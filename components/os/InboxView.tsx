@@ -6,6 +6,7 @@ import { THEME as T } from '@/lib/make-one/os-data';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { LIVE_AGENTS } from '@/lib/make-one/agents-data';
+import { FAECHER, FACH, fachVon, absenderKey } from '@/lib/make-one/inbox-data';
 
 // ─── Normalisierte Nachricht (Apple Mail live + M365 Snapshot) ───────────────
 type Source = 'apple' | 'ms';
@@ -71,6 +72,17 @@ export function InboxView() {
   const [sel, setSel] = useState<string | null>(null);
   const [seg, setSeg] = useState<'offen' | 'erledigt' | 'alle'>('offen');
   const [srcFilter, setSrcFilter] = useState<string>('alle');
+  // Split Inbox + Screener (aus der Marktanalyse: Hey, Shortwave, Superhuman)
+  const [fachFilter, setFachFilter] = useState<string>('alle');
+  const [absender, setAbsender] = useState<Record<string, { status: 'durchgelassen' | 'geblockt'; seit: string }>>({});
+  const [screenerAuf, setScreenerAuf] = useState(false);
+  useEffect(() => {
+    fetch('/api/state/inbox-absender').then(r => r.json()).then(d => setAbsender(d.bekannt ?? {})).catch(() => {});
+  }, []);
+  function entscheideAbsender(key: string, st: 'durchgelassen' | 'geblockt') {
+    setAbsender(prev => ({ ...prev, [key]: { status: st, seit: localDay() } }));
+    fetch('/api/state/inbox-absender', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ absender: key, status: st }) }).catch(() => {});
+  }
   const [q, setQ] = useState('');
   const [draftText, setDraftText] = useState('');
   const [draftBusy, setDraftBusy] = useState(false);
@@ -307,6 +319,7 @@ export function InboxView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zero, msgs]);
 
+
   async function openInMail(m: Msg) {
     if (!draftText.trim()) return;
     setDraftInfo('öffnet in Apple Mail …');
@@ -330,6 +343,9 @@ export function InboxView() {
       if (seg === 'offen' && !istOffen(m.id)) return false;
       if (seg === 'erledigt' && !DONE.has(st)) return false;
       if (srcFilter !== 'alle') { const acc = m.source === 'apple' ? m.account : 'M365 · KEMARIS'; if (acc !== srcFilter) return false; }
+      // Geblockte Absender verschwinden aus dem Postfach — genau das ist der Sinn.
+      if (seg === 'offen' && absender[absenderKey(m)]?.status === 'geblockt') return false;
+      if (fachFilter !== 'alle' && fachVon(m) !== fachFilter) return false;
       if (needle) {
         const hay = `${m.sender} ${m.senderEmail ?? ''} ${m.subject} ${m.preview ?? ''} ${triage[fpOf(m)]?.zeile ?? ''}`.toLowerCase();
         if (!hay.includes(needle)) return false;
@@ -340,7 +356,31 @@ export function InboxView() {
       (istWiedervorlage(b.id) ? 1 : 0) - (istWiedervorlage(a.id) ? 1 : 0) ||
       stufeRang(triage[fpOf(a)]?.stufe) - stufeRang(triage[fpOf(b)]?.stufe) ||
       b.receivedAt.localeCompare(a.receivedAt));
-  }, [msgs, status, seg, srcFilter, q, triage]);
+  }, [msgs, status, seg, srcFilter, fachFilter, q, triage, absender]);
+
+  /** Wie viel liegt in jedem Fach — Zahlen an den Reitern. */
+  const fachZahlen = useMemo(() => {
+    const z: Record<string, number> = {};
+    msgs.filter(m => istOffen(m.id) && absender[absenderKey(m)]?.status !== 'geblockt')
+      .forEach(m => { const f = fachVon(m); z[f] = (z[f] ?? 0) + 1; });
+    return z;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [msgs, status, absender]);
+
+  /** Screener: Absender, über die noch nie entschieden wurde — je einmal, dann nie wieder. */
+  const screener = useMemo(() => {
+    const map = new Map<string, { name: string; email?: string; anzahl: number; letzte: string; betreff: string; fach: string }>();
+    msgs.filter(m => istOffen(m.id)).forEach(m => {
+      const key = absenderKey(m);
+      if (!key || absender[key]) return;
+      const e = map.get(key);
+      if (e) { e.anzahl++; if (m.receivedAt > e.letzte) { e.letzte = m.receivedAt; e.betreff = m.subject; } }
+      else map.set(key, { name: m.sender, email: m.senderEmail, anzahl: 1, letzte: m.receivedAt, betreff: m.subject, fach: fachVon(m) });
+    });
+    return Array.from(map.entries()).map(([key, v]) => ({ key, ...v }))
+      .sort((a, b) => b.anzahl - a.anzahl || b.letzte.localeCompare(a.letzte));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [msgs, status, absender]);
   const anzahlJe = useMemo(() => {
     const z = { wichtig: 0, normal: 0, rauschen: 0, offen: 0 };
     for (const m of filtered) {
@@ -349,6 +389,40 @@ export function InboxView() {
     }
     return z;
   }, [filtered, triage]);
+
+  // Tastatur in der Liste — das Tempo, für das Superhuman Geld nimmt.
+  // j/k oder ↑/↓ wandern, e erledigt, a macht eine Aufgabe, s legt schlafen,
+  // Enter öffnet, / springt in die Suche.
+  useEffect(() => {
+    if (zero) return; // im Durchlauf gilt die andere Belegung
+    function onKey(ev: KeyboardEvent) {
+      const tag = (ev.target as HTMLElement)?.tagName;
+      if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') {
+        if (ev.key === 'Escape') (ev.target as HTMLElement).blur();
+        return;
+      }
+      const k = ev.key.toLowerCase();
+      const liste = filtered;
+      if (!liste.length) return;
+      const idx = sel ? liste.findIndex(m => m.id === sel) : -1;
+
+      if (k === 'j' || ev.key === 'ArrowDown') { ev.preventDefault(); setSel(liste[Math.min(liste.length - 1, idx + 1)]?.id ?? liste[0].id); return; }
+      if (k === 'k' || ev.key === 'ArrowUp') { ev.preventDefault(); setSel(liste[Math.max(0, idx - 1)]?.id ?? liste[0].id); return; }
+      if (k === '/') { ev.preventDefault(); (document.querySelector('input[aria-label="Inbox durchsuchen"]') as HTMLInputElement)?.focus(); return; }
+      if (k === 'escape') { setSel(null); return; }
+      if (idx < 0) return;
+      const m = liste[idx];
+      // Nach einer Entscheidung auf die nächste Nachricht springen — nie ins Leere.
+      const weiter = () => setSel(liste[Math.min(liste.length - 1, idx + 1)]?.id ?? null);
+      if (k === 'e') { ev.preventDefault(); setMsgStatus(m.id, 'erledigt'); weiter(); }
+      else if (k === 'a') { ev.preventDefault(); toTask(m); weiter(); }
+      else if (k === 's') { ev.preventDefault(); setMsgStatus(m.id, 'snoozed', tagIn(1)); weiter(); }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zero, filtered, sel]);
 
   const openCount = msgs.filter(m => istOffen(m.id)).length;
   const selMsg = msgs.find(m => m.id === sel) ?? null;
@@ -483,6 +557,63 @@ export function InboxView() {
             }}>{a === 'alle' ? 'Alle Quellen' : a}</button>
           ))}
         </div>
+
+        {/* Fächer — nicht eine lange Liste, sondern getrennt nach Art der Nachricht */}
+        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
+          <button onClick={() => setFachFilter('alle')} style={{
+            fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, padding: '6px 13px', borderRadius: 9, cursor: 'pointer',
+            border: `1px solid ${fachFilter === 'alle' ? T.lineHot : T.line}`, background: fachFilter === 'alle' ? T.accentSoft : 'transparent',
+            color: fachFilter === 'alle' ? T.accentInk : T.inkDim,
+          }}>Alles</button>
+          {FAECHER.map(f => {
+            const n = fachZahlen[f.id] ?? 0;
+            const an = fachFilter === f.id;
+            return (
+              <button key={f.id} onClick={() => setFachFilter(f.id)} title={f.satz} style={{
+                fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, padding: '6px 13px', borderRadius: 9, cursor: 'pointer',
+                border: `1px solid ${an ? f.farbe : T.line}`, background: an ? `${f.farbe}1c` : 'transparent',
+                color: an ? f.farbe : n ? T.inkDim : T.muted,
+              }}>{f.label}<span style={{ fontFamily: T.mono, fontSize: 11, marginLeft: 6, color: an ? f.farbe : T.muted }}>{n}</span></button>
+            );
+          })}
+          {screener.length > 0 && (
+            <button onClick={() => setScreenerAuf(!screenerAuf)} style={{
+              marginLeft: 'auto', fontFamily: T.sans, fontSize: 12.5, fontWeight: 700, padding: '6px 13px', borderRadius: 9, cursor: 'pointer',
+              border: `1px solid ${screenerAuf ? T.accent : T.amber}55`, background: screenerAuf ? `${T.accent}1c` : `${T.amber}14`, color: screenerAuf ? T.accentInk : T.amber,
+            }}>Türsteher · {screener.length} neue Absender {screenerAuf ? '▾' : '▸'}</button>
+          )}
+        </div>
+
+        {/* Türsteher: je Absender EINE Entscheidung — danach nie wieder gefragt */}
+        {screenerAuf && screener.length > 0 && (
+          <div style={{ ...panel, borderLeft: `3px solid ${T.amber}`, padding: '13px 16px', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
+              <span style={lbl}>Türsteher</span>
+              <span style={{ fontSize: 12, color: T.inkDim }}>Wer darf dich erreichen? Einmal entscheiden — Geblockte verschwinden dauerhaft aus dem Postfach.</span>
+              <button onClick={() => setScreenerAuf(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 12 }}>✕</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 340, overflowY: 'auto' }}>
+              {screener.slice(0, 30).map((s, i) => (
+                <div key={s.key} style={{ display: 'flex', gap: 11, alignItems: 'center', padding: '9px 0', borderTop: i ? `1px solid ${T.lineSoft}` : 0 }}>
+                  <span style={{ width: 4, height: 30, borderRadius: 2, background: FACH[s.fach]?.farbe ?? T.line, flex: '0 0 auto' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {s.name} {s.anzahl > 1 && <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.amber }}>· {s.anzahl} Nachrichten</span>}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: T.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {s.email ?? '—'} · {s.betreff}
+                    </div>
+                  </div>
+                  <button onClick={() => entscheideAbsender(s.key, 'durchgelassen')}
+                    style={{ fontSize: 12, fontWeight: 600, color: T.accentInk, background: `${T.accent}18`, border: `1px solid ${T.accent}55`, borderRadius: 8, padding: '5px 12px', cursor: 'pointer', flex: '0 0 auto' }}>Durchlassen</button>
+                  <button onClick={() => entscheideAbsender(s.key, 'geblockt')}
+                    style={{ fontSize: 12, color: T.muted, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 8, padding: '5px 12px', cursor: 'pointer', flex: '0 0 auto' }}>Blocken</button>
+                </div>
+              ))}
+              {screener.length > 30 && <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted, paddingTop: 8 }}>+{screener.length - 30} weitere — die häufigsten zuerst</div>}
+            </div>
+          </div>
+        )}
 
         {/* Kommando-Zentrale: Meldungen von Jarvis & den Agenten — Eingänge ohne Absender */}
         {seg === 'offen' && (shields.length > 0 || meldungen.length > 0) && (
