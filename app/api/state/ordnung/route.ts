@@ -13,10 +13,13 @@ interface OrdnungFile {
   reihenfolge: string[];
   zuordnung: Record<string, string>;
   stichworte: Record<string, string[]>;
+  /** Aufgabe → Organisation (kdv|kdc|kemaris|privat), von Hand gesetzt. */
+  orgs: Record<string, string>;
 }
 
 const STANDARD = ['recht', 'umsatz', 'produkt', 'leben'];
 const ERLAUBT = new Set(STANDARD);
+const ORG_IDS = new Set(['kdv', 'kdc', 'kemaris', 'privat']);
 
 export async function GET() {
   const f = await loadJson<OrdnungFile>('ordnung');
@@ -24,6 +27,7 @@ export async function GET() {
     reihenfolge: Array.isArray(f?.reihenfolge) && f.reihenfolge.length ? f.reihenfolge.filter(x => ERLAUBT.has(x)) : STANDARD,
     zuordnung: f?.zuordnung && typeof f.zuordnung === 'object' ? f.zuordnung : {},
     stichworte: f?.stichworte && typeof f.stichworte === 'object' ? f.stichworte : {},
+    orgs: f?.orgs && typeof f.orgs === 'object' ? f.orgs : {},
   });
 }
 
@@ -57,7 +61,15 @@ export async function PUT(req: Request) {
       }
     }
 
-    return { reihenfolge, zuordnung, stichworte };
+    const orgs = { ...(current?.orgs ?? {}) };
+    if (body.orgs && typeof body.orgs === 'object') {
+      for (const [taskId, org] of Object.entries(body.orgs).slice(0, 500)) {
+        if (typeof org === 'string' && ORG_IDS.has(org)) orgs[String(taskId).slice(0, 60)] = org;
+        else delete orgs[String(taskId).slice(0, 60)];
+      }
+    }
+
+    return { reihenfolge, zuordnung, stichworte, orgs };
   });
 
   return NextResponse.json({ ok: true, ...next });

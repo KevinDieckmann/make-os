@@ -9,6 +9,8 @@ export interface TeamMitglied {
   bereiche: string[];
   /** 'kern' = KEMARIS-Führung, 'partner' = extern/beratend, 'privat' = MAKE.One */
   kreis: 'kern' | 'partner' | 'privat';
+  /** Wohin die Person gehört (organisation-data): kdv|kdc|kemaris|privat */
+  org?: string;
 }
 
 export const TEAM: TeamMitglied[] = [
@@ -30,9 +32,16 @@ export const TEAM: TeamMitglied[] = [
     bereiche: ['Investoren', 'Netzwerkaufbau', 'Eventmanagement (Family Offices)'] },
   { name: 'Michael Höppner (Akasha)', kurz: 'Michael', kreis: 'partner',
     bereiche: ['Investoren', 'Family Offices'] },
-  { name: 'Malin', kurz: 'Malin', kreis: 'privat',
-    bereiche: ['Kevins rechte Hand', 'Board & Netzwerk', 'KD-Kostenaufstellung', 'MAKE.One'] },
+  { name: 'Malin', kurz: 'Malin', kreis: 'privat', org: 'privat',
+    bereiche: ['Kevins rechte Hand', 'Board & Netzwerk', 'KD-Kostenaufstellung', 'MAKE.One', 'Gesundheits-Beauftragte', 'kritische Themen zuerst'] },
+  { name: 'Jörn Peters', kurz: 'Jörn', kreis: 'partner', org: 'kdv',
+    bereiche: ['Steuerberatung', 'Buchhaltung', 'Lohnbuchhaltung', 'Jahresabschluss', 'steuerliche Struktur'] },
+  { name: 'Lietz (Rechtsanwalt)', kurz: 'Lietz', kreis: 'partner', org: 'privat',
+    bereiche: ['Mietrecht', 'Rechtsstreit', 'Schriftsätze'] },
 ];
+
+/** Wer darf Aufgaben bekommen — Kevin selbst steht nicht zur Auswahl. */
+export const DELEGIERBAR = TEAM.filter(t => t.kurz !== 'Kevin');
 
 /** Für Prompts: eine Zeile je Person. */
 export const teamZeilen = () => TEAM.map(t => `${t.name}: ${t.bereiche.join(', ')}`);
