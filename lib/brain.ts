@@ -18,6 +18,11 @@ import { computeIndex, type PerfIndex } from '@/lib/performance';
 import { computeMetrics, eur, type FinanceState, type FinanceMetrics } from '@/lib/make-one/finance-data';
 import { recentRuns, type AgentLogEntry } from '@/lib/agent-log';
 import { computeShields, shieldZeilen, type Shield } from '@/lib/risk';
+import { schwellen, type Schwellen } from '@/lib/schwellen';
+import { MODUS, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
+import { THEMA, STANDARD_ORDNUNG, themaVon } from '@/lib/make-one/ordnung-data';
+import { ORG, orgVon } from '@/lib/make-one/organisation-data';
+import { einschaetzen, dauerText, WER_LABEL } from '@/lib/make-one/umsetzung-data';
 import { teamZeilen } from '@/lib/make-one/team-data';
 import type { Prospect } from '@/lib/make-one/prospecting-data';
 
@@ -67,11 +72,20 @@ export interface Brain {
   mandate: { aktiv: number; gespraech: number; cashflow: number };
   /** Deterministische Frühwarnungen (lib/risk) — Agenten sprechen sie aktiv an. */
   shields: Shield[];
+  /** Die Lage aus dem Kompass — sie bestimmt, wie priorisiert wird. */
+  lage: {
+    modus: string;
+    label: string;
+    satz: string;
+    /** Reihenfolge der Themen: was zuerst zählt, wenn alles wichtig ist. */
+    ordnung: string[];
+    schwellen: Schwellen;
+  };
 }
 
 /** Alles einsammeln — jede Quelle darf einzeln ausfallen. */
 export async function gatherBrain(heute = localDay()): Promise<Brain> {
-  const [tasksR, finR, prospectsR, calR, kemR, msR, vitalsR, indexR, laeufeR, meilR, fplanR, kundenR, shieldsR] = await Promise.allSettled([
+  const [tasksR, finR, prospectsR, calR, kemR, msR, vitalsR, indexR, laeufeR, meilR, fplanR, kundenR, shieldsR, kompassR, ordnungR, schwellenR] = await Promise.allSettled([
     loadJson<{ tasks: StoredTask[]; projects: StoredProject[] }>('tasks'),
     loadJson<FinanceState>('finance'),
     loadJson<{ prospects: Prospect[] }>('prospects'),
@@ -85,6 +99,9 @@ export async function gatherBrain(heute = localDay()): Promise<Brain> {
     loadJson<{ rechnungen: { status: string; betrag: number; faellig?: string }[] }>('finanzplan'),
     loadJson<{ kunden: { status: string; cashflow?: number }[] }>('kunden'),
     computeShields(heute),
+    loadJson<{ modus?: string }>('kompass'),
+    loadJson<{ reihenfolge?: string[] }>('ordnung'),
+    schwellen(),
   ]);
   const val = <T,>(r: PromiseSettledResult<T>): T | null => (r.status === 'fulfilled' ? r.value : null);
 
@@ -188,16 +205,70 @@ export async function gatherBrain(heute = localDay()): Promise<Brain> {
       };
     })(),
     shields: val(shieldsR) ?? [],
+    lage: (() => {
+      const modusId = val(kompassR)?.modus ?? STANDARD_MODUS;
+      const m = MODUS[modusId] ?? MODUS[STANDARD_MODUS];
+      const gespeichert = val(ordnungR)?.reihenfolge;
+      return {
+        modus: modusId,
+        label: m.label,
+        satz: m.satz,
+        ordnung: Array.isArray(gespeichert) && gespeichert.length ? gespeichert : (m.ordnung ?? STANDARD_ORDNUNG),
+        schwellen: val(schwellenR) ?? await0Schwellen(),
+      };
+    })(),
+  };
+}
+
+/** Notnagel, falls das Laden der Schwellen ausfällt — Werte der Standard-Lage. */
+function await0Schwellen(): Schwellen {
+  const m = MODUS[STANDARD_MODUS];
+  return {
+    fokusSchwelle: m.werte['fokus-schwelle'], tageslast: m.werte.tageslast, wochenlast: m.werte.wochenlast,
+    kritischGrenze: m.werte['kritisch-grenze'], vorschauTage: m.werte['vorschau-tage'],
+    recoveryGruen: m.werte['recovery-gruen'], recoveryGelb: Math.max(20, m.werte['recovery-gruen'] - 26),
+    runwayRot: m.werte['runway-warnung'], runwayAmber: m.werte['runway-warnung'] * 2,
+    nachtruheAb: m.werte['nachtruhe-ab'],
+    tagesstartAuto: m.werte['tagesstart-auto'] >= 50,
+    koerperAnAgenten: m.werte['koerper-an-agenten'] >= 50,
   };
 }
 
 // ── Prompt-Blöcke — die eine Sprache, in der alle Agenten die Lage sehen ──
 
+/**
+ * Die Lage — der wichtigste Block. Er sagt jedem Agenten, wonach überhaupt
+ * priorisiert wird. Ohne ihn erfindet jeder Agent seine eigene Rangfolge.
+ */
+export function blockLage(b: Brain): string {
+  const s = b.lage.schwellen;
+  const ordnung = b.lage.ordnung.map((id, i) => `${i + 1}. ${THEMA[id]?.label ?? id}`).join(' → ');
+  return [
+    `LAGE: „${b.lage.label}" — ${b.lage.satz}`,
+    `REIHENFOLGE (so wird priorisiert, wenn alles wichtig ist): ${ordnung}.`,
+    'Nur KRITISCHE Aufgaben brechen diese Reihenfolge — sie blockieren alles andere.',
+    `GRENZEN: höchstens ${s.tageslast} h Arbeit am Tag · Alarm ab ${s.kritischGrenze} kritischen Aufgaben · Vorausschau ${s.vorschauTage} Tage · Runway unter ${s.runwayRot} Monaten ist rot.`,
+    'Halte dich an diese Reihenfolge und diese Grenzen. Plane niemals mehr in einen Tag, als die Tageslast hergibt — sag lieber, was dafür weichen muss.',
+  ].join('\n');
+}
+
 export function blockAufgaben(b: Brain, max = 20): string {
   if (!b.tasks.offen.length) return 'OFFENE AUFGABEN: keine im Store — wenn das überrascht, sag es Kevin, statt Aufgaben zu erfinden.';
-  const zeilen = b.tasks.offen.slice(0, max).map(t =>
-    `• ${t.title} [${t.priority}${t.dueDate ? `, fällig ${t.dueDate}` : ''}${b.tasks.projektName(t.projectId) ? `, ${b.tasks.projektName(t.projectId)}` : ''}${t.assignee ? `, ${t.assignee}` : ''}]`);
-  return `OFFENE AUFGABEN (${b.tasks.offen.length}, davon ${b.tasks.kritisch.length} kritisch, ${b.tasks.overdue.length} überfällig, ${b.tasks.dueToday.length} heute fällig):\n${zeilen.join('\n')}`;
+  // Jede Aufgabe trägt jetzt Thema, Ort und Umsetzungs-Einschätzung — damit
+  // Agenten nach derselben Logik priorisieren wie die Oberfläche.
+  const zeilen = b.tasks.offen.slice(0, max).map(t => {
+    const zuordnung = { ...t, projectId: t.projectId ?? '' };
+    const thema = THEMA[themaVon(zuordnung)]?.label.split(' ')[0] ?? '—';
+    const ort = ORG[orgVon(zuordnung)]?.kurz ?? '—';
+    const e = einschaetzen(t);
+    const wer = e.wer === 'jarvis' ? 'DU KANNST DAS' : e.wer === 'gemeinsam' ? 'du bereitest vor' : 'nur Kevin/Malin';
+    return `• ${t.title} [${t.priority}${t.dueDate ? `, fällig ${t.dueDate}` : ''}, ${thema}, ${ort}, ${t.assignee ?? '—'} · ${wer}, ~${dauerText(e.dauer)}]`;
+  });
+  const jarvisBar = b.tasks.offen.filter(t => einschaetzen(t).wer === 'jarvis');
+  const hinweis = jarvisBar.length
+    ? `\n${jarvisBar.length} dieser Aufgaben kannst DU selbst erledigen (mit „DU KANNST DAS" markiert) — biete das aktiv an, statt sie nur aufzuzählen.`
+    : '';
+  return `OFFENE AUFGABEN (${b.tasks.offen.length}, davon ${b.tasks.kritisch.length} kritisch, ${b.tasks.overdue.length} überfällig, ${b.tasks.dueToday.length} heute fällig):\n${zeilen.join('\n')}${hinweis}`;
 }
 
 export function blockZahlen(b: Brain): string {
@@ -262,14 +333,18 @@ export function blockZiele(b?: Brain): string {
 /** Der Standard-Kontext für Agenten — wähl ab, was der Agent braucht. */
 export function promptBrain(b: Brain, teile?: { koerper?: boolean; ziele?: boolean; gedaechtnis?: boolean }): string {
   const t = { koerper: true, ziele: true, gedaechtnis: true, ...teile };
+  // Der Kompass-Schalter schlägt den Wunsch des Aufrufers: steht er auf
+  // „bleiben privat", sehen Agenten die Körperdaten gar nicht erst.
+  const koerper = t.koerper && b.lage.schwellen.koerperAnAgenten;
   return [
+    blockLage(b),
     shieldZeilen(b.shields),
     blockAufgaben(b),
     blockZahlen(b),
     blockPipeline(b),
     blockTermine(b),
     blockIndex(b),
-    t.koerper ? blockVitals(b) : '',
+    koerper ? blockVitals(b) : '',
     t.gedaechtnis ? blockGedaechtnis(b) : '',
     t.ziele ? blockZiele(b) : '',
   ].filter(Boolean).join('\n\n');
