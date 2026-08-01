@@ -1,0 +1,49 @@
+# MAKE OS — Onboarding für Malin
+
+Willkommen im Maschinenraum. MAKE OS ist unser Life & Business OS — Dashboard,
+Tag, Inbox, Gesundheit, Finanzen, Planung mit Zeitstrahl, Jarvis. Du hast
+vollen Zugriff: mitbenutzen und mitbauen.
+
+## 1 · Mitbenutzen (ohne Code)
+
+Kevins Mac betreibt das System. Solange sein Server läuft:
+
+- Im selben WLAN: `http://<IP-von-Kevins-Mac>:3001/os` im Browser öffnen
+  (IP steht auf dem Mac unter Systemeinstellungen → WLAN → Details).
+- Beim ersten Aufruf fragt das System nach dem Zugangsschlüssel — den gibt dir
+  Kevin persönlich. Niemals per Mail/Chat schicken.
+- Für Zugriff von unterwegs richten wir Tailscale ein (steht im Bauplan).
+
+## 2 · Mitbauen (eigene Entwicklungs-Kopie)
+
+Du entwickelst auf einer eigenen Kopie mit eigenen Testdaten — die echten
+Daten bleiben auf Kevins Mac. Zusammengeführt wird über GitHub.
+
+1. **Werkzeuge:** Node 22 (nodejs.org) und Git. Optional, aber empfohlen:
+   Claude Code (claude.com/claude-code) — damit bauen wir dieses System.
+2. **Code holen:** `git clone <GitHub-URL>` (URL kommt von Kevin, das Repo ist
+   privat) und dann `cd make && npm install`.
+3. **Umgebung:** `.env.local.example` zu `.env.local` kopieren und eigene
+   Werte eintragen — eigener `MAKE_OS_KEY` (frei ausdenken), Anthropic-Key
+   von Kevin. Die Datei bleibt auf deinem Rechner, Git ignoriert sie.
+4. **Starten:** `npm run dev` → `http://localhost:3001/os`. Beim ersten Start
+   ist alles leer — das ist richtig so: deine Kopie, deine Testdaten.
+
+## 3 · Arbeitsweise
+
+- `main` bleibt immer lauffähig. Für jede Änderung ein eigener Branch
+  (`git checkout -b feature/mein-thema`), kleine Commits, dann Pull Request —
+  Kevin oder Claude schaut kurz drüber, dann Merge.
+- Design-Sprache: Klar·DARK, Petrol `#21B5AA`, keine Untertitel hinter Namen,
+  Terminologie wie im System etabliert.
+- TypeScript strikt: vor jedem Commit `npx tsc --noEmit` — null Fehler.
+
+## 4 · Eiserne Regeln
+
+1. `.env.local` und `.data/` sind vom Repo ausgeschlossen und bleiben es —
+   niemals Schlüssel oder echte Daten committen, niemals Keys in den Code.
+2. Was wir an Dritte geben (z. B. Alex), ist immer nur der **Rohbau**: Code,
+   Regeln, Struktur. Niemals unsere Daten — Gesundheit, Journal, Ziele,
+   Finanzen bleiben bei uns. Das Repo ist genau so gebaut.
+3. Ausgehendes (Mails, Nachrichten an Dritte) verschickt das System nie
+   selbst — immer erst Freigabe durch einen von uns.
