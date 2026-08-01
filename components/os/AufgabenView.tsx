@@ -7,6 +7,8 @@ import { useTasks } from '@/context/TasksContext';
 import type { Priority } from '@/types';
 import { localDay } from '@/lib/zeit';
 import { SAEULE_VON_PROJEKT, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
+import { THEMA, STANDARD_ORDNUNG, themaVon, sortierteThemen } from '@/lib/make-one/ordnung-data';
+import { Zeitstrahl, type StrahlMarker } from './Zeitstrahl';
 
 // ── Datums-Kurzhelfer fürs Schnellanlegen und die Zeilen-Aktionen ──
 const tagInT = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return localDay(d); };
@@ -43,6 +45,7 @@ function parseSchnell(rein: string, projekte: { id: string; title: string }[]): 
 }
 
 const PRIO_ZYKLUS: Priority[] = ['low', 'medium', 'high', 'critical'];
+const PRIO_RANG: Record<Priority, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
 interface Reminder { id: string; list: string; title: string; due?: string; priority: number; }
 
@@ -57,11 +60,20 @@ const PRIO: Record<Priority, { c: string; t: string }> = {
 };
 const OWNER: Record<string, string> = { kevin: 'Kevin', malin: 'Malin', both: 'Beide' };
 
+type Ansicht = 'jetzt' | 'bahnen' | 'zeit' | 'liste';
+const ANSICHTEN: { key: Ansicht; label: string }[] = [
+  { key: 'jetzt', label: 'Jetzt' },
+  { key: 'bahnen', label: 'Bahnen' },
+  { key: 'zeit', label: 'Zeitstrahl' },
+  { key: 'liste', label: 'Liste' },
+];
+
 interface DelegVorschlag { taskId: string; titel: string; empfehlung: 'abgeben' | 'bleibt'; an?: string; warum: string; uebergabe?: string }
 
 export function AufgabenView() {
   const { state, dispatch, ready } = useTasks();
   const [seg, setSeg] = useState<'offen' | 'erledigt' | 'alle'>('offen');
+  const [ansicht, setAnsicht] = useState<Ansicht>('jetzt');
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [remState, setRemState] = useState<'laden' | 'ok' | 'fehler'>('laden');
   // Delegations-Runde: Jarvis schlägt vor, Kevin klickt — nichts geht automatisch raus.
@@ -69,6 +81,32 @@ export function AufgabenView() {
   const [delegBusy, setDelegBusy] = useState(false);
   const [delegPrivat, setDelegPrivat] = useState(0);
   const [delegStatus, setDelegStatus] = useState<Record<string, string>>({});
+
+  // ── Die Ordnung: Reihenfolge der Bahnen + Zuordnungen von Hand ──
+  const [reihenfolge, setReihenfolge] = useState<string[]>(STANDARD_ORDNUNG);
+  const [zuordnung, setZuordnung] = useState<Record<string, string>>({});
+  const [ordnungAuf, setOrdnungAuf] = useState(false);
+  useEffect(() => {
+    fetch('/api/state/ordnung').then(r => r.json()).then(d => {
+      if (Array.isArray(d.reihenfolge) && d.reihenfolge.length) setReihenfolge(d.reihenfolge);
+      if (d.zuordnung) setZuordnung(d.zuordnung);
+    }).catch(() => {});
+  }, []);
+  function ordnungSpeichern(next: { reihenfolge?: string[]; zuordnung?: Record<string, string> }) {
+    if (next.reihenfolge) setReihenfolge(next.reihenfolge);
+    if (next.zuordnung) setZuordnung(next.zuordnung);
+    fetch('/api/state/ordnung', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
+  }
+  function bahnSchieben(id: string, richtung: -1 | 1) {
+    const i = reihenfolge.indexOf(id);
+    const j = i + richtung;
+    if (i < 0 || j < 0 || j >= reihenfolge.length) return;
+    const next = [...reihenfolge];
+    [next[i], next[j]] = [next[j], next[i]];
+    ordnungSpeichern({ reihenfolge: next });
+  }
+  const bahnen = useMemo(() => sortierteThemen(reihenfolge), [reihenfolge]);
+  const bahnRang = useMemo(() => Object.fromEntries(bahnen.map((b, i) => [b.id, i])) as Record<string, number>, [bahnen]);
 
   async function delegationsRunde() {
     setDelegBusy(true); setDeleg(null); setDelegStatus({});
@@ -115,6 +153,8 @@ export function AufgabenView() {
   // Delegiert-Marker aus der Beschreibung („— Delegiert an Frank (31.07): …").
   const delegiertAn = (desc?: string) => desc?.match(/— Delegiert an (\w+)/)?.[1];
   const [bes, setBes] = useState<'alle' | 'kevin' | 'malin' | 'both'>('alle');
+  const [prioFilter, setPrioFilter] = useState<Priority | 'alle'>('alle');
+  const [bahnFilter, setBahnFilter] = useState<string | 'alle'>('alle');
 
   // ── Schnell-Anlegen + Zeilen-Editor + Fokus-Regler-Lenkung ──
   const [neuTitel, setNeuTitel] = useState('');
@@ -140,6 +180,8 @@ export function AufgabenView() {
 
   const heute = localDay();
   const patchTask = (id: string, p: Record<string, unknown>) => dispatch({ type: 'UPDATE_TASK', payload: { id, ...p } });
+  const bahnVon = (t: { id: string; title: string; description?: string; projectId: string }) => themaVon(t, zuordnung);
+
   const list = useMemo(() => {
     const arr = state.tasks.filter(t => {
       if (seg === 'offen' && t.status === 'done') return false;
@@ -148,19 +190,30 @@ export function AufgabenView() {
       if (bes === 'malin' && !(t.assignee === 'malin' || t.assignee === 'both' || delegiertAn(t.description) === 'Malin')) return false;
       if (bes === 'kevin' && !((t.assignee === 'kevin' || t.assignee === 'both') && !delegiertAn(t.description))) return false;
       if (bes === 'both' && t.assignee !== 'both') return false;
+      if (prioFilter !== 'alle' && t.priority !== prioFilter) return false;
+      if (bahnFilter !== 'alle' && themaVon(t, zuordnung) !== bahnFilter) return false;
       return true;
     });
-    // Priorität schlägt alles, dann lenkt der Fokus-Regler, dann Fälligkeit.
-    const rank: Record<Priority, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-    return arr.sort((a, b) =>
-      (rank[a.priority] - rank[b.priority]) ||
-      boost(b) - boost(a) ||
-      (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999') ||
-      a.title.localeCompare(b.title));
+    // Die Ordnung entscheidet: kritisch bricht die Bahn (das sind unsere
+    // Blocker), danach zählt die Bahn-Reihenfolge, dann Prio und Fälligkeit.
+    const key = (t: typeof arr[number]) => [
+      t.priority === 'critical' ? 0 : 1,
+      bahnRang[themaVon(t, zuordnung)] ?? 9,
+      PRIO_RANG[t.priority],
+      t.dueDate && t.dueDate < heute ? 0 : 1,
+      t.dueDate ?? '9999-99-99',
+    ];
+    return arr.sort((a, b) => {
+      const ka = key(a), kb = key(b);
+      for (let i = 0; i < ka.length; i++) {
+        if (ka[i] !== kb[i]) return ka[i] < kb[i] ? -1 : 1;
+      }
+      return boost(b) - boost(a) || a.title.localeCompare(b.title);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.tasks, seg, bes, regler]);
+  }, [state.tasks, seg, bes, prioFilter, bahnFilter, regler, zuordnung, bahnRang, heute]);
 
-  // ── Fällig-Gruppen (nur „Offen"): der Blick, der sagt, was JETZT dran ist ──
+  // ── Fällig-Gruppen (Listen-Ansicht): was JETZT dran ist ──
   const gruppen = useMemo(() => {
     if (seg !== 'offen') return null;
     const morgenT = tagInT(1);
@@ -179,6 +232,7 @@ export function AufgabenView() {
   }, [seg, list, heute]);
 
   const openCount = state.tasks.filter(t => t.status !== 'done').length;
+  const kritischOffen = state.tasks.filter(t => t.status !== 'done' && t.priority === 'critical').length;
   const fromInbox = (desc?: string) => !!desc && desc.startsWith('Aus Inbox');
 
   const segBtn = (key: 'offen' | 'erledigt' | 'alle', label: string, n?: number) => (
@@ -189,14 +243,135 @@ export function AufgabenView() {
     }}>{label}{typeof n === 'number' ? <span style={{ fontFamily: T.mono, marginLeft: 6, color: seg === key ? T.accent : T.muted }}>{n}</span> : null}</button>
   );
 
+  /** Eine Aufgabenzeile — überall gleich, damit jede Ansicht dieselbe Wahrheit zeigt. */
+  const Zeile = ({ t, i, zeigeBahn }: { t: typeof list[number]; i: number; zeigeBahn?: boolean }) => {
+    const done = t.status === 'done';
+    const blockiert = t.status === 'blocked';
+    const p = PRIO[t.priority];
+    const auf = offenId === t.id;
+    const imFokus = !done && boost(t) >= FOKUS_SCHWELLE;
+    const bahn = THEMA[bahnVon(t)];
+    const spaet = !!t.dueDate && t.dueDate < heute && !done;
+    const kritisch = t.priority === 'critical' && !done;
+    return (
+      <div style={{ borderTop: i ? `1px solid ${T.lineSoft}` : 0, background: auf ? T.panel2 : 'transparent' }}>
+        <div onClick={() => setOffenId(auf ? null : t.id)} style={{ display: 'flex', gap: 13, padding: '12px 16px', alignItems: 'flex-start', cursor: 'pointer' }}>
+          <button onClick={e => { e.stopPropagation(); dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } }); }} aria-label={done ? 'Wieder öffnen' : 'Erledigen'}
+            style={{ width: 19, height: 19, borderRadius: 6, flex: '0 0 auto', marginTop: 1, cursor: 'pointer',
+              border: `1.6px solid ${done ? T.accent : kritisch ? T.crit : T.muted}`, background: done ? T.accent : 'transparent',
+              color: T.void, fontSize: 12, lineHeight: 1, display: 'grid', placeItems: 'center' }}>{done ? <span className="check-pop">✓</span> : ''}</button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 550, color: done ? T.muted : blockiert ? T.amber : T.ink, textDecoration: done ? 'line-through' : 'none', lineHeight: 1.35 }}>
+              {kritisch && <span className="krit-puls" style={{ color: T.crit, marginRight: 5 }}>●</span>}
+              {imFokus && <span style={{ color: T.accent }}>◎ </span>}{t.title}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 5, flexWrap: 'wrap' }}>
+              {!done && (
+                <button onClick={e => { e.stopPropagation(); patchTask(t.id, { priority: PRIO_ZYKLUS[(PRIO_ZYKLUS.indexOf(t.priority) + 1) % PRIO_ZYKLUS.length] }); }}
+                  title="Priorität wechseln"
+                  className={kritisch ? 'krit-puls' : undefined}
+                  style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: p.c, border: `1px solid ${p.c}${kritisch ? '99' : '44'}`, borderRadius: 5, padding: '1px 6px', background: kritisch ? `${T.crit}18` : 'transparent', cursor: 'pointer' }}>{p.t}</button>
+              )}
+              {zeigeBahn && bahn && <span style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: bahn.farbe, border: `1px solid ${bahn.farbe}44`, borderRadius: 5, padding: '1px 6px' }}>{bahn.label.split(' ')[0]}</span>}
+              {blockiert && <span style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: T.amber, border: `1px solid ${T.amber}55`, borderRadius: 5, padding: '1px 6px' }}>blockiert</span>}
+              {t.dueDate && <span className={spaet ? 'krit-puls' : undefined} style={{ fontFamily: T.mono, fontSize: 10, color: spaet ? T.crit : T.muted }}>{t.dueDate.slice(8)}.{t.dueDate.slice(5, 7)}.</span>}
+              <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{projName(t.projectId)}</span>
+              <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>· {OWNER[t.assignee] ?? t.assignee}</span>
+              {delegiertAn(t.description) && <span style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: T.amber, border: `1px solid ${T.amber}55`, borderRadius: 5, padding: '1px 6px' }}>→ delegiert an {delegiertAn(t.description)}</span>}
+              {fromInbox(t.description) && <span style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: T.accent, border: `1px solid ${T.lineHot}`, borderRadius: 5, padding: '1px 6px' }}>aus Inbox</span>}
+            </div>
+          </div>
+          <span style={{ fontFamily: T.mono, fontSize: 12, color: T.muted, flex: '0 0 auto' }}>{auf ? '▾' : '▸'}</span>
+        </div>
+        {auf && (
+          <div style={{ padding: '0 16px 13px 48px', display: 'flex', flexDirection: 'column', gap: 9 }}>
+            {t.description && <div style={{ fontSize: 12, color: T.inkDim, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{t.description}</div>}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>Fällig</span>
+              {([['Heute', heute], ['Morgen', tagInT(1)], ['Montag', naechsterWochentag(1)], ['+7 Tage', tagInT(7)]] as const).map(([label, d]) => (
+                <button key={label} onClick={() => patchTask(t.id, { dueDate: d })}
+                  style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${t.dueDate === d ? T.accent : T.line}`, background: t.dueDate === d ? `${T.accent}1c` : 'transparent', color: t.dueDate === d ? T.accentInk : T.inkDim }}>{label}</button>
+              ))}
+              {t.dueDate && <button onClick={() => patchTask(t.id, { dueDate: undefined })} style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.muted }}>✕ kein Datum</button>}
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>Bahn</span>
+              {bahnen.map(b => (
+                <button key={b.id} onClick={() => ordnungSpeichern({ zuordnung: { [t.id]: b.id } })}
+                  style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${bahnVon(t) === b.id ? b.farbe : T.line}`, background: bahnVon(t) === b.id ? `${b.farbe}1c` : 'transparent', color: bahnVon(t) === b.id ? b.farbe : T.inkDim }}>{b.label}</button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <select value={t.projectId} onChange={e => patchTask(t.id, { projectId: e.target.value })}
+                style={{ background: T.void, border: `1px solid ${T.line}`, borderRadius: 7, color: T.inkDim, fontFamily: T.sans, fontSize: 11.5, padding: '4px 8px', outline: 'none' }}>
+                {state.projects.map(pr => <option key={pr.id} value={pr.id} style={{ background: T.panel }}>{pr.title}</option>)}
+              </select>
+              <select value={t.assignee} onChange={e => patchTask(t.id, { assignee: e.target.value })}
+                style={{ background: T.void, border: `1px solid ${T.line}`, borderRadius: 7, color: T.inkDim, fontFamily: T.sans, fontSize: 11.5, padding: '4px 8px', outline: 'none' }}>
+                <option value="kevin" style={{ background: T.panel }}>Kevin</option>
+                <option value="malin" style={{ background: T.panel }}>Malin</option>
+                <option value="both" style={{ background: T.panel }}>Beide</option>
+              </select>
+              <button onClick={() => patchTask(t.id, { status: blockiert ? 'todo' : 'blocked' })}
+                style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${blockiert ? T.amber : T.line}`, background: blockiert ? `${T.amber}1c` : 'transparent', color: blockiert ? T.amber : T.inkDim }}>{blockiert ? 'blockiert ✓' : 'blockiert?'}</button>
+              <button onClick={() => { dispatch({ type: 'DELETE_TASK', payload: { id: t.id } }); setOffenId(null); }}
+                style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.muted }}>Löschen</button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 48px' }}>
+      <div style={{ maxWidth: 980, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 48px' }}>
         <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
         <div style={lbl}>Aufgaben · eine Wahrheit, lokal gespeichert</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 18px' }}>
+        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>
           {openCount} {openCount === 1 ? 'Aufgabe' : 'Aufgaben'} offen
+          {kritischOffen > 0 && <span className="krit-puls" style={{ fontSize: 14, fontWeight: 600, color: T.crit, marginLeft: 12 }}>● {kritischOffen} kritisch</span>}
         </h1>
+
+        {/* Die Ordnung — die Reihenfolge, die alles andere sortiert */}
+        <div style={{ ...panel, borderLeft: `3px solid ${bahnen[0]?.farbe ?? T.accent}`, padding: '12px 16px', margin: '14px 0 12px' }}>
+          <div onClick={() => setOrdnungAuf(!ordnungAuf)} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', cursor: 'pointer' }}>
+            <span style={lbl}>Unsere Ordnung</span>
+            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', flex: 1 }}>
+              {bahnen.map((b, i) => (
+                <span key={b.id} style={{ fontSize: 12, fontWeight: 600, color: b.farbe }}>
+                  <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{i + 1}</span> {b.label}
+                  {i < bahnen.length - 1 && <span style={{ color: T.muted, marginLeft: 7 }}>›</span>}
+                </span>
+              ))}
+            </div>
+            <span style={{ fontFamily: T.mono, fontSize: 12, color: T.muted }}>{ordnungAuf ? '▾' : '▸'}</span>
+          </div>
+          {ordnungAuf && (
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ fontSize: 12, color: T.inkDim, lineHeight: 1.55 }}>
+                Was zuerst zählt, wenn alles wichtig ist. Diese Reihenfolge sortiert jede Ansicht —
+                nur <b style={{ color: T.crit }}>kritische</b> Aufgaben brechen sie, weil sie alles andere blockieren.
+              </div>
+              {bahnen.map((b, i) => {
+                const n = state.tasks.filter(t => t.status !== 'done' && bahnVon(t) === b.id).length;
+                return (
+                  <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 11px', background: T.panel2, border: `1px solid ${b.farbe}33`, borderRadius: 10 }}>
+                    <span style={{ fontFamily: T.mono, fontSize: 13, fontWeight: 700, color: b.farbe, width: 16 }}>{i + 1}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>{b.label} <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>{n} offen</span></div>
+                      <div style={{ fontSize: 11.5, color: T.muted, marginTop: 1 }}>{b.satz}</div>
+                    </div>
+                    <button onClick={() => bahnSchieben(b.id, -1)} disabled={i === 0} aria-label="Nach oben"
+                      style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: i === 0 ? T.line : T.inkDim, padding: '3px 9px', cursor: i === 0 ? 'default' : 'pointer' }}>▲</button>
+                    <button onClick={() => bahnSchieben(b.id, 1)} disabled={i === bahnen.length - 1} aria-label="Nach unten"
+                      style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: i === bahnen.length - 1 ? T.line : T.inkDim, padding: '3px 9px', cursor: i === bahnen.length - 1 ? 'default' : 'pointer' }}>▼</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* Schnell-Anlegen: tippen, Enter, drin — Kürzel machen den Rest */}
         <div style={{ marginBottom: 12 }}>
@@ -207,11 +382,27 @@ export function AufgabenView() {
             style={{ width: '100%', background: T.panel, border: `1px solid ${T.line}`, borderRadius: 10, padding: '11px 14px', color: T.ink, fontSize: 13.5, fontFamily: T.sans, outline: 'none' }} />
         </div>
 
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
+        {/* Ansicht wählen */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+          {ANSICHTEN.map(a => (
+            <button key={a.key} onClick={() => setAnsicht(a.key)} style={{
+              fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, padding: '6px 14px', borderRadius: 9, cursor: 'pointer',
+              border: `1px solid ${ansicht === a.key ? T.lineHot : T.line}`, background: ansicht === a.key ? T.accentSoft : 'transparent',
+              color: ansicht === a.key ? T.accentInk : T.inkDim,
+            }}>{a.label}</button>
+          ))}
+          <button onClick={delegationsRunde} disabled={delegBusy}
+            style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, padding: '6px 14px', borderRadius: 9, cursor: delegBusy ? 'wait' : 'pointer', border: `1px solid ${T.accent}`, background: `${T.accent}1c`, color: T.accentInk, opacity: delegBusy ? 0.6 : 1 }}>
+            {delegBusy ? 'Jarvis prüft dein Board …' : '✨ Delegations-Runde'}
+          </button>
+        </div>
+
+        {/* Filter: Status · Besitzer · Priorität · Bahn */}
+        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
           {segBtn('offen', 'Offen', openCount)}
           {segBtn('erledigt', 'Erledigt')}
           {segBtn('alle', 'Alle')}
-          <span style={{ width: 1, height: 20, background: T.line, margin: '0 4px' }} />
+          <span style={{ width: 1, height: 20, background: T.line, margin: '0 3px' }} />
           {([['alle', 'Jeder'], ['kevin', 'Kevin'], ['malin', 'Malin'], ['both', 'Beide']] as const).map(([k, label]) => (
             <button key={k} onClick={() => setBes(k)} style={{
               fontFamily: T.mono, fontSize: 11, padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
@@ -219,10 +410,28 @@ export function AufgabenView() {
               color: bes === k ? T.accentInk : T.muted,
             }}>{label}</button>
           ))}
-          <button onClick={delegationsRunde} disabled={delegBusy}
-            style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, padding: '6px 14px', borderRadius: 9, cursor: delegBusy ? 'wait' : 'pointer', border: `1px solid ${T.accent}`, background: `${T.accent}1c`, color: T.accentInk, opacity: delegBusy ? 0.6 : 1 }}>
-            {delegBusy ? 'Jarvis prüft dein Board …' : '✨ Delegations-Runde'}
-          </button>
+          <span style={{ width: 1, height: 20, background: T.line, margin: '0 3px' }} />
+          {(['alle', 'critical', 'high', 'medium', 'low'] as const).map(k => {
+            const an = prioFilter === k;
+            const farbe = k === 'alle' ? T.accentInk : PRIO[k].c;
+            return (
+              <button key={k} onClick={() => setPrioFilter(k)} style={{
+                fontFamily: T.mono, fontSize: 11, padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
+                border: `1px solid ${an ? farbe : T.line}`, background: an ? `${farbe}1c` : 'transparent', color: an ? farbe : T.muted,
+              }}>{k === 'alle' ? 'Alle Stufen' : PRIO[k].t}</button>
+            );
+          })}
+          <span style={{ width: 1, height: 20, background: T.line, margin: '0 3px' }} />
+          {(['alle', ...bahnen.map(b => b.id)]).map(k => {
+            const an = bahnFilter === k;
+            const farbe = k === 'alle' ? T.accentInk : THEMA[k].farbe;
+            return (
+              <button key={k} onClick={() => setBahnFilter(k)} style={{
+                fontFamily: T.mono, fontSize: 11, padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
+                border: `1px solid ${an ? farbe : T.line}`, background: an ? `${farbe}1c` : 'transparent', color: an ? farbe : T.muted,
+              }}>{k === 'alle' ? 'Alle Bahnen' : THEMA[k].label.split(' ')[0]}</button>
+            );
+          })}
         </div>
 
         {/* Delegations-Vorschläge: Kevin behält nur, was nur er kann */}
@@ -264,88 +473,123 @@ export function AufgabenView() {
           </div>
         )}
 
-        <div style={{ ...panel, overflow: 'hidden' }}>
-          {!ready && <div style={{ padding: '34px 20px', textAlign: 'center', color: T.muted, fontSize: 13.5 }}>Lade Aufgaben …</div>}
-          {ready && list.length === 0 && (
-            <div style={{ padding: '40px 20px', textAlign: 'center', color: T.muted, fontSize: 13.5 }}>
-              {seg === 'offen' ? 'Alles erledigt. 🎯' : 'Keine Aufgaben in dieser Ansicht.'}
-            </div>
-          )}
-          {(gruppen ?? [{ key: 'flach', label: '', tasks: list }]).map(g => (
-            <div key={g.key}>
-              {g.label && (
-                <div style={{ padding: '9px 16px 4px', fontFamily: T.mono, fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: g.key === 'spaet' ? T.crit : g.key === 'heute' ? T.accent : T.muted, borderTop: `1px solid ${T.lineSoft}` }}>
-                  {g.label} · {g.tasks.length}
+        {!ready && <div style={{ ...panel, padding: '34px 20px', textAlign: 'center', color: T.muted, fontSize: 13.5 }}>Lade Aufgaben …</div>}
+
+        {ready && !list.length && (
+          <div style={{ ...panel, padding: '40px 20px', textAlign: 'center', color: T.muted, fontSize: 13.5 }}>
+            {seg === 'offen' ? 'Nichts in dieser Auswahl. 🎯' : 'Keine Aufgaben in dieser Ansicht.'}
+          </div>
+        )}
+
+        {/* ── JETZT: die ersten fünf, dann der Rest ── */}
+        {ready && !!list.length && ansicht === 'jetzt' && (() => {
+          const top = list.slice(0, 5);
+          const rest = list.slice(5);
+          return (
+            <>
+              <div style={{ ...panel, overflow: 'hidden', marginBottom: 14 }}>
+                <div style={{ padding: '11px 16px 8px', display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={lbl}>Die nächsten fünf</span>
+                  <span style={{ fontSize: 11.5, color: T.muted }}>in der Reihenfolge unserer Ordnung — mehr als fünf gleichzeitig ist keine Priorität mehr</span>
+                </div>
+                {top.map((t, i) => (
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'stretch', borderTop: `1px solid ${T.lineSoft}` }}>
+                    <div style={{ width: 34, flex: '0 0 auto', display: 'grid', placeItems: 'center', fontFamily: T.mono, fontSize: 15, fontWeight: 700, color: THEMA[bahnVon(t)]?.farbe ?? T.muted, background: `${THEMA[bahnVon(t)]?.farbe ?? T.muted}0f` }}>{i + 1}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}><Zeile t={t} i={0} zeigeBahn /></div>
+                  </div>
+                ))}
+              </div>
+              {!!rest.length && (
+                <div style={{ ...panel, overflow: 'hidden' }}>
+                  <div style={{ padding: '11px 16px 8px', ...lbl }}>Danach · {rest.length}</div>
+                  {rest.map((t, i) => <Zeile key={t.id} t={t} i={i + 1} zeigeBahn />)}
                 </div>
               )}
-              {g.tasks.map((t, i) => {
-                const done = t.status === 'done';
-                const blockiert = t.status === 'blocked';
-                const p = PRIO[t.priority];
-                const auf = offenId === t.id;
-                const imFokus = !done && boost(t) >= FOKUS_SCHWELLE;
-                return (
-                  <div key={t.id} style={{ borderTop: i || !g.label ? `1px solid ${T.lineSoft}` : 0, background: auf ? T.panel2 : 'transparent' }}>
-                    <div onClick={() => setOffenId(auf ? null : t.id)} style={{ display: 'flex', gap: 13, padding: '12px 16px', alignItems: 'flex-start', cursor: 'pointer' }}>
-                      <button onClick={e => { e.stopPropagation(); dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } }); }} aria-label={done ? 'Wieder öffnen' : 'Erledigen'}
-                        style={{ width: 19, height: 19, borderRadius: 6, flex: '0 0 auto', marginTop: 1, cursor: 'pointer',
-                          border: `1.6px solid ${done ? T.accent : T.muted}`, background: done ? T.accent : 'transparent',
-                          color: T.void, fontSize: 12, lineHeight: 1, display: 'grid', placeItems: 'center' }}>{done ? <span className="check-pop">✓</span> : ''}</button>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13.5, fontWeight: 550, color: done ? T.muted : blockiert ? T.amber : T.ink, textDecoration: done ? 'line-through' : 'none', lineHeight: 1.35 }}>
-                          {imFokus && <span style={{ color: T.accent }}>◎ </span>}{t.title}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 5, flexWrap: 'wrap' }}>
-                          {!done && (
-                            <button onClick={e => { e.stopPropagation(); patchTask(t.id, { priority: PRIO_ZYKLUS[(PRIO_ZYKLUS.indexOf(t.priority) + 1) % PRIO_ZYKLUS.length] }); }}
-                              title="Priorität wechseln"
-                              style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: p.c, border: `1px solid ${p.c}44`, borderRadius: 5, padding: '1px 6px', background: 'transparent', cursor: 'pointer' }}>{p.t}</button>
-                          )}
-                          {blockiert && <span style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: T.amber, border: `1px solid ${T.amber}55`, borderRadius: 5, padding: '1px 6px' }}>blockiert</span>}
-                          {t.dueDate && <span style={{ fontFamily: T.mono, fontSize: 10, color: t.dueDate < heute && !done ? T.crit : T.muted }}>{t.dueDate.slice(8)}.{t.dueDate.slice(5, 7)}.</span>}
-                          <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{projName(t.projectId)}</span>
-                          <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>· {OWNER[t.assignee] ?? t.assignee}</span>
-                          {delegiertAn(t.description) && <span style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: T.amber, border: `1px solid ${T.amber}55`, borderRadius: 5, padding: '1px 6px' }}>→ delegiert an {delegiertAn(t.description)}</span>}
-                          {fromInbox(t.description) && <span style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: T.accent, border: `1px solid ${T.lineHot}`, borderRadius: 5, padding: '1px 6px' }}>aus Inbox</span>}
-                        </div>
-                      </div>
-                      <span style={{ fontFamily: T.mono, fontSize: 12, color: T.muted, flex: '0 0 auto' }}>{auf ? '▾' : '▸'}</span>
+            </>
+          );
+        })()}
+
+        {/* ── BAHNEN: das Board — je Bahn eine Spalte, in unserer Reihenfolge ── */}
+        {ready && !!list.length && ansicht === 'bahnen' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 12, alignItems: 'start' }}>
+            {bahnen.map((b, bi) => {
+              const drin = list.filter(t => bahnVon(t) === b.id);
+              return (
+                <div key={b.id} style={{ ...panel, borderTop: `3px solid ${b.farbe}`, overflow: 'hidden' }}>
+                  <div style={{ padding: '11px 14px 9px' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+                      <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{bi + 1}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: b.farbe }}>{b.label}</span>
+                      <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginLeft: 'auto' }}>{drin.length}</span>
                     </div>
-                    {auf && (
-                      <div style={{ padding: '0 16px 13px 48px', display: 'flex', flexDirection: 'column', gap: 9 }}>
-                        {t.description && <div style={{ fontSize: 12, color: T.inkDim, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{t.description}</div>}
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                          <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>Fällig</span>
-                          {([['Heute', heute], ['Morgen', tagInT(1)], ['Montag', naechsterWochentag(1)], ['+7 Tage', tagInT(7)]] as const).map(([label, d]) => (
-                            <button key={label} onClick={() => patchTask(t.id, { dueDate: d })}
-                              style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${t.dueDate === d ? T.accent : T.line}`, background: t.dueDate === d ? `${T.accent}1c` : 'transparent', color: t.dueDate === d ? T.accentInk : T.inkDim }}>{label}</button>
-                          ))}
-                          {t.dueDate && <button onClick={() => patchTask(t.id, { dueDate: undefined })} style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.muted }}>✕ kein Datum</button>}
-                        </div>
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                          <select value={t.projectId} onChange={e => patchTask(t.id, { projectId: e.target.value })}
-                            style={{ background: T.void, border: `1px solid ${T.line}`, borderRadius: 7, color: T.inkDim, fontFamily: T.sans, fontSize: 11.5, padding: '4px 8px', outline: 'none' }}>
-                            {state.projects.map(pr => <option key={pr.id} value={pr.id} style={{ background: T.panel }}>{pr.title}</option>)}
-                          </select>
-                          <select value={t.assignee} onChange={e => patchTask(t.id, { assignee: e.target.value })}
-                            style={{ background: T.void, border: `1px solid ${T.line}`, borderRadius: 7, color: T.inkDim, fontFamily: T.sans, fontSize: 11.5, padding: '4px 8px', outline: 'none' }}>
-                            <option value="kevin" style={{ background: T.panel }}>Kevin</option>
-                            <option value="malin" style={{ background: T.panel }}>Malin</option>
-                            <option value="both" style={{ background: T.panel }}>Beide</option>
-                          </select>
-                          <button onClick={() => patchTask(t.id, { status: blockiert ? 'todo' : 'blocked' })}
-                            style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${blockiert ? T.amber : T.line}`, background: blockiert ? `${T.amber}1c` : 'transparent', color: blockiert ? T.amber : T.inkDim }}>{blockiert ? 'blockiert ✓' : 'blockiert?'}</button>
-                          <button onClick={() => { dispatch({ type: 'DELETE_TASK', payload: { id: t.id } }); setOffenId(null); }}
-                            style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.muted }}>Löschen</button>
-                        </div>
-                      </div>
-                    )}
+                    <div style={{ fontSize: 11, color: T.muted, marginTop: 3, lineHeight: 1.45 }}>{b.satz}</div>
+                  </div>
+                  {drin.length
+                    ? drin.map((t, i) => <Zeile key={t.id} t={t} i={i + 1} />)
+                    : <div style={{ padding: '14px', fontSize: 12, color: T.muted, borderTop: `1px solid ${T.lineSoft}` }}>Nichts offen hier.</div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── ZEITSTRAHL: alle Bahnen parallel, 60 Tage voraus ── */}
+        {ready && !!list.length && ansicht === 'zeit' && (() => {
+          const von = heute;
+          const bis = tagInT(60);
+          const p2 = (n: number) => String(n).padStart(2, '0');
+          const ticks = [14, 28, 42, 56].map(o => {
+            const d = new Date(); d.setDate(d.getDate() + o);
+            return { date: `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`, label: `${d.getDate()}.${d.getMonth() + 1}.` };
+          });
+          const ohneDatum = list.filter(t => !t.dueDate).length;
+          return (
+            <>
+              {bahnen.map(b => {
+                const drin = list.filter(t => bahnVon(t) === b.id && t.dueDate);
+                const marker: StrahlMarker[] = drin.map(t => ({
+                  date: t.dueDate!,
+                  label: t.title,
+                  farbe: t.priority === 'critical' ? T.crit : b.farbe,
+                  symbol: t.priority === 'critical' ? '◆' : '●',
+                  titel: `${t.title} · ${PRIO[t.priority].t} · ${OWNER[t.assignee] ?? t.assignee}`,
+                }));
+                const spaet = drin.filter(t => t.dueDate! < heute).length;
+                return (
+                  <div key={b.id} style={{ marginBottom: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, margin: '0 2px 5px' }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: b.farbe }}>{b.label}</span>
+                      <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>{drin.length} terminiert</span>
+                      {spaet > 0 && <span className="krit-puls" style={{ fontFamily: T.mono, fontSize: 10.5, color: T.crit }}>{spaet} überfällig</span>}
+                    </div>
+                    <Zeitstrahl von={von} bis={bis} ticks={ticks} marker={marker} />
                   </div>
                 );
               })}
-            </div>
-          ))}
-        </div>
+              {ohneDatum > 0 && (
+                <div style={{ ...panel, padding: '12px 16px', fontSize: 12.5, color: T.inkDim }}>
+                  <b style={{ color: T.amber }}>{ohneDatum} Aufgaben ohne Datum</b> — sie erscheinen erst auf dem Zeitstrahl, wenn ihr ihnen einen Tag gebt. Aufgabe aufklappen → „Fällig".
+                </div>
+              )}
+            </>
+          );
+        })()}
+
+        {/* ── LISTE: nach Fälligkeit gruppiert ── */}
+        {ready && !!list.length && ansicht === 'liste' && (
+          <div style={{ ...panel, overflow: 'hidden' }}>
+            {(gruppen ?? [{ key: 'flach', label: '', tasks: list }]).map(g => (
+              <div key={g.key}>
+                {g.label && (
+                  <div style={{ padding: '9px 16px 4px', fontFamily: T.mono, fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: g.key === 'spaet' ? T.crit : g.key === 'heute' ? T.accent : T.muted, borderTop: `1px solid ${T.lineSoft}` }}>
+                    {g.label} · {g.tasks.length}
+                  </div>
+                )}
+                {g.tasks.map((t, i) => <Zeile key={t.id} t={t} i={i || !g.label ? 1 : 0} zeigeBahn />)}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Apple Erinnerungen (iCloud · geteilt mit Malin) */}
         <div style={{ marginTop: 28 }}>

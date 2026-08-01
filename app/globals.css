@@ -156,6 +156,10 @@ nav a:hover { transform: translateX(2px); }
 .zeit-pill { transition: filter .18s var(--ease-glatt, ease), transform .18s var(--ease-glatt, ease); }
 .zeit-pill:hover { filter: brightness(1.25); transform: translateY(-1px); }
 
+/* Kritisch pulsiert — Kevins Regel: was blockiert, muss man sehen, nicht suchen */
+@keyframes kritPuls { 0%, 100% { opacity: 1; } 50% { opacity: .42; } }
+.krit-puls { animation: kritPuls 1.9s var(--ease-glatt, ease-in-out) infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
