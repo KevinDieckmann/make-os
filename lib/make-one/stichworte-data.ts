@@ -173,14 +173,33 @@ export const STICHWORTE: Stichwort[] = [
 
 export const STICHWORT = Object.fromEntries(STICHWORTE.map(s => [s.id, s])) as Record<string, Stichwort>;
 
+/** Selbst angelegtes Stichwort (aus /api/state/filter) — Wörter statt Regex. */
+export interface EigenesStichwort { id: string; label: string; thema: string; woerter: string[]; kpi?: boolean }
+
+/** Eigene Stichworte in die Liste einreihen — sie verhalten sich wie eingebaute. */
+export function mitEigenen(eigene: EigenesStichwort[] = []): Stichwort[] {
+  const zusatz = eigene
+    .filter(e => e.label && e.woerter?.length)
+    .map(e => ({
+      id: e.id,
+      label: e.label,
+      thema: e.thema,
+      kpi: e.kpi,
+      // Wörter werden zu einem ODER-Muster; Sonderzeichen entschärft.
+      muster: new RegExp(e.woerter.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'i'),
+    }));
+  return [...STICHWORTE, ...zusatz];
+}
+
 /** Alle Stichworte einer Aufgabe: von Hand gesetzte + im Text erkannte. */
 export function stichworteVon(
   t: { id: string; title: string; description?: string },
   handisch: Record<string, string[]> = {},
+  liste: Stichwort[] = STICHWORTE,
 ): string[] {
   const gesetzt = handisch[t.id] ?? [];
   const text = `${t.title} ${t.description ?? ''}`;
-  const erkannt = STICHWORTE.filter(s => s.muster.test(text)).map(s => s.id);
+  const erkannt = liste.filter(s => s.muster.test(text)).map(s => s.id);
   return Array.from(new Set([...gesetzt, ...erkannt]));
 }
 

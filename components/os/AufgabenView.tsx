@@ -8,7 +8,7 @@ import type { Priority } from '@/types';
 import { localDay } from '@/lib/zeit';
 import { SAEULE_VON_PROJEKT, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
 import { THEMA, STANDARD_ORDNUNG, themaVon, sortierteThemen } from '@/lib/make-one/ordnung-data';
-import { STICHWORTE, STICHWORT, stichworteVon } from '@/lib/make-one/stichworte-data';
+import { STICHWORTE, STICHWORT, stichworteVon, mitEigenen } from '@/lib/make-one/stichworte-data';
 import { ORGS, ORG, orgVon } from '@/lib/make-one/organisation-data';
 import { einschaetzen, dauerText, WER_LABEL, WER_FARBE, type Wer } from '@/lib/make-one/umsetzung-data';
 import { DELEGIERBAR } from '@/lib/make-one/team-data';
@@ -92,6 +92,17 @@ export function AufgabenView() {
   const [zuordnung, setZuordnung] = useState<Record<string, string>>({});
   const [handStich, setHandStich] = useState<Record<string, string[]>>({});
   const [orgZuord, setOrgZuord] = useState<Record<string, string>>({});
+  // Eigene Filter & Stichworte aus dem Kompass
+  const [eigeneFilter, setEigeneFilter] = useState<{ id: string; name: string; wo: string; themen?: string[]; orgs?: string[]; prios?: string[]; stichworte?: string[]; wege?: string[]; besitzer?: string; suche?: string }[]>([]);
+  const [eigeneStich, setEigeneStich] = useState<{ id: string; label: string; thema: string; woerter: string[]; kpi?: boolean }[]>([]);
+  const [aktiverFilter, setAktiverFilter] = useState<string | null>(null);
+  useEffect(() => {
+    fetch('/api/state/filter').then(r => r.json()).then(d => {
+      setEigeneFilter(Array.isArray(d.filter) ? d.filter.filter((f: { wo: string }) => f.wo !== 'inbox') : []);
+      setEigeneStich(Array.isArray(d.stichworte) ? d.stichworte : []);
+    }).catch(() => {});
+  }, []);
+  const stichListe = useMemo(() => mitEigenen(eigeneStich), [eigeneStich]);
   const [ordnungAuf, setOrdnungAuf] = useState(false);
   useEffect(() => {
     fetch('/api/state/ordnung').then(r => r.json()).then(d => {
@@ -210,9 +221,25 @@ export function AufgabenView() {
       if (bes === 'both' && t.assignee !== 'both') return false;
       if (prioFilter !== 'alle' && t.priority !== prioFilter) return false;
       if (themaFilter !== 'alle' && themaVon(t, zuordnung) !== themaFilter) return false;
-      if (stichFilter && !stichworteVon(t, handStich).includes(stichFilter)) return false;
+      if (stichFilter && !stichworteVon(t, handStich, stichListe).includes(stichFilter)) return false;
       if (orgFilter !== 'alle' && orgVon(t, orgZuord) !== orgFilter) return false;
       if (werFilter !== 'alle' && einschaetzen(t).wer !== werFilter) return false;
+      // Gespeicherter Filter aus dem Kompass: leere Liste heißt „egal".
+      if (aktiverFilter) {
+        const f = eigeneFilter.find(x => x.id === aktiverFilter);
+        if (f) {
+          if (f.themen?.length && !f.themen.includes(themaVon(t, zuordnung))) return false;
+          if (f.orgs?.length && !f.orgs.includes(orgVon(t, orgZuord))) return false;
+          if (f.prios?.length && !f.prios.includes(t.priority)) return false;
+          if (f.wege?.length && !f.wege.includes(einschaetzen(t).wer)) return false;
+          if (f.besitzer && t.assignee !== f.besitzer) return false;
+          if (f.stichworte?.length) {
+            const meine = stichworteVon(t, handStich, stichListe);
+            if (!f.stichworte.some(s => meine.includes(s))) return false;
+          }
+          if (f.suche && !`${t.title} ${t.description ?? ''}`.toLowerCase().includes(f.suche.toLowerCase())) return false;
+        }
+      }
       return true;
     });
     // Die Ordnung entscheidet: kritisch bricht die Thema (das sind unsere
@@ -232,7 +259,8 @@ export function AufgabenView() {
       return boost(b) - boost(a) || a.title.localeCompare(b.title);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.tasks, seg, bes, prioFilter, themaFilter, stichFilter, handStich, regler, zuordnung, themaRang, heute]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.tasks, seg, bes, prioFilter, themaFilter, stichFilter, orgFilter, werFilter, aktiverFilter, eigeneFilter, stichListe, handStich, orgZuord, regler, zuordnung, themaRang, heute]);
 
   // ── Stichwort-Register: was gerade wirklich anliegt, nach Dringlichkeit ──
   const stichStand = useMemo(() => {
@@ -522,6 +550,21 @@ export function AufgabenView() {
             placeholder="Neue Aufgabe … (Enter)  ·  !! kritisch  ·  ! hoch  ·  heute / morgen / fr / 15.08.  ·  #capos  ·  @malin"
             aria-label="Neue Aufgabe anlegen"
             style={{ width: '100%', background: T.panel, border: `1px solid ${T.line}`, borderRadius: 10, padding: '11px 14px', color: T.ink, fontSize: 13.5, fontFamily: T.sans, outline: 'none' }} />
+        </div>
+
+        {/* Eigene Filter aus dem Kompass — einmal eingestellt, immer da */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
+          <span style={{ ...lbl, marginRight: 2 }}>Meine Filter</span>
+          {eigeneFilter.map(f => (
+            <button key={f.id} onClick={() => setAktiverFilter(aktiverFilter === f.id ? null : f.id)} style={{
+              fontFamily: T.sans, fontSize: 12, fontWeight: aktiverFilter === f.id ? 700 : 500, padding: '5px 12px', borderRadius: 999, cursor: 'pointer',
+              border: `1px solid ${aktiverFilter === f.id ? T.accent : T.line}`, background: aktiverFilter === f.id ? `${T.accent}1c` : 'transparent',
+              color: aktiverFilter === f.id ? T.accentInk : T.inkDim,
+            }}>{f.name}</button>
+          ))}
+          <Link href="/os/kompass" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', border: `1px dashed ${T.line}`, borderRadius: 999, padding: '5px 12px' }}>
+            {eigeneFilter.length ? '+ verwalten' : '+ eigenen Filter anlegen'}
+          </Link>
         </div>
 
         {/* Ansicht wählen */}

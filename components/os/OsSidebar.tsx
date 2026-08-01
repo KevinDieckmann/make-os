@@ -24,6 +24,7 @@ const GRUPPEN: Gruppe[] = [
       { href: '/os', label: 'Dashboard' },
       { href: '/os/planung', label: 'Tag' },
       { href: '/os/inbox', label: 'Inbox' },
+      { href: '/os/kompass', label: 'Kompass' },
     ],
   },
   {
