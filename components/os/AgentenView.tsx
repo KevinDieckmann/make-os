@@ -51,8 +51,9 @@ export function AgentenView() {
   const pill = (text: string, color: string) => (
     <span style={{ fontFamily: T.mono, fontSize: 9.5, color, border: `1px solid ${color}55`, borderRadius: 5, padding: '2px 7px', whiteSpace: 'nowrap' }}>{text}</span>
   );
-  const selBtn = (active: boolean, onClick: () => void, text: string, color = T.accent) => (
-    <button onClick={onClick} style={{ fontFamily: T.sans, fontSize: 11.5, fontWeight: 600, padding: '5px 10px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${active ? color : T.line}`, background: active ? `${color}22` : 'transparent', color: active ? color : T.inkDim }}>{text}</button>
+  // Der Schlüssel gehört ans Element — sonst warnt React bei jeder Liste.
+  const selBtn = (active: boolean, onClick: () => void, text: string, color = T.accent, key?: string) => (
+    <button key={key ?? text} onClick={onClick} style={{ fontFamily: T.sans, fontSize: 11.5, fontWeight: 600, padding: '5px 10px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${active ? color : T.line}`, background: active ? `${color}22` : 'transparent', color: active ? color : T.inkDim }}>{text}</button>
   );
 
   return (

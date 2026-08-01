@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { localDay } from '@/lib/zeit';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
 import { WOCHE, type BlockKind } from '@/lib/make-one/health-data';
 
@@ -18,7 +18,10 @@ const KIND: Record<BlockKind, { c: string; l: string }> = {
 };
 
 export function WochenView() {
-  const todayIdx = (new Date().getDay() + 6) % 7; // Mo=0 … So=6
+  // Erst im Browser bestimmen: der Server kennt eine andere Zeitzone und
+  // würde nachts die falsche Spalte hervorheben (Hydration-Fehler).
+  const [todayIdx, setTodayIdx] = useState(-1); // Mo=0 … So=6, -1 = noch unbekannt
+  useEffect(() => { setTodayIdx((new Date().getDay() + 6) % 7); }, []);
   const [cal, setCal] = useState<'idle' | 'creating' | 'done' | 'error'>('idle');
   const [calMsg, setCalMsg] = useState('');
 

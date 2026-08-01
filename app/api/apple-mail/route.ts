@@ -83,6 +83,11 @@ function parseAppleDate(str: string): string {
 
 // ─── Route handler ────────────────────────────────────────────────────────────
 
+// Ohne diese Zeile würde Next die Route beim Bauen vorberechnen — im
+// Produktionsbetrieb käme dann ein eingefrorenes Postfach vom Build-Zeitpunkt.
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const stdout = await runOsascript(SCRIPT);

@@ -91,7 +91,7 @@ export function JournalView() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
           <div>
             <div style={lbl}>Journal · dein Datenweg</div>
-            <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 0' }}>{new Date().toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' })}</h1>
+            <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 0' }} suppressHydrationWarning>{new Date().toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' })}</h1>
           </div>
           <span style={{ fontFamily: T.mono, fontSize: 11, color: saved ? T.accent : T.amber }}>{saved ? 'gespeichert ✓' : 'speichert …'}</span>
         </div>

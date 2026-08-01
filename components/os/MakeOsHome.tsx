@@ -147,7 +147,8 @@ function Agenda() {
   return (
     <section style={{ ...panel, padding: '20px 22px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12, gap: 10 }}>
-        <span style={lbl}>{label === 'Heute' ? `Heute · ${new Date().toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })}` : label}</span>
+        {/* Datum weicht zwischen Server und Browser ab (Zeitzone) — bewusst erlaubt. */}
+        <span style={lbl} suppressHydrationWarning>{label === 'Heute' ? `Heute · ${new Date().toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })}` : label}</span>
         <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.accent }}>KEMARIS + Holding</span>
       </div>
       {events.map((e, i) => (
@@ -179,14 +180,18 @@ export function MakeOsHome() {
 
   // Der große Auftritt (Kaskade + Score-Hochzählen) spielt EINMAL pro Sitzung —
   // danach steht das Dashboard sofort. Wiederholte Intros nerven statt wowen.
-  const [intro] = useState(() => {
-    if (typeof window === 'undefined') return false;
+  // Der Wert darf NICHT im useState-Initialisierer entstehen: Auf dem Server
+  // gibt es kein sessionStorage (→ false), im Browser beim ersten Besuch true.
+  // Diese Abweichung landet direkt im Markup und wirft einen Hydration-Fehler.
+  // Deshalb: erst false, dann im Effekt nachziehen.
+  const [intro, setIntro] = useState(false);
+  useEffect(() => {
     try {
-      if (sessionStorage.getItem('make-os-intro')) return false;
+      if (sessionStorage.getItem('make-os-intro')) return;
       sessionStorage.setItem('make-os-intro', '1');
-      return true;
-    } catch { return false; }
-  });
+      setIntro(true);
+    } catch { /* privater Modus: dann eben ohne Auftritt */ }
+  }, []);
 
   // EIN Score: derselbe echte Index wie unter /os/performance. Vorher stand
   // hier eine zweite, fest eingetragene Rechnung — zwei Wahrheiten für
