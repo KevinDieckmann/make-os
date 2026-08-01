@@ -8,6 +8,7 @@ import type { Priority } from '@/types';
 import { localDay } from '@/lib/zeit';
 import { SAEULE_VON_PROJEKT, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
 import { THEMA, STANDARD_ORDNUNG, themaVon, sortierteThemen } from '@/lib/make-one/ordnung-data';
+import { STICHWORTE, STICHWORT, stichworteVon } from '@/lib/make-one/stichworte-data';
 import { Zeitstrahl, type StrahlMarker } from './Zeitstrahl';
 
 // ── Datums-Kurzhelfer fürs Schnellanlegen und die Zeilen-Aktionen ──
@@ -60,10 +61,10 @@ const PRIO: Record<Priority, { c: string; t: string }> = {
 };
 const OWNER: Record<string, string> = { kevin: 'Kevin', malin: 'Malin', both: 'Beide' };
 
-type Ansicht = 'jetzt' | 'bahnen' | 'zeit' | 'liste';
+type Ansicht = 'jetzt' | 'themen' | 'zeit' | 'liste';
 const ANSICHTEN: { key: Ansicht; label: string }[] = [
   { key: 'jetzt', label: 'Jetzt' },
-  { key: 'bahnen', label: 'Bahnen' },
+  { key: 'themen', label: 'Themen' },
   { key: 'zeit', label: 'Zeitstrahl' },
   { key: 'liste', label: 'Liste' },
 ];
@@ -82,22 +83,25 @@ export function AufgabenView() {
   const [delegPrivat, setDelegPrivat] = useState(0);
   const [delegStatus, setDelegStatus] = useState<Record<string, string>>({});
 
-  // ── Die Ordnung: Reihenfolge der Bahnen + Zuordnungen von Hand ──
+  // ── Die Ordnung: Reihenfolge der Themen + Zuordnungen von Hand ──
   const [reihenfolge, setReihenfolge] = useState<string[]>(STANDARD_ORDNUNG);
   const [zuordnung, setZuordnung] = useState<Record<string, string>>({});
+  const [handStich, setHandStich] = useState<Record<string, string[]>>({});
   const [ordnungAuf, setOrdnungAuf] = useState(false);
   useEffect(() => {
     fetch('/api/state/ordnung').then(r => r.json()).then(d => {
       if (Array.isArray(d.reihenfolge) && d.reihenfolge.length) setReihenfolge(d.reihenfolge);
       if (d.zuordnung) setZuordnung(d.zuordnung);
+      if (d.stichworte) setHandStich(d.stichworte);
     }).catch(() => {});
   }, []);
-  function ordnungSpeichern(next: { reihenfolge?: string[]; zuordnung?: Record<string, string> }) {
+  function ordnungSpeichern(next: { reihenfolge?: string[]; zuordnung?: Record<string, string>; stichworte?: Record<string, string[]> }) {
     if (next.reihenfolge) setReihenfolge(next.reihenfolge);
-    if (next.zuordnung) setZuordnung(next.zuordnung);
+    if (next.zuordnung) setZuordnung(v => ({ ...v, ...next.zuordnung }));
+    if (next.stichworte) setHandStich(v => ({ ...v, ...next.stichworte }));
     fetch('/api/state/ordnung', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
   }
-  function bahnSchieben(id: string, richtung: -1 | 1) {
+  function themaSchieben(id: string, richtung: -1 | 1) {
     const i = reihenfolge.indexOf(id);
     const j = i + richtung;
     if (i < 0 || j < 0 || j >= reihenfolge.length) return;
@@ -105,8 +109,8 @@ export function AufgabenView() {
     [next[i], next[j]] = [next[j], next[i]];
     ordnungSpeichern({ reihenfolge: next });
   }
-  const bahnen = useMemo(() => sortierteThemen(reihenfolge), [reihenfolge]);
-  const bahnRang = useMemo(() => Object.fromEntries(bahnen.map((b, i) => [b.id, i])) as Record<string, number>, [bahnen]);
+  const themen = useMemo(() => sortierteThemen(reihenfolge), [reihenfolge]);
+  const themaRang = useMemo(() => Object.fromEntries(themen.map((b, i) => [b.id, i])) as Record<string, number>, [themen]);
 
   async function delegationsRunde() {
     setDelegBusy(true); setDeleg(null); setDelegStatus({});
@@ -154,7 +158,10 @@ export function AufgabenView() {
   const delegiertAn = (desc?: string) => desc?.match(/— Delegiert an (\w+)/)?.[1];
   const [bes, setBes] = useState<'alle' | 'kevin' | 'malin' | 'both'>('alle');
   const [prioFilter, setPrioFilter] = useState<Priority | 'alle'>('alle');
-  const [bahnFilter, setBahnFilter] = useState<string | 'alle'>('alle');
+  const [themaFilter, setThemaFilter] = useState<string | 'alle'>('alle');
+  const [stichFilter, setStichFilter] = useState<string | null>(null);
+  const [stichSuche, setStichSuche] = useState('');
+  const [alleStichAuf, setAlleStichAuf] = useState(false);
 
   // ── Schnell-Anlegen + Zeilen-Editor + Fokus-Regler-Lenkung ──
   const [neuTitel, setNeuTitel] = useState('');
@@ -180,7 +187,8 @@ export function AufgabenView() {
 
   const heute = localDay();
   const patchTask = (id: string, p: Record<string, unknown>) => dispatch({ type: 'UPDATE_TASK', payload: { id, ...p } });
-  const bahnVon = (t: { id: string; title: string; description?: string; projectId: string }) => themaVon(t, zuordnung);
+  const meinThema = (t: { id: string; title: string; description?: string; projectId: string }) => themaVon(t, zuordnung);
+  const meineStich = (t: { id: string; title: string; description?: string }) => stichworteVon(t, handStich);
 
   const list = useMemo(() => {
     const arr = state.tasks.filter(t => {
@@ -191,14 +199,15 @@ export function AufgabenView() {
       if (bes === 'kevin' && !((t.assignee === 'kevin' || t.assignee === 'both') && !delegiertAn(t.description))) return false;
       if (bes === 'both' && t.assignee !== 'both') return false;
       if (prioFilter !== 'alle' && t.priority !== prioFilter) return false;
-      if (bahnFilter !== 'alle' && themaVon(t, zuordnung) !== bahnFilter) return false;
+      if (themaFilter !== 'alle' && themaVon(t, zuordnung) !== themaFilter) return false;
+      if (stichFilter && !stichworteVon(t, handStich).includes(stichFilter)) return false;
       return true;
     });
-    // Die Ordnung entscheidet: kritisch bricht die Bahn (das sind unsere
-    // Blocker), danach zählt die Bahn-Reihenfolge, dann Prio und Fälligkeit.
+    // Die Ordnung entscheidet: kritisch bricht die Thema (das sind unsere
+    // Blocker), danach zählt die Thema-Reihenfolge, dann Prio und Fälligkeit.
     const key = (t: typeof arr[number]) => [
       t.priority === 'critical' ? 0 : 1,
-      bahnRang[themaVon(t, zuordnung)] ?? 9,
+      themaRang[themaVon(t, zuordnung)] ?? 9,
       PRIO_RANG[t.priority],
       t.dueDate && t.dueDate < heute ? 0 : 1,
       t.dueDate ?? '9999-99-99',
@@ -211,7 +220,26 @@ export function AufgabenView() {
       return boost(b) - boost(a) || a.title.localeCompare(b.title);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.tasks, seg, bes, prioFilter, bahnFilter, regler, zuordnung, bahnRang, heute]);
+  }, [state.tasks, seg, bes, prioFilter, themaFilter, stichFilter, handStich, regler, zuordnung, themaRang, heute]);
+
+  // ── Stichwort-Register: was gerade wirklich anliegt, nach Dringlichkeit ──
+  const stichStand = useMemo(() => {
+    const zaehl = new Map<string, { offen: number; kritisch: number; spaet: number }>();
+    state.tasks.filter(t => t.status !== 'done').forEach(t => {
+      const spaet = !!t.dueDate && t.dueDate < heute;
+      stichworteVon(t, handStich).forEach(id => {
+        const e = zaehl.get(id) ?? { offen: 0, kritisch: 0, spaet: 0 };
+        e.offen++;
+        if (t.priority === 'critical') e.kritisch++;
+        if (spaet) e.spaet++;
+        zaehl.set(id, e);
+      });
+    });
+    return Array.from(zaehl.entries())
+      .map(([id, z]) => ({ id, ...z, wort: STICHWORT[id] }))
+      .filter(x => x.wort)
+      .sort((a, b) => b.kritisch - a.kritisch || b.spaet - a.spaet || b.offen - a.offen || a.wort.label.localeCompare(b.wort.label));
+  }, [state.tasks, handStich, heute]);
 
   // ── Fällig-Gruppen (Listen-Ansicht): was JETZT dran ist ──
   const gruppen = useMemo(() => {
@@ -244,13 +272,13 @@ export function AufgabenView() {
   );
 
   /** Eine Aufgabenzeile — überall gleich, damit jede Ansicht dieselbe Wahrheit zeigt. */
-  const Zeile = ({ t, i, zeigeBahn }: { t: typeof list[number]; i: number; zeigeBahn?: boolean }) => {
+  const Zeile = ({ t, i, zeigeThema }: { t: typeof list[number]; i: number; zeigeThema?: boolean }) => {
     const done = t.status === 'done';
     const blockiert = t.status === 'blocked';
     const p = PRIO[t.priority];
     const auf = offenId === t.id;
     const imFokus = !done && boost(t) >= FOKUS_SCHWELLE;
-    const bahn = THEMA[bahnVon(t)];
+    const thema = THEMA[meinThema(t)];
     const spaet = !!t.dueDate && t.dueDate < heute && !done;
     const kritisch = t.priority === 'critical' && !done;
     return (
@@ -272,7 +300,12 @@ export function AufgabenView() {
                   className={kritisch ? 'krit-puls' : undefined}
                   style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: p.c, border: `1px solid ${p.c}${kritisch ? '99' : '44'}`, borderRadius: 5, padding: '1px 6px', background: kritisch ? `${T.crit}18` : 'transparent', cursor: 'pointer' }}>{p.t}</button>
               )}
-              {zeigeBahn && bahn && <span style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: bahn.farbe, border: `1px solid ${bahn.farbe}44`, borderRadius: 5, padding: '1px 6px' }}>{bahn.label.split(' ')[0]}</span>}
+              {zeigeThema && thema && <span style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: thema.farbe, border: `1px solid ${thema.farbe}44`, borderRadius: 5, padding: '1px 6px' }}>{thema.label.split(' ')[0]}</span>}
+              {meineStich(t).slice(0, 3).map(sid => (
+                <button key={sid} onClick={e => { e.stopPropagation(); setStichFilter(stichFilter === sid ? null : sid); }}
+                  title={`Alles zu „${STICHWORT[sid]?.label}" zeigen`}
+                  style={{ fontFamily: T.sans, fontSize: 10.5, color: stichFilter === sid ? T.accentInk : T.muted, border: `1px solid ${stichFilter === sid ? T.accent : T.line}`, borderRadius: 999, padding: '1px 8px', background: 'transparent', cursor: 'pointer' }}>{STICHWORT[sid]?.label}</button>
+              ))}
               {blockiert && <span style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: T.amber, border: `1px solid ${T.amber}55`, borderRadius: 5, padding: '1px 6px' }}>blockiert</span>}
               {t.dueDate && <span className={spaet ? 'krit-puls' : undefined} style={{ fontFamily: T.mono, fontSize: 10, color: spaet ? T.crit : T.muted }}>{t.dueDate.slice(8)}.{t.dueDate.slice(5, 7)}.</span>}
               <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{projName(t.projectId)}</span>
@@ -295,11 +328,33 @@ export function AufgabenView() {
               {t.dueDate && <button onClick={() => patchTask(t.id, { dueDate: undefined })} style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.muted }}>✕ kein Datum</button>}
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>Bahn</span>
-              {bahnen.map(b => (
+              <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>Thema</span>
+              {themen.map(b => (
                 <button key={b.id} onClick={() => ordnungSpeichern({ zuordnung: { [t.id]: b.id } })}
-                  style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${bahnVon(t) === b.id ? b.farbe : T.line}`, background: bahnVon(t) === b.id ? `${b.farbe}1c` : 'transparent', color: bahnVon(t) === b.id ? b.farbe : T.inkDim }}>{b.label}</button>
+                  style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${meinThema(t) === b.id ? b.farbe : T.line}`, background: meinThema(t) === b.id ? `${b.farbe}1c` : 'transparent', color: meinThema(t) === b.id ? b.farbe : T.inkDim }}>{b.label}</button>
               ))}
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>Stichworte</span>
+              {meineStich(t).map(sid => {
+                const gesetzt = (handStich[t.id] ?? []).includes(sid);
+                return (
+                  <span key={sid} style={{ fontFamily: T.sans, fontSize: 11.5, color: T.inkDim, border: `1px solid ${T.line}`, borderRadius: 999, padding: '3px 9px', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    {STICHWORT[sid]?.label}
+                    {gesetzt
+                      ? <button onClick={() => ordnungSpeichern({ stichworte: { [t.id]: (handStich[t.id] ?? []).filter(x => x !== sid) } })} aria-label="Stichwort entfernen" style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', padding: 0, fontSize: 11 }}>✕</button>
+                      : <span title="automatisch erkannt" style={{ color: T.accent, fontSize: 9 }}>●</span>}
+                  </span>
+                );
+              })}
+              <select value="" onChange={e => { if (e.target.value) ordnungSpeichern({ stichworte: { [t.id]: [...(handStich[t.id] ?? []), e.target.value] } }); }}
+                aria-label="Stichwort hinzufügen"
+                style={{ background: T.void, border: `1px solid ${T.line}`, borderRadius: 999, color: T.muted, fontFamily: T.sans, fontSize: 11.5, padding: '3px 8px', outline: 'none' }}>
+                <option value="">+ Stichwort</option>
+                {STICHWORTE.filter(w => !meineStich(t).includes(w.id)).map(w => (
+                  <option key={w.id} value={w.id} style={{ background: T.panel }}>{w.label}</option>
+                ))}
+              </select>
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
               <select value={t.projectId} onChange={e => patchTask(t.id, { projectId: e.target.value })}
@@ -334,14 +389,14 @@ export function AufgabenView() {
         </h1>
 
         {/* Die Ordnung — die Reihenfolge, die alles andere sortiert */}
-        <div style={{ ...panel, borderLeft: `3px solid ${bahnen[0]?.farbe ?? T.accent}`, padding: '12px 16px', margin: '14px 0 12px' }}>
+        <div style={{ ...panel, borderLeft: `3px solid ${themen[0]?.farbe ?? T.accent}`, padding: '12px 16px', margin: '14px 0 12px' }}>
           <div onClick={() => setOrdnungAuf(!ordnungAuf)} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', cursor: 'pointer' }}>
             <span style={lbl}>Unsere Ordnung</span>
             <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', flex: 1 }}>
-              {bahnen.map((b, i) => (
+              {themen.map((b, i) => (
                 <span key={b.id} style={{ fontSize: 12, fontWeight: 600, color: b.farbe }}>
                   <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{i + 1}</span> {b.label}
-                  {i < bahnen.length - 1 && <span style={{ color: T.muted, marginLeft: 7 }}>›</span>}
+                  {i < themen.length - 1 && <span style={{ color: T.muted, marginLeft: 7 }}>›</span>}
                 </span>
               ))}
             </div>
@@ -353,8 +408,8 @@ export function AufgabenView() {
                 Was zuerst zählt, wenn alles wichtig ist. Diese Reihenfolge sortiert jede Ansicht —
                 nur <b style={{ color: T.crit }}>kritische</b> Aufgaben brechen sie, weil sie alles andere blockieren.
               </div>
-              {bahnen.map((b, i) => {
-                const n = state.tasks.filter(t => t.status !== 'done' && bahnVon(t) === b.id).length;
+              {themen.map((b, i) => {
+                const n = state.tasks.filter(t => t.status !== 'done' && meinThema(t) === b.id).length;
                 return (
                   <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 11px', background: T.panel2, border: `1px solid ${b.farbe}33`, borderRadius: 10 }}>
                     <span style={{ fontFamily: T.mono, fontSize: 13, fontWeight: 700, color: b.farbe, width: 16 }}>{i + 1}</span>
@@ -362,10 +417,10 @@ export function AufgabenView() {
                       <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>{b.label} <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>{n} offen</span></div>
                       <div style={{ fontSize: 11.5, color: T.muted, marginTop: 1 }}>{b.satz}</div>
                     </div>
-                    <button onClick={() => bahnSchieben(b.id, -1)} disabled={i === 0} aria-label="Nach oben"
+                    <button onClick={() => themaSchieben(b.id, -1)} disabled={i === 0} aria-label="Nach oben"
                       style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: i === 0 ? T.line : T.inkDim, padding: '3px 9px', cursor: i === 0 ? 'default' : 'pointer' }}>▲</button>
-                    <button onClick={() => bahnSchieben(b.id, 1)} disabled={i === bahnen.length - 1} aria-label="Nach unten"
-                      style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: i === bahnen.length - 1 ? T.line : T.inkDim, padding: '3px 9px', cursor: i === bahnen.length - 1 ? 'default' : 'pointer' }}>▼</button>
+                    <button onClick={() => themaSchieben(b.id, 1)} disabled={i === themen.length - 1} aria-label="Nach unten"
+                      style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: i === themen.length - 1 ? T.line : T.inkDim, padding: '3px 9px', cursor: i === themen.length - 1 ? 'default' : 'pointer' }}>▼</button>
                   </div>
                 );
               })}
@@ -397,7 +452,7 @@ export function AufgabenView() {
           </button>
         </div>
 
-        {/* Filter: Status · Besitzer · Priorität · Bahn */}
+        {/* Filter: Status · Besitzer · Priorität · Thema */}
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
           {segBtn('offen', 'Offen', openCount)}
           {segBtn('erledigt', 'Erledigt')}
@@ -422,16 +477,71 @@ export function AufgabenView() {
             );
           })}
           <span style={{ width: 1, height: 20, background: T.line, margin: '0 3px' }} />
-          {(['alle', ...bahnen.map(b => b.id)]).map(k => {
-            const an = bahnFilter === k;
+          {(['alle', ...themen.map(b => b.id)]).map(k => {
+            const an = themaFilter === k;
             const farbe = k === 'alle' ? T.accentInk : THEMA[k].farbe;
             return (
-              <button key={k} onClick={() => setBahnFilter(k)} style={{
+              <button key={k} onClick={() => setThemaFilter(k)} style={{
                 fontFamily: T.mono, fontSize: 11, padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
                 border: `1px solid ${an ? farbe : T.line}`, background: an ? `${farbe}1c` : 'transparent', color: an ? farbe : T.muted,
-              }}>{k === 'alle' ? 'Alle Bahnen' : THEMA[k].label.split(' ')[0]}</button>
+              }}>{k === 'alle' ? 'Alle Themen' : THEMA[k].label.split(' ')[0]}</button>
             );
           })}
+        </div>
+
+        {/* Stichworte — die feine Klassierung: anklicken und am Stück wegarbeiten */}
+        <div style={{ ...panel, padding: '12px 16px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 9 }}>
+            <span style={lbl}>Stichworte</span>
+            <span style={{ fontSize: 11.5, color: T.muted }}>anklicken und alles dazu am Stück wegarbeiten — Dringendstes zuerst</span>
+            <input value={stichSuche} onChange={e => setStichSuche(e.target.value)} placeholder="suchen …"
+              aria-label="Stichwort suchen"
+              style={{ marginLeft: 'auto', width: 150, background: T.void, border: `1px solid ${T.line}`, borderRadius: 8, padding: '5px 10px', color: T.ink, fontSize: 12, fontFamily: T.sans, outline: 'none' }} />
+          </div>
+          {(() => {
+            const suche = stichSuche.trim().toLowerCase();
+            const treffer = suche
+              ? STICHWORTE.filter(w => w.label.toLowerCase().includes(suche))
+                  .map(w => stichStand.find(s => s.id === w.id) ?? { id: w.id, offen: 0, kritisch: 0, spaet: 0, wort: w })
+              : (alleStichAuf ? stichStand : stichStand.slice(0, 14));
+            if (!treffer.length) return <div style={{ fontSize: 12.5, color: T.muted }}>Keine Stichworte gefunden.</div>;
+            return (
+              <>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {treffer.map(s => {
+                    const an = stichFilter === s.id;
+                    const farbe = s.kritisch ? T.crit : s.spaet ? T.amber : THEMA[s.wort.thema]?.farbe ?? T.accent;
+                    return (
+                      <button key={s.id} onClick={() => setStichFilter(an ? null : s.id)}
+                        className={s.kritisch && !an ? 'krit-puls' : undefined}
+                        title={`${s.offen} offen${s.kritisch ? ` · ${s.kritisch} kritisch` : ''}${s.spaet ? ` · ${s.spaet} überfällig` : ''}`}
+                        style={{ fontFamily: T.sans, fontSize: 12, fontWeight: an ? 700 : 500, padding: '4px 10px', borderRadius: 999, cursor: 'pointer',
+                          border: `1px solid ${an ? farbe : s.offen ? `${farbe}55` : T.line}`, background: an ? `${farbe}22` : 'transparent',
+                          color: an ? farbe : s.offen ? T.inkDim : T.muted }}>
+                        {s.wort.label}
+                        {s.offen > 0 && <span style={{ fontFamily: T.mono, fontSize: 10, marginLeft: 6, color: farbe }}>{s.offen}</span>}
+                        {s.wort.kpi && <span style={{ fontFamily: T.mono, fontSize: 8.5, marginLeft: 4, color: T.muted }}>KPI</span>}
+                      </button>
+                    );
+                  })}
+                  {!suche && stichStand.length > 14 && (
+                    <button onClick={() => setAlleStichAuf(!alleStichAuf)}
+                      style={{ fontFamily: T.mono, fontSize: 11, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.muted }}>
+                      {alleStichAuf ? '− weniger' : `+ ${stichStand.length - 14} weitere`}
+                    </button>
+                  )}
+                </div>
+                {stichFilter && (
+                  <div style={{ marginTop: 9, display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 12.5, color: T.inkDim }}>
+                      Gefiltert auf <b style={{ color: T.accentInk }}>{STICHWORT[stichFilter]?.label}</b> · {list.length} {list.length === 1 ? 'Aufgabe' : 'Aufgaben'}
+                    </span>
+                    <button onClick={() => setStichFilter(null)} style={{ fontFamily: T.sans, fontSize: 11.5, padding: '3px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.muted }}>✕ Filter lösen</button>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* Delegations-Vorschläge: Kevin behält nur, was nur er kann */}
@@ -494,26 +604,26 @@ export function AufgabenView() {
                 </div>
                 {top.map((t, i) => (
                   <div key={t.id} style={{ display: 'flex', alignItems: 'stretch', borderTop: `1px solid ${T.lineSoft}` }}>
-                    <div style={{ width: 34, flex: '0 0 auto', display: 'grid', placeItems: 'center', fontFamily: T.mono, fontSize: 15, fontWeight: 700, color: THEMA[bahnVon(t)]?.farbe ?? T.muted, background: `${THEMA[bahnVon(t)]?.farbe ?? T.muted}0f` }}>{i + 1}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}><Zeile t={t} i={0} zeigeBahn /></div>
+                    <div style={{ width: 34, flex: '0 0 auto', display: 'grid', placeItems: 'center', fontFamily: T.mono, fontSize: 15, fontWeight: 700, color: THEMA[meinThema(t)]?.farbe ?? T.muted, background: `${THEMA[meinThema(t)]?.farbe ?? T.muted}0f` }}>{i + 1}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}><Zeile t={t} i={0} zeigeThema /></div>
                   </div>
                 ))}
               </div>
               {!!rest.length && (
                 <div style={{ ...panel, overflow: 'hidden' }}>
                   <div style={{ padding: '11px 16px 8px', ...lbl }}>Danach · {rest.length}</div>
-                  {rest.map((t, i) => <Zeile key={t.id} t={t} i={i + 1} zeigeBahn />)}
+                  {rest.map((t, i) => <Zeile key={t.id} t={t} i={i + 1} zeigeThema />)}
                 </div>
               )}
             </>
           );
         })()}
 
-        {/* ── BAHNEN: das Board — je Bahn eine Spalte, in unserer Reihenfolge ── */}
-        {ready && !!list.length && ansicht === 'bahnen' && (
+        {/* ── BAHNEN: das Board — je Thema eine Spalte, in unserer Reihenfolge ── */}
+        {ready && !!list.length && ansicht === 'themen' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 12, alignItems: 'start' }}>
-            {bahnen.map((b, bi) => {
-              const drin = list.filter(t => bahnVon(t) === b.id);
+            {themen.map((b, bi) => {
+              const drin = list.filter(t => meinThema(t) === b.id);
               return (
                 <div key={b.id} style={{ ...panel, borderTop: `3px solid ${b.farbe}`, overflow: 'hidden' }}>
                   <div style={{ padding: '11px 14px 9px' }}>
@@ -533,7 +643,7 @@ export function AufgabenView() {
           </div>
         )}
 
-        {/* ── ZEITSTRAHL: alle Bahnen parallel, 60 Tage voraus ── */}
+        {/* ── ZEITSTRAHL: alle Themen parallel, 60 Tage voraus ── */}
         {ready && !!list.length && ansicht === 'zeit' && (() => {
           const von = heute;
           const bis = tagInT(60);
@@ -545,8 +655,8 @@ export function AufgabenView() {
           const ohneDatum = list.filter(t => !t.dueDate).length;
           return (
             <>
-              {bahnen.map(b => {
-                const drin = list.filter(t => bahnVon(t) === b.id && t.dueDate);
+              {themen.map(b => {
+                const drin = list.filter(t => meinThema(t) === b.id && t.dueDate);
                 const marker: StrahlMarker[] = drin.map(t => ({
                   date: t.dueDate!,
                   label: t.title,
@@ -585,7 +695,7 @@ export function AufgabenView() {
                     {g.label} · {g.tasks.length}
                   </div>
                 )}
-                {g.tasks.map((t, i) => <Zeile key={t.id} t={t} i={i || !g.label ? 1 : 0} zeigeBahn />)}
+                {g.tasks.map((t, i) => <Zeile key={t.id} t={t} i={i || !g.label ? 1 : 0} zeigeThema />)}
               </div>
             ))}
           </div>
