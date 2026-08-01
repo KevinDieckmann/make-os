@@ -88,6 +88,7 @@ const GRUPPEN: Gruppe[] = [
     titel: 'Agenten & Wachstum',
     eintraege: [
       { href: '/os/agenten', label: 'Agentensystem' },
+      { href: '/os/netzwerk', label: 'Netzwerk & Pipeline' },
       { href: '/os/crm', label: 'CRM & Kunden' },
       { href: '/os/roadmap', label: 'Roadmap' },
       { href: '/os/bauplan', label: 'Bauplan' },
