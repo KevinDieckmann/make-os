@@ -27,10 +27,11 @@
 
 export type ReglerId =
   | 'fokus-health' | 'fokus-business' | 'fokus-planning' | 'fokus-finance' | 'fokus-social'
-  | 'tageslast' | 'kritisch-grenze' | 'vorschau-tage'
+  | 'fokus-schwelle'
+  | 'tageslast' | 'kritisch-grenze' | 'vorschau-tage' | 'wochenlast'
   | 'tuersteher' | 'triage-tiefe'
-  | 'agenten-leine' | 'auto-takt'
-  | 'schutzzeit';
+  | 'agenten-leine' | 'auto-takt' | 'nachtruhe-ab' | 'tagesstart-auto'
+  | 'schutzzeit' | 'recovery-gruen' | 'runway-warnung' | 'koerper-an-agenten';
 
 export interface Regler {
   id: ReglerId;
@@ -47,6 +48,8 @@ export interface Regler {
   wirktIn: { label: string; href: string }[];
   /** Beschreibt die Skala in Worten (unteres/oberes Ende). */
   skala?: [string, string];
+  /** Ja/Nein statt Schieberegler (0 = aus, 100 = an). */
+  schalter?: boolean;
 }
 
 export interface Bereich {
@@ -76,6 +79,8 @@ export const REGLER: Regler[] = [
     wirktIn: [{ label: 'Aufgaben', href: '/os/aufgaben' }, { label: 'Finanzen', href: '/os/finanzen' }], skala: ['läuft nebenher', 'hat Vorfahrt'] },
   { id: 'fokus-social', label: 'Beziehung & Team', bereich: 'fokus', erklaert: 'Wie stark Menschen-Themen nach oben wandern.', min: 0, max: 100, schritt: 5,
     wirktIn: [{ label: 'Aufgaben', href: '/os/aufgaben' }, { label: 'Beziehung & Team', href: '/os/saeule/social' }], skala: ['läuft nebenher', 'hat Vorfahrt'] },
+  { id: 'fokus-schwelle', label: 'Ab wann „im Fokus“', bereich: 'fokus', erklaert: 'Ab welchem Reglerwert eine Säule wirklich Vorfahrt bekommt — sonst hätten alle Regler auf 60 gar keinen Fokus mehr.', min: 40, max: 90, schritt: 5,
+    wirktIn: [{ label: 'Aufgaben', href: '/os/aufgaben' }, { label: 'Dashboard', href: '/os' }], skala: ['schnell im Fokus', 'nur klare Ansage'] },
 
   // ── Zeit & Last ──
   { id: 'tageslast', label: 'Tageslast', bereich: 'zeit', erklaert: 'Wie viele Stunden Arbeit ein Tag höchstens tragen soll — darüber warnt das System.', min: 2, max: 12, schritt: 1, einheit: 'h',
@@ -84,6 +89,8 @@ export const REGLER: Regler[] = [
     wirktIn: [{ label: 'Aufgaben', href: '/os/aufgaben' }, { label: 'Dashboard', href: '/os' }], skala: ['sehr streng', 'lässt viel zu'] },
   { id: 'vorschau-tage', label: 'Vorausschau', bereich: 'zeit', erklaert: 'Wie weit der Zeitstrahl und die Fällig-Gruppen nach vorn schauen.', min: 7, max: 120, schritt: 7, einheit: 'Tage',
     wirktIn: [{ label: 'Aufgaben', href: '/os/aufgaben' }, { label: 'Monat', href: '/os/planung/monat' }], skala: ['kurzer Horizont', 'weiter Blick'] },
+  { id: 'wochenlast', label: 'Wochenlast', bereich: 'zeit', erklaert: 'Ab wie vielen verplanten Stunden pro Woche der Wochenplaner warnt.', min: 20, max: 70, schritt: 5, einheit: 'h',
+    wirktIn: [{ label: 'Wochenplaner', href: '/os/planung/woche' }], skala: ['ruhige Woche', 'Vollauslastung'] },
 
   // ── Postfach ──
   { id: 'tuersteher', label: 'Türsteher-Strenge', bereich: 'postfach', erklaert: 'Wie viel unbekannte Absender überhaupt ins Postfach dürfen, bevor du entschieden hast.', min: 0, max: 100, schritt: 25,
@@ -96,10 +103,22 @@ export const REGLER: Regler[] = [
     wirktIn: [{ label: 'Agenten', href: '/os/agenten' }, { label: 'Postfach', href: '/os/inbox' }], skala: ['fragt bei allem', 'arbeitet selbständig'] },
   { id: 'auto-takt', label: 'Takt der Läufe', bereich: 'agenten', erklaert: 'Wie oft die Loops und Auswertungen von selbst laufen.', min: 0, max: 100, schritt: 25,
     wirktIn: [{ label: 'Agenten', href: '/os/agenten' }, { label: 'Loops', href: '/os/loop' }], skala: ['nur auf Zuruf', 'ständig im Takt'] },
+  { id: 'nachtruhe-ab', label: 'Nachtruhe ab', bereich: 'agenten', erklaert: 'Ab welcher Uhrzeit abends nichts mehr von selbst läuft.', min: 18, max: 24, schritt: 1, einheit: 'Uhr',
+    wirktIn: [{ label: 'Agenten', href: '/os/agenten' }], skala: ['früh Feierabend', 'spät bis Mitternacht'] },
+  { id: 'tagesstart-auto', label: 'Tagesstart automatisch', bereich: 'agenten', schalter: true,
+    erklaert: 'Ob der volle Tageslauf beim ersten Öffnen von selbst startet — er braucht bis zu vier Minuten und mehrere Anfragen.', min: 0, max: 100, schritt: 100,
+    wirktIn: [{ label: 'Tagesstart', href: '/os/ritual' }], skala: ['erst auf Knopfdruck', 'startet von selbst'] },
 
   // ── Schutz ──
   { id: 'schutzzeit', label: 'Schutzzeit', bereich: 'schutz', erklaert: 'Wie hart geschützte Zeiten (Sport, Sunday Dinner, Feierabend) verteidigt werden.', min: 0, max: 100, schritt: 25,
     wirktIn: [{ label: 'Wochenplaner', href: '/os/planung/woche' }, { label: 'Energie', href: '/os/energie' }], skala: ['nachgiebig', 'unantastbar'] },
+  { id: 'recovery-gruen', label: 'Grüne Tagesform ab', bereich: 'schutz', erklaert: 'Ab welchem Erholungswert ein Tag als grün gilt — steuert Tagesform, Fokus-Vorschlag und Wochenplanung.', min: 50, max: 85, schritt: 1, einheit: '%',
+    wirktIn: [{ label: 'Gesundheit', href: '/os/gesundheit' }, { label: 'Tag', href: '/os/planung' }], skala: ['schnell grün', 'nur wirklich erholt'] },
+  { id: 'runway-warnung', label: 'Runway-Warnung ab', bereich: 'schutz', erklaert: 'Ab wie wenigen Monaten Geldreichweite das System rot schlägt.', min: 1, max: 12, schritt: 1, einheit: 'Monate',
+    wirktIn: [{ label: 'Finanzen', href: '/os/finanzen' }, { label: 'Controlling', href: '/os/controlling' }], skala: ['erst spät nervös', 'früh warnen'] },
+  { id: 'koerper-an-agenten', label: 'Körperdaten an Agenten', bereich: 'schutz', schalter: true,
+    erklaert: 'Ob Gesundheitswerte in die Arbeitsaufträge der Agenten fließen. Aus bedeutet: Business-Agenten sehen sie gar nicht erst.', min: 0, max: 100, schritt: 100,
+    wirktIn: [{ label: 'Agenten', href: '/os/agenten' }, { label: 'Gesundheit', href: '/os/gesundheit' }], skala: ['bleiben privat', 'fließen mit ein'] },
 ];
 
 export const REGLER_MAP = Object.fromEntries(REGLER.map(r => [r.id, r])) as Record<ReglerId, Regler>;
@@ -130,6 +149,7 @@ export const MODI: Modus[] = [
       tuersteher: 50, 'triage-tiefe': 50,
       'agenten-leine': 75, 'auto-takt': 75,
       schutzzeit: 50,
+      'fokus-schwelle': 65, 'wochenlast': 50, 'nachtruhe-ab': 22, 'tagesstart-auto': 100, 'recovery-gruen': 66, 'runway-warnung': 3, 'koerper-an-agenten': 100,
     },
   },
   {
@@ -142,6 +162,7 @@ export const MODI: Modus[] = [
       tuersteher: 25, 'triage-tiefe': 25,
       'agenten-leine': 75, 'auto-takt': 100,
       schutzzeit: 50,
+      'fokus-schwelle': 60, 'wochenlast': 55, 'nachtruhe-ab': 22, 'tagesstart-auto': 100, 'recovery-gruen': 66, 'runway-warnung': 4, 'koerper-an-agenten': 100,
     },
   },
   {
@@ -154,6 +175,7 @@ export const MODI: Modus[] = [
       tuersteher: 100, 'triage-tiefe': 75,
       'agenten-leine': 50, 'auto-takt': 50,
       schutzzeit: 100,
+      'fokus-schwelle': 70, 'wochenlast': 35, 'nachtruhe-ab': 20, 'tagesstart-auto': 0, 'recovery-gruen': 70, 'runway-warnung': 6, 'koerper-an-agenten': 100,
     },
   },
   {
@@ -166,6 +188,7 @@ export const MODI: Modus[] = [
       tuersteher: 100, 'triage-tiefe': 100,
       'agenten-leine': 100, 'auto-takt': 100,
       schutzzeit: 25,
+      'fokus-schwelle': 55, 'wochenlast': 60, 'nachtruhe-ab': 23, 'tagesstart-auto': 100, 'recovery-gruen': 60, 'runway-warnung': 6, 'koerper-an-agenten': 100,
     },
   },
 ];

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
+import { wertVon, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
 import {
   DEFAULT_FINANCE, MONTHS_DE, computeMetrics, eur,
   type FinanceState,
@@ -27,6 +28,13 @@ function Kpi({ label, value, sub, color }: { label: string; value: string; sub?:
 export function ControllingView() {
   const [s, setS] = useState<FinanceState>(DEFAULT_FINANCE);
   const [loaded, setLoaded] = useState(false);
+  // Runway-Grenze kommt aus dem Kompass — eine Zahl für die ganze Software.
+  const [runwayRot, setRunwayRot] = useState(3);
+  useEffect(() => {
+    fetch('/api/state/kompass').then(r => r.json())
+      .then(d => setRunwayRot(wertVon('runway-warnung', d.modus ?? STANDARD_MODUS, d.eigene ?? {})))
+      .catch(() => {});
+  }, []);
   const [a, setA] = useState<Analysis | null>(null);
   const [busy, setBusy] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -96,7 +104,7 @@ export function ControllingView() {
           <Kpi label="Run-Rate nötig" value={`${eur(m.runRateNoetig)}`} sub={`/Monat · ${m.restMonate} Monate übrig`} />
           <Kpi label="Run-Rate aktuell" value={m.aktiveMonate > 0 ? `${eur(m.runRateAktuell)}` : '—'} sub={m.aktiveMonate > 0 ? `Ø aus ${m.aktiveMonate} Monaten` : 'keine Ist-Zahlen'} color={runRateColor} />
           <Kpi label="Gewinn" value={m.aktiveMonate > 0 ? `${eur(m.istGewinn)}` : '—'} sub={`Ziel ${eur(s.zielGewinn)}`} color={m.istGewinn >= 0 ? T.ink : T.crit} />
-          <Kpi label="Runway" value={m.runwayMonate != null ? `${m.runwayMonate.toFixed(1)} Mon.` : '—'} sub={m.runwayMonate != null ? `bei Ø Burn ${eur(m.avgBurn)}` : 'kein Burn/Cash'} color={m.runwayMonate != null && m.runwayMonate < 4 ? T.crit : T.ink} />
+          <Kpi label="Runway" value={m.runwayMonate != null ? `${m.runwayMonate.toFixed(1)} Mon.` : '—'} sub={m.runwayMonate != null ? `bei Ø Burn ${eur(m.avgBurn)}` : 'kein Burn/Cash'} color={m.runwayMonate != null && m.runwayMonate < runwayRot ? T.crit : T.ink} />
         </div>
 
         {/* Analyse */}

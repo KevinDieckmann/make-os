@@ -165,6 +165,17 @@ export function KompassView() {
       const n = offen.filter(t => t.dueDate && t.dueDate >= heute && t.dueDate <= grenze).length;
       return `${n} Aufgaben liegen in diesem Fenster`;
     }
+    if (id === 'fokus-schwelle') {
+      const drueber = (['health', 'business', 'planning', 'finance', 'social'] as const)
+        .filter(s => wert(`fokus-${s}` as ReglerId) >= v).length;
+      return drueber === 0 ? 'keine Säule hat gerade Vorfahrt' : drueber === 5 ? 'alle fünf Säulen — das ist kein Fokus mehr' : `${drueber} von 5 Säulen haben Vorfahrt`;
+    }
+    if (id === 'wochenlast') return `Wochenplaner warnt ab ${v} verplanten Stunden`;
+    if (id === 'recovery-gruen') return `grün ab ${v} % · gelb ab ${Math.max(20, v - 26)} % · darunter rot`;
+    if (id === 'runway-warnung') return `rot unter ${v} Monaten, gelb unter ${v * 2} — gilt in Shields, Controlling und Board`;
+    if (id === 'nachtruhe-ab') return `zwischen ${v} und 7 Uhr läuft nichts von selbst`;
+    if (id === 'tagesstart-auto') return v >= 50 ? 'startet beim Öffnen von selbst (bis zu 4 Minuten)' : 'wartet auf deinen Knopfdruck';
+    if (id === 'koerper-an-agenten') return v >= 50 ? 'Agenten sehen Erholung, Schlaf und Symptome' : 'Gesundheitswerte bleiben aus allen Agenten-Aufträgen draußen';
     if (id === 'tuersteher') {
       const n = offeneAbsender;
       if (v >= 88) return n ? `nur die ${n} entschiedenen Absender kommen durch` : 'noch niemand entschieden — Postfach bleibt offen';
@@ -292,13 +303,27 @@ export function KompassView() {
                         {r.label}
                         {eigenerWert && <span style={{ color: T.amber, marginLeft: 5 }} title="weicht von der Lage ab">•</span>}
                       </span>
-                      <input type="range" min={r.min} max={r.max} step={r.schritt} value={v}
-                        onChange={e => reglerSetzen(r.id, Number(e.target.value))}
-                        aria-label={r.label}
-                        style={{ flex: 1, minWidth: 140, accentColor: b.farbe, cursor: 'pointer' }} />
-                      <span style={{ fontFamily: T.mono, fontSize: 12, color: b.farbe, width: 56, textAlign: 'right', flex: '0 0 auto' }}>
-                        {v}{r.einheit ? ` ${r.einheit}` : ''}
-                      </span>
+                      {r.schalter ? (
+                        <span style={{ display: 'flex', gap: 6, flex: 1 }}>
+                          {([[100, r.skala?.[1] ?? 'an'], [0, r.skala?.[0] ?? 'aus']] as const).map(([val, text]) => (
+                            <button key={val} onClick={() => reglerSetzen(r.id, val)} style={{
+                              fontFamily: T.sans, fontSize: 12, fontWeight: v === val ? 700 : 500, padding: '4px 12px', borderRadius: 7, cursor: 'pointer',
+                              border: `1px solid ${v === val ? b.farbe : T.line}`, background: v === val ? `${b.farbe}1c` : 'transparent',
+                              color: v === val ? b.farbe : T.inkDim,
+                            }}>{text}</button>
+                          ))}
+                        </span>
+                      ) : (
+                        <>
+                          <input type="range" min={r.min} max={r.max} step={r.schritt} value={v}
+                            onChange={e => reglerSetzen(r.id, Number(e.target.value))}
+                            aria-label={r.label}
+                            style={{ flex: 1, minWidth: 140, accentColor: b.farbe, cursor: 'pointer' }} />
+                          <span style={{ fontFamily: T.mono, fontSize: 12, color: b.farbe, width: 56, textAlign: 'right', flex: '0 0 auto' }}>
+                            {v}{r.einheit ? ` ${r.einheit}` : ''}
+                          </span>
+                        </>
+                      )}
                     </div>
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'baseline', marginTop: 4, paddingLeft: 2 }}>
                       <span style={{ fontSize: 12, color: T.inkDim }}>→ {wirkung(r.id)}</span>

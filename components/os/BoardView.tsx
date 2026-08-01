@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
+import { wertVon, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
 import { eur } from '@/lib/make-one/finance-data';
 import { todayISO } from '@/components/os/kit';
 
@@ -30,6 +31,13 @@ function Kpi({ label, value, sub, color }: { label: string; value: string; sub?:
 export function BoardView() {
   const [pack, setPack] = useState<Pack | null>(null);
   const [busy, setBusy] = useState(false);
+  // Runway-Grenze aus dem Kompass — dieselbe Zahl wie in Controlling und Shields.
+  const [runwayRot, setRunwayRot] = useState(3);
+  useEffect(() => {
+    fetch('/api/state/kompass').then(r => r.json())
+      .then(d => setRunwayRot(wertVon('runway-warnung', d.modus ?? STANDARD_MODUS, d.eigene ?? {})))
+      .catch(() => {});
+  }, []);
   const [ready, setReady] = useState(false);
   const [privat, setPrivat] = useState(0);
   const [payload, setPayload] = useState<{ finance: unknown; prospects: unknown[]; tasks: unknown[] } | null>(null);
@@ -93,7 +101,7 @@ export function BoardView() {
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
               <Kpi label="Umsatz-Kurs" value={s.finance?.aktiv ? `${s.finance.fortschritt}%` : '—'} sub={s.finance ? `Ziel ${eur(s.finance.zielUmsatz)}` : ''} color={T.accent} />
               <Kpi label="Run-Rate nötig" value={s.finance ? eur(s.finance.runRateNoetig) : '—'} sub="/Monat" />
-              <Kpi label="Runway" value={s.finance?.runway != null ? `${s.finance.runway.toFixed(1)} Mon.` : '—'} color={s.finance?.runway != null && s.finance.runway < 4 ? T.crit : T.ink} />
+              <Kpi label="Runway" value={s.finance?.runway != null ? `${s.finance.runway.toFixed(1)} Mon.` : '—'} color={s.finance?.runway != null && s.finance.runway < runwayRot ? T.crit : T.ink} />
             </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
               <Kpi label="Pipeline" value={`${s.pipeline.total}`} sub={`${s.pipeline.hot} starker Fit · Ø ${s.pipeline.avgScore}`} color={T.accentInk} />

@@ -18,9 +18,11 @@ interface KompassFile {
 
 const MODI = new Set(['aufbau', 'ernte', 'schutz', 'feuer']);
 const REGLER = new Set([
-  'fokus-health', 'fokus-business', 'fokus-planning', 'fokus-finance', 'fokus-social',
-  'tageslast', 'kritisch-grenze', 'vorschau-tage',
-  'tuersteher', 'triage-tiefe', 'agenten-leine', 'auto-takt', 'schutzzeit',
+  'fokus-health', 'fokus-business', 'fokus-planning', 'fokus-finance', 'fokus-social', 'fokus-schwelle',
+  'tageslast', 'kritisch-grenze', 'vorschau-tage', 'wochenlast',
+  'tuersteher', 'triage-tiefe',
+  'agenten-leine', 'auto-takt', 'nachtruhe-ab', 'tagesstart-auto',
+  'schutzzeit', 'recovery-gruen', 'runway-warnung', 'koerper-an-agenten',
 ]);
 
 export async function GET() {

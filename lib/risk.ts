@@ -7,6 +7,7 @@
 import { loadJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import { computeMetrics, type FinanceState } from '@/lib/make-one/finance-data';
+import { schwellen } from '@/lib/schwellen';
 
 export interface Shield {
   id: string;
@@ -47,12 +48,13 @@ export async function computeShields(today = localDay()): Promise<Shield[]> {
     });
   }
 
-  // ── Runway: unter 3 Monaten brennt es, unter 6 wird es eng ──
+  // ── Runway: die Grenzen kommen aus dem Kompass, nicht aus dem Code ──
   if (fin) {
     const m = computeMetrics(fin);
+    const s = await schwellen();
     if (m.runwayMonate != null && m.aktiveMonate > 0) {
-      if (m.runwayMonate < 3) shields.push({ id: 'runway', stufe: 'rot', text: `Runway ${m.runwayMonate.toFixed(1)} Monate — Liquidität ist DAS Thema.`, href: '/os/controlling', label: 'Controlling' });
-      else if (m.runwayMonate < 6) shields.push({ id: 'runway', stufe: 'amber', text: `Runway ${m.runwayMonate.toFixed(1)} Monate — Puffer schrumpft.`, href: '/os/controlling', label: 'Controlling' });
+      if (m.runwayMonate < s.runwayRot) shields.push({ id: 'runway', stufe: 'rot', text: `Runway ${m.runwayMonate.toFixed(1)} Monate — Liquidität ist DAS Thema.`, href: '/os/controlling', label: 'Controlling' });
+      else if (m.runwayMonate < s.runwayAmber) shields.push({ id: 'runway', stufe: 'amber', text: `Runway ${m.runwayMonate.toFixed(1)} Monate — Puffer schrumpft.`, href: '/os/controlling', label: 'Controlling' });
     }
   }
 
