@@ -22,7 +22,7 @@ import { schwellen, type Schwellen } from '@/lib/schwellen';
 import { MODUS, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
 import { THEMA, STANDARD_ORDNUNG, themaVon } from '@/lib/make-one/ordnung-data';
 import { ORG, orgVon } from '@/lib/make-one/organisation-data';
-import { einschaetzen, dauerText, WER_LABEL } from '@/lib/make-one/umsetzung-data';
+import { einschaetzen, dauerText } from '@/lib/make-one/umsetzung-data';
 import { teamZeilen } from '@/lib/make-one/team-data';
 import type { Prospect } from '@/lib/make-one/prospecting-data';
 

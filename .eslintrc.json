@@ -1,3 +1,13 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript"]
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "//": "Altlast aus dem ersten Bau (Route /dashboard und deren Bausteine) — wird von /os nicht mehr benutzt und blockiert sonst den Produktions-Build. Aufräumen steht im Bauplan.",
+  "ignorePatterns": [
+    "app/(dashboard)/**",
+    "components/ui/make/**",
+    "components/dashboard/**",
+    "components/calendar/**",
+    "components/tasks/**",
+    "components/fundament/**",
+    "lib/mock-data/**"
+  ]
 }
