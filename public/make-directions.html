@@ -1,0 +1,170 @@
+<title>MAKE OS · 5 UX-Richtungen</title>
+<style>
+  :root{ --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif; --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{color-scheme:dark}
+  body{background:#08090C;color:#E9ECF2;font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.5}
+  .wrap{max-width:1180px;margin:0 auto;padding:40px clamp(16px,3vw,40px) 72px}
+  header.top{margin-bottom:34px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:#6EE7C7;margin-bottom:12px}
+  h1{font-size:clamp(26px,4vw,40px);font-weight:600;letter-spacing:-.02em;text-wrap:balance}
+  header.top p{color:#96A0B5;font-size:15.5px;margin-top:12px;max-width:64ch}
+  header.top p b{color:#E9ECF2;font-weight:600}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px}
+  .dir{background:#0E1016;border:1px solid #1C2029;border-radius:18px;overflow:hidden;display:flex;flex-direction:column;transition:border-color .25s,transform .25s}
+  .dir:hover{border-color:#2C323F;transform:translateY(-3px)}
+
+  /* preview — themed per card via custom props */
+  .preview{position:relative;height:196px;background:var(--bg);overflow:hidden;display:flex;align-items:center;gap:18px;padding:0 22px;border-bottom:1px solid #1C2029}
+  .preview .aura{position:absolute;inset:0;background:var(--aura);opacity:.9}
+  .preview .orb{position:relative;width:92px;height:92px;flex:0 0 auto}
+  .preview .orb::before{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,var(--a) 0%,color-mix(in srgb,var(--a) 22%,transparent) 44%,transparent 72%);animation:breathe 4.6s ease-in-out infinite}
+  .preview .orb::after{content:"";position:absolute;inset:26px;border-radius:50%;background:var(--a);box-shadow:0 0 22px var(--a);animation:pulse 4.6s ease-in-out infinite}
+  .preview .ui{position:relative;flex:1;min-width:0}
+  .preview .ui .lbl{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:color-mix(in srgb,var(--ink) 55%,transparent);text-transform:uppercase}
+  .preview .ui .val{font-family:var(--mono);font-size:30px;font-weight:600;color:var(--ink);margin:4px 0 12px}
+  .preview .ui .val small{font-size:12px;color:color-mix(in srgb,var(--ink) 45%,transparent)}
+  .preview .bar{height:5px;border-radius:3px;background:color-mix(in srgb,var(--ink) 12%,transparent);margin-bottom:8px;overflow:hidden}
+  .preview .bar i{display:block;height:100%;border-radius:3px}
+  .preview .b1 i{width:72%;background:var(--a)}
+  .preview .b2 i{width:48%;background:var(--a2)}
+  .preview .b3 i{width:60%;background:var(--warm,var(--a2))}
+
+  .meta{padding:20px 22px 22px;display:flex;flex-direction:column;gap:12px;flex:1}
+  .rowline{display:flex;align-items:baseline;gap:12px}
+  .num{font-family:var(--mono);font-size:12px;color:#5A6272}
+  .meta h3{font-size:19px;font-weight:600;letter-spacing:-.01em}
+  .badge{margin-left:auto;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:20px;border:1px solid rgba(110,231,199,.35);color:#6EE7C7}
+  .tag{font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:#8A93A6}
+  .concept{font-size:14px;color:#AEB6C6;line-height:1.6}
+  .concept b{color:#E9ECF2;font-weight:600}
+  .swatches{display:flex;gap:7px;flex-wrap:wrap;margin-top:2px}
+  .sw{width:46px}
+  .sw i{display:block;height:30px;border-radius:7px;border:1px solid rgba(255,255,255,.08)}
+  .sw span{font-family:var(--mono);font-size:8px;color:#6A7284;display:block;margin-top:5px;letter-spacing:.02em}
+  .type{font-family:var(--mono);font-size:10.5px;color:#727C90;letter-spacing:.02em;border-top:1px solid #1C2029;padding-top:12px;margin-top:2px}
+  .type b{color:#AEB6C6;font-weight:400}
+
+  .foot{margin-top:30px;text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:#5A6272}
+
+  @keyframes breathe{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.14);opacity:.82}}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.82);opacity:.7}}
+  @keyframes drift{0%{transform:translate3d(-6%,-4%,0) scale(1.1)}50%{transform:translate3d(6%,4%,0) scale(1.25)}100%{transform:translate3d(-6%,-4%,0) scale(1.1)}}
+  .dir.aurora .aura{animation:drift 12s ease-in-out infinite}
+  @media (prefers-reduced-motion:reduce){.orb::before,.orb::after,.aura{animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">◊ Design-Richtungen · zum Auswählen</div>
+    <h1>MAKE OS als lebendiger Organismus</h1>
+    <p>Fünf Farb- & UX-Welten. Jede lässt das System <b>atmen und leben</b> — nicht wie ein Dashboard, sondern wie ein Wesen, das mit dir reagiert. Die Vorschauen pulsieren bewusst. Sag mir, welche sich richtig anfühlt.</p>
+  </header>
+
+  <div class="grid">
+
+    <!-- 1 Bioluminescence -->
+    <article class="dir" style="--bg:#05090E;--aura:radial-gradient(60% 80% at 20% 40%,rgba(43,240,192,.16),transparent 70%);--a:#2BF0C0;--a2:#38B6FF;--warm:#F5C15A;--ink:#E8F4F0">
+      <div class="preview"><div class="aura"></div><div class="orb"></div>
+        <div class="ui"><div class="lbl">MSI · Souveränität</div><div class="val">49<small>/100</small></div>
+          <div class="bar b1"><i></i></div><div class="bar b2"><i></i></div><div class="bar b3"><i></i></div></div></div>
+      <div class="meta">
+        <div class="rowline"><span class="num">01</span><h3>Bioluminescence</h3><span class="badge">Empfehlung</span></div>
+        <div class="tag">Tiefsee-Leuchten — Leben, das im Dunkeln selbst leuchtet</div>
+        <div class="concept">Fast schwarzes Tiefsee-Blau, aus dem <b>lebendiges Licht</b> glimmt. Premium, ruhig, aber spürbar am Leben — wie ein Organismus, der im Dunkeln pulsiert. Nah an deinem jetzigen Look, nur edler & lebendiger.</div>
+        <div class="swatches">
+          <div class="sw"><i style="background:#05090E"></i><span>#05090E</span></div>
+          <div class="sw"><i style="background:#0A121A"></i><span>#0A121A</span></div>
+          <div class="sw"><i style="background:#2BF0C0"></i><span>#2BF0C0</span></div>
+          <div class="sw"><i style="background:#38B6FF"></i><span>#38B6FF</span></div>
+          <div class="sw"><i style="background:#F5C15A"></i><span>#F5C15A</span></div>
+        </div>
+        <div class="type"><b>Typo:</b> klare Sans (Inter/SF) + Mono für Werte · sanftes Glühen als Leben</div>
+      </div>
+    </article>
+
+    <!-- 2 Neural -->
+    <article class="dir" style="--bg:#09070F;--aura:radial-gradient(60% 80% at 75% 30%,rgba(124,123,255,.18),transparent 70%);--a:#7C7BFF;--a2:#FF6EC7;--warm:#63D8FF;--ink:#ECE9F7">
+      <div class="preview"><div class="aura"></div><div class="orb"></div>
+        <div class="ui"><div class="lbl">MSI · Souveränität</div><div class="val">49<small>/100</small></div>
+          <div class="bar b1"><i></i></div><div class="bar b2"><i></i></div><div class="bar b3"><i></i></div></div></div>
+      <div class="meta">
+        <div class="rowline"><span class="num">02</span><h3>Neural · Synapse</h3></div>
+        <div class="tag">Nervensystem — Knoten feuern, Verbindungen pulsieren</div>
+        <div class="concept">Das OS als <b>lebendiges Nervensystem</b>: tiefes Indigo, synaptisches Violett-Blau, Magenta-Funken. Alles ist vernetzt und „feuert", wenn etwas passiert. Am stärksten das Gefühl von „es denkt & reagiert".</div>
+        <div class="swatches">
+          <div class="sw"><i style="background:#09070F"></i><span>#09070F</span></div>
+          <div class="sw"><i style="background:#120E1F"></i><span>#120E1F</span></div>
+          <div class="sw"><i style="background:#7C7BFF"></i><span>#7C7BFF</span></div>
+          <div class="sw"><i style="background:#FF6EC7"></i><span>#FF6EC7</span></div>
+          <div class="sw"><i style="background:#63D8FF"></i><span>#63D8FF</span></div>
+        </div>
+        <div class="type"><b>Typo:</b> geometrische Sans + Mono · pulsierende Knotenpunkte als Leben</div>
+      </div>
+    </article>
+
+    <!-- 3 Mycel -->
+    <article class="dir" style="--bg:#0B0F0A;--aura:radial-gradient(60% 80% at 25% 55%,rgba(111,224,106,.15),transparent 70%);--a:#6FE06A;--a2:#C8A24B;--warm:#E08A4B;--ink:#EDF2E6">
+      <div class="preview"><div class="aura"></div><div class="orb"></div>
+        <div class="ui"><div class="lbl">MSI · Souveränität</div><div class="val">49<small>/100</small></div>
+          <div class="bar b1"><i></i></div><div class="bar b2"><i></i></div><div class="bar b3"><i></i></div></div></div>
+      <div class="meta">
+        <div class="rowline"><span class="num">03</span><h3>Mycel · Wachstum</h3></div>
+        <div class="tag">Organisches Wachstum — Wurzeln, die sich ausbreiten</div>
+        <div class="concept">Warmes Dunkel mit <b>lebendigen Grüns</b> und Moos/Amber. Der OS als wachsender Organismus — Myzel-Linien, die sich ausbreiten. Perfekt zum Thema Gesundheit & Aufbau, sehr „am Leben".</div>
+        <div class="swatches">
+          <div class="sw"><i style="background:#0B0F0A"></i><span>#0B0F0A</span></div>
+          <div class="sw"><i style="background:#141810"></i><span>#141810</span></div>
+          <div class="sw"><i style="background:#6FE06A"></i><span>#6FE06A</span></div>
+          <div class="sw"><i style="background:#C8A24B"></i><span>#C8A24B</span></div>
+          <div class="sw"><i style="background:#E08A4B"></i><span>#E08A4B</span></div>
+        </div>
+        <div class="type"><b>Typo:</b> humanistische Sans (warm) + Mono · langsames Wachsen/Atmen</div>
+      </div>
+    </article>
+
+    <!-- 4 Aurora -->
+    <article class="dir aurora" style="--bg:#070B12;--aura:radial-gradient(70% 90% at 30% 40%,rgba(52,224,160,.20),transparent 55%),radial-gradient(60% 80% at 80% 70%,rgba(138,108,255,.20),transparent 60%);--a:#34E0A0;--a2:#8A6CFF;--warm:#2BC0D8;--ink:#EAF1F7">
+      <div class="preview"><div class="aura"></div><div class="orb"></div>
+        <div class="ui"><div class="lbl">MSI · Souveränität</div><div class="val">49<small>/100</small></div>
+          <div class="bar b1"><i></i></div><div class="bar b2"><i></i></div><div class="bar b3"><i></i></div></div></div>
+      <div class="meta">
+        <div class="rowline"><span class="num">04</span><h3>Aurora · Circadian</h3><span class="badge">Am lebendigsten</span></div>
+        <div class="tag">Lebendiger Rhythmus — atmet mit deinem Tag</div>
+        <div class="concept">Ein <b>driftender Aurora-Verlauf</b> (Grün → Teal → Violett), der sich sanft bewegt und mit der Tageszeit wandelt — Morgen frisch, Nacht ruhig. Der OS lebt mit deinem Rhythmus. Am deutlichsten „ein Wesen, das atmet".</div>
+        <div class="swatches">
+          <div class="sw"><i style="background:#070B12"></i><span>#070B12</span></div>
+          <div class="sw"><i style="background:#34E0A0"></i><span>#34E0A0</span></div>
+          <div class="sw"><i style="background:#2BC0D8"></i><span>#2BC0D8</span></div>
+          <div class="sw"><i style="background:#8A6CFF"></i><span>#8A6CFF</span></div>
+          <div class="sw"><i style="background:#EAF1F7"></i><span>#EAF1F7</span></div>
+        </div>
+        <div class="type"><b>Typo:</b> elegante Sans + Mono · driftender Gradient als Atem des Systems</div>
+      </div>
+    </article>
+
+    <!-- 5 Cellular -->
+    <article class="dir" style="--bg:#0D0B0A;--aura:radial-gradient(60% 80% at 30% 45%,rgba(255,138,91,.14),transparent 70%);--a:#FF8A5B;--a2:#3ED9A4;--warm:#F2C14E;--ink:#F2ECE6">
+      <div class="preview"><div class="aura"></div><div class="orb"></div>
+        <div class="ui"><div class="lbl">MSI · Souveränität</div><div class="val">49<small>/100</small></div>
+          <div class="bar b1"><i></i></div><div class="bar b2"><i></i></div><div class="bar b3"><i></i></div></div></div>
+      <div class="meta">
+        <div class="rowline"><span class="num">05</span><h3>Zellular · Warm Organic</h3></div>
+        <div class="tag">Warme Zelle — weich, menschlich, membranartig</div>
+        <div class="concept">Weiches, warmes Dunkel mit <b>Korall-Orange und Jade</b>. Runde, membranartige Formen statt harter Kanten — nah, menschlich, lebendig. Der Gegenentwurf zu „kühl & klinisch", spürbar organisch.</div>
+        <div class="swatches">
+          <div class="sw"><i style="background:#0D0B0A"></i><span>#0D0B0A</span></div>
+          <div class="sw"><i style="background:#16130F"></i><span>#16130F</span></div>
+          <div class="sw"><i style="background:#FF8A5B"></i><span>#FF8A5B</span></div>
+          <div class="sw"><i style="background:#3ED9A4"></i><span>#3ED9A4</span></div>
+          <div class="sw"><i style="background:#F2C14E"></i><span>#F2C14E</span></div>
+        </div>
+        <div class="type"><b>Typo:</b> runde, warme Sans + Mono · weiches Membran-Wabern</div>
+      </div>
+    </article>
+
+  </div>
+
+  <div class="foot">MAKE OS · 5 UX-RICHTUNGEN — welche fühlt sich lebendig an?</div>
+</div>

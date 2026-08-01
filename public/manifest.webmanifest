@@ -1,0 +1,13 @@
+{
+  "name": "MAKE OS",
+  "short_name": "MAKE",
+  "description": "Kevins Life & Business OS — MAKE steuert, du entscheidest.",
+  "start_url": "/os",
+  "display": "standalone",
+  "background_color": "#0B0E10",
+  "theme_color": "#0B0E10",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

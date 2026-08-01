@@ -2,26 +2,160 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── MAKE OS — „KLAR" DESIGN SYSTEM · DARK ──────────────────────────────────
+   Dunkel, kühl, präzise. Ein Petrol-Akzent, Hairline-Raster, Mono-Kennzahlen.
+   Instrumenten-Cockpit statt Neon. Token-getrieben: die /os-App liest THEME
+   (lib/make-one/os-data.ts) — diese Datei liefert Foundation + shadcn (dark).  */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Klar-Dark-Tokens (Rohwerte) */
+  --bg:            #0B0E10;
+  --surface:       #14181B;
+  --surface-2:     #191E21;
+  --border-hair:   #232A2D;
+  --border-soft:   #1A2023;
+  --ink:           #E8ECEA;
+  --ink-dim:       #A2ADB0;
+  --faint:         #6E7A7D;
+  --accent:        #21B5AA;
+  --accent-ink:    #58D9CD;
+  --accent-soft:   rgba(33,181,170,.13);
+  --good:          #2FB57A;
+  --warn:          #D9A441;
+  --crit:          #E8695E;
+  --mono-font:     ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* shadcn/Radix compat — auf Klar-Dark gemappt (HSL) */
+  --background:        200 14% 6%;
+  --foreground:        160 8% 92%;
+  --card:              200 12% 9%;
+  --card-foreground:   160 8% 92%;
+  --popover:           200 12% 9%;
+  --popover-foreground:160 8% 92%;
+  --primary:           176 69% 42%;
+  --primary-foreground:200 20% 6%;
+  --secondary:         200 10% 14%;
+  --secondary-foreground: 160 8% 88%;
+  --muted:             200 10% 14%;
+  --muted-foreground:  200 6% 66%;
+  --accent:            176 69% 42%;
+  --accent-foreground: 200 20% 6%;
+  --destructive:       4 74% 64%;
+  --destructive-foreground: 0 0% 100%;
+  --border:            200 12% 16%;
+  --input:             200 12% 18%;
+  --ring:              176 69% 42%;
+  --radius:            0.625rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+html { color-scheme: dark; }
+
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+/* ─── Scrollbar (dezent, dunkel) ────────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 10px; height: 10px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: #2A3236; border: 3px solid var(--bg); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #35403f; }
+
+::selection { background: rgba(33,181,170,.28); color: var(--ink); }
+
+/* ─── Fokus-Sichtbarkeit (Tastatur) ─────────────────────────────────────────── */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ─── Utilities ─────────────────────────────────────────────────────────────── */
+.mono { font-family: var(--mono-font); font-variant-numeric: tabular-nums; }
+
+.progress-track { background: var(--border-hair); height: 6px; width: 100%; border-radius: 6px; overflow: hidden; }
+.progress-fill  { height: 100%; background: var(--accent); border-radius: 6px; transition: width 600ms cubic-bezier(.22,1,.36,1); }
+
+.interactive-element {
+  cursor: pointer;
+  transition: transform 60ms linear, background-color 120ms linear, color 120ms linear, border-color 120ms linear;
+  -webkit-user-select: none; user-select: none;
+}
+.interactive-element:active { transform: translateY(.5px); }
+
+.privacy-blur { filter: blur(8px); user-select: none; transition: filter 200ms linear; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.animate-in { animation: fadeIn 220ms ease forwards; }
+
+/* ─── Motion-Sprache: ruhig, zweckvoll, unter 400ms (Best Practice) ─────────── */
+:root { --ease-glatt: cubic-bezier(.22, 1, .36, 1); --ease-feder: cubic-bezier(.34, 1.56, .64, 1); }
+html { scroll-behavior: smooth; }
+
+/* Feedback auf jede Berührung — aber gezielt: Karten und Chips heben sich,
+   reine Textlinks wechseln nur die Farbe (Text darf nie springen). */
+main a, main button, nav a, nav button {
+  transition: transform 150ms var(--ease-glatt), border-color 150ms linear, background-color 150ms linear,
+    color 150ms linear, box-shadow 220ms var(--ease-glatt), opacity 150ms linear;
+}
+main a[style*="border"]:hover, main button:hover:not(:disabled) { transform: translateY(-1px); }
+main a[style*="border"]:active, main button:active:not(:disabled) { transform: translateY(0) scale(.985); }
+main a:not([style*="border"]):hover { opacity: .85; }
+nav a:hover { transform: translateX(2px); }
+.sb-aktiv { box-shadow: inset 0 0 18px rgba(33, 181, 170, .09); }
+
+/* Choreografie: Abschnitte treten gestaffelt und leicht ein */
+.stagger > * { animation: fadeIn .4s var(--ease-glatt) backwards; }
+.stagger > *:nth-child(1) { animation-delay: .02s; }
+.stagger > *:nth-child(2) { animation-delay: .07s; }
+.stagger > *:nth-child(3) { animation-delay: .12s; }
+.stagger > *:nth-child(4) { animation-delay: .17s; }
+.stagger > *:nth-child(5) { animation-delay: .22s; }
+.stagger > *:nth-child(6) { animation-delay: .27s; }
+.stagger > *:nth-child(7) { animation-delay: .32s; }
+.stagger > *:nth-child(8) { animation-delay: .37s; }
+
+/* MAKE Score: der Ring zeichnet sich beim Laden, dahinter eine ruhige Atmung */
+.ring-anim { transition: stroke-dashoffset 950ms var(--ease-glatt); }
+@keyframes scoreAtem { 0%, 100% { opacity: .14; transform: scale(.96); } 50% { opacity: .32; transform: scale(1.04); } }
+.score-atem { animation: scoreAtem 5.6s ease-in-out infinite; }
+
+/* Balken füllen sich weich, statt zu springen */
+.fuell-anim { transition: width 800ms var(--ease-glatt); }
+
+/* Häkchen-Pop: die kleine Belohnung beim Abhaken */
+@keyframes checkPop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }
+.check-pop { display: inline-block; animation: checkPop .28s var(--ease-feder); }
+
+/* Jarvis: federnder Auftritt aus der Ecke, Icon reagiert auf die Hand */
+@keyframes jarvisAuf { from { transform: translateY(14px) scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+.jarvis-fenster { transform-origin: 100% 100%; animation: jarvisAuf .28s var(--ease-feder); }
+.jarvis-fab { transition: transform 180ms var(--ease-feder), box-shadow 220ms var(--ease-glatt); }
+.jarvis-fab:hover { transform: scale(1.08); box-shadow: 0 10px 36px rgba(33, 181, 170, .35) !important; }
+
+/* ─── Jarvis-Icon: ruhiger Puls — die Intelligenz geht überall mit ──────────── */
+@keyframes jarvisRing { 0% { transform: scale(.85); opacity: .7; } 70%, 100% { transform: scale(1.45); opacity: 0; } }
+@keyframes jarvisKern { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+.jarvis-orb-ring { animation: jarvisRing 2.8s ease-out infinite; }
+.jarvis-orb-kern { animation: jarvisKern 2.8s ease-in-out infinite; }
+
+/* ─── Gesundheits-Kachel: ruhiger Herzschlag (Dashboard) ────────────────────── */
+@keyframes gesundRing { 0% { transform: scale(.7); opacity: .8; } 70%, 100% { transform: scale(1.35); opacity: 0; } }
+@keyframes gesundKern { 0%, 100% { transform: scale(1); } 10% { transform: scale(1.16); } 20% { transform: scale(1); } 30% { transform: scale(1.1); } 40% { transform: scale(1); } }
+@keyframes gesundGlow { 0%, 100% { box-shadow: 0 0 0 0 rgba(88, 217, 205, 0); } 50% { box-shadow: 0 0 36px 2px rgba(88, 217, 205, .13); } }
+.gesund-puls-ring { animation: gesundRing 2.6s ease-out infinite; }
+.gesund-puls-kern { animation: gesundKern 2.6s ease-in-out infinite; }
+.gesund-kachel { animation: gesundGlow 5.2s ease-in-out infinite; }
+
+/* Zeitstrahl: Heute-Anker atmet leise; Pills heben sich beim Zeigen */
+@keyframes zeitPuls { 0%, 100% { box-shadow: 0 0 0 0 rgba(33, 181, 170, .45); } 55% { box-shadow: 0 0 0 6px rgba(33, 181, 170, 0); } }
+.zeit-puls { animation: zeitPuls 2.8s ease-out infinite; }
+.zeit-pill { transition: filter .18s var(--ease-glatt, ease), transform .18s var(--ease-glatt, ease); }
+.zeit-pill:hover { filter: brightness(1.25); transform: translateY(-1px); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }

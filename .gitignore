@@ -34,3 +34,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# MAKE OS lokaler Datei-Store (nur auf diesem Mac)
+.data/
