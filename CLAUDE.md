@@ -18,6 +18,10 @@ lokal, Route `/os`, Port 3001.
 - **KD Ventures UG ist DIE Firma.** Gegründet als „KD Management UG" — dieser
   Name wird überall ersetzt und nie mehr verwendet. KEMARIS ist nur eine
   Beteiligung der KD Ventures (Kevins Hauptfokus, aber Risiko wird gestreut).
+  KD-Ventures-Aktivitäten gehen **nie in Konkurrenz zu KEMARIS** — sie ist die
+  größte Beteiligung und das größte Gut.
+- **Synonyme im Sprachgebrauch:** „die Selbständigkeit" = Kevin Dieckmann
+  Consulting (Einzelunternehmen) · „die Beteiligungsgesellschaft" = KD Ventures UG.
 - **Malin ist Gesundheits-Beauftragte** (Sport, Ernährung, Hyrox-Pro-Ziel) —
   Gesundheitsthemen laufen über sie.
 - **Kritisch pulsiert:** Priorisierung nach Eisenhower; kritische Aufgaben
