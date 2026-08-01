@@ -90,6 +90,32 @@ export function NetzwerkView() {
     setSicht('kontakte');
   }
 
+  // ── Verlauf aus Postfach und Kalender ──
+  const [verlauf, setVerlauf] = useState<{ name: string; datum: string; woher: string; beleg: string }[] | null>(null);
+  const [verlaufInfo, setVerlaufInfo] = useState<{ geprueft: number; ohneDatum: number } | null>(null);
+  const [verlaufBusy, setVerlaufBusy] = useState(false);
+
+  async function verlaufPruefen() {
+    setVerlaufBusy(true);
+    try {
+      const d = await (await fetch('/api/netzwerk/verlauf')).json();
+      setVerlauf(Array.isArray(d.treffer) ? d.treffer : []);
+      setVerlaufInfo({ geprueft: d.geprueft ?? 0, ohneDatum: d.ohneDatum ?? 0 });
+    } catch { setVerlauf([]); }
+    setVerlaufBusy(false);
+  }
+
+  async function verlaufSetzen() {
+    setVerlaufBusy(true);
+    try {
+      await fetch('/api/netzwerk/verlauf', { method: 'POST' });
+      const d = await (await fetch('/api/state/netzwerk')).json();
+      setKontakte(Array.isArray(d.kontakte) ? d.kontakte : []);
+      setVerlauf(null);
+    } catch { /* still */ }
+    setVerlaufBusy(false);
+  }
+
   // ── Mac-Kontakte ──
   const [mac, setMac] = useState<{ name: string; firma?: string; rolle?: string; email?: string; telefon?: string; art: string }[] | null>(null);
   const [macBusy, setMacBusy] = useState(false);
@@ -149,14 +175,30 @@ export function NetzwerkView() {
 
   const wert = useMemo(() => pipelineWert(chancen), [chancen]);
   const liegt = useMemo(() => liegenGeblieben(kontakte, chancen, heute), [kontakte, chancen, heute]);
+  const [gruppe, setGruppe] = useState<'alle' | 'geschaeftlich' | 'privat' | 'einsortieren' | 'ohne-datum'>('alle');
   const sichtbar = useMemo(() => {
     const n = suche.trim().toLowerCase();
     return kontakte.filter(k => {
       if (wer !== 'alle' && k.besitzer !== wer) return false;
+      if (gruppe === 'ohne-datum' && k.letzterKontakt) return false;
+      if (gruppe !== 'alle' && gruppe !== 'ohne-datum' && !(k.stichworte ?? []).includes(gruppe)) return false;
       if (!n) return true;
       return `${k.name} ${k.firma ?? ''} ${k.rolle ?? ''} ${k.notizen ?? ''}`.toLowerCase().includes(n);
     }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [kontakte, suche, wer]);
+  }, [kontakte, suche, wer, gruppe]);
+  const gruppenZahl = useMemo(() => ({
+    alle: kontakte.length,
+    geschaeftlich: kontakte.filter(k => (k.stichworte ?? []).includes('geschaeftlich')).length,
+    privat: kontakte.filter(k => (k.stichworte ?? []).includes('privat')).length,
+    einsortieren: kontakte.filter(k => (k.stichworte ?? []).includes('einsortieren')).length,
+    'ohne-datum': kontakte.filter(k => !k.letzterKontakt).length,
+  }), [kontakte]);
+
+  /** Einsortieren: Stichwort ersetzen, damit die Gruppe sauber bleibt. */
+  function einsortieren(k: Kontakt, ziel: 'geschaeftlich' | 'privat') {
+    const rest = (k.stichworte ?? []).filter(s => !['geschaeftlich', 'privat', 'einsortieren'].includes(s));
+    patchK(k.id, { stichworte: [ziel, ...rest] });
+  }
 
   const chancenVon = (kid: string) => chancen.filter(c => c.kontaktId === kid);
   const nameVon = (kid: string) => kontakte.find(k => k.id === kid)?.name ?? '—';
@@ -210,6 +252,15 @@ export function NetzwerkView() {
                   {p === 'beide' ? 'Beide' : p === 'kevin' ? 'Kevin' : 'Malin'}
                 </button>
               ))}
+              {(k.stichworte ?? []).includes('einsortieren') && (
+                <>
+                  <span style={{ ...lbl, marginLeft: 8 }}>Ist das</span>
+                  <button onClick={() => einsortieren(k, 'geschaeftlich')}
+                    style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${T.amber}66`, background: `${T.amber}14`, color: T.amber }}>geschäftlich</button>
+                  <button onClick={() => einsortieren(k, 'privat')}
+                    style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.inkDim }}>privat</button>
+                </>
+              )}
               <button onClick={() => patchK(k.id, { letzterKontakt: heute })}
                 style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 11.5, fontWeight: 600, padding: '4px 12px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${T.accent}`, background: `${T.accent}1c`, color: T.accentInk }}>
                 ✓ heute gesprochen
@@ -340,6 +391,44 @@ export function NetzwerkView() {
               </>
             )}
 
+            {/* Verlauf abgleichen */}
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.lineSoft}` }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                <span style={lbl}>Verlauf abgleichen</span>
+                <span style={{ fontSize: 12.5, color: T.muted }}>Setzt „zuletzt gesprochen" aus Postfach und Kalender.</span>
+                <button onClick={verlaufPruefen} disabled={verlaufBusy}
+                  style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 12, fontWeight: 600, padding: '5px 13px', borderRadius: 8, cursor: verlaufBusy ? 'wait' : 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.inkDim }}>
+                  {verlaufBusy ? 'prüft …' : 'Belege suchen'}
+                </button>
+              </div>
+              {verlaufInfo && (
+                <div style={{ fontSize: 12, color: T.muted, marginTop: 6 }}>
+                  {verlaufInfo.geprueft} Kontakte geprüft · {verlaufInfo.ohneDatum} haben noch kein Datum.
+                  {verlauf && !verlauf.length && ' Keine neuen Belege — Postfach und Kalender geben zu diesen Kontakten nichts her.'}
+                </div>
+              )}
+              {!!verlauf?.length && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, margin: '8px 0 6px' }}>
+                    <span style={{ fontSize: 12.5, color: T.inkDim }}><b style={{ color: T.accent }}>{verlauf.length} Belege</b> gefunden</span>
+                    <button onClick={verlaufSetzen} disabled={verlaufBusy}
+                      style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 12.5, fontWeight: 700, padding: '6px 15px', borderRadius: 8, cursor: 'pointer', border: 'none', background: T.accent, color: '#04110F' }}>
+                      ✓ Daten übernehmen
+                    </button>
+                  </div>
+                  <div style={{ maxHeight: 180, overflowY: 'auto', border: `1px solid ${T.lineSoft}`, borderRadius: 9 }}>
+                    {verlauf.slice(0, 40).map((v, i) => (
+                      <div key={`${v.name}-${i}`} style={{ display: 'flex', gap: 9, padding: '6px 11px', borderTop: i ? `1px solid ${T.lineSoft}` : 0 }}>
+                        <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.accent, minWidth: 74 }}>{v.datum}</span>
+                        <span style={{ fontSize: 12.5, color: T.ink, minWidth: 120 }}>{v.name}</span>
+                        <span style={{ fontSize: 11.5, color: T.muted, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.woher} · {v.beleg}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
             {/* Vom Mac */}
             <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.lineSoft}` }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
@@ -443,6 +532,18 @@ export function NetzwerkView() {
           ))}
           <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="suchen …" aria-label="Kontakte durchsuchen"
             style={{ ...feld, marginLeft: 'auto', width: 160, fontSize: 12 }} />
+        </div>
+
+        {/* Gruppen — bei hunderten Kontakten der eigentliche Einstieg */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
+          {([['alle', 'Alle'], ['geschaeftlich', 'Geschäftlich'], ['privat', 'Privat'], ['einsortieren', 'Einsortieren'], ['ohne-datum', 'Nie gesprochen']] as const).map(([k, label]) => (
+            <button key={k} onClick={() => { setGruppe(k); setSicht('kontakte'); }} style={{
+              fontFamily: T.sans, fontSize: 12, fontWeight: gruppe === k ? 700 : 500, padding: '5px 12px', borderRadius: 999, cursor: 'pointer',
+              border: `1px solid ${gruppe === k ? (k === 'einsortieren' ? T.amber : T.accent) : T.line}`,
+              background: gruppe === k ? `${k === 'einsortieren' ? T.amber : T.accent}1c` : 'transparent',
+              color: gruppe === k ? (k === 'einsortieren' ? T.amber : T.accentInk) : T.inkDim,
+            }}>{label} <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>{gruppenZahl[k]}</span></button>
+          ))}
         </div>
 
         {!geladen && <div style={{ ...panel, padding: '30px', textAlign: 'center', color: T.muted, fontSize: 13 }}>lädt …</div>}
