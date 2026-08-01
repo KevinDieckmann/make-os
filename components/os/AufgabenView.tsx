@@ -12,6 +12,7 @@ import { STICHWORTE, STICHWORT, stichworteVon, mitEigenen } from '@/lib/make-one
 import { ORGS, ORG, orgVon } from '@/lib/make-one/organisation-data';
 import { einschaetzen, dauerText, WER_LABEL, WER_FARBE, type Wer } from '@/lib/make-one/umsetzung-data';
 import { DELEGIERBAR } from '@/lib/make-one/team-data';
+import { wertVon, STANDARD_MODUS, type ReglerId } from '@/lib/make-one/kompass-data';
 import { Zeitstrahl, type StrahlMarker } from './Zeitstrahl';
 
 // ── Datums-Kurzhelfer fürs Schnellanlegen und die Zeilen-Aktionen ──
@@ -103,6 +104,13 @@ export function AufgabenView() {
     }).catch(() => {});
   }, []);
   const stichListe = useMemo(() => mitEigenen(eigeneStich), [eigeneStich]);
+  // Grenzen aus dem Kompass — dieselben Werte, die dort eingestellt werden.
+  const [kompass, setKompass] = useState<{ modus: string; eigene: Partial<Record<ReglerId, number>> }>({ modus: STANDARD_MODUS, eigene: {} });
+  useEffect(() => {
+    fetch('/api/state/kompass').then(r => r.json()).then(d => setKompass({ modus: d.modus ?? STANDARD_MODUS, eigene: d.eigene ?? {} })).catch(() => {});
+  }, []);
+  const grenzeLast = wertVon('tageslast', kompass.modus, kompass.eigene);
+  const grenzeKritisch = wertVon('kritisch-grenze', kompass.modus, kompass.eigene);
   const [ordnungAuf, setOrdnungAuf] = useState(false);
   useEffect(() => {
     fetch('/api/state/ordnung').then(r => r.json()).then(d => {
@@ -492,10 +500,15 @@ export function AufgabenView() {
         <div style={lbl}>Aufgaben · eine Wahrheit, lokal gespeichert</div>
         <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>
           {openCount} {openCount === 1 ? 'Aufgabe' : 'Aufgaben'} offen
-          {kritischOffen > 0 && <span className="krit-puls" style={{ fontSize: 14, fontWeight: 600, color: T.crit, marginLeft: 12 }}>● {kritischOffen} kritisch</span>}
+          {kritischOffen > 0 && (
+            <span className="krit-puls" style={{ fontSize: 14, fontWeight: 600, color: T.crit, marginLeft: 12 }}>
+              ● {kritischOffen} kritisch{kritischOffen > grenzeKritisch ? ` · ${kritischOffen - grenzeKritisch} über deiner Grenze` : ''}
+            </span>
+          )}
         </h1>
         <div style={{ fontSize: 12.5, color: T.muted, marginBottom: 4 }}>
-          Diese Auswahl: <b style={{ color: T.inkDim }}>{dauerText(lastMin)}</b> geschätzter Aufwand
+          Diese Auswahl: <b style={{ color: lastMin > grenzeLast * 60 ? T.amber : T.inkDim }}>{dauerText(lastMin)}</b> geschätzter Aufwand
+          {lastMin > grenzeLast * 60 && <> · <b style={{ color: T.amber }}>{dauerText(lastMin - grenzeLast * 60)} über der Tageslast von {grenzeLast} h</b></>}
           {(() => {
             const j = list.filter(t => t.status !== 'done' && einschaetzen(t).wer === 'jarvis');
             const jMin = j.reduce((s, t) => s + einschaetzen(t).dauer, 0);
