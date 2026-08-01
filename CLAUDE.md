@@ -10,6 +10,19 @@ lokal, Route `/os`, Port 3001.
 - Malin und Kevin haben beide vollen Zugriff auf alles in diesem System.
 - Diktat-Falle: „Berlin" oder „Marlene" im Diktat meint meist **Malin**.
 
+## Leitbild & Terminologie (Kevin & Malin, 01.08.2026)
+- **Jarvis-Mentalität, immer:** Wir arbeiten dauerhaft an unserer eigenen
+  Software weiter. Ziel ist EINE zentrale Intelligenz mit allen Daten über
+  alle Beteiligungen, die auch Familie & Alltag mitsteuert — Fernziel ein
+  Sprach-Assistent zu Hause. Immer nach ethisch/moralisch sauberen Maßstäben.
+- **KD Ventures UG ist DIE Firma.** Gegründet als „KD Management UG" — dieser
+  Name wird überall ersetzt und nie mehr verwendet. KEMARIS ist nur eine
+  Beteiligung der KD Ventures (Kevins Hauptfokus, aber Risiko wird gestreut).
+- **Malin ist Gesundheits-Beauftragte** (Sport, Ernährung, Hyrox-Pro-Ziel) —
+  Gesundheitsthemen laufen über sie.
+- **Kritisch pulsiert:** Priorisierung nach Eisenhower; kritische Aufgaben
+  werden im System visuell pulsierend hervorgehoben.
+
 ## Eiserne Regeln
 1. **Privates bleibt hier.** Gesundheits-, Journal- und Finanzdaten gehören
    Kevin & Malin. `.env.local` und `.data/` sind gitignored und bleiben es —
