@@ -22,7 +22,9 @@ Daten bleiben auf Kevins Mac. Zusammengeführt wird über GitHub.
 1. **Werkzeuge:** Node 22 (nodejs.org) und Git. Optional, aber empfohlen:
    Claude Code (claude.com/claude-code) — damit bauen wir dieses System.
 2. **Code holen:** `git clone <GitHub-URL>` (URL kommt von Kevin, das Repo ist
-   privat) und dann `cd make && npm install`.
+   privat) und dann `cd make-os && npm install`.
+   Öffne den geklonten Ordner danach als Projekt in Claude Code — dein
+   Claude liest die `CLAUDE.md` und kennt damit unsere Spielregeln.
 3. **Umgebung:** `.env.local.example` zu `.env.local` kopieren und eigene
    Werte eintragen — eigener `MAKE_OS_KEY` (frei ausdenken), Anthropic-Key
    von Kevin. Die Datei bleibt auf deinem Rechner, Git ignoriert sie.
