@@ -90,6 +90,44 @@ export function NetzwerkView() {
     setSicht('kontakte');
   }
 
+  // ── Mac-Kontakte ──
+  const [mac, setMac] = useState<{ name: string; firma?: string; rolle?: string; email?: string; telefon?: string; art: string }[] | null>(null);
+  const [macBusy, setMacBusy] = useState(false);
+  const [macFehler, setMacFehler] = useState('');
+  const [macArt, setMacArt] = useState<'alle' | 'geschaeftlich' | 'privat' | 'unklar'>('geschaeftlich');
+
+  async function macHolen() {
+    setMacBusy(true); setMacFehler('');
+    try {
+      const d = await (await fetch('/api/apple-contacts')).json();
+      if (d.error) { setMacFehler(d.error); setMac(null); }
+      else setMac(Array.isArray(d.kontakte) ? d.kontakte : []);
+    } catch { setMacFehler('Kontakte-App nicht erreichbar.'); }
+    setMacBusy(false);
+  }
+
+  const macAuswahl = useMemo(() => {
+    if (!mac) return [];
+    const namen = new Set(kontakte.map(k => k.name.toLowerCase().trim()));
+    const mails = new Set(kontakte.map(k => k.email?.toLowerCase().trim()).filter(Boolean));
+    return mac
+      .filter(m => macArt === 'alle' || m.art === macArt)
+      .filter(m => !namen.has(m.name.toLowerCase().trim()) && !(m.email && mails.has(m.email.toLowerCase())));
+  }, [mac, macArt, kontakte]);
+
+  function macUebernehmen() {
+    if (!macAuswahl.length) return;
+    const neue: Kontakt[] = macAuswahl.map((m, i) => ({
+      id: `k-mac-${Date.now().toString(36)}-${i}`,
+      name: m.name, firma: m.firma, rolle: m.rolle, email: m.email, telefon: m.telefon,
+      naehe: 'kalt', besitzer: importWer, quelle: 'Kontakte-App',
+      stichworte: m.art === 'unklar' ? ['einsortieren'] : [m.art],
+    }));
+    speichern([...kontakte, ...neue], chancen);
+    setMac(null);
+    setSicht('kontakte');
+  }
+
   async function postfachHolen() {
     setVorschlagBusy(true);
     try {
@@ -301,6 +339,61 @@ export function NetzwerkView() {
                 </div>
               </>
             )}
+
+            {/* Vom Mac */}
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.lineSoft}` }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                <span style={lbl}>Kontakte-App</span>
+                <span style={{ fontSize: 12.5, color: T.muted }}>Alles, was auf dem Mac und dem iPhone liegt.</span>
+                <button onClick={macHolen} disabled={macBusy}
+                  style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 12, fontWeight: 600, padding: '5px 13px', borderRadius: 8, cursor: macBusy ? 'wait' : 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.inkDim }}>
+                  {macBusy ? 'liest …' : mac ? '↻ neu lesen' : 'Kontakte lesen'}
+                </button>
+              </div>
+
+              {macFehler && (
+                <div style={{ marginTop: 8, fontSize: 12.5, color: T.amber, lineHeight: 1.5 }}>
+                  {macFehler}<br />
+                  <span style={{ color: T.muted }}>Freigabe: Systemeinstellungen → Datenschutz &amp; Sicherheit → Kontakte → den Terminal-Eintrag aktivieren, dann neu lesen.</span>
+                </div>
+              )}
+
+              {mac && (
+                <>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', margin: '10px 0 8px' }}>
+                    {([['geschaeftlich', 'geschäftlich'], ['privat', 'privat'], ['unklar', 'nur Name & Nummer'], ['alle', 'alle']] as const).map(([k, label]) => {
+                      const n = mac.filter(m => k === 'alle' || m.art === k).length;
+                      return (
+                        <button key={k} onClick={() => setMacArt(k)}
+                          style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 11px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${macArt === k ? T.accent : T.line}`, background: macArt === k ? `${T.accent}1c` : 'transparent', color: macArt === k ? T.accentInk : T.inkDim }}>
+                          {label} <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{n}</span>
+                        </button>
+                      );
+                    })}
+                    <button onClick={macUebernehmen} disabled={!macAuswahl.length}
+                      style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 12.5, fontWeight: 700, padding: '6px 15px', borderRadius: 8, cursor: macAuswahl.length ? 'pointer' : 'default', border: 'none', background: macAuswahl.length ? T.accent : T.line, color: macAuswahl.length ? '#04110F' : T.muted }}>
+                      ✓ {macAuswahl.length} übernehmen
+                    </button>
+                  </div>
+                  <div style={{ fontSize: 12, color: T.muted, marginBottom: 6 }}>
+                    Einordnung nach vorhandenen Daten: Firma oder Geschäftsadresse → geschäftlich, Freemail → privat.
+                    Wer nur mit Name und Nummer drinsteht, bekommt das Stichwort <b style={{ color: T.inkDim }}>einsortieren</b> — den Rest macht ihr beim Durchgehen.
+                  </div>
+                  <div style={{ maxHeight: 200, overflowY: 'auto', border: `1px solid ${T.lineSoft}`, borderRadius: 9 }}>
+                    {macAuswahl.slice(0, 50).map((m, i) => (
+                      <div key={`${m.name}-${i}`} style={{ display: 'flex', gap: 9, padding: '6px 11px', borderTop: i ? `1px solid ${T.lineSoft}` : 0 }}>
+                        <span style={{ fontSize: 12.5, color: T.ink, fontWeight: 550, minWidth: 140 }}>{m.name}</span>
+                        <span style={{ fontSize: 12, color: T.muted, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {[m.firma, m.rolle, m.email, m.telefon].filter(Boolean).join(' · ') || '—'}
+                        </span>
+                      </div>
+                    ))}
+                    {macAuswahl.length > 50 && <div style={{ padding: '7px 11px', fontFamily: T.mono, fontSize: 10.5, color: T.muted, borderTop: `1px solid ${T.lineSoft}` }}>+{macAuswahl.length - 50} weitere — alle werden übernommen</div>}
+                    {!macAuswahl.length && <div style={{ padding: '12px', fontSize: 12.5, color: T.muted }}>In dieser Gruppe ist niemand Neues.</div>}
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Aus dem Postfach */}
             <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.lineSoft}` }}>
