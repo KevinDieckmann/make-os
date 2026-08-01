@@ -204,13 +204,13 @@ export function NetzwerkView() {
   const nameVon = (kid: string) => kontakte.find(k => k.id === kid)?.name ?? '—';
 
   /** Kontaktkarte — überall dieselbe, aufklappbar zum Bearbeiten. */
-  const Karte = ({ k, i }: { k: Kontakt; i: number }) => {
+  function karte(k: Kontakt, i: number) {
     const auf = offen === k.id;
     const meine = chancenVon(k.id);
     const offeneW = meine.filter(c => OFFENE_STUFEN.includes(c.stufe)).reduce((s, c) => s + (c.wert ?? 0), 0);
     const nm = NAEHE_META[k.naehe];
     return (
-      <div style={{ borderTop: i ? `1px solid ${T.lineSoft}` : 0, background: auf ? T.panel2 : 'transparent' }}>
+      <div key={k.id} style={{ borderTop: i ? `1px solid ${T.lineSoft}` : 0, background: auf ? T.panel2 : 'transparent' }}>
         <div onClick={() => setOffen(auf ? null : k.id)} style={{ display: 'flex', gap: 12, padding: '11px 16px', alignItems: 'center', cursor: 'pointer' }}>
           <span style={{ width: 4, height: 30, borderRadius: 2, background: nm.farbe, flex: '0 0 auto' }} />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -276,7 +276,7 @@ export function NetzwerkView() {
               <span style={lbl}>Chancen</span>
               <button onClick={() => chanceAnlegen(k.id)} style={{ fontFamily: T.sans, fontSize: 11.5, padding: '3px 11px', borderRadius: 7, cursor: 'pointer', border: `1px dashed ${T.line}`, background: 'transparent', color: T.inkDim }}>+ Chance</button>
             </div>
-            {meine.map(c => <ChanceZeile key={c.id} c={c} />)}
+            {meine.map(c => chanceZeile(c))}
             <button onClick={() => { if (confirm(`${k.name} wirklich löschen?`)) { speichern(kontakte.filter(x => x.id !== k.id), chancen.filter(c => c.kontaktId !== k.id)); setOffen(null); } }}
               style={{ alignSelf: 'flex-start', fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.muted }}>Kontakt löschen</button>
           </div>
@@ -285,8 +285,8 @@ export function NetzwerkView() {
     );
   };
 
-  const ChanceZeile = ({ c }: { c: Chance }) => (
-    <div style={{ background: T.void, border: `1px solid ${STUFE[c.stufe].farbe}33`, borderRadius: 10, padding: '9px 11px', display: 'flex', flexDirection: 'column', gap: 7 }}>
+  function chanceZeile(c: Chance) { return (
+    <div key={c.id} style={{ background: T.void, border: `1px solid ${STUFE[c.stufe].farbe}33`, borderRadius: 10, padding: '9px 11px', display: 'flex', flexDirection: 'column', gap: 7 }}>
       <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
         <input value={c.titel} onChange={e => patchC(c.id, { titel: e.target.value })} aria-label="Titel der Chance"
           style={{ background: 'transparent', border: 'none', outline: 'none', color: T.ink, fontFamily: T.sans, fontSize: 13, fontWeight: 600, flex: 1, minWidth: 130 }} />
@@ -309,7 +309,7 @@ export function NetzwerkView() {
           style={{ ...feld, fontFamily: T.mono, fontSize: 11.5, colorScheme: 'dark' }} />
       </div>
     </div>
-  );
+  ); }
 
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
@@ -624,7 +624,7 @@ export function NetzwerkView() {
         {/* ── KONTAKTE ── */}
         {geladen && !!kontakte.length && sicht === 'kontakte' && (
           <div style={{ ...panel, overflow: 'hidden' }}>
-            {sichtbar.map((k, i) => <Karte key={k.id} k={k} i={i} />)}
+            {sichtbar.map((k, i) => karte(k, i))}
             {!sichtbar.length && <div style={{ padding: '24px', textAlign: 'center', color: T.muted, fontSize: 13 }}>Kein Treffer.</div>}
           </div>
         )}

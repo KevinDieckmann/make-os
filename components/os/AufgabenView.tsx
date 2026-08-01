@@ -337,7 +337,7 @@ export function AufgabenView() {
   );
 
   /** Eine Aufgabenzeile — überall gleich, damit jede Ansicht dieselbe Wahrheit zeigt. */
-  const Zeile = ({ t, i, zeigeThema }: { t: typeof list[number]; i: number; zeigeThema?: boolean }) => {
+  function zeile(t: typeof list[number], i: number, zeigeThema?: boolean) {
     const done = t.status === 'done';
     const blockiert = t.status === 'blocked';
     const p = PRIO[t.priority];
@@ -347,7 +347,7 @@ export function AufgabenView() {
     const spaet = !!t.dueDate && t.dueDate < heute && !done;
     const kritisch = t.priority === 'critical' && !done;
     return (
-      <div style={{ borderTop: i ? `1px solid ${T.lineSoft}` : 0, background: auf ? T.panel2 : 'transparent' }}>
+      <div key={t.id} style={{ borderTop: i ? `1px solid ${T.lineSoft}` : 0, background: auf ? T.panel2 : 'transparent' }}>
         <div onClick={() => setOffenId(auf ? null : t.id)} style={{ display: 'flex', gap: 13, padding: '12px 16px', alignItems: 'flex-start', cursor: 'pointer' }}>
           <button onClick={e => { e.stopPropagation(); dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } }); }} aria-label={done ? 'Wieder öffnen' : 'Erledigen'}
             style={{ width: 19, height: 19, borderRadius: 6, flex: '0 0 auto', marginTop: 1, cursor: 'pointer',
@@ -783,14 +783,14 @@ export function AufgabenView() {
                 {top.map((t, i) => (
                   <div key={t.id} style={{ display: 'flex', alignItems: 'stretch', borderTop: `1px solid ${T.lineSoft}` }}>
                     <div style={{ width: 34, flex: '0 0 auto', display: 'grid', placeItems: 'center', fontFamily: T.mono, fontSize: 15, fontWeight: 700, color: THEMA[meinThema(t)]?.farbe ?? T.muted, background: `${THEMA[meinThema(t)]?.farbe ?? T.muted}0f` }}>{i + 1}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}><Zeile t={t} i={0} zeigeThema /></div>
+                    <div style={{ flex: 1, minWidth: 0 }}>{zeile(t, 0, true)}</div>
                   </div>
                 ))}
               </div>
               {!!rest.length && (
                 <div style={{ ...panel, overflow: 'hidden' }}>
                   <div style={{ padding: '11px 16px 8px', ...lbl }}>Danach · {rest.length}</div>
-                  {rest.map((t, i) => <Zeile key={t.id} t={t} i={i + 1} zeigeThema />)}
+                  {rest.map((t, i) => zeile(t, i + 1, true))}
                 </div>
               )}
             </>
@@ -813,7 +813,7 @@ export function AufgabenView() {
                     <div style={{ fontSize: 11, color: T.muted, marginTop: 3, lineHeight: 1.45 }}>{b.satz}</div>
                   </div>
                   {drin.length
-                    ? drin.map((t, i) => <Zeile key={t.id} t={t} i={i + 1} />)
+                    ? drin.map((t, i) => zeile(t, i + 1))
                     : <div style={{ padding: '14px', fontSize: 12, color: T.muted, borderTop: `1px solid ${T.lineSoft}` }}>Nichts offen hier.</div>}
                 </div>
               );
@@ -873,7 +873,7 @@ export function AufgabenView() {
                     {g.label} · {g.tasks.length}
                   </div>
                 )}
-                {g.tasks.map((t, i) => <Zeile key={t.id} t={t} i={i || !g.label ? 1 : 0} zeigeThema />)}
+                {g.tasks.map((t, i) => zeile(t, i || !g.label ? 1 : 0, true))}
               </div>
             ))}
           </div>
