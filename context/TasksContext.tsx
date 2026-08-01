@@ -105,21 +105,40 @@ const TasksContext = createContext<TasksContextValue | null>(null);
 export function TasksProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(tasksReducer, initialState);
   const [ready, setReady] = useState(false);
+  /** Laden fehlgeschlagen — dann wird nichts gespeichert, um echte Daten zu schützen. */
+  const [ladeFehler, setLadeFehler] = useState(false);
   const hydrated = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Beim Start: persistierten Zustand vom lokalen Store laden.
+  // WICHTIG: `hydrated` wird nur gesetzt, wenn das Laden WIRKLICH geklappt hat.
+  // Sonst gilt der Beispiel-Zustand als „geladen" und der nächste Klick würde
+  // die echten Aufgaben damit überschreiben — genau das ist einmal passiert.
   useEffect(() => {
     let alive = true;
     fetch('/api/state/tasks')
-      .then(r => r.json())
-      .then((d: { state: TasksState | null }) => {
-        if (alive && d.state && Array.isArray(d.state.tasks)) {
-          dispatch({ type: 'HYDRATE', payload: d.state });
-        }
+      .then(r => {
+        if (!r.ok) throw new Error(`Aufgaben-Store antwortet ${r.status}`);
+        return r.json();
       })
-      .catch(() => { /* Erststart ohne Datei ist ok */ })
-      .finally(() => { if (alive) { hydrated.current = true; setReady(true); } });
+      .then((d: { state: TasksState | null }) => {
+        if (!alive) return;
+        if (d.state && Array.isArray(d.state.tasks)) {
+          dispatch({ type: 'HYDRATE', payload: d.state });
+          hydrated.current = true;
+        } else {
+          // Erststart ohne Datei: leerer Stand ist gültig, Speichern erlaubt.
+          hydrated.current = true;
+        }
+        setReady(true);
+      })
+      .catch(err => {
+        if (!alive) return;
+        // Nicht speichern, solange wir den echten Stand nicht kennen.
+        console.error('[MAKE OS] Aufgaben konnten nicht geladen werden — Speichern ist gesperrt, bis das Laden klappt.', err);
+        setLadeFehler(true);
+        setReady(true);
+      });
     return () => { alive = false; };
   }, []);
 
@@ -132,17 +151,20 @@ export function TasksProvider({ children }: { children: ReactNode }) {
 
   // Bei jeder Änderung (nach dem Laden): debounced in den lokalen Store schreiben.
   useEffect(() => {
-    if (!hydrated.current) return;
+    if (!hydrated.current || ladeFehler) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       fetch('/api/state/tasks', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(state),
+      }).then(r => {
+        // Der Schrumpf-Wächter lehnt mit 409 ab — das darf nicht still passieren.
+        if (r.status === 409) console.error('[MAKE OS] Speichern abgelehnt: das hätte zu viele Aufgaben gelöscht. Seite neu laden.');
       }).catch(() => { /* offline/lokal aus → beim nächsten Mal erneut */ });
     }, 400);
     return () => clearTimeout(saveTimer.current);
-  }, [state]);
+  }, [state, ladeFehler]);
 
   return <TasksContext.Provider value={{ state, dispatch, ready, rehydrate }}>{children}</TasksContext.Provider>;
 }

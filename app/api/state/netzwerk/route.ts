@@ -72,10 +72,12 @@ export async function PUT(req: Request) {
       ? body.chancen.slice(0, 2000).map(sauberChance).filter((x): x is Chance => !!x)
       : (current?.chancen ?? []);
 
-    // Schrumpf-Wächter wie bei Journal/Health: ein Client-Fehler darf das
-    // mühsam gepflegte Netzwerk nicht halbieren.
+    // Schrumpf-Wächter: ein Client-Fehler darf weder das mühsam gepflegte
+    // Netzwerk noch die Pipeline halbieren.
     const alt = current?.kontakte?.length ?? 0;
     if (alt >= 10 && kontakte.length < alt / 2) throw new Error('schrumpf');
+    const altC = current?.chancen?.length ?? 0;
+    if (altC >= 4 && chancen.length < altC / 2) throw new Error('schrumpf');
 
     return { kontakte, chancen };
   }).catch((e: Error) => {

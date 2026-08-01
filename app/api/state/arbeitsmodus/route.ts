@@ -55,8 +55,13 @@ export async function POST(req: Request) {
   const next = await updateJson<ModusLog>(store, current => {
     const log: ModusLog = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
     // Vergessene offene Sessions vergangener Tage ehrlich um 23:59 schließen.
-    for (const tag of Object.keys(log)) {
-      if (tag !== heute) for (const s of log[tag].sessions) if (s.bis === null) s.bis = '23:59';
+    for (const tagKey of Object.keys(log)) {
+      // Ein Tages-Eintrag ohne sessions (Altformat, von Hand editiert) darf
+      // die Route nicht abstürzen lassen — der Schalter wäre sonst dauerhaft
+      // kaputt, weil jeder Aufruf über diese Zeile läuft.
+      const eintrag = log[tagKey];
+      if (!eintrag || !Array.isArray(eintrag.sessions)) { log[tagKey] = { sessions: [] }; continue; }
+      if (tagKey !== heute) for (const s of eintrag.sessions) if (s.bis === null) s.bis = '23:59';
     }
     const tag = log[heute] ?? (log[heute] = { sessions: [] });
     const offen = tag.sessions.find(s => s.bis === null);
