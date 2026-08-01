@@ -25,8 +25,8 @@ import type { Owner, Priority } from '@/types/common';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const ORDNER = path.join(homedir(), 'Library', 'Mobile Documents', 'com~apple~CloudDocs', 'Make Privat ❤️');
-const DATEI = path.join(ORDNER, 'MAKE-OS Eingang.md');
+const ORDNER = path.join(homedir(), 'Library', 'Mobile Documents', 'com~apple~CloudDocs', 'Make Privat ❤️', 'MAKE OS', '02 Eingang');
+const DATEI = path.join(ORDNER, 'Eingang.md');
 
 const VORLAGE = `# MAKE OS · Eingang
 
