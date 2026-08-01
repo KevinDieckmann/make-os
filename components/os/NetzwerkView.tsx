@@ -13,6 +13,7 @@ import {
   NAEHE_META, STUFEN, STUFE, OFFENE_STUFEN, pipelineWert, liegenGeblieben,
   type Kontakt, type Chance, type Naehe, type Stufe,
 } from '@/lib/make-one/netzwerk-data';
+import { textLesen, zuKontakt, type Rohling } from '@/lib/make-one/netzwerk-import';
 
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
@@ -67,6 +68,45 @@ export function NetzwerkView() {
   function chanceAnlegen(kontaktId: string) {
     const c: Chance = { id: `c-${Date.now().toString(36)}`, kontaktId, titel: 'Neue Chance', stufe: 'kontakt' };
     speichern(kontakte, [...chancen, c]);
+  }
+
+  // ── Einfüllen: Liste einfügen oder aus dem Postfach übernehmen ──
+  const [fuellAuf, setFuellAuf] = useState(false);
+  const [rohtext, setRohtext] = useState('');
+  const [importNaehe, setImportNaehe] = useState<Naehe>('kalt');
+  const [importWer, setImportWer] = useState<Kontakt['besitzer']>('kevin');
+  const [importQuelle, setImportQuelle] = useState('');
+  const [vorschlaege, setVorschlaege] = useState<{ name: string; email: string; anzahl: number; betreff: string }[] | null>(null);
+  const [vorschlagBusy, setVorschlagBusy] = useState(false);
+
+  const gelesen = useMemo(() => (rohtext.trim() ? textLesen(rohtext, kontakte) : []), [rohtext, kontakte]);
+  const neuDavon = gelesen.filter(r => !r.doppelt);
+
+  function uebernehmen(liste: Rohling[]) {
+    if (!liste.length) return;
+    const neue = liste.map((r, i) => zuKontakt(r, importNaehe, importWer, importQuelle, i));
+    speichern([...kontakte, ...neue], chancen);
+    setRohtext('');
+    setSicht('kontakte');
+  }
+
+  async function postfachHolen() {
+    setVorschlagBusy(true);
+    try {
+      const d = await (await fetch('/api/netzwerk/vorschlaege')).json();
+      setVorschlaege(Array.isArray(d.vorschlaege) ? d.vorschlaege : []);
+    } catch { setVorschlaege([]); }
+    setVorschlagBusy(false);
+  }
+
+  function vorschlagUebernehmen(v: { name: string; email: string }) {
+    const k: Kontakt = {
+      id: `k-${Date.now().toString(36)}`,
+      name: v.name, email: v.email,
+      naehe: 'warm', besitzer: importWer, quelle: 'aus dem Postfach',
+    };
+    speichern([...kontakte, k], chancen);
+    setVorschlaege(vs => (vs ?? []).filter(x => x.email !== v.email));
   }
 
   const wert = useMemo(() => pipelineWert(chancen), [chancen]);
@@ -198,11 +238,99 @@ export function NetzwerkView() {
         </p>
 
         {/* Anlegen */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
           <input value={neu} onChange={e => setNeu(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') kontaktAnlegen(); }}
             placeholder="Name, Firma — Enter legt an" aria-label="Neuer Kontakt" style={{ ...feld, flex: 1, fontSize: 13.5, padding: '10px 13px' }} />
           <button onClick={kontaktAnlegen} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 700, padding: '9px 17px', borderRadius: 8, border: 'none', background: T.accent, color: '#04110F', cursor: 'pointer' }}>+ Kontakt</button>
+          <button onClick={() => setFuellAuf(!fuellAuf)} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 600, padding: '9px 15px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${fuellAuf ? T.accent : T.line}`, background: fuellAuf ? `${T.accent}1c` : 'transparent', color: fuellAuf ? T.accentInk : T.inkDim }}>
+            Viele auf einmal {fuellAuf ? '▾' : '▸'}
+          </button>
         </div>
+
+        {/* ── Einfüllen: Liste einfügen oder aus dem Postfach ── */}
+        {fuellAuf && (
+          <div style={{ ...panel, borderLeft: `3px solid ${T.accent}`, padding: '14px 18px', marginBottom: 14 }}>
+            <div style={{ ...lbl, marginBottom: 4 }}>Liste einfügen</div>
+            <div style={{ fontSize: 12.5, color: T.muted, marginBottom: 9, lineHeight: 1.5 }}>
+              Aus Handy-Kontakten, LinkedIn-Export, einer Tabelle oder einfach getippt — eine Person je Zeile.
+              Erkannt wird: <b style={{ color: T.inkDim }}>Name, Firma, Rolle</b> sowie E-Mail und Telefon, egal wo sie stehen.
+            </div>
+            <textarea value={rohtext} onChange={e => setRohtext(e.target.value)} rows={6}
+              placeholder={'Frank Mathick, KEMARIS, Finanzen, frank@beispiel.de\nAnna Beispiel; Volksbank; Firmenkunden\nMoritz (Events) moritz@beispiel.de'}
+              aria-label="Kontaktliste einfügen"
+              style={{ ...feld, width: '100%', fontFamily: T.mono, fontSize: 12, lineHeight: 1.6, resize: 'vertical' }} />
+
+            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center', margin: '10px 0' }}>
+              <span style={{ ...lbl, width: 56 }}>Nähe</span>
+              {(Object.keys(NAEHE_META) as Naehe[]).map(n => (
+                <button key={n} onClick={() => setImportNaehe(n)}
+                  style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${importNaehe === n ? NAEHE_META[n].farbe : T.line}`, background: importNaehe === n ? `${NAEHE_META[n].farbe}1c` : 'transparent', color: importNaehe === n ? NAEHE_META[n].farbe : T.inkDim }}>{NAEHE_META[n].label}</button>
+              ))}
+              <span style={{ ...lbl, width: 56, marginLeft: 6 }}>Wer hält</span>
+              {(['kevin', 'malin', 'beide'] as const).map(p => (
+                <button key={p} onClick={() => setImportWer(p)}
+                  style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${importWer === p ? T.accent : T.line}`, background: importWer === p ? `${T.accent}1c` : 'transparent', color: importWer === p ? T.accentInk : T.inkDim }}>{p === 'beide' ? 'Beide' : p === 'kevin' ? 'Kevin' : 'Malin'}</button>
+              ))}
+              <input value={importQuelle} onChange={e => setImportQuelle(e.target.value)} placeholder="Woher? z. B. LinkedIn-Export"
+                aria-label="Quelle" style={{ ...feld, flex: 1, minWidth: 150, fontSize: 12 }} />
+            </div>
+
+            {/* Vorschau — man sieht vorher, was ankommt */}
+            {!!gelesen.length && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
+                  <span style={{ fontSize: 12.5, color: T.inkDim }}>
+                    <b style={{ color: T.accent }}>{neuDavon.length} neu</b>
+                    {gelesen.length - neuDavon.length > 0 && <span style={{ color: T.muted }}> · {gelesen.length - neuDavon.length} kennen wir schon</span>}
+                  </span>
+                  <button onClick={() => uebernehmen(neuDavon)} disabled={!neuDavon.length}
+                    style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 12.5, fontWeight: 700, padding: '6px 15px', borderRadius: 8, cursor: neuDavon.length ? 'pointer' : 'default', border: 'none', background: neuDavon.length ? T.accent : T.line, color: neuDavon.length ? '#04110F' : T.muted }}>
+                    ✓ {neuDavon.length} übernehmen
+                  </button>
+                </div>
+                <div style={{ maxHeight: 200, overflowY: 'auto', border: `1px solid ${T.lineSoft}`, borderRadius: 9 }}>
+                  {gelesen.slice(0, 60).map((r, i) => (
+                    <div key={`${r.name}-${i}`} style={{ display: 'flex', gap: 9, padding: '6px 11px', borderTop: i ? `1px solid ${T.lineSoft}` : 0, opacity: r.doppelt ? 0.45 : 1 }}>
+                      <span style={{ fontSize: 12.5, color: T.ink, fontWeight: 550, minWidth: 130 }}>{r.name}</span>
+                      <span style={{ fontSize: 12, color: T.muted, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {[r.firma, r.rolle, r.email, r.telefon].filter(Boolean).join(' · ') || '—'}
+                      </span>
+                      {r.doppelt && <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.amber }}>schon da</span>}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Aus dem Postfach */}
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.lineSoft}` }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                <span style={lbl}>Aus dem Postfach</span>
+                <span style={{ fontSize: 12.5, color: T.muted }}>Wer euch schreibt, ist schon ein Kontakt.</span>
+                <button onClick={postfachHolen} disabled={vorschlagBusy}
+                  style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 12, fontWeight: 600, padding: '5px 13px', borderRadius: 8, cursor: vorschlagBusy ? 'wait' : 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.inkDim }}>
+                  {vorschlagBusy ? 'sucht …' : vorschlaege ? '↻ neu suchen' : 'Absender vorschlagen'}
+                </button>
+              </div>
+              {vorschlaege && (
+                vorschlaege.length ? (
+                  <div style={{ marginTop: 9, maxHeight: 220, overflowY: 'auto' }}>
+                    {vorschlaege.map((v, i) => (
+                      <div key={v.email} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '7px 0', borderTop: i ? `1px solid ${T.lineSoft}` : 0 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, color: T.ink }}>{v.name} <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{v.anzahl}×</span></div>
+                          <div style={{ fontSize: 11, color: T.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.email} · {v.betreff}</div>
+                        </div>
+                        <button onClick={() => vorschlagUebernehmen(v)}
+                          style={{ fontFamily: T.sans, fontSize: 11.5, fontWeight: 600, padding: '4px 12px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${T.accent}55`, background: `${T.accent}18`, color: T.accentInk }}>+ übernehmen</button>
+                      </div>
+                    ))}
+                  </div>
+                ) : <div style={{ marginTop: 8, fontSize: 12.5, color: T.muted }}>Keine neuen Absender gefunden — entweder kennt ihr schon alle, oder der Postfach-Stand ist leer.</div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Sichten */}
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
