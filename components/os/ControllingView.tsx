@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
 import { wertVon, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
 import { localDay } from '@/lib/zeit';
+import { useSpeichern } from '@/hooks/useSpeichern';
 import { vorschau, monatlicheLast, type Firma, type Rechnung, type Zahlung, type Merkposten } from '@/lib/make-one/liquiditaet';
 
 /** Der Teil des Finanzplans, den die Liquiditäts-Vorschau braucht. */
@@ -51,6 +52,7 @@ export function ControllingView() {
   // ── Liquidität: Finanzplan laden, Kontostände hier pflegbar machen ──
   const [fplan, setFplan] = useState<FinanzplanStand | null>(null);
   const [optimistisch, setOptimistisch] = useState(false);
+  const [zieleAuf, setZieleAuf] = useState(false);
   const heute = localDay();
   useEffect(() => {
     fetch('/api/state/finanzplan')
@@ -59,18 +61,15 @@ export function ControllingView() {
       .catch(err => console.error('[MAKE OS] Finanzplan für die Liquiditäts-Vorschau nicht ladbar.', err));
   }, []);
 
+  const planSpeichern = useSpeichern('/api/state/finanzplan');
   function kontostandSetzen(firmaId: string, wert: string) {
     if (!fplan) return;
     const zahl = wert.trim() === '' ? null : Math.round(Number(wert));
     if (zahl !== null && !Number.isFinite(zahl)) return;
     const next = { ...fplan, firmen: fplan.firmen.map(f => f.id === firmaId ? { ...f, kontostand: zahl } : f) };
     setFplan(next);
-    clearTimeout(fpTimer.current);
-    fpTimer.current = setTimeout(() => {
-      fetch('/api/state/finanzplan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
-    }, 600);
+    planSpeichern.speichern(next);
   }
-  const fpTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
     fetch('/api/state/finance')
       .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
@@ -85,19 +84,25 @@ export function ControllingView() {
       });
   }, []);
 
+  // Speichert auch dann, wenn du sofort die Seite wechselst oder den Tab
+  // schließt — beim nächsten Öffnen steht derselbe Stand da.
+  const finanzSpeichern = useSpeichern('/api/state/finance');
   function persist(next: FinanceState) {
     setS(next);
     if (ladeFehler) return;
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      fetch('/api/state/finance', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
-    }, 500);
+    finanzSpeichern.speichern(next);
   }
   const setMonth = (i: number, field: 'umsatz' | 'kosten', v: string) =>
     persist({ ...s, months: s.months.map((r, j) => j === i ? { ...r, [field]: num(v) } : r) });
   const setField = (field: 'zielUmsatz' | 'zielGewinn' | 'cash', v: string) => persist({ ...s, [field]: num(v) });
 
   const m = useMemo(() => computeMetrics(s), [s]);
+  // Ohne gesetzten Startmonat gilt der erste Monat mit Zahlen als Start.
+  const startMonat = useMemo(() => {
+    if (typeof s.startMonat === 'number') return Math.max(0, Math.min(11, s.startMonat));
+    const i = s.months.findIndex(r => (r.umsatz || 0) > 0 || (r.kosten || 0) > 0);
+    return i < 0 ? 0 : i;
+  }, [s]);
   const pct = Math.min(100, Math.round(m.fortschritt * 100));
   const maxBar = Math.max(m.runRateNoetig, ...s.months.map(r => r.umsatz), 1);
 
@@ -266,17 +271,58 @@ export function ControllingView() {
           </div>
         </div>
 
+        {/* ── Ziele anpassen: die Grundlage der ganzen Rechnung ── */}
+        <div style={{ ...panel, borderLeft: `3px solid ${T.amber}`, padding: '14px 18px', marginBottom: 14 }}>
+          <div onClick={() => setZieleAuf(!zieleAuf)} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', cursor: 'pointer' }}>
+            <span style={lbl}>Ziele anpassen</span>
+            <span style={{ fontSize: 12.5, color: T.inkDim }}>
+              Seit <b style={{ color: T.ink }}>{MONTHS_DE[startMonat]}</b> · Ziel {eur(s.zielUmsatz)} Umsatz, {eur(s.zielGewinn)} Gewinn
+            </span>
+            <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 12, color: T.muted }}>{zieleAuf ? '▾' : '▸'}</span>
+          </div>
+
+          {zieleAuf && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 12.5, color: T.muted, lineHeight: 1.55, marginBottom: 10 }}>
+                Der Startmonat entscheidet über alles: Ohne ihn zählt das System ab Januar und teilt deinen Umsatz
+                durch Monate, in denen es dich noch nicht gab. Das drückt den Schnitt und macht die nötige Run-Rate absurd.
+              </div>
+              <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={lbl}>Gestartet ab</span>
+                  <select value={startMonat} onChange={e => persist({ ...s, startMonat: Number(e.target.value) })}
+                    aria-label="Startmonat"
+                    style={{ background: T.void, border: `1px solid ${T.accent}66`, borderRadius: 8, color: T.ink, fontFamily: T.sans, fontSize: 13, padding: '7px 10px', width: 150, outline: 'none', cursor: 'pointer' }}>
+                    {MONTHS_DE.map((mo, i) => <option key={mo} value={i} style={{ background: T.panel }}>{mo} {s.jahr}</option>)}
+                  </select>
+                </label>
+                {([['zielUmsatz', 'Ziel-Umsatz'], ['zielGewinn', 'Ziel-Gewinn'], ['cash', 'Cash aktuell']] as const).map(([f, l]) => (
+                  <label key={f} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={lbl}>{l}</span>
+                    <input value={eur(s[f])} onChange={e => setField(f, e.target.value)} aria-label={l}
+                      style={{ background: T.void, border: `1px solid ${T.line}`, borderRadius: 8, color: T.ink, fontFamily: T.mono, fontSize: 13, padding: '7px 10px', width: 150, outline: 'none' }} />
+                  </label>
+                ))}
+              </div>
+
+              {/* Was die Einstellung gerade bewirkt — sofort, in echten Zahlen */}
+              <div style={{ marginTop: 12, padding: '10px 13px', background: T.panel2, borderRadius: 10, fontSize: 12.5, color: T.inkDim, lineHeight: 1.6 }}>
+                {m.aktiveMonate > 0 ? (
+                  <>
+                    <b style={{ color: T.ink }}>{m.aktiveMonate} {m.aktiveMonate === 1 ? 'Monat' : 'Monate'} aktiv</b> seit {MONTHS_DE[startMonat]} ·
+                    Schnitt <b style={{ color: T.ink }}>{eur(m.runRateAktuell)}/Monat</b> ·
+                    noch <b style={{ color: T.ink }}>{m.restMonate} Monate</b> im Jahr.
+                    {m.restMonate > 0 && <> Für das Ziel bräuchtest du ab jetzt <b style={{ color: m.runRateNoetig > m.runRateAktuell * 5 ? T.crit : T.amber }}>{eur(m.runRateNoetig)}/Monat</b> — {m.runRateNoetig > m.runRateAktuell * 5 ? 'das ist vom aktuellen Stand aus unrealistisch, das Ziel gehört angepasst.' : 'ambitioniert, aber im Bereich.'}</>}
+                  </>
+                ) : <>Noch keine Ist-Zahlen eingetragen — unten je Monat Umsatz und Kosten pflegen, dann rechnet alles live.</>}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Eingabe */}
         <details style={{ ...panel, padding: '14px 18px', marginBottom: 14 }} open={loaded && m.aktiveMonate === 0}>
           <summary style={{ cursor: 'pointer', fontFamily: T.mono, fontSize: 11, color: T.accentInk, letterSpacing: '.08em', textTransform: 'uppercase' }}>Zahlen pflegen</summary>
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', margin: '14px 0 6px' }}>
-            {([['zielUmsatz', 'Ziel-Umsatz'], ['zielGewinn', 'Ziel-Gewinn'], ['cash', 'Cash aktuell']] as const).map(([f, l]) => (
-              <label key={f} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={lbl}>{l}</span>
-                <input value={eur(s[f])} onChange={e => setField(f, e.target.value)} style={{ background: T.void, border: `1px solid ${T.line}`, borderRadius: 8, color: T.ink, fontFamily: T.mono, fontSize: 13, padding: '7px 10px', width: 150, outline: 'none' }} />
-              </label>
-            ))}
-          </div>
           <div style={{ ...lbl, margin: '12px 0 6px' }}>Ist je Monat — Umsatz / Kosten</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8 }}>
             {s.months.map((r, i) => (

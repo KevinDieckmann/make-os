@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
 import { localDay } from '@/lib/zeit';
+import { useSpeichern } from '@/hooks/useSpeichern';
 import { eur } from '@/lib/make-one/finance-data';
 import {
   NAEHE_META, STUFEN, STUFE, OFFENE_STUFEN, pipelineWert, liegenGeblieben,
@@ -39,9 +40,12 @@ export function NetzwerkView() {
     }).catch(() => setGeladen(true));
   }, []);
 
+  // Speichert auch beim Seitenwechsel oder Tab-Schließen — was einmal
+  // getippt wurde, ist beim nächsten Öffnen wieder da.
+  const netzSpeichern = useSpeichern('/api/state/netzwerk', { verzoegerung: 400 });
   function speichern(k: Kontakt[], c: Chance[]) {
     setKontakte(k); setChancen(c);
-    fetch('/api/state/netzwerk', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kontakte: k, chancen: c }) }).catch(() => {});
+    netzSpeichern.speichern({ kontakte: k, chancen: c });
   }
   const patchK = (id: string, p: Partial<Kontakt>) => speichern(kontakte.map(k => k.id === id ? { ...k, ...p } : k), chancen);
   const patchC = (id: string, p: Partial<Chance>) => speichern(kontakte, chancen.map(c => c.id === id ? { ...c, ...p } : c));

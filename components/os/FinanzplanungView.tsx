@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
 import { computeMetrics, eur, type FinanceState } from '@/lib/make-one/finance-data';
+import { useSpeichern } from '@/hooks/useSpeichern';
 import { localDay } from '@/lib/zeit';
 
 interface Firma { id: string; name: string; bank: string; kontostand: number | null; stand: string | null }
@@ -40,12 +41,11 @@ export function FinanzplanungView() {
     fetch('/api/state/finance').then(r => r.json()).then(d => setFinance(d.state ?? d)).catch(() => {});
   }, []);
 
+  // Speichert auch beim Seitenwechsel — nichts geht zwischen zwei Klicks verloren.
+  const planSpeichern = useSpeichern('/api/state/finanzplan');
   function speichern(next: Plan) {
     setPlan(next);
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      fetch('/api/state/finanzplan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
-    }, 500);
+    planSpeichern.speichern(next);
   }
 
   if (!plan) return <div style={{ minHeight: '100vh', background: T.void, color: T.muted, fontFamily: T.mono, fontSize: 12, padding: 40 }}>lade …</div>;

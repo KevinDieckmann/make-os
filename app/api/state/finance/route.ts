@@ -18,6 +18,14 @@ export async function PUT(req: Request) {
   if (!s || !Array.isArray(s.months) || typeof s.zielUmsatz !== 'number') {
     return NextResponse.json({ ok: false, error: 'Ungültiger Zustand.' }, { status: 400 });
   }
-  await saveJson('finance', { jahr: s.jahr ?? 2026, zielUmsatz: s.zielUmsatz, zielGewinn: s.zielGewinn ?? 0, cash: s.cash ?? 0, months: s.months });
+  await saveJson('finance', {
+    jahr: s.jahr ?? 2026,
+    zielUmsatz: s.zielUmsatz,
+    zielGewinn: s.zielGewinn ?? 0,
+    cash: s.cash ?? 0,
+    months: s.months,
+    // Startmonat mitschreiben — ohne ihn zählt die Rechnung ab Januar.
+    ...(typeof s.startMonat === 'number' && s.startMonat >= 0 && s.startMonat <= 11 ? { startMonat: Math.round(s.startMonat) } : {}),
+  });
   return NextResponse.json({ ok: true });
 }

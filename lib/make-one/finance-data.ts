@@ -9,6 +9,9 @@ export interface FinanceState {
   zielGewinn: number;
   cash: number;
   months: MonthRow[];
+  /** Ab welchem Monat wirklich gearbeitet wird (0 = Januar). Ohne diesen
+   *  Wert zählt das System ab Jahresanfang und rechnet den Schnitt kaputt. */
+  startMonat?: number;
 }
 
 export const MONTHS_DE = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
@@ -45,11 +48,17 @@ export function computeMetrics(s: FinanceState): FinanceMetrics {
   const istKosten = months.reduce((a, r) => a + (r.kosten || 0), 0);
   const istGewinn = istUmsatz - istKosten;
 
-  // Aktiver Zeitraum = bis zum letzten Monat mit Umsatz ODER Kosten
+  // Aktiver Zeitraum = vom Startmonat bis zum letzten Monat mit Zahlen.
+  // OHNE Startmonat würde ab Januar gezählt — wer im Juni loslegt, hätte
+  // dann sieben statt zwei Monate und einen viel zu niedrigen Schnitt.
   let lastActive = -1;
   months.forEach((r, i) => { if ((r.umsatz || 0) > 0 || (r.kosten || 0) > 0) lastActive = i; });
-  const aktiveMonate = lastActive + 1;
-  const restMonate = Math.max(0, 12 - aktiveMonate);
+  // Kein Startmonat gesetzt? Dann gilt der erste Monat mit Zahlen als Start.
+  let ersterMitZahlen = -1;
+  months.forEach((r, i) => { if (ersterMitZahlen < 0 && ((r.umsatz || 0) > 0 || (r.kosten || 0) > 0)) ersterMitZahlen = i; });
+  const start = typeof s.startMonat === 'number' ? Math.max(0, Math.min(11, s.startMonat)) : Math.max(0, ersterMitZahlen);
+  const aktiveMonate = lastActive < 0 ? 0 : Math.max(1, lastActive - start + 1);
+  const restMonate = Math.max(0, 12 - (lastActive + 1));
 
   const verbleibend = Math.max(0, s.zielUmsatz - istUmsatz);
   const runRateNoetig = restMonate > 0 ? verbleibend / restMonate : verbleibend;
