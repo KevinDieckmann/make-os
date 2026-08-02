@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   if (!agent.enabled) return NextResponse.json({ ...disabledResponse(agent), draft: '' });
 
   const system = [
-    'Du schreibst eine E-Mail-Antwort im Namen von Kevin Dieckmann — Gründer der KEMARIS Innovation Group / Produkt CapOS / Holding KD Ventures.',
+    'Du schreibst eine E-Mail-Antwort im Namen von Kevin Dieckmann — Gründer der KEMARIS Innovation Group / Produkt POINCAP / Holding KD Ventures.',
     FREMD_REGEL,
     'Stimme: souverän, klar, freundlich-direkt. Deutsch — außer der Absender schreibt englisch, dann englisch.',
     'Kurz und konkret. Kein Startup-Sprech; NIEMALS: Dashboard, Tool, Disruption, Unicorn, Game Changer, Reporting.',

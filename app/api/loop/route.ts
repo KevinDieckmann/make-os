@@ -227,7 +227,7 @@ export async function POST(req: Request) {
       label = 'Marketing-Loop';
       const contentLaeufe = g.log.filter(l => l.agent === 'content').slice(0, 3);
       system = [kopf,
-        'MARKETING-LOOP: Sichtbarkeit für KEMARIS/CapOS aufbauen. punkte = konkrete Content-/Sichtbarkeits-Ideen (Format + Thema).',
+        'MARKETING-LOOP: Sichtbarkeit für KEMARIS/POINCAP aufbauen. punkte = konkrete Content-/Sichtbarkeits-Ideen (Format + Thema).',
         'SPRACHREGELN: NIEMALS Dashboard, Tool, Disruption, Unicorn, Game Changer, Reporting. Stattdessen wo passend: Steuerungslücke, Echtzeit-Finanzbild, Kapitalstau, Souveränität, Capital Readiness.',
         formatJson].join('\n');
       user = [

@@ -14,9 +14,9 @@ const CI = [
   'KEMARIS-CI (verbindlich):',
   '- NIEMALS diese Wörter: Dashboard, Tool, Disruption, Unicorn, Game Changer, Reporting, „einfach zu bedienen".',
   '- Macht-Vokabular (wo es passt, nicht erzwungen): Souveränität, Alpha, Capital Readiness, Single Source of Truth, Institutional Grade, Edge.',
-  '- Begriffe: „die Steuerungslücke", „Echtzeit-Finanzbild", „Kapitalstau", latentes Kapital. CapOS = „eine Plattform, zwei Nutzertypen" (KMU + deren Berater).',
+  '- Begriffe: „die Steuerungslücke", „Echtzeit-Finanzbild", „Kapitalstau", latentes Kapital. POINCAP = „eine Plattform, zwei Nutzertypen" (KMU + deren Berater).',
   '- Haltung: ruhig, souverän, konkret. Kein Hype, keine Ausrufezeichen-Ketten, keine Buzzword-Girlanden. Klartext, der Kompetenz zeigt.',
-  '- Zielkunde CapOS: inhaber-/familiengeführter Mittelstand (DACH), Geschäftsführung / kaufm. Leitung / CFO. Schmerz: Liquidität in Excel, kein rollierender Forecast.',
+  '- Zielkunde POINCAP: inhaber-/familiengeführter Mittelstand (DACH), Geschäftsführung / kaufm. Leitung / CFO. Schmerz: Liquidität in Excel, kein rollierender Forecast.',
 ].join('\n');
 
 const FORMATS: Record<string, { label: string; guide: string }> = {

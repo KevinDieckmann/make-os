@@ -14,7 +14,7 @@ const DATA = {
       subject: 'Rückfragen Market Traction',
       senderName: 'Alexander Groß-Ophoff',
       senderEmail: 'gross-ophoff@quapler.de',
-      preview: 'Rückfragen zu den Market-Traction-Kennzahlen (mit Anhang) — die echten Zahlen für CapOS/Investoren. Antwort nötig. Mit den besten Grüßen, Groß-Ophoff Alexander, Quapler GmbH & Co. KG.',
+      preview: 'Rückfragen zu den Market-Traction-Kennzahlen (mit Anhang) — die echten Zahlen für POINCAP/Investoren. Antwort nötig. Mit den besten Grüßen, Groß-Ophoff Alexander, Quapler GmbH & Co. KG.',
       receivedAt: '2026-07-28T10:43:57.000Z',
       isRead: false,
       hasAttachment: true,
@@ -36,7 +36,7 @@ const DATA = {
     {
       id: 'ms-mail-3',
       subject: 'Tagesübersicht — 3 Benachrichtigungen',
-      senderName: 'CapOS · Quapler',
+      senderName: 'POINCAP · Quapler',
       senderEmail: 'kemaris@quapler.de',
       preview: 'Hallo Kevin Dieckmann, hier deine Tagesübersicht mit 3 Benachrichtigungen: 2× Dashboard-Alert — Lieferantenkonzentration (Top-Lieferant) über 60 (aktuell 100).',
       receivedAt: '2026-07-28T08:02:01.000Z',
@@ -443,8 +443,27 @@ const DATA = {
   ],
 };
 
+/** Ab wann ein Postfach-Stand nicht mehr als Wahrheit durchgeht. */
+const MAX_TAGE = 7;
+
 export async function GET() {
-  // Write-through: das M365-Postfach gehört ins Brain, nicht nur in diese Ansicht.
-  try { await saveJson('microsoft-inbox', { emails: DATA.emails, at: DATA.lastUpdated }); } catch { /* Anzeige geht vor */ }
-  return NextResponse.json(DATA, { headers: { 'Cache-Control': 'no-store' } });
+  const alterTage = Math.floor((Date.now() - Date.parse(DATA.lastUpdated)) / 86_400_000);
+  const veraltet = !Number.isFinite(alterTage) || alterTage > MAX_TAGE;
+
+  // Write-through: das M365-Postfach gehört ins Brain. ABER ein zu alter
+  // Stand darf nicht mehr hinein — sonst setzt der Netzwerk-Abgleich daraus
+  // dauerhaft falsche „zuletzt gesprochen"-Daten in die Kontakte.
+  if (!veraltet) {
+    try { await saveJson('microsoft-inbox', { emails: DATA.emails, at: DATA.lastUpdated }); } catch { /* Anzeige geht vor */ }
+  }
+
+  return NextResponse.json(
+    {
+      ...DATA,
+      alterTage: Number.isFinite(alterTage) ? alterTage : null,
+      veraltet,
+      ...(veraltet ? { hinweis: `Postfach-Stand ist ${alterTage} Tage alt — nicht als aktueller Eingang verwenden.` } : {}),
+    },
+    { headers: { 'Cache-Control': 'no-store' } },
+  );
 }

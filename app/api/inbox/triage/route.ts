@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   if (!agent.enabled) return NextResponse.json({ ...disabledResponse(agent), triage: cache });
 
   const system = [
-    'Du bist JARVIS und sortierst Kevins Post vor. Kevin ist Gründer (KEMARIS/CapOS, KD Ventures, Kevin Dieckmann Consulting).',
+    'Du bist JARVIS und sortierst Kevins Post vor. Kevin ist Gründer (KEMARIS/POINCAP, KD Ventures, Kevin Dieckmann Consulting).',
     'Stufe jede Nachricht ein:',
     '- "wichtig": Kunden (OneBanking, Gregor, ACME), Team (Alex, Frank, Björn, Jan, Lisa, Clemens), Malin, Geld/Verträge/Rechnungen, Steuerberater, Notariat, Rechtsanwalt, Inkasso, Banken, Behörden, Fristen.',
     '- "rauschen": Newsletter, Marketing, Produkt-Updates, Social-Media-Benachrichtigungen, Werbung.',

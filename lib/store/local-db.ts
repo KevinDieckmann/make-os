@@ -129,3 +129,37 @@ export async function updateJson<T>(name: string, mutate: (current: T | null) =>
     if (writeChain.get(name) === run) writeChain.delete(name);
   }
 }
+
+/**
+ * Schreibt eine Sammlung mit Schrumpf-Schutz: Wenn der neue Stand deutlich
+ * weniger Einträge hätte als der alte, wird abgelehnt statt überschrieben.
+ *
+ * Warum: Eine Ansicht, die ihren Stand nicht laden konnte, startet leer —
+ * und der erste Klick würde diesen leeren Stand speichern. Genau so gehen
+ * mühsam gepflegte Listen verloren, ohne dass es jemand merkt.
+ *
+ * Die Prüfung läuft INNERHALB der Schreib-Sperre, greift also auch dann,
+ * wenn zwei Anfragen gleichzeitig kommen.
+ *
+ * @param zaehle  liefert die Anzahl der Einträge, die geschützt werden soll
+ * @param abTeil  ab welcher Größe geprüft wird (kleine Listen ändern sich stark)
+ * @returns       { ok: true, next } oder { ok: false } — dann wurde NICHT geschrieben
+ */
+export async function updateGeschuetzt<T>(
+  name: string,
+  neu: T,
+  zaehle: (stand: T) => number,
+  abTeil = 10,
+): Promise<{ ok: boolean; next: T }> {
+  let abgelehnt = false;
+  const next = await updateJson<T>(name, current => {
+    if (!current) return neu;
+    const alt = zaehle(current);
+    if (alt >= abTeil && zaehle(neu) < alt / 2) {
+      abgelehnt = true;
+      return current;
+    }
+    return neu;
+  });
+  return { ok: !abgelehnt, next };
+}

@@ -5,7 +5,7 @@
 //          eintrage, ohne die Liste zu überschreiben.
 
 import { NextResponse } from 'next/server';
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson, updateJson, updateGeschuetzt } from '@/lib/store/local-db';
 import { SEED, type BacklogItem } from '@/lib/make-one/backlog-data';
 
 export const runtime = 'nodejs';
@@ -34,7 +34,8 @@ export async function PUT(req: Request) {
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const b = body as { items?: BacklogItem[] };
   if (!b || !Array.isArray(b.items)) return NextResponse.json({ ok: false, error: 'items fehlt.' }, { status: 400 });
-  await updateJson<BacklogFile>('backlog', () => ({ items: b.items! }));
+  const { ok } = await updateGeschuetzt<BacklogFile>('backlog', { items: b.items! }, s => s.items?.length ?? 0);
+  if (!ok) return NextResponse.json({ ok: false, error: 'Abgelehnt: das haette ueber die Haelfte der Bauplan-Punkte geloescht.' }, { status: 409 });
   return NextResponse.json({ ok: true });
 }
 

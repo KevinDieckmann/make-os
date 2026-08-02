@@ -31,15 +31,15 @@ interface MeilensteinFile { meilensteine: Meilenstein[] }
 // Etappen. Erledigtes bleibt sichtbar — der Weg zählt.
 const SEED: Meilenstein[] = [
   { id: 'ms-kdm-ug', titel: 'KD Management UG gegründet', bereich: 'business', faellig: '2026-06-25', fortschritt: 100, erledigt: true, erledigtAm: '2026-06-25' },
-  { id: 'ms-capos-v1', titel: 'CapOS v1.0 live', bereich: 'business', faellig: '2026-06-25', fortschritt: 100, erledigt: true, erledigtAm: '2026-06-25' },
+  { id: 'ms-poincap-v1', titel: 'POINCAP v1.0 live', bereich: 'business', faellig: '2026-06-25', fortschritt: 100, erledigt: true, erledigtAm: '2026-06-25' },
   { id: 'ms-landingpage', titel: 'Landingpage F&F live', bereich: 'business', faellig: '2026-07-03', fortschritt: 100, erledigt: true, erledigtAm: '2026-07-03' },
   { id: 'ms-ig', titel: 'KEMARIS Innovation GmbH / IG gegründet', bereich: 'business', faellig: '2026-07-28', fortschritt: 100, erledigt: true, erledigtAm: '2026-07-28' },
   { id: 'ms-ff-launch', titel: 'F&F-Launch', bereich: 'business', faellig: '2026-08-01', messlatte: '30 Testkunden onboarded', fortschritt: 60, erledigt: false },
-  { id: 'ms-capos-gmbh', titel: 'CapOS GmbH Gründung', bereich: 'business', faellig: '2026-09-30', fortschritt: 0, erledigt: false },
+  { id: 'ms-poincap-gmbh', titel: 'POINCAP GmbH Gründung', bereich: 'business', faellig: '2026-09-30', fortschritt: 0, erledigt: false },
   { id: 'ms-volllaunch', titel: 'Volllaunch + Pressekonferenz Zoo Palais', bereich: 'business', faellig: '2026-10-01', fortschritt: 0, erledigt: false },
   { id: 'ms-podcast', titel: 'KEMARIS Podcast', bereich: 'business', zeitfenster: 'Q3', fortschritt: 0, erledigt: false },
   { id: 'ms-magazin', titel: 'KEMARIS Magazin', bereich: 'business', zeitfenster: 'Q4', fortschritt: 0, erledigt: false },
-  { id: 'ms-breakeven', titel: 'Break-even CapOS', bereich: 'business', zeitfenster: '2028', fortschritt: 0, erledigt: false },
+  { id: 'ms-breakeven', titel: 'Break-even POINCAP', bereich: 'business', zeitfenster: '2028', fortschritt: 0, erledigt: false },
   { id: 'ms-g-infiltration', titel: 'Rücken: Infiltration wahrgenommen', bereich: 'gesundheit', faellig: '2026-07-31', messlatte: 'Termin wahrgenommen, Plan mit Arzt besprochen', fortschritt: 0, erledigt: false },
   { id: 'ms-g-cannabis', titel: 'Cannabis-Cut durchgehalten', bereich: 'gesundheit', faellig: '2026-08-30', messlatte: '30 Tage ohne — Start 31.07', fortschritt: 0, erledigt: false },
   { id: 'ms-g-reha', titel: 'Reha Stufe 1 etabliert', bereich: 'gesundheit', faellig: '2026-08-14', messlatte: '14 Tage in Folge täglich ein Reha-Block', fortschritt: 0, erledigt: false },

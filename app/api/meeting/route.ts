@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 // Kevins reale Projekte — der Agent ordnet Action-Items hier zu.
 const PROJECTS = [
   { id: 'proj-ig', label: 'KEMARIS Innovation Group (IG)' },
-  { id: 'proj-capos', label: 'CapOS — Produkt & Traktion' },
+  { id: 'proj-poincap', label: 'POINCAP — Produkt & Traktion' },
   { id: 'proj-kdm', label: 'KD Management (Holding)' },
   { id: 'proj-health', label: 'Gesundheit & Aufbau' },
   { id: 'proj-make', label: 'MAKE.One (Malin & Kevin)' },
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     `Ordne jedes Action-Item einem Projekt zu (projectId aus dieser Liste): ${PROJECTS.map(p => `${p.id} = ${p.label}`).join('; ')}. Wenn unklar: proj-kdm.`,
     `owner ist "kevin", "malin" oder "both". prio ist "low", "medium", "high" oder "critical". due nur wenn im Text ein Datum/Frist genannt ist (Format YYYY-MM-DD), sonst weglassen. HEUTE ist ${heute} — löse relative Angaben (heute, morgen, Mittwoch, nächste Woche) exakt auf dieses Datum und Jahr auf.`,
     'Antworte AUSSCHLIESSLICH als JSON, kein Markdown:',
-    '{"titel":"<kurzer Meeting-Titel>","zusammenfassung":"<3-5 Sätze>","entscheidungen":["<getroffene Entscheidung>", "..."],"actionItems":[{"titel":"<klare Aufgabe>","owner":"kevin","prio":"high","projectId":"proj-capos","due":"2026-08-05"}]}',
+    '{"titel":"<kurzer Meeting-Titel>","zusammenfassung":"<3-5 Sätze>","entscheidungen":["<getroffene Entscheidung>", "..."],"actionItems":[{"titel":"<klare Aufgabe>","owner":"kevin","prio":"high","projectId":"proj-poincap","due":"2026-08-05"}]}',
   ].join('\n');
 
   const r = await askJson<{ titel?: string; zusammenfassung?: string; entscheidungen?: string[]; actionItems?: unknown[] }>({

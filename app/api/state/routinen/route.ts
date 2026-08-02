@@ -7,7 +7,7 @@
 // damit Streak und Verlauf nahtlos weiterlaufen.
 
 import { NextResponse } from 'next/server';
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson, updateJson, updateGeschuetzt } from '@/lib/store/local-db';
 import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
 
 export const runtime = 'nodejs';
@@ -55,6 +55,7 @@ export async function PUT(req: Request) {
     aktiv: r.aktiv !== false,
   })).filter(r => r.label);
 
-  const next = await updateJson<RoutinenFile>('routinen', () => ({ routinen: sauber }));
+  const { ok, next } = await updateGeschuetzt<RoutinenFile>('routinen', { routinen: sauber }, s => s.routinen?.length ?? 0, 4);
+  if (!ok) return NextResponse.json({ ok: false, error: 'Abgelehnt: das haette ueber die Haelfte der Routinen geloescht.' }, { status: 409 });
   return NextResponse.json({ ok: true, routinen: next.routinen });
 }

@@ -3,7 +3,7 @@
 // Schritt. Roadmap Phase 5 — hier beginnt der Kundenbereich.
 
 import { NextResponse } from 'next/server';
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson, updateJson, updateGeschuetzt } from '@/lib/store/local-db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,6 +49,7 @@ export async function PUT(req: Request) {
     naechsterSchritt: k.naechsterSchritt ? String(k.naechsterSchritt).slice(0, 300) : undefined,
     notizen: k.notizen ? String(k.notizen).slice(0, 4000) : undefined,
   })).filter(k => k.name);
-  const next = await updateJson<KundenFile>('kunden', () => ({ kunden: sauber }));
+  const { ok, next } = await updateGeschuetzt<KundenFile>('kunden', { kunden: sauber }, s => s.kunden?.length ?? 0, 4);
+  if (!ok) return NextResponse.json({ ok: false, error: 'Abgelehnt: das haette ueber die Haelfte der Kunden geloescht.' }, { status: 409 });
   return NextResponse.json({ ok: true, kunden: next.kunden });
 }

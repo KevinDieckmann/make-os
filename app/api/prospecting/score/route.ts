@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   if (!agent.enabled) return NextResponse.json(disabledResponse(agent));
 
   const system = [
-    'Du bist der Prospecting-Agent in Kevins MAKE OS und qualifizierst Firmen gegen ein ideales Kundenprofil (ICP) für "CapOS".',
+    'Du bist der Prospecting-Agent in Kevins MAKE OS und qualifizierst Firmen gegen ein ideales Kundenprofil (ICP) für "POINCAP".',
     'Bewerte NÜCHTERN und ehrlich. Wenn du eine Firma nicht kennst, leite den Fit aus Branche/Größe/Region ab und sag das offen — erfinde keine Fakten.',
     'Antworte AUSSCHLIESSLICH mit einem JSON-Objekt, kein Fließtext, kein Markdown:',
     '{"score": <0-100 int>, "fit": "<1-2 Sätze: warum passt/passt nicht>", "angle": "<1 Satz: konkreter Aufhänger für die Erstansprache>"}',

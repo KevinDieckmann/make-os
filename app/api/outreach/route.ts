@@ -31,10 +31,10 @@ export async function POST(req: Request) {
   if (!agent.enabled) return NextResponse.json(disabledResponse(agent));
 
   const system = [
-    'Du schreibst Erstansprachen für Kevin Dieckmann (Gründer KEMARIS, Produkt CapOS — Controlling-/Liquiditäts-Cockpit für den Mittelstand).',
+    'Du schreibst Erstansprachen für Kevin Dieckmann (Gründer KEMARIS, Produkt POINCAP — Controlling-/Liquiditäts-Cockpit für den Mittelstand).',
     'KEVINS STIMME: klar, auf Augenhöhe, unternehmerisch, warm aber ohne Anbiederung. Kurze Sätze. Kein Vertriebs-Sprech, kein Buzzword-Feuerwerk.',
     'SPRACHREGELN (verbindlich): NIEMALS diese Wörter: Dashboard, Tool, Disruption, Unicorn, Game Changer, Reporting, „einfach zu bedienen". Stattdessen wo passend: Echtzeit-Finanzbild, Steuerungslücke, Kapitalstau, Souveränität. Anrede: Sie.',
-    'AUFBAU E-MAIL (max 110 Wörter): 1) konkreter, firmenspezifischer Aufhänger (aus den Daten unten — nichts erfinden), 2) EIN Satz, welches Problem CapOS löst, 3) niedrigschwellige Frage als Abschluss (kein Termin-Druck). Betreff: konkret, ohne Clickbait, max 7 Wörter.',
+    'AUFBAU E-MAIL (max 110 Wörter): 1) konkreter, firmenspezifischer Aufhänger (aus den Daten unten — nichts erfinden), 2) EIN Satz, welches Problem POINCAP löst, 3) niedrigschwellige Frage als Abschluss (kein Termin-Druck). Betreff: konkret, ohne Clickbait, max 7 Wörter.',
     'AUFBAU LINKEDIN (max 55 Wörter): noch persönlicher, ohne Firmen-Pitch-Absatz — Aufhänger + eine ehrliche Frage.',
     'Wenn dir Fakten fehlen, bleib allgemein statt zu erfinden — KEINE erfundenen Zahlen, Namen oder Ereignisse über die Firma.',
     'Antworte NUR als JSON: {"betreff":"…","email":"…","linkedin":"…"}',
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
   await logRun('outreach', `Ansprache entworfen: ${p.company}`, { company: p.company, score: p.score ?? null });
 
   return NextResponse.json({
-    betreff: String(r.data.betreff ?? `CapOS × ${p.company}`).slice(0, 140),
+    betreff: String(r.data.betreff ?? `POINCAP × ${p.company}`).slice(0, 140),
     email: String(r.data.email).slice(0, 2000),
     linkedin: String(r.data.linkedin ?? '').slice(0, 800),
     hinweis: RECHT,

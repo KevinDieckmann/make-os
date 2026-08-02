@@ -5,7 +5,7 @@ export type CircadianPhase =
   | 'PHASE_2_CONNECTION'  // 12:00–17:00 — serotonin peak, creative, collaborative
   | 'PHASE_3_RESET';      // 17:00–05:00 — melatonin onset, decompression
 
-export type TaskProject = 'Holding' | 'Private' | 'make OS' | 'CapOS' | 'Connect';
+export type TaskProject = 'Holding' | 'Private' | 'make OS' | 'POINCAP' | 'Connect';
 export type TaskAssignee = 'Malin' | 'Kevin' | 'Both';
 export type TaskPriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 export type TaskStatus = 'OFFEN' | 'IN_ARBEIT' | 'BLOCKIERT' | 'ERLEDIGT';

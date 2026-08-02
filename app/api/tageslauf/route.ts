@@ -137,7 +137,7 @@ export async function POST(req: Request) {
     const r = await askWithSearch({
       system: [
         'Du bist der Research-Agent in Kevins MAKE OS. Liefere die Lage von heute in drei Blöcken — je GENAU DREI Meldungen, nicht mehr.',
-        'Kontext: Kevin baut CapOS (Controlling-/Liquiditäts-Plattform für den Mittelstand) unter der Holding KD Ventures, Sitz OWL/Deutschland.',
+        'Kontext: Kevin baut POINCAP (Controlling-/Liquiditäts-Plattform für den Mittelstand) unter der Holding KD Ventures, Sitz OWL/Deutschland.',
         'welt = weltweite Lage mit möglicher Auswirkung auf deutsche Unternehmen. business = KI/Software/Mittelstand/Finanzierung. wettbewerb = konkrete Anbieter im Umfeld Controlling/Liquidität/KI-Beratung (DACH).',
         'Jede Meldung: ein Satz Sachverhalt + ein Halbsatz, warum es Kevin angeht. Keine Floskeln, kein Startup-Sprech. Wenn du zu einem Block nichts Belastbares findest, gib weniger — erfinde nichts.',
         'Antworte NUR als JSON: {"welt":["…"],"business":["…"],"wettbewerb":["…"]}',
