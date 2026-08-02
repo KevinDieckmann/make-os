@@ -24,14 +24,25 @@ export function ProspectingView() {
   const [newName, setNewName] = useState('');
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  // Ohne geladenen Stand wird nicht gespeichert — sonst ersetzt der erste
+  // neue Eintrag die ganze Zielkundenliste.
+  const [ladeFehler, setLadeFehler] = useState(false);
   useEffect(() => {
-    fetch('/api/state/prospects').then(r => r.json()).then((d: { state: ProspectsState | null }) => {
-      if (d.state) { setIcp(d.state.icp || DEFAULT_ICP); setRows(d.state.prospects || []); }
-      setLoaded(true);
-    }).catch(() => setLoaded(true));
+    fetch('/api/state/prospects')
+      .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
+      .then((d: { state: ProspectsState | null }) => {
+        if (d.state) { setIcp(d.state.icp || DEFAULT_ICP); setRows(d.state.prospects || []); }
+        setLoaded(true);
+      })
+      .catch(err => {
+        console.error('[MAKE OS] Zielkunden konnten nicht geladen werden — Speichern gesperrt.', err);
+        setLadeFehler(true);
+        setLoaded(true);
+      });
   }, []);
 
   function persist(nextIcp: string, nextRows: Prospect[]) {
+    if (ladeFehler) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       fetch('/api/state/prospects', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ icp: nextIcp, prospects: nextRows }) }).catch(() => {});

@@ -36,15 +36,23 @@ export function CrmView() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const fpTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  // Ohne geladene Stände wird nichts zurückgeschrieben — sonst überschreibt
+  // die erste Änderung Kundenliste oder Finanzplan mit einem leeren Stand.
+  const [ladeFehler, setLadeFehler] = useState(false);
   useEffect(() => {
-    fetch('/api/state/kunden').then(r => r.json()).then(d => setKunden(d.kunden ?? [])).catch(() => {});
-    fetch('/api/state/prospects').then(r => r.json()).then(d => setProspects(d.state?.prospects ?? [])).catch(() => {});
-    fetch('/api/state/finanzplan').then(r => r.json()).then(setFplan).catch(() => {});
+    const pruefen = (r: Response) => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); };
+    const melden = (was: string) => (err: unknown) => {
+      console.error(`[MAKE OS] ${was} konnte nicht geladen werden — Speichern gesperrt.`, err);
+      setLadeFehler(true);
+    };
+    fetch('/api/state/kunden').then(pruefen).then(d => setKunden(d.kunden ?? [])).catch(melden('Kunden'));
+    fetch('/api/state/prospects').then(pruefen).then(d => setProspects(d.state?.prospects ?? [])).catch(melden('Zielkunden'));
+    fetch('/api/state/finanzplan').then(pruefen).then(setFplan).catch(melden('Finanzplan'));
   }, []);
 
   /** Rechnung im Finanzplan anlegen (z.B. Produkt an Kunden) — gleiche Wahrheit wie /os/finanzen. */
   function rechnungAnlegen(kunde: string, titel: string, betrag: number) {
-    if (!fplan) return;
+    if (!fplan || ladeFehler) return;
     const next: Finanzplan = { ...fplan, rechnungen: [...fplan.rechnungen, { id: `r-${Date.now().toString(36)}`, firmaId: 'kdc', kunde, titel, betrag, status: 'geplant' }] };
     setFplan(next);
     clearTimeout(fpTimer.current);
@@ -58,6 +66,7 @@ export function CrmView() {
 
   function persist(next: Kunde[]) {
     setKunden(next);
+    if (ladeFehler) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       fetch('/api/state/kunden', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kunden: next }) }).catch(() => {});

@@ -39,15 +39,26 @@ export function ControllingView() {
   const [busy, setBusy] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  // Konnte der Stand nicht geladen werden, wird NICHT gespeichert — sonst
+  // würde eine einzige Eingabe die zwölf Monatszahlen mit Nullen überschreiben.
+  const [ladeFehler, setLadeFehler] = useState(false);
   useEffect(() => {
-    fetch('/api/state/finance').then(r => r.json()).then((d: { state: FinanceState | null }) => {
-      if (d.state && Array.isArray(d.state.months) && d.state.months.length === 12) setS(d.state);
-      setLoaded(true);
-    }).catch(() => setLoaded(true));
+    fetch('/api/state/finance')
+      .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
+      .then((d: { state: FinanceState | null }) => {
+        if (d.state && Array.isArray(d.state.months) && d.state.months.length === 12) setS(d.state);
+        setLoaded(true);
+      })
+      .catch(err => {
+        console.error('[MAKE OS] Controlling konnte nicht geladen werden — Speichern gesperrt.', err);
+        setLadeFehler(true);
+        setLoaded(true);
+      });
   }, []);
 
   function persist(next: FinanceState) {
     setS(next);
+    if (ladeFehler) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       fetch('/api/state/finance', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});

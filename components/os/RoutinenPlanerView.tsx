@@ -29,19 +29,26 @@ const katFarbe = (k: Routine['kategorie']) => KAT.find(x => x.id === k)!.farbe;
 export function RoutinenPlanerView() {
   const [routinen, setRoutinen] = useState<Routine[]>([]);
   const [geladen, setGeladen] = useState(false);
+  /** Laden fehlgeschlagen → nicht speichern, sonst löscht der erste Klick alles. */
+  const [ladeFehler, setLadeFehler] = useState(false);
   const [neu, setNeu] = useState('');
   const [neuWann, setNeuWann] = useState<Routine['wann']>('morgen');
   const [neuKat, setNeuKat] = useState<Routine['kategorie']>('gesundheit');
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
-    fetch('/api/state/routinen').then(r => r.json()).then(d => {
-      setRoutinen(Array.isArray(d.routinen) ? d.routinen : []); setGeladen(true);
-    }).catch(() => setGeladen(true));
+    fetch('/api/state/routinen')
+      .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
+      .then(d => { setRoutinen(Array.isArray(d.routinen) ? d.routinen : []); setGeladen(true); })
+      .catch(err => {
+        console.error('[MAKE OS] Routinen konnten nicht geladen werden — Speichern gesperrt.', err);
+        setLadeFehler(true); setGeladen(true);
+      });
   }, []);
 
   function persist(next: Routine[]) {
     setRoutinen(next);
+    if (ladeFehler) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       fetch('/api/state/routinen', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ routinen: next }) }).catch(() => {});
