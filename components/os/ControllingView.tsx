@@ -7,13 +7,13 @@ import { wertVon, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
 import { localDay } from '@/lib/zeit';
 import { useSpeichern } from '@/hooks/useSpeichern';
 import { vorschau, monatlicheLast, type Firma, type Rechnung, type Zahlung, type Merkposten } from '@/lib/make-one/liquiditaet';
-
-/** Der Teil des Finanzplans, den die Liquiditäts-Vorschau braucht. */
-interface FinanzplanStand { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
 import {
   DEFAULT_FINANCE, MONTHS_DE, computeMetrics, eur,
   type FinanceState,
 } from '@/lib/make-one/finance-data';
+
+/** Der Teil des Finanzplans, den die Liquiditäts-Vorschau braucht. */
+interface FinanzplanStand { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
 
 interface Analysis { briefing: string; fokus?: string[]; risiken?: string[]; }
 
@@ -43,7 +43,6 @@ export function ControllingView() {
   }, []);
   const [a, setA] = useState<Analysis | null>(null);
   const [busy, setBusy] = useState(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Konnte der Stand nicht geladen werden, wird NICHT gespeichert — sonst
   // würde eine einzige Eingabe die zwölf Monatszahlen mit Nullen überschreiben.
