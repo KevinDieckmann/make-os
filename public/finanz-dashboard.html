@@ -126,6 +126,43 @@ input[type=range]{width:100%;accent-color:var(--blue);margin:6px 0 3px}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<!-- MAKE-OS-DESIGN: Klar·DARK über Malins Dashboard gelegt. Nur Farben und
+     Flächen werden überschrieben — die Struktur der Datei bleibt unangetastet,
+     damit Malin dort weiterarbeiten kann wie gewohnt. -->
+<style>
+  :root {
+    --bg: #0B0E10;        /* Grund */
+    --white: #14181B;     /* Karten */
+    --g7: #14181B;
+    --g6: #191E22;
+    --g5: #262C31;        /* Linien */
+    --g3: #7C8B93;        /* leise Schrift */
+    --g2: #B7C4C9;
+    --g1: #E8EFED;        /* Haupt-Schrift */
+    --blue: #21B5AA;      /* Akzent: Petrol statt Apple-Blau */
+    --green: #21B5AA;
+    --orange: #DE9E63;
+    --red: #E4572E;
+    --purple: #8A7CE0;
+  }
+  body { background: var(--bg) !important; color: var(--g1) !important; -webkit-font-smoothing: antialiased; }
+  /* Flächen, die im Original hell gesetzt sind */
+  [style*="background:#fff"], [style*="background: #fff"],
+  [style*="background:white"], [style*="background: white"],
+  [style*="#f0f0f5"], [style*="#fafafa"], [style*="#f2f2f7"] {
+    background: var(--white) !important;
+  }
+  input, select, textarea, button {
+    background: #0F1417 !important; color: var(--g1) !important;
+    border-color: var(--g5) !important; color-scheme: dark;
+  }
+  button { cursor: pointer; }
+  table, th, td { border-color: var(--g5) !important; }
+  th { color: var(--g3) !important; }
+  hr { border-color: var(--g5) !important; }
+  ::placeholder { color: var(--g3) !important; }
+</style>
 </head>
 <body>
 

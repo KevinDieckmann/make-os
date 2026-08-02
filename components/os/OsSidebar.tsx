@@ -74,6 +74,7 @@ const GRUPPEN: Gruppe[] = [
     titel: 'Finanzen',
     eintraege: [
       { href: '/os/finanzen', label: 'Finanzplanung' },
+      { href: '/os/finanzen/liquiditaet', label: 'Liquiditäts-Planung' },
       { href: '/os/controlling', label: 'Controlling' },
       { href: '/os/finanzen/dashboard', label: 'Finanz-Dashboard' },
     ],

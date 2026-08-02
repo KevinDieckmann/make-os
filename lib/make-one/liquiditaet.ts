@@ -68,6 +68,34 @@ export function monatlicheLast(merkposten: Merkposten[]): { text: string; betrag
  * Vorschau über N Wochen. „geplant" zählt nur mit, wenn optimistisch=true —
  * sonst rechnen wir nur mit dem, was wirklich gestellt ist.
  */
+export type Rhythmus = 'einmalig' | 'monatlich' | 'quartal' | 'jaehrlich';
+export interface Planposten {
+  id: string; titel: string; betrag: number; rhythmus: Rhythmus;
+  ab: string; bis?: string; sicher: boolean; notiz?: string;
+}
+
+/** Fällt der Posten in dieser Woche an? Liefert das Datum oder null. */
+function faelligIn(p: Planposten, vonISO: string, bisISO: string): string | null {
+  if (p.ab > bisISO) return null;
+  if (p.bis && p.bis < vonISO) return null;
+  if (p.rhythmus === 'einmalig') return p.ab >= vonISO && p.ab <= bisISO ? p.ab : null;
+
+  // Wiederkehrend: am selben Tag des Monats wie im Startdatum.
+  const tag = Number(p.ab.slice(8, 10));
+  const von = new Date(`${vonISO}T00:00:00`);
+  const bis = new Date(`${bisISO}T00:00:00`);
+  for (let d = new Date(von); d <= bis; d.setDate(d.getDate() + 1)) {
+    if (d.getDate() !== tag) continue;
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (iso < p.ab) continue;
+    const monateSeitStart = (d.getFullYear() - Number(p.ab.slice(0, 4))) * 12 + (d.getMonth() - (Number(p.ab.slice(5, 7)) - 1));
+    if (p.rhythmus === 'monatlich') return iso;
+    if (p.rhythmus === 'quartal' && monateSeitStart % 3 === 0) return iso;
+    if (p.rhythmus === 'jaehrlich' && monateSeitStart % 12 === 0) return iso;
+  }
+  return null;
+}
+
 export function vorschau(
   firmen: Firma[],
   rechnungen: Rechnung[],
@@ -76,6 +104,7 @@ export function vorschau(
   heute: string,
   wochenAnzahl = 12,
   optimistisch = false,
+  planposten: Planposten[] = [],
 ): Vorschau {
   const start = firmen.reduce((s, f) => s + (f.kontostand ?? 0), 0);
   const fix = monatlicheLast(merkposten);
@@ -124,8 +153,21 @@ export function vorschau(
       bewegungen.push({ datum: faellig, text: `${z.an}${ueberfaellig ? ' (überfällig)' : ''}`.slice(0, 60), betrag: -z.betrag, art: 'ausgang', sicher: true });
     }
 
-    // Fixkosten einmal im Monat — in der ersten Woche jedes Vier-Wochen-Blocks.
-    if (fixSumme && i % 4 === 0) {
+    // Geplante Posten — wiederkehrend oder einmalig.
+    for (const p of planposten) {
+      const datum = faelligIn(p, vonISO, bisISO);
+      if (!datum) continue;
+      if (!p.sicher && !optimistisch && p.betrag > 0) { unsicher += p.betrag; continue; }
+      bewegungen.push({
+        datum, text: p.titel.slice(0, 60), betrag: p.betrag,
+        art: p.betrag > 0 ? 'eingang' : 'fix', sicher: p.sicher,
+      });
+      if (!p.sicher && p.betrag > 0) unsicher += p.betrag;
+    }
+
+    // Fixkosten aus den Merkposten — nur, solange es keine eigenen Planposten
+    // gibt. Sonst würde dasselbe Geld zweimal abgezogen.
+    if (fixSumme && i % 4 === 0 && !planposten.length) {
       bewegungen.push({ datum: vonISO, text: `Fixkosten (${fix.map(f => f.text).join(', ')})`.slice(0, 60), betrag: -fixSumme, art: 'fix', sicher: true });
     }
 
