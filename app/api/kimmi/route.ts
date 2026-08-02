@@ -254,8 +254,72 @@ async function setzeKunde(input: Record<string, unknown>): Promise<string> {
 }
 
 // Werkzeug-Register: Name → Gruppe (für die ⚙-Chips) + Ausführung.
+/** Jahresziele und Startmonat setzen — die Grundlage jeder Controlling-Zahl. */
+async function setzeZiele(input: Record<string, unknown>): Promise<string> {
+  const zielUmsatz = isFinite(Number(input.zielUmsatz)) ? Math.max(0, Math.round(Number(input.zielUmsatz))) : undefined;
+  const zielGewinn = isFinite(Number(input.zielGewinn)) ? Math.max(0, Math.round(Number(input.zielGewinn))) : undefined;
+  const cash = isFinite(Number(input.cash)) ? Math.round(Number(input.cash)) : undefined;
+  const MONATE = ['januar', 'februar', 'märz', 'maerz', 'april', 'mai', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'dezember'];
+  let startMonat: number | undefined;
+  if (input.startMonat != null) {
+    const roh = String(input.startMonat).toLowerCase().trim();
+    const alsZahl = Number(roh);
+    if (isFinite(alsZahl) && alsZahl >= 0 && alsZahl <= 11) startMonat = Math.round(alsZahl);
+    else {
+      const i = MONATE.findIndex(m => roh.startsWith(m.slice(0, 3)));
+      // „maerz" liegt doppelt in der Liste — Index korrigieren.
+      if (i >= 0) startMonat = i > 3 ? i - 1 : i;
+    }
+  }
+  if (zielUmsatz == null && zielGewinn == null && cash == null && startMonat == null) {
+    return 'Fehlgeschlagen: nichts zu setzen (zielUmsatz, zielGewinn, cash oder startMonat angeben).';
+  }
+  const teile: string[] = [];
+  await updateJson<{ jahr: number; zielUmsatz: number; zielGewinn: number; cash: number; months: unknown[]; startMonat?: number }>('finance', current => {
+    const f = current ?? { jahr: new Date().getFullYear(), zielUmsatz: 0, zielGewinn: 0, cash: 0, months: [] };
+    if (zielUmsatz != null) { f.zielUmsatz = zielUmsatz; teile.push(`Ziel-Umsatz ${eurW(zielUmsatz)}`); }
+    if (zielGewinn != null) { f.zielGewinn = zielGewinn; teile.push(`Ziel-Gewinn ${eurW(zielGewinn)}`); }
+    if (cash != null) { f.cash = cash; teile.push(`Cash ${eurW(cash)}`); }
+    if (startMonat != null) { f.startMonat = startMonat; teile.push(`Start ab ${['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'][startMonat]}`); }
+    return f;
+  });
+  return `Erfasst: ${teile.join(' · ')}. Sichtbar im Controlling — Fortschritt und nötige Run-Rate rechnen sofort neu.`;
+}
+
+/** Wiederkehrende Kosten oder Einnahmen für die Liquiditäts-Planung. */
+async function erfassePlanposten(input: Record<string, unknown>): Promise<string> {
+  const titel = String(input.titel ?? '').trim().slice(0, 160);
+  const betrag = Math.round(Number(input.betrag));
+  if (!titel || !isFinite(betrag) || betrag === 0) return 'Fehlgeschlagen: titel + betrag nötig (negativ = Ausgabe).';
+  const RHY = ['einmalig', 'monatlich', 'quartal', 'jaehrlich'];
+  const rhythmus = RHY.includes(String(input.rhythmus)) ? String(input.rhythmus) : 'monatlich';
+  const ab = /^\d{4}-\d{2}-\d{2}$/.test(String(input.ab ?? '')) ? String(input.ab) : new Date().toISOString().slice(0, 10);
+  const kategorie = input.kategorie ? String(input.kategorie).slice(0, 40) : undefined;
+  const firmaId = ['kdv', 'kdc', 'kemaris', 'privat'].includes(String(input.firma)) ? String(input.firma) : undefined;
+  const sicher = input.sicher !== false;
+
+  let aktion = '';
+  await updateJson<{ posten: { id: string; titel: string; betrag: number; rhythmus: string; ab: string; sicher: boolean; kategorie?: string; firmaId?: string }[] }>('liquiplan', current => {
+    const f = current ?? { posten: [] };
+    f.posten = f.posten ?? [];
+    const idx = f.posten.findIndex(p => p.titel.toLowerCase() === titel.toLowerCase());
+    if (idx >= 0) {
+      f.posten[idx] = { ...f.posten[idx], betrag, rhythmus, ab, sicher, ...(kategorie ? { kategorie } : {}), ...(firmaId ? { firmaId } : {}) };
+      aktion = `${titel} aktualisiert`;
+    } else {
+      f.posten.push({ id: `lp-${Date.now().toString(36)}`, titel, betrag, rhythmus, ab, sicher, ...(kategorie ? { kategorie } : {}), ...(firmaId ? { firmaId } : {}) });
+      aktion = `${titel} angelegt`;
+    }
+    return f;
+  });
+  const wie = rhythmus === 'einmalig' ? 'einmalig' : rhythmus === 'monatlich' ? 'monatlich' : rhythmus === 'quartal' ? 'je Quartal' : 'jährlich';
+  return `Erfasst: ${aktion} — ${betrag < 0 ? '−' : '+'}${eurW(Math.abs(betrag))} ${wie} ab ${ab}. Rechnet sofort in der Liquiditäts-Planung mit.`;
+}
+
 const WERKZEUGE: Record<string, { gruppe: string; lauf: (input: Record<string, unknown>) => Promise<string> }> = {
   plan_block: { gruppe: 'planer', lauf: planBlock },
+  setze_ziele: { gruppe: 'finanzen', lauf: setzeZiele },
+  erfasse_planposten: { gruppe: 'finanzen', lauf: erfassePlanposten },
   setze_kontostand: { gruppe: 'finanzen', lauf: setzeKontostand },
   erfasse_rechnung: { gruppe: 'finanzen', lauf: erfasseRechnung },
   erfasse_zahlung: { gruppe: 'finanzen', lauf: erfasseZahlung },
@@ -356,6 +420,29 @@ export async function POST(req: Request) {
     });
     // ── Erfassen per Zuruf: Kevin diktiert, Jarvis schreibt in die Stores ──
     tools.push(
+      {
+        name: 'setze_ziele',
+        description: 'Setzt Jahresziele, Cash oder den Startmonat im Controlling. Nutze das, wenn Kevin Ziele nennt oder korrigiert („Jahresziel 300.000", „wir haben erst im Juni angefangen", „Ziel-Gewinn 100k"). Der Startmonat ist entscheidend: ohne ihn rechnet das System ab Januar und der Monatsschnitt wird falsch.',
+        input_schema: { type: 'object', properties: {
+          zielUmsatz: { type: 'number', description: 'Ziel-Umsatz für das Jahr in Euro' },
+          zielGewinn: { type: 'number', description: 'Ziel-Gewinn für das Jahr in Euro' },
+          cash: { type: 'number', description: 'Aktueller Cash-Bestand in Euro' },
+          startMonat: { type: 'string', description: 'Ab wann gearbeitet wird — Monatsname („Juni") oder Index 0–11' },
+        }, required: [] },
+      },
+      {
+        name: 'erfasse_planposten',
+        description: 'Legt eine wiederkehrende oder einmalige Einnahme/Ausgabe in der Liquiditäts-Planung an. Nutze das bei Abos, Mieten, Gehältern, Versicherungen, Steuervorauszahlungen und laufenden Mandaten („ich habe ein Abo für 49 im Monat abgeschlossen", „ab September zahlen wir 1.200 Miete"). Ausgaben als NEGATIVEN Betrag.',
+        input_schema: { type: 'object', properties: {
+          titel: { type: 'string', description: 'Wofür — z. B. „Adobe-Abo" oder „Mandat OneBanking"' },
+          betrag: { type: 'number', description: 'Betrag in Euro; NEGATIV für Ausgaben, positiv für Einnahmen' },
+          rhythmus: { type: 'string', enum: ['einmalig', 'monatlich', 'quartal', 'jaehrlich'], description: 'Wie oft — Standard monatlich' },
+          ab: { type: 'string', description: 'Ab wann, YYYY-MM-DD (Standard heute)' },
+          kategorie: { type: 'string', enum: ['mandat', 'produkt', 'sonstige-ein', 'personal', 'raum', 'steuern', 'kredite', 'betrieb', 'privat'], description: 'Wofür es zählt' },
+          firma: { type: 'string', enum: ['kdv', 'kdc', 'kemaris', 'privat'], description: 'Wessen Konto' },
+          sicher: { type: 'boolean', description: 'false, wenn der Posten noch unsicher ist (nur bei Einnahmen relevant)' },
+        }, required: ['titel', 'betrag'] },
+      },
       {
         name: 'setze_kontostand',
         description: 'Setzt den Kontostand einer Firma in der Finanzplanung. Nutze das sofort, wenn Kevin einen Kontostand nennt („Kontostand KDC 18.500").',
