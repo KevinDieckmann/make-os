@@ -19,6 +19,8 @@ export interface Bewegung {
   art: 'eingang' | 'ausgang' | 'fix';
   /** Wie sicher ist das Geld? Gestellte Rechnungen sind belastbarer als geplante. */
   sicher: boolean;
+  kategorie?: string;
+  firmaId?: string;
 }
 
 export interface Woche {
@@ -72,7 +74,35 @@ export type Rhythmus = 'einmalig' | 'monatlich' | 'quartal' | 'jaehrlich';
 export interface Planposten {
   id: string; titel: string; betrag: number; rhythmus: Rhythmus;
   ab: string; bis?: string; sicher: boolean; notiz?: string;
+  /** Wessen Geld — erlaubt eine Planung je Firma statt nur im Topf. */
+  firmaId?: string;
+  /** Wofür — für die Aufschlüsselung nach Kategorien. */
+  kategorie?: string;
+  /** 0–100: wie wahrscheinlich der Posten eintritt (für Szenarien). */
+  wahrscheinlich?: number;
 }
+
+/** Die Kategorien, in denen bei uns gedacht wird. */
+export const KATEGORIEN: { id: string; label: string; farbe: string; art: 'ein' | 'aus' }[] = [
+  { id: 'mandat', label: 'Mandate & Honorare', farbe: '#21B5AA', art: 'ein' },
+  { id: 'produkt', label: 'Produkte & Lizenzen', farbe: '#4A6CF7', art: 'ein' },
+  { id: 'sonstige-ein', label: 'Sonstige Einnahmen', farbe: '#8A7CE0', art: 'ein' },
+  { id: 'personal', label: 'Personal & Gehälter', farbe: '#DE9E63', art: 'aus' },
+  { id: 'raum', label: 'Raum & Infrastruktur', farbe: '#B08968', art: 'aus' },
+  { id: 'steuern', label: 'Steuern & Abgaben', farbe: '#E4572E', art: 'aus' },
+  { id: 'kredite', label: 'Kredite & Tilgung', farbe: '#C9603A', art: 'aus' },
+  { id: 'betrieb', label: 'Betrieb & Werkzeuge', farbe: '#8A9BA8', art: 'aus' },
+  { id: 'privat', label: 'Privates', farbe: '#58D9CD', art: 'aus' },
+];
+export const KATEGORIE = Object.fromEntries(KATEGORIEN.map(k => [k.id, k])) as Record<string, typeof KATEGORIEN[number]>;
+
+/** Drei Sichtweisen auf dieselben Zahlen. */
+export type Szenario = 'schlecht' | 'real' | 'gut';
+export const SZENARIO_LABEL: Record<Szenario, string> = {
+  schlecht: 'Wenn es schlecht läuft', real: 'Realistisch', gut: 'Wenn es gut läuft',
+};
+/** Ab welcher Wahrscheinlichkeit ein unsicherer Eingang im Szenario zählt. */
+const SZENARIO_SCHWELLE: Record<Szenario, number> = { schlecht: 100, real: 60, gut: 1 };
 
 /** Fällt der Posten in dieser Woche an? Liefert das Datum oder null. */
 function faelligIn(p: Planposten, vonISO: string, bisISO: string): string | null {
@@ -105,8 +135,13 @@ export function vorschau(
   wochenAnzahl = 12,
   optimistisch = false,
   planposten: Planposten[] = [],
+  szenario: Szenario = 'real',
+  nurFirma?: string,
 ): Vorschau {
-  const start = firmen.reduce((s, f) => s + (f.kontostand ?? 0), 0);
+  // „optimistisch" bleibt als Kurzform erhalten: es entspricht dem guten Fall.
+  const schwelle = optimistisch ? SZENARIO_SCHWELLE.gut : SZENARIO_SCHWELLE[szenario];
+  const start = (nurFirma ? firmen.filter(f => f.id === nurFirma) : firmen)
+    .reduce((s, f) => s + (f.kontostand ?? 0), 0);
   const fix = monatlicheLast(merkposten);
   const fixSumme = fix.reduce((s, f) => s + f.betrag, 0);
 
@@ -124,6 +159,7 @@ export function vorschau(
     // Eingänge: offene Rechnungen mit Fälligkeit in dieser Woche.
     for (const r of rechnungen) {
       if (r.status === 'bezahlt' || !r.betrag) continue;
+      if (nurFirma && (r as { firmaId?: string }).firmaId && (r as { firmaId?: string }).firmaId !== nurFirma) continue;
       const geplant = r.status === 'geplant';
       if (geplant && !optimistisch) continue;
       // Ohne Fälligkeit: gestellte in der ersten Woche, geplante in der vierten.
@@ -146,6 +182,7 @@ export function vorschau(
     // Ausgänge: offene Zahlungen.
     for (const z of zahlungen) {
       if (z.status !== 'offen' || !z.betrag) continue;
+      if (nurFirma && (z as { firmaId?: string }).firmaId && (z as { firmaId?: string }).firmaId !== nurFirma) continue;
       const faellig = z.faellig ?? iso(tage(heuteD, 14));
       const inWoche = faellig >= vonISO && faellig <= bisISO;
       const ueberfaellig = i === 0 && faellig < vonISO;
@@ -155,12 +192,19 @@ export function vorschau(
 
     // Geplante Posten — wiederkehrend oder einmalig.
     for (const p of planposten) {
+      // Filter je Firma: erlaubt eine Planung pro Gesellschaft statt im Topf.
+      if (nurFirma && p.firmaId && p.firmaId !== nurFirma) continue;
       const datum = faelligIn(p, vonISO, bisISO);
       if (!datum) continue;
-      if (!p.sicher && !optimistisch && p.betrag > 0) { unsicher += p.betrag; continue; }
+      // Einnahmen zählen nur, wenn sie im gewählten Szenario überhaupt eintreten.
+      if (p.betrag > 0 && !p.sicher) {
+        const chance = p.wahrscheinlich ?? 50;
+        if (chance < schwelle) { unsicher += p.betrag; continue; }
+      }
       bewegungen.push({
         datum, text: p.titel.slice(0, 60), betrag: p.betrag,
         art: p.betrag > 0 ? 'eingang' : 'fix', sicher: p.sicher,
+        kategorie: p.kategorie, firmaId: p.firmaId,
       });
       if (!p.sicher && p.betrag > 0) unsicher += p.betrag;
     }

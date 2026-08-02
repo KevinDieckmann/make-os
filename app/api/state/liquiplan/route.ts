@@ -25,11 +25,18 @@ export interface Planposten {
   /** Wie sicher ist der Posten? Unsicheres wird in der Vorschau getrennt gezeigt. */
   sicher: boolean;
   notiz?: string;
+  /** Wessen Geld — kdv | kdc | privat. Damit lässt sich je Firma planen. */
+  firmaId?: string;
+  /** Wofür — Personal, Miete, Steuern … für die Aufschlüsselung. */
+  kategorie?: string;
+  /** Nur im schlechten Fall (0) bis sicher (100) — für die Szenarien. */
+  wahrscheinlich?: number;
 }
 interface Datei { posten: Planposten[] }
 
 const RHYTHMEN: Rhythmus[] = ['einmalig', 'monatlich', 'quartal', 'jaehrlich'];
 const DATUM = /^\d{4}-\d{2}-\d{2}$/;
+const FIRMEN = ['kdv', 'kdc', 'kemaris', 'privat'];
 
 function sauber(p: Partial<Planposten>, i: number): Planposten | null {
   const titel = String(p.titel ?? '').trim().slice(0, 160);
@@ -45,6 +52,11 @@ function sauber(p: Partial<Planposten>, i: number): Planposten | null {
     bis: typeof p.bis === 'string' && DATUM.test(p.bis) ? p.bis : undefined,
     sicher: p.sicher !== false,
     notiz: p.notiz ? String(p.notiz).slice(0, 300) : undefined,
+    firmaId: FIRMEN.includes(String(p.firmaId)) ? String(p.firmaId) : undefined,
+    kategorie: p.kategorie ? String(p.kategorie).trim().slice(0, 40) : undefined,
+    wahrscheinlich: Number.isFinite(Number(p.wahrscheinlich))
+      ? Math.max(0, Math.min(100, Math.round(Number(p.wahrscheinlich))))
+      : undefined,
   };
 }
 
