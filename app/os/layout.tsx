@@ -5,10 +5,13 @@
 import { OsSidebar } from '@/components/os/OsSidebar';
 import { Taktgeber } from '@/components/os/Taktgeber';
 import { JarvisPanel } from '@/components/os/JarvisPanel';
+import { FehlerMelder } from '@/components/os/FehlerMelder';
 
 export default function OsLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="os-shell" style={{ display: 'flex', minHeight: '100vh', alignItems: 'stretch' }}>
+      {/* Schreibt Browser-Fehler mit, damit sie nicht nur auf dem Bildschirm stehen. */}
+      <FehlerMelder />
       <OsSidebar />
       <main style={{ flex: 1, minWidth: 0, height: '100vh', overflowY: 'auto', overflowX: 'hidden' }}>
         <Taktgeber />

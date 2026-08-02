@@ -4,6 +4,11 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
 import { wertVon, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
+import { localDay } from '@/lib/zeit';
+import { vorschau, monatlicheLast, type Firma, type Rechnung, type Zahlung, type Merkposten } from '@/lib/make-one/liquiditaet';
+
+/** Der Teil des Finanzplans, den die Liquiditäts-Vorschau braucht. */
+interface FinanzplanStand { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
 import {
   DEFAULT_FINANCE, MONTHS_DE, computeMetrics, eur,
   type FinanceState,
@@ -42,6 +47,30 @@ export function ControllingView() {
   // Konnte der Stand nicht geladen werden, wird NICHT gespeichert — sonst
   // würde eine einzige Eingabe die zwölf Monatszahlen mit Nullen überschreiben.
   const [ladeFehler, setLadeFehler] = useState(false);
+
+  // ── Liquidität: Finanzplan laden, Kontostände hier pflegbar machen ──
+  const [fplan, setFplan] = useState<FinanzplanStand | null>(null);
+  const [optimistisch, setOptimistisch] = useState(false);
+  const heute = localDay();
+  useEffect(() => {
+    fetch('/api/state/finanzplan')
+      .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
+      .then(setFplan)
+      .catch(err => console.error('[MAKE OS] Finanzplan für die Liquiditäts-Vorschau nicht ladbar.', err));
+  }, []);
+
+  function kontostandSetzen(firmaId: string, wert: string) {
+    if (!fplan) return;
+    const zahl = wert.trim() === '' ? null : Math.round(Number(wert));
+    if (zahl !== null && !Number.isFinite(zahl)) return;
+    const next = { ...fplan, firmen: fplan.firmen.map(f => f.id === firmaId ? { ...f, kontostand: zahl } : f) };
+    setFplan(next);
+    clearTimeout(fpTimer.current);
+    fpTimer.current = setTimeout(() => {
+      fetch('/api/state/finanzplan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
+    }, 600);
+  }
+  const fpTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
     fetch('/api/state/finance')
       .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
@@ -94,6 +123,87 @@ export function ControllingView() {
         </div>
         <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Kurs auf 1 Mio €.</h1>
         <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 680, lineHeight: 1.5 }}>KD Ventures → 1 Mio € Umsatz, min. 300k € Gewinn für dich & Malin. Trag deine Ist-Zahlen ein — Fortschritt, nötige Run-Rate und Runway rechnen sich live. Der Agent gibt den Lagebericht.</p>
+
+        {/* ── Liquidität: was ist wann da, und wann wird es eng ── */}
+        {fplan && (() => {
+          const v = vorschau(fplan.firmen, fplan.rechnungen, fplan.zahlungen, fplan.merkposten, heute, 12, optimistisch);
+          const fix = monatlicheLast(fplan.merkposten);
+          const maxAbs = Math.max(1, ...v.wochen.map(w => Math.abs(w.stand)));
+          return (
+            <div style={{ ...panel, borderTop: `2px solid ${v.engpass ? T.crit : T.accent}`, padding: '18px 22px', margin: '18px 0 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
+                <span style={lbl}>Liquidität · 12 Wochen</span>
+                <button onClick={() => setOptimistisch(!optimistisch)} title="Geplante Rechnungen mitrechnen, obwohl sie noch nicht gestellt sind"
+                  style={{ fontFamily: T.sans, fontSize: 11.5, padding: '3px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${optimistisch ? T.amber : T.line}`, background: optimistisch ? `${T.amber}1c` : 'transparent', color: optimistisch ? T.amber : T.muted }}>
+                  {optimistisch ? 'mit geplanten Rechnungen' : 'nur was gestellt ist'}
+                </button>
+                <Link href="/os/finanzen" style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: T.accentInk, textDecoration: 'none' }}>Rechnungen & Zahlungen ›</Link>
+              </div>
+
+              <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'baseline', margin: '10px 0 12px' }}>
+                <div>
+                  <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, textTransform: 'uppercase', letterSpacing: '.1em' }}>Heute auf den Konten</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{eur(v.start)}</div>
+                </div>
+                <div>
+                  <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, textTransform: 'uppercase', letterSpacing: '.1em' }}>Tiefpunkt</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: v.tiefpunkt.stand < 0 ? T.crit : v.tiefpunkt.stand < 2000 ? T.amber : T.ink, fontVariantNumeric: 'tabular-nums' }}>
+                    {eur(v.tiefpunkt.stand)}
+                  </div>
+                  <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>{v.tiefpunkt.label}</div>
+                </div>
+                <div>
+                  <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, textTransform: 'uppercase', letterSpacing: '.1em' }}>Rein / Raus</div>
+                  <div style={{ fontSize: 15, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                    <span style={{ color: T.accent }}>+{eur(v.summeEin)}</span> <span style={{ color: T.muted }}>/</span> <span style={{ color: T.amber }}>−{eur(v.summeAus)}</span>
+                  </div>
+                  {!!v.unsicher && <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.amber }}>davon {eur(v.unsicher)} unsicher</div>}
+                </div>
+              </div>
+
+              <div style={{ fontSize: 13, color: v.engpass ? T.crit : T.inkDim, lineHeight: 1.5, marginBottom: 12 }}>
+                {v.engpass
+                  ? <><b>Engpass {v.engpass.label}</b> — dann fehlen {eur(Math.abs(v.engpass.stand))}. Entweder kommt vorher Geld rein, oder Zahlungen müssen geschoben werden.</>
+                  : v.tiefpunkt.stand < 2000
+                    ? <>Es reicht, aber knapp: im Tief bleiben nur {eur(v.tiefpunkt.stand)}. Ein unerwarteter Posten kippt das.</>
+                    : <>Die nächsten 12 Wochen tragen. Tiefster Punkt {eur(v.tiefpunkt.stand)} ({v.tiefpunkt.label}).</>}
+                {!!fix.length && <> Monatlich fest: {fix.map(f => `${f.text} ${eur(f.betrag)}`).join(' · ')}.</>}
+              </div>
+
+              {/* Verlauf als Balken — die Nulllinie ist der Boden */}
+              <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 90, marginBottom: 6 }}>
+                {v.wochen.map(w => {
+                  const hoehe = Math.max(3, Math.round((Math.abs(w.stand) / maxAbs) * 84));
+                  const farbe = w.stand < 0 ? T.crit : w.stand < 2000 ? T.amber : T.accent;
+                  return (
+                    <div key={w.von} title={`${w.label}: ${eur(w.stand)}${w.bewegungen.length ? `\n${w.bewegungen.map(b => `${b.datum.slice(8)}.${b.datum.slice(5, 7)}. ${b.betrag > 0 ? '+' : ''}${b.betrag} € ${b.text}`).join('\n')}` : ''}`}
+                      style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%', cursor: 'default' }}>
+                      <div style={{ height: hoehe, background: farbe, opacity: w.bewegungen.length ? 0.85 : 0.35, borderRadius: '3px 3px 0 0' }} />
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: 3, fontFamily: T.mono, fontSize: 9, color: T.muted }}>
+                {v.wochen.map((w, i) => <div key={w.von} style={{ flex: 1, textAlign: 'center' }}>{i % 2 === 0 ? w.von.slice(8) + '.' + w.von.slice(5, 7) + '.' : ''}</div>)}
+              </div>
+
+              {/* Kontostände direkt hier pflegen — sie sind der Startpunkt der Rechnung */}
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.lineSoft}` }}>
+                {fplan.firmen.map(f => (
+                  <label key={f.id} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{f.name}{f.stand ? ` · ${f.stand.slice(8)}.${f.stand.slice(5, 7)}.` : ''}</span>
+                    <input type="number" value={f.kontostand ?? ''} onChange={e => kontostandSetzen(f.id, e.target.value)}
+                      placeholder="Kontostand" aria-label={`Kontostand ${f.name}`}
+                      style={{ width: 130, background: T.void, border: `1px solid ${T.line}`, borderRadius: 8, padding: '6px 10px', color: T.ink, fontFamily: T.mono, fontSize: 13, outline: 'none' }} />
+                  </label>
+                ))}
+                <div style={{ alignSelf: 'flex-end', fontSize: 11.5, color: T.muted, paddingBottom: 6 }}>
+                  Diese Zahlen sind der Startpunkt der Vorschau — je aktueller, desto ehrlicher die Linie.
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Ziel-Fortschritt */}
         <div style={{ ...panel, borderTop: `2px solid ${T.accent}`, padding: '18px 22px', margin: '18px 0 14px' }}>
