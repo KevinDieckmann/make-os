@@ -7,7 +7,7 @@ import { Rich } from '@/components/os/Rich';
 import { Seitenkopf } from './Seitenkopf';
 
 const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
+const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
 
 const FORMATS = [
   { id: 'linkedin', label: 'LinkedIn-Post', hint: 'Hook + Haltung, Einladung zum Gespräch' },
@@ -43,7 +43,7 @@ export function ContentView() {
 
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
         <Link href="/os/agenten" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Agenten</Link>
           <Seitenkopf
             rubrik={<>Content-/Brand-Agent <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, border: `1px solid ${T.accentInk}55`, borderRadius: 5, padding: '2px 7px' }}>live · Entwurf</span></>}
@@ -64,9 +64,9 @@ export function ContentView() {
 
         {/* Eingabe */}
         <div style={{ ...lbl, margin: '18px 0 8px' }}>Thema</div>
-        <input value={thema} onChange={e => setThema(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) generate(); }} placeholder={`Worum geht's im ${activeFmt?.label}?`} style={{ width: '100%', background: T.panel2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.ink, fontFamily: T.sans, fontSize: 14, padding: '11px 14px', outline: 'none' }} />
+        <input value={thema} onChange={e => setThema(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) generate(); }} placeholder={`Worum geht's im ${activeFmt?.label}?`} style={{ width: '100%', background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', color: T.ink, fontFamily: T.sans, fontSize: 14, padding: '11px 14px', outline: 'none' }} />
         <div style={{ ...lbl, margin: '12px 0 8px' }}>Notizen / Fakten <span style={{ textTransform: 'none', color: T.muted }}>(optional)</span></div>
-        <textarea value={notizen} onChange={e => setNotizen(e.target.value)} rows={3} placeholder="Kernaussagen, Zahlen, Details, die rein sollen — der Agent erfindet nichts dazu." style={{ width: '100%', background: T.panel2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.ink, fontFamily: T.sans, fontSize: 13.5, lineHeight: 1.5, padding: '11px 14px', outline: 'none', resize: 'vertical' }} />
+        <textarea value={notizen} onChange={e => setNotizen(e.target.value)} rows={3} placeholder="Kernaussagen, Zahlen, Details, die rein sollen — der Agent erfindet nichts dazu." style={{ width: '100%', background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', color: T.ink, fontFamily: T.sans, fontSize: 13.5, lineHeight: 1.5, padding: '11px 14px', outline: 'none', resize: 'vertical' }} />
 
         <button onClick={generate} disabled={busy || !thema.trim()} style={{ marginTop: 14, fontFamily: T.sans, fontSize: 13.5, fontWeight: 700, padding: '11px 20px', borderRadius: 9, border: 'none', cursor: busy || !thema.trim() ? 'default' : 'pointer', background: busy || !thema.trim() ? T.line : T.accent, color: busy || !thema.trim() ? T.muted : '#04110F' }}>
           {busy ? 'entwerfe …' : draft ? 'Neu entwerfen' : 'Entwurf schreiben'}

@@ -12,7 +12,7 @@ interface Hebel { saeule?: string; warum?: string; schritt?: string }
 interface Analyse { lage?: string; hebel?: Hebel; staerke?: string; messluecke?: string }
 
 const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
+const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
 const col = (v: number | null) => (v == null ? T.muted : v >= 70 ? T.accent : v >= 45 ? T.amber : T.crit);
 
 function Ring({ v, size = 132 }: { v: number | null; size?: number }) {
@@ -228,7 +228,7 @@ export function PerformanceView() {
 
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
         <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
 
         {!idx ? (

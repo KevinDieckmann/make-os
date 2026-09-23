@@ -14,7 +14,7 @@ import { THEME as T } from '@/lib/make-one/os-data';
 import { ZONEN } from '@/lib/make-one/onboarding-data';
 import { Seitenkopf } from './Seitenkopf';
 
-const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
+const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
 const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const ZONENFARBE: Record<string, string> = { gruen: T.accent, gelb: T.amber, rot: T.crit };
 

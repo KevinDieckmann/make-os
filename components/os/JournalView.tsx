@@ -10,7 +10,7 @@ import { Seitenkopf } from './Seitenkopf';
 interface Entry { text?: string; mood?: number; energy?: number; stress?: number; haut?: string; ruecken?: string; flags?: string[]; at?: string; }
 type Journal = Record<string, Entry>;
 const ymd = (d: Date) => localDay(d);
-const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
+const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
 const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 
 const FLAGS: { id: string; label: string }[] = [
@@ -86,7 +86,7 @@ export function JournalView() {
 
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
         <Link href="/os/gesundheit" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Gesundheit</Link>
         <Seitenkopf
           rubrik={<>Journal · dein Datenweg</>}
@@ -115,7 +115,7 @@ export function JournalView() {
           <div>
             <div style={{ fontSize: 12.5, color: T.inkDim, marginBottom: 8 }}>Was war heute? Was ist dir aufgefallen?</div>
             <textarea value={entry.text ?? ''} onChange={e => patch({ text: e.target.value })} rows={5} placeholder="Frei schreiben …"
-              style={{ width: '100%', background: T.panel2, border: `1px solid ${T.line}`, borderRadius: 10, padding: '12px 14px', color: T.ink, fontSize: 14, fontFamily: T.sans, resize: 'vertical', lineHeight: 1.55, outline: 'none' }} />
+              style={{ width: '100%', background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '12px 14px', color: T.ink, fontSize: 14, fontFamily: T.sans, resize: 'vertical', lineHeight: 1.55, outline: 'none' }} />
           </div>
         </div>
 

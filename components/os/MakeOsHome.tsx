@@ -62,7 +62,7 @@ function Gauge({ value, size = 54 }: { value: number; size?: number }) {
 }
 
 const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 16 };
+const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
 const wbtn = { fontFamily: T.mono, fontSize: 11, color: T.inkDim, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer' } as const;
 
 // ─── Widget-Board: das Dashboard gehört Kevin ───────────────────────────────

@@ -288,7 +288,7 @@ export function Startflaeche() {
 
         {/* Eigene Kachel anlegen: jede Seite des Systems kann nach vorn */}
         {bearbeiten && zufuegen && (
-          <div style={{ background: C.flaeche, border: `1px solid ${C.linie}`, borderRadius: RADIUS.behaelter, padding: A.l, marginBottom: A.m }}>
+          <div style={{ background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: A.l, marginBottom: A.m }}>
             <div style={{ ...MIKRO, marginBottom: A.s }}>Was soll vorne draufkommen?</div>
             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', maxHeight: 190, overflowY: 'auto' }}>
               {ALLE_SEITEN

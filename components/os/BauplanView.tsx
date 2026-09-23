@@ -12,7 +12,7 @@ import { Zeitstrahl, type StrahlMarker, type StrahlTick } from './Zeitstrahl';
 import { Seitenkopf } from './Seitenkopf';
 
 const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
+const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
 
 const katColor = (k: BacklogKat) => (k === 'anbindung' ? '#4A6CF7' : k === 'agent' ? T.accent : k === 'qualitaet' ? T.accentInk : '#AC9D80');
 const blockColor = (b: BacklogBlock) => (b === 'frei' ? T.accent : b === 'kevin' ? T.amber : T.muted);
@@ -115,7 +115,7 @@ export function BauplanView() {
 
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 920, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
+      <div style={{ maxWidth: 920, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
         <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
 
         {/* Lieber ehrlich stehenbleiben als still eine leere Liste speichern. */}

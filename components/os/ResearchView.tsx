@@ -54,7 +54,7 @@ export function ResearchView() {
             <div style={{ ...lbl, marginBottom: 9 }}>Beispiele</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {SUGGEST.map(s => (
-                <button key={s} onClick={() => run(s)} style={{ textAlign: 'left', fontFamily: T.sans, fontSize: 13, color: T.inkDim, background: T.panel, border: `1px solid ${T.line}`, borderRadius: 10, padding: '11px 14px', cursor: 'pointer', lineHeight: 1.4 }}>
+                <button key={s} onClick={() => run(s)} style={{ textAlign: 'left', fontFamily: T.sans, fontSize: 13, color: T.inkDim, background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '11px 14px', cursor: 'pointer', lineHeight: 1.4 }}>
                   <span style={{ color: T.accent, marginRight: 8 }}>›</span>{s}
                 </button>
               ))}
@@ -69,7 +69,7 @@ export function ResearchView() {
                 <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, flex: '0 0 auto', marginTop: 3 }}>Du</span>
                 <div style={{ fontSize: 14.5, fontWeight: 600, color: T.ink, lineHeight: 1.45 }}>{it.q}</div>
               </div>
-              <div style={{ background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14, padding: '14px 18px' }}>
+              <div style={{ background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '14px 18px' }}>
                 {it.loading ? (
                   <div style={{ fontFamily: T.mono, fontSize: 12, color: T.muted }}>recherchiere im Web …</div>
                 ) : (
@@ -86,7 +86,7 @@ export function ResearchView() {
           <div ref={endRef} />
         </div>
 
-        <div style={{ position: 'sticky', bottom: 16, display: 'flex', gap: 8, background: T.panel2, border: `1px solid ${T.line}`, borderRadius: 12, padding: 8 }}>
+        <div style={{ position: 'sticky', bottom: 16, display: 'flex', gap: 8, background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: 8 }}>
           <input
             value={q}
             onChange={e => setQ(e.target.value)}

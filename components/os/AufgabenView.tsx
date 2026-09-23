@@ -26,7 +26,7 @@ const PRIO_RANG: Record<Priority, number> = { critical: 0, high: 1, medium: 2, l
 
 interface Reminder { id: string; list: string; title: string; due?: string; priority: number; }
 
-const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
+const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
 const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 
 const PRIO: Record<Priority, { c: string; t: string }> = {
@@ -529,7 +529,7 @@ export function AufgabenView() {
           // damit Malin und ich darin richtig arbeiten können." ───
           // Aufbau: Notizen zuerst (die Information), darunter ein Raster mit
           // fester Label-Spalte — alles fluchtet, nichts stapelt sich mehr.
-          <div style={{ margin: '0 16px 13px 48px', background: T.panel2, border: `1px solid ${T.line}`, borderRadius: 12, padding: '13px 15px', display: 'flex', flexDirection: 'column', gap: 11 }}>
+          <div style={{ margin: '0 16px 13px 48px', background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '13px 15px', display: 'flex', flexDirection: 'column', gap: 11 }}>
 
             {/* 1 · Notizen — das Feld, das gefehlt hat. Speichert beim Verlassen. */}
             <textarea

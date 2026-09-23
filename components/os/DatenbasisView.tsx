@@ -14,7 +14,7 @@ import { localDay } from '@/lib/zeit';
 import { Seitenkopf } from './Seitenkopf';
 
 const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
+const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
 
 type Ton = 'ok' | 'acht' | 'fehlt' | 'neutral';
 const TON_FARBE: Record<Ton, string> = { ok: T.accent, acht: T.amber, fehlt: T.crit, neutral: T.muted };
@@ -108,7 +108,7 @@ export function DatenbasisView() {
 
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div className="stagger" style={{ maxWidth: 860, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
+      <div className="stagger" style={{ maxWidth: 860, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
         <Seitenkopf
           rubrik={<>Datenbasis</>}
           titel={<>Was das System trägt.</>}

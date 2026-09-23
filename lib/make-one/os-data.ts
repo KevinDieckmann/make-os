@@ -13,7 +13,8 @@ export const THEME = {
   accent: '#58D9CD', accentSoft: 'rgba(88,217,205,.14)', accentInk: '#7FE6DC',
   amber: '#FFC93C', crit: '#FF5C5C',
   track: 'rgba(255,255,255,.08)',
-  mono: 'ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace',
+  // 24.09.: T.mono trug Labels und Zahlen — als Terminal-Schrift. Jetzt die Display-Schrift.
+  mono: 'var(--schrift-display),-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif',
   sans: 'var(--schrift-text),-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif',
 };
 

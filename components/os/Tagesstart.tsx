@@ -83,7 +83,7 @@ export function Tagesstart() {
   if (!st) return null;
 
   const card = {
-    background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14,
+    background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)',
     borderLeft: `3px solid ${loop ? formColor(loop.tagesform) : T.accent}`,
     padding: '16px 20px',
   };

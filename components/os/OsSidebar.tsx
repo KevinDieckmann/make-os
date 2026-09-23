@@ -313,7 +313,7 @@ export function OsSidebar() {
 
       {palette && (
         <div onClick={() => setPalette(false)} style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '14vh' }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: 'min(560px, 92vw)', background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14, overflow: 'hidden' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: 'min(560px, 92vw)', background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', overflow: 'hidden' }}>
             <input
               ref={inputRef} value={q}
               onChange={e => { setQ(e.target.value); setSel(0); }}

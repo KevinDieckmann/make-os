@@ -288,7 +288,7 @@ export function WochenplanView() {
 
         {/* Ziele im Blick — die Woche plant man gegen Ziele, nicht ins Blaue */}
         {(ziele.monat.length > 0 || ziele.quartal.length > 0) && (
-          <div style={{ background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14, padding: '10px 14px', marginBottom: 10, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '10px 14px', marginBottom: 10, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ ...lbl }}>Ziele</span>
             {(ziele.fokus?.woche || ziele.fokus?.monat) && <span style={{ fontSize: 12.5, fontWeight: 700, color: T.accent }}>◎ {ziele.fokus?.woche || ziele.fokus?.monat}</span>}
             {[...ziele.monat.filter(z => !z.erledigt).slice(0, 3).map(z => ({ ...z, h: 'M' })), ...ziele.quartal.filter(z => !z.erledigt).slice(0, 2).map(z => ({ ...z, h: 'Q' }))].map((z, i) => (
@@ -328,7 +328,7 @@ export function WochenplanView() {
         )}
 
         {/* Eigener Block: Titel, Dauer, Art — dann in den Tag klicken */}
-        <div style={{ background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14, padding: '12px 14px', marginBottom: 10 }}>
+        <div style={{ background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '12px 14px', marginBottom: 10 }}>
           <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={lbl}>Eigener Block</span>
             <input value={neuTitel} onChange={e => setNeuTitel(e.target.value)}
@@ -381,7 +381,7 @@ export function WochenplanView() {
         </div>
 
         {/* Leiste: Bausteine · Routinen · Aufgaben */}
-        <div style={{ background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14, padding: '12px 14px', marginBottom: 14 }}>
+        <div style={{ background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '12px 14px', marginBottom: 14 }}>
           <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
             <div>
               <div style={{ ...lbl, marginBottom: 7 }}>Bausteine</div>

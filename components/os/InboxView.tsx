@@ -65,7 +65,7 @@ function initials(name: string): string {
 const srcColor = (s: Source) => (s === 'apple' ? T.accent : T.amber);
 const srcLabel = (m: Msg) => (m.source === 'apple' ? m.account : 'M365 · KEMARIS');
 
-const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
+const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
 const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 
 export function InboxView() {
@@ -610,7 +610,7 @@ export function InboxView() {
 
         {/* Suche */}
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="Suchen — Absender, Betreff, Inhalt …" aria-label="Inbox durchsuchen"
-          style={{ width: '100%', background: T.panel, border: `1px solid ${T.line}`, borderRadius: 10, padding: '10px 14px', color: T.ink, fontSize: 13, fontFamily: T.sans, outline: 'none', marginBottom: 14 }} />
+          style={{ width: '100%', background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '10px 14px', color: T.ink, fontSize: 13, fontFamily: T.sans, outline: 'none', marginBottom: 14 }} />
 
         {/* Filter */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
@@ -828,7 +828,7 @@ export function InboxView() {
                     <div>
                       <div style={{ ...lbl, marginBottom: 8 }}><span style={{ color: T.accent }}>MAKE</span> · Antwort-Entwurf (editierbar)</div>
                       <textarea value={draftText} onChange={e => setDraftText(e.target.value)} rows={8} aria-label="Antwort-Entwurf"
-                        style={{ width: '100%', background: T.panel2, border: `1px solid ${T.line}`, borderRadius: 10, padding: '12px 14px', color: T.ink, fontSize: 13.5, fontFamily: T.sans, resize: 'vertical', lineHeight: 1.55, outline: 'none' }} />
+                        style={{ width: '100%', background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '12px 14px', color: T.ink, fontSize: 13.5, fontFamily: T.sans, resize: 'vertical', lineHeight: 1.55, outline: 'none' }} />
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10, alignItems: 'center' }}>
                         <button onClick={() => openInMail(selMsg)} style={btnPri}>In Apple Mail öffnen →</button>
                         <button onClick={() => makeDraft(selMsg)} style={btn}>↻ Neu entwerfen</button>

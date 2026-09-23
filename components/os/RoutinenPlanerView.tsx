@@ -15,7 +15,7 @@ import { Seitenkopf } from './Seitenkopf';
 interface Routine { id: string; label: string; wann: 'morgen' | 'tag' | 'abend'; kategorie: 'gesundheit' | 'leben' | 'business'; dauerMin: number; aktiv: boolean }
 
 const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
+const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
 
 const WANN: { id: Routine['wann']; label: string; hint: string }[] = [
   { id: 'morgen', label: 'Morgens', hint: 'der Start — vor allem anderen' },
@@ -73,7 +73,7 @@ export function RoutinenPlanerView() {
 
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
+      <div style={{ maxWidth: 860, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
         <PlanerLeiste aktiv="routinen" />
         <Seitenkopf
           rubrik={<>Routine-Planer</>}
@@ -87,13 +87,13 @@ export function RoutinenPlanerView() {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <input value={neu} onChange={e => setNeu(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }}
               placeholder="z. B. 10 Min Spazieren nach dem Mittag …"
-              style={{ flex: 1, minWidth: 220, background: T.panel2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.ink, fontFamily: T.sans, fontSize: 13.5, padding: '10px 13px', outline: 'none' }} />
+              style={{ flex: 1, minWidth: 220, background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', color: T.ink, fontFamily: T.sans, fontSize: 13.5, padding: '10px 13px', outline: 'none' }} />
             <select value={neuWann} onChange={e => setNeuWann(e.target.value as Routine['wann'])}
-              style={{ background: T.panel2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.ink, fontFamily: T.sans, fontSize: 13, padding: '9px 11px', outline: 'none' }}>
+              style={{ background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', color: T.ink, fontFamily: T.sans, fontSize: 13, padding: '9px 11px', outline: 'none' }}>
               {WANN.map(w => <option key={w.id} value={w.id}>{w.label}</option>)}
             </select>
             <select value={neuKat} onChange={e => setNeuKat(e.target.value as Routine['kategorie'])}
-              style={{ background: T.panel2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.ink, fontFamily: T.sans, fontSize: 13, padding: '9px 11px', outline: 'none' }}>
+              style={{ background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', color: T.ink, fontFamily: T.sans, fontSize: 13, padding: '9px 11px', outline: 'none' }}>
               {KAT.map(k => <option key={k.id} value={k.id}>{k.label}</option>)}
             </select>
             <button onClick={add} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 700, padding: '10px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', background: T.accent, color: '#04110F' }}>+ Routine</button>

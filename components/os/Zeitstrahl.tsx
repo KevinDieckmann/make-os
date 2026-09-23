@@ -71,7 +71,7 @@ export function Zeitstrahl({ von, bis, marker, ticks }: { von: string; bis: stri
   const hoehe = achseY + FUSS - 12;
 
   return (
-    <div style={{ background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14, padding: '16px 18px 6px', marginBottom: 12 }}>
+    <div style={{ background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '16px 18px 6px', marginBottom: 12 }}>
       <div ref={boxRef} style={{ position: 'relative', height: hoehe }}>
 
         {/* Heute-Hairline durch den Pill-Raum — leise, hinter allem */}

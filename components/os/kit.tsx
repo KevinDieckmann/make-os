@@ -11,7 +11,7 @@ import { Seitenkopf } from './Seitenkopf';
 
 // ── Basis-Styles ──
 export const lbl: CSSProperties = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: T.muted };
-export const panelStyle: CSSProperties = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
+export const panelStyle: CSSProperties = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
 
 export function Lbl({ children, color, style }: { children: ReactNode; color?: string; style?: CSSProperties }) {
   return <div style={{ ...lbl, ...(color ? { color } : {}), ...style }}>{children}</div>;
@@ -48,7 +48,7 @@ export function AgentHeader({ label, badge, badgeColor, title, children, backHre
 export function Page({ children, maxWidth = 900 }: { children: ReactNode; maxWidth?: number }) {
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>{children}</div>
+      <div style={{ maxWidth, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>{children}</div>
     </div>
   );
 }

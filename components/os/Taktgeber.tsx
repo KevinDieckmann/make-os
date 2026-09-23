@@ -87,7 +87,7 @@ export function Taktgeber() {
     return (
       <div style={{
         position: 'fixed', bottom: 18, right: 18, zIndex: 90, maxWidth: 340,
-        background: T.panel, border: `1px solid ${T.line}`, borderRadius: 12,
+        background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)',
         padding: '13px 16px', boxShadow: '0 12px 40px rgba(0,0,0,.45)',
       }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>

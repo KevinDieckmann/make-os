@@ -23,7 +23,7 @@ interface Routine { id: string; label: string; wann: 'morgen' | 'tag' | 'abend';
 interface Fix { titel: string; startMin: number; dauerMin: number }
 
 const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
+const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
 const KATEGORIE_FARBE: Record<string, string> = { gesundheit: '#58D9CD', leben: '#C77DFF', business: '#4A6CF7' };
 const mm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const snap = (min: number) => Math.round(min / 15) * 15;
@@ -271,7 +271,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
 
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 1060, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
+      <div style={{ maxWidth: 1060, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
         <PlanerLeiste aktiv="tag" tag={heute} />
         <div style={lbl}>Tagesplanung · {datum}</div>
 
@@ -318,7 +318,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
               </div>
               {/* Tagesspalte */}
               <div onDragOver={e => e.preventDefault()} onDrop={dropAufKalender}
-                style={{ position: 'relative', height: H, flex: 1, background: T.panel, border: `1px solid ${T.line}`, borderRadius: 12, overflow: 'hidden' }}>
+                style={{ position: 'relative', height: H, flex: 1, background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', overflow: 'hidden' }}>
                 {stunden.map(h => (
                   <div key={h} style={{ position: 'absolute', top: (h * 60 - START) * PX, left: 0, right: 0, borderTop: `1px solid ${T.line}55` }} />
                 ))}
