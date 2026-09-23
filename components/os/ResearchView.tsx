@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
 import { Rich } from '@/components/os/Rich';
+import { Seitenkopf } from './Seitenkopf';
 
 interface Item { id: number; q: string; a: string; webUsed?: boolean; loading?: boolean; }
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const SUGGEST = [
   'Wettbewerber für ein Controlling-Cockpit (CapOS) im deutschen KMU-Markt',
   'Wie ist BSFZ-Forschungszulage 2026 geregelt — Sätze & Voraussetzungen?',
@@ -42,12 +43,11 @@ export function ResearchView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 40px' }}>
         <Link href="/os/agenten" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Agenten</Link>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <div style={lbl}>Research-Agent</div>
-          <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.accent, border: `1px solid ${T.accent}55`, borderRadius: 5, padding: '2px 7px' }}>live · autonom</span>
-        </div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Recherchiere mit Quellen.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 620, lineHeight: 1.5 }}>Stell eine Frage — Markt, Wettbewerb, Förderung, Prospects. Ich suche im Web und antworte belegt. Read-only, keine Freigabe nötig.</p>
+          <Seitenkopf
+            rubrik={<>Research-Agent <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, border: `1px solid ${T.accent}55`, borderRadius: 5, padding: '2px 7px' }}>live · autonom</span></>}
+            titel={<>Recherchiere mit Quellen.</>}
+            satz={<>Stell eine Frage — Markt, Wettbewerb, Förderung, Prospects. Ich suche im Web und antworte belegt. Read-only, keine Freigabe nötig.</>}
+          />
 
         {items.length === 0 && (
           <div style={{ marginTop: 22 }}>
@@ -75,7 +75,7 @@ export function ResearchView() {
                 ) : (
                   <>
                     <Rich text={it.a} />
-                    <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, marginTop: 12, paddingTop: 10, borderTop: `1px solid ${T.lineSoft}` }}>
+                    <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 12, paddingTop: 10, borderTop: `1px solid ${T.lineSoft}` }}>
                       {it.webUsed ? '⌁ mit Web-Suche' : '⌁ ohne Live-Suche beantwortet'}
                     </div>
                   </>

@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNachspeichern } from '@/lib/make-one/nachspeichern';
 import { THEME as T } from '@/lib/make-one/os-data';
+import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, RADIUS, MIKRO } from '@/lib/make-one/design';
+import { Held } from './Held';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { LIVE_AGENTS } from '@/lib/make-one/agents-data';
@@ -63,7 +66,7 @@ const srcColor = (s: Source) => (s === 'apple' ? T.accent : T.amber);
 const srcLabel = (m: Msg) => (m.source === 'apple' ? m.account : 'M365 · KEMARIS');
 
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 
 export function InboxView() {
   const { state, dispatch } = useTasks();
@@ -116,7 +119,28 @@ export function InboxView() {
       return true;
     }).slice(0, 5);
   }, [laeufe]);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Zwei-Fenster-Fundament: nur die angefassten Mails gehen raus, nicht die
+  // ganze Status-Karte — sonst macht ein Häkchen von Kevin Malins gerade
+  // weggearbeitete Post wieder auf. Gesammelt und gebündelt geschickt, damit
+  // ein schneller Tastatur-Durchlauf nicht pro Mail einen Aufruf macht.
+  /** Schon vorhandene Aufgabe beim Übernehmen — kurzer Hinweis statt Doppel. */
+  const [doppelt, setDoppelt] = useState<{ titel: string; id: string } | null>(null);
+  const offeneOps = useRef<Map<string, { id: string; status: string | null; bis?: string }>>(new Map());
+  const spaeter = useNachspeichern<null>(() => {
+    const ops = Array.from(offeneOps.current.values());
+    offeneOps.current.clear();
+    if (!ops.length) return;
+    fetch('/api/state/inbox', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ops }), keepalive: true,
+    }).catch(() => { /* offline — nächster Klick versucht es erneut */ });
+  }, 300);
+
+  /** Eine Mail vormerken und das gebündelte Schreiben anstoßen. */
+  const merken = (id: string, s: string | null, bis?: string) => {
+    offeneOps.current.set(id, { id, status: s, bis });
+    spaeter(null);
+  };
   const triageAngefragt = useRef<Set<string>>(new Set());
 
   // ── laden: Apple (live) + M365 (Snapshot) + Status ──
@@ -183,14 +207,8 @@ export function InboxView() {
 
   // ── Status setzen + persistieren (snoozed trägt ein bis-Datum) ──
   function setMsgStatus(id: string, s: string, bis?: string) {
-    setStatus(prev => {
-      const next = { ...prev, [id]: { status: s, at: new Date().toISOString(), ...(bis ? { bis } : {}) } };
-      clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => {
-        fetch('/api/state/inbox', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
-      }, 300);
-      return next;
-    });
+    setStatus({ ...status, [id]: { status: s, at: new Date().toISOString(), ...(bis ? { bis } : {}) } });
+    merken(id, s, bis);
   }
   const statusOf = (id: string) => status[id]?.status ?? 'offen';
   const heuteTag = localDay();
@@ -206,7 +224,19 @@ export function InboxView() {
   const istWiedervorlage = (id: string) => status[id]?.status === 'snoozed' && !!status[id]?.bis && status[id]!.bis! <= heuteTag;
 
   // ── „→ Aufgabe" aus einer Mail ──
+  // Duplikat-Wache: zu zweit landet dieselbe Mail schnell zweimal im Board —
+  // genau so entstand „AW: Absage Termin CT Spritze" doppelt (31.07., eine
+  // Minute Abstand). Gibt es die Aufgabe schon, wird sie nur markiert.
   function toTask(m: Msg) {
+    const schonDa = state.tasks.find(t =>
+      t.status !== 'done'
+      && t.title.trim().toLowerCase() === m.subject.trim().toLowerCase()
+      && (t.description ?? '').startsWith('Aus Inbox'));
+    if (schonDa) {
+      setDoppelt({ titel: m.subject, id: schonDa.id });
+      setMsgStatus(m.id, 'aufgabe');
+      return;
+    }
     const projectId = state.projects[0]?.id ?? '';
     dispatch({
       type: 'ADD_TASK',
@@ -288,16 +318,10 @@ export function InboxView() {
   function rauschenAufraeumen() {
     const rausch = msgs.filter(m => istOffen(m.id) && triage[fpOf(m)]?.stufe === 'rauschen');
     if (!rausch.length) return;
-    setStatus(prev => {
-      const next = { ...prev };
-      const at = new Date().toISOString();
-      rausch.forEach(m => { next[m.id] = { status: 'erledigt', at }; });
-      clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => {
-        fetch('/api/state/inbox', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
-      }, 300);
-      return next;
-    });
+    const next = { ...status };
+    const at = new Date().toISOString();
+    rausch.forEach(m => { next[m.id] = { status: 'erledigt', at }; merken(m.id, 'erledigt'); });
+    setStatus(next);
   }
 
   // Tastatur-Tempo im Durchlauf: E/A/D/S + Esc — nie schneller triagiert.
@@ -469,9 +493,9 @@ export function InboxView() {
                     <div style={{ width: 34, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, color: T.void, background: srcColor(zeroMail.source), flex: '0 0 auto' }}>{initials(zeroMail.sender)}</div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{zeroMail.sender}</div>
-                      <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{srcLabel(zeroMail)} · {relTime(zeroMail.receivedAt)}</div>
+                      <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{srcLabel(zeroMail)} · {relTime(zeroMail.receivedAt)}</div>
                     </div>
-                    {triage[fpOf(zeroMail)]?.stufe === 'wichtig' && <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 9.5, color: STUFE_META.wichtig.farbe, border: `1px solid ${STUFE_META.wichtig.farbe}44`, borderRadius: 5, padding: '2px 8px', flex: '0 0 auto' }}>WICHTIG</span>}
+                    {triage[fpOf(zeroMail)]?.stufe === 'wichtig' && <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: STUFE_META.wichtig.farbe, border: `1px solid ${STUFE_META.wichtig.farbe}44`, borderRadius: 5, padding: '2px 8px', flex: '0 0 auto' }}>WICHTIG</span>}
                   </div>
                   <h2 style={{ fontSize: 16.5, fontWeight: 600, lineHeight: 1.35, marginBottom: 6 }}>{zeroMail.subject}</h2>
                   {triage[fpOf(zeroMail)]?.zeile && <div style={{ fontSize: 12.5, color: T.accentInk, marginBottom: 10 }}>✨ {triage[fpOf(zeroMail)]!.zeile}</div>}
@@ -481,11 +505,11 @@ export function InboxView() {
                 </div>
                 {/* Die EINE Entscheidung */}
                 <div style={{ padding: '12px 18px 14px', borderTop: `1px solid ${T.line}`, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button onClick={() => zeroEntscheid('erledigt')} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 700, padding: '9px 15px', borderRadius: 9, border: 'none', background: T.accent, color: '#04110F', cursor: 'pointer' }}>✓ Erledigt <span style={{ opacity: .6, fontFamily: T.mono, fontSize: 10 }}>E</span></button>
-                  <button onClick={() => zeroEntscheid('aufgabe')} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 600, padding: '9px 15px', borderRadius: 9, border: `1px solid ${T.accent}66`, background: 'transparent', color: T.accentInk, cursor: 'pointer' }}>→ Aufgabe <span style={{ opacity: .6, fontFamily: T.mono, fontSize: 10 }}>A</span></button>
-                  <button onClick={() => zeroEntscheid('delegiert')} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 600, padding: '9px 15px', borderRadius: 9, border: `1px solid ${T.line}`, background: 'transparent', color: T.inkDim, cursor: 'pointer' }}>Delegieren <span style={{ opacity: .6, fontFamily: T.mono, fontSize: 10 }}>D</span></button>
+                  <button onClick={() => zeroEntscheid('erledigt')} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 700, padding: '9px 15px', borderRadius: 9, border: 'none', background: T.accent, color: '#04110F', cursor: 'pointer' }}>✓ Erledigt <span style={{ opacity: .6, fontFamily: T.mono, fontSize: 11 }}>E</span></button>
+                  <button onClick={() => zeroEntscheid('aufgabe')} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 600, padding: '9px 15px', borderRadius: 9, border: `1px solid ${T.accent}66`, background: 'transparent', color: T.accentInk, cursor: 'pointer' }}>→ Aufgabe <span style={{ opacity: .6, fontFamily: T.mono, fontSize: 11 }}>A</span></button>
+                  <button onClick={() => zeroEntscheid('delegiert')} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 600, padding: '9px 15px', borderRadius: 9, border: `1px solid ${T.line}`, background: 'transparent', color: T.inkDim, cursor: 'pointer' }}>Delegieren <span style={{ opacity: .6, fontFamily: T.mono, fontSize: 11 }}>D</span></button>
                   <button onClick={zeroAntworten} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 600, padding: '9px 15px', borderRadius: 9, border: `1px solid ${T.line}`, background: 'transparent', color: T.inkDim, cursor: 'pointer' }}>✍ Antworten</button>
-                  <button onClick={() => zeroEntscheid('uebersprungen')} style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 13, fontWeight: 600, padding: '9px 15px', borderRadius: 9, border: `1px solid ${T.line}`, background: 'transparent', color: T.muted, cursor: 'pointer' }}>Überspringen <span style={{ opacity: .6, fontFamily: T.mono, fontSize: 10 }}>S</span></button>
+                  <button onClick={() => zeroEntscheid('uebersprungen')} style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 13, fontWeight: 600, padding: '9px 15px', borderRadius: 9, border: `1px solid ${T.line}`, background: 'transparent', color: T.muted, cursor: 'pointer' }}>Überspringen <span style={{ opacity: .6, fontFamily: T.mono, fontSize: 11 }}>S</span></button>
                 </div>
               </>
             ) : (
@@ -511,33 +535,78 @@ export function InboxView() {
       )}
       <div style={{ maxWidth: 1240, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 48px' }}>
 
-        {/* Kopf */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 18 }}>
-          <div>
-            <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
-            <div style={lbl}>Inbox · ein Postfach für alles</div>
-            <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', marginTop: 6 }}>
-              {openCount} {openCount === 1 ? 'Nachricht' : 'Nachrichten'} offen
-            </h1>
+        {/* Diese Mail lag schon als Aufgabe im Board — kein zweites Mal anlegen. */}
+        {doppelt && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: `${T.amber}12`, border: `1px solid ${T.amber}44`, borderRadius: 10, padding: '9px 13px', marginBottom: 14 }}>
+            <span style={{ fontSize: 13, color: T.amber }}>
+              Lag schon als Aufgabe im Board: <b>{doppelt.titel.slice(0, 70)}</b> — Mail als erledigt markiert, keine zweite Aufgabe angelegt.
+            </span>
+            <Link href="/os/aufgaben" style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, textDecoration: 'none', marginLeft: 'auto' }}>zur Aufgabe ›</Link>
+            <button onClick={() => setDoppelt(null)} aria-label="Hinweis schließen" style={{ background: 'transparent', border: 'none', color: T.muted, cursor: 'pointer' }}>✕</button>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button onClick={zeroStart} disabled={loading || !zeroKandidaten().length} style={{
-              fontFamily: T.sans, fontSize: 12.5, fontWeight: 700, padding: '8px 16px', borderRadius: 9,
-              border: `1px solid ${T.accent}`, background: `${T.accent}1c`, color: T.accentInk, cursor: loading ? 'default' : 'pointer',
-            }}>▶ Zero-Durchlauf{zeroKandidaten().length ? ` (${zeroKandidaten().length})` : ''}</button>
-            <button onClick={load} disabled={loading} style={{
-              fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, padding: '8px 14px', borderRadius: 9,
-              border: `1px solid ${T.line}`, background: T.panel, color: loading ? T.muted : T.ink, cursor: loading ? 'default' : 'pointer',
-            }}>{loading ? 'synchronisiert …' : '↻ Neu synchronisieren'}</button>
-          </div>
-        </div>
+        )}
 
-        {/* Sync-Leiste */}
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 14, fontFamily: T.mono, fontSize: 11, color: T.muted }}>
-          <span><span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: T.accent, marginRight: 7 }} />Apple Mail · <span style={{ color: T.inkDim }}>{sync.apple}</span></span>
-          <span><span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: T.amber, marginRight: 7 }} />Microsoft 365 · <span style={{ color: T.inkDim }}>{sync.ms}</span></span>
-          <span>✨ Jarvis · <span style={{ color: triageBusy ? T.accent : T.inkDim }}>{triageBusy ? 'stuft ein …' : `${anzahlJe.wichtig} wichtig · ${anzahlJe.rauschen} Rauschen`}</span></span>
-        </div>
+        {/* ─── Der Held (UX 5, 06.09.) ──────────────────────────────────────
+            Die eine Frage beim Öffnen: wie viel liegt an — und wie viel davon
+            sind wirklich Menschen, die etwas wollen? Alles andere (Zähler je
+            Fach, Sync-Stände) tritt darunter zurück. */}
+        <Held
+          wert={String(openCount)}
+          label={openCount === 1 ? 'Nachricht offen' : 'Nachrichten offen'}
+          farbe={openCount > 40 ? C.achtung : openCount ? C.ink : C.gut}
+          satz={openCount === 0
+            ? 'Alles weggearbeitet.'
+            : <>Davon <b style={{ color: C.kritisch }}>{anzahlJe.wichtig}</b> wichtig — und <b style={{ color: C.inkDim }}>{anzahlJe.rauschen}</b> Rauschen, das am Stück wegkann.</>}
+          neben={[
+            { label: 'Apple Mail', wert: sync.apple },
+            { label: 'Microsoft 365', wert: sync.ms },
+            ...(triageBusy ? [{ label: 'Jarvis', wert: 'stuft ein …', farbe: C.aktiv }] : []),
+          ]}
+          kinder={
+            <div style={{ display: 'flex', gap: A.s, flexWrap: 'wrap' }}>
+              <button onClick={zeroStart} disabled={loading || !zeroKandidaten().length} style={{
+                fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: `9px ${A.l}px`, minHeight: 36,
+                borderRadius: RADIUS.bauteil, border: `1px solid ${C.gut}`, background: C.gut, color: C.grund,
+                cursor: loading ? 'default' : 'pointer', opacity: loading || !zeroKandidaten().length ? 0.5 : 1,
+              }}>▶ Zero-Durchlauf{zeroKandidaten().length ? ` (${zeroKandidaten().length})` : ''}</button>
+              <button onClick={load} disabled={loading} style={{
+                fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: `9px ${A.l}px`, minHeight: 36,
+                borderRadius: RADIUS.bauteil, border: `1px solid ${C.linie}`, background: 'transparent',
+                color: loading ? C.inkLeise : C.inkDim, cursor: loading ? 'default' : 'pointer',
+              }}>{loading ? 'synchronisiert …' : '↻ Neu laden'}</button>
+            </div>
+          }
+        />
+
+        {/* ── JETZT DRAN ────────────────────────────────────────────────────
+            Unter dem Helden steht, was wirklich zu tun ist. Suche, Fächer und
+            Türsteher bleiben darunter — für alle, die suchen statt arbeiten. */}
+        {(() => {
+          const dran = filtered.filter(m => triage[fpOf(m)]?.stufe === 'wichtig').slice(0, 5);
+          if (!dran.length) return null;
+          return (
+            <div style={{ background: T.panel, border: `1px solid ${T.line}`, borderLeft: `3px solid ${T.accent}`, borderRadius: RADIUS.behaelter, padding: '14px 18px', margin: `${A.m}px 0 ${A.l}px` }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: A.m, marginBottom: A.s }}>
+                <span style={MIKRO}>Jetzt dran</span>
+                <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>
+                  {dran.length === 1 ? 'eine Nachricht' : `die ersten ${dran.length}`} von {anzahlJe.wichtig}
+                </span>
+              </div>
+              {dran.map(m => {
+                const tr = triage[fpOf(m)];
+                return (
+                  <div key={fpOf(m)} onClick={() => { void openMsg(m); }}
+                    style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '5px 0', cursor: 'pointer', borderTop: `1px solid ${T.lineSoft}` }}>
+                    <span style={{ color: T.accent, fontSize: 11, flex: '0 0 auto' }}>●</span>
+                    <span style={{ fontSize: 12.5, color: T.inkDim, width: 132, flex: '0 0 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.sender}</span>
+                    <span style={{ fontSize: 13, color: T.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.subject}</span>
+                    {tr?.zeile && <span style={{ fontSize: 11.5, color: T.accentInk, flex: '0 0 auto', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>✨ {tr.zeile}</span>}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* Suche */}
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="Suchen — Absender, Betreff, Inhalt …" aria-label="Inbox durchsuchen"
@@ -598,7 +667,7 @@ export function InboxView() {
                   <span style={{ width: 4, height: 30, borderRadius: 2, background: FACH[s.fach]?.farbe ?? T.line, flex: '0 0 auto' }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {s.name} {s.anzahl > 1 && <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.amber }}>· {s.anzahl} Nachrichten</span>}
+                      {s.name} {s.anzahl > 1 && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.amber }}>· {s.anzahl} Nachrichten</span>}
                     </div>
                     <div style={{ fontSize: 11.5, color: T.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {s.email ?? '—'} · {s.betreff}
@@ -610,7 +679,7 @@ export function InboxView() {
                     style={{ fontSize: 12, color: T.muted, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 8, padding: '5px 12px', cursor: 'pointer', flex: '0 0 auto' }}>Blocken</button>
                 </div>
               ))}
-              {screener.length > 30 && <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted, paddingTop: 8 }}>+{screener.length - 30} weitere — die häufigsten zuerst</div>}
+              {screener.length > 30 && <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, paddingTop: 8 }}>+{screener.length - 30} weitere — die häufigsten zuerst</div>}
             </div>
           </div>
         )}
@@ -622,16 +691,16 @@ export function InboxView() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               {shields.map(s => (
                 <Link key={s.id} href={s.href} style={{ display: 'flex', gap: 9, alignItems: 'baseline', textDecoration: 'none', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 10, color: s.stufe === 'rot' ? T.crit : T.amber, flex: '0 0 auto' }}>●</span>
+                  <span style={{ fontSize: 11, color: s.stufe === 'rot' ? T.crit : T.amber, flex: '0 0 auto' }}>●</span>
                   <span style={{ fontSize: 12.5, color: T.ink, flex: 1, minWidth: 200 }}>{s.text}</span>
-                  <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.accentInk, flex: '0 0 auto' }}>{s.label} ›</span>
+                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, flex: '0 0 auto' }}>{s.label} ›</span>
                 </Link>
               ))}
               {meldungen.map(l => (
                 <Link key={`${l.agent}-${l.ts}`} href={agentHref(l.agent)} style={{ display: 'flex', gap: 9, alignItems: 'baseline', textDecoration: 'none', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 10, color: T.accent, flex: '0 0 auto' }}>⚙</span>
+                  <span style={{ fontSize: 11, color: T.accent, flex: '0 0 auto' }}>⚙</span>
                   <span style={{ fontSize: 12.5, color: T.inkDim, flex: 1, minWidth: 200 }}><b style={{ color: T.ink }}>{l.agent}</b> · {l.title}</span>
-                  <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, flex: '0 0 auto' }}>{relTime(l.ts)}</span>
+                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, flex: '0 0 auto' }}>{relTime(l.ts)}</span>
                 </Link>
               ))}
             </div>
@@ -660,7 +729,7 @@ export function InboxView() {
                 if (gruppe === 'rauschen' && !rauschenAuf) {
                   if (!kopf) return null;
                   return (
-                    <div key="rauschen-zu" onClick={() => setRauschenAuf(true)} style={{ padding: '10px 15px', cursor: 'pointer', borderTop: `1px solid ${T.lineSoft}`, fontFamily: T.mono, fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: T.muted }}>
+                    <div key="rauschen-zu" onClick={() => setRauschenAuf(true)} style={{ padding: '10px 15px', cursor: 'pointer', borderTop: `1px solid ${T.lineSoft}`, fontFamily: T.mono, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: T.muted }}>
                       ▸ Rauschen · {anzahlJe.rauschen} — Newsletter & Co., ausgeblendet
                     </div>
                   );
@@ -669,7 +738,7 @@ export function InboxView() {
                   <div key={m.id}>
                     {kopf && (
                       <div onClick={gruppe === 'rauschen' ? () => setRauschenAuf(false) : undefined}
-                        style={{ padding: '9px 15px 4px', borderTop: i ? `1px solid ${T.lineSoft}` : 0, fontFamily: T.mono, fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: meta?.farbe ?? T.muted, cursor: gruppe === 'rauschen' ? 'pointer' : 'default' }}>
+                        style={{ padding: '9px 15px 4px', borderTop: i ? `1px solid ${T.lineSoft}` : 0, fontFamily: T.mono, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: meta?.farbe ?? T.muted, cursor: gruppe === 'rauschen' ? 'pointer' : 'default' }}>
                         {gruppe === 'neu' ? (triageBusy ? '◌ Jarvis stuft ein …' : 'Ohne Einstufung') : `${gruppe === 'rauschen' ? '▾ ' : ''}${meta!.label} · ${gruppe === 'wichtig' ? anzahlJe.wichtig : gruppe === 'normal' ? anzahlJe.normal : anzahlJe.rauschen}`}
                       </div>
                     )}
@@ -684,17 +753,17 @@ export function InboxView() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                           {!m.isRead && OPEN.has(st) && <span style={{ width: 7, height: 7, borderRadius: '50%', background: T.accent, flex: '0 0 auto' }} />}
-                          {tr?.stufe === 'wichtig' && <span style={{ color: STUFE_META.wichtig.farbe, fontSize: 10, flex: '0 0 auto' }}>●</span>}
+                          {tr?.stufe === 'wichtig' && <span style={{ color: STUFE_META.wichtig.farbe, fontSize: 11, flex: '0 0 auto' }}>●</span>}
                           <span style={{ fontSize: 13, fontWeight: 600, color: T.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.sender}</span>
-                          <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 10, color: T.muted, flex: '0 0 auto' }}>{relTime(m.receivedAt)}</span>
+                          <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: T.muted, flex: '0 0 auto' }}>{relTime(m.receivedAt)}</span>
                         </div>
                         <div style={{ fontSize: 12.5, color: T.inkDim, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.subject}</div>
                         {tr?.zeile && <div style={{ fontSize: 11.5, color: tr.stufe === 'wichtig' ? T.accentInk : T.muted, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>✨ {tr.zeile}</div>}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
-                          {istWiedervorlage(m.id) && <span style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.04em', color: T.amber, border: `1px solid ${T.amber}55`, borderRadius: 5, padding: '1px 6px' }}>⏰ WIEDERVORLAGE</span>}
-                          <span style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.04em', textTransform: 'uppercase', color: srcColor(m.source), border: `1px solid ${srcColor(m.source)}44`, borderRadius: 5, padding: '1px 6px' }}>{srcLabel(m)}</span>
-                          {tr?.grund && <span style={{ fontFamily: T.mono, fontSize: 9, color: T.muted }}>{tr.grund}</span>}
-                          {DONE.has(st) && <span style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.04em', textTransform: 'uppercase', color: T.muted }}>{st === 'aufgabe' ? '→ Aufgabe' : st === 'delegiert' ? 'delegiert' : 'erledigt ✓'}</span>}
+                          {istWiedervorlage(m.id) && <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.04em', color: T.amber, border: `1px solid ${T.amber}55`, borderRadius: 5, padding: '1px 6px' }}>⏰ WIEDERVORLAGE</span>}
+                          <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.04em', textTransform: 'uppercase', color: srcColor(m.source), border: `1px solid ${srcColor(m.source)}44`, borderRadius: 5, padding: '1px 6px' }}>{srcLabel(m)}</span>
+                          {tr?.grund && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{tr.grund}</span>}
+                          {DONE.has(st) && <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.04em', textTransform: 'uppercase', color: T.muted }}>{st === 'aufgabe' ? '→ Aufgabe' : st === 'delegiert' ? 'delegiert' : 'erledigt ✓'}</span>}
                         </div>
                       </div>
                     </div>
@@ -711,8 +780,8 @@ export function InboxView() {
             ) : (
               <>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
-                  <span style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: srcColor(selMsg.source), border: `1px solid ${srcColor(selMsg.source)}44`, borderRadius: 5, padding: '2px 7px' }}>{srcLabel(selMsg)}</span>
-                  {selMsg.importance === 'high' && <span style={{ fontFamily: T.mono, fontSize: 9.5, textTransform: 'uppercase', color: T.crit, border: `1px solid ${T.crit}44`, borderRadius: 5, padding: '2px 7px' }}>wichtig</span>}
+                  <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.04em', textTransform: 'uppercase', color: srcColor(selMsg.source), border: `1px solid ${srcColor(selMsg.source)}44`, borderRadius: 5, padding: '2px 7px' }}>{srcLabel(selMsg)}</span>
+                  {selMsg.importance === 'high' && <span style={{ fontFamily: T.mono, fontSize: 11, textTransform: 'uppercase', color: T.crit, border: `1px solid ${T.crit}44`, borderRadius: 5, padding: '2px 7px' }}>wichtig</span>}
                   <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: T.muted }}>{new Date(selMsg.receivedAt).toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
 
@@ -766,7 +835,7 @@ export function InboxView() {
                         <button onClick={() => { navigator.clipboard?.writeText(draftText); setDraftInfo('kopiert.'); }} style={btn}>Kopieren</button>
                         {draftInfo && <span style={{ fontFamily: T.mono, fontSize: 11, color: (draftInfo.startsWith('✓') || draftInfo === 'kopiert.') ? T.accent : T.muted }}>{draftInfo}</span>}
                       </div>
-                      <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, marginTop: 8 }}>Versand machst du selbst in Mail — MAKE sendet nie ungefragt.</div>
+                      <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 8 }}>Versand machst du selbst in Mail — MAKE sendet nie ungefragt.</div>
                     </div>
                   )}
                 </div>

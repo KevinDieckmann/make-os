@@ -44,18 +44,18 @@ export function HabitAppreciation() {
             {/* Header */}
             <div style={{ borderBottom: '1px solid #1e1e1e', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 8, color: '#00ff66', letterSpacing: '0.12em', marginBottom: 3 }}>HABIT_02 // MICRO-HABIT</div>
+                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#00ff66', letterSpacing: '0.12em', marginBottom: 3 }}>HABIT_02 // MICRO-HABIT</div>
                 <div style={{ fontFamily: 'var(--mono-font)', fontSize: 12, color: '#ffffff', letterSpacing: '0.04em' }}>SPEZIFISCHE WERTSCHÄTZUNG</div>
               </div>
               <button onClick={closeHabit} className="interactive-element"
-                style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#444', background: 'none', border: '1px solid #1e1e1e', padding: '2px 8px', cursor: 'pointer' }}>
+                style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#444', background: 'none', border: '1px solid #1e1e1e', padding: '2px 8px', cursor: 'pointer' }}>
                 ESC
               </button>
             </div>
 
             {!submitted ? (
               <div style={{ padding: 16 }}>
-                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 8, color: '#555', letterSpacing: '0.08em', marginBottom: 16, lineHeight: 1.7 }}>
+                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#555', letterSpacing: '0.08em', marginBottom: 16, lineHeight: 1.7 }}>
                   Wissenschaftlich validiertes Gottman-Protokoll. Beide Sektionen müssen ausgefüllt werden.
                   Verhaltens-Ebene + Charakter-Ebene erzeugen maximalen EBA-Transfer (×1.0).
                 </div>
@@ -64,7 +64,7 @@ export function HabitAppreciation() {
                 <div style={{ marginBottom: 14 }}>
                   <div style={{
                     fontFamily: 'var(--mono-font)',
-                    fontSize: 8,
+                    fontSize: 11,
                     color: errors.a ? '#ff4444' : '#444',
                     letterSpacing: '0.1em',
                     marginBottom: 6,
@@ -75,7 +75,7 @@ export function HabitAppreciation() {
                     {errors.a && <span>PFLICHTFELD</span>}
                   </div>
                   <div style={{
-                    fontFamily: 'var(--mono-font)', fontSize: 9, color: '#555',
+                    fontFamily: 'var(--mono-font)', fontSize: 11, color: '#555',
                     border: '1px solid #1a1a1a', padding: '6px 10px', marginBottom: 6,
                     background: '#050505', letterSpacing: '0.04em',
                   }}>
@@ -105,7 +105,7 @@ export function HabitAppreciation() {
                 <div style={{ marginBottom: 16 }}>
                   <div style={{
                     fontFamily: 'var(--mono-font)',
-                    fontSize: 8,
+                    fontSize: 11,
                     color: errors.b ? '#ff4444' : '#444',
                     letterSpacing: '0.1em',
                     marginBottom: 6,
@@ -116,7 +116,7 @@ export function HabitAppreciation() {
                     {errors.b && <span>PFLICHTFELD</span>}
                   </div>
                   <div style={{
-                    fontFamily: 'var(--mono-font)', fontSize: 9, color: '#555',
+                    fontFamily: 'var(--mono-font)', fontSize: 11, color: '#555',
                     border: '1px solid #1a1a1a', padding: '6px 10px', marginBottom: 6,
                     background: '#050505', letterSpacing: '0.04em',
                   }}>
@@ -144,8 +144,8 @@ export function HabitAppreciation() {
 
                 {/* EBA preview */}
                 <div style={{ background: '#050505', border: '1px solid #111', padding: '6px 10px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontFamily: 'var(--mono-font)', fontSize: 8, color: '#333', letterSpacing: '0.08em' }}>EBA TRANSFER VORSCHAU</span>
-                  <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#00ff66', letterSpacing: '0.08em' }}>
+                  <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#333', letterSpacing: '0.08em' }}>EBA TRANSFER VORSCHAU</span>
+                  <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#00ff66', letterSpacing: '0.08em' }}>
                     +{(8 * 1.0).toFixed(1)} PUNKTE
                   </span>
                 </div>
@@ -160,7 +160,7 @@ export function HabitAppreciation() {
                     border: '1px solid #00ff6633',
                     color: '#00ff66',
                     fontFamily: 'var(--mono-font)',
-                    fontSize: 10,
+                    fontSize: 11,
                     letterSpacing: '0.12em',
                     cursor: 'pointer',
                   }}
@@ -170,10 +170,10 @@ export function HabitAppreciation() {
               </div>
             ) : (
               <div style={{ padding: '32px 16px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 10, color: '#00ff66', letterSpacing: '0.12em', marginBottom: 8 }}>
+                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#00ff66', letterSpacing: '0.12em', marginBottom: 8 }}>
                   ✓ WERTSCHÄTZUNG PROTOKOLLIERT
                 </div>
-                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#555', letterSpacing: '0.06em' }}>
+                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#555', letterSpacing: '0.06em' }}>
                   EBA +8.0 — GOTTMAN RATIO VERBESSERT
                 </div>
               </div>

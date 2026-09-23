@@ -163,3 +163,220 @@ nav a:hover { transform: translateX(2px); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ─── Das Hirn: Jarvis' Startbild ───────────────────────────────────────────
+   Nach Kevins Vorlage vom 07.09. Der Puls hängt an der Warteschlange: im
+   Leerlauf atmet es ruhig, unter Last schneller und heller. Die Dauern kommen
+   als Inline-Stil aus der Komponente, hier steht nur die Bewegung. */
+@keyframes hirnDreht { to { transform: rotate(360deg); } }
+@keyframes hirnDrehtZurueck { to { transform: rotate(-360deg); } }
+@keyframes hirnAtem { 0%, 100% { transform: scale(.94); opacity: .75; } 50% { transform: scale(1.06); opacity: 1; } }
+@keyframes hirnKern { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.16); } }
+.hirn-dreht { animation: hirnDreht linear infinite; }
+.hirn-dreht-zurueck { animation: hirnDrehtZurueck linear infinite; }
+.hirn-atem { animation: hirnAtem ease-in-out infinite; }
+.hirn-kern { animation: hirnKern ease-in-out infinite; }
+.hirn-auftrag { animation: hirnDreht linear infinite; }
+
+/* ─── Das Hirn, zweiter Durchgang (07.09.) ──────────────────────────────────
+   Kevins Einwand: „da ist ja nichts lebendiges dran". Stimmte. Was hier
+   dazukommt, folgt drei Regeln aus der Recherche:
+   1. Nur transform und opacity animieren — alles andere kostet den Browser
+      einen Neuaufbau je Bild (16,7 ms Budget bei 60 Hz).
+   2. Auftritt gestaffelt, nicht alles auf einmal: 50 ms zwischen Geschwistern.
+   3. Ausfahren (ease-out) für alles, was ankommt; die Kurve unten ist die
+      „glatte" — schnell los, weich aus. */
+
+/* Auftritt: von leicht kleiner und blass in die Ruhelage. Der Endzustand ist
+   sichtbar, nicht opacity:0 — wer die Seite ohne Animationen sieht (oder ein
+   Vorschaubild), bekommt das fertige Bild. */
+@keyframes hirnAuf {
+  from { opacity: 0; transform: scale(.965); }
+  to   { opacity: 1; transform: none; }
+}
+.hirn-auf {
+  transform-origin: 310px 310px;
+  animation: hirnAuf .9s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+/* Zustandswechsel: eine einzige Welle nach außen. Läuft genau einmal. */
+@keyframes hirnWelle {
+  from { transform: scale(.55); opacity: .5; }
+  to   { transform: scale(3.6); opacity: 0; }
+}
+.hirn-welle { animation: hirnWelle 1.5s cubic-bezier(.16, 1, .3, 1) forwards; }
+
+/* ─── Tiefe im dunklen Bild ─────────────────────────────────────────────────
+   Ein dunkler Bildschirm ohne Tiefe wirkt wie ein ausgeschalteter. Drei
+   Schichten geben ihm Raum, alle rein dekorativ (pointer-events: none):
+   Hof (farbiges Licht hinter dem Hirn), Vignette (dunkle Ränder), Korn. */
+.buehne { position: relative; isolation: isolate; }
+.buehne-hof {
+  position: absolute; inset: -20%;
+  background: radial-gradient(ellipse 55% 45% at 50% 42%, rgba(88, 217, 205, .13), transparent 70%);
+  filter: blur(30px);
+  pointer-events: none; z-index: 0;
+}
+.buehne-vignette {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 75% 65% at 50% 45%, transparent 40%, rgba(0, 0, 0, .55) 100%);
+  pointer-events: none; z-index: 2;
+}
+/* Korn: ein einziges SVG-Rauschen als Datenadresse — kein Netzabruf, keine
+   Bilddatei. Sehr leise; es soll das Banding in den Verläufen brechen, nicht
+   sichtbar sein. */
+.buehne-korn {
+  position: absolute; inset: 0; opacity: .028; pointer-events: none; z-index: 3;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* Auf dunklem Grund saufen overlay und soft-light ab. screen ist hier
+     richtig — es hellt auf, statt zu verschlucken. */
+  mix-blend-mode: screen;
+  /* Vier ganze Pixel-Versätze bei rund 9 Bildern je Sekunde: das ist der
+     Unterschied zwischen Filmkorn und Schmutz auf der Scheibe. Verschoben
+     wird background-position — die ist compositor-günstig und kostet fast
+     nichts. */
+  animation: kornWandert .44s steps(1) infinite;
+}
+@keyframes kornWandert {
+  0%   { background-position: 0 0; }
+  25%  { background-position: -37px 19px; }
+  50%  { background-position: 23px -41px; }
+  75%  { background-position: -13px -29px; }
+  100% { background-position: 0 0; }
+}
+
+/* ─── Text, der ankommt statt dazustehen ────────────────────────────────────
+   Wort für Wort eingeblendet, 45 ms Versatz. Die Verzögerung setzt die
+   Komponente je Wort als Inline-Stil. */
+@keyframes wortAuf {
+  from { opacity: 0; transform: translateY(6px); filter: blur(4px); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+/* 180 ms, nicht 500: das erste Wort muss innerhalb einer knappen Drittel-
+   sekunde stehen. Der Eindruck von Reaktionsfähigkeit entsteht dort, nicht
+   über die Gesamtdauer. Der Weichzeichner kaschiert, dass die Wörter
+   stoßweise ankommen — reine Deckkraft tut das nicht. */
+.wort { display: inline-block; animation: wortAuf .18s ease both; }
+
+/* Drei Punkte, solange gedacht wird — ohne Text, damit nichts zu lesen ist,
+   was sich gleich wieder ändert. */
+@keyframes denkPunkt { 0%, 70%, 100% { opacity: .25; transform: translateY(0); } 35% { opacity: 1; transform: translateY(-4px); } }
+.denk-punkt { animation: denkPunkt 1.25s cubic-bezier(.22, 1, .36, 1) infinite; }
+
+/* ─── Anfassbare Flächen ────────────────────────────────────────────────────
+   Alles, was man drücken kann, hebt sich beim Zeigen und senkt sich beim
+   Drücken. Ohne diese Rückmeldung fühlt sich eine Fläche wie ein Bild an. */
+.fassbar {
+  transition: transform .16s cubic-bezier(.22, 1, .36, 1),
+              box-shadow .16s cubic-bezier(.22, 1, .36, 1),
+              border-color .16s ease, background .16s ease;
+}
+.fassbar:hover { transform: translateY(-1px); }
+
+/* Der Sprechknopf: ein Ring, der beim Aufnehmen nach außen läuft. */
+@keyframes hoerRing {
+  from { transform: scale(1); opacity: .55; }
+  to   { transform: scale(1.9); opacity: 0; }
+}
+.hoer-ring { animation: hoerRing 1.8s cubic-bezier(.16, 1, .3, 1) infinite; }
+
+/* Zeilen einer Liste kommen gestaffelt an — die Verzögerung setzt die
+   Komponente, hier steht nur die Bewegung. */
+@keyframes zeileAuf { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.zeile-auf { animation: zeileAuf .45s cubic-bezier(.22, 1, .36, 1) both; }
+
+
+/* ─── Fokus: sichtbar für die Tastatur, unsichtbar für die Maus ─────────────
+   :focus-visible statt :focus — sonst bekommt jeder Mausklick einen Rahmen
+   und man gewöhnt sich an, ihn wegzustylen. Genau so verschwindet
+   Tastaturbedienbarkeit aus Software. */
+:where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--fokus, #58D9CD);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px rgba(88, 217, 205, .15);
+  border-radius: inherit;
+}
+
+/* Tastenhinweis. Ein Kürzel, das nirgends steht, existiert nicht. */
+.taste {
+  display: inline-block; min-width: 1.5em; text-align: center;
+  padding: 1px 6px; border: 1px solid #232A2D; border-bottom-width: 2px;
+  border-radius: 5px; background: #14181B; color: #6E7A7D;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px;
+  line-height: 1.5;
+}
+
+/* Taschenlampe unter dem Zeiger. Auf dunklem Grund wirkt eine aufgehellte
+   Fläche matschig; ein weicher Lichtfleck, der dem Finger folgt, wirkt
+   dagegen nach Material. --x/--y setzt die Komponente bei pointermove. */
+.lampe { position: relative; overflow: hidden; }
+.lampe::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  border-radius: inherit; opacity: 0; transition: opacity .25s ease;
+  background: radial-gradient(180px circle at var(--x, 50%) var(--y, 50%), rgba(88, 217, 205, .13), transparent 62%);
+}
+.lampe:hover::before { opacity: 1; }
+
+/* Druck: kürzer als Hover, sonst fühlt es sich klebrig an. */
+.fassbar:active { transform: scale(.97); transition-duration: .1s; }
+
+/* Tastenkürzel gibt es nur, wo eine Tastatur ist. Auf einem Gerät ohne
+   Zeiger und ohne Tasten ist „Leertaste halten" ein Versprechen ins Leere. */
+@media (hover: none), (pointer: coarse) {
+  .nur-tastatur { display: none !important; }
+}
+
+/* ─── Lebendigkeit für die ganze Software ───────────────────────────────────
+   Kevins zweiter Satz vom 07.09.: „das ganze UX Design ist ja ein Grauen, da
+   ist ja nichts Lebendiges dran." Der Empfangsbildschirm allein hätte das
+   nicht beantwortet.
+   Diese Regeln greifen überall, weil sie an den Elementtypen hängen und nicht
+   an Klassen. Wichtig dabei: die Software setzt ihre Farben als Inline-Stil,
+   und Inline schlägt Stylesheet. Deshalb wird hier mit `filter` und
+   `transform` gearbeitet — den beiden Eigenschaften, die praktisch nirgends
+   inline gesetzt sind und die zugleich die einzigen sind, die der Browser
+   ohne Neuaufbau der Seite zeichnen kann. */
+@media (prefers-reduced-motion: no-preference) {
+  button, [role="button"], a[href], summary {
+    transition: filter .17s cubic-bezier(.22, 1, .36, 1),
+                transform .17s cubic-bezier(.22, 1, .36, 1),
+                opacity .17s ease;
+  }
+  button:hover:not(:disabled):not([data-still]),
+  [role="button"]:hover:not([data-still]),
+  summary:hover { filter: brightness(1.16); }
+  button:active:not(:disabled):not([data-still]),
+  [role="button"]:active:not([data-still]) { transform: scale(.97); transition-duration: .1s; }
+  a[href]:hover { filter: brightness(1.2); }
+}
+
+/* Karten: eine hellere Kante und ein Millimeter Höhe beim Zeigen. Mehr nicht —
+   eine Fläche, die springt, lenkt vom Inhalt ab. */
+.karte {
+  transition: transform .2s cubic-bezier(.22, 1, .36, 1),
+              border-color .2s ease, box-shadow .2s ease;
+}
+.karte:hover {
+  transform: translateY(-1px);
+  border-color: #2E3A3E;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .3), inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+
+/* ─── Die Leiste (23.09.): links auf dem Rechner, unten auf dem Handy ────── */
+.leiste-desktop { display: flex; }
+.leiste-mobil { display: none; }
+@media (max-width: 720px) {
+  .leiste-desktop { display: none; }
+  .leiste-mobil { display: flex; }
+  .os-shell main { padding-bottom: 72px; }
+}
+/* Auf dem Handy sitzt der Jarvis-Knopf über der Leiste, nicht darauf. */
+@media (max-width: 720px) {
+  .jarvis-fab { bottom: 86px !important; }
+}
+
+/* Heute auf dem Handy (23.09.): Ring oben, die fünf Säulen als Reihe darunter */
+@media (max-width: 720px) {
+  .heute-kopf { grid-template-columns: 1fr !important; justify-items: center; }
+  .heute-saeulen { grid-template-columns: repeat(5, 1fr) !important; text-align: center; width: 100%; }
+}

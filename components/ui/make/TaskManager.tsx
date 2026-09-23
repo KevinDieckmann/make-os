@@ -150,11 +150,11 @@ function SubtaskRow({ sub, onToggle }: { sub: SubTask; onToggle: () => void }) {
         flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        {sub.completed && <span style={{ color: '#000', fontSize: 6, fontWeight: 900 }}>✓</span>}
+        {sub.completed && <span style={{ color: '#000', fontSize: 11, fontWeight: 900 }}>✓</span>}
       </div>
       <span style={{
         fontFamily: 'var(--mono-font)',
-        fontSize: 10,
+        fontSize: 11,
         color: sub.completed ? '#555' : '#aaaaaa',
         textDecoration: sub.completed ? 'line-through' : 'none',
         letterSpacing: '0.02em',
@@ -193,11 +193,11 @@ function TaskRow({ task, blocker, onToggleSubtask }: {
             flexShrink: 0,
           }}
         >
-          <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#666', letterSpacing: '0.06em' }}>
+          <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#666', letterSpacing: '0.06em' }}>
             {task.id}
           </span>
           {hasSubtasks && (
-            <span style={{ fontSize: 9, color: '#777', transform: expanded ? 'rotate(90deg)' : 'none', display: 'inline-block', transition: 'transform 120ms' }}>
+            <span style={{ fontSize: 11, color: '#777', transform: expanded ? 'rotate(90deg)' : 'none', display: 'inline-block', transition: 'transform 120ms' }}>
               ▶
             </span>
           )}
@@ -222,10 +222,10 @@ function TaskRow({ task, blocker, onToggleSubtask }: {
             {/* Blocked indicator */}
             {task.blockedByTaskId && blocker && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                <span style={{ fontSize: 10 }}>🔒</span>
+                <span style={{ fontSize: 11 }}>🔒</span>
                 <span style={{
                   fontFamily: 'var(--mono-font)',
-                  fontSize: 8,
+                  fontSize: 11,
                   color: '#ff8800',
                   border: '1px solid #ff880044',
                   padding: '1px 5px',
@@ -239,16 +239,16 @@ function TaskRow({ task, blocker, onToggleSubtask }: {
 
           {/* Sub-info row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
-            <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#777', letterSpacing: '0.08em' }}>
+            <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#777', letterSpacing: '0.08em' }}>
               {PROJECT_LABELS[task.project]}
             </span>
             {task.dueDate && (
-              <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#666', letterSpacing: '0.06em' }}>
+              <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#666', letterSpacing: '0.06em' }}>
                 DUE {task.dueDate}
               </span>
             )}
             {hasSubtasks && (
-              <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#666', letterSpacing: '0.06em' }}>
+              <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#666', letterSpacing: '0.06em' }}>
                 {completedCount}/{task.subtasks.length} SUBS
               </span>
             )}
@@ -259,7 +259,7 @@ function TaskRow({ task, blocker, onToggleSubtask }: {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 10 }}>
           <span style={{
             fontFamily: 'var(--mono-font)',
-            fontSize: 8,
+            fontSize: 11,
             color: PRIO_COLORS[task.priority],
             letterSpacing: '0.08em',
             border: `1px solid ${PRIO_COLORS[task.priority]}44`,
@@ -273,7 +273,7 @@ function TaskRow({ task, blocker, onToggleSubtask }: {
             border: `1px solid ${ASSIGNEE_COLORS[task.assignedTo]}44`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <span style={{ fontSize: 7, color: ASSIGNEE_COLORS[task.assignedTo], fontWeight: 700, fontFamily: 'var(--mono-font)' }}>
+            <span style={{ fontSize: 11, color: ASSIGNEE_COLORS[task.assignedTo], fontWeight: 700, fontFamily: 'var(--mono-font)' }}>
               {task.assignedTo === 'Both' ? 'MK' : task.assignedTo[0]}
             </span>
           </div>
@@ -340,14 +340,14 @@ export function TaskManager() {
         borderBottom: '1px solid #1e1e1e',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#555', letterSpacing: '0.12em' }}>
+          <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#555', letterSpacing: '0.12em' }}>
             SYS.TASKS
           </span>
-          <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#00ff66', border: '1px solid #00ff6633', padding: '1px 6px' }}>
+          <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#00ff66', border: '1px solid #00ff6633', padding: '1px 6px' }}>
             {tasks.filter(t => t.status !== 'ERLEDIGT').length} OFFEN
           </span>
           {tasks.filter(t => t.status === 'BLOCKIERT').length > 0 && (
-            <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#ff8800', border: '1px solid #ff880033', padding: '1px 6px' }}>
+            <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#ff8800', border: '1px solid #ff880033', padding: '1px 6px' }}>
               {tasks.filter(t => t.status === 'BLOCKIERT').length} BLOCKIERT
             </span>
           )}
@@ -363,7 +363,7 @@ export function TaskManager() {
               style={{
                 padding: '3px 8px',
                 fontFamily: 'var(--mono-font)',
-                fontSize: 8,
+                fontSize: 11,
                 letterSpacing: '0.08em',
                 background: filter === f ? '#1e1e1e' : 'transparent',
                 border: `1px solid ${filter === f ? '#2a2a2a' : '#1e1e1e'}`,
@@ -392,7 +392,7 @@ export function TaskManager() {
           />
         ))}
         {phase1.length === 0 && (
-          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 10, color: '#666', padding: '12px 0', letterSpacing: '0.06em' }}>
+          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#666', padding: '12px 0', letterSpacing: '0.06em' }}>
             KEINE PHASE_1 TASKS
           </div>
         )}
@@ -413,7 +413,7 @@ export function TaskManager() {
           />
         ))}
         {phase2.length === 0 && (
-          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 10, color: '#666', padding: '12px 0', letterSpacing: '0.06em' }}>
+          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#666', padding: '12px 0', letterSpacing: '0.06em' }}>
             KEINE PHASE_2 TASKS
           </div>
         )}

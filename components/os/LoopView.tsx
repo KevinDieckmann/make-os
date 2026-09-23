@@ -42,6 +42,9 @@ export function LoopView() {
   const [kind, setKind] = useState<LoopKind>('woche');
   const [res, setRes] = useState<Record<string, LoopResult | undefined>>({});
   const [busy, setBusy] = useState(false);
+  // Verbesserungs-Loop: eigener Zustand, weil er nicht aufs Geschäft schaut.
+  const [vbBusy, setVbBusy] = useState(false);
+  const [vbInfo, setVbInfo] = useState('');
   const [history, setHistory] = useState<LogEntry[]>([]);
 
   async function loadHistory() {
@@ -71,6 +74,38 @@ export function LoopView() {
       <AgentHeader label="Loops" badge="der Takt" badgeColor={T.accent} title="Der Rhythmus des Systems." backHref="/os" backLabel="‹ Übersicht">
         Loops sind das, was aus einzelnen Agenten ein Betriebssystem macht: sie ziehen deine echten Daten zusammen, leiten <b style={{ color: T.ink }}>eine Handlung</b> daraus ab und merken sich das Ergebnis — damit der nächste Lauf darauf aufbaut.
       </AgentHeader>
+
+      {/* ── VERBESSERUNGS-LOOP ────────────────────────────────────────────
+          Kevins Ansage: „Bau einen Loop ein, der aufnimmt, wie wir arbeiten,
+          damit wir uns in der Software selbst verbessern." Der einzige Loop,
+          der nicht aufs Geschäft schaut, sondern auf MAKE OS selbst. */}
+      <div style={{ background: T.panel, border: `1px solid ${T.line}`, borderLeft: `3px solid ${T.accentInk}`, borderRadius: 12, padding: '14px 18px', marginTop: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: T.accentInk }}>Verbesserungs-Loop</div>
+            <div style={{ fontSize: 12, color: T.muted, marginTop: 2, lineHeight: 1.45 }}>
+              Schaut auf die Software statt aufs Geschäft: was ihr wirklich benutzt, was seit Wochen niemand öffnet, welche Fehler auflaufen — und schlägt daraus Änderungen vor. Die Vorschläge landen im Bauplan.
+            </div>
+          </div>
+          <button onClick={async () => {
+            setVbBusy(true); setVbInfo('');
+            try {
+              const r = await fetch('/api/loop/verbesserung?jetzt=1', { method: 'POST' });
+              const d = await r.json();
+              setVbInfo(d.uebersprungen ? `Übersprungen — ${d.grund}` : d.ok ? `✓ ${d.anzahl} Vorschläge im Bauplan` : (d.error ?? 'Fehlgeschlagen'));
+            } catch { setVbInfo('Gerade nicht erreichbar.'); }
+            setVbBusy(false);
+          }} disabled={vbBusy} style={{
+            fontFamily: T.sans, fontSize: 12.5, fontWeight: 700, padding: '9px 16px', borderRadius: 9,
+            cursor: vbBusy ? 'default' : 'pointer', border: `1px solid ${T.accentInk}`,
+            background: 'transparent', color: T.accentInk, flex: '0 0 auto',
+          }}>{vbBusy ? 'schaut nach …' : 'Jetzt vorschlagen lassen'}</button>
+        </div>
+        {vbInfo && <div style={{ fontSize: 12, color: vbInfo.startsWith('✓') ? T.accent : T.muted, marginTop: 9 }}>{vbInfo}</div>}
+        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 8 }}>
+          Läuft von selbst höchstens alle 7 Tage — Hilfe soll nicht zu Rauschen werden.
+        </div>
+      </div>
 
       {/* Loop-Wahl */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8, margin: '20px 0 16px' }}>
@@ -119,7 +154,7 @@ export function LoopView() {
                   <div>
                     <div style={{ fontSize: 14.5, fontWeight: 600, color: T.ink }}>{p.titel}</div>
                     <div style={{ fontSize: 12.5, color: T.inkDim, marginTop: 2, lineHeight: 1.45 }}>{p.warum}</div>
-                    {p.wann && <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.accentInk, marginTop: 3 }}>{p.wann}</div>}
+                    {p.wann && <div style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, marginTop: 3 }}>{p.wann}</div>}
                   </div>
                 </div>
               ))}
@@ -267,7 +302,7 @@ export function LoopView() {
           <Panel style={{ overflow: 'hidden' }}>
             {history.map((h, i) => (
               <div key={h.id} style={{ display: 'flex', gap: 12, padding: '9px 16px', borderTop: i ? `1px solid ${T.lineSoft}` : 0, alignItems: 'baseline' }}>
-                <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted, flex: '0 0 auto' }}>{h.ts.slice(0, 16).replace('T', ' ')}</span>
+                <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, flex: '0 0 auto' }}>{h.ts.slice(0, 16).replace('T', ' ')}</span>
                 <span style={{ fontSize: 13, color: T.inkDim }}>{h.title}</span>
               </div>
             ))}

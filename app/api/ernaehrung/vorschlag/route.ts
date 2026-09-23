@@ -41,7 +41,7 @@ export async function POST(req: Request) {
 
   const user = body.hinweis ? `Kevins Hinweis für diese Woche: ${String(body.hinweis).slice(0, 300)}` : 'Plane eine normale Arbeitswoche.';
 
-  const r = await askJson<{ begruendung?: string; plan?: Partial<Record<Tag, Partial<Mahlzeiten>>>; einkauf?: unknown[] }>({
+  const r = await askJson<{ begruendung?: string; plan?: Partial<Record<Tag, Partial<Mahlzeiten>>>; einkauf?: unknown[] }>({ zweck: 'ernaehrung-vorschlag',
     system, user, maxTokens: 5000, model: agent.model, timeoutMs: 150_000,
   });
   if (!r.ok || !r.data?.plan) return NextResponse.json({ error: r.error ?? 'Kein Vorschlag erhalten.' }, { status: 200 });

@@ -48,7 +48,7 @@ export async function POST(req: Request) {
 
   const user = [`Thema: ${thema}`, notizen ? `Zusätzliche Notizen/Fakten (nutze sie, erfinde nichts dazu):\n${notizen}` : ''].filter(Boolean).join('\n\n');
 
-  const r = await askText({ system, user, maxTokens: 4000, model: agent.model });
+  const r = await askText({ zweck: 'content', system, user, maxTokens: 4000, model: agent.model });
   if (!r.ok || !r.text) return NextResponse.json({ reply: r.error ?? 'Konnte gerade keinen Entwurf erzeugen — nochmal versuchen.' });
 
   await logRun('content', `${fmt.label}: ${thema.slice(0, 80)}`, { format: fmt.label, thema, entwurf: r.text.slice(0, 2000) });

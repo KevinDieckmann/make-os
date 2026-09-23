@@ -4,6 +4,7 @@
 // POST {analyse} → zusätzlich: MAKE ordnet die Lage ein und benennt den Hebel
 
 import { NextResponse } from 'next/server';
+import { personAus } from '@/lib/jarvis/raum';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
@@ -27,8 +28,10 @@ async function history(): Promise<PerfSnapshot[]> {
   return Array.isArray(f?.snapshots) ? f.snapshots : [];
 }
 
-export async function GET() {
-  const [aktuell, verlauf] = await Promise.all([computeIndex(), history()]);
+export async function GET(req: Request) {
+  // Der Score hängt an persönlichen Beständen (Gesundheit, Journal,
+  // Routinen) — er gehört deshalb der Person, die fragt.
+  const [aktuell, verlauf] = await Promise.all([computeIndex(undefined, personAus(req)), history()]);
   // Der Verlauf wächst von selbst: der ERSTE Aufruf des Tages hält den Punkt
   // fest (idempotent — spätere GETs schreiben nicht; POST/Analyse erneuert).
   if (aktuell.index != null && !verlauf.some(s => s.date === aktuell.stand)) {
@@ -52,7 +55,7 @@ export async function POST(req: Request) {
   let body: { analyse?: boolean } = {};
   try { body = await req.json(); } catch { /* ohne Body ist ok */ }
 
-  const aktuell = await computeIndex();
+  const aktuell = await computeIndex(undefined, personAus(req));
 
   // Schnappschuss für heute — ein Eintrag pro Tag, spätere überschreiben.
   const snap: PerfSnapshot = {
@@ -95,7 +98,7 @@ export async function POST(req: Request) {
     saeulenText,
   ].join('\n');
 
-  const r = await askJson<Record<string, unknown>>({ system, user, maxTokens: 3000 });
+  const r = await askJson<Record<string, unknown>>({ zweck: 'performance', system, user, maxTokens: 3000 });
   if (!r.ok || !r.data) return NextResponse.json({ aktuell, verlauf: file.snapshots, error: r.error ?? 'Analyse fehlgeschlagen.' });
 
   await logRun('performance', `Index ${aktuell.index ?? '—'} (${aktuell.stand})`, { index: aktuell.index, ...r.data });

@@ -5,9 +5,9 @@ import { localDay } from '@/lib/zeit';
 import { useEffect, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
 import { WOCHE, type BlockKind } from '@/lib/make-one/health-data';
+import { Seitenkopf } from './Seitenkopf';
 
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 
 const KIND: Record<BlockKind, { c: string; l: string }> = {
   health: { c: T.accent, l: 'Gesundheit / Reha' },
@@ -51,9 +51,11 @@ export function WochenView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
         <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
-        <div style={lbl}>Wochenplanung · dein Rhythmus</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Die Woche mit Ruhe.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 640, lineHeight: 1.5 }}>Fokuszeit 09–17 ist geschützt. Reha läuft täglich. Feste Rituale geben Halt — Sunday Dinner, Reflexion, Bewegung. Der Rhythmus trägt, nicht die Willenskraft.</p>
+        <Seitenkopf
+          rubrik={<>Wochenplanung · dein Rhythmus</>}
+          titel={<>Die Woche mit Ruhe.</>}
+          satz={<>Fokuszeit 09–17 ist geschützt. Reha läuft täglich. Feste Rituale geben Halt — Sunday Dinner, Reflexion, Bewegung. Der Rhythmus trägt, nicht die Willenskraft.</>}
+        />
 
         {/* Woche schützen — Blöcke in den Kalender */}
         <div style={{ ...panel, padding: '16px 20px', margin: '18px 0 4px', display: 'flex', gap: 16, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', borderColor: cal === 'done' ? T.accent : T.line }}>
@@ -86,12 +88,12 @@ export function WochenView() {
               <div key={day.day} style={{ ...panel, padding: '14px 14px', borderColor: isToday ? T.accent : T.line }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
                   <span style={{ fontSize: 14, fontWeight: 600, color: isToday ? T.accentInk : T.ink }}>{day.label}</span>
-                  {isToday && <span style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.08em', textTransform: 'uppercase', color: T.accent }}>heute</span>}
+                  {isToday && <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: T.accent }}>heute</span>}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                   {day.blocks.map((b, j) => (
                     <div key={j} style={{ borderLeft: `2px solid ${KIND[b.kind].c}`, paddingLeft: 9 }}>
-                      <div style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted, letterSpacing: '.04em' }}>{b.t}</div>
+                      <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, letterSpacing: '.04em' }}>{b.t}</div>
                       <div style={{ fontSize: 12, color: T.inkDim, lineHeight: 1.35, marginTop: 1 }}>{b.name}</div>
                     </div>
                   ))}

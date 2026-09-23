@@ -59,14 +59,14 @@ export function SmartGroceries() {
       {/* Header */}
       <div style={{ borderBottom: '1px solid #1e1e1e', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 7, color: '#555', letterSpacing: '0.12em', marginBottom: 3 }}>SYS.EINKAUF</div>
-          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 10, color: '#ffffff', letterSpacing: '0.04em' }}>SMART GROCERIES</div>
+          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#555', letterSpacing: '0.12em', marginBottom: 3 }}>SYS.EINKAUF</div>
+          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#ffffff', letterSpacing: '0.04em' }}>SMART GROCERIES</div>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
-          <span style={{ fontFamily: 'var(--mono-font)', fontSize: 8, color: '#00ff66', border: '1px solid #00ff6622', padding: '2px 6px', letterSpacing: '0.06em' }}>
+          <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#00ff66', border: '1px solid #00ff6622', padding: '2px 6px', letterSpacing: '0.06em' }}>
             {openCount} OFFEN
           </span>
-          <span style={{ fontFamily: 'var(--mono-font)', fontSize: 8, color: '#444', border: '1px solid #1e1e1e', padding: '2px 6px', letterSpacing: '0.06em' }}>
+          <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#444', border: '1px solid #1e1e1e', padding: '2px 6px', letterSpacing: '0.06em' }}>
             {checkedCount} ✓
           </span>
         </div>
@@ -88,7 +88,7 @@ export function SmartGroceries() {
                 border: `1px solid ${exists ? '#111' : '#1e1e1e'}`,
                 color: exists ? '#222' : '#555',
                 fontFamily: 'var(--mono-font)',
-                fontSize: 8,
+                fontSize: 11,
                 letterSpacing: '0.06em',
                 cursor: exists ? 'default' : 'pointer',
               }}
@@ -115,7 +115,7 @@ export function SmartGroceries() {
                 borderBottom: '1px solid #111',
               }}>
                 <div style={{ width: 4, height: 4, background: CAT_COLORS[cat] }} />
-                <span style={{ fontFamily: 'var(--mono-font)', fontSize: 7, color: CAT_COLORS[cat], letterSpacing: '0.12em' }}>
+                <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: CAT_COLORS[cat], letterSpacing: '0.12em' }}>
                   {cat}
                 </span>
               </div>
@@ -139,7 +139,7 @@ export function SmartGroceries() {
                     background: item.checked ? '#00ff66' : 'transparent',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    {item.checked && <span style={{ color: '#000', fontSize: 5, fontWeight: 900 }}>✓</span>}
+                    {item.checked && <span style={{ color: '#000', fontSize: 11, fontWeight: 900 }}>✓</span>}
                   </div>
                   <span style={{
                     flex: 1,
@@ -151,7 +151,7 @@ export function SmartGroceries() {
                     {item.name}
                   </span>
                   {item.quantity && (
-                    <span style={{ fontFamily: 'var(--mono-font)', fontSize: 8, color: '#333', letterSpacing: '0.04em' }}>
+                    <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#333', letterSpacing: '0.04em' }}>
                       {item.quantity}
                     </span>
                   )}

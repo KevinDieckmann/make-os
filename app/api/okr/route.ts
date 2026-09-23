@@ -54,7 +54,7 @@ export async function POST(req: Request) {
 
   const user = [`FINANZLAGE:\n${finText}`, '', `AUFGABEN (echt):\n${taskText}`].join('\n');
 
-  const r = await askJson<{ lage?: string; objectives?: unknown[] }>({ system, user, maxTokens: 4000, model: agent.model });
+  const r = await askJson<{ lage?: string; objectives?: unknown[] }>({ zweck: 'okr', system, user, maxTokens: 4000, model: agent.model });
   if (!r.ok || !r.data) return NextResponse.json({ lage: r.error ?? 'Analyse gerade nicht möglich.', objectives: [] });
 
   const objectives = Array.isArray(r.data.objectives) ? r.data.objectives.slice(0, 4) : [];

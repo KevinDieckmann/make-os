@@ -96,7 +96,7 @@ export async function POST(req: Request) {
     conflicts.length ? `Erkannte Konflikte:\n${conflicts.map(c => `- ${c.date}: "${c.a}" ⨯ "${c.b}" (${c.overlap})`).join('\n')}` : 'Keine Terminkonflikte erkannt.',
   ].join('\n');
 
-  const r = await askJson<{ briefing?: string; vorschlaege?: Block[] }>({ system, user, maxTokens: 4000, model: agent.model });
+  const r = await askJson<{ briefing?: string; vorschlaege?: Block[] }>({ zweck: 'kalender-analyse', system, user, maxTokens: 4000, model: agent.model });
   if (!r.ok || !r.data) return NextResponse.json({ briefing: r.error ?? 'Analyse gerade nicht möglich — Konflikte sind geprüft.', conflicts, vorschlaege: [] });
 
   const allowed = new Set(['Privat Kevin', 'Kalender']);

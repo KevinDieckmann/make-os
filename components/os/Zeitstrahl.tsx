@@ -85,7 +85,7 @@ export function Zeitstrahl({ von, bis, marker, ticks }: { von: string; bis: stri
           const top = achseY - 10 - (p.lane + 1) * LANE_H;
           const inhalt = (
             <>
-              <span style={{ color: p.m.farbe, fontSize: 9, flex: '0 0 auto' }}>{p.m.symbol ?? '◇'}</span>
+              <span style={{ color: p.m.farbe, fontSize: 11, flex: '0 0 auto' }}>{p.m.symbol ?? '◇'}</span>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.m.label}</span>
             </>
           );
@@ -129,7 +129,7 @@ export function Zeitstrahl({ von, bis, marker, ticks }: { von: string; bis: stri
         {heuteDrin && (
           <>
             <div className="zeit-puls" style={{ position: 'absolute', left: heuteX * breite - 4.5, top: achseY - 4.5, width: 9, height: 9, borderRadius: '50%', background: T.accent, zIndex: 4 }} />
-            <div style={{ position: 'absolute', left: heuteX * breite, top: achseY + 9, transform: 'translateX(-50%)', fontFamily: T.mono, fontSize: 8.5, letterSpacing: '.12em', color: T.accent, whiteSpace: 'nowrap' }}>HEUTE</div>
+            <div style={{ position: 'absolute', left: heuteX * breite, top: achseY + 9, transform: 'translateX(-50%)', fontFamily: T.mono, fontSize: 11, letterSpacing: '.12em', color: T.accent, whiteSpace: 'nowrap' }}>HEUTE</div>
           </>
         )}
 
@@ -137,7 +137,7 @@ export function Zeitstrahl({ von, bis, marker, ticks }: { von: string; bis: stri
         {ticks.filter(tk => !heuteDrin || Math.abs(frak(tk.date) - heuteX) * breite > 28).map(tk => (
           <div key={tk.date} style={{ position: 'absolute', left: `${frak(tk.date) * 100}%`, top: achseY + 3, transform: 'translateX(-50%)', textAlign: 'center' }}>
             <div style={{ width: 1, height: 6, background: T.line, margin: '0 auto' }} />
-            <div style={{ fontFamily: T.mono, fontSize: 9, color: T.muted, marginTop: 3, whiteSpace: 'nowrap' }}>{tk.label}</div>
+            <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 3, whiteSpace: 'nowrap' }}>{tk.label}</div>
           </div>
         ))}
       </div>

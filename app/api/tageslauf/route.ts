@@ -134,7 +134,7 @@ export async function POST(req: Request) {
   // ── 5. Lage draußen ──
   await schritt('news', async () => {
     if (!hasAnthropicKey()) return { stand: 'uebersprungen' as const, kurz: 'Kein Anthropic-Key' };
-    const r = await askWithSearch({
+    const r = await askWithSearch({ zweck: 'tageslauf',
       system: [
         'Du bist der Research-Agent in Kevins MAKE OS. Liefere die Lage von heute in drei Blöcken — je GENAU DREI Meldungen, nicht mehr.',
         'Kontext: Kevin baut POINCAP (Controlling-/Liquiditäts-Plattform für den Mittelstand) unter der Holding KD Ventures, Sitz OWL/Deutschland.',
@@ -160,7 +160,7 @@ export async function POST(req: Request) {
     if (!neueMails.length && !overdue.length && !dueToday.length) {
       return { stand: 'leer' as const, kurz: 'Nichts, was den Tag umwirft' };
     }
-    const r = await askJson<{ vorziehen?: { was: string; warum: string; statt?: string }[]; ruhig?: boolean; satz?: string }>({
+    const r = await askJson<{ vorziehen?: { was: string; warum: string; statt?: string }[]; ruhig?: boolean; satz?: string }>({ zweck: 'tageslauf',
       system: [
         'Du bist der Prioritäten-Wächter in Kevins MAKE OS. Deine EINZIGE Frage: Ist etwas hereingekommen, das die geplante Reihenfolge des Tages umwirft?',
         FREMD_REGEL,
@@ -197,7 +197,7 @@ export async function POST(req: Request) {
     const vit = b.vitals;
     const vorher = schritte.map(s => `- ${s.name}: ${s.kurz}`).join('\n');
 
-    const r = await askJson<Record<string, unknown>>({
+    const r = await askJson<Record<string, unknown>>({ zweck: 'tageslauf',
       system: [
         'Du bist JARVIS, Kevins zentrale Intelligenz und Chief of Staff. Du schließt den Tageslauf ab: aus allem, was die Kette gefunden hat, wird EINE ruhige Ausrichtung.',
         FREMD_REGEL,

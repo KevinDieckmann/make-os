@@ -6,6 +6,7 @@ import { THEME as T } from '@/lib/make-one/os-data';
 import { wertVon, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
 import { eur } from '@/lib/make-one/finance-data';
 import { todayISO } from '@/components/os/kit';
+import { Seitenkopf } from './Seitenkopf';
 
 interface Sektion { titel: string; punkte?: string[]; }
 interface Stats {
@@ -15,7 +16,7 @@ interface Stats {
 }
 interface Pack { headline: string; sektionen: Sektion[]; risiken: string[]; naechsteWoche: string[]; stats: Stats; }
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 
 function Kpi({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
@@ -38,6 +39,7 @@ export function BoardView() {
       .then(d => setRunwayRot(wertVon('runway-warnung', d.modus ?? STANDARD_MODUS, d.eigene ?? {})))
       .catch(() => {});
   }, []);
+
   const [ready, setReady] = useState(false);
   const [privat, setPrivat] = useState(0);
   const [payload, setPayload] = useState<{ finance: unknown; prospects: unknown[]; tasks: unknown[] } | null>(null);
@@ -80,12 +82,11 @@ export function BoardView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
         <Link href="/os/agenten" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Agenten</Link>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <div style={lbl}>Reporting-/Board-Agent</div>
-          <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.accentInk, border: `1px solid ${T.accentInk}55`, borderRadius: 5, padding: '2px 7px' }}>live · Entwurf</span>
-        </div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Das Wochen-Pack.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 680, lineHeight: 1.5 }}>Ein Blick über alles: Umsatz-Kurs, Pipeline und Ausführung — zusammengefasst aus Controlling, Prospecting und Aufgaben. Kennzahlen exakt, Einordnung vom Agenten.</p>
+        <Seitenkopf
+          rubrik={<>Reporting-/Board-Agent <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, border: `1px solid ${T.accentInk}55`, borderRadius: 5, padding: '2px 7px' }}>live · Entwurf</span></>}
+          titel={<>Das Wochen-Pack.</>}
+          satz={<>Ein Blick über alles: Umsatz-Kurs, Pipeline und Ausführung — zusammengefasst aus Controlling, Prospecting und Aufgaben. Kennzahlen exakt, Einordnung vom Agenten.</>}
+        />
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '18px 0 16px' }}>
           <button onClick={build} disabled={busy || !ready} style={{ fontFamily: T.sans, fontSize: 13.5, fontWeight: 700, padding: '11px 20px', borderRadius: 9, border: 'none', cursor: busy || !ready ? 'default' : 'pointer', background: busy || !ready ? T.line : T.accent, color: busy || !ready ? T.muted : '#04110F' }}>

@@ -92,7 +92,7 @@ export function CommandPalette() {
           >
             {/* Header */}
             <div style={{ borderBottom: '1px solid #1e1e1e', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontFamily: 'var(--mono-font)', fontSize: 10, color: '#00ff66', letterSpacing: '0.1em' }}>⌘K</span>
+              <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#00ff66', letterSpacing: '0.1em' }}>⌘K</span>
               <input
                 ref={inputRef}
                 value={query}
@@ -110,7 +110,7 @@ export function CommandPalette() {
                   letterSpacing: '0.02em',
                 }}
               />
-              <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#444', letterSpacing: '0.08em' }}>ESC</span>
+              <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#444', letterSpacing: '0.08em' }}>ESC</span>
             </div>
 
             {/* Results */}
@@ -137,7 +137,7 @@ export function CommandPalette() {
                   }}
                 >
                   <span style={{
-                    fontFamily: 'var(--mono-font)', fontSize: 8, letterSpacing: '0.1em',
+                    fontFamily: 'var(--mono-font)', fontSize: 11, letterSpacing: '0.1em',
                     color: TAG_COLORS[cmd.tag] ?? '#888',
                     minWidth: 56, textAlign: 'right',
                   }}>
@@ -147,12 +147,12 @@ export function CommandPalette() {
                     <div style={{ fontFamily: 'var(--mono-font)', fontSize: 12, color: i === cursor ? '#ffffff' : '#cccccc', letterSpacing: '0.01em' }}>
                       {cmd.label}
                     </div>
-                    <div style={{ fontFamily: 'var(--mono-font)', fontSize: 10, color: '#555', marginTop: 1, letterSpacing: '0.02em' }}>
+                    <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#555', marginTop: 1, letterSpacing: '0.02em' }}>
                       {cmd.desc}
                     </div>
                   </div>
                   {i === cursor && (
-                    <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#333' }}>↵</span>
+                    <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#333' }}>↵</span>
                   )}
                 </div>
               ))}
@@ -162,8 +162,8 @@ export function CommandPalette() {
             <div style={{ borderTop: '1px solid #1e1e1e', padding: '6px 14px', display: 'flex', gap: 16 }}>
               {[['↑↓', 'NAVIGIEREN'], ['↵', 'AUSFÜHREN'], ['ESC', 'SCHLIESSEN']].map(([k, l]) => (
                 <span key={k} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#333', border: '1px solid #222', padding: '1px 4px' }}>{k}</span>
-                  <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#333', letterSpacing: '0.08em' }}>{l}</span>
+                  <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#333', border: '1px solid #222', padding: '1px 4px' }}>{k}</span>
+                  <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#333', letterSpacing: '0.08em' }}>{l}</span>
                 </span>
               ))}
             </div>

@@ -7,8 +7,9 @@ import {
   DEFAULT_ICP, PROSPECT_STATUS_ORDER, PROSPECT_STATUS_LABEL, PIPELINE_HINT,
   type Prospect, type ProspectStatus, type ProspectsState,
 } from '@/lib/make-one/prospecting-data';
+import { Seitenkopf } from './Seitenkopf';
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 
 const scoreColor = (s?: number) => (s == null ? T.muted : s >= 80 ? T.accent : s >= 50 ? T.amber : T.crit);
@@ -61,16 +62,24 @@ export function ProspectingView() {
   async function scoreOne(p: Prospect) {
     setBusy(b => ({ ...b, [p.id]: true }));
     const upd = await score(p);
-    setRows(prev => { const next = prev.map(x => x.id === p.id ? upd : x); persist(icp, next); return next; });
+    const next = rows.map(x => x.id === p.id ? upd : x);
+    setRows(next);
+    persist(icp, next);
     setBusy(b => ({ ...b, [p.id]: false }));
   }
 
   async function scoreAll() {
     setBulk(true);
     const todo = rows.filter(p => p.score == null);
+    // Über die Schleife hinweg mitzählen: `rows` aus dem Abschluss wäre nach
+    // dem ersten await veraltet, und der Speichervorgang gehört nicht in den
+    // State-Updater — React darf den mehrfach aufrufen.
+    let aktuell = rows;
     for (const p of todo) {
       const upd = await score(p);
-      setRows(prev => { const next = prev.map(x => x.id === p.id ? upd : x); persist(icp, next); return next; });
+      aktuell = aktuell.map(x => x.id === p.id ? upd : x);
+      setRows(aktuell);
+      persist(icp, aktuell);
     }
     setBulk(false);
   }
@@ -122,12 +131,11 @@ export function ProspectingView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
         <Link href="/os/agenten" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Agenten</Link>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <div style={lbl}>Prospecting-Agent</div>
-          <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.accent, border: `1px solid ${T.accent}55`, borderRadius: 5, padding: '2px 7px' }}>live · autonom</span>
-        </div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Deine Zielliste zum 1-Mio-Ziel.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 680, lineHeight: 1.5 }}>Firmen rein, KI qualifiziert gegen dein Profil (Score + Fit + Aufhänger), du priorisierst. {PIPELINE_HINT}</p>
+          <Seitenkopf
+            rubrik={<>Prospecting-Agent <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, border: `1px solid ${T.accent}55`, borderRadius: 5, padding: '2px 7px' }}>live · autonom</span></>}
+            titel={<>Deine Zielliste zum 1-Mio-Ziel.</>}
+            satz={<>Firmen rein, KI qualifiziert gegen dein Profil (Score + Fit + Aufhänger), du priorisierst. {PIPELINE_HINT}</>}
+          />
 
         {/* Kennzahlen */}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '18px 0 16px' }}>
@@ -141,7 +149,7 @@ export function ProspectingView() {
         <details style={{ ...panel, padding: '14px 18px', marginBottom: 16 }}>
           <summary style={{ cursor: 'pointer', fontFamily: T.mono, fontSize: 11, color: T.accentInk, letterSpacing: '.08em', textTransform: 'uppercase' }}>Ideales Kundenprofil (ICP)</summary>
           <textarea value={icp} onChange={e => setIcpP(e.target.value)} rows={7} style={{ width: '100%', marginTop: 10, background: T.void, border: `1px solid ${T.line}`, borderRadius: 10, color: T.inkDim, fontFamily: T.sans, fontSize: 12.5, lineHeight: 1.5, padding: 12, resize: 'vertical', outline: 'none' }} />
-          <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted, marginTop: 6 }}>Das Profil steuert das Scoring. Änderungen werden gespeichert.</div>
+          <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 6 }}>Das Profil steuert das Scoring. Änderungen werden gespeichert.</div>
         </details>
 
         {/* Aktionen */}
@@ -176,7 +184,7 @@ export function ProspectingView() {
                       <div style={{ fontSize: 14.5, fontWeight: 600, color: T.ink }}>{p.company}</div>
                       <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>{[p.industry, p.size, p.region].filter(Boolean).join(' · ') || (p.domain ?? '')}</div>
                     </div>
-                    <button onClick={e => { e.stopPropagation(); cycleStatus(p); }} title="Status wechseln" style={{ fontFamily: T.mono, fontSize: 10, color: statusColor(p.status), border: `1px solid ${statusColor(p.status)}55`, borderRadius: 6, padding: '3px 9px', background: 'transparent', cursor: 'pointer', whiteSpace: 'nowrap' }}>{PROSPECT_STATUS_LABEL[p.status]}</button>
+                    <button onClick={e => { e.stopPropagation(); cycleStatus(p); }} title="Status wechseln" style={{ fontFamily: T.mono, fontSize: 11, color: statusColor(p.status), border: `1px solid ${statusColor(p.status)}55`, borderRadius: 6, padding: '3px 9px', background: 'transparent', cursor: 'pointer', whiteSpace: 'nowrap' }}>{PROSPECT_STATUS_LABEL[p.status]}</button>
                     <button onClick={e => { e.stopPropagation(); scoreOne(p); }} disabled={busy[p.id]} style={{ fontFamily: T.sans, fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 8, border: `1px solid ${T.accent}`, background: busy[p.id] ? 'transparent' : `${T.accent}22`, color: T.accent, cursor: busy[p.id] ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>{busy[p.id] ? '…' : p.score == null ? 'Qualifizieren' : 'Neu bewerten'}</button>
                     <span style={{ fontFamily: T.mono, fontSize: 13, color: T.muted }}>{isOpen ? '▾' : '▸'}</span>
                   </div>
@@ -227,7 +235,7 @@ export function ProspectingView() {
                         ))}
                         <button onClick={() => setRowsP(rows.filter(x => x.id !== p.id))} style={{ fontFamily: T.sans, fontSize: 11.5, fontWeight: 600, padding: '5px 11px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.muted, marginLeft: 'auto' }}>Löschen</button>
                       </div>
-                      {p.source && <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>Quelle: {p.source}</div>}
+                      {p.source && <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>Quelle: {p.source}</div>}
                     </div>
                   )}
                 </div>

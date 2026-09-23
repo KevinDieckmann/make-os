@@ -8,13 +8,14 @@ import Link from 'next/link';
 // vorschlag entsprechend.
 
 import { useEffect, useRef, useState } from 'react';
+import { useNachspeichern } from '@/lib/make-one/nachspeichern';
 import { THEME as T } from '@/lib/make-one/os-data';
+import { Seitenkopf } from './Seitenkopf';
 
 type SaeuleKey = 'health' | 'business' | 'planning' | 'finance' | 'social';
 type Regler = Record<SaeuleKey, number>;
 interface ScoreSaeule { key: string; label: string; score: number | null; zuDuenn: boolean; gewicht: number }
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 
 const SAEULEN: { key: SaeuleKey; label: string; farbe: string; hint: string }[] = [
@@ -31,22 +32,20 @@ export function FokusReglerView() {
   const [regler, setRegler] = useState<Regler>({ health: 50, business: 50, planning: 50, finance: 50, social: 50 });
   const [score, setScore] = useState<ScoreSaeule[]>([]);
   const [geladen, setGeladen] = useState(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     fetch('/api/state/fokus-regler').then(r => r.json()).then(d => { setRegler(d.regler); setGeladen(true); }).catch(() => setGeladen(true));
     fetch('/api/performance').then(r => r.json()).then(d => setScore(d.aktuell?.saeulen ?? [])).catch(() => {});
   }, []);
 
+  const spaeter = useNachspeichern<Regler>(next => {
+    fetch('/api/state/fokus-regler', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ regler: next }) }).catch(() => {});
+  }, 500);
+
   function setzen(k: SaeuleKey, v: number) {
-    setRegler(prev => {
-      const next = { ...prev, [k]: v };
-      clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => {
-        fetch('/api/state/fokus-regler', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ regler: next }) }).catch(() => {});
-      }, 500);
-      return next;
-    });
+    const next = { ...regler, [k]: v };
+    setRegler(next);
+    spaeter(next);
   }
 
   const summe = Object.values(regler).reduce((a, b) => a + b, 0);
@@ -54,13 +53,11 @@ export function FokusReglerView() {
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 780, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
-        <div style={lbl}>Fokus-Regler</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Wohin fließt die Energie?</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 660, lineHeight: 1.5 }}>
-          Der MAKE Score zeigt die Datenlage — <b style={{ color: T.ink }}>aber wo der Fokus hingeht, entscheidest du</b>.
-          Die Regler sortieren die Aufgaben im <Link href="/os/planung/woche" style={{ color: T.accentInk, textDecoration: 'none' }}>Wochenplaner</Link> vor,
-          und Jarvis gewichtet seinen Wochenvorschlag danach.
-        </p>
+        <Seitenkopf
+          rubrik={<>Fokus-Regler</>}
+          titel={<>Wohin fließt die Energie?</>}
+          satz={<>Der MAKE Score zeigt die Datenlage — <b style={{ color: T.ink }}>aber wo der Fokus hingeht, entscheidest du</b>. Die Regler sortieren die Aufgaben im <Link href="/os/planung/woche" style={{ color: T.accentInk, textDecoration: 'none' }}>Wochenplaner</Link> vor, und Jarvis gewichtet seinen Wochenvorschlag danach.</>}
+        />
 
         {!geladen ? (
           <div style={{ fontFamily: T.mono, fontSize: 12, color: T.muted, marginTop: 20 }}>lade …</div>
@@ -73,7 +70,7 @@ export function FokusReglerView() {
                 <div key={s.key} style={{ ...panel, borderLeft: `3px solid ${s.farbe}`, padding: '14px 18px' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
                     <span style={{ fontSize: 14.5, fontWeight: 700, color: T.ink }}>{s.label}</span>
-                    <span style={{ fontFamily: T.mono, fontSize: 10.5, color: s.farbe }}>{stufe(v)}</span>
+                    <span style={{ fontFamily: T.mono, fontSize: 11, color: s.farbe }}>{stufe(v)}</span>
                     <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: T.muted }}>
                       {sc ? (sc.score != null ? `Score: ${sc.score}${sc.zuDuenn ? ' (zu dünn)' : ''}` : 'Score: keine Daten') : ''}
                     </span>

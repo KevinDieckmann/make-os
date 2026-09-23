@@ -9,13 +9,14 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
+import type { PlanBlock } from '@/types/planer';
 import { localDay } from '@/lib/zeit';
+import { Seitenkopf } from './Seitenkopf';
 
-interface PlanBlock { date: string; startMin: number; dauerMin: number; titel: string; art: string }
 interface Termin { titel: string; date: string; zeit: string }
 interface Meilenstein { titel: string; faellig?: string; zeitfenster?: string; messlatte?: string; fortschritt: number; erledigt: boolean; bereich: string }
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 const GES_TERMIN = /arzt|dr\.|physio|reha|spritze|infiltration|neurolog|orthop|training|sport|gym|fitness|schwimm|massage|therapie/i;
 const GES_BLOCK = /sport|train|gym|lauf|schwimm|spazier|bewegung|yoga|dehn/i;
@@ -28,7 +29,7 @@ function montagVon(tag: string): string {
 }
 const tagPlus = (t: string, n: number) => { const d = new Date(`${t}T12:00:00`); d.setDate(d.getDate() + n); return localDay(d); };
 
-export function EnergieView() {
+export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } = {}) {
   const heute = localDay();
   const startMontag = montagVon(heute);
   const wochen = [0, 1, 2, 3].map(i => tagPlus(startMontag, i * 7));
@@ -83,13 +84,13 @@ export function EnergieView() {
   const tagKurz = (d: string) => ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][new Date(`${d}T12:00:00`).getDay()];
 
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div className="stagger" style={{ maxWidth: 860, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
-        <div style={{ ...lbl, color: '#58D9CD' }}>Gesundheit · Energie erhöhen</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Die nächsten 4 Wochen.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 660, lineHeight: 1.5 }}>
-          Was für Körper und Energie wirklich geplant ist — Sport, Reha, Termine, Etappen. Eine leere Woche ist keine freie Woche, sondern eine Ansage.
-        </p>
+    <div style={eingebettet ? { color: T.ink, fontFamily: T.sans } : { minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
+      <div className="stagger" style={eingebettet ? {} : { maxWidth: 860, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
+        {!eingebettet && <Seitenkopf
+          rubrik={<>Gesundheit · Energie erhöhen</>}
+          titel={<>Die nächsten 4 Wochen.</>}
+          satz={<>Was für Körper und Energie wirklich geplant ist — Sport, Reha, Termine, Etappen. Eine leere Woche ist keine freie Woche, sondern eine Ansage.</>}
+        />}
 
         {/* 4 Wochen */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, margin: '18px 0' }}>
@@ -99,7 +100,7 @@ export function EnergieView() {
               <div key={w} style={{ ...panel, borderLeft: `3px solid ${leer ? T.amber : '#58D9CD'}`, padding: '14px 18px' }}>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: leer ? 0 : 8 }}>
                   <span style={{ fontSize: 14, fontWeight: 700 }}>{wLabel(w, wi)}</span>
-                  <span style={{ fontFamily: T.mono, fontSize: 10.5, color: reha.length ? T.accent : T.amber }}>
+                  <span style={{ fontFamily: T.mono, fontSize: 11, color: reha.length ? T.accent : T.amber }}>
                     Reha {reha.length}× {reha.length === 0 ? '— Bandscheibe braucht täglich' : reha.length < 5 ? '— Luft nach oben' : '✓'}
                   </span>
                   {leer && <span style={{ fontSize: 12, color: T.amber }}>nichts geplant — <Link href="/os/planung/woche" style={{ color: T.accentInk, textDecoration: 'none' }}>Blöcke reinziehen ›</Link></span>}
@@ -107,7 +108,7 @@ export function EnergieView() {
                 {(reha.length > 0 || sport.length > 0) && (
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: term.length || ms.length ? 8 : 0 }}>
                     {[...reha, ...sport].sort((a, b) => a.date.localeCompare(b.date) || a.startMin - b.startMin).map((b, i) => (
-                      <span key={i} style={{ fontFamily: T.mono, fontSize: 10.5, color: b.art === 'reha' ? '#58D9CD' : T.accentInk, border: `1px solid ${b.art === 'reha' ? '#58D9CD44' : `${T.accent}44`}`, borderRadius: 6, padding: '3px 9px' }}>
+                      <span key={i} style={{ fontFamily: T.mono, fontSize: 11, color: b.art === 'reha' ? '#58D9CD' : T.accentInk, border: `1px solid ${b.art === 'reha' ? '#58D9CD44' : `${T.accent}44`}`, borderRadius: 6, padding: '3px 9px' }}>
                         {tagKurz(b.date)} {mm(b.startMin)} {b.titel}
                       </span>
                     ))}
@@ -150,7 +151,7 @@ export function EnergieView() {
           <div style={{ ...panel, padding: '14px 18px' }}>
             <div style={{ ...lbl, marginBottom: 8 }}>Tägliche Gesundheits-Routinen</div>
             {routinen.length ? routinen.map((r, i) => (
-              <div key={i} style={{ fontSize: 12.5, color: T.inkDim, lineHeight: 1.6 }}>· {r.label} <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>({r.wann})</span></div>
+              <div key={i} style={{ fontSize: 12.5, color: T.inkDim, lineHeight: 1.6 }}>· {r.label} <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>({r.wann})</span></div>
             )) : <span style={{ fontSize: 12, color: T.muted }}>keine aktiv</span>}
             <Link href="/os/planung/routinen" style={{ fontSize: 11.5, color: T.accentInk, textDecoration: 'none' }}>planen ›</Link>
           </div>

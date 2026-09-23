@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
 import { Rich } from '@/components/os/Rich';
+import { Seitenkopf } from './Seitenkopf';
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 
 const FORMATS = [
@@ -44,12 +45,11 @@ export function ContentView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
         <Link href="/os/agenten" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Agenten</Link>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <div style={lbl}>Content-/Brand-Agent</div>
-          <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.accentInk, border: `1px solid ${T.accentInk}55`, borderRadius: 5, padding: '2px 7px' }}>live · Entwurf</span>
-        </div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Schreibt in deiner CI.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 680, lineHeight: 1.5 }}>Format wählen, Thema rein — der Agent entwirft in KEMARIS-Sprache (Souveränität, Klartext, keine Buzzwords). <b style={{ color: T.ink }}>Veröffentlichen bleibt dein Klick.</b></p>
+          <Seitenkopf
+            rubrik={<>Content-/Brand-Agent <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, border: `1px solid ${T.accentInk}55`, borderRadius: 5, padding: '2px 7px' }}>live · Entwurf</span></>}
+            titel={<>Schreibt in deiner CI.</>}
+            satz={<>Format wählen, Thema rein — der Agent entwirft in KEMARIS-Sprache (Souveränität, Klartext, keine Buzzwords). <b style={{ color: T.ink }}>Veröffentlichen bleibt dein Klick.</b></>}
+          />
 
         {/* Format */}
         <div style={{ ...lbl, margin: '20px 0 8px' }}>Format</div>
@@ -82,7 +82,7 @@ export function ContentView() {
               )}
             </div>
             {busy ? <div style={{ fontFamily: T.mono, fontSize: 12, color: T.muted }}>schreibe in CI …</div> : <Rich text={draft} />}
-            {draft && !busy && <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, marginTop: 12, paddingTop: 10, borderTop: `1px solid ${T.lineSoft}` }}>Entwurf — gegenlesen & selbst veröffentlichen.</div>}
+            {draft && !busy && <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 12, paddingTop: 10, borderTop: `1px solid ${T.lineSoft}` }}>Entwurf — gegenlesen & selbst veröffentlichen.</div>}
           </div>
         )}
       </div>

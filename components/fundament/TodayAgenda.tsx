@@ -93,10 +93,10 @@ export function TodayAgenda() {
   return (
     <div className="os-card" style={{ padding: 16, height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#777', letterSpacing: '0.14em' }}>
+        <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#777', letterSpacing: '0.14em' }}>
           AGENDA // {label}
         </div>
-        <span style={{ fontFamily: 'var(--mono-font)', fontSize: 8, color: status === 'ok' ? '#00ff66' : '#ff8800', letterSpacing: '0.06em' }}>
+        <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: status === 'ok' ? '#00ff66' : '#ff8800', letterSpacing: '0.06em' }}>
           {status === 'loading' ? 'LÄDT…' : status === 'ok' ? '● KEMARIS + APPLE' : '● KEMARIS (Apple offline)'}
         </span>
       </div>
@@ -115,9 +115,9 @@ export function TodayAgenda() {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {e.title}{e.isTeams && <span style={{ color: '#5b5fc7', fontSize: 10 }}> · Teams</span>}
+                  {e.title}{e.isTeams && <span style={{ color: '#5b5fc7', fontSize: 11 }}> · Teams</span>}
                 </div>
-                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 8, color: e.color, letterSpacing: '0.08em', marginTop: 2 }}>
+                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: e.color, letterSpacing: '0.08em', marginTop: 2 }}>
                   {e.sourceLabel}{focus && <span style={{ color: '#ff8800' }}> · ⚠ FOKUSZEIT</span>}
                 </div>
               </div>

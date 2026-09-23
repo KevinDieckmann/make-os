@@ -8,7 +8,35 @@
 // Client-safe: keine Server-Importe.
 
 export interface Firma { id: string; name: string; kontostand: number | null; stand: string | null }
-export interface Rechnung { id: string; kunde: string; titel: string; betrag: number; status: string; faellig?: string }
+/**
+ * Kevins Ansage: „Was bringt es, 3.000 € einzutragen, wenn die Abläufe dahinter
+ * nicht funktionieren — Angebotsnummer, Datum und so weiter fehlen." Deshalb
+ * trägt eine Rechnung jetzt ihren ganzen Vorgang: vom Angebot bis zum Eingang.
+ */
+export interface Rechnung {
+  id: string;
+  kunde: string;
+  titel: string;
+  betrag: number;
+  status: string;
+  faellig?: string;
+  /** Rechnungsnummer, wie sie beim Kunden liegt. */
+  nummer?: string;
+  /** Wann gestellt (YYYY-MM-DD). */
+  datum?: string;
+  /** Angebotsnummer und -datum — der Schritt davor. */
+  angebot?: string;
+  angebotAm?: string;
+  /** Wann das Geld gekommen ist. */
+  bezahltAm?: string;
+  /** Netto, wenn abweichend gerechnet wird. */
+  netto?: number;
+  ustSatz?: number;
+  /** Leistungszeitraum, für die Buchhaltung. */
+  leistungVon?: string;
+  leistungBis?: string;
+  notiz?: string;
+}
 export interface Zahlung { id: string; an: string; titel: string; betrag: number; status: string; faellig?: string }
 export interface Merkposten { id: string; titel: string; betrag: number; art: string; notiz?: string }
 

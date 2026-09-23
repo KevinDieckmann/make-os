@@ -27,7 +27,7 @@ export interface Kontakt {
   /** YYYY-MM-DD des letzten echten Kontakts. */
   letzterKontakt?: string;
   /** Wer von uns beiden die Beziehung hält. */
-  besitzer: 'kevin' | 'malin' | 'beide';
+  besitzer: string | 'beide';
   stichworte?: string[];
 }
 

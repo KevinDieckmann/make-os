@@ -4,7 +4,7 @@
 // eingebauten ergänzen.
 
 import { NextResponse } from 'next/server';
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson, updateJson, updateGeschuetztListen } from '@/lib/store/local-db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -86,14 +86,26 @@ export async function PUT(req: Request) {
   let body: Partial<FilterFile>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
 
-  const next = await updateJson<FilterFile>('filter', current => ({
+  const vorher = await loadJson<FilterFile>('filter');
+  const sauber: FilterFile = {
     filter: Array.isArray(body.filter)
       ? body.filter.slice(0, 40).map(sauberFilter).filter((x): x is EigenerFilter => !!x)
-      : (current?.filter ?? []),
+      : (vorher?.filter ?? []),
     stichworte: Array.isArray(body.stichworte)
       ? body.stichworte.slice(0, 100).map(sauberStichwort).filter((x): x is EigenesStichwort => !!x)
-      : (current?.stichworte ?? []),
-  }));
+      : (vorher?.stichworte ?? []),
+  };
 
+  // Eigene Filter und Stichworte sind Handarbeit — ein Client mit halbem Stand
+  // darf sie nicht halbieren.
+  const { ok, next, verloren } = await updateGeschuetztListen<FilterFile>(
+    'filter', sauber, ['filter', 'stichworte'],
+  );
+  if (!ok) {
+    return NextResponse.json(
+      { ok: false, error: `Abgelehnt: das hätte über die Hälfte von ${verloren} gelöscht.` },
+      { status: 409 },
+    );
+  }
   return NextResponse.json({ ok: true, ...next });
 }

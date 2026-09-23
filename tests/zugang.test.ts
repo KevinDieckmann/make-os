@@ -1,0 +1,81 @@
+// ─── Zugang: Konten, Sitzungen, Passwörter ──────────────────────────────────
+// Das hier ist die Tür. Jeder Test schützt einen Weg, auf dem jemand hinein
+// käme, der nicht hinein soll — oder einen, auf dem Kevin ausgesperrt bliebe.
+
+import { describe, it, expect } from 'vitest';
+import { speicherName, emailSauber, passwortTauglich, neuerEinladungscode, passwortHashen, passwortStimmt } from '../lib/zugang/konten';
+import { sitzungAusstellen, sitzungPruefen } from '../lib/zugang/sitzung';
+
+describe('Speichername', () => {
+  it('macht aus Kevin „kevin" und aus Malin „malin" — damit die alten Dateien passen', () => {
+    expect(speicherName('Kevin Dieckmann', [])).toBe('kevin');
+    expect(speicherName('Malin', ['kevin'])).toBe('malin');
+  });
+
+  it('ersetzt Umlaute und hängt bei Dopplung eine Zahl an', () => {
+    expect(speicherName('Jörg', [])).toBe('joerg');
+    expect(speicherName('Jörg', ['joerg'])).toBe('joerg2');
+  });
+
+  it('gibt nie einen leeren Namen zurück', () => {
+    expect(speicherName('!!!', [])).toBe('person');
+  });
+});
+
+describe('Eingaben', () => {
+  it('nimmt nur echte E-Mails, klein geschrieben', () => {
+    expect(emailSauber(' K.Dieckmann@Beispiel.DE ')).toBe('k.dieckmann@beispiel.de');
+    expect(emailSauber('kein-at')).toBeNull();
+  });
+
+  it('verlangt beim Passwort Länge, keine Sonderzeichenregeln', () => {
+    expect(passwortTauglich('kurz')).toBe(false);
+    expect(passwortTauglich('zehn zeichen lang')).toBe(true);
+  });
+
+  it('erzeugt Einladungscodes ohne verwechselbare Zeichen', () => {
+    for (let i = 0; i < 40; i++) expect(neuerEinladungscode()).toMatch(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4}-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4}$/);
+  });
+});
+
+describe('Passwort', () => {
+  it('erkennt das richtige und lehnt das falsche ab', async () => {
+    const k = await passwortHashen('TESTPASSWORT-nur-fuer-den-test');
+    expect(await passwortStimmt('TESTPASSWORT-nur-fuer-den-test', k)).toBe(true);
+    expect(await passwortStimmt('TESTPASSWORT-nur-fuer-den-tesT', k)).toBe(false);
+  });
+
+  it('hasht dasselbe Passwort zweimal verschieden (Salz)', async () => {
+    const a = await passwortHashen('gleiches passwort');
+    const b = await passwortHashen('gleiches passwort');
+    expect(a.hash).not.toBe(b.hash);
+  });
+});
+
+describe('Sitzung', () => {
+  const G = 'TESTGEHEIMNIS-nicht-echt';
+
+  it('stellt einen Zettel aus, den nur dasselbe Geheimnis prüft', async () => {
+    const z = await sitzungAusstellen(G, 'kevin');
+    expect(await sitzungPruefen(G, z)).toEqual({ speicher: 'kevin' });
+    expect(await sitzungPruefen('anderes', z)).toBeNull();
+  });
+
+  it('lehnt einen veränderten Zettel ab', async () => {
+    const z = await sitzungAusstellen(G, 'kevin');
+    expect(await sitzungPruefen(G, z.replace('kevin', 'malin'))).toBeNull();
+    // Letztes Zeichen wirklich ändern — endet die Signatur zufällig auf 0,
+    // wäre „+ '0'" keine Veränderung (Zufallsfehler vom 23.09.).
+    expect(await sitzungPruefen(G, z.slice(0, -1) + (z.endsWith('0') ? '1' : '0'))).toBeNull();
+  });
+
+  it('lässt Zettel ablaufen', async () => {
+    const z = await sitzungAusstellen(G, 'kevin', Date.now() - 40 * 864e5);
+    expect(await sitzungPruefen(G, z)).toBeNull();
+  });
+
+  it('nimmt keinen Speichernamen mit fremden Zeichen', async () => {
+    const z = await sitzungAusstellen(G, '../etc');
+    expect(await sitzungPruefen(G, z)).toBeNull();
+  });
+});

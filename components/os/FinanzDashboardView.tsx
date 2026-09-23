@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 
 export function FinanzDashboardView() {
   const [voll, setVoll] = useState(false);

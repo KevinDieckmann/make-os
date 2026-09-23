@@ -37,7 +37,12 @@ export interface AskOptions {
   /** Default 4000 — bewusst großzügig wegen extended thinking. Wird auf min. 1200 angehoben. */
   maxTokens?: number;
   tools?: unknown[];
-  temperature?: number;
+  // Kein `temperature` mehr: die aktuellen Modelle lehnen den Wert ab
+  // („temperature is deprecated for this model") und der ganze Aufruf
+  // scheitert daran. Steuerung läuft über den System-Text.
+  /** Wofür der Aufruf ist — landet in der Verbrauchs-Mitschrift, damit man
+   *  später sieht, welcher Agent die Rechnung treibt. Ohne Angabe „unbenannt". */
+  zweck?: string;
   /** Abbruch nach x ms (Default 90s) — sonst kann ein Hänger das UI blockieren. */
   timeoutMs?: number;
   /** Zusätzliche Versuche bei 429/5xx (Default 2). */
@@ -114,7 +119,6 @@ export async function askText(opts: AskOptions): Promise<AskResult> {
     messages: opts.messages ?? [{ role: 'user', content: opts.user }],
   };
   if (opts.tools && opts.tools.length) body.tools = opts.tools;
-  if (opts.temperature != null) body.temperature = opts.temperature;
 
   const timeoutMs = opts.timeoutMs ?? 90_000;
   const maxAttempts = (opts.retries ?? 2) + 1;
@@ -138,6 +142,17 @@ export async function askText(opts: AskOptions): Promise<AskResult> {
         return last;
       }
       const data = await res.json();
+      // Verbrauch mitschreiben — an DIESER einen Stelle, durch die jeder
+      // Modellaufruf geht. Je Route wäre es 21-mal dieselbe Zeile und beim
+      // 22. Mal vergessen. Schlägt es fehl, ist das egal: eine fehlende
+      // Kostenzeile darf niemals eine Antwort verhindern.
+      try {
+        const u = (data as { usage?: { input_tokens?: number; output_tokens?: number } }).usage;
+        if (u) {
+          const { notiere } = await import('./jarvis/verbrauch');
+          void notiere(String(body.model), opts.zweck ?? 'unbenannt', u.input_tokens ?? 0, u.output_tokens ?? 0);
+        }
+      } catch { /* still */ }
       const text = extractText(data);
       const stopReason = (data as { stop_reason?: string }).stop_reason;
       // Denken hat das ganze Budget gefressen → einmal mit mehr Luft nachfassen.

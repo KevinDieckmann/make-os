@@ -5,9 +5,9 @@ import { useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
 import { WHOOP } from '@/lib/make-one/health-data';
 import { Rich } from './Rich';
+import { Seitenkopf } from './Seitenkopf';
 
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 
 const rec = WHOOP.rec;
 const zone = rec >= 66 ? 'grün' : rec >= 40 ? 'gelb' : 'rot';
@@ -34,9 +34,11 @@ export function FokusView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 820, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
         <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
-        <div style={lbl}>Fokus · Recovery × Prioritäten</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Dein Tag, ausgerichtet.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 620, lineHeight: 1.5 }}>MAKE verrechnet deine Whoop-Recovery mit deinen Aufgaben — und sagt dir die Tagesform. Firma und Gesundheit in einer Empfehlung.</p>
+        <Seitenkopf
+          rubrik={<>Fokus · Recovery × Prioritäten</>}
+          titel={<>Dein Tag, ausgerichtet.</>}
+          satz={<>MAKE verrechnet deine Whoop-Recovery mit deinen Aufgaben — und sagt dir die Tagesform. Firma und Gesundheit in einer Empfehlung.</>}
+        />
 
         {/* Readiness */}
         <div style={{ ...panel, padding: '20px 22px', margin: '20px 0 16px', display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', borderColor: `${zoneColor}55` }}>
@@ -47,11 +49,11 @@ export function FokusView() {
             </svg>
             <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontFamily: T.mono, fontSize: 26, fontWeight: 600, color: T.ink, lineHeight: 1 }}>{rec}</span>
-              <span style={{ fontFamily: T.mono, fontSize: 8, color: T.muted }}>Recovery</span>
+              <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>Recovery</span>
             </div>
           </div>
           <div style={{ flex: 1, minWidth: 220 }}>
-            <span style={{ fontFamily: T.mono, fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: zoneColor, border: `1px solid ${zoneColor}55`, borderRadius: 5, padding: '2px 9px' }}>Zone {zone}</span>
+            <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: zoneColor, border: `1px solid ${zoneColor}55`, borderRadius: 5, padding: '2px 9px' }}>Zone {zone}</span>
             <div style={{ fontSize: 14, color: T.ink, marginTop: 10, lineHeight: 1.5 }}>{zoneText}</div>
             <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 6 }}>RHR {WHOOP.rhr} · HRV {WHOOP.hrv} · Schlaf {WHOOP.sleepLast}h</div>
           </div>

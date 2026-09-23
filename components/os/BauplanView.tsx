@@ -9,8 +9,9 @@ import {
 } from '@/lib/make-one/backlog-data';
 import { localDay } from '@/lib/zeit';
 import { Zeitstrahl, type StrahlMarker, type StrahlTick } from './Zeitstrahl';
+import { Seitenkopf } from './Seitenkopf';
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 
 const katColor = (k: BacklogKat) => (k === 'anbindung' ? '#4A6CF7' : k === 'agent' ? T.accent : k === 'qualitaet' ? T.accentInk : '#AC9D80');
@@ -21,21 +22,37 @@ const STATI: BacklogStatus[] = ['offen', 'laufend', 'erledigt'];
 export function BauplanView() {
   const [items, setItems] = useState<BacklogItem[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [ladeFehler, setLadeFehler] = useState(false);
+  const [speicherFehler, setSpeicherFehler] = useState(false);
   const [neu, setNeu] = useState('');
   const [filter, setFilter] = useState<'alle' | BacklogBlock>('alle');
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
-    fetch('/api/state/backlog').then(r => r.json()).then((d: { items: BacklogItem[] }) => {
-      setItems(d.items ?? []); setLoaded(true);
-    }).catch(() => setLoaded(true));
+    fetch('/api/state/backlog')
+      .then(r => r.json())
+      .then((d: { items: BacklogItem[] }) => {
+        // Eine leere Antwort ist kein leerer Bauplan — sie ist ein Fehler.
+        if (!Array.isArray(d.items)) throw new Error('keine Liste');
+        setItems(d.items); setLoaded(true);
+      })
+      .catch(() => setLadeFehler(true));
   }, []);
 
+  /**
+   * Speichern nur, wenn vorher wirklich geladen wurde. Sonst schriebe ein
+   * fehlgeschlagener Ladevorgang eine leere Liste zurück — der Server lehnt
+   * das zwar ab (Schrumpf-Wächter), aber Kevin sähe eine leere Seite und
+   * seine Änderung verschwände still. Lieber gar nicht speichern und es sagen.
+   */
   function persist(next: BacklogItem[]) {
+    if (ladeFehler || !loaded) return;
     setItems(next);
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      fetch('/api/state/backlog', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: next }) }).catch(() => {});
+      fetch('/api/state/backlog', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: next }) })
+        .then(r => { if (!r.ok) setSpeicherFehler(true); })
+        .catch(() => setSpeicherFehler(true));
     }, 400);
   }
 
@@ -100,12 +117,32 @@ export function BauplanView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 920, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
         <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
-        <div style={lbl}>Bauplan · das System selbst</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Was wir noch bauen.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 680, lineHeight: 1.5 }}>
-          Getrennt von deinen echten Aufgaben: hier steht, was an MAKE OS fehlt — Anbindungen, Agenten, Verbesserungen.
-          Was dir unterwegs auffällt, trägst du unten ein; ich schreibe rein, was ich beim Bauen finde.
-        </p>
+
+        {/* Lieber ehrlich stehenbleiben als still eine leere Liste speichern. */}
+        {ladeFehler && (
+          <div style={{ background: T.panel, border: `1px solid ${T.crit}66`, borderLeft: `3px solid ${T.crit}`, borderRadius: 12, padding: '13px 17px', marginBottom: 14 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: T.crit }}>Der Bauplan konnte nicht geladen werden.</div>
+            <div style={{ fontSize: 12.5, color: T.inkDim, lineHeight: 1.55, marginTop: 4 }}>
+              Deine Einträge sind nicht weg — sie liegen auf der Platte. Änderungen sind hier so lange gesperrt,
+              damit nichts Leeres darüber geschrieben wird. Seite neu laden.
+            </div>
+          </div>
+        )}
+        {speicherFehler && !ladeFehler && (
+          <div style={{ background: T.panel, border: `1px solid ${T.amber}66`, borderLeft: `3px solid ${T.amber}`, borderRadius: 12, padding: '13px 17px', marginBottom: 14 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: T.amber }}>Die letzte Änderung wurde nicht gespeichert.</div>
+            <div style={{ fontSize: 12.5, color: T.inkDim, lineHeight: 1.55, marginTop: 4 }}>
+              Entweder war der Server kurz weg, oder der Schutz hat abgelehnt, weil zu viel auf einmal verschwunden wäre.
+              Seite neu laden und noch einmal versuchen.
+            </div>
+          </div>
+        )}
+
+        <Seitenkopf
+          rubrik={<>Bauplan · das System selbst</>}
+          titel={<>Was wir noch bauen.</>}
+          satz={<>Getrennt von deinen echten Aufgaben: hier steht, was an MAKE OS fehlt — Anbindungen, Agenten, Verbesserungen. Was dir unterwegs auffällt, trägst du unten ein; ich schreibe rein, was ich beim Bauen finde.</>}
+        />
 
         {/* Kennzahlen + Filter */}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '18px 0 14px', alignItems: 'stretch' }}>
@@ -117,7 +154,7 @@ export function BauplanView() {
         {/* Zeitstrahl — 90 Tage voraus; nur terminierte Punkte erscheinen */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', margin: '0 2px 6px' }}>
           <span style={lbl}>Zeitstrahl · 90 Tage</span>
-          {ohneZiel > 0 && <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{ohneZiel} offene Punkte ohne Zieldatum — Datum am Punkt setzen, dann erscheinen sie hier</span>}
+          {ohneZiel > 0 && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{ohneZiel} offene Punkte ohne Zieldatum — Datum am Punkt setzen, dann erscheinen sie hier</span>}
         </div>
         <Zeitstrahl von={heute} bis={strahlBis} ticks={ticks} marker={strahlMarker} />
 
@@ -155,11 +192,11 @@ export function BauplanView() {
                     P{it.prio}
                   </button>
                   <span style={{ fontSize: 15, fontWeight: 600, color: statusColor(it.status), textDecoration: it.status === 'erledigt' ? 'line-through' : 'none', flex: 1, minWidth: 180 }}>{it.titel}</span>
-                  <span style={{ fontFamily: T.mono, fontSize: 9.5, color: katColor(it.kategorie), border: `1px solid ${katColor(it.kategorie)}55`, borderRadius: 5, padding: '2px 7px' }}>{KAT_LABEL[it.kategorie]}</span>
-                  <span style={{ fontFamily: T.mono, fontSize: 9.5, color: blockColor(it.block), border: `1px solid ${blockColor(it.block)}55`, borderRadius: 5, padding: '2px 7px' }}>{BLOCK_LABEL[it.block]}</span>
+                  <span style={{ fontFamily: T.mono, fontSize: 11, color: katColor(it.kategorie), border: `1px solid ${katColor(it.kategorie)}55`, borderRadius: 5, padding: '2px 7px' }}>{KAT_LABEL[it.kategorie]}</span>
+                  <span style={{ fontFamily: T.mono, fontSize: 11, color: blockColor(it.block), border: `1px solid ${blockColor(it.block)}55`, borderRadius: 5, padding: '2px 7px' }}>{BLOCK_LABEL[it.block]}</span>
                   <input type="date" value={it.ziel ?? ''} title="Zieldatum — setzt den Punkt auf den Zeitstrahl"
                     onChange={e => persist(items.map(x => x.id === it.id ? { ...x, ziel: e.target.value || undefined } : x))}
-                    style={{ fontFamily: T.mono, fontSize: 10.5, color: it.ziel ? T.accentInk : T.muted, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 6, padding: '2px 6px', colorScheme: 'dark', flex: '0 0 auto' }} />
+                    style={{ fontFamily: T.mono, fontSize: 11, color: it.ziel ? T.accentInk : T.muted, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 6, padding: '2px 6px', colorScheme: 'dark', flex: '0 0 auto' }} />
                   <button onClick={() => cycleStatus(it)} style={{ fontFamily: T.sans, fontSize: 11.5, fontWeight: 600, padding: '4px 11px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.inkDim, flex: '0 0 auto' }}>
                     {STATUS_LABEL[it.status]}
                   </button>
@@ -174,7 +211,7 @@ export function BauplanView() {
                   </div>
                 )}
 
-                {it.quelle && <div style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted, marginTop: 7, paddingLeft: 30 }}>aus: {it.quelle}</div>}
+                {it.quelle && <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 7, paddingLeft: 30 }}>aus: {it.quelle}</div>}
               </div>
             ))}
             {!sichtbar.length && (

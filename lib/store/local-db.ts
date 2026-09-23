@@ -145,6 +145,25 @@ export async function updateJson<T>(name: string, mutate: (current: T | null) =>
  * @param abTeil  ab welcher Größe geprüft wird (kleine Listen ändern sich stark)
  * @returns       { ok: true, next } oder { ok: false } — dann wurde NICHT geschrieben
  */
+/**
+ * Die eigentliche Regel hinter beiden Wächtern: schrumpft eine Liste um mehr
+ * als die Hälfte, ist das kein Bearbeiten mehr, sondern ein Verlust.
+ *
+ * Steht als eigene Funktion da, damit sie prüfbar ist. Sie ist die Zeile, die
+ * am 06.09. verhindert hätte, dass 57 Aufgaben still verschwinden — so etwas
+ * gehört nicht in eine Bedingung mitten in einer Schreiboperation, wo es
+ * niemand testen kann.
+ *
+ * @param alt     Länge vorher
+ * @param neu     Länge nachher
+ * @param abTeil  ab welcher Länge überhaupt geprüft wird (kurze Listen
+ *                schwanken naturgemäß stark — bei 2 von 3 wäre jede Änderung
+ *                verdächtig)
+ */
+export function schrumpftZuStark(alt: number, neu: number, abTeil: number): boolean {
+  return alt >= abTeil && neu < alt / 2;
+}
+
 export async function updateGeschuetzt<T>(
   name: string,
   neu: T,
@@ -155,11 +174,50 @@ export async function updateGeschuetzt<T>(
   const next = await updateJson<T>(name, current => {
     if (!current) return neu;
     const alt = zaehle(current);
-    if (alt >= abTeil && zaehle(neu) < alt / 2) {
+    if (schrumpftZuStark(alt, zaehle(neu), abTeil)) {
       abgelehnt = true;
       return current;
     }
     return neu;
   });
   return { ok: !abgelehnt, next };
+}
+
+/**
+ * Derselbe Schutz für Dateien mit MEHREREN Listen — etwa der Finanzplan mit
+ * Firmen, Rechnungen, Zahlungen und Merkposten nebeneinander.
+ *
+ * Warum eigens dafür: mit `updateGeschuetzt` müsste man sich für EINE Liste
+ * entscheiden. Dann kämen zwar die Rechnungen durch, aber die neun offenen
+ * Zahlungen könnten still verschwinden. Hier wird jede Liste einzeln geprüft;
+ * eine einzige schrumpfende reicht, um den ganzen Schreibvorgang abzulehnen.
+ *
+ * @param felder  welche Listen geschützt werden (Schlüssel der Datei)
+ * @param abTeil  ab welcher Länge geprüft wird — kurze Listen ändern sich stark
+ * @returns       bei Ablehnung zusätzlich `verloren`: welche Liste geschrumpft wäre
+ */
+export async function updateGeschuetztListen<T extends object>(
+  name: string,
+  neu: T,
+  felder: (keyof T)[],
+  abTeil = 3,
+): Promise<{ ok: boolean; next: T; verloren?: string }> {
+  let verloren: string | undefined;
+  const laenge = (o: T | null, k: keyof T) => {
+    const v = o ? (o as Record<string, unknown>)[String(k)] : undefined;
+    return Array.isArray(v) ? v.length : 0;
+  };
+
+  const next = await updateJson<T>(name, current => {
+    if (!current) return neu;
+    for (const k of felder) {
+      const alt = laenge(current, k);
+      if (schrumpftZuStark(alt, laenge(neu, k), abTeil)) {
+        verloren = `${String(k)} (${alt} → ${laenge(neu, k)})`;
+        return current;
+      }
+    }
+    return neu;
+  });
+  return { ok: !verloren, next, verloren };
 }

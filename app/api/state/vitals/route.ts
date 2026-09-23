@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/jarvis/raum';
 import { resolveVitals, localDay, type VitalsLog, type DayVitals } from '@/lib/vitals';
 
 export const runtime = 'nodejs';
@@ -16,9 +17,17 @@ const num = (v: unknown, min: number, max: number): number | undefined => {
   return Math.max(min, Math.min(max, n));
 };
 
-export async function GET() {
-  const log = (await loadJson<VitalsLog>('vitals')) ?? {};
-  const aktuell = await resolveVitals();
+export async function GET(req: Request) {
+  // Körperwerte sind persönlich: Kevin und Malin schreiben in getrennte
+  // Speicher. Vorher hätte ihr Morgen-Check seinen überschrieben.
+  // Lesen dürfen sich beide gegenseitig (?fuer=, seit 23.09.).
+  const person = ansichtPerson(req);
+  if (!(await darfGesundheitSehen(req, person))) return NextResponse.json({ error: 'Diese Person teilt ihre Gesundheitsdaten nicht mit dir.' }, { status: 403 });
+  const log = (await loadJson<VitalsLog>(speicherFuer('vitals', person))) ?? {};
+  // Auch der Rückfallwert gehört der Person: resolveVitals nimmt für Kevin
+  // seinen Whoop-Export als Ausgangspunkt und für Malin ehrlich Null. Ohne
+  // das stand bei ihr Kevins Recovery von 81 % als ihr eigener Wert.
+  const aktuell = await resolveVitals(undefined, person);
   return NextResponse.json({ log, aktuell });
 }
 
@@ -46,7 +55,8 @@ export async function PUT(req: Request) {
 
   // Serialisiert lesen-ändern-schreiben: sonst überschreibt ein paralleler
   // Schreiber die anderen Tage.
-  await updateJson<VitalsLog>('vitals', current => {
+  const person = personAus(req);
+  await updateJson<VitalsLog>(speicherFuer('vitals', person), current => {
     const log = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
     return { ...log, [date]: { ...(log[date] ?? {}), ...clean } };
   });
@@ -60,13 +70,16 @@ export async function PUT(req: Request) {
   const j2 = num(b.energy, 1, 5); if (j2 !== undefined) jrnl.energy = j2;
   const j3 = num(b.stress, 1, 5); if (j3 !== undefined) jrnl.stress = j3;
   if (Object.keys(jrnl).length) {
-    await updateJson<Record<string, Record<string, unknown>>>('journal', current => {
+    await updateJson<Record<string, Record<string, unknown>>>(speicherFuer('journal', person), current => {
       const log = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
       // Vorhandenen Freitext des Tages nicht anfassen.
       return { ...log, [date]: { ...(log[date] ?? {}), ...jrnl, at: new Date().toISOString() } };
     });
   }
 
-  const aktuell = await resolveVitals();
+  // Auch der Rückfallwert gehört der Person: resolveVitals nimmt für Kevin
+  // seinen Whoop-Export als Ausgangspunkt und für Malin ehrlich Null. Ohne
+  // das stand bei ihr Kevins Recovery von 81 % als ihr eigener Wert.
+  const aktuell = await resolveVitals(undefined, person);
   return NextResponse.json({ ok: true, date, aktuell });
 }

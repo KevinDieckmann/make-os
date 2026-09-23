@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   const agent = await resolveAgent('research');
   if (!agent.enabled) return NextResponse.json({ ...disabledResponse(agent), reply: '' });
 
-  const r2 = await askWithSearch({ system: SYSTEM, user: query, maxTokens: 5000, model: agent.model, timeoutMs: 120_000 });
+  const r2 = await askWithSearch({ zweck: 'research', system: SYSTEM, user: query, maxTokens: 5000, model: agent.model, timeoutMs: 120_000 });
   if (!r2.ok || !r2.text) return NextResponse.json({ reply: r2.error ?? 'Konnte gerade nicht recherchieren — versuch es nochmal.' });
 
   await logRun('research', query.slice(0, 120), { query, reply: r2.text.slice(0, 2000), webUsed: r2.webUsed });

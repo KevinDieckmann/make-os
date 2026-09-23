@@ -3,7 +3,7 @@
 // Kevin: Kraft 3×/Woche · Journaling täglich · Morgen-/Abend-Routine.
 // Whoop-Zielwerte sind Vorschläge (⏳) bis Kevin sie im MAKE Abstimmung fixiert.
 
-export type Person = 'kevin' | 'malin';
+export type Person = string;
 
 // ─── Energie-Rhythmus (Gesundheit_Brain: Verfügbar 07–09 & 17–19, Fokus 09–17)
 

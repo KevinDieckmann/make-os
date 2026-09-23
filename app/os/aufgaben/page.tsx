@@ -1,5 +1,3 @@
-import { AufgabenView } from '@/components/os/AufgabenView';
-
-export default function AufgabenPage() {
-  return <AufgabenView />;
-}
+import { Suspense } from 'react';
+import { AufgabenSchlank } from '@/components/os/AufgabenSchlank';
+export default function AufgabenPage() { return <Suspense><AufgabenSchlank /></Suspense>; }

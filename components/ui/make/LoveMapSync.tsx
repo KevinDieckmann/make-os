@@ -56,10 +56,10 @@ export function LoveMapSync() {
       {/* Header */}
       <div style={{ borderBottom: '1px solid #1e1e1e', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 7, color: '#555', letterSpacing: '0.12em', marginBottom: 3 }}>
+          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#555', letterSpacing: '0.12em', marginBottom: 3 }}>
             HABIT_05 // SONNTAGS-SYNC
           </div>
-          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 10, color: '#ffffff', letterSpacing: '0.04em' }}>
+          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#ffffff', letterSpacing: '0.04em' }}>
             LOVE-MAP UPDATE
           </div>
         </div>
@@ -68,13 +68,13 @@ export function LoveMapSync() {
             <button
               onClick={() => setDevMode(true)}
               className="interactive-element"
-              style={{ fontFamily: 'var(--mono-font)', fontSize: 7, color: '#333', border: '1px solid #1a1a1a', padding: '2px 6px', background: 'none', cursor: 'pointer', letterSpacing: '0.08em' }}
+              style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#333', border: '1px solid #1a1a1a', padding: '2px 6px', background: 'none', cursor: 'pointer', letterSpacing: '0.08em' }}
             >
               DEV
             </button>
           )}
           <div style={{
-            fontFamily: 'var(--mono-font)', fontSize: 8,
+            fontFamily: 'var(--mono-font)', fontSize: 11,
             color: available ? '#00ff66' : '#444',
             border: `1px solid ${available ? '#00ff6633' : '#1e1e1e'}`,
             padding: '2px 8px',
@@ -88,16 +88,16 @@ export function LoveMapSync() {
       <div style={{ padding: 14 }}>
         {!available ? (
           <div style={{ textAlign: 'center', padding: '24px 0' }}>
-            <div style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#333', letterSpacing: '0.1em', marginBottom: 8 }}>
+            <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#333', letterSpacing: '0.1em', marginBottom: 8 }}>
               // ZEITSPERRE AKTIV
             </div>
-            <div style={{ fontFamily: 'var(--mono-font)', fontSize: 8, color: '#222', letterSpacing: '0.08em', lineHeight: 1.8 }}>
+            <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#222', letterSpacing: '0.08em', lineHeight: 1.8 }}>
               Dieses Modul entsperrt sich<br />ausschließlich Sonntag ab 18:00 Uhr.<br />Schutzfenster für geteilte Reflexion.
             </div>
           </div>
         ) : !unlocked ? (
           <div>
-            <div style={{ fontFamily: 'var(--mono-font)', fontSize: 8, color: '#444', letterSpacing: '0.1em', marginBottom: 12, textAlign: 'center' }}>
+            <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#444', letterSpacing: '0.1em', marginBottom: 12, textAlign: 'center' }}>
               SCHIEBE ZUM ENTSPERREN →
             </div>
             <div style={{ position: 'relative', padding: '0 0 8px' }}>
@@ -110,17 +110,17 @@ export function LoveMapSync() {
                 style={{ width: '100%', cursor: 'pointer' }}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                <span style={{ fontFamily: 'var(--mono-font)', fontSize: 7, color: '#222' }}>START</span>
-                <span style={{ fontFamily: 'var(--mono-font)', fontSize: 7, color: '#222' }}>ENTSPERRT</span>
+                <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#222' }}>START</span>
+                <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#222' }}>ENTSPERRT</span>
               </div>
             </div>
           </div>
         ) : completed ? (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ fontFamily: 'var(--mono-font)', fontSize: 10, color: '#00ff66', letterSpacing: '0.1em', marginBottom: 6 }}>
+            <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#00ff66', letterSpacing: '0.1em', marginBottom: 6 }}>
               ✓ LOVE-MAP SYNC ABGESCHLOSSEN
             </div>
-            <div style={{ fontFamily: 'var(--mono-font)', fontSize: 8, color: '#444', letterSpacing: '0.06em' }}>
+            <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#444', letterSpacing: '0.06em' }}>
               KW{Math.ceil(new Date().getDate() / 7)} GESPEICHERT
             </div>
           </div>
@@ -129,8 +129,8 @@ export function LoveMapSync() {
             {QUESTIONS.map((q, i) => (
               <div key={q.id} style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontFamily: 'var(--mono-font)', fontSize: 7, color: '#555', letterSpacing: '0.1em' }}>FRAGE {i + 1}</span>
-                  <span style={{ fontFamily: 'var(--mono-font)', fontSize: 7, color: '#333', letterSpacing: '0.08em' }}>{q.target.toUpperCase()}</span>
+                  <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#555', letterSpacing: '0.1em' }}>FRAGE {i + 1}</span>
+                  <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#333', letterSpacing: '0.08em' }}>{q.target.toUpperCase()}</span>
                 </div>
                 <div style={{
                   fontFamily: '-apple-system, BlinkMacSystemFont, Inter, sans-serif',
@@ -172,7 +172,7 @@ export function LoveMapSync() {
                 border: `1px solid ${allAnswered ? '#00ff6633' : '#1e1e1e'}`,
                 color: allAnswered ? '#00ff66' : '#333',
                 fontFamily: 'var(--mono-font)',
-                fontSize: 9,
+                fontSize: 11,
                 letterSpacing: '0.1em',
                 cursor: allAnswered ? 'pointer' : 'default',
               }}

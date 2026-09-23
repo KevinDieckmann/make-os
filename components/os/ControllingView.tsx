@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
+import { FARBE as C } from '@/lib/make-one/design';
+import { Held } from './Held';
 import { wertVon, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
 import { localDay } from '@/lib/zeit';
 import { useSpeichern } from '@/hooks/useSpeichern';
@@ -17,7 +19,7 @@ interface FinanzplanStand { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: 
 
 interface Analysis { briefing: string; fokus?: string[]; risiken?: string[]; }
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 const num = (v: string) => Math.max(0, Math.round(Number(v.replace(/[^\d]/g, '')) || 0));
 
@@ -121,12 +123,27 @@ export function ControllingView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 940, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
         <Link href="/os/agenten" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Agenten</Link>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <div style={lbl}>Controlling-Agent</div>
-          <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.accent, border: `1px solid ${T.accent}55`, borderRadius: 5, padding: '2px 7px' }}>live · autonom</span>
-        </div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Kurs auf 1 Mio €.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 680, lineHeight: 1.5 }}>KD Ventures → 1 Mio € Umsatz, min. 300k € Gewinn für dich & Malin. Trag deine Ist-Zahlen ein — Fortschritt, nötige Run-Rate und Runway rechnen sich live. Der Agent gibt den Lagebericht.</p>
+        {/* ── Der Held (UX 5, 06.09.) ───────────────────────────────────────
+            Die eine Frage: liegen wir auf Kurs zum Jahresziel? Der Ring ist
+            der Fortschritt, der Satz sagt, ob die aktuelle Run-Rate reicht.
+            Der frühere Fortschritts-Balken darunter ist damit erledigt. */}
+        <Held
+          ring={pct}
+          wert={`${pct} %`}
+          label={`Ziel ${s.jahr}`}
+          satz={m.aktiveMonate === 0
+            ? <>Noch keine Ist-Zahlen für {s.jahr}. Trag unten einen Monat ein, dann rechnet alles mit.</>
+            : m.runRateAktuell >= m.runRateNoetig
+              ? <>Auf Kurs: Ø <b style={{ color: C.gut }}>{eur(m.runRateAktuell)}</b> im Monat, nötig sind {eur(m.runRateNoetig)}.</>
+              : <>Es fehlen <b style={{ color: C.achtung }}>{eur(m.runRateNoetig - m.runRateAktuell)}</b> im Monat — {eur(m.runRateAktuell)} statt {eur(m.runRateNoetig)}, bei {m.restMonate} Monaten Rest.</>}
+          neben={[
+            { label: 'Umsatz', wert: `${eur(m.istUmsatz)} / ${eur(s.zielUmsatz)}` },
+            { label: 'fehlt noch', wert: eur(m.verbleibend) },
+            ...(m.runwayMonate != null
+              ? [{ label: 'Runway', wert: `${m.runwayMonate.toFixed(1)} Mon.`, farbe: m.runwayMonate < runwayRot ? C.kritisch : C.inkDim }]
+              : []),
+          ]}
+        />
 
         {/* ── Liquidität: was ist wann da, und wann wird es eng ── */}
         {fplan && (() => {
@@ -146,22 +163,22 @@ export function ControllingView() {
 
               <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'baseline', margin: '10px 0 12px' }}>
                 <div>
-                  <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, textTransform: 'uppercase', letterSpacing: '.1em' }}>Heute auf den Konten</div>
+                  <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textTransform: 'uppercase', letterSpacing: '.1em' }}>Heute auf den Konten</div>
                   <div style={{ fontSize: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{eur(v.start)}</div>
                 </div>
                 <div>
-                  <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, textTransform: 'uppercase', letterSpacing: '.1em' }}>Tiefpunkt</div>
+                  <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textTransform: 'uppercase', letterSpacing: '.1em' }}>Tiefpunkt</div>
                   <div style={{ fontSize: 22, fontWeight: 700, color: v.tiefpunkt.stand < 0 ? T.crit : v.tiefpunkt.stand < 2000 ? T.amber : T.ink, fontVariantNumeric: 'tabular-nums' }}>
                     {eur(v.tiefpunkt.stand)}
                   </div>
-                  <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>{v.tiefpunkt.label}</div>
+                  <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{v.tiefpunkt.label}</div>
                 </div>
                 <div>
-                  <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, textTransform: 'uppercase', letterSpacing: '.1em' }}>Rein / Raus</div>
+                  <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textTransform: 'uppercase', letterSpacing: '.1em' }}>Rein / Raus</div>
                   <div style={{ fontSize: 15, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                     <span style={{ color: T.accent }}>+{eur(v.summeEin)}</span> <span style={{ color: T.muted }}>/</span> <span style={{ color: T.amber }}>−{eur(v.summeAus)}</span>
                   </div>
-                  {!!v.unsicher && <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.amber }}>davon {eur(v.unsicher)} unsicher</div>}
+                  {!!v.unsicher && <div style={{ fontFamily: T.mono, fontSize: 11, color: T.amber }}>davon {eur(v.unsicher)} unsicher</div>}
                 </div>
               </div>
 
@@ -187,7 +204,7 @@ export function ControllingView() {
                   );
                 })}
               </div>
-              <div style={{ display: 'flex', gap: 3, fontFamily: T.mono, fontSize: 9, color: T.muted }}>
+              <div style={{ display: 'flex', gap: 3, fontFamily: T.mono, fontSize: 11, color: T.muted }}>
                 {v.wochen.map((w, i) => <div key={w.von} style={{ flex: 1, textAlign: 'center' }}>{i % 2 === 0 ? w.von.slice(8) + '.' + w.von.slice(5, 7) + '.' : ''}</div>)}
               </div>
 
@@ -195,7 +212,7 @@ export function ControllingView() {
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.lineSoft}` }}>
                 {fplan.firmen.map(f => (
                   <label key={f.id} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{f.name}{f.stand ? ` · ${f.stand.slice(8)}.${f.stand.slice(5, 7)}.` : ''}</span>
+                    <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{f.name}{f.stand ? ` · ${f.stand.slice(8)}.${f.stand.slice(5, 7)}.` : ''}</span>
                     <input type="number" value={f.kontostand ?? ''} onChange={e => kontostandSetzen(f.id, e.target.value)}
                       placeholder="Kontostand" aria-label={`Kontostand ${f.name}`}
                       style={{ width: 130, background: T.void, border: `1px solid ${T.line}`, borderRadius: 8, padding: '6px 10px', color: T.ink, fontFamily: T.mono, fontSize: 13, outline: 'none' }} />
@@ -208,21 +225,6 @@ export function ControllingView() {
             </div>
           );
         })()}
-
-        {/* Ziel-Fortschritt */}
-        <div style={{ ...panel, borderTop: `2px solid ${T.accent}`, padding: '18px 22px', margin: '18px 0 14px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
-            <div style={lbl}>Umsatz {s.jahr} gegen Ziel</div>
-            <div style={{ fontFamily: T.mono, fontSize: 12, color: T.muted }}>{eur(m.istUmsatz)} / {eur(s.zielUmsatz)}</div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, margin: '6px 0 10px' }}>
-            <div style={{ fontSize: 34, fontWeight: 800, color: T.accent, letterSpacing: '-.02em' }}>{pct}%</div>
-            <div style={{ fontSize: 13, color: T.inkDim }}>· noch {eur(m.verbleibend)}</div>
-          </div>
-          <div style={{ height: 10, background: T.void, borderRadius: 6, overflow: 'hidden', border: `1px solid ${T.line}` }}>
-            <div style={{ width: `${pct}%`, height: '100%', background: `linear-gradient(90deg, ${T.accent}, ${T.accentInk})`, transition: 'width .4s' }} />
-          </div>
-        </div>
 
         {/* KPIs */}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
@@ -264,7 +266,7 @@ export function ControllingView() {
             {s.months.map((r, i) => (
               <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
                 <div style={{ width: '100%', height: `${(r.umsatz / maxBar) * 100}%`, minHeight: r.umsatz > 0 ? 3 : 0, background: r.umsatz >= m.runRateNoetig && r.umsatz > 0 ? T.accent : T.accentInk, borderRadius: '3px 3px 0 0', opacity: r.umsatz > 0 ? 1 : 0.15 }} />
-                <span style={{ fontFamily: T.mono, fontSize: 9, color: i === m.aktMonatIdx ? T.accent : T.muted }}>{r.m}</span>
+                <span style={{ fontFamily: T.mono, fontSize: 11, color: i === m.aktMonatIdx ? T.accent : T.muted }}>{r.m}</span>
               </div>
             ))}
           </div>
@@ -326,13 +328,13 @@ export function ControllingView() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8 }}>
             {s.months.map((r, i) => (
               <div key={i} style={{ background: T.void, border: `1px solid ${T.line}`, borderRadius: 8, padding: '7px 9px' }}>
-                <div style={{ fontFamily: T.mono, fontSize: 10, color: i === m.aktMonatIdx ? T.accent : T.muted, marginBottom: 4 }}>{MONTHS_DE[i]}</div>
+                <div style={{ fontFamily: T.mono, fontSize: 11, color: i === m.aktMonatIdx ? T.accent : T.muted, marginBottom: 4 }}>{MONTHS_DE[i]}</div>
                 <input value={r.umsatz || ''} placeholder="Umsatz" onChange={e => setMonth(i, 'umsatz', e.target.value)} inputMode="numeric" style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: `1px solid ${T.lineSoft}`, color: T.ink, fontFamily: T.mono, fontSize: 12, padding: '3px 0', outline: 'none' }} />
                 <input value={r.kosten || ''} placeholder="Kosten" onChange={e => setMonth(i, 'kosten', e.target.value)} inputMode="numeric" style={{ width: '100%', background: 'transparent', border: 'none', color: T.inkDim, fontFamily: T.mono, fontSize: 12, padding: '3px 0', outline: 'none', marginTop: 2 }} />
               </div>
             ))}
           </div>
-          <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted, marginTop: 8 }}>Nur Zahlen eintragen. Wird automatisch gespeichert, alles rechnet live.</div>
+          <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 8 }}>Nur Zahlen eintragen. Wird automatisch gespeichert, alles rechnet live.</div>
         </details>
       </div>
     </div>

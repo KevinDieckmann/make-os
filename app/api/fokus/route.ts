@@ -41,7 +41,7 @@ export async function POST() {
 
   const message = `Recovery: ${rec}% (Zone ${zone})${vitalsHint(v)}. Ruhepuls ${v.rhr}, HRV ${v.hrv}, Schlaf letzte Nacht ${v.sleep}h.${v.note ? ` Kevin notiert: "${v.note}"` : ""}\n\n${taskLines}\n\nRichte meinen Tag aus.`;
 
-  const r = await askText({ system, user: message, maxTokens: 4000, model: agent.model });
+  const r = await askText({ zweck: 'fokus', system, user: message, maxTokens: 4000, model: agent.model });
   if (!r.ok || !r.text) return NextResponse.json({ reply: r.error ?? 'Konnte gerade keinen Tagesplan erzeugen — nochmal versuchen.', recovery: rec, zone });
 
   await logRun('fokus', `Tagesform ${zone} (${rec}%)`, { zone, recovery: rec, reply: r.text.slice(0, 1500) });

@@ -61,7 +61,7 @@ export function ReunionDecompression() {
         >
           {/* Top label */}
           <div style={{ position: 'absolute', top: 24, left: 0, right: 0, display: 'flex', justifyContent: 'center' }}>
-            <span style={{ fontFamily: 'var(--mono-font)', fontSize: 8, color: '#222', letterSpacing: '0.2em' }}>
+            <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#222', letterSpacing: '0.2em' }}>
               ANALOG MODE AKTIV // DEKOMPRESSIONS-PROTOKOLL
             </span>
           </div>
@@ -78,7 +78,7 @@ export function ReunionDecompression() {
             }}>
               {mm}:{ss}
             </div>
-            <div style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#1a1a1a', letterSpacing: '0.2em' }}>
+            <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#1a1a1a', letterSpacing: '0.2em' }}>
               VERBLEIBENDE DEKOMPRESSIONSZEIT
             </div>
           </div>
@@ -97,7 +97,7 @@ export function ReunionDecompression() {
               'Keine Arbeit.',
               'Nur Anwesenheit.',
             ].map((line, i) => (
-              <div key={i} style={{ fontFamily: 'var(--mono-font)', fontSize: 10, color: '#1a1a1a', letterSpacing: '0.12em', padding: '4px 0' }}>
+              <div key={i} style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#1a1a1a', letterSpacing: '0.12em', padding: '4px 0' }}>
                 {line}
               </div>
             ))}
@@ -114,7 +114,7 @@ export function ReunionDecompression() {
                 border: '1px solid #111',
                 color: '#1e1e1e',
                 fontFamily: 'var(--mono-font)',
-                fontSize: 8,
+                fontSize: 11,
                 letterSpacing: '0.1em',
                 cursor: 'pointer',
               }}
@@ -130,7 +130,7 @@ export function ReunionDecompression() {
                 border: '1px solid #111',
                 color: '#1e1e1e',
                 fontFamily: 'var(--mono-font)',
-                fontSize: 8,
+                fontSize: 11,
                 letterSpacing: '0.1em',
                 cursor: 'pointer',
               }}

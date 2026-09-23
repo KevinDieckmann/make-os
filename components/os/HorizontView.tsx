@@ -8,10 +8,13 @@ import Link from 'next/link';
 
 import { useEffect, useRef, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
+import { listeSchreiben } from '@/lib/make-one/liste-sync';
+import { PlanerLeiste } from './PlanerLeiste';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { NORDSTERN } from '@/lib/make-one/nordstern-data';
 import { Zeitstrahl, type StrahlMarker, type StrahlTick } from './Zeitstrahl';
+import { Seitenkopf } from './Seitenkopf';
 
 interface Ziel { id: string; titel: string; fortschritt: number; notiz?: string; erledigt?: boolean }
 interface Meilenstein { id: string; titel: string; bereich: 'business' | 'gesundheit'; faellig?: string; zeitfenster?: string; messlatte?: string; fortschritt: number; erledigt: boolean; erledigtAm?: string }
@@ -23,7 +26,7 @@ const META: Record<Horizont, { titel: string; claim: string; hinweis: string }> 
   jahr: { titel: 'Jahresplanung & Ziele', claim: 'Das Jahr, an dem du dich misst.', hinweis: 'Nordstern + Meilensteine + deine Jahresziele.' },
 };
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 const col = (v: number) => (v >= 70 ? T.accent : v >= 40 ? T.amber : T.crit);
 
@@ -52,6 +55,8 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   const [neu, setNeu] = useState('');
   const [geladen, setGeladen] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /** Zuletzt gelesener/geschriebener Stand — Basis für die Unterschiede. */
+  const gespeichert = useRef<Meilenstein[] | null>(null);
 
   useEffect(() => {
     fetch('/api/state/ziele').then(r => r.json()).then(d => {
@@ -66,13 +71,15 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   const [msNeu, setMsNeu] = useState({ titel: '', bereich: 'business' as Meilenstein['bereich'], faellig: '' });
   const msTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
-    fetch('/api/state/meilensteine').then(r => r.json()).then(d => setMs(Array.isArray(d.meilensteine) ? d.meilensteine : [])).catch(() => {});
+    fetch('/api/state/meilensteine').then(r => r.json()).then(d => { const l = Array.isArray(d.meilensteine) ? d.meilensteine : []; gespeichert.current = l; setMs(l); }).catch(() => {});
   }, [horizont]);
   function msPersist(next: Meilenstein[]) {
     setMs(next);
     clearTimeout(msTimer.current);
     msTimer.current = setTimeout(() => {
-      fetch('/api/state/meilensteine', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ meilensteine: next }) }).catch(() => {});
+      const alt = gespeichert.current;
+      gespeichert.current = next;
+      void listeSchreiben<Meilenstein>('/api/state/meilensteine', 'meilensteine', alt, next);
     }, 500);
   }
   const msPatch = (id: string, p: Partial<Meilenstein>) => msPersist(ms.map(m => m.id === id ? { ...m, ...p } : m));
@@ -149,9 +156,12 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 880, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
-        <div style={lbl}>{meta.titel} · {zr.label}</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>{meta.claim}</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 640, lineHeight: 1.5 }}>{meta.hinweis}</p>
+        <PlanerLeiste aktiv={horizont} />
+        <Seitenkopf
+          rubrik={<>{meta.titel} · {zr.label}</>}
+          titel={<>{meta.claim}</>}
+          satz={<>{meta.hinweis}</>}
+        />
 
         {/* Fokus dieses Horizonts — die eine Richtung, gegen die geplant wird */}
         <div style={{ ...panel, borderLeft: `3px solid ${T.accent}`, padding: '12px 16px', margin: '16px 0 12px' }}>
@@ -159,7 +169,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
           <input value={fokus} onChange={e => fokusSetzen(e.target.value)}
             placeholder={horizont === 'monat' ? 'z. B. Gesundheit stabilisieren + F&F-Kunden onboarden' : 'Woran richtet sich alles aus?'}
             style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: T.ink, fontFamily: T.sans, fontSize: 14.5, fontWeight: 600 }} />
-          <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, marginTop: 4 }}>Sichtbar im Wochenplaner und in der Tagesplanung — Jarvis plant dagegen.</div>
+          <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 4 }}>Sichtbar im Wochenplaner und in der Tagesplanung — Jarvis plant dagegen.</div>
         </div>
 
         {/* Zeitstrahl zuerst — der Zeitraum als Linie: Heute-Anker, Meilensteine, Fälligkeiten */}
@@ -189,8 +199,8 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
                   <div key={m.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', fontSize: 13, color: T.inkDim, lineHeight: 1.7, flexWrap: 'wrap' }}>
                     <span style={{ color: spaet ? T.crit : T.amber }}>◇</span>
                     <span style={{ color: T.ink, fontWeight: 600 }}>{m.titel}</span>
-                    {msFaelligLabel(m) && <span style={{ fontFamily: T.mono, fontSize: 10.5, color: spaet ? T.crit : T.muted }}>{spaet ? 'überfällig ' : ''}{msFaelligLabel(m)}</span>}
-                    <span style={{ fontFamily: T.mono, fontSize: 10.5, color: col(m.fortschritt) }}>{m.fortschritt}%</span>
+                    {msFaelligLabel(m) && <span style={{ fontFamily: T.mono, fontSize: 11, color: spaet ? T.crit : T.muted }}>{spaet ? 'überfällig ' : ''}{msFaelligLabel(m)}</span>}
+                    <span style={{ fontFamily: T.mono, fontSize: 11, color: col(m.fortschritt) }}>{m.fortschritt}%</span>
                     {m.messlatte && <span style={{ fontSize: 11.5, color: T.muted }}>· {m.messlatte}</span>}
                   </div>
                 );
@@ -218,7 +228,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
                       {m.erledigt ? <span className="check-pop">✓</span> : ''}
                     </span>
                     <span style={{ fontSize: 13, fontWeight: 600, color: m.erledigt ? T.muted : T.ink, textDecoration: m.erledigt ? 'line-through' : 'none', minWidth: 140 }}>{m.titel}</span>
-                    <span style={{ fontFamily: T.mono, fontSize: 10.5, color: m.faellig && m.faellig < localDay() && !m.erledigt ? T.crit : T.muted }}>{msFaelligLabel(m)}</span>
+                    <span style={{ fontFamily: T.mono, fontSize: 11, color: m.faellig && m.faellig < localDay() && !m.erledigt ? T.crit : T.muted }}>{msFaelligLabel(m)}</span>
                     {!m.erledigt && (
                       <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
                         <input type="range" min={0} max={100} step={5} value={m.fortschritt}
@@ -306,7 +316,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
               <Link key={t.id} href="/os/aufgaben" style={{ display: 'flex', gap: 12, padding: '10px 16px', borderTop: i ? `1px solid ${T.lineSoft}` : 0, textDecoration: 'none', alignItems: 'baseline' }}>
                 <span style={{ fontFamily: T.mono, fontSize: 11, color: t.dueDate && t.dueDate < heute ? T.crit : T.muted, flex: '0 0 auto', width: 78 }}>{t.dueDate}</span>
                 <span style={{ fontSize: 13.5, color: T.ink, flex: 1 }}>{t.title}</span>
-                <span style={{ fontFamily: T.mono, fontSize: 10, color: t.priority === 'critical' ? T.crit : T.muted }}>{t.priority}</span>
+                <span style={{ fontFamily: T.mono, fontSize: 11, color: t.priority === 'critical' ? T.crit : T.muted }}>{t.priority}</span>
               </Link>
             ))}
           </div>

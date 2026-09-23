@@ -53,16 +53,18 @@ function daysBetween(from: string, to: string): number {
 
 /** Die Werte, mit denen gerechnet werden soll — heute, sonst der letzte
  *  bekannte Stand, sonst der ursprüngliche Whoop-Export. */
-export async function resolveVitals(today = localDay()): Promise<ResolvedVitals> {
-  const base = {
-    rec: WHOOP.rec, sleep: WHOOP.sleepLast, hrv: WHOOP.hrv, rhr: WHOOP.rhr,
-  };
+export async function resolveVitals(today = localDay(), person: string = 'kevin'): Promise<ResolvedVitals> {
+  // Kevins Whoop-Export ist sein Ausgangspunkt. Malin startet ohne — bei ihr
+  // gibt es keine erfundenen Rückfallwerte, sondern ehrlich leere Säulen.
+  const base = person === 'kevin'
+    ? { rec: WHOOP.rec, sleep: WHOOP.sleepLast, hrv: WHOOP.hrv, rhr: WHOOP.rhr }
+    : { rec: 0, sleep: 0, hrv: 0, rhr: 0 };
   try {
-    const log = (await loadJson<VitalsLog>('vitals')) ?? {};
+    const log = (await loadJson<VitalsLog>(person === 'kevin' ? 'vitals' : `vitals--${person}`)) ?? {};
     const days = Object.keys(log).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= today).sort();
     const latest = days[days.length - 1];
     if (!latest) {
-      return { ...base, stand: WHOOP.stand, heute: false, alterTage: 999, fallback: true };
+      return { ...base, stand: person === 'kevin' ? WHOOP.stand : '—', heute: false, alterTage: 999, fallback: true };
     }
     const v = log[latest] ?? {};
     return {
@@ -77,7 +79,7 @@ export async function resolveVitals(today = localDay()): Promise<ResolvedVitals>
       fallback: false,
     };
   } catch {
-    return { ...base, stand: WHOOP.stand, heute: false, alterTage: 999, fallback: true };
+    return { ...base, stand: person === 'kevin' ? WHOOP.stand : '—', heute: false, alterTage: 999, fallback: true };
   }
 }
 

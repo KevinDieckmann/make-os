@@ -19,8 +19,8 @@ export interface Beschwerde { name: string; sev: number; tone: 'good' | 'watch' 
 export const BESCHWERDEN: Beschwerde[] = [
   { name: 'Schuppenflechte (Psoriasis)', sev: 70, tone: 'crit', status: 'aktiver Schub',
     note: 'Beine ~60 %, Rücken 3–4 Stellen, beide Ellbogen (links schlimmer). Zyklus: Anspannung → Kratzen → Juckreiz.' },
-  { name: 'Bandscheibenvorfall', sev: 65, tone: 'crit', status: 'Spritze Fr 31.07',
-    note: 'Diagnose bestätigt. Danach: schonen, Physio, wirbelsäulen-sicherer Aufbau. Kein Sport direkt nach der Spritze.' },
+  { name: 'Bandscheibenvorfall', sev: 65, tone: 'crit', status: 'Reha-Phase',
+    note: 'Diagnose bestätigt (30.07.), Spritze 31.07. Jetzt: Physio, Mobilität, wirbelsäulen-sicherer Aufbau in Stufen — kein Ego-Training.' },
   { name: 'Nagelpilz', sev: 25, tone: 'watch', status: 'klein',
     note: 'Hautarzt-Termin für Diagnose + Antimykotikum, dann dranbleiben bis weg.' },
   { name: 'Epilepsie', sev: 20, tone: 'good', status: 'anfallsfrei · stabil',
@@ -123,4 +123,6 @@ export const ZUSAMMENHAENGE = [
   'Bandscheibe → Bewegung spine-safe, kein Ego-Training — Aufbau in Stufen',
 ];
 
-export const CARE_NOTE = 'Struktur & Tracking, keine ärztliche Beratung — deine Ärzte führen. Morgen (31.07) ist ein großer medizinischer Tag: Spritze + Cannabis-Entscheidung mit dem Neurologen. Nicht noch mehr draufpacken.';
+// Bis 23.09. stand hier noch „Morgen (31.07.) ist ein großer medizinischer
+// Tag" — acht Wochen lang. Ein Satz mit Datum gehört nicht in eine Konstante.
+export const CARE_NOTE = 'Struktur & Tracking, keine ärztliche Beratung — deine Ärzte führen. Beim Cannabis-Schnitt: mit dem Neurologen, weil Schlaf deine Anfallsschwelle schützt.';

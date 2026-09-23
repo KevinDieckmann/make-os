@@ -31,11 +31,11 @@ export function EnergyRhythm() {
   return (
     <div className="os-card" style={{ padding: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
-        <div style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#777', letterSpacing: '0.14em' }}>
+        <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#777', letterSpacing: '0.14em' }}>
           ENERGIE_RHYTHMUS // TAGESFENSTER
         </div>
         {current && (
-          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 10, color: KIND_COLOR[current.kind], letterSpacing: '0.08em' }}>
+          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: KIND_COLOR[current.kind], letterSpacing: '0.08em' }}>
             JETZT: {current.label.toUpperCase()}
           </div>
         )}
@@ -64,7 +64,7 @@ export function EnergyRhythm() {
             >
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: color, opacity: isFocus ? 1 : 0.5 }} />
               <span style={{
-                fontFamily: 'var(--mono-font)', fontSize: 8.5, letterSpacing: '0.06em',
+                fontFamily: 'var(--mono-font)', fontSize: 11, letterSpacing: '0.06em',
                 color: isFocus ? '#00ff66' : '#888', textAlign: 'center', padding: '0 4px', lineHeight: 1.2,
               }}>
                 {isFocus ? '🔒 FOKUS' : w.label}
@@ -76,7 +76,7 @@ export function EnergyRhythm() {
         {/* Now marker */}
         {now && (
           <div style={{ position: 'absolute', top: -4, bottom: -4, left: `${nowPct}%`, width: 2, background: '#ff4444', boxShadow: '0 0 6px rgba(255,68,68,0.8)' }}>
-            <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', fontFamily: 'var(--mono-font)', fontSize: 8, color: '#ff4444', whiteSpace: 'nowrap' }}>
+            <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', fontFamily: 'var(--mono-font)', fontSize: 11, color: '#ff4444', whiteSpace: 'nowrap' }}>
               {String(now.getHours()).padStart(2, '0')}:{String(now.getMinutes()).padStart(2, '0')}
             </div>
           </div>
@@ -84,12 +84,12 @@ export function EnergyRhythm() {
       </div>
 
       {/* Hour ticks */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontFamily: 'var(--mono-font)', fontSize: 8, color: '#555' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontFamily: 'var(--mono-font)', fontSize: 11, color: '#555' }}>
         {[6, 9, 12, 15, 17, 19, 23].map(h => <span key={h}>{h}:00</span>)}
       </div>
 
       {current && (
-        <div style={{ marginTop: 12, fontFamily: 'var(--mono-font)', fontSize: 10, color: '#999', letterSpacing: '0.03em', lineHeight: 1.5 }}>
+        <div style={{ marginTop: 12, fontFamily: 'var(--mono-font)', fontSize: 11, color: '#999', letterSpacing: '0.03em', lineHeight: 1.5 }}>
           {current.note}
         </div>
       )}

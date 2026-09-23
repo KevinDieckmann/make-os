@@ -69,11 +69,11 @@ export function HabitReset() {
             {/* Header */}
             <div style={{ borderBottom: '1px solid #1e1e1e', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 8, color: '#00ff66', letterSpacing: '0.12em', marginBottom: 3 }}>HABIT_03 // MICRO-HABIT</div>
+                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#00ff66', letterSpacing: '0.12em', marginBottom: 3 }}>HABIT_03 // MICRO-HABIT</div>
                 <div style={{ fontFamily: 'var(--mono-font)', fontSize: 12, color: '#ffffff', letterSpacing: '0.04em' }}>6-SEKUNDEN PHYSIOLOGISCHER RESET</div>
               </div>
               <button onClick={closeHabit} className="interactive-element"
-                style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#444', background: 'none', border: '1px solid #1e1e1e', padding: '2px 8px', cursor: 'pointer' }}>
+                style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#444', background: 'none', border: '1px solid #1e1e1e', padding: '2px 8px', cursor: 'pointer' }}>
                 ESC
               </button>
             </div>
@@ -115,21 +115,21 @@ export function HabitReset() {
                     {done ? '✓' : seconds}
                   </span>
                   {!done && (
-                    <span style={{ fontFamily: 'var(--mono-font)', fontSize: 7, color: '#444', letterSpacing: '0.1em' }}>SEK</span>
+                    <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#444', letterSpacing: '0.1em' }}>SEK</span>
                   )}
                 </div>
               </div>
 
               {/* Protocol */}
               <div style={{ background: '#050505', border: '1px solid #111', padding: '10px 12px', width: '100%' }}>
-                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 7, color: '#333', letterSpacing: '0.12em', marginBottom: 6 }}>// NFC-HANDSHAKE PROTOKOLL</div>
+                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#333', letterSpacing: '0.12em', marginBottom: 6 }}>// NFC-HANDSHAKE PROTOKOLL</div>
                 {[
                   '1. Physischen Kontakt herstellen',
                   '2. Langen Kuss / Umarmung initiieren',
                   '3. 6 Sekunden vollständig halten',
                   '4. Oxytocin-Bindungseffekt aktiviert',
                 ].map((s, i) => (
-                  <div key={i} style={{ fontFamily: 'var(--mono-font)', fontSize: 8, color: '#555', letterSpacing: '0.04em', padding: '2px 0', lineHeight: 1.5 }}>{s}</div>
+                  <div key={i} style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#555', letterSpacing: '0.04em', padding: '2px 0', lineHeight: 1.5 }}>{s}</div>
                 ))}
               </div>
 
@@ -147,7 +147,7 @@ export function HabitReset() {
                       border: `1px solid ${running ? '#1e1e1e' : '#00ff6633'}`,
                       color: running ? '#444' : '#00ff66',
                       fontFamily: 'var(--mono-font)',
-                      fontSize: 9,
+                      fontSize: 11,
                       letterSpacing: '0.1em',
                       cursor: running ? 'default' : 'pointer',
                     }}
@@ -162,7 +162,7 @@ export function HabitReset() {
                         border: '1px solid #1e1e1e',
                         color: '#444',
                         fontFamily: 'var(--mono-font)',
-                        fontSize: 9,
+                        fontSize: 11,
                         letterSpacing: '0.1em',
                         cursor: 'pointer',
                       }}>
@@ -178,7 +178,7 @@ export function HabitReset() {
                   padding: '12px',
                   textAlign: 'center',
                 }}>
-                  <div style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#00ff66', letterSpacing: '0.12em' }}>
+                  <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#00ff66', letterSpacing: '0.12em' }}>
                     ✓ RESET ABGESCHLOSSEN — EBA +{(6 * 0.9).toFixed(1)}
                   </div>
                 </div>

@@ -123,7 +123,7 @@ export async function POST(req: Request) {
     body.hinweis ? `\nKevins Hinweis: ${body.hinweis}` : '',
   ].filter(Boolean).join('\n');
 
-  const r = await askJson<{ begruendung?: string; bloecke?: Block[] }>({ system, user, maxTokens: 6000, timeoutMs: 150_000 });
+  const r = await askJson<{ begruendung?: string; bloecke?: Block[] }>({ zweck: 'planung-vorschlag', system, user, maxTokens: 6000, timeoutMs: 150_000 });
   if (!r.ok || !r.data) return NextResponse.json({ error: r.error ?? 'Kein Vorschlag.' }, { status: 200 });
 
   // Server-seitige Härtung: Raster, Grenzen, gültige Tage/Arten/taskIds — und

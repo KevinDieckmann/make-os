@@ -5,6 +5,8 @@ import { loadJson, saveJson } from '@/lib/store/local-db';
 // Apple Kalender via osascript ist zäh (whose-Datumsfilter) und wird unter Last
 // >60s → Timeout. Deshalb Cache: frische Reads werden gespeichert, bei
 // Langsamkeit/Fehler servieren wir den letzten guten Stand statt zu hängen.
+import { kopfTauglich } from '@/lib/kopf-tauglich';
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const CACHE = 'calendar-cache';
@@ -103,7 +105,7 @@ export async function GET(req: Request) {
 
   // Frischer Cache → sofort ausliefern (kein zäher osascript-Read)
   if (!force && cached && Date.now() - new Date(cached.at).getTime() < STALE_MS) {
-    return NextResponse.json(cached.events, { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'hit' } });
+    return NextResponse.json(cached.events, { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'hit', 'X-Stand': cached.at } });
   }
 
   try {
@@ -156,13 +158,20 @@ export async function GET(req: Request) {
     (events as Array<{ startDate: string }>).sort((a, b) => a.startDate.localeCompare(b.startDate));
 
     await saveJson<CalCache>(CACHE, { events, at: new Date().toISOString() });
-    return NextResponse.json(events, { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'fresh' } });
+    return NextResponse.json(events, { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'fresh', 'X-Stand': new Date().toISOString() } });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[Apple Calendar API]', msg);
     // Lieber letzten guten Stand als einen Fehler: Cache servieren, wenn vorhanden
     if (cached) {
-      return NextResponse.json(cached.events, { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'stale' } });
+      // Eingefroren: der Kalender war nicht erreichbar. Die Ansicht MUSS das
+      // kennzeichnen können — sonst sehen alte Termine aus wie aktuelle.
+      // kopfTauglich: HTTP-Header dürfen nur Latin-1. Eine deutsche
+      // Fehlermeldung mit Gedankenstrich („—", U+2014) lässt Response.json
+      // werfen — und dann antwortet die Route mit 500, obwohl der Cache noch
+      // da war. Genau das ist am 07.09. passiert: der Kalender fiel aus, und
+      // ausgerechnet der Rettungsweg stürzte am Fehlertext ab.
+      return NextResponse.json(cached.events, { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'stale', 'X-Stand': cached.at, 'X-Grund': kopfTauglich(msg) } });
     }
     return NextResponse.json(
       { error: 'Kein Zugriff auf Apple Kalender', detail: msg },

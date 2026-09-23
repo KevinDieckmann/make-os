@@ -7,9 +7,10 @@ import { THEME as T } from '@/lib/make-one/os-data';
 import { useTasks } from '@/context/TasksContext';
 import type { Priority, Task } from '@/types';
 import { Rich } from './Rich';
+import { Seitenkopf } from './Seitenkopf';
 
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const PRIO: Record<Priority, string> = { critical: T.crit, high: T.amber, medium: T.accent, low: T.muted };
 
 function iso(offset: number) {
@@ -64,9 +65,9 @@ export function PlanungView() {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.35 }}>{t.title}</div>
         <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontFamily: T.mono, fontSize: 9.5, textTransform: 'uppercase', color: PRIO[t.priority], border: `1px solid ${PRIO[t.priority]}44`, borderRadius: 5, padding: '1px 6px' }}>{t.priority}</span>
-          <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{projName(t.projectId)}</span>
-          {t.dueDate && <span style={{ fontFamily: T.mono, fontSize: 10, color: T.amber }}>fällig {t.dueDate.slice(8, 10)}.{t.dueDate.slice(5, 7)}.</span>}
+          <span style={{ fontFamily: T.mono, fontSize: 11, textTransform: 'uppercase', color: PRIO[t.priority], border: `1px solid ${PRIO[t.priority]}44`, borderRadius: 5, padding: '1px 6px' }}>{t.priority}</span>
+          <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{projName(t.projectId)}</span>
+          {t.dueDate && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.amber }}>fällig {t.dueDate.slice(8, 10)}.{t.dueDate.slice(5, 7)}.</span>}
         </div>
       </div>
     </div>
@@ -86,8 +87,10 @@ export function PlanungView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 1120, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 48px' }}>
         <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
-        <div style={lbl}>Planung · deinen Tag & deine Woche steuern</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 18px' }}>Planungsmodus</h1>
+        <Seitenkopf
+          rubrik={<>Planung · deinen Tag & deine Woche steuern</>}
+          titel={<>Planungsmodus</>}
+        />
 
         {/* MAKE-Tagesplan */}
         <section style={{ ...panel, borderTop: `2px solid ${T.accent}`, padding: '20px 22px', marginBottom: 20 }}>

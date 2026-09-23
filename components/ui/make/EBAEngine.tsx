@@ -37,7 +37,7 @@ export function EBAEngine() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#666', letterSpacing: '0.12em', marginBottom: 4 }}>
+          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#666', letterSpacing: '0.12em', marginBottom: 4 }}>
             EBA ENGINE // GOTTMAN_DYNAMIC_SYSTEM
           </div>
           <div style={{ fontFamily: 'var(--mono-font)', fontSize: 22, color, letterSpacing: '-0.03em', lineHeight: 1 }}>
@@ -48,7 +48,7 @@ export function EBAEngine() {
         <div style={{ textAlign: 'right' }}>
           <div style={{
             fontFamily: 'var(--mono-font)',
-            fontSize: 9,
+            fontSize: 11,
             color,
             border: `1px solid ${color}44`,
             padding: '2px 8px',
@@ -57,7 +57,7 @@ export function EBAEngine() {
           }}>
             {label}
           </div>
-          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#777', letterSpacing: '0.08em' }}>
+          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#777', letterSpacing: '0.08em' }}>
             STREAK {eba.streakDays}T
           </div>
         </div>
@@ -69,15 +69,15 @@ export function EBAEngine() {
           <div className="progress-fill" style={{ width: `${eba.currentScore}%`, background: color }} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-          <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#ff4444', letterSpacing: '0.08em' }}>KRITISCH 20</span>
-          <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#ff8800', letterSpacing: '0.08em' }}>WARNUNG 40</span>
-          <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#00ff66', letterSpacing: '0.08em' }}>STABIL 60</span>
+          <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#ff4444', letterSpacing: '0.08em' }}>KRITISCH 20</span>
+          <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#ff8800', letterSpacing: '0.08em' }}>WARNUNG 40</span>
+          <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#00ff66', letterSpacing: '0.08em' }}>STABIL 60</span>
         </div>
       </div>
 
       {/* Formula */}
       <div style={{ background: '#050505', border: '1px solid #1e1e1e', padding: '8px 10px' }}>
-        <div style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#555', letterSpacing: '0.1em', marginBottom: 6 }}>
+        <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#555', letterSpacing: '0.1em', marginBottom: 6 }}>
           // SYSTEMFORMEL
         </div>
         <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#888', letterSpacing: '0.04em', lineHeight: 1.8 }}>
@@ -95,7 +95,7 @@ export function EBAEngine() {
 
       {/* Quick actions */}
       <div>
-        <div style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#555', letterSpacing: '0.12em', marginBottom: 6 }}>
+        <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#555', letterSpacing: '0.12em', marginBottom: 6 }}>
           // INTERAKTION ERFASSEN
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -110,7 +110,7 @@ export function EBAEngine() {
                 border: `1px solid #1e1e1e`,
                 color: a.color,
                 fontFamily: 'var(--mono-font)',
-                fontSize: 10,
+                fontSize: 11,
                 letterSpacing: '0.08em',
                 cursor: 'pointer',
                 textAlign: 'left',
@@ -119,7 +119,7 @@ export function EBAEngine() {
                 gap: 8,
               }}
             >
-              <span style={{ color: '#666', fontSize: 9 }}>
+              <span style={{ color: '#666', fontSize: 11 }}>
                 ×{EBA_CONSTANTS.MULTIPLIERS[a.category]}
               </span>
               {a.label}
@@ -131,7 +131,7 @@ export function EBAEngine() {
       {/* Recent history */}
       {recent.length > 0 && (
         <div>
-          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#555', letterSpacing: '0.12em', marginBottom: 6 }}>
+          <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#555', letterSpacing: '0.12em', marginBottom: 6 }}>
             // LETZTE INTERAKTIONEN
           </div>
           {recent.map(item => {
@@ -144,10 +144,10 @@ export function EBAEngine() {
                 padding: '4px 0',
                 borderBottom: '1px solid #111',
               }}>
-                <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#888', letterSpacing: '0.04em', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#888', letterSpacing: '0.04em', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {item.description ?? item.category}
                 </span>
-                <span style={{ fontFamily: 'var(--mono-font)', fontSize: 10, color: isPositive ? '#00ff66' : '#ff4444', marginLeft: 6, flexShrink: 0 }}>
+                <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: isPositive ? '#00ff66' : '#ff4444', marginLeft: 6, flexShrink: 0 }}>
                   {isPositive ? '+' : ''}{item.netValue.toFixed(1)}
                 </span>
               </div>

@@ -12,6 +12,7 @@ import { Tagesstart } from './Tagesstart';
 import { localDay } from '@/lib/zeit';
 import type { PerfIndex } from '@/lib/performance';
 import { SAEULE_VON_PROJEKT, SAEULE_LABEL, SAEULE_FARBE, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
+import { THEMEN, themaVon } from '@/lib/make-one/ordnung-data';
 import { Zeitstrahl, type StrahlMarker } from './Zeitstrahl';
 
 // ─── Zähler: Zahlen laufen ein, statt zu erscheinen (Wow beim Laden) ────────
@@ -60,9 +61,9 @@ function Gauge({ value, size = 54 }: { value: number; size?: number }) {
   );
 }
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 16 };
-const wbtn = { fontFamily: T.mono, fontSize: 10, color: T.inkDim, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer' } as const;
+const wbtn = { fontFamily: T.mono, fontSize: 11, color: T.inkDim, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer' } as const;
 
 // ─── Widget-Board: das Dashboard gehört Kevin ───────────────────────────────
 // Jede Kachel ist ein Widget — Reihenfolge & Sichtbarkeit liegen im Store
@@ -73,14 +74,16 @@ const WIDGET_LABEL: Record<string, string> = {
   kopf: 'Fokus jetzt + Tagesstart',
   tagesausrichtung: 'Tagesplan & Ausrichtung',
   zeitstrahl: 'Zeitstrahl',
-  score: 'MAKE Score + Fokus & To-dos',
+  score: 'MAKE Score',
+  fokus: 'Fokus & wichtigste To-dos',
   forecast: 'Forecast (Ziele)',
   module: 'Bereichs-Kacheln',
   system: 'System & Agenten',
   balance: 'Lebensrad + Agenda',
 };
-// Kevins Ansage: die Tagesausrichtung steht ganz oben; Forecast aufs Board.
-const STANDARD_BOARD = ['tagesausrichtung', 'zeitstrahl', 'gesundheit', 'shields', 'kopf', 'score', 'forecast', 'module', 'system', 'balance'];
+// Kevins Reihenfolge vom 02.08., wörtlich: „Gesundheit ganz oben drüber, da
+// drunter der Lagebericht, dann der Tagesplan und einmal der Fokus als Widget."
+const STANDARD_BOARD = ['gesundheit', 'tagesausrichtung', 'zeitstrahl', 'fokus', 'shields', 'kopf', 'score', 'forecast', 'module', 'system', 'balance'];
 
 // ─── Lebensrad (radar) ──────────────────────────────────────────────────────
 function Lebensrad() {
@@ -96,7 +99,7 @@ function Lebensrad() {
     <section style={{ ...panel, padding: '22px 24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
         <span style={lbl}>Lebensrad · Balance</span>
-        <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted }}>Mut zum Glücklich sein · Bodo Schäfer</span>
+        <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>Mut zum Glücklich sein · Bodo Schäfer</span>
       </div>
       <div style={{ display: 'flex', gap: 22, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
         <svg width="200" height="200" viewBox="0 0 280 280" style={{ flex: '0 0 auto' }} aria-label="Lebensrad">
@@ -107,15 +110,15 @@ function Lebensrad() {
           {LIFE_WHEEL.map((a, i) => { const [x, y] = pt(i, (a.score / 10) * maxR); return <circle key={i} cx={x} cy={y} r="2.5" fill={T.accent} />; })}
         </svg>
         <div style={{ flex: 1, minWidth: 170, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
-          {LIFE_WHEEL.map(a => (
-            <div key={a.label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: T.inkDim }}>
+          {LIFE_WHEEL.map((a, ai) => (
+            <div key={`${a.label}-${ai}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: T.inkDim }}>
               <span style={{ width: 8, height: 8, borderRadius: 2, background: a.score >= 7 ? T.accent : a.score >= 5 ? T.amber : T.crit }} />
               {a.label}<span style={{ marginLeft: 'auto', fontFamily: T.mono, color: T.ink }}>{a.score}</span>
             </div>
           ))}
         </div>
       </div>
-      <div style={{ marginTop: 16, borderTop: `1px solid ${T.line}`, paddingTop: 12, fontFamily: T.mono, fontSize: 10, letterSpacing: '.08em', color: T.muted }}>
+      <div style={{ marginTop: 16, borderTop: `1px solid ${T.line}`, paddingTop: 12, fontFamily: T.mono, fontSize: 11, letterSpacing: '.08em', color: T.muted }}>
         METHODIK · {MZG_PILLARS.map(p => <span key={p} style={{ color: T.accent }}>{p} </span>)}— MAKE führt dich durch die Reflexion
       </div>
     </section>
@@ -149,7 +152,7 @@ function Agenda() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12, gap: 10 }}>
         {/* Datum weicht zwischen Server und Browser ab (Zeitzone) — bewusst erlaubt. */}
         <span style={lbl} suppressHydrationWarning>{label === 'Heute' ? `Heute · ${new Date().toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })}` : label}</span>
-        <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.accent }}>KEMARIS + Holding</span>
+        <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent }}>KEMARIS + Holding</span>
       </div>
       {events.map((e, i) => (
         <div key={e.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 0', borderTop: i ? `1px solid ${T.lineSoft}` : 0 }}>
@@ -157,7 +160,7 @@ function Agenda() {
           <span style={{ fontFamily: T.mono, fontSize: 12, color: T.ink, minWidth: 46 }}>{hhmm(e.start)}</span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13.5, color: T.inkDim, lineHeight: 1.3 }}>{e.title}{e.isTeams && ' · Teams'}</div>
-            <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.06em', textTransform: 'uppercase', marginTop: 4, color: T.muted }}>
+            <div style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', marginTop: 4, color: T.muted }}>
               KEMARIS{focus(e.start) && <span style={{ color: T.amber }}> · ⚠ Fokuszeit</span>}
             </div>
           </span>
@@ -206,6 +209,9 @@ export function MakeOsHome() {
   const [fokus, setFokus] = useState<Record<string, string>>({});
   const [fokusH, setFokusH] = useState<'tag' | 'woche' | 'monat'>('tag');
   const [regler, setRegler] = useState<Record<string, number>>({});
+  // Kevins Handzuordnung aus dem Taskmanagement — sonst zeigt das Fokus-Widget
+  // ein anderes Thema als die Aufgabenliste für dieselbe Aufgabe.
+  const [zuordnung, setZuordnung] = useState<Record<string, string>>({});
   const fokusTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [zieleAlle, setZieleAlle] = useState<Record<'monat' | 'quartal' | 'jahr', { fortschritt: number; erledigt?: boolean }[]>>({ monat: [], quartal: [], jahr: [] });
   const [msAlle, setMsAlle] = useState<{ titel: string; bereich: string; faellig?: string; erledigt?: boolean }[]>([]);
@@ -217,6 +223,7 @@ export function MakeOsHome() {
       setZieleAlle({ monat: d.monat ?? [], quartal: d.quartal ?? [], jahr: d.jahr ?? [] });
     }).catch(() => {});
     fetch('/api/state/fokus-regler').then(r => r.json()).then(d => setRegler(d.regler ?? {})).catch(() => {});
+    fetch('/api/state/ordnung').then(r => r.json()).then(d => setZuordnung(d.zuordnung ?? {})).catch(() => {});
     fetch('/api/state/meilensteine').then(r => r.json()).then(d => setMsAlle(Array.isArray(d.meilensteine) ? d.meilensteine : [])).catch(() => {});
   }, []);
   function fokusSetzen(h: 'tag' | 'woche' | 'monat', text: string) {
@@ -349,9 +356,9 @@ export function MakeOsHome() {
             const avg = basis(k);
             if (avg == null) return null;
             const d = wert - avg;
-            if (Math.abs(d) < 0.04 * Math.max(1, Math.abs(avg))) return <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted }}>≈ Ø</span>;
+            if (Math.abs(d) < 0.04 * Math.max(1, Math.abs(avg))) return <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>≈ Ø</span>;
             const gut = besserHoch ? d > 0 : d < 0;
-            return <span style={{ fontFamily: T.mono, fontSize: 9.5, color: gut ? T.accent : T.amber }}>{d > 0 ? '▲' : '▼'} {(Math.abs(d) < 10 ? Math.abs(d).toFixed(1).replace('.', ',') : String(Math.round(Math.abs(d))))} vs Ø</span>;
+            return <span style={{ fontFamily: T.mono, fontSize: 11, color: gut ? T.accent : T.amber }}>{d > 0 ? '▲' : '▼'} {(Math.abs(d) < 10 ? Math.abs(d).toFixed(1).replace('.', ',') : String(Math.round(Math.abs(d))))} vs Ø</span>;
           };
           // Das eine Urteil des Morgens — deterministisch aus der Zone.
           const urteil = !vital ? '' :
@@ -360,7 +367,7 @@ export function MakeOsHome() {
             'Erhaltungsmodus — nur Essenzielles, Rücken schonen, früh Schluss.';
           const stat = (l: string, v: React.ReactNode, extra?: React.ReactNode) => (
             <div style={{ minWidth: 76 }}>
-              <div style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.12em', textTransform: 'uppercase', color: T.muted }}>{l}</div>
+              <div style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: T.muted }}>{l}</div>
               <div style={{ fontFamily: T.mono, fontSize: 21, fontWeight: 700, color: T.ink, marginTop: 3 }}>{v}</div>
               {extra}
             </div>
@@ -414,9 +421,9 @@ export function MakeOsHome() {
           <div style={{ ...panel, borderLeft: `3px solid ${shields.some(s => s.stufe === 'rot') ? T.crit : T.amber}`, padding: '10px 16px', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {shields.slice(0, 4).map(s => (
               <Link key={s.id} href={s.href} style={{ display: 'flex', gap: 9, alignItems: 'baseline', textDecoration: 'none', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 10, color: s.stufe === 'rot' ? T.crit : T.amber, flex: '0 0 auto' }}>●</span>
+                <span style={{ fontSize: 11, color: s.stufe === 'rot' ? T.crit : T.amber, flex: '0 0 auto' }}>●</span>
                 <span style={{ fontSize: 12.5, color: T.ink, flex: 1, minWidth: 200 }}>{s.text}</span>
-                <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.accentInk, flex: '0 0 auto' }}>{s.label} ›</span>
+                <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, flex: '0 0 auto' }}>{s.label} ›</span>
               </Link>
             ))}
           </div>
@@ -437,7 +444,7 @@ export function MakeOsHome() {
           const istSpaet = !!top.dueDate && top.dueDate < heute;
           return (
             <Link href="/os/fokus" style={{ ...panel, borderLeft: `3px solid ${istSpaet || top.priority === 'critical' ? T.crit : T.amber}`, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
-              <span style={{ fontFamily: T.mono, fontSize: 10, letterSpacing: '.16em', color: istSpaet || top.priority === 'critical' ? T.crit : T.amber, textTransform: 'uppercase' }}>◆ Fokus jetzt</span>
+              <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.16em', color: istSpaet || top.priority === 'critical' ? T.crit : T.amber, textTransform: 'uppercase' }}>◆ Fokus jetzt</span>
               <span style={{ fontSize: 16, fontWeight: 600, color: T.ink }}>{top.title}</span>
               <span style={{ fontSize: 13, color: T.inkDim }}>{istSpaet ? `überfällig seit ${top.dueDate}` : top.dueDate === heute ? 'heute fällig' : `${top.priority} · ${krit.length} kritisch offen`}</span>
               <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: T.accent, whiteSpace: 'nowrap' }}>Tag ausrichten →</span>
@@ -449,12 +456,12 @@ export function MakeOsHome() {
 
       </>);
       case 'score': return (<>
-        {/* MAKE SCORE (halb) + FOKUS & WICHTIGSTE TO-DOS (halb) — über Jarvis */}
+        {/* MAKE SCORE — steht seit 02.08. auch permanent auf der Startfläche. */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: 12, marginBottom: 18, alignItems: 'stretch' }}>
           <section style={{ ...panel, padding: '20px 22px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <span style={lbl}>MAKE Score</span>
-              <Link href="/os/performance" style={{ fontFamily: T.mono, fontSize: 9.5, color: T.accentInk, textDecoration: 'none' }}>aufschlüsseln ›</Link>
+              <Link href="/os/performance" style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, textDecoration: 'none' }}>aufschlüsseln ›</Link>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 18, margin: '14px 0 14px' }}>
               <div style={{ position: 'relative', width: 84, height: 84, flex: '0 0 auto' }}>
@@ -468,7 +475,7 @@ export function MakeOsHome() {
                 </svg>
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ fontFamily: T.mono, fontSize: 24, fontWeight: 600, color: T.ink, lineHeight: 1 }}>{msiAnzeige}</span>
-                  <span style={{ fontFamily: T.mono, fontSize: 8, color: T.muted }}>/100</span>
+                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>/100</span>
                 </div>
               </div>
               <div>
@@ -485,8 +492,8 @@ export function MakeOsHome() {
                 <Link key={p.key} href={`/os/saeule/${p.key}`} style={{ textDecoration: 'none', display: 'block' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
                     <span style={{ fontSize: 12, color: T.inkDim }}>
-                      {p.label} <span style={{ color: T.muted, fontSize: 10 }}>· {Math.round(p.gewicht * 100)}%</span>
-                      {p.zuDuenn && <span style={{ color: T.amber, fontSize: 10 }}> · zu dünn</span>}
+                      {p.label} <span style={{ color: T.muted, fontSize: 11 }}>· {Math.round(p.gewicht * 100)}%</span>
+                      {p.zuDuenn && <span style={{ color: T.amber, fontSize: 11 }}> · zu dünn</span>}
                     </span>
                     <span style={{ fontFamily: T.mono, fontSize: 12, color: p.score == null ? T.muted : scoreColor(p.score) }}>{p.score ?? '—'}</span>
                   </div>
@@ -498,6 +505,13 @@ export function MakeOsHome() {
             </div>
           </section>
 
+        </div>
+      </>);
+
+      // Kevins Ansage 02.08.: der Fokus ist ein EIGENES Widget — „auch mit dem
+      // Thema dahinter", damit man sieht, auf welche Säule eine Aufgabe einzahlt.
+      case 'fokus': return (<>
+        <div style={{ marginBottom: 18 }}>
           {/* Fokus + wichtigste To-dos — die Reihenfolge lenkt der Fokus-Regler */}
           {(() => {
             const rank: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -518,7 +532,7 @@ export function MakeOsHome() {
                   <div style={{ display: 'flex', gap: 4 }}>
                     {(['tag', 'woche', 'monat'] as const).map(h => (
                       <button key={h} onClick={() => setFokusH(h)}
-                        style={{ fontFamily: T.mono, fontSize: 10, letterSpacing: '.06em', cursor: 'pointer', borderRadius: 6, padding: '3px 9px', border: `1px solid ${fokusH === h ? T.accent : T.line}`, background: fokusH === h ? `${T.accent}1c` : 'transparent', color: fokusH === h ? T.accentInk : T.muted }}>
+                        style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.06em', cursor: 'pointer', borderRadius: 6, padding: '3px 9px', border: `1px solid ${fokusH === h ? T.accent : T.line}`, background: fokusH === h ? `${T.accent}1c` : 'transparent', color: fokusH === h ? T.accentInk : T.muted }}>
                         {h === 'tag' ? 'Tag' : h === 'woche' ? 'Woche' : 'Monat'}
                       </button>
                     ))}
@@ -533,7 +547,7 @@ export function MakeOsHome() {
                 {bereiche.length > 0 && (
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
                     {bereiche.map(([k, v]) => (
-                      <span key={k} style={{ fontSize: 10.5, fontWeight: 600, color: SAEULE_FARBE[k] ?? T.inkDim, border: `1px solid ${SAEULE_FARBE[k] ?? T.line}55`, borderRadius: 6, padding: '2px 7px' }}>{SAEULE_LABEL[k] ?? k} {v}</span>
+                      <span key={k} style={{ fontSize: 11, fontWeight: 600, color: SAEULE_FARBE[k] ?? T.inkDim, border: `1px solid ${SAEULE_FARBE[k] ?? T.line}55`, borderRadius: 6, padding: '2px 7px' }}>{SAEULE_LABEL[k] ?? k} {v}</span>
                     ))}
                   </div>
                 )}
@@ -548,8 +562,17 @@ export function MakeOsHome() {
                           {t.priority === 'critical' ? '‼' : imFokus ? '◎' : '·'}
                         </span>
                         <span style={{ fontSize: 13, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
+                        {/* Das Thema dahinter — Recht / Umsatz / Produkt / Leben */}
+                        {(() => {
+                          const th = THEMEN.find(x => x.id === themaVon(t, zuordnung));
+                          return th ? (
+                            <span title={th.label} style={{ flex: '0 0 auto', fontFamily: T.mono, fontSize: 11, color: th.farbe, border: `1px solid ${th.farbe}44`, borderRadius: 5, padding: '1px 6px' }}>
+                              {th.label.split(' ')[0]}
+                            </span>
+                          ) : null;
+                        })()}
                         {t.dueDate && (
-                          <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 10, color: spaet ? T.crit : t.dueDate === heute ? T.amber : T.muted, flex: '0 0 auto' }}>
+                          <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: spaet ? T.crit : t.dueDate === heute ? T.amber : T.muted, flex: '0 0 auto' }}>
                             {spaet ? 'überfällig' : t.dueDate === heute ? 'heute' : `${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.`}
                           </span>
                         )}
@@ -578,12 +601,12 @@ export function MakeOsHome() {
               : mRaw;
             return (
             <Link key={m.dom} href={m.href ?? '/os'} style={{ ...panel, padding: '16px 17px', display: 'flex', gap: 14, alignItems: 'center', textDecoration: 'none', color: 'inherit', position: 'relative' }}>
-              {m.tag && <span style={{ position: 'absolute', top: 13, right: 14, fontFamily: T.mono, fontSize: 8.5, letterSpacing: '.1em', textTransform: 'uppercase', padding: '3px 7px', borderRadius: 5, color: m.tag.tone === 'ok' ? T.accent : T.amber, border: `1px solid ${m.tag.tone === 'ok' ? 'rgba(51,204,156,.28)' : 'rgba(227,162,75,.3)'}` }}>{m.tag.text}</span>}
+              {m.tag && <span style={{ position: 'absolute', top: 13, right: 14, fontFamily: T.mono, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', padding: '3px 7px', borderRadius: 5, color: m.tag.tone === 'ok' ? T.accent : T.amber, border: `1px solid ${m.tag.tone === 'ok' ? 'rgba(51,204,156,.28)' : 'rgba(227,162,75,.3)'}` }}>{m.tag.text}</span>}
               {m.score != null
                 ? <Gauge value={m.score} />
                 : <span style={{ width: 54, height: 54, borderRadius: '50%', flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${T.line}`, background: 'radial-gradient(circle, rgba(33,181,170,.16), transparent 70%)', fontSize: 18 }}>›</span>}
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontFamily: T.mono, fontSize: 10, letterSpacing: '.11em', textTransform: 'uppercase', color: T.muted, paddingRight: 54 }}>{m.dom}</div>
+                <div style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.11em', textTransform: 'uppercase', color: T.muted, paddingRight: 54 }}>{m.dom}</div>
                 <div style={{ fontSize: 14, fontWeight: 600, marginTop: 5, lineHeight: 1.18 }}>{m.val}</div>
                 <div style={{ fontSize: 12, marginTop: 5, lineHeight: 1.4, color: m.subTone === 'crit' ? T.crit : m.subTone === 'att' ? T.amber : T.inkDim }}>{m.sub}</div>
               </div>
@@ -638,7 +661,7 @@ export function MakeOsHome() {
 
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 9 }}>
             <div style={{ ...lbl }}>Deine Agenten</div>
-            <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>{LIVE_AGENTS.length} live · <Link href="/os/agenten" style={{ color: T.accentInk, textDecoration: 'none' }}>verwalten ›</Link></span>
+            <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{LIVE_AGENTS.length} live · <Link href="/os/agenten" style={{ color: T.accentInk, textDecoration: 'none' }}>verwalten ›</Link></span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(196px, 1fr))', gap: 8 }}>
             {LIVE_AGENTS.map(a => (
@@ -674,7 +697,7 @@ export function MakeOsHome() {
             <div style={{ ...panel, borderLeft: `3px solid ${T.accent}`, padding: '20px 24px', marginBottom: 14 }}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 12 }}>
                 <span style={lbl}>Tagesplan</span>
-                {ausricht?.stand && <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>Lage von {ausricht.stand} Uhr</span>}
+                {ausricht?.stand && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>Lage von {ausricht.stand} Uhr</span>}
                 <Link href="/os/planung" style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: T.accentInk, textDecoration: 'none' }}>Tagesplanung ›</Link>
                 <Link href="/os/tageslauf" style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, textDecoration: 'none' }}>Tageslauf ›</Link>
               </div>
@@ -707,7 +730,7 @@ export function MakeOsHome() {
                           style={{ width: 18, height: 18, borderRadius: 6, flex: '0 0 auto', marginTop: 2, cursor: 'pointer', border: `1.6px solid ${T.muted}`, background: 'transparent' }} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.35 }}>{t.priority === 'critical' ? <span style={{ color: T.crit }}>‼ </span> : ''}{t.title}</div>
-                          <div style={{ fontFamily: T.mono, fontSize: 10, color: spaet ? T.crit : T.muted, marginTop: 2 }}>
+                          <div style={{ fontFamily: T.mono, fontSize: 11, color: spaet ? T.crit : T.muted, marginTop: 2 }}>
                             {spaet ? `überfällig seit ${t.dueDate!.slice(8)}.${t.dueDate!.slice(5, 7)}.` : t.dueDate === heuteT ? 'heute fällig' : 'kritisch'}
                           </div>
                         </div>
@@ -816,15 +839,15 @@ export function MakeOsHome() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontFamily: T.mono, fontSize: 11, color: T.muted, letterSpacing: '.06em' }}>
             <button onClick={() => setBearbeiten(b => !b)} title="Widgets ein-/ausblenden und umsortieren"
-              style={{ cursor: 'pointer', fontFamily: T.mono, fontSize: 10.5, letterSpacing: '.06em', borderRadius: 7, padding: '4px 10px', border: `1px solid ${bearbeiten ? T.accent : T.line}`, background: bearbeiten ? `${T.accent}1c` : 'transparent', color: bearbeiten ? T.accentInk : T.muted }}>
+              style={{ cursor: 'pointer', fontFamily: T.mono, fontSize: 11, letterSpacing: '.06em', borderRadius: 7, padding: '4px 10px', border: `1px solid ${bearbeiten ? T.accent : T.line}`, background: bearbeiten ? `${T.accent}1c` : 'transparent', color: bearbeiten ? T.accentInk : T.muted }}>
               {bearbeiten ? '✓ Fertig' : '⚙ Anpassen'}
             </button>
             <button onClick={gesundZeitToggle} title={gesundZeit?.an ? 'Gesundheits-Zeit stoppen' : 'Gesundheits-Zeit starten — Reha, Bewegung, Erholung'}
-              style={{ cursor: 'pointer', fontFamily: T.mono, fontSize: 10.5, letterSpacing: '.06em', borderRadius: 7, padding: '4px 10px', border: `1px solid ${gesundZeit?.an ? '#58D9CD' : T.line}`, background: gesundZeit?.an ? 'rgba(88,217,205,.12)' : 'transparent', color: gesundZeit?.an ? '#58D9CD' : T.muted }}>
+              style={{ cursor: 'pointer', fontFamily: T.mono, fontSize: 11, letterSpacing: '.06em', borderRadius: 7, padding: '4px 10px', border: `1px solid ${gesundZeit?.an ? '#58D9CD' : T.line}`, background: gesundZeit?.an ? 'rgba(88,217,205,.12)' : 'transparent', color: gesundZeit?.an ? '#58D9CD' : T.muted }}>
               {gesundZeit?.an ? `♥ läuft seit ${gesundZeit.seit}` : '♥'}{gesundZeit && gesundZeit.aktivMin > 0 ? ` · ${(gesundZeit.aktivMin / 60).toFixed(1).replace('.', ',')} h` : ''}
             </button>
             <button onClick={modusToggle} title={modus?.an ? 'Ausloggen — beendet die Arbeits-Session' : 'Anmelden — startet die Arbeits-Session'}
-              style={{ cursor: 'pointer', fontFamily: T.mono, fontSize: 10.5, letterSpacing: '.06em', borderRadius: 7, padding: '4px 10px', border: `1px solid ${modus?.an ? T.accent : T.line}`, background: modus?.an ? `${T.accent}1c` : 'transparent', color: modus?.an ? T.accentInk : T.muted }}>
+              style={{ cursor: 'pointer', fontFamily: T.mono, fontSize: 11, letterSpacing: '.06em', borderRadius: 7, padding: '4px 10px', border: `1px solid ${modus?.an ? T.accent : T.line}`, background: modus?.an ? `${T.accent}1c` : 'transparent', color: modus?.an ? T.accentInk : T.muted }}>
               {modus?.an ? `⏻ seit ${modus.seit}` : '⏻'}{modus && modus.aktivMin > 0 ? ` · ${(modus.aktivMin / 60).toFixed(1).replace('.', ',')} h` : ''}
             </button>
             <span><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: T.accent, marginRight: 7 }} /><span style={{ color: T.accent }}>JARVIS · ONLINE</span></span>
@@ -845,8 +868,8 @@ export function MakeOsHome() {
             {bearbeiten && (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '0 4px 10px' }}>
                 <span style={{ fontFamily: T.mono, fontSize: 12, color: T.muted, cursor: 'grab' }}>⠿</span>
-                <span style={{ fontFamily: T.mono, fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: T.accent }}>{WIDGET_LABEL[id]}</span>
-                <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted }}>ziehen zum Sortieren</span>
+                <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: T.accent }}>{WIDGET_LABEL[id]}</span>
+                <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>ziehen zum Sortieren</span>
                 <button onClick={() => boardSpeichern(aktuellBoard.filter(x => x !== id))} title="Nur vom Dashboard nehmen — bleibt in seiner Abteilung"
                   style={{ ...wbtn, marginLeft: 'auto', color: T.crit, borderColor: `${T.crit}55` }}>✕</button>
               </div>
@@ -864,7 +887,7 @@ export function MakeOsHome() {
             </div>
           </div>
         )}
-        <div style={{ marginTop: 24, textAlign: 'center', fontFamily: T.mono, fontSize: 10, letterSpacing: '.1em', color: T.muted }}>
+        <div style={{ marginTop: 24, textAlign: 'center', fontFamily: T.mono, fontSize: 11, letterSpacing: '.1em', color: T.muted }}>
           MAKE OS · GRUNDGERÜST — <span style={{ color: T.inkDim }}>MAKE steuert dein Leben &amp; beide Firmen. Du gewinnst Zeit für Gesundheit &amp; Mindset.</span>
         </div>
       </div>

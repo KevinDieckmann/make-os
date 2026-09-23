@@ -14,7 +14,7 @@ import { LIVE_AGENTS } from '@/lib/make-one/agents-data';
 
 interface Lauf { agent: string; title: string; ts: string }
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 
 export function AgentenHirn() {
   const [laeufe, setLaeufe] = useState<Lauf[]>([]);
@@ -37,7 +37,12 @@ export function AgentenHirn() {
   const cx = 260, cy = 190, R = 140;
   const pos = (i: number) => {
     const a = (-90 + (i * 360) / n) * (Math.PI / 180);
-    return { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a) };
+    // Auf drei Stellen runden: Server und Browser rechnen Sinus und Cosinus
+    // an der letzten Nachkommastelle minimal verschieden (86.53875158910776
+    // gegen …775), und React meldet das als Hydrations-Abweichung. Für ein
+    // Bild in Pixeln ist die Stelle ohnehin bedeutungslos.
+    const rund = (z: number) => Math.round(z * 1000) / 1000;
+    return { x: rund(cx + R * Math.cos(a)), y: rund(cy + R * Math.sin(a)) };
   };
 
   const heissN = LIVE_AGENTS.filter(a => aktivitaet(a.id) === 'heiss').length;
@@ -49,7 +54,7 @@ export function AgentenHirn() {
         <span style={lbl}>Das Hirn</span>
         <span style={{ fontFamily: T.mono, fontSize: 11, color: heissN ? T.accent : T.muted }}>{n} Agenten live · {heissN} gerade aktiv</span>
         {letzter && (
-          <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>
+          <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: T.muted }}>
             zuletzt: <span style={{ color: T.inkDim }}>{letzter.agent}</span> · {letzter.title.slice(0, 44)}{letzter.title.length > 44 ? '…' : ''}
           </span>
         )}
@@ -83,13 +88,13 @@ export function AgentenHirn() {
               style={{ position: 'absolute', left: `${(p.x / 520) * 100}%`, top: `${(p.y / 380) * 100}%`, transform: 'translate(-50%, -50%)', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
               <span className={akt === 'heiss' ? 'jarvis-orb-kern' : undefined}
                 style={{ width: akt === 'heiss' ? 16 : 12, height: akt === 'heiss' ? 16 : 12, borderRadius: '50%', background: farbe, boxShadow: akt !== 'ruht' ? `0 0 ${akt === 'heiss' ? 14 : 8}px ${farbe}` : 'none', display: 'inline-block' }} />
-              <span style={{ fontFamily: T.mono, fontSize: 9, color: akt === 'ruht' ? T.muted : T.inkDim, whiteSpace: 'nowrap', background: 'rgba(11,14,16,.72)', borderRadius: 4, padding: '1px 5px' }}>{a.name.replace('-Agent', '')}</span>
+              <span style={{ fontFamily: T.mono, fontSize: 11, color: akt === 'ruht' ? T.muted : T.inkDim, whiteSpace: 'nowrap', background: 'rgba(11,14,16,.72)', borderRadius: 4, padding: '1px 5px' }}>{a.name.replace('-Agent', '')}</span>
             </Link>
           );
         })}
       </div>
 
-      <div style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted, textAlign: 'center' }}>
+      <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textAlign: 'center' }}>
         <span style={{ color: T.accent }}>●</span> letzte Stunde · <span style={{ color: T.accentInk }}>●</span> heute · <span>●</span> ruht — Klick öffnet den Agenten
       </div>
     </div>

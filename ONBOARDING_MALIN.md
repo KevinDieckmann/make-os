@@ -28,8 +28,16 @@ Daten bleiben auf Kevins Mac. Zusammengeführt wird über GitHub.
 3. **Umgebung:** `.env.local.example` zu `.env.local` kopieren und eigene
    Werte eintragen — eigener `MAKE_OS_KEY` (frei ausdenken), Anthropic-Key
    von Kevin. Die Datei bleibt auf deinem Rechner, Git ignoriert sie.
-4. **Starten:** `npm run dev` → `http://localhost:3001/os`. Beim ersten Start
-   ist alles leer — das ist richtig so: deine Kopie, deine Testdaten.
+4. **Starten:** `npm run dev` → `http://localhost:3001/anmelden`. Beim ersten
+   Start „Erstes Konto einrichten" — dafür einmal deinen eigenen `MAKE_OS_KEY`
+   aus deiner `.env.local`. Danach ist alles leer — das ist richtig so: deine
+   Kopie, deine Testdaten.
+
+   **Im gemeinsamen System** (Kevins Instanz, später der Server) brauchst du
+   keinen Schlüssel: Kevin erzeugt unter Konto → „Einladen" einen Code, du
+   öffnest die Anmeldeseite → „Ich habe eine Einladung" → Vorname, E-Mail,
+   Passwort. Dein Vorname wird der Name deiner Daten (`malin`) — deine
+   bisherigen Bestände hängen damit automatisch an deinem Konto.
 
 ## 3 · Arbeitsweise
 

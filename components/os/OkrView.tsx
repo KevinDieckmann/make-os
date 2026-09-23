@@ -4,11 +4,12 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
 import { DEFAULT_FINANCE, computeMetrics, eur, type FinanceState } from '@/lib/make-one/finance-data';
+import { Seitenkopf } from './Seitenkopf';
 
 interface Objective { titel: string; warum?: string; keyResults?: string[]; hebelTasks?: string[]; luecke?: string; }
 interface TaskLite { title: string; status?: string; priority?: string; description?: string; }
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 
 export function OkrView() {
@@ -48,12 +49,11 @@ export function OkrView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
         <Link href="/os/agenten" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Agenten</Link>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <div style={lbl}>OKR-/Ziel-Agent</div>
-          <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.accentInk, border: `1px solid ${T.accentInk}55`, borderRadius: 5, padding: '2px 7px' }}>live · Vorschlag</span>
-        </div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Der Weg auf 1 Mio.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 680, lineHeight: 1.5 }}>Der Agent klammert deinen Nordstern mit den echten Controlling-Zahlen und deinen Aufgaben zusammen — Objectives, Key Results, welche Aufgabe einzahlt und <b style={{ color: T.ink }}>wo eine Lücke klafft</b>.</p>
+          <Seitenkopf
+            rubrik={<>OKR-/Ziel-Agent <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, border: `1px solid ${T.accentInk}55`, borderRadius: 5, padding: '2px 7px' }}>live · Vorschlag</span></>}
+            titel={<>Der Weg auf 1 Mio.</>}
+            satz={<>Der Agent klammert deinen Nordstern mit den echten Controlling-Zahlen und deinen Aufgaben zusammen — Objectives, Key Results, welche Aufgabe einzahlt und <b style={{ color: T.ink }}>wo eine Lücke klafft</b>.</>}
+          />
 
         {/* Nordstern */}
         <div style={{ ...panel, borderTop: `2px solid ${T.accent}`, padding: '18px 22px', margin: '18px 0 16px' }}>

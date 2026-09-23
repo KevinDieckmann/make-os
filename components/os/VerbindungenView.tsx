@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { THEME as T } from '@/lib/make-one/os-data';
+import { Seitenkopf } from './Seitenkopf';
 
 interface Verbindung {
   id: string; name: string; konfiguriert: boolean; verbunden: boolean;
@@ -17,7 +18,6 @@ interface Verbindung {
   anleitung: string; envId: string; envSecret: string;
 }
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 
 export function VerbindungenView() {
@@ -47,11 +47,11 @@ export function VerbindungenView() {
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 780, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
-        <div style={lbl}>Verbindungen</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Externe Quellen anschließen.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 640, lineHeight: 1.5 }}>
-          App beim Anbieter registrieren, Schlüssel in <span style={{ fontFamily: T.mono, fontSize: 12 }}>.env.local</span>, einmal verbinden — danach fließen die Daten von selbst. Zugangs-Tokens bleiben lokal auf diesem Mac.
-        </p>
+        <Seitenkopf
+          rubrik={<>Verbindungen</>}
+          titel={<>Externe Quellen anschließen.</>}
+          satz={<>App beim Anbieter registrieren, Schlüssel in <span style={{ fontFamily: T.mono, fontSize: 12 }}>.env.local</span>, einmal verbinden — danach fließen die Daten von selbst. Zugangs-Tokens bleiben lokal auf diesem Mac.</>}
+        />
 
         {status?.startsWith('verbunden') && <div style={{ ...panel, borderLeft: `3px solid ${T.accent}`, padding: '10px 16px', margin: '14px 0', fontSize: 13, color: T.accent }}>✓ Verbindung hergestellt.</div>}
         {status && !status.startsWith('verbunden') && <div style={{ ...panel, borderLeft: `3px solid ${T.crit}`, padding: '10px 16px', margin: '14px 0', fontSize: 13, color: T.crit }}>Verbindung nicht zustande gekommen ({status}) — nochmal versuchen.</div>}
@@ -62,10 +62,10 @@ export function VerbindungenView() {
             <div key={v.id} style={{ ...panel, borderLeft: `3px solid ${v.verbunden ? T.accent : v.konfiguriert ? T.amber : T.line}`, padding: '15px 19px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 15, fontWeight: 700 }}>{v.name}</span>
-                <span style={{ fontFamily: T.mono, fontSize: 10, color: v.verbunden ? T.accent : v.konfiguriert ? T.amber : T.muted, border: `1px solid ${v.verbunden ? T.accent : v.konfiguriert ? T.amber : T.line}55`, borderRadius: 5, padding: '2px 8px' }}>
+                <span style={{ fontFamily: T.mono, fontSize: 11, color: v.verbunden ? T.accent : v.konfiguriert ? T.amber : T.muted, border: `1px solid ${v.verbunden ? T.accent : v.konfiguriert ? T.amber : T.line}55`, borderRadius: 5, padding: '2px 8px' }}>
                   {v.verbunden ? 'verbunden' : v.konfiguriert ? 'bereit — noch nicht verbunden' : 'nicht konfiguriert'}
                 </span>
-                {v.verbunden && v.seit && <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>seit {v.seit.slice(0, 10)}</span>}
+                {v.verbunden && v.seit && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>seit {v.seit.slice(0, 10)}</span>}
               </div>
 
               {!v.konfiguriert && (

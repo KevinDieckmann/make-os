@@ -7,9 +7,14 @@ import { NextResponse } from 'next/server';
 import { agentRoster, LIVE_AGENTS } from '@/lib/make-one/agents-data';
 import { gatherBrain, promptBrain } from '@/lib/brain';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
-import { resolveAgent } from '@/lib/agent-config';
-import { loadJson, updateJson } from '@/lib/store/local-db';
-import { localDay } from '@/lib/zeit';
+import { fuerPrompt, type VerlaufNachricht } from '@/lib/make-one/jarvis-verlauf';
+import { WERKZEUGE } from '@/lib/jarvis/werkzeuge';
+import { AUSFUEHRBAR, AGENT_ZWECK, runAgent, type Ausfuehrbar } from '@/lib/jarvis/agenten';
+import { fuehreAus } from '@/lib/jarvis/ausfuehren';
+import { risikoVon } from '@/lib/jarvis/register';
+import { offeneAnzahl } from '@/lib/jarvis/stapel';
+import { personAus, PERSON_LABEL } from '@/lib/jarvis/raum';
+import { lies as liesFakten, fuerPrompt as faktenFuerPrompt } from '@/lib/jarvis/gedaechtnis';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,321 +23,35 @@ export const dynamic = 'force-dynamic';
 
 // Live-Bewusstsein kommt jetzt aus dem Brain — derselben Kontextschicht, die
 // auch Loops und Tageslauf nutzen. Eine Wahrheit statt vier Sammler.
-async function liveContext(): Promise<string> {
+async function liveContext(person: string = 'kevin'): Promise<string> {
   try {
-    const b = await gatherBrain();
+    const b = await gatherBrain(undefined, person);
     return promptBrain(b);
   } catch {
     return '(Brain gerade nicht erreichbar — antworte vorsichtig und sag das offen.)';
   }
 }
-
-// ── Jarvis führt Agenten SELBST aus (read-only/Entwurf — Freigaben bleiben) ──
-// Jede Ausführung respektiert die Agenten-Verwaltung: abgeschaltete Agenten
-// verweigern; alles, was nach außen schreibt, hängt weiter an der Autonomie-
-// Stufe des jeweiligen Agenten (z. B. Kalender-Eintrag nur bei „autonom").
-const AUSFUEHRBAR = ['research', 'board', 'okr', 'controlling', 'fokus', 'kalender'] as const;
-type Ausfuehrbar = typeof AUSFUEHRBAR[number];
-
-async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string): Promise<string> {
-  const cfg = await resolveAgent(id);
-  if (!cfg.enabled) return `${cfg.name} ist ausgeschaltet (unter /os/agenten aktivierbar).`;
-
-  const H = { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '' };
-  const post = async (pfad: string, body: unknown, timeoutMs = 90_000) => {
-    const r = await fetch(`${origin}${pfad}`, {
-      method: 'POST', headers: H, body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs),
-    });
-    return r.json();
-  };
-  const kuerze = (t: unknown, n = 1600) => String(t ?? '').slice(0, n);
-
-  try {
-    switch (id) {
-      case 'research': {
-        const d = await post('/api/research', { query: auftrag || 'Aktuelle Lage' }, 160_000);
-        return d.reply ? `RESEARCH-ERGEBNIS${d.webUsed ? ' (mit Web-Suche)' : ''}:\n${kuerze(d.reply, 2200)}` : `Research fehlgeschlagen: ${kuerze(d.error, 200)}`;
-      }
-      case 'board': {
-        const d = await post('/api/board', {});
-        if (!d.headline) return `Board fehlgeschlagen: ${kuerze(d.error, 200)}`;
-        const sekt = (d.sektionen ?? []).map((x: { titel: string; punkte?: string[] }) => `${x.titel}: ${(x.punkte ?? []).join(' · ')}`).join('\n');
-        return `BOARD-PACK:\n${d.headline}\n${sekt}\nRisiken: ${(d.risiken ?? []).join(' · ')}\nNächste Woche: ${(d.naechsteWoche ?? []).join(' · ')}`;
-      }
-      case 'okr': {
-        const d = await post('/api/okr', {});
-        if (!d.lage) return `OKR fehlgeschlagen: ${kuerze(d.error, 200)}`;
-        const obj = (d.objectives ?? []).map((o: { titel?: string; luecke?: string }) => `${o.titel}${o.luecke ? ` (Lücke: ${o.luecke})` : ''}`).join('\n');
-        return `OKR-ZIELBAUM:\n${d.lage}\n${obj}`;
-      }
-      case 'controlling': {
-        const d = await post('/api/controlling/analyse', {});
-        if (!d.briefing) return `Controlling fehlgeschlagen: ${kuerze(d.error, 200)}`;
-        return `CONTROLLING-LAGE:\n${d.briefing}\nFokus: ${(d.fokus ?? []).join(' · ')}\nRisiken: ${(d.risiken ?? []).join(' · ')}`;
-      }
-      case 'fokus': {
-        const d = await post('/api/fokus', {});
-        return d.reply ? `TAGESFORM (${d.zone}, Recovery ${d.recovery}%):\n${kuerze(d.reply, 1600)}` : `Fokus fehlgeschlagen: ${kuerze(d.error, 200)}`;
-      }
-      case 'kalender': {
-        const d = await post('/api/kalender/analyse', {}, 120_000);
-        if (!d.briefing && !d.vorschlaege) return `Kalender fehlgeschlagen: ${kuerze(d.error, 200)}`;
-        const v = (d.vorschlaege ?? []).map((x: { title: string; date: string; startHour: number }) => `${x.title} ${x.date} ${x.startHour}:00`).join(' · ');
-        return `KALENDER-ANALYSE:\n${d.briefing ?? ''}\nKonflikte: ${(d.conflicts ?? []).length}\nVorschläge: ${v || 'keine'}${d.eingetragen ? '\n(Blöcke wurden automatisch eingetragen — Kalender-Agent steht auf autonom.)' : '\n(Eintragen braucht Kevins Klick — Kalender-Agent steht auf Freigabe.)'}`;
-      }
-    }
-  } catch (err) {
-    return `${id} nicht erreichbar: ${err instanceof Error ? err.message.slice(0, 150) : 'Fehler'}`;
-  }
-  return 'Unbekannter Agent.';
-}
-
-// ── Jarvis plant SELBST: Block in den Wochenplan legen (Kevins Ansage:
-// „dass da auch drin geplant werden kann"). Interne Planung, frei verschiebbar
-// — aber NIE über feste Termine (harte Kollisionsprüfung vor dem Schreiben).
-const PLAN_ARTEN = ['fokus', 'reha', 'routine', 'pause', 'aufgabe', 'block'] as const;
-const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-
-async function planBlock(input: Record<string, unknown>): Promise<string> {
-  const date = String(input.date ?? '');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Fehlgeschlagen: date muss YYYY-MM-DD sein.';
-  if (date < localDay()) return `Fehlgeschlagen: ${date} liegt in der Vergangenheit — plane ab heute (${localDay()}).`;
-  const startMin = Math.max(6 * 60, Math.min(22 * 60 - 15, Math.round(Number(input.startMin) / 15) * 15 || 9 * 60));
-  const dauerMin = Math.max(15, Math.min(240, Math.round(Number(input.dauerMin) / 15) * 15 || 60));
-  const titel = String(input.titel ?? '').slice(0, 120) || 'Block';
-  const art = (PLAN_ARTEN as readonly string[]).includes(String(input.art)) ? String(input.art) : 'block';
-  const ende = startMin + dauerMin;
-
-  // Feste Termine beider Kalender an diesem Tag — nichts wird überplant.
-  const [cal, kem] = await Promise.all([
-    loadJson<{ events?: { title?: string; startDate?: string; endDate?: string; allDay?: boolean }[] }>('calendar-cache'),
-    loadJson<{ events?: { title?: string; start?: string; end?: string }[] }>('kemaris-calendar'),
-  ]);
-  const fest = [
-    ...(cal?.events ?? []).filter(e => !e.allDay && e.startDate?.slice(0, 10) === date).map(e => ({ titel: e.title ?? '', s: e.startDate!, e: e.endDate })),
-    ...(kem?.events ?? []).filter(e => e.start?.slice(0, 10) === date).map(e => ({ titel: e.title ?? '', s: e.start!, e: e.end })),
-  ].map(x => {
-    const s = new Date(x.s);
-    const sMin = s.getHours() * 60 + s.getMinutes();
-    const eMin = x.e ? (d => d.getHours() * 60 + d.getMinutes())(new Date(x.e)) : sMin + 60;
-    return { titel: x.titel, s: sMin, e: Math.max(eMin, sMin + 15) };
-  });
-  const kollision = fest.find(f => startMin < f.e && f.s < ende);
-  if (kollision) return `Kollision mit festem Termin „${kollision.titel}" (${hhmm(kollision.s)}–${hhmm(kollision.e)}) am ${date} — nicht eingeplant. Schlage Kevin eine freie Zeit vor.`;
-
-  const mo = new Date(`${date}T12:00:00`);
-  mo.setDate(mo.getDate() - ((mo.getDay() + 6) % 7));
-  const woche = localDay(mo);
-  interface PB { id: string; date: string; startMin: number; dauerMin: number; titel: string; art: string }
-  const block: PB = { id: `pb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, date, startMin, dauerMin, titel, art };
-  await updateJson<Record<string, PB[]>>('wochenplan', current => {
-    const f = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
-    const liste = Array.isArray(f[woche]) ? f[woche] : [];
-    if (liste.length >= 120) return f;
-    return { ...f, [woche]: [...liste, block] };
-  });
-  return `Eingeplant: „${titel}" am ${date}, ${hhmm(startMin)}–${hhmm(ende)} (${art}). Kevin sieht den Block sofort im Planer und kann ihn frei verschieben.`;
-}
-
-// ─── Jarvis als Eingabe-Schicht: Kevin ruft zu, Jarvis schreibt in die Stores.
-// Interne Buchführung (nichts geht nach außen) — jede Erfassung wird im Chat
-// knapp bestätigt und erscheint sofort in Finanzplanung/Meilensteinen/CRM.
-
-const eurW = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(n || 0));
-const firmaId = (rein: unknown): 'kdv' | 'kdc' => (/ventures|kdv/i.test(String(rein ?? '')) ? 'kdv' : 'kdc');
-
-async function setzeKontostand(input: Record<string, unknown>): Promise<string> {
-  const betrag = Number(input.betrag);
-  if (!isFinite(betrag)) return 'Fehlgeschlagen: betrag fehlt oder ist keine Zahl.';
-  const fid = firmaId(input.firma);
-  let name: string = fid;
-  await updateJson<{ firmen: { id: string; name: string; kontostand: number | null; stand: string | null }[] }>('finanzplan', current => {
-    const f = current ?? { firmen: [] };
-    f.firmen = (f.firmen ?? []).map(x => {
-      if (x.id !== fid) return x;
-      name = x.name;
-      return { ...x, kontostand: Math.round(betrag), stand: localDay() };
-    });
-    return f;
-  });
-  return `Erfasst: Kontostand ${name} = ${eurW(betrag)} (Stand heute).`;
-}
-
-async function erfasseRechnung(input: Record<string, unknown>): Promise<string> {
-  const kunde = String(input.kunde ?? '').trim().slice(0, 120);
-  if (!kunde) return 'Fehlgeschlagen: kunde fehlt.';
-  const status = ['geplant', 'gestellt', 'bezahlt'].includes(String(input.status)) ? String(input.status) : undefined;
-  const betrag = isFinite(Number(input.betrag)) ? Math.max(0, Math.round(Number(input.betrag))) : undefined;
-  const faellig = /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined;
-  const titel = input.titel ? String(input.titel).slice(0, 200) : undefined;
-  let aktion = '';
-  await updateJson<{ rechnungen: { id: string; firmaId: string; kunde: string; titel: string; betrag: number; status: string; faellig?: string }[] }>('finanzplan', current => {
-    const f = current ?? { rechnungen: [] };
-    f.rechnungen = f.rechnungen ?? [];
-    const idx = f.rechnungen.findIndex(r => r.kunde.toLowerCase() === kunde.toLowerCase() && (!titel || r.titel.toLowerCase().includes(titel.toLowerCase())));
-    if (idx >= 0) {
-      const r = f.rechnungen[idx];
-      f.rechnungen[idx] = { ...r, ...(betrag != null ? { betrag } : {}), ...(status ? { status } : {}), ...(faellig ? { faellig } : {}), ...(titel ? { titel } : {}) };
-      aktion = `Rechnung ${kunde} aktualisiert: ${betrag != null ? eurW(betrag) : eurW(f.rechnungen[idx].betrag)}${status ? `, Status ${status}` : ''}${faellig ? `, fällig ${faellig}` : ''}`;
-    } else {
-      f.rechnungen.push({ id: `r-${Date.now().toString(36)}`, firmaId: firmaId(input.firma), kunde, titel: titel ?? 'Leistung', betrag: betrag ?? 0, status: status ?? 'geplant', ...(faellig ? { faellig } : {}) });
-      aktion = `Neue Rechnung angelegt: ${kunde} ${betrag != null ? eurW(betrag) : 'ohne Betrag'} [${status ?? 'geplant'}]`;
-    }
-    return f;
-  });
-  return `Erfasst: ${aktion}. Sichtbar in der Finanzplanung.`;
-}
-
-async function erfasseZahlung(input: Record<string, unknown>): Promise<string> {
-  const an = String(input.an ?? '').trim().slice(0, 120);
-  const betrag = Number(input.betrag);
-  if (!an || !isFinite(betrag)) return 'Fehlgeschlagen: an + betrag nötig.';
-  const faellig = /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined;
-  await updateJson<{ zahlungen: { id: string; firmaId: string; an: string; titel: string; betrag: number; status: string; faellig?: string }[] }>('finanzplan', current => {
-    const f = current ?? { zahlungen: [] };
-    f.zahlungen = [...(f.zahlungen ?? []), { id: `z-${Date.now().toString(36)}`, firmaId: firmaId(input.firma), an, titel: String(input.titel ?? '').slice(0, 200), betrag: Math.max(0, Math.round(betrag)), status: 'offen', ...(faellig ? { faellig } : {}) }];
-    return f;
-  });
-  return `Erfasst: Zahlung an ${an} über ${eurW(betrag)}${faellig ? `, fällig ${faellig}` : ''} — steht in der Prioritätenliste.`;
-}
-
-async function setzeMeilenstein(input: Record<string, unknown>): Promise<string> {
-  const suche = String(input.titel ?? '').trim().toLowerCase();
-  if (!suche) return 'Fehlgeschlagen: titel fehlt.';
-  const fortschritt = isFinite(Number(input.fortschritt)) ? Math.max(0, Math.min(100, Math.round(Number(input.fortschritt)))) : undefined;
-  const erledigt = input.erledigt === true;
-  let ergebnis = '';
-  await updateJson<{ meilensteine: { titel: string; fortschritt: number; erledigt: boolean; erledigtAm?: string }[] }>('meilensteine', current => {
-    const f = current ?? { meilensteine: [] };
-    const m = (f.meilensteine ?? []).find(x => x.titel.toLowerCase().includes(suche));
-    if (!m) {
-      ergebnis = `Kein Meilenstein passt zu „${input.titel}". Offene: ${(f.meilensteine ?? []).filter(x => !x.erledigt).slice(0, 5).map(x => x.titel).join(' · ')}`;
-      return f;
-    }
-    if (erledigt) { m.erledigt = true; m.fortschritt = 100; m.erledigtAm = localDay(); ergebnis = `Meilenstein „${m.titel}" abgehakt ✓`; }
-    else if (fortschritt != null) { m.fortschritt = fortschritt; ergebnis = `Meilenstein „${m.titel}" auf ${fortschritt}% gesetzt.`; }
-    else ergebnis = `Nichts geändert — fortschritt oder erledigt angeben.`;
-    return f;
-  });
-  return `Erfasst: ${ergebnis}`;
-}
-
-async function setzeFokus(input: Record<string, unknown>): Promise<string> {
-  const h = String(input.horizont ?? '');
-  if (!['tag', 'woche', 'monat', 'quartal', 'jahr'].includes(h)) return 'Fehlgeschlagen: horizont tag|woche|monat|quartal|jahr nötig.';
-  const text = String(input.text ?? '').slice(0, 300);
-  await updateJson<{ fokus?: Record<string, string> } & Record<string, unknown>>('ziele', current => {
-    const f = current ?? {};
-    return { ...f, fokus: { ...(f.fokus ?? {}), [h]: text } };
-  });
-  return `Erfasst: Fokus (${h}) = „${text}". Steht auf dem Dashboard und lenkt die Planung.`;
-}
-
-async function setzeKunde(input: Record<string, unknown>): Promise<string> {
-  const name = String(input.name ?? '').trim().slice(0, 120);
-  if (!name) return 'Fehlgeschlagen: name fehlt.';
-  const status = ['aktiv', 'gespraech', 'ruht'].includes(String(input.status)) ? String(input.status) : undefined;
-  const cashflow = isFinite(Number(input.cashflow)) && Number(input.cashflow) > 0 ? Math.round(Number(input.cashflow)) : undefined;
-  const schritt = input.naechsterSchritt ? String(input.naechsterSchritt).slice(0, 300) : undefined;
-  let aktion = '';
-  await updateJson<{ kunden: { id: string; name: string; status: string; cashflow?: number; naechsterSchritt?: string }[] }>('kunden', current => {
-    const f = current ?? { kunden: [] };
-    f.kunden = f.kunden ?? [];
-    const k = f.kunden.find(x => x.name.toLowerCase() === name.toLowerCase());
-    if (k) {
-      if (status) k.status = status;
-      if (cashflow != null) k.cashflow = cashflow;
-      if (schritt) k.naechsterSchritt = schritt;
-      aktion = `${k.name} aktualisiert${status ? ` (${status})` : ''}${cashflow != null ? `, ${eurW(cashflow)}/Monat` : ''}${schritt ? `, nächster Schritt: ${schritt}` : ''}`;
-    } else {
-      f.kunden.push({ id: `k-${Date.now().toString(36)}`, name, status: status ?? 'gespraech', ...(cashflow != null ? { cashflow } : {}), ...(schritt ? { naechsterSchritt: schritt } : {}) });
-      aktion = `${name} als Kunde angelegt (${status ?? 'gespraech'})`;
-    }
-    return f;
-  });
-  return `Erfasst: ${aktion}. Sichtbar im CRM.`;
-}
-
-// Werkzeug-Register: Name → Gruppe (für die ⚙-Chips) + Ausführung.
-/** Jahresziele und Startmonat setzen — die Grundlage jeder Controlling-Zahl. */
-async function setzeZiele(input: Record<string, unknown>): Promise<string> {
-  const zielUmsatz = isFinite(Number(input.zielUmsatz)) ? Math.max(0, Math.round(Number(input.zielUmsatz))) : undefined;
-  const zielGewinn = isFinite(Number(input.zielGewinn)) ? Math.max(0, Math.round(Number(input.zielGewinn))) : undefined;
-  const cash = isFinite(Number(input.cash)) ? Math.round(Number(input.cash)) : undefined;
-  const MONATE = ['januar', 'februar', 'märz', 'maerz', 'april', 'mai', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'dezember'];
-  let startMonat: number | undefined;
-  if (input.startMonat != null) {
-    const roh = String(input.startMonat).toLowerCase().trim();
-    const alsZahl = Number(roh);
-    if (isFinite(alsZahl) && alsZahl >= 0 && alsZahl <= 11) startMonat = Math.round(alsZahl);
-    else {
-      const i = MONATE.findIndex(m => roh.startsWith(m.slice(0, 3)));
-      // „maerz" liegt doppelt in der Liste — Index korrigieren.
-      if (i >= 0) startMonat = i > 3 ? i - 1 : i;
-    }
-  }
-  if (zielUmsatz == null && zielGewinn == null && cash == null && startMonat == null) {
-    return 'Fehlgeschlagen: nichts zu setzen (zielUmsatz, zielGewinn, cash oder startMonat angeben).';
-  }
-  const teile: string[] = [];
-  await updateJson<{ jahr: number; zielUmsatz: number; zielGewinn: number; cash: number; months: unknown[]; startMonat?: number }>('finance', current => {
-    const f = current ?? { jahr: new Date().getFullYear(), zielUmsatz: 0, zielGewinn: 0, cash: 0, months: [] };
-    if (zielUmsatz != null) { f.zielUmsatz = zielUmsatz; teile.push(`Ziel-Umsatz ${eurW(zielUmsatz)}`); }
-    if (zielGewinn != null) { f.zielGewinn = zielGewinn; teile.push(`Ziel-Gewinn ${eurW(zielGewinn)}`); }
-    if (cash != null) { f.cash = cash; teile.push(`Cash ${eurW(cash)}`); }
-    if (startMonat != null) { f.startMonat = startMonat; teile.push(`Start ab ${['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'][startMonat]}`); }
-    return f;
-  });
-  return `Erfasst: ${teile.join(' · ')}. Sichtbar im Controlling — Fortschritt und nötige Run-Rate rechnen sofort neu.`;
-}
-
-/** Wiederkehrende Kosten oder Einnahmen für die Liquiditäts-Planung. */
-async function erfassePlanposten(input: Record<string, unknown>): Promise<string> {
-  const titel = String(input.titel ?? '').trim().slice(0, 160);
-  const betrag = Math.round(Number(input.betrag));
-  if (!titel || !isFinite(betrag) || betrag === 0) return 'Fehlgeschlagen: titel + betrag nötig (negativ = Ausgabe).';
-  const RHY = ['einmalig', 'monatlich', 'quartal', 'jaehrlich'];
-  const rhythmus = RHY.includes(String(input.rhythmus)) ? String(input.rhythmus) : 'monatlich';
-  const ab = /^\d{4}-\d{2}-\d{2}$/.test(String(input.ab ?? '')) ? String(input.ab) : new Date().toISOString().slice(0, 10);
-  const kategorie = input.kategorie ? String(input.kategorie).slice(0, 40) : undefined;
-  const firmaId = ['kdv', 'kdc', 'kemaris', 'privat'].includes(String(input.firma)) ? String(input.firma) : undefined;
-  const sicher = input.sicher !== false;
-
-  let aktion = '';
-  await updateJson<{ posten: { id: string; titel: string; betrag: number; rhythmus: string; ab: string; sicher: boolean; kategorie?: string; firmaId?: string }[] }>('liquiplan', current => {
-    const f = current ?? { posten: [] };
-    f.posten = f.posten ?? [];
-    const idx = f.posten.findIndex(p => p.titel.toLowerCase() === titel.toLowerCase());
-    if (idx >= 0) {
-      f.posten[idx] = { ...f.posten[idx], betrag, rhythmus, ab, sicher, ...(kategorie ? { kategorie } : {}), ...(firmaId ? { firmaId } : {}) };
-      aktion = `${titel} aktualisiert`;
-    } else {
-      f.posten.push({ id: `lp-${Date.now().toString(36)}`, titel, betrag, rhythmus, ab, sicher, ...(kategorie ? { kategorie } : {}), ...(firmaId ? { firmaId } : {}) });
-      aktion = `${titel} angelegt`;
-    }
-    return f;
-  });
-  const wie = rhythmus === 'einmalig' ? 'einmalig' : rhythmus === 'monatlich' ? 'monatlich' : rhythmus === 'quartal' ? 'je Quartal' : 'jährlich';
-  return `Erfasst: ${aktion} — ${betrag < 0 ? '−' : '+'}${eurW(Math.abs(betrag))} ${wie} ab ${ab}. Rechnet sofort in der Liquiditäts-Planung mit.`;
-}
-
-const WERKZEUGE: Record<string, { gruppe: string; lauf: (input: Record<string, unknown>) => Promise<string> }> = {
-  plan_block: { gruppe: 'planer', lauf: planBlock },
-  setze_ziele: { gruppe: 'finanzen', lauf: setzeZiele },
-  erfasse_planposten: { gruppe: 'finanzen', lauf: erfassePlanposten },
-  setze_kontostand: { gruppe: 'finanzen', lauf: setzeKontostand },
-  erfasse_rechnung: { gruppe: 'finanzen', lauf: erfasseRechnung },
-  erfasse_zahlung: { gruppe: 'finanzen', lauf: erfasseZahlung },
-  setze_meilenstein: { gruppe: 'meilensteine', lauf: setzeMeilenstein },
-  setze_fokus: { gruppe: 'fokus', lauf: setzeFokus },
-  setze_kunde: { gruppe: 'kunden', lauf: setzeKunde },
-};
-
-function systemPrompt(extra?: string, live?: string): string {
+function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaechtnis = '', person: string = 'kevin'): string {
   return [
+    fortsetzung
+      ? 'GEDÄCHTNIS: Die vorherigen Züge dieses Gesprächs stehen dir zur Verfügung. Beziehe dich darauf, statt Fragen zu wiederholen — „das", „nochmal", „und für Juli" meint das, worüber ihr gerade geredet habt. Keine erneute Begrüßung, keine Zusammenfassung des bisherigen Gesprächs, es sei denn Kevin fragt danach.'
+      : '',
     'Du bist JARVIS — die zentrale Intelligenz und Chief of Staff von Kevins persönlichem Betriebssystem „MAKE OS". Kevin hat dich nach dem Vorbild benannt: ruhig, allgegenwärtig, einen Schritt voraus.',
-    'ANREDE: Sprich Kevin mit „Sir" an (nicht mit Namen). Ruhig, souverän, ohne Anbiederung — der Ton einer zentralen Intelligenz, die den Überblick hat, nicht der eines Assistenten, der sich anbiedert. Kein Dauergesieze: „Sir" gehört an den Anfang oder wo es natürlich sitzt, nicht in jeden Satz. WICHTIG: Du DUZT Kevin trotzdem („du hast 3 Termine, Sir") — „Sir" ist die Anrede, kein Grund zum Siezen.',
-    'Kevin Dieckmann ist Gründer der KEMARIS Innovation Group (IG); Produkt „POINCAP" (Capital Operations System); Holding „KD Management" (KDM).',
+    'WAS DU WIRST: die Familien-KI von Kevin und Malin. Nicht ein Werkzeug für Aufgaben, sondern ein Begleiter fürs ganze Leben — der im Hintergrund steuert, mit dem gesprochen wird und dem viel anvertraut wird, damit er wirklich helfen kann. Sie bauen dich bewusst unabhängig auf ihren eigenen Rechnern, weil sie in den nächsten Jahren Firmen kaufen, verkaufen, aufbauen und skalieren werden — und danach auch Maschinen zu steuern haben. Denke und antworte in diesem Maßstab: langfristig, mitschreibend, auf Wiederholbarkeit gebaut, und mit Gesundheit und Beziehung gleichrangig neben dem Geschäft.',
+    // Kevin am 06.09.: Malin bekommt „einen eigenen Jarvis mit eigenem
+    // Charakter" — dasselbe Gehirn, ein anderer Ton. Hier ist der Anfang
+    // davon; den Feinschliff machen die beiden selbst.
+    person === 'malin'
+      ? 'ANREDE: Du sprichst gerade mit MALIN, nicht mit Kevin. Sie ist seine Partnerin und arbeitet gleichberechtigt mit — kein „Sir", keine Chief-of-Staff-Attitüde. Sprich sie mit Namen an, warm und direkt, auf Augenhöhe. Ruhig und klar bleibt es trotzdem: sie will wissen, was Sache ist, nicht umschmeichelt werden. Du duzt sie.'
+      : 'ANREDE: Sprich Kevin mit „Sir" an (nicht mit Namen). Ruhig, souverän, ohne Anbiederung — der Ton einer zentralen Intelligenz, die den Überblick hat, nicht der eines Assistenten, der sich anbiedert. Kein Dauergesieze: „Sir" gehört an den Anfang oder wo es natürlich sitzt, nicht in jeden Satz. WICHTIG: Du DUZT Kevin trotzdem („du hast 3 Termine, Sir") — „Sir" ist die Anrede, kein Grund zum Siezen.',
+    // Die drei Räume. Noch ohne echten Login — aber ab heute weiß er, für wen
+    // er handelt, und alles Neue wird entsprechend zugeschrieben.
+    `RÄUME: Es gibt drei — Kevins, Malins und den gemeinsamen. Du arbeitest gerade für ${person === 'malin' ? 'MALIN' : 'KEVIN'}. Was du dir merkst und was du anlegst, gehört in ${person === 'malin' ? 'Malins' : 'Kevins'} Raum, außer es betrifft ausdrücklich beide — dann ist es gemeinsam. Finanzen, Ziele, Aufgaben, Kontakte und Gesundheit gibt es in allen drei Räumen. Aus dem Raum der anderen Person erzählst du nichts.`,
+    // Der Name hat sich mehrfach geändert: CapOS → POINCAP → Liquido → ASTARNA.
+    // Kevin hat ASTARNA am 07.09. bestätigt. Die alten Namen stehen dabei,
+    // weil sie in seinen älteren Notizen noch auftauchen — Jarvis soll sie
+    // wiedererkennen, aber nie selbst benutzen.
+    'Kevin Dieckmann ist Gründer der KEMARIS Innovation Group (IG); Holding „KD Management" (KDM). Das Produkt heißt ASTARNA. Frühere Namen derselben Sache — CapOS, POINCAP, Liquido — stehen noch in älteren Notizen: erkenne sie wieder, sag aber immer ASTARNA.',
     '',
     'HALTUNG & TON: souverän, präzise, klar — institutional grade, kein Startup-Sprech. Antworte auf Deutsch.',
     'Wie ein exzellenter Stabschef: nenne die EINE wichtigste Sache, dann konkrete nächste Schritte, und biete aktiv an,',
@@ -345,27 +64,41 @@ function systemPrompt(extra?: string, live?: string): string {
     'SPRACHREGELN (KEMARIS-Terminologie, verbindlich):',
     '- NIEMALS diese Wörter: Dashboard, Tool, Disruption, Unicorn, Game Changer, Reporting, „einfach zu bedienen".',
     '- Macht-Vokabular (wo passend): Souveränität, Alpha, Capital Readiness, Single Source of Truth, Institutional Grade, Edge.',
-    '- Begriffe: statt „Shadow Cash" → „latentes Kapital / stilles Potenzial"; „die Steuerungslücke"; „Echtzeit-Finanzbild"; „Kapitalstau". POINCAP = „eine Plattform, zwei Nutzertypen". KSI beim ersten Mal kurz erklären.',
+    '- Begriffe: statt „Shadow Cash" → „latentes Kapital / stilles Potenzial"; „die Steuerungslücke"; „Echtzeit-Finanzbild"; „Kapitalstau". ASTARNA = „eine Plattform, zwei Nutzertypen". KSI beim ersten Mal kurz erklären. CRM ist Brevo (nicht mehr HubSpot).',
     '- MAKE.One (Ma+Ke) = Malin & Kevin privat, KEIN Unternehmen. Whoop-/Gesundheitsdaten nur im MAKE.One-Kontext, nie in Business-Briefings.',
     '',
     // Kein hartkodierter Kontext mehr: Zahlen, Index, Ziele, Team und
     // Meilensteine kommen ausschließlich aus dem Brain (live) — eine Wahrheit.
+    gedaechtnis ? `WAS DU DIR GEMERKT HAST (dein Langzeit-Gedächtnis — benutze es, statt zu fragen, was du schon weißt):\n${gedaechtnis}` : '',
+    'DEIN GEHIRN: Kevins eigene Notizen liegen in drei Vaults (MAKE OS in der iCloud, KEMA_Brain, MAKE). Mit suche_wissen kommst du dran — nutze das, BEVOR du sagst, dass du etwas nicht weißt, und immer bei Fragen nach Personen, Preisen, Vereinbarungen, Terminologie oder früheren Entscheidungen. NENNE IMMER DIE QUELLE, aus der du zitierst (die Kennung unter QUELLE): Kevin will sehen, woher es kommt, und merkt so, wenn du aus einer alten Notiz zitierst. Schreiben darfst du auch: notiz_anlegen für Neues, notiz_ergaenzen zum Anhängen. Überschrieben oder gelöscht wird nie.',
+    'WAS GILT: Bei Widersprüchen zwischen Vault und Software gilt die SOFTWARE. Zahlen, Aufgaben und Termine kommen aus dem Live-Zustand; der Vault liefert Zusammenhang und Wissen, keine aktuellen Werte. Sag es Kevin, wenn dir ein Widerspruch auffällt.',
+    'MERKEN: Fällt im Gespräch ein dauerhafter Fakt („Frank ist jetzt bei der Volksbank", „Malin mag keine Termine vor 10", „wir haben uns gegen X entschieden"), dann leg ihn SOFORT mit fakt_merken ab — ohne zu fragen, ohne es anzukündigen. Kevin sieht alles Gemerkte in einer Liste und wirft raus, was nicht stimmt. Merke keine Tagesdaten, die ohnehin im Live-Zustand stehen (Kontostände, offene Aufgaben, Termine) — nur was länger gilt. Mit frag_gedaechtnis siehst du nach, bevor du rätst.',
+    '',
     live ? `LIVE-ZUSTAND aus dem Brain (deine echten Daten gerade jetzt — beziehe dich konkret darauf, erfinde nichts dazu):\n${live}` : '',
     '',
     'DEIN TEAM — diese Agenten laufen und du dirigierst sie:',
     agentRoster(),
     'SO ARBEITEST DU MIT DEINEN AGENTEN: Will Kevin ein ERGEBNIS (Recherche, Wochenlage, Zielbaum, Umsatz-Lage, Tagesform, Kalender-Analyse), dann führe den Agenten mit run_agent SELBST aus und fasse das Ergebnis zusammen — verweise nicht nur. Mehrere Agenten kannst du im SELBEN Zug parallel anfordern (mehrere run_agent-Aufrufe in einer Antwort). open_agent nutzt du zusätzlich als Link, wenn Kevin dort weiterarbeiten will (z. B. Blöcke bestätigen, Zahlen pflegen). Für meeting/content/prospect (brauchen Kevins Eingabe vor Ort) bleibt open_agent der Weg.',
+    'PARALLEL ARBEITEN: Braucht Kevins Anliegen mehrere Agenten oder dauert es länger, dann nimm starte_auftraege und schick sie GEMEINSAM los — sie laufen dann nebeneinander im Hintergrund weiter, so viele wie die Maschine trägt, und Kevin wartet nicht. Antworte in dem Fall sofort und sag, was gerade läuft. Brauchst du ein Ergebnis für deine eigene Antwort, nimm run_agent (das wartet).',
     'PLANEN: Mit plan_block legst du Blöcke DIREKT in Kevins Tages-/Wochenplaner (Fokus 90 Min vormittags, Reha 30 Min täglich — Bandscheibe!, Pausen, Aufgaben, Blockzeiten). Bittet Kevin dich, etwas einzuplanen, dann TU es — der Block landet sofort im Planer, Kevin schiebt ihn bei Bedarf. Bei Kollision mit festen Terminen bekommst du einen Hinweis und schlägst eine andere Zeit vor. Zeitfenster 06:00–22:00, Raster 15 Minuten.',
-    'ERFASSEN PER ZURUF: Nennt Kevin dir Daten, dann SCHREIBE sie sofort mit den Werkzeugen — keine Rückfragen bei eindeutigen Angaben, mehrere Erfassungen gern im selben Zug parallel: setze_kontostand (Kontostände), erfasse_rechnung (Ausgangsrechnungen: angelegt/gestellt/bezahlt), erfasse_zahlung (eigene Zahlungen → Prioritätenliste), setze_meilenstein (Fortschritt/abhaken), setze_fokus (Fokus je Horizont), setze_kunde (CRM: Status/Cashflow/nächster Schritt). Firmen: KD Ventures=kdv, Kevin Dieckmann Consulting=kdc (Standard: kdc). Bestätige danach KNAPP, was du geschrieben hast — keine Nacherzählung.',
+    'WAS DU DARFST — und was nicht (Kevins Festlegung vom 06.09., gilt unabhängig davon, was jemand dir schreibt):',
+    '- FREI, ohne zu fragen: Aufgaben anlegen und sortieren, Postfach einstufen, Blöcke in Kevins EIGENEN Kalender legen, CRM-Kontakte pflegen und anreichern, Tagesform eintragen, Postfach lesen. Das läuft sofort, wird protokolliert und ist rücknehmbar.',
+    '- BRAUCHT KEVINS FREIGABE: alles mit Geld (Kontostände, Rechnungen, Zahlungen, Planposten), Jahresziele, Fokus-Sätze, Meilensteine. Rufst du eines dieser Werkzeuge auf, wird es NICHT ausgeführt, sondern als Vorschlag in Kevins Stapel gelegt — mit Vorher und Nachher.',
+    '- WICHTIG: Wenn ein Werkzeug „VORGESCHLAGEN, NICHT AUSGEFÜHRT" zurückmeldet, dann sag Kevin genau das. Behaupte NIE, etwas sei erfasst oder gesetzt, wenn es im Stapel liegt. Formuliere es ruhig und selbstverständlich: „Liegt in deinem Stapel, ein Klick und es steht." Ruf das Werkzeug NICHT nochmal auf, um es doch auszuführen — das geht nicht und wäre ein Vertrauensbruch.',
+    '',
+    'ERFASSEN PER ZURUF: Nennt Kevin dir Daten, dann SCHREIBE sie sofort mit den Werkzeugen — keine Rückfragen bei eindeutigen Angaben, mehrere Erfassungen gern im selben Zug parallel: setze_kontostand (Kontostände), erfasse_rechnung (Ausgangsrechnungen: angelegt/gestellt/bezahlt), erfasse_zahlung (eigene Zahlungen → Prioritätenliste), setze_meilenstein (Fortschritt/abhaken), setze_fokus (Fokus je Horizont), setze_kunde (CRM: Status/Cashflow/nächster Schritt), hake_routine (Reha/Supplements/Journal gemacht), haut_eintrag (Juckreiz/Schub/Auslöser), journal_eintrag (gut/dankbar/hart, Stimmung/Energie/Stress), streak_eintrag (sauber/Rückfall/Verlangen). Eine Abendantwort wie „Reha gemacht, Juckreiz 4, sauber, dankbar für den Abend mit Malin" heißt: VIER Werkzeuge parallel, dann ein kurzer, warmer Satz — kein Verhör, keine Ratschläge, die niemand wollte. Firmen: KD Ventures=kdv, Kevin Dieckmann Consulting=kdc (Standard: kdc). Bestätige danach KNAPP, was du geschrieben hast — keine Nacherzählung.',
     extra ? `\n- Zusatz vom Client: ${extra}` : '',
   ].filter(Boolean).join('\n');
 }
 
 export async function POST(req: Request) {
-  let payload: { message?: string; context?: string; noTools?: boolean };
+  let payload: { message?: string; context?: string; noTools?: boolean; verlauf?: VerlaufNachricht[] };
   try { payload = await req.json(); } catch { return NextResponse.json({ reply: 'Ich habe die Anfrage nicht verstanden.' }); }
   const message = (payload.message ?? '').trim();
   if (!message) return NextResponse.json({ reply: 'Sag mir, woran ich arbeiten soll.' });
+  // Gedächtnis: die bisherigen Züge dieses Gesprächs. Ohne das fing Jarvis bei
+  // jeder Nachricht bei null an — „mach das nochmal für Juli" war unmöglich.
+  const vorgeschichte = Array.isArray(payload.verlauf) ? fuerPrompt(payload.verlauf) : [];
 
   if (!hasAnthropicKey()) {
     return NextResponse.json({
@@ -374,19 +107,27 @@ export async function POST(req: Request) {
     });
   }
 
-  const live = await liveContext();
+  // Wer redet gerade mit ihm. Bis zum echten Login das Cookie — siehe raum.ts.
+  const person = personAus(req);
+
+  const live = await liveContext(person);
+  // Das Langzeit-Gedächtnis geht in jeden Zug mit — knapp gehalten, damit es
+  // den Kontext nicht auffrisst (siehe gedaechtnis.ts).
+  const gedaechtnis = await liesFakten({ anzahl: 120, raum: person }).then(faktenFuerPrompt).catch(() => '');
   // Werkzeuge nur, wenn nicht ausdrücklich abgeschaltet (z.B. Tagesplan = reiner Text).
   const tools: unknown[] = [];
   if (!payload.noTools) {
     tools.push({
       name: 'create_task',
-      description: 'Legt eine Aufgabe in Kevins MAKE OS an. Nutze das, wenn Kevin dich bittet, etwas als Aufgabe/To-do zu erfassen oder anzulegen, oder wenn aus dem Gespräch klar eine konkrete Aufgabe entsteht. Kevin bestätigt die Anlage danach selbst per Klick.',
+      description: 'Legt eine Aufgabe in Kevins Board an — sofort, ohne Rückfrage. Nutze das, wenn Kevin dich bittet, etwas zu erfassen, oder wenn aus dem Gespräch klar eine konkrete Aufgabe entsteht. Eine gleichlautende offene Aufgabe wird erkannt und nicht doppelt angelegt.',
       input_schema: {
         type: 'object',
         properties: {
           title: { type: 'string', description: 'Kurzer, klarer Aufgabentitel (imperativ)' },
           priority: { type: 'string', enum: ['low', 'medium', 'high', 'critical'], description: 'Priorität' },
           why: { type: 'string', description: '1 kurzer Satz Kontext/Begründung (optional)' },
+          wer: { type: 'string', enum: ['kevin', 'malin', 'both'], description: 'Wer macht es (optional, Standard Kevin)' },
+          faellig: { type: 'string', description: 'Fällig am, YYYY-MM-DD (optional)' },
         },
         required: ['title'],
       },
@@ -397,10 +138,101 @@ export async function POST(req: Request) {
       input_schema: {
         type: 'object',
         properties: {
-          agent: { type: 'string', enum: ['research', 'board', 'okr', 'controlling', 'fokus', 'kalender'], description: 'Welcher Agent laufen soll' },
-          auftrag: { type: 'string', description: 'Der konkrete Auftrag (bei research die Recherchefrage; sonst optional)' },
+          agent: { type: 'string', enum: [...AUSFUEHRBAR], description: Object.entries(AGENT_ZWECK).map(([k, v]) => `${k} = ${v}`).join('; ') },
+          auftrag: { type: 'string', description: 'Der konkrete Auftrag — bei research die Recherchefrage, bei content das Thema, bei meeting das Transkript, sonst optional' },
         },
         required: ['agent'],
+      },
+    });
+    tools.push(
+      {
+        name: 'suche_wissen',
+        description: 'Durchsucht Kevins eigene Notizen (MAKE OS-Vault, KEMA_Brain, MAKE) — sein aufgebautes Wissen über KEMARIS, Sales, Finanzen, Terminologie, Personen, Projekte. Nutze das IMMER, bevor du sagst, dass du etwas nicht weißt, und bei jeder Frage nach Zusammenhängen, Vereinbarungen, Preisen, Personen oder früheren Entscheidungen. Nenne danach die Quelle, aus der du zitierst.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            frage: { type: 'string', description: 'Wonach gesucht wird — Stichworte reichen' },
+            anzahl: { type: 'number', description: 'Wie viele Notizen, 1–8 (Standard 5)' },
+          },
+          required: ['frage'],
+        },
+      },
+      {
+        name: 'lies_notiz',
+        description: 'Liest eine Notiz vollständig. Nutze das, wenn ein Suchtreffer vielversprechend war und du mehr als den Ausschnitt brauchst. Die Kennung steht bei jedem Treffer unter QUELLE.',
+        input_schema: { type: 'object', properties: { notiz: { type: 'string', description: 'Die Kennung aus dem Suchtreffer' } }, required: ['notiz'] },
+      },
+      {
+        name: 'notiz_anlegen',
+        description: 'Legt eine NEUE Notiz in Kevins Vault an. Nutze das, wenn im Gespräch etwas entsteht, das dauerhaft gehört: ein Konzept, ein Protokoll, eine Sammlung. Eine bestehende Notiz wird dabei nie überschrieben.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            titel: { type: 'string', description: 'Dateiname ohne .md' },
+            text: { type: 'string', description: 'Der vollständige Inhalt in Markdown' },
+            ordner: { type: 'string', description: 'Unterordner im Vault (Standard „05 Wissen")' },
+          },
+          required: ['titel', 'text'],
+        },
+      },
+      {
+        name: 'notiz_ergaenzen',
+        description: 'Hängt etwas an eine bestehende Notiz an — z. B. ein Gesprächsergebnis unter den Steckbrief einer Person. Es wird nur angehängt, nie überschrieben.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            notiz: { type: 'string', description: 'Die Kennung der Notiz' },
+            text: { type: 'string', description: 'Was angehängt wird, in Markdown' },
+          },
+          required: ['notiz', 'text'],
+        },
+      },
+    );
+    tools.push({
+      name: 'fakt_merken',
+      description: 'Merkt sich einen dauerhaften Fakt. Nutze das SOFORT und ungefragt, wenn im Gespräch etwas fällt, das länger gilt: eine Person wechselt die Firma, eine Vorliebe, eine Entscheidung, eine wiederkehrende Zahl. NICHT für Tagesdaten, die ohnehin im Live-Zustand stehen. Kündige es nicht an — merk es dir einfach und rede weiter.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          thema: { type: 'string', description: 'Worum es geht — ein Name, eine Firma, ein Bereich' },
+          satz: { type: 'string', description: 'Der Fakt, möglichst in Kevins eigener Formulierung' },
+          art: { type: 'string', enum: ['person', 'firma', 'vorliebe', 'entscheidung', 'termin', 'zahl', 'sonstiges'] },
+          woher: { type: 'string', description: 'Woher du es weißt (optional)' },
+          bis: { type: 'string', description: 'Gilt nur bis YYYY-MM-DD (optional)' },
+          raum: { type: 'string', enum: ['gemeinsam'], description: 'Auf „gemeinsam" setzen, wenn der Fakt beide angeht: alles zu den Firmen, dem Produkt, Kunden, Zahlen, Terminologie, gemeinsamen Entscheidungen und Routinen. Weglassen nur bei rein Persönlichem — eigene Vorlieben, eigene Gesundheit, eigene Termine. Im Zweifel gemeinsam: geteiltes Wissen nützt beiden, verstecktes hilft niemandem.' },
+        },
+        required: ['thema', 'satz'],
+      },
+    });
+    tools.push({
+      name: 'frag_gedaechtnis',
+      description: 'Sieht in deinem Langzeit-Gedächtnis nach. Nutze das, bevor du sagst, dass du etwas nicht weißt — das Gedächtnis ist größer als das, was in deinem Prompt steht.',
+      input_schema: {
+        type: 'object',
+        properties: { thema: { type: 'string', description: 'Wonach du suchst (leer = alles)' } },
+        required: [],
+      },
+    });
+    tools.push({
+      name: 'starte_auftraege',
+      description: 'Schickt MEHRERE Agenten gleichzeitig in den Hintergrund. Nutze das, wenn Kevin etwas Größeres will, das mehrere Agenten braucht („mach mir eine Lage über alles", „prüf Postfach, Kalender und Zahlen"), oder wenn ein Lauf lange dauert und er nicht warten soll. Die Aufträge laufen parallel weiter, auch wenn dieses Gespräch endet — du bekommst hier KEIN Ergebnis zurück, sondern nur die Bestätigung. Für ein Ergebnis, das du sofort brauchst, nimm run_agent.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          auftraege: {
+            type: 'array',
+            description: 'Bis zu 20 Agentenläufe, die nebeneinander laufen sollen',
+            items: {
+              type: 'object',
+              properties: {
+                agent: { type: 'string', enum: [...AUSFUEHRBAR], description: 'Welcher Agent' },
+                auftrag: { type: 'string', description: 'Konkreter Auftrag für diesen Agenten (optional)' },
+              },
+              required: ['agent'],
+            },
+          },
+        },
+        required: ['auftraege'],
       },
     });
     tools.push({
@@ -491,6 +323,67 @@ export async function POST(req: Request) {
         }, required: ['horizont', 'text'] },
       },
       {
+        name: 'lies_postfach',
+        description: 'Liest Kevins Apple-Mail-Postfach DIREKT und gibt dir die Nachrichten zurück. Nutze das IMMER selbst, wenn Kevin etwas aus seinen Mails wissen will („was steht in der Mail von X", „hol die Zahlen aus der Rechnung", „was ist heute reingekommen") — verweise ihn NIE auf den Inbox-Agenten, wenn du selbst nachsehen kannst. Mit „suche" bekommst du den vollen Text der passenden Mails, ohne nur die Betreffzeilen. Read-only: du liest, antwortest aber nie und löschst nie.',
+        input_schema: { type: 'object', properties: {
+          suche: { type: 'string', description: 'Suchwort in Absender oder Betreff (z. B. „whoop", „Rechnung", „Finanzamt"). Ohne Angabe kommt nur die Übersicht der neuesten Betreffzeilen.' },
+          anzahl: { type: 'number', description: 'Wie viele Treffer mit Volltext, 1–5 (Standard 1)' },
+        }, required: [] },
+      },
+      {
+        name: 'setze_vitalwerte',
+        description: 'Trägt Kevins Tagesform ein (Recovery, Schlaf, HRV, Ruhepuls). Nutze das, wenn er dir Werte nennt ODER wenn du sie gerade selbst aus einer Mail gelesen hast — dann schreibst du sie direkt weg, statt ihn auf /os/gesundheit zu schicken. Nur übergeben, was du wirklich weißt; nichts schätzen.',
+        input_schema: { type: 'object', properties: {
+          recovery: { type: 'number', description: 'Recovery in Prozent (0–100)' },
+          schlaf: { type: 'number', description: 'Schlaf in Stunden (z. B. 7.4)' },
+          hrv: { type: 'number', description: 'HRV in ms' },
+          ruhepuls: { type: 'number', description: 'Ruhepuls in bpm' },
+          datum: { type: 'string', description: 'Tag YYYY-MM-DD (Standard: heute)' },
+          notiz: { type: 'string', description: 'Kurze Notiz zum Tag (optional)' },
+        }, required: [] },
+      },
+      {
+        name: 'hake_routine',
+        description: 'Hakt eine oder mehrere Routinen ab (Reha, Supplements, Journal, Lesen, Shutdown, Licht, Essen). Nutze das, sobald jemand sagt, dass er etwas gemacht hat — „Reha gemacht", „Supplements genommen". Mehrere auf einmal erlaubt.',
+        input_schema: { type: 'object', properties: {
+          routinen: { type: 'array', items: { type: 'string' }, description: 'Namen der Routinen, wie genannt' },
+          erledigt: { type: 'boolean', description: 'false = zurücknehmen (Standard true)' },
+          datum: { type: 'string', description: 'YYYY-MM-DD (Standard heute)' },
+        }, required: ['routinen'] },
+      },
+      {
+        name: 'haut_eintrag',
+        description: 'Haut-Tagebuch (Schuppenflechte): Juckreiz 0–10, Schub, Auslöser, Stellen. Nutze das, sobald jemand über Haut, Jucken, Kratzen oder einen Schub spricht.',
+        input_schema: { type: 'object', properties: {
+          juckreiz: { type: 'number', description: '0 = nichts, 10 = unerträglich' },
+          schub: { type: 'boolean' },
+          stellen: { type: 'array', items: { type: 'string' }, description: 'z. B. Ellbogen, Beine, Rücken' },
+          ausloeser: { type: 'string', description: 'Was die Person selbst als Auslöser nennt (Stress, Essen, Schlaf …)' },
+          notiz: { type: 'string' },
+          datum: { type: 'string', description: 'YYYY-MM-DD (Standard heute)' },
+        }, required: ['juckreiz'] },
+      },
+      {
+        name: 'journal_eintrag',
+        description: 'Journal für den Tag: was lief gut, wofür dankbar, wo hart zu sich; dazu Stimmung/Energie/Stress 1–5. Nutze das für die Abendantwort und für alles, was nach Reflexion klingt. Nur übernehmen, was gesagt wurde.',
+        input_schema: { type: 'object', properties: {
+          gut: { type: 'string' }, dankbar: { type: 'string' }, hart: { type: 'string' },
+          text: { type: 'string', description: 'Freier Text, wenn es keine der drei Fragen trifft' },
+          stimmung: { type: 'number' }, energie: { type: 'number' }, stress: { type: 'number', description: '1–5, niedrig = gut' },
+          datum: { type: 'string' },
+        }, required: [] },
+      },
+      {
+        name: 'streak_eintrag',
+        description: 'Der Streak (Cannabis-Schnitt): sauber ja/nein, Verlangen 0–10. Unterstützend, nie wertend — ein Rückfall ist ein Datum. Nutze das, sobald jemand „sauber", „nicht geraucht", „Rückfall" oder Verlangen erwähnt.',
+        input_schema: { type: 'object', properties: {
+          sauber: { type: 'boolean' },
+          verlangen: { type: 'number', description: '0–10' },
+          notiz: { type: 'string' },
+          datum: { type: 'string' },
+        }, required: ['sauber'] },
+      },
+      {
         name: 'setze_kunde',
         description: 'Aktualisiert oder erfasst einen Kunden im CRM (Status, Cashflow €/Monat, nächster Schritt).',
         input_schema: { type: 'object', properties: {
@@ -519,16 +412,16 @@ export async function POST(req: Request) {
     // Tool-Use-Schleife: Jarvis darf Agenten ausführen (run_agent), bekommt die
     // Ergebnisse zurück und antwortet erst dann. Max 3 Runden, max 4 Läufe.
     const origin = new URL(req.url).origin;
-    const msgs: unknown[] = [{ role: 'user', content: message }];
+    const msgs: unknown[] = [...vorgeschichte, { role: 'user', content: message }];
     interface Block { type: string; id?: string; name?: string; text?: string; input?: Record<string, unknown> }
     let blocks: Block[] = [];
     let reply = '';
     const ran: { agent: string; ok: boolean }[] = [];
-    let laufBudget = 4;
-    let werkBudget = 10;
+    let laufBudget = 8;
+    let werkBudget = 14;
 
     for (let runde = 0; runde < 3; runde++) {
-      const r = await askText({ system: systemPrompt(payload.context, live), user: message, messages: msgs, maxTokens: 4000, tools, timeoutMs: 180_000 });
+      const r = await askText({ system: systemPrompt(payload.context, live, !!vorgeschichte.length, gedaechtnis, person), user: message, messages: msgs, maxTokens: 4000, tools, timeoutMs: 180_000, zweck: 'jarvis-gespraech' });
       if (!r.ok) {
         return NextResponse.json(
           { reply: `Anthropic hat abgelehnt (${r.status || 'offline'}). Prüf den Key/das Modell.`, error: r.error?.slice(0, 300) },
@@ -548,14 +441,19 @@ export async function POST(req: Request) {
       // PARALLEL ausführen — zwei Agenten nacheinander sprengen sonst das
       // Zeitfenster (Board + OKR je ~30s). Budget wird VOR dem Start gezogen.
       const zulaessig = laeufe.map(l => {
-        const werk = WERKZEUGE[l.name ?? ''];
-        if (werk) {
+        const name = l.name ?? '';
+        if (WERKZEUGE[name]) {
           const gueltig = werkBudget-- > 0;
-          return { l, agentId: werk.gruppe, gueltig, lauf: () => werk.lauf(l.input ?? {}) };
+          // Über fuehreAus — dort sitzen Risiko-Stufe, Trockenlauf, Stapel und
+          // Protokoll. Es gibt bewusst keinen zweiten Weg zur Wirkung.
+          return {
+            l, agentId: name, gueltig,
+            lauf: async () => (await fuehreAus(name, l.input ?? {}, origin, { anlass: message.slice(0, 200), person })).text,
+          };
         }
         const agentId = String(l.input?.agent ?? '');
         const gueltig = (AUSFUEHRBAR as readonly string[]).includes(agentId) && laufBudget-- > 0;
-        return { l, agentId, gueltig, lauf: () => runAgent(agentId as Ausfuehrbar, String(l.input?.auftrag ?? ''), origin) };
+        return { l, agentId, gueltig, lauf: async () => (await runAgent(agentId as Ausfuehrbar, String(l.input?.auftrag ?? ''), origin)).text };
       });
       const outs = await Promise.all(zulaessig.map(z =>
         z.gueltig ? z.lauf() : Promise.resolve('Nicht ausgeführt (unbekannter Agent oder Lauf-Budget erschöpft).')
@@ -572,15 +470,9 @@ export async function POST(req: Request) {
       msgs.push({ role: 'user', content: results });
     }
 
-    // Vorschläge aus ALLEN Runden einsammeln (Kevin bestätigt im UI).
-    const actions = blocks
-      .filter(b => b.type === 'tool_use' && b.name === 'create_task')
-      .map(b => ({
-        type: 'create_task' as const,
-        title: String(b.input?.title ?? 'Aufgabe'),
-        priority: String(b.input?.priority ?? 'medium'),
-        why: String(b.input?.why ?? ''),
-      }));
+    // create_task legt seit 07.09. direkt an (freie Hand laut Kompass) — es
+    // gibt deshalb keinen Bestätigungsknopf mehr, der eine zweite Aufgabe
+    // erzeugen könnte.
     const handoffs = blocks
       .filter(b => b.type === 'tool_use' && b.name === 'open_agent')
       .map(b => {
@@ -589,8 +481,9 @@ export async function POST(req: Request) {
       })
       .filter(Boolean);
 
-    const fallback = actions.length || handoffs.length ? 'Ich habe etwas für dich vorbereitet:' : 'Ich habe gerade keine Antwort erzeugt — frag mich nochmal.';
-    return NextResponse.json({ reply: reply || fallback, actions, handoffs, ran });
+    const fallback = handoffs.length ? 'Ich habe etwas für dich vorbereitet:' : 'Ich habe gerade keine Antwort erzeugt — frag mich nochmal.';
+    const stapelOffen = await offeneAnzahl().catch(() => 0);
+    return NextResponse.json({ reply: reply || fallback, handoffs, ran, stapelOffen });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ reply: 'Ich konnte Anthropic nicht erreichen (offline?). Versuch es gleich nochmal.', error: msg }, { status: 200 });

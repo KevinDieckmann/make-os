@@ -100,7 +100,7 @@ export async function POST(req: Request) {
         : 'PERFORMANCE-INDEX: noch nicht berechenbar — sag Kevin, was ihm dafür fehlt.',
     ].join('\n');
 
-    const r = await askJson<Record<string, unknown>>({ system, user, maxTokens: 3000 });
+    const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 3000 });
     if (!r.ok) return NextResponse.json({ error: r.error ?? 'Loop fehlgeschlagen', loop, stats: { open: g.open.length, termine: g.todaysEvents.length } });
     await logRun('loop-morgen', `Morgen-Loop ${today}`, r.data);
     return NextResponse.json({ loop, today, ...r.data, stats: { open: g.open.length, overdue: g.overdue.length, dueToday: g.dueToday.length, termine: g.todaysEvents.length } });
@@ -150,7 +150,7 @@ export async function POST(req: Request) {
       g.loopLog.length ? `FRÜHERE LOOP-ERGEBNISSE (zum Vergleich, neueste zuletzt):\n${g.loopLog.slice(-4).map(e => `- ${e.ts.slice(0, 10)} ${e.title}`).join('\n')}` : '',
     ].filter(Boolean).join('\n');
 
-    const r = await askJson<Record<string, unknown>>({ system, user, maxTokens: 4000 });
+    const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 4000 });
     if (!r.ok) return NextResponse.json({ error: r.error ?? 'Loop fehlgeschlagen', loop });
     await logRun('loop-woche', `Wochen-Loop ${today}`, r.data);
     return NextResponse.json({ loop, today, ...r.data, stats: { open: g.open.length, critical: g.critical.length, pipeline: g.prospects.length, hot } });
@@ -170,7 +170,7 @@ export async function POST(req: Request) {
       'Antworte NUR als JSON: {"muster":["<wiederkehrendes Muster in den Empfehlungen>"],"blindeFlecken":["<was dem System an Daten/Fähigkeit fehlt>"],"verbesserungen":[{"was":"<konkrete Verbesserung am System>","warum":"<1 Satz>"}]}',
     ].join('\n');
     const user = g.loopLog.slice(-12).map(e => `[${e.ts.slice(0, 16)}] ${e.agent} — ${e.title}\n${JSON.stringify(e.payload).slice(0, 900)}`).join('\n\n');
-    const r = await askJson<Record<string, unknown>>({ system, user, maxTokens: 3000 });
+    const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 3000 });
     if (!r.ok) return NextResponse.json({ error: r.error ?? 'Loop fehlgeschlagen', loop });
     await logRun('loop-rueckblick', `Rückblick ${today}`, r.data);
     return NextResponse.json({ loop, today, ...r.data, anzahl: g.loopLog.length });
@@ -284,7 +284,7 @@ export async function POST(req: Request) {
       ].join('\n');
     }
 
-    const r = await askJson<Record<string, unknown>>({ system, user, maxTokens: 3500 });
+    const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 3500 });
     if (!r.ok) return NextResponse.json({ error: r.error ?? 'Loop fehlgeschlagen', loop });
     await logRun(`loop-${loop}`, `${label} ${today}`, r.data);
     return NextResponse.json({ loop, today, ...r.data });

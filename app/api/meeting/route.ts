@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     '{"titel":"<kurzer Meeting-Titel>","zusammenfassung":"<3-5 Sätze>","entscheidungen":["<getroffene Entscheidung>", "..."],"actionItems":[{"titel":"<klare Aufgabe>","owner":"kevin","prio":"high","projectId":"proj-poincap","due":"2026-08-05"}]}',
   ].join('\n');
 
-  const r = await askJson<{ titel?: string; zusammenfassung?: string; entscheidungen?: string[]; actionItems?: unknown[] }>({
+  const r = await askJson<{ titel?: string; zusammenfassung?: string; entscheidungen?: string[]; actionItems?: unknown[] }>({ zweck: 'meeting',
     system, user: transcript.slice(0, 24000), maxTokens: 4000, model: agent.model,
   });
   if (!r.ok || !r.data) return NextResponse.json({ error: r.error ?? 'Keine strukturierte Antwort.' }, { status: 200 });

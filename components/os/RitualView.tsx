@@ -9,16 +9,17 @@ import Link from 'next/link';
 // Abends: Routinen → Abend-Journal → Blick auf morgen → ausloggen.
 
 import { useEffect, useRef, useState } from 'react';
+import { useNachspeichern } from '@/lib/make-one/nachspeichern';
 import { THEME as T } from '@/lib/make-one/os-data';
+import type { PlanBlock } from '@/types/planer';
 import { localDay } from '@/lib/zeit';
 import { useTasks } from '@/context/TasksContext';
 
 interface Vitals { rec?: number; sleep?: number; hrv?: number; rhr?: number; note?: string }
 interface JournalEintrag { text?: string; mood?: number; energy?: number; stress?: number; flags?: string[]; at?: string; tagesnote?: number }
-interface PlanBlock { date: string; titel: string; startMin: number }
 interface Modus { an: boolean; seit: string | null; aktivMin: number }
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 const inp = { background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: T.ink, fontFamily: T.mono, fontSize: 13, padding: '6px 10px', outline: 'none' };
 
@@ -34,7 +35,7 @@ function Schritt({ nr, titel, done, children }: { nr: number; titel: string; don
   return (
     <div style={{ ...panel, borderLeft: `3px solid ${done ? T.accent : T.line}`, padding: '14px 18px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
-        <span style={{ width: 20, height: 20, borderRadius: '50%', border: `1px solid ${done ? T.accent : T.line}`, background: done ? `${T.accent}22` : 'transparent', color: done ? T.accent : T.muted, fontFamily: T.mono, fontSize: 10.5, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>{done ? <span className="check-pop">✓</span> : nr}</span>
+        <span style={{ width: 20, height: 20, borderRadius: '50%', border: `1px solid ${done ? T.accent : T.line}`, background: done ? `${T.accent}22` : 'transparent', color: done ? T.accent : T.muted, fontFamily: T.mono, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>{done ? <span className="check-pop">✓</span> : nr}</span>
         <span style={{ fontSize: 14, fontWeight: 700, color: done ? T.muted : T.ink }}>{titel}</span>
       </div>
       <div style={{ paddingLeft: 30 }}>{children}</div>
@@ -48,7 +49,7 @@ function Skala({ wert, setzen, farbe }: { wert?: number; setzen: (n: number) => 
     <span style={{ display: 'inline-flex', gap: 5 }}>
       {[1, 2, 3, 4, 5].map(n => (
         <span key={n} onClick={() => setzen(n)}
-          style={{ width: 20, height: 20, borderRadius: '50%', cursor: 'pointer', border: `1px solid ${wert && n <= wert ? farbe : T.line}`, background: wert && n <= wert ? `${farbe}33` : 'transparent', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: T.mono, fontSize: 9.5, color: wert && n <= wert ? farbe : T.muted }}>
+          style={{ width: 20, height: 20, borderRadius: '50%', cursor: 'pointer', border: `1px solid ${wert && n <= wert ? farbe : T.line}`, background: wert && n <= wert ? `${farbe}33` : 'transparent', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: T.mono, fontSize: 11, color: wert && n <= wert ? farbe : T.muted }}>
           {n}
         </span>
       ))}
@@ -142,15 +143,14 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
     } catch { /* still */ }
   }
 
+  const journalSpaeter = useNachspeichern<Record<string, JournalEintrag>>(next => {
+    fetch('/api/state/journal', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
+  }, 600);
+
   function journalSetzen(patch: Partial<JournalEintrag>) {
-    setJournal(prev => {
-      const next = { ...prev, [heute]: { ...prev[heute], ...patch, at: new Date().toISOString() } };
-      clearTimeout(timer.current);
-      timer.current = setTimeout(() => {
-        fetch('/api/state/journal', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
-      }, 600);
-      return next;
-    });
+    const next = { ...journal, [heute]: { ...journal[heute], ...patch, at: new Date().toISOString() } };
+    setJournal(next);
+    journalSpaeter(next);
   }
 
   function fokusSpeichern(text: string) {
@@ -213,7 +213,7 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
             {(['morgen', 'abend'] as const).map(m => (
               <button key={m} onClick={() => setModusTab(m)}
-                style={{ fontFamily: T.mono, fontSize: 10, cursor: 'pointer', borderRadius: 6, padding: '3px 10px', border: `1px solid ${modusTab === m ? T.accent : T.line}`, background: modusTab === m ? `${T.accent}1c` : 'transparent', color: modusTab === m ? T.accentInk : T.muted }}>
+                style={{ fontFamily: T.mono, fontSize: 11, cursor: 'pointer', borderRadius: 6, padding: '3px 10px', border: `1px solid ${modusTab === m ? T.accent : T.line}`, background: modusTab === m ? `${T.accent}1c` : 'transparent', color: modusTab === m ? T.accentInk : T.muted }}>
                 {m === 'morgen' ? 'Morgen' : 'Abend'}
               </button>
             ))}
@@ -239,7 +239,7 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
             <Schritt nr={2} titel="Die Lage — Jarvis zieht alle Daten zusammen" done={mSchritte.lage}>
               {lauf?.ausrichtung ? (
                 <div style={{ fontSize: 12.5, color: T.inkDim, lineHeight: 1.55, marginBottom: 8 }}>
-                  {lauf.ausrichtung.gruss && <div style={{ marginBottom: 4 }}>{lauf.ausrichtung.gruss} <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>Stand {lauf.gestartet.slice(11, 16)} Uhr</span></div>}
+                  {lauf.ausrichtung.gruss && <div style={{ marginBottom: 4 }}>{lauf.ausrichtung.gruss} <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>Stand {lauf.gestartet.slice(11, 16)} Uhr</span></div>}
                   {(lauf.ausrichtung.prioritaeten ?? []).slice(0, 3).map((p, i) => (
                     <div key={i}><b style={{ color: T.ink }}>{i + 1}. {p.titel}</b>{p.wann ? <span style={{ color: T.muted }}> · {p.wann}</span> : null}</div>
                   ))}

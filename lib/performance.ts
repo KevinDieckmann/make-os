@@ -11,6 +11,8 @@ import { loadJson } from '@/lib/store/local-db';
 import { resolveVitals } from '@/lib/vitals';
 import { computeMetrics, type FinanceState } from '@/lib/make-one/finance-data';
 import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
+// `routineQuote` heißt weiter unten schon eine Zahl — deshalb der Alias.
+import { hautTrend, streakStand, routineQuote as quoteFuer, type HautLog, type StreakLog } from '@/lib/gesundheit/eintraege';
 import { RITUALE } from '@/lib/make-one/team-data';
 import type { Prospect } from '@/lib/make-one/prospecting-data';
 
@@ -79,16 +81,39 @@ import { localDay } from '@/lib/zeit';
 interface JournalTag { mood?: number; energy?: number; stress?: number; haut?: string; ruecken?: string }
 interface CalCache { events: { title?: string; startDate?: string; endDate?: string; allDay?: boolean }[]; at?: string }
 
-export async function computeIndex(today = localDay()): Promise<PerfIndex> {
+/**
+ * Kevins Ansage: „Malin und Kevin müssen auch separate Scores haben. Sie hat
+ * ein anderes privates Konto, aber auch eine andere Gesundheit und andere
+ * Ziele — das muss mit einfließen."
+ *
+ * Gelöst über personenbezogene Bestände: Kevins Dateien behalten ihren Namen
+ * (nichts wird verschoben, nichts geht verloren), Malins bekommen ein Suffix.
+ * Wo sie noch nichts gepflegt hat, ist die Datei leer — und die Säule sagt
+ * ehrlich „zu wenig Daten", statt Kevins Werte als ihre auszugeben.
+ */
+export type Person = string;
+export const personDatei = (name: string, person: Person) => (person === 'kevin' ? name : `${name}--${person}`);
+
+/** Diese Bestände gehören einer Person. Alles andere teilen sich die beiden. */
+const PERSOENLICH = ['health-log', 'journal', 'rituale', 'vitals', 'haut', 'streak'];
+
+export async function computeIndex(today = localDay(), person: Person = 'kevin'): Promise<PerfIndex> {
+  const p = (name: string) => (PERSOENLICH.includes(name) ? personDatei(name, person) : name);
+  // Haut-Tagebuch und Streak (23.09.) — die zwei Hebel, die Kevin am 29.07.
+  // genannt hat und die bis dahin nirgends gemessen wurden.
+  const [hautLog, streakLog] = await Promise.all([
+    loadJson<HautLog>(p('haut')),
+    loadJson<StreakLog>(p('streak')),
+  ]);
   const [vitals, healthLog, tasksState, fin, prospectState, journal, cal, ritualLog, routinenF, msF, kundenF, fplanF] = await Promise.all([
-    resolveVitals(today),
-    loadJson<Record<string, string[]>>('health-log'),
-    loadJson<{ tasks: { status: string; priority: string; dueDate?: string }[] }>('tasks'),
+    resolveVitals(today, person),
+    loadJson<Record<string, string[]>>(p('health-log')),
+    loadJson<{ tasks: { status: string; priority: string; dueDate?: string; assignee?: string }[] }>('tasks'),
     loadJson<FinanceState>('finance'),
     loadJson<{ prospects: Prospect[] }>('prospects'),
-    loadJson<Record<string, JournalTag>>('journal'),
+    loadJson<Record<string, JournalTag>>(p('journal')),
     loadJson<CalCache>('calendar-cache'),
-    loadJson<Record<string, string[]>>('rituale'),
+    loadJson<Record<string, string[]>>(p('rituale')),
     loadJson<{ routinen: { aktiv: boolean }[] }>('routinen'),
     loadJson<{ meilensteine: { bereich: string; faellig?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
     loadJson<{ kunden: { status: string; cashflow?: number }[] }>('kunden'),
@@ -132,27 +157,42 @@ export async function computeIndex(today = localDay()): Promise<PerfIndex> {
       quelle: energien.length ? `Ø ${(energien.reduce((a, b) => a + b, 0) / energien.length).toFixed(1)}/5 aus ${energien.length} Einträgen` : 'kein Journal-Eintrag in 7 Tagen' },
     { label: 'Stress (invers)', wert: stress.length ? clamp(100 - ((stress.reduce((a, b) => a + b, 0) / stress.length / 5) * 100)) : 0, echt: stress.length > 0,
       quelle: stress.length ? `Ø ${(stress.reduce((a, b) => a + b, 0) / stress.length).toFixed(1)}/5 — niedriger ist besser` : 'kein Journal-Eintrag in 7 Tagen' },
-    // Symptome: bei aktivem Psoriasis-Schub und Bandscheibe ist das die
-    // Größe, die den Alltag wirklich bestimmt. 'ruhig'/'ok' = 100, sonst 25.
-    {
-      label: 'Symptome (Haut, Rücken)',
-      wert: (() => {
-        const tage2 = journalTage.filter(d => journal![d].haut || journal![d].ruecken);
-        if (!tage2.length) return 0;
-        const punkte = tage2.map(d => {
-          const j = journal![d];
-          const h = j.haut ? (j.haut === 'ruhig' ? 100 : 25) : null;
-          const r = j.ruecken ? (j.ruecken === 'ok' ? 100 : 25) : null;
-          const vals = [h, r].filter((x): x is number => x != null);
-          return vals.reduce((a, b) => a + b, 0) / vals.length;
-        });
-        return clamp(punkte.reduce((a, b) => a + b, 0) / punkte.length);
-      })(),
-      echt: journalTage.some(d => journal![d].haut || journal![d].ruecken),
-      quelle: journalTage.some(d => journal![d].haut || journal![d].ruecken)
-        ? `aus ${journalTage.filter(d => journal![d].haut || journal![d].ruecken).length} Journal-Einträgen (Haut/Rücken)`
-        : 'im Journal noch nicht erfasst',
-    },
+    // Haut (23.09.): aus dem Haut-Tagebuch, nicht mehr aus dem Journal-Flag.
+    // Juckreiz 0 = 100, Juckreiz 10 = 0. Sieben Tage Schnitt — ein einzelner
+    // schlechter Abend kippt die Säule nicht.
+    (() => {
+      const ht = hautTrend(hautLog ?? {}, today);
+      const echt = typeof ht.juckreiz7 === 'number';
+      return {
+        label: 'Haut (Juckreiz)',
+        wert: echt ? clamp(100 - ht.juckreiz7! * 10) : 0,
+        echt,
+        quelle: echt
+          ? `Ø ${ht.juckreiz7}/10 über 7 Tage${ht.richtung !== 'unbekannt' ? `, ${ht.richtung} als die Woche davor` : ''}${ht.schuebe30 ? `, ${ht.schuebe30} Schub-Tage/30` : ''}`
+          : 'kein Haut-Eintrag in 7 Tagen',
+      };
+    })(),
+    // Die beiden Hebel gegen die Schübe, einzeln sichtbar — nicht in der
+    // Routinen-Quote versteckt, wo sie niemand findet.
+    (() => {
+      const q = quoteFuer(log, ['essen'], today, 7);
+      return { label: 'Regelmäßig gegessen', wert: clamp(q.quote * 100), echt: q.tage > 0, quelle: q.tage ? `${Math.round(q.quote * 7)}/7 Tage abgehakt` : 'noch nicht abgehakt' };
+    })(),
+    (() => {
+      const q = quoteFuer(log, ['reha'], today, 7);
+      return { label: 'Reha & Mobilität', wert: clamp(q.quote * 100), echt: q.tage > 0, quelle: q.tage ? `${Math.round(q.quote * 7)}/7 Tage` : 'noch nicht abgehakt' };
+    })(),
+    // Der Streak zählt nur für die Person, die ihn führt. 30 saubere Tage = 100.
+    ...(() => {
+      const st = streakStand(streakLog ?? {}, today);
+      if (!st.eintraege30) return [] as Faktor[];
+      return [{
+        label: 'Sauber (Streak)',
+        wert: st.aktuell ? clamp((Math.min(30, st.sauberTage) / 30) * 100) : 0,
+        echt: st.aktuell,
+        quelle: st.aktuell ? `${st.sauberTage} Tage seit dem letzten Rückfall` : 'seit über 3 Tagen kein Eintrag',
+      }];
+    })(),
     { label: 'Gesundheits-Meilensteine', ...msKurs('gesundheit') },
   ];
 

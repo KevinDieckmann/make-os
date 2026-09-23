@@ -1,5 +1,8 @@
 # MAKE OS — Umsetzungsplan (Übergabe an die nächste Session)
 
+> **Erledigt und abgelöst (18.09.2026).** Die Pakete unten sind gebaut. Der
+> führende Plan ist jetzt `PLAN.md`. Diese Datei bleibt als Referenz.
+
 > **Für den ausführenden Bot:** Dieses Dokument ist selbsttragend. Arbeite die
 > Pakete IN REIHENFOLGE ab. Nach jedem Paket: `tsc` + Verifikation (unten) +
 > Haken hier im Dokument setzen. Vollständige Audit-Befunde (5 Dimensionen,

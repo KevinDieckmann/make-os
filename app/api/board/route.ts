@@ -94,7 +94,7 @@ export async function POST(req: Request) {
     'Je Sektion 2-4 Punkte, max 4 Risiken, 3 Fokus-Punkte für nächste Woche. Beziehe dich auf die echten Zahlen/Aufgaben.',
   ].join('\n');
 
-  const r = await askJson<{ headline?: string; sektionen?: unknown[]; risiken?: string[]; naechsteWoche?: string[] }>({ system, user: context, maxTokens: 4000, model: agent.model });
+  const r = await askJson<{ headline?: string; sektionen?: unknown[]; risiken?: string[]; naechsteWoche?: string[] }>({ zweck: 'board', system, user: context, maxTokens: 4000, model: agent.model });
   if (!r.ok || !r.data) return NextResponse.json({ headline: r.error ?? 'Analyse gerade nicht möglich — Kennzahlen stehen.', stats, sektionen: [], risiken: [], naechsteWoche: [] });
 
   const out = {

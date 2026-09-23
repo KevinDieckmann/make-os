@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   ].filter(Boolean).join('\n');
 
   // 2500 statt 500: extended thinking teilt sich das Budget mit der Antwort.
-  const r = await askJson<{ score?: number; fit?: string; angle?: string }>({ system, user, maxTokens: 2500, timeoutMs: 60_000, model: agent.model });
+  const r = await askJson<{ score?: number; fit?: string; angle?: string }>({ zweck: 'prospecting-score', system, user, maxTokens: 2500, timeoutMs: 60_000, model: agent.model });
   if (!r.ok || !r.data) return NextResponse.json({ error: r.error ?? 'Keine Antwort.' });
 
   const score = Math.max(0, Math.min(100, Math.round(Number(r.data.score) || 0)));

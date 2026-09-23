@@ -8,10 +8,13 @@ import Link from 'next/link';
 
 import { useEffect, useRef, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
+import { listeSchreiben } from '@/lib/make-one/liste-sync';
+import { PlanerLeiste } from './PlanerLeiste';
+import { Seitenkopf } from './Seitenkopf';
 
 interface Routine { id: string; label: string; wann: 'morgen' | 'tag' | 'abend'; kategorie: 'gesundheit' | 'leben' | 'business'; dauerMin: number; aktiv: boolean }
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 
 const WANN: { id: Routine['wann']; label: string; hint: string }[] = [
@@ -35,6 +38,8 @@ export function RoutinenPlanerView() {
   const [neuWann, setNeuWann] = useState<Routine['wann']>('morgen');
   const [neuKat, setNeuKat] = useState<Routine['kategorie']>('gesundheit');
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /** Zuletzt gelesener/geschriebener Stand — Basis für die Unterschiede. */
+  const gespeichert = useRef<Routine[] | null>(null);
 
   useEffect(() => {
     fetch('/api/state/routinen')
@@ -51,7 +56,9 @@ export function RoutinenPlanerView() {
     if (ladeFehler) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      fetch('/api/state/routinen', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ routinen: next }) }).catch(() => {});
+      const alt = gespeichert.current;
+      gespeichert.current = next;
+      void listeSchreiben<Routine>('/api/state/routinen', 'routinen', alt, next);
     }, 500);
   }
 
@@ -67,14 +74,12 @@ export function RoutinenPlanerView() {
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
-        <div style={lbl}>Routine-Planer</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Was dich jeden Tag trägt.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 680, lineHeight: 1.5 }}>
-          Positive Routinen für Gesundheit, Leben und Business — hier geplant, überall wirksam:
-          im <Link href="/os/planung/woche" style={{ color: T.accentInk, textDecoration: 'none' }}>Wochenplaner</Link> (Leiste + Jarvis-Vorschlag),
-          in der <Link href="/os/planung" style={{ color: T.accentInk, textDecoration: 'none' }}>Tagesplanung</Link>,
-          im <Link href="/os/gesundheit" style={{ color: T.accentInk, textDecoration: 'none' }}>Cockpit</Link> (Häkchen) und im MAKE Score.
-        </p>
+        <PlanerLeiste aktiv="routinen" />
+        <Seitenkopf
+          rubrik={<>Routine-Planer</>}
+          titel={<>Was dich jeden Tag trägt.</>}
+          satz={<>Positive Routinen für Gesundheit, Leben und Business — hier geplant, überall wirksam: im <Link href="/os/planung/woche" style={{ color: T.accentInk, textDecoration: 'none' }}>Wochenplaner</Link> (Leiste + Jarvis-Vorschlag), in der <Link href="/os/planung" style={{ color: T.accentInk, textDecoration: 'none' }}>Tagesplanung</Link>, im <Link href="/os/gesundheit" style={{ color: T.accentInk, textDecoration: 'none' }}>Cockpit</Link> (Häkchen) und im MAKE Score.</>}
+        />
 
         {/* Neu anlegen */}
         <div style={{ ...panel, padding: '14px 16px', margin: '18px 0 16px' }}>
@@ -107,7 +112,7 @@ export function RoutinenPlanerView() {
                   <div style={{ padding: '12px 16px 8px', display: 'flex', alignItems: 'baseline', gap: 10 }}>
                     <span style={{ fontSize: 14.5, fontWeight: 700, color: T.ink }}>{w.label}</span>
                     <span style={{ fontSize: 11.5, color: T.muted }}>{w.hint}</span>
-                    <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>{eigene.filter(r => r.aktiv).length} aktiv</span>
+                    <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: T.muted }}>{eigene.filter(r => r.aktiv).length} aktiv</span>
                   </div>
                   {!eigene.length && <div style={{ padding: '4px 16px 14px', fontSize: 12.5, color: T.muted }}>Noch nichts — leg oben eine an.</div>}
                   {eigene.map((r, i) => (
@@ -121,14 +126,14 @@ export function RoutinenPlanerView() {
                       <input value={r.label} onChange={e => persist(routinen.map(x => x.id === r.id ? { ...x, label: e.target.value } : x))}
                         style={{ flex: 1, minWidth: 180, background: 'transparent', border: 'none', outline: 'none', color: T.ink, fontFamily: T.sans, fontSize: 13.5 }} />
                       <select value={r.kategorie} onChange={e => persist(routinen.map(x => x.id === r.id ? { ...x, kategorie: e.target.value as Routine['kategorie'] } : x))}
-                        style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: katFarbe(r.kategorie), fontFamily: T.mono, fontSize: 10, padding: '3px 6px', outline: 'none' }}>
+                        style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: katFarbe(r.kategorie), fontFamily: T.mono, fontSize: 11, padding: '3px 6px', outline: 'none' }}>
                         {KAT.map(k => <option key={k.id} value={k.id}>{k.label}</option>)}
                       </select>
                       <select value={r.wann} onChange={e => persist(routinen.map(x => x.id === r.id ? { ...x, wann: e.target.value as Routine['wann'] } : x))}
-                        style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: T.inkDim, fontFamily: T.mono, fontSize: 10, padding: '3px 6px', outline: 'none' }}>
+                        style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: T.inkDim, fontFamily: T.mono, fontSize: 11, padding: '3px 6px', outline: 'none' }}>
                         {WANN.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}
                       </select>
-                      <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted, flex: '0 0 auto' }}>
+                      <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, flex: '0 0 auto' }}>
                         <button onClick={() => persist(routinen.map(x => x.id === r.id ? { ...x, dauerMin: Math.max(5, x.dauerMin - 5) } : x))} style={mini()}>−</button>
                         {' '}{r.dauerMin}m{' '}
                         <button onClick={() => persist(routinen.map(x => x.id === r.id ? { ...x, dauerMin: Math.min(120, x.dauerMin + 5) } : x))} style={mini()}>＋</button>
@@ -142,7 +147,7 @@ export function RoutinenPlanerView() {
           </div>
         )}
 
-        <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted, marginTop: 14, lineHeight: 1.6 }}>
+        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 14, lineHeight: 1.6 }}>
           {aktivN} aktive Routinen · {KAT.map(k => <span key={k.id}><span style={{ color: k.farbe }}>■</span> {k.label}  </span>)}— pausierte zählen nirgends mit.
         </div>
       </div>

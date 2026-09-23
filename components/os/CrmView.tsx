@@ -8,7 +8,9 @@ import Link from 'next/link';
 
 import { useEffect, useRef, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
+import { listeSchreiben } from '@/lib/make-one/liste-sync';
 import { useTasks } from '@/context/TasksContext';
+import { Seitenkopf } from './Seitenkopf';
 
 interface Kunde { id: string; name: string; status: 'aktiv' | 'gespraech' | 'ruht'; mandat?: string; cashflow?: number; naechsterSchritt?: string; notizen?: string }
 interface Prospect { id: string; company: string; score?: number; status: string }
@@ -17,7 +19,7 @@ interface Produkt { id: string; name: string; beschreibung: string; preis: numbe
 interface Finanzplan { rechnungen: Rechnung[]; produkte: Produkt[]; firmen: { id: string }[] }
 const RSTATUS_FARBE: Record<Rechnung['status'], string> = { geplant: '#96A8A2', gestellt: '#E3A24B', bezahlt: '#21B5AA' }
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 const STATUS: { id: Kunde['status']; label: string; farbe: string }[] = [
   { id: 'aktiv', label: 'Aktiv', farbe: T.accent },
@@ -26,7 +28,7 @@ const STATUS: { id: Kunde['status']; label: string; farbe: string }[] = [
 ];
 const eur = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 
-export function CrmView() {
+export function CrmView({ eingebettet = false }: { eingebettet?: boolean } = {}) {
   const { state: tasksState } = useTasks();
   const [kunden, setKunden] = useState<Kunde[]>([]);
   const [prospects, setProspects] = useState<Prospect[]>([]);
@@ -34,7 +36,8 @@ export function CrmView() {
   const [neu, setNeu] = useState('');
   const [offen, setOffen] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const fpTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /** Zuletzt gelesener/geschriebener Stand — Basis für die Unterschiede. */
+  const gespeichert = useRef<Kunde[] | null>(null);
 
   // Ohne geladene Stände wird nichts zurückgeschrieben — sonst überschreibt
   // die erste Änderung Kundenliste oder Finanzplan mit einem leeren Stand.
@@ -45,20 +48,23 @@ export function CrmView() {
       console.error(`[MAKE OS] ${was} konnte nicht geladen werden — Speichern gesperrt.`, err);
       setLadeFehler(true);
     };
-    fetch('/api/state/kunden').then(pruefen).then(d => setKunden(d.kunden ?? [])).catch(melden('Kunden'));
+    fetch('/api/state/kunden').then(pruefen).then(d => { const l = d.kunden ?? []; gespeichert.current = l; setKunden(l); }).catch(melden('Kunden'));
     fetch('/api/state/prospects').then(pruefen).then(d => setProspects(d.state?.prospects ?? [])).catch(melden('Zielkunden'));
     fetch('/api/state/finanzplan').then(pruefen).then(setFplan).catch(melden('Finanzplan'));
   }, []);
 
-  /** Rechnung im Finanzplan anlegen (z.B. Produkt an Kunden) — gleiche Wahrheit wie /os/finanzen. */
+  /** Rechnung im Finanzplan anlegen (z.B. Produkt an Kunden) — gleiche Wahrheit wie /os/finanzen.
+   *  Zwei-Fenster-Fundament: es geht NUR die neue Rechnung raus, nicht der
+   *  ganze Finanzplan — sonst überschriebe ein Klick hier Malins gerade
+   *  gepflegte Kontostände und Zahlungen. */
   function rechnungAnlegen(kunde: string, titel: string, betrag: number) {
     if (!fplan || ladeFehler) return;
-    const next: Finanzplan = { ...fplan, rechnungen: [...fplan.rechnungen, { id: `r-${Date.now().toString(36)}`, firmaId: 'kdc', kunde, titel, betrag, status: 'geplant' }] };
-    setFplan(next);
-    clearTimeout(fpTimer.current);
-    fpTimer.current = setTimeout(() => {
-      fetch('/api/state/finanzplan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
-    }, 400);
+    const neu = { id: `r-${Date.now().toString(36)}`, firmaId: 'kdc', kunde, titel, betrag, status: 'geplant' as const };
+    setFplan({ ...fplan, rechnungen: [...fplan.rechnungen, neu] });
+    fetch('/api/state/finanzplan', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ops: [{ liste: 'rechnungen', op: 'upsert', eintrag: neu }] }),
+    }).catch(() => { /* offline — nächster Versuch beim nächsten Anlegen */ });
   }
 
   const rechnungenVon = (name: string) => (fplan?.rechnungen ?? []).filter(r => r.kunde.toLowerCase() === name.toLowerCase());
@@ -69,7 +75,9 @@ export function CrmView() {
     if (ladeFehler) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      fetch('/api/state/kunden', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kunden: next }) }).catch(() => {});
+      const alt = gespeichert.current;
+      gespeichert.current = next;
+      void listeSchreiben<Kunde>('/api/state/kunden', 'kunden', alt, next);
     }, 500);
   }
   const patch = (id: string, p: Partial<Kunde>) => persist(kunden.map(k => k.id === id ? { ...k, ...p } : k));
@@ -86,14 +94,13 @@ export function CrmView() {
   const kontaktiert = prospects.filter(p => p.status === 'kontaktiert').length;
 
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 920, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
-        <div style={lbl}>CRM & Kunden · KD Ventures</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Deine Mandate.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 660, lineHeight: 1.5 }}>
-          Wer zahlt, wer im Gespräch ist, was als Nächstes passiert — du und Malin arbeitet über dieselbe Liste.
-          <span style={{ color: T.muted }}> (HubSpot-Anbindung steht im Bauplan; bis dahin ist das hier die Wahrheit.)</span>
-        </p>
+    <div style={eingebettet ? { color: T.ink, fontFamily: T.sans } : { minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
+      <div style={eingebettet ? {} : { maxWidth: 920, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
+        {!eingebettet && <Seitenkopf
+          rubrik={<>CRM & Kunden · KD Ventures</>}
+          titel={<>Deine Mandate.</>}
+          satz={<>Wer zahlt, wer im Gespräch ist, was als Nächstes passiert — du und Malin arbeitet über dieselbe Liste. <span style={{ color: T.muted }}> (HubSpot-Anbindung steht im Bauplan; bis dahin ist das hier die Wahrheit.)</span></>}
+        />}
 
         {/* Kennzahlen */}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '18px 0 16px' }}>
@@ -124,7 +131,7 @@ export function CrmView() {
                 <div onClick={() => setOffen(auf ? null : k.id)} style={{ display: 'flex', gap: 12, padding: '13px 16px', cursor: 'pointer', alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: st.farbe, flex: '0 0 auto' }} />
                   <span style={{ fontSize: 14.5, fontWeight: 700, color: T.ink }}>{k.name}</span>
-                  <span style={{ fontFamily: T.mono, fontSize: 10, color: st.farbe, border: `1px solid ${st.farbe}44`, borderRadius: 5, padding: '2px 8px' }}>{st.label}</span>
+                  <span style={{ fontFamily: T.mono, fontSize: 11, color: st.farbe, border: `1px solid ${st.farbe}44`, borderRadius: 5, padding: '2px 8px' }}>{st.label}</span>
                   {k.cashflow ? <span style={{ fontFamily: T.mono, fontSize: 11.5, color: T.accent }}>{eur(k.cashflow)}/Monat</span> : null}
                   <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: T.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.naechsterSchritt ?? k.mandat ?? ''}</span>
                   <span style={{ fontFamily: T.mono, fontSize: 13, color: T.muted }}>{auf ? '▾' : '▸'}</span>
@@ -162,10 +169,10 @@ export function CrmView() {
                           {re.length
                             ? re.map(r => (
                               <div key={r.id} style={{ display: 'flex', gap: 9, alignItems: 'baseline', fontSize: 12.5, padding: '2px 0', flexWrap: 'wrap' }}>
-                                <span style={{ fontFamily: T.mono, fontSize: 10, color: RSTATUS_FARBE[r.status], border: `1px solid ${RSTATUS_FARBE[r.status]}44`, borderRadius: 5, padding: '1px 7px' }}>{r.status}</span>
+                                <span style={{ fontFamily: T.mono, fontSize: 11, color: RSTATUS_FARBE[r.status], border: `1px solid ${RSTATUS_FARBE[r.status]}44`, borderRadius: 5, padding: '1px 7px' }}>{r.status}</span>
                                 <span style={{ color: T.inkDim }}>{r.titel || 'Leistung'}</span>
                                 <span style={{ fontFamily: T.mono, fontWeight: 700, color: T.ink }}>{r.betrag ? eur(r.betrag) : '— €'}</span>
-                                {r.faellig && <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>fällig {r.faellig.slice(8)}.{r.faellig.slice(5, 7)}.</span>}
+                                {r.faellig && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>fällig {r.faellig.slice(8)}.{r.faellig.slice(5, 7)}.</span>}
                               </div>
                             ))
                             : <span style={{ fontSize: 12, color: T.muted }}>Noch keine Rechnung — unten ein Produkt anbieten oder in der Finanzplanung anlegen.</span>}
@@ -198,7 +205,7 @@ export function CrmView() {
                           <div style={{ ...lbl, marginBottom: 6 }}>Offene Aufgaben <Link href="/os/aufgaben" style={{ color: T.accent, textDecoration: 'none', textTransform: 'none' }}>Taskmanagement ›</Link></div>
                           {at.slice(0, 5).map(t => (
                             <div key={t.id} style={{ fontSize: 12.5, color: T.inkDim, padding: '2px 0' }}>
-                              {t.priority === 'critical' ? '‼ ' : '· '}{t.title}{t.dueDate ? <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}> · {t.dueDate.slice(8)}.{t.dueDate.slice(5, 7)}.</span> : null}
+                              {t.priority === 'critical' ? '‼ ' : '· '}{t.title}{t.dueDate ? <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}> · {t.dueDate.slice(8)}.{t.dueDate.slice(5, 7)}.</span> : null}
                             </div>
                           ))}
                         </div>

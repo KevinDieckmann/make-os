@@ -1,115 +1,33 @@
 'use client';
 
 import Link from 'next/link';
-// ─── MAKE OS — Seitenleiste (die Software-Navigation) ───────────────────────
-// Kevins Ordnung: MAKE OS · MAKE Score · Ausführung & Tasks · Planung ·
-// Gesundheit · Agenten & Wachstum. JEDE Gruppe ist einklappbar — sichtbar ist
-// nur, was du gerade brauchst; der Zustand überlebt den Neustart.
-// Darunter Favoriten + „Brennt gerade". ⌘K bleibt der Schnellweg.
+// ─── MAKE OS — Seitenleiste (Bereichs-Modus) ────────────────────────────────
+// Kevins Ansage: „Das ist mittlerweile sehr voll geworden — ich möchte das
+// Ganze mehr mit Klarheit, besser klickbar." Vorbild: KEMARIS Operations.
+//
+// Wer in einem Bereich arbeitet, sieht NUR dessen Punkte — nicht die Navigation
+// aller sieben Bereiche gleichzeitig. Außerhalb (Startfläche, Heute, Inbox)
+// steht die Bereichsauswahl. Einklappbar auf eine Symbolspalte. Darunter
+// bleiben „Brennt gerade" und ⌘K, weil beides täglich gebraucht wird.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { ArrowLeft, PanelLeftClose, PanelLeftOpen, type LucideIcon } from 'lucide-react';
 import { THEME as T } from '@/lib/make-one/os-data';
+import { Anwesenheit } from './Anwesenheit';
 import { LIVE_AGENTS } from '@/lib/make-one/agents-data';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
+import { ALLE_SEITEN, BEREICHE, EINSTIEGE, bereichFuerPfad, bereicheFuer, type Modus } from '@/lib/make-one/bereiche';
 
-interface Eintrag { href: string; label: string; hint?: string }
-interface Gruppe { titel: string; eintraege: Eintrag[] }
+const MERKER_ZU = 'make-os-sidebar-schmal';
 
-const GRUPPEN: Gruppe[] = [
-  {
-    titel: 'MAKE OS',
-    eintraege: [
-      { href: '/os', label: 'Dashboard' },
-      { href: '/os/planung', label: 'Tag' },
-      { href: '/os/inbox', label: 'Inbox' },
-      { href: '/os/kompass', label: 'Kompass' },
-    ],
-  },
-  {
-    titel: 'MAKE Score',
-    eintraege: [
-      { href: '/os/performance', label: 'Der Score' },
-      { href: '/os/saeule/health', label: 'Gesundheit & Energie' },
-      { href: '/os/saeule/business', label: 'Business-Performance' },
-      { href: '/os/saeule/planning', label: 'Planung & Execution' },
-      { href: '/os/saeule/finance', label: 'Finanzen' },
-      { href: '/os/saeule/social', label: 'Beziehung & Team' },
-    ],
-  },
-  {
-    titel: 'Gesundheit',
-    eintraege: [
-      { href: '/os/ritual', label: 'Tagesstart' },
-      { href: '/os/ritual?modus=abend', label: 'Tagesende' },
-      { href: '/os/gesundheit', label: 'Cockpit' },
-      { href: '/os/energie', label: 'Energie erhöhen' },
-      { href: '/os/ernaehrung', label: 'Ernährung' },
-      { href: '/os/journal', label: 'Journal' },
-      { href: '/os/woche', label: 'Wochen-Rhythmus' },
-    ],
-  },
-  {
-    titel: 'Ausführung & Tasks',
-    eintraege: [
-      { href: '/os/aufgaben', label: 'Taskmanagement' },
-      { href: '/os/meeting', label: 'Meeting → Aufgaben' },
-    ],
-  },
-  {
-    titel: 'Planung',
-    eintraege: [
-      { href: '/os/planung/woche', label: 'Wochenplaner' },
-      { href: '/os/planung/monat', label: 'Monat' },
-      { href: '/os/planung/quartal', label: 'Quartal' },
-      { href: '/os/planung/jahr', label: 'Jahr & Ziele' },
-      { href: '/os/planung/routinen', label: 'Routinen' },
-      { href: '/os/tageslauf', label: 'Tageslauf' },
-      { href: '/os/planung/fokus', label: 'Fokus-Regler' },
-      { href: '/os/loop', label: 'Loops' },
-    ],
-  },
-  {
-    titel: 'Finanzen',
-    eintraege: [
-      { href: '/os/finanzen', label: 'Finanzplanung' },
-      { href: '/os/finanzen/liquiditaet', label: 'Liquiditäts-Planung' },
-      { href: '/os/controlling', label: 'Controlling' },
-      { href: '/os/finanzen/dashboard', label: 'Finanz-Dashboard' },
-    ],
-  },
-  {
-    titel: 'Datenbasis',
-    eintraege: [
-      { href: '/os/datenbasis', label: 'Zentrale' },
-      { href: '/os/verbindungen', label: 'Verbindungen' },
-    ],
-  },
-  {
-    titel: 'Agenten & Wachstum',
-    eintraege: [
-      { href: '/os/agenten', label: 'Agentensystem' },
-      { href: '/os/netzwerk', label: 'Netzwerk & Pipeline' },
-      { href: '/os/crm', label: 'CRM & Kunden' },
-      { href: '/os/roadmap', label: 'Roadmap' },
-      { href: '/os/bauplan', label: 'Bauplan' },
-    ],
-  },
-];
-
-const FAVORITEN: Eintrag[] = [
-  { href: '/os/kalender', label: 'Kalender' },
-  { href: '/os/research', label: 'Research' },
-  { href: '/os/content', label: 'Content' },
-  { href: '/os/prospecting', label: 'Zielliste' },
-];
-
-const MERKER = 'make-os-sidebar-zu';
+/** Dieselben Stufen wie im Score selbst — keine zweite Wahrheit. */
+const scoreFarbe = (v: number | null) => v == null ? T.muted : v >= 70 ? T.accent : v >= 50 ? T.accentInk : v >= 30 ? T.amber : T.crit;
 
 function paletteZiele(): { href: string; label: string; group: string; hint?: string }[] {
   return [
-    ...GRUPPEN.flatMap(g => g.eintraege.map(e => ({ href: e.href, label: `${g.titel} · ${e.label}`, group: g.titel, hint: e.hint }))),
+    ...ALLE_SEITEN.map(s => ({ href: s.href, label: s.label, group: s.bereich, hint: s.hinweis })),
     ...LIVE_AGENTS.map(a => ({ href: a.href, label: a.name, group: 'Agent', hint: a.role })),
   ];
 }
@@ -119,43 +37,57 @@ export function OsSidebar() {
   const router = useRouter();
   const { state: tasksState } = useTasks();
 
+  const bereich = useMemo(() => bereichFuerPfad(pathname), [pathname]);
+
+  // In welchem Leben — steuert, was in der Navigation steht. Eine Sache
+  // dieses Rechners (localStorage). WER da ist, entscheidet seit 23.09. die
+  // Anmeldung, nicht mehr ein Schalter: das Konto kommt vom Server.
+  const [modus, setModus] = useState<Modus>('alles');
+  const [konto, setKonto] = useState<{ speicher: string; name: string; rolle: string } | null>(null);
+  useEffect(() => {
+    try {
+      const m = localStorage.getItem('make-os-modus');
+      if (m === 'alles' || m === 'business' || m === 'privat') setModus(m);
+    } catch { /* egal */ }
+    fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich) setKonto(d.ich); }).catch(() => {});
+  }, []);
+  const person = konto?.speicher ?? '';
+  const arbeitsplatzSetzen = (teil: { modus?: Modus }) => {
+    if (teil.modus) setModus(teil.modus);
+    try { if (teil.modus) localStorage.setItem('make-os-modus', teil.modus); } catch { /* egal */ }
+    // Andere Bereiche der Seite (Gruß, Zurufe, Mitschrift) hören mit.
+    window.dispatchEvent(new CustomEvent('make-os-arbeitsplatz', { detail: { person, modus: teil.modus ?? modus } }));
+  };
+  const abmelden = async () => {
+    await fetch('/api/konto/abmelden', { method: 'POST' }).catch(() => {});
+    window.location.href = '/anmelden';
+  };
+  const sichtbareBereiche = useMemo(() => bereicheFuer(modus), [modus]);
+
+  // Der Score je Leben — kommt aus derselben Quelle wie die Startfläche.
+  const [scoreModi, setScoreModi] = useState<Record<string, { index: number | null; label: string; abdeckung: number }>>({});
+  useEffect(() => {
+    fetch('/api/startflaeche').then(r => r.json()).then(d => setScoreModi(d?.score?.modi ?? {})).catch(() => {});
+  }, []);
+  const scoreModus = scoreModi[modus];
+
   const [mobilOffen, setMobilOffen] = useState(false);
-  const [zu, setZu] = useState<Record<string, boolean>>({});
-  const [geladen, setGeladen] = useState(false);
+  const [schmal, setSchmal] = useState(false);
   const [palette, setPalette] = useState(false);
   const [q, setQ] = useState('');
   const [sel, setSel] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Zugeklappt-Zustand laden; Standard: alles zu AUSSER „MAKE OS" und der
-  // Gruppe, in der du gerade bist. So stehen nie 20 Zeilen untereinander.
   useEffect(() => {
-    let gespeichert: Record<string, boolean> | null = null;
-    try { gespeichert = JSON.parse(localStorage.getItem(MERKER) ?? 'null'); } catch { /* egal */ }
-    if (gespeichert && typeof gespeichert === 'object') {
-      setZu(gespeichert);
-    } else {
-      const start: Record<string, boolean> = {};
-      for (const g of GRUPPEN) start[g.titel] = g.titel !== 'MAKE OS';
-      setZu(start);
-    }
-    setGeladen(true);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    try { setSchmal(localStorage.getItem(MERKER_ZU) === '1'); } catch { /* egal */ }
   }, []);
-
-  // Aktive Gruppe immer sichtbar — auch wenn sie zugeklappt gespeichert war.
-  const aktiveGruppe = useMemo(
-    () => GRUPPEN.find(g => g.eintraege.some(e => (e.href === '/os' ? pathname === '/os' : pathname.startsWith(e.href))))?.titel,
-    [pathname]
-  );
-
-  function klappe(titel: string) {
-    setZu(prev => {
-      const next = { ...prev, [titel]: !prev[titel] };
-      try { localStorage.setItem(MERKER, JSON.stringify(next)); } catch { /* egal */ }
-      return next;
-    });
-  }
+  // Merken gehört neben den Zustandswechsel, nicht hinein: React darf einen
+  // Updater mehrfach aufrufen.
+  const umschalten = () => {
+    const neu = !schmal;
+    setSchmal(neu);
+    try { localStorage.setItem(MERKER_ZU, neu ? '1' : '0'); } catch { /* egal */ }
+  };
 
   const brennt = useMemo(() => {
     const heute = localDay();
@@ -169,7 +101,7 @@ export function OsSidebar() {
   const treffer = useMemo(() => {
     const s = q.trim().toLowerCase();
     if (!s) return ziele;
-    return ziele.filter(t => `${t.label} ${t.hint ?? ''} ${t.href}`.toLowerCase().includes(s));
+    return ziele.filter(t => `${t.label} ${t.hint ?? ''} ${t.group} ${t.href}`.toLowerCase().includes(s));
   }, [q, ziele]);
 
   useEffect(() => {
@@ -183,63 +115,166 @@ export function OsSidebar() {
   useEffect(() => { if (palette) setTimeout(() => inputRef.current?.focus(), 30); }, [palette]);
   useEffect(() => { setMobilOffen(false); }, [pathname]);
 
-  const aktiv = (href: string) => (href === '/os' ? pathname === '/os' : pathname.startsWith(href));
+  const aktiv = (href: string) => (href === '/os' ? pathname === '/os' : pathname === href || pathname.startsWith(`${href}/`));
+
+  /** Eine Navigationszeile — als Funktion, nicht als Komponente (sonst baut React sie neu auf). */
+  const zeile = (it: { href: string; label: string; icon: LucideIcon; hinweis?: string }, farbe?: string) => {
+    const on = aktiv(it.href);
+    const Icon = it.icon;
+    return (
+      <Link key={it.href} href={it.href} title={schmal ? it.label : undefined} aria-current={on ? 'page' : undefined}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', borderRadius: 9,
+          padding: schmal ? '8px 0' : '7px 10px', justifyContent: schmal ? 'center' : 'flex-start',
+          background: on ? T.accentSoft : 'transparent',
+          borderLeft: `2px solid ${on ? T.accent : 'transparent'}`,
+        }}>
+        <Icon size={15} strokeWidth={1.75} color={on ? T.accent : (farbe ?? T.muted)} style={{ flex: '0 0 auto' }} />
+        {!schmal && (
+          <>
+            <span style={{ fontSize: 13, fontWeight: on ? 700 : 500, color: on ? T.accent : T.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.label}</span>
+            {it.hinweis && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginLeft: 'auto', flex: '0 0 auto' }}>{it.hinweis}</span>}
+          </>
+        )}
+      </Link>
+    );
+  };
 
   const inhalt = (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', padding: '14px 10px 18px' }}>
-      <Link href="/os" style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', padding: '4px 10px 14px' }}>
-        <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'radial-gradient(circle, #BFF5EF, #21B5AA 55%, rgba(33,181,170,.2))', flex: '0 0 auto' }} />
-        <span style={{ fontFamily: T.mono, fontSize: 13, fontWeight: 700, letterSpacing: '.14em', color: T.ink }}>MAKE OS</span>
-      </Link>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', padding: schmal ? '14px 8px 16px' : '14px 10px 16px', gap: 2 }}>
 
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-        {GRUPPEN.map(g => {
-          const offenJetzt = geladen && (!zu[g.titel] || g.titel === aktiveGruppe);
-          const enthaeltAktiv = g.titel === aktiveGruppe;
-          return (
-            <div key={g.titel}>
-              <button
-                onClick={() => klappe(g.titel)}
-                style={{
-                  width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  background: 'transparent', border: 'none', cursor: 'pointer', padding: '7px 10px', borderRadius: 8,
-                  fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase',
-                  color: enthaeltAktiv ? T.accent : T.muted,
-                }}
-              >
-                <span>{g.titel}</span>
-                <span style={{ fontSize: 11 }}>{offenJetzt ? '▾' : '▸'}</span>
-              </button>
-              {offenJetzt && g.eintraege.map(e => (
-                <Link key={e.href} href={e.href} className={aktiv(e.href) ? 'sb-aktiv' : undefined} style={{
-                  display: 'block', textDecoration: 'none', padding: '6px 10px 6px 16px', borderRadius: 8, marginBottom: 1,
-                  background: aktiv(e.href) ? 'rgba(33,181,170,.13)' : 'transparent',
-                  borderLeft: `2px solid ${aktiv(e.href) ? T.accent : 'transparent'}`,
-                }}>
-                  <span style={{ fontSize: 13, fontWeight: aktiv(e.href) ? 700 : 500, color: aktiv(e.href) ? T.accent : T.inkDim }}>{e.label}</span>
-                  {e.hint && <span style={{ fontSize: 10.5, color: T.muted, marginLeft: 7 }}>{e.hint}</span>}
-                </Link>
-              ))}
-            </div>
-          );
-        })}
-      </nav>
-
-      <div style={{ borderTop: `1px solid ${T.lineSoft}`, paddingTop: 12, marginTop: 12 }}>
-        <div style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.16em', textTransform: 'uppercase', color: T.muted, padding: '0 10px 7px' }}>Favoriten</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0 8px' }}>
-          {FAVORITEN.map(f => (
-            <Link key={f.href} href={f.href} style={{ fontSize: 11.5, color: aktiv(f.href) ? T.accent : T.inkDim, textDecoration: 'none', border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 9px' }}>{f.label}</Link>
-          ))}
-        </div>
+      {/* Marke + Einklappen */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: schmal ? 'center' : 'space-between', gap: 8, padding: schmal ? '0 0 14px' : '0 6px 14px', flexDirection: schmal ? 'column' : 'row' }}>
+        <Link href="/os/start" style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', minWidth: 0 }}>
+          <span style={{ width: 26, height: 26, borderRadius: 8, flex: '0 0 auto', display: 'grid', placeItems: 'center', background: 'radial-gradient(circle at 30% 30%, #BFF5EF, #21B5AA 60%, rgba(33,181,170,.25))', fontFamily: T.mono, fontSize: 11, fontWeight: 700, color: T.void }}>OS</span>
+          {!schmal && (
+            <span style={{ lineHeight: 1.25, minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 700, letterSpacing: '-.01em', color: T.ink }}>MAKE OS</span>
+              <span style={{ display: 'block', fontFamily: T.mono, fontSize: 11, color: T.muted, whiteSpace: 'nowrap' }}>Life &amp; Business OS</span>
+            </span>
+          )}
+        </Link>
+        <button onClick={umschalten} aria-label={schmal ? 'Navigation ausklappen' : 'Navigation einklappen'} title={schmal ? 'Ausklappen' : 'Einklappen'}
+          style={{ background: 'transparent', border: 'none', color: T.muted, cursor: 'pointer', padding: 5, borderRadius: 8, display: 'grid', placeItems: 'center' }}>
+          {schmal ? <PanelLeftOpen size={15} strokeWidth={1.75} /> : <PanelLeftClose size={15} strokeWidth={1.75} />}
+        </button>
       </div>
 
-      {brennt.length > 0 && (
-        <div style={{ borderTop: `1px solid ${T.lineSoft}`, paddingTop: 12, marginTop: 12 }}>
-          <div style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.16em', textTransform: 'uppercase', color: T.amber, padding: '0 10px 7px' }}>Brennt gerade</div>
+      {/* ── ARBEITSPLATZ: wer arbeitet, in welchem Leben ────────────────────
+          Seit 23.09.: das angemeldete Konto statt eines Schalters. Und der bewusste Schnitt
+          zwischen Privat und Business — im Privat-Modus verschwindet das
+          Geschäft aus der Navigation, nicht nur aus dem Blick. */}
+      {!schmal && (
+        <div style={{ padding: '0 4px 12px' }}>
+          {/* Das Konto — wer angemeldet ist. Kein Schalter mehr (23.09.):
+              wer jemand anderes sein will, meldet sich als jemand anderes an. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 4px 9px' }}>
+            <span style={{ width: 24, height: 24, borderRadius: 8, flex: '0 0 auto', display: 'grid', placeItems: 'center', background: T.accentSoft, color: T.accent, fontFamily: T.mono, fontSize: 11, fontWeight: 700 }}>
+              {(konto?.name ?? '?').charAt(0).toUpperCase()}
+            </span>
+            <Link href="/os/konto" title="Mein Konto" style={{ flex: 1, minWidth: 0, textDecoration: 'none', color: T.ink, fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {konto?.name ?? '…'}
+            </Link>
+            <button onClick={abmelden} title="Abmelden" style={{ background: 'transparent', border: 'none', color: T.muted, cursor: 'pointer', fontFamily: T.mono, fontSize: 11, padding: '3px 6px', borderRadius: 6 }}>abmelden</button>
+          </div>
+          <div style={{ display: 'flex', gap: 3, background: T.void, border: `1px solid ${T.line}`, borderRadius: 9, padding: 3 }}>
+            {([['alles', 'Alles'], ['business', 'Business'], ['privat', 'Privat']] as const).map(([m, label]) => (
+              <button key={m} onClick={() => arbeitsplatzSetzen({ modus: m })} title={
+                m === 'privat' ? 'Nur Gesundheit, Tag, Planung und Privates — kein Geschäft.'
+                  : m === 'business' ? 'Nur das Geschäft — Gesundheit und Privates treten zurück.'
+                    : 'Beides nebeneinander.'
+              } style={{
+                flex: 1, fontFamily: T.mono, fontSize: 11, fontWeight: modus === m ? 700 : 400, padding: '5px 0', borderRadius: 7,
+                cursor: 'pointer', border: 'none',
+                background: modus === m ? (m === 'privat' ? `${T.crit}22` : m === 'business' ? `${T.amber}22` : T.accentSoft) : 'transparent',
+                color: modus === m ? (m === 'privat' ? T.crit : m === 'business' ? T.amber : T.accent) : T.muted,
+              }}>{label}</button>
+            ))}
+          </div>
+
+          {/* Der MAKE Score für das gewählte Leben — Kevins Ansage: gehört mit
+              zu den Schaltflächen und rechnet sich je nach Auswahl neu. So gibt
+              es auch einen privaten Score, nicht nur einen Gesamtwert. */}
+          <Link href="/os/performance" title={`MAKE Score ${modus === 'alles' ? 'gesamt' : modus} — ${scoreModus?.label ?? ''}`}
+            className="score-puls" style={{
+              display: 'flex', alignItems: 'center', gap: 9, marginTop: 5, textDecoration: 'none',
+              background: T.void, border: `1px solid ${scoreFarbe(scoreModus?.index ?? null)}55`,
+              borderRadius: 9, padding: '7px 11px',
+            }}>
+            <span style={{ fontSize: 17, fontWeight: 700, color: scoreFarbe(scoreModus?.index ?? null), fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+              {scoreModus?.index ?? '—'}
+            </span>
+            <span style={{ minWidth: 0, lineHeight: 1.25 }}>
+              <span style={{ display: 'block', fontFamily: T.mono, fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: T.muted }}>
+                MAKE Score {modus === 'alles' ? '' : modus}
+              </span>
+              <span style={{ display: 'block', fontSize: 11, color: scoreFarbe(scoreModus?.index ?? null), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {scoreModus?.label ?? 'lädt …'}
+              </span>
+            </span>
+            {scoreModus && scoreModus.abdeckung < 0.6 && (
+              <span title={`Nur ${Math.round(scoreModus.abdeckung * 100)} % der Säulen haben tragfähige Daten`}
+                style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: T.amber, flex: '0 0 auto' }}>
+                {Math.round(scoreModus.abdeckung * 100)}%
+              </span>
+            )}
+          </Link>
+        </div>
+      )}
+
+      {bereich ? (
+        /* ── Im Bereich: Rücksprung, Bereichsname, nur dessen Punkte ── */
+        <>
+          <Link href="/os/start" title={schmal ? 'Alle Bereiche' : undefined}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, textDecoration: 'none', color: T.muted, padding: schmal ? '7px 0' : '6px 10px', justifyContent: schmal ? 'center' : 'flex-start', borderRadius: 9, marginBottom: 2 }}>
+            <ArrowLeft size={13} strokeWidth={2} style={{ flex: '0 0 auto' }} />
+            {!schmal && <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase' }}>Alle Bereiche</span>}
+          </Link>
+          {!schmal && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 10px 8px' }}>
+              <bereich.icon size={15} strokeWidth={1.75} color={bereich.farbe} style={{ flex: '0 0 auto' }} />
+              <span style={{ fontSize: 13.5, fontWeight: 700, letterSpacing: '-.01em', color: T.ink }}>{bereich.titel}</span>
+            </div>
+          )}
+          {bereich.items.filter(i => !i.versteckt).map(it => zeile(it, bereich.farbe))}
+        </>
+      ) : (
+        /* ── Außerhalb: Einstiege + Bereichsauswahl ── */
+        <>
+          {EINSTIEGE.map(e => zeile(e))}
+          {schmal
+            ? <div style={{ height: 1, background: T.line, margin: '10px auto', width: 22 }} role="presentation" />
+            : <div style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', color: T.muted, padding: '16px 10px 6px' }}>Bereiche</div>}
+          {sichtbareBereiche.map(b => {
+            const Icon = b.icon;
+            return (
+              <Link key={b.id} href={b.start} title={schmal ? b.titel : undefined}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', borderRadius: 9,
+                  padding: schmal ? '8px 0' : '7px 10px', justifyContent: schmal ? 'center' : 'flex-start',
+                  borderLeft: '2px solid transparent',
+                }}>
+                <Icon size={15} strokeWidth={1.75} color={b.farbe} style={{ flex: '0 0 auto' }} />
+                {!schmal && (
+                  <>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: T.inkDim }}>{b.titel}</span>
+                    <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginLeft: 'auto' }}>{b.items.length}</span>
+                  </>
+                )}
+              </Link>
+            );
+          })}
+        </>
+      )}
+
+      <div style={{ flex: 1 }} />
+
+      {brennt.length > 0 && !schmal && (
+        <div style={{ borderTop: `1px solid ${T.lineSoft}`, paddingTop: 11, marginTop: 11 }}>
+          <div style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', color: T.amber, padding: '0 10px 6px' }}>Brennt gerade</div>
           {brennt.map(t => (
-            <Link key={t.id} href="/os/aufgaben" style={{ display: 'block', textDecoration: 'none', padding: '5px 10px' }}>
-              <span style={{ fontSize: 12, color: T.inkDim, lineHeight: 1.35, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <Link key={t.id} href="/os/aufgaben" style={{ display: 'block', textDecoration: 'none', padding: '4px 10px' }}>
+              <span style={{ fontSize: 11.5, color: T.inkDim, lineHeight: 1.35, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 <span style={{ color: t.dueDate && t.dueDate < localDay() ? T.crit : T.amber }}>●</span> {t.title}
               </span>
             </Link>
@@ -247,25 +282,30 @@ export function OsSidebar() {
         </div>
       )}
 
-      <button onClick={() => { setPalette(true); setQ(''); setSel(0); }} style={{ margin: '14px 8px 0', fontFamily: T.mono, fontSize: 11, color: T.muted, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 8, padding: '8px 10px', cursor: 'pointer', textAlign: 'left' }}>
-        ⌘K Springen …
+      {/* Wer sonst gerade im System ist — schmal zusammengeklappt kein Platz. */}
+      {!schmal && <Anwesenheit />}
+
+      <button onClick={() => { setPalette(true); setQ(''); setSel(0); }} title="Schnellnavigation"
+        style={{ marginTop: 11, borderTop: `1px solid ${T.lineSoft}`, paddingTop: 11, fontFamily: T.mono, fontSize: 11, color: T.muted, background: 'transparent', border: 'none', borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: T.lineSoft, cursor: 'pointer', textAlign: schmal ? 'center' : 'left', padding: schmal ? '11px 0 0' : '11px 10px 0' }}>
+        {schmal ? '⌘K' : <>Schnellnavigation: <span style={{ border: `1px solid ${T.line}`, borderRadius: 5, padding: '1px 5px', background: T.panel2 }}>⌘K</span></>}
       </button>
     </div>
   );
 
   return (
     <>
-      <aside className="os-sidebar-desktop" style={{ width: 232, flex: '0 0 auto', borderRight: `1px solid ${T.line}`, background: T.panel, height: '100vh', position: 'sticky', top: 0 }}>
+      <aside className="os-sidebar-desktop" style={{ width: schmal ? 64 : 236, flex: '0 0 auto', borderRight: `1px solid ${T.line}`, background: T.panel, height: '100vh', position: 'sticky', top: 0, transition: 'width .18s ease' }}>
         {inhalt}
       </aside>
 
       <div className="os-sidebar-mobilbar" style={{ display: 'none', position: 'sticky', top: 0, zIndex: 40, background: T.panel, borderBottom: `1px solid ${T.line}`, padding: '10px 14px', alignItems: 'center', gap: 12 }}>
         <button onClick={() => setMobilOffen(true)} aria-label="Menü" style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 8, color: T.ink, fontSize: 16, padding: '4px 10px', cursor: 'pointer' }}>☰</button>
-        <Link href="/os" style={{ fontFamily: T.mono, fontSize: 12.5, fontWeight: 700, letterSpacing: '.14em', color: T.ink, textDecoration: 'none' }}>MAKE OS</Link>
+        <Link href="/os/start" style={{ fontFamily: T.mono, fontSize: 12.5, fontWeight: 700, letterSpacing: '.14em', color: T.ink, textDecoration: 'none' }}>MAKE OS</Link>
+        {bereich && <span style={{ fontSize: 12, color: T.muted }}>· {bereich.titel}</span>}
       </div>
       {mobilOffen && (
         <div onClick={() => setMobilOffen(false)} style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,.55)' }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: 262, height: '100%', background: T.panel, borderRight: `1px solid ${T.line}` }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: 268, height: '100%', background: T.panel, borderRight: `1px solid ${T.line}` }}>
             {inhalt}
           </div>
         </div>
@@ -282,14 +322,14 @@ export function OsSidebar() {
                 else if (e.key === 'ArrowUp') { e.preventDefault(); setSel(s => Math.max(s - 1, 0)); }
                 else if (e.key === 'Enter' && treffer[sel]) { setPalette(false); router.push(treffer[sel].href); }
               }}
-              placeholder="Wohin, Sir? (Bereich oder Agent tippen)"
+              placeholder="Wohin, Sir? (Bereich, Seite oder Agent tippen)"
               style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: T.ink, fontFamily: T.sans, fontSize: 15, padding: '14px 16px', borderBottom: `1px solid ${T.line}` }}
             />
             <div style={{ maxHeight: '46vh', overflowY: 'auto', padding: 6 }}>
               {treffer.slice(0, 14).map((t, i) => (
                 <div key={t.href + i} onClick={() => { setPalette(false); router.push(t.href); }} onMouseEnter={() => setSel(i)}
-                  style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '9px 12px', borderRadius: 9, cursor: 'pointer', background: i === sel ? 'rgba(33,181,170,.14)' : 'transparent' }}>
-                  <span style={{ fontFamily: T.mono, fontSize: 9, color: T.muted, width: 92, flex: '0 0 auto', textTransform: 'uppercase', letterSpacing: '.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.group}</span>
+                  style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '9px 12px', borderRadius: 9, cursor: 'pointer', background: i === sel ? T.accentSoft : 'transparent' }}>
+                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, width: 104, flex: '0 0 auto', textTransform: 'uppercase', letterSpacing: '.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.group}</span>
                   <span style={{ fontSize: 13.5, color: i === sel ? T.accent : T.ink }}>{t.label}</span>
                   {t.hint && <span style={{ fontSize: 11, color: T.muted }}>{t.hint}</span>}
                 </div>
@@ -300,14 +340,21 @@ export function OsSidebar() {
         </div>
       )}
 
-      <style>{`
+      {/* dangerouslySetInnerHTML, nicht als Kind-Text: das „>" im Kindselektor
+          wird sonst serverseitig zu &gt; escaped, clientseitig nicht — genau
+          das löste den Hydrations-Fehler aus, der auf JEDER /os-Seite unten im
+          Bild hing. */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes scorePuls { 0%,100% { box-shadow: 0 0 0 0 rgba(33,181,170,.0); } 50% { box-shadow: 0 0 0 4px rgba(33,181,170,.10); } }
+        .score-puls { animation: scorePuls 3.2s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) { .score-puls { animation: none; } }
         @media (max-width: 900px) {
           .os-sidebar-desktop { display: none !important; }
           .os-sidebar-mobilbar { display: flex !important; }
           .os-shell { flex-direction: column !important; }
           .os-shell > main { height: auto !important; min-height: calc(100vh - 49px); }
         }
-      `}</style>
+      ` }} />
     </>
   );
 }

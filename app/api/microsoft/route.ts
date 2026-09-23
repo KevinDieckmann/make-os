@@ -1,9 +1,23 @@
 import { NextResponse } from 'next/server';
-import { saveJson } from '@/lib/store/local-db';
+import { loadJson, saveJson } from '@/lib/store/local-db';
 
-// ─── Real Microsoft 365 data — Snapshot via Claude MCP, aktualisiert 2026-07-30 ─
-// Refresh: Kevin sagt Claude "Microsoft-Daten aktualisieren" → Claude zieht per MCP
-// und schreibt diese Datei neu. (Live-M365 kommt mit Azure-App-Registrierung.)
+// ─── Microsoft 365 (KEMARIS) — Postfach als Bestand ─────────────────────────
+// Die Mails leben seit 03.08. in .data/m365-postfach.json und werden über PUT
+// aktualisiert — Kevin sagt Claude „KEMARIS-Postfach aktualisieren", Claude
+// zieht den Eingang über die Microsoft-Anbindung und schreibt ihn hierher.
+// Vorher war der Stand IM CODE eingefroren (unten als DATA, bleibt als
+// Rückfalllösung und für Kalender/Teams/Dokumente).
+//
+// Voll-Live ohne Claude dazwischen braucht eine Azure-App-Registrierung
+// (MS_CLIENT_ID/SECRET/TENANT in .env.local) — steht im Bauplan.
+
+/** Form, die Inbox und Feed erwarten. */
+interface M365Mail {
+  id: string; subject: string; senderName?: string; senderEmail?: string;
+  preview?: string; receivedAt: string; isRead: boolean;
+  hasAttachment?: boolean; importance?: string; webLink?: string;
+}
+interface PostfachStore { stand: string; mails: M365Mail[] }
 
 const DATA = {
   lastUpdated: '2026-07-30T07:00:00.000Z',
@@ -447,23 +461,64 @@ const DATA = {
 const MAX_TAGE = 7;
 
 export async function GET() {
-  const alterTage = Math.floor((Date.now() - Date.parse(DATA.lastUpdated)) / 86_400_000);
+  // Mails aus dem Bestand — der ist aktualisierbar. Nur wenn er (noch) nicht
+  // existiert, greift der alte, einprogrammierte Stand.
+  const store = await loadJson<PostfachStore>('m365-postfach');
+  const mails = Array.isArray(store?.mails) && store.mails.length ? store.mails : (DATA.emails as unknown as M365Mail[]);
+  const stand = store?.stand ?? DATA.lastUpdated;
+
+  const alterTage = Math.floor((Date.now() - Date.parse(stand)) / 86_400_000);
   const veraltet = !Number.isFinite(alterTage) || alterTage > MAX_TAGE;
 
   // Write-through: das M365-Postfach gehört ins Brain. ABER ein zu alter
   // Stand darf nicht mehr hinein — sonst setzt der Netzwerk-Abgleich daraus
   // dauerhaft falsche „zuletzt gesprochen"-Daten in die Kontakte.
   if (!veraltet) {
-    try { await saveJson('microsoft-inbox', { emails: DATA.emails, at: DATA.lastUpdated }); } catch { /* Anzeige geht vor */ }
+    try { await saveJson('microsoft-inbox', { emails: mails, at: stand }); } catch { /* Anzeige geht vor */ }
   }
 
   return NextResponse.json(
     {
       ...DATA,
+      emails: mails,
+      lastUpdated: stand,
       alterTage: Number.isFinite(alterTage) ? alterTage : null,
       veraltet,
-      ...(veraltet ? { hinweis: `Postfach-Stand ist ${alterTage} Tage alt — nicht als aktueller Eingang verwenden.` } : {}),
+      ...(veraltet ? { hinweis: `Postfach-Stand ist ${alterTage} Tage alt — „KEMARIS-Postfach aktualisieren" zu Claude sagen.` } : {}),
     },
     { headers: { 'Cache-Control': 'no-store' } },
   );
+}
+
+/**
+ * Frischen Posteingang ablegen. Aufrufer ist Claude (per Microsoft-Anbindung)
+ * oder später der Graph-Abruf selbst. Ersetzt den ganzen Bestand — das
+ * Postfach ist ein Spiegel, kein Archiv; gelöschte Mails sollen verschwinden.
+ */
+export async function PUT(req: Request) {
+  let body: { mails?: unknown };
+  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein JSON.' }, { status: 400 }); }
+  if (!Array.isArray(body.mails)) return NextResponse.json({ ok: false, error: 'Feld "mails" (Liste) fehlt.' }, { status: 400 });
+
+  const mails: M365Mail[] = (body.mails as Record<string, unknown>[])
+    .filter(m => m && typeof m === 'object' && m.id && m.subject)
+    .map(m => ({
+      id: String(m.id).slice(0, 300),
+      subject: String(m.subject).slice(0, 300),
+      senderName: m.senderName ? String(m.senderName).slice(0, 120) : undefined,
+      senderEmail: m.senderEmail ? String(m.senderEmail).slice(0, 160) : undefined,
+      preview: m.preview ? String(m.preview).slice(0, 400) : undefined,
+      receivedAt: String(m.receivedAt ?? new Date().toISOString()).slice(0, 30),
+      isRead: m.isRead === true,
+      hasAttachment: m.hasAttachment === true,
+      importance: m.importance ? String(m.importance).slice(0, 12) : undefined,
+      webLink: m.webLink ? String(m.webLink).slice(0, 600) : undefined,
+    }))
+    .slice(0, 200);
+
+  if (!mails.length) return NextResponse.json({ ok: false, error: 'Keine gültigen Mails in der Liste.' }, { status: 400 });
+
+  const stand = new Date().toISOString();
+  await saveJson('m365-postfach', { stand, mails } satisfies PostfachStore);
+  return NextResponse.json({ ok: true, anzahl: mails.length, stand });
 }

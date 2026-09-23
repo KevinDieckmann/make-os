@@ -7,6 +7,8 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
+import { FARBE as C } from '@/lib/make-one/design';
+import { Held } from './Held';
 import { localDay } from '@/lib/zeit';
 import { useSpeichern } from '@/hooks/useSpeichern';
 import { eur } from '@/lib/make-one/finance-data';
@@ -17,7 +19,7 @@ import {
 import { textLesen, zuKontakt, type Rohling } from '@/lib/make-one/netzwerk-import';
 
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const feld = { background: T.void, border: `1px solid ${T.line}`, borderRadius: 8, color: T.ink, fontFamily: T.sans, fontSize: 13, padding: '7px 10px', outline: 'none' };
 
 type Sicht = 'liegt' | 'pipeline' | 'kontakte';
@@ -29,7 +31,7 @@ export function NetzwerkView() {
   const [sicht, setSicht] = useState<Sicht>('liegt');
   const [offen, setOffen] = useState<string | null>(null);
   const [suche, setSuche] = useState('');
-  const [wer, setWer] = useState<'alle' | 'kevin' | 'malin' | 'beide'>('alle');
+  const [wer, setWer] = useState<'alle' | string | 'beide'>('alle');
   const heute = localDay();
 
   useEffect(() => {
@@ -223,11 +225,11 @@ export function NetzwerkView() {
               {k.firma && <span style={{ color: T.muted, fontWeight: 400 }}> · {k.firma}</span>}
             </div>
             <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap', marginTop: 3 }}>
-              <span style={{ fontFamily: T.mono, fontSize: 9.5, color: nm.farbe, border: `1px solid ${nm.farbe}44`, borderRadius: 5, padding: '1px 6px' }}>{nm.label}</span>
+              <span style={{ fontFamily: T.mono, fontSize: 11, color: nm.farbe, border: `1px solid ${nm.farbe}44`, borderRadius: 5, padding: '1px 6px' }}>{nm.label}</span>
               {k.rolle && <span style={{ fontSize: 11.5, color: T.muted }}>{k.rolle}</span>}
-              {k.letzterKontakt && <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>zuletzt {k.letzterKontakt.slice(8)}.{k.letzterKontakt.slice(5, 7)}.</span>}
-              <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{k.besitzer === 'beide' ? 'Beide' : k.besitzer === 'malin' ? 'Malin' : 'Kevin'}</span>
-              {!!meine.length && <span style={{ fontFamily: T.mono, fontSize: 10, color: T.accent }}>{meine.length} Chance{meine.length === 1 ? '' : 'n'}{offeneW ? ` · ${eur(offeneW)}` : ''}</span>}
+              {k.letzterKontakt && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>zuletzt {k.letzterKontakt.slice(8)}.{k.letzterKontakt.slice(5, 7)}.</span>}
+              <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{k.besitzer === 'beide' ? 'Beide' : k.besitzer === 'malin' ? 'Malin' : 'Kevin'}</span>
+              {!!meine.length && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent }}>{meine.length} Chance{meine.length === 1 ? '' : 'n'}{offeneW ? ` · ${eur(offeneW)}` : ''}</span>}
             </div>
           </div>
           <span style={{ fontFamily: T.mono, fontSize: 12, color: T.muted }}>{auf ? '▾' : '▸'}</span>
@@ -319,16 +321,25 @@ export function NetzwerkView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 940, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
         <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
-        <div style={lbl}>Netzwerk</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>
-          {kontakte.length} {kontakte.length === 1 ? 'Kontakt' : 'Kontakte'}
-          {wert.anzahl > 0 && <span style={{ fontSize: 15, fontWeight: 600, color: T.accent, marginLeft: 12 }}>{eur(wert.gewichtet)} gewichtet</span>}
-        </h1>
-        <p style={{ fontSize: 13, color: T.inkDim, marginBottom: 16 }}>
-          {wert.anzahl > 0
-            ? <>{wert.anzahl} offene Chancen über {eur(wert.roh)} — nach Abschluss-Wahrscheinlichkeit der Stufen {eur(wert.gewichtet)}.</>
-            : <>Noch keine Chancen erfasst. Das Geld liegt im Nachhalten, nicht im Sammeln.</>}
-        </p>
+        {/* ── Der Held (UX 5, 06.09.) ───────────────────────────────────────
+            Nicht die Zahl der Kontakte ist die Frage, sondern was davon Geld
+            werden kann — und was gerade kalt wird. Kontaktzahl und Rohwert
+            stehen daneben, nicht darüber. */}
+        <Held
+          wert={wert.anzahl > 0 ? eur(wert.gewichtet) : String(kontakte.length)}
+          label={wert.anzahl > 0 ? 'Pipeline gewichtet' : kontakte.length === 1 ? 'Kontakt' : 'Kontakte'}
+          farbe={wert.anzahl > 0 ? C.ink : C.inkDim}
+          satz={wert.anzahl === 0
+            ? <>Noch keine Chancen erfasst. Das Geld liegt im Nachhalten, nicht im Sammeln.</>
+            : liegt.length
+              ? <><b style={{ color: C.achtung }}>{liegt.length}</b> {liegt.length === 1 ? 'Faden' : 'Fäden'} {liegt.length === 1 ? 'wird' : 'werden'} gerade kalt — das ist der teuerste Posten auf dieser Seite.</>
+              : <>Nichts liegt liegen. {wert.anzahl} offene {wert.anzahl === 1 ? 'Chance' : 'Chancen'} laufen nach.</>}
+          neben={[
+            { label: 'offene Chancen', wert: String(wert.anzahl) },
+            { label: 'Rohwert', wert: eur(wert.roh) },
+            { label: 'Kontakte', wert: String(kontakte.length) },
+          ]}
+        />
 
         {/* Anlegen */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
@@ -388,7 +399,7 @@ export function NetzwerkView() {
                       <span style={{ fontSize: 12, color: T.muted, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {[r.firma, r.rolle, r.email, r.telefon].filter(Boolean).join(' · ') || '—'}
                       </span>
-                      {r.doppelt && <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.amber }}>schon da</span>}
+                      {r.doppelt && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.amber }}>schon da</span>}
                     </div>
                   ))}
                 </div>
@@ -423,7 +434,7 @@ export function NetzwerkView() {
                   <div style={{ maxHeight: 180, overflowY: 'auto', border: `1px solid ${T.lineSoft}`, borderRadius: 9 }}>
                     {verlauf.slice(0, 40).map((v, i) => (
                       <div key={`${v.name}-${i}`} style={{ display: 'flex', gap: 9, padding: '6px 11px', borderTop: i ? `1px solid ${T.lineSoft}` : 0 }}>
-                        <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.accent, minWidth: 74 }}>{v.datum}</span>
+                        <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, minWidth: 74 }}>{v.datum}</span>
                         <span style={{ fontSize: 12.5, color: T.ink, minWidth: 120 }}>{v.name}</span>
                         <span style={{ fontSize: 11.5, color: T.muted, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.woher} · {v.beleg}</span>
                       </div>
@@ -459,7 +470,7 @@ export function NetzwerkView() {
                       return (
                         <button key={k} onClick={() => setMacArt(k)}
                           style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 11px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${macArt === k ? T.accent : T.line}`, background: macArt === k ? `${T.accent}1c` : 'transparent', color: macArt === k ? T.accentInk : T.inkDim }}>
-                          {label} <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{n}</span>
+                          {label} <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{n}</span>
                         </button>
                       );
                     })}
@@ -481,7 +492,7 @@ export function NetzwerkView() {
                         </span>
                       </div>
                     ))}
-                    {macAuswahl.length > 50 && <div style={{ padding: '7px 11px', fontFamily: T.mono, fontSize: 10.5, color: T.muted, borderTop: `1px solid ${T.lineSoft}` }}>+{macAuswahl.length - 50} weitere — alle werden übernommen</div>}
+                    {macAuswahl.length > 50 && <div style={{ padding: '7px 11px', fontFamily: T.mono, fontSize: 11, color: T.muted, borderTop: `1px solid ${T.lineSoft}` }}>+{macAuswahl.length - 50} weitere — alle werden übernommen</div>}
                     {!macAuswahl.length && <div style={{ padding: '12px', fontSize: 12.5, color: T.muted }}>In dieser Gruppe ist niemand Neues.</div>}
                   </div>
                 </>
@@ -504,7 +515,7 @@ export function NetzwerkView() {
                     {vorschlaege.map((v, i) => (
                       <div key={v.email} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '7px 0', borderTop: i ? `1px solid ${T.lineSoft}` : 0 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 600, color: T.ink }}>{v.name} <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{v.anzahl}×</span></div>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, color: T.ink }}>{v.name} <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{v.anzahl}×</span></div>
                           <div style={{ fontSize: 11, color: T.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.email} · {v.betreff}</div>
                         </div>
                         <button onClick={() => vorschlagUebernehmen(v)}
@@ -546,7 +557,7 @@ export function NetzwerkView() {
               border: `1px solid ${gruppe === k ? (k === 'einsortieren' ? T.amber : T.accent) : T.line}`,
               background: gruppe === k ? `${k === 'einsortieren' ? T.amber : T.accent}1c` : 'transparent',
               color: gruppe === k ? (k === 'einsortieren' ? T.amber : T.accentInk) : T.inkDim,
-            }}>{label} <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>{gruppenZahl[k]}</span></button>
+            }}>{label} <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{gruppenZahl[k]}</span></button>
           ))}
         </div>
 
@@ -578,11 +589,11 @@ export function NetzwerkView() {
                     style={{ display: 'flex', gap: 11, padding: '10px 16px', alignItems: 'center', borderTop: `1px solid ${T.lineSoft}`, cursor: 'pointer' }}>
                     <span style={{ color: farbe, fontSize: 11, flex: '0 0 auto' }}>{l.art === 'stumm' ? '◷' : l.art === 'ohne-schritt' ? '◇' : '●'}</span>
                     <span style={{ fontSize: 13, color: T.inkDim, flex: 1, lineHeight: 1.4 }}>{l.text}</span>
-                    <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>öffnen ›</span>
+                    <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>öffnen ›</span>
                   </div>
                 );
               })}
-              {liegt.length > 40 && <div style={{ padding: '10px 16px', fontFamily: T.mono, fontSize: 10.5, color: T.muted, borderTop: `1px solid ${T.lineSoft}` }}>+{liegt.length - 40} weitere</div>}
+              {liegt.length > 40 && <div style={{ padding: '10px 16px', fontFamily: T.mono, fontSize: 11, color: T.muted, borderTop: `1px solid ${T.lineSoft}` }}>+{liegt.length - 40} weitere</div>}
             </div>
           ) : (
             <div style={{ ...panel, padding: '28px', textAlign: 'center', color: T.inkDim, fontSize: 13.5 }}>
@@ -633,7 +644,7 @@ export function NetzwerkView() {
           </div>
         )}
 
-        <div style={{ marginTop: 18, fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>
+        <div style={{ marginTop: 18, fontFamily: T.mono, fontSize: 11, color: T.muted }}>
           Euer Netzwerk — liegt lokal, gehört euch. Nähe bestimmt den Melde-Takt: eng 30 · warm 90 · lose 180 Tage.
         </div>
       </div>

@@ -69,7 +69,7 @@ export function Header() {
       {/* Phase indicator */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <div style={{ width: 5, height: 5, background: phaseColor[phase] }} />
-        <span style={{ fontSize: 10, color: phaseColor[phase], letterSpacing: '0.1em' }}>
+        <span style={{ fontSize: 11, color: phaseColor[phase], letterSpacing: '0.1em' }}>
           {PHASE_LABELS[phase]}
         </span>
       </div>
@@ -93,7 +93,7 @@ export function Header() {
           background: holdingBlur ? 'rgba(255,136,0,0.08)' : 'transparent',
           border: `1px solid ${holdingBlur ? '#ff8800' : '#2a2a2a'}`,
           color: holdingBlur ? '#ff8800' : '#777',
-          fontSize: 10,
+          fontSize: 11,
           letterSpacing: '0.1em',
           cursor: 'pointer',
           fontFamily: 'var(--mono-font)',
@@ -102,7 +102,7 @@ export function Header() {
           gap: 5,
         }}
       >
-        <span style={{ fontSize: 8 }}>{holdingBlur ? '●' : '○'}</span>
+        <span style={{ fontSize: 11 }}>{holdingBlur ? '●' : '○'}</span>
         HOLDING {holdingBlur ? 'VERBORGEN' : 'SICHTBAR'}
       </button>
     </header>

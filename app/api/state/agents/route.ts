@@ -3,7 +3,7 @@
 // Map: { [agentId]: { autonomy?, enabled?, model?, buildNext? } }
 
 import { NextResponse } from 'next/server';
-import { loadJson, saveJson } from '@/lib/store/local-db';
+import { loadJson, updateJson } from '@/lib/store/local-db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,6 +23,24 @@ export async function PUT(req: Request) {
   if (!map || typeof map !== 'object' || Array.isArray(map)) {
     return NextResponse.json({ ok: false, error: 'Ungültige Konfig.' }, { status: 400 });
   }
-  await saveJson('agents-config', map);
+  // Schrumpf-Wächter: die Ansicht schreibt die komplette Konfiguration zurück.
+  // Ohne geladenen Stand würde sie alle von Hand gesetzten Autonomie-Stufen
+  // auf einmal auf Standard zurückdrehen.
+  let verloren: string | null = null;
+  await updateJson<AgentConfigMap>('agents-config', current => {
+    const alt = Object.keys(current ?? {}).length;
+    if (alt >= 4 && Object.keys(map).length < alt / 2) {
+      verloren = `${alt} → ${Object.keys(map).length} Agenten`;
+      return current!;
+    }
+    return map;
+  });
+
+  if (verloren) {
+    return NextResponse.json(
+      { ok: false, error: `Verweigert: die Einstellungen wären von ${verloren} geschrumpft. Der alte Stand bleibt stehen — Seite neu laden.` },
+      { status: 409 },
+    );
+  }
   return NextResponse.json({ ok: true });
 }

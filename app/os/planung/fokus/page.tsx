@@ -1,7 +1,7 @@
-import { FokusReglerView } from '@/components/os/FokusReglerView';
+import { redirect } from 'next/navigation';
 
-export const metadata = { title: 'Fokus-Regler — MAKE OS' };
-
+// Die Fokus-Regler leben seit 02.08. im Kompass — dort stehen Prioritäten,
+// Fokus und Regler an einem Ort. Alte Verweise laufen so nicht ins Leere.
 export default function FokusReglerPage() {
-  return <FokusReglerView />;
+  redirect('/os/kompass');
 }

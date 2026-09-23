@@ -28,9 +28,9 @@ function HabitCard({ label, shortLabel, sub, accentColor, onClick }: {
         borderLeft: `2px solid ${accentColor}`,
       }}
     >
-      <div style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: accentColor, letterSpacing: '0.12em' }}>{shortLabel}</div>
+      <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: accentColor, letterSpacing: '0.12em' }}>{shortLabel}</div>
       <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, Inter, sans-serif', fontSize: 13, color: '#ffffff', fontWeight: 500 }}>{label}</div>
-      <div style={{ fontFamily: 'var(--mono-font)', fontSize: 10, color: '#777', letterSpacing: '0.04em' }}>{sub}</div>
+      <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#777', letterSpacing: '0.04em' }}>{sub}</div>
     </button>
   );
 }

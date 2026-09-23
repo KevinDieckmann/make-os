@@ -22,7 +22,7 @@ function HabitRow({ habit }: { habit: Habit }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #141414' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'var(--mono-font)', fontSize: 8.5, color: habit.accent, letterSpacing: '0.1em', marginBottom: 3 }}>
+        <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: habit.accent, letterSpacing: '0.1em', marginBottom: 3 }}>
           {habit.short}
         </div>
         <div style={{ fontSize: 13, color: '#fff', fontWeight: 500 }}>{habit.label}</div>
@@ -41,7 +41,7 @@ function HabitRow({ habit }: { habit: Habit }) {
                 title={isToday ? 'Heute abhaken' : undefined}
                 style={{ width: 18, height: 18, background: bg, border, cursor: isToday ? 'pointer' : 'default' }}
               />
-              <span style={{ fontFamily: 'var(--mono-font)', fontSize: 7, color: isToday ? habit.accent : '#444' }}>{DAYS[i]}</span>
+              <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: isToday ? habit.accent : '#444' }}>{DAYS[i]}</span>
             </div>
           );
         })}
@@ -52,7 +52,7 @@ function HabitRow({ habit }: { habit: Habit }) {
         <div style={{ fontFamily: 'var(--mono-font)', fontSize: 15, color: onTarget ? habit.accent : '#fff', fontWeight: 600 }}>
           {done}<span style={{ color: '#555', fontSize: 11 }}>/{habit.targetPerWeek}</span>
         </div>
-        <div style={{ fontFamily: 'var(--mono-font)', fontSize: 7.5, color: onTarget ? '#00ff66' : '#666', letterSpacing: '0.06em' }}>
+        <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: onTarget ? '#00ff66' : '#666', letterSpacing: '0.06em' }}>
           {onTarget ? '✓ ZIEL' : 'WOCHE'}
         </div>
       </div>
@@ -68,8 +68,8 @@ function Checklist({ title, steps, accent }: { title: string; steps: ChecklistSt
   return (
     <div style={{ flex: 1 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-        <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: accent, letterSpacing: '0.1em' }}>{title}</span>
-        <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#666' }}>{doneCount}/{items.length} · {totalMin}min</span>
+        <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: accent, letterSpacing: '0.1em' }}>{title}</span>
+        <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#666' }}>{doneCount}/{items.length} · {totalMin}min</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {items.map(step => (
@@ -81,7 +81,7 @@ function Checklist({ title, steps, accent }: { title: string; steps: ChecklistSt
           >
             <div style={{ width: 12, height: 12, border: `1px solid ${step.done ? accent : '#333'}`, background: step.done ? accent : 'transparent', flexShrink: 0 }} />
             <span style={{ fontSize: 11.5, color: step.done ? '#666' : '#ddd', textDecoration: step.done ? 'line-through' : 'none', flex: 1 }}>{step.label}</span>
-            <span style={{ fontFamily: 'var(--mono-font)', fontSize: 8.5, color: '#555' }}>{step.minutes}m</span>
+            <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#555' }}>{step.minutes}m</span>
           </div>
         ))}
       </div>
@@ -92,7 +92,7 @@ function Checklist({ title, steps, accent }: { title: string; steps: ChecklistSt
 export function RoutineTracker() {
   return (
     <div className="os-card" style={{ padding: 16 }}>
-      <div style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#777', letterSpacing: '0.14em', marginBottom: 10 }}>
+      <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#777', letterSpacing: '0.14em', marginBottom: 10 }}>
         ROUTINEN // DIESE WOCHE — KW 31
       </div>
 

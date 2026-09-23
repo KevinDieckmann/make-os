@@ -10,18 +10,20 @@ import Link from 'next/link';
 // Tag, der Rest der Woche bleibt unangetastet.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNachspeichern } from '@/lib/make-one/nachspeichern';
 import { THEME as T } from '@/lib/make-one/os-data';
+import { ART_FARBE, type PlanBlock } from '@/types/planer';
+import { PlanerLeiste } from './PlanerLeiste';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
+import { wochenplanSchreiben } from '@/lib/make-one/wochenplan-sync';
 import { SAEULE_VON_PROJEKT, KATEGORIE_ZU_SAEULE, SAEULE_LABEL, SAEULE_FARBE, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
 
-interface PlanBlock { id: string; date: string; startMin: number; dauerMin: number; titel: string; art: 'fokus' | 'reha' | 'routine' | 'pause' | 'aufgabe' | 'block'; taskId?: string }
 interface Routine { id: string; label: string; wann: 'morgen' | 'tag' | 'abend'; kategorie: string; dauerMin: number; aktiv: boolean }
 interface Fix { titel: string; startMin: number; dauerMin: number }
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
-const ART_FARBE: Record<string, string> = { fokus: T.accent, reha: '#58D9CD', routine: T.amber, pause: '#96A8A2', aufgabe: '#4A6CF7', block: '#AC9D80' };
 const KATEGORIE_FARBE: Record<string, string> = { gesundheit: '#58D9CD', leben: '#C77DFF', business: '#4A6CF7' };
 const mm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const snap = (min: number) => Math.round(min / 15) * 15;
@@ -30,11 +32,25 @@ const snap = (min: number) => Math.round(min / 15) * 15;
 const START = 6 * 60, ENDE = 22 * 60, PX = 0.85;
 const H = (ENDE - START) * PX;
 
+/**
+ * Kevins Ansage: „Nimm im Planer auch viele Standards mit dabei." Das sind die
+ * Bausteine, aus denen ein Tag bei Kevin und Malin tatsächlich besteht —
+ * einmal anklicken statt jedes Mal neu tippen.
+ */
 const BAUSTEINE: { art: PlanBlock['art']; titel: string; dauerMin: number }[] = [
   { art: 'fokus', titel: 'Fokus (Deep Work)', dauerMin: 90 },
+  { art: 'fokus', titel: 'Kurzer Fokus', dauerMin: 45 },
   { art: 'reha', titel: 'Reha / Rücken', dauerMin: 30 },
+  { art: 'reha', titel: 'Bewegung / Spaziergang', dauerMin: 30 },
   { art: 'pause', titel: 'Pause', dauerMin: 15 },
+  { art: 'pause', titel: 'Mittag', dauerMin: 45 },
   { art: 'block', titel: 'Blockzeit', dauerMin: 60 },
+  { art: 'block', titel: 'Postfach leeren', dauerMin: 30 },
+  { art: 'block', titel: 'Telefonate / Rückrufe', dauerMin: 45 },
+  { art: 'block', titel: 'Finanzen & Rechnungen', dauerMin: 60 },
+  { art: 'block', titel: 'Termin mit Malin', dauerMin: 60 },
+  { art: 'routine', titel: 'Tagesstart', dauerMin: 15 },
+  { art: 'routine', titel: 'Tagesende', dauerMin: 15 },
 ];
 
 const neuId = () => `pb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
@@ -45,8 +61,10 @@ function montagVon(tag: string): string {
   return localDay(d);
 }
 
-export function TagesplanView() {
-  const heute = localDay();
+export function TagesplanView({ tag }: { tag?: string } = {}) {
+  // Kevins Ansage: den nächsten Tag angucken können. Ohne Anker ist es heute.
+  const heute = tag ?? localDay();
+  const istHeute = heute === localDay();
   const woche = montagVon(heute);
   const { state: tasksState } = useTasks();
   const [wocheBloecke, setWocheBloecke] = useState<PlanBlock[]>([]);
@@ -59,11 +77,21 @@ export function TagesplanView() {
   const [aktivBlock, setAktivBlock] = useState<string | null>(null);
   const [jetztMin, setJetztMin] = useState<number | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const hSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /** Stand, wie er zuletzt gelesen/geschrieben wurde — Basis für die Unterschiede. */
+  const gespeichert = useRef<PlanBlock[] | null>(null);
+  /** Ein Speichervorgang steht aus — dann keinen Abgleich dazwischenschieben. */
+  const speichernSteht = useRef(false);
+  const hSpaeter = useNachspeichern<Record<string, string[]>>(next => {
+    fetch('/api/state/health', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
+  }, 300);
 
   useEffect(() => {
     fetch(`/api/state/wochenplan?woche=${woche}`).then(r => r.json())
-      .then(d => setWocheBloecke(Array.isArray(d.bloecke) ? d.bloecke : [])).catch(() => {});
+      .then(d => {
+        const geladen = Array.isArray(d.bloecke) ? d.bloecke : [];
+        gespeichert.current = geladen;
+        setWocheBloecke(geladen);
+      }).catch(() => {});
     Promise.all([
       fetch('/api/apple-calendar').then(r => r.json()).catch(() => []),
       fetch('/api/kemaris-calendar').then(r => r.json()).catch(() => ({ events: [] })),
@@ -99,15 +127,36 @@ export function TagesplanView() {
 
   const meine = useMemo(() => wocheBloecke.filter(b => b.date === heute), [wocheBloecke, heute]);
 
-  /** Heutige Blöcke ersetzen, Rest der Woche unangetastet lassen, debounced sichern. */
+  /** Heutige Blöcke ersetzen, Rest der Woche unangetastet lassen, debounced
+   *  sichern — als Einzel-Änderungen, damit Malins Fenster nichts verliert. */
   function speichern(nextHeute: PlanBlock[]) {
     const alle = [...wocheBloecke.filter(b => b.date !== heute), ...nextHeute];
     setWocheBloecke(alle);
     clearTimeout(saveTimer.current);
+    speichernSteht.current = true;
     saveTimer.current = setTimeout(() => {
-      fetch('/api/state/wochenplan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ woche, bloecke: alle }) }).catch(() => {});
+      speichernSteht.current = false;
+      const alt = gespeichert.current;
+      gespeichert.current = alle;
+      void wochenplanSchreiben(woche, alt, alle);
     }, 500);
   }
+
+  // Regelmäßiger Abgleich mit dem Bestand — nie mitten in einem eigenen Zug.
+  useEffect(() => {
+    const iv = setInterval(() => {
+      if (speichernSteht.current) return;
+      fetch(`/api/state/wochenplan?woche=${woche}`).then(r => r.json()).then(d => {
+        if (speichernSteht.current) return;
+        const neu = Array.isArray(d.bloecke) ? d.bloecke : [];
+        if (JSON.stringify(neu) !== JSON.stringify(gespeichert.current ?? [])) {
+          gespeichert.current = neu;
+          setWocheBloecke(neu);
+        }
+      }).catch(() => { /* nächste Runde */ });
+    }, 60_000);
+    return () => clearInterval(iv);
+  }, [woche]);
 
   function dropAufKalender(e: React.DragEvent) {
     e.preventDefault();
@@ -146,16 +195,11 @@ export function TagesplanView() {
   // Routine-Häkchen — derselbe Store wie im Gesundheits-Cockpit.
   const erledigt = new Set(hlog[heute] ?? []);
   function toggleRoutine(id: string) {
-    setHlog(prev => {
-      const tag = new Set(prev[heute] ?? []);
-      tag.has(id) ? tag.delete(id) : tag.add(id);
-      const next = { ...prev, [heute]: Array.from(tag) };
-      clearTimeout(hSaveTimer.current);
-      hSaveTimer.current = setTimeout(() => {
-        fetch('/api/state/health', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
-      }, 300);
-      return next;
-    });
+    const tag = new Set(hlog[heute] ?? []);
+    tag.has(id) ? tag.delete(id) : tag.add(id);
+    const next = { ...hlog, [heute]: Array.from(tag) };
+    setHlog(next);
+    hSpaeter(next);
   }
 
   // ── Aufgaben-Leiste: Priorität schlägt immer, dann Fokus-Regler, dann Fälligkeit ──
@@ -228,12 +272,13 @@ export function TagesplanView() {
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 1060, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
+        <PlanerLeiste aktiv="tag" tag={heute} />
         <div style={lbl}>Tagesplanung · {datum}</div>
 
         {/* ── Die Fokusthemen stehen über dem Tag ── */}
         <h1 style={{ fontSize: 23, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 6px', lineHeight: 1.3 }}>
           {fokusText
-            ? <><span style={{ color: T.accent }}>◎</span> {fokusText}{fokusQuelle !== 'Tag' && <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, marginLeft: 8, verticalAlign: 'middle' }}>{fokusQuelle.toUpperCase()}</span>}</>
+            ? <><span style={{ color: T.accent }}>◎</span> {fokusText}{fokusQuelle !== 'Tag' && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginLeft: 8, verticalAlign: 'middle' }}>{fokusQuelle.toUpperCase()}</span>}</>
             : <>Worauf es heute ankommt <Link href="/os" style={{ fontSize: 13, color: T.accentInk, textDecoration: 'none', fontWeight: 400 }}>Fokus setzen ›</Link></>}
         </h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
@@ -243,7 +288,7 @@ export function TagesplanView() {
             </span>
           ))}
           {ziele.slice(0, 3).map((z, i) => (
-            <span key={`z${i}`} style={{ fontSize: 12, color: T.inkDim }}>{z.titel} <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>{z.fortschritt}%</span></span>
+            <span key={`z${i}`} style={{ fontSize: 12, color: T.inkDim }}>{z.titel} <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{z.fortschritt}%</span></span>
           ))}
           <Link href="/os/planung/fokus" style={{ fontSize: 11.5, color: T.accentInk, textDecoration: 'none', marginLeft: 'auto' }}>Regler ›</Link>
         </div>
@@ -268,7 +313,7 @@ export function TagesplanView() {
               {/* Zeitspalte */}
               <div style={{ position: 'relative', height: H, width: 42, flex: '0 0 auto' }}>
                 {stunden.map(h => (
-                  <div key={h} style={{ position: 'absolute', top: (h * 60 - START) * PX - 5, right: 6, fontFamily: T.mono, fontSize: 9.5, color: T.muted }}>{String(h).padStart(2, '0')}:00</div>
+                  <div key={h} style={{ position: 'absolute', top: (h * 60 - START) * PX - 5, right: 6, fontFamily: T.mono, fontSize: 11, color: T.muted }}>{String(h).padStart(2, '0')}:00</div>
                 ))}
               </div>
               {/* Tagesspalte */}
@@ -278,9 +323,9 @@ export function TagesplanView() {
                   <div key={h} style={{ position: 'absolute', top: (h * 60 - START) * PX, left: 0, right: 0, borderTop: `1px solid ${T.line}55` }} />
                 ))}
                 {/* Jetzt-Linie */}
-                {jetztMin !== null && jetztMin >= START && jetztMin <= ENDE && (
+                {istHeute && jetztMin !== null && jetztMin >= START && jetztMin <= ENDE && (
                   <div style={{ position: 'absolute', top: (jetztMin - START) * PX, left: 0, right: 0, borderTop: `2px solid ${T.crit}`, zIndex: 3 }}>
-                    <span style={{ position: 'absolute', right: 4, top: -14, fontFamily: T.mono, fontSize: 9, color: T.crit }}>{mm(jetztMin)}</span>
+                    <span style={{ position: 'absolute', right: 4, top: -14, fontFamily: T.mono, fontSize: 11, color: T.crit }}>{mm(jetztMin)}</span>
                   </div>
                 )}
                 {/* Feste Termine — unverrückbar */}
@@ -298,12 +343,12 @@ export function TagesplanView() {
                       onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ move: b.id }))}
                       onClick={() => setAktivBlock(aktiv ? null : b.id)}
                       style={{ position: 'absolute', top: (b.startMin - START) * PX, height: Math.max(18, b.dauerMin * PX - 2), left: 4, right: 4, background: `${farbe}26`, border: `1px solid ${farbe}${aktiv ? '' : '66'}`, borderRadius: 7, padding: '2px 8px', fontSize: 11.5, color: T.ink, overflow: 'hidden', cursor: 'grab', zIndex: 2 }}>
-                      <span style={{ fontFamily: T.mono, fontSize: 9.5, color: farbe }}>{mm(b.startMin)}</span> {b.titel}
+                      <span style={{ fontFamily: T.mono, fontSize: 11, color: farbe }}>{mm(b.startMin)}</span> {b.titel}
                       {aktiv && (
                         <span style={{ position: 'absolute', right: 4, top: 2, display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
-                          <button onClick={() => speichern(meine.map(x => x.id === b.id ? { ...x, dauerMin: Math.max(15, x.dauerMin - 30) } : x))} style={{ background: 'none', border: `1px solid ${T.line}`, borderRadius: 5, color: T.inkDim, fontSize: 10, cursor: 'pointer', padding: '0 5px' }}>−</button>
-                          <button onClick={() => speichern(meine.map(x => x.id === b.id ? { ...x, dauerMin: Math.min(240, x.dauerMin + 30) } : x))} style={{ background: 'none', border: `1px solid ${T.line}`, borderRadius: 5, color: T.inkDim, fontSize: 10, cursor: 'pointer', padding: '0 5px' }}>＋</button>
-                          <button onClick={() => { speichern(meine.filter(x => x.id !== b.id)); setAktivBlock(null); }} style={{ background: 'none', border: `1px solid ${T.crit}66`, borderRadius: 5, color: T.crit, fontSize: 10, cursor: 'pointer', padding: '0 5px' }}>✕</button>
+                          <button onClick={() => speichern(meine.map(x => x.id === b.id ? { ...x, dauerMin: Math.max(15, x.dauerMin - 30) } : x))} style={{ background: 'none', border: `1px solid ${T.line}`, borderRadius: 5, color: T.inkDim, fontSize: 11, cursor: 'pointer', padding: '0 5px' }}>−</button>
+                          <button onClick={() => speichern(meine.map(x => x.id === b.id ? { ...x, dauerMin: Math.min(240, x.dauerMin + 30) } : x))} style={{ background: 'none', border: `1px solid ${T.line}`, borderRadius: 5, color: T.inkDim, fontSize: 11, cursor: 'pointer', padding: '0 5px' }}>＋</button>
+                          <button onClick={() => { speichern(meine.filter(x => x.id !== b.id)); setAktivBlock(null); }} style={{ background: 'none', border: `1px solid ${T.crit}66`, borderRadius: 5, color: T.crit, fontSize: 11, cursor: 'pointer', padding: '0 5px' }}>✕</button>
                         </span>
                       )}
                     </div>
@@ -335,8 +380,11 @@ export function TagesplanView() {
             <div style={{ ...panel, padding: '12px 16px' }}>
               <div style={{ ...lbl, marginBottom: 7 }}>Bausteine</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                {/* Schlüssel ist der Titel, nicht die Art: „block" kommt
+                    sechsmal vor — mit `art` verlieren die Bausteine beim
+                    Ziehen ihre Identität. */}
                 {BAUSTEINE.map(bs => (
-                  <div key={bs.art} draggable
+                  <div key={bs.titel} draggable
                     onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ neu: { art: bs.art, titel: bs.titel, dauerMin: bs.dauerMin } }))}
                     style={{ cursor: 'grab', fontSize: 11.5, color: ART_FARBE[bs.art], border: `1px solid ${ART_FARBE[bs.art]}44`, borderRadius: 7, padding: '4px 9px' }}>
                     {bs.titel} · {bs.dauerMin}m
@@ -361,7 +409,7 @@ export function TagesplanView() {
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 9 }}>
                 <div style={lbl}>Routinen heute</div>
                 <span style={{ fontFamily: T.mono, fontSize: 11, color: erledigt.size ? T.accent : T.muted }}>{Array.from(erledigt).filter(id => routinen.some(r => r.id === id)).length}/{routinen.length}</span>
-                <span style={{ fontSize: 10.5, color: T.muted }}>◎ zahlt auf den Fokus ein · auch in den Tag ziehbar</span>
+                <span style={{ fontSize: 11, color: T.muted }}>◎ zahlt auf den Fokus ein · auch in den Tag ziehbar</span>
                 <Link href="/os/planung/routinen" style={{ fontSize: 11.5, color: T.accentInk, textDecoration: 'none', marginLeft: 'auto' }}>planen ›</Link>
               </div>
               {(['morgen', 'tag', 'abend'] as const).map(wann => {
@@ -369,7 +417,7 @@ export function TagesplanView() {
                 if (!eigene.length) return null;
                 return (
                   <div key={wann} style={{ marginBottom: 8 }}>
-                    <div style={{ fontFamily: T.mono, fontSize: 9, color: T.muted, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>{wann === 'morgen' ? 'Morgens' : wann === 'tag' ? 'Tagsüber' : 'Abends'}</div>
+                    <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>{wann === 'morgen' ? 'Morgens' : wann === 'tag' ? 'Tagsüber' : 'Abends'}</div>
                     {eigene.map(r => {
                       const done = erledigt.has(r.id);
                       const imFokus = passtZumFokus(r);

@@ -49,9 +49,48 @@ export async function GET() {
   return NextResponse.json(sauber(f));
 }
 
+/** Wie viele der 21 Mahlzeiten-Felder gefüllt sind. */
+function gefuellt(f: ErnaehrungFile): number {
+  return TAGE.reduce((n, t) => {
+    const m = f.plan[t];
+    return n + (m.fruehstueck ? 1 : 0) + (m.mittag ? 1 : 0) + (m.abend ? 1 : 0);
+  }, 0);
+}
+
 export async function PUT(req: Request) {
   let body: Partial<ErnaehrungFile>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  const next = await updateJson<ErnaehrungFile>('ernaehrung', () => sauber(body));
+
+  // Schrumpf-Wächter: die Ansicht schreibt immer den kompletten Plan zurück.
+  // Konnte sie ihren Stand nicht laden, würde sie damit die ganze Woche
+  // leerräumen. Ein halbes Leerräumen auf einmal ist nie beabsichtigt.
+  let verloren: string | null = null;
+  const next = await updateJson<ErnaehrungFile>('ernaehrung', current => {
+    const neu = sauber(body);
+    if (!current) return neu;
+    const alt = sauber(current);
+    if (gefuellt(alt) >= 4 && gefuellt(neu) < gefuellt(alt) / 2) {
+      verloren = `Essensplan (${gefuellt(alt)} → ${gefuellt(neu)} Mahlzeiten)`;
+      return alt;
+    }
+    if (alt.einkauf.length >= 4 && neu.einkauf.length < alt.einkauf.length / 2) {
+      verloren = `Einkaufsliste (${alt.einkauf.length} → ${neu.einkauf.length})`;
+      return alt;
+    }
+    // Ein leeres Textfeld gegen ausgeschriebene Grundsätze ist kein Löschen,
+    // das jemand so meint — das ist eine Ansicht ohne geladenen Stand.
+    if (alt.grundsaetze.length > 100 && !neu.grundsaetze.trim()) {
+      verloren = 'Grundsätze (leeres Feld gegen ausgeschriebenen Text)';
+      return alt;
+    }
+    return neu;
+  });
+
+  if (verloren) {
+    return NextResponse.json(
+      { ok: false, error: `Verweigert: ${verloren} wäre stark geschrumpft. Der alte Stand bleibt stehen — Seite neu laden.` },
+      { status: 409 },
+    );
+  }
   return NextResponse.json({ ok: true, ...next });
 }

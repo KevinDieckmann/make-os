@@ -18,7 +18,7 @@ interface Status {
   schritte?: { name: string; ok: boolean; info?: string }[];
 }
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const formColor = (f?: string) => (f === 'gruen' ? T.accent : f === 'gelb' ? T.amber : f === 'rot' ? T.crit : T.muted);
 
 export function Tagesstart() {
@@ -93,12 +93,12 @@ export function Tagesstart() {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
         <div style={lbl}>Tagesstart</div>
         {loop?.tagesform && (
-          <span style={{ fontFamily: T.mono, fontSize: 9.5, color: formColor(loop.tagesform), border: `1px solid ${formColor(loop.tagesform)}55`, borderRadius: 5, padding: '2px 7px', textTransform: 'uppercase' }}>
+          <span style={{ fontFamily: T.mono, fontSize: 11, color: formColor(loop.tagesform), border: `1px solid ${formColor(loop.tagesform)}55`, borderRadius: 5, padding: '2px 7px', textTransform: 'uppercase' }}>
             {loop.tagesform}
           </span>
         )}
         <span style={{ flex: 1 }} />
-        <button onClick={() => run(true)} disabled={busy} style={{ fontFamily: T.mono, fontSize: 10.5, color: busy ? T.muted : T.accentInk, background: 'transparent', border: 'none', cursor: busy ? 'default' : 'pointer', padding: 0 }}>
+        <button onClick={() => run(true)} disabled={busy} style={{ fontFamily: T.mono, fontSize: 11, color: busy ? T.muted : T.accentInk, background: 'transparent', border: 'none', cursor: busy ? 'default' : 'pointer', padding: 0 }}>
           {busy ? 'hole alles …' : '↻ neu'}
         </button>
       </div>
@@ -125,7 +125,7 @@ export function Tagesstart() {
                 <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, flex: '0 0 auto' }}>{i + 1}</span>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <span style={{ fontSize: 13.5, color: T.ink, fontWeight: 600 }}>{p.titel}</span>
-                  {p.wann && <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted, marginLeft: 8 }}>{p.wann}</span>}
+                  {p.wann && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginLeft: 8 }}>{p.wann}</span>}
                   {p.warum && <div style={{ fontSize: 12, color: T.inkDim, marginTop: 1, lineHeight: 1.4 }}>{p.warum}</div>}
                 </div>
                 <button onClick={() => uebernehmen(p, i)} disabled={st === 'busy' || st === 'ok' || st === 'dupl'}
@@ -158,7 +158,7 @@ export function Tagesstart() {
       {loop?.alarm && (
         <div style={{ fontSize: 12.5, color: T.amber, marginTop: 6 }}><b>Wächter:</b> {loop.alarm}</div>
       )}
-      <Link href="/os/tageslauf" style={{ display: 'inline-block', marginTop: 10, fontFamily: T.mono, fontSize: 10.5, color: T.accentInk, textDecoration: 'none' }}>ganze Kette ansehen ›</Link>
+      <Link href="/os/tageslauf" style={{ display: 'inline-block', marginTop: 10, fontFamily: T.mono, fontSize: 11, color: T.accentInk, textDecoration: 'none' }}>ganze Kette ansehen ›</Link>
 
       {/* Was die Zahlen noch verfälscht — ehrlich statt stillschweigend. */}
       {!!st.offen.length && (

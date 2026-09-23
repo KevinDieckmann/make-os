@@ -78,9 +78,23 @@ export function themaVon(
   return 'umsatz';
 }
 
+/**
+ * Themen mit Kevins und Malins eigenen Bezeichnungen. Kommt aus dem Kompass
+ * („Eigene Bezeichnungen") — leer heißt: es bleibt beim Standard.
+ */
+export function themenMit(eigene: Record<string, string> = {}): Record<string, Thema> {
+  const raus: Record<string, Thema> = {};
+  for (const t of THEMEN) {
+    const name = (eigene[t.id] ?? '').trim();
+    raus[t.id] = name ? { ...t, label: name } : t;
+  }
+  return raus;
+}
+
 /** Themen in der gespeicherten Reihenfolge, unbekannte hinten dran. */
-export function sortierteThemen(reihenfolge: string[]): Thema[] {
-  const bekannt = reihenfolge.filter(id => THEMA[id]);
+export function sortierteThemen(reihenfolge: string[], eigene: Record<string, string> = {}): Thema[] {
+  const karte = themenMit(eigene);
+  const bekannt = reihenfolge.filter(id => karte[id]);
   const rest = THEMEN.filter(t => !bekannt.includes(t.id)).map(t => t.id);
-  return [...bekannt, ...rest].map(id => THEMA[id]);
+  return [...bekannt, ...rest].map(id => karte[id]);
 }

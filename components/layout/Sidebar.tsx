@@ -52,7 +52,7 @@ export function Sidebar() {
 
       {/* Primary Nav */}
       <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-        <div style={{ padding: '0 12px 6px', fontSize: 9, color: '#555', letterSpacing: '0.14em' }}>// NAVIGATION</div>
+        <div style={{ padding: '0 12px 6px', fontSize: 11, color: '#555', letterSpacing: '0.14em' }}>// NAVIGATION</div>
         {NAV.map(item => {
           const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
           return (
@@ -70,7 +70,7 @@ export function Sidebar() {
                   transition: 'background 80ms',
                 }}
               >
-                <span style={{ color: active ? '#00ff66' : '#555', fontSize: 9, letterSpacing: '0.08em', minWidth: 14 }}>
+                <span style={{ color: active ? '#00ff66' : '#555', fontSize: 11, letterSpacing: '0.08em', minWidth: 14 }}>
                   {item.key}
                 </span>
                 <span style={{ color: active ? '#ffffff' : '#aaaaaa', fontSize: 11, letterSpacing: '0.08em', fontWeight: active ? 600 : 400 }}>
@@ -82,7 +82,7 @@ export function Sidebar() {
         })}
 
         {/* Habits Section */}
-        <div style={{ padding: '16px 12px 6px', fontSize: 9, color: '#555', letterSpacing: '0.14em' }}>// MICRO-HABITS</div>
+        <div style={{ padding: '16px 12px 6px', fontSize: 11, color: '#555', letterSpacing: '0.14em' }}>// MICRO-HABITS</div>
         {HABITS.map(h => (
           <button
             key={h.id}
@@ -101,7 +101,7 @@ export function Sidebar() {
               textAlign: 'left',
             }}
           >
-            <span style={{ color: '#555', fontSize: 9, letterSpacing: '0.08em', minWidth: 14 }}>{h.shortcut}</span>
+            <span style={{ color: '#555', fontSize: 11, letterSpacing: '0.08em', minWidth: 14 }}>{h.shortcut}</span>
             <span style={{ color: '#888', fontSize: 11, letterSpacing: '0.06em', fontFamily: 'var(--mono-font)' }}>{h.label}</span>
           </button>
         ))}
@@ -122,14 +122,14 @@ export function Sidebar() {
             textAlign: 'left',
           }}
         >
-          <span style={{ color: '#555', fontSize: 9, letterSpacing: '0.08em', minWidth: 14 }}>U</span>
+          <span style={{ color: '#555', fontSize: 11, letterSpacing: '0.08em', minWidth: 14 }}>U</span>
           <span style={{ color: '#888', fontSize: 11, letterSpacing: '0.06em', fontFamily: 'var(--mono-font)' }}>/reunion</span>
         </button>
       </nav>
 
       {/* Members */}
       <div style={{ borderTop: '1px solid #1e1e1e', padding: '10px 12px' }}>
-        <div style={{ fontSize: 9, color: '#555', letterSpacing: '0.14em', marginBottom: 8 }}>// MITGLIEDER</div>
+        <div style={{ fontSize: 11, color: '#555', letterSpacing: '0.14em', marginBottom: 8 }}>// MITGLIEDER</div>
         {[
           { id: 'malin', label: 'MALIN', color: '#ec4899' },
           { id: 'kevin', label: 'KEVIN', color: '#3b82f6' },
@@ -138,7 +138,7 @@ export function Sidebar() {
             <div style={{
               width: 6, height: 6, background: m.color, flexShrink: 0,
             }} />
-            <span style={{ fontSize: 10, color: '#888', letterSpacing: '0.08em' }}>{m.label}</span>
+            <span style={{ fontSize: 11, color: '#888', letterSpacing: '0.08em' }}>{m.label}</span>
           </div>
         ))}
       </div>
@@ -159,8 +159,8 @@ export function Sidebar() {
           width: '100%',
         }}
       >
-        <span style={{ fontSize: 9, color: '#666', border: '1px solid #444', padding: '1px 5px', fontFamily: 'var(--mono-font)', letterSpacing: '0.06em' }}>⌘K</span>
-        <span style={{ fontSize: 9, color: '#666', letterSpacing: '0.08em', fontFamily: 'var(--mono-font)' }}>BEFEHLSPALETTE</span>
+        <span style={{ fontSize: 11, color: '#666', border: '1px solid #444', padding: '1px 5px', fontFamily: 'var(--mono-font)', letterSpacing: '0.06em' }}>⌘K</span>
+        <span style={{ fontSize: 11, color: '#666', letterSpacing: '0.08em', fontFamily: 'var(--mono-font)' }}>BEFEHLSPALETTE</span>
       </button>
     </aside>
   );

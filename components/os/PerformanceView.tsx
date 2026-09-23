@@ -3,13 +3,15 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
+import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, RADIUS } from '@/lib/make-one/design';
+import { Held } from './Held';
 import type { PerfIndex, Saeule } from '@/lib/performance';
 
 interface Snapshot { date: string; index: number | null; saeulen: Record<string, number | null>; abdeckung: number }
 interface Hebel { saeule?: string; warum?: string; schritt?: string }
 interface Analyse { lage?: string; hebel?: Hebel; staerke?: string; messluecke?: string }
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 const col = (v: number | null) => (v == null ? T.muted : v >= 70 ? T.accent : v >= 45 ? T.amber : T.crit);
 
@@ -25,7 +27,7 @@ function Ring({ v, size = 132 }: { v: number | null; size?: number }) {
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{ fontFamily: T.mono, fontSize: size * 0.3, fontWeight: 700, color: T.ink, lineHeight: 1 }}>{v ?? '—'}</span>
-        <span style={{ fontFamily: T.mono, fontSize: 9, color: T.muted, marginTop: 2 }}>INDEX</span>
+        <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 2 }}>INDEX</span>
       </div>
     </div>
   );
@@ -90,7 +92,7 @@ function Verlauf({ data }: { data: Snapshot[] }) {
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
         {REIHEN.map(rh => (
           <button key={rh.key} onClick={() => toggle(rh.key)}
-            style={{ fontFamily: T.mono, fontSize: 10.5, cursor: 'pointer', borderRadius: 7, padding: '3px 9px', display: 'flex', alignItems: 'center', gap: 6, border: `1px solid ${aktiv.has(rh.key) ? `${rh.farbe}88` : T.line}`, background: aktiv.has(rh.key) ? `${rh.farbe}14` : 'transparent', color: aktiv.has(rh.key) ? T.ink : T.muted }}>
+            style={{ fontFamily: T.mono, fontSize: 11, cursor: 'pointer', borderRadius: 7, padding: '3px 9px', display: 'flex', alignItems: 'center', gap: 6, border: `1px solid ${aktiv.has(rh.key) ? `${rh.farbe}88` : T.line}`, background: aktiv.has(rh.key) ? `${rh.farbe}14` : 'transparent', color: aktiv.has(rh.key) ? T.ink : T.muted }}>
             <span style={{ width: 8, height: 8, borderRadius: 2, background: rh.farbe, opacity: aktiv.has(rh.key) ? 1 : 0.35 }} />{rh.label}
           </button>
         ))}
@@ -109,12 +111,12 @@ function Verlauf({ data }: { data: Snapshot[] }) {
           ))}
         </svg>
         {/* Y-Beschriftung (Text in Text-Tönen, nie in Serienfarbe) */}
-        <div style={{ position: 'absolute', left: 2, top: 0, fontFamily: T.mono, fontSize: 9, color: T.muted }}>100</div>
-        <div style={{ position: 'absolute', left: 2, bottom: 0, fontFamily: T.mono, fontSize: 9, color: T.muted }}>0</div>
+        <div style={{ position: 'absolute', left: 2, top: 0, fontFamily: T.mono, fontSize: 11, color: T.muted }}>100</div>
+        <div style={{ position: 'absolute', left: 2, bottom: 0, fontFamily: T.mono, fontSize: 11, color: T.muted }}>0</div>
         {/* Tooltip */}
         {hp && (
           <div style={{ position: 'absolute', top: 6, left: `${(hover! / (pts.length - 1)) * 100}%`, transform: hover! > pts.length / 2 ? 'translateX(calc(-100% - 10px))' : 'translateX(10px)', background: T.panel2, border: `1px solid ${T.line}`, borderRadius: 9, padding: '8px 11px', pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 2 }}>
-            <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, marginBottom: 4 }}>{hp.date.slice(8)}.{hp.date.slice(5, 7)}.{hp.date.slice(0, 4)}</div>
+            <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginBottom: 4 }}>{hp.date.slice(8)}.{hp.date.slice(5, 7)}.{hp.date.slice(0, 4)}</div>
             {REIHEN.filter(rh => aktiv.has(rh.key)).map(rh => {
               const v = wert(hp, rh.key);
               return v != null ? (
@@ -128,7 +130,7 @@ function Verlauf({ data }: { data: Snapshot[] }) {
         )}
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: T.mono, fontSize: 10, color: T.muted, marginTop: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 6 }}>
         <span>{pts[0].date.slice(8)}.{pts[0].date.slice(5, 7)}.</span>
         <span style={{ color: diff > 0 ? T.accent : diff < 0 ? T.crit : T.muted }}>Index {diff > 0 ? '+' : ''}{diff} über {pts.length} Tage</span>
         <span>{pts[pts.length - 1].date.slice(8)}.{pts[pts.length - 1].date.slice(5, 7)}.</span>
@@ -136,7 +138,7 @@ function Verlauf({ data }: { data: Snapshot[] }) {
 
       {/* Tabellen-Sicht: dieselben Zahlen, ohne Farbe lesbar */}
       <details style={{ marginTop: 10 }}>
-        <summary style={{ fontFamily: T.mono, fontSize: 10.5, color: T.accentInk, cursor: 'pointer', letterSpacing: '.08em', textTransform: 'uppercase' }}>Als Tabelle</summary>
+        <summary style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, cursor: 'pointer', letterSpacing: '.08em', textTransform: 'uppercase' }}>Als Tabelle</summary>
         <div style={{ overflowX: 'auto', marginTop: 8 }}>
           <table style={{ borderCollapse: 'collapse', fontFamily: T.mono, fontSize: 11, color: T.inkDim, fontVariantNumeric: 'tabular-nums' }}>
             <thead><tr>{['Datum', ...REIHEN.map(rh => rh.label)].map(hcell => <th key={hcell} style={{ textAlign: 'right', padding: '4px 10px', color: T.muted, fontWeight: 400, borderBottom: `1px solid ${T.line}` }}>{hcell}</th>)}</tr></thead>
@@ -175,7 +177,7 @@ function SaeulenKarte({ s, offen, onToggle }: { s: Saeule; offen: boolean; onTog
             <div style={{ width: `${s.score ?? 0}%`, height: '100%', background: col(s.score), opacity: 0.35 + s.abdeckung * 0.65 }} />
           </div>
         </div>
-        <Link href={`/os/saeule/${s.key}`} onClick={e => e.stopPropagation()} style={{ fontFamily: T.mono, fontSize: 10.5, color: T.accentInk, textDecoration: 'none', border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 10px', whiteSpace: 'nowrap', flex: '0 0 auto' }}>öffnen ›</Link>
+        <Link href={`/os/saeule/${s.key}`} onClick={e => e.stopPropagation()} style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, textDecoration: 'none', border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 10px', whiteSpace: 'nowrap', flex: '0 0 auto' }}>öffnen ›</Link>
         <span style={{ fontFamily: T.mono, fontSize: 13, color: T.muted, flex: '0 0 auto' }}>{offen ? '▾' : '▸'}</span>
       </div>
 
@@ -192,7 +194,7 @@ function SaeulenKarte({ s, offen, onToggle }: { s: Saeule; offen: boolean; onTog
               </div>
             </div>
           ))}
-          <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, marginTop: 4, paddingTop: 8, borderTop: `1px solid ${T.lineSoft}` }}>
+          <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 4, paddingTop: 8, borderTop: `1px solid ${T.lineSoft}` }}>
             Datenbasis {Math.round(s.abdeckung * 100)}% — nur gemessene Faktoren zählen in den Wert.
           </div>
         </div>
@@ -228,31 +230,37 @@ export function PerformanceView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
         <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
-        <div style={lbl}>Performance-Index</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Wo du wirklich stehst.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 680, lineHeight: 1.5 }}>
-          Fünf Säulen, aus deinen echten Daten gerechnet — nicht geschätzt. Was nicht gemessen ist, wird als <b style={{ color: T.amber }}>Messlücke</b> ausgewiesen statt geraten.
-        </p>
 
         {!idx ? (
           <div style={{ fontFamily: T.mono, fontSize: 12, color: T.muted, marginTop: 20 }}>rechne …</div>
         ) : (
           <>
-            {/* Kopf */}
-            <div style={{ ...panel, borderTop: `2px solid ${col(idx.index)}`, padding: '22px 24px', margin: '20px 0 14px', display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
-              <Ring v={idx.index} />
-              <div style={{ flex: 1, minWidth: 230 }}>
-                <div style={{ fontSize: 19, fontWeight: 700, color: col(idx.index) }}>{idx.label}</div>
-                <div style={{ fontSize: 13, color: T.inkDim, marginTop: 6, lineHeight: 1.5 }}>
-                  {idx.hebel && <>Größter Hebel: <b style={{ color: T.ink }}>{idx.hebel}</b>. </>}
-                  Der Index steht auf <b style={{ color: idx.abdeckung >= 0.6 ? T.accent : T.amber }}>{Math.round(idx.abdeckung * 100)}% echten Daten</b>
-                  {idx.abdeckung < 0.6 && ' — je mehr du pflegst, desto ehrlicher wird er.'}
-                </div>
-                <button onClick={analyse} disabled={busy} style={{ marginTop: 12, fontFamily: T.sans, fontSize: 13, fontWeight: 700, padding: '9px 17px', borderRadius: 9, border: 'none', cursor: busy ? 'default' : 'pointer', background: busy ? T.line : T.accent, color: busy ? T.muted : '#04110F' }}>
-                  {busy ? 'ordne ein …' : 'Lage einordnen'}
-                </button>
-              </div>
-            </div>
+            {/* ── Der Held (UX 5, 06.09.) ─────────────────────────────────────
+                Vorher: Rubrik, Überschrift, Erklärabsatz und erst danach der
+                Ring — vier Ebenen, bevor die Zahl kam. Jetzt steht die Zahl
+                zuerst und sagt in einem Satz, woran sie hängt. */}
+            <Held
+              ring={idx.index}
+              wert={String(idx.index)}
+              label="Index"
+              satz={<>
+                {idx.label}.{' '}
+                {idx.hebel ? <>Größter Hebel ist <b style={{ color: C.aktiv }}>{idx.hebel}</b>.</>
+                  : 'Alle fünf Säulen tragen gleich.'}
+              </>}
+              neben={[{
+                label: 'aus echten Daten',
+                wert: `${Math.round(idx.abdeckung * 100)} %`,
+                farbe: idx.abdeckung >= 0.6 ? C.gut : C.achtung,
+              }]}
+              kinder={
+                <button onClick={analyse} disabled={busy} style={{
+                  fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: `9px ${A.l}px`, minHeight: 36,
+                  borderRadius: RADIUS.bauteil, border: 'none', cursor: busy ? 'default' : 'pointer',
+                  background: busy ? C.linie : C.gut, color: busy ? C.inkLeise : C.grund,
+                }}>{busy ? 'ordne ein …' : 'Lage einordnen'}</button>
+              }
+            />
 
             {/* Einordnung */}
             {a?.lage && (

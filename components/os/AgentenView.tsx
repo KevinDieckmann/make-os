@@ -3,18 +3,20 @@
 import Link from 'next/link';
 import { AgentenHirn } from './AgentenHirn';
 import { useEffect, useRef, useState } from 'react';
+import { useNachspeichern } from '@/lib/make-one/nachspeichern';
 import { THEME as T } from '@/lib/make-one/os-data';
 import {
   DEPARTMENTS, ORCHESTRATOR, ARCHITEKTUR, REALITAET,
   STATUS_LABEL, AUTONOMY_LABEL, AUTONOMY_ORDER, MODEL_LABEL,
   type AgentStatus, type Autonomy, type ModelTier, type DeptAgent,
 } from '@/lib/make-one/agents-data';
+import { Seitenkopf } from './Seitenkopf';
 
 interface Cfg { autonomy?: Autonomy; enabled?: boolean; model?: ModelTier; buildNext?: boolean; }
 type CfgMap = Record<string, Cfg>;
 
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const statusColor = (s: AgentStatus) => (s === 'live' ? T.accent : s === 'teil' ? T.amber : T.muted);
 const autoColor = (a: Autonomy) => (a === 'autonom' ? T.accent : a === 'entwurf' ? T.accentInk : a === 'freigabe' ? T.amber : T.muted);
 const MODELS: ModelTier[] = ['schnell', 'ausgewogen', 'stark'];
@@ -22,21 +24,19 @@ const MODELS: ModelTier[] = ['schnell', 'ausgewogen', 'stark'];
 export function AgentenView() {
   const [cfg, setCfg] = useState<CfgMap>({});
   const [open, setOpen] = useState<string | null>(null);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     fetch('/api/state/agents').then(r => r.json()).then((d: { config: CfgMap }) => setCfg(d.config ?? {})).catch(() => {});
   }, []);
 
+  const spaeter = useNachspeichern<CfgMap>(next => {
+    fetch('/api/state/agents', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
+  }, 300);
+
   function patch(id: string, p: Cfg) {
-    setCfg(prev => {
-      const next: CfgMap = { ...prev, [id]: { ...prev[id], ...p } };
-      clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => {
-        fetch('/api/state/agents', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
-      }, 300);
-      return next;
-    });
+    const next: CfgMap = { ...cfg, [id]: { ...cfg[id], ...p } };
+    setCfg(next);
+    spaeter(next);
   }
 
   const eff = (a: DeptAgent) => {
@@ -49,7 +49,7 @@ export function AgentenView() {
   const buildCount = all.filter(a => (cfg[a.id]?.buildNext) === true).length;
 
   const pill = (text: string, color: string) => (
-    <span style={{ fontFamily: T.mono, fontSize: 9.5, color, border: `1px solid ${color}55`, borderRadius: 5, padding: '2px 7px', whiteSpace: 'nowrap' }}>{text}</span>
+    <span style={{ fontFamily: T.mono, fontSize: 11, color, border: `1px solid ${color}55`, borderRadius: 5, padding: '2px 7px', whiteSpace: 'nowrap' }}>{text}</span>
   );
   // Der Schlüssel gehört ans Element — sonst warnt React bei jeder Liste.
   const selBtn = (active: boolean, onClick: () => void, text: string, color = T.accent, key?: string) => (
@@ -60,9 +60,11 @@ export function AgentenView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 1120, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
         <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
-        <div style={lbl}>Agenten · verwalten & bauen</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Deine Agenten-Abteilungen.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 700, lineHeight: 1.5 }}>JARVIS dirigiert, {DEPARTMENTS.length} Abteilungen darunter. Klick einen Agenten auf, um <b style={{ color: T.ink }}>Autonomie, Modell & Freigaben einzustellen</b>, seine geplanten Funktionen zu sehen und ihn zum Bauen zu markieren. Wir schalten Abteilung für Abteilung live.</p>
+        <Seitenkopf
+          rubrik={<>Agenten · verwalten & bauen</>}
+          titel={<>Deine Agenten-Abteilungen.</>}
+          satz={<>JARVIS dirigiert, {DEPARTMENTS.length} Abteilungen darunter. Klick einen Agenten auf, um <b style={{ color: T.ink }}>Autonomie, Modell & Freigaben einzustellen</b>, seine geplanten Funktionen zu sehen und ihn zum Bauen zu markieren. Wir schalten Abteilung für Abteilung live.</>}
+        />
 
         <AgentenHirn />
 
@@ -152,7 +154,7 @@ export function AgentenView() {
 
                         {/* Bauplan */}
                         <div style={{ background: T.panel, border: `1px solid ${T.line}`, borderRadius: 10, padding: '11px 13px' }}>
-                          <span style={{ fontFamily: T.mono, fontSize: 10, color: T.accent, textTransform: 'uppercase', letterSpacing: '.08em' }}>So würde ich ihn bauen</span>
+                          <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, textTransform: 'uppercase', letterSpacing: '.08em' }}>So würde ich ihn bauen</span>
                           <div style={{ fontSize: 12.5, color: T.inkDim, lineHeight: 1.5, marginTop: 5 }}>{a.bauplan}</div>
                         </div>
                       </div>

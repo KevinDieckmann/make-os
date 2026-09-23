@@ -9,9 +9,9 @@ import { HABITS } from '@/lib/make-one/fundament-data';
 function ScoreChip({ label, value, sub, accent }: { label: string; value: string; sub: string; accent: string }) {
   return (
     <div style={{ background: '#0a0a0a', border: '1px solid #1a1a1a', borderTop: `2px solid ${accent}`, padding: '10px 14px', flex: 1 }}>
-      <div style={{ fontFamily: 'var(--mono-font)', fontSize: 8, color: '#777', letterSpacing: '0.1em', marginBottom: 6 }}>{label}</div>
+      <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#777', letterSpacing: '0.1em', marginBottom: 6 }}>{label}</div>
       <div style={{ fontFamily: 'var(--mono-font)', fontSize: 20, color: accent, fontWeight: 600, lineHeight: 1 }}>{value}</div>
-      <div style={{ fontFamily: 'var(--mono-font)', fontSize: 8.5, color: '#666', marginTop: 4 }}>{sub}</div>
+      <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#666', marginTop: 4 }}>{sub}</div>
     </div>
   );
 }
@@ -27,13 +27,13 @@ export function FundamentCockpit() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {/* Header */}
       <div>
-        <div style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#00ff66', letterSpacing: '0.16em', marginBottom: 4 }}>
+        <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#00ff66', letterSpacing: '0.16em', marginBottom: 4 }}>
           MAKE.ONE // FUNDAMENT
         </div>
         <div style={{ fontSize: 20, color: '#fff', fontWeight: 600, letterSpacing: '-0.01em' }}>
           Gesundheit &amp; Energie — dein Fundament
         </div>
-        <div style={{ fontFamily: 'var(--mono-font)', fontSize: 10, color: '#666', marginTop: 4, letterSpacing: '0.02em' }}>
+        <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#666', marginTop: 4, letterSpacing: '0.02em' }}>
           „Erst Fundament, dann Firma steuern." — Whoop-Daten bleiben hier, nie in Business-Briefings.
         </div>
       </div>

@@ -1,7 +1,3 @@
-import { FinanzplanungView } from '@/components/os/FinanzplanungView';
-
-export const metadata = { title: 'Finanzplanung — MAKE OS' };
-
-export default function FinanzenPage() {
-  return <FinanzplanungView />;
-}
+import { ZahlenView } from '@/components/os/ZahlenView';
+export const metadata = { title: 'Zahlen · MAKE OS' };
+export default function Page() { return <ZahlenView />; }

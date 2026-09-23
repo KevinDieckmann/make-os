@@ -6,7 +6,7 @@
 // je Monat — hier lebt die Planung/Verwaltung davor.
 
 import { NextResponse } from 'next/server';
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson, updateJson, updateGeschuetztListen } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 
 export const runtime = 'nodejs';
@@ -30,6 +30,16 @@ export interface Rechnung {
   betrag: number;
   status: RechnungStatus;
   faellig?: string;
+  /** Der ganze Vorgang: Angebot → Rechnung → Eingang (Kevins Ansage 02.08.). */
+  nummer?: string;
+  datum?: string;
+  angebot?: string;
+  angebotAm?: string;
+  bezahltAm?: string;
+  netto?: number;
+  ustSatz?: number;
+  leistungVon?: string;
+  leistungBis?: string;
   notiz?: string;
 }
 export interface Merkposten {
@@ -110,6 +120,9 @@ const SEED: FinanzplanFile = {
   },
 };
 
+/** Ein Datum oder gar nichts — spart die Wiederholung bei jedem Feld. */
+const tag = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
+
 function sauberFile(f: Partial<FinanzplanFile> | null): FinanzplanFile {
   return {
     firmen: (Array.isArray(f?.firmen) ? f!.firmen : []).slice(0, 10).map(x => ({
@@ -126,7 +139,17 @@ function sauberFile(f: Partial<FinanzplanFile> | null): FinanzplanFile {
       titel: String(x.titel ?? '').slice(0, 200),
       betrag: isFinite(Number(x.betrag)) ? Math.max(0, Math.round(Number(x.betrag))) : 0,
       status: STATI.includes(x.status as RechnungStatus) ? x.status as RechnungStatus : 'geplant',
-      faellig: typeof x.faellig === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.faellig) ? x.faellig : undefined,
+      faellig: tag(x.faellig),
+      // Der ganze Vorgang, nicht nur der Betrag: Angebot → Rechnung → Eingang.
+      nummer: x.nummer ? String(x.nummer).slice(0, 60) : undefined,
+      datum: tag(x.datum),
+      angebot: x.angebot ? String(x.angebot).slice(0, 60) : undefined,
+      angebotAm: tag(x.angebotAm),
+      bezahltAm: tag(x.bezahltAm),
+      netto: x.netto == null || !isFinite(Number(x.netto)) ? undefined : Math.round(Number(x.netto) * 100) / 100,
+      ustSatz: x.ustSatz == null || !isFinite(Number(x.ustSatz)) ? undefined : Math.max(0, Math.min(30, Number(x.ustSatz))),
+      leistungVon: tag(x.leistungVon),
+      leistungBis: tag(x.leistungBis),
       notiz: x.notiz ? String(x.notiz).slice(0, 300) : undefined,
     })).filter(x => x.kunde || x.titel),
     merkposten: (Array.isArray(f?.merkposten) ? f!.merkposten : []).slice(0, 100).map(x => ({
@@ -195,6 +218,76 @@ export async function PUT(req: Request) {
     const alt = vorher?.firmen?.find(x => x.id === fa.id);
     if (fa.kontostand !== null && fa.kontostand !== (alt?.kontostand ?? null)) fa.stand = localDay();
   }
-  const next = await updateJson<FinanzplanFile>('finanzplan', () => sauber);
+  // Hier hängt Geld dran: Rechnungen, offene Zahlungen, Merkposten. Ein Client
+  // mit halb geladenem Stand darf das nicht überschreiben — jede Liste wird
+  // einzeln geprüft, eine schrumpfende reicht zur Ablehnung.
+  const { ok, next, verloren } = await updateGeschuetztListen<FinanzplanFile>(
+    'finanzplan', sauber, ['firmen', 'rechnungen', 'zahlungen', 'merkposten', 'produkte'],
+  );
+  if (!ok) {
+    return NextResponse.json(
+      { ok: false, error: `Abgelehnt: das hätte über die Hälfte von ${verloren} gelöscht.` },
+      { status: 409 },
+    );
+  }
   return NextResponse.json({ ok: true, ...next });
+}
+
+/**
+ * Einzelne Einträge ändern statt der ganzen Datei.
+ *
+ * Zwei-Fenster-Fundament: Malin pflegt Rechnungen, Kevin lässt nebenher einen
+ * Beleg von Jarvis buchen — vorher schrieb jeder Weg den KOMPLETTEN Finanzplan
+ * zurück und überschrieb still die Arbeit des anderen. Jetzt geht nur der eine
+ * geänderte Eintrag raus, und zwar in der benannten Liste.
+ *
+ * Format: { ops: [{ liste: 'rechnungen', op: 'upsert', eintrag: {…} }, … ] }
+ */
+const PATCHBAR = ['firmen', 'rechnungen', 'zahlungen', 'merkposten', 'produkte'] as const;
+type PatchListe = typeof PATCHBAR[number];
+
+export async function PATCH(req: Request) {
+  let body: { ops?: unknown };
+  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  const roh = Array.isArray(body.ops) ? body.ops.slice(0, 100) : null;
+  if (!roh) return NextResponse.json({ ok: false, error: 'Feld "ops" (Liste) fehlt.' }, { status: 400 });
+
+  interface Op { liste: PatchListe; op: 'upsert' | 'delete'; eintrag?: Record<string, unknown>; id?: string }
+  const ops: Op[] = [];
+  for (const o of roh as Record<string, unknown>[]) {
+    const l = String(o?.liste ?? '') as PatchListe;
+    if (!(PATCHBAR as readonly string[]).includes(l)) continue;
+    if (o.op === 'delete' && typeof o.id === 'string') ops.push({ liste: l, op: 'delete', id: o.id });
+    else if (o.op === 'upsert' && o.eintrag && typeof o.eintrag === 'object') {
+      ops.push({ liste: l, op: 'upsert', eintrag: o.eintrag as Record<string, unknown> });
+    }
+  }
+  if (!ops.length) return NextResponse.json({ ok: false, error: 'Keine gültigen Änderungen.' }, { status: 400 });
+
+  let angewandt = 0;
+  const next = await updateJson<FinanzplanFile>('finanzplan', current => {
+    // Immer vom gesäuberten Bestand ausgehen — nie vom Rohzustand.
+    const f = sauberFile(current);
+    for (const o of ops) {
+      const liste = f[o.liste] as { id: string }[];
+      const nachId = new Map(liste.map(x => [x.id, x]));
+      if (o.op === 'delete') { if (nachId.delete(o.id!)) angewandt++; }
+      else {
+        // Einzelnen Eintrag über sauberFile schleusen: dieselben Regeln wie
+        // beim Vollschreiben, kein zweiter Satz Prüfungen.
+        const geprueft = (sauberFile({ [o.liste]: [o.eintrag] } as Partial<FinanzplanFile>)[o.liste] as { id: string }[])[0];
+        if (geprueft) { nachId.set(geprueft.id, geprueft); angewandt++; }
+      }
+      (f[o.liste] as unknown) = Array.from(nachId.values());
+    }
+    // Kontostand-Änderung stempelt das Stand-Datum, wie beim Vollschreiben.
+    const alt = sauberFile(current);
+    for (const fa of f.firmen) {
+      const vorher = alt.firmen.find(x => x.id === fa.id);
+      if (fa.kontostand !== null && fa.kontostand !== (vorher?.kontostand ?? null)) fa.stand = localDay();
+    }
+    return f;
+  });
+
+  return NextResponse.json({ ok: true, angewandt, ...next });
 }

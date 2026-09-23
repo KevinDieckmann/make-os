@@ -10,15 +10,16 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
 import { TAGE, TAG_LABEL, type ErnaehrungFile, type Mahlzeiten, type Tag } from '@/lib/make-one/ernaehrung-data';
+import { Seitenkopf } from './Seitenkopf';
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 const inp = { background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: T.ink, fontFamily: T.sans, fontSize: 12.5, padding: '5px 9px', outline: 'none', width: '100%' };
 const M_LABEL: { k: keyof Mahlzeiten; label: string }[] = [
   { k: 'fruehstueck', label: 'Früh' }, { k: 'mittag', label: 'Mittag' }, { k: 'abend', label: 'Abend' },
 ];
 
-export function ErnaehrungView() {
+export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean } = {}) {
   const [daten, setDaten] = useState<ErnaehrungFile | null>(null);
   const [neu, setNeu] = useState('');
   const [vorschlag, setVorschlag] = useState<{ begruendung: string; plan: Record<Tag, Mahlzeiten>; einkauf: string[]; hinweis: string } | null>(null);
@@ -72,13 +73,13 @@ export function ErnaehrungView() {
   const geplantN = TAGE.reduce((s, t) => s + M_LABEL.filter(m => daten.plan[t][m.k].trim()).length, 0);
 
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 980, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
-        <div style={lbl}>Gesundheit · Ernährung</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Die Woche, die du durchhältst.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 660, lineHeight: 1.5 }}>
-          Regelmäßig + anti-entzündlich — dein größter Hebel. Plan die Woche einmal, dann ist Essen keine Tages-Entscheidung mehr.
-        </p>
+    <div style={eingebettet ? { color: T.ink, fontFamily: T.sans } : { minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
+      <div style={eingebettet ? {} : { maxWidth: 980, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
+        {!eingebettet && <Seitenkopf
+          rubrik={<>Gesundheit · Ernährung</>}
+          titel={<>Die Woche, die du durchhältst.</>}
+          satz={<>Regelmäßig + anti-entzündlich — dein größter Hebel. Plan die Woche einmal, dann ist Essen keine Tages-Entscheidung mehr.</>}
+        />}
 
         {/* Grundsätze */}
         <details style={{ ...panel, padding: '13px 17px', margin: '16px 0 12px' }}>
@@ -113,7 +114,7 @@ export function ErnaehrungView() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
               {TAGE.map((t, i) => (
                 <div key={t} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', padding: '6px 8px', borderRadius: 9, background: i === heuteIdx ? `${T.accent}0e` : 'transparent', border: i === heuteIdx ? `1px solid ${T.accent}33` : '1px solid transparent' }}>
-                  <span style={{ fontFamily: T.mono, fontSize: 10.5, color: i === heuteIdx ? T.accent : T.muted, width: 78, flex: '0 0 auto', textTransform: 'uppercase', letterSpacing: '.08em' }}>{TAG_LABEL[t]}</span>
+                  <span style={{ fontFamily: T.mono, fontSize: 11, color: i === heuteIdx ? T.accent : T.muted, width: 78, flex: '0 0 auto', textTransform: 'uppercase', letterSpacing: '.08em' }}>{TAG_LABEL[t]}</span>
                   {M_LABEL.map(m => (
                     <input key={m.k} value={(vorschlag ? vorschlag.plan[t][m.k] : daten.plan[t][m.k]) ?? ''}
                       readOnly={!!vorschlag}
@@ -124,7 +125,7 @@ export function ErnaehrungView() {
                 </div>
               ))}
             </div>
-            {vorschlag && <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.amber, marginTop: 8 }}>Vorschau — mit „Übernehmen" wird sie dein Plan.</div>}
+            {vorschlag && <div style={{ fontFamily: T.mono, fontSize: 11, color: T.amber, marginTop: 8 }}>Vorschau — mit „Übernehmen" wird sie dein Plan.</div>}
           </div>
 
           {/* Einkaufsliste */}
@@ -132,14 +133,14 @@ export function ErnaehrungView() {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
               <div style={lbl}>Einkaufsliste</div>
               <span style={{ fontFamily: T.mono, fontSize: 11, color: offeneEinkaeufe ? T.amber : T.accent }}>{offeneEinkaeufe} offen</span>
-              <button onClick={listeKopieren} style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 10.5, color: T.accentInk, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, padding: '3px 9px', cursor: 'pointer' }}>Liste kopieren</button>
+              <button onClick={listeKopieren} style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: T.accentInk, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, padding: '3px 9px', cursor: 'pointer' }}>Liste kopieren</button>
             </div>
             {meld && <div style={{ fontSize: 11.5, color: T.accent, marginBottom: 8 }}>{meld}</div>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 420, overflowY: 'auto' }}>
               {daten.einkauf.map(p => (
                 <div key={p.id} style={{ display: 'flex', gap: 9, alignItems: 'center' }}>
                   <span onClick={() => speichern({ ...daten, einkauf: daten.einkauf.map(x => x.id === p.id ? { ...x, erledigt: !x.erledigt } : x) })}
-                    style={{ width: 16, height: 16, borderRadius: 5, border: `1px solid ${p.erledigt ? T.accent : T.line}`, background: p.erledigt ? `${T.accent}22` : 'transparent', color: T.accent, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto', cursor: 'pointer' }}>
+                    style={{ width: 16, height: 16, borderRadius: 5, border: `1px solid ${p.erledigt ? T.accent : T.line}`, background: p.erledigt ? `${T.accent}22` : 'transparent', color: T.accent, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto', cursor: 'pointer' }}>
                     {p.erledigt ? <span className="check-pop">✓</span> : ''}
                   </span>
                   <span style={{ fontSize: 12.5, color: p.erledigt ? T.muted : T.inkDim, textDecoration: p.erledigt ? 'line-through' : 'none', flex: 1 }}>{p.text}</span>
@@ -156,7 +157,7 @@ export function ErnaehrungView() {
             </div>
             {daten.einkauf.some(p => p.erledigt) && (
               <button onClick={() => speichern({ ...daten, einkauf: daten.einkauf.filter(p => !p.erledigt) })}
-                style={{ marginTop: 8, fontFamily: T.mono, fontSize: 10.5, color: T.muted, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 9px', cursor: 'pointer' }}>Abgehakte entfernen</button>
+                style={{ marginTop: 8, fontFamily: T.mono, fontSize: 11, color: T.muted, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 9px', cursor: 'pointer' }}>Abgehakte entfernen</button>
             )}
           </div>
         </div>

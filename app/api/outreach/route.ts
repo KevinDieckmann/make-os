@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     String(body.icp ?? '').slice(0, 900),
   ].filter(Boolean).join('\n');
 
-  const r = await askJson<{ betreff?: string; email?: string; linkedin?: string }>({
+  const r = await askJson<{ betreff?: string; email?: string; linkedin?: string }>({ zweck: 'outreach',
     system, user, maxTokens: 3500, model: agent.model, timeoutMs: 120_000,
   });
   if (!r.ok || !r.data?.email) return NextResponse.json({ error: r.error ?? 'Kein Entwurf erhalten.' }, { status: 200 });

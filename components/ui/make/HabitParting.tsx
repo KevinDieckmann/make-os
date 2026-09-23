@@ -68,11 +68,11 @@ export function HabitParting() {
             {/* Header */}
             <div style={{ borderBottom: '1px solid #1e1e1e', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 8, color: '#00ff66', letterSpacing: '0.12em', marginBottom: 3 }}>HABIT_01 // MICRO-HABIT</div>
+                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#00ff66', letterSpacing: '0.12em', marginBottom: 3 }}>HABIT_01 // MICRO-HABIT</div>
                 <div style={{ fontFamily: 'var(--mono-font)', fontSize: 12, color: '#ffffff', letterSpacing: '0.04em' }}>INTENTIONALER ABSCHIED</div>
               </div>
               <button onClick={closeHabit} className="interactive-element"
-                style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#444', background: 'none', border: '1px solid #1e1e1e', padding: '2px 8px', cursor: 'pointer' }}>
+                style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#444', background: 'none', border: '1px solid #1e1e1e', padding: '2px 8px', cursor: 'pointer' }}>
                 ESC
               </button>
             </div>
@@ -80,12 +80,12 @@ export function HabitParting() {
             <div style={{ padding: 16 }}>
               {/* Peak strain display */}
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 7, color: '#333', letterSpacing: '0.12em', marginBottom: 8 }}>// EXECUTIVE STRAIN — PEAK WINDOW</div>
+                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#333', letterSpacing: '0.12em', marginBottom: 8 }}>// EXECUTIVE STRAIN — PEAK WINDOW</div>
                 {PEAK_STRAIN.map(p => (
                   <div key={p.name} style={{ marginBottom: 8 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                      <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: p.color, letterSpacing: '0.08em' }}>{p.name}</span>
-                      <span style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#555', letterSpacing: '0.06em' }}>{p.time} &nbsp; LOAD: {p.load}%</span>
+                      <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: p.color, letterSpacing: '0.08em' }}>{p.name}</span>
+                      <span style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#555', letterSpacing: '0.06em' }}>{p.time} &nbsp; LOAD: {p.load}%</span>
                     </div>
                     <div className="progress-track">
                       <div className="progress-fill" style={{ width: `${p.load}%`, background: p.color }} />
@@ -96,21 +96,21 @@ export function HabitParting() {
 
               {/* Protocol */}
               <div style={{ background: '#050505', border: '1px solid #111', padding: '10px 12px', marginBottom: 16 }}>
-                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 7, color: '#333', letterSpacing: '0.12em', marginBottom: 6 }}>// PROTOKOLL</div>
+                <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#333', letterSpacing: '0.12em', marginBottom: 6 }}>// PROTOKOLL</div>
                 {[
                   '1. Augenkontakt herstellen — 3 Sekunden',
                   '2. Einen vollständigen Satz sprechen (nicht nur "Tschüss")',
                   '3. Physischer Kontakt: Umarmung oder Kuss',
                   '4. 3-Sekunden-Halte-Bestätigung unten ausführen',
                 ].map((step, i) => (
-                  <div key={i} style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#555', letterSpacing: '0.04em', padding: '2px 0', lineHeight: 1.5 }}>{step}</div>
+                  <div key={i} style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#555', letterSpacing: '0.04em', padding: '2px 0', lineHeight: 1.5 }}>{step}</div>
                 ))}
               </div>
 
               {/* Hold button */}
               {!completed ? (
                 <div>
-                  <div style={{ fontFamily: 'var(--mono-font)', fontSize: 7, color: '#333', letterSpacing: '0.12em', marginBottom: 8, textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#333', letterSpacing: '0.12em', marginBottom: 8, textAlign: 'center' }}>
                     HALTE GEDRÜCKT — 3 SEKUNDEN
                   </div>
                   <div style={{ position: 'relative', overflow: 'hidden' }}>
@@ -128,7 +128,7 @@ export function HabitParting() {
                         border: `1px solid ${holding ? '#00ff66' : '#2a2a2a'}`,
                         color: '#ffffff',
                         fontFamily: 'var(--mono-font)',
-                        fontSize: 10,
+                        fontSize: 11,
                         letterSpacing: '0.1em',
                         cursor: 'pointer',
                         position: 'relative',
@@ -156,7 +156,7 @@ export function HabitParting() {
                   padding: '14px',
                   textAlign: 'center',
                 }}>
-                  <div style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#00ff66', letterSpacing: '0.12em' }}>
+                  <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#00ff66', letterSpacing: '0.12em' }}>
                     ✓ ABSCHIED PROTOKOLLIERT — EBA +{(4 * 0.8).toFixed(1)}
                   </div>
                 </div>

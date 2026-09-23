@@ -14,7 +14,15 @@ export function FehlerMelder() {
     if (w.__makeFehlerMelder) return;
     w.__makeFehlerMelder = true;
 
+    /**
+     * Kein Fehler, sondern Next.js bei der Arbeit: redirect() und notFound()
+     * werfen absichtlich. Wer das meldet, verstopft den Melder mit Rauschen
+     * und übersieht die echten Fehler daneben.
+     */
+    const harmlos = (t: string) => /NEXT_REDIRECT|NEXT_NOT_FOUND/.test(t);
+
     const melde = (art: 'fehler' | 'versprechen' | 'react', text: string, quelle?: string) => {
+      if (harmlos(text)) return;
       try {
         fetch('/api/client-fehler', {
           method: 'POST',

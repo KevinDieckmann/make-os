@@ -15,9 +15,10 @@ import {
   vorschau, KATEGORIEN, KATEGORIE, SZENARIO_LABEL,
   type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Rhythmus, type Szenario,
 } from '@/lib/make-one/liquiditaet';
+import { Seitenkopf } from './Seitenkopf';
 
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const feld = { background: T.void, border: `1px solid ${T.line}`, borderRadius: 8, color: T.ink, fontFamily: T.sans, fontSize: 13, padding: '7px 10px', outline: 'none' };
 
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
@@ -29,6 +30,8 @@ const RHYTHMUS_LABEL: Record<Rhythmus, string> = {
 export function LiquiditaetView() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [posten, setPosten] = useState<Planposten[]>([]);
+  // Eigene Kategorien aus dem Kompass — Kevin und Malin pflegen sie selbst.
+  const [eigeneKat, setEigeneKat] = useState<string[]>([]);
   const [geladen, setGeladen] = useState(false);
   const [wochen, setWochen] = useState(12);
   const [szenario, setSzenario] = useState<Szenario>('real');
@@ -38,6 +41,7 @@ export function LiquiditaetView() {
 
   useEffect(() => {
     fetch('/api/state/finanzplan').then(r => r.json()).then(setPlan).catch(() => {});
+    fetch('/api/state/labels').then(r => r.json()).then(d => setEigeneKat(Array.isArray(d.kategorien) ? d.kategorien : [])).catch(() => {});
     fetch('/api/state/liquiplan').then(r => r.json()).then(d => {
       setPosten(Array.isArray(d.posten) ? d.posten : []);
       setGeladen(true);
@@ -114,8 +118,8 @@ export function LiquiditaetView() {
       <div key={p.id} style={{ borderTop: `1px solid ${T.lineSoft}`, background: auf ? T.panel2 : 'transparent' }}>
         <div onClick={() => setOffen(auf ? null : p.id)} style={{ display: 'flex', gap: 11, padding: '9px 14px', alignItems: 'center', cursor: 'pointer' }}>
           <span style={{ fontSize: 13, color: T.ink, flex: 1, minWidth: 0 }}>{p.titel}</span>
-          {!p.sicher && <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.amber, border: `1px solid ${T.amber}55`, borderRadius: 5, padding: '1px 6px' }}>unsicher</span>}
-          <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>{RHYTHMUS_LABEL[p.rhythmus]}</span>
+          {!p.sicher && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.amber, border: `1px solid ${T.amber}55`, borderRadius: 5, padding: '1px 6px' }}>unsicher</span>}
+          <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{RHYTHMUS_LABEL[p.rhythmus]}</span>
           <span style={{ fontFamily: T.mono, fontSize: 13, fontWeight: 600, color: raus ? T.amber : T.accent, minWidth: 84, textAlign: 'right' }}>
             {raus ? '−' : '+'}{eur(Math.abs(p.betrag))}
           </span>
@@ -153,6 +157,10 @@ export function LiquiditaetView() {
                 <option value="" style={{ background: T.panel }}>— nicht zugeordnet</option>
                 {KATEGORIEN.filter(k => k.art === (raus ? 'aus' : 'ein')).map(k => (
                   <option key={k.id} value={k.id} style={{ background: T.panel }}>{k.label}</option>
+                ))}
+                {/* Eure eigenen Kategorien aus dem Kompass — ohne Code-Änderung. */}
+                {eigeneKat.map(k => (
+                  <option key={k} value={k} style={{ background: T.panel }}>{k}</option>
                 ))}
               </select>
             </label>
@@ -192,12 +200,11 @@ export function LiquiditaetView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 940, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
         <Link href="/os/finanzen" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Finanzen</Link>
-        <div style={lbl}>Liquiditäts-Planung</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Wie viel Geld ist wann da.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 680, lineHeight: 1.5, marginBottom: 18 }}>
-          Gerechnet aus dem, was ist — Kontostände, offene Rechnungen, fällige Zahlungen —
-          und dem, was ihr erwartet. Was hier eingetragen ist, rechnet sofort mit.
-        </p>
+        <Seitenkopf
+          rubrik={<>Liquiditäts-Planung</>}
+          titel={<>Wie viel Geld ist wann da.</>}
+          satz={<>Gerechnet aus dem, was ist — Kontostände, offene Rechnungen, fällige Zahlungen — und dem, was ihr erwartet. Was hier eingetragen ist, rechnet sofort mit.</>}
+        />
 
         {!v && <div style={{ ...panel, padding: '30px', color: T.muted, fontSize: 13 }}>lädt …</div>}
 
@@ -244,9 +251,9 @@ export function LiquiditaetView() {
                         textAlign: 'left', padding: '10px 12px', borderRadius: 11, cursor: 'pointer',
                         border: `1px solid ${an ? farbe : T.line}`, background: an ? `${farbe}14` : T.panel2,
                       }}>
-                        <div style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>{SZENARIO_LABEL[sz]}</div>
+                        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>{SZENARIO_LABEL[sz]}</div>
                         <div style={{ fontSize: 17, fontWeight: 700, color: an ? farbe : T.inkDim, fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{eur(ende)}</div>
-                        <div style={{ fontFamily: T.mono, fontSize: 10, color: f.engpass ? T.crit : T.muted }}>
+                        <div style={{ fontFamily: T.mono, fontSize: 11, color: f.engpass ? T.crit : T.muted }}>
                           {f.engpass ? `eng ab ${f.engpass.label}` : `Tief ${eur(f.tiefpunkt.stand)}`}
                         </div>
                       </button>
@@ -263,12 +270,12 @@ export function LiquiditaetView() {
                 <div>
                   <div style={lbl}>Tiefpunkt</div>
                   <div style={{ fontSize: 24, fontWeight: 700, color: v.tiefpunkt.stand < 0 ? T.crit : v.tiefpunkt.stand < 2000 ? T.amber : T.ink, fontVariantNumeric: 'tabular-nums' }}>{eur(v.tiefpunkt.stand)}</div>
-                  <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>{v.tiefpunkt.label}</div>
+                  <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{v.tiefpunkt.label}</div>
                 </div>
                 <div>
                   <div style={lbl}>Am Ende</div>
                   <div style={{ fontSize: 24, fontWeight: 700, color: (v.wochen.at(-1)?.stand ?? 0) < 0 ? T.crit : T.ink, fontVariantNumeric: 'tabular-nums' }}>{eur(v.wochen.at(-1)?.stand ?? 0)}</div>
-                  <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>in {wochen} Wochen</div>
+                  <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>in {wochen} Wochen</div>
                 </div>
               </div>
 
@@ -298,7 +305,7 @@ export function LiquiditaetView() {
                         </div>
                       ))}
                     </div>
-                    <div style={{ display: 'flex', gap: 2, marginTop: 4, fontFamily: T.mono, fontSize: 9, color: T.muted }}>
+                    <div style={{ display: 'flex', gap: 2, marginTop: 4, fontFamily: T.mono, fontSize: 11, color: T.muted }}>
                       {v.wochen.map((w, i) => <div key={w.von} style={{ flex: 1, textAlign: 'center' }}>{i % Math.ceil(wochen / 8) === 0 ? `${w.von.slice(8)}.${w.von.slice(5, 7)}.` : ''}</div>)}
                     </div>
                   </>
@@ -334,7 +341,7 @@ export function LiquiditaetView() {
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   {plan.firmen.map(f => (
                     <label key={f.id} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{f.name}</span>
+                      <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{f.name}</span>
                       <input type="number" value={f.kontostand ?? ''} onChange={e => kontostand(f.id, e.target.value)}
                         placeholder="—" aria-label={`Kontostand ${f.name}`} style={{ ...feld, width: 140, fontFamily: T.mono }} />
                     </label>

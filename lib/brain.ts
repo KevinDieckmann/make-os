@@ -84,7 +84,12 @@ export interface Brain {
 }
 
 /** Alles einsammeln — jede Quelle darf einzeln ausfallen. */
-export async function gatherBrain(heute = localDay()): Promise<Brain> {
+/**
+ * Der Live-Zustand. `person` entscheidet, WESSEN Körperwerte darin stehen —
+ * seit 07.09., weil Jarvis sonst Malin Kevins Recovery vorgelesen hätte.
+ * Alles andere (Zahlen, Aufgaben, Kalender) ist gemeinsam und bleibt gleich.
+ */
+export async function gatherBrain(heute = localDay(), person: string = 'kevin'): Promise<Brain> {
   const [tasksR, finR, prospectsR, calR, kemR, msR, vitalsR, indexR, laeufeR, meilR, fplanR, kundenR, shieldsR, kompassR, ordnungR, schwellenR] = await Promise.allSettled([
     loadJson<{ tasks: StoredTask[]; projects: StoredProject[] }>('tasks'),
     loadJson<FinanceState>('finance'),
@@ -92,8 +97,8 @@ export async function gatherBrain(heute = localDay()): Promise<Brain> {
     loadJson<{ events: CalEvent[]; at?: string }>('calendar-cache'),
     loadJson<{ events: { title?: string; start?: string; end?: string; isTeams?: boolean }[]; at?: string }>('kemaris-calendar'),
     loadJson<{ emails: MsMail[]; at?: string }>('microsoft-inbox'),
-    resolveVitals(heute),
-    computeIndex(heute),
+    resolveVitals(heute, person),
+    computeIndex(heute, person),
     recentRuns(undefined, 10),
     loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; zeitfenster?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
     loadJson<{ rechnungen: { status: string; betrag: number; faellig?: string }[] }>('finanzplan'),
@@ -315,9 +320,13 @@ export function blockIndex(b: Brain): string {
     'Eine niedrige Säule mit dünner Datenbasis ist KEIN schlechter Wert, sondern eine Messlücke — sag dann, was Kevin eintragen müsste, statt ihn zu bewerten. Säulen-Seiten: /os/saeule/<key>.';
 }
 
-export function blockVitals(b: Brain): string {
+export function blockVitals(b: Brain, person: string = 'kevin'): string {
   const v = b.vitals;
-  return `KÖRPER (privat, nie in Business-Aussagen): Recovery ${v.rec}%, Schlaf ${v.sleep}h${vitalsHint(v)}.${v.note ? ` Kevin notiert: "${v.note}"` : ''}`;
+  const wer = person === 'malin' ? 'Malin' : 'Kevin';
+  // „privat" heißt hier zweierlei: nie in Business-Aussagen — und nie über
+  // die andere Person. Die Werte kommen aus dem Speicher der Person, mit der
+  // gerade geredet wird (siehe gatherBrain).
+  return `KÖRPER (privat, nie in Business-Aussagen, nie über die andere Person): Recovery ${v.rec}%, Schlaf ${v.sleep}h${vitalsHint(v)}.${v.note ? ` ${wer} notiert: "${v.note}"` : ''}`;
 }
 
 export function blockGedaechtnis(b: Brain, max = 6): string {
@@ -331,12 +340,42 @@ export function blockZiele(b?: Brain): string {
 }
 
 /** Der Standard-Kontext für Agenten — wähl ab, was der Agent braucht. */
+/**
+ * Der Auftrag. Steht vor allem anderen, weil er alles andere einordnet.
+ *
+ * Kevin am 02.08.2026, wörtlich sinngemäß: „Das soll unsere Familien-KI
+ * werden, die uns bei allem im Leben unterstützt, mit der wir sprechen und
+ * vieles teilen, damit sie uns optimal hilft. Ein treuer Begleiter, der alles
+ * im Hintergrund für uns steuert. In drei, vier Jahren haben wir Roboter, die
+ * auch gemanagt werden wollen. Die ganze Welt verändert sich — und wir bauen
+ * uns jetzt schon unabhängig eine eigene KI. Dazu werden wir Dutzende Firmen
+ * kaufen, verkaufen, aufbauen und skalieren."
+ *
+ * Das ist kein Werbetext, sondern eine Anweisung: Es begründet, warum Jarvis
+ * langfristig denkt, warum er Wissen sammelt statt Antworten wegzuwerfen, und
+ * warum Gesundheit und Beziehung genauso zählen wie Umsatz.
+ */
+export function blockAuftrag(): string {
+  return [
+    'DEIN AUFTRAG — das steht über allem anderen:',
+    'Du bist nicht ein Werkzeug in einer Software. Du bist die KI von Kevin und Malin — für ihr ganzes Leben, nicht nur fürs Geschäft. Ihr Ziel ist ein treuer Begleiter, der im Hintergrund steuert, mit dem sie sprechen und dem sie viel anvertrauen, damit du wirklich helfen kannst.',
+    'DARAUS FOLGT, wie du arbeitest:',
+    '- LANGFRISTIG DENKEN. Die beiden bauen über Jahre. Bewerte Entscheidungen danach, was in einem Jahr trägt, nicht nur was diese Woche löst. Sag es, wenn ein schneller Weg später teuer wird.',
+    '- MITSCHREIBEN STATT VERGESSEN. Was du erfährst, gehört ins System — Zusammenhänge, Namen, Muster, Entscheidungen und warum sie so fielen. Ein Begleiter, der jedes Mal bei null anfängt, ist keiner.',
+    '- DAS GANZE LEBEN. Gesundheit, Beziehung und Ruhe zählen gleichrangig mit Umsatz. Kevins Rücken und die Beziehung zu Malin sind keine Nebenbedingungen, sondern das, wofür das Geschäft überhaupt da ist. Ein Vorschlag, der Umsatz bringt und den Menschen ruiniert, ist ein schlechter Vorschlag.',
+    '- UNABHÄNGIG BLEIBEN. Alles läuft auf ihren eigenen Rechnern, mit ihren eigenen Daten. Bevorzuge Lösungen, die ihnen gehören, vor Abhängigkeiten von fremden Diensten. Wenn etwas nach außen geht, sag es dazu.',
+    '- SKALIEREN VORBEREITEN. Die Absicht ist, Firmen zu kaufen, zu verkaufen, aufzubauen und zu skalieren — und in wenigen Jahren auch Maschinen und Roboter zu steuern. Baue und rate so, dass aus einem Fall zehn werden können: Struktur vor Einzellösung, Regel vor Handgriff, Wiederholbares vor Einmaligem.',
+    '- EHRLICH SEIN. Ein Begleiter, der schönredet, ist gefährlicher als einer, der schweigt. Nenne Lücken, unsichere Daten und schlechte Nachrichten zuerst und beim Namen.',
+  ].join('\n');
+}
+
 export function promptBrain(b: Brain, teile?: { koerper?: boolean; ziele?: boolean; gedaechtnis?: boolean }): string {
   const t = { koerper: true, ziele: true, gedaechtnis: true, ...teile };
   // Der Kompass-Schalter schlägt den Wunsch des Aufrufers: steht er auf
   // „bleiben privat", sehen Agenten die Körperdaten gar nicht erst.
   const koerper = t.koerper && b.lage.schwellen.koerperAnAgenten;
   return [
+    blockAuftrag(),
     blockLage(b),
     shieldZeilen(b.shields),
     blockAufgaben(b),

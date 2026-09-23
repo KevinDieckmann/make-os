@@ -9,8 +9,9 @@ import { useEffect, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
 import { KETTE, schritteFuer, type LaufArt, type Lauf, type SchrittErgebnis } from '@/lib/tageslauf';
 import { useTasks } from '@/context/TasksContext';
+import { Seitenkopf } from './Seitenkopf';
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 
 const standFarbe = (s: SchrittErgebnis['stand']) =>
@@ -90,13 +91,11 @@ export function TageslaufView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
         <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
-        <div style={lbl}>Tageslauf · die feste Kette</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Jeden Tag dieselbe Reihenfolge.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 690, lineHeight: 1.5 }}>
-          Postfächer, Termine, Aufgaben, Transkripte, Lage draußen, Prioritäten — und am Ende eine Ausrichtung.
-          Du sollst morgens nichts entscheiden und nichts suchen müssen.
-          {d && <> <span style={{ color: T.muted }}>Heute {d.heute} {d.heute === 1 ? 'Lauf' : 'Läufe'}.</span></>}
-        </p>
+        <Seitenkopf
+          rubrik={<>Tageslauf · die feste Kette</>}
+          titel={<>Jeden Tag dieselbe Reihenfolge.</>}
+          satz={<>Postfächer, Termine, Aufgaben, Transkripte, Lage draußen, Prioritäten — und am Ende eine Ausrichtung. Du sollst morgens nichts entscheiden und nichts suchen müssen. {d && <> <span style={{ color: T.muted }}>Heute {d.heute} {d.heute === 1 ? 'Lauf' : 'Läufe'}.</span></>}</>}
+        />
 
         {/* Lauf-Art */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 8, margin: '20px 0 14px' }}>
@@ -106,7 +105,7 @@ export function TageslaufView() {
               border: `1px solid ${art === x.id ? T.accent : T.line}`, background: art === x.id ? `${T.accent}18` : T.panel,
             }}>
               <div style={{ fontSize: 13.5, fontWeight: 600, color: art === x.id ? T.accent : T.ink }}>
-                {x.label}{d?.empfohlen === x.id && <span style={{ fontFamily: T.mono, fontSize: 9, color: T.muted, marginLeft: 7 }}>jetzt dran</span>}
+                {x.label}{d?.empfohlen === x.id && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginLeft: 7 }}>jetzt dran</span>}
               </div>
               <div style={{ fontSize: 11.5, color: T.muted, marginTop: 2, lineHeight: 1.35 }}>{x.hin}</div>
             </button>
@@ -139,8 +138,8 @@ export function TageslaufView() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', gap: 9, alignItems: 'baseline', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 13.5, fontWeight: 600, color: erg ? T.ink : T.muted }}>{s.name}</span>
-                        {erg?.ms != null && erg.ms > 1500 && <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted }}>{(erg.ms / 1000).toFixed(1)}s</span>}
-                        {!!erg?.detail && <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{auf ? '▾' : '▸'}</span>}
+                        {erg?.ms != null && erg.ms > 1500 && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{(erg.ms / 1000).toFixed(1)}s</span>}
+                        {!!erg?.detail && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{auf ? '▾' : '▸'}</span>}
                       </div>
                       <div style={{ fontSize: 12.5, color: erg ? (erg.stand === 'fehler' ? T.crit : erg.stand === 'uebersprungen' ? T.amber : T.inkDim) : T.muted, marginTop: 2, lineHeight: 1.45 }}>
                         {erg ? erg.kurz : s.tut}
@@ -193,7 +192,7 @@ export function TageslaufView() {
           <div style={{ ...panel, borderTop: `2px solid ${formFarbe(a.tagesform)}`, padding: '18px 22px' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
               <div style={lbl}>Ausrichtung</div>
-              {a.tagesform && <span style={{ fontFamily: T.mono, fontSize: 9.5, color: formFarbe(a.tagesform), border: `1px solid ${formFarbe(a.tagesform)}55`, borderRadius: 5, padding: '2px 7px', textTransform: 'uppercase' }}>{a.tagesform}</span>}
+              {a.tagesform && <span style={{ fontFamily: T.mono, fontSize: 11, color: formFarbe(a.tagesform), border: `1px solid ${formFarbe(a.tagesform)}55`, borderRadius: 5, padding: '2px 7px', textTransform: 'uppercase' }}>{a.tagesform}</span>}
             </div>
             <div style={{ fontSize: 15.5, color: T.ink, lineHeight: 1.55 }}>{a.gruss}</div>
             {a.warum && <div style={{ fontSize: 12.5, color: T.muted, marginTop: 4 }}>{a.warum}</div>}
@@ -205,7 +204,7 @@ export function TageslaufView() {
                     <span style={{ fontFamily: T.mono, fontSize: 12, color: T.accent, flex: '0 0 auto' }}>{i + 1}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ fontSize: 14, fontWeight: 600, color: T.ink }}>{p.titel}</span>
-                      {p.wann && <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted, marginLeft: 8 }}>{p.wann}</span>}
+                      {p.wann && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginLeft: 8 }}>{p.wann}</span>}
                       {p.warum && <div style={{ fontSize: 12.5, color: T.inkDim, marginTop: 2, lineHeight: 1.45 }}>{p.warum}</div>}
                     </div>
                     {aufgabeKnopf(`prio-${i}`, p.titel, [p.warum, p.wann ? `Wann: ${p.wann}` : ''].filter(Boolean).join(' · ') || 'Aus der Tages-Ausrichtung.')}
@@ -236,7 +235,7 @@ export function TageslaufView() {
                   <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, flex: '0 0 auto' }}>
                     {l.gestartet.slice(5, 10).replace('-', '.')} {l.gestartet.slice(11, 16)}
                   </span>
-                  <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.accentInk, border: `1px solid ${T.line}`, borderRadius: 5, padding: '2px 7px' }}>{l.art}</span>
+                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, border: `1px solid ${T.line}`, borderRadius: 5, padding: '2px 7px' }}>{l.art}</span>
                   <span style={{ fontSize: 12.5, color: T.inkDim, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {(l.ausrichtung as { gruss?: string })?.gruss ?? l.schritte.map(s => s.name).join(' · ')}
                   </span>
@@ -247,7 +246,7 @@ export function TageslaufView() {
           </div>
         )}
 
-        <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted, marginTop: 16, lineHeight: 1.6 }}>
+        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 16, lineHeight: 1.6 }}>
           {KETTE.length} Schritte insgesamt · voller Lauf {schritteFuer('voll').length} · kurzer Check {schritteFuer('kurz').length} · Puls {schritteFuer('puls').length}
         </div>
       </div>

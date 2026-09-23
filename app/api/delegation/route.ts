@@ -69,7 +69,7 @@ export async function POST() {
     ...joint.slice(0, 6).map(t => zeile(t, ' [MAKE.One]')),
   ].join('\n');
 
-  const r = await askJson<{ vorschlaege?: Partial<Vorschlag>[] }>({ system, user, maxTokens: 6000, model: agent.model, timeoutMs: 150_000 });
+  const r = await askJson<{ vorschlaege?: Partial<Vorschlag>[] }>({ zweck: 'delegation', system, user, maxTokens: 6000, model: agent.model, timeoutMs: 150_000 });
   if (!r.ok || !Array.isArray(r.data?.vorschlaege)) {
     return NextResponse.json({ error: r.error ?? 'Keine Vorschläge erhalten.' }, { status: 200 });
   }

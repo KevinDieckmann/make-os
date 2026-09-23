@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     `fp: ${n.fp}\n${fremd('mail', `Von: ${String(n.sender).slice(0, 120)} (${String(n.account ?? '').slice(0, 60)})\nBetreff: ${String(n.subject).slice(0, 160)}${n.preview ? `\nVorschau: ${String(n.preview).slice(0, 200)}` : ''}`)}`
   ).join('\n\n');
 
-  const r = await askJson<{ einstufungen?: { fp?: string; stufe?: string; zeile?: string; grund?: string }[] }>({
+  const r = await askJson<{ einstufungen?: { fp?: string; stufe?: string; zeile?: string; grund?: string }[] }>({ zweck: 'inbox-triage',
     system, user, maxTokens: 5000, model: agent.model, timeoutMs: 120_000,
   });
   if (!r.ok || !r.data?.einstufungen) {

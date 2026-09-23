@@ -2,14 +2,16 @@
 
 import Link from 'next/link';
 import { localDay } from '@/lib/zeit';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNachspeichern } from '@/lib/make-one/nachspeichern';
 import { THEME as T } from '@/lib/make-one/os-data';
+import { Seitenkopf } from './Seitenkopf';
 
 interface Entry { text?: string; mood?: number; energy?: number; stress?: number; haut?: string; ruecken?: string; flags?: string[]; at?: string; }
 type Journal = Record<string, Entry>;
 const ymd = (d: Date) => localDay(d);
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 
 const FLAGS: { id: string; label: string }[] = [
   { id: 'antiinflamm', label: 'Anti-entzündlich gegessen' },
@@ -23,25 +25,23 @@ export function JournalView() {
   const today = ymd(new Date());
   const [journal, setJournal] = useState<Journal>({});
   const [saved, setSaved] = useState(true);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     fetch('/api/state/journal').then(r => r.json()).then((d: { journal: Journal }) => setJournal(d.journal ?? {})).catch(() => {});
   }, []);
 
+  const spaeter = useNachspeichern<Journal>(next => {
+    fetch('/api/state/journal', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) })
+      .then(() => setSaved(true)).catch(() => {});
+  }, 500);
+
   const entry = journal[today] ?? {};
   function patch(p: Partial<Entry>) {
     setSaved(false);
-    setJournal(prev => {
-      const cur = prev[today] ?? {};
-      const next: Journal = { ...prev, [today]: { ...cur, ...p, at: new Date().toISOString() } };
-      clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => {
-        fetch('/api/state/journal', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) })
-          .then(() => setSaved(true)).catch(() => {});
-      }, 500);
-      return next;
-    });
+    const cur = journal[today] ?? {};
+    const next: Journal = { ...journal, [today]: { ...cur, ...p, at: new Date().toISOString() } };
+    setJournal(next);
+    spaeter(next);
   }
   const toggleFlag = (id: string) => {
     const f = new Set(entry.flags ?? []);
@@ -88,14 +88,12 @@ export function JournalView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
         <Link href="/os/gesundheit" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Gesundheit</Link>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
-          <div>
-            <div style={lbl}>Journal · dein Datenweg</div>
-            <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 0' }} suppressHydrationWarning>{new Date().toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' })}</h1>
-          </div>
-          <span style={{ fontFamily: T.mono, fontSize: 11, color: saved ? T.accent : T.amber }}>{saved ? 'gespeichert ✓' : 'speichert …'}</span>
-        </div>
-        <p style={{ fontSize: 13, color: T.inkDim, marginTop: 6 }}>Kurz festhalten, wie der Tag war — daraus entstehen deine Daten, um den Weg immer wieder anzupassen.</p>
+        <Seitenkopf
+          rubrik={<>Journal · dein Datenweg</>}
+          titel={<span suppressHydrationWarning>{new Date().toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' })}</span>}
+          satz={<>Kurz festhalten, wie der Tag war — daraus entstehen deine Daten, um den Weg immer wieder anzupassen.</>}
+          rechts={<span style={{ fontFamily: T.mono, fontSize: 11, color: saved ? T.accent : T.amber }}>{saved ? 'gespeichert ✓' : 'speichert …'}</span>}
+        />
 
         {/* Tages-Check */}
         <div style={{ ...panel, padding: '20px 22px', margin: '18px 0 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -140,10 +138,10 @@ export function JournalView() {
             <div key={date} style={{ padding: '13px 0', borderTop: i ? `1px solid ${T.lineSoft}` : 0 }}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
                 <span style={{ fontFamily: T.mono, fontSize: 11, color: T.inkDim }}>{new Date(date + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })}</span>
-                {typeof e.mood === 'number' && <span style={{ fontFamily: T.mono, fontSize: 10, color: T.accent }}>Stimmung {e.mood}</span>}
-                {typeof e.stress === 'number' && <span style={{ fontFamily: T.mono, fontSize: 10, color: T.crit }}>Stress {e.stress}</span>}
-                {e.haut === 'schub' && <span style={{ fontFamily: T.mono, fontSize: 10, color: T.crit }}>Haut-Schub</span>}
-                {e.ruecken === 'schmerz' && <span style={{ fontFamily: T.mono, fontSize: 10, color: T.crit }}>Rücken-Schmerz</span>}
+                {typeof e.mood === 'number' && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent }}>Stimmung {e.mood}</span>}
+                {typeof e.stress === 'number' && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.crit }}>Stress {e.stress}</span>}
+                {e.haut === 'schub' && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.crit }}>Haut-Schub</span>}
+                {e.ruecken === 'schmerz' && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.crit }}>Rücken-Schmerz</span>}
               </div>
               {e.text && <div style={{ fontSize: 13, color: T.inkDim, marginTop: 4, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{e.text}</div>}
             </div>

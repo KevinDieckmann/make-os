@@ -68,7 +68,7 @@ export function SystemDispatch() {
         <div>
           <div style={{
             fontFamily: 'var(--mono-font)',
-            fontSize: 9,
+            fontSize: 11,
             color: '#777',
             letterSpacing: '0.14em',
             marginBottom: 6,
@@ -97,7 +97,7 @@ export function SystemDispatch() {
           <div style={{ width: 4, height: 4, background: accent }} />
           <span style={{
             fontFamily: 'var(--mono-font)',
-            fontSize: 8,
+            fontSize: 11,
             color: accent,
             letterSpacing: '0.12em',
           }}>
@@ -115,7 +115,7 @@ export function SystemDispatch() {
       }}>
         <div style={{
           fontFamily: 'var(--mono-font)',
-          fontSize: 9,
+          fontSize: 11,
           color: '#777',
           letterSpacing: '0.1em',
           marginBottom: 6,
@@ -151,7 +151,7 @@ export function SystemDispatch() {
         }}>
           <span style={{
             fontFamily: 'var(--mono-font)',
-            fontSize: 9,
+            fontSize: 11,
             color: phase === 'PHASE_1_FOCUS' ? '#00ff66' : '#00aaff',
             letterSpacing: '0.08em',
           }}>
@@ -174,7 +174,7 @@ export function SystemDispatch() {
             border: '1px solid #1a1a1a',
             padding: '8px 10px',
           }}>
-            <div style={{ fontFamily: 'var(--mono-font)', fontSize: 9, color: '#777', letterSpacing: '0.1em', marginBottom: 4 }}>
+            <div style={{ fontFamily: 'var(--mono-font)', fontSize: 11, color: '#777', letterSpacing: '0.1em', marginBottom: 4 }}>
               {stat.label}
             </div>
             <div style={{ fontFamily: 'var(--mono-font)', fontSize: 16, color: stat.color ?? '#ffffff', letterSpacing: '-0.02em' }}>

@@ -61,6 +61,25 @@ lokal, Route `/os`, Port 3001.
   kurzem Review.
 
 ## Doku
+- **Schlanke Oberfläche (seit 23.09.2026):** neue Seiten nur mit den Bauteilen
+  aus `components/os/schlank.tsx` (Seite, Zeile, Liste, Haken, Ring, Segmente)
+  — keine Rahmen, eine Schrift, große Zahlen, nie eine Null. Alle sechs
+  Einträge der Leiste sind umgebaut. Alte Ansichten liegen unter
+  `/os/uebersicht`, `/os/aufgaben/board` und `/os/inbox/voll`.
+- **`PLAN.md` ist der führende Plan (seit 18.09.2026).** Bestand bleibt und
+  wird auf Hetzner hochgefahren; Reihenfolge Hochfahren → Aufgaben → CRM →
+  Anbindungen → Prozesse. Ein Bereich wird fertig und benutzt, dann der
+  nächste. Keine Spielerei — Kevins Ansage. `UMSETZUNGSPLAN.md` ist erledigt.
+- **Das Gedächtnis liegt im Obsidian-Vault**, nicht nur im Repo:
+  `iCloud/Make Privat ❤️/MAKE OS/05 Wissen/MAKE OS/`. Einstieg dort:
+  `MAKE OS — Karte.md`. 21 verlinkte Notizen (07.09.2026) mit dem kompletten
+  Weg seit 19.06., allen Entscheidungen samt Begründung, den Fehlern und ihren
+  Lehren, der Codelandkarte, dem tragenden Code im Original und Kevins
+  Wunschliste. **Vor größeren Umbauten dort nachlesen** — die Begründungen
+  stehen nirgends sonst. Jarvis findet die Notizen über `suche_wissen`.
+  Achtung: der Vault liegt in iCloud — dort niemals Schlüssel ablegen.
+- `BEWEGUNG.md` — die Bewegungssprache: 30 Punkte aus der Recherche vom 07.09.,
+  jeweils mit Begründung.
 - `ONBOARDING_MALIN.md` — Einstieg für Malin (mitbenutzen + mitbauen).
 - `UMSETZUNGSPLAN.md` — Konzept; der lebende Bauplan liegt in der App
   unter `/os/bauplan`.

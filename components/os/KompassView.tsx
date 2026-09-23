@@ -10,11 +10,14 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useNachspeichern } from '@/lib/make-one/nachspeichern';
 import { THEME as T } from '@/lib/make-one/os-data';
+import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, RADIUS } from '@/lib/make-one/design';
+import { Held } from './Held';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { SAEULE_VON_PROJEKT, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
-import { THEMEN, THEMA, STANDARD_ORDNUNG, sortierteThemen, themaVon } from '@/lib/make-one/ordnung-data';
+import { THEMEN, STANDARD_ORDNUNG, sortierteThemen, themenMit, themaVon } from '@/lib/make-one/ordnung-data';
 import { ORGS } from '@/lib/make-one/organisation-data';
 import { STICHWORTE, stichworteVon, mitEigenen } from '@/lib/make-one/stichworte-data';
 import { FAECHER } from '@/lib/make-one/inbox-data';
@@ -25,7 +28,7 @@ import {
 } from '@/lib/make-one/kompass-data';
 
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const feld = { background: T.void, border: `1px solid ${T.line}`, borderRadius: 8, color: T.ink, fontFamily: T.sans, fontSize: 13, padding: '8px 11px', outline: 'none' };
 
 const SAEULE_VON_REGLER: Record<string, string> = {
@@ -42,6 +45,15 @@ interface EigenesStichwort { id: string; label: string; thema: string; woerter: 
 
 const PRIOS = [['critical', 'kritisch'], ['high', 'hoch'], ['medium', 'mittel'], ['low', 'niedrig']] as const;
 
+/** Die Horizonte, für die je ein Fokus-Satz gesetzt wird. */
+const HORIZONTE = [
+  { id: 'jahr', label: 'Jahr', frage: 'Worauf läuft dieses Jahr hinaus?' },
+  { id: 'quartal', label: 'Quartal', frage: 'Was muss dieses Quartal stehen?' },
+  { id: 'monat', label: 'Monat', frage: 'Worauf liegt der Fokus diesen Monat?' },
+  { id: 'woche', label: 'Woche', frage: 'Worauf liegt der Fokus diese Woche?' },
+  { id: 'tag', label: 'Heute', frage: 'Worauf liegt der Fokus heute?' },
+];
+
 export function KompassView() {
   const { state } = useTasks();
 
@@ -51,6 +63,9 @@ export function KompassView() {
   const [geladen, setGeladen] = useState(false);
   const [reihenfolge, setReihenfolge] = useState<string[]>(STANDARD_ORDNUNG);
   const [tiefer, setTiefer] = useState(false);
+  // Der Fokus je Horizont liegt in denselben Zielen, aus denen Tag, Woche und
+  // Jarvis lesen — hier wird er gesetzt, dort wirkt er.
+  const [fokus, setFokus] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch('/api/state/kompass').then(r => r.json()).then(d => {
@@ -61,7 +76,25 @@ export function KompassView() {
     fetch('/api/state/ordnung').then(r => r.json()).then(d => {
       if (Array.isArray(d.reihenfolge) && d.reihenfolge.length) setReihenfolge(d.reihenfolge);
     }).catch(() => {});
+    fetch('/api/state/ziele').then(r => r.json()).then(d => setFokus(d.fokus ?? {})).catch(() => {});
   }, []);
+
+  // Die Route nimmt einen Horizont je Aufruf — genau den geänderten.
+  const fokusSpaeter = useNachspeichern<{ h: string; text: string }>(({ h, text }) => {
+    fetch('/api/state/ziele', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ horizont: h, fokus: text }), keepalive: true,
+    }).catch(() => {});
+  }, 500);
+
+  /** Fokus-Satz setzen — sofort sichtbar, kurz gebündelt geschrieben. */
+  function fokusSetzen(h: string, text: string) {
+    fokusSpaeter({ h, text });
+    setFokus(prev => {
+      const next = { ...prev, [h]: text };
+      return next;
+    });
+  }
 
   const wert = (id: ReglerId) => wertVon(id, modus, eigene);
   const abw = abweichungen(modus, eigene);
@@ -112,6 +145,38 @@ export function KompassView() {
     [next[i], next[j]] = [next[j], next[i]];
     setReihenfolge(next);
     fetch('/api/state/ordnung', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reihenfolge: next }) }).catch(() => {});
+  }
+
+  // ── Eigene Bezeichnungen: umbenennen und ergänzen ohne Code ──
+  const [labels, setLabels] = useState<{ themen: Record<string, string>; orte: Record<string, string>; kategorien: string[]; versteckt: string[] }>(
+    { themen: {}, orte: {}, kategorien: [], versteckt: [] },
+  );
+  const [neueKat, setNeueKat] = useState('');
+  useEffect(() => {
+    fetch('/api/state/labels').then(r => r.json()).then(d => setLabels({
+      themen: d.themen ?? {}, orte: d.orte ?? {}, kategorien: d.kategorien ?? [], versteckt: d.versteckt ?? [],
+    })).catch(() => {});
+  }, []);
+
+  const labelSpaeter = useNachspeichern<{ gruppe: string; werte: Record<string, string> }>(({ gruppe, werte }) => {
+    fetch('/api/state/labels', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [gruppe]: werte }), keepalive: true,
+    }).catch(() => {});
+  }, 500);
+
+  function labelSetzen(gruppe: 'themen' | 'orte', id: string, text: string) {
+    const werte = { ...labels[gruppe], [id]: text };
+    setLabels({ ...labels, [gruppe]: werte });
+    labelSpaeter({ gruppe, werte });
+  }
+
+  function kategorienSetzen(liste: string[]) {
+    setLabels(prev => ({ ...prev, kategorien: liste }));
+    fetch('/api/state/labels', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kategorien: liste }), keepalive: true,
+    }).catch(() => {});
   }
 
   // ── Eigene Filter & Stichworte ──
@@ -185,7 +250,9 @@ export function KompassView() {
     return stufeText(v, REGLER.find(r => r.id === id)?.skala);
   };
 
-  const themen = sortierteThemen(reihenfolge);
+  const themen = sortierteThemen(reihenfolge, labels.themen);
+  /** Themen-Nachschlag mit euren eigenen Bezeichnungen. */
+  const THEMA_EIGEN = useMemo(() => themenMit(labels.themen), [labels.themen]);
   const stichListe = useMemo(() => mitEigenen(eigeneSw), [eigeneSw]);
   const aktLage = MODUS[modus] ?? MODUS[STANDARD_MODUS];
 
@@ -240,26 +307,26 @@ export function KompassView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
         <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
-        <div style={lbl}>Kompass</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Woran sich alles ausrichtet.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 680, lineHeight: 1.5, marginBottom: 18 }}>
-          Erst die Lage wählen — sie stellt das ganze System um. Danach einzeln nachjustieren, wenn nötig.
-          Was hier steht, wirkt sofort in Aufgaben, Tag, Dashboard und Postfach.
-        </p>
+        {/* ── Der Held (UX 5, 06.09.) ───────────────────────────────────────
+            Kein Zahlenwert, sondern ein Zustand: in welcher Lage läuft das
+            System gerade. Alles andere auf dieser Seite justiert nur nach. */}
+        <Held
+          wert={aktLage.label}
+          label="Lage"
+          farbe={aktLage.farbe}
+          satz={<>{aktLage.satz}{abw.length > 0 && <span style={{ color: C.achtung }}> Von der Lage abweichend eingestellt: {abw.length} {abw.length === 1 ? 'Regler' : 'Regler'}.</span>}</>}
+          neben={[{ label: 'wirkt in', wert: 'Aufgaben · Tag · Dashboard · Postfach' }]}
+          kinder={abw.length > 0 ? (
+            <button onClick={zuruecksetzen} style={{
+              fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: `0 ${A.l}px`, minHeight: 32,
+              borderRadius: RADIUS.bauteil, cursor: 'pointer', border: `1px solid ${C.linie}`,
+              background: 'transparent', color: C.inkDim,
+            }}>↺ {abw.length} Abweichung{abw.length === 1 ? '' : 'en'} zurücknehmen</button>
+          ) : undefined}
+        />
 
         {/* ── EBENE 1: DIE LAGE ── */}
         <div style={{ ...panel, borderLeft: `3px solid ${aktLage.farbe}`, padding: '16px 20px', marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-            <span style={lbl}>Lage</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: aktLage.farbe }}>
-              {aktLage.label}{abw.length > 0 && <span style={{ color: T.amber, fontWeight: 500 }}>, angepasst</span>}
-            </span>
-            {abw.length > 0 && (
-              <button onClick={zuruecksetzen} style={{ fontFamily: T.sans, fontSize: 11.5, padding: '3px 11px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.muted }}>
-                ↺ {abw.length} Abweichung{abw.length === 1 ? '' : 'en'} zurücknehmen
-              </button>
-            )}
-          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 9 }}>
             {MODI.map(m => {
               const an = m.id === modus;
@@ -274,8 +341,61 @@ export function KompassView() {
               );
             })}
           </div>
-          <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted, marginTop: 10 }}>
+          <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 10 }}>
             Ein Klick stellt Fokus, Reihenfolge, Tageslast, Postfach-Strenge und Agenten-Leine gemeinsam um.
+          </div>
+        </div>
+
+        {/* ── PRIORITÄTEN: was zuerst zählt, wenn alles wichtig ist ──────────
+            Kevins Ansage: „Das ist nicht unsere Ordnung, das sind unsere
+            Prioritäten." Diese Reihenfolge sortiert das Taskmanagement, den
+            Tagesplan und Jarvis' Vorschläge — deshalb steht sie hier oben. */}
+        <div style={{ ...panel, borderLeft: `3px solid ${T.accent}`, padding: '16px 20px', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+            <span style={lbl}>Unsere Prioritäten</span>
+            <span style={{ fontSize: 12.5, color: T.muted }}>Was zuerst zählt, wenn alles wichtig ist. Die Lage setzt sie — hier feinjustieren.</span>
+          </div>
+          {themen.map((b, i) => {
+            const n = offen.filter(t => themaVon(t, {}) === b.id).length;
+            return (
+              <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 0', borderTop: i ? `1px solid ${T.lineSoft}` : 0 }}>
+                <span style={{ fontFamily: T.mono, fontSize: 13, fontWeight: 700, color: b.farbe, width: 16 }}>{i + 1}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{b.label} <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{n} offen</span></div>
+                  <div style={{ fontSize: 11.5, color: T.muted }}>{b.satz}</div>
+                </div>
+                <button onClick={() => schieben(b.id, -1)} disabled={i === 0} aria-label="Nach oben"
+                  style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: i === 0 ? T.line : T.inkDim, padding: '3px 9px', cursor: i === 0 ? 'default' : 'pointer' }}>▲</button>
+                <button onClick={() => schieben(b.id, 1)} disabled={i === themen.length - 1} aria-label="Nach unten"
+                  style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: i === themen.length - 1 ? T.line : T.inkDim, padding: '3px 9px', cursor: i === themen.length - 1 ? 'default' : 'pointer' }}>▼</button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── FOKUS: worauf es je Horizont ankommt ────────────────────────────
+            Kevin: „eine eigene Seite, wo es nur darum geht, welche Prios wir
+            geben und welchen Fokus." Der Satz je Horizont steht in denselben
+            Daten, aus denen Jarvis, der Tagesplan und die Wochensicht lesen. */}
+        <div style={{ ...panel, borderLeft: `3px solid ${T.accentInk}`, padding: '16px 20px', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
+            <span style={lbl}>Unser Fokus</span>
+            <span style={{ fontSize: 12.5, color: T.muted }}>Ein Satz je Horizont. Was hier steht, taucht im Tag, in der Woche und bei Jarvis wieder auf.</span>
+          </div>
+          {HORIZONTE.map((h, i) => (
+            <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0', borderTop: i ? `1px solid ${T.lineSoft}` : 0 }}>
+              <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: T.muted, width: 62, flex: '0 0 auto' }}>{h.label}</span>
+              <input
+                value={fokus[h.id] ?? ''}
+                onChange={e => fokusSetzen(h.id, e.target.value)}
+                placeholder={h.frage}
+                aria-label={`Fokus ${h.label}`}
+                style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', borderBottom: `1px solid ${T.line}`, padding: '3px 0 6px', fontSize: 13.5, fontWeight: fokus[h.id] ? 600 : 400, color: fokus[h.id] ? T.ink : T.muted, fontFamily: T.sans }}
+              />
+            </div>
+          ))}
+          <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 9 }}>
+            {HORIZONTE.filter(h => (fokus[h.id] ?? '').trim()).length} von {HORIZONTE.length} gesetzt
           </div>
         </div>
 
@@ -330,7 +450,7 @@ export function KompassView() {
                       <span style={{ fontSize: 11.5, color: T.muted }}>{r.erklaert}</span>
                       <span style={{ marginLeft: 'auto', display: 'flex', gap: 7 }}>
                         {r.wirktIn.map(w => (
-                          <Link key={w.href} href={w.href} style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, textDecoration: 'none', borderBottom: `1px dotted ${T.line}` }}>{w.label}</Link>
+                          <Link key={w.href} href={w.href} style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', borderBottom: `1px dotted ${T.line}` }}>{w.label}</Link>
                         ))}
                       </span>
                     </div>
@@ -349,30 +469,6 @@ export function KompassView() {
             {tiefer ? '− Postfach, Agenten und Schutz einklappen' : '+ Postfach, Agenten und Schutz einstellen'}
           </button>
         )}
-
-        {/* ── Reihenfolge der Themen ── */}
-        <div style={{ ...panel, padding: '16px 20px', marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
-            <span style={lbl}>Unsere Ordnung</span>
-            <span style={{ fontSize: 12.5, color: T.muted }}>Was zuerst zählt, wenn alles wichtig ist. Die Lage setzt sie — hier feinjustieren.</span>
-          </div>
-          {themen.map((b, i) => {
-            const n = offen.filter(t => themaVon(t, {}) === b.id).length;
-            return (
-              <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 0', borderTop: i ? `1px solid ${T.lineSoft}` : 0 }}>
-                <span style={{ fontFamily: T.mono, fontSize: 13, fontWeight: 700, color: b.farbe, width: 16 }}>{i + 1}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{b.label} <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>{n} offen</span></div>
-                  <div style={{ fontSize: 11.5, color: T.muted }}>{b.satz}</div>
-                </div>
-                <button onClick={() => schieben(b.id, -1)} disabled={i === 0} aria-label="Nach oben"
-                  style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: i === 0 ? T.line : T.inkDim, padding: '3px 9px', cursor: i === 0 ? 'default' : 'pointer' }}>▲</button>
-                <button onClick={() => schieben(b.id, 1)} disabled={i === themen.length - 1} aria-label="Nach unten"
-                  style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: i === themen.length - 1 ? T.line : T.inkDim, padding: '3px 9px', cursor: i === themen.length - 1 ? 'default' : 'pointer' }}>▼</button>
-              </div>
-            );
-          })}
-        </div>
 
         {/* ── Eigene Filter ── */}
         <div style={{ ...panel, padding: '16px 20px', marginBottom: 14 }}>
@@ -394,7 +490,7 @@ export function KompassView() {
               const auf = offenId === f.id;
               const treffer = f.wo === 'aufgaben' ? trefferVon(f) : null;
               const teile = [
-                ...(f.themen ?? []).map(x => THEMA[x]?.label),
+                ...(f.themen ?? []).map(x => THEMA_EIGEN[x]?.label),
                 ...(f.orgs ?? []).map(x => ORGS.find(o => o.id === x)?.kurz),
                 ...(f.prios ?? []).map(x => PRIOS.find(p => p[0] === x)?.[1]),
                 ...(f.wege ?? []).map(x => WER_LABEL[x as keyof typeof WER_LABEL]),
@@ -406,7 +502,7 @@ export function KompassView() {
                     <input value={f.name} onChange={e => patch(f.id, { name: e.target.value })} aria-label="Filtername"
                       style={{ background: 'transparent', border: 'none', outline: 'none', color: T.ink, fontFamily: T.sans, fontSize: 13.5, fontWeight: 600, flex: 1, minWidth: 140 }} />
                     {treffer != null && <span style={{ fontFamily: T.mono, fontSize: 11, color: treffer ? T.accent : T.muted }}>{treffer} Treffer</span>}
-                    <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{f.wo === 'inbox' ? 'Postfach' : 'Aufgaben'}</span>
+                    <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{f.wo === 'inbox' ? 'Postfach' : 'Aufgaben'}</span>
                     <button onClick={() => setOffenId(auf ? null : f.id)} style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: T.inkDim, padding: '3px 10px', fontSize: 11.5, cursor: 'pointer' }}>{auf ? 'Fertig' : 'Einstellen'}</button>
                     <button onClick={() => speichern({ filter: filter.filter(x => x.id !== f.id) })} aria-label="Filter löschen"
                       style={{ background: 'transparent', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 13 }}>✕</button>
@@ -484,14 +580,68 @@ export function KompassView() {
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
             {eigeneSw.map(s => (
               <span key={s.id} title={s.woerter.join(', ')}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, color: T.inkDim, border: `1px solid ${THEMA[s.thema]?.farbe ?? T.line}55`, borderRadius: 999, padding: '4px 11px' }}>
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, color: T.inkDim, border: `1px solid ${THEMA_EIGEN[s.thema]?.farbe ?? T.line}55`, borderRadius: 999, padding: '4px 11px' }}>
                 {s.label}
-                <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted }}>{s.woerter.length} Wörter</span>
+                <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{s.woerter.length} Wörter</span>
                 <button onClick={() => speichern({ stichworte: eigeneSw.filter(x => x.id !== s.id) })} aria-label="Stichwort löschen"
                   style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', padding: 0, fontSize: 11 }}>✕</button>
               </span>
             ))}
           </div>
+        </div>
+
+        {/* ── EIGENE BEZEICHNUNGEN ───────────────────────────────────────────
+            Kevins Kernsatz: „Wir bauen aus diesem System selber ein System —
+            aber das geht nicht, wenn du das immer einprogrammierst." Hier wird
+            umbenannt und ergänzt, ohne dass jemand Code anfasst. */}
+        <div style={{ ...panel, padding: '16px 20px', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+            <span style={lbl}>Eigene Bezeichnungen</span>
+            <span style={{ fontSize: 12.5, color: T.muted }}>Wie die Dinge bei euch heißen. Wirkt überall, wo sie auftauchen.</span>
+          </div>
+
+          <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>Prioritäten umbenennen</div>
+          {THEMEN.map(th => (
+            <div key={th.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0' }}>
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: th.farbe, flex: '0 0 auto' }} />
+              <input
+                value={labels.themen[th.id] ?? ''}
+                placeholder={th.label}
+                onChange={e => labelSetzen('themen', th.id, e.target.value)}
+                aria-label={`Bezeichnung für ${th.label}`}
+                style={{ ...feld, flex: 1, fontSize: 12.5 }} />
+              {labels.themen[th.id] && (
+                <button onClick={() => labelSetzen('themen', th.id, '')} title="Zurück auf den Standard"
+                  style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: T.muted, padding: '4px 9px', cursor: 'pointer', fontSize: 11 }}>↺</button>
+              )}
+            </div>
+          ))}
+
+          <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em', margin: '14px 0 6px' }}>
+            Eigene Kategorien <span style={{ textTransform: 'none', letterSpacing: 0 }}>für Buchungen, Zahlungen und Planposten</span>
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+            {labels.kategorien.map(k => (
+              <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.inkDim, border: `1px solid ${T.line}`, borderRadius: 999, padding: '3px 10px' }}>
+                {k}
+                <button onClick={() => kategorienSetzen(labels.kategorien.filter(x => x !== k))} title={`„${k}" entfernen`}
+                  style={{ background: 'transparent', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 11, padding: 0 }}>✕</button>
+              </span>
+            ))}
+            {!labels.kategorien.length && <span style={{ fontSize: 12, color: T.muted }}>Noch keine eigenen — die vorhandenen kommen aus euren Daten.</span>}
+          </div>
+          <form onSubmit={e => {
+            e.preventDefault();
+            const w = neueKat.trim();
+            if (!w || labels.kategorien.includes(w)) return;
+            kategorienSetzen([...labels.kategorien, w]);
+            setNeueKat('');
+          }} style={{ display: 'flex', gap: 7 }}>
+            <input value={neueKat} onChange={e => setNeueKat(e.target.value)} placeholder="Kategorie hinzufügen …"
+              aria-label="Neue Kategorie" style={{ ...feld, flex: 1, maxWidth: 280, fontSize: 12.5 }} />
+            <button type="submit" disabled={!neueKat.trim()}
+              style={{ fontSize: 12.5, fontWeight: 600, padding: '7px 14px', borderRadius: 8, cursor: neueKat.trim() ? 'pointer' : 'default', border: `1px solid ${T.accent}`, background: neueKat.trim() ? T.accentSoft : 'transparent', color: T.accent }}>+ anlegen</button>
+          </form>
         </div>
 
         {/* ── Reichweite: wo sonst noch eingestellt wird ── */}

@@ -5,7 +5,8 @@
 // Gesundheits-Säule — und bleibt aus Business-Kontexten draußen (Privatsphäre).
 
 import { NextResponse } from 'next/server';
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson, updateJson, updateGeschuetztListen } from '@/lib/store/local-db';
+import { listePatchen, opsLesen } from '@/lib/store/patch-liste';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -73,6 +74,27 @@ export async function PUT(req: Request) {
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const sauber = sauberListe(body.meilensteine);
   if (!sauber.length) return NextResponse.json({ ok: false, error: 'meilensteine darf nicht leer sein.' }, { status: 400 });
-  const next = await updateJson<MeilensteinFile>('meilensteine', () => ({ meilensteine: sauber }));
+  // Vorher ersetzte jeder PUT die Liste bedingungslos — ein Client mit halbem
+  // Stand hätte alle Meilensteine gelöscht.
+  const { ok, next, verloren } = await updateGeschuetztListen<MeilensteinFile>(
+    'meilensteine', { meilensteine: sauber }, ['meilensteine'],
+  );
+  if (!ok) {
+    return NextResponse.json(
+      { ok: false, error: `Abgelehnt: das hätte über die Hälfte von ${verloren} gelöscht.` },
+      { status: 409 },
+    );
+  }
   return NextResponse.json({ ok: true, meilensteine: next.meilensteine });
+}
+
+/** Einzelne Meilensteine ändern — Zwei-Fenster-Fundament. */
+export async function PATCH(req: Request) {
+  let body: { ops?: unknown };
+  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  const ops = opsLesen<Meilenstein>(body.ops, e => sauberListe([e])[0] ?? null, 60);
+  if (!ops) return NextResponse.json({ ok: false, error: 'Feld "ops" (Liste) fehlt.' }, { status: 400 });
+  const r = await listePatchen<Meilenstein, MeilensteinFile & Record<string, unknown>>('meilensteine', 'meilensteine', ops, 6);
+  if (!r.ok) return NextResponse.json({ ok: false, error: r.fehler }, { status: r.fehler?.startsWith('Abgelehnt') ? 409 : 400 });
+  return NextResponse.json({ ok: true, angewandt: r.angewandt, meilensteine: r.next?.meilensteine });
 }

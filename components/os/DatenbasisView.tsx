@@ -11,8 +11,9 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
 import { localDay } from '@/lib/zeit';
+import { Seitenkopf } from './Seitenkopf';
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 
 type Ton = 'ok' | 'acht' | 'fehlt' | 'neutral';
@@ -99,7 +100,7 @@ export function DatenbasisView() {
   }, [heute]);
 
   const chip = (ton: Ton, text: string) => (
-    <span style={{ fontFamily: T.mono, fontSize: 10, color: TON_FARBE[ton], border: `1px solid ${TON_FARBE[ton]}44`, borderRadius: 5, padding: '2px 8px', whiteSpace: 'nowrap' }}>{text}</span>
+    <span style={{ fontFamily: T.mono, fontSize: 11, color: TON_FARBE[ton], border: `1px solid ${TON_FARBE[ton]}44`, borderRadius: 5, padding: '2px 8px', whiteSpace: 'nowrap' }}>{text}</span>
   );
 
   const fehltN = (zeilen ?? []).filter(z => z.ton === 'fehlt').length;
@@ -108,11 +109,11 @@ export function DatenbasisView() {
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div className="stagger" style={{ maxWidth: 860, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
-        <div style={lbl}>Datenbasis</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>Was das System trägt.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 660, lineHeight: 1.5 }}>
-          Eine Wahrheit, drei Ebenen: <b style={{ color: T.ink }}>eingeben</b> was nur ihr wisst, <b style={{ color: T.ink }}>verbinden</b> was automatisch fließen kann, <b style={{ color: T.ink }}>Agenten</b> arbeiten lassen. Jede Zeile springt direkt ins richtige Feld.
-        </p>
+        <Seitenkopf
+          rubrik={<>Datenbasis</>}
+          titel={<>Was das System trägt.</>}
+          satz={<>Eine Wahrheit, drei Ebenen: <b style={{ color: T.ink }}>eingeben</b> was nur ihr wisst, <b style={{ color: T.ink }}>verbinden</b> was automatisch fließen kann, <b style={{ color: T.ink }}>Agenten</b> arbeiten lassen. Jede Zeile springt direkt ins richtige Feld.</>}
+        />
 
         {/* Ampel-Kopf */}
         {zeilen && (
@@ -132,7 +133,7 @@ export function DatenbasisView() {
             <Link key={z.bereich} href={z.href} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '11px 16px', textDecoration: 'none', borderTop: i ? `1px solid ${T.lineSoft}` : 0, flexWrap: 'wrap' }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: TON_FARBE[z.ton], flex: '0 0 auto' }} />
               <span style={{ fontSize: 13.5, fontWeight: 600, color: T.ink, minWidth: 200, flex: 1 }}>{z.bereich}</span>
-              {z.wer && <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted, border: `1px solid ${T.line}`, borderRadius: 5, padding: '1px 7px' }}>{z.wer}</span>}
+              {z.wer && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, border: `1px solid ${T.line}`, borderRadius: 5, padding: '1px 7px' }}>{z.wer}</span>}
               <span style={{ fontSize: 12, color: z.ton === 'ok' ? T.inkDim : TON_FARBE[z.ton] }}>{z.status}</span>
               <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk }}>›</span>
             </Link>

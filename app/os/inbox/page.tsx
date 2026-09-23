@@ -1,5 +1,2 @@
-import { InboxView } from '@/components/os/InboxView';
-
-export default function InboxPage() {
-  return <InboxView />;
-}
+import { InboxSchlank } from '@/components/os/InboxSchlank';
+export default function InboxPage() { return <InboxSchlank />; }

@@ -9,8 +9,9 @@ import { useEffect, useState } from 'react';
 import { THEME as T } from '@/lib/make-one/os-data';
 import { PHASEN } from '@/lib/make-one/roadmap-data';
 import { KAT_LABEL, BLOCK_LABEL, type BacklogItem } from '@/lib/make-one/backlog-data';
+import { Seitenkopf } from './Seitenkopf';
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 const blockColor = (b: string) => (b === 'frei' ? T.accent : b === 'kevin' ? T.amber : T.muted);
 const katColor = (k: string) => (k === 'anbindung' ? '#4A6CF7' : k === 'agent' ? T.accent : k === 'qualitaet' ? T.accentInk : '#AC9D80');
@@ -34,12 +35,11 @@ export function RoadmapView() {
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 940, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
         <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
-        <div style={lbl}>Roadmap · der Fahrplan</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>In welcher Reihenfolge wir bauen.</h1>
-        <p style={{ fontSize: 13.5, color: T.inkDim, maxWidth: 700, lineHeight: 1.5 }}>
-          Sieben Phasen, die aufeinander aufbauen. Erst der tägliche Takt, dann vollständige Daten, dann Steuerung —
-          Messbarkeit auf Daten zu bauen, die noch nicht reinfließen, führt zu Zahlen, denen man nicht trauen kann.
-        </p>
+        <Seitenkopf
+          rubrik={<>Roadmap · der Fahrplan</>}
+          titel={<>In welcher Reihenfolge wir bauen.</>}
+          satz={<>Sieben Phasen, die aufeinander aufbauen. Erst der tägliche Takt, dann vollständige Daten, dann Steuerung — Messbarkeit auf Daten zu bauen, die noch nicht reinfließen, führt zu Zahlen, denen man nicht trauen kann.</>}
+        />
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '18px 0 20px' }}>
           <div style={{ ...panel, padding: '10px 16px' }}><div style={lbl}>Bausteine</div><div style={{ fontSize: 21, fontWeight: 700 }}>{gesamt}</div></div>
@@ -71,7 +71,7 @@ export function RoadmapView() {
                       <span style={{ fontFamily: T.mono, fontSize: 12, fontWeight: 700, color: T.accent, flex: '0 0 auto' }}>{String(p.nr).padStart(2, '0')}</span>
                       <span style={{ fontSize: 16.5, fontWeight: 700, color: T.ink }}>{p.name}</span>
                       <span style={{ flex: 1 }} />
-                      <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>
+                      <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>
                         {done}/{eigene.length}
                         {meine > 0 && <span style={{ color: T.accent }}> · {meine} baubar</span>}
                         {deine > 0 && <span style={{ color: T.amber }}> · {deine} brauchen dich</span>}
@@ -93,10 +93,10 @@ export function RoadmapView() {
                         {eigene.sort((a, b) => a.prio - b.prio).map(i => (
                           <div key={i.id} style={{ opacity: i.status === 'erledigt' ? 0.45 : 1 }}>
                             <div style={{ display: 'flex', gap: 9, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                              <span style={{ fontFamily: T.mono, fontSize: 10, color: i.prio === 1 ? T.accent : T.muted, flex: '0 0 auto' }}>P{i.prio}</span>
+                              <span style={{ fontFamily: T.mono, fontSize: 11, color: i.prio === 1 ? T.accent : T.muted, flex: '0 0 auto' }}>P{i.prio}</span>
                               <span style={{ fontSize: 13.5, fontWeight: 600, color: T.ink, textDecoration: i.status === 'erledigt' ? 'line-through' : 'none' }}>{i.titel}</span>
-                              <span style={{ fontFamily: T.mono, fontSize: 9, color: katColor(i.kategorie), border: `1px solid ${katColor(i.kategorie)}44`, borderRadius: 4, padding: '1px 6px' }}>{KAT_LABEL[i.kategorie]}</span>
-                              <span style={{ fontFamily: T.mono, fontSize: 9, color: blockColor(i.block), border: `1px solid ${blockColor(i.block)}44`, borderRadius: 4, padding: '1px 6px' }}>{BLOCK_LABEL[i.block]}</span>
+                              <span style={{ fontFamily: T.mono, fontSize: 11, color: katColor(i.kategorie), border: `1px solid ${katColor(i.kategorie)}44`, borderRadius: 4, padding: '1px 6px' }}>{KAT_LABEL[i.kategorie]}</span>
+                              <span style={{ fontFamily: T.mono, fontSize: 11, color: blockColor(i.block), border: `1px solid ${blockColor(i.block)}44`, borderRadius: 4, padding: '1px 6px' }}>{BLOCK_LABEL[i.block]}</span>
                             </div>
                             {i.warum && <div style={{ fontSize: 12.5, color: T.inkDim, marginTop: 3, lineHeight: 1.45, paddingLeft: 26 }}>{i.warum}</div>}
                             {i.block === 'kevin' && i.brauche && (

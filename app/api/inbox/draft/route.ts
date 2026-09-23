@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     p.hint ? `Kevins Hinweis für die Antwort: ${p.hint}` : 'Schreibe eine passende, knappe Antwort.',
   ].join('\n');
 
-  const r = await askText({ system, user: message, maxTokens: 4000, model: agent.model });
+  const r = await askText({ zweck: 'inbox-draft', system, user: message, maxTokens: 4000, model: agent.model });
   if (!r.ok || !r.text) return NextResponse.json({ draft: '', error: r.error ?? 'Konnte gerade keinen Entwurf schreiben — nochmal versuchen.' });
   return NextResponse.json({ draft: r.text });
 }

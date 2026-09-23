@@ -1,53 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import type { Owner } from '@/types/common';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AufgabenBoard } from './AufgabenBoard';
+import { Abhaengigkeit, BlockiertChip } from './Abhaengigkeit';
+import { Faelligkeit } from './Faelligkeit';
 import { THEME as T } from '@/lib/make-one/os-data';
+import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, RADIUS, MIKRO } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import type { Priority } from '@/types';
 import { localDay } from '@/lib/zeit';
 import { SAEULE_VON_PROJEKT, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
-import { THEMA, STANDARD_ORDNUNG, themaVon, sortierteThemen } from '@/lib/make-one/ordnung-data';
+import { STANDARD_ORDNUNG, themaVon, sortierteThemen, themenMit } from '@/lib/make-one/ordnung-data';
 import { STICHWORTE, STICHWORT, stichworteVon, mitEigenen } from '@/lib/make-one/stichworte-data';
 import { ORGS, ORG, orgVon } from '@/lib/make-one/organisation-data';
 import { einschaetzen, dauerText, WER_LABEL, WER_FARBE, type Wer } from '@/lib/make-one/umsetzung-data';
 import { DELEGIERBAR } from '@/lib/make-one/team-data';
 import { wertVon, STANDARD_MODUS, type ReglerId } from '@/lib/make-one/kompass-data';
 import { Zeitstrahl, type StrahlMarker } from './Zeitstrahl';
-
-// ── Datums-Kurzhelfer fürs Schnellanlegen und die Zeilen-Aktionen ──
-const tagInT = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return localDay(d); };
-const naechsterWochentag = (idx: number) => { // 0=So … 6=Sa (JS getDay)
-  const d = new Date();
-  d.setDate(d.getDate() + (((idx - d.getDay()) % 7 + 7) % 7 || 7));
-  return localDay(d);
-};
-
-/** Schnell-Anlegen mit Kürzeln: !! kritisch · ! hoch · heute/morgen/mo–so/TT.MM. · #projekt · @malin/@beide */
-function parseSchnell(rein: string, projekte: { id: string; title: string }[]): { title: string; priority: Priority; dueDate?: string; projectId?: string; assignee: 'kevin' | 'malin' | 'both' } {
-  let s = ` ${rein.trim()} `;
-  let priority: Priority = 'medium';
-  if (s.includes('!!')) { priority = 'critical'; s = s.replace('!!', ' '); }
-  else if (s.includes('!')) { priority = 'high'; s = s.replace('!', ' '); }
-  let assignee: 'kevin' | 'malin' | 'both' = 'kevin';
-  s = s.replace(/\s@(malin|beide|kevin)\b/i, (_, w) => { assignee = w.toLowerCase() === 'beide' ? 'both' : w.toLowerCase() as 'kevin' | 'malin'; return ' '; });
-  let dueDate: string | undefined;
-  s = s.replace(/\s(heute|morgen|übermorgen)\b/i, (_, w) => { dueDate = tagInT(w.toLowerCase() === 'heute' ? 0 : w.toLowerCase() === 'morgen' ? 1 : 2); return ' '; });
-  if (!dueDate) s = s.replace(/\s(mo|di|mi|do|fr|sa|so)\b/i, (_, w) => { dueDate = naechsterWochentag(['so', 'mo', 'di', 'mi', 'do', 'fr', 'sa'].indexOf(w.toLowerCase())); return ' '; });
-  if (!dueDate) s = s.replace(/\s(\d{1,2})\.(\d{1,2})\.?(?=\s)/, (_, tt, mm) => {
-    const j = new Date().getFullYear();
-    const kand = `${j}-${String(mm).padStart(2, '0')}-${String(tt).padStart(2, '0')}`;
-    dueDate = kand < localDay() ? `${j + 1}${kand.slice(4)}` : kand;
-    return ' ';
-  });
-  let projectId: string | undefined;
-  s = s.replace(/\s#(\S+)/, (_, w) => {
-    const p = projekte.find(x => x.title.toLowerCase().includes(String(w).toLowerCase()));
-    if (p) { projectId = p.id; return ' '; }
-    return ` #${w}`;
-  });
-  return { title: s.replace(/\s+/g, ' ').trim(), priority, dueDate, projectId, assignee };
-}
+import { parseSchnell, tagInT, naechsterWochentag } from '@/lib/make-one/schnell-anlegen';
 
 const PRIO_ZYKLUS: Priority[] = ['low', 'medium', 'high', 'critical'];
 const PRIO_RANG: Record<Priority, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -55,7 +27,7 @@ const PRIO_RANG: Record<Priority, number> = { critical: 0, high: 1, medium: 2, l
 interface Reminder { id: string; list: string; title: string; due?: string; priority: number; }
 
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 
 const PRIO: Record<Priority, { c: string; t: string }> = {
   critical: { c: T.crit, t: 'kritisch' },
@@ -65,12 +37,22 @@ const PRIO: Record<Priority, { c: string; t: string }> = {
 };
 const OWNER: Record<string, string> = { kevin: 'Kevin', malin: 'Malin', both: 'Beide' };
 
-type Ansicht = 'jetzt' | 'themen' | 'zeit' | 'liste';
+type Ansicht = 'jetzt' | 'board' | 'personen' | 'themen' | 'zeit' | 'liste';
 const ANSICHTEN: { key: Ansicht; label: string }[] = [
   { key: 'jetzt', label: 'Jetzt' },
+  // Die Verteil-Runde: Spalten von links nach rechts, Bahnen nach Person oder Firma.
+  { key: 'board', label: 'Board' },
+  { key: 'personen', label: 'Kevin & Malin' },
   { key: 'themen', label: 'Themen' },
   { key: 'zeit', label: 'Zeitstrahl' },
   { key: 'liste', label: 'Liste' },
+];
+
+/** Die drei Bahnen der Ansicht „Kevin & Malin". */
+const BAHNEN = [
+  { id: 'kevin' as const, titel: 'Kevin', satz: 'Was nur er machen kann.' },
+  { id: 'both' as const, titel: 'Beide', satz: 'Braucht euch zusammen.' },
+  { id: 'malin' as const, titel: 'Malin', satz: 'Bei ihr besser aufgehoben.' },
 ];
 
 interface DelegVorschlag { taskId: string; titel: string; empfehlung: 'abgeben' | 'bleibt'; an?: string; warum: string; uebergabe?: string }
@@ -135,7 +117,13 @@ export function AufgabenView() {
     [next[i], next[j]] = [next[j], next[i]];
     ordnungSpeichern({ reihenfolge: next });
   }
-  const themen = useMemo(() => sortierteThemen(reihenfolge), [reihenfolge]);
+  // Eure eigenen Bezeichnungen aus dem Kompass — leer heißt Standard.
+  const [eigeneNamen, setEigeneNamen] = useState<Record<string, string>>({});
+  useEffect(() => {
+    fetch('/api/state/labels').then(r => r.json()).then(d => setEigeneNamen(d.themen ?? {})).catch(() => {});
+  }, []);
+  const themen = useMemo(() => sortierteThemen(reihenfolge, eigeneNamen), [reihenfolge, eigeneNamen]);
+  const THEMA_EIGEN = useMemo(() => themenMit(eigeneNamen), [eigeneNamen]);
   const themaRang = useMemo(() => Object.fromEntries(themen.map((b, i) => [b.id, i])) as Record<string, number>, [themen]);
 
   async function delegationsRunde() {
@@ -182,10 +170,12 @@ export function AufgabenView() {
   const projName = (id: string) => state.projects.find(p => p.id === id)?.title ?? '—';
   // Delegiert-Marker aus der Beschreibung („— Delegiert an Frank (31.07): …").
   const delegiertAn = (desc?: string) => desc?.match(/— Delegiert an (\w+)/)?.[1];
-  const [bes, setBes] = useState<'alle' | 'kevin' | 'malin' | 'both'>('alle');
+  const [bes, setBes] = useState<'alle' | string | 'both'>('alle');
   const [prioFilter, setPrioFilter] = useState<Priority | 'alle'>('alle');
   const [themaFilter, setThemaFilter] = useState<string | 'alle'>('alle');
   const [orgFilter, setOrgFilter] = useState<string | 'alle'>('alle');
+  /** Termin-Lage: alles · nur ohne Datum · nur überfällig. */
+  const [datumFilter, setDatumFilter] = useState<'alle' | 'ohne' | 'spaet'>('alle');
   const [werFilter, setWerFilter] = useState<Wer | 'alle'>('alle');
   const [stichFilter, setStichFilter] = useState<string | null>(null);
   const [stichSuche, setStichSuche] = useState('');
@@ -193,7 +183,23 @@ export function AufgabenView() {
 
   // ── Schnell-Anlegen + Zeilen-Editor + Fokus-Regler-Lenkung ──
   const [neuTitel, setNeuTitel] = useState('');
+  // Anlegen mit Feldern statt nur Kürzeln — und die beiden Klappen, damit oben
+  // nicht dauerhaft vier Reihen Filter stehen.
+  const [neuAuf, setNeuAuf] = useState(false);
+  const [neuPrio, setNeuPrio] = useState<Priority>('medium');
+  const [neuWer, setNeuWer] = useState<Owner>('kevin');
+  const [neuDatum, setNeuDatum] = useState<string | undefined>(undefined);
+  const [neuOrg, setNeuOrg] = useState<string>('kdv');
+  const [filterAuf, setFilterAuf] = useState(false);
+  const [stichAuf, setStichAuf] = useState(false);
+  /** Ort, der der zuletzt angelegten Aufgabe noch zugeordnet werden muss. */
+  const [orgFuerNeu, setOrgFuerNeu] = useState<string | null>(null);
+  /** Entprellt die Notizen — es ist immer nur ein Feld zugleich im Fokus. */
+  const notizTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [offenId, setOffenId] = useState<string | null>(null);
+  // Welches Feld gerade zur Auswahl offensteht — ein Klick auf „kritisch",
+  // ein Stichwort oder die Zuweisung öffnet den Streifen unter der Zeile.
+  const [menue, setMenue] = useState<{ id: string; feld: 'prio' | 'wer' | 'stich' } | null>(null);
   const [regler, setRegler] = useState<Record<string, number>>({});
   useEffect(() => {
     fetch('/api/state/fokus-regler').then(r => r.json()).then(d => setRegler(d.regler ?? {})).catch(() => {});
@@ -211,6 +217,29 @@ export function AufgabenView() {
       ...(p.dueDate ? { dueDate: p.dueDate } : {}),
     } });
     setNeuTitel('');
+  }
+
+  /**
+   * Anlegen mit den Feldern aus dem ＋-Formular. Die Kürzel im Titel gelten
+   * weiterhin — was Kevin angeklickt hat, schlägt sie aber, denn der Klick ist
+   * die spätere und bewusstere Angabe.
+   */
+  function anlegenMitFeldern() {
+    const roh = neuTitel.trim();
+    if (!roh) return;
+    const p = parseSchnell(roh, state.projects);
+    dispatch({ type: 'ADD_TASK', payload: {
+      projectId: p.projectId ?? state.projects[0]?.id ?? '',
+      title: p.title || roh, description: '', status: 'todo',
+      priority: neuPrio, assignee: neuWer,
+      tags: [], subTasks: [], dependencies: [], sortOrder: 0,
+      ...(neuDatum ?? p.dueDate ? { dueDate: neuDatum ?? p.dueDate } : {}),
+    } });
+    // Die Id vergibt der Reducer. Der Ort wird deshalb im Zug danach gesetzt —
+    // die neue Aufgabe hängt immer hinten in der Liste.
+    setOrgFuerNeu(neuOrg);
+    setNeuTitel('');
+    setNeuDatum(undefined);
   }
 
   const heute = localDay();
@@ -231,6 +260,8 @@ export function AufgabenView() {
       if (themaFilter !== 'alle' && themaVon(t, zuordnung) !== themaFilter) return false;
       if (stichFilter && !stichworteVon(t, handStich, stichListe).includes(stichFilter)) return false;
       if (orgFilter !== 'alle' && orgVon(t, orgZuord) !== orgFilter) return false;
+      if (datumFilter === 'ohne' && t.dueDate) return false;
+      if (datumFilter === 'spaet' && !(t.dueDate && t.dueDate < heute && t.status !== 'done')) return false;
       if (werFilter !== 'alle' && einschaetzen(t).wer !== werFilter) return false;
       // Gespeicherter Filter aus dem Kompass: leere Liste heißt „egal".
       if (aktiverFilter) {
@@ -268,7 +299,27 @@ export function AufgabenView() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.tasks, seg, bes, prioFilter, themaFilter, stichFilter, orgFilter, werFilter, aktiverFilter, eigeneFilter, stichListe, handStich, orgZuord, regler, zuordnung, themaRang, heute]);
+  }, [state.tasks, seg, bes, prioFilter, themaFilter, stichFilter, orgFilter, datumFilter, werFilter, aktiverFilter, eigeneFilter, stichListe, handStich, orgZuord, regler, zuordnung, themaRang, heute]);
+
+  // Zähler für die Termin-Chips — über ALLE offenen Aufgaben, nicht über die
+  // gerade gefilterte Liste: sonst zeigt „ohne Datum 0", während 20 offen sind.
+  // Ort der frisch angelegten Aufgabe nachtragen, sobald sie im Zustand steht.
+  useEffect(() => {
+    if (!orgFuerNeu) return;
+    const letzte = state.tasks[state.tasks.length - 1];
+    if (letzte) ordnungSpeichern({ orgs: { [letzte.id]: orgFuerNeu } });
+    setOrgFuerNeu(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgFuerNeu, state.tasks]);
+
+  /** Wie viele Filter gerade wirklich greifen — steht auf der zugeklappten Klappe. */
+  const aktiveFilter = [
+    bes !== 'alle', prioFilter !== 'alle', themaFilter !== 'alle', orgFilter !== 'alle',
+    datumFilter !== 'alle', werFilter !== 'alle', !!stichFilter, !!aktiverFilter,
+  ].filter(Boolean).length;
+
+  const ohneDatumAnzahl = useMemo(() => state.tasks.filter(t => t.status !== 'done' && !t.dueDate).length, [state.tasks]);
+  const ueberfaelligAnzahl = useMemo(() => state.tasks.filter(t => t.status !== 'done' && t.dueDate && t.dueDate < heute).length, [state.tasks, heute]);
 
   // ── Stichwort-Register: was gerade wirklich anliegt, nach Dringlichkeit ──
   const stichStand = useMemo(() => {
@@ -337,13 +388,45 @@ export function AufgabenView() {
   );
 
   /** Eine Aufgabenzeile — überall gleich, damit jede Ansicht dieselbe Wahrheit zeigt. */
+  /**
+   * Ein Auswahl-Streifen direkt unter der Zeile. Kevins Ansage: „Ich möchte
+   * einmal auf kritisch draufgehen und dann die Möglichkeiten zur Auswahl da
+   * drunter stehen haben." Vorher rotierte der Klick durch die Stufen — man
+   * sah nie, was zur Wahl steht, und brauchte drei Klicks für einen Schritt.
+   */
+  function auswahl(
+    titel: string,
+    optionen: { id: string; label: string; farbe?: string; aktiv: boolean }[],
+    waehle: (id: string) => void,
+    zu: () => void,
+  ) {
+    return (
+      <div onClick={e => e.stopPropagation()}
+        style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', padding: '9px 16px 11px 48px', background: T.panel2, borderTop: `1px solid ${T.lineSoft}` }}>
+        <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em', marginRight: 2 }}>{titel}</span>
+        {optionen.map(o => (
+          <button key={o.id} onClick={() => { waehle(o.id); zu(); }}
+            style={{
+              fontFamily: T.sans, fontSize: 11.5, padding: '4px 11px', borderRadius: 7, cursor: 'pointer',
+              border: `1px solid ${o.aktiv ? (o.farbe ?? T.accent) : T.line}`,
+              background: o.aktiv ? `${o.farbe ?? T.accent}1c` : 'transparent',
+              color: o.aktiv ? (o.farbe ?? T.accentInk) : T.inkDim,
+              fontWeight: o.aktiv ? 700 : 400,
+            }}>{o.aktiv ? '✓ ' : ''}{o.label}</button>
+        ))}
+        <button onClick={zu} title="Auswahl schließen"
+          style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: T.muted, background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 6px' }}>✕</button>
+      </div>
+    );
+  }
+
   function zeile(t: typeof list[number], i: number, zeigeThema?: boolean) {
     const done = t.status === 'done';
     const blockiert = t.status === 'blocked';
     const p = PRIO[t.priority];
     const auf = offenId === t.id;
     const imFokus = !done && boost(t) >= FOKUS_SCHWELLE;
-    const thema = THEMA[meinThema(t)];
+    const thema = THEMA_EIGEN[meinThema(t)];
     const spaet = !!t.dueDate && t.dueDate < heute && !done;
     const kritisch = t.priority === 'critical' && !done;
     return (
@@ -360,132 +443,207 @@ export function AufgabenView() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 5, flexWrap: 'wrap' }}>
               {!done && (
-                <button onClick={e => { e.stopPropagation(); patchTask(t.id, { priority: PRIO_ZYKLUS[(PRIO_ZYKLUS.indexOf(t.priority) + 1) % PRIO_ZYKLUS.length] }); }}
-                  title="Priorität wechseln"
+                <button onClick={e => { e.stopPropagation(); setMenue(m => m?.id === t.id && m.feld === 'prio' ? null : { id: t.id, feld: 'prio' }); }}
+                  title="Priorität ändern — Auswahl erscheint darunter"
                   className={kritisch ? 'krit-puls' : undefined}
-                  style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: p.c, border: `1px solid ${p.c}${kritisch ? '99' : '44'}`, borderRadius: 5, padding: '1px 6px', background: kritisch ? `${T.crit}18` : 'transparent', cursor: 'pointer' }}>{p.t}</button>
+                  style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.04em', textTransform: 'uppercase', color: p.c, border: `1px solid ${p.c}${kritisch ? '99' : '44'}`, borderRadius: 5, padding: '1px 6px', background: kritisch ? `${T.crit}18` : 'transparent', cursor: 'pointer' }}>{p.t}</button>
               )}
-              {zeigeThema && thema && <span style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: thema.farbe, border: `1px solid ${thema.farbe}44`, borderRadius: 5, padding: '1px 6px' }}>{thema.label.split(' ')[0]}</span>}
+              {/* Entklobt (awork-Muster): reine Anzeigen sind farbiger Text
+                  ohne Rahmen — Rahmen heißt ab jetzt „hier kann man klicken". */}
+              {zeigeThema && thema && <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.04em', textTransform: 'uppercase', color: thema.farbe, opacity: 0.9 }}>{thema.label.split(' ')[0]}</span>}
               {!done && (() => {
                 const e = einschaetzen(t);
                 return (
                   <span title={`${WER_LABEL[e.wer]} — ${e.warum}${e.beitrag ? ` · Jarvis: ${e.beitrag}` : ''}`}
-                    style={{ fontFamily: T.mono, fontSize: 9.5, color: WER_FARBE[e.wer], border: `1px solid ${WER_FARBE[e.wer]}44`, borderRadius: 5, padding: '1px 6px' }}>
+                    style={{ fontFamily: T.mono, fontSize: 11, color: WER_FARBE[e.wer], opacity: 0.9 }}>
                     {e.wer === 'jarvis' ? '⚡' : e.wer === 'gemeinsam' ? '◐' : '☺'} {dauerText(e.dauer)}
                   </span>
                 );
               })()}
-              {zeigeThema && <span style={{ fontFamily: T.mono, fontSize: 9.5, color: ORG[meineOrg(t)]?.farbe, opacity: 0.85 }}>{ORG[meineOrg(t)]?.kurz}</span>}
+              {zeigeThema && <span style={{ fontFamily: T.mono, fontSize: 11, color: ORG[meineOrg(t)]?.farbe, opacity: 0.85 }}>{ORG[meineOrg(t)]?.kurz}</span>}
               {meineStich(t).slice(0, 3).map(sid => (
-                <button key={sid} onClick={e => { e.stopPropagation(); setStichFilter(stichFilter === sid ? null : sid); }}
-                  title={`Alles zu „${STICHWORT[sid]?.label}" zeigen`}
-                  style={{ fontFamily: T.sans, fontSize: 10.5, color: stichFilter === sid ? T.accentInk : T.muted, border: `1px solid ${stichFilter === sid ? T.accent : T.line}`, borderRadius: 999, padding: '1px 8px', background: 'transparent', cursor: 'pointer' }}>{STICHWORT[sid]?.label}</button>
+                <button key={sid} onClick={e => { e.stopPropagation(); setMenue(m => m?.id === t.id && m.feld === 'stich' ? null : { id: t.id, feld: 'stich' }); }}
+                  title={`„${STICHWORT[sid]?.label}" — klicken, um die Stichworte zu ändern`}
+                  style={{ fontFamily: T.sans, fontSize: 11, color: stichFilter === sid ? T.accentInk : T.muted, border: `1px solid ${stichFilter === sid ? T.accent : T.line}`, borderRadius: 999, padding: '1px 8px', background: 'transparent', cursor: 'pointer' }}>{STICHWORT[sid]?.label}</button>
               ))}
-              {blockiert && <span style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: T.amber, border: `1px solid ${T.amber}55`, borderRadius: 5, padding: '1px 6px' }}>blockiert</span>}
-              {t.dueDate && <span className={spaet ? 'krit-puls' : undefined} style={{ fontFamily: T.mono, fontSize: 10, color: spaet ? T.crit : T.muted }}>{t.dueDate.slice(8)}.{t.dueDate.slice(5, 7)}.</span>}
-              <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{projName(t.projectId)}</span>
-              <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>· {OWNER[t.assignee] ?? t.assignee}</span>
-              {delegiertAn(t.description) && <span style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: T.amber, border: `1px solid ${T.amber}55`, borderRadius: 5, padding: '1px 6px' }}>→ delegiert an {delegiertAn(t.description)}</span>}
-              {fromInbox(t.description) && <span style={{ fontFamily: T.mono, fontSize: 9.5, letterSpacing: '.04em', textTransform: 'uppercase', color: T.accent, border: `1px solid ${T.lineHot}`, borderRadius: 5, padding: '1px 6px' }}>aus Inbox</span>}
+              {!done && !meineStich(t).length && (
+                <button onClick={e => { e.stopPropagation(); setMenue({ id: t.id, feld: 'stich' }); }} title="Stichwort setzen"
+                  style={{ fontFamily: T.sans, fontSize: 11, color: T.muted, border: `1px dashed ${T.line}`, borderRadius: 999, padding: '1px 8px', background: 'transparent', cursor: 'pointer' }}>+ Stichwort</button>
+              )}
+              {blockiert && <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.04em', textTransform: 'uppercase', color: T.amber, border: `1px solid ${T.amber}55`, borderRadius: 5, padding: '1px 6px' }}>blockiert</span>}
+              {!done && <BlockiertChip t={t} alle={state.tasks} />}
+              {/* Das Datum ist der Knopf — auch wenn noch keins gesetzt ist.
+                  Sonst muss man für jede Deadline erst die Zeile aufklappen. */}
+              {!done && <Faelligkeit klein spaetPuls wert={t.dueDate} setzen={d => patchTask(t.id, { dueDate: d })} />}
+              {done && t.dueDate && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{t.dueDate.slice(8)}.{t.dueDate.slice(5, 7)}.</span>}
+              <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{projName(t.projectId)}</span>
+              <button onClick={e => { e.stopPropagation(); setMenue(m => m?.id === t.id && m.feld === 'wer' ? null : { id: t.id, feld: 'wer' }); }}
+                title="Zuweisung ändern — Kevin, Malin oder beide"
+                style={{ fontFamily: T.mono, fontSize: 11, color: t.assignee === 'malin' ? T.accentInk : T.muted, background: 'transparent', border: `1px solid ${t.assignee === 'malin' ? T.lineHot : 'transparent'}`, borderRadius: 5, padding: '1px 5px', cursor: 'pointer' }}>
+                · {OWNER[t.assignee] ?? t.assignee}
+              </button>
+              {delegiertAn(t.description) && <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.04em', textTransform: 'uppercase', color: T.amber, border: `1px solid ${T.amber}55`, borderRadius: 5, padding: '1px 6px' }}>→ delegiert an {delegiertAn(t.description)}</span>}
+              {fromInbox(t.description) && <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.04em', textTransform: 'uppercase', color: T.accent, border: `1px solid ${T.lineHot}`, borderRadius: 5, padding: '1px 6px' }}>aus Inbox</span>}
             </div>
           </div>
           <span style={{ fontFamily: T.mono, fontSize: 12, color: T.muted, flex: '0 0 auto' }}>{auf ? '▾' : '▸'}</span>
         </div>
+
+        {/* Auswahl direkt unter der Zeile — ohne die Aufgabe aufklappen zu müssen */}
+        {menue?.id === t.id && menue.feld === 'prio' && auswahl(
+          'Priorität',
+          PRIO_ZYKLUS.slice().reverse().map(p2 => ({ id: p2, label: PRIO[p2].t, farbe: PRIO[p2].c, aktiv: t.priority === p2 })),
+          id => patchTask(t.id, { priority: id as Priority }),
+          () => setMenue(null),
+        )}
+        {menue?.id === t.id && menue.feld === 'wer' && auswahl(
+          'Wer macht das',
+          [
+            { id: 'kevin', label: 'Kevin', aktiv: t.assignee === 'kevin' },
+            { id: 'malin', label: 'Malin', aktiv: t.assignee === 'malin' },
+            { id: 'both', label: 'Beide', aktiv: t.assignee === 'both' },
+          ],
+          id => patchTask(t.id, { assignee: id }),
+          () => setMenue(null),
+        )}
+        {menue?.id === t.id && menue.feld === 'stich' && (() => {
+          const meine = meineStich(t);
+          // Zur Wahl: was schon dranhängt, plus die Stichworte des Themas —
+          // sonst stehen hier 139 Knöpfe und man findet nichts.
+          const thema2 = meinThema(t);
+          const passend = stichListe.filter(s => s.thema === thema2).map(s => s.id);
+          const zurWahl = Array.from(new Set([...meine, ...passend])).slice(0, 24);
+          return auswahl(
+            'Stichworte',
+            zurWahl.map(sid => ({ id: sid, label: STICHWORT[sid]?.label ?? sid, aktiv: meine.includes(sid) })),
+            sid => {
+              const next = meine.includes(sid) ? meine.filter(x => x !== sid) : [...meine, sid];
+              ordnungSpeichern({ stichworte: { [t.id]: next } });
+            },
+            () => setMenue(null),
+          );
+        })()}
         {auf && (
-          <div style={{ padding: '0 16px 13px 48px', display: 'flex', flexDirection: 'column', gap: 9 }}>
-            {t.description && <div style={{ fontSize: 12, color: T.inkDim, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{t.description}</div>}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>Fällig</span>
-              {([['Heute', heute], ['Morgen', tagInT(1)], ['Montag', naechsterWochentag(1)], ['+7 Tage', tagInT(7)]] as const).map(([label, d]) => (
-                <button key={label} onClick={() => patchTask(t.id, { dueDate: d })}
-                  style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${t.dueDate === d ? T.accent : T.line}`, background: t.dueDate === d ? `${T.accent}1c` : 'transparent', color: t.dueDate === d ? T.accentInk : T.inkDim }}>{label}</button>
-              ))}
-              {t.dueDate && <button onClick={() => patchTask(t.id, { dueDate: undefined })} style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.muted }}>✕ kein Datum</button>}
-            </div>
-            {/* Umsetzung: wie kommt das weg — und was kann Jarvis beitragen */}
-            {!done && (() => {
-              const e = einschaetzen(t);
-              return (
-                <div style={{ background: T.panel2, border: `1px solid ${WER_FARBE[e.wer]}33`, borderRadius: 10, padding: '9px 12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 700, color: WER_FARBE[e.wer] }}>{WER_LABEL[e.wer]}</span>
-                    <span style={{ fontFamily: T.mono, fontSize: 11, color: T.inkDim }}>≈ {dauerText(e.dauer)}</span>
-                    <span style={{ fontSize: 11.5, color: T.muted }}>{e.warum}</span>
-                  </div>
-                  {e.beitrag && <div style={{ fontSize: 12, color: T.inkDim, marginTop: 4, lineHeight: 1.5 }}>Erster Schritt: {e.beitrag}</div>}
-                </div>
-              );
-            })()}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>Ort</span>
-              {ORGS.map(o => (
-                <button key={o.id} onClick={() => ordnungSpeichern({ orgs: { [t.id]: o.id } })} title={o.satz}
-                  style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${meineOrg(t) === o.id ? o.farbe : T.line}`, background: meineOrg(t) === o.id ? `${o.farbe}1c` : 'transparent', color: meineOrg(t) === o.id ? o.farbe : T.inkDim }}>{o.kurz}</button>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>Abgeben an</span>
-              <select value="" onChange={e => {
-                  const an = e.target.value;
-                  if (!an) return;
-                  const datum = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
-                  patchTask(t.id, {
-                    description: `${t.description ? `${t.description}\n` : ''}— Delegiert an ${an} (${datum})`,
-                    ...(an === 'Malin' ? { assignee: 'malin' } : {}),
-                  });
-                }}
-                aria-label="Aufgabe abgeben an"
-                style={{ background: T.void, border: `1px solid ${T.line}`, borderRadius: 7, color: T.inkDim, fontFamily: T.sans, fontSize: 11.5, padding: '4px 8px', outline: 'none' }}>
-                <option value="">Person wählen …</option>
-                {DELEGIERBAR.map(p => (
-                  <option key={p.kurz} value={p.kurz} style={{ background: T.panel }}>{p.name} — {p.bereiche[0]}</option>
+          // ─── Aufgaben-Detail — Kevins Ansage: „Da muss ein Textfeld sein
+          // für Infos und all solche grundlegenden Sachen. Sauberer Stand,
+          // damit Malin und ich darin richtig arbeiten können." ───
+          // Aufbau: Notizen zuerst (die Information), darunter ein Raster mit
+          // fester Label-Spalte — alles fluchtet, nichts stapelt sich mehr.
+          <div style={{ margin: '0 16px 13px 48px', background: T.panel2, border: `1px solid ${T.line}`, borderRadius: 12, padding: '13px 15px', display: 'flex', flexDirection: 'column', gap: 11 }}>
+
+            {/* 1 · Notizen — das Feld, das gefehlt hat. Speichert beim Verlassen. */}
+            <textarea
+              key={t.id}
+              defaultValue={t.description ?? ''}
+              // Beim Tippen entprellt speichern UND beim Verlassen sofort —
+              // so geht nie eine Notiz verloren, egal wie man das Feld verlässt.
+              onChange={e => {
+                const v = e.target.value;
+                clearTimeout(notizTimer.current);
+                notizTimer.current = setTimeout(() => { if (v !== (t.description ?? '')) patchTask(t.id, { description: v }); }, 700);
+              }}
+              onBlur={e => { clearTimeout(notizTimer.current); const v = e.target.value; if (v !== (t.description ?? '')) patchTask(t.id, { description: v }); }}
+              placeholder="Notizen — Kontext, Infos, Übergabe an Malin, Zwischenstände …"
+              aria-label="Notizen zur Aufgabe"
+              rows={t.description && t.description.length > 160 ? 4 : 2}
+              style={{ width: '100%', background: T.void, border: `1px solid ${T.line}`, borderRadius: 9, padding: '9px 11px', color: T.ink, fontSize: 12.5, fontFamily: T.sans, lineHeight: 1.55, resize: 'vertical', outline: 'none' }} />
+
+            {/* 2 · Eigenschaften — feste Label-Spalte, alles auf einer Flucht */}
+            <div style={{ display: 'grid', gridTemplateColumns: '88px 1fr', rowGap: 8, columnGap: 10, alignItems: 'center' }}>
+              <DetailLabel>Fällig</DetailLabel>
+              <div><Faelligkeit wert={t.dueDate} setzen={d => patchTask(t.id, { dueDate: d })} /></div>
+
+              <DetailLabel>Person</DetailLabel>
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                {([['kevin', 'Kevin'], ['both', 'Beide'], ['malin', 'Malin']] as const).map(([k, label]) => (
+                  <DetailWahl key={k} an={t.assignee === k} farbe={k === 'malin' ? T.amber : k === 'both' ? T.accent : T.accentInk} onClick={() => patchTask(t.id, { assignee: k })}>{label}</DetailWahl>
                 ))}
-              </select>
+              </div>
+
+              <DetailLabel>Ort</DetailLabel>
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                {ORGS.map(o => (
+                  <DetailWahl key={o.id} an={meineOrg(t) === o.id} farbe={o.farbe} titel={o.satz} onClick={() => ordnungSpeichern({ orgs: { [t.id]: o.id } })}>{o.kurz}</DetailWahl>
+                ))}
+              </div>
+
+              <DetailLabel>Thema</DetailLabel>
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                {themen.map(b => (
+                  <DetailWahl key={b.id} an={meinThema(t) === b.id} farbe={b.farbe} onClick={() => ordnungSpeichern({ zuordnung: { [t.id]: b.id } })}>{b.label}</DetailWahl>
+                ))}
+              </div>
+
+              <DetailLabel>Projekt</DetailLabel>
+              <div>
+                <select value={t.projectId} onChange={e => patchTask(t.id, { projectId: e.target.value })}
+                  style={{ background: T.void, border: `1px solid ${T.line}`, borderRadius: 7, color: T.inkDim, fontFamily: T.sans, fontSize: 11.5, padding: '5px 8px', outline: 'none', maxWidth: 280 }}>
+                  {state.projects.map(pr => <option key={pr.id} value={pr.id} style={{ background: T.panel }}>{pr.title}</option>)}
+                </select>
+              </div>
+
+              <DetailLabel>Abgeben</DetailLabel>
+              <div>
+                <select value="" onChange={e => {
+                    const an = e.target.value;
+                    if (!an) return;
+                    const datum = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+                    patchTask(t.id, {
+                      description: `${t.description ? `${t.description}\n` : ''}— Delegiert an ${an} (${datum})`,
+                      ...(an === 'Malin' ? { assignee: 'malin' } : {}),
+                    });
+                  }}
+                  aria-label="Aufgabe abgeben an"
+                  style={{ background: T.void, border: `1px solid ${T.line}`, borderRadius: 7, color: T.muted, fontFamily: T.sans, fontSize: 11.5, padding: '5px 8px', outline: 'none', maxWidth: 280 }}>
+                  <option value="">Person wählen …</option>
+                  {DELEGIERBAR.map(p => (
+                    <option key={p.kurz} value={p.kurz} style={{ background: T.panel }}>{p.name} — {p.bereiche[0]}</option>
+                  ))}
+                </select>
+              </div>
+
+              <DetailLabel>Stichworte</DetailLabel>
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+                {meineStich(t).map(sid => {
+                  const gesetzt = (handStich[t.id] ?? []).includes(sid);
+                  return (
+                    <span key={sid} style={{ fontFamily: T.sans, fontSize: 11.5, color: T.inkDim, border: `1px solid ${T.line}`, borderRadius: 999, padding: '2px 9px', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                      {STICHWORT[sid]?.label}
+                      {gesetzt
+                        ? <button onClick={() => ordnungSpeichern({ stichworte: { [t.id]: (handStich[t.id] ?? []).filter(x => x !== sid) } })} aria-label="Stichwort entfernen" style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', padding: 0, fontSize: 11 }}>✕</button>
+                        : <span title="automatisch erkannt" style={{ color: T.accent, fontSize: 11 }}>●</span>}
+                    </span>
+                  );
+                })}
+                <select value="" onChange={e => { if (e.target.value) ordnungSpeichern({ stichworte: { [t.id]: [...(handStich[t.id] ?? []), e.target.value] } }); }}
+                  aria-label="Stichwort hinzufügen"
+                  style={{ background: 'transparent', border: `1px dashed ${T.line}`, borderRadius: 999, color: T.muted, fontFamily: T.sans, fontSize: 11.5, padding: '2px 8px', outline: 'none', maxWidth: 130 }}>
+                  <option value="">+ Stichwort</option>
+                  {STICHWORTE.filter(w => !meineStich(t).includes(w.id)).map(w => (
+                    <option key={w.id} value={w.id} style={{ background: T.panel }}>{w.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>Thema</span>
-              {themen.map(b => (
-                <button key={b.id} onClick={() => ordnungSpeichern({ zuordnung: { [t.id]: b.id } })}
-                  style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${meinThema(t) === b.id ? b.farbe : T.line}`, background: meinThema(t) === b.id ? `${b.farbe}1c` : 'transparent', color: meinThema(t) === b.id ? b.farbe : T.inkDim }}>{b.label}</button>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>Stichworte</span>
-              {meineStich(t).map(sid => {
-                const gesetzt = (handStich[t.id] ?? []).includes(sid);
+
+            {/* 3 · Reihenfolge: was muss vorher fertig sein? */}
+            {!done && <Abhaengigkeit t={t} alle={state.tasks} patchTask={patchTask} />}
+
+            {/* 4 · Fuß: Jarvis-Einschätzung als eine Zeile + Aktionen */}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', borderTop: `1px solid ${T.lineSoft}`, paddingTop: 10 }}>
+              {!done && (() => {
+                const e = einschaetzen(t);
                 return (
-                  <span key={sid} style={{ fontFamily: T.sans, fontSize: 11.5, color: T.inkDim, border: `1px solid ${T.line}`, borderRadius: 999, padding: '3px 9px', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                    {STICHWORT[sid]?.label}
-                    {gesetzt
-                      ? <button onClick={() => ordnungSpeichern({ stichworte: { [t.id]: (handStich[t.id] ?? []).filter(x => x !== sid) } })} aria-label="Stichwort entfernen" style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', padding: 0, fontSize: 11 }}>✕</button>
-                      : <span title="automatisch erkannt" style={{ color: T.accent, fontSize: 9 }}>●</span>}
+                  <span title={`${e.warum}${e.beitrag ? ` · Erster Schritt: ${e.beitrag}` : ''}`}
+                    style={{ fontSize: 11.5, color: WER_FARBE[e.wer], minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                    {WER_LABEL[e.wer]} · ≈ {dauerText(e.dauer)}{e.beitrag ? ` — ${e.beitrag}` : ''}
                   </span>
                 );
-              })}
-              <select value="" onChange={e => { if (e.target.value) ordnungSpeichern({ stichworte: { [t.id]: [...(handStich[t.id] ?? []), e.target.value] } }); }}
-                aria-label="Stichwort hinzufügen"
-                style={{ background: T.void, border: `1px solid ${T.line}`, borderRadius: 999, color: T.muted, fontFamily: T.sans, fontSize: 11.5, padding: '3px 8px', outline: 'none' }}>
-                <option value="">+ Stichwort</option>
-                {STICHWORTE.filter(w => !meineStich(t).includes(w.id)).map(w => (
-                  <option key={w.id} value={w.id} style={{ background: T.panel }}>{w.label}</option>
-                ))}
-              </select>
-            </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-              <select value={t.projectId} onChange={e => patchTask(t.id, { projectId: e.target.value })}
-                style={{ background: T.void, border: `1px solid ${T.line}`, borderRadius: 7, color: T.inkDim, fontFamily: T.sans, fontSize: 11.5, padding: '4px 8px', outline: 'none' }}>
-                {state.projects.map(pr => <option key={pr.id} value={pr.id} style={{ background: T.panel }}>{pr.title}</option>)}
-              </select>
-              <select value={t.assignee} onChange={e => patchTask(t.id, { assignee: e.target.value })}
-                style={{ background: T.void, border: `1px solid ${T.line}`, borderRadius: 7, color: T.inkDim, fontFamily: T.sans, fontSize: 11.5, padding: '4px 8px', outline: 'none' }}>
-                <option value="kevin" style={{ background: T.panel }}>Kevin</option>
-                <option value="malin" style={{ background: T.panel }}>Malin</option>
-                <option value="both" style={{ background: T.panel }}>Beide</option>
-              </select>
+              })()}
               <button onClick={() => patchTask(t.id, { status: blockiert ? 'todo' : 'blocked' })}
-                style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${blockiert ? T.amber : T.line}`, background: blockiert ? `${T.amber}1c` : 'transparent', color: blockiert ? T.amber : T.inkDim }}>{blockiert ? 'blockiert ✓' : 'blockiert?'}</button>
-              <button onClick={() => { dispatch({ type: 'DELETE_TASK', payload: { id: t.id } }); setOffenId(null); }}
-                style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.muted }}>Löschen</button>
+                style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${blockiert ? T.amber : T.line}`, background: blockiert ? `${T.amber}1c` : 'transparent', color: blockiert ? T.amber : T.inkDim, flex: '0 0 auto', marginLeft: done ? 'auto' : 0 }}>{blockiert ? 'blockiert ✓' : 'blockiert?'}</button>
+              <button onClick={() => { if (confirm(`„${t.title.slice(0, 60)}" wirklich löschen?`)) { dispatch({ type: 'DELETE_TASK', payload: { id: t.id } }); setOffenId(null); } }}
+                style={{ fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.muted, flex: '0 0 auto' }}>Löschen</button>
             </div>
           </div>
         )}
@@ -496,40 +654,38 @@ export function AufgabenView() {
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 980, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 48px' }}>
-        <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
-        <div style={lbl}>Aufgaben · eine Wahrheit, lokal gespeichert</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 4px' }}>
-          {openCount} {openCount === 1 ? 'Aufgabe' : 'Aufgaben'} offen
+        {/* ─── Kopf (UX 2, 06.09.) ──────────────────────────────────────────
+            Vorher standen hier acht gestapelte Zeilen — 218 px, bevor die
+            erste Aufgabe kam. Jetzt: EINE Zeile mit der Lage, eine mit dem
+            Anlegen, eine mit Ansicht + Filter. Die Prioritäten-Reihenfolge
+            ist in die Klappe gewandert; sie gehört zur Steuerung, nicht auf
+            jede Aufgabenseite. */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: A.m, flexWrap: 'wrap', marginBottom: A.m }}>
+          <h1 style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 600, letterSpacing: '-.01em', margin: 0 }}>
+            {openCount} {openCount === 1 ? 'Aufgabe' : 'Aufgaben'} offen
+          </h1>
           {kritischOffen > 0 && (
-            <span className="krit-puls" style={{ fontSize: 14, fontWeight: 600, color: T.crit, marginLeft: 12 }}>
+            <span className="krit-puls" style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.kritisch }}>
               ● {kritischOffen} kritisch{kritischOffen > grenzeKritisch ? ` · ${kritischOffen - grenzeKritisch} über deiner Grenze` : ''}
             </span>
           )}
-        </h1>
-        <div style={{ fontSize: 12.5, color: T.muted, marginBottom: 4 }}>
-          Diese Auswahl: <b style={{ color: lastMin > grenzeLast * 60 ? T.amber : T.inkDim }}>{dauerText(lastMin)}</b> geschätzter Aufwand
-          {lastMin > grenzeLast * 60 && <> · <b style={{ color: T.amber }}>{dauerText(lastMin - grenzeLast * 60)} über der Tageslast von {grenzeLast} h</b></>}
-          {(() => {
-            const j = list.filter(t => t.status !== 'done' && einschaetzen(t).wer === 'jarvis');
-            const jMin = j.reduce((s, t) => s + einschaetzen(t).dauer, 0);
-            return j.length ? <> · davon <b style={{ color: WER_FARBE.jarvis }}>{j.length} Aufgaben ({dauerText(jMin)}) kann Jarvis übernehmen</b></> : null;
-          })()}
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise, marginLeft: 'auto' }}>
+            <b style={{ color: lastMin > grenzeLast * 60 ? C.achtung : C.inkDim, fontWeight: 600 }}>{dauerText(lastMin)}</b> Aufwand
+            {lastMin > grenzeLast * 60 && <> · <b style={{ color: C.achtung }}>{dauerText(lastMin - grenzeLast * 60)} über {grenzeLast} h</b></>}
+            {(() => {
+              const j = list.filter(t => t.status !== 'done' && einschaetzen(t).wer === 'jarvis');
+              const jMin = j.reduce((s, t) => s + einschaetzen(t).dauer, 0);
+              return j.length ? <> · <b style={{ color: WER_FARBE.jarvis, fontWeight: 600 }}>{j.length} für Jarvis ({dauerText(jMin)})</b></> : null;
+            })()}
+          </span>
         </div>
 
-        {/* Die Ordnung — die Reihenfolge, die alles andere sortiert */}
-        <div style={{ ...panel, borderLeft: `3px solid ${themen[0]?.farbe ?? T.accent}`, padding: '12px 16px', margin: '14px 0 12px' }}>
-          <div onClick={() => setOrdnungAuf(!ordnungAuf)} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', cursor: 'pointer' }}>
-            <span style={lbl}>Unsere Ordnung</span>
-            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', flex: 1 }}>
-              {themen.map((b, i) => (
-                <span key={b.id} style={{ fontSize: 12, fontWeight: 600, color: b.farbe }}>
-                  <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{i + 1}</span> {b.label}
-                  {i < themen.length - 1 && <span style={{ color: T.muted, marginLeft: 7 }}>›</span>}
-                </span>
-              ))}
-            </div>
-            <span style={{ fontFamily: T.mono, fontSize: 12, color: T.muted }}>{ordnungAuf ? '▾' : '▸'}</span>
-          </div>
+        {/* Prioritäten-Reihenfolge: nur noch auf Wunsch sichtbar */}
+        <div style={{ marginBottom: A.m }}>
+          <button onClick={() => setOrdnungAuf(!ordnungAuf)}
+            style={{ ...MIKRO, background: 'transparent', border: 'none', padding: `6px 0`, cursor: 'pointer', color: ordnungAuf ? C.aktiv : C.inkLeise, minHeight: 32 }}>
+            {ordnungAuf ? '▾' : '▸'} Unsere Prioritäten · {themen.map(b => b.label.split(' ')[0]).join(' › ')}
+          </button>
           {ordnungAuf && (
             <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ fontSize: 12, color: T.inkDim, lineHeight: 1.55 }}>
@@ -542,7 +698,7 @@ export function AufgabenView() {
                   <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 11px', background: T.panel2, border: `1px solid ${b.farbe}33`, borderRadius: 10 }}>
                     <span style={{ fontFamily: T.mono, fontSize: 13, fontWeight: 700, color: b.farbe, width: 16 }}>{i + 1}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>{b.label} <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>{n} offen</span></div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>{b.label} <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{n} offen</span></div>
                       <div style={{ fontSize: 11.5, color: T.muted, marginTop: 1 }}>{b.satz}</div>
                     </div>
                     <button onClick={() => themaSchieben(b.id, -1)} disabled={i === 0} aria-label="Nach oben"
@@ -556,16 +712,97 @@ export function AufgabenView() {
           )}
         </div>
 
-        {/* Schnell-Anlegen: tippen, Enter, drin — Kürzel machen den Rest */}
-        <div style={{ marginBottom: 12 }}>
+        {/* Anlegen: schnell tippen ODER mit dem ＋ alles anklicken.
+            Kevins Ansage: „dass ich selber Sachen anlegen kann — mit einem
+            Plus, wo ich alles schnell ausklicken kann." */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: neuAuf ? 0 : 12 }}>
           <input value={neuTitel} onChange={e => setNeuTitel(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') schnellAnlegen(); }}
+            onKeyDown={e => { if (e.key === 'Enter') { if (neuAuf) anlegenMitFeldern(); else schnellAnlegen(); } }}
             placeholder="Neue Aufgabe … (Enter)  ·  !! kritisch  ·  ! hoch  ·  heute / morgen / fr / 15.08.  ·  #capos  ·  @malin"
             aria-label="Neue Aufgabe anlegen"
-            style={{ width: '100%', background: T.panel, border: `1px solid ${T.line}`, borderRadius: 10, padding: '11px 14px', color: T.ink, fontSize: 13.5, fontFamily: T.sans, outline: 'none' }} />
+            style={{ flex: 1, minWidth: 0, background: T.panel, border: `1px solid ${neuAuf ? T.lineHot : T.line}`, borderRadius: 10, padding: '11px 14px', color: T.ink, fontSize: 13.5, fontFamily: T.sans, outline: 'none' }} />
+          <button onClick={() => setNeuAuf(!neuAuf)} title={neuAuf ? 'Felder zuklappen' : 'Alles selbst festlegen: Stufe, Person, Termin, Ort'}
+            aria-label="Aufgabe mit Feldern anlegen"
+            style={{
+              flex: '0 0 auto', width: 46, borderRadius: 10, cursor: 'pointer', fontSize: 19, lineHeight: 1,
+              border: `1px solid ${neuAuf ? T.accent : T.line}`, background: neuAuf ? `${T.accent}1c` : T.panel,
+              color: neuAuf ? T.accentInk : T.inkDim,
+            }}>{neuAuf ? '×' : '＋'}</button>
         </div>
 
-        {/* Eigene Filter aus dem Kompass — einmal eingestellt, immer da */}
+        {neuAuf && (
+          <div style={{ ...panel, borderTop: `2px solid ${T.accent}`, padding: '13px 16px', margin: '8px 0 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <Feldzeile titel="Stufe">
+              {(['critical', 'high', 'medium', 'low'] as const).map(k => (
+                <Wahl key={k} an={neuPrio === k} farbe={PRIO[k].c} onClick={() => setNeuPrio(k)}>{PRIO[k].t}</Wahl>
+              ))}
+            </Feldzeile>
+            <Feldzeile titel="Wer">
+              {(['kevin', 'both', 'malin'] as const).map(k => (
+                <Wahl key={k} an={neuWer === k} farbe={k === 'malin' ? T.amber : k === 'both' ? T.accent : T.accentInk} onClick={() => setNeuWer(k)}>{OWNER[k]}</Wahl>
+              ))}
+            </Feldzeile>
+            <Feldzeile titel="Fällig">
+              <Faelligkeit wert={neuDatum} setzen={d => setNeuDatum(d)} />
+            </Feldzeile>
+            <Feldzeile titel="Ort">
+              {ORGS.map(o => (
+                <Wahl key={o.id} an={neuOrg === o.id} farbe={o.farbe} onClick={() => setNeuOrg(o.id)}>{o.kurz}</Wahl>
+              ))}
+            </Feldzeile>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button onClick={anlegenMitFeldern} disabled={!neuTitel.trim()}
+                style={{
+                  fontFamily: T.sans, fontSize: 13, fontWeight: 700, padding: '9px 18px', borderRadius: 9,
+                  cursor: neuTitel.trim() ? 'pointer' : 'default', border: 'none',
+                  background: neuTitel.trim() ? T.accent : T.line, color: neuTitel.trim() ? T.void : T.muted,
+                }}>Aufgabe anlegen</button>
+              <span style={{ fontSize: 11.5, color: T.muted }}>
+                {neuTitel.trim() ? 'Enter legt sie auch an.' : 'Titel oben eintippen.'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Ansicht wählen — ein Segment-Schalter statt sechs Einzelknöpfe.
+            Gleiche Auswahl, liest sich aber als EIN Bedienelement (UX 2). */}
+        <div style={{ display: 'flex', gap: A.s, flexWrap: 'wrap', alignItems: 'center', marginBottom: A.m }}>
+          <div role="group" aria-label="Ansicht"
+            style={{ display: 'flex', gap: 2, background: C.grund, border: `1px solid ${C.linie}`, borderRadius: RADIUS.bauteil, padding: 2 }}>
+            {ANSICHTEN.map(a => (
+              <button key={a.key} onClick={() => setAnsicht(a.key)} aria-pressed={ansicht === a.key} style={{
+                fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: `7px ${A.m}px`,
+                minHeight: 32, borderRadius: 6, cursor: 'pointer', border: 'none',
+                background: ansicht === a.key ? C.aktivSanft : 'transparent',
+                color: ansicht === a.key ? C.aktiv : C.inkLeise,
+              }}>{a.label}</button>
+            ))}
+          </div>
+          {/* Die Filter-Klappe: zu, solange man nicht filtert. Steht etwas an,
+              sagt der Knopf, wie viele Filter gerade greifen. */}
+          <button onClick={() => setFilterAuf(!filterAuf)}
+            title="Status, Person, Stufe, Termine, Ort, Weg, Thema"
+            style={{
+              marginLeft: 'auto', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600,
+              padding: `7px ${A.m}px`, minHeight: 32, borderRadius: RADIUS.bauteil, cursor: 'pointer',
+              border: `1px solid ${filterAuf || aktiveFilter ? C.aktiv : C.linie}`,
+              background: filterAuf || aktiveFilter ? C.aktivSanft : 'transparent',
+              color: filterAuf || aktiveFilter ? C.aktiv : C.inkDim,
+            }}>
+            {filterAuf ? '▾' : '▸'} Filter{aktiveFilter ? ` · ${aktiveFilter}` : ''}
+          </button>
+          <button onClick={delegationsRunde} disabled={delegBusy}
+            style={{
+              fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: `7px ${A.m}px`,
+              minHeight: 32, borderRadius: RADIUS.bauteil, cursor: delegBusy ? 'wait' : 'pointer',
+              border: `1px solid ${C.gut}`, background: C.gut, color: C.grund, opacity: delegBusy ? 0.6 : 1,
+            }}>
+            {delegBusy ? 'Jarvis prüft …' : '✨ Delegations-Runde'}
+          </button>
+        </div>
+
+        {/* Eigene Filter aus dem Kompass — in der Klappe, wie die anderen */}
+        {filterAuf && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
           <span style={{ ...lbl, marginRight: 2 }}>Meine Filter</span>
           {eigeneFilter.map(f => (
@@ -579,23 +816,10 @@ export function AufgabenView() {
             {eigeneFilter.length ? '+ verwalten' : '+ eigenen Filter anlegen'}
           </Link>
         </div>
+        )}
 
-        {/* Ansicht wählen */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          {ANSICHTEN.map(a => (
-            <button key={a.key} onClick={() => setAnsicht(a.key)} style={{
-              fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, padding: '6px 14px', borderRadius: 9, cursor: 'pointer',
-              border: `1px solid ${ansicht === a.key ? T.lineHot : T.line}`, background: ansicht === a.key ? T.accentSoft : 'transparent',
-              color: ansicht === a.key ? T.accentInk : T.inkDim,
-            }}>{a.label}</button>
-          ))}
-          <button onClick={delegationsRunde} disabled={delegBusy}
-            style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, padding: '6px 14px', borderRadius: 9, cursor: delegBusy ? 'wait' : 'pointer', border: `1px solid ${T.accent}`, background: `${T.accent}1c`, color: T.accentInk, opacity: delegBusy ? 0.6 : 1 }}>
-            {delegBusy ? 'Jarvis prüft dein Board …' : '✨ Delegations-Runde'}
-          </button>
-        </div>
-
-        {/* Filter: Status · Besitzer · Priorität · Thema */}
+        {/* Filter: Status · Besitzer · Priorität · Termine · Ort · Weg · Thema */}
+        {filterAuf && (
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
           {segBtn('offen', 'Offen', openCount)}
           {segBtn('erledigt', 'Erledigt')}
@@ -617,6 +841,21 @@ export function AufgabenView() {
                 fontFamily: T.mono, fontSize: 11, padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
                 border: `1px solid ${an ? farbe : T.line}`, background: an ? `${farbe}1c` : 'transparent', color: an ? farbe : T.muted,
               }}>{k === 'alle' ? 'Alle Stufen' : PRIO[k].t}</button>
+            );
+          })}
+          {/* Termin-Lage: die zwei Fälle, die man beim Planen wirklich greifen
+              will — was noch kein Datum hat, und was schon drüber ist. */}
+          <span style={{ width: 1, height: 20, background: T.line, margin: '0 3px' }} />
+          {([['alle', 'Alle Termine', T.accentInk], ['ohne', 'ohne Datum', T.amber], ['spaet', 'überfällig', T.crit]] as const).map(([k, label, farbe]) => {
+            const an = datumFilter === k;
+            const wieviele = k === 'ohne' ? ohneDatumAnzahl : k === 'spaet' ? ueberfaelligAnzahl : 0;
+            return (
+              <button key={k} onClick={() => setDatumFilter(k)}
+                title={k === 'ohne' ? 'Aufgaben, die noch keinen Termin haben — die fehlen in jeder Planung' : k === 'spaet' ? 'Termin liegt in der Vergangenheit' : 'Termin egal'}
+                style={{ fontFamily: T.mono, fontSize: 11, padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
+                  border: `1px solid ${an ? farbe : T.line}`, background: an ? `${farbe}1c` : 'transparent', color: an ? farbe : T.muted }}>
+                {label}{wieviele ? ` ${wieviele}` : ''}
+              </button>
             );
           })}
           <span style={{ width: 1, height: 20, background: T.line, margin: '0 3px' }} />
@@ -646,26 +885,38 @@ export function AufgabenView() {
           <span style={{ width: 1, height: 20, background: T.line, margin: '0 3px' }} />
           {(['alle', ...themen.map(b => b.id)]).map(k => {
             const an = themaFilter === k;
-            const farbe = k === 'alle' ? T.accentInk : THEMA[k].farbe;
+            const farbe = k === 'alle' ? T.accentInk : THEMA_EIGEN[k].farbe;
             return (
               <button key={k} onClick={() => setThemaFilter(k)} style={{
                 fontFamily: T.mono, fontSize: 11, padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
                 border: `1px solid ${an ? farbe : T.line}`, background: an ? `${farbe}1c` : 'transparent', color: an ? farbe : T.muted,
-              }}>{k === 'alle' ? 'Alle Themen' : THEMA[k].label.split(' ')[0]}</button>
+              }}>{k === 'alle' ? 'Alle Themen' : THEMA_EIGEN[k].label.split(' ')[0]}</button>
             );
           })}
         </div>
+        )}
 
-        {/* Stichworte — die feine Klassierung: anklicken und am Stück wegarbeiten */}
-        <div style={{ ...panel, padding: '12px 16px', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 9 }}>
-            <span style={lbl}>Stichworte</span>
-            <span style={{ fontSize: 11.5, color: T.muted }}>anklicken und alles dazu am Stück wegarbeiten — Dringendstes zuerst</span>
-            <input value={stichSuche} onChange={e => setStichSuche(e.target.value)} placeholder="suchen …"
-              aria-label="Stichwort suchen"
-              style={{ marginLeft: 'auto', width: 150, background: T.void, border: `1px solid ${T.line}`, borderRadius: 8, padding: '5px 10px', color: T.ink, fontSize: 12, fontFamily: T.sans, outline: 'none' }} />
+        {/* Stichworte — die feine Klassierung, ebenfalls zum Zuklappen:
+            man braucht sie beim Wegarbeiten, nicht die ganze Zeit. */}
+        <div style={{ ...panel, padding: stichAuf ? '12px 16px' : '9px 16px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: stichAuf ? 9 : 0 }}>
+            <button onClick={() => setStichAuf(!stichAuf)}
+              style={{ ...MIKRO, background: 'transparent', border: 'none', padding: '4px 0', minHeight: 32, cursor: 'pointer', color: stichAuf ? C.aktiv : C.inkLeise }}>
+              {stichAuf ? '▾' : '▸'} Stichworte{!stichAuf && stichStand.length ? ` · ${stichStand.length}` : ''}
+            </button>
+            {stichAuf
+              ? <span style={{ fontSize: 11.5, color: T.muted }}>anklicken und alles dazu am Stück wegarbeiten — Dringendstes zuerst</span>
+              : stichFilter && <span style={{ fontSize: 11.5, color: T.accentInk }}>gefiltert: {STICHWORT[stichFilter]?.label ?? stichFilter}</span>}
+            {stichAuf && (
+              <input value={stichSuche} onChange={e => setStichSuche(e.target.value)} placeholder="suchen …"
+                aria-label="Stichwort suchen"
+                style={{ marginLeft: 'auto', width: 150, background: T.void, border: `1px solid ${T.line}`, borderRadius: 8, padding: '5px 10px', color: T.ink, fontSize: 12, fontFamily: T.sans, outline: 'none' }} />
+            )}
+            {!stichAuf && stichFilter && (
+              <button onClick={() => setStichFilter(null)} style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 11.5, color: T.muted, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, padding: '3px 9px', cursor: 'pointer' }}>✕ aufheben</button>
+            )}
           </div>
-          {(() => {
+          {stichAuf && (() => {
             const suche = stichSuche.trim().toLowerCase();
             const treffer = suche
               ? STICHWORTE.filter(w => w.label.toLowerCase().includes(suche))
@@ -677,7 +928,7 @@ export function AufgabenView() {
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {treffer.map(s => {
                     const an = stichFilter === s.id;
-                    const farbe = s.kritisch ? T.crit : s.spaet ? T.amber : THEMA[s.wort.thema]?.farbe ?? T.accent;
+                    const farbe = s.kritisch ? T.crit : s.spaet ? T.amber : THEMA_EIGEN[s.wort.thema]?.farbe ?? T.accent;
                     return (
                       <button key={s.id} onClick={() => setStichFilter(an ? null : s.id)}
                         className={s.kritisch && !an ? 'krit-puls' : undefined}
@@ -686,8 +937,8 @@ export function AufgabenView() {
                           border: `1px solid ${an ? farbe : s.offen ? `${farbe}55` : T.line}`, background: an ? `${farbe}22` : 'transparent',
                           color: an ? farbe : s.offen ? T.inkDim : T.muted }}>
                         {s.wort.label}
-                        {s.offen > 0 && <span style={{ fontFamily: T.mono, fontSize: 10, marginLeft: 6, color: farbe }}>{s.offen}</span>}
-                        {s.wort.kpi && <span style={{ fontFamily: T.mono, fontSize: 8.5, marginLeft: 4, color: T.muted }}>KPI</span>}
+                        {s.offen > 0 && <span style={{ fontFamily: T.mono, fontSize: 11, marginLeft: 6, color: farbe }}>{s.offen}</span>}
+                        {s.wort.kpi && <span style={{ fontFamily: T.mono, fontSize: 11, marginLeft: 4, color: T.muted }}>KPI</span>}
                       </button>
                     );
                   })}
@@ -717,12 +968,12 @@ export function AufgabenView() {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
               <span style={lbl}>Delegations-Runde</span>
               <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent }}>{deleg.filter(v => v.empfehlung === 'abgeben').length} abgebbar · {deleg.filter(v => v.empfehlung === 'bleibt').length} bleiben bei dir</span>
-              {delegPrivat > 0 && <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{delegPrivat} private ausgeblendet</span>}
+              {delegPrivat > 0 && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{delegPrivat} private ausgeblendet</span>}
               <button onClick={() => setDeleg(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 12 }}>✕</button>
             </div>
             {/* Sortieren — nach der Runde will man das Ergebnis ordnen können */}
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
-              <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>Sortiert nach</span>
+              <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>Sortiert nach</span>
               {([['person', 'Person'], ['prio', 'Priorität'], ['aufwand', 'Aufwand'], ['thema', 'Thema']] as const).map(([k, label]) => (
                 <button key={k} onClick={() => setDelegSort(k)} style={{
                   fontFamily: T.sans, fontSize: 11.5, padding: '4px 10px', borderRadius: 7, cursor: 'pointer',
@@ -736,7 +987,7 @@ export function AufgabenView() {
                 <div key={v.taskId} style={{ borderBottom: `1px solid ${T.lineSoft}`, paddingBottom: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 13.5, fontWeight: 600, color: T.ink }}>{v.titel}</span>
-                    <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.accent, border: `1px solid ${T.accent}44`, borderRadius: 6, padding: '2px 8px' }}>→ {v.an}</span>
+                    <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, border: `1px solid ${T.accent}44`, borderRadius: 6, padding: '2px 8px' }}>→ {v.an}</span>
                     <span style={{ fontSize: 11.5, color: T.muted }}>{v.warum}</span>
                   </div>
                   {v.uebergabe && <div style={{ fontSize: 12.5, color: T.inkDim, margin: '6px 0 7px', lineHeight: 1.5 }}>„{v.uebergabe}"</div>}
@@ -769,6 +1020,17 @@ export function AufgabenView() {
           </div>
         )}
 
+        {/* ── BOARD: verteilen, terminieren, zuordnen ── */}
+        {ready && ansicht === 'board' && (
+          <AufgabenBoard
+            tasks={list}
+            heute={heute}
+            orgVon={meineOrg}
+            patchTask={patchTask}
+            setOrg={(id, org) => ordnungSpeichern({ orgs: { [id]: org } })}
+          />
+        )}
+
         {/* ── JETZT: die ersten fünf, dann der Rest ── */}
         {ready && !!list.length && ansicht === 'jetzt' && (() => {
           const top = list.slice(0, 5);
@@ -782,7 +1044,7 @@ export function AufgabenView() {
                 </div>
                 {top.map((t, i) => (
                   <div key={t.id} style={{ display: 'flex', alignItems: 'stretch', borderTop: `1px solid ${T.lineSoft}` }}>
-                    <div style={{ width: 34, flex: '0 0 auto', display: 'grid', placeItems: 'center', fontFamily: T.mono, fontSize: 15, fontWeight: 700, color: THEMA[meinThema(t)]?.farbe ?? T.muted, background: `${THEMA[meinThema(t)]?.farbe ?? T.muted}0f` }}>{i + 1}</div>
+                    <div style={{ width: 34, flex: '0 0 auto', display: 'grid', placeItems: 'center', fontFamily: T.mono, fontSize: 15, fontWeight: 700, color: THEMA_EIGEN[meinThema(t)]?.farbe ?? T.muted, background: `${THEMA_EIGEN[meinThema(t)]?.farbe ?? T.muted}0f` }}>{i + 1}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>{zeile(t, 0, true)}</div>
                   </div>
                 ))}
@@ -796,6 +1058,48 @@ export function AufgabenView() {
             </>
           );
         })()}
+
+        {/* ── KEVIN & MALIN: je Person eine eigene Pipeline ──────────────────
+            Kevins Ansage: „aufteilen nach den Aufgaben von Kevin, von Malin
+            oder welche beide machen müssen — und da auch eine eigene Pipeline,
+            die jeder vernünftig mitnehmen kann." Jede Bahn zeigt ihre eigene
+            Last; per Klick wandert eine Aufgabe in die andere Bahn. */}
+        {ready && !!list.length && ansicht === 'personen' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 12, alignItems: 'start' }}>
+            {BAHNEN.map(b => {
+              const drin = list.filter(t => t.assignee === b.id);
+              const offen = drin.filter(t => t.status !== 'done');
+              const kritisch = offen.filter(t => t.priority === 'critical').length;
+              const spaet = offen.filter(t => t.dueDate && t.dueDate < heute).length;
+              const minuten = offen.reduce((s, t) => s + einschaetzen(t).dauer, 0);
+              const jarvis = offen.filter(t => einschaetzen(t).wer === 'jarvis').length;
+              const farbe = b.id === 'malin' ? T.accentInk : b.id === 'both' ? T.amber : T.accent;
+              return (
+                <div key={b.id} style={{ ...panel, borderTop: `3px solid ${farbe}`, overflow: 'hidden' }}>
+                  <div style={{ padding: '12px 14px 10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: farbe }}>{b.titel}</span>
+                      <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginLeft: 'auto' }}>{offen.length}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: T.muted, marginTop: 3, lineHeight: 1.45 }}>{b.satz}</div>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 7 }}>
+                      <span style={{ fontFamily: T.mono, fontSize: 11, color: kritisch ? T.crit : T.muted }}>{kritisch} kritisch</span>
+                      <span style={{ fontFamily: T.mono, fontSize: 11, color: spaet ? T.crit : T.muted }}>{spaet} überfällig</span>
+                      <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{dauerText(minuten)}</span>
+                      {!!jarvis && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent }}>⚡ {jarvis}</span>}
+                    </div>
+                    <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 7 }}>
+                      Übergeben: in der Zeile auf den Namen klicken
+                    </div>
+                  </div>
+                  {offen.length
+                    ? offen.map((t, i) => zeile(t, i + 1, true))
+                    : <div style={{ padding: '14px', fontSize: 12, color: T.muted, borderTop: `1px solid ${T.lineSoft}` }}>Nichts offen hier.</div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* ── BAHNEN: das Board — je Thema eine Spalte, in unserer Reihenfolge ── */}
         {ready && !!list.length && ansicht === 'themen' && (
@@ -847,8 +1151,8 @@ export function AufgabenView() {
                   <div key={b.id} style={{ marginBottom: 6 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, margin: '0 2px 5px' }}>
                       <span style={{ fontSize: 12.5, fontWeight: 700, color: b.farbe }}>{b.label}</span>
-                      <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>{drin.length} terminiert</span>
-                      {spaet > 0 && <span className="krit-puls" style={{ fontFamily: T.mono, fontSize: 10.5, color: T.crit }}>{spaet} überfällig</span>}
+                      <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{drin.length} terminiert</span>
+                      {spaet > 0 && <span className="krit-puls" style={{ fontFamily: T.mono, fontSize: 11, color: T.crit }}>{spaet} überfällig</span>}
                     </div>
                     <Zeitstrahl von={von} bis={bis} ticks={ticks} marker={marker} />
                   </div>
@@ -869,7 +1173,7 @@ export function AufgabenView() {
             {(gruppen ?? [{ key: 'flach', label: '', tasks: list }]).map(g => (
               <div key={g.key}>
                 {g.label && (
-                  <div style={{ padding: '9px 16px 4px', fontFamily: T.mono, fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: g.key === 'spaet' ? T.crit : g.key === 'heute' ? T.accent : T.muted, borderTop: `1px solid ${T.lineSoft}` }}>
+                  <div style={{ padding: '9px 16px 4px', fontFamily: T.mono, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: g.key === 'spaet' ? T.crit : g.key === 'heute' ? T.accent : T.muted, borderTop: `1px solid ${T.lineSoft}` }}>
                     {g.label} · {g.tasks.length}
                   </div>
                 )}
@@ -901,27 +1205,72 @@ export function AufgabenView() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 12 }}>
               {remByList.map(([lname, items]) => (
                 <div key={lname} style={{ ...panel, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: T.accentInk, marginBottom: 10 }}>{lname} <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{items.length}</span></div>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: T.accentInk, marginBottom: 10 }}>{lname} <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{items.length}</span></div>
                   {items.slice(0, 10).map((r, i) => (
                     <div key={r.id} style={{ display: 'flex', gap: 9, padding: '7px 0', borderTop: i ? `1px solid ${T.lineSoft}` : 0 }}>
                       <span style={{ width: 15, height: 15, borderRadius: 5, border: `1.5px solid ${T.muted}`, flex: '0 0 auto', marginTop: 1 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.35 }}>{r.title}</div>
-                        {r.due && <div style={{ fontFamily: T.mono, fontSize: 10, color: T.amber, marginTop: 2 }}>{new Date(r.due).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}</div>}
+                        {r.due && <div style={{ fontFamily: T.mono, fontSize: 11, color: T.amber, marginTop: 2 }}>{new Date(r.due).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}</div>}
                       </div>
                     </div>
                   ))}
-                  {items.length > 10 && <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, marginTop: 6 }}>+{items.length - 10} weitere</div>}
+                  {items.length > 10 && <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 6 }}>+{items.length - 10} weitere</div>}
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        <div style={{ marginTop: 20, fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>
+        <div style={{ marginTop: 20, fontFamily: T.mono, fontSize: 11, color: T.muted }}>
           Aufgaben werden lokal auf deinem Mac gespeichert · Erinnerungen live aus iCloud.
         </div>
       </div>
     </div>
+  );
+}
+
+// ── Kleine Bausteine für das ＋-Formular ────────────────────────────────────
+// Bewusst schlicht: eine Beschriftung links, Knöpfe rechts. Kevins Ansage war
+// „schnell ausklicken" — also keine Auswahllisten, alles auf einen Blick.
+
+function Feldzeile({ titel, children }: { titel: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+      <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: T.muted, width: 52, flex: '0 0 auto' }}>{titel}</span>
+      {children}
+    </div>
+  );
+}
+
+function Wahl({ an, farbe, onClick, children }: { an: boolean; farbe: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button onClick={onClick} style={{
+      fontFamily: T.sans, fontSize: 11.5, padding: '4px 11px', borderRadius: 7, cursor: 'pointer',
+      border: `1px solid ${an ? farbe : T.line}`, background: an ? `${farbe}1c` : 'transparent', color: an ? farbe : T.inkDim,
+    }}>{children}</button>
+  );
+}
+
+// ── Bausteine des Aufgaben-Details ──────────────────────────────────────────
+// Feste Label-Spalte + einheitliche Wahl-Knöpfe: alles fluchtet, und ein
+// Rahmen heißt überall dasselbe — „hier kann man klicken".
+
+function DetailLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em', alignSelf: 'center' }}>
+      {children}
+    </span>
+  );
+}
+
+function DetailWahl({ an, farbe, titel, onClick, children }: {
+  an: boolean; farbe: string; titel?: string; onClick: () => void; children: React.ReactNode;
+}) {
+  return (
+    <button onClick={onClick} title={titel} style={{
+      fontFamily: T.sans, fontSize: 11.5, padding: '3px 10px', borderRadius: 7, cursor: 'pointer',
+      border: `1px solid ${an ? farbe : T.line}`, background: an ? `${farbe}1c` : 'transparent', color: an ? farbe : T.inkDim,
+    }}>{children}</button>
   );
 }

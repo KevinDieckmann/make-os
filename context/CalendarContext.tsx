@@ -4,6 +4,7 @@ import {
   createContext, useContext, useReducer, useEffect, useState,
   type Dispatch, type ReactNode,
 } from 'react';
+import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
 import type { CalendarState, CalendarAction, CalendarEvent, CalendarView } from '@/types/calendar';
 import { MOCK_CALENDAR_EVENTS } from '@/lib/mock-data/calendar-events';
 import { navigateDate, parseISO } from '@/lib/date-utils';
@@ -79,6 +80,9 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
 
   useEffect(() => {
+    // Ohne Konto keine Daten: auf der Anmeldeseite laufen die Kontexte auch,
+    // und ohne Sitzung bekämen sie 401 — laut und sinnlos. (23.09.)
+    if (!personLesen()) return;
     setSyncStatus('loading');
     fetch('/api/apple-calendar')
       .then(r => {

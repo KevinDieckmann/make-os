@@ -12,17 +12,23 @@ import { THEME as T } from '@/lib/make-one/os-data';
 import { computeMetrics, eur, type FinanceState } from '@/lib/make-one/finance-data';
 import { useSpeichern } from '@/hooks/useSpeichern';
 import { localDay } from '@/lib/zeit';
+import { Seitenkopf } from './Seitenkopf';
 
 interface Firma { id: string; name: string; bank: string; kontostand: number | null; stand: string | null }
 type RStatus = 'geplant' | 'gestellt' | 'bezahlt';
-interface Rechnung { id: string; firmaId: string; kunde: string; titel: string; betrag: number; status: RStatus; faellig?: string; notiz?: string }
+interface Rechnung {
+  id: string; firmaId: string; kunde: string; titel: string; betrag: number; status: RStatus; faellig?: string; notiz?: string;
+  /** Der Vorgang: Angebot → Rechnung → Eingang (Kevins Ansage 02.08.). */
+  nummer?: string; datum?: string; angebot?: string; angebotAm?: string; bezahltAm?: string;
+  netto?: number; ustSatz?: number; leistungVon?: string; leistungBis?: string;
+}
 interface Merkposten { id: string; firmaId: string; titel: string; betrag: number; art: 'kredit' | 'sonstig'; datum?: string; notiz?: string }
 interface Zahlung { id: string; firmaId: string; an: string; titel: string; betrag: number; status: 'offen' | 'bezahlt'; faellig?: string }
 interface Produkt { id: string; name: string; beschreibung: string; preis: number; einheit: 'einmalig' | 'monatlich' | 'projekt'; status: 'entwurf' | 'aktiv' }
 interface Uhrwerk { letztesMeeting: string | null; agenda: { id: string; label: string; done: boolean }[] }
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; merkposten: Merkposten[]; zahlungen: Zahlung[]; produkte: Produkt[]; uhrwerk: Uhrwerk }
 
-const lbl = { fontFamily: T.mono, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
 const STATUS_FARBE: Record<RStatus, string> = { geplant: '#96A8A2', gestellt: T.amber, bezahlt: T.accent };
 const STATUS_NEXT: Record<RStatus, RStatus> = { geplant: 'gestellt', gestellt: 'bezahlt', bezahlt: 'geplant' };
@@ -80,8 +86,10 @@ export function FinanzplanungView() {
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 980, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
-        <div style={lbl}>Finanzen · {heute.slice(8)}.{heute.slice(5, 7)}.</div>
-        <h1 style={{ fontSize: 25, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 14px' }}>Finanzplanung</h1>
+        <Seitenkopf
+          rubrik={<>Finanzen · {heute.slice(8)}.{heute.slice(5, 7)}.</>}
+          titel={<>Finanzplanung</>}
+        />
 
         {/* ── Finanzmeeting — das Uhrwerk: 2× im Monat, läuft immer wieder durch ── */}
         <div style={{ ...panel, borderLeft: `3px solid ${meetingUeberfaellig ? T.crit : T.amber}`, padding: '14px 18px', marginBottom: 14 }}>
@@ -101,7 +109,7 @@ export function FinanzplanungView() {
             {uhrwerk.agenda.map(a => (
               <div key={a.id} onClick={() => speichern({ ...plan, uhrwerk: { ...uhrwerk, agenda: uhrwerk.agenda.map(x => x.id === a.id ? { ...x, done: !x.done } : x) } })}
                 style={{ display: 'flex', gap: 9, alignItems: 'baseline', cursor: 'pointer' }}>
-                <span style={{ width: 16, height: 16, borderRadius: 5, border: `1px solid ${a.done ? T.accent : T.line}`, background: a.done ? `${T.accent}22` : 'transparent', color: T.accent, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>{a.done ? <span className="check-pop">✓</span> : ''}</span>
+                <span style={{ width: 16, height: 16, borderRadius: 5, border: `1px solid ${a.done ? T.accent : T.line}`, background: a.done ? `${T.accent}22` : 'transparent', color: T.accent, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>{a.done ? <span className="check-pop">✓</span> : ''}</span>
                 <span style={{ fontSize: 12.5, color: a.done ? T.muted : T.inkDim, textDecoration: a.done ? 'line-through' : 'none' }}>{a.label}</span>
               </div>
             ))}
@@ -151,14 +159,14 @@ export function FinanzplanungView() {
               <div key={f.id} style={{ ...panel, padding: '14px 18px' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                   <span style={{ fontSize: 14.5, fontWeight: 700 }}>{f.name}</span>
-                  <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{f.bank}</span>
+                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{f.bank}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '10px 0 6px' }}>
                   <span style={{ fontSize: 12, color: T.inkDim }}>Kontostand</span>
                   <input type="number" value={f.kontostand ?? ''} placeholder="—"
                     onChange={e => speichern({ ...plan, firmen: plan.firmen.map(x => x.id === f.id ? { ...x, kontostand: e.target.value === '' ? null : Number(e.target.value) } : x) })}
                     style={{ ...inp, width: 110, fontSize: 15, fontWeight: 700 }} />
-                  <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>€{f.stand ? ` · Stand ${f.stand.slice(8)}.${f.stand.slice(5, 7)}.` : ''}</span>
+                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>€{f.stand ? ` · Stand ${f.stand.slice(8)}.${f.stand.slice(5, 7)}.` : ''}</span>
                 </div>
                 <div style={{ fontSize: 11.5, color: offen.length ? T.amber : T.muted }}>
                   {offen.length ? `${offen.length} Rechnung${offen.length > 1 ? 'en' : ''} offen · ${eur(sum(offen))}` : 'keine offenen Forderungen'}
@@ -177,19 +185,39 @@ export function FinanzplanungView() {
               return (
                 <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderBottom: `1px solid ${T.line}55`, paddingBottom: 8 }}>
                   <button onClick={() => rechnungAendern(r.id, { status: STATUS_NEXT[r.status] })}
-                    style={{ fontFamily: T.mono, fontSize: 10, letterSpacing: '.06em', cursor: 'pointer', borderRadius: 6, padding: '3px 9px', border: `1px solid ${STATUS_FARBE[r.status]}66`, background: `${STATUS_FARBE[r.status]}1a`, color: STATUS_FARBE[r.status], width: 76, textAlign: 'center' }}>
+                    style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.06em', cursor: 'pointer', borderRadius: 6, padding: '3px 9px', border: `1px solid ${STATUS_FARBE[r.status]}66`, background: `${STATUS_FARBE[r.status]}1a`, color: STATUS_FARBE[r.status], width: 76, textAlign: 'center' }}>
                     {r.status}
                   </button>
                   <span style={{ fontSize: 13.5, fontWeight: 600, color: T.ink }}>{r.kunde}</span>
                   <span style={{ fontSize: 12.5, color: T.inkDim, flex: 1, minWidth: 140 }}>{r.titel}</span>
-                  <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{firmaName(r.firmaId)}</span>
-                  {r.faellig && <span style={{ fontFamily: T.mono, fontSize: 10.5, color: spaet ? T.crit : T.muted }}>{spaet ? 'überfällig ' : 'fällig '}{r.faellig.slice(8)}.{r.faellig.slice(5, 7)}.</span>}
+                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{firmaName(r.firmaId)}</span>
+                  {r.faellig && <span style={{ fontFamily: T.mono, fontSize: 11, color: spaet ? T.crit : T.muted }}>{spaet ? 'überfällig ' : 'fällig '}{r.faellig.slice(8)}.{r.faellig.slice(5, 7)}.</span>}
                   <input type="number" value={r.betrag || ''} placeholder="0"
                     onChange={e => rechnungAendern(r.id, { betrag: Number(e.target.value) || 0 })}
                     style={{ ...inp, width: 90, textAlign: 'right' }} />
                   <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>€</span>
                   <button onClick={() => speichern({ ...plan, rechnungen: plan.rechnungen.filter(x => x.id !== r.id) })}
                     style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 12 }}>✕</button>
+
+                  {/* Der Vorgang dahinter — Kevins Ansage: der Betrag allein
+                      reicht nicht, Angebot, Nummer und Daten gehören dazu. */}
+                  <div style={{ flexBasis: '100%', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', paddingLeft: 86 }}>
+                    {([
+                      ['nummer', 'Rechnungs-Nr.', 'text', 108],
+                      ['datum', 'gestellt am', 'date', 128],
+                      ['angebot', 'Angebots-Nr.', 'text', 108],
+                      ['angebotAm', 'Angebot vom', 'date', 128],
+                      ['bezahltAm', 'bezahlt am', 'date', 128],
+                    ] as const).map(([feld, platz, typ, breite]) => (
+                      <input key={feld} type={typ} value={(r[feld] as string) ?? ''} placeholder={platz} title={platz}
+                        onChange={e => rechnungAendern(r.id, { [feld]: e.target.value || undefined })}
+                        style={{ ...inp, width: breite, fontSize: 11, padding: '4px 7px' }} />
+                    ))}
+                    <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>
+                      netto {(r.netto ?? r.betrag / 1.19).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                      {r.ustSatz != null ? ` · ${r.ustSatz}% USt` : ' · 19% angenommen'}
+                    </span>
+                  </div>
                 </div>
               );
             })}
@@ -228,17 +256,17 @@ export function FinanzplanungView() {
                 <div key={z.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderBottom: `1px solid ${T.line}55`, paddingBottom: 8, opacity: z.status === 'bezahlt' ? 0.5 : 1 }}>
                   <span style={{ fontFamily: T.mono, fontSize: 12, fontWeight: 700, color: i === 0 && z.status === 'offen' ? T.crit : T.muted, width: 20, textAlign: 'right' }}>{i + 1}.</span>
                   <span style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <button onClick={() => zahlungBewegen(z.id, -1)} disabled={i === 0} style={{ background: 'none', border: 'none', color: i === 0 ? `${T.muted}55` : T.muted, cursor: i === 0 ? 'default' : 'pointer', fontSize: 9, padding: 0, lineHeight: 1 }}>▲</button>
-                    <button onClick={() => zahlungBewegen(z.id, 1)} disabled={i === plan.zahlungen.length - 1} style={{ background: 'none', border: 'none', color: i === plan.zahlungen.length - 1 ? `${T.muted}55` : T.muted, cursor: i === plan.zahlungen.length - 1 ? 'default' : 'pointer', fontSize: 9, padding: 0, lineHeight: 1 }}>▼</button>
+                    <button onClick={() => zahlungBewegen(z.id, -1)} disabled={i === 0} style={{ background: 'none', border: 'none', color: i === 0 ? `${T.muted}55` : T.muted, cursor: i === 0 ? 'default' : 'pointer', fontSize: 11, padding: 0, lineHeight: 1 }}>▲</button>
+                    <button onClick={() => zahlungBewegen(z.id, 1)} disabled={i === plan.zahlungen.length - 1} style={{ background: 'none', border: 'none', color: i === plan.zahlungen.length - 1 ? `${T.muted}55` : T.muted, cursor: i === plan.zahlungen.length - 1 ? 'default' : 'pointer', fontSize: 11, padding: 0, lineHeight: 1 }}>▼</button>
                   </span>
                   <button onClick={() => speichern({ ...plan, zahlungen: plan.zahlungen.map(x => x.id === z.id ? { ...x, status: x.status === 'offen' ? 'bezahlt' : 'offen' } : x) })}
-                    style={{ fontFamily: T.mono, fontSize: 10, cursor: 'pointer', borderRadius: 6, padding: '3px 9px', border: `1px solid ${z.status === 'bezahlt' ? T.accent : T.amber}66`, background: `${z.status === 'bezahlt' ? T.accent : T.amber}1a`, color: z.status === 'bezahlt' ? T.accent : T.amber, width: 72, textAlign: 'center' }}>
+                    style={{ fontFamily: T.mono, fontSize: 11, cursor: 'pointer', borderRadius: 6, padding: '3px 9px', border: `1px solid ${z.status === 'bezahlt' ? T.accent : T.amber}66`, background: `${z.status === 'bezahlt' ? T.accent : T.amber}1a`, color: z.status === 'bezahlt' ? T.accent : T.amber, width: 72, textAlign: 'center' }}>
                     {z.status}
                   </button>
                   <span style={{ fontSize: 13.5, fontWeight: 600, color: T.ink }}>{z.an}</span>
                   <span style={{ fontSize: 12.5, color: T.inkDim, flex: 1, minWidth: 120 }}>{z.titel}</span>
-                  <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{firmaName(z.firmaId)}</span>
-                  {z.faellig && <span style={{ fontFamily: T.mono, fontSize: 10.5, color: spaet ? T.crit : T.muted }}>{spaet ? 'überfällig ' : 'fällig '}{z.faellig.slice(8)}.{z.faellig.slice(5, 7)}.</span>}
+                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{firmaName(z.firmaId)}</span>
+                  {z.faellig && <span style={{ fontFamily: T.mono, fontSize: 11, color: spaet ? T.crit : T.muted }}>{spaet ? 'überfällig ' : 'fällig '}{z.faellig.slice(8)}.{z.faellig.slice(5, 7)}.</span>}
                   <span style={{ fontFamily: T.mono, fontSize: 12.5, fontWeight: 700, color: T.ink }}>{eur(z.betrag)}</span>
                   <button onClick={() => speichern({ ...plan, zahlungen: plan.zahlungen.filter(x => x.id !== z.id) })}
                     style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 12 }}>✕</button>
@@ -277,7 +305,7 @@ export function FinanzplanungView() {
                   <input value={p.name} onChange={e => speichern({ ...plan, produkte: plan.produkte.map(x => x.id === p.id ? { ...x, name: e.target.value } : x) })}
                     style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 14, fontWeight: 700, color: T.ink, fontFamily: T.sans, flex: 1, minWidth: 0 }} />
                   <button onClick={() => speichern({ ...plan, produkte: plan.produkte.map(x => x.id === p.id ? { ...x, status: x.status === 'aktiv' ? 'entwurf' : 'aktiv' } : x) })}
-                    style={{ fontFamily: T.mono, fontSize: 9.5, cursor: 'pointer', borderRadius: 6, padding: '2px 8px', border: `1px solid ${p.status === 'aktiv' ? T.accent : T.muted}66`, background: 'transparent', color: p.status === 'aktiv' ? T.accent : T.muted }}>
+                    style={{ fontFamily: T.mono, fontSize: 11, cursor: 'pointer', borderRadius: 6, padding: '2px 8px', border: `1px solid ${p.status === 'aktiv' ? T.accent : T.muted}66`, background: 'transparent', color: p.status === 'aktiv' ? T.accent : T.muted }}>
                     {p.status}
                   </button>
                 </div>
@@ -286,7 +314,7 @@ export function FinanzplanungView() {
                   <input type="number" value={p.preis || ''} placeholder="Preis"
                     onChange={e => speichern({ ...plan, produkte: plan.produkte.map(x => x.id === p.id ? { ...x, preis: Number(e.target.value) || 0 } : x) })}
                     style={{ ...inp, width: 90, textAlign: 'right' }} />
-                  <span style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted }}>€ · {p.einheit}</span>
+                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>€ · {p.einheit}</span>
                 </div>
               </div>
             ))}
@@ -298,10 +326,10 @@ export function FinanzplanungView() {
           <div style={{ ...lbl, marginBottom: 10 }}>Merkposten</div>
           {plan.merkposten.map(x => (
             <div key={x.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', padding: '3px 0' }}>
-              <span style={{ fontFamily: T.mono, fontSize: 10.5, color: '#C77DFF' }}>{x.art === 'kredit' ? 'KREDIT' : 'MERK'}</span>
+              <span style={{ fontFamily: T.mono, fontSize: 11, color: '#C77DFF' }}>{x.art === 'kredit' ? 'KREDIT' : 'MERK'}</span>
               <span style={{ fontSize: 13, color: T.ink }}>{x.titel}</span>
               <span style={{ fontFamily: T.mono, fontSize: 12.5, fontWeight: 700, color: x.betrag >= 0 ? T.accent : T.crit }}>{eur(x.betrag)}</span>
-              <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>{firmaName(x.firmaId)}{x.datum ? ` · ${x.datum.slice(8)}.${x.datum.slice(5, 7)}.` : ''}</span>
+              <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{firmaName(x.firmaId)}{x.datum ? ` · ${x.datum.slice(8)}.${x.datum.slice(5, 7)}.` : ''}</span>
               {x.notiz && <span style={{ fontSize: 11.5, color: T.muted }}>{x.notiz}</span>}
             </div>
           ))}

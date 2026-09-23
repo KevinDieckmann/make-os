@@ -4,6 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { spawn } from 'child_process';
+import { loadJson } from '@/lib/store/local-db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,11 +28,11 @@ function runOsascript(script: string, timeoutMs = 40_000): Promise<string> {
 
 const esc = (s: string) => s.replace(/[\\"\n\r]/g, ' ').slice(0, 120);
 
-function blockFor(e: NewEvent): string | null {
+function blockFor(e: NewEvent, erlaubt: Set<string>, standard: string): string | null {
   const m = e.date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) return null;
   const [, y, mo, d] = m;
-  const cal = e.calendar && ALLOWED_CALENDARS.has(e.calendar) ? e.calendar : 'Privat Kevin';
+  const cal = e.calendar && erlaubt.has(e.calendar) ? e.calendar : standard;
   const sh = Math.max(0, Math.min(23, Math.floor(e.startHour)));
   const sm = Math.max(0, Math.min(59, Math.floor(e.startMin ?? 0)));
   const dur = Math.max(5, Math.min(600, Math.floor(e.durationMin)));
@@ -56,7 +57,16 @@ export async function POST(req: Request) {
   const list = Array.isArray(payload.events) ? payload.events.slice(0, 30) : [];
   if (!list.length) return NextResponse.json({ ok: false, error: 'Keine Termine übergeben.' }, { status: 400 });
 
-  const blocks = list.map(blockFor).filter(Boolean);
+  // Welche Kalender erlaubt sind, steht in den Einstellungen — sonst landet
+  // Malins Termin in Kevins Kalender und niemand sieht, wem er gehört.
+  const cfg = await loadJson<{ kalender?: { kevin?: string; malin?: string; beide?: string } }>('kalender-einstellungen');
+  const erlaubt = new Set([
+    ...Array.from(ALLOWED_CALENDARS),
+    ...Object.values(cfg?.kalender ?? {}).filter((x): x is string => !!x),
+  ]);
+  const standard = cfg?.kalender?.beide || 'Privat Kevin';
+
+  const blocks = list.map(e => blockFor(e, erlaubt, standard)).filter(Boolean);
   if (!blocks.length) return NextResponse.json({ ok: false, error: 'Ungültige Termindaten.' }, { status: 400 });
 
   const script = `tell application "Calendar"\n${blocks.join('\n')}\nend tell\nreturn "ok"`;

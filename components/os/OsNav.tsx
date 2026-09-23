@@ -77,7 +77,7 @@ export function OsNav() {
               <Link key={n.href} href={n.href} style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.05em', textDecoration: 'none', whiteSpace: 'nowrap', padding: '4px 9px', borderRadius: 7, color: isActive(n.href) ? T.accent : T.muted, background: isActive(n.href) ? T.accentSoft : 'transparent' }}>{n.label}</Link>
             ))}
           </div>
-          <button onClick={() => { setOpen(true); setQ(''); setSel(0); }} style={{ fontFamily: T.mono, fontSize: 10.5, color: T.muted, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 9px', cursor: 'pointer', flex: '0 0 auto', whiteSpace: 'nowrap' }}>⌘K Springen</button>
+          <button onClick={() => { setOpen(true); setQ(''); setSel(0); }} style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 9px', cursor: 'pointer', flex: '0 0 auto', whiteSpace: 'nowrap' }}>⌘K Springen</button>
         </div>
       </div>
 
@@ -102,7 +102,7 @@ export function OsNav() {
               {results.map((r, i) => (
                 <div key={r.href + r.label} onMouseEnter={() => setSel(i)} onClick={() => go(r.href)}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 18px', cursor: 'pointer', background: i === sel ? T.accentSoft : 'transparent', borderLeft: `2px solid ${i === sel ? T.accent : 'transparent'}` }}>
-                  <span style={{ fontFamily: T.mono, fontSize: 9, color: r.group === 'Agent' ? T.accentInk : T.muted, width: 46, flex: '0 0 auto', textTransform: 'uppercase', letterSpacing: '.08em' }}>{r.group}</span>
+                  <span style={{ fontFamily: T.mono, fontSize: 11, color: r.group === 'Agent' ? T.accentInk : T.muted, width: 46, flex: '0 0 auto', textTransform: 'uppercase', letterSpacing: '.08em' }}>{r.group}</span>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, color: T.ink }}>{r.label}</div>
                     {r.hint && <div style={{ fontSize: 11.5, color: T.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.hint}</div>}
