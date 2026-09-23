@@ -74,7 +74,7 @@ export function Faelligkeit({ wert, setzen, klein = false, spaetPuls = false }: 
       {auf && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 60, minWidth: 236,
-          background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)',
+          background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20,
           padding: '11px 12px', boxShadow: '0 16px 44px rgba(0,0,0,.5)',
         }}>
           {/* Verschieben — der Fall beim Durchgehen: „geht später" */}
