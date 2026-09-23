@@ -82,7 +82,13 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Ohne Konto keine Daten: auf der Anmeldeseite laufen die Kontexte auch,
     // und ohne Sitzung bekämen sie 401 — laut und sinnlos. (23.09.)
-    if (!personLesen()) return;
+    let alive = true;
+    let warten: ReturnType<typeof setTimeout> | undefined;
+    const laden = () => {
+    if (!alive) return;
+    // Noch keine Sitzung: alle zwei Sekunden nachsehen, nach der Anmeldung
+    // kommt der Kalender dann von selbst. (23.09.)
+    if (!personLesen()) { warten = setTimeout(laden, 2000); return; }
     setSyncStatus('loading');
     fetch('/api/apple-calendar')
       .then(r => {
@@ -101,7 +107,10 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
         console.warn('[CalendarContext] Apple Calendar Sync fehlgeschlagen:', err);
         setSyncStatus('error');
       });
-  }, []); // run once on mount
+    };
+    laden();
+    return () => { alive = false; if (warten) clearTimeout(warten); };
+  }, []); // einmal beim Start — wartet notfalls auf die Sitzung
 
   return (
     <CalendarContext.Provider value={{ state, dispatch, syncStatus }}>

@@ -197,8 +197,13 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Ohne Konto keine Daten: auf der Anmeldeseite laufen die Kontexte auch,
     // und ohne Sitzung bekämen sie 401 — laut und sinnlos. (23.09.)
-    if (!personLesen()) return;
     let alive = true;
+    let warten: ReturnType<typeof setTimeout> | undefined;
+    const laden = () => {
+    if (!alive) return;
+    // Noch keine Sitzung (z. B. Anmeldeseite): alle zwei Sekunden nachsehen —
+    // nach der Anmeldung laden die Daten dann von selbst. (23.09.)
+    if (!personLesen()) { warten = setTimeout(laden, 2000); return; }
     fetch('/api/state/tasks')
       .then(r => {
         if (!r.ok) throw new Error(`Aufgaben-Store antwortet ${r.status}`);
@@ -223,7 +228,9 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         setLadeFehler(true);
         setReady(true);
       });
-    return () => { alive = false; };
+    };
+    laden();
+    return () => { alive = false; if (warten) clearTimeout(warten); };
   }, []);
 
   // Regelmäßiger Abgleich: zwei offene Fenster gleichen sich von selbst an,

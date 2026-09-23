@@ -11,7 +11,8 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
-import { Seite, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, zoneFarbe, prioFarbe } from './schlank';
+import { parseSchnell } from '@/lib/make-one/schnell-anlegen';
+import { Seite, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, feld, zoneFarbe, prioFarbe } from './schlank';
 
 interface Perf { index: number | null; label: string; hebel: string | null; saeulen: { key: string; label: string; score: number | null; zuDuenn: boolean }[] }
 interface Termin { id?: string; title?: string; startDate?: string; endDate?: string; allDay?: boolean }
@@ -27,6 +28,14 @@ export function HeuteView() {
   const [termine, setTermine] = useState<Termin[]>([]);
   const [koerper, setKoerper] = useState<{ rec?: number; frisch: boolean; routinen: number; von: number } | null>(null);
   const [stapel, setStapel] = useState<number | null>(null);
+  const [neu, setNeu] = useState('');
+  // Schnell anlegen — ohne Datum landet es heute, deshalb steht die Zeile hier.
+  const anlegen = () => {
+    const p = parseSchnell(neu.trim(), state.projects);
+    if (!p.title) return;
+    dispatch({ type: 'ADD_TASK', payload: { projectId: p.projectId ?? state.projects[0]?.id ?? '', title: p.title, description: '', status: 'todo', priority: p.priority, assignee: p.assignee, tags: [], subTasks: [], dependencies: [], sortOrder: 0, dueDate: p.dueDate ?? heute } });
+    setNeu('');
+  };
 
   useEffect(() => {
     setDatum(new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }));
@@ -88,6 +97,7 @@ export function HeuteView() {
       </Liste>
 
       <Ueberschrift rechts={<Link href="/os/aufgaben" style={{ color: C.inkLeise, textDecoration: 'none' }}>{offen.length} offen</Link>}>Aufgaben</Ueberschrift>
+      <input value={neu} onChange={e => setNeu(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') anlegen(); }} placeholder="Neue Aufgabe für heute … (!! kritisch · fr · #projekt · @malin)" style={feld} />
       <Liste>
         {dran.length === 0 && <Leer>{offen.length ? 'Nichts fällig, nichts kritisch — freie Bahn.' : 'Keine Aufgaben. Anlegen unter Aufgaben oder Jarvis sagen.'}</Leer>}
         {dran.map(t => (

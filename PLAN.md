@@ -131,6 +131,19 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Offen bleiben nur Kevins Freischaltungen (Konto, Telegram, Whoop) — und
 > dann Phase 1, Hetzner.
 
+> **Nachtrag 24.09., Einstieg geprüft.** Kevin: *„überprüfe auch den eigenen
+> Onboarding-Prozess."* Durchgespielt mit Wegwerfkonten: erstes Konto →
+> Einladungslink erzeugen → abmelden → Link öffnen → beitreten → Heute.
+> Gefunden und behoben: **nach der Anmeldung luden Aufgaben und Kalender
+> nicht** (die Kontexte starteten auf der Anmeldeseite ohne Sitzung und
+> zeigten danach den Beispiel-Zustand, ohne zu speichern). Jetzt lädt die
+> Anmeldung die Seite neu, und die Kontexte warten auf die Sitzung. Dazu:
+> Einladung als **Link** (`/anmelden?code=…`, Code vorbelegt), Konto-Seite im
+> schlanken Muster, Empfang führt zu Heute, Onboarding-Schritte auf den
+> Konten-Weg umgeschrieben (Bauzeit-Schritt raus), Aufgaben mit Karte (Datum,
+> Priorität, Wer, Projekt, Löschen), Schnellanlage auf Heute. Kevins Konto ist
+> angelegt (Speicher `kevin`).
+
 Jede Phase hat ein Ziel in einem Satz, eine Fertig-Bedingung, und eine Liste,
 was **bewusst nicht** darin ist. Grobe Größe in Arbeitstagen — ehrlich grob.
 

@@ -8,11 +8,14 @@ vollen Zugriff: mitbenutzen und mitbauen.
 
 Kevins Mac betreibt das System. Solange sein Server läuft:
 
-- Im selben WLAN: `http://<IP-von-Kevins-Mac>:3001/os` im Browser öffnen
-  (IP steht auf dem Mac unter Systemeinstellungen → WLAN → Details).
-- Beim ersten Aufruf fragt das System nach dem Zugangsschlüssel — den gibt dir
-  Kevin persönlich. Niemals per Mail/Chat schicken.
-- Für Zugriff von unterwegs richten wir Tailscale ein (steht im Bauplan).
+- Kevin erzeugt unter System → Konto → „Einladen" einen Link und gibt ihn dir
+  persönlich (48 Stunden gültig, einmal einlösbar).
+- Im selben WLAN den Link öffnen (`http://<IP-von-Kevins-Mac>:3001/anmelden?code=…`;
+  die IP steht auf dem Mac unter Systemeinstellungen → WLAN → Details).
+- Vorname **Malin**, E-Mail, Passwort mit mindestens 10 Zeichen — fertig. Der
+  Vorname wird der Name deiner Daten, deine bisherigen Bestände hängen damit
+  an deinem Konto. Danach: `http://<IP>:3001/anmelden` als Lesezeichen.
+- Für Zugriff von überall kommt der Server (PLAN.md, Phase 1).
 
 ## 2 · Mitbauen (eigene Entwicklungs-Kopie)
 

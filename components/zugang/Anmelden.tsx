@@ -9,7 +9,7 @@
 // eine Fläche, große ruhige Marke, nichts, was ablenkt.
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, RADIUS, MIKRO } from '@/lib/make-one/design';
 
 type Art = 'anmelden' | 'einrichten' | 'beitreten';
@@ -20,20 +20,25 @@ const feld: React.CSSProperties = {
 };
 
 export function Anmelden() {
-  const router = useRouter();
   const params = useSearchParams();
   const zu = params.get('zu') || '/jarvis';
+  // Einladungslink: /anmelden?code=XXXX-XXXX — der Code steht schon drin.
+  const codeAusLink = (params.get('code') ?? '').toUpperCase();
   const [eingerichtet, setEingerichtet] = useState<boolean | null>(null);
   const [art, setArt] = useState<Art>('anmelden');
-  const [f, setF] = useState({ email: '', passwort: '', name: '', schluessel: '', code: '' });
+  const [f, setF] = useState({ email: '', passwort: '', name: '', schluessel: '', code: codeAusLink });
   const [fehler, setFehler] = useState('');
   const [laeuft, setLaeuft] = useState(false);
 
   useEffect(() => {
+    // Schon angemeldet? Dann gleich weiter — die Maske wäre nur im Weg.
+    fetch('/api/konto/ich').then(r => (r.ok ? r.json() : null)).then(d => { if (d?.ich) window.location.assign(zu); }).catch(() => {});
     fetch('/api/konto/status').then(r => r.json()).then(d => {
       setEingerichtet(!!d.eingerichtet);
       if (!d.eingerichtet) setArt('einrichten');
+      else if (codeAusLink) setArt('beitreten');
     }).catch(() => setEingerichtet(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function los(e: React.FormEvent) {
@@ -44,7 +49,9 @@ export function Anmelden() {
       const r = await fetch(pfad, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(f) });
       const d = await r.json();
       if (!r.ok || d.error) { setFehler(d.error ?? `Fehler ${r.status}`); setLaeuft(false); return; }
-      router.replace(zu);
+      // Volles Neuladen, kein Seitenwechsel im Browser: die Datenkontexte (Aufgaben,
+      // Kalender) starten sonst ohne Sitzung und zeigten den Beispiel-Zustand. (23.09.)
+      window.location.assign(zu);
     } catch { setFehler('Der Server ist nicht erreichbar.'); setLaeuft(false); }
   }
 
@@ -70,9 +77,12 @@ export function Anmelden() {
             <input type="password" placeholder="MAKE_OS_KEY" value={f.schluessel} onChange={s('schluessel')} style={feld} autoComplete="off" />
           </>
         )}
-        {art === 'beitreten' && (
+        {art === 'beitreten' && (<>
+          <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, margin: 0 }}>
+            Dein Vorname wird der Name deiner Daten — wer schon Bestände hier hat, nimmt genau den Vornamen, unter dem sie liegen.
+          </p>
           <input placeholder="Einladungscode (XXXX-XXXX)" value={f.code} onChange={s('code')} style={{ ...feld, fontFamily: SCHRIFT.mono, letterSpacing: '.1em', textTransform: 'uppercase' }} autoComplete="off" />
-        )}
+        </>)}
         {art !== 'anmelden' && (
           <input placeholder="Dein Vorname (wird der Name deiner Daten)" value={f.name} onChange={s('name')} style={feld} autoComplete="given-name" />
         )}

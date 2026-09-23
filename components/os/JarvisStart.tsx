@@ -450,7 +450,7 @@ export function JarvisStart() {
             marginTop: A.m, flex: '0 0 auto',
             fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none',
           }}
-        >Weiter zur Startfläche ›</Link>
+        >Weiter zu Heute ›</Link>
       </div>
     </div>
   );

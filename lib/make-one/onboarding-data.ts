@@ -73,10 +73,11 @@ export const SCHRITTE: Schritt[] = [
   {
     id: 'anmelden', spur: 'fundament', wer: 'beide', minuten: 2,
     titel: 'Einmal anmelden',
-    warum: 'Der Schlüssel in der Adresse setzt ein Cookie für 30 Tage. Danach reicht die kurze Adresse.',
+    warum: 'Jede Person hat ein eigenes Konto. Der Vorname wird der Name der Daten (Kevin → kevin, Malin → malin) — die gewachsenen Bestände hängen damit ohne Umzug am richtigen Konto.',
     wie: [
-      'http://localhost:3001/os?key=DEIN_SCHLÜSSEL einmal öffnen.',
-      'Danach genügt http://localhost:3001/os — am besten als Lesezeichen.',
+      'http://localhost:3001/anmelden öffnen.',
+      'Beim allerersten Mal „Erstes Konto einrichten": Vorname, E-Mail, Passwort (mindestens 10 Zeichen) und einmal der Schlüssel aus .env.local.',
+      'Danach genügt E-Mail + Passwort — die Sitzung hält 30 Tage. Lesezeichen auf http://localhost:3001/os.',
     ],
   },
   {
@@ -84,7 +85,7 @@ export const SCHRITTE: Schritt[] = [
     titel: 'Entscheiden, wie Malin zugreift',
     warum: 'Das ist die wichtigste Weiche des ganzen Onboardings. Davon hängt ab, ob ihr eine Wahrheit habt oder zwei auseinanderlaufende Stände.',
     wie: [
-      'EMPFOHLEN — eine Instanz: Kevins Rechner läuft, Malin öffnet im selben WLAN http://<Kevins-IP>:3001/os?key=… Der Server lauscht bereits auf allen Schnittstellen. Eine Datenbasis, keine Konflikte.',
+      'EMPFOHLEN — eine Instanz: Kevins Rechner läuft. Kevin erzeugt unter Konto → Einladen einen Link, Malin öffnet ihn im selben WLAN (http://<Kevins-IP>:3001/anmelden?code=…) und legt ihr Konto an. Eine Datenbasis, keine Konflikte.',
       'Kevins IP findest du mit: ipconfig getifaddr en0',
       'FALLBACK — eigene Kopie: Malin startet ihre eigene Instanz aus dem iCloud-Ordner. Dann sind ihre Einträge NUR auf ihrem Rechner. Das ist für Ansehen und Ausprobieren in Ordnung, nicht für gemeinsames Pflegen.',
       'DAUERHAFT: der Hetzner-Server. Dann greift ihr beide von überall auf dieselbe Instanz zu, ohne dass ein Rechner laufen muss. Steht als nächster Schritt im Bauplan.',
@@ -97,10 +98,9 @@ export const SCHRITTE: Schritt[] = [
     warum: 'Kevin baut weiter an der Software, während Malin damit arbeitet. Ohne Absprache gehen dabei Eingaben verloren oder eine Seite ist kurz kaputt.',
     wie: [
       'Die drei Zonen (grün/gelb/rot) einmal gemeinsam durchgehen.',
-      'Den Bauzeit-Schalter kennen: Kevin schaltet ihn ein, wenn er baut — Malin sieht dann überall einen Hinweis.',
-      'Abmachung: während Bauzeit nichts Wichtiges eintragen.',
+      'Abmachung: Kevin sagt kurz Bescheid, wenn er baut — solange nichts Wichtiges eintragen.',
     ],
-    wo: { href: '/os/onboarding/zusammenarbeit', label: 'Zusammenarbeit & Bauzeit' },
+    wo: { href: '/os/onboarding/zusammenarbeit', label: 'Zusammenarbeit' },
   },
   {
     id: 'grundlage', spur: 'fundament', wer: 'Malin', minuten: 10,
@@ -205,22 +205,14 @@ export const SCHRITTE: Schritt[] = [
     wie: ['Ein Gespräch führen — der Verlauf bleibt gespeichert.', 'Stimme einschalten und Freihand testen.', 'Einmal etwas per Zuruf erfassen lassen („trag Adobe-Abo mit 59 € monatlich ein").'],
     pruefung: 'jarvis',
   },
-  {
-    id: 'kevin-bauzeit', spur: 'kevin', minuten: 5,
-    titel: 'Bauzeit-Schalter benutzen',
-    warum: 'Damit Malin sieht, wann du am Code arbeitest — und nichts einträgt, das gleich überschrieben wird.',
-    wie: ['Vor dem Bauen einschalten, danach ausschalten.', 'Kurz dazuschreiben, woran du baust.'],
-    wo: { href: '/os/onboarding/zusammenarbeit', label: 'Bauzeit' },
-  },
-
   // ── MALIN ─────────────────────────────────────────────────────────────────
   {
     id: 'malin-zugang', spur: 'malin', minuten: 10,
     titel: 'Zugang einrichten',
     warum: 'Erster Schritt: reinkommen. Alles andere baut darauf auf.',
     wie: [
-      'Kevins Rechner läuft → im selben WLAN http://<Kevins-IP>:3001/os?key=… öffnen.',
-      'Lesezeichen anlegen.',
+      'Kevin schickt dir den Einladungslink (Konto → Einladen). Öffnen, Vorname „Malin", E-Mail, Passwort — fertig. Deine bisherigen Bestände hängen dann an deinem Konto.',
+      'Lesezeichen auf http://<Kevins-IP>:3001/anmelden anlegen.',
       'Falls eigene Kopie: Ordner aus iCloud holen, npm install, ./start.sh — dann aber wissen, dass Einträge nur lokal liegen.',
     ],
   },

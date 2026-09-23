@@ -12,7 +12,10 @@ import { useTasks } from '@/context/TasksContext';
 import { parseSchnell } from '@/lib/make-one/schnell-anlegen';
 import { localDay, tagePlus } from '@/lib/zeit';
 import type { Task } from '@/types/tasks';
+import type { Owner } from '@/types/common';
 import { Seite, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, feld, prioFarbe } from './schlank';
+
+const wahl: React.CSSProperties = { background: C.flaeche, border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark' };
 
 const WER: Record<string, string> = { kevin: 'K', malin: 'M', both: 'K+M' };
 
@@ -21,6 +24,8 @@ export function AufgabenSchlank() {
   const { state, dispatch } = useTasks();
   const [neu, setNeu] = useState('');
   const [zeigeErledigt, setZeigeErledigt] = useState(false);
+  const [offenId, setOffenId] = useState<string | null>(null);
+  const aendern = (id: string, teil: Partial<Task>) => dispatch({ type: 'UPDATE_TASK', payload: { id, ...teil } });
 
   const anlegen = () => {
     const roh = neu.trim();
@@ -48,6 +53,27 @@ export function AufgabenSchlank() {
   const projekt = (id: string) => state.projects.find(p => p.id === id)?.title ?? '';
   const datum = (d?: string) => (d ? `${d.slice(8)}.${d.slice(5, 7)}.` : '');
 
+  // Eine Zeile aufklappen: Titel, Datum, Priorität, Wer, Projekt, Löschen.
+  const Karte = ({ t }: { t: Task }) => (
+    <div style={{ padding: '8px 2px 16px 36px', borderBottom: `1px solid ${C.linie}` }}>
+      <input defaultValue={t.title} onBlur={e => { const v = e.target.value.trim(); if (v && v !== t.title) aendern(t.id, { title: v }); }}
+        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} style={{ ...feld, marginBottom: 10 }} />
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <input type="date" value={t.dueDate ?? ''} onChange={e => aendern(t.id, { dueDate: e.target.value || undefined })} style={wahl} />
+        <select value={t.priority} onChange={e => aendern(t.id, { priority: e.target.value as Task['priority'] })} style={wahl}>
+          <option value="low">Niedrig</option><option value="medium">Normal</option><option value="high">Hoch</option><option value="critical">Kritisch</option>
+        </select>
+        <select value={t.assignee} onChange={e => aendern(t.id, { assignee: e.target.value as Owner })} style={wahl}>
+          <option value="kevin">Kevin</option><option value="malin">Malin</option><option value="both">Beide</option>
+        </select>
+        <select value={t.projectId} onChange={e => aendern(t.id, { projectId: e.target.value })} style={wahl}>
+          {state.projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+        </select>
+        <button onClick={() => { dispatch({ type: 'DELETE_TASK', payload: { id: t.id } }); setOffenId(null); }} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>Löschen</button>
+      </div>
+    </div>
+  );
+
   return (
     <Seite titel="Aufgaben" rechts={<Link href="/os/aufgaben/board" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Board &amp; Zeitstrahl ›</Link>}>
       <input value={neu} onChange={e => setNeu(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') anlegen(); }}
@@ -59,14 +85,17 @@ export function AufgabenSchlank() {
           <Ueberschrift rechts={`${g.liste.length}`}>{g.titel}</Ueberschrift>
           <Liste>
             {g.liste.map(t => (
-              <Zeile key={t.id}
-                links={<Haken an={false} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />}
-                titel={t.title}
-                unter={[projekt(t.projectId), t.assignee !== 'kevin' ? WER[t.assignee] : ''].filter(Boolean).join(' · ')}
-                rechts={<span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {t.dueDate && <span style={{ fontFamily: SCHRIFT.display, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute ? C.kritisch : C.inkLeise }}>{datum(t.dueDate)}</span>}
-                  <Punkt farbe={prioFarbe(t.priority)} />
-                </span>} />
+              <div key={t.id}>
+                <Zeile onClick={() => setOffenId(o => (o === t.id ? null : t.id))} aktiv={offenId === t.id}
+                  links={<Haken an={false} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />}
+                  titel={t.title}
+                  unter={[projekt(t.projectId), t.assignee !== 'kevin' ? WER[t.assignee] : ''].filter(Boolean).join(' · ')}
+                  rechts={<span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {t.dueDate && <span style={{ fontFamily: SCHRIFT.display, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute ? C.kritisch : C.inkLeise }}>{datum(t.dueDate)}</span>}
+                    <Punkt farbe={prioFarbe(t.priority)} />
+                  </span>} />
+                {offenId === t.id && <Karte t={t} />}
+              </div>
             ))}
           </Liste>
         </div>
