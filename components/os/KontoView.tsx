@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Seite, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, feld } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, feld, LEUCHT } from './schlank';
 
 interface Ich { speicher: string; email: string; name: string; rolle: 'inhaber' | 'mitglied'; teilt: { gesundheit: string[] }; angelegt: string }
 interface Andere { speicher: string; name: string; rolle: string; teiltGesundheitMitMir: boolean }
@@ -54,11 +54,12 @@ export function KontoView() {
 
   return (
     <Seite titel={<>Konto <span style={{ color: C.inkLeise, fontWeight: 500, fontSize: 15 }}>{ich.rolle === 'inhaber' ? 'Inhaber' : 'Mitglied'}</span></>} rechts={<Knopf leise onClick={abmelden}>Abmelden</Knopf>}>
-      <div style={{ fontSize: TYP.body }}>{ich.email}<span style={{ color: C.inkLeise }}> · Daten unter <code style={{ fontFamily: SCHRIFT.mono, fontSize: 13 }}>{ich.speicher}</code> · seit {ich.angelegt.slice(8, 10)}.{ich.angelegt.slice(5, 7)}.{ich.angelegt.slice(0, 4)}</span></div>
-      {meldung && <div style={{ fontSize: TYP.bedien, color: meldung.includes('nicht') || meldung.includes('Fehler') ? C.kritisch : C.gut, marginTop: 10 }}>{meldung}</div>}
+      <Karte i={0}><div style={{ fontSize: TYP.body }}>{ich.email}<span style={{ color: C.inkLeise }}> · Daten unter <code style={{ fontFamily: SCHRIFT.mono, fontSize: 13 }}>{ich.speicher}</code> · seit {ich.angelegt.slice(8, 10)}.{ich.angelegt.slice(5, 7)}.{ich.angelegt.slice(0, 4)}</span></div>
+      {meldung && <div style={{ fontSize: TYP.bedien, color: meldung.includes('nicht') || meldung.includes('Fehler') ? LEUCHT.kritisch : LEUCHT.gut, marginTop: 10 }}>{meldung}</div>}</Karte>
 
+      <Karte i={1}>
       <Ueberschrift>Name</Ueberschrift>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 18 }}>
         <input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') speichern({ name }, 'Name gespeichert.'); }} style={feld} />
         <Knopf leise onClick={() => speichern({ name }, 'Name gespeichert.')} aus={name.trim() === ich.name}>Speichern</Knopf>
       </div>
@@ -69,8 +70,10 @@ export function KontoView() {
         <input type="password" placeholder="neues, mindestens 10 Zeichen" value={pw.neu} onChange={e => setPw(p => ({ ...p, neu: e.target.value }))} style={feld} autoComplete="new-password" />
         <Knopf leise onClick={() => speichern({ passwortAlt: pw.alt, passwortNeu: pw.neu }, 'Passwort geändert.')} aus={pw.neu.length < 10 || !pw.alt}>Ändern</Knopf>
       </div>
+      </Karte>
 
-      <Ueberschrift>Gesundheit teilen</Ueberschrift>
+      <Karte i={2}>
+      <Ueberschrift farbe={LEUCHT.gut}>Gesundheit teilen</Ueberschrift>
       <Liste>
         {andere.length === 0 && <Leer>Noch niemand sonst hier. Wer deine Recovery, Journal, Haut und Streak sehen darf, entscheidest du je Person.</Leer>}
         {andere.map(a => {
@@ -79,20 +82,23 @@ export function KontoView() {
             unter={`${an ? 'sieht deine Gesundheit' : 'sieht deine Gesundheit nicht'} · ${a.teiltGesundheitMitMir ? 'teilt mit dir' : 'teilt nicht mit dir'}`} />;
         })}
       </Liste>
+      </Karte>
 
-      <Ueberschrift>Der Bote · Telegram</Ueberschrift>
+      <Karte i={3}>
+      <Ueberschrift farbe={LEUCHT.puls}>Der Bote · Telegram</Ueberschrift>
       <Liste>
         {!tg ? <Leer>lade …</Leer>
           : !tg.konfiguriert ? <Leer>Noch kein Bot. In Telegram @BotFather anschreiben, /newbot, den Token als <code style={{ fontFamily: SCHRIFT.mono, fontSize: 12 }}>TELEGRAM_BOT_TOKEN</code> in <code style={{ fontFamily: SCHRIFT.mono, fontSize: 12 }}>.env.local</code>, neu starten.</Leer>
           : tg.chats > 0 ? <Zeile titel="Gekoppelt" unter="Jarvis schreibt dir morgens, mittags und abends; du antwortest mit einem Satz." rechts={<Knopf leise onClick={tgWeg}>Entkoppeln</Knopf>} />
           : tg.code ? <Zeile titel={<>Dem Bot {tg.bot ? <b>@{tg.bot}</b> : ''} senden: <span style={{ ...mono, fontSize: 17 }}>/start {tg.code}</span></>} unter={`${tg.minuten} Minuten gültig`} />
           : <Zeile titel="Noch nicht gekoppelt" unter="Jarvis schreibt dir morgens, mittags und abends aufs Handy." rechts={<Knopf onClick={tgCode}>Code holen</Knopf>} />}
-        {tg?.fehler && <Leer><span style={{ color: C.kritisch }}>{tg.fehler}</span></Leer>}
+        {tg?.fehler && <Leer><span style={{ color: LEUCHT.kritisch }}>{tg.fehler}</span></Leer>}
       </Liste>
+      </Karte>
 
       {ich.rolle === 'inhaber' && (
-        <>
-          <Ueberschrift>Einladen</Ueberschrift>
+        <Karte i={4} akzent={LEUCHT.schlaf}>
+          <Ueberschrift farbe={LEUCHT.schlaf}>Einladen</Ueberschrift>
           <Liste>
             {einladung ? (
               <div style={{ padding: '14px 2px', borderBottom: `1px solid ${C.linie}` }}>
@@ -105,7 +111,7 @@ export function KontoView() {
               </div>
             ) : <Zeile titel="Jemanden einladen" unter={'Die Person öffnet den Link, trägt Vorname, E-Mail und Passwort ein — fertig. Malin nimmt den Vornamen „Malin“, dann hängen ihre bisherigen Bestände am Konto.'} rechts={<Knopf onClick={einladen}>Link erzeugen</Knopf>} />}
           </Liste>
-        </>
+        </Karte>
       )}
     </Seite>
   );

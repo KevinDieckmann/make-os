@@ -14,7 +14,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { absenderKey } from '@/lib/make-one/inbox-data';
-import { Seite, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, LEUCHT } from './schlank';
 
 type Source = 'apple' | 'ms';
 interface Msg { id: string; source: Source; account: string; sender: string; senderEmail?: string; subject: string; preview?: string; receivedAt: string; isRead: boolean; importance?: string; mbIndex?: number }
@@ -26,7 +26,7 @@ type Segment = 'offen' | 'erledigt';
 const OFFEN = new Set(['offen', 'snoozed', '']);
 const ERLEDIGT = new Set(['erledigt', 'aufgabe', 'delegiert']);
 const SEG: { id: Segment; label: string }[] = [{ id: 'offen', label: 'Offen' }, { id: 'erledigt', label: 'Erledigt' }];
-const STUFE_FARBE: Record<Stufe, string> = { wichtig: C.aktiv, normal: C.inkLeise, rauschen: C.linie };
+const STUFE_FARBE: Record<Stufe, string> = { wichtig: LEUCHT.gut, normal: LEUCHT.puls, rauschen: C.inkLeise };
 const RANG: Record<Stufe, number> = { wichtig: 0, normal: 1, rauschen: 3 };
 
 const fpOf = (m: Msg) => `${(m.senderEmail ?? m.sender).toLowerCase().trim()}|${m.subject.toLowerCase().trim().slice(0, 80)}|${m.receivedAt.slice(0, 16)}`;
@@ -170,7 +170,7 @@ export function InboxSchlank() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gruppen, rauschen, rauschenAuf, offenId]);
 
-  const Karte = ({ m }: { m: Msg }) => (
+  const Detail = ({ m }: { m: Msg }) => (
     <div style={{ padding: '6px 2px 18px 22px', borderBottom: `1px solid ${C.linie}` }}>
       <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 8 }}>{m.senderEmail ?? m.sender} · {m.account} · {new Date(m.receivedAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}{triage[fpOf(m)]?.grund ? ` · ${triage[fpOf(m)].grund}` : ''}</div>
       <pre style={{ whiteSpace: 'pre-wrap', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.55, maxHeight: 320, overflow: 'auto' }}>{(m.source === 'apple' ? body[m.id] : m.preview) ?? (m.source === 'apple' && m.mbIndex ? 'lädt …' : m.preview ?? '')}</pre>
@@ -204,7 +204,7 @@ export function InboxSchlank() {
         titel={<><span style={{ fontWeight: m.isRead ? 400 : 600 }}>{m.sender}</span><span style={{ color: C.inkLeise }}> · {m.subject}</span></>}
         unter={triage[fpOf(m)]?.zeile ?? m.preview}
         rechts={<span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{relTime(m.receivedAt)}</span>} />
-      {offenId === m.id && <Karte m={m} />}
+      {offenId === m.id && <Detail m={m} />}
     </div>
   );
 
@@ -212,22 +212,22 @@ export function InboxSchlank() {
     <Seite titel={<>Inbox {offenZahl > 0 && <span style={{ color: C.inkLeise, fontWeight: 500, fontSize: 15 }}>{offenZahl} offen</span>}</>}
       rechts={<span style={{ display: 'flex', gap: 14, alignItems: 'center' }}><Segmente liste={SEG} aktiv={seg} onWahl={setSeg} /><Link href="/os/inbox/voll" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Volle Ansicht ›</Link></span>}>
       {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 12 }}>{meldung}</div>}
-      {laedt && !msgs.length && <Leer>Apple Mail antwortet gleich · Microsoft 365 {quelle.ms} …</Leer>}
-      {!laedt && !sichtbar.length && !rauschen.length && <Leer>{seg === 'offen' ? 'Nichts offen. Apple Mail ' + quelle.apple + ' · Microsoft 365 ' + quelle.ms + '.' : 'Noch nichts erledigt.'}</Leer>}
-      {gruppen.filter(g => g.liste.length).map(g => (
-        <div key={g.titel}>
-          <Ueberschrift rechts={`${g.liste.length}`}>{g.titel}</Ueberschrift>
+      {laedt && !msgs.length && <Karte i={0}><Leer>Apple Mail antwortet gleich · Microsoft 365 {quelle.ms} …</Leer></Karte>}
+      {!laedt && !sichtbar.length && !rauschen.length && <Karte i={0} akzent={LEUCHT.gut}><Leer>{seg === 'offen' ? 'Nichts offen. Apple Mail ' + quelle.apple + ' · Microsoft 365 ' + quelle.ms + '.' : 'Noch nichts erledigt.'}</Leer></Karte>}
+      {gruppen.filter(g => g.liste.length).map((g, gi) => (
+        <Karte key={g.titel} i={gi} akzent={g.titel === 'Wiedervorlage' ? LEUCHT.achtung : g.titel === 'Wichtig' ? LEUCHT.gut : undefined}>
+          <Ueberschrift farbe={g.titel === 'Wiedervorlage' ? LEUCHT.achtung : g.titel === 'Wichtig' ? LEUCHT.gut : g.titel === 'Normal' ? LEUCHT.puls : C.inkLeise} rechts={`${g.liste.length}`}>{g.titel}</Ueberschrift>
           <Liste>{g.liste.map(zeile)}</Liste>
-        </div>
+        </Karte>
       ))}
       {rauschen.length > 0 && (
-        <div>
+        <Karte i={gruppen.length}>
           <Ueberschrift rechts={<span style={{ display: 'flex', gap: 14 }}>
             <button onClick={() => setRauschenAuf(a => !a)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12, padding: 0 }}>{rauschenAuf ? 'einklappen' : `${rauschen.length} anzeigen`}</button>
             <button onClick={() => setzen(rauschen.map(m => ({ id: m.id, status: 'erledigt' })))} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12, padding: 0 }}>alle erledigen</button>
           </span>}>Rauschen</Ueberschrift>
-          {rauschenAuf && <Liste>{rauschen.map(zeile)}</Liste>}
-        </div>
+          {rauschenAuf ? <Liste>{rauschen.map(zeile)}</Liste> : <Leer>Newsletter und Automatisches — {rauschen.length} Mails, die keine Entscheidung brauchen.</Leer>}
+        </Karte>
       )}
       <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 28 }}>Apple Mail {quelle.apple} · Microsoft 365 {quelle.ms} · Tasten: j/k wandern · e erledigt · a Aufgabe · s morgen</div>
     </Seite>

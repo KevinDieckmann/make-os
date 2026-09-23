@@ -104,3 +104,31 @@ export const ZIFFERN = {
   fontVariantNumeric: 'tabular-nums' as const,
   letterSpacing: '-.02em',
 };
+
+/**
+ * Leuchtfarben (24.09., nach Kevins Ansage „das sieht tot aus"): Whoop lebt
+ * von kräftigen, leuchtenden Kennzahlfarben auf dunklem Grund. FARBE bleibt
+ * für Flächen und Text; die Kennzahlen der schlanken Seiten nehmen DIESE.
+ * Weiter gilt: Farbe bedeutet Zustand — grün/gelb/rot — plus eine feste Farbe
+ * je Kennzahl (Schlaf, Puls, Geld, Business, Planung, Beziehung).
+ */
+export const LEUCHT = {
+  gut: '#3DE28B',
+  achtung: '#FFC93C',
+  kritisch: '#FF5C5C',
+  schlaf: '#8F86FF',
+  puls: '#4FC3F7',
+  geld: '#58D9CD',
+  business: '#FF9F43',
+  planung: '#4FC3F7',
+  beziehung: '#FF7EB6',
+} as const;
+
+/** Zustandsfarbe in Leuchtstärke — dieselben Schwellen wie zustandFarbe. */
+export function leuchtFarbe(wert: number | null | undefined): string {
+  if (wert == null) return FARBE.inkLeise;
+  if (wert >= 60) return LEUCHT.gut;
+  if (wert >= 35) return LEUCHT.achtung;
+  return LEUCHT.kritisch;
+}
+

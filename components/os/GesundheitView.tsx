@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT, ABSTAND as A } from '@/lib/make-one/design';
+import { Seite, Karte, Ueberschrift, Ring, Segmente, Chip, Fortschritt, Balken as Trend, feld, LEUCHT } from './schlank';
 import { BESCHWERDEN, HEBEL, AUFBAU, HGOALS, ZUSAMMENHAENGE, CARE_NOTE } from '@/lib/make-one/health-data';
 import { localDay } from '@/lib/zeit';
 import { ErnaehrungView } from './ErnaehrungView';
@@ -34,32 +35,14 @@ interface Stand {
   person: string; ich: string; heute: string; vitals: Vitals;
   haut: { trend: { tage: number; heute?: number; juckreiz7?: number; schuebe30: number; richtung: 'besser' | 'schlechter' | 'gleich' | 'unbekannt'; ausloeser: { was: string; mal: number }[] }; tage: { d: string; e: { juckreiz: number; schub: boolean } | null }[] };
   streak: { sauberTage: number; letzterRueckfall?: string; aktuell: boolean; craving7?: number; eintraege30: number };
-  routinen: { liste: { id: string; label: string; wann: string; heute: boolean }[]; tage: { d: string; n: number }[] };
+  routinen: { liste: { id: string; label: string; wann: string; heute: boolean }[]; quote7?: number; tage: { d: string; n: number }[] };
   journal: { tage7: number; heute: { gut?: string; dankbar?: string; hart?: string; stress?: number } | null };
   telegram: { konfiguriert: boolean; gekoppelt: boolean };
 }
 
 // ── Bausteine ────────────────────────────────────────────────────────────────
 
-const zone = (r?: number) => (r == null ? C.inkLeise : r >= 66 ? C.gut : r >= 40 ? C.achtung : C.kritisch);
-
-function Ring({ wert, einheit, label, farbe, anteil }: { wert?: string; einheit?: string; label: string; farbe: string; anteil?: number }) {
-  const r = 52, u = 2 * Math.PI * r;
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '10px 0' }}>
-      <svg viewBox="0 0 120 120" style={{ width: 'clamp(96px, 14vw, 124px)', height: 'auto' }} aria-hidden>
-        <circle cx="60" cy="60" r={r} fill="none" stroke={C.linie} strokeWidth="8" />
-        {anteil != null && <circle cx="60" cy="60" r={r} fill="none" stroke={farbe} strokeWidth="8" strokeLinecap="round"
-          strokeDasharray={u.toFixed(1)} strokeDashoffset={(u * (1 - Math.max(0, Math.min(1, anteil)))).toFixed(1)} transform="rotate(-90 60 60)"
-          style={{ transition: 'stroke-dashoffset .8s cubic-bezier(.22,1,.36,1)' }} />}
-      </svg>
-      <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 'clamp(30px, 4vw, 38px)', letterSpacing: '-.03em', lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: wert == null ? C.inkLeise : C.ink }}>
-        {wert ?? '—'}{wert != null && einheit && <span style={{ fontSize: 15, fontWeight: 600, color: C.inkDim, marginLeft: 2 }}>{einheit}</span>}
-      </div>
-      <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{label}</div>
-    </div>
-  );
-}
+const zone = (r?: number) => (r == null ? C.inkLeise : r >= 66 ? LEUCHT.gut : r >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
 
 function Schalter({ an, onChange, aus }: { an: boolean; onChange?: () => void; aus?: boolean }) {
   return (
@@ -85,11 +68,6 @@ function Zeile({ wann, titel, unter, kinder }: { wann?: string; titel: string; u
   );
 }
 
-function Ueberschrift({ children }: { children: React.ReactNode }) {
-  return <h2 style={{ fontSize: 12, fontWeight: 600, color: C.inkLeise, letterSpacing: '.04em', textTransform: 'uppercase', margin: '30px 0 6px' }}>{children}</h2>;
-}
-
-/** Ein Diagramm für den Verlauf: 30 Balken, kein Rahmen, ein Wert hervorgehoben. */
 function Balken({ titel, werte, max, farbe, einheit, besserIst }: { titel: string; werte: (number | null)[]; max: number; farbe: string; einheit?: string; besserIst?: 'hoch' | 'tief' }) {
   const echte = werte.filter((x): x is number => x != null);
   const mittel = echte.length ? Math.round((echte.reduce((a, b) => a + b, 0) / echte.length) * 10) / 10 : null;
@@ -204,128 +182,126 @@ export function GesundheitView() {
   const tage30 = useMemo(() => Array.from({ length: 30 }, (_, i) => { const d = new Date(`${heute}T12:00:00`); d.setDate(d.getDate() - (29 - i)); return localDay(d); }), [heute]);
 
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto', padding: '34px clamp(20px,4vw,56px) 60px', color: C.ink, fontFamily: SCHRIFT.text }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 26 }}>
-        <h1 style={{ fontFamily: SCHRIFT.display, fontWeight: 600, fontSize: 22, letterSpacing: '-.02em', margin: 0 }}>
-          Gesundheit{personen.length > 1 && !eigene && <span style={{ color: C.inkLeise, fontWeight: 500 }}> · {personen.find(p => p.speicher === ansicht)?.name.split(' ')[0]}</span>}
-        </h1>
-        <div style={{ display: 'flex', gap: 2, background: C.flaeche, borderRadius: 10, padding: 3 }}>
-          {SEGMENTE.map(s => (
-            <button key={s.id} onClick={() => geheZu(s.id)} style={{ padding: '6px 13px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, background: segment === s.id ? C.grund : 'transparent', color: segment === s.id ? C.ink : C.inkDim }}>{s.label}</button>
-          ))}
-        </div>
-      </div>
-
-      {personen.length > 1 && (
-        <div style={{ display: 'flex', gap: 14, marginTop: -14, marginBottom: 22, fontSize: TYP.bedien }}>
+    <Seite titel={<>Gesundheit{personen.length > 1 && !eigene && <span style={{ color: C.inkLeise, fontWeight: 500 }}> · {personen.find(p => p.speicher === ansicht)?.name.split(' ')[0]}</span>}</>}
+      unter={personen.length > 1 ? (
+        <div style={{ display: 'flex', gap: 14, fontSize: TYP.bedien }}>
           {personen.map(p => <button key={p.speicher} onClick={() => { setAnsicht(p.speicher); setStand(null); setVerlauf(null); }} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: ansicht === p.speicher ? C.ink : C.inkLeise, borderBottom: `1px solid ${ansicht === p.speicher ? C.ink : 'transparent'}` }}>{p.name.split(' ')[0]}</button>)}
         </div>
-      )}
+      ) : undefined}
+      rechts={<Segmente liste={SEGMENTE} aktiv={segment} onWahl={geheZu} />}>
 
       {segment === 'heute' && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 'clamp(8px,2vw,20px)', margin: '8px 0 10px' }}>
-            <Ring label="Recovery" wert={rec != null ? String(rec) : undefined} einheit="%" farbe={zone(rec)} anteil={rec != null ? rec / 100 : undefined} />
-            <Ring label="Schlaf" wert={schlaf != null ? String(schlaf).replace('.', ',') : undefined} einheit="h" farbe={C.lavendel} anteil={schlaf != null ? schlaf / 8 : undefined} />
-            <Ring label="Anspannung" wert={anspannung != null ? String(anspannung) : undefined} einheit="/5" farbe={anspannung != null && anspannung >= 4 ? C.kritisch : anspannung != null && anspannung >= 3 ? C.achtung : C.aktiv} anteil={anspannung != null ? anspannung / 5 : undefined} />
-          </div>
-          <p style={{ textAlign: 'center', color: C.inkDim, fontSize: TYP.body, margin: '0 0 30px' }}>
-            {satz ? <><b style={{ color: C.ink, fontWeight: 600 }}>{satz.split('.')[0]}.</b> {satz.split('.').slice(1).join('.').trim()}</> : null}
-            {stand && rec == null && <> <Link href="/os/verbindungen" style={{ color: C.aktiv, textDecoration: 'none' }}>Whoop verbinden</Link> oder morgens dem Boten sagen.</>}
-            {stand && anspannung == null && rec != null && <> Anspannung fragt der Bote mittags.</>}
-          </p>
+          <Karte i={0} akzent={rec != null ? zone(rec) : undefined}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 'clamp(8px,2vw,20px)', margin: '4px 0 8px' }}>
+              <Ring label="Recovery" wert={rec != null ? String(rec) : undefined} einheit="%" farbe={zone(rec)} anteil={rec != null ? rec / 100 : undefined}
+                unter={rec != null ? <Chip farbe={zone(rec)}>{rec >= 66 ? 'Grün' : rec >= 40 ? 'Gelb' : 'Rot'}</Chip> : undefined} />
+              <Ring label="Schlaf" wert={schlaf != null ? String(schlaf).replace('.', ',') : undefined} einheit="h" farbe={LEUCHT.schlaf} anteil={schlaf != null ? schlaf / 8 : undefined} />
+              <Ring label="Anspannung" wert={anspannung != null ? String(anspannung) : undefined} einheit="/5" farbe={anspannung != null && anspannung >= 4 ? LEUCHT.kritisch : anspannung != null && anspannung >= 3 ? LEUCHT.achtung : LEUCHT.puls} anteil={anspannung != null ? anspannung / 5 : undefined} />
+            </div>
+            <p style={{ textAlign: 'center', color: C.inkDim, fontSize: TYP.body, margin: '14px 0 0', lineHeight: 1.5 }}>
+              {satz ? <><b style={{ color: C.ink, fontWeight: 600 }}>{satz.split('.')[0]}.</b> {satz.split('.').slice(1).join('.').trim()}</> : null}
+              {stand && rec == null && <> <Link href="/os/verbindungen" style={{ color: C.aktiv, textDecoration: 'none' }}>Whoop verbinden</Link> oder morgens dem Boten sagen.</>}
+              {stand && anspannung == null && rec != null && <> Anspannung fragt der Bote mittags.</>}
+            </p>
+          </Karte>
 
-          <Ueberschrift>Heute</Ueberschrift>
-          <div style={{ borderTop: `1px solid ${C.linie}` }}>
-            {(stand?.routinen.liste ?? []).map(r => (
-              <Zeile key={r.id} wann={r.wann === 'abend' ? 'Abend' : r.id === 'essen' ? 'Mittag' : 'Morgen'} titel={r.label}
-                unter={r.id === 'essen' ? 'dein Hebel gegen die Schübe' : undefined}
-                kinder={<Schalter an={heuteDrin.has(r.id)} onChange={() => hake(r.id)} aus={!eigene} />} />
-            ))}
-            <Zeile wann="Abend" titel="Haut · Juckreiz"
-              unter={stand?.haut.trend.juckreiz7 != null ? `Ø ${stand.haut.trend.juckreiz7} diese Woche${stand.haut.trend.richtung === 'besser' ? ', besser als die Woche davor' : stand.haut.trend.richtung === 'schlechter' ? ', schlechter als die Woche davor' : ''}` : 'noch kein Eintrag'}
-              kinder={
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '0 0 clamp(140px, 24vw, 200px)' }}>
-                  <input type="range" min={0} max={10} value={juckreiz ?? 0} disabled={!eigene} onChange={e => hautSetzen(Number(e.target.value))} aria-label="Juckreiz 0 bis 10"
-                    style={{ flex: 1, accentColor: juckreiz == null ? C.inkLeise : juckreiz >= 7 ? C.kritisch : juckreiz >= 4 ? C.achtung : C.aktiv }} />
-                  <span style={{ fontFamily: SCHRIFT.display, fontWeight: 600, fontSize: 15, width: 20, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: juckreiz == null ? C.inkLeise : C.ink }}>{juckreiz ?? '—'}</span>
-                </div>
-              } />
-            {(ansicht === 'kevin' || (stand?.streak.eintraege30 ?? 0) > 0) && (
-              <Zeile wann="Abend" titel="Sauber geblieben"
-                unter={stand?.streak.aktuell ? `Tag ${stand.streak.sauberTage} seit dem letzten Rückfall` : stand?.streak.eintraege30 ? 'seit über drei Tagen kein Eintrag' : 'noch nicht angefangen'}
-                kinder={<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {eigene && <button onClick={() => streakSetzen(false)} style={{ background: 'none', border: 'none', color: C.inkLeise, fontSize: 12, cursor: 'pointer', fontFamily: SCHRIFT.text, padding: 0 }}>Rückfall</button>}
-                  <Schalter an={!!stand?.streak.aktuell && (stand.haut.tage[0]?.d === heute ? true : stand.streak.aktuell)} onChange={() => streakSetzen(true)} aus={!eigene} />
-                </div>} />
-            )}
-          </div>
+          <Karte i={1}>
+            <Ueberschrift farbe={LEUCHT.gut} rechts={`${heuteDrin.size} von ${anzahl}`}>Heute</Ueberschrift>
+            <Fortschritt anteil={anzahl ? heuteDrin.size / anzahl : 0} farbe={LEUCHT.gut} />
+            <div style={{ marginTop: 6 }}>
+              {(stand?.routinen.liste ?? []).map(r => (
+                <Zeile key={r.id} wann={r.wann === 'abend' ? 'Abend' : r.id === 'essen' ? 'Mittag' : 'Morgen'} titel={r.label}
+                  unter={r.id === 'essen' ? 'dein Hebel gegen die Schübe' : undefined}
+                  kinder={<Schalter an={heuteDrin.has(r.id)} onChange={() => hake(r.id)} aus={!eigene} />} />
+              ))}
+              <Zeile wann="Abend" titel="Haut · Juckreiz"
+                unter={stand?.haut.trend.juckreiz7 != null ? `Ø ${stand.haut.trend.juckreiz7} diese Woche${stand.haut.trend.richtung === 'besser' ? ', besser als die Woche davor' : stand.haut.trend.richtung === 'schlechter' ? ', schlechter als die Woche davor' : ''}` : 'noch kein Eintrag'}
+                kinder={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '0 0 clamp(140px, 24vw, 200px)' }}>
+                    <input type="range" min={0} max={10} value={juckreiz ?? 0} disabled={!eigene} onChange={e => hautSetzen(Number(e.target.value))} aria-label="Juckreiz 0 bis 10"
+                      style={{ flex: 1, accentColor: juckreiz == null ? C.inkLeise : juckreiz >= 7 ? LEUCHT.kritisch : juckreiz >= 4 ? LEUCHT.achtung : LEUCHT.gut }} />
+                    <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 16, width: 22, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: juckreiz == null ? C.inkLeise : C.ink }}>{juckreiz ?? '—'}</span>
+                  </div>
+                } />
+              {(ansicht === 'kevin' || (stand?.streak.eintraege30 ?? 0) > 0) && (
+                <Zeile wann="Abend" titel="Sauber geblieben"
+                  unter={stand?.streak.aktuell ? `Tag ${stand.streak.sauberTage} seit dem letzten Rückfall` : stand?.streak.eintraege30 ? 'seit über drei Tagen kein Eintrag' : 'noch nicht angefangen'}
+                  kinder={<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {eigene && <button onClick={() => streakSetzen(false)} style={{ background: 'none', border: 'none', color: C.inkLeise, fontSize: 12, cursor: 'pointer', fontFamily: SCHRIFT.text, padding: 0 }}>Rückfall</button>}
+                    <Schalter an={!!stand?.streak.aktuell && (stand.haut.tage[0]?.d === heute ? true : stand.streak.aktuell)} onChange={() => streakSetzen(true)} aus={!eigene} />
+                  </div>} />
+              )}
+            </div>
+          </Karte>
 
           {eigene && (
-            <>
-              <Ueberschrift>Drei Fragen</Ueberschrift>
-              {([['gut', 'Was lief heute gut?'], ['dankbar', 'Wofür bist du dankbar?'], ['hart', 'Wo warst du hart zu dir?']] as const).map(([k, frage]) => (
-                <input key={k} value={fragen[k]} onChange={e => setFragen(f => ({ ...f, [k]: e.target.value }))} onBlur={() => frageSpeichern(k)} placeholder={frage}
-                  style={{ width: '100%', background: 'transparent', border: 0, borderBottom: `1px solid ${C.linie}`, padding: '11px 2px', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.body, outline: 'none' }} />
-              ))}
-            </>
+            <Karte i={2} akzent={LEUCHT.schlaf}>
+              <Ueberschrift farbe={LEUCHT.schlaf}>Drei Fragen</Ueberschrift>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {([['gut', 'Was lief heute gut?'], ['dankbar', 'Wofür bist du dankbar?'], ['hart', 'Wo warst du hart zu dir?']] as const).map(([k, frage]) => (
+                  <input key={k} value={fragen[k]} onChange={e => setFragen(f => ({ ...f, [k]: e.target.value }))} onBlur={() => frageSpeichern(k)} placeholder={frage} style={feld} />
+                ))}
+              </div>
+            </Karte>
           )}
 
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 18, color: C.inkLeise, fontSize: 12 }}>
-            7 Tage {sieben.map(t => <span key={t.d} title={`${t.d.slice(5)} · ${t.n}/${anzahl}`} style={{ width: 22, height: 6, borderRadius: 3, background: t.n >= anzahl * 0.6 ? C.aktiv : t.n > 0 ? `${C.aktiv}66` : C.linie }} />)}
-          </div>
-
-          <div style={{ marginTop: 34, paddingTop: 16, borderTop: `1px solid ${C.linie}`, color: C.inkLeise, fontSize: TYP.bedien, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-            <span>Bote: {!stand ? '…' : !stand.telegram.konfiguriert ? <Link href="/os/konto" style={{ color: C.inkDim }}>Telegram einrichten</Link> : stand.telegram.gekoppelt ? 'Telegram gekoppelt' : <Link href="/os/konto" style={{ color: C.inkDim }}>Telegram koppeln</Link>}</span>
-            <span>{v?.heute ? 'Whoop heute' : <Link href="/os/verbindungen" style={{ color: C.inkDim }}>Whoop verbinden</Link>}</span>
-          </div>
+          <Karte i={3}>
+            <Ueberschrift rechts={`Ø ${stand?.routinen.quote7 ?? '—'} %`}>Sieben Tage Routinen</Ueberschrift>
+            <Trend werte={sieben.map(t => t.n || null)} max={anzahl} farbe={LEUCHT.gut} hoehe={44} titel={sieben.map(t => `${t.d.slice(8)}.${t.d.slice(5, 7)}. · ${t.n}/${anzahl}`)} />
+            <div style={{ marginTop: 16, color: C.inkLeise, fontSize: TYP.bedien, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <span>Bote: {!stand ? '…' : !stand.telegram.konfiguriert ? <Link href="/os/konto" style={{ color: C.inkDim }}>Telegram einrichten</Link> : stand.telegram.gekoppelt ? 'Telegram gekoppelt' : <Link href="/os/konto" style={{ color: C.inkDim }}>Telegram koppeln</Link>}</span>
+              <span>{v?.heute ? 'Whoop heute' : <Link href="/os/verbindungen" style={{ color: C.inkDim }}>Whoop verbinden</Link>}</span>
+            </div>
+          </Karte>
         </>
       )}
 
       {segment === 'verlauf' && (
-        <div style={{ marginTop: 8 }}>
+        <Karte i={0}>
+          <Ueberschrift>30 Tage</Ueberschrift>
           {!verlauf ? <div style={{ color: C.inkLeise, fontSize: TYP.bedien }}>lade …</div> : (
             <>
-              <Balken titel="Recovery" einheit="%" max={100} farbe={C.gut} besserIst="hoch" werte={tage30.map(d => verlauf.vitals[d]?.rec ?? null)} />
-              <Balken titel="Schlaf" einheit=" h" max={9} farbe={C.lavendel} besserIst="hoch" werte={tage30.map(d => verlauf.vitals[d]?.sleep ?? null)} />
-              <Balken titel="Juckreiz" max={10} farbe={C.achtung} besserIst="tief" werte={tage30.map(d => verlauf.haut[d]?.juckreiz ?? null)} />
-              <Balken titel="Routinen" max={anzahl} farbe={C.aktiv} besserIst="hoch" werte={tage30.map(d => (hl[d]?.length ?? 0) || null)} />
+              <Balken titel="Recovery" einheit="%" max={100} farbe={LEUCHT.gut} besserIst="hoch" werte={tage30.map(d => verlauf.vitals[d]?.rec ?? null)} />
+              <Balken titel="Schlaf" einheit=" h" max={9} farbe={LEUCHT.schlaf} besserIst="hoch" werte={tage30.map(d => verlauf.vitals[d]?.sleep ?? null)} />
+              <Balken titel="Juckreiz" max={10} farbe={LEUCHT.achtung} besserIst="tief" werte={tage30.map(d => verlauf.haut[d]?.juckreiz ?? null)} />
+              <Balken titel="Routinen" max={anzahl} farbe={LEUCHT.puls} besserIst="hoch" werte={tage30.map(d => (hl[d]?.length ?? 0) || null)} />
               {stand?.haut.trend.ausloeser.length ? (
                 <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 4 }}>Auslöser in 30 Tagen: {stand.haut.trend.ausloeser.map(a => `${a.was} (${a.mal}×)`).join(' · ')}</div>
               ) : null}
             </>
           )}
-        </div>
+        </Karte>
       )}
 
-      {segment === 'ernaehrung' && <ErnaehrungView eingebettet />}
+      {segment === 'ernaehrung' && <Karte i={0}><ErnaehrungView eingebettet /></Karte>}
 
       {segment === 'koerper' && (
         <>
-          <EnergieView eingebettet />
-          <Ueberschrift>Profil · Stand 29.07.</Ueberschrift>
-          <div style={{ borderTop: `1px solid ${C.linie}` }}>
+          <Karte i={0}><EnergieView eingebettet /></Karte>
+          <Karte i={1}>
+            <Ueberschrift farbe={LEUCHT.puls}>Profil · Stand 29.07.</Ueberschrift>
             {AUFBAU.map(s => <Zeile key={s.phase} wann={s.state === 'now' ? 'Jetzt' : s.state === 'next' ? 'Danach' : 'Später'} titel={`${s.phase} · ${s.name}`} unter={s.desc} kinder={<span />} />)}
-          </div>
-          <Ueberschrift>Was Aufmerksamkeit braucht</Ueberschrift>
-          <div style={{ borderTop: `1px solid ${C.linie}` }}>
-            {BESCHWERDEN.map(b => <Zeile key={b.name} titel={b.name} unter={b.note} kinder={<span style={{ fontSize: 12, color: b.tone === 'crit' ? C.kritisch : b.tone === 'watch' ? C.achtung : C.gut, whiteSpace: 'nowrap' }}>{b.status}</span>} />)}
-          </div>
-          <Ueberschrift>Hebel</Ueberschrift>
-          <div style={{ borderTop: `1px solid ${C.linie}` }}>
-            {HEBEL.map(h => <Zeile key={h.name} titel={h.name} unter={h.note} kinder={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 600, fontSize: 15, color: h.tone === 'crit' ? C.kritisch : h.tone === 'watch' ? C.achtung : C.gut }}>{h.score}</span>} />)}
-          </div>
-          <Ueberschrift>Ziele</Ueberschrift>
-          <div style={{ borderTop: `1px solid ${C.linie}` }}>
-            {HGOALS.map(g => <Zeile key={g.title} titel={g.title} unter={g.why} kinder={<span style={{ fontSize: 12, color: C.inkLeise }}>{g.progress} %</span>} />)}
-          </div>
-          <Ueberschrift>Zusammenhänge</Ueberschrift>
-          <div style={{ borderTop: `1px solid ${C.linie}` }}>
+          </Karte>
+          <Karte i={2}>
+            <Ueberschrift farbe={LEUCHT.achtung}>Was Aufmerksamkeit braucht</Ueberschrift>
+            {BESCHWERDEN.map(b => <Zeile key={b.name} titel={b.name} unter={b.note} kinder={<Chip farbe={b.tone === 'crit' ? LEUCHT.kritisch : b.tone === 'watch' ? LEUCHT.achtung : LEUCHT.gut}>{b.status}</Chip>} />)}
+          </Karte>
+          <Karte i={3}>
+            <Ueberschrift farbe={LEUCHT.gut}>Hebel</Ueberschrift>
+            {HEBEL.map(h => <Zeile key={h.name} titel={h.name} unter={h.note} kinder={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 18, color: h.tone === 'crit' ? LEUCHT.kritisch : h.tone === 'watch' ? LEUCHT.achtung : LEUCHT.gut }}>{h.score}</span>} />)}
+          </Karte>
+          <Karte i={4}>
+            <Ueberschrift farbe={LEUCHT.schlaf}>Ziele</Ueberschrift>
+            {HGOALS.map(g => <div key={g.title}><Zeile titel={g.title} unter={g.why} kinder={<span style={{ fontSize: 12, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{g.progress} %</span>} /><div style={{ margin: '-4px 0 10px' }}><Fortschritt anteil={g.progress / 100} farbe={LEUCHT.schlaf} /></div></div>)}
+          </Karte>
+          <Karte i={5}>
+            <Ueberschrift>Zusammenhänge</Ueberschrift>
             {ZUSAMMENHAENGE.map(z => <Zeile key={z} titel={z} kinder={<span />} />)}
-          </div>
-          <p style={{ fontSize: 12, color: C.inkLeise, marginTop: A.xl, lineHeight: 1.5 }}>{CARE_NOTE}</p>
+            <p style={{ fontSize: 12, color: C.inkLeise, marginTop: A.xl, lineHeight: 1.5 }}>{CARE_NOTE}</p>
+          </Karte>
         </>
       )}
-    </div>
+    </Seite>
   );
 }

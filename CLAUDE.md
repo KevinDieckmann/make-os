@@ -61,9 +61,11 @@ lokal, Route `/os`, Port 3001.
   kurzem Review.
 
 ## Doku
-- **Schlanke Oberfläche (seit 23.09.2026):** neue Seiten nur mit den Bauteilen
-  aus `components/os/schlank.tsx` (Seite, Zeile, Liste, Haken, Ring, Segmente)
-  — keine Rahmen, eine Schrift, große Zahlen, nie eine Null. Alle sechs
+- **Schlanke, lebendige Oberfläche (seit 23./24.09.2026):** neue Seiten nur mit
+  den Bauteilen aus `components/os/schlank.tsx` (Seite, Karte, Ring, Zahl,
+  Balken, Chip, Zeile, Haken, Segmente) und den Leuchtfarben `LEUCHT` aus
+  design.ts — Karten mit Tiefe, Glow, hochzählende Zahlen, gestaffeltes
+  Erscheinen; eine Ebene, nie eine Null, Farbe bedeutet Zustand. Alle sechs
   Einträge der Leiste sind umgebaut. Alte Ansichten liegen unter
   `/os/uebersicht`, `/os/aufgaben/board` und `/os/inbox/voll`.
 - **`PLAN.md` ist der führende Plan (seit 18.09.2026).** Bestand bleibt und

@@ -380,3 +380,26 @@ nav a:hover { transform: translateX(2px); }
   .heute-kopf { grid-template-columns: 1fr !important; justify-items: center; }
   .heute-saeulen { grid-template-columns: repeat(5, 1fr) !important; text-align: center; width: 100%; }
 }
+
+/* ─── Die lebendige Oberfläche (24.09.) ─────────────────────────────────────
+   Whoops Rezept: dunkle Karten mit Tiefe statt Haarlinien auf Schwarz,
+   leuchtende Kennzahlen, und alles erscheint gestaffelt, statt einfach da zu
+   sein. Wer eine neue Karte baut, nimmt .karte + os-auf mit --i als Index.
+   (Die ältere .karte-Regel weiter oben liefert nur den Hover.) */
+.karten { display: grid; gap: 14px; }
+.karte {
+  background: linear-gradient(165deg, #1A2024 0%, #12171A 100%);
+  border-radius: 20px;
+  padding: 18px 20px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35);
+  min-width: 0;
+}
+@keyframes osAuf { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.os-auf { animation: osAuf .55s var(--ease-glatt, cubic-bezier(.22,1,.36,1)) both; animation-delay: calc(var(--i, 0) * 70ms); }
+@keyframes balkenAuf { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.balken-auf { transform-origin: bottom; animation: balkenAuf .7s var(--ease-glatt, cubic-bezier(.22,1,.36,1)) both; animation-delay: calc(120ms + var(--i, 0) * 25ms); }
+.zeile:last-child { border-bottom: 0 !important; }
+.zeile-klick { transition: background .15s ease; }
+.zeile-klick:hover { background: rgba(255,255,255,.035); border-radius: 10px; }
+@media (max-width: 720px) { .karte { padding: 16px 16px; border-radius: 18px; } }
+

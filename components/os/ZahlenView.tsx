@@ -13,7 +13,7 @@ import { localDay } from '@/lib/zeit';
 import { eur } from '@/lib/make-one/finance-data';
 import { vorschau, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten } from '@/lib/make-one/liquiditaet';
 import { MONAT_KURZ, type Kennzahlen } from '@/lib/make-one/grundlage';
-import { Seite, Ueberschrift, Liste, Zeile, Leer } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Zahl, Fortschritt, LEUCHT } from './schlank';
 
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
 interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string }
@@ -26,13 +26,6 @@ const BEREICHE = [
   { href: '/os/controlling', titel: 'Controlling & Ziele', satz: 'Kurs aufs Jahresziel, Run-Rate, Runway' },
   { href: '/os/finanzen/dashboard', titel: 'Malins Dashboard', satz: 'das gewachsene Werkzeug, unverändert' },
 ];
-
-const Zahl = ({ wert, label, farbe }: { wert: string; label: string; farbe?: string }) => (
-  <div>
-    <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 'clamp(18px,2.4vw,22px)', letterSpacing: '-.02em', fontVariantNumeric: 'tabular-nums', color: farbe ?? C.ink }}>{wert}</div>
-    <div style={{ fontSize: 12, color: C.inkDim, marginTop: 2 }}>{label}</div>
-  </div>
-);
 
 export function ZahlenView() {
   const heute = localDay();
@@ -71,65 +64,71 @@ export function ZahlenView() {
   const k = grund?.kennzahlen;
 
   return (
-    <Seite titel="Zahlen">
-      <div style={{ fontSize: 12, color: C.inkDim }}>Auf den Konten{plan?.firmen.length ? ` · ${plan.firmen.length} Konten` : ''}</div>
-      <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 'clamp(34px,5vw,46px)', letterSpacing: '-.03em', lineHeight: 1.05, fontVariantNumeric: 'tabular-nums', color: !plan ? C.inkLeise : konten < 0 ? C.kritisch : C.ink, margin: '4px 0 18px' }}>
-        {plan ? eur(konten) : '—'}
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16 }}>
-        <Zahl wert={stand12 != null ? eur(stand12) : '—'} label={v?.engpass ? `in 12 Wochen · eng ab ${v.engpass.label}` : v ? `in 12 Wochen · Tief ${eur(v.tiefpunkt.stand)}` : 'in 12 Wochen'} farbe={v ? (v.engpass ? C.kritisch : (stand12 ?? 0) < 2000 ? C.achtung : C.gut) : C.inkLeise} />
-        <Zahl wert={plan ? eur(mussRaus.reduce((s, z) => s + z.betrag, 0)) : '—'} label={`muss raus · ${mussRaus.length} Posten`} farbe={mussRaus.length ? C.achtung : C.inkLeise} />
-        <Zahl wert={plan ? eur(kommtRein.reduce((s, r) => s + r.betrag, 0)) : '—'} label={`kommt rein · ${kommtRein.length} Rechnungen`} farbe={kommtRein.length ? C.gut : C.inkLeise} />
-      </div>
+    <Seite titel="Zahlen" unter={plan?.firmen.length ? `${plan.firmen.length} Konten` : undefined}>
+      <Karte i={0} akzent={LEUCHT.geld}>
+        <Ueberschrift farbe={LEUCHT.geld}>Auf den Konten</Ueberschrift>
+        <Zahl gross wert={plan ? eur(konten) : undefined} farbe={konten < 0 ? LEUCHT.kritisch : LEUCHT.geld} label="" />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginTop: 14 }}>
+          <Zahl wert={stand12 != null ? eur(stand12) : undefined} label={v?.engpass ? `in 12 Wochen · eng ab ${v.engpass.label}` : v ? `in 12 Wochen · Tief ${eur(v.tiefpunkt.stand)}` : 'in 12 Wochen'} farbe={v ? (v.engpass ? LEUCHT.kritisch : (stand12 ?? 0) < 2000 ? LEUCHT.achtung : LEUCHT.gut) : C.inkLeise} />
+          <Zahl wert={plan ? eur(mussRaus.reduce((s, z) => s + z.betrag, 0)) : undefined} label={`muss raus · ${mussRaus.length} Posten`} farbe={mussRaus.length ? LEUCHT.achtung : C.inkLeise} />
+          <Zahl wert={plan ? eur(kommtRein.reduce((s, r) => s + r.betrag, 0)) : undefined} label={`kommt rein · ${kommtRein.length} Rechnungen`} farbe={kommtRein.length ? LEUCHT.gut : C.inkLeise} />
+        </div>
+      </Karte>
 
       {k && (
-        <>
-          <Ueberschrift rechts={<Link href="/os/finanzen/grundlage" style={{ color: C.inkLeise, textDecoration: 'none' }}>Stand {datum(grund?.stand)} ›</Link>}>Grundlage · Malins Kassenbuch</Ueberschrift>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, padding: '12px 0 4px' }}>
-            <Zahl wert={eur(k.umsatzNetto)} label="Umsatz netto" farbe={C.gut} />
-            <Zahl wert={eur(k.kostenNetto)} label="Kosten netto" farbe={C.achtung} />
-            <Zahl wert={eur(k.ergebnisNetto)} label="Ergebnis" farbe={k.ergebnisNetto >= 0 ? C.gut : C.kritisch} />
+        <Karte i={1}>
+          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/finanzen/grundlage" style={{ color: C.inkLeise, textDecoration: 'none' }}>Stand {datum(grund?.stand)} ›</Link>}>Grundlage · Malins Kassenbuch</Ueberschrift>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, padding: '4px 0' }}>
+            <Zahl wert={eur(k.umsatzNetto)} label="Umsatz netto" farbe={LEUCHT.gut} />
+            <Zahl wert={eur(k.kostenNetto)} label="Kosten netto" farbe={LEUCHT.achtung} />
+            <Zahl wert={eur(k.ergebnisNetto)} label="Ergebnis" farbe={k.ergebnisNetto >= 0 ? LEUCHT.gut : LEUCHT.kritisch} />
             <Zahl wert={eur(k.umsatzProMonat)} label="Ø je Monat" />
           </div>
-          <div style={{ fontSize: 12, color: C.inkLeise }}>{MONAT_KURZ(k.vonMonat)} bis {MONAT_KURZ(k.bisMonat)} {k.bisMonat.slice(0, 4)} · {k.monate} Monate seit dem ersten Beleg</div>
-        </>
+          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>{MONAT_KURZ(k.vonMonat)} bis {MONAT_KURZ(k.bisMonat)} {k.bisMonat.slice(0, 4)} · {k.monate} Monate seit dem ersten Beleg</div>
+        </Karte>
       )}
 
-      <Ueberschrift rechts={<Link href="/os/finanzen/planung" style={{ color: C.inkLeise, textDecoration: 'none' }}>alle ›</Link>}>Als Nächstes fällig</Ueberschrift>
-      <Liste>
-        {plan && !faellig.length && <Leer>Nichts offen.</Leer>}
-        {faellig.map(z => {
-          const spaet = !!z.faellig && z.faellig < heute;
-          return <Zeile key={z.id} links={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 600, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: spaet ? C.kritisch : C.inkDim, width: 48 }}>{datum(z.faellig)}</span>}
-            titel={z.an} unter={z.titel} rechts={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 600, fontSize: 14, fontVariantNumeric: 'tabular-nums', color: spaet ? C.kritisch : C.ink }}>{eur(z.betrag)}</span>} />;
-        })}
-      </Liste>
+      <Karte i={2} akzent={faellig.some(z => z.faellig && z.faellig < heute) ? LEUCHT.kritisch : undefined}>
+        <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href="/os/finanzen/planung" style={{ color: C.inkLeise, textDecoration: 'none' }}>alle ›</Link>}>Als Nächstes fällig</Ueberschrift>
+        <Liste>
+          {plan && !faellig.length && <Leer>Nichts offen.</Leer>}
+          {faellig.map(z => {
+            const spaet = !!z.faellig && z.faellig < heute;
+            return <Zeile key={z.id} links={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: spaet ? LEUCHT.kritisch : C.inkDim, width: 48 }}>{datum(z.faellig)}</span>}
+              titel={z.an} unter={z.titel} rechts={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 15, fontVariantNumeric: 'tabular-nums', color: spaet ? LEUCHT.kritisch : C.ink }}>{eur(z.betrag)}</span>} />;
+          })}
+        </Liste>
+      </Karte>
 
       {monat.im.length > 0 && (
-        <>
-          <Ueberschrift rechts={<Link href="/os/finanzen/buchungen" style={{ color: C.inkLeise, textDecoration: 'none' }}>{buchungen.length} Buchungen ›</Link>}>{monat.label}</Ueberschrift>
-          <div style={{ display: 'flex', gap: 18, padding: '12px 0 8px', fontFamily: SCHRIFT.display, fontWeight: 600, fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>
-            <span style={{ color: C.gut }}>+{eur(monat.ein)}</span><span style={{ color: C.achtung }}>−{eur(monat.aus)}</span>
-            <span style={{ color: monat.ein - monat.aus >= 0 ? C.gut : C.kritisch }}>= {monat.ein - monat.aus >= 0 ? '+' : ''}{eur(monat.ein - monat.aus)}</span>
+        <Karte i={3}>
+          <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href="/os/finanzen/buchungen" style={{ color: C.inkLeise, textDecoration: 'none' }}>{buchungen.length} Buchungen ›</Link>}>{monat.label}</Ueberschrift>
+          <div style={{ display: 'flex', gap: 18, padding: '4px 0 12px', fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 17, fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ color: LEUCHT.gut }}>+{eur(monat.ein)}</span><span style={{ color: LEUCHT.achtung }}>−{eur(monat.aus)}</span>
+            <span style={{ color: monat.ein - monat.aus >= 0 ? LEUCHT.gut : LEUCHT.kritisch }}>= {monat.ein - monat.aus >= 0 ? '+' : ''}{eur(monat.ein - monat.aus)}</span>
           </div>
-          {monat.top.map(x => (
-            <div key={x.k} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '5px 0' }}>
-              <span style={{ fontSize: TYP.bedien, color: C.inkDim, width: 150, flex: '0 0 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.k}</span>
-              <div style={{ flex: 1, height: 6, background: C.flaeche, borderRadius: 3, overflow: 'hidden' }}><div style={{ width: `${Math.round((x.s / Math.max(monat.top[0]?.s ?? 1, 1)) * 100)}%`, height: '100%', background: C.achtung, borderRadius: 3 }} /></div>
-              <span style={{ fontFamily: SCHRIFT.display, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: C.inkDim, width: 84, textAlign: 'right' }}>{eur(x.s)}</span>
-            </div>
-          ))}
-        </>
+          <div style={{ display: 'grid', gap: 9 }}>
+            {monat.top.map(x => (
+              <div key={x.k} style={{ display: 'grid', gridTemplateColumns: 'minmax(90px,150px) 1fr 84px', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: TYP.bedien, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.k}</span>
+                <Fortschritt anteil={x.s / Math.max(monat.top[0]?.s ?? 1, 1)} farbe={LEUCHT.achtung} />
+                <span style={{ fontFamily: SCHRIFT.display, fontWeight: 600, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: C.inkDim, textAlign: 'right' }}>{eur(x.s)}</span>
+              </div>
+            ))}
+          </div>
+        </Karte>
       )}
 
-      <Ueberschrift>Bereiche</Ueberschrift>
-      <Liste>
-        {BEREICHE.map(b => (
-          <Link key={b.href} href={b.href} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <Zeile titel={b.titel} unter={b.satz} rechts={<span style={{ color: C.inkLeise }}>›</span>} />
-          </Link>
-        ))}
-      </Liste>
+      <Karte i={4}>
+        <Ueberschrift>Bereiche</Ueberschrift>
+        <Liste>
+          {BEREICHE.map(b => (
+            <Link key={b.href} href={b.href} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Zeile onClick={() => {}} titel={b.titel} unter={b.satz} rechts={<span style={{ color: C.inkLeise }}>›</span>} />
+            </Link>
+          ))}
+        </Liste>
+      </Karte>
     </Seite>
   );
 }

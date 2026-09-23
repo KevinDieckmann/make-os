@@ -144,6 +144,19 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Priorität, Wer, Projekt, Löschen), Schnellanlage auf Heute. Kevins Konto ist
 > angelegt (Speicher `kevin`).
 
+> **Nachtrag 24.09., lebendig.** Kevin: *„nach Whoop sieht das gerade nicht
+> aus, das sieht so tot aus, ich soll doch Spaß haben, da reinzugucken."*
+> Berechtigt: schlank war zu Askese geworden — Haarlinien auf Schwarz, gedämpfte
+> Farben, Striche. Whoops Rezept nachgebaut, ohne die Regeln vom 23.09. zu
+> brechen: **dunkle Karten mit Tiefe** statt Haarlinien (`.karte`),
+> **Leuchtfarben** je Kennzahl (`LEUCHT` in design.ts: grün/gelb/rot, Schlaf,
+> Puls, Geld, Business, Planung, Beziehung), **Ringe mit Glow** und der Zahl
+> innen, **Zahlen, die hochzählen**, **Trendbalken**, **Zone-Chips**, und alles
+> **erscheint gestaffelt** (`os-auf`). Begrüßung mit Namen auf Heute, die fünf
+> Säulen als kleine Ringe, Körper und Jarvis als zwei Karten. Bausteine in
+> `components/os/schlank.tsx`, alle sechs Seiten plus Konto darauf. Geprüft mit
+> kopflosem Chrome (Screenshots Rechner und Handy) und Wegwerfkonto.
+
 Jede Phase hat ein Ziel in einem Satz, eine Fertig-Bedingung, und eine Liste,
 was **bewusst nicht** darin ist. Grobe Größe in Arbeitstagen — ehrlich grob.
 

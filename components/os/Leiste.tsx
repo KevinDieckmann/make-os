@@ -29,7 +29,7 @@ export function Leiste() {
     return (
       <Link key={e.href} href={e.href} className="fassbar" style={{
         display: 'flex', alignItems: 'center', gap: 10, padding: klein ? '6px 0' : '9px 10px', borderRadius: 9, textDecoration: 'none',
-        color: an ? C.ink : C.inkDim, background: an && !klein ? C.flaeche : 'transparent',
+        color: an ? C.aktiv : C.inkDim, background: an && !klein ? C.aktivSanft : 'transparent', transition: 'background .2s ease, color .2s ease',
         fontFamily: SCHRIFT.text, fontSize: klein ? 11 : 14, fontWeight: 500, flexDirection: klein ? 'column' : 'row', flex: klein ? 1 : undefined,
       }}>
         <Icon size={klein ? 20 : 16} strokeWidth={1.75} />
@@ -44,7 +44,9 @@ export function Leiste() {
         width: 200, flex: '0 0 200px', padding: '22px 14px', borderRight: `1px solid ${C.linie}`, background: C.grund,
         flexDirection: 'column', gap: 2, position: 'sticky', top: 0, height: '100vh',
       }}>
-        <Link href="/jarvis" title="Zum Empfang" style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 15, letterSpacing: '-.01em', padding: '4px 10px 22px', color: C.ink, textDecoration: 'none' }}>MAKE OS</Link>
+        <Link href="/jarvis" title="Zum Empfang" style={{ display: 'flex', alignItems: 'center', gap: 9, fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 15, letterSpacing: '-.01em', padding: '4px 10px 22px', color: C.ink, textDecoration: 'none' }}>
+          <span className="zeit-puls" style={{ width: 9, height: 9, borderRadius: '50%', background: C.aktiv, boxShadow: `0 0 10px ${C.aktiv}` }} />MAKE OS
+        </Link>
         {HAUPT.map(e => zeile(e))}
         <div style={{ marginTop: 'auto' }}>
           {zeile(SYSTEM)}

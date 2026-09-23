@@ -13,7 +13,7 @@ import { parseSchnell } from '@/lib/make-one/schnell-anlegen';
 import { localDay, tagePlus } from '@/lib/zeit';
 import type { Task } from '@/types/tasks';
 import type { Owner } from '@/types/common';
-import { Seite, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, feld, prioFarbe } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, feld, prioFarbe, LEUCHT } from './schlank';
 
 const wahl: React.CSSProperties = { background: C.flaeche, border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark' };
 
@@ -43,18 +43,18 @@ export function AufgabenSchlank() {
   const offen = state.tasks.filter(t => t.status !== 'done');
   const erledigt = state.tasks.filter(t => t.status === 'done').sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? '')).slice(0, 20);
   const wochenEnde = tagePlus(heute, 7);
-  const gruppen: { titel: string; liste: Task[] }[] = [
-    { titel: 'Überfällig', liste: offen.filter(t => t.dueDate && t.dueDate < heute) },
-    { titel: 'Heute', liste: offen.filter(t => t.dueDate === heute) },
-    { titel: 'Diese Woche', liste: offen.filter(t => t.dueDate && t.dueDate > heute && t.dueDate <= wochenEnde) },
-    { titel: 'Später', liste: offen.filter(t => t.dueDate && t.dueDate > wochenEnde) },
-    { titel: 'Ohne Datum', liste: offen.filter(t => !t.dueDate) },
+  const gruppen: { titel: string; farbe: string; liste: Task[] }[] = [
+    { titel: 'Überfällig', farbe: LEUCHT.kritisch, liste: offen.filter(t => t.dueDate && t.dueDate < heute) },
+    { titel: 'Heute', farbe: LEUCHT.gut, liste: offen.filter(t => t.dueDate === heute) },
+    { titel: 'Diese Woche', farbe: LEUCHT.achtung, liste: offen.filter(t => t.dueDate && t.dueDate > heute && t.dueDate <= wochenEnde) },
+    { titel: 'Später', farbe: LEUCHT.puls, liste: offen.filter(t => t.dueDate && t.dueDate > wochenEnde) },
+    { titel: 'Ohne Datum', farbe: C.inkLeise, liste: offen.filter(t => !t.dueDate) },
   ].map(g => ({ ...g, liste: g.liste.sort((a, b) => (a.dueDate ?? '9').localeCompare(b.dueDate ?? '9') || (a.priority === 'critical' ? -1 : 1)) }));
   const projekt = (id: string) => state.projects.find(p => p.id === id)?.title ?? '';
   const datum = (d?: string) => (d ? `${d.slice(8)}.${d.slice(5, 7)}.` : '');
 
   // Eine Zeile aufklappen: Titel, Datum, Priorität, Wer, Projekt, Löschen.
-  const Karte = ({ t }: { t: Task }) => (
+  const Detail = ({ t }: { t: Task }) => (
     <div style={{ padding: '8px 2px 16px 36px', borderBottom: `1px solid ${C.linie}` }}>
       <input defaultValue={t.title} onBlur={e => { const v = e.target.value.trim(); if (v && v !== t.title) aendern(t.id, { title: v }); }}
         onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} style={{ ...feld, marginBottom: 10 }} />
@@ -76,13 +76,14 @@ export function AufgabenSchlank() {
 
   return (
     <Seite titel="Aufgaben" rechts={<Link href="/os/aufgaben/board" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Board &amp; Zeitstrahl ›</Link>}>
-      <input value={neu} onChange={e => setNeu(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') anlegen(); }}
-        placeholder="Neue Aufgabe … (!! kritisch · heute / mo–so / 24.09. · #projekt · @malin)" style={{ ...feld, fontSize: TYP.body, marginBottom: 6 }} />
-
-      {offen.length === 0 && <Leer>Keine offenen Aufgaben. Eine Zeile oben, Enter — oder Jarvis sagen.</Leer>}
-      {gruppen.filter(g => g.liste.length).map(g => (
-        <div key={g.titel}>
-          <Ueberschrift rechts={`${g.liste.length}`}>{g.titel}</Ueberschrift>
+      <Karte i={0} akzent={LEUCHT.achtung}>
+        <input value={neu} onChange={e => setNeu(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') anlegen(); }}
+          placeholder="Neue Aufgabe … (!! kritisch · heute / mo–so / 24.09. · #projekt · @malin)" style={{ ...feld, fontSize: TYP.body }} />
+        {offen.length === 0 && <Leer>Keine offenen Aufgaben. Eine Zeile oben, Enter — oder Jarvis sagen.</Leer>}
+      </Karte>
+      {gruppen.filter(g => g.liste.length).map((g, gi) => (
+        <Karte key={g.titel} i={gi + 1}>
+          <Ueberschrift farbe={g.farbe} rechts={`${g.liste.length}`}>{g.titel}</Ueberschrift>
           <Liste>
             {g.liste.map(t => (
               <div key={t.id}>
@@ -94,15 +95,15 @@ export function AufgabenSchlank() {
                     {t.dueDate && <span style={{ fontFamily: SCHRIFT.display, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute ? C.kritisch : C.inkLeise }}>{datum(t.dueDate)}</span>}
                     <Punkt farbe={prioFarbe(t.priority)} />
                   </span>} />
-                {offenId === t.id && <Karte t={t} />}
+                {offenId === t.id && <Detail t={t} />}
               </div>
             ))}
           </Liste>
-        </div>
+        </Karte>
       ))}
 
       {erledigt.length > 0 && (
-        <>
+        <Karte i={gruppen.length + 1}>
           <Ueberschrift rechts={<button onClick={() => setZeigeErledigt(z => !z)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12, padding: 0 }}>{zeigeErledigt ? 'ausblenden' : `${erledigt.length} anzeigen`}</button>}>Erledigt</Ueberschrift>
           {zeigeErledigt && (
             <Liste>
@@ -112,7 +113,7 @@ export function AufgabenSchlank() {
               ))}
             </Liste>
           )}
-        </>
+        </Karte>
       )}
     </Seite>
   );

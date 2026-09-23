@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { STUFE_LABEL, anzeigename, type Kontakt, type Stufe } from '@/lib/make-one/crm';
-import { Seite, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, feld } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, Chip, feld, LEUCHT } from './schlank';
 import { CrmView } from './CrmView';
 
 type Segment = 'heute' | 'alle' | 'mandate';
@@ -22,7 +22,8 @@ const SEG: { id: Segment; label: string }[] = [{ id: 'heute', label: 'Heute' }, 
 interface Posten { kontakt: Kontakt; grund: string; kanaele: { art: string; ziel: string }[] }
 interface Entwurf { betreff: string; email: string; linkedin: string; hinweis: string }
 
-const stufeFarbe = (s: Stufe) => (s === 'gewonnen' ? C.gut : s === 'verloren' || s === 'ruht' ? C.inkLeise : s === 'neu' ? C.inkDim : C.aktiv);
+const stufeFarbe = (s: Stufe) => (s === 'gewonnen' ? LEUCHT.gut : s === 'verloren' || s === 'ruht' ? C.inkLeise : s === 'neu' ? LEUCHT.puls : s === 'termin' || s === 'angebot' ? LEUCHT.achtung : LEUCHT.business);
+const prioChip = (p?: string) => (p === 'A' ? LEUCHT.gut : p === 'B' ? LEUCHT.achtung : C.inkLeise);
 
 export function KontakteView() {
   const router = useRouter(); const pfad = usePathname(); const params = useSearchParams();
@@ -75,7 +76,7 @@ export function KontakteView() {
     return gefiltert.sort((a, b) => (a.prio || 'Z').localeCompare(b.prio || 'Z') || anzeigename(a).localeCompare(anzeigename(b))).slice(0, q ? 60 : 40);
   }, [kontakte, suche]);
 
-  const Karte = ({ k, grund }: { k: Kontakt; grund?: string }) => {
+  const Detail = ({ k, grund }: { k: Kontakt; grund?: string }) => {
     const e = entwurf[k.id];
     return (
       <div style={{ padding: '6px 2px 18px 36px', borderBottom: `1px solid ${C.linie}` }}>
@@ -119,7 +120,7 @@ export function KontakteView() {
   const zeile = (k: Kontakt, unter: string, rechts?: React.ReactNode) => (
     <Zeile key={k.id} onClick={() => setOffen(o => (o === k.id ? null : k.id))} aktiv={offen === k.id}
       links={<Punkt farbe={stufeFarbe(k.stufe)} />} titel={<>{anzeigename(k)}{k.firma && <span style={{ color: C.inkLeise }}> · {k.firma}</span>}</>} unter={unter}
-      rechts={rechts ?? <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{k.prio ? `${k.prio} · ` : ''}{STUFE_LABEL[k.stufe]}</span>} />
+      rechts={rechts ?? <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>{k.prio && <Chip farbe={prioChip(k.prio)}>{k.prio}</Chip>}<Chip farbe={stufeFarbe(k.stufe)}>{STUFE_LABEL[k.stufe]}</Chip></span>} />
   );
 
   return (
@@ -128,29 +129,29 @@ export function KontakteView() {
 
       {segment === 'heute' && (
         kontakte !== null && kontakte.length === 0 ? (
-          <Leer>
+          <Karte i={0}><Leer>
             Noch keine Kontakte im CRM. Die Masterliste liegt auf dem Schreibtisch (443 Kontakte, angereichert).
             <div style={{ marginTop: 12 }}><Knopf onClick={importieren} aus={importiert}>Masterliste importieren</Knopf></div>
-          </Leer>
+          </Leer></Karte>
         ) : (
-          <>
-            <Ueberschrift rechts={stand ? `${stand.ansprechbar} ansprechbar · ${stand.gesamt} gesamt` : ''}>Wer heute dran ist</Ueberschrift>
+          <Karte i={0} akzent={LEUCHT.gut}>
+            <Ueberschrift farbe={LEUCHT.gut} rechts={stand ? `${stand.ansprechbar} ansprechbar · ${stand.gesamt} gesamt` : ''}>Wer heute dran ist</Ueberschrift>
             <Liste>
               {liste.length === 0 && kontakte !== null && <Leer>Niemand fällig — alle Prio-A/B-Kontakte sind angesprochen oder ohne Aufhänger.</Leer>}
               {liste.map(p => (
                 <div key={p.kontakt.id}>
                   {zeile(p.kontakt, `${p.grund} · ${p.kanaele.map(c => c.art).join(', ') || 'kein Kanal'}`)}
-                  {offen === p.kontakt.id && <Karte k={p.kontakt} grund={p.grund} />}
+                  {offen === p.kontakt.id && <Detail k={p.kontakt} grund={p.grund} />}
                 </div>
               ))}
             </Liste>
-          </>
+          </Karte>
         )
       )}
 
       {segment === 'alle' && (
-        <>
-          <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Name, Firma, Branche, Ort …" style={{ ...feld, marginBottom: 6 }} />
+        <Karte i={0}>
+          <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Name, Firma, Branche, Ort …" style={{ ...feld, marginBottom: 12 }} />
           <Ueberschrift rechts={<span><button onClick={importieren} disabled={importiert} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12, padding: 0 }}>Masterliste abgleichen</button></span>}>
             {suche ? `${treffer.length} Treffer` : `Nach Priorität · ${kontakte?.length ?? 0} Kontakte`}
           </Ueberschrift>
@@ -159,14 +160,14 @@ export function KontakteView() {
             {treffer.map(k => (
               <div key={k.id}>
                 {zeile(k, [k.position, k.firmaBranche, k.wiedervorlage ? `Wiedervorlage ${k.wiedervorlage.slice(5)}` : ''].filter(Boolean).join(' · '))}
-                {offen === k.id && <Karte k={k} />}
+                {offen === k.id && <Detail k={k} />}
               </div>
             ))}
           </Liste>
-        </>
+        </Karte>
       )}
 
-      {segment === 'mandate' && <CrmView eingebettet />}
+      {segment === 'mandate' && <Karte i={0}><CrmView eingebettet /></Karte>}
     </Seite>
   );
 }
