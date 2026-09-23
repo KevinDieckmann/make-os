@@ -21,9 +21,9 @@ interface Messung { date: string; index: number | null }
 interface Ziel { id: string; titel: string; fortschritt: number; erledigt: boolean }
 interface Ziele { monat: Ziel[]; quartal: Ziel[]; jahr: Ziel[]; fokus: { monat?: string; woche?: string; tag?: string } }
 
-const FARBE_JE: Record<string, string> = { health: LEUCHT.gut, business: LEUCHT.business, planning: LEUCHT.planung, finance: LEUCHT.geld, social: LEUCHT.beziehung };
-const KURZ: Record<string, string> = { health: 'Gesundheit', business: 'Business', planning: 'Planung', finance: 'Finanzen', social: 'Beziehung' };
-const HREF: Record<string, string> = { health: '/os/gesundheit', finance: '/os/finanzen' };
+const FARBE_JE: Record<string, string> = { health: LEUCHT.gut, business: LEUCHT.business, planning: LEUCHT.planung, finance: LEUCHT.geld, social: LEUCHT.beziehung, agents: LEUCHT.agenten };
+const KURZ: Record<string, string> = { health: 'Gesundheit', business: 'Business', planning: 'Planung', finance: 'Finanzen', social: 'Beziehung', agents: 'Agenten' };
+const HREF: Record<string, string> = { health: '/os/gesundheit', finance: '/os/finanzen', agents: '/os/agenten' };
 
 export function WachstumView() {
   const [perf, setPerf] = useState<Perf | null>(null);
@@ -72,7 +72,7 @@ export function WachstumView() {
       </Karte>
 
       <Karte i={1}>
-        <Ueberschrift rechts="Klick zeigt die Faktoren">Die fünf Säulen</Ueberschrift>
+        <Ueberschrift rechts="Klick zeigt die Faktoren">Die sechs Säulen</Ueberschrift>
         <Liste>
           {(perf?.saeulen ?? []).map(s => {
             const f = FARBE_JE[s.key] ?? C.inkLeise;

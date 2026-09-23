@@ -185,6 +185,18 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Beziehung 15) sind unverändert — das ist Kevins Entscheidung, wenn er den
 > Score stärker auf Unternehmertum und Geld drehen will.
 
+> **Nachtrag 24.09., Agenten-Score.** Kevin: *„Ich möchte oben bei den Scores
+> auch noch einen Agenten-Score mit reinnehmen. Jedes Mal, wenn wir auf den
+> Score klicken, kommen wir direkt auf die Seite, wo es weitergeht."* Gebaut:
+> **Agenten** ist die sechste Säule des Wachstums-Scores (`lib/agenten-score.ts`,
+> rein und getestet): Agenten live · Läufe diese Woche · Aufträge erledigt ·
+> Stapel fließt · Bote erreicht dich — alles aus vorhandenen Daten
+> (Agenten-Log, Aufträge des Arbeiters, Stapel, Telegram). Gewichte jetzt:
+> Gesundheit 35 · Business 20 · Finanzen 15 · Planung 10 · Beziehung 10 ·
+> Agenten 10. Im Kopf über jeder Seite ist **jeder Score ein eigener Sprung**:
+> Gesundheit → /os/gesundheit, Business/Planung/Beziehung → ihre Säulen-Seite,
+> Finanzen → /os/finanzen, Agenten → /os/agenten, der große Ring → Wachstum.
+
 Jede Phase hat ein Ziel in einem Satz, eine Fertig-Bedingung, und eine Liste,
 was **bewusst nicht** darin ist. Grobe Größe in Arbeitstagen — ehrlich grob.
 

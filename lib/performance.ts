@@ -15,6 +15,9 @@ import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
 import { hautTrend, streakStand, routineQuote as quoteFuer, type HautLog, type StreakLog } from '@/lib/gesundheit/eintraege';
 import { RITUALE } from '@/lib/make-one/team-data';
 import type { Prospect } from '@/lib/make-one/prospecting-data';
+import { agentenFaktoren, agentenEingabe } from '@/lib/agenten-score';
+import { DEPARTMENTS } from '@/lib/make-one/agents-data';
+import { ladeStand as ladeTelegram, chatsFuerPerson, telegramKonfiguriert } from '@/lib/telegram';
 
 export interface Faktor {
   label: string;
@@ -118,6 +121,14 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
     loadJson<{ meilensteine: { bereich: string; faellig?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
     loadJson<{ kunden: { status: string; cashflow?: number }[] }>('kunden'),
     loadJson<{ rechnungen: { status: string; betrag: number; faellig?: string }[]; produkte: { status: string; preis: number }[] }>('finanzplan'),
+  ]);
+
+  // Agenten (24.09.): was Jarvis und die Agenten abnehmen — sechste Säule.
+  const [agentLogF, auftraegeF, stapelF, tgStand] = await Promise.all([
+    loadJson<{ entries: { ts: string }[] }>('agent-log'),
+    loadJson<{ auftraege: { zeit: string; status: string }[] }>('jarvis-auftraege'),
+    loadJson<{ vorschlaege: { zeit?: string; status: string; entschiedenAm?: string }[] }>('jarvis-stapel'),
+    ladeTelegram().catch(() => null),
   ]);
 
   // ── Meilenstein-Kurs je Bereich: Ø Fortschritt der OFFENEN Meilensteine;
@@ -329,13 +340,25 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
       quelle: `Ø ${(moods.reduce((a, b) => a + b, 0) / moods.length).toFixed(1)}/5 aus ${moods.length} Einträgen` };
   }
 
+  // ── Agenten ──
+  const agenten = agentenFaktoren(agentenEingabe({
+    agenten: DEPARTMENTS.flatMap(d => d.agents),
+    log: agentLogF?.entries ?? [],
+    auftraege: auftraegeF?.auftraege ?? [],
+    vorschlaege: stapelF?.vorschlaege ?? [],
+    boteKonfiguriert: telegramKonfiguriert(),
+    boteGekoppelt: !!tgStand && chatsFuerPerson(tgStand, person).length > 0,
+  }, today));
+
   const roh: { key: string; label: string; gewicht: number; faktoren: Faktor[]; hinweis: string }[] = [
     // Kevin: „Gesundheit macht mindestens 35% aus — ohne sie funktioniert nichts."
     { key: 'health', label: 'Gesundheit & Energie', gewicht: 0.35, faktoren: gesundheit, hinweis: 'Morgen-Check + Routinen + Journal' },
     { key: 'business', label: 'Business-Performance', gewicht: 0.20, faktoren: business, hinweis: 'Umsatz-Kurs + Pipeline' },
-    { key: 'planning', label: 'Planung & Ausführung', gewicht: 0.15, faktoren: planung, hinweis: 'Aufgabenlage + Kalender' },
+    // 24.09.: Agenten als sechste Säule (10 %); Planung und Beziehung geben je 5 % ab.
+    { key: 'planning', label: 'Planung & Ausführung', gewicht: 0.10, faktoren: planung, hinweis: 'Aufgabenlage + Kalender' },
     { key: 'finance', label: 'Finanzen', gewicht: 0.15, faktoren: finanzen, hinweis: 'Runway + Gewinn' },
-    { key: 'social', label: 'Beziehung & Ruhe', gewicht: 0.15, faktoren: sozial, hinweis: 'Journal' },
+    { key: 'social', label: 'Beziehung & Ruhe', gewicht: 0.10, faktoren: sozial, hinweis: 'Journal' },
+    { key: 'agents', label: 'Agenten', gewicht: 0.10, faktoren: agenten, hinweis: 'Läufe, Aufträge, Stapel, Bote' },
   ];
 
   const saeulen: Saeule[] = roh.map(s => {

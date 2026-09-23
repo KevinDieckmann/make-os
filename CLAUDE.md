@@ -69,7 +69,10 @@ lokal, Route `/os`, Port 3001.
   Leiste (Heute · Wachstum · Gesundheit · Inbox · Aufgaben · Zahlen · Kontakte ·
   Jarvis · System) sind umgebaut; Anmeldung führt zu Heute, Jarvis ist kein
   Vorspann mehr. Der **Wachstums-Score** steht als Kopf über jeder Seite
-  (`WachstumsKopf`) — der Score, auf den wir hinarbeiten. Alte Ansichten liegen unter
+  (`WachstumsKopf`) — der Score, auf den wir hinarbeiten; sechs Säulen
+  (Gesundheit 35 · Business 20 · Finanzen 15 · Planung 10 · Beziehung 10 ·
+  Agenten 10, Regel in `lib/agenten-score.ts`), jeder Ring ein Sprung auf
+  seine Seite. Alte Ansichten liegen unter
   `/os/uebersicht`, `/os/aufgaben/board` und `/os/inbox/voll`.
 - **`PLAN.md` ist der führende Plan (seit 18.09.2026).** Bestand bleibt und
   wird auf Hetzner hochgefahren; Reihenfolge Hochfahren → Aufgaben → CRM →

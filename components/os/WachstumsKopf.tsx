@@ -17,8 +17,10 @@ import { Ring, Chip, zoneFarbe, LEUCHT } from './schlank';
 interface Saeule { key: string; label: string; score: number | null; zuDuenn: boolean }
 interface Antwort { aktuell: { index: number | null; label: string; hebel: string | null; stand: string; saeulen: Saeule[] }; verlauf: { date: string; index: number | null }[] }
 
-const FARBE_JE: Record<string, string> = { health: LEUCHT.gut, business: LEUCHT.business, planning: LEUCHT.planung, finance: LEUCHT.geld, social: LEUCHT.beziehung };
-const KURZ: Record<string, string> = { health: 'Gesundheit', business: 'Business', planning: 'Planung', finance: 'Finanzen', social: 'Beziehung' };
+const FARBE_JE: Record<string, string> = { health: LEUCHT.gut, business: LEUCHT.business, planning: LEUCHT.planung, finance: LEUCHT.geld, social: LEUCHT.beziehung, agents: LEUCHT.agenten };
+const KURZ: Record<string, string> = { health: 'Gesundheit', business: 'Business', planning: 'Planung', finance: 'Finanzen', social: 'Beziehung', agents: 'Agenten' };
+// Jeder Score springt dorthin, wo es weitergeht (Kevin, 24.09.).
+const HREF: Record<string, string> = { health: '/os/gesundheit', business: '/os/saeule/business', planning: '/os/saeule/planning', finance: '/os/finanzen', social: '/os/saeule/social', agents: '/os/agenten' };
 
 // Der Score rechnet über viele Dateien — einmal je fünf Minuten reicht, nicht
 // bei jedem Seitenwechsel. Der Bereich Wachstum lädt ihn ohnehin frisch.
@@ -60,22 +62,28 @@ export function WachstumsKopf() {
   const delta = letzte != null && davor != null ? letzte - davor : null;
 
   return (
-    <Link href="/os/wachstum" className="wachstum-kopf os-auf" title="Zum Bereich Wachstum" style={{ textDecoration: 'none', color: 'inherit' }}>
-      <Ring groesse="klein" label="" wert={p?.index != null ? String(p.index) : undefined} farbe={zone} anteil={p?.index != null ? p.index / 100 : undefined} />
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span className="wachstum-kopf-name" style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.body, letterSpacing: '-.01em', whiteSpace: 'nowrap' }}>Wachstums-Score</span>
-          {p?.index != null && <Chip farbe={zone}>{p.label}</Chip>}
-          {delta != null && delta !== 0 && <span style={{ fontSize: 12, fontWeight: 700, color: delta > 0 ? LEUCHT.gut : LEUCHT.kritisch }}>{delta > 0 ? '▲' : '▼'} {Math.abs(delta)}</span>}
+    <div className="wachstum-kopf os-auf">
+      <Link href="/os/wachstum" title="Zum Bereich Wachstum" style={{ display: 'flex', alignItems: 'center', gap: 16, textDecoration: 'none', color: 'inherit', minWidth: 0 }}>
+        <Ring groesse="klein" label="" wert={p?.index != null ? String(p.index) : undefined} farbe={zone} anteil={p?.index != null ? p.index / 100 : undefined} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span className="wachstum-kopf-name" style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.body, letterSpacing: '-.01em', whiteSpace: 'nowrap' }}>Wachstums-Score</span>
+            {p?.index != null && <Chip farbe={zone}>{p.label}</Chip>}
+            {delta != null && delta !== 0 && <span style={{ fontSize: 12, fontWeight: 700, color: delta > 0 ? LEUCHT.gut : LEUCHT.kritisch }}>{delta > 0 ? '▲' : '▼'} {Math.abs(delta)}</span>}
+          </div>
+          <div className="wachstum-kopf-unter" style={{ fontSize: 12, color: C.inkLeise, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {p ? (p.hebel ? `Größter Hebel: ${p.hebel}` : `Stand ${p.stand.slice(8)}.${p.stand.slice(5, 7)}.`) : 'Der Score, auf den wir hinarbeiten'}
+          </div>
         </div>
-        <div className="wachstum-kopf-unter" style={{ fontSize: 12, color: C.inkLeise, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {p ? (p.hebel ? `Größter Hebel: ${p.hebel}` : `Stand ${p.stand.slice(8)}.${p.stand.slice(5, 7)}.`) : 'Der Score, auf den wir hinarbeiten'}
-        </div>
-      </div>
+      </Link>
       <div className="wachstum-kopf-saeulen" style={{ display: 'flex', gap: 12, marginLeft: 'auto', alignItems: 'flex-start' }}>
-        {(p?.saeulen ?? []).map(s => <Winzig key={s.key} wert={s.score == null || s.score === 0 ? undefined : s.score} farbe={FARBE_JE[s.key] ?? C.inkLeise} label={KURZ[s.key] ?? s.label} />)}
+        {(p?.saeulen ?? []).map(s => (
+          <Link key={s.key} href={HREF[s.key] ?? `/os/saeule/${s.key}`} title={`${KURZ[s.key] ?? s.label} — weiter`} style={{ textDecoration: 'none', color: 'inherit' }}>
+            <Winzig wert={s.score == null || s.score === 0 ? undefined : s.score} farbe={FARBE_JE[s.key] ?? C.inkLeise} label={KURZ[s.key] ?? s.label} />
+          </Link>
+        ))}
       </div>
-      <span style={{ color: C.inkLeise, fontSize: 18 }}>›</span>
-    </Link>
+      <Link href="/os/wachstum" title="Zum Bereich Wachstum" style={{ color: C.inkLeise, fontSize: 18, textDecoration: 'none' }}>›</Link>
+    </div>
   );
 }

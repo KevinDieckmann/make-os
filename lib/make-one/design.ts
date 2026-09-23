@@ -122,6 +122,7 @@ export const LEUCHT = {
   business: '#FF9F43',
   planung: '#4FC3F7',
   beziehung: '#FF7EB6',
+  agenten: '#C77DFF',
 } as const;
 
 /** Zustandsfarbe in Leuchtstärke — dieselben Schwellen wie zustandFarbe. */
