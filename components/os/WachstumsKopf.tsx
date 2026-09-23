@@ -68,8 +68,10 @@ export function WachstumsKopf() {
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span className="wachstum-kopf-name" style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.body, letterSpacing: '-.01em', whiteSpace: 'nowrap' }}>Wachstums-Score</span>
-            {p?.index != null && <Chip farbe={zone}>{p.label}</Chip>}
-            {delta != null && delta !== 0 && <span style={{ fontSize: 12, fontWeight: 700, color: delta > 0 ? LEUCHT.gut : LEUCHT.kritisch }}>{delta > 0 ? '▲' : '▼'} {Math.abs(delta)}</span>}
+            <span className="wachstum-kopf-zone" style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+              {p?.index != null && <Chip farbe={zone}>{p.label}</Chip>}
+              {delta != null && delta !== 0 && <span style={{ fontSize: 12, fontWeight: 700, color: delta > 0 ? LEUCHT.gut : LEUCHT.kritisch }}>{delta > 0 ? '▲' : '▼'} {Math.abs(delta)}</span>}
+            </span>
           </div>
           <div className="wachstum-kopf-unter" style={{ fontSize: 12, color: C.inkLeise, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {p ? (p.hebel ? `Größter Hebel: ${p.hebel}` : `Stand ${p.stand.slice(8)}.${p.stand.slice(5, 7)}.`) : 'Der Score, auf den wir hinarbeiten'}
