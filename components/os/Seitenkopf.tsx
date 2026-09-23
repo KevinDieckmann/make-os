@@ -14,6 +14,7 @@
 
 import type React from 'react';
 import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, MIKRO } from '@/lib/make-one/design';
+// TYP bleibt für den Satz; die Titelgröße folgt seit 24.09. der Seite aus schlank.tsx.
 
 export function Seitenkopf({ rubrik, titel, satz, rechts }: {
   /** Wo man ist — GROSSBUCHSTABEN, leise. */
@@ -34,8 +35,9 @@ export function Seitenkopf({ rubrik, titel, satz, rechts }: {
       {rubrik && <div className="zeile-auf" style={MIKRO}>{rubrik}</div>}
       <div className="zeile-auf" style={{ animationDelay: '.06s', display: 'flex', alignItems: 'baseline', gap: A.l, flexWrap: 'wrap' }}>
         <h1 style={{
-          fontFamily: SCHRIFT.display, fontSize: TYP.zahl, fontWeight: 600, letterSpacing: '-.02em',
-          color: C.ink, margin: `${A.xs}px 0 0`, lineHeight: 1.2, textWrap: 'balance',
+          // 24.09.: derselbe Kopf wie auf den neuen Seiten — groß, fett, eng.
+          fontFamily: SCHRIFT.display, fontSize: 'clamp(24px,3vw,30px)', fontWeight: 700, letterSpacing: '-.025em',
+          color: C.ink, margin: `${A.xs}px 0 0`, lineHeight: 1.1, textWrap: 'balance',
         }}>{titel}</h1>
         {rechts && <div style={{ marginLeft: 'auto', display: 'flex', gap: A.s, flexWrap: 'wrap' }}>{rechts}</div>}
       </div>

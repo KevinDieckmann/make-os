@@ -27,7 +27,7 @@ export const WER_LABEL: Record<Wer, string> = {
   mensch: 'nur persönlich',
 };
 export const WER_FARBE: Record<Wer, string> = {
-  jarvis: '#21B5AA',
+  jarvis: '#58D9CD',
   gemeinsam: '#4A6CF7',
   mensch: '#DE9E63',
 };

@@ -17,7 +17,7 @@ interface Prospect { id: string; company: string; score?: number; status: string
 interface Rechnung { id: string; firmaId: string; kunde: string; titel: string; betrag: number; status: 'geplant' | 'gestellt' | 'bezahlt'; faellig?: string }
 interface Produkt { id: string; name: string; beschreibung: string; preis: number; einheit: string; status: string }
 interface Finanzplan { rechnungen: Rechnung[]; produkte: Produkt[]; firmen: { id: string }[] }
-const RSTATUS_FARBE: Record<Rechnung['status'], string> = { geplant: '#96A8A2', gestellt: '#E3A24B', bezahlt: '#21B5AA' }
+const RSTATUS_FARBE: Record<Rechnung['status'], string> = { geplant: '#96A8A2', gestellt: '#E3A24B', bezahlt: '#58D9CD' }
 
 const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };

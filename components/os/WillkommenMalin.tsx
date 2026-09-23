@@ -17,17 +17,17 @@ function ZweiLichter() {
       <defs>
         <radialGradient id="gl-k" cx="50%" cy="50%">
           <stop offset="0%" stopColor="#BFF5EF" stopOpacity="0.95" />
-          <stop offset="55%" stopColor="#21B5AA" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#21B5AA" stopOpacity="0" />
+          <stop offset="55%" stopColor="#58D9CD" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="#58D9CD" stopOpacity="0" />
         </radialGradient>
         <radialGradient id="gl-m" cx="50%" cy="50%">
           <stop offset="0%" stopColor="#FFD9E6" stopOpacity="0.95" />
-          <stop offset="55%" stopColor="#E8695E" stopOpacity="0.5" />
-          <stop offset="100%" stopColor="#E8695E" stopOpacity="0" />
+          <stop offset="55%" stopColor="#FF5C5C" stopOpacity="0.5" />
+          <stop offset="100%" stopColor="#FF5C5C" stopOpacity="0" />
         </radialGradient>
         <linearGradient id="herz" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#BFF5EF" />
-          <stop offset="100%" stopColor="#E8695E" />
+          <stop offset="100%" stopColor="#FF5C5C" />
         </linearGradient>
       </defs>
 
@@ -46,8 +46,8 @@ function ZweiLichter() {
         fill="url(#herz)" opacity="0.92"
       />
 
-      <text x="126" y="188" textAnchor="middle" fontFamily="ui-monospace, monospace" fontSize="10" fill="#21B5AA" opacity="0.75">KEVIN</text>
-      <text x="194" y="188" textAnchor="middle" fontFamily="ui-monospace, monospace" fontSize="10" fill="#E8695E" opacity="0.75">MALIN</text>
+      <text x="126" y="188" textAnchor="middle" fontFamily="ui-monospace, monospace" fontSize="10" fill="#58D9CD" opacity="0.75">KEVIN</text>
+      <text x="194" y="188" textAnchor="middle" fontFamily="ui-monospace, monospace" fontSize="10" fill="#FF5C5C" opacity="0.75">MALIN</text>
     </svg>
   );
 }

@@ -60,7 +60,7 @@ export interface Bereich {
 }
 
 export const BEREICHE: Bereich[] = [
-  { id: 'fokus', label: 'Fokus', satz: 'Welche Säule gerade zieht.', farbe: '#21B5AA' },
+  { id: 'fokus', label: 'Fokus', satz: 'Welche Säule gerade zieht.', farbe: '#58D9CD' },
   { id: 'zeit', label: 'Zeit & Last', satz: 'Wie viel ein Tag tragen darf.', farbe: '#DE9E63' },
   { id: 'postfach', label: 'Postfach', satz: 'Wie streng gefiltert wird.', farbe: '#4A6CF7' },
   { id: 'agenten', label: 'Agenten', satz: 'Wie lang die Leine ist.', farbe: '#8A7CE0' },
@@ -140,7 +140,7 @@ export interface Modus {
  */
 export const MODI: Modus[] = [
   {
-    id: 'aufbau', label: 'Aufbau', farbe: '#21B5AA',
+    id: 'aufbau', label: 'Aufbau', farbe: '#58D9CD',
     satz: 'Wir bauen. Produkt und Umsatz ziehen, das System darf mitwachsen.',
     ordnung: ['recht', 'umsatz', 'produkt', 'leben'],
     werte: {

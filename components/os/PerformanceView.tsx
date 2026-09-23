@@ -41,7 +41,7 @@ const REIHEN: { key: string; label: string; farbe: string }[] = [
   { key: 'index', label: 'Index', farbe: '#E8EFED' },
   { key: 'health', label: 'Gesundheit', farbe: '#58D9CD' },
   { key: 'business', label: 'Business', farbe: '#4A6CF7' },
-  { key: 'planning', label: 'Planung', farbe: '#21B5AA' },
+  { key: 'planning', label: 'Planung', farbe: '#58D9CD' },
   { key: 'finance', label: 'Finanzen', farbe: '#DE9E63' },
   { key: 'social', label: 'Beziehung', farbe: '#C77DFF' },
 ];

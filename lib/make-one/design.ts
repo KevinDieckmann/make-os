@@ -46,9 +46,9 @@ export const SCHRIFT = {
  */
 export const FARBE = {
   grund: '#0B0E10',
-  flaeche: '#14181B',
-  flaecheHoch: '#191E21',
-  linie: '#232A2D',
+  flaeche: '#161B1F',
+  flaecheHoch: '#1B2126',
+  linie: '#1F262A',
   linieWeich: '#1A2023',
 
   ink: '#E8ECEA',
@@ -61,10 +61,10 @@ export const FARBE = {
   /** Schlaf — eine Farbe je Kennzahl (23.09., nach Whoop). */
   lavendel: '#A79BFF',
 
-  /** Zustand — und NUR Zustand. */
-  gut: '#21B5AA',
-  achtung: '#D9A441',
-  kritisch: '#E8695E',
+  /** Zustand — und NUR Zustand. Seit 24.09. leuchtend (= LEUCHT), damit alte und neue Seiten dasselbe sagen. */
+  gut: '#3DE28B',
+  achtung: '#FFC93C',
+  kritisch: '#FF5C5C',
 } as const;
 
 /** Sieben Abstände auf dem 4-px-Raster. */

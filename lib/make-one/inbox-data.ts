@@ -19,7 +19,7 @@ export interface Fach {
 
 /** Die Fächer in der Reihenfolge, in der sie abgearbeitet werden. */
 export const FAECHER: Fach[] = [
-  { id: 'menschen', label: 'Menschen', satz: 'Echte Personen, die etwas von dir wollen.', farbe: '#21B5AA' },
+  { id: 'menschen', label: 'Menschen', satz: 'Echte Personen, die etwas von dir wollen.', farbe: '#58D9CD' },
   { id: 'geld', label: 'Geld & Papier', satz: 'Rechnungen, Verträge, Behörden, Banken.', farbe: '#DE9E63' },
   { id: 'system', label: 'Systemmeldungen', satz: 'Bestätigungen, Zustellungen, Technisches.', farbe: '#4A6CF7' },
   { id: 'rundschreiben', label: 'Rundschreiben', satz: 'Newsletter und Werbung — am Stück wegräumen.', farbe: '#8A9BA8' },

@@ -1,420 +1,152 @@
 'use client';
 
-// ─── MAKE OS — Der Freigabe-Stapel ──────────────────────────────────────────
-// Baustein 2 (07.09.). Kevins Vorgabe vom 06.09.: gebündelt, morgens und
-// abends — nicht als Unterbrechung. Deshalb sammelt Jarvis, und hier wird
-// entschieden.
-//
-// Vier Antworten, nicht zwei: freigeben · ändern und freigeben · ablehnen mit
-// Grund (Jarvis liest den Grund) · selbst machen. Dazu „Alles durcharbeiten"
-// je Gruppe — Kevins eigener Wunsch: einmal freigeben, dann läuft es durch.
-//
-// Darunter das Protokoll: was Jarvis von allein getan hat, und der Knopf, um
-// es zurückzunehmen.
+// ─── MAKE OS — Aufträge & Freigaben (der Stapel) ────────────────────────────
+// Was Jarvis vorbereitet hat und auf dein Ja wartet. Seit 24.09. im
+// lebendigen Muster: offene Vorschläge je Gruppe mit Freigeben/Ablehnen,
+// zuletzt Entschiedenes, der Arbeiter mit seinen Aufträgen, Gedächtnis und
+// Verbrauch. Protokoll, Rückgängig und Felder-Ändern: /os/stapel/voll.
 
-import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { THEME as T } from '@/lib/make-one/os-data';
-import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, RADIUS, MIKRO, ZIFFERN } from '@/lib/make-one/design';
-import { Held } from './Held';
+import { useCallback, useEffect, useState } from 'react';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { eur } from '@/lib/make-one/finance-data';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, feld, LEUCHT } from './schlank';
 
-interface Vorschlag {
-  id: string; zeit: string; werkzeug: string; gruppe: string;
-  titel: string; vorher?: string; nachher: string;
-  eingabe: Record<string, unknown>; anlass?: string;
-  status: 'offen' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen';
-  ergebnis?: string; grund?: string; quelle?: 'gespraech' | 'lauf';
-}
-interface Fakt {
-  id: string; tag: string; art: string; thema: string; satz: string; woher?: string; bis?: string;
-}
-interface Auftrag {
-  id: string; zeit: string; art: 'werkzeug' | 'agent'; name: string;
-  auftrag?: string; status: 'offen' | 'laeuft' | 'fertig' | 'fehler';
-  versuche: number; ergebnis?: string; fehler?: string; begonnen?: string;
-}
-interface Eintrag {
-  id: string; zeit: string; werkzeug: string; gruppe: string; risiko: string;
-  ergebnis: string; ok: boolean; quelle: 'jarvis' | 'stapel';
-  ruecknahme?: { text: string } | null; zurueckgenommenAm?: string;
-}
+interface Vorschlag { id: string; zeit: string; werkzeug: string; gruppe: string; titel: string; vorher?: string; nachher: string; eingabe: Record<string, unknown>; anlass?: string; status: 'offen' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen'; ergebnis?: string; grund?: string }
+interface Auftrag { id: string; zeit: string; art: string; name: string; auftrag?: string; status: 'offen' | 'laeuft' | 'fertig' | 'fehler'; ergebnis?: string; fehler?: string }
+interface Fakt { id: string; tag: string; art: string; thema: string; satz: string }
+interface Kosten { heuteCent: number; summeCent: number; jeZweck: { zweck: string; cent: number; anzahl: number }[] }
 
-/** Wohin man geht, wenn man es lieber selbst macht. */
-const SELBST: Record<string, { href: string; label: string }> = {
-  finanzen: { href: '/os/finanzen', label: 'Finanzen' },
-  meilensteine: { href: '/os/roadmap', label: 'Roadmap' },
-  fokus: { href: '/os/fokus', label: 'Fokus' },
-  aufgaben: { href: '/os/aufgaben', label: 'Aufgaben' },
-  kunden: { href: '/os/crm', label: 'CRM' },
-  planer: { href: '/os/planung/woche', label: 'Wochenplaner' },
-  inbox: { href: '/os/inbox', label: 'Postfach' },
-  gesundheit: { href: '/os/gesundheit', label: 'Gesundheit' },
+const GRUPPE: Record<string, { label: string; href: string; farbe: string }> = {
+  finanzen: { label: 'Geld', href: '/os/finanzen', farbe: LEUCHT.geld }, meilensteine: { label: 'Meilensteine', href: '/os/roadmap', farbe: LEUCHT.schlaf },
+  fokus: { label: 'Fokus & Ziele', href: '/os/wachstum', farbe: LEUCHT.schlaf }, aufgaben: { label: 'Aufgaben', href: '/os/aufgaben', farbe: LEUCHT.achtung },
+  kunden: { label: 'Kunden', href: '/os/crm', farbe: LEUCHT.business }, planer: { label: 'Planung', href: '/os/planung/woche', farbe: LEUCHT.puls },
+  inbox: { label: 'Postfach', href: '/os/inbox', farbe: LEUCHT.puls }, gesundheit: { label: 'Gesundheit', href: '/os/gesundheit', farbe: LEUCHT.gut },
 };
-
-const GRUPPE_LABEL: Record<string, string> = {
-  finanzen: 'Geld', meilensteine: 'Meilensteine', fokus: 'Fokus & Ziele',
-  aufgaben: 'Aufgaben', kunden: 'Kunden', planer: 'Planung', inbox: 'Postfach', gesundheit: 'Gesundheit',
+const STATUS: Record<string, { label: string; farbe: string }> = {
+  offen: { label: 'offen', farbe: LEUCHT.achtung }, laeuft: { label: 'läuft', farbe: LEUCHT.puls }, fertig: { label: 'fertig', farbe: LEUCHT.gut }, fehler: { label: 'Fehler', farbe: LEUCHT.kritisch },
+  freigegeben: { label: 'freigegeben', farbe: LEUCHT.gut }, abgelehnt: { label: 'abgelehnt', farbe: C.inkLeise }, fehlgeschlagen: { label: 'fehlgeschlagen', farbe: LEUCHT.kritisch },
 };
-
-const uhr = (iso: string) => { try { return new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
-
-const knopf = (art: 'stark' | 'ruhig' | 'weg'): React.CSSProperties => ({
-  fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600,
-  minHeight: 34, padding: `0 ${A.l}px`, borderRadius: RADIUS.bauteil, cursor: 'pointer',
-  border: `1px solid ${art === 'stark' ? C.gut : art === 'weg' ? C.linie : C.linie}`,
-  background: art === 'stark' ? C.gut : 'transparent',
-  color: art === 'stark' ? C.grund : art === 'weg' ? C.inkLeise : C.inkDim,
-});
+const her = (iso: string) => { const min = Math.floor((Date.now() - Date.parse(iso)) / 60000); return min < 1 ? 'gerade' : min < 60 ? `vor ${min} min` : min < 1440 ? `vor ${Math.floor(min / 60)} h` : `${iso.slice(8, 10)}.${iso.slice(5, 7)}.`; };
 
 export function StapelView() {
   const [vorschlaege, setVorschlaege] = useState<Vorschlag[]>([]);
-  const [protokoll, setProtokoll] = useState<Eintrag[]>([]);
   const [auftraege, setAuftraege] = useState<Auftrag[]>([]);
   const [fakten, setFakten] = useState<Fakt[]>([]);
-  const [gehirn, setGehirn] = useState<{ notizen: number; dubletten: number; privatUebersprungen: number } | null>(null);
-  const [kosten, setKosten] = useState<{ heuteCent: number; summeCent: number; jeZweck: { zweck: string; cent: number; anzahl: number }[] } | null>(null);
-  const [laedt, setLaedt] = useState(true);
+  const [kosten, setKosten] = useState<Kosten | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [aendern, setAendern] = useState<Record<string, Record<string, string>>>({});
-  const [ablehnen, setAblehnen] = useState<Record<string, string>>({});
+  const [offenId, setOffenId] = useState<string | null>(null);
+  const [grund, setGrund] = useState<Record<string, string>>({});
   const [meldung, setMeldung] = useState('');
+  const [laedt, setLaedt] = useState(true);
 
   const laden = useCallback(async () => {
     try {
-      const [s, p, a, g] = await Promise.all([
-        fetch('/api/jarvis/stapel?alle=1').then(r => r.json()),
-        fetch('/api/jarvis/protokoll?anzahl=40').then(r => r.json()),
-        fetch('/api/jarvis/auftraege').then(r => r.json()),
-        fetch('/api/jarvis/gedaechtnis').then(r => r.json()),
-      ]) as [Record<string, unknown>, Record<string, unknown>, Record<string, unknown>, Record<string, unknown>];
-      setVorschlaege(Array.isArray(s.vorschlaege) ? (s.vorschlaege as Vorschlag[]) : []);
-      setProtokoll(Array.isArray(p.eintraege) ? (p.eintraege as Eintrag[]) : []);
-      setAuftraege(Array.isArray(a.auftraege) ? (a.auftraege as Auftrag[]) : []);
-      setFakten(Array.isArray(g.fakten) ? (g.fakten as Fakt[]) : []);
-    } catch { /* offline — der alte Stand bleibt stehen */ }
+      const [s, a, g] = await Promise.all([fetch('/api/jarvis/stapel?alle=1').then(r => r.json()), fetch('/api/jarvis/auftraege').then(r => r.json()), fetch('/api/jarvis/gedaechtnis').then(r => r.json())]);
+      setVorschlaege(Array.isArray(s.vorschlaege) ? s.vorschlaege : []); setAuftraege(Array.isArray(a.auftraege) ? a.auftraege : []); setFakten(Array.isArray(g.fakten) ? g.fakten : []);
+    } catch { /* offline — der alte Stand bleibt */ }
     setLaedt(false);
   }, []);
-
-  useEffect(() => { void laden(); }, [laden]);
-
-  // Der Stand des Gehirns — einmal beim Öffnen, er ändert sich selten.
-  useEffect(() => {
-    fetch('/api/jarvis/wissen').then(r => r.json()).then(d => { if (d.ok) setGehirn(d); }).catch(() => {});
-    fetch('/api/jarvis/verbrauch').then(r => r.json()).then(d => { if (d.ok) setKosten(d); }).catch(() => {});
-  }, []);
-
-  // Solange Aufträge laufen, kurz getaktet nachsehen — das ist der Moment,
-  // den Kevin sehen wollte. Danach hört das Nachfragen von selbst auf.
-  const inArbeit = auftraege.filter(a => a.status === 'laeuft' || a.status === 'offen');
-  useEffect(() => {
-    if (!inArbeit.length) return;
-    const iv = setInterval(() => { void laden(); }, 3000);
-    return () => clearInterval(iv);
-  }, [inArbeit.length, laden]);
-
-  // „Frisch fertig" heißt: in den letzten zehn Minuten beendet. Ältere Läufe
-  // stehen im Protokoll, nicht hier.
-  const frischFertig = auftraege.filter(a => (a.status === 'fertig' || a.status === 'fehler')
-    && Date.now() - Date.parse(a.zeit) < 10 * 60_000);
-  const offen = vorschlaege.filter(v => v.status === 'offen');
-  const erledigt = vorschlaege.filter(v => v.status !== 'offen').slice(0, 12);
-  const gruppen = Array.from(new Set(offen.map(v => v.gruppe)));
+  useEffect(() => { void laden(); fetch('/api/jarvis/verbrauch').then(r => r.json()).then(d => { if (d.ok) setKosten(d); }).catch(() => {}); }, [laden]);
+  const inArbeit = auftraege.filter(a => a.status === 'laeuft' || a.status === 'offen').length;
+  useEffect(() => { if (!inArbeit) return; const iv = setInterval(() => { void laden(); }, 3000); return () => clearInterval(iv); }, [inArbeit, laden]);
 
   async function entscheide(v: Vorschlag, entscheidung: 'freigeben' | 'ablehnen') {
     setBusy(v.id);
-    // Geänderte Felder zurück in die Form bringen, die das Werkzeug erwartet:
-    // was vorher eine Zahl war, bleibt eine Zahl.
-    const roh = aendern[v.id];
-    const eingabe = roh
-      ? Object.fromEntries(Object.entries(roh).map(([k, wert]) => {
-          const alt = v.eingabe[k];
-          return [k, typeof alt === 'number' && wert.trim() !== '' && isFinite(Number(wert)) ? Number(wert) : wert];
-        }))
-      : undefined;
-    try {
-      const r = await fetch('/api/jarvis/stapel', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: v.id, entscheidung, ...(eingabe ? { eingabe } : {}), ...(ablehnen[v.id] ? { grund: ablehnen[v.id] } : {}) }),
-      });
-      const d = await r.json();
-      setMeldung(d.ergebnis ?? (entscheidung === 'ablehnen' ? 'Abgelehnt.' : d.error ?? ''));
-    } catch { setMeldung('Nicht erreichbar.'); }
-    setBusy(null);
-    void laden();
+    const d = await fetch('/api/jarvis/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: v.id, entscheidung, ...(grund[v.id] ? { grund: grund[v.id] } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
+    setMeldung(d.ergebnis ?? (entscheidung === 'ablehnen' ? `Abgelehnt: ${v.titel}` : d.error ?? '')); setBusy(null); setOffenId(null); void laden();
   }
-
-  async function durcharbeiten(gruppe?: string) {
+  async function alleFreigeben(gruppe?: string) {
     setBusy(gruppe ?? 'alle');
-    try {
-      const r = await fetch('/api/jarvis/stapel', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ alle: true, ...(gruppe ? { gruppe } : {}) }),
-      });
-      const d = await r.json();
-      setMeldung(`${d.erledigt ?? 0} erledigt.`);
-    } catch { setMeldung('Nicht erreichbar.'); }
-    setBusy(null);
-    void laden();
+    const d = await fetch('/api/jarvis/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alle: true, ...(gruppe ? { gruppe } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
+    setMeldung(d.error ?? `${d.erledigt ?? 0} freigegeben und ausgeführt.`); setBusy(null); void laden();
   }
-
   async function vergiss(id: string) {
-    setBusy(id);
-    try {
-      const r = await fetch(`/api/jarvis/gedaechtnis?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-      const d = await r.json();
-      setMeldung(d.ok ? 'Vergessen.' : d.error ?? 'Ging nicht.');
-    } catch { setMeldung('Nicht erreichbar.'); }
-    setBusy(null);
-    void laden();
+    setBusy(id); await fetch(`/api/jarvis/gedaechtnis?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {}); setBusy(null); void laden();
   }
 
-  async function zurueck(id: string) {
-    setBusy(id);
-    try {
-      const r = await fetch('/api/jarvis/protokoll', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }),
-      });
-      const d = await r.json();
-      setMeldung(d.ok ? 'Zurückgenommen.' : d.error ?? 'Ging nicht.');
-    } catch { setMeldung('Nicht erreichbar.'); }
-    setBusy(null);
-    void laden();
-  }
+  const offen = vorschlaege.filter(v => v.status === 'offen');
+  const entschieden = vorschlaege.filter(v => v.status !== 'offen').slice(0, 10);
+  const gruppen = Array.from(new Set(offen.map(v => v.gruppe)));
+  const g = (id: string) => GRUPPE[id] ?? { label: id, href: '/os', farbe: C.inkLeise };
 
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 940, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
-        <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
+    <Seite titel="Aufträge & Freigaben" unter="Was Jarvis vorbereitet hat und auf dein Ja wartet. Ohne dich passiert nichts." rechts={<Link href="/os/stapel/voll" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Protokoll & Rückgängig ›</Link>}>
+      {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{meldung}</div>}
 
-        <Held
-          wert={String(offen.length)}
-          label={offen.length === 1 ? 'Vorschlag offen' : 'Vorschläge offen'}
-          farbe={offen.length === 0 ? C.gut : offen.length > 8 ? C.achtung : C.ink}
-          satz={laedt ? 'lädt …' : offen.length === 0
-            ? <>Nichts wartet auf dich. Jarvis hat alles erledigt, was er allein darf.</>
-            : <>Alles hier ist <b style={{ color: C.achtung }}>vorbereitet, aber nicht ausgeführt</b> — Geld, Ziele und Kompass gehen nie ohne dich.</>}
-          neben={[
-            { label: 'Gruppen', wert: String(gruppen.length) },
-            { label: 'zuletzt entschieden', wert: String(erledigt.length) },
-          ]}
-          kinder={offen.length > 1 ? (
-            <button onClick={() => durcharbeiten()} disabled={busy !== null} style={{ ...knopf('stark'), minHeight: 36 }}>
-              {busy === 'alle' ? 'arbeitet durch …' : `Alle ${offen.length} durcharbeiten`}
-            </button>
-          ) : undefined}
-        />
-
-        {meldung && (
-          <div style={{ background: C.aktivSanft, border: `1px solid ${C.aktiv}44`, borderRadius: RADIUS.bauteil, padding: `${A.m}px ${A.l}px`, fontSize: TYP.bedien, color: C.aktiv, marginBottom: A.l }}>
-            {meldung}
+      <Karte i={0} akzent={offen.length ? LEUCHT.achtung : undefined}>
+        <Ueberschrift farbe={offen.length ? LEUCHT.achtung : C.inkLeise} rechts={offen.length > 1 ? <Knopf onClick={() => alleFreigeben()} aus={busy === 'alle'}>Alle {offen.length} freigeben</Knopf> : `${offen.length} offen`}>Wartet auf dich</Ueberschrift>
+        {!laedt && offen.length === 0 && <Leer>Nichts offen. Jarvis legt hier ab, was er vorbereitet hat — du entscheidest.</Leer>}
+        {gruppen.map(gr => (
+          <div key={gr} style={{ marginTop: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '6px 0 2px' }}>
+              <Punkt farbe={g(gr).farbe} /><span style={{ fontSize: 12, fontWeight: 700, color: C.inkDim, letterSpacing: '.04em', textTransform: 'uppercase' }}>{g(gr).label}</span>
+              <Link href={g(gr).href} style={{ fontSize: 12, color: C.inkLeise, textDecoration: 'none' }}>lieber selbst ›</Link>
+              {offen.filter(v => v.gruppe === gr).length > 1 && <button onClick={() => alleFreigeben(gr)} disabled={busy === gr} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>alle in {g(gr).label} freigeben</button>}
+            </div>
+            <Liste>
+              {offen.filter(v => v.gruppe === gr).map(v => (
+                <div key={v.id}>
+                  <Zeile onClick={() => setOffenId(o => (o === v.id ? null : v.id))} aktiv={offenId === v.id} titel={v.titel} unter={v.anlass ?? `${v.vorher ? `${v.vorher} → ` : ''}${v.nachher}`}
+                    rechts={<span style={{ display: 'flex', gap: 6 }}><Knopf onClick={() => entscheide(v, 'freigeben')} aus={busy === v.id} farbe={LEUCHT.gut}>Freigeben</Knopf><Knopf leise onClick={() => entscheide(v, 'ablehnen')} aus={busy === v.id}>Ablehnen</Knopf></span>} />
+                  {offenId === v.id && (
+                    <div style={{ padding: '6px 2px 16px 2px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', fontSize: TYP.bedien, color: C.inkDim }}>
+                        {v.vorher && <><span style={{ color: C.inkLeise }}>vorher</span><span>{v.vorher}</span></>}
+                        <span style={{ color: C.inkLeise }}>nachher</span><span style={{ color: C.ink, fontWeight: 600 }}>{v.nachher}</span>
+                        <span style={{ color: C.inkLeise }}>Werkzeug</span><span style={{ fontFamily: SCHRIFT.mono, fontSize: 12 }}>{v.werkzeug}</span>
+                        <span style={{ color: C.inkLeise }}>seit</span><span>{her(v.zeit)}</span>
+                      </div>
+                      <input value={grund[v.id] ?? ''} onChange={e => setGrund(x => ({ ...x, [v.id]: e.target.value }))} placeholder="Grund fürs Ablehnen (optional) — Jarvis lernt daraus" style={{ ...feld, marginTop: 12 }} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </Liste>
           </div>
-        )}
+        ))}
+      </Karte>
 
-        {/* ── Was gerade läuft ────────────────────────────────────────────
-            Nur sichtbar, wenn wirklich etwas läuft oder gerade fertig wurde.
-            Eine ruhige Seite, wenn nichts los ist. */}
-        {(inArbeit.length > 0 || frischFertig.length > 0) && (
-          <section style={{ marginBottom: A.xl }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: A.m, marginBottom: A.m, flexWrap: 'wrap' }}>
-              <span style={MIKRO}>Im Hintergrund</span>
-              {inArbeit.length > 0 && (
-                <span style={{ fontSize: TYP.bedien, color: C.aktiv }}>
-                  {auftraege.filter(a => a.status === 'laeuft').length} laufen gleichzeitig
-                  {auftraege.filter(a => a.status === 'offen').length > 0 && `, ${auftraege.filter(a => a.status === 'offen').length} warten` }
-                </span>
-              )}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))', gap: A.s }}>
-              {[...inArbeit, ...frischFertig].slice(0, 24).map(a => {
-                const farbe = a.status === 'laeuft' ? C.aktiv : a.status === 'fehler' ? C.kritisch : a.status === 'fertig' ? C.gut : C.inkLeise;
-                return (
-                  <div key={a.id} title={a.ergebnis ?? a.fehler ?? a.auftrag ?? ''}
-                    style={{ background: T.panel, border: `1px solid ${a.status === 'laeuft' ? C.aktiv : C.linie}`, borderRadius: RADIUS.bauteil, padding: `${A.m}px ${A.l}px`, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: A.s }}>
-                      <span style={{ width: 6, height: 6, borderRadius: 3, background: farbe, flex: '0 0 auto' }} />
-                      <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 600, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
-                    </div>
-                    <div style={{ fontFamily: T.mono, fontSize: TYP.mikro, color: farbe, marginTop: 3 }}>
-                      {a.status === 'laeuft' ? 'läuft …' : a.status === 'offen' ? 'wartet' : a.status === 'fehler' ? 'fehlgeschlagen' : 'fertig'}
-                    </div>
-                    {a.status === 'fertig' && a.ergebnis && (
-                      <div style={{ fontSize: TYP.mikro, color: C.inkLeise, marginTop: 4, lineHeight: 1.4, maxHeight: 46, overflow: 'hidden' }}>
-                        {a.ergebnis.slice(0, 110)}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {gruppen.map(g => {
-          const drin = offen.filter(v => v.gruppe === g);
-          return (
-            <section key={g} style={{ marginBottom: A.xl }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: A.m, marginBottom: A.m, flexWrap: 'wrap' }}>
-                <span style={MIKRO}>{GRUPPE_LABEL[g] ?? g}</span>
-                <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{drin.length}</span>
-                {drin.length > 1 && (
-                  <button onClick={() => durcharbeiten(g)} disabled={busy !== null}
-                    style={{ ...knopf('ruhig'), marginLeft: 'auto', minHeight: 30, fontSize: TYP.mikro }}>
-                    {busy === g ? 'läuft …' : 'Gruppe durcharbeiten'}
-                  </button>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: A.m }}>
-                {drin.map(v => {
-                  const felder = aendern[v.id];
-                  return (
-                    <div key={v.id} style={{ background: T.panel, border: `1px solid ${C.linie}`, borderLeft: `3px solid ${C.achtung}`, borderRadius: RADIUS.behaelter, padding: `${A.l}px ${A.xl}px` }}>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: A.m, flexWrap: 'wrap' }}>
-                        <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 600, color: C.ink }}>{v.titel}</span>
-                        <span style={{ fontFamily: T.mono, fontSize: TYP.mikro, color: C.inkLeise }}>{uhr(v.zeit)}</span>
-                      </div>
-
-                      {/* Vorher → Nachher: aus demselben Lesevorgang wie die Ausführung */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: A.m, flexWrap: 'wrap', margin: `${A.m}px 0` }}>
-                        {v.vorher && <span style={{ ...ZIFFERN, fontSize: TYP.body, color: C.inkLeise, textDecoration: 'line-through' }}>{v.vorher}</span>}
-                        {v.vorher && <span style={{ color: C.inkLeise }}>→</span>}
-                        <span style={{ ...ZIFFERN, fontSize: TYP.body, fontWeight: 600, color: C.ink }}>{v.nachher}</span>
-                      </div>
-
-                      {v.anlass && (
-                        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: A.m }}>
-                          {/* Kam der Vorschlag aus einem Lauf, ist der Anlass
-                              Jarvis' Herleitung — nicht Kevins Satz. „Weil du
-                              gesagt hast" wäre dann schlicht falsch. */}
-                          {v.quelle === 'lauf' ? `Jarvis: ${v.anlass}` : `weil du gesagt hast: „${v.anlass}"`}
-                        </div>
-                      )}
-
-                      {/* Ändern und freigeben — die Felder, die das Werkzeug bekommt */}
-                      {felder && (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: A.s, marginBottom: A.m }}>
-                          {Object.entries(felder).map(([k, wert]) => (
-                            <label key={k} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                              <span style={MIKRO}>{k}</span>
-                              <input value={wert} onChange={e => setAendern(a => ({ ...a, [v.id]: { ...a[v.id], [k]: e.target.value } }))}
-                                style={{ background: C.grund, border: `1px solid ${C.linie}`, borderRadius: RADIUS.bauteil, padding: '7px 10px', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, outline: 'none' }} />
-                            </label>
-                          ))}
-                        </div>
-                      )}
-
-                      {ablehnen[v.id] !== undefined && (
-                        <input value={ablehnen[v.id]} autoFocus placeholder="Warum nicht? Jarvis liest das."
-                          onChange={e => setAblehnen(a => ({ ...a, [v.id]: e.target.value }))}
-                          style={{ width: '100%', background: C.grund, border: `1px solid ${C.linie}`, borderRadius: RADIUS.bauteil, padding: '8px 11px', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, outline: 'none', marginBottom: A.m }} />
-                      )}
-
-                      <div style={{ display: 'flex', gap: A.s, flexWrap: 'wrap' }}>
-                        <button onClick={() => entscheide(v, 'freigeben')} disabled={busy !== null} style={knopf('stark')}>
-                          {busy === v.id ? '…' : felder ? '✓ Ändern und freigeben' : '✓ Freigeben'}
-                        </button>
-                        {!felder && (
-                          <button onClick={() => setAendern(a => ({ ...a, [v.id]: Object.fromEntries(Object.entries(v.eingabe).map(([k, w]) => [k, String(w ?? '')])) }))}
-                            disabled={busy !== null} style={knopf('ruhig')}>Ändern</button>
-                        )}
-                        <button onClick={() => ablehnen[v.id] === undefined ? setAblehnen(a => ({ ...a, [v.id]: '' })) : entscheide(v, 'ablehnen')}
-                          disabled={busy !== null} style={knopf('weg')}>
-                          {ablehnen[v.id] === undefined ? 'Ablehnen' : 'Ablehnung abschicken'}
-                        </button>
-                        {SELBST[v.gruppe] && (
-                          <Link href={SELBST[v.gruppe].href} style={{ ...knopf('weg'), display: 'inline-flex', alignItems: 'center', textDecoration: 'none', marginLeft: 'auto' }}>
-                            Selbst machen — {SELBST[v.gruppe].label} ›
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
-
-        {/* ── Das Gehirn: woraus er sein Wissen zieht ── */}
-        {gehirn && (
-          <section style={{ marginTop: A.xxl }}>
-            <div style={{ ...MIKRO, marginBottom: A.s }}>Sein Gehirn</div>
-            <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
-              <b style={{ color: C.ink }}>{gehirn.notizen} Notizen</b> aus deinen drei Vaults durchsuchbar.
-              {' '}{gehirn.dubletten} Kopien übersprungen, {gehirn.privatUebersprungen} private Pfade gar nicht erst geöffnet.
-            </div>
-          </section>
-        )}
-
-        {/* ── Was das kostet ────────────────────────────────────────────────
-            Damit Kevin nach vier Wochen weiß, welcher Agent die Rechnung
-            treibt — und nicht aus Unsicherheit alles abschaltet. */}
-        {kosten && kosten.summeCent > 0 && (
-          <section style={{ marginTop: A.xl }}>
-            <div style={{ ...MIKRO, marginBottom: A.s }}>Was die KI kostet</div>
-            <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
-              Heute <b style={{ ...ZIFFERN, color: C.ink }}>{(kosten.heuteCent / 100).toFixed(2)} $</b>,
-              in 30 Tagen <b style={{ ...ZIFFERN, color: C.ink }}>{(kosten.summeCent / 100).toFixed(2)} $</b>.
-              {kosten.jeZweck.length > 0 && (
-                <> Am meisten: {kosten.jeZweck.slice(0, 3).map(z => `${z.zweck} (${(z.cent / 100).toFixed(2)} $, ${z.anzahl}×)`).join(' · ')}.</>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* ── Was Jarvis sich gemerkt hat ──────────────────────────────────
-            Kevins Bedingung: sofort merken, dafür sichtbar und löschbar. */}
-        {fakten.length > 0 && (
-          <section style={{ marginTop: A.xxl }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: A.m, marginBottom: A.m }}>
-              <span style={MIKRO}>Was Jarvis sich gemerkt hat</span>
-              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{fakten.length}</span>
-            </div>
-            <div style={{ background: T.panel, border: `1px solid ${C.linie}`, borderRadius: RADIUS.behaelter, overflow: 'hidden' }}>
-              {fakten.slice(0, 40).map((f, i) => (
-                <div key={f.id} style={{ display: 'flex', alignItems: 'baseline', gap: A.m, padding: `${A.m}px ${A.l}px`, borderTop: i ? `1px solid ${C.linieWeich}` : 'none', flexWrap: 'wrap' }}>
-                  <span style={{ fontFamily: T.mono, fontSize: TYP.mikro, color: C.inkLeise, width: 78, flex: '0 0 auto' }}>{f.art}</span>
-                  <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.ink, flex: '0 0 auto' }}>{f.thema}</span>
-                  <span style={{ fontSize: TYP.bedien, color: C.inkDim, flex: 1, minWidth: 160 }}>{f.satz}</span>
-                  {f.bis && <span style={{ fontFamily: T.mono, fontSize: TYP.mikro, color: C.achtung }}>bis {f.bis}</span>}
-                  <button onClick={() => vergiss(f.id)} disabled={busy !== null} title="Stimmt nicht — vergessen"
-                    style={{ ...knopf('weg'), minHeight: 28, fontSize: TYP.mikro }}>vergessen</button>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ── Was Jarvis von allein getan hat ── */}
-        <section style={{ marginTop: A.xxl }}>
-          <div style={{ ...MIKRO, marginBottom: A.m }}>Was Jarvis getan hat</div>
-          {!protokoll.length ? (
-            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch nichts protokolliert.</div>
-          ) : (
-            <div style={{ background: T.panel, border: `1px solid ${C.linie}`, borderRadius: RADIUS.behaelter, overflow: 'hidden' }}>
-              {protokoll.map((e, i) => (
-                <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: A.m, padding: `${A.m}px ${A.l}px`, borderTop: i ? `1px solid ${C.linieWeich}` : 'none', flexWrap: 'wrap' }}>
-                  <span style={{ width: 6, height: 6, borderRadius: 3, background: e.ok ? C.gut : C.kritisch, flex: '0 0 auto' }} />
-                  <span style={{ fontFamily: T.mono, fontSize: TYP.mikro, color: C.inkLeise, width: 44, flex: '0 0 auto' }}>{uhr(e.zeit)}</span>
-                  {/* Nur die erste Zeile: eine gelesene Notiz bringt sonst
-                      600 Zeichen mit und das Protokoll wird unlesbar. */}
-                  <span title={e.ergebnis} style={{ fontSize: TYP.bedien, color: C.inkDim, flex: 1, minWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {e.ergebnis.split('\n')[0].slice(0, 150)}
-                  </span>
-                  <span style={{ fontFamily: T.mono, fontSize: TYP.mikro, color: C.inkLeise, flex: '0 0 auto' }}>
-                    {e.quelle === 'stapel' ? 'nach Freigabe' : 'von allein'}
-                  </span>
-                  {e.zurueckgenommenAm
-                    ? <span style={{ fontFamily: T.mono, fontSize: TYP.mikro, color: C.inkLeise }}>zurückgenommen</span>
-                    : e.ruecknahme
-                      ? <button onClick={() => zurueck(e.id)} disabled={busy !== null} style={{ ...knopf('weg'), minHeight: 28, fontSize: TYP.mikro }}>↺ {e.ruecknahme.text}</button>
-                      : null}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14 }}>
+        <Karte i={1}>
+          <Ueberschrift farbe={inArbeit ? LEUCHT.puls : C.inkLeise} rechts={inArbeit ? `${inArbeit} in Arbeit` : undefined}>Der Arbeiter</Ueberschrift>
+          <Liste>
+            {auftraege.length === 0 && <Leer>Noch kein Auftrag.</Leer>}
+            {auftraege.slice(0, 8).map(a => <Zeile key={a.id} links={<Punkt farbe={STATUS[a.status]?.farbe ?? C.inkLeise} />} titel={a.auftrag ?? a.name} unter={`${a.name} · ${her(a.zeit)}${a.fehler ? ` · ${a.fehler}` : a.ergebnis ? ` · ${a.ergebnis.slice(0, 80)}` : ''}`} rechts={<Chip farbe={STATUS[a.status]?.farbe ?? C.inkLeise}>{STATUS[a.status]?.label ?? a.status}</Chip>} />)}
+          </Liste>
+        </Karte>
+        <Karte i={2}>
+          <Ueberschrift farbe={LEUCHT.schlaf}>Zuletzt entschieden</Ueberschrift>
+          <Liste>
+            {entschieden.length === 0 && <Leer>Noch nichts entschieden.</Leer>}
+            {entschieden.map(v => <Zeile key={v.id} links={<Punkt farbe={STATUS[v.status]?.farbe ?? C.inkLeise} />} titel={v.titel} unter={`${g(v.gruppe).label} · ${her(v.zeit)}${v.grund ? ` · ${v.grund}` : v.ergebnis ? ` · ${v.ergebnis.slice(0, 80)}` : ''}`} rechts={<Chip farbe={STATUS[v.status]?.farbe ?? C.inkLeise}>{STATUS[v.status]?.label ?? v.status}</Chip>} />)}
+          </Liste>
+        </Karte>
       </div>
-    </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14 }}>
+        <Karte i={3}>
+          <Ueberschrift farbe={LEUCHT.agenten} rechts={`${fakten.length}`}>Gedächtnis</Ueberschrift>
+          <Liste>
+            {fakten.length === 0 && <Leer>Jarvis hat sich noch nichts gemerkt. Sag ihm „merk dir …".</Leer>}
+            {fakten.slice(0, 10).map(f => <Zeile key={f.id} titel={f.satz} unter={`${f.thema} · ${f.tag}`} rechts={<button onClick={() => vergiss(f.id)} disabled={busy === f.id} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>vergessen</button>} />)}
+          </Liste>
+        </Karte>
+        <Karte i={4}>
+          <Ueberschrift farbe={LEUCHT.geld}>Verbrauch der KI</Ueberschrift>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 12 }}>
+            <Zahl wert={kosten ? eur(kosten.heuteCent / 100) : undefined} label="heute" farbe={LEUCHT.geld} />
+            <Zahl wert={kosten ? eur(kosten.summeCent / 100) : undefined} label="insgesamt" />
+          </div>
+          {(kosten?.jeZweck ?? []).slice(0, 5).map(z => (
+            <div key={z.zweck} style={{ display: 'grid', gridTemplateColumns: 'minmax(80px,130px) 1fr 64px', alignItems: 'center', gap: 10, padding: '4px 0' }}>
+              <span style={{ fontSize: 12.5, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.zweck}</span>
+              <Fortschritt anteil={z.cent / Math.max(kosten!.jeZweck[0]?.cent ?? 1, 1)} farbe={LEUCHT.geld} />
+              <span style={{ fontFamily: SCHRIFT.display, fontSize: 12.5, fontVariantNumeric: 'tabular-nums', color: C.inkDim, textAlign: 'right' }}>{eur(z.cent / 100)}</span>
+            </div>
+          ))}
+        </Karte>
+      </div>
+    </Seite>
   );
 }

@@ -35,7 +35,7 @@ const fpOf = (m: { sender: string; senderEmail?: string; subject: string; receiv
   `${(m.senderEmail ?? m.sender).toLowerCase().trim()}|${m.subject.toLowerCase().trim().slice(0, 80)}|${m.receivedAt.slice(0, 16)}`;
 
 const STUFE_META: Record<Stufe, { label: string; farbe: string; rang: number }> = {
-  wichtig: { label: 'Wichtig', farbe: '#21B5AA', rang: 0 },
+  wichtig: { label: 'Wichtig', farbe: '#58D9CD', rang: 0 },
   normal: { label: 'Normal', farbe: '#96A8A2', rang: 1 },
   rauschen: { label: 'Rauschen', farbe: '#5A6B66', rang: 3 },
 };

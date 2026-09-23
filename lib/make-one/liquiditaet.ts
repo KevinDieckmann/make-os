@@ -112,7 +112,7 @@ export interface Planposten {
 
 /** Die Kategorien, in denen bei uns gedacht wird. */
 export const KATEGORIEN: { id: string; label: string; farbe: string; art: 'ein' | 'aus' }[] = [
-  { id: 'mandat', label: 'Mandate & Honorare', farbe: '#21B5AA', art: 'ein' },
+  { id: 'mandat', label: 'Mandate & Honorare', farbe: '#58D9CD', art: 'ein' },
   { id: 'produkt', label: 'Produkte & Lizenzen', farbe: '#4A6CF7', art: 'ein' },
   { id: 'sonstige-ein', label: 'Sonstige Einnahmen', farbe: '#8A7CE0', art: 'ein' },
   { id: 'personal', label: 'Personal & Gehälter', farbe: '#DE9E63', art: 'aus' },

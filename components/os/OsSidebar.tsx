@@ -146,7 +146,7 @@ export function OsSidebar() {
       {/* Marke + Einklappen */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: schmal ? 'center' : 'space-between', gap: 8, padding: schmal ? '0 0 14px' : '0 6px 14px', flexDirection: schmal ? 'column' : 'row' }}>
         <Link href="/os/start" style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', minWidth: 0 }}>
-          <span style={{ width: 26, height: 26, borderRadius: 8, flex: '0 0 auto', display: 'grid', placeItems: 'center', background: 'radial-gradient(circle at 30% 30%, #BFF5EF, #21B5AA 60%, rgba(33,181,170,.25))', fontFamily: T.mono, fontSize: 11, fontWeight: 700, color: T.void }}>OS</span>
+          <span style={{ width: 26, height: 26, borderRadius: 8, flex: '0 0 auto', display: 'grid', placeItems: 'center', background: 'radial-gradient(circle at 30% 30%, #BFF5EF, #58D9CD 60%, rgba(33,181,170,.25))', fontFamily: T.mono, fontSize: 11, fontWeight: 700, color: T.void }}>OS</span>
           {!schmal && (
             <span style={{ lineHeight: 1.25, minWidth: 0 }}>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 700, letterSpacing: '-.01em', color: T.ink }}>MAKE OS</span>

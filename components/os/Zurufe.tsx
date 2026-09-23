@@ -17,7 +17,7 @@ const MERKER_ZEIT = 'make-os-zuruf-zeit';
 const MERKER_GEZEIGT = 'make-os-zuruf-gezeigt';
 
 const FARBE: Record<Zuruf['art'], string> = {
-  liebe: '#E8695E',
+  liebe: '#FF5C5C',
   mindset: T.accent,
   ruhe: '#58D9CD',
 };

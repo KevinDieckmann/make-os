@@ -29,7 +29,7 @@ export const THEMEN: Thema[] = [
     id: 'umsatz',
     label: 'Umsatz & Cashflow',
     satz: 'Geld verdienen und Liquidität sichern — der Motor.',
-    farbe: '#21B5AA',
+    farbe: '#58D9CD',
     muster: /rechnung|kunde|mandat|cashflow|umsatz|sales|pipeline|crm|kontakt|netzwerk|investor|förder|kredit|zahlung|budget|schulden|preis|produkt.?paket|akquise|angebot|honorar/i,
   },
   {

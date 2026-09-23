@@ -646,8 +646,8 @@ export function SaeuleView({ keyName }: { keyName: string }) {
   return (
     <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
-        <Link href="/os/performance" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>
-          ‹ Performance-Index
+        <Link href="/os/wachstum" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>
+          ‹ Wachstum
         </Link>
         <Seitenkopf
           rubrik={<>{meta.titel}</>}

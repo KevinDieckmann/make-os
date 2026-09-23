@@ -24,7 +24,7 @@ export const ORGS: Organisation[] = [
   {
     id: 'kdc', label: 'Kevin Dieckmann Consulting', kurz: 'Selbständigkeit',
     satz: 'Die Selbständigkeit — das Einzelunternehmen, das heute verdient.',
-    farbe: '#21B5AA',
+    farbe: '#58D9CD',
     muster: /selbst[äa]ndig|consulting|einzelunternehm|freiberuf/i,
   },
   {

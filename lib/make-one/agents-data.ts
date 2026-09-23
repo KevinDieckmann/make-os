@@ -28,7 +28,7 @@ export const ORCHESTRATOR = {
 
 export const DEPARTMENTS: Department[] = [
   {
-    id: 'ops', name: 'Operations', mission: 'Alles am Laufen halten — Inbox, Aufgaben, Zeit, Wissen.', color: '#21B5AA', lead: 'Ops Lead',
+    id: 'ops', name: 'Operations', mission: 'Alles am Laufen halten — Inbox, Aufgaben, Zeit, Wissen.', color: '#58D9CD', lead: 'Ops Lead',
     agents: [
       { id: 'inbox', name: 'Inbox-Agent', role: 'Postfach triagieren & Antworten entwerfen', status: 'live', autonomy: 'entwurf', model: 'ausgewogen', gate: 'Versand ✋', href: '/os/inbox',
         funktionen: ['Triage nach Dringlichkeit', 'Zusammenfassung + Kontext', 'Antwort-Entwurf in deiner Stimme', 'In Aufgabe/Delegation wandeln'],

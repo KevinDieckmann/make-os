@@ -10,19 +10,19 @@
 :root {
   /* Klar-Dark-Tokens (Rohwerte) */
   --bg:            #0B0E10;
-  --surface:       #14181B;
-  --surface-2:     #191E21;
-  --border-hair:   #232A2D;
-  --border-soft:   #1A2023;
+  --surface:       #161B1F;
+  --surface-2:     #1B2126;
+  --border-hair:   rgba(255,255,255,.07);
+  --border-soft:   rgba(255,255,255,.05);
   --ink:           #E8ECEA;
   --ink-dim:       #A2ADB0;
   --faint:         #6E7A7D;
-  --accent:        #21B5AA;
-  --accent-ink:    #58D9CD;
-  --accent-soft:   rgba(33,181,170,.13);
-  --good:          #2FB57A;
-  --warn:          #D9A441;
-  --crit:          #E8695E;
+  --accent:        #58D9CD;
+  --accent-ink:    #7FE6DC;
+  --accent-soft:   rgba(88,217,205,.14);
+  --good:          #3DE28B;
+  --warn:          #FFC93C;
+  --crit:          #FF5C5C;
   --mono-font:     ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
 
   /* shadcn/Radix compat — auf Klar-Dark gemappt (HSL) */

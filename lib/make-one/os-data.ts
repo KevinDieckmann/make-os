@@ -4,19 +4,22 @@
 
 // „Klar"-Palette · DARK — kühl, präzise, ein Petrol-Akzent. Spiegelt globals.css.
 export const THEME = {
-  void: '#0B0E10', panel: '#14181B', panel2: '#191E21',
-  line: '#232A2D', lineSoft: '#1A2023', lineHot: 'rgba(33,181,170,.34)',
+  // 24.09. (Kevin: „N26 und Whoop"): dieselben Werte wie das Design-System —
+  // weichere Flächen, Haarlinien fast unsichtbar, Zustandsfarben leuchtend,
+  // die eingebettete Schrift. Alte Seiten erben das ohne Umbau.
+  void: '#0B0E10', panel: '#161B1F', panel2: '#1B2126',
+  line: 'rgba(255,255,255,.07)', lineSoft: 'rgba(255,255,255,.05)', lineHot: 'rgba(88,217,205,.34)',
   ink: '#E8ECEA', inkDim: '#A2ADB0', muted: '#6E7A7D',
-  accent: '#21B5AA', accentSoft: 'rgba(33,181,170,.13)', accentInk: '#58D9CD',
-  amber: '#D9A441', crit: '#E8695E',
+  accent: '#58D9CD', accentSoft: 'rgba(88,217,205,.14)', accentInk: '#7FE6DC',
+  amber: '#FFC93C', crit: '#FF5C5C',
   track: 'rgba(255,255,255,.08)',
   mono: 'ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace',
-  sans: '-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif',
+  sans: 'var(--schrift-text),-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif',
 };
 
 // Farb-Logik für Scores (semantisch, ruhig)
 export function scoreColor(v: number): string {
-  if (v >= 60) return THEME.accent;
+  if (v >= 60) return '#3DE28B';
   if (v >= 40) return THEME.amber;
   return THEME.crit;
 }

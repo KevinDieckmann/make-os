@@ -342,7 +342,7 @@ export function JarvisPanel() {
   if (!fenster.offen) {
     return (
       <button onClick={() => setFenster(f => ({ ...f, offen: true }))} aria-label="Jarvis öffnen" title="Jarvis" className="jarvis-fab"
-        style={{ position: 'fixed', right: 22, bottom: 22, zIndex: 70, width: 52, height: 52, borderRadius: '50%', border: `1px solid ${T.lineHot}`, background: T.panel, cursor: 'pointer', display: 'grid', placeItems: 'center', boxShadow: '0 8px 30px rgba(0,0,0,.45)' }}>
+        style={{ position: 'fixed', right: 22, bottom: 22, zIndex: 70, width: 52, height: 52, borderRadius: '50%', border: 'none', background: 'linear-gradient(165deg,#1A2024,#12171A)', cursor: 'pointer', display: 'grid', placeItems: 'center', boxShadow: `0 8px 30px rgba(0,0,0,.45), 0 0 26px ${T.accent}33, inset 0 1px 0 rgba(255,255,255,.08)` }}>
         <Orb size={30} puls />
         {(thinking || stimme.hoert || stimme.spricht) && <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', background: stimme.hoert ? T.crit : stimme.spricht ? T.accent : T.amber }} />}
       </button>
@@ -362,19 +362,19 @@ export function JarvisPanel() {
         const f = e.dataTransfer.files?.[0];
         if (f) void belegLesen(f);
       }}
-      style={{ position: 'fixed', right: fenster.right, bottom: fenster.bottom, width: `min(${fenster.w}px, calc(100vw - 16px))`, height: `min(${fenster.h}px, calc(100vh - 16px))`, zIndex: 70, display: 'flex', flexDirection: 'column', background: T.void, border: `1px solid ${ueberDatei ? T.accent : T.lineHot}`, borderRadius: 16, boxShadow: '0 24px 70px rgba(0,0,0,.55)', overflow: 'hidden' }}>
+      style={{ position: 'fixed', right: fenster.right, bottom: fenster.bottom, width: `min(${fenster.w}px, calc(100vw - 16px))`, height: `min(${fenster.h}px, calc(100vh - 16px))`, zIndex: 70, display: 'flex', flexDirection: 'column', background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: `1px solid ${ueberDatei ? T.accent : 'rgba(255,255,255,.08)'}`, borderRadius: 20, boxShadow: `0 24px 70px rgba(0,0,0,.55), 0 0 40px -10px ${T.accent}44, inset 0 1px 0 rgba(255,255,255,.06)`, overflow: 'hidden' }}>
       {ueberDatei && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 5, background: `${T.accent}14`, border: `2px dashed ${T.accent}`, borderRadius: 16, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 5, background: `${T.accent}14`, border: `2px dashed ${T.accent}`, borderRadius: 20, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
           <span style={{ fontSize: 13.5, fontWeight: 600, color: T.accentInk }}>Beleg loslassen — ich lese die Zahlen heraus</span>
         </div>
       )}
       {/* Zieh-Ecke: stufenlos so groß, wie du arbeiten willst */}
       <div onPointerDown={zugStart('groesse')} title="Ziehen zum Vergrößern"
-        style={{ position: 'absolute', top: 0, left: 0, width: 26, height: 26, cursor: 'nwse-resize', zIndex: 3, borderTop: `2px solid ${T.accent}55`, borderLeft: `2px solid ${T.accent}55`, borderTopLeftRadius: 16 }} />
+        style={{ position: 'absolute', top: 0, left: 0, width: 26, height: 26, cursor: 'nwse-resize', zIndex: 3, borderTop: `2px solid ${T.accent}55`, borderLeft: `2px solid ${T.accent}55`, borderTopLeftRadius: 20 }} />
 
       {/* Kopf — am Kopf packst du das Fenster und schiebst es, wohin du willst */}
       <div onPointerDown={zugStart('ort')}
-        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px 10px 20px', borderBottom: `1px solid ${T.line}`, background: T.panel, cursor: 'grab', touchAction: 'none' }}>
+        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px 10px 20px', borderBottom: `1px solid ${T.line}`, background: 'rgba(255,255,255,.03)', cursor: 'grab', touchAction: 'none' }}>
         <Orb size={26} puls={stimme.hoert || stimme.spricht} />
         <div style={{ minWidth: 0, flex: '0 0 auto' }}>
           <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.04em' }}>JARVIS</div>
@@ -435,7 +435,7 @@ export function JarvisPanel() {
 
       {/* Verlauf — alle Gespräche, jederzeit wieder aufmachbar */}
       {zeigeVerlauf && (
-        <div style={{ flex: 1, overflowY: 'auto', background: T.panel2 }}>
+        <div style={{ flex: 1, overflowY: 'auto', background: 'transparent' }}>
           <div style={{ ...lbl, padding: '12px 16px 6px' }}>Verlauf · {alle.length} {alle.length === 1 ? 'Gespräch' : 'Gespräche'}</div>
           {!alle.length && <div style={{ padding: '18px 16px', fontSize: 12.5, color: T.muted }}>Noch nichts gespeichert. Ab jetzt bleibt jedes Gespräch hier liegen.</div>}
           {alle.map(g => (
@@ -463,7 +463,7 @@ export function JarvisPanel() {
           </div>
         )}
         {convo.map((m, i) => m.role === 'user'
-          ? <div key={i} style={{ alignSelf: 'flex-end', maxWidth: '88%', background: T.accentSoft, border: `1px solid ${T.lineHot}`, color: T.ink, borderRadius: '12px 12px 4px 12px', padding: '8px 12px', fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{m.text}</div>
+          ? <div key={i} style={{ alignSelf: 'flex-end', maxWidth: '88%', background: T.accentSoft, border: `1px solid ${T.lineHot}`, color: T.ink, borderRadius: '16px 16px 6px 16px', padding: '9px 13px', fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{m.text}</div>
           : <div key={i} style={{ maxWidth: '96%' }}>
               <div style={{ ...lbl, marginBottom: 5, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ color: T.accent }}>JARVIS</span>
@@ -498,7 +498,7 @@ export function JarvisPanel() {
       )}
 
       {/* Eingabe */}
-      <div style={{ padding: '10px 12px 12px', borderTop: `1px solid ${T.line}`, background: T.panel }}>
+      <div style={{ padding: '10px 12px 12px', borderTop: `1px solid ${T.line}`, background: 'rgba(255,255,255,.03)' }}>
         {/* ── Beleg: gelesen, noch nicht gebucht ── */}
         {belegLaeuft && belegLaeuft !== 'speichern' && (
           <div style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, marginBottom: 7 }}>
@@ -562,7 +562,7 @@ export function JarvisPanel() {
           </div>
         )}
         {stimme.fehler && <div style={{ fontSize: 11, color: T.amber, marginBottom: 6 }}>{stimme.fehler}</div>}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 9, background: T.panel2, border: `1px solid ${stimme.hoert ? T.crit : T.line}`, borderRadius: 11, padding: '8px 10px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 9, background: 'rgba(255,255,255,.05)', border: `1px solid ${stimme.hoert ? T.crit : 'rgba(255,255,255,.06)'}`, borderRadius: 14, padding: '8px 10px' }}>
           <textarea value={ask} onChange={e => setAsk(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && ask.trim() && !thinking) { e.preventDefault(); send(ask.trim()); } }}
             placeholder={stimme.hoert ? 'Sprich einfach …' : 'Sprich mit Jarvis …'} aria-label="Nachricht an Jarvis" rows={fenster.h > 640 ? 2 : 1} disabled={thinking}

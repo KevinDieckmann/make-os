@@ -197,6 +197,24 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Gesundheit → /os/gesundheit, Business/Planung/Beziehung → ihre Säulen-Seite,
 > Finanzen → /os/finanzen, Agenten → /os/agenten, der große Ring → Wachstum.
 
+> **Nachtrag 24.09., das Erscheinungsbild überall.** Kevin: *„passe überall
+> das CI an, auch Jarvis und die Agenten, das muss viel besser aussehen. N26
+> und Whoop."* Drei Stufen: (1) Die gemeinsamen Werte gehoben — `THEME` in
+> os-data.ts und `FARBE` in design.ts tragen jetzt dieselben Leuchtfarben
+> (grün/gelb/rot), weichere Flächen, fast unsichtbare Haarlinien und die
+> eingebettete Schrift; alte Hex-Werte in 14 Dateien ersetzt; der Seitenkopf
+> aller 35 Arbeitsseiten hat den großen, fetten Titel. Damit erben rund 60
+> alte Ansichten das Bild ohne Umbau. (2) Neu gebaut im lebendigen Muster:
+> **Agenten** (Agenten-Score als Ring, letzte Läufe, je Abteilung eine Karte,
+> Agenten aufklappbar mit Autonomie/Modell/Status), **Aufträge & Freigaben**
+> (offene Vorschläge je Gruppe mit Freigeben/Ablehnen, Arbeiter, Entschiedenes,
+> Gedächtnis, Verbrauch; alter Bau mit Protokoll/Rückgängig unter
+> `/os/stapel/voll`), **Loops**, **Verbindungen**. (3) Das Jarvis-Panel mit
+> Tiefe und Glow, der Empfang erbt die Farben. Nicht neu gebaut, nur gehoben:
+> Kalender, Kompass, Planung, Säulen-Seiten, Zahlen-Unterseiten, Board,
+> Meeting, Netzwerk, Prospecting, Bauplan, Roadmap, Onboarding, Research,
+> Content, Datenbasis, Stammdaten, Startfläche, Übersicht (alt).
+
 Jede Phase hat ein Ziel in einem Satz, eine Fertig-Bedingung, und eine Liste,
 was **bewusst nicht** darin ist. Grobe Größe in Arbeitstagen — ehrlich grob.
 

@@ -46,7 +46,7 @@ export interface Chance {
 }
 
 export const NAEHE_META: Record<Naehe, { label: string; farbe: string; /** Tage, nach denen man sich wieder melden sollte. */ takt: number }> = {
-  eng: { label: 'eng', farbe: '#21B5AA', takt: 30 },
+  eng: { label: 'eng', farbe: '#58D9CD', takt: 30 },
   warm: { label: 'warm', farbe: '#4A6CF7', takt: 90 },
   kalt: { label: 'lose', farbe: '#8A9BA8', takt: 180 },
 };
@@ -55,8 +55,8 @@ export const STUFEN: { id: Stufe; label: string; farbe: string; /** Grobe Abschl
   { id: 'kontakt', label: 'Erstkontakt', farbe: '#8A9BA8', quote: 0.1 },
   { id: 'gespraech', label: 'Im Gespräch', farbe: '#4A6CF7', quote: 0.3 },
   { id: 'angebot', label: 'Angebot', farbe: '#DE9E63', quote: 0.5 },
-  { id: 'verhandlung', label: 'Verhandlung', farbe: '#21B5AA', quote: 0.8 },
-  { id: 'gewonnen', label: 'Gewonnen', farbe: '#21B5AA', quote: 1 },
+  { id: 'verhandlung', label: 'Verhandlung', farbe: '#58D9CD', quote: 0.8 },
+  { id: 'gewonnen', label: 'Gewonnen', farbe: '#58D9CD', quote: 1 },
   { id: 'verloren', label: 'Verloren', farbe: '#5A6B66', quote: 0 },
 ];
 export const STUFE = Object.fromEntries(STUFEN.map(s => [s.id, s])) as Record<Stufe, typeof STUFEN[number]>;

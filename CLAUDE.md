@@ -72,7 +72,9 @@ lokal, Route `/os`, Port 3001.
   (`WachstumsKopf`) — der Score, auf den wir hinarbeiten; sechs Säulen
   (Gesundheit 35 · Business 20 · Finanzen 15 · Planung 10 · Beziehung 10 ·
   Agenten 10, Regel in `lib/agenten-score.ts`), jeder Ring ein Sprung auf
-  seine Seite. Alte Ansichten liegen unter
+  seine Seite. Alte Seiten erben das Bild über `THEME` (os-data.ts) =
+  `FARBE`/`LEUCHT` (design.ts); Agenten, Stapel, Loops, Verbindungen sind
+  neu gebaut, der alte Stapel liegt unter `/os/stapel/voll`. Alte Ansichten liegen unter
   `/os/uebersicht`, `/os/aufgaben/board` und `/os/inbox/voll`.
 - **`PLAN.md` ist der führende Plan (seit 18.09.2026).** Bestand bleibt und
   wird auf Hetzner hochgefahren; Reihenfolge Hochfahren → Aufgaben → CRM →

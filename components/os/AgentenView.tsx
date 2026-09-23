@@ -1,186 +1,154 @@
 'use client';
 
+// ─── MAKE OS — Agenten ──────────────────────────────────────────────────────
+// Jarvis dirigiert, darunter die Abteilungen. Seit 24.09. im lebendigen
+// Muster: der Agenten-Score als Ring, die letzten Läufe, je Abteilung eine
+// Karte mit den Agenten als Zeilen (Status, Autonomie als Chips), aufklappbar
+// für Autonomie, Modell, Status, Funktionen und Bauplan.
+
 import Link from 'next/link';
-import { AgentenHirn } from './AgentenHirn';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNachspeichern } from '@/lib/make-one/nachspeichern';
-import { THEME as T } from '@/lib/make-one/os-data';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import {
   DEPARTMENTS, ORCHESTRATOR, ARCHITEKTUR, REALITAET,
   STATUS_LABEL, AUTONOMY_LABEL, AUTONOMY_ORDER, MODEL_LABEL,
   type AgentStatus, type Autonomy, type ModelTier, type DeptAgent,
 } from '@/lib/make-one/agents-data';
-import { Seitenkopf } from './Seitenkopf';
+import { AgentenHirn } from './AgentenHirn';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Ring, Zahl, LEUCHT } from './schlank';
 
-interface Cfg { autonomy?: Autonomy; enabled?: boolean; model?: ModelTier; buildNext?: boolean; }
+interface Cfg { autonomy?: Autonomy; enabled?: boolean; model?: ModelTier; buildNext?: boolean }
 type CfgMap = Record<string, Cfg>;
+interface Lauf { id: string; agent: string; title: string; ts: string }
 
-const panel = { background: T.panel, border: `1px solid ${T.line}`, borderRadius: 14 };
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const statusColor = (s: AgentStatus) => (s === 'live' ? T.accent : s === 'teil' ? T.amber : T.muted);
-const autoColor = (a: Autonomy) => (a === 'autonom' ? T.accent : a === 'entwurf' ? T.accentInk : a === 'freigabe' ? T.amber : T.muted);
 const MODELS: ModelTier[] = ['schnell', 'ausgewogen', 'stark'];
+const statusFarbe = (s: AgentStatus) => (s === 'live' ? LEUCHT.gut : s === 'teil' ? LEUCHT.achtung : C.inkLeise);
+const autoFarbe = (a: Autonomy) => (a === 'autonom' ? LEUCHT.agenten : a === 'entwurf' ? LEUCHT.puls : a === 'freigabe' ? LEUCHT.achtung : C.inkLeise);
+const her = (iso: string) => { const min = Math.floor((Date.now() - Date.parse(iso)) / 60000); return min < 60 ? `vor ${Math.max(1, min)} min` : min < 1440 ? `vor ${Math.floor(min / 60)} h` : `vor ${Math.floor(min / 1440)} d`; };
+
+function Wahl({ an, farbe, onClick, children }: { an: boolean; farbe: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button onClick={onClick} className="fassbar" style={{ fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 600, padding: '6px 11px', borderRadius: 9, cursor: 'pointer', border: 'none', background: an ? `${farbe}22` : 'rgba(255,255,255,.05)', color: an ? farbe : C.inkDim, transition: 'background .15s ease, color .15s ease' }}>{children}</button>
+  );
+}
 
 export function AgentenView() {
   const [cfg, setCfg] = useState<CfgMap>({});
-  const [open, setOpen] = useState<string | null>(null);
+  const [offen, setOffen] = useState<string | null>(null);
+  const [laeufe, setLaeufe] = useState<Lauf[]>([]);
+  const [score, setScore] = useState<number | null | undefined>(undefined);
 
   useEffect(() => {
     fetch('/api/state/agents').then(r => r.json()).then((d: { config: CfgMap }) => setCfg(d.config ?? {})).catch(() => {});
+    fetch('/api/state/agent-log?limit=10').then(r => r.json()).then(d => setLaeufe(Array.isArray(d.entries) ? d.entries : [])).catch(() => {});
+    fetch('/api/performance').then(r => r.json()).then(d => { const s = (d.aktuell?.saeulen ?? []).find((x: { key: string }) => x.key === 'agents'); setScore(s ? s.score : null); }).catch(() => setScore(null));
   }, []);
+  const spaeter = useNachspeichern<CfgMap>(next => { fetch('/api/state/agents', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {}); }, 300);
+  const patch = (id: string, p: Cfg) => { const next: CfgMap = { ...cfg, [id]: { ...cfg[id], ...p } }; setCfg(next); spaeter(next); };
+  const eff = (a: DeptAgent) => { const c = cfg[a.id] ?? {}; return { autonomy: c.autonomy ?? a.autonomy, model: c.model ?? a.model, enabled: c.enabled !== false, buildNext: c.buildNext === true }; };
 
-  const spaeter = useNachspeichern<CfgMap>(next => {
-    fetch('/api/state/agents', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
-  }, 300);
-
-  function patch(id: string, p: Cfg) {
-    const next: CfgMap = { ...cfg, [id]: { ...cfg[id], ...p } };
-    setCfg(next);
-    spaeter(next);
-  }
-
-  const eff = (a: DeptAgent) => {
-    const c = cfg[a.id] ?? {};
-    return { autonomy: c.autonomy ?? a.autonomy, model: c.model ?? a.model, enabled: c.enabled !== false, buildNext: c.buildNext === true };
-  };
-
-  const all = DEPARTMENTS.flatMap(d => d.agents);
-  const liveCount = all.filter(a => a.status === 'live').length;
-  const buildCount = all.filter(a => (cfg[a.id]?.buildNext) === true).length;
-
-  const pill = (text: string, color: string) => (
-    <span style={{ fontFamily: T.mono, fontSize: 11, color, border: `1px solid ${color}55`, borderRadius: 5, padding: '2px 7px', whiteSpace: 'nowrap' }}>{text}</span>
-  );
-  // Der Schlüssel gehört ans Element — sonst warnt React bei jeder Liste.
-  const selBtn = (active: boolean, onClick: () => void, text: string, color = T.accent, key?: string) => (
-    <button key={key ?? text} onClick={onClick} style={{ fontFamily: T.sans, fontSize: 11.5, fontWeight: 600, padding: '5px 10px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${active ? color : T.line}`, background: active ? `${color}22` : 'transparent', color: active ? color : T.inkDim }}>{text}</button>
-  );
+  const alle = DEPARTMENTS.flatMap(d => d.agents);
+  const live = alle.filter(a => a.status === 'live').length;
+  const bauen = alle.filter(a => cfg[a.id]?.buildNext === true).length;
+  const woche = laeufe.filter(l => Date.now() - Date.parse(l.ts) < 7 * 86400_000).length;
+  const abteilungVon = (agentId: string) => DEPARTMENTS.find(d => d.agents.some(a => a.id === agentId));
 
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 1120, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 56px' }}>
-        <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
-        <Seitenkopf
-          rubrik={<>Agenten · verwalten & bauen</>}
-          titel={<>Deine Agenten-Abteilungen.</>}
-          satz={<>JARVIS dirigiert, {DEPARTMENTS.length} Abteilungen darunter. Klick einen Agenten auf, um <b style={{ color: T.ink }}>Autonomie, Modell & Freigaben einzustellen</b>, seine geplanten Funktionen zu sehen und ihn zum Bauen zu markieren. Wir schalten Abteilung für Abteilung live.</>}
-        />
-
-        <AgentenHirn />
-
-        {/* Orchestrator */}
-        <section style={{ ...panel, borderTop: `2px solid ${T.accent}`, padding: '18px 22px', margin: '20px 0 22px', display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ width: 42, height: 42, borderRadius: '50%', flex: '0 0 auto', background: 'radial-gradient(circle,rgba(33,181,170,.7),rgba(33,181,170,.15) 60%,transparent)', border: `1.5px solid ${T.accent}` }} />
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <div style={{ fontSize: 15.5, fontWeight: 700, color: T.ink }}>{ORCHESTRATOR.name}</div>
-            <div style={{ fontSize: 12, color: T.inkDim, marginTop: 3, lineHeight: 1.5 }}>{ORCHESTRATOR.note}</div>
+    <Seite titel="Agenten" unter={`${ORCHESTRATOR.name} dirigiert · ${DEPARTMENTS.length} Abteilungen · ${live} von ${alle.length} live`}>
+      <Karte i={0} akzent={LEUCHT.agenten}>
+        <Ueberschrift farbe={LEUCHT.agenten} rechts={<Link href="/os/wachstum" style={{ color: C.inkLeise, textDecoration: 'none' }}>Wachstum ›</Link>}>Agenten-Score</Ueberschrift>
+        <div style={{ display: 'flex', gap: 'clamp(16px,3vw,32px)', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Ring label="Agenten" wert={score != null ? String(score) : undefined} farbe={LEUCHT.agenten} anteil={score != null ? score / 100 : undefined} />
+          <div style={{ flex: 1, minWidth: 220, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 16 }}>
+            <Zahl wert={String(live)} label={`von ${alle.length} Agenten live`} farbe={LEUCHT.gut} />
+            <Zahl wert={laeufe.length ? String(woche) : undefined} label="Läufe in 7 Tagen" farbe={LEUCHT.puls} />
+            <Zahl wert={bauen ? String(bauen) : undefined} label="zum Bauen markiert" farbe={LEUCHT.achtung} />
           </div>
-          <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, whiteSpace: 'nowrap' }}><b style={{ color: T.accent, fontSize: 15 }}>{liveCount}</b> live · <b style={{ color: T.ink }}>{all.length}</b> Agenten{buildCount ? ` · ${buildCount}★ zum Bauen` : ''}</div>
-        </section>
+        </div>
+        <p style={{ fontSize: TYP.bedien, color: C.inkDim, margin: '14px 0 0', lineHeight: 1.5 }}>{ORCHESTRATOR.note}</p>
+      </Karte>
 
-        {/* Abteilungen */}
-        {DEPARTMENTS.map(d => (
-          <div key={d.id} style={{ marginBottom: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: d.color }} />
-              <span style={{ fontSize: 16, fontWeight: 700, color: T.ink }}>{d.name}</span>
-              <span style={{ fontSize: 12.5, color: T.muted }}>· {d.mission}</span>
-            </div>
-            <div style={{ ...panel, overflow: 'hidden' }}>
-              {d.agents.map((a, i) => {
-                const e = eff(a); const isOpen = open === a.id;
+      <Karte i={1}><AgentenHirn /></Karte>
+
+      <Karte i={2}>
+        <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href="/os/stapel" style={{ color: C.inkLeise, textDecoration: 'none' }}>Aufträge & Freigaben ›</Link>}>Zuletzt gelaufen</Ueberschrift>
+        <Liste>
+          {laeufe.length === 0 && <Leer>Noch kein Lauf protokolliert.</Leer>}
+          {laeufe.slice(0, 8).map(l => {
+            const d = abteilungVon(l.agent);
+            return <Zeile key={l.id} links={<Punkt farbe={d?.color ?? LEUCHT.agenten} />} titel={l.title} unter={`${alle.find(a => a.id === l.agent)?.name ?? l.agent} · ${her(l.ts)}`} />;
+          })}
+        </Liste>
+      </Karte>
+
+      {DEPARTMENTS.map((d, di) => {
+        const liveHier = d.agents.filter(a => a.status === 'live').length;
+        return (
+          <Karte key={d.id} i={3 + di}>
+            <Ueberschrift farbe={d.color} rechts={`${liveHier} von ${d.agents.length} live`}>{d.name}</Ueberschrift>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '-4px 0 8px' }}>{d.mission}</div>
+            <Liste>
+              {d.agents.map(a => {
+                const e = eff(a); const auf = offen === a.id;
                 return (
-                  <div key={a.id} style={{ borderTop: i ? `1px solid ${T.lineSoft}` : 0, background: isOpen ? T.panel2 : 'transparent' }}>
-                    <div onClick={() => setOpen(isOpen ? null : a.id)} style={{ display: 'flex', gap: 12, padding: '13px 16px', cursor: 'pointer', alignItems: 'center', opacity: e.enabled ? 1 : 0.5 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 14, fontWeight: 600, color: T.ink }}>{a.name}</span>
-                          {pill(STATUS_LABEL[a.status], statusColor(a.status))}
-                          {e.buildNext && pill('★ bauen', T.accent)}
-                        </div>
-                        <div style={{ fontSize: 12.5, color: T.inkDim, marginTop: 3 }}>{a.role}</div>
-                      </div>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flex: '0 0 auto' }}>
-                        {pill(AUTONOMY_LABEL[e.autonomy], autoColor(e.autonomy))}
-                        <span style={{ fontFamily: T.mono, fontSize: 13, color: T.muted }}>{isOpen ? '▾' : '▸'}</span>
-                      </div>
-                    </div>
-
-                    {isOpen && (
-                      <div style={{ padding: '4px 18px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        {/* Einstellungen */}
-                        <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap' }}>
+                  <div key={a.id} style={{ opacity: e.enabled ? 1 : .55 }}>
+                    <Zeile onClick={() => setOffen(auf ? null : a.id)} aktiv={auf}
+                      links={<Punkt farbe={statusFarbe(a.status)} />}
+                      titel={<>{a.name}{e.buildNext && <span style={{ color: LEUCHT.achtung, marginLeft: 8, fontSize: 12 }}>★ bauen</span>}</>}
+                      unter={a.role}
+                      rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}><Chip farbe={statusFarbe(a.status)}>{STATUS_LABEL[a.status]}</Chip><Chip farbe={autoFarbe(e.autonomy)}>{AUTONOMY_LABEL[e.autonomy]}</Chip></span>} />
+                    {auf && (
+                      <div style={{ padding: '6px 2px 18px 24px', borderBottom: 'none', display: 'grid', gap: 16 }}>
+                        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
                           <div>
-                            <div style={{ ...lbl, marginBottom: 7 }}>Autonomie</div>
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                              {AUTONOMY_ORDER.map(au => selBtn(e.autonomy === au, () => patch(a.id, { autonomy: au }), AUTONOMY_LABEL[au], autoColor(au)))}
-                            </div>
-                            <div style={{ fontSize: 11, color: T.muted, marginTop: 6, lineHeight: 1.45, maxWidth: 420 }}>
-                              {e.autonomy === 'autonom'
-                                ? 'Wirkt sofort: Ergebnisse werden direkt angewendet — ohne Rückfrage.'
-                                : 'Ergebnisse werden vorgelegt, du bestätigst per Klick.'}
-                              {a.id === 'task' && ' (Bei „autonom" legt der Tageslauf die Morgen-Prioritäten selbst als Aufgaben an.)'}
-                              {a.id === 'kalender' && ' (Bei „autonom" trägt der Agent Schutz-Blöcke direkt in den echten Kalender ein.)'}
-                            </div>
+                            <div style={{ fontSize: 11.5, color: C.inkLeise, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 7 }}>Autonomie</div>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{AUTONOMY_ORDER.map(au => <Wahl key={au} an={e.autonomy === au} farbe={autoFarbe(au)} onClick={() => patch(a.id, { autonomy: au })}>{AUTONOMY_LABEL[au]}</Wahl>)}</div>
+                            <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6, maxWidth: 420, lineHeight: 1.45 }}>{e.autonomy === 'autonom' ? 'Wirkt sofort: Ergebnisse werden direkt angewendet, ohne Rückfrage.' : 'Ergebnisse werden vorgelegt, du bestätigst per Klick.'}</div>
                           </div>
                           <div>
-                            <div style={{ ...lbl, marginBottom: 7 }}>Modell</div>
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                              {MODELS.map(m => selBtn(e.model === m, () => patch(a.id, { model: m }), MODEL_LABEL[m]))}
-                            </div>
+                            <div style={{ fontSize: 11.5, color: C.inkLeise, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 7 }}>Modell</div>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{MODELS.map(m => <Wahl key={m} an={e.model === m} farbe={C.aktiv} onClick={() => patch(a.id, { model: m })}>{MODEL_LABEL[m]}</Wahl>)}</div>
                           </div>
                           <div>
-                            <div style={{ ...lbl, marginBottom: 7 }}>Status</div>
+                            <div style={{ fontSize: 11.5, color: C.inkLeise, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 7 }}>Status</div>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                              {selBtn(e.enabled, () => patch(a.id, { enabled: !e.enabled }), e.enabled ? 'Aktiv ✓' : 'Aus', e.enabled ? T.accent : T.muted)}
-                              {selBtn(e.buildNext, () => patch(a.id, { buildNext: !e.buildNext }), '★ Als Nächstes bauen', T.amber)}
+                              <Wahl an={e.enabled} farbe={LEUCHT.gut} onClick={() => patch(a.id, { enabled: !e.enabled })}>{e.enabled ? 'Aktiv ✓' : 'Aus'}</Wahl>
+                              <Wahl an={e.buildNext} farbe={LEUCHT.achtung} onClick={() => patch(a.id, { buildNext: !e.buildNext })}>★ Als Nächstes bauen</Wahl>
                             </div>
                           </div>
                         </div>
-
-                        {a.href && (
-                          <Link href={a.href} style={{ alignSelf: 'flex-start', textDecoration: 'none', fontFamily: T.sans, fontSize: 12.5, fontWeight: 700, padding: '8px 16px', borderRadius: 9, border: 'none', background: T.accent, color: '#04110F' }}>Agent öffnen ›</Link>
-                        )}
-
-                        {a.gate && <div style={{ fontFamily: T.mono, fontSize: 11, color: T.amber }}>Freigabe-Gate: {a.gate}</div>}
-
-                        {/* Funktionen */}
+                        {a.gate && <div style={{ fontSize: 12, color: LEUCHT.achtung }}>Freigabe-Gate: {a.gate}</div>}
                         <div>
-                          <div style={{ ...lbl, marginBottom: 7 }}>Funktionen</div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                            {a.funktionen.map(f => <div key={f} style={{ display: 'flex', gap: 8, fontSize: 12.5, color: T.inkDim, lineHeight: 1.4 }}><span style={{ color: T.accent, flex: '0 0 auto' }}>›</span>{f}</div>)}
-                          </div>
+                          <div style={{ fontSize: 11.5, color: C.inkLeise, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 6 }}>Funktionen</div>
+                          {a.funktionen.map(f => <div key={f} style={{ display: 'flex', gap: 8, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}><span style={{ color: d.color }}>›</span>{f}</div>)}
                         </div>
-
-                        {/* Bauplan */}
-                        <div style={{ background: T.panel, border: `1px solid ${T.line}`, borderRadius: 10, padding: '11px 13px' }}>
-                          <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, textTransform: 'uppercase', letterSpacing: '.08em' }}>So würde ich ihn bauen</span>
-                          <div style={{ fontSize: 12.5, color: T.inkDim, lineHeight: 1.5, marginTop: 5 }}>{a.bauplan}</div>
+                        <div style={{ background: 'rgba(255,255,255,.04)', borderRadius: 12, padding: '10px 14px' }}>
+                          <div style={{ fontSize: 11.5, color: LEUCHT.agenten, letterSpacing: '.06em', textTransform: 'uppercase' }}>So würde ich ihn bauen</div>
+                          <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, marginTop: 5 }}>{a.bauplan}</div>
                         </div>
+                        {a.href && <div><Link href={a.href} style={{ textDecoration: 'none' }}><Knopf>Agent öffnen ›</Knopf></Link></div>}
                       </div>
                     )}
                   </div>
                 );
               })}
-            </div>
+            </Liste>
+          </Karte>
+        );
+      })}
+
+      <Karte i={3 + DEPARTMENTS.length}>
+        <Ueberschrift>So skalierst du auf 100 bis 150</Ueberschrift>
+        {ARCHITEKTUR.map((zeile, i) => (
+          <div key={i} style={{ display: 'flex', gap: 12, padding: '8px 0', borderTop: i ? '1px solid rgba(255,255,255,.06)' : 0, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>
+            <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, color: LEUCHT.agenten, flex: '0 0 auto' }}>{i + 1}</span>{zeile}
           </div>
         ))}
-
-        {/* Architektur + Realität */}
-        <div style={{ ...lbl, marginTop: 8 }}>So skalierst du auf 100–150 (recherchiert)</div>
-        <div style={{ ...panel, padding: '16px 20px', margin: '12px 0 16px' }}>
-          {ARCHITEKTUR.map((line, i) => (
-            <div key={i} style={{ display: 'flex', gap: 11, padding: '9px 0', borderTop: i ? `1px solid ${T.lineSoft}` : 0, fontSize: 13, color: T.inkDim, lineHeight: 1.5 }}>
-              <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, flex: '0 0 auto', marginTop: 1 }}>{i + 1}</span>{line}
-            </div>
-          ))}
+        <div style={{ display: 'flex', gap: 10, marginTop: 14, padding: '12px 14px', borderRadius: 12, background: `${LEUCHT.achtung}12` }}>
+          <span style={{ color: LEUCHT.achtung }}>⚠</span><div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>{REALITAET}</div>
         </div>
-
-        <div style={{ display: 'flex', gap: 12, padding: '14px 18px', borderRadius: 12, background: T.panel2, border: `1px solid ${T.line}` }}>
-          <span style={{ color: T.amber, flex: '0 0 auto', fontSize: 15 }}>⚠</span>
-          <div style={{ fontSize: 12.5, color: T.inkDim, lineHeight: 1.55 }}>{REALITAET}</div>
-        </div>
-      </div>
-    </div>
+      </Karte>
+    </Seite>
   );
 }
