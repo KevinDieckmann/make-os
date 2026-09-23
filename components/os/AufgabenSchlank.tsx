@@ -92,7 +92,7 @@ export function AufgabenSchlank() {
                   titel={t.title}
                   unter={[projekt(t.projectId), t.assignee !== 'kevin' ? WER[t.assignee] : ''].filter(Boolean).join(' · ')}
                   rechts={<span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {t.dueDate && <span style={{ fontFamily: SCHRIFT.display, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute ? C.kritisch : C.inkLeise }}>{datum(t.dueDate)}</span>}
+                    {t.dueDate && <span style={{ fontFamily: SCHRIFT.display, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute ? LEUCHT.kritisch : C.inkLeise }}>{datum(t.dueDate)}</span>}
                     <Punkt farbe={prioFarbe(t.priority)} />
                   </span>} />
                 {offenId === t.id && <Detail t={t} />}

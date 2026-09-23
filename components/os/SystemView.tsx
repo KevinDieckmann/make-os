@@ -4,7 +4,8 @@
 // Das Zahnrad: alles, was nicht der Alltag ist. Eine Liste, keine Kacheln.
 
 import Link from 'next/link';
-import { FARBE as C, SCHRIFT, TYP, ABSTAND as A } from '@/lib/make-one/design';
+import { FARBE as C } from '@/lib/make-one/design';
+import { Seite, Karte, Ueberschrift, Liste, Zeile } from './schlank';
 
 const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: string }[] }[] = [
   { titel: 'Weitere Bereiche', eintraege: [
@@ -35,21 +36,19 @@ const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: s
 
 export function SystemView() {
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: `34px clamp(20px,4vw,56px) 60px`, color: C.ink, fontFamily: SCHRIFT.text }}>
-      <h1 style={{ fontFamily: SCHRIFT.display, fontWeight: 600, fontSize: 22, letterSpacing: '-.02em', margin: `0 0 ${A.xl}px` }}>System</h1>
-      {GRUPPEN.map(g => (
-        <section key={g.titel} style={{ marginBottom: A.xl }}>
-          <h2 style={{ fontSize: 12, fontWeight: 600, color: C.inkLeise, letterSpacing: '.04em', textTransform: 'uppercase', margin: '0 0 4px' }}>{g.titel}</h2>
-          <div style={{ borderTop: `1px solid ${C.linie}` }}>
+    <Seite titel="System" unter="Alles, was nicht täglich ist: Jarvis, Zugang, Bauen.">
+      {GRUPPEN.map((g, i) => (
+        <Karte key={g.titel} i={i}>
+          <Ueberschrift>{g.titel}</Ueberschrift>
+          <Liste>
             {g.eintraege.map(e => (
-              <Link key={e.href} href={e.href} className="fassbar" style={{ display: 'flex', alignItems: 'baseline', gap: A.m, padding: '12px 2px', borderBottom: `1px solid ${C.linie}`, textDecoration: 'none', color: C.ink }}>
-                <span style={{ fontSize: TYP.body, fontWeight: 500, minWidth: 200 }}>{e.label}</span>
-                <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{e.was}</span>
+              <Link key={e.href} href={e.href} style={{ textDecoration: 'none', color: 'inherit' }}>
+                <Zeile onClick={() => {}} titel={e.label} unter={e.was} rechts={<span style={{ color: C.inkLeise }}>›</span>} />
               </Link>
             ))}
-          </div>
-        </section>
+          </Liste>
+        </Karte>
       ))}
-    </div>
+    </Seite>
   );
 }

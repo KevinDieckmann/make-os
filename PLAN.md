@@ -157,6 +157,20 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > `components/os/schlank.tsx`, alle sechs Seiten plus Konto darauf. Geprüft mit
 > kopflosem Chrome (Screenshots Rechner und Handy) und Wegwerfkonto.
 
+> **Nachtrag 24.09., Wachstum und Jarvis.** Kevin: *„Nimm Jarvis erst weg,
+> dass er nicht immer vorweg kommt. Nimm als Score das ganze Thema Wachstum mit
+> rein, einen eigenen Bereich. Und nimm Jarvis links als eigene Seite mit rein."*
+> Gebaut: Nach der Anmeldung landet man auf **Heute**, nicht mehr im Empfang.
+> **Wachstum** (`/os/wachstum`, `WachstumView`) ist ein eigener Eintrag: der
+> MAKE Score groß mit Abdeckung, Bestwert und Verlauf; die fünf Säulen mit
+> Gewicht, Chip und aufklappbaren Faktoren (echt gemessen oder nicht, mit
+> Quelle); Ziele je Horizont (Jahr · Quartal · Monat) mit Fortschritt; Fokus.
+> `/os/performance` leitet dorthin. **Jarvis** steht als letzter Eintrag links
+> (`/jarvis`, der Empfang bleibt, man geht hin, wenn man will). Die Leiste hat
+> jetzt acht Einträge plus System; auf dem Handy: Heute · Inbox · Gesundheit ·
+> Wachstum · System. System-Seite ebenfalls auf Karten. Kontrollgang: keine
+> alten Farben oder Haarlinien mehr in den neuen Ansichten.
+
 Jede Phase hat ein Ziel in einem Satz, eine Fertig-Bedingung, und eine Liste,
 was **bewusst nicht** darin ist. Grobe Größe in Arbeitstagen — ehrlich grob.
 

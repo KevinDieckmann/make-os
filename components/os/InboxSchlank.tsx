@@ -200,7 +200,7 @@ export function InboxSchlank() {
   const zeile = (m: Msg) => (
     <div key={m.id}>
       <Zeile onClick={() => oeffnen(m)} aktiv={offenId === m.id}
-        links={<Punkt farbe={istFaellig(m.id) ? C.achtung : STUFE_FARBE[stufe(m) ?? 'normal']} />}
+        links={<Punkt farbe={istFaellig(m.id) ? LEUCHT.achtung : STUFE_FARBE[stufe(m) ?? 'normal']} />}
         titel={<><span style={{ fontWeight: m.isRead ? 400 : 600 }}>{m.sender}</span><span style={{ color: C.inkLeise }}> · {m.subject}</span></>}
         unter={triage[fpOf(m)]?.zeile ?? m.preview}
         rechts={<span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{relTime(m.receivedAt)}</span>} />

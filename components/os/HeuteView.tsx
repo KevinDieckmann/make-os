@@ -14,7 +14,7 @@ import { localDay } from '@/lib/zeit';
 import { parseSchnell } from '@/lib/make-one/schnell-anlegen';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Balken, Chip, Fortschritt, feld, zoneFarbe, prioFarbe, LEUCHT } from './schlank';
 
-interface Perf { index: number | null; label: string; hebel: string | null; saeulen: { key: string; label: string; score: number | null; zuDuenn: boolean }[] }
+interface Perf { index: number | null; label: string; hebel: string | null; stand?: string; saeulen: { key: string; label: string; score: number | null; zuDuenn: boolean }[] }
 interface Termin { id?: string; title?: string; startDate?: string; endDate?: string; allDay?: boolean }
 interface Punkt14 { date: string; index: number | null }
 
@@ -78,10 +78,11 @@ export function HeuteView() {
   return (
     <Seite titel={<>{gruss}{vorname ? `, ${vorname}` : ''}</>} unter={<span suppressHydrationWarning>{datum}</span>}>
       <Karte i={0} akzent={perf?.index != null ? zone : undefined}>
+        <Ueberschrift farbe={zone} rechts={<Link href="/os/wachstum" style={{ color: C.inkLeise, textDecoration: 'none' }}>Wachstum ›</Link>}>MAKE Score</Ueberschrift>
         <div className="heute-kopf" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'clamp(18px,4vw,44px)', alignItems: 'center' }}>
-          <Ring groesse="gross" label="MAKE Score" wert={perf?.index != null ? String(perf.index) : undefined} farbe={zone} anteil={perf?.index != null ? perf.index / 100 : undefined}
+          <Ring groesse="gross" label={perf?.stand ? `Stand ${perf.stand.slice(8)}.${perf.stand.slice(5, 7)}.` : 'Score'} wert={perf?.index != null ? String(perf.index) : undefined} farbe={zone} anteil={perf?.index != null ? perf.index / 100 : undefined}
             unter={perf?.index != null ? <Chip farbe={zone}>{perf.label}</Chip> : undefined} />
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0, width: '100%' }}>
             <div className="heute-saeulen" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
               {(perf?.saeulen ?? []).map(s => {
                 const m = SAEULE[s.key] ?? { label: s.label, farbe: C.inkLeise, href: '/os' };

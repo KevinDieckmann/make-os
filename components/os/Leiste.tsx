@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { HAUPT, SYSTEM, aktiverEintrag } from '@/lib/make-one/navigation';
+import { HAUPT, HANDY, SYSTEM, aktiverEintrag } from '@/lib/make-one/navigation';
 
 export function Leiste() {
   const pfad = usePathname() ?? '/os';
@@ -44,7 +44,7 @@ export function Leiste() {
         width: 200, flex: '0 0 200px', padding: '22px 14px', borderRight: `1px solid ${C.linie}`, background: C.grund,
         flexDirection: 'column', gap: 2, position: 'sticky', top: 0, height: '100vh',
       }}>
-        <Link href="/jarvis" title="Zum Empfang" style={{ display: 'flex', alignItems: 'center', gap: 9, fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 15, letterSpacing: '-.01em', padding: '4px 10px 22px', color: C.ink, textDecoration: 'none' }}>
+        <Link href="/os" title="Heute" style={{ display: 'flex', alignItems: 'center', gap: 9, fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 15, letterSpacing: '-.01em', padding: '4px 10px 22px', color: C.ink, textDecoration: 'none' }}>
           <span className="zeit-puls" style={{ width: 9, height: 9, borderRadius: '50%', background: C.aktiv, boxShadow: `0 0 10px ${C.aktiv}` }} />MAKE OS
         </Link>
         {HAUPT.map(e => zeile(e))}
@@ -61,7 +61,7 @@ export function Leiste() {
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 40, borderTop: `1px solid ${C.linie}`, background: C.grund,
         padding: '6px 8px calc(6px + env(safe-area-inset-bottom))', justifyContent: 'space-around',
       }}>
-        {[HAUPT[0], HAUPT[1], HAUPT[2], HAUPT[3], SYSTEM].map(e => zeile(e, true))}
+        {[...HANDY.map(h => HAUPT.find(e => e.href === h)!), SYSTEM].map(e => zeile(e, true))}
       </nav>
     </>
   );

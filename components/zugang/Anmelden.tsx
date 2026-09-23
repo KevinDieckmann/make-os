@@ -21,7 +21,8 @@ const feld: React.CSSProperties = {
 
 export function Anmelden() {
   const params = useSearchParams();
-  const zu = params.get('zu') || '/jarvis';
+  // 24.09.: nach der Anmeldung direkt Heute — Jarvis ist ein Eintrag links, kein Vorspann.
+  const zu = params.get('zu') || '/os';
   // Einladungslink: /anmelden?code=XXXX-XXXX — der Code steht schon drin.
   const codeAusLink = (params.get('code') ?? '').toUpperCase();
   const [eingerichtet, setEingerichtet] = useState<boolean | null>(null);

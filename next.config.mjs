@@ -4,6 +4,7 @@ const nextConfig = {
   // Adressen bleiben gültig — Lesezeichen und Jarvis-Verweise landen richtig.
   async redirects() {
     return [
+      { source: '/os/performance', destination: '/os/wachstum', permanent: false },
       { source: '/os/journal', destination: '/os/gesundheit', permanent: false },
       { source: '/os/ritual', destination: '/os/gesundheit', permanent: false },
       { source: '/os/fokus', destination: '/os/gesundheit', permanent: false },

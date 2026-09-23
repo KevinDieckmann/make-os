@@ -80,7 +80,7 @@ export function KontakteView() {
     const e = entwurf[k.id];
     return (
       <div style={{ padding: '6px 2px 18px 36px', borderBottom: `1px solid ${C.linie}` }}>
-        {grund && <div style={{ fontSize: 12, color: C.achtung, marginBottom: 6 }}>{grund}</div>}
+        {grund && <div style={{ fontSize: 12, color: LEUCHT.achtung, marginBottom: 6 }}>{grund}</div>}
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>
           {[k.position, k.firma, k.firmaStadt].filter(Boolean).join(' · ')}
           {k.email && <> · <a href={`mailto:${k.email}`} style={{ color: C.inkDim }}>{k.email}</a></>}
