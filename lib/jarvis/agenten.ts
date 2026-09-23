@@ -32,7 +32,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
   prospect: 'Zielliste gegen das ICP bewerten',
   planung: 'Wochenplan-Vorschlag aus Kalender und Aufgaben',
   ernaehrung: 'Essensplan und Einkaufsliste für die Woche',
-  performance: 'MAKE Score neu rechnen und einordnen',
+  performance: 'Wachstums-Score neu rechnen und einordnen',
   content: 'Text-Entwurf in der Marken-Sprache (auftrag = Thema)',
   meeting: 'Transkript zu Protokoll und Aufgaben (auftrag = Transkript)',
   outreach: 'Erstansprache entwerfen (auftrag = Name oder Firma — aus dem CRM, sonst aus der Zielliste)',

@@ -1,10 +1,10 @@
 'use client';
 
 // ─── MAKE OS — Heute ────────────────────────────────────────────────────────
-// Die Seite nach dem Empfang. Eine Frage: Was ist heute dran? Begrüßung, der
-// Score als großer Ring mit den fünf Säulen als kleine Ringe daneben, dann
-// Karten: Fokus, Termine, Aufgaben (mit Schnellanlage), Körper, Jarvis.
-// 24.09.: lebendig nach Whoop — Farbe, Glow, Bewegung. Nie eine Null.
+// Die Seite nach der Anmeldung. Eine Frage: Was ist heute dran? Der
+// Wachstums-Score steht seit 24.09. als Kopf über JEDER Seite (WachstumsKopf),
+// deshalb hier nicht noch einmal. Begrüßung, dann Karten: Fokus, Termine,
+// Aufgaben mit Schnellanlage, Körper, Jarvis. Nie eine Null.
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -12,19 +12,9 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { parseSchnell } from '@/lib/make-one/schnell-anlegen';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Balken, Chip, Fortschritt, feld, zoneFarbe, prioFarbe, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Fortschritt, feld, zoneFarbe, prioFarbe, LEUCHT } from './schlank';
 
-interface Perf { index: number | null; label: string; hebel: string | null; stand?: string; saeulen: { key: string; label: string; score: number | null; zuDuenn: boolean }[] }
 interface Termin { id?: string; title?: string; startDate?: string; endDate?: string; allDay?: boolean }
-interface Punkt14 { date: string; index: number | null }
-
-const SAEULE: Record<string, { label: string; farbe: string; href: string }> = {
-  health: { label: 'Gesundheit', farbe: LEUCHT.gut, href: '/os/gesundheit' },
-  business: { label: 'Business', farbe: LEUCHT.business, href: '/os/saeule/business' },
-  planning: { label: 'Planung', farbe: LEUCHT.planung, href: '/os/saeule/planning' },
-  finance: { label: 'Finanzen', farbe: LEUCHT.geld, href: '/os/finanzen' },
-  social: { label: 'Beziehung', farbe: LEUCHT.beziehung, href: '/os/saeule/social' },
-};
 
 export function HeuteView() {
   const heute = localDay();
@@ -32,8 +22,6 @@ export function HeuteView() {
   const [datum, setDatum] = useState('');
   const [gruss, setGruss] = useState('Hallo');
   const [vorname, setVorname] = useState('');
-  const [perf, setPerf] = useState<Perf | null>(null);
-  const [verlauf, setVerlauf] = useState<Punkt14[]>([]);
   const [fokus, setFokus] = useState<{ tag?: string; woche?: string; monat?: string }>({});
   const [termine, setTermine] = useState<Termin[]>([]);
   const [koerper, setKoerper] = useState<{ rec?: number; frisch: boolean; routinen: number; von: number } | null>(null);
@@ -45,7 +33,6 @@ export function HeuteView() {
     setDatum(jetzt.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }));
     setGruss(jetzt.getHours() < 11 ? 'Guten Morgen' : jetzt.getHours() < 18 ? 'Guten Tag' : 'Guten Abend');
     fetch('/api/konto/ich').then(r => r.json()).then(d => setVorname((d.ich?.name ?? '').split(' ')[0])).catch(() => {});
-    fetch('/api/performance').then(r => r.json()).then(d => { setPerf(d.aktuell ?? null); setVerlauf((d.verlauf ?? []).slice(-14)); }).catch(() => {});
     fetch('/api/state/ziele').then(r => r.json()).then(d => setFokus((d.state ?? d)?.fokus ?? {})).catch(() => {});
     fetch('/api/apple-calendar').then(r => r.json()).then((l: Termin[]) => {
       if (!Array.isArray(l)) return;
@@ -72,48 +59,18 @@ export function HeuteView() {
   const fokusText = fokus.tag || fokus.woche || fokus.monat;
   const fokusWann = fokus.tag ? 'heute' : fokus.woche ? 'diese Woche' : 'diesen Monat';
   const uhr = (iso?: string) => (iso ? new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '');
-  const zone = zoneFarbe(perf?.index);
   const koerperFarbe = koerper?.frisch ? zoneFarbe(koerper.rec) : C.inkLeise;
 
   return (
     <Seite titel={<>{gruss}{vorname ? `, ${vorname}` : ''}</>} unter={<span suppressHydrationWarning>{datum}</span>}>
-      <Karte i={0} akzent={perf?.index != null ? zone : undefined}>
-        <Ueberschrift farbe={zone} rechts={<Link href="/os/wachstum" style={{ color: C.inkLeise, textDecoration: 'none' }}>Wachstum ›</Link>}>MAKE Score</Ueberschrift>
-        <div className="heute-kopf" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'clamp(18px,4vw,44px)', alignItems: 'center' }}>
-          <Ring groesse="gross" label={perf?.stand ? `Stand ${perf.stand.slice(8)}.${perf.stand.slice(5, 7)}.` : 'Score'} wert={perf?.index != null ? String(perf.index) : undefined} farbe={zone} anteil={perf?.index != null ? perf.index / 100 : undefined}
-            unter={perf?.index != null ? <Chip farbe={zone}>{perf.label}</Chip> : undefined} />
-          <div style={{ minWidth: 0, width: '100%' }}>
-            <div className="heute-saeulen" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
-              {(perf?.saeulen ?? []).map(s => {
-                const m = SAEULE[s.key] ?? { label: s.label, farbe: C.inkLeise, href: '/os' };
-                const w = s.score == null || s.score === 0 ? undefined : String(s.score);
-                return (
-                  <Link key={s.key} href={m.href} style={{ textDecoration: 'none', color: 'inherit' }} title={s.zuDuenn ? `${m.label} — noch dünn gemessen` : m.label}>
-                    <Ring groesse="klein" label={m.label} wert={w} farbe={s.zuDuenn ? `${m.farbe}99` : m.farbe} anteil={w ? Number(w) / 100 : undefined} />
-                  </Link>
-                );
-              })}
-            </div>
-            {perf?.hebel && <p style={{ fontSize: TYP.bedien, color: C.inkDim, margin: '16px 0 0' }}>Größter Hebel: <b style={{ color: C.ink, fontWeight: 600 }}>{perf.hebel}</b></p>}
-            {perf && perf.index == null && <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '16px 0 0' }}>Noch zu wenig gemessen, um einen Score zu nennen.</p>}
-            {verlauf.length > 1 && (
-              <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 11.5, color: C.inkLeise, marginBottom: 6, letterSpacing: '.04em', textTransform: 'uppercase' }}>Verlauf · {verlauf.length} Messungen</div>
-                <Balken werte={verlauf.map(p => p.index)} max={100} farbe={zone} hoehe={38} titel={verlauf.map(p => `${p.date.slice(8)}.${p.date.slice(5, 7)}. · ${p.index ?? '—'}`)} />
-              </div>
-            )}
-          </div>
-        </div>
-      </Karte>
-
       {fokusText && (
-        <Karte i={1} akzent={LEUCHT.schlaf}>
-          <Ueberschrift farbe={LEUCHT.schlaf}>Fokus {fokusWann}</Ueberschrift>
+        <Karte i={0} akzent={LEUCHT.schlaf}>
+          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/wachstum" style={{ color: C.inkLeise, textDecoration: 'none' }}>Wachstum ›</Link>}>Fokus {fokusWann}</Ueberschrift>
           <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(17px,2.2vw,20px)', fontWeight: 600, letterSpacing: '-.01em', lineHeight: 1.3 }}>{fokusText}</div>
         </Karte>
       )}
 
-      <Karte i={2}>
+      <Karte i={1}>
         <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href="/os/kalender" style={{ color: C.inkLeise, textDecoration: 'none' }}>Kalender ›</Link>}>Termine</Ueberschrift>
         <Liste>
           {termine.length === 0 && <Leer>Keine Termine heute — freie Bahn.</Leer>}
@@ -123,7 +80,7 @@ export function HeuteView() {
         </Liste>
       </Karte>
 
-      <Karte i={3}>
+      <Karte i={2}>
         <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href="/os/aufgaben" style={{ color: C.inkLeise, textDecoration: 'none' }}>{offen.length} offen ›</Link>}>Aufgaben</Ueberschrift>
         <input value={neu} onChange={e => setNeu(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') anlegen(); }} placeholder="Neue Aufgabe für heute … (!! kritisch · fr · #projekt · @malin)" style={{ ...feld, marginBottom: 6 }} />
         <Liste>
@@ -139,7 +96,7 @@ export function HeuteView() {
       </Karte>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
-        <Karte i={4} akzent={koerper?.frisch ? koerperFarbe : undefined}>
+        <Karte i={3} akzent={koerper?.frisch ? koerperFarbe : undefined}>
           <Ueberschrift farbe={LEUCHT.gut} rechts={<Link href="/os/gesundheit" style={{ color: C.inkLeise, textDecoration: 'none' }}>Gesundheit ›</Link>}>Körper</Ueberschrift>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
             <Ring groesse="klein" label="Recovery" wert={koerper?.frisch && koerper.rec != null ? String(koerper.rec) : undefined} einheit="%" farbe={koerperFarbe} anteil={koerper?.frisch && koerper.rec != null ? koerper.rec / 100 : undefined} />
@@ -150,7 +107,7 @@ export function HeuteView() {
             </div>
           </div>
         </Karte>
-        <Karte i={5} akzent={stapel ? LEUCHT.achtung : undefined}>
+        <Karte i={4} akzent={stapel ? LEUCHT.achtung : undefined}>
           <Ueberschrift farbe={stapel ? LEUCHT.achtung : C.inkLeise} rechts={<Link href="/os/stapel" style={{ color: C.inkLeise, textDecoration: 'none' }}>Stapel ›</Link>}>Jarvis</Ueberschrift>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
             <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 'clamp(34px,4vw,44px)', letterSpacing: '-.04em', lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: stapel ? LEUCHT.achtung : C.inkLeise, textShadow: stapel ? `0 0 24px ${LEUCHT.achtung}66` : undefined }}>{stapel == null ? '—' : stapel === 0 ? '0' : stapel}</div>

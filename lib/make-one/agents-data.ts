@@ -98,7 +98,7 @@ export const DEPARTMENTS: Department[] = [
       { id: 'brain', name: 'Kontext-/Gedächtnis-Agent', role: 'Was dauerhaft gilt, behalten und einbringen', status: 'live', autonomy: 'autonom', model: 'schnell', href: '/os/stapel',
         funktionen: ['Fakten aus Gesprächen sofort merken', 'In jeden Zug einbringen', 'Nach Raum trennen (Kevin/Malin/gemeinsam)', 'Auf Klick vergessen'],
         bauplan: 'LIVE seit 07.09.: lib/jarvis/gedaechtnis.ts. Strukturierte Fakten statt Vektorsuche — „wann habe ich Frank zuletzt gesprochen" ist eine Frage nach einem Feld, keine nach Ähnlichkeit. Geht auf 1.800 Zeichen gedeckelt in jeden Prompt. Sichtbar und einzeln löschbar unter /os/stapel. OFFEN: das Spiegeln des Miro-Boards — das braucht die Miro-Anbindung.' },
-      { id: 'performance', name: 'Score-Agent', role: 'Den MAKE Score rechnen und einordnen', status: 'live', autonomy: 'autonom', model: 'stark', href: '/os/performance',
+      { id: 'performance', name: 'Score-Agent', role: 'Den Wachstums-Score rechnen und einordnen', status: 'live', autonomy: 'autonom', model: 'stark', href: '/os/wachstum',
         funktionen: ['Fünf Säulen aus echten Daten rechnen', 'Messlücken ausweisen statt raten', 'Verlauf mitschreiben', 'Größten Hebel benennen'],
         bauplan: 'LIVE: /api/performance. Rechnet je Person getrennt (seit 07.09.), weil Gesundheit und Journal persönlich sind. Was nicht gemessen ist, wird als Messlücke ausgewiesen und zählt nicht als schlechter Wert. Jarvis startet ihn selbst.' },
       { id: 'okr', name: 'OKR-/Ziel-Agent', role: 'Weg zum 1-Mio-Ziel, MSI-Anbindung', status: 'live', autonomy: 'vorschlag', model: 'stark', href: '/os/okr',

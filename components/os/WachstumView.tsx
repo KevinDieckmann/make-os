@@ -5,7 +5,7 @@
 // wachstum. Gesundheit ist die Basis." — 24.09.: „Nimm als Score das ganze
 // Thema Wachstum mit rein. Einen eigenen Bereich."
 //
-// Der MAKE Score im Zentrum, darunter die fünf Säulen mit ihren Faktoren
+// Der Wachstums-Score im Zentrum, darunter die fünf Säulen mit ihren Faktoren
 // (echt gemessen oder noch nicht), der Verlauf, die Ziele je Horizont und der
 // Fokus. Alles, was Wachstum misst, auf einer Seite.
 
@@ -47,10 +47,11 @@ export function WachstumView() {
   ];
 
   return (
-    <Seite titel="Wachstum" unter="Der MAKE Score — Gesundheit ist die Basis, alles andere baut darauf.">
+    <Seite titel="Wachstum" unter="Der Score, auf den wir hinarbeiten: wachsen, uns optimieren, Unternehmertum, Firmen optimieren, mehr Geld verdienen. Gesundheit ist die Basis.">
       <Karte i={0} akzent={perf?.index != null ? zone : undefined}>
+        <Ueberschrift farbe={zone} rechts={perf?.stand ? `Stand ${datum(perf.stand)}` : undefined}>Wachstums-Score</Ueberschrift>
         <div className="heute-kopf" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'clamp(18px,4vw,44px)', alignItems: 'center' }}>
-          <Ring groesse="gross" label={perf?.stand ? `Stand ${datum(perf.stand)}` : 'MAKE Score'} wert={perf?.index != null ? String(perf.index) : undefined} farbe={zone} anteil={perf?.index != null ? perf.index / 100 : undefined}
+          <Ring groesse="gross" label="Wachstums-Score" wert={perf?.index != null ? String(perf.index) : undefined} farbe={zone} anteil={perf?.index != null ? perf.index / 100 : undefined}
             unter={perf?.index != null ? <Chip farbe={zone}>{perf.label}</Chip> : undefined} />
           <div style={{ minWidth: 0, width: '100%' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 16 }}>

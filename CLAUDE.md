@@ -66,9 +66,10 @@ lokal, Route `/os`, Port 3001.
   Balken, Chip, Zeile, Haken, Segmente) und den Leuchtfarben `LEUCHT` aus
   design.ts — Karten mit Tiefe, Glow, hochzählende Zahlen, gestaffeltes
   Erscheinen; eine Ebene, nie eine Null, Farbe bedeutet Zustand. Alle Einträge der
-  Leiste (Heute · Inbox · Gesundheit · Wachstum · Aufgaben · Zahlen · Kontakte ·
+  Leiste (Heute · Wachstum · Gesundheit · Inbox · Aufgaben · Zahlen · Kontakte ·
   Jarvis · System) sind umgebaut; Anmeldung führt zu Heute, Jarvis ist kein
-  Vorspann mehr. Alte Ansichten liegen unter
+  Vorspann mehr. Der **Wachstums-Score** steht als Kopf über jeder Seite
+  (`WachstumsKopf`) — der Score, auf den wir hinarbeiten. Alte Ansichten liegen unter
   `/os/uebersicht`, `/os/aufgaben/board` und `/os/inbox/voll`.
 - **`PLAN.md` ist der führende Plan (seit 18.09.2026).** Bestand bleibt und
   wird auf Hetzner hochgefahren; Reihenfolge Hochfahren → Aufgaben → CRM →

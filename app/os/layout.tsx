@@ -3,6 +3,7 @@
 // Bereichs-Cockpit, Bauzeit-Hinweis, Onboarding-Erinnerung und Zurufe. Was
 // mitläuft, muss etwas tun, nicht nur da sein.
 import { Taktgeber } from '@/components/os/Taktgeber';
+import { WachstumsKopf } from '@/components/os/WachstumsKopf';
 import { Leiste } from '@/components/os/Leiste';
 import { JarvisPanel } from '@/components/os/JarvisPanel';
 import { FehlerMelder } from '@/components/os/FehlerMelder';
@@ -26,6 +27,8 @@ export default async function OsLayout({ children }: { children: React.ReactNode
       {/* Eine Ebene, sechs Einträge (23.09.). */}
       <Leiste />
       <main style={{ flex: 1, minWidth: 0, height: '100vh', overflowY: 'auto', overflowX: 'hidden' }}>
+        {/* Der Wachstums-Score über allem (24.09.) — der Score, auf den wir hinarbeiten. */}
+        <WachstumsKopf />
         <Taktgeber />
         {children}
       </main>

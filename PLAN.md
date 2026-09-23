@@ -171,6 +171,20 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Wachstum · System. System-Seite ebenfalls auf Karten. Kontrollgang: keine
 > alten Farben oder Haarlinien mehr in den neuen Ansichten.
 
+> **Nachtrag 24.09., der Wachstums-Score über allem.** Kevin: *„Ich möchte,
+> dass der Wachstumsscore oben drüber steht und im Grunde genommen der Score
+> ist, auf den wir hinarbeiten. Wir wollen immer Wachstum, uns optimieren,
+> Unternehmertum, Firmen optimieren, mehr Geld verdienen …"* Gebaut: Der Score
+> heißt jetzt überall **Wachstums-Score** und steht als fester Kopf über jeder
+> Seite (`WachstumsKopf` im /os-Layout, klebt oben, wie Whoop seine Kennzahlen
+> trägt): Ring mit Zone, Veränderung zur letzten Messung, größter Hebel, die
+> fünf Säulen als winzige Ringe, ein Klick führt in den Bereich Wachstum. Heute
+> hat deshalb keine eigene Score-Karte mehr. Wachstum steht in der Leiste direkt
+> nach Heute, auch auf dem Handy. Die Beschreibung des Bereichs trägt Kevins
+> Satz. Die Gewichte (Gesundheit 35 · Business 20 · Planung 15 · Finanzen 15 ·
+> Beziehung 15) sind unverändert — das ist Kevins Entscheidung, wenn er den
+> Score stärker auf Unternehmertum und Geld drehen will.
+
 Jede Phase hat ein Ziel in einem Satz, eine Fertig-Bedingung, und eine Liste,
 was **bewusst nicht** darin ist. Grobe Größe in Arbeitstagen — ehrlich grob.
 

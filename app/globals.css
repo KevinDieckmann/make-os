@@ -403,3 +403,19 @@ nav a:hover { transform: translateX(2px); }
 .zeile-klick:hover { background: rgba(255,255,255,.035); border-radius: 10px; }
 @media (max-width: 720px) { .karte { padding: 16px 16px; border-radius: 18px; } }
 
+/* ─── Der Wachstums-Score über jeder Seite (24.09.) ────────────────────────── */
+.wachstum-kopf {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; gap: 16px;
+  padding: 10px clamp(18px,4vw,48px);
+  background: rgba(11,14,16,.82); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  transition: background .2s ease;
+}
+.wachstum-kopf:hover { background: rgba(20,24,27,.92); }
+@media (max-width: 720px) {
+  .wachstum-kopf { gap: 12px; padding: 8px 16px; }
+  .wachstum-kopf-unter, .wachstum-kopf-label, .wachstum-kopf-name { display: none; }
+  .wachstum-kopf-saeulen { gap: 6px; }
+}
+
