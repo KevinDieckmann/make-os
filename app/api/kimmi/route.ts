@@ -14,6 +14,9 @@ import { fuehreAus } from '@/lib/jarvis/ausfuehren';
 import { offeneAnzahl } from '@/lib/jarvis/stapel';
 import { personAus } from '@/lib/jarvis/raum';
 import { brainAnweisung } from '@/lib/jarvis/vault';
+import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
+import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
+import { blockHaushalt } from '@/lib/finanzen/haushalt/jarvis';
 import { lies as liesFakten, fuerPrompt as faktenFuerPrompt } from '@/lib/jarvis/gedaechtnis';
 import { innenAdresse } from '@/lib/innen';
 
@@ -113,7 +116,12 @@ export async function POST(req: Request) {
   // Wer redet gerade mit ihm. Bis zum echten Login das Cookie — siehe raum.ts.
   const person = personAus(req);
 
-  const live = await liveContext(person);
+  // Haushaltsfinanzen (24.09.): nur mit ausdrücklich benannter Person, die
+  // einem Haushalt angehört. Der Block steht bewusst NICHT im gemeinsamen
+  // Brain — Board, OKR & Co. bekommen ihn nie.
+  const haushalt = await haushaltVon(req).catch(() => null);
+  const haushaltBlock = haushalt ? await ladeHaushalt(haushalt.haushalt).then(h => blockHaushalt(h)).catch(() => '') : '';
+  const live = [await liveContext(person), haushaltBlock].filter(Boolean).join('\n\n');
   // Das Langzeit-Gedächtnis geht in jeden Zug mit — knapp gehalten, damit es
   // den Kontext nicht auffrisst (siehe gedaechtnis.ts).
   const gedaechtnis = await liesFakten({ anzahl: 120, raum: person }).then(faktenFuerPrompt).catch(() => '');
@@ -190,6 +198,43 @@ export async function POST(req: Request) {
           },
           required: ['notiz', 'text'],
         },
+      },
+    );
+    if (haushalt) tools.push(
+      {
+        name: 'haushalt_stand',
+        description: 'Stand der PRIVATEN Haushaltsfinanzen von Kevin und Malin: Einkommen, Ausgaben, Sparquote, Sockel, Luft, Schulden, was ansteht. Privat — nur im Gespräch mit Kevin/Malin und in ihren Briefings nutzen.',
+        input_schema: { type: 'object', properties: {} },
+      },
+      {
+        name: 'haushalt_buchungen',
+        description: 'Sucht in den privaten Buchungen (N26) — z. B. „Was ging im August an Lieferando?“. Liefert Summe und die Buchungen.',
+        input_schema: { type: 'object', properties: {
+          suche: { type: 'string', description: 'Empfänger oder Text' },
+          monat: { type: 'string', description: 'JJJJ-MM' },
+          kategorie: { type: 'string', description: 'z. B. Lebensmittel' },
+        } },
+      },
+      {
+        name: 'haushalt_zuordnen',
+        description: 'Ordnet private Buchungen eines Empfängers einer Kategorie zu und merkt es sich als Regel (auf Wunsch rückwirkend). Braucht Kevins/Malins Freigabe.',
+        input_schema: { type: 'object', properties: {
+          muster: { type: 'string', description: 'Empfänger, wie er in den Buchungen steht' },
+          kategorie: { type: 'string', description: 'Name der Kategorie, genau wie vorhanden' },
+          rueckwirkend: { type: 'boolean', description: 'auch vorhandene Buchungen (Standard: ja)' },
+        }, required: ['muster', 'kategorie'] },
+      },
+      {
+        name: 'haushalt_rechnung_bezahlt',
+        description: 'Vermerkt eine offene PRIVATE Rechnung als bezahlt. Braucht Freigabe.',
+        input_schema: { type: 'object', properties: { rechnung: { type: 'string', description: 'Empfänger oder Bezeichnung' } }, required: ['rechnung'] },
+      },
+      {
+        name: 'haushalt_rechnung_erfassen',
+        description: 'Erfasst eine offene PRIVATE Rechnung (Geld, das noch raus muss). Braucht Freigabe.',
+        input_schema: { type: 'object', properties: {
+          an: { type: 'string' }, wofuer: { type: 'string' }, betrag: { type: 'number', description: 'Euro' }, faellig: { type: 'string', description: 'JJJJ-MM-TT' },
+        }, required: ['an'] },
       },
     );
     tools.push({

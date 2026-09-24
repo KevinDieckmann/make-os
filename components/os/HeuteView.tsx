@@ -27,6 +27,9 @@ export function HeuteView() {
   const [koerper, setKoerper] = useState<{ rec?: number; frisch: boolean; routinen: number; von: number } | null>(null);
   const [stapel, setStapel] = useState<number | null>(null);
   const [neu, setNeu] = useState('');
+  // Haushaltsfinanzen (24.09.): nur, wer einem Haushalt angehört, bekommt die Karte.
+  const [finanzen, setFinanzen] = useState<string[] | null>(null);
+  useEffect(() => { fetch('/api/haushalt?nur=signale').then(r => (r.ok ? r.json() : null)).then(d => setFinanzen(d?.ok && !d.leer ? d.punkte : null)).catch(() => {}); }, []);
 
   useEffect(() => {
     const jetzt = new Date();
@@ -110,6 +113,15 @@ export function HeuteView() {
             </div>
           </div>
         </Karte>
+        {finanzen && (
+          <Karte i={4} akzent={finanzen.some(t => /Überfällig|kein Kontoauszug/.test(t)) ? LEUCHT.kritisch : undefined}>
+            <Ueberschrift farbe={LEUCHT.geld} rechts={<Link href="/os/finanzen" style={{ color: C.inkLeise, textDecoration: 'none' }}>Zahlen ›</Link>}>Finanzen · privat</Ueberschrift>
+            <Liste>
+              {!finanzen.length && <Leer>Nichts fällig. Alles bezahlt.</Leer>}
+              {finanzen.slice(0, 4).map(t => <Zeile key={t} links={<Punkt farbe={/Überfällig|kein Kontoauszug/.test(t) ? LEUCHT.kritisch : LEUCHT.achtung} />} titel={<span style={{ whiteSpace: 'normal' }}>{t}</span>} />)}
+            </Liste>
+          </Karte>
+        )}
         <Karte i={4} akzent={stapel ? LEUCHT.achtung : undefined}>
           <Ueberschrift farbe={stapel ? LEUCHT.achtung : C.inkLeise} rechts={<Link href="/os/stapel" style={{ color: C.inkLeise, textDecoration: 'none' }}>Stapel ›</Link>}>Jarvis</Ueberschrift>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>

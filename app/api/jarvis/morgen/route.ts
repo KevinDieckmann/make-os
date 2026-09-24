@@ -15,6 +15,9 @@
 import { NextResponse } from 'next/server';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { gatherBrain, promptBrain } from '@/lib/brain';
+import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
+import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
+import { blockHaushalt } from '@/lib/finanzen/haushalt/jarvis';
 import { fuehreAus } from '@/lib/jarvis/ausfuehren';
 import { offeneAnzahl, lies as liesStapel } from '@/lib/jarvis/stapel';
 import { personAus, type Person } from '@/lib/jarvis/raum';
@@ -140,6 +143,9 @@ export async function POST(req: Request) {
   let lage = '';
   try {
     lage = promptBrain(await gatherBrain(undefined, person));
+    // Haushalt (24.09.): Kevin hat Beträge im Briefing ausdrücklich erlaubt — nur mit benannter Person.
+    const hz = await haushaltVon(req).catch(() => null);
+    if (hz) lage += `\n\n${blockHaushalt(await ladeHaushalt(hz.haushalt))}`;
   } catch {
     return NextResponse.json({ ok: false, error: 'Lage nicht lesbar.' }, { status: 200 });
   }

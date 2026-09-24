@@ -9,6 +9,8 @@
 import { NextResponse } from 'next/server';
 import { haushaltVon, KEIN_ZUGANG } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt, patchen, type Op } from '@/lib/finanzen/haushalt/speicher';
+import { belegAufgabenAbgleichen } from '@/lib/finanzen/haushalt/aufgaben';
+import { faelligeZeilen } from '@/lib/finanzen/haushalt/jarvis';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,7 +21,13 @@ export async function GET(req: Request) {
   const z = await haushaltVon(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   // Nur fragen, ob es einen Zugang gibt — ohne die Daten zu laden.
-  if (new URL(req.url).searchParams.get('nur') === 'zugang') return NextResponse.json({ ok: true, haushalt: z.haushalt });
+  const nur = new URL(req.url).searchParams.get('nur');
+  if (nur === 'zugang') return NextResponse.json({ ok: true, haushalt: z.haushalt });
+  // Für die Heute-Seite: nur, was ansteht — Raten, Rechnungen, fehlender Kontoauszug.
+  if (nur === 'signale') {
+    const h = await ladeHaushalt(z.haushalt);
+    return NextResponse.json({ ok: true, punkte: h.buchungen.length ? faelligeZeilen(h) : [], leer: !h.buchungen.length });
+  }
   const h = await ladeHaushalt(z.haushalt);
   return NextResponse.json({ ok: true, haushalt: z.haushalt, person: z.person, ...h });
 }
@@ -36,5 +44,6 @@ export async function PATCH(req: Request) {
   // Wer anlegt, steht dabei — nicht, was der Browser behauptet.
   if (teil === 'buchungen') for (const o of ops) if (o.op === 'upsert' && o.eintrag && !o.eintrag.id) o.eintrag.erfasst_von = z.person;
   const e = await patchen(z.haushalt, teil, ops);
+  if (e.ok && teil === 'belege') await belegAufgabenAbgleichen(z.haushalt).catch(() => null);
   return NextResponse.json(e, { status: e.ok ? 200 : e.status });
 }

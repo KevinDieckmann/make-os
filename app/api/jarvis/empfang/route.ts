@@ -10,6 +10,9 @@
 import { NextResponse } from 'next/server';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { gatherBrain, promptBrain } from '@/lib/brain';
+import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
+import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
+import { blockHaushalt } from '@/lib/finanzen/haushalt/jarvis';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { offeneAnzahl } from '@/lib/jarvis/stapel';
 import { personAus, type Person } from '@/lib/jarvis/raum';
@@ -70,6 +73,7 @@ export async function GET(req: Request) {
   const offen = await offeneAnzahl().catch(() => 0);
   let lage = '';
   try { lage = promptBrain(await gatherBrain(undefined, person)); } catch { /* ohne Lage geht es auch */ }
+  try { const hz = await haushaltVon(req); if (hz) lage += `\n\n${blockHaushalt(await ladeHaushalt(hz.haushalt))}`; } catch { /* ohne Haushalt geht es auch */ }
 
   const r = await askText({
     zweck: 'empfang',

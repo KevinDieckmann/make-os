@@ -18,6 +18,16 @@ export interface PerfSnapshot {
   index: number | null;
   saeulen: Record<string, number | null>;
   abdeckung: number;
+  /** Was sich an der Rechnung geändert hat — damit ein Sprung im Verlauf erklärt ist. */
+  notiz?: string;
+}
+
+/** 24.09.: ab dem ersten Tag, an dem die private Hälfte der Finanzen zählt, steht das im Verlauf. */
+const HAUSHALT_NOTIZ = 'Finanzen ab hier mit Haushalt (Privat + Business je zur Hälfte)';
+function mitNotiz(snap: PerfSnapshot, aktuell: { saeulen: { key: string; teile?: { privat: number | null } }[] }, liste: PerfSnapshot[]): PerfSnapshot {
+  const privatZaehlt = aktuell.saeulen.find(s => s.key === 'finance')?.teile?.privat != null;
+  const schonMarkiert = liste.some(s => s.notiz === HAUSHALT_NOTIZ && s.date !== snap.date);
+  return privatZaehlt && !schonMarkiert ? { ...snap, notiz: HAUSHALT_NOTIZ } : snap;
 }
 interface PerfFile { snapshots: PerfSnapshot[] }
 
@@ -44,7 +54,7 @@ export async function GET(req: Request) {
     const file = await updateJson<PerfFile>('performance', current => {
       const list = Array.isArray(current?.snapshots) ? current.snapshots : [];
       if (list.some(s => s.date === snap.date)) return { snapshots: list };
-      return { snapshots: [...list, snap].sort((a, b) => a.date.localeCompare(b.date)).slice(-MAX) };
+      return { snapshots: [...list, mitNotiz(snap, aktuell, list)].sort((a, b) => a.date.localeCompare(b.date)).slice(-MAX) };
     });
     return NextResponse.json({ aktuell, verlauf: file.snapshots });
   }
@@ -67,7 +77,7 @@ export async function POST(req: Request) {
   const file = await updateJson<PerfFile>('performance', current => {
     const list = Array.isArray(current?.snapshots) ? current.snapshots : [];
     const ohneHeute = list.filter(s => s.date !== snap.date);
-    return { snapshots: [...ohneHeute, snap].sort((a, b) => a.date.localeCompare(b.date)).slice(-MAX) };
+    return { snapshots: [...ohneHeute, mitNotiz(snap, aktuell, list)].sort((a, b) => a.date.localeCompare(b.date)).slice(-MAX) };
   });
 
   if (!body.analyse) return NextResponse.json({ aktuell, verlauf: file.snapshots });

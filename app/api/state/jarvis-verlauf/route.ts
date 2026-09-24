@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { GRENZEN, titelAus, type Gespraech, type VerlaufNachricht } from '@/lib/make-one/jarvis-verlauf';
+import { personAus } from '@/lib/jarvis/raum';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,9 +42,18 @@ function sauber(g: Partial<Gespraech>): Gespraech | null {
   };
 }
 
-export async function GET() {
+/**
+ * Gespräche gehören der Person, die sie geführt hat (24.09.). Vorher sah jedes
+ * Konto jedes Gespräch — seit Jarvis auch private Finanzen kennt, geht das
+ * nicht mehr. Gespräche ohne Zuordnung stammen aus der Zeit mit nur Kevins
+ * Konto und gehören ihm.
+ */
+const gehoert = (g: { person?: string }, person: string) => (g.person ?? 'kevin') === person;
+
+export async function GET(req: Request) {
+  const person = personAus(req);
   const f = await loadJson<Datei>('jarvis-verlauf');
-  const gespraeche = (Array.isArray(f?.gespraeche) ? f.gespraeche : [])
+  const gespraeche = (Array.isArray(f?.gespraeche) ? f.gespraeche : []).filter(g => gehoert(g, person))
     .slice()
     .sort((a, b) => (b.zuletzt ?? '').localeCompare(a.zuletzt ?? ''));
   return NextResponse.json({
@@ -62,10 +72,14 @@ export async function PUT(req: Request) {
   // Leeres Gespräch nicht anlegen — sonst füllt jeder Panel-Aufruf die Liste.
   if (!g.nachrichten.length) return NextResponse.json({ ok: true, uebersprungen: true });
 
+  const person = personAus(req);
+  let fremd = false;
   const next = await updateJson<Datei>('jarvis-verlauf', current => {
     const f = current ?? { gespraeche: [] };
     f.gespraeche = Array.isArray(f.gespraeche) ? f.gespraeche : [];
     const i = f.gespraeche.findIndex(x => x.id === g.id);
+    if (i >= 0 && !gehoert(f.gespraeche[i], person)) { fremd = true; return f; }
+    g.person = person;
     // Kürzer als der gespeicherte Stand? Dann ist der Client hinterher —
     // die Historie wird nicht beschnitten.
     if (i >= 0 && (f.gespraeche[i].nachrichten?.length ?? 0) > g.nachrichten.length) return f;
@@ -75,16 +89,18 @@ export async function PUT(req: Request) {
     f.gespraeche = f.gespraeche.slice(0, GRENZEN.gespraeche);
     return f;
   });
-  return NextResponse.json({ ok: true, anzahl: next.gespraeche.length });
+  if (fremd) return NextResponse.json({ ok: false, error: 'Nicht dein Gespräch.' }, { status: 403 });
+  return NextResponse.json({ ok: true, anzahl: next.gespraeche.filter(x => gehoert(x, person)).length });
 }
 
 /** Ein einzelnes Gespräch entfernen. */
 export async function DELETE(req: Request) {
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ ok: false, error: 'id fehlt.' }, { status: 400 });
+  const person = personAus(req);
   const next = await updateJson<Datei>('jarvis-verlauf', current => {
     const f = current ?? { gespraeche: [] };
-    f.gespraeche = (f.gespraeche ?? []).filter(g => g.id !== id);
+    f.gespraeche = (f.gespraeche ?? []).filter(g => g.id !== id || !gehoert(g, person));
     return f;
   });
   return NextResponse.json({ ok: true, anzahl: next.gespraeche.length });

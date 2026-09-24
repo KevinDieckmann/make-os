@@ -638,6 +638,68 @@ async function entwurfAnsprache(input: Record<string, unknown>): Promise<string>
   return `ANSPRACHE-ENTWURF für ${anzeigename(treffer)}${treffer.firma ? ` (${treffer.firma})` : ''} — Kanäle: ${wege}\n\nBETREFF: ${r.entwurf.betreff}\n\nE-MAIL:\n${r.entwurf.email}\n\nLINKEDIN:\n${r.entwurf.linkedin}\n\n${r.entwurf.hinweis}\nNichts wurde versendet. Wenn Kevin es geschickt hat, mit notiere_kontakt (art: mail oder linkedin) festhalten.`;
 }
 
+// ─── Haushaltsfinanzen (24.09.) ─────────────────────────────────────────────
+// Nur für Personen mit Haushalt. Ohne benannte Person (Hintergrundlauf, Rück-
+// nahme aus dem Protokoll) verweigern die Werkzeuge — private Finanzen gibt es
+// nie „im Auftrag von niemandem“.
+
+async function haushaltDer(person?: string) {
+  const { haushaltFuer } = await import('@/lib/finanzen/haushalt/zugriff');
+  return haushaltFuer(person ?? null);
+}
+const KEIN_HAUSHALT = 'Nicht verfügbar: Die Haushaltsfinanzen gibt es nur im Gespräch mit Kevin oder Malin — nicht im Hintergrund und nicht für andere Konten.';
+
+async function haushaltStand(_i: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+  const z = await haushaltDer(person); if (!z) return KEIN_HAUSHALT;
+  const { ladeHaushalt } = await import('@/lib/finanzen/haushalt/speicher');
+  const { standText } = await import('@/lib/finanzen/haushalt/jarvis');
+  return standText(await ladeHaushalt(z.haushalt));
+}
+
+async function haushaltBuchungen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+  const z = await haushaltDer(person); if (!z) return KEIN_HAUSHALT;
+  const { ladeHaushalt } = await import('@/lib/finanzen/haushalt/speicher');
+  const { buchungenSuchen } = await import('@/lib/finanzen/haushalt/jarvis');
+  return buchungenSuchen(await ladeHaushalt(z.haushalt), { suche: input.suche ? String(input.suche) : undefined, monat: input.monat ? String(input.monat) : undefined, kategorie: input.kategorie ? String(input.kategorie) : undefined });
+}
+
+async function haushaltZuordnen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+  const z = await haushaltDer(person); if (!z) return KEIN_HAUSHALT;
+  const { ladeHaushalt } = await import('@/lib/finanzen/haushalt/speicher');
+  const { regelLernen } = await import('@/lib/finanzen/haushalt/aktionen');
+  const { normal } = await import('@/lib/finanzen/haushalt/regeln');
+  const h = await ladeHaushalt(z.haushalt);
+  const kat = h.stamm.kategorien.find(k => normal(k.name) === normal(String(input.kategorie ?? '')));
+  if (!kat) return `Fehlgeschlagen: Kategorie „${String(input.kategorie ?? '')}“ gibt es nicht. Vorhanden: ${h.stamm.kategorien.map(k => k.name).join(', ')}.`;
+  const e = await regelLernen(z.haushalt, { muster: String(input.muster ?? ''), kategorie_id: kat.id, rueckwirkend: input.rueckwirkend !== false, ganzes_wort: true }, false);
+  return `Gemerkt: „${String(input.muster)}“ → ${kat.name}. ${e.geaendert} Buchung${e.geaendert === 1 ? '' : 'en'} zugeordnet.`;
+}
+
+async function haushaltRechnungBezahlt(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+  const z = await haushaltDer(person); if (!z) return KEIN_HAUSHALT;
+  const { ladeHaushalt, patchen } = await import('@/lib/finanzen/haushalt/speicher');
+  const { normal } = await import('@/lib/finanzen/haushalt/regeln');
+  const { heuteBerlin } = await import('@/lib/finanzen/haushalt/monat');
+  const h = await ladeHaushalt(z.haushalt);
+  const s = normal(String(input.rechnung ?? ''));
+  const r = h.belege.filter(b => b.art === 'rechnung' && !b.erledigt && (normal(b.empfaenger ?? '').includes(s) || normal(b.bezeichnung).includes(s)));
+  if (r.length !== 1) return r.length ? `Nicht eindeutig: ${r.map(b => b.empfaenger || b.bezeichnung).join(', ')}.` : `Keine offene Rechnung zu „${String(input.rechnung ?? '')}“.`;
+  const e = await patchen(z.haushalt, 'belege', [{ op: 'upsert', stand: r[0].stand, eintrag: { ...r[0], erledigt: true, bezahlt_am: heuteBerlin() } }]);
+  return e.ok ? `Als bezahlt vermerkt: ${r[0].empfaenger || r[0].bezeichnung}.` : `Fehlgeschlagen: ${e.fehler}`;
+}
+
+async function haushaltRechnungErfassen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+  const z = await haushaltDer(person); if (!z) return KEIN_HAUSHALT;
+  const { patchen } = await import('@/lib/finanzen/haushalt/speicher');
+  const betrag = Number(input.betrag);
+  const e = await patchen(z.haushalt, 'belege', [{ op: 'upsert', eintrag: {
+    art: 'rechnung', empfaenger: String(input.an ?? ''), bezeichnung: String(input.wofuer ?? input.an ?? 'Rechnung'),
+    betrag: Number.isFinite(betrag) ? Math.round(betrag * 100) : null, faellig_am: /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : null,
+    verursacher: person === 'malin' ? 'Malin' : 'Kevin', einheit: 'privat', erledigt: false,
+  } }]);
+  return e.ok ? `Offene Rechnung erfasst: ${String(input.an ?? '')}${Number.isFinite(betrag) ? ` über ${eurW(betrag)}` : ''}.` : `Fehlgeschlagen: ${e.fehler}`;
+}
+
 export const WERKZEUGE: Record<string, { gruppe: string; lauf: (input: Record<string, unknown>, origin: string, person?: string) => Promise<string> }> = {
   create_task: { gruppe: 'aufgaben', lauf: erstelleAufgabe },
   starte_auftraege: { gruppe: 'auftraege', lauf: starteAuftraege },
@@ -646,6 +708,11 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: (input: Record<st
   lies_notiz: { gruppe: 'wissen', lauf: liesNotiz },
   notiz_anlegen: { gruppe: 'wissen', lauf: notizAnlegen },
   notiz_ergaenzen: { gruppe: 'wissen', lauf: notizErgaenzen },
+  haushalt_stand: { gruppe: 'haushalt', lauf: haushaltStand },
+  haushalt_buchungen: { gruppe: 'haushalt', lauf: haushaltBuchungen },
+  haushalt_zuordnen: { gruppe: 'haushalt', lauf: haushaltZuordnen },
+  haushalt_rechnung_bezahlt: { gruppe: 'haushalt', lauf: haushaltRechnungBezahlt },
+  haushalt_rechnung_erfassen: { gruppe: 'haushalt', lauf: haushaltRechnungErfassen },
   frag_gedaechtnis: { gruppe: 'gedaechtnis', lauf: fragGedaechtnis },
   plan_block: { gruppe: 'planer', lauf: planBlock },
   // Selbst nachsehen statt verweisen — Kevins Ansage.

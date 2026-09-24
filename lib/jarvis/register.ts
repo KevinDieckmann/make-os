@@ -255,6 +255,12 @@ export const REGISTER: Record<string, Eintrag> = {
   },
 
   // Freigabe — Geld, Ziele, Kompass. Wird zum Vorschlag im Stapel.
+  // Haushaltsfinanzen (24.09.): lesen läuft durch, Ändern braucht die Freigabe.
+  haushalt_stand: { gruppe: 'haushalt', risiko: 'frei', vorschau: schlicht('Haushalts-Stand lesen', () => 'privat, nur lesen') },
+  haushalt_buchungen: { gruppe: 'haushalt', risiko: 'frei', vorschau: schlicht('Private Buchungen suchen', i => text(i.suche) || text(i.monat) || text(i.kategorie) || 'alle') },
+  haushalt_zuordnen: { gruppe: 'haushalt', risiko: 'freigabe', vorschau: schlicht('Private Buchungen zuordnen und Regel merken', i => `„${text(i.muster)}“ → ${text(i.kategorie)}${i.rueckwirkend === false ? '' : ' · auch rückwirkend'}`) },
+  haushalt_rechnung_bezahlt: { gruppe: 'haushalt', risiko: 'freigabe', vorschau: schlicht('Private Rechnung als bezahlt vermerken', i => text(i.rechnung)) },
+  haushalt_rechnung_erfassen: { gruppe: 'haushalt', risiko: 'freigabe', vorschau: schlicht('Private offene Rechnung erfassen', i => `${text(i.an)}${i.betrag ? ` · ${eur(i.betrag)}` : ''}${i.faellig ? ` · fällig ${text(i.faellig, 10)}` : ''}`) },
   setze_kontostand: { gruppe: 'finanzen', risiko: 'freigabe', vorschau: vsKontostand },
   erfasse_rechnung: { gruppe: 'finanzen', risiko: 'freigabe', vorschau: vsRechnung },
   erfasse_zahlung: { gruppe: 'finanzen', risiko: 'freigabe', vorschau: vsZahlung },

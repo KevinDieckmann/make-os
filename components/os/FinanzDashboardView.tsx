@@ -36,7 +36,7 @@ export function FinanzDashboardView() {
   }
 
   return (
-    <Seite titel="Malins Dashboard" unter="Euer eigenes Dashboard — läuft mit seiner eigenen Datenablage weiter, hier nur eingebettet."
+    <Seite titel="Business-Altbestand" unter="Malins erstes Cockpit (Version 1). Hier wird die Selbstständigkeit noch gepflegt, bis sie ein eigenes Zuhause hat. Eure privaten Finanzen stehen jetzt unter Zahlen → Privat."
       rechts={<span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>{schalter}{fenster}</span>}>
       <Karte i={0} akzent={LEUCHT.geld} style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '18px 20px 0' }}>

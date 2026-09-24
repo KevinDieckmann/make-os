@@ -95,7 +95,7 @@ export const BEREICHE: Bereich[] = [
       { href: '/os/finanzen/buchungen', label: 'Buchungen', icon: ListChecks },
       { href: '/os/finanzen/planung', label: 'Rechnungen & Zahlungen', icon: CheckSquare, modus: 'business' },
       { href: '/os/controlling', label: 'Controlling', icon: Gauge, modus: 'business' },
-      { href: '/os/finanzen/dashboard', label: 'Malins Dashboard', icon: LayoutGrid, modus: 'business' },
+      { href: '/os/finanzen/dashboard', label: 'Business-Altbestand', icon: LayoutGrid, modus: 'business' },
     ],
   },
   {

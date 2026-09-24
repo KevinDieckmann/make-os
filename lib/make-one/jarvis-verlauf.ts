@@ -31,6 +31,8 @@ export interface Gespraech {
   /** Aus der ersten Frage abgeleitet, damit die Liste lesbar ist. */
   titel: string;
   nachrichten: VerlaufNachricht[];
+  /** Wem das Gespräch gehört (24.09.) — ohne Angabe: Kevin (aus der Zeit mit nur einem Konto). */
+  person?: string;
 }
 
 /** Was wir behalten. Reicht für Monate; die Datei bleibt trotzdem klein. */

@@ -23,7 +23,8 @@ export async function POST(req: Request) {
   const fin = payload.finance ?? brain.finance ?? undefined;
   const tasks: TaskLite[] = Array.isArray(payload.tasks) && payload.tasks.length
     ? payload.tasks
-    : brain.tasks.offen.map(t => ({ title: t.title, status: t.status, priority: t.priority }));
+    // Haushalts-Aufgaben (Stichwort „haushalt“) bleiben draußen — OKR-Ergebnisse können an Dritte gehen.
+    : brain.tasks.offen.filter(t => !((t as { tags?: string[] }).tags ?? []).includes('haushalt')).map(t => ({ title: t.title, status: t.status, priority: t.priority }));
 
   if (!hasAnthropicKey()) return NextResponse.json({ lage: 'Kein Anthropic-Key hinterlegt.', objectives: [] });
   const agent = await resolveAgent('okr');

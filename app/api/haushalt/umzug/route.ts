@@ -17,6 +17,7 @@ import { loadJson, saveJson } from '@/lib/store/local-db';
 import { haushaltVon, KEIN_ZUGANG } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt, setzeHaushalt, aendereMeta } from '@/lib/finanzen/haushalt/speicher';
 import { verbindungAusUmgebung, ausSupabaseLesen, zusammenfuehren, type Umzugsbericht } from '@/lib/finanzen/haushalt/supabase-umzug';
+import { belegAufgabenAbgleichen } from '@/lib/finanzen/haushalt/aufgaben';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -73,6 +74,7 @@ export async function POST(req: Request) {
     const zeit = new Date().toISOString();
     await aendereMeta(z.haushalt, m => ({ ...m, umzug: { zeit, wer: z.person, ziel: z.haushalt, zaehlung: Object.fromEntries(Object.entries(ergebnis).map(([k, v]) => [k, v.neu + v.ersetzt + v.behalten + v.nurMakeOs])), supabase: Object.fromEntries(Object.entries(s.bericht.zaehlung).map(([k, v]) => [k, v.supabase])) } }));
     await saveJson<Stand>(standName(z.haushalt), { ...s, uebernommen: { zeit, wer: z.person, ergebnis } });
+    await belegAufgabenAbgleichen(z.haushalt).catch(() => null);
     return NextResponse.json({ ok: true, ergebnis });
   }
   return NextResponse.json({ ok: false, fehler: 'Unbekannter Schritt.' }, { status: 400 });

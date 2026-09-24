@@ -59,10 +59,12 @@ export async function GET() {
   const SAEULEN_JE_MODUS: Record<string, string[]> = {
     alles: ['health', 'business', 'planning', 'finance', 'social'],
     business: ['business', 'finance', 'planning'],
-    privat: ['health', 'social', 'planning'],
+    privat: ['health', 'social', 'planning', 'finance'],
   };
-  const teilIndex = (keys: string[]) => {
-    const gezaehlt = idx.saeulen.filter(s => keys.includes(s.key) && s.score != null && !s.zuDuenn);
+  const teilIndex = (keys: string[], modus?: 'business' | 'privat') => {
+    // Finanzen: im Business-Modus nur die Business-Hälfte, im Privat-Modus nur die private.
+    const saeulen = idx.saeulen.map(s => (s.key === 'finance' && modus && s.teile ? { ...s, score: s.teile[modus] } : s));
+    const gezaehlt = saeulen.filter(s => keys.includes(s.key) && s.score != null && !s.zuDuenn);
     const summe = gezaehlt.reduce((s, x) => s + x.gewicht, 0);
     if (!summe) return { index: null as number | null, label: indexLabel(null), abdeckung: 0 };
     const wert = Math.round(gezaehlt.reduce((s, x) => s + (x.score as number) * x.gewicht, 0) / summe);
@@ -82,7 +84,7 @@ export async function GET() {
       key: s.key, label: s.label, wert: s.score, gewicht: s.gewicht, zuDuenn: s.zuDuenn, hinweis: s.hinweis,
     })),
     // Je Leben ein eigener Wert — dokumentierbar, nicht nur ein Gesamtgefühl.
-    modi: Object.fromEntries(Object.entries(SAEULEN_JE_MODUS).map(([m, keys]) => [m, teilIndex(keys)])),
+    modi: Object.fromEntries(Object.entries(SAEULEN_JE_MODUS).map(([m, keys]) => [m, teilIndex(keys, m === 'business' || m === 'privat' ? m : undefined)])),
     // Und je Person: Malin hat eine andere Gesundheit und andere Ziele.
     person: {
       kevin: { index: idx.index, label: idx.label, abdeckung: idx.abdeckung },

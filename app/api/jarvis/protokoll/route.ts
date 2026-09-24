@@ -11,6 +11,7 @@ import { lies, eintrag, stempleZurueckgenommen } from '@/lib/jarvis/protokoll';
 import { fuehreAus } from '@/lib/jarvis/ausfuehren';
 import { uebersicht } from '@/lib/jarvis/ausfuehren';
 import { innenAdresse } from '@/lib/innen';
+import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,7 +19,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   const p = new URL(req.url).searchParams;
   const anzahl = Math.max(1, Math.min(200, Number(p.get('anzahl')) || 60));
-  const eintraege = await lies(anzahl);
+  // Einträge der Haushaltsfinanzen nur für Haushaltsmitglieder (24.09.).
+  const z = await haushaltVon(req);
+  const eintraege = (await lies(anzahl)).filter(e => z || e.gruppe !== 'haushalt');
   return NextResponse.json({ ok: true, eintraege, werkzeuge: uebersicht() });
 }
 

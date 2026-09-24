@@ -41,6 +41,23 @@ async function whoopHolen(origin: string): Promise<void> {
   } catch { /* nichts — die Nachricht kommt trotzdem */ }
 }
 
+/**
+ * Fällige private Posten für die Morgennachricht (24.09.). Kevin hat Beträge
+ * in Briefings ausdrücklich erlaubt. Nur für Personen mit Haushalt; Telegram-
+ * Bot-Chats sind nicht Ende-zu-Ende-verschlüsselt — das weiß Kevin.
+ */
+async function haushaltZeilen(person: Person): Promise<string> {
+  try {
+    const { haushaltFuer } = await import('@/lib/finanzen/haushalt/zugriff');
+    const z = await haushaltFuer(person);
+    if (!z) return '';
+    const { ladeHaushalt } = await import('@/lib/finanzen/haushalt/speicher');
+    const { faelligeZeilen } = await import('@/lib/finanzen/haushalt/jarvis');
+    const zeilen = faelligeZeilen(await ladeHaushalt(z.haushalt)).slice(0, 4);
+    return zeilen.length ? `\n\n💶 Finanzen\n${zeilen.map(t => `• ${t}`).join('\n')}` : '';
+  } catch { return ''; }
+}
+
 export async function nachrichtFuer(person: Person, slot: Slot, origin: string): Promise<string> {
   const heute = localDay();
   const name = (await namenVon())[person] ?? nameVon(person);
@@ -48,11 +65,12 @@ export async function nachrichtFuer(person: Person, slot: Slot, origin: string):
   if (slot === 'morgen') {
     if (person === 'kevin') await whoopHolen(origin);
     const v = await resolveVitals(heute, person);
-    return morgenText({
+    const text = morgenText({
       name,
       vitals: { rec: v.rec, sleep: v.sleep, heute: v.heute },
       routinen: alle.filter(r => r.wann === 'morgen').map(r => r.label),
     });
+    return text + await haushaltZeilen(person);
   }
   if (slot === 'mittag') return mittagText(name);
   const streak = (await loadJson<StreakLog>(speicherFuer('streak', person))) ?? {};

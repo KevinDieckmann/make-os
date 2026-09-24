@@ -18,6 +18,9 @@ import type { Prospect } from '@/lib/make-one/prospecting-data';
 import { agentenFaktoren, agentenEingabe } from '@/lib/agenten-score';
 import { DEPARTMENTS } from '@/lib/make-one/agents-data';
 import { ladeStand as ladeTelegram, chatsFuerPerson, telegramKonfiguriert } from '@/lib/telegram';
+import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
+import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
+import { privatFaktoren, finanzSaeule } from '@/lib/finanzen/haushalt/score';
 
 export interface Faktor {
   label: string;
@@ -41,6 +44,8 @@ export interface Saeule {
   /** true = zu wenig gemessen, zählt NICHT in den Gesamtindex. */
   zuDuenn: boolean;
   hinweis: string;
+  /** Nur Finanzen (24.09.): die beiden Hälften einzeln — Business-Modus zeigt nur die Business-Hälfte. */
+  teile?: { business: number | null; privat: number | null };
 }
 
 /** Unter dieser Abdeckung ist eine Säule kein Urteil, sondern eine Ahnung.
@@ -310,6 +315,14 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
       quelle: hatZahlen && m!.istUmsatz > 0 ? `${Math.round((m!.istGewinn / m!.istUmsatz) * 100)}% — 50% = 100` : 'keine Ist-Zahlen' },
   ];
 
+  // ── Finanzen, private Hälfte (24.09.) — nur für Personen mit Haushalt ──
+  const zugang = await haushaltFuer(person).catch(() => null);
+  const privat: Faktor[] = zugang ? privatFaktoren(await ladeHaushalt(zugang.haushalt), today) : [];
+  const finanzenGesamt: Faktor[] = [
+    ...finanzen.map(f => ({ ...f, label: `Business · ${f.label}` })),
+    ...privat.map(f => ({ ...f, label: `Privat · ${f.label}` })),
+  ];
+
   // ── Beziehung & Team ──
   // Bewusst ohne erfundene Messgröße: hier gibt es (noch) keine Datenquelle.
   const sozial: Faktor[] = [
@@ -356,12 +369,16 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
     { key: 'business', label: 'Business-Performance', gewicht: 0.20, faktoren: business, hinweis: 'Umsatz-Kurs + Pipeline' },
     // 24.09.: Agenten als sechste Säule (10 %); Planung und Beziehung geben je 5 % ab.
     { key: 'planning', label: 'Planung & Ausführung', gewicht: 0.10, faktoren: planung, hinweis: 'Aufgabenlage + Kalender' },
-    { key: 'finance', label: 'Finanzen', gewicht: 0.15, faktoren: finanzen, hinweis: 'Runway + Gewinn' },
+    { key: 'finance', label: 'Finanzen', gewicht: 0.15, faktoren: finanzenGesamt, hinweis: privat.length ? 'Business (Runway, Gewinn, Marge) + Privat (Sparquote, Luft, Schuldenabbau) — je zur Hälfte' : 'Runway + Gewinn' },
     { key: 'social', label: 'Beziehung & Ruhe', gewicht: 0.10, faktoren: sozial, hinweis: 'Journal' },
     { key: 'agents', label: 'Agenten', gewicht: 0.10, faktoren: agenten, hinweis: 'Läufe, Aufträge, Stapel, Bote' },
   ];
 
   const saeulen: Saeule[] = roh.map(s => {
+    if (s.key === 'finance') {
+      const f = finanzSaeule(finanzen, privat);
+      return { ...s, score: f.score, abdeckung: f.abdeckung, teile: f.teile, zuDuenn: f.score != null && f.abdeckung < MIN_ABDECKUNG };
+    }
     const { score, abdeckung } = verdichte(s.faktoren);
     return { ...s, score, abdeckung, zuDuenn: score != null && abdeckung < MIN_ABDECKUNG };
   });

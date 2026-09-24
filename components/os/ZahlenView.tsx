@@ -24,7 +24,7 @@ const BEREICHE = [
   { href: '/os/finanzen/buchungen', titel: 'Buchungen', satz: 'was auf den Konten wirklich passiert ist' },
   { href: '/os/finanzen/planung', titel: 'Rechnungen & Zahlungen', satz: 'was reinkommt, was raus muss, in welcher Reihenfolge' },
   { href: '/os/controlling', titel: 'Controlling & Ziele', satz: 'Kurs aufs Jahresziel, Run-Rate, Runway' },
-  { href: '/os/finanzen/dashboard', titel: 'Malins Dashboard', satz: 'das gewachsene Werkzeug, unverändert' },
+  { href: '/os/finanzen/dashboard', titel: 'Business-Altbestand', satz: 'Malins erstes Cockpit — dort wird die Selbstständigkeit noch gepflegt; Privates steht jetzt unter Privat' },
 ];
 
 /** Business: die bisherigen Zahlen (Firmen, Liquidität, Grundlage). Eingebettet in FinanzenView. */
@@ -121,6 +121,7 @@ export function ZahlenBusiness() {
           <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>{MONAT_KURZ(k.vonMonat)} bis {MONAT_KURZ(k.bisMonat)} {k.bisMonat.slice(0, 4)} · {k.monate} Monate seit dem ersten Beleg</div>
         </Karte>
       )}
+      <BelegeBusiness />
       <Karte i={4}>
         <Ueberschrift>Bereiche</Ueberschrift>
         <Liste>
@@ -134,5 +135,31 @@ export function ZahlenBusiness() {
         </Spalte>
       </Spalten>
     </>
+  );
+}
+
+/**
+ * Rechnungen und fehlende Belege der Selbstständigkeit und der UG (24.09.).
+ * Sie stehen in Malins Datenmodell bei den Haushaltsfinanzen (Spalte einheit)
+ * und sind deshalb nur für Haushaltsmitglieder lesbar — andere sehen die
+ * Karte nicht.
+ */
+function BelegeBusiness() {
+  const [liste, setListe] = useState<{ id: string; art: string; bezeichnung: string; empfaenger: string | null; betrag: number | null; faellig_am: string | null; einheit: string; erledigt: boolean }[] | null>(null);
+  useEffect(() => { fetch('/api/haushalt').then(r => (r.ok ? r.json() : null)).then(d => setListe(d?.ok ? (d.belege ?? []).filter((b: { einheit: string; erledigt: boolean }) => b.einheit !== 'privat' && !b.erledigt) : null)).catch(() => {}); }, []);
+  if (!liste) return null;
+  const heute = localDay();
+  return (
+    <Karte i={5}>
+      <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href="/os/finanzen?s=privat&t=schulden" style={{ color: C.inkLeise, textDecoration: 'none' }}>pflegen ›</Link>}>Rechnungen & Belege · Selbstständigkeit / UG</Ueberschrift>
+      <Liste>
+        {!liste.length && <Leer>Nichts offen.</Leer>}
+        {liste.slice(0, 8).map(b => (
+          <Zeile key={b.id} links={<span style={{ fontSize: 12, color: C.inkLeise, width: 56 }}>{b.art === 'rechnung' ? 'Rechnung' : 'Beleg'}</span>}
+            titel={b.empfaenger || b.bezeichnung} unter={`${b.bezeichnung}${b.faellig_am ? ` · fällig ${b.faellig_am.slice(8, 10)}.${b.faellig_am.slice(5, 7)}.` : ''} · ${b.einheit === 'ug' ? 'UG' : 'Selbstständigkeit'}`}
+            rechts={b.betrag ? <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums', color: b.faellig_am && b.faellig_am < heute ? LEUCHT.kritisch : C.ink }}>{(b.betrag / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span> : undefined} />
+        ))}
+      </Liste>
+    </Karte>
   );
 }

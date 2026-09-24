@@ -25,12 +25,17 @@ export async function GET() {
     return NextResponse.json({ vorhanden: false, hinweis: 'Noch kein Export aus Malins Finanz-Dashboard geladen.' });
   }
   const g = lesen(d.roh, d.stand);
+  // 24.09.: Privates bleibt draußen. Das Privatkonto (p.bank) und die privaten
+  // Schulden (p.sch) aus Malins altem Export gehören in die Haushaltsfinanzen —
+  // diese Route liest jedes Konto, auch ohne Haushalt.
+  const { privat: _p, schulden: _s, ...business } = g;
+  const { schuldenRest: _r, schuldenRateMonat: _m, ...kz } = kennzahlen(g);
   return NextResponse.json({
     vorhanden: true,
     stand: d.stand,
     geladen: d.geladen,
-    grundlage: g,
-    kennzahlen: kennzahlen(g),
+    grundlage: { ...business, privat: [], schulden: [] },
+    kennzahlen: { ...kz, schuldenRest: 0, schuldenRateMonat: 0 },
     monate: monatsBild(g),
     kategorien: kostenNachKategorie(g),
   });

@@ -41,3 +41,15 @@ describe('Werkzeug-Register', () => {
     }
   });
 });
+
+describe('Haushaltsfinanzen-Werkzeuge (24.09.)', () => {
+  it('Ändern braucht die Freigabe, Lesen läuft durch', () => {
+    for (const n of ['haushalt_zuordnen', 'haushalt_rechnung_bezahlt', 'haushalt_rechnung_erfassen']) expect(risikoVon(n), n).toBe('freigabe');
+    for (const n of ['haushalt_stand', 'haushalt_buchungen']) expect(risikoVon(n), n).toBe('frei');
+  });
+  it('ohne benannte Person (Hintergrund, Rücknahme) verweigern alle — private Finanzen nie im Auftrag von niemandem', async () => {
+    for (const n of ['haushalt_stand', 'haushalt_buchungen', 'haushalt_zuordnen', 'haushalt_rechnung_bezahlt', 'haushalt_rechnung_erfassen']) {
+      expect(await WERKZEUGE[n].lauf({}, 'http://localhost', undefined), n).toMatch(/^Nicht verfügbar/);
+    }
+  });
+});
