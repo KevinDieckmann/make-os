@@ -57,5 +57,11 @@ export async function POST(req: Request) {
     return f;
   });
   if (!ergebnis) return NextResponse.json({ error: `Kein Kontakt mit id ${id}.` }, { status: 404 });
+  // Karte aus einer Kampagne: das Ergebnis zählt auch dort (Power Hour ↔ Kampagne).
+  if (bezug?.startsWith('kp-') && erg) {
+    const kErg = erg === 'gespraech' || erg === 'termin' ? 'gespraech' : erg === 'kein_bedarf' || erg === 'sperre' ? 'kein_interesse' : 'angesprochen';
+    const { aendereCrm } = await import('@/lib/crm/speicher');
+    await aendereCrm(c => ({ ...c, kampagnen: c.kampagnen.map(k => (k.id === bezug && k.kontaktIds.includes(id) ? { ...k, ergebnisse: [...k.ergebnisse, { kontaktId: id, ergebnis: kErg, am: heute }], geaendert: new Date().toISOString() } : k)) }));
+  }
   return NextResponse.json({ ok: true, kontakt: ergebnis, hinweis: erg ? folgeAus(erg, heute, 'neu').hinweis : undefined });
 }

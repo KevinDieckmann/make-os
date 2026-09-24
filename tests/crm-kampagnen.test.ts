@@ -46,3 +46,14 @@ describe('Kampagnen', () => {
     expect(kampagnenZahlen(kp, HEUTE)).toMatchObject({ personen: 3, angesprochen: 2, gespraeche: 1, keinInteresse: 1, offen: 1, schritteFaellig: 4 });
   });
 });
+
+import { werIstDran } from '../lib/crm/heute';
+describe('Kampagne ↔ Power Hour', () => {
+  it('offene Personen einer aktiven Kampagne erscheinen als „Neu“ mit Bezug', () => {
+    const kontakte = [k('x', { telefon: '030', kreis: 'B', letzterKontakt: '2026-09-01' })];
+    const crm2 = { ...leererBestand(), kampagnen: [{ ...planen(PLAYBOOKS[1], [], leererBestand(), HEUTE, 'kp-1'), status: 'aktiv' as const, kontaktIds: ['c-x'] }] };
+    const a = werIstDran(kontakte, crm2, HEUTE, 'kevin');
+    const karte = a.karten.find(c => c.kontakt.id === 'c-x');
+    expect(karte?.gruende.some(g => g.includes('Kampagne'))).toBe(true);
+  });
+});

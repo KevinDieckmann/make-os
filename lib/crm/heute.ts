@@ -117,6 +117,11 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
     const seit = k.letzterKontakt ? tage(k.letzterKontakt, heute) : null;
     if (seit === null || seit >= takt) nimm(k, 'pflege', Math.round((seit === null ? 2 : seit / takt) * 10 * (KREIS_GEWICHT[k.kreis ?? 'B'])), seit === null ? `Kreis ${k.kreis ?? '–'}: noch kein Kontakt vermerkt` : `Kreis ${k.kreis ?? '–'}: ${seit} Tage still (Takt ${takt})`);
   }
+  // 5b Aktive Kampagnen: wer noch nicht angesprochen ist, kommt als „Neu“ mit Kampagnen-Bezug.
+  for (const kp of (crm.kampagnen ?? []).filter(x => x.status === 'aktiv')) {
+    const erledigt = new Set(kp.ergebnisse.map(e => e.kontaktId));
+    for (const id of kp.kontaktIds.filter(i => !erledigt.has(i)).slice(0, 10)) nimm(nachId.get(id), 'neu', 24, `Kampagne „${kp.name}“: noch nicht angesprochen`, { bezug: kp.id });
+  }
   // 6 Neu (die bisherige Tagesliste, jetzt mit Kanal-Ampel)
   const PRIO: Record<string, number> = { A: 20, B: 10 };
   for (const k of kontakte) {
