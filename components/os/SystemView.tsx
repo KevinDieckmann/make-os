@@ -8,9 +8,15 @@ import { FARBE as C } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Raster } from './schlank';
 
 const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: string }[] }[] = [
-  { titel: 'Weitere Bereiche', eintraege: [
-    { href: '/os/finanzen', label: 'Zahlen', was: 'Liquidität, Konten, Buchungen' },
-    { href: '/os/crm', label: 'Kontakte', was: 'wer heute dran ist, alle Kontakte, Mandate' },
+  // Alles, was seit 24.09. abends im Kopf oben liegt — hier noch einmal zum Nachschlagen.
+  { titel: 'Alle Bereiche', eintraege: [
+    { href: '/os', label: 'Heute', was: 'der Tag auf einen Blick' },
+    { href: '/os/inbox', label: 'Inbox', was: 'Postfächer, priorisiert' },
+    { href: '/os/wachstum', label: 'Wachstum', was: 'der Score über allem' },
+    { href: '/os/gesundheit', label: 'Gesundheit', was: 'Körper, Journal, Ernährung' },
+    { href: '/os/finanzen', label: 'Zahlen', was: 'Privat, Business, Gesamt, Head of Finance' },
+    { href: '/os/familie', label: 'Familie & Partnerschaft', was: 'wir zwei zuerst, dann die Familie' },
+    { href: '/os/crm', label: 'CRM', was: 'Kartei, wer heute dran ist, Kunden und Mandate' },
   ] },
   { titel: 'Jarvis', eintraege: [
     { href: '/os/stapel', label: 'Aufträge & Freigaben', was: 'was vorbereitet ist und auf dich wartet' },

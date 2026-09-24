@@ -1,45 +1,45 @@
-// ─── MAKE OS — Die Navigation (23.09.) ──────────────────────────────────────
-// Kevin: „Das ist grausig … wie würdest du es maximal verschlanken?"
-//
-// Vorher: 50 Seiten in 7 Bereichen, eine Seitenleiste, die je Bereich ihren
-// Inhalt wechselte, darüber eine Reiterleiste mit denselben Einträgen, dazu
-// ein Modus-Schalter. Jetzt: EINE Ebene, sechs Einträge, ein Zahnrad.
+// ─── MAKE OS — Die Navigation ───────────────────────────────────────────────
+// 23.09. (Kevin: „Das ist grausig … maximal verschlanken"): eine Ebene statt
+// sieben Bereichen. 24.09. abends, Kevin: „Wir haben oben alle Sachen sauber
+// verlinkt, das bedeutet wir brauchen auf der linken Seite nicht alles —
+// das doppelt sich." Links stehen jetzt nur die Arbeitsräume: Jarvis, Brain,
+// CRM, Fokus, Aufgaben. Heute, Inbox, Wachstum, Gesundheit, Business,
+// Planung, Zahlen, Familie und Agenten erreicht man über den Kopf oben
+// (WachstumsKopf) — auf dem Handy genauso.
 //
 // Jeder Eintrag kennt die Pfade, für die er „aktiv" ist — so bleibt jede alte
 // Adresse erreichbar und die Leiste zeigt trotzdem, wo man ist.
 
 import type { LucideIcon } from 'lucide-react';
-import { Clock, Inbox, HeartPulse, TrendingUp, ListChecks, BarChart3, Users, BookOpen, Sparkles, Settings } from 'lucide-react';
+import { ListChecks, Users, Brain, Sparkles, Settings, Crosshair } from 'lucide-react';
 
 export interface Eintrag { href: string; label: string; icon: LucideIcon; passt: string[] }
 
 export const HAUPT: Eintrag[] = [
-  { href: '/os', label: 'Heute', icon: Clock, passt: ['/os', '/os/kompass', '/os/tageslauf', '/os/ritual', '/os/planung', '/os/kalender'] },
-  // 24.09., Kevin: „Nimm als Score das ganze Thema Wachstum mit rein. Einen eigenen Bereich."
-  { href: '/os/wachstum', label: 'Wachstum', icon: TrendingUp, passt: ['/os/wachstum', '/os/performance', '/os/saeule'] },
-  { href: '/os/inbox', label: 'Inbox', icon: Inbox, passt: ['/os/inbox'] },
-  { href: '/os/gesundheit', label: 'Gesundheit', icon: HeartPulse, passt: ['/os/gesundheit', '/os/journal', '/os/ernaehrung', '/os/energie', '/os/woche', '/os/fokus', '/os/saeule/health'] },
-  { href: '/os/aufgaben', label: 'Aufgaben', icon: ListChecks, passt: ['/os/aufgaben', '/os/planung/woche', '/os/planung/monat', '/os/planung/quartal', '/os/planung/jahr', '/os/planung/routinen', '/os/meeting', '/os/board'] },
-  { href: '/os/finanzen', label: 'Zahlen', icon: BarChart3, passt: ['/os/finanzen', '/os/controlling'] },
-  { href: '/os/crm', label: 'Kontakte', icon: Users, passt: ['/os/crm', '/os/netzwerk', '/os/prospecting'] },
-  // 24.09., Kevin: „Obsidian soll Nr. 1 Wissensbank sein." — suchen und lesen, gepflegt wird in Obsidian.
-  { href: '/os/wissen', label: 'Wissen', icon: BookOpen, passt: ['/os/wissen'] },
-  // 24.09., Kevin: „Nimm Jarvis einfach links als eigene Seite mit rein, wo ich draufklicken kann, wenn ich möchte."
+  // 24.09., Kevin: „Nimm Jarvis einfach links als eigene Seite mit rein."
   { href: '/jarvis', label: 'Jarvis', icon: Sparkles, passt: ['/jarvis'] },
+  // Kevin: „Wissen, wo ich aber gerne Brain für haben möchte." Obsidian ist Wissensbank Nr. 1.
+  { href: '/os/wissen', label: 'Brain', icon: Brain, passt: ['/os/wissen'] },
+  // Kevin: „das Thema CRM, was jetzt gerade noch Kontakte ist."
+  { href: '/os/crm', label: 'CRM', icon: Users, passt: ['/os/crm', '/os/netzwerk', '/os/prospecting', '/os/kunden'] },
+  // Kevin: „Fokus, das haben wir ja auch als riesiges Thema."
+  { href: '/os/fokus', label: 'Fokus', icon: Crosshair, passt: ['/os/fokus', '/os/kompass', '/os/planung/fokus'] },
+  { href: '/os/aufgaben', label: 'Aufgaben', icon: ListChecks, passt: ['/os/aufgaben', '/os/planung/woche', '/os/planung/monat', '/os/planung/quartal', '/os/planung/jahr', '/os/planung/routinen', '/os/meeting', '/os/board'] },
 ];
 
-/** Die fünf Plätze der Handy-Leiste — Whoop hat auch nur fünf. */
-export const HANDY = ['/os', '/os/wachstum', '/os/gesundheit', '/os/inbox'];
+/** Die Handy-Leiste: dieselben Arbeitsräume wie links, dazu das Zahnrad. */
+export const HANDY = HAUPT.map(e => e.href);
 
 export const SYSTEM: Eintrag = { href: '/os/system', label: 'System', icon: Settings, passt: ['/os/system', '/os/agenten', '/os/stapel', '/os/verbindungen', '/os/konto', '/os/datenbasis', '/os/stammdaten', '/os/bauplan', '/os/roadmap', '/os/loop', '/os/onboarding', '/os/research', '/os/content'] };
 
-export function aktiverEintrag(pfad: string): Eintrag {
+/** Der aktive Leisten-Eintrag — oder keiner (Heute, Zahlen, Gesundheit … liegen im Kopf). */
+export function aktiverEintrag(pfad: string): Eintrag | null {
   const alle = [...HAUPT, SYSTEM];
-  // Längster passender Präfix gewinnt — /os/planung/woche gehört zu Aufgaben, /os/planung zu Heute.
+  // Längster passender Präfix gewinnt — /os/planung/woche gehört zu Aufgaben.
   let best: { e: Eintrag; l: number } | null = null;
   for (const e of alle) for (const p of e.passt) {
-    const ok = p === '/os' ? pfad === '/os' : pfad === p || pfad.startsWith(`${p}/`);
+    const ok = pfad === p || pfad.startsWith(`${p}/`);
     if (ok && (!best || p.length > best.l)) best = { e, l: p.length };
   }
-  return best?.e ?? HAUPT[0];
+  return best?.e ?? null;
 }

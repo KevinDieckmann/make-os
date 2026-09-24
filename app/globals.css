@@ -416,7 +416,8 @@ nav a:hover { transform: translateX(2px); }
 @media (max-width: 720px) {
   /* !important, weil der Chip-Wrapper inline display:inline-flex trägt */
   .wachstum-kopf-unter, .wachstum-kopf-label, .wachstum-kopf-name, .wachstum-kopf-zone { display: none !important; }
-  .wachstum-kopf-saeulen { gap: 6px; }
+  .wachstum-kopf-saeulen { gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .wachstum-kopf-saeulen::-webkit-scrollbar { display: none; }
 }
 
 /* ─── Dashboard-Raster (24.09.) ─────────────────────────────────────────────

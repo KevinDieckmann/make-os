@@ -129,7 +129,7 @@ export function KontakteView() {
   );
 
   return (
-    <Seite titel="Kontakte" rechts={<Segmente liste={SEG} aktiv={segment} onWahl={s => router.replace(s === 'heute' ? pfad : `${pfad}?s=${s}`)} />}>
+    <Seite titel="CRM" rechts={<Segmente liste={SEG} aktiv={segment} onWahl={s => router.replace(s === 'heute' ? pfad : `${pfad}?s=${s}`)} />}>
       {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 12 }}>{meldung}</div>}
 
       {segment !== 'mandate' && (

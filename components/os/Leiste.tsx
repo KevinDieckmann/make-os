@@ -1,7 +1,8 @@
 'use client';
 
 // ─── MAKE OS — Die Leiste ───────────────────────────────────────────────────
-// Eine Ebene, sechs Einträge, das Konto, ein Zahnrad. Kein Bereichswechsel,
+// Seit 24.09. abends: nur die Arbeitsräume (Jarvis, Brain, CRM, Fokus,
+// Aufgaben), das Konto, ein Zahnrad — alles andere liegt im Kopf oben. Kein Bereichswechsel,
 // kein Modus-Schalter, kein Score-Kasten, keine Fußzeile. Was man anklicken
 // kann, ist alles, was da ist.
 //
@@ -24,7 +25,7 @@ export function Leiste() {
   const vorname = konto?.name.split(' ')[0] ?? '';
 
   const zeile = (e: typeof HAUPT[number], klein = false) => {
-    const an = aktiv.href === e.href;
+    const an = aktiv?.href === e.href;
     const Icon = e.icon;
     return (
       <Link key={e.href} href={e.href} className="fassbar" style={{

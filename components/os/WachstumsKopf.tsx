@@ -14,14 +14,17 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Ring, Chip, zoneFarbe, LEUCHT } from './schlank';
 import { SCORE_NEU } from './WhoopImport';
+import { Sun, Inbox as InboxIcon } from 'lucide-react';
 
 interface Saeule { key: string; label: string; score: number | null; zuDuenn: boolean }
 interface Antwort { aktuell: { index: number | null; label: string; hebel: string | null; stand: string; saeulen: Saeule[] }; verlauf: { date: string; index: number | null }[] }
 
 const FARBE_JE: Record<string, string> = { health: LEUCHT.gut, business: LEUCHT.business, planning: LEUCHT.planung, finance: LEUCHT.geld, social: LEUCHT.beziehung, agents: LEUCHT.agenten };
-const KURZ: Record<string, string> = { health: 'Gesundheit', business: 'Business', planning: 'Planung', finance: 'Finanzen', social: 'Beziehung', agents: 'Agenten' };
-// Jeder Score springt dorthin, wo es weitergeht (Kevin, 24.09.).
-const HREF: Record<string, string> = { health: '/os/gesundheit', business: '/os/saeule/business', planning: '/os/saeule/planning', finance: '/os/finanzen', social: '/os/saeule/social', agents: '/os/agenten' };
+const KURZ: Record<string, string> = { health: 'Gesundheit', business: 'Business', planning: 'Planung', finance: 'Finanzen', social: 'Familie', agents: 'Agenten' };
+// Jeder Score springt dorthin, wo es weitergeht (Kevin, 24.09.). Seit 24.09.
+// abends ist der Kopf die Navigation für alles, was nicht links steht.
+const HREF: Record<string, string> = { health: '/os/gesundheit', business: '/os/saeule/business', planning: '/os/saeule/planning', finance: '/os/finanzen', social: '/os/familie', agents: '/os/agenten' };
+const SCHNELL = [{ href: '/os', label: 'Heute', Icon: Sun }, { href: '/os/inbox', label: 'Inbox', Icon: InboxIcon }];
 
 // Der Score rechnet über viele Dateien — einmal je fünf Minuten reicht, nicht
 // bei jedem Seitenwechsel. Der Bereich Wachstum lädt ihn ohnehin frisch.
@@ -85,7 +88,19 @@ export function WachstumsKopf() {
           </div>
         </div>
       </Link>
-      <div className="wachstum-kopf-saeulen" style={{ display: 'flex', gap: 12, marginLeft: 'auto', alignItems: 'flex-start' }}>
+      <div className="wachstum-kopf-saeulen" style={{ display: 'flex', gap: 12, marginLeft: 'auto', alignItems: 'flex-start', minWidth: 0 }}>
+        {SCHNELL.map(({ href, label, Icon }) => {
+          const an = href === '/os' ? pfad === '/os' : pfad.startsWith(href);
+          return (
+            <Link key={href} href={href} title={label} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                <div style={{ width: 34, height: 34, borderRadius: '50%', display: 'grid', placeItems: 'center', border: `2px solid ${an ? C.aktiv : 'rgba(255,255,255,.1)'}`, color: an ? C.aktiv : C.inkDim }}><Icon size={15} strokeWidth={1.9} /></div>
+                <span className="wachstum-kopf-label" style={{ fontSize: 11, color: an ? C.aktiv : C.inkLeise }}>{label}</span>
+              </div>
+            </Link>
+          );
+        })}
+        <span aria-hidden style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,.06)', margin: '0 2px' }} />
         {(p?.saeulen ?? []).map(s => (
           <Link key={s.key} href={HREF[s.key] ?? `/os/saeule/${s.key}`} title={`${KURZ[s.key] ?? s.label} — weiter`} style={{ textDecoration: 'none', color: 'inherit' }}>
             <Winzig wert={s.score == null || s.score === 0 ? undefined : s.score} farbe={FARBE_JE[s.key] ?? C.inkLeise} label={KURZ[s.key] ?? s.label} />

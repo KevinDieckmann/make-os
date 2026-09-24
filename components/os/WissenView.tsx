@@ -425,7 +425,7 @@ export function WissenView() {
 
   return (
     <Seite
-      titel="Wissen"
+      titel="Brain"
       unter={stand ? `Dein Obsidian-Brain · ${stand.notizen} ${stand.notizen === 1 ? 'Notiz' : 'Notizen'} · Nummer eins für Jarvis` : 'Dein Obsidian-Brain · Nummer eins für Jarvis'}
       rechts={obsidianVault ? <Knopf leise onClick={() => { window.location.href = obsidianVault; }}>Obsidian öffnen</Knopf> : undefined}
     >
