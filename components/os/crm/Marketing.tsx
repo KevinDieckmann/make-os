@@ -14,6 +14,7 @@ import { anzeigename } from '@/lib/make-one/crm';
 import { kanalStatus, art14 } from '@/lib/crm/recht';
 import type { CrmApi } from './daten';
 import { datum } from './daten';
+import { HeadPanel } from './HeadPanel';
 
 export function Marketing({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string) => void }) {
   const kontakte = api.kontakte ?? [];
@@ -42,6 +43,7 @@ export function Marketing({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: str
 
   return (
     <>
+      <HeadPanel head="marketing" standardModus="wochenplan" zuKontakt={zuKontakt} i={0} />
       <Karte i={0}>
         <Ueberschrift>Wen wir ansprechen dürfen</Ueberschrift>
         <Raster min={150}>

@@ -51,7 +51,7 @@ export function CrmSeite() {
   return (
     <Seite titel="CRM" unter={UNTER[bereich]} rechts={<div className="crm-bereiche" style={{ maxWidth: '100%', overflowX: 'auto', scrollbarWidth: 'none' }}><Segmente liste={BEREICHE} aktiv={bereich} onWahl={wechsle} /></div>}>
       {api.fehler && <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{api.fehler}</div>}
-      {bereich === 'heute' && <Heute api={api} name={name} />}
+      {bereich === 'heute' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
       {bereich === 'kartei' && <Kartei api={api} name={name} auswahl={auswahl} setAuswahl={setAuswahl} />}
       {bereich === 'pipeline' && <Pipeline api={api} zuKontakt={zuKontakt} />}
       {bereich === 'kunden' && <Kunden api={api} zuKontakt={zuKontakt} />}

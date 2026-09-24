@@ -12,6 +12,7 @@ import { localDay } from '@/lib/zeit';
 export const AUSFUEHRBAR = [
   'research', 'board', 'okr', 'controlling', 'finanzchef', 'fokus', 'kalender',
   'inbox', 'task', 'prospect', 'planung', 'ernaehrung', 'performance', 'content', 'meeting', 'outreach', 'crm',
+  'head-sales', 'head-marketing', 'head-event',
   // Systemläufe: kein Fach-Agent, sondern der Takt selbst. Sie stehen hier,
   // damit der Arbeiter sie wie alles andere aus der Warteschlange holt.
   'tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit',
@@ -38,6 +39,9 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
   meeting: 'Transkript zu Protokoll und Aufgaben (auftrag = Transkript)',
   outreach: 'Erstansprache entwerfen (auftrag = Name oder Firma — aus dem CRM, sonst aus der Zielliste)',
   crm: 'Wer ist heute im CRM dran — Tagesliste mit Grund, Aufhänger und Kanal',
+  'head-sales': 'Head of Sales — Vertriebslage, Pipeline, Mandate, wer heute dran ist (auftrag = Frage, oder modus:power_hour | deal_review | kundenreview | wochenreview)',
+  'head-marketing': 'Head of Marketing — Einwilligungsbestand, Art.-14-Fristen, Themen aus der Stimme der Kunden (auftrag = Frage, oder modus:wochenplan | monatsreview)',
+  'head-event': 'Head of Event — Events planen, Gäste, Nachfassen in 48 h, Wirkung (auftrag = Frage, oder modus:planung | einladung | nachfassen | wirkung)',
   tagesstart: 'Der Morgenlauf — Kalender auffrischen, Lage bauen (einmal am Tag)',
   tageslauf: 'Ein Durchgang des Tageslaufs (auftrag = voll | kurz | puls)',
   verbesserung: 'Der Verbesserungs-Loop über Nutzung, Fehler und Bauplan',
@@ -295,6 +299,25 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string)
 ${kuerze(a?.antwort ?? a?.zusammenfassung, 1600)}
 ${(a?.vorschlaege ?? []).map((v: { titel: string }) => `→ ${v.titel}`).join('\n')}
 (${zahlen}; Prüfung: ${d.bericht?.pruefung?.geprueft ?? 0} Zahlen, ${d.bericht?.pruefung?.unbelegt?.length ?? 0} unbelegt)`);
+      }
+      case 'head-sales':
+      case 'head-marketing':
+      case 'head-event': {
+        // Takt: „modus:power_hour“ — sonst eine Frage von Jarvis (Antwort im Gespräch, keine Freigabe-Liste).
+        const head = id.slice(5);
+        const modus = /modus:([a-z_]+)/.exec(auftrag)?.[1];
+        const r = await fetch(`${origin}/api/heads/${head}`, {
+          method: 'POST', headers: H,
+          body: JSON.stringify(modus ? { aktion: 'lauf', modus, ausgeloest: 'takt' } : { aktion: 'lauf', modus: 'frage', frage: auftrag || 'Wie ist die Lage?', ausgeloest: 'jarvis' }),
+          signal: AbortSignal.timeout(400_000),
+        });
+        const d = await r.json();
+        if (!d.ok) return fehl(`${id}: ${kuerze(d.fehler, 200)}`);
+        if (d.ohneKi) return gut(`${id.toUpperCase()}: ${d.ruhigText}`);
+        const a = d.bericht?.antwort;
+        return gut(`${id.toUpperCase()} · ${modus ?? 'frage'}: ${kuerze(a?.antwort || a?.zusammenfassung, 1400)}
+${(a?.vorschlaege ?? []).map((v: { titel: string }) => `→ ${v.titel}`).join('\n')}
+(${d.neu ?? 0} neu in der Freigabe-Liste · ${d.bericht?.pruefung?.gestrichen?.length ?? 0} vom Prüfer gestrichen)`);
       }
       case 'meeting': {
         if (!auftrag || auftrag.length < 80) return fehl('Meeting-Agent braucht ein Transkript oder ausführliche Notizen — bitte Kevin, sie einzusprechen oder einzufügen.');

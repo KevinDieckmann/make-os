@@ -16,6 +16,7 @@ import { followUpBis } from '@/lib/crm/events';
 import type { Event, Teilnahme, TeilnahmeStatus } from '@/lib/crm/typen';
 import { type CrmApi, neueId, datum, euro, plusTage } from './daten';
 import { Feldzeile, Pillen, Feld, AMPEL_FARBE } from './teile';
+import { HeadPanel } from './HeadPanel';
 
 const FORMATE = [{ id: 'stammtisch', label: 'Stammtisch' }, { id: 'workshop', label: 'Workshop' }, { id: 'dinner', label: 'Dinner' }, { id: 'webinar', label: 'Webinar' }, { id: 'messe', label: 'Messe' }, { id: 'sonstig', label: 'Sonstiges' }] as const;
 const STATUS = [{ id: 'idee', label: 'Idee' }, { id: 'geplant', label: 'Geplant' }, { id: 'einladung', label: 'Einladung läuft' }, { id: 'durchgefuehrt', label: 'Durchgeführt' }, { id: 'abgesagt', label: 'Abgesagt' }] as const;
@@ -45,6 +46,7 @@ export function Events({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string
 
   return (
     <>
+      <HeadPanel head="event" standardModus={kommend.length ? 'planung' : 'wirkung'} zuKontakt={zuKontakt} i={0} />
       <Karte i={0}>
         <Ueberschrift rechts={<Knopf onClick={() => { const id = neueId('ev'); void api.setze('events', { id, titel: 'Neues Event', format: 'stammtisch', ziel: '', datum: plusTage(crm.heute, 42), status: 'idee' }); setAuswahl(id); }}>+ Event</Knopf>}>Events</Ueberschrift>
         {nachfassen.length > 0 && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginBottom: 8 }}>{nachfassen.length} Gäste warten auf dein Nachfassen — sie stehen auch in der Power Hour.</div>}

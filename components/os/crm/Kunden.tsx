@@ -14,6 +14,7 @@ import { HEALTH_GEWICHTE, HEALTH_LABEL } from '@/lib/crm/kunden';
 import type { Mandat, Leistung } from '@/lib/crm/typen';
 import { type CrmApi, neueId, datum, euro, kurzEuro } from './daten';
 import { Feldzeile, Pillen, Feld } from './teile';
+import { HeadPanel } from './HeadPanel';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 const STATUS: { id: Mandat['status']; label: string }[] = [{ id: 'angebot', label: 'Angebot' }, { id: 'verhandlung', label: 'Verhandlung' }, { id: 'aktiv', label: 'Aktiv' }, { id: 'pausiert', label: 'Pausiert' }, { id: 'beendet', label: 'Beendet' }];
@@ -75,6 +76,7 @@ export function Kunden({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string
         {!sichtbar.length && <Leer>Noch keine Mandate.</Leer>}
       </Karte>
 
+      <HeadPanel head="sales" standardModus="kundenreview" zuKontakt={zuKontakt} i={2} />
       <Katalog api={api} />
     </>
   );

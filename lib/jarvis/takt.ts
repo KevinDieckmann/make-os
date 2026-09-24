@@ -137,6 +137,14 @@ export async function faellig(jetzt = new Date()): Promise<Faellig[]> {
     console.error('[MAKE OS] Head-of-Finance-Takt übersprungen:', err);
   }
 
+  // 4c) Die Heads (24.09.): Sales, Marketing, Event — je höchstens ein Lauf.
+  try {
+    const { headsFaellig } = await import('@/lib/heads/takt');
+    raus.push(...await headsFaellig(jetzt));
+  } catch (err) {
+    console.error('[MAKE OS] Heads-Takt übersprungen:', err);
+  }
+
   // 5) Der Tageslauf — stündlich, aber nur wenn der Morgenlauf durch ist.
   const tl = await loadJson<TageslaufStand>('tageslauf');
   // Der SPEICHER hängt neue Läufe hinten an — die Route dreht sie erst für die
