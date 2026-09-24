@@ -13,6 +13,7 @@ import { pflegeRhythmus, naechstesGespraech, wichtigeTage, kontaktFaellig, sicht
 import { LOVEMAP_FRAGEN } from '@/lib/familie/katalog';
 import { LISTEN, type Familie } from '@/lib/familie/typen';
 import type { ListenOp } from '@/lib/sync';
+import { ladeKonten } from '@/lib/zugang/konten';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,7 +28,13 @@ function sicht(f: Familie, person: string): Familie {
   return s;
 }
 
-function antwort(f: Familie, person: string) {
+/** Wer gehört zum Haushalt — für Namen und die Wahl „wer plant, wer trägt“. */
+async function mitglieder(haushalt: string) {
+  const k = await ladeKonten();
+  return k.konten.filter(x => x.haushalt === haushalt).map(x => ({ person: x.speicher, name: x.name.split(' ')[0] || x.speicher }));
+}
+
+async function antwort(f: Familie, person: string, haushalt: string) {
   const heute = heuteBerlin();
   const woche = Math.floor(Date.parse(`${heute}T12:00:00Z`) / (7 * 864e5));
   return {
@@ -38,6 +45,7 @@ function antwort(f: Familie, person: string) {
     kontakte: kontaktFaellig(f.menschen, heute),
     frage: LOVEMAP_FRAGEN[woche % LOVEMAP_FRAGEN.length],
     agenda: agendaVorbereiten(f, heute, person),
+    mitglieder: await mitglieder(haushalt),
     heute,
   };
 }
@@ -45,7 +53,7 @@ function antwort(f: Familie, person: string) {
 export async function GET(req: Request) {
   const z = await haushaltVon(req);
   if (!z) return NextResponse.json(KEIN, { status: 403 });
-  return NextResponse.json(antwort(await ladeFamilie(z.haushalt), z.person));
+  return NextResponse.json(await antwort(await ladeFamilie(z.haushalt), z.person, z.haushalt));
 }
 
 export async function PATCH(req: Request) {
@@ -62,5 +70,5 @@ export async function PATCH(req: Request) {
     if (b.felder) x = setzeFelder(x, b.felder, z.person, jetzt);
     return x;
   });
-  return NextResponse.json({ ...antwort(f, z.person), angewandt, abgelehnt });
+  return NextResponse.json({ ...(await antwort(f, z.person, z.haushalt)), angewandt, abgelehnt });
 }

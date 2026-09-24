@@ -39,6 +39,15 @@ describe('Privates bleibt privat', () => {
     expect(r.abgelehnt).toBe(1);
     expect(r.familie.wuensche).toHaveLength(1);
   });
+  it('Reparatur: die ungeteilte Reflexion des anderen überlebt eine eigene Änderung', () => {
+    const r = { id: 'r1', datum: HEUTE, pauseBis: null, abgeschlossen: null, vereinbarung: '' };
+    let f = wendeFamilieAn(basis(), [{ liste: 'reparaturen', op: 'upsert', eintrag: { ...r, reflexionen: [{ person: 'malin', gefuehle: 'müde', meineSicht: '', meinAnteil: '', wunsch: '', geteilt: false }] } }], 'malin', J).familie;
+    // Kevin sieht Malins Reflexion nicht und schickt nur seine eigene (und versucht, ihre zu überschreiben).
+    f = wendeFamilieAn(f, [{ liste: 'reparaturen', op: 'upsert', eintrag: { ...r, reflexionen: [{ person: 'kevin', gefuehle: 'ärger', meineSicht: '', meinAnteil: '', wunsch: '', geteilt: true }, { person: 'malin', gefuehle: 'X', meineSicht: '', meinAnteil: '', wunsch: '', geteilt: true }] } }], 'kevin', J).familie;
+    const refl = f.reparaturen[0].reflexionen;
+    expect(refl.find(x => x.person === 'malin')).toMatchObject({ gefuehle: 'müde', geteilt: false });
+    expect(refl.find(x => x.person === 'kevin')).toMatchObject({ gefuehle: 'ärger' });
+  });
   it('Profil pflegt jeder nur für sich', () => {
     const f = setzeFelder(basis(), { profil: { stress: 'Umzug', person: 'malin' } }, 'kevin', J);
     expect(f.profile).toEqual([expect.objectContaining({ person: 'kevin', stress: 'Umzug' })]);

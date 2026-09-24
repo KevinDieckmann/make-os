@@ -10,6 +10,7 @@ const nextConfig = {
       { source: '/os/journal', destination: '/os/gesundheit', permanent: false },
       { source: '/os/ritual', destination: '/os/gesundheit', permanent: false },
       { source: '/os/saeule/health', destination: '/os/gesundheit?s=verlauf', permanent: false },
+      { source: '/os/saeule/social', destination: '/os/familie', permanent: false },
       { source: '/os/ernaehrung', destination: '/os/gesundheit?s=ernaehrung', permanent: false },
       { source: '/os/energie', destination: '/os/gesundheit?s=koerper', permanent: false },
       { source: '/os/woche', destination: '/os/gesundheit?s=koerper', permanent: false },

@@ -54,7 +54,16 @@ export function wendeFamilieAn(f: Familie, ops: ListenOp[], person: string, jetz
       const id = text(roh.id, 60);
       if (!id) return null;
       const alt = nachId.get(id);
-      return { ...roh, id, von: alt?.von ?? person, am: alt?.am ?? jetzt, sichtbarkeit: roh.sichtbarkeit === 'nur-ich' ? 'nur-ich' : 'paar' };
+      const aus: Record<string, unknown> = { ...roh, id, von: alt?.von ?? person, am: alt?.am ?? jetzt, sichtbarkeit: roh.sichtbarkeit === 'nur-ich' ? 'nur-ich' : 'paar' };
+      // Reparatur: jeder schreibt nur die eigene Reflexion. Die des anderen
+      // (die man ungeteilt gar nicht sieht) bleibt aus dem Bestand erhalten.
+      if (name === 'reparaturen') {
+        type Refl = { person: string };
+        const eigene = ((roh.reflexionen as Refl[]) ?? []).filter(x => x?.person === person);
+        const fremde = ((alt?.reflexionen as Refl[]) ?? []).filter(x => x?.person !== person);
+        aus.reflexionen = [...fremde, ...eigene];
+      }
+      return aus;
     });
     angewandt += r.angewandt;
     (neu as Record<string, unknown>)[name] = r.liste;

@@ -78,7 +78,7 @@ export const REGLER: Regler[] = [
   { id: 'fokus-finance', label: 'Finanzen', bereich: 'fokus', erklaert: 'Wie stark Geldthemen nach oben wandern.', min: 0, max: 100, schritt: 5,
     wirktIn: [{ label: 'Aufgaben', href: '/os/aufgaben' }, { label: 'Finanzen', href: '/os/finanzen' }], skala: ['läuft nebenher', 'hat Vorfahrt'] },
   { id: 'fokus-social', label: 'Beziehung & Team', bereich: 'fokus', erklaert: 'Wie stark Menschen-Themen nach oben wandern.', min: 0, max: 100, schritt: 5,
-    wirktIn: [{ label: 'Aufgaben', href: '/os/aufgaben' }, { label: 'Beziehung & Team', href: '/os/saeule/social' }], skala: ['läuft nebenher', 'hat Vorfahrt'] },
+    wirktIn: [{ label: 'Aufgaben', href: '/os/aufgaben' }, { label: 'Familie & Partnerschaft', href: '/os/familie' }], skala: ['läuft nebenher', 'hat Vorfahrt'] },
   { id: 'fokus-schwelle', label: 'Ab wann „im Fokus“', bereich: 'fokus', erklaert: 'Ab welchem Reglerwert eine Säule wirklich Vorfahrt bekommt — sonst hätten alle Regler auf 60 gar keinen Fokus mehr.', min: 40, max: 90, schritt: 5,
     wirktIn: [{ label: 'Aufgaben', href: '/os/aufgaben' }, { label: 'Dashboard', href: '/os' }], skala: ['schnell im Fokus', 'nur klare Ansage'] },
 

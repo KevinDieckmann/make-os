@@ -122,7 +122,7 @@ export const BEREICHE: Bereich[] = [
       { href: '/os/saeule/business', label: 'Säule Business-Performance', icon: TrendingUp, modus: 'business', versteckt: true },
       { href: '/os/saeule/planning', label: 'Säule Planung & Execution', icon: ListChecks, versteckt: true },
       { href: '/os/saeule/finance', label: 'Säule Finanzen', icon: Wallet, modus: 'business', versteckt: true },
-      { href: '/os/saeule/social', label: 'Säule Beziehung & Team', icon: Users, versteckt: true },
+      { href: '/os/familie', label: 'Familie & Partnerschaft', icon: Users, versteckt: true },
     ],
   },
   {

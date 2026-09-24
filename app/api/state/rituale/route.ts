@@ -5,14 +5,20 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { personAus } from '@/lib/jarvis/raum';
+import { personDatei } from '@/lib/performance';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 type RitualLog = Record<string, string[]>;
 
-export async function GET() {
-  const log = (await loadJson<RitualLog>('rituale')) ?? {};
+// Je Person (24.09.): der Score las schon immer rituale--<person>, die Route
+// schrieb aber für alle in „rituale“ — Malins Häkchen landeten bei Kevin.
+const name = (req: Request) => personDatei('rituale', personAus(req));
+
+export async function GET(req: Request) {
+  const log = (await loadJson<RitualLog>(name(req))) ?? {};
   return NextResponse.json({ log });
 }
 
@@ -29,7 +35,7 @@ export async function PUT(req: Request) {
     ? body.date
     : `${heute.getFullYear()}-${p(heute.getMonth() + 1)}-${p(heute.getDate())}`;
 
-  const log = await updateJson<RitualLog>('rituale', current => {
+  const log = await updateJson<RitualLog>(name(req), current => {
     const l = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
     const tag = new Set(l[date] ?? []);
     if (body.an === false) tag.delete(id); else tag.add(id);

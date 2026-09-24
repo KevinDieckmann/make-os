@@ -21,6 +21,8 @@ import { ladeStand as ladeTelegram, chatsFuerPerson, telegramKonfiguriert } from
 import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { privatFaktoren, finanzSaeule } from '@/lib/finanzen/haushalt/score';
+import { ladeFamilie } from '@/lib/familie/speicher';
+import { pflegeRhythmus, type Rhythmus } from '@/lib/familie/logik';
 
 export interface Faktor {
   label: string;
@@ -323,7 +325,14 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
     ...privat.map(f => ({ ...f, label: `Privat · ${f.label}` })),
   ];
 
-  // ── Beziehung & Team ──
+  // ── Familie & Partnerschaft (24.09.) ──
+  // Mit Haushalt zählt der Pflege-Rhythmus des Paares (lib/familie/logik.ts):
+  // gemeinsame Rhythmen über 28 Tage, nie eine Person, nie Gefühle. Ohne
+  // Haushalt bleibt der alte Weg (Journal-Stimmung + Rituale).
+  const rhythmus: Rhythmus | null = zugang ? pflegeRhythmus(await ladeFamilie(zugang.haushalt), today) : null;
+  const familie: Faktor[] | null = rhythmus && rhythmus.score != null
+    ? rhythmus.bausteine.map(b => ({ label: b.titel, wert: clamp(b.wert * 100), echt: true, quelle: `${b.text} · Gewicht ${b.gewicht}` }))
+    : null;
   // Bewusst ohne erfundene Messgröße: hier gibt es (noch) keine Datenquelle.
   const sozial: Faktor[] = [
     { label: 'Stimmung (Journal)', wert: 0, echt: false, quelle: 'kommt aus deinen Journal-Einträgen — noch keine da' },
@@ -344,7 +353,7 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
       quelle: `${gehalteneRituale.size} von ${RITUALE.length} Ritualen diese Woche`,
     });
   } else {
-    sozial.push({ label: 'Rituale gehalten', wert: 0, echt: false, quelle: 'noch keins abgehakt — auf /os/saeule/social' });
+    sozial.push({ label: 'Rituale gehalten', wert: 0, echt: false, quelle: 'noch keins abgehakt — auf /os/familie' });
   }
 
     const moods = journalTage.map(d => journal![d].mood).filter((n): n is number => typeof n === 'number');
@@ -370,7 +379,7 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
     // 24.09.: Agenten als sechste Säule (10 %); Planung und Beziehung geben je 5 % ab.
     { key: 'planning', label: 'Planung & Ausführung', gewicht: 0.10, faktoren: planung, hinweis: 'Aufgabenlage + Kalender' },
     { key: 'finance', label: 'Finanzen', gewicht: 0.15, faktoren: finanzenGesamt, hinweis: privat.length ? 'Business (Runway, Gewinn, Marge) + Privat (Sparquote, Luft, Schuldenabbau) — je zur Hälfte' : 'Runway + Gewinn' },
-    { key: 'social', label: 'Beziehung & Ruhe', gewicht: 0.10, faktoren: sozial, hinweis: 'Journal' },
+    { key: 'social', label: 'Familie & Partnerschaft', gewicht: 0.10, faktoren: familie ?? sozial, hinweis: familie ? 'Pflege-Rhythmus des Paares · 28 Tage' : rhythmus?.stufe === 'pause' ? 'Ausnahmezeit — pausiert' : 'Journal + Rituale, bis der Pflege-Rhythmus läuft' },
     { key: 'agents', label: 'Agenten', gewicht: 0.10, faktoren: agenten, hinweis: 'Läufe, Aufträge, Stapel, Bote' },
   ];
 
@@ -379,6 +388,10 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
       const f = finanzSaeule(finanzen, privat);
       return { ...s, score: f.score, abdeckung: f.abdeckung, teile: f.teile, zuDuenn: f.score != null && f.abdeckung < MIN_ABDECKUNG };
     }
+    // Pflege-Rhythmus: gewichtete Summe statt Mittelwert — so wie auf /os/familie.
+    if (s.key === 'social' && familie && rhythmus?.score != null) return { ...s, score: rhythmus.score, abdeckung: 1, zuDuenn: false };
+    // Ausnahmezeit: die Säule zählt nicht, statt zu strafen.
+    if (s.key === 'social' && rhythmus?.stufe === 'pause') return { ...s, faktoren: [], score: null, abdeckung: 0, zuDuenn: false };
     const { score, abdeckung } = verdichte(s.faktoren);
     return { ...s, score, abdeckung, zuDuenn: score != null && abdeckung < MIN_ABDECKUNG };
   });
