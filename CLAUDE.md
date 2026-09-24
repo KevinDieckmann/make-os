@@ -92,6 +92,18 @@ lokal, Route `/os`, Port 3001.
   über `blockHaushalt` in Gespräch/Morgen/Empfang, nie in `gatherBrain`.
   Test-Haushalt „test“ für Fotos, echte Prüfdaten nur in `.data/pruefdaten/`.
   Umzug: `app/api/haushalt/umzug`, Einfrieren: `docs/make-orga/`.
+- **Head of Finance (24.09.2026): der Finanzagent auf allem.** `lib/finanzen/chef/`:
+  `finanzbild.ts` rechnet ALLES deterministisch (Business, Haushalt nur mit
+  Zugang, Brücke, Steuertermine, Hinweise); das Modell ordnet nur ein
+  (`prompt.ts`, 5 Modi, JSON-Schema). `pruefer.ts` prüft jede Zahl, Quelle,
+  Frist + Vollzug/Anlageprodukte → eine Korrekturrunde. Er bewegt nie Geld:
+  Vorschläge → Freigabe-Liste (`stand.ts`, Dedup) → angenommen = Aufgabe
+  (privat ohne Beträge, Tag „haushalt“). Takt über `plan.ts`/`takt.ts`, ein Lauf
+  je Haushalt gleichzeitig; Haushalts-Ergebnisse in Warteschlange/Agenten-Log
+  nur als Zähler. Speicher: `finanzchef` (Business) · `haushalt-chef--<h>`.
+- **Eine Kasse (24.09.2026).** Business-Kasse = Summe der Firmenkonten
+  (`geschaeftsKasse`/`mitKasse` in `finance-data.ts`); `finance.cash` nur
+  Rückfall. Rest-Monate ab heute (Berlin). Keine zweite Runway-Formel bauen.
 - **Selbstaufrufe nie über die Anfrage-Adresse (24.09.2026).** Routen, die
   andere Routen mit `x-make-key` aufrufen, nehmen `innenAdresse(req)` aus
   `lib/innen.ts` — nie `new URL(req.url).origin` (Vorbau Tailscale/Caddy,

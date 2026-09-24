@@ -349,6 +349,22 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Business-Kontostände eintragen (Runway), Vertraulichkeitsregeln im Brain
 > um die Briefing-Ausnahme ergänzen.
 
+> **Nachtrag 24.09., verbunden und der Head of Finance.** Kevin: *„verbinde was
+> noch zusammen hängt und baue einen Finanz Agenten dazu. Der muss darauf
+> nachher sitzen.“* Verbunden: eine Business-Kasse aus den Firmenkonten (Runway,
+> Brain, Schilde, Controlling rechnen gleich; vorher stand `finance.cash` auf 0),
+> Rest-Monate ab heute, eine Liquiditätskurve (Controlling nutzt die Planposten),
+> eine Runway-Formel, Beleg-Übernahme schreibt die Firma richtig, private
+> Forderungen aus Brain/Schilden raus, Kategorien aufräumen (Synonyme, Alias).
+> Gebaut: **Head of Finance** (`lib/finanzen/chef/`, Zahlen › Head of Finance) —
+> recherchiert nach Anthropic-Leitlinien und Finanz-Agenten-Vorlagen: ein Agent,
+> fünf Modi (Tagescheck, Wochenreview, Monatsabschluss, Steuercheck, Frage), der
+> Code rechnet das Finanzbild, das Modell ordnet ein, ein Prüfer kontrolliert
+> jede Zahl/Quelle/Frist (eine Korrekturrunde), Vorschläge in eine Freigabe-Liste,
+> angenommen = Aufgabe. Takt je Haushalt. Erste echte Läufe 24.09.: 5 Berichte,
+> 290 Zahlen geprüft, 0 unbelegt. Offen: Rechtsform kdv/kdc und Steuer-Annahmen
+> eintragen; August im Controlling; Kontostände; Haushaltsdaten (Umzug).
+
 Jede Phase hat ein Ziel in einem Satz, eine Fertig-Bedingung, und eine Liste,
 was **bewusst nicht** darin ist. Grobe Größe in Arbeitstagen — ehrlich grob.
 
