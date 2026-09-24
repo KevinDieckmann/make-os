@@ -87,7 +87,7 @@ function teile(liste: Teil[], oeffne: (ziel: string) => void): ReactNode[] {
 
 const CALLOUT: Record<string, string> = { warning: LEUCHT.achtung, caution: LEUCHT.achtung, danger: LEUCHT.kritisch, important: LEUCHT.kritisch, tip: LEUCHT.gut, success: LEUCHT.gut, info: LEUCHT.puls, note: LEUCHT.puls, question: LEUCHT.agenten };
 
-function block(b: Block, i: number, oeffne: (ziel: string) => void, oben = false): ReactNode {
+export function block(b: Block, i: number, oeffne: (ziel: string) => void, oben = false): ReactNode {
   const zeile = (s: string) => teile(inline(s), oeffne);
   switch (b.art) {
     case 'titel': {

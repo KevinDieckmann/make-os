@@ -49,6 +49,11 @@ export interface AskOptions {
   retries?: number;
   /** Modell überschreiben (z. B. aus der Agenten-Konfiguration). */
   model?: string;
+  /** JSON-Schema für strukturierte Ausgabe (output_config.format). Lehnt die
+   *  API das ab, läuft derselbe Aufruf ohne — extractJson fängt es dann auf. */
+  schema?: Record<string, unknown>;
+  /** System-Text als Cache-Block markieren — lohnt bei langen, stabilen Prompts. */
+  cacheSystem?: boolean;
 }
 
 export interface AskResult {
@@ -115,10 +120,11 @@ export async function askText(opts: AskOptions): Promise<AskResult> {
     // Antwort. Zu klein → das Modell verbrennt alles im Denken (stop:max_tokens)
     // und der Text-Block bleibt leer.
     max_tokens: Math.max(1200, opts.maxTokens ?? 4000),
-    system: opts.system,
+    system: opts.cacheSystem ? [{ type: 'text', text: opts.system, cache_control: { type: 'ephemeral' } }] : opts.system,
     messages: opts.messages ?? [{ role: 'user', content: opts.user }],
   };
   if (opts.tools && opts.tools.length) body.tools = opts.tools;
+  if (opts.schema) body.output_config = { format: { type: 'json_schema', schema: opts.schema } };
 
   const timeoutMs = opts.timeoutMs ?? 90_000;
   const maxAttempts = (opts.retries ?? 2) + 1;
@@ -137,6 +143,13 @@ export async function askText(opts: AskOptions): Promise<AskResult> {
       clearTimeout(timer);
       if (!res.ok) {
         const detail = await res.text();
+        // Strukturierte Ausgabe nicht verfügbar (Modell/Konto)? Einmal ohne —
+        // der Aufrufer prüft das JSON ohnehin selbst.
+        if (res.status === 400 && body.output_config && /output_config|json_schema|format|schema/i.test(detail)) {
+          delete body.output_config;
+          attempt--;
+          continue;
+        }
         last = { ok: false, status: res.status, text: '', error: detail.slice(0, 220) };
         if (RETRYABLE.has(res.status) && attempt < maxAttempts) { await sleep(700 * attempt); continue; }
         return last;

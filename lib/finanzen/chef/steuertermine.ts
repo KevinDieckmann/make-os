@@ -7,10 +7,14 @@
 // bundesweiten Feiertag, gilt der nächste Werktag (§ 108 Abs. 3 AO).
 
 export type UstRhythmus = 'monatlich' | 'quartal' | 'keine';
-export interface SteuerEinstellung { ust: UstRhythmus; dauerfrist: boolean; estVorauszahlung: boolean; gewstVorauszahlung: boolean }
+export interface SteuerEinstellung {
+  ust: UstRhythmus; dauerfrist: boolean; estVorauszahlung: boolean; gewstVorauszahlung: boolean;
+  /** Körperschaftsteuer-Vorauszahlungen einer UG/GmbH (gleiche Termine wie ESt, § 31 KStG). */
+  kstVorauszahlung?: boolean;
+}
 export const STANDARD_EINSTELLUNG: SteuerEinstellung = { ust: 'quartal', dauerfrist: false, estVorauszahlung: true, gewstVorauszahlung: false };
 
-export interface Termin { datum: string; art: 'ust' | 'est' | 'gewst'; titel: string; hinweis: string }
+export interface Termin { datum: string; art: 'ust' | 'ust-sv' | 'est' | 'kst' | 'gewst'; titel: string; hinweis: string }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const utc = (j: number, m: number, t: number) => new Date(Date.UTC(j, m - 1, t, 12));
@@ -56,6 +60,9 @@ export function steuertermine(von: string, bis: string, e: SteuerEinstellung = S
         rein({ datum: werktag(iso(faellig)), art: 'ust', titel: `Umsatzsteuer-Voranmeldung ${zeitraum}`, hinweis: `Anmeldung und Zahlung${e.dauerfrist ? ' (mit Dauerfristverlängerung)' : ''}` });
       }
     }
+    // Monatszahler mit Dauerfristverlängerung: Sondervorauszahlung (1/11 der Vorjahressumme) bis 10.02.
+    if (e.ust === 'monatlich' && e.dauerfrist) rein({ datum: werktag(iso(utc(j, 2, 10))), art: 'ust-sv', titel: `Umsatzsteuer-Sondervorauszahlung ${j}`, hinweis: '1/11 der Vorjahres-Vorauszahlungen, wird mit der Dezember-Anmeldung verrechnet' });
+    if (e.kstVorauszahlung) for (const m of [3, 6, 9, 12]) rein({ datum: werktag(iso(utc(j, m, 10))), art: 'kst', titel: `Körperschaftsteuer-Vorauszahlung Q${m / 3}/${j}`, hinweis: 'UG/GmbH, Höhe laut Bescheid' });
     if (e.estVorauszahlung) for (const m of [3, 6, 9, 12]) rein({ datum: werktag(iso(utc(j, m, 10))), art: 'est', titel: `Einkommensteuer-Vorauszahlung Q${m / 3}/${j}`, hinweis: 'Höhe laut letztem Bescheid' });
     if (e.gewstVorauszahlung) for (const m of [2, 5, 8, 11]) rein({ datum: werktag(iso(utc(j, m, 15))), art: 'gewst', titel: `Gewerbesteuer-Vorauszahlung ${m === 2 ? 'Q1' : m === 5 ? 'Q2' : m === 8 ? 'Q3' : 'Q4'}/${j}`, hinweis: 'nur bei Gewerbe, Höhe laut Bescheid der Gemeinde' });
   }

@@ -21,3 +21,14 @@ describe('Steuertermine', () => {
     expect(steuertermine('2026-11-01', '2026-11-30', { ust: 'keine', dauerfrist: false, estVorauszahlung: false, gewstVorauszahlung: true })[0].datum).toBe('2026-11-16');
   });
 });
+
+describe('Steuertermine — Sondervorauszahlung und UG', () => {
+  it('Monatszahler mit Dauerfrist: Sondervorauszahlung am 10.02. (Werktag)', () => {
+    const t = steuertermine('2027-02-01', '2027-02-28', { ust: 'monatlich', dauerfrist: true, estVorauszahlung: false, gewstVorauszahlung: false });
+    expect(t.find(x => x.art === 'ust-sv')?.datum).toBe('2027-02-10');
+  });
+  it('UG: Körperschaftsteuer an den ESt-Terminen', () => {
+    const t = steuertermine('2026-12-01', '2026-12-31', { ust: 'keine', dauerfrist: false, estVorauszahlung: false, gewstVorauszahlung: false, kstVorauszahlung: true });
+    expect(t.map(x => `${x.datum} ${x.art}`)).toEqual(['2026-12-10 kst']);
+  });
+});

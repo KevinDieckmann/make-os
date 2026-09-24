@@ -10,7 +10,7 @@ import { localDay } from '@/lib/zeit';
 
 /** Agenten, die Jarvis selbst starten darf. */
 export const AUSFUEHRBAR = [
-  'research', 'board', 'okr', 'controlling', 'fokus', 'kalender',
+  'research', 'board', 'okr', 'controlling', 'finanzchef', 'fokus', 'kalender',
   'inbox', 'task', 'prospect', 'planung', 'ernaehrung', 'performance', 'content', 'meeting', 'outreach', 'crm',
   // Systemläufe: kein Fach-Agent, sondern der Takt selbst. Sie stehen hier,
   // damit der Arbeiter sie wie alles andere aus der Warteschlange holt.
@@ -25,6 +25,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
   board: 'Wochenlage aus Zahlen, Pipeline und Aufgaben',
   okr: 'Zielbaum und Lücken zum Jahresziel',
   controlling: 'Umsatz-Lage, Run-Rate, Runway',
+  finanzchef: 'Head of Finance — Finanzlage Business mit Befunden und Vorschlägen zur Freigabe (auftrag = Frage, oder modus:tagescheck | wochenreview | monatsabschluss | steuercheck)',
   fokus: 'Tagesform aus Recovery × Prioritäten',
   kalender: 'Termine prüfen, Konflikte, Schutzblöcke',
   inbox: 'Postfach einstufen (wichtig / Rauschen)',
@@ -272,6 +273,28 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string)
         const d = await post('/api/jarvis/selbstbild', {}, 120_000);
         if (!d.ok) return fehl(`Selbstbild fehlgeschlagen: ${kuerze(d.ergebnisse?.[0]?.fehler ?? d.error, 200)}`);
         return gut(`SELBSTBILD: ${d.geschrieben} von ${d.von} Blättern im Vault aktualisiert.`);
+      }
+      case 'finanzchef': {
+        // Der Takt gibt Modus und Person vor („modus:wochenreview person:kevin“) —
+        // dann läuft er mit Haushalt, und das Ergebnis hier trägt KEINE Beträge,
+        // weil die Warteschlange allen Konten gehört. Ohne Person (Jarvis): nur Business.
+        const modus = /modus:(tagescheck|wochenreview|monatsabschluss|steuercheck)/.exec(auftrag)?.[1];
+        const person = /person:([a-z0-9-]{1,40})/.exec(auftrag)?.[1];
+        const r = await fetch(`${origin}/api/finanzchef`, {
+          method: 'POST', headers: { ...H, ...(person ? { 'x-make-person': person } : {}) },
+          body: JSON.stringify(modus ? { aktion: 'lauf', modus, ausgeloest: 'takt' } : { aktion: 'lauf', modus: 'frage', frage: auftrag || 'Wie ist die Finanzlage?', ausgeloest: 'jarvis', umfang: 'business' }),
+          signal: AbortSignal.timeout(400_000),
+        });
+        const d = await r.json();
+        if (!d.ok) return fehl(`Head of Finance: ${kuerze(d.fehler, 200)}`);
+        if (d.ohneKi) return gut(`HEAD OF FINANCE · Tagescheck: ${d.ruhigText}`);
+        const a = d.bericht?.antwort;
+        const zahlen = `${a?.befunde?.length ?? 0} Befunde, ${d.neu ?? 0} neue Vorschläge zur Freigabe`;
+        if (d.bericht?.umfang !== 'business') return gut(`HEAD OF FINANCE · ${modus}: Status ${a?.status} · ${zahlen} — Bericht unter Zahlen › Head of Finance.`);
+        return gut(`HEAD OF FINANCE (Business):
+${kuerze(a?.antwort ?? a?.zusammenfassung, 1600)}
+${(a?.vorschlaege ?? []).map((v: { titel: string }) => `→ ${v.titel}`).join('\n')}
+(${zahlen}; Prüfung: ${d.bericht?.pruefung?.geprueft ?? 0} Zahlen, ${d.bericht?.pruefung?.unbelegt?.length ?? 0} unbelegt)`);
       }
       case 'meeting': {
         if (!auftrag || auftrag.length < 80) return fehl('Meeting-Agent braucht ein Transkript oder ausführliche Notizen — bitte Kevin, sie einzusprechen oder einzufügen.');

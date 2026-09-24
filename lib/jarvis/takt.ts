@@ -127,6 +127,16 @@ export async function faellig(jetzt = new Date()): Promise<Faellig[]> {
     });
   }
 
+  // 4b) Der Head of Finance (24.09.) — je Haushalt der fällige Modus:
+  //     Monatsabschluss > Steuercheck > Wochenreview > Tagescheck. Sein Riegel
+  //     steht in seinem eigenen Speicher (letzte/versuche), kein zweiter Zähler.
+  try {
+    const { finanzchefFaellig } = await import('@/lib/finanzen/chef/takt');
+    raus.push(...await finanzchefFaellig(jetzt));
+  } catch (err) {
+    console.error('[MAKE OS] Head-of-Finance-Takt übersprungen:', err);
+  }
+
   // 5) Der Tageslauf — stündlich, aber nur wenn der Morgenlauf durch ist.
   const tl = await loadJson<TageslaufStand>('tageslauf');
   // Der SPEICHER hängt neue Läufe hinten an — die Route dreht sie erst für die

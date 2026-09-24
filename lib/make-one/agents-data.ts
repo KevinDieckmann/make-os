@@ -81,6 +81,10 @@ export const DEPARTMENTS: Department[] = [
   {
     id: 'finance', name: 'Finance', mission: 'Zahlen, Liquidität, Kapital-Kurs.', color: '#00C9B8', lead: 'Finance Lead',
     agents: [
+      { id: 'finanzchef', name: 'Head of Finance', role: 'Finanzchef für Haushalt und Business — Lage, Fristen, Vorschläge zur Freigabe', status: 'live', autonomy: 'vorschlag', model: 'stark', href: '/os/finanzen?s=chef',
+        gate: 'Bewegt kein Geld. Jeder Vorschlag geht in die Freigabe-Liste; angenommen wird er zur Aufgabe.',
+        funktionen: ['Tagescheck, Wochenreview, Monatsabschluss, Steuercheck — vom Takt geplant', 'Finanzbild: Business, Haushalt, Brücke, Steuertermine, Datenqualität — deterministisch gerechnet', 'Prüfer: jede Zahl, Quelle und Frist gegen die Daten, eine Korrekturrunde', 'Freigabe-Liste mit Dedup; Fragen an den Head of Finance'],
+        bauplan: 'LIVE (24.09.): lib/finanzen/chef/ — finanzbild (Code rechnet), prompt (recherchierter System-Prompt, 5 Modi, JSON-Schema), pruefer (Zahlen/Quellen/Fristen/Vollzug/Anlage), lauf (Werkzeuge rechne + buchungen_suchen, Korrekturrunde), plan (Takt). Haushalt nur für Mitglieder, eigener Speicher je Haushalt. → /os/finanzen?s=chef' },
       { id: 'controlling', name: 'Controlling-Agent', role: 'Umsatz gg. 1-Mio-Ziel, Runway', status: 'live', autonomy: 'autonom', model: 'schnell', href: '/os/controlling',
         funktionen: ['Umsatz vs. 1-Mio-Ziel + Fortschritt', 'Nötige Run-Rate & Runway (live gerechnet)', 'KI-Lagebericht: Fokus + Risiken', 'Monatsverlauf gg. Ziel-Linie'],
         bauplan: 'LIVE: Ist-Zahlen pflegst du, Kennzahlen deterministisch in JS (computeMetrics), Lagebericht von Anthropic (rechnet nichts, interpretiert nur). DATEV/Bank-Anbindung später. → /os/controlling' },
