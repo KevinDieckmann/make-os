@@ -51,6 +51,11 @@ describe('Finanzbild', () => {
     expect(b.haushalt).toBeNull();
     expect(b.gesamt).toBeNull();
   });
+  it('ein Kontostand ohne Datum wird als unbestätigt gemeldet', () => {
+    const e = basis(false);
+    e.plan!.firmen = [{ id: 'kdv', name: 'KD Ventures', kontostand: 20000, stand: null }];
+    expect(baueFinanzbild(e).hinweise.some(h => /ohne Datum: KD Ventures/.test(h.text))).toBe(true);
+  });
   it('Kanarienvogel: der private Kontostand taucht im Business-Bild nirgends auf', () => {
     expect(JSON.stringify(baueFinanzbild(basis(false)))).not.toContain('4711.13');
   });

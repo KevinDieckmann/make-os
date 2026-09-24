@@ -71,6 +71,9 @@ export function baueFinanzbild(e: Eingaben) {
   if (kasse.quelle === 'keine') h('hoch', 'daten', 'Kein Business-Kontostand hinterlegt — Runway und Liquidität starten bei 0 €.', 'finanzplan.firmen');
   else if (kasse.quelle === 'manuell') h('mittel', 'daten', 'Business-Kasse nur als manuelle Zahl, keine Kontostände je Firma.', 'finance.cash');
   else if (kasse.alter_tage != null && kasse.alter_tage > 14) h('mittel', 'daten', `Ältester Business-Kontostand ist ${kasse.alter_tage} Tage alt (${tagDe(kasse.stand!)}).`, 'finanzplan.firmen');
+  // Ein Stand ohne Datum ist nicht geprüft — Runway und Liquidität hängen trotzdem daran.
+  const ohneDatum = firmen.filter(f => typeof f.kontostand === 'number' && !f.stand).map(f => f.name);
+  if (ohneDatum.length) h('mittel', 'daten', `Kontostand ohne Datum: ${ohneDatum.join(', ')} — unbestätigt, Runway und Liquidität rechnen damit.`, 'finanzplan.firmen');
 
   // ── Business: Liquidität 12 Wochen (dieselbe Kurve wie Zahlen) ──────────
   const v = e.plan ? vorschau(e.plan.firmen ?? [], e.plan.rechnungen ?? [], e.plan.zahlungen ?? [], e.plan.merkposten ?? [], e.heute, 12, false, e.planposten, 'real', undefined, true) : null;
