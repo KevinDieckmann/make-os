@@ -37,3 +37,14 @@ next-env.d.ts
 
 # MAKE OS lokaler Datei-Store (nur auf diesem Mac)
 .data/
+
+# 24.09.: Finanz-Exporte und echte Kontodaten gehören nie ins Repo
+# (Alex bekommt den Rohbau, nie Daten). Echte Prüfdaten liegen in .data/pruefdaten/.
+MAKE-ORGA-Sicherung-*.json
+KD-Finanzen-*.json
+make-orga-migration*.sql
+*n26*zeilen*.json
+*.n26.csv
+
+# pdf.js-Worker wird von scripts/pdf-worker.mjs kopiert (postinstall)
+public/pdf.worker.min.mjs

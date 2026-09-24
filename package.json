@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "worker": "node worker.mjs"
+    "worker": "node worker.mjs",
+    "postinstall": "node scripts/pdf-worker.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.2.0",
@@ -32,6 +33,7 @@
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.21.0",
     "next": "14.2.35",
+    "pdfjs-dist": "4.10.38",
     "react": "^18",
     "react-dom": "^18",
     "tailwind-merge": "^3.6.0"

@@ -47,3 +47,12 @@ describe('Schrumpf-Wächter', () => {
     expect(schrumpftZuStark(0, 12, 10)).toBe(false);
   });
 });
+
+import { sicherungenVon } from '../lib/store/local-db';
+describe('Tagessicherungen', () => {
+  it('räumt nur die Sicherungen genau dieses Stores auf', () => {
+    const d = ['vitals-2026-09-01.json', 'vitals--malin-2026-09-01.json', 'vitals-vor-whoop-2026-09-24.json', 'vitals-2026-08-31.json', 'vitalsx-2026-09-01.json'];
+    expect(sicherungenVon('vitals', d)).toEqual(['vitals-2026-08-31.json', 'vitals-2026-09-01.json']);
+    expect(sicherungenVon('vitals--malin', d)).toEqual(['vitals--malin-2026-09-01.json']);
+  });
+});

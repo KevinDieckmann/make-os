@@ -13,7 +13,7 @@ import { localDay } from '@/lib/zeit';
 import { eur } from '@/lib/make-one/finance-data';
 import { vorschau, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten } from '@/lib/make-one/liquiditaet';
 import { MONAT_KURZ, type Kennzahlen } from '@/lib/make-one/grundlage';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Zahl, Fortschritt, LEUCHT, Spalten, Spalte } from './schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Zahl, Fortschritt, LEUCHT, Spalten, Spalte } from './schlank';
 
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
 interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string }
@@ -27,7 +27,8 @@ const BEREICHE = [
   { href: '/os/finanzen/dashboard', titel: 'Malins Dashboard', satz: 'das gewachsene Werkzeug, unverändert' },
 ];
 
-export function ZahlenView() {
+/** Business: die bisherigen Zahlen (Firmen, Liquidität, Grundlage). Eingebettet in FinanzenView. */
+export function ZahlenBusiness() {
   const heute = localDay();
   const [plan, setPlan] = useState<Plan | null>(null);
   const [posten, setPosten] = useState<Planposten[]>([]);
@@ -64,7 +65,7 @@ export function ZahlenView() {
   const k = grund?.kennzahlen;
 
   return (
-    <Seite titel="Zahlen" unter={plan?.firmen.length ? `${plan.firmen.length} Konten` : undefined}>
+    <>
       <Karte i={0} akzent={LEUCHT.geld}>
         <Ueberschrift farbe={LEUCHT.geld}>Auf den Konten</Ueberschrift>
         <Zahl gross wert={plan ? eur(konten) : undefined} farbe={konten < 0 ? LEUCHT.kritisch : LEUCHT.geld} label="" />
@@ -131,6 +132,6 @@ export function ZahlenView() {
       </Karte>
         </Spalte>
       </Spalten>
-    </Seite>
+    </>
   );
 }

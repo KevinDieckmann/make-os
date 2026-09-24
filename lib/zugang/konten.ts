@@ -33,6 +33,12 @@ export interface Konto {
   teilt: { gesundheit: string[] };
   /** Wer die Einladung ausgesprochen hat. */
   eingeladenVon?: string;
+  /**
+   * Zu welchem Haushalt die Person gehört (Haushaltsfinanzen, 24.09.). Setzt
+   * nur der Inhaber. Kevin und Malin: „kevin-malin“. Ohne Eintrag: kein
+   * Zugriff auf private Finanzen — auch keine Summen.
+   */
+  haushalt?: string;
 }
 
 export interface Einladung { code: string; von: string; bis: string }

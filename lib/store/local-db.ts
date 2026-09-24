@@ -28,6 +28,18 @@ function pruefeName(name: string): void {
 const gesichertHeute = new Map<string, string>();
 const BACKUPS_BEHALTEN = 14;
 
+/**
+ * Die Tagessicherungen genau DIESES Stores, älteste zuerst.
+ *
+ * 24.09.: vorher reichte „fängt mit name- an“. Damit zählten `vitals--malin-…`
+ * und handgemachte Sicherungen wie `vitals-vor-whoop-…` zu `vitals` und wurden
+ * beim Aufräumen mitgelöscht. Jetzt nur `<name>-JJJJ-MM-TT.json`.
+ */
+export function sicherungenVon(name: string, dateien: string[]): string[] {
+  const muster = new RegExp(`^${name}-\\d{4}-\\d{2}-\\d{2}\\.json$`);
+  return dateien.filter(f => muster.test(f)).sort();
+}
+
 async function taeglicheSicherung(name: string, dest: string): Promise<void> {
   const p = (n: number) => String(n).padStart(2, '0');
   const d = new Date();
@@ -40,9 +52,7 @@ async function taeglicheSicherung(name: string, dest: string): Promise<void> {
     try { await fs.access(ziel); return; } catch { /* heute noch keins */ }
     await fs.copyFile(dest, ziel);
     // Alte Sicherungen dieses Stores auf die letzten N begrenzen.
-    const alle = (await fs.readdir(BACKUP_DIR))
-      .filter(f => f.startsWith(`${name}-`) && f.endsWith('.json'))
-      .sort();
+    const alle = sicherungenVon(name, await fs.readdir(BACKUP_DIR));
     for (const f of alle.slice(0, Math.max(0, alle.length - BACKUPS_BEHALTEN))) {
       await fs.unlink(path.join(BACKUP_DIR, f)).catch(() => {});
     }
