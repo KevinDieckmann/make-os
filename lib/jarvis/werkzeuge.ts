@@ -635,13 +635,63 @@ async function entwurfAnsprache(input: Record<string, unknown>): Promise<string>
   if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
   const { treffer, mehrere } = await kontaktFinden(hinweis);
   if (!treffer) return `Kein Kontakt zu „${hinweis}" gefunden.`;
-  const { anzeigename, kanaele } = await import('@/lib/make-one/crm');
+  const { anzeigename } = await import('@/lib/make-one/crm');
   if (mehrere) return `Mehrdeutig — ${mehrere.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}? Bitte mit der ID.`;
   const { entwurfFuer } = await import('@/lib/ansprache');
   const r = await entwurfFuer(treffer);
   if (!r.ok) return `Entwurf fehlgeschlagen: ${r.fehler}`;
-  const wege = kanaele(treffer).map(c => c.art).join(', ') || 'kein Kanal hinterlegt';
+  const { ampel } = await import('@/lib/crm/recht');
+  const wege = ampel(treffer).map(c => `${c.kanal} ${c.farbe === 'gruen' ? 'zulässig' : c.farbe === 'gelb' ? 'nur persönlich' : 'NICHT zulässig'}`).join(', ') || 'kein Kanal hinterlegt';
   return `ANSPRACHE-ENTWURF für ${anzeigename(treffer)}${treffer.firma ? ` (${treffer.firma})` : ''} — Kanäle: ${wege}\n\nBETREFF: ${r.entwurf.betreff}\n\nE-MAIL:\n${r.entwurf.email}\n\nLINKEDIN:\n${r.entwurf.linkedin}\n\n${r.entwurf.hinweis}\nNichts wurde versendet. Wenn Kevin es geschickt hat, mit notiere_kontakt (art: mail oder linkedin) festhalten.`;
+}
+
+// ─── CRM (24.09. nachts): Chance anlegen, Lage abfragen ─────────────────────
+
+async function chanceAnlegen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+  const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
+  if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
+  const { treffer, mehrere } = await kontaktFinden(hinweis);
+  if (!treffer) return `Kein Kontakt zu „${hinweis}" — erst mit suche_kontakt nachsehen oder im CRM anlegen.`;
+  const { anzeigename } = await import('@/lib/make-one/crm');
+  if (mehrere) return `Mehrdeutig — ${mehrere.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}? Bitte mit der ID.`;
+  const { aendereCrm } = await import('@/lib/crm/speicher');
+  const { STUFEN } = await import('@/lib/crm/pipeline');
+  const stufe = STUFEN.some(x => x.id === input.stufe && x.offen) ? String(input.stufe) : 'qualifiziert';
+  const betrag = Number(input.wert_monat) > 0 ? Math.round(Number(input.wert_monat)) : Number(input.wert_einmalig) > 0 ? Math.round(Number(input.wert_einmalig)) : 0;
+  const basis = Number(input.wert_monat) > 0 ? 'monat' : 'einmalig';
+  const jetzt = new Date().toISOString();
+  const titel = String(input.titel ?? '').trim().slice(0, 160) || `${treffer.firma ?? anzeigename(treffer)} — Chance`;
+  const schritt = String(input.naechster_schritt ?? '').trim().slice(0, 300);
+  const datum = /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined;
+  const id = `ch-${Date.now().toString(36)}`;
+  await aendereCrm(c => ({ ...c, chancen: [...c.chancen, {
+    id, titel, kontaktIds: [treffer.id], ...(treffer.firma ? { firma: treffer.firma } : {}), art: 'retainer', wert: { betrag, basis: basis as 'monat' | 'einmalig' },
+    stufe: stufe as 'qualifiziert', historie: [{ stufe: stufe as 'qualifiziert', am: jetzt, von: person ?? 'jarvis' }],
+    ...(schritt && datum ? { naechsterSchritt: { text: schritt, datum } } : {}), quelle: 'bestand',
+    qualifizierung: { schmerz: 'unklar', entscheider: 'unklar', budget: 'unklar', zeitpunkt: 'unklar', wirkung: 'unklar', alternative: 'unklar' },
+    gesellschaft: 'offen', besitzer: person ?? 'kevin', angelegt: jetzt, geaendert: jetzt, letzteAktivitaet: jetzt.slice(0, 10),
+  }] }));
+  return `Chance angelegt: „${titel}“ (${anzeigename(treffer)}) · Stufe ${stufe}${betrag ? ` · ${betrag} € ${basis === 'monat' ? 'im Monat' : 'einmalig'}` : ' · noch ohne Wert'}${schritt && datum ? ` · nächster Schritt ${datum}` : ' · ohne nächsten Schritt (gilt als gelb)'}. Sichtbar im CRM › Pipeline.`;
+}
+
+async function crmLage(_i: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+  const { loadJson } = await import('@/lib/store/local-db');
+  const { localDay } = await import('@/lib/zeit');
+  const { ladeCrm } = await import('@/lib/crm/speicher');
+  const { werIstDran } = await import('@/lib/crm/heute');
+  const { kennzahlen } = await import('@/lib/crm/kennzahlen');
+  const { befunde } = await import('@/lib/crm/befunde');
+  const kontakte = (await loadJson<{ kontakte: import('@/lib/make-one/crm').Kontakt[] }>('kontakte'))?.kontakte ?? [];
+  const crm = await ladeCrm();
+  const heute = localDay();
+  const a = werIstDran(kontakte, crm, heute, person ?? 'kevin', 8);
+  return [
+    `CRM-LAGE ${heute}`,
+    `Kennzahlen: ${kennzahlen(kontakte, crm, heute).map(k => `${k.label} ${k.anzeige}${k.ampel !== 'grau' ? ` (${k.ampel})` : ''}`).join(' · ')}`,
+    `Wer heute dran ist (${a.karten.length}):`,
+    ...a.karten.map(c => `- ${c.name}${c.kontakt.firma ? ` · ${c.kontakt.firma}` : ''} [${c.kontakt.id}] — ${c.kategorie}: ${c.gruende[0]}${c.kanal ? ` · Kanal ${c.kanal.kanal} (${c.kanal.farbe})` : ''}`),
+    `Was zu tun ist: ${befunde(kontakte, crm, heute).slice(0, 6).map(b => b.titel).join(' · ') || 'nichts Rotes'}`,
+  ].join('\n');
 }
 
 // ─── Haushaltsfinanzen (24.09.) ─────────────────────────────────────────────
@@ -739,4 +789,6 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: (input: Record<st
   suche_kontakt: { gruppe: 'kontakte', lauf: sucheKontakt },
   notiere_kontakt: { gruppe: 'kontakte', lauf: notiereKontakt },
   entwurf_ansprache: { gruppe: 'kontakte', lauf: entwurfAnsprache },
+  chance_anlegen: { gruppe: 'kontakte', lauf: chanceAnlegen },
+  crm_lage: { gruppe: 'kontakte', lauf: crmLage },
 };

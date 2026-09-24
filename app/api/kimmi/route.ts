@@ -433,8 +433,46 @@ export async function POST(req: Request) {
         }, required: ['sauber'] },
       },
       {
+        name: 'crm_lage',
+        description: 'Liest die Lage im CRM: wer heute dran ist (Power Hour, mit Grund und zulässigem Kanal), Kennzahlen mit Ampel und was zu tun ist. Nutze das bei Fragen wie „wen soll ich heute anrufen?“ oder „wie steht der Vertrieb?“.',
+        input_schema: { type: 'object', properties: {}, required: [] },
+      },
+      {
+        name: 'suche_kontakt',
+        description: 'Sucht Personen in der CRM-Kartei (Name, Firma, Mail, Branche, Ort) und zeigt Stufe, Kreis, nächsten Schritt und die Kanal-Ampel (§ 7 UWG).',
+        input_schema: { type: 'object', properties: { frage: { type: 'string' }, anzahl: { type: 'number', description: '1–8' } }, required: ['frage'] },
+      },
+      {
+        name: 'notiere_kontakt',
+        description: 'Hält eine Aktivität an einer Person fest („habe X angerufen / angeschrieben / Antwort erhalten / Termin vereinbart“). Setzt letzten Kontakt, Stufe (nur vorwärts) und Wiedervorlage.',
+        input_schema: { type: 'object', properties: {
+          kontakt: { type: 'string', description: 'Name, Firma oder ID' },
+          art: { type: 'string', enum: ['mail', 'linkedin', 'anruf', 'antwort', 'termin', 'notiz'] },
+          text: { type: 'string', description: 'Kurz, was passiert ist (optional)' },
+          wiedervorlage: { type: 'string', description: 'YYYY-MM-DD (optional)' },
+        }, required: ['kontakt', 'art'] },
+      },
+      {
+        name: 'entwurf_ansprache',
+        description: 'Entwirft eine persönliche Ansprache (Mail + LinkedIn) für eine Person — versendet NICHTS und nennt die zulässigen Kanäle.',
+        input_schema: { type: 'object', properties: { kontakt: { type: 'string', description: 'Name, Firma oder ID' } }, required: ['kontakt'] },
+      },
+      {
+        name: 'chance_anlegen',
+        description: 'Legt eine Chance in der Pipeline an („für Acme eine Chance, 3.000 im Monat, nächster Schritt Angebot bis Freitag“). Ohne Wert und nächsten Schritt gilt sie als gelb.',
+        input_schema: { type: 'object', properties: {
+          kontakt: { type: 'string', description: 'Person: Name, Firma oder ID' },
+          titel: { type: 'string' },
+          stufe: { type: 'string', enum: ['qualifiziert', 'bedarf', 'diagnose', 'angebot', 'abschluss'] },
+          wert_monat: { type: 'number', description: '€ je Monat (Retainer)' },
+          wert_einmalig: { type: 'number', description: '€ einmalig (Projekt/Workshop)' },
+          naechster_schritt: { type: 'string' },
+          faellig: { type: 'string', description: 'YYYY-MM-DD für den nächsten Schritt' },
+        }, required: ['kontakt'] },
+      },
+      {
         name: 'setze_kunde',
-        description: 'Aktualisiert oder erfasst einen Kunden im CRM (Status, Cashflow €/Monat, nächster Schritt).',
+        description: 'Aktualisiert oder erfasst einen Kunden als Mandat im CRM (Status, Honorar €/Monat, nächster Schritt als offener Punkt).',
         input_schema: { type: 'object', properties: {
           name: { type: 'string' },
           status: { type: 'string', enum: ['aktiv', 'gespraech', 'ruht'] },

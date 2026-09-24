@@ -249,6 +249,14 @@ export const REGISTER: Record<string, Eintrag> = {
     gruppe: 'kontakte', risiko: 'frei',
     vorschau: schlicht('Aktivität am Kontakt notieren', i => `${text(i.kontakt)} · ${text(i.art) || 'notiz'}`),
   },
+  chance_anlegen: {
+    gruppe: 'kontakte', risiko: 'frei',
+    vorschau: schlicht('Chance in der Pipeline anlegen', i => `${text(i.kontakt)}${i.titel ? ` · ${text(i.titel)}` : ''}`),
+  },
+  crm_lage: {
+    gruppe: 'kontakte', risiko: 'frei',
+    vorschau: schlicht('CRM-Lage lesen', () => 'wer dran ist, Kennzahlen, Befunde'),
+  },
   entwurf_ansprache: {
     gruppe: 'kontakte', risiko: 'frei',
     vorschau: schlicht('Ansprache entwerfen — kein Versand', i => text(i.kontakt)),

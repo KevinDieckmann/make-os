@@ -69,8 +69,29 @@ export async function datenpaket(bild: Finanzbild, einstellung: ChefEinstellung,
     },
     definitionen: DEFINITIONEN,
     ...bild,
+    crm: await crmFuerFinanzen(bild.stichtag),
     vorschlaege_offen: vorschlaegeFuerDaten(stand.vorschlaege),
   };
+}
+
+/** Die Vertriebsseite fürs Finanzbild (24.09.): wiederkehrender Umsatz, auslaufende
+ *  Mandate, Mandate außerhalb des Liquiplans, gewichtete Pipeline (NIE Basisplan). */
+async function crmFuerFinanzen(heute: string) {
+  try {
+    const { ladeCrm } = await import('@/lib/crm/speicher');
+    const { mrr, konzentration, mandatLage, planpostenAus } = await import('@/lib/crm/kunden');
+    const { prognose } = await import('@/lib/crm/pipeline');
+    const crm = await ladeCrm();
+    const posten = (await loadJson<{ posten?: Planposten[] }>('liquiplan'))?.posten ?? [];
+    const p = prognose(crm.chancen, heute, crm.wahrscheinlichkeiten);
+    return {
+      hinweis: 'Pipeline ist Szenario, nie Basisplan. Mandate ohne Liquiplan-Posten sind Kandidaten für die Planung (Kevin entscheidet im CRM).',
+      mrr_netto: mrr(crm.mandate), konzentration: konzentration(crm.mandate),
+      mandate_auslaufend_90_tage: crm.mandate.filter(m => m.status === 'aktiv').map(m => ({ kunde: m.kunde, titel: m.titel.slice(0, 80), ende_in_tagen: mandatLage(m, heute).endeIn })).filter(x => x.ende_in_tagen !== null && x.ende_in_tagen <= 90),
+      mandate_ohne_liquiplan: crm.mandate.map(m => ({ m, v: planpostenAus(m, heute) })).filter(x => x.v && !posten.some(pp => pp.id === x.v!.id)).map(x => ({ kunde: x.m.kunde, status: x.m.status, betrag_brutto: x.v!.betrag, rhythmus: x.v!.rhythmus })),
+      pipeline: { offen: Math.round(p.offen), gewichtet: Math.round(p.gewichtet), commit: Math.round(p.commit), best_case: Math.round(p.bestCase) },
+    };
+  } catch { return null; }
 }
 
 // ── Werkzeuge (wenige, gebündelt, lesbare Ergebnisse) ──────────────────────
