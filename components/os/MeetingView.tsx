@@ -40,7 +40,7 @@ export function MeetingView() {
   const [verlauf, setVerlauf] = useState<Meeting[]>([]);
   const [termine, setTermine] = useState<Termin[]>([]);
   const [gewaehlterTermin, setGewaehlterTermin] = useState('');
-  const [meetingId, setMeetingId] = useState('');
+  const [, setMeetingId] = useState('');
   const [offenesProtokoll, setOffenesProtokoll] = useState<string | null>(null);
 
   const ladeVerlauf = () => {

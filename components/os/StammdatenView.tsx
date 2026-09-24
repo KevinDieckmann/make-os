@@ -114,7 +114,7 @@ function KarteiBlock({ i, kartei, saetze, offen, aufdecken, aendern, gesperrt }:
       </Ueberschrift>
       <p style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5, margin: '0 0 6px' }}>{kartei.satz}</p>
 
-      {saetze.length === 0 && <Leer>Noch nichts eingetragen. Über „Neu" die erste Karte anlegen.</Leer>}
+      {saetze.length === 0 && <Leer>Noch nichts eingetragen. Über „Neu“ die erste Karte anlegen.</Leer>}
 
       {saetze.map((s, idx) => (
         <div key={s.id} style={{ padding: '14px 0 16px', borderTop: `1px solid ${HAAR}` }}>

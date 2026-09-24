@@ -26,7 +26,7 @@ import { einschaetzen, dauerText, WER_LABEL, WER_FARBE, type Wer } from '@/lib/m
 import { DELEGIERBAR } from '@/lib/make-one/team-data';
 import { wertVon, STANDARD_MODUS, type ReglerId } from '@/lib/make-one/kompass-data';
 import { Zeitstrahl, type StrahlMarker } from './Zeitstrahl';
-import { parseSchnell, tagInT, naechsterWochentag } from '@/lib/make-one/schnell-anlegen';
+import { parseSchnell, tagInT } from '@/lib/make-one/schnell-anlegen';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, Chip, Haken, feld, prioFarbe, LEUCHT } from './schlank';
 
 const PRIO_ZYKLUS: Priority[] = ['low', 'medium', 'high', 'critical'];
@@ -917,7 +917,7 @@ export function AufgabenView() {
                   <Chip farbe={C.aktiv}>→ {v.an}</Chip>
                   <span style={{ fontSize: 12, color: C.inkLeise }}>{v.warum}</span>
                 </div>
-                {v.uebergabe && <div style={{ fontSize: TYP.bedien, color: C.inkDim, margin: '6px 0 8px', lineHeight: 1.5 }}>„{v.uebergabe}"</div>}
+                {v.uebergabe && <div style={{ fontSize: TYP.bedien, color: C.inkDim, margin: '6px 0 8px', lineHeight: 1.5 }}>„{v.uebergabe}“</div>}
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: v.uebergabe ? 0 : 8 }}>
                   {delegStatus[v.taskId]
                     ? <Chip farbe={LEUCHT.gut}>{delegStatus[v.taskId]} — Übergabetext in der Aufgabe notiert</Chip>
@@ -1071,7 +1071,7 @@ export function AufgabenView() {
             {ohneDatum > 0 && (
               <Karte i={ki++}>
                 <Leer>
-                  <b style={{ color: LEUCHT.achtung }}>{ohneDatum} Aufgaben ohne Datum</b> — sie erscheinen erst auf dem Zeitstrahl, wenn ihr ihnen einen Tag gebt. Aufgabe aufklappen → „Fällig".
+                  <b style={{ color: LEUCHT.achtung }}>{ohneDatum} Aufgaben ohne Datum</b> — sie erscheinen erst auf dem Zeitstrahl, wenn ihr ihnen einen Tag gebt. Aufgabe aufklappen → „Fällig“.
                 </Leer>
               </Karte>
             )}
@@ -1104,7 +1104,7 @@ export function AufgabenView() {
         {remState === 'fehler' && (
           <Leer>
             <div style={{ fontSize: TYP.body, color: C.ink, fontWeight: 600, marginBottom: 4 }}>Zugriff auf Erinnerungen freigeben</div>
-            macOS muss den Zugriff einmalig erlauben — bestätige das Popup „Zugriff auf Erinnerungen", oder aktiviere es unter <b>Systemeinstellungen → Datenschutz &amp; Sicherheit → Erinnerungen</b>. Danach die Seite neu laden.
+            macOS muss den Zugriff einmalig erlauben — bestätige das Popup „Zugriff auf Erinnerungen“, oder aktiviere es unter <b>Systemeinstellungen → Datenschutz &amp; Sicherheit → Erinnerungen</b>. Danach die Seite neu laden.
           </Leer>
         )}
 

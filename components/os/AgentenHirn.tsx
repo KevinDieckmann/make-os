@@ -13,7 +13,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
 import { LEUCHT, Ueberschrift } from './schlank';
 import { LIVE_AGENTS } from '@/lib/make-one/agents-data';
 

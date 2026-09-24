@@ -287,7 +287,7 @@ export function KalenderView() {
           </div>
           {anlegenInfo && <div style={{ fontSize: TYP.bedien, color: anlegenInfo.startsWith('✓') ? LEUCHT.gut : LEUCHT.kritisch, marginTop: 10 }}>{anlegenInfo}</div>}
           <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>
-            Landet in „{einst.kalender[wer]}" — gepflegt wird weiter im Apple-Kalender, MAKE OS schreibt nur hinein.
+            Landet in „{einst.kalender[wer]}“ — gepflegt wird weiter im Apple-Kalender, MAKE OS schreibt nur hinein.
           </div>
         </Karte>
       )}

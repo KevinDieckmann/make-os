@@ -26,6 +26,9 @@ interface Msg {
   preview?: string; receivedAt: string; isRead: boolean;
   importance?: string; hasAttachment?: boolean; mbIndex?: number;
 }
+/** Rohform aus /api/microsoft (Snapshot) und /api/apple-mail (live). */
+interface MsRoh { id: string; senderName?: string; senderEmail?: string; subject?: string; preview?: string; receivedAt?: string; isRead?: boolean; importance?: string; hasAttachment?: boolean }
+interface AppleRoh { id: string; account?: string; sender?: string; subject?: string; receivedAt?: string; isRead?: boolean; mbIndex?: number }
 type StatusMap = Record<string, { status: string; at: string; bis?: string }>;
 type Stufe = 'wichtig' | 'normal' | 'rauschen';
 type TriageMap = Record<string, { stufe: Stufe; zeile: string; grund: string }>;
@@ -176,7 +179,7 @@ export function InboxView() {
     // Status
     fetch('/api/state/inbox').then(r => r.json()).then((d: { status: StatusMap }) => setStatus(d.status ?? {})).catch(() => {});
     // M365 (Snapshot, schnell)
-    fetch('/api/microsoft').then(r => r.json()).then((d: { emails?: any[] }) => {
+    fetch('/api/microsoft').then(r => r.json()).then((d: { emails?: MsRoh[] }) => {
       const ms: Msg[] = (d.emails ?? []).map(e => ({
         id: e.id, source: 'ms', account: 'M365 · KEMARIS',
         sender: e.senderName ?? e.senderEmail ?? 'Unbekannt', senderEmail: e.senderEmail,
@@ -188,9 +191,9 @@ export function InboxView() {
       setSync(s => ({ ...s, ms: `${ms.length} · Snapshot` }));
     }).catch(() => setSync(s => ({ ...s, ms: 'nicht erreichbar' })));
     // Apple (live, kann ein paar Sekunden dauern)
-    fetch('/api/apple-mail').then(r => r.json()).then((rows: any) => {
+    fetch('/api/apple-mail').then(r => r.json()).then((rows: AppleRoh[] | { error?: string }) => {
       if (!Array.isArray(rows)) { setSync(s => ({ ...s, apple: rows?.error ?? 'Fehler' })); setLoading(false); return; }
-      const apple: Msg[] = rows.map((r: any) => {
+      const apple: Msg[] = rows.map((r: AppleRoh) => {
         const { name, email } = stripEmail(r.sender ?? '');
         return {
           id: r.id, source: 'apple', account: r.account ?? 'Apple Mail',

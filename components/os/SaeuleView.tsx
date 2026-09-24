@@ -388,7 +388,7 @@ function WerkzeugSozial() {
     const an = !gehalten.has(id); // Sofort umschalten, danach bestätigen lassen — sonst fühlt es sich träge an.
     setRitLog(prev => {
       const tag = new Set(prev[heute] ?? []);
-      an ? tag.add(id) : tag.delete(id);
+      if (an) tag.add(id); else tag.delete(id);
       return { ...prev, [heute]: Array.from(tag) };
     });
     try {

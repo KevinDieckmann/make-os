@@ -127,7 +127,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
             );
           })}
         </div>
-        {vorschlag && <p style={{ fontSize: 12, color: LEUCHT.achtung, margin: '10px 0 0' }}>Vorschau — mit „Übernehmen" wird sie dein Plan.</p>}
+        {vorschlag && <p style={{ fontSize: 12, color: LEUCHT.achtung, margin: '10px 0 0' }}>Vorschau — mit „Übernehmen“ wird sie dein Plan.</p>}
       </Abschnitt>
 
       <div style={eingebettet ? { marginTop: 24 } : { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>

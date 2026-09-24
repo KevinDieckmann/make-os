@@ -26,8 +26,6 @@ import Link from 'next/link';
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { useTasks } from '@/context/TasksContext';
-import type { Priority } from '@/types';
 import { Rich } from './Rich';
 import { Chip, Knopf, feld, LEUCHT } from './schlank';
 import { useStimme } from '@/hooks/useStimme';
@@ -111,7 +109,6 @@ const ausNachrichten = (ns: VerlaufNachricht[]): Msg[] => ns.map(n => ({
 }));
 
 export function JarvisPanel() {
-  const { state: tasksState, dispatch: tasksDispatch } = useTasks();
   const [fenster, setFenster] = useState<Fenster>(STANDARD);
   const [convo, setConvo] = useState<Msg[]>([]);
   const [ask, setAsk] = useState('');

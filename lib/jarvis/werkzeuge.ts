@@ -174,7 +174,7 @@ async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: 
   await updateJson<Record<string, string[]>>(speicherFuer('health-log', wer), current => {
     const log = current ?? {};
     const tag = new Set(log[datum] ?? []);
-    for (const id of ids) erledigt ? tag.add(id) : tag.delete(id);
+    for (const id of ids) { if (erledigt) tag.add(id); else tag.delete(id); }
     return { ...log, [datum]: Array.from(tag) };
   });
   const namen = ids.map(id => alle.find(r => r.id === id)?.label ?? id);

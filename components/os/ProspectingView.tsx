@@ -181,7 +181,7 @@ export function ProspectingView() {
         {!loaded ? (
           <Leer>lade Zielliste …</Leer>
         ) : rows.length === 0 ? (
-          <Leer>Noch keine Firmen. Füg oben welche hinzu — oder sag mir im Chat „bau die Zielliste aus", dann ziehe ich echte Mittelstands-Firmen (Explorium) rein.</Leer>
+          <Leer>Noch keine Firmen. Füg oben welche hinzu — oder sag mir im Chat „bau die Zielliste aus“, dann ziehe ich echte Mittelstands-Firmen (Explorium) rein.</Leer>
         ) : (
           <Liste>
             {sorted.map(p => {
@@ -204,7 +204,7 @@ export function ProspectingView() {
                     <div style={{ padding: '6px 2px 18px 56px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {p.fit && <div><div style={{ ...mikro, marginBottom: 4 }}>Fit</div><div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{p.fit}</div></div>}
                       {p.angle && <div><div style={{ ...mikro, marginBottom: 4 }}>Aufhänger</div><div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{p.angle}</div></div>}
-                      {!p.fit && !p.angle && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch nicht qualifiziert — „Qualifizieren" klicken.</div>}
+                      {!p.fit && !p.angle && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch nicht qualifiziert — „Qualifizieren“ klicken.</div>}
 
                       {/* Outreach: Ansprache entwerfen — Versand bleibt bei Kevin */}
                       {p.score != null && (

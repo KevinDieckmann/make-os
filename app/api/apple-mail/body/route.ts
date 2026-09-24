@@ -17,7 +17,7 @@ function runOsascript(script: string, timeoutMs = 30_000): Promise<string> {
     child.stderr.on('data', (d: Buffer) => { stderr += d.toString(); });
     child.stdin.write(script, 'utf8');
     child.stdin.end();
-    child.on('close', (code) => { clearTimeout(timer); code === 0 ? resolve(stdout) : reject(new Error(stderr.trim() || `Exit ${code}`)); });
+    child.on('close', (code) => { clearTimeout(timer); if (code === 0) resolve(stdout); else reject(new Error(stderr.trim() || `Exit ${code}`)); });
     child.on('error', (err) => { clearTimeout(timer); reject(err); });
   });
 }

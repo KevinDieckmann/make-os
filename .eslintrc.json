@@ -10,6 +10,17 @@
     "components/calendar/**",
     "components/tasks/**",
     "components/fundament/**",
-    "lib/mock-data/**"
-  ]
+    "lib/mock-data/**",
+    "components/layout/**"
+  ],
+  "rules": {
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "ignoreRestSiblings": true
+      }
+    ]
+  }
 }

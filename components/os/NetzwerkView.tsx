@@ -411,7 +411,7 @@ export function NetzwerkView() {
           {/* Verlauf abgleichen */}
           <Karte i={3}>
             <Ueberschrift farbe={LEUCHT.puls} rechts={<Knopf leise onClick={verlaufPruefen} aus={verlaufBusy}>{verlaufBusy ? 'prüft …' : 'Belege suchen'}</Knopf>}>Verlauf abgleichen</Ueberschrift>
-            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Setzt „zuletzt gesprochen" aus Postfach und Kalender.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Setzt „zuletzt gesprochen“ aus Postfach und Kalender.</div>
             {verlaufInfo && (
               <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>
                 {verlaufInfo.geprueft} Kontakte geprüft · {verlaufInfo.ohneDatum} haben noch kein Datum.

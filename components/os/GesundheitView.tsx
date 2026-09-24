@@ -142,7 +142,7 @@ export function GesundheitView() {
   const hake = (id: string) => {
     if (!eigene) return;
     const tag = new Set(hl[heute] ?? []);
-    tag.has(id) ? tag.delete(id) : tag.add(id);
+    if (tag.has(id)) tag.delete(id); else tag.add(id);
     const next = { ...hl, [heute]: Array.from(tag) };
     setHl(next);
     fetch('/api/state/health', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});

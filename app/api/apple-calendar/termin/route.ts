@@ -28,7 +28,7 @@ function osascript(script: string, timeoutMs = 45_000): Promise<string> {
     child.stderr.on('data', (d: Buffer) => { err += d.toString(); });
     child.stdin.write(script, 'utf8');
     child.stdin.end();
-    child.on('close', c => { clearTimeout(timer); c === 0 ? resolve(out.trim()) : reject(new Error(err.trim() || `Exit ${c}`)); });
+    child.on('close', c => { clearTimeout(timer); if (c === 0) resolve(out.trim()); else reject(new Error(err.trim() || `Exit ${c}`)); });
     child.on('error', e => { clearTimeout(timer); reject(e); });
   });
 }

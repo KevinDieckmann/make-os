@@ -11,9 +11,8 @@ import { fuerPrompt, type VerlaufNachricht } from '@/lib/make-one/jarvis-verlauf
 import { WERKZEUGE } from '@/lib/jarvis/werkzeuge';
 import { AUSFUEHRBAR, AGENT_ZWECK, runAgent, type Ausfuehrbar } from '@/lib/jarvis/agenten';
 import { fuehreAus } from '@/lib/jarvis/ausfuehren';
-import { risikoVon } from '@/lib/jarvis/register';
 import { offeneAnzahl } from '@/lib/jarvis/stapel';
-import { personAus, PERSON_LABEL } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/jarvis/raum';
 import { lies as liesFakten, fuerPrompt as faktenFuerPrompt } from '@/lib/jarvis/gedaechtnis';
 
 export const runtime = 'nodejs';

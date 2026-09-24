@@ -116,7 +116,7 @@ export function OkrView() {
 
       {objectives.length === 0 && !busy && lage === '' && (
         <Karte i={1}>
-          <Leer>„Zielbaum bauen" — der Agent zerlegt die 1 Mio in Objectives, ordnet deine Aufgaben zu und zeigt, wo noch nichts einzahlt.</Leer>
+          <Leer>„Zielbaum bauen“ — der Agent zerlegt die 1 Mio in Objectives, ordnet deine Aufgaben zu und zeigt, wo noch nichts einzahlt.</Leer>
         </Karte>
       )}
     </Seite>

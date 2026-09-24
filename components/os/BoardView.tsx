@@ -101,7 +101,7 @@ export function BoardView() {
           <span style={{ fontSize: 12, color: C.inkLeise }}>{ready ? `Geschäftssicht${privat > 0 ? ` · ${privat} private Aufgaben ausgeblendet` : ''}` : 'lade …'}</span>
         </div>
         {!pack && !busy && (
-          <Leer>„Board-Pack erstellen" — der Agent zieht Controlling, Pipeline und Aufgaben zusammen und schreibt das Wochen-Briefing.</Leer>
+          <Leer>„Board-Pack erstellen“ — der Agent zieht Controlling, Pipeline und Aufgaben zusammen und schreibt das Wochen-Briefing.</Leer>
         )}
       </Karte>
 

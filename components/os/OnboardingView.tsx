@@ -14,7 +14,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { SCHRITTE, SPUREN, schritteVon, type Schritt, type Spur } from '@/lib/make-one/onboarding-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Fortschritt as FortschrittBalken, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Chip, Fortschritt as FortschrittBalken, LEUCHT } from './schlank';
 
 /** Ein Verweis, der wie ein leiser Knopf aussieht. */
 const linkKnopf: CSSProperties = {

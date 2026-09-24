@@ -156,7 +156,7 @@ export function KontakteView() {
             {suche ? `${treffer.length} Treffer` : `Nach Priorität · ${kontakte?.length ?? 0} Kontakte`}
           </Ueberschrift>
           <Liste>
-            {kontakte !== null && kontakte.length === 0 && <Leer>Noch keine Kontakte — oben „Masterliste abgleichen".</Leer>}
+            {kontakte !== null && kontakte.length === 0 && <Leer>Noch keine Kontakte — oben „Masterliste abgleichen“.</Leer>}
             {treffer.map(k => (
               <div key={k.id}>
                 {zeile(k, [k.position, k.firmaBranche, k.wiedervorlage ? `Wiedervorlage ${k.wiedervorlage.slice(5)}` : ''].filter(Boolean).join(' · '))}

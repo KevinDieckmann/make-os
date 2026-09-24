@@ -86,7 +86,7 @@ export function Abhaengigkeit({ t, alle, patchTask }: {
 
       {konflikt && (
         <div style={{ fontSize: 12, color: LEUCHT.kritisch, lineHeight: 1.45 }}>
-          Terminkonflikt: fällig {t.dueDate && datumKurz(t.dueDate)}, aber „{konflikt.title.slice(0, 50)}" erst {konflikt.dueDate && datumKurz(konflikt.dueDate)} — eins von beiden verschieben.
+          Terminkonflikt: fällig {t.dueDate && datumKurz(t.dueDate)}, aber „{konflikt.title.slice(0, 50)}“ erst {konflikt.dueDate && datumKurz(konflikt.dueDate)} — eins von beiden verschieben.
         </div>
       )}
 

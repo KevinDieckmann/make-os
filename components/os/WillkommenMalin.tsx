@@ -14,7 +14,7 @@
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Knopf } from './schlank';
-import { personLesen, modusLesen, beiWechsel } from '@/lib/make-one/arbeitsplatz-browser';
+import { personLesen, beiWechsel } from '@/lib/make-one/arbeitsplatz-browser';
 
 /** Malins Licht im Bild — dieselbe Farbe wie im gezeichneten Herz. */
 const MALIN = '#FF5C5C';
@@ -119,7 +119,7 @@ export function WillkommenMalin() {
         </p>
         {/* Im Raster gestreckt, damit der Knopf die ganze Breite nimmt. */}
         <div style={{ display: 'grid', marginTop: 20 }}>
-          <Knopf onClick={schliessen}>Los geht's</Knopf>
+          <Knopf onClick={schliessen}>Los geht’s</Knopf>
         </div>
       </div>
 

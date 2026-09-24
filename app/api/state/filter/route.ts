@@ -4,7 +4,7 @@
 // eingebauten ergänzen.
 
 import { NextResponse } from 'next/server';
-import { loadJson, updateJson, updateGeschuetztListen } from '@/lib/store/local-db';
+import { loadJson, updateGeschuetztListen } from '@/lib/store/local-db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

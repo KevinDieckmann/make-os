@@ -209,7 +209,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   const erledigt = new Set(hlog[heute] ?? []);
   function toggleRoutine(id: string) {
     const tag = new Set(hlog[heute] ?? []);
-    tag.has(id) ? tag.delete(id) : tag.add(id);
+    if (tag.has(id)) tag.delete(id); else tag.add(id);
     const next = { ...hlog, [heute]: Array.from(tag) };
     setHlog(next);
     hSpaeter(next);

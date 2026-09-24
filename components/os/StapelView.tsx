@@ -128,7 +128,7 @@ export function StapelView() {
         <Karte i={3}>
           <Ueberschrift farbe={LEUCHT.agenten} rechts={`${fakten.length}`}>Gedächtnis</Ueberschrift>
           <Liste>
-            {fakten.length === 0 && <Leer>Jarvis hat sich noch nichts gemerkt. Sag ihm „merk dir …".</Leer>}
+            {fakten.length === 0 && <Leer>Jarvis hat sich noch nichts gemerkt. Sag ihm „merk dir …“.</Leer>}
             {fakten.slice(0, 10).map(f => <Zeile key={f.id} titel={f.satz} unter={`${f.thema} · ${f.tag}`} rechts={<button onClick={() => vergiss(f.id)} disabled={busy === f.id} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>vergessen</button>} />)}
           </Liste>
         </Karte>

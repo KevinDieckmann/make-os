@@ -53,7 +53,7 @@ export function JournalView() {
   }
   const toggleFlag = (id: string) => {
     const f = new Set(entry.flags ?? []);
-    f.has(id) ? f.delete(id) : f.add(id);
+    if (f.has(id)) f.delete(id); else f.add(id);
     patch({ flags: Array.from(f) });
   };
 

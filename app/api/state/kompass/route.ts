@@ -43,7 +43,7 @@ export async function PUT(req: Request) {
     // Lagewechsel oder Zurücksetzen räumt die eigenen Werte weg — sonst wäre
     // die neue Lage nicht wirklich neu.
     const wechsel = !!body.modus && body.modus !== current?.modus;
-    let eigene: Record<string, number> = wechsel || body.zuruecksetzen ? {} : { ...(current?.eigene ?? {}) };
+    const eigene: Record<string, number> = wechsel || body.zuruecksetzen ? {} : { ...(current?.eigene ?? {}) };
 
     if (body.eigene && typeof body.eigene === 'object' && !body.zuruecksetzen) {
       for (const [k, v] of Object.entries(body.eigene)) {
