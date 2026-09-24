@@ -232,29 +232,32 @@ async function streakEintrag(input: Record<string, unknown>, _o: string, person?
   return `Sauber seit ${st.sauberTage} Tag${st.sauberTage === 1 ? '' : 'en'}${typeof e.craving === 'number' ? `, Verlangen ${e.craving}/10` : ''}.`;
 }
 
+// 24.09.: Kunden leben als Mandate im CRM (lib/crm) — eine Wahrheit statt zwei.
 async function setzeKunde(input: Record<string, unknown>): Promise<string> {
   const name = String(input.name ?? '').trim().slice(0, 120);
   if (!name) return 'Fehlgeschlagen: name fehlt.';
-  const status = ['aktiv', 'gespraech', 'ruht'].includes(String(input.status)) ? String(input.status) : undefined;
+  const status = ({ aktiv: 'aktiv', gespraech: 'verhandlung', ruht: 'pausiert' } as const)[String(input.status) as 'aktiv' | 'gespraech' | 'ruht'];
   const cashflow = isFinite(Number(input.cashflow)) && Number(input.cashflow) > 0 ? Math.round(Number(input.cashflow)) : undefined;
   const schritt = input.naechsterSchritt ? String(input.naechsterSchritt).slice(0, 300) : undefined;
+  const { aendereCrm } = await import('@/lib/crm/speicher');
   let aktion = '';
-  await updateJson<{ kunden: { id: string; name: string; status: string; cashflow?: number; naechsterSchritt?: string }[] }>('kunden', current => {
-    const f = current ?? { kunden: [] };
-    f.kunden = f.kunden ?? [];
-    const k = f.kunden.find(x => x.name.toLowerCase() === name.toLowerCase());
-    if (k) {
-      if (status) k.status = status;
-      if (cashflow != null) k.cashflow = cashflow;
-      if (schritt) k.naechsterSchritt = schritt;
-      aktion = `${k.name} aktualisiert${status ? ` (${status})` : ''}${cashflow != null ? `, ${eurW(cashflow)}/Monat` : ''}${schritt ? `, nächster Schritt: ${schritt}` : ''}`;
-    } else {
-      f.kunden.push({ id: `k-${Date.now().toString(36)}`, name, status: status ?? 'gespraech', ...(cashflow != null ? { cashflow } : {}), ...(schritt ? { naechsterSchritt: schritt } : {}) });
-      aktion = `${name} als Kunde angelegt (${status ?? 'gespraech'})`;
+  const jetzt = new Date().toISOString();
+  await aendereCrm(b => {
+    const treffer = b.mandate.filter(m => m.kunde.toLowerCase().includes(name.toLowerCase()) && m.status !== 'beendet');
+    if (treffer.length) {
+      const m = treffer.find(x => x.honorar.basis === 'monat') ?? treffer[0];
+      const neu = { ...m, ...(status ? { status } : {}), ...(cashflow != null ? { honorar: { ...m.honorar, betrag: cashflow, basis: 'monat' as const } } : {}), ...(schritt ? { offen: [...m.offen, `Nächster Schritt: ${schritt}`] } : {}), geaendert: jetzt };
+      aktion = `${m.kunde} aktualisiert${status ? ` (${status})` : ''}${cashflow != null ? `, ${eurW(cashflow)}/Monat` : ''}${schritt ? `, nächster Schritt: ${schritt}` : ''}`;
+      return { ...b, mandate: b.mandate.map(x => (x.id === m.id ? neu : x)) };
     }
-    return f;
+    aktion = `${name} als Mandat angelegt (${status ?? 'verhandlung'})`;
+    return { ...b, mandate: [...b.mandate, {
+      id: `m-${Date.now().toString(36)}`, kunde: name, kontaktIds: [], titel: 'Mandat', art: 'retainer', gesellschaft: 'offen', status: status ?? 'verhandlung', vertragUnterschrieben: false,
+      verlaengerung: 'offen', honorar: { betrag: cashflow ?? 0, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [],
+      health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: schritt ? [`Nächster Schritt: ${schritt}`] : [], geaendert: jetzt,
+    }] };
   });
-  return `Erfasst: ${aktion}. Sichtbar im CRM.`;
+  return `Erfasst: ${aktion}. Sichtbar im CRM unter Kunden.`;
 }
 
 /**

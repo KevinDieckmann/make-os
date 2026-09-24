@@ -12,19 +12,24 @@ import { resolveAgent } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 
+// 24.09.: Der alte Hinweis („bei kaltem Kontakt ist LinkedIn oder Telefon der
+// sichere erste Kanal“) war falsch — LinkedIn-Nachrichten zählen als
+// elektronische Post (OLG Hamm), Kaltanrufe brauchen einen konkreten Anlass.
+// Welcher Kanal zulässig ist, sagt jetzt die Kanal-Ampel (lib/crm/recht.ts).
 export const RECHT =
-  'B2B-Kaltansprache per E-Mail ist in DE nur mit mutmaßlicher Einwilligung sauber (§7 UWG) — bei kaltem Kontakt ist LinkedIn oder Telefon der sichere erste Kanal. Versand bleibt bei dir.';
+  'Werbung per Mail oder LinkedIn-Nachricht nur mit Einwilligung oder als Bestandskunde (§ 7 UWG); ohne Grundlage nur eine Vernetzungsanfrage ohne Werbebotschaft. Welcher Kanal geht, zeigt die Ampel. Versand bleibt bei dir.';
 
 export interface Entwurf { betreff: string; email: string; linkedin: string; hinweis: string }
 
 export async function entwurfFuer(k: Kontakt): Promise<{ ok: true; entwurf: Entwurf } | { ok: false; fehler: string }> {
+  if (k.werbesperre) return { ok: false, fehler: `Werbesperre seit ${k.werbesperre.seit} — kein Entwurf.` };
   const agent = await resolveAgent('outreach');
   if (!agent.enabled) return { ok: false, fehler: 'Outreach-Agent ist ausgeschaltet.' };
 
   const system = [
     'Du schreibst Erstansprachen für Kevin Dieckmann (Gründer KEMARIS, Produkt POINCAP — Controlling-/Liquiditäts-Cockpit für den Mittelstand).',
     'KEVINS STIMME: klar, auf Augenhöhe, unternehmerisch, warm aber ohne Anbiederung. Kurze Sätze. Kein Vertriebs-Sprech.',
-    'SPRACHREGELN (verbindlich): NIEMALS diese Wörter: Dashboard, Tool, Disruption, Unicorn, Game Changer, Reporting, „einfach zu bedienen". Stattdessen wo passend: Echtzeit-Finanzbild, Steuerungslücke, Kapitalstau, Souveränität. Anrede: Sie — außer die Person ist als Netzwerk-/Apple-Kontakt markiert, dann Du.',
+    'SPRACHREGELN (verbindlich): NIEMALS diese Wörter: Dashboard, Tool, Disruption, Unicorn, Game Changer, Reporting, „einfach zu bedienen". Stattdessen wo passend: Echtzeit-Finanzbild, Steuerungslücke, Kapitalstau, Souveränität. Anrede: laut „Anrede“-Zeile; fehlt sie, Sie — außer die Person ist als Netzwerk-/Apple-Kontakt markiert, dann Du.',
     'AUFBAU E-MAIL (max 110 Wörter): 1) der konkrete Aufhänger unten — nichts erfinden, 2) EIN Satz, welches Problem POINCAP für genau diese Rolle löst, 3) niedrigschwellige Frage als Abschluss. Betreff: konkret, max 7 Wörter.',
     'AUFBAU LINKEDIN (max 55 Wörter): persönlicher, ohne Pitch-Absatz — Aufhänger + eine ehrliche Frage.',
     'Wenn Fakten fehlen, bleib allgemein statt zu erfinden. KEINE erfundenen Zahlen, Namen oder Ereignisse.',
@@ -33,6 +38,7 @@ export async function entwurfFuer(k: Kontakt): Promise<{ ok: true; entwurf: Entw
 
   const user = [
     `PERSON: ${anzeigename(k)}`,
+    k.anrede ? `Anrede: ${k.anrede}` : '',
     k.position ? `Position: ${k.position}` : k.jobtitel ? `Position: ${k.jobtitel}` : '',
     k.senioritaet ? `Seniorität: ${k.senioritaet}` : '',
     k.personInfo ? `Über die Person: ${k.personInfo}` : '',

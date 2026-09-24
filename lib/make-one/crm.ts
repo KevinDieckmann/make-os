@@ -28,12 +28,44 @@ export const STUFE_LABEL: Record<Stufe, string> = {
 /** Stufen, in denen ein Kontakt für die Tagesliste nicht mehr in Frage kommt. */
 export const ABGESCHLOSSEN: readonly Stufe[] = ['gewonnen', 'verloren', 'ruht'];
 
-export type AktivitaetArt = 'mail' | 'linkedin' | 'anruf' | 'antwort' | 'termin' | 'notiz' | 'stufe';
+export type AktivitaetArt = 'mail' | 'linkedin' | 'anruf' | 'antwort' | 'termin' | 'notiz' | 'stufe' | 'gespraech' | 'event' | 'system';
+export const AKTIVITAET_ARTEN: readonly AktivitaetArt[] = ['mail', 'linkedin', 'anruf', 'antwort', 'termin', 'notiz', 'stufe', 'gespraech', 'event', 'system'];
+
+/** Ergebnis eines Anrufs oder Gesprächsversuchs (Power Hour). */
+export type Ergebnis = 'gespraech' | 'termin' | 'mailbox' | 'nicht_erreicht' | 'rueckruf' | 'kein_bedarf' | 'sperre';
+export const ERGEBNISSE: readonly Ergebnis[] = ['gespraech', 'termin', 'mailbox', 'nicht_erreicht', 'rueckruf', 'kein_bedarf', 'sperre'];
+
+/** Die Notizvorlage (24.09.): was nach jedem echten Gespräch festgehalten wird. */
+export interface NotizVorlage { anlass?: string; erkenntnisse?: string; bedarf?: string; signale?: string; zusage?: string; naechster?: string }
+export const NOTIZ_FELDER: { id: keyof NotizVorlage; label: string }[] = [
+  { id: 'anlass', label: 'Anlass' }, { id: 'erkenntnisse', label: 'Erkenntnisse' }, { id: 'bedarf', label: 'Bedarf / Schmerz' },
+  { id: 'signale', label: 'Signale' }, { id: 'zusage', label: 'Unsere Zusage' }, { id: 'naechster', label: 'Nächster Schritt' },
+];
+
 export interface Aktivitaet {
   am: string;
   art: AktivitaetArt;
   text?: string;
   von: string;
+  ergebnis?: Ergebnis;
+  notiz?: NotizVorlage;
+  /** Bezug: Chance, Mandat oder Event. */
+  bezug?: string;
+}
+
+/** Beziehungskreis A–D: bestimmt den Takt, in dem man sich meldet (Dunbar-Schichten). */
+export type Kreis = 'A' | 'B' | 'C' | 'D';
+export const KREIS_TAKT: Record<Kreis, number> = { A: 30, B: 60, C: 90, D: 180 };
+export type Lebensphase = 'kontakt' | 'interessent' | 'kunde' | 'ex_kunde' | 'partner' | 'multiplikator';
+export const LEBENSPHASEN: readonly Lebensphase[] = ['kontakt', 'interessent', 'kunde', 'ex_kunde', 'partner', 'multiplikator'];
+
+/** Rechtsgrundlage je Kanal (DSGVO/§ 7 UWG). Keine Rechtsberatung — einmal anwaltlich gegenlesen. */
+export type Grundlage = 'einwilligung' | 'bestandskunde_7_3' | 'mutmasslich_b2b_tel' | 'anfrage' | 'vertrag' | 'intro_akzeptiert';
+export type EinwilligungKanal = 'mail' | 'telefon' | 'social' | 'newsletter' | 'einladung';
+export interface Einwilligung {
+  kanal: EinwilligungKanal; grundlage: Grundlage; erteiltAm: string;
+  /** Wortlaut oder Beleg („DOI 12.03.“, „im Gespräch am …: darf ich Ihnen … schicken? — ja“). */
+  nachweis: string; widerrufenAm?: string;
 }
 
 export type Prio = 'A' | 'B' | 'C' | '';
@@ -80,6 +112,23 @@ export interface Kontakt {
   notiz?: string;
   hubspotId?: string;
   steckbrief?: string;
+  // ── Beziehung & Recht (24.09., alles optional — der Import kennt es nicht) ──
+  kreis?: Kreis;
+  /** Eigener Takt in Tagen, sonst aus dem Kreis. */
+  taktTage?: number;
+  besitzer?: string;
+  lebensphase?: Lebensphase;
+  anrede?: 'Sie' | 'Du';
+  vorgestelltDurch?: string;
+  einwilligungen?: Einwilligung[];
+  /** Werbewiderspruch (Art. 21 DSGVO): sofort, dauerhaft, kein Import überschreibt ihn. */
+  werbesperre?: { seit: string; grund: string };
+  /** Daten nicht von der Person selbst (Recherche, Liste, Empfehlung) → Art.-14-Information fällig. */
+  fremddaten?: boolean;
+  art14InformiertAm?: string;
+  naechsterSchritt?: { text: string; datum: string };
+  /** Nie in ein Agentenpaket. */
+  privatNotiz?: string;
   // ── Pipeline (lebt nur hier) ──
   stufe: Stufe;
   wiedervorlage?: string;
@@ -90,7 +139,8 @@ export interface Kontakt {
 }
 
 /** Felder, die der Import NIE anfasst — das ist die Arbeit im CRM. */
-const PIPELINE_FELDER: (keyof Kontakt)[] = ['stufe', 'wiedervorlage', 'letzterKontakt', 'aktivitaeten', 'importiertAm'];
+const PIPELINE_FELDER: (keyof Kontakt)[] = ['stufe', 'wiedervorlage', 'letzterKontakt', 'aktivitaeten', 'importiertAm',
+  'kreis', 'taktTage', 'besitzer', 'lebensphase', 'anrede', 'vorgestelltDurch', 'einwilligungen', 'werbesperre', 'fremddaten', 'art14InformiertAm', 'naechsterSchritt', 'privatNotiz'];
 
 const s = (v: unknown, n = 400) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 const norm = (v: string) => v.toLowerCase().replace(/[^a-z0-9äöüß@.]/g, '');
@@ -327,13 +377,31 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
   if (!STUFEN.includes(st)) return null;
   const tag = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
   const txt = (v: unknown, n: number) => { const t = String(v ?? '').trim().slice(0, n); return t || undefined; };
-  const akt = Array.isArray(o.aktivitaeten) ? (o.aktivitaeten as unknown[]).slice(0, 400).map(a => {
+  const akt = Array.isArray(o.aktivitaeten) ? (o.aktivitaeten as unknown[]).slice(-600).map(a => {
     const x = (a ?? {}) as Record<string, unknown>;
     const art = String(x.art ?? '') as AktivitaetArt;
-    if (!['mail', 'linkedin', 'anruf', 'antwort', 'termin', 'notiz', 'stufe'].includes(art)) return null;
-    const von = ['kevin', 'malin', 'jarvis'].includes(String(x.von)) ? (String(x.von) as Aktivitaet['von']) : 'kevin';
-    return { am: String(x.am ?? '').slice(0, 25), art, ...(txt(x.text, 1200) ? { text: txt(x.text, 1200) } : {}), von } as Aktivitaet;
+    if (!AKTIVITAET_ARTEN.includes(art)) return null;
+    const von = /^[a-z0-9-]{1,40}$/.test(String(x.von)) ? String(x.von) : 'kevin';
+    const ergebnis = ERGEBNISSE.includes(x.ergebnis as Ergebnis) ? (x.ergebnis as Ergebnis) : undefined;
+    const n = x.notiz && typeof x.notiz === 'object' ? x.notiz as Record<string, unknown> : null;
+    const notiz = n ? Object.fromEntries(NOTIZ_FELDER.map(f => [f.id, txt(n[f.id], 1500)]).filter(([, v]) => v)) as NotizVorlage : undefined;
+    return {
+      am: String(x.am ?? '').slice(0, 25), art, ...(txt(x.text, 3000) ? { text: txt(x.text, 3000) } : {}), von,
+      ...(ergebnis ? { ergebnis } : {}), ...(notiz && Object.keys(notiz).length ? { notiz } : {}), ...(txt(x.bezug, 60) ? { bezug: txt(x.bezug, 60) } : {}),
+    } as Aktivitaet;
   }).filter((a): a is Aktivitaet => !!a) : [];
+  const GRUNDLAGEN: Grundlage[] = ['einwilligung', 'bestandskunde_7_3', 'mutmasslich_b2b_tel', 'anfrage', 'vertrag', 'intro_akzeptiert'];
+  const EW_KANAELE: EinwilligungKanal[] = ['mail', 'telefon', 'social', 'newsletter', 'einladung'];
+  const einwilligungen = Array.isArray(o.einwilligungen) ? (o.einwilligungen as unknown[]).slice(0, 30).map(e => {
+    const x = (e ?? {}) as Record<string, unknown>;
+    if (!EW_KANAELE.includes(x.kanal as EinwilligungKanal) || !GRUNDLAGEN.includes(x.grundlage as Grundlage) || !tag(x.erteiltAm)) return null;
+    return { kanal: x.kanal, grundlage: x.grundlage, erteiltAm: tag(x.erteiltAm), nachweis: txt(x.nachweis, 400) ?? '', ...(tag(x.widerrufenAm) ? { widerrufenAm: tag(x.widerrufenAm) } : {}) } as Einwilligung;
+  }).filter((e): e is Einwilligung => !!e) : undefined;
+  const ws = o.werbesperre && typeof o.werbesperre === 'object' ? o.werbesperre as Record<string, unknown> : null;
+  const ns = o.naechsterSchritt && typeof o.naechsterSchritt === 'object' ? o.naechsterSchritt as Record<string, unknown> : null;
+  const kreis = ['A', 'B', 'C', 'D'].includes(String(o.kreis)) ? String(o.kreis) as Kreis : undefined;
+  const lebensphase = LEBENSPHASEN.includes(o.lebensphase as Lebensphase) ? o.lebensphase as Lebensphase : undefined;
+  const takt = Number(o.taktTage);
   const k: Kontakt = {
     id, vorname: String(o.vorname ?? '').trim().slice(0, 80), nachname: String(o.nachname ?? '').trim().slice(0, 80),
     email: txt(o.email, 160)?.toLowerCase(), telefon: txt(o.telefon, 60), sms: txt(o.sms, 60),
@@ -349,6 +417,14 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     aufhaenger: txt(o.aufhaenger, 600), kategorie: txt(o.kategorie, 80), owner: txt(o.owner, 60),
     lifecycle: txt(o.lifecycle, 40), quelle: txt(o.quelle, 120), recherche: txt(o.recherche, 60),
     notiz: txt(o.notiz, 2000), hubspotId: txt(o.hubspotId, 40), steckbrief: txt(o.steckbrief, 400),
+    ...(kreis ? { kreis } : {}), ...(takt >= 7 && takt <= 730 ? { taktTage: Math.round(takt) } : {}),
+    ...(txt(o.besitzer, 40) ? { besitzer: txt(o.besitzer, 40) } : {}), ...(lebensphase ? { lebensphase } : {}),
+    ...(o.anrede === 'Sie' || o.anrede === 'Du' ? { anrede: o.anrede } : {}), ...(txt(o.vorgestelltDurch, 60) ? { vorgestelltDurch: txt(o.vorgestelltDurch, 60) } : {}),
+    ...(einwilligungen?.length ? { einwilligungen } : {}),
+    ...(ws && tag(ws.seit) ? { werbesperre: { seit: tag(ws.seit)!, grund: txt(ws.grund, 300) ?? 'Widerspruch' } } : {}),
+    ...(o.fremddaten === true ? { fremddaten: true } : {}), ...(tag(o.art14InformiertAm) ? { art14InformiertAm: tag(o.art14InformiertAm) } : {}),
+    ...(ns && txt(ns.text, 300) && tag(ns.datum) ? { naechsterSchritt: { text: txt(ns.text, 300)!, datum: tag(ns.datum)! } } : {}),
+    ...(txt(o.privatNotiz, 2000) ? { privatNotiz: txt(o.privatNotiz, 2000) } : {}),
     stufe: st, wiedervorlage: tag(o.wiedervorlage), letzterKontakt: tag(o.letzterKontakt),
     aktivitaeten: akt,
     importiertAm: String(o.importiertAm ?? '').slice(0, 10) || '', geaendertAm: String(o.geaendertAm ?? '').slice(0, 10) || '',
@@ -361,6 +437,9 @@ export interface AktivitaetEingabe {
   art: AktivitaetArt;
   text?: string;
   von: Aktivitaet['von'];
+  ergebnis?: Ergebnis;
+  notiz?: NotizVorlage;
+  bezug?: string;
   /** Ausdrückliche Stufe gewinnt über die Regel. */
   stufe?: Stufe;
   wiedervorlage?: string;
@@ -375,8 +454,12 @@ export function wendeAktivitaetAn(
   k: Kontakt, e: AktivitaetEingabe, heute: string, jetztIso: string,
   tagePlus: (d: string, n: number) => string,
 ): Kontakt {
-  const out: Kontakt = { ...k, aktivitaeten: [...(k.aktivitaeten ?? []), { am: jetztIso, art: e.art, ...(e.text ? { text: e.text } : {}), von: e.von }] };
-  if (e.art !== 'notiz' && e.art !== 'stufe') out.letzterKontakt = heute;
+  const eintrag: Aktivitaet = { am: jetztIso, art: e.art, ...(e.text ? { text: e.text } : {}), von: e.von,
+    ...(e.ergebnis ? { ergebnis: e.ergebnis } : {}), ...(e.notiz ? { notiz: e.notiz } : {}), ...(e.bezug ? { bezug: e.bezug } : {}) };
+  const out: Kontakt = { ...k, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag] };
+  // Nur echter Kontakt zählt: ein nicht erreichter Anruf ist ein Versuch, kein Kontakt.
+  const echt = e.art !== 'notiz' && e.art !== 'stufe' && e.art !== 'system' && e.ergebnis !== 'nicht_erreicht' && e.ergebnis !== 'mailbox';
+  if (echt) out.letzterKontakt = heute;
   out.stufe = e.stufe ?? stufeNach(e.art, k.stufe);
   const wv = e.wiedervorlage ?? wiedervorlageNach(e.art, heute, tagePlus);
   if (wv) out.wiedervorlage = wv;

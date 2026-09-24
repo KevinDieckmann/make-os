@@ -12,6 +12,7 @@
 //     verstreut in Routen.
 
 import { loadJson } from '@/lib/store/local-db';
+import { ladeCrm, kundenAusMandaten } from '@/lib/crm/speicher';
 import { localDay, tagePlus, alterStunden } from '@/lib/zeit';
 import { resolveVitals, vitalsHint, type ResolvedVitals } from '@/lib/vitals';
 import { computeIndex, type PerfIndex } from '@/lib/performance';
@@ -102,7 +103,7 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
     recentRuns(undefined, 10),
     loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; zeitfenster?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
     loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string; firmaId?: string }[] }>('finanzplan'),
-    loadJson<{ kunden: { status: string; cashflow?: number }[] }>('kunden'),
+    ladeCrm().then(kundenAusMandaten),
     computeShields(heute),
     loadJson<{ modus?: string }>('kompass'),
     loadJson<{ reihenfolge?: string[] }>('ordnung'),

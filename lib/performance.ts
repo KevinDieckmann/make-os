@@ -22,6 +22,7 @@ import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { privatFaktoren, finanzSaeule } from '@/lib/finanzen/haushalt/score';
 import { ladeFamilie } from '@/lib/familie/speicher';
+import { ladeCrm, kundenAusMandaten } from '@/lib/crm/speicher';
 import { pflegeRhythmus, type Rhythmus } from '@/lib/familie/logik';
 
 export interface Faktor {
@@ -126,7 +127,7 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
     loadJson<Record<string, string[]>>(p('rituale')),
     loadJson<{ routinen: { aktiv: boolean }[] }>('routinen'),
     loadJson<{ meilensteine: { bereich: string; faellig?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
-    loadJson<{ kunden: { status: string; cashflow?: number }[] }>('kunden'),
+    ladeCrm().then(kundenAusMandaten),
     loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string }[]; produkte: { status: string; preis: number }[] }>('finanzplan'),
   ]);
 

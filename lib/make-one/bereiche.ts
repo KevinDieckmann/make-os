@@ -131,11 +131,10 @@ export const BEREICHE: Bereich[] = [
     titel: 'Wachstum',
     kurz: 'Netzwerk, Kunden und was als Nächstes gebaut wird',
     icon: Network,
-    start: '/os/netzwerk',
+    start: '/os/crm',
     farbe: T.accentInk,
     items: [
-      { href: '/os/netzwerk', label: 'Netzwerk & Pipeline', icon: Network },
-      { href: '/os/crm', label: 'CRM & Kunden', icon: Users },
+      { href: '/os/crm', label: 'CRM', icon: Users },
       { href: '/os/prospecting', label: 'Zielliste', icon: Target },
       { href: '/os/research', label: 'Research', icon: Search },
       { href: '/os/content', label: 'Content', icon: Sparkles },
