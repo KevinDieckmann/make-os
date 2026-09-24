@@ -11,7 +11,7 @@ const INITIAL_TASKS: ProjectTask[] = [
   {
     id: 'T-001',
     title: 'CapOS Backend-Architektur reviewen',
-    project: 'CapOS',
+    project: 'POINCAP',
     assignedTo: 'Kevin',
     priority: 'CRITICAL',
     status: 'IN_ARBEIT',
