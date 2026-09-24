@@ -12,7 +12,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Ring, Balken, Chip, Fortschritt, Zahl, zoneFarbe, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Ring, Balken, Chip, Fortschritt, Zahl, zoneFarbe, LEUCHT, Spalten, Spalte } from './schlank';
 
 interface Faktor { label: string; wert: number; echt: boolean; quelle?: string }
 interface Saeule { key: string; label: string; gewicht: number; score: number | null; zuDuenn: boolean; faktoren?: Faktor[] }
@@ -71,6 +71,8 @@ export function WachstumView() {
         </div>
       </Karte>
 
+      <Spalten verhaeltnis="3:2">
+        <Spalte>
       <Karte i={1}>
         <Ueberschrift rechts="Klick zeigt die Faktoren">Die sechs Säulen</Ueberschrift>
         <Liste>
@@ -108,7 +110,17 @@ export function WachstumView() {
         </Liste>
       </Karte>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+        </Spalte>
+        <Spalte>
+      <Karte i={5} akzent={LEUCHT.schlaf}>
+        <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/kompass" style={{ color: C.inkLeise, textDecoration: 'none' }}>Kompass ›</Link>}>Fokus</Ueberschrift>
+        <Liste>
+          {(['monat', 'woche', 'tag'] as const).map(k => (
+            <Zeile key={k} links={<span style={{ fontSize: 12, color: C.inkLeise, width: 52, textTransform: 'uppercase', letterSpacing: '.04em' }}>{k === 'monat' ? 'Monat' : k === 'woche' ? 'Woche' : 'Tag'}</span>}
+              titel={ziele?.fokus?.[k] ? <span style={{ fontWeight: 600 }}>{ziele.fokus[k]}</span> : <span style={{ color: C.inkLeise }}>noch nicht gesetzt</span>} />
+          ))}
+        </Liste>
+      </Karte>
         {horizonte.map((h, i) => {
           const liste = ziele?.[h.id] ?? [];
           return (
@@ -127,17 +139,8 @@ export function WachstumView() {
             </Karte>
           );
         })}
-      </div>
-
-      <Karte i={5} akzent={LEUCHT.schlaf}>
-        <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/kompass" style={{ color: C.inkLeise, textDecoration: 'none' }}>Kompass ›</Link>}>Fokus</Ueberschrift>
-        <Liste>
-          {(['monat', 'woche', 'tag'] as const).map(k => (
-            <Zeile key={k} links={<span style={{ fontSize: 12, color: C.inkLeise, width: 52, textTransform: 'uppercase', letterSpacing: '.04em' }}>{k === 'monat' ? 'Monat' : k === 'woche' ? 'Woche' : 'Tag'}</span>}
-              titel={ziele?.fokus?.[k] ? <span style={{ fontWeight: 600 }}>{ziele.fokus[k]}</span> : <span style={{ color: C.inkLeise }}>noch nicht gesetzt</span>} />
-          ))}
-        </Liste>
-      </Karte>
+        </Spalte>
+      </Spalten>
     </Seite>
   );
 }

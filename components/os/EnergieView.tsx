@@ -13,7 +13,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import type { PlanBlock } from '@/types/planer';
 import { localDay } from '@/lib/zeit';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Zahl, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Zahl, LEUCHT, Spalten, Spalte } from './schlank';
 
 interface Termin { titel: string; date: string; zeit: string }
 interface Meilenstein { titel: string; faellig?: string; zeitfenster?: string; messlatte?: string; fortschritt: number; erledigt: boolean; bereich: string }
@@ -32,7 +32,8 @@ const tagPlus = (t: string, n: number) => { const d = new Date(`${t}T12:00:00`);
 
 /** Eingebettet: nur ein Abschnitt mit Luft nach oben. Frei: eine eigene Karte. */
 function Abschnitt({ eingebettet, i, akzent, children }: { eingebettet: boolean; i: number; akzent?: string; children: ReactNode }) {
-  if (eingebettet) return <div style={{ marginTop: i ? 24 : 0 }}>{children}</div>;
+  // 24.09.: auch eingebettet eigene Karten — die Gesundheitsseite ordnet sie in ihre Spalte ein.
+  void eingebettet;
   return <Karte i={i} akzent={akzent}>{children}</Karte>;
 }
 
@@ -91,7 +92,7 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
   const tagKurz = (d: string) => ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][new Date(`${d}T12:00:00`).getDay()];
   const wochenMitPlan = wochenDaten.filter(x => x.reha.length || x.sport.length || x.term.length || x.ms.length).length;
 
-  const inhalt = (
+  const vier = (
     <>
       {/* 4 Wochen */}
       <Abschnitt eingebettet={eingebettet} i={0} akzent={LEUCHT.gut}>
@@ -141,8 +142,11 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
         </p>
       </Abschnitt>
 
+    </>
+  );
+  const rest = (
+    <>
       {/* Etappen + Ernährung + Routinen */}
-      <div style={eingebettet ? { marginTop: 24 } : { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 14 }}>
         <Abschnitt eingebettet={eingebettet} i={1}>
           <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/planung/jahr" style={link}>pflegen ›</Link>}>Etappen</Ueberschrift>
           {etappen.length ? (
@@ -172,9 +176,10 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
             </Liste>
           ) : <Leer>keine aktiv</Leer>}
         </Abschnitt>
-      </div>
     </>
   );
+  // Allein: 4 Wochen links, der Rest rechts. Eingebettet: gestapelt — die Gesundheitsseite gibt die Spalte vor.
+  const inhalt = eingebettet ? <>{vier}{rest}</> : <Spalten verhaeltnis="2:1"><Spalte>{vier}</Spalte><Spalte>{rest}</Spalte></Spalten>;
 
   if (eingebettet) return inhalt;
 

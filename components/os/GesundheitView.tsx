@@ -19,7 +19,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT, ABSTAND as A } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Ring, Segmente, Chip, Fortschritt, Balken as Trend, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Ring, Segmente, Chip, Fortschritt, Balken as Trend, feld, LEUCHT, Spalten, Spalte } from './schlank';
 import { BESCHWERDEN, HEBEL, AUFBAU, HGOALS, ZUSAMMENHAENGE, CARE_NOTE } from '@/lib/make-one/health-data';
 import { localDay } from '@/lib/zeit';
 import { ErnaehrungView } from './ErnaehrungView';
@@ -192,6 +192,8 @@ export function GesundheitView() {
 
       {segment === 'heute' && (
         <>
+          <Spalten verhaeltnis="1:1">
+          <Spalte>
           <Karte i={0} akzent={rec != null ? zone(rec) : undefined}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 'clamp(8px,2vw,20px)', margin: '4px 0 8px' }}>
               <Ring label="Recovery" wert={rec != null ? String(rec) : undefined} einheit="%" farbe={zone(rec)} anteil={rec != null ? rec / 100 : undefined}
@@ -205,7 +207,26 @@ export function GesundheitView() {
               {stand && anspannung == null && rec != null && <> Anspannung fragt der Bote mittags.</>}
             </p>
           </Karte>
-
+          <Karte i={3}>
+            <Ueberschrift rechts={`Ø ${stand?.routinen.quote7 ?? '—'} %`}>Sieben Tage Routinen</Ueberschrift>
+            <Trend werte={sieben.map(t => t.n || null)} max={anzahl} farbe={LEUCHT.gut} hoehe={44} titel={sieben.map(t => `${t.d.slice(8)}.${t.d.slice(5, 7)}. · ${t.n}/${anzahl}`)} />
+            <div style={{ marginTop: 16, color: C.inkLeise, fontSize: TYP.bedien, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <span>Bote: {!stand ? '…' : !stand.telegram.konfiguriert ? <Link href="/os/konto" style={{ color: C.inkDim }}>Telegram einrichten</Link> : stand.telegram.gekoppelt ? 'Telegram gekoppelt' : <Link href="/os/konto" style={{ color: C.inkDim }}>Telegram koppeln</Link>}</span>
+              <span>{v?.heute ? 'Whoop heute' : <Link href="/os/verbindungen" style={{ color: C.inkDim }}>Whoop verbinden</Link>}</span>
+            </div>
+          </Karte>
+          {eigene && (
+            <Karte i={2} akzent={LEUCHT.schlaf}>
+              <Ueberschrift farbe={LEUCHT.schlaf}>Drei Fragen</Ueberschrift>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {([['gut', 'Was lief heute gut?'], ['dankbar', 'Wofür bist du dankbar?'], ['hart', 'Wo warst du hart zu dir?']] as const).map(([k, frage]) => (
+                  <input key={k} value={fragen[k]} onChange={e => setFragen(f => ({ ...f, [k]: e.target.value }))} onBlur={() => frageSpeichern(k)} placeholder={frage} style={feld} />
+                ))}
+              </div>
+            </Karte>
+          )}
+          </Spalte>
+          <Spalte>
           <Karte i={1}>
             <Ueberschrift farbe={LEUCHT.gut} rechts={`${heuteDrin.size} von ${anzahl}`}>Heute</Ueberschrift>
             <Fortschritt anteil={anzahl ? heuteDrin.size / anzahl : 0} farbe={LEUCHT.gut} />
@@ -234,26 +255,8 @@ export function GesundheitView() {
               )}
             </div>
           </Karte>
-
-          {eigene && (
-            <Karte i={2} akzent={LEUCHT.schlaf}>
-              <Ueberschrift farbe={LEUCHT.schlaf}>Drei Fragen</Ueberschrift>
-              <div style={{ display: 'grid', gap: 8 }}>
-                {([['gut', 'Was lief heute gut?'], ['dankbar', 'Wofür bist du dankbar?'], ['hart', 'Wo warst du hart zu dir?']] as const).map(([k, frage]) => (
-                  <input key={k} value={fragen[k]} onChange={e => setFragen(f => ({ ...f, [k]: e.target.value }))} onBlur={() => frageSpeichern(k)} placeholder={frage} style={feld} />
-                ))}
-              </div>
-            </Karte>
-          )}
-
-          <Karte i={3}>
-            <Ueberschrift rechts={`Ø ${stand?.routinen.quote7 ?? '—'} %`}>Sieben Tage Routinen</Ueberschrift>
-            <Trend werte={sieben.map(t => t.n || null)} max={anzahl} farbe={LEUCHT.gut} hoehe={44} titel={sieben.map(t => `${t.d.slice(8)}.${t.d.slice(5, 7)}. · ${t.n}/${anzahl}`)} />
-            <div style={{ marginTop: 16, color: C.inkLeise, fontSize: TYP.bedien, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-              <span>Bote: {!stand ? '…' : !stand.telegram.konfiguriert ? <Link href="/os/konto" style={{ color: C.inkDim }}>Telegram einrichten</Link> : stand.telegram.gekoppelt ? 'Telegram gekoppelt' : <Link href="/os/konto" style={{ color: C.inkDim }}>Telegram koppeln</Link>}</span>
-              <span>{v?.heute ? 'Whoop heute' : <Link href="/os/verbindungen" style={{ color: C.inkDim }}>Whoop verbinden</Link>}</span>
-            </div>
-          </Karte>
+          </Spalte>
+          </Spalten>
         </>
       )}
 
@@ -274,11 +277,24 @@ export function GesundheitView() {
         </Karte>
       )}
 
-      {segment === 'ernaehrung' && <Karte i={0}><ErnaehrungView eingebettet /></Karte>}
+      {segment === 'ernaehrung' && <ErnaehrungView eingebettet />}
 
       {segment === 'koerper' && (
         <>
-          <Karte i={0}><EnergieView eingebettet /></Karte>
+          <Spalten verhaeltnis="1:1">
+          <Spalte>
+          <EnergieView eingebettet />
+          <Karte i={4}>
+            <Ueberschrift farbe={LEUCHT.schlaf}>Ziele</Ueberschrift>
+            {HGOALS.map(g => <div key={g.title}><Zeile titel={g.title} unter={g.why} kinder={<span style={{ fontSize: 12, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{g.progress} %</span>} /><div style={{ margin: '-4px 0 10px' }}><Fortschritt anteil={g.progress / 100} farbe={LEUCHT.schlaf} /></div></div>)}
+          </Karte>
+          <Karte i={5}>
+            <Ueberschrift>Zusammenhänge</Ueberschrift>
+            {ZUSAMMENHAENGE.map(z => <Zeile key={z} titel={z} kinder={<span />} />)}
+            <p style={{ fontSize: 12, color: C.inkLeise, marginTop: A.xl, lineHeight: 1.5 }}>{CARE_NOTE}</p>
+          </Karte>
+          </Spalte>
+          <Spalte>
           <Karte i={1}>
             <Ueberschrift farbe={LEUCHT.puls}>Profil · Stand 29.07.</Ueberschrift>
             {AUFBAU.map(s => <Zeile key={s.phase} wann={s.state === 'now' ? 'Jetzt' : s.state === 'next' ? 'Danach' : 'Später'} titel={`${s.phase} · ${s.name}`} unter={s.desc} kinder={<span />} />)}
@@ -291,15 +307,8 @@ export function GesundheitView() {
             <Ueberschrift farbe={LEUCHT.gut}>Hebel</Ueberschrift>
             {HEBEL.map(h => <Zeile key={h.name} titel={h.name} unter={h.note} kinder={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 18, color: h.tone === 'crit' ? LEUCHT.kritisch : h.tone === 'watch' ? LEUCHT.achtung : LEUCHT.gut }}>{h.score}</span>} />)}
           </Karte>
-          <Karte i={4}>
-            <Ueberschrift farbe={LEUCHT.schlaf}>Ziele</Ueberschrift>
-            {HGOALS.map(g => <div key={g.title}><Zeile titel={g.title} unter={g.why} kinder={<span style={{ fontSize: 12, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{g.progress} %</span>} /><div style={{ margin: '-4px 0 10px' }}><Fortschritt anteil={g.progress / 100} farbe={LEUCHT.schlaf} /></div></div>)}
-          </Karte>
-          <Karte i={5}>
-            <Ueberschrift>Zusammenhänge</Ueberschrift>
-            {ZUSAMMENHAENGE.map(z => <Zeile key={z} titel={z} kinder={<span />} />)}
-            <p style={{ fontSize: 12, color: C.inkLeise, marginTop: A.xl, lineHeight: 1.5 }}>{CARE_NOTE}</p>
-          </Karte>
+          </Spalte>
+          </Spalten>
         </>
       )}
     </Seite>

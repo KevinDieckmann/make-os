@@ -406,8 +406,6 @@ nav a:hover { transform: translateX(2px); }
 /* ─── Der Wachstums-Score über jeder Seite (24.09.) ────────────────────────── */
 .wachstum-kopf {
   position: sticky; top: 0; z-index: 30;
-  display: flex; align-items: center; gap: 16px;
-  padding: 10px clamp(18px,4vw,48px);
   background: rgba(11,14,16,.82); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(255,255,255,.05);
   transition: background .2s ease;
@@ -416,9 +414,25 @@ nav a:hover { transform: translateX(2px); }
 .wachstum-kopf-saeulen a { transition: transform .18s var(--ease-feder, ease); display: block; }
 .wachstum-kopf-saeulen a:hover { transform: translateY(-2px) scale(1.06); }
 @media (max-width: 720px) {
-  .wachstum-kopf { gap: 12px; padding: 8px 16px; }
   /* !important, weil der Chip-Wrapper inline display:inline-flex trägt */
   .wachstum-kopf-unter, .wachstum-kopf-label, .wachstum-kopf-name, .wachstum-kopf-zone { display: none !important; }
   .wachstum-kopf-saeulen { gap: 6px; }
 }
 
+/* ─── Dashboard-Raster (24.09.) ─────────────────────────────────────────────
+   Kevin: „das Ganze ist jetzt nur in der Mitte". Seiten nutzen die Breite:
+   Spalten nebeneinander ab 1180 px Fenster, darunter gestapelt. */
+.spalten { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+.spalte { display: grid; gap: 14px; min-width: 0; align-content: start; }
+.raster { display: grid; gap: 14px; align-items: start; }
+@media (min-width: 1180px) {
+  .spalten-1-1 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .spalten-2-1 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  .spalten-1-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+  .spalten-3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  /* Lesefenster: bleibt beim Scrollen unter dem Wachstums-Kopf stehen */
+  .spalte-klebt { position: sticky; top: 104px; max-height: calc(100vh - 124px); overflow-y: auto; }
+}
+/* Der Kopf nimmt dieselbe Breite wie die Seite, damit die Kanten übereinanderstehen */
+.wachstum-kopf-innen { max-width: 1440px; margin: 0 auto; padding: 10px clamp(18px,4vw,48px); display: flex; align-items: center; gap: 16px; }
+@media (max-width: 720px) { .wachstum-kopf-innen { gap: 12px; padding: 8px 16px; } }

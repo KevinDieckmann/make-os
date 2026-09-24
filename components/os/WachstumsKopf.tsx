@@ -63,6 +63,7 @@ export function WachstumsKopf() {
 
   return (
     <div className="wachstum-kopf os-auf">
+      <div className="wachstum-kopf-innen">
       <Link href="/os/wachstum" title="Zum Bereich Wachstum" style={{ display: 'flex', alignItems: 'center', gap: 16, textDecoration: 'none', color: 'inherit', minWidth: 0 }}>
         <Ring groesse="klein" label="" wert={p?.index != null ? String(p.index) : undefined} farbe={zone} anteil={p?.index != null ? p.index / 100 : undefined} />
         <div style={{ minWidth: 0 }}>
@@ -86,6 +87,7 @@ export function WachstumsKopf() {
         ))}
       </div>
       <Link href="/os/wachstum" title="Zum Bereich Wachstum" style={{ color: C.inkLeise, fontSize: 18, textDecoration: 'none' }}>›</Link>
+      </div>
     </div>
   );
 }

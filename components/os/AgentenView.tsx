@@ -16,7 +16,7 @@ import {
   type AgentStatus, type Autonomy, type ModelTier, type DeptAgent,
 } from '@/lib/make-one/agents-data';
 import { AgentenHirn } from './AgentenHirn';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Ring, Zahl, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Ring, Zahl, LEUCHT, Spalten, Spalte, aufZwei } from './schlank';
 
 interface Cfg { autonomy?: Autonomy; enabled?: boolean; model?: ModelTier; buildNext?: boolean }
 type CfgMap = Record<string, Cfg>;
@@ -54,35 +54,8 @@ export function AgentenView() {
   const woche = laeufe.filter(l => Date.now() - Date.parse(l.ts) < 7 * 86400_000).length;
   const abteilungVon = (agentId: string) => DEPARTMENTS.find(d => d.agents.some(a => a.id === agentId));
 
-  return (
-    <Seite titel="Agenten" unter={`${ORCHESTRATOR.name} dirigiert · ${DEPARTMENTS.length} Abteilungen · ${live} von ${alle.length} live`}>
-      <Karte i={0} akzent={LEUCHT.agenten}>
-        <Ueberschrift farbe={LEUCHT.agenten} rechts={<Link href="/os/wachstum" style={{ color: C.inkLeise, textDecoration: 'none' }}>Wachstum ›</Link>}>Agenten-Score</Ueberschrift>
-        <div style={{ display: 'flex', gap: 'clamp(16px,3vw,32px)', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Ring label="Agenten" wert={score != null ? String(score) : undefined} farbe={LEUCHT.agenten} anteil={score != null ? score / 100 : undefined} />
-          <div style={{ flex: 1, minWidth: 220, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 16 }}>
-            <Zahl wert={String(live)} label={`von ${alle.length} Agenten live`} farbe={LEUCHT.gut} />
-            <Zahl wert={laeufe.length ? String(woche) : undefined} label="Läufe in 7 Tagen" farbe={LEUCHT.puls} />
-            <Zahl wert={bauen ? String(bauen) : undefined} label="zum Bauen markiert" farbe={LEUCHT.achtung} />
-          </div>
-        </div>
-        <p style={{ fontSize: TYP.bedien, color: C.inkDim, margin: '14px 0 0', lineHeight: 1.5 }}>{ORCHESTRATOR.note}</p>
-      </Karte>
-
-      <Karte i={1}><AgentenHirn /></Karte>
-
-      <Karte i={2}>
-        <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href="/os/stapel" style={{ color: C.inkLeise, textDecoration: 'none' }}>Aufträge & Freigaben ›</Link>}>Zuletzt gelaufen</Ueberschrift>
-        <Liste>
-          {laeufe.length === 0 && <Leer>Noch kein Lauf protokolliert.</Leer>}
-          {laeufe.slice(0, 8).map(l => {
-            const d = abteilungVon(l.agent);
-            return <Zeile key={l.id} links={<Punkt farbe={d?.color ?? LEUCHT.agenten} />} titel={l.title} unter={`${alle.find(a => a.id === l.agent)?.name ?? l.agent} · ${her(l.ts)}`} />;
-          })}
-        </Liste>
-      </Karte>
-
-      {DEPARTMENTS.map((d, di) => {
+  // Eine Abteilung als Karte — auf breiten Bildschirmen stehen zwei Spalten nebeneinander (24.09.).
+  const abteilung = (d: typeof DEPARTMENTS[number], di: number) => {
         const liveHier = d.agents.filter(a => a.status === 'live').length;
         return (
           <Karte key={d.id} i={3 + di}>
@@ -136,8 +109,46 @@ export function AgentenView() {
             </Liste>
           </Karte>
         );
-      })}
+      };
 
+  return (
+    <Seite titel="Agenten" unter={`${ORCHESTRATOR.name} dirigiert · ${DEPARTMENTS.length} Abteilungen · ${live} von ${alle.length} live`}>
+      <Spalten verhaeltnis="1:1">
+        <Spalte>
+      <Karte i={0} akzent={LEUCHT.agenten}>
+        <Ueberschrift farbe={LEUCHT.agenten} rechts={<Link href="/os/wachstum" style={{ color: C.inkLeise, textDecoration: 'none' }}>Wachstum ›</Link>}>Agenten-Score</Ueberschrift>
+        <div style={{ display: 'flex', gap: 'clamp(16px,3vw,32px)', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Ring label="Agenten" wert={score != null ? String(score) : undefined} farbe={LEUCHT.agenten} anteil={score != null ? score / 100 : undefined} />
+          <div style={{ flex: 1, minWidth: 220, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 16 }}>
+            <Zahl wert={String(live)} label={`von ${alle.length} Agenten live`} farbe={LEUCHT.gut} />
+            <Zahl wert={laeufe.length ? String(woche) : undefined} label="Läufe in 7 Tagen" farbe={LEUCHT.puls} />
+            <Zahl wert={bauen ? String(bauen) : undefined} label="zum Bauen markiert" farbe={LEUCHT.achtung} />
+          </div>
+        </div>
+        <p style={{ fontSize: TYP.bedien, color: C.inkDim, margin: '14px 0 0', lineHeight: 1.5 }}>{ORCHESTRATOR.note}</p>
+      </Karte>
+      <Karte i={2}>
+        <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href="/os/stapel" style={{ color: C.inkLeise, textDecoration: 'none' }}>Aufträge & Freigaben ›</Link>}>Zuletzt gelaufen</Ueberschrift>
+        <Liste>
+          {laeufe.length === 0 && <Leer>Noch kein Lauf protokolliert.</Leer>}
+          {laeufe.slice(0, 8).map(l => {
+            const d = abteilungVon(l.agent);
+            return <Zeile key={l.id} links={<Punkt farbe={d?.color ?? LEUCHT.agenten} />} titel={l.title} unter={`${alle.find(a => a.id === l.agent)?.name ?? l.agent} · ${her(l.ts)}`} />;
+          })}
+        </Liste>
+      </Karte>
+        </Spalte>
+        <Spalte>
+      <Karte i={1}><AgentenHirn /></Karte>
+        </Spalte>
+      </Spalten>
+      <Spalten verhaeltnis="1:1">
+        {aufZwei(DEPARTMENTS.map((d, di) => ({ d, di }))).map((haelfte, hi) => (
+          <Spalte key={hi}>
+            {haelfte.map(({ d, di }) => abteilung(d, di))}
+          </Spalte>
+        ))}
+      </Spalten>
       <Karte i={3 + DEPARTMENTS.length}>
         <Ueberschrift>So skalierst du auf 100 bis 150</Ueberschrift>
         {ARCHITEKTUR.map((zeile, i) => (

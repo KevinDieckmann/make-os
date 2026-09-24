@@ -617,7 +617,7 @@ export function InboxView() {
         </div>
       )}
 
-      <Seite titel="Inbox · voll" breit={1200}
+      <Seite titel="Inbox · voll"
         unter={<>Apple Mail {sync.apple} · Microsoft 365 {sync.ms}{triageBusy && <span style={{ color: LEUCHT.agenten }}> · Jarvis stuft ein …</span>}</>}
         rechts={<span style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
           <Segmente liste={SEG} aktiv={seg} onWahl={setSeg} />

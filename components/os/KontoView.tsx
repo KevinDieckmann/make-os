@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, feld, LEUCHT, Spalten, Spalte } from './schlank';
 
 interface Ich { speicher: string; email: string; name: string; rolle: 'inhaber' | 'mitglied'; teilt: { gesundheit: string[] }; angelegt: string }
 interface Andere { speicher: string; name: string; rolle: string; teiltGesundheitMitMir: boolean }
@@ -56,7 +56,8 @@ export function KontoView() {
     <Seite titel={<>Konto <span style={{ color: C.inkLeise, fontWeight: 500, fontSize: 15 }}>{ich.rolle === 'inhaber' ? 'Inhaber' : 'Mitglied'}</span></>} rechts={<Knopf leise onClick={abmelden}>Abmelden</Knopf>}>
       <Karte i={0}><div style={{ fontSize: TYP.body }}>{ich.email}<span style={{ color: C.inkLeise }}> · Daten unter <code style={{ fontFamily: SCHRIFT.mono, fontSize: 13 }}>{ich.speicher}</code> · seit {ich.angelegt.slice(8, 10)}.{ich.angelegt.slice(5, 7)}.{ich.angelegt.slice(0, 4)}</span></div>
       {meldung && <div style={{ fontSize: TYP.bedien, color: meldung.includes('nicht') || meldung.includes('Fehler') ? LEUCHT.kritisch : LEUCHT.gut, marginTop: 10 }}>{meldung}</div>}</Karte>
-
+      <Spalten verhaeltnis="1:1">
+        <Spalte>
       <Karte i={1}>
       <Ueberschrift>Name</Ueberschrift>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 18 }}>
@@ -71,31 +72,6 @@ export function KontoView() {
         <Knopf leise onClick={() => speichern({ passwortAlt: pw.alt, passwortNeu: pw.neu }, 'Passwort geändert.')} aus={pw.neu.length < 10 || !pw.alt}>Ändern</Knopf>
       </div>
       </Karte>
-
-      <Karte i={2}>
-      <Ueberschrift farbe={LEUCHT.gut}>Gesundheit teilen</Ueberschrift>
-      <Liste>
-        {andere.length === 0 && <Leer>Noch niemand sonst hier. Wer deine Recovery, Journal, Haut und Streak sehen darf, entscheidest du je Person.</Leer>}
-        {andere.map(a => {
-          const an = ich.teilt.gesundheit.includes(a.speicher);
-          return <Zeile key={a.speicher} links={<Haken an={an} onChange={() => teilen(a.speicher, !an)} />} titel={a.name}
-            unter={`${an ? 'sieht deine Gesundheit' : 'sieht deine Gesundheit nicht'} · ${a.teiltGesundheitMitMir ? 'teilt mit dir' : 'teilt nicht mit dir'}`} />;
-        })}
-      </Liste>
-      </Karte>
-
-      <Karte i={3}>
-      <Ueberschrift farbe={LEUCHT.puls}>Der Bote · Telegram</Ueberschrift>
-      <Liste>
-        {!tg ? <Leer>lade …</Leer>
-          : !tg.konfiguriert ? <Leer>Noch kein Bot. In Telegram @BotFather anschreiben, /newbot, den Token als <code style={{ fontFamily: SCHRIFT.mono, fontSize: 12 }}>TELEGRAM_BOT_TOKEN</code> in <code style={{ fontFamily: SCHRIFT.mono, fontSize: 12 }}>.env.local</code>, neu starten.</Leer>
-          : tg.chats > 0 ? <Zeile titel="Gekoppelt" unter="Jarvis schreibt dir morgens, mittags und abends; du antwortest mit einem Satz." rechts={<Knopf leise onClick={tgWeg}>Entkoppeln</Knopf>} />
-          : tg.code ? <Zeile titel={<>Dem Bot {tg.bot ? <b>@{tg.bot}</b> : ''} senden: <span style={{ ...mono, fontSize: 17 }}>/start {tg.code}</span></>} unter={`${tg.minuten} Minuten gültig`} />
-          : <Zeile titel="Noch nicht gekoppelt" unter="Jarvis schreibt dir morgens, mittags und abends aufs Handy." rechts={<Knopf onClick={tgCode}>Code holen</Knopf>} />}
-        {tg?.fehler && <Leer><span style={{ color: LEUCHT.kritisch }}>{tg.fehler}</span></Leer>}
-      </Liste>
-      </Karte>
-
       {ich.rolle === 'inhaber' && (
         <Karte i={4} akzent={LEUCHT.schlaf}>
           <Ueberschrift farbe={LEUCHT.schlaf}>Einladen</Ueberschrift>
@@ -113,6 +89,32 @@ export function KontoView() {
           </Liste>
         </Karte>
       )}
+        </Spalte>
+        <Spalte>
+      <Karte i={2}>
+      <Ueberschrift farbe={LEUCHT.gut}>Gesundheit teilen</Ueberschrift>
+      <Liste>
+        {andere.length === 0 && <Leer>Noch niemand sonst hier. Wer deine Recovery, Journal, Haut und Streak sehen darf, entscheidest du je Person.</Leer>}
+        {andere.map(a => {
+          const an = ich.teilt.gesundheit.includes(a.speicher);
+          return <Zeile key={a.speicher} links={<Haken an={an} onChange={() => teilen(a.speicher, !an)} />} titel={a.name}
+            unter={`${an ? 'sieht deine Gesundheit' : 'sieht deine Gesundheit nicht'} · ${a.teiltGesundheitMitMir ? 'teilt mit dir' : 'teilt nicht mit dir'}`} />;
+        })}
+      </Liste>
+      </Karte>
+      <Karte i={3}>
+      <Ueberschrift farbe={LEUCHT.puls}>Der Bote · Telegram</Ueberschrift>
+      <Liste>
+        {!tg ? <Leer>lade …</Leer>
+          : !tg.konfiguriert ? <Leer>Noch kein Bot. In Telegram @BotFather anschreiben, /newbot, den Token als <code style={{ fontFamily: SCHRIFT.mono, fontSize: 12 }}>TELEGRAM_BOT_TOKEN</code> in <code style={{ fontFamily: SCHRIFT.mono, fontSize: 12 }}>.env.local</code>, neu starten.</Leer>
+          : tg.chats > 0 ? <Zeile titel="Gekoppelt" unter="Jarvis schreibt dir morgens, mittags und abends; du antwortest mit einem Satz." rechts={<Knopf leise onClick={tgWeg}>Entkoppeln</Knopf>} />
+          : tg.code ? <Zeile titel={<>Dem Bot {tg.bot ? <b>@{tg.bot}</b> : ''} senden: <span style={{ ...mono, fontSize: 17 }}>/start {tg.code}</span></>} unter={`${tg.minuten} Minuten gültig`} />
+          : <Zeile titel="Noch nicht gekoppelt" unter="Jarvis schreibt dir morgens, mittags und abends aufs Handy." rechts={<Knopf onClick={tgCode}>Code holen</Knopf>} />}
+        {tg?.fehler && <Leer><span style={{ color: LEUCHT.kritisch }}>{tg.fehler}</span></Leer>}
+      </Liste>
+      </Karte>
+        </Spalte>
+      </Spalten>
     </Seite>
   );
 }

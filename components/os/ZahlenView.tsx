@@ -13,7 +13,7 @@ import { localDay } from '@/lib/zeit';
 import { eur } from '@/lib/make-one/finance-data';
 import { vorschau, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten } from '@/lib/make-one/liquiditaet';
 import { MONAT_KURZ, type Kennzahlen } from '@/lib/make-one/grundlage';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Zahl, Fortschritt, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Zahl, Fortschritt, LEUCHT, Spalten, Spalte } from './schlank';
 
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
 interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string }
@@ -74,20 +74,8 @@ export function ZahlenView() {
           <Zahl wert={plan ? eur(kommtRein.reduce((s, r) => s + r.betrag, 0)) : undefined} label={`kommt rein · ${kommtRein.length} Rechnungen`} farbe={kommtRein.length ? LEUCHT.gut : C.inkLeise} />
         </div>
       </Karte>
-
-      {k && (
-        <Karte i={1}>
-          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/finanzen/grundlage" style={{ color: C.inkLeise, textDecoration: 'none' }}>Stand {datum(grund?.stand)} ›</Link>}>Grundlage · Malins Kassenbuch</Ueberschrift>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, padding: '4px 0' }}>
-            <Zahl wert={eur(k.umsatzNetto)} label="Umsatz netto" farbe={LEUCHT.gut} />
-            <Zahl wert={eur(k.kostenNetto)} label="Kosten netto" farbe={LEUCHT.achtung} />
-            <Zahl wert={eur(k.ergebnisNetto)} label="Ergebnis" farbe={k.ergebnisNetto >= 0 ? LEUCHT.gut : LEUCHT.kritisch} />
-            <Zahl wert={eur(k.umsatzProMonat)} label="Ø je Monat" />
-          </div>
-          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>{MONAT_KURZ(k.vonMonat)} bis {MONAT_KURZ(k.bisMonat)} {k.bisMonat.slice(0, 4)} · {k.monate} Monate seit dem ersten Beleg</div>
-        </Karte>
-      )}
-
+      <Spalten verhaeltnis="3:2">
+        <Spalte>
       <Karte i={2} akzent={faellig.some(z => z.faellig && z.faellig < heute) ? LEUCHT.kritisch : undefined}>
         <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href="/os/finanzen/planung" style={{ color: C.inkLeise, textDecoration: 'none' }}>alle ›</Link>}>Als Nächstes fällig</Ueberschrift>
         <Liste>
@@ -99,7 +87,6 @@ export function ZahlenView() {
           })}
         </Liste>
       </Karte>
-
       {monat.im.length > 0 && (
         <Karte i={3}>
           <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href="/os/finanzen/buchungen" style={{ color: C.inkLeise, textDecoration: 'none' }}>{buchungen.length} Buchungen ›</Link>}>{monat.label}</Ueberschrift>
@@ -118,7 +105,20 @@ export function ZahlenView() {
           </div>
         </Karte>
       )}
-
+        </Spalte>
+        <Spalte>
+      {k && (
+        <Karte i={1}>
+          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/finanzen/grundlage" style={{ color: C.inkLeise, textDecoration: 'none' }}>Stand {datum(grund?.stand)} ›</Link>}>Grundlage · Malins Kassenbuch</Ueberschrift>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, padding: '4px 0' }}>
+            <Zahl wert={eur(k.umsatzNetto)} label="Umsatz netto" farbe={LEUCHT.gut} />
+            <Zahl wert={eur(k.kostenNetto)} label="Kosten netto" farbe={LEUCHT.achtung} />
+            <Zahl wert={eur(k.ergebnisNetto)} label="Ergebnis" farbe={k.ergebnisNetto >= 0 ? LEUCHT.gut : LEUCHT.kritisch} />
+            <Zahl wert={eur(k.umsatzProMonat)} label="Ø je Monat" />
+          </div>
+          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>{MONAT_KURZ(k.vonMonat)} bis {MONAT_KURZ(k.bisMonat)} {k.bisMonat.slice(0, 4)} · {k.monate} Monate seit dem ersten Beleg</div>
+        </Karte>
+      )}
       <Karte i={4}>
         <Ueberschrift>Bereiche</Ueberschrift>
         <Liste>
@@ -129,6 +129,8 @@ export function ZahlenView() {
           ))}
         </Liste>
       </Karte>
+        </Spalte>
+      </Spalten>
     </Seite>
   );
 }

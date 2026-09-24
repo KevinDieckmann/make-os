@@ -12,7 +12,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { parseSchnell } from '@/lib/make-one/schnell-anlegen';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Fortschritt, feld, zoneFarbe, prioFarbe, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Fortschritt, feld, zoneFarbe, prioFarbe, LEUCHT, Spalten, Spalte } from './schlank';
 
 interface Termin { id?: string; title?: string; startDate?: string; endDate?: string; allDay?: boolean }
 
@@ -63,23 +63,8 @@ export function HeuteView() {
 
   return (
     <Seite titel={<>{gruss}{vorname ? `, ${vorname}` : ''}</>} unter={<span suppressHydrationWarning>{datum}</span>}>
-      {fokusText && (
-        <Karte i={0} akzent={LEUCHT.schlaf}>
-          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/wachstum" style={{ color: C.inkLeise, textDecoration: 'none' }}>Wachstum ›</Link>}>Fokus {fokusWann}</Ueberschrift>
-          <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(17px,2.2vw,20px)', fontWeight: 600, letterSpacing: '-.01em', lineHeight: 1.3 }}>{fokusText}</div>
-        </Karte>
-      )}
-
-      <Karte i={1}>
-        <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href="/os/kalender" style={{ color: C.inkLeise, textDecoration: 'none' }}>Kalender ›</Link>}>Termine</Ueberschrift>
-        <Liste>
-          {termine.length === 0 && <Leer>Keine Termine heute — freie Bahn.</Leer>}
-          {termine.map((t, i) => (
-            <Zeile key={t.id ?? i} links={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums', color: LEUCHT.puls, width: 52 }}>{t.allDay ? 'Tag' : uhr(t.startDate)}</span>} titel={t.title ?? '—'} unter={t.endDate && !t.allDay ? `bis ${uhr(t.endDate)}` : undefined} />
-          ))}
-        </Liste>
-      </Karte>
-
+      <Spalten verhaeltnis="2:1">
+        <Spalte>
       <Karte i={2}>
         <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href="/os/aufgaben" style={{ color: C.inkLeise, textDecoration: 'none' }}>{offen.length} offen ›</Link>}>Aufgaben</Ueberschrift>
         <input value={neu} onChange={e => setNeu(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') anlegen(); }} placeholder="Neue Aufgabe für heute … (!! kritisch · fr · #projekt · @malin)" style={{ ...feld, marginBottom: 6 }} />
@@ -95,7 +80,25 @@ export function HeuteView() {
         </Liste>
       </Karte>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+      <Karte i={1}>
+        <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href="/os/kalender" style={{ color: C.inkLeise, textDecoration: 'none' }}>Kalender ›</Link>}>Termine</Ueberschrift>
+        <Liste>
+          {termine.length === 0 && <Leer>Keine Termine heute — freie Bahn.</Leer>}
+          {termine.map((t, i) => (
+            <Zeile key={t.id ?? i} links={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums', color: LEUCHT.puls, width: 52 }}>{t.allDay ? 'Tag' : uhr(t.startDate)}</span>} titel={t.title ?? '—'} unter={t.endDate && !t.allDay ? `bis ${uhr(t.endDate)}` : undefined} />
+          ))}
+        </Liste>
+      </Karte>
+
+        </Spalte>
+        <Spalte>
+      {fokusText && (
+        <Karte i={0} akzent={LEUCHT.schlaf}>
+          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/wachstum" style={{ color: C.inkLeise, textDecoration: 'none' }}>Wachstum ›</Link>}>Fokus {fokusWann}</Ueberschrift>
+          <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(17px,2.2vw,20px)', fontWeight: 600, letterSpacing: '-.01em', lineHeight: 1.3 }}>{fokusText}</div>
+        </Karte>
+      )}
+
         <Karte i={3} akzent={koerper?.frisch ? koerperFarbe : undefined}>
           <Ueberschrift farbe={LEUCHT.gut} rechts={<Link href="/os/gesundheit" style={{ color: C.inkLeise, textDecoration: 'none' }}>Gesundheit ›</Link>}>Körper</Ueberschrift>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
@@ -114,7 +117,8 @@ export function HeuteView() {
             <div style={{ fontSize: TYP.body, fontWeight: 600, lineHeight: 1.35 }}>{stapel == null ? 'Jarvis' : stapel === 0 ? 'Nichts vorbereitet — alles erledigt.' : `Vorschl${stapel === 1 ? 'ag wartet' : 'äge warten'} auf dich`}</div>
           </div>
         </Karte>
-      </div>
+        </Spalte>
+      </Spalten>
     </Seite>
   );
 }

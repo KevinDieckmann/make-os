@@ -14,7 +14,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { absenderKey } from '@/lib/make-one/inbox-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, LEUCHT, Spalten, Spalte, useBreit } from './schlank';
 
 type Source = 'apple' | 'ms';
 interface Msg { id: string; source: Source; account: string; sender: string; senderEmail?: string; subject: string; preview?: string; receivedAt: string; isRead: boolean; importance?: string; mbIndex?: number }
@@ -61,6 +61,8 @@ export function InboxSchlank() {
   const [rauschenAuf, setRauschenAuf] = useState(false);
   const [meldung, setMeldung] = useState('');
   const [laedt, setLaedt] = useState(true);
+  // Breiter Bildschirm: die Mail öffnet rechts im Lesefenster statt in der Liste.
+  const breit = useBreit();
   const angefragt = useRef<Set<string>>(new Set());
 
   const merge = (a: Msg[], b: Msg[]) => { const m = new Map<string, Msg>(); a.concat(b).forEach(x => m.set(x.id, x)); return Array.from(m.values()).sort((x, y) => y.receivedAt.localeCompare(x.receivedAt)); };
@@ -170,8 +172,10 @@ export function InboxSchlank() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gruppen, rauschen, rauschenAuf, offenId]);
 
-  const Detail = ({ m }: { m: Msg }) => (
-    <div style={{ padding: '6px 2px 18px 22px', borderBottom: `1px solid ${C.linie}` }}>
+  // Als Funktion, nicht als Bauteil: sonst baut React die Ansicht bei jedem
+  // Tastendruck neu und das Antwortfeld verliert den Fokus (24.09.).
+  const detail = (m: Msg, imFenster = false) => (
+    <div style={imFenster ? undefined : { padding: '6px 2px 18px 22px', borderBottom: `1px solid ${C.linie}` }}>
       <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 8 }}>{m.senderEmail ?? m.sender} · {m.account} · {new Date(m.receivedAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}{triage[fpOf(m)]?.grund ? ` · ${triage[fpOf(m)].grund}` : ''}</div>
       <pre style={{ whiteSpace: 'pre-wrap', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.55, maxHeight: 320, overflow: 'auto' }}>{(m.source === 'apple' ? body[m.id] : m.preview) ?? (m.source === 'apple' && m.mbIndex ? 'lädt …' : m.preview ?? '')}</pre>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
@@ -197,6 +201,7 @@ export function InboxSchlank() {
     </div>
   );
 
+  const offenMsg = offenId ? msgs.find(m => m.id === offenId) ?? null : null;
   const zeile = (m: Msg) => (
     <div key={m.id}>
       <Zeile onClick={() => oeffnen(m)} aktiv={offenId === m.id}
@@ -204,7 +209,7 @@ export function InboxSchlank() {
         titel={<><span style={{ fontWeight: m.isRead ? 400 : 600 }}>{m.sender}</span><span style={{ color: C.inkLeise }}> · {m.subject}</span></>}
         unter={triage[fpOf(m)]?.zeile ?? m.preview}
         rechts={<span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{relTime(m.receivedAt)}</span>} />
-      {offenId === m.id && <Detail m={m} />}
+      {offenId === m.id && !breit && detail(m)}
     </div>
   );
 
@@ -212,7 +217,9 @@ export function InboxSchlank() {
     <Seite titel={<>Inbox {offenZahl > 0 && <span style={{ color: C.inkLeise, fontWeight: 500, fontSize: 15 }}>{offenZahl} offen</span>}</>}
       rechts={<span style={{ display: 'flex', gap: 14, alignItems: 'center' }}><Segmente liste={SEG} aktiv={seg} onWahl={setSeg} /><Link href="/os/inbox/voll" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Volle Ansicht ›</Link></span>}>
       {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 12 }}>{meldung}</div>}
-      {laedt && !msgs.length && <Karte i={0}><Leer>Apple Mail antwortet gleich · Microsoft 365 {quelle.ms} …</Leer></Karte>}
+      <Spalten verhaeltnis="3:2">
+        <Spalte>
+      {laedt && !sichtbar.length && !rauschen.length && <Karte i={0}><Leer>{msgs.length ? `Microsoft 365: nichts offen. Apple Mail antwortet gleich …` : `Apple Mail antwortet gleich · Microsoft 365 ${quelle.ms} …`}</Leer></Karte>}
       {!laedt && !sichtbar.length && !rauschen.length && <Karte i={0} akzent={LEUCHT.gut}><Leer>{seg === 'offen' ? 'Nichts offen. Apple Mail ' + quelle.apple + ' · Microsoft 365 ' + quelle.ms + '.' : 'Noch nichts erledigt.'}</Leer></Karte>}
       {gruppen.filter(g => g.liste.length).map((g, gi) => (
         <Karte key={g.titel} i={gi} akzent={g.titel === 'Wiedervorlage' ? LEUCHT.achtung : g.titel === 'Wichtig' ? LEUCHT.gut : undefined}>
@@ -229,6 +236,21 @@ export function InboxSchlank() {
           {rauschenAuf ? <Liste>{rauschen.map(zeile)}</Liste> : <Leer>Newsletter und Automatisches — {rauschen.length} Mails, die keine Entscheidung brauchen.</Leer>}
         </Karte>
       )}
+        </Spalte>
+        {breit && (
+          <Spalte klebt>
+            <Karte i={1} akzent={offenMsg ? LEUCHT.puls : undefined}>
+              {offenMsg ? (
+                <>
+                  <Ueberschrift farbe={istFaellig(offenMsg.id) ? LEUCHT.achtung : STUFE_FARBE[stufe(offenMsg) ?? 'normal']} rechts={relTime(offenMsg.receivedAt)}>{offenMsg.sender}</Ueberschrift>
+                  <div style={{ fontFamily: SCHRIFT.display, fontSize: 19, fontWeight: 600, letterSpacing: '-.01em', lineHeight: 1.3, margin: '2px 0 12px' }}>{offenMsg.subject}</div>
+                  {detail(offenMsg, true)}
+                </>
+              ) : <Leer>Eine Mail anklicken — sie öffnet sich hier. Mit j und k wanderst du durch die Liste, e erledigt, a macht eine Aufgabe, s legt sie auf morgen.</Leer>}
+            </Karte>
+          </Spalte>
+        )}
+      </Spalten>
       <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 28 }}>Apple Mail {quelle.apple} · Microsoft 365 {quelle.ms} · Tasten: j/k wandern · e erledigt · a Aufgabe · s morgen</div>
     </Seite>
   );

@@ -5,7 +5,7 @@
 
 import Link from 'next/link';
 import { FARBE as C } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Liste, Zeile } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Raster } from './schlank';
 
 const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: string }[] }[] = [
   { titel: 'Weitere Bereiche', eintraege: [
@@ -35,6 +35,7 @@ const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: s
 export function SystemView() {
   return (
     <Seite titel="System" unter="Alles, was nicht täglich ist: Jarvis, Zugang, Bauen.">
+      <Raster min={380}>
       {GRUPPEN.map((g, i) => (
         <Karte key={g.titel} i={i}>
           <Ueberschrift>{g.titel}</Ueberschrift>
@@ -47,6 +48,7 @@ export function SystemView() {
           </Liste>
         </Karte>
       ))}
+      </Raster>
     </Seite>
   );
 }

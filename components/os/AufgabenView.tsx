@@ -664,7 +664,7 @@ export function AufgabenView() {
   let ki = 0;
 
   return (
-    <Seite breit={1200} titel="Aufgaben · Board"
+    <Seite titel="Aufgaben · Board"
       unter={
         <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'baseline' }}>
           <span>{openCount ? `${openCount} ${openCount === 1 ? 'Aufgabe' : 'Aufgaben'} offen` : 'Nichts offen'}</span>

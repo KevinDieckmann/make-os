@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { eur } from '@/lib/make-one/finance-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, feld, LEUCHT, Spalten, Spalte } from './schlank';
 
 interface Vorschlag { id: string; zeit: string; werkzeug: string; gruppe: string; titel: string; vorher?: string; nachher: string; eingabe: Record<string, unknown>; anlass?: string; status: 'offen' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen'; ergebnis?: string; grund?: string }
 interface Auftrag { id: string; zeit: string; art: string; name: string; auftrag?: string; status: 'offen' | 'laeuft' | 'fertig' | 'fehler'; ergebnis?: string; fehler?: string }
@@ -74,6 +74,8 @@ export function StapelView() {
     <Seite titel="Aufträge & Freigaben" unter="Was Jarvis vorbereitet hat und auf dein Ja wartet. Ohne dich passiert nichts." rechts={<Link href="/os/stapel/voll" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Protokoll & Rückgängig ›</Link>}>
       {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{meldung}</div>}
 
+      <Spalten verhaeltnis="2:1">
+        <Spalte>
       <Karte i={0} akzent={offen.length ? LEUCHT.achtung : undefined}>
         <Ueberschrift farbe={offen.length ? LEUCHT.achtung : C.inkLeise} rechts={offen.length > 1 ? <Knopf onClick={() => alleFreigeben()} aus={busy === 'alle'}>Alle {offen.length} freigeben</Knopf> : `${offen.length} offen`}>Wartet auf dich</Ueberschrift>
         {!laedt && offen.length === 0 && <Leer>Nichts offen. Jarvis legt hier ab, was er vorbereitet hat — du entscheidest.</Leer>}
@@ -106,8 +108,8 @@ export function StapelView() {
           </div>
         ))}
       </Karte>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14 }}>
+        </Spalte>
+        <Spalte>
         <Karte i={1}>
           <Ueberschrift farbe={inArbeit ? LEUCHT.puls : C.inkLeise} rechts={inArbeit ? `${inArbeit} in Arbeit` : undefined}>Der Arbeiter</Ueberschrift>
           <Liste>
@@ -122,9 +124,6 @@ export function StapelView() {
             {entschieden.map(v => <Zeile key={v.id} links={<Punkt farbe={STATUS[v.status]?.farbe ?? C.inkLeise} />} titel={v.titel} unter={`${g(v.gruppe).label} · ${her(v.zeit)}${v.grund ? ` · ${v.grund}` : v.ergebnis ? ` · ${v.ergebnis.slice(0, 80)}` : ''}`} rechts={<Chip farbe={STATUS[v.status]?.farbe ?? C.inkLeise}>{STATUS[v.status]?.label ?? v.status}</Chip>} />)}
           </Liste>
         </Karte>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14 }}>
         <Karte i={3}>
           <Ueberschrift farbe={LEUCHT.agenten} rechts={`${fakten.length}`}>Gedächtnis</Ueberschrift>
           <Liste>
@@ -146,7 +145,8 @@ export function StapelView() {
             </div>
           ))}
         </Karte>
-      </div>
+        </Spalte>
+      </Spalten>
     </Seite>
   );
 }

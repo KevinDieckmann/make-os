@@ -13,7 +13,7 @@ import { parseSchnell } from '@/lib/make-one/schnell-anlegen';
 import { localDay, tagePlus } from '@/lib/zeit';
 import type { Task } from '@/types/tasks';
 import type { Owner } from '@/types/common';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, feld, prioFarbe, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, feld, prioFarbe, LEUCHT, Spalten, Spalte } from './schlank';
 
 const wahl: React.CSSProperties = { background: C.flaeche, border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark' };
 
@@ -54,7 +54,8 @@ export function AufgabenSchlank() {
   const datum = (d?: string) => (d ? `${d.slice(8)}.${d.slice(5, 7)}.` : '');
 
   // Eine Zeile aufklappen: Titel, Datum, Priorität, Wer, Projekt, Löschen.
-  const Detail = ({ t }: { t: Task }) => (
+  // Als Funktion, nicht als Bauteil — sonst baut React die Karte bei jeder Änderung neu (24.09.).
+  const detail = (t: Task) => (
     <div style={{ padding: '8px 2px 16px 36px', borderBottom: `1px solid ${C.linie}` }}>
       <input defaultValue={t.title} onBlur={e => { const v = e.target.value.trim(); if (v && v !== t.title) aendern(t.id, { title: v }); }}
         onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} style={{ ...feld, marginBottom: 10 }} />
@@ -74,6 +75,31 @@ export function AufgabenSchlank() {
     </div>
   );
 
+  // Links, was drängt; rechts, was warten kann (24.09., breite Bildschirme).
+  const sichtbar = gruppen.filter(g => g.liste.length);
+  const links = sichtbar.filter(g => ['Überfällig', 'Heute', 'Diese Woche'].includes(g.titel));
+  const rechts = sichtbar.filter(g => !links.includes(g));
+  const gruppeKarte = (g: { titel: string; farbe: string; liste: Task[] }, gi: number) => (
+        <Karte key={g.titel} i={gi + 1}>
+      <Ueberschrift farbe={g.farbe} rechts={`${g.liste.length}`}>{g.titel}</Ueberschrift>
+      <Liste>
+        {g.liste.map(t => (
+          <div key={t.id}>
+            <Zeile onClick={() => setOffenId(o => (o === t.id ? null : t.id))} aktiv={offenId === t.id}
+              links={<Haken an={false} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />}
+              titel={t.title}
+              unter={[projekt(t.projectId), t.assignee !== 'kevin' ? WER[t.assignee] : ''].filter(Boolean).join(' · ')}
+              rechts={<span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {t.dueDate && <span style={{ fontFamily: SCHRIFT.display, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute ? LEUCHT.kritisch : C.inkLeise }}>{datum(t.dueDate)}</span>}
+                <Punkt farbe={prioFarbe(t.priority)} />
+              </span>} />
+            {offenId === t.id && detail(t)}
+          </div>
+        ))}
+      </Liste>
+    </Karte>
+  );
+
   return (
     <Seite titel="Aufgaben" rechts={<Link href="/os/aufgaben/board" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Board &amp; Zeitstrahl ›</Link>}>
       <Karte i={0} akzent={LEUCHT.achtung}>
@@ -81,27 +107,13 @@ export function AufgabenSchlank() {
           placeholder="Neue Aufgabe … (!! kritisch · heute / mo–so / 24.09. · #projekt · @malin)" style={{ ...feld, fontSize: TYP.body }} />
         {offen.length === 0 && <Leer>Keine offenen Aufgaben. Eine Zeile oben, Enter — oder Jarvis sagen.</Leer>}
       </Karte>
-      {gruppen.filter(g => g.liste.length).map((g, gi) => (
-        <Karte key={g.titel} i={gi + 1}>
-          <Ueberschrift farbe={g.farbe} rechts={`${g.liste.length}`}>{g.titel}</Ueberschrift>
-          <Liste>
-            {g.liste.map(t => (
-              <div key={t.id}>
-                <Zeile onClick={() => setOffenId(o => (o === t.id ? null : t.id))} aktiv={offenId === t.id}
-                  links={<Haken an={false} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />}
-                  titel={t.title}
-                  unter={[projekt(t.projectId), t.assignee !== 'kevin' ? WER[t.assignee] : ''].filter(Boolean).join(' · ')}
-                  rechts={<span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {t.dueDate && <span style={{ fontFamily: SCHRIFT.display, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute ? LEUCHT.kritisch : C.inkLeise }}>{datum(t.dueDate)}</span>}
-                    <Punkt farbe={prioFarbe(t.priority)} />
-                  </span>} />
-                {offenId === t.id && <Detail t={t} />}
-              </div>
-            ))}
-          </Liste>
-        </Karte>
-      ))}
-
+      <Spalten verhaeltnis="1:1">
+        <Spalte>
+          {links.map((g, gi) => gruppeKarte(g, gi))}
+          {!links.length && offen.length > 0 && <Karte i={1}><Leer>Nichts überfällig, nichts für heute oder diese Woche.</Leer></Karte>}
+        </Spalte>
+        <Spalte>
+          {rechts.map((g, gi) => gruppeKarte(g, gi + links.length))}
       {erledigt.length > 0 && (
         <Karte i={gruppen.length + 1}>
           <Ueberschrift rechts={<button onClick={() => setZeigeErledigt(z => !z)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12, padding: 0 }}>{zeigeErledigt ? 'ausblenden' : `${erledigt.length} anzeigen`}</button>}>Erledigt</Ueberschrift>
@@ -115,6 +127,8 @@ export function AufgabenSchlank() {
           )}
         </Karte>
       )}
+        </Spalte>
+      </Spalten>
     </Seite>
   );
 }

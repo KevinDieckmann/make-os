@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Leer, Chip, Knopf, Zeile, Liste, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Leer, Chip, Knopf, Zeile, Liste, LEUCHT, Raster } from './schlank';
 
 interface Verbindung { id: string; name: string; konfiguriert: boolean; verbunden: boolean; seit: string | null; laeuftAb: number | null; scope: string | null; anleitung: string; envId: string; envSecret: string }
 
@@ -40,6 +40,7 @@ export function VerbindungenView() {
         </Karte>
       )}
       {!geladen && <Karte i={0}><Leer>lade …</Leer></Karte>}
+      <Raster min={420}>
       {liste.map((v, i) => {
         const z = zustand(v); const f = FARBE_JE[v.id] ?? LEUCHT.puls;
         return (
@@ -72,6 +73,7 @@ export function VerbindungenView() {
           </Link>
         </Liste>
       </Karte>
+      </Raster>
     </Seite>
   );
 }

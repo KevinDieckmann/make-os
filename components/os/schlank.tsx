@@ -11,9 +11,19 @@ import { useEffect, useState, type ReactNode, type CSSProperties } from 'react';
 import { FARBE as C, LEUCHT, SCHRIFT, TYP, leuchtFarbe } from '@/lib/make-one/design';
 
 export { LEUCHT };
+
+/**
+ * Breite der Arbeitsfläche (24.09., Kevin: „das Ganze ist jetzt nur in der
+ * Mitte"). Vorher 900 px und eine Kartenspalte — auf einem breiten Bildschirm
+ * blieb links und rechts die Hälfte leer. Jetzt bis 1440 px; der
+ * Wachstums-Kopf nimmt dieselbe Breite, damit beide Kanten übereinander stehen.
+ */
+export const SEITE_BREIT = 1440;
+/** Ab dieser Fensterbreite stehen Spalten nebeneinander (200 px Leiste + ~1000 px Fläche). */
+export const SPALTEN_AB = 1180;
 const HAAR = 'rgba(255,255,255,.06)';
 
-export function Seite({ titel, unter, rechts, children, breit = 900 }: { titel: ReactNode; unter?: ReactNode; rechts?: ReactNode; children: ReactNode; breit?: number }) {
+export function Seite({ titel, unter, rechts, children, breit = SEITE_BREIT }: { titel: ReactNode; unter?: ReactNode; rechts?: ReactNode; children: ReactNode; breit?: number }) {
   return (
     <div style={{ maxWidth: breit, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px', color: C.ink, fontFamily: SCHRIFT.text }}>
       <div className="os-auf" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
@@ -35,6 +45,39 @@ export function Karte({ children, i = 0, akzent, style }: { children: ReactNode;
       {children}
     </section>
   );
+}
+
+/**
+ * Dashboard-Aufteilung: zwei Spalten, die auf dem Handy untereinander stehen.
+ * `verhaeltnis` 2:1 für Hauptsache + Seitenleiste, 1:1 für Gleichgewichtiges.
+ * Jede Spalte stapelt ihre Karten für sich — nichts springt, wenn eine Karte
+ * aufklappt, und es entstehen keine Löcher wie in einem starren Raster.
+ */
+export function Spalten({ children, verhaeltnis = '1:1' }: { children: ReactNode; verhaeltnis?: '1:1' | '2:1' | '1:2' | '3:2' }) {
+  return <div className={`spalten spalten-${verhaeltnis.replace(':', '-')}`}>{children}</div>;
+}
+/** Eine Spalte in `Spalten`. `klebt` hält sie beim Scrollen oben (Lesefenster). */
+export function Spalte({ children, klebt }: { children: ReactNode; klebt?: boolean }) {
+  return <div className={`spalte${klebt ? ' spalte-klebt' : ''}`}>{children}</div>;
+}
+/** Gleich breite Karten nebeneinander, so viele, wie passen (`min` = Mindestbreite je Karte). */
+export function Raster({ children, min = 360 }: { children: ReactNode; min?: number }) {
+  return <div className="raster" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${min}px), 1fr))` }}>{children}</div>;
+}
+/** Teilt eine Liste abwechselnd auf zwei Spalten — für viele gleichartige Karten (Abteilungen, Gruppen). */
+export function aufZwei<T>(liste: T[]): [T[], T[]] {
+  return [liste.filter((_, i) => i % 2 === 0), liste.filter((_, i) => i % 2 === 1)];
+}
+/** Ist genug Platz für Spalten? Für Ansichten, die sich dann anders verhalten (Lesefenster statt Aufklappen). */
+export function useBreit(): boolean {
+  const [breit, setBreit] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${SPALTEN_AB}px)`);
+    const an = () => setBreit(mq.matches);
+    an(); mq.addEventListener('change', an);
+    return () => mq.removeEventListener('change', an);
+  }, []);
+  return breit;
 }
 
 export function Ueberschrift({ children, rechts, farbe }: { children: ReactNode; rechts?: ReactNode; farbe?: string }) {

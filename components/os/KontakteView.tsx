@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { STUFE_LABEL, anzeigename, type Kontakt, type Stufe } from '@/lib/make-one/crm';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, Chip, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, Chip, feld, LEUCHT, Spalten, Spalte, useBreit } from './schlank';
 import { CrmView } from './CrmView';
 
 type Segment = 'heute' | 'alle' | 'mandate';
@@ -36,6 +36,8 @@ export function KontakteView() {
   const [entwurf, setEntwurf] = useState<Record<string, Entwurf | 'lädt' | undefined>>({});
   const [meldung, setMeldung] = useState('');
   const [importiert, setImportiert] = useState(false);
+  // Breiter Bildschirm: der Kontakt öffnet rechts im Lesefenster.
+  const breit = useBreit();
 
   const laden = () => {
     fetch('/api/state/kontakte').then(r => r.json()).then(d => { setKontakte(d.kontakte ?? []); setStand(d.stand ?? null); }).catch(() => setKontakte([]));
@@ -76,10 +78,11 @@ export function KontakteView() {
     return gefiltert.sort((a, b) => (a.prio || 'Z').localeCompare(b.prio || 'Z') || anzeigename(a).localeCompare(anzeigename(b))).slice(0, q ? 60 : 40);
   }, [kontakte, suche]);
 
-  const Detail = ({ k, grund }: { k: Kontakt; grund?: string }) => {
+  // Als Funktion, nicht als Bauteil — sonst baut React die Karte bei jeder Änderung neu (24.09.).
+  const detail = (k: Kontakt, grund?: string, imFenster = false) => {
     const e = entwurf[k.id];
     return (
-      <div style={{ padding: '6px 2px 18px 36px', borderBottom: `1px solid ${C.linie}` }}>
+      <div style={imFenster ? undefined : { padding: '6px 2px 18px 36px', borderBottom: `1px solid ${C.linie}` }}>
         {grund && <div style={{ fontSize: 12, color: LEUCHT.achtung, marginBottom: 6 }}>{grund}</div>}
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>
           {[k.position, k.firma, k.firmaStadt].filter(Boolean).join(' · ')}
@@ -117,6 +120,8 @@ export function KontakteView() {
     );
   };
 
+  const offenK = offen ? (kontakte ?? []).find(k => k.id === offen) ?? liste.find(p => p.kontakt.id === offen)?.kontakt ?? null : null;
+  const offenGrund = offen ? liste.find(p => p.kontakt.id === offen)?.grund : undefined;
   const zeile = (k: Kontakt, unter: string, rechts?: React.ReactNode) => (
     <Zeile key={k.id} onClick={() => setOffen(o => (o === k.id ? null : k.id))} aktiv={offen === k.id}
       links={<Punkt farbe={stufeFarbe(k.stufe)} />} titel={<>{anzeigename(k)}{k.firma && <span style={{ color: C.inkLeise }}> · {k.firma}</span>}</>} unter={unter}
@@ -127,6 +132,9 @@ export function KontakteView() {
     <Seite titel="Kontakte" rechts={<Segmente liste={SEG} aktiv={segment} onWahl={s => router.replace(s === 'heute' ? pfad : `${pfad}?s=${s}`)} />}>
       {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 12 }}>{meldung}</div>}
 
+      {segment !== 'mandate' && (
+      <Spalten verhaeltnis="3:2">
+        <Spalte>
       {segment === 'heute' && (
         kontakte !== null && kontakte.length === 0 ? (
           <Karte i={0}><Leer>
@@ -141,7 +149,7 @@ export function KontakteView() {
               {liste.map(p => (
                 <div key={p.kontakt.id}>
                   {zeile(p.kontakt, `${p.grund} · ${p.kanaele.map(c => c.art).join(', ') || 'kein Kanal'}`)}
-                  {offen === p.kontakt.id && <Detail k={p.kontakt} grund={p.grund} />}
+                  {offen === p.kontakt.id && !breit && detail(p.kontakt, p.grund)}
                 </div>
               ))}
             </Liste>
@@ -160,13 +168,30 @@ export function KontakteView() {
             {treffer.map(k => (
               <div key={k.id}>
                 {zeile(k, [k.position, k.firmaBranche, k.wiedervorlage ? `Wiedervorlage ${k.wiedervorlage.slice(5)}` : ''].filter(Boolean).join(' · '))}
-                {offen === k.id && <Detail k={k} />}
+                {offen === k.id && !breit && detail(k)}
               </div>
             ))}
           </Liste>
         </Karte>
       )}
 
+        </Spalte>
+        {breit && (
+          <Spalte klebt>
+            <Karte i={1} akzent={offenK ? LEUCHT.business : undefined}>
+              {offenK ? (
+                <>
+                  <Ueberschrift farbe={stufeFarbe(offenK.stufe)} rechts={<span style={{ display: 'flex', gap: 6 }}>{offenK.prio && <Chip farbe={prioChip(offenK.prio)}>{offenK.prio}</Chip>}<Chip farbe={stufeFarbe(offenK.stufe)}>{STUFE_LABEL[offenK.stufe]}</Chip></span>}>Kontakt</Ueberschrift>
+                  <div style={{ fontFamily: SCHRIFT.display, fontSize: 20, fontWeight: 700, letterSpacing: '-.015em', margin: '2px 0 2px' }}>{anzeigename(offenK)}</div>
+                  {offenK.firma && <div style={{ fontSize: TYP.body, color: C.inkDim, marginBottom: 10 }}>{offenK.firma}</div>}
+                  {detail(offenK, offenGrund, true)}
+                </>
+              ) : <Leer>Einen Kontakt anklicken — Aufhänger, Entwurf und die Griffe erscheinen hier.</Leer>}
+            </Karte>
+          </Spalte>
+        )}
+      </Spalten>
+      )}
       {segment === 'mandate' && <Karte i={0}><CrmView eingebettet /></Karte>}
     </Seite>
   );

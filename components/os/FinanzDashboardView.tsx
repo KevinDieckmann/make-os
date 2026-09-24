@@ -36,7 +36,7 @@ export function FinanzDashboardView() {
   }
 
   return (
-    <Seite titel="Malins Dashboard" unter="Euer eigenes Dashboard — läuft mit seiner eigenen Datenablage weiter, hier nur eingebettet." breit={1400}
+    <Seite titel="Malins Dashboard" unter="Euer eigenes Dashboard — läuft mit seiner eigenen Datenablage weiter, hier nur eingebettet."
       rechts={<span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>{schalter}{fenster}</span>}>
       <Karte i={0} akzent={LEUCHT.geld} style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '18px 20px 0' }}>

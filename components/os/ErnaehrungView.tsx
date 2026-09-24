@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { TAGE, TAG_LABEL, type ErnaehrungFile, type Mahlzeiten, type Tag } from '@/lib/make-one/ernaehrung-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, feld, LEUCHT, Spalten, Spalte } from './schlank';
 
 const M_LABEL: { k: keyof Mahlzeiten; label: string }[] = [
   { k: 'fruehstueck', label: 'Früh' }, { k: 'mittag', label: 'Mittag' }, { k: 'abend', label: 'Abend' },
@@ -23,7 +23,8 @@ const nackt: CSSProperties = { background: 'none', border: 'none', padding: 4, c
 
 /** Eingebettet: nur ein Abschnitt mit Luft nach oben. Frei: eine eigene Karte. */
 function Abschnitt({ eingebettet, i, akzent, children }: { eingebettet: boolean; i: number; akzent?: string; children: ReactNode }) {
-  if (eingebettet) return <div style={{ marginTop: i ? 24 : 0 }}>{children}</div>;
+  // 24.09.: auch eingebettet eigene Karten — die Gesundheitsseite legt keine Karte mehr drumherum.
+  void eingebettet;
   return <Karte i={i} akzent={akzent}>{children}</Karte>;
 }
 
@@ -88,7 +89,8 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
   const geplantN = TAGE.reduce((s, t) => s + M_LABEL.filter(m => daten.plan[t][m.k].trim()).length, 0);
 
   const inhalt = (
-    <>
+    <Spalten verhaeltnis="2:1">
+      <Spalte>
       {/* Essens-Woche + Jarvis */}
       <Abschnitt eingebettet={eingebettet} i={0} akzent={LEUCHT.gut}>
         <Ueberschrift farbe={geplantN >= 15 ? LEUCHT.gut : LEUCHT.achtung} rechts={<Chip farbe={geplantN >= 15 ? LEUCHT.gut : C.inkLeise}>{geplantN}/21 geplant</Chip>}>Essens-Woche</Ueberschrift>
@@ -130,7 +132,8 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
         {vorschlag && <p style={{ fontSize: 12, color: LEUCHT.achtung, margin: '10px 0 0' }}>Vorschau — mit „Übernehmen“ wird sie dein Plan.</p>}
       </Abschnitt>
 
-      <div style={eingebettet ? { marginTop: 24 } : { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+      </Spalte>
+      <Spalte>
         {/* Einkaufsliste */}
         <Abschnitt eingebettet={eingebettet} i={1}>
           <Ueberschrift farbe={LEUCHT.geld} rechts={<><Chip farbe={offeneEinkaeufe ? LEUCHT.achtung : LEUCHT.gut}>{offeneEinkaeufe} offen</Chip><Knopf leise onClick={listeKopieren}>Liste kopieren</Knopf></>}>Einkaufsliste</Ueberschrift>
@@ -171,8 +174,8 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
             {' '}<Link href="/os/gesundheit" style={link}>Zum Cockpit ›</Link>
           </p>
         </Abschnitt>
-      </div>
-    </>
+      </Spalte>
+    </Spalten>
   );
 
   if (eingebettet) return inhalt;
