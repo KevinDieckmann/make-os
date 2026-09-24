@@ -175,3 +175,34 @@ describe('Zeitplan', () => {
     expect(Array.from(m.entries())).toEqual([['kevin-malin', 'kevin']]);
   });
 });
+
+import { istStand } from '../lib/finanzen/chef/ist-stand';
+
+describe('Ist-Stand-Checkliste', () => {
+  const basis = {
+    heute: '2026-09-25',
+    firmen: [{ id: 'kdv', name: 'KD Ventures', kontostand: 16955, stand: null }, { id: 'kdc', name: 'Consulting', kontostand: 40, stand: '2026-09-24' }],
+    offeneRechnungen: [{ kunde: 'Beispielkunde' }], leereControllingMonate: ['Aug'], grundlageStand: '2026-09-21',
+    planposten: 46, zuKlaeren: 8, rechtsform: { kdv: 'UG', kdc: 'Einzelunternehmen' },
+    haushalt: { umzug: false, buchungen: 0, letzteBuchung: null, ohneKategorie: 0, pruefposten: 12, steuerquote: null, mitglieder: ['kevin'] },
+  };
+  it('leitet jeden Punkt aus den Daten ab und sagt, was fehlt', () => {
+    const s = Object.fromEntries(istStand(basis).map(x => [x.id, x]));
+    expect(s.umzug.erledigt).toBe(false);
+    expect(s.kontostaende.detail).toMatch(/KD Ventures \(ohne Datum\)/);
+    expect(s.rechnungen.detail).toMatch(/Beispielkunde/);
+    expect(s.controlling.detail).toMatch(/Aug/);
+    expect(s.grundlage.erledigt).toBe(true);
+    expect(s.planung.detail).toMatch(/8 Posten/);
+    expect(s.rechtsform.erledigt).toBe(true);
+    expect(s.malin.erledigt).toBe(false);
+  });
+  it('ohne Haushalt nur Business-Punkte', () => {
+    expect(istStand({ ...basis, haushalt: null }).every(x => x.bereich === 'business')).toBe(true);
+  });
+  it('alles aktuell → alles erledigt', () => {
+    const fertig = istStand({ ...basis, firmen: [{ id: 'kdv', name: 'KD Ventures', kontostand: 1, stand: '2026-09-25' }], offeneRechnungen: [], leereControllingMonate: [], zuKlaeren: 0,
+      haushalt: { umzug: true, buchungen: 1200, letzteBuchung: '2026-09-24', ohneKategorie: 10, pruefposten: 0, steuerquote: 30, mitglieder: ['kevin', 'malin'] } });
+    expect(fertig.filter(x => !x.erledigt).map(x => x.id)).toEqual([]);
+  });
+});

@@ -14,6 +14,42 @@ import { chefLauf, ladeFinanzbild, ladeEinstellung } from '@/lib/finanzen/chef/l
 import { MODI, type Modus } from '@/lib/finanzen/chef/prompt';
 import { leererStand, standName, EINSTELLUNG_NAME, type ChefStand, type ChefVorschlag, type VorschlagStatus, type ChefEinstellung } from '@/lib/finanzen/chef/stand';
 import type { UstRhythmus } from '@/lib/finanzen/chef/steuertermine';
+import { istStand } from '@/lib/finanzen/chef/ist-stand';
+import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
+import { pruefliste, type Businessbestand } from '@/lib/finanzen/haushalt/entflechtung';
+import { ladeKonten } from '@/lib/zugang/konten';
+
+/** Die Checkliste „Ist-Stand“ — jeder Punkt aus den Daten abgeleitet. */
+async function checkliste(haushalt: string | null, bild: Awaited<ReturnType<typeof ladeFinanzbild>>['bild'], einstellung: ChefEinstellung) {
+  const [fp, bu, lp] = await Promise.all([
+    loadJson<Omit<NonNullable<Businessbestand['finanzplan']>, 'firmen'> & { firmen?: { id: string; name: string; kontostand: number | null; stand?: string | null }[] }>('finanzplan'),
+    loadJson<Businessbestand['buchungen']>('buchungen'),
+    loadJson<{ posten?: { betrag: number; sicher?: boolean; notiz?: string; firmaId?: string }[] }>('liquiplan'),
+  ]);
+  const business = (lp?.posten ?? []).filter(p => p.firmaId !== 'privat');
+  let hh = null as Parameters<typeof istStand>[0]['haushalt'];
+  if (haushalt && bild.haushalt) {
+    const h = await ladeHaushalt(haushalt);
+    const privat = h.buchungen.filter(b => b.einheit === 'privat');
+    const konten = (await ladeKonten()).konten;
+    hh = {
+      umzug: !!h.meta.umzug, buchungen: privat.length,
+      letzteBuchung: privat.map(b => b.datum).sort().pop() ?? null,
+      ohneKategorie: privat.filter(b => !b.kategorie_id && !b.ist_umbuchung).length,
+      pruefposten: istEchterHaushalt(haushalt) ? pruefliste({ finanzplan: fp, buchungen: bu, liquiplan: lp as Businessbestand['liquiplan'] }, h).length : 0,
+      steuerquote: h.meta.steuerquote, mitglieder: konten.filter(k => k.haushalt === haushalt).map(k => k.speicher),
+    };
+  }
+  return istStand({
+    heute: bild.stichtag,
+    firmen: (fp?.firmen ?? []).map(f => ({ id: f.id, name: f.name, kontostand: f.kontostand ?? null, stand: f.stand ?? null })),
+    offeneRechnungen: (fp?.rechnungen ?? []).filter(r => r.status === 'gestellt' && r.firmaId !== 'privat').map(r => ({ kunde: r.kunde, faellig: r.faellig })),
+    leereControllingMonate: bild.business.controlling ? bild.business.controlling.leere_monate : null,
+    grundlageStand: bild.business.grundlage?.stand ?? null,
+    planposten: business.length, zuKlaeren: business.filter(p => !p.sicher && (p.notiz ?? '').startsWith('Zu klären')).length,
+    rechtsform: einstellung.rechtsform, haushalt: hh,
+  });
+}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,7 +68,9 @@ export async function GET(req: Request) {
     ladeFinanzbild(u.haushalt),
   ]);
   const s = { ...leererStand(), ...(stand ?? {}) };
+  const istStandListe = await checkliste(u.haushalt, bild, einstellung);
   return NextResponse.json({
+    istStand: istStandListe,
     ok: true, umfang: u.haushalt ? 'business+haushalt' : 'business', haushaltZugang: u.zugang,
     berichte: s.berichte.slice(-10).reverse(), vorschlaege: s.vorschlaege.slice().reverse(), letzte: s.letzte, ruhig: s.ruhig ?? null,
     einstellung,

@@ -16,9 +16,12 @@ import type { Bericht, ChefVorschlag, ChefEinstellung } from '@/lib/finanzen/che
 import type { Hinweis } from '@/lib/finanzen/chef/finanzbild';
 import type { Termin } from '@/lib/finanzen/chef/steuertermine';
 import type { Modus } from '@/lib/finanzen/chef/prompt';
+import type { Schritt } from '@/lib/finanzen/chef/ist-stand';
+import Link from 'next/link';
 
 interface Stand {
   ok: boolean; umfang: 'business' | 'business+haushalt'; haushaltZugang: boolean;
+  istStand: Schritt[];
   berichte: Bericht[]; vorschlaege: ChefVorschlag[]; letzte: Partial<Record<Modus, string>>; ruhig: { zeit: string; text: string } | null;
   einstellung: ChefEinstellung;
   lage: { hinweise: Hinweis[]; termine: Termin[]; kasse: { betrag: number; quelle: string; konten: number; stand: string | null }; runway: number | null;
@@ -86,6 +89,7 @@ export function FinanzchefView() {
 
   return (
     <>
+      <IstStand liste={s.istStand ?? []} />
       <Karte i={0}>
         <Ueberschrift farbe={LEUCHT.geld} rechts={<Chip farbe={s.umfang === 'business' ? LEUCHT.business : LEUCHT.geld}>{s.umfang === 'business' ? 'nur Business' : 'Haushalt + Business'}</Chip>}>Head of Finance</Ueberschrift>
         {a ? (
@@ -237,6 +241,41 @@ export function FinanzchefView() {
         </Spalte>
       </Spalten>
     </>
+  );
+}
+
+/** Ist-Stand — was für einen sauberen Finanzstand noch fehlt, aus den Daten abgeleitet. */
+function IstStand({ liste }: { liste: Schritt[] }) {
+  const offen = liste.filter(x => !x.erledigt);
+  const [auf, setAuf] = useState(true);
+  if (!liste.length) return null;
+  const BEREICH: Record<Schritt['bereich'], string> = { privat: 'Privat', business: 'Business', gemeinsam: 'Gemeinsam' };
+  return (
+    <Karte i={0} akzent={offen.length ? LEUCHT.achtung : LEUCHT.gut}>
+      <Ueberschrift farbe={offen.length ? LEUCHT.achtung : LEUCHT.gut} rechts={<Knopf leise onClick={() => setAuf(!auf)}>{auf ? 'zuklappen' : 'zeigen'}</Knopf>}>
+        Ist-Stand · {liste.length - offen.length} von {liste.length} erledigt
+      </Ueberschrift>
+      {!offen.length && <div style={{ fontSize: TYP.body, color: C.inkDim }}>Der Finanzstand ist vollständig — darauf lässt sich planen.</div>}
+      {auf && (['privat', 'gemeinsam', 'business'] as const).map(b => {
+        const teil = liste.filter(x => x.bereich === b);
+        if (!teil.length) return null;
+        return (
+          <div key={b} style={{ marginTop: 10 }}>
+            <div style={{ fontSize: TYP.mikro, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, marginBottom: 4 }}>{BEREICH[b]}</div>
+            {teil.map(x => (
+              <Link key={x.id} href={x.link} style={{ display: 'flex', gap: 12, alignItems: 'baseline', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)', color: 'inherit', textDecoration: 'none' }}>
+                <span style={{ width: 18, flex: '0 0 auto', color: x.erledigt ? LEUCHT.gut : LEUCHT.achtung, fontWeight: 800 }}>{x.erledigt ? '✓' : '○'}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontWeight: 600, color: x.erledigt ? C.inkDim : C.ink }}>{x.titel}</span>
+                  <span style={{ display: 'block', fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.45 }}>{x.detail}</span>
+                </span>
+                {!x.erledigt && <Chip farbe={x.wer === 'malin' ? LEUCHT.beziehung : x.wer === 'beide' ? LEUCHT.puls : LEUCHT.geld}>{x.wer === 'beide' ? 'beide' : x.wer === 'malin' ? 'Malin' : 'Kevin'}</Chip>}
+              </Link>
+            ))}
+          </div>
+        );
+      })}
+    </Karte>
   );
 }
 
