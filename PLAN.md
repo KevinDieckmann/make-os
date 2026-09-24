@@ -261,6 +261,24 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Daten nur eigene (Masterdatei + Brain). Offen: Anthropic-Guthaben aufladen
 > (Agenten laufen sonst nicht), Kaltakquise-Liste Berlin erst nach Kevins Wort.
 
+> **Nachtrag Nacht zum 25.09. — CRM zusammengeführt (autonom, Kevin schlief).**
+> Kontakte und Firmen sind eigene Einstiege (Aufbau wie in KEMARIS Operations), und die Schnellsuche ⌘K funktioniert von überall.
+>
+> **Kampagnen:** Sie werden nach acht bewährten Vorgehen auf Basis der echten Kunden geplant. Head of Marketing und Head of Sales können beide planen. Offene Personen stehen in der Power Hour, Ergebnisse fließen zurück.
+>
+> **Marketing:** Segmente, Redaktionsplan mit Wirkung je Beitrag, Newsletter (nur Double-Opt-in) und Positionierung. Gebaut hat das ein Agent, die Einbindung ich.
+>
+> **Events:** Vorlagen, Gästemischung, Checkliste mit Aufgaben, Budget, Check-in am Abend und Nachfassen. Auch das hat ein Agent gebaut.
+>
+> **Verbindungen:**
+> - Mail und Kalender aus geschäftlichen Quellen landen im Verlauf.
+> - Die Rechnungen bestimmen den Health-Faktor Zahlung.
+> - Die Startseite zeigt „Wer heute dran ist“.
+> - Jarvis hat die Werkzeuge crm_lage und chance_anlegen.
+> - Der Head of Finance sieht die Vertriebsseite.
+>
+> **Stand:** Der Produktions-Build läuft durch.
+
 > **Nachtrag 24.09., volle Breite und Whoop-Export.** Kevin: *„das Ganze ist
 > jetzt nur in der Mitte"* — Seiten waren auf 900 px begrenzt, eine
 > Kartenspalte. Jetzt bis 1440 px mit Dashboard-Spalten (`Spalten`/`Spalte`/

@@ -129,6 +129,19 @@ lokal, Route `/os`, Port 3001.
   Pflichtangaben (Herkunft Art. 14 / Rechtsgrundlage Art. 6 nur als Vorschlag,
   Übernahme per Klick), Betroffenenanträge, Verzeichnis Art. 30, Export.
   Konzept: `docs/konzepte/crm-sales-marketing-events.md`.
+- **CRM verbunden (Nacht zum 25.09.2026):**
+  - **Einstiege:** Kontakte und Firmen sind eigene Einstiege. Die Schnellsuche (⌘K) findet Personen, Firmen, Chancen und Mandate.
+  - **Signale:** `lib/crm/signale.ts` übernimmt Mail und Kalender, aber nur aus den GESCHÄFTLICHEN Quellen. Das private Postfach und private Kalender bleiben draußen. Übernommen werden nur Betreff und Titel, und Funktionspostfächer zählen nicht.
+  - **Zahlung:** Der Health-Faktor Zahlung kommt aus den Rechnungen im Finanzplan.
+  - **Anbindung:** Jarvis-Werkzeuge `crm_lage` und `chance_anlegen`. Der Head of Finance sieht MRR und die gewichtete Pipeline (nie im Basisplan).
+  - **Kampagnen** (`lib/crm/kampagnen.ts`):
+    - acht Playbooks mit Begründung und Rechtshinweis
+    - Kundenprofil und „Kunden wie unsere besten“ (nur mit gemeinsamer Branche)
+    - Head of Sales und Head of Marketing planen Kampagnen im Modus `kampagne`; angenommen wird daraus ein Entwurf
+    - offene Personen aktiver Kampagnen stehen in der Power Hour
+  - **Marketing:** Segmente (`lib/crm/segmente.ts`), Redaktionsplan, Newsletter (nur Double-Opt-in), Positionierung.
+  - **Events:** Vorlagen, Gästemischung, Checkliste → Aufgaben, Budget, Check-in, Nachfassen, Kalenderdatei.
+  - **Grenze:** MAKE OS versendet nichts.
 - **Die drei Heads (24.09.2026):** Sales, Marketing, Event in `lib/heads/`
   (Muster wie Head of Finance: Code rechnet das Datenpaket, Prüfer streicht
   erfundene IDs, Sperren und unzulässige Kanäle, Vollzug/unbelegte Zahlen →
