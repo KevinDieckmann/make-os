@@ -10,10 +10,13 @@
 //   3. Drei leise Ebenen: Achse+Ticks (Hintergrund), Heute-Anker (Akzent),
 //      Pills (Inhalt). Nichts anderes kämpft um Aufmerksamkeit.
 // Der Aufrufer liefert Ticks + Marker; die Höhe wächst mit der Dichte.
+// 24.09.: auf das lebendige Muster umgezogen — Zeit leuchtet in LEUCHT.puls,
+// Pills ohne Rahmen; die Geometrie ist unverändert.
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
+import { LEUCHT } from './schlank';
 import { localDay } from '@/lib/zeit';
 
 export interface StrahlMarker {
@@ -30,6 +33,8 @@ export interface StrahlTick { date: string; label: string }
 const LANE_H = 27;    // Höhe einer Pill-Reihe
 const MAX_LANES = 5;  // darüber: nur noch Punkt auf der Achse
 const FUSS = 46;      // Achse + Ticks + Luft
+const ZEIT = LEUCHT.puls;
+const ACHSE = 'rgba(255,255,255,.1)';
 
 export function Zeitstrahl({ von, bis, marker, ticks }: { von: string; bis: string; marker: StrahlMarker[]; ticks: StrahlTick[] }) {
   const boxRef = useRef<HTMLDivElement>(null);
@@ -76,7 +81,7 @@ export function Zeitstrahl({ von, bis, marker, ticks }: { von: string; bis: stri
 
         {/* Heute-Hairline durch den Pill-Raum — leise, hinter allem */}
         {heuteDrin && (
-          <div style={{ position: 'absolute', left: heuteX * breite - 0.5, top: 0, width: 1, height: achseY, background: `${T.accent}2E` }} />
+          <div style={{ position: 'absolute', left: heuteX * breite - 0.5, top: 0, width: 1, height: achseY, background: `${ZEIT}2E` }} />
         )}
 
         {/* Pills — Inhalt-Ebene, unterste Lane liegt an der Achse */}
@@ -92,8 +97,8 @@ export function Zeitstrahl({ von, bis, marker, ticks }: { von: string; bis: stri
           const stil = {
             position: 'absolute' as const, left: p.links, top, maxWidth: p.w,
             display: 'flex', alignItems: 'center', gap: 5, padding: '3px 9px 3px 8px',
-            background: T.panel2, border: `1px solid ${p.m.farbe}4D`, borderRadius: 999,
-            fontSize: 11, fontWeight: 600, color: T.ink, lineHeight: 1.35,
+            background: `${p.m.farbe}22`, border: 'none', borderRadius: 999,
+            fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, color: C.ink, lineHeight: 1.35,
             opacity: vergangen ? 0.45 : 1, zIndex: 2, textDecoration: 'none' as const,
           };
           const titel = p.m.titel ?? `${p.m.label} · ${p.m.date.slice(8)}.${p.m.date.slice(5, 7)}.`;
@@ -104,7 +109,7 @@ export function Zeitstrahl({ von, bis, marker, ticks }: { von: string; bis: stri
                 : <span className="zeit-pill" title={titel} style={stil}>{inhalt}</span>}
               {/* Faden vom Pill zur Achse + Punkt auf der Achse */}
               <span style={{ position: 'absolute', left: p.cx - 0.5, top: top + LANE_H - 6, width: 1, height: achseY - (top + LANE_H - 6), background: `${p.m.farbe}40`, zIndex: 1 }} />
-              <span style={{ position: 'absolute', left: p.cx - 3, top: achseY - 3, width: 6, height: 6, borderRadius: '50%', background: p.m.farbe, opacity: vergangen ? 0.45 : 1, zIndex: 3 }} />
+              <span style={{ position: 'absolute', left: p.cx - 3, top: achseY - 3, width: 6, height: 6, borderRadius: '50%', background: p.m.farbe, boxShadow: vergangen ? undefined : `0 0 8px ${p.m.farbe}99`, opacity: vergangen ? 0.45 : 1, zIndex: 3 }} />
             </span>
           );
         })}
@@ -112,32 +117,32 @@ export function Zeitstrahl({ von, bis, marker, ticks }: { von: string; bis: stri
         {/* Überlauf jenseits der Lanes: nur der Punkt, Details im Hover-Titel */}
         {pills.filter(p => p.kompakt).map((p, i) => (
           <span key={`k-${i}`} title={p.m.titel ?? `${p.m.label} · ${p.m.date.slice(8)}.${p.m.date.slice(5, 7)}.`}
-            style={{ position: 'absolute', left: p.cx - 3, top: achseY - 3, width: 6, height: 6, borderRadius: '50%', background: p.m.farbe, zIndex: 3 }} />
+            style={{ position: 'absolute', left: p.cx - 3, top: achseY - 3, width: 6, height: 6, borderRadius: '50%', background: p.m.farbe, boxShadow: `0 0 8px ${p.m.farbe}99`, zIndex: 3 }} />
         ))}
 
         {!sichtbar.length && (
-          <div style={{ position: 'absolute', left: 0, right: 0, top: achseY - 34, textAlign: 'center', fontSize: 12, color: T.muted }}>
+          <div style={{ position: 'absolute', left: 0, right: 0, top: achseY - 34, textAlign: 'center', fontSize: 12, color: C.inkLeise }}>
             Nichts terminiert in diesem Zeitraum.
           </div>
         )}
 
         {/* Achse: verstrichene Zeit gefüllt, Rest offen — der Zeitraum als Fortschritt */}
-        <div style={{ position: 'absolute', left: 0, right: 0, top: achseY - 1, height: 2, background: T.line, borderRadius: 1 }} />
-        <div style={{ position: 'absolute', left: 0, top: achseY - 1, width: `${heuteX * 100}%`, height: 2, background: `linear-gradient(90deg, ${T.accent}22, ${T.accent}99)`, borderRadius: 1 }} />
+        <div style={{ position: 'absolute', left: 0, right: 0, top: achseY - 1, height: 2, background: ACHSE, borderRadius: 1 }} />
+        <div style={{ position: 'absolute', left: 0, top: achseY - 1, width: `${heuteX * 100}%`, height: 2, background: `linear-gradient(90deg, ${ZEIT}22, ${ZEIT}99)`, borderRadius: 1, boxShadow: `0 0 10px ${ZEIT}55` }} />
 
         {/* Heute-Anker */}
         {heuteDrin && (
           <>
-            <div className="zeit-puls" style={{ position: 'absolute', left: heuteX * breite - 4.5, top: achseY - 4.5, width: 9, height: 9, borderRadius: '50%', background: T.accent, zIndex: 4 }} />
-            <div style={{ position: 'absolute', left: heuteX * breite, top: achseY + 9, transform: 'translateX(-50%)', fontFamily: T.mono, fontSize: 11, letterSpacing: '.12em', color: T.accent, whiteSpace: 'nowrap' }}>HEUTE</div>
+            <div className="zeit-puls" style={{ position: 'absolute', left: heuteX * breite - 4.5, top: achseY - 4.5, width: 9, height: 9, borderRadius: '50%', background: ZEIT, boxShadow: `0 0 12px ${ZEIT}99`, zIndex: 4 }} />
+            <div style={{ position: 'absolute', left: heuteX * breite, top: achseY + 9, transform: 'translateX(-50%)', fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 700, letterSpacing: '.12em', color: ZEIT, whiteSpace: 'nowrap' }}>HEUTE</div>
           </>
         )}
 
         {/* Ticks — Hintergrund-Ebene; weichen dem HEUTE-Label aus */}
         {ticks.filter(tk => !heuteDrin || Math.abs(frak(tk.date) - heuteX) * breite > 28).map(tk => (
           <div key={tk.date} style={{ position: 'absolute', left: `${frak(tk.date) * 100}%`, top: achseY + 3, transform: 'translateX(-50%)', textAlign: 'center' }}>
-            <div style={{ width: 1, height: 6, background: T.line, margin: '0 auto' }} />
-            <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 3, whiteSpace: 'nowrap' }}>{tk.label}</div>
+            <div style={{ width: 1, height: 6, background: ACHSE, margin: '0 auto' }} />
+            <div style={{ fontFamily: SCHRIFT.display, fontSize: 11, color: C.inkLeise, marginTop: 3, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{tk.label}</div>
           </div>
         ))}
       </div>

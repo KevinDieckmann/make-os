@@ -18,9 +18,13 @@ import Link from 'next/link';
 //   2. MELDEN — der Wächter-Alarm und der Hinweis des Verbesserungs-Loops.
 //      Die kamen früher aus der Antwort des selbst ausgelösten Laufs. Jetzt
 //      läuft er im Hintergrund, also werden sie aus dem Zustand gelesen.
+//
+// 24.09.: auf das lebendige Bild angeglichen — schwebende Kärtchen als `.karte`,
+// der Alarm mit gelbem Hauch am Rand statt Rahmen, Labels in der Text-Schrift.
 
 import { useEffect, useRef, useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { LEUCHT } from './schlank';
 import { tagKey, type LaufArt } from '@/lib/tageslauf';
 
 const MIN = 60_000;
@@ -30,6 +34,14 @@ interface Auftrag { name: string; status: string; beendet?: string; ergebnis?: s
 /** Meldung mit ihrem Schlüssel — den braucht das Wegklicken, sonst kommt sie
  *  beim nächsten Blick sofort wieder. */
 interface Meldung { key: string; text: string }
+
+/** Beschriftung über der Meldung — gesperrt, leise, Text-Schrift. */
+const etikett = (farbe: string) => ({
+  fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600 as const, letterSpacing: '.1em',
+  textTransform: 'uppercase' as const, color: farbe, marginBottom: 4,
+});
+const schliessKnopf = { background: 'transparent', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 14, padding: 0, flex: '0 0 auto' } as const;
+const weiter = { display: 'inline-block', marginTop: 8, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, color: C.aktiv, textDecoration: 'none' } as const;
 
 export function Taktgeber() {
   const [alarm, setAlarm] = useState<Meldung | null>(null);
@@ -85,20 +97,20 @@ export function Taktgeber() {
 
   if (!alarm && hinweis) {
     return (
-      <div style={{
+      <div className="karte os-auf" style={{
         position: 'fixed', bottom: 18, right: 18, zIndex: 90, maxWidth: 340,
-        background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20,
-        padding: '13px 16px', boxShadow: '0 12px 40px rgba(0,0,0,.45)',
+        padding: '14px 16px', color: C.ink, fontFamily: SCHRIFT.text,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 40px rgba(0,0,0,.45)',
       }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: T.muted, marginBottom: 3 }}>Verbesserungs-Loop</div>
-            <div style={{ fontSize: 13, color: T.ink, lineHeight: 1.5 }}>{hinweis.text}</div>
-            <Link href="/os/bauplan" style={{ display: 'inline-block', marginTop: 7, fontFamily: T.mono, fontSize: 11, color: T.accentInk, textDecoration: 'none' }}>ansehen ›</Link>
+            <div style={etikett(C.inkLeise)}>Verbesserungs-Loop</div>
+            <div style={{ fontSize: TYP.bedien, color: C.ink, lineHeight: 1.5 }}>{hinweis.text}</div>
+            <Link href="/os/bauplan" style={weiter}>ansehen ›</Link>
           </div>
           <button onClick={() => { wegklicken(hinweis.key); setHinweis(null); }}
             aria-label="Hinweis schließen"
-            style={{ background: 'transparent', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 14, padding: 0, flex: '0 0 auto' }}>✕</button>
+            style={schliessKnopf}>✕</button>
         </div>
       </div>
     );
@@ -107,20 +119,20 @@ export function Taktgeber() {
   if (!alarm) return null;
 
   return (
-    <div style={{
+    <div className="karte os-auf" style={{
       position: 'fixed', bottom: 18, right: 18, zIndex: 90, maxWidth: 380,
-      background: T.panel, border: `1px solid ${T.amber}66`, borderRadius: 12,
-      padding: '13px 16px', boxShadow: '0 12px 40px rgba(0,0,0,.45)',
+      padding: '14px 16px', color: C.ink, fontFamily: SCHRIFT.text,
+      boxShadow: `inset 0 1px 0 rgba(255,255,255,.06), 0 12px 40px rgba(0,0,0,.45), inset 0 0 0 1px ${LEUCHT.achtung}26, 0 0 40px -12px ${LEUCHT.achtung}55`,
     }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <span style={{ color: T.amber, flex: '0 0 auto' }}>⚠</span>
+        <span style={{ color: LEUCHT.achtung, flex: '0 0 auto', textShadow: `0 0 10px ${LEUCHT.achtung}99` }}>⚠</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: T.amber, marginBottom: 3 }}>Wächter</div>
-          <div style={{ fontSize: 13, color: T.ink, lineHeight: 1.5 }}>{alarm.text}</div>
-          <Link href="/os/tageslauf" style={{ display: 'inline-block', marginTop: 7, fontFamily: T.mono, fontSize: 11, color: T.accentInk, textDecoration: 'none' }}>ansehen ›</Link>
+          <div style={etikett(LEUCHT.achtung)}>Wächter</div>
+          <div style={{ fontSize: TYP.bedien, color: C.ink, lineHeight: 1.5 }}>{alarm.text}</div>
+          <Link href="/os/tageslauf" style={weiter}>ansehen ›</Link>
         </div>
         <button onClick={() => { wegklicken(alarm.key); setAlarm(null); }}
-          style={{ background: 'transparent', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 14, padding: 0, flex: '0 0 auto' }}>✕</button>
+          style={schliessKnopf}>✕</button>
       </div>
     </div>
   );

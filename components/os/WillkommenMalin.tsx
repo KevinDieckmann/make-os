@@ -6,10 +6,18 @@
 //
 // Das Bild ist gezeichnet, kein Foto: zwei Lichter, die sich zu einem Herz
 // überlagern. Passt zur Software, wird nie unscharf und lädt nichts von außen.
+//
+// 24.09.: auf das lebendige Bild angeglichen — Karte mit Tiefe statt Rahmen,
+// Display-Schrift für den Gruß, der Knopf im `Knopf`-Stil. Bild und Ablauf
+// sind unverändert.
 
 import { useEffect, useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { Knopf } from './schlank';
 import { personLesen, modusLesen, beiWechsel } from '@/lib/make-one/arbeitsplatz-browser';
+
+/** Malins Licht im Bild — dieselbe Farbe wie im gezeichneten Herz. */
+const MALIN = '#FF5C5C';
 
 function ZweiLichter() {
   return (
@@ -89,31 +97,30 @@ export function WillkommenMalin() {
       display: 'grid', placeItems: 'center', padding: 20, backdropFilter: 'blur(6px)',
     }}>
       <div onClick={e => e.stopPropagation()} className="gruss-auf" style={{
-        width: 'min(460px, 94vw)', background: T.panel, border: `1px solid ${T.lineHot}`,
-        borderRadius: 20, padding: '26px 28px 24px', textAlign: 'center',
-        boxShadow: '0 30px 90px rgba(0,0,0,.6)',
+        width: 'min(460px, 94vw)', background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)',
+        borderRadius: 20, padding: '26px 28px 24px', textAlign: 'center', color: C.ink, fontFamily: SCHRIFT.text,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 30px 90px rgba(0,0,0,.6)',
       }}>
         <ZweiLichter />
-        <div style={{ fontSize: 22, fontWeight: 700, color: T.ink, marginTop: 14, lineHeight: 1.3 }}>
-          Ich liebe dich, Schatziiiii <span style={{ color: T.crit }}>:****</span>
+        <div style={{ fontFamily: SCHRIFT.display, fontSize: 22, fontWeight: 700, letterSpacing: '-.02em', color: C.ink, marginTop: 14, lineHeight: 1.3 }}>
+          Ich liebe dich, Schatziiiii <span style={{ color: MALIN, textShadow: `0 0 16px ${MALIN}66` }}>:****</span>
         </div>
-        <p style={{ fontSize: 13.5, color: T.inkDim, lineHeight: 1.6, margin: '12px 0 0' }}>
+        <p style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.6, margin: '12px 0 0' }}>
           Willkommen in unserem System. Ich hab das hier für uns beide gebaut —
           damit wir endlich alles an einem Ort haben und du überall drin bist.
           Alles, was du siehst, gehört uns.
         </p>
-        <p style={{ fontSize: 13.5, color: T.inkDim, lineHeight: 1.6, margin: '10px 0 0' }}>
+        <p style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.6, margin: '10px 0 0' }}>
           Das hier ist unser Fundament. So schaffen wir es, immer alles
-          zusammen zu machen <span style={{ color: T.accent }}>:)</span>
+          zusammen zu machen <span style={{ color: C.aktiv }}>:)</span>
         </p>
-        <p style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, margin: '14px 0 0' }}>
+        <p style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.inkLeise, margin: '14px 0 0' }}>
           — Kevin
         </p>
-        <button onClick={schliessen} style={{
-          marginTop: 20, width: '100%', fontFamily: T.sans, fontSize: 14, fontWeight: 700,
-          padding: '12px 0', borderRadius: 11, border: 'none', cursor: 'pointer',
-          background: T.accent, color: T.void,
-        }}>Los geht's</button>
+        {/* Im Raster gestreckt, damit der Knopf die ganze Breite nimmt. */}
+        <div style={{ display: 'grid', marginTop: 20 }}>
+          <Knopf onClick={schliessen}>Los geht's</Knopf>
+        </div>
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `

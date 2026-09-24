@@ -11,16 +11,18 @@
 //
 // Alles, was die Karte zeigt, ist auch auf der Karte änderbar. Beim Durchgehen
 // zu zweit will man nicht für jede Änderung eine Zeile aufklappen.
+// 24.09.: auf das lebendige Muster umgezogen — rahmenlose Spalten, Karten mit
+// Prio-Punkt, Bahnen als Segmente. Ziehen und Ablegen unverändert.
 
-import { useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+import { useState, type CSSProperties } from 'react';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { ORG, ORGS } from '@/lib/make-one/organisation-data';
 import { Faelligkeit } from './Faelligkeit';
 import { BlockiertChip } from './Abhaengigkeit';
-import type { Priority } from '@/types/common';
+import { Segmente, Punkt, Leer, prioFarbe, LEUCHT } from './schlank';
 import type { Task, TaskStatus } from '@/types/tasks';
 
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise };
 
 /** Von links nach rechts — der Weg, den eine Aufgabe nimmt. */
 const SPALTEN: { id: TaskStatus; titel: string; satz: string }[] = [
@@ -30,13 +32,16 @@ const SPALTEN: { id: TaskStatus; titel: string; satz: string }[] = [
   { id: 'blocked', titel: 'Blockiert', satz: 'Wartet auf etwas' },
   { id: 'done', titel: 'Erledigt', satz: 'Weg' },
 ];
+const SPALTE_FARBE: Partial<Record<TaskStatus, string>> = { done: LEUCHT.gut, blocked: LEUCHT.achtung, 'in-progress': LEUCHT.puls };
 
-const PRIO_FARBE: Record<Priority, string> = { critical: T.crit, high: T.amber, medium: T.accent, low: T.muted };
 const PERSON: Record<string, string> = { kevin: 'Kevin', malin: 'Malin', both: 'Beide' };
 const PERSON_ZYKLUS = ['kevin', 'both', 'malin'] as const;
-const PERSON_FARBE: Record<string, string> = { kevin: T.accentInk, malin: T.amber, both: T.accent };
+// Personenfarben sind keine Zustandsfarben — Kevin Türkis, Malin Rosé, Beide Violett.
+// (Dieselbe Zuordnung steht in AufgabenView.tsx.)
+const PERSON_FARBE: Record<string, string> = { kevin: C.aktiv, malin: LEUCHT.beziehung, both: LEUCHT.agenten };
 
 type Bahnen = 'keine' | 'person' | 'firma';
+const BAHN_WAHL: { id: Bahnen; label: string }[] = [{ id: 'person', label: 'Nach Person' }, { id: 'firma', label: 'Nach Firma' }, { id: 'keine', label: 'Ohne' }];
 
 export function AufgabenBoard({ tasks, heute, orgVon, patchTask, setOrg }: {
   tasks: Task[];
@@ -61,7 +66,7 @@ export function AufgabenBoard({ tasks, heute, orgVon, patchTask, setOrg }: {
           id: o.id, titel: o.label, satz: o.satz, farbe: o.farbe,
           tasks: tasks.filter(t => orgVon(t) === o.id),
         }))
-        : [{ id: 'alle', titel: '', satz: '', farbe: T.line, tasks }];
+        : [{ id: 'alle', titel: '', satz: '', farbe: C.inkLeise, tasks }];
 
   const sichtbar = gruppen.filter(g => g.tasks.length > 0 || bahnen === 'person');
 
@@ -82,37 +87,31 @@ export function AufgabenBoard({ tasks, heute, orgVon, patchTask, setOrg }: {
   return (
     <div>
       {/* Bahnen umschalten — die zwei Fragen einer Verteil-Runde */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-        <span style={lbl}>Bahnen</span>
-        {([['person', 'Nach Person'], ['firma', 'Nach Firma'], ['keine', 'Ohne']] as const).map(([k, label]) => (
-          <button key={k} onClick={() => setBahnen(k)}
-            style={{
-              fontFamily: T.sans, fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '5px 12px', borderRadius: 8,
-              border: `1px solid ${bahnen === k ? T.lineHot : T.line}`,
-              background: bahnen === k ? T.accentSoft : 'transparent',
-              color: bahnen === k ? T.accentInk : T.inkDim,
-            }}>{label}</button>
-        ))}
-        <span style={{ fontSize: 12, color: T.muted, marginLeft: 'auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+        <span style={mikro}>Bahnen</span>
+        <Segmente liste={BAHN_WAHL} aktiv={bahnen} onWahl={setBahnen} />
+        <span style={{ fontSize: 12, color: C.inkLeise, marginLeft: 'auto' }}>
           Karte greifen und in die Spalte ziehen — in einer Bahn abgelegt, wechselt auch {bahnen === 'firma' ? 'die Firma' : 'die Person'}.
         </span>
       </div>
 
       {sichtbar.map(g => (
-        <section key={g.id} style={{ marginBottom: bahnen === 'keine' ? 0 : 20 }}>
+        <section key={g.id} style={{ marginBottom: bahnen === 'keine' ? 0 : 22 }}>
           {bahnen !== 'keine' && (
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, margin: '0 0 7px', paddingLeft: 2 }}>
-              <span style={{ width: 9, height: 9, borderRadius: 3, background: g.farbe, flex: '0 0 auto' }} />
-              <span style={{ fontSize: 14.5, fontWeight: 700, color: T.ink }}>{g.titel}</span>
-              <span style={{ fontSize: 12, color: T.muted }}>{g.satz}</span>
-              <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginLeft: 'auto' }}>{g.tasks.length}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, margin: '0 0 8px', paddingLeft: 2 }}>
+              <Punkt farbe={g.farbe} />
+              <span style={{ fontSize: TYP.body, fontWeight: 700, color: C.ink }}>{g.titel}</span>
+              <span style={{ fontSize: 12, color: C.inkLeise }}>{g.satz}</span>
+              <span style={{ fontFamily: SCHRIFT.display, fontSize: 12, fontWeight: 700, color: g.tasks.length ? C.inkDim : C.inkLeise, marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{g.tasks.length || '—'}</span>
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${SPALTEN.length}, minmax(180px, 1fr))`, gap: 9, overflowX: 'auto' }}>
+          {/* Fünf Spalten; auf dem Handy scrollt das Kanban seitwärts. */}
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${SPALTEN.length}, minmax(180px, 1fr))`, gap: 9, overflowX: 'auto', paddingBottom: 4 }}>
             {SPALTEN.map(sp => {
               const drin = g.tasks.filter(t => (t.status ?? 'todo') === sp.id);
               const zielHier = ueber === `${g.id}|${sp.id}`;
+              const farbe = SPALTE_FARBE[sp.id];
               return (
                 <div
                   key={sp.id}
@@ -120,23 +119,25 @@ export function AufgabenBoard({ tasks, heute, orgVon, patchTask, setOrg }: {
                   onDragLeave={() => setUeber(u => (u === `${g.id}|${sp.id}` ? null : u))}
                   onDrop={() => ablegen(sp.id, g.id)}
                   style={{
-                    background: zielHier ? T.accentSoft : T.panel,
-                    border: `1px solid ${zielHier ? T.lineHot : T.line}`,
-                    borderRadius: 12, padding: '9px 9px 11px', minHeight: 92,
-                    transition: 'background .12s, border-color .12s',
+                    background: zielHier ? C.aktivSanft : 'rgba(255,255,255,.04)',
+                    borderRadius: 14, padding: '10px 9px 11px', minHeight: 92,
+                    boxShadow: zielHier ? `inset 0 0 0 1px ${C.aktiv}66, 0 0 24px -8px ${C.aktiv}88` : undefined,
+                    transition: 'background .15s ease, box-shadow .15s ease',
                   }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6, marginBottom: 7 }}>
-                    <span style={{ ...lbl, fontSize: 11, color: sp.id === 'done' ? T.accent : sp.id === 'blocked' ? T.crit : T.muted }}>{sp.titel}</span>
-                    <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{drin.length}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 8 }}>
+                    <span style={{ ...mikro, display: 'inline-flex', alignItems: 'center', gap: 6, color: farbe ?? C.inkLeise }}>
+                      {farbe && <Punkt farbe={farbe} groesse={6} />}{sp.titel}
+                    </span>
+                    <span style={{ fontFamily: SCHRIFT.display, fontSize: 12, fontWeight: 700, color: drin.length ? C.inkDim : C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{drin.length || '—'}</span>
                   </div>
 
                   {drin.length === 0 && (
-                    <div style={{ fontSize: 11, color: T.muted, opacity: 0.6, lineHeight: 1.4, padding: '4px 2px' }}>{sp.satz}</div>
+                    <div style={{ fontSize: 11, color: C.inkLeise, opacity: 0.7, lineHeight: 1.4, padding: '4px 2px' }}>{sp.satz}</div>
                   )}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                     {drin.map(t => (
-                      <Karte
+                      <Kanbankarte
                         key={t.id} t={t} alleTasks={tasks} heute={heute} org={orgVon(t)}
                         greift={zieht === t.id}
                         anfassen={() => setZieht(t.id)}
@@ -153,21 +154,20 @@ export function AufgabenBoard({ tasks, heute, orgVon, patchTask, setOrg }: {
       ))}
 
       {!tasks.length && (
-        <div style={{ background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '20px', fontSize: 13, color: T.muted, textAlign: 'center' }}>
-          Keine Aufgaben in dieser Auswahl — oben die Filter weiter aufmachen.
-        </div>
+        <Leer>Keine Aufgaben in dieser Auswahl — oben die Filter weiter aufmachen.</Leer>
       )}
     </div>
   );
 }
 
-function Karte({ t, alleTasks, heute, org, greift, anfassen, loslassen, patchTask }: {
+function Kanbankarte({ t, alleTasks, heute, org, greift, anfassen, loslassen, patchTask }: {
   t: Task; alleTasks: Task[]; heute: string; org: string; greift: boolean;
   anfassen: () => void; loslassen: () => void;
   patchTask: (id: string, p: Record<string, unknown>) => void;
 }) {
   const o = ORG[org];
   const spaet = !!t.dueDate && t.dueDate < heute && t.status !== 'done';
+  const person = PERSON_FARBE[t.assignee ?? 'kevin'];
   const naechstePerson = () => {
     const i = PERSON_ZYKLUS.indexOf((t.assignee ?? 'kevin') as typeof PERSON_ZYKLUS[number]);
     return PERSON_ZYKLUS[(i + 1) % PERSON_ZYKLUS.length];
@@ -179,33 +179,35 @@ function Karte({ t, alleTasks, heute, org, greift, anfassen, loslassen, patchTas
       onDragStart={anfassen}
       onDragEnd={loslassen}
       style={{
-        background: T.panel2, border: `1px solid ${spaet ? `${T.crit}55` : T.lineSoft}`,
-        borderLeft: `3px solid ${PRIO_FARBE[t.priority]}`,
-        borderRadius: 9, padding: '8px 9px', cursor: 'grab',
+        background: 'rgba(255,255,255,.06)', borderRadius: 12, padding: '9px 10px', cursor: 'grab',
         opacity: greift ? 0.4 : 1,
+        boxShadow: spaet ? `0 0 18px -6px ${LEUCHT.kritisch}88` : 'inset 0 1px 0 rgba(255,255,255,.04)',
+        transition: 'opacity .15s ease, box-shadow .2s ease',
       }}>
-      <div style={{
-        fontSize: 12.5, color: T.ink, lineHeight: 1.4, marginBottom: 6,
-        textDecoration: t.status === 'done' ? 'line-through' : 'none',
-        opacity: t.status === 'done' ? 0.6 : 1,
-      }}>{t.title}</div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 7 }}>
+        <span style={{ marginTop: 5, display: 'inline-flex' }}><Punkt farbe={prioFarbe(t.priority)} groesse={7} /></span>
+        <div style={{
+          fontSize: TYP.bedien, fontWeight: 500, color: C.ink, lineHeight: 1.4, minWidth: 0,
+          textDecoration: t.status === 'done' ? 'line-through' : 'none',
+          opacity: t.status === 'done' ? 0.6 : 1,
+        }}>{t.title}</div>
+      </div>
 
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
         {/* Person: ein Klick reicht ihn weiter — Kevin → Beide → Malin */}
         <button
           onClick={() => patchTask(t.id, { assignee: naechstePerson() })}
           title="Weiterreichen: Kevin → Beide → Malin"
+          className="fassbar"
           style={{
-            fontFamily: T.mono, fontSize: 11, cursor: 'pointer', padding: '2px 7px', borderRadius: 6,
-            border: `1px solid ${PERSON_FARBE[t.assignee ?? 'kevin']}55`,
-            background: `${PERSON_FARBE[t.assignee ?? 'kevin']}14`,
-            color: PERSON_FARBE[t.assignee ?? 'kevin'],
+            fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '3px 9px', borderRadius: 999,
+            border: 'none', background: `${person}22`, color: person, letterSpacing: '.02em',
           }}>{PERSON[t.assignee ?? 'kevin']}</button>
 
         <Faelligkeit klein wert={t.dueDate} setzen={d => patchTask(t.id, { dueDate: d })} />
         <BlockiertChip klein t={t} alle={alleTasks} />
 
-        {o && <span style={{ fontFamily: T.mono, fontSize: 11, color: o.farbe, opacity: 0.85, marginLeft: 'auto' }}>{o.kurz}</span>}
+        {o && <span style={{ fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, color: o.farbe, opacity: 0.9, marginLeft: 'auto' }}>{o.kurz}</span>}
       </div>
     </div>
   );

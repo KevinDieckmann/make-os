@@ -19,12 +19,17 @@ import Link from 'next/link';
 // STIMME (Kevin: „und gleichzeitig auch mit ihm sprechen"): Mikrofon diktiert,
 // Jarvis liest seine Antwort vor, und im Freihand-Betrieb hört er nach dem
 // Sprechen von selbst wieder zu — ein echtes Gespräch ohne Tastatur.
+//
+// 24.09.: auf das lebendige Muster umgezogen — Flächen wie die Karten, Chips,
+// Knöpfe und Eingabe aus schlank.tsx, Jarvis-Lila für ihn, Teal für die
+// Bedienung, Grün/Gelb/Rot für Zustand. Die Logik ist unverändert.
 
-import { useEffect, useRef, useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import type { Priority } from '@/types';
 import { Rich } from './Rich';
+import { Chip, Knopf, feld, LEUCHT } from './schlank';
 import { useStimme } from '@/hooks/useStimme';
 import { fuerStimme, titelAus, wannText, type Gespraech, type VerlaufNachricht } from '@/lib/make-one/jarvis-verlauf';
 
@@ -48,17 +53,26 @@ interface Handoff { agent: string; name: string; href: string; why: string }
 interface Msg { role: 'user' | 'kimmi'; text: string; zeit?: string; handoffs?: Handoff[]; ran?: { agent: string; ok: boolean }[] }
 interface Fenster { offen: boolean; w: number; h: number; right: number; bottom: number }
 
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+// Jarvis-Lila für alles, was er selbst ist; Teal für das, was man drückt.
+const J = LEUCHT.agenten;
+const HAAR = 'rgba(255,255,255,.07)';
+const FLAECHE = 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)';
+const lbl: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise };
 const MERKER_FENSTER = 'make-os-jarvis-fenster';
 const MERKER_STIMME = 'make-os-jarvis-stimme';
 const STANDARD: Fenster = { offen: false, w: 400, h: 560, right: 22, bottom: 22 };
 const MIN_W = 320, MIN_H = 380;
 
-const knopf = (aktiv?: boolean) => ({
-  fontFamily: T.mono, fontSize: 11, background: aktiv ? T.accentSoft : 'transparent',
-  border: `1px solid ${aktiv ? T.lineHot : T.line}`, color: aktiv ? T.accent : T.muted,
-  borderRadius: 7, padding: '4px 8px', cursor: 'pointer', lineHeight: 1.2,
+/** Klickbare Pille im Chip-Stil — leuchtet in der Farbe, wenn sie „an" ist. */
+const chip = (farbe: string, an = true): CSSProperties => ({
+  display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 700, letterSpacing: '.02em',
+  lineHeight: 1.2, whiteSpace: 'nowrap', background: an ? `${farbe}22` : 'rgba(255,255,255,.06)', color: an ? farbe : C.inkDim,
+  border: 'none', borderRadius: 999, padding: '5px 11px', cursor: 'pointer', textDecoration: 'none',
 });
+const knopf = (aktiv?: boolean) => chip(C.aktiv, !!aktiv);
+/** Runder Bedienknopf (Mikro, Beleg, Senden, Fenster). */
+const rund: CSSProperties = { width: 32, height: 32, borderRadius: 10, flex: '0 0 auto', border: 'none', background: 'rgba(255,255,255,.06)', color: C.inkDim, cursor: 'pointer', display: 'grid', placeItems: 'center', fontSize: 14, padding: 0 };
+const zahl: CSSProperties = { fontFamily: SCHRIFT.display, fontVariantNumeric: 'tabular-nums', color: C.ink };
 
 /** Mikrofon — gezeichnet statt Emoji, damit es zum Rest der Oberfläche passt. */
 function Mikro({ farbe }: { farbe: string }) {
@@ -74,9 +88,9 @@ function Mikro({ farbe }: { farbe: string }) {
 function Orb({ size = 30, puls = false }: { size?: number; puls?: boolean }) {
   return (
     <span style={{ position: 'relative', width: size, height: size, flex: '0 0 auto', display: 'inline-block' }}>
-      {puls && <span className="jarvis-orb-ring" style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `1.5px solid ${T.accent}` }} />}
-      <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `1.5px solid ${T.accent}` }} />
-      <span className={puls ? 'jarvis-orb-kern' : undefined} style={{ position: 'absolute', inset: size * 0.28, borderRadius: '50%', background: T.accent, boxShadow: `0 0 ${size * 0.4}px ${T.accent}66` }} />
+      {puls && <span className="jarvis-orb-ring" style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `1.5px solid ${J}` }} />}
+      <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `1.5px solid ${J}` }} />
+      <span className={puls ? 'jarvis-orb-kern' : undefined} style={{ position: 'absolute', inset: size * 0.28, borderRadius: '50%', background: J, boxShadow: `0 0 ${size * 0.4}px ${J}66` }} />
     </span>
   );
 }
@@ -342,15 +356,16 @@ export function JarvisPanel() {
   if (!fenster.offen) {
     return (
       <button onClick={() => setFenster(f => ({ ...f, offen: true }))} aria-label="Jarvis öffnen" title="Jarvis" className="jarvis-fab"
-        style={{ position: 'fixed', right: 22, bottom: 22, zIndex: 70, width: 52, height: 52, borderRadius: '50%', border: 'none', background: 'linear-gradient(165deg,#1A2024,#12171A)', cursor: 'pointer', display: 'grid', placeItems: 'center', boxShadow: `0 8px 30px rgba(0,0,0,.45), 0 0 26px ${T.accent}33, inset 0 1px 0 rgba(255,255,255,.08)` }}>
+        style={{ position: 'fixed', right: 22, bottom: 22, zIndex: 70, width: 52, height: 52, borderRadius: '50%', border: 'none', background: FLAECHE, cursor: 'pointer', display: 'grid', placeItems: 'center', boxShadow: `0 8px 30px rgba(0,0,0,.45), 0 0 26px ${J}33, inset 0 1px 0 rgba(255,255,255,.08)` }}>
         <Orb size={30} puls />
-        {(thinking || stimme.hoert || stimme.spricht) && <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', background: stimme.hoert ? T.crit : stimme.spricht ? T.accent : T.amber }} />}
+        {(thinking || stimme.hoert || stimme.spricht) && <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', background: stimme.hoert ? LEUCHT.kritisch : stimme.spricht ? J : LEUCHT.achtung, boxShadow: `0 0 8px ${stimme.hoert ? LEUCHT.kritisch : stimme.spricht ? J : LEUCHT.achtung}` }} />}
       </button>
     );
   }
 
   // Im engen Kopf zählt Kürze — der Gesprächsknopf trägt den Zustand ohnehin.
   const zustand = stimme.hoert ? '● hört zu' : stimme.spricht ? '● spricht' : '● online';
+  const zustandFarbe = stimme.hoert ? LEUCHT.kritisch : stimme.spricht ? J : LEUCHT.gut;
 
   return (
     <div className="jarvis-fenster"
@@ -362,25 +377,25 @@ export function JarvisPanel() {
         const f = e.dataTransfer.files?.[0];
         if (f) void belegLesen(f);
       }}
-      style={{ position: 'fixed', right: fenster.right, bottom: fenster.bottom, width: `min(${fenster.w}px, calc(100vw - 16px))`, height: `min(${fenster.h}px, calc(100vh - 16px))`, zIndex: 70, display: 'flex', flexDirection: 'column', background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: `1px solid ${ueberDatei ? T.accent : 'rgba(255,255,255,.08)'}`, borderRadius: 20, boxShadow: `0 24px 70px rgba(0,0,0,.55), 0 0 40px -10px ${T.accent}44, inset 0 1px 0 rgba(255,255,255,.06)`, overflow: 'hidden' }}>
+      style={{ position: 'fixed', right: fenster.right, bottom: fenster.bottom, width: `min(${fenster.w}px, calc(100vw - 16px))`, height: `min(${fenster.h}px, calc(100vh - 16px))`, zIndex: 70, display: 'flex', flexDirection: 'column', background: FLAECHE, border: `1px solid ${ueberDatei ? C.aktiv : HAAR}`, borderRadius: 20, boxShadow: `0 24px 70px rgba(0,0,0,.55), 0 0 40px -10px ${J}44, inset 0 1px 0 rgba(255,255,255,.06)`, overflow: 'hidden', color: C.ink, fontFamily: SCHRIFT.text }}>
       {ueberDatei && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 5, background: `${T.accent}14`, border: `2px dashed ${T.accent}`, borderRadius: 20, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
-          <span style={{ fontSize: 13.5, fontWeight: 600, color: T.accentInk }}>Beleg loslassen — ich lese die Zahlen heraus</span>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 5, background: `${C.aktiv}14`, border: `2px dashed ${C.aktiv}`, borderRadius: 20, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
+          <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: C.aktiv }}>Beleg loslassen — ich lese die Zahlen heraus</span>
         </div>
       )}
       {/* Zieh-Ecke: stufenlos so groß, wie du arbeiten willst */}
       <div onPointerDown={zugStart('groesse')} title="Ziehen zum Vergrößern"
-        style={{ position: 'absolute', top: 0, left: 0, width: 26, height: 26, cursor: 'nwse-resize', zIndex: 3, borderTop: `2px solid ${T.accent}55`, borderLeft: `2px solid ${T.accent}55`, borderTopLeftRadius: 20 }} />
+        style={{ position: 'absolute', top: 0, left: 0, width: 26, height: 26, cursor: 'nwse-resize', zIndex: 3, borderTop: `2px solid ${J}55`, borderLeft: `2px solid ${J}55`, borderTopLeftRadius: 20 }} />
 
       {/* Kopf — am Kopf packst du das Fenster und schiebst es, wohin du willst */}
       <div onPointerDown={zugStart('ort')}
-        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px 10px 20px', borderBottom: `1px solid ${T.line}`, background: 'rgba(255,255,255,.03)', cursor: 'grab', touchAction: 'none' }}>
+        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px 10px 20px', borderBottom: `1px solid ${HAAR}`, background: 'rgba(255,255,255,.03)', cursor: 'grab', touchAction: 'none' }}>
         <Orb size={26} puls={stimme.hoert || stimme.spricht} />
         <div style={{ minWidth: 0, flex: '0 0 auto' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.04em' }}>JARVIS</div>
-          <div style={{ fontFamily: T.mono, fontSize: 11, color: stimme.hoert ? T.crit : stimme.spricht ? T.accentInk : T.accent, whiteSpace: 'nowrap' }}>{zustand}</div>
+          <div style={{ fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 700, letterSpacing: '.06em' }}>JARVIS</div>
+          <div style={{ fontSize: TYP.mikro, fontWeight: 600, color: zustandFarbe, whiteSpace: 'nowrap' }}>{zustand}</div>
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 5, alignItems: 'center' }} onPointerDown={e => e.stopPropagation()}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }} onPointerDown={e => e.stopPropagation()}>
           {/* Gesprächs-Modus: ein Knopf für alles — Mikrofon an, Antwort wird
               vorgelesen, danach hört er von selbst wieder zu. Kevins Ansage:
               „damit ich eine echte Konversation aufbauen kann." */}
@@ -393,14 +408,8 @@ export function JarvisPanel() {
                 else { stimme.schweig(); stimme.hoerAuf(); }
               }}
               title={freihand ? 'Gespräch beenden' : 'Gespräch: sprechen und vorlesen lassen'}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6, fontFamily: T.mono, fontSize: 11,
-                borderRadius: 8, padding: '5px 10px', cursor: 'pointer', lineHeight: 1.2,
-                border: `1px solid ${freihand ? T.accent : T.line}`,
-                background: freihand ? T.accentSoft : 'transparent',
-                color: freihand ? T.accent : T.muted,
-              }}>
-              <Mikro farbe={freihand ? T.accent : T.muted} />
+              style={chip(J, freihand)}>
+              <Mikro farbe={freihand ? J : C.inkDim} />
               <span style={{ whiteSpace: 'nowrap' }}>
                 {freihand ? (stimme.hoert ? 'hört' : stimme.spricht ? 'spricht' : 'Gespräch') : 'Gespräch'}
               </span>
@@ -409,27 +418,22 @@ export function JarvisPanel() {
           {/* Weg ins volle Hirn. Das Symbol selbst öffnet weiter dieses Fenster:
               eine Frage im Vorbeigehen soll die Seite nicht verlassen, auf der
               Kevin gerade arbeitet. Wer den ganzen Empfang will, geht hier. */}
-          <Link href="/jarvis" title="Zum Hirn — der ganze Empfang"
-            style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, background: T.accentSoft,
-              border: `1px solid ${T.lineHot}`, borderRadius: 7, padding: '4px 9px',
-              textDecoration: 'none', whiteSpace: 'nowrap' }}>
+          <Link href="/jarvis" title="Zum Hirn — der ganze Empfang" style={chip(J)}>
             ◎ Hirn
           </Link>
           {stapelOffen > 0 && (
-            <Link href="/os/stapel" title={`${stapelOffen} vorbereitet — wartet auf deine Freigabe`}
-              style={{ fontFamily: T.mono, fontSize: 11, fontWeight: 600, color: T.amber, background: `${T.amber}18`,
-                border: `1px solid ${T.amber}55`, borderRadius: 7, padding: '4px 9px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-              ✋ {stapelOffen}
+            <Link href="/os/stapel" title={`${stapelOffen} vorbereitet — wartet auf deine Freigabe`} style={{ textDecoration: 'none', display: 'inline-flex' }}>
+              <Chip farbe={LEUCHT.achtung}>✋ {stapelOffen}</Chip>
             </Link>
           )}
-          <button onClick={() => setZeigeVerlauf(v => !v)} title={`Verlauf — ${alle.length} Gespräche`} style={{ ...knopf(zeigeVerlauf), whiteSpace: 'nowrap' }}>
+          <button onClick={() => setZeigeVerlauf(v => !v)} title={`Verlauf — ${alle.length} Gespräche`} style={knopf(zeigeVerlauf)}>
             ☰{alle.length ? ` ${alle.length}` : ''}
           </button>
-          {convo.length > 0 && <button onClick={neuesGespraech} title="Neues Gespräch (das alte bleibt im Verlauf)" style={{ ...knopf(), whiteSpace: 'nowrap' }}>Neu</button>}
+          {convo.length > 0 && <button onClick={neuesGespraech} title="Neues Gespräch (das alte bleibt im Verlauf)" style={knopf()}>Neu</button>}
           <button onClick={() => setFenster(f => ({ ...f, w: STANDARD.w, h: STANDARD.h, right: STANDARD.right, bottom: STANDARD.bottom }))} title="Normalgröße"
-            style={{ fontSize: 11, color: T.inkDim, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, width: 26, height: 26, cursor: 'pointer', lineHeight: 1 }}>◱</button>
+            style={{ ...rund, width: 26, height: 26, borderRadius: 8, fontSize: 12, lineHeight: 1 }}>◱</button>
           <button onClick={() => { stimme.schweig(); stimme.hoerAuf(); setFenster(f => ({ ...f, offen: false })); }} title="Schließen — Jarvis bleibt als Icon da"
-            style={{ fontSize: 12, color: T.inkDim, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, width: 26, height: 26, cursor: 'pointer', lineHeight: 1 }}>—</button>
+            style={{ ...rund, width: 26, height: 26, borderRadius: 8, fontSize: 12, lineHeight: 1 }}>—</button>
         </div>
       </div>
 
@@ -437,17 +441,17 @@ export function JarvisPanel() {
       {zeigeVerlauf && (
         <div style={{ flex: 1, overflowY: 'auto', background: 'transparent' }}>
           <div style={{ ...lbl, padding: '12px 16px 6px' }}>Verlauf · {alle.length} {alle.length === 1 ? 'Gespräch' : 'Gespräche'}</div>
-          {!alle.length && <div style={{ padding: '18px 16px', fontSize: 12.5, color: T.muted }}>Noch nichts gespeichert. Ab jetzt bleibt jedes Gespräch hier liegen.</div>}
+          {!alle.length && <div style={{ padding: '18px 16px', fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.55 }}>Noch nichts gespeichert. Ab jetzt bleibt jedes Gespräch hier liegen.</div>}
           {alle.map(g => (
-            <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderTop: `1px solid ${T.lineSoft}`, background: g.id === gespraechId ? T.accentSoft : 'transparent' }}>
-              <button onClick={() => oeffne(g)} style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'transparent', border: 0, cursor: 'pointer', padding: 0 }}>
-                <div style={{ fontSize: 12.5, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.titel}</div>
-                <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 2 }}>
+            <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderTop: `1px solid rgba(255,255,255,.05)`, background: g.id === gespraechId ? `${J}14` : 'transparent' }}>
+              <button onClick={() => oeffne(g)} style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'transparent', border: 0, cursor: 'pointer', padding: 0, fontFamily: SCHRIFT.text }}>
+                <div style={{ fontSize: TYP.bedien, fontWeight: 500, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.titel}</div>
+                <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 2 }}>
                   {heute ? wannText(g.zuletzt, heute) : g.zuletzt.slice(0, 10)} · {g.nachrichten.length} Nachrichten
                 </div>
               </button>
               <button onClick={() => loesche(g.id)} title="Gespräch löschen" aria-label={`Gespräch „${g.titel}" löschen`}
-                style={{ background: 'transparent', border: 0, color: T.muted, cursor: 'pointer', fontSize: 13, padding: '2px 4px', flex: '0 0 auto' }}>✕</button>
+                style={{ background: 'transparent', border: 0, color: C.inkLeise, cursor: 'pointer', fontSize: 13, padding: '2px 4px', flex: '0 0 auto' }}>✕</button>
             </div>
           ))}
         </div>
@@ -458,18 +462,18 @@ export function JarvisPanel() {
       <div ref={convoRef} style={{ flex: 1, overflowY: 'auto', padding: '14px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         {convo.length === 0 && !thinking && (
           <div>
-            <div style={{ ...lbl, marginBottom: 8 }}><span style={{ color: T.accent }}>JARVIS</span> · Lagebericht</div>
+            <div style={{ ...lbl, marginBottom: 8 }}><span style={{ color: J }}>JARVIS</span> · Lagebericht</div>
             <Rich text={briefing} />
           </div>
         )}
         {convo.map((m, i) => m.role === 'user'
-          ? <div key={i} style={{ alignSelf: 'flex-end', maxWidth: '88%', background: T.accentSoft, border: `1px solid ${T.lineHot}`, color: T.ink, borderRadius: '16px 16px 6px 16px', padding: '9px 13px', fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{m.text}</div>
+          ? <div key={i} style={{ alignSelf: 'flex-end', maxWidth: '88%', background: `${C.aktiv}22`, color: C.ink, borderRadius: 16, padding: '9px 13px', fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-wrap', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)' }}>{m.text}</div>
           : <div key={i} style={{ maxWidth: '96%' }}>
               <div style={{ ...lbl, marginBottom: 5, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: T.accent }}>JARVIS</span>
+                <span style={{ color: J }}>JARVIS</span>
                 {stimme.kannSprechen && (
                   <button onClick={() => stimme.spricht ? stimme.schweig() : stimme.lies(fuerStimme(m.text))} title={stimme.spricht ? 'Still' : 'Vorlesen'}
-                    style={{ background: 'transparent', border: 0, color: T.muted, cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: T.mono }}>
+                    style={{ background: 'transparent', border: 0, color: C.inkLeise, cursor: 'pointer', fontSize: TYP.mikro, padding: 0, fontFamily: SCHRIFT.text }}>
                     {stimme.spricht ? '■' : '▶'}
                   </button>
                 )}
@@ -478,118 +482,114 @@ export function JarvisPanel() {
               {m.ran && m.ran.length > 0 && (
                 <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 7 }}>
                   {m.ran.map((x, xi) => (
-                    <span key={xi} style={{ fontFamily: T.mono, fontSize: 11, color: x.ok ? T.accent : T.crit, border: `1px solid ${x.ok ? T.accent : T.crit}44`, borderRadius: 5, padding: '2px 7px' }}>
-                      ⚙ {x.agent} {x.ok ? 'ausgeführt' : 'fehlgeschlagen'}
-                    </span>
+                    <Chip key={xi} farbe={x.ok ? LEUCHT.gut : LEUCHT.kritisch}>
+                      <span style={{ fontFamily: SCHRIFT.mono, fontWeight: 600 }}>⚙ {x.agent}</span> {x.ok ? 'ausgeführt' : 'fehlgeschlagen'}
+                    </Chip>
                   ))}
                 </div>
               )}
               {m.handoffs && m.handoffs.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 9 }}>
                   {m.handoffs.map((h, hi) => (
-                    <Link key={hi} href={h.href} title={h.why} style={{ fontSize: 12, fontWeight: 600, color: T.accent, background: T.accentSoft, border: `1px solid ${T.lineHot}`, borderRadius: 8, padding: '6px 11px', textDecoration: 'none' }}>→ {h.name} öffnen</Link>
+                    <Link key={hi} href={h.href} title={h.why} style={{ ...chip(C.aktiv), padding: '6px 12px' }}>→ {h.name} öffnen</Link>
                   ))}
                 </div>
               )}
             </div>
         )}
-        {thinking && <div style={{ fontFamily: T.mono, fontSize: 11.5, color: T.muted }}><span style={{ color: T.accent }}>JARVIS</span> denkt nach …</div>}
+        {thinking && <div style={{ fontSize: 12, color: C.inkLeise }}><span style={{ ...lbl, color: J }}>JARVIS</span> denkt nach …</div>}
       </div>
       )}
 
       {/* Eingabe */}
-      <div style={{ padding: '10px 12px 12px', borderTop: `1px solid ${T.line}`, background: 'rgba(255,255,255,.03)' }}>
+      <div style={{ padding: '10px 12px 12px', borderTop: `1px solid ${HAAR}`, background: 'rgba(255,255,255,.03)' }}>
         {/* ── Beleg: gelesen, noch nicht gebucht ── */}
         {belegLaeuft && belegLaeuft !== 'speichern' && (
-          <div style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, marginBottom: 7 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: C.aktiv, marginBottom: 7 }}>
             liest {belegLaeuft} …
           </div>
         )}
         {belegFehler && (
-          <div style={{ fontSize: 12, color: T.amber, background: `${T.amber}12`, border: `1px solid ${T.amber}44`, borderRadius: 9, padding: '8px 11px', marginBottom: 8, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 12, color: LEUCHT.achtung, background: `${LEUCHT.achtung}14`, borderRadius: 12, padding: '8px 11px', marginBottom: 8, lineHeight: 1.5 }}>
             {belegFehler}
-            <button onClick={() => setBelegFehler(null)} style={{ marginLeft: 7, background: 'transparent', border: 'none', color: T.muted, cursor: 'pointer' }}>✕</button>
+            <button onClick={() => setBelegFehler(null)} style={{ marginLeft: 7, background: 'transparent', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>✕</button>
           </div>
         )}
         {belegGebucht && (
-          <div style={{ fontSize: 12, color: T.accentInk, background: T.accentSoft, border: `1px solid ${T.lineHot}`, borderRadius: 9, padding: '8px 11px', marginBottom: 8, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 12, color: LEUCHT.gut, background: `${LEUCHT.gut}14`, borderRadius: 12, padding: '8px 11px', marginBottom: 8, lineHeight: 1.5 }}>
             Übernommen: {belegGebucht}
-            <button onClick={() => setBelegGebucht(null)} style={{ marginLeft: 7, background: 'transparent', border: 'none', color: T.muted, cursor: 'pointer' }}>✕</button>
+            <button onClick={() => setBelegGebucht(null)} style={{ marginLeft: 7, background: 'transparent', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>✕</button>
           </div>
         )}
         {beleg && (
-          <div style={{ background: T.panel2, border: `1px solid ${T.lineHot}`, borderRadius: 11, padding: '10px 12px', marginBottom: 9 }}>
-            <div style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: T.muted, marginBottom: 6 }}>
+          <div style={{ background: 'rgba(255,255,255,.04)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)', borderRadius: 14, padding: '12px 14px', marginBottom: 9 }}>
+            <div style={{ ...lbl, marginBottom: 6 }}>
               Beleg gelesen · {beleg.dateiname}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '3px 10px', fontSize: 12.5 }}>
-              <span style={{ color: T.muted }}>Partner</span><span style={{ color: T.ink }}>{beleg.partner || '—'}</span>
-              <span style={{ color: T.muted }}>Betrag</span>
-              <span style={{ color: T.ink, fontFamily: T.mono }}>
+              <span style={{ color: C.inkLeise }}>Partner</span><span style={{ color: C.ink }}>{beleg.partner || '—'}</span>
+              <span style={{ color: C.inkLeise }}>Betrag</span>
+              <span style={zahl}>
                 {beleg.betragBrutto != null ? `${beleg.betragBrutto.toLocaleString('de-DE', { minimumFractionDigits: 2 })} ${beleg.waehrung ?? 'EUR'}` : '—'}
-                {beleg.betragNetto != null && beleg.betragBrutto !== beleg.betragNetto && <span style={{ color: T.muted }}> · netto {beleg.betragNetto.toLocaleString('de-DE', { minimumFractionDigits: 2 })}</span>}
+                {beleg.betragNetto != null && beleg.betragBrutto !== beleg.betragNetto && <span style={{ color: C.inkLeise }}> · netto {beleg.betragNetto.toLocaleString('de-DE', { minimumFractionDigits: 2 })}</span>}
               </span>
-              <span style={{ color: T.muted }}>Datum</span><span style={{ color: T.ink, fontFamily: T.mono }}>{beleg.datum ?? '—'}</span>
-              {beleg.zweck && <><span style={{ color: T.muted }}>Zweck</span><span style={{ color: T.inkDim }}>{beleg.zweck}</span></>}
-              {beleg.kategorie && <><span style={{ color: T.muted }}>Kategorie</span><span style={{ color: T.inkDim }}>{beleg.kategorie}</span></>}
-              <span style={{ color: T.muted }}>Richtung</span>
-              <span style={{ color: beleg.richtung === 'unklar' ? T.amber : T.inkDim }}>
+              <span style={{ color: C.inkLeise }}>Datum</span><span style={zahl}>{beleg.datum ?? '—'}</span>
+              {beleg.zweck && <><span style={{ color: C.inkLeise }}>Zweck</span><span style={{ color: C.inkDim }}>{beleg.zweck}</span></>}
+              {beleg.kategorie && <><span style={{ color: C.inkLeise }}>Kategorie</span><span style={{ color: C.inkDim }}>{beleg.kategorie}</span></>}
+              <span style={{ color: C.inkLeise }}>Richtung</span>
+              <span style={{ color: beleg.richtung === 'unklar' ? LEUCHT.achtung : C.inkDim }}>
                 {beleg.richtung === 'eingang' ? 'du zahlst' : beleg.richtung === 'ausgang' ? 'du bekommst Geld' : 'unklar — du entscheidest'}
               </span>
             </div>
             {!!beleg.unsicher?.length && (
-              <div style={{ fontSize: 11.5, color: T.amber, marginTop: 7, lineHeight: 1.45 }}>
+              <div style={{ fontSize: 11.5, color: LEUCHT.achtung, marginTop: 7, lineHeight: 1.45 }}>
                 Nicht sicher gelesen: {beleg.unsicher.join(' · ')} — bitte prüfen.
               </div>
             )}
-            <div style={{ display: 'flex', gap: 6, marginTop: 9, flexWrap: 'wrap' }}>
-              <button onClick={() => belegUebernehmen('buchung')} disabled={belegLaeuft === 'speichern'}
-                style={{ fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${T.lineHot}`, background: beleg.richtung === 'ausgang' ? 'transparent' : T.accent, color: beleg.richtung === 'ausgang' ? T.inkDim : T.void }}>
+            <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+              <Knopf onClick={() => belegUebernehmen('buchung')} aus={belegLaeuft === 'speichern'} leise={beleg.richtung === 'ausgang'}>
                 Als Ausgabe buchen
-              </button>
-              <button onClick={() => belegUebernehmen('rechnung')} disabled={belegLaeuft === 'speichern'}
-                style={{ fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${beleg.richtung === 'ausgang' ? T.lineHot : T.line}`, background: beleg.richtung === 'ausgang' ? T.accent : 'transparent', color: beleg.richtung === 'ausgang' ? T.void : T.inkDim }}>
+              </Knopf>
+              <Knopf onClick={() => belegUebernehmen('rechnung')} aus={belegLaeuft === 'speichern'} leise={beleg.richtung !== 'ausgang'}>
                 Als Rechnung führen
-              </button>
-              <button onClick={() => setBeleg(null)} style={{ fontSize: 12, padding: '6px 11px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.muted }}>Verwerfen</button>
+              </Knopf>
+              <Knopf leise onClick={() => setBeleg(null)}>Verwerfen</Knopf>
             </div>
           </div>
         )}
         {stimme.hoert && (
-          <div style={{ fontFamily: T.mono, fontSize: 11, color: T.crit, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span className="jarvis-orb-kern" style={{ width: 7, height: 7, borderRadius: '50%', background: T.crit, display: 'inline-block' }} />
+          <div style={{ fontSize: 12, fontWeight: 600, color: LEUCHT.kritisch, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 7 }}>
+            <span className="jarvis-orb-kern" style={{ width: 7, height: 7, borderRadius: '50%', background: LEUCHT.kritisch, boxShadow: `0 0 8px ${LEUCHT.kritisch}`, display: 'inline-block' }} />
             {stimme.teil ? stimme.teil : 'Ich höre …'}
           </div>
         )}
-        {stimme.fehler && <div style={{ fontSize: 11, color: T.amber, marginBottom: 6 }}>{stimme.fehler}</div>}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 9, background: 'rgba(255,255,255,.05)', border: `1px solid ${stimme.hoert ? T.crit : 'rgba(255,255,255,.06)'}`, borderRadius: 14, padding: '8px 10px' }}>
+        {stimme.fehler && <div style={{ fontSize: TYP.mikro, color: LEUCHT.achtung, marginBottom: 6 }}>{stimme.fehler}</div>}
+        <div style={{ ...feld, display: 'flex', alignItems: 'flex-end', gap: 9, padding: '8px 10px', boxShadow: stimme.hoert ? `0 0 0 1px ${LEUCHT.kritisch}, 0 0 14px ${LEUCHT.kritisch}44` : undefined }}>
           <textarea value={ask} onChange={e => setAsk(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && ask.trim() && !thinking) { e.preventDefault(); send(ask.trim()); } }}
             placeholder={stimme.hoert ? 'Sprich einfach …' : 'Sprich mit Jarvis …'} aria-label="Nachricht an Jarvis" rows={fenster.h > 640 ? 2 : 1} disabled={thinking}
-            style={{ flex: 1, background: 'transparent', border: 0, outline: 'none', color: T.ink, fontSize: 13.5, fontFamily: T.sans, resize: 'none', lineHeight: 1.5 }} />
+            style={{ flex: 1, minWidth: 0, background: 'transparent', border: 0, outline: 'none', color: C.ink, fontSize: 13.5, fontFamily: SCHRIFT.text, resize: 'none', lineHeight: 1.5, padding: '4px 2px' }} />
           {stimme.kannHoeren && (
             <button onClick={() => stimme.hoert ? stimme.hoerAuf() : stimme.hoerZu()} disabled={thinking}
               aria-label={stimme.hoert ? 'Aufnahme beenden' : 'Sprechen'} title={stimme.hoert ? 'Fertig — abschicken' : 'Mikrofon: sprich mit Jarvis'}
-              style={{ width: 32, height: 32, borderRadius: 9, flex: '0 0 auto', cursor: thinking ? 'default' : 'pointer', fontSize: 14,
-                border: `1px solid ${stimme.hoert ? T.crit : T.line}`, background: stimme.hoert ? `${T.crit}22` : 'transparent', color: stimme.hoert ? T.crit : T.inkDim }}>
-              {stimme.hoert ? '■' : <Mikro farbe={T.inkDim} />}
+              style={{ ...rund, cursor: thinking ? 'default' : 'pointer', background: stimme.hoert ? `${LEUCHT.kritisch}22` : 'rgba(255,255,255,.06)', color: stimme.hoert ? LEUCHT.kritisch : C.inkDim, boxShadow: stimme.hoert ? `0 0 12px ${LEUCHT.kritisch}66` : undefined }}>
+              {stimme.hoert ? '■' : <Mikro farbe={C.inkDim} />}
             </button>
           )}
           {/* Beleg an Jarvis geben — Kevins Ansage: „Rechnung fotografieren,
               Zahlen landen im System." */}
           <button onClick={() => dateiWahl.current?.click()} disabled={thinking || !!belegLaeuft}
             aria-label="Beleg anhängen" title="Rechnung oder Quittung anhängen — Jarvis liest die Zahlen heraus"
-            style={{ width: 32, height: 32, borderRadius: 9, flex: '0 0 auto', cursor: thinking || belegLaeuft ? 'default' : 'pointer', fontSize: 15,
-              border: `1px solid ${T.line}`, background: 'transparent', color: T.inkDim }}>📎</button>
+            style={{ ...rund, fontSize: 15, cursor: thinking || belegLaeuft ? 'default' : 'pointer' }}>📎</button>
           <input ref={dateiWahl} type="file" accept="image/*,application/pdf" hidden
             onChange={e => { const f = e.target.files?.[0]; if (f) void belegLesen(f); e.target.value = ''; }} />
           <button onClick={() => ask.trim() && !thinking && send(ask.trim())} aria-label="Senden" disabled={thinking}
-            style={{ width: 32, height: 32, borderRadius: 9, border: `1px solid ${T.lineHot}`, background: T.accent, color: T.void, cursor: thinking ? 'default' : 'pointer', fontSize: 15, flex: '0 0 auto' }}>↑</button>
+            style={{ ...rund, background: thinking ? 'rgba(255,255,255,.08)' : C.aktiv, color: thinking ? C.inkLeise : C.grund, fontSize: 15, fontWeight: 700, cursor: thinking ? 'default' : 'pointer', boxShadow: thinking ? undefined : `0 6px 18px -6px ${C.aktiv}99` }}>↑</button>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8, alignItems: 'center' }}>
           {['Plane meinen Tag', 'Was ist heute wichtig?', 'Was kann ich abgeben?'].map(c => (
             <button key={c} onClick={() => !thinking && send(c)} disabled={thinking}
-              style={{ fontSize: 11, color: T.inkDim, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 9px', cursor: thinking ? 'default' : 'pointer' }}>{c}</button>
+              style={{ ...knopf(), cursor: thinking ? 'default' : 'pointer' }}>{c}</button>
           ))}
           {stimme.kannSprechen && (
             <button onClick={() => { const n = !vorlesen; setVorlesen(n); if (!n) { setFreihand(false); stimme.schweig(); } }}
@@ -604,12 +604,12 @@ export function JarvisPanel() {
               value={stimme.stimmName}
               onChange={e => { stimme.waehleStimme(e.target.value); stimme.lies('Ich bin Jarvis. So klinge ich.'); }}
               aria-label="Stimme wählen" title="Stimme wählen — wird sofort vorgesprochen"
-              style={{ fontFamily: T.mono, fontSize: 11, background: 'transparent', border: `1px solid ${T.line}`, color: T.muted, borderRadius: 7, padding: '4px 6px', cursor: 'pointer', maxWidth: 104 }}>
-              {stimme.stimmen.map(v => <option key={v.name} value={v.name} style={{ background: T.panel, color: T.ink }}>{v.kurz}</option>)}
+              style={{ background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark', cursor: 'pointer', maxWidth: 104 }}>
+              {stimme.stimmen.map(v => <option key={v.name} value={v.name} style={{ background: C.flaeche, color: C.ink }}>{v.kurz}</option>)}
             </select>
           )}
           {stimme.spricht && (
-            <button onClick={() => stimme.schweig()} title="Vorlesen abbrechen" style={{ ...knopf(true), color: T.amber, borderColor: `${T.amber}66` }}>
+            <button onClick={() => stimme.schweig()} title="Vorlesen abbrechen" style={chip(LEUCHT.achtung)}>
               ■ Still
             </button>
           )}

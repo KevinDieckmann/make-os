@@ -4,13 +4,18 @@
 // Das Bedienmuster kombiniert monday und awork: die Abhängigkeit wird direkt
 // an der Aufgabe gesetzt (Picker mit Suche statt Spalten-Konfiguration), und
 // die Vorgänger stehen mit Status-Farbe im Detail — grün heißt „fertig, du
-// bist frei", amber heißt „daran hängst du noch".
+// bist frei", gelb heißt „daran hängst du noch".
+// 24.09.: auf das lebendige Muster umgezogen — Vorgänger als Chips, Suche als
+// Liste von Zeilen, keine Rahmen.
 
-import { useMemo, useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+import { useMemo, useState, type CSSProperties } from 'react';
+import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
 import { offeneBlocker, terminKonflikt, wuerdeKreis } from '@/lib/make-one/abhaengigkeiten';
 import { datumKurz } from './Faelligkeit';
+import { Liste, Zeile, Leer, Punkt, LEUCHT } from './schlank';
 import type { Task } from '@/types/tasks';
+
+const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise };
 
 export function Abhaengigkeit({ t, alle, patchTask }: {
   t: Task;
@@ -55,50 +60,49 @@ export function Abhaengigkeit({ t, alle, patchTask }: {
     patchTask(t.id, { dependencies: deps.filter(d => d.blockedByTaskId !== aufgabeId) });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>Wartet auf</span>
+        <span style={mikro}>Wartet auf</span>
 
         {blocker.map(({ d, b }) => {
           const fertig = b!.status === 'done' || !!d.resolvedAt;
-          const farbe = fertig ? T.accent : T.amber;
+          const farbe = fertig ? LEUCHT.gut : LEUCHT.achtung;
           return (
             <span key={b!.id} title={fertig ? 'Erledigt — blockiert nicht mehr' : 'Noch offen — diese Aufgabe wartet darauf'}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, color: farbe, background: `${farbe}12`, border: `1px solid ${farbe}44`, borderRadius: 7, padding: '3px 8px', maxWidth: 260 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: farbe, flex: '0 0 auto' }} />
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: farbe, background: `${farbe}22`, borderRadius: 999, padding: '4px 10px', maxWidth: 260 }}>
+              <Punkt farbe={farbe} groesse={6} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: fertig ? 'line-through' : 'none', opacity: fertig ? 0.75 : 1 }}>{b!.title}</span>
               <button onClick={() => loesen(b!.id)} aria-label="Abhängigkeit entfernen"
-                style={{ background: 'transparent', border: 'none', color: T.muted, cursor: 'pointer', padding: 0, fontSize: 11, lineHeight: 1 }}>✕</button>
+                style={{ background: 'transparent', border: 'none', color: farbe, cursor: 'pointer', padding: 0, fontSize: 11, lineHeight: 1, opacity: .8 }}>✕</button>
             </span>
           );
         })}
 
-        <button onClick={() => setAuf(!auf)}
-          style={{ fontFamily: T.sans, fontSize: 11, color: auf ? T.accentInk : T.muted, border: `1px dashed ${auf ? T.accent : T.line}`, borderRadius: 7, padding: '3px 9px', background: 'transparent', cursor: 'pointer' }}>
+        <button onClick={() => setAuf(!auf)} className="fassbar"
+          style={{ fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 600, color: auf ? C.aktiv : C.inkLeise, border: 'none', borderRadius: 999, padding: '4px 11px', background: auf ? C.aktivSanft : 'rgba(255,255,255,.06)', cursor: 'pointer' }}>
           {auf ? '✕ zu' : '+ Abhängigkeit'}
         </button>
       </div>
 
       {konflikt && (
-        <div style={{ fontSize: 11.5, color: T.crit, lineHeight: 1.45 }}>
+        <div style={{ fontSize: 12, color: LEUCHT.kritisch, lineHeight: 1.45 }}>
           Terminkonflikt: fällig {t.dueDate && datumKurz(t.dueDate)}, aber „{konflikt.title.slice(0, 50)}" erst {konflikt.dueDate && datumKurz(konflikt.dueDate)} — eins von beiden verschieben.
         </div>
       )}
 
       {auf && (
-        <div style={{ background: T.void, border: `1px solid ${T.line}`, borderRadius: 9, padding: '8px 10px' }}>
+        <div style={{ background: 'rgba(255,255,255,.04)', borderRadius: 14, padding: '6px 12px 4px' }}>
           <input autoFocus value={suche} onChange={e => setSuche(e.target.value)}
             placeholder="Aufgabe suchen, die vorher fertig sein muss …"
             aria-label="Blockierende Aufgabe suchen"
-            style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: T.ink, fontSize: 12.5, fontFamily: T.sans, marginBottom: kandidaten.length ? 7 : 0 }} />
-          {kandidaten.map(k => (
-            <button key={k.id} onClick={() => setzen(k.id)}
-              style={{ display: 'block', width: '100%', textAlign: 'left', fontSize: 12.5, color: T.inkDim, background: 'transparent', border: 'none', borderTop: `1px solid ${T.lineSoft}`, padding: '6px 2px', cursor: 'pointer' }}>
-              {k.title}
-              {k.dueDate && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginLeft: 7 }}>{datumKurz(k.dueDate)}</span>}
-            </button>
-          ))}
-          {!kandidaten.length && suche.trim() && <div style={{ fontSize: 12, color: T.muted }}>Nichts gefunden — Kreise und Erledigtes sind ausgeschlossen.</div>}
+            style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: C.ink, fontSize: 13, fontFamily: SCHRIFT.text, padding: '6px 0' }} />
+          <Liste>
+            {kandidaten.map(k => (
+              <Zeile key={k.id} onClick={() => setzen(k.id)} titel={k.title}
+                rechts={k.dueDate ? <span style={{ fontFamily: SCHRIFT.display, fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{datumKurz(k.dueDate)}</span> : undefined} />
+            ))}
+          </Liste>
+          {!kandidaten.length && suche.trim() && <Leer>Nichts gefunden — Kreise und Erledigtes sind ausgeschlossen.</Leer>}
         </div>
       )}
     </div>
@@ -111,7 +115,7 @@ export function BlockiertChip({ t, alle, klein = false }: { t: Task; alle: Task[
   if (!b.length) return null;
   return (
     <span title={`Wartet auf: ${b.map(x => x.title).join(' · ')}`}
-      style={{ fontFamily: T.mono, fontSize: klein ? 9 : 9.5, color: T.amber, border: `1px solid ${T.amber}55`, borderRadius: 5, padding: klein ? '1px 5px' : '1px 6px', whiteSpace: 'nowrap' }}>
+      style={{ display: 'inline-flex', alignItems: 'center', fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 700, letterSpacing: '.02em', color: LEUCHT.achtung, background: `${LEUCHT.achtung}22`, borderRadius: 999, padding: klein ? '2px 8px' : '3px 9px', whiteSpace: 'nowrap' }}>
       ⛓ wartet{b.length > 1 ? ` ×${b.length}` : ''}
     </span>
   );

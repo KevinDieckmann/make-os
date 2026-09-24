@@ -1,15 +1,22 @@
 'use client';
 
+// ─── MAKE OS — Inbox · volle Ansicht ────────────────────────────────────────
+// Fächer (Split Inbox), Türsteher (Screener) für unbekannte Absender, Zero-
+// Durchlauf mit den Tasten E/A/D/S, Jarvis-Triage, Antwort-Entwurf → Apple
+// Mail, Snooze, „→ Aufgabe" mit Duplikat-Wache, Suche, Konten-Filter und die
+// Tasten j/k/e/a/s in der Liste. Die schlanke Schwester liegt unter /os/inbox.
+// 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Zeile aus schlank,
+// Farben aus design.ts) — gleiche Funktion, neue Darstellung.
+
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useNachspeichern } from '@/lib/make-one/nachspeichern';
-import { THEME as T } from '@/lib/make-one/os-data';
-import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, RADIUS, MIKRO } from '@/lib/make-one/design';
-import { Held } from './Held';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { LIVE_AGENTS } from '@/lib/make-one/agents-data';
 import { FAECHER, FACH, fachVon, absenderKey } from '@/lib/make-one/inbox-data';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, Segmente, Punkt, feld, LEUCHT } from './schlank';
 
 // ─── Normalisierte Nachricht (Apple Mail live + M365 Snapshot) ───────────────
 type Source = 'apple' | 'ms';
@@ -22,9 +29,11 @@ interface Msg {
 type StatusMap = Record<string, { status: string; at: string; bis?: string }>;
 type Stufe = 'wichtig' | 'normal' | 'rauschen';
 type TriageMap = Record<string, { stufe: Stufe; zeile: string; grund: string }>;
+type Segment = 'offen' | 'erledigt' | 'alle';
 
 const OPEN = new Set(['offen', 'snoozed', '']);
 const DONE = new Set(['erledigt', 'aufgabe', 'delegiert']);
+const HAAR = 'rgba(255,255,255,.06)';
 
 const tagIn = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return localDay(d); };
 const naechsterMontag = () => { const d = new Date(); d.setDate(d.getDate() + (((8 - d.getDay()) % 7) || 7)); return localDay(d); };
@@ -34,10 +43,11 @@ const naechsterMontag = () => { const d = new Date(); d.setDate(d.getDate() + ((
 const fpOf = (m: { sender: string; senderEmail?: string; subject: string; receivedAt: string }) =>
   `${(m.senderEmail ?? m.sender).toLowerCase().trim()}|${m.subject.toLowerCase().trim().slice(0, 80)}|${m.receivedAt.slice(0, 16)}`;
 
+// Farben wie in der schlanken Schwester: wichtig grün, normal blau, Rauschen leise.
 const STUFE_META: Record<Stufe, { label: string; farbe: string; rang: number }> = {
-  wichtig: { label: 'Wichtig', farbe: '#58D9CD', rang: 0 },
-  normal: { label: 'Normal', farbe: '#96A8A2', rang: 1 },
-  rauschen: { label: 'Rauschen', farbe: '#5A6B66', rang: 3 },
+  wichtig: { label: 'Wichtig', farbe: LEUCHT.gut, rang: 0 },
+  normal: { label: 'Normal', farbe: LEUCHT.puls, rang: 1 },
+  rauschen: { label: 'Rauschen', farbe: C.inkLeise, rang: 3 },
 };
 const stufeRang = (s?: Stufe) => (s ? STUFE_META[s].rang : 2);
 
@@ -62,18 +72,35 @@ function initials(name: string): string {
   const p = name.trim().split(/\s+/);
   return ((p[0]?.[0] ?? '') + (p[1]?.[0] ?? '')).toUpperCase() || '·';
 }
-const srcColor = (s: Source) => (s === 'apple' ? T.accent : T.amber);
+/** Quellfarbe: Apple Mail türkis, Microsoft 365 orange. */
+const srcColor = (s: Source) => (s === 'apple' ? LEUCHT.geld : LEUCHT.business);
 const srcLabel = (m: Msg) => (m.source === 'apple' ? m.account : 'M365 · KEMARIS');
 
-const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const wahl: CSSProperties = { background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark' };
+const textKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12, padding: 0 };
+const verweis: CSSProperties = { fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none', whiteSpace: 'nowrap' };
+
+/** Kürzel-Taste am Knopf — das einzige Monospace der Seite. */
+const Taste = ({ k }: { k: string }) => (
+  <span style={{ fontFamily: SCHRIFT.mono, fontSize: 11, fontWeight: 700, marginLeft: 7, padding: '1px 6px', borderRadius: 6, background: 'rgba(127,127,127,.28)' }}>{k}</span>
+);
+
+/** Absender-Kürzel in Quellfarbe; ungelesen leuchtet. */
+const Avatar = ({ m, glanz }: { m: Msg; glanz?: boolean }) => {
+  const f = srcColor(m.source);
+  return (
+    <span style={{ width: 32, height: 32, borderRadius: 10, flex: '0 0 auto', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, color: f, background: `${f}22`, boxShadow: glanz ? `0 0 12px ${f}55` : undefined }}>
+      {initials(m.sender)}
+    </span>
+  );
+};
 
 export function InboxView() {
   const { state, dispatch } = useTasks();
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [status, setStatus] = useState<StatusMap>({});
   const [sel, setSel] = useState<string | null>(null);
-  const [seg, setSeg] = useState<'offen' | 'erledigt' | 'alle'>('offen');
+  const [seg, setSeg] = useState<Segment>('offen');
   const [srcFilter, setSrcFilter] = useState<string>('alle');
   // Split Inbox + Screener (aus der Marktanalyse: Hey, Shortwave, Superhuman)
   const [fachFilter, setFachFilter] = useState<string>('alle');
@@ -450,352 +477,310 @@ export function InboxView() {
 
   const openCount = msgs.filter(m => istOffen(m.id)).length;
   const selMsg = msgs.find(m => m.id === sel) ?? null;
-
-  // ── Segment-Button ──
-  const segBtn = (key: 'offen' | 'erledigt' | 'alle', label: string, n?: number) => (
-    <button key={key} onClick={() => setSeg(key)} style={{
-      fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, padding: '6px 12px', borderRadius: 9, cursor: 'pointer',
-      border: `1px solid ${seg === key ? T.lineHot : T.line}`, background: seg === key ? T.accentSoft : 'transparent',
-      color: seg === key ? T.accentInk : T.inkDim,
-    }}>{label}{typeof n === 'number' ? <span style={{ fontFamily: T.mono, marginLeft: 6, color: seg === key ? T.accent : T.muted }}>{n}</span> : null}</button>
-  );
+  const selTriage = selMsg ? triage[fpOf(selMsg)] : undefined;
 
   // ── Zero-Overlay: fokussierter Vollbild-Modus über allem ──
   const zeroAktiv = zero !== null;
   const zeroMail = zeroAktiv && zero!.pos < zero!.queue.length ? msgs.find(m => m.id === zero!.queue[zero!.pos]) ?? null : null;
   const zeroFertig = zeroAktiv && zero!.pos >= zero!.queue.length;
   const rauschenOffen = msgs.filter(m => istOffen(m.id) && triage[fpOf(m)]?.stufe === 'rauschen').length;
+  const zeroN = zeroKandidaten().length;
+
+  // ── Was die Seite zeigt ──
+  const dran = filtered.filter(m => triage[fpOf(m)]?.stufe === 'wichtig').slice(0, 5);
+  const SEG: { id: Segment; label: string }[] = [
+    { id: 'offen', label: openCount ? `Offen · ${openCount}` : 'Offen' },
+    { id: 'erledigt', label: 'Erledigt' },
+    { id: 'alle', label: 'Alle' },
+  ];
+  const FACH_SEG: { id: string; label: string }[] = [
+    { id: 'alle', label: 'Alles' },
+    ...FAECHER.map(f => { const n = fachZahlen[f.id] ?? 0; return { id: f.id, label: n ? `${f.label} · ${n}` : f.label }; }),
+  ];
+  const rotMeldung = shields.some(s => s.stufe === 'rot');
+  const kopfFarbe = openCount > 40 ? LEUCHT.achtung : openCount ? C.ink : LEUCHT.gut;
+  let karte = 0; // laufender Index — die Karten erscheinen gestaffelt
+
+  /** Eine Nachricht in der Liste: Kürzel, Absender · Betreff, Jarvis-Zeile, Zeit + Pillen. */
+  const mailZeile = (m: Msg) => {
+    const st = statusOf(m.id);
+    const tr = triage[fpOf(m)];
+    const ungelesen = !m.isRead && OPEN.has(st);
+    return (
+      <Zeile key={m.id} onClick={() => { void openMsg(m); }} aktiv={m.id === sel}
+        links={<Avatar m={m} glanz={ungelesen} />}
+        titel={<><span style={{ fontWeight: ungelesen ? 700 : 500 }}>{m.sender}</span><span style={{ color: C.inkLeise, fontWeight: 400 }}> · {m.subject}</span></>}
+        unter={[tr?.zeile ? `✨ ${tr.zeile}` : m.preview, tr?.grund, srcLabel(m)].filter(Boolean).join(' · ')}
+        rechts={<span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flex: '0 0 auto' }}>
+          <span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{relTime(m.receivedAt)}</span>
+          {istWiedervorlage(m.id) && <Chip farbe={LEUCHT.achtung}>⏰ Wiedervorlage</Chip>}
+          {DONE.has(st) && <Chip farbe={C.inkLeise}>{st === 'aufgabe' ? '→ Aufgabe' : st === 'delegiert' ? 'delegiert' : 'erledigt ✓'}</Chip>}
+        </span>} />
+    );
+  };
+
+  /** Die Liste mit Gruppenköpfen (Wichtig → Normal → Rauschen); Rauschen bleibt eingeklappt. */
+  const listenInhalt = () => {
+    let letzteGruppe = '';
+    const raus: ReactNode[] = [];
+    filtered.forEach((m, i) => {
+      // Der Cast, weil Record-Zugriffe nie „undefined" liefern — ohne ihn hält TS „neu" für unerreichbar.
+      const tr = triage[fpOf(m)] as TriageMap[string] | undefined;
+      const gruppe: Stufe | 'neu' = tr?.stufe ?? 'neu';
+      const kopf = gruppe !== letzteGruppe;
+      letzteGruppe = gruppe;
+      if (kopf) {
+        const meta = gruppe === 'neu' ? null : STUFE_META[gruppe];
+        raus.push(
+          <div key={`kopf-${gruppe}-${i}`} style={{ marginTop: raus.length ? 18 : 0 }}>
+            <Ueberschrift
+              farbe={meta ? meta.farbe : triageBusy ? LEUCHT.agenten : C.inkLeise}
+              rechts={gruppe === 'neu' ? undefined : gruppe === 'rauschen'
+                ? <button onClick={() => setRauschenAuf(a => !a)} style={textKnopf}>{rauschenAuf ? 'einklappen' : `${anzahlJe.rauschen} anzeigen`}</button>
+                : `${gruppe === 'wichtig' ? anzahlJe.wichtig : anzahlJe.normal}`}>
+              {gruppe === 'neu' ? (triageBusy ? 'Jarvis stuft ein …' : 'Ohne Einstufung') : meta!.label}
+            </Ueberschrift>
+          </div>,
+        );
+      }
+      // Rauschen bleibt eingeklappt — der Knopf am Gruppenkopf öffnet es.
+      if (gruppe === 'rauschen' && !rauschenAuf) {
+        if (kopf) raus.push(<Leer key="rauschen-zu">Newsletter & Co. — {anzahlJe.rauschen} Nachrichten, ausgeblendet.</Leer>);
+        return;
+      }
+      raus.push(mailZeile(m));
+    });
+    return raus;
+  };
 
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
+    <>
       {zeroAktiv && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 55, background: 'rgba(11,14,16,.92)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div className="animate-in" style={{ width: 'min(720px, 100%)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', background: T.panel, border: `1px solid ${T.lineHot}`, borderRadius: 16, overflow: 'hidden' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 55, background: 'rgba(11,14,16,.92)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: SCHRIFT.text, color: C.ink }}>
+          <Karte akzent={LEUCHT.gut} style={{ width: 'min(720px, 100%)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* Kopf mit Fortschritt */}
-            <div style={{ padding: '13px 18px 11px', borderBottom: `1px solid ${T.line}` }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                <span style={{ ...lbl, color: T.accent }}>Zero-Durchlauf</span>
-                {!zeroFertig && <span style={{ fontFamily: T.mono, fontSize: 12, fontWeight: 700, color: T.ink }}>{zero!.pos + 1} von {zero!.queue.length}</span>}
-                <button onClick={() => setZero(null)} title="Beenden (Esc)" style={{ marginLeft: 'auto', background: 'none', border: `1px solid ${T.line}`, borderRadius: 7, color: T.muted, cursor: 'pointer', fontSize: 12, width: 26, height: 26, lineHeight: 1 }}>✕</button>
-              </div>
-              <div style={{ display: 'flex', gap: 3, marginTop: 9 }}>
-                {zero!.queue.map((_, i) => (
-                  <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i < zero!.pos ? T.accent : T.line }} />
-                ))}
-              </div>
-            </div>
+            <Ueberschrift farbe={LEUCHT.gut} rechts={<>
+              {!zeroFertig && <span style={{ color: C.ink, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{zero!.pos + 1} von {zero!.queue.length}</span>}
+              <button onClick={() => setZero(null)} title="Beenden (Esc)" aria-label="Beenden" style={textKnopf}>✕</button>
+            </>}>Zero-Durchlauf</Ueberschrift>
+            <Fortschritt anteil={zero!.queue.length ? zero!.pos / zero!.queue.length : 0} farbe={LEUCHT.gut} />
 
             {zeroMail ? (
               <>
                 {/* Die EINE Mail */}
-                <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1 }}>
+                <div style={{ overflowY: 'auto', flex: 1, minHeight: 0, padding: '16px 0 6px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 10 }}>
-                    <div style={{ width: 34, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, color: T.void, background: srcColor(zeroMail.source), flex: '0 0 auto' }}>{initials(zeroMail.sender)}</div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{zeroMail.sender}</div>
-                      <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{srcLabel(zeroMail)} · {relTime(zeroMail.receivedAt)}</div>
+                    <Avatar m={zeroMail} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: TYP.body, fontWeight: 700 }}>{zeroMail.sender}</div>
+                      <div style={{ fontSize: 12, color: C.inkLeise }}>{srcLabel(zeroMail)} · {relTime(zeroMail.receivedAt)}</div>
                     </div>
-                    {triage[fpOf(zeroMail)]?.stufe === 'wichtig' && <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: STUFE_META.wichtig.farbe, border: `1px solid ${STUFE_META.wichtig.farbe}44`, borderRadius: 5, padding: '2px 8px', flex: '0 0 auto' }}>WICHTIG</span>}
+                    {triage[fpOf(zeroMail)]?.stufe === 'wichtig' && <Chip farbe={LEUCHT.gut}>Wichtig</Chip>}
                   </div>
-                  <h2 style={{ fontSize: 16.5, fontWeight: 600, lineHeight: 1.35, marginBottom: 6 }}>{zeroMail.subject}</h2>
-                  {triage[fpOf(zeroMail)]?.zeile && <div style={{ fontSize: 12.5, color: T.accentInk, marginBottom: 10 }}>✨ {triage[fpOf(zeroMail)]!.zeile}</div>}
-                  <div style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                  <h2 style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, lineHeight: 1.3, letterSpacing: '-.015em', margin: '0 0 6px' }}>{zeroMail.subject}</h2>
+                  {triage[fpOf(zeroMail)]?.zeile && <div style={{ fontSize: TYP.bedien, color: C.ink, fontWeight: 500, marginBottom: 10 }}>✨ {triage[fpOf(zeroMail)]!.zeile}</div>}
+                  <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                     {bodyLoading && !body[zeroMail.id] ? 'lade Inhalt …' : (body[zeroMail.id] ?? zeroMail.preview ?? '(keine Vorschau — Entscheidung nach Betreff)')}
                   </div>
                 </div>
                 {/* Die EINE Entscheidung */}
-                <div style={{ padding: '12px 18px 14px', borderTop: `1px solid ${T.line}`, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button onClick={() => zeroEntscheid('erledigt')} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 700, padding: '9px 15px', borderRadius: 9, border: 'none', background: T.accent, color: '#04110F', cursor: 'pointer' }}>✓ Erledigt <span style={{ opacity: .6, fontFamily: T.mono, fontSize: 11 }}>E</span></button>
-                  <button onClick={() => zeroEntscheid('aufgabe')} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 600, padding: '9px 15px', borderRadius: 9, border: `1px solid ${T.accent}66`, background: 'transparent', color: T.accentInk, cursor: 'pointer' }}>→ Aufgabe <span style={{ opacity: .6, fontFamily: T.mono, fontSize: 11 }}>A</span></button>
-                  <button onClick={() => zeroEntscheid('delegiert')} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 600, padding: '9px 15px', borderRadius: 9, border: `1px solid ${T.line}`, background: 'transparent', color: T.inkDim, cursor: 'pointer' }}>Delegieren <span style={{ opacity: .6, fontFamily: T.mono, fontSize: 11 }}>D</span></button>
-                  <button onClick={zeroAntworten} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 600, padding: '9px 15px', borderRadius: 9, border: `1px solid ${T.line}`, background: 'transparent', color: T.inkDim, cursor: 'pointer' }}>✍ Antworten</button>
-                  <button onClick={() => zeroEntscheid('uebersprungen')} style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 13, fontWeight: 600, padding: '9px 15px', borderRadius: 9, border: `1px solid ${T.line}`, background: 'transparent', color: T.muted, cursor: 'pointer' }}>Überspringen <span style={{ opacity: .6, fontFamily: T.mono, fontSize: 11 }}>S</span></button>
+                <div style={{ paddingTop: 14, borderTop: `1px solid ${HAAR}`, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <Knopf farbe={LEUCHT.gut} onClick={() => zeroEntscheid('erledigt')}>✓ Erledigt<Taste k="E" /></Knopf>
+                  <Knopf leise onClick={() => zeroEntscheid('aufgabe')}>→ Aufgabe<Taste k="A" /></Knopf>
+                  <Knopf leise onClick={() => zeroEntscheid('delegiert')}>Delegieren<Taste k="D" /></Knopf>
+                  <Knopf leise onClick={zeroAntworten}>✍ Antworten</Knopf>
+                  <span style={{ marginLeft: 'auto' }}><Knopf leise onClick={() => zeroEntscheid('uebersprungen')}>Überspringen<Taste k="S" /></Knopf></span>
                 </div>
               </>
             ) : (
               /* 🎯 Null erreicht */
-              <div style={{ padding: '34px 24px 28px', textAlign: 'center' }}>
+              <div style={{ padding: '30px 8px 22px', textAlign: 'center' }}>
                 <div style={{ fontSize: 40, marginBottom: 10 }}>🎯</div>
-                <div style={{ fontSize: 19, fontWeight: 700, marginBottom: 8 }}>Inbox auf Null.</div>
-                <div style={{ fontFamily: T.mono, fontSize: 12, color: T.inkDim, marginBottom: 18 }}>
+                <div style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, marginBottom: 8 }}>Inbox auf Null.</div>
+                <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 18 }}>
                   {zero!.stats.erledigt} erledigt · {zero!.stats.aufgabe} → Aufgaben · {zero!.stats.delegiert} delegiert{zero!.stats.uebersprungen ? ` · ${zero!.stats.uebersprungen} übersprungen` : ''}
                 </div>
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
                   {rauschenOffen > 0 && (
-                    <button onClick={() => { rauschenAufraeumen(); setZero(null); }} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 600, padding: '9px 16px', borderRadius: 9, border: `1px solid ${T.amber}66`, background: `${T.amber}14`, color: T.amber, cursor: 'pointer' }}>
+                    <Knopf farbe={LEUCHT.achtung} onClick={() => { rauschenAufraeumen(); setZero(null); }}>
                       Rauschen aufräumen ({rauschenOffen} Newsletter & Co. → erledigt)
-                    </button>
+                    </Knopf>
                   )}
-                  <button onClick={() => setZero(null)} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 700, padding: '9px 18px', borderRadius: 9, border: 'none', background: T.accent, color: '#04110F', cursor: 'pointer' }}>Fertig</button>
+                  <Knopf farbe={LEUCHT.gut} onClick={() => setZero(null)}>Fertig</Knopf>
                 </div>
               </div>
             )}
-          </div>
+          </Karte>
         </div>
       )}
-      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 48px' }}>
+
+      <Seite titel="Inbox · voll" breit={1200}
+        unter={<>Apple Mail {sync.apple} · Microsoft 365 {sync.ms}{triageBusy && <span style={{ color: LEUCHT.agenten }}> · Jarvis stuft ein …</span>}</>}
+        rechts={<span style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Segmente liste={SEG} aktiv={seg} onWahl={setSeg} />
+          <Link href="/os/inbox" style={verweis}>Schlanke Inbox ›</Link>
+        </span>}>
 
         {/* Diese Mail lag schon als Aufgabe im Board — kein zweites Mal anlegen. */}
         {doppelt && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: `${T.amber}12`, border: `1px solid ${T.amber}44`, borderRadius: 10, padding: '9px 13px', marginBottom: 14 }}>
-            <span style={{ fontSize: 13, color: T.amber }}>
-              Lag schon als Aufgabe im Board: <b>{doppelt.titel.slice(0, 70)}</b> — Mail als erledigt markiert, keine zweite Aufgabe angelegt.
-            </span>
-            <Link href="/os/aufgaben" style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, textDecoration: 'none', marginLeft: 'auto' }}>zur Aufgabe ›</Link>
-            <button onClick={() => setDoppelt(null)} aria-label="Hinweis schließen" style={{ background: 'transparent', border: 'none', color: T.muted, cursor: 'pointer' }}>✕</button>
-          </div>
+          <Karte i={karte++} akzent={LEUCHT.achtung}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, flex: '1 1 260px' }}>
+                Lag schon als Aufgabe im Board: <b>{doppelt.titel.slice(0, 70)}</b> — Mail als erledigt markiert, keine zweite Aufgabe angelegt.
+              </span>
+              <Link href="/os/aufgaben" style={verweis}>zur Aufgabe ›</Link>
+              <button onClick={() => setDoppelt(null)} aria-label="Hinweis schließen" style={textKnopf}>✕</button>
+            </div>
+          </Karte>
         )}
 
-        {/* ─── Der Held (UX 5, 06.09.) ──────────────────────────────────────
-            Die eine Frage beim Öffnen: wie viel liegt an — und wie viel davon
-            sind wirklich Menschen, die etwas wollen? Alles andere (Zähler je
-            Fach, Sync-Stände) tritt darunter zurück. */}
-        <Held
-          wert={String(openCount)}
-          label={openCount === 1 ? 'Nachricht offen' : 'Nachrichten offen'}
-          farbe={openCount > 40 ? C.achtung : openCount ? C.ink : C.gut}
-          satz={openCount === 0
-            ? 'Alles weggearbeitet.'
-            : <>Davon <b style={{ color: C.kritisch }}>{anzahlJe.wichtig}</b> wichtig — und <b style={{ color: C.inkDim }}>{anzahlJe.rauschen}</b> Rauschen, das am Stück wegkann.</>}
-          neben={[
-            { label: 'Apple Mail', wert: sync.apple },
-            { label: 'Microsoft 365', wert: sync.ms },
-            ...(triageBusy ? [{ label: 'Jarvis', wert: 'stuft ein …', farbe: C.aktiv }] : []),
-          ]}
-          kinder={
-            <div style={{ display: 'flex', gap: A.s, flexWrap: 'wrap' }}>
-              <button onClick={zeroStart} disabled={loading || !zeroKandidaten().length} style={{
-                fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: `9px ${A.l}px`, minHeight: 36,
-                borderRadius: RADIUS.bauteil, border: `1px solid ${C.gut}`, background: C.gut, color: C.grund,
-                cursor: loading ? 'default' : 'pointer', opacity: loading || !zeroKandidaten().length ? 0.5 : 1,
-              }}>▶ Zero-Durchlauf{zeroKandidaten().length ? ` (${zeroKandidaten().length})` : ''}</button>
-              <button onClick={load} disabled={loading} style={{
-                fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: `9px ${A.l}px`, minHeight: 36,
-                borderRadius: RADIUS.bauteil, border: `1px solid ${C.linie}`, background: 'transparent',
-                color: loading ? C.inkLeise : C.inkDim, cursor: loading ? 'default' : 'pointer',
-              }}>{loading ? 'synchronisiert …' : '↻ Neu laden'}</button>
-            </div>
-          }
-        />
-
-        {/* ── JETZT DRAN ────────────────────────────────────────────────────
-            Unter dem Helden steht, was wirklich zu tun ist. Suche, Fächer und
-            Türsteher bleiben darunter — für alle, die suchen statt arbeiten. */}
-        {(() => {
-          const dran = filtered.filter(m => triage[fpOf(m)]?.stufe === 'wichtig').slice(0, 5);
-          if (!dran.length) return null;
-          return (
-            <div style={{ background: T.panel, border: `1px solid ${T.line}`, borderLeft: `3px solid ${T.accent}`, borderRadius: RADIUS.behaelter, padding: '14px 18px', margin: `${A.m}px 0 ${A.l}px` }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: A.m, marginBottom: A.s }}>
-                <span style={MIKRO}>Jetzt dran</span>
-                <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>
-                  {dran.length === 1 ? 'eine Nachricht' : `die ersten ${dran.length}`} von {anzahlJe.wichtig}
-                </span>
+        {/* ─── Der Kopf: wie viel liegt an — und wie viel davon sind Menschen, die etwas wollen? */}
+        <Karte i={karte++} akzent={openCount > 40 ? LEUCHT.achtung : !openCount && !loading ? LEUCHT.gut : undefined}>
+          <div style={{ display: 'flex', gap: 'clamp(18px,4vw,36px)', alignItems: 'center', flexWrap: 'wrap' }}>
+            <Zahl gross wert={openCount ? String(openCount) : undefined} label={openCount === 1 ? 'Nachricht offen' : 'Nachrichten offen'} farbe={kopfFarbe} />
+            <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+              <p style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 600, letterSpacing: '-.01em', margin: 0, lineHeight: 1.35 }}>
+                {loading && !msgs.length ? 'Postfächer werden geladen …' : openCount === 0
+                  ? 'Alles weggearbeitet.'
+                  : <>Davon <b style={{ color: LEUCHT.gut }}>{anzahlJe.wichtig}</b> wichtig — und <b style={{ color: C.inkDim }}>{anzahlJe.rauschen}</b> Rauschen, das am Stück wegkann.</>}
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))', gap: 14, marginTop: 14 }}>
+                <Zahl wert={anzahlJe.wichtig ? String(anzahlJe.wichtig) : undefined} label="wichtig" farbe={LEUCHT.gut} />
+                <Zahl wert={anzahlJe.normal ? String(anzahlJe.normal) : undefined} label="normal" farbe={LEUCHT.puls} />
+                <Zahl wert={anzahlJe.rauschen ? String(anzahlJe.rauschen) : undefined} label="Rauschen" farbe={C.inkDim} />
               </div>
-              {dran.map(m => {
-                const tr = triage[fpOf(m)];
-                return (
-                  <div key={fpOf(m)} onClick={() => { void openMsg(m); }}
-                    style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '5px 0', cursor: 'pointer', borderTop: `1px solid ${T.lineSoft}` }}>
-                    <span style={{ color: T.accent, fontSize: 11, flex: '0 0 auto' }}>●</span>
-                    <span style={{ fontSize: 12.5, color: T.inkDim, width: 132, flex: '0 0 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.sender}</span>
-                    <span style={{ fontSize: 13, color: T.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.subject}</span>
-                    {tr?.zeile && <span style={{ fontSize: 11.5, color: T.accentInk, flex: '0 0 auto', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>✨ {tr.zeile}</span>}
-                  </div>
-                );
-              })}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
+                <Knopf farbe={LEUCHT.gut} onClick={zeroStart} aus={loading || !zeroN}>▶ Zero-Durchlauf{zeroN ? ` (${zeroN})` : ''}</Knopf>
+                <Knopf leise onClick={load} aus={loading}>{loading ? 'synchronisiert …' : '↻ Neu laden'}</Knopf>
+              </div>
             </div>
-          );
-        })()}
+          </div>
+        </Karte>
 
-        {/* Suche */}
-        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Suchen — Absender, Betreff, Inhalt …" aria-label="Inbox durchsuchen"
-          style={{ width: '100%', background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '10px 14px', color: T.ink, fontSize: 13, fontFamily: T.sans, outline: 'none', marginBottom: 14 }} />
+        {/* ── JETZT DRAN: unter dem Kopf steht, was wirklich zu tun ist. */}
+        {dran.length > 0 && (
+          <Karte i={karte++} akzent={LEUCHT.gut}>
+            <Ueberschrift farbe={LEUCHT.gut} rechts={`${dran.length === 1 ? 'eine Nachricht' : `die ersten ${dran.length}`} von ${anzahlJe.wichtig}`}>Jetzt dran</Ueberschrift>
+            <Liste>
+              {dran.map(m => (
+                <Zeile key={fpOf(m)} onClick={() => { void openMsg(m); }} aktiv={m.id === sel}
+                  links={<Punkt farbe={LEUCHT.gut} />}
+                  titel={<><span style={{ fontWeight: 600 }}>{m.sender}</span><span style={{ color: C.inkLeise, fontWeight: 400 }}> · {m.subject}</span></>}
+                  unter={triage[fpOf(m)]?.zeile ? `✨ ${triage[fpOf(m)]!.zeile}` : undefined}
+                  rechts={<span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{relTime(m.receivedAt)}</span>} />
+              ))}
+            </Liste>
+          </Karte>
+        )}
 
-        {/* Filter */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
-          {segBtn('offen', 'Offen', openCount)}
-          {segBtn('erledigt', 'Erledigt')}
-          {segBtn('alle', 'Alle')}
-          <span style={{ width: 1, height: 20, background: T.line, margin: '0 4px' }} />
-          {['alle', ...accounts].map(a => (
-            <button key={a} onClick={() => setSrcFilter(a)} style={{
-              fontFamily: T.mono, fontSize: 11, padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
-              border: `1px solid ${srcFilter === a ? T.lineHot : T.line}`, background: 'transparent',
-              color: srcFilter === a ? T.accentInk : T.muted,
-            }}>{a === 'alle' ? 'Alle Quellen' : a}</button>
-          ))}
-        </div>
-
-        {/* Fächer — nicht eine lange Liste, sondern getrennt nach Art der Nachricht */}
-        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
-          <button onClick={() => setFachFilter('alle')} style={{
-            fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, padding: '6px 13px', borderRadius: 9, cursor: 'pointer',
-            border: `1px solid ${fachFilter === 'alle' ? T.lineHot : T.line}`, background: fachFilter === 'alle' ? T.accentSoft : 'transparent',
-            color: fachFilter === 'alle' ? T.accentInk : T.inkDim,
-          }}>Alles</button>
-          {FAECHER.map(f => {
-            const n = fachZahlen[f.id] ?? 0;
-            const an = fachFilter === f.id;
-            return (
-              <button key={f.id} onClick={() => setFachFilter(f.id)} title={f.satz} style={{
-                fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, padding: '6px 13px', borderRadius: 9, cursor: 'pointer',
-                border: `1px solid ${an ? f.farbe : T.line}`, background: an ? `${f.farbe}1c` : 'transparent',
-                color: an ? f.farbe : n ? T.inkDim : T.muted,
-              }}>{f.label}<span style={{ fontFamily: T.mono, fontSize: 11, marginLeft: 6, color: an ? f.farbe : T.muted }}>{n}</span></button>
-            );
-          })}
-          {screener.length > 0 && (
-            <button onClick={() => setScreenerAuf(!screenerAuf)} style={{
-              marginLeft: 'auto', fontFamily: T.sans, fontSize: 12.5, fontWeight: 700, padding: '6px 13px', borderRadius: 9, cursor: 'pointer',
-              border: `1px solid ${screenerAuf ? T.accent : T.amber}55`, background: screenerAuf ? `${T.accent}1c` : `${T.amber}14`, color: screenerAuf ? T.accentInk : T.amber,
-            }}>Türsteher · {screener.length} neue Absender {screenerAuf ? '▾' : '▸'}</button>
-          )}
-        </div>
+        {/* Suche · Konten · Fächer · Türsteher — für alle, die suchen statt arbeiten */}
+        <Karte i={karte++}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Suchen — Absender, Betreff, Inhalt …" aria-label="Inbox durchsuchen" style={{ ...feld, flex: '1 1 240px', width: 'auto' }} />
+            <select value={srcFilter} onChange={e => setSrcFilter(e.target.value)} aria-label="Konto" style={wahl}>
+              <option value="alle">Alle Quellen</option>
+              {accounts.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          {/* Fächer — nicht eine lange Liste, sondern getrennt nach Art der Nachricht */}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
+            <div style={{ maxWidth: '100%', overflowX: 'auto' }}>
+              <Segmente liste={FACH_SEG} aktiv={fachFilter} onWahl={setFachFilter} />
+            </div>
+            {screener.length > 0 && (
+              <span style={{ marginLeft: 'auto' }}>
+                {screenerAuf
+                  ? <Knopf leise onClick={() => setScreenerAuf(false)}>Türsteher · {screener.length} neue Absender ▾</Knopf>
+                  : <Knopf farbe={LEUCHT.achtung} onClick={() => setScreenerAuf(true)}>Türsteher · {screener.length} neue Absender ▸</Knopf>}
+              </span>
+            )}
+          </div>
+          {fachFilter !== 'alle' && FACH[fachFilter] && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>{FACH[fachFilter].satz}</div>}
+        </Karte>
 
         {/* Türsteher: je Absender EINE Entscheidung — danach nie wieder gefragt */}
         {screenerAuf && screener.length > 0 && (
-          <div style={{ ...panel, borderLeft: `3px solid ${T.amber}`, padding: '13px 16px', marginBottom: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
-              <span style={lbl}>Türsteher</span>
-              <span style={{ fontSize: 12, color: T.inkDim }}>Wer darf dich erreichen? Einmal entscheiden — Geblockte verschwinden dauerhaft aus dem Postfach.</span>
-              <button onClick={() => setScreenerAuf(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 12 }}>✕</button>
+          <Karte i={karte++} akzent={LEUCHT.achtung}>
+            <Ueberschrift farbe={LEUCHT.achtung} rechts={<button onClick={() => setScreenerAuf(false)} aria-label="Türsteher schließen" style={textKnopf}>✕</button>}>Türsteher</Ueberschrift>
+            <Leer>Wer darf dich erreichen? Einmal entscheiden — Geblockte verschwinden dauerhaft aus dem Postfach.</Leer>
+            <div style={{ maxHeight: 340, overflowY: 'auto' }}>
+              <Liste>
+                {screener.slice(0, 30).map(s => (
+                  <Zeile key={s.key}
+                    links={<Punkt farbe={FACH[s.fach]?.farbe ?? C.inkLeise} />}
+                    titel={<>{s.name}{s.anzahl > 1 && <span style={{ color: LEUCHT.achtung, fontWeight: 400 }}> · {s.anzahl} Nachrichten</span>}</>}
+                    unter={`${s.email ?? '—'} · ${s.betreff}`}
+                    rechts={<span style={{ display: 'flex', gap: 12, alignItems: 'center', flex: '0 0 auto' }}>
+                      <Knopf leise onClick={() => entscheideAbsender(s.key, 'durchgelassen')}>Durchlassen</Knopf>
+                      <button onClick={() => entscheideAbsender(s.key, 'geblockt')} style={textKnopf}>Blocken</button>
+                    </span>} />
+                ))}
+              </Liste>
+              {screener.length > 30 && <Leer>+{screener.length - 30} weitere — die häufigsten zuerst</Leer>}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 340, overflowY: 'auto' }}>
-              {screener.slice(0, 30).map((s, i) => (
-                <div key={s.key} style={{ display: 'flex', gap: 11, alignItems: 'center', padding: '9px 0', borderTop: i ? `1px solid ${T.lineSoft}` : 0 }}>
-                  <span style={{ width: 4, height: 30, borderRadius: 2, background: FACH[s.fach]?.farbe ?? T.line, flex: '0 0 auto' }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {s.name} {s.anzahl > 1 && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.amber }}>· {s.anzahl} Nachrichten</span>}
-                    </div>
-                    <div style={{ fontSize: 11.5, color: T.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {s.email ?? '—'} · {s.betreff}
-                    </div>
-                  </div>
-                  <button onClick={() => entscheideAbsender(s.key, 'durchgelassen')}
-                    style={{ fontSize: 12, fontWeight: 600, color: T.accentInk, background: `${T.accent}18`, border: `1px solid ${T.accent}55`, borderRadius: 8, padding: '5px 12px', cursor: 'pointer', flex: '0 0 auto' }}>Durchlassen</button>
-                  <button onClick={() => entscheideAbsender(s.key, 'geblockt')}
-                    style={{ fontSize: 12, color: T.muted, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 8, padding: '5px 12px', cursor: 'pointer', flex: '0 0 auto' }}>Blocken</button>
-                </div>
-              ))}
-              {screener.length > 30 && <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, paddingTop: 8 }}>+{screener.length - 30} weitere — die häufigsten zuerst</div>}
-            </div>
-          </div>
+          </Karte>
         )}
 
         {/* Kommando-Zentrale: Meldungen von Jarvis & den Agenten — Eingänge ohne Absender */}
         {seg === 'offen' && (shields.length > 0 || meldungen.length > 0) && (
-          <div style={{ ...panel, borderLeft: `3px solid ${shields.some(s => s.stufe === 'rot') ? T.crit : T.accent}`, padding: '11px 16px', marginBottom: 14 }}>
-            <div style={{ ...lbl, marginBottom: 7 }}>Zentrale · Meldungen</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <Karte i={karte++} akzent={rotMeldung ? LEUCHT.kritisch : undefined}>
+            <Ueberschrift farbe={rotMeldung ? LEUCHT.kritisch : LEUCHT.agenten}>Zentrale · Meldungen</Ueberschrift>
+            <Liste>
               {shields.map(s => (
-                <Link key={s.id} href={s.href} style={{ display: 'flex', gap: 9, alignItems: 'baseline', textDecoration: 'none', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 11, color: s.stufe === 'rot' ? T.crit : T.amber, flex: '0 0 auto' }}>●</span>
-                  <span style={{ fontSize: 12.5, color: T.ink, flex: 1, minWidth: 200 }}>{s.text}</span>
-                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, flex: '0 0 auto' }}>{s.label} ›</span>
+                <Link key={s.id} href={s.href} className="zeile zeile-klick fassbar" style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '11px 6px', margin: '0 -6px', minHeight: 50, borderBottom: `1px solid ${HAAR}`, borderRadius: 10, textDecoration: 'none', color: C.ink }}>
+                  <Punkt farbe={s.stufe === 'rot' ? LEUCHT.kritisch : LEUCHT.achtung} />
+                  <span style={{ fontSize: TYP.body, fontWeight: 500, flex: 1, minWidth: 0 }}>{s.text}</span>
+                  <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{s.label} ›</span>
                 </Link>
               ))}
               {meldungen.map(l => (
-                <Link key={`${l.agent}-${l.ts}`} href={agentHref(l.agent)} style={{ display: 'flex', gap: 9, alignItems: 'baseline', textDecoration: 'none', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 11, color: T.accent, flex: '0 0 auto' }}>⚙</span>
-                  <span style={{ fontSize: 12.5, color: T.inkDim, flex: 1, minWidth: 200 }}><b style={{ color: T.ink }}>{l.agent}</b> · {l.title}</span>
-                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, flex: '0 0 auto' }}>{relTime(l.ts)}</span>
+                <Link key={`${l.agent}-${l.ts}`} href={agentHref(l.agent)} className="zeile zeile-klick fassbar" style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '11px 6px', margin: '0 -6px', minHeight: 50, borderBottom: `1px solid ${HAAR}`, borderRadius: 10, textDecoration: 'none', color: C.ink }}>
+                  <Punkt farbe={LEUCHT.agenten} />
+                  <span style={{ fontSize: TYP.body, fontWeight: 500, flex: 1, minWidth: 0, color: C.inkDim }}><b style={{ color: C.ink }}>{l.agent}</b> · {l.title}</span>
+                  <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{relTime(l.ts)}</span>
                 </Link>
               ))}
-            </div>
-          </div>
+            </Liste>
+          </Karte>
         )}
 
-        {/* Liste | Detail */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.25fr)', gap: 16, alignItems: 'start' }} className="ibx-grid">
-          {/* Liste */}
-          <div style={{ ...panel, overflow: 'hidden' }}>
-            {filtered.length === 0 && (
-              <div style={{ padding: '40px 20px', textAlign: 'center', color: T.muted, fontSize: 13.5 }}>
-                {loading ? 'Lade Nachrichten …' : seg === 'offen' ? 'Alles abgearbeitet. 🎯' : 'Keine Nachrichten in dieser Ansicht.'}
-              </div>
-            )}
-            {(() => {
-              let letzteGruppe = '';
-              return filtered.map((m, i) => {
-                const st = statusOf(m.id); const active = m.id === sel;
-                const tr = triage[fpOf(m)] as TriageMap[string] | undefined;
-                const gruppe: Stufe | 'neu' = tr?.stufe ?? 'neu';
-                const kopf = gruppe !== letzteGruppe;
-                letzteGruppe = gruppe;
-                const meta = tr ? STUFE_META[tr.stufe] : null;
-                // Rauschen bleibt eingeklappt — ein Klick auf den Gruppenkopf öffnet es.
-                if (gruppe === 'rauschen' && !rauschenAuf) {
-                  if (!kopf) return null;
-                  return (
-                    <div key="rauschen-zu" onClick={() => setRauschenAuf(true)} style={{ padding: '10px 15px', cursor: 'pointer', borderTop: `1px solid ${T.lineSoft}`, fontFamily: T.mono, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: T.muted }}>
-                      ▸ Rauschen · {anzahlJe.rauschen} — Newsletter & Co., ausgeblendet
-                    </div>
-                  );
-                }
-                return (
-                  <div key={m.id}>
-                    {kopf && (
-                      <div onClick={gruppe === 'rauschen' ? () => setRauschenAuf(false) : undefined}
-                        style={{ padding: '9px 15px 4px', borderTop: i ? `1px solid ${T.lineSoft}` : 0, fontFamily: T.mono, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: meta?.farbe ?? T.muted, cursor: gruppe === 'rauschen' ? 'pointer' : 'default' }}>
-                        {gruppe === 'neu' ? (triageBusy ? '◌ Jarvis stuft ein …' : 'Ohne Einstufung') : `${gruppe === 'rauschen' ? '▾ ' : ''}${meta!.label} · ${gruppe === 'wichtig' ? anzahlJe.wichtig : gruppe === 'normal' ? anzahlJe.normal : anzahlJe.rauschen}`}
-                      </div>
-                    )}
-                    <div onClick={() => openMsg(m)} style={{
-                      display: 'flex', gap: 12, padding: '11px 15px', cursor: 'pointer',
-                      borderTop: kopf ? 0 : `1px solid ${T.lineSoft}`,
-                      background: active ? T.panel2 : 'transparent',
-                      boxShadow: active ? `inset 2px 0 0 ${T.accent}` : 'none',
-                      opacity: gruppe === 'rauschen' ? 0.65 : 1,
-                    }}>
-                      <div style={{ width: 32, height: 32, borderRadius: 9, flex: '0 0 auto', display: 'grid', placeItems: 'center', fontSize: 11.5, fontWeight: 700, color: T.void, background: srcColor(m.source) }}>{initials(m.sender)}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                          {!m.isRead && OPEN.has(st) && <span style={{ width: 7, height: 7, borderRadius: '50%', background: T.accent, flex: '0 0 auto' }} />}
-                          {tr?.stufe === 'wichtig' && <span style={{ color: STUFE_META.wichtig.farbe, fontSize: 11, flex: '0 0 auto' }}>●</span>}
-                          <span style={{ fontSize: 13, fontWeight: 600, color: T.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.sender}</span>
-                          <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: T.muted, flex: '0 0 auto' }}>{relTime(m.receivedAt)}</span>
-                        </div>
-                        <div style={{ fontSize: 12.5, color: T.inkDim, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.subject}</div>
-                        {tr?.zeile && <div style={{ fontSize: 11.5, color: tr.stufe === 'wichtig' ? T.accentInk : T.muted, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>✨ {tr.zeile}</div>}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5 }}>
-                          {istWiedervorlage(m.id) && <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.04em', color: T.amber, border: `1px solid ${T.amber}55`, borderRadius: 5, padding: '1px 6px' }}>⏰ WIEDERVORLAGE</span>}
-                          <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.04em', textTransform: 'uppercase', color: srcColor(m.source), border: `1px solid ${srcColor(m.source)}44`, borderRadius: 5, padding: '1px 6px' }}>{srcLabel(m)}</span>
-                          {tr?.grund && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{tr.grund}</span>}
-                          {DONE.has(st) && <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.04em', textTransform: 'uppercase', color: T.muted }}>{st === 'aufgabe' ? '→ Aufgabe' : st === 'delegiert' ? 'delegiert' : 'erledigt ✓'}</span>}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              });
-            })()}
-          </div>
+        {/* Liste | Nachricht — zwei Karten nebeneinander, auf dem Handy untereinander */}
+        <div className="ibx-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) minmax(320px, 1.2fr)', gap: 14, alignItems: 'start' }}>
+          <Karte i={karte++}>
+            <Ueberschrift rechts={filtered.length ? `${filtered.length}` : undefined}>Nachrichten</Ueberschrift>
+            {filtered.length === 0
+              ? <Leer>{loading ? 'Lade Nachrichten …' : seg === 'offen' ? 'Alles abgearbeitet. 🎯' : 'Keine Nachrichten in dieser Ansicht.'}</Leer>
+              : <Liste>{listenInhalt()}</Liste>}
+          </Karte>
 
-          {/* Detail */}
-          <div style={{ ...panel, padding: selMsg ? '22px 24px' : '40px 24px', minHeight: 320 }}>
+          <Karte i={karte++} akzent={selTriage?.stufe === 'wichtig' ? LEUCHT.gut : undefined} style={{ minHeight: 320 }}>
             {!selMsg ? (
-              <div style={{ color: T.muted, fontSize: 13.5, textAlign: 'center', paddingTop: 40 }}>Wähle links eine Nachricht, um sie zu lesen und zu triagieren.</div>
+              <>
+                <Ueberschrift>Nachricht</Ueberschrift>
+                <Leer>Wähle links eine Nachricht, um sie zu lesen und zu triagieren. Tasten: j/k wandern · e erledigt · a Aufgabe · s morgen · / suchen.</Leer>
+              </>
             ) : (
               <>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
-                  <span style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.04em', textTransform: 'uppercase', color: srcColor(selMsg.source), border: `1px solid ${srcColor(selMsg.source)}44`, borderRadius: 5, padding: '2px 7px' }}>{srcLabel(selMsg)}</span>
-                  {selMsg.importance === 'high' && <span style={{ fontFamily: T.mono, fontSize: 11, textTransform: 'uppercase', color: T.crit, border: `1px solid ${T.crit}44`, borderRadius: 5, padding: '2px 7px' }}>wichtig</span>}
-                  <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: T.muted }}>{new Date(selMsg.receivedAt).toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-
-                <h2 style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-.01em', lineHeight: 1.3, marginBottom: 12 }}>{selMsg.subject}</h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 11, paddingBottom: 16, borderBottom: `1px solid ${T.line}`, marginBottom: 16 }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, color: T.void, background: srcColor(selMsg.source) }}>{initials(selMsg.sender)}</div>
-                  <div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: T.ink }}>{selMsg.sender}</div>
-                    {selMsg.senderEmail && <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{selMsg.senderEmail}</div>}
+                <Ueberschrift farbe={srcColor(selMsg.source)} rechts={new Date(selMsg.receivedAt).toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}>{srcLabel(selMsg)}</Ueberschrift>
+                <h2 style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, letterSpacing: '-.015em', lineHeight: 1.3, margin: '0 0 12px' }}>{selMsg.subject}</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 11, flexWrap: 'wrap', paddingBottom: 14, borderBottom: `1px solid ${HAAR}`, marginBottom: 14 }}>
+                  <Avatar m={selMsg} />
+                  <div style={{ minWidth: 0, flex: '1 1 160px' }}>
+                    <div style={{ fontSize: TYP.bedien, fontWeight: 600 }}>{selMsg.sender}</div>
+                    {selMsg.senderEmail && <div style={{ fontSize: 12, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selMsg.senderEmail}</div>}
                   </div>
+                  {selTriage && <Chip farbe={STUFE_META[selTriage.stufe].farbe}>{STUFE_META[selTriage.stufe].label}</Chip>}
+                  {selMsg.importance === 'high' && <Chip farbe={LEUCHT.kritisch}>wichtig</Chip>}
+                  {istWiedervorlage(selMsg.id) && <Chip farbe={LEUCHT.achtung}>⏰ Wiedervorlage</Chip>}
                 </div>
+                {selTriage?.zeile && (
+                  <div style={{ fontSize: TYP.bedien, color: C.ink, fontWeight: 500, marginBottom: 12 }}>
+                    ✨ {selTriage.zeile}{selTriage.grund && <span style={{ color: C.inkLeise, fontWeight: 400 }}> · {selTriage.grund}</span>}
+                  </div>
+                )}
 
                 {/* Body */}
-                <div style={{ fontSize: 13.5, lineHeight: 1.62, color: T.inkDim, whiteSpace: 'pre-wrap', maxHeight: 320, overflowY: 'auto', marginBottom: 18 }}>
+                <div style={{ fontSize: TYP.bedien, lineHeight: 1.62, color: C.inkDim, whiteSpace: 'pre-wrap', maxHeight: 320, overflowY: 'auto', marginBottom: 16 }}>
                   {selMsg.source === 'ms'
                     ? (selMsg.preview || '(keine Vorschau im Snapshot — Volltext kommt mit Microsoft-Live)')
                     : bodyLoading && !body[selMsg.id] ? 'Lade Nachrichtentext aus Apple Mail …'
@@ -803,52 +788,49 @@ export function InboxView() {
                 </div>
 
                 {/* Triage */}
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${T.line}`, paddingTop: 16 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 14, borderTop: `1px solid ${HAAR}` }}>
                   {OPEN.has(statusOf(selMsg.id)) ? (
                     <>
-                      <button onClick={() => setMsgStatus(selMsg.id, 'erledigt')} style={btnPri}>✓ Erledigt</button>
-                      <button onClick={() => toTask(selMsg)} style={btn}>→ Aufgabe</button>
-                      <button onClick={() => setMsgStatus(selMsg.id, 'delegiert')} style={btn}>Delegieren</button>
-                      <button onClick={() => setMsgStatus(selMsg.id, 'snoozed', tagIn(1))} style={btn} title="taucht morgen als Wiedervorlage auf">⏰ Morgen</button>
-                      <button onClick={() => setMsgStatus(selMsg.id, 'snoozed', tagIn(3))} style={btn} title="taucht in 3 Tagen wieder auf">⏰ +3 Tage</button>
-                      <button onClick={() => setMsgStatus(selMsg.id, 'snoozed', naechsterMontag())} style={btn} title="taucht am Montag wieder auf">⏰ Montag</button>
+                      <Knopf farbe={LEUCHT.gut} onClick={() => setMsgStatus(selMsg.id, 'erledigt')}>✓ Erledigt</Knopf>
+                      <Knopf leise onClick={() => toTask(selMsg)}>→ Aufgabe</Knopf>
+                      <Knopf leise onClick={() => setMsgStatus(selMsg.id, 'delegiert')}>Delegieren</Knopf>
+                      <span title="taucht morgen als Wiedervorlage auf"><Knopf leise onClick={() => setMsgStatus(selMsg.id, 'snoozed', tagIn(1))}>⏰ Morgen</Knopf></span>
+                      <span title="taucht in 3 Tagen wieder auf"><Knopf leise onClick={() => setMsgStatus(selMsg.id, 'snoozed', tagIn(3))}>⏰ +3 Tage</Knopf></span>
+                      <span title="taucht am Montag wieder auf"><Knopf leise onClick={() => setMsgStatus(selMsg.id, 'snoozed', naechsterMontag())}>⏰ Montag</Knopf></span>
                     </>
                   ) : (
-                    <button onClick={() => setMsgStatus(selMsg.id, 'offen')} style={btn}>↩ Wieder öffnen</button>
+                    <Knopf leise onClick={() => setMsgStatus(selMsg.id, 'offen')}>↩ Wieder öffnen</Knopf>
                   )}
                 </div>
 
                 {/* Antwort-Entwurf · Inbox-Agent */}
-                <div style={{ marginTop: 16, borderTop: `1px solid ${T.line}`, paddingTop: 16 }}>
+                <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${HAAR}` }}>
+                  <Ueberschrift farbe={LEUCHT.agenten}>MAKE · Antwort-Entwurf{draftText ? ' (editierbar)' : ''}</Ueberschrift>
                   {!draftText && !draftBusy && (
-                    <button onClick={() => makeDraft(selMsg)} style={{ ...btn, border: `1px solid ${T.lineHot}`, background: T.accentSoft, color: T.accentInk, fontWeight: 600 }}>✍ Antwort entwerfen (MAKE)</button>
+                    <Knopf leise onClick={() => makeDraft(selMsg)}>✍ Antwort entwerfen (MAKE)</Knopf>
                   )}
-                  {draftBusy && <div style={{ fontFamily: T.mono, fontSize: 12, color: T.muted }}>MAKE schreibt einen Entwurf in deiner Stimme …</div>}
+                  {draftBusy && <Leer>MAKE schreibt einen Entwurf in deiner Stimme …</Leer>}
                   {draftText && (
                     <div>
-                      <div style={{ ...lbl, marginBottom: 8 }}><span style={{ color: T.accent }}>MAKE</span> · Antwort-Entwurf (editierbar)</div>
                       <textarea value={draftText} onChange={e => setDraftText(e.target.value)} rows={8} aria-label="Antwort-Entwurf"
-                        style={{ width: '100%', background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '12px 14px', color: T.ink, fontSize: 13.5, fontFamily: T.sans, resize: 'vertical', lineHeight: 1.55, outline: 'none' }} />
+                        style={{ ...feld, fontSize: TYP.bedien, resize: 'vertical', lineHeight: 1.55 }} />
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10, alignItems: 'center' }}>
-                        <button onClick={() => openInMail(selMsg)} style={btnPri}>In Apple Mail öffnen →</button>
-                        <button onClick={() => makeDraft(selMsg)} style={btn}>↻ Neu entwerfen</button>
-                        <button onClick={() => { navigator.clipboard?.writeText(draftText); setDraftInfo('kopiert.'); }} style={btn}>Kopieren</button>
-                        {draftInfo && <span style={{ fontFamily: T.mono, fontSize: 11, color: (draftInfo.startsWith('✓') || draftInfo === 'kopiert.') ? T.accent : T.muted }}>{draftInfo}</span>}
+                        <Knopf onClick={() => openInMail(selMsg)}>In Apple Mail öffnen →</Knopf>
+                        <Knopf leise onClick={() => makeDraft(selMsg)}>↻ Neu entwerfen</Knopf>
+                        <Knopf leise onClick={() => { navigator.clipboard?.writeText(draftText); setDraftInfo('kopiert.'); }}>Kopieren</Knopf>
+                        {draftInfo && <span style={{ fontSize: 12, color: (draftInfo.startsWith('✓') || draftInfo === 'kopiert.') ? LEUCHT.gut : C.inkLeise }}>{draftInfo}</span>}
                       </div>
-                      <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 8 }}>Versand machst du selbst in Mail — MAKE sendet nie ungefragt.</div>
+                      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Versand machst du selbst in Mail — MAKE sendet nie ungefragt.</div>
                     </div>
                   )}
                 </div>
               </>
             )}
-          </div>
+          </Karte>
         </div>
-      </div>
 
-      <style>{`@media (max-width:820px){ .ibx-grid{grid-template-columns:1fr !important} }`}</style>
-    </div>
+        <style>{`@media (max-width:820px){ .ibx-grid{grid-template-columns:1fr !important} }`}</style>
+      </Seite>
+    </>
   );
 }
-
-const btn: React.CSSProperties = { fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600, padding: '8px 14px', borderRadius: 9, border: `1px solid ${T.line}`, background: T.panel, color: T.ink, cursor: 'pointer' };
-const btnPri: React.CSSProperties = { ...btn, border: `1px solid ${T.accent}`, background: T.accent, color: T.void };
