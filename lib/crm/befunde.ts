@@ -34,6 +34,11 @@ export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string): Be
   if (ohneAngaben) b.push({ prio: 3, titel: `${ohneAngaben} Kontakte ohne Herkunft oder Rechtsgrundlage`, grund: 'Vorschlag per Regel, Übernahme per Klick', bereich: 'stammdaten', ansicht: 'datenschutz' });
   const d = dubletten(kontakte).length;
   if (d) b.push({ prio: 4, titel: `${d} Dubletten zusammenführen`, grund: 'gleicher Name, gleiche Firma oder Kontaktdaten', bereich: 'stammdaten', ansicht: 'qualitaet' });
+  // Marketing: Rhythmus und Nachhalten (Beiträge, Newsletter-Zahlen).
+  const vor7 = (() => { const x = new Date(`${heute}T12:00:00Z`); x.setUTCDate(x.getUTCDate() - 6); return x.toISOString().slice(0, 10); })();
+  if (crm.beitraege.length && !crm.beitraege.some(b => b.status === 'veroeffentlicht' && b.datum && b.datum >= vor7 && b.datum <= heute)) b.push({ prio: 4, titel: 'Diese Woche noch nichts veröffentlicht', grund: 'Zwei Beiträge je Woche halten die Zielgruppe warm — Ideen liegen im Redaktionsplan', bereich: 'marketing' });
+  const ohneZahlen = crm.newsletter.filter(a => a.status === 'versendet' && a.empfaenger === undefined).length;
+  if (ohneZahlen) b.push({ prio: 5, titel: `${ohneZahlen} versendete Newsletter ohne Zahlen`, grund: 'Empfänger, Antworten, Abmeldungen nachtragen', bereich: 'marketing' });
   const letzte = crm.sitzungen.map(s => s.datum).sort().pop();
   if (!letzte || !bald(letzte, 7) || letzte < (() => { const x = new Date(`${heute}T12:00:00Z`); x.setUTCDate(x.getUTCDate() - 6); return x.toISOString().slice(0, 10); })()) b.push({ prio: 4, titel: letzte ? 'Diese Woche noch keine Power Hour' : 'Erste Power Hour', grund: 'Vier Stunden pro Woche halten die Pipeline in Bewegung', bereich: 'heute' });
   return b.sort((x, y) => x.prio - y.prio);

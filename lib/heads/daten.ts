@@ -12,6 +12,8 @@ import { mandatLage, mrr, konzentration } from '@/lib/crm/kunden';
 import { eventZahlen, followUpBis } from '@/lib/crm/events';
 import type { HeadId } from './prompt';
 import { PLAYBOOKS, kundenprofil, aehnlicheFirmen, zielgruppe, kampagnenZahlen } from '@/lib/crm/kampagnen';
+import { einstellungAus, marketingKennzahlen, wirkungZahlen, newsletterEmpfaenger, abmeldequote } from '@/lib/crm/marketing';
+import { kontextAus, segmentAuswerten } from '@/lib/crm/segmente';
 
 const kurz = (t: string | undefined, n: number) => (t ?? '').replace(/\s+/g, ' ').trim().slice(0, n) || undefined;
 
@@ -78,8 +80,21 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
     const stimmen = aktiv.flatMap(k => (k.aktivitaeten ?? []).filter(x => x.notiz?.bedarf).map(x => ({ kontakt_id: k.id, am: x.am.slice(0, 10), bedarf: kurz(x.notiz!.bedarf, 240), phase: k.lebensphase }))).sort((a, b) => b.am.localeCompare(a.am)).slice(0, 20);
     const quellen: Record<string, number> = {};
     for (const c of crm.chancen) quellen[c.quelle ?? 'nicht erfasst'] = (quellen[c.quelle ?? 'nicht erfasst'] ?? 0) + 1;
+    const vor60 = new Date(Date.parse(heute) - 60 * 864e5).toISOString().slice(0, 10);
+    const einst = einstellungAus(crm);
+    const saeule = (id?: string) => einst.saeulen.find(x => x.id === id)?.name ?? id;
+    const ctx = kontextAus(crm, heute);
     return {
       meta,
+      positionierung: { text: kurz(einst.positionierung, 1500), zielgruppe: kurz(einst.icp, 1500), ton: einst.ton, saeulen: einst.saeulen.map(x => ({ name: x.name, beschreibung: kurz(x.beschreibung, 200) })) },
+      kennzahlen: marketingKennzahlen(aktiv, crm, heute).map(x => ({ label: x.label, wert: x.anzeige, ampel: x.ampel, ziel: x.ziel })),
+      content_log: crm.beitraege.filter(b => !b.datum || b.datum >= vor60).slice(-30).map(b => ({
+        titel: b.titel, kanal: b.kanal, saeule: saeule(b.saeule), status: b.status, datum: b.datum ?? null, wirkung: wirkungZahlen(b),
+        reagiert: b.wirkung.map(w => nachId.get(w.kontaktId)).filter((k): k is Kontakt => !!k).slice(0, 5).map(k => ({ id: k.id, name: anzeigename(k), firma: k.firma })),
+      })),
+      segmente: crm.segmente.map(sg => { const a = segmentAuswerten(aktiv, sg.kriterien, ctx); return { name: sg.name, anzahl: a.anzahl, kanaele: a.kanaele }; }),
+      newsletter: { empfaenger_doi: newsletterEmpfaenger(aktiv).length, ausgaben: crm.newsletter.slice(-5).map(a => ({ titel: a.titel, status: a.status, datum: a.datum ?? null, empfaenger: a.empfaenger ?? null, antworten: a.antworten ?? null, abmeldequote: abmeldequote(a) })) },
+      kampagnen: crm.kampagnen.filter(k => k.status === 'entwurf' || k.status === 'aktiv').map(k => ({ name: k.name, playbook: k.playbook, zahlen: kampagnenZahlen(k, heute) })),
       bestand: {
         kartei: kontakte.length, gesperrt: kontakte.length - aktiv.length,
         mail_freigegeben: aktiv.filter(k => kanalStatus(k, 'mail').farbe === 'gruen').length,
