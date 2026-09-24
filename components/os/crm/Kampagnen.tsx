@@ -92,7 +92,7 @@ export function Kampagnen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: str
         {d.profil.kunden.length ? (
           <div style={{ display: 'grid', gap: 10 }}>
             <Raster min={150}>
-              {d.profil.mrrJeKunde.slice(0, 4).map(m => <Zahl key={m.kunde} wert={euro(m.mrr)} label={`${m.kunde.slice(0, 26)}${m.health !== null ? ` · Health ${m.health}` : ''}`} />)}
+              {d.profil.mrrJeKunde.slice(0, 6).map(m => <Zahl key={m.kunde} wert={m.mrr ? euro(m.mrr) : 'offen'} label={`${m.kunde.slice(0, 26)}${m.mrr ? ' je Monat' : ' · Honorar offen'}${m.health !== null ? ` · Health ${m.health}` : ''}`} />)}
             </Raster>
             <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>
               {d.profil.branchen.length ? <>Branchen: {d.profil.branchen.join(' · ')}. </> : <>Bei den Kunden-Firmen fehlt die Branche — in der Firmenkarte pflegen, dann findet „Kunden wie unsere besten“ ähnliche Firmen. </>}

@@ -121,14 +121,15 @@ export function aehnlicheFirmen(crm: CrmBestand, heute: string, n = 25): Aehnlic
     let best: Aehnlich | null = null;
     for (const k of kundenWoerter) {
       const gemeinsam = Array.from(w).filter(x => k.w.has(x));
-      let punkte = gemeinsam.length * 20;
-      const gruende: string[] = [];
-      if (gemeinsam.length) gruende.push(`Branche wie ${k.f.name} (${gemeinsam.slice(0, 2).join(', ')})`);
-      if (f.stadt && k.f.stadt && f.stadt.toLowerCase() === k.f.stadt.toLowerCase()) { punkte += 10; gruende.push(`auch in ${f.stadt}`); }
-      if (g && k.g && g >= k.g / 3 && g <= k.g * 3) { punkte += 10; gruende.push(`ähnliche Größe (${g} MA)`); }
+      // Ohne gemeinsame Branche ist es keine Ähnlichkeit — Ort und Größe verfeinern nur.
+      if (!gemeinsam.length) continue;
+      let punkte = gemeinsam.length * 30;
+      const gruende: string[] = [`Branche wie ${k.f.name} (${gemeinsam.slice(0, 2).join(', ')})`];
+      if (f.stadt && k.f.stadt && f.stadt.toLowerCase() === k.f.stadt.toLowerCase()) { punkte += 8; gruende.push(`auch in ${f.stadt}`); }
+      if (g && k.g && g >= k.g / 3 && g <= k.g * 3) { punkte += 7; gruende.push(`ähnliche Größe (${g} MA)`); }
       if (!best || punkte > best.punkte) best = { firma: f, punkte, gruende };
     }
-    if (best && best.punkte >= 20) raus.push(best);
+    if (best) raus.push(best);
   }
   return raus.sort((a, b) => b.punkte - a.punkte).slice(0, n);
 }
