@@ -33,7 +33,7 @@ export function Buchungen({ h, katName, patch, aktion, melde, laden, onImport }:
   const [offeneBereiche, setOffen] = useState<Record<string, boolean>>({});
   const [zeigen, setZeigen] = useState(SEITE);
   const [merken, setMerken] = useState<{ b: Buchung; katId: string } | null>(null);
-  const [bearb, setBearb] = useState<Buchung | null>(null);
+  const [bearb, setBearb] = useState<Buchung | 'neu' | null>(null);
   const [loesch, setLoesch] = useState<Buchung | null>(null);
 
   const liste = useMemo(() => {
@@ -61,7 +61,7 @@ export function Buchungen({ h, katName, patch, aktion, melde, laden, onImport }:
   return (
     <>
       <Karte i={1}>
-        <Ueberschrift farbe={LEUCHT.geld}>Buchungen</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.geld} rechts={<Knopf leise onClick={() => setBearb('neu')}>+ Buchung von Hand</Knopf>}>Buchungen</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
           <select aria-label="Konto" value={f.konto} onChange={e => { setF({ ...f, konto: e.target.value }); setZeigen(SEITE); }} style={auswahl}>
             <option value="">Alle Konten</option>{h.stamm.konten.map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
@@ -147,7 +147,7 @@ export function Buchungen({ h, katName, patch, aktion, melde, laden, onImport }:
       </Karte>
 
       {merken && <MerkenDialog b={merken.b} katId={merken.katId} katName={katName} aktion={aktion} melde={melde} laden={laden} onZu={() => setMerken(null)} />}
-      {bearb && <BearbeitenDialog b={bearb} h={h} patch={patch} melde={melde} onZu={() => setBearb(null)} />}
+      {bearb && <BearbeitenDialog b={bearb === 'neu' ? null : bearb} h={h} patch={patch} melde={melde} onZu={() => setBearb(null)} />}
       {loesch && (
         <Dialog titel="Buchung löschen?" onZu={() => setLoesch(null)} aktionen={<Knopf farbe={LEUCHT.kritisch} onClick={async () => { const ok = await patch('buchungen', [{ op: 'delete', id: loesch.id, stand: loesch.stand }]); if (ok) melde('ok', 'Gelöscht', 'Die Buchung ist weg und kommt nicht zurück.'); setLoesch(null); }}>Ja, löschen</Knopf>}>
           <div>Buchung vom <strong>{datumDe(loesch.datum)}</strong> über <strong>{eur(loesch.betrag)}</strong> ({loesch.empfaenger || '–'}) wirklich löschen? Das lässt sich nicht rückgängig machen — ein erneuter Import desselben Auszugs würde sie allerdings wieder anlegen.</div>
@@ -188,18 +188,26 @@ function MerkenDialog({ b, katId, katName, aktion, melde, laden, onZu }: { b: Bu
   );
 }
 
-function BearbeitenDialog({ b, h, patch, melde, onZu }: { b: Buchung; h: HaushaltDaten; patch: Props['patch']; melde: Props['melde']; onZu: () => void }) {
-  const [e, setE] = useState({ datum: b.datum, betrag: (b.betrag / 100).toFixed(2).replace('.', ','), empfaenger: b.empfaenger, beschreibung: b.beschreibung, konto_id: b.konto_id, kategorie_id: b.kategorie_id ?? '', ist_umbuchung: b.ist_umbuchung, ist_fixkosten: b.ist_fixkosten, notiz: b.notiz ?? '' });
+/** Bearbeiten — oder, ohne Buchung, eine neue von Hand anlegen (Bargeld, fehlt im Auszug). */
+function BearbeitenDialog({ b, h, patch, melde, onZu }: { b: Buchung | null; h: HaushaltDaten; patch: Props['patch']; melde: Props['melde']; onZu: () => void }) {
+  const standardKonto = h.stamm.konten.find(k => k.aktiv)?.id ?? h.stamm.konten[0]?.id ?? '';
+  const [e, setE] = useState(b
+    ? { datum: b.datum, betrag: (b.betrag / 100).toFixed(2).replace('.', ','), empfaenger: b.empfaenger, beschreibung: b.beschreibung, konto_id: b.konto_id, kategorie_id: b.kategorie_id ?? '', ist_umbuchung: b.ist_umbuchung, ist_fixkosten: b.ist_fixkosten, notiz: b.notiz ?? '' }
+    : { datum: new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Berlin' }), betrag: '', empfaenger: '', beschreibung: '', konto_id: standardKonto, kategorie_id: '', ist_umbuchung: false, ist_fixkosten: false, notiz: '' });
+  if (!b && !h.stamm.konten.length) return <Dialog titel="Buchung von Hand" onZu={onZu}><Hinweis>Erst ein Konto anlegen (Konten & Kategorien) — jede Buchung gehört zu einem Konto.</Hinweis></Dialog>;
   return (
-    <Dialog titel="Buchung bearbeiten" onZu={onZu} aktionen={<Knopf farbe={LEUCHT.geld} onClick={async () => {
+    <Dialog titel={b ? 'Buchung bearbeiten' : 'Buchung von Hand'} onZu={onZu} aktionen={<Knopf farbe={LEUCHT.geld} onClick={async () => {
       const betrag = zuCent(e.betrag);
-      if (!e.datum || betrag === null) { melde('fehler', 'Eingabe unvollständig', 'Datum und Betrag werden gebraucht.'); return; }
-      const ok = await patch('buchungen', [{ op: 'upsert', stand: b.stand, eintrag: { ...b, ...e, betrag, kategorie_id: e.kategorie_id || null, notiz: e.notiz || null } }]);
-      if (ok) { melde('ok', 'Gespeichert'); onZu(); }
-    }}>Speichern</Knopf>}>
+      if (!e.datum || betrag === null || betrag === 0) { melde('fehler', 'Eingabe unvollständig', 'Datum und Betrag werden gebraucht (Ausgaben mit Minus).'); return; }
+      const eintrag = b
+        ? { ...b, ...e, betrag, kategorie_id: e.kategorie_id || null, notiz: e.notiz || null }
+        : { ...e, betrag, kategorie_id: e.kategorie_id || null, notiz: e.notiz || null, einheit: 'privat', erfasst_von: h.person, beschreibung: e.beschreibung || e.empfaenger || 'Buchung von Hand' };
+      const ok = await patch('buchungen', [b ? { op: 'upsert', stand: b.stand, eintrag } : { op: 'upsert', eintrag }]);
+      if (ok) { melde('ok', b ? 'Gespeichert' : 'Buchung angelegt'); onZu(); }
+    }}>{b ? 'Speichern' : 'Anlegen'}</Knopf>}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <Feld label="Datum"><input type="date" value={e.datum} onChange={x => setE({ ...e, datum: x.target.value })} style={feld} /></Feld>
-        <Feld label="Betrag (negativ = Ausgabe)"><input inputMode="decimal" value={e.betrag} onChange={x => setE({ ...e, betrag: x.target.value })} style={feld} /></Feld>
+        <Feld label="Betrag (negativ = Ausgabe)"><input inputMode="decimal" placeholder="z. B. -12,50" value={e.betrag} onChange={x => setE({ ...e, betrag: x.target.value })} style={feld} /></Feld>
       </div>
       <Feld label="Empfänger"><input value={e.empfaenger} onChange={x => setE({ ...e, empfaenger: x.target.value })} style={feld} /></Feld>
       <Feld label="Beschreibung"><textarea rows={2} value={e.beschreibung} onChange={x => setE({ ...e, beschreibung: x.target.value })} style={{ ...feld, resize: 'vertical' }} /></Feld>

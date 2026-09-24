@@ -23,7 +23,7 @@ interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; 
 const RHYTHMUS_LABEL: Record<Rhythmus, string> = {
   einmalig: 'einmalig', monatlich: 'jeden Monat', quartal: 'jedes Quartal', jaehrlich: 'jedes Jahr',
 };
-const WOCHEN = [{ id: '8', label: '8 Wo.' }, { id: '12', label: '12 Wo.' }, { id: '26', label: '26 Wo.' }, { id: '52', label: '52 Wo.' }];
+const WOCHEN = [{ id: '8', label: '8 Wo.' }, { id: '12', label: '12 Wo.' }, { id: '26', label: '26 Wo.' }, { id: '52', label: '52 Wo.' }, { id: '66', label: '15 Mon.' }];
 
 const geld: CSSProperties = { fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 15, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', minWidth: 84, textAlign: 'right' };
 const leise: CSSProperties = { fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' };

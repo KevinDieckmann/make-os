@@ -132,7 +132,8 @@ export function sauberKategorie(roh: Record<string, unknown>): Omit<Kategorie, '
 export function sauberKonto(roh: Record<string, unknown>): Omit<Konto, 'id' | 'stand'> {
   const name = text(roh.name, 80);
   if (!name) throw new Ungueltig('Name fehlt.');
-  const suffix = text(roh.iban_suffix, 8).replace(/\D/g, '').slice(-4);
+  // Erst Ziffern, dann die letzten vier — wer die ganze IBAN eintippt, bekommt ihr Ende, nicht die Mitte.
+  const suffix = String(roh.iban_suffix ?? '').slice(0, 64).replace(/\D/g, '').slice(-4);
   return { name, inhaber: textOderNull(roh.inhaber, 40), einheit: einheit(roh.einheit ?? 'privat'), iban_suffix: suffix || null, bank: textOderNull(roh.bank, 60), waehrung: text(roh.waehrung, 3) || 'EUR', aktiv: roh.aktiv !== false };
 }
 
@@ -189,11 +190,27 @@ export function opsAnwenden<E extends Zeile>(
   return { ok: true, angewandt: ops.length, zeilen: geaendert, liste: Array.from(nachId.values()) };
 }
 
+/** Löschen nur, wo nichts mehr dranhängt. Liefert den Grund oder null. */
+export function loeschenBlockiert(teil: 'kategorien' | 'konten', ops: Op[], h: Pick<Haushalt, 'buchungen' | 'stamm'>): string | null {
+  const weg = ops.filter(o => o.op === 'delete').map(o => String(o.id));
+  if (teil === 'kategorien') {
+    return weg.some(id => h.buchungen.some(b => b.kategorie_id === id) || h.stamm.regeln.some(r => r.kategorie_id === id))
+      ? 'Diese Kategorie hat noch Buchungen oder Regeln — erst zusammenlegen, dann ist sie leer.' : null;
+  }
+  return weg.some(id => h.buchungen.some(b => b.konto_id === id)) ? 'An diesem Konto hängen Buchungen — stattdessen stilllegen.' : null;
+}
+
 /** Eine Liste eines Haushalts in einem Schritt ändern (Prüfung innerhalb der Schreibsperre). */
 export async function patchen(haushalt: string, teil: Exclude<Teil, 'stamm'> | 'konten' | 'kategorien' | 'regeln', ops: Op[]): Promise<PatchErgebnis> {
   const jetzt = new Date().toISOString();
   let ergebnis: PatchErgebnis = { ok: false, status: 400, fehler: 'Unbekannter Teil.' };
   const stamm = teil === 'buchungen' ? (await ladeHaushalt(haushalt)).stamm : null;
+  // Nichts löschen, woran noch Buchungen oder Regeln hängen — sonst zeigen die
+  // ins Leere. Kategorien werden stattdessen zusammengelegt (Aufräumen).
+  if ((teil === 'kategorien' || teil === 'konten') && ops.some(o => o.op === 'delete')) {
+    const nein = loeschenBlockiert(teil, ops, await ladeHaushalt(haushalt));
+    if (nein) return { ok: false, status: 409, fehler: nein };
+  }
   const lauf = <E extends Zeile>(datei: Teil, feld: string, saeubern: (r: Record<string, unknown>) => Omit<E, 'id' | 'stand'>, mitZeit = false) =>
     updateJson<Record<string, unknown>>(speicherName(datei, haushalt), aktuell => {
       const f = aktuell ?? {};

@@ -3,7 +3,8 @@
 // gibt es keinen Zugang — auch nicht über den Rückfall auf „kevin“.
 
 import { describe, it, expect } from 'vitest';
-import { opsAnwenden, sauberBeleg, Ungueltig, speicherName } from '../lib/finanzen/haushalt/speicher';
+import { opsAnwenden, sauberBeleg, sauberKonto, Ungueltig, speicherName, loeschenBlockiert } from '../lib/finanzen/haushalt/speicher';
+import { testHaushalt } from '../lib/finanzen/haushalt/testdaten';
 import { personStreng } from '../lib/finanzen/haushalt/zugriff';
 import type { Zeile } from '../lib/finanzen/haushalt/typen';
 
@@ -53,5 +54,26 @@ describe('Zugriff ohne Rückfall', () => {
   it('Speichernamen je Haushalt, nie aus fremder Eingabe', () => {
     expect(speicherName('buchungen', 'kevin-malin')).toBe('haushalt-buchungen--kevin-malin');
     expect(() => speicherName('buchungen', '../x')).toThrow();
+  });
+});
+
+describe('Löschen nur, wo nichts dranhängt', () => {
+  const h = testHaushalt('2026-09-24');
+  const belegteKat = h.buchungen.find(b => b.kategorie_id)!.kategorie_id!;
+  const leereKat = h.stamm.kategorien.find(k => !h.buchungen.some(b => b.kategorie_id === k.id) && !h.stamm.regeln.some(r => r.kategorie_id === k.id));
+  it('Kategorie mit Buchungen: nein, leere: ja', () => {
+    expect(loeschenBlockiert('kategorien', [{ op: 'delete', id: belegteKat }], h)).toMatch(/zusammenlegen/);
+    if (leereKat) expect(loeschenBlockiert('kategorien', [{ op: 'delete', id: leereKat.id }], h)).toBeNull();
+  });
+  it('Konto mit Buchungen: nein — stilllegen', () => {
+    expect(loeschenBlockiert('konten', [{ op: 'delete', id: h.buchungen[0].konto_id }], h)).toMatch(/stilllegen/);
+    expect(loeschenBlockiert('konten', [{ op: 'delete', id: 'gibt-es-nicht' }], h)).toBeNull();
+  });
+});
+
+describe('Konto: nur das IBAN-Ende', () => {
+  it('aus einer ganzen IBAN werden die letzten vier Ziffern', () => {
+    expect(sauberKonto({ name: 'Test', iban_suffix: 'DE12 3456 7890 1234 5678 90' }).iban_suffix).toBe('7890');
+    expect(sauberKonto({ name: 'Test', iban_suffix: '0042' }).iban_suffix).toBe('0042');
   });
 });
