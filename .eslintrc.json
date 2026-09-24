@@ -1,6 +1,8 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript"],
-  "//": "Altlast aus dem ersten Bau (Route /dashboard und deren Bausteine) — wird von /os nicht mehr benutzt und blockiert sonst den Produktions-Build. Aufräumen steht im Bauplan.",
+  "extends": [
+    "next/core-web-vitals",
+    "next/typescript"
+  ],
   "ignorePatterns": [
     "app/(dashboard)/**",
     "components/ui/make/**",

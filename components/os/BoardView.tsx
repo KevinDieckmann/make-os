@@ -1,5 +1,7 @@
 'use client';
 
+import { localDay } from '@/lib/zeit';
+
 // ─── MAKE OS — Reporting-/Board-Agent ───────────────────────────────────────
 // Das Wochen-Pack: Umsatz-Kurs, Pipeline und Ausführung aus Controlling,
 // Prospecting und Aufgaben — Kennzahlen exakt, Einordnung vom Agenten.
@@ -9,7 +11,6 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { wertVon, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
 import { eur } from '@/lib/make-one/finance-data';
-import { todayISO } from '@/components/os/kit';
 import { Seite, Karte, Ueberschrift, Leer, Knopf, Chip, Zahl, Fortschritt, LEUCHT } from './schlank';
 
 interface Sektion { titel: string; punkte?: string[]; }
@@ -76,7 +77,7 @@ export function BoardView() {
     if (!payload) return;
     setBusy(true);
     try {
-      const r = await fetch('/api/board', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, today: todayISO() }) });
+      const r = await fetch('/api/board', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, today: localDay() }) });
       setPack(await r.json());
     } catch { setPack(null); }
     setBusy(false);

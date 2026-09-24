@@ -9,7 +9,6 @@
 
 import { useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, MIKRO, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { todayISO } from '@/components/os/kit';
 import { localDay } from '@/lib/zeit';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Segmente, feld, LEUCHT } from './schlank';
 
@@ -69,7 +68,7 @@ function Absatz({ children, farbe }: { children: React.ReactNode; farbe?: string
 
 export function KalenderView() {
   // pro Render frisch — sonst steht das Datum bei offenem Tab über Mitternacht still
-  const TODAY = todayISO();
+  const TODAY = localDay();
   const [events, setEvents] = useState<Ev[]>([]);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

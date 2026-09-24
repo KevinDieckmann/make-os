@@ -29,8 +29,6 @@ const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: s
     { href: '/os/onboarding', label: 'Onboarding', was: 'die Einrichtungsspur je Person' },
     { href: '/os/research', label: 'Research', was: 'Recherche-Agent' },
     { href: '/os/content', label: 'Content', was: 'Text-Agent' },
-    { href: '/os/start', label: 'Startfläche', was: 'das Widget-Brett — zum Ziehen und Ablegen' },
-    { href: '/os/uebersicht', label: 'Übersicht (alt)', was: 'das frühere Dashboard, bis nichts mehr fehlt' },
   ] },
 ];
 

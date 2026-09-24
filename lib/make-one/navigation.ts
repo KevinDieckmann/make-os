@@ -14,7 +14,7 @@ import { Clock, Inbox, HeartPulse, TrendingUp, ListChecks, BarChart3, Users, Spa
 export interface Eintrag { href: string; label: string; icon: LucideIcon; passt: string[] }
 
 export const HAUPT: Eintrag[] = [
-  { href: '/os', label: 'Heute', icon: Clock, passt: ['/os', '/os/start', '/os/kompass', '/os/tageslauf', '/os/ritual', '/os/planung', '/os/kalender'] },
+  { href: '/os', label: 'Heute', icon: Clock, passt: ['/os', '/os/kompass', '/os/tageslauf', '/os/ritual', '/os/planung', '/os/kalender'] },
   // 24.09., Kevin: „Nimm als Score das ganze Thema Wachstum mit rein. Einen eigenen Bereich."
   { href: '/os/wachstum', label: 'Wachstum', icon: TrendingUp, passt: ['/os/wachstum', '/os/performance', '/os/saeule'] },
   { href: '/os/inbox', label: 'Inbox', icon: Inbox, passt: ['/os/inbox'] },

@@ -1,5 +1,7 @@
 'use client';
 
+import { localDay } from '@/lib/zeit';
+
 // ─── MAKE OS — Meeting-Agent ────────────────────────────────────────────────
 // Mitschrift rein → Zusammenfassung, Entscheidungen, Action-Items. Jedes
 // Action-Item wird auf Klick eine echte Aufgabe. Der Skriptverlauf bleibt
@@ -8,7 +10,6 @@
 
 import { useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { todayISO } from '@/components/os/kit';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, feld, prioFarbe, LEUCHT } from './schlank';
 
 interface ActionItem { titel: string; owner: string; prio: string; projectId: string; due?: string; }
@@ -50,7 +51,7 @@ export function MeetingView() {
     // Die Termine kommen aus dem Apple-Kalender — dort wird gepflegt, hier
     // nur gelesen und verknüpft.
     fetch('/api/apple-calendar').then(r => r.json()).then((e: Termin[]) => {
-      const heute = todayISO();
+      const heute = localDay();
       setTermine((Array.isArray(e) ? e : []).filter(t => (t.startDate ?? '').slice(0, 10) === heute));
     }).catch(() => {});
   }, []);
@@ -59,7 +60,7 @@ export function MeetingView() {
     if (transcript.trim().length < 20 || busy) return;
     setBusy(true); setErr(''); setProt(null); setCreated({});
     try {
-      const r = await fetch('/api/meeting', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transcript, datum: todayISO() }) });
+      const r = await fetch('/api/meeting', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transcript, datum: localDay() }) });
       const d = await r.json();
       if (d.error) setErr(d.error);
       else {
@@ -73,7 +74,7 @@ export function MeetingView() {
         fetch('/api/state/meetings', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            id, datum: todayISO(), titel: p.titel, transcript,
+            id, datum: localDay(), titel: p.titel, transcript,
             zusammenfassung: p.zusammenfassung, entscheidungen: p.entscheidungen,
             aufgaben: p.actionItems.map((a: ActionItem) => ({ text: a.titel, wer: ownerLabel(a.owner), frist: a.due })),
             terminId: termin?.id, terminTitel: termin?.title,
