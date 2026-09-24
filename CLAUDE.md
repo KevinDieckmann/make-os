@@ -123,8 +123,12 @@ lokal, Route `/os`, Port 3001.
   LinkedIn-Nachricht = elektronische Post, Kaltanruf nur mit Anlass, Werbesperre
   sperrt alles — keine Rechtsberatung, einmal anwaltlich gegenlesen. Kunden
   = Mandate (`kundenAusMandaten` für Score/Jarvis); Mandat → Liquiplan nur als
-  Vorschlag (`/api/crm/liquiplan`), nie automatisch. Konzept:
-  `docs/konzepte/crm-sales-marketing-events.md`.
+  Vorschlag (`/api/crm/liquiplan`), nie automatisch. **Firmen** sind eigene
+  Stammdaten (`crm.firmen`, Kontakt.firmaId, Abgleich `lib/crm/abgleich.ts` nach
+  jedem Import — füllt nur leere Felder). **Stammdaten-Bereich**: Selbstprüfung,
+  Pflichtangaben (Herkunft Art. 14 / Rechtsgrundlage Art. 6 nur als Vorschlag,
+  Übernahme per Klick), Betroffenenanträge, Verzeichnis Art. 30, Export.
+  Konzept: `docs/konzepte/crm-sales-marketing-events.md`.
 - **Die drei Heads (24.09.2026):** Sales, Marketing, Event in `lib/heads/`
   (Muster wie Head of Finance: Code rechnet das Datenpaket, Prüfer streicht
   erfundene IDs, Sperren und unzulässige Kanäle, Vollzug/unbelegte Zahlen →

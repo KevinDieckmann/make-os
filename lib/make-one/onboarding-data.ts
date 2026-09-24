@@ -144,10 +144,10 @@ export const SCHRITTE: Schritt[] = [
   },
   {
     id: 'kevin-kontakte', spur: 'kevin', minuten: 5,
-    titel: 'Kontakte prüfen und sortieren',
-    warum: 'Netzwerk und Pipeline rechnen mit den Kontakten. Geschäftlich/privat muss stimmen, sonst schlägt das System bei den Falschen Kontakt vor.',
-    wie: ['Die importierten Mac-Kontakte durchsehen.', 'Nähe-Stufen bei den wichtigsten 20 setzen.', 'LinkedIn-Export ergänzen, sobald du ihn heruntergeladen hast.'],
-    wo: { href: '/os/netzwerk', label: 'Netzwerk' },
+    titel: 'Kartei prüfen und sortieren',
+    warum: 'Power Hour und Pipeline rechnen mit der Kartei. Kreis, Lebensphase und Herkunft müssen stimmen, sonst schlägt das System die Falschen vor.',
+    wie: ['Im CRM › Stammdaten die Pflichtangaben (Herkunft, Rechtsgrundlage) übernehmen.', 'Bei den wichtigsten 20 Menschen den Kreis A oder B setzen.', 'Die restlichen Dubletten zusammenführen.'],
+    wo: { href: '/os/crm?s=kartei', label: 'CRM › Kartei' },
     pruefung: 'kontakte',
   },
   {

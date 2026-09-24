@@ -21,7 +21,7 @@ export const HAUPT: Eintrag[] = [
   // Kevin: „Wissen, wo ich aber gerne Brain für haben möchte." Obsidian ist Wissensbank Nr. 1.
   { href: '/os/wissen', label: 'Brain', icon: Brain, passt: ['/os/wissen'] },
   // Kevin: „das Thema CRM, was jetzt gerade noch Kontakte ist."
-  { href: '/os/crm', label: 'CRM', icon: Users, passt: ['/os/crm', '/os/netzwerk', '/os/prospecting', '/os/kunden'] },
+  { href: '/os/crm', label: 'CRM', icon: Users, passt: ['/os/crm', '/os/prospecting'] },
   // Kevin: „Fokus, das haben wir ja auch als riesiges Thema."
   { href: '/os/fokus', label: 'Fokus', icon: Crosshair, passt: ['/os/fokus', '/os/kompass', '/os/planung/fokus'] },
   { href: '/os/aufgaben', label: 'Aufgaben', icon: ListChecks, passt: ['/os/aufgaben', '/os/planung/woche', '/os/planung/monat', '/os/planung/quartal', '/os/planung/jahr', '/os/planung/routinen', '/os/meeting', '/os/board'] },
