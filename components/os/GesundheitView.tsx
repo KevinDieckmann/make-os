@@ -69,7 +69,10 @@ function Zeile({ wann, titel, unter, kinder }: { wann?: string; titel: string; u
   );
 }
 
-function Balken({ titel, werte, max, farbe, einheit, besserIst }: { titel: string; werte: (number | null)[]; max: number; farbe: string; einheit?: string; besserIst?: 'hoch' | 'tief' }) {
+// Deutsche Zahl: 8,5 statt 8.5
+const de = (n: number) => String(n).replace('.', ',');
+
+function Balken({ titel, werte, max, farbe, farbeJe, einheit, besserIst, tage }: { titel: string; werte: (number | null)[]; max: number; farbe: string; farbeJe?: (w: number) => string; einheit?: string; besserIst?: 'hoch' | 'tief'; tage?: string[] }) {
   const echte = werte.filter((x): x is number => x != null);
   const mittel = echte.length ? Math.round((echte.reduce((a, b) => a + b, 0) / echte.length) * 10) / 10 : null;
   const letzter = [...werte].reverse().find(x => x != null) ?? null;
@@ -77,12 +80,13 @@ function Balken({ titel, werte, max, farbe, einheit, besserIst }: { titel: strin
     <div style={{ marginBottom: 28 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
         <span style={{ fontSize: TYP.body, fontWeight: 500 }}>{titel}</span>
-        <span style={{ fontFamily: SCHRIFT.display, fontSize: 22, fontWeight: 700, color: letzter == null ? C.inkLeise : C.ink, fontVariantNumeric: 'tabular-nums' }}>{letzter ?? '—'}{letzter != null && einheit}</span>
-        <span style={{ fontSize: 12, color: C.inkLeise }}>{mittel != null ? `Ø ${mittel}${einheit ?? ''} · ${echte.length} von 30 Tagen` : 'noch keine Werte'}</span>
+        <span style={{ fontFamily: SCHRIFT.display, fontSize: 22, fontWeight: 700, color: letzter == null ? C.inkLeise : C.ink, fontVariantNumeric: 'tabular-nums' }}>{letzter != null ? de(letzter) : '—'}{letzter != null && einheit}</span>
+        <span style={{ fontSize: 12, color: C.inkLeise }}>{mittel != null ? `Ø ${de(mittel)}${einheit ?? ''} · ${echte.length} von 30 Tagen` : 'noch keine Werte'}</span>
       </div>
       <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 56 }}>
         {werte.map((w, i) => (
-          <span key={i} style={{ flex: 1, height: w == null ? 3 : Math.max(3, (w / max) * 56), borderRadius: 2, background: w == null ? C.linie : farbe, opacity: w == null ? 1 : 0.55 + 0.45 * (i / 29) }} />
+          <span key={i} title={tage?.[i] ? `${tage[i].slice(8, 10)}.${tage[i].slice(5, 7)}. · ${w == null ? 'kein Wert' : `${de(w)}${einheit ?? ''}`}` : undefined}
+            style={{ flex: 1, height: w == null ? 3 : Math.max(3, (Math.min(w, max) / max) * 56), borderRadius: 2, background: w == null ? C.linie : farbeJe ? farbeJe(w) : farbe, opacity: w == null ? 1 : 0.55 + 0.45 * (i / 29) }} />
         ))}
       </div>
       {besserIst && <div style={{ fontSize: 11, color: C.inkLeise, marginTop: 4 }}>{besserIst === 'tief' ? 'niedriger ist besser' : 'höher ist besser'}</div>}
@@ -105,7 +109,7 @@ export function GesundheitView() {
   const [hl, setHl] = useState<Record<string, string[]>>({});
   const [juckreiz, setJuckreiz] = useState<number | null>(null);
   const [fragen, setFragen] = useState({ gut: '', dankbar: '', hart: '' });
-  const [verlauf, setVerlauf] = useState<{ vitals: Record<string, { rec?: number; sleep?: number }>; haut: Record<string, { juckreiz: number }> } | null>(null);
+  const [verlauf, setVerlauf] = useState<{ vitals: Record<string, { rec?: number; sleep?: number; hrv?: number; rhr?: number }>; haut: Record<string, { juckreiz: number }> } | null>(null);
   const eigene = !stand || stand.ich === ansicht;
   const q = ansicht ? `?fuer=${ansicht}` : '';
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -267,10 +271,13 @@ export function GesundheitView() {
           <Ueberschrift>30 Tage</Ueberschrift>
           {!verlauf ? <div style={{ color: C.inkLeise, fontSize: TYP.bedien }}>lade …</div> : (
             <>
-              <Balken titel="Recovery" einheit="%" max={100} farbe={LEUCHT.gut} besserIst="hoch" werte={tage30.map(d => verlauf.vitals[d]?.rec ?? null)} />
-              <Balken titel="Schlaf" einheit=" h" max={9} farbe={LEUCHT.schlaf} besserIst="hoch" werte={tage30.map(d => verlauf.vitals[d]?.sleep ?? null)} />
-              <Balken titel="Juckreiz" max={10} farbe={LEUCHT.achtung} besserIst="tief" werte={tage30.map(d => verlauf.haut[d]?.juckreiz ?? null)} />
-              <Balken titel="Routinen" max={anzahl} farbe={LEUCHT.puls} besserIst="hoch" werte={tage30.map(d => (hl[d]?.length ?? 0) || null)} />
+              {/* Recovery je Tag in seiner Zone — wie Whoop: grün ab 66, gelb ab 40, darunter rot */}
+              <Balken titel="Recovery" einheit="%" max={100} farbe={LEUCHT.gut} farbeJe={zone} besserIst="hoch" tage={tage30} werte={tage30.map(d => verlauf.vitals[d]?.rec ?? null)} />
+              <Balken titel="Schlaf" einheit=" h" max={9} farbe={LEUCHT.schlaf} besserIst="hoch" tage={tage30} werte={tage30.map(d => verlauf.vitals[d]?.sleep ?? null)} />
+              <Balken titel="HRV" einheit=" ms" max={140} farbe={LEUCHT.puls} besserIst="hoch" tage={tage30} werte={tage30.map(d => verlauf.vitals[d]?.hrv ?? null)} />
+              <Balken titel="Ruhepuls" einheit="" max={90} farbe={LEUCHT.beziehung} besserIst="tief" tage={tage30} werte={tage30.map(d => verlauf.vitals[d]?.rhr ?? null)} />
+              <Balken titel="Juckreiz" max={10} farbe={LEUCHT.achtung} besserIst="tief" tage={tage30} werte={tage30.map(d => verlauf.haut[d]?.juckreiz ?? null)} />
+              <Balken titel="Routinen" max={anzahl} farbe={LEUCHT.gut} besserIst="hoch" tage={tage30} werte={tage30.map(d => (hl[d]?.length ?? 0) || null)} />
               {stand?.haut.trend.ausloeser.length ? (
                 <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 4 }}>Auslöser in 30 Tagen: {stand.haut.trend.ausloeser.map(a => `${a.was} (${a.mal}×)`).join(' · ')}</div>
               ) : null}

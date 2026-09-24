@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { readdir, readFile, stat } from 'fs/promises';
 import { homedir } from 'os';
 import { join } from 'path';
+import { gunzipSync } from 'zlib';
 import { updateJson } from '@/lib/store/local-db';
 import { personAus, speicherFuer } from '@/lib/jarvis/raum';
 import { zipEintrag, zyklenLesen, einmischen, istZyklenDatei, type WhoopLog } from '@/lib/whoop-export';
@@ -23,7 +24,9 @@ export const dynamic = 'force-dynamic';
 const DOWNLOADS = join(homedir(), 'Downloads');
 
 /** ZIP oder CSV → Tabellentext. */
-function tabelleAus(buf: Buffer, name: string): string | null {
+function tabelleAus(roh: Buffer, name: string): string | null {
+  // Whoop liefert das ZIP von S3 mit gzip-Hülle aus; Browser packen sie aus, curl nicht.
+  const buf = roh[0] === 0x1f && roh[1] === 0x8b ? gunzipSync(roh) : roh;
   if (/\.zip$/i.test(name) || buf.readUInt32LE(0) === 0x04034b50) return zipEintrag(buf, istZyklenDatei);
   return buf.toString('utf8');
 }

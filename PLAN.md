@@ -261,6 +261,19 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Knopf „Aus Downloads einlesen" unter Gesundheit und Verbindungen. Der Export
 > vom 24.09. liegt noch in der Mail; Kevin klickt dort „Daten herunterladen".
 
+> **Nachtrag 24.09., Whoop-Export eingelesen.** Kevin: *„Die Datei für Whoop
+> kommt aus Apple Mail. Hol dir daraus die Infos."* Den Download-Link aus dem
+> Quelltext der Mail gezogen (Whoop-Weiterleitung → Whoops S3-Export), als
+> `my_whoop_data_2026_09_24.zip` in Downloads gelegt (S3 liefert mit gzip-Hülle,
+> die Schnittstelle packt sie jetzt selbst aus) und eingelesen: 300 Tage, 96
+> neu. Dabei einen Fehler behoben: Whoop beginnt einen Zyklus mit dem
+> Einschlafen; wer vor Mitternacht einschläft, dessen Werte landeten beim
+> Vortag, und der echte Vortag ging verloren. Jetzt zählt der Tag des
+> Aufwachens (110 Tage korrigiert). Gesundheit rechnet mit echten Werten,
+> Wachstums-Score 44 → 55, größter Hebel jetzt Gesundheit. Verlauf mit
+> Zonenfarben je Tag, dazu HRV und Ruhepuls. Sicherung vor dem Import:
+> `.data/backup/vitals-vor-whoop-2026-09-24.json`.
+
 Jede Phase hat ein Ziel in einem Satz, eine Fertig-Bedingung, und eine Liste,
 was **bewusst nicht** darin ist. Grobe Größe in Arbeitstagen — ehrlich grob.
 

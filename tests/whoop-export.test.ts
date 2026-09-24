@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { deflateRawSync } from 'zlib';
-import { zipEintrag, zyklenLesen, einmischen, istZyklenDatei } from '@/lib/whoop-export';
+import { zipEintrag, zyklenLesen, einmischen, istZyklenDatei, tagDesZyklus } from '@/lib/whoop-export';
 
 /** Minimales ZIP bauen — gespeichert (0) oder deflate (8). */
 function zipBauen(dateien: { name: string; text: string; deflate?: boolean }[]): Buffer {
@@ -54,5 +54,15 @@ describe('Whoop-Export', () => {
     expect(log['2026-09-23']).toEqual({ rec: 61, note: 'schlecht geschlafen' });
     expect(log['2026-09-24']).toEqual({ rec: 72 });
     expect([neu, aktualisiert]).toEqual([1, 1]);
+  });
+
+  it('ordnet einen Zyklus dem Tag des Aufwachens zu, nicht dem Einschlafen', () => {
+    expect(tagDesZyklus('2026-09-23 23:42:42', '2026-09-24 07:10:00')).toBe('2026-09-24');
+    expect(tagDesZyklus('2026-09-23 00:26:42', '2026-09-23 08:02:00')).toBe('2026-09-23');
+    expect(tagDesZyklus('2026-09-30 23:10:00', '')).toBe('2026-10-01');
+    expect(tagDesZyklus('2026-09-23 01:00:00')).toBe('2026-09-23');
+    const kopf = 'Startzeit des Zyklus,Erholungswert %,Beginn des Aufwachens';
+    const r = zyklenLesen(`${kopf}\n2026-09-23 23:42:42,27,2026-09-24 07:10:00\n2026-09-23 00:26:42,1,2026-09-23 08:02:00`);
+    expect(r.ok && r.tage).toEqual({ '2026-09-24': { rec: 27 }, '2026-09-23': { rec: 1 } });
   });
 });
