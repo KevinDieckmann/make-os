@@ -17,12 +17,14 @@ import { loadJson, saveJson } from '@/lib/store/local-db';
 import { haushaltVon, KEIN_ZUGANG } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt, setzeHaushalt, aendereMeta } from '@/lib/finanzen/haushalt/speicher';
 import { verbindungAusUmgebung, ausSupabaseLesen, zusammenfuehren, type Umzugsbericht } from '@/lib/finanzen/haushalt/supabase-umzug';
+import { umwandeln } from '@/lib/finanzen/haushalt/supabase-umzug';
+import { ausDateien, v1Nacharbeiten, type Sicherung, type V1Export, type DateiBericht } from '@/lib/finanzen/haushalt/datei-umzug';
 import { belegAufgabenAbgleichen } from '@/lib/finanzen/haushalt/aufgaben';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface Stand { bericht: Umzugsbericht; zeit: string; wer: string; archiv: string; uebernommen?: { zeit: string; wer: string; ergebnis: Record<string, Record<string, number>> } }
+interface Stand { bericht: Umzugsbericht; datei?: DateiBericht & { regelTreffer: number; sonstiges: number; offenEin: number }; quelle?: 'supabase' | 'dateien'; zeit: string; wer: string; archiv: string; uebernommen?: { zeit: string; wer: string; ergebnis: Record<string, Record<string, number>> } }
 const standName = (h: string) => `haushalt-umzug--${h}`;
 const probe = (h: string) => `${h}-probe`;
 
@@ -36,7 +38,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const z = await haushaltVon(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
-  let b: { schritt?: unknown; email?: unknown; passwort?: unknown };
+  let b: { schritt?: unknown; email?: unknown; passwort?: unknown; sicherung?: Sicherung; v1?: V1Export | null };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
 
   if (b.schritt === 'probe') {
@@ -56,6 +58,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, bericht });
     } catch (err) {
       return NextResponse.json({ ok: false, fehler: err instanceof Error ? err.message : 'Lesen aus Supabase fehlgeschlagen.' }, { status: 400 });
+    }
+  }
+
+  // Aus Dateien (24.09., Kevin: „nicht mit Malins Board verbinden — die Daten aus
+  // der Datei holen“): Malins Sicherung + V1-Export, zusammengesetzt an der Naht.
+  // Danach derselbe Weg: Probe-Haushalt, Bericht, Übernahme.
+  if (b.schritt === 'dateien') {
+    if (!b.sicherung || !Array.isArray(b.sicherung.buchungen)) return NextResponse.json({ ok: false, fehler: 'Malins Sicherung (MAKE-ORGA-Sicherung-….json) fehlt.' }, { status: 400 });
+    try {
+      const { roh, bericht: datei } = ausDateien(b.sicherung, b.v1 ?? null);
+      const zeit = new Date().toISOString();
+      const { haushalt: roherHaushalt, bericht } = umwandeln(roh, zeit);
+      const n = v1Nacharbeiten(roherHaushalt);
+      bericht.hinweise.unshift(...datei.hinweise);
+      const ordner = path.join(process.cwd(), '.data', 'archiv');
+      await fs.mkdir(ordner, { recursive: true, mode: 0o700 });
+      const archiv = path.join(ordner, `make-orga-dateien-${zeit.replace(/[:.]/g, '-')}.json`);
+      await fs.writeFile(archiv, JSON.stringify({ _quelle: 'Dateien (Sicherung + V1)', _gelesen: zeit, _von: z.person, sicherung: b.sicherung, v1: b.v1 ?? null }, null, 1), { mode: 0o600 });
+      await setzeHaushalt(probe(z.haushalt), n.haushalt);
+      const detail = { ...datei, regelTreffer: n.regelTreffer, sonstiges: n.sonstiges, offenEin: n.offenEin };
+      await saveJson<Stand>(standName(z.haushalt), { bericht, datei: detail, quelle: 'dateien', zeit, wer: z.person, archiv: path.basename(archiv) });
+      return NextResponse.json({ ok: true, bericht, datei: detail });
+    } catch (err) {
+      return NextResponse.json({ ok: false, fehler: err instanceof Error ? err.message : 'Dateien nicht lesbar.' }, { status: 400 });
     }
   }
 
