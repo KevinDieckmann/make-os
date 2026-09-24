@@ -375,6 +375,18 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Monatssalden = Excel bis auf Rundung); Platzhalter entfernt, Office Club endet 30.09.;
 > Liquidität zeigt jetzt 15 Monate.
 
+> **Nachtrag 24.09. spät, Plan für den 25.09.** Kevin: *„morgen ist das Ziel
+> den Gesundheitsbereich für mich fertig zu machen, dann dass Malin und ich
+> das Thema Finanzen sauber reinbringen und wir morgen abend einen klaren
+> Ist-Stand haben … morgen sollten wir das ganze auch live bekommen.“*
+> Entschieden: Obsidian-Hirn als privates Git-Repo; Apple-Daten „Mac liefert
+> zu“; Adresse morgen. Vorbereitet: Live-Paket (Dockerfile, compose mit Caddy,
+> deploy/-Skripte, GitHub Action — DEPLOY.md „Live gehen“), Produktions-Build
+> repariert und geprüft, Apple-Routen serverfest + /api/zulieferung +
+> zulieferer.mjs, Ist-Stand-Checkliste (12 Punkte) unter Zahlen › Head of Finance.
+> Reihenfolge morgen: Gesundheit (Kevin) → live (GitHub, Hetzner, Domain) →
+> Malin-Zugang → Finanzen gemeinsam bis die Checkliste grün ist → Aufgaben verteilen.
+
 Jede Phase hat ein Ziel in einem Satz, eine Fertig-Bedingung, und eine Liste,
 was **bewusst nicht** darin ist. Grobe Größe in Arbeitstagen — ehrlich grob.
 
