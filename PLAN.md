@@ -247,6 +247,20 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > der Produktions-Build nicht mehr an Lint-Fehlern. Nicht angefasst: der erste
 > Bau unter `/dashboard` (rund 70 Dateien, von der Prüfung ausgenommen).
 
+> **Nachtrag 24.09., volle Breite und Whoop-Export.** Kevin: *„das Ganze ist
+> jetzt nur in der Mitte"* — Seiten waren auf 900 px begrenzt, eine
+> Kartenspalte. Jetzt bis 1440 px mit Dashboard-Spalten (`Spalten`/`Spalte`/
+> `Raster` in schlank.tsx, nebeneinander ab 1180 px Fensterbreite), Inbox und
+> Kontakte mit Lesefenster rechts. Nebenbei behoben: das Antwortfeld der Inbox
+> verlor nach jedem Buchstaben den Fokus. — Kevin: *„als Nächstes steht der
+> Datenexport von Whoop zur Verfügung, somit haben wir alles."* Der Import
+> existierte, hatte aber keinen Knopf. Jetzt: `lib/whoop-export.ts` (ZIP ohne
+> Zusatzpaket, deutsche und englische Tabelle, 5 Tests), die Schnittstelle nimmt
+> ZIP, CSV oder den neuesten `my_whoop_data_….zip` aus dem Downloads-Ordner und
+> schreibt in den Bestand der angemeldeten Person (vorher immer in Kevins).
+> Knopf „Aus Downloads einlesen" unter Gesundheit und Verbindungen. Der Export
+> vom 24.09. liegt noch in der Mail; Kevin klickt dort „Daten herunterladen".
+
 Jede Phase hat ein Ziel in einem Satz, eine Fertig-Bedingung, und eine Liste,
 was **bewusst nicht** darin ist. Grobe Größe in Arbeitstagen — ehrlich grob.
 

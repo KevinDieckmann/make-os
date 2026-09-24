@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT, ABSTAND as A } from '@/lib/make-one/design';
+import { WhoopImport } from './WhoopImport';
 import { Seite, Karte, Ueberschrift, Ring, Segmente, Chip, Fortschritt, Balken as Trend, feld, LEUCHT, Spalten, Spalte } from './schlank';
 import { BESCHWERDEN, HEBEL, AUFBAU, HGOALS, ZUSAMMENHAENGE, CARE_NOTE } from '@/lib/make-one/health-data';
 import { localDay } from '@/lib/zeit';
@@ -203,9 +204,10 @@ export function GesundheitView() {
             </div>
             <p style={{ textAlign: 'center', color: C.inkDim, fontSize: TYP.body, margin: '14px 0 0', lineHeight: 1.5 }}>
               {satz ? <><b style={{ color: C.ink, fontWeight: 600 }}>{satz.split('.')[0]}.</b> {satz.split('.').slice(1).join('.').trim()}</> : null}
-              {stand && rec == null && <> <Link href="/os/verbindungen" style={{ color: C.aktiv, textDecoration: 'none' }}>Whoop verbinden</Link> oder morgens dem Boten sagen.</>}
+              {stand && rec == null && <> Whoop-Export einlesen oder morgens dem Boten sagen.</>}
               {stand && anspannung == null && rec != null && <> Anspannung fragt der Bote mittags.</>}
             </p>
+            {stand && rec == null && eigene && <div style={{ marginTop: 14, display: 'flex', justifyContent: 'center' }}><WhoopImport kurz onFertig={() => { void laden(); setVerlauf(null); }} /></div>}
           </Karte>
           <Karte i={3}>
             <Ueberschrift rechts={`Ø ${stand?.routinen.quote7 ?? '—'} %`}>Sieben Tage Routinen</Ueberschrift>

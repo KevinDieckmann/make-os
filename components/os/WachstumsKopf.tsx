@@ -13,6 +13,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Ring, Chip, zoneFarbe, LEUCHT } from './schlank';
+import { SCORE_NEU } from './WhoopImport';
 
 interface Saeule { key: string; label: string; score: number | null; zuDuenn: boolean }
 interface Antwort { aktuell: { index: number | null; label: string; hebel: string | null; stand: string; saeulen: Saeule[] }; verlauf: { date: string; index: number | null }[] }
@@ -53,6 +54,11 @@ export function WachstumsKopf() {
     fetch('/api/performance').then(r => r.json()).then((x: Antwort) => { if (x?.aktuell) { zwischen = { t: Date.now(), d: x }; setD(x); } }).catch(() => {});
   }, [pfad]);
   // Im Bereich Wachstum selbst steht der Score groß — der Kopf wäre doppelt.
+  // Neue Werte (z. B. Whoop-Export eingelesen): Zwischenspeicher verwerfen, neu holen.
+  useEffect(() => {
+    const neu = () => { zwischen = null; fetch('/api/performance').then(r => r.json()).then((x: Antwort) => { if (x?.aktuell) { zwischen = { t: Date.now(), d: x }; setD(x); } }).catch(() => {}); };
+    window.addEventListener(SCORE_NEU, neu); return () => window.removeEventListener(SCORE_NEU, neu);
+  }, []);
   if (pfad.startsWith('/os/wachstum')) return null;
 
   const p = d?.aktuell;

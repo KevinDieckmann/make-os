@@ -74,7 +74,12 @@ lokal, Route `/os`, Port 3001.
   Agenten 10, Regel in `lib/agenten-score.ts`), jeder Ring ein Sprung auf
   seine Seite. Seit 24.09. laufen ALLE Seiten und Mitläufer auf diesen Bausteinen; kein
   Bauteil unter `components/os` nutzt mehr `THEME`. ESLint muss grün bleiben
-  (`npx next lint`), sonst bricht der Produktions-Build. Neue Seiten: nie THEME, nie
+  (`npx next lint`), sonst bricht der Produktions-Build. Breite Seiten teilen
+  sich mit `Spalten`/`Spalte`/`Raster` auf (ab 1180 px nebeneinander); keine
+  Seite bleibt eine schmale Spalte in der Mitte.
+- **Whoop-Export:** `lib/whoop-export.ts` + `/api/import/whoop` (ZIP, CSV oder
+  neuester Export aus ~/Downloads, je Person). Knopf unter Gesundheit und
+  Verbindungen. Neue Seiten: nie THEME, nie
   Rahmen-Kästen, nie Schrift unter 11, nie eine Null. Alte Ansichten liegen unter
   `/os/uebersicht`, `/os/aufgaben/board` und `/os/inbox/voll`.
 - **`PLAN.md` ist der führende Plan (seit 18.09.2026).** Bestand bleibt und

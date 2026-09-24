@@ -1,115 +1,75 @@
 // ─── MAKE OS — Whoop-Export einlesen ────────────────────────────────────────
-// Kevins Ansage: „Zieh dir die neuesten Whoop-Werte, dann haben wir die Daten
-// sauber drin für Gesundheit."
-//
-// Die Whoop-Mail meldet nur, dass ein Export bereitsteht — die Zahlen stecken
-// im ZIP dahinter. Diese Route nimmt daraus die Datei
-// „physiologische_zyklen.csv" und schreibt jeden Tag in den Vitalwerte-Bestand.
-//
-// Warum CSV statt API: die Whoop-API braucht eine App-Registrierung und liegt
-// im Bauplan. Bis dahin ist der Export der Weg, der ohne Zugangsdaten
-// funktioniert — und er liefert die volle Historie, nicht nur heute.
-//
-// Bestehende Tage werden ERGÄNZT, nicht ersetzt: was Kevin von Hand eingetragen
-// hat (etwa eine Notiz), bleibt stehen.
+// Die Whoop-Mail meldet nur, dass ein Export bereitsteht; die Zahlen stecken
+// im ZIP dahinter. Drei Wege hinein (24.09.):
+//   POST { csv }              die Zyklen-Tabelle als Text (wie bisher)
+//   POST FormData „datei"     das ZIP oder die CSV aus der Dateiauswahl
+//   POST { ausDownloads }     der neueste my_whoop_data_*.zip im Downloads-
+//                             Ordner dieses Rechners — ein Klick nach dem Download
+// Die Regeln stehen in lib/whoop-export.ts. Bestehende Tage werden ergänzt,
+// eigene Notizen bleiben stehen. Geschrieben wird in den Bestand der
+// angemeldeten Person.
 
 import { NextResponse } from 'next/server';
+import { readdir, readFile, stat } from 'fs/promises';
+import { homedir } from 'os';
+import { join } from 'path';
 import { updateJson } from '@/lib/store/local-db';
+import { personAus, speicherFuer } from '@/lib/jarvis/raum';
+import { zipEintrag, zyklenLesen, einmischen, istZyklenDatei, type WhoopLog } from '@/lib/whoop-export';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface Tag { rec?: number; sleep?: number; hrv?: number; rhr?: number; note?: string }
-type Log = Record<string, Tag>;
+const DOWNLOADS = join(homedir(), 'Downloads');
 
-/** Spalten des deutschen Exports → unsere Felder. */
-const SPALTEN = {
-  start: 'Startzeit des Zyklus',
-  rec: 'Erholungswert %',
-  rhr: 'Ruheherzfrequenz (Schläge pro Minute)',
-  hrv: 'Herzfrequenzvariabilität (ms)',
-  schlafMin: 'Schlafdauer (Min.)',
-} as const;
-
-/** CSV-Zeile zerlegen — Whoop quotet Felder mit Komma. */
-function zerlege(zeile: string): string[] {
-  const out: string[] = [];
-  let feld = '', inAnf = false;
-  for (let i = 0; i < zeile.length; i++) {
-    const c = zeile[i];
-    if (c === '"') { if (inAnf && zeile[i + 1] === '"') { feld += '"'; i++; } else inAnf = !inAnf; }
-    else if (c === ',' && !inAnf) { out.push(feld); feld = ''; }
-    else feld += c;
-  }
-  out.push(feld);
-  return out;
+/** ZIP oder CSV → Tabellentext. */
+function tabelleAus(buf: Buffer, name: string): string | null {
+  if (/\.zip$/i.test(name) || buf.readUInt32LE(0) === 0x04034b50) return zipEintrag(buf, istZyklenDatei);
+  return buf.toString('utf8');
 }
 
-const zahl = (s: string | undefined, min: number, max: number, stellen = 0): number | undefined => {
-  if (!s?.trim()) return undefined;
-  const n = Number(s.replace(',', '.'));
-  if (!isFinite(n) || n < min || n > max) return undefined;
-  return stellen ? Math.round(n * 10 ** stellen) / 10 ** stellen : Math.round(n);
-};
+async function neuesterExport(): Promise<{ pfad: string; name: string; zeit: Date } | null> {
+  const namen = (await readdir(DOWNLOADS).catch(() => [] as string[])).filter(n => /^my_whoop_data.*\.zip$/i.test(n));
+  const mit = await Promise.all(namen.map(async n => ({ pfad: join(DOWNLOADS, n), name: n, zeit: (await stat(join(DOWNLOADS, n))).mtime })));
+  return mit.sort((a, b) => b.zeit.getTime() - a.zeit.getTime())[0] ?? null;
+}
+
+/** GET → welcher Export läge im Downloads-Ordner bereit (für den Knopf). */
+export async function GET() {
+  const n = await neuesterExport();
+  return NextResponse.json({ ok: true, downloads: n ? { name: n.name, zeit: n.zeit.toISOString() } : null });
+}
 
 export async function POST(req: Request) {
-  let csv: string;
+  let csv: string | null = null, quelle = '';
+  const typ = req.headers.get('content-type') ?? '';
   try {
-    const body = await req.json();
-    csv = String(body.csv ?? '');
-  } catch { return NextResponse.json({ ok: false, error: 'Kein JSON mit Feld "csv".' }, { status: 400 }); }
-
-  const zeilen = csv.split(/\r?\n/).filter(z => z.trim());
-  if (zeilen.length < 2) return NextResponse.json({ ok: false, error: 'CSV ist leer.' }, { status: 400 });
-
-  const kopf = zerlege(zeilen[0]).map(s => s.trim());
-  const idx = Object.fromEntries(Object.entries(SPALTEN).map(([k, name]) => [k, kopf.indexOf(name)])) as Record<keyof typeof SPALTEN, number>;
-  if (idx.start < 0 || idx.rec < 0) {
-    return NextResponse.json(
-      { ok: false, error: 'Das sieht nicht nach „physiologische_zyklen.csv" aus — die Spalten „Startzeit des Zyklus" und „Erholungswert %" fehlen.' },
-      { status: 400 },
-    );
-  }
-
-  const neu: Log = {};
-  let ohneWerte = 0;
-  for (const z of zeilen.slice(1)) {
-    const f = zerlege(z);
-    const datum = (f[idx.start] ?? '').slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(datum)) continue;
-
-    const schlafMin = zahl(f[idx.schlafMin], 0, 24 * 60);
-    const tag: Tag = {
-      rec: zahl(f[idx.rec], 0, 100),
-      rhr: zahl(f[idx.rhr], 20, 200),
-      hrv: zahl(f[idx.hrv], 0, 300),
-      sleep: schlafMin != null ? Math.round((schlafMin / 60) * 10) / 10 : undefined,
-    };
-    (Object.keys(tag) as (keyof Tag)[]).forEach(k => { if (tag[k] === undefined) delete tag[k]; });
-
-    // Zeilen ohne jede Messung (Whoop legt für Lücken leere Zyklen an) überspringen.
-    if (!Object.keys(tag).length) { ohneWerte++; continue; }
-    // Neuere Zeile gewinnt nicht über eine frühere desselben Tages — die Datei
-    // ist neueste-zuerst, der erste Treffer je Tag ist der vollständigste.
-    if (!neu[datum]) neu[datum] = tag;
-  }
-
-  const tage = Object.keys(neu).sort();
-  if (!tage.length) return NextResponse.json({ ok: false, error: 'Keine verwertbaren Zeilen gefunden.' }, { status: 400 });
-
-  let ergaenzt = 0, dazu = 0;
-  await updateJson<Log>('vitals', current => {
-    const log: Log = current && typeof current === 'object' && !Array.isArray(current) ? { ...current } : {};
-    for (const [d, t] of Object.entries(neu)) {
-      if (log[d]) { log[d] = { ...t, ...(log[d].note ? { note: log[d].note } : {}) }; ergaenzt++; }
-      else { log[d] = t; dazu++; }
+    if (typ.includes('multipart/form-data')) {
+      const f = (await req.formData()).get('datei');
+      if (!f || typeof f === 'string') return NextResponse.json({ ok: false, error: 'Keine Datei erhalten.' }, { status: 400 });
+      csv = tabelleAus(Buffer.from(await f.arrayBuffer()), f.name); quelle = f.name;
+    } else {
+      const body = await req.json() as { csv?: string; ausDownloads?: boolean };
+      if (body.ausDownloads) {
+        const n = await neuesterExport();
+        if (!n) return NextResponse.json({ ok: false, error: 'Im Downloads-Ordner liegt kein Whoop-Export (my_whoop_data_….zip). Erst in der Whoop-Mail auf „Daten herunterladen" klicken.' }, { status: 404 });
+        csv = tabelleAus(await readFile(n.pfad), n.name); quelle = n.name;
+      } else { csv = String(body.csv ?? ''); quelle = 'Text'; }
     }
-    return log;
-  });
+  } catch { return NextResponse.json({ ok: false, error: 'Die Anfrage war nicht lesbar.' }, { status: 400 }); }
+  if (!csv) return NextResponse.json({ ok: false, error: 'Im ZIP fehlt „physiologische_zyklen.csv".' }, { status: 400 });
 
-  return NextResponse.json({
-    ok: true,
-    tage: tage.length, neu: dazu, aktualisiert: ergaenzt, uebersprungen: ohneWerte,
-    von: tage[0], bis: tage[tage.length - 1],
+  const r = zyklenLesen(csv);
+  if (!r.ok) return NextResponse.json({ ok: false, error: r.fehler }, { status: 400 });
+
+  let zahlen = { neu: 0, aktualisiert: 0 };
+  // Je Person eigener Bestand — Malins Export landet bei Malin, nicht bei Kevin (24.09.).
+  await updateJson<WhoopLog>(speicherFuer('vitals', personAus(req)), current => {
+    const bestand = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
+    const m = einmischen(bestand, r.tage); zahlen = { neu: m.neu, aktualisiert: m.aktualisiert };
+    return m.log;
   });
+  const tage = Object.keys(r.tage).sort();
+  const bis = tage[tage.length - 1];
+  return NextResponse.json({ ok: true, quelle, tage: tage.length, ...zahlen, uebersprungen: r.ohneWerte, von: tage[0], bis, letzter: r.tage[bis] });
 }

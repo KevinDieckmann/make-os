@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { WhoopImport } from './WhoopImport';
 import { Seite, Karte, Ueberschrift, Leer, Chip, Knopf, Zeile, Liste, LEUCHT, Raster } from './schlank';
 
 interface Verbindung { id: string; name: string; konfiguriert: boolean; verbunden: boolean; seit: string | null; laeuftAb: number | null; scope: string | null; anleitung: string; envId: string; envSecret: string }
@@ -59,6 +60,12 @@ export function VerbindungenView() {
               {v.verbunden && <Knopf leise onClick={() => trennen(v.id)}>Trennen</Knopf>}
               {v.id === 'whoop' && syncMeld && <span style={{ fontSize: TYP.bedien, color: syncMeld.startsWith('Übernommen') ? LEUCHT.gut : LEUCHT.achtung }}>{syncMeld}</span>}
             </div>
+            {v.id === 'whoop' && (
+              <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.07)' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.inkDim, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>Export einlesen · ohne Entwickler-Zugang</div>
+                <WhoopImport />
+              </div>
+            )}
             <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 12, lineHeight: 1.5 }}>
               {v.id === 'whoop' ? 'Verbunden heißt: Recovery, Schlaf, HRV und Puls kommen jeden Morgen von selbst — in die Gesundheit und in den Wachstums-Score.' : 'Verbunden heißt: Postfach und Firmenkalender live statt als Momentaufnahme.'}
             </div>
