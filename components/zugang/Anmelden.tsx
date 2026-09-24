@@ -10,14 +10,12 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, RADIUS, MIKRO } from '@/lib/make-one/design';
+import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, MIKRO } from '@/lib/make-one/design';
+import { feld as feldBasis } from '@/components/os/schlank';
 
 type Art = 'anmelden' | 'einrichten' | 'beitreten';
 
-const feld: React.CSSProperties = {
-  width: '100%', background: C.grund, border: `1px solid ${C.linie}`, borderRadius: RADIUS.bauteil,
-  color: C.ink, fontFamily: SCHRIFT.text, fontSize: 16, padding: '12px 14px', outline: 'none',
-};
+const feld: React.CSSProperties = { ...feldBasis, fontSize: 16, padding: '13px 15px' };
 
 export function Anmelden() {
   const params = useSearchParams();
@@ -60,9 +58,9 @@ export function Anmelden() {
 
   return (
     <div style={{ minHeight: '100dvh', background: C.grund, color: C.ink, fontFamily: SCHRIFT.text, display: 'grid', placeItems: 'center', padding: A.l }}>
-      <form onSubmit={los} style={{ width: 'min(400px, 100%)', display: 'flex', flexDirection: 'column', gap: A.m }}>
+      <form onSubmit={los} className="karte os-auf" style={{ width: 'min(420px, 100%)', display: 'flex', flexDirection: 'column', gap: A.m, padding: '30px 28px 26px' }}>
         <div style={{ textAlign: 'center', marginBottom: A.l }}>
-          <div style={{ fontFamily: SCHRIFT.display, fontSize: 30, fontWeight: 700, letterSpacing: '-.02em', color: C.ink }}>MAKE OS</div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontFamily: SCHRIFT.display, fontSize: 30, fontWeight: 700, letterSpacing: '-.025em', color: C.ink }}><span className="zeit-puls" style={{ width: 10, height: 10, borderRadius: '50%', background: C.aktiv, boxShadow: `0 0 12px ${C.aktiv}` }} />MAKE OS</div>
           <div style={{ ...MIKRO, marginTop: 4 }}>
             {art === 'anmelden' ? 'Anmelden' : art === 'einrichten' ? 'Erstes Konto einrichten' : 'Mit Einladung beitreten'}
           </div>
@@ -93,8 +91,9 @@ export function Anmelden() {
         {fehler && <div style={{ fontSize: TYP.bedien, color: C.kritisch, lineHeight: 1.4 }}>{fehler}</div>}
 
         <button type="submit" disabled={laeuft || eingerichtet === null} className="fassbar" style={{
-          fontFamily: SCHRIFT.text, fontSize: TYP.body, fontWeight: 700, padding: '13px', borderRadius: RADIUS.bauteil, border: 'none',
-          cursor: laeuft ? 'default' : 'pointer', background: laeuft ? C.linie : C.aktiv, color: laeuft ? C.inkLeise : C.grund, marginTop: A.s,
+          fontFamily: SCHRIFT.text, fontSize: TYP.body, fontWeight: 700, padding: '13px', borderRadius: 12, border: 'none', marginTop: A.s,
+          cursor: laeuft ? 'default' : 'pointer', background: laeuft ? 'rgba(255,255,255,.08)' : C.aktiv, color: laeuft ? C.inkLeise : C.grund,
+          boxShadow: laeuft ? undefined : `0 8px 24px -8px ${C.aktiv}99`,
         }}>
           {laeuft ? '…' : art === 'anmelden' ? 'Anmelden' : art === 'einrichten' ? 'Konto anlegen' : 'Beitreten'}
         </button>
