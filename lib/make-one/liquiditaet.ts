@@ -119,6 +119,8 @@ export interface Planposten {
   kategorie?: string;
   /** 0–100: wie wahrscheinlich der Posten eintritt (für Szenarien). */
   wahrscheinlich?: number;
+  /** Ersetzt einen importierten Plan-Posten (Excel-Import legt ihn nicht wieder an). */
+  ersetzt?: string;
 }
 
 /** Die Kategorien, in denen bei uns gedacht wird. */
@@ -242,9 +244,12 @@ export function vorschau(
       const datum = faelligIn(p, vonISO, bisISO);
       if (!datum) continue;
       // Einnahmen zählen nur, wenn sie im gewählten Szenario überhaupt eintreten.
-      if (p.betrag > 0 && !p.sicher) {
+      // Ausgaben, die an unsicheren Einnahmen hängen (z. B. die USt-Zahllast
+      // aus geplanten Umsätzen), tragen eine Wahrscheinlichkeit und folgen ihr —
+      // sonst stünde im schlechten Fall Steuer auf Umsatz, der nie kam.
+      if (!p.sicher && (p.betrag > 0 || p.wahrscheinlich != null)) {
         const chance = p.wahrscheinlich ?? 50;
-        if (chance < schwelle) { unsicher += p.betrag; continue; }
+        if (chance < schwelle) { if (p.betrag > 0) unsicher += p.betrag; continue; }
       }
       bewegungen.push({
         datum, text: p.titel.slice(0, 60), betrag: p.betrag,

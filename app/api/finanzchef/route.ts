@@ -120,8 +120,8 @@ export async function POST(req: Request) {
       },
       ruecklageQuote: e.ruecklageQuote === null ? null : typeof e.ruecklageQuote === 'number' && e.ruecklageQuote >= 0 && e.ruecklageQuote <= 70 ? Math.round(e.ruecklageQuote) : alt.ruecklageQuote,
       rechtsform: {
-        kdv: e.rechtsform && 'kdv' in e.rechtsform ? (e.rechtsform.kdv ? String(e.rechtsform.kdv).slice(0, 40) : null) : alt.rechtsform.kdv,
-        kdc: e.rechtsform && 'kdc' in e.rechtsform ? (e.rechtsform.kdc ? String(e.rechtsform.kdc).slice(0, 40) : null) : alt.rechtsform.kdc,
+        kdv: e.rechtsform && 'kdv' in e.rechtsform ? (e.rechtsform.kdv ? String(e.rechtsform.kdv).slice(0, 80) : null) : alt.rechtsform.kdv,
+        kdc: e.rechtsform && 'kdc' in e.rechtsform ? (e.rechtsform.kdc ? String(e.rechtsform.kdc).slice(0, 80) : null) : alt.rechtsform.kdc,
       },
       geaendert: new Date().toISOString(),
     };

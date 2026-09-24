@@ -158,8 +158,9 @@ def baue(b, quelle):
     for k, c in enumerate(SPALTEN):
         z = zahl(L, f'{c}20')
         if z > 0:
-            neu(f'ust-{k + 1}', f'USt-Zahllast für {monat(start, k)}', -z, 'einmalig', f'{monat(start, k + 1)}-10', None, 'steuern',
-                n='19 % × (Umsatz − Sachkosten) des Vormonats, laut Planung — ändert sich mit den Umsätzen')
+            # Hängt an den geplanten Umsätzen — deshalb so unsicher wie sie.
+            neu(f'ust-{k + 1}', f'USt-Zahllast für {monat(start, k)}', -z, 'einmalig', f'{monat(start, k + 1)}-10', None, 'steuern', sicher=False, wahrscheinlich=60,
+                n='19 % × (Umsatz − Sachkosten) des Vormonats, laut Planung — kommt nur, wenn die Umsätze kommen')
     return posten, start
 
 
@@ -208,7 +209,20 @@ def main():
     os.makedirs(archiv, exist_ok=True)
     ziel = os.path.join(archiv, f'liquiplan-vor-excel-import-{datetime.datetime.now().strftime("%Y-%m-%d-%H%M%S")}.json')
     json.dump({'posten': alt}, open(ziel, 'w'), ensure_ascii=False, indent=1)
-    neu = [p for p in alt if not str(p.get('id', '')).startswith(PRAEFIX)] + posten
+    # Was in MAKE OS entschieden wurde, gewinnt: ersetzte Plan-Posten bleiben weg,
+    # und Einschätzung (sicher, Wahrscheinlichkeit) sowie Firma bleiben erhalten.
+    eigene = [p for p in alt if not str(p.get('id', '')).startswith(PRAEFIX)]
+    ersetzt = {p.get('ersetzt') for p in eigene if p.get('ersetzt')}
+    vorher = {p['id']: p for p in alt if str(p.get('id', '')).startswith(PRAEFIX)}
+    for p in posten:
+        v = vorher.get(p['id'])
+        if v:
+            for feld in ('sicher', 'wahrscheinlich', 'firmaId'):
+                if feld in v: p[feld] = v[feld]
+            if v.get('notiz', '').startswith('Zu klären') and not p['notiz'].startswith('Zu klären'):
+                p['notiz'] = v['notiz'].split(' · ')[0] + ' · ' + p['notiz']
+    posten = [p for p in posten if p['id'] not in ersetzt]
+    neu = eigene + posten
     req = urllib.request.Request(f'{ort}/api/state/liquiplan', data=json.dumps({'posten': neu}).encode(), headers=kopf, method='PUT')
     antwort = json.load(urllib.request.urlopen(req))
     print(f'Geschrieben: {len(neu)} Posten ({len(posten)} aus der Excel, {len(neu) - len(posten)} eigene). Alter Stand: {ziel}. Antwort ok={antwort.get("ok")}')

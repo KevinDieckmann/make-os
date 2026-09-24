@@ -31,6 +31,9 @@ export interface Planposten {
   kategorie?: string;
   /** Nur im schlechten Fall (0) bis sicher (100) — für die Szenarien. */
   wahrscheinlich?: number;
+  /** Dieser (eigene) Posten ersetzt einen importierten Plan-Posten — der
+   *  Excel-Import legt den ersetzten dann nicht wieder an. */
+  ersetzt?: string;
 }
 interface Datei { posten: Planposten[] }
 
@@ -57,6 +60,7 @@ function sauber(p: Partial<Planposten>, i: number): Planposten | null {
     wahrscheinlich: Number.isFinite(Number(p.wahrscheinlich))
       ? Math.max(0, Math.min(100, Math.round(Number(p.wahrscheinlich))))
       : undefined,
+    ersetzt: p.ersetzt ? String(p.ersetzt).slice(0, 60) : undefined,
   };
 }
 
