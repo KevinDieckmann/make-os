@@ -8,6 +8,7 @@ import { OFFENE_STUFEN, gesundheit } from './pipeline';
 import { mandatLage } from './kunden';
 import { art14 } from './recht';
 import { dubletten } from './dubletten';
+import { checklisteFaellig } from './eventplanung';
 
 export interface Befund { prio: 1 | 2 | 3 | 4 | 5; titel: string; grund: string; bereich: 'heute' | 'kontakte' | 'firmen' | 'pipeline' | 'kunden' | 'marketing' | 'events' | 'stammdaten'; ansicht?: string }
 
@@ -34,6 +35,9 @@ export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string): Be
   if (ohneAngaben) b.push({ prio: 3, titel: `${ohneAngaben} Kontakte ohne Herkunft oder Rechtsgrundlage`, grund: 'Vorschlag per Regel, Übernahme per Klick', bereich: 'stammdaten', ansicht: 'datenschutz' });
   const d = dubletten(kontakte).length;
   if (d) b.push({ prio: 4, titel: `${d} Dubletten zusammenführen`, grund: 'gleicher Name, gleiche Firma oder Kontaktdaten', bereich: 'stammdaten', ansicht: 'qualitaet' });
+  // Events: überfällige Checklistenpunkte (vor dem Termin) — nach dem Event zählt das Nachfassen in der Power Hour.
+  const evUeber = crm.events.filter(e => e.status !== 'abgesagt' && e.datum >= heute).map(e => ({ e, n: checklisteFaellig(e, heute).filter(pk => pk.ueberfaellig).length })).filter(x => x.n);
+  if (evUeber.length) b.push({ prio: 2, titel: `${evUeber.reduce((a, x) => a + x.n, 0)} Punkte der Event-Checkliste überfällig`, grund: evUeber.map(x => x.e.titel).join(', '), bereich: 'events' });
   // Marketing: Rhythmus und Nachhalten (Beiträge, Newsletter-Zahlen).
   const vor7 = (() => { const x = new Date(`${heute}T12:00:00Z`); x.setUTCDate(x.getUTCDate() - 6); return x.toISOString().slice(0, 10); })();
   if (crm.beitraege.length && !crm.beitraege.some(b => b.status === 'veroeffentlicht' && b.datum && b.datum >= vor7 && b.datum <= heute)) b.push({ prio: 4, titel: 'Diese Woche noch nichts veröffentlicht', grund: 'Zwei Beiträge je Woche halten die Zielgruppe warm — Ideen liegen im Redaktionsplan', bereich: 'marketing' });

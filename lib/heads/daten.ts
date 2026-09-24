@@ -9,7 +9,8 @@ import { werIstDran } from '@/lib/crm/heute';
 import { ampel, art14, kanalStatus } from '@/lib/crm/recht';
 import { prognose, gesundheit, gesamtwert, OFFENE_STUFEN, STUFEN, gewinnquote } from '@/lib/crm/pipeline';
 import { mandatLage, mrr, konzentration } from '@/lib/crm/kunden';
-import { eventZahlen, followUpBis } from '@/lib/crm/events';
+import { eventZahlen, followUpBis, nachfassenRest } from '@/lib/crm/events';
+import { mix, checklisteStand, zielHinweis, budgetSumme, gaesteVorschlag } from '@/lib/crm/eventplanung';
 import type { HeadId } from './prompt';
 import { PLAYBOOKS, kundenprofil, aehnlicheFirmen, zielgruppe, kampagnenZahlen } from '@/lib/crm/kampagnen';
 import { einstellungAus, marketingKennzahlen, wirkungZahlen, newsletterEmpfaenger, abmeldequote } from '@/lib/crm/marketing';
@@ -113,15 +114,21 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
 
   // event
   const events = crm.events.filter(e => e.status !== 'abgesagt');
-  const kandidaten = aktiv.filter(k => (k.kreis && k.kreis !== 'D') || k.lebensphase === 'kunde' || k.lebensphase === 'multiplikator' || k.prio === 'A').slice(0, 40).map(p);
+  // Gästevorschläge für das nächste Event (mit Grund und zulässigem Einladungsweg), sonst allgemein die Kreise.
+  const naechstes = events.filter(e => e.datum >= heute).sort((a, b) => a.datum.localeCompare(b.datum))[0];
+  const seg = naechstes?.segmentId ? crm.segmente.find(sg => sg.id === naechstes.segmentId) : undefined;
+  const kandidaten = naechstes
+    ? gaesteVorschlag(aktiv, crm, naechstes, heute, seg?.kriterien, 15).map(g => ({ ...p(g.kontakt), gruende: g.gruende, gruppe: g.gruppe, einladungsweg: g.weg }))
+    : aktiv.filter(k => (k.kreis && k.kreis !== 'D') || k.lebensphase === 'kunde' || k.lebensphase === 'multiplikator' || k.prio === 'A').slice(0, 40).map(p);
   return {
     meta,
     events: events.map(e => ({
-      id: e.id, titel: e.titel, format: e.format, ziel: kurz(e.ziel, 300), datum: e.datum, ort: e.ort, kapazitaet: e.kapazitaet, kosten: e.kostenEuro, status: e.status,
-      nachfassen_bis: followUpBis(e), zahlen: eventZahlen(e, crm.teilnahmen, kontakte, crm.chancen),
-      gaeste: crm.teilnahmen.filter(t => t.eventId === e.id).map(t => { const k = nachId.get(t.kontaktId); return k ? { status: t.status, notiz_vom_abend: kurz(t.notiz, 240), nachgefasst: t.followUpAm ?? null, einladung_per_mail: kanalStatus(k, 'einladung').farbe, ...p(k) } : null; }).filter(Boolean),
+      id: e.id, titel: e.titel, format: e.format, ziel: kurz(e.ziel, 300), ziel_hinweis: zielHinweis(e.ziel), datum: e.datum, ort: e.ort, kapazitaet: e.kapazitaet, kosten: budgetSumme(e), status: e.status,
+      nachfassen_bis: followUpBis(e), nachfassen_rest_stunden: nachfassenRest(e, Date.now()), zahlen: eventZahlen(e, crm.teilnahmen, kontakte, crm.chancen),
+      mischung: mix(e, crm.teilnahmen, kontakte, crm.firmen), checkliste: checklisteStand(e, heute),
+      gaeste: crm.teilnahmen.filter(t => t.eventId === e.id).map(t => { const k = nachId.get(t.kontaktId); return k ? { status: t.status, rolle: t.rolle ?? 'gast', fotofreigabe: t.fotofreigabe ?? null, einladungsweg: t.einladungsweg ?? null, eingeladen_am: t.eingeladenAm ?? null, notiz_vom_abend: kurz(t.notiz, 240), nachgefasst: t.followUpAm ?? null, einladung_per_mail: kanalStatus(k, 'einladung').farbe, ...p(k) } : null; }).filter(Boolean),
     })),
-    kandidaten,
+    kandidaten, naechstes_event: naechstes?.id ?? null,
     chancen_aus_events: crm.chancen.filter(c => c.quelle === 'event').map(c => ({ id: c.id, titel: c.titel, event_id: c.quelleBezug, wert_gesamt: Math.round(gesamtwert(c)) })),
   };
 }
