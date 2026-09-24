@@ -322,6 +322,33 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > installieren und Mac mit Malin teilen, GitHub-Repo, Hetzner-Server, und wie
 > das Brain auf den Server kommt. Tests: 191 grün.
 
+> **Nachtrag 24.09., Haushaltsfinanzen: Malins Cockpit zieht nach MAKE OS.**
+> Kevin: *„das Ganze als unsere privaten Finanzen mit reinnehmen, dass wir über
+> Privat und Business unterscheiden können … kritisch, dass wir keine Probleme
+> im Gesamtsystem haben.“* Plan freigegeben nach zwei Prüfrunden; Entscheidungen:
+> alles nach MAKE OS umziehen (Malins Supabase wird eingefroren), Beträge
+> dürfen in Briefings und Telegram, Finanzen-Säule misst Privat + Business.
+> Gebaut: Zahlen → **Privat | Business | Gesamt**. Privat = Malins sieben
+> Ansichten im MAKE-OS-Design (Übersicht, Buchungen mit Import, Einnahmen,
+> Analyse, Fixkosten & Budget, Ist gegen Soll, Schulden & Rechnungen), Logik
+> in `lib/finanzen/haushalt/` (Cent, eine Einordnung für alle Ansichten).
+> Zugriff nur für Konten mit Haushalt (Kevin: „kevin-malin“). Gesamt = Brücke
+> privater Sockel → nötige Entnahme → Mindestumsatz. Entflechtung: Privates
+> zählt in keiner Business-Rechnung mehr (roter Schild „6 überfällige
+> Zahlungen“ weg — die waren privat). Jarvis: Haushaltsblock + 5 Werkzeuge nur
+> im Gespräch/Briefing mit benannter Person; Business-Agenten bekommen nichts;
+> Verlauf je Person, Stapel/Protokoll gefiltert. Score: finanzSaeule 50/50.
+> Umzug: Probelauf direkt aus Supabase (blätternd, exakt gezählt), dann
+> Übernahme; Prüfliste räumt private Einträge aus den Firmen-Speichern.
+> Funde in Malins Cockpit (`docs/make-orga/FUNDE-fuer-Malin.md`): Sicherung und
+> Cockpit sehen max. 1.000 Buchungen, Monate um einen verschoben (Zeitzone),
+> drei Einnahme-Definitionen, Kreditrate doppelt im Sockel, Regeln verlieren
+> gegen N26 u. a. Grundlage (Business) mit V1-Export vom 21.09. aufgefrischt
+> (Jun–Aug). Offen bei Kevin/Malin: Tailscale + Malins Konto, Probelauf mit
+> Supabase-Zugang, Einfrieren, Übernehmen, Prüfliste entscheiden,
+> Business-Kontostände eintragen (Runway), Vertraulichkeitsregeln im Brain
+> um die Briefing-Ausnahme ergänzen.
+
 Jede Phase hat ein Ziel in einem Satz, eine Fertig-Bedingung, und eine Liste,
 was **bewusst nicht** darin ist. Grobe Größe in Arbeitstagen — ehrlich grob.
 

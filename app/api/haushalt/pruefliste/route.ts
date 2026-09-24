@@ -15,6 +15,7 @@ import { ladeHaushalt, aendereBuchungen, aendereSchulden, speicherName } from '@
 import { pruefliste, type Aktion, type Businessbestand, type Quelle } from '@/lib/finanzen/haushalt/entflechtung';
 import type { Beleg, Buchung, Schuld } from '@/lib/finanzen/haushalt/typen';
 import { fingerabdruck } from '@/lib/finanzen/haushalt/import';
+import { istEchterHaushalt } from '@/lib/finanzen/haushalt/aufgaben';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,9 @@ async function bestand(): Promise<Businessbestand> {
 export async function GET(req: Request) {
   const z = await haushaltVon(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  // Die Firmen-Speicher gehören der Instanz — also nur dem echten Haushalt.
+  // Test- und Probe-Haushalte sehen nichts davon (gefunden 24.09.).
+  if (!istEchterHaushalt(z.haushalt)) return NextResponse.json({ ok: true, posten: [], haushaltLeer: true });
   const h = await ladeHaushalt(z.haushalt);
   return NextResponse.json({ ok: true, posten: pruefliste(await bestand(), h), haushaltLeer: !h.buchungen.length });
 }
@@ -34,6 +38,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const z = await haushaltVon(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  if (!istEchterHaushalt(z.haushalt)) return NextResponse.json({ ok: false, fehler: 'Nur im echten Haushalt.' }, { status: 403 });
   let b: { entscheidungen?: { quelle: Quelle; id: string; aktion: Aktion }[] };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   const h = await ladeHaushalt(z.haushalt);

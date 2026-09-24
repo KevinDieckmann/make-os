@@ -48,9 +48,10 @@ export function HaushaltView({ reiter, onReiter }: { reiter: string | null; onRe
 
   return (
     <>
-      <div className="os-auf" style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-        <div style={{ overflowX: 'auto', maxWidth: '100%', paddingBottom: 2 }}><Segmente liste={REITER} aktiv={aktiv} onWahl={onReiter} /></div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 12.5, color: C.inkLeise }}>
+      {/* minWidth 0 + Umbruch: sonst macht diese Leiste auf dem Handy die ganze Seite breiter als den Bildschirm */}
+      <div className="os-auf" style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', minWidth: 0 }}>
+        <div style={{ overflowX: 'auto', maxWidth: '100%', minWidth: 0, paddingBottom: 2 }}><Segmente liste={REITER} aktiv={aktiv} onWahl={onReiter} /></div>
+        <div style={{ display: 'flex', gap: '8px 14px', alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkLeise, minWidth: 0 }}>
           {juengste && <span style={{ color: alt !== null && alt > 40 ? LEUCHT.achtung : C.inkLeise }}>Letzte Buchung {datumDe(juengste)}</span>}
           {pruefAnzahl > 0 && <button onClick={() => setPruefAuf(true)} style={{ background: 'none', border: 'none', color: LEUCHT.achtung, cursor: 'pointer', font: 'inherit', padding: 0 }} title="Private Einträge, die noch in den Business-Speichern stehen">Aufräumen ({pruefAnzahl})</button>}
           <button onClick={() => setUmzugAuf(true)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', font: 'inherit', padding: 0 }} title="Probelauf und Übernahme aus Malins Supabase">{h.meta.umzug ? `Aus Malins Cockpit (${datumDe(h.meta.umzug.zeit.slice(0, 10))})` : 'Aus Malins Cockpit'}</button>

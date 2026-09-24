@@ -82,6 +82,16 @@ lokal, Route `/os`, Port 3001.
   Verbindungen. Neue Seiten: nie THEME, nie
   Rahmen-Kästen, nie Schrift unter 11, nie eine Null. Alte Ansichten liegen unter
   `/os/uebersicht`, `/os/aufgaben/board` und `/os/inbox/voll`.
+- **Haushaltsfinanzen (24.09.2026): Malins MAKE.ORGA zieht nach MAKE OS.**
+  Zahlen = Privat | Business | Gesamt. Logik in `lib/finanzen/haushalt/`
+  (Cent, EINE Einordnung `einordnung.ts`, Monate über `monat.ts` — nie
+  `new Date(...).toISOString()` für Monate). Zugriff nur über
+  `haushaltVon(req)` (Konto.haushalt, setzt nur der Inhaber; kein Rückfall
+  auf „kevin“). Privat zählt in keiner Business-Rechnung
+  (`istPrivatPosten`/`nurBusiness` in `liquiditaet.ts`). Jarvis: Haushalt NUR
+  über `blockHaushalt` in Gespräch/Morgen/Empfang, nie in `gatherBrain`.
+  Test-Haushalt „test“ für Fotos, echte Prüfdaten nur in `.data/pruefdaten/`.
+  Umzug: `app/api/haushalt/umzug`, Einfrieren: `docs/make-orga/`.
 - **Selbstaufrufe nie über die Anfrage-Adresse (24.09.2026).** Routen, die
   andere Routen mit `x-make-key` aufrufen, nehmen `innenAdresse(req)` aus
   `lib/innen.ts` — nie `new URL(req.url).origin` (Vorbau Tailscale/Caddy,
