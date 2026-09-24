@@ -87,6 +87,7 @@ async function setzeKontostand(input: Record<string, unknown>): Promise<string> 
 }
 
 async function erfasseRechnung(input: Record<string, unknown>): Promise<string> {
+  if (istPrivatAngabe(input.firma)) return PRIVAT_HINWEIS;
   const kunde = String(input.kunde ?? '').trim().slice(0, 120);
   if (!kunde) return 'Fehlgeschlagen: kunde fehlt.';
   const status = ['geplant', 'gestellt', 'bezahlt'].includes(String(input.status)) ? String(input.status) : undefined;

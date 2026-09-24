@@ -11,7 +11,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import type { PerfIndex, Saeule } from '@/lib/performance';
 import { TEAM, RITUALE } from '@/lib/make-one/team-data';
-import { eur, type FinanceState } from '@/lib/make-one/finance-data';
+import { eur, computeMetrics, type FinanceState, type Kasse } from '@/lib/make-one/finance-data';
 import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
 import { localDay } from '@/lib/zeit';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Ring, Zahl, Balken, Fortschritt, Haken, feld, LEUCHT } from './schlank';
@@ -313,6 +313,8 @@ function WerkzeugPlanung() {
 // ───────────────────────── Finanzen ─────────────────────────
 function WerkzeugFinanzen() {
   const [fin, setFin] = useState<FinanceState | null>(null);
+  const [kasse, setKasse] = useState<Kasse | null>(null);
+  const [grenze, setGrenze] = useState({ rot: 4, amber: 8 });
   const [cash, setCash] = useState('');
   const [saving, setSaving] = useState(false);
   useEffect(() => {
@@ -320,16 +322,19 @@ function WerkzeugFinanzen() {
       .then(r => r.json())
       .then(d => {
         setFin(d.state ?? null);
+        setKasse(d.kasse ?? null);
+        if (d.runway) setGrenze(d.runway);
         if (d.state?.cash) setCash(String(d.state.cash));
       })
       .catch(() => {});
   }, []);
-  const kosten = fin ? fin.months.reduce((s, m) => s + m.kosten, 0) : 0;
-  const aktiv = fin ? fin.months.filter(m => m.umsatz > 0 || m.kosten > 0).length : 0;
-  const burn = aktiv ? kosten / aktiv : 0;
-  const cashNum = Number(cash.replace(/[^\d]/g, '')) || 0;
-  const runway = burn > 0 ? cashNum / burn : null;
-  const runwayFarbe = runway == null ? undefined : runway < 4 ? LEUCHT.kritisch : runway < 8 ? LEUCHT.achtung : LEUCHT.gut;
+  // Eine Formel für alle: computeMetrics (ab Startmonat), Kasse aus den Firmenkonten.
+  const ausKonten = kasse?.quelle === 'konten';
+  const cashNum = ausKonten ? kasse!.betrag : Number(cash.replace(/[^\d-]/g, '')) || 0;
+  const m = fin ? computeMetrics({ ...fin, cash: cashNum }) : null;
+  const burn = m?.avgBurn ?? 0;
+  const runway = m?.runwayMonate ?? null;
+  const runwayFarbe = runway == null ? undefined : runway < grenze.rot ? LEUCHT.kritisch : runway < grenze.amber ? LEUCHT.achtung : LEUCHT.gut;
   async function speichern() {
     if (!fin) return;
     setSaving(true);
@@ -346,16 +351,18 @@ function WerkzeugFinanzen() {
       <Ueberschrift farbe={LEUCHT.geld} rechts={<Link href="/os/controlling" style={link}>Monatszahlen pflegen ›</Link>}>Runway-Rechner</Ueberschrift>
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 160px', maxWidth: 220 }}>
-          <span style={{ fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise }}>Cash aktuell</span>
-          <input
-            value={cash}
-            onChange={e => setCash(e.target.value)}
-            inputMode="numeric"
-            placeholder="0"
-            style={{ ...feld, fontFamily: SCHRIFT.display, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}
-          />
+          <span style={{ fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise }}>{ausKonten ? `Cash · ${kasse!.konten} Firmenkonten` : 'Cash aktuell'}</span>
+          {ausKonten
+            ? <div style={{ ...feld, fontFamily: SCHRIFT.display, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }} title={kasse!.stand ? `ältester Kontostand vom ${kasse!.stand}` : undefined}>{eur(cashNum)}</div>
+            : <input
+                value={cash}
+                onChange={e => setCash(e.target.value)}
+                inputMode="numeric"
+                placeholder="0"
+                style={{ ...feld, fontFamily: SCHRIFT.display, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}
+              />}
         </label>
-        <Knopf onClick={speichern} aus={saving || !fin} farbe={LEUCHT.geld}>{saving ? '…' : 'Übernehmen'}</Knopf>
+        {!ausKonten && <Knopf onClick={speichern} aus={saving || !fin} farbe={LEUCHT.geld}>{saving ? '…' : 'Übernehmen'}</Knopf>}
         <div style={{ flex: '1 1 160px' }}>
           <Zahl wert={runway == null ? undefined : `${runway.toFixed(1).replace('.', ',')} Monate`} label={burn > 0 ? `reicht bei Ø Burn ${eur(burn)}/Monat` : 'trag Kosten im Controlling ein, dann rechnet es'} farbe={runwayFarbe} />
         </div>

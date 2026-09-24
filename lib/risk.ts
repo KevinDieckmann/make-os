@@ -6,7 +6,7 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
-import { computeMetrics, type FinanceState } from '@/lib/make-one/finance-data';
+import { computeMetrics, mitKasse, type FinanceState } from '@/lib/make-one/finance-data';
 import { schwellen } from '@/lib/schwellen';
 
 export interface Shield {
@@ -21,7 +21,7 @@ const eur = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', c
 
 export async function computeShields(today = localDay()): Promise<Shield[]> {
   const [fplan, fin, tasksF, msF, wplanF] = await Promise.all([
-    loadJson<{ rechnungen: { status: string; betrag: number; faellig?: string }[]; zahlungen: { status: string; betrag: number; faellig?: string; an: string }[]; uhrwerk?: { letztesMeeting: string | null } }>('finanzplan'),
+    loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string; firmaId?: string }[]; zahlungen: { status: string; betrag: number; faellig?: string; an: string }[]; uhrwerk?: { letztesMeeting: string | null } }>('finanzplan'),
     loadJson<FinanceState>('finance'),
     loadJson<{ tasks: { title: string; status: string; priority: string; dueDate?: string }[] }>('tasks'),
     loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; erledigt: boolean }[] }>('meilensteine'),
@@ -31,7 +31,7 @@ export async function computeShields(today = localDay()): Promise<Shield[]> {
   const shields: Shield[] = [];
 
   // ── Geld: überfällige Forderungen (rein) und überfällige Zahlungen (raus) ──
-  const forderungenUeberfaellig = (fplan?.rechnungen ?? []).filter(r => r.status === 'gestellt' && r.faellig && r.faellig < today);
+  const forderungenUeberfaellig = (fplan?.rechnungen ?? []).filter(r => r.status === 'gestellt' && r.faellig && r.faellig < today && r.firmaId !== 'privat');
   if (forderungenUeberfaellig.length) {
     shields.push({
       id: 'forderungen', stufe: 'rot',
@@ -51,7 +51,7 @@ export async function computeShields(today = localDay()): Promise<Shield[]> {
 
   // ── Runway: die Grenzen kommen aus dem Kompass, nicht aus dem Code ──
   if (fin) {
-    const m = computeMetrics(fin);
+    const m = computeMetrics(mitKasse(fin, fplan?.firmen));
     const s = await schwellen();
     if (m.runwayMonate != null && m.aktiveMonate > 0) {
       if (m.runwayMonate < s.runwayRot) shields.push({ id: 'runway', stufe: 'rot', text: `Runway ${m.runwayMonate.toFixed(1)} Monate — Liquidität ist DAS Thema.`, href: '/os/controlling', label: 'Controlling' });

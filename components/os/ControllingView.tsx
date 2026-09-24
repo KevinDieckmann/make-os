@@ -13,9 +13,9 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { wertVon, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
 import { localDay } from '@/lib/zeit';
 import { useSpeichern } from '@/hooks/useSpeichern';
-import { vorschau, monatlicheLast, type Firma, type Rechnung, type Zahlung, type Merkposten, type Woche, nurBusiness } from '@/lib/make-one/liquiditaet';
+import { vorschau, monatlicheLast, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Woche, nurBusiness } from '@/lib/make-one/liquiditaet';
 import {
-  DEFAULT_FINANCE, MONTHS_DE, computeMetrics, eur,
+  DEFAULT_FINANCE, MONTHS_DE, computeMetrics, mitKasse, geschaeftsKasse, eur,
   type FinanceState,
 } from '@/lib/make-one/finance-data';
 import { Seite, Karte, Ueberschrift, Leer, Knopf, Zahl, Ring, feld, zoneFarbe, LEUCHT } from './schlank';
@@ -85,6 +85,11 @@ export function ControllingView() {
   const [optimistisch, setOptimistisch] = useState(false);
   const [zieleAuf, setZieleAuf] = useState(false);
   const heute = localDay();
+  // Dieselben Planposten wie unter Zahlen und Liquidität — sonst zeigt jede Seite eine andere Kurve.
+  const [posten, setPosten] = useState<Planposten[]>([]);
+  useEffect(() => {
+    fetch('/api/state/liquiplan').then(r => r.json()).then(d => setPosten(d.posten ?? [])).catch(() => {});
+  }, []);
   useEffect(() => {
     fetch('/api/state/finanzplan')
       .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
@@ -127,7 +132,9 @@ export function ControllingView() {
     persist({ ...s, months: s.months.map((r, j) => j === i ? { ...r, [field]: num(v) } : r) });
   const setField = (field: 'zielUmsatz' | 'zielGewinn' | 'cash', v: string) => persist({ ...s, [field]: num(v) });
 
-  const m = useMemo(() => computeMetrics(s), [s]);
+  // Kasse aus den Firmenkonten — das Feld „Cash“ gilt nur, solange keins einen Stand hat.
+  const kasse = useMemo(() => geschaeftsKasse(fplan?.firmen, s.cash), [fplan, s.cash]);
+  const m = useMemo(() => computeMetrics(fplan ? mitKasse(s, fplan.firmen) : s), [s, fplan]);
   // Ohne gesetzten Startmonat gilt der erste Monat mit Zahlen als Start.
   const startMonat = useMemo(() => {
     if (typeof s.startMonat === 'number') return Math.max(0, Math.min(11, s.startMonat));
@@ -180,7 +187,7 @@ export function ControllingView() {
 
       {/* ── Liquidität: was ist wann da, und wann wird es eng ── */}
       {fplan && (() => {
-        const v = vorschau(fplan.firmen, fplan.rechnungen, fplan.zahlungen, fplan.merkposten, heute, 12, optimistisch, [], 'real', undefined, true);
+        const v = vorschau(fplan.firmen, fplan.rechnungen, fplan.zahlungen, fplan.merkposten, heute, 12, optimistisch, posten, 'real', undefined, true);
         const fix = monatlicheLast(nurBusiness(fplan.merkposten));
         return (
           <Karte i={1}>
@@ -302,11 +309,16 @@ export function ControllingView() {
                   {MONTHS_DE.map((mo, i) => <option key={mo} value={i} style={option}>{mo} {s.jahr}</option>)}
                 </select>
               </Feld>
-              {([['zielUmsatz', 'Ziel-Umsatz'], ['zielGewinn', 'Ziel-Gewinn'], ['cash', 'Cash aktuell']] as const).map(([f, l]) => (
+              {([['zielUmsatz', 'Ziel-Umsatz'], ['zielGewinn', 'Ziel-Gewinn'], ...(kasse.quelle === 'konten' ? [] : [['cash', 'Cash aktuell']])] as ['zielUmsatz' | 'zielGewinn' | 'cash', string][]).map(([f, l]) => (
                 <Feld key={f} label={l}>
                   <input value={eur(s[f])} onChange={e => setField(f, e.target.value)} aria-label={l} style={{ ...zahlFeld, width: 150 }} />
                 </Feld>
               ))}
+              {kasse.quelle === 'konten' && (
+                <Feld label="Cash aus den Konten">
+                  <div style={{ ...zahlFeld, width: 150, display: 'flex', alignItems: 'center' }} title={`Summe aus ${kasse.konten} Firmenkonten${kasse.stand ? `, ältester Stand ${kasse.stand}` : ''} — pflegen oben unter Liquidität`}>{eur(kasse.betrag)}</div>
+                </Feld>
+              )}
             </div>
 
             {/* Was die Einstellung gerade bewirkt — sofort, in echten Zahlen */}

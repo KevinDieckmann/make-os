@@ -9,7 +9,7 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { resolveVitals } from '@/lib/vitals';
-import { computeMetrics, type FinanceState } from '@/lib/make-one/finance-data';
+import { computeMetrics, mitKasse, type FinanceState } from '@/lib/make-one/finance-data';
 import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
 // `routineQuote` heißt weiter unten schon eine Zahl — deshalb der Alias.
 import { hautTrend, streakStand, routineQuote as quoteFuer, type HautLog, type StreakLog } from '@/lib/gesundheit/eintraege';
@@ -125,7 +125,7 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
     loadJson<{ routinen: { aktiv: boolean }[] }>('routinen'),
     loadJson<{ meilensteine: { bereich: string; faellig?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
     loadJson<{ kunden: { status: string; cashflow?: number }[] }>('kunden'),
-    loadJson<{ rechnungen: { status: string; betrag: number; faellig?: string }[]; produkte: { status: string; preis: number }[] }>('finanzplan'),
+    loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string }[]; produkte: { status: string; preis: number }[] }>('finanzplan'),
   ]);
 
   // Agenten (24.09.): was Jarvis und die Agenten abnehmen — sechste Säule.
@@ -217,7 +217,7 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   const qualifiziert = prospects.filter(p => typeof p.score === 'number').length;
   const kontaktiert = prospects.filter(p => p.status === 'kontaktiert').length;
   const hot = prospects.filter(p => (p.score ?? 0) >= 80).length;
-  const m = fin ? computeMetrics(fin) : null;
+  const m = fin ? computeMetrics(mitKasse(fin, fplanF?.firmen)) : null;
   const hatZahlen = !!m && m.aktiveMonate > 0;
 
   const business: Faktor[] = [

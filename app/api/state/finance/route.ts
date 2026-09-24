@@ -1,14 +1,20 @@
 // ─── MAKE OS — Controlling-Zustand persistieren (lokal) ─────────────────────
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import type { FinanceState } from '@/lib/make-one/finance-data';
+import { schwellen } from '@/lib/schwellen';
+import { geschaeftsKasse, type FinanceState } from '@/lib/make-one/finance-data';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const state = await loadJson<FinanceState>('finance');
-  return NextResponse.json({ state });
+  const [state, plan, grenzen] = await Promise.all([
+    loadJson<FinanceState>('finance'),
+    loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[] }>('finanzplan'),
+    schwellen(),
+  ]);
+  // Die Kasse kommt aus den Firmenkonten; `state.cash` bleibt nur Rückfall.
+  return NextResponse.json({ state, kasse: geschaeftsKasse(plan?.firmen, state?.cash), runway: { rot: grenzen.runwayRot, amber: grenzen.runwayAmber } });
 }
 
 export async function PUT(req: Request) {

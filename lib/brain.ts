@@ -15,7 +15,7 @@ import { loadJson } from '@/lib/store/local-db';
 import { localDay, tagePlus, alterStunden } from '@/lib/zeit';
 import { resolveVitals, vitalsHint, type ResolvedVitals } from '@/lib/vitals';
 import { computeIndex, type PerfIndex } from '@/lib/performance';
-import { computeMetrics, eur, type FinanceState, type FinanceMetrics } from '@/lib/make-one/finance-data';
+import { computeMetrics, mitKasse, eur, type FinanceState, type FinanceMetrics } from '@/lib/make-one/finance-data';
 import { recentRuns, type AgentLogEntry } from '@/lib/agent-log';
 import { computeShields, shieldZeilen, type Shield } from '@/lib/risk';
 import { schwellen, type Schwellen } from '@/lib/schwellen';
@@ -101,7 +101,7 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
     computeIndex(heute, person),
     recentRuns(undefined, 10),
     loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; zeitfenster?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
-    loadJson<{ rechnungen: { status: string; betrag: number; faellig?: string }[] }>('finanzplan'),
+    loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string; firmaId?: string }[] }>('finanzplan'),
     loadJson<{ kunden: { status: string; cashflow?: number }[] }>('kunden'),
     computeShields(heute),
     loadJson<{ modus?: string }>('kompass'),
@@ -117,7 +117,9 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
   const rank: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
   offen.sort((a, b) => (rank[a.priority] ?? 9) - (rank[b.priority] ?? 9));
 
-  const fin = val(finR);
+  const finRoh = val(finR);
+  // Kasse aus den Firmenkonten — dieselbe Zahl wie in Liquidität und Schilden.
+  const fin = finRoh ? mitKasse(finRoh, val(fplanR)?.firmen) : null;
   const prospects = val(prospectsR)?.prospects ?? [];
   const cal = val(calR);
   const calAlterH = alterStunden(cal?.at ?? null);
@@ -192,7 +194,7 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
       return ms.map(m => `${m.titel}${m.erledigt ? ' ✓' : ` (${m.faellig ? m.faellig.slice(8) + '.' + m.faellig.slice(5, 7) + '.' : m.zeitfenster ?? 'offen'}${m.fortschritt ? `, ${m.fortschritt}%` : ''})`}`);
     })(),
     geld: (() => {
-      const re = val(fplanR)?.rechnungen ?? [];
+      const re = (val(fplanR)?.rechnungen ?? []).filter(r => r.firmaId !== 'privat');
       const sum = (l: typeof re) => l.reduce((s, r) => s + (r.betrag || 0), 0);
       const gestellt = re.filter(r => r.status === 'gestellt');
       return {

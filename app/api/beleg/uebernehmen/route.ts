@@ -29,6 +29,10 @@ export async function POST(req: Request) {
   if (!partner) return NextResponse.json({ ok: false, error: 'Ohne Partner wird nichts gebucht.' }, { status: 400 });
   if (!isFinite(betrag) || betrag <= 0) return NextResponse.json({ ok: false, error: 'Betrag fehlt oder ist nicht plausibel.' }, { status: 400 });
 
+  // Belege aus dem Chat sind Firmen-Belege. Private gehören in den Haushalt
+  // (Zahlen › Privat), nicht in die Business-Buchungen.
+  if (String(b.firma ?? '').toLowerCase() === 'privat') return NextResponse.json({ ok: false, error: 'Private Belege bitte unter Zahlen › Privat erfassen — hier landen nur Firmen-Belege.' }, { status: 400 });
+  const firma = b.firma === 'kdc' ? 'kdc' : 'kdv';
   const datum = /^\d{4}-\d{2}-\d{2}$/.test(String(b.datum ?? '')) ? String(b.datum) : localDay();
   const zweck = String(b.zweck ?? '').slice(0, 200) || partner;
 
@@ -39,7 +43,7 @@ export async function POST(req: Request) {
       f.rechnungen = Array.isArray(f.rechnungen) ? f.rechnungen : [];
       const r: Rechnung = {
         id: `r-${Date.now().toString(36)}`,
-        firmaId: String(b.firma ?? 'kdv').slice(0, 20),
+        firmaId: firma,
         kunde: partner,
         titel: b.rechnungsnummer ? `${zweck} (${b.rechnungsnummer})` : zweck,
         betrag: Math.round(betrag),
@@ -61,13 +65,15 @@ export async function POST(req: Request) {
     const neu: Buchung = {
       id: `b-${Date.now().toString(36)}-${f.buchungen.length}`,
       datum,
-      wer: String(b.wer ?? 'Kevin').slice(0, 40),
+      // „wer“ ist der Geschäftspartner, „ort“ die Firma — früher stand der
+      // Partner in „ort“, die Buchung fiel aus Zahlen heraus und wurde privat.
+      wer: partner.slice(0, 80),
       // Ausgaben stehen im Bestand negativ — sonst zählt der Beleg als Einnahme.
       betrag: -Math.abs(Math.round(betrag * 100) / 100),
       kategorie: String(b.kategorie ?? 'Sonstiges').slice(0, 40),
       zweck,
       konto: String(b.konto ?? 'Geschäftskonto').slice(0, 40),
-      ort: partner,
+      ort: firma,
     };
     f.buchungen.push(neu);
     angelegt = `${neu.zweck} · ${neu.betrag} € · ${neu.kategorie}`;

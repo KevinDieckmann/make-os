@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 import { logRun } from '@/lib/agent-log';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
-import { computeMetrics, eur, MONTHS_DE, type FinanceState } from '@/lib/make-one/finance-data';
+import { computeMetrics, mitKasse, eur, MONTHS_DE, type FinanceState } from '@/lib/make-one/finance-data';
 import { loadJson } from '@/lib/store/local-db';
 
 export const runtime = 'nodejs';
@@ -16,9 +16,12 @@ export async function POST(req: Request) {
   let payload: { state?: FinanceState };
   try { payload = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Ohne Body: Server liest selbst — damit Jarvis den Agenten direkt ausführen kann.
-  const s = payload.state ?? (await loadJson<FinanceState>('finance'));
-  if (!s || !Array.isArray(s.months)) return NextResponse.json({ error: 'Kein Finanzstand hinterlegt — Zahlen unter /os/controlling pflegen.' }, { status: 200 });
+  const roh = payload.state ?? (await loadJson<FinanceState>('finance'));
+  if (!roh || !Array.isArray(roh.months)) return NextResponse.json({ error: 'Kein Finanzstand hinterlegt — Zahlen unter /os/controlling pflegen.' }, { status: 200 });
 
+  // Kasse immer aus den Firmenkonten — auch wenn die Seite ihren Stand mitschickt.
+  const plan = await loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[] }>('finanzplan');
+  const s = mitKasse(roh, plan?.firmen);
   const m = computeMetrics(s);
   if (!hasAnthropicKey()) return NextResponse.json({ briefing: 'Kein Anthropic-Key hinterlegt — die Kennzahlen stehen aber (siehe Cockpit).', metrics: m });
   const agent = await resolveAgent('controlling');
@@ -42,7 +45,7 @@ export async function POST(req: Request) {
     hasData ? `Aktive Monate: ${m.aktiveMonate}, Ø Umsatz/Monat bisher: ${eur(m.runRateAktuell)}` : '',
     `Rest-Monate bis Dez: ${m.restMonate}`,
     `Nötige Run-Rate, um Ziel zu treffen: ${eur(m.runRateNoetig)}/Monat`,
-    `Cash: ${eur(s.cash)}${m.runwayMonate != null ? ` · Runway: ${m.runwayMonate.toFixed(1)} Monate (bei Ø Burn ${eur(m.avgBurn)})` : ' · Runway: n/a (kein Burn hinterlegt)'}`,
+    `Cash: ${eur(s.cash)} (${s.kasse.quelle === 'konten' ? `Summe ${s.kasse.konten} Firmenkonten${s.kasse.stand ? `, ältester Stand ${s.kasse.stand}` : ''}` : s.kasse.quelle === 'manuell' ? 'manuell eingetragen, keine Kontostände' : 'kein Kontostand hinterlegt'})${m.runwayMonate != null ? ` · Runway: ${m.runwayMonate.toFixed(1)} Monate (bei Ø Burn ${eur(m.avgBurn)})` : ' · Runway: n/a (kein Burn hinterlegt)'}`,
     '',
     'Monatsverlauf (Umsatz / Kosten):',
     s.months.map((r, i) => `${MONTHS_DE[i]}: ${eur(r.umsatz)} / ${eur(r.kosten)}`).join('\n'),

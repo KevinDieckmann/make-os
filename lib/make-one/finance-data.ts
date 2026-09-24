@@ -42,11 +42,15 @@ export interface FinanceMetrics {
   aktiveMonate: number;
 }
 
-export function computeMetrics(s: FinanceState): FinanceMetrics {
+/** Monat (0..11) und Jahr in deutscher Zeit — ein UTC-Server läge sonst
+ *  am Monatsersten nachts im Vormonat. */
+function heuteBerlin(jetzt: Date): { jahr: number; monat: number } {
+  const [j, m] = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit' }).format(jetzt).split('-');
+  return { jahr: Number(j), monat: Number(m) - 1 };
+}
+
+export function computeMetrics(s: FinanceState, jetzt: Date = new Date()): FinanceMetrics {
   const months = s.months ?? [];
-  const istUmsatz = months.reduce((a, r) => a + (r.umsatz || 0), 0);
-  const istKosten = months.reduce((a, r) => a + (r.kosten || 0), 0);
-  const istGewinn = istUmsatz - istKosten;
 
   // Aktiver Zeitraum = vom Startmonat bis zum letzten Monat mit Zahlen.
   // OHNE Startmonat würde ab Januar gezählt — wer im Juni loslegt, hätte
@@ -58,7 +62,17 @@ export function computeMetrics(s: FinanceState): FinanceMetrics {
   months.forEach((r, i) => { if (ersterMitZahlen < 0 && ((r.umsatz || 0) > 0 || (r.kosten || 0) > 0)) ersterMitZahlen = i; });
   const start = typeof s.startMonat === 'number' ? Math.max(0, Math.min(11, s.startMonat)) : Math.max(0, ersterMitZahlen);
   const aktiveMonate = lastActive < 0 ? 0 : Math.max(1, lastActive - start + 1);
-  const restMonate = Math.max(0, 12 - (lastActive + 1));
+  // Ist zählt ab dem Startmonat — dieselbe Spanne wie der Schnitt.
+  const imZeitraum = months.slice(start);
+  const istUmsatz = imZeitraum.reduce((a, r) => a + (r.umsatz || 0), 0);
+  const istKosten = imZeitraum.reduce((a, r) => a + (r.kosten || 0), 0);
+  const istGewinn = istUmsatz - istKosten;
+  // Rest-Monate zählen ab heute, nicht ab dem letzten gepflegten Monat: wer
+  // im September noch bei Juli steht, hat nicht fünf Monate Zeit, sondern vier.
+  const h = heuteBerlin(jetzt);
+  const restMonate = s.jahr < h.jahr ? 0
+    : s.jahr > h.jahr ? 12 - start
+    : Math.max(0, 12 - Math.max(lastActive + 1, h.monat));
 
   const verbleibend = Math.max(0, s.zielUmsatz - istUmsatz);
   const runRateNoetig = restMonate > 0 ? verbleibend / restMonate : verbleibend;
@@ -79,6 +93,28 @@ export function computeMetrics(s: FinanceState): FinanceMetrics {
     runwayMonate,
     aktiveMonate,
   };
+}
+
+// ─── Business-Kasse: eine Quelle ────────────────────────────────────────────
+// Die Kontostände der Firmenkonten (Finanzplanung) sind die Kasse. Das alte
+// Feld `cash` gilt nur, solange noch kein Firmenkonto einen Stand hat — sonst
+// liefen Runway und Liquidität auf zwei verschiedenen Zahlen.
+export interface Kasse { betrag: number; quelle: 'konten' | 'manuell' | 'keine'; konten: number; stand: string | null }
+
+export function geschaeftsKasse(firmen: { id: string; kontostand?: number | null; stand?: string | null }[] | undefined, manuell: number | undefined): Kasse {
+  const mitStand = (firmen ?? []).filter(f => f.id !== 'privat' && typeof f.kontostand === 'number' && isFinite(f.kontostand));
+  if (mitStand.length) {
+    const staende = mitStand.map(f => f.stand).filter((x): x is string => !!x).sort();
+    return { betrag: mitStand.reduce((a, f) => a + (f.kontostand as number), 0), quelle: 'konten', konten: mitStand.length, stand: staende[0] ?? null };
+  }
+  if (manuell) return { betrag: manuell, quelle: 'manuell', konten: 0, stand: null };
+  return { betrag: 0, quelle: 'keine', konten: 0, stand: null };
+}
+
+/** Finanzstand mit der Kasse aus den Konten — so rechnen Runway, Brain und Schilde gleich. */
+export function mitKasse(s: FinanceState, firmen: Parameters<typeof geschaeftsKasse>[0]): FinanceState & { kasse: Kasse } {
+  const kasse = geschaeftsKasse(firmen, s.cash);
+  return { ...s, cash: kasse.betrag, kasse };
 }
 
 export const eur = (n: number) =>
