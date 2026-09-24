@@ -16,6 +16,10 @@ import { regelLernen, importieren, kreditZuSchuld, fixkostenMarkieren, turnusSet
 import { aendereMeta, setzeHaushalt, Ungueltig } from '@/lib/finanzen/haushalt/speicher';
 import { turnusAus } from '@/lib/finanzen/haushalt/regeln';
 import { testHaushalt } from '@/lib/finanzen/haushalt/testdaten';
+import { vorschlag as katVorschlag, ungenutzt as katUngenutzt, anwenden as katAnwenden } from '@/lib/finanzen/haushalt/kategorien';
+import { ladeHaushalt, aendereStamm, aendereBuchungen } from '@/lib/finanzen/haushalt/speicher';
+import { promises as fs } from 'fs';
+import path from 'path';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -54,6 +58,22 @@ export async function POST(req: Request) {
         const q = typeof b.steuerquote === 'number' && b.steuerquote >= 0 && b.steuerquote < 90 ? b.steuerquote : null;
         const meta = await aendereMeta(z.haushalt, m => ({ ...m, steuerquote: q }));
         return NextResponse.json({ ok: true, steuerquote: meta.steuerquote });
+      }
+      case 'kategorien': {
+        const h = await ladeHaushalt(z.haushalt);
+        if (vorschau) return NextResponse.json({ ok: true, vorschlaege: katVorschlag(h.stamm, h.buchungen), ungenutzt: katUngenutzt(h.stamm, h.buchungen).map(k => ({ id: k.id, name: k.name })), anzahl: h.stamm.kategorien.length });
+        const paare = Array.isArray(b.paare) ? (b.paare as { von: unknown; nach: unknown }[]).map(p => ({ von: String(p.von), nach: String(p.nach) })) : [];
+        const loeschen = new Set(Array.isArray(b.loeschen) ? (b.loeschen as unknown[]).map(String) : []);
+        // Vorher archivieren — Kategorien hängen an jeder Buchung.
+        const ordner = path.join(process.cwd(), '.data', 'archiv');
+        await fs.mkdir(ordner, { recursive: true, mode: 0o700 });
+        await fs.writeFile(path.join(ordner, `kategorien-vor-aufraeumen-${z.haushalt}-${Date.now()}.json`), JSON.stringify({ stamm: h.stamm, zuordnung: h.buchungen.map(x => [x.id, x.kategorie_id]) }), { mode: 0o600 });
+        const jetzt = new Date().toISOString();
+        let geaendert = 0;
+        await aendereBuchungen(z.haushalt, l => { const e = katAnwenden(h.stamm, l, paare, jetzt); geaendert = e.geaendert; return e.buchungen; });
+        const frei = new Set(katUngenutzt(h.stamm, h.buchungen).map(k => k.id));
+        await aendereStamm(z.haushalt, s => { const e = katAnwenden(s, [], paare, jetzt).stamm; return { ...e, kategorien: e.kategorien.filter(k => !(loeschen.has(k.id) && frei.has(k.id))) }; });
+        return NextResponse.json({ ok: true, zusammengelegt: paare.length, geaendert, geloescht: Array.from(loeschen).filter(id => frei.has(id)).length });
       }
       case 'testdaten':
         if (z.haushalt !== 'test') return NextResponse.json({ ok: false, fehler: 'Testdaten gibt es nur im Test-Haushalt.' }, { status: 403 });
