@@ -233,6 +233,20 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > gemeinsamen Werte. Der erste Lauf der Agenten scheiterte am Sitzungslimit
 > (23.09., 23:30), der zweite lief durch.
 
+> **Nachtrag 24.09., der Rest und aufgeräumt.** Kevin: *„weiter."* Gelöscht,
+> weil niemand sie mehr benutzte oder Heute/Wachstum sie abgelöst haben:
+> OsSidebar, OsNav, BereichsCockpit, BauzeitHinweis, OnboardingErinnerung,
+> Zurufe, altes Finanz-Hub, PlanungView, FokusReglerView, Anwesenheit,
+> PerformanceView, kit, Übersicht (alt) mit Tagesstart, Startfläche, Held,
+> Seitenkopf — 17 Bauteile. `/os/uebersicht` und `/os/start` leiten zu Heute.
+> Auf die Bausteine gezogen: Aufgaben-Board samt Zeitstrahl, Inbox voll,
+> Stapel voll, Jarvis-Panel, Rich, Taktgeber, WillkommenMalin, PlanerLeiste,
+> AgentenHirn. Kein Bauteil unter `components/os` nutzt mehr `THEME`.
+> ESLint lief seit Wochen gar nicht (kaputte Konfiguration) — repariert, 48
+> Fehler behoben; es bleiben 5 Hinweise zu Hook-Abhängigkeiten. Damit steht
+> der Produktions-Build nicht mehr an Lint-Fehlern. Nicht angefasst: der erste
+> Bau unter `/dashboard` (rund 70 Dateien, von der Prüfung ausgenommen).
+
 Jede Phase hat ein Ziel in einem Satz, eine Fertig-Bedingung, und eine Liste,
 was **bewusst nicht** darin ist. Grobe Größe in Arbeitstagen — ehrlich grob.
 

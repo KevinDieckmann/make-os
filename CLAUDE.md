@@ -72,9 +72,9 @@ lokal, Route `/os`, Port 3001.
   (`WachstumsKopf`) — der Score, auf den wir hinarbeiten; sechs Säulen
   (Gesundheit 35 · Business 20 · Finanzen 15 · Planung 10 · Beziehung 10 ·
   Agenten 10, Regel in `lib/agenten-score.ts`), jeder Ring ein Sprung auf
-  seine Seite. Seit 24.09. laufen ALLE Arbeitsseiten auf diesen Bausteinen; `THEME`
-  (os-data.ts) gilt nur noch für Legacy (Übersicht alt, Aufgaben-Board, Inbox
-  voll, Stapel voll, Startfläche) und Mitläufer. Neue Seiten: nie THEME, nie
+  seine Seite. Seit 24.09. laufen ALLE Seiten und Mitläufer auf diesen Bausteinen; kein
+  Bauteil unter `components/os` nutzt mehr `THEME`. ESLint muss grün bleiben
+  (`npx next lint`), sonst bricht der Produktions-Build. Neue Seiten: nie THEME, nie
   Rahmen-Kästen, nie Schrift unter 11, nie eine Null. Alte Ansichten liegen unter
   `/os/uebersicht`, `/os/aufgaben/board` und `/os/inbox/voll`.
 - **`PLAN.md` ist der führende Plan (seit 18.09.2026).** Bestand bleibt und
