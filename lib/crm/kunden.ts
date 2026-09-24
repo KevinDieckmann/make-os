@@ -36,7 +36,25 @@ export interface MandatLage {
   monatswert: number;
 }
 
-export function mandatLage(m: Mandat, heute: string): MandatLage {
+/** Rechnung, wie sie im Finanzplan steht (lib/make-one/liquiditaet.ts) — nur die Felder, die hier zählen. */
+export interface RechnungKurz { kunde: string; status: string; faellig?: string; bezahltAm?: string }
+const RAUSCHEN = new Set(['gmbh', 'limited', 'ltd', 'group', 'holding', 'products', 'technology', 'institute', 'for', 'the', 'und', 'and']);
+const worte = (t: string) => new Set(t.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').split(/[^a-z0-9]+/).filter(w => w.length >= 4 && !RAUSCHEN.has(w)));
+/** Gehört die Rechnung zu diesem Kunden? Mindestens ein kennzeichnendes Wort gemeinsam (z. B. „acme“, „onebanking“). */
+export const rechnungPasst = (m: Pick<Mandat, 'kunde'>, r: RechnungKurz) => { const a = worte(m.kunde), b = worte(r.kunde); return Array.from(a).some(w => b.has(w)); };
+
+/** Faktor „Zahlung“ aus den Rechnungen: überfällige kosten 30, verspätet bezahlte 10 Punkte. null ohne Rechnungen. */
+export function zahlungAusRechnungen(m: Pick<Mandat, 'kunde'>, rechnungen: RechnungKurz[], heute: string): { wert: number; text: string } | null {
+  const l = rechnungen.filter(r => (r.status === 'gestellt' || r.status === 'bezahlt') && rechnungPasst(m, r));
+  if (!l.length) return null;
+  const ueber = l.filter(r => r.status === 'gestellt' && r.faellig && r.faellig < heute).length;
+  const spaet = l.filter(r => r.status === 'bezahlt' && r.faellig && r.bezahltAm && r.bezahltAm > r.faellig).length;
+  return { wert: Math.max(0, 100 - ueber * 30 - spaet * 10), text: `${l.length} Rechnungen · ${ueber} überfällig · ${spaet} verspätet bezahlt` };
+}
+
+export function mandatLage(m: Mandat, heute: string, rechnungen?: RechnungKurz[]): MandatLage {
+  // Zahlung: von Hand gesetzt gewinnt, sonst aus den Rechnungen gerechnet.
+  if (rechnungen && m.health.zahlung === null) { const z = zahlungAusRechnungen(m, rechnungen, heute); if (z) m = { ...m, health: { ...m.health, zahlung: z.wert } }; }
   let endeAm: string | null = m.ende ?? null;
   if (!endeAm && m.start && m.mindestlaufzeitMonate) {
     endeAm = plusMonate(m.start, m.mindestlaufzeitMonate);

@@ -12,7 +12,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import type { ListenOp } from '@/lib/sync';
 import { ladeCrm, aendereCrm, wendeCrmAn } from '@/lib/crm/speicher';
 import { prognose, gesundheit, gewinnquote, STUFEN, wahrscheinlichkeit } from '@/lib/crm/pipeline';
-import { mandatLage, mrr, konzentration } from '@/lib/crm/kunden';
+import { mandatLage, mrr, konzentration, zahlungAusRechnungen, type RechnungKurz } from '@/lib/crm/kunden';
 import { eventZahlen } from '@/lib/crm/events';
 import type { CrmBestand } from '@/lib/crm/typen';
 
@@ -22,15 +22,18 @@ export const dynamic = 'force-dynamic';
 async function antwort(b: CrmBestand) {
   const heute = localDay();
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
+  const rechnungen = (await loadJson<{ rechnungen?: RechnungKurz[] }>('finanzplan'))?.rechnungen ?? [];
   return {
     ok: true, heute, stand: b,
     stufen: STUFEN.map(s => ({ ...s, p: wahrscheinlichkeit(s.id, b.wahrscheinlichkeiten) })),
     prognose: prognose(b.chancen, heute, b.wahrscheinlichkeiten),
     gewinnquote: gewinnquote(b.chancen),
     ampel: Object.fromEntries(b.chancen.map(c => [c.id, gesundheit(c, heute)])),
-    mandate: Object.fromEntries(b.mandate.map(m => [m.id, mandatLage(m, heute)])),
+    mandate: Object.fromEntries(b.mandate.map(m => [m.id, mandatLage(m, heute, rechnungen)])),
+    zahlung: Object.fromEntries(b.mandate.map(m => [m.id, zahlungAusRechnungen(m, rechnungen, heute)])),
     mrr: mrr(b.mandate), konzentration: konzentration(b.mandate),
     events: Object.fromEntries(b.events.map(e => [e.id, eventZahlen(e, b.teilnahmen, kontakte, b.chancen)])),
+    termine: ((await loadJson<{ kommend?: Record<string, { titel: string; start: string }> }>('crm-signale'))?.kommend) ?? {},
   };
 }
 

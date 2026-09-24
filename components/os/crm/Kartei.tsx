@@ -308,6 +308,7 @@ function Karteikarte({ k, api, name, zuFirma }: { k: Kontakt; api: CrmApi; name:
 
       {reiter === 'ueberblick' && (
         <>
+          {crm?.termine?.[k.id] && <div style={{ padding: '10px 12px', borderRadius: 10, background: `${LEUCHT.puls}14`, fontSize: TYP.bedien, color: C.ink }}>Nächster Termin: <b style={{ fontWeight: 600 }}>{crm.termine[k.id].titel}</b> · {datum(crm.termine[k.id].start.slice(0, 10), heute)} {crm.termine[k.id].start.slice(11, 16)}</div>}
           <div><Ueberschrift>Kanäle</Ueberschrift><KanalAmpel ampel={ampel} ziele={{ telefon: k.telefon ?? k.sms, email: k.email, linkedin: k.linkedin }} /><Grund ampel={ampel} /></div>
           <div>
             <Ueberschrift rechts={k.naechsterSchritt ? <button onClick={() => setze({ naechsterSchritt: undefined })} style={{ background: 'none', border: 'none', color: LEUCHT.gut, cursor: 'pointer', fontSize: 12 }}>✓ erledigt</button> : undefined}>Nächster Schritt</Ueberschrift>

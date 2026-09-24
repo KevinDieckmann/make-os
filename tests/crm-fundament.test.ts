@@ -179,3 +179,15 @@ describe('Übernahme aus dem Brain', () => {
     expect(kundenAusMandaten(r2.bestand).kunden).toEqual([{ name: 'Beispiel GmbH', status: 'aktiv', cashflow: 2000 }]);
   });
 });
+
+import { zahlungAusRechnungen, rechnungPasst } from '../lib/crm/kunden';
+describe('Zahlung aus dem Finanzplan', () => {
+  it('Rechnung passt über ein kennzeichnendes Wort; überfällig −30, verspätet −10; von Hand gewinnt', () => {
+    expect(rechnungPasst({ kunde: 'ACME Venetian Products GmbH' }, { kunde: 'Acme GmbH (Gregosch)', status: 'geplant' })).toBe(true);
+    expect(rechnungPasst({ kunde: 'One Finance Limited' }, { kunde: 'Acme GmbH', status: 'bezahlt' })).toBe(false);
+    const r = [{ kunde: 'OneBanking (One Finance Limited)', status: 'gestellt', faellig: '2026-09-01' }, { kunde: 'One Finance Limited', status: 'bezahlt', faellig: '2026-08-01', bezahltAm: '2026-08-10' }];
+    expect(zahlungAusRechnungen({ kunde: 'One Finance Limited' }, r, HEUTE)).toMatchObject({ wert: 60 });
+    expect(mandatLage(md({ kunde: 'One Finance Limited' }), HEUTE, r).health).toBe(60);
+    expect(mandatLage(md({ kunde: 'One Finance Limited', health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: 100, stimmung: null } }), HEUTE, r).health).toBe(100);
+  });
+});

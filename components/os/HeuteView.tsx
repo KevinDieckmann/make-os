@@ -26,6 +26,9 @@ export function HeuteView() {
   const [termine, setTermine] = useState<Termin[]>([]);
   const [koerper, setKoerper] = useState<{ rec?: number; frisch: boolean; routinen: number; von: number } | null>(null);
   const [stapel, setStapel] = useState<number | null>(null);
+  // CRM (24.09.): wer heute dran ist — die drei wichtigsten Karten der Power Hour.
+  const [crm, setCrm] = useState<{ n: number; karten: { id: string; name: string; firma?: string; kategorie: string; gruende: string[] }[] } | null>(null);
+  useEffect(() => { fetch('/api/crm/heute?n=12').then(r => (r.ok ? r.json() : null)).then(d => d?.ok && setCrm({ n: d.karten.length, karten: d.karten.slice(0, 3) })).catch(() => {}); }, []);
   const [neu, setNeu] = useState('');
   // Haushaltsfinanzen (24.09.): nur, wer einem Haushalt angehört, bekommt die Karte.
   const [finanzen, setFinanzen] = useState<string[] | null>(null);
@@ -92,6 +95,15 @@ export function HeuteView() {
           ))}
         </Liste>
       </Karte>
+
+      {crm && crm.n > 0 && (
+        <Karte i={2}>
+          <Ueberschrift farbe={LEUCHT.business} rechts={<Link href="/os/crm" style={{ color: C.inkLeise, textDecoration: 'none' }}>Power Hour ›</Link>}>Wer heute dran ist · {crm.n}</Ueberschrift>
+          <Liste>
+            {crm.karten.map(k => <Zeile key={k.id} onClick={() => { window.location.href = `/os/crm?s=kontakte&k=${k.id}`; }} links={<Punkt farbe={k.kategorie === 'versprechen' ? LEUCHT.kritisch : k.kategorie === 'signale' ? LEUCHT.achtung : LEUCHT.business} />} titel={<>{k.name}{k.firma && <span style={{ color: C.inkLeise }}> · {k.firma}</span>}</>} unter={k.gruende[0]} />)}
+          </Liste>
+        </Karte>
+      )}
 
         </Spalte>
         <Spalte>

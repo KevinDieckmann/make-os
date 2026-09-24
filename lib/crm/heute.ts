@@ -49,10 +49,11 @@ function werktageSeit(von: string, bis: string): number {
 const KREIS_GEWICHT: Record<string, number> = { A: 3, B: 2, C: 1, D: 1 };
 const c2n = (t?: string) => (t ?? '').toLowerCase().replace(/[^a-z0-9äöüß]/g, '');
 
-/** Letzte Aktivität ist eine Antwort des Kontakts, auf die noch nichts kam. */
-export function unbeantwortet(k: Kontakt): boolean {
-  const l = (k.aktivitaeten ?? []).filter(a => a.art !== 'notiz' && a.art !== 'stufe' && a.art !== 'system');
-  return l.length > 0 && l[l.length - 1].art === 'antwort';
+/** Letzte Aktivität ist eine Antwort des Kontakts, auf die noch nichts kam — und sie ist höchstens 14 Tage alt. */
+export function unbeantwortet(k: Kontakt, heute?: string): boolean {
+  const l = (k.aktivitaeten ?? []).filter(a => a.art !== 'notiz' && a.art !== 'stufe' && a.art !== 'system').sort((a, b) => a.am.localeCompare(b.am));
+  if (!l.length || l[l.length - 1].art !== 'antwort') return false;
+  return !heute || tage(l[l.length - 1].am, heute) <= 14;
 }
 
 export interface Auswahl { karten: Karte[]; ausgefiltert: { sperre: number; ohneKanal: number; kuerzlich: number } }
@@ -90,7 +91,7 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
     nimm(nachId.get(t.kontaktId), 'versprechen', bis >= heute ? 55 : 35, bis >= heute ? `Nachfassen nach „${ev.titel}“ bis ${bis}` : `Nachfassen nach „${ev.titel}“ überfällig`, { bezug: ev.id });
   }
   // 2 Signale
-  for (const k of kontakte) if (unbeantwortet(k)) nimm(k, 'signale', 50, 'hat geantwortet — wartet auf dich');
+  for (const k of kontakte) if (unbeantwortet(k, heute)) nimm(k, 'signale', 50, (k.aktivitaeten ?? []).slice(-1)[0]?.text?.startsWith('Mail:') ? `hat geschrieben (${(k.aktivitaeten ?? []).slice(-1)[0].text!.slice(6, 70)}) — wartet auf dich` : 'hat geantwortet — wartet auf dich');
   // 3 Chancen
   for (const c of crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe))) {
     const g = gesundheit(c, heute);

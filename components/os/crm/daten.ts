@@ -20,8 +20,12 @@ export interface CrmAntwort {
   prognose: Prognose; gewinnquote: { gewonnen: number; verloren: number; quote: number | null };
   ampel: Record<string, { ampel: Ampel; gruende: string[] }>;
   mandate: Record<string, MandatLage>;
+  /** Faktor Zahlung aus den Rechnungen im Finanzplan (null = keine passende Rechnung). */
+  zahlung: Record<string, { wert: number; text: string } | null>;
   mrr: number; konzentration: { kunde: string; anteil: number } | null;
   events: Record<string, EventZahlen>;
+  /** Nächster Termin je Person (aus dem Geschäftskalender). */
+  termine: Record<string, { titel: string; start: string }>;
 }
 
 export const neueId = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -42,6 +46,8 @@ export function useCrm() {
     } catch { setFehler('Nicht erreichbar.'); }
   }, []);
   useEffect(() => { void laden(); }, [laden]);
+  // Signale aus Mail und Kalender (höchstens alle 5 Minuten, der Server entscheidet) — danach neu laden, wenn etwas dazukam.
+  useEffect(() => { fetch('/api/crm/signale', { method: 'POST' }).then(r => r.json()).then(d => { if (d?.neu) void laden(); }).catch(() => {}); }, [laden]);
   useAbgleich(laden, { alle: 20_000, pausiert: () => unterwegs.current > 0 });
 
   /** CRM-Eintrag anlegen/ändern (ganzer Eintrag). */
