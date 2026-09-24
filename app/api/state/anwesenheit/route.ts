@@ -12,6 +12,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { personAus, nameVon } from '@/lib/jarvis/raum';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,19 +23,21 @@ interface Datei { wer: Record<string, Eintrag> }
 /** Nach so langer Stille gilt jemand als weg. */
 const FRISCH_MS = 90_000;
 
-export async function GET() {
+export async function GET(req: Request) {
+  const ich = personAus(req);
   const f = await loadJson<Datei>('anwesenheit');
   const jetzt = Date.now();
   const aktiv = Object.values(f?.wer ?? {})
     .filter(e => jetzt - Date.parse(e.at) < FRISCH_MS)
-    .map(e => ({ ...e, seitSek: Math.round((jetzt - Date.parse(e.at)) / 1000) }));
-  return NextResponse.json({ aktiv }, { headers: { 'Cache-Control': 'no-store' } });
+    .map(e => ({ ...e, name: nameVon(e.person), seitSek: Math.round((jetzt - Date.parse(e.at)) / 1000) }));
+  return NextResponse.json({ aktiv, ich }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: Request) {
   let body: { person?: string; pfad?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false }, { status: 400 }); }
-  const person = body.person === 'malin' ? 'malin' : 'kevin';
+  // Seit den Konten (23.09.): die Person aus der Sitzung, nicht aus der Anfrage.
+  const person = personAus(req);
   const pfad = String(body.pfad ?? '').slice(0, 80);
   if (!pfad.startsWith('/os')) return NextResponse.json({ ok: true, ignoriert: true });
 

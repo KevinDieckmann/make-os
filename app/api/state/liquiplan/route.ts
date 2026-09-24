@@ -6,7 +6,8 @@
 // fällige Zahlungen) — hier steht, was ERWARTET wird.
 
 import { NextResponse } from 'next/server';
-import { loadJson, updateGeschuetzt } from '@/lib/store/local-db';
+import { loadJson, updateGeschuetzt, updateJson } from '@/lib/store/local-db';
+import { wendeAn, type ListenOp } from '@/lib/sync';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -78,4 +79,22 @@ export async function PUT(req: Request) {
   const { ok, next } = await updateGeschuetzt<Datei>('liquiplan', { posten }, d => d.posten?.length ?? 0, 4);
   if (!ok) return NextResponse.json({ ok: false, error: 'Abgelehnt: das hätte über die Hälfte der Planposten gelöscht.' }, { status: 409 });
   return NextResponse.json({ ok: true, ...next });
+}
+
+/**
+ * Zu zweit (24.09.): Einzeländerungen — { ops: [{ liste: 'posten', op, eintrag?, id? }] }.
+ * Vorher schrieb die Seite die ganze Liste; wer zuletzt tippte, überschrieb den anderen.
+ */
+export async function PATCH(req: Request) {
+  let body: { ops?: ListenOp[] };
+  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  const ops = (Array.isArray(body.ops) ? body.ops : []).filter(o => o.liste === 'posten').slice(0, 300);
+  if (!ops.length) return NextResponse.json({ ok: true, angewandt: 0 });
+  let angewandt = 0;
+  const next = await updateJson<Datei>('liquiplan', current => {
+    const r = wendeAn((current?.posten ?? []) as unknown as Record<string, unknown>[], ops, 'id', roh => sauber(roh as Partial<Planposten>, 0) as unknown as Record<string, unknown> | null);
+    angewandt = r.angewandt;
+    return { posten: (r.liste as unknown as Planposten[]).slice(0, 200) };
+  });
+  return NextResponse.json({ ok: true, angewandt, stand: next });
 }

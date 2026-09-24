@@ -8,11 +8,13 @@
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Leuchtfarben, Ring).
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { wertVon, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
 import { localDay } from '@/lib/zeit';
 import { useSpeichern } from '@/hooks/useSpeichern';
+import { useAbgleich } from '@/hooks/useAbgleich';
+import { FINANZPLAN_LISTEN } from '@/lib/sync';
 import { vorschau, monatlicheLast, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Woche, nurBusiness } from '@/lib/make-one/liquiditaet';
 import {
   DEFAULT_FINANCE, MONTHS_DE, computeMetrics, mitKasse, geschaeftsKasse, eur,
@@ -90,14 +92,13 @@ export function ControllingView() {
   useEffect(() => {
     fetch('/api/state/liquiplan').then(r => r.json()).then(d => setPosten(d.posten ?? [])).catch(() => {});
   }, []);
-  useEffect(() => {
-    fetch('/api/state/finanzplan')
-      .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
-      .then(setFplan)
-      .catch(err => console.error('[MAKE OS] Finanzplan für die Liquiditäts-Vorschau nicht ladbar.', err));
-  }, []);
-
-  const planSpeichern = useSpeichern('/api/state/finanzplan');
+  // Zu zweit: Kontostände als Einzeländerung, Malins Änderungen per Abgleich.
+  const planSpeichern = useSpeichern('/api/state/finanzplan', { listen: FINANZPLAN_LISTEN, uebernehmen: st => setFplan(st as unknown as FinanzplanStand) });
+  const ladePlan = useCallback(() => fetch('/api/state/finanzplan')
+    .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
+    .then((d: FinanzplanStand) => { if (planSpeichern.hatOffenes()) return; setFplan(d); planSpeichern.kenne(d); })
+    .catch(err => console.error('[MAKE OS] Finanzplan für die Liquiditäts-Vorschau nicht ladbar.', err)), [planSpeichern]);
+  useEffect(() => { void ladePlan(); }, [ladePlan]);
   function kontostandSetzen(firmaId: string, wert: string) {
     if (!fplan) return;
     const zahl = wert.trim() === '' ? null : Math.round(Number(wert));
@@ -106,23 +107,24 @@ export function ControllingView() {
     setFplan(next);
     planSpeichern.speichern(next);
   }
-  useEffect(() => {
-    fetch('/api/state/finance')
-      .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
-      .then((d: { state: FinanceState | null }) => {
-        if (d.state && Array.isArray(d.state.months) && d.state.months.length === 12) setS(d.state);
-        setLoaded(true);
-      })
-      .catch(err => {
-        console.error('[MAKE OS] Controlling konnte nicht geladen werden — Speichern gesperrt.', err);
-        setLadeFehler(true);
-        setLoaded(true);
-      });
-  }, []);
-
   // Speichert auch dann, wenn du sofort die Seite wechselst oder den Tab
-  // schließt — beim nächsten Öffnen steht derselbe Stand da.
-  const finanzSpeichern = useSpeichern('/api/state/finance');
+  // schließt — beim nächsten Öffnen steht derselbe Stand da. Zu zweit: Monate
+  // und Felder einzeln; was Malin in anderen Monaten tippt, bleibt erhalten.
+  const finanzSpeichern = useSpeichern('/api/state/finance', { listen: { months: 'm' }, uebernehmen: st => setS(st as unknown as FinanceState) });
+  const ladeFinanz = useCallback(() => fetch('/api/state/finance')
+    .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
+    .then((d: { state: FinanceState | null }) => {
+      if (finanzSpeichern.hatOffenes()) return;
+      if (d.state && Array.isArray(d.state.months) && d.state.months.length === 12) { setS(d.state); finanzSpeichern.kenne(d.state); }
+      setLoaded(true);
+    })
+    .catch(err => {
+      console.error('[MAKE OS] Controlling konnte nicht geladen werden — Speichern gesperrt.', err);
+      setLadeFehler(true);
+      setLoaded(true);
+    }), [finanzSpeichern]);
+  useEffect(() => { void ladeFinanz(); }, [ladeFinanz]);
+  useAbgleich(() => { void ladePlan(); void ladeFinanz(); }, { pausiert: () => planSpeichern.hatOffenes() || finanzSpeichern.hatOffenes() });
   function persist(next: FinanceState) {
     setS(next);
     if (ladeFehler) return;

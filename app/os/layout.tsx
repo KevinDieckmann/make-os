@@ -9,6 +9,7 @@ import { JarvisPanel } from '@/components/os/JarvisPanel';
 import { FehlerMelder } from '@/components/os/FehlerMelder';
 import { NutzungsMelder } from '@/components/os/NutzungsMelder';
 import { Protokollant } from '@/components/os/Protokollant';
+import { Mitarbeit } from '@/components/os/Mitarbeit';
 import { WillkommenMalin } from '@/components/os/WillkommenMalin';
 import { wache } from '@/lib/zugang/wache';
 
@@ -34,6 +35,8 @@ export default async function OsLayout({ children }: { children: React.ReactNode
       </main>
       {/* Jarvis läuft rechts auf JEDER /os-Seite mit — in Stufen aufziehbar. */}
       <JarvisPanel />
+      {/* Zu zweit: wer ist gerade wo (24.09.). */}
+      <Mitarbeit />
       {/* Einmaliger Gruß beim allerersten Öffnen. */}
       <WillkommenMalin />
     </div>

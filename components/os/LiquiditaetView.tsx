@@ -7,11 +7,13 @@
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Leuchtfarben, Listen).
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 import { eur } from '@/lib/make-one/finance-data';
 import { useSpeichern } from '@/hooks/useSpeichern';
+import { useAbgleich } from '@/hooks/useAbgleich';
+import { FINANZPLAN_LISTEN } from '@/lib/sync';
 import {
   vorschau, KATEGORIEN, KATEGORIE, SZENARIO_LABEL,
   type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Rhythmus, type Szenario, type Woche,
@@ -74,17 +76,25 @@ export function LiquiditaetView() {
   const [offen, setOffen] = useState<string | null>(null);
   const heute = localDay();
 
+  // Zu zweit: nur Einzeländerungen; Malins Änderungen kommen per Abgleich herein.
+  const speichernHook = useSpeichern('/api/state/liquiplan', { verzoegerung: 400, listen: ['posten'], uebernehmen: st => setPosten((st.posten as Planposten[]) ?? []) });
+  const planSpeichern = useSpeichern('/api/state/finanzplan', { listen: FINANZPLAN_LISTEN, uebernehmen: st => setPlan(st as unknown as typeof plan) });
+  const ladePlan = useCallback(() => fetch('/api/state/finanzplan').then(r => r.json()).then(d => {
+    if (planSpeichern.hatOffenes()) return;
+    setPlan(d); planSpeichern.kenne(d);
+  }).catch(() => {}), [planSpeichern]);
+  const ladePosten = useCallback(() => fetch('/api/state/liquiplan').then(r => r.json()).then(d => {
+    if (speichernHook.hatOffenes()) return;
+    const liste = Array.isArray(d.posten) ? d.posten : [];
+    setPosten(liste); speichernHook.kenne({ posten: liste });
+    setGeladen(true);
+  }).catch(() => setGeladen(true)), [speichernHook]);
   useEffect(() => {
-    fetch('/api/state/finanzplan').then(r => r.json()).then(setPlan).catch(() => {});
+    void ladePlan();
     fetch('/api/state/labels').then(r => r.json()).then(d => setEigeneKat(Array.isArray(d.kategorien) ? d.kategorien : [])).catch(() => {});
-    fetch('/api/state/liquiplan').then(r => r.json()).then(d => {
-      setPosten(Array.isArray(d.posten) ? d.posten : []);
-      setGeladen(true);
-    }).catch(() => setGeladen(true));
-  }, []);
-
-  const speichernHook = useSpeichern('/api/state/liquiplan', { verzoegerung: 400 });
-  const planSpeichern = useSpeichern('/api/state/finanzplan');
+    void ladePosten();
+  }, [ladePlan, ladePosten]);
+  useAbgleich(() => { void ladePlan(); void ladePosten(); }, { pausiert: () => speichernHook.hatOffenes() || planSpeichern.hatOffenes() });
   function setzePosten(next: Planposten[]) {
     setPosten(next);
     speichernHook.speichern({ posten: next });

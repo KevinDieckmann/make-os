@@ -3,6 +3,7 @@
 // Bewusst leer beim Start — hier gehören nur echte Menschen rein.
 
 import { NextResponse } from 'next/server';
+import { wendeAn, type ListenOp } from '@/lib/sync';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import type { Kontakt, Chance, Naehe, Stufe } from '@/lib/make-one/netzwerk-data';
 
@@ -87,4 +88,25 @@ export async function PUT(req: Request) {
 
   if (!next) return NextResponse.json({ ok: false, error: 'Das hätte über die Hälfte der Kontakte gelöscht — abgelehnt.' }, { status: 409 });
   return NextResponse.json({ ok: true, ...next });
+}
+
+/**
+ * Zu zweit (24.09.): Einzeländerungen statt ganzer Listen —
+ * { ops: [{ liste: 'kontakte' | 'chancen', op: 'upsert' | 'delete', eintrag?, id? }] }.
+ * Was der andere inzwischen an anderen Einträgen geändert hat, bleibt erhalten.
+ */
+export async function PATCH(req: Request) {
+  let body: { ops?: ListenOp[] };
+  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  const ops = (Array.isArray(body.ops) ? body.ops : []).slice(0, 500);
+  if (!ops.length) return NextResponse.json({ ok: true, angewandt: 0 });
+  let angewandt = 0;
+  const next = await updateJson<NetzFile>('netzwerk', current => {
+    const f = { kontakte: current?.kontakte ?? [], chancen: current?.chancen ?? [] };
+    const k = wendeAn(f.kontakte as unknown as Record<string, unknown>[], ops.filter(o => o.liste === 'kontakte'), 'id', r => sauberKontakt(r as Partial<Kontakt>, 0) as unknown as Record<string, unknown> | null);
+    const c = wendeAn(f.chancen as unknown as Record<string, unknown>[], ops.filter(o => o.liste === 'chancen'), 'id', r => sauberChance(r as Partial<Chance>, 0) as unknown as Record<string, unknown> | null);
+    angewandt = k.angewandt + c.angewandt;
+    return { kontakte: k.liste as unknown as Kontakt[], chancen: c.liste as unknown as Chance[] };
+  });
+  return NextResponse.json({ ok: true, angewandt, stand: next });
 }

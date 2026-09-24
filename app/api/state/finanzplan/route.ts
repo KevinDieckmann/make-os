@@ -247,10 +247,12 @@ const PATCHBAR = ['firmen', 'rechnungen', 'zahlungen', 'merkposten', 'produkte']
 type PatchListe = typeof PATCHBAR[number];
 
 export async function PATCH(req: Request) {
-  let body: { ops?: unknown };
+  let body: { ops?: unknown; felder?: Record<string, unknown> };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  const roh = Array.isArray(body.ops) ? body.ops.slice(0, 100) : null;
+  const roh = Array.isArray(body.ops) ? body.ops.slice(0, 100) : (body.felder ? [] : null);
   if (!roh) return NextResponse.json({ ok: false, error: 'Feld "ops" (Liste) fehlt.' }, { status: 400 });
+  // Zu zweit (24.09.): Einzelfelder außerhalb der Listen — derzeit nur das Uhrwerk.
+  const uhrwerk = body.felder && typeof body.felder.uhrwerk === 'object' && body.felder.uhrwerk ? body.felder.uhrwerk : null;
 
   interface Op { liste: PatchListe; op: 'upsert' | 'delete'; eintrag?: Record<string, unknown>; id?: string }
   const ops: Op[] = [];
@@ -262,7 +264,7 @@ export async function PATCH(req: Request) {
       ops.push({ liste: l, op: 'upsert', eintrag: o.eintrag as Record<string, unknown> });
     }
   }
-  if (!ops.length) return NextResponse.json({ ok: false, error: 'Keine gültigen Änderungen.' }, { status: 400 });
+  if (!ops.length && !uhrwerk) return NextResponse.json({ ok: false, error: 'Keine gültigen Änderungen.' }, { status: 400 });
 
   let angewandt = 0;
   const next = await updateJson<FinanzplanFile>('finanzplan', current => {
@@ -280,6 +282,7 @@ export async function PATCH(req: Request) {
       }
       (f[o.liste] as unknown) = Array.from(nachId.values());
     }
+    if (uhrwerk) { f.uhrwerk = sauberFile({ uhrwerk } as unknown as Partial<FinanzplanFile>).uhrwerk; angewandt++; }
     // Kontostand-Änderung stempelt das Stand-Datum, wie beim Vollschreiben.
     const alt = sauberFile(current);
     for (const fa of f.firmen) {
@@ -289,5 +292,5 @@ export async function PATCH(req: Request) {
     return f;
   });
 
-  return NextResponse.json({ ok: true, angewandt, ...next });
+  return NextResponse.json({ ok: true, angewandt, ...next, stand: next });
 }

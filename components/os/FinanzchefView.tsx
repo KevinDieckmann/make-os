@@ -12,6 +12,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { bloecke } from '@/lib/make-one/markdown';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Punkt, Chip, Knopf, Segmente, Spalten, Spalte, Zahl, feld, LEUCHT } from './schlank';
 import { block } from './WissenView';
+import { useAbgleich } from '@/hooks/useAbgleich';
 import type { Bericht, ChefVorschlag, ChefEinstellung } from '@/lib/finanzen/chef/stand';
 import type { Hinweis } from '@/lib/finanzen/chef/finanzbild';
 import type { Termin } from '@/lib/finanzen/chef/steuertermine';
@@ -59,6 +60,8 @@ export function FinanzchefView() {
     fetch('/api/finanzchef').then(r => r.json()).then((d: Stand) => { if (d.ok) setS(d); else setFehler('Nicht ladbar.'); }).catch(() => setFehler('Nicht ladbar — läuft MAKE OS?'));
   }, []);
   useEffect(() => { laden(); }, [laden]);
+  // Zu zweit: Entscheidungen des anderen über Vorschläge erscheinen von selbst.
+  useAbgleich(laden, { alle: 30_000, pausiert: () => !!laeuft });
 
   async function starte(m: Modus, f?: string) {
     setLaeuft(m === 'frage' ? 'Der Head of Finance denkt über deine Frage nach …' : `${MODI.find(x => x.id === m)?.label} läuft — der Head of Finance rechnet und lässt sich prüfen (bis zu zwei Minuten) …`);

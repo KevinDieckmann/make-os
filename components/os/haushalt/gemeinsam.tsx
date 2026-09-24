@@ -6,6 +6,7 @@
 // Meldungen — Fehler bleiben stehen, bis man sie wegklickt.
 
 import { useCallback, useEffect, useState, type ReactNode, type CSSProperties } from 'react';
+import { useAbgleich } from '@/hooks/useAbgleich';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import type { Haushalt, Kategorie } from '@/lib/finanzen/haushalt/typen';
 import { eur } from '@/lib/finanzen/haushalt/typen';
@@ -38,6 +39,9 @@ export function useHaushalt() {
     } catch { melde('fehler', 'Keine Verbindung', 'MAKE OS ist gerade nicht erreichbar.'); }
   }, [melde]);
   useEffect(() => { void laden(); }, [laden]);
+  // Zu zweit (24.09.): Malins Änderungen erscheinen von selbst. Gleichzeitiges
+  // Bearbeiten derselben Zeile fängt die Stand-Prüfung ab (409 → neu laden).
+  useAbgleich(laden, { alle: 20_000 });
 
   /** Einzeländerungen. Bei Konflikt: Meldung und frischer Stand statt stillem Überschreiben. */
   const patch = useCallback(async (teil: string, ops: Op[]): Promise<boolean> => {

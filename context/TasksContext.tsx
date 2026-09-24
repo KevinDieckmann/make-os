@@ -237,11 +237,17 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   // statt stundenlang auseinanderzulaufen. Nie mitten in einem ungespeicherten
   // Zug — dann wartet der Abgleich auf die nächste Runde.
   useEffect(() => {
-    const iv = setInterval(() => {
-      if (!hydrated.current || ladeFehler || speichernSteht.current) return;
+    // Zu zweit (24.09.): alle 15 Sekunden und beim Zurückkehren in den Tab —
+    // Malins Änderungen sollen erscheinen, ohne dass jemand neu lädt.
+    const zug = () => {
+      if (!hydrated.current || ladeFehler || speichernSteht.current || document.visibilityState !== 'visible') return;
       void rehydrate();
-    }, 60_000);
-    return () => clearInterval(iv);
+    };
+    const iv = setInterval(zug, 15_000);
+    const sicht = () => { if (document.visibilityState === 'visible') zug(); };
+    window.addEventListener('focus', zug);
+    document.addEventListener('visibilitychange', sicht);
+    return () => { clearInterval(iv); window.removeEventListener('focus', zug); document.removeEventListener('visibilitychange', sicht); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ladeFehler]);
 
@@ -288,13 +294,21 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       }
 
       const projekteGleich = alt && JSON.stringify(alt.projects) === JSON.stringify(state.projects);
-      if (alt && projekteGleich && ops.length > 0 && ops.length <= 40) {
-        void schreibeMitWache('PATCH', { ops });
+      if (alt && projekteGleich && ops.length === 0) return;
+      if (alt) {
+        // Zu zweit (24.09.): auch Projektänderungen und große Änderungen als
+        // Einzeländerungen — in Paketen zu 100, Projekte reisen im ersten mit.
+        // Die ganze Liste (PUT) nur noch beim allerersten Stand.
+        void (async () => {
+          const pakete = ops.length ? Array.from({ length: Math.ceil(ops.length / 100) }, (_, i) => ops.slice(i * 100, i * 100 + 100)) : [[]];
+          for (let i = 0; i < pakete.length; i++) {
+            await schreibeMitWache('PATCH', { ops: pakete[i], ...(i === 0 && !projekteGleich ? { projekte: state.projects } : {}) });
+          }
+        })();
         return;
       }
-      if (alt && projekteGleich && ops.length === 0) return;
 
-      // Rückfall (Erststand, Projektänderung, Massenänderung): ganze Liste.
+      // Erststand (noch nichts geladen): ganze Liste.
       void schreibeMitWache('PUT', jetzt);
     }, 400);
     return () => clearTimeout(saveTimer.current);

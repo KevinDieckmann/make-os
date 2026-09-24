@@ -2,7 +2,8 @@
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { schwellen } from '@/lib/schwellen';
-import { geschaeftsKasse, type FinanceState } from '@/lib/make-one/finance-data';
+import { geschaeftsKasse, DEFAULT_FINANCE, type FinanceState, type MonthRow } from '@/lib/make-one/finance-data';
+import { wendeAn, type ListenOp } from '@/lib/sync';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -53,4 +54,34 @@ export async function PUT(req: Request) {
     );
   }
   return NextResponse.json({ ok: true });
+}
+
+/**
+ * Zu zweit (24.09.): Einzeländerungen — Monate über ihren Namen
+ * ({ ops: [{ liste: 'months', op: 'upsert', eintrag: { m, umsatz, kosten } }] })
+ * und Einzelfelder ({ felder: { zielUmsatz, zielGewinn, cash, startMonat, jahr } }).
+ */
+export async function PATCH(req: Request) {
+  let body: { ops?: ListenOp[]; felder?: Record<string, unknown> };
+  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  const zahl = (v: unknown) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : undefined);
+  let angewandt = 0;
+  const next = await updateJson<FinanceState>('finance', current => {
+    const f: FinanceState = current ?? { ...DEFAULT_FINANCE, months: DEFAULT_FINANCE.months.map(m => ({ ...m })) };
+    // Monate: nur Umsatz/Kosten eines bekannten Monats — das Raster bleibt immer zwölf lang.
+    const monatsOps = (body.ops ?? []).filter(o => o.liste === 'months' && o.op === 'upsert');
+    const r = wendeAn(f.months as unknown as Record<string, unknown>[], monatsOps, 'm', roh => {
+      if (!f.months.some(x => x.m === roh.m)) return null;
+      return { m: String(roh.m), umsatz: zahl(roh.umsatz) ?? 0, kosten: zahl(roh.kosten) ?? 0 };
+    });
+    angewandt += r.angewandt;
+    const reihenfolge = f.months.map(x => x.m);
+    const months = reihenfolge.map(m => (r.liste as unknown as MonthRow[]).find(x => x.m === m)!);
+    const fe = body.felder ?? {};
+    const neu: FinanceState = { ...f, months };
+    for (const k of ['jahr', 'zielUmsatz', 'zielGewinn', 'cash'] as const) if (k in fe && zahl(fe[k]) !== undefined) { neu[k] = zahl(fe[k])!; angewandt++; }
+    if ('startMonat' in fe && zahl(fe.startMonat) !== undefined && zahl(fe.startMonat)! >= 0 && zahl(fe.startMonat)! <= 11) { neu.startMonat = zahl(fe.startMonat); angewandt++; }
+    return neu;
+  });
+  return NextResponse.json({ ok: true, angewandt, stand: next });
 }

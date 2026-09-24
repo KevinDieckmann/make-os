@@ -6,10 +6,11 @@
 // 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Zeile/Zahl/Segmente
 // aus schlank) — der Held ist jetzt die erste Karte, die Sichten sind Segmente.
 
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 import { useSpeichern } from '@/hooks/useSpeichern';
+import { useAbgleich } from '@/hooks/useAbgleich';
 import { eur } from '@/lib/make-one/finance-data';
 import {
   NAEHE_META, STUFEN, STUFE, OFFENE_STUFEN, pipelineWert, liegenGeblieben,
@@ -46,17 +47,18 @@ export function NetzwerkView() {
   const [wer, setWer] = useState<'alle' | string | 'beide'>('alle');
   const heute = localDay();
 
-  useEffect(() => {
-    fetch('/api/state/netzwerk').then(r => r.json()).then(d => {
-      setKontakte(Array.isArray(d.kontakte) ? d.kontakte : []);
-      setChancen(Array.isArray(d.chancen) ? d.chancen : []);
-      setGeladen(true);
-    }).catch(() => setGeladen(true));
-  }, []);
-
   // Speichert auch beim Seitenwechsel oder Tab-Schließen — was einmal
-  // getippt wurde, ist beim nächsten Öffnen wieder da.
-  const netzSpeichern = useSpeichern('/api/state/netzwerk', { verzoegerung: 400 });
+  // getippt wurde, ist beim nächsten Öffnen wieder da. Zu zweit: nur
+  // Einzeländerungen, Malins Änderungen kommen per Abgleich herein.
+  const netzSpeichern = useSpeichern('/api/state/netzwerk', { verzoegerung: 400, listen: ['kontakte', 'chancen'], uebernehmen: st => { setKontakte((st.kontakte as Kontakt[]) ?? []); setChancen((st.chancen as Chance[]) ?? []); } });
+  const laden = useCallback(() => fetch('/api/state/netzwerk').then(r => r.json()).then(d => {
+    if (netzSpeichern.hatOffenes()) return;
+    const k = Array.isArray(d.kontakte) ? d.kontakte : [], c = Array.isArray(d.chancen) ? d.chancen : [];
+    setKontakte(k); setChancen(c); netzSpeichern.kenne({ kontakte: k, chancen: c });
+    setGeladen(true);
+  }).catch(() => setGeladen(true)), [netzSpeichern]);
+  useEffect(() => { void laden(); }, [laden]);
+  useAbgleich(laden, { pausiert: netzSpeichern.hatOffenes });
   function speichern(k: Kontakt[], c: Chance[]) {
     setKontakte(k); setChancen(c);
     netzSpeichern.speichern({ kontakte: k, chancen: c });

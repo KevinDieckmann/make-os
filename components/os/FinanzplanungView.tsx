@@ -8,10 +8,12 @@
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Leuchtfarben, Listen).
 
 import Link from 'next/link';
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { computeMetrics, eur, type FinanceState } from '@/lib/make-one/finance-data';
 import { useSpeichern } from '@/hooks/useSpeichern';
+import { useAbgleich } from '@/hooks/useAbgleich';
+import { FINANZPLAN_LISTEN } from '@/lib/sync';
 import { localDay } from '@/lib/zeit';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Zahl, feld, LEUCHT } from './schlank';
 
@@ -69,13 +71,18 @@ export function FinanzplanungView() {
   const [neuZ, setNeuZ] = useState({ an: '', titel: '', betrag: '', faellig: '', firmaId: 'kdc' });
   const heute = localDay();
 
-  useEffect(() => {
-    fetch('/api/state/finanzplan').then(r => r.json()).then(setPlan).catch(() => {});
-    fetch('/api/state/finance').then(r => r.json()).then(d => setFinance(d.state ?? d)).catch(() => {});
-  }, []);
-
   // Speichert auch beim Seitenwechsel — nichts geht zwischen zwei Klicks verloren.
-  const planSpeichern = useSpeichern('/api/state/finanzplan');
+  // Zu zweit: nur Einzeländerungen, und Malins Änderungen kommen per Abgleich herein.
+  const planSpeichern = useSpeichern('/api/state/finanzplan', { listen: FINANZPLAN_LISTEN, uebernehmen: st => setPlan(st as unknown as Plan) });
+  const ladePlan = useCallback(() => fetch('/api/state/finanzplan').then(r => r.json()).then((d: Plan) => {
+    if (planSpeichern.hatOffenes()) return;
+    setPlan(d); planSpeichern.kenne(d);
+  }).catch(() => {}), [planSpeichern]);
+  useEffect(() => {
+    void ladePlan();
+    fetch('/api/state/finance').then(r => r.json()).then(d => setFinance(d.state ?? d)).catch(() => {});
+  }, [ladePlan]);
+  useAbgleich(ladePlan, { pausiert: planSpeichern.hatOffenes });
   function speichern(next: Plan) {
     setPlan(next);
     planSpeichern.speichern(next);

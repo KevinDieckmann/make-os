@@ -15,7 +15,7 @@ import { useEffect } from 'react';
 import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
 
 /** Nicht protokollieren: das Protokoll selbst und reine Mitschriften. */
-const STILL = new Set(['aenderungen', 'nutzung', 'client-fehler', 'arbeitsplatz']);
+const STILL = new Set(['aenderungen', 'nutzung', 'client-fehler', 'arbeitsplatz', 'anwesenheit']);
 
 export function Protokollant() {
   useEffect(() => {

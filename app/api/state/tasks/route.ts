@@ -88,9 +88,12 @@ export async function PUT(req: Request) {
  * beide durch.
  */
 export async function PATCH(req: Request) {
-  let body: { ops?: unknown; massenAenderung?: boolean };
+  let body: { ops?: unknown; massenAenderung?: boolean; projekte?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  const roh = Array.isArray(body.ops) ? body.ops.slice(0, 100) : null;
+  // Zu zweit (24.09.): Projekte reisen mit, statt die ganze Aufgabenliste per PUT
+  // zu schreiben — so bleibt, was der andere an Aufgaben geändert hat.
+  const projekte = Array.isArray(body.projekte) ? (body.projekte as TasksState['projects']).slice(0, 200) : null;
+  const roh = Array.isArray(body.ops) ? body.ops.slice(0, 100) : (projekte ? [] : null);
   if (!roh) return NextResponse.json({ ok: false, error: 'Feld "ops" (Liste) fehlt.' }, { status: 400 });
 
   interface Op { op: 'upsert' | 'delete'; task?: Task; id?: string }
@@ -101,7 +104,7 @@ export async function PATCH(req: Request) {
       ops.push({ op: 'upsert', task: o.task as Task });
     }
   }
-  if (!ops.length) return NextResponse.json({ ok: false, error: 'Keine gültigen Änderungen.' }, { status: 400 });
+  if (!ops.length && !projekte) return NextResponse.json({ ok: false, error: 'Keine gültigen Änderungen.' }, { status: 400 });
 
   let angewandt = 0;
   let massen = 0;
@@ -119,7 +122,7 @@ export async function PATCH(req: Request) {
     // genauso gut in 57 kleinen Schritten in EINEM Aufruf erledigen.
     const pruef = brauchtBestaetigung(f.tasks, naechste, body.massenAenderung === true);
     if (pruef.noetig) { massen = pruef.anzahl; angewandt = 0; return f; }
-    return { ...f, tasks: naechste };
+    return { ...f, tasks: naechste, ...(projekte ? { projects: projekte } : {}) };
   });
 
   if (massen) {

@@ -8,6 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { personAus, nameVon } from '@/lib/jarvis/raum';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,7 +47,8 @@ export async function POST(req: Request) {
     f.eintraege = Array.isArray(f.eintraege) ? f.eintraege : [];
     const neu: Eintrag = {
       at: new Date().toISOString(),
-      person: body.person === 'malin' ? 'Malin' : 'Kevin',
+      // Seit den Konten (23.09.): wer angemeldet ist — nicht, was die Anfrage behauptet.
+      person: nameVon(personAus(req)),
       bestand,
       seite: body.seite ? String(body.seite).slice(0, 80) : undefined,
       art: String(body.art ?? 'PUT').slice(0, 8),

@@ -436,3 +436,6 @@ nav a:hover { transform: translateX(2px); }
 /* Der Kopf nimmt dieselbe Breite wie die Seite, damit die Kanten übereinanderstehen */
 .wachstum-kopf-innen { max-width: 1440px; margin: 0 auto; padding: 10px clamp(18px,4vw,48px); display: flex; align-items: center; gap: 16px; }
 @media (max-width: 720px) { .wachstum-kopf-innen { gap: 12px; padding: 8px 16px; } }
+
+/* Zu zweit (24.09.): „Malin ist auch hier“ — auf dem Handy über der unteren Leiste. */
+@media (max-width: 767px) { .os-mitarbeit { bottom: 84px !important; left: 12px !important; right: auto !important; justify-items: start !important; } }
