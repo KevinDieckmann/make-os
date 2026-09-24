@@ -17,6 +17,10 @@ import { SITZUNG_COOKIE, sitzungPruefen, sitzungsGeheimnis } from '@/lib/zugang/
 /** Ohne Sitzung erreichbar: die Anmeldung selbst und ihre Schnittstellen. */
 const OFFEN = [/^\/anmelden$/, /^\/api\/konto\/(status|anmelden|einrichten|beitreten)$/];
 
+function adresseHost(): string | null {
+  try { const a = process.env.MAKE_OS_ADRESSE?.trim(); return a ? new URL(a).host : null; } catch { return null; }
+}
+
 function verweigertApi(): NextResponse {
   return NextResponse.json({ error: 'Nicht angemeldet.' }, { status: 401 });
 }
@@ -30,7 +34,13 @@ export async function middleware(req: NextRequest) {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     const origin = req.headers.get('origin');
     if (origin) {
-      try { if (new URL(origin).host !== (req.headers.get('host') ?? '')) return verweigertApi(); }
+      // Die eigene Adresse ist, was der Browser als Host schickt — hinter einem
+      // Vorbau (Tailscale Serve, später Caddy auf Hetzner) steht sie in
+      // X-Forwarded-Host, und fest eingetragen in MAKE_OS_ADRESSE. Ein Browser
+      // kann X-Forwarded-Host bei einer fremden Seite nicht setzen, ohne an
+      // der Vorabprüfung zu scheitern — der Schutz bleibt also dicht.
+      const eigene = [req.headers.get('host'), req.headers.get('x-forwarded-host'), adresseHost()].filter(Boolean);
+      try { if (!eigene.includes(new URL(origin).host)) return verweigertApi(); }
       catch { return verweigertApi(); }
     }
   }

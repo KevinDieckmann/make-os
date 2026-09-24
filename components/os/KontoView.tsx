@@ -44,7 +44,7 @@ export function KontoView() {
   async function tgWeg() { await fetch('/api/telegram/koppeln', { method: 'DELETE' }).catch(() => {}); setTg(null); void ladeTg(); }
   async function einladen() {
     const r = await fetch('/api/konto/einladen', { method: 'POST' }).then(x => x.json()).catch(() => ({ error: 'nicht erreichbar' }));
-    if (r.code) setEinladung({ code: r.code, stunden: r.stunden, link: `${window.location.origin}/anmelden?code=${r.code}` }); else setMeldung(r.error ?? 'Fehler');
+    if (r.code) setEinladung({ code: r.code, stunden: r.stunden, link: `${r.adresse || window.location.origin}/anmelden?code=${r.code}` }); else setMeldung(r.error ?? 'Fehler');
   }
   async function abmelden() { await fetch('/api/konto/abmelden', { method: 'POST' }).catch(() => {}); window.location.assign('/anmelden'); }
   const kopieren = (t: string) => { try { void navigator.clipboard.writeText(t); setMeldung('Link kopiert — persönlich weitergeben.'); } catch { setMeldung(t); } };

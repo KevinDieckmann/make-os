@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import { lies, hole, entscheide } from '@/lib/jarvis/stapel';
 import { fuehreAus } from '@/lib/jarvis/ausfuehren';
 import { personAus } from '@/lib/jarvis/raum';
+import { innenAdresse } from '@/lib/innen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,7 +35,7 @@ interface Eingang {
 export async function POST(req: Request) {
   let body: Eingang;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  const origin = new URL(req.url).origin;
+  const origin = innenAdresse(req);
   const person = personAus(req);
 
   // ── Sammel-Freigabe: „durcharbeiten" ──

@@ -307,6 +307,21 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Brain nannte deshalb einen Eintrag vom 07.09. als neuesten — Protokolle werden
 > jetzt so gekürzt, dass das Ende bleibt. Tests: 187 grün.
 
+> **Nachtrag 24.09., Malins Zugang.** Kevin: *„Wie kriegen wir das hin, dass
+> Malin darauf Zugriff bekommen kann?“* Zu Hause gibt es kein WLAN, nur den
+> Handy-Hotspot. Entscheidung: **Tailscale jetzt als Brücke, Hetzner
+> parallel.** Vorbereitet: Einladungslinks nehmen `MAKE_OS_ADRESSE` (sonst
+> zeigten sie auf localhost), der Schutz gegen fremde Seiten erkennt die
+> Vorbau-Adresse (getestet: Vorbau kommt durch, fremde Seite wird abgewiesen).
+> Dabei eine echte Lücke geschlossen: zehn Routen riefen sich selbst über die
+> Adresse aus der Anfrage auf und schickten dabei den Dienstschlüssel mit —
+> hinter einem Vorbau wäre das gescheitert, mit gefälschtem Host-Kopf wäre der
+> Schlüssel nach außen gegangen. Jetzt immer direkt (`lib/innen.ts`). Anleitung
+> für Kevin in `DEPLOY.md`, für Malin in `ONBOARDING_MALIN.md`; `DEPLOY.md` an
+> den Plan angeglichen (kein Postgres, kein Coolify). Offen bei Kevin: Tailscale
+> installieren und Mac mit Malin teilen, GitHub-Repo, Hetzner-Server, und wie
+> das Brain auf den Server kommt. Tests: 191 grün.
+
 Jede Phase hat ein Ziel in einem Satz, eine Fertig-Bedingung, und eine Liste,
 was **bewusst nicht** darin ist. Grobe Größe in Arbeitstagen — ehrlich grob.
 

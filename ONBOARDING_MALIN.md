@@ -6,16 +6,30 @@ vollen Zugriff: mitbenutzen und mitbauen.
 
 ## 1 · Mitbenutzen (ohne Code)
 
-Kevins Mac betreibt das System. Solange sein Server läuft:
+Kevins Mac betreibt das System, bis der Server steht (PLAN.md, Phase 1). Du
+kommst über **Tailscale** hin — ein privates, verschlüsseltes Netz nur
+zwischen unseren Geräten. Das klappt über mobile Daten von überall, ein
+gemeinsames WLAN braucht es nicht. (Kevin, 24.09.: Tailscale jetzt als Brücke,
+Hetzner parallel.)
 
-- Kevin erzeugt unter System → Konto → „Einladen" einen Link und gibt ihn dir
-  persönlich (48 Stunden gültig, einmal einlösbar).
-- Im selben WLAN den Link öffnen (`http://<IP-von-Kevins-Mac>:3001/anmelden?code=…`;
-  die IP steht auf dem Mac unter Systemeinstellungen → WLAN → Details).
-- Vorname **Malin**, E-Mail, Passwort mit mindestens 10 Zeichen — fertig. Der
-  Vorname wird der Name deiner Daten, deine bisherigen Bestände hängen damit
-  an deinem Konto. Danach: `http://<IP>:3001/anmelden` als Lesezeichen.
-- Für Zugriff von überall kommt der Server (PLAN.md, Phase 1).
+**Einmal einrichten (iPhone):**
+1. **Tailscale** aus dem App Store laden, mit deinem eigenen Konto anmelden
+   (Apple-ID reicht).
+2. Kevins Freigabe für seinen Mac annehmen (kommt per Mail oder Link) und in
+   der App den Schalter auf „Connected".
+3. Den **Einladungslink** von Kevin öffnen (48 Stunden gültig, einmal
+   einlösbar). Er sieht so aus: `https://macbook-air-von-kevin.….ts.net/anmelden?code=…`
+4. Vorname **Malin**, E-Mail, Passwort mit mindestens 10 Zeichen — fertig. Der
+   Vorname wird der Name deiner Daten, deine bisherigen Bestände hängen damit
+   an deinem Konto.
+5. In Safari Teilen → **„Zum Home-Bildschirm"**: MAKE OS liegt dann wie eine
+   App auf dem Handy.
+
+**Was du wissen musst:** Du erreichst MAKE OS nur, solange Kevins Mac läuft,
+MAKE OS darauf gestartet ist und der Mac online ist (gerade über Kevins
+Handy-Hotspot). Ist er weg, siehst du „Seite nicht erreichbar" — nichts ist
+kaputt. Das ändert sich mit dem Server. Im Wissen siehst du alles aus dem
+Brain außer Kevins privaten Notizen.
 
 ## 2 · Mitbauen (eigene Entwicklungs-Kopie)
 

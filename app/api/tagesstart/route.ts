@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { recentRuns } from '@/lib/agent-log';
 import { resolveVitals, localDay } from '@/lib/vitals';
+import { innenAdresse } from '@/lib/innen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ...st, uebersprungen: true, loop: letzte?.payload ?? null });
   }
 
-  const origin = new URL(req.url).origin;
+  const origin = innenAdresse(req);
   const schritte: { name: string; ok: boolean; info?: string }[] = [];
 
   // 1) Kalender auffrischen — nur wenn er wirklich alt ist. Der osascript-Read

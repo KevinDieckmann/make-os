@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import { lies, eintrag, stempleZurueckgenommen } from '@/lib/jarvis/protokoll';
 import { fuehreAus } from '@/lib/jarvis/ausfuehren';
 import { uebersicht } from '@/lib/jarvis/ausfuehren';
+import { innenAdresse } from '@/lib/innen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
   if (e.zurueckgenommenAm) return NextResponse.json({ ok: false, error: 'Schon zurückgenommen.' }, { status: 409 });
   if (!e.ruecknahme) return NextResponse.json({ ok: false, error: 'Für diesen Schritt gibt es keine Rücknahme.' }, { status: 409 });
 
-  const origin = new URL(req.url).origin;
+  const origin = innenAdresse(req);
   const lauf = await fuehreAus(e.ruecknahme.werkzeug, e.ruecknahme.eingabe, origin, { erzwingen: true });
   if (lauf.ok) await stempleZurueckgenommen(id);
   return NextResponse.json({ ok: lauf.ok, ergebnis: lauf.text });

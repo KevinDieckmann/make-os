@@ -15,6 +15,7 @@ import { offeneAnzahl } from '@/lib/jarvis/stapel';
 import { personAus } from '@/lib/jarvis/raum';
 import { brainAnweisung } from '@/lib/jarvis/vault';
 import { lies as liesFakten, fuerPrompt as faktenFuerPrompt } from '@/lib/jarvis/gedaechtnis';
+import { innenAdresse } from '@/lib/innen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -414,7 +415,7 @@ export async function POST(req: Request) {
   try {
     // Tool-Use-Schleife: Jarvis darf Agenten ausführen (run_agent), bekommt die
     // Ergebnisse zurück und antwortet erst dann. Max 3 Runden, max 4 Läufe.
-    const origin = new URL(req.url).origin;
+    const origin = innenAdresse(req);
     const msgs: unknown[] = [...vorgeschichte, { role: 'user', content: message }];
     interface Block { type: string; id?: string; name?: string; text?: string; input?: Record<string, unknown> }
     let blocks: Block[] = [];

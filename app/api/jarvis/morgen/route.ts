@@ -19,6 +19,7 @@ import { fuehreAus } from '@/lib/jarvis/ausfuehren';
 import { offeneAnzahl, lies as liesStapel } from '@/lib/jarvis/stapel';
 import { personAus, type Person } from '@/lib/jarvis/raum';
 import { localDay } from '@/lib/zeit';
+import { innenAdresse } from '@/lib/innen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -131,7 +132,7 @@ function anweisungAbend(person: Person, lage: string, liegt: string): string {
 export async function POST(req: Request) {
   if (!hasAnthropicKey()) return NextResponse.json({ ok: false, error: 'Kein Anthropic-Schlüssel.' }, { status: 200 });
   const person = personAus(req);
-  const origin = new URL(req.url).origin;
+  const origin = innenAdresse(req);
   let body: { zeit?: Tageszeit } = {};
   try { body = await req.json(); } catch { /* ohne Rumpf gilt Morgen */ }
   const zeit: Tageszeit = body.zeit === 'abend' ? 'abend' : 'morgen';

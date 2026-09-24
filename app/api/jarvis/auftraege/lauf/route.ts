@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { lies, melde } from '@/lib/jarvis/auftraege';
 import { fuehreAus } from '@/lib/jarvis/ausfuehren';
 import { runAgent, AUSFUEHRBAR, type Ausfuehrbar } from '@/lib/jarvis/agenten';
+import { innenAdresse } from '@/lib/innen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
   const a = (await lies()).find(x => x.id === id);
   if (!a) return NextResponse.json({ ok: false, error: 'Auftrag nicht gefunden.' }, { status: 404 });
 
-  const origin = new URL(req.url).origin;
+  const origin = innenAdresse(req);
   try {
     if (a.art === 'agent') {
       if (!(AUSFUEHRBAR as readonly string[]).includes(a.name)) {

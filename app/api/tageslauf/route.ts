@@ -17,6 +17,7 @@ import {
   schritteFuer, tagKey, MAX_LAEUFE, artFuerStunde,
   type LaufArt, type Lauf, type LaufFile, type SchrittErgebnis,
 } from '@/lib/tageslauf';
+import { innenAdresse } from '@/lib/innen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
   const heute = tagKey();
   const jetzt = new Date();
   const wd = WD[jetzt.getDay()];
-  const origin = new URL(req.url).origin;
+  const origin = innenAdresse(req);
   const geplant = schritteFuer(art);
   const schritte: SchrittErgebnis[] = [];
   // EIN Brain-Zug für die ganze Kette — statt dass jeder Schritt selbst liest.

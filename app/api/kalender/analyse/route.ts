@@ -17,6 +17,7 @@ interface Conflict { date: string; a: string; b: string; overlap: string; }
 const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
 import { localDay as localKey } from '@/lib/zeit';
+import { innenAdresse } from '@/lib/innen';
 
 // Overlap-Erkennung: echte Zeit-Kollisionen (keine Ganztags-Events).
 function findConflicts(events: Ev[]): Conflict[] {
@@ -113,7 +114,7 @@ export async function POST(req: Request) {
   let eingetragen = false;
   if (agent.autonomy === 'autonom' && vorschlaege.length) {
     try {
-      const origin = new URL(req.url).origin;
+      const origin = innenAdresse(req);
       const res = await fetch(`${origin}/api/apple-calendar/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '' },

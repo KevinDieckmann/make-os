@@ -82,6 +82,10 @@ lokal, Route `/os`, Port 3001.
   Verbindungen. Neue Seiten: nie THEME, nie
   Rahmen-Kästen, nie Schrift unter 11, nie eine Null. Alte Ansichten liegen unter
   `/os/uebersicht`, `/os/aufgaben/board` und `/os/inbox/voll`.
+- **Selbstaufrufe nie über die Anfrage-Adresse (24.09.2026).** Routen, die
+  andere Routen mit `x-make-key` aufrufen, nehmen `innenAdresse(req)` aus
+  `lib/innen.ts` — nie `new URL(req.url).origin` (Vorbau Tailscale/Caddy,
+  Schlüssel an fremden Host). Einladungslinks: `MAKE_OS_ADRESSE`.
 - **Obsidian ist Wissensbank Nummer eins (24.09.2026).** `lib/jarvis/vault.ts`
   liest `~/Desktop/MAKE/Make.Claude` zuerst, dann die iCloud-Doku. Es gelten
   Kevins Regeln aus dem Vault (`AGENTS.md`, `Vertraulichkeitsregeln.md`):

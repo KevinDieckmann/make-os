@@ -19,6 +19,7 @@ import { nachrichtFuer } from '@/lib/gesundheit/lauf';
 import { faelligeSlots, type TaktStand } from '@/lib/gesundheit/takt';
 import { loadJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
+import { innenAdresse } from '@/lib/innen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -80,7 +81,7 @@ export async function POST(req: Request) {
     try {
       const st = (await loadJson<TaktStand>('gesundheit-takt')) ?? {};
       const slot = faelligeSlots(st, person, jetzt, localDay(jetzt))[0];
-      if (slot) gruss += '\n\n' + await nachrichtFuer(person, slot, new URL(req.url).origin);
+      if (slot) gruss += '\n\n' + await nachrichtFuer(person, slot, innenAdresse(req));
     } catch { /* der Gruß reicht */ }
     await sendeAnChat(chatId, gruss);
     return NextResponse.json({ ok: true, person, was: 'gekoppelt' });
@@ -104,7 +105,7 @@ export async function POST(req: Request) {
   // ── An Jarvis ──
   // Derselbe Weg wie im Browser: /api/kimmi mit der Person im Kopf. Kein
   // zweiter Gesprächspfad, kein zweites Werkzeug-Register.
-  const origin = new URL(req.url).origin;
+  const origin = innenAdresse(req);
   let antwort = '';
   try {
     const r = await fetch(`${origin}/api/kimmi`, {

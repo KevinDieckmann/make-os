@@ -8,7 +8,7 @@ bewusst **nicht** über iCloud läuft.
 | Was | Wo | Warum dort |
 |---|---|---|
 | **Code** | GitHub, privates Repo | Zwei Leute ändern gleichzeitig — nur Git kann das zusammenführen |
-| **Daten** (Aufgaben, Netzwerk, Finanzen …) | Postgres auf dem Hetzner-Server | Ein Stand für beide, gleichzeitig nutzbar |
+| **Daten** (Aufgaben, Netzwerk, Finanzen …) | `.data/` als Volume auf dem Hetzner-Server | Ein Stand für beide, gleichzeitig nutzbar |
 | **Dokumente** (Belege, PDFs, Screenshots) | gemeinsamer iCloud-Ordner | Genau dafür ist iCloud gut |
 | **Arbeitsregeln für Claude** | `CLAUDE.md` im Repo | Reist mit dem Code mit, jedes Claude liest sie |
 
@@ -45,13 +45,16 @@ Nur Kevin, einmalig:
 - Server-IP an Claude geben
 
 ### 3 · Einrichtung (übernimmt Claude)
-- Postgres aufsetzen, Datenspeicher umstellen (`lib/store/local-db.ts` ist
-  die einzige Naht — mit `DATABASE_URL` schreibt sie in die Datenbank, ohne
-  weiter lokal als Datei)
-- Bestehende Daten aus `.data/` einmalig übertragen
-- Coolify installieren: jeder Merge auf `main` geht in 1–2 Minuten live,
-  mit HTTPS und Rollback-Knopf
-- Zwei Zugänge einrichten: einer für Kevin, einer für Malin
+Nach PLAN.md, Phase 1 — bewusst **ohne** Postgres und Coolify (Stand 18.09.):
+- `Dockerfile` + `compose.yml`: App, Arbeiter, Caddy (HTTPS von allein),
+  Volume für `.data` und den Vault
+- Deploy per GitHub Action: Push auf `main` → Server zieht → `docker compose up -d --build`
+- `.data/` einmalig übertragen, nächtliche verschlüsselte Sicherung
+- Hinter Caddy: `MAKE_OS_ADRESSE=https://<Domain>` und
+  `MAKE_OS_INTERN=http://localhost:3000` setzen (siehe `lib/innen.ts`)
+- **Offen, Kevins Entscheidung:** wie das Obsidian-Brain auf den Server kommt
+  (Plan: eigenes Git-Repo für den Vault). Damit lägen auch private Notizen
+  beim Anbieter.
 
 ### 4 · Malins Einstieg
 - **Nutzen:** Adresse im Browser öffnen, Schlüssel von Kevin persönlich
@@ -68,8 +71,26 @@ Regeln, Begriffe und Leitplanken. Wer den Ordner öffnet, dessen Claude kennt
 sie sofort. Das ist der belastbarste gemeinsame Kontext, den es gibt — er
 altert nicht und geht nicht verloren.
 
-## Bis der Server steht
+## Bis der Server steht: Tailscale (seit 24.09.)
 
-Malin kann schon jetzt mitarbeiten: solange Kevins Mac läuft, erreicht sie
-`http://<Mac-IP>:3001/os` im selben WLAN. Für unterwegs steht Tailscale im
-Bauplan.
+Kein WLAN zu Hause, nur Handy-Hotspot — deshalb Tailscale als Brücke. Malin
+erreicht Kevins Mac über ein privates, verschlüsseltes Netz, von überall.
+
+**Kevin, einmalig am Mac:**
+1. Tailscale aus dem Mac App Store installieren, öffnen, anmelden.
+2. Unter login.tailscale.com/admin → **DNS**: MagicDNS an, **HTTPS
+   Certificates** aktivieren.
+3. Unter **Machines** beim Mac → **Share** → Malins E-Mail. Sie sieht so nur
+   diesen Mac, nicht dein ganzes Netz.
+4. Im Terminal einmal (macht MAKE OS unter HTTPS im Tailnet erreichbar, bleibt
+   nach Neustart bestehen):
+   `/Applications/Tailscale.app/Contents/MacOS/Tailscale serve --bg 3001`
+5. Die ausgegebene Adresse (`https://….ts.net`) in `.env.local` als
+   `MAKE_OS_ADRESSE` eintragen, MAKE OS neu starten.
+6. System → Konto → „Jemanden einladen" → Link an Malin.
+
+HTTPS ist Pflicht, nicht Kür: ohne sichere Verbindung gibt Safari kein
+Mikrofon frei (Jarvis per Sprache) und legt keine App auf den Home-Bildschirm.
+
+**Grenze:** Malin ist nur drin, solange der Mac läuft, MAKE OS gestartet ist
+und der Mac online ist. Deckel zu heißt: Mac schläft, Malin draußen.
