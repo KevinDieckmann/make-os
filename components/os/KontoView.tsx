@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, feld, LEUCHT, Spalten, Spalte } from './schlank';
+import { HaushaltZuordnung } from './HaushaltZuordnung';
 
 interface Ich { speicher: string; email: string; name: string; rolle: 'inhaber' | 'mitglied'; teilt: { gesundheit: string[] }; angelegt: string }
 interface Andere { speicher: string; name: string; rolle: string; teiltGesundheitMitMir: boolean }
@@ -89,6 +90,7 @@ export function KontoView() {
           </Liste>
         </Karte>
       )}
+      {ich.rolle === 'inhaber' && <HaushaltZuordnung />}
         </Spalte>
         <Spalte>
       <Karte i={2}>

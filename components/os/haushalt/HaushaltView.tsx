@@ -20,6 +20,7 @@ import { Fixkosten } from './Fixkosten';
 import { IstSoll } from './IstSoll';
 import { Schulden } from './Schulden';
 import { ImportDialog } from './Import';
+import { UmzugDialog } from './Umzug';
 
 type Reiter = 'uebersicht' | 'buchungen' | 'einnahmen' | 'analyse' | 'fixkosten' | 'plan' | 'schulden';
 const REITER: { id: Reiter; label: string }[] = [
@@ -30,6 +31,7 @@ const REITER: { id: Reiter; label: string }[] = [
 export function HaushaltView({ reiter, onReiter }: { reiter: string | null; onReiter: (r: string) => void }) {
   const { daten: h, kein, laden, patch, aktion, melde, meldungen, weg } = useHaushalt();
   const [importAuf, setImportAuf] = useState(false);
+  const [umzugAuf, setUmzugAuf] = useState(false);
   const katName = useMemo(() => (h ? katNamen(h.stamm) : () => ''), [h]);
   const aktiv = (REITER.find(r => r.id === reiter)?.id ?? 'uebersicht') as Reiter;
 
@@ -46,12 +48,16 @@ export function HaushaltView({ reiter, onReiter }: { reiter: string | null; onRe
         <div style={{ overflowX: 'auto', maxWidth: '100%', paddingBottom: 2 }}><Segmente liste={REITER} aktiv={aktiv} onWahl={onReiter} /></div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 12.5, color: C.inkLeise }}>
           {juengste && <span style={{ color: alt !== null && alt > 40 ? LEUCHT.achtung : C.inkLeise }}>Letzte Buchung {datumDe(juengste)}</span>}
+          <button onClick={() => setUmzugAuf(true)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', font: 'inherit', padding: 0 }} title="Probelauf und Übernahme aus Malins Supabase">{h.meta.umzug ? `Aus Malins Cockpit (${datumDe(h.meta.umzug.zeit.slice(0, 10))})` : 'Aus Malins Cockpit'}</button>
           <a href="/api/haushalt/sicherung" style={{ color: C.inkDim, textDecoration: 'none' }} title="Alle Haushaltsdaten als JSON — im Format von Malins Sicherung">Sicherung ↓</a>
           {!leer && <Knopf farbe={LEUCHT.geld} onClick={() => setImportAuf(true)}>Kontoauszug einlesen</Knopf>}
         </div>
       </div>
       {leer ? (
-        <Karte i={1}><Leer>Noch keine Daten in diesem Haushalt. Der Umzug aus Malins Cockpit füllt ihn — bis dahin bleibt er leer.</Leer></Karte>
+        <Karte i={1} akzent={LEUCHT.geld}>
+          <Leer>Noch keine Daten in diesem Haushalt. Der Umzug aus Malins Cockpit füllt ihn: erst ein Probelauf mit Abgleich, dann die Übernahme.</Leer>
+          <Knopf farbe={LEUCHT.geld} onClick={() => setUmzugAuf(true)}>Umzug aus Malins Cockpit</Knopf>
+        </Karte>
       ) : (
         <>
           {aktiv === 'uebersicht' && <Uebersicht h={h} katName={katName} />}
@@ -63,6 +69,7 @@ export function HaushaltView({ reiter, onReiter }: { reiter: string | null; onRe
           {aktiv === 'schulden' && <Schulden h={h} patch={patch} melde={melde} />}
         </>
       )}
+      {umzugAuf && <UmzugDialog onZu={() => setUmzugAuf(false)} laden={laden} melde={melde} />}
       {importAuf && <ImportDialog h={h} aktion={aktion} laden={laden} melde={melde} onZu={() => setImportAuf(false)} />}
       <Meldungen liste={meldungen} weg={weg} />
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, textAlign: 'center', marginTop: 4 }}>Privat · nur für euren Haushalt sichtbar</div>
