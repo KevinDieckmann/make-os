@@ -7,16 +7,22 @@
 // Zwei Dinge stehen hier: die Abmachung (drei Zonen) und der Schalter, der sie
 // sichtbar macht. Steht Bauzeit an, zeigt die Software auf jeder Seite einen
 // Hinweis — Malin muss nicht raten, ob gerade gebaut wird.
+// 24.09.: auf das lebendige Muster umgezogen.
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { ZONEN } from '@/lib/make-one/onboarding-data';
-import { Seitenkopf } from './Seitenkopf';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, feld, LEUCHT } from './schlank';
 
-const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const ZONENFARBE: Record<string, string> = { gruen: T.accent, gelb: T.amber, rot: T.crit };
+const ZONENFARBE: Record<string, string> = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch };
+const PERSONFARBE: Record<string, string> = { Malin: LEUCHT.beziehung, Kevin: LEUCHT.puls };
+const linkKnopf: CSSProperties = {
+  fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '9px 15px', borderRadius: 11, whiteSpace: 'nowrap',
+  background: 'rgba(255,255,255,.06)', color: C.ink, textDecoration: 'none',
+};
+const absatz: CSSProperties = { fontSize: TYP.body, color: C.inkDim, lineHeight: 1.7, margin: 0 };
+const punkt: CSSProperties = { fontSize: TYP.body, color: C.inkDim, lineHeight: 1.7 };
 
 interface Bauzeit { aktiv: boolean; woran: string; seit: string | null; von: string }
 
@@ -37,97 +43,79 @@ export function ZusammenarbeitView() {
     }).then(r => r.json()).then(d => { if (d.ok) setB({ aktiv: d.aktiv, woran: d.woran, seit: d.seit, von: d.von }); }).catch(() => {});
   };
 
+  const aktiv = !!b?.aktiv;
+
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 60px' }}>
-        <Link href="/os/onboarding" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Onboarding</Link>
-        <Seitenkopf
-          rubrik={<>Onboarding</>}
-          titel={<>Zusammenarbeit</>}
-          satz={<>Kevin baut weiter an der Software, während Malin damit arbeitet. Damit dabei nichts verloren geht, gibt es drei Zonen und einen Schalter.</>}
-        />
+    <Seite titel="Zusammenarbeit" unter="Kevin baut weiter an der Software, während Malin damit arbeitet. Damit dabei nichts verloren geht, gibt es drei Zonen und einen Schalter."
+      rechts={<Link href="/os/onboarding" className="fassbar" style={linkKnopf}>Onboarding ›</Link>}>
 
-        {/* Der Schalter */}
-        <div style={{ ...panel, borderLeft: `3px solid ${b?.aktiv ? T.amber : T.line}`, padding: '17px 19px', marginBottom: 18 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ ...lbl, color: b?.aktiv ? T.amber : T.muted }}>Bauzeit</div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: b?.aktiv ? T.amber : T.ink, marginTop: 3 }}>
-                {b?.aktiv ? 'Kevin baut gerade' : 'Kein Umbau — alles sicher'}
-              </div>
-              <div style={{ fontSize: 12.5, color: T.muted, marginTop: 3, lineHeight: 1.55 }}>
-                {b?.aktiv
-                  ? <>Seit {b.seit ? `${b.seit.slice(11, 16)} Uhr` : 'gerade eben'}{b.woran ? ` · ${b.woran}` : ''}. Der Hinweis steht jetzt auf jeder Seite.</>
-                  : 'Einschalten, bevor du am Code arbeitest. Malin sieht den Hinweis dann überall.'}
-              </div>
-            </div>
-            <button
-              onClick={() => setzen(!b?.aktiv, woran)}
-              style={{
-                flex: '0 0 auto', fontSize: 13, fontWeight: 600, cursor: 'pointer', borderRadius: 10, padding: '10px 16px',
-                border: `1px solid ${b?.aktiv ? T.line : T.amber}`,
-                background: b?.aktiv ? 'transparent' : T.amber,
-                color: b?.aktiv ? T.inkDim : T.void,
-              }}>
-              {b?.aktiv ? 'Bauzeit beenden' : 'Bauzeit starten'}
-            </button>
-          </div>
-          <input
-            value={woran}
-            onChange={e => setWoran(e.target.value)}
-            onBlur={() => { if (b?.aktiv && woran !== b.woran) setzen(true, woran); }}
-            placeholder="Woran baust du gerade? z. B. Finanzen-Import umbauen"
-            aria-label="Woran gerade gebaut wird"
-            style={{
-              width: '100%', marginTop: 13, background: T.void, border: `1px solid ${T.line}`, borderRadius: 9,
-              padding: '9px 12px', color: T.ink, fontSize: 13, fontFamily: T.sans, outline: 'none',
-            }} />
+      {/* Der Schalter */}
+      <Karte i={0} akzent={aktiv ? LEUCHT.achtung : undefined}>
+        <Ueberschrift farbe={aktiv ? LEUCHT.achtung : C.inkLeise}
+          rechts={aktiv
+            ? <Knopf leise onClick={() => setzen(false, woran)}>Bauzeit beenden</Knopf>
+            : <Knopf farbe={LEUCHT.achtung} onClick={() => setzen(true, woran)}>Bauzeit starten</Knopf>}>
+          Bauzeit
+        </Ueberschrift>
+        <div style={{ fontSize: TYP.titel, fontWeight: 700, letterSpacing: '-.01em', color: aktiv ? LEUCHT.achtung : C.ink }}>
+          {aktiv ? 'Kevin baut gerade' : 'Kein Umbau — alles sicher'}
         </div>
+        <p style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.55, margin: '4px 0 0' }}>
+          {aktiv
+            ? <>Seit {b?.seit ? `${b.seit.slice(11, 16)} Uhr` : 'gerade eben'}{b?.woran ? ` · ${b.woran}` : ''}. Der Hinweis steht jetzt auf jeder Seite.</>
+            : 'Einschalten, bevor du am Code arbeitest. Malin sieht den Hinweis dann überall.'}
+        </p>
+        <input
+          value={woran}
+          onChange={e => setWoran(e.target.value)}
+          onBlur={() => { if (b?.aktiv && woran !== b.woran) setzen(true, woran); }}
+          placeholder="Woran baust du gerade? z. B. Finanzen-Import umbauen"
+          aria-label="Woran gerade gebaut wird"
+          style={{ ...feld, marginTop: 14 }} />
+      </Karte>
 
-        {/* Die drei Zonen */}
-        <div style={{ ...lbl, marginBottom: 8 }}>Die drei Zonen</div>
-        {ZONEN.map(z => (
-          <div key={z.farbe} style={{ ...panel, borderLeft: `3px solid ${ZONENFARBE[z.farbe]}`, padding: '15px 18px', marginBottom: 10 }}>
-            <div style={{ fontSize: 14.5, fontWeight: 600, color: ZONENFARBE[z.farbe] }}>{z.titel}</div>
-            <p style={{ fontSize: 12.5, color: T.muted, lineHeight: 1.6, margin: '5px 0 9px' }}>{z.satz}</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-              {z.beispiele.map(b2 => (
-                <span key={b2} style={{ fontFamily: T.mono, fontSize: 11, color: T.inkDim, border: `1px solid ${T.line}`, borderRadius: 6, padding: '3px 8px' }}>{b2}</span>
-              ))}
+      {/* Die drei Zonen */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+        {ZONEN.map((z, i) => (
+          <Karte key={z.farbe} i={1 + i}>
+            <Ueberschrift farbe={ZONENFARBE[z.farbe]}>{z.titel}</Ueberschrift>
+            <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6, margin: '0 0 10px' }}>{z.satz}</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {z.beispiele.map(b2 => <Chip key={b2} farbe={C.inkDim}>{b2}</Chip>)}
             </div>
-          </div>
+          </Karte>
         ))}
-
-        {/* Wer führt die Daten */}
-        <div style={{ ...panel, padding: '16px 19px', marginTop: 18 }}>
-          <div style={{ ...lbl, marginBottom: 8 }}>Wer führt die Daten</div>
-          <div style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.7 }}>
-            Das ist die Regel, an der es sonst scheitert: <strong>zwei Rechner dürfen nicht gleichzeitig in dieselbe Datei schreiben.</strong> Der
-            iCloud-Ordner löst Schreibkonflikte nicht auf — er behält eine Fassung und benennt die andere um. Deshalb:
-          </div>
-          <ul style={{ margin: '10px 0 0', paddingLeft: 18 }}>
-            <li style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.7 }}><strong>Code und Dokumente</strong> liegen im iCloud-Ordner — den darf jeder lesen.</li>
-            <li style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.7 }}><strong>Die Daten (.data)</strong> liegen genau einmal: auf dem Rechner, der gerade die Instanz betreibt.</li>
-            <li style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.7 }}><strong>Solange Kevins Rechner läuft</strong>, arbeitet Malin über das Netzwerk auf derselben Instanz — dann gibt es nur eine Wahrheit.</li>
-            <li style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.7 }}><strong>Eigene Kopie</strong> nur zum Ansehen. Was Malin dort einträgt, bleibt dort und ist nach dem nächsten Abgleich weg.</li>
-            <li style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.7 }}><strong>Dauerhaft</strong> gehört das auf den Hetzner-Server: eine Instanz, zwei Zugänge, kein Rechner muss laufen.</li>
-          </ul>
-        </div>
-
-        {/* Wer hat was geändert */}
-        <Aenderungen />
-
-        {/* Wenn doch etwas kaputtgeht */}
-        <div style={{ ...panel, padding: '16px 19px', marginTop: 12 }}>
-          <div style={{ ...lbl, marginBottom: 8 }}>Wenn doch etwas kaputtgeht</div>
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
-            <li style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.7 }}>Jede Datei wird täglich gesichert, 14 Stände bleiben liegen — in <span style={{ fontFamily: T.mono, fontSize: 12 }}>.data/backup</span>.</li>
-            <li style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.7 }}>Beim Schreiben schützt eine Sperre: Wer plötzlich viel weniger Daten schickt als gespeichert sind, wird abgelehnt.</li>
-            <li style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.7 }}>Sieht eine Seite kaputt aus: Bildschirmfoto an Kevin. Nicht selbst reparieren.</li>
-          </ul>
-        </div>
       </div>
-    </div>
+
+      {/* Wer führt die Daten */}
+      <Karte i={4}>
+        <Ueberschrift farbe={LEUCHT.geld}>Wer führt die Daten</Ueberschrift>
+        <p style={absatz}>
+          Das ist die Regel, an der es sonst scheitert: <strong style={{ color: C.ink, fontWeight: 600 }}>zwei Rechner dürfen nicht gleichzeitig in dieselbe Datei schreiben.</strong> Der
+          iCloud-Ordner löst Schreibkonflikte nicht auf — er behält eine Fassung und benennt die andere um. Deshalb:
+        </p>
+        <ul style={{ margin: '10px 0 0', paddingLeft: 18 }}>
+          <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Code und Dokumente</strong> liegen im iCloud-Ordner — den darf jeder lesen.</li>
+          <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Die Daten (.data)</strong> liegen genau einmal: auf dem Rechner, der gerade die Instanz betreibt.</li>
+          <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Solange Kevins Rechner läuft</strong>, arbeitet Malin über das Netzwerk auf derselben Instanz — dann gibt es nur eine Wahrheit.</li>
+          <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Eigene Kopie</strong> nur zum Ansehen. Was Malin dort einträgt, bleibt dort und ist nach dem nächsten Abgleich weg.</li>
+          <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Dauerhaft</strong> gehört das auf den Hetzner-Server: eine Instanz, zwei Zugänge, kein Rechner muss laufen.</li>
+        </ul>
+      </Karte>
+
+      {/* Wer hat was geändert */}
+      <Aenderungen />
+
+      {/* Wenn doch etwas kaputtgeht */}
+      <Karte i={6}>
+        <Ueberschrift farbe={LEUCHT.kritisch}>Wenn doch etwas kaputtgeht</Ueberschrift>
+        <ul style={{ margin: 0, paddingLeft: 18 }}>
+          <li style={punkt}>Jede Datei wird täglich gesichert, 14 Stände bleiben liegen — in <span style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>.data/backup</span>.</li>
+          <li style={punkt}>Beim Schreiben schützt eine Sperre: Wer plötzlich viel weniger Daten schickt als gespeichert sind, wird abgelehnt.</li>
+          <li style={punkt}>Sieht eine Seite kaputt aus: Bildschirmfoto an Kevin. Nicht selbst reparieren.</li>
+        </ul>
+      </Karte>
+    </Seite>
   );
 }
 
@@ -167,37 +155,28 @@ function Aenderungen() {
   const zeigen = liste ? (alle ? liste.slice(0, 60) : liste.slice(0, 8)) : [];
 
   return (
-    <div style={{ ...panel, padding: '16px 19px', marginTop: 12 }}>
-      <div style={{ ...lbl, marginBottom: 8 }}>Wer hat was geändert</div>
-      {liste === null && <div style={{ fontSize: 12.5, color: T.muted }}>lädt …</div>}
+    <Karte i={5}>
+      <Ueberschrift farbe={LEUCHT.beziehung} rechts={liste?.length ? `${liste.length} Einträge` : undefined}>Wer hat was geändert</Ueberschrift>
+      {liste === null && <Leer>lädt …</Leer>}
       {liste?.length === 0 && (
-        <div style={{ fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
+        <Leer>
           Noch nichts mitgeschrieben. Ab jetzt hält die Software fest, wer welchen Bestand ändert — damit ihr bei einer
           Abweichung nicht raten müsst.
-        </div>
+        </Leer>
       )}
-      {zeigen.map((e, i) => (
-        <div key={e.at + i} style={{
-          display: 'flex', alignItems: 'baseline', gap: 10, padding: '7px 0',
-          borderTop: i === 0 ? 'none' : `1px solid ${T.line}`,
-        }}>
-          <span style={{
-            fontFamily: T.mono, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase',
-            color: e.person === 'Malin' ? T.amber : T.accent, flex: '0 0 46px',
-          }}>{e.person}</span>
-          <span style={{ fontSize: 13, color: T.ink, flex: 1, minWidth: 0 }}>
-            {BESTAND_NAME[e.bestand] ?? e.bestand}
-            {e.art === 'DELETE' && <span style={{ color: T.crit, fontSize: 11.5 }}> · gelöscht</span>}
-          </span>
-          <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, flex: '0 0 auto' }}>{wann(e.at)}</span>
-        </div>
-      ))}
+      <Liste>
+        {zeigen.map((e, i) => (
+          <Zeile key={e.at + i}
+            links={<Chip farbe={PERSONFARBE[e.person] ?? C.inkDim}>{e.person}</Chip>}
+            titel={<>{BESTAND_NAME[e.bestand] ?? e.bestand}{e.art === 'DELETE' && <span style={{ color: LEUCHT.kritisch, fontSize: 12, fontWeight: 400 }}> · gelöscht</span>}</>}
+            rechts={<span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}><Punkt farbe={C.inkLeise} groesse={6} />{wann(e.at)}</span>} />
+        ))}
+      </Liste>
       {liste && liste.length > 8 && (
-        <button onClick={() => setAlle(!alle)} style={{
-          marginTop: 9, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 8,
-          padding: '6px 11px', color: T.inkDim, fontSize: 12, fontFamily: T.sans, cursor: 'pointer',
-        }}>{alle ? 'Weniger zeigen' : `Alle ${liste.length} zeigen`}</button>
+        <div style={{ marginTop: 12 }}>
+          <Knopf leise onClick={() => setAlle(!alle)}>{alle ? 'Weniger zeigen' : `Alle ${liste.length} zeigen`}</Knopf>
+        </div>
       )}
-    </div>
+    </Karte>
   );
 }

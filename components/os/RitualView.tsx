@@ -7,21 +7,22 @@ import Link from 'next/link';
 // geschrieben, Fokus gesetzt, an-/abgemeldet) — kein doppeltes Abhaken.
 // Morgens: anmelden → wie gepennt → Kurz-Journal → Fokus → Tag checken.
 // Abends: Routinen → Abend-Journal → Blick auf morgen → ausloggen.
+// 24.09.: auf das lebendige Muster umgezogen — jeder Schritt ist eine Karte.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNachspeichern } from '@/lib/make-one/nachspeichern';
-import { THEME as T } from '@/lib/make-one/os-data';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import type { PlanBlock } from '@/types/planer';
 import { localDay } from '@/lib/zeit';
 import { useTasks } from '@/context/TasksContext';
+import { Seite, Karte, Chip, Knopf, Segmente, feld, LEUCHT } from './schlank';
 
 interface Vitals { rec?: number; sleep?: number; hrv?: number; rhr?: number; note?: string }
 interface JournalEintrag { text?: string; mood?: number; energy?: number; stress?: number; flags?: string[]; at?: string; tagesnote?: number }
 interface Modus { an: boolean; seit: string | null; aktivMin: number }
 
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
-const inp = { background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: T.ink, fontFamily: T.mono, fontSize: 13, padding: '6px 10px', outline: 'none' };
+const link = { fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' as const };
+const zahlenFeld = { ...feld, width: 'auto', flex: '1 1 96px', minWidth: 0 } as const;
 
 function montagVon(tag: string): string {
   const d = new Date(`${tag}T12:00:00`);
@@ -30,29 +31,37 @@ function montagVon(tag: string): string {
 }
 const stunden = (min: number) => `${(min / 60).toFixed(1).replace('.', ',')} h`;
 
-/** Ein Ritual-Schritt: hakt sich selbst ab, wenn `done` wahr ist. */
-function Schritt({ nr, titel, done, children }: { nr: number; titel: string; done: boolean; children: React.ReactNode }) {
+/** Ein Ritual-Schritt: eine Karte, die sich selbst abhakt, wenn `done` wahr ist. */
+function Schritt({ nr, titel, done, children }: { nr: number; titel: string; done: boolean; children: ReactNode }) {
   return (
-    <div style={{ ...panel, borderLeft: `3px solid ${done ? T.accent : T.line}`, padding: '14px 18px' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
-        <span style={{ width: 20, height: 20, borderRadius: '50%', border: `1px solid ${done ? T.accent : T.line}`, background: done ? `${T.accent}22` : 'transparent', color: done ? T.accent : T.muted, fontFamily: T.mono, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>{done ? <span className="check-pop">✓</span> : nr}</span>
-        <span style={{ fontSize: 14, fontWeight: 700, color: done ? T.muted : T.ink }}>{titel}</span>
+    <Karte i={nr}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+        <span style={{
+          width: 26, height: 26, borderRadius: '50%', flex: '0 0 auto', display: 'grid', placeItems: 'center',
+          fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 700, transition: 'background .2s ease, box-shadow .2s ease',
+          background: done ? LEUCHT.gut : 'rgba(255,255,255,.08)', color: done ? C.grund : C.inkLeise, boxShadow: done ? `0 0 12px ${LEUCHT.gut}88` : undefined,
+        }}>{done ? <span className="check-pop">✓</span> : nr}</span>
+        <span style={{ fontSize: TYP.body, fontWeight: 700, color: done ? C.inkDim : C.ink }}>{titel}</span>
       </div>
-      <div style={{ paddingLeft: 30 }}>{children}</div>
-    </div>
+      <div style={{ paddingLeft: 'clamp(0px, 4vw, 38px)' }}>{children}</div>
+    </Karte>
   );
 }
 
 /** 1–5-Skala als klickbare Punkte. */
 function Skala({ wert, setzen, farbe }: { wert?: number; setzen: (n: number) => void; farbe: string }) {
   return (
-    <span style={{ display: 'inline-flex', gap: 5 }}>
-      {[1, 2, 3, 4, 5].map(n => (
-        <span key={n} onClick={() => setzen(n)}
-          style={{ width: 20, height: 20, borderRadius: '50%', cursor: 'pointer', border: `1px solid ${wert && n <= wert ? farbe : T.line}`, background: wert && n <= wert ? `${farbe}33` : 'transparent', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: T.mono, fontSize: 11, color: wert && n <= wert ? farbe : T.muted }}>
-          {n}
-        </span>
-      ))}
+    <span style={{ display: 'inline-flex', gap: 5, verticalAlign: 'middle' }}>
+      {[1, 2, 3, 4, 5].map(n => {
+        const an = !!wert && n <= wert;
+        return (
+          <button key={n} onClick={() => setzen(n)} aria-label={`${n}`} className="fassbar" style={{
+            width: 24, height: 24, borderRadius: '50%', cursor: 'pointer', border: 'none', display: 'inline-grid', placeItems: 'center',
+            fontFamily: SCHRIFT.display, fontSize: TYP.mikro, fontWeight: 700, transition: 'background .15s ease',
+            background: an ? farbe : 'rgba(255,255,255,.08)', color: an ? C.grund : C.inkLeise, boxShadow: an ? `0 0 8px ${farbe}66` : undefined,
+          }}>{n}</button>
+        );
+      })}
     </span>
   );
 }
@@ -187,166 +196,154 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
   };
   const mDone = Object.values(mSchritte).filter(Boolean).length;
   const aDone = Object.values(aSchritte).filter(Boolean).length;
+  const alleFertig = modusTab === 'morgen' ? mDone === 6 : aDone === 5;
 
   // Zonen-Reaktion direkt nach der Eingabe — das eine Urteil des Morgens.
   const recHeute = vitalsLog[heute]?.rec;
   const zoneR = recHeute != null
-    ? recHeute >= 66 ? { l: 'GRÜN', c: T.accent, txt: 'volle Ladung — heute darf hart gefahren werden.' }
-      : recHeute >= 40 ? { l: 'GELB', c: T.amber, txt: 'halbe Ladung — zwei gute Blöcke, Pausen ernst nehmen.' }
-      : { l: 'ROT', c: T.crit, txt: 'Erhaltungsmodus — heute bewusst leichter planen, Rücken schonen.' }
+    ? recHeute >= 66 ? { l: 'GRÜN', c: LEUCHT.gut, txt: 'volle Ladung — heute darf hart gefahren werden.' }
+      : recHeute >= 40 ? { l: 'GELB', c: LEUCHT.achtung, txt: 'halbe Ladung — zwei gute Blöcke, Pausen ernst nehmen.' }
+      : { l: 'ROT', c: LEUCHT.kritisch, txt: 'Erhaltungsmodus — heute bewusst leichter planen, Rücken schonen.' }
     : null;
   const erledigtHeute = tasksState.tasks.filter(t => t.status === 'done' && t.dueDate === heute).length;
 
   const datum = new Date(`${heute}T12:00:00`).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+  const hinweis = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, marginBottom: 8 } as const;
 
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
-        <div style={lbl}>{modusTab === 'morgen' ? 'Tagesstart' : 'Tagesende'} · {datum}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0 4px' }}>
-          <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-.02em' }}>
-            {modusTab === 'morgen' ? 'Rein in den Tag.' : 'Raus aus dem Tag.'}
-          </h1>
-          <span style={{ fontFamily: T.mono, fontSize: 12, fontWeight: 700, color: (modusTab === 'morgen' ? mDone === 6 : aDone === 5) ? T.accent : T.amber }}>
-            {modusTab === 'morgen' ? `${mDone}/6` : `${aDone}/5`}
-          </span>
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
-            {(['morgen', 'abend'] as const).map(m => (
-              <button key={m} onClick={() => setModusTab(m)}
-                style={{ fontFamily: T.mono, fontSize: 11, cursor: 'pointer', borderRadius: 6, padding: '3px 10px', border: `1px solid ${modusTab === m ? T.accent : T.line}`, background: modusTab === m ? `${T.accent}1c` : 'transparent', color: modusTab === m ? T.accentInk : T.muted }}>
-                {m === 'morgen' ? 'Morgen' : 'Abend'}
-              </button>
-            ))}
-          </div>
-        </div>
-        <p style={{ fontSize: 12.5, color: T.muted, marginBottom: 10 }}>10–15 Minuten für dich — zahlt direkt auf Gesundheit & Energie ein. Jeder Schritt hakt sich selbst ab, sobald er wirklich passiert ist.{gespeichert && <span style={{ color: T.accent }}> {gespeichert}</span>}</p>
-
-        {/* Fortschritt als Segmente — ein Blick zeigt, was noch fehlt */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
-          {(modusTab === 'morgen' ? Object.values(mSchritte) : Object.values(aSchritte)).map((ok, i) => (
-            <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: ok ? T.accent : T.line }} />
-          ))}
-        </div>
-
-        {modusTab === 'morgen' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <Schritt nr={1} titel="Anmelden — der Tag läuft" done={mSchritte.an}>
-              {arbeit?.an
-                ? <span style={{ fontSize: 12.5, color: T.inkDim }}>AN seit {arbeit.seit} · bisher {stunden(arbeit.aktivMin)} aktiv.</span>
-                : <button onClick={() => arbeitToggle('an')} style={{ fontFamily: T.mono, fontSize: 11, cursor: 'pointer', borderRadius: 7, padding: '6px 14px', border: `1px solid ${T.accent}`, background: `${T.accent}1c`, color: T.accentInk }}>● AN — Arbeitszeit läuft</button>}
-            </Schritt>
-
-            <Schritt nr={2} titel="Die Lage — Jarvis zieht alle Daten zusammen" done={mSchritte.lage}>
-              {lauf?.ausrichtung ? (
-                <div style={{ fontSize: 12.5, color: T.inkDim, lineHeight: 1.55, marginBottom: 8 }}>
-                  {lauf.ausrichtung.gruss && <div style={{ marginBottom: 4 }}>{lauf.ausrichtung.gruss} <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>Stand {lauf.gestartet.slice(11, 16)} Uhr</span></div>}
-                  {(lauf.ausrichtung.prioritaeten ?? []).slice(0, 3).map((p, i) => (
-                    <div key={i}><b style={{ color: T.ink }}>{i + 1}. {p.titel}</b>{p.wann ? <span style={{ color: T.muted }}> · {p.wann}</span> : null}</div>
-                  ))}
-                  {lauf.ausrichtung.schutz && <div style={{ color: '#58D9CD', marginTop: 4 }}>◇ {lauf.ausrichtung.schutz}</div>}
-                </div>
-              ) : (
-                <div style={{ fontSize: 12.5, color: T.muted, marginBottom: 8 }}>Noch kein Lauf heute — Postfach, Kalender und Aufgaben werden vom Loop zusammengezogen.</div>
-              )}
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                <button onClick={lageZiehen} disabled={zieht}
-                  style={{ fontFamily: T.mono, fontSize: 11, cursor: zieht ? 'wait' : 'pointer', borderRadius: 7, padding: '6px 14px', border: `1px solid ${T.accent}`, background: `${T.accent}1c`, color: T.accentInk, opacity: zieht ? 0.6 : 1 }}>
-                  {zieht ? 'zieht zusammen …' : laufHeute > 0 ? 'Lage frisch ziehen' : '⟳ Lage jetzt ziehen'}
-                </button>
-                <Link href="/os/tageslauf" style={{ fontSize: 11.5, color: T.accentInk, textDecoration: 'none' }}>Ganzer Tageslauf ›</Link>
-              </div>
-            </Schritt>
-
-            <Schritt nr={3} titel="Wie gepennt? (Whoop-Werte)" done={mSchritte.vitals}>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                <input value={vEingabe.rec} onChange={e => setVEingabe({ ...vEingabe, rec: e.target.value })} placeholder="Recovery %" type="number" style={{ ...inp, width: 100 }} />
-                <input value={vEingabe.sleep} onChange={e => setVEingabe({ ...vEingabe, sleep: e.target.value })} placeholder="Schlaf h" style={{ ...inp, width: 84 }} />
-                <input value={vEingabe.hrv} onChange={e => setVEingabe({ ...vEingabe, hrv: e.target.value })} placeholder="HRV" type="number" style={{ ...inp, width: 70 }} />
-                <input value={vEingabe.rhr} onChange={e => setVEingabe({ ...vEingabe, rhr: e.target.value })} placeholder="Puls" type="number" style={{ ...inp, width: 70 }} />
-                <input value={vEingabe.note} onChange={e => setVEingabe({ ...vEingabe, note: e.target.value })} placeholder="Notiz (z.B. Rücken zieht)" style={{ ...inp, flex: 1, minWidth: 150, fontFamily: T.sans }} />
-                <button onClick={vitalsSpeichern} style={{ fontFamily: T.mono, fontSize: 11, cursor: 'pointer', borderRadius: 7, padding: '6px 12px', border: `1px solid ${T.accent}`, background: `${T.accent}1c`, color: T.accentInk }}>Speichern</button>
-              </div>
-              {zoneR && (
-                <div style={{ fontSize: 12.5, marginTop: 8 }}>
-                  <b style={{ fontFamily: T.mono, color: zoneR.c }}>● {zoneR.l}</b>
-                  <span style={{ color: T.inkDim }}> — {zoneR.txt}</span>
-                </div>
-              )}
-              {mSchritte.vitals && !zoneR && <div style={{ fontSize: 11.5, color: T.muted, marginTop: 6 }}>Heute schon da — neue Eingabe überschreibt nur die ausgefüllten Felder.</div>}
-            </Schritt>
-
-            <Schritt nr={4} titel="Kurz-Journal — wie geht's rein?" done={mSchritte.journal}>
-              <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontSize: 12, color: T.inkDim }}>Stimmung <Skala wert={j.mood} setzen={n => journalSetzen({ mood: n })} farbe={T.accent} /></span>
-                <span style={{ fontSize: 12, color: T.inkDim }}>Energie <Skala wert={j.energy} setzen={n => journalSetzen({ energy: n })} farbe={T.amber} /></span>
-                <span style={{ fontSize: 12, color: T.inkDim }}>Stress <Skala wert={j.stress} setzen={n => journalSetzen({ stress: n })} farbe={T.crit} /></span>
-              </div>
-              <Link href="/os/journal" style={{ fontSize: 11.5, color: T.accentInk, textDecoration: 'none' }}>Mehr im Journal ›</Link>
-            </Schritt>
-
-            <Schritt nr={5} titel="Fokus des Tages" done={mSchritte.fokus}>
-              <input value={fokusTag} onChange={e => fokusSpeichern(e.target.value)} placeholder="Der eine Satz: worauf liegt heute der Fokus?"
-                style={{ ...inp, width: '100%', fontFamily: T.sans, fontSize: 14, fontWeight: 600 }} />
-            </Schritt>
-
-            <Schritt nr={6} titel="Tag bauen — Blöcke, Kollisionen, Delegation" done={mSchritte.plan}>
-              <div style={{ fontSize: 12.5, color: T.inkDim, marginBottom: 6 }}>
-                {heuteBloecke.length
-                  ? `${heuteBloecke.length} Block${heuteBloecke.length > 1 ? ' e' : ''} für heute geplant.`
-                  : 'Noch nichts für heute geplant — kurz reinschauen und die Lücken füllen.'}
-              </div>
-              {(faelligHeute.length > 0 || ueberfaellig.length > 0) && (
-                <div style={{ fontSize: 12.5, marginBottom: 6 }}>
-                  {faelligHeute.length > 0 && <span style={{ color: T.amber }}>{faelligHeute.length} heute fällig. </span>}
-                  {ueberfaellig.length > 0 && <span style={{ color: T.crit }}>{ueberfaellig.length} überfällig — erledigen, delegieren oder ehrlich neu terminieren.</span>}
-                </div>
-              )}
-              <div style={{ display: 'flex', gap: 14 }}>
-                <Link href="/os/planung" style={{ fontSize: 12, color: T.accentInk, textDecoration: 'none' }}>Tagesplanung ›</Link>
-                <Link href="/os/aufgaben" style={{ fontSize: 12, color: T.accentInk, textDecoration: 'none' }}>Aufgaben & Delegation ›</Link>
-              </div>
-            </Schritt>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <Schritt nr={1} titel="Routinen abschließen" done={aSchritte.routinen}>
-              <div style={{ fontSize: 12.5, color: T.inkDim, marginBottom: 6 }}>{routinen.erledigt}/{routinen.gesamt} heute abgehakt.</div>
-              <Link href="/os/planung" style={{ fontSize: 12, color: T.accentInk, textDecoration: 'none' }}>Abhaken in der Tagesplanung ›</Link>
-            </Schritt>
-
-            <Schritt nr={2} titel="Tag bewerten — der Tag in Zahlen" done={aSchritte.bewertung}>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
-                <span style={{ fontSize: 12, color: T.inkDim }}>Wie war der Tag?</span>
-                <Skala wert={j.tagesnote} setzen={n => journalSetzen({ tagesnote: n })} farbe={T.accent} />
-              </div>
-              <div style={{ fontFamily: T.mono, fontSize: 11.5, color: T.muted }}>
-                {arbeit ? `Arbeitszeit ${stunden(arbeit.aktivMin)}` : ''} · Routinen {routinen.erledigt}/{routinen.gesamt} · {heuteBloecke.length} Blöcke geplant · {erledigtHeute} fällige erledigt
-              </div>
-            </Schritt>
-
-            <Schritt nr={3} titel="Ein Satz zum Tag" done={aSchritte.journal}>
-              <textarea value={abendText} onChange={e => { setAbendText(e.target.value); journalSetzen({ text: e.target.value }); }}
-                placeholder="»Hat alles super geklappt, geile Gespräche« zählt auch — was war gut, was nehme ich mit?"
-                rows={3} style={{ ...inp, width: '100%', fontFamily: T.sans, fontSize: 13, resize: 'vertical', lineHeight: 1.5 }} />
-            </Schritt>
-
-            <Schritt nr={4} titel="Blick auf morgen" done={aSchritte.morgen}>
-              <div style={{ fontSize: 12.5, color: T.inkDim, marginBottom: 6 }}>
-                {morgenBloecke.length
-                  ? `${morgenBloecke.length} Block${morgenBloecke.length > 1 ? ' e' : ''} für morgen geplant — der Tag ist vorbereitet.`
-                  : 'Morgen ist noch leer — zwei, drei Blöcke reichen, dann startet der Morgen ohne Denken.'}
-              </div>
-              <Link href="/os/planung/woche" style={{ fontSize: 12, color: T.accentInk, textDecoration: 'none' }}>Wochenplaner öffnen ›</Link>
-            </Schritt>
-
-            <Schritt nr={5} titel="Ausloggen — Feierabend ist Feierabend" done={aSchritte.aus}>
-              {arbeit?.an
-                ? <button onClick={() => arbeitToggle('aus')} style={{ fontFamily: T.mono, fontSize: 11, cursor: 'pointer', borderRadius: 7, padding: '6px 14px', border: `1px solid ${T.crit}`, background: `${T.crit}1a`, color: T.crit }}>○ AUS — Session beenden</button>
-                : <span style={{ fontSize: 12.5, color: T.inkDim }}>{arbeit && arbeit.aktivMin > 0 ? `Ausgeloggt · heute ${stunden(arbeit.aktivMin)} aktiv gearbeitet.` : 'Heute keine Arbeits-Session erfasst.'}</span>}
-            </Schritt>
-          </div>
-        )}
+    <Seite
+      titel={modusTab === 'morgen' ? 'Rein in den Tag.' : 'Raus aus dem Tag.'}
+      unter={<>{modusTab === 'morgen' ? 'Tagesstart' : 'Tagesende'} · {datum} — 10–15 Minuten für dich, zahlt direkt auf Gesundheit & Energie ein. Jeder Schritt hakt sich selbst ab, sobald er wirklich passiert ist.{gespeichert && <span style={{ color: LEUCHT.gut }}> {gespeichert}</span>}</>}
+      rechts={<div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Chip farbe={alleFertig ? LEUCHT.gut : LEUCHT.achtung}>{modusTab === 'morgen' ? `${mDone}/6` : `${aDone}/5`}</Chip>
+        <Segmente liste={[{ id: 'morgen', label: 'Morgen' }, { id: 'abend', label: 'Abend' }]} aktiv={modusTab} onWahl={setModusTab} />
+      </div>}
+      breit={760}
+    >
+      {/* Fortschritt als Segmente — ein Blick zeigt, was noch fehlt */}
+      <div className="os-auf" style={{ display: 'flex', gap: 4 }}>
+        {(modusTab === 'morgen' ? Object.values(mSchritte) : Object.values(aSchritte)).map((ok, i) => (
+          <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: ok ? LEUCHT.gut : 'rgba(255,255,255,.08)', boxShadow: ok ? `0 0 8px ${LEUCHT.gut}88` : undefined, transition: 'background .3s ease' }} />
+        ))}
       </div>
-    </div>
+
+      {modusTab === 'morgen' ? (
+        <>
+          <Schritt nr={1} titel="Anmelden — der Tag läuft" done={mSchritte.an}>
+            {arbeit?.an
+              ? <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>AN seit {arbeit.seit} · bisher {stunden(arbeit.aktivMin)} aktiv.</span>
+              : <Knopf onClick={() => arbeitToggle('an')} farbe={LEUCHT.gut}>● AN — Arbeitszeit läuft</Knopf>}
+          </Schritt>
+
+          <Schritt nr={2} titel="Die Lage — Jarvis zieht alle Daten zusammen" done={mSchritte.lage}>
+            {lauf?.ausrichtung ? (
+              <div style={hinweis}>
+                {lauf.ausrichtung.gruss && <div style={{ marginBottom: 4 }}>{lauf.ausrichtung.gruss} <span style={{ fontSize: TYP.mikro, color: C.inkLeise }}>Stand {lauf.gestartet.slice(11, 16)} Uhr</span></div>}
+                {(lauf.ausrichtung.prioritaeten ?? []).slice(0, 3).map((p, i) => (
+                  <div key={i}><b style={{ color: C.ink }}>{i + 1}. {p.titel}</b>{p.wann ? <span style={{ color: C.inkLeise }}> · {p.wann}</span> : null}</div>
+                ))}
+                {lauf.ausrichtung.schutz && <div style={{ color: C.aktiv, marginTop: 4 }}>◇ {lauf.ausrichtung.schutz}</div>}
+              </div>
+            ) : (
+              <div style={{ ...hinweis, color: C.inkLeise }}>Noch kein Lauf heute — Postfach, Kalender und Aufgaben werden vom Loop zusammengezogen.</div>
+            )}
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Knopf onClick={lageZiehen} aus={zieht} farbe={LEUCHT.agenten}>
+                {zieht ? 'zieht zusammen …' : laufHeute > 0 ? 'Lage frisch ziehen' : '⟳ Lage jetzt ziehen'}
+              </Knopf>
+              <Link href="/os/tageslauf" style={link}>Ganzer Tageslauf ›</Link>
+            </div>
+          </Schritt>
+
+          <Schritt nr={3} titel="Wie gepennt? (Whoop-Werte)" done={mSchritte.vitals}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <input value={vEingabe.rec} onChange={e => setVEingabe({ ...vEingabe, rec: e.target.value })} placeholder="Recovery %" type="number" style={zahlenFeld} />
+              <input value={vEingabe.sleep} onChange={e => setVEingabe({ ...vEingabe, sleep: e.target.value })} placeholder="Schlaf h" style={zahlenFeld} />
+              <input value={vEingabe.hrv} onChange={e => setVEingabe({ ...vEingabe, hrv: e.target.value })} placeholder="HRV" type="number" style={zahlenFeld} />
+              <input value={vEingabe.rhr} onChange={e => setVEingabe({ ...vEingabe, rhr: e.target.value })} placeholder="Puls" type="number" style={zahlenFeld} />
+              <input value={vEingabe.note} onChange={e => setVEingabe({ ...vEingabe, note: e.target.value })} placeholder="Notiz (z.B. Rücken zieht)" style={{ ...feld, width: 'auto', flex: '2 1 160px', minWidth: 0 }} />
+              <Knopf onClick={vitalsSpeichern}>Speichern</Knopf>
+            </div>
+            {zoneR && (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
+                <Chip farbe={zoneR.c}>● {zoneR.l}</Chip>
+                <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{zoneR.txt}</span>
+              </div>
+            )}
+            {mSchritte.vitals && !zoneR && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Heute schon da — neue Eingabe überschreibt nur die ausgefüllten Felder.</div>}
+          </Schritt>
+
+          <Schritt nr={4} titel="Kurz-Journal — wie geht's rein?" done={mSchritte.journal}>
+            <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: TYP.bedien, color: C.inkDim, display: 'inline-flex', gap: 8, alignItems: 'center' }}>Stimmung <Skala wert={j.mood} setzen={n => journalSetzen({ mood: n })} farbe={LEUCHT.gut} /></span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkDim, display: 'inline-flex', gap: 8, alignItems: 'center' }}>Energie <Skala wert={j.energy} setzen={n => journalSetzen({ energy: n })} farbe={LEUCHT.achtung} /></span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkDim, display: 'inline-flex', gap: 8, alignItems: 'center' }}>Stress <Skala wert={j.stress} setzen={n => journalSetzen({ stress: n })} farbe={LEUCHT.kritisch} /></span>
+            </div>
+            <Link href="/os/journal" style={link}>Mehr im Journal ›</Link>
+          </Schritt>
+
+          <Schritt nr={5} titel="Fokus des Tages" done={mSchritte.fokus}>
+            <input value={fokusTag} onChange={e => fokusSpeichern(e.target.value)} placeholder="Der eine Satz: worauf liegt heute der Fokus?"
+              style={{ ...feld, fontWeight: 600 }} />
+          </Schritt>
+
+          <Schritt nr={6} titel="Tag bauen — Blöcke, Kollisionen, Delegation" done={mSchritte.plan}>
+            <div style={hinweis}>
+              {heuteBloecke.length
+                ? `${heuteBloecke.length} Block${heuteBloecke.length > 1 ? ' e' : ''} für heute geplant.`
+                : 'Noch nichts für heute geplant — kurz reinschauen und die Lücken füllen.'}
+            </div>
+            {(faelligHeute.length > 0 || ueberfaellig.length > 0) && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+                {faelligHeute.length > 0 && <Chip farbe={LEUCHT.achtung}>{faelligHeute.length} heute fällig</Chip>}
+                {ueberfaellig.length > 0 && <><Chip farbe={LEUCHT.kritisch}>{ueberfaellig.length} überfällig</Chip><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>erledigen, delegieren oder ehrlich neu terminieren.</span></>}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+              <Link href="/os/planung" style={link}>Tagesplanung ›</Link>
+              <Link href="/os/aufgaben" style={link}>Aufgaben & Delegation ›</Link>
+            </div>
+          </Schritt>
+        </>
+      ) : (
+        <>
+          <Schritt nr={1} titel="Routinen abschließen" done={aSchritte.routinen}>
+            <div style={hinweis}>{routinen.erledigt}/{routinen.gesamt} heute abgehakt.</div>
+            <Link href="/os/planung" style={link}>Abhaken in der Tagesplanung ›</Link>
+          </Schritt>
+
+          <Schritt nr={2} titel="Tag bewerten — der Tag in Zahlen" done={aSchritte.bewertung}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+              <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Wie war der Tag?</span>
+              <Skala wert={j.tagesnote} setzen={n => journalSetzen({ tagesnote: n })} farbe={LEUCHT.gut} />
+            </div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>
+              {arbeit ? `Arbeitszeit ${stunden(arbeit.aktivMin)}` : ''} · Routinen {routinen.erledigt}/{routinen.gesamt} · {heuteBloecke.length} Blöcke geplant · {erledigtHeute} fällige erledigt
+            </div>
+          </Schritt>
+
+          <Schritt nr={3} titel="Ein Satz zum Tag" done={aSchritte.journal}>
+            <textarea value={abendText} onChange={e => { setAbendText(e.target.value); journalSetzen({ text: e.target.value }); }}
+              placeholder="»Hat alles super geklappt, geile Gespräche« zählt auch — was war gut, was nehme ich mit?"
+              rows={3} style={{ ...feld, resize: 'vertical', lineHeight: 1.5 }} />
+          </Schritt>
+
+          <Schritt nr={4} titel="Blick auf morgen" done={aSchritte.morgen}>
+            <div style={hinweis}>
+              {morgenBloecke.length
+                ? `${morgenBloecke.length} Block${morgenBloecke.length > 1 ? ' e' : ''} für morgen geplant — der Tag ist vorbereitet.`
+                : 'Morgen ist noch leer — zwei, drei Blöcke reichen, dann startet der Morgen ohne Denken.'}
+            </div>
+            <Link href="/os/planung/woche" style={link}>Wochenplaner öffnen ›</Link>
+          </Schritt>
+
+          <Schritt nr={5} titel="Ausloggen — Feierabend ist Feierabend" done={aSchritte.aus}>
+            {arbeit?.an
+              ? <Knopf onClick={() => arbeitToggle('aus')} farbe={LEUCHT.kritisch}>○ AUS — Session beenden</Knopf>
+              : <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{arbeit && arbeit.aktivMin > 0 ? `Ausgeloggt · heute ${stunden(arbeit.aktivMin)} aktiv gearbeitet.` : 'Heute keine Arbeits-Session erfasst.'}</span>}
+          </Schritt>
+        </>
+      )}
+    </Seite>
   );
 }

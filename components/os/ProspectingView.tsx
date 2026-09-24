@@ -1,19 +1,32 @@
 'use client';
 
-import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+// ─── MAKE OS — Prospecting-Agent ────────────────────────────────────────────
+// Die Zielliste zum 1-Mio-Ziel: Firmen rein, KI qualifiziert gegen das ICP
+// (Score + Fit + Aufhänger), Kevin priorisiert. Ansprache entwerfen — der
+// Versand bleibt bei ihm.
+// 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Zeile/Zahl aus schlank).
+
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import {
   DEFAULT_ICP, PROSPECT_STATUS_ORDER, PROSPECT_STATUS_LABEL, PIPELINE_HINT,
   type Prospect, type ProspectStatus, type ProspectsState,
 } from '@/lib/make-one/prospecting-data';
-import { Seitenkopf } from './Seitenkopf';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Zahl, feld, LEUCHT } from './schlank';
 
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
+const scoreColor = (s?: number) => (s == null ? C.inkLeise : s >= 80 ? LEUCHT.gut : s >= 50 ? LEUCHT.achtung : LEUCHT.kritisch);
+const statusColor = (s: ProspectStatus) => (s === 'kontaktiert' ? LEUCHT.gut : s === 'qualifiziert' ? LEUCHT.business : s === 'verworfen' ? LEUCHT.kritisch : C.inkLeise);
+const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise };
+/** Nie eine Null als große Zahl — dann lieber der Strich. */
+const z = (n: number) => (n ? String(n) : undefined);
 
-const scoreColor = (s?: number) => (s == null ? T.muted : s >= 80 ? T.accent : s >= 50 ? T.amber : T.crit);
-const statusColor = (s: ProspectStatus) => (s === 'kontaktiert' ? T.accent : s === 'qualifiziert' ? T.accentInk : s === 'verworfen' ? T.crit : T.muted);
+/** Pillen-Schalter — eine Wahl aus mehreren, ohne Rahmen. */
+function Wahl({ an, farbe, onClick, children, title, aus }: { an: boolean; farbe?: string; onClick: () => void; children: ReactNode; title?: string; aus?: boolean }) {
+  const f = farbe ?? C.aktiv;
+  return (
+    <button onClick={onClick} title={title} disabled={aus} className="fassbar" style={{ fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 999, border: 'none', cursor: aus ? 'default' : 'pointer', background: an ? `${f}22` : 'rgba(255,255,255,.05)', color: an ? f : C.inkDim, whiteSpace: 'nowrap', transition: 'background .2s ease, color .2s ease' }}>{children}</button>
+  );
+}
 
 export function ProspectingView() {
   const [icp, setIcp] = useState(DEFAULT_ICP);
@@ -128,122 +141,120 @@ export function ProspectingView() {
   const hot = rows.filter(r => (r.score ?? 0) >= 80).length;
 
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
-        <Link href="/os/agenten" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Agenten</Link>
-          <Seitenkopf
-            rubrik={<>Prospecting-Agent <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, border: `1px solid ${T.accent}55`, borderRadius: 5, padding: '2px 7px' }}>live · autonom</span></>}
-            titel={<>Deine Zielliste zum 1-Mio-Ziel.</>}
-            satz={<>Firmen rein, KI qualifiziert gegen dein Profil (Score + Fit + Aufhänger), du priorisierst. {PIPELINE_HINT}</>}
-          />
-
-        {/* Kennzahlen */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '18px 0 16px' }}>
-          <div style={{ ...panel, padding: '10px 16px' }}><div style={lbl}>In Liste</div><div style={{ fontSize: 22, fontWeight: 700 }}>{rows.length}</div></div>
-          <div style={{ ...panel, padding: '10px 16px' }}><div style={lbl}>Starker Fit (80+)</div><div style={{ fontSize: 22, fontWeight: 700, color: T.accent }}>{hot}</div></div>
-          <div style={{ ...panel, padding: '10px 16px' }}><div style={lbl}>Noch offen</div><div style={{ fontSize: 22, fontWeight: 700, color: unscored ? T.amber : T.muted }}>{unscored}</div></div>
-          {counts.map(c => <div key={c.s} style={{ ...panel, padding: '10px 16px' }}><div style={lbl}>{PROSPECT_STATUS_LABEL[c.s]}</div><div style={{ fontSize: 22, fontWeight: 700, color: statusColor(c.s) }}>{c.n}</div></div>)}
+    <Seite
+      titel="Deine Zielliste zum 1-Mio-Ziel."
+      unter={<>Firmen rein, KI qualifiziert gegen dein Profil (Score + Fit + Aufhänger), du priorisierst. {PIPELINE_HINT}</>}
+      rechts={<Chip farbe={LEUCHT.agenten}>live · autonom</Chip>}
+    >
+      {/* Kennzahlen */}
+      <Karte i={0} akzent={LEUCHT.business}>
+        <Ueberschrift farbe={LEUCHT.business}>Zielliste</Ueberschrift>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 16 }}>
+          <Zahl wert={z(rows.length)} label="In Liste" />
+          <Zahl wert={z(hot)} label="Starker Fit (80+)" farbe={LEUCHT.gut} />
+          <Zahl wert={z(unscored)} label="Noch offen" farbe={unscored ? LEUCHT.achtung : C.inkLeise} />
+          {counts.map(c => <Zahl key={c.s} wert={z(c.n)} label={PROSPECT_STATUS_LABEL[c.s]} farbe={statusColor(c.s)} />)}
         </div>
+      </Karte>
 
-        {/* ICP */}
-        <details style={{ ...panel, padding: '14px 18px', marginBottom: 16 }}>
-          <summary style={{ cursor: 'pointer', fontFamily: T.mono, fontSize: 11, color: T.accentInk, letterSpacing: '.08em', textTransform: 'uppercase' }}>Ideales Kundenprofil (ICP)</summary>
-          <textarea value={icp} onChange={e => setIcpP(e.target.value)} rows={7} style={{ width: '100%', marginTop: 10, background: T.void, border: `1px solid ${T.line}`, borderRadius: 10, color: T.inkDim, fontFamily: T.sans, fontSize: 12.5, lineHeight: 1.5, padding: 12, resize: 'vertical', outline: 'none' }} />
-          <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 6 }}>Das Profil steuert das Scoring. Änderungen werden gespeichert.</div>
+      {/* ICP */}
+      <Karte i={1}>
+        <details>
+          <summary style={{ cursor: 'pointer', ...mikro, color: LEUCHT.business }}>Ideales Kundenprofil (ICP)</summary>
+          <textarea value={icp} onChange={e => setIcpP(e.target.value)} rows={7} style={{ ...feld, marginTop: 12, resize: 'vertical', lineHeight: 1.5, color: C.inkDim }} />
+          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Das Profil steuert das Scoring. Änderungen werden gespeichert.</div>
         </details>
+      </Karte>
 
-        {/* Aktionen */}
+      {/* Aktionen + Liste */}
+      <Karte i={2}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
-          <button onClick={scoreAll} disabled={bulk || !unscored} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 700, padding: '9px 16px', borderRadius: 9, border: 'none', cursor: bulk || !unscored ? 'default' : 'pointer', background: bulk || !unscored ? T.line : T.accent, color: bulk || !unscored ? T.muted : '#04110F' }}>
+          <Knopf onClick={scoreAll} aus={bulk || !unscored} farbe={LEUCHT.business}>
             {bulk ? 'qualifiziere …' : unscored ? `Alle ${unscored} qualifizieren` : 'Alle qualifiziert ✓'}
-          </button>
+          </Knopf>
           <div style={{ display: 'flex', gap: 6, flex: 1, minWidth: 220 }}>
-            <input value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addManual(); }} placeholder="Firma manuell hinzufügen …" style={{ flex: 1, background: T.panel2, border: `1px solid ${T.line}`, borderRadius: 9, color: T.ink, fontFamily: T.sans, fontSize: 13, padding: '8px 12px', outline: 'none' }} />
-            <button onClick={addManual} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 600, padding: '8px 14px', borderRadius: 9, border: `1px solid ${T.line}`, background: 'transparent', color: T.inkDim, cursor: 'pointer' }}>+ Hinzufügen</button>
+            <input value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addManual(); }} placeholder="Firma manuell hinzufügen …" style={{ ...feld, flex: 1, width: 'auto', padding: '9px 14px' }} />
+            <Knopf leise onClick={addManual}>+ Hinzufügen</Knopf>
           </div>
         </div>
 
-        {/* Liste */}
         {!loaded ? (
-          <div style={{ fontFamily: T.mono, fontSize: 12, color: T.muted }}>lade Zielliste …</div>
+          <Leer>lade Zielliste …</Leer>
         ) : rows.length === 0 ? (
-          <div style={{ ...panel, padding: '28px 20px', textAlign: 'center', color: T.inkDim, fontSize: 13.5, lineHeight: 1.5 }}>
-            Noch keine Firmen. Füg oben welche hinzu — oder sag mir im Chat „bau die Zielliste aus", dann ziehe ich echte Mittelstands-Firmen (Explorium) rein.
-          </div>
+          <Leer>Noch keine Firmen. Füg oben welche hinzu — oder sag mir im Chat „bau die Zielliste aus", dann ziehe ich echte Mittelstands-Firmen (Explorium) rein.</Leer>
         ) : (
-          <div style={{ ...panel, overflow: 'hidden' }}>
-            {sorted.map((p, i) => {
+          <Liste>
+            {sorted.map(p => {
               const isOpen = open === p.id;
               return (
-                <div key={p.id} style={{ borderTop: i ? `1px solid ${T.lineSoft}` : 0, background: isOpen ? T.panel2 : 'transparent' }}>
-                  <div onClick={() => setOpen(isOpen ? null : p.id)} style={{ display: 'flex', gap: 12, padding: '13px 16px', cursor: 'pointer', alignItems: 'center' }}>
-                    <div style={{ width: 42, textAlign: 'center', flex: '0 0 auto' }}>
-                      <div style={{ fontSize: 18, fontWeight: 800, fontFamily: T.mono, color: scoreColor(p.score) }}>{p.score ?? '–'}</div>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14.5, fontWeight: 600, color: T.ink }}>{p.company}</div>
-                      <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>{[p.industry, p.size, p.region].filter(Boolean).join(' · ') || (p.domain ?? '')}</div>
-                    </div>
-                    <button onClick={e => { e.stopPropagation(); cycleStatus(p); }} title="Status wechseln" style={{ fontFamily: T.mono, fontSize: 11, color: statusColor(p.status), border: `1px solid ${statusColor(p.status)}55`, borderRadius: 6, padding: '3px 9px', background: 'transparent', cursor: 'pointer', whiteSpace: 'nowrap' }}>{PROSPECT_STATUS_LABEL[p.status]}</button>
-                    <button onClick={e => { e.stopPropagation(); scoreOne(p); }} disabled={busy[p.id]} style={{ fontFamily: T.sans, fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 8, border: `1px solid ${T.accent}`, background: busy[p.id] ? 'transparent' : `${T.accent}22`, color: T.accent, cursor: busy[p.id] ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>{busy[p.id] ? '…' : p.score == null ? 'Qualifizieren' : 'Neu bewerten'}</button>
-                    <span style={{ fontFamily: T.mono, fontSize: 13, color: T.muted }}>{isOpen ? '▾' : '▸'}</span>
-                  </div>
+                <div key={p.id}>
+                  <Zeile onClick={() => setOpen(isOpen ? null : p.id)} aktiv={isOpen}
+                    links={<span style={{ width: 42, textAlign: 'center', flex: '0 0 auto', fontFamily: SCHRIFT.display, fontSize: 18, fontWeight: 800, letterSpacing: '-.02em', fontVariantNumeric: 'tabular-nums', color: scoreColor(p.score) }}>{p.score ?? '–'}</span>}
+                    titel={p.company}
+                    unter={[p.industry, p.size, p.region].filter(Boolean).join(' · ') || (p.domain ?? '')}
+                    rechts={
+                      <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <button onClick={e => { e.stopPropagation(); cycleStatus(p); }} title="Status wechseln" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}><Chip farbe={statusColor(p.status)}>{PROSPECT_STATUS_LABEL[p.status]}</Chip></button>
+                        <span onClick={e => e.stopPropagation()}><Knopf leise onClick={() => scoreOne(p)} aus={busy[p.id]}>{busy[p.id] ? '…' : p.score == null ? 'Qualifizieren' : 'Neu bewerten'}</Knopf></span>
+                        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{isOpen ? '▾' : '▸'}</span>
+                      </span>
+                    }
+                  />
                   {isOpen && (
-                    <div style={{ padding: '2px 18px 18px 70px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {p.fit && <div><div style={{ ...lbl, marginBottom: 4 }}>Fit</div><div style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.5 }}>{p.fit}</div></div>}
-                      {p.angle && <div><div style={{ ...lbl, marginBottom: 4 }}>Aufhänger</div><div style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.5 }}>{p.angle}</div></div>}
-                      {!p.fit && !p.angle && <div style={{ fontSize: 12.5, color: T.muted }}>Noch nicht qualifiziert — „Qualifizieren" klicken.</div>}
+                    <div style={{ padding: '6px 2px 18px 56px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {p.fit && <div><div style={{ ...mikro, marginBottom: 4 }}>Fit</div><div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{p.fit}</div></div>}
+                      {p.angle && <div><div style={{ ...mikro, marginBottom: 4 }}>Aufhänger</div><div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{p.angle}</div></div>}
+                      {!p.fit && !p.angle && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch nicht qualifiziert — „Qualifizieren" klicken.</div>}
 
                       {/* Outreach: Ansprache entwerfen — Versand bleibt bei Kevin */}
                       {p.score != null && (
                         <div>
-                          <button onClick={() => ansprache(p)} disabled={entwurfBusy === p.id}
-                            style={{ fontFamily: T.sans, fontSize: 12.5, fontWeight: 700, padding: '7px 14px', borderRadius: 9, border: `1px solid ${T.accent}`, background: entwurfBusy === p.id ? 'transparent' : `${T.accent}1c`, color: T.accentInk, cursor: entwurfBusy === p.id ? 'wait' : 'pointer' }}>
+                          <Knopf leise onClick={() => ansprache(p)} aus={entwurfBusy === p.id}>
                             {entwurfBusy === p.id ? 'Jarvis schreibt …' : entwurf?.fuer === p.id ? '↻ Neu entwerfen' : '✍ Ansprache entwerfen'}
-                          </button>
+                          </Knopf>
                         </div>
                       )}
                       {entwurf?.fuer === p.id && (
-                        <div style={{ background: T.void, border: `1px solid ${T.accent}44`, borderRadius: 12, padding: '13px 15px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ ...lbl, color: T.accent }}>E-Mail</span>
-                            <input value={entwurf.betreff} onChange={e => setEntwurf({ ...entwurf, betreff: e.target.value })}
-                              style={{ flex: 1, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: T.ink, fontFamily: T.sans, fontSize: 13, fontWeight: 600, padding: '5px 9px', outline: 'none' }} />
+                        <div style={{ background: 'rgba(255,255,255,.04)', borderRadius: 14, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                            <span style={{ ...mikro, color: LEUCHT.business }}>E-Mail</span>
+                            <input value={entwurf.betreff} onChange={e => setEntwurf({ ...entwurf, betreff: e.target.value })} aria-label="Betreff"
+                              style={{ ...feld, flex: 1, minWidth: 160, width: 'auto', fontWeight: 600, padding: '8px 12px' }} />
                           </div>
-                          <textarea value={entwurf.email} onChange={e => setEntwurf({ ...entwurf, email: e.target.value })} rows={7}
-                            style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 8, color: T.inkDim, fontFamily: T.sans, fontSize: 13, lineHeight: 1.55, padding: '9px 11px', outline: 'none', resize: 'vertical' }} />
+                          <textarea value={entwurf.email} onChange={e => setEntwurf({ ...entwurf, email: e.target.value })} rows={7} aria-label="E-Mail-Text"
+                            style={{ ...feld, color: C.inkDim, lineHeight: 1.55, resize: 'vertical' }} />
                           {entwurf.linkedin && (
                             <>
-                              <div style={{ ...lbl, color: T.accent }}>LinkedIn-Erstnachricht</div>
-                              <textarea value={entwurf.linkedin} onChange={e => setEntwurf({ ...entwurf, linkedin: e.target.value })} rows={3}
-                                style={{ background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 8, color: T.inkDim, fontFamily: T.sans, fontSize: 13, lineHeight: 1.55, padding: '9px 11px', outline: 'none', resize: 'vertical' }} />
+                              <div style={{ ...mikro, color: LEUCHT.business }}>LinkedIn-Erstnachricht</div>
+                              <textarea value={entwurf.linkedin} onChange={e => setEntwurf({ ...entwurf, linkedin: e.target.value })} rows={3} aria-label="LinkedIn-Erstnachricht"
+                                style={{ ...feld, color: C.inkDim, lineHeight: 1.55, resize: 'vertical' }} />
                             </>
                           )}
                           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                            <button onClick={inMailOeffnen} style={{ fontFamily: T.sans, fontSize: 12, fontWeight: 700, padding: '6px 12px', borderRadius: 8, border: 'none', background: T.accent, color: '#04110F', cursor: 'pointer' }}>In Apple Mail öffnen</button>
-                            <button onClick={() => { try { navigator.clipboard.writeText(`${entwurf.betreff}\n\n${entwurf.email}`); } catch { /* egal */ } }} style={{ fontFamily: T.sans, fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 8, border: `1px solid ${T.line}`, background: 'transparent', color: T.inkDim, cursor: 'pointer' }}>E-Mail kopieren</button>
-                            {entwurf.linkedin && <button onClick={() => { try { navigator.clipboard.writeText(entwurf.linkedin); } catch { /* egal */ } }} style={{ fontFamily: T.sans, fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 8, border: `1px solid ${T.line}`, background: 'transparent', color: T.inkDim, cursor: 'pointer' }}>LinkedIn kopieren</button>}
-                            <button onClick={() => setRowsP(rows.map(x => x.id === p.id ? { ...x, status: 'kontaktiert' } : x))} style={{ fontFamily: T.sans, fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 8, border: `1px solid ${T.accent}66`, background: 'transparent', color: T.accent, cursor: 'pointer' }}>→ als kontaktiert markieren</button>
-                            {mailInfo && <span style={{ fontSize: 11.5, color: T.accent }}>{mailInfo}</span>}
+                            <Knopf onClick={inMailOeffnen} farbe={LEUCHT.business}>In Apple Mail öffnen</Knopf>
+                            <Knopf leise onClick={() => { try { navigator.clipboard.writeText(`${entwurf.betreff}\n\n${entwurf.email}`); } catch { /* egal */ } }}>E-Mail kopieren</Knopf>
+                            {entwurf.linkedin && <Knopf leise onClick={() => { try { navigator.clipboard.writeText(entwurf.linkedin); } catch { /* egal */ } }}>LinkedIn kopieren</Knopf>}
+                            <Knopf leise onClick={() => setRowsP(rows.map(x => x.id === p.id ? { ...x, status: 'kontaktiert' } : x))}>→ als kontaktiert markieren</Knopf>
+                            {mailInfo && <span style={{ fontSize: 12, color: LEUCHT.gut }}>{mailInfo}</span>}
                           </div>
-                          {entwurf.hinweis && <div style={{ fontSize: 11, color: T.muted, lineHeight: 1.5 }}>{entwurf.hinweis}</div>}
+                          {entwurf.hinweis && <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.5 }}>{entwurf.hinweis}</div>}
                         </div>
                       )}
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                         {PROSPECT_STATUS_ORDER.map(s => (
-                          <button key={s} onClick={() => setRowsP(rows.map(x => x.id === p.id ? { ...x, status: s } : x))} style={{ fontFamily: T.sans, fontSize: 11.5, fontWeight: 600, padding: '5px 11px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${p.status === s ? statusColor(s) : T.line}`, background: p.status === s ? `${statusColor(s)}22` : 'transparent', color: p.status === s ? statusColor(s) : T.inkDim }}>{PROSPECT_STATUS_LABEL[s]}</button>
+                          <Wahl key={s} an={p.status === s} farbe={statusColor(s)} onClick={() => setRowsP(rows.map(x => x.id === p.id ? { ...x, status: s } : x))}>{PROSPECT_STATUS_LABEL[s]}</Wahl>
                         ))}
-                        <button onClick={() => setRowsP(rows.filter(x => x.id !== p.id))} style={{ fontFamily: T.sans, fontSize: 11.5, fontWeight: 600, padding: '5px 11px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.muted, marginLeft: 'auto' }}>Löschen</button>
+                        <span style={{ marginLeft: 'auto' }}><Knopf leise onClick={() => setRowsP(rows.filter(x => x.id !== p.id))}>Löschen</Knopf></span>
                       </div>
-                      {p.source && <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>Quelle: {p.source}</div>}
+                      {p.source && <div style={{ fontSize: 12, color: C.inkLeise }}>Quelle: {p.source}</div>}
                     </div>
                   )}
                 </div>
               );
             })}
-          </div>
+          </Liste>
         )}
-      </div>
-    </div>
+      </Karte>
+    </Seite>
   );
 }

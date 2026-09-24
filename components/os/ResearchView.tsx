@@ -1,14 +1,17 @@
 'use client';
 
-import Link from 'next/link';
+// ─── MAKE OS — Research-Agent ───────────────────────────────────────────────
+// Eine Frage rein — Markt, Wettbewerb, Förderung, Prospects — Antwort mit
+// Quellen zurück. Read-only, keine Freigabe nötig.
+// 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Zeile aus schlank).
+
 import { useEffect, useRef, useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Rich } from '@/components/os/Rich';
-import { Seitenkopf } from './Seitenkopf';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, feld, LEUCHT } from './schlank';
 
 interface Item { id: number; q: string; a: string; webUsed?: boolean; loading?: boolean; }
 
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const SUGGEST = [
   'Wettbewerber für ein Controlling-Cockpit (CapOS) im deutschen KMU-Markt',
   'Wie ist BSFZ-Forschungszulage 2026 geregelt — Sätze & Voraussetzungen?',
@@ -40,65 +43,52 @@ export function ResearchView() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 40px' }}>
-        <Link href="/os/agenten" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Agenten</Link>
-          <Seitenkopf
-            rubrik={<>Research-Agent <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, border: `1px solid ${T.accent}55`, borderRadius: 5, padding: '2px 7px' }}>live · autonom</span></>}
-            titel={<>Recherchiere mit Quellen.</>}
-            satz={<>Stell eine Frage — Markt, Wettbewerb, Förderung, Prospects. Ich suche im Web und antworte belegt. Read-only, keine Freigabe nötig.</>}
-          />
+    <Seite
+      titel="Recherchiere mit Quellen."
+      unter="Stell eine Frage — Markt, Wettbewerb, Förderung, Prospects. Ich suche im Web und antworte belegt. Read-only, keine Freigabe nötig."
+      rechts={<Chip farbe={LEUCHT.agenten}>live · autonom</Chip>}
+    >
+      {items.length === 0 && (
+        <Karte i={0} akzent={LEUCHT.agenten}>
+          <Ueberschrift farbe={LEUCHT.agenten}>Beispiele</Ueberschrift>
+          <Liste>
+            {SUGGEST.map(s => (
+              <Zeile key={s} onClick={() => run(s)} links={<span style={{ color: LEUCHT.agenten, fontWeight: 700 }}>›</span>} titel={<span style={{ whiteSpace: 'normal', fontWeight: 500, color: C.inkDim }}>{s}</span>} />
+            ))}
+          </Liste>
+        </Karte>
+      )}
 
-        {items.length === 0 && (
-          <div style={{ marginTop: 22 }}>
-            <div style={{ ...lbl, marginBottom: 9 }}>Beispiele</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {SUGGEST.map(s => (
-                <button key={s} onClick={() => run(s)} style={{ textAlign: 'left', fontFamily: T.sans, fontSize: 13, color: T.inkDim, background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '11px 14px', cursor: 'pointer', lineHeight: 1.4 }}>
-                  <span style={{ color: T.accent, marginRight: 8 }}>›</span>{s}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18, margin: '22px 0' }}>
-          {items.map(it => (
-            <div key={it.id}>
-              <div style={{ display: 'flex', gap: 9, marginBottom: 10 }}>
-                <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, flex: '0 0 auto', marginTop: 3 }}>Du</span>
-                <div style={{ fontSize: 14.5, fontWeight: 600, color: T.ink, lineHeight: 1.45 }}>{it.q}</div>
+      {items.map((it, n) => (
+        <Karte key={it.id} i={n}>
+          <Ueberschrift farbe={LEUCHT.agenten}>Du</Ueberschrift>
+          <div style={{ fontSize: TYP.body, fontWeight: 600, color: C.ink, lineHeight: 1.45, marginBottom: 12 }}>{it.q}</div>
+          {it.loading ? (
+            <Leer>recherchiere im Web …</Leer>
+          ) : (
+            <>
+              <Rich text={it.a} />
+              <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 14 }}>
+                {it.webUsed ? '⌁ mit Web-Suche' : '⌁ ohne Live-Suche beantwortet'}
               </div>
-              <div style={{ background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '14px 18px' }}>
-                {it.loading ? (
-                  <div style={{ fontFamily: T.mono, fontSize: 12, color: T.muted }}>recherchiere im Web …</div>
-                ) : (
-                  <>
-                    <Rich text={it.a} />
-                    <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 12, paddingTop: 10, borderTop: `1px solid ${T.lineSoft}` }}>
-                      {it.webUsed ? '⌁ mit Web-Suche' : '⌁ ohne Live-Suche beantwortet'}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-          <div ref={endRef} />
-        </div>
+            </>
+          )}
+        </Karte>
+      ))}
+      <div ref={endRef} />
 
-        <div style={{ position: 'sticky', bottom: 16, display: 'flex', gap: 8, background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: 8 }}>
+      <Karte i={items.length + 1} style={{ position: 'sticky', bottom: 16, zIndex: 2 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <input
             value={q}
             onChange={e => setQ(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') run(q); }}
             placeholder="Was soll ich recherchieren?"
-            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: T.ink, fontFamily: T.sans, fontSize: 14, padding: '8px 10px' }}
+            style={{ ...feld, flex: 1, minWidth: 180, width: 'auto', fontFamily: SCHRIFT.text }}
           />
-          <button onClick={() => run(q)} disabled={busy || !q.trim()} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 600, padding: '8px 18px', borderRadius: 9, cursor: busy || !q.trim() ? 'default' : 'pointer', border: 'none', background: busy || !q.trim() ? T.line : T.accent, color: busy || !q.trim() ? T.muted : '#04110F' }}>
-            {busy ? '…' : 'Recherchieren'}
-          </button>
+          <Knopf onClick={() => run(q)} aus={busy || !q.trim()} farbe={LEUCHT.agenten}>{busy ? '…' : 'Recherchieren'}</Knopf>
         </div>
-      </div>
-    </div>
+      </Karte>
+    </Seite>
   );
 }

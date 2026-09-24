@@ -1,18 +1,19 @@
 'use client';
 
-import Link from 'next/link';
 // ─── MAKE OS — Finanzplanung ────────────────────────────────────────────────
 // Der lebende Finanz-Organismus: beide Firmen mit Vivid-Konten (Stand von
 // Hand, bis die Anbindung steht — siehe Bauplan), die Rechnungs-Pipeline
 // (geplant → gestellt → bezahlt, Klick wechselt den Status) und Merkposten
 // (Björn-Kredit). Oben die Verknüpfung zum Umsatzziel aus dem Controlling.
+// 24.09.: auf das lebendige Muster umgezogen (Karten, Leuchtfarben, Listen).
 
-import { useEffect, useRef, useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+import Link from 'next/link';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { computeMetrics, eur, type FinanceState } from '@/lib/make-one/finance-data';
 import { useSpeichern } from '@/hooks/useSpeichern';
 import { localDay } from '@/lib/zeit';
-import { Seitenkopf } from './Seitenkopf';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Zahl, feld, LEUCHT } from './schlank';
 
 interface Firma { id: string; name: string; bank: string; kontostand: number | null; stand: string | null }
 type RStatus = 'geplant' | 'gestellt' | 'bezahlt';
@@ -28,18 +29,44 @@ interface Produkt { id: string; name: string; beschreibung: string; preis: numbe
 interface Uhrwerk { letztesMeeting: string | null; agenda: { id: string; label: string; done: boolean }[] }
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; merkposten: Merkposten[]; zahlungen: Zahlung[]; produkte: Produkt[]; uhrwerk: Uhrwerk }
 
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
-const STATUS_FARBE: Record<RStatus, string> = { geplant: '#96A8A2', gestellt: T.amber, bezahlt: T.accent };
+const STATUS_FARBE: Record<RStatus, string> = { geplant: C.inkDim, gestellt: LEUCHT.achtung, bezahlt: LEUCHT.gut };
 const STATUS_NEXT: Record<RStatus, RStatus> = { geplant: 'gestellt', gestellt: 'bezahlt', bezahlt: 'geplant' };
-const inp = { background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: T.ink, fontFamily: T.mono, fontSize: 12, padding: '4px 8px', outline: 'none' };
+/** Kredite in Lila — wie bisher, jetzt aus der Leuchtpalette. */
+const KREDIT = LEUCHT.agenten;
+const HAAR = 'rgba(255,255,255,.06)';
+
+const geld: CSSProperties = { fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 15, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' };
+const leise: CSSProperties = { fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' };
+/** Kompaktes Eingabefeld in einer Zeile. */
+const eingabe: CSSProperties = { ...feld, width: 'auto', padding: '7px 10px', fontSize: TYP.bedien, borderRadius: 8 };
+const auswahl: CSSProperties = { background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark', outline: 'none', cursor: 'pointer' };
+const option: CSSProperties = { background: C.flaeche };
+const datum = (d: string) => `${d.slice(8)}.${d.slice(5, 7)}.`;
+
+/** Ein Chip, den man drücken kann — für Status-Wechsel. */
+function ChipKnopf({ farbe, onClick, title, children }: { farbe: string; onClick: () => void; title?: string; children: ReactNode }) {
+  return (
+    <button onClick={onClick} title={title} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', minWidth: 76, justifyContent: 'center' }}>
+      <Chip farbe={farbe}>{children}</Chip>
+    </button>
+  );
+}
+
+/** Kleiner Zeichen-Knopf — ▲ ▼ ✕. */
+function Zeichen({ onClick, aus, label, children }: { onClick: () => void; aus?: boolean; label: string; children: ReactNode }) {
+  return (
+    <button onClick={onClick} disabled={aus} aria-label={label} title={label} style={{
+      width: 28, height: 28, borderRadius: 8, border: 'none', padding: 0, flex: '0 0 auto', display: 'grid', placeItems: 'center',
+      background: 'rgba(255,255,255,.05)', color: aus ? 'rgba(255,255,255,.18)' : C.inkDim, cursor: aus ? 'default' : 'pointer', fontSize: 12, lineHeight: 1,
+    }}>{children}</button>
+  );
+}
 
 export function FinanzplanungView() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [finance, setFinance] = useState<FinanceState | null>(null);
   const [neu, setNeu] = useState({ kunde: '', titel: '', betrag: '', firmaId: 'kdc' });
   const [neuZ, setNeuZ] = useState({ an: '', titel: '', betrag: '', faellig: '', firmaId: 'kdc' });
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const heute = localDay();
 
   useEffect(() => {
@@ -54,7 +81,7 @@ export function FinanzplanungView() {
     planSpeichern.speichern(next);
   }
 
-  if (!plan) return <div style={{ minHeight: '100vh', background: T.void, color: T.muted, fontFamily: T.mono, fontSize: 12, padding: 40 }}>lade …</div>;
+  if (!plan) return <Seite titel="Finanzplanung" unter={`Finanzen · ${datum(heute)}`}><Karte i={0}><Leer>lade …</Leer></Karte></Seite>;
 
   const m = finance ? computeMetrics(finance) : null;
   const cash = plan.firmen.reduce((s, f) => s + (f.kontostand ?? 0), 0);
@@ -62,6 +89,7 @@ export function FinanzplanungView() {
   const geplant = plan.rechnungen.filter(r => r.status === 'geplant');
   const sum = (list: Rechnung[]) => list.reduce((s, r) => s + r.betrag, 0);
   const kredite = plan.merkposten.filter(x => x.art === 'kredit').reduce((s, x) => s + x.betrag, 0);
+  const zuZahlen = plan.zahlungen.filter(z => z.status === 'offen');
   const firmaName = (id: string) => plan.firmen.find(f => f.id === id)?.name ?? id;
 
   function rechnungAendern(id: string, patch: Partial<Rechnung>) {
@@ -84,258 +112,229 @@ export function FinanzplanungView() {
   const meetingUeberfaellig = tageSeitMeeting !== null && tageSeitMeeting > 16;
 
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 980, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
-        <Seitenkopf
-          rubrik={<>Finanzen · {heute.slice(8)}.{heute.slice(5, 7)}.</>}
-          titel={<>Finanzplanung</>}
-        />
-
-        {/* ── Finanzmeeting — das Uhrwerk: 2× im Monat, läuft immer wieder durch ── */}
-        <div style={{ ...panel, borderLeft: `3px solid ${meetingUeberfaellig ? T.crit : T.amber}`, padding: '14px 18px', marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
-            <span style={lbl}>Finanzmeeting · 2× im Monat</span>
-            <span style={{ fontFamily: T.mono, fontSize: 11, color: agendaOffen ? T.amber : T.accent }}>{uhrwerk.agenda.length - agendaOffen}/{uhrwerk.agenda.length}</span>
-            <span style={{ fontSize: 11.5, color: meetingUeberfaellig ? T.crit : T.muted, marginLeft: 'auto' }}>
+    <Seite titel="Finanzplanung" unter={`Finanzen · ${datum(heute)}`}>
+      {/* ── Finanzmeeting — das Uhrwerk: 2× im Monat, läuft immer wieder durch ── */}
+      <Karte i={0} akzent={meetingUeberfaellig ? LEUCHT.kritisch : undefined}>
+        <Ueberschrift farbe={meetingUeberfaellig ? LEUCHT.kritisch : agendaOffen ? LEUCHT.achtung : LEUCHT.gut}
+          rechts={<><Chip farbe={agendaOffen ? LEUCHT.achtung : LEUCHT.gut}>{uhrwerk.agenda.length - agendaOffen}/{uhrwerk.agenda.length}</Chip>
+            <span style={{ color: meetingUeberfaellig ? LEUCHT.kritisch : C.inkLeise }}>
               {uhrwerk.letztesMeeting
-                ? `zuletzt ${uhrwerk.letztesMeeting.slice(8)}.${uhrwerk.letztesMeeting.slice(5, 7)}.${meetingUeberfaellig ? ' — überfällig, der Takt ist alle 2 Wochen' : ''}`
+                ? `zuletzt ${datum(uhrwerk.letztesMeeting)}${meetingUeberfaellig ? ' — überfällig, der Takt ist alle 2 Wochen' : ''}`
                 : 'noch keins abgeschlossen — das erste steht an'}
-            </span>
-          </div>
-          <div style={{ fontSize: 12, color: T.inkDim, marginBottom: 10 }}>
-            <b style={{ color: T.ink }}>Rollen:</b> Malin bereitet vor, gleicht ab und prüft · Kevin entscheidet und gibt frei.
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 6 }}>
-            {uhrwerk.agenda.map(a => (
-              <div key={a.id} onClick={() => speichern({ ...plan, uhrwerk: { ...uhrwerk, agenda: uhrwerk.agenda.map(x => x.id === a.id ? { ...x, done: !x.done } : x) } })}
-                style={{ display: 'flex', gap: 9, alignItems: 'baseline', cursor: 'pointer' }}>
-                <span style={{ width: 16, height: 16, borderRadius: 5, border: `1px solid ${a.done ? T.accent : T.line}`, background: a.done ? `${T.accent}22` : 'transparent', color: T.accent, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>{a.done ? <span className="check-pop">✓</span> : ''}</span>
-                <span style={{ fontSize: 12.5, color: a.done ? T.muted : T.inkDim, textDecoration: a.done ? 'line-through' : 'none' }}>{a.label}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 12 }}>
-            <button
-              onClick={() => speichern({ ...plan, uhrwerk: { letztesMeeting: heute, agenda: uhrwerk.agenda.map(a => ({ ...a, done: false })) } })}
-              style={{ fontFamily: T.mono, fontSize: 11, cursor: 'pointer', borderRadius: 7, padding: '5px 12px', border: `1px solid ${T.accent}`, background: `${T.accent}1c`, color: T.accentInk }}>
-              ✓ Meeting abgeschlossen
-            </button>
-            <span style={{ fontSize: 11, color: T.muted }}>stempelt das Datum und setzt die Liste fürs nächste Mal zurück</span>
-          </div>
+            </span></>}>
+          Finanzmeeting · 2× im Monat
+        </Ueberschrift>
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 4 }}>
+          <b style={{ color: C.ink }}>Rollen:</b> Malin bereitet vor, gleicht ab und prüft · Kevin entscheidet und gibt frei.
         </div>
-
-        {/* Ziel-Verknüpfung: dieselben Zahlen wie im Controlling */}
-        {m && finance && (
-          <Link href="/os/controlling" style={{ ...panel, borderLeft: `3px solid ${T.accent}`, padding: '12px 16px', marginBottom: 14, display: 'flex', gap: 16, alignItems: 'baseline', flexWrap: 'wrap', textDecoration: 'none', color: 'inherit' }}>
-            <span style={{ fontSize: 13, color: T.inkDim }}>Jahresziel <b style={{ color: T.ink }}>{eur(finance.zielUmsatz)}</b></span>
-            <span style={{ fontSize: 13, color: T.inkDim }}>Ist <b style={{ color: T.ink }}>{eur(m.istUmsatz)}</b> ({Math.round(m.fortschritt * 100)}%)</span>
-            <span style={{ fontSize: 13, color: T.inkDim }}>gestellt offen <b style={{ color: T.amber }}>{eur(sum(gestellt))}</b></span>
-            <span style={{ fontSize: 13, color: T.inkDim }}>in Vorbereitung <b style={{ color: T.ink }}>{eur(sum(geplant))}</b></span>
-            <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: T.accentInk }}>Controlling ›</span>
-          </Link>
-        )}
-
-        {/* KPIs */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 14 }}>
-          {[
-            { l: 'Cash (beide Konten)', v: plan.firmen.some(f => f.kontostand != null) ? eur(cash) : '—', c: T.ink },
-            { l: 'Offene Forderungen', v: eur(sum(gestellt)), c: T.amber },
-            { l: 'In Vorbereitung', v: eur(sum(geplant)), c: T.inkDim },
-            { l: 'Zu zahlen (offen)', v: eur(plan.zahlungen.filter(z => z.status === 'offen').reduce((s, z) => s + z.betrag, 0)), c: T.crit },
-            { l: 'Kredite erhalten', v: eur(kredite), c: '#C77DFF' },
-          ].map((k, i) => (
-            <div key={i} style={{ ...panel, padding: '12px 16px' }}>
-              <div style={lbl}>{k.l}</div>
-              <div style={{ fontFamily: T.mono, fontSize: 19, fontWeight: 700, color: k.c, marginTop: 5 }}>{k.v}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Firmen & Konten */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12, marginBottom: 14 }}>
-          {plan.firmen.map(f => {
-            const offen = plan.rechnungen.filter(r => r.firmaId === f.id && r.status === 'gestellt');
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', columnGap: 24 }}>
+          {uhrwerk.agenda.map(a => {
+            const wechsel = () => speichern({ ...plan, uhrwerk: { ...uhrwerk, agenda: uhrwerk.agenda.map(x => x.id === a.id ? { ...x, done: !x.done } : x) } });
             return (
-              <div key={f.id} style={{ ...panel, padding: '14px 18px' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <span style={{ fontSize: 14.5, fontWeight: 700 }}>{f.name}</span>
-                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{f.bank}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '10px 0 6px' }}>
-                  <span style={{ fontSize: 12, color: T.inkDim }}>Kontostand</span>
-                  <input type="number" value={f.kontostand ?? ''} placeholder="—"
-                    onChange={e => speichern({ ...plan, firmen: plan.firmen.map(x => x.id === f.id ? { ...x, kontostand: e.target.value === '' ? null : Number(e.target.value) } : x) })}
-                    style={{ ...inp, width: 110, fontSize: 15, fontWeight: 700 }} />
-                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>€{f.stand ? ` · Stand ${f.stand.slice(8)}.${f.stand.slice(5, 7)}.` : ''}</span>
-                </div>
-                <div style={{ fontSize: 11.5, color: offen.length ? T.amber : T.muted }}>
+              <Zeile key={a.id} onClick={wechsel} links={<Haken an={a.done} onChange={wechsel} />}
+                titel={<span style={{ color: a.done ? C.inkLeise : C.ink, textDecoration: a.done ? 'line-through' : 'none' }}>{a.label}</span>} />
+            );
+          })}
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 14 }}>
+          <Knopf onClick={() => speichern({ ...plan, uhrwerk: { letztesMeeting: heute, agenda: uhrwerk.agenda.map(a => ({ ...a, done: false })) } })}>✓ Meeting abgeschlossen</Knopf>
+          <span style={{ fontSize: 12, color: C.inkLeise }}>stempelt das Datum und setzt die Liste fürs nächste Mal zurück</span>
+        </div>
+      </Karte>
+
+      {/* Ziel-Verknüpfung: dieselben Zahlen wie im Controlling */}
+      {m && finance && (
+        <Karte i={1}>
+          <Ueberschrift farbe={LEUCHT.business} rechts={<Link href="/os/controlling" style={{ color: C.inkLeise, textDecoration: 'none' }}>Controlling ›</Link>}>Jahresziel</Ueberschrift>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16 }}>
+            <Zahl wert={eur(finance.zielUmsatz)} label="Jahresziel" />
+            <Zahl wert={eur(m.istUmsatz)} label={`Ist · ${Math.round(m.fortschritt * 100)} %`} farbe={LEUCHT.gut} />
+            <Zahl wert={eur(sum(gestellt))} label="gestellt offen" farbe={gestellt.length ? LEUCHT.achtung : C.inkLeise} />
+            <Zahl wert={eur(sum(geplant))} label="in Vorbereitung" />
+          </div>
+        </Karte>
+      )}
+
+      {/* KPIs */}
+      <Karte i={2} akzent={LEUCHT.geld}>
+        <Ueberschrift farbe={LEUCHT.geld}>Cash · beide Konten</Ueberschrift>
+        <Zahl gross wert={plan.firmen.some(f => f.kontostand != null) ? eur(cash) : undefined} farbe={cash < 0 ? LEUCHT.kritisch : LEUCHT.geld} label={plan.firmen.some(f => f.kontostand != null) ? `${plan.firmen.length} Konten` : 'noch kein Kontostand eingetragen'} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginTop: 14 }}>
+          <Zahl wert={eur(sum(gestellt))} label={`offene Forderungen · ${gestellt.length}`} farbe={gestellt.length ? LEUCHT.achtung : C.inkLeise} />
+          <Zahl wert={eur(sum(geplant))} label={`in Vorbereitung · ${geplant.length}`} />
+          <Zahl wert={eur(zuZahlen.reduce((s, z) => s + z.betrag, 0))} label={`zu zahlen · ${zuZahlen.length} offen`} farbe={zuZahlen.length ? LEUCHT.kritisch : C.inkLeise} />
+          <Zahl wert={eur(kredite)} label="Kredite erhalten" farbe={kredite ? KREDIT : C.inkLeise} />
+        </div>
+      </Karte>
+
+      {/* Firmen & Konten */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+        {plan.firmen.map((f, fi) => {
+          const offen = plan.rechnungen.filter(r => r.firmaId === f.id && r.status === 'gestellt');
+          return (
+            <Karte key={f.id} i={3 + fi}>
+              <Ueberschrift farbe={offen.length ? LEUCHT.achtung : LEUCHT.gut} rechts={f.bank}>{f.name}</Ueberschrift>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Kontostand</span>
+                <input type="number" value={f.kontostand ?? ''} placeholder="—" aria-label={`Kontostand ${f.name}`}
+                  onChange={e => speichern({ ...plan, firmen: plan.firmen.map(x => x.id === f.id ? { ...x, kontostand: e.target.value === '' ? null : Number(e.target.value) } : x) })}
+                  style={{ ...eingabe, width: 130, fontFamily: SCHRIFT.display, fontSize: 17, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }} />
+                <span style={leise}>€{f.stand ? ` · Stand ${datum(f.stand)}` : ''}</span>
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <Chip farbe={offen.length ? LEUCHT.achtung : C.inkLeise}>
                   {offen.length ? `${offen.length} Rechnung${offen.length > 1 ? 'en' : ''} offen · ${eur(sum(offen))}` : 'keine offenen Forderungen'}
+                </Chip>
+              </div>
+            </Karte>
+          );
+        })}
+      </div>
+
+      {/* Rechnungs-Pipeline */}
+      <Karte i={3 + plan.firmen.length}>
+        <Ueberschrift farbe={LEUCHT.gut} rechts="Klick auf den Status wechselt: geplant → gestellt → bezahlt">Rechnungen</Ueberschrift>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {plan.rechnungen.map(r => {
+            const spaet = r.status === 'gestellt' && r.faellig && r.faellig < heute;
+            return (
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderBottom: `1px solid ${HAAR}`, padding: '10px 0' }}>
+                <ChipKnopf farbe={STATUS_FARBE[r.status]} onClick={() => rechnungAendern(r.id, { status: STATUS_NEXT[r.status] })} title="Status wechseln">{r.status}</ChipKnopf>
+                <span style={{ fontSize: TYP.body, fontWeight: 600, color: C.ink }}>{r.kunde}</span>
+                <span style={{ fontSize: TYP.bedien, color: C.inkDim, flex: 1, minWidth: 140 }}>{r.titel}</span>
+                <span style={leise}>{firmaName(r.firmaId)}</span>
+                {r.faellig && <span style={{ ...leise, color: spaet ? LEUCHT.kritisch : C.inkLeise }}>{spaet ? 'überfällig ' : 'fällig '}{datum(r.faellig)}</span>}
+                <input type="number" value={r.betrag || ''} placeholder="0" aria-label="Betrag"
+                  onChange={e => rechnungAendern(r.id, { betrag: Number(e.target.value) || 0 })}
+                  style={{ ...eingabe, width: 96, textAlign: 'right', fontFamily: SCHRIFT.display, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }} />
+                <span style={leise}>€</span>
+                <Zeichen onClick={() => speichern({ ...plan, rechnungen: plan.rechnungen.filter(x => x.id !== r.id) })} label="Rechnung löschen">✕</Zeichen>
+
+                {/* Der Vorgang dahinter — Kevins Ansage: der Betrag allein
+                    reicht nicht, Angebot, Nummer und Daten gehören dazu. */}
+                <div style={{ flexBasis: '100%', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {([
+                    ['nummer', 'Rechnungs-Nr.', 'text', 118],
+                    ['datum', 'gestellt am', 'date', 138],
+                    ['angebot', 'Angebots-Nr.', 'text', 118],
+                    ['angebotAm', 'Angebot vom', 'date', 138],
+                    ['bezahltAm', 'bezahlt am', 'date', 138],
+                  ] as const).map(([name, platz, typ, breite]) => (
+                    <input key={name} type={typ} value={(r[name] as string) ?? ''} placeholder={platz} title={platz} aria-label={platz}
+                      onChange={e => rechnungAendern(r.id, { [name]: e.target.value || undefined })}
+                      style={{ ...eingabe, width: breite, fontSize: 12, padding: '5px 8px', colorScheme: 'dark', color: r[name] ? C.ink : C.inkLeise }} />
+                  ))}
+                  <span style={leise}>
+                    netto {(r.netto ?? r.betrag / 1.19).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                    {r.ustSatz != null ? ` · ${r.ustSatz}% USt` : ' · 19% angenommen'}
+                  </span>
                 </div>
               </div>
             );
           })}
+          {!plan.rechnungen.length && <Leer>Keine Rechnungen — unten anlegen.</Leer>}
         </div>
-
-        {/* Rechnungs-Pipeline */}
-        <div style={{ ...panel, padding: '14px 18px', marginBottom: 14 }}>
-          <div style={{ ...lbl, marginBottom: 10 }}>Rechnungen <span style={{ textTransform: 'none' }}>(Klick auf den Status wechselt: geplant → gestellt → bezahlt)</span></div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {plan.rechnungen.map(r => {
-              const spaet = r.status === 'gestellt' && r.faellig && r.faellig < heute;
-              return (
-                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderBottom: `1px solid ${T.line}55`, paddingBottom: 8 }}>
-                  <button onClick={() => rechnungAendern(r.id, { status: STATUS_NEXT[r.status] })}
-                    style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.06em', cursor: 'pointer', borderRadius: 6, padding: '3px 9px', border: `1px solid ${STATUS_FARBE[r.status]}66`, background: `${STATUS_FARBE[r.status]}1a`, color: STATUS_FARBE[r.status], width: 76, textAlign: 'center' }}>
-                    {r.status}
-                  </button>
-                  <span style={{ fontSize: 13.5, fontWeight: 600, color: T.ink }}>{r.kunde}</span>
-                  <span style={{ fontSize: 12.5, color: T.inkDim, flex: 1, minWidth: 140 }}>{r.titel}</span>
-                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{firmaName(r.firmaId)}</span>
-                  {r.faellig && <span style={{ fontFamily: T.mono, fontSize: 11, color: spaet ? T.crit : T.muted }}>{spaet ? 'überfällig ' : 'fällig '}{r.faellig.slice(8)}.{r.faellig.slice(5, 7)}.</span>}
-                  <input type="number" value={r.betrag || ''} placeholder="0"
-                    onChange={e => rechnungAendern(r.id, { betrag: Number(e.target.value) || 0 })}
-                    style={{ ...inp, width: 90, textAlign: 'right' }} />
-                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>€</span>
-                  <button onClick={() => speichern({ ...plan, rechnungen: plan.rechnungen.filter(x => x.id !== r.id) })}
-                    style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 12 }}>✕</button>
-
-                  {/* Der Vorgang dahinter — Kevins Ansage: der Betrag allein
-                      reicht nicht, Angebot, Nummer und Daten gehören dazu. */}
-                  <div style={{ flexBasis: '100%', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', paddingLeft: 86 }}>
-                    {([
-                      ['nummer', 'Rechnungs-Nr.', 'text', 108],
-                      ['datum', 'gestellt am', 'date', 128],
-                      ['angebot', 'Angebots-Nr.', 'text', 108],
-                      ['angebotAm', 'Angebot vom', 'date', 128],
-                      ['bezahltAm', 'bezahlt am', 'date', 128],
-                    ] as const).map(([feld, platz, typ, breite]) => (
-                      <input key={feld} type={typ} value={(r[feld] as string) ?? ''} placeholder={platz} title={platz}
-                        onChange={e => rechnungAendern(r.id, { [feld]: e.target.value || undefined })}
-                        style={{ ...inp, width: breite, fontSize: 11, padding: '4px 7px' }} />
-                    ))}
-                    <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>
-                      netto {(r.netto ?? r.betrag / 1.19).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
-                      {r.ustSatz != null ? ` · ${r.ustSatz}% USt` : ' · 19% angenommen'}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-            {!plan.rechnungen.length && <span style={{ fontSize: 12.5, color: T.muted }}>Keine Rechnungen — unten anlegen.</span>}
-          </div>
-          {/* Neu anlegen */}
-          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            <input value={neu.kunde} onChange={e => setNeu({ ...neu, kunde: e.target.value })} placeholder="Kunde" style={{ ...inp, width: 130, fontFamily: T.sans }} />
-            <input value={neu.titel} onChange={e => setNeu({ ...neu, titel: e.target.value })} placeholder="Leistung/Titel" style={{ ...inp, flex: 1, minWidth: 160, fontFamily: T.sans }} />
-            <input value={neu.betrag} onChange={e => setNeu({ ...neu, betrag: e.target.value })} placeholder="€" type="number" style={{ ...inp, width: 90, textAlign: 'right' }} />
-            <select value={neu.firmaId} onChange={e => setNeu({ ...neu, firmaId: e.target.value })} style={{ ...inp, fontFamily: T.sans }}>
-              {plan.firmen.map(f => <option key={f.id} value={f.id} style={{ background: T.panel }}>{f.name}</option>)}
-            </select>
-            <button
-              onClick={() => {
-                if (!neu.kunde.trim()) return;
-                speichern({ ...plan, rechnungen: [...plan.rechnungen, { id: `r-${Date.now().toString(36)}`, firmaId: neu.firmaId, kunde: neu.kunde.trim(), titel: neu.titel.trim(), betrag: Number(neu.betrag) || 0, status: 'geplant' }] });
-                setNeu({ kunde: '', titel: '', betrag: '', firmaId: neu.firmaId });
-              }}
-              style={{ fontFamily: T.mono, fontSize: 11, cursor: 'pointer', borderRadius: 7, padding: '5px 12px', border: `1px solid ${T.accent}`, background: `${T.accent}1c`, color: T.accentInk }}>
-              + Rechnung
-            </button>
-          </div>
-          <div style={{ fontSize: 11.5, color: T.muted, marginTop: 10 }}>
-            Bezahlt? Dann den Betrag im <Link href="/os/controlling" style={{ color: T.accentInk, textDecoration: 'none' }}>Controlling</Link> als Monats-Umsatz erfassen — dort zählt er aufs Jahresziel.
-          </div>
+        {/* Neu anlegen */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input value={neu.kunde} onChange={e => setNeu({ ...neu, kunde: e.target.value })} placeholder="Kunde" aria-label="Kunde" style={{ ...eingabe, width: 140 }} />
+          <input value={neu.titel} onChange={e => setNeu({ ...neu, titel: e.target.value })} placeholder="Leistung/Titel" aria-label="Leistung" style={{ ...eingabe, flex: 1, minWidth: 160 }} />
+          <input value={neu.betrag} onChange={e => setNeu({ ...neu, betrag: e.target.value })} placeholder="€" type="number" aria-label="Betrag" style={{ ...eingabe, width: 96, textAlign: 'right' }} />
+          <select value={neu.firmaId} onChange={e => setNeu({ ...neu, firmaId: e.target.value })} aria-label="Firma" style={auswahl}>
+            {plan.firmen.map(f => <option key={f.id} value={f.id} style={option}>{f.name}</option>)}
+          </select>
+          <Knopf onClick={() => {
+            if (!neu.kunde.trim()) return;
+            speichern({ ...plan, rechnungen: [...plan.rechnungen, { id: `r-${Date.now().toString(36)}`, firmaId: neu.firmaId, kunde: neu.kunde.trim(), titel: neu.titel.trim(), betrag: Number(neu.betrag) || 0, status: 'geplant' }] });
+            setNeu({ kunde: '', titel: '', betrag: '', firmaId: neu.firmaId });
+          }}>+ Rechnung</Knopf>
         </div>
-
-        {/* ── Zahlungs-Prioritäten: was zuerst bezahlt wird, steht oben ── */}
-        <div style={{ ...panel, padding: '14px 18px', marginBottom: 14 }}>
-          <div style={{ ...lbl, marginBottom: 10 }}>Zahlungs-Prioritäten <span style={{ textTransform: 'none' }}>(oben = zuerst · ↑↓ ordnen)</span></div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {plan.zahlungen.map((z, i) => {
-              const spaet = z.status === 'offen' && z.faellig && z.faellig < heute;
-              return (
-                <div key={z.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderBottom: `1px solid ${T.line}55`, paddingBottom: 8, opacity: z.status === 'bezahlt' ? 0.5 : 1 }}>
-                  <span style={{ fontFamily: T.mono, fontSize: 12, fontWeight: 700, color: i === 0 && z.status === 'offen' ? T.crit : T.muted, width: 20, textAlign: 'right' }}>{i + 1}.</span>
-                  <span style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <button onClick={() => zahlungBewegen(z.id, -1)} disabled={i === 0} style={{ background: 'none', border: 'none', color: i === 0 ? `${T.muted}55` : T.muted, cursor: i === 0 ? 'default' : 'pointer', fontSize: 11, padding: 0, lineHeight: 1 }}>▲</button>
-                    <button onClick={() => zahlungBewegen(z.id, 1)} disabled={i === plan.zahlungen.length - 1} style={{ background: 'none', border: 'none', color: i === plan.zahlungen.length - 1 ? `${T.muted}55` : T.muted, cursor: i === plan.zahlungen.length - 1 ? 'default' : 'pointer', fontSize: 11, padding: 0, lineHeight: 1 }}>▼</button>
-                  </span>
-                  <button onClick={() => speichern({ ...plan, zahlungen: plan.zahlungen.map(x => x.id === z.id ? { ...x, status: x.status === 'offen' ? 'bezahlt' : 'offen' } : x) })}
-                    style={{ fontFamily: T.mono, fontSize: 11, cursor: 'pointer', borderRadius: 6, padding: '3px 9px', border: `1px solid ${z.status === 'bezahlt' ? T.accent : T.amber}66`, background: `${z.status === 'bezahlt' ? T.accent : T.amber}1a`, color: z.status === 'bezahlt' ? T.accent : T.amber, width: 72, textAlign: 'center' }}>
-                    {z.status}
-                  </button>
-                  <span style={{ fontSize: 13.5, fontWeight: 600, color: T.ink }}>{z.an}</span>
-                  <span style={{ fontSize: 12.5, color: T.inkDim, flex: 1, minWidth: 120 }}>{z.titel}</span>
-                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{firmaName(z.firmaId)}</span>
-                  {z.faellig && <span style={{ fontFamily: T.mono, fontSize: 11, color: spaet ? T.crit : T.muted }}>{spaet ? 'überfällig ' : 'fällig '}{z.faellig.slice(8)}.{z.faellig.slice(5, 7)}.</span>}
-                  <span style={{ fontFamily: T.mono, fontSize: 12.5, fontWeight: 700, color: T.ink }}>{eur(z.betrag)}</span>
-                  <button onClick={() => speichern({ ...plan, zahlungen: plan.zahlungen.filter(x => x.id !== z.id) })}
-                    style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 12 }}>✕</button>
-                </div>
-              );
-            })}
-            {!plan.zahlungen.length && <span style={{ fontSize: 12.5, color: T.muted }}>Noch leer — im Finanzmeeting alle offenen Rechnungen zusammenziehen und hier priorisieren.</span>}
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            <input value={neuZ.an} onChange={e => setNeuZ({ ...neuZ, an: e.target.value })} placeholder="An wen" style={{ ...inp, width: 130, fontFamily: T.sans }} />
-            <input value={neuZ.titel} onChange={e => setNeuZ({ ...neuZ, titel: e.target.value })} placeholder="Wofür" style={{ ...inp, flex: 1, minWidth: 140, fontFamily: T.sans }} />
-            <input value={neuZ.betrag} onChange={e => setNeuZ({ ...neuZ, betrag: e.target.value })} placeholder="€" type="number" style={{ ...inp, width: 90, textAlign: 'right' }} />
-            <input value={neuZ.faellig} onChange={e => setNeuZ({ ...neuZ, faellig: e.target.value })} type="date" style={{ ...inp }} />
-            <select value={neuZ.firmaId} onChange={e => setNeuZ({ ...neuZ, firmaId: e.target.value })} style={{ ...inp, fontFamily: T.sans }}>
-              {plan.firmen.map(f => <option key={f.id} value={f.id} style={{ background: T.panel }}>{f.name}</option>)}
-            </select>
-            <button
-              onClick={() => {
-                if (!neuZ.an.trim()) return;
-                speichern({ ...plan, zahlungen: [...plan.zahlungen, { id: `z-${Date.now().toString(36)}`, firmaId: neuZ.firmaId, an: neuZ.an.trim(), titel: neuZ.titel.trim(), betrag: Number(neuZ.betrag) || 0, status: 'offen', faellig: neuZ.faellig || undefined }] });
-                setNeuZ({ an: '', titel: '', betrag: '', faellig: '', firmaId: neuZ.firmaId });
-              }}
-              style={{ fontFamily: T.mono, fontSize: 11, cursor: 'pointer', borderRadius: 7, padding: '5px 12px', border: `1px solid ${T.amber}`, background: `${T.amber}1c`, color: T.amber }}>
-              + Zahlung
-            </button>
-          </div>
+        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 12, lineHeight: 1.6 }}>
+          Bezahlt? Dann den Betrag im <Link href="/os/controlling" style={{ color: C.aktiv, textDecoration: 'none' }}>Controlling</Link> als Monats-Umsatz erfassen — dort zählt er aufs Jahresziel.
         </div>
+      </Karte>
 
-        {/* ── Produkte: 2–3 Pakete, im Meeting festzurren ── */}
-        <div style={{ ...panel, padding: '14px 18px', marginBottom: 14 }}>
-          <div style={{ ...lbl, marginBottom: 10 }}>Produkte <span style={{ textTransform: 'none' }}>(Entwürfe — im Finanzmeeting festzurren, Klick auf Status aktiviert)</span></div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 10 }}>
-            {plan.produkte.map(p => (
-              <div key={p.id} style={{ border: `1px solid ${p.status === 'aktiv' ? T.accent : T.line}`, borderRadius: 10, padding: '12px 14px' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <input value={p.name} onChange={e => speichern({ ...plan, produkte: plan.produkte.map(x => x.id === p.id ? { ...x, name: e.target.value } : x) })}
-                    style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 14, fontWeight: 700, color: T.ink, fontFamily: T.sans, flex: 1, minWidth: 0 }} />
-                  <button onClick={() => speichern({ ...plan, produkte: plan.produkte.map(x => x.id === p.id ? { ...x, status: x.status === 'aktiv' ? 'entwurf' : 'aktiv' } : x) })}
-                    style={{ fontFamily: T.mono, fontSize: 11, cursor: 'pointer', borderRadius: 6, padding: '2px 8px', border: `1px solid ${p.status === 'aktiv' ? T.accent : T.muted}66`, background: 'transparent', color: p.status === 'aktiv' ? T.accent : T.muted }}>
-                    {p.status}
-                  </button>
-                </div>
-                <div style={{ fontSize: 11.5, color: T.inkDim, margin: '6px 0 8px', lineHeight: 1.45 }}>{p.beschreibung}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <input type="number" value={p.preis || ''} placeholder="Preis"
-                    onChange={e => speichern({ ...plan, produkte: plan.produkte.map(x => x.id === p.id ? { ...x, preis: Number(e.target.value) || 0 } : x) })}
-                    style={{ ...inp, width: 90, textAlign: 'right' }} />
-                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>€ · {p.einheit}</span>
-                </div>
+      {/* ── Zahlungs-Prioritäten: was zuerst bezahlt wird, steht oben ── */}
+      <Karte i={4 + plan.firmen.length}>
+        <Ueberschrift farbe={LEUCHT.achtung} rechts="oben = zuerst · ▲▼ ordnen">Zahlungs-Prioritäten</Ueberschrift>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {plan.zahlungen.map((z, i) => {
+            const spaet = z.status === 'offen' && z.faellig && z.faellig < heute;
+            return (
+              <div key={z.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderBottom: `1px solid ${HAAR}`, padding: '10px 0', opacity: z.status === 'bezahlt' ? 0.5 : 1 }}>
+                <span style={{ fontFamily: SCHRIFT.display, fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: i === 0 && z.status === 'offen' ? LEUCHT.kritisch : C.inkLeise, width: 24, textAlign: 'right' }}>{i + 1}.</span>
+                <span style={{ display: 'flex', gap: 3 }}>
+                  <Zeichen onClick={() => zahlungBewegen(z.id, -1)} aus={i === 0} label="nach oben">▲</Zeichen>
+                  <Zeichen onClick={() => zahlungBewegen(z.id, 1)} aus={i === plan.zahlungen.length - 1} label="nach unten">▼</Zeichen>
+                </span>
+                <ChipKnopf farbe={z.status === 'bezahlt' ? LEUCHT.gut : LEUCHT.achtung} title="offen ↔ bezahlt"
+                  onClick={() => speichern({ ...plan, zahlungen: plan.zahlungen.map(x => x.id === z.id ? { ...x, status: x.status === 'offen' ? 'bezahlt' : 'offen' } : x) })}>
+                  {z.status}
+                </ChipKnopf>
+                <span style={{ fontSize: TYP.body, fontWeight: 600, color: C.ink }}>{z.an}</span>
+                <span style={{ fontSize: TYP.bedien, color: C.inkDim, flex: 1, minWidth: 120 }}>{z.titel}</span>
+                <span style={leise}>{firmaName(z.firmaId)}</span>
+                {z.faellig && <span style={{ ...leise, color: spaet ? LEUCHT.kritisch : C.inkLeise }}>{spaet ? 'überfällig ' : 'fällig '}{datum(z.faellig)}</span>}
+                <span style={{ ...geld, color: spaet ? LEUCHT.kritisch : C.ink }}>{eur(z.betrag)}</span>
+                <Zeichen onClick={() => speichern({ ...plan, zahlungen: plan.zahlungen.filter(x => x.id !== z.id) })} label="Zahlung löschen">✕</Zeichen>
               </div>
-            ))}
-          </div>
+            );
+          })}
+          {!plan.zahlungen.length && <Leer>Noch leer — im Finanzmeeting alle offenen Rechnungen zusammenziehen und hier priorisieren.</Leer>}
         </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input value={neuZ.an} onChange={e => setNeuZ({ ...neuZ, an: e.target.value })} placeholder="An wen" aria-label="An wen" style={{ ...eingabe, width: 140 }} />
+          <input value={neuZ.titel} onChange={e => setNeuZ({ ...neuZ, titel: e.target.value })} placeholder="Wofür" aria-label="Wofür" style={{ ...eingabe, flex: 1, minWidth: 140 }} />
+          <input value={neuZ.betrag} onChange={e => setNeuZ({ ...neuZ, betrag: e.target.value })} placeholder="€" type="number" aria-label="Betrag" style={{ ...eingabe, width: 96, textAlign: 'right' }} />
+          <input value={neuZ.faellig} onChange={e => setNeuZ({ ...neuZ, faellig: e.target.value })} type="date" aria-label="Fällig am" style={{ ...eingabe, colorScheme: 'dark', color: neuZ.faellig ? C.ink : C.inkLeise }} />
+          <select value={neuZ.firmaId} onChange={e => setNeuZ({ ...neuZ, firmaId: e.target.value })} aria-label="Firma" style={auswahl}>
+            {plan.firmen.map(f => <option key={f.id} value={f.id} style={option}>{f.name}</option>)}
+          </select>
+          <Knopf farbe={LEUCHT.achtung} onClick={() => {
+            if (!neuZ.an.trim()) return;
+            speichern({ ...plan, zahlungen: [...plan.zahlungen, { id: `z-${Date.now().toString(36)}`, firmaId: neuZ.firmaId, an: neuZ.an.trim(), titel: neuZ.titel.trim(), betrag: Number(neuZ.betrag) || 0, status: 'offen', faellig: neuZ.faellig || undefined }] });
+            setNeuZ({ an: '', titel: '', betrag: '', faellig: '', firmaId: neuZ.firmaId });
+          }}>+ Zahlung</Knopf>
+        </div>
+      </Karte>
 
-        {/* Merkposten */}
-        <div style={{ ...panel, padding: '14px 18px' }}>
-          <div style={{ ...lbl, marginBottom: 10 }}>Merkposten</div>
-          {plan.merkposten.map(x => (
-            <div key={x.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', padding: '3px 0' }}>
-              <span style={{ fontFamily: T.mono, fontSize: 11, color: '#C77DFF' }}>{x.art === 'kredit' ? 'KREDIT' : 'MERK'}</span>
-              <span style={{ fontSize: 13, color: T.ink }}>{x.titel}</span>
-              <span style={{ fontFamily: T.mono, fontSize: 12.5, fontWeight: 700, color: x.betrag >= 0 ? T.accent : T.crit }}>{eur(x.betrag)}</span>
-              <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{firmaName(x.firmaId)}{x.datum ? ` · ${x.datum.slice(8)}.${x.datum.slice(5, 7)}.` : ''}</span>
-              {x.notiz && <span style={{ fontSize: 11.5, color: T.muted }}>{x.notiz}</span>}
+      {/* ── Produkte: 2–3 Pakete, im Meeting festzurren ── */}
+      <Karte i={5 + plan.firmen.length}>
+        <Ueberschrift farbe={LEUCHT.business} rechts="Entwürfe — im Finanzmeeting festzurren, Klick auf Status aktiviert">Produkte</Ueberschrift>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 10 }}>
+          {plan.produkte.map(p => (
+            <div key={p.id} style={{ background: 'rgba(255,255,255,.04)', borderRadius: 14, padding: '12px 14px', boxShadow: p.status === 'aktiv' ? `inset 0 0 0 1px ${LEUCHT.gut}55, 0 0 24px -10px ${LEUCHT.gut}66` : undefined }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input value={p.name} aria-label="Produktname" onChange={e => speichern({ ...plan, produkte: plan.produkte.map(x => x.id === p.id ? { ...x, name: e.target.value } : x) })}
+                  style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: TYP.body, fontWeight: 700, color: C.ink, fontFamily: SCHRIFT.display, flex: 1, minWidth: 0, padding: 0 }} />
+                <ChipKnopf farbe={p.status === 'aktiv' ? LEUCHT.gut : C.inkLeise} title="Entwurf ↔ aktiv"
+                  onClick={() => speichern({ ...plan, produkte: plan.produkte.map(x => x.id === p.id ? { ...x, status: x.status === 'aktiv' ? 'entwurf' : 'aktiv' } : x) })}>
+                  {p.status}
+                </ChipKnopf>
+              </div>
+              <div style={{ fontSize: 12.5, color: C.inkDim, margin: '6px 0 10px', lineHeight: 1.45 }}>{p.beschreibung}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input type="number" value={p.preis || ''} placeholder="Preis" aria-label="Preis"
+                  onChange={e => speichern({ ...plan, produkte: plan.produkte.map(x => x.id === p.id ? { ...x, preis: Number(e.target.value) || 0 } : x) })}
+                  style={{ ...eingabe, width: 96, textAlign: 'right', fontFamily: SCHRIFT.display, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }} />
+                <span style={leise}>€ · {p.einheit}</span>
+              </div>
             </div>
           ))}
-          {!plan.merkposten.length && <span style={{ fontSize: 12.5, color: T.muted }}>Nichts vorgemerkt.</span>}
         </div>
-      </div>
-    </div>
+      </Karte>
+
+      {/* Merkposten */}
+      <Karte i={6 + plan.firmen.length}>
+        <Ueberschrift farbe={KREDIT}>Merkposten</Ueberschrift>
+        <Liste>
+          {plan.merkposten.map(x => (
+            <Zeile key={x.id} links={<Chip farbe={KREDIT}>{x.art === 'kredit' ? 'KREDIT' : 'MERK'}</Chip>} titel={x.titel}
+              unter={`${firmaName(x.firmaId)}${x.datum ? ` · ${datum(x.datum)}` : ''}${x.notiz ? ` · ${x.notiz}` : ''}`}
+              rechts={<span style={{ ...geld, color: x.betrag >= 0 ? LEUCHT.gut : LEUCHT.kritisch }}>{eur(x.betrag)}</span>} />
+          ))}
+          {!plan.merkposten.length && <Leer>Nichts vorgemerkt.</Leer>}
+        </Liste>
+      </Karte>
+    </Seite>
   );
 }

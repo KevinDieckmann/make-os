@@ -5,49 +5,51 @@
 // hier unverändert weiter — eingebettet, damit man es nicht mehr separat
 // öffnen muss. Es hängt an seiner eigenen Datenablage; was daraus ins System
 // gehört (Zahlungen, Rechnungen), holen wir gezielt herüber.
+// 24.09.: auf das lebendige Muster umgezogen (Seite + Karte, Knopf).
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
-
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { Seite, Karte, Ueberschrift, Knopf, LEUCHT } from './schlank';
 
 export function FinanzDashboardView() {
   const [voll, setVoll] = useState(false);
 
-  return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: voll ? '10px 16px' : '20px clamp(16px,3vw,32px) 12px', flex: '0 0 auto' }}>
-        {!voll && (
-          <>
-            <Link href="/os/finanzen" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Finanzen</Link>
-            <div style={lbl}>Finanz-Dashboard</div>
-          </>
-        )}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-          {!voll && <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 0' }}>Euer eigenes Dashboard.</h1>}
-          <button onClick={() => setVoll(!voll)} style={{
-            marginLeft: 'auto', fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, padding: '6px 13px', borderRadius: 9,
-            cursor: 'pointer', border: `1px solid ${T.line}`, background: 'transparent', color: T.inkDim,
-          }}>{voll ? '↙ Rahmen zeigen' : '↗ Ganze Seite'}</button>
-          <a href="/finanz-dashboard.html" target="_blank" rel="noopener noreferrer"
-            style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, textDecoration: 'none' }}>in eigenem Fenster ›</a>
-        </div>
-        {!voll && (
-          <p style={{ fontSize: 12.5, color: T.muted, margin: '6px 0 0', maxWidth: 680, lineHeight: 1.5 }}>
-            Läuft mit seiner eigenen Datenablage weiter — hier nur eingebettet.
-            Was daraus ins System gehört, holen wir gezielt herüber: Zahlungen landen in der{' '}
-            <Link href="/os/finanzen" style={{ color: T.accentInk }}>Prioritätenliste</Link>, die Lage im{' '}
-            <Link href="/os/controlling" style={{ color: T.accentInk }}>Controlling</Link>.
-          </p>
-        )}
-      </div>
+  const schalter = <Knopf leise onClick={() => setVoll(!voll)}>{voll ? '↙ Rahmen zeigen' : '↗ Ganze Seite'}</Knopf>;
+  const fenster = (
+    <a href="/finanz-dashboard.html" target="_blank" rel="noopener noreferrer" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+      in eigenem Fenster ›
+    </a>
+  );
 
-      <iframe
-        src="/finanz-dashboard.html"
-        title="Finanz-Dashboard"
-        style={{ flex: 1, width: '100%', border: 0, background: '#0B0E10', minHeight: voll ? 'calc(100vh - 52px)' : 'calc(100vh - 150px)' }}
-      />
-    </div>
+  // Ganze Seite: nur eine schmale Leiste über dem Dashboard, sonst nichts.
+  if (voll) {
+    return (
+      <div style={{ color: C.ink, fontFamily: SCHRIFT.text }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 14, padding: '10px 16px' }}>
+          {schalter}{fenster}
+        </div>
+        <iframe src="/finanz-dashboard.html" title="Finanz-Dashboard"
+          style={{ display: 'block', width: '100%', border: 0, background: C.grund, height: 'calc(100vh - 62px)' }} />
+      </div>
+    );
+  }
+
+  return (
+    <Seite titel="Malins Dashboard" unter="Euer eigenes Dashboard — läuft mit seiner eigenen Datenablage weiter, hier nur eingebettet." breit={1400}
+      rechts={<span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>{schalter}{fenster}</span>}>
+      <Karte i={0} akzent={LEUCHT.geld} style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{ padding: '18px 20px 0' }}>
+          <Ueberschrift farbe={LEUCHT.geld}>Finanz-Dashboard</Ueberschrift>
+          <p style={{ fontSize: TYP.bedien, color: C.inkDim, margin: '0 0 14px', maxWidth: 680, lineHeight: 1.55 }}>
+            Was daraus ins System gehört, holen wir gezielt herüber: Zahlungen landen in der{' '}
+            <Link href="/os/finanzen" style={{ color: C.aktiv, textDecoration: 'none' }}>Prioritätenliste</Link>, die Lage im{' '}
+            <Link href="/os/controlling" style={{ color: C.aktiv, textDecoration: 'none' }}>Controlling</Link>.
+          </p>
+        </div>
+        <iframe src="/finanz-dashboard.html" title="Finanz-Dashboard"
+          style={{ display: 'block', width: '100%', border: 0, background: C.grund, height: 'max(560px, calc(100vh - 260px))' }} />
+      </Karte>
+    </Seite>
   );
 }

@@ -8,16 +8,18 @@
 // 1. Geschützte Felder (Steuer-ID, SV-Nummer, IBAN) stehen verdeckt. Zeigen
 //    ist ein bewusster Klick — nicht der Normalzustand, wenn jemand mitguckt.
 // 2. Gespeichert wird erst beim Verlassen des Feldes, nicht bei jedem Zeichen.
+// 24.09.: auf das lebendige Muster umgezogen.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
-import { THEME as T } from '@/lib/make-one/os-data';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { KARTEIEN, verdecken, type Feld, type Kartei } from '@/lib/make-one/stammdaten-data';
 import { modusLesen, beiWechsel } from '@/lib/make-one/arbeitsplatz-browser';
-import { Seitenkopf } from './Seitenkopf';
+import { Seite, Karte, Ueberschrift, Leer, Knopf, feld, LEUCHT } from './schlank';
 
-const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+const HAAR = 'rgba(255,255,255,.06)';
+const beschriftung: CSSProperties = { fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
+const nackt: CSSProperties = { background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: C.inkLeise, display: 'flex' };
 
 type Satz = Record<string, string> & { id: string };
 type Bestand = { firmen: Satz[]; konten: Satz[]; personen: Satz[]; partner: Satz[] };
@@ -57,152 +59,135 @@ export function StammdatenView() {
   const karteien = KARTEIEN.filter(k => modus === 'alles' || k.modus === 'beides' || k.modus === modus);
 
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 70px' }}>
-        <Seitenkopf
-          rubrik={<>System</>}
-          titel={<>Stammdaten</>}
-          satz={<>Die Angaben, die man dreimal im Jahr braucht und dann sucht. Sie liegen hier auf dem Rechner, werden täglich gesichert und gehen nirgendwohin.</>}
+    <Seite titel="Stammdaten" unter="Die Angaben, die man dreimal im Jahr braucht und dann sucht. Sie liegen hier auf dem Rechner, werden täglich gesichert und gehen nirgendwohin.">
+      <Karte i={0}>
+        <Ueberschrift farbe={LEUCHT.gut}>Verdeckt, bis du hinschaust</Ueberschrift>
+        <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6, margin: 0 }}>
+          Steuer-ID, Sozialversicherungsnummer und IBAN stehen verdeckt. Zum Ansehen einmal auf das Auge tippen —
+          so steht nichts offen auf dem Bildschirm, wenn jemand danebensitzt.
+        </p>
+      </Karte>
+
+      {ladeFehler && (
+        <Karte i={1} akzent={LEUCHT.kritisch}>
+          <Ueberschrift farbe={LEUCHT.kritisch}>Stammdaten nicht geladen</Ueberschrift>
+          <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, margin: 0 }}>
+            Damit nichts überschrieben wird, ist das Speichern gesperrt. Seite neu laden.
+          </p>
+        </Karte>
+      )}
+      {fehler && !ladeFehler && (
+        <Karte i={1} akzent={LEUCHT.achtung}>
+          <Ueberschrift farbe={LEUCHT.achtung}>Nicht gespeichert</Ueberschrift>
+          <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, margin: 0 }}>{fehler}</p>
+        </Karte>
+      )}
+
+      {d === null && !ladeFehler && <Karte i={1}><Leer>lädt …</Leer></Karte>}
+
+      {d && karteien.map((k, i) => (
+        <KarteiBlock
+          key={k.id}
+          i={i + 1}
+          kartei={k}
+          saetze={d[k.id]}
+          offen={offen}
+          aufdecken={(id) => setOffen(o => ({ ...o, [id]: !o[id] }))}
+          aendern={(saetze) => sichern({ ...d, [k.id]: saetze })}
+          gesperrt={ladeFehler}
         />
-        <div style={{ ...panel, borderLeft: `3px solid ${T.accent}`, padding: '11px 15px', marginBottom: 20, maxWidth: 640 }}>
-          <div style={{ fontSize: 12.5, color: T.inkDim, lineHeight: 1.6 }}>
-            Steuer-ID, Sozialversicherungsnummer und IBAN stehen verdeckt. Zum Ansehen einmal auf das Auge tippen —
-            so steht nichts offen auf dem Bildschirm, wenn jemand danebensitzt.
-          </div>
-        </div>
-
-        {ladeFehler && (
-          <div style={{ ...panel, borderLeft: `3px solid ${T.crit}`, padding: '13px 16px', marginBottom: 16 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: T.crit }}>Stammdaten nicht geladen</div>
-            <div style={{ fontSize: 12.5, color: T.muted, marginTop: 3, lineHeight: 1.55 }}>
-              Damit nichts überschrieben wird, ist das Speichern gesperrt. Seite neu laden.
-            </div>
-          </div>
-        )}
-        {fehler && !ladeFehler && (
-          <div style={{ ...panel, borderLeft: `3px solid ${T.amber}`, padding: '13px 16px', marginBottom: 16 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: T.amber }}>Nicht gespeichert</div>
-            <div style={{ fontSize: 12.5, color: T.muted, marginTop: 3, lineHeight: 1.55 }}>{fehler}</div>
-          </div>
-        )}
-
-        {d === null && !ladeFehler && <div style={{ fontSize: 13, color: T.muted }}>lädt …</div>}
-
-        {d && karteien.map(k => (
-          <KarteiBlock
-            key={k.id}
-            kartei={k}
-            saetze={d[k.id]}
-            offen={offen}
-            aufdecken={(id) => setOffen(o => ({ ...o, [id]: !o[id] }))}
-            aendern={(saetze) => sichern({ ...d, [k.id]: saetze })}
-            gesperrt={ladeFehler}
-          />
-        ))}
-      </div>
-    </div>
+      ))}
+    </Seite>
   );
 }
 
-function KarteiBlock({ kartei, saetze, offen, aufdecken, aendern, gesperrt }: {
-  kartei: Kartei; saetze: Satz[]; offen: Record<string, boolean>;
+function KarteiBlock({ i, kartei, saetze, offen, aufdecken, aendern, gesperrt }: {
+  i: number; kartei: Kartei; saetze: Satz[]; offen: Record<string, boolean>;
   aufdecken: (id: string) => void; aendern: (s: Satz[]) => void; gesperrt: boolean;
 }) {
   const neu = () => aendern([...saetze, { id: `${kartei.id}-${saetze.length + 1}-${saetze.length}`, [kartei.titelFeld]: '' } as Satz]);
 
   return (
-    <section style={{ marginBottom: 26 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 4 }}>
-        <div>
-          <div style={{ fontSize: 17, fontWeight: 600 }}>{kartei.titel}</div>
-          <div style={{ fontSize: 12.5, color: T.muted, marginTop: 2, lineHeight: 1.5 }}>{kartei.satz}</div>
-        </div>
-        <button onClick={neu} disabled={gesperrt} style={{
-          flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 5, background: 'transparent',
-          border: `1px solid ${T.line}`, borderRadius: 9, padding: '7px 12px', color: gesperrt ? T.muted : T.inkDim,
-          fontSize: 12.5, fontFamily: T.sans, cursor: gesperrt ? 'not-allowed' : 'pointer',
-        }}><Plus size={13} /> Neu</button>
-      </div>
+    <Karte i={i}>
+      <Ueberschrift rechts={<Knopf leise onClick={neu} aus={gesperrt}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Plus size={13} /> Neu</span></Knopf>}>
+        {kartei.titel}
+      </Ueberschrift>
+      <p style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5, margin: '0 0 6px' }}>{kartei.satz}</p>
 
-      {saetze.length === 0 && (
-        <div style={{ ...panel, padding: '15px 18px', marginTop: 10, fontSize: 13, color: T.muted, lineHeight: 1.6 }}>
-          Noch nichts eingetragen. Über „Neu" die erste Karte anlegen.
-        </div>
-      )}
+      {saetze.length === 0 && <Leer>Noch nichts eingetragen. Über „Neu" die erste Karte anlegen.</Leer>}
 
-      {saetze.map((s, i) => (
-        <div key={s.id} style={{ ...panel, padding: '15px 18px', marginTop: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+      {saetze.map((s, idx) => (
+        <div key={s.id} style={{ padding: '14px 0 16px', borderTop: `1px solid ${HAAR}` }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 14.5, fontWeight: 600 }}>{s[kartei.titelFeld] || 'Ohne Namen'}</div>
+              <div style={{ fontSize: TYP.body, fontWeight: 600 }}>{s[kartei.titelFeld] || 'Ohne Namen'}</div>
               {kartei.untertitelFeld && s[kartei.untertitelFeld] && (
-                <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>{s[kartei.untertitelFeld]}</div>
+                <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 2 }}>{s[kartei.untertitelFeld]}</div>
               )}
             </div>
             <button
-              onClick={() => { if (confirm(`„${s[kartei.titelFeld] || 'Diese Karte'}" wirklich löschen?`)) aendern(saetze.filter((_, j) => j !== i)); }}
-              aria-label="Karte löschen"
-              style={{ flex: '0 0 auto', background: 'transparent', border: 'none', color: T.muted, cursor: 'pointer', padding: 4 }}>
+              onClick={() => { if (confirm(`„${s[kartei.titelFeld] || 'Diese Karte'}" wirklich löschen?`)) aendern(saetze.filter((_, j) => j !== idx)); }}
+              aria-label="Karte löschen" title="Karte löschen"
+              style={{ ...nackt, flex: '0 0 auto' }}>
               <Trash2 size={14} />
             </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 10 }}>
             {kartei.felder.map(f => (
               <FeldZeile
                 key={f.key} feld={f} wert={s[f.key] ?? ''}
                 sichtbar={!f.schutz || !!offen[`${s.id}.${f.key}`]}
                 umschalten={() => aufdecken(`${s.id}.${f.key}`)}
-                setzen={(v) => aendern(saetze.map((x, j) => j === i ? { ...x, [f.key]: v } : x))}
+                setzen={(v) => aendern(saetze.map((x, j) => j === idx ? { ...x, [f.key]: v } : x))}
               />
             ))}
           </div>
         </div>
       ))}
-    </section>
+    </Karte>
   );
 }
 
-function FeldZeile({ feld, wert, sichtbar, umschalten, setzen }: {
+function FeldZeile({ feld: f, wert, sichtbar, umschalten, setzen }: {
   feld: Feld; wert: string; sichtbar: boolean; umschalten: () => void; setzen: (v: string) => void;
 }) {
   // Beim Tippen nur lokal — gespeichert wird beim Verlassen des Feldes.
   const [entwurf, setEntwurf] = useState(wert);
   useEffect(() => { setEntwurf(wert); }, [wert]);
 
-  const eingabe = {
-    width: '100%', background: T.void, border: `1px solid ${T.line}`, borderRadius: 8,
-    padding: '8px 10px', color: T.ink, fontSize: 13, fontFamily: feld.schutz ? T.mono : T.sans, outline: 'none',
-  } as const;
+  // Geschützte Werte (IBAN, Steuer-ID) in gleichbreiter Schrift — das sind Codes, keine Sätze.
+  const eingabe: CSSProperties = { ...feld, padding: '9px 12px', fontSize: TYP.bedien, fontFamily: f.schutz ? SCHRIFT.mono : SCHRIFT.text };
 
-  const spalte = feld.art === 'lang' ? { gridColumn: '1 / -1' } : undefined;
+  const spalte = f.art === 'lang' ? { gridColumn: '1 / -1' } : undefined;
 
   return (
     <div style={spalte}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 3 }}>
-        <label style={{ ...lbl, fontSize: 11 }}>{feld.label}</label>
-        {feld.schutz && (
-          <button onClick={umschalten} aria-label={sichtbar ? 'Verdecken' : 'Zeigen'}
-            style={{ background: 'transparent', border: 'none', color: T.muted, cursor: 'pointer', padding: 0, display: 'flex' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 4 }}>
+        <label style={beschriftung}>{f.label}</label>
+        {f.schutz && (
+          <button onClick={umschalten} aria-label={sichtbar ? 'Verdecken' : 'Zeigen'} title={sichtbar ? 'Verdecken' : 'Zeigen'}
+            style={{ ...nackt, padding: 0 }}>
             {sichtbar ? <EyeOff size={12} /> : <Eye size={12} />}
           </button>
         )}
       </div>
 
-      {feld.schutz && !sichtbar ? (
+      {f.schutz && !sichtbar ? (
         <div onClick={umschalten} role="button" tabIndex={0}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') umschalten(); }}
-          style={{ ...eingabe, cursor: 'pointer', color: wert ? T.inkDim : T.muted, letterSpacing: '.06em' }}>
+          style={{ ...eingabe, cursor: 'pointer', color: wert ? C.inkDim : C.inkLeise, letterSpacing: '.06em' }}>
           {wert ? verdecken(wert) : '—'}
         </div>
-      ) : feld.art === 'lang' ? (
+      ) : f.art === 'lang' ? (
         <textarea value={entwurf} onChange={e => setEntwurf(e.target.value)}
           onBlur={() => { if (entwurf !== wert) setzen(entwurf); }}
-          rows={2} placeholder={feld.hinweis} style={{ ...eingabe, resize: 'vertical', lineHeight: 1.5 }} />
+          rows={2} placeholder={f.hinweis} style={{ ...eingabe, resize: 'vertical', lineHeight: 1.5 }} />
       ) : (
         <input value={entwurf} onChange={e => setEntwurf(e.target.value)}
           onBlur={() => { if (entwurf !== wert) setzen(entwurf); }}
-          type={feld.art === 'datum' ? 'date' : 'text'} placeholder={feld.hinweis} style={eingabe} />
+          type={f.art === 'datum' ? 'date' : 'text'} placeholder={f.hinweis}
+          style={{ ...eingabe, ...(f.art === 'datum' ? { colorScheme: 'dark' as const } : {}) }} />
       )}
     </div>
   );

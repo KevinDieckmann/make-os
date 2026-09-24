@@ -6,24 +6,22 @@
 // Drei Ebenen: EINGEBEN (die Pflege-Felder mit Live-Status) · VERBINDEN
 // (Mail, Kalender, Whoop, M365, Erinnerungen) · AGENTEN (einstellen).
 // Jede Zeile sagt ehrlich: gepflegt, leer oder fehlt — mit direktem Absprung.
+// 24.09.: auf das lebendige Muster umgezogen.
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
-import { Seitenkopf } from './Seitenkopf';
-
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Zahl, Fortschritt, LEUCHT } from './schlank';
 
 type Ton = 'ok' | 'acht' | 'fehlt' | 'neutral';
-const TON_FARBE: Record<Ton, string> = { ok: T.accent, acht: T.amber, fehlt: T.crit, neutral: T.muted };
+const TON_FARBE: Record<Ton, string> = { ok: LEUCHT.gut, acht: LEUCHT.achtung, fehlt: LEUCHT.kritisch, neutral: C.inkLeise };
 
-interface Zeile { bereich: string; status: string; ton: Ton; href: string; wer?: string }
+interface Eintrag { bereich: string; status: string; ton: Ton; href: string; wer?: string }
 
 export function DatenbasisView() {
   const heute = localDay();
-  const [zeilen, setZeilen] = useState<Zeile[] | null>(null);
+  const [zeilen, setZeilen] = useState<Eintrag[] | null>(null);
   const [verb, setVerb] = useState<{ id: string; name: string; konfiguriert: boolean; verbunden: boolean }[]>([]);
   const [agenten, setAgenten] = useState<{ live: number } | null>(null);
 
@@ -36,7 +34,7 @@ export function DatenbasisView() {
         hole('/api/state/kunden'), hole('/api/state/journal'),
       ]);
 
-      const z: Zeile[] = [];
+      const z: Eintrag[] = [];
 
       // ── Geld (Malins Revier) ──
       const staende = (fplan?.firmen ?? []).filter((f: { kontostand: number | null }) => f.kontostand != null).length;
@@ -99,82 +97,94 @@ export function DatenbasisView() {
     fetch('/api/state/agents').then(r => r.json()).then(() => setAgenten({ live: 12 })).catch(() => setAgenten({ live: 12 }));
   }, [heute]);
 
-  const chip = (ton: Ton, text: string) => (
-    <span style={{ fontFamily: T.mono, fontSize: 11, color: TON_FARBE[ton], border: `1px solid ${TON_FARBE[ton]}44`, borderRadius: 5, padding: '2px 8px', whiteSpace: 'nowrap' }}>{text}</span>
-  );
-
   const fehltN = (zeilen ?? []).filter(z => z.ton === 'fehlt').length;
   const achtN = (zeilen ?? []).filter(z => z.ton === 'acht').length;
+  const gepflegtN = zeilen ? zeilen.length - fehltN - achtN : 0;
+  const ampel = fehltN ? LEUCHT.kritisch : achtN ? LEUCHT.achtung : LEUCHT.gut;
+
+  const verbindungen: { name: string; status: string; ton: Ton; href: string }[] = [
+    { name: 'Apple Mail', status: 'läuft — beide Postfächer live in der Inbox', ton: 'ok', href: '/os/inbox' },
+    { name: 'Apple Kalender', status: 'läuft — lesen & schreiben (Termine, Blöcke)', ton: 'ok', href: '/os/kalender' },
+    { name: 'Apple Erinnerungen', status: 'braucht einmalige macOS-Freigabe (Systemeinstellungen → Datenschutz)', ton: 'acht', href: '/os/aufgaben' },
+    ...verb.map(v => ({
+      name: v.name,
+      status: v.verbunden ? 'verbunden — Daten fließen' : v.konfiguriert ? 'bereit — einmal Verbinden klicken' : v.id === 'whoop' ? 'App registrieren (5 Min) → Morgen-Check füllt sich selbst' : 'Azure-App registrieren (5 Min) → Postfach & Kalender live',
+      ton: (v.verbunden ? 'ok' : v.konfiguriert ? 'acht' : 'fehlt') as Ton,
+      href: '/os/verbindungen',
+    })),
+    { name: 'Vivid (Konten)', status: 'keine offene API — Stände manuell oder zusammen über Chrome', ton: 'acht', href: '/os/finanzen' },
+  ];
+
+  const pfeil = <span style={{ color: C.inkLeise }}>›</span>;
 
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div className="stagger" style={{ maxWidth: 860, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
-        <Seitenkopf
-          rubrik={<>Datenbasis</>}
-          titel={<>Was das System trägt.</>}
-          satz={<>Eine Wahrheit, drei Ebenen: <b style={{ color: T.ink }}>eingeben</b> was nur ihr wisst, <b style={{ color: T.ink }}>verbinden</b> was automatisch fließen kann, <b style={{ color: T.ink }}>Agenten</b> arbeiten lassen. Jede Zeile springt direkt ins richtige Feld.</>}
-        />
-
-        {/* Ampel-Kopf */}
-        {zeilen && (
-          <div style={{ ...panel, borderLeft: `3px solid ${fehltN ? T.crit : achtN ? T.amber : T.accent}`, padding: '11px 16px', margin: '16px 0 14px', display: 'flex', gap: 16, alignItems: 'baseline', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13.5, fontWeight: 700 }}>
+    <Seite titel="Datenbasis" unter={<>Eine Wahrheit, drei Ebenen: <b style={{ color: C.ink, fontWeight: 600 }}>eingeben</b> was nur ihr wisst, <b style={{ color: C.ink, fontWeight: 600 }}>verbinden</b> was automatisch fließen kann, <b style={{ color: C.ink, fontWeight: 600 }}>Agenten</b> arbeiten lassen. Jede Zeile springt direkt ins richtige Feld.</>}>
+      {/* Ampel-Kopf */}
+      <Karte i={0} akzent={zeilen ? ampel : undefined}>
+        <Ueberschrift farbe={zeilen ? ampel : C.inkLeise} rechts={zeilen ? `${gepflegtN} von ${zeilen.length} gepflegt` : undefined}>Was das System trägt</Ueberschrift>
+        {!zeilen ? (
+          <Leer>prüfe die Stores …</Leer>
+        ) : (
+          <>
+            <div style={{ fontSize: TYP.titel, fontWeight: 700, letterSpacing: '-.01em', marginBottom: 14 }}>
               {fehltN ? `${fehltN} Bereiche fehlen ganz` : achtN ? `${achtN} Bereiche brauchen euch` : 'Datenbasis steht — alles gepflegt'}
-            </span>
-            <span style={{ fontSize: 12, color: T.muted }}>{(zeilen.length - fehltN - achtN)} von {zeilen.length} gepflegt</span>
-          </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 16 }}>
+              <Zahl wert={gepflegtN ? String(gepflegtN) : undefined} label="gepflegt" farbe={LEUCHT.gut} />
+              <Zahl wert={achtN ? String(achtN) : undefined} label="brauchen euch" farbe={LEUCHT.achtung} />
+              <Zahl wert={fehltN ? String(fehltN) : undefined} label="fehlen ganz" farbe={LEUCHT.kritisch} />
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <Fortschritt anteil={zeilen.length ? gepflegtN / zeilen.length : 0} farbe={ampel} />
+            </div>
+          </>
         )}
+      </Karte>
 
-        {/* ── Ebene 1: Eingeben ── */}
-        <div style={{ ...lbl, margin: '18px 0 8px' }}>Eingeben — was nur ihr wisst</div>
-        <div style={{ ...panel, overflow: 'hidden' }}>
-          {!zeilen && <div style={{ padding: '24px 18px', fontFamily: T.mono, fontSize: 12, color: T.muted }}>prüfe die Stores …</div>}
-          {(zeilen ?? []).map((z, i) => (
-            <Link key={z.bereich} href={z.href} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '11px 16px', textDecoration: 'none', borderTop: i ? `1px solid ${T.lineSoft}` : 0, flexWrap: 'wrap' }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: TON_FARBE[z.ton], flex: '0 0 auto' }} />
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: T.ink, minWidth: 200, flex: 1 }}>{z.bereich}</span>
-              {z.wer && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, border: `1px solid ${T.line}`, borderRadius: 5, padding: '1px 7px' }}>{z.wer}</span>}
-              <span style={{ fontSize: 12, color: z.ton === 'ok' ? T.inkDim : TON_FARBE[z.ton] }}>{z.status}</span>
-              <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk }}>›</span>
+      {/* ── Ebene 1: Eingeben ── */}
+      <Karte i={1}>
+        <Ueberschrift farbe={LEUCHT.geld}>Eingeben — was nur ihr wisst</Ueberschrift>
+        {!zeilen && <Leer>prüfe die Stores …</Leer>}
+        <Liste>
+          {(zeilen ?? []).map(z => (
+            <Link key={z.bereich} href={z.href} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Zeile onClick={() => {}}
+                links={<Punkt farbe={TON_FARBE[z.ton]} />}
+                titel={z.bereich}
+                unter={<span style={{ color: z.ton === 'ok' ? C.inkLeise : TON_FARBE[z.ton] }}>{z.status}</span>}
+                rechts={<span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{z.wer && <Chip farbe={C.inkLeise}>{z.wer}</Chip>}{pfeil}</span>} />
             </Link>
           ))}
-        </div>
+        </Liste>
+      </Karte>
 
-        {/* ── Ebene 2: Verbinden ── */}
-        <div style={{ ...lbl, margin: '22px 0 8px' }}>Verbinden — was von selbst fließen soll</div>
-        <div style={{ ...panel, overflow: 'hidden' }}>
-          {[
-            { name: 'Apple Mail', status: 'läuft — beide Postfächer live in der Inbox', ton: 'ok' as Ton, href: '/os/inbox' },
-            { name: 'Apple Kalender', status: 'läuft — lesen & schreiben (Termine, Blöcke)', ton: 'ok' as Ton, href: '/os/kalender' },
-            { name: 'Apple Erinnerungen', status: 'braucht einmalige macOS-Freigabe (Systemeinstellungen → Datenschutz)', ton: 'acht' as Ton, href: '/os/aufgaben' },
-            ...verb.map(v => ({
-              name: v.name,
-              status: v.verbunden ? 'verbunden — Daten fließen' : v.konfiguriert ? 'bereit — einmal Verbinden klicken' : v.id === 'whoop' ? 'App registrieren (5 Min) → Morgen-Check füllt sich selbst' : 'Azure-App registrieren (5 Min) → Postfach & Kalender live',
-              ton: (v.verbunden ? 'ok' : v.konfiguriert ? 'acht' : 'fehlt') as Ton,
-              href: '/os/verbindungen',
-            })),
-            { name: 'Vivid (Konten)', status: 'keine offene API — Stände manuell oder zusammen über Chrome', ton: 'acht' as Ton, href: '/os/finanzen' },
-          ].map((v, i) => (
-            <Link key={v.name} href={v.href} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '11px 16px', textDecoration: 'none', borderTop: i ? `1px solid ${T.lineSoft}` : 0, flexWrap: 'wrap' }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: TON_FARBE[v.ton], flex: '0 0 auto' }} />
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: T.ink, minWidth: 160, flex: '0 0 auto' }}>{v.name}</span>
-              <span style={{ fontSize: 12, color: v.ton === 'ok' ? T.inkDim : TON_FARBE[v.ton], flex: 1, minWidth: 220 }}>{v.status}</span>
-              <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk }}>›</span>
+      {/* ── Ebene 2: Verbinden ── */}
+      <Karte i={2}>
+        <Ueberschrift farbe={LEUCHT.puls}>Verbinden — was von selbst fließen soll</Ueberschrift>
+        <Liste>
+          {verbindungen.map(v => (
+            <Link key={v.name} href={v.href} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Zeile onClick={() => {}}
+                links={<Punkt farbe={TON_FARBE[v.ton]} />}
+                titel={v.name}
+                unter={<span title={v.status} style={{ color: v.ton === 'ok' ? C.inkLeise : TON_FARBE[v.ton] }}>{v.status}</span>}
+                rechts={pfeil} />
             </Link>
           ))}
-        </div>
+        </Liste>
+      </Karte>
 
-        {/* ── Ebene 3: Agenten ── */}
-        <div style={{ ...lbl, margin: '22px 0 8px' }}>Agenten — wer für euch arbeitet</div>
-        <div style={{ ...panel, padding: '13px 16px', display: 'flex', gap: 14, alignItems: 'baseline', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13.5, fontWeight: 600 }}>‎{agenten ? `12 Agenten live` : '…'} · Autonomie, Modell & Freigaben je Agent einstellbar</span>
-          <Link href="/os/agenten" style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, textDecoration: 'none', marginLeft: 'auto' }}>Agentensystem öffnen ›</Link>
+      {/* ── Ebene 3: Agenten ── */}
+      <Karte i={3}>
+        <Ueberschrift farbe={LEUCHT.agenten} rechts={<Link href="/os/agenten" style={{ color: C.inkLeise, textDecoration: 'none' }}>Agentensystem öffnen ›</Link>}>Agenten — wer für euch arbeitet</Ueberschrift>
+        <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Zahl wert={agenten ? String(agenten.live) : undefined} label="Agenten live" farbe={LEUCHT.agenten} />
+          <span style={{ fontSize: TYP.bedien, color: C.inkDim, flex: '1 1 220px' }}>Autonomie, Modell & Freigaben je Agent einstellbar</span>
         </div>
-
-        <div style={{ fontSize: 11.5, color: T.muted, marginTop: 16, lineHeight: 1.55 }}>
-          Faustregel: Rot heute klären · Amber diese Woche · Grün läuft. Das Finanz-Uhrwerk (2× im Monat) und das Tagesritual halten die Basis danach von selbst frisch.
-        </div>
-      </div>
-    </div>
+        <p style={{ fontSize: 12, color: C.inkLeise, margin: '16px 0 0', lineHeight: 1.55 }}>
+          Faustregel: Rot heute klären · Gelb diese Woche · Grün läuft. Das Finanz-Uhrwerk (2× im Monat) und das Tagesritual halten die Basis danach von selbst frisch.
+        </p>
+      </Karte>
+    </Seite>
   );
 }

@@ -8,15 +8,20 @@
 // Der Plan prüft sich selbst: Schritte, die das System messen kann, stehen mit
 // echtem Zustand da („5 überfällig von 56"). Nur was sich nicht messen lässt,
 // hakt man von Hand ab — und das wird sofort gespeichert.
+// 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Zeile, LEUCHT).
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { SCHRITTE, SPUREN, schritteVon, type Schritt, type Spur } from '@/lib/make-one/onboarding-data';
-import { Seitenkopf } from './Seitenkopf';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Fortschritt as FortschrittBalken, LEUCHT } from './schlank';
 
-const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
+/** Ein Verweis, der wie ein leiser Knopf aussieht. */
+const linkKnopf: CSSProperties = {
+  fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '9px 15px', borderRadius: 11, whiteSpace: 'nowrap',
+  background: 'rgba(255,255,255,.06)', color: C.ink, textDecoration: 'none',
+};
+const link: CSSProperties = { color: C.inkDim, textDecoration: 'none' };
 
 interface Befund { erfuellt: boolean; wert: string }
 interface Zustand { erledigt: Record<string, { at: string; von: string }>; befunde: Record<string, Befund> }
@@ -52,30 +57,41 @@ export function useOnboarding() {
   return { z, haken, laden };
 }
 
+/** Fortschritt einer Spur: „12/20 · noch 45 Min." mit leuchtendem Balken. */
 export function Fortschritt({ spur, z, gross }: { spur: Spur; z: Zustand | null; gross?: boolean }) {
   const alle = schritteVon(spur);
   const fertig = alle.filter(s => istFertig(s, z)).length;
   const anteil = alle.length ? fertig / alle.length : 0;
   const offen = alle.filter(s => !istFertig(s, z));
   const minuten = offen.reduce((s, x) => s + x.minuten, 0);
+  const farbe = anteil === 1 ? LEUCHT.gut : LEUCHT.schlaf;
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
-        <span style={{ fontSize: gross ? 21 : 17, fontWeight: 700, color: anteil === 1 ? T.accent : T.ink, fontVariantNumeric: 'tabular-nums' }}>
-          {fertig}<span style={{ color: T.muted, fontWeight: 400 }}>/{alle.length}</span>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: SCHRIFT.display, fontSize: gross ? 'clamp(28px,4vw,36px)' : TYP.zahl, fontWeight: 700, letterSpacing: '-.03em', lineHeight: 1, color: anteil === 1 ? LEUCHT.gut : C.ink, fontVariantNumeric: 'tabular-nums' }}>
+          {fertig}<span style={{ color: C.inkLeise, fontWeight: 400 }}>/{alle.length}</span>
         </span>
-        <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>
+        <span style={{ fontSize: 12.5, color: C.inkLeise }}>
           {anteil === 1 ? 'fertig' : `noch ${minuten} Min.`}
         </span>
       </div>
-      <div style={{ height: 6, background: T.void, borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{ width: `${Math.round(anteil * 100)}%`, height: '100%', background: anteil === 1 ? T.accent : T.accentInk, borderRadius: 3, transition: 'width .2s ease' }} />
-      </div>
+      <FortschrittBalken anteil={anteil} farbe={farbe} />
     </div>
   );
 }
 
-/** Eine Schritt-Karte. Funktion statt Komponente — sonst baut React sie bei jedem Klick neu auf. */
+/** Der Haken am Schritt — leuchtet grün, wenn getan; grau, wenn die Software ihn selbst setzt. */
+function Hakerl({ fertig, automatisch, onClick, titel, label }: { fertig: boolean; automatisch: boolean; onClick: () => void; titel: string; label: string }) {
+  return (
+    <button onClick={e => { e.stopPropagation(); onClick(); }} disabled={automatisch} title={titel} aria-label={label} className="fassbar" style={{
+      width: 24, height: 24, borderRadius: 8, flex: '0 0 auto', cursor: automatisch ? 'default' : 'pointer', display: 'grid', placeItems: 'center', padding: 0,
+      border: `2px solid ${fertig ? LEUCHT.gut : C.inkLeise}`, background: fertig ? LEUCHT.gut : 'transparent', color: C.grund, fontSize: 13, fontWeight: 800,
+      boxShadow: fertig ? `0 0 12px ${LEUCHT.gut}88` : undefined, transition: 'background .2s ease, box-shadow .2s ease',
+    }}>{fertig ? '✓' : ''}</button>
+  );
+}
+
+/** Eine Schritt-Zeile. Funktion statt Komponente — sonst baut React sie bei jedem Klick neu auf. */
 function karte(s: Schritt, nr: number, z: Zustand | null, haken: (id: string, an: boolean, von: Spur) => void) {
   const befund = s.pruefung ? z?.befunde[s.pruefung] : undefined;
   const automatisch = !!befund?.erfuellt;
@@ -83,71 +99,47 @@ function karte(s: Schritt, nr: number, z: Zustand | null, haken: (id: string, an
   const fertig = automatisch || handisch;
 
   return (
-    <div key={s.id} style={{
-      ...panel, padding: '15px 18px', marginBottom: 10,
-      borderLeft: `3px solid ${fertig ? T.accent : T.line}`,
-      opacity: fertig ? 0.72 : 1,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-        <button
-          onClick={() => { if (!automatisch) haken(s.id, !handisch, s.spur); }}
-          disabled={automatisch}
-          title={automatisch ? 'Das prüft die Software selbst' : handisch ? 'Häkchen entfernen' : 'Als erledigt markieren'}
-          aria-label={`${s.titel} ${fertig ? 'erledigt' : 'offen'}`}
-          style={{
-            flex: '0 0 auto', width: 20, height: 20, marginTop: 1, borderRadius: 6, cursor: automatisch ? 'default' : 'pointer',
-            border: `1.5px solid ${fertig ? T.accent : T.line}`, background: fertig ? T.accent : 'transparent',
-            color: T.void, fontSize: 12, lineHeight: 1, display: 'grid', placeItems: 'center', padding: 0,
-          }}>
-          {fertig ? '✓' : ''}
-        </button>
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{String(nr).padStart(2, '0')}</span>
-            <span style={{ fontSize: 14.5, fontWeight: 600, color: fertig ? T.inkDim : T.ink, textDecoration: fertig ? 'line-through' : 'none' }}>{s.titel}</span>
-            {s.wer && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, border: `1px solid ${T.line}`, borderRadius: 5, padding: '1px 6px' }}>{s.wer}</span>}
-            <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginLeft: 'auto' }}>{s.minuten} Min.</span>
+    <div key={s.id} style={{ opacity: fertig ? 0.72 : 1 }}>
+      <Zeile
+        links={
+          <Hakerl fertig={fertig} automatisch={automatisch}
+            onClick={() => { if (!automatisch) haken(s.id, !handisch, s.spur); }}
+            titel={automatisch ? 'Das prüft die Software selbst' : handisch ? 'Häkchen entfernen' : 'Als erledigt markieren'}
+            label={`${s.titel} ${fertig ? 'erledigt' : 'offen'}`} />
+        }
+        titel={<><span style={{ color: C.inkLeise, fontWeight: 400 }}>{String(nr).padStart(2, '0')} · </span><span style={{ color: fertig ? C.inkDim : C.ink, textDecoration: fertig ? 'line-through' : 'none' }}>{s.titel}</span></>}
+        unter={<span title={s.warum}>{s.warum}</span>}
+        rechts={
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {s.wer && <Chip farbe={LEUCHT.beziehung}>{s.wer}</Chip>}
+            {befund && <Chip farbe={befund.erfuellt ? LEUCHT.gut : LEUCHT.achtung}>{befund.erfuellt ? '✓ ' : '◇ '}{befund.wert}</Chip>}
+            <Chip farbe={C.inkLeise}>{s.minuten} Min.</Chip>
           </div>
+        } />
 
-          <p style={{ fontSize: 12.5, color: T.muted, lineHeight: 1.55, margin: '5px 0 0' }}>{s.warum}</p>
-
-          {!fertig && (
-            <ol style={{ margin: '9px 0 0', paddingLeft: 17 }}>
+      <div style={{ padding: '4px 2px 12px 38px' }}>
+        {!fertig && (
+          <>
+            <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, margin: 0 }}>{s.warum}</p>
+            <ol style={{ margin: '8px 0 0', paddingLeft: 17 }}>
               {s.wie.map((w, i) => (
-                <li key={i} style={{ fontSize: 12.5, color: T.inkDim, lineHeight: 1.6, marginBottom: 2 }}>{w}</li>
+                <li key={i} style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6, marginBottom: 2 }}>{w}</li>
               ))}
             </ol>
-          )}
-
-          {s.befehl && !fertig && (
-            <pre style={{
-              margin: '9px 0 0', padding: '9px 11px', background: T.void, border: `1px solid ${T.line}`, borderRadius: 9,
-              fontFamily: T.mono, fontSize: 11, color: T.accentInk, overflowX: 'auto', whiteSpace: 'pre',
-            }}>{s.befehl}</pre>
-          )}
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 9 }}>
-            {befund && (
-              <span style={{
-                fontFamily: T.mono, fontSize: 11, borderRadius: 6, padding: '2px 8px',
-                color: befund.erfuellt ? T.accent : T.amber,
-                border: `1px solid ${befund.erfuellt ? T.accent : T.amber}44`,
-                background: `${befund.erfuellt ? T.accent : T.amber}12`,
-              }}>
-                {befund.erfuellt ? '✓ ' : '◇ '}{befund.wert}
-              </span>
+            {s.befehl && (
+              <pre style={{
+                margin: '9px 0 0', padding: '9px 11px', background: 'rgba(255,255,255,.05)', borderRadius: 9,
+                fontFamily: SCHRIFT.mono, fontSize: 12, color: LEUCHT.geld, overflowX: 'auto', whiteSpace: 'pre',
+              }}>{s.befehl}</pre>
             )}
-            {s.wo && (
-              <Link href={s.wo.href} style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, textDecoration: 'none' }}>{s.wo.label} ›</Link>
-            )}
-            {handisch && !automatisch && z?.erledigt[s.id] && (
-              <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>
-                abgehakt von {z.erledigt[s.id].von}
-              </span>
-            )}
+          </>
+        )}
+        {(s.wo || (handisch && !automatisch && z?.erledigt[s.id])) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: fertig ? 0 : 8, fontSize: 12, color: C.inkLeise }}>
+            {s.wo && <Link href={s.wo.href} style={link}>{s.wo.label} ›</Link>}
+            {handisch && !automatisch && z?.erledigt[s.id] && <span>abgehakt von {z.erledigt[s.id].von}</span>}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -159,18 +151,25 @@ export function SpurView({ spur }: { spur: Spur }) {
   const schritte = schritteVon(spur);
 
   return (
-    <Rahmen titel={meta.titel} unter={meta.satz}>
-      <div style={{ ...panel, padding: '15px 19px', marginBottom: 16 }}>
+    <Rahmen titel={meta.titel} unter={meta.satz} rechts={<Link href="/os/onboarding" className="fassbar" style={linkKnopf}>Onboarding ›</Link>}>
+      <Karte i={0} akzent={LEUCHT.schlaf}>
+        <Ueberschrift farbe={LEUCHT.schlaf}>Stand der Spur</Ueberschrift>
         <Fortschritt spur={spur} z={z} gross />
-      </div>
-      {schritte.map((s, i) => karte(s, i + 1, z, haken))}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
-        {SPUREN.filter(s => s.id !== spur).map(s => (
-          <Link key={s.id} href={s.href} style={{ fontFamily: T.mono, fontSize: 11, color: T.inkDim, textDecoration: 'none', border: `1px solid ${T.line}`, borderRadius: 8, padding: '6px 11px' }}>
-            {s.titel} ›
-          </Link>
-        ))}
-      </div>
+      </Karte>
+      <Karte i={1}>
+        <Ueberschrift rechts={`${schritte.length} Schritte`}>Die Schritte</Ueberschrift>
+        <Liste>{schritte.map((s, i) => karte(s, i + 1, z, haken))}</Liste>
+      </Karte>
+      <Karte i={2}>
+        <Ueberschrift>Die anderen Spuren</Ueberschrift>
+        <Liste>
+          {SPUREN.filter(s => s.id !== spur).map(s => (
+            <Link key={s.id} href={s.href} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Zeile onClick={() => {}} titel={s.titel} unter={s.satz} rechts={<span style={{ color: C.inkLeise }}>›</span>} />
+            </Link>
+          ))}
+        </Liste>
+      </Karte>
     </Rahmen>
   );
 }
@@ -180,67 +179,67 @@ export function OnboardingUebersicht() {
   const alle = SCHRITTE;
   const fertig = alle.filter(s => istFertig(s, z)).length;
   const restMinuten = alle.filter(s => !istFertig(s, z)).reduce((s, x) => s + x.minuten, 0);
+  const stunden = Math.round(restMinuten / 60 * 10) / 10;
 
   return (
     <Rahmen titel="Onboarding" unter="Alles, was drin sein muss, damit MAKE OS für euch beide reibungslos läuft.">
-      <div style={{ ...panel, borderLeft: `3px solid ${T.accent}`, padding: '15px 19px', marginBottom: 14 }}>
-        <div style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.6 }}>
-          <strong>{fertig} von {alle.length}</strong> Schritten stehen — noch rund <strong>{Math.round(restMinuten / 60 * 10) / 10} Stunden</strong> Arbeit,
-          verteilt auf drei Spuren. Vieles prüft die Software selbst: Schritte mit einem grünen Befund sind schon erledigt, ohne dass jemand ein Häkchen setzen muss.
+      <Karte i={0} akzent={LEUCHT.schlaf}>
+        <Ueberschrift farbe={LEUCHT.schlaf} rechts={`${fertig} von ${alle.length} Schritten`}>Stand</Ueberschrift>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(28px,4vw,36px)', fontWeight: 700, letterSpacing: '-.03em', lineHeight: 1, color: fertig === alle.length ? LEUCHT.gut : C.ink, fontVariantNumeric: 'tabular-nums' }}>
+            {fertig}<span style={{ color: C.inkLeise, fontWeight: 400 }}>/{alle.length}</span>
+          </span>
+          <span style={{ fontSize: 12.5, color: C.inkLeise }}>{fertig === alle.length ? 'fertig' : `noch rund ${stunden} Stunden`}</span>
         </div>
-      </div>
+        <FortschrittBalken anteil={alle.length ? fertig / alle.length : 0} farbe={fertig === alle.length ? LEUCHT.gut : LEUCHT.schlaf} />
+        <p style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.6, margin: '14px 0 0' }}>
+          <strong style={{ color: C.ink, fontWeight: 600 }}>{fertig} von {alle.length}</strong> Schritten stehen — noch rund <strong style={{ color: C.ink, fontWeight: 600 }}>{stunden} Stunden</strong> Arbeit,
+          verteilt auf drei Spuren. Vieles prüft die Software selbst: Schritte mit einem grünen Befund sind schon erledigt, ohne dass jemand ein Häkchen setzen muss.
+        </p>
+      </Karte>
 
-      <div style={{ ...lbl, marginBottom: 8 }}>Die drei Spuren</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(268px,1fr))', gap: 12, marginBottom: 22 }}>
-        {SPUREN.map(s => {
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(268px, 1fr))', gap: 14 }}>
+        {SPUREN.map((s, i) => {
           const offen = schritteVon(s.id).filter(x => !istFertig(x, z));
           return (
-            <Link key={s.id} href={s.href} className="bereich-kachel" style={{ ...panel, padding: '16px 18px', textDecoration: 'none', display: 'block' }}>
-              <div style={{ fontSize: 14.5, fontWeight: 600, color: T.ink, marginBottom: 3 }}>{s.titel}</div>
-              <div style={{ fontSize: 12, color: T.muted, lineHeight: 1.5, marginBottom: 11, minHeight: 34 }}>{s.satz}</div>
-              <Fortschritt spur={s.id} z={z} />
-              {!!offen.length && (
-                <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 9, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  als Nächstes: {offen[0].titel}
-                </div>
-              )}
+            <Link key={s.id} href={s.href} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+              <Karte i={1 + i} style={{ height: '100%' }}>
+                <Ueberschrift rechts={<span>›</span>}>{s.titel}</Ueberschrift>
+                <p style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5, margin: '0 0 12px', minHeight: 34 }}>{s.satz}</p>
+                <Fortschritt spur={s.id} z={z} />
+                {!!offen.length && (
+                  <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 9, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    als Nächstes: {offen[0].titel}
+                  </div>
+                )}
+              </Karte>
             </Link>
           );
         })}
       </div>
 
-      <div style={{ ...lbl, marginBottom: 8 }}>Fundament — einmal aufsetzen, dann läuft es für beide</div>
-      {schritteVon('fundament').map((s, i) => karte(s, i + 1, z, haken))}
+      <Karte i={4}>
+        <Ueberschrift rechts={`${schritteVon('fundament').length} Schritte`}>Fundament — einmal aufsetzen, dann läuft es für beide</Ueberschrift>
+        <Liste>{schritteVon('fundament').map((s, i) => karte(s, i + 1, z, haken))}</Liste>
+      </Karte>
 
-      <div style={{ ...panel, padding: '15px 19px', marginTop: 18 }}>
-        <div style={{ ...lbl, marginBottom: 7 }}>Danach</div>
-        <div style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.65 }}>
-          Wenn das Fundament steht, geht jeder seine eigene Spur — <Link href="/os/onboarding/kevin" style={{ color: T.accentInk, textDecoration: 'none' }}>Kevin</Link> füllt
-          Kalender, Postfach, Kompass und Gesundheit, <Link href="/os/onboarding/malin" style={{ color: T.accentInk, textDecoration: 'none' }}>Malin</Link> die
+      <Karte i={5}>
+        <Ueberschrift>Danach</Ueberschrift>
+        <p style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.65, margin: 0 }}>
+          Wenn das Fundament steht, geht jeder seine eigene Spur — <Link href="/os/onboarding/kevin" style={{ color: C.ink, textDecoration: 'none', fontWeight: 600 }}>Kevin</Link> füllt
+          Kalender, Postfach, Kompass und Gesundheit, <Link href="/os/onboarding/malin" style={{ color: C.ink, textDecoration: 'none', fontWeight: 600 }}>Malin</Link> die
           Finanzen und offenen Posten. Die Regeln fürs Nebeneinander stehen unter{' '}
-          <Link href="/os/onboarding/zusammenarbeit" style={{ color: T.accentInk, textDecoration: 'none' }}>Zusammenarbeit</Link>.
-        </div>
-      </div>
+          <Link href="/os/onboarding/zusammenarbeit" style={{ color: C.ink, textDecoration: 'none', fontWeight: 600 }}>Zusammenarbeit</Link>.
+        </p>
+      </Karte>
     </Rahmen>
   );
 }
 
-export function Rahmen({ titel, unter, children }: { titel: string; unter: string; children: React.ReactNode }) {
+export function Rahmen({ titel, unter, rechts, children }: { titel: string; unter: string; rechts?: ReactNode; children: ReactNode }) {
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '26px clamp(16px,3vw,36px) 60px' }}>
-        <Link href="/os/onboarding" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Onboarding</Link>
-        <Seitenkopf
-          rubrik={<>Onboarding</>}
-          titel={<>{titel}</>}
-          satz={<>{unter}</>}
-        />
-        {children}
-      </div>
-      <style dangerouslySetInnerHTML={{ __html: `
-        .bereich-kachel { transition: border-color .16s ease, background .16s ease; }
-        .bereich-kachel:hover { border-color: ${T.lineHot}; background: ${T.panel2}; }
-      ` }} />
-    </div>
+    <Seite titel={titel} unter={unter} rechts={rechts}>
+      {children}
+    </Seite>
   );
 }

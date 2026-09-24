@@ -8,23 +8,23 @@ import Link from 'next/link';
 // man Bausteine, Routinen und Aufgaben einfach rein. Die Blöcke sind DIESELBEN
 // wie im Wochenplaner (gleicher Store) — hier bearbeitet man nur den heutigen
 // Tag, der Rest der Woche bleibt unangetastet.
+// 24.09.: auf das lebendige Muster umgezogen (Karten, Chips, Leuchtfarben).
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNachspeichern } from '@/lib/make-one/nachspeichern';
-import { THEME as T } from '@/lib/make-one/os-data';
+import { FARBE as C, MIKRO, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { ART_FARBE, type PlanBlock } from '@/types/planer';
 import { PlanerLeiste } from './PlanerLeiste';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { wochenplanSchreiben } from '@/lib/make-one/wochenplan-sync';
 import { SAEULE_VON_PROJEKT, KATEGORIE_ZU_SAEULE, SAEULE_LABEL, SAEULE_FARBE, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Haken, Fortschritt, Zahl, LEUCHT } from './schlank';
 
 interface Routine { id: string; label: string; wann: 'morgen' | 'tag' | 'abend'; kategorie: string; dauerMin: number; aktiv: boolean }
 interface Fix { titel: string; startMin: number; dauerMin: number }
 
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
-const KATEGORIE_FARBE: Record<string, string> = { gesundheit: '#58D9CD', leben: '#C77DFF', business: '#4A6CF7' };
+const KATEGORIE_FARBE: Record<string, string> = { gesundheit: LEUCHT.gut, leben: LEUCHT.beziehung, business: LEUCHT.business };
 const mm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const snap = (min: number) => Math.round(min / 15) * 15;
 
@@ -59,6 +59,19 @@ function montagVon(tag: string): string {
   const d = new Date(`${tag}T12:00:00`);
   d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
   return localDay(d);
+}
+
+const verweis: CSSProperties = { fontSize: 12, color: C.aktiv, textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' };
+const mini = (farbe: string): CSSProperties => ({ background: `${farbe}33`, border: 'none', borderRadius: 5, color: farbe, fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '0 6px', lineHeight: '16px' });
+
+/** Ziehbare Pille — Baustein, Routine oder Aufgabe, die man in den Tag zieht. */
+function Ziehbar({ farbe, daten, children, breit }: { farbe: string; daten: object; children: React.ReactNode; breit?: number }) {
+  return (
+    <span draggable onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify(daten))} className="fassbar" style={{
+      display: 'inline-block', background: `${farbe}22`, color: farbe, borderRadius: 999, padding: '5px 11px', fontSize: 12, fontWeight: 700, letterSpacing: '.02em',
+      whiteSpace: 'nowrap', cursor: 'grab', maxWidth: breit ?? '100%', overflow: 'hidden', textOverflow: 'ellipsis', verticalAlign: 'middle',
+    }}>{children}</span>
+  );
 }
 
 export function TagesplanView({ tag }: { tag?: string } = {}) {
@@ -263,183 +276,181 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
     ];
   }, [meine, fix, faelligHeute, geplantTasks, erledigt, heute]);
   const okN = check.filter(c => c.ok).length;
+  const checkFarbe = okN === check.length ? LEUCHT.gut : okN >= 3 ? LEUCHT.achtung : LEUCHT.kritisch;
 
   const stunden = Array.from({ length: (ENDE - START) / 60 }, (_, i) => START / 60 + i);
   const datum = new Date(`${heute}T12:00:00`).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const sortiertNachFokus = (a: Routine, b: Routine) => Number(passtZumFokus(b)) - Number(passtZumFokus(a));
+  const routinenErledigt = Array.from(erledigt).filter(id => routinen.some(r => r.id === id)).length;
 
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 1060, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
-        <PlanerLeiste aktiv="tag" tag={heute} />
-        <div style={lbl}>Tagesplanung · {datum}</div>
-
-        {/* ── Die Fokusthemen stehen über dem Tag ── */}
-        <h1 style={{ fontSize: 23, fontWeight: 600, letterSpacing: '-.02em', margin: '6px 0 6px', lineHeight: 1.3 }}>
+    <Seite breit={1060} titel="Tagesplanung" unter={<div>{datum}<div style={{ marginTop: 12 }}><PlanerLeiste aktiv="tag" tag={heute} /></div></div>}>
+      {/* ── Die Fokusthemen stehen über dem Tag ── */}
+      <Karte i={0} akzent={LEUCHT.schlaf}>
+        <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/planung/fokus" style={verweis}>Regler ›</Link>}>
+          Fokus{fokusQuelle && fokusQuelle !== 'Tag' ? ` · ${fokusQuelle}` : ''}
+        </Ueberschrift>
+        <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(17px,2.2vw,20px)', fontWeight: 600, lineHeight: 1.35 }}>
           {fokusText
-            ? <><span style={{ color: T.accent }}>◎</span> {fokusText}{fokusQuelle !== 'Tag' && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginLeft: 8, verticalAlign: 'middle' }}>{fokusQuelle.toUpperCase()}</span>}</>
-            : <>Worauf es heute ankommt <Link href="/os" style={{ fontSize: 13, color: T.accentInk, textDecoration: 'none', fontWeight: 400 }}>Fokus setzen ›</Link></>}
-        </h1>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
-          {Array.from(fokusSaeulen).map(s => (
-            <span key={s} style={{ fontSize: 11.5, fontWeight: 600, color: SAEULE_FARBE[s] ?? T.inkDim, border: `1px solid ${SAEULE_FARBE[s] ?? T.line}55`, borderRadius: 7, padding: '3px 9px' }}>
-              {SAEULE_LABEL[s] ?? s}
-            </span>
-          ))}
-          {ziele.slice(0, 3).map((z, i) => (
-            <span key={`z${i}`} style={{ fontSize: 12, color: T.inkDim }}>{z.titel} <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{z.fortschritt}%</span></span>
-          ))}
-          <Link href="/os/planung/fokus" style={{ fontSize: 11.5, color: T.accentInk, textDecoration: 'none', marginLeft: 'auto' }}>Regler ›</Link>
+            ? <><span style={{ color: LEUCHT.schlaf }}>◎</span> {fokusText}</>
+            : <>Worauf es heute ankommt <Link href="/os" style={{ ...verweis, fontSize: TYP.bedien, marginLeft: 6 }}>Fokus setzen ›</Link></>}
         </div>
+        {(fokusSaeulen.size > 0 || ziele.length > 0) && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
+            {Array.from(fokusSaeulen).map(s => <Chip key={s} farbe={SAEULE_FARBE[s] ?? C.inkDim}>{SAEULE_LABEL[s] ?? s}</Chip>)}
+            {ziele.slice(0, 3).map((z, i) => (
+              <span key={`z${i}`} style={{ fontSize: TYP.bedien, color: C.inkDim }}>{z.titel} <span style={{ color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{z.fortschritt}%</span></span>
+            ))}
+          </div>
+        )}
+      </Karte>
 
-        {/* ── Kompakter Durchgeplant-Check ── */}
-        <div style={{ ...panel, borderLeft: `3px solid ${okN === check.length ? T.accent : okN >= 3 ? T.amber : T.crit}`, padding: '9px 14px', marginBottom: 14, display: 'flex', gap: 12, alignItems: 'baseline', flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: T.mono, fontSize: 12, fontWeight: 700, color: okN === check.length ? T.accent : okN >= 3 ? T.amber : T.crit }}>{okN}/{check.length}</span>
-          {check.map((c, i) => (
-            <span key={i} style={{ fontSize: 12, color: c.ok ? T.inkDim : T.crit }}>
-              <span style={{ color: c.ok ? T.accent : T.crit }}>{c.ok ? '✓' : '✗'}</span> {c.text}
-            </span>
-          ))}
-          {ueberfaellig.length > 0 && <span style={{ fontSize: 12, color: T.crit }}>⚠ {ueberfaellig.length} überfällig</span>}
-          <Link href="/os/planung/woche" style={{ fontSize: 11.5, color: T.accentInk, textDecoration: 'none', marginLeft: 'auto' }}>Wochenplaner ›</Link>
-        </div>
-
-        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          {/* ── Der Tag als Kalender — Lücken sichtbar, alles reinziehbar ── */}
-          <div style={{ flex: '0 1 400px', minWidth: 300 }}>
-            <div style={{ ...lbl, marginBottom: 7 }}>Der Tag <span style={{ textTransform: 'none' }}>(ziehen wie im Wochenplaner)</span></div>
-            <div style={{ display: 'flex', gap: 4 }}>
-              {/* Zeitspalte */}
-              <div style={{ position: 'relative', height: H, width: 42, flex: '0 0 auto' }}>
-                {stunden.map(h => (
-                  <div key={h} style={{ position: 'absolute', top: (h * 60 - START) * PX - 5, right: 6, fontFamily: T.mono, fontSize: 11, color: T.muted }}>{String(h).padStart(2, '0')}:00</div>
-                ))}
-              </div>
-              {/* Tagesspalte */}
-              <div onDragOver={e => e.preventDefault()} onDrop={dropAufKalender}
-                style={{ position: 'relative', height: H, flex: 1, background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', overflow: 'hidden' }}>
-                {stunden.map(h => (
-                  <div key={h} style={{ position: 'absolute', top: (h * 60 - START) * PX, left: 0, right: 0, borderTop: `1px solid ${T.line}55` }} />
-                ))}
-                {/* Jetzt-Linie */}
-                {istHeute && jetztMin !== null && jetztMin >= START && jetztMin <= ENDE && (
-                  <div style={{ position: 'absolute', top: (jetztMin - START) * PX, left: 0, right: 0, borderTop: `2px solid ${T.crit}`, zIndex: 3 }}>
-                    <span style={{ position: 'absolute', right: 4, top: -14, fontFamily: T.mono, fontSize: 11, color: T.crit }}>{mm(jetztMin)}</span>
-                  </div>
-                )}
-                {/* Feste Termine — unverrückbar */}
-                {fix.map((f, i) => (
-                  <div key={`fix${i}`} style={{ position: 'absolute', top: (f.startMin - START) * PX, height: Math.max(16, f.dauerMin * PX - 2), left: 4, right: 4, background: `${T.line}88`, border: `1px solid ${T.line}`, borderRadius: 7, padding: '2px 8px', fontSize: 11, color: T.inkDim, overflow: 'hidden', zIndex: 1 }}>
-                    🔒 {mm(f.startMin)} {f.titel}
-                  </div>
-                ))}
-                {/* Bewegliche Blöcke */}
-                {meine.map(b => {
-                  const aktiv = aktivBlock === b.id;
-                  const farbe = ART_FARBE[b.art] ?? T.muted;
-                  return (
-                    <div key={b.id} draggable
-                      onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ move: b.id }))}
-                      onClick={() => setAktivBlock(aktiv ? null : b.id)}
-                      style={{ position: 'absolute', top: (b.startMin - START) * PX, height: Math.max(18, b.dauerMin * PX - 2), left: 4, right: 4, background: `${farbe}26`, border: `1px solid ${farbe}${aktiv ? '' : '66'}`, borderRadius: 7, padding: '2px 8px', fontSize: 11.5, color: T.ink, overflow: 'hidden', cursor: 'grab', zIndex: 2 }}>
-                      <span style={{ fontFamily: T.mono, fontSize: 11, color: farbe }}>{mm(b.startMin)}</span> {b.titel}
-                      {aktiv && (
-                        <span style={{ position: 'absolute', right: 4, top: 2, display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
-                          <button onClick={() => speichern(meine.map(x => x.id === b.id ? { ...x, dauerMin: Math.max(15, x.dauerMin - 30) } : x))} style={{ background: 'none', border: `1px solid ${T.line}`, borderRadius: 5, color: T.inkDim, fontSize: 11, cursor: 'pointer', padding: '0 5px' }}>−</button>
-                          <button onClick={() => speichern(meine.map(x => x.id === b.id ? { ...x, dauerMin: Math.min(240, x.dauerMin + 30) } : x))} style={{ background: 'none', border: `1px solid ${T.line}`, borderRadius: 5, color: T.inkDim, fontSize: 11, cursor: 'pointer', padding: '0 5px' }}>＋</button>
-                          <button onClick={() => { speichern(meine.filter(x => x.id !== b.id)); setAktivBlock(null); }} style={{ background: 'none', border: `1px solid ${T.crit}66`, borderRadius: 5, color: T.crit, fontSize: 11, cursor: 'pointer', padding: '0 5px' }}>✕</button>
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+      {/* ── Kompakter Durchgeplant-Check ── */}
+      <Karte i={1}>
+        <Ueberschrift farbe={checkFarbe} rechts={<Link href="/os/planung/woche" style={verweis}>Wochenplaner ›</Link>}>Durchgeplant</Ueberschrift>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Zahl wert={`${okN}/${check.length}`} label="Punkte erfüllt" farbe={checkFarbe} />
+          <div style={{ flex: '1 1 240px', minWidth: 'min(240px, 100%)' }}>
+            <Fortschritt anteil={okN / check.length} farbe={checkFarbe} />
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+              {check.map((c, i) => <Chip key={i} farbe={c.ok ? LEUCHT.gut : LEUCHT.kritisch}>{c.ok ? '✓' : '✗'} {c.text}</Chip>)}
+              {ueberfaellig.length > 0 && <Chip farbe={LEUCHT.achtung}>⚠ {ueberfaellig.length} überfällig</Chip>}
             </div>
           </div>
+        </div>
+      </Karte>
 
-          {/* ── Rechte Spalte: Lücken, Bausteine, Aufgaben, Routinen ── */}
-          <div style={{ flex: '1 1 320px', minWidth: 290, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/* Tageslücken */}
-            <div style={{ ...panel, padding: '12px 16px' }}>
-              <div style={{ ...lbl, marginBottom: 7 }}>Tageslücken <span style={{ textTransform: 'none' }}>(frei ≥30 Min · füllen durch Reinziehen)</span></div>
-              {luecken.length ? (
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {luecken.map((l, i) => (
-                    <span key={i} style={{ fontFamily: T.mono, fontSize: 11.5, color: T.accentInk, border: `1px solid ${T.accent}44`, borderRadius: 7, padding: '3px 9px' }}>
-                      {mm(l.von)}–{mm(l.bis)} · {Math.round((l.bis - l.von) / 15) * 15} min
-                    </span>
-                  ))}
+      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        {/* ── Der Tag als Kalender — Lücken sichtbar, alles reinziehbar ── */}
+        <Karte i={2} style={{ flex: '0 1 440px', minWidth: 'min(300px, 100%)' }}>
+          <Ueberschrift farbe={LEUCHT.puls} rechts="ziehen wie im Wochenplaner">Der Tag</Ueberschrift>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {/* Zeitspalte */}
+            <div style={{ position: 'relative', height: H, width: 42, flex: '0 0 auto' }}>
+              {stunden.map(h => (
+                <div key={h} style={{ position: 'absolute', top: (h * 60 - START) * PX - 6, right: 6, fontSize: 11, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{String(h).padStart(2, '0')}:00</div>
+              ))}
+            </div>
+            {/* Tagesspalte */}
+            <div onDragOver={e => e.preventDefault()} onDrop={dropAufKalender}
+              style={{ position: 'relative', height: H, flex: 1, minWidth: 0, background: 'rgba(255,255,255,.03)', borderRadius: 12, overflow: 'hidden' }}>
+              {stunden.map(h => (
+                <div key={h} style={{ position: 'absolute', top: (h * 60 - START) * PX, left: 0, right: 0, borderTop: '1px solid rgba(255,255,255,.05)' }} />
+              ))}
+              {/* Jetzt-Linie */}
+              {istHeute && jetztMin !== null && jetztMin >= START && jetztMin <= ENDE && (
+                <div style={{ position: 'absolute', top: (jetztMin - START) * PX, left: 0, right: 0, borderTop: `2px solid ${LEUCHT.kritisch}`, boxShadow: `0 0 10px ${LEUCHT.kritisch}88`, zIndex: 3 }}>
+                  <span style={{ position: 'absolute', right: 6, top: -15, fontSize: 11, fontWeight: 700, color: LEUCHT.kritisch, fontVariantNumeric: 'tabular-nums' }}>{mm(jetztMin)}</span>
                 </div>
-              ) : (
-                <span style={{ fontSize: 12, color: T.muted }}>Keine Lücke ≥30 Min zwischen 07 und 21 Uhr — voller Tag.</span>
               )}
-            </div>
-
-            {/* Bausteine + Aufgaben */}
-            <div style={{ ...panel, padding: '12px 16px' }}>
-              <div style={{ ...lbl, marginBottom: 7 }}>Bausteine</div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                {/* Schlüssel ist der Titel, nicht die Art: „block" kommt
-                    sechsmal vor — mit `art` verlieren die Bausteine beim
-                    Ziehen ihre Identität. */}
-                {BAUSTEINE.map(bs => (
-                  <div key={bs.titel} draggable
-                    onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ neu: { art: bs.art, titel: bs.titel, dauerMin: bs.dauerMin } }))}
-                    style={{ cursor: 'grab', fontSize: 11.5, color: ART_FARBE[bs.art], border: `1px solid ${ART_FARBE[bs.art]}44`, borderRadius: 7, padding: '4px 9px' }}>
-                    {bs.titel} · {bs.dauerMin}m
-                  </div>
-                ))}
-              </div>
-              <div style={{ ...lbl, marginBottom: 7 }}>Aufgaben einplanen <span style={{ textTransform: 'none' }}>(◎ = <Link href="/os/planung/fokus" style={{ color: T.accentInk, textDecoration: 'none' }}>im Fokus</Link>)</span></div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {offeneAufgaben.map(t => (
-                  <div key={t.id} draggable
-                    onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ aufgabe: { taskId: t.id, titel: t.title } }))}
-                    style={{ cursor: 'grab', fontSize: 11.5, color: t.imFokus ? T.accentInk : '#8FA6FF', border: t.imFokus ? `1px solid ${T.accent}88` : '1px solid #4A6CF755', borderRadius: 7, padding: '4px 9px', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {t.priority === 'critical' ? '‼ ' : ''}{t.imFokus ? '◎ ' : ''}{t.title}
-                  </div>
-                ))}
-                {!offeneAufgaben.length && <span style={{ fontSize: 12, color: T.muted }}>Alles eingeplant oder erledigt.</span>}
-              </div>
-            </div>
-
-            {/* Routinen heute — Fokus-passende zuerst (◎), dieselben Häkchen wie im Cockpit */}
-            <div style={{ ...panel, padding: '12px 16px' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 9 }}>
-                <div style={lbl}>Routinen heute</div>
-                <span style={{ fontFamily: T.mono, fontSize: 11, color: erledigt.size ? T.accent : T.muted }}>{Array.from(erledigt).filter(id => routinen.some(r => r.id === id)).length}/{routinen.length}</span>
-                <span style={{ fontSize: 11, color: T.muted }}>◎ zahlt auf den Fokus ein · auch in den Tag ziehbar</span>
-                <Link href="/os/planung/routinen" style={{ fontSize: 11.5, color: T.accentInk, textDecoration: 'none', marginLeft: 'auto' }}>planen ›</Link>
-              </div>
-              {(['morgen', 'tag', 'abend'] as const).map(wann => {
-                const eigene = routinen.filter(r => r.wann === wann).sort(sortiertNachFokus);
-                if (!eigene.length) return null;
+              {/* Feste Termine — unverrückbar */}
+              {fix.map((f, i) => (
+                <div key={`fix${i}`} style={{ position: 'absolute', top: (f.startMin - START) * PX, height: Math.max(16, f.dauerMin * PX - 2), left: 4, right: 4, background: 'rgba(255,255,255,.08)', borderLeft: `3px solid ${C.inkLeise}`, borderRadius: 8, padding: '2px 8px', fontSize: 11, color: C.inkDim, overflow: 'hidden', zIndex: 1 }}>
+                  🔒 {mm(f.startMin)} {f.titel}
+                </div>
+              ))}
+              {/* Bewegliche Blöcke */}
+              {meine.map(b => {
+                const aktiv = aktivBlock === b.id;
+                const farbe = ART_FARBE[b.art] ?? C.inkLeise;
                 return (
-                  <div key={wann} style={{ marginBottom: 8 }}>
-                    <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>{wann === 'morgen' ? 'Morgens' : wann === 'tag' ? 'Tagsüber' : 'Abends'}</div>
-                    {eigene.map(r => {
-                      const done = erledigt.has(r.id);
-                      const imFokus = passtZumFokus(r);
-                      return (
-                        <div key={r.id} style={{ display: 'flex', gap: 9, alignItems: 'center', padding: '4px 0' }}>
-                          <span onClick={() => toggleRoutine(r.id)} style={{ width: 17, height: 17, borderRadius: 5, border: `1px solid ${done ? T.accent : T.line}`, background: done ? `${T.accent}22` : 'transparent', color: T.accent, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto', cursor: 'pointer' }}>{done ? <span className="check-pop">✓</span> : ''}</span>
-                          <span draggable
-                            onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ neu: { art: 'routine', titel: r.label, dauerMin: r.dauerMin } }))}
-                            onClick={() => toggleRoutine(r.id)}
-                            style={{ fontSize: 12.5, color: done ? T.muted : T.inkDim, textDecoration: done ? 'line-through' : 'none', cursor: 'grab' }}>
-                            {imFokus ? <span style={{ color: KATEGORIE_FARBE[r.kategorie] ?? T.accent }}>◎ </span> : ''}{r.label}
-                          </span>
-                        </div>
-                      );
-                    })}
+                  <div key={b.id} draggable
+                    onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ move: b.id }))}
+                    onClick={() => setAktivBlock(aktiv ? null : b.id)}
+                    style={{ position: 'absolute', top: (b.startMin - START) * PX, height: Math.max(18, b.dauerMin * PX - 2), left: 4, right: 4, background: `${farbe}2A`, borderLeft: `3px solid ${farbe}`, borderRadius: 8, padding: '2px 8px', fontSize: 11.5, color: C.ink, overflow: 'hidden', cursor: 'grab', zIndex: aktiv ? 4 : 2, boxShadow: aktiv ? `0 0 0 1px ${farbe}, 0 0 14px ${farbe}66` : undefined, transition: 'box-shadow .2s ease' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: farbe, fontVariantNumeric: 'tabular-nums' }}>{mm(b.startMin)}</span> {b.titel}
+                    {aktiv && (
+                      <span style={{ position: 'absolute', right: 4, top: 2, display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
+                        <button onClick={() => speichern(meine.map(x => x.id === b.id ? { ...x, dauerMin: Math.max(15, x.dauerMin - 30) } : x))} style={mini(C.inkDim)}>−</button>
+                        <button onClick={() => speichern(meine.map(x => x.id === b.id ? { ...x, dauerMin: Math.min(240, x.dauerMin + 30) } : x))} style={mini(C.inkDim)}>＋</button>
+                        <button onClick={() => { speichern(meine.filter(x => x.id !== b.id)); setAktivBlock(null); }} style={mini(LEUCHT.kritisch)}>✕</button>
+                      </span>
+                    )}
                   </div>
                 );
               })}
             </div>
           </div>
+        </Karte>
+
+        {/* ── Rechte Spalte: Lücken, Bausteine, Aufgaben, Routinen ── */}
+        <div style={{ flex: '1 1 320px', minWidth: 'min(290px, 100%)', display: 'grid', gap: 14, alignContent: 'start' }}>
+          {/* Tageslücken */}
+          <Karte i={3}>
+            <Ueberschrift farbe={LEUCHT.puls} rechts="frei ≥30 Min · füllen durch Reinziehen">Tageslücken</Ueberschrift>
+            {luecken.length ? (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {luecken.map((l, i) => (
+                  <Chip key={i} farbe={LEUCHT.puls}>{mm(l.von)}–{mm(l.bis)} · {Math.round((l.bis - l.von) / 15) * 15} min</Chip>
+                ))}
+              </div>
+            ) : (
+              <Leer>Keine Lücke ≥30 Min zwischen 07 und 21 Uhr — voller Tag.</Leer>
+            )}
+          </Karte>
+
+          {/* Bausteine + Aufgaben */}
+          <Karte i={4}>
+            <Ueberschrift>Bausteine</Ueberschrift>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+              {/* Schlüssel ist der Titel, nicht die Art: „block" kommt
+                  sechsmal vor — mit `art` verlieren die Bausteine beim
+                  Ziehen ihre Identität. */}
+              {BAUSTEINE.map(bs => (
+                <Ziehbar key={bs.titel} farbe={ART_FARBE[bs.art]} daten={{ neu: { art: bs.art, titel: bs.titel, dauerMin: bs.dauerMin } }}>
+                  {bs.titel} · {bs.dauerMin}m
+                </Ziehbar>
+              ))}
+            </div>
+            <Ueberschrift rechts={<span>◎ = <Link href="/os/planung/fokus" style={verweis}>im Fokus</Link></span>}>Aufgaben einplanen</Ueberschrift>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {offeneAufgaben.map(t => (
+                <Ziehbar key={t.id} farbe={t.imFokus ? LEUCHT.schlaf : ART_FARBE.aufgabe} daten={{ aufgabe: { taskId: t.id, titel: t.title } }} breit={240}>
+                  {t.priority === 'critical' ? '‼ ' : ''}{t.imFokus ? '◎ ' : ''}{t.title}
+                </Ziehbar>
+              ))}
+              {!offeneAufgaben.length && <Leer>Alles eingeplant oder erledigt.</Leer>}
+            </div>
+          </Karte>
+
+          {/* Routinen heute — Fokus-passende zuerst (◎), dieselben Häkchen wie im Cockpit */}
+          <Karte i={5}>
+            <Ueberschrift farbe={LEUCHT.gut} rechts={<>
+              <span style={{ color: routinenErledigt ? LEUCHT.gut : C.inkLeise, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{routinenErledigt}/{routinen.length}</span>
+              <Link href="/os/planung/routinen" style={verweis}>planen ›</Link>
+            </>}>Routinen heute</Ueberschrift>
+            <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>◎ zahlt auf den Fokus ein · auch in den Tag ziehbar</div>
+            {(['morgen', 'tag', 'abend'] as const).map(wann => {
+              const eigene = routinen.filter(r => r.wann === wann).sort(sortiertNachFokus);
+              if (!eigene.length) return null;
+              return (
+                <div key={wann} style={{ marginTop: 8 }}>
+                  <div style={MIKRO}>{wann === 'morgen' ? 'Morgens' : wann === 'tag' ? 'Tagsüber' : 'Abends'}</div>
+                  <Liste>
+                    {eigene.map(r => {
+                      const done = erledigt.has(r.id);
+                      const imFokus = passtZumFokus(r);
+                      return (
+                        <Zeile key={r.id} onClick={() => toggleRoutine(r.id)}
+                          links={<Haken an={done} onChange={() => toggleRoutine(r.id)} farbe={imFokus ? KATEGORIE_FARBE[r.kategorie] ?? LEUCHT.gut : undefined} />}
+                          titel={
+                            <span draggable
+                              onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ neu: { art: 'routine', titel: r.label, dauerMin: r.dauerMin } }))}
+                              style={{ color: done ? C.inkLeise : C.ink, textDecoration: done ? 'line-through' : 'none', cursor: 'grab' }}>
+                              {imFokus ? <span style={{ color: KATEGORIE_FARBE[r.kategorie] ?? LEUCHT.gut }}>◎ </span> : ''}{r.label}
+                            </span>
+                          }
+                          rechts={<span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{r.dauerMin} min</span>} />
+                      );
+                    })}
+                  </Liste>
+                </div>
+              );
+            })}
+          </Karte>
         </div>
       </div>
-    </div>
+    </Seite>
   );
 }

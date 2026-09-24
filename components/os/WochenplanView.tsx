@@ -6,9 +6,11 @@ import Link from 'next/link';
 // alles andere — Fokus, Reha, Routinen, Pausen, Aufgaben — ziehst du aus der
 // Leiste in den Tag und schiebst es frei herum. Kein Gespräch nötig: gucken,
 // schieben, fertig. Gespeichert wird von selbst.
+// 24.09.: auf das lebendige Muster umgezogen (Karten, Chips, Leuchtfarben).
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useRouter } from 'next/navigation';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { ART_FARBE, type PlanBlock } from '@/types/planer';
 import { PlanerLeiste } from './PlanerLeiste';
 import { useTasks } from '@/context/TasksContext';
@@ -16,12 +18,11 @@ import { localDay } from '@/lib/zeit';
 import { wochenplanSchreiben } from '@/lib/make-one/wochenplan-sync';
 import { verteileSpuren, spurStil, titelStil } from '@/lib/make-one/spuren';
 import { SAEULE_VON_PROJEKT, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
-import { Seitenkopf } from './Seitenkopf';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, Segmente, feld, LEUCHT } from './schlank';
 // Routinen kommen aus dem Routine-Planer — nicht mehr aus der Konstante.
 
 interface FixTermin { titel: string; date: string; startMin: number; dauerMin: number; quelle: string }
 
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 const WD = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
 // Raster: 06:00–22:00, 1 Minute = 0.8px → Tag = 768px hoch, 15-Minuten-Raster.
@@ -34,9 +35,12 @@ const BAUSTEINE: { art: PlanBlock['art']; titel: string; dauerMin: number }[] = 
   { art: 'pause', titel: 'Pause', dauerMin: 15 },
   { art: 'block', titel: 'Blockzeit', dauerMin: 60 },
 ];
+const DAUERN = [15, 30, 60, 90, 120].map(d => ({ id: String(d), label: d < 60 ? `${d}m` : `${d / 60}h` }));
+const ART_LABEL: Record<'block' | 'fokus' | 'reha' | 'pause', string> = { block: 'Block', fokus: 'Fokus', reha: 'Reha', pause: 'Pause' };
 
 const mmss = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 const snap = (min: number) => Math.round(min / 15) * 15;
+const fmtH = (h: number) => h.toFixed(1).replace('.', ',');
 
 /** Montag der Woche mit Versatz (0 = diese Woche). */
 function montag(offset: number): Date {
@@ -47,7 +51,26 @@ function montag(offset: number): Date {
   return d;
 }
 
+const verweis: CSSProperties = { fontSize: 12, color: C.aktiv, textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' };
+const zeit: CSSProperties = { fontSize: 11, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' };
+/** Wahlknopf in Kennzahlfarbe — Art des eigenen Blocks. */
+const wahl = (an: boolean, farbe: string): CSSProperties => ({
+  fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '7px 13px', borderRadius: 10, border: 'none', cursor: 'pointer',
+  background: an ? `${farbe}26` : 'rgba(255,255,255,.05)', color: an ? farbe : C.inkDim, transition: 'background .15s ease, color .15s ease',
+});
+
+/** Ziehbare Pille — Baustein, Routine oder Aufgabe, die man in den Tag zieht. */
+function Ziehbar({ farbe, daten, children, breit }: { farbe: string; daten: object; children: React.ReactNode; breit?: number }) {
+  return (
+    <span draggable onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify(daten))} className="fassbar" style={{
+      display: 'inline-block', background: `${farbe}22`, color: farbe, borderRadius: 999, padding: '5px 11px', fontSize: 12, fontWeight: 700, letterSpacing: '.02em',
+      whiteSpace: 'nowrap', cursor: 'grab', maxWidth: breit ?? '100%', overflow: 'hidden', textOverflow: 'ellipsis', verticalAlign: 'middle',
+    }}>{children}</span>
+  );
+}
+
 export function WochenplanView() {
+  const router = useRouter();
   const { state: tasksState } = useTasks();
   const [offset, setOffset] = useState(0);
   const [bloecke, setBloecke] = useState<PlanBlock[]>([]);
@@ -254,288 +277,267 @@ export function WochenplanView() {
   const stunden = Array.from({ length: (ENDE - START) / 60 }, (_, i) => START / 60 + i);
   const wochenLabel = `${tage[0].slice(8)}.${tage[0].slice(5, 7)}. – ${tage[6].slice(8)}.${tage[6].slice(5, 7)}.${tage[6].slice(0, 4)}`;
 
+  // Wochen-Kapazität: was ist verplant, was drückt an Aufgabenlast?
+  const planMin = bloecke.reduce((s, b) => s + b.dauerMin, 0);
+  const fixMin = fix.reduce((s, f) => s + f.dauerMin, 0);
+  const offeneN = tasksState.tasks.filter(t => t.status !== 'done').length;
+  const faelligWoche = tasksState.tasks.filter(t => t.status !== 'done' && t.dueDate && t.dueDate >= tage[0] && t.dueDate <= tage[6]).length;
+  const gesamtH = (planMin + fixMin) / 60;
+  const ueberladen = gesamtH > 50;
+
+  const zielListe = [...ziele.monat.filter(z => !z.erledigt).slice(0, 3).map(z => ({ ...z, h: 'M' })), ...ziele.quartal.filter(z => !z.erledigt).slice(0, 2).map(z => ({ ...z, h: 'Q' }))];
+
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '26px clamp(12px,2vw,28px) 56px' }}>
-        <PlanerLeiste aktiv="woche" />
-        <Seitenkopf
-          rubrik={<>Wochenplaner · {wochenLabel}</>}
-          titel={<>Die Woche, beweglich.</>}
-          satz={<>
-            Feste Termine stehen fest — alles andere ziehst du aus der Leiste in den Tag und schiebst es, bis der Tag passt.
-            Blöcke: <b style={{ color: T.ink }}>anfassen & ziehen</b> zum Verschieben · <b style={{ color: T.ink }}>−/＋</b> für die Dauer · <b style={{ color: T.ink }}>✕</b> löschen.
-          </>}
-          rechts={<div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={() => setOffset(o => o - 1)} style={btn()}>‹</button>
-            <button onClick={() => setOffset(0)} style={btn(offset === 0)}>heute</button>
-            <button onClick={() => setOffset(o => o + 1)} style={btn()}>›</button>
-          </div>}
-        />
-
-        {/* Wochen-Kapazität: was ist verplant, was drückt an Aufgabenlast? */}
-        {(() => {
-          const planMin = bloecke.reduce((s, b) => s + b.dauerMin, 0);
-          const fixMin = fix.reduce((s, f) => s + f.dauerMin, 0);
-          const offeneN = tasksState.tasks.filter(t => t.status !== 'done').length;
-          const faelligWoche = tasksState.tasks.filter(t => t.status !== 'done' && t.dueDate && t.dueDate >= tage[0] && t.dueDate <= tage[6]).length;
-          const gesamtH = (planMin + fixMin) / 60;
-          return (
-            <div style={{ fontFamily: T.mono, fontSize: 11, color: gesamtH > 50 ? T.amber : T.muted, margin: '0 0 14px' }}>
-              {gesamtH.toFixed(1).replace('.', ',')} h belegt ({(fixMin / 60).toFixed(1).replace('.', ',')} h Termine · {(planMin / 60).toFixed(1).replace('.', ',')} h Blöcke) · {offeneN} Aufgaben offen, {faelligWoche} fällig diese Woche{gesamtH > 50 ? ' — überladen, Ruhe braucht Luft' : ''}
-            </div>
-          );
-        })()}
-
-        {/* Ziele im Blick — die Woche plant man gegen Ziele, nicht ins Blaue */}
-        {(ziele.monat.length > 0 || ziele.quartal.length > 0) && (
-          <div style={{ background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '10px 14px', marginBottom: 10, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ ...lbl }}>Ziele</span>
-            {(ziele.fokus?.woche || ziele.fokus?.monat) && <span style={{ fontSize: 12.5, fontWeight: 700, color: T.accent }}>◎ {ziele.fokus?.woche || ziele.fokus?.monat}</span>}
-            {[...ziele.monat.filter(z => !z.erledigt).slice(0, 3).map(z => ({ ...z, h: 'M' })), ...ziele.quartal.filter(z => !z.erledigt).slice(0, 2).map(z => ({ ...z, h: 'Q' }))].map((z, i) => (
-              <Link key={i} href={z.h === 'M' ? '/os/planung/monat' : '/os/planung/quartal'} style={{ display: 'flex', alignItems: 'center', gap: 7, textDecoration: 'none' }}>
-                <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{z.h}</span>
-                <span style={{ fontSize: 12, color: T.inkDim }}>{z.titel}</span>
-                <span style={{ width: 44, height: 4, borderRadius: 2, background: 'rgba(255,255,255,.07)', overflow: 'hidden', display: 'inline-block' }}>
-                  <span style={{ display: 'block', width: `${z.fortschritt}%`, height: '100%', background: z.fortschritt >= 70 ? T.accent : z.fortschritt >= 40 ? T.amber : T.crit }} />
-                </span>
-              </Link>
-            ))}
-            {!ziele.monat.length && <Link href="/os/planung/monat" style={{ fontSize: 12, color: T.accentInk, textDecoration: 'none' }}>Monatsziele anlegen ›</Link>}
-          </div>
-        )}
-
-        {/* Jarvis belegt die Woche — Vorschlag, den du zurechtschiebst */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
-          <button onClick={jarvisBelegen} disabled={denkt} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 700, padding: '9px 16px', borderRadius: 9, border: 'none', cursor: denkt ? 'default' : 'pointer', background: denkt ? T.line : T.accent, color: denkt ? T.muted : '#04110F' }}>
-            {denkt ? 'Jarvis plant …' : '✨ Jarvis belegt die Woche'}
-          </button>
-          <span style={{ fontSize: 11.5, color: T.muted }}>Reha täglich · Fokus vormittags · Routinen · Aufgaben nach Priorität — um deine festen Termine herum.</span>
+    <Seite
+      breit={1200}
+      titel="Wochenplaner"
+      unter={<div>
+        Die Woche, beweglich. Feste Termine stehen fest — alles andere ziehst du aus der Leiste in den Tag und schiebst es, bis der Tag passt.
+        Blöcke: <b style={{ color: C.ink }}>anfassen & ziehen</b> zum Verschieben · <b style={{ color: C.ink }}>−/＋</b> für die Dauer · <b style={{ color: C.ink }}>✕</b> löschen.
+        <div style={{ marginTop: 12 }}><PlanerLeiste aktiv="woche" /></div>
+      </div>}
+      rechts={<div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: TYP.bedien, color: C.inkDim, marginRight: 6 }}>{wochenLabel}</span>
+        <Knopf leise onClick={() => setOffset(o => o - 1)}>‹</Knopf>
+        <Knopf leise={offset !== 0} farbe={LEUCHT.puls} onClick={() => setOffset(0)}>heute</Knopf>
+        <Knopf leise onClick={() => setOffset(o => o + 1)}>›</Knopf>
+      </div>}
+    >
+      {/* Wochen-Kapazität */}
+      <Karte i={0} akzent={ueberladen ? LEUCHT.achtung : undefined}>
+        <Ueberschrift farbe={ueberladen ? LEUCHT.achtung : LEUCHT.puls} rechts={ueberladen ? <Chip farbe={LEUCHT.achtung}>überladen, Ruhe braucht Luft</Chip> : 'Termine + Blöcke'}>Diese Woche</Ueberschrift>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 14 }}>
+          <Zahl wert={gesamtH ? fmtH(gesamtH) : undefined} label="h belegt" farbe={ueberladen ? LEUCHT.achtung : LEUCHT.puls} />
+          <Zahl wert={fixMin ? fmtH(fixMin / 60) : undefined} label="h Termine" />
+          <Zahl wert={planMin ? fmtH(planMin / 60) : undefined} label="h Blöcke" />
+          <Zahl wert={offeneN ? String(offeneN) : undefined} label="Aufgaben offen" />
+          <Zahl wert={faelligWoche ? String(faelligWoche) : undefined} label="fällig diese Woche" farbe={faelligWoche ? LEUCHT.achtung : undefined} />
         </div>
+      </Karte>
 
-        {vorschlag && (
-          <div style={{ background: T.panel, border: `1px solid ${T.accent}44`, borderRadius: 14, padding: '13px 16px', marginBottom: 12 }}>
-            <div style={{ ...lbl, color: T.accent, marginBottom: 5 }}>Jarvis' Vorschlag · {vorschlag.bloecke.length} Blöcke{vorschlag.verworfen ? ` · ${vorschlag.verworfen} verworfen (kollidierten mit Terminen)` : ''}</div>
-            <div style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.5 }}>{vorschlag.begruendung}</div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <button onClick={() => { speichern(vorschlag.bloecke); setVorschlag(null); }} style={{ fontFamily: T.sans, fontSize: 12.5, fontWeight: 700, padding: '8px 15px', borderRadius: 8, border: 'none', cursor: 'pointer', background: T.accent, color: '#04110F' }}>
-                Übernehmen — ersetzt die aktuellen Blöcke
-              </button>
-              <button onClick={() => setVorschlag(null)} style={{ fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, padding: '8px 15px', borderRadius: 8, border: `1px solid ${T.line}`, background: 'transparent', color: T.inkDim, cursor: 'pointer' }}>
-                Verwerfen
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Eigener Block: Titel, Dauer, Art — dann in den Tag klicken */}
-        <div style={{ background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '12px 14px', marginBottom: 10 }}>
-          <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={lbl}>Eigener Block</span>
-            <input value={neuTitel} onChange={e => setNeuTitel(e.target.value)}
-              placeholder="Wofür? z. B. Steuerberater anrufen"
-              aria-label="Titel des eigenen Blocks"
-              style={{ flex: '1 1 220px', minWidth: 180, background: T.void, border: `1px solid ${T.line}`, borderRadius: 8, padding: '8px 11px', color: T.ink, fontSize: 13, fontFamily: T.sans, outline: 'none' }} />
-            {([15, 30, 60, 90, 120] as const).map(d => (
-              <button key={d} onClick={() => setNeuDauer(d)}
-                style={{ fontFamily: T.mono, fontSize: 11.5, padding: '6px 10px', borderRadius: 8, cursor: 'pointer',
-                  border: `1px solid ${neuDauer === d ? T.accent : T.line}`, background: neuDauer === d ? `${T.accent}1c` : 'transparent', color: neuDauer === d ? T.accentInk : T.muted }}>
-                {d < 60 ? `${d}m` : `${d / 60}h`}
-              </button>
-            ))}
-            {(['block', 'fokus', 'reha', 'pause'] as const).map(a => (
-              <button key={a} onClick={() => setNeuArt(a)}
-                style={{ fontFamily: T.sans, fontSize: 11.5, padding: '6px 11px', borderRadius: 8, cursor: 'pointer',
-                  border: `1px solid ${neuArt === a ? ART_FARBE[a] : T.line}`, background: neuArt === a ? `${ART_FARBE[a]}1c` : 'transparent', color: neuArt === a ? ART_FARBE[a] : T.muted }}>
-                {a === 'block' ? 'Block' : a === 'fokus' ? 'Fokus' : a === 'reha' ? 'Reha' : 'Pause'}
-              </button>
-            ))}
-            <span style={{ fontSize: 11.5, color: T.muted, flexBasis: '100%' }}>
-              Dann unten in den Tag klicken — dort, wo der Block liegen soll.
-            </span>
-          </div>
-
-          {/* Spiegelung nach Apple — bewusst ein Schalter, kein Automatismus */}
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.lineSoft}` }}>
-            <button onClick={() => setAppleSync(!appleSync)}
-              title={appleSync ? 'Neue Blöcke landen sofort im Apple Kalender' : 'Blöcke bleiben nur in MAKE OS'}
-              style={{
-                fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, padding: '6px 13px', borderRadius: 8, cursor: 'pointer',
-                border: `1px solid ${appleSync ? T.accent : T.line}`, background: appleSync ? `${T.accent}1c` : 'transparent',
-                color: appleSync ? T.accentInk : T.inkDim,
-              }}>
-              {appleSync ? '● ' : '○ '}In Apple Kalender schreiben
-            </button>
-            <span style={{ fontSize: 11.5, color: T.muted }}>
-              {appleSync
-                ? <>Neue Blöcke werden sofort als Termin in <b style={{ color: T.inkDim }}>{appleKalender || '…'}</b> angelegt. Löschst du den Block, geht der Termin mit.</>
-                : <>Aus. Blöcke bleiben in MAKE OS. {appleKalender && `Ziel wäre: ${appleKalender}.`}</>}
-            </span>
-            {syncLaeuft && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk }}>schreibt …</span>}
-          </div>
-          {syncMeldung && (
-            <div style={{ marginTop: 8, fontSize: 12.5, color: T.amber, background: `${T.amber}12`, border: `1px solid ${T.amber}44`, borderRadius: 8, padding: '7px 11px' }}>
-              {syncMeldung}
-              <button onClick={() => setSyncMeldung(null)} style={{ marginLeft: 8, background: 'transparent', border: 'none', color: T.muted, cursor: 'pointer' }}>✕</button>
+      {/* Ziele im Blick — die Woche plant man gegen Ziele, nicht ins Blaue */}
+      {(ziele.monat.length > 0 || ziele.quartal.length > 0) && (
+        <Karte i={1}>
+          <Ueberschrift farbe={LEUCHT.schlaf} rechts={!ziele.monat.length ? <Link href="/os/planung/monat" style={verweis}>Monatsziele anlegen ›</Link> : undefined}>Ziele</Ueberschrift>
+          {(ziele.fokus?.woche || ziele.fokus?.monat) && (
+            <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(16px,2vw,18px)', fontWeight: 600, lineHeight: 1.4, marginBottom: 4 }}>
+              <span style={{ color: LEUCHT.schlaf }}>◎</span> {ziele.fokus?.woche || ziele.fokus?.monat}
             </div>
           )}
-        </div>
+          <Liste>
+            {zielListe.map((z, i) => (
+              <Zeile key={i} onClick={() => router.push(z.h === 'M' ? '/os/planung/monat' : '/os/planung/quartal')}
+                links={<Chip farbe={z.h === 'M' ? LEUCHT.schlaf : LEUCHT.agenten}>{z.h}</Chip>} titel={z.titel}
+                rechts={<div style={{ width: 64, flex: '0 0 auto' }}><Fortschritt anteil={z.fortschritt / 100} farbe={z.fortschritt >= 70 ? LEUCHT.gut : z.fortschritt >= 40 ? LEUCHT.achtung : LEUCHT.kritisch} /></div>} />
+            ))}
+          </Liste>
+        </Karte>
+      )}
 
-        {/* Leiste: Bausteine · Routinen · Aufgaben */}
-        <div style={{ background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '12px 14px', marginBottom: 14 }}>
-          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ ...lbl, marginBottom: 7 }}>Bausteine</div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {BAUSTEINE.map(bs => (
-                  <div key={bs.titel} draggable
-                    onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ neu: bs }))}
-                    style={{ cursor: 'grab', fontSize: 12, fontWeight: 600, color: ART_FARBE[bs.art], border: `1px solid ${ART_FARBE[bs.art]}55`, background: `${ART_FARBE[bs.art]}14`, borderRadius: 8, padding: '6px 11px' }}>
-                    {bs.titel} · {bs.dauerMin}m
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <div style={{ ...lbl, marginBottom: 7 }}>Routinen <Link href="/os/planung/routinen" style={{ color: T.accentInk, textDecoration: 'none', textTransform: 'none' }}>planen ›</Link></div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', maxWidth: 460 }}>
-                {routinen.map(r => (
-                  <div key={r.id} draggable
-                    onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ neu: { art: 'routine', titel: r.label, dauerMin: r.dauerMin } }))}
-                    style={{ cursor: 'grab', fontSize: 11.5, color: T.amber, border: `1px solid ${T.amber}44`, borderRadius: 7, padding: '4px 9px' }}>
-                    {r.label}
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <div style={{ ...lbl, marginBottom: 7 }}>Aufgaben einplanen <span style={{ textTransform: 'none' }}>(ziehen · ◎ = <Link href="/os/planung/fokus" style={{ color: T.accentInk, textDecoration: 'none' }}>im Fokus</Link>)</span></div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {offeneAufgaben.map(t => (
-                  <div key={t.id} draggable
-                    onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ aufgabe: { taskId: t.id, titel: t.title } }))}
-                    style={{ cursor: 'grab', fontSize: 11.5, color: t.imFokus ? T.accentInk : '#8FA6FF', border: t.imFokus ? `1px solid ${T.accent}88` : '1px solid #4A6CF755', borderRadius: 7, padding: '4px 9px', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {t.priority === 'critical' ? '‼ ' : ''}{t.imFokus ? '◎ ' : ''}{t.title}
-                  </div>
-                ))}
-                {!offeneAufgaben.length && <span style={{ fontSize: 12, color: T.muted }}>Alles eingeplant oder erledigt.</span>}
-              </div>
+      {/* Jarvis belegt die Woche — Vorschlag, den du zurechtschiebst */}
+      <Karte i={2} akzent={LEUCHT.agenten}>
+        <Ueberschrift farbe={LEUCHT.agenten}>Jarvis belegt die Woche</Ueberschrift>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Knopf onClick={jarvisBelegen} aus={denkt} farbe={LEUCHT.agenten}>{denkt ? 'Jarvis plant …' : '✨ Jarvis belegt die Woche'}</Knopf>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Reha täglich · Fokus vormittags · Routinen · Aufgaben nach Priorität — um deine festen Termine herum.</span>
+        </div>
+        {vorschlag && (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+            <Ueberschrift farbe={LEUCHT.agenten} rechts={`${vorschlag.bloecke.length} Blöcke${vorschlag.verworfen ? ` · ${vorschlag.verworfen} verworfen (kollidierten mit Terminen)` : ''}`}>Jarvis&apos; Vorschlag</Ueberschrift>
+            <div style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.5 }}>{vorschlag.begruendung}</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+              <Knopf farbe={LEUCHT.agenten} onClick={() => { speichern(vorschlag.bloecke); setVorschlag(null); }}>Übernehmen — ersetzt die aktuellen Blöcke</Knopf>
+              <Knopf leise onClick={() => setVorschlag(null)}>Verwerfen</Knopf>
             </div>
           </div>
-        </div>
+        )}
+      </Karte>
 
-        {/* Raster */}
-        <div style={{ display: 'grid', gridTemplateColumns: `46px repeat(7, minmax(120px, 1fr))`, gap: 4, overflowX: 'auto' }}>
-          {/* Zeitspalte */}
-          <div>
-            <div style={{ height: 34 }} />
-            <div style={{ position: 'relative', height: H }}>
-              {stunden.map(h => (
-                <div key={h} style={{ position: 'absolute', top: (h * 60 - START) * PX - 7, right: 6, fontFamily: T.mono, fontSize: 11, color: T.muted }}>{String(h).padStart(2, '0')}</div>
+      {/* Eigener Block: Titel, Dauer, Art — dann in den Tag klicken */}
+      <Karte i={3}>
+        <Ueberschrift farbe={ART_FARBE[neuArt]}>Eigener Block</Ueberschrift>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input value={neuTitel} onChange={e => setNeuTitel(e.target.value)}
+            placeholder="Wofür? z. B. Steuerberater anrufen"
+            aria-label="Titel des eigenen Blocks"
+            style={{ ...feld, width: 'auto', flex: '1 1 220px', minWidth: 'min(180px, 100%)' }} />
+          <Segmente liste={DAUERN} aktiv={String(neuDauer)} onWahl={id => setNeuDauer(Number(id))} />
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {(['block', 'fokus', 'reha', 'pause'] as const).map(a => (
+              <button key={a} className="fassbar" onClick={() => setNeuArt(a)} style={wahl(neuArt === a, ART_FARBE[a])}>{ART_LABEL[a]}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Dann unten in den Tag klicken — dort, wo der Block liegen soll.</div>
+
+        {/* Spiegelung nach Apple — bewusst ein Schalter, kein Automatismus */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+          <span title={appleSync ? 'Neue Blöcke landen sofort im Apple Kalender' : 'Blöcke bleiben nur in MAKE OS'}>
+            <Knopf leise={!appleSync} farbe={LEUCHT.puls} onClick={() => setAppleSync(!appleSync)}>{appleSync ? '● ' : '○ '}In Apple Kalender schreiben</Knopf>
+          </span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>
+            {appleSync
+              ? <>Neue Blöcke werden sofort als Termin in <b style={{ color: C.inkDim }}>{appleKalender || '…'}</b> angelegt. Löschst du den Block, geht der Termin mit.</>
+              : <>Aus. Blöcke bleiben in MAKE OS. {appleKalender && `Ziel wäre: ${appleKalender}.`}</>}
+          </span>
+          {syncLaeuft && <span style={{ fontSize: 12, color: LEUCHT.puls }}>schreibt …</span>}
+        </div>
+        {syncMeldung && (
+          <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: LEUCHT.achtung, background: `${LEUCHT.achtung}14`, borderRadius: 10, padding: '8px 12px' }}>
+            <span style={{ flex: 1 }}>{syncMeldung}</span>
+            <button onClick={() => setSyncMeldung(null)} aria-label="Meldung schließen" style={{ background: 'transparent', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>✕</button>
+          </div>
+        )}
+      </Karte>
+
+      {/* Leiste: Bausteine · Routinen · Aufgaben */}
+      <Karte i={4}>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 0 }}>
+            <Ueberschrift>Bausteine</Ueberschrift>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {BAUSTEINE.map(bs => (
+                <Ziehbar key={bs.titel} farbe={ART_FARBE[bs.art]} daten={{ neu: bs }}>{bs.titel} · {bs.dauerMin}m</Ziehbar>
               ))}
             </div>
           </div>
+          <div style={{ minWidth: 0, maxWidth: 460 }}>
+            <Ueberschrift rechts={<Link href="/os/planung/routinen" style={verweis}>planen ›</Link>}>Routinen</Ueberschrift>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {routinen.map(r => (
+                <Ziehbar key={r.id} farbe={ART_FARBE.routine} daten={{ neu: { art: 'routine', titel: r.label, dauerMin: r.dauerMin } }}>{r.label}</Ziehbar>
+              ))}
+              {!routinen.length && <Leer>Noch keine Routinen — im Routine-Planer anlegen.</Leer>}
+            </div>
+          </div>
+          <div style={{ flex: 1, minWidth: 'min(220px, 100%)' }}>
+            <Ueberschrift rechts={<span>ziehen · ◎ = <Link href="/os/planung/fokus" style={verweis}>im Fokus</Link></span>}>Aufgaben einplanen</Ueberschrift>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {offeneAufgaben.map(t => (
+                <Ziehbar key={t.id} farbe={t.imFokus ? LEUCHT.schlaf : ART_FARBE.aufgabe} daten={{ aufgabe: { taskId: t.id, titel: t.title } }} breit={240}>
+                  {t.priority === 'critical' ? '‼ ' : ''}{t.imFokus ? '◎ ' : ''}{t.title}
+                </Ziehbar>
+              ))}
+              {!offeneAufgaben.length && <Leer>Alles eingeplant oder erledigt.</Leer>}
+            </div>
+          </div>
+        </div>
+      </Karte>
 
-          {tage.map((date, di) => {
-            const istHeute = date === heute;
-            // Kapazität: verplante Stunden (Blöcke + feste Termine) je Tag —
-            // ehrliche Auslastung statt gefühlter Fülle. >8h amber, >10h rot.
-            const belegtMin = bloecke.filter(b => b.date === date).reduce((s, b) => s + b.dauerMin, 0)
-              + fix.filter(f => f.date === date).reduce((s, f) => s + f.dauerMin, 0);
-            const belegtH = belegtMin / 60;
-            const lastFarbe = belegtH > 10 ? T.crit : belegtH > 8 ? T.amber : T.muted;
-            // Feste Termine UND Blöcke gemeinsam verteilen — sie liegen in
-            // derselben Spalte und dürfen sich deshalb nicht zudecken.
-            const tagesFix = fix.filter(f => f.date === date);
-            const tagesBloecke = bloecke.filter(b => b.date === date);
-            const spuren = verteileSpuren([
-              ...tagesFix.map((f, i) => ({ id: `fix-${i}`, startMin: f.startMin, dauerMin: f.dauerMin })),
-              ...tagesBloecke.map(b => ({ id: b.id, startMin: b.startMin, dauerMin: b.dauerMin })),
-            ]);
-            return (
-              <div key={date} style={{ minWidth: 0 }}>
-                <div style={{ height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 8, background: istHeute ? 'rgba(33,181,170,.13)' : T.panel, border: `1px solid ${istHeute ? T.accent : T.line}` }}>
-                  <span style={{ fontFamily: T.mono, fontSize: 11, fontWeight: 700, color: istHeute ? T.accent : T.inkDim }}>{WD[di]} {date.slice(8)}.{date.slice(5, 7)}.</span>
-                  {belegtMin > 0 && <span title={belegtH > 10 ? 'überladen — Ruhe braucht Luft' : belegtH > 8 ? 'voll — Pausen ernst nehmen' : 'Auslastung'}
-                    style={{ fontFamily: T.mono, fontSize: 11, color: lastFarbe }}>{belegtH.toFixed(1).replace('.', ',')}h</span>}
-                </div>
-                <div
-                  onDragOver={e => e.preventDefault()}
-                  onDrop={e => dropAufTag(e, date)}
-                  // Klick auf freie Fläche legt dort einen Block an — Kevins
-                  // Ansage: „Ich will auch selber Blöcke anlegen können."
-                  onClick={e => {
-                    if (e.target !== e.currentTarget) return;   // nur die leere Fläche
-                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                    eigenerBlock(date, Math.max(START, Math.min(ENDE - 15, START + snap((e.clientY - rect.top) / PX))));
-                  }}
-                  title="Auf eine freie Stelle klicken, um dort einen Block anzulegen"
-                  style={{ position: 'relative', height: H, background: istHeute ? 'rgba(33,181,170,.04)' : T.panel, border: `1px solid ${istHeute ? 'rgba(33,181,170,.35)' : T.line}`, borderRadius: 10, marginTop: 4, cursor: 'copy' }}
-                >
-                  {/* Stundenlinien */}
-                  {stunden.map(h => (
-                    <div key={h} style={{ position: 'absolute', top: (h * 60 - START) * PX, left: 0, right: 0, borderTop: `1px solid rgba(255,255,255,.045)` }} />
-                  ))}
-
-                  {/* Feste Termine (unverrückbar) */}
-                  {tagesFix.map((f, fi) => {
-                    const top = Math.max(0, (f.startMin - START) * PX);
-                    const hoehe = Math.max(16, Math.min(H - top, f.dauerMin * PX));
-                    const lage = spuren.get(`fix-${fi}`);
-                    const n = lage?.spuren ?? 1;
-                    return (
-                      <div key={fi} title={`${f.titel} · ${mmss(f.startMin)}–${mmss(f.startMin + f.dauerMin)} (fest)`}
-                        // Nur Einzelwerte, keine Kurzschreibweise: React warnt
-                        // sonst, weil `border` und `borderLeftWidth` einander
-                        // beim Neuzeichnen überschreiben.
-                        style={{ position: 'absolute', top, ...spurStil(lage), height: hoehe, background: 'rgba(24,28,27,.96)', borderStyle: 'solid', borderWidth: '1px 1px 1px 3px', borderColor: `${n > 1 ? T.line : 'transparent'} ${n > 1 ? T.line : 'transparent'} ${n > 1 ? T.line : 'transparent'} ${T.inkDim}`, borderRadius: 6, padding: n > 2 ? '2px 4px' : '3px 6px', overflow: 'hidden', zIndex: 1 }}>
-                        <div style={titelStil(n, T.inkDim)}>{n > 2 ? '' : '🔒 '}{f.titel}</div>
-                        {hoehe > 30 && n < 3 && <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{mmss(f.startMin)}–{mmss(f.startMin + f.dauerMin)}</div>}
-                      </div>
-                    );
-                  })}
-
-                  {/* Verschiebbare Blöcke */}
-                  {tagesBloecke.map(b => {
-                    const top = Math.max(0, (b.startMin - START) * PX);
-                    const hoehe = Math.max(18, Math.min(H - top, b.dauerMin * PX));
-                    const farbe = ART_FARBE[b.art];
-                    const aktivB = aktivBlock === b.id;
-                    const lage = spuren.get(b.id);
-                    return (
-                      <div key={b.id} draggable
-                        onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ move: b.id }))}
-                        onClick={() => setAktivBlock(aktivB ? null : b.id)}
-                        title={`${b.titel} · ${mmss(b.startMin)}–${mmss(b.startMin + b.dauerMin)}`}
-                        style={{ position: 'absolute', top, ...spurStil(lage), height: hoehe, cursor: 'grab', background: `${farbe}1e`, backdropFilter: 'blur(2px)', borderStyle: 'solid', borderWidth: '1px 1px 1px 3px', borderColor: `${aktivB ? farbe : `${farbe}44`} ${aktivB ? farbe : `${farbe}44`} ${aktivB ? farbe : `${farbe}44`} ${farbe}`, borderRadius: 6, padding: '3px 6px', overflow: 'hidden', zIndex: aktivB ? 8 : 3 }}>
-                        <div style={titelStil(lage?.spuren ?? 1, farbe)}>{b.titel}</div>
-                        {hoehe > 30 && (lage?.spuren ?? 1) < 3 && <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{mmss(b.startMin)}–{mmss(b.startMin + b.dauerMin)}</div>}
-                        {aktivB && (
-                          <div style={{ position: 'absolute', top: 2, right: 4, display: 'flex', gap: 3 }} onClick={e => e.stopPropagation()}>
-                            <button onClick={() => speichern(bloecke.map(x => x.id === b.id ? { ...x, dauerMin: Math.max(15, x.dauerMin - 30) } : x))} style={miniBtn(farbe)}>−</button>
-                            <button onClick={() => speichern(bloecke.map(x => x.id === b.id ? { ...x, dauerMin: Math.min(480, x.dauerMin + 30) } : x))} style={miniBtn(farbe)}>＋</button>
-                            <button onClick={() => blockLoeschen(b)} title={b.appleUid ? 'Block und Apple-Termin löschen' : 'Block löschen'} style={miniBtn(T.crit)}>✕</button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+      {/* Raster */}
+      <Karte i={5}>
+        <div style={{ overflowX: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '46px repeat(7, minmax(120px, 1fr))', gap: 4 }}>
+            {/* Zeitspalte */}
+            <div>
+              <div style={{ height: 34 }} />
+              <div style={{ position: 'relative', height: H }}>
+                {stunden.map(h => (
+                  <div key={h} style={{ position: 'absolute', top: (h * 60 - START) * PX - 7, right: 6, ...zeit }}>{String(h).padStart(2, '0')}</div>
+                ))}
               </div>
-            );
-          })}
+            </div>
+
+            {tage.map((date, di) => {
+              const istHeute = date === heute;
+              // Kapazität: verplante Stunden (Blöcke + feste Termine) je Tag —
+              // ehrliche Auslastung statt gefühlter Fülle. >8h gelb, >10h rot.
+              const belegtMin = bloecke.filter(b => b.date === date).reduce((s, b) => s + b.dauerMin, 0)
+                + fix.filter(f => f.date === date).reduce((s, f) => s + f.dauerMin, 0);
+              const belegtH = belegtMin / 60;
+              const lastFarbe = belegtH > 10 ? LEUCHT.kritisch : belegtH > 8 ? LEUCHT.achtung : C.inkLeise;
+              // Feste Termine UND Blöcke gemeinsam verteilen — sie liegen in
+              // derselben Spalte und dürfen sich deshalb nicht zudecken.
+              const tagesFix = fix.filter(f => f.date === date);
+              const tagesBloecke = bloecke.filter(b => b.date === date);
+              const spuren = verteileSpuren([
+                ...tagesFix.map((f, i) => ({ id: `fix-${i}`, startMin: f.startMin, dauerMin: f.dauerMin })),
+                ...tagesBloecke.map(b => ({ id: b.id, startMin: b.startMin, dauerMin: b.dauerMin })),
+              ]);
+              return (
+                <div key={date} style={{ minWidth: 0 }}>
+                  <div style={{ height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 10, background: istHeute ? `${LEUCHT.puls}1F` : 'rgba(255,255,255,.05)' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: istHeute ? LEUCHT.puls : C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{WD[di]} {date.slice(8)}.{date.slice(5, 7)}.</span>
+                    {belegtMin > 0 && <span title={belegtH > 10 ? 'überladen — Ruhe braucht Luft' : belegtH > 8 ? 'voll — Pausen ernst nehmen' : 'Auslastung'}
+                      style={{ fontSize: 11, fontWeight: 700, color: lastFarbe, fontVariantNumeric: 'tabular-nums' }}>{fmtH(belegtH)}h</span>}
+                  </div>
+                  <div
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={e => dropAufTag(e, date)}
+                    // Klick auf freie Fläche legt dort einen Block an — Kevins
+                    // Ansage: „Ich will auch selber Blöcke anlegen können."
+                    onClick={e => {
+                      if (e.target !== e.currentTarget) return;   // nur die leere Fläche
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      eigenerBlock(date, Math.max(START, Math.min(ENDE - 15, START + snap((e.clientY - rect.top) / PX))));
+                    }}
+                    title="Auf eine freie Stelle klicken, um dort einen Block anzulegen"
+                    style={{ position: 'relative', height: H, background: istHeute ? `${LEUCHT.puls}0A` : 'rgba(255,255,255,.03)', boxShadow: istHeute ? `inset 0 0 0 1px ${LEUCHT.puls}33` : undefined, borderRadius: 12, marginTop: 4, cursor: 'copy' }}
+                  >
+                    {/* Stundenlinien */}
+                    {stunden.map(h => (
+                      <div key={h} style={{ position: 'absolute', top: (h * 60 - START) * PX, left: 0, right: 0, borderTop: '1px solid rgba(255,255,255,.045)' }} />
+                    ))}
+
+                    {/* Feste Termine (unverrückbar) */}
+                    {tagesFix.map((f, fi) => {
+                      const top = Math.max(0, (f.startMin - START) * PX);
+                      const hoehe = Math.max(16, Math.min(H - top, f.dauerMin * PX));
+                      const lage = spuren.get(`fix-${fi}`);
+                      const n = lage?.spuren ?? 1;
+                      return (
+                        <div key={fi} title={`${f.titel} · ${mmss(f.startMin)}–${mmss(f.startMin + f.dauerMin)} (fest)`}
+                          style={{ position: 'absolute', top, ...spurStil(lage), height: hoehe, background: C.flaecheHoch, borderLeft: `3px solid ${C.inkDim}`, boxShadow: n > 1 ? `0 0 0 1px ${C.grund}` : undefined, borderRadius: 7, padding: n > 2 ? '2px 4px' : '3px 6px', overflow: 'hidden', zIndex: 1 }}>
+                          <div style={titelStil(n, C.inkDim)}>{n > 2 ? '' : '🔒 '}{f.titel}</div>
+                          {hoehe > 30 && n < 3 && <div style={zeit}>{mmss(f.startMin)}–{mmss(f.startMin + f.dauerMin)}</div>}
+                        </div>
+                      );
+                    })}
+
+                    {/* Verschiebbare Blöcke */}
+                    {tagesBloecke.map(b => {
+                      const top = Math.max(0, (b.startMin - START) * PX);
+                      const hoehe = Math.max(18, Math.min(H - top, b.dauerMin * PX));
+                      const farbe = ART_FARBE[b.art];
+                      const aktivB = aktivBlock === b.id;
+                      const lage = spuren.get(b.id);
+                      return (
+                        <div key={b.id} draggable
+                          onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ move: b.id }))}
+                          onClick={() => setAktivBlock(aktivB ? null : b.id)}
+                          title={`${b.titel} · ${mmss(b.startMin)}–${mmss(b.startMin + b.dauerMin)}`}
+                          style={{ position: 'absolute', top, ...spurStil(lage), height: hoehe, cursor: 'grab', background: `${farbe}26`, backdropFilter: 'blur(2px)', borderLeft: `3px solid ${farbe}`, boxShadow: aktivB ? `0 0 0 1px ${farbe}, 0 0 14px ${farbe}66` : undefined, borderRadius: 7, padding: '3px 6px', overflow: 'hidden', zIndex: aktivB ? 8 : 3, transition: 'box-shadow .2s ease' }}>
+                          <div style={titelStil(lage?.spuren ?? 1, farbe)}>{b.titel}</div>
+                          {hoehe > 30 && (lage?.spuren ?? 1) < 3 && <div style={zeit}>{mmss(b.startMin)}–{mmss(b.startMin + b.dauerMin)}</div>}
+                          {aktivB && (
+                            <div style={{ position: 'absolute', top: 2, right: 4, display: 'flex', gap: 3 }} onClick={e => e.stopPropagation()}>
+                              <button onClick={() => speichern(bloecke.map(x => x.id === b.id ? { ...x, dauerMin: Math.max(15, x.dauerMin - 30) } : x))} style={miniBtn(farbe)}>−</button>
+                              <button onClick={() => speichern(bloecke.map(x => x.id === b.id ? { ...x, dauerMin: Math.min(480, x.dauerMin + 30) } : x))} style={miniBtn(farbe)}>＋</button>
+                              <button onClick={() => blockLoeschen(b)} title={b.appleUid ? 'Block und Apple-Termin löschen' : 'Block löschen'} style={miniBtn(LEUCHT.kritisch)}>✕</button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 12, lineHeight: 1.6 }}>
-          🔒 feste Termine (Apple + KEMARIS) · <span style={{ color: ART_FARBE.fokus }}>Fokus</span> · <span style={{ color: ART_FARBE.reha }}>Reha</span> · <span style={{ color: ART_FARBE.routine }}>Routine</span> · <span style={{ color: ART_FARBE.aufgabe }}>Aufgabe</span> · <span style={{ color: ART_FARBE.pause }}>Pause</span> — alles wird automatisch gespeichert.
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', alignItems: 'center', fontSize: 12, color: C.inkLeise, marginTop: 14, lineHeight: 1.6 }}>
+          <span>🔒 feste Termine (Apple + KEMARIS)</span>
+          {(['fokus', 'reha', 'routine', 'aufgabe', 'pause'] as const).map(a => (
+            <span key={a} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: ART_FARBE[a] }}><Punkt farbe={ART_FARBE[a]} groesse={7} />{a === 'fokus' ? 'Fokus' : a === 'reha' ? 'Reha' : a === 'routine' ? 'Routine' : a === 'aufgabe' ? 'Aufgabe' : 'Pause'}</span>
+          ))}
+          <span>— alles wird automatisch gespeichert.</span>
         </div>
-      </div>
-    </div>
+      </Karte>
+    </Seite>
   );
 }
 
-function btn(aktivB = false): React.CSSProperties {
-  return { fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700, padding: '7px 13px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${aktivB ? T.accent : T.line}`, background: aktivB ? 'rgba(33,181,170,.14)' : T.panel, color: aktivB ? T.accent : T.inkDim };
-}
 function miniBtn(farbe: string): React.CSSProperties {
-  return { width: 18, height: 18, lineHeight: '14px', fontSize: 11, borderRadius: 5, cursor: 'pointer', border: `1px solid ${farbe}66`, background: T.panel, color: farbe, padding: 0 };
+  return { width: 18, height: 18, lineHeight: '18px', fontSize: 11, fontWeight: 700, borderRadius: 5, cursor: 'pointer', border: 'none', background: `${farbe}33`, color: farbe, padding: 0 };
 }

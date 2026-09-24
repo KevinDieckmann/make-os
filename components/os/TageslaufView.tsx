@@ -1,24 +1,20 @@
 'use client';
 
-import Link from 'next/link';
+// ─── MAKE OS — Tageslauf ────────────────────────────────────────────────────
 // Der Tageslauf sichtbar: welche Schritte laufen, was sie gefunden haben, und
 // am Ende die eine Ausrichtung. Bewusst als Kette dargestellt — man soll sehen,
 // dass jeden Tag dasselbe passiert.
+// 24.09.: auf das lebendige Muster umgezogen (Karten, Chips, Leuchtfarben).
 
-import { useEffect, useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+import { Fragment, useEffect, useState } from 'react';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { KETTE, schritteFuer, type LaufArt, type Lauf, type SchrittErgebnis } from '@/lib/tageslauf';
 import { useTasks } from '@/context/TasksContext';
-import { Seitenkopf } from './Seitenkopf';
-
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Chip, Knopf, Punkt, LEUCHT } from './schlank';
 
 const standFarbe = (s: SchrittErgebnis['stand']) =>
-  s === 'ok' ? T.accent : s === 'leer' ? T.muted : s === 'fehler' ? T.crit : T.amber;
-const standZeichen = (s: SchrittErgebnis['stand']) =>
-  s === 'ok' ? '●' : s === 'leer' ? '○' : s === 'fehler' ? '⨯' : '–';
-const formFarbe = (f?: string) => (f === 'gruen' ? T.accent : f === 'gelb' ? T.amber : f === 'rot' ? T.crit : T.muted);
+  s === 'ok' ? LEUCHT.gut : s === 'leer' ? C.inkLeise : s === 'fehler' ? LEUCHT.kritisch : LEUCHT.achtung;
+const formFarbe = (f?: string) => (f === 'gruen' ? LEUCHT.gut : f === 'gelb' ? LEUCHT.achtung : f === 'rot' ? LEUCHT.kritisch : C.inkLeise);
 
 const ARTEN: { id: LaufArt; label: string; hin: string }[] = [
   { id: 'voll', label: 'Voller Lauf', hin: 'die ganze Kette — morgens' },
@@ -27,6 +23,11 @@ const ARTEN: { id: LaufArt; label: string; hin: string }[] = [
 ];
 
 interface Antwort { laeufe: Lauf[]; heute: number; letzterVoll: Lauf | null; empfohlen: LaufArt }
+
+/** Text, der in einer Zeile umbrechen darf (die Zeile schneidet sonst ab). */
+function Weich({ children, farbe }: { children: React.ReactNode; farbe?: string }) {
+  return <span style={{ whiteSpace: 'normal', color: farbe }}>{children}</span>;
+}
 
 export function TageslaufView() {
   const [d, setD] = useState<Antwort | null>(null);
@@ -53,14 +54,11 @@ export function TageslaufView() {
 
   function aufgabeKnopf(key: string, titel: string, beschreibung: string) {
     const st = angelegt[key];
+    const fertig = st === 'ok' || st === 'dupl';
     return (
-      <button onClick={() => alsAufgabe(key, titel, beschreibung)} disabled={st === 'busy' || st === 'ok' || st === 'dupl'}
-        style={{ fontFamily: T.sans, fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 7, whiteSpace: 'nowrap', flex: '0 0 auto', cursor: st ? 'default' : 'pointer',
-          border: `1px solid ${st === 'err' ? T.crit : st === 'ok' || st === 'dupl' ? T.line : T.accent}`,
-          background: st === 'ok' || st === 'dupl' ? 'transparent' : `${T.accent}18`,
-          color: st === 'err' ? T.crit : st === 'ok' || st === 'dupl' ? T.muted : T.accent }}>
+      <Knopf onClick={() => alsAufgabe(key, titel, beschreibung)} leise={fertig} aus={st === 'busy' || fertig} farbe={st === 'err' ? LEUCHT.kritisch : LEUCHT.agenten}>
         {st === 'busy' ? '…' : st === 'ok' ? '✓ Aufgabe' : st === 'dupl' ? 'gibt es schon' : st === 'err' ? 'Fehler' : '→ Aufgabe'}
-      </button>
+      </Knopf>
     );
   }
 
@@ -86,170 +84,132 @@ export function TageslaufView() {
 
   const geplant = schritteFuer(art);
   const a = aktuell?.ausrichtung as { gruss?: string; tagesform?: string; warum?: string; prioritaeten?: { titel: string; warum?: string; wann?: string }[]; schutz?: string; warnung?: string; autoAufgaben?: { titel: string; stand: string }[] } | undefined;
+  const vorziehen = (aktuell?.schritte.find(x => x.id === 'prioritaet')?.detail as { vorziehen?: { was: string; warum?: string; statt?: string }[] } | undefined)?.vorziehen ?? [];
 
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
-        <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
-        <Seitenkopf
-          rubrik={<>Tageslauf · die feste Kette</>}
-          titel={<>Jeden Tag dieselbe Reihenfolge.</>}
-          satz={<>Postfächer, Termine, Aufgaben, Transkripte, Lage draußen, Prioritäten — und am Ende eine Ausrichtung. Du sollst morgens nichts entscheiden und nichts suchen müssen. {d && <> <span style={{ color: T.muted }}>Heute {d.heute} {d.heute === 1 ? 'Lauf' : 'Läufe'}.</span></>}</>}
-        />
-
-        {/* Lauf-Art */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 8, margin: '20px 0 14px' }}>
+    <Seite
+      titel="Tageslauf"
+      unter={<>Jeden Tag dieselbe Reihenfolge: Postfächer, Termine, Aufgaben, Transkripte, Lage draußen, Prioritäten — und am Ende eine Ausrichtung. Du sollst morgens nichts entscheiden und nichts suchen müssen.{d && <span style={{ color: C.inkLeise }}> Heute {d.heute} {d.heute === 1 ? 'Lauf' : 'Läufe'}.</span>}</>}
+      rechts={<Chip farbe={LEUCHT.agenten}>die feste Kette</Chip>}
+    >
+      {/* Lauf-Art */}
+      <Karte i={0}>
+        <Ueberschrift farbe={LEUCHT.agenten}>Lauf-Art</Ueberschrift>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
           {ARTEN.map(x => (
-            <button key={x.id} onClick={() => setArt(x.id)} disabled={laeuft} style={{
-              textAlign: 'left', padding: '11px 14px', borderRadius: 10, cursor: laeuft ? 'default' : 'pointer',
-              border: `1px solid ${art === x.id ? T.accent : T.line}`, background: art === x.id ? `${T.accent}18` : T.panel,
-            }}>
-              <div style={{ fontSize: 13.5, fontWeight: 600, color: art === x.id ? T.accent : T.ink }}>
-                {x.label}{d?.empfohlen === x.id && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginLeft: 7 }}>jetzt dran</span>}
+            <button key={x.id} onClick={() => setArt(x.id)} disabled={laeuft} className="fassbar" style={{ textAlign: 'left', padding: '11px 13px', borderRadius: 12, cursor: laeuft ? 'default' : 'pointer', border: 'none', background: art === x.id ? `${LEUCHT.agenten}1F` : 'rgba(255,255,255,.04)', transition: 'background .15s ease' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <Punkt farbe={art === x.id ? LEUCHT.agenten : C.inkLeise} />
+                <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: art === x.id ? C.ink : C.inkDim }}>{x.label}</span>
+                {d?.empfohlen === x.id && <Chip farbe={LEUCHT.gut}>jetzt dran</Chip>}
               </div>
-              <div style={{ fontSize: 11.5, color: T.muted, marginTop: 2, lineHeight: 1.35 }}>{x.hin}</div>
+              <div style={{ fontSize: 11.5, color: C.inkLeise, marginTop: 3, lineHeight: 1.35 }}>{x.hin}</div>
             </button>
           ))}
         </div>
-
-        <button onClick={starten} disabled={laeuft} style={{
-          fontFamily: T.sans, fontSize: 13.5, fontWeight: 700, padding: '11px 22px', borderRadius: 9, border: 'none',
-          cursor: laeuft ? 'default' : 'pointer', background: laeuft ? T.line : T.accent, color: laeuft ? T.muted : '#04110F', marginBottom: 20,
-        }}>
-          {laeuft ? 'die Kette läuft …' : 'Lauf starten'}
-        </button>
-
-        {/* Die Kette */}
-        <div style={{ ...panel, padding: '16px 20px', marginBottom: 14 }}>
-          <div style={{ ...lbl, marginBottom: 12 }}>Die Kette{laeuft ? ' — läuft' : ''}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {geplant.map((s, i) => {
-              const erg = aktuell?.schritte.find(x => x.id === s.id);
-              const auf = offen === s.id;
-              return (
-                <div key={s.id}>
-                  <div onClick={() => erg?.detail && setOffen(auf ? null : s.id)} style={{
-                    display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 0',
-                    borderTop: i ? `1px solid ${T.lineSoft}` : 0, cursor: erg?.detail ? 'pointer' : 'default',
-                  }}>
-                    <span style={{ fontFamily: T.mono, fontSize: 13, color: erg ? standFarbe(erg.stand) : (laeuft ? T.accentInk : T.muted), flex: '0 0 auto', width: 14, opacity: erg ? 1 : 0.4 }}>
-                      {erg ? standZeichen(erg.stand) : '·'}
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', gap: 9, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 13.5, fontWeight: 600, color: erg ? T.ink : T.muted }}>{s.name}</span>
-                        {erg?.ms != null && erg.ms > 1500 && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{(erg.ms / 1000).toFixed(1)}s</span>}
-                        {!!erg?.detail && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{auf ? '▾' : '▸'}</span>}
-                      </div>
-                      <div style={{ fontSize: 12.5, color: erg ? (erg.stand === 'fehler' ? T.crit : erg.stand === 'uebersprungen' ? T.amber : T.inkDim) : T.muted, marginTop: 2, lineHeight: 1.45 }}>
-                        {erg ? erg.kurz : s.tut}
-                      </div>
-                    </div>
-                  </div>
-                  {auf && erg?.detail != null && (
-                    <div style={{ padding: '0 0 12px 26px' }}>
-                      <pre style={{ fontFamily: T.mono, fontSize: 11.5, color: T.inkDim, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, background: T.panel2, borderRadius: 9, padding: '11px 13px' }}>
-                        {typeof erg.detail === 'string' ? erg.detail : String(JSON.stringify(erg.detail, null, 2) ?? '')}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 14, flexWrap: 'wrap' }}>
+          <Knopf onClick={starten} aus={laeuft} farbe={LEUCHT.agenten}>{laeuft ? 'die Kette läuft …' : 'Lauf starten'}</Knopf>
+          {laeuft && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Schritt für Schritt — gleich steht die Ausrichtung.</span>}
         </div>
+      </Karte>
 
-        {/* Wächter */}
-        {aktuell?.alarm && (
-          <div style={{ ...panel, borderColor: `${T.amber}55`, padding: '14px 20px', marginBottom: 14 }}>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <span style={{ color: T.amber, flex: '0 0 auto' }}>⚠</span>
-              <div style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.5 }}><b style={{ color: T.amber }}>Wächter: </b>{aktuell.alarm}</div>
-            </div>
-            {(() => {
-              const det = aktuell.schritte.find(x => x.id === 'prioritaet')?.detail as { vorziehen?: { was: string; warum?: string; statt?: string }[] } | undefined;
-              const v = det?.vorziehen ?? [];
-              if (!v.length) return null;
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 10, paddingLeft: 24 }}>
-                  {v.map((x, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>{x.was}</span>
-                        {x.warum && <div style={{ fontSize: 12, color: T.inkDim, marginTop: 1, lineHeight: 1.4 }}>{x.warum}{x.statt ? ` — dafür wartet: ${x.statt}` : ''}</div>}
-                      </div>
-                      {aufgabeKnopf(`waechter-${i}`, x.was, [x.warum, x.statt ? `Dafür wartet: ${x.statt}` : '', 'Vom Prioritäten-Wächter vorgezogen.'].filter(Boolean).join(' · '))}
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-          </div>
-        )}
-
-        {/* Ausrichtung */}
-        {a?.gruss && (
-          <div style={{ ...panel, borderTop: `2px solid ${formFarbe(a.tagesform)}`, padding: '18px 22px' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
-              <div style={lbl}>Ausrichtung</div>
-              {a.tagesform && <span style={{ fontFamily: T.mono, fontSize: 11, color: formFarbe(a.tagesform), border: `1px solid ${formFarbe(a.tagesform)}55`, borderRadius: 5, padding: '2px 7px', textTransform: 'uppercase' }}>{a.tagesform}</span>}
-            </div>
-            <div style={{ fontSize: 15.5, color: T.ink, lineHeight: 1.55 }}>{a.gruss}</div>
-            {a.warum && <div style={{ fontSize: 12.5, color: T.muted, marginTop: 4 }}>{a.warum}</div>}
-
-            {!!a.prioritaeten?.length && (
-              <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 9 }}>
-                {a.prioritaeten.slice(0, 3).map((p, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                    <span style={{ fontFamily: T.mono, fontSize: 12, color: T.accent, flex: '0 0 auto' }}>{i + 1}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: T.ink }}>{p.titel}</span>
-                      {p.wann && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginLeft: 8 }}>{p.wann}</span>}
-                      {p.warum && <div style={{ fontSize: 12.5, color: T.inkDim, marginTop: 2, lineHeight: 1.45 }}>{p.warum}</div>}
-                    </div>
-                    {aufgabeKnopf(`prio-${i}`, p.titel, [p.warum, p.wann ? `Wann: ${p.wann}` : ''].filter(Boolean).join(' · ') || 'Aus der Tages-Ausrichtung.')}
+      {/* Die Kette */}
+      <Karte i={1} akzent={laeuft ? LEUCHT.agenten : undefined}>
+        <Ueberschrift farbe={LEUCHT.agenten} rechts={laeuft ? 'läuft' : `${geplant.length} Schritte`}>Die Kette</Ueberschrift>
+        <Liste>
+          {geplant.map(s => {
+            const erg = aktuell?.schritte.find(x => x.id === s.id);
+            const auf = offen === s.id;
+            const hatDetail = !!erg?.detail;
+            return (
+              <Fragment key={s.id}>
+                <Zeile
+                  onClick={hatDetail ? () => setOffen(auf ? null : s.id) : undefined}
+                  aktiv={auf}
+                  links={erg ? <Punkt farbe={standFarbe(erg.stand)} /> : <Punkt farbe={laeuft ? LEUCHT.agenten : C.inkLeise} groesse={7} />}
+                  titel={<span style={{ color: erg ? C.ink : C.inkLeise }}>{s.name}{erg?.ms != null && erg.ms > 1500 && <span style={{ fontSize: 12, color: C.inkLeise, marginLeft: 8, fontVariantNumeric: 'tabular-nums' }}>{(erg.ms / 1000).toFixed(1)}s</span>}</span>}
+                  unter={<Weich farbe={erg ? (erg.stand === 'fehler' ? LEUCHT.kritisch : erg.stand === 'uebersprungen' ? LEUCHT.achtung : C.inkDim) : C.inkLeise}>{erg ? erg.kurz : s.tut}</Weich>}
+                  rechts={hatDetail ? <span style={{ fontSize: 12, color: C.inkLeise }}>{auf ? '▾' : '▸'}</span> : undefined} />
+                {auf && erg?.detail != null && (
+                  <div style={{ padding: '4px 0 12px 23px' }}>
+                    <pre style={{ fontFamily: SCHRIFT.mono, fontSize: 11.5, color: C.inkDim, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, background: 'rgba(0,0,0,.25)', borderRadius: 10, padding: '11px 13px' }}>
+                      {typeof erg.detail === 'string' ? erg.detail : String(JSON.stringify(erg.detail, null, 2) ?? '')}
+                    </pre>
                   </div>
-                ))}
-              </div>
-            )}
-            {!!a.autoAufgaben?.length && (
-              <div style={{ fontSize: 12, color: T.accent, marginTop: 10, lineHeight: 1.5 }}>
-                ⚙ Task-Agent (autonom) hat angelegt: {a.autoAufgaben.map(x => `${x.titel} (${x.stand})`).join(' · ')}
-              </div>
-            )}
-            {a.schutz && <div style={{ fontSize: 12.5, color: T.accentInk, marginTop: 12 }}>◇ {a.schutz}</div>}
-            {a.warnung && <div style={{ fontSize: 12.5, color: T.amber, marginTop: 6 }}>⚠ {a.warnung}</div>}
-          </div>
-        )}
-
-        {/* Frühere Läufe */}
-        {!!d?.laeufe?.length && (
-          <div style={{ marginTop: 20 }}>
-            <div style={{ ...lbl, marginBottom: 9 }}>Frühere Läufe</div>
-            <div style={{ ...panel, overflow: 'hidden' }}>
-              {d.laeufe.slice(0, 8).map((l, i) => (
-                <div key={l.id} onClick={() => { setAktuell(l); setArt(l.art); setOffen(null); }} style={{
-                  display: 'flex', gap: 12, alignItems: 'center', padding: '10px 16px', cursor: 'pointer',
-                  borderTop: i ? `1px solid ${T.lineSoft}` : 0, background: aktuell?.id === l.id ? T.panel2 : 'transparent',
-                }}>
-                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, flex: '0 0 auto' }}>
-                    {l.gestartet.slice(5, 10).replace('-', '.')} {l.gestartet.slice(11, 16)}
-                  </span>
-                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, border: `1px solid ${T.line}`, borderRadius: 5, padding: '2px 7px' }}>{l.art}</span>
-                  <span style={{ fontSize: 12.5, color: T.inkDim, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {(l.ausrichtung as { gruss?: string })?.gruss ?? l.schritte.map(s => s.name).join(' · ')}
-                  </span>
-                  {l.alarm && <span style={{ color: T.amber, flex: '0 0 auto' }}>⚠</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 16, lineHeight: 1.6 }}>
+                )}
+              </Fragment>
+            );
+          })}
+        </Liste>
+        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 12, lineHeight: 1.6 }}>
           {KETTE.length} Schritte insgesamt · voller Lauf {schritteFuer('voll').length} · kurzer Check {schritteFuer('kurz').length} · Puls {schritteFuer('puls').length}
         </div>
-      </div>
-    </div>
+      </Karte>
+
+      {/* Wächter */}
+      {aktuell?.alarm && (
+        <Karte i={2} akzent={LEUCHT.achtung}>
+          <Ueberschrift farbe={LEUCHT.achtung}>Wächter</Ueberschrift>
+          <div style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.5 }}>⚠ {aktuell.alarm}</div>
+          {vorziehen.length > 0 && (
+            <Liste>
+              {vorziehen.map((x, i) => (
+                <Zeile key={i} links={<Punkt farbe={LEUCHT.achtung} groesse={7} />} titel={x.was}
+                  unter={x.warum ? <Weich>{x.warum}{x.statt ? ` — dafür wartet: ${x.statt}` : ''}</Weich> : undefined}
+                  rechts={aufgabeKnopf(`waechter-${i}`, x.was, [x.warum, x.statt ? `Dafür wartet: ${x.statt}` : '', 'Vom Prioritäten-Wächter vorgezogen.'].filter(Boolean).join(' · '))} />
+              ))}
+            </Liste>
+          )}
+        </Karte>
+      )}
+
+      {/* Ausrichtung */}
+      {a?.gruss && (
+        <Karte i={3} akzent={formFarbe(a.tagesform)}>
+          <Ueberschrift farbe={formFarbe(a.tagesform)} rechts={a.tagesform ? <Chip farbe={formFarbe(a.tagesform)}>{a.tagesform}</Chip> : undefined}>Ausrichtung</Ueberschrift>
+          <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(16px,2.2vw,18px)', fontWeight: 600, lineHeight: 1.45 }}>{a.gruss}</div>
+          {a.warum && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>{a.warum}</div>}
+
+          {!!a.prioritaeten?.length && (
+            <div style={{ marginTop: 10 }}>
+              <Liste>
+                {a.prioritaeten.slice(0, 3).map((p, i) => (
+                  <Zeile key={i}
+                    links={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, color: formFarbe(a.tagesform), width: 20, flex: '0 0 auto' }}>{i + 1}</span>}
+                    titel={<>{p.titel}{p.wann && <span style={{ fontSize: 12, color: C.inkLeise, marginLeft: 8 }}>{p.wann}</span>}</>}
+                    unter={p.warum ? <Weich>{p.warum}</Weich> : undefined}
+                    rechts={aufgabeKnopf(`prio-${i}`, p.titel, [p.warum, p.wann ? `Wann: ${p.wann}` : ''].filter(Boolean).join(' · ') || 'Aus der Tages-Ausrichtung.')} />
+                ))}
+              </Liste>
+            </div>
+          )}
+          {!!a.autoAufgaben?.length && (
+            <div style={{ fontSize: 12.5, color: LEUCHT.agenten, marginTop: 10, lineHeight: 1.5 }}>
+              ⚙ Task-Agent (autonom) hat angelegt: {a.autoAufgaben.map(x => `${x.titel} (${x.stand})`).join(' · ')}
+            </div>
+          )}
+          {a.schutz && <div style={{ fontSize: TYP.bedien, color: LEUCHT.puls, marginTop: 12 }}>◇ {a.schutz}</div>}
+          {a.warnung && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 6 }}>⚠ {a.warnung}</div>}
+        </Karte>
+      )}
+
+      {/* Frühere Läufe */}
+      {!!d?.laeufe?.length && (
+        <Karte i={4}>
+          <Ueberschrift rechts={`${d.laeufe.length}`}>Frühere Läufe</Ueberschrift>
+          <Liste>
+            {d.laeufe.slice(0, 8).map(l => (
+              <Zeile key={l.id} onClick={() => { setAktuell(l); setArt(l.art); setOffen(null); }} aktiv={aktuell?.id === l.id}
+                links={<>
+                  <span style={{ fontSize: 12, color: C.inkLeise, width: 76, flex: '0 0 auto', fontVariantNumeric: 'tabular-nums' }}>{l.gestartet.slice(5, 10).replace('-', '.')} {l.gestartet.slice(11, 16)}</span>
+                  <Chip farbe={LEUCHT.agenten}>{l.art}</Chip>
+                </>}
+                titel={<span style={{ color: C.inkDim, fontWeight: 400 }}>{(l.ausrichtung as { gruss?: string })?.gruss ?? l.schritte.map(s => s.name).join(' · ')}</span>}
+                rechts={l.alarm ? <span style={{ color: LEUCHT.achtung, flex: '0 0 auto' }}>⚠</span> : undefined} />
+            ))}
+          </Liste>
+        </Karte>
+      )}
+    </Seite>
   );
 }

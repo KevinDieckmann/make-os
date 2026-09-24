@@ -1,13 +1,14 @@
 'use client';
 
-import Link from 'next/link';
-import { useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
-import { Rich } from '@/components/os/Rich';
-import { Seitenkopf } from './Seitenkopf';
+// ─── MAKE OS — Content-/Brand-Agent ─────────────────────────────────────────
+// Format wählen, Thema rein — der Agent entwirft in KEMARIS-Sprache.
+// Veröffentlichen bleibt Kevins Klick.
+// 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Knopf aus schlank).
 
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
+import { useState } from 'react';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { Rich } from '@/components/os/Rich';
+import { Seite, Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT } from './schlank';
 
 const FORMATS = [
   { id: 'linkedin', label: 'LinkedIn-Post', hint: 'Hook + Haltung, Einladung zum Gespräch' },
@@ -15,6 +16,8 @@ const FORMATS = [
   { id: 'landing', label: 'Landingpage', hint: 'Hero, Nutzen-Blöcke, ruhiger CTA' },
   { id: 'email', label: 'Kalt-E-Mail', hint: 'Erstansprache an kaufm. Leitung/CFO' },
 ];
+
+const mikro = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: C.inkLeise };
 
 export function ContentView() {
   const [format, setFormat] = useState('linkedin');
@@ -42,50 +45,46 @@ export function ContentView() {
   const activeFmt = FORMATS.find(f => f.id === format);
 
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
-        <Link href="/os/agenten" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Agenten</Link>
-          <Seitenkopf
-            rubrik={<>Content-/Brand-Agent <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, border: `1px solid ${T.accentInk}55`, borderRadius: 5, padding: '2px 7px' }}>live · Entwurf</span></>}
-            titel={<>Schreibt in deiner CI.</>}
-            satz={<>Format wählen, Thema rein — der Agent entwirft in KEMARIS-Sprache (Souveränität, Klartext, keine Buzzwords). <b style={{ color: T.ink }}>Veröffentlichen bleibt dein Klick.</b></>}
-          />
-
-        {/* Format */}
-        <div style={{ ...lbl, margin: '20px 0 8px' }}>Format</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
-          {FORMATS.map(f => (
-            <button key={f.id} onClick={() => setFormat(f.id)} style={{ textAlign: 'left', padding: '11px 13px', borderRadius: 10, cursor: 'pointer', border: `1px solid ${format === f.id ? T.accent : T.line}`, background: format === f.id ? `${T.accent}18` : T.panel }}>
-              <div style={{ fontSize: 13.5, fontWeight: 600, color: format === f.id ? T.accent : T.ink }}>{f.label}</div>
-              <div style={{ fontSize: 11.5, color: T.muted, marginTop: 2, lineHeight: 1.35 }}>{f.hint}</div>
-            </button>
-          ))}
+    <Seite
+      titel="Schreibt in deiner CI."
+      unter={<>Format wählen, Thema rein — der Agent entwirft in KEMARIS-Sprache (Souveränität, Klartext, keine Buzzwords). <b style={{ color: C.ink }}>Veröffentlichen bleibt dein Klick.</b></>}
+      rechts={<Chip farbe={LEUCHT.agenten}>live · Entwurf</Chip>}
+    >
+      <Karte i={0} akzent={LEUCHT.agenten}>
+        <Ueberschrift farbe={LEUCHT.agenten}>Format</Ueberschrift>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
+          {FORMATS.map(f => {
+            const an = format === f.id;
+            return (
+              <button key={f.id} onClick={() => setFormat(f.id)} className="fassbar" style={{ textAlign: 'left', padding: '12px 14px', borderRadius: 14, cursor: 'pointer', border: 'none', fontFamily: SCHRIFT.text, background: an ? `${LEUCHT.agenten}1f` : 'rgba(255,255,255,.04)', transition: 'background .2s ease' }}>
+                <div style={{ fontSize: TYP.bedien, fontWeight: 700, color: an ? LEUCHT.agenten : C.ink }}>{f.label}</div>
+                <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 3, lineHeight: 1.4 }}>{f.hint}</div>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Eingabe */}
-        <div style={{ ...lbl, margin: '18px 0 8px' }}>Thema</div>
-        <input value={thema} onChange={e => setThema(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) generate(); }} placeholder={`Worum geht's im ${activeFmt?.label}?`} style={{ width: '100%', background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', color: T.ink, fontFamily: T.sans, fontSize: 14, padding: '11px 14px', outline: 'none' }} />
-        <div style={{ ...lbl, margin: '12px 0 8px' }}>Notizen / Fakten <span style={{ textTransform: 'none', color: T.muted }}>(optional)</span></div>
-        <textarea value={notizen} onChange={e => setNotizen(e.target.value)} rows={3} placeholder="Kernaussagen, Zahlen, Details, die rein sollen — der Agent erfindet nichts dazu." style={{ width: '100%', background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', color: T.ink, fontFamily: T.sans, fontSize: 13.5, lineHeight: 1.5, padding: '11px 14px', outline: 'none', resize: 'vertical' }} />
+        <div style={{ ...mikro, margin: '18px 0 8px' }}>Thema</div>
+        <input value={thema} onChange={e => setThema(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) generate(); }} placeholder={`Worum geht's im ${activeFmt?.label}?`} style={feld} />
+        <div style={{ ...mikro, margin: '12px 0 8px' }}>Notizen / Fakten <span style={{ textTransform: 'none', letterSpacing: 0 }}>(optional)</span></div>
+        <textarea value={notizen} onChange={e => setNotizen(e.target.value)} rows={3} placeholder="Kernaussagen, Zahlen, Details, die rein sollen — der Agent erfindet nichts dazu." style={{ ...feld, resize: 'vertical', lineHeight: 1.5 }} />
 
-        <button onClick={generate} disabled={busy || !thema.trim()} style={{ marginTop: 14, fontFamily: T.sans, fontSize: 13.5, fontWeight: 700, padding: '11px 20px', borderRadius: 9, border: 'none', cursor: busy || !thema.trim() ? 'default' : 'pointer', background: busy || !thema.trim() ? T.line : T.accent, color: busy || !thema.trim() ? T.muted : '#04110F' }}>
-          {busy ? 'entwerfe …' : draft ? 'Neu entwerfen' : 'Entwurf schreiben'}
-        </button>
+        <div style={{ marginTop: 14 }}>
+          <Knopf onClick={generate} aus={busy || !thema.trim()} farbe={LEUCHT.agenten}>
+            {busy ? 'entwerfe …' : draft ? 'Neu entwerfen' : 'Entwurf schreiben'}
+          </Knopf>
+        </div>
+      </Karte>
 
-        {/* Entwurf */}
-        {(draft || busy) && (
-          <div style={{ ...panel, borderTop: `2px solid ${T.accentInk}`, padding: '16px 20px', marginTop: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <div style={lbl}>Entwurf · {activeFmt?.label}</div>
-              {draft && !busy && (
-                <button onClick={copy} style={{ fontFamily: T.sans, fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 8, border: `1px solid ${T.line}`, background: 'transparent', color: copied ? T.accent : T.inkDim, cursor: 'pointer' }}>{copied ? '✓ kopiert' : 'Kopieren'}</button>
-              )}
-            </div>
-            {busy ? <div style={{ fontFamily: T.mono, fontSize: 12, color: T.muted }}>schreibe in CI …</div> : <Rich text={draft} />}
-            {draft && !busy && <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 12, paddingTop: 10, borderTop: `1px solid ${T.lineSoft}` }}>Entwurf — gegenlesen & selbst veröffentlichen.</div>}
-          </div>
-        )}
-      </div>
-    </div>
+      {(draft || busy) && (
+        <Karte i={1}>
+          <Ueberschrift farbe={LEUCHT.agenten} rechts={draft && !busy ? <Knopf leise onClick={copy}>{copied ? '✓ kopiert' : 'Kopieren'}</Knopf> : undefined}>
+            Entwurf · {activeFmt?.label}
+          </Ueberschrift>
+          {busy ? <Leer>schreibe in CI …</Leer> : <Rich text={draft} />}
+          {draft && !busy && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 14 }}>Entwurf — gegenlesen &amp; selbst veröffentlichen.</div>}
+        </Karte>
+      )}
+    </Seite>
   );
 }

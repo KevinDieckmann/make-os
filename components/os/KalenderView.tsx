@@ -1,11 +1,17 @@
 'use client';
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+// ─── MAKE OS — Kalender-Agent ───────────────────────────────────────────────
+// Echte Termine aus Apple Kalender, Konflikte markiert; der Agent schlägt
+// Reha- und Fokus-Blöcke in die freien Lücken vor — eintragen auf Klick.
+// Sicht Alle/Kevin/Malin/Gemeinsam, eigener Eintrag, Einstellungen (welcher
+// Apple-Kalender gehört wem, wie lange dauert was).
+// 24.09.: auf das lebendige Muster umgezogen (Karten, Chips, Leuchtfarben).
+
+import { useEffect, useState, type CSSProperties } from 'react';
+import { FARBE as C, MIKRO, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { todayISO } from '@/components/os/kit';
 import { localDay } from '@/lib/zeit';
-import { Seitenkopf } from './Seitenkopf';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Segmente, feld, LEUCHT } from './schlank';
 
 interface Ev { id: string; title: string; startDate: string; endDate: string; allDay?: boolean; calendarName?: string; location?: string; category?: string; }
 
@@ -29,25 +35,37 @@ const EINST_LEER: Einstellungen = {
  * je Art, nur den Titel.
  */
 const ARTEN: { id: ArtId; label: string; farbe: string; praefix: string; beispiel: string }[] = [
-  { id: 'termin', label: 'Termin', farbe: T.accentInk, praefix: '', beispiel: 'Finanzmeeting mit Malin' },
-  { id: 'fokus', label: 'Fokus', farbe: T.accent, praefix: '◎ ', beispiel: 'Markttraktion durchrechnen' },
-  { id: 'routine', label: 'Routine', farbe: '#C77DFF', praefix: '↻ ', beispiel: 'Tagesstart' },
-  { id: 'aufgabe', label: 'Aufgabe', farbe: T.amber, praefix: '✓ ', beispiel: 'Rechnung an One Finance' },
-  { id: 'reha', label: 'Reha', farbe: '#58D9CD', praefix: '✚ ', beispiel: 'Rücken-Übungen' },
+  { id: 'termin', label: 'Termin', farbe: LEUCHT.puls, praefix: '', beispiel: 'Finanzmeeting mit Malin' },
+  { id: 'fokus', label: 'Fokus', farbe: LEUCHT.schlaf, praefix: '◎ ', beispiel: 'Markttraktion durchrechnen' },
+  { id: 'routine', label: 'Routine', farbe: LEUCHT.agenten, praefix: '↻ ', beispiel: 'Tagesstart' },
+  { id: 'aufgabe', label: 'Aufgabe', farbe: LEUCHT.achtung, praefix: '✓ ', beispiel: 'Rechnung an One Finance' },
+  { id: 'reha', label: 'Reha', farbe: LEUCHT.gut, praefix: '✚ ', beispiel: 'Rücken-Übungen' },
 ];
 interface Block { title: string; date: string; startHour: number; startMin?: number; durationMin: number; calendar: string; grund?: string; }
 interface AnalyseAntwort { briefing?: string; conflicts?: Conflict[]; vorschlaege?: Block[]; eingetragen?: boolean; }
 interface Conflict { date: string; a: string; b: string; overlap: string; }
 
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
-const feld = { background: T.void, border: `1px solid ${T.line}`, borderRadius: 8, color: T.ink, fontFamily: T.sans, fontSize: 13, padding: '8px 11px', outline: 'none' };
 const WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
-const calColor = (c?: string) => (c === 'Privat Kevin' ? T.accentInk : c === 'Privat Malin' ? '#C77DFF' : c === 'Kevin Dieckmann' ? T.amber : T.accent);
+/** Eingabe mit dunklem Datums-/Zeit-Wähler. */
+const eingabe: CSSProperties = { ...feld, colorScheme: 'dark' };
+const auswahl: CSSProperties = { background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark', cursor: 'pointer' };
+const spalte: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 5 };
+/** Wahlknopf in Kennzahlfarbe — Art des Eintrags. */
+const wahl = (an: boolean, farbe: string): CSSProperties => ({
+  fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '7px 13px', borderRadius: 10, border: 'none', cursor: 'pointer',
+  background: an ? `${farbe}26` : 'rgba(255,255,255,.05)', color: an ? farbe : C.inkDim, transition: 'background .15s ease, color .15s ease',
+});
+
+/** Menschenfarben: Kevin blau, Malin rosa, KEMARIS orange, gemeinsam türkis. */
+const calColor = (c?: string) => (c === 'Privat Kevin' ? LEUCHT.puls : c === 'Privat Malin' ? LEUCHT.beziehung : c === 'Kevin Dieckmann' ? LEUCHT.business : LEUCHT.geld);
 const fmtTime = (iso: string) => { const d = new Date(iso); return isNaN(d.getTime()) ? '' : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 const dayKey = (iso: string) => iso.slice(0, 10);
 const dayLabel = (k: string) => { const d = new Date(`${k}T00:00:00`); return `${WD[d.getDay()]} · ${d.getDate()}.${d.getMonth() + 1}.`; };
+
+function Absatz({ children, farbe }: { children: React.ReactNode; farbe?: string }) {
+  return <div style={{ fontSize: TYP.bedien, color: farbe ?? C.inkDim, lineHeight: 1.55 }}>{children}</div>;
+}
 
 export function KalenderView() {
   // pro Render frisch — sonst steht das Datum bei offenem Tab über Mitternacht still
@@ -185,234 +203,214 @@ export function KalenderView() {
   const conflictKey = (c: Conflict) => `${c.date}|${c.a}|${c.b}`;
   const conflictTitles = new Set(conflicts.flatMap(c => [`${c.date}|${c.a}`, `${c.date}|${c.b}`]));
 
+  // Sicht: wessen Kalender — Kevins Ansage: „Man soll sich jeweils die andere
+  // Sicht angucken können, also Malin oder Kevin." Die Zuordnung kommt aus den
+  // Einstellungen — dort steht, welcher Apple-Kalender zu wem gehört.
+  const sichten: { id: 'alle' | Wer; label: string }[] = ([['alle', 'Alle'], ['kevin', 'Kevin'], ['malin', 'Malin'], ['beide', 'Gemeinsam']] as const).map(([id, label]) => {
+    const n = id === 'alle' ? events.length : events.filter(e => wemGehoert(e) === id).length;
+    return { id, label: `${label} ${n}` };
+  });
+  const artAktiv = ARTEN.find(a => a.id === art);
+  const stimmt = !!titel.trim() && !speichert;
+
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
-        <Link href="/os/agenten" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Agenten</Link>
-          <Seitenkopf
-            rubrik={<>Kalender-Agent <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, border: `1px solid ${T.accent}55`, borderRadius: 5, padding: '2px 7px' }}>live · mit Freigabe</span></>}
-            titel={<>Die Woche schützt sich selbst.</>}
-            satz={<>Echte Termine aus Apple Kalender, Konflikte markiert. Der Agent schlägt Reha- & Fokus-Blöcke in die freien Lücken vor — eintragen tust du auf Klick.</>}
-          />
+    <Seite
+      titel="Kalender"
+      unter="Die Woche schützt sich selbst: echte Termine aus Apple Kalender, Konflikte markiert. Der Agent schlägt Reha- & Fokus-Blöcke in die freien Lücken vor — eintragen tust du auf Klick."
+      rechts={<Chip farbe={LEUCHT.puls}>live · mit Freigabe</Chip>}
+    >
+      {/* Eingefroren: lieber sagen, dass es ein alter Stand ist, als so tun,
+          als wäre er aktuell. */}
+      {eingefroren && (
+        <Karte i={0} akzent={LEUCHT.achtung}>
+          <Ueberschrift farbe={LEUCHT.achtung} rechts={<Knopf leise onClick={() => fetch('/api/apple-calendar?refresh=1').then(load)}>Nochmal versuchen</Knopf>}>
+            Eingefrorener Stand{stand ? ` vom ${new Date(stand).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} Uhr` : ''}
+          </Ueberschrift>
+          <Absatz>
+            Der Apple-Kalender war gerade nicht erreichbar — du siehst den letzten guten Stand.
+            Neue oder verschobene Termine fehlen hier möglicherweise.
+            {frostGrund && <span style={{ color: C.inkLeise }}> ({frostGrund})</span>}
+          </Absatz>
+        </Karte>
+      )}
 
-        {/* Eingefroren: lieber sagen, dass es ein alter Stand ist, als so tun,
-            als wäre er aktuell. */}
-        {eingefroren && (
-          <div style={{ ...panel, borderLeft: `3px solid ${T.amber}`, padding: '13px 17px', marginTop: 16 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: T.amber }}>
-              Eingefrorener Stand{stand ? ` vom ${new Date(stand).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} Uhr` : ''}
-            </div>
-            <div style={{ fontSize: 12.5, color: T.inkDim, lineHeight: 1.55, marginTop: 4 }}>
-              Der Apple-Kalender war gerade nicht erreichbar — du siehst den letzten guten Stand.
-              Neue oder verschobene Termine fehlen hier möglicherweise.
-              {frostGrund && <span style={{ color: T.muted }}> ({frostGrund})</span>}
-            </div>
-            <button onClick={() => fetch('/api/apple-calendar?refresh=1').then(load)} style={{
-              marginTop: 9, fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, padding: '6px 13px', borderRadius: 8,
-              cursor: 'pointer', border: `1px solid ${T.amber}`, background: 'transparent', color: T.amber,
-            }}>Nochmal versuchen</button>
+      {/* Sicht + Aktionen */}
+      <Karte i={1}>
+        <Ueberschrift farbe={LEUCHT.puls} rechts={loading ? 'lade …' : loadErr ? undefined : `${upcoming.length} Termine · ${conflicts.length} Konflikte`}>Sicht</Ueberschrift>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ maxWidth: '100%', overflowX: 'auto' }}><Segmente liste={sichten} aktiv={sicht} onWahl={setSicht} /></div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginLeft: 'auto' }}>
+            <Knopf leise onClick={() => setAnlegen(v => !v)}>+ Termin anlegen</Knopf>
+            <Knopf leise onClick={() => setZeigeEinst(v => !v)}>⚙ Einstellungen</Knopf>
           </div>
-        )}
-
-        {/* ── SICHT: wessen Kalender ─────────────────────────────────────────
-            Kevins Ansage: „Man soll sich jeweils die andere Sicht angucken
-            können, also Malin oder Kevin." Die Zuordnung kommt aus den
-            Einstellungen — dort steht, welcher Apple-Kalender zu wem gehört. */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 18 }}>
-          <span style={lbl}>Sicht</span>
-          {([['alle', 'Alle'], ['kevin', 'Kevin'], ['malin', 'Malin'], ['beide', 'Gemeinsam']] as const).map(([id, label]) => {
-            const an = sicht === id;
-            const n = id === 'alle' ? events.length : events.filter(e => wemGehoert(e) === id).length;
-            return (
-              <button key={id} onClick={() => setSicht(id)} style={{
-                fontFamily: T.sans, fontSize: 12.5, fontWeight: an ? 700 : 500, padding: '6px 13px', borderRadius: 9, cursor: 'pointer',
-                border: `1px solid ${an ? T.accent : T.line}`, background: an ? T.accentSoft : 'transparent', color: an ? T.accent : T.inkDim,
-              }}>{label} <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{n}</span></button>
-            );
-          })}
-          <button onClick={() => setAnlegen(v => !v)} style={{
-            marginLeft: 'auto', fontFamily: T.sans, fontSize: 12.5, fontWeight: 700, padding: '6px 14px', borderRadius: 9, cursor: 'pointer',
-            border: `1px solid ${T.accent}`, background: anlegen ? T.accentSoft : 'transparent', color: T.accent,
-          }}>+ Termin anlegen</button>
-          <button onClick={() => setZeigeEinst(v => !v)} title="Kalender-Einstellungen" style={{
-            fontFamily: T.mono, fontSize: 11, padding: '6px 11px', borderRadius: 9, cursor: 'pointer',
-            border: `1px solid ${T.line}`, background: 'transparent', color: T.muted,
-          }}>⚙</button>
         </div>
-
-        {/* Selbst eintragen — Termin, Fokus, Routine, Aufgabe oder Reha */}
-        {anlegen && (
-          <div style={{ ...panel, padding: '16px 20px', marginTop: 12 }}>
-            <div style={{ ...lbl, marginBottom: 10 }}>Neuer Eintrag</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 11 }}>
-              {ARTEN.map(a => (
-                <button key={a.id} onClick={() => { setArt(a.id); setDauer(einst.dauer[a.id]); }} style={{
-                  fontFamily: T.sans, fontSize: 12, padding: '5px 12px', borderRadius: 8, cursor: 'pointer',
-                  border: `1px solid ${art === a.id ? a.farbe : T.line}`, background: art === a.id ? `${a.farbe}1c` : 'transparent',
-                  color: art === a.id ? a.farbe : T.inkDim,
-                }}>{a.label}</button>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 210 }}>
-                <span style={lbl}>Was</span>
-                <input value={titel} onChange={e => setTitel(e.target.value)} placeholder={ARTEN.find(a => a.id === art)?.beispiel}
-                  style={feld} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <span style={lbl}>Für wen</span>
-                <select value={wer} onChange={e => setWer(e.target.value as Wer)} style={{ ...feld, cursor: 'pointer' }}>
-                  <option value="kevin" style={{ background: T.panel }}>Kevin</option>
-                  <option value="malin" style={{ background: T.panel }}>Malin</option>
-                  <option value="beide" style={{ background: T.panel }}>Gemeinsam</option>
-                </select>
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <span style={lbl}>Tag</span>
-                <input type="date" value={datum} onChange={e => setDatum(e.target.value)} style={feld} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <span style={lbl}>Ab</span>
-                <input type="time" value={zeit} onChange={e => setZeit(e.target.value)} step={900} style={feld} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <span style={lbl}>Minuten</span>
-                <input type="number" min={5} max={600} step={5} value={dauer} onChange={e => setDauer(Number(e.target.value) || 0)}
-                  style={{ ...feld, width: 84 }} />
-              </label>
-              <button onClick={eintragen} disabled={!titel.trim() || speichert} style={{
-                fontFamily: T.sans, fontSize: 13, fontWeight: 700, padding: '9px 17px', borderRadius: 9, border: 'none',
-                cursor: !titel.trim() || speichert ? 'default' : 'pointer',
-                background: !titel.trim() || speichert ? T.line : T.accent, color: !titel.trim() || speichert ? T.muted : '#04110F',
-              }}>{speichert ? 'trägt ein …' : 'In den Kalender'}</button>
-            </div>
-            {anlegenInfo && <div style={{ fontSize: 12.5, color: anlegenInfo.startsWith('✓') ? T.accent : T.crit, marginTop: 9 }}>{anlegenInfo}</div>}
-            <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 9 }}>
-              Landet in „{einst.kalender[wer]}" — gepflegt wird weiter im Apple-Kalender, MAKE OS schreibt nur hinein.
-            </div>
-          </div>
-        )}
-
-        {/* Einstellungen: welcher Kalender gehört wem, wie lange dauert was */}
-        {zeigeEinst && (
-          <div style={{ ...panel, padding: '16px 20px', marginTop: 12 }}>
-            <div style={{ ...lbl, marginBottom: 10 }}>Kalender-Einstellungen</div>
-            <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap', marginBottom: 12 }}>
-              {(['kevin', 'malin', 'beide'] as const).map(w => (
-                <label key={w} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <span style={lbl}>Kalender {w === 'beide' ? 'gemeinsam' : w}</span>
-                  <input value={einst.kalender[w]} onChange={e => einstSetzen({ kalender: { ...einst.kalender, [w]: e.target.value } })}
-                    placeholder="Name in der Kalender-App" style={{ ...feld, width: 170 }} />
-                </label>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
-              {ARTEN.map(a => (
-                <label key={a.id} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <span style={lbl}>{a.label} · Min.</span>
-                  <input type="number" min={5} max={600} step={5} value={einst.dauer[a.id]}
-                    onChange={e => einstSetzen({ dauer: { ...einst.dauer, [a.id]: Number(e.target.value) || 5 } })}
-                    style={{ ...feld, width: 84 }} />
-                </label>
-              ))}
-            </div>
-            <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 10 }}>
-              Die Namen müssen genau so heißen wie in der Kalender-App — sonst landet alles im gemeinsamen Kalender.
-            </div>
-          </div>
-        )}
-
-        {/* Aktionsleiste */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', margin: '18px 0 16px' }}>
-          <button onClick={analyse} disabled={analysing || loading || !!loadErr} style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 700, padding: '9px 16px', borderRadius: 9, border: 'none', cursor: analysing || loading || loadErr ? 'default' : 'pointer', background: analysing || loading || loadErr ? T.line : T.accent, color: analysing || loading || loadErr ? T.muted : '#04110F' }}>
-            {analysing ? 'analysiere …' : 'Woche analysieren & schützen'}
-          </button>
-          <button onClick={load} style={{ fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, padding: '9px 14px', borderRadius: 9, border: `1px solid ${T.line}`, background: 'transparent', color: T.inkDim, cursor: 'pointer' }}>↻ Termine neu laden</button>
-          <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>{loading ? 'lade …' : loadErr ? '' : `${upcoming.length} Termine · ${conflicts.length} Konflikte`}</span>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 14 }}>
+          <Knopf onClick={analyse} aus={analysing || loading || !!loadErr}>{analysing ? 'analysiere …' : 'Woche analysieren & schützen'}</Knopf>
+          <Knopf leise onClick={load}>↻ Termine neu laden</Knopf>
         </div>
+      </Karte>
 
-        {loadErr && (
-          <div style={{ ...panel, borderColor: `${T.crit}55`, padding: '14px 18px', marginBottom: 16, fontSize: 13, color: T.inkDim, lineHeight: 1.5 }}>
-            <b style={{ color: T.crit }}>Kein Kalender-Zugriff.</b> Systemeinstellungen → Datenschutz & Sicherheit → Kalender → Node.js/Terminal erlauben. <span style={{ color: T.muted }}>({loadErr.slice(0, 120)})</span>
-          </div>
-        )}
-
-        {/* KI-Briefing */}
-        {briefing && (
-          <div style={{ ...panel, borderTop: `2px solid ${T.accent}`, padding: '16px 20px', marginBottom: 16 }}>
-            <div style={{ ...lbl, marginBottom: 6 }}>Briefing</div>
-            <div style={{ fontSize: 14, color: T.ink, lineHeight: 1.55 }}>{briefing}</div>
-          </div>
-        )}
-
-        {/* Konflikte */}
-        {conflicts.length > 0 && (
-          <div style={{ ...panel, borderColor: `${T.crit}44`, padding: '14px 18px', marginBottom: 16 }}>
-            <div style={{ ...lbl, color: T.crit, marginBottom: 8 }}>Konflikte ({conflicts.length})</div>
-            {conflicts.map(c => (
-              <div key={conflictKey(c)} style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.6 }}>
-                <span style={{ color: T.crit }}>⨯</span> {dayLabel(c.date)} — <b style={{ color: T.ink }}>{c.a}</b> ⨯ <b style={{ color: T.ink }}>{c.b}</b> <span style={{ color: T.muted }}>({c.overlap})</span>
-              </div>
+      {/* Selbst eintragen — Termin, Fokus, Routine, Aufgabe oder Reha */}
+      {anlegen && (
+        <Karte i={2} akzent={artAktiv?.farbe}>
+          <Ueberschrift farbe={artAktiv?.farbe}>Neuer Eintrag</Ueberschrift>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+            {ARTEN.map(a => (
+              <button key={a.id} className="fassbar" onClick={() => { setArt(a.id); setDauer(einst.dauer[a.id]); }} style={wahl(art === a.id, a.farbe)}>{a.label}</button>
             ))}
           </div>
-        )}
-
-        {/* Vorschläge */}
-        {blocks.length > 0 && (
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <div style={lbl}>Schutz-Blöcke ({blocks.length})</div>
-              <button onClick={addAll} style={{ fontFamily: T.sans, fontSize: 12, fontWeight: 700, padding: '5px 12px', borderRadius: 8, border: `1px solid ${T.accent}`, background: `${T.accent}22`, color: T.accent, cursor: 'pointer' }}>Alle eintragen</button>
-            </div>
-            <div style={{ ...panel, overflow: 'hidden' }}>
-              {blocks.map((b, i) => (
-                <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 16px', borderTop: i ? `1px solid ${T.lineSoft}` : 0, alignItems: 'center' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: T.ink }}>{b.title}</div>
-                    <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>{dayLabel(b.date)} · {String(b.startHour).padStart(2, '0')}:{String(b.startMin ?? 0).padStart(2, '0')} · {b.durationMin} Min · <span style={{ color: calColor(b.calendar) }}>{b.calendar}</span></div>
-                    {b.grund && <div style={{ fontSize: 12.5, color: T.inkDim, marginTop: 4, lineHeight: 1.4 }}>{b.grund}</div>}
-                  </div>
-                  <button onClick={() => addBlock(b, i)} disabled={added[i] === 'busy' || added[i] === 'ok'} style={{ fontFamily: T.sans, fontSize: 12, fontWeight: 600, padding: '7px 13px', borderRadius: 8, whiteSpace: 'nowrap', cursor: added[i] === 'ok' ? 'default' : 'pointer', border: `1px solid ${added[i] === 'err' ? T.crit : T.accent}`, background: added[i] === 'ok' ? 'transparent' : `${T.accent}22`, color: added[i] === 'err' ? T.crit : T.accent }}>
-                    {added[i] === 'ok' ? '✓ eingetragen' : added[i] === 'busy' ? '…' : added[i] === 'err' ? 'Fehler' : 'In Kalender legen'}
-                  </button>
-                </div>
-              ))}
-            </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <label style={{ ...spalte, flex: '1 1 220px', minWidth: 'min(220px, 100%)' }}>
+              <span style={MIKRO}>Was</span>
+              <input value={titel} onChange={e => setTitel(e.target.value)} placeholder={artAktiv?.beispiel} style={feld} />
+            </label>
+            <label style={spalte}>
+              <span style={MIKRO}>Für wen</span>
+              <select value={wer} onChange={e => setWer(e.target.value as Wer)} style={auswahl}>
+                <option value="kevin">Kevin</option>
+                <option value="malin">Malin</option>
+                <option value="beide">Gemeinsam</option>
+              </select>
+            </label>
+            <label style={spalte}>
+              <span style={MIKRO}>Tag</span>
+              <input type="date" value={datum} onChange={e => setDatum(e.target.value)} style={eingabe} />
+            </label>
+            <label style={spalte}>
+              <span style={MIKRO}>Ab</span>
+              <input type="time" value={zeit} onChange={e => setZeit(e.target.value)} step={900} style={eingabe} />
+            </label>
+            <label style={spalte}>
+              <span style={MIKRO}>Minuten</span>
+              <input type="number" min={5} max={600} step={5} value={dauer} onChange={e => setDauer(Number(e.target.value) || 0)} style={{ ...feld, width: 96 }} />
+            </label>
+            <Knopf onClick={eintragen} aus={!stimmt} farbe={artAktiv?.farbe}>{speichert ? 'trägt ein …' : 'In den Kalender'}</Knopf>
           </div>
-        )}
+          {anlegenInfo && <div style={{ fontSize: TYP.bedien, color: anlegenInfo.startsWith('✓') ? LEUCHT.gut : LEUCHT.kritisch, marginTop: 10 }}>{anlegenInfo}</div>}
+          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>
+            Landet in „{einst.kalender[wer]}" — gepflegt wird weiter im Apple-Kalender, MAKE OS schreibt nur hinein.
+          </div>
+        </Karte>
+      )}
 
-        {/* Wochen-Übersicht */}
-        {!loadErr && (
-          <div>
-            <div style={{ ...lbl, marginBottom: 10 }}>Deine nächsten 7 Tage</div>
-            {loading ? (
-              <div style={{ fontFamily: T.mono, fontSize: 12, color: T.muted }}>lade Termine …</div>
-            ) : days.length === 0 ? (
-              <div style={{ ...panel, padding: '22px', textAlign: 'center', color: T.inkDim, fontSize: 13 }}>Keine Termine in den nächsten Tagen.</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {days.map(k => (
-                  <div key={k} style={{ ...panel, padding: '12px 16px' }}>
-                    <div style={{ fontFamily: T.mono, fontSize: 11, color: k === TODAY ? T.accent : T.inkDim, marginBottom: 8, letterSpacing: '.05em' }}>{dayLabel(k)}{k === TODAY ? ' · heute' : ''}</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {/* Einstellungen: welcher Kalender gehört wem, wie lange dauert was */}
+      {zeigeEinst && (
+        <Karte i={3}>
+          <Ueberschrift>Kalender-Einstellungen</Ueberschrift>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+            {(['kevin', 'malin', 'beide'] as const).map(w => (
+              <label key={w} style={{ ...spalte, flex: '1 1 170px', minWidth: 'min(170px, 100%)' }}>
+                <span style={MIKRO}>Kalender {w === 'beide' ? 'gemeinsam' : w}</span>
+                <input value={einst.kalender[w]} onChange={e => einstSetzen({ kalender: { ...einst.kalender, [w]: e.target.value } })}
+                  placeholder="Name in der Kalender-App" style={feld} />
+              </label>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {ARTEN.map(a => (
+              <label key={a.id} style={spalte}>
+                <span style={{ ...MIKRO, color: a.farbe }}>{a.label} · Min.</span>
+                <input type="number" min={5} max={600} step={5} value={einst.dauer[a.id]}
+                  onChange={e => einstSetzen({ dauer: { ...einst.dauer, [a.id]: Number(e.target.value) || 5 } })}
+                  style={{ ...feld, width: 96 }} />
+              </label>
+            ))}
+          </div>
+          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>
+            Die Namen müssen genau so heißen wie in der Kalender-App — sonst landet alles im gemeinsamen Kalender.
+          </div>
+        </Karte>
+      )}
+
+      {loadErr && (
+        <Karte i={4} akzent={LEUCHT.kritisch}>
+          <Ueberschrift farbe={LEUCHT.kritisch}>Kein Kalender-Zugriff</Ueberschrift>
+          <Absatz>Systemeinstellungen → Datenschutz & Sicherheit → Kalender → Node.js/Terminal erlauben. <span style={{ color: C.inkLeise }}>({loadErr.slice(0, 120)})</span></Absatz>
+        </Karte>
+      )}
+
+      {/* KI-Briefing */}
+      {briefing && (
+        <Karte i={4} akzent={LEUCHT.agenten}>
+          <Ueberschrift farbe={LEUCHT.agenten}>Briefing</Ueberschrift>
+          <div style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.55 }}>{briefing}</div>
+        </Karte>
+      )}
+
+      {/* Konflikte */}
+      {conflicts.length > 0 && (
+        <Karte i={5} akzent={LEUCHT.kritisch}>
+          <Ueberschrift farbe={LEUCHT.kritisch} rechts={`${conflicts.length}`}>Konflikte</Ueberschrift>
+          <Liste>
+            {conflicts.map(c => (
+              <Zeile key={conflictKey(c)} links={<Punkt farbe={LEUCHT.kritisch} />}
+                titel={<><b>{c.a}</b> <span style={{ color: LEUCHT.kritisch }}>⨯</span> <b>{c.b}</b></>}
+                unter={`${dayLabel(c.date)} · ${c.overlap}`} />
+            ))}
+          </Liste>
+        </Karte>
+      )}
+
+      {/* Vorschläge */}
+      {blocks.length > 0 && (
+        <Karte i={6}>
+          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<><span>{blocks.length}</span><Knopf leise onClick={addAll}>Alle eintragen</Knopf></>}>Schutz-Blöcke</Ueberschrift>
+          <Liste>
+            {blocks.map((b, i) => (
+              <Zeile key={i}
+                links={<Punkt farbe={calColor(b.calendar)} />}
+                titel={<>
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.title}</div>
+                  {b.grund &&<div style={{ whiteSpace: 'normal', fontSize: 12.5, fontWeight: 400, color: C.inkDim, lineHeight: 1.4, marginTop: 2 }}>{b.grund}</div>}
+                </>}
+                unter={<>{dayLabel(b.date)} · {String(b.startHour).padStart(2, '0')}:{String(b.startMin ?? 0).padStart(2, '0')} · {b.durationMin} Min · <span style={{ color: calColor(b.calendar) }}>{b.calendar}</span></>}
+                rechts={
+                  <Knopf leise={added[i] === 'ok'} aus={added[i] === 'busy' || added[i] === 'ok'} farbe={added[i] === 'err' ? LEUCHT.kritisch : LEUCHT.schlaf} onClick={() => addBlock(b, i)}>
+                    {added[i] === 'ok' ? '✓ eingetragen' : added[i] === 'busy' ? '…' : added[i] === 'err' ? 'Fehler' : 'In Kalender legen'}
+                  </Knopf>
+                } />
+            ))}
+          </Liste>
+        </Karte>
+      )}
+
+      {/* Wochen-Übersicht */}
+      {!loadErr && (
+        <Karte i={7}>
+          <Ueberschrift farbe={LEUCHT.puls} rechts={!loading && days.length ? `${days.length} Tage` : undefined}>Deine nächsten 7 Tage</Ueberschrift>
+          {loading ? (
+            <Leer>lade Termine …</Leer>
+          ) : days.length === 0 ? (
+            <Leer>Keine Termine in den nächsten Tagen.</Leer>
+          ) : (
+            <div style={{ display: 'grid', gap: 14 }}>
+              {days.map(k => {
+                const heute = k === TODAY;
+                return (
+                  <div key={k}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: TYP.bedien, fontWeight: 700, color: heute ? LEUCHT.puls : C.inkDim, letterSpacing: '.02em' }}>
+                      {heute && <Punkt farbe={LEUCHT.puls} groesse={7} />}{dayLabel(k)}{heute ? ' · heute' : ''}
+                    </div>
+                    <Liste>
                       {byDay[k].map(e => {
                         const clash = conflictTitles.has(`${k}|${e.title}`);
                         return (
-                          <div key={e.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                            <span style={{ fontFamily: T.mono, fontSize: 12, color: T.muted, width: 46, flex: '0 0 auto' }}>{e.allDay ? 'ganzt.' : fmtTime(e.startDate)}</span>
-                            <span style={{ width: 7, height: 7, borderRadius: 2, background: calColor(e.calendarName), flex: '0 0 auto', marginTop: 5 }} />
-                            <span style={{ fontSize: 13.5, color: T.ink }}>{e.title}{clash && <span style={{ color: T.crit, marginLeft: 6, fontSize: 11 }}>⨯ Konflikt</span>}</span>
-                          </div>
+                          <Zeile key={e.id}
+                            links={<>
+                              <span style={{ fontSize: TYP.bedien, color: C.inkLeise, width: 46, flex: '0 0 auto', fontVariantNumeric: 'tabular-nums' }}>{e.allDay ? 'ganzt.' : fmtTime(e.startDate)}</span>
+                              <Punkt farbe={calColor(e.calendarName)} groesse={7} />
+                            </>}
+                            titel={<>{e.title}{clash && <span style={{ marginLeft: 8 }}><Chip farbe={LEUCHT.kritisch}>⨯ Konflikt</Chip></span>}</>} />
                         );
                       })}
-                    </div>
+                    </Liste>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+                );
+              })}
+            </div>
+          )}
+        </Karte>
+      )}
+    </Seite>
   );
 }

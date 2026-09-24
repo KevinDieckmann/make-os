@@ -1,16 +1,20 @@
 'use client';
 
-import Link from 'next/link';
-// Eine Seite je MSI-Säule: oben der gerechnete Wert mit seiner Herleitung,
-// darunter Werkzeuge, die genau diesen Bereich bewegen. Kein Abladeplatz für
-// Links — jede Säule bekommt etwas, das man hier wirklich tut.
+// ─── MAKE OS — Säule ────────────────────────────────────────────────────────
+// Eine Seite je Säule des Wachstums-Scores: oben der gerechnete Wert mit seiner
+// Herleitung, darunter Werkzeuge, die genau diesen Bereich bewegen. Kein
+// Abladeplatz für Links — jede Säule bekommt etwas, das man hier wirklich tut.
+// 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Zeile, LEUCHT).
 
-import { useEffect, useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+import Link from 'next/link';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import type { PerfIndex, Saeule } from '@/lib/performance';
 import { TEAM, RITUALE } from '@/lib/make-one/team-data';
 import { eur, type FinanceState } from '@/lib/make-one/finance-data';
 import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
+import { localDay } from '@/lib/zeit';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Ring, Zahl, Balken, Fortschritt, Haken, feld, LEUCHT } from './schlank';
 
 export const SAEULEN_META: Record<string, { titel: string; claim: string; hin: string }> = {
   health: { titel: 'Gesundheit & Energie', claim: 'Der Körper trägt alles andere.', hin: 'Recovery, Schlaf, Routinen, Journal' },
@@ -21,17 +25,24 @@ export const SAEULEN_META: Record<string, { titel: string; claim: string; hin: s
   agents: { titel: 'Agenten', claim: 'Was Jarvis und die Agenten dir abnehmen.', hin: 'Läufe, Aufträge, Stapel, Bote' },
 };
 
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
-const col = (v: number | null) => (v == null ? T.muted : v >= 70 ? T.accent : v >= 45 ? T.amber : T.crit);
-import { localDay } from '@/lib/zeit';
-import { Seitenkopf } from './Seitenkopf';
+/** Eine Farbe je Säule — dieselbe wie auf der Wachstums-Seite. */
+const SAEULEN_FARBE: Record<string, string> = { health: LEUCHT.gut, business: LEUCHT.business, planning: LEUCHT.puls, finance: LEUCHT.geld, social: LEUCHT.beziehung, agents: LEUCHT.agenten };
+/** Zustandsfarbe eines Werts — Schwellen wie bisher (70/45). */
+const col = (v: number | null) => (v == null ? C.inkLeise : v >= 70 ? LEUCHT.gut : v >= 45 ? LEUCHT.achtung : LEUCHT.kritisch);
+const link: CSSProperties = { color: C.inkDim, textDecoration: 'none' };
+const linkKnopf: CSSProperties = {
+  fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '9px 15px', borderRadius: 11, whiteSpace: 'nowrap',
+  background: 'rgba(255,255,255,.06)', color: C.ink, textDecoration: 'none',
+};
+const legende: CSSProperties = { fontSize: TYP.mikro, color: C.inkLeise, marginTop: 8, letterSpacing: '.04em', textTransform: 'uppercase' };
+const absatz: CSSProperties = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, margin: 0 };
 const tage = (n: number, bis = new Date()) =>
   Array.from({ length: n }, (_, i) => {
     const d = new Date(bis);
     d.setDate(d.getDate() - (n - 1 - i));
     return localDay(d);
   });
+const kurzDatum = (d: string) => `${d.slice(8)}.${d.slice(5, 7)}.`;
 
 // ───────────────────────── Gesundheit ─────────────────────────
 function WerkzeugGesundheit() {
@@ -58,64 +69,37 @@ function WerkzeugGesundheit() {
     }
     return s;
   })();
+  const titel = werte.map(w => `${kurzDatum(w.d)} · Recovery ${w.rec ?? '—'}, Schlaf ${w.sleep ?? '—'}h`);
 
   return (
     <>
-      <div style={{ ...panel, padding: '16px 20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
-          <div style={lbl}>Recovery & Schlaf · 14 Tage</div>
-          <Link href="/os/gesundheit" style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, textDecoration: 'none' }}>
-            Morgen-Check ›
-          </Link>
-        </div>
+      <Karte i={1}>
+        <Ueberschrift farbe={LEUCHT.gut} rechts={<Link href="/os/gesundheit" style={link}>Morgen-Check ›</Link>}>Recovery & Schlaf · 14 Tage</Ueberschrift>
         {!hatWerte ? (
-          <div style={{ fontSize: 13, color: T.inkDim, marginTop: 10, lineHeight: 1.5 }}>
-            Noch keine eingetragenen Werte. Jeder Morgen-Check setzt hier einen Punkt — nach ein paar Tagen siehst du, ob Schlaf und Erholung zusammenhängen.
-          </div>
+          <Leer>Noch keine eingetragenen Werte. Jeder Morgen-Check setzt hier einen Punkt — nach ein paar Tagen siehst du, ob Schlaf und Erholung zusammenhängen.</Leer>
         ) : (
-          <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 78, marginTop: 12 }}>
-            {werte.map(w => (
-              <div
-                key={w.d}
-                title={`${w.d}: Recovery ${w.rec ?? '—'}, Schlaf ${w.sleep ?? '—'}h`}
-                style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 2, height: '100%' }}
-              >
-                <div style={{ height: `${w.rec ?? 0}%`, background: col(w.rec ?? null), borderRadius: '2px 2px 0 0', opacity: w.rec == null ? 0.12 : 1, minHeight: w.rec ? 2 : 3 }} />
-                <div
-                  style={{ height: `${Math.min(100, ((w.sleep ?? 0) / 9) * 100) * 0.45}%`, background: T.accentInk, opacity: w.sleep == null ? 0.1 : 0.45, borderRadius: '0 0 2px 2px', minHeight: 2 }}
-                />
-              </div>
-            ))}
-          </div>
+          <>
+            <Balken werte={werte.map(w => w.rec ?? null)} max={100} farbe={LEUCHT.gut} hoehe={56} titel={titel} />
+            <div style={{ marginTop: 6 }}>
+              <Balken werte={werte.map(w => w.sleep ?? null)} max={9} farbe={LEUCHT.schlaf} hoehe={28} titel={titel} />
+            </div>
+          </>
         )}
-        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 8 }}>oben Recovery · unten Schlaf</div>
-      </div>
-      <div style={{ ...panel, padding: '16px 20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <div style={lbl}>Routinen</div> <span style={{ fontFamily: T.mono, fontSize: 11, color: streak > 0 ? T.accent : T.muted }}>{streak} Tage in Folge</span>
-        </div>
-        <div style={{ display: 'flex', gap: 4, marginTop: 12 }}>
-          {t14.map(d => {
-            const n = log[d]?.length ?? 0;
-            return (
-              <div
-                key={d}
-                title={`${d}: ${n}/${ROUTINE_ITEMS.length}`}
-                style={{ flex: 1, height: 26, borderRadius: 4, background: n === 0 ? 'rgba(255,255,255,.05)' : T.accent, opacity: n === 0 ? 1 : 0.25 + (n / ROUTINE_ITEMS.length) * 0.75 }}
-              />
-            );
-          })}
-        </div>
-        <div style={{ fontSize: 12.5, color: T.inkDim, marginTop: 10, lineHeight: 1.5 }}>
-          Vier von {ROUTINE_ITEMS.length} Häkchen zählen als gehaltener Tag.
-          <Link href="/os/gesundheit" style={{ color: T.accentInk, textDecoration: 'none' }}>
-            Heute abhaken ›
-          </Link>
-        </div>
-      </div>
+        <div style={legende}>oben Recovery · unten Schlaf</div>
+      </Karte>
+      <Karte i={2}>
+        <Ueberschrift farbe={LEUCHT.gut} rechts={<Chip farbe={streak > 0 ? LEUCHT.gut : C.inkLeise}>{streak} Tage in Folge</Chip>}>Routinen</Ueberschrift>
+        <Balken werte={t14.map(d => log[d]?.length ?? 0)} max={ROUTINE_ITEMS.length} farbe={LEUCHT.gut} hoehe={32} titel={t14.map(d => `${kurzDatum(d)} · ${log[d]?.length ?? 0}/${ROUTINE_ITEMS.length}`)} />
+        <p style={{ ...absatz, marginTop: 10 }}>
+          Vier von {ROUTINE_ITEMS.length} Häkchen zählen als gehaltener Tag.{' '}
+          <Link href="/os/gesundheit" style={link}>Heute abhaken ›</Link>
+        </p>
+      </Karte>
     </>
   );
-} // ───────────────────────── Business ─────────────────────────
+}
+
+// ───────────────────────── Business ─────────────────────────
 interface Prospect {
   id: string;
   company: string;
@@ -183,102 +167,76 @@ function WerkzeugBusiness() {
     if (naechsterMs) return { text: `Nächster Meilenstein: ${naechsterMs.titel} (${naechsterMs.fortschritt}%) — Fortschritt schieben.`, href: '/os/planung/jahr', label: 'Meilensteine' };
     return { text: 'Kurs halten — Pipeline füllen und Mandate ausbauen.', href: '/os/prospecting', label: 'Zielliste' };
   })();
+  const kursPct = fin && ist > 0 ? Math.round((ist / fin.zielUmsatz) * 100) : null;
   return (
     <>
       {/* Der eine Hebel — was JETZT den größten Unterschied macht */}
-      <div style={{ ...panel, borderLeft: `3px solid ${T.amber}`, padding: '13px 17px' }}>
-        <div style={{ ...lbl, color: T.amber, marginBottom: 5 }}>Der eine Hebel</div>
-        <div style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.5 }}>
-          {hebel.text}
-          <Link href={hebel.href} style={{ color: T.accentInk, textDecoration: 'none' }}>
-            {hebel.label} ›
-          </Link>
-        </div>
-      </div>
+      <Karte i={1}>
+        <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href={hebel.href} style={link}>{hebel.label} ›</Link>}>Der eine Hebel</Ueberschrift>
+        <div style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.5 }}>{hebel.text}</div>
+      </Karte>
       {/* Geld & Mandate — die ehrlichen Bestandszahlen */}
-      <div style={{ ...panel, padding: '16px 20px' }}>
-        <div style={{ ...lbl, marginBottom: 10 }}>Geld & Mandate</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
-          {[
-            { l: 'Offene Forderungen', v: gestellt.length ? eur(sum(gestellt)) : '—', c: ueberfaellig.length ? T.crit : T.amber },
-            { l: 'In Vorbereitung', v: geplantR.length ? eur(sum(geplantR)) : '—', c: T.inkDim },
-            { l: 'Aktive Mandate', v: String(aktive.length), c: T.accent },
-            { l: 'Cashflow/Monat', v: cash ? eur(cash) : '—', c: T.ink },
-          ].map((k, i) => (
-            <div key={i}>
-              <div style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: T.muted }}>{k.l}</div>
-              <div style={{ fontFamily: T.mono, fontSize: 17, fontWeight: 700, color: k.c, marginTop: 3 }}>{k.v}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-          <Link href="/os/finanzen" style={{ fontSize: 11.5, color: T.accentInk, textDecoration: 'none' }}>
-            Finanzplanung ›
-          </Link>
-          <Link href="/os/crm" style={{ fontSize: 11.5, color: T.accentInk, textDecoration: 'none' }}>
-            CRM ›
-          </Link>
+      <Karte i={2}>
+        <Ueberschrift farbe={LEUCHT.geld} rechts={<><Link href="/os/finanzen" style={link}>Finanzplanung ›</Link><Link href="/os/crm" style={link}>CRM ›</Link></>}>Geld & Mandate</Ueberschrift>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
+          <Zahl wert={gestellt.length ? eur(sum(gestellt)) : undefined} label="offene Forderungen" farbe={ueberfaellig.length ? LEUCHT.kritisch : LEUCHT.achtung} />
+          <Zahl wert={geplantR.length ? eur(sum(geplantR)) : undefined} label="in Vorbereitung" />
+          <Zahl wert={aktive.length ? String(aktive.length) : undefined} label="aktive Mandate" farbe={LEUCHT.gut} />
+          <Zahl wert={cash ? eur(cash) : undefined} label="Cashflow / Monat" farbe={LEUCHT.geld} />
         </div>
         {naechsterMs && (
-          <div style={{ marginTop: 12, borderTop: `1px solid ${T.line}`, paddingTop: 10, fontSize: 12.5, color: T.inkDim }}>
-            <span style={{ color: T.amber }}>◇</span> Nächster Meilenstein: <b style={{ color: T.ink }}>{naechsterMs.titel}</b>
-            <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>
-              {naechsterMs.faellig ? `· ${naechsterMs.faellig.slice(8)}.${naechsterMs.faellig.slice(5, 7)}.` : (naechsterMs.zeitfenster ?? '')} · {naechsterMs.fortschritt}%
-            </span>
-          </div>
+          <Liste>
+            <div style={{ marginTop: 10 }}>
+              <Zeile links={<Chip farbe={LEUCHT.achtung}>◇</Chip>} titel={<>Nächster Meilenstein: <b style={{ fontWeight: 600 }}>{naechsterMs.titel}</b></>}
+                unter={naechsterMs.faellig ? `fällig ${kurzDatum(naechsterMs.faellig)}` : (naechsterMs.zeitfenster ?? undefined)}
+                rechts={<Chip farbe={col(naechsterMs.fortschritt)}>{naechsterMs.fortschritt} %</Chip>} />
+            </div>
+          </Liste>
         )}
-      </div>
-      <div style={{ ...panel, padding: '16px 20px' }}>
-        <div style={{ ...lbl, marginBottom: 12 }}>Trichter</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+      </Karte>
+      <Karte i={3}>
+        <Ueberschrift farbe={LEUCHT.business} rechts={<Link href="/os/prospecting" style={link}>Zielliste ›</Link>}>Trichter</Ueberschrift>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {stufen.map(s => (
-            <div key={s.k} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 12.5, color: T.inkDim, width: 100, flex: '0 0 auto' }}>{s.label}</span>
-              <div style={{ flex: 1, height: 22, background: T.void, borderRadius: 5, overflow: 'hidden' }}>
-                <div style={{ width: `${(s.n / max) * 100}%`, height: '100%', background: s.k === 'kontaktiert' ? T.accent : T.accentInk, opacity: s.n ? 0.8 : 0, borderRadius: 5 }} />
-              </div>
-              <span style={{ fontFamily: T.mono, fontSize: 14, fontWeight: 700, color: s.n ? T.ink : T.muted, width: 26, textAlign: 'right', flex: '0 0 auto' }}>{s.n}</span>
+            <div key={s.k} style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 120px) 1fr 36px', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{s.label}</span>
+              <Fortschritt anteil={s.n / max} farbe={s.k === 'kontaktiert' ? LEUCHT.gut : LEUCHT.business} />
+              <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.body, fontVariantNumeric: 'tabular-nums', color: s.n ? C.ink : C.inkLeise, textAlign: 'right' }}>{s.n || '—'}</span>
             </div>
           ))}
         </div>
         {top && (
-          <div style={{ marginTop: 14, background: T.panel2, border: `1px solid ${T.accent}44`, borderRadius: 10, padding: '11px 14px' }}>
-            <div style={{ ...lbl, color: T.accent, marginBottom: 4 }}>Nächster Kontakt</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: T.ink }}>
-              {top.company} <span style={{ fontFamily: T.mono, fontSize: 12, color: col(top.score ?? null), marginLeft: 6 }}>{top.score ?? '—'}</span>
+          <div style={{ marginTop: 16, background: `${LEUCHT.business}14`, borderRadius: 12, padding: '12px 14px' }}>
+            <div style={{ fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: LEUCHT.business, marginBottom: 4 }}>Nächster Kontakt</div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: TYP.body, fontWeight: 600, color: C.ink }}>{top.company}</span>
+              <Chip farbe={col(top.score ?? null)}>{top.score ?? '—'}</Chip>
             </div>
-            <Link href="/os/prospecting" style={{ fontSize: 12.5, color: T.accentInk, textDecoration: 'none', display: 'inline-block', marginTop: 5 }}>
-              In der Zielliste öffnen ›
-            </Link>
+            <Link href="/os/prospecting" style={{ ...link, fontSize: TYP.bedien, display: 'inline-block', marginTop: 6 }}>In der Zielliste öffnen ›</Link>
           </div>
         )}
-      </div>
-      <div style={{ ...panel, padding: '16px 20px' }}>
-        <div style={{ ...lbl, marginBottom: 10 }}>Umsatz-Kurs</div>
-        {fin && ist > 0 ? (
+      </Karte>
+      <Karte i={4}>
+        <Ueberschrift farbe={LEUCHT.business} rechts={fin && ist > 0 ? `${eur(ist)} von ${eur(fin.zielUmsatz)}` : undefined}>Umsatz-Kurs</Ueberschrift>
+        {fin && ist > 0 && kursPct != null ? (
           <>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-              <span style={{ fontSize: 26, fontWeight: 800, color: T.accent }}>{Math.round((ist / fin.zielUmsatz) * 100)}%</span>
-              <span style={{ fontSize: 13, color: T.inkDim }}>
-                {eur(ist)} von {eur(fin.zielUmsatz)}
-              </span>
-            </div>
-            <div style={{ height: 8, background: T.void, borderRadius: 5, marginTop: 10, overflow: 'hidden' }}>
-              <div style={{ width: `${Math.min(100, (ist / fin.zielUmsatz) * 100)}%`, height: '100%', background: `linear-gradient(90deg,${T.accent},${T.accentInk})` }} />
+            <Zahl gross wert={String(kursPct)} label={`% von ${eur(fin.zielUmsatz)} erreicht`} farbe={LEUCHT.business} />
+            <div style={{ marginTop: 12 }}>
+              <Fortschritt anteil={Math.min(1, ist / fin.zielUmsatz)} farbe={LEUCHT.business} />
             </div>
           </>
         ) : (
-          <div style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.5 }}>
-            Noch keine Ist-Zahlen. Ohne sie kann diese Säule nur die Pipeline bewerten — der halbe Blick.
-            <Link href="/os/controlling" style={{ color: T.accentInk, textDecoration: 'none' }}>
-              Zahlen eintragen ›
-            </Link>
-          </div>
+          <Leer>
+            Noch keine Ist-Zahlen. Ohne sie kann diese Säule nur die Pipeline bewerten — der halbe Blick.{' '}
+            <Link href="/os/controlling" style={link}>Zahlen eintragen ›</Link>
+          </Leer>
         )}
-      </div>
+      </Karte>
     </>
   );
-} // ───────────────────────── Planung ─────────────────────────
+}
+
+// ───────────────────────── Planung ─────────────────────────
 interface Task {
   id: string;
   title: string;
@@ -324,72 +282,35 @@ function WerkzeugPlanung() {
     setBusy(null);
   }
   return (
-    <div style={{ ...panel, padding: '16px 20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
-        <div style={lbl}>Was jetzt brennt</div>
-        <Link href="/os/aufgaben" style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, textDecoration: 'none' }}>
-          alle Aufgaben ›
-        </Link>
-      </div>
+    <Karte i={1}>
+      <Ueberschrift farbe={brennt.length ? LEUCHT.kritisch : LEUCHT.gut} rechts={<Link href="/os/aufgaben" style={link}>alle Aufgaben ›</Link>}>Was jetzt brennt</Ueberschrift>
       {!brennt.length ? (
-        <div style={{ fontSize: 13, color: T.inkDim, marginTop: 10 }}>Nichts überfällig und nichts Kritisches offen. Das ist die Lage, die du halten willst.</div>
+        <Leer>Nichts überfällig und nichts Kritisches offen. Das ist die Lage, die du halten willst.</Leer>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+        <Liste>
           {brennt.slice(0, 8).map(t => {
             const spaet = !!t.dueDate && t.dueDate < today;
+            const laeuft = t.status === 'in-progress';
             return (
-              <div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'center', paddingBottom: 8, borderBottom: `1px solid ${T.lineSoft}` }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, color: T.ink }}>{t.title}</div>
-                  <div style={{ fontFamily: T.mono, fontSize: 11, color: spaet ? T.crit : T.muted, marginTop: 2 }}>
-                    {t.priority}
-                    {t.dueDate ? ` · ${spaet ? 'überfällig seit' : 'fällig'} ${t.dueDate}` : ''}
+              <Zeile key={t.id}
+                titel={t.title}
+                unter={<span style={{ color: spaet ? LEUCHT.kritisch : C.inkLeise }}>{t.priority}{t.dueDate ? ` · ${spaet ? 'überfällig seit' : 'fällig'} ${t.dueDate}` : ''}</span>}
+                rechts={
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <Knopf leise={!laeuft} farbe={LEUCHT.puls} aus={busy === t.id} onClick={() => setStatus(t, laeuft ? 'todo' : 'in-progress')}>{laeuft ? 'in Arbeit' : 'anfangen'}</Knopf>
+                    <Knopf farbe={LEUCHT.gut} aus={busy === t.id} onClick={() => setStatus(t, 'done')}>✓</Knopf>
                   </div>
-                </div>
-                <button
-                  onClick={() => setStatus(t, t.status === 'in-progress' ? 'todo' : 'in-progress')}
-                  disabled={busy === t.id}
-                  style={{
-                    fontFamily: T.sans,
-                    fontSize: 11.5,
-                    fontWeight: 600,
-                    padding: '5px 10px',
-                    borderRadius: 7,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    border: `1px solid ${t.status === 'in-progress' ? T.accentInk : T.line}`,
-                    background: t.status === 'in-progress' ? `${T.accentInk}22` : 'transparent',
-                    color: t.status === 'in-progress' ? T.accentInk : T.inkDim,
-                  }}
-                >
-                  {t.status === 'in-progress' ? 'in Arbeit' : 'anfangen'}
-                </button>
-                <button
-                  onClick={() => setStatus(t, 'done')}
-                  disabled={busy === t.id}
-                  style={{
-                    fontFamily: T.sans,
-                    fontSize: 11.5,
-                    fontWeight: 600,
-                    padding: '5px 10px',
-                    borderRadius: 7,
-                    cursor: 'pointer',
-                    border: `1px solid ${T.accent}`,
-                    background: `${T.accent}22`,
-                    color: T.accent,
-                  }}
-                >
-                  ✓
-                </button>
-              </div>
+                } />
             );
           })}
-        </div>
+        </Liste>
       )}
-      <div style={{ fontSize: 12, color: T.muted, marginTop: 12, lineHeight: 1.5 }}> {offen.length} offen — bis 12 gilt als tragbar. Was hier nicht brennt, muss heute nicht in deinen Kopf. </div>
-    </div>
+      <p style={{ fontSize: 12, color: C.inkLeise, marginTop: 12, marginBottom: 0, lineHeight: 1.5 }}>{offen.length} offen — bis 12 gilt als tragbar. Was hier nicht brennt, muss heute nicht in deinen Kopf.</p>
+    </Karte>
   );
-} // ───────────────────────── Finanzen ─────────────────────────
+}
+
+// ───────────────────────── Finanzen ─────────────────────────
 function WerkzeugFinanzen() {
   const [fin, setFin] = useState<FinanceState | null>(null);
   const [cash, setCash] = useState('');
@@ -408,6 +329,7 @@ function WerkzeugFinanzen() {
   const burn = aktiv ? kosten / aktiv : 0;
   const cashNum = Number(cash.replace(/[^\d]/g, '')) || 0;
   const runway = burn > 0 ? cashNum / burn : null;
+  const runwayFarbe = runway == null ? undefined : runway < 4 ? LEUCHT.kritisch : runway < 8 ? LEUCHT.achtung : LEUCHT.gut;
   async function speichern() {
     if (!fin) return;
     setSaving(true);
@@ -420,53 +342,32 @@ function WerkzeugFinanzen() {
     setSaving(false);
   }
   return (
-    <div style={{ ...panel, padding: '16px 20px' }}>
-      <div style={{ ...lbl, marginBottom: 10 }}>Runway-Rechner</div>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span style={lbl}>Cash aktuell</span>
+    <Karte i={1}>
+      <Ueberschrift farbe={LEUCHT.geld} rechts={<Link href="/os/controlling" style={link}>Monatszahlen pflegen ›</Link>}>Runway-Rechner</Ueberschrift>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 160px', maxWidth: 220 }}>
+          <span style={{ fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise }}>Cash aktuell</span>
           <input
             value={cash}
             onChange={e => setCash(e.target.value)}
             inputMode="numeric"
             placeholder="0"
-            style={{ background: T.void, border: `1px solid ${T.line}`, borderRadius: 8, color: T.ink, fontFamily: T.mono, fontSize: 15, padding: '9px 11px', width: 150, outline: 'none' }}
+            style={{ ...feld, fontFamily: SCHRIFT.display, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}
           />
         </label>
-        <button
-          onClick={speichern}
-          disabled={saving || !fin}
-          style={{
-            fontFamily: T.sans,
-            fontSize: 12.5,
-            fontWeight: 700,
-            padding: '10px 16px',
-            borderRadius: 9,
-            border: 'none',
-            cursor: saving ? 'default' : 'pointer',
-            background: saving ? T.line : T.accent,
-            color: saving ? T.muted : '#04110F',
-          }}
-        >
-          {saving ? '…' : 'Übernehmen'}
-        </button>
-        <div style={{ flex: 1, minWidth: 160 }}>
-          <div style={lbl}>Reicht für</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: runway == null ? T.muted : runway < 4 ? T.crit : runway < 8 ? T.amber : T.accent }}>
-            {runway == null ? '—' : `${runway.toFixed(1)} Monate`}
-          </div>
-          <div style={{ fontSize: 11.5, color: T.muted, marginTop: 2 }}> {burn > 0 ? `bei Ø Burn ${eur(burn)}/Monat` : 'trag Kosten im Controlling ein, dann rechnet es'} </div>
+        <Knopf onClick={speichern} aus={saving || !fin} farbe={LEUCHT.geld}>{saving ? '…' : 'Übernehmen'}</Knopf>
+        <div style={{ flex: '1 1 160px' }}>
+          <Zahl wert={runway == null ? undefined : `${runway.toFixed(1).replace('.', ',')} Monate`} label={burn > 0 ? `reicht bei Ø Burn ${eur(burn)}/Monat` : 'trag Kosten im Controlling ein, dann rechnet es'} farbe={runwayFarbe} />
         </div>
       </div>
-      <div style={{ fontSize: 12.5, color: T.inkDim, marginTop: 14, lineHeight: 1.5, paddingTop: 12, borderTop: `1px solid ${T.lineSoft}` }}>
+      <p style={{ ...absatz, marginTop: 16 }}>
         Der Runway ist die härteste Zahl im System: er sagt, wie lange du Entscheidungen aus Ruhe treffen kannst statt aus Druck.
-        <Link href="/os/controlling" style={{ color: T.accentInk, textDecoration: 'none' }}>
-          Monatszahlen pflegen ›
-        </Link>
-      </div>
-    </div>
+      </p>
+    </Karte>
   );
-} // ───────────────────────── Beziehung & Team ─────────────────────────
+}
+
+// ───────────────────────── Beziehung & Team ─────────────────────────
 function WerkzeugSozial() {
   const [journal, setJournal] = useState<Record<string, { mood?: number }>>({});
   const [ritLog, setRitLog] = useState<Record<string, string[]>>({}); // Die Route liefert { journal } — nicht log/state. Vorher blieb die Kurve
@@ -504,64 +405,47 @@ function WerkzeugSozial() {
   const partner = TEAM.filter(t => t.kreis !== 'kern');
   return (
     <>
-      <div style={{ ...panel, padding: '16px 20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <div style={lbl}>Stimmung · 14 Tage</div>
-          <Link href="/os/journal" style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, textDecoration: 'none' }}>
-            Journal ›
-          </Link>
-        </div>
+      <Karte i={1}>
+        <Ueberschrift farbe={LEUCHT.beziehung} rechts={<Link href="/os/journal" style={link}>Journal ›</Link>}>Stimmung · 14 Tage</Ueberschrift>
         {!hatStimmung ? (
-          <div style={{ fontSize: 13, color: T.inkDim, marginTop: 10, lineHeight: 1.5 }}> Diese Säule hat noch keine Datenquelle. Ein Journal-Eintrag pro Woche genügt, damit sie mitzählt. </div>
+          <Leer>Diese Säule hat noch keine Datenquelle. Ein Journal-Eintrag pro Woche genügt, damit sie mitzählt.</Leer>
         ) : (
-          <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: 60, marginTop: 12 }}>
-            {t14.map(d => {
-              const m = journal[d]?.mood;
-              return (
-                <div
-                  key={d}
-                  title={`${d}: ${m ?? '—'}/5`}
-                  style={{ flex: 1, height: m ? `${(m / 5) * 100}%` : 3, background: m ? (m >= 4 ? T.accent : m >= 3 ? T.amber : T.crit) : 'rgba(255,255,255,.06)', borderRadius: '3px 3px 0 0' }}
-                />
-              );
-            })}
-          </div>
+          <Balken werte={t14.map(d => (typeof journal[d]?.mood === 'number' ? (journal[d]!.mood as number) : null))} max={5} farbe={LEUCHT.beziehung} hoehe={60} titel={t14.map(d => `${kurzDatum(d)} · ${journal[d]?.mood ?? '—'}/5`)} />
         )}
-      </div>
-      <div style={{ ...panel, padding: '16px 20px' }}>
-        <div style={{ ...lbl, marginBottom: 4 }}>Rituale — was die Beziehung trägt</div>
-        <div style={{ fontSize: 12, color: T.muted, marginBottom: 12 }}>Antippen, wenn gehalten. Zählt in die Säule ein.</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      </Karte>
+      <Karte i={2}>
+        <Ueberschrift farbe={LEUCHT.beziehung} rechts="Antippen, wenn gehalten">Rituale — was die Beziehung trägt</Ueberschrift>
+        <Liste>
           {RITUALE.map(r => {
             const an = gehalten.has(r.id);
             return (
-              <div key={r.id} onClick={() => toggleRitual(r.id)} style={{ display: 'flex', gap: 10, alignItems: 'baseline', cursor: 'pointer' }}>
-                <span style={{ color: an ? T.accent : T.muted, flex: '0 0 auto', fontSize: 14 }}>{an ? '◆' : '◇'}</span>
-                <div>
-                  <span style={{ fontSize: 13.5, color: an ? T.accent : T.ink, fontWeight: 600 }}>{r.name}</span>
-                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginLeft: 8 }}>{r.rhythmus}</span>
-                  <div style={{ fontSize: 12.5, color: T.inkDim, marginTop: 2, lineHeight: 1.45 }}>{r.warum}</div>
-                </div>
-              </div>
+              <Zeile key={r.id} onClick={() => toggleRitual(r.id)} aktiv={an}
+                links={<Haken an={an} onChange={() => toggleRitual(r.id)} farbe={LEUCHT.beziehung} />}
+                titel={<span style={{ color: an ? LEUCHT.gut : C.ink }}>{r.name}</span>}
+                unter={<span title={r.warum}>{r.warum}</span>}
+                rechts={<Chip farbe={C.inkDim}>{r.rhythmus}</Chip>} />
             );
           })}
-        </div>
-      </div>
-      <div style={{ ...panel, padding: '16px 20px' }}>
-        <div style={{ ...lbl, marginBottom: 4 }}>Wer was trägt</div>
-        <div style={{ fontSize: 12.5, color: T.muted, marginBottom: 12 }}>Aus dem Miro-Strategieboard — die Grundlage für jede Delegation.</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+        </Liste>
+        <p style={{ fontSize: 12, color: C.inkLeise, margin: '10px 0 0' }}>Zählt in die Säule ein.</p>
+      </Karte>
+      <Karte i={3}>
+        <Ueberschrift farbe={LEUCHT.beziehung} rechts="aus dem Miro-Strategieboard">Wer was trägt</Ueberschrift>
+        <Liste>
           {[...kern, ...partner].map(t => (
-            <div key={t.name} style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: t.kreis === 'privat' ? T.accentInk : T.ink, width: 132, flex: '0 0 auto' }}>{t.kurz}</span>
-              <span style={{ fontSize: 12.5, color: T.inkDim, flex: 1, minWidth: 180, lineHeight: 1.45 }}>{t.bereiche.join(' · ')}</span>
-            </div>
+            <Zeile key={t.name}
+              titel={<span style={{ color: t.kreis === 'privat' ? LEUCHT.beziehung : C.ink }}>{t.kurz}</span>}
+              unter={<span title={t.bereiche.join(' · ')}>{t.bereiche.join(' · ')}</span>}
+              rechts={<Chip farbe={t.kreis === 'kern' ? LEUCHT.beziehung : C.inkLeise}>{t.kreis}</Chip>} />
           ))}
-        </div>
-      </div>
+        </Liste>
+        <p style={{ fontSize: 12, color: C.inkLeise, margin: '10px 0 0' }}>Die Grundlage für jede Delegation.</p>
+      </Karte>
     </>
   );
-} // Verbindung, nach der der Rückblick-Loop selbst gefragt hat: hängt die
+}
+
+// Verbindung, nach der der Rückblick-Loop selbst gefragt hat: hängt die
 // Tagesform mit dem zusammen, was tatsächlich fertig wurde?
 function WerkzeugZusammenhang() {
   const [vit, setVit] = useState<Record<string, { rec?: number; sleep?: number }>>({});
@@ -580,13 +464,13 @@ function WerkzeugZusammenhang() {
   const zeilen = t21.map(d => ({ d, rec: vit[d]?.rec, fertig: tasks.filter(t => t.completedAt?.slice(0, 10) === d).length })).filter(z => z.rec != null);
   if (zeilen.length < 5) {
     return (
-      <div style={{ ...panel, padding: '16px 20px' }}>
-        <div style={{ ...lbl, marginBottom: 8 }}>Zusammenhang · Tagesform & Erledigtes</div>
-        <div style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.5 }}>
+      <Karte i={3}>
+        <Ueberschrift farbe={LEUCHT.puls} rechts={`${zeilen.length} von 5 Tagen`}>Zusammenhang · Tagesform & Erledigtes</Ueberschrift>
+        <Leer>
           Ab etwa fünf Tagen mit Morgen-Check zeige ich hier, ob niedrige Recovery und liegengebliebene Aufgaben zusammenfallen — der Zusammenhang, den man im Alltag nie sieht.
-          <span style={{ color: T.muted }}> Aktuell {zeilen.length} von 5.</span>
-        </div>
-      </div>
+          {' '}Aktuell {zeilen.length} von 5.
+        </Leer>
+      </Karte>
     );
   }
   const gute = zeilen.filter(z => (z.rec as number) >= 60);
@@ -595,30 +479,28 @@ function WerkzeugZusammenhang() {
   const gS = schnitt(gute),
     sS = schnitt(schlechte);
   const spanne = Math.max(1, ...zeilen.map(z => z.fertig));
+  const titel = zeilen.map(z => `${kurzDatum(z.d)} · Recovery ${z.rec}, ${z.fertig} erledigt`);
   return (
-    <div style={{ ...panel, padding: '16px 20px' }}>
-      <div style={{ ...lbl, marginBottom: 12 }}>Zusammenhang · Tagesform & Erledigtes</div>
-      <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 70 }}>
-        {zeilen.map(z => (
-          <div key={z.d} title={`${z.d}: Recovery ${z.rec}, ${z.fertig} erledigt`} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 2, height: '100%' }}>
-            <div style={{ height: `${(z.fertig / spanne) * 55}%`, background: T.accent, opacity: 0.8, borderRadius: '2px 2px 0 0', minHeight: 2 }} />
-            <div style={{ height: `${(z.rec as number) * 0.4}%`, background: col(z.rec as number), opacity: 0.35, borderRadius: '0 0 2px 2px', minHeight: 2 }} />
-          </div>
-        ))}
+    <Karte i={3}>
+      <Ueberschrift farbe={LEUCHT.puls} rechts={`${zeilen.length} Tage`}>Zusammenhang · Tagesform & Erledigtes</Ueberschrift>
+      <Balken werte={zeilen.map(z => z.fertig)} max={spanne} farbe={LEUCHT.puls} hoehe={44} titel={titel} />
+      <div style={{ marginTop: 6 }}>
+        <Balken werte={zeilen.map(z => z.rec as number)} max={100} farbe={LEUCHT.gut} hoehe={28} titel={titel} />
       </div>
-      <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 6 }}>oben erledigt · unten Recovery</div>
-      <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.lineSoft}`, fontSize: 13, color: T.inkDim, lineHeight: 1.55 }}>
-        An Tagen mit Recovery ab 60 wurden im Schnitt <b style={{ color: T.accent }}>{gS.toFixed(1)}</b> Aufgaben fertig, darunter
-        <b style={{ color: sS < gS ? T.amber : T.accent }}>{sS.toFixed(1)}</b>.
+      <div style={legende}>oben erledigt · unten Recovery</div>
+      <p style={{ ...absatz, marginTop: 14 }}>
+        An Tagen mit Recovery ab 60 wurden im Schnitt <b style={{ color: LEUCHT.gut }}>{gS.toFixed(1)}</b> Aufgaben fertig, darunter{' '}
+        <b style={{ color: sS < gS ? LEUCHT.achtung : LEUCHT.gut }}>{sS.toFixed(1)}</b>.
         {gute.length >= 3 && schlechte.length >= 3
           ? gS - sS >= 0.7
             ? ' Der Zusammenhang ist da — an schwachen Tagen weniger vornehmen ist keine Schwäche, sondern Rechnen.'
             : ' Bisher kein klarer Zusammenhang — deine Ausführung hängt offenbar an etwas anderem als der Erholung.'
           : ' Für ein Urteil fehlen noch Tage in beiden Gruppen.'}
-      </div>
-    </div>
+      </p>
+    </Karte>
   );
 }
+
 const WERKZEUGE: Record<string, () => JSX.Element> = {
   health: () => (
     <>
@@ -630,7 +512,9 @@ const WERKZEUGE: Record<string, () => JSX.Element> = {
   planning: WerkzeugPlanung,
   finance: WerkzeugFinanzen,
   social: WerkzeugSozial,
-}; // ───────────────────────── Rahmen ─────────────────────────
+};
+
+// ───────────────────────── Rahmen ─────────────────────────
 export function SaeuleView({ keyName }: { keyName: string }) {
   const [idx, setIdx] = useState<PerfIndex | null>(null);
   const meta = SAEULEN_META[keyName];
@@ -643,49 +527,43 @@ export function SaeuleView({ keyName }: { keyName: string }) {
   const s: Saeule | undefined = idx?.saeulen.find(x => x.key === keyName);
   const Werkzeug = WERKZEUGE[keyName];
   if (!meta) return null;
+  const saeulenFarbe = SAEULEN_FARBE[keyName] ?? C.inkLeise;
+  const zone = col(s?.score ?? null);
+  const abdeckung = s ? Math.round(s.abdeckung * 100) : null;
+  const echt = (s?.faktoren ?? []).filter(f => f.echt).length;
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
-        <Link href="/os/wachstum" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>
-          ‹ Wachstum
-        </Link>
-        <Seitenkopf
-          rubrik={<>{meta.titel}</>}
-          titel={<>{meta.claim}</>}
-          satz={<>{meta.hin}</>}
-        />
-        {/* Wert + Herleitung */}
-        <div style={{ ...panel, borderTop: `2px solid ${col(s?.score ?? null)}`, padding: '18px 22px', margin: '20px 0 14px' }}>
-          <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ fontSize: 42, fontWeight: 800, fontFamily: T.mono, color: col(s?.score ?? null), lineHeight: 1 }}>{s?.score ?? '—'}</div>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={{ fontSize: 13, color: T.inkDim, lineHeight: 1.5 }}>
-                Gewicht {s ? Math.round(s.gewicht * 100) : '—'}% im Index · Datenbasis
-                <b style={{ color: (s?.abdeckung ?? 0) >= 0.4 ? T.accent : T.amber }}>{s ? Math.round(s.abdeckung * 100) : 0}%</b>
-                {s?.zuDuenn && <span style={{ color: T.amber }}> — zählt noch nicht mit</span>}
-              </div>
+    <Seite titel={meta.titel} unter={<>{meta.claim} <span style={{ color: C.inkLeise }}>· {meta.hin}</span></>}
+      rechts={<Link href="/os/wachstum" className="fassbar" style={linkKnopf}>Wachstum ›</Link>}>
+      {/* Wert + Herleitung */}
+      <Karte i={0} akzent={s?.score != null ? zone : undefined}>
+        <Ueberschrift farbe={s ? zone : C.inkLeise} rechts={s?.zuDuenn ? <Chip farbe={LEUCHT.achtung}>zählt noch nicht mit</Chip> : undefined}>Die Säule</Ueberschrift>
+        <div className="heute-kopf" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'clamp(18px,4vw,44px)', alignItems: 'center' }}>
+          <Ring groesse="gross" label={meta.titel} wert={s?.score != null ? String(s.score) : undefined} farbe={zone} anteil={s?.score != null ? s.score / 100 : undefined} />
+          <div style={{ minWidth: 0, width: '100%' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 16 }}>
+              <Zahl wert={s ? String(Math.round(s.gewicht * 100)) : undefined} label="% Gewicht im Index" farbe={saeulenFarbe} />
+              <Zahl wert={abdeckung ? String(abdeckung) : undefined} label="% Datenbasis" farbe={abdeckung != null ? (abdeckung >= 40 ? LEUCHT.gut : LEUCHT.achtung) : undefined} />
+              <Zahl wert={echt ? String(echt) : undefined} label={s?.faktoren.length ? `von ${s.faktoren.length} Faktoren echt gemessen` : 'Faktoren'} />
             </div>
+            {s?.zuDuenn && <p style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, margin: '12px 0 0' }}>Datenbasis unter 40 % — die Säule zählt noch nicht mit.</p>}
           </div>
-          {!!s?.faktoren.length && (
-            <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.lineSoft}`, display: 'flex', flexDirection: 'column', gap: 7 }}>
-              {s.faktoren.map((f, i) => (
-                <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'baseline', opacity: f.echt ? 1 : 0.6 }}>
-                  <span style={{ fontFamily: T.mono, fontSize: 13, fontWeight: 700, color: f.echt ? col(f.wert) : T.muted, width: 32, textAlign: 'right', flex: '0 0 auto' }}>
-                    {f.echt ? f.wert : '—'}
-                  </span>
-                  <div style={{ minWidth: 0 }}>
-                    <span style={{ fontSize: 13, color: f.echt ? T.ink : T.muted }}>{f.label}</span>
-                    <span style={{ fontSize: 11.5, color: f.echt ? T.muted : T.amber, marginLeft: 8 }}>{f.quelle}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
-        {/* Werkzeuge */}
-        <div style={{ ...lbl, margin: '18px 0 10px' }}>Werkzeuge</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{Werkzeug ? <Werkzeug /> : null}</div>
-      </div>
-    </div>
+        {!!s?.faktoren.length && (
+          <div style={{ marginTop: 18 }}>
+            {s.faktoren.map((f, i) => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 200px) 1fr 44px', alignItems: 'center', gap: 12, padding: '6px 0', opacity: f.echt ? 1 : 0.6 }}>
+                <span style={{ fontSize: TYP.bedien, color: f.echt ? C.ink : C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${f.label}${f.quelle ? ` · ${f.quelle}` : ''}`}>
+                  {f.label}<span style={{ color: f.echt ? C.inkLeise : LEUCHT.achtung, marginLeft: 8, fontSize: 11.5 }}>{f.quelle}</span>
+                </span>
+                <Fortschritt anteil={f.echt ? f.wert / 100 : 0} farbe={f.echt ? col(f.wert) : saeulenFarbe} />
+                <span style={{ fontFamily: SCHRIFT.display, fontWeight: 600, fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', color: f.echt ? col(f.wert) : C.inkLeise, textAlign: 'right' }}>{f.echt ? f.wert : '—'}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Karte>
+      {/* Werkzeuge */}
+      {Werkzeug ? <Werkzeug /> : null}
+    </Seite>
   );
 }

@@ -1,20 +1,24 @@
 'use client';
 
-import Link from 'next/link';
-// Die Roadmap: in welcher Reihenfolge MAKE OS gebaut wird. Sieben Phasen, die
-// aufeinander aufbauen — man kann Messbarkeit nicht auf Daten bauen, die noch
-// nicht reinfließen.
+// ─── MAKE OS — Roadmap ──────────────────────────────────────────────────────
+// In welcher Reihenfolge MAKE OS gebaut wird: sieben Phasen, die aufeinander
+// aufbauen — Messbarkeit lässt sich nicht auf Daten bauen, die noch nicht
+// reinfließen. 24.09.: auf das lebendige Muster umgezogen.
 
-import { useEffect, useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+import Link from 'next/link';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { PHASEN } from '@/lib/make-one/roadmap-data';
 import { KAT_LABEL, BLOCK_LABEL, type BacklogItem } from '@/lib/make-one/backlog-data';
-import { Seitenkopf } from './Seitenkopf';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Ring, Zahl, Fortschritt, LEUCHT } from './schlank';
 
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
-const blockColor = (b: string) => (b === 'frei' ? T.accent : b === 'kevin' ? T.amber : T.muted);
-const katColor = (k: string) => (k === 'anbindung' ? '#4A6CF7' : k === 'agent' ? T.accent : k === 'qualitaet' ? T.accentInk : '#AC9D80');
+const blockColor = (b: string) => (b === 'frei' ? LEUCHT.gut : b === 'kevin' ? LEUCHT.achtung : C.inkLeise);
+const katColor = (k: string) => (k === 'anbindung' ? LEUCHT.puls : k === 'agent' ? LEUCHT.agenten : k === 'qualitaet' ? LEUCHT.gut : LEUCHT.schlaf);
+/** Ein Verweis, der wie ein Knopf aussieht. */
+const linkKnopf: CSSProperties = {
+  fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '9px 15px', borderRadius: 11, whiteSpace: 'nowrap',
+  background: LEUCHT.puls, color: C.grund, textDecoration: 'none', boxShadow: `0 6px 18px -6px ${LEUCHT.puls}99`,
+};
 
 export function RoadmapView() {
   const [items, setItems] = useState<BacklogItem[]>([]);
@@ -32,30 +36,25 @@ export function RoadmapView() {
   const fertig = items.filter(i => i.status === 'erledigt').length;
 
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 940, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
-        <Link href="/os" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Übersicht</Link>
-        <Seitenkopf
-          rubrik={<>Roadmap · der Fahrplan</>}
-          titel={<>In welcher Reihenfolge wir bauen.</>}
-          satz={<>Sieben Phasen, die aufeinander aufbauen. Erst der tägliche Takt, dann vollständige Daten, dann Steuerung — Messbarkeit auf Daten zu bauen, die noch nicht reinfließen, führt zu Zahlen, denen man nicht trauen kann.</>}
-        />
-
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '18px 0 20px' }}>
-          <div style={{ ...panel, padding: '10px 16px' }}><div style={lbl}>Bausteine</div><div style={{ fontSize: 21, fontWeight: 700 }}>{gesamt}</div></div>
-          <div style={{ ...panel, padding: '10px 16px' }}><div style={lbl}>Erledigt</div><div style={{ fontSize: 21, fontWeight: 700, color: T.accent }}>{fertig}</div></div>
-          <div style={{ ...panel, padding: '10px 16px', flex: 1, minWidth: 200 }}>
-            <div style={lbl}>Fortschritt</div>
-            <div style={{ height: 8, background: T.void, borderRadius: 5, marginTop: 9, overflow: 'hidden' }}>
-              <div style={{ width: `${gesamt ? (fertig / gesamt) * 100 : 0}%`, height: '100%', background: `linear-gradient(90deg,${T.accent},${T.accentInk})` }} />
-            </div>
-          </div>
+    <Seite titel="Roadmap" unter="Sieben Phasen, die aufeinander aufbauen. Erst der tägliche Takt, dann vollständige Daten, dann Steuerung — Messbarkeit auf Daten zu bauen, die noch nicht reinfließen, führt zu Zahlen, denen man nicht trauen kann.">
+      <Karte i={0} akzent={LEUCHT.puls}>
+        <Ueberschrift farbe={LEUCHT.puls} rechts={`${PHASEN.length} Phasen`}>Der Fahrplan</Ueberschrift>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 16 }}>
+          <Zahl wert={gesamt ? String(gesamt) : undefined} label="Bausteine" />
+          <Zahl wert={fertig ? String(fertig) : undefined} label="erledigt" farbe={LEUCHT.gut} />
+          <Zahl wert={gesamt && fertig ? String(Math.round((fertig / gesamt) * 100)) : undefined} label="% des Fahrplans" farbe={LEUCHT.puls} />
         </div>
+        <div style={{ marginTop: 14 }}>
+          <Fortschritt anteil={gesamt ? fertig / gesamt : 0} farbe={LEUCHT.puls} />
+        </div>
+      </Karte>
 
+      <Karte i={1}>
+        <Ueberschrift rechts="Klick öffnet die Phase">Die Phasen</Ueberschrift>
         {!loaded ? (
-          <div style={{ fontFamily: T.mono, fontSize: 12, color: T.muted }}>lade Fahrplan …</div>
+          <Leer>lade Fahrplan …</Leer>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Liste>
             {PHASEN.map(p => {
               const eigene = jePhase(p.id);
               const done = eigene.filter(i => i.status === 'erledigt').length;
@@ -63,66 +62,64 @@ export function RoadmapView() {
               const deine = eigene.filter(i => i.status !== 'erledigt' && i.block === 'kevin').length;
               const auf = offen === p.id;
               const pct = eigene.length ? (done / eigene.length) * 100 : 0;
+              const farbe = pct === 100 ? LEUCHT.gut : LEUCHT.puls;
 
               return (
-                <div key={p.id} style={{ ...panel, overflow: 'hidden', borderLeft: `3px solid ${pct === 100 ? T.accent : auf ? T.accentInk : T.line}` }}>
-                  <div onClick={() => setOffen(auf ? null : p.id)} style={{ padding: '16px 20px', cursor: 'pointer', background: auf ? T.panel2 : 'transparent' }}>
-                    <div style={{ display: 'flex', gap: 14, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                      <span style={{ fontFamily: T.mono, fontSize: 12, fontWeight: 700, color: T.accent, flex: '0 0 auto' }}>{String(p.nr).padStart(2, '0')}</span>
-                      <span style={{ fontSize: 16.5, fontWeight: 700, color: T.ink }}>{p.name}</span>
-                      <span style={{ flex: 1 }} />
-                      <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>
-                        {done}/{eigene.length}
-                        {meine > 0 && <span style={{ color: T.accent }}> · {meine} baubar</span>}
-                        {deine > 0 && <span style={{ color: T.amber }}> · {deine} brauchen dich</span>}
-                      </span>
-                      <span style={{ fontFamily: T.mono, fontSize: 13, color: T.muted }}>{auf ? '▾' : '▸'}</span>
-                    </div>
-                    <div style={{ fontSize: 13, color: T.inkDim, marginTop: 6, lineHeight: 1.5, paddingLeft: 26 }}>{p.ziel}</div>
-                    <div style={{ height: 3, background: T.void, borderRadius: 2, marginTop: 10, marginLeft: 26, overflow: 'hidden' }}>
-                      <div style={{ width: `${pct}%`, height: '100%', background: T.accent }} />
-                    </div>
-                  </div>
+                <div key={p.id}>
+                  <Zeile onClick={() => setOffen(auf ? null : p.id)} aktiv={auf}
+                    links={<Ring groesse="klein" label="" wert={eigene.length ? String(Math.round(pct)) : undefined} farbe={farbe} anteil={eigene.length ? pct / 100 : undefined} />}
+                    titel={<><span style={{ color: C.inkLeise, fontWeight: 400 }}>{String(p.nr).padStart(2, '0')} · </span>{p.name}</>}
+                    unter={<span title={p.ziel}>{p.ziel}</span>}
+                    rechts={
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <Chip farbe={pct === 100 ? LEUCHT.gut : C.inkDim}>{done}/{eigene.length}</Chip>
+                        {meine > 0 && <Chip farbe={LEUCHT.gut}>{meine} baubar</Chip>}
+                        {deine > 0 && <Chip farbe={LEUCHT.achtung}>{deine} brauchen dich</Chip>}
+                      </div>
+                    } />
 
                   {auf && (
-                    <div style={{ padding: '2px 20px 18px 46px' }}>
-                      <div style={{ fontSize: 12.5, color: T.muted, marginBottom: 14, lineHeight: 1.5, borderLeft: `2px solid ${T.lineSoft}`, paddingLeft: 12 }}>
-                        <b style={{ color: T.accentInk }}>Fertig, wenn: </b>{p.fertigWenn}
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-                        {eigene.sort((a, b) => a.prio - b.prio).map(i => (
-                          <div key={i.id} style={{ opacity: i.status === 'erledigt' ? 0.45 : 1 }}>
-                            <div style={{ display: 'flex', gap: 9, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                              <span style={{ fontFamily: T.mono, fontSize: 11, color: i.prio === 1 ? T.accent : T.muted, flex: '0 0 auto' }}>P{i.prio}</span>
-                              <span style={{ fontSize: 13.5, fontWeight: 600, color: T.ink, textDecoration: i.status === 'erledigt' ? 'line-through' : 'none' }}>{i.titel}</span>
-                              <span style={{ fontFamily: T.mono, fontSize: 11, color: katColor(i.kategorie), border: `1px solid ${katColor(i.kategorie)}44`, borderRadius: 4, padding: '1px 6px' }}>{KAT_LABEL[i.kategorie]}</span>
-                              <span style={{ fontFamily: T.mono, fontSize: 11, color: blockColor(i.block), border: `1px solid ${blockColor(i.block)}44`, borderRadius: 4, padding: '1px 6px' }}>{BLOCK_LABEL[i.block]}</span>
+                    <div style={{ padding: '6px 2px 16px' }}>
+                      <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, margin: 0 }}>{p.ziel}</p>
+                      <p style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.55, margin: '8px 0 12px' }}>
+                        <b style={{ color: LEUCHT.puls }}>Fertig, wenn: </b>{p.fertigWenn}
+                      </p>
+                      {eigene.sort((a, b) => a.prio - b.prio).map(i => (
+                        <div key={i.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 0', opacity: i.status === 'erledigt' ? 0.45 : 1 }}>
+                          <Chip farbe={i.prio === 1 ? LEUCHT.puls : C.inkLeise}>P{i.prio}</Chip>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: TYP.body, fontWeight: 500, color: C.ink, textDecoration: i.status === 'erledigt' ? 'line-through' : 'none' }}>{i.titel}</span>
+                              <Chip farbe={katColor(i.kategorie)}>{KAT_LABEL[i.kategorie]}</Chip>
+                              <Chip farbe={blockColor(i.block)}>{BLOCK_LABEL[i.block]}</Chip>
                             </div>
-                            {i.warum && <div style={{ fontSize: 12.5, color: T.inkDim, marginTop: 3, lineHeight: 1.45, paddingLeft: 26 }}>{i.warum}</div>}
+                            {i.warum && <p style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5, margin: '4px 0 0' }}>{i.warum}</p>}
                             {i.block === 'kevin' && i.brauche && (
-                              <div style={{ marginTop: 5, marginLeft: 26, display: 'flex', gap: 7, background: T.panel2, border: `1px solid ${T.amber}33`, borderRadius: 8, padding: '7px 11px' }}>
-                                <span style={{ color: T.amber, flex: '0 0 auto', fontSize: 12 }}>→</span>
-                                <div style={{ fontSize: 12, color: T.inkDim, lineHeight: 1.45 }}>{i.brauche}</div>
-                              </div>
+                              <p style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5, margin: '4px 0 0' }}>
+                                <b style={{ color: LEUCHT.achtung }}>Du brauchst: </b>{i.brauche}
+                              </p>
                             )}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
+                      {!eigene.length && <Leer>Noch kein Baustein in dieser Phase eingeordnet.</Leer>}
                     </div>
                   )}
                 </div>
               );
             })}
-          </div>
+          </Liste>
         )}
+      </Karte>
 
-        <div style={{ ...panel, padding: '14px 20px', marginTop: 18, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, color: T.inkDim, flex: 1, minWidth: 220 }}>
+      <Karte i={2}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: TYP.body, color: C.inkDim, flex: '1 1 220px' }}>
             Einzelne Punkte bearbeiten, Prioritäten ändern oder Neues notieren:
           </span>
-          <Link href="/os/bauplan" style={{ fontFamily: T.sans, fontSize: 12.5, fontWeight: 700, textDecoration: 'none', color: '#04110F', background: T.accent, borderRadius: 9, padding: '9px 16px' }}>Zum Bauplan →</Link>
+          <Link href="/os/bauplan" className="fassbar" style={linkKnopf}>Zum Bauplan →</Link>
         </div>
-      </div>
-    </div>
+      </Karte>
+    </Seite>
   );
 }

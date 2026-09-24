@@ -1,17 +1,19 @@
 'use client';
 
+// ─── MAKE OS — Journal ──────────────────────────────────────────────────────
+// Kurz festhalten, wie der Tag war — daraus entstehen die Daten für den Weg.
+// 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Balken/Chip).
+
 import Link from 'next/link';
 import { localDay } from '@/lib/zeit';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useNachspeichern } from '@/lib/make-one/nachspeichern';
-import { THEME as T } from '@/lib/make-one/os-data';
-import { Seitenkopf } from './Seitenkopf';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Balken, feld, LEUCHT } from './schlank';
 
 interface Entry { text?: string; mood?: number; energy?: number; stress?: number; haut?: string; ruecken?: string; flags?: string[]; at?: string; }
 type Journal = Record<string, Entry>;
 const ymd = (d: Date) => localDay(d);
-const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
 
 const FLAGS: { id: string; label: string }[] = [
   { id: 'antiinflamm', label: 'Anti-entzündlich gegessen' },
@@ -20,6 +22,12 @@ const FLAGS: { id: string; label: string }[] = [
   { id: 'keincannabis', label: 'Kein Cannabis' },
   { id: 'keinalkohol', label: 'Kein Alkohol' },
 ];
+
+/** Pille zum Umschalten — leuchtet in der Kennzahlfarbe, wenn sie an ist. */
+const pille = (an: boolean, farbe: string): CSSProperties => ({
+  fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: '6px 12px', borderRadius: 999, cursor: 'pointer', border: 'none',
+  background: an ? `${farbe}22` : 'rgba(255,255,255,.06)', color: an ? farbe : C.inkDim, transition: 'background .15s ease, color .15s ease',
+});
 
 export function JournalView() {
   const today = ymd(new Date());
@@ -51,24 +59,29 @@ export function JournalView() {
 
   const dots = (label: string, val: number | undefined, set: (n: number) => void, bad = false) => (
     <div>
-      <div style={{ fontSize: 12.5, color: T.inkDim, marginBottom: 6 }}>{label}</div>
-      <div style={{ display: 'flex', gap: 7 }}>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 6 }}>{label}</div>
+      <div style={{ display: 'flex', gap: 6 }}>
         {[1, 2, 3, 4, 5].map(n => {
           const on = (val ?? 0) >= n;
-          const c = bad ? T.crit : T.accent;
-          return <button key={n} onClick={() => set(n)} aria-label={`${label} ${n}`} style={{ width: 26, height: 26, borderRadius: 8, cursor: 'pointer', border: `1px solid ${on ? c : T.line}`, background: on ? c : 'transparent', color: on ? T.void : T.muted, fontFamily: T.mono, fontSize: 12 }}>{n}</button>;
+          const c = bad ? LEUCHT.kritisch : LEUCHT.gut;
+          return (
+            <button key={n} onClick={() => set(n)} aria-label={`${label} ${n}`} className="fassbar" style={{
+              width: 30, height: 30, borderRadius: 10, cursor: 'pointer', border: 'none', fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 700,
+              background: on ? c : 'rgba(255,255,255,.07)', color: on ? C.grund : C.inkLeise, boxShadow: on ? `0 0 10px ${c}66` : undefined, transition: 'background .15s ease',
+            }}>{n}</button>
+          );
         })}
       </div>
     </div>
   );
   const choice = (label: string, val: string | undefined, opts: { v: string; l: string; bad?: boolean }[], key: 'haut' | 'ruecken') => (
     <div>
-      <div style={{ fontSize: 12.5, color: T.inkDim, marginBottom: 6 }}>{label}</div>
-      <div style={{ display: 'flex', gap: 7 }}>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 6 }}>{label}</div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {opts.map(o => {
           const on = val === o.v;
-          const c = o.bad ? T.crit : T.accent;
-          return <button key={o.v} onClick={() => patch({ [key]: on ? '' : o.v } as Partial<Entry>)} style={{ fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${on ? c : T.line}`, background: on ? `${c}22` : 'transparent', color: on ? c : T.inkDim }}>{o.l}</button>;
+          const c = o.bad ? LEUCHT.kritisch : LEUCHT.gut;
+          return <button key={o.v} onClick={() => patch({ [key]: on ? '' : o.v } as Partial<Entry>)} className="fassbar" style={pille(on, c)}>{o.l}</button>;
         })}
       </div>
     </div>
@@ -76,27 +89,27 @@ export function JournalView() {
 
   // Verlauf (ohne heute) + Trend
   const history = useMemo(() => Object.entries(journal).filter(([d]) => d !== today).sort((a, b) => b[0].localeCompare(a[0])), [journal, today]);
-  const last14 = useMemo(() => Array.from({ length: 14 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - (13 - i)); return journal[ymd(d)] ?? {}; }), [journal]);
+  const last14 = useMemo(() => Array.from({ length: 14 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - (13 - i)); return { tag: ymd(d), e: journal[ymd(d)] ?? {} }; }), [journal]);
+  const datumKurz = (d: string) => `${d.slice(8)}.${d.slice(5, 7)}.`;
 
-  const miniBars = (pick: (e: Entry) => number | undefined, c: string) => (
-    <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 34 }}>
-      {last14.map((e, i) => { const v = pick(e) ?? 0; return <div key={i} style={{ width: 8, height: `${Math.max(3, (v / 5) * 34)}px`, borderRadius: 2, background: v ? c : 'rgba(255,255,255,.06)' }} />; })}
-    </div>
-  );
+  const trend: { name: string; pick: (e: Entry) => number | undefined; c: string }[] = [
+    { name: 'Stimmung', pick: e => e.mood, c: LEUCHT.gut },
+    { name: 'Energie', pick: e => e.energy, c: LEUCHT.gut },
+    { name: 'Stress', pick: e => e.stress, c: LEUCHT.kritisch },
+  ];
 
   return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
-        <Link href="/os/gesundheit" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Gesundheit</Link>
-        <Seitenkopf
-          rubrik={<>Journal · dein Datenweg</>}
-          titel={<span suppressHydrationWarning>{new Date().toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' })}</span>}
-          satz={<>Kurz festhalten, wie der Tag war — daraus entstehen deine Daten, um den Weg immer wieder anzupassen.</>}
-          rechts={<span style={{ fontFamily: T.mono, fontSize: 11, color: saved ? T.accent : T.amber }}>{saved ? 'gespeichert ✓' : 'speichert …'}</span>}
-        />
-
-        {/* Tages-Check */}
-        <div style={{ ...panel, padding: '20px 22px', margin: '18px 0 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <Seite
+      titel={<span suppressHydrationWarning>{new Date().toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' })}</span>}
+      unter="Journal · dein Datenweg — kurz festhalten, wie der Tag war. Daraus entstehen deine Daten, um den Weg immer wieder anzupassen."
+      rechts={<div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Chip farbe={saved ? LEUCHT.gut : LEUCHT.achtung}>{saved ? 'gespeichert ✓' : 'speichert …'}</Chip>
+        <Link href="/os/gesundheit" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Gesundheit ›</Link>
+      </div>}
+    >
+      <Karte i={0} akzent={LEUCHT.gut}>
+        <Ueberschrift farbe={LEUCHT.gut}>Tages-Check</Ueberschrift>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div style={{ display: 'flex', gap: 26, flexWrap: 'wrap' }}>
             {dots('Stimmung', entry.mood, n => patch({ mood: n }))}
             {dots('Energie', entry.energy, n => patch({ energy: n }))}
@@ -107,47 +120,52 @@ export function JournalView() {
             {choice('Rücken (Bandscheibe)', entry.ruecken, [{ v: 'ok', l: 'ok' }, { v: 'schmerz', l: 'Schmerz', bad: true }], 'ruecken')}
           </div>
           <div>
-            <div style={{ fontSize: 12.5, color: T.inkDim, marginBottom: 8 }}>Heute gelungen</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-              {FLAGS.map(f => { const on = (entry.flags ?? []).includes(f.id); return <button key={f.id} onClick={() => toggleFlag(f.id)} style={{ fontSize: 12, padding: '6px 11px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${on ? T.accent : T.line}`, background: on ? T.accentSoft : 'transparent', color: on ? T.accentInk : T.inkDim }}>{on ? '✓ ' : ''}{f.label}</button>; })}
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 8 }}>Heute gelungen</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {FLAGS.map(f => { const on = (entry.flags ?? []).includes(f.id); return <button key={f.id} onClick={() => toggleFlag(f.id)} className="fassbar" style={pille(on, C.aktiv)}>{on ? '✓ ' : ''}{f.label}</button>; })}
             </div>
           </div>
           <div>
-            <div style={{ fontSize: 12.5, color: T.inkDim, marginBottom: 8 }}>Was war heute? Was ist dir aufgefallen?</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 8 }}>Was war heute? Was ist dir aufgefallen?</div>
             <textarea value={entry.text ?? ''} onChange={e => patch({ text: e.target.value })} rows={5} placeholder="Frei schreiben …"
-              style={{ width: '100%', background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', padding: '12px 14px', color: T.ink, fontSize: 14, fontFamily: T.sans, resize: 'vertical', lineHeight: 1.55, outline: 'none' }} />
+              style={{ ...feld, resize: 'vertical', lineHeight: 1.55 }} />
           </div>
         </div>
+      </Karte>
 
-        {/* Trend */}
-        <div style={lbl}>Trend · 14 Tage</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12, margin: '12px 0 22px' }}>
-          {[['Stimmung', (e: Entry) => e.mood, T.accent], ['Energie', (e: Entry) => e.energy, T.accent], ['Stress', (e: Entry) => e.stress, T.crit]].map(([name, pick, c]) => (
-            <div key={name as string} style={{ ...panel, padding: '14px 16px' }}>
-              <div style={{ fontSize: 12, color: T.inkDim, marginBottom: 10 }}>{name as string}</div>
-              {miniBars(pick as (e: Entry) => number | undefined, c as string)}
-            </div>
-          ))}
-        </div>
-
-        {/* Verlauf */}
-        <div style={lbl}>Verlauf</div>
-        <div style={{ ...panel, padding: history.length ? '4px 20px' : '20px', marginTop: 12 }}>
-          {history.length === 0 && <div style={{ color: T.muted, fontSize: 13 }}>Noch keine früheren Einträge — heute ist der Anfang. 🌱</div>}
-          {history.slice(0, 30).map(([date, e], i) => (
-            <div key={date} style={{ padding: '13px 0', borderTop: i ? `1px solid ${T.lineSoft}` : 0 }}>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                <span style={{ fontFamily: T.mono, fontSize: 11, color: T.inkDim }}>{new Date(date + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })}</span>
-                {typeof e.mood === 'number' && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent }}>Stimmung {e.mood}</span>}
-                {typeof e.stress === 'number' && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.crit }}>Stress {e.stress}</span>}
-                {e.haut === 'schub' && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.crit }}>Haut-Schub</span>}
-                {e.ruecken === 'schmerz' && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.crit }}>Rücken-Schmerz</span>}
-              </div>
-              {e.text && <div style={{ fontSize: 13, color: T.inkDim, marginTop: 4, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{e.text}</div>}
-            </div>
-          ))}
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
+        {trend.map((t, i) => {
+          const werte = last14.map(x => t.pick(x.e) ?? null);
+          const hat = werte.some(w => w != null);
+          return (
+            <Karte key={t.name} i={1 + i}>
+              <Ueberschrift farbe={t.c} rechts="14 Tage">{t.name}</Ueberschrift>
+              {hat
+                ? <Balken werte={werte} max={5} farbe={t.c} hoehe={40} titel={last14.map(x => `${datumKurz(x.tag)} · ${t.pick(x.e) ?? '—'}`)} />
+                : <Leer>Noch nichts eingetragen.</Leer>}
+            </Karte>
+          );
+        })}
       </div>
-    </div>
+
+      <Karte i={4}>
+        <Ueberschrift rechts={history.length ? `${history.length} Einträge` : undefined}>Verlauf</Ueberschrift>
+        {history.length === 0 && <Leer>Noch keine früheren Einträge — heute ist der Anfang. 🌱</Leer>}
+        <Liste>
+          {history.slice(0, 30).map(([date, e]) => (
+            <div key={date} className="zeile" style={{ padding: '12px 2px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim }}>{new Date(date + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })}</span>
+                {typeof e.mood === 'number' && <Chip farbe={LEUCHT.gut}>Stimmung {e.mood}</Chip>}
+                {typeof e.stress === 'number' && <Chip farbe={LEUCHT.kritisch}>Stress {e.stress}</Chip>}
+                {e.haut === 'schub' && <Chip farbe={LEUCHT.kritisch}>Haut-Schub</Chip>}
+                {e.ruecken === 'schmerz' && <Chip farbe={LEUCHT.kritisch}>Rücken-Schmerz</Chip>}
+              </div>
+              {e.text && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 6, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{e.text}</div>}
+            </div>
+          ))}
+        </Liste>
+      </Karte>
+    </Seite>
   );
 }

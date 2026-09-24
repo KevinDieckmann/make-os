@@ -1,10 +1,15 @@
 'use client';
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { THEME as T } from '@/lib/make-one/os-data';
+// ─── MAKE OS — Meeting-Agent ────────────────────────────────────────────────
+// Mitschrift rein → Zusammenfassung, Entscheidungen, Action-Items. Jedes
+// Action-Item wird auf Klick eine echte Aufgabe. Der Skriptverlauf bleibt
+// liegen, mit Termin verknüpft.
+// 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Zeile aus schlank).
+
+import { useEffect, useState, type CSSProperties } from 'react';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { todayISO } from '@/components/os/kit';
-import { Seitenkopf } from './Seitenkopf';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, feld, prioFarbe, LEUCHT } from './schlank';
 
 interface ActionItem { titel: string; owner: string; prio: string; projectId: string; due?: string; }
 interface Protokoll { titel: string; zusammenfassung: string; entscheidungen: string[]; actionItems: ActionItem[]; }
@@ -16,14 +21,12 @@ interface Meeting {
   transcript?: string;
 }
 
-const lbl = { fontFamily: T.mono, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: T.muted };
-const panel = { background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)' };
-
 const PROJECTS: Record<string, string> = {
   'proj-ig': 'IG', 'proj-capos': 'CapOS', 'proj-kdm': 'Holding', 'proj-health': 'Gesundheit', 'proj-make': 'MAKE.One', 'proj-privat': 'Privat',
 };
-const prioColor = (p: string) => (p === 'critical' ? T.crit : p === 'high' ? T.amber : p === 'medium' ? T.accentInk : T.muted);
 const ownerLabel = (o: string) => (o === 'both' ? 'Ma+Ke' : o === 'malin' ? 'Malin' : 'Kevin');
+const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise };
+const auswahl: CSSProperties = { background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark', maxWidth: '100%' };
 
 export function MeetingView() {
   const [transcript, setTranscript] = useState('');
@@ -100,138 +103,129 @@ export function MeetingView() {
     }
   }
 
-  return (
-    <div style={{ minHeight: '100vh', background: T.void, color: T.ink, fontFamily: T.sans }}>
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '30px clamp(18px,4vw,48px) 72px' }}>
-        <Link href="/os/agenten" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}>‹ Agenten</Link>
-          <Seitenkopf
-            rubrik={<>Meeting-Agent <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, border: `1px solid ${T.accentInk}55`, borderRadius: 5, padding: '2px 7px' }}>live · Entwurf</span></>}
-            titel={<>Vom Gespräch zu Aufgaben.</>}
-            satz={<>Transkript oder Notizen einfügen — der Agent macht Zusammenfassung, Entscheidungen und Action-Items daraus. Jedes Action-Item übernimmst du <b style={{ color: T.ink }}>auf Klick in deine echten Aufgaben</b>. <span style={{ color: T.muted }}>(Auto-Mitschrift via Granola/Fireflies kommt als Zusatz.)</span></>}
-          />
+  const kannAuswerten = !busy && transcript.trim().length >= 20;
 
-        <textarea value={transcript} onChange={e => setTranscript(e.target.value)} rows={7} placeholder="Meeting-Transkript oder Notizen hier einfügen …" style={{ width: '100%', marginTop: 16, background: 'linear-gradient(165deg, #1A2024 0%, #12171A 100%)', border: 'none', borderRadius: 20, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35)', color: T.ink, fontFamily: T.sans, fontSize: 13.5, lineHeight: 1.5, padding: '12px 14px', outline: 'none', resize: 'vertical' }} />
+  return (
+    <Seite
+      titel="Vom Gespräch zu Aufgaben."
+      unter={<>Transkript oder Notizen einfügen — der Agent macht Zusammenfassung, Entscheidungen und Action-Items daraus. Jedes Action-Item übernimmst du <b style={{ color: C.ink }}>auf Klick in deine echten Aufgaben</b>. <span style={{ color: C.inkLeise }}>(Auto-Mitschrift via Granola/Fireflies kommt als Zusatz.)</span></>}
+      rechts={<Chip farbe={LEUCHT.agenten}>live · Entwurf</Chip>}
+    >
+      <Karte i={0} akzent={LEUCHT.agenten}>
+        <Ueberschrift farbe={LEUCHT.agenten}>Mitschrift</Ueberschrift>
+        <textarea value={transcript} onChange={e => setTranscript(e.target.value)} rows={7} placeholder="Meeting-Transkript oder Notizen hier einfügen …" style={{ ...feld, resize: 'vertical', lineHeight: 1.5 }} />
         {/* Zu welchem Termin gehört das? Der Kalender bleibt die Pflegebasis. */}
         {!!termine.length && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
-            <span style={lbl}>Termin heute</span>
-            <select value={gewaehlterTermin} onChange={e => setGewaehlterTermin(e.target.value)} aria-label="Termin zuordnen"
-              style={{ background: T.void, border: `1px solid ${T.line}`, borderRadius: 8, color: T.ink, fontSize: 12.5, padding: '6px 10px', cursor: 'pointer', maxWidth: 380 }}>
-              <option value="" style={{ background: T.panel }}>— ohne Termin</option>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
+            <span style={mikro}>Termin heute</span>
+            <select value={gewaehlterTermin} onChange={e => setGewaehlterTermin(e.target.value)} aria-label="Termin zuordnen" style={auswahl}>
+              <option value="">— ohne Termin</option>
               {termine.map(t => (
-                <option key={t.id} value={t.id} style={{ background: T.panel }}>
+                <option key={t.id} value={t.id}>
                   {(t.startDate ?? '').slice(11, 16)} · {t.title ?? 'Termin'}
                 </option>
               ))}
             </select>
           </div>
         )}
-
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 12 }}>
-          <button onClick={evaluate} disabled={busy || transcript.trim().length < 20} style={{ fontFamily: T.sans, fontSize: 13.5, fontWeight: 700, padding: '11px 20px', borderRadius: 9, border: 'none', cursor: busy || transcript.trim().length < 20 ? 'default' : 'pointer', background: busy || transcript.trim().length < 20 ? T.line : T.accent, color: busy || transcript.trim().length < 20 ? T.muted : '#04110F' }}>
-            {busy ? 'werte aus …' : 'Meeting auswerten'}
-          </button>
-          {err && <span style={{ fontSize: 12.5, color: T.crit }}>{err}</span>}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 14 }}>
+          <Knopf onClick={evaluate} aus={!kannAuswerten} farbe={LEUCHT.agenten}>{busy ? 'werte aus …' : 'Meeting auswerten'}</Knopf>
+          {err && <span style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{err}</span>}
         </div>
+      </Karte>
 
-        {prot && (
-          <div style={{ marginTop: 22 }}>
-            <div style={{ ...panel, borderTop: `2px solid ${T.accent}`, padding: '16px 20px' }}>
-              <div style={{ ...lbl, marginBottom: 4 }}>Protokoll</div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: T.ink, marginBottom: 8 }}>{prot.titel}</div>
-              <div style={{ fontSize: 13.5, color: T.inkDim, lineHeight: 1.55 }}>{prot.zusammenfassung}</div>
+      {prot && (
+        <Karte i={1}>
+          <Ueberschrift farbe={LEUCHT.agenten}>Protokoll</Ueberschrift>
+          <div style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, color: C.ink, marginBottom: 8, letterSpacing: '-.01em' }}>{prot.titel}</div>
+          <div style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.55 }}>{prot.zusammenfassung}</div>
+        </Karte>
+      )}
+
+      {prot && !!prot.entscheidungen.length && (
+        <Karte i={2}>
+          <Ueberschrift farbe={LEUCHT.gut}>Entscheidungen</Ueberschrift>
+          {prot.entscheidungen.map((e, i) => (
+            <div key={i} style={{ display: 'flex', gap: 10, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, padding: '4px 0' }}>
+              <span style={{ color: LEUCHT.gut, fontWeight: 700, flex: '0 0 auto' }}>✓</span><span>{e}</span>
             </div>
+          ))}
+        </Karte>
+      )}
 
-            {!!prot.entscheidungen.length && (
-              <div style={{ ...panel, padding: '14px 20px', marginTop: 12 }}>
-                <div style={{ ...lbl, marginBottom: 8 }}>Entscheidungen</div>
-                {prot.entscheidungen.map((e, i) => <div key={i} style={{ display: 'flex', gap: 8, fontSize: 13, color: T.inkDim, lineHeight: 1.5, marginTop: 3 }}><span style={{ color: T.accent }}>✓</span>{e}</div>)}
-              </div>
-            )}
+      {prot && !!prot.actionItems.length && (
+        <Karte i={3}>
+          <Ueberschrift farbe={LEUCHT.planung} rechts={<Knopf leise onClick={allToTasks}>Alle übernehmen</Knopf>}>Action-Items ({prot.actionItems.length})</Ueberschrift>
+          <Liste>
+            {prot.actionItems.map((it, i) => (
+              <Zeile key={i}
+                links={<Chip farbe={prioFarbe(it.prio)}>{it.prio}</Chip>}
+                titel={it.titel}
+                unter={[ownerLabel(it.owner), PROJECTS[it.projectId] ?? it.projectId, it.due].filter(Boolean).join(' · ')}
+                rechts={
+                  <Knopf leise={created[i] !== 'err'} farbe={created[i] === 'err' ? LEUCHT.kritisch : undefined} onClick={() => toTask(it, i)} aus={created[i] === 'busy' || created[i] === 'ok'}>
+                    {created[i] === 'ok' ? '✓ Aufgabe' : created[i] === 'busy' ? '…' : created[i] === 'err' ? 'Fehler' : '→ Aufgabe'}
+                  </Knopf>
+                }
+              />
+            ))}
+          </Liste>
+          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Übernommene Aufgaben landen in deinen echten Aufgaben (/os/aufgaben).</div>
+        </Karte>
+      )}
 
-            {!!prot.actionItems.length && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                  <div style={lbl}>Action-Items ({prot.actionItems.length})</div>
-                  <button onClick={allToTasks} style={{ fontFamily: T.sans, fontSize: 12, fontWeight: 700, padding: '5px 12px', borderRadius: 8, border: `1px solid ${T.accent}`, background: `${T.accent}22`, color: T.accent, cursor: 'pointer' }}>Alle übernehmen</button>
-                </div>
-                <div style={{ ...panel, overflow: 'hidden' }}>
-                  {prot.actionItems.map((it, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 16px', borderTop: i ? `1px solid ${T.lineSoft}` : 0, alignItems: 'center' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: T.ink }}>{it.titel}</div>
-                        <div style={{ display: 'flex', gap: 6, marginTop: 5, flexWrap: 'wrap' }}>
-                          <span style={{ fontFamily: T.mono, fontSize: 11, color: prioColor(it.prio), border: `1px solid ${prioColor(it.prio)}55`, borderRadius: 5, padding: '2px 7px' }}>{it.prio}</span>
-                          <span style={{ fontFamily: T.mono, fontSize: 11, color: T.inkDim, border: `1px solid ${T.line}`, borderRadius: 5, padding: '2px 7px' }}>{ownerLabel(it.owner)}</span>
-                          <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, border: `1px solid ${T.accentInk}44`, borderRadius: 5, padding: '2px 7px' }}>{PROJECTS[it.projectId] ?? it.projectId}</span>
-                          {it.due && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.amber, border: `1px solid ${T.amber}44`, borderRadius: 5, padding: '2px 7px' }}>{it.due}</span>}
-                        </div>
-                      </div>
-                      <button onClick={() => toTask(it, i)} disabled={created[i] === 'busy' || created[i] === 'ok'} style={{ fontFamily: T.sans, fontSize: 12, fontWeight: 600, padding: '7px 13px', borderRadius: 8, whiteSpace: 'nowrap', cursor: created[i] === 'ok' ? 'default' : 'pointer', border: `1px solid ${created[i] === 'err' ? T.crit : T.accent}`, background: created[i] === 'ok' ? 'transparent' : `${T.accent}22`, color: created[i] === 'err' ? T.crit : T.accent }}>
-                        {created[i] === 'ok' ? '✓ Aufgabe' : created[i] === 'busy' ? '…' : created[i] === 'err' ? 'Fehler' : '→ Aufgabe'}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, marginTop: 8 }}>Übernommene Aufgaben landen in deinen echten Aufgaben (/os/aufgaben).</div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── SKRIPTVERLAUF ─────────────────────────────────────────────────
-            Kevins Ansage: jedes Skript, in dem ihr wart, soll dahinterliegen.
-            Vorher war jedes Protokoll nach der Sitzung weg. */}
-        <div style={{ ...panel, padding: '16px 20px', marginTop: 22 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-            <span style={lbl}>Skriptverlauf</span>
-            <span style={{ fontSize: 12.5, color: T.muted }}>
-              {verlauf.length ? `${verlauf.length} Protokoll${verlauf.length === 1 ? '' : 'e'} — bleiben liegen, mit Termin verknüpft.` : 'Noch nichts protokolliert. Ab jetzt bleibt jede Auswertung hier liegen.'}
-            </span>
-          </div>
+      {/* ── SKRIPTVERLAUF ─────────────────────────────────────────────────
+          Kevins Ansage: jedes Skript, in dem ihr wart, soll dahinterliegen.
+          Vorher war jedes Protokoll nach der Sitzung weg. */}
+      <Karte i={prot ? 4 : 1}>
+        <Ueberschrift farbe={LEUCHT.puls} rechts={verlauf.length ? `${verlauf.length} Protokoll${verlauf.length === 1 ? '' : 'e'}` : undefined}>Skriptverlauf</Ueberschrift>
+        {!verlauf.length && <Leer>Noch nichts protokolliert. Ab jetzt bleibt jede Auswertung hier liegen.</Leer>}
+        {!!verlauf.length && <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Bleiben liegen, mit Termin verknüpft.</div>}
+        <Liste>
           {verlauf.map(m => {
             const auf = offenesProtokoll === m.id;
             return (
-              <div key={m.id} style={{ borderTop: `1px solid ${T.lineSoft}`, padding: '9px 0' }}>
-                <div onClick={() => setOffenesProtokoll(auf ? null : m.id)} style={{ display: 'flex', gap: 11, alignItems: 'baseline', cursor: 'pointer' }}>
-                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, width: 62, flex: '0 0 auto' }}>{m.datum.slice(8)}.{m.datum.slice(5, 7)}.</span>
-                  <span style={{ fontSize: 13, color: T.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titel}</span>
-                  {m.terminTitel && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accentInk, border: `1px solid ${T.lineHot}`, borderRadius: 5, padding: '1px 6px', flex: '0 0 auto' }}>⌛ {m.terminTitel}</span>}
-                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, flex: '0 0 auto' }}>{(m.aufgaben ?? []).length} Aufgaben</span>
-                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, flex: '0 0 auto' }}>{auf ? '▾' : '▸'}</span>
-                </div>
+              <div key={m.id}>
+                <Zeile onClick={() => setOffenesProtokoll(auf ? null : m.id)} aktiv={auf}
+                  links={<span style={{ fontSize: 12, color: C.inkLeise, width: 46, flex: '0 0 auto', fontVariantNumeric: 'tabular-nums' }}>{m.datum.slice(8)}.{m.datum.slice(5, 7)}.</span>}
+                  titel={m.titel}
+                  unter={m.terminTitel ? `⌛ ${m.terminTitel}` : undefined}
+                  rechts={<span style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{(m.aufgaben ?? []).length} Aufgaben<span>{auf ? '▾' : '▸'}</span></span>}
+                />
                 {auf && (
-                  <div style={{ padding: '8px 0 4px 73px' }}>
-                    {m.zusammenfassung && <div style={{ fontSize: 12.5, color: T.inkDim, lineHeight: 1.55, marginBottom: 7 }}>{m.zusammenfassung}</div>}
+                  <div style={{ padding: '10px 2px 16px 60px' }}>
+                    {m.zusammenfassung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, marginBottom: 8 }}>{m.zusammenfassung}</div>}
                     {!!m.entscheidungen?.length && (
-                      <ul style={{ margin: '0 0 7px', paddingLeft: 17 }}>
-                        {m.entscheidungen.map((e, i) => <li key={i} style={{ fontSize: 12.5, color: T.inkDim, lineHeight: 1.55 }}>{e}</li>)}
+                      <ul style={{ margin: '0 0 8px', paddingLeft: 17 }}>
+                        {m.entscheidungen.map((e, i) => <li key={i} style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>{e}</li>)}
                       </ul>
                     )}
                     {(m.aufgaben ?? []).map((a, i) => (
-                      <div key={i} style={{ fontSize: 12.5, color: T.inkDim, padding: '2px 0' }}>
-                        ◇ {a.text}{a.wer ? <span style={{ color: T.muted }}> · {a.wer}</span> : null}{a.frist ? <span style={{ color: T.muted }}> · {a.frist}</span> : null}
+                      <div key={i} style={{ fontSize: TYP.bedien, color: C.inkDim, padding: '2px 0' }}>
+                        ◇ {a.text}{a.wer ? <span style={{ color: C.inkLeise }}> · {a.wer}</span> : null}{a.frist ? <span style={{ color: C.inkLeise }}> · {a.frist}</span> : null}
                       </div>
                     ))}
-                    <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                    <div style={{ display: 'flex', gap: 12, marginTop: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                       {m.transcript && (
-                        <details style={{ fontSize: 11.5, color: T.muted }}>
+                        <details style={{ fontSize: 12, color: C.inkLeise, flex: 1, minWidth: 200 }}>
                           <summary style={{ cursor: 'pointer' }}>Skript nachlesen</summary>
-                          <div style={{ whiteSpace: 'pre-wrap', marginTop: 6, maxHeight: 260, overflowY: 'auto', fontSize: 12, color: T.inkDim, lineHeight: 1.5 }}>{m.transcript}</div>
+                          <div style={{ whiteSpace: 'pre-wrap', marginTop: 6, maxHeight: 260, overflowY: 'auto', fontSize: 12, color: C.inkDim, lineHeight: 1.5 }}>{m.transcript}</div>
                         </details>
                       )}
-                      <button onClick={() => {
-                        fetch(`/api/state/meetings?id=${encodeURIComponent(m.id)}`, { method: 'DELETE' })
-                          .then(() => setVerlauf(v => v.filter(x => x.id !== m.id))).catch(() => {});
-                      }} style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, background: 'transparent', border: `1px solid ${T.line}`, borderRadius: 7, color: T.muted, padding: '3px 9px', cursor: 'pointer' }}>Protokoll löschen</button>
+                      <span style={{ marginLeft: 'auto' }}>
+                        <Knopf leise onClick={() => {
+                          fetch(`/api/state/meetings?id=${encodeURIComponent(m.id)}`, { method: 'DELETE' })
+                            .then(() => setVerlauf(v => v.filter(x => x.id !== m.id))).catch(() => {});
+                        }}>Protokoll löschen</Knopf>
+                      </span>
                     </div>
                   </div>
                 )}
               </div>
             );
           })}
-        </div>
-      </div>
-    </div>
+        </Liste>
+      </Karte>
+    </Seite>
   );
 }
