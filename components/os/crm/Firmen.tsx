@@ -24,6 +24,7 @@ const RECHTSFORMEN = ['GmbH', 'UG (haftungsbeschränkt)', 'GmbH & Co. KG', 'AG',
 const rolle = (r: FirmaRolle) => ROLLEN.find(x => x.id === r) ?? ROLLEN[ROLLEN.length - 1];
 
 type Ansicht = 'alle' | FirmaRolle | 'ohne_branche' | 'dubletten';
+const FIRMEN_SPALTEN = '10px minmax(0,1.5fr) minmax(0,1fr) minmax(0,1.3fr) minmax(0,.8fr) 44px 84px';
 
 export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: CrmApi; auswahl: string | null; setAuswahl: (id: string | null) => void; zuPerson: (id: string) => void; suche: string }) {
   const breit = useBreit();
@@ -50,13 +51,25 @@ export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: Crm
   const f = auswahl ? firmen.find(x => x.id === auswahl) ?? null : null;
   const ohneBranche = firmen.filter(x => !x.branche).length;
 
-  const zeile = (x: Firma) => (
+  // Breit: dichte Tabelle wie in einer guten Adressverwaltung (Firma · Domain · Branche · Ort · Personen · Rolle).
+  const zeile = (x: Firma) => breit ? (
+    <div key={x.id} onClick={() => setAuswahl(auswahl === x.id ? null : x.id)} className="fassbar" title={[x.name, x.branche, x.stadt].filter(Boolean).join(' · ')}
+      style={{ display: 'grid', gridTemplateColumns: FIRMEN_SPALTEN, gap: 12, alignItems: 'center', padding: '8px 8px', minHeight: 40, borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer', fontSize: TYP.bedien, background: auswahl === x.id ? 'rgba(255,255,255,.07)' : 'transparent', borderRadius: auswahl === x.id ? 8 : 0 }}>
+      <Punkt farbe={rolle(x.rolle).farbe} groesse={8} />
+      <span style={{ fontWeight: 500, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.name}</span>
+      <span style={{ color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.domain ?? '—'}</span>
+      <span style={{ color: x.branche ? C.inkDim : C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.branche ?? '—'}</span>
+      <span style={{ color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.stadt ?? '—'}</span>
+      <span style={{ textAlign: 'right', color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{personenJe.get(x.id) ?? '—'}</span>
+      <span style={{ fontSize: 12, color: rolle(x.rolle).farbe, whiteSpace: 'nowrap' }}>{rolle(x.rolle).label}</span>
+    </div>
+  ) : (
     <div key={x.id}>
       <Zeile onClick={() => setAuswahl(auswahl === x.id ? null : x.id)} aktiv={auswahl === x.id} links={<Punkt farbe={rolle(x.rolle).farbe} />}
         titel={<>{x.name}{x.domain && <span style={{ color: C.inkLeise }}> · {x.domain}</span>}</>}
         unter={[x.branche, x.stadt, x.mitarbeiter ? `${x.mitarbeiter} MA` : ''].filter(Boolean).join(' · ') || 'keine Details'}
         rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{personenJe.get(x.id) ?? 0} P.</span><Chip farbe={rolle(x.rolle).farbe}>{rolle(x.rolle).label}</Chip></span>} />
-      {auswahl === x.id && !breit && <div style={{ padding: '8px 0 18px' }}><FirmenKarte f={x} api={api} zuPerson={zuPerson} /></div>}
+      {auswahl === x.id && <div style={{ padding: '8px 0 18px' }}><FirmenKarte f={x} api={api} zuPerson={zuPerson} /></div>}
     </div>
   );
 
@@ -77,7 +90,12 @@ export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: Crm
             </div>
           ) : (
             <>
-              <Liste>{treffer.slice(0, mehr).map(zeile)}</Liste>
+              {breit && (
+                <div style={{ display: 'grid', gridTemplateColumns: FIRMEN_SPALTEN, gap: 12, padding: '0 8px 6px', fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+                  <span /><span>Firma</span><span>Domain</span><span>Branche</span><span>Ort</span><span style={{ textAlign: 'right' }}>Pers.</span><span>Rolle</span>
+                </div>
+              )}
+              <div>{treffer.slice(0, mehr).map(zeile)}</div>
               {treffer.length > mehr && <div style={{ marginTop: 10 }}><Knopf leise onClick={() => setMehr(mehr + 150)}>Weitere {Math.min(150, treffer.length - mehr)} zeigen</Knopf></div>}
               {!treffer.length && <Leer>Keine Firma gefunden.</Leer>}
             </>

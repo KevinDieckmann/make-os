@@ -9,7 +9,7 @@ import { mandatLage } from './kunden';
 import { art14 } from './recht';
 import { dubletten } from './dubletten';
 
-export interface Befund { prio: 1 | 2 | 3 | 4 | 5; titel: string; grund: string; bereich: 'heute' | 'kartei' | 'pipeline' | 'kunden' | 'marketing' | 'events' | 'stammdaten'; ansicht?: string }
+export interface Befund { prio: 1 | 2 | 3 | 4 | 5; titel: string; grund: string; bereich: 'heute' | 'kontakte' | 'firmen' | 'pipeline' | 'kunden' | 'marketing' | 'events' | 'stammdaten'; ansicht?: string }
 
 export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string): Befund[] {
   const b: Befund[] = [];

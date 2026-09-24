@@ -11,6 +11,7 @@ import { NutzungsMelder } from '@/components/os/NutzungsMelder';
 import { Protokollant } from '@/components/os/Protokollant';
 import { Mitarbeit } from '@/components/os/Mitarbeit';
 import { WillkommenMalin } from '@/components/os/WillkommenMalin';
+import { Schnellsuche } from '@/components/os/Schnellsuche';
 import { wache } from '@/lib/zugang/wache';
 
 export default async function OsLayout({ children }: { children: React.ReactNode }) {
@@ -35,6 +36,8 @@ export default async function OsLayout({ children }: { children: React.ReactNode
       </main>
       {/* Jarvis läuft rechts auf JEDER /os-Seite mit — in Stufen aufziehbar. */}
       <JarvisPanel />
+      {/* ⌘K von überall: Kontakte, Firmen, Chancen, Mandate, Bereiche (24.09.). */}
+      <Schnellsuche />
       {/* Zu zweit: wer ist gerade wo (24.09.). */}
       <Mitarbeit />
       {/* Einmaliger Gruß beim allerersten Öffnen. */}

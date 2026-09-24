@@ -109,7 +109,7 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start }: { api: CrmApi; 
           <Karte i={2}>
             <Ueberschrift>Dubletten</Ueberschrift>
             <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>{d.qualitaet.dublettenPersonen} Personen-Paare (gleicher Name und ein zweites Merkmal). Zusammenführen in der Kartei, Ansicht „Dubletten“ — Verlauf, Einwilligungen und zweite Mailadresse bleiben erhalten, eine Sperre gilt weiter.</div>
-            <div style={{ marginTop: 10 }}><Knopf leise onClick={() => zuBereich('kartei', 'dubletten')}>Dubletten öffnen</Knopf></div>
+            <div style={{ marginTop: 10 }}><Knopf leise onClick={() => zuBereich('kontakte', 'dubletten')}>Dubletten öffnen</Knopf></div>
           </Karte>
         </>
       )}

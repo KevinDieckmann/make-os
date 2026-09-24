@@ -34,9 +34,8 @@ const GRUNDLAGEN: { id: Grundlage; label: string }[] = [{ id: 'einwilligung', la
 const phaseFarbe = (p?: string) => (p === 'kunde' ? LEUCHT.gut : p === 'partner' || p === 'multiplikator' ? LEUCHT.agenten : p === 'interessent' ? LEUCHT.business : p === 'ex_kunde' ? C.inkLeise : LEUCHT.puls);
 const phaseLabel = (p?: string) => PHASEN.find(x => x.id === p)?.label ?? 'Kontakt';
 
-export function Kartei({ api, name, auswahl, setAuswahl, start }: { api: CrmApi; name: (p: string) => string; auswahl: string | null; setAuswahl: (id: string | null) => void; start?: string }) {
+export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFirma, start }: { api: CrmApi; name: (p: string) => string; modus: Modus; auswahl: string | null; setAuswahl: (id: string | null) => void; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; start?: string }) {
   const breit = useBreit();
-  const [modus, setModus] = useState<Modus>(auswahl?.startsWith('f-') ? 'firmen' : 'personen');
   const [suche, setSuche] = useState('');
   const [ansicht, setAnsicht] = useState<Ansicht>(start === 'dubletten' ? 'dubletten' : 'alle');
   const [mehr, setMehr] = useState(80);
@@ -50,8 +49,7 @@ export function Kartei({ api, name, auswahl, setAuswahl, start }: { api: CrmApi;
   const mitChance = useMemo(() => new Set((crm?.stand.chancen ?? []).filter(c => OFFENE_STUFEN.includes(c.stufe)).flatMap(c => c.kontaktIds)), [crm]);
   const mitMandat = useMemo(() => new Set((crm?.stand.mandate ?? []).filter(m => m.status === 'aktiv').flatMap(m => m.kontaktIds)), [crm]);
   const paare = useMemo(() => dubletten(kontakte), [kontakte]);
-  useEffect(() => { if (start === 'dubletten') { setModus('personen'); setAnsicht('dubletten'); } }, [start]);
-  useEffect(() => { if (auswahl?.startsWith('f-')) setModus('firmen'); else if (auswahl) setModus('personen'); }, [auswahl]);
+  useEffect(() => { if (start === 'dubletten') setAnsicht('dubletten'); }, [start]);
 
   const filter: Record<Ansicht, (k: Kontakt) => boolean> = {
     alle: () => true, kunden: k => k.lebensphase === 'kunde', kreis: k => k.kreis === 'A' || k.kreis === 'B', prio: k => k.prio === 'A',
@@ -99,10 +97,9 @@ export function Kartei({ api, name, auswahl, setAuswahl, start }: { api: CrmApi;
   const k = auswahl && !auswahl.startsWith('f-') ? kontakte.find(x => x.id === auswahl) ?? null : null;
   const kopf = (
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-      <Pillen liste={[{ id: 'personen', label: `Personen ${kontakte.length}` }, { id: 'firmen', label: `Firmen ${crm?.stand.firmen.length ?? 0}` }]} aktiv={modus} onWahl={m => { setModus(m); setAuswahl(null); }} farbe={LEUCHT.business} />
       <input ref={sucheRef} value={suche} onChange={e => setSuche(e.target.value)} placeholder={modus === 'personen' ? 'Suchen: Name, Firma, Branche, Ort …  ( / )' : 'Firma, Domain, Branche, Ort …'} aria-label="Suchen" style={{ ...feld, flex: 1, minWidth: 200, padding: '9px 13px', fontSize: TYP.bedien }} />
       {modus === 'personen' ? <Knopf onClick={() => setAnlegen(!anlegen)}>+ Person</Knopf>
-        : <Knopf onClick={() => { const n = window.prompt('Name der Firma'); if (n?.trim()) { const f = neueFirma(n); void api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>).then(() => setAuswahl(f.id)); } }}>+ Firma</Knopf>}
+        : <Knopf onClick={() => { const n = window.prompt('Name der Firma'); if (n?.trim()) { const f = neueFirma(n); void api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>).then(() => zuFirma(f.id)); } }}>+ Firma</Knopf>}
     </div>
   );
 
@@ -110,7 +107,7 @@ export function Kartei({ api, name, auswahl, setAuswahl, start }: { api: CrmApi;
     return (
       <>
         <Karte i={0}>{kopf}</Karte>
-        <Firmen api={api} auswahl={auswahl?.startsWith('f-') ? auswahl : null} setAuswahl={setAuswahl} zuPerson={id => { setModus('personen'); setAuswahl(id); }} suche={suche} />
+        <Firmen api={api} auswahl={auswahl?.startsWith('f-') ? auswahl : null} setAuswahl={setAuswahl} zuPerson={zuKontakt} suche={suche} />
       </>
     );
   }
@@ -154,7 +151,7 @@ export function Kartei({ api, name, auswahl, setAuswahl, start }: { api: CrmApi;
                     <div key={x.id}>
                       <KarteiZeile k={x} firma={x.firmaId ? firmen.get(x.firmaId)?.name : undefined} breit={breit} aktiv={auswahl === x.id} markiert={i === markiert && breit}
                         chance={mitChance.has(x.id)} mandat={mitMandat.has(x.id)} heute={heute} onClick={() => { setMarkiert(i); setAuswahl(auswahl === x.id ? null : x.id); }} />
-                      {auswahl === x.id && !breit && <div style={{ padding: '8px 0 18px' }}><Karteikarte k={x} api={api} name={name} zuFirma={id => { setModus('firmen'); setAuswahl(id); }} /></div>}
+                      {auswahl === x.id && !breit && <div style={{ padding: '8px 0 18px' }}><Karteikarte k={x} api={api} name={name} zuFirma={zuFirma} /></div>}
                     </div>
                   ))}
                 </div>
@@ -167,7 +164,7 @@ export function Kartei({ api, name, auswahl, setAuswahl, start }: { api: CrmApi;
         {breit && (
           <Spalte klebt>
             <Karte i={2} akzent={k ? phaseFarbe(k.lebensphase) : undefined}>
-              {k ? <Karteikarte k={k} api={api} name={name} zuFirma={id => { setModus('firmen'); setAuswahl(id); }} /> : <Leer>Eine Person anklicken oder mit j/k wählen und Enter — Verlauf, Notiz, Kanäle, Stammdaten und Recht erscheinen hier.</Leer>}
+              {k ? <Karteikarte k={k} api={api} name={name} zuFirma={zuFirma} /> : <Leer>Eine Person anklicken oder mit j/k wählen und Enter — Verlauf, Notiz, Kanäle, Stammdaten und Recht erscheinen hier.</Leer>}
             </Karte>
           </Spalte>
         )}

@@ -12,7 +12,7 @@ const nextConfig = {
       { source: '/os/saeule/health', destination: '/os/gesundheit?s=verlauf', permanent: false },
       { source: '/os/saeule/social', destination: '/os/familie', permanent: false },
       // 24.09.: eine Kartei im CRM statt Netzwerk + Kontakte + Kunden
-      { source: '/os/netzwerk', destination: '/os/crm?s=kartei', permanent: false },
+      { source: '/os/netzwerk', destination: '/os/crm?s=kontakte', permanent: false },
       { source: '/os/kunden', destination: '/os/crm?s=kunden', permanent: false },
       { source: '/os/ernaehrung', destination: '/os/gesundheit?s=ernaehrung', permanent: false },
       { source: '/os/energie', destination: '/os/gesundheit?s=koerper', permanent: false },

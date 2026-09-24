@@ -14,7 +14,7 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Ring, Chip, zoneFarbe, LEUCHT } from './schlank';
 import { SCORE_NEU } from './WhoopImport';
-import { Sun, Inbox as InboxIcon } from 'lucide-react';
+import { Sun, Inbox as InboxIcon, Search } from 'lucide-react';
 
 interface Saeule { key: string; label: string; score: number | null; zuDuenn: boolean }
 interface Antwort { aktuell: { index: number | null; label: string; hebel: string | null; stand: string; saeulen: Saeule[] }; verlauf: { date: string; index: number | null }[] }
@@ -89,6 +89,12 @@ export function WachstumsKopf() {
         </div>
       </Link>
       <div className="wachstum-kopf-saeulen" style={{ display: 'flex', gap: 12, marginLeft: 'auto', alignItems: 'flex-start', minWidth: 0 }}>
+        <button onClick={() => window.dispatchEvent(new Event('make-suche'))} title="Suchen (⌘K)" aria-label="Suchen" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+            <div style={{ width: 34, height: 34, borderRadius: '50%', display: 'grid', placeItems: 'center', border: '2px solid rgba(255,255,255,.1)', color: C.inkDim }}><Search size={15} strokeWidth={1.9} /></div>
+            <span className="wachstum-kopf-label" style={{ fontSize: 11, color: C.inkLeise }}>Suche</span>
+          </div>
+        </button>
         {SCHNELL.map(({ href, label, Icon }) => {
           const an = href === '/os' ? pfad === '/os' : pfad.startsWith(href);
           return (
