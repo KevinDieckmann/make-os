@@ -61,3 +61,22 @@ describe('Takt', () => {
     expect(faelligeModi('event', new Date(2026, 8, 24, 9), leererStand(), [{ datum: '2026-09-23', status: 'durchgefuehrt' }])[0].modus).toBe('nachfassen');
   });
 });
+
+describe('Kampagnen über die Heads', () => {
+  const kontakte = [k('a', { email: 'a@b.de' }), k('s', { werbesperre: { seit: '2026-09-01', grund: 'x' } })];
+  it('Prüfer: unbekanntes Vorgehen gestrichen, gesperrte/erfundene Personen aussortiert', () => {
+    const roh = normalisiere({ status: 'handeln', zusammenfassung: 'x', befunde: [], fragen: [], datenluecken: [], antwort: '', vorschlaege: [
+      v({ art: 'kampagne_planen', titel: 'Empfehlungen', kontakt_id: null, dedup_schluessel: 'k1', kampagne: { playbook: 'empfehlung', name: 'Empfehlungen Herbst', ziel: 'Intros', kontakt_ids: ['c-a', 'c-s', 'c-erfunden'] } }),
+      v({ art: 'kampagne_planen', titel: 'Fantasie', kontakt_id: null, dedup_schluessel: 'k2', kampagne: { playbook: 'gibtsnicht', name: 'x', ziel: 'y', kontakt_ids: [] } }),
+    ] }, 'marketing');
+    const r = pruefe(roh, {}, kontakte, leererBestand());
+    expect(r.antwort.vorschlaege.map(x => x.kampagne?.kontakt_ids)).toEqual([['c-a']]);
+    expect(r.pruefung.gestrichen.map(g => g.titel)).toEqual(['Fantasie']);
+  });
+  it('Datenpaket im Modus Kampagne: Playbooks je Head, keine gesperrten Personen', () => {
+    const d = datenpaket('sales', 'kampagne', kontakte, leererBestand(), HEUTE, 'kevin', []) as unknown as { playbooks: { id: string }[] };
+    expect(d.playbooks.map(p => p.id)).toContain('verlaengerung');
+    expect(d.playbooks.map(p => p.id)).not.toContain('newsletter');
+    expect(JSON.stringify(d)).not.toContain('c-s');
+  });
+});

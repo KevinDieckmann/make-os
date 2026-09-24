@@ -13,7 +13,8 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { HEADS, HEAD_NAME, MODI, AGENT_ID, type HeadId } from '@/lib/heads/prompt';
 import { headLauf } from '@/lib/heads/lauf';
 import { datenpaket } from '@/lib/heads/daten';
-import { ladeCrm } from '@/lib/crm/speicher';
+import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
+import { PLAYBOOKS, planen } from '@/lib/crm/kampagnen';
 import { localDay } from '@/lib/zeit';
 import { leererStand, standName, type HeadStand, type HeadVorschlag, type Status } from '@/lib/heads/stand';
 
@@ -62,7 +63,17 @@ export async function POST(req: Request, { params }: { params: { head: string } 
     const t = v as HeadVorschlag | null;
     if (!t) return NextResponse.json({ ok: false, fehler: 'Vorschlag nicht gefunden.' }, { status: 404 });
     let wohin = '';
-    if (status === 'angenommen' && t.kontakt_id && t.frist) {
+    if (status === 'angenommen' && t.kampagne) {
+      // Kampagnen-Vorschlag → Entwurf im Marketing › Kampagnen (Personen aus dem Vorschlag, sonst Zielgruppe des Playbooks).
+      const pb = PLAYBOOKS.find(x => x.id === t.kampagne!.playbook);
+      const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
+      const crm = await ladeCrm();
+      const basis = pb ?? { ...PLAYBOOKS[0], id: 'eigen', name: t.kampagne.name, schritte: [{ text: 'Anlass und Botschaft festlegen', tag: 0 }, { text: 'Personen ansprechen', tag: 2 }, { text: 'Nachfassen', tag: 9 }] };
+      const plan = planen(basis, kontakte, crm, localDay(), `kp-${Date.now().toString(36)}`, h === 'sales' ? 'head-sales' : 'head-marketing');
+      const ids = t.kampagne.kontakt_ids.filter(id => kontakte.some(k => k.id === id && !k.werbesperre));
+      await aendereCrm(c => ({ ...c, kampagnen: [...c.kampagnen, { ...plan, name: t.kampagne!.name || plan.name, ziel: t.kampagne!.ziel || plan.ziel, kontaktIds: ids.length ? ids : plan.kontaktIds, notiz: t.begruendung.slice(0, 1000) }] }));
+      wohin = 'Kampagnen-Entwurf im Marketing';
+    } else if (status === 'angenommen' && t.kontakt_id && t.frist) {
       await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
         const f = cur ?? { kontakte: [] };
         return { ...f, kontakte: f.kontakte.map(k => (k.id === t.kontakt_id && !k.werbesperre ? { ...k, naechsterSchritt: { text: t.titel.slice(0, 300), datum: t.frist! }, geaendertAm: jetzt.slice(0, 10) } : k)) };

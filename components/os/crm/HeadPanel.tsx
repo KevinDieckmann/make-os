@@ -64,6 +64,12 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
                 {v.frist && <span style={{ fontSize: 12, color: C.inkLeise }}>bis {datum(v.frist)}</span>}
               </div>
               <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>{v.begruendung}</div>
+              {v.kampagne && (
+                <div style={{ borderLeft: `2px solid ${LEUCHT.business}55`, paddingLeft: 10, fontSize: 12.5, color: C.inkDim }}>
+                  <div style={{ fontSize: 11, color: C.inkLeise, textTransform: 'uppercase', letterSpacing: '.06em' }}>Kampagne · {v.kampagne.playbook}</div>
+                  <b style={{ color: C.ink }}>{v.kampagne.name}</b> — {v.kampagne.ziel} · {v.kampagne.kontakt_ids.length} Personen
+                </div>
+              )}
               {v.entwurf && (
                 <div style={{ borderLeft: `2px solid ${LEUCHT.agenten}55`, paddingLeft: 10 }}>
                   <div style={{ fontSize: 11, color: C.inkLeise, textTransform: 'uppercase', letterSpacing: '.06em' }}>Entwurf · {v.entwurf.kanal}</div>

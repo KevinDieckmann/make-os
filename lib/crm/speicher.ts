@@ -6,10 +6,10 @@
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { STUFEN } from './pipeline';
-import { CRM_LISTEN, type CrmBestand, type CrmListe, type Firma, type FirmaRolle, type Antrag, type AntragArt, type Verarbeitung, type Segment, type SegmentKriterien, type Beitrag, type NewsletterAusgabe, type Chance, type Mandat, type Leistung, type Event, type Teilnahme, type PowerHourSitzung, type ChancenStufe, type Qual } from './typen';
+import { CRM_LISTEN, type CrmBestand, type CrmListe, type Firma, type FirmaRolle, type Antrag, type AntragArt, type Verarbeitung, type Segment, type SegmentKriterien, type Beitrag, type NewsletterAusgabe, type Kampagne, type Chance, type Mandat, type Leistung, type Event, type Teilnahme, type PowerHourSitzung, type ChancenStufe, type Qual } from './typen';
 
 export const CRM_SPEICHER = 'crm';
-export const leererBestand = (): CrmBestand => ({ firmen: [], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [], segmente: [], beitraege: [], newsletter: [] });
+export const leererBestand = (): CrmBestand => ({ firmen: [], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [], segmente: [], beitraege: [], newsletter: [], kampagnen: [] });
 
 export async function ladeCrm(): Promise<CrmBestand> {
   return { ...leererBestand(), ...((await loadJson<CrmBestand>(CRM_SPEICHER)) ?? {}) };
@@ -200,6 +200,25 @@ function ausgabe(o: Record<string, unknown>, jetzt: string): NewsletterAusgabe |
   };
 }
 
+function kriterien(v: unknown): SegmentKriterien {
+  const r = segment({ id: 'x-tmp', name: 'x', kriterien: v }, '');
+  return r?.kriterien ?? {};
+}
+function kampagne(o: Record<string, unknown>, jetzt: string): Kampagne | null {
+  if (!idOk(o.id) || !txt(o.name)) return null;
+  return {
+    id: String(o.id), name: txt(o.name, 160), playbook: txt(o.playbook, 40) || 'eigen', ziel: txt(o.ziel, 600),
+    zielgruppe: kriterien(o.zielgruppe), ...(idOk(o.segmentId) ? { segmentId: String(o.segmentId) } : {}),
+    kanal: aus(o.kanal, ['persoenlich', 'telefon', 'mail', 'linkedin', 'event', 'mix'] as const, 'persoenlich'),
+    status: aus(o.status, ['entwurf', 'aktiv', 'abgeschlossen', 'abgebrochen'] as const, 'entwurf'),
+    ...(tag(o.start) ? { start: tag(o.start) } : {}), ...(tag(o.ende) ? { ende: tag(o.ende) } : {}),
+    schritte: Array.isArray(o.schritte) ? (o.schritte as Record<string, unknown>[]).slice(0, 40).map((x, i) => ({ id: txt(x.id, 40) || `s${i}`, text: txt(x.text, 240), tag: zahl(x.tag, -60, 365), erledigt: x.erledigt === true, ...(opt(x.aufgabeId, 80) ? { aufgabeId: opt(x.aufgabeId, 80) } : {}) })).filter(x => x.text) : [],
+    kontaktIds: Array.isArray(o.kontaktIds) ? (o.kontaktIds as unknown[]).map(String).filter(x => /^c-[a-z0-9-]{4,60}$/.test(x)).slice(0, 500) : [],
+    ergebnisse: Array.isArray(o.ergebnisse) ? (o.ergebnisse as Record<string, unknown>[]).slice(0, 1000).map(e => ({ kontaktId: txt(e.kontaktId, 80), ergebnis: aus(e.ergebnis, ['angesprochen', 'reagiert', 'gespraech', 'chance', 'kein_interesse'] as const, 'angesprochen'), am: tag(e.am) ?? jetzt.slice(0, 10) })).filter(e => /^c-/.test(e.kontaktId)) : [],
+    von: aus(o.von, ['hand', 'head-sales', 'head-marketing'] as const, 'hand'), ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}), geaendert: jetzt,
+  };
+}
+
 export function saeubern(liste: CrmListe, roh: Record<string, unknown>, jetzt: string, person: string): Record<string, unknown> | null {
   switch (liste) {
     case 'firmen': return firma(roh, jetzt) as unknown as Record<string, unknown>;
@@ -208,6 +227,7 @@ export function saeubern(liste: CrmListe, roh: Record<string, unknown>, jetzt: s
     case 'segmente': return segment(roh, jetzt) as unknown as Record<string, unknown>;
     case 'beitraege': return beitrag(roh, jetzt) as unknown as Record<string, unknown>;
     case 'newsletter': return ausgabe(roh, jetzt) as unknown as Record<string, unknown>;
+    case 'kampagnen': return kampagne(roh, jetzt) as unknown as Record<string, unknown>;
     case 'chancen': return chance(roh, jetzt, person) as unknown as Record<string, unknown>;
     case 'mandate': return mandat(roh, jetzt) as unknown as Record<string, unknown>;
     case 'leistungen': return leistung(roh, jetzt) as unknown as Record<string, unknown>;

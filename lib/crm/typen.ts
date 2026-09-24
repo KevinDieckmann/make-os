@@ -194,6 +194,24 @@ export interface NewsletterAusgabe {
   empfaenger?: number; antworten?: number; abmeldungen?: number;
   geaendert: string;
 }
+/** Kampagne: ein geplanter Anlauf auf eine Zielgruppe nach einem bewährten Vorgehen (Playbook). Versendet wird nichts. */
+export type KampagnenStatus = 'entwurf' | 'aktiv' | 'abgeschlossen' | 'abgebrochen';
+export type KampagnenErgebnis = 'angesprochen' | 'reagiert' | 'gespraech' | 'chance' | 'kein_interesse';
+export interface Kampagne {
+  id: string; name: string; playbook: string; ziel: string;
+  zielgruppe: SegmentKriterien; segmentId?: string;
+  kanal: 'persoenlich' | 'telefon' | 'mail' | 'linkedin' | 'event' | 'mix';
+  status: KampagnenStatus; start?: string; ende?: string;
+  schritte: { id: string; text: string; tag: number; erledigt: boolean; aufgabeId?: string }[];
+  /** Ausgewählte Personen (aus der Zielgruppe übernommen oder einzeln). */
+  kontaktIds: string[];
+  ergebnisse: { kontaktId: string; ergebnis: KampagnenErgebnis; am: string }[];
+  /** Wer sie angelegt hat — von Hand oder aus einem Vorschlag eines Heads. */
+  von: 'hand' | 'head-sales' | 'head-marketing';
+  notiz?: string;
+  geaendert: string;
+}
+
 export interface MarketingEinstellung { positionierung: string; icp: string; ton: string; saeulen: { id: string; name: string; beschreibung: string }[] }
 
 export interface PowerHourKarte { kontaktId: string; kategorie: string; ergebnis?: string; notiz?: string }
@@ -227,10 +245,11 @@ export interface CrmBestand {
   segmente: Segment[];
   beitraege: Beitrag[];
   newsletter: NewsletterAusgabe[];
+  kampagnen: Kampagne[];
   marketing?: MarketingEinstellung;
   /** Wahrscheinlichkeiten je Stufe, von Hand überschreibbar (wie in KEMARIS Operations „von_hand“). */
   wahrscheinlichkeiten?: Partial<Record<ChancenStufe, number>>;
 }
 
-export const CRM_LISTEN = ['firmen', 'chancen', 'mandate', 'leistungen', 'events', 'teilnahmen', 'sitzungen', 'antraege', 'verarbeitungen', 'segmente', 'beitraege', 'newsletter'] as const;
+export const CRM_LISTEN = ['firmen', 'chancen', 'mandate', 'leistungen', 'events', 'teilnahmen', 'sitzungen', 'antraege', 'verarbeitungen', 'segmente', 'beitraege', 'newsletter', 'kampagnen'] as const;
 export type CrmListe = typeof CRM_LISTEN[number];

@@ -11,6 +11,7 @@ import { prognose, gesundheit, gesamtwert, OFFENE_STUFEN, STUFEN, gewinnquote } 
 import { mandatLage, mrr, konzentration } from '@/lib/crm/kunden';
 import { eventZahlen, followUpBis } from '@/lib/crm/events';
 import type { HeadId } from './prompt';
+import { PLAYBOOKS, kundenprofil, aehnlicheFirmen, zielgruppe, kampagnenZahlen } from '@/lib/crm/kampagnen';
 
 const kurz = (t: string | undefined, n: number) => (t ?? '').replace(/\s+/g, ' ').trim().slice(0, n) || undefined;
 
@@ -32,6 +33,25 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
   const chanceJe = new Set(crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe)).flatMap(c => c.kontaktIds));
   const p = (k: Kontakt) => person(k, { hatMandat: mandatJe.has(k.id), hatChance: chanceJe.has(k.id) });
   const meta = { heute, head, modus, fuer: personName, fruehere_vorschlaege: frueher.slice(-15) };
+
+  // Kampagnen planen (Sales und Marketing): Kundenprofil, ähnliche Firmen, Playbooks mit heutiger Zielgruppe.
+  if (modus === 'kampagne' && (head === 'sales' || head === 'marketing')) {
+    const profil = kundenprofil(crm, heute);
+    const personenJeFirma = new Map<string, Kontakt[]>();
+    for (const k of aktiv) if (k.firmaId) personenJeFirma.set(k.firmaId, [...(personenJeFirma.get(k.firmaId) ?? []), k]);
+    return {
+      meta,
+      kundenprofil: { kunden: profil.firmen.map(f => ({ name: f.name, branche: f.branche, stadt: f.stadt, mitarbeiter: f.mitarbeiter })), branchen: profil.branchen, staedte: profil.staedte, groesse: profil.groesse, mrr_je_kunde: profil.mrrJeKunde },
+      aehnliche: aehnlicheFirmen(crm, heute, 15).map(a => ({ firma: a.firma.name, branche: a.firma.branche, gruende: a.gruende, personen: (personenJeFirma.get(a.firma.id) ?? []).slice(0, 3).map(p) })),
+      playbooks: PLAYBOOKS.filter(pb => pb.fuer.includes(head === 'sales' ? 'head-sales' : 'head-marketing')).map(pb => {
+        const zg = zielgruppe(aktiv, crm, pb, heute);
+        return { id: pb.id, name: pb.name, warum: pb.warum, kanal: pb.kanal, kennzahl: pb.kennzahl, recht: pb.recht, zielgruppe_anzahl: zg.length, zielgruppe: zg.slice(0, 20).map(p) };
+      }),
+      laufende_kampagnen: crm.kampagnen.filter(k => k.status === 'entwurf' || k.status === 'aktiv').map(k => ({ name: k.name, playbook: k.playbook, status: k.status, zahlen: kampagnenZahlen(k, heute) })),
+      segmente: crm.segmente.map(sg => ({ name: sg.name, kriterien: sg.kriterien })),
+      mrr: mrr(crm.mandate), konzentration: konzentration(crm.mandate),
+    };
+  }
 
   if (head === 'sales') {
     const a = werIstDran(aktiv, crm, heute, personName, 12);

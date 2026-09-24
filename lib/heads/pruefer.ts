@@ -14,12 +14,17 @@ import type { CrmBestand } from '@/lib/crm/typen';
 import { kanalStatus, type Kanal } from '@/lib/crm/recht';
 import { pruefeText } from '@/lib/finanzen/chef/pruefung';
 import { ARTEN, type HeadId } from './prompt';
+import { PLAYBOOKS } from '@/lib/crm/kampagnen';
+
+const PLAYBOOK_IDS = new Set([...PLAYBOOKS.map(p => p.id), 'eigen']);
 
 export interface Vorschlag {
   art: string; titel: string; begruendung: string;
   kontakt_id: string | null; chance_id: string | null; mandat_id: string | null; event_id: string | null;
   frist: string | null; prioritaet: 'hoch' | 'mittel' | 'niedrig'; dedup_schluessel: string; quelle: string[];
   entwurf: { kanal: 'mail' | 'linkedin' | 'telefon' | 'vernetzen' | 'persoenlich'; text: string } | null;
+  /** Nur bei art „kampagne_planen“: Playbook, Name, Ziel und die ausgewählten Personen. */
+  kampagne?: { playbook: string; name: string; ziel: string; kontakt_ids: string[] } | null;
 }
 export interface Antwort { status: 'ruhig' | 'beobachten' | 'handeln'; zusammenfassung: string; befunde: { titel: string; text: string; quelle: string[] }[]; vorschlaege: Vorschlag[]; fragen: string[]; datenluecken: string[]; antwort: string }
 export interface Pruefung { gestrichen: { titel: string; grund: string }[]; unbelegt: string[]; verstoesse: string[]; geprueft: number }
@@ -43,6 +48,7 @@ export function normalisiere(roh: unknown, head: HeadId): Antwort {
       frist: tag(v.frist), prioritaet: (['hoch', 'mittel', 'niedrig'].includes(String(v.prioritaet)) ? v.prioritaet : 'mittel') as Vorschlag['prioritaet'],
       dedup_schluessel: s(v.dedup_schluessel, 120) || s(v.titel, 60).toLowerCase(), quelle: liste(v.quelle).map(q => s(q, 120)).slice(0, 6),
       entwurf: e && kanal && s(e.text, 1500) ? { kanal, text: s(e.text, 1500) } : null,
+      kampagne: v.kampagne && typeof v.kampagne === 'object' ? (() => { const kp = v.kampagne as Record<string, unknown>; return { playbook: s(kp.playbook, 40), name: s(kp.name, 160), ziel: s(kp.ziel, 400), kontakt_ids: liste(kp.kontakt_ids).map(x => s(x, 80)).filter(Boolean).slice(0, 40) }; })() : null,
     } as Vorschlag;
   }).filter(v => v.titel);
   return {
@@ -71,6 +77,11 @@ export function pruefe(a: Antwort, daten: unknown, kontakte: Kontakt[], crm: Crm
         if (st.farbe === 'rot') return weg(`Kanal ${v.entwurf.kanal} nicht zulässig: ${st.grund}`);
       }
     } else if (v.entwurf && v.entwurf.kanal !== 'persoenlich') return weg('Entwurf ohne Person');
+    if (v.kampagne) {
+      if (!PLAYBOOK_IDS.has(v.kampagne.playbook)) return weg(`unbekanntes Vorgehen „${v.kampagne.playbook}“`);
+      // Nur echte, nicht gesperrte Personen — Rest still aussortieren.
+      v.kampagne.kontakt_ids = v.kampagne.kontakt_ids.filter(id => { const k = nachId.get(id); return k && !k.werbesperre; });
+    }
     return true;
   });
   const alle = [a.zusammenfassung, a.antwort, ...a.befunde.map(b => b.text), ...bleiben.flatMap(v => [v.titel, v.begruendung, v.entwurf?.text ?? ''])].join('\n');

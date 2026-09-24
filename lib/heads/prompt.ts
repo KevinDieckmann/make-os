@@ -11,14 +11,14 @@ export const HEAD_NAME: Record<HeadId, string> = { sales: 'Head of Sales', marke
 export const AGENT_ID: Record<HeadId, string> = { sales: 'head-sales', marketing: 'head-marketing', event: 'head-event' };
 
 export const MODI: Record<HeadId, { id: string; label: string }[]> = {
-  sales: [{ id: 'power_hour', label: 'Power Hour vorbereiten' }, { id: 'deal_review', label: 'Deal-Review' }, { id: 'kundenreview', label: 'Kundenreview' }, { id: 'wochenreview', label: 'Wochenreview' }, { id: 'frage', label: 'Frage' }],
-  marketing: [{ id: 'wochenplan', label: 'Wochenplan' }, { id: 'monatsreview', label: 'Monatsreview' }, { id: 'frage', label: 'Frage' }],
+  sales: [{ id: 'power_hour', label: 'Power Hour vorbereiten' }, { id: 'deal_review', label: 'Deal-Review' }, { id: 'kundenreview', label: 'Kundenreview' }, { id: 'kampagne', label: 'Kampagne planen' }, { id: 'wochenreview', label: 'Wochenreview' }, { id: 'frage', label: 'Frage' }],
+  marketing: [{ id: 'wochenplan', label: 'Wochenplan' }, { id: 'kampagne', label: 'Kampagne planen' }, { id: 'monatsreview', label: 'Monatsreview' }, { id: 'frage', label: 'Frage' }],
   event: [{ id: 'planung', label: 'Planung' }, { id: 'einladung', label: 'Gästeliste' }, { id: 'nachfassen', label: 'Nachfassen' }, { id: 'wirkung', label: 'Wirkung' }, { id: 'frage', label: 'Frage' }],
 };
 
 export const ARTEN: Record<HeadId, string[]> = {
-  sales: ['anrufen', 'nachfassen', 'intro_erbitten', 'angebot_nachfassen', 'qualifizierung_klaeren', 'chance_parken', 'verlaengerung_ansprechen', 'review_ansetzen', 'upsell_pruefen', 'winloss_gespraech', 'grundlage_klaeren', 'daten_pflegen'],
-  marketing: ['beitrag_entwurf', 'newsletter_ausgabe', 'fallstudie_anfragen', 'empfehlung_erbitten', 'lead_magnet', 'einwilligung_einholen', 'info_art14_nachholen', 'einwilligung_auffrischen', 'liste_bereinigen', 'positionierung_schaerfen'],
+  sales: ['anrufen', 'nachfassen', 'intro_erbitten', 'angebot_nachfassen', 'qualifizierung_klaeren', 'chance_parken', 'verlaengerung_ansprechen', 'review_ansetzen', 'upsell_pruefen', 'winloss_gespraech', 'grundlage_klaeren', 'kampagne_planen', 'daten_pflegen'],
+  marketing: ['beitrag_entwurf', 'newsletter_ausgabe', 'fallstudie_anfragen', 'empfehlung_erbitten', 'lead_magnet', 'einwilligung_einholen', 'info_art14_nachholen', 'einwilligung_auffrischen', 'liste_bereinigen', 'positionierung_schaerfen', 'kampagne_planen'],
   event: ['einladen', 'erinnern', 'nachruecken', 'intro_am_abend', 'nachfassen', 'folgetermin', 'format_anpassen', 'co_host_anfragen', 'fotofreigabe_einholen', 'ziel_schaerfen'],
 };
 
@@ -75,6 +75,7 @@ const AUFGABEN: Record<string, string> = {
   einladung: 'Stelle für das nächste Event eine Gästeliste aus der Kartei zusammen (nur Personen aus "kandidaten"), je mit Grund und — laut Ampel — Einladungsweg.',
   nachfassen: 'Für jedes vergangene Event: Wer war da und ist noch nicht nachgefasst? Je Person ein Vorschlag mit Bezug auf die Notiz vom Abend.',
   wirkung: 'Werte die vergangenen Events aus: Folgegespräche, beeinflusste Pipeline, Kosten je Folgegespräch, Lehren fürs nächste Format.',
+  kampagne: 'Plane bis zu drei Kampagnen auf Basis unserer echten Kunden (kundenprofil) und der bewährten Vorgehen (playbooks): wähle je Kampagne ein Playbook, das zur Lage passt, begründe es mit Zahlen aus den Daten und nenne die Personen (kontakt_ids nur aus zielgruppen/aehnliche, höchstens 25). Art "kampagne_planen", Feld "kampagne" ausfüllen. Keine Kampagne auf einen Kanal, den die Personen nicht erlauben — das Playbook nennt den Kanal.',
   frage: 'Beantworte die Frage in "antwort" knapp und belegt.',
 };
 export function aufgabe(modus: string, frage?: string): string {
@@ -89,13 +90,14 @@ export const SCHEMA = {
     zusammenfassung: { type: 'string' },
     befunde: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['titel', 'text', 'quelle'], properties: { titel: { type: 'string' }, text: { type: 'string' }, quelle: { type: 'array', items: { type: 'string' } } } } },
     vorschlaege: { type: 'array', items: { type: 'object', additionalProperties: false,
-      required: ['art', 'titel', 'begruendung', 'kontakt_id', 'chance_id', 'mandat_id', 'event_id', 'frist', 'prioritaet', 'dedup_schluessel', 'quelle', 'entwurf'],
+      required: ['art', 'titel', 'begruendung', 'kontakt_id', 'chance_id', 'mandat_id', 'event_id', 'frist', 'prioritaet', 'dedup_schluessel', 'quelle', 'entwurf', 'kampagne'],
       properties: {
         art: { type: 'string' }, titel: { type: 'string' }, begruendung: { type: 'string' },
         kontakt_id: { type: ['string', 'null'] }, chance_id: { type: ['string', 'null'] }, mandat_id: { type: ['string', 'null'] }, event_id: { type: ['string', 'null'] },
         frist: { type: ['string', 'null'] }, prioritaet: { type: 'string', enum: ['hoch', 'mittel', 'niedrig'] }, dedup_schluessel: { type: 'string' },
         quelle: { type: 'array', items: { type: 'string' } },
         entwurf: { anyOf: [{ type: 'null' }, { type: 'object', additionalProperties: false, required: ['kanal', 'text'], properties: { kanal: { type: 'string', enum: ['mail', 'linkedin', 'telefon', 'vernetzen', 'persoenlich'] }, text: { type: 'string' } } }] },
+        kampagne: { anyOf: [{ type: 'null' }, { type: 'object', additionalProperties: false, required: ['playbook', 'name', 'ziel', 'kontakt_ids'], properties: { playbook: { type: 'string' }, name: { type: 'string' }, ziel: { type: 'string' }, kontakt_ids: { type: 'array', items: { type: 'string' } } } }] },
       } } },
     fragen: { type: 'array', items: { type: 'string' } },
     datenluecken: { type: 'array', items: { type: 'string' } },
