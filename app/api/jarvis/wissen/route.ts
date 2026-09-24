@@ -8,12 +8,15 @@
 //   GET ?notiz=<Kennung|Wikilink>    eine Notiz ganz
 //   GET ?neueste=1[&bereich=…]       die zuletzt geänderten
 //   GET (ohne)                       Stand: Zahlen je Quelle und Bereich
+//   POST { frage, verlauf }          mit dem Brain chatten (lib/jarvis/brain-chat.ts)
 //
 // Geschrieben wird hier nichts. Kevin pflegt sein Brain in Obsidian.
 
 import { NextResponse } from 'next/server';
 import { bestand, darfSehen, neueste, notiz, suche, WURZELN } from '@/lib/jarvis/vault';
 import { personAus } from '@/lib/jarvis/raum';
+import { frageBrain, type Zug } from '@/lib/jarvis/brain-chat';
+import { hasAnthropicKey } from '@/lib/anthropic';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -62,4 +65,27 @@ export async function GET(req: Request) {
     privatUebersprungen: b.privatUebersprungen,
     dauerMs: b.dauerMs,
   });
+}
+
+/** Mit dem Brain chatten: eine Frage, dazu der bisherige Verlauf (nur Text). */
+export async function POST(req: Request) {
+  let b: { frage?: unknown; verlauf?: unknown };
+  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
+  const frage = String(b.frage ?? '').trim().slice(0, 1500);
+  if (!frage) return NextResponse.json({ ok: false, fehler: 'Frage fehlt.' }, { status: 400 });
+  if (!hasAnthropicKey()) {
+    return NextResponse.json({ ok: false, fehler: 'Ohne Anthropic-Schlüssel kann das Brain nicht antworten. Er gehört in .env.local (ANTHROPIC_API_KEY).' });
+  }
+  const verlauf: Zug[] = Array.isArray(b.verlauf)
+    ? (b.verlauf as { rolle?: unknown; text?: unknown }[])
+        .filter(z => (z?.rolle === 'ich' || z?.rolle === 'brain') && typeof z.text === 'string')
+        .slice(-12)
+        .map(z => ({ rolle: z.rolle as Zug['rolle'], text: String(z.text).slice(0, 4000) }))
+    : [];
+  try {
+    const d = await frageBrain(frage, verlauf, { person: personAus(req) });
+    return NextResponse.json(d);
+  } catch (err) {
+    return NextResponse.json({ ok: false, fehler: err instanceof Error ? err.message.slice(0, 200) : 'Unbekannter Fehler.' });
+  }
 }

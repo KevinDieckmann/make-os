@@ -4,7 +4,10 @@
 // Kevin: „kann meine Software jetzt auch auf Obsidian zugreifen?" — „ja mach
 // das" — „Obsidian soll Nr. 1 Wissensbank sein."
 //
-// Links suchen oder stöbern, rechts lesen. Es ist dieselbe Suche, die Jarvis
+// Links fragen, suchen oder stöbern, rechts lesen. „Fragen“ ist der Chat mit
+// dem Brain (Kevin, 24.09.: „dass ich direkt mit dem Hirn chatten kann“) — er
+// antwortet nur aus den Notizen, und jede Quelle öffnet sich rechts.
+// Es ist dieselbe Suche, die Jarvis
 // benutzt, mit derselben Sicht: gezeigt wird nur, was die angemeldete Person
 // sehen darf (Vertraulichkeitsregeln im Vault). Geschrieben wird hier nichts —
 // gepflegt wird in Obsidian, deshalb führt jede Notiz mit einem Griff dorthin.
@@ -26,6 +29,13 @@ interface Voll {
   ok: boolean; fehler?: string; id?: string; titel?: string; text?: string; oben?: string;
   bereich?: string; typ?: string; scope?: string; stand?: string; geaendert?: string; obsidian?: string | null;
 }
+
+interface Quelle { id: string; titel: string; bereich: string; scope?: string }
+interface ChatZug { rolle: 'ich' | 'brain'; text: string; quellen?: Quelle[]; fehler?: boolean }
+type Modus = 'fragen' | 'stoebern';
+const MODI: { id: Modus; label: string }[] = [{ id: 'fragen', label: 'Fragen' }, { id: 'stoebern', label: 'Stöbern' }];
+const CHAT_MERKER = 'make-os:brain-chat';
+const VORSCHLAEGE = ['Was ist der aktuelle Ist-Stand?', 'Welche offenen Fragen stehen im Brain?', 'Was steht in den letzten Protokollen?', 'Wer ist wer im Team?'];
 
 const BEREICHE = ['Business', 'Fundament', 'Protokolle', 'Quellen', 'Privat', 'MAKE OS', 'Sonstiges'];
 const FARBE_BEREICH: Record<string, string> = {
@@ -146,6 +156,45 @@ export function WissenView() {
   const [offen, setOffen] = useState<Voll | null>(null);
   const [laedtNotiz, setLaedtNotiz] = useState(false);
   const [verlauf, setVerlauf] = useState<string[]>([]);
+  const [modus, setModus] = useState<Modus>('fragen');
+  const [chat, setChat] = useState<ChatZug[]>([]);
+  const [eingabe, setEingabe] = useState('');
+  const [denkt, setDenkt] = useState(false);
+  const chatFenster = useRef<HTMLDivElement | null>(null);
+  const letzteFrage = useRef<HTMLDivElement | null>(null);
+  const eingabeFeld = useRef<HTMLTextAreaElement | null>(null);
+
+  // Der Chat überlebt ein Neuladen im selben Tab, aber nicht das Schließen:
+  // er enthält Inhalte aus dem Brain und soll nicht dauerhaft im Browser liegen.
+  useEffect(() => {
+    try { const roh = sessionStorage.getItem(CHAT_MERKER); if (roh) { const d = JSON.parse(roh); if (Array.isArray(d)) setChat(d.slice(-30)); } } catch { /* egal */ }
+  }, []);
+  // Gespeichert wird beim Ändern, nicht in einem Effekt — ein Effekt schriebe
+  // beim ersten Zeichnen den leeren Chat zurück, bevor der gemerkte geladen ist.
+  const merke = (c: ChatZug[]) => { try { sessionStorage.setItem(CHAT_MERKER, JSON.stringify(c.slice(-30))); } catch { /* egal */ } return c; };
+  // Beim Warten ans Ende; kommt die Antwort, bleibt ihr Anfang samt Frage im Blick.
+  useEffect(() => {
+    const f = chatFenster.current;
+    const frage = letzteFrage.current;
+    if (!f) return;
+    if (denkt || !frage || chat[chat.length - 1]?.rolle !== 'brain') { if (breit) f.scrollTop = f.scrollHeight; return; }
+    if (breit) f.scrollTop = Math.max(0, frage.offsetTop - 8);
+    else window.scrollTo({ top: frage.getBoundingClientRect().top + window.scrollY - 130, behavior: 'smooth' });
+  }, [chat, denkt, breit]);
+  useEffect(() => { if (breit && modus === 'fragen') eingabeFeld.current?.focus(); }, [breit, modus]);
+
+  const fragen = async (text?: string) => {
+    const f = (text ?? eingabe).trim();
+    if (!f || denkt) return;
+    const bisher = chat.filter(z => !z.fehler).map(z => ({ rolle: z.rolle, text: z.text }));
+    setChat(c => merke([...c, { rolle: 'ich', text: f }]));
+    setEingabe('');
+    setDenkt(true);
+    const d = await fetch('/api/jarvis/wissen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ frage: f, verlauf: bisher }) })
+      .then(r => r.json()).catch(() => ({ ok: false, fehler: 'Nicht erreichbar — läuft MAKE OS?' }));
+    setDenkt(false);
+    setChat(c => merke([...c, d.ok ? { rolle: 'brain', text: String(d.antwort ?? ''), quellen: Array.isArray(d.quellen) ? d.quellen : [] } : { rolle: 'brain', text: String(d.fehler ?? 'Keine Antwort.'), fehler: true, quellen: Array.isArray(d.quellen) ? d.quellen : [] }]));
+  };
   const lauf = useRef(0);
   const lesefenster = useRef<HTMLDivElement | null>(null);
 
@@ -198,9 +247,80 @@ export function WissenView() {
   const segmente = [{ id: 'alle', label: 'Alle' }, ...BEREICHE.filter(b => stand?.jeBereich[b]).map(b => ({ id: b, label: b }))];
   const suchend = frage.trim().length >= 3;
 
-  // ── Liste ──
+  const umschalter = (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      <Segmente liste={MODI} aktiv={modus} onWahl={setModus} />
+      {modus === 'fragen' && chat.length > 0 && <Knopf leise onClick={() => setChat(merke([]))}>Neuer Chat</Knopf>}
+    </div>
+  );
+
+  // ── Fragen: der Chat mit dem Brain ──
+  const chatKarte = (
+    <Karte i={1} akzent={LEUCHT.agenten}>
+      {umschalter}
+      <div ref={chatFenster} style={{ position: 'relative', maxHeight: breit ? 'calc(100vh - 420px)' : undefined, minHeight: breit ? 280 : 120, overflowY: breit ? 'auto' : undefined, display: 'grid', gap: 14, alignContent: 'start', paddingRight: breit ? 4 : 0, marginBottom: 14 }}>
+        {!chat.length && (
+          <div>
+            <div style={{ fontFamily: SCHRIFT.display, fontSize: 19, fontWeight: 700, letterSpacing: '-.01em', marginBottom: 6 }}>Frag dein Brain.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, marginBottom: 14, maxWidth: '60ch' }}>
+              {'Es sucht selbst in deinen Obsidian-Notizen, liest sie bei Bedarf ganz und antwortet nur daraus — mit Quelle. Was nicht drinsteht, sagt es dir. Ändern kann es nichts; dafür ist Jarvis da.'}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {VORSCHLAEGE.map(v => (
+                <button key={v} onClick={() => void fragen(v)} className="fassbar" style={{ border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink, borderRadius: 999, padding: '8px 14px', font: 'inherit', fontSize: 13, cursor: 'pointer' }}>{v}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        {chat.map((z, i) => z.rolle === 'ich' ? (
+          <div key={i} ref={i === chat.map(x => x.rolle).lastIndexOf('ich') ? letzteFrage : undefined} style={{ justifySelf: 'end', maxWidth: '85%', background: 'rgba(255,255,255,.08)', borderRadius: '16px 16px 4px 16px', padding: '10px 14px', fontSize: TYP.body, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{z.text}</div>
+        ) : (
+          <div key={i} className="os-auf" style={{ maxWidth: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: z.fehler ? LEUCHT.achtung : LEUCHT.agenten, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+              <Punkt farbe={z.fehler ? LEUCHT.achtung : LEUCHT.agenten} groesse={7} />Brain
+            </div>
+            <div style={{ fontSize: 14.5, lineHeight: 1.6, color: z.fehler ? C.inkDim : C.ink }}>
+              {z.fehler ? z.text : bloecke(z.text).map((b, j) => block(b, j, ziel => void oeffne(ziel)))}
+            </div>
+            {!!z.quellen?.length && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                {z.quellen.map(q => (
+                  <button key={q.id} onClick={() => void oeffne(q.id)} title={q.id} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, maxWidth: '100%', border: `1px solid ${offen?.id === q.id ? bereichFarbe(q.bereich) : 'rgba(255,255,255,.1)'}`, background: 'rgba(255,255,255,.03)', color: C.inkDim, borderRadius: 999, padding: '5px 11px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>
+                    <Punkt farbe={bereichFarbe(q.bereich)} groesse={7} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.titel}</span>
+                    {q.scope === 'privat' && <span aria-label="privat">🔒</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+        {denkt && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: C.inkLeise, fontSize: 13 }}>
+            <span style={{ display: 'inline-flex', gap: 4 }}>
+              {[0, 1, 2].map(k => <span key={k} className="denk-punkt" style={{ width: 6, height: 6, borderRadius: '50%', background: LEUCHT.agenten, animationDelay: `${k * 0.15}s` }} />)}
+            </span>
+            {'Das Brain sucht und liest …'}
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+        <textarea
+          ref={eingabeFeld} value={eingabe} rows={2} onChange={e => setEingabe(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void fragen(); } }}
+          placeholder="Frag dein Brain — Firma, Person, Vereinbarung, Stand …" aria-label="Frage an das Brain"
+          style={{ ...feld, resize: 'none', lineHeight: 1.45, fontSize: 15, minHeight: 50 }}
+        />
+        <Knopf farbe={LEUCHT.agenten} aus={denkt || !eingabe.trim()} onClick={() => void fragen()}>Fragen</Knopf>
+      </div>
+      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>{'Enter schickt, Umschalt+Enter macht eine neue Zeile. Der Chat bleibt nur, solange dieser Tab offen ist.'}</div>
+    </Karte>
+  );
+
+  // ── Stöbern ──
   const listeKarte = (
     <Karte i={1}>
+      {umschalter}
       <input
         value={frage} onChange={e => setFrage(e.target.value)} autoFocus
         placeholder="Suchen — Firma, Person, Vertrag, Begriff …" aria-label="Wissen durchsuchen"
@@ -290,7 +410,7 @@ export function WissenView() {
       </div>
       <div style={{ display: 'grid', gap: 2, marginBottom: 12 }}>
         {BEREICHE.filter(b => stand?.jeBereich[b]).map(b => (
-          <button key={b} onClick={() => setBereich(b)} className="zeile-klick" style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', border: 'none', background: 'transparent', color: C.ink, font: 'inherit', cursor: 'pointer', padding: '8px 6px', margin: '0 -6px', boxSizing: 'content-box', textAlign: 'left' }}>
+          <button key={b} onClick={() => { setBereich(b); setModus('stoebern'); }} className="zeile-klick" style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', border: 'none', background: 'transparent', color: C.ink, font: 'inherit', cursor: 'pointer', padding: '8px 6px', margin: '0 -6px', boxSizing: 'content-box', textAlign: 'left' }}>
             <Punkt farbe={bereichFarbe(b)} groesse={8} />
             <span style={{ flex: 1, fontSize: TYP.body }}>{b}</span>
             <span style={{ fontSize: 13, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{stand?.jeBereich[b]}</span>
@@ -298,7 +418,7 @@ export function WissenView() {
         ))}
       </div>
       <Leer>
-        {laedtNotiz ? 'Öffne …' : 'Links suchen oder stöbern, hier lesen. Jarvis sucht zuerst hier, bevor er etwas behauptet, und nennt dir die Quelle. Gepflegt wird in Obsidian — jede Notiz hat den Griff dorthin.'}
+        {laedtNotiz ? 'Öffne …' : 'Links fragen oder stöbern, hier lesen. Jarvis sucht zuerst hier, bevor er etwas behauptet, und nennt dir die Quelle. Gepflegt wird in Obsidian — jede Notiz hat den Griff dorthin.'}
       </Leer>
     </Karte>
   );
@@ -311,11 +431,11 @@ export function WissenView() {
     >
       {breit ? (
         <Spalten verhaeltnis="1:1">
-          <Spalte>{listeKarte}</Spalte>
+          <Spalte>{modus === 'fragen' ? chatKarte : listeKarte}</Spalte>
           <Spalte klebt><div ref={lesefenster}>{leseKarte}</div></Spalte>
         </Spalten>
       ) : offen ? leseKarte : (
-        <>{listeKarte}{leseKarte}</>
+        <>{modus === 'fragen' ? chatKarte : listeKarte}{leseKarte}</>
       )}
     </Seite>
   );

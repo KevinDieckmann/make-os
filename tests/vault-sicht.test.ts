@@ -5,7 +5,7 @@
 // Software genau das tut — und dass eine Notiz ihren gültigen Stand oben trägt.
 
 import { describe, it, expect } from 'vitest';
-import { darfSehen, leseKopf, obersterBlock, bereichVon, AGENT } from '../lib/jarvis/vault';
+import { darfSehen, leseKopf, obersterBlock, bereichVon, gekuerzt, AGENT } from '../lib/jarvis/vault';
 
 describe('Sicht auf das Brain', () => {
   it('Agenten bekommen nie Privates', () => {
@@ -59,4 +59,20 @@ describe('Kopf und gültiger Stand', () => {
     expect(bereichVon('make/Make.Claude/03. Protokolle/P.md')).toBe('Protokolle');
     expect(bereichVon('makeos/05 Wissen/A.md')).toBe('MAKE OS');
   });
+});
+
+describe('Kürzen langer Notizen', () => {
+  const lang = `ANFANG ${'x'.repeat(5000)} ENDE`;
+  it('Wissensnotiz: der Anfang bleibt', () => {
+    const k = gekuerzt(lang, 1000, false);
+    expect(k.startsWith('ANFANG')).toBe(true);
+    expect(k).not.toContain('ENDE');
+  });
+  it('Log: Anfang und vor allem das Ende bleiben', () => {
+    const k = gekuerzt(lang, 1000, true);
+    expect(k.startsWith('ANFANG')).toBe(true);
+    expect(k.endsWith('ENDE')).toBe(true);
+    expect(k).toContain('ältere Einträge ausgelassen');
+  });
+  it('Kurzes bleibt, wie es ist', () => expect(gekuerzt('kurz', 1000, true)).toBe('kurz'));
 });

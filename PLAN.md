@@ -294,6 +294,19 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > gültiger Stand), mit Griff „In Obsidian öffnen“. Direktlink:
 > `/os/wissen?n=<Notiz>`. Tests: 180 grün.
 
+> **Nachtrag 24.09., Chat mit dem Brain.** Kevin: *„bau bitte bei dem Wissen
+> einen Chat mit rein, dass ich direkt mit dem Hirn chatten kann.“* Unter
+> Wissen steht links jetzt „Fragen | Stöbern“, Fragen ist der Start. Das Brain
+> sucht selbst weiter, liest Notizen bei Bedarf ganz (bis zu fünf Runden) und
+> antwortet nur aus den Notizen, mit `[[Quelle]]` an der Aussage; was nicht
+> drinsteht, sagt es. Ändern kann es nichts — dafür bleibt Jarvis. Quellen
+> stehen unter der Antwort und öffnen sich rechts im Lesefenster. Der Chat
+> bleibt nur, solange der Tab offen ist. Sicht wie überall: die fragende Person
+> (`lib/jarvis/brain-chat.ts`, `POST /api/jarvis/wissen`). Beim ersten echten
+> Test gefunden und behoben: lange Logs kamen nur mit ihrem Anfang an, das
+> Brain nannte deshalb einen Eintrag vom 07.09. als neuesten — Protokolle werden
+> jetzt so gekürzt, dass das Ende bleibt. Tests: 187 grün.
+
 Jede Phase hat ein Ziel in einem Satz, eine Fertig-Bedingung, und eine Liste,
 was **bewusst nicht** darin ist. Grobe Größe in Arbeitstagen — ehrlich grob.
 

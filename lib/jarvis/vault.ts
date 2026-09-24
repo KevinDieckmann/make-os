@@ -308,6 +308,19 @@ export interface NotizVoll {
   wurzel?: string; bereich?: string; typ?: string; scope?: string; owner?: string; stand?: string; geaendert?: string; obsidian?: string | null;
 }
 
+/**
+ * Zu lange Notizen kürzen, ohne das Wichtige abzuschneiden. Wissensnotizen
+ * tragen den gültigen Stand oben — dort zählt der Anfang. Protokolle und Logs
+ * wachsen nach unten — dort zählt das Ende (gefunden 24.09.: das Brain nannte
+ * einen Eintrag vom 07.09. als neuesten, weil nur der Anfang des Logs ankam).
+ */
+export function gekuerzt(rumpf: string, max: number, waechstNachUnten: boolean): string {
+  if (rumpf.length <= max) return rumpf;
+  if (!waechstNachUnten) return `${rumpf.slice(0, max)}\n\n[… gekürzt: ${rumpf.length - max} Zeichen weiter unten nicht mitgegeben]`;
+  const kopf = Math.min(1500, Math.floor(max * 0.2));
+  return `${rumpf.slice(0, kopf)}\n\n[… gekürzt: ${rumpf.length - max} Zeichen ältere Einträge ausgelassen — unten stehen die neuesten …]\n\n${rumpf.slice(rumpf.length - (max - kopf))}`;
+}
+
 /** Eine Notiz ganz lesen. Der Pfad wird gegen den Bestand geprüft — von außen
  *  gereichte Pfade führen so nie an Ausschlüssen oder der Sicht vorbei. */
 export async function notiz(id: string, maxZeichen = 12_000, sicht: Sicht = AGENT): Promise<NotizVoll> {
@@ -318,7 +331,7 @@ export async function notiz(id: string, maxZeichen = 12_000, sicht: Sicht = AGEN
     const text = await readFile(n.pfad, 'utf8');
     const { rumpf } = leseKopf(text);
     return {
-      ok: true, id: n.id, titel: n.titel, pfad: n.id, text: rumpf.slice(0, maxZeichen),
+      ok: true, id: n.id, titel: n.titel, pfad: n.id, text: gekuerzt(rumpf, maxZeichen, n.typ === 'protokoll'),
       // AGENTS.md §4.1: „Update-Block oben“ gilt für Wissensnotizen. Protokolle und
       // Logs wachsen nach unten — dort wäre der oberste Block der älteste.
       oben: n.typ === 'protokoll' ? '' : obersterBlock(rumpf),

@@ -88,7 +88,9 @@ lokal, Route `/os`, Port 3001.
   `scope: privat` nie an Agenten/Hintergrundläufe und nie in Texte nach außen;
   Schreiben nur als Protokoll oder Anhang an `Offene_Fragen_Brain`,
   `Taskmanagement_Brain`, `Jarvis_Log` — Fundament und Quellen nie, im Ordner
-  MAKE wird nichts gelöscht. Seite `/os/wissen`, Tests `vault-sicht`/`markdown`.
+  MAKE wird nichts gelöscht. Seite `/os/wissen` mit Chat „Fragen“
+  (`lib/jarvis/brain-chat.ts`, nur lesend, antwortet nur aus Notizen mit Quelle),
+  Tests `vault-sicht`/`markdown`/`brain-chat`.
 - **`PLAN.md` ist der führende Plan (seit 18.09.2026).** Bestand bleibt und
   wird auf Hetzner hochgefahren; Reihenfolge Hochfahren → Aufgaben → CRM →
   Anbindungen → Prozesse. Ein Bereich wird fertig und benutzt, dann der
