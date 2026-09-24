@@ -35,8 +35,9 @@ export async function GET() {
   const letzter = (perf?.snapshots ?? []).slice().sort((a, b) => a.date.localeCompare(b.date)).at(-1);
 
   const fin = grund?.roh ? finanzKennzahlen(lesen(grund.roh, grund.stand)) : null;
-  const konten = (plan?.firmen ?? []).reduce((s, f) => s + (f.kontostand ?? 0), 0);
-  const offenePosten = (plan?.zahlungen ?? []).filter(z => z.status === 'offen').length;
+  // Business: private Konten und Zahlungen stehen seit 24.09. unter Zahlen → Privat.
+  const konten = (plan?.firmen ?? []).filter(f => (f as { id?: string }).id !== 'privat').reduce((s, f) => s + (f.kontostand ?? 0), 0);
+  const offenePosten = (plan?.zahlungen ?? []).filter(z => z.status === 'offen' && (z as { firmaId?: string }).firmaId !== 'privat').length;
 
   const eur0 = (n: number) => new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(Math.round(n));
 

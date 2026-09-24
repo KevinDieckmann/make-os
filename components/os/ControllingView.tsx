@@ -13,7 +13,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { wertVon, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
 import { localDay } from '@/lib/zeit';
 import { useSpeichern } from '@/hooks/useSpeichern';
-import { vorschau, monatlicheLast, type Firma, type Rechnung, type Zahlung, type Merkposten, type Woche } from '@/lib/make-one/liquiditaet';
+import { vorschau, monatlicheLast, type Firma, type Rechnung, type Zahlung, type Merkposten, type Woche, nurBusiness } from '@/lib/make-one/liquiditaet';
 import {
   DEFAULT_FINANCE, MONTHS_DE, computeMetrics, eur,
   type FinanceState,
@@ -180,8 +180,8 @@ export function ControllingView() {
 
       {/* ── Liquidität: was ist wann da, und wann wird es eng ── */}
       {fplan && (() => {
-        const v = vorschau(fplan.firmen, fplan.rechnungen, fplan.zahlungen, fplan.merkposten, heute, 12, optimistisch);
-        const fix = monatlicheLast(fplan.merkposten);
+        const v = vorschau(fplan.firmen, fplan.rechnungen, fplan.zahlungen, fplan.merkposten, heute, 12, optimistisch, [], 'real', undefined, true);
+        const fix = monatlicheLast(nurBusiness(fplan.merkposten));
         return (
           <Karte i={1}>
             <Ueberschrift farbe={v.engpass ? LEUCHT.kritisch : LEUCHT.geld}

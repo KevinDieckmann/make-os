@@ -39,7 +39,8 @@ export async function computeShields(today = localDay()): Promise<Shield[]> {
       href: '/os/finanzen', label: 'Finanzplanung',
     });
   }
-  const zahlungenUeberfaellig = (fplan?.zahlungen ?? []).filter(z => z.status === 'offen' && z.faellig && z.faellig < today);
+  // Nur Firmen-Zahlungen. Private Fälligkeiten meldet haushaltShields() — nur an den Haushalt.
+  const zahlungenUeberfaellig = (fplan?.zahlungen ?? []).filter(z => z.status === 'offen' && z.faellig && z.faellig < today && (z as { firmaId?: string }).firmaId !== 'privat');
   if (zahlungenUeberfaellig.length) {
     shields.push({
       id: 'zahlungen', stufe: 'rot',

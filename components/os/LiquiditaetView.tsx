@@ -115,13 +115,13 @@ export function LiquiditaetView() {
 
   const firmaFilter = nurFirma === 'alle' ? undefined : nurFirma;
   const v = useMemo(
-    () => plan ? vorschau(plan.firmen, plan.rechnungen, plan.zahlungen, plan.merkposten, heute, wochen, false, posten, szenario, firmaFilter) : null,
+    () => plan ? vorschau(plan.firmen, plan.rechnungen, plan.zahlungen, plan.merkposten, heute, wochen, false, posten, szenario, firmaFilter, true) : null,
     [plan, posten, heute, wochen, szenario, firmaFilter],
   );
   /** Dieselbe Rechnung in allen drei Szenarien — für den Vergleich. */
   const dreiFaelle = useMemo(() => {
     if (!plan) return null;
-    const f = (sz: Szenario) => vorschau(plan.firmen, plan.rechnungen, plan.zahlungen, plan.merkposten, heute, wochen, false, posten, sz, firmaFilter);
+    const f = (sz: Szenario) => vorschau(plan.firmen, plan.rechnungen, plan.zahlungen, plan.merkposten, heute, wochen, false, posten, sz, firmaFilter, true);
     return { schlecht: f('schlecht'), real: f('real'), gut: f('gut') };
   }, [plan, posten, heute, wochen, firmaFilter]);
   /** Aufschlüsselung nach Kategorie über den ganzen Zeitraum. */

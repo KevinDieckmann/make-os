@@ -84,7 +84,8 @@ export function FinanzplanungView() {
   if (!plan) return <Seite titel="Finanzplanung" unter={`Finanzen · ${datum(heute)}`}><Karte i={0}><Leer>lade …</Leer></Karte></Seite>;
 
   const m = finance ? computeMetrics(finance) : null;
-  const cash = plan.firmen.reduce((s, f) => s + (f.kontostand ?? 0), 0);
+  // Privat zählt hier nicht mit — die privaten Konten stehen unter Zahlen → Privat.
+  const cash = plan.firmen.filter(f => f.id !== 'privat').reduce((s, f) => s + (f.kontostand ?? 0), 0);
   const gestellt = plan.rechnungen.filter(r => r.status === 'gestellt');
   const geplant = plan.rechnungen.filter(r => r.status === 'geplant');
   const sum = (list: Rechnung[]) => list.reduce((s, r) => s + r.betrag, 0);

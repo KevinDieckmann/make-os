@@ -65,6 +65,9 @@ async function planBlock(input: Record<string, unknown>): Promise<string> {
 
 const eurW = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(n || 0));
 const firmaId = (rein: unknown): 'kdv' | 'kdc' => (/ventures|kdv/i.test(String(rein ?? '')) ? 'kdv' : 'kdc');
+/** Privates gehört seit 24.09. in die Haushaltsfinanzen, nicht in den Finanzplan der Firmen. */
+const istPrivatAngabe = (rein: unknown) => /privat|haushalt|malin|n26/i.test(String(rein ?? ''));
+const PRIVAT_HINWEIS = 'Nicht erfasst: Das ist privat. Private Zahlungen und Rechnungen gehören in die Haushaltsfinanzen (Zahlen → Privat) — dafür gibt es eigene Werkzeuge.';
 
 async function setzeKontostand(input: Record<string, unknown>): Promise<string> {
   const betrag = Number(input.betrag);
@@ -109,6 +112,7 @@ async function erfasseRechnung(input: Record<string, unknown>): Promise<string> 
 }
 
 async function erfasseZahlung(input: Record<string, unknown>): Promise<string> {
+  if (istPrivatAngabe(input.firma)) return PRIVAT_HINWEIS;
   const an = String(input.an ?? '').trim().slice(0, 120);
   const betrag = Number(input.betrag);
   if (!an || !isFinite(betrag)) return 'Fehlgeschlagen: an + betrag nötig.';
@@ -369,6 +373,7 @@ async function setzeZiele(input: Record<string, unknown>): Promise<string> {
 
 /** Wiederkehrende Kosten oder Einnahmen für die Liquiditäts-Planung. */
 async function erfassePlanposten(input: Record<string, unknown>): Promise<string> {
+  if (istPrivatAngabe(input.firma) || String(input.kategorie ?? '') === 'privat') return PRIVAT_HINWEIS;
   const titel = String(input.titel ?? '').trim().slice(0, 160);
   const betrag = Math.round(Number(input.betrag));
   if (!titel || !isFinite(betrag) || betrag === 0) return 'Fehlgeschlagen: titel + betrag nötig (negativ = Ausgabe).';
@@ -376,7 +381,7 @@ async function erfassePlanposten(input: Record<string, unknown>): Promise<string
   const rhythmus = RHY.includes(String(input.rhythmus)) ? String(input.rhythmus) : 'monatlich';
   const ab = /^\d{4}-\d{2}-\d{2}$/.test(String(input.ab ?? '')) ? String(input.ab) : new Date().toISOString().slice(0, 10);
   const kategorie = input.kategorie ? String(input.kategorie).slice(0, 40) : undefined;
-  const firmaId = ['kdv', 'kdc', 'kemaris', 'privat'].includes(String(input.firma)) ? String(input.firma) : undefined;
+  const firmaId = ['kdv', 'kdc', 'kemaris'].includes(String(input.firma)) ? String(input.firma) : undefined;
   const sicher = input.sicher !== false;
 
   let aktion = '';

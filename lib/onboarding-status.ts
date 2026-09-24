@@ -54,9 +54,9 @@ export async function pruefeAlles(): Promise<Record<string, Befund>> {
   const kvPv = g?.konfiguration.kvPvKevinMonat ?? 0;
   const malinBrutto = g?.konfiguration.malinBruttoMonat ?? 0;
 
-  const firmen = plan?.firmen ?? [];
+  const firmen = (plan?.firmen ?? []).filter(f => (f as { id?: string }).id !== 'privat');
   const ohneStand = firmen.filter(f => f.kontostand == null).length;
-  const offeneZahlungen = (plan?.zahlungen ?? []).filter(z => z.status === 'offen');
+  const offeneZahlungen = (plan?.zahlungen ?? []).filter(z => z.status === 'offen' && (z as { firmaId?: string }).firmaId !== 'privat');
   const ohneFrist = offeneZahlungen.filter(z => !z.faellig).length;
 
   const horizonte = ['jahr', 'quartal', 'monat', 'woche'] as const;

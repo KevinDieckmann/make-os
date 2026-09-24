@@ -112,7 +112,7 @@ export function GrundlageView() {
           Gepflegt wird dort, gerechnet wird hier. MAKE OS erfindet nichts dazu.
         </div>
         <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 5 }}>
-          {g.umsatz.length + g.kosten.length + g.entnahmen.length + g.offen.length} Positionen Betrieb · {g.privat.length} Buchungen Privatkonto · {g.schulden.length} Verbindlichkeiten
+          {g.umsatz.length + g.kosten.length + g.entnahmen.length + g.offen.length} Positionen Betrieb · Privatkonto und private Schulden stehen seit 24.09. unter Zahlen → Privat
         </div>
       </Karte>
 
@@ -162,15 +162,8 @@ export function GrundlageView() {
         <Liste>{g.entnahmen.map(p => posten(p, C.inkDim, '−'))}</Liste>
       </Karte>
 
-      <Karte i={6}>
-        <Ueberschrift farbe={LEUCHT.kritisch} rechts={`${eurC(k.schuldenRest)} offen · ${eurC(k.schuldenRateMonat)} Rate/Monat`}>Verbindlichkeiten</Ueberschrift>
-        <Liste>
-          {g.schulden.map(s => (
-            <Zeile key={s.id} titel={s.name} unter={s.rate ? `${eurC(s.rate)} / Monat` : 'keine Rate'}
-              rechts={<span style={{ ...geld, color: LEUCHT.kritisch }}>{eurC(s.rest)}</span>} />
-          ))}
-        </Liste>
-      </Karte>
+      {/* 24.09.: Die „Verbindlichkeiten“ hier waren Malins PRIVATE Schulden (p.sch)
+          und standen auf einer Business-Seite. Sie leben jetzt unter Zahlen → Privat. */}
 
       <Karte i={7}>
         <Ueberschrift farbe={LEUCHT.achtung} rechts={`${eurC(k.fixkostenMonatBrutto)} pro Monat brutto`}>Laufende Fixkosten</Ueberschrift>

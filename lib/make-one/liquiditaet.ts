@@ -37,8 +37,19 @@ export interface Rechnung {
   leistungBis?: string;
   notiz?: string;
 }
-export interface Zahlung { id: string; an: string; titel: string; betrag: number; status: string; faellig?: string }
-export interface Merkposten { id: string; titel: string; betrag: number; art: string; notiz?: string }
+export interface Zahlung { id: string; an: string; titel: string; betrag: number; status: string; faellig?: string; firmaId?: string }
+export interface Merkposten { id: string; titel: string; betrag: number; art: string; notiz?: string; firmaId?: string }
+
+// ── Privat ist nie Business (Kevin, 24.09.) ─────────────────────────────────
+// Die privaten Finanzen leben seit dem Umzug von Malins Cockpit unter
+// „Zahlen → Privat“. In den Business-Speichern stehen noch alte Einträge mit
+// firmaId „privat“ — die zählen in keiner Business-Rechnung mehr. Was NICHT
+// ausdrücklich privat markiert ist, gilt als Business (ältere Einträge ohne
+// Firma sind Firmen-Posten; die Prüfliste unter Privat zeigt sie zum Zuordnen).
+export const PRIVAT_ID = 'privat';
+export const istPrivatPosten = (x: { firmaId?: string; kategorie?: string }) => x.firmaId === PRIVAT_ID || x.kategorie === PRIVAT_ID;
+export const nurBusiness = <T extends { firmaId?: string; kategorie?: string }>(l: T[]): T[] => l.filter(x => !istPrivatPosten(x));
+export const businessFirmen = <F extends { id: string }>(f: F[]): F[] => f.filter(x => x.id !== PRIVAT_ID);
 
 export interface Bewegung {
   datum: string;
@@ -165,7 +176,13 @@ export function vorschau(
   planposten: Planposten[] = [],
   szenario: Szenario = 'real',
   nurFirma?: string,
+  /** true: Privates bleibt draußen (Business-Sicht). Standard für alle Firmen-Rechnungen. */
+  ohnePrivat = false,
 ): Vorschau {
+  if (ohnePrivat && nurFirma !== PRIVAT_ID) {
+    firmen = businessFirmen(firmen); rechnungen = nurBusiness(rechnungen as (Rechnung & { firmaId?: string })[]);
+    zahlungen = nurBusiness(zahlungen); merkposten = nurBusiness(merkposten); planposten = nurBusiness(planposten);
+  }
   // „optimistisch" bleibt als Kurzform erhalten: es entspricht dem guten Fall.
   const schwelle = optimistisch ? SZENARIO_SCHWELLE.gut : SZENARIO_SCHWELLE[szenario];
   const start = (nurFirma ? firmen.filter(f => f.id === nurFirma) : firmen)

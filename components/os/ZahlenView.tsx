@@ -11,12 +11,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 import { eur } from '@/lib/make-one/finance-data';
-import { vorschau, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten } from '@/lib/make-one/liquiditaet';
+import { vorschau, businessFirmen, nurBusiness, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten } from '@/lib/make-one/liquiditaet';
 import { MONAT_KURZ, type Kennzahlen } from '@/lib/make-one/grundlage';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Zahl, Fortschritt, LEUCHT, Spalten, Spalte } from './schlank';
 
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
-interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string }
+interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string; ort?: string }
 
 const BEREICHE = [
   { href: '/os/finanzen/grundlage', titel: 'Grundlage', satz: 'Malins Kassenbuch — die Zahlen, auf denen alles steht' },
@@ -38,14 +38,15 @@ export function ZahlenBusiness() {
   useEffect(() => {
     fetch('/api/state/finanzplan').then(r => r.json()).then(setPlan).catch(() => {});
     fetch('/api/state/liquiplan').then(r => r.json()).then(d => setPosten(d.posten ?? [])).catch(() => {});
-    fetch('/api/state/buchungen').then(r => r.json()).then(d => setBuchungen(d.buchungen ?? [])).catch(() => {});
+    // Nur Firmen-Buchungen: ohne „ort“ gilt eine Buchung als privat (Regel der Buchungs-Route).
+    fetch('/api/state/buchungen').then(r => r.json()).then(d => setBuchungen((d.buchungen ?? []).filter((b: Buchung) => b.ort === 'kdv' || b.ort === 'kdc'))).catch(() => {});
     fetch('/api/state/grundlage').then(r => r.json()).then(setGrund).catch(() => {});
   }, []);
 
-  const v = useMemo(() => (plan ? vorschau(plan.firmen, plan.rechnungen, plan.zahlungen, plan.merkposten, heute, 12, false, posten, 'real') : null), [plan, posten, heute]);
-  const konten = (plan?.firmen ?? []).reduce((s, f) => s + (f.kontostand ?? 0), 0);
-  const mussRaus = (plan?.zahlungen ?? []).filter(z => z.status === 'offen');
-  const kommtRein = (plan?.rechnungen ?? []).filter(r => r.status !== 'bezahlt' && r.betrag > 0);
+  const v = useMemo(() => (plan ? vorschau(plan.firmen, plan.rechnungen, plan.zahlungen, plan.merkposten, heute, 12, false, posten, 'real', undefined, true) : null), [plan, posten, heute]);
+  const konten = businessFirmen(plan?.firmen ?? []).reduce((s, f) => s + (f.kontostand ?? 0), 0);
+  const mussRaus = nurBusiness(plan?.zahlungen ?? []).filter(z => z.status === 'offen');
+  const kommtRein = nurBusiness((plan?.rechnungen ?? []) as (Rechnung & { firmaId?: string })[]).filter(r => r.status !== 'bezahlt' && r.betrag > 0);
   const faellig = mussRaus.slice().sort((a, b) => (a.faellig ?? '9999').localeCompare(b.faellig ?? '9999')).slice(0, 6);
 
   const monat = useMemo(() => {

@@ -6,7 +6,7 @@
 // Reihenfolge der Reiter nach Nutzen, wie sie es vorgeschlagen hat.
 // Nur für Personen, denen der Inhaber einen Haushalt zugeordnet hat.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { katNamen } from '@/lib/finanzen/haushalt/einordnung';
 import { heuteBerlin, tageZwischen, datumDe } from '@/lib/finanzen/haushalt/monat';
@@ -21,6 +21,7 @@ import { IstSoll } from './IstSoll';
 import { Schulden } from './Schulden';
 import { ImportDialog } from './Import';
 import { UmzugDialog } from './Umzug';
+import { PrueflisteDialog } from './Pruefliste';
 
 type Reiter = 'uebersicht' | 'buchungen' | 'einnahmen' | 'analyse' | 'fixkosten' | 'plan' | 'schulden';
 const REITER: { id: Reiter; label: string }[] = [
@@ -32,6 +33,9 @@ export function HaushaltView({ reiter, onReiter }: { reiter: string | null; onRe
   const { daten: h, kein, laden, patch, aktion, melde, meldungen, weg } = useHaushalt();
   const [importAuf, setImportAuf] = useState(false);
   const [umzugAuf, setUmzugAuf] = useState(false);
+  const [pruefAuf, setPruefAuf] = useState(false);
+  const [pruefAnzahl, setPruefAnzahl] = useState(0);
+  useEffect(() => { fetch('/api/haushalt/pruefliste').then(r => r.json()).then(d => setPruefAnzahl(d.ok ? d.posten.length : 0)).catch(() => {}); }, [h]);
   const katName = useMemo(() => (h ? katNamen(h.stamm) : () => ''), [h]);
   const aktiv = (REITER.find(r => r.id === reiter)?.id ?? 'uebersicht') as Reiter;
 
@@ -48,6 +52,7 @@ export function HaushaltView({ reiter, onReiter }: { reiter: string | null; onRe
         <div style={{ overflowX: 'auto', maxWidth: '100%', paddingBottom: 2 }}><Segmente liste={REITER} aktiv={aktiv} onWahl={onReiter} /></div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 12.5, color: C.inkLeise }}>
           {juengste && <span style={{ color: alt !== null && alt > 40 ? LEUCHT.achtung : C.inkLeise }}>Letzte Buchung {datumDe(juengste)}</span>}
+          {pruefAnzahl > 0 && <button onClick={() => setPruefAuf(true)} style={{ background: 'none', border: 'none', color: LEUCHT.achtung, cursor: 'pointer', font: 'inherit', padding: 0 }} title="Private Einträge, die noch in den Business-Speichern stehen">Aufräumen ({pruefAnzahl})</button>}
           <button onClick={() => setUmzugAuf(true)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', font: 'inherit', padding: 0 }} title="Probelauf und Übernahme aus Malins Supabase">{h.meta.umzug ? `Aus Malins Cockpit (${datumDe(h.meta.umzug.zeit.slice(0, 10))})` : 'Aus Malins Cockpit'}</button>
           <a href="/api/haushalt/sicherung" style={{ color: C.inkDim, textDecoration: 'none' }} title="Alle Haushaltsdaten als JSON — im Format von Malins Sicherung">Sicherung ↓</a>
           {!leer && <Knopf farbe={LEUCHT.geld} onClick={() => setImportAuf(true)}>Kontoauszug einlesen</Knopf>}
@@ -69,6 +74,7 @@ export function HaushaltView({ reiter, onReiter }: { reiter: string | null; onRe
           {aktiv === 'schulden' && <Schulden h={h} patch={patch} melde={melde} />}
         </>
       )}
+      {pruefAuf && <PrueflisteDialog onZu={() => setPruefAuf(false)} laden={laden} melde={melde} />}
       {umzugAuf && <UmzugDialog onZu={() => setUmzugAuf(false)} laden={laden} melde={melde} />}
       {importAuf && <ImportDialog h={h} aktion={aktion} laden={laden} melde={melde} onZu={() => setImportAuf(false)} />}
       <Meldungen liste={meldungen} weg={weg} />
