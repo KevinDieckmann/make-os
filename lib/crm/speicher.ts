@@ -6,10 +6,10 @@
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { STUFEN } from './pipeline';
-import { CRM_LISTEN, type CrmBestand, type CrmListe, type Firma, type FirmaRolle, type Antrag, type AntragArt, type Verarbeitung, type Chance, type Mandat, type Leistung, type Event, type Teilnahme, type PowerHourSitzung, type ChancenStufe, type Qual } from './typen';
+import { CRM_LISTEN, type CrmBestand, type CrmListe, type Firma, type FirmaRolle, type Antrag, type AntragArt, type Verarbeitung, type Segment, type SegmentKriterien, type Beitrag, type NewsletterAusgabe, type Chance, type Mandat, type Leistung, type Event, type Teilnahme, type PowerHourSitzung, type ChancenStufe, type Qual } from './typen';
 
 export const CRM_SPEICHER = 'crm';
-export const leererBestand = (): CrmBestand => ({ firmen: [], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [] });
+export const leererBestand = (): CrmBestand => ({ firmen: [], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [], segmente: [], beitraege: [], newsletter: [] });
 
 export async function ladeCrm(): Promise<CrmBestand> {
   return { ...leererBestand(), ...((await loadJson<CrmBestand>(CRM_SPEICHER)) ?? {}) };
@@ -113,7 +113,13 @@ function event(o: Record<string, unknown>, jetzt: string): Event | null {
     ...(zahl(o.kapazitaet, 0, 5000) ? { kapazitaet: zahl(o.kapazitaet, 0, 5000) } : {}), ...(zahl(o.kostenEuro, 0, 1e7) ? { kostenEuro: zahl(o.kostenEuro, 0, 1e7) } : {}),
     ...(opt(o.coHost, 160) ? { coHost: opt(o.coHost, 160) } : {}),
     status: aus(o.status, ['idee', 'geplant', 'einladung', 'durchgefuehrt', 'abgesagt'] as const, 'idee'),
-    ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}), geaendert: jetzt,
+    ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}),
+    ...(Array.isArray(o.ablauf) ? { ablauf: (o.ablauf as Record<string, unknown>[]).slice(0, 30).map(a => ({ zeit: txt(a.zeit, 5), punkt: txt(a.punkt, 200) })).filter(a => a.punkt) } : {}),
+    ...(Array.isArray(o.checkliste) ? { checkliste: (o.checkliste as Record<string, unknown>[]).slice(0, 60).map((c, i) => ({ id: txt(c.id, 40) || `cl${i}`, text: txt(c.text, 200), tageVorher: zahl(c.tageVorher, -30, 120), erledigt: c.erledigt === true, ...(opt(c.aufgabeId, 80) ? { aufgabeId: opt(c.aufgabeId, 80) } : {}) })).filter(c => c.text) } : {}),
+    ...(Array.isArray(o.budget) ? { budget: (o.budget as Record<string, unknown>[]).slice(0, 40).map((b, i) => ({ id: txt(b.id, 40) || `b${i}`, posten: txt(b.posten, 120), betrag: zahl(b.betrag, 0, 1e6) })).filter(b => b.posten) } : {}),
+    ...(o.mixZiel && typeof o.mixZiel === 'object' ? { mixZiel: { zielkunden: zahl((o.mixZiel as Record<string, unknown>).zielkunden, 0, 100), kunden: zahl((o.mixZiel as Record<string, unknown>).kunden, 0, 100) } } : {}),
+    ...(idOk(o.segmentId) ? { segmentId: String(o.segmentId) } : {}), ...(opt(o.vorlage, 40) ? { vorlage: opt(o.vorlage, 40) } : {}),
+    geaendert: jetzt,
   };
 }
 
@@ -122,7 +128,11 @@ function teilnahme(o: Record<string, unknown>, jetzt: string): Teilnahme | null 
   return {
     id: String(o.id), eventId: String(o.eventId), kontaktId: String(o.kontaktId),
     status: aus(o.status, ['vorgemerkt', 'eingeladen', 'zugesagt', 'abgesagt', 'da', 'no_show'] as const, 'vorgemerkt'),
-    ...(opt(o.notiz, 1500) ? { notiz: opt(o.notiz, 1500) } : {}), ...(tag(o.followUpAm) ? { followUpAm: tag(o.followUpAm) } : {}), geaendert: jetzt,
+    ...(opt(o.notiz, 1500) ? { notiz: opt(o.notiz, 1500) } : {}), ...(tag(o.followUpAm) ? { followUpAm: tag(o.followUpAm) } : {}),
+    ...(['gast', 'co_host', 'speaker'].includes(String(o.rolle)) ? { rolle: o.rolle as Teilnahme['rolle'] } : {}),
+    ...(typeof o.fotofreigabe === 'boolean' ? { fotofreigabe: o.fotofreigabe } : {}), ...(tag(o.eingeladenAm) ? { eingeladenAm: tag(o.eingeladenAm) } : {}),
+    ...(['persoenlich', 'telefon', 'mail', 'linkedin'].includes(String(o.einladungsweg)) ? { einladungsweg: o.einladungsweg as Teilnahme['einladungsweg'] } : {}),
+    geaendert: jetzt,
   };
 }
 
@@ -157,11 +167,47 @@ function verarbeitung(o: Record<string, unknown>, jetzt: string): Verarbeitung |
   };
 }
 
+const strListe = (v: unknown, n = 12, l = 40) => (Array.isArray(v) ? v.map(x => txt(x, l)).filter(Boolean).slice(0, n) : undefined);
+function segment(o: Record<string, unknown>, jetzt: string): Segment | null {
+  if (!idOk(o.id) || !txt(o.name)) return null;
+  const k = (o.kriterien ?? {}) as Record<string, unknown>;
+  const kr: SegmentKriterien = {};
+  for (const f of ['lebensphase', 'kreis', 'prio', 'firmaRolle', 'herkunft'] as const) { const l = strListe(k[f]); if (l?.length) kr[f] = l; }
+  for (const f of ['branche', 'stadt', 'stichwort'] as const) { const t = opt(k[f], 80); if (t) kr[f] = t; }
+  if (['mail', 'telefon', 'linkedin', 'newsletter', 'einladung'].includes(String(k.kanal))) kr.kanal = k.kanal as SegmentKriterien['kanal'];
+  if (typeof k.mitChance === 'boolean') kr.mitChance = k.mitChance;
+  if (zahl(k.ohneKontaktSeitTagen, 0, 3650)) kr.ohneKontaktSeitTagen = zahl(k.ohneKontaktSeitTagen, 0, 3650);
+  return { id: String(o.id), name: txt(o.name, 120), ...(opt(o.beschreibung, 400) ? { beschreibung: opt(o.beschreibung, 400) } : {}), kriterien: kr, geaendert: jetzt };
+}
+function beitrag(o: Record<string, unknown>, jetzt: string): Beitrag | null {
+  if (!idOk(o.id) || !txt(o.titel)) return null;
+  return {
+    id: String(o.id), titel: txt(o.titel, 200), kanal: aus(o.kanal, ['linkedin', 'newsletter', 'blog', 'podcast', 'vortrag', 'sonstig'] as const, 'linkedin'),
+    ...(opt(o.saeule, 60) ? { saeule: opt(o.saeule, 60) } : {}), status: aus(o.status, ['idee', 'entwurf', 'geplant', 'veroeffentlicht'] as const, 'idee'),
+    ...(tag(o.datum) ? { datum: tag(o.datum) } : {}), ...(opt(o.text, 8000) ? { text: opt(o.text, 8000) } : {}), ...(opt(o.link, 400) ? { link: opt(o.link, 400) } : {}),
+    wirkung: Array.isArray(o.wirkung) ? (o.wirkung as Record<string, unknown>[]).slice(0, 200).map(w => ({ kontaktId: txt(w.kontaktId, 80), art: aus(w.art, ['reaktion', 'gespraech', 'anfrage'] as const, 'reaktion'), am: tag(w.am) ?? jetzt.slice(0, 10), ...(opt(w.notiz, 300) ? { notiz: opt(w.notiz, 300) } : {}) })).filter(w => /^c-/.test(w.kontaktId)) : [],
+    quellen: strListe(o.quellen, 30, 80) ?? [], geaendert: jetzt,
+  };
+}
+function ausgabe(o: Record<string, unknown>, jetzt: string): NewsletterAusgabe | null {
+  if (!idOk(o.id) || !txt(o.titel)) return null;
+  const n = (v: unknown) => (v === undefined || v === null || v === '' ? undefined : zahl(v, 0, 1e6));
+  return {
+    id: String(o.id), titel: txt(o.titel, 200), ...(tag(o.datum) ? { datum: tag(o.datum) } : {}), status: aus(o.status, ['entwurf', 'bereit', 'versendet'] as const, 'entwurf'),
+    inhalt: txt(o.inhalt, 20000), beitragIds: ids(o.beitragIds),
+    ...(n(o.empfaenger) !== undefined ? { empfaenger: n(o.empfaenger) } : {}), ...(n(o.antworten) !== undefined ? { antworten: n(o.antworten) } : {}), ...(n(o.abmeldungen) !== undefined ? { abmeldungen: n(o.abmeldungen) } : {}),
+    geaendert: jetzt,
+  };
+}
+
 export function saeubern(liste: CrmListe, roh: Record<string, unknown>, jetzt: string, person: string): Record<string, unknown> | null {
   switch (liste) {
     case 'firmen': return firma(roh, jetzt) as unknown as Record<string, unknown>;
     case 'antraege': return antrag(roh, jetzt, person) as unknown as Record<string, unknown>;
     case 'verarbeitungen': return verarbeitung(roh, jetzt) as unknown as Record<string, unknown>;
+    case 'segmente': return segment(roh, jetzt) as unknown as Record<string, unknown>;
+    case 'beitraege': return beitrag(roh, jetzt) as unknown as Record<string, unknown>;
+    case 'newsletter': return ausgabe(roh, jetzt) as unknown as Record<string, unknown>;
     case 'chancen': return chance(roh, jetzt, person) as unknown as Record<string, unknown>;
     case 'mandate': return mandat(roh, jetzt) as unknown as Record<string, unknown>;
     case 'leistungen': return leistung(roh, jetzt) as unknown as Record<string, unknown>;

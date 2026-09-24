@@ -137,6 +137,17 @@ export interface Event {
   coHost?: string;
   status: 'idee' | 'geplant' | 'einladung' | 'durchgefuehrt' | 'abgesagt';
   notiz?: string;
+  /** Ablauf des Abends (Uhrzeit + Punkt). */
+  ablauf?: { zeit: string; punkt: string }[];
+  /** Checkliste mit Vorlauf in Tagen vor dem Event; angenommen → Aufgabe (aufgabeId). */
+  checkliste?: { id: string; text: string; tageVorher: number; erledigt: boolean; aufgabeId?: string }[];
+  /** Kostenpositionen — Summe ersetzt kostenEuro, sobald Positionen da sind. */
+  budget?: { id: string; posten: string; betrag: number }[];
+  /** Soll-Mischung der Gäste in Prozent (Zielkunden inkl. Interessenten; Kunden + Multiplikatoren). */
+  mixZiel?: { zielkunden: number; kunden: number };
+  /** Gästeliste aus einem Segment vorgeschlagen. */
+  segmentId?: string;
+  vorlage?: string;
   geaendert: string;
 }
 export type TeilnahmeStatus = 'vorgemerkt' | 'eingeladen' | 'zugesagt' | 'abgesagt' | 'da' | 'no_show';
@@ -147,8 +158,43 @@ export interface Teilnahme {
   status: TeilnahmeStatus;
   notiz?: string;
   followUpAm?: string;
+  rolle?: 'gast' | 'co_host' | 'speaker';
+  /** Fotos nur mit ausdrücklicher Freigabe. */
+  fotofreigabe?: boolean;
+  eingeladenAm?: string;
+  einladungsweg?: 'persoenlich' | 'telefon' | 'mail' | 'linkedin';
   geaendert: string;
 }
+
+// ── Marketing (24.09. nachts) ────────────────────────────────────────────
+/** Ein Segment = gespeicherter Filter über die Kartei (für Kampagnen, Einladungen, Newsletter). */
+export interface SegmentKriterien {
+  lebensphase?: string[]; kreis?: string[]; prio?: string[]; firmaRolle?: string[]; herkunft?: string[];
+  branche?: string; stadt?: string; stichwort?: string;
+  /** Nur, wer über diesen Kanal zulässig erreichbar ist (Ampel grün, bei 'persoenlich' alle). */
+  kanal?: 'mail' | 'telefon' | 'linkedin' | 'newsletter' | 'einladung';
+  mitChance?: boolean; ohneKontaktSeitTagen?: number;
+}
+export interface Segment { id: string; name: string; beschreibung?: string; kriterien: SegmentKriterien; geaendert: string }
+export type BeitragKanal = 'linkedin' | 'newsletter' | 'blog' | 'podcast' | 'vortrag' | 'sonstig';
+export interface Beitrag {
+  id: string; titel: string; kanal: BeitragKanal; saeule?: string;
+  status: 'idee' | 'entwurf' | 'geplant' | 'veroeffentlicht';
+  datum?: string; text?: string; link?: string;
+  /** Wirkung: wer reagiert hat, welche Gespräche/Anfragen daraus entstanden (Attribution per Kontakt). */
+  wirkung: { kontaktId: string; art: 'reaktion' | 'gespraech' | 'anfrage'; am: string; notiz?: string }[];
+  /** Aus welchen Kundengesprächen das Thema stammt (Stimme der Kunden). */
+  quellen: string[];
+  geaendert: string;
+}
+export interface NewsletterAusgabe {
+  id: string; titel: string; datum?: string; status: 'entwurf' | 'bereit' | 'versendet';
+  inhalt: string; beitragIds: string[];
+  /** Zahlen nach dem Versand (von Hand aus dem Versandwerkzeug) — keine Öffnungsraten. */
+  empfaenger?: number; antworten?: number; abmeldungen?: number;
+  geaendert: string;
+}
+export interface MarketingEinstellung { positionierung: string; icp: string; ton: string; saeulen: { id: string; name: string; beschreibung: string }[] }
 
 export interface PowerHourKarte { kontaktId: string; kategorie: string; ergebnis?: string; notiz?: string }
 export interface PowerHourSitzung {
@@ -178,9 +224,13 @@ export interface CrmBestand {
   sitzungen: PowerHourSitzung[];
   antraege: Antrag[];
   verarbeitungen: Verarbeitung[];
+  segmente: Segment[];
+  beitraege: Beitrag[];
+  newsletter: NewsletterAusgabe[];
+  marketing?: MarketingEinstellung;
   /** Wahrscheinlichkeiten je Stufe, von Hand überschreibbar (wie in KEMARIS Operations „von_hand“). */
   wahrscheinlichkeiten?: Partial<Record<ChancenStufe, number>>;
 }
 
-export const CRM_LISTEN = ['firmen', 'chancen', 'mandate', 'leistungen', 'events', 'teilnahmen', 'sitzungen', 'antraege', 'verarbeitungen'] as const;
+export const CRM_LISTEN = ['firmen', 'chancen', 'mandate', 'leistungen', 'events', 'teilnahmen', 'sitzungen', 'antraege', 'verarbeitungen', 'segmente', 'beitraege', 'newsletter'] as const;
 export type CrmListe = typeof CRM_LISTEN[number];
