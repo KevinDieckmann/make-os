@@ -215,6 +215,24 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Meeting, Netzwerk, Prospecting, Bauplan, Roadmap, Onboarding, Research,
 > Content, Datenbasis, Stammdaten, Startfläche, Übersicht (alt).
 
+> **Nachtrag 24.09., alles umgesetzt.** Kevin: *„alles umsetzen."* Erst eine
+> mechanische Runde über alle alten Dateien (Kästen → Karten, Monospace-Labels
+> → Display-Schrift, Ränder angeglichen; 51 Dateien), dann fünf parallele
+> Bau-Agenten mit demselben Vertrag (Bausteine aus `schlank.tsx`, keine
+> Funktion entfällt, kein THEME, keine Rahmen, keine Schrift unter 11, nie eine
+> Null): **Zeit** (Kalender, Tagesplan, Wochenplan, Tageslauf, Woche),
+> **Planung & Ziele** (Horizonte, Routinen, Kompass, Fokus, OKR, Journal,
+> Tagesstart), **Zahlen** (Grundlage, Buchungen, Rechnungen & Zahlungen,
+> Liquidität, Controlling, Malins Dashboard), **Business** (Board, Meeting,
+> Netzwerk, Prospecting, Mandate, Research, Content), **System & Körper**
+> (Bauplan, Roadmap, Datenbasis, Stammdaten, Onboarding, Zusammenarbeit,
+> Energie, Ernährung, Säulen-Seiten). Dazu die Anmeldeseite. 34 Ansichten,
+> 4.400 Zeilen neu. Am alten Schema hängen nur noch die Legacy-Fallbacks
+> (Übersicht alt, Aufgaben-Board, Inbox voll, Stapel voll, Startfläche) und
+> Mitläufer (Jarvis-Panel, Taktgeber) — die erben Farben und Flächen über die
+> gemeinsamen Werte. Der erste Lauf der Agenten scheiterte am Sitzungslimit
+> (23.09., 23:30), der zweite lief durch.
+
 Jede Phase hat ein Ziel in einem Satz, eine Fertig-Bedingung, und eine Liste,
 was **bewusst nicht** darin ist. Grobe Größe in Arbeitstagen — ehrlich grob.
 
