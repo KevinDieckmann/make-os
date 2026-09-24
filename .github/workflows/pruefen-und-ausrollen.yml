@@ -1,0 +1,37 @@
+# ─── MAKE OS · Prüfen und ausrollen ─────────────────────────────────────────
+# Jeder Push auf main: Typen, Tests, Lint. Nur wenn alles grün ist, zieht der
+# Server den Stand und baut neu. Geheimnisse im Repo (Settings → Secrets):
+#   MAKE_OS_HOST     — Server-IP oder -Name
+#   MAKE_OS_SSH_KEY  — privater Schlüssel, dessen öffentlicher Teil bei make@Server liegt
+name: Prüfen und ausrollen
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  pruefen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx tsc --noEmit -p tsconfig.json
+      - run: npx vitest run
+      - run: npx next lint
+
+  ausrollen:
+    needs: pruefen
+    runs-on: ubuntu-latest
+    if: ${{ vars.AUSROLLEN != 'aus' }}
+    steps:
+      - name: Server zieht und baut
+        env:
+          HOST: ${{ secrets.MAKE_OS_HOST }}
+          KEY: ${{ secrets.MAKE_OS_SSH_KEY }}
+        run: |
+          [ -n "$HOST" ] && [ -n "$KEY" ] || { echo "Noch kein Server hinterlegt — nur geprüft."; exit 0; }
+          mkdir -p ~/.ssh && echo "$KEY" > ~/.ssh/id && chmod 600 ~/.ssh/id
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/id make@"$HOST" 'cd /srv/make-os/app && git pull --ff-only && docker compose up -d --build && docker image prune -f'

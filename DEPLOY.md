@@ -1,5 +1,37 @@
 # MAKE OS gemeinsam betreiben
 
+## ▶ Live gehen — die Schritte (vorbereitet 24.09. abends)
+
+Alles Technische liegt im Repo: `Dockerfile`, `compose.yml` (App, Arbeiter,
+Caddy mit HTTPS), `deploy/` (Einrichtung, Datenumzug, Sicherung, Vault-Abgleich,
+Zulieferer) und `.github/workflows/pruefen-und-ausrollen.yml`. Der
+Produktions-Build läuft (geprüft 24.09.).
+
+**Kevin (je einmal, im Browser — ca. 20 Minuten):**
+1. **GitHub:** zwei private Repos anlegen, ohne README: `make-os` (Code) und
+   `make-vault` (Obsidian-Hirn). SSH-Schlüssel des Macs hinterlegen, falls noch nicht.
+2. **Hetzner:** Cloud-Server CX22, Falkenstein, Ubuntu 24.04, SSH-Schlüssel des Macs → IP an Claude.
+3. **Adresse:** Domain oder Subdomain festlegen, A-Eintrag auf die Server-IP.
+
+**Claude (ca. 45 Minuten, mit Kevin am Bildschirm):**
+1. Code nach `make-os` pushen.
+2. Auf dem Server: `bash server-einrichten.sh <repo>` → Deploy-Schlüssel in beide Repos eintragen.
+3. `.env` aus `deploy/env.server.beispiel` — neue Schlüssel (`openssl rand -hex 32`).
+4. Vault: `deploy/vault.gitignore` als `.gitignore` in `~/Desktop/MAKE/Make.Claude`,
+   `git init`, nach `make-vault` pushen; auf dem Server nach `/srv/make-os/vault` klonen.
+5. `bash deploy/daten-hochladen.sh <server>` — **ab da nur noch online arbeiten.**
+6. `docker compose up -d --build` → Adresse öffnen, anmelden, Stichproben.
+7. GitHub-Secrets `MAKE_OS_HOST`, `MAKE_OS_SSH_KEY` → jeder Push rollt geprüft aus.
+8. Mac: `~/.make-os/zulieferer.env` anlegen, Zulieferer als Hintergrunddienst
+   (`deploy/de.makeos.zulieferer.plist`), Vault-Abgleich per Cron.
+9. Malin einladen (Konto → Einladung), Haushalt „kevin-malin“ zuweisen.
+
+**Mac liefert zu (Kevins Entscheidung):** Kalender, Mail, Erinnerungen und
+Kontakte liest nur der Mac. Auf dem Server zeigen die Apple-Routen den zuletzt
+zugelieferten Stand (Kopfzeile `X-Stand`); Termin anlegen und Mail-Entwürfe
+gehen nur am Mac. Die lokale Instanz dient danach NUR noch als Zulieferer.
+
+
 Was wohin gehört, damit Kevin und Malin zusammen arbeiten können — und was
 bewusst **nicht** über iCloud läuft.
 

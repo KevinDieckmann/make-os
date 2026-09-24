@@ -1,0 +1,10 @@
+# HTTPS für MAKE OS — Zertifikat holt Caddy selbst, sobald die Domain auf den Server zeigt.
+{$MAKE_OS_DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+	reverse_proxy app:3000
+}

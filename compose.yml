@@ -1,0 +1,58 @@
+# ─── MAKE OS auf dem Server ─────────────────────────────────────────────────
+# app      — die Oberfläche und alle Schnittstellen (next start, Port 3000 intern)
+# arbeiter — der Takt: holt jede Minute fällige Läufe (Tagesstart, Head of Finance …)
+# caddy    — HTTPS von allein (Let's Encrypt) für MAKE_OS_DOMAIN
+#
+# Ordner auf dem Server (server-einrichten.sh legt sie an):
+#   /srv/make-os/daten   → .data   (alles, was ihr eingebt)
+#   /srv/make-os/vault   → Obsidian-Hirn (privates Git-Repo, vault-abgleich.sh)
+# Geheimnisse stehen in /srv/make-os/app/.env (Vorlage: deploy/env.server.beispiel).
+
+services:
+  app:
+    build: .
+    image: make-os:aktuell
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: "3000"
+      TZ: Europe/Berlin
+      MAKE_OS_INTERN: http://localhost:3000
+      MAKE_VAULT_DIR: /vault
+    volumes:
+      - ${MAKE_OS_DATEN:-/srv/make-os/daten}:/app/.data
+      - ${MAKE_OS_VAULT:-/srv/make-os/vault}:/vault
+    expose: ["3000"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/anmelden').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  arbeiter:
+    image: make-os:aktuell
+    restart: unless-stopped
+    env_file: .env
+    command: ["node", "worker.mjs"]
+    environment:
+      TZ: Europe/Berlin
+      MAKE_OS_URL: http://app:3000
+    depends_on:
+      app:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      MAKE_OS_DOMAIN: ${MAKE_OS_DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_daten:/data
+      - caddy_konfig:/config
+    depends_on: [app]
+
+volumes:
+  caddy_daten:
+  caddy_konfig:

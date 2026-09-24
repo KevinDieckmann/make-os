@@ -5,6 +5,7 @@
 // (macOS-Popup „Zugriff auf Erinnerungen").
 
 import { NextResponse } from 'next/server';
+import { AUF_DEM_MAC, merke, vomMac } from '@/lib/mac';
 import { spawn } from 'child_process';
 
 export const runtime = 'nodejs';
@@ -63,6 +64,7 @@ function parseDate(s: string): string | undefined {
 }
 
 export async function GET() {
+  if (!AUF_DEM_MAC) return vomMac('erinnerungen', []);
   try {
     const stdout = await runOsascript(SCRIPT);
     const items: object[] = [];
@@ -81,6 +83,7 @@ export async function GET() {
         source: 'apple-reminders',
       });
     }
+    await merke('erinnerungen', items);
     return NextResponse.json(items, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

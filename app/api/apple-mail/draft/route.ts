@@ -3,6 +3,7 @@
 // Versand!). Kevin prüft und sendet selbst — sauberes Human-in-the-Loop.
 
 import { NextResponse } from 'next/server';
+import { AUF_DEM_MAC, nurMac } from '@/lib/mac';
 import { spawn } from 'child_process';
 
 export const runtime = 'nodejs';
@@ -25,6 +26,7 @@ function runOsascript(script: string, timeoutMs = 20_000): Promise<string> {
 }
 
 export async function POST(req: Request) {
+  if (!AUF_DEM_MAC) return nurMac();
   let p: { to?: string; subject?: string; body?: string };
   try { p = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const to = (p.to ?? '').trim();

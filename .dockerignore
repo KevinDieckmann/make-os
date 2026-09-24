@@ -1,0 +1,10 @@
+node_modules
+.next
+.data
+.env*
+.git
+.github
+.claude
+tests
+*.log
+public/pdf.worker.min.mjs

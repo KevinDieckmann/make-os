@@ -3,6 +3,7 @@
 // Woche selbst schützt. Nur auf Klick des Nutzers (Human-in-the-Loop). Lokal.
 
 import { NextResponse } from 'next/server';
+import { AUF_DEM_MAC, nurMac } from '@/lib/mac';
 import { spawn } from 'child_process';
 import { loadJson } from '@/lib/store/local-db';
 
@@ -52,6 +53,7 @@ function blockFor(e: NewEvent, erlaubt: Set<string>, standard: string): string |
 }
 
 export async function POST(req: Request) {
+  if (!AUF_DEM_MAC) return nurMac();
   let payload: { events?: NewEvent[] };
   try { payload = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const list = Array.isArray(payload.events) ? payload.events.slice(0, 30) : [];

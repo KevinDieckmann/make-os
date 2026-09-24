@@ -13,6 +13,7 @@
 // wiederfinden und mitlöschen, wenn der Block im Planer verschwindet.
 
 import { NextResponse } from 'next/server';
+import { AUF_DEM_MAC, nurMac } from '@/lib/mac';
 import { spawn } from 'child_process';
 import { loadJson } from '@/lib/store/local-db';
 
@@ -54,6 +55,7 @@ async function zielKalender(): Promise<string> {
 }
 
 export async function POST(req: Request) {
+  if (!AUF_DEM_MAC) return nurMac();
   let body: { titel?: string; date?: string; startMin?: number; dauerMin?: number; notiz?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein JSON.' }, { status: 400 }); }
 
@@ -95,6 +97,7 @@ end tell`;
 
 /** Termin wieder entfernen — wenn der Block im Planer gelöscht wird. */
 export async function DELETE(req: Request) {
+  if (!AUF_DEM_MAC) return nurMac();
   const uid = new URL(req.url).searchParams.get('uid') ?? '';
   if (!uid) return NextResponse.json({ ok: false, error: 'uid fehlt.' }, { status: 400 });
   const kalender = await zielKalender();
@@ -118,6 +121,7 @@ end tell`;
 
 /** Welche Kalender beschreibbar sind — für die Auswahl in den Einstellungen. */
 export async function GET() {
+  if (!AUF_DEM_MAC) return nurMac();
   try {
     const roh = await osascript(`
 tell application "Calendar"

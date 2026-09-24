@@ -8,6 +8,7 @@
 // keine Geburtstage — was wir nicht brauchen, holen wir nicht.
 
 import { NextResponse } from 'next/server';
+import { AUF_DEM_MAC, merke, vomMac } from '@/lib/mac';
 import { spawn } from 'child_process';
 
 export const runtime = 'nodejs';
@@ -96,6 +97,7 @@ function einordnen(firma: string, rolle: string, email: string): 'geschaeftlich'
 }
 
 export async function GET() {
+  if (!AUF_DEM_MAC) return vomMac('kontakte', { kontakte: [], anzahl: 0, error: 'Kontakte kommen nur vom Mac — noch nichts zugeliefert.' });
   try {
     const stdout = await runOsascript(SCRIPT);
     const kontakte = [];
@@ -121,6 +123,7 @@ export async function GET() {
     }
     const zaehl = { geschaeftlich: 0, privat: 0, unklar: 0 };
     kontakte.forEach(k => { zaehl[k.art]++; });
+    await merke('kontakte', { kontakte, anzahl: kontakte.length, zaehl });
     return NextResponse.json({ kontakte, anzahl: kontakte.length, zaehl });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Kontakte nicht lesbar.' }, { status: 200 });

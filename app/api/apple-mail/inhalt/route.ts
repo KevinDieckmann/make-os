@@ -9,6 +9,7 @@
 // Read-only: es wird gelesen, nie geantwortet, nie verschoben, nie gelöscht.
 
 import { NextResponse } from 'next/server';
+import { AUF_DEM_MAC, nurMac } from '@/lib/mac';
 import { spawn } from 'child_process';
 
 export const runtime = 'nodejs';
@@ -85,6 +86,7 @@ function osascript(s: string, timeoutMs: number): Promise<string> {
 }
 
 export async function GET(req: Request) {
+  if (!AUF_DEM_MAC) return nurMac();
   const p = new URL(req.url).searchParams;
   const suche = (p.get('suche') ?? '').toLowerCase().trim();
   const anzahl = Math.min(5, Math.max(1, Number(p.get('anzahl') ?? 1)));

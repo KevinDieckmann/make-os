@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { AUF_DEM_MAC, merke, vomMac } from '@/lib/mac';
 import { spawn } from 'child_process';
 
 // ─── AppleScript — liest die neuesten Mails je aktivem Postfach ──────────────
@@ -89,6 +90,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  if (!AUF_DEM_MAC) return vomMac('mail', []);
   try {
     const stdout = await runOsascript(SCRIPT);
 
@@ -119,6 +121,7 @@ export async function GET() {
       b.receivedAt.localeCompare(a.receivedAt),
     );
 
+    await merke('mail', messages.slice(0, 50));
     return NextResponse.json(messages.slice(0, 50), {
       headers: { 'Cache-Control': 'no-store' },
     });

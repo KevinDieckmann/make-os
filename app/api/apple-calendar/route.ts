@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { AUF_DEM_MAC } from '@/lib/mac';
 import { spawn } from 'child_process';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 
@@ -103,6 +104,10 @@ export async function GET(req: Request) {
   const force = new URL(req.url).searchParams.get('refresh') === '1';
   const cached = await loadJson<CalCache>(CACHE);
 
+  // Auf dem Server gibt es kein osascript: dort gilt, was der Mac zugeliefert hat.
+  if (!AUF_DEM_MAC) {
+    return NextResponse.json(cached?.events ?? [], { headers: { 'Cache-Control': 'no-store', 'X-Cache': cached ? 'zulieferung' : 'leer', ...(cached?.at ? { 'X-Stand': cached.at } : { 'X-Nur-Mac': '1' }) } });
+  }
   // Frischer Cache → sofort ausliefern (kein zäher osascript-Read)
   if (!force && cached && Date.now() - new Date(cached.at).getTime() < STALE_MS) {
     return NextResponse.json(cached.events, { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'hit', 'X-Stand': cached.at } });
