@@ -13,6 +13,7 @@ import { gesamtwert, VERLUSTGRUENDE } from '@/lib/crm/pipeline';
 import type { Chance, ChancenStufe, Qual } from '@/lib/crm/typen';
 import { type CrmApi, neueId, datum, euro, kurzEuro, plusTage } from './daten';
 import { Feldzeile, Pillen, Feld } from './teile';
+import { HeadPanel } from './HeadPanel';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 const ARTEN = [{ id: 'retainer', label: 'Retainer' }, { id: 'projekt', label: 'Projekt' }, { id: 'workshop', label: 'Workshop' }, { id: 'vermittlung', label: 'Vermittlung' }, { id: 'software', label: 'Software' }] as const;
@@ -42,6 +43,7 @@ export function Pipeline({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
 
   return (
     <>
+      <HeadPanel head="sales" standardModus="deal_review" zuKontakt={zuKontakt} i={0} nachEntscheid={() => void api.laden()} />
       <Karte i={0}>
         <Ueberschrift rechts={<Knopf onClick={neu}>+ Chance</Knopf>}>Prognose</Ueberschrift>
         <Raster min={150}>
