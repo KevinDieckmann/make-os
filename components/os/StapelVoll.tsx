@@ -348,7 +348,7 @@ export function StapelView() {
                 <Zahl wert={gehirn.dubletten ? String(gehirn.dubletten) : undefined} label="Kopien übersprungen" />
                 <Zahl wert={gehirn.privatUebersprungen ? String(gehirn.privatUebersprungen) : undefined} label="private Pfade zu" />
               </div>
-              <Leer>Aus deinen drei Vaults. Private Pfade werden gar nicht erst geöffnet.</Leer>
+              <Leer>Aus deinem Obsidian-Brain (Nummer eins) und der MAKE-OS-Doku. Malins private Ordner werden gar nicht erst geöffnet.</Leer>
             </Karte>
           )}
 

@@ -82,6 +82,13 @@ lokal, Route `/os`, Port 3001.
   Verbindungen. Neue Seiten: nie THEME, nie
   Rahmen-Kästen, nie Schrift unter 11, nie eine Null. Alte Ansichten liegen unter
   `/os/uebersicht`, `/os/aufgaben/board` und `/os/inbox/voll`.
+- **Obsidian ist Wissensbank Nummer eins (24.09.2026).** `lib/jarvis/vault.ts`
+  liest `~/Desktop/MAKE/Make.Claude` zuerst, dann die iCloud-Doku. Es gelten
+  Kevins Regeln aus dem Vault (`AGENTS.md`, `Vertraulichkeitsregeln.md`):
+  `scope: privat` nie an Agenten/Hintergrundläufe und nie in Texte nach außen;
+  Schreiben nur als Protokoll oder Anhang an `Offene_Fragen_Brain`,
+  `Taskmanagement_Brain`, `Jarvis_Log` — Fundament und Quellen nie, im Ordner
+  MAKE wird nichts gelöscht. Seite `/os/wissen`, Tests `vault-sicht`/`markdown`.
 - **`PLAN.md` ist der führende Plan (seit 18.09.2026).** Bestand bleibt und
   wird auf Hetzner hochgefahren; Reihenfolge Hochfahren → Aufgaben → CRM →
   Anbindungen → Prozesse. Ein Bereich wird fertig und benutzt, dann der

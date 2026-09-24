@@ -274,6 +274,26 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Zonenfarben je Tag, dazu HRV und Ruhepuls. Sicherung vor dem Import:
 > `.data/backup/vitals-vor-whoop-2026-09-24.json`.
 
+> **Nachtrag 24.09., Obsidian ist Wissensbank Nummer eins.** Kevin: *„kann
+> meine Software jetzt auch auf Obsidian zugreifen?“ — „ja mach das“ —
+> „Obsidian soll Nr. 1 Wissensbank sein.“* Führend ist jetzt Kevins Vault
+> `~/Desktop/MAKE/Make.Claude` (388 Notizen), dahinter die MAKE-OS-Doku in der
+> iCloud (41). Die Anbindung hält sich an die Regeln, die Kevin selbst im Vault
+> festgelegt hat (`AGENTS.md`, `Vertraulichkeitsregeln.md`): Notizen mit
+> `scope: privat` nutzt Jarvis nur im Gespräch mit Kevin, nie in Mails,
+> Entwürfen oder Briefings; Agenten und Hintergrundläufe bekommen sie nie;
+> Malin sieht alles außer Kevins Privatem; andere Konten nur `familie` und
+> `oeffentlich`. Geschrieben wird nur, was der Vault erlaubt: neue Notizen als
+> Protokoll in `03. Protokolle`, Anhängen nur an `Offene_Fragen_Brain`,
+> `Taskmanagement_Brain` und `Jarvis_Log`. Obsidians eigene Ausschlüsse
+> (`userIgnoreFilters`) gelten mit. Jarvis liest seine Grundlage
+> (`00_JARVIS_AGENT`) und die Vertraulichkeitsregeln bei jedem Gespräch live —
+> vorher stand das nur in der Notiz, nicht im Code. Neue Seite **Wissen** in der
+> Leiste: links suchen und stöbern nach Bereich, rechts lesen (Tabellen,
+> Aufgaben, Callouts, klickbare `[[Wikilinks]]`, der oberste 🔴-Block als
+> gültiger Stand), mit Griff „In Obsidian öffnen“. Direktlink:
+> `/os/wissen?n=<Notiz>`. Tests: 180 grün.
+
 Jede Phase hat ein Ziel in einem Satz, eine Fertig-Bedingung, und eine Liste,
 was **bewusst nicht** darin ist. Grobe Größe in Arbeitstagen — ehrlich grob.
 

@@ -26,7 +26,7 @@ export async function fuehreAus(
   name: string,
   input: Record<string, unknown>,
   origin: string,
-  opt: { erzwingen?: boolean; anlass?: string; person?: Person; vorschlagen?: boolean; quelle?: 'gespraech' | 'lauf' } = {},
+  opt: { erzwingen?: boolean; anlass?: string; person?: Person; vorschlagen?: boolean; quelle?: 'gespraech' | 'lauf'; hintergrund?: boolean } = {},
 ): Promise<Lauf> {
   const werk = WERKZEUGE[name];
   if (!werk) return { text: `Unbekanntes Werkzeug: ${name}.`, ok: false, gestapelt: false };
@@ -70,7 +70,11 @@ export async function fuehreAus(
     };
   }
 
-  const text = await werk.lauf(input, origin, opt.person);
+  // Kevins Vertraulichkeitsregeln im Vault: „Agenten bekommen nie privat."
+  // Was ohne Gespräch im Hintergrund läuft, liest das Brain deshalb in der
+  // Agenten-Sicht (ohne Person). Geschrieben wird weiterhin für die Person.
+  const leseSicht = (opt.hintergrund || opt.quelle === 'lauf') && gruppe === 'wissen' && (name === 'suche_wissen' || name === 'lies_notiz');
+  const text = await werk.lauf(input, origin, leseSicht ? undefined : opt.person);
   // Ebenfalls nur der Anfang: die Werkzeuge stellen ihre Fehlermeldung voran,
   // im weiteren Text dürfen dieselben Wörter harmlos vorkommen.
   const ok = !/fehlgeschlagen|nicht erreichbar|nicht lesbar|nicht angelegt|Kollision|Kein Meilenstein|Nicht ausgeführt/i.test(text.slice(0, 200));

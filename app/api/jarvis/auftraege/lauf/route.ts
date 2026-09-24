@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     // Die Identität kommt aus dem AUFTRAG, nicht aus dieser Anfrage: der
     // Arbeiter ruft hier an, nicht die Person. Sonst liefe alles, was nachts
     // passiert, unter einer Dienst-Identität.
-    const lauf = await fuehreAus(a.name, a.eingabe, origin, { anlass: a.anlass, person: a.person });
+    const lauf = await fuehreAus(a.name, a.eingabe, origin, { anlass: a.anlass, person: a.person, hintergrund: true });
     await melde(a.id, lauf.ok ? 'fertig' : 'fehler', lauf.text);
     return NextResponse.json({ ok: lauf.ok, ergebnis: lauf.text, gestapelt: lauf.gestapelt });
   } catch (err) {

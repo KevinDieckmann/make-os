@@ -510,37 +510,41 @@ async function fragGedaechtnis(input: Record<string, unknown>, _origin: string, 
 
 // ── Das Gehirn: Kevins Notizen (Baustein 4b) ──────────────────────────────
 
-async function sucheWissen(input: Record<string, unknown>): Promise<string> {
+// Die Sicht: im Gespräch die Person, für die Jarvis arbeitet; ohne Person
+// (Hintergrundlauf) ein Agent — und Agenten bekommen nie Privates (Vertraulichkeitsregeln §1).
+const sichtFuer = (person?: string) => (person ? { person } : { person: 'kevin', agent: true });
+
+async function sucheWissen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
   const frage = String(input.frage ?? '').trim().slice(0, 300);
   if (!frage) return 'Fehlgeschlagen: frage fehlt.';
   const { suche } = await import('./vault');
-  const { treffer, durchsucht } = await suche(frage, Math.min(8, Math.max(1, Number(input.anzahl) || 5)));
+  const { treffer, durchsucht } = await suche(frage, Math.min(8, Math.max(1, Number(input.anzahl) || 5)), sichtFuer(person));
   if (!treffer.length) return `Nichts gefunden zu „${frage}" (${durchsucht} Notizen durchsucht).`;
   return `WISSEN — ${treffer.length} von ${durchsucht} Notizen:\n\n` + treffer.map(t =>
-    `QUELLE ${t.id}\nTITEL ${t.titel}${t.ueberschriften.length ? `\nABSCHNITTE ${t.ueberschriften.slice(0, 4).join(' · ')}` : ''}\n${t.ausschnitt}`,
+    `QUELLE ${t.id}\nTITEL ${t.titel} · ${t.bereich}${t.scope === 'privat' ? ' · 🔒 PRIVAT' : ''}${t.stand ? ` · Stand ${t.stand}` : ''}${t.ueberschriften.length ? `\nABSCHNITTE ${t.ueberschriften.slice(0, 4).join(' · ')}` : ''}\n${t.ausschnitt}`,
   ).join('\n\n───\n\n')
-  + '\n\nNenne Kevin die Quelle, aus der du zitierst — er will sehen, woher es kommt.';
+  + '\n\nNenne die Quelle, aus der du zitierst. 🔒 PRIVAT heißt: nur im Gespräch mit der Person selbst verwenden — nie in Mails, Entwürfe, Briefings oder Texte nach außen.';
 }
 
-async function liesNotiz(input: Record<string, unknown>): Promise<string> {
+async function liesNotiz(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
   const id = String(input.notiz ?? '').trim();
   if (!id) return 'Fehlgeschlagen: notiz fehlt.';
   const { notiz } = await import('./vault');
-  const d = await notiz(id);
+  const d = await notiz(id, 12_000, sichtFuer(person));
   if (!d.ok) return `Notiz nicht lesbar: ${d.fehler}`;
-  return `NOTIZ ${d.pfad} — ${d.titel}\n\n${d.text}`;
+  return `NOTIZ ${d.pfad} — ${d.titel}${d.scope === 'privat' ? ' · 🔒 PRIVAT' : ''}${d.stand ? ` · Stand ${d.stand}` : ''}${d.oben ? `\nGÜLTIGER STAND (oberster 🔴-Block):\n${d.oben}\n───` : ''}\n\n${d.text}`;
 }
 
-async function notizAnlegen(input: Record<string, unknown>): Promise<string> {
+async function notizAnlegen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
   const { legeAn } = await import('./vault');
-  const d = await legeAn(String(input.titel ?? ''), String(input.text ?? ''), input.ordner ? String(input.ordner) : undefined);
-  return d.ok ? `Angelegt: ${d.pfad} — steht in deinem Vault.` : `Notiz nicht angelegt: ${d.fehler}`;
+  const d = await legeAn(String(input.titel ?? ''), String(input.text ?? ''), { person, scope: input.privat === true ? 'privat' : 'intern' });
+  return d.ok ? `Protokoll angelegt: ${d.pfad} — steht in deinem Obsidian-Brain.` : `Nicht angelegt: ${d.fehler}`;
 }
 
-async function notizErgaenzen(input: Record<string, unknown>): Promise<string> {
+async function notizErgaenzen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
   const { haengeAn } = await import('./vault');
-  const d = await haengeAn(String(input.notiz ?? ''), String(input.text ?? ''));
-  return d.ok ? `Ergänzt: ${d.pfad} — angehängt, nichts überschrieben.` : `Nicht ergänzt: ${d.fehler}`;
+  const d = await haengeAn(String(input.notiz ?? ''), String(input.text ?? ''), { titel: input.titel ? String(input.titel) : undefined, person });
+  return d.ok ? `Ergänzt: ${d.pfad} — als datierter Block angehängt, nichts überschrieben.` : `Nicht ergänzt: ${d.fehler}`;
 }
 
 

@@ -13,6 +13,7 @@ import { AUSFUEHRBAR, AGENT_ZWECK, runAgent, type Ausfuehrbar } from '@/lib/jarv
 import { fuehreAus } from '@/lib/jarvis/ausfuehren';
 import { offeneAnzahl } from '@/lib/jarvis/stapel';
 import { personAus } from '@/lib/jarvis/raum';
+import { brainAnweisung } from '@/lib/jarvis/vault';
 import { lies as liesFakten, fuerPrompt as faktenFuerPrompt } from '@/lib/jarvis/gedaechtnis';
 
 export const runtime = 'nodejs';
@@ -30,8 +31,10 @@ async function liveContext(person: string = 'kevin'): Promise<string> {
     return '(Brain gerade nicht erreichbar — antworte vorsichtig und sag das offen.)';
   }
 }
-function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaechtnis = '', person: string = 'kevin'): string {
+function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaechtnis = '', person: string = 'kevin', brain = ''): string {
   return [
+    // 24.09.: Die Identität kommt live aus Kevins Obsidian-Brain (AGENTS.md §5).
+    brain ? `DEINE GRUNDLAGE AUS KEVINS OBSIDIAN-BRAIN — gilt für jede Antwort. Die Regeln dieser Software unten gehen bei Widerspruch vor (Werkzeuge, Freigaben, Live-Zahlen).\n\n${brain}` : '',
     fortsetzung
       ? 'GEDÄCHTNIS: Die vorherigen Züge dieses Gesprächs stehen dir zur Verfügung. Beziehe dich darauf, statt Fragen zu wiederholen — „das", „nochmal", „und für Juli" meint das, worüber ihr gerade geredet habt. Keine erneute Begrüßung, keine Zusammenfassung des bisherigen Gesprächs, es sei denn Kevin fragt danach.'
       : '',
@@ -69,7 +72,7 @@ function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaec
     // Kein hartkodierter Kontext mehr: Zahlen, Index, Ziele, Team und
     // Meilensteine kommen ausschließlich aus dem Brain (live) — eine Wahrheit.
     gedaechtnis ? `WAS DU DIR GEMERKT HAST (dein Langzeit-Gedächtnis — benutze es, statt zu fragen, was du schon weißt):\n${gedaechtnis}` : '',
-    'DEIN GEHIRN: Kevins eigene Notizen liegen in drei Vaults (MAKE OS in der iCloud, KEMA_Brain, MAKE). Mit suche_wissen kommst du dran — nutze das, BEVOR du sagst, dass du etwas nicht weißt, und immer bei Fragen nach Personen, Preisen, Vereinbarungen, Terminologie oder früheren Entscheidungen. NENNE IMMER DIE QUELLE, aus der du zitierst (die Kennung unter QUELLE): Kevin will sehen, woher es kommt, und merkt so, wenn du aus einer alten Notiz zitierst. Schreiben darfst du auch: notiz_anlegen für Neues, notiz_ergaenzen zum Anhängen. Überschrieben oder gelöscht wird nie.',
+    'DEIN GEHIRN: Kevins Obsidian-Brain (Vault „MAKE“, Ordner Make.Claude) ist deine Wissensbank Nummer eins; dazu die MAKE-OS-Doku in der iCloud. Mit suche_wissen und lies_notiz kommst du dran — nutze das, BEVOR du sagst, dass du etwas nicht weißt, und immer bei Fragen nach Personen, Firmen, Preisen, Vereinbarungen, Terminologie oder früheren Entscheidungen. Der oberste 🔴-UPDATE-Block einer Notiz ist ihr gültiger Stand. NENNE IMMER DIE QUELLE (die Kennung unter QUELLE). Mit 🔒 PRIVAT markierte Notizen nur im Gespräch mit der Person selbst verwenden, nie in Mails, Entwürfe, Briefings oder Texte nach außen. Schreiben nach den Regeln des Vaults: notiz_anlegen legt ein Protokoll an (03. Protokolle), notiz_ergaenzen hängt nur an Offene_Fragen_Brain, Taskmanagement_Brain oder Jarvis_Log an. Was nicht im Brain steht, erfindest du nicht — trag es als offene Frage in Offene_Fragen_Brain ein. Überschrieben oder gelöscht wird nie.',
     'WAS GILT: Bei Widersprüchen zwischen Vault und Software gilt die SOFTWARE. Zahlen, Aufgaben und Termine kommen aus dem Live-Zustand; der Vault liefert Zusammenhang und Wissen, keine aktuellen Werte. Sag es Kevin, wenn dir ein Widerspruch auffällt.',
     'MERKEN: Fällt im Gespräch ein dauerhafter Fakt („Frank ist jetzt bei der Volksbank", „Malin mag keine Termine vor 10", „wir haben uns gegen X entschieden"), dann leg ihn SOFORT mit fakt_merken ab — ohne zu fragen, ohne es anzukündigen. Kevin sieht alles Gemerkte in einer Liste und wirft raus, was nicht stimmt. Merke keine Tagesdaten, die ohnehin im Live-Zustand stehen (Kontostände, offene Aufgaben, Termine) — nur was länger gilt. Mit frag_gedaechtnis siehst du nach, bevor du rätst.',
     '',
@@ -146,7 +149,7 @@ export async function POST(req: Request) {
     tools.push(
       {
         name: 'suche_wissen',
-        description: 'Durchsucht Kevins eigene Notizen (MAKE OS-Vault, KEMA_Brain, MAKE) — sein aufgebautes Wissen über KEMARIS, Sales, Finanzen, Terminologie, Personen, Projekte. Nutze das IMMER, bevor du sagst, dass du etwas nicht weißt, und bei jeder Frage nach Zusammenhängen, Vereinbarungen, Preisen, Personen oder früheren Entscheidungen. Nenne danach die Quelle, aus der du zitierst.',
+        description: 'Durchsucht Kevins Obsidian-Brain (Wissensbank Nummer eins: Firmen, Personen, Verträge, Sales, Finanzen, Terminologie, Protokolle) und die MAKE-OS-Doku. Nutze das IMMER, bevor du sagst, dass du etwas nicht weißt, und bei jeder Frage nach Zusammenhängen, Vereinbarungen, Preisen, Personen oder früheren Entscheidungen. Nenne danach die Quelle, aus der du zitierst.',
         input_schema: {
           type: 'object',
           properties: {
@@ -163,24 +166,25 @@ export async function POST(req: Request) {
       },
       {
         name: 'notiz_anlegen',
-        description: 'Legt eine NEUE Notiz in Kevins Vault an. Nutze das, wenn im Gespräch etwas entsteht, das dauerhaft gehört: ein Konzept, ein Protokoll, eine Sammlung. Eine bestehende Notiz wird dabei nie überschrieben.',
+        description: 'Legt ein PROTOKOLL im Obsidian-Brain an (03. Protokolle, Datum vorn, mit Kopf nach Vault-Regel). Nutze das, wenn im Gespräch etwas entsteht, das dauerhaft gehört: ein Gesprächsergebnis, eine Entscheidung, eine Sammlung. Andere Ordner beschreibt die Software nicht. Gibt es das Protokoll heute schon, wird ein Nachtrag angehängt.',
         input_schema: {
           type: 'object',
           properties: {
             titel: { type: 'string', description: 'Dateiname ohne .md' },
             text: { type: 'string', description: 'Der vollständige Inhalt in Markdown' },
-            ordner: { type: 'string', description: 'Unterordner im Vault (Standard „05 Wissen")' },
+            privat: { type: 'boolean', description: 'true, wenn der Inhalt privat ist (Gesundheit, Familie, Personeneinschätzungen) — dann scope: privat' },
           },
           required: ['titel', 'text'],
         },
       },
       {
         name: 'notiz_ergaenzen',
-        description: 'Hängt etwas an eine bestehende Notiz an — z. B. ein Gesprächsergebnis unter den Steckbrief einer Person. Es wird nur angehängt, nie überschrieben.',
+        description: 'Hängt einen datierten 🔴-Block an — erlaubt NUR an Offene_Fragen_Brain (Fragen, die das Brain nicht beantwortet), Taskmanagement_Brain (Aufgaben) oder Jarvis_Log (was du festgehalten hast). Andere Notizen pflegt Kevin selbst in Obsidian.',
         input_schema: {
           type: 'object',
           properties: {
-            notiz: { type: 'string', description: 'Die Kennung der Notiz' },
+            notiz: { type: 'string', description: 'Offene_Fragen_Brain, Taskmanagement_Brain oder Jarvis_Log' },
+            titel: { type: 'string', description: 'Kurzer Titel des Blocks' },
             text: { type: 'string', description: 'Was angehängt wird, in Markdown' },
           },
           required: ['notiz', 'text'],
@@ -419,8 +423,10 @@ export async function POST(req: Request) {
     let laufBudget = 8;
     let werkBudget = 14;
 
+    // Grundlage aus dem Obsidian-Brain (00_JARVIS_AGENT + Vertraulichkeitsregeln), eine Minute zwischengespeichert.
+    const brain = await brainAnweisung().catch(() => '');
     for (let runde = 0; runde < 3; runde++) {
-      const r = await askText({ system: systemPrompt(payload.context, live, !!vorgeschichte.length, gedaechtnis, person), user: message, messages: msgs, maxTokens: 4000, tools, timeoutMs: 180_000, zweck: 'jarvis-gespraech' });
+      const r = await askText({ system: systemPrompt(payload.context, live, !!vorgeschichte.length, gedaechtnis, person, brain), user: message, messages: msgs, maxTokens: 4000, tools, timeoutMs: 180_000, zweck: 'jarvis-gespraech' });
       if (!r.ok) {
         return NextResponse.json(
           { reply: `Anthropic hat abgelehnt (${r.status || 'offline'}). Prüf den Key/das Modell.`, error: r.error?.slice(0, 300) },

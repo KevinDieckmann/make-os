@@ -182,11 +182,11 @@ export const REGISTER: Record<string, Eintrag> = {
   },
   notiz_anlegen: {
     gruppe: 'wissen', risiko: 'frei',
-    vorschau: schlicht('Neue Notiz anlegen', i => `„${text(i.titel)}" in ${text(i.ordner) || '05 Wissen'}`),
+    vorschau: schlicht('Protokoll im Obsidian-Brain anlegen', i => `„${text(i.titel)}" in 03. Protokolle`),
   },
   notiz_ergaenzen: {
     gruppe: 'wissen', risiko: 'frei',
-    vorschau: schlicht('Notiz ergänzen', i => `${text(i.notiz, 100)} — ${text(i.text, 80)}`),
+    vorschau: schlicht('An Brain-Notiz anhängen', i => `${text(i.notiz, 100)} — ${text(i.text, 80)}`),
   },
   fakt_merken: {
     gruppe: 'gedaechtnis', risiko: 'frei',

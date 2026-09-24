@@ -9,7 +9,7 @@
 // Adresse erreichbar und die Leiste zeigt trotzdem, wo man ist.
 
 import type { LucideIcon } from 'lucide-react';
-import { Clock, Inbox, HeartPulse, TrendingUp, ListChecks, BarChart3, Users, Sparkles, Settings } from 'lucide-react';
+import { Clock, Inbox, HeartPulse, TrendingUp, ListChecks, BarChart3, Users, BookOpen, Sparkles, Settings } from 'lucide-react';
 
 export interface Eintrag { href: string; label: string; icon: LucideIcon; passt: string[] }
 
@@ -22,6 +22,8 @@ export const HAUPT: Eintrag[] = [
   { href: '/os/aufgaben', label: 'Aufgaben', icon: ListChecks, passt: ['/os/aufgaben', '/os/planung/woche', '/os/planung/monat', '/os/planung/quartal', '/os/planung/jahr', '/os/planung/routinen', '/os/meeting', '/os/board'] },
   { href: '/os/finanzen', label: 'Zahlen', icon: BarChart3, passt: ['/os/finanzen', '/os/controlling'] },
   { href: '/os/crm', label: 'Kontakte', icon: Users, passt: ['/os/crm', '/os/netzwerk', '/os/prospecting'] },
+  // 24.09., Kevin: „Obsidian soll Nr. 1 Wissensbank sein." — suchen und lesen, gepflegt wird in Obsidian.
+  { href: '/os/wissen', label: 'Wissen', icon: BookOpen, passt: ['/os/wissen'] },
   // 24.09., Kevin: „Nimm Jarvis einfach links als eigene Seite mit rein, wo ich draufklicken kann, wenn ich möchte."
   { href: '/jarvis', label: 'Jarvis', icon: Sparkles, passt: ['/jarvis'] },
 ];
