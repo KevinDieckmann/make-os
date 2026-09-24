@@ -365,6 +365,16 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > 290 Zahlen geprüft, 0 unbelegt. Offen: Rechtsform kdv/kdc und Steuer-Annahmen
 > eintragen; August im Controlling; Kontostände; Haushaltsdaten (Umzug).
 
+> **Nachtrag 24.09. abends, Launch-Vorbereitung Privat und KD-Ventures-Planung.**
+> Kevins neue MAKE.ORGA-Sicherung ist wieder bei 1.000 Buchungen abgeschnitten
+> (01.01.–16.05.; `sicherung.js` blättert nicht) — der Weg bleibt der Umzug per
+> Login (Zahlen › Privat › „Aus Malins Cockpit“). Supabase erreichbar, braucht Login.
+> Anlegen überall: Buchung von Hand, Konten/Kategorien/Regeln (Löschen nur, wo
+> nichts dranhängt). Business: Liquiditätsplanung KD Ventures (Excel v2, Okt 26–
+> Dez 27) als 42 Planposten übernommen (`scripts/liquiplan-aus-excel.py`,
+> Monatssalden = Excel bis auf Rundung); Platzhalter entfernt, Office Club endet 30.09.;
+> Liquidität zeigt jetzt 15 Monate.
+
 Jede Phase hat ein Ziel in einem Satz, eine Fertig-Bedingung, und eine Liste,
 was **bewusst nicht** darin ist. Grobe Größe in Arbeitstagen — ehrlich grob.
 
