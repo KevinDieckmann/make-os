@@ -101,6 +101,36 @@ lokal, Route `/os`, Port 3001.
   (privat ohne Beträge, Tag „haushalt“). Takt über `plan.ts`/`takt.ts`, ein Lauf
   je Haushalt gleichzeitig; Haushalts-Ergebnisse in Warteschlange/Agenten-Log
   nur als Zähler. Speicher: `finanzchef` (Business) · `haushalt-chef--<h>`.
+- **Navigation (24.09.2026, Kevins Vorgabe):** links nur Jarvis · Brain (Wissen) ·
+  CRM · Fokus · Aufgaben (`lib/make-one/navigation.ts`, Test `navigation.test.ts`);
+  alles andere oben im `WachstumsKopf` (Heute, Inbox, Säulen-Ringe). `/os/fokus`
+  ist eine eigene Seite (Fokus je Horizont, Tagesform, Regler).
+- **Familie & Partnerschaft (24.09.2026):** `/os/familie`, Logik `lib/familie/`,
+  Speicher `familie--<haushalt>` nur über `haushaltVon`. Gemessen wird der
+  Pflege-Rhythmus des PAARES (28 Tage, Gewichte in `logik.ts`), nie eine Person,
+  nie Gefühle; Ausnahmezeit pausiert. „nur-ich“-Einträge und ungeteilte
+  Reparatur-Reflexionen sieht und ändert nur, wer sie schrieb (serverseitig
+  erzwungen). Säule „Familie & Partnerschaft“ im Score = Pflege-Rhythmus.
+  Konzept: `docs/konzepte/familie-und-partnerschaft.md`.
+- **CRM (24.09.2026): alles zur Kundengewinnung unter `/os/crm`** — Heute (Power
+  Hour) · Kartei · Pipeline · Kunden · Marketing · Events. Personen im Speicher
+  `kontakte` (Modell `lib/make-one/crm.ts`), alles daran im Speicher `crm`
+  (`lib/crm/`: pipeline, recht, heute, kunden, events, dubletten, umzug).
+  Grundkonzept aus der Markttraktion (KEMARIS Operations) — **Daten nur eigene**
+  (Masterdatei `~/Desktop/CRM Leadordner`, Brain); nie Daten aus Operations/HubSpot
+  holen, das Adressbuch der Kontakte-App bleibt draußen. **Kanal-Ampel
+  (`lib/crm/recht.ts`) gilt für jede Karte, jeden Entwurf, jedes Agentenpaket**:
+  LinkedIn-Nachricht = elektronische Post, Kaltanruf nur mit Anlass, Werbesperre
+  sperrt alles — keine Rechtsberatung, einmal anwaltlich gegenlesen. Kunden
+  = Mandate (`kundenAusMandaten` für Score/Jarvis); Mandat → Liquiplan nur als
+  Vorschlag (`/api/crm/liquiplan`), nie automatisch. Konzept:
+  `docs/konzepte/crm-sales-marketing-events.md`.
+- **Die drei Heads (24.09.2026):** Sales, Marketing, Event in `lib/heads/`
+  (Muster wie Head of Finance: Code rechnet das Datenpaket, Prüfer streicht
+  erfundene IDs, Sperren und unzulässige Kanäle, Vollzug/unbelegte Zahlen →
+  Korrekturrunde; Freigabe-Liste `head-<id>`; angenommen = nächster Schritt an
+  der Person oder Aufgabe). Nie `privatNotiz`, nie gesperrte Personen ins Paket.
+  Takt in `lib/heads/takt.ts`, eingehängt in `lib/jarvis/takt.ts`.
 - **Eine Kasse (24.09.2026).** Business-Kasse = Summe der Firmenkonten
   (`geschaeftsKasse`/`mitKasse` in `finance-data.ts`); `finance.cash` nur
   Rückfall. Rest-Monate ab heute (Berlin). Keine zweite Runway-Formel bauen.

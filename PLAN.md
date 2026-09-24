@@ -247,6 +247,20 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > der Produktions-Build nicht mehr an Lint-Fehlern. Nicht angefasst: der erste
 > Bau unter `/dashboard` (rund 70 Dateien, von der Prüfung ausgenommen).
 
+> **Nachtrag 24.09., Abend — fünf Punkte von Kevin.** (1) Navigation links nur
+> Jarvis · Brain · CRM · Fokus · Aufgaben, Rest oben; Fokus ist eine eigene Seite.
+> (2) **Familie & Partnerschaft** (`/os/familie`): Paar-Gespräch mit Agenda und
+> Zeitbox, Rituale, Dates, Themen-Parkplatz, Reparatur, Vision, wichtige Tage,
+> Kontakt-Rhythmus, Aufgabenkarten; Säule im Score = Pflege-Rhythmus des Paares.
+> (3) **Kunden & Mandate + Leistungskatalog** im CRM, übernommen aus dem Brain
+> (10 Mandate, 12 Leistungen, Widersprüche sichtbar), Mandat → Liquiplan als
+> Vorschlag. (4) Haushaltszahlen kommen aus den Dateien (erledigt, s. o.).
+> (5) **CRM** nach dem Grundkonzept der Markttraktion: Power Hour, Kartei mit
+> Verlauf und Notizvorlage, Pipeline mit Austrittskriterien, Kanal-Ampel (§ 7
+> UWG), Marketing, Events, Dubletten; dazu **Head of Sales/Marketing/Event**.
+> Daten nur eigene (Masterdatei + Brain). Offen: Anthropic-Guthaben aufladen
+> (Agenten laufen sonst nicht), Kaltakquise-Liste Berlin erst nach Kevins Wort.
+
 > **Nachtrag 24.09., volle Breite und Whoop-Export.** Kevin: *„das Ganze ist
 > jetzt nur in der Mitte"* — Seiten waren auf 900 px begrenzt, eine
 > Kartenspalte. Jetzt bis 1440 px mit Dashboard-Spalten (`Spalten`/`Spalte`/
