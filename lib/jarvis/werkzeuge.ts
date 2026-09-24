@@ -580,7 +580,8 @@ async function kontaktFinden(hinweis: string) {
 async function sucheKontakt(input: Record<string, unknown>): Promise<string> {
   const frage = String(input.frage ?? '').trim().slice(0, 200);
   if (!frage) return 'Fehlgeschlagen: frage fehlt.';
-  const { findeKontakte, anzeigename, STUFE_LABEL, kanaele } = await import('@/lib/make-one/crm');
+  const { findeKontakte, anzeigename, STUFE_LABEL } = await import('@/lib/make-one/crm');
+  const { ampel } = await import('@/lib/crm/recht');
   const alle = await ladeKontakte();
   if (!alle.length) return 'Das CRM ist leer — die Masterliste wurde noch nicht importiert (/os/crm → Import).';
   const l = findeKontakte(alle, frage, Math.min(8, Math.max(1, Number(input.anzahl) || 5)));
@@ -589,7 +590,8 @@ async function sucheKontakt(input: Record<string, unknown>): Promise<string> {
     `ID ${k.id}\n${anzeigename(k)}${k.position ? ` · ${k.position}` : ''}${k.firma ? ` · ${k.firma}` : ''}` +
     `\nStufe ${STUFE_LABEL[k.stufe]} · Prio ${k.prio || '–'} · Eignung ${k.eignung || '–'}` +
     `${k.wiedervorlage ? ` · Wiedervorlage ${k.wiedervorlage}` : ''}${k.letzterKontakt ? ` · zuletzt ${k.letzterKontakt}` : ''}` +
-    `\nKanäle: ${kanaele(k).map(c => c.art).join(', ') || 'keine'}` +
+    `${k.lebensphase ? ` · ${k.lebensphase}` : ''}${k.kreis ? ` · Kreis ${k.kreis}` : ''}${k.naechsterSchritt ? `\nNächster Schritt: ${k.naechsterSchritt.text} (${k.naechsterSchritt.datum})` : ''}` +
+    (k.werbesperre ? `\nWERBESPERRE seit ${k.werbesperre.seit} — nicht ansprechen.` : `\nKanäle (Ampel § 7 UWG): ${ampel(k).map(c => `${c.kanal} ${c.farbe === 'gruen' ? 'frei' : c.farbe === 'gelb' ? 'nur persönlich/mit Anlass' : 'nicht zulässig'}`).join(', ') || 'keine'}`) +
     `${k.aufhaenger ? `\nAufhänger: ${k.aufhaenger.slice(0, 220)}` : ''}`,
   ).join('\n\n───\n\n');
 }

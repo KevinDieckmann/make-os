@@ -97,6 +97,30 @@ export interface Leistung {
   geaendert: string;
 }
 
+export type FirmaRolle = 'zielkunde' | 'kunde' | 'ex_kunde' | 'partner' | 'dienstleister' | 'investor' | 'netzwerk' | 'wettbewerb' | 'offen';
+/** Ein Unternehmen — Stammdaten an EINER Stelle, Personen zeigen per firmaId darauf. */
+export interface Firma {
+  id: string;
+  name: string;
+  domain?: string;
+  webseite?: string;
+  branche?: string;
+  mitarbeiter?: string;
+  umsatz?: string;
+  stadt?: string;
+  gegruendet?: string;
+  linkedin?: string;
+  telefon?: string;
+  email?: string;
+  rechtsform?: string;
+  rolle: FirmaRolle;
+  /** Rolle von Hand gesetzt — der Abgleich leitet sie dann nicht mehr ab. */
+  rolleVonHand?: boolean;
+  marktinfo?: string;
+  notiz?: string;
+  geaendert: string;
+}
+
 export type EventFormat = 'stammtisch' | 'workshop' | 'dinner' | 'webinar' | 'messe' | 'sonstig';
 export interface Event {
   id: string;
@@ -138,16 +162,25 @@ export interface PowerHourSitzung {
   gelernt?: string;
 }
 
+/** Betroffenenantrag (Art. 15–21 DSGVO) — Frist ein Monat ab Eingang. */
+export type AntragArt = 'auskunft' | 'berichtigung' | 'loeschung' | 'einschraenkung' | 'uebertragbarkeit' | 'widerspruch';
+export interface Antrag { id: string; art: AntragArt; name: string; email?: string; kontaktId?: string; eingang: string; frist: string; status: 'offen' | 'erledigt'; ergebnis?: string; erledigtAm?: string; von?: string; geaendert: string }
+/** Verzeichnis der Verarbeitungstätigkeiten (Art. 30 DSGVO). */
+export interface Verarbeitung { id: string; name: string; zweck: string; personen: string; daten: string; rechtsgrundlage: string; empfaenger: string; drittland: string; loeschfrist: string; toms: string; verantwortlich: string; stand: string }
+
 export interface CrmBestand {
+  firmen: Firma[];
   chancen: Chance[];
   mandate: Mandat[];
   leistungen: Leistung[];
   events: Event[];
   teilnahmen: Teilnahme[];
   sitzungen: PowerHourSitzung[];
+  antraege: Antrag[];
+  verarbeitungen: Verarbeitung[];
   /** Wahrscheinlichkeiten je Stufe, von Hand überschreibbar (wie in KEMARIS Operations „von_hand“). */
   wahrscheinlichkeiten?: Partial<Record<ChancenStufe, number>>;
 }
 
-export const CRM_LISTEN = ['chancen', 'mandate', 'leistungen', 'events', 'teilnahmen', 'sitzungen'] as const;
+export const CRM_LISTEN = ['firmen', 'chancen', 'mandate', 'leistungen', 'events', 'teilnahmen', 'sitzungen', 'antraege', 'verarbeitungen'] as const;
 export type CrmListe = typeof CRM_LISTEN[number];

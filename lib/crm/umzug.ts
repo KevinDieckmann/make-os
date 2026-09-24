@@ -61,7 +61,7 @@ export function ausBrain(d: BrainDaten, bestand: CrmBestand, kartei: Kontakt[], 
         vorhanden.kontakte++; idsHier.push(da.id);
         // Nur ergänzen, was fehlt — Lebensphase „Kunde“ gewinnt über „Kontakt“.
         const i = kontakte.indexOf(da);
-        kontakte[i] = { ...da, ...(da.lebensphase && da.lebensphase !== 'kontakt' ? {} : { lebensphase: phase }), ...(da.kreis ? {} : { kreis: phase === 'kunde' ? 'A' : 'B' }), ...(da.firma ? {} : { firma }), ...(da.position ? {} : sauberRolle(ap.rolle) ? { position: sauberRolle(ap.rolle) } : {}) };
+        kontakte[i] = { ...da, ...(phase === 'kunde' && ['neu', 'ansprechen', 'angesprochen'].includes(da.stufe) ? { stufe: 'gewonnen' as const } : {}), ...(da.lebensphase && da.lebensphase !== 'kontakt' ? {} : { lebensphase: phase }), ...(da.kreis ? {} : { kreis: phase === 'kunde' ? 'A' : 'B' }), ...(da.firma ? {} : { firma }), ...(da.position ? {} : sauberRolle(ap.rolle) ? { position: sauberRolle(ap.rolle) } : {}) };
         continue;
       }
       const k: Kontakt = {

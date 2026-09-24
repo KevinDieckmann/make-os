@@ -14,6 +14,7 @@ import { homedir } from 'node:os';
 import { loadJson, updateGeschuetzt } from '@/lib/store/local-db';
 import { csvLesen, trennerVon } from '@/lib/make-one/csv';
 import { importieren, pipelineStand, type Kontakt } from '@/lib/make-one/crm';
+import { firmenAbgleichen } from '@/lib/crm/abgleich';
 import { localDay } from '@/lib/zeit';
 import { logRun } from '@/lib/agent-log';
 
@@ -44,6 +45,8 @@ export async function POST(req: Request) {
   const w = await updateGeschuetzt<Bestand>('kontakte', { kontakte: r.kontakte }, f => f.kontakte.length, 20);
   if (!w.ok) return NextResponse.json({ error: 'Abgelehnt: der Import hätte den Bestand halbiert.' }, { status: 409 });
 
+  // Firmen als eigene Stammdaten: neue anlegen, Personen verknüpfen, leere Felder füllen.
+  const firmen = await firmenAbgleichen();
   await logRun('crm', `Import: ${r.neu} neu, ${r.aktualisiert} aktualisiert, ${r.unveraendert} unverändert`, { pfad: pfad.replace(homedir(), '~'), zeilen: zeilen.length });
-  return NextResponse.json({ ok: true, zeilen: zeilen.length, neu: r.neu, aktualisiert: r.aktualisiert, unveraendert: r.unveraendert, stand: pipelineStand(r.kontakte) });
+  return NextResponse.json({ ok: true, zeilen: zeilen.length, neu: r.neu, aktualisiert: r.aktualisiert, unveraendert: r.unveraendert, firmen, stand: pipelineStand(r.kontakte) });
 }

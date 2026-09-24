@@ -59,6 +59,18 @@ export const KREIS_TAKT: Record<Kreis, number> = { A: 30, B: 60, C: 90, D: 180 }
 export type Lebensphase = 'kontakt' | 'interessent' | 'kunde' | 'ex_kunde' | 'partner' | 'multiplikator';
 export const LEBENSPHASEN: readonly Lebensphase[] = ['kontakt', 'interessent', 'kunde', 'ex_kunde', 'partner', 'multiplikator'];
 
+export type Herkunft = 'selbst' | 'bekannt' | 'hubspot' | 'empfehlung' | 'recherche' | 'veranstaltung' | 'vertrag';
+export const HERKUNFT: { id: Herkunft; label: string; fremd: boolean }[] = [
+  { id: 'selbst', label: 'Selbst angegeben', fremd: false }, { id: 'bekannt', label: 'Persönlich bekannt', fremd: false },
+  { id: 'vertrag', label: 'Aus Auftrag / Vertrag', fremd: false }, { id: 'veranstaltung', label: 'Veranstaltung', fremd: false },
+  { id: 'hubspot', label: 'Früheres CRM (HubSpot)', fremd: false }, { id: 'empfehlung', label: 'Empfehlung', fremd: true }, { id: 'recherche', label: 'Recherche / Liste', fremd: true },
+];
+export type Rechtsgrundlage = 'einwilligung' | 'vertrag' | 'rechtspflicht' | 'berechtigt';
+export const RECHTSGRUNDLAGEN: { id: Rechtsgrundlage; label: string; norm: string }[] = [
+  { id: 'einwilligung', label: 'Einwilligung', norm: 'Art. 6 Abs. 1 lit. a' }, { id: 'vertrag', label: 'Vertrag / Anbahnung', norm: 'Art. 6 Abs. 1 lit. b' },
+  { id: 'rechtspflicht', label: 'Rechtliche Pflicht', norm: 'Art. 6 Abs. 1 lit. c' }, { id: 'berechtigt', label: 'Berechtigtes Interesse', norm: 'Art. 6 Abs. 1 lit. f' },
+];
+
 /** Rechtsgrundlage je Kanal (DSGVO/§ 7 UWG). Keine Rechtsberatung — einmal anwaltlich gegenlesen. */
 export type Grundlage = 'einwilligung' | 'bestandskunde_7_3' | 'mutmasslich_b2b_tel' | 'anfrage' | 'vertrag' | 'intro_akzeptiert';
 export type EinwilligungKanal = 'mail' | 'telefon' | 'social' | 'newsletter' | 'einladung';
@@ -112,6 +124,8 @@ export interface Kontakt {
   notiz?: string;
   hubspotId?: string;
   steckbrief?: string;
+  /** Verweis auf die Firma (CRM-Stammdaten, lib/crm/firmen.ts). */
+  firmaId?: string;
   // ── Beziehung & Recht (24.09., alles optional — der Import kennt es nicht) ──
   kreis?: Kreis;
   /** Eigener Takt in Tagen, sonst aus dem Kreis. */
@@ -123,6 +137,9 @@ export interface Kontakt {
   einwilligungen?: Einwilligung[];
   /** Werbewiderspruch (Art. 21 DSGVO): sofort, dauerhaft, kein Import überschreibt ihn. */
   werbesperre?: { seit: string; grund: string };
+  /** Woher die Daten stammen (Art. 14 DSGVO) und worauf die Verarbeitung beruht (Art. 6). */
+  herkunft?: Herkunft;
+  rechtsgrundlage?: Rechtsgrundlage;
   /** Daten nicht von der Person selbst (Recherche, Liste, Empfehlung) → Art.-14-Information fällig. */
   fremddaten?: boolean;
   art14InformiertAm?: string;
@@ -140,7 +157,7 @@ export interface Kontakt {
 
 /** Felder, die der Import NIE anfasst — das ist die Arbeit im CRM. */
 const PIPELINE_FELDER: (keyof Kontakt)[] = ['stufe', 'wiedervorlage', 'letzterKontakt', 'aktivitaeten', 'importiertAm',
-  'kreis', 'taktTage', 'besitzer', 'lebensphase', 'anrede', 'vorgestelltDurch', 'einwilligungen', 'werbesperre', 'fremddaten', 'art14InformiertAm', 'naechsterSchritt', 'privatNotiz'];
+  'firmaId', 'herkunft', 'rechtsgrundlage', 'kreis', 'taktTage', 'besitzer', 'lebensphase', 'anrede', 'vorgestelltDurch', 'einwilligungen', 'werbesperre', 'fremddaten', 'art14InformiertAm', 'naechsterSchritt', 'privatNotiz'];
 
 const s = (v: unknown, n = 400) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 const norm = (v: string) => v.toLowerCase().replace(/[^a-z0-9äöüß@.]/g, '');
@@ -417,11 +434,14 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     aufhaenger: txt(o.aufhaenger, 600), kategorie: txt(o.kategorie, 80), owner: txt(o.owner, 60),
     lifecycle: txt(o.lifecycle, 40), quelle: txt(o.quelle, 120), recherche: txt(o.recherche, 60),
     notiz: txt(o.notiz, 2000), hubspotId: txt(o.hubspotId, 40), steckbrief: txt(o.steckbrief, 400),
+    ...(/^f-[a-z0-9-]{2,60}$/.test(String(o.firmaId ?? '')) ? { firmaId: String(o.firmaId) } : {}),
     ...(kreis ? { kreis } : {}), ...(takt >= 7 && takt <= 730 ? { taktTage: Math.round(takt) } : {}),
     ...(txt(o.besitzer, 40) ? { besitzer: txt(o.besitzer, 40) } : {}), ...(lebensphase ? { lebensphase } : {}),
     ...(o.anrede === 'Sie' || o.anrede === 'Du' ? { anrede: o.anrede } : {}), ...(txt(o.vorgestelltDurch, 60) ? { vorgestelltDurch: txt(o.vorgestelltDurch, 60) } : {}),
     ...(einwilligungen?.length ? { einwilligungen } : {}),
     ...(ws && tag(ws.seit) ? { werbesperre: { seit: tag(ws.seit)!, grund: txt(ws.grund, 300) ?? 'Widerspruch' } } : {}),
+    ...(HERKUNFT.some(h => h.id === o.herkunft) ? { herkunft: o.herkunft as Herkunft } : {}),
+    ...(RECHTSGRUNDLAGEN.some(r => r.id === o.rechtsgrundlage) ? { rechtsgrundlage: o.rechtsgrundlage as Rechtsgrundlage } : {}),
     ...(o.fremddaten === true ? { fremddaten: true } : {}), ...(tag(o.art14InformiertAm) ? { art14InformiertAm: tag(o.art14InformiertAm) } : {}),
     ...(ns && txt(ns.text, 300) && tag(ns.datum) ? { naechsterSchritt: { text: txt(ns.text, 300)!, datum: tag(ns.datum)! } } : {}),
     ...(txt(o.privatNotiz, 2000) ? { privatNotiz: txt(o.privatNotiz, 2000) } : {}),

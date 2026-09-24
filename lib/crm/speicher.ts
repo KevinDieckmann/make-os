@@ -6,10 +6,10 @@
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { STUFEN } from './pipeline';
-import { CRM_LISTEN, type CrmBestand, type CrmListe, type Chance, type Mandat, type Leistung, type Event, type Teilnahme, type PowerHourSitzung, type ChancenStufe, type Qual } from './typen';
+import { CRM_LISTEN, type CrmBestand, type CrmListe, type Firma, type FirmaRolle, type Antrag, type AntragArt, type Verarbeitung, type Chance, type Mandat, type Leistung, type Event, type Teilnahme, type PowerHourSitzung, type ChancenStufe, type Qual } from './typen';
 
 export const CRM_SPEICHER = 'crm';
-export const leererBestand = (): CrmBestand => ({ chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [] });
+export const leererBestand = (): CrmBestand => ({ firmen: [], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [] });
 
 export async function ladeCrm(): Promise<CrmBestand> {
   return { ...leererBestand(), ...((await loadJson<CrmBestand>(CRM_SPEICHER)) ?? {}) };
@@ -93,6 +93,17 @@ function leistung(o: Record<string, unknown>, jetzt: string): Leistung | null {
   };
 }
 
+const ROLLEN: FirmaRolle[] = ['zielkunde', 'kunde', 'ex_kunde', 'partner', 'dienstleister', 'investor', 'netzwerk', 'wettbewerb', 'offen'];
+function firma(o: Record<string, unknown>, jetzt: string): Firma | null {
+  if (!/^f-[a-z0-9-]{2,60}$/.test(String(o.id ?? '')) || !txt(o.name)) return null;
+  const f = (n: keyof Firma, l = 200) => (opt(o[n], l) ? { [n]: opt(o[n], l) } : {});
+  return {
+    id: String(o.id), name: txt(o.name, 160), ...f('domain', 120), ...f('webseite'), ...f('branche', 160), ...f('mitarbeiter', 40), ...f('umsatz', 60), ...f('stadt', 80),
+    ...f('gegruendet', 20), ...f('linkedin'), ...f('telefon', 60), ...f('email', 160), ...f('rechtsform', 80),
+    rolle: aus(o.rolle, ROLLEN, 'offen'), ...(o.rolleVonHand === true ? { rolleVonHand: true } : {}), ...f('marktinfo', 800), ...f('notiz', 3000), geaendert: jetzt,
+  } as Firma;
+}
+
 function event(o: Record<string, unknown>, jetzt: string): Event | null {
   if (!idOk(o.id) || !txt(o.titel) || !tag(o.datum)) return null;
   return {
@@ -126,8 +137,31 @@ function sitzung(o: Record<string, unknown>, person: string): PowerHourSitzung |
   };
 }
 
+const ANTRAEGE: AntragArt[] = ['auskunft', 'berichtigung', 'loeschung', 'einschraenkung', 'uebertragbarkeit', 'widerspruch'];
+function antrag(o: Record<string, unknown>, jetzt: string, person: string): Antrag | null {
+  if (!idOk(o.id) || !txt(o.name) || !tag(o.eingang)) return null;
+  const eingang = tag(o.eingang)!;
+  const d = new Date(`${eingang}T12:00:00Z`); d.setUTCMonth(d.getUTCMonth() + 1);
+  return {
+    id: String(o.id), art: aus(o.art, ANTRAEGE, 'auskunft'), name: txt(o.name, 160), ...(opt(o.email, 160) ? { email: opt(o.email, 160) } : {}),
+    ...(/^c-[a-z0-9-]{4,60}$/.test(String(o.kontaktId ?? '')) ? { kontaktId: String(o.kontaktId) } : {}),
+    eingang, frist: tag(o.frist) ?? d.toISOString().slice(0, 10), status: o.status === 'erledigt' ? 'erledigt' : 'offen',
+    ...(opt(o.ergebnis, 600) ? { ergebnis: opt(o.ergebnis, 600) } : {}), ...(tag(o.erledigtAm) ? { erledigtAm: tag(o.erledigtAm) } : {}), von: txt(o.von, 40) || person, geaendert: jetzt,
+  };
+}
+function verarbeitung(o: Record<string, unknown>, jetzt: string): Verarbeitung | null {
+  if (!idOk(o.id) || !txt(o.name)) return null;
+  return {
+    id: String(o.id), name: txt(o.name, 160), zweck: txt(o.zweck, 1500), personen: txt(o.personen, 600), daten: txt(o.daten, 800), rechtsgrundlage: txt(o.rechtsgrundlage, 300),
+    empfaenger: txt(o.empfaenger, 800), drittland: txt(o.drittland, 300), loeschfrist: txt(o.loeschfrist, 300), toms: txt(o.toms, 1500), verantwortlich: txt(o.verantwortlich, 200), stand: jetzt.slice(0, 10),
+  };
+}
+
 export function saeubern(liste: CrmListe, roh: Record<string, unknown>, jetzt: string, person: string): Record<string, unknown> | null {
   switch (liste) {
+    case 'firmen': return firma(roh, jetzt) as unknown as Record<string, unknown>;
+    case 'antraege': return antrag(roh, jetzt, person) as unknown as Record<string, unknown>;
+    case 'verarbeitungen': return verarbeitung(roh, jetzt) as unknown as Record<string, unknown>;
     case 'chancen': return chance(roh, jetzt, person) as unknown as Record<string, unknown>;
     case 'mandate': return mandat(roh, jetzt) as unknown as Record<string, unknown>;
     case 'leistungen': return leistung(roh, jetzt) as unknown as Record<string, unknown>;

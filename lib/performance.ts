@@ -14,7 +14,6 @@ import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
 // `routineQuote` heißt weiter unten schon eine Zahl — deshalb der Alias.
 import { hautTrend, streakStand, routineQuote as quoteFuer, type HautLog, type StreakLog } from '@/lib/gesundheit/eintraege';
 import { RITUALE } from '@/lib/make-one/team-data';
-import type { Prospect } from '@/lib/make-one/prospecting-data';
 import { agentenFaktoren, agentenEingabe } from '@/lib/agenten-score';
 import { DEPARTMENTS } from '@/lib/make-one/agents-data';
 import { ladeStand as ladeTelegram, chatsFuerPerson, telegramKonfiguriert } from '@/lib/telegram';
@@ -23,6 +22,9 @@ import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { privatFaktoren, finanzSaeule } from '@/lib/finanzen/haushalt/score';
 import { ladeFamilie } from '@/lib/familie/speicher';
 import { ladeCrm, kundenAusMandaten } from '@/lib/crm/speicher';
+import { kennzahlen } from '@/lib/crm/kennzahlen';
+import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
+import type { Kontakt } from '@/lib/make-one/crm';
 import { pflegeRhythmus, type Rhythmus } from '@/lib/familie/logik';
 
 export interface Faktor {
@@ -116,12 +118,11 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
     loadJson<HautLog>(p('haut')),
     loadJson<StreakLog>(p('streak')),
   ]);
-  const [vitals, healthLog, tasksState, fin, prospectState, journal, cal, ritualLog, routinenF, msF, kundenF, fplanF] = await Promise.all([
+  const [vitals, healthLog, tasksState, fin, journal, cal, ritualLog, routinenF, msF, kundenF, fplanF] = await Promise.all([
     resolveVitals(today, person),
     loadJson<Record<string, string[]>>(p('health-log')),
     loadJson<{ tasks: { status: string; priority: string; dueDate?: string; assignee?: string }[] }>('tasks'),
     loadJson<FinanceState>('finance'),
-    loadJson<{ prospects: Prospect[] }>('prospects'),
     loadJson<Record<string, JournalTag>>(p('journal')),
     loadJson<CalCache>('calendar-cache'),
     loadJson<Record<string, string[]>>(p('rituale')),
@@ -216,10 +217,16 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   ];
 
   // ── Business-Performance ──
-  const prospects = prospectState?.prospects ?? [];
-  const qualifiziert = prospects.filter(p => typeof p.score === 'number').length;
-  const kontaktiert = prospects.filter(p => p.status === 'kontaktiert').length;
-  const hot = prospects.filter(p => (p.score ?? 0) >= 80).length;
+  const crmF = await ladeCrm();
+  const kz = kennzahlen((await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [], crmF, today);
+  const kpi = (id: string) => kz.find(x => x.id === id)!;
+  const offeneChancen = crmF.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe));
+  const crmFaktoren: Faktor[] = [
+    { label: 'Pipeline gepflegt', wert: offeneChancen.length ? clamp(((offeneChancen.length - offeneChancen.filter(c => !c.naechsterSchritt).length) / offeneChancen.length) * 100) : 0, echt: offeneChancen.length > 0,
+      quelle: offeneChancen.length ? `${offeneChancen.length} offene Chancen, ${kpi('ohne_schritt').anzeige} ohne nächsten Schritt` : 'noch keine Chance im CRM' },
+    { label: 'Vertriebsrhythmus', wert: clamp(((kpi('power_hours').wert ?? 0) / 4) * 50 + ((kpi('gespraeche').wert ?? 0) / 8) * 50), echt: kpi('power_hours').ampel !== 'grau' || kpi('gespraeche').ampel !== 'grau',
+      quelle: `${kpi('power_hours').anzeige} Power Hours, ${kpi('gespraeche').anzeige} echte Gespräche in 7 Tagen (4 und 8 = 100)` },
+  ];
   const m = fin ? computeMetrics(mitKasse(fin, fplanF?.firmen)) : null;
   const hatZahlen = !!m && m.aktiveMonate > 0;
 
@@ -228,10 +235,8 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
       quelle: hatZahlen ? `${Math.round(m!.fortschritt * 100)}% von 1 Mio €` : 'keine Ist-Zahlen im Controlling' },
     { label: 'Run-Rate hält Kurs', wert: hatZahlen && m!.runRateNoetig > 0 ? clamp((m!.runRateAktuell / m!.runRateNoetig) * 100) : 0, echt: hatZahlen,
       quelle: hatZahlen ? `Ø ${Math.round(m!.runRateAktuell / 1000)}k von nötigen ${Math.round(m!.runRateNoetig / 1000)}k` : 'keine Ist-Zahlen' },
-    { label: 'Pipeline aufgebaut', wert: clamp((qualifiziert / 20) * 100), echt: prospects.length > 0,
-      quelle: prospects.length ? `${qualifiziert} qualifiziert (20 = 100)` : 'Zielliste leer' },
-    { label: 'Pipeline in Bewegung', wert: qualifiziert ? clamp((kontaktiert / qualifiziert) * 100) : 0, echt: qualifiziert > 0,
-      quelle: qualifiziert ? `${kontaktiert} von ${qualifiziert} kontaktiert${hot && !kontaktiert ? ` — ${hot} starker Fit liegt brach` : ''}` : 'nichts qualifiziert' },
+    // 24.09.: Pipeline und Vertriebsrhythmus aus dem CRM (vorher: fünf Firmen aus einer externen Zielliste).
+    ...crmFaktoren,
     { label: 'Meilenstein-Kurs', ...msKurs('business') },
     // ── Mandate: zahlende Kunden sind der ehrlichste Business-Beweis. ──
     (() => {

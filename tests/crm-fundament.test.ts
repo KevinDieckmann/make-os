@@ -171,6 +171,9 @@ describe('Übernahme aus dem Brain', () => {
     expect(r1.kontakte[0]).toMatchObject({ vorname: 'Max', nachname: 'Muster', lebensphase: 'kunde', kreis: 'A', position: 'Geschäftsführer' });
     expect(r1.bestand.mandate[0]).toMatchObject({ kontaktIds: [r1.kontakte[0].id], honorar: { betrag: 2000, basis: 'monat' }, offen: ['Laufzeit unklar'] });
     expect(r1.bestand.leistungen[0]).toMatchObject({ typ: 'sprint', status: 'entwurf' });
+    // Wer schon in der Kartei steht und Kunde ist, rückt von „neu“ auf „gewonnen“.
+    const vorhanden = ausBrain(d, leererBestand(), [k('mm', { vorname: 'Max', nachname: 'Muster', stufe: 'neu' })], HEUTE, `${HEUTE}T10:00`, 'kevin');
+    expect(vorhanden.kontakte[0]).toMatchObject({ stufe: 'gewonnen', lebensphase: 'kunde' });
     const r2 = ausBrain(d, r1.bestand, r1.kontakte, HEUTE, `${HEUTE}T11:00`, 'kevin');
     expect(r2.neu).toEqual({ mandate: 0, leistungen: 0, kontakte: 0 });
     expect(kundenAusMandaten(r2.bestand).kunden).toEqual([{ name: 'Beispiel GmbH', status: 'aktiv', cashflow: 2000 }]);

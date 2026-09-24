@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, useBreit, LEUCHT } from '../schlank';
 import { anzeigename } from '@/lib/make-one/crm';
 import { gesamtwert, VERLUSTGRUENDE } from '@/lib/crm/pipeline';
 import type { Chance, ChancenStufe, Qual } from '@/lib/crm/typen';
@@ -25,6 +25,9 @@ const GES = [{ id: 'kdc', label: 'Selbstständigkeit' }, { id: 'kdv', label: 'KD
 export function Pipeline({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string) => void }) {
   const [auswahl, setAuswahl] = useState<string | null>(null);
   const [geschlossen, setGeschlossen] = useState(false);
+  const breit = useBreit();
+  const [board, setBoard] = useState(true);
+  const [alleVorschlaege, setAlleVorschlaege] = useState(false);
   const crm = api.crm;
   if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
   const p = crm.prognose;
@@ -52,17 +55,53 @@ export function Pipeline({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
         <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Wert = Monatshonorar × Laufzeit (ohne Angabe 12 Monate), gewichtet mit der Stufen-Wahrscheinlichkeit. Die Wahrscheinlichkeiten sind vorsichtige Startwerte und werden durch gemessene Quoten ersetzt.</div>
       </Karte>
 
-      {vorschlaege.length > 0 && (
-        <Karte i={1}>
-          <Ueberschrift rechts={`${vorschlaege.length} aus der Kartei`}>Noch ohne Chance</Ueberschrift>
-          <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Laut Masterdatei im Gespräch oder mit Angebot — als Chance anlegen, dann Wert und nächsten Schritt eintragen.</div>
-          <Liste>
-            {vorschlaege.slice(0, 20).map(k => <Zeile key={k.id} titel={<>{anzeigename(k)}{k.firma && <span style={{ color: C.inkLeise }}> · {k.firma}</span>}</>} unter={k.stufe === 'angebot' ? 'Angebot' : k.stufe === 'termin' ? 'Termin' : 'im Gespräch'} rechts={<Knopf leise onClick={() => ausKontakt(k)}>+ Chance</Knopf>} />)}
-          </Liste>
-        </Karte>
+      {breit && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Pillen liste={[{ id: 'board', label: 'Board' }, { id: 'liste', label: 'Liste' }]} aktiv={board ? 'board' : 'liste'} onWahl={x => setBoard(x === 'board')} /></div>
       )}
 
-      {offen.map((s, i) => {
+      {breit && board && (() => {
+        const sel = auswahl ? crm.stand.chancen.find(c => c.id === auswahl) : null;
+        return (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${offen.length}, minmax(0, 1fr))`, gap: 12, alignItems: 'start' }}>
+              {offen.map(s => {
+                const l = crm.stand.chancen.filter(c => c.stufe === s.id);
+                const js = p.jeStufe.find(x => x.stufe === s.id);
+                return (
+                  <div key={s.id} style={{ background: 'rgba(255,255,255,.025)', borderRadius: 14, padding: 10, minHeight: 160 }}>
+                    <div title={`Weiter, wenn: ${s.weiterWenn}`} style={{ padding: '2px 4px 10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6, fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.inkDim }}><span>{s.label}</span><span style={{ color: C.inkLeise }}>{s.p} %</span></div>
+                      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 2 }}>{l.length} · {kurzEuro(js?.wert ?? 0)}{js?.haengt ? <span style={{ color: LEUCHT.kritisch }}> · {js.haengt} hängt</span> : null}</div>
+                    </div>
+                    <div style={{ display: 'grid', gap: 8 }}>
+                      {l.map(c => {
+                        const a = crm.ampel[c.id];
+                        return (
+                          <button key={c.id} onClick={() => setAuswahl(auswahl === c.id ? null : c.id)} className="fassbar" style={{ textAlign: 'left', cursor: 'pointer', border: `1px solid ${auswahl === c.id ? LEUCHT.business : 'rgba(255,255,255,.06)'}`, borderLeft: `3px solid ${a ? AMPEL[a.ampel] : C.inkLeise}`, background: 'rgba(255,255,255,.04)', borderRadius: 10, padding: '9px 10px', color: C.ink, display: 'grid', gap: 3 }}>
+                            <span style={{ fontSize: TYP.bedien, fontWeight: 600, lineHeight: 1.3 }}>{c.titel}</span>
+                            {c.firma && c.firma !== c.titel && <span style={{ fontSize: 12, color: C.inkLeise }}>{c.firma}</span>}
+                            <span style={{ fontSize: 12, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{c.wert.betrag ? `${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/M' : c.wert.basis === 'jahr' ? '/J' : ''}` : 'ohne Wert'}</span>
+                            <span style={{ fontSize: 11.5, color: c.naechsterSchritt && c.naechsterSchritt.datum < crm.heute ? LEUCHT.kritisch : C.inkLeise }}>{c.naechsterSchritt ? `→ ${datum(c.naechsterSchritt.datum, crm.heute)}` : 'kein nächster Schritt'}</span>
+                          </button>
+                        );
+                      })}
+                      {!l.length && <div style={{ fontSize: 12, color: C.inkLeise, padding: '4px' }}>—</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {sel && offen.some(s => s.id === sel.stufe) && (
+              <Karte i={2} akzent={LEUCHT.business}>
+                <Ueberschrift rechts={<button onClick={() => setAuswahl(null)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 14 }}>✕</button>}>{sel.titel}</Ueberschrift>
+                <ChancenDetail c={sel} api={api} personen={sel.kontaktIds.map(id => (api.kontakte ?? []).find(k => k.id === id)).filter((k): k is NonNullable<typeof k> => !!k)} zuKontakt={zuKontakt} />
+              </Karte>
+            )}
+          </>
+        );
+      })()}
+
+      {(!breit || !board) && offen.map((s, i) => {
         const l = crm.stand.chancen.filter(c => c.stufe === s.id);
         const js = p.jeStufe.find(x => x.stufe === s.id);
         return (
@@ -76,6 +115,17 @@ export function Pipeline({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
           </Karte>
         );
       })}
+
+      {vorschlaege.length > 0 && (
+        <Karte i={1}>
+          <Ueberschrift rechts={`${vorschlaege.length} aus der Kartei`}>Noch ohne Chance</Ueberschrift>
+          <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Laut Masterdatei im Gespräch oder mit Angebot — als Chance anlegen, dann Wert und nächsten Schritt eintragen.</div>
+          <Liste>
+            {vorschlaege.slice(0, alleVorschlaege ? 40 : 6).map(k => <Zeile key={k.id} titel={<>{anzeigename(k)}{k.firma && <span style={{ color: C.inkLeise }}> · {k.firma}</span>}</>} unter={k.stufe === 'angebot' ? 'Angebot' : k.stufe === 'termin' ? 'Termin' : 'im Gespräch'} rechts={<Knopf leise onClick={() => ausKontakt(k)}>+ Chance</Knopf>} />)}
+          </Liste>
+          {vorschlaege.length > 6 && <button onClick={() => setAlleVorschlaege(!alleVorschlaege)} style={{ marginTop: 8, background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>{alleVorschlaege ? 'weniger' : `alle ${vorschlaege.length} zeigen`}</button>}
+        </Karte>
+      )}
 
       <Karte i={7}>
         <Ueberschrift rechts={<button onClick={() => setGeschlossen(!geschlossen)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>{geschlossen ? 'ausblenden' : `${zu.length} zeigen`}</button>}>Gewonnen · Verloren · Geparkt</Ueberschrift>

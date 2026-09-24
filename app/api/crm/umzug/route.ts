@@ -12,7 +12,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/jarvis/raum';
 import { localDay } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
-import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
+import { ladeCrm, aendereCrm, leererBestand } from '@/lib/crm/speicher';
 import { ausBrain, type BrainDaten } from '@/lib/crm/umzug';
 
 export const runtime = 'nodejs';
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   let kartei: ReturnType<typeof ausBrain> | null = null;
   await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
     const f = cur ?? { kontakte: [] };
-    kartei = ausBrain({ kunden: b.daten!.kunden }, { chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [] }, f.kontakte, heute, jetzt, person);
+    kartei = ausBrain({ kunden: b.daten!.kunden }, leererBestand(), f.kontakte, heute, jetzt, person);
     return { ...f, kontakte: kartei.kontakte };
   });
   // 2. CRM: Leistungen und Mandate — gegen die fertige Kartei, damit jedes Mandat seine Ansprechpartner kennt.
