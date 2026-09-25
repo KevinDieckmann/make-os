@@ -14,7 +14,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useZurueck } from './Verlauf';
+import { useZurueck, nachOben } from './Verlauf';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { bloecke, inline, sichererLink, type Block, type Teil } from '@/lib/make-one/markdown';
 import { Seite, Karte, Ueberschrift, Leer, Knopf, Segmente, Punkt, Chip, Zahl, feld, LEUCHT, Spalten, Spalte, useBreit } from './schlank';
@@ -230,7 +230,7 @@ export function WissenView() {
     setLaedtNotiz(false);
     setOffen(d);
     lesefenster.current?.scrollTo?.({ top: 0 });
-    if (!breit) document.querySelector('main')?.scrollTo({ top: 0 });
+    if (!breit) nachOben();
   }, [breit]);
   // Direkt verlinkt (/os/wissen?n=…, etwa aus einer Quelle, die Jarvis nennt), Sprung, Zurück oder Vor — die Notiz folgt dem Link.
   useEffect(() => { if (n) void laden(n); else setOffen(null); }, [n, laden]);

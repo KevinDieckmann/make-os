@@ -14,6 +14,7 @@
 // Browser) führt in die Kartei mit derselben Person. Die Bausteine teilt die
 // Akte mit der Karteikarte (kontakt-teile.tsx), die Regeln stehen in lib/crm/akte.ts.
 
+import { nachOben } from '../Verlauf';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Chip, Punkt, Fortschritt, LEUCHT, SPALTEN_AB } from '../schlank';
@@ -95,7 +96,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte }: { api: 
   const k = api.kontakte?.find(x => x.id === id) ?? null;
 
   // Oben anfangen — die Kartei war vielleicht weit nach unten gescrollt. Gescrollt wird in <main> der Oberfläche, nicht im Fenster.
-  useEffect(() => { document.querySelector('main')?.scrollTo({ top: 0 }); window.scrollTo({ top: 0 }); }, [id]);
+  useEffect(() => { nachOben(); }, [id]);
   // Esc = zurück, außer beim Tippen oder wenn ein Fenster (z. B. „+ Gespräch“) offen ist.
   useEffect(() => {
     const taste = (e: KeyboardEvent) => {

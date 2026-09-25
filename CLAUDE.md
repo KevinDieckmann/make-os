@@ -156,6 +156,25 @@ lokal, Route `/os`, Port 3001.
   Pflichtangaben (Herkunft Art. 14 / Rechtsgrundlage Art. 6 nur als Vorschlag,
   Übernahme per Klick), Betroffenenanträge, Verzeichnis Art. 30, Export.
   Konzept: `docs/konzepte/crm-sales-marketing-events.md`.
+- **Überall sauber zurück (25.09.2026):** `components/os/Verlauf.tsx` (im Wurzel-Layout):
+  jeder Verlaufseintrag trägt seine Tiefe, die Scrollposition in `<main>` wird je
+  Eintrag gemerkt und bei Zurück/Vor wiederhergestellt. **Regel:** Ort wechseln
+  (Bereich, Reiter, etwas öffnen) = `router.push`; nur Gleichrangiges tauschen =
+  `replace`. Zurück-Knöpfe: `useZurueck()`/`ZurueckKnopf` (echter Schritt, sonst die
+  übergeordnete Seite). Offene Details im Link: `useLinkAuswahl('k'|'offen')`
+  (Deals, Mandate, Kampagnen, Leads, Events, Aufgaben, Inbox, Kartei). Nach oben nur
+  über `nachOben()`. Brain-Notizen über `?n=` mit Verlauf. Aufgaben zeigen ihre
+  Beschreibung, `/os/…`-Pfade darin werden Links (`TextMitLinks`).
+- **LinkedIn-Flow (25.09.2026):** `lib/crm/netzwerk.ts` (+ `netzwerk-form.ts`),
+  `/api/crm/netzwerk`, `components/os/crm/Vernetzen.tsx`. Stand je Profil an der
+  Person (`Kontakt.netzwerk[kevin|malin]`: angefragt → vernetzt → geschrieben),
+  Vernetzen-Runde (Kontakte › Vernetzen-Runde, `a=runde-vernetzen&k=kp-…`):
+  anreichern (Suchlink/Profil einfügen) → anfragen (Tagesportion, Notiz) →
+  schreiben (Text der Kampagne) → nachfassen (Ja = Einwilligung „social“ mit Wortlaut).
+  Texte **modular je Kampagne** (Playbook `vernetzen`, `Kampagne.vernetzen`, Vorlagen mit
+  Rechts-Ampel). LinkedIn-Export (Connections.csv) gleicht nur mit vorhandenen
+  Kontakten ab und markiert Annahmen. Head of Marketing Modus `netzwerk` (werktags ab
+  8, reines Regelwerk, Art `vernetzen_runde`). MAKE OS versendet nichts.
 - **Kontaktakte (25.09.2026, Kevin: „die ganze Matrix … auf einem Bild“):**
   Karteikarte oben rechts „Akte öffnen ⤢“ → `/os/markttraktion?s=kontakte&a=akte&k=<id>`
   (`components/os/crm/Akte.tsx`, Regeln `lib/crm/akte.ts`). Kopf: Zurück (Knopf, Esc,

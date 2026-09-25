@@ -38,7 +38,7 @@ import { Stammdaten } from './Stammdaten';
 import { SchnellErfassen } from './SchnellErfassen';
 import { Runden, type RundenArt } from './Runden';
 import { Leads, SalesTrichter } from './Leads';
-import { useZurueck } from '../Verlauf';
+import { useZurueck, nachOben } from '../Verlauf';
 import { KontaktAkte } from './Akte';
 
 const WELTEN: { id: Bereich; label: string; farbe?: string }[] = [
@@ -102,7 +102,7 @@ export function MarkttraktionSeite() {
     const ziel = q.toString() ? `${PFAD}?${q}` : PFAD;
     if (ziel === `${PFAD}${params.toString() ? `?${params}` : ''}`) return;
     router[wie](ziel, { scroll: false });
-    if (wie === 'push' && (s !== bereich || (a ?? '') !== (ansicht ?? ''))) document.querySelector('main')?.scrollTo({ top: 0 });
+    if (wie === 'push' && (s !== bereich || (a ?? '') !== (ansicht ?? ''))) nachOben();
   };
   /** In der Kartei eine Person oder Firma wählen: die erste öffnet (Zurück schließt sie wieder), jede weitere tauscht nur. */
   const setAuswahl = (id: string | null) => gehe(bereich, ansicht, id ?? undefined, auswahl && id ? 'replace' : id ? 'push' : 'replace');

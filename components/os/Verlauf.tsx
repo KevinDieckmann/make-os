@@ -36,16 +36,36 @@ export function verlaufStand(): Stand {
 }
 
 const inhalt = () => document.querySelector('main');
+/**
+ * Die zuletzt GESCROLLTE Position — nicht die aktuelle: Eine neue Seite setzt
+ * den Inhalt oft schon auf „oben“, einen Moment bevor Next den neuen
+ * Verlaufseintrag anlegt. Mit scrollTop würde dann „oben“ für die alte Seite
+ * gemerkt. Scroll-Ereignisse kommen erst danach — der Wert hier ist also
+ * immer der der Seite, die man gerade verlässt.
+ */
+let zuletzt = 0;
+/** Bis hierhin zählt Scrollen nicht als Position der Seite (die App springt selbst nach oben). */
+let ruheBis = 0;
+
+/**
+ * Den Inhalt nach oben setzen, wenn ein neuer Ort beginnt — über diesen
+ * Baustein, damit der Sprung nicht als Position der Seite gilt, die man
+ * gerade verlässt (sonst käme man mit Zurück oben an statt an der alten Stelle).
+ */
+export function nachOben() {
+  ruheBis = Date.now() + 700;
+  inhalt()?.scrollTo({ top: 0 });
+}
 
 function merken() {
-  const m = inhalt();
-  if (m) positionen.set(verlaufStand().id, m.scrollTop);
+  positionen.set(verlaufStand().id, zuletzt);
 }
 
 function wiederherstellen() {
   const ziel = positionen.get(verlaufStand().id);
   if (ziel === undefined) return;
   // Der Inhalt baut sich nach dem Zurück erst auf — mehrmals versuchen, bis die Höhe reicht.
+  zuletzt = ziel;
   for (const ms of [0, 60, 200, 450, 900]) setTimeout(() => { const m = inhalt(); if (m && Math.abs(m.scrollTop - ziel) > 2) m.scrollTop = ziel; }, ms);
 }
 
@@ -71,7 +91,7 @@ function installieren() {
   document.addEventListener('scroll', e => {
     if (geplant || e.target !== inhalt()) return;
     geplant = true;
-    requestAnimationFrame(() => { geplant = false; merken(); });
+    requestAnimationFrame(() => { geplant = false; if (Date.now() < ruheBis) return; zuletzt = inhalt()?.scrollTop ?? 0; merken(); });
   }, { capture: true, passive: true });
 }
 

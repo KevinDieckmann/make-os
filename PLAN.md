@@ -637,3 +637,10 @@ Danach Phase 4 und 5, jeweils erst, wenn die vorherige im Alltag läuft.
 > Felder der Masterdatei, direkt bearbeitbar, Vollständigkeit je Gruppe), ganzem
 > Verlauf, Sales (nächster Schritt, Lead, Deals, Entwurf), Beziehung, Verbindungen
 > und Recht; Zurück führt in die Kartei zur selben Person. Tests: `markttraktion-akte`.
+
+> **Nachtrag 25.09. (Nachmittag) — überall sauber zurück + LinkedIn-Flow.** Kevin:
+> „alle Funktionen miteinander verbinden, dass wir überall sauber zurückkommen“ und
+> „ein Modus beim Head of Marketing … erst vernetzen, dann schreiben … kompletter Flow“.
+> Gebaut: Verlaufs-Regel für alle Seiten (Tiefe, Scrollposition, Auswahl im Link,
+> echte Ziele statt Umleitungen, /jarvis mit Zurück, Aufgaben mit Links), dazu die
+> Vernetzen-Runde mit Texten je Kampagne, Export-Import und Head-of-Marketing-Takt.
