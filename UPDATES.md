@@ -25,9 +25,7 @@ Stand hier und einen Stand, der online ist.“
   (Privat Kevin, Privat Malin und seit 25.09. abends „MAKE Gemeinsam“ — in iCloud angelegt, mit Malin geteilt, in den Einstellungen als gemeinsamer Kalender eingetragen)
 - iCloud-Skript vereinfacht (Update 25.09. abends, `3b042a7`)
 
-## Nächstes Update — vorbereitet, noch nicht online
-
-_(hier sammeln, was auf `entwicklung` fertig ist)_
+## Update 25.09.2026 abends — online
 
 - Kalender: gemeinsamer Kalender heißt standardmäßig „Gemeinsam“; beim Anlegen werden nur Kalender angeboten, die es in iCloud gibt.
 - **Business-Index** (unsere KSI-Logik, eigene Zahlen): Cockpit `/os/business` hinter dem Kopf-Ring „Business“
@@ -38,6 +36,15 @@ _(hier sammeln, was auf `entwicklung` fertig ist)_
   fehlendem Abschluss; eigene Schwellen und Jahresziele je Firma; Verlauf 90 Tage.
 - **Design: tiefe Akzente überall** — Ringe, Balken, Kopf-Ringe, Hauptknöpfe, Häkchen im Stil des
   Kontakt-Kürzels; Leuchtkränze gedämpft (54 Stellen).
+
+Einmalig danach: im Cockpit `/os/business` Köpfe (FTE) und Jahresziele je Firma eintragen, dazu den
+Monatsabschluss August — das schließt die meisten Messlücken.
+
+## Nächstes Update — vorbereitet, noch nicht online
+
+_(hier sammeln, was auf `entwicklung` fertig ist)_
+
+- …
 
 ## Ablauf eines Updates (Checkliste)
 
