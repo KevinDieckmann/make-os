@@ -101,6 +101,19 @@ lokal, Route `/os`, Port 3001.
 - Apple-Erinnerungen gibt iCloud nicht per CalDAV heraus — die kommen nur, wenn der Mac
   zuliefert (`zulieferer.mjs`); den Kalender vom Mac nimmt der Server nicht mehr an.
 
+## Business-Index (seit 25.09.2026)
+- Unsere KSI-Logik mit eigenen Zahlen: Finanzielle Gesundheit 50 · Unternehmer-DNA 30 ·
+  Markttraktion 20 (arithmetisch). Nur Struktur + Standard-Kennzahlen übernommen — kein Code,
+  keine Daten aus KEMARIS/POINCAP/HubSpot. Plan + Entscheidungen: `BUSINESS_KSI_PLAN.md`.
+- `lib/business/` (register · messen · index · speicher), API `app/api/business`, Cockpit
+  `/os/business` (Kopf-Ring „Business“; `/os/saeule/business` leitet dorthin).
+- **Eine Wahrheit:** Business-Säule des Wachstums-Scores = Business-Index (Gesamt);
+  Business-Hälfte der Finanzen = Finanzielle Gesundheit. Neue Business-Kennzahlen gehören ins
+  Register, nicht als Einzelfaktor in `performance.ts`.
+- Sichten: gesamt · kdc (Consulting) · kdv (KD Ventures); Privates nie. Die Kredite im
+  V1-Export (`grundlage.schulden`) sind PRIVAT — nie in Business-Kennzahlen.
+- Zugang: Haushalt des Inhabers (`lib/zugang/haushalt-inhaber.ts`, auch für den Kalender).
+
 ## Technik
 - TypeScript strikt: vor jedem Commit `npx tsc --noEmit` — null Fehler.
 - Node liegt bei Kevin unter `~/.local/node22/bin` (nicht im PATH). Server

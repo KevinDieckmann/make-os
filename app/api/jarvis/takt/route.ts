@@ -10,6 +10,17 @@ import { NextResponse } from 'next/server';
 import { faellig } from '@/lib/jarvis/takt';
 import { reihe } from '@/lib/jarvis/auftraege';
 import { verbunden, ladeStand, abgleichen, naechsterVersuchFaellig } from '@/lib/kalender/icloud';
+import { alleSichten } from '@/lib/business/speicher';
+import { localDay } from '@/lib/zeit';
+
+/** Business-Index: einmal am Tag festhalten (Verlauf, Trend, Ampel-Wechsel, MRR für die NRR) — auch ohne offene Seite. */
+let businessTag = '';
+async function businessTagesstand() {
+  const heute = localDay();
+  if (businessTag === heute) return;
+  businessTag = heute;
+  await alleSichten(heute).catch(() => { businessTag = ''; });
+}
 
 /** Kalender im Hintergrund frisch halten (alle 10 Min.) — Jarvis, Morgenlauf und Heute lesen den Stand, auch wenn keine Seite offen ist. */
 async function kalenderFrischHalten() {
@@ -37,6 +48,7 @@ export async function GET(req: Request) {
 
 export async function POST() {
   await kalenderFrischHalten().catch(() => {});
+  void businessTagesstand();
   const dran = await faellig();
   if (!dran.length) return NextResponse.json({ ok: true, eingereiht: 0 });
   const { angelegt, schonDa } = await reihe(dran.map(f => f.auftrag));

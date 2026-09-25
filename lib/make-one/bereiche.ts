@@ -120,7 +120,7 @@ export const BEREICHE: Bereich[] = [
       { href: '/os/woche', label: 'Wochen-Rhythmus', icon: Repeat },
       { href: '/os/performance', label: 'Der Score', icon: Gauge },
       { href: '/os/saeule/health', label: 'Säule Gesundheit & Energie', icon: HeartPulse, versteckt: true },
-      { href: '/os/saeule/business', label: 'Säule Business-Performance', icon: TrendingUp, modus: 'business', versteckt: true },
+      { href: '/os/business', label: 'Business-Index', icon: TrendingUp, modus: 'business', versteckt: true },
       { href: '/os/saeule/planning', label: 'Säule Planung & Execution', icon: ListChecks, versteckt: true },
       { href: '/os/saeule/finance', label: 'Säule Finanzen', icon: Wallet, modus: 'business', versteckt: true },
       { href: '/os/familie', label: 'Familie & Partnerschaft', icon: Users, versteckt: true },

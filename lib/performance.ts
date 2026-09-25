@@ -9,7 +9,6 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { resolveVitals } from '@/lib/vitals';
-import { computeMetrics, mitKasse, type FinanceState } from '@/lib/make-one/finance-data';
 import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
 // `routineQuote` heißt weiter unten schon eine Zahl — deshalb der Alias.
 import { hautTrend, streakStand, routineQuote as quoteFuer, type HautLog, type StreakLog } from '@/lib/gesundheit/eintraege';
@@ -21,12 +20,8 @@ import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { privatFaktoren, finanzSaeule } from '@/lib/finanzen/haushalt/score';
 import { ladeFamilie } from '@/lib/familie/speicher';
-import { ladeCrm, kundenAusMandaten } from '@/lib/crm/speicher';
-import { kennzahlen } from '@/lib/crm/kennzahlen';
-import { marketingKennzahlen } from '@/lib/crm/marketing';
-import { eventKennzahlen, traktion } from '@/lib/crm/traktion';
-import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
-import type { Kontakt } from '@/lib/make-one/crm';
+import { berechne } from '@/lib/business/index';
+import { ladeRoh as ladeBusinessRoh, bestandFuer } from '@/lib/business/speicher';
 import { pflegeRhythmus, type Rhythmus } from '@/lib/familie/logik';
 
 export interface Faktor {
@@ -69,6 +64,8 @@ export interface PerfIndex {
   /** Die Säule mit dem größten Hebel (niedrig × schwer). */
   hebel: string | null;
   stand: string;
+  /** Der Business-Index (Gesamtsicht) — die Business-Säule im Detail (25.09.). */
+  business?: { index: number | null; label: string; saeulen: { label: string; score: number | null }[]; rot: string[]; luecken: number; hebel: string | null };
 }
 
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
@@ -120,18 +117,15 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
     loadJson<HautLog>(p('haut')),
     loadJson<StreakLog>(p('streak')),
   ]);
-  const [vitals, healthLog, tasksState, fin, journal, cal, ritualLog, routinenF, msF, kundenF, fplanF] = await Promise.all([
+  const [vitals, healthLog, tasksState, journal, cal, ritualLog, routinenF, msF] = await Promise.all([
     resolveVitals(today, person),
     loadJson<Record<string, string[]>>(p('health-log')),
     loadJson<{ tasks: { status: string; priority: string; dueDate?: string; assignee?: string }[] }>('tasks'),
-    loadJson<FinanceState>('finance'),
     loadJson<Record<string, JournalTag>>(p('journal')),
     loadJson<CalCache>('calendar-cache'),
     loadJson<Record<string, string[]>>(p('rituale')),
     loadJson<{ routinen: { aktiv: boolean }[] }>('routinen'),
     loadJson<{ meilensteine: { bereich: string; faellig?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
-    ladeCrm().then(kundenAusMandaten),
-    loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string }[]; produkte: { status: string; preis: number }[] }>('finanzplan'),
   ]);
 
   // Agenten (24.09.): was Jarvis und die Agenten abnehmen — sechste Säule.
@@ -218,56 +212,17 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
     { label: 'Gesundheits-Meilensteine', ...msKurs('gesundheit') },
   ];
 
-  // ── Business-Performance ──
-  const [crmF, kartei] = await Promise.all([ladeCrm(), loadJson<{ kontakte: Kontakt[] }>('kontakte')]);
-  // 25.09.: Die Markttraktion (Sales, Marketing, Event) geht als ihr Traction-Score ein —
-  // eine Zahl statt zwei Einzelteilen, damit Power Hours und Chancen nicht doppelt zählen.
-  const kontakteF = kartei?.kontakte ?? [];
-  const tr = traktion({ sales: kennzahlen(kontakteF, crmF, today), marketing: marketingKennzahlen(kontakteF, crmF, today), event: eventKennzahlen(kontakteF, crmF, today) });
-  const offeneChancen = crmF.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe));
-  const crmFaktoren: Faktor[] = [
-    { label: 'Markttraktion', wert: tr.score ?? 0, echt: tr.score !== null,
-      quelle: tr.score !== null ? `Traction-Score ${tr.score} · ${tr.welten.map(w => `${w.label} ${w.score ?? '—'}`).join(' · ')}${tr.vorlaeufig ? ' (vorläufig)' : ''}` : `noch nichts gemessen · ${offeneChancen.length} offene Chancen` },
-  ];
-  const m = fin ? computeMetrics(mitKasse(fin, fplanF?.firmen)) : null;
-  const hatZahlen = !!m && m.aktiveMonate > 0;
-
-  const business: Faktor[] = [
-    { label: 'Umsatz gg. Ziel', wert: hatZahlen ? clamp(m!.fortschritt * 100) : 0, echt: hatZahlen,
-      quelle: hatZahlen ? `${Math.round(m!.fortschritt * 100)}% von 1 Mio €` : 'keine Ist-Zahlen im Controlling' },
-    { label: 'Run-Rate hält Kurs', wert: hatZahlen && m!.runRateNoetig > 0 ? clamp((m!.runRateAktuell / m!.runRateNoetig) * 100) : 0, echt: hatZahlen,
-      quelle: hatZahlen ? `Ø ${Math.round(m!.runRateAktuell / 1000)}k von nötigen ${Math.round(m!.runRateNoetig / 1000)}k` : 'keine Ist-Zahlen' },
-    // 24.09.: aus der Markttraktion (vorher: fünf Firmen aus einer externen Zielliste).
-    ...crmFaktoren,
-    { label: 'Meilenstein-Kurs', ...msKurs('business') },
-    // ── Mandate: zahlende Kunden sind der ehrlichste Business-Beweis. ──
-    (() => {
-      const kunden = kundenF?.kunden ?? [];
-      const aktiv = kunden.filter(k => k.status === 'aktiv').length;
-      const gespraech = kunden.filter(k => k.status === 'gespraech').length;
-      const cash = kunden.filter(k => k.status === 'aktiv').reduce((s, k) => s + (k.cashflow ?? 0), 0);
-      return { label: 'Mandate', wert: clamp(aktiv * 40 + gespraech * 15), echt: kunden.length > 0,
-        quelle: kunden.length ? `${aktiv} aktiv${cash ? ` (${Math.round(cash / 1000)}k €/Monat)` : ''} · ${gespraech} im Gespräch` : 'keine Kunden gepflegt' };
-    })(),
-    // ── Rechnungsfluss: gestellt muss bezahlt werden — Überfälliges drückt. ──
-    (() => {
-      const re = fplanF?.rechnungen ?? [];
-      const gestellt = re.filter(r => r.status === 'gestellt');
-      const bezahlt = re.filter(r => r.status === 'bezahlt').length;
-      const relevant = gestellt.length + bezahlt;
-      const ueberfaellig = gestellt.filter(r => r.faellig && r.faellig < today).length;
-      return { label: 'Rechnungsfluss', wert: relevant ? clamp((bezahlt / relevant) * 100 - ueberfaellig * 25) : 0, echt: relevant > 0,
-        quelle: relevant ? `${bezahlt} bezahlt, ${gestellt.length} gestellt${ueberfaellig ? ` (${ueberfaellig} überfällig!)` : ''}` : 'noch keine Rechnung gestellt' };
-    })(),
-    // ── Produkt-Fundament: ohne aktivierte Pakete gibt es nichts zu verkaufen. ──
-    (() => {
-      const pr = fplanF?.produkte ?? [];
-      const aktivMitPreis = pr.filter(p => p.status === 'aktiv' && p.preis > 0).length;
-      const entwuerfe = pr.filter(p => p.status !== 'aktiv').length;
-      return { label: 'Produkt-Fundament', wert: clamp(aktivMitPreis * 35 + entwuerfe * 5), echt: pr.length > 0,
-        quelle: pr.length ? `${aktivMitPreis} aktiv mit Preis · ${entwuerfe} im Entwurf${!aktivMitPreis ? ' — Pakete festzurren' : ''}` : 'keine Produkte definiert' };
-    })(),
-  ];
+  // ── Business-Performance = Business-Index (25.09., „eine Wahrheit“) ──
+  // Unsere KSI-Logik — Finanzielle Gesundheit 50 · Unternehmer-DNA 30 ·
+  // Markttraktion 20 — in der Gesamtsicht (lib/business). Die Säule IST dieser
+  // Index; die Faktoren zeigen seine drei Säulen. Umsatz-Kurs, Traktion,
+  // Meilensteine, Forderungen und Kunden stecken jetzt dort als Kennzahlen.
+  const bi = berechne(bestandFuer(await ladeBusinessRoh(today), 'gesamt'));
+  const fh = bi.saeulen.find(s => s.id === 'fh')!;
+  const business: Faktor[] = bi.saeulen.map(s => ({
+    label: `${s.label} (${Math.round(s.gewicht * 100)} %)`, wert: s.score ?? 0, echt: s.score != null && !s.zuDuenn,
+    quelle: s.score == null ? 'noch nichts gemessen' : `${s.kennzahlen.filter(k => k.gemessen).length} von ${s.kennzahlen.length} Kennzahlen gemessen${s.zuDuenn ? ' — zu wenig, zählt noch nicht' : ''}`,
+  }));
 
   // ── Planung & Ausführung ──
   const alle = tasksState?.tasks ?? [];
@@ -315,15 +270,11 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
       quelle: `${inArbeit} in Arbeit, ${erledigt} erledigt` },
   ];
 
-  // ── Finanzen ──
-  const finanzen: Faktor[] = [
-    { label: 'Runway', wert: m?.runwayMonate != null ? clamp((m.runwayMonate / 12) * 100) : 0, echt: m?.runwayMonate != null,
-      quelle: m?.runwayMonate != null ? `${m.runwayMonate.toFixed(1)} Monate — 12 = 100` : 'kein Cash/Burn hinterlegt' },
-    { label: 'Gewinn gg. Ziel', wert: hatZahlen && fin!.zielGewinn > 0 ? clamp((m!.istGewinn / fin!.zielGewinn) * 100) : 0, echt: hatZahlen,
-      quelle: hatZahlen ? `${Math.round(m!.istGewinn / 1000)}k von ${Math.round(fin!.zielGewinn / 1000)}k` : 'keine Ist-Zahlen' },
-    { label: 'Marge', wert: hatZahlen && m!.istUmsatz > 0 ? clamp((m!.istGewinn / m!.istUmsatz) * 100 * 2) : 0, echt: hatZahlen && (m?.istUmsatz ?? 0) > 0,
-      quelle: hatZahlen && m!.istUmsatz > 0 ? `${Math.round((m!.istGewinn / m!.istUmsatz) * 100)}% — 50% = 100` : 'keine Ist-Zahlen' },
-  ];
+  // ── Finanzen, Business-Hälfte = Finanzielle Gesundheit des Business-Index (25.09.) ──
+  const finanzen: Faktor[] = [{
+    label: 'Finanzielle Gesundheit', wert: fh.score ?? 0, echt: fh.score != null && !fh.zuDuenn,
+    quelle: fh.score == null ? 'noch nichts gemessen' : `Business-Index · ${fh.kennzahlen.filter(k => k.gemessen).length} von ${fh.kennzahlen.length} Kennzahlen (Liquidität, Forderungen, Ausgaben, Kapital)`,
+  }];
 
   // ── Finanzen, private Hälfte (24.09.) — nur für Personen mit Haushalt ──
   const zugang = await haushaltFuer(person).catch(() => null);
@@ -383,15 +334,17 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   const roh: { key: string; label: string; gewicht: number; faktoren: Faktor[]; hinweis: string }[] = [
     // Kevin: „Gesundheit macht mindestens 35% aus — ohne sie funktioniert nichts."
     { key: 'health', label: 'Gesundheit & Energie', gewicht: 0.35, faktoren: gesundheit, hinweis: 'Morgen-Check + Routinen + Journal' },
-    { key: 'business', label: 'Business-Performance', gewicht: 0.20, faktoren: business, hinweis: 'Umsatz-Kurs + Pipeline' },
+    { key: 'business', label: 'Business-Performance', gewicht: 0.20, faktoren: business, hinweis: 'Business-Index: Finanzielle Gesundheit · Unternehmer-DNA · Markttraktion' },
     // 24.09.: Agenten als sechste Säule (10 %); Planung und Beziehung geben je 5 % ab.
     { key: 'planning', label: 'Planung & Ausführung', gewicht: 0.10, faktoren: planung, hinweis: 'Aufgabenlage + Kalender' },
-    { key: 'finance', label: 'Finanzen', gewicht: 0.15, faktoren: finanzenGesamt, hinweis: privat.length ? 'Business (Runway, Gewinn, Marge) + Privat (Sparquote, Luft, Schuldenabbau) — je zur Hälfte' : 'Runway + Gewinn' },
+    { key: 'finance', label: 'Finanzen', gewicht: 0.15, faktoren: finanzenGesamt, hinweis: privat.length ? 'Business (Finanzielle Gesundheit) + Privat (Sparquote, Luft, Schuldenabbau) — je zur Hälfte' : 'Finanzielle Gesundheit (Business-Index)' },
     { key: 'social', label: 'Familie & Partnerschaft', gewicht: 0.10, faktoren: familie ?? sozial, hinweis: familie ? 'Pflege-Rhythmus des Paares · 28 Tage' : rhythmus?.stufe === 'pause' ? 'Ausnahmezeit — pausiert' : 'Journal + Rituale, bis der Pflege-Rhythmus läuft' },
     { key: 'agents', label: 'Agenten', gewicht: 0.10, faktoren: agenten, hinweis: 'Läufe, Aufträge, Stapel, Bote' },
   ];
 
   const saeulen: Saeule[] = roh.map(s => {
+    // Business: die Zahl des Business-Index, nicht der Schnitt seiner drei Säulen (50/30/20).
+    if (s.key === 'business') return { ...s, score: bi.index, abdeckung: bi.abdeckung, zuDuenn: bi.index != null && bi.abdeckung < MIN_ABDECKUNG };
     if (s.key === 'finance') {
       const f = finanzSaeule(finanzen, privat);
       return { ...s, score: f.score, abdeckung: f.abdeckung, teile: f.teile, zuDuenn: f.score != null && f.abdeckung < MIN_ABDECKUNG };
@@ -423,5 +376,10 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   const gesamtGewicht = roh.reduce((s, x) => s + x.gewicht, 0) || 1;
   const abdeckung = saeulen.reduce((s, x) => s + (x.zuDuenn || x.score == null ? 0 : x.abdeckung) * x.gewicht, 0) / gesamtGewicht;
 
-  return { index, label: indexLabel(index), saeulen, abdeckung, hebel, stand: today };
+  const businessDetail = {
+    index: bi.index, label: bi.label, luecken: bi.luecken, hebel: bi.hebel?.label ?? null,
+    saeulen: bi.saeulen.map(x => ({ label: x.label, score: x.zuDuenn ? null : x.score })),
+    rot: bi.saeulen.flatMap(x => x.kennzahlen.filter(k => k.ampel === 'rot').map(k => `${k.label} ${k.anzeige}`)),
+  };
+  return { index, label: indexLabel(index), saeulen, abdeckung, hebel, stand: today, business: businessDetail };
 }

@@ -5,7 +5,7 @@ Kevin 25.09.2026: „Das CapOS-Operationssystem einmal mit in den Business-Berei
 kompletten Business-Bereich — darauf können wir sämtliche Berechnungen
 innerhalb des Business anstellen.“
 
-Status: **Plan entschieden (25.09.), noch nichts gebaut.** Umsetzung auf `entwicklung`, online mit
+Status: **gebaut (25.09.) auf `entwicklung`** — online mit dem nächsten geplanten Update (UPDATES.md). Umsetzung auf `entwicklung`, online mit
 einem geplanten Update (siehe `UPDATES.md`).
 
 ---
@@ -132,3 +132,18 @@ DevSpec-Kennzahlen, die mit Mandaten/Pipeline rechenbar sind:
    Business-Index; die Business-Hälfte der Finanzen-Säule ist die Finanzielle
    Gesundheit.
 4. **Gesellschaften:** je Firma (Consulting, KD Ventures) + gesamt, Umschalter im Cockpit.
+
+## 7. Umgesetzt (25.09.2026)
+
+- `lib/business/register.ts` — 26 Kennzahlen (FH 12 · Unternehmer-DNA 6 · MT 8) mit Formel, Quelle,
+  Schwellen, „so schließen“. Zusätzlich zum Plan: Meilenstein-Kurs (UD) und Umsatz-Kurs (MT), damit
+  nichts aus der alten Business-Säule verloren geht.
+- `lib/business/messen.ts` — jede Kennzahl je Sicht; Ist-Monate aus Monatsabschluss > Grundlage
+  (Consulting) > Controlling (gesamt). Private Kredite aus dem V1-Export zählen nie.
+- `lib/business/index.ts` — Punkte (rot 20 · grün 100 · linear), Säulen (ab 40 % Abdeckung), Gesamt 50/30/20.
+- `lib/business/speicher.ts` + `app/api/business` — Monatsabschluss, Köpfe, täglicher Schnappschuss
+  (Trend, Ampel-Wechsel, MRR für die NRR).
+- `/os/business` (Kopf-Ring „Business“) — Cockpit; Wachstums-Score: Business-Säule = Index,
+  Finanzen-Business-Hälfte = Finanzielle Gesundheit; Jarvis bekommt Index, Rotes und Messlücken.
+- Tests: `tests/business-index.test.ts`.
+
