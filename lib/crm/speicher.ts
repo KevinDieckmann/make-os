@@ -8,6 +8,7 @@ import { wendeAn, type ListenOp } from '@/lib/sync';
 import { STUFEN } from './pipeline';
 import { CRM_LISTEN, type CrmBestand, type CrmListe, type Firma, type FirmaRolle, type Antrag, type AntragArt, type Verarbeitung, type Segment, type SegmentKriterien, type Beitrag, type NewsletterAusgabe, type Kampagne, type Chance, type Mandat, type Leistung, type Event, type Teilnahme, type PowerHourSitzung, type ChancenStufe, type Qual, type Freigabe } from './typen';
 import { wer, BEIDE, verantwortlich } from './team';
+import { leadSaeubern } from './lead-form';
 
 export const CRM_SPEICHER = 'crm';
 export const leererBestand = (): CrmBestand => ({ firmen: [], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [], segmente: [], beitraege: [], newsletter: [], kampagnen: [] });
@@ -110,7 +111,7 @@ function firma(o: Record<string, unknown>, jetzt: string): Firma | null {
   return {
     id: String(o.id), name: txt(o.name, 160), ...f('domain', 120), ...f('webseite'), ...f('branche', 160), ...f('mitarbeiter', 40), ...f('umsatz', 60), ...f('stadt', 80),
     ...f('gegruendet', 20), ...f('linkedin'), ...f('telefon', 60), ...f('email', 160), ...f('rechtsform', 80),
-    rolle: aus(o.rolle, ROLLEN, 'offen'), ...(o.rolleVonHand === true ? { rolleVonHand: true } : {}), ...f('marktinfo', 800), ...f('notiz', 3000), geaendert: jetzt,
+    rolle: aus(o.rolle, ROLLEN, 'offen'), ...(o.rolleVonHand === true ? { rolleVonHand: true } : {}), ...(leadSaeubern(o.lead) ? { lead: leadSaeubern(o.lead) } : {}), ...f('marktinfo', 800), ...f('notiz', 3000), geaendert: jetzt,
   } as Firma;
 }
 

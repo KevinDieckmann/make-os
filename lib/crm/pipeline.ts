@@ -13,7 +13,8 @@ import type { Welt } from './traktion';
 import { TEAM, BEIDE, zustaendig } from './team';
 
 export const STUFEN: { id: ChancenStufe; label: string; p: number; weiterWenn: string; offen: boolean }[] = [
-  { id: 'qualifiziert', label: 'Qualifiziert', p: 30, weiterWenn: 'Schmerz und Entscheider bekannt, Gespräch mit dem Entscheider vereinbart.', offen: true },
+  // Einstieg der Deal-Ebene: ein qualifizierter Lead (SQL, lib/crm/leads.ts) — die Qualifizierung selbst passiert eine Ebene darüber.
+  { id: 'qualifiziert', label: 'SQL', p: 30, weiterWenn: 'Bedarfsgespräch mit dem Entscheider steht im Kalender.', offen: true },
   { id: 'bedarf', label: 'Bedarf', p: 45, weiterWenn: 'Moralischer Vorvertrag: höchstens drei bis fünf Prioritäten, Diagnose-Termin steht.', offen: true },
   { id: 'diagnose', label: 'Diagnose', p: 60, weiterWenn: 'Diagnose mit dem Entscheider gehalten; Wirkung, Budgetrahmen und Zeitpunkt bestätigt.', offen: true },
   { id: 'angebot', label: 'Angebot', p: 75, weiterWenn: 'Optionen live besprochen, Preis ohne Rabatt bestätigt, Entscheidungsdatum genannt.', offen: true },

@@ -1,16 +1,16 @@
 // ─── Markttraktion — Adressen (rein, getestet) ──────────────────────────────
 // /os/markttraktion?s=<Bereich>&a=<Ansicht>&k=<Person oder Firma>
 //   s: ueberblick (Start) · sales · marketing · event · kontakte · firmen · stammdaten
-//   a: sales     → heute (Start) · pipeline · kunden · kampagnen
+//   a: sales     → heute (Start) · leads (Ebene 1) · pipeline (Deals, Ebene 2) · kunden (Ebene 3) · kampagnen
 //      marketing → uebersicht (Start) · segmente · kampagnen · redaktion · newsletter · positionierung
 //      kontakte/stammdaten → die gespeicherte Ansicht bzw. der Reiter
 // Alte CRM-Adressen (/os/crm?s=heute|pipeline|kunden|events|kartei …) bleiben
 // gültig: /os/crm leitet um, und `aufloesen` übersetzt die alten Bereiche.
 
 export type Bereich = 'ueberblick' | 'sales' | 'marketing' | 'event' | 'kontakte' | 'firmen' | 'stammdaten';
-export type SalesAnsicht = 'heute' | 'pipeline' | 'kunden' | 'kampagnen';
+export type SalesAnsicht = 'heute' | 'leads' | 'pipeline' | 'kunden' | 'kampagnen';
 export const BEREICHE: Bereich[] = ['ueberblick', 'sales', 'marketing', 'event', 'kontakte', 'firmen', 'stammdaten'];
-export const SALES_ANSICHTEN: SalesAnsicht[] = ['heute', 'pipeline', 'kunden', 'kampagnen'];
+export const SALES_ANSICHTEN: SalesAnsicht[] = ['heute', 'leads', 'pipeline', 'kunden', 'kampagnen'];
 export const PFAD = '/os/markttraktion';
 
 /** Bereich + Ansicht aus der Adresse — alte CRM-Bereiche eingeschlossen. */

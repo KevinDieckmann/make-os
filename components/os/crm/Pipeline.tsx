@@ -32,7 +32,7 @@ const GES = [{ id: 'kdc', label: 'Selbstständigkeit' }, { id: 'kdv', label: 'KD
 const nurFelder = (t: Record<string, unknown>) => Object.fromEntries(Object.entries(t).map(([k, v]) => [k, v === undefined ? '' : v]));
 const wertText = (c: Chance) => (c.wert.betrag ? `${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/M' : c.wert.basis === 'jahr' ? '/J' : ''}` : 'ohne Wert');
 
-export function Pipeline({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string) => void }) {
+export function Pipeline({ api, zuKontakt, zuLeads }: { api: CrmApi; zuKontakt: (id: string) => void; /** Ebene 1 — wer im Gespräch ist, wird erst dort qualifiziert. */ zuLeads?: () => void }) {
   const [auswahl, setAuswahl] = useState<string | null>(null);
   const [geschlossen, setGeschlossen] = useState(false);
   const breit = useBreit();
@@ -161,8 +161,8 @@ export function Pipeline({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
 
       {vorschlaege.length > 0 && (
         <Karte i={1}>
-          <Ueberschrift rechts={`${vorschlaege.length} aus der Kartei`}>Noch ohne Chance</Ueberschrift>
-          <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Laut Masterdatei im Gespräch oder mit Angebot — als Chance anlegen, dann Wert und nächsten Schritt eintragen.</div>
+          <Ueberschrift rechts={zuLeads ? <Knopf leise onClick={zuLeads}>Zu den Leads (Ebene 1)</Knopf> : `${vorschlaege.length} aus der Kartei`}>Im Gespräch, noch kein Deal</Ueberschrift>
+          <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Erst qualifizieren (Ebene 1: Schmerz, Entscheider, Budget oder Zeitpunkt), dann wird daraus ein Deal. Direkt anlegen nur, wenn die Qualifizierung schon feststeht.</div>
           <Liste>
             {vorschlaege.slice(0, alleVorschlaege ? 40 : 6).map(k => <Zeile key={k.id} titel={<>{anzeigename(k)}{k.firma && <span style={{ color: C.inkLeise }}> · {k.firma}</span>}</>} unter={k.stufe === 'angebot' ? 'Angebot' : k.stufe === 'termin' ? 'Termin' : 'im Gespräch'} rechts={<Knopf leise onClick={() => ausKontakt(k)}>+ Chance</Knopf>} />)}
           </Liste>
@@ -276,6 +276,13 @@ function ChancenDetail({ c, api, personen, zuKontakt }: { c: Chance; api: CrmApi
       </Feldzeile>
       <Feldzeile label="Notiz"><Feld wert={c.notiz} onFertig={notiz => setze({ notiz: notiz || undefined })} /></Feldzeile>
       {c.grund && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Grund: {c.grund}{c.wiedervorlage ? ` · Wiedervorlage ${datum(c.wiedervorlage)}` : ''}</div>}
+      {c.stufe === 'gewonnen' && !crm.stand.mandate.some(m => m.chanceId === c.id) && (
+        <div style={{ padding: '10px 12px', borderRadius: 12, background: `${LEUCHT.gut}12`, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: TYP.bedien }}>Gewonnen — jetzt Ebene 3: aus dem Deal wird ein Mandat (Vertrag, Kickoff, Health).</span>
+          <Knopf farbe={LEUCHT.gut} onClick={async () => { const r = await fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'mandat', chanceId: c.id }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' })); if (!r.ok) api.setFehler(r.fehler); void api.laden(); }}>Mandat anlegen</Knopf>
+        </div>
+      )}
+      {c.stufe === 'gewonnen' && crm.stand.mandate.some(m => m.chanceId === c.id) && <div style={{ fontSize: 12.5, color: LEUCHT.gut }}>Mandat angelegt — Sales › Kunden.</div>}
       <div><button onClick={() => { if (window.confirm('Chance löschen? Besser: als verloren markieren — dann lernt die Pipeline.')) void api.weg('chancen', c.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>Löschen</button> {' '}<Chip farbe={C.inkLeise}>angelegt {datum(c.angelegt)}</Chip></div>
     </div>
   );

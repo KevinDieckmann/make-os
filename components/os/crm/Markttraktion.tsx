@@ -5,7 +5,8 @@
 // Markttraktion.“ Aufbau:
 //   Überblick   Traction-Score über die drei Welten, die drei Heads, die
 //               Übergaben zwischen den Welten, was jetzt zu tun ist
-//   Sales       Heute (Power Hour) · Pipeline · Kunden · Kampagnen  — Head of Sales
+//   Sales       Heute (Power Hour) · 1 Leads (qualifizieren → SQL) · 2 Deals (Pipeline,
+//               Closing) · 3 Kunden (Mandate) · Kampagnen — Head of Sales; oben der Trichter
 //   Marketing   Übersicht · Segmente · Kampagnen · Redaktionsplan ·
 //               Newsletter · Positionierung                     — Head of Marketing
 //   Event       Events mit Gästen, Checkliste, Abend, Nachfassen  — Head of Event
@@ -35,13 +36,15 @@ import { Events } from './Events';
 import { Stammdaten } from './Stammdaten';
 import { SchnellErfassen } from './SchnellErfassen';
 import { Runden, type RundenArt } from './Runden';
+import { Leads, SalesTrichter } from './Leads';
 
 const WELTEN: { id: Bereich; label: string; farbe?: string }[] = [
   { id: 'ueberblick', label: 'Überblick' }, { id: 'sales', label: 'Sales', farbe: WELT_FARBE.sales },
   { id: 'marketing', label: 'Marketing', farbe: WELT_FARBE.marketing }, { id: 'event', label: 'Event', farbe: WELT_FARBE.event },
 ];
 const GRUNDLAGE: { id: Bereich; label: string }[] = [{ id: 'kontakte', label: 'Kontakte' }, { id: 'firmen', label: 'Firmen' }, { id: 'stammdaten', label: 'Stammdaten' }];
-const SALES: { id: SalesAnsicht; label: string }[] = [{ id: 'heute', label: 'Heute · Power Hour' }, { id: 'pipeline', label: 'Pipeline' }, { id: 'kunden', label: 'Kunden' }, { id: 'kampagnen', label: 'Kampagnen' }];
+// Sales in drei Ebenen (Kevin 25.09.): Leads qualifizieren → Deals im Closing → Kunden. Dazu der Tag (Power Hour) und Kampagnen.
+const SALES: { id: SalesAnsicht; label: string }[] = [{ id: 'heute', label: 'Heute · Power Hour' }, { id: 'leads', label: '1 · Leads' }, { id: 'pipeline', label: '2 · Deals' }, { id: 'kunden', label: '3 · Kunden' }, { id: 'kampagnen', label: 'Kampagnen' }];
 
 const UNTER: Record<Bereich, string> = {
   ueberblick: 'Sales, Marketing und Event als ein System — gemessen an Gesprächen und Chancen, nicht an Lautstärke.',
@@ -111,9 +114,11 @@ export function MarkttraktionSeite() {
 
       {bereich === 'sales' && (
         <>
+          <SalesTrichter api={api} zuBereich={zuBereich} />
           <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={SALES} aktiv={sales} onWahl={a => gehe('sales', a === 'heute' ? undefined : a)} /></div>
           {sales === 'heute' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
-          {sales === 'pipeline' && <Pipeline api={api} zuKontakt={zuKontakt} />}
+          {sales === 'leads' && <Leads api={api} zuKontakt={zuKontakt} zuDeal={() => gehe('sales', 'pipeline')} />}
+          {sales === 'pipeline' && <Pipeline api={api} zuKontakt={zuKontakt} zuLeads={() => gehe('sales', 'leads')} />}
           {sales === 'kunden' && <Kunden api={api} zuKontakt={zuKontakt} />}
           {sales === 'kampagnen' && <Kampagnen api={api} zuKontakt={zuKontakt} head="sales" />}
         </>

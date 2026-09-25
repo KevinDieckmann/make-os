@@ -14,6 +14,8 @@
 // Alles hier ist reine Logik in einer .ts-Datei, damit vitest es prüfen kann.
 // Nichts sendet. Versand bleibt bei Kevin — das ist eiserne Regel 3.
 
+import { leadSaeubern } from '@/lib/crm/lead-form';
+
 export const STUFEN = [
   'neu', 'ansprechen', 'angesprochen', 'gespraech', 'termin', 'angebot',
   'gewonnen', 'verloren', 'ruht',
@@ -131,6 +133,8 @@ export interface Kontakt {
   /** Eigener Takt in Tagen, sonst aus dem Kreis. */
   taktTage?: number;
   besitzer?: string;
+  /** Ebene 1 (Lead) für Personen OHNE Firma — mit Firma liegt die Qualifizierung an der Firma. */
+  lead?: import('@/lib/crm/typen').Lead;
   lebensphase?: Lebensphase;
   anrede?: 'Sie' | 'Du';
   vorgestelltDurch?: string;
@@ -438,7 +442,7 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     notiz: txt(o.notiz, 2000), hubspotId: txt(o.hubspotId, 40), steckbrief: txt(o.steckbrief, 400),
     ...(/^f-[a-z0-9-]{2,60}$/.test(String(o.firmaId ?? '')) ? { firmaId: String(o.firmaId) } : {}),
     ...(kreis ? { kreis } : {}), ...(takt >= 7 && takt <= 730 ? { taktTage: Math.round(takt) } : {}),
-    ...(txt(o.besitzer, 40) ? { besitzer: txt(o.besitzer, 40) } : {}), ...(lebensphase ? { lebensphase } : {}),
+    ...(txt(o.besitzer, 40) ? { besitzer: txt(o.besitzer, 40) } : {}), ...(lebensphase ? { lebensphase } : {}), ...(leadSaeubern(o.lead) ? { lead: leadSaeubern(o.lead) } : {}),
     ...(o.anrede === 'Sie' || o.anrede === 'Du' ? { anrede: o.anrede } : {}), ...(txt(o.vorgestelltDurch, 60) ? { vorgestelltDurch: txt(o.vorgestelltDurch, 60) } : {}),
     ...(einwilligungen?.length ? { einwilligungen } : {}),
     ...(ws && tag(ws.seit) ? { werbesperre: { seit: tag(ws.seit)!, grund: txt(ws.grund, 300) ?? 'Widerspruch' } } : {}),

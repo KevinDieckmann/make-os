@@ -7,6 +7,25 @@
 // im Speicher „crm“. Konzept: docs/konzepte/crm-sales-marketing-events.md
 
 /** Chancen-Stufen nach KEMARIS Operations (pipeline.ts, Version 2): jede Stufe endet mit einem Ereignis auf KUNDENseite. */
+// ── Ebene 1: Lead (25.09., Kevin: „Kontakt-/Firmen-Ebene, wo wir qualifizieren und es ein SQL wird“) ──
+/** Lead-Status — die Qualifizierung VOR dem Deal. Ab „sql“ gehört es in die Deal-Ebene (Pipeline). */
+export type LeadStatus = 'neu' | 'kontaktiert' | 'im_gespraech' | 'qualifizierung' | 'sql' | 'kunde' | 'kein_fit' | 'ruht';
+/** Die sechs Kernfragen der Qualifizierung (dieselben wie am Deal — sie wandern beim SQL mit). */
+export interface Kriterien { schmerz: Qual; entscheider: Qual; budget: Qual; zeitpunkt: Qual; wirkung: Qual; alternative: Qual }
+/** Qualifizierung an der Firma (Account) — ohne Firma an der Person. */
+export interface Lead {
+  status: LeadStatus;
+  kriterien: Kriterien;
+  /** Passt die Firma zu unserem Kundenprofil? */
+  fit?: Qual;
+  notiz?: string;
+  /** Wann es ein SQL wurde und welcher Deal daraus entstand. */
+  sqlAm?: string; chanceId?: string;
+  /** Warum kein Fit / ruht. */
+  grund?: string;
+  geaendert?: string; geaendertVon?: string;
+}
+
 export type ChancenStufe = 'qualifiziert' | 'bedarf' | 'diagnose' | 'angebot' | 'abschluss' | 'gewonnen' | 'verloren' | 'geparkt';
 export type ChancenArt = 'retainer' | 'projekt' | 'workshop' | 'vermittlung' | 'software';
 export type WertBasis = 'monat' | 'jahr' | 'einmalig';
@@ -120,6 +139,8 @@ export interface Firma {
   email?: string;
   rechtsform?: string;
   rolle: FirmaRolle;
+  /** Ebene 1: Qualifizierung dieser Firma als Lead (fehlt → aus den Personen abgeleitet). */
+  lead?: Lead;
   /** Rolle von Hand gesetzt — der Abgleich leitet sie dann nicht mehr ab. */
   rolleVonHand?: boolean;
   marktinfo?: string;
