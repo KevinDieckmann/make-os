@@ -48,7 +48,9 @@ services:
     environment:
       MAKE_OS_DOMAIN: ${MAKE_OS_DOMAIN}
     volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Ein Ordner statt einer Datei: git ersetzt Dateien beim Aktualisieren — eine einzeln
+      # eingebundene Datei sähe der Container dann nicht (Caddy läse die alte Fassung).
+      - ./deploy/caddy:/etc/caddy:ro
       - caddy_daten:/data
       - caddy_konfig:/config
     depends_on: [app]

@@ -1,19 +1,20 @@
 import type { Metadata } from 'next';
-import { Archivo, Public_Sans } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 
-// ─── Schrift (Härtung 06.09.) ───────────────────────────────────────────────
+// ─── Schrift (Härtung 06.09., selbst mitgeliefert seit 25.09.) ──────────────
 // Archivo trägt große Zahlen — der Score-Ring, der Kontostand — mit echten
-// Tabellenziffern. Public Sans ist auf kleine Größen ausgelegt und löst
-// system-ui ab, das je nach Rechner anders aussah. Beide werden lokal
-// mitgeliefert (next/font), also kein Nachladen und kein Schriftsprung.
-const archivo = Archivo({
-  subsets: ['latin'], weight: ['500', '600', '700'],
-  variable: '--schrift-display', display: 'swap',
+// Tabellenziffern. Public Sans ist auf kleine Größen ausgelegt. Beide liegen
+// als Dateien im Repo (app/schriften, SIL Open Font License): Beim Bauen auf
+// dem Server gibt es so keine Abhängigkeit von Google (ein Aussetzer dort ließ
+// am 25.09. das Ausrollen scheitern), kein Nachladen, kein Schriftsprung.
+const archivo = localFont({
+  src: './schriften/archivo-latin.woff2', weight: '500 700', style: 'normal',
+  variable: '--schrift-display', display: 'swap', adjustFontFallback: 'Arial',
 });
-const publicSans = Public_Sans({
-  subsets: ['latin'], weight: ['400', '500', '600'],
-  variable: '--schrift-text', display: 'swap',
+const publicSans = localFont({
+  src: './schriften/public-sans-latin.woff2', weight: '400 600', style: 'normal',
+  variable: '--schrift-text', display: 'swap', adjustFontFallback: 'Arial',
 });
 import { AppContextProvider } from '@/context/AppContext';
 import { TasksProvider } from '@/context/TasksContext';
