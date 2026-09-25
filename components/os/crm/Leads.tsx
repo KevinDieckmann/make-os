@@ -200,7 +200,7 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
         <Ueberschrift>Status</Ueberschrift>
         <Pillen liste={LEAD_STATUS.filter(s => s.id !== 'sql' && s.id !== 'kunde').map(s => ({ id: s.id, label: s.label }))} aktiv={status === 'sql' || status === 'kunde' ? undefined : status}
           onWahl={s => { setStatus(s); void setze({ status: s, ...(s === 'kein_fit' || s === 'ruht' ? { grund: window.prompt(s === 'kein_fit' ? 'Warum kein Fit? (kurz)' : 'Warum ruht es? (kurz)') ?? '' } : {}) }); }} />
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>{status === 'sql' ? 'SQL — der Deal läuft in der Pipeline.' : status === 'kunde' ? 'Kunde — siehe Sales › Kunden.' : `Weiter, wenn: ${LEAD_STATUS.find(s => s.id === status)?.weiterWenn}`}{z.grund ? ` · Grund: ${z.grund}` : ''}{!z.gesetzt ? ' · Status aus den Personen abgeleitet' : ''}</div>
+        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>{status === 'sql' ? 'SQL — der Deal läuft in der Pipeline.' : status === 'kunde' ? 'Kunde — siehe Produkte & Mandate.' : `Weiter, wenn: ${LEAD_STATUS.find(s => s.id === status)?.weiterWenn}`}{z.grund ? ` · Grund: ${z.grund}` : ''}{!z.gesetzt ? ' · Status aus den Personen abgeleitet' : ''}</div>
       </div>
 
       <div>

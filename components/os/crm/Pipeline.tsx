@@ -10,6 +10,8 @@
 // sich Kevin und Malin an derselben Chance nichts überschreiben.
 
 import { useLinkAuswahl } from '../Verlauf';
+import { mandateLink } from '@/lib/crm/adresse';
+import Link from 'next/link';
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, useBreit, LEUCHT } from '../schlank';
@@ -284,7 +286,7 @@ function ChancenDetail({ c, api, personen, zuKontakt }: { c: Chance; api: CrmApi
           <Knopf farbe={LEUCHT.gut} onClick={async () => { const r = await fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'mandat', chanceId: c.id }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' })); if (!r.ok) api.setFehler(r.fehler); void api.laden(); }}>Mandat anlegen</Knopf>
         </div>
       )}
-      {c.stufe === 'gewonnen' && crm.stand.mandate.some(m => m.chanceId === c.id) && <div style={{ fontSize: 12.5, color: LEUCHT.gut }}>Mandat angelegt — Sales › Kunden.</div>}
+      {c.stufe === 'gewonnen' && crm.stand.mandate.some(m => m.chanceId === c.id) && <div style={{ fontSize: 12.5, color: LEUCHT.gut }}>Mandat angelegt — <Link href={mandateLink('mandate', crm.stand.mandate.find(m => m.chanceId === c.id)!.id)} style={{ color: LEUCHT.gut }}>unter Produkte & Mandate öffnen ›</Link></div>}
       <div><button onClick={() => { if (window.confirm('Deal löschen? Besser: als verloren markieren — dann lernt die Pipeline.')) void api.weg('chancen', c.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>Löschen</button> {' '}<Chip farbe={C.inkLeise}>angelegt {datum(c.angelegt)}</Chip></div>
     </div>
   );

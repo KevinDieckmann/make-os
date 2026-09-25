@@ -19,7 +19,7 @@ import { art14 } from '@/lib/crm/recht';
 import { PERSON_FELDER, FIRMA_FELDER, FIRMA_FELDER_IMPORT, EINORDNUNG_FELDER, HERKUNFT_FELDER, gefuellt, vollstaendigkeit, type MatrixFeld } from '@/lib/crm/akte';
 import { haeltBeziehung, BEIDE, TEAM, nameVon } from '@/lib/crm/team';
 import { netzStufe, profilAdresse, suchLink } from '@/lib/crm/netzwerk';
-import { markttraktion } from '@/lib/crm/adresse';
+import { markttraktion, mandateLink } from '@/lib/crm/adresse';
 import Link from 'next/link';
 import { type CrmApi, neueId, datum, euro } from './daten';
 import { NotizFormular, Verlauf, Feldzeile, Pillen, Feld, festhalten, hatMailEinwilligung } from './teile';
@@ -128,7 +128,7 @@ export function DealsTeil({ k, api }: { k: Kontakt; api: CrmApi }) {
     <div>
       <Ueberschrift rechts={<Knopf leise onClick={neuerDeal}>+ Deal</Knopf>}>Deals & Mandate</Ueberschrift>
       {chancen.map(c => <div key={c.id} style={{ fontSize: TYP.bedien, padding: '5px 0' }}><Punkt farbe={crm?.ampel[c.id]?.ampel === 'rot' ? LEUCHT.kritisch : crm?.ampel[c.id]?.ampel === 'gelb' ? LEUCHT.achtung : LEUCHT.gut} groesse={7} /> <b style={{ fontWeight: 600 }}>{c.titel}</b> <span style={{ color: C.inkLeise }}>· {crm?.stufen.find(s => s.id === c.stufe)?.label} · {c.wert.betrag ? euro(c.wert.betrag) + (c.wert.basis === 'monat' ? '/Monat' : '') : 'ohne Wert'}</span></div>)}
-      {mandate.map(m => <div key={m.id} style={{ fontSize: TYP.bedien, padding: '5px 0' }}><Punkt farbe={LEUCHT.geld} groesse={7} /> <b style={{ fontWeight: 600 }}>{m.titel.slice(0, 70)}</b> <span style={{ color: C.inkLeise }}>· Mandat {m.status}</span></div>)}
+      {mandate.map(m => <Link key={m.id} href={mandateLink('mandate', m.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '5px 0', color: C.ink, textDecoration: 'none' }}><Punkt farbe={LEUCHT.geld} groesse={7} /> <b style={{ fontWeight: 600 }}>{m.titel.slice(0, 70)}</b> <span style={{ color: C.inkLeise }}>· Mandat {m.status} ›</span></Link>)}
       {!chancen.length && !mandate.length && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Noch kein Deal.</div>}
     </div>
   );

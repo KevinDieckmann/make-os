@@ -93,6 +93,8 @@ export interface Mandat {
   /** DEAR, für Beratung übersetzt — je 0–100, null = noch nicht bewertet. */
   health: { beteiligung: number | null; umsetzung: number | null; wirkung: number | null; zahlung: number | null; stimmung: number | null };
   leistungen: string[];
+  /** Aktuelle Phase im Ablauf des Produkts (id aus Leistung.phasen). */
+  phase?: string;
   /** Widersprüche und offene Punkte — werden nicht geglättet, sondern sichtbar gemacht. */
   offen: string[];
   quelle?: string;
@@ -105,6 +107,11 @@ export interface Mandat {
 }
 
 export type LeistungTyp = 'diagnose' | 'workshop' | 'retainer' | 'sprint' | 'vermittlung' | 'software';
+/** Ein Schritt im Ablauf eines Produkts (25.09.) — ein Mandat steht in genau einer Phase. */
+export interface ProduktPhase { id: string; name: string; dauerTage?: number; beschreibung?: string }
+export type UnterlageArt = 'angebot' | 'vertrag' | 'deck' | 'onepager' | 'sonstiges';
+/** Unterlage zu einem Produkt: Link (https) oder Notiz im Brain (/os/wissen?n=…). */
+export interface Unterlage { id: string; titel: string; art: UnterlageArt; url?: string }
 export interface Leistung {
   id: string;
   name: string;
@@ -119,6 +126,11 @@ export interface Leistung {
   gesellschaft: Gesellschaft;
   status: 'aktiv' | 'entwurf' | 'eingestellt';
   quelle?: string;
+  /** Produktlinie (frei, z. B. „Beratung & Begleitung“) — ohne Eintrag aus dem Typ abgeleitet (lib/crm/produkte.ts). */
+  linie?: string;
+  /** Ablauf in Phasen — ein Mandat auf diesem Produkt steht in einer davon. */
+  phasen?: ProduktPhase[];
+  unterlagen?: Unterlage[];
   geaendert: string;
 }
 

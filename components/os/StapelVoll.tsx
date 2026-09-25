@@ -47,7 +47,7 @@ const SELBST: Record<string, { href: string; label: string }> = {
   meilensteine: { href: '/os/roadmap', label: 'Roadmap' },
   fokus: { href: '/os/fokus', label: 'Fokus' },
   aufgaben: { href: '/os/aufgaben', label: 'Aufgaben' },
-  kunden: { href: '/os/markttraktion?s=sales&a=kunden', label: 'Markttraktion' },
+  kunden: { href: '/os/mandate', label: 'Produkte & Mandate' },
   planer: { href: '/os/planung/woche', label: 'Wochenplaner' },
   inbox: { href: '/os/inbox', label: 'Postfach' },
   gesundheit: { href: '/os/gesundheit', label: 'Gesundheit' },

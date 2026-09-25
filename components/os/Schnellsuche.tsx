@@ -15,7 +15,7 @@ const SEITEN: Treffer[] = [
   { art: 'seite', id: 'markttraktion', titel: 'Markttraktion · Überblick', href: '/os/markttraktion' }, { art: 'seite', id: 'powerhour', titel: 'Sales · Heute (Power Hour)', href: '/os/markttraktion?s=sales' },
   { art: 'seite', id: 'kontakte', titel: 'Markttraktion · Kontakte', href: '/os/markttraktion?s=kontakte' },
   { art: 'seite', id: 'firmen', titel: 'Markttraktion · Firmen', href: '/os/markttraktion?s=firmen' }, { art: 'seite', id: 'pipeline', titel: 'Sales · Pipeline', href: '/os/markttraktion?s=sales&a=pipeline' },
-  { art: 'seite', id: 'kunden', titel: 'Sales · Kunden & Mandate', href: '/os/markttraktion?s=sales&a=kunden' }, { art: 'seite', id: 'kampagnen', titel: 'Kampagnen', href: '/os/markttraktion?s=sales&a=kampagnen' },
+  { art: 'seite', id: 'kunden', titel: 'Produkte & Mandate', href: '/os/mandate' }, { art: 'seite', id: 'produkte', titel: 'Produkte (Leistungskatalog)', href: '/os/mandate?s=produkte' }, { art: 'seite', id: 'kampagnen', titel: 'Kampagnen', href: '/os/markttraktion?s=sales&a=kampagnen' },
   { art: 'seite', id: 'marketing', titel: 'Marketing', href: '/os/markttraktion?s=marketing' },
   { art: 'seite', id: 'events', titel: 'Event', href: '/os/markttraktion?s=event' }, { art: 'seite', id: 'stammdaten', titel: 'Markttraktion · Stammdaten', href: '/os/markttraktion?s=stammdaten' },
   { art: 'seite', id: 'aufgaben', titel: 'Aufgaben', href: '/os/aufgaben' }, { art: 'seite', id: 'finanzen', titel: 'Zahlen', href: '/os/finanzen' },

@@ -20,7 +20,7 @@ interface Kosten { heuteCent: number; summeCent: number; jeZweck: { zweck: strin
 const GRUPPE: Record<string, { label: string; href: string; farbe: string }> = {
   finanzen: { label: 'Geld', href: '/os/finanzen', farbe: LEUCHT.geld }, meilensteine: { label: 'Meilensteine', href: '/os/roadmap', farbe: LEUCHT.schlaf },
   fokus: { label: 'Fokus & Ziele', href: '/os/wachstum', farbe: LEUCHT.schlaf }, aufgaben: { label: 'Aufgaben', href: '/os/aufgaben', farbe: LEUCHT.achtung },
-  kunden: { label: 'Kunden', href: '/os/markttraktion?s=sales&a=kunden', farbe: LEUCHT.business }, planer: { label: 'Planung', href: '/os/planung/woche', farbe: LEUCHT.puls },
+  kunden: { label: 'Mandate', href: '/os/mandate', farbe: LEUCHT.business }, planer: { label: 'Planung', href: '/os/planung/woche', farbe: LEUCHT.puls },
   inbox: { label: 'Postfach', href: '/os/inbox', farbe: LEUCHT.puls }, gesundheit: { label: 'Gesundheit', href: '/os/gesundheit', farbe: LEUCHT.gut },
 };
 const STATUS: Record<string, { label: string; farbe: string }> = {

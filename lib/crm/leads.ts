@@ -10,7 +10,7 @@
 //   Ebene 2  DEAL    Aus dem SQL wird mit einem Klick ein Deal (Chance) in der
 //                    Pipeline: SQL → Bedarf → Diagnose → Angebot → Abschluss →
 //                    gewonnen/verloren. Die Kernfragen wandern mit.
-//   Ebene 3  KUNDE   Gewonnen → Mandat (Sales › Kunden).
+//   Ebene 3  KUNDE   Gewonnen → Mandat (Produkte & Mandate, /os/mandate; in Sales › Kunden verlinkt).
 // Solange niemand den Status gesetzt hat, wird er aus den Personen abgeleitet
 // (Kontaktstufe, Lebensphase, offener Deal) — so ist die Liste sofort gefüllt,
 // ohne 450 Einträge von Hand.

@@ -257,7 +257,7 @@ async function setzeKunde(input: Record<string, unknown>): Promise<string> {
       health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: schritt ? [`Nächster Schritt: ${schritt}`] : [], geaendert: jetzt,
     }] };
   });
-  return `Erfasst: ${aktion}. Sichtbar in der Markttraktion unter Sales › Kunden.`;
+  return `Erfasst: ${aktion}. Sichtbar unter Produkte & Mandate (links in der Leiste).`;
 }
 
 /**

@@ -9,7 +9,7 @@ import { updateJson } from '@/lib/store/local-db';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { aendereCrm } from './speicher';
 import { wer, nameVon, BEIDE } from './team';
-import { markttraktion } from './adresse';
+import { markttraktion, mandateLink } from './adresse';
 import type { CrmBestand, CrmListe } from './typen';
 
 export const UEBERGABE_ARTEN = ['kontakt', 'kontakte', 'chance', 'mandat', 'event', 'kampagne', 'beitrag', 'newsletter'] as const;
@@ -67,7 +67,8 @@ export async function uebergeben(b: UebergabeEingabe, person: string): Promise<U
     });
     if (!anzahl) return { ok: false, fehler: 'Eintrag nicht gefunden.', status: 404 };
     const [s, a] = ZIEL[art]!;
-    link = markttraktion(s, a);
+    // Mandate leben seit 25.09. unter Produkte & Mandate — der Link öffnet genau dieses Mandat.
+    link = art === 'mandat' ? mandateLink('mandate', id) : markttraktion(s, a);
   }
 
   // Die andere Person bekommt eine Aufgabe — nicht, wer sich selbst etwas gibt, und nicht bei „beide“.

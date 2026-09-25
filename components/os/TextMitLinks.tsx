@@ -17,6 +17,7 @@ function name(pfad: string): string {
   const [p, q = ''] = pfad.split('?');
   const s = new URLSearchParams(q).get('s');
   if (p.startsWith('/os/markttraktion')) return s === 'event' ? 'Event öffnen' : s === 'kontakte' ? 'Person öffnen' : s === 'firmen' ? 'Firma öffnen' : s === 'sales' ? 'In Sales öffnen' : s === 'marketing' ? 'In Marketing öffnen' : 'In der Markttraktion öffnen';
+  if (p.startsWith('/os/mandate')) return new URLSearchParams(q).get('s') === 'produkte' ? 'Produkt öffnen' : 'Mandat öffnen';
   if (p.startsWith('/os/finanzen')) return 'In Zahlen öffnen';
   if (p.startsWith('/os/aufgaben')) return 'Aufgabe öffnen';
   if (p.startsWith('/os/gesundheit')) return 'In Gesundheit öffnen';

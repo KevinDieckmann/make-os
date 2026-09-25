@@ -74,7 +74,7 @@ export function DatenbasisView() {
         status: `${msOffen.length} offen${msSpaet ? ` · ${msSpaet} überfällig` : ''}`,
         ton: msSpaet ? 'acht' : 'ok' });
       const kundenN = (kunden?.kunden ?? []).length;
-      z.push({ bereich: 'Kunden & Mandate', wer: 'beide', href: '/os/markttraktion?s=sales&a=kunden',
+      z.push({ bereich: 'Kunden & Mandate', wer: 'beide', href: '/os/mandate',
         status: kundenN ? `${kundenN} Kunden gepflegt` : 'leer',
         ton: kundenN ? 'ok' : 'acht' });
 

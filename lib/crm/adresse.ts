@@ -37,3 +37,13 @@ export function markttraktion(s?: string, a?: string, k?: string): string {
   const t = q.toString();
   return t ? `${PFAD}?${t}` : PFAD;
 }
+
+/** Produkte & Mandate (25.09.): eigener Bereich links unter Aufgaben — s: mandate (Start) · produkte, k: Mandat bzw. Produkt. */
+export const MANDATE_PFAD = '/os/mandate';
+export function mandateLink(s?: 'mandate' | 'produkte', k?: string): string {
+  const q = new URLSearchParams();
+  if (s === 'produkte') q.set('s', 'produkte');
+  if (k) q.set('k', k);
+  const t = q.toString();
+  return t ? `${MANDATE_PFAD}?${t}` : MANDATE_PFAD;
+}

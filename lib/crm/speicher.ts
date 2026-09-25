@@ -86,7 +86,7 @@ function mandat(o: Record<string, unknown>, jetzt: string): Mandat | null {
     ...(tag(o.naechstesReview) ? { naechstesReview: tag(o.naechstesReview) } : {}),
     ziele: Array.isArray(o.ziele) ? (o.ziele as Record<string, unknown>[]).slice(0, 12).map((z, i) => ({ id: txt(z.id, 40) || `z${i}`, text: txt(z.text, 300), ...(opt(z.ziel, 80) ? { ziel: opt(z.ziel, 80) } : {}), ...(opt(z.ist, 80) ? { ist: opt(z.ist, 80) } : {}) })).filter(z => z.text) : [],
     health: { beteiligung: hv(he.beteiligung), umsetzung: hv(he.umsetzung), wirkung: hv(he.wirkung), zahlung: hv(he.zahlung), stimmung: hv(he.stimmung) },
-    leistungen: texte(o.leistungen, 30, 400), offen: texte(o.offen, 30, 800),
+    leistungen: texte(o.leistungen, 30, 400), offen: texte(o.offen, 30, 800), ...(opt(o.phase, 40) ? { phase: opt(o.phase, 40) } : {}),
     ...(opt(o.quelle, 600) ? { quelle: opt(o.quelle, 600) } : {}), ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}), ...zst(o), geaendert: jetzt,
   };
 }
@@ -101,8 +101,18 @@ function leistung(o: Record<string, unknown>, jetzt: string): Leistung | null {
     ...(opt(o.beschreibung, 1500) ? { beschreibung: opt(o.beschreibung, 1500) } : {}), lieferumfang: texte(o.lieferumfang, 20, 300),
     ...(opt(o.grenzen, 600) ? { grenzen: opt(o.grenzen, 600) } : {}), ...(opt(o.ergebnis, 600) ? { ergebnis: opt(o.ergebnis, 600) } : {}),
     gesellschaft: aus(o.gesellschaft, GES, 'offen'), status: aus(o.status, ['aktiv', 'entwurf', 'eingestellt'] as const, 'entwurf'),
-    ...(opt(o.quelle, 600) ? { quelle: opt(o.quelle, 600) } : {}), geaendert: jetzt,
+    ...(opt(o.quelle, 600) ? { quelle: opt(o.quelle, 600) } : {}),
+    ...(opt(o.linie, 80) ? { linie: opt(o.linie, 80) } : {}),
+    ...(Array.isArray(o.phasen) && o.phasen.length ? { phasen: (o.phasen as Record<string, unknown>[]).slice(0, 12).map((x, i) => ({ id: txt(x.id, 40) || `p${i}`, name: txt(x.name, 80), ...(zahl(x.dauerTage, 0, 730) ? { dauerTage: zahl(x.dauerTage, 0, 730) } : {}), ...(opt(x.beschreibung, 400) ? { beschreibung: opt(x.beschreibung, 400) } : {}) })).filter(x => x.name) } : {}),
+    ...(Array.isArray(o.unterlagen) && o.unterlagen.length ? { unterlagen: (o.unterlagen as Record<string, unknown>[]).slice(0, 20).map((x, i) => ({ id: txt(x.id, 40) || `u${i}`, titel: txt(x.titel, 120), art: aus(x.art, ['angebot', 'vertrag', 'deck', 'onepager', 'sonstiges'] as const, 'sonstiges'), ...(unterlageLink(x.url) ? { url: unterlageLink(x.url)! } : {}) })).filter(x => x.titel) } : {}),
+    geaendert: jetzt,
   };
+}
+
+/** Nur https-Links oder Notizen im Brain (/os/wissen?n=…) — nie javascript: o. Ä. */
+export function unterlageLink(v: unknown): string | undefined {
+  const t = String(v ?? '').trim().slice(0, 500);
+  return /^https:\/\/[^\s]+$/i.test(t) || /^\/os\/wissen\?n=[^\s]+$/.test(t) ? t : undefined;
 }
 
 const ROLLEN: FirmaRolle[] = ['zielkunde', 'kunde', 'ex_kunde', 'partner', 'dienstleister', 'investor', 'netzwerk', 'wettbewerb', 'offen'];

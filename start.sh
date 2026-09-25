@@ -170,8 +170,9 @@ echo "  Zum Beenden: dieses Fenster schließen oder Strg+C."
 echo "  ───────"
 echo ""
 
-# Browser öffnen, sobald der Server antwortet.
-(
+# Browser öffnen, sobald der Server antwortet — nach dem Umzug nicht: die
+# lokale Fassung ist dann nur zum Entwickeln, echte Arbeit läuft auf dem Server.
+[ -f .data/umgezogen.json ] || (
   for _ in $(seq 1 120); do
     if curl -s -o /dev/null -m 2 "http://localhost:3001/jarvis"; then
       open "$ADRESSE" 2>/dev/null

@@ -3,8 +3,8 @@ import { describe, it, expect } from 'vitest';
 import { HAUPT, HANDY, aktiverEintrag } from '../lib/make-one/navigation';
 
 describe('Navigation', () => {
-  it('links stehen genau Jarvis, Brain, Markttraktion, Fokus, Aufgaben', () => {
-    expect(HAUPT.map(e => e.label)).toEqual(['Jarvis', 'Brain', 'Markttraktion', 'Fokus', 'Aufgaben']);
+  it('links stehen genau Jarvis, Brain, Markttraktion, Fokus, Aufgaben, Mandate (seit 25.09.)', () => {
+    expect(HAUPT.map(e => e.label)).toEqual(['Jarvis', 'Brain', 'Markttraktion', 'Fokus', 'Aufgaben', 'Mandate']);
     expect(HANDY).toEqual(HAUPT.map(e => e.href));
   });
   it('markiert den richtigen Eintrag — auch für Unterseiten', () => {
@@ -14,6 +14,7 @@ describe('Navigation', () => {
     expect(aktiverEintrag('/os/kompass')?.label).toBe('Fokus');
     expect(aktiverEintrag('/os/planung/woche')?.label).toBe('Aufgaben');
     expect(aktiverEintrag('/os/agenten')?.label).toBe('System');
+    expect(aktiverEintrag('/os/mandate')?.label).toBe('Mandate');
   });
   it('Bereiche aus dem Kopf markieren links nichts', () => {
     for (const p of ['/os', '/os/finanzen', '/os/gesundheit', '/os/inbox', '/os/familie']) expect(aktiverEintrag(p)).toBeNull();

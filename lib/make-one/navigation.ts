@@ -11,7 +11,7 @@
 // Adresse erreichbar und die Leiste zeigt trotzdem, wo man ist.
 
 import type { LucideIcon } from 'lucide-react';
-import { ListChecks, TrendingUp, Brain, Sparkles, Settings, Crosshair } from 'lucide-react';
+import { ListChecks, TrendingUp, Brain, Sparkles, Settings, Crosshair, Briefcase } from 'lucide-react';
 
 export interface Eintrag { href: string; label: string; icon: LucideIcon; passt: string[] }
 
@@ -25,6 +25,8 @@ export const HAUPT: Eintrag[] = [
   // Kevin: „Fokus, das haben wir ja auch als riesiges Thema."
   { href: '/os/fokus', label: 'Fokus', icon: Crosshair, passt: ['/os/fokus', '/os/kompass', '/os/planung/fokus'] },
   { href: '/os/aufgaben', label: 'Aufgaben', icon: ListChecks, passt: ['/os/aufgaben', '/os/planung/woche', '/os/planung/monat', '/os/planung/quartal', '/os/planung/jahr', '/os/planung/routinen', '/os/meeting', '/os/board'] },
+  // 25.09., Kevin: „Das Mandaten-Abteil auf die linke Seite unter Aufgaben — Produkte und Mandate.“
+  { href: '/os/mandate', label: 'Mandate', icon: Briefcase, passt: ['/os/mandate', '/os/kunden'] },
 ];
 
 /** Die Handy-Leiste: dieselben Arbeitsräume wie links, dazu das Zahnrad. */

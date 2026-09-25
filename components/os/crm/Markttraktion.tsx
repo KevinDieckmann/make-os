@@ -30,7 +30,7 @@ import { Ueberblick, WELT_FARBE } from './Ueberblick';
 import { Heute } from './Heute';
 import { Kartei } from './Kartei';
 import { Pipeline } from './Pipeline';
-import { Kunden } from './Kunden';
+import { KundenKurz } from './Kunden';
 import { Kampagnen } from './Kampagnen';
 import { Marketing } from './Marketing';
 import { Events } from './Events';
@@ -137,7 +137,7 @@ export function MarkttraktionSeite() {
           {sales === 'heute' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
           {sales === 'leads' && <Leads api={api} zuKontakt={zuKontakt} zuDeal={() => gehe('sales', 'pipeline')} />}
           {sales === 'pipeline' && <Pipeline api={api} zuKontakt={zuKontakt} zuLeads={() => gehe('sales', 'leads')} />}
-          {sales === 'kunden' && <Kunden api={api} zuKontakt={zuKontakt} />}
+          {sales === 'kunden' && <KundenKurz api={api} />}
           {sales === 'kampagnen' && <Kampagnen api={api} zuKontakt={zuKontakt} head="sales" />}
         </>
       )}

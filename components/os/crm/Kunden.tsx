@@ -1,23 +1,31 @@
 'use client';
 
-// ─── Markttraktion · Sales › Kunden & Mandate — und der Leistungskatalog ─────────────────────
+// ─── Mandate (Produkte & Mandate, /os/mandate) — und die Kurzfassung für Sales ───
+// Seit 25.09. leben die Mandate im eigenen Bereich links unter Aufgaben (Kevin:
+// „Mandaten-Abteil … Produkte und Mandate“); Sales › 3 · Kunden zeigt nur noch
+// die Kurzfassung mit Sprung dorthin (KundenKurz). Je Mandat jetzt auch das
+// Produkt und die Phase in dessen Ablauf. Die Produkte: components/os/mandate/Produkte.tsx.
 // Oben MRR und Kundenkonzentration. Je Mandat: Status, Laufzeit und Frist,
 // Health (DEAR: Beteiligung, Umsetzung, Wirkung, Zahlung, Stimmung), die
 // offenen Punkte und Widersprüche — sichtbar, nicht geglättet — und ob das
-// Mandat im Liquiditätsplan steht. Darunter der Leistungskatalog.
+// Mandat im Liquiditätsplan steht.
 // Zu zweit (25.09.): Je Mandat ist jemand zuständig (ohne Eintrag Kevin als
 // Sales-Verantwortung) — Filter „Alle · Meins · Malin“, Plakette, Zeile je
 // Person, Übergeben. Änderungen gehen als Einzelfelder raus (api.teil).
 
 import { useLinkAuswahl } from '../Verlauf';
 import { useEffect, useState } from 'react';
-import { FARBE as C } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, LEUCHT } from '../schlank';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { mandateLink } from '@/lib/crm/adresse';
+import { mandatPhase, portfolio } from '@/lib/crm/produkte';
+import { FARBE as C, TYP } from '@/lib/make-one/design';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, feld, useBreit, LEUCHT } from '../schlank';
 import { anzeigename } from '@/lib/make-one/crm';
 import { HEALTH_GEWICHTE, HEALTH_LABEL, kundenJePerson } from '@/lib/crm/kunden';
 import { werZahlen } from '@/lib/crm/pipeline';
 import { zustaendig, mitglied, nameVon } from '@/lib/crm/team';
-import type { Mandat, Leistung } from '@/lib/crm/typen';
+import type { Mandat } from '@/lib/crm/typen';
 import { type CrmApi, neueId, datum, euro, kurzEuro } from './daten';
 import { Feldzeile, Pillen, Feld } from './teile';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
@@ -31,9 +39,12 @@ const statusFarbe = (s: string) => (s === 'aktiv' ? LEUCHT.gut : s === 'verhandl
 const nurFelder = (t: Record<string, unknown>) => Object.fromEntries(Object.entries(t).map(([k, v]) => [k, v === undefined ? '' : v]));
 interface LiquiLage { id: string; lage: 'fehlt' | 'ok' | 'abweichend' | 'kein-posten'; vorschlag: { betrag: number; ab: string; rhythmus: string } | null; vorhanden: { id: string; betrag: number } | null }
 
-export function Kunden({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string) => void }) {
+/** Alle Mandate mit Kennzahlen, Filter und Detail — der Hauptteil von Produkte & Mandate. */
+export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string) => void }) {
   // Offenes Mandat bzw. offene Leistung im Link (k): Zurück schließt es wieder.
   const [auswahl, setAuswahl] = useLinkAuswahl();
+  // Am Handy: Hinweise in die Zeile darunter — sonst drücken die Chips den Kundennamen weg.
+  const breit = useBreit();
   const [liqui, setLiqui] = useState<{ mandate: LiquiLage[]; freiePosten: { id: string; titel: string; betrag: number }[] } | null>(null);
   const [alle, setAlle] = useState(false);
   const [wahl, setWahl] = useWerFilter('kunden');
@@ -55,11 +66,12 @@ export function Kunden({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string
   const meine = ich ? jePerson.find(x => x.person === ich) : undefined;
   // Neues Mandat: für die gefilterte Person, sonst für mich (im Team) — ohne beides gilt die Sales-Verantwortung.
   const neuFuer = wahl !== 'alle' && wahl !== 'ich' && mitglied(wahl) ? wahl : mitglied(ich)?.id;
+  const produktName = (m: Mandat) => { const p = crm.stand.leistungen.find(x => x.id === m.leistungId); const ph = mandatPhase(m, p); return p ? `${p.name.slice(0, 40)}${ph ? ` · Phase ${ph.nr}/${ph.von}` : ''}` : ''; };
 
   return (
     <>
       <Karte i={0}>
-        <Ueberschrift rechts={<Knopf onClick={() => { const id = neueId('m'); void api.setze('mandate', { id, kunde: 'Neuer Kunde', titel: 'Mandat', kontaktIds: [], art: 'retainer', gesellschaft: 'offen', status: 'verhandlung', vertragUnterschrieben: false, verlaengerung: 'offen', honorar: { betrag: 0, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [], health: {}, leistungen: [], offen: [], ...(neuFuer ? { zustaendig: neuFuer } : {}) }); setAuswahl(id); }}>+ Mandat</Knopf>}>Kunden & Mandate</Ueberschrift>
+        <Ueberschrift rechts={<Knopf onClick={() => { const id = neueId('m'); void api.setze('mandate', { id, kunde: 'Neuer Kunde', titel: 'Mandat', kontaktIds: [], art: 'retainer', gesellschaft: 'offen', status: 'verhandlung', vertragUnterschrieben: false, verlaengerung: 'offen', honorar: { betrag: 0, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [], health: {}, leistungen: [], offen: [], ...(neuFuer ? { zustaendig: neuFuer } : {}) }); setAuswahl(id); }}>+ Mandat</Knopf>}>Überblick</Ueberschrift>
         <Raster min={150}>
           <Zahl wert={kurzEuro(crm.mrr)} label="wiederkehrend je Monat (netto)" farbe={LEUCHT.geld} />
           <Zahl wert={String(mandate.filter(m => m.status === 'aktiv').length)} label="aktive Mandate" />
@@ -102,11 +114,11 @@ export function Kunden({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string
                 <Zeile onClick={() => setAuswahl(auswahl === m.id ? null : m.id)} aktiv={auswahl === m.id}
                   links={<Punkt farbe={l?.ampel ? AMPEL[l.ampel] : statusFarbe(m.status)} />}
                   titel={<>{m.kunde}<span style={{ color: C.inkLeise }}> · {m.titel}</span></>}
-                  unter={[m.honorar.betrag ? `${euro(m.honorar.betrag)}${m.honorar.basis === 'monat' ? '/Monat' : m.honorar.basis === 'tag' ? '/Tag' : ' einmalig'}` : 'Honorar offen', l?.endeAm ? `bis ${datum(l.endeAm)}` : '', l?.health != null ? `Health ${l.health}` : '', m.offen.length ? `${m.offen.length} offen` : ''].filter(Boolean).join(' · ')}
+                  unter={[produktName(m), ...(!breit ? [lq?.lage === 'fehlt' ? 'nicht im Liquiplan' : lq?.lage === 'abweichend' ? 'Liquiplan weicht ab' : '', !m.vertragUnterschrieben && m.status !== 'beendet' ? 'ohne Vertrag' : ''] : []), m.honorar.betrag ? `${euro(m.honorar.betrag)}${m.honorar.basis === 'monat' ? '/Monat' : m.honorar.basis === 'tag' ? '/Tag' : ' einmalig'}` : 'Honorar offen', l?.endeAm ? `bis ${datum(l.endeAm)}` : '', l?.health != null ? `Health ${l.health}` : '', m.offen.length ? `${m.offen.length} offen` : ''].filter(Boolean).join(' · ')}
                   rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    {lq?.lage === 'fehlt' && <Chip farbe={LEUCHT.achtung}>nicht im Liquiplan</Chip>}
-                    {lq?.lage === 'abweichend' && <Chip farbe={LEUCHT.achtung}>Liquiplan weicht ab</Chip>}
-                    {!m.vertragUnterschrieben && m.status !== 'beendet' && <Chip farbe={C.inkLeise}>ohne Vertrag</Chip>}
+                    {breit && lq?.lage === 'fehlt' && <Chip farbe={LEUCHT.achtung}>nicht im Liquiplan</Chip>}
+                    {breit && lq?.lage === 'abweichend' && <Chip farbe={LEUCHT.achtung}>Liquiplan weicht ab</Chip>}
+                    {breit && !m.vertragUnterschrieben && m.status !== 'beendet' && <Chip farbe={C.inkLeise}>ohne Vertrag</Chip>}
                     <Chip farbe={statusFarbe(m.status)}>{STATUS.find(s => s.id === m.status)?.label}</Chip>
                     <Person id={zustaendig(m.zustaendig, 'sales')} groesse={18} />
                   </span>} />
@@ -119,7 +131,6 @@ export function Kunden({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string
       </Karte>
 
       <HeadPanel head="sales" standardModus="kundenreview" zuKontakt={zuKontakt} i={2} />
-      <Katalog api={api} />
     </>
   );
 }
@@ -129,6 +140,7 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
   const l = crm.mandate[m.id];
   // Nur die geänderten Felder — Kevin und Malin können gleichzeitig am selben Mandat arbeiten.
   const setze = (teil: Partial<Mandat>) => api.teil('mandate', m.id, nurFelder(teil));
+  const produkt = m.leistungId ? crm.stand.leistungen.find(x => x.id === m.leistungId) : undefined;
   const personen = m.kontaktIds.map(id => (api.kontakte ?? []).find(k => k.id === id)).filter((k): k is NonNullable<typeof k> => !!k);
   const liquiplan = async (aktion: 'anlegen' | 'verknuepfen', postenId?: string) => {
     await fetch('/api/crm/liquiplan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mandatId: m.id, aktion, postenId }) });
@@ -157,6 +169,18 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
       <Feldzeile label="Vertrag"><Pillen liste={[{ id: 'ja', label: 'unterschrieben' }, { id: 'nein', label: 'nicht unterschrieben' }]} aktiv={m.vertragUnterschrieben ? 'ja' : 'nein'} onWahl={x => setze({ vertragUnterschrieben: x === 'ja' })} /></Feldzeile>
       <Feldzeile label="Kunde"><Feld wert={m.kunde} onFertig={kunde => kunde.trim() && setze({ kunde: kunde.trim() })} /></Feldzeile>
       <Feldzeile label="Titel"><Feld wert={m.titel} onFertig={titel => titel.trim() && setze({ titel: titel.trim() })} /></Feldzeile>
+      <Feldzeile label="Produkt">
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <select value={m.leistungId ?? ''} aria-label="Produkt" onChange={e => setze({ leistungId: e.target.value || undefined, phase: undefined })} style={{ ...feld, width: 'auto', maxWidth: '100%', fontSize: TYP.bedien, padding: '8px 11px' }}>
+            <option value="">— ohne Produkt —</option>
+            {crm.stand.leistungen.filter(x => x.status !== 'eingestellt' || x.id === m.leistungId).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+          </select>
+          {produkt && <Link href={mandateLink('produkte', produkt.id)} style={{ fontSize: 12.5, color: C.inkDim, textDecoration: 'none' }}>Produkt öffnen ›</Link>}
+        </div>
+      </Feldzeile>
+      {produkt && (produkt.phasen?.length
+        ? <Feldzeile label="Phase"><Pillen liste={produkt.phasen.map(p => ({ id: p.id, label: p.name }))} aktiv={m.phase ?? produkt.phasen[0].id} onWahl={phase => setze({ phase })} farbe={LEUCHT.business} /></Feldzeile>
+        : <Feldzeile label="Phase"><span style={{ fontSize: 12.5, color: C.inkLeise }}>Das Produkt hat noch keinen Ablauf — unter Produkte anlegen.</span></Feldzeile>)}
       <Feldzeile label="Honorar">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Feld typ="number" wert={m.honorar.betrag ? String(m.honorar.betrag) : ''} breite={120} platzhalter="€" onFertig={b => setze({ honorar: { ...m.honorar, betrag: Number(b) || 0 } })} />
@@ -214,42 +238,35 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
   );
 }
 
-function Katalog({ api }: { api: CrmApi }) {
-  // Offenes Mandat bzw. offene Leistung im Link (k): Zurück schließt es wieder.
-  const [auswahl, setAuswahl] = useLinkAuswahl();
-  const l = api.crm?.stand.leistungen ?? [];
-  const STUFE: Record<Leistung['stufe'], string> = { einstieg: 'Einstieg', kern: 'Kern', premium: 'Premium' };
-  const sortiert = [...l].sort((a, b) => ['einstieg', 'kern', 'premium'].indexOf(a.stufe) - ['einstieg', 'kern', 'premium'].indexOf(b.stufe) || a.name.localeCompare(b.name));
+/**
+ * Sales › 3 · Kunden (seit 25.09.): nur noch die Kurzfassung — Monatsumsatz,
+ * laufende Mandate, ein Klick öffnet das Mandat unter Produkte & Mandate.
+ */
+export function KundenKurz({ api }: { api: CrmApi }) {
+  const router = useRouter();
+  const crm = api.crm;
+  if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
+  const p = portfolio(crm.stand);
+  const REIHE = ['aktiv', 'verhandlung', 'angebot', 'pausiert'];
+  const laufend = crm.stand.mandate.filter(m => m.status !== 'beendet').sort((a, b) => REIHE.indexOf(a.status) - REIHE.indexOf(b.status) || a.kunde.localeCompare(b.kunde));
   return (
-    <Karte i={2}>
-      <Ueberschrift rechts={<Knopf leise onClick={() => { const id = neueId('l'); void api.setze('leistungen', { id, name: 'Neue Leistung', typ: 'retainer', stufe: 'kern', preis: { betrag: 0, einheit: 'Monat netto' }, lieferumfang: [], gesellschaft: 'offen', status: 'entwurf' }); setAuswahl(id); }}>+ Leistung</Knopf>}>Leistungskatalog</Ueberschrift>
-      <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 8 }}>Einstieg → Kern → Premium: jede Leistung hat einen klaren Umfang und Preis. Entwürfe ohne Preis sind noch nicht verkaufbar.</div>
+    <Karte i={0}>
+      <Ueberschrift rechts={<Link href={mandateLink()} style={{ color: LEUCHT.business, textDecoration: 'none', fontSize: 12.5, fontWeight: 600 }}>Produkte & Mandate ›</Link>}>Ebene 3 · Kunden</Ueberschrift>
+      <Raster min={150}>
+        <Zahl wert={kurzEuro(p.mrr)} label="wiederkehrend je Monat (netto)" farbe={LEUCHT.geld} />
+        <Zahl wert={String(p.aktiv)} label="aktive Mandate" />
+        <Zahl wert={p.groessterKunde ? `${Math.round(p.groessterKunde.anteil * 100)} %` : '—'} label={p.groessterKunde ? `größter Kunde: ${p.groessterKunde.kunde.slice(0, 22)}` : 'Kundenkonzentration'} farbe={p.groessterKunde && p.groessterKunde.anteil > 0.5 ? LEUCHT.kritisch : undefined} />
+      </Raster>
+      <div style={{ fontSize: 12.5, color: C.inkLeise, margin: '10px 0 4px', lineHeight: 1.5 }}>Die Mandate und Produkte leben unter „Produkte & Mandate“ (links in der Leiste). Aus einem gewonnenen Deal entsteht das Mandat wie bisher über „Mandat anlegen“.</div>
       <Liste>
-        {sortiert.map(x => (
-          <div key={x.id}>
-            <Zeile onClick={() => setAuswahl(auswahl === x.id ? null : x.id)} aktiv={auswahl === x.id} links={<Punkt farbe={x.status === 'aktiv' ? LEUCHT.gut : x.status === 'entwurf' ? LEUCHT.achtung : C.inkLeise} />}
-              titel={x.name} unter={`${STUFE[x.stufe]} · ${x.typ}${x.preis.betrag ? ` · ${euro(x.preis.betrag)} ${x.preis.einheit}` : ' · Preis offen'}`}
-              rechts={<Chip farbe={x.status === 'aktiv' ? LEUCHT.gut : C.inkLeise}>{x.status}</Chip>} />
-            {auswahl === x.id && (
-              <div style={{ padding: '8px 2px 16px' }}>
-                <Feldzeile label="Name"><Feld wert={x.name} onFertig={name => name.trim() && api.teil('leistungen', x.id, { name: name.trim() })} /></Feldzeile>
-                <Feldzeile label="Stufe"><Pillen liste={[{ id: 'einstieg', label: 'Einstieg' }, { id: 'kern', label: 'Kern' }, { id: 'premium', label: 'Premium' }]} aktiv={x.stufe} onWahl={stufe => api.teil('leistungen', x.id, { stufe })} /></Feldzeile>
-                <Feldzeile label="Preis">
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Feld typ="number" wert={x.preis.betrag ? String(x.preis.betrag) : ''} breite={120} platzhalter="€" onFertig={b => api.teil('leistungen', x.id, { preis: { ...x.preis, betrag: Number(b) || 0 } })} />
-                    <Feld wert={x.preis.einheit} platzhalter="Einheit" onFertig={einheit => api.teil('leistungen', x.id, { preis: { ...x.preis, einheit } })} />
-                  </div>
-                </Feldzeile>
-                <Feldzeile label="Status"><Pillen liste={[{ id: 'aktiv', label: 'aktiv' }, { id: 'entwurf', label: 'Entwurf' }, { id: 'eingestellt', label: 'eingestellt' }]} aktiv={x.status} onWahl={status => api.teil('leistungen', x.id, { status })} /></Feldzeile>
-                {x.beschreibung && <p style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>{x.beschreibung}</p>}
-                {x.lieferumfang.length > 0 && <ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 3 }}>{x.lieferumfang.map((y, i) => <li key={i} style={{ fontSize: 12.5, color: C.inkDim }}>{y}</li>)}</ul>}
-                {x.quelle && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>Quelle: {x.quelle}</div>}
-              </div>
-            )}
-          </div>
+        {laufend.map(m => (
+          <Zeile key={m.id} onClick={() => router.push(mandateLink('mandate', m.id))} links={<Punkt farbe={crm.mandate[m.id]?.ampel ? AMPEL[crm.mandate[m.id]!.ampel!] : statusFarbe(m.status)} />}
+            titel={<>{m.kunde}<span style={{ color: C.inkLeise }}> · {m.titel}</span></>}
+            unter={m.honorar.betrag ? `${euro(m.honorar.betrag)}${m.honorar.basis === 'monat' ? '/Monat' : m.honorar.basis === 'tag' ? '/Tag' : ' einmalig'}` : 'Honorar offen'}
+            rechts={<Chip farbe={statusFarbe(m.status)}>{STATUS.find(s => s.id === m.status)?.label}</Chip>} />
         ))}
       </Liste>
-      {!l.length && <Leer>Noch keine Leistungen.</Leer>}
+      {!laufend.length && <Leer>Noch keine laufenden Mandate.</Leer>}
     </Karte>
   );
 }
