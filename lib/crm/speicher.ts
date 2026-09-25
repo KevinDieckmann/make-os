@@ -228,7 +228,7 @@ function kampagne(o: Record<string, unknown>, jetzt: string): Kampagne | null {
     ...(tag(o.start) ? { start: tag(o.start) } : {}), ...(tag(o.ende) ? { ende: tag(o.ende) } : {}),
     schritte: Array.isArray(o.schritte) ? (o.schritte as Record<string, unknown>[]).slice(0, 40).map((x, i) => ({ id: txt(x.id, 40) || `s${i}`, text: txt(x.text, 240), tag: zahl(x.tag, -60, 365), erledigt: x.erledigt === true, ...(opt(x.aufgabeId, 80) ? { aufgabeId: opt(x.aufgabeId, 80) } : {}) })).filter(x => x.text) : [],
     kontaktIds: Array.isArray(o.kontaktIds) ? (o.kontaktIds as unknown[]).map(String).filter(x => /^c-[a-z0-9-]{4,60}$/.test(x)).slice(0, 500) : [],
-    ergebnisse: Array.isArray(o.ergebnisse) ? (o.ergebnisse as Record<string, unknown>[]).slice(0, 1000).map(e => ({ kontaktId: txt(e.kontaktId, 80), ergebnis: aus(e.ergebnis, ['angesprochen', 'reagiert', 'gespraech', 'chance', 'kein_interesse'] as const, 'angesprochen'), am: tag(e.am) ?? jetzt.slice(0, 10) })).filter(e => /^c-/.test(e.kontaktId)) : [],
+    ergebnisse: Array.isArray(o.ergebnisse) ? (o.ergebnisse as Record<string, unknown>[]).slice(0, 1000).map(e => ({ kontaktId: txt(e.kontaktId, 80), ergebnis: aus(e.ergebnis, ['angesprochen', 'reagiert', 'gespraech', 'chance', 'kein_interesse'] as const, 'angesprochen'), am: tag(e.am) ?? jetzt.slice(0, 10), ...(wer(e.von) && wer(e.von) !== BEIDE ? { von: wer(e.von) } : {}) })).filter(e => /^c-/.test(e.kontaktId)) : [],
     von: aus(o.von, ['hand', 'head-sales', 'head-marketing'] as const, 'hand'), ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}), ...zst(o), geaendert: jetzt,
   };
 }

@@ -21,7 +21,7 @@ import { HeadPanel } from './HeadPanel';
 import { EventDetail } from './events/EventDetail';
 import { FORMATE, STATUS } from './events/gemeinsam';
 
-export function Events({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string) => void }) {
+export function Events({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string) => void; /** Event aus der Adresse (k=…) — zum Wiederfinden und für „Malin ist gerade hier“. */ start?: string; onAuswahl?: (id: string | null) => void }) {
   const breit = useBreit();
   const [auswahl, setAuswahl] = useState<string | null>(null);
   const [neu, setNeu] = useState(false);

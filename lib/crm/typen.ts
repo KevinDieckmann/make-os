@@ -236,7 +236,7 @@ export interface Kampagne {
   schritte: { id: string; text: string; tag: number; erledigt: boolean; aufgabeId?: string }[];
   /** Ausgewählte Personen (aus der Zielgruppe übernommen oder einzeln). */
   kontaktIds: string[];
-  ergebnisse: { kontaktId: string; ergebnis: KampagnenErgebnis; am: string }[];
+  ergebnisse: { kontaktId: string; ergebnis: KampagnenErgebnis; am: string; /** Wer angesprochen hat. */ von?: string }[];
   /** Wer sie angelegt hat — von Hand oder aus einem Vorschlag eines Heads. */
   von: 'hand' | 'head-sales' | 'head-marketing';
   notiz?: string;
