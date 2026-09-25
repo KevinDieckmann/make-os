@@ -47,6 +47,23 @@ lokal, Route `/os`, Port 3001.
 - Charts: die drei Teals (health/planning/finance) nie gemeinsam als Serien —
   Finanzen im Chart = Kupfer `#DE9E63`.
 
+## Live-Betrieb (seit 25.09.2026)
+- **Server:** Hetzner, `https://2-28-108-162.sslip.io` (IP 2.28.108.162, Admin `ssh root@…`,
+  App-Nutzer `make`, Ordner `/srv/make-os/{app,daten,vault,sicherungen}`, Docker Compose:
+  app · arbeiter · caddy). Repos: `KevinDieckmann/make-os`, `KevinDieckmann/make-vault` (privat).
+- **Daten liegen NUR auf dem Server.** `deploy/daten-hochladen.sh` nie wieder ausführen
+  (überschriebe den Server mit der alten Mac-Kopie). Lokal nur `start.sh --entwicklung`;
+  der Marker `.data/umgezogen.json` lässt `start.sh` sonst den Server öffnen.
+- **Updates:** commit → `git push` (macht Kevin) → GitHub Action (tsc, vitest, lint) →
+  Ausrollen über einen Schlüssel, der auf dem Server nur `git pull && docker compose up
+  -d --build` darf (authorized_keys `command=…,restrict`, fester Host-Fingerabdruck im
+  Workflow). Ausrollen dauert ~5 Min., die alte Version läuft solange weiter.
+- **Härtung:** `deploy/server-haerten.sh` (SSH nur Schlüssel, fail2ban, ufw, Auto-Updates
+  mit Reboot 04:30, Docker-Log-Grenzen, sysctl), Login-/Code-Drossel (`lib/zugang/drossel.ts`),
+  Sicherheits-Header (`deploy/caddy/Caddyfile`), Schriften selbst mitgeliefert (`app/schriften`).
+- **Sicherung:** nachts 03:15 verschlüsselt auf dem Server (14 Tage); Passwort hat Kevin.
+  Empfohlen zusätzlich: Hetzner-Backups.
+
 ## Technik
 - TypeScript strikt: vor jedem Commit `npx tsc --noEmit` — null Fehler.
 - Node liegt bei Kevin unter `~/.local/node22/bin` (nicht im PATH). Server
