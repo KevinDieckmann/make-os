@@ -9,6 +9,7 @@
 // Chancen je Person. Änderungen gehen als Einzelfelder (api.teil) raus, damit
 // sich Kevin und Malin an derselben Chance nichts überschreiben.
 
+import { useLinkAuswahl } from '../Verlauf';
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, useBreit, LEUCHT } from '../schlank';
@@ -33,7 +34,8 @@ const nurFelder = (t: Record<string, unknown>) => Object.fromEntries(Object.entr
 const wertText = (c: Chance) => (c.wert.betrag ? `${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/M' : c.wert.basis === 'jahr' ? '/J' : ''}` : 'ohne Wert');
 
 export function Pipeline({ api, zuKontakt, zuLeads }: { api: CrmApi; zuKontakt: (id: string) => void; /** Ebene 1 — wer im Gespräch ist, wird erst dort qualifiziert. */ zuLeads?: () => void }) {
-  const [auswahl, setAuswahl] = useState<string | null>(null);
+  // Offener Deal im Link (k): Zurück schließt ihn wieder.
+  const [auswahl, setAuswahl] = useLinkAuswahl();
   const [geschlossen, setGeschlossen] = useState(false);
   const breit = useBreit();
   const [board, setBoard] = useState(true);

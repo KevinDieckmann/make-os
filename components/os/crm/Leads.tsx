@@ -11,6 +11,7 @@
 // Dazu `SalesTrichter`: die Leiste über allen Sales-Ansichten — Kontaktiert →
 // Im Gespräch → Qualifizierung → Deals → Gewonnen → Kunden, mit Umwandlungen.
 
+import { useLinkAuswahl } from '../Verlauf';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { markttraktion } from '@/lib/crm/adresse';
@@ -71,13 +72,13 @@ export function SalesTrichter({ api, zuBereich }: { api: CrmApi; zuBereich: (s: 
 }
 
 type Filter = 'aktiv' | LeadStatus;
-export function Leads({ api, zuKontakt, zuDeal, start }: { api: CrmApi; zuKontakt: (id: string) => void; zuDeal: () => void; /** Lead aus der Adresse (k=…) — aus Kartei und Firmen „Qualifizieren“. */ start?: string }) {
+export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id: string) => void; zuDeal: () => void }) {
   const breit = useBreit();
   const { d, laden } = useLeads(api);
   const [filter, setFilter] = useState<Filter>('aktiv');
   const [suche, setSuche] = useState('');
-  const [wahl, setWahl] = useState<string | null>(start ?? null);
-  useEffect(() => { if (start) setWahl(start); }, [start]);
+  // Offener Lead im Link (k) — aus Kartei und Firmen „Qualifizieren“, und Zurück schließt ihn wieder.
+  const [wahl, setWahl] = useLinkAuswahl();
   const [wer, setWer] = useWerFilter('leads');
   const ich = api.ich;
   const zeilen = useMemo(() => {
@@ -286,7 +287,7 @@ export function QualifizierungsRunde({ api, zuKontakt, zurueck }: { api: CrmApi;
   if (!d || !ids) return <Karte i={0}><Leer>Lädt die Leads …</Leer></Karte>;
   const z = ids[pos] ? d.leads.find(x => x.id === ids[pos]) : undefined;
   const sql = ids.filter(id => d.leads.find(x => x.id === id)?.status === 'sql').length;
-  const zuDeals = () => router.replace(markttraktion('sales', 'pipeline'));
+  const zuDeals = () => router.push(markttraktion('sales', 'pipeline'));
   return (
     <>
       <Karte i={0} akzent={LEUCHT.business}>
@@ -327,7 +328,7 @@ export function LeadBlock({ api, leadId }: { api: CrmApi; leadId: string }) {
   const fehlt = fehltBisSql(z.kriterien);
   return (
     <div>
-      <Ueberschrift rechts={<Knopf leise onClick={() => router.replace(markttraktion('sales', 'leads', z.id))}>{z.status === 'sql' || z.status === 'kunde' ? 'Zum Lead' : 'Qualifizieren'}</Knopf>}>Lead · Ebene 1{z.art === 'firma' ? ' (Firma)' : ''}</Ueberschrift>
+      <Ueberschrift rechts={<Knopf leise onClick={() => router.push(markttraktion('sales', 'leads', z.id))}>{z.status === 'sql' || z.status === 'kunde' ? 'Zum Lead' : 'Qualifizieren'}</Knopf>}>Lead · Ebene 1{z.art === 'firma' ? ' (Firma)' : ''}</Ueberschrift>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien }}>
         <Chip farbe={STATUS_FARBE[z.status]}>{statusLabel(z.status)}</Chip>
         <KriterienPunkte k={z.kriterien} />

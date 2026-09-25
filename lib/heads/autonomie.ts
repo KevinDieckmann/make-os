@@ -26,7 +26,7 @@ export type AutoWirkung = 'schritt' | 'aufgabe';
  * setzen, kämen dieselben Personen morgen als „Zusage“ ganz nach oben und die
  * Liste schaukelte sich selbst hoch. Fragen erzeugen nie etwas.
  */
-export const OHNE_AUTO_MODI = new Set(['power_hour', 'nachfassen', 'frage']);
+export const OHNE_AUTO_MODI = new Set(['power_hour', 'nachfassen', 'frage', 'netzwerk']);
 /** Meta-Arten („pflegen“, „schärfen“) werden Aufgaben, nie ein nächster Schritt an einer Person. */
 const NUR_AUFGABE = new Set(['daten_pflegen', 'ziel_schaerfen', 'positionierung_schaerfen', 'liste_bereinigen', 'format_anpassen']);
 

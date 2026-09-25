@@ -26,7 +26,8 @@ export function FinanzenView() {
   const setze = (s: Record<string, string | null>) => {
     const q = new URLSearchParams(p.toString());
     for (const [k, v] of Object.entries(s)) { if (v === null) q.delete(k); else q.set(k, v); }
-    router.replace(`${pfad}?${q.toString()}`, { scroll: false });
+    // Sicht wechseln ist ein Ortswechsel — Zurück führt zur vorigen Sicht (25.09.).
+    router.push(`${pfad}?${q.toString()}`, { scroll: false });
   };
   const chef = { id: 'chef' as Sicht, label: 'Head of Finance' };
   const liste = zugang ? [{ id: 'privat' as Sicht, label: 'Privat' }, { id: 'business' as Sicht, label: 'Business' }, { id: 'gesamt' as Sicht, label: 'Gesamt' }, chef] : [{ id: 'business' as Sicht, label: 'Business' }, chef];

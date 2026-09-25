@@ -80,13 +80,13 @@ export function DatenbasisView() {
 
       // ── Körper (täglich, 15 Minuten) ──
       const vitHeute = !!vit?.log?.[heute];
-      z.push({ bereich: 'Morgen-Check (Whoop-Werte)', wer: 'Kevin', href: '/os/ritual',
+      z.push({ bereich: 'Morgen-Check (Whoop-Werte)', wer: 'Kevin', href: '/os/gesundheit',
         status: vitHeute ? 'heute eingetragen' : 'heute noch offen — oder Whoop verbinden',
         ton: vitHeute ? 'ok' : 'acht' });
       const routN = (rout?.routinen ?? []).filter((r: { aktiv: boolean }) => r.aktiv).length;
       z.push({ bereich: 'Routinen', wer: 'Kevin', href: '/os/planung/routinen',
         status: `${routN} aktiv`, ton: routN ? 'ok' : 'acht' });
-      z.push({ bereich: 'Journal', wer: 'Kevin', href: '/os/journal',
+      z.push({ bereich: 'Journal', wer: 'Kevin', href: '/os/gesundheit',
         status: journal?.journal?.[heute] ? 'heute geschrieben' : 'heute noch leer',
         ton: journal?.journal?.[heute] ? 'ok' : 'neutral' });
 

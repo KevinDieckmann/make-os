@@ -171,7 +171,7 @@ export const SCHRITTE: Schritt[] = [
     titel: 'Fokus je Horizont setzen',
     warum: 'Jahr, Quartal, Monat und Woche brauchen je einen Satz. Ohne den kann weder Jarvis noch der Tagesplan entscheiden, was gerade wichtiger ist.',
     wie: ['Jahresfokus setzen.', 'Quartal und Monat daraus ableiten.', 'Wochenfokus für diese Woche setzen.'],
-    wo: { href: '/os/planung/fokus', label: 'Fokus-Regler' },
+    wo: { href: '/os/kompass', label: 'Fokus-Regler' },
     pruefung: 'fokus',
   },
   {
@@ -226,7 +226,7 @@ export const SCHRITTE: Schritt[] = [
       '⌘K öffnet die Schnellnavigation über alle Seiten.',
       'Du darfst alles sehen — auch Gesundheit und Privates. Nichts ist vor dir versteckt.',
     ],
-    wo: { href: '/os/start', label: 'Startfläche' },
+    wo: { href: '/os', label: 'Startfläche' },
   },
   {
     id: 'malin-grundlage', spur: 'malin', minuten: 15,

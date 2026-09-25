@@ -141,7 +141,8 @@ export function GesundheitView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segment, ansicht]);
 
-  const geheZu = (s: Segment) => router.replace(s === 'heute' ? pfad : `${pfad}?s=${s}`);
+  // Segment wechseln ist ein Ortswechsel — Zurück führt zum vorigen Segment (25.09.).
+  const geheZu = (s: Segment) => router.push(s === 'heute' ? pfad : `${pfad}?s=${s}`, { scroll: false });
 
   // ── Schreiben (nur auf der eigenen Seite) ──
   const hake = (id: string) => {

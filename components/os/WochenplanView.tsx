@@ -411,7 +411,7 @@ export function WochenplanView() {
             </div>
           </div>
           <div style={{ flex: 1, minWidth: 'min(220px, 100%)' }}>
-            <Ueberschrift rechts={<span>ziehen · ◎ = <Link href="/os/planung/fokus" style={verweis}>im Fokus</Link></span>}>Aufgaben einplanen</Ueberschrift>
+            <Ueberschrift rechts={<span>ziehen · ◎ = <Link href="/os/kompass" style={verweis}>im Fokus</Link></span>}>Aufgaben einplanen</Ueberschrift>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {offeneAufgaben.map(t => (
                 <Ziehbar key={t.id} farbe={t.imFokus ? LEUCHT.schlaf : ART_FARBE.aufgabe} daten={{ aufgabe: { taskId: t.id, titel: t.title } }} breit={240}>

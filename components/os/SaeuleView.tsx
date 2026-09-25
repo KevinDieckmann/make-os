@@ -413,7 +413,7 @@ function WerkzeugSozial() {
   return (
     <>
       <Karte i={1}>
-        <Ueberschrift farbe={LEUCHT.beziehung} rechts={<Link href="/os/journal" style={link}>Journal ›</Link>}>Stimmung · 14 Tage</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.beziehung} rechts={<Link href="/os/gesundheit" style={link}>Journal ›</Link>}>Stimmung · 14 Tage</Ueberschrift>
         {!hatStimmung ? (
           <Leer>Diese Säule hat noch keine Datenquelle. Ein Journal-Eintrag pro Woche genügt, damit sie mitzählt.</Leer>
         ) : (

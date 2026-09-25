@@ -141,7 +141,18 @@ export function useCrm() {
     } finally { unterwegs.current--; }
   }, []);
 
-  return { crm, kontakte, fehler, setFehler, laden, setze, teil, uebergeben, weg, kontaktSetzen, aktivitaet, ich: crm?.ich ?? null };
+  /** LinkedIn-Netzwerk (/api/crm/netzwerk): ein Schritt an einer Person — die Antwort ersetzt die Person im Stand. */
+  const netzwerk = useCallback(async (body: Record<string, unknown>) => {
+    unterwegs.current++;
+    try {
+      const r = await fetch('/api/crm/netzwerk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'keine Verbindung' }));
+      if (r.kontakt) setKontakte(alt => (alt ? alt.map(x => (x.id === r.kontakt.id ? r.kontakt : x)) : alt));
+      else if (!r.ok) fehlschlag(r.fehler ?? 'Nicht gespeichert.');
+      return r as { ok: boolean; fehler?: string; kontakt?: Kontakt; vorschau?: Record<string, unknown>; text?: string };
+    } finally { unterwegs.current--; }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { crm, kontakte, fehler, setFehler, laden, setze, teil, uebergeben, weg, kontaktSetzen, aktivitaet, netzwerk, ich: crm?.ich ?? null };
 }
 export type CrmApi = ReturnType<typeof useCrm>;
 

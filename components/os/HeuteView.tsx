@@ -7,6 +7,8 @@
 // Aufgaben mit Schnellanlage, Körper, Jarvis. Nie eine Null.
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { markttraktion } from '@/lib/crm/adresse';
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
@@ -17,6 +19,7 @@ import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, For
 interface Termin { id?: string; title?: string; startDate?: string; endDate?: string; allDay?: boolean }
 
 export function HeuteView() {
+  const router = useRouter();
   const heute = localDay();
   const { state, dispatch } = useTasks();
   const [datum, setDatum] = useState('');
@@ -100,7 +103,7 @@ export function HeuteView() {
         <Karte i={2}>
           <Ueberschrift farbe={LEUCHT.business} rechts={<Link href="/os/markttraktion?s=sales" style={{ color: C.inkLeise, textDecoration: 'none' }}>Power Hour ›</Link>}>Wer heute dran ist · {crm.n}</Ueberschrift>
           <Liste>
-            {crm.karten.map(k => <Zeile key={k.id} onClick={() => { window.location.href = `/os/markttraktion?s=kontakte&k=${k.id}`; }} links={<Punkt farbe={k.kategorie === 'versprechen' ? LEUCHT.kritisch : k.kategorie === 'signale' ? LEUCHT.achtung : LEUCHT.business} />} titel={<>{k.name}{k.firma && <span style={{ color: C.inkLeise }}> · {k.firma}</span>}</>} unter={k.gruende[0]} />)}
+            {crm.karten.map(k => <Zeile key={k.id} onClick={() => router.push(markttraktion('kontakte', undefined, k.id))} links={<Punkt farbe={k.kategorie === 'versprechen' ? LEUCHT.kritisch : k.kategorie === 'signale' ? LEUCHT.achtung : LEUCHT.business} />} titel={<>{k.name}{k.firma && <span style={{ color: C.inkLeise }}> · {k.firma}</span>}</>} unter={k.gruende[0]} />)}
           </Liste>
         </Karte>
       )}

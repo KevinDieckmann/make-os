@@ -28,14 +28,14 @@ import { Person, WerFilter, useWerFilter, passtWer } from './team';
 import { EventDetail } from './events/EventDetail';
 import { FORMATE, STATUS } from './events/gemeinsam';
 
-export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKontakt: (id: string) => void; /** Event aus der Adresse (k=…) — zum Wiederfinden und für „Malin ist gerade hier“. */ start?: string; onAuswahl?: (id: string | null) => void }) {
+export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKontakt: (id: string) => void; /** Event aus der Adresse (k=…) — zum Wiederfinden und für „Malin ist gerade hier“. */ start?: string; onAuswahl?: (id: string | null, wie?: 'push' | 'replace') => void }) {
   const breit = useBreit();
-  const [auswahl, setAuswahl] = useState<string | null>(start ?? null);
+  const [lokal, setLokal] = useState<string | null>(start ?? null);
+  // Mit onAuswahl steht die Auswahl im Link (k) — Zurück und Vor zeigen dann dasselbe Event.
+  const auswahl = onAuswahl ? start ?? null : lokal;
   const [neu, setNeu] = useState(false);
   const [wahl, setWahl] = useWerFilter('event');
   const ich = api.ich;
-  // Die Auswahl folgt der Adresse (Link aus einer Aufgabe, Schnellsuche, „Zurück“).
-  useEffect(() => { if (start) setAuswahl(start); }, [start]);
 
   const crm = api.crm;
   const heute = crm?.heute ?? '';
@@ -50,7 +50,7 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
   const aktivId = auswahl && idsEvents.has(auswahl) ? auswahl : breit ? kommend[0]?.id ?? kommendAlle[0]?.id ?? vorbei[0]?.id ?? vorbeiAlle[0]?.id ?? null : null;
   const aktiv = aktivId ? events.find(e => e.id === aktivId) : undefined;
   // Was rechts offen ist, steht auch in der Adresse (ersetzt, kein neuer Verlaufseintrag).
-  useEffect(() => { if (aktivId && aktivId !== start) onAuswahl?.(aktivId); }, [aktivId, start, onAuswahl]);
+  useEffect(() => { if (aktivId && aktivId !== start) onAuswahl?.(aktivId, 'replace'); }, [aktivId, start, onAuswahl]);
 
   // Nachfassen über alle Events — je Person, die einlädt und nachfasst.
   const nachfassen = useMemo(() => {
@@ -69,7 +69,7 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
 
   if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
 
-  const waehle = (id: string | null) => { setAuswahl(id); onAuswahl?.(id); };
+  const waehle = (id: string | null) => { setLokal(id); onAuswahl?.(id, start && id ? 'replace' : id ? 'push' : 'replace'); };
   const andere = ich ? anderer(ich) : null;
   const zahlen: Record<string, number> = { alle: kommendAlle.length };
   if (ich) zahlen.ich = kommendAlle.filter(e => passtWer('ich', e.zustaendig, 'event', ich)).length;

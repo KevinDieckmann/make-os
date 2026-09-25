@@ -20,7 +20,7 @@ export const AGENT_ID: Record<HeadId, string> = { sales: 'head-sales', marketing
 
 export const MODI: Record<HeadId, { id: string; label: string }[]> = {
   sales: [{ id: 'power_hour', label: 'Power Hour vorbereiten' }, { id: 'lead_review', label: 'Leads qualifizieren' }, { id: 'deal_review', label: 'Deal-Review' }, { id: 'kundenreview', label: 'Kundenreview' }, { id: 'kampagne', label: 'Kampagne planen' }, { id: 'wochenreview', label: 'Wochenreview' }, { id: 'frage', label: 'Frage' }],
-  marketing: [{ id: 'wochenplan', label: 'Wochenplan' }, { id: 'kampagne', label: 'Kampagne planen' }, { id: 'monatsreview', label: 'Monatsreview' }, { id: 'frage', label: 'Frage' }],
+  marketing: [{ id: 'wochenplan', label: 'Wochenplan' }, { id: 'netzwerk', label: 'Netzwerk ausbauen' }, { id: 'kampagne', label: 'Kampagne planen' }, { id: 'monatsreview', label: 'Monatsreview' }, { id: 'frage', label: 'Frage' }],
   event: [{ id: 'planung', label: 'Planung' }, { id: 'einladung', label: 'Gästeliste' }, { id: 'nachfassen', label: 'Nachfassen' }, { id: 'wirkung', label: 'Wirkung' }, { id: 'frage', label: 'Frage' }],
 };
 
@@ -29,7 +29,7 @@ export const REVIEW_MODI = new Set(['deal_review', 'kundenreview', 'kampagne', '
 
 export const ARTEN: Record<HeadId, string[]> = {
   sales: ['anrufen', 'nachfassen', 'intro_erbitten', 'sql_anlegen', 'angebot_nachfassen', 'qualifizierung_klaeren', 'chance_parken', 'verlaengerung_ansprechen', 'review_ansetzen', 'upsell_pruefen', 'winloss_gespraech', 'grundlage_klaeren', 'kampagne_planen', 'daten_pflegen', 'merken'],
-  marketing: ['beitrag_entwurf', 'newsletter_ausgabe', 'fallstudie_anfragen', 'empfehlung_erbitten', 'lead_magnet', 'einwilligung_einholen', 'info_art14_nachholen', 'einwilligung_auffrischen', 'liste_bereinigen', 'positionierung_schaerfen', 'kampagne_planen', 'merken'],
+  marketing: ['beitrag_entwurf', 'newsletter_ausgabe', 'fallstudie_anfragen', 'empfehlung_erbitten', 'lead_magnet', 'einwilligung_einholen', 'info_art14_nachholen', 'einwilligung_auffrischen', 'liste_bereinigen', 'positionierung_schaerfen', 'kampagne_planen', 'vernetzen_runde', 'merken'],
   event: ['einladen', 'erinnern', 'nachruecken', 'intro_am_abend', 'nachfassen', 'folgetermin', 'format_anpassen', 'co_host_anfragen', 'fotofreigabe_einholen', 'ziel_schaerfen', 'merken'],
 };
 
@@ -151,6 +151,7 @@ const AUFGABEN: Record<string, string> = {
   kundenreview: 'Prüfe die Mandate: Laufzeitende, Health, offene Punkte und Widersprüche, Kundenkonzentration. Schlag Verlängerungs-, Review- und Klärungsgespräche vor; Widersprüche als Befunde.',
   wochenreview: 'Wochenrückblick Vertrieb: Power Hours, echte Gespräche, neue Chancen, Pipeline-Bewegung — je Person, wenn Kevin und Malin beide gearbeitet haben. Was lief, was fehlt, was ist nächste Woche der eine Hebel?',
   wochenplan: 'Plane die Woche: drei Themen aus der Stimme der Kunden mit je einem Entwurfsanstoß, dazu fällige Pflichten (Art. 14, Einwilligungen) und Freigaben, die warten.',
+  netzwerk: 'LinkedIn-Netzwerk (Kevin 25.09.): Plane für jedes Profil in "netzwerk" den Tag — erst die Annahmen, die auf eine Nachricht warten (schreiben), dann die Tagesportion neuer Anfragen, dann Profile anreichern (LinkedIn-Export importieren). Art "vernetzen_runde", je Profil höchstens ein Vorschlag je Schritt; die Arbeit selbst passiert in der Vernetzen-Runde. Nie eine Nachricht an jemanden vorschlagen, der nicht vernetzt ist.',
   monatsreview: 'Monatsrückblick Marketing: Einwilligungsbestand, Quellen der Chancen, was Gespräche ausgelöst hat, Listenpflege — und was im nächsten Monat anders laufen soll.',
   planung: 'Plane die anstehenden Events: Ist das Ziel messbar? Passt die Gästemischung? Was fehlt bis zum Termin (Checkliste)?',
   einladung: 'Stelle für das nächste Event eine Gästeliste aus der Kartei zusammen (nur Personen aus "kandidaten"), je mit Grund und — laut Ampel — Einladungsweg.',

@@ -20,7 +20,7 @@
 // (lib/crm, /api/crm) — das ist die Kartei darunter, nicht der Name.
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, LEUCHT } from '../schlank';
 import { aufloesen, markttraktion, PFAD, type Bereich, type SalesAnsicht } from '@/lib/crm/adresse';
@@ -38,6 +38,7 @@ import { Stammdaten } from './Stammdaten';
 import { SchnellErfassen } from './SchnellErfassen';
 import { Runden, type RundenArt } from './Runden';
 import { Leads, SalesTrichter } from './Leads';
+import { useZurueck } from '../Verlauf';
 import { KontaktAkte } from './Akte';
 
 const WELTEN: { id: Bereich; label: string; farbe?: string }[] = [
@@ -81,21 +82,33 @@ function Reiter({ liste, aktiv, onWahl, leise }: { liste: { id: Bereich; label: 
 export function MarkttraktionSeite() {
   const router = useRouter(); const params = useSearchParams();
   const { s: bereich, a: ansicht } = aufloesen(params.get('s'), params.get('a'));
-  const [auswahl, setAuswahl] = useState<string | null>(params.get('k'));
   const api = useCrm();
-  const gehe = (s: Bereich, a?: string, k?: string) => {
+  const zurueckWie = useZurueck();
+  // Die Auswahl steht im Link (k) — so zeigen Zurück, Vor, Schnellsuche und Befunde immer dieselbe Person.
+  const kParam = params.get('k');
+  const auswahl = kParam;
+  /**
+   * Hin zu einem Ort (25.09.: „überall sauber zurück“): Bereich, Ansicht oder
+   * etwas öffnen = neuer Eintrag im Verlauf (push) — Zurück führt genau dorthin
+   * zurück. Nur Gleichrangiges austauschen (die nächste Person in der Liste)
+   * ersetzt den Eintrag (replace). Beim Wechsel des Bereichs oder der Ansicht
+   * beginnt der Inhalt oben.
+   */
+  const gehe = (s: Bereich, a?: string, k?: string, wie: 'push' | 'replace' = 'push') => {
     const q = new URLSearchParams();
     if (s !== 'ueberblick') q.set('s', s);
     if (a) q.set('a', a);
     if (k) q.set('k', k);
-    router.replace(q.toString() ? `${PFAD}?${q}` : PFAD, { scroll: false });
+    const ziel = q.toString() ? `${PFAD}?${q}` : PFAD;
+    if (ziel === `${PFAD}${params.toString() ? `?${params}` : ''}`) return;
+    router[wie](ziel, { scroll: false });
+    if (wie === 'push' && (s !== bereich || (a ?? '') !== (ansicht ?? ''))) document.querySelector('main')?.scrollTo({ top: 0 });
   };
+  /** In der Kartei eine Person oder Firma wählen: die erste öffnet (Zurück schließt sie wieder), jede weitere tauscht nur. */
+  const setAuswahl = (id: string | null) => gehe(bereich, ansicht, id ?? undefined, auswahl && id ? 'replace' : id ? 'push' : 'replace');
   const zuBereich = (b: string, a?: string) => { const z = aufloesen(b, a); gehe(z.s, z.a); };
-  const zuKontakt = (id: string) => { setAuswahl(id); gehe('kontakte', undefined, id); };
-  const zuFirma = (id: string) => { setAuswahl(id); gehe('firmen', undefined, id); };
-  // Die Auswahl folgt dem Link (Schnellsuche, Befunde, Zurück im Browser).
-  const kParam = params.get('k');
-  useEffect(() => { if (kParam) setAuswahl(kParam); }, [kParam]);
+  const zuKontakt = (id: string) => gehe('kontakte', undefined, id);
+  const zuFirma = (id: string) => gehe('firmen', undefined, id);
   const name = (p: string) => (p ? p.charAt(0).toUpperCase() + p.slice(1) : '—');
   const sales = (ansicht ?? 'heute') as SalesAnsicht;
   // Gespräch festhalten — von überall in der Markttraktion, ein Knopf oben rechts.
@@ -103,7 +116,7 @@ export function MarkttraktionSeite() {
   const runde = bereich === 'kontakte' && ansicht?.startsWith('runde-') ? (ansicht.slice(6) as RundenArt) : null;
   // Die Akte einer Person (Kevin 25.09.): eigener Eintrag im Verlauf des Browsers — „Zurück“ dort führt ebenfalls in die Kartei.
   const akteId = bereich === 'kontakte' && ansicht === 'akte' ? kParam : null;
-  const zuAkte = (id: string) => { setAuswahl(id); router.push(markttraktion('kontakte', 'akte', id), { scroll: false }); };
+  const zuAkte = (id: string) => gehe('kontakte', 'akte', id);
 
   return (
     // „+ Gespräch“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (in der Reiterleiste rutschte er aus dem Bild).
@@ -122,17 +135,18 @@ export function MarkttraktionSeite() {
           <SalesTrichter api={api} zuBereich={zuBereich} />
           <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={SALES} aktiv={sales} onWahl={a => gehe('sales', a === 'heute' ? undefined : a)} /></div>
           {sales === 'heute' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
-          {sales === 'leads' && <Leads api={api} zuKontakt={zuKontakt} zuDeal={() => gehe('sales', 'pipeline')} start={params.get('k') ?? undefined} />}
+          {sales === 'leads' && <Leads api={api} zuKontakt={zuKontakt} zuDeal={() => gehe('sales', 'pipeline')} />}
           {sales === 'pipeline' && <Pipeline api={api} zuKontakt={zuKontakt} zuLeads={() => gehe('sales', 'leads')} />}
           {sales === 'kunden' && <Kunden api={api} zuKontakt={zuKontakt} />}
           {sales === 'kampagnen' && <Kampagnen api={api} zuKontakt={zuKontakt} head="sales" />}
         </>
       )}
       {bereich === 'marketing' && <Marketing api={api} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('marketing', a === 'uebersicht' ? undefined : a)} />}
-      {bereich === 'event' && <Events api={api} zuKontakt={zuKontakt} start={params.get('k') ?? undefined} onAuswahl={id => gehe('event', undefined, id ?? undefined)} />}
+      {bereich === 'event' && <Events api={api} zuKontakt={zuKontakt} start={params.get('k') ?? undefined} onAuswahl={(id, wie) => gehe('event', undefined, id ?? undefined, wie)} />}
 
-      {runde && <Runden api={api} art={runde} name={name} zuKontakt={zuKontakt} zurueck={() => gehe('kontakte')} />}
-      {akteId && <KontaktAkte api={api} id={akteId} name={name} zurueck={() => gehe('kontakte', undefined, akteId)} zuFirma={zuFirma} zuAkte={zuAkte} />}
+      {runde && <Runden api={api} art={runde} name={name} zuKontakt={zuKontakt} zurueck={() => zurueckWie(markttraktion('kontakte'))}
+        kampagneId={kParam?.startsWith('kp-') ? kParam : undefined} zuKampagne={id => gehe('kontakte', 'runde-vernetzen', id ?? undefined, 'replace')} />}
+      {akteId && <KontaktAkte api={api} id={akteId} name={name} zurueck={() => zurueckWie(markttraktion('kontakte', undefined, akteId))} zuFirma={zuFirma} zuAkte={zuAkte} />}
       {!runde && !akteId && (bereich === 'kontakte' || bereich === 'firmen') && <Kartei api={api} name={name} modus={bereich === 'firmen' ? 'firmen' : 'personen'} auswahl={auswahl} setAuswahl={setAuswahl} zuKontakt={zuKontakt} zuFirma={zuFirma} start={ansicht === 'akte' ? undefined : ansicht} zuRunde={a => gehe('kontakte', `runde-${a}`)} zuAkte={zuAkte} />}
       {bereich === 'stammdaten' && <Stammdaten api={api} zuBereich={zuBereich} zuKontakt={zuKontakt} start={ansicht} />}
     </Seite>

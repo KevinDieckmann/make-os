@@ -196,7 +196,7 @@ export function ControllingView() {
             <Ueberschrift farbe={v.engpass ? LEUCHT.kritisch : LEUCHT.geld}
               rechts={<>
                 <Knopf leise onClick={() => setOptimistisch(!optimistisch)}>{optimistisch ? 'mit geplanten Rechnungen' : 'nur was gestellt ist'}</Knopf>
-                <Link href="/os/finanzen" style={{ color: C.inkLeise, textDecoration: 'none' }}>Rechnungen & Zahlungen ›</Link>
+                <Link href="/os/finanzen/planung" style={{ color: C.inkLeise, textDecoration: 'none' }}>Rechnungen & Zahlungen ›</Link>
               </>}>
               Liquidität · 12 Wochen
             </Ueberschrift>

@@ -145,7 +145,7 @@ export const DEPARTMENTS: Department[] = [
       { id: 'health', name: 'Health-Agent', role: 'Der Tagestakt aufs Handy — Whoop, Haut, Streak, Routinen, Journal', status: 'live', autonomy: 'autonom', model: 'schnell', href: '/os/gesundheit',
         funktionen: ['Morgens Lage + Routinen, mittags „schon gegessen?", abends Journal/Haut/Reha/Streak — per Telegram', 'Haut-Tagebuch mit Trend und Auslösern (für den Hautarzt)', 'Streak: Tage seit dem letzten Rückfall, nie wertend', 'Whoop nachts holen, sobald verbunden'],
         bauplan: 'LIVE seit 23.09. — Kevins Entscheidung: „Gesundheit ist die Basis, deswegen bauen wir ihn zuerst." Takt in lib/gesundheit/takt.ts, Bote bote.mjs, Werkzeuge hake_routine / haut_eintrag / journal_eintrag / streak_eintrag. Braucht TELEGRAM_BOT_TOKEN und je Person einmal /start CODE. Whoop: wartet auf Kevins Developer-Zugang.' },
-      { id: 'ernaehrung', name: 'Ernährungs-Agent', role: 'Essensplan und Einkaufsliste für die Woche', status: 'live', autonomy: 'vorschlag', model: 'ausgewogen', href: '/os/ernaehrung',
+      { id: 'ernaehrung', name: 'Ernährungs-Agent', role: 'Essensplan und Einkaufsliste für die Woche', status: 'live', autonomy: 'vorschlag', model: 'ausgewogen', href: '/os/gesundheit?s=ernaehrung',
         funktionen: ['Wochenplan aus den Ernährungs-Regeln', 'Einkaufsliste daraus ableiten', 'Anti-entzündlich wegen Psoriasis', 'Hinweis von Kevin einarbeiten'],
         bauplan: 'LIVE: /api/ernaehrung/vorschlag. Jarvis startet ihn selbst (run_agent ernaehrung) und nimmt einen Hinweis für die Woche entgegen.' },
       { id: 'team', name: 'Team-/HR-Agent', role: 'Team-Struktur, Onboarding (Miro)', status: 'geplant', autonomy: 'vorschlag', model: 'schnell',

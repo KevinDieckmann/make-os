@@ -107,11 +107,11 @@ export const REGLER: Regler[] = [
     wirktIn: [{ label: 'Agenten', href: '/os/agenten' }], skala: ['früh Feierabend', 'spät bis Mitternacht'] },
   { id: 'tagesstart-auto', label: 'Tagesstart automatisch', bereich: 'agenten', schalter: true,
     erklaert: 'Ob der volle Tageslauf beim ersten Öffnen von selbst startet — er braucht bis zu vier Minuten und mehrere Anfragen.', min: 0, max: 100, schritt: 100,
-    wirktIn: [{ label: 'Tagesstart', href: '/os/ritual' }], skala: ['erst auf Knopfdruck', 'startet von selbst'] },
+    wirktIn: [{ label: 'Tagesstart', href: '/os/gesundheit' }], skala: ['erst auf Knopfdruck', 'startet von selbst'] },
 
   // ── Schutz ──
   { id: 'schutzzeit', label: 'Schutzzeit', bereich: 'schutz', erklaert: 'Wie hart geschützte Zeiten (Sport, Sunday Dinner, Feierabend) verteidigt werden.', min: 0, max: 100, schritt: 25,
-    wirktIn: [{ label: 'Wochenplaner', href: '/os/planung/woche' }, { label: 'Energie', href: '/os/energie' }], skala: ['nachgiebig', 'unantastbar'] },
+    wirktIn: [{ label: 'Wochenplaner', href: '/os/planung/woche' }, { label: 'Energie', href: '/os/gesundheit?s=koerper' }], skala: ['nachgiebig', 'unantastbar'] },
   { id: 'recovery-gruen', label: 'Grüne Tagesform ab', bereich: 'schutz', erklaert: 'Ab welchem Erholungswert ein Tag als grün gilt — steuert Tagesform, Fokus-Vorschlag und Wochenplanung.', min: 50, max: 85, schritt: 1, einheit: '%',
     wirktIn: [{ label: 'Gesundheit', href: '/os/gesundheit' }, { label: 'Tag', href: '/os/planung' }], skala: ['schnell grün', 'nur wirklich erholt'] },
   { id: 'runway-warnung', label: 'Runway-Warnung ab', bereich: 'schutz', erklaert: 'Ab wie wenigen Monaten Geldreichweite das System rot schlägt.', min: 1, max: 12, schritt: 1, einheit: 'Monate',

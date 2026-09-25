@@ -288,7 +288,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
     <Seite titel="Tagesplanung" unter={<div>{datum}<div style={{ marginTop: 12 }}><PlanerLeiste aktiv="tag" tag={heute} /></div></div>}>
       {/* ── Die Fokusthemen stehen über dem Tag ── */}
       <Karte i={0} akzent={LEUCHT.schlaf}>
-        <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/planung/fokus" style={verweis}>Regler ›</Link>}>
+        <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/kompass" style={verweis}>Regler ›</Link>}>
           Fokus{fokusQuelle && fokusQuelle !== 'Tag' ? ` · ${fokusQuelle}` : ''}
         </Ueberschrift>
         <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(17px,2.2vw,20px)', fontWeight: 600, lineHeight: 1.35 }}>
@@ -403,7 +403,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
                 </Ziehbar>
               ))}
             </div>
-            <Ueberschrift rechts={<span>◎ = <Link href="/os/planung/fokus" style={verweis}>im Fokus</Link></span>}>Aufgaben einplanen</Ueberschrift>
+            <Ueberschrift rechts={<span>◎ = <Link href="/os/kompass" style={verweis}>im Fokus</Link></span>}>Aufgaben einplanen</Ueberschrift>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {offeneAufgaben.map(t => (
                 <Ziehbar key={t.id} farbe={t.imFokus ? LEUCHT.schlaf : ART_FARBE.aufgabe} daten={{ aufgabe: { taskId: t.id, titel: t.title } }} breit={240}>

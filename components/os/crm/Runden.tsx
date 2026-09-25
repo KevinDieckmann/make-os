@@ -25,6 +25,7 @@ import { Karte, Ueberschrift, Knopf, Chip, Leer, Fortschritt, LEUCHT } from '../
 import { anzeigename, type Kontakt, type Kreis } from '@/lib/make-one/crm';
 import { TEAM, BEIDE, anderer, nameVon, haeltBeziehung, verantwortlich } from '@/lib/crm/team';
 import { QualifizierungsRunde } from './Leads';
+import { VernetzenRunde } from './Vernetzen';
 import {
   kreisKandidaten, kreisBilanz, kreisZusammenfassung, letzteNotiz, KREIS_WAHL, KREIS_GRUPPEN,
   type KreisKandidat, type KreisGruppe,
@@ -34,15 +35,15 @@ import { Pillen, Feldzeile } from './teile';
 import { Person, ZustaendigWahl } from './team';
 
 /** 'chancen' heißt seit 25.09. Qualifizierungs-Runde: Leads im Gespräch bis zum SQL (Ebene 1 → 2). */
-export type RundenArt = 'kreis' | 'chancen';
+export type RundenArt = 'kreis' | 'chancen' | 'vernetzen';
 interface RundenProps { api: CrmApi; name: (p: string) => string; zuKontakt: (id: string) => void; zurueck: () => void }
 
-export function Runden({ api, art, name, zuKontakt, zurueck }: RundenProps & { art: RundenArt }) {
+export function Runden({ api, art, name, zuKontakt, zurueck, kampagneId, zuKampagne }: RundenProps & { art: RundenArt; /** Vernetzen-Runde: Texte aus dieser Kampagne. */ kampagneId?: string; zuKampagne?: (id: string | null) => void }) {
   // Handy: volle Breite; Rechner: eine Spalte in der Mitte — eine Karte, ein Blick.
   return (
     <div style={{ width: '100%', maxWidth: 720, margin: '0 auto', display: 'grid', gap: 14 }}>
-      {art === 'kreis'
-        ? <KreisRunde api={api} name={name} zuKontakt={zuKontakt} zurueck={zurueck} />
+      {art === 'kreis' ? <KreisRunde api={api} name={name} zuKontakt={zuKontakt} zurueck={zurueck} />
+        : art === 'vernetzen' ? <VernetzenRunde api={api} kampagneId={kampagneId} zuKontakt={zuKontakt} zurueck={zurueck} zuKampagne={zuKampagne ?? (() => {})} />
         : <QualifizierungsRunde api={api} zuKontakt={zuKontakt} zurueck={zurueck} />}
     </div>
   );

@@ -8,6 +8,8 @@ const nextConfig = {
   async redirects() {
     return [
       { source: '/os/performance', destination: '/os/wachstum', permanent: false },
+      // 25.09.: „Brain“ heißt in der Leiste so, die Seite liegt unter /os/wissen.
+      { source: '/os/brain', destination: '/os/wissen', permanent: false },
       { source: '/os/uebersicht', destination: '/os', permanent: false },
       { source: '/os/start', destination: '/os', permanent: false },
       { source: '/os/journal', destination: '/os/gesundheit', permanent: false },

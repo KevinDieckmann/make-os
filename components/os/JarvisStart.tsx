@@ -21,6 +21,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { ZurueckKnopf } from './Verlauf';
 import { FARBE as C, TYP, SCHRIFT, ABSTAND as A, RADIUS, MIKRO } from '@/lib/make-one/design';
 import { JarvisHirn, TON } from './JarvisHirn';
 import { useStimme } from '@/hooks/useStimme';
@@ -229,6 +230,10 @@ export function JarvisStart() {
       }} />
       <div className="buehne-vignette" />
       <div className="buehne-korn" />
+      {/* Kein Sackgasse (25.09.): oben links ein Weg zurück — ein echter Schritt, sonst ins System. */}
+      <div style={{ position: 'absolute', top: 'clamp(12px, 2vh, 22px)', left: 'clamp(12px, 2vw, 24px)', zIndex: 6 }}>
+        <ZurueckKnopf ersatz="/os">Zurück</ZurueckKnopf>
+      </div>
 
       <div style={{
         position: 'relative', zIndex: 4, width: '100%',

@@ -11,6 +11,7 @@
 //      Frist wird es deren nächster Schritt (erscheint dann in der Power
 //      Hour), sonst eine Aufgabe. Nichts wird versendet.
 
+import { markttraktion } from '@/lib/crm/adresse';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/jarvis/raum';
@@ -54,6 +55,16 @@ export async function GET(_: Request, { params }: { params: { head: string } }) 
   const auto = s.vorschlaege.filter(v => v.auto && v.auto.am >= vor7).sort((a, b) => b.auto!.am.localeCompare(a.auto!.am)).slice(0, 12);
   return NextResponse.json({ ok: true, head: h, name: HEAD_NAME[h], modi: MODI[h], vorschlaege: s.vorschlaege, berichte: s.berichte.slice(-5).reverse(), letzte: s.letzte, ruhig: s.ruhig ?? null,
     gedaechtnis: s.gedaechtnis ?? [], hinweise: l.hinweise, ablehngruende: ABLEHNGRUENDE, qualitaet, autonomie: s.autonomie ?? 'intern', auto });
+}
+
+/** Wo der Vorschlag hingehört — als Pfad in der Aufgabe, dort wird er ein Link (components/os/TextMitLinks.tsx). */
+function ort(t: { art?: string; kontakt_id?: string | null; chance_id?: string | null; mandat_id?: string | null; event_id?: string | null }): string | null {
+  if (t.art === 'vernetzen_runde') return markttraktion('kontakte', 'runde-vernetzen');
+  if (t.chance_id) return markttraktion('sales', 'pipeline', t.chance_id);
+  if (t.mandat_id) return markttraktion('sales', 'kunden', t.mandat_id);
+  if (t.event_id) return markttraktion('event', undefined, t.event_id);
+  if (t.kontakt_id) return markttraktion('kontakte', 'akte', t.kontakt_id);
+  return null;
 }
 
 export async function POST(req: Request, { params }: { params: { head: string } }) {
@@ -153,7 +164,7 @@ export async function POST(req: Request, { params }: { params: { head: string } 
         const i = tasks.findIndex(x => x.id === `hd-${t.id}`);
         if (status === 'erledigt') { if (i >= 0) tasks[i] = { ...tasks[i], status: 'done', updatedAt: jetzt }; return { ...f, tasks }; }
         if (i >= 0) return f;
-        tasks.push({ id: `hd-${t.id}`, title: t.titel.slice(0, 200), description: `Vorschlag des ${HEAD_NAME[h]}: ${t.begruendung}${t.entwurf ? `\n\nEntwurf (${t.entwurf.kanal}):\n${t.entwurf.text}` : ''}`, status: 'todo', priority: t.prioritaet === 'hoch' ? 'high' : t.prioritaet === 'niedrig' ? 'low' : 'medium', assignee: bearbeiter, tags: [AGENT_ID[h], 'markttraktion'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, ...(t.frist ? { dueDate: t.frist } : {}) });
+        tasks.push({ id: `hd-${t.id}`, title: t.titel.slice(0, 200), description: `Vorschlag des ${HEAD_NAME[h]}: ${t.begruendung}${t.entwurf ? `\n\nEntwurf (${t.entwurf.kanal}):\n${t.entwurf.text}` : ''}${ort(t) ? `\n\n${ort(t)}` : ''}`, status: 'todo', priority: t.prioritaet === 'hoch' ? 'high' : t.prioritaet === 'niedrig' ? 'low' : 'medium', assignee: bearbeiter, tags: [AGENT_ID[h], 'markttraktion'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, ...(t.frist ? { dueDate: t.frist } : {}) });
         return { ...f, tasks };
       });
       wohin = bearbeiter === person ? 'Aufgabe' : `Aufgabe für ${nameVon(bearbeiter)}`;

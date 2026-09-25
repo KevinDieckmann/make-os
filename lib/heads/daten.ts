@@ -16,6 +16,8 @@ import { PLAYBOOKS, kundenprofil, aehnlicheFirmen, zielgruppe, kampagnenZahlen }
 import { leads as leadZeilen, fehltBisSql, sqlBereit, geklaert } from '@/lib/crm/leads';
 import { einstellungAus, marketingKennzahlen, wirkungZahlen, newsletterEmpfaenger, abmeldequote } from '@/lib/crm/marketing';
 import { kontextAus, segmentAuswerten } from '@/lib/crm/segmente';
+import { netzRunde } from '@/lib/crm/netzwerk';
+import { TEAM } from '@/lib/crm/team';
 
 const kurz = (t: string | undefined, n: number) => (t ?? '').replace(/\s+/g, ' ').trim().slice(0, n) || undefined;
 
@@ -138,6 +140,12 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
         kreis_a_bis_c: aktiv.filter(k => k.kreis && k.kreis !== 'D').length,
       },
       art14_faellig: aktiv.filter(k => art14(k, heute)?.faellig).slice(0, 15).map(k => ({ ...p(k), tage: art14(k, heute)!.tage })),
+      // LinkedIn je Profil (25.09.): was heute in der Vernetzen-Runde ansteht — nur Zahlen und die ersten Namen, keine Texte.
+      netzwerk: TEAM.map(t => {
+        const kp = crm.kampagnen.find(x => x.playbook === 'vernetzen' && x.status === 'aktiv');
+        const r = netzRunde(aktiv, t.id, heute, { kampagne: kp });
+        return { profil: t.id, name: t.name, kampagne: kp ? { id: kp.id, name: kp.name } : null, zahlen: r.zahlen, als_naechstes: r.karten.slice(0, 5).map(x => ({ id: x.kontakt.id, name: anzeigename(x.kontakt), stufe: x.stufe })) };
+      }),
       einwilligungen_alt: aktiv.filter(k => (k.einwilligungen ?? []).some(e => !e.widerrufenAm && (Date.parse(heute) - Date.parse(e.erteiltAm)) / 864e5 > 730)).slice(0, 10).map(p),
       quellen_der_chancen: quellen,
       selbstauskunft: crm.chancen.filter(c => c.selbstauskunft).map(c => ({ chance_id: c.id, text: kurz(c.selbstauskunft, 200) })),

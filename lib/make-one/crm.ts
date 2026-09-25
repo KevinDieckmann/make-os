@@ -15,6 +15,7 @@
 // Nichts sendet. Versand bleibt bei Kevin — das ist eiserne Regel 3.
 
 import { leadSaeubern } from '@/lib/crm/lead-form';
+import { netzwerkSaeubern, netzwerkVereinen } from '@/lib/crm/netzwerk-form';
 
 export const STUFEN = [
   'neu', 'ansprechen', 'angesprochen', 'gespraech', 'termin', 'angebot',
@@ -135,6 +136,10 @@ export interface Kontakt {
   besitzer?: string;
   /** Ebene 1 (Lead) für Personen OHNE Firma — mit Firma liegt die Qualifizierung an der Firma. */
   lead?: import('@/lib/crm/typen').Lead;
+  /** LinkedIn je Profil (kevin, malin): angefragt, vernetzt, Nachricht geschrieben (25.09., lib/crm/netzwerk.ts). */
+  netzwerk?: Record<string, import('@/lib/crm/netzwerk-form').NetzStand>;
+  /** Beim Anreichern kein LinkedIn-Profil gefunden (Tag) — fällt aus der Vernetzen-Runde, bis ein Profil eingetragen wird. */
+  linkedinNichtGefunden?: string;
   lebensphase?: Lebensphase;
   anrede?: 'Sie' | 'Du';
   vorgestelltDurch?: string;
@@ -163,7 +168,7 @@ export interface Kontakt {
 
 /** Felder, die der Import NIE anfasst — das ist die Arbeit im CRM. */
 const PIPELINE_FELDER: (keyof Kontakt)[] = ['stufe', 'wiedervorlage', 'letzterKontakt', 'aktivitaeten', 'importiertAm',
-  'firmaId', 'herkunft', 'rechtsgrundlage', 'kreis', 'taktTage', 'besitzer', 'lebensphase', 'anrede', 'vorgestelltDurch', 'einwilligungen', 'werbesperre', 'fremddaten', 'art14InformiertAm', 'naechsterSchritt', 'privatNotiz'];
+  'firmaId', 'herkunft', 'rechtsgrundlage', 'kreis', 'taktTage', 'besitzer', 'lebensphase', 'anrede', 'vorgestelltDurch', 'einwilligungen', 'werbesperre', 'fremddaten', 'art14InformiertAm', 'naechsterSchritt', 'privatNotiz', 'netzwerk', 'linkedinNichtGefunden'];
 
 const s = (v: unknown, n = 400) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 const norm = (v: string) => v.toLowerCase().replace(/[^a-z0-9äöüß@.]/g, '');
@@ -443,6 +448,7 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     ...(/^f-[a-z0-9-]{2,60}$/.test(String(o.firmaId ?? '')) ? { firmaId: String(o.firmaId) } : {}),
     ...(kreis ? { kreis } : {}), ...(takt >= 7 && takt <= 730 ? { taktTage: Math.round(takt) } : {}),
     ...(txt(o.besitzer, 40) ? { besitzer: txt(o.besitzer, 40) } : {}), ...(lebensphase ? { lebensphase } : {}), ...(leadSaeubern(o.lead) ? { lead: leadSaeubern(o.lead) } : {}),
+    ...(netzwerkSaeubern(o.netzwerk) ? { netzwerk: netzwerkSaeubern(o.netzwerk) } : {}), ...(tag(o.linkedinNichtGefunden) ? { linkedinNichtGefunden: tag(o.linkedinNichtGefunden) } : {}),
     ...(o.anrede === 'Sie' || o.anrede === 'Du' ? { anrede: o.anrede } : {}), ...(txt(o.vorgestelltDurch, 60) ? { vorgestelltDurch: txt(o.vorgestelltDurch, 60) } : {}),
     ...(einwilligungen?.length ? { einwilligungen } : {}),
     ...(ws && tag(ws.seit) ? { werbesperre: { seit: tag(ws.seit)!, grund: txt(ws.grund, 300) ?? 'Widerspruch' } } : {}),
@@ -509,6 +515,8 @@ export function kontaktVereinen(neu: Kontakt, alt: Kontakt, person?: string): Ko
     ...privatNotizVereinen(neu, alt, person),
     aktivitaeten: fehlend.length ? [...(neu.aktivitaeten ?? []), ...fehlend].sort((a, b) => a.am.localeCompare(b.am)) : neu.aktivitaeten,
     ...(letzter ? { letzterKontakt: letzter } : {}),
+    // LinkedIn je Profil: der weitere Schritt gewinnt — ein älterer Stand wischt kein „vernetzt“ weg.
+    ...(neu.netzwerk || alt.netzwerk ? { netzwerk: netzwerkVereinen(neu.netzwerk, alt.netzwerk) } : {}),
   };
 }
 

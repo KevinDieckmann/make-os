@@ -26,7 +26,7 @@ import { type CrmApi, datum, euro } from './daten';
 import { KanalAmpel, Grund } from './teile';
 import { Person, AuchHier } from './team';
 import { LeadBlock } from './Leads';
-import { phaseFarbe, phaseLabel, Hinweise, NaechsterSchrittTeil, BeziehungTeil, DealsTeil, EntwurfTeil, VerlaufTeil, RechtTeil, Matrix } from './kontakt-teile';
+import { phaseFarbe, phaseLabel, Hinweise, NaechsterSchrittTeil, BeziehungTeil, DealsTeil, EntwurfTeil, VerlaufTeil, RechtTeil, Matrix, LinkedInTeil } from './kontakt-teile';
 
 /** Drei Spalten ab 1440 px Fenster, zwei ab SPALTEN_AB, sonst eine. */
 function useSpalten(): 1 | 2 | 3 {
@@ -200,6 +200,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte }: { api: 
         <NaechsterSchrittTeil k={k} heute={heute} setze={setze} />
         <LeadBlock api={api} leadId={k.firmaId ?? k.id} />
         <DealsTeil k={k} api={api} />
+        <LinkedInTeil k={k} api={api} />
         <EntwurfTeil k={k} mailOk={mailOk} />
       </div>
     </Karte>

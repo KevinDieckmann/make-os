@@ -5,6 +5,8 @@
 // Überfällig · Heute · Diese Woche · Später · Ohne Datum. Haken, fertig.
 // Board, Zeitstrahl und Filter des alten Baus liegen unter /os/aufgaben/board.
 
+import { TextMitLinks } from './TextMitLinks';
+import { useLinkAuswahl } from './Verlauf';
 import Link from 'next/link';
 import { useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -24,7 +26,8 @@ export function AufgabenSchlank() {
   const { state, dispatch } = useTasks();
   const [neu, setNeu] = useState('');
   const [zeigeErledigt, setZeigeErledigt] = useState(false);
-  const [offenId, setOffenId] = useState<string | null>(null);
+  // Offene Aufgabe im Link (?offen=): Zurück schließt sie wieder, statt die Seite zu verlassen (25.09.).
+  const [offenId, setOffenId] = useLinkAuswahl('offen');
   const aendern = (id: string, teil: Partial<Task>) => dispatch({ type: 'UPDATE_TASK', payload: { id, ...teil } });
 
   const anlegen = () => {
@@ -59,6 +62,8 @@ export function AufgabenSchlank() {
     <div style={{ padding: '8px 2px 16px 36px', borderBottom: `1px solid ${C.linie}` }}>
       <input defaultValue={t.title} onBlur={e => { const v = e.target.value.trim(); if (v && v !== t.title) aendern(t.id, { title: v }); }}
         onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} style={{ ...feld, marginBottom: 10 }} />
+      {/* Beschreibung aus Übergabe, Head oder Event — mit anklickbarem Ort (25.09.). */}
+      {t.description?.trim() && <TextMitLinks text={t.description.trim()} style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 10, maxHeight: 220, overflowY: 'auto' }} />}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <input type="date" value={t.dueDate ?? ''} onChange={e => aendern(t.id, { dueDate: e.target.value || undefined })} style={wahl} />
         <select value={t.priority} onChange={e => aendern(t.id, { priority: e.target.value as Task['priority'] })} style={wahl}>
@@ -85,7 +90,7 @@ export function AufgabenSchlank() {
       <Liste>
         {g.liste.map(t => (
           <div key={t.id}>
-            <Zeile onClick={() => setOffenId(o => (o === t.id ? null : t.id))} aktiv={offenId === t.id}
+            <Zeile onClick={() => setOffenId(offenId === t.id ? null : t.id)} aktiv={offenId === t.id}
               links={<Haken an={false} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />}
               titel={t.title}
               unter={[projekt(t.projectId), t.assignee !== 'kevin' ? WER[t.assignee] : ''].filter(Boolean).join(' · ')}

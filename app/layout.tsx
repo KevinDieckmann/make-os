@@ -20,6 +20,7 @@ import { TasksProvider } from '@/context/TasksContext';
 import { CalendarProvider } from '@/context/CalendarContext';
 import { PrivacyProvider } from '@/context/PrivacyContext';
 import { MakeOSProvider } from '@/context/MakeOSContext';
+import { VerlaufWaechter } from '@/components/os/Verlauf';
 
 export const metadata: Metadata = {
   title: 'make — Life & Business OS',
@@ -42,6 +43,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="de" className={`dark ${archivo.variable} ${publicSans.variable}`}>
       <body className="antialiased bg-zinc-950 text-foreground">
+        {/* Sauber zurück, überall: Tiefe je Verlaufseintrag und Scrollposition (components/os/Verlauf.tsx). */}
+        <VerlaufWaechter />
         <MakeOSProvider>
           <PrivacyProvider>
             <AppContextProvider>

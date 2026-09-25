@@ -12,6 +12,7 @@
 // Plakette, Übergeben. Ergebnisse halten fest, wer angesprochen hat („von“);
 // Schritt-Aufgaben gehen an die Zuständigkeit. Änderungen als Einzelfelder.
 
+import { useLinkAuswahl } from '../Verlauf';
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, Zahl, LEUCHT } from '../schlank';
@@ -25,6 +26,7 @@ import { type CrmApi, datum, euro, plusTage } from './daten';
 import { Pillen, Feld, Feldzeile, AMPEL_FARBE } from './teile';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
 import { HeadPanel } from './HeadPanel';
+import { VernetzenEinstellungen } from './Vernetzen';
 
 interface Daten {
   heute: string; playbooks: (Playbook & { anzahl: number })[];
@@ -44,7 +46,8 @@ const nurFelder = (t: Record<string, unknown>) => Object.fromEntries(Object.entr
 /** Kampagnen planen beide Heads (Kevin, 25.09.): in Sales mit dem Head of Sales, in Marketing mit dem Head of Marketing — dieselben Kampagnen. */
 export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi; zuKontakt: (id: string) => void; head?: 'sales' | 'marketing' }) {
   const [d, setD] = useState<Daten | null>(null);
-  const [offen, setOffen] = useState<string | null>(null);
+  // Offene Kampagne im Link (k): Zurück schließt sie wieder.
+  const [offen, setOffen] = useLinkAuswahl();
   const [meldung, setMeldung] = useState('');
   const [segmentPlan, setSegmentPlan] = useState<string | null>(null);
   const [wahl, setWahl] = useWerFilter('kampagnen');
@@ -188,6 +191,7 @@ function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagn
         </div>
       )}
       {pb && <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}><b style={{ color: C.ink }}>Warum:</b> {pb.warum} <span style={{ color: C.inkLeise }}>· ⚖ {pb.recht}</span></div>}
+      {k.playbook === 'vernetzen' && <VernetzenEinstellungen k={k} api={api} />}
       <Feldzeile label="Zuständig">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <ZustaendigWahl wert={k.zustaendig} welt="sales" onWahl={wert => void api.teil('kampagnen', k.id, { zustaendig: wert })} />

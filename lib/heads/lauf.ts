@@ -37,6 +37,9 @@ export interface ReplayFall { zeit: string; modus: string; person: string; heute
 export interface ReplayStand { faelle: ReplayFall[] }
 
 export interface HeadAuftrag { head: HeadId; modus: string; person: string; frage?: string; ausgeloest: HeadBericht['ausgeloest'] }
+/** Modi, die das Regelwerk allein trägt (kein Modell nötig). */
+const NUR_REGELWERK = new Set(['netzwerk']);
+
 export interface HeadErgebnis { ok: boolean; fehler?: string; bericht?: HeadBericht; ohneKi?: boolean; ruhigText?: string; neu?: number; /** So viele interne Kleinigkeiten hat der Head selbst übernommen. */ auto?: number }
 
 const RANG = { hoch: 0, mittel: 1, niedrig: 2 } as const;
@@ -97,9 +100,10 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
     pruefung = p.pruefung; art.quelle = 'regelwerk'; art.ohneKiGrund = grund; art.roh = g!.antwort;
   };
 
-  const kiMoeglich = hasAnthropicKey();
+  // Netzwerk ist reine Planung aus Zahlen — das Regelwerk genügt, kein Modellaufruf.
+  const kiMoeglich = hasAnthropicKey() && !NUR_REGELWERK.has(a.modus);
   if (!kiMoeglich && !g) return { ok: false, fehler: 'Fragen beantwortet der Head nur mit KI — kein Anthropic-Schlüssel hinterlegt.' };
-  if (!kiMoeglich) regelwerk('kein Anthropic-Schlüssel');
+  if (!kiMoeglich) regelwerk(NUR_REGELWERK.has(a.modus) ? 'Planung aus Zahlen' : 'kein Anthropic-Schlüssel');
   else {
     // Kevin 25.09.: stark für Reviews, sonst ausgewogen — ANTHROPIC_MODEL übersteuert alles.
     const review = REVIEW_MODI.has(a.modus);
@@ -142,7 +146,7 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
     const q = qualitaet(v, v.kontakt_id ? nachId.get(v.kontakt_id) : undefined, heute);
     const entwurf = q.entwurfUnbrauchbar ? null : v.entwurf;
     const b = belege(daten, v.quelle);
-    return { ...v, entwurf, fuer: fuerWen(v, a.head, nachId, crm, a.person), belege: b.belege, ...(q.maengel.length || b.insLeere.length ? { maengel: [...q.maengel, ...(q.entwurfUnbrauchbar ? ['Entwurf entfernt'] : []), ...(b.insLeere.length ? [`Quelle ins Leere: ${b.insLeere.join(', ')}`] : [])] } : { maengel: undefined }) };
+    return { ...v, entwurf, fuer: v.fuer ?? fuerWen(v, a.head, nachId, crm, a.person), belege: b.belege, ...(q.maengel.length || b.insLeere.length ? { maengel: [...q.maengel, ...(q.entwurfUnbrauchbar ? ['Entwurf entfernt'] : []), ...(b.insLeere.length ? [`Quelle ins Leere: ${b.insLeere.join(', ')}`] : [])] } : { maengel: undefined }) };
   }).sort((x, y) => RANG[x.prioritaet] - RANG[y.prioritaet] || (x.frist ?? '9999').localeCompare(y.frist ?? '9999')) };
 
   const bericht: HeadBericht = { id: `hb-${Date.now().toString(36)}`, zeit: jetzt, modus: a.modus, ausgeloest: a.ausgeloest, person: a.person, ...(a.frage ? { frage: a.frage.slice(0, 500) } : {}), antwort, pruefung: { ...pruefung!, korrigiert }, modell: art.quelle === 'ki' ? art.modell ?? agent.model : 'regelwerk', dauer_ms: Date.now() - start, ...(verbrauch.aufrufe ? { verbrauch } : {}), quelle: art.quelle, ...(art.ohneKiGrund ? { ohneKiGrund: art.ohneKiGrund } : {}) };

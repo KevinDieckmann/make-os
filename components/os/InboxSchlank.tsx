@@ -8,6 +8,7 @@
 // Tasten wie gehabt: j/k wandern, e erledigt, a Aufgabe, s morgen.
 // Fächer, Screener und der Zero-Durchlauf des alten Baus: /os/inbox/voll.
 
+import { useLinkAuswahl } from './Verlauf';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -54,7 +55,8 @@ export function InboxSchlank() {
   const [absender, setAbsender] = useState<Record<string, { status: string }>>({});
   const [quelle, setQuelle] = useState<{ apple: string; ms: string }>({ apple: 'lädt …', ms: 'lädt …' });
   const [seg, setSeg] = useState<Segment>('offen');
-  const [offenId, setOffenId] = useState<string | null>(null);
+  // Offene Mail im Link (?offen=): Zurück schließt sie wieder, statt die Seite zu verlassen (25.09.).
+  const [offenId, setOffenId] = useLinkAuswahl('offen');
   const [body, setBody] = useState<Record<string, string>>({});
   const [entwurf, setEntwurf] = useState<{ id: string; text: string } | null>(null);
   const [schreibt, setSchreibt] = useState(false);

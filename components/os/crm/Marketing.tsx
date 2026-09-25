@@ -19,7 +19,7 @@
 // („· 2 für dich“), und aus der Übersicht springt ein Klick direkt in den
 // Beitrag oder die Ausgabe.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FARBE as C } from '@/lib/make-one/design';
 import { verantwortlich } from '@/lib/crm/team';
@@ -46,10 +46,10 @@ const KAMPAGNE_SEGMENT_SCHLUESSEL = 'crm-kampagne-segment';
 export function Marketing({ api, zuKontakt, start, onAnsicht }: { api: CrmApi; zuKontakt: (id: string) => void; start?: string; onAnsicht?: (a: string) => void }) {
   const params = useSearchParams();
   const wunsch = start ?? params.get('a') ?? undefined;
-  const [unter, setUnter] = useState<Unter>(UNTER.find(u => u.id === wunsch)?.id ?? 'uebersicht');
-  useEffect(() => { if (wunsch && UNTER.some(u => u.id === wunsch)) setUnter(wunsch as Unter); }, [wunsch]);
-  // Die Ansicht steht in der Adresse — Zurück im Browser und Links führen wieder genau hierher.
-  const waehle = (u: Unter) => { setUnter(u); onAnsicht?.(u); };
+  const [lokal, setLokal] = useState<Unter>(UNTER.find(u => u.id === wunsch)?.id ?? 'uebersicht');
+  // Die Ansicht steht in der Adresse — Zurück im Browser und Links führen wieder genau hierher (auch zurück zur Übersicht).
+  const unter: Unter = onAnsicht ? UNTER.find(u => u.id === wunsch)?.id ?? 'uebersicht' : lokal;
+  const waehle = (u: Unter) => { setLokal(u); onAnsicht?.(u); };
   const zuKampagne = (segmentId: string) => {
     try { sessionStorage.setItem(KAMPAGNE_SEGMENT_SCHLUESSEL, segmentId); } catch { /* ohne Speicher öffnet der Planer leer */ }
     waehle('kampagnen');

@@ -9,6 +9,7 @@
 // Sales-Verantwortung) — Filter „Alle · Meins · Malin“, Plakette, Zeile je
 // Person, Übergeben. Änderungen gehen als Einzelfelder raus (api.teil).
 
+import { useLinkAuswahl } from '../Verlauf';
 import { useEffect, useState } from 'react';
 import { FARBE as C } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, LEUCHT } from '../schlank';
@@ -31,7 +32,8 @@ const nurFelder = (t: Record<string, unknown>) => Object.fromEntries(Object.entr
 interface LiquiLage { id: string; lage: 'fehlt' | 'ok' | 'abweichend' | 'kein-posten'; vorschlag: { betrag: number; ab: string; rhythmus: string } | null; vorhanden: { id: string; betrag: number } | null }
 
 export function Kunden({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string) => void }) {
-  const [auswahl, setAuswahl] = useState<string | null>(null);
+  // Offenes Mandat bzw. offene Leistung im Link (k): Zurück schließt es wieder.
+  const [auswahl, setAuswahl] = useLinkAuswahl();
   const [liqui, setLiqui] = useState<{ mandate: LiquiLage[]; freiePosten: { id: string; titel: string; betrag: number }[] } | null>(null);
   const [alle, setAlle] = useState(false);
   const [wahl, setWahl] = useWerFilter('kunden');
@@ -213,7 +215,8 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
 }
 
 function Katalog({ api }: { api: CrmApi }) {
-  const [auswahl, setAuswahl] = useState<string | null>(null);
+  // Offenes Mandat bzw. offene Leistung im Link (k): Zurück schließt es wieder.
+  const [auswahl, setAuswahl] = useLinkAuswahl();
   const l = api.crm?.stand.leistungen ?? [];
   const STUFE: Record<Leistung['stufe'], string> = { einstieg: 'Einstieg', kern: 'Kern', premium: 'Premium' };
   const sortiert = [...l].sort((a, b) => ['einstieg', 'kern', 'premium'].indexOf(a.stufe) - ['einstieg', 'kern', 'premium'].indexOf(b.stufe) || a.name.localeCompare(b.name));

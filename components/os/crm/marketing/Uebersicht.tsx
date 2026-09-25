@@ -24,6 +24,9 @@ import { marketingKennzahlen, freigabeLage, liegtBei, beitraegeJePerson, genitiv
 import { type CrmApi, datum } from '../daten';
 import { Person } from '../team';
 import { KpiLeiste, AlsNaechstes, STAND_FARBE } from './gemeinsam';
+import Link from 'next/link';
+import { netzRunde } from '@/lib/crm/netzwerk';
+import { markttraktion } from '@/lib/crm/adresse';
 
 /** Wohin ein Klick auf einen Posten führt — Redaktionsplan oder Newsletter mit geöffnetem Eintrag. */
 export type ZuEintrag = (ansicht: 'redaktion' | 'newsletter', id: string) => void;
@@ -64,12 +67,31 @@ export function Uebersicht({ api, zuKontakt, zu }: { api: CrmApi; zuKontakt: (id
       stimmen, alteEinwilligung,
     };
   }, [kontakte, crm, heute]);
+  // LinkedIn-Netzwerk je Profil (25.09.): was heute in der Vernetzen-Runde ansteht.
+  const netz = useMemo(() => TEAM.map(t => ({ id: t.id, z: netzRunde(kontakte, t.id, heute).zahlen })), [kontakte, heute]);
   const QLABEL: Record<string, string> = { empfehlung: 'Empfehlung', event: 'Event', content: 'Content', outreach: 'Ansprache', bestand: 'Bestand', inbound: 'Anfrage', unbekannt: 'nicht erfasst' };
   const chancenGesamt = z.quellen.reduce((a, [, n]) => a + n, 0);
 
   return (
     <>
       <Raster min={360}>
+        <Karte i={0} akzent={netz.some(n => n.z.schreiben) ? LEUCHT.gut : undefined}>
+          <Ueberschrift farbe={LEUCHT.business} rechts={<Link href={markttraktion('kontakte', 'runde-vernetzen')} style={{ color: LEUCHT.business, textDecoration: 'none', fontSize: 12.5, fontWeight: 600 }}>Vernetzen-Runde ›</Link>}>LinkedIn-Netzwerk</Ueberschrift>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {netz.map(n => (
+              <div key={n.id} style={{ display: 'grid', gap: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: C.inkDim }}><Person id={n.id} name /><span style={{ color: C.inkLeise }}>· {n.z.vernetzt} vernetzt · {n.z.warten} Anfragen offen</span></div>
+                <div style={{ fontSize: TYP.bedien, color: C.ink, lineHeight: 1.5 }}>
+                  {n.z.schreiben ? <b style={{ color: LEUCHT.gut }}>{n.z.schreiben} angenommen — schreiben. </b> : null}
+                  {n.z.nachfassen ? `${n.z.nachfassen} nachfassen. ` : ''}
+                  {n.z.restHeute && n.z.anfragen ? `Heute noch ${Math.min(n.z.restHeute, n.z.anfragen)} Anfragen. ` : n.z.anfragen ? 'Tagesportion erledigt. ' : ''}
+                  {n.z.anreichern ? `${n.z.anreichern} ohne Profil.` : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Erst vernetzen, nach der Annahme schreiben — Texte je Kampagne „LinkedIn: vernetzen & anschreiben“. Den LinkedIn-Export importieren, dann kommen Annahmen von selbst.</div>
+        </Karte>
         <Karte i={0} akzent={beiMir.length ? LEUCHT.achtung : undefined}>
           <Ueberschrift farbe={lage.length ? LEUCHT.achtung : undefined} rechts={lage.length ? `${lage.length} offen` : undefined}>Wartet auf Freigabe</Ueberschrift>
           {beiWem.length ? (

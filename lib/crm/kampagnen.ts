@@ -13,6 +13,7 @@ import type { CrmBestand, Firma, Kampagne, SegmentKriterien } from './typen';
 import { mandatLage } from './kunden';
 import { kontextAus, segmentAuswerten } from './segmente';
 import { firmenSchluessel } from './firmen';
+import { vernetzenStandard } from './netzwerk';
 
 export interface Playbook {
   id: string; name: string; kurz: string;
@@ -77,6 +78,19 @@ export const PLAYBOOKS: Playbook[] = [
     zielgruppe: { lebensphase: ['kunde'] }, zusatz: 'laufzeit_90', kanal: 'persoenlich',
     schritte: [{ text: 'Ergebnisse gegen die Ziele aufbereiten', tag: 0 }, { text: 'Review-Termin mit dem Entscheider', tag: 5 }, { text: 'Verlängerungsangebot mit Optionen', tag: 14 }],
     kennzahl: 'Verlängerungsquote', recht: 'Im laufenden Mandat frei.', fuer: ['head-sales'],
+  },
+  {
+    // Kevin 25.09.: „erst vernetzen, dann schreiben … ein kompletter Flow in die Bearbeitung der Leute.“
+    id: 'vernetzen', name: 'LinkedIn: vernetzen & anschreiben', kurz: 'Erst vernetzen, nach der Annahme persönlich schreiben — Texte je Kampagne',
+    warum: 'Wer vernetzt ist, sieht unsere Beiträge und nimmt eine Nachricht an; die Vernetzung selbst ist keine Werbung. Die Nachricht danach öffnet das Gespräch — mit der Erlaubnisfrage rechtlich sauber, und ein Ja ist eine Einwilligung.',
+    zielgruppe: { prio: ['A', 'B'], firmaRolle: ['zielkunde', 'offen', 'kunde', 'partner'] }, kanal: 'linkedin',
+    schritte: [
+      { text: 'LinkedIn-Export importieren und fehlende Profile über den Suchlink ergänzen', tag: 0 },
+      { text: 'Vernetzen-Runde: jeden Werktag die Tagesportion anfragen', tag: 0 },
+      { text: 'Nach der Annahme: Nachricht aus dieser Kampagne schicken', tag: 2 },
+      { text: 'Ohne Reaktion nach den Folgetagen: nachfassen oder anrufen', tag: 10 },
+    ],
+    kennzahl: 'Annahmen und Gespräche aus der Vernetzung', recht: 'Vernetzen ist keine Werbung; die Nachricht danach ist elektronische Post (§ 7 UWG) — ohne Einwilligung nur ohne Werbung. Jede Vorlage trägt ihre Ampel.', fuer: ['head-marketing'],
   },
   {
     id: 'newsletter', name: 'Einwilligungen aufbauen', kurz: 'Kreis A–C für den Newsletter gewinnen',
@@ -161,6 +175,7 @@ export function planen(pb: Playbook, kontakte: Kontakt[], crm: CrmBestand, heute
     id, name: pb.name, playbook: pb.id, ziel: pb.kennzahl, zielgruppe: pb.zielgruppe, kanal: pb.kanal, status: 'entwurf', start: heute,
     schritte: pb.schritte.map((s, i) => ({ id: `s${i}`, text: s.text, tag: s.tag, erledigt: false })),
     kontaktIds: l.map(k => k.id), ergebnisse: [], von, geaendert: new Date().toISOString(),
+    ...(pb.id === 'vernetzen' ? { vernetzen: vernetzenStandard() } : {}),
   };
 }
 

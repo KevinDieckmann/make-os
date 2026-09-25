@@ -33,6 +33,8 @@ export function faelligeModi(head: HeadId, jetzt: Date, s: HeadStand, events: { 
   }
   if (head === 'marketing') {
     if (w === 1 && h >= 8 && !liefHeute(s, 'wochenplan', heute)) raus.push({ modus: 'wochenplan', grund: 'Wochenplan Marketing' });
+    // LinkedIn (25.09.): werktags ab 8 Uhr die Vernetzen-Portion planen — reines Regelwerk, kostet kein Guthaben.
+    if (werktag && h >= 8 && !liefHeute(s, 'netzwerk', heute)) raus.push({ modus: 'netzwerk', grund: 'Netzwerk: Vernetzen-Runde für heute planen' });
     if (ersterWerktag && h >= 10 && !liefHeute(s, 'monatsreview', heute)) raus.push({ modus: 'monatsreview', grund: 'Monatsreview Marketing' });
   }
   if (head === 'event' && h >= 8) {

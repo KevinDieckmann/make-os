@@ -143,6 +143,31 @@ export function grundlauf(head: HeadId, modus: string, daten: Record<string, unk
     if (!stimmen.length) luecken.push('Keine Kundenstimme in den Gesprächsnotizen — nach Gesprächen „Bedarf / Schmerz“ ausfüllen, daraus entstehen die Themen.');
   }
 
+  // LinkedIn-Netzwerk (25.09.): je Profil der Tag in der Vernetzen-Runde — Annahmen zuerst, dann die Portion, dann anreichern.
+  if (head === 'marketing' && modus === 'netzwerk') {
+    type NetzD = { profil: string; name: string; zahlen: { schreiben: number; nachfassen: number; anfragen: number; restHeute: number; anreichern: number; zurueckziehen: number; warten: number; vernetzt: number }; als_naechstes: { name: string; stufe: string }[] };
+    const nz = (daten.netzwerk as NetzD[] | undefined) ?? [];
+    nz.forEach((n, i) => {
+      const z = n.zahlen;
+      const namen = (stufe: string) => n.als_naechstes.filter(x => x.stufe === stufe).slice(0, 3).map(x => x.name).join(', ');
+      if (z.schreiben) vs.push(v({ art: 'vernetzen_runde', titel: `LinkedIn: ${z.schreiben} Annahme${z.schreiben === 1 ? '' : 'n'} — Nachricht schreiben (${n.name})`, frist: heute, prioritaet: 'mittel', fuer: n.profil,
+        begruendung: `${z.schreiben} ${z.schreiben === 1 ? 'Person hat' : 'Personen haben'} die Vernetzung mit ${n.name} angenommen und ${z.schreiben === 1 ? 'wartet' : 'warten'} auf eine Nachricht${namen('schreiben') ? ` (${namen('schreiben')})` : ''} — solange die Annahme frisch ist, wird gelesen.`,
+        dedup_schluessel: `netz:schreiben:${n.profil}:${heute}`, quelle: [`netzwerk[${i}].zahlen.schreiben`] }));
+      if (z.nachfassen) vs.push(v({ art: 'vernetzen_runde', titel: `LinkedIn: ${z.nachfassen}× nachfassen (${n.name})`, frist: heute, prioritaet: 'mittel', fuer: n.profil,
+        begruendung: `Nach der Nachricht kam bei ${z.nachfassen} ${z.nachfassen === 1 ? 'Person' : 'Personen'} keine Reaktion — Antwort festhalten oder anrufen.`, dedup_schluessel: `netz:nachfassen:${n.profil}:${heute}`, quelle: [`netzwerk[${i}].zahlen.nachfassen`] }));
+      const portion = Math.min(z.restHeute, z.anfragen);
+      if (portion) vs.push(v({ art: 'vernetzen_runde', titel: `Vernetzen heute: ${portion} Anfrage${portion === 1 ? '' : 'n'} (${n.name})`, frist: heute, prioritaet: 'mittel', fuer: n.profil,
+        begruendung: `${z.anfragen} Personen mit Profil sind noch nicht mit ${n.name} vernetzt — die Tagesportion hält das LinkedIn-Wochenlimit ein${namen('anfragen') ? `; zuerst ${namen('anfragen')}` : ''}.`,
+        dedup_schluessel: `netz:anfragen:${n.profil}:${heute}`, quelle: [`netzwerk[${i}].zahlen.restHeute`, `netzwerk[${i}].zahlen.anfragen`] }));
+      if (z.anreichern >= 20) vs.push(v({ art: 'vernetzen_runde', titel: `Profile anreichern: ${z.anreichern} ohne LinkedIn (${n.name})`, frist: tagPlus(heute, 3), prioritaet: 'niedrig', fuer: n.profil,
+        begruendung: `${z.anreichern} Personen haben kein LinkedIn-Profil — den eigenen LinkedIn-Export (Connections.csv) in der Vernetzen-Runde importieren, der Rest über den Suchlink.`,
+        dedup_schluessel: `netz:anreichern:${n.profil}:${heute.slice(0, 7)}`, quelle: [`netzwerk[${i}].zahlen.anreichern`] }));
+      if (z.zurueckziehen) vs.push(v({ art: 'vernetzen_runde', titel: `${z.zurueckziehen} alte Anfrage${z.zurueckziehen === 1 ? '' : 'n'} zurückziehen (${n.name})`, frist: tagPlus(heute, 7), prioritaet: 'niedrig', fuer: n.profil,
+        begruendung: 'Offene Anfragen älter als 21 Tage zählen gegen das LinkedIn-Limit — zurückziehen und die Person auf anderem Weg ansprechen.', dedup_schluessel: `netz:zurueck:${n.profil}:${heute.slice(0, 7)}`, quelle: [`netzwerk[${i}].zahlen.zurueckziehen`] }));
+    });
+    if (!nz.some(n => n.zahlen.vernetzt || n.zahlen.warten)) luecken.push('Noch niemand als vernetzt erfasst — den LinkedIn-Export importieren, dann stimmt der Stand.');
+  }
+
   if (head === 'event') {
     const events = (daten.events as EventD[] | undefined) ?? [];
     events.forEach((e, i) => {

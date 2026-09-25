@@ -352,7 +352,7 @@ export function LiquiditaetView() {
             <Ueberschrift>Weiter</Ueberschrift>
             <Liste>
               {[
-                { href: '/os/finanzen', titel: 'Rechnungen & Zahlungen', satz: 'was reinkommt, was raus muss, in welcher Reihenfolge' },
+                { href: '/os/finanzen/planung', titel: 'Rechnungen & Zahlungen', satz: 'was reinkommt, was raus muss, in welcher Reihenfolge' },
                 { href: '/os/controlling', titel: 'Controlling & Ziele', satz: 'Kurs aufs Jahresziel, Run-Rate, Runway' },
                 { href: '/os/finanzen/dashboard', titel: 'Finanz-Dashboard', satz: 'Malins gewachsenes Werkzeug, unverändert' },
               ].map(b => (

@@ -13,6 +13,8 @@
 // gepflegt wird in Obsidian, deshalb führt jede Notiz mit einem Griff dorthin.
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useZurueck } from './Verlauf';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { bloecke, inline, sichererLink, type Block, type Teil } from '@/lib/make-one/markdown';
 import { Seite, Karte, Ueberschrift, Leer, Knopf, Segmente, Punkt, Chip, Zahl, feld, LEUCHT, Spalten, Spalte, useBreit } from './schlank';
@@ -155,7 +157,10 @@ export function WissenView() {
   const [durchsucht, setDurchsucht] = useState<number | null>(null);
   const [offen, setOffen] = useState<Voll | null>(null);
   const [laedtNotiz, setLaedtNotiz] = useState(false);
-  const [verlauf, setVerlauf] = useState<string[]>([]);
+  // Die offene Notiz steht im Link (?n=) — jeder Sprung ist ein Verlaufseintrag, Zurück geht Notiz für Notiz zurück (25.09.).
+  const router = useRouter();
+  const n = useSearchParams().get('n');
+  const zurueckWie = useZurueck();
   const [modus, setModus] = useState<Modus>('fragen');
   const [chat, setChat] = useState<ChatZug[]>([]);
   const [eingabe, setEingabe] = useState('');
@@ -200,9 +205,6 @@ export function WissenView() {
 
   useEffect(() => {
     fetch('/api/jarvis/wissen').then(r => r.json()).then(d => { if (d.ok) setStand(d); }).catch(() => {});
-    // Direkt auf eine Notiz verlinkt (/os/wissen?n=…) — etwa aus einer Quelle, die Jarvis nennt.
-    const n = new URLSearchParams(window.location.search).get('n');
-    if (n) void oeffne(n, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -222,26 +224,18 @@ export function WissenView() {
     return () => clearTimeout(t);
   }, [frage, bereich]);
 
-  const oeffne = useCallback(async (id: string, merken = true) => {
+  const laden = useCallback(async (id: string) => {
     setLaedtNotiz(true);
     const d: Voll = await fetch(`/api/jarvis/wissen?notiz=${encodeURIComponent(id)}`).then(r => r.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' }));
     setLaedtNotiz(false);
     setOffen(d);
-    if (d.ok && d.id) {
-      if (merken) setVerlauf(v => (v[v.length - 1] === d.id ? v : [...v, d.id!].slice(-20)));
-      else setVerlauf([d.id]);
-      try { window.history.replaceState(null, '', `/os/wissen?n=${encodeURIComponent(d.id)}`); } catch { /* egal */ }
-    }
     lesefenster.current?.scrollTo?.({ top: 0 });
-    if (!breit) window.scrollTo({ top: 0 });
+    if (!breit) document.querySelector('main')?.scrollTo({ top: 0 });
   }, [breit]);
-
-  const zurueck = () => {
-    const v = verlauf.slice(0, -1);
-    setVerlauf(v);
-    if (v.length) void oeffne(v[v.length - 1], false).then(() => setVerlauf(v));
-    else { setOffen(null); try { window.history.replaceState(null, '', '/os/wissen'); } catch { /* egal */ } }
-  };
+  // Direkt verlinkt (/os/wissen?n=…, etwa aus einer Quelle, die Jarvis nennt), Sprung, Zurück oder Vor — die Notiz folgt dem Link.
+  useEffect(() => { if (n) void laden(n); else setOffen(null); }, [n, laden]);
+  const oeffne = useCallback((id: string) => { if (id !== n) router.push(`/os/wissen?n=${encodeURIComponent(id)}`, { scroll: false }); }, [router, n]);
+  const zurueck = () => zurueckWie('/os/wissen');
 
   const obsidianVault = stand?.wurzeln.find(w => w.id === 'make')?.obsidian;
   const segmente = [{ id: 'alle', label: 'Alle' }, ...BEREICHE.filter(b => stand?.jeBereich[b]).map(b => ({ id: b, label: b }))];
@@ -364,7 +358,7 @@ export function WissenView() {
   // ── Lesefenster ──
   const leseKarte = offen ? (
     <Karte i={2} akzent={bereichFarbe(offen.bereich)}>
-      {(verlauf.length > 1 || !breit) && (
+      {offen && (
         <button onClick={zurueck} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', font: 'inherit', fontSize: 13, padding: 0, marginBottom: 10 }}>← zurück</button>
       )}
       {!offen.ok ? <Leer>{offen.fehler ?? 'Nicht lesbar.'}</Leer> : (

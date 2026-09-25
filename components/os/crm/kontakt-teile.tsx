@@ -17,10 +17,13 @@ import {
 import type { Firma } from '@/lib/crm/typen';
 import { art14 } from '@/lib/crm/recht';
 import { PERSON_FELDER, FIRMA_FELDER, FIRMA_FELDER_IMPORT, EINORDNUNG_FELDER, HERKUNFT_FELDER, gefuellt, vollstaendigkeit, type MatrixFeld } from '@/lib/crm/akte';
-import { haeltBeziehung, BEIDE } from '@/lib/crm/team';
+import { haeltBeziehung, BEIDE, TEAM, nameVon } from '@/lib/crm/team';
+import { netzStufe, profilAdresse, suchLink } from '@/lib/crm/netzwerk';
+import { markttraktion } from '@/lib/crm/adresse';
+import Link from 'next/link';
 import { type CrmApi, neueId, datum, euro } from './daten';
 import { NotizFormular, Verlauf, Feldzeile, Pillen, Feld, festhalten, hatMailEinwilligung } from './teile';
-import { ZustaendigWahl, Uebergeben } from './team';
+import { ZustaendigWahl, Uebergeben, Person } from './team';
 import { neueFirma, ROLLEN } from './Firmen';
 
 export const PHASEN: { id: Lebensphase; label: string }[] = [
@@ -71,6 +74,46 @@ export function BeziehungTeil({ k, api, setze }: { k: Kontakt; api: CrmApi; setz
       <Feldzeile label="Anrede"><Pillen liste={[{ id: 'Sie', label: 'Sie' }, { id: 'Du', label: 'Du' }]} aktiv={k.anrede} onWahl={anrede => void setze({ anrede: anrede as 'Sie' | 'Du' })} /></Feldzeile>
       <Feldzeile label="Hält die Beziehung"><ZustaendigWahl wert={k.besitzer} welt="sales" onWahl={besitzer => void setze({ besitzer })} /></Feldzeile>
       <div style={{ marginTop: 8 }}><Uebergeben api={api} art="kontakt" id={k.id} jetzt={haeltBeziehung(k)} /></div>
+    </div>
+  );
+}
+
+/**
+ * LinkedIn an der Person (25.09.): Profil, Stand je Profil (Kevin, Malin) und
+ * der nächste Schritt für das eigene Profil — dieselben Schritte wie in der
+ * Vernetzen-Runde (/api/crm/netzwerk). Versendet wird nichts.
+ */
+export function LinkedInTeil({ k, api }: { k: Kontakt; api: CrmApi }) {
+  const ich = api.ich ?? 'kevin';
+  const heute = api.crm?.heute ?? new Date().toISOString().slice(0, 10);
+  const profil = profilAdresse(k.linkedin);
+  const [url, setUrl] = useState('');
+  const [fehler, setFehler] = useState<string | null>(null);
+  useEffect(() => { setUrl(''); setFehler(null); }, [k.id]);
+  const tun = async (body: Record<string, unknown>) => { setFehler(null); const r = await api.netzwerk({ id: k.id, ...body }); if (!r.ok) setFehler(r.fehler ?? 'Nicht gespeichert.'); };
+  const { stufe } = netzStufe(k, ich, heute);
+  const zeile = (p: string) => {
+    const s = k.netzwerk?.[p];
+    const text = !s ? 'nicht vernetzt' : s.status === 'vernetzt' ? `vernetzt seit ${datum(s.vernetztAm)}${s.geschriebenAm ? ` · geschrieben ${datum(s.geschriebenAm)}` : ' · noch nicht geschrieben'}` : s.status === 'angefragt' ? `angefragt ${datum(s.angefragtAm)}` : s.status === 'abgelehnt' ? 'abgelehnt' : 'Anfrage zurückgezogen';
+    return <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: TYP.bedien, color: s?.status === 'vernetzt' ? C.ink : C.inkDim, padding: '3px 0' }}><Person id={p} groesse={18} /><span>{nameVon(p)}: {text}</span></div>;
+  };
+  const leise = { background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: 0, fontFamily: SCHRIFT.text } as const;
+  return (
+    <div>
+      <Ueberschrift rechts={<Link href={markttraktion('kontakte', 'runde-vernetzen')} style={{ color: C.inkLeise, textDecoration: 'none', fontSize: 12 }}>Vernetzen-Runde ›</Link>}>LinkedIn</Ueberschrift>
+      {profil ? <a href={profil} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5, color: C.inkDim, textDecoration: 'none', overflowWrap: 'anywhere' }}>{profil.replace('https://www.', '')} ↗</a>
+        : <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <a href={suchLink(k)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5, color: LEUCHT.business, textDecoration: 'none' }}>Auf LinkedIn suchen ↗</a>
+          <input value={url} onChange={e => setUrl(e.target.value)} placeholder="Profiladresse einfügen" aria-label="LinkedIn-Profiladresse" onKeyDown={e => { if (e.key === 'Enter' && url.trim()) void tun({ aktion: 'profil', url }); }} style={{ ...feld, flex: 1, minWidth: 160, fontSize: TYP.bedien, padding: '7px 10px' }} />
+          {url.trim() && <Knopf leise onClick={() => void tun({ aktion: 'profil', url })}>Speichern</Knopf>}
+        </div>}
+      <div style={{ marginTop: 6 }}>{TEAM.map(t => zeile(t.id))}</div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 4 }}>
+        {stufe === 'anfragen' && <><button onClick={() => void tun({ aktion: 'angefragt' })} style={leise}>Meine Anfrage ist raus ✓</button><button onClick={() => void tun({ aktion: 'vernetzt' })} style={leise}>Bin schon vernetzt</button></>}
+        {(stufe === 'warten' || stufe === 'zurueckziehen') && <><button onClick={() => void tun({ aktion: 'vernetzt' })} style={leise}>Wurde angenommen ✓</button><button onClick={() => void tun({ aktion: 'zurueckgezogen' })} style={leise}>Zurückgezogen</button></>}
+        {stufe === 'schreiben' && <Link href={markttraktion('kontakte', 'runde-vernetzen')} style={{ ...leise, color: LEUCHT.gut, textDecoration: 'none' }}>Angenommen — in der Runde schreiben ›</Link>}
+      </div>
+      {fehler && <div style={{ fontSize: 12.5, color: LEUCHT.kritisch, marginTop: 4 }}>{fehler}</div>}
     </div>
   );
 }
