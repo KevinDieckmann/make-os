@@ -147,3 +147,14 @@ DevSpec-Kennzahlen, die mit Mandaten/Pipeline rechenbar sind:
   Finanzen-Business-Hälfte = Finanzielle Gesundheit; Jarvis bekommt Index, Rotes und Messlücken.
 - Tests: `tests/business-index.test.ts`.
 
+## 8. Tiefer verankert (25.09.2026, Kevin: Fachseiten · Jarvis & Head of Finance · Feinjustierung)
+
+- Fachseiten: `components/os/business/IndexStreifen.tsx` auf Zahlen (Business), Markttraktion
+  (Überblick), Mandate — dieselbe Zahl wie im Cockpit, Klick öffnet die Kennzahl dort.
+- Jarvis: `business_index` (frei) · `monatsabschluss_erfassen` (Freigabe, nur genannte Zahlen).
+- Head of Finance: `business_index` im Datenpaket, Hinweise bei roter Kennzahl (FH = hoch) und
+  fehlendem Monatsabschluss des Vormonats — nur für den Haushalt des Inhabers.
+- Feinjustierung: eigene Schwellen je Kennzahl (alle Sichten oder je Firma, mit Rückweg zum
+  Standard), Jahresumsatzziele je Firma (Umsatz-Kurs und Pipeline-Deckung jetzt auch je Firma),
+  Verlaufs-Diagramm (Index + drei Säulen, 90 Tage).
+

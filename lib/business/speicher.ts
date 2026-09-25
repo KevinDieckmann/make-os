@@ -14,7 +14,7 @@ import { eventKennzahlen, traktion } from '@/lib/crm/traktion';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { PlanBlock } from '@/types/planer';
 import { localDay } from '@/lib/zeit';
-import { SCOPES, type Scope } from './register';
+import { SCOPES, schwelleSauber, type Scope, type Schwelle } from './register';
 import { mrrJeKunde, type Bestand, type Monatsabschluss } from './messen';
 import { berechne, type Ampel, type BusinessIndex } from './index';
 
@@ -22,7 +22,13 @@ export const EINSTELLUNGEN = 'business-einstellungen';
 export const ABSCHLUESSE = 'business-abschluesse';
 export const VERLAUF = 'business-verlauf';
 
-export interface BusinessEinstellungen { fte: Partial<Record<'kdc' | 'kdv', number>> }
+export interface BusinessEinstellungen {
+  fte: Partial<Record<'kdc' | 'kdv', number>>;
+  /** Jahresumsatzziel je Firma (gesamt: Controlling). */
+  ziele?: Partial<Record<'kdc' | 'kdv', number>>;
+  /** Eigene Schwellen: „alle“ gilt überall, eine Sicht überschreibt „alle“. */
+  schwellen?: Partial<Record<'alle' | Scope, Record<string, Schwelle>>>;
+}
 export interface Tagesstand { index: number | null; saeulen: Record<string, number | null>; werte: Record<string, number | null>; ampeln: Record<string, Ampel> }
 export interface BusinessVerlauf {
   /** Datum → Sicht → Stand */
@@ -32,20 +38,52 @@ export interface BusinessVerlauf {
 }
 
 const FIRMEN = ['kdc', 'kdv'] as const;
+
+/** Zählt eigene Schreibvorgänge — Zwischenspeicher (Jarvis, Head of Finance) wissen so, wann sie neu rechnen müssen. */
+let schreibStand = 0;
+export const businessSchreibStand = () => schreibStand;
 const zahlOder = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : Number.isFinite(Number(v)) && v !== '' && v != null ? Number(v) : undefined);
 
 export async function ladeEinstellungen(): Promise<BusinessEinstellungen> {
   const e = await loadJson<BusinessEinstellungen>(EINSTELLUNGEN);
-  return { fte: e?.fte ?? {} };
+  return { fte: e?.fte ?? {}, ziele: e?.ziele ?? {}, schwellen: e?.schwellen ?? {} };
 }
 
-export async function speichereEinstellungen(roh: Record<string, unknown>): Promise<BusinessEinstellungen> {
-  return updateJson<BusinessEinstellungen>(EINSTELLUNGEN, alt => {
-    const fte: BusinessEinstellungen['fte'] = { ...(alt?.fte ?? {}) };
-    const r = (roh.fte ?? {}) as Record<string, unknown>;
-    for (const f of FIRMEN) if (f in r) { const n = zahlOder(r[f]); if (n == null || n <= 0) delete fte[f]; else fte[f] = Math.min(500, Math.round(n * 10) / 10); }
-    return { ...(alt ?? {}), fte };
+/** Die geltenden eigenen Schwellen einer Sicht: „alle“, überschrieben von der Sicht selbst. */
+export const schwellenFuer = (e: BusinessEinstellungen, scope: Scope): Record<string, Schwelle> => ({ ...(e.schwellen?.alle ?? {}), ...(e.schwellen?.[scope] ?? {}) });
+
+/**
+ * Einstellungen ändern — Köpfe, Jahresziele je Firma, eigene Schwellen
+ * ({ schwelle: { id, sicht: 'alle'|Sicht, gruen, rot } } oder { …, zuruecksetzen: true }).
+ */
+export async function speichereEinstellungen(roh: Record<string, unknown>): Promise<{ ok: true; einstellungen: BusinessEinstellungen } | { ok: false; fehler: string }> {
+  let fehler: string | null = null;
+  const e = await updateJson<BusinessEinstellungen>(EINSTELLUNGEN, alt => {
+    const neu: BusinessEinstellungen = { fte: { ...(alt?.fte ?? {}) }, ziele: { ...(alt?.ziele ?? {}) }, schwellen: { ...(alt?.schwellen ?? {}) } };
+    const zahlen = (quelle: unknown, ziel: Partial<Record<'kdc' | 'kdv', number>>, max: number, stellen: number) => {
+      const r = (quelle ?? {}) as Record<string, unknown>;
+      for (const f of FIRMEN) if (f in r) { const n = zahlOder(r[f]); if (n == null || n <= 0) delete ziel[f]; else ziel[f] = Math.min(max, Math.round(n * stellen) / stellen); }
+    };
+    if (roh.fte) zahlen(roh.fte, neu.fte, 500, 10);
+    if (roh.ziele) zahlen(roh.ziele, neu.ziele!, 1e9, 1);
+    if (roh.schwelle && typeof roh.schwelle === 'object') {
+      const s = roh.schwelle as Record<string, unknown>;
+      const sicht = (['alle', ...SCOPES.map(x => x.id)] as const).find(x => x === s.sicht);
+      const id = String(s.id ?? '');
+      if (!sicht) { fehler = 'Sicht fehlt (alle, gesamt, kdc oder kdv).'; return alt ?? neu; }
+      const liste = { ...(neu.schwellen![sicht] ?? {}) };
+      if (s.zuruecksetzen === true) delete liste[id];
+      else {
+        const r = schwelleSauber(id, s as { gruen?: unknown; rot?: unknown });
+        if (!r.ok) { fehler = r.fehler; return alt ?? neu; }
+        liste[id] = r.schwelle;
+      }
+      neu.schwellen![sicht] = liste;
+    }
+    return neu;
   });
+  if (!fehler) schreibStand++;
+  return fehler ? { ok: false, fehler } : { ok: true, einstellungen: e };
 }
 
 export async function ladeAbschluesse(): Promise<Monatsabschluss[]> {
@@ -69,12 +107,14 @@ export async function speichereAbschluss(roh: Record<string, unknown>, von: stri
     for (const f of ABSCHLUSS_FELDER) if (f in roh) { const n = zahlOder(roh[f]); if (n == null) delete neu[f]; else neu[f] = Math.round(n * 100) / 100; }
     if ('notiz' in roh) { const t = String(roh.notiz ?? '').trim().slice(0, 300); if (t) neu.notiz = t; else delete neu.notiz; }
     eintrag = neu;
+    schreibStand++;
     return { eintraege: [...liste.filter(x => !(x.firma === firma && x.monat === monat)), neu].sort((a, b) => b.monat.localeCompare(a.monat) || a.firma.localeCompare(b.firma)) };
   });
   return { ok: true, eintrag };
 }
 
 export async function loescheAbschluss(firma: string, monat: string): Promise<void> {
+  schreibStand++;
   await updateJson<{ eintraege: Monatsabschluss[] }>(ABSCHLUESSE, alt => ({ eintraege: (alt?.eintraege ?? []).filter(x => !(x.firma === firma && x.monat === monat)) }));
 }
 
@@ -124,6 +164,8 @@ export async function ladeRoh(heute = localDay()) {
     auftraege: auftraege?.auftraege ?? [],
     meilensteine: ms?.meilensteine ?? [],
     fte: einst.fte,
+    ziele: einst.ziele ?? {},
+    einstellungen: einst,
     verlauf: verlauf ?? { tage: {}, mrr: {} },
   };
 }
@@ -135,8 +177,8 @@ export function bestandFuer(r: Roh, scope: Scope): Bestand {
   for (const [m, je] of Object.entries(r.verlauf.mrr ?? {})) if (je[scope]) mrrVerlauf[m] = je[scope]!;
   // Der laufende Monat immer aus dem aktuellen Stand.
   mrrVerlauf[r.heute.slice(0, 7)] = mrrJeKunde(r.mandate, scope);
-  const { verlauf: _v, ...rest } = r;
-  return { ...rest, scope, mrrVerlauf };
+  const { verlauf: _v, einstellungen, ...rest } = r;
+  return { ...rest, scope, mrrVerlauf, schwellen: schwellenFuer(einstellungen, scope) };
 }
 
 function tagesstand(bi: BusinessIndex): Tagesstand {

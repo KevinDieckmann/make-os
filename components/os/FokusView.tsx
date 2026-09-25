@@ -100,7 +100,7 @@ export function FokusView() {
               return (
                 <div key={k} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 190px) 1fr 40px', gap: 12, alignItems: 'center', fontSize: TYP.bedien }}>
                   <span style={{ color: C.inkDim }}>{s.name}</span>
-                  <div style={{ height: 8, borderRadius: 99, background: 'rgba(255,255,255,.06)' }}><div style={{ width: `${w}%`, height: '100%', borderRadius: 99, background: s.farbe, boxShadow: `0 0 10px ${s.farbe}66` }} /></div>
+                  <div style={{ height: 8, borderRadius: 99, background: 'rgba(255,255,255,.06)' }}><div style={{ width: `${w}%`, height: '100%', borderRadius: 99, background: s.farbe, boxShadow: `0 0 10px ${s.farbe}33` }} /></div>
                   <span style={{ fontVariantNumeric: 'tabular-nums', color: C.ink, textAlign: 'right' }}>{w}</span>
                 </div>
               );

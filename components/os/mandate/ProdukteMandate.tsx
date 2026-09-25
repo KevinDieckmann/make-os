@@ -17,6 +17,7 @@ import { mandateLink, markttraktion } from '@/lib/crm/adresse';
 import { useCrm } from '../crm/daten';
 import { MandateUebersicht } from '../crm/Kunden';
 import { Produkte } from './Produkte';
+import { IndexStreifen, STREIFEN } from '../business/IndexStreifen';
 
 type Reiter = 'mandate' | 'produkte';
 
@@ -30,6 +31,7 @@ export function ProdukteMandate() {
     <Seite titel="Produkte & Mandate" unter={reiter === 'produkte' ? 'Was wir anbieten — mit Preis, Ablauf und Unterlagen.' : 'Für wen wir gerade arbeiten — Laufzeit, Health, Umsatz.'}
       rechts={<Segmente liste={[{ id: 'mandate' as Reiter, label: 'Mandate' }, { id: 'produkte' as Reiter, label: 'Produkte' }]} aktiv={reiter} onWahl={r => router.push(mandateLink(r), { scroll: false })} />}>
       {api.fehler && <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{api.fehler}</div>}
+      {reiter === 'mandate' && <IndexStreifen ids={STREIFEN.mandate} titel="Business-Index · Kunden" />}
       {reiter === 'mandate' ? <MandateUebersicht api={api} zuKontakt={zuKontakt} /> : <Produkte api={api} />}
       <div style={{ fontSize: 12, color: C.inkLeise }}>Neue Mandate entstehen meist aus einem gewonnenen Deal (Markttraktion › Sales › Deals → „Mandat anlegen“).</div>
     </Seite>

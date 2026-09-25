@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import { punkte, ampel, berechne } from '../lib/business/index';
 import { MESSEN, istMonate, type Bestand } from '../lib/business/messen';
-import { KENNZAHLEN, kennzahlenFuer } from '../lib/business/register';
+import { KENNZAHLEN, kennzahlenFuer, schwelleSauber } from '../lib/business/register';
 import type { Mandat, Chance } from '../lib/crm/typen';
 
 const HEUTE = '2026-09-25';
@@ -165,3 +165,27 @@ describe('Säulen und Gesamt', () => {
     expect(berechne(leer()).index).toBeNull();
   });
 });
+
+describe('Feinjustierung', () => {
+  it('eigene Schwellen ändern Ampel und Punkte, der Standard bleibt sichtbar; verdrehte Schwellen werden abgewiesen', () => {
+    const auftraege = [...Array(8)].map((_, i) => ({ status: 'fertig', beendet: `2026-09-${10 + i}T10:00:00Z`, anlass: 'Jarvis' }));
+    const std = berechne(leer({ auftraege })).saeulen.flatMap(s => s.kennzahlen).find(k => k.id === 'delegation')!;
+    expect(std).toMatchObject({ ampel: 'rot', angepasst: false, standard: { gruen: 10, rot: 3 } });
+    const eigen = berechne(leer({ auftraege, schwellen: { delegation: { gruen: 2, rot: 1 } } })).saeulen.flatMap(s => s.kennzahlen).find(k => k.id === 'delegation')!;
+    expect(eigen).toMatchObject({ ampel: 'gruen', punkte: 100, angepasst: true, gruen: 2, standard: { gruen: 10, rot: 3 } });
+    expect(schwelleSauber('delegation', { gruen: 1, rot: 2 })).toMatchObject({ ok: false });
+    expect(schwelleSauber('dso', { gruen: 30, rot: 45 })).toEqual({ ok: true, schwelle: { gruen: 30, rot: 45 } });
+    expect(schwelleSauber('dso', { gruen: 50, rot: 45 })).toMatchObject({ ok: false });
+    expect(schwelleSauber('gibtsnicht', { gruen: 1, rot: 0 })).toMatchObject({ ok: false });
+  });
+  it('Umsatz-Kurs und Pipeline-Deckung je Firma mit eigenem Jahresziel', () => {
+    const b = leer({ scope: 'kdc', grundlageMonate: monate(1, 8, 10000, 5000), chancen: [chance('o', 'angebot', [{ stufe: 'angebot', am: J, von: 'k' }], { wert: { betrag: 100000, basis: 'einmalig' } })] });
+    expect(mess('run_rate', b)).toMatchObject({ luecke: expect.stringContaining('Jahresumsatzziel') });
+    const mitZiel = { ...b, ziele: { kdc: 200000 } };
+    // 80.000 Ist in 8 Monaten → Ø 10.000; Rest 120.000 in 4 Monaten (Sep–Dez) → 30.000 nötig
+    expect(wert('run_rate', mitZiel)).toBeCloseTo(33.33, 1);
+    expect(wert('pipeline', mitZiel)).toBeGreaterThan(0);
+    expect(kennzahlenFuer('kdc').map(k => k.id)).toEqual(expect.arrayContaining(['run_rate', 'pipeline']));
+  });
+});
+

@@ -168,7 +168,7 @@ export function Kacheln({ children }: { children: ReactNode }) {
 export function Leiste({ anteil, farbe }: { anteil: number; farbe: string }) {
   return (
     <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,.07)', overflow: 'hidden', marginTop: 6 }}>
-      <div style={{ width: `${Math.max(0, Math.min(100, anteil))}%`, height: '100%', background: farbe, borderRadius: 3, boxShadow: `0 0 8px ${farbe}66` }} />
+      <div style={{ width: `${Math.max(0, Math.min(100, anteil))}%`, height: '100%', background: farbe, borderRadius: 3, boxShadow: `0 0 8px ${farbe}33` }} />
     </div>
   );
 }

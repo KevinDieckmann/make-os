@@ -81,7 +81,7 @@ export function AgentenHirn() {
           })}
           {/* Zentrum: JARVIS */}
           <circle cx={cx} cy={cy} r="34" fill={`${A}1A`} stroke={A} strokeWidth="1.4" />
-          <circle className="jarvis-orb-kern" cx={cx} cy={cy} r="12" fill={A} style={{ transformOrigin: `${cx}px ${cy}px`, filter: `drop-shadow(0 0 8px ${A})` }} />
+          <circle className="jarvis-orb-kern" cx={cx} cy={cy} r="12" fill={A} style={{ transformOrigin: `${cx}px ${cy}px`, filter: `drop-shadow(0 0 8px ${A}33)` }} />
           <text x={cx} y={cy + 52} textAnchor="middle" fill={A} fontFamily={SCHRIFT.text} fontSize="11" fontWeight="700" letterSpacing="2">JARVIS</text>
         </svg>
 
@@ -102,7 +102,7 @@ export function AgentenHirn() {
       </div>
 
       <div style={{ fontSize: 12, color: C.inkLeise, textAlign: 'center' }}>
-        <span style={{ color: A, textShadow: `0 0 8px ${A}` }}>●</span> letzte Stunde · <span style={{ color: WARM }}>●</span> heute · <span>●</span> ruht — Klick öffnet den Agenten
+        <span style={{ color: A, textShadow: `0 0 8px ${A}33` }}>●</span> letzte Stunde · <span style={{ color: WARM }}>●</span> heute · <span>●</span> ruht — Klick öffnet den Agenten
       </div>
     </div>
   );

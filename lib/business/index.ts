@@ -32,6 +32,8 @@ export const indexLabel = (n: number | null) => (n == null ? 'Noch keine Daten' 
 export interface KennzahlStand {
   id: string; label: string; gruppe: string; einheit: KennzahlDef['einheit']; richtung: KennzahlDef['richtung'];
   gruen: number; rot: number; formel: string; pflegen?: KennzahlDef['pflegen'];
+  /** Die Standard-Schwellen — gruen/rot oben sind die geltenden (ggf. eigene). */
+  standard: { gruen: number; rot: number }; angepasst: boolean;
   gemessen: boolean; wert: number | null; anzeige: string | null; quelle: string;
   punkte: number | null; ampel: Ampel;
 }
@@ -54,9 +56,13 @@ function messe(id: string, b: Bestand): Messung {
 export function berechne(b: Bestand): BusinessIndex {
   const defs = kennzahlenFuer(b.scope);
   const saeulen: SaeulenStand[] = SAEULEN.map(s => {
-    const kennzahlen: KennzahlStand[] = defs.filter(k => k.saeule === s.id).map(k => {
+    const kennzahlen: KennzahlStand[] = defs.filter(k => k.saeule === s.id).map(def => {
+      // Feinjustierung: eigene Schwellen dieser Sicht gehen vor.
+      const eigen = b.schwellen?.[def.id];
+      const k = eigen ? { ...def, gruen: eigen.gruen, rot: eigen.rot } : def;
       const m = messe(k.id, b);
-      const basis = { id: k.id, label: k.label, gruppe: k.gruppe, einheit: k.einheit, richtung: k.richtung, gruen: k.gruen, rot: k.rot, formel: k.formel, ...(k.pflegen ? { pflegen: k.pflegen } : {}) };
+      const basis = { id: k.id, label: k.label, gruppe: k.gruppe, einheit: k.einheit, richtung: k.richtung, gruen: k.gruen, rot: k.rot, formel: k.formel, ...(k.pflegen ? { pflegen: k.pflegen } : {}),
+        standard: { gruen: def.gruen, rot: def.rot }, angepasst: !!eigen };
       if ('luecke' in m || !Number.isFinite(m.wert)) return { ...basis, gemessen: false, wert: null, anzeige: null, quelle: 'luecke' in m ? m.luecke : 'kein Wert', punkte: null, ampel: 'grau' as Ampel };
       return { ...basis, gemessen: true, wert: m.wert, anzeige: m.anzeige, quelle: m.quelle, punkte: punkte(m.wert, k), ampel: ampel(m.wert, k) };
     });

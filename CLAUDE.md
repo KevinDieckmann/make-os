@@ -113,6 +113,11 @@ lokal, Route `/os`, Port 3001.
 - Sichten: gesamt · kdc (Consulting) · kdv (KD Ventures); Privates nie. Die Kredite im
   V1-Export (`grundlage.schulden`) sind PRIVAT — nie in Business-Kennzahlen.
 - Zugang: Haushalt des Inhabers (`lib/zugang/haushalt-inhaber.ts`, auch für den Kalender).
+- Verankert: Fachseiten zeigen ihre Kennzahlen (`IndexStreifen`: Zahlen, Markttraktion,
+  Mandate); Jarvis `business_index` (frei) und `monatsabschluss_erfassen` (Freigabe); der
+  Head of Finance bekommt `business_index` im Datenpaket und Hinweise bei Rot/fehlendem
+  Monatsabschluss (`lib/business/fuer-chef.ts`); Feinjustierung: eigene Schwellen je
+  Kennzahl (alle Sichten oder eine Firma), Jahresziele je Firma, Verlauf 90 Tage.
 
 ## Technik
 - TypeScript strikt: vor jedem Commit `npx tsc --noEmit` — null Fehler.
@@ -144,6 +149,13 @@ lokal, Route `/os`, Port 3001.
   kurzem Review.
 
 ## Doku
+- **Tiefe Akzente (seit 25.09.2026, Kevin: „nicht diese Neonfarben, aber nicht platt — die
+  Akzente sind wichtig“):** Vorbild ist das Kürzel in der Kontakt-Akte. Große Farbträger
+  (Ringe, Balken, Kürzel, Hauptknöpfe) nehmen das Rezept `TIEF` aus design.ts: kräftige
+  Farbe mit Tiefe (Verlauf in den tieferen Ton `TIEF.tiefer`/`TIEF.verlauf`), getönte
+  Fläche (`TIEF.flaeche`), halbtransparente Kontur (`TIEF.rand`), weicher Schein
+  (`TIEF.schein`/`svgSchein`) — nie Vollfarbe mit Leuchtkranz. Zahlen in Ringen bleiben
+  WEISS. Hauptknopf = `TIEF.knopf(farbe)`. Leuchtkränze höchstens mit Alpha 33/40.
 - **Schlanke, lebendige Oberfläche (seit 23./24.09.2026):** neue Seiten nur mit
   den Bauteilen aus `components/os/schlank.tsx` (Seite, Karte, Ring, Zahl,
   Balken, Chip, Zeile, Haken, Segmente) und den Leuchtfarben `LEUCHT` aus

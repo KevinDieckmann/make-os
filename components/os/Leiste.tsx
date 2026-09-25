@@ -46,7 +46,7 @@ export function Leiste() {
         flexDirection: 'column', gap: 2, position: 'sticky', top: 0, height: '100vh',
       }}>
         <Link href="/os" title="Heute" style={{ display: 'flex', alignItems: 'center', gap: 9, fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 15, letterSpacing: '-.01em', padding: '4px 10px 22px', color: C.ink, textDecoration: 'none' }}>
-          <span className="zeit-puls" style={{ width: 9, height: 9, borderRadius: '50%', background: C.aktiv, boxShadow: `0 0 10px ${C.aktiv}` }} />MAKE OS
+          <span className="zeit-puls" style={{ width: 9, height: 9, borderRadius: '50%', background: C.aktiv, boxShadow: `0 0 10px ${C.aktiv}33` }} />MAKE OS
         </Link>
         {HAUPT.map(e => zeile(e))}
         <div style={{ marginTop: 'auto' }}>

@@ -7,7 +7,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState, type CSSProperties } from 'react';
-import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
 import { PHASEN } from '@/lib/make-one/roadmap-data';
 import { KAT_LABEL, BLOCK_LABEL, type BacklogItem } from '@/lib/make-one/backlog-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Ring, Zahl, Fortschritt, LEUCHT } from './schlank';
@@ -17,7 +17,7 @@ const katColor = (k: string) => (k === 'anbindung' ? LEUCHT.puls : k === 'agent'
 /** Ein Verweis, der wie ein Knopf aussieht. */
 const linkKnopf: CSSProperties = {
   fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '9px 15px', borderRadius: 11, whiteSpace: 'nowrap',
-  background: LEUCHT.puls, color: C.grund, textDecoration: 'none', boxShadow: `0 6px 18px -6px ${LEUCHT.puls}99`,
+  ...TIEF.knopf(LEUCHT.puls), textDecoration: 'none',
 };
 
 export function RoadmapView() {

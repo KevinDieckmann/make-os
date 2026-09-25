@@ -3,12 +3,15 @@
 //      Quelle oder Messlücke), Trend, Ampel-Wechsel, Monatsabschlüsse, Einstellungen
 // POST { aktion: 'abschluss', firma, monat, umsatz?, kosten?, personal?, … }
 //      { aktion: 'abschluss_weg', firma, monat }
-//      { aktion: 'einstellungen', fte: { kdc?, kdv? } }
+//      { aktion: 'einstellungen', fte?: { kdc?, kdv? }, ziele?: { kdc?, kdv? },
+//        schwelle?: { id, sicht: 'alle'|'gesamt'|'kdc'|'kdv', gruen, rot } | { id, sicht, zuruecksetzen: true } }
+// GET  ?kompakt=1 → nur diese Sicht, ohne Verlauf/Abschlüsse (für die Fachseiten)
 // Nur der Haushalt des Inhabers (Kevin & Malin) und der Dienstweg.
 
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
-import { alleSichten, vergleich, speichereAbschluss, loescheAbschluss, speichereEinstellungen, ladeEinstellungen } from '@/lib/business/speicher';
+import { alleSichten, vergleich, speichereAbschluss, loescheAbschluss, speichereEinstellungen, ladeEinstellungen, ladeRoh, bestandFuer } from '@/lib/business/speicher';
+import { berechne } from '@/lib/business/index';
 import { SCOPES, type Scope } from '@/lib/business/register';
 
 export const runtime = 'nodejs';
@@ -18,8 +21,14 @@ const KEIN_ZUGANG = { ok: false, fehler: 'Kein Zugang zum Business-Index — er 
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
-  const s = new URL(req.url).searchParams.get('scope');
+  const q = new URL(req.url).searchParams;
+  const s = q.get('scope');
   const scope: Scope = SCOPES.some(x => x.id === s) ? (s as Scope) : 'gesamt';
+  if (q.get('kompakt') === '1') {
+    // Fachseiten (Zahlen, Markttraktion, Mandate): nur diese Sicht, schnell.
+    const roh = await ladeRoh();
+    return NextResponse.json({ ok: true, scope, bi: berechne(bestandFuer(roh, scope)) }, { headers: { 'Cache-Control': 'no-store' } });
+  }
   const { roh, ergebnis } = await alleSichten();
   const bi = ergebnis[scope];
   const { vor30, wechsel } = vergleich(roh.verlauf, scope, roh.heute, bi);
@@ -49,6 +58,9 @@ export async function POST(req: Request) {
     await loescheAbschluss(String(b.firma), String(b.monat));
     return NextResponse.json({ ok: true });
   }
-  if (b.aktion === 'einstellungen') return NextResponse.json({ ok: true, einstellungen: await speichereEinstellungen(b) });
+  if (b.aktion === 'einstellungen') {
+    const r = await speichereEinstellungen(b);
+    return NextResponse.json(r, { status: r.ok ? 200 : 400 });
+  }
   return NextResponse.json({ ok: false, fehler: 'Unbekannte Aktion.' }, { status: 400 });
 }

@@ -34,7 +34,7 @@ export function KanalAmpel({ ampel, ziele }: { ampel: KanalStatus[]; ziele: { te
       {ampel.map(s => {
         const f = AMPEL_FARBE[s.farbe];
         const h = kanalLink(s, ziele);
-        const inhalt = <><span style={{ width: 7, height: 7, borderRadius: '50%', background: f, boxShadow: `0 0 8px ${f}` }} />{KANAL_LABEL[s.kanal] ?? s.kanal}{h && <span aria-hidden style={{ color: C.inkLeise, fontWeight: 500 }}>↗</span>}</>;
+        const inhalt = <><span style={{ width: 7, height: 7, borderRadius: '50%', background: f, boxShadow: `0 0 8px ${f}33` }} />{KANAL_LABEL[s.kanal] ?? s.kanal}{h && <span aria-hidden style={{ color: C.inkLeise, fontWeight: 500 }}>↗</span>}</>;
         // Große Tippfläche fürs Handy (min. 32 px), Farbe und Kante aus der Ampel.
         const stil = { display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 32, padding: '5px 11px', borderRadius: 999, fontSize: 12, fontWeight: 600, textDecoration: 'none', border: `1px solid ${f}55`, background: `${f}14`, color: s.farbe === 'rot' ? C.inkLeise : C.ink } as const;
         const extern = !!h && h.startsWith('http');

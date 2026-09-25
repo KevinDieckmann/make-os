@@ -493,7 +493,7 @@ export function WochenplanView() {
                           onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ move: b.id }))}
                           onClick={() => setAktivBlock(aktivB ? null : b.id)}
                           title={`${b.titel} · ${mmss(b.startMin)}–${mmss(b.startMin + b.dauerMin)}`}
-                          style={{ position: 'absolute', top, ...spurStil(lage), height: hoehe, cursor: 'grab', background: `${farbe}26`, backdropFilter: 'blur(2px)', borderLeft: `3px solid ${farbe}`, boxShadow: aktivB ? `0 0 0 1px ${farbe}, 0 0 14px ${farbe}66` : undefined, borderRadius: 7, padding: '3px 6px', overflow: 'hidden', zIndex: aktivB ? 8 : 3, transition: 'box-shadow .2s ease' }}>
+                          style={{ position: 'absolute', top, ...spurStil(lage), height: hoehe, cursor: 'grab', background: `${farbe}26`, backdropFilter: 'blur(2px)', borderLeft: `3px solid ${farbe}`, boxShadow: aktivB ? `0 0 0 1px ${farbe}, 0 0 14px ${farbe}33` : undefined, borderRadius: 7, padding: '3px 6px', overflow: 'hidden', zIndex: aktivB ? 8 : 3, transition: 'box-shadow .2s ease' }}>
                           <div style={titelStil(lage?.spuren ?? 1, farbe)}>{b.titel}</div>
                           {hoehe > 30 && (lage?.spuren ?? 1) < 3 && <div style={zeit}>{mmss(b.startMin)}–{mmss(b.startMin + b.dauerMin)}</div>}
                           {aktivB && (

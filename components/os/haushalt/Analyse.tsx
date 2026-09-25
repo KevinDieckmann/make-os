@@ -6,7 +6,7 @@
 // langen Zeitraum davor. Der laufende Monat bleibt draußen.
 
 import { useMemo, useState } from 'react';
-import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
 import { eur } from '@/lib/finanzen/haushalt/typen';
 import type { KatName } from '@/lib/finanzen/haushalt/einordnung';
 import { kennzahlen, schuldenbild, bewertungSparquote } from '@/lib/finanzen/haushalt/kennzahlen';
@@ -99,8 +99,8 @@ export function Analyse({ h, katName }: { h: HaushaltDaten; katName: KatName }) 
                     <div key={r.m} style={{ display: 'grid', gridTemplateColumns: '56px 1fr 96px', gap: 10, alignItems: 'center' }}>
                       <span style={{ fontSize: 12.5, color: C.inkDim }}>{monatKurz(r.m)}</span>
                       <div>
-                        <div title={`Einnahmen ${eur(r.ein)}`} style={{ height: 6, borderRadius: 3, width: `${r.ein / maxV * 100}%`, background: LEUCHT.gut, marginBottom: 3 }} />
-                        <div title={`Ausgaben ${eur(r.aus)}`} style={{ height: 6, borderRadius: 3, width: `${r.aus / maxV * 100}%`, background: LEUCHT.achtung }} />
+                        <div title={`Einnahmen ${eur(r.ein)}`} style={{ height: 6, borderRadius: 3, width: `${r.ein / maxV * 100}%`, background: TIEF.fuellung(LEUCHT.gut), marginBottom: 3 }} />
+                        <div title={`Ausgaben ${eur(r.aus)}`} style={{ height: 6, borderRadius: 3, width: `${r.aus / maxV * 100}%`, background: TIEF.fuellung(LEUCHT.achtung) }} />
                       </div>
                       <span style={{ textAlign: 'right', fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 13.5, fontVariantNumeric: 'tabular-nums', color: r.saldo >= 0 ? LEUCHT.gut : LEUCHT.kritisch }}>{r.saldo >= 0 ? '+' : ''}{eur(r.saldo)}</span>
                     </div>

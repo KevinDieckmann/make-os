@@ -117,7 +117,7 @@ export function RoutinenPlanerView() {
                   <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                     <button onClick={() => persist(routinen.map(x => x.id === r.id ? { ...x, aktiv: !x.aktiv } : x))}
                       title={r.aktiv ? 'aktiv — klicken zum Pausieren' : 'pausiert — klicken zum Aktivieren'} aria-label={r.aktiv ? 'aktiv' : 'pausiert'}
-                      style={{ width: 36, height: 20, borderRadius: 10, cursor: 'pointer', border: 'none', padding: 0, background: r.aktiv ? LEUCHT.gut : 'rgba(255,255,255,.12)', position: 'relative', flex: '0 0 auto', boxShadow: r.aktiv ? `0 0 10px ${LEUCHT.gut}66` : undefined, transition: 'background .2s ease' }}>
+                      style={{ width: 36, height: 20, borderRadius: 10, cursor: 'pointer', border: 'none', padding: 0, background: r.aktiv ? LEUCHT.gut : 'rgba(255,255,255,.12)', position: 'relative', flex: '0 0 auto', boxShadow: r.aktiv ? `0 0 10px ${LEUCHT.gut}33` : undefined, transition: 'background .2s ease' }}>
                       <span style={{ position: 'absolute', top: 2, left: r.aktiv ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: r.aktiv ? C.grund : C.inkDim, transition: 'left .15s ease' }} />
                     </button>
                     <Punkt farbe={katFarbe(r.kategorie)} groesse={8} />

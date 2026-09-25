@@ -33,7 +33,7 @@ function GrossKnopf({ an, farbe, onClick, children }: { an: boolean; farbe: stri
     <button onClick={onClick} className="fassbar" style={{
       flex: 1, minWidth: 120, minHeight: 48, padding: '12px 18px', borderRadius: 12, cursor: 'pointer', fontSize: TYP.body, fontWeight: 700,
       border: `1px solid ${an ? farbe : 'rgba(255,255,255,.12)'}`, background: an ? `${farbe}26` : 'rgba(255,255,255,.04)', color: an ? farbe : C.ink,
-      boxShadow: an ? `0 0 18px -6px ${farbe}` : undefined,
+      boxShadow: an ? `0 0 18px -6px ${farbe}40` : undefined,
     }}>{children}</button>
   );
 }

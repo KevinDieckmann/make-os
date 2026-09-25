@@ -103,7 +103,7 @@ export function WillkommenMalin() {
       }}>
         <ZweiLichter />
         <div style={{ fontFamily: SCHRIFT.display, fontSize: 22, fontWeight: 700, letterSpacing: '-.02em', color: C.ink, marginTop: 14, lineHeight: 1.3 }}>
-          Ich liebe dich, Schatziiiii <span style={{ color: MALIN, textShadow: `0 0 16px ${MALIN}66` }}>:****</span>
+          Ich liebe dich, Schatziiiii <span style={{ color: MALIN, textShadow: `0 0 16px ${MALIN}33` }}>:****</span>
         </div>
         <p style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.6, margin: '12px 0 0' }}>
           Willkommen in unserem System. Ich hab das hier für uns beide gebaut —

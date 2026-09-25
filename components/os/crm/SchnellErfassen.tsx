@@ -18,7 +18,7 @@
 // (/api/crm/aktivitaet). MAKE OS versendet nichts.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
 import { Knopf, feld, Chip, LEUCHT } from '../schlank';
 import { anzeigename, findeKontakte, STUFE_LABEL, type Kontakt, type Ergebnis, type AktivitaetArt } from '@/lib/make-one/crm';
 import { haeltBeziehung, BEIDE } from '@/lib/crm/team';
@@ -158,7 +158,7 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
 
         {fertig ? (
           <div role="status" style={{ display: 'grid', justifyItems: 'center', gap: 10, padding: '28px 8px', textAlign: 'center' }}>
-            <span aria-hidden style={{ width: 54, height: 54, borderRadius: '50%', display: 'grid', placeItems: 'center', background: LEUCHT.gut, color: C.grund, fontSize: 28, fontWeight: 800, boxShadow: `0 0 28px ${LEUCHT.gut}88` }}>✓</span>
+            <span aria-hidden style={{ width: 54, height: 54, borderRadius: '50%', display: 'grid', placeItems: 'center', background: TIEF.flaeche(LEUCHT.gut), border: `2px solid ${TIEF.rand(LEUCHT.gut)}`, color: LEUCHT.gut, fontSize: 28, fontWeight: 800, boxShadow: TIEF.schein(LEUCHT.gut) }}>✓</span>
             <div style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.5 }}>{fertig}</div>
           </div>
         ) : (

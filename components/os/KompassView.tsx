@@ -344,7 +344,7 @@ export function KompassView() {
             return (
               <button key={m.id} onClick={() => lageWechseln(m.id)} className="fassbar" style={{
                 textAlign: 'left', padding: '12px 14px', borderRadius: 14, cursor: 'pointer', border: 'none', fontFamily: SCHRIFT.text,
-                background: an ? `${m.farbe}1f` : 'rgba(255,255,255,.04)', boxShadow: an ? `inset 0 0 0 1px ${m.farbe}66, 0 0 24px -8px ${m.farbe}66` : undefined, transition: 'background .2s ease, box-shadow .2s ease',
+                background: an ? `${m.farbe}1f` : 'rgba(255,255,255,.04)', boxShadow: an ? `inset 0 0 0 1px ${m.farbe}66, 0 0 24px -8px ${m.farbe}40` : undefined, transition: 'background .2s ease, box-shadow .2s ease',
               }}>
                 <div style={{ fontSize: TYP.body, fontWeight: 700, color: an ? m.farbe : C.ink, marginBottom: 3 }}>{m.label}</div>
                 <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.45 }}>{m.satz}</div>

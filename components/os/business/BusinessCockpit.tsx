@@ -13,7 +13,8 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Ring, Fortschritt, Segmente, Chip, LEUCHT } from '../schlank';
 import { useLinkAuswahl } from '../Verlauf';
 import { KennzahlKachel, KennzahlFenster, SAEULE_FARBE, AMPEL_FARBE, scoreFarbe } from './teile';
-import { MonatsabschlussKarte, KoepfeKarte } from './Abschluss';
+import { MonatsabschlussKarte, EinstellungenKarte } from './Abschluss';
+import { VerlaufKarte } from './Verlauf';
 import type { BusinessIndex } from '@/lib/business/index';
 import type { Monatsabschluss } from '@/lib/business/messen';
 import type { Scope } from '@/lib/business/register';
@@ -25,7 +26,7 @@ interface Antwort {
   wechsel: { id: string; von: string; nach: string; seit: string }[];
   verlauf: { tag: string; index: number | null; saeulen: Record<string, number | null>; werte: Record<string, number | null> }[];
   abschluesse: Monatsabschluss[];
-  einstellungen: { fte: Partial<Record<'kdc' | 'kdv', number>> };
+  einstellungen: { fte: Partial<Record<'kdc' | 'kdv', number>>; ziele?: Partial<Record<'kdc' | 'kdv', number>> };
   fehler?: string;
 }
 
@@ -123,8 +124,10 @@ export function BusinessCockpit() {
         );
       })}
 
+      {d && d.verlauf.length > 0 && <VerlaufKarte punkte={d.verlauf} />}
+
       {d && <MonatsabschlussKarte eintraege={d.abschluesse} onGespeichert={() => void laden()} />}
-      {d && <KoepfeKarte fte={d.einstellungen.fte} onGespeichert={() => void laden()} />}
+      {d && <EinstellungenKarte einstellungen={d.einstellungen} onGespeichert={() => void laden()} />}
 
       <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.6 }}>
         Übernommen aus dem KSI: die Struktur (50/30/20) und Standard-Kennzahlen mit ihren Schwellen — gerechnet nur mit euren eigenen Daten,
@@ -133,7 +136,7 @@ export function BusinessCockpit() {
       </div>
 
       {offeneK && d && (
-        <KennzahlFenster key={offeneK.k.id} k={offeneK.k} saeule={offeneK.s.label} onZu={() => setOffen(null)}
+        <KennzahlFenster key={offeneK.k.id} k={offeneK.k} saeule={offeneK.s.label} scope={scope} onZu={() => setOffen(null)} onGespeichert={() => void laden()}
           verlauf={d.verlauf.map(v => ({ tag: v.tag, wert: v.werte?.[offeneK.k.id] ?? null }))} />
       )}
     </Seite>

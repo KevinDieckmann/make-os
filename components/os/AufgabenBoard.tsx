@@ -121,7 +121,7 @@ export function AufgabenBoard({ tasks, heute, orgVon, patchTask, setOrg }: {
                   style={{
                     background: zielHier ? C.aktivSanft : 'rgba(255,255,255,.04)',
                     borderRadius: 14, padding: '10px 9px 11px', minHeight: 92,
-                    boxShadow: zielHier ? `inset 0 0 0 1px ${C.aktiv}66, 0 0 24px -8px ${C.aktiv}88` : undefined,
+                    boxShadow: zielHier ? `inset 0 0 0 1px ${C.aktiv}66, 0 0 24px -8px ${C.aktiv}40` : undefined,
                     transition: 'background .15s ease, box-shadow .15s ease',
                   }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 8 }}>
@@ -181,7 +181,7 @@ function Kanbankarte({ t, alleTasks, heute, org, greift, anfassen, loslassen, pa
       style={{
         background: 'rgba(255,255,255,.06)', borderRadius: 12, padding: '9px 10px', cursor: 'grab',
         opacity: greift ? 0.4 : 1,
-        boxShadow: spaet ? `0 0 18px -6px ${LEUCHT.kritisch}88` : 'inset 0 1px 0 rgba(255,255,255,.04)',
+        boxShadow: spaet ? `0 0 18px -6px ${LEUCHT.kritisch}40` : 'inset 0 1px 0 rgba(255,255,255,.04)',
         transition: 'opacity .15s ease, box-shadow .2s ease',
       }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 7 }}>

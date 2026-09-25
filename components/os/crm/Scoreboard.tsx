@@ -95,7 +95,7 @@ function Verlauf({ tage, heute }: { tage: VerlaufTag[]; heute: string }) {
             <polygon points={`0,100 ${linie} ${ex.toFixed(2)},100`} fill={`url(#vl-${verlaufId})`} />
             <polyline points={linie} fill="none" stroke={farbe} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
           </svg>
-          <span title={`${tagKurz(letzter.tag)}: ${letzter.score}`} style={{ position: 'absolute', left: `${ex}%`, top: `${ey}%`, width: 9, height: 9, borderRadius: '50%', background: farbe, boxShadow: `0 0 10px ${farbe}`, transform: 'translate(-50%,-50%)' }} />
+          <span title={`${tagKurz(letzter.tag)}: ${letzter.score}`} style={{ position: 'absolute', left: `${ex}%`, top: `${ey}%`, width: 9, height: 9, borderRadius: '50%', background: farbe, boxShadow: `0 0 10px ${farbe}33`, transform: 'translate(-50%,-50%)' }} />
         </div>
       </div>
       <div style={{ textAlign: 'right', flex: '0 0 auto' }}>

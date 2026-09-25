@@ -49,7 +49,7 @@ function Wochenbalken({ wochen, hoehe, jede }: { wochen: Woche[]; hoehe: number;
           const letzte = i === wochen.length - 1;
           return (
             <div key={w.von} className="balken-auf" title={`${w.label} (${datum(w.von)}): ${eur(w.stand)}${w.bewegungen.length ? '\n' + w.bewegungen.map(b => `${datum(b.datum)} ${b.betrag > 0 ? '+' : ''}${b.betrag} € ${b.text}`).join('\n') : '\nkeine Bewegung'}`}
-              style={{ ['--i' as string]: i, flex: 1, height: Math.max(3, Math.round((Math.abs(w.stand) / maxAbs) * hoehe)), borderRadius: 3, background: farbe, opacity: letzte ? 1 : w.bewegungen.length ? .8 : .35, boxShadow: letzte ? `0 0 10px ${farbe}99` : undefined }} />
+              style={{ ['--i' as string]: i, flex: 1, height: Math.max(3, Math.round((Math.abs(w.stand) / maxAbs) * hoehe)), borderRadius: 3, background: farbe, opacity: letzte ? 1 : w.bewegungen.length ? .8 : .35, boxShadow: letzte ? `0 0 10px ${farbe}33` : undefined }} />
           );
         })}
       </div>
@@ -260,7 +260,7 @@ export function LiquiditaetView() {
                   return (
                     <button key={sz} onClick={() => setSzenario(sz)} className="fassbar" style={{
                       textAlign: 'left', padding: '10px 12px', borderRadius: 12, cursor: 'pointer', border: 'none', fontFamily: SCHRIFT.text,
-                      background: an ? `${farbe}14` : 'rgba(255,255,255,.04)', boxShadow: an ? `inset 0 0 0 1px ${farbe}66, 0 0 20px -8px ${farbe}88` : undefined,
+                      background: an ? `${farbe}14` : 'rgba(255,255,255,.04)', boxShadow: an ? `inset 0 0 0 1px ${farbe}66, 0 0 20px -8px ${farbe}40` : undefined,
                     }}>
                       <div style={mikro}>{SZENARIO_LABEL[sz]}</div>
                       <div style={{ fontFamily: SCHRIFT.display, fontSize: 19, fontWeight: 700, color: an ? farbe : C.inkDim, fontVariantNumeric: 'tabular-nums', marginTop: 4, letterSpacing: '-.02em' }}>{eur(szEnde)}</div>

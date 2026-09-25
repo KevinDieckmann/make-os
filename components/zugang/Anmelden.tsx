@@ -60,7 +60,7 @@ export function Anmelden() {
     <div style={{ minHeight: '100dvh', background: C.grund, color: C.ink, fontFamily: SCHRIFT.text, display: 'grid', placeItems: 'center', padding: A.l }}>
       <form onSubmit={los} className="karte os-auf" style={{ width: 'min(420px, 100%)', display: 'flex', flexDirection: 'column', gap: A.m, padding: '30px 28px 26px' }}>
         <div style={{ textAlign: 'center', marginBottom: A.l }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontFamily: SCHRIFT.display, fontSize: 30, fontWeight: 700, letterSpacing: '-.025em', color: C.ink }}><span className="zeit-puls" style={{ width: 10, height: 10, borderRadius: '50%', background: C.aktiv, boxShadow: `0 0 12px ${C.aktiv}` }} />MAKE OS</div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontFamily: SCHRIFT.display, fontSize: 30, fontWeight: 700, letterSpacing: '-.025em', color: C.ink }}><span className="zeit-puls" style={{ width: 10, height: 10, borderRadius: '50%', background: C.aktiv, boxShadow: `0 0 12px ${C.aktiv}33` }} />MAKE OS</div>
           <div style={{ ...MIKRO, marginTop: 4 }}>
             {art === 'anmelden' ? 'Anmelden' : art === 'einrichten' ? 'Erstes Konto einrichten' : 'Mit Einladung beitreten'}
           </div>

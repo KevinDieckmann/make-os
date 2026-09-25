@@ -272,7 +272,7 @@ export function JarvisStart() {
         }}>
           <span style={{
             width: 6, height: 6, borderRadius: '50%', background: ton.farbe,
-            boxShadow: zustand === 'ruht' ? 'none' : `0 0 10px ${ton.farbe}`,
+            boxShadow: zustand === 'ruht' ? 'none' : `0 0 10px ${ton.farbe}33`,
             transition: 'box-shadow .4s ease, background .4s ease',
           }} />
           {ton.wort}

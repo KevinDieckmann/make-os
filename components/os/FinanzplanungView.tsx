@@ -310,7 +310,7 @@ export function FinanzplanungView() {
         <Ueberschrift farbe={LEUCHT.business} rechts="Entwürfe — im Finanzmeeting festzurren, Klick auf Status aktiviert">Produkte</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 10 }}>
           {plan.produkte.map(p => (
-            <div key={p.id} style={{ background: 'rgba(255,255,255,.04)', borderRadius: 14, padding: '12px 14px', boxShadow: p.status === 'aktiv' ? `inset 0 0 0 1px ${LEUCHT.gut}55, 0 0 24px -10px ${LEUCHT.gut}66` : undefined }}>
+            <div key={p.id} style={{ background: 'rgba(255,255,255,.04)', borderRadius: 14, padding: '12px 14px', boxShadow: p.status === 'aktiv' ? `inset 0 0 0 1px ${LEUCHT.gut}55, 0 0 24px -10px ${LEUCHT.gut}40` : undefined }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <input value={p.name} aria-label="Produktname" onChange={e => speichern({ ...plan, produkte: plan.produkte.map(x => x.id === p.id ? { ...x, name: e.target.value } : x) })}
                   style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: TYP.body, fontWeight: 700, color: C.ink, fontFamily: SCHRIFT.display, flex: 1, minWidth: 0, padding: 0 }} />

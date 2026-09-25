@@ -86,7 +86,7 @@ function Hakerl({ fertig, automatisch, onClick, titel, label }: { fertig: boolea
     <button onClick={e => { e.stopPropagation(); onClick(); }} disabled={automatisch} title={titel} aria-label={label} className="fassbar" style={{
       width: 24, height: 24, borderRadius: 8, flex: '0 0 auto', cursor: automatisch ? 'default' : 'pointer', display: 'grid', placeItems: 'center', padding: 0,
       border: `2px solid ${fertig ? LEUCHT.gut : C.inkLeise}`, background: fertig ? LEUCHT.gut : 'transparent', color: C.grund, fontSize: 13, fontWeight: 800,
-      boxShadow: fertig ? `0 0 12px ${LEUCHT.gut}88` : undefined, transition: 'background .2s ease, box-shadow .2s ease',
+      boxShadow: fertig ? `0 0 12px ${LEUCHT.gut}33` : undefined, transition: 'background .2s ease, box-shadow .2s ease',
     }}>{fertig ? '✓' : ''}</button>
   );
 }

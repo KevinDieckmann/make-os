@@ -440,12 +440,12 @@ export function AufgabenView() {
       <div key={t.id} className="zeile" style={{ borderBottom: `1px solid ${HAAR}` }}>
         <div onClick={() => setOffenId(auf ? null : t.id)} className="zeile-klick"
           style={{ display: 'flex', gap: 12, padding: '11px 6px', margin: '0 -6px', alignItems: 'flex-start', cursor: 'pointer', background: auf ? 'rgba(255,255,255,.05)' : 'transparent', borderRadius: 10 }}>
-          {nummer && <span style={{ fontFamily: SCHRIFT.display, fontSize: 16, fontWeight: 700, color: nummer.farbe, width: 18, flex: '0 0 auto', textAlign: 'center', marginTop: 2, textShadow: `0 0 14px ${nummer.farbe}88`, fontVariantNumeric: 'tabular-nums' }}>{nummer.n}</span>}
+          {nummer && <span style={{ fontFamily: SCHRIFT.display, fontSize: 16, fontWeight: 700, color: nummer.farbe, width: 18, flex: '0 0 auto', textAlign: 'center', marginTop: 2, textShadow: `0 0 14px ${nummer.farbe}33`, fontVariantNumeric: 'tabular-nums' }}>{nummer.n}</span>}
           <Haken an={done} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={kritisch ? LEUCHT.kritisch : prioFarbe(t.priority)} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: TYP.body, fontWeight: 500, color: done ? C.inkLeise : blockiert ? LEUCHT.achtung : C.ink, textDecoration: done ? 'line-through' : 'none', lineHeight: 1.35, display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
               {kritisch && <span className="krit-puls" style={{ display: 'inline-flex' }}><Punkt farbe={LEUCHT.kritisch} groesse={8} /></span>}
-              {imFokus && <span style={{ color: LEUCHT.schlaf, textShadow: `0 0 10px ${LEUCHT.schlaf}99` }} title="Im Fokus — der Regler dieser Säule steht hoch">◎</span>}
+              {imFokus && <span style={{ color: LEUCHT.schlaf, textShadow: `0 0 10px ${LEUCHT.schlaf}33` }} title="Im Fokus — der Regler dieser Säule steht hoch">◎</span>}
               <span>{t.title}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
@@ -819,7 +819,7 @@ export function AufgabenView() {
                   const n = state.tasks.filter(t => t.status !== 'done' && meinThema(t) === b.id).length;
                   return (
                     <Zeile key={b.id}
-                      links={<span style={{ fontFamily: SCHRIFT.display, fontSize: 15, fontWeight: 700, color: b.farbe, width: 18, textAlign: 'center', flex: '0 0 auto', textShadow: `0 0 12px ${b.farbe}88` }}>{i + 1}</span>}
+                      links={<span style={{ fontFamily: SCHRIFT.display, fontSize: 15, fontWeight: 700, color: b.farbe, width: 18, textAlign: 'center', flex: '0 0 auto', textShadow: `0 0 12px ${b.farbe}33` }}>{i + 1}</span>}
                       titel={<>{b.label} <span style={{ ...zahl, marginLeft: 6 }}>{n ? `${n} offen` : 'nichts offen'}</span></>}
                       unter={b.satz}
                       rechts={<span style={{ display: 'flex', gap: 4 }}>

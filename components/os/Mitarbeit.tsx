@@ -48,7 +48,7 @@ export function Mitarbeit() {
           <Link key={a.person} href={a.pfad} style={{ pointerEvents: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 999, textDecoration: 'none',
             background: 'rgba(20,24,26,.92)', border: `1px solid ${hier ? LEUCHT.beziehung : 'rgba(255,255,255,.08)'}`, color: C.ink, fontFamily: SCHRIFT.text, fontSize: 12.5, boxShadow: '0 6px 20px -8px rgba(0,0,0,.6)' }}
             title={hier ? 'Ihr seid auf derselben Seite — ändert nicht gleichzeitig denselben Eintrag.' : 'Klick: dorthin wechseln'}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: LEUCHT.beziehung, boxShadow: `0 0 8px ${LEUCHT.beziehung}` }} />
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: LEUCHT.beziehung, boxShadow: `0 0 8px ${LEUCHT.beziehung}33` }} />
             {hier ? <><b>{a.name}</b>&nbsp;ist auch hier</> : <><b>{a.name}</b>&nbsp;ist in {bereich(a.pfad)}</>}
           </Link>
         );

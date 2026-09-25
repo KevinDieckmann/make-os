@@ -140,7 +140,7 @@ export function HeuteView() {
         <Karte i={4} akzent={stapel ? LEUCHT.achtung : undefined}>
           <Ueberschrift farbe={stapel ? LEUCHT.achtung : C.inkLeise} rechts={<Link href="/os/stapel" style={{ color: C.inkLeise, textDecoration: 'none' }}>Stapel ›</Link>}>Jarvis</Ueberschrift>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-            <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 'clamp(34px,4vw,44px)', letterSpacing: '-.04em', lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: stapel ? LEUCHT.achtung : C.inkLeise, textShadow: stapel ? `0 0 24px ${LEUCHT.achtung}66` : undefined }}>{stapel == null ? '—' : stapel === 0 ? '0' : stapel}</div>
+            <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 'clamp(34px,4vw,44px)', letterSpacing: '-.04em', lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: stapel ? LEUCHT.achtung : C.inkLeise, textShadow: stapel ? `0 0 24px ${LEUCHT.achtung}33` : undefined }}>{stapel == null ? '—' : stapel === 0 ? '0' : stapel}</div>
             <div style={{ fontSize: TYP.body, fontWeight: 600, lineHeight: 1.35 }}>{stapel == null ? 'Jarvis' : stapel === 0 ? 'Nichts vorbereitet — alles erledigt.' : `Vorschl${stapel === 1 ? 'ag wartet' : 'äge warten'} auf dich`}</div>
           </div>
         </Karte>

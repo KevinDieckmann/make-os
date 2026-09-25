@@ -317,7 +317,7 @@ export function FocusTasksCard() {
                   {/* Priority dot */}
                   <div
                     className="h-[6px] w-[6px] rounded-full shrink-0"
-                    style={{ backgroundColor: PRIO[task.prioritaet].color, boxShadow: `0 0 4px ${PRIO[task.prioritaet].color}60` }}
+                    style={{ backgroundColor: PRIO[task.prioritaet].color, boxShadow: `0 0 4px ${PRIO[task.prioritaet].color}33` }}
                   />
 
                   {/* Title + subtask count */}

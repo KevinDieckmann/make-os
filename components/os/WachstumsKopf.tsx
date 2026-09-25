@@ -10,8 +10,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { useEffect, useId, useState } from 'react';
+import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
 import { Ring, Chip, zoneFarbe, LEUCHT } from './schlank';
 import { SCORE_NEU } from './WhoopImport';
 import { Sun, Inbox as InboxIcon, Search, Lightbulb, CalendarDays } from 'lucide-react';
@@ -40,12 +40,16 @@ function Winzig({ wert, farbe, label }: { wert?: number; farbe: string; label: s
   const [an, setAn] = useState(false);
   useEffect(() => { const t = requestAnimationFrame(() => setAn(true)); return () => cancelAnimationFrame(t); }, []);
   const anteil = wert != null ? Math.max(0.03, Math.min(1, wert / 100)) : 0;
+  const id = `winzig-${useId().replace(/[^a-zA-Z0-9-]/g, '')}`;
   return (
     <div title={`${label}: ${wert ?? '—'}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
       <div style={{ position: 'relative', width: 34, height: 34 }}>
-        <svg viewBox="0 0 34 34" style={{ width: 34, height: 34, display: 'block', filter: wert != null ? `drop-shadow(0 0 4px ${farbe}88)` : undefined }} aria-hidden>
+        <svg viewBox="0 0 34 34" style={{ width: 34, height: 34, display: 'block', filter: wert != null ? TIEF.svgSchein(farbe, 4) : undefined }} aria-hidden>
+          {/* Tiefe Akzente (25.09.): Verlauf in den tieferen Ton, getönte Scheibe — wie die großen Ringe. */}
+          <defs><linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor={farbe} /><stop offset="100%" style={{ stopColor: TIEF.tiefer(farbe, 60) }} /></linearGradient></defs>
+          {wert != null && <circle cx="17" cy="17" r={r - 3} fill={TIEF.flaeche(farbe)} />}
           <circle cx="17" cy="17" r={r} fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="4" />
-          {wert != null && <circle cx="17" cy="17" r={r} fill="none" stroke={farbe} strokeWidth="4" strokeLinecap="round" strokeDasharray={u.toFixed(1)} strokeDashoffset={(u * (1 - (an ? anteil : 0))).toFixed(1)} transform="rotate(-90 17 17)" style={{ transition: 'stroke-dashoffset 1s cubic-bezier(.22,1,.36,1)' }} />}
+          {wert != null && <circle cx="17" cy="17" r={r} fill="none" stroke={`url(#${id})`} strokeWidth="4" strokeLinecap="round" strokeDasharray={u.toFixed(1)} strokeDashoffset={(u * (1 - (an ? anteil : 0))).toFixed(1)} transform="rotate(-90 17 17)" style={{ transition: 'stroke-dashoffset 1s cubic-bezier(.22,1,.36,1)' }} />}
         </svg>
         <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 11, fontVariantNumeric: 'tabular-nums', color: wert == null ? C.inkLeise : C.ink }}>{wert ?? '—'}</div>
       </div>

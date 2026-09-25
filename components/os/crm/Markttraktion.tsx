@@ -21,7 +21,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
-import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
 import { Seite, LEUCHT } from '../schlank';
 import { aufloesen, markttraktion, PFAD, type Bereich, type SalesAnsicht } from '@/lib/crm/adresse';
 import { useCrm } from './daten';
@@ -40,6 +40,7 @@ import { Runden, type RundenArt } from './Runden';
 import { Leads, SalesTrichter } from './Leads';
 import { useZurueck, nachOben } from '../Verlauf';
 import { KontaktAkte } from './Akte';
+import { IndexStreifen, STREIFEN } from '../business/IndexStreifen';
 
 const WELTEN: { id: Bereich; label: string; farbe?: string }[] = [
   { id: 'ueberblick', label: 'Überblick' }, { id: 'sales', label: 'Sales', farbe: WELT_FARBE.sales },
@@ -70,7 +71,7 @@ function Reiter({ liste, aktiv, onWahl, leise }: { liste: { id: Bereich; label: 
             fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, transition: 'background .2s ease, color .2s ease',
             background: an ? C.ink : 'transparent', color: an ? C.grund : C.inkDim,
           }}>
-            {b.farbe && <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: b.farbe, boxShadow: an ? 'none' : `0 0 8px ${b.farbe}` }} />}
+            {b.farbe && <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: b.farbe, boxShadow: an ? 'none' : `0 0 8px ${b.farbe}33` }} />}
             {b.label}
           </button>
         );
@@ -120,7 +121,7 @@ export function MarkttraktionSeite() {
 
   return (
     // „+ Gespräch“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (in der Reiterleiste rutschte er aus dem Bild).
-    <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<button onClick={() => setErfassen(true)} className="fassbar" style={{ flex: '0 0 auto', padding: '10px 16px', borderRadius: 12, border: 'none', cursor: 'pointer', background: C.aktiv, color: C.grund, fontWeight: 700, fontSize: TYP.bedien, fontFamily: SCHRIFT.text, whiteSpace: 'nowrap', boxShadow: `0 6px 18px -6px ${C.aktiv}99` }}>+ Gespräch festhalten</button>}>
+    <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<button onClick={() => setErfassen(true)} className="fassbar" style={{ flex: '0 0 auto', padding: '10px 16px', borderRadius: 12, cursor: 'pointer', ...TIEF.knopf(C.aktiv), fontWeight: 700, fontSize: TYP.bedien, fontFamily: SCHRIFT.text, whiteSpace: 'nowrap' }}>+ Gespräch festhalten</button>}>
       <nav aria-label="Markttraktion" style={{ display: 'flex', gap: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none', margin: '-4px 0 2px', paddingBottom: 2 }}>
         <Reiter liste={WELTEN} aktiv={bereich} onWahl={b => gehe(b)} />
         <Reiter leise liste={GRUNDLAGE} aktiv={bereich} onWahl={b => gehe(b)} />
@@ -128,6 +129,7 @@ export function MarkttraktionSeite() {
       <SchnellErfassen api={api} offen={erfassen} onZu={() => setErfassen(false)} kontaktId={bereich === 'kontakte' && auswahl && !auswahl.startsWith('f-') ? auswahl : undefined} />
       {api.fehler && <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{api.fehler}</div>}
 
+      {bereich === 'ueberblick' && <IndexStreifen ids={STREIFEN.markttraktion} titel="Business-Index · Markttraktion" />}
       {bereich === 'ueberblick' && <Ueberblick api={api} zuBereich={zuBereich} />}
 
       {bereich === 'sales' && (

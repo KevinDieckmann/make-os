@@ -507,6 +507,27 @@ async function faktMerken(input: Record<string, unknown>, _origin: string, perso
     : `Wusste ich schon: ${thema} — ${satz} (nicht doppelt abgelegt).`;
 }
 
+/** Business-Index lesen (25.09.) — nur für den Haushalt des Inhabers, wie das Cockpit. */
+async function businessIndex(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
+  const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
+  if (!(await personImHaushaltDesInhabers(person ?? 'kevin'))) return 'Kein Zugang: Der Business-Index gehört zum Haushalt des Inhabers.';
+  const { businessText } = await import('@/lib/business/fuer-chef');
+  const sicht = input.sicht === 'kdc' || input.sicht === 'kdv' ? input.sicht : 'gesamt';
+  return businessText(sicht, typeof input.kennzahl === 'string' && input.kennzahl ? input.kennzahl : undefined);
+}
+
+/** Monatsabschluss eintragen (25.09.) — läuft nur nach Freigabe (Register: freigabe). */
+async function monatsabschlussErfassen(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
+  const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
+  if (!(await personImHaushaltDesInhabers(person ?? 'kevin'))) return 'Kein Zugang: Der Business-Index gehört zum Haushalt des Inhabers.';
+  const { speichereAbschluss } = await import('@/lib/business/speicher');
+  // Nur genannte Zahlen weitergeben — fehlende Felder bleiben, wie sie sind.
+  const roh = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined && v !== null && v !== ''));
+  const r = await speichereAbschluss(roh, person ?? 'kevin');
+  if (!r.ok) return `Nicht eingetragen: ${r.fehler}`;
+  return `Monatsabschluss ${r.eintrag.firma === 'kdv' ? 'KD Ventures' : 'Consulting'} ${r.eintrag.monat} gespeichert — der Business-Index rechnet damit (/os/business).`;
+}
+
 /** Idee, Fehler oder Wunsch an MAKE OS selbst — landet im Bauplan unter „Ideen“ (nie direkt in „Bereit“). */
 async function bauplanNotieren(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
   const { karteAnlegen } = await import('@/lib/bauplan/speicher');
@@ -815,6 +836,8 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: (input: Record<st
   starte_auftraege: { gruppe: 'auftraege', lauf: starteAuftraege },
   fakt_merken: { gruppe: 'gedaechtnis', lauf: faktMerken },
   bauplan_notieren: { gruppe: 'bauplan', lauf: bauplanNotieren },
+  business_index: { gruppe: 'business', lauf: businessIndex },
+  monatsabschluss_erfassen: { gruppe: 'finanzen', lauf: monatsabschlussErfassen },
   suche_wissen: { gruppe: 'wissen', lauf: sucheWissen },
   lies_notiz: { gruppe: 'wissen', lauf: liesNotiz },
   notiz_anlegen: { gruppe: 'wissen', lauf: notizAnlegen },

@@ -120,15 +120,15 @@ export const KENNZAHLEN: KennzahlDef[] = [
   { id: 'traktion', label: 'Traktions-Score', saeule: 'mt', gruppe: 'Vertrieb', einheit: 'punkte', richtung: 'hoch', gruen: 70, rot: 40, nurGesamt: true, direkt: true,
     formel: 'Sales 50 · Marketing 40 · Event 10 (geometrisches Mittel der Ampeln)', quelle: 'Markttraktion',
     luecke: 'In der Markttraktion ist noch nichts gemessen', pflegen: { text: 'Markttraktion öffnen', href: '/os/markttraktion' } },
-  { id: 'run_rate', label: 'Umsatz-Kurs', saeule: 'mt', gruppe: 'Wachstum', einheit: 'prozent', richtung: 'hoch', gruen: 100, rot: 70, nurGesamt: true,
-    formel: 'Ø Monatsumsatz ÷ nötiger Monatsumsatz fürs Jahresziel', quelle: 'Controlling (Ziel + Ist-Monate)',
-    luecke: 'Ziel oder Ist-Monate im Controlling fehlen', pflegen: { text: 'Controlling pflegen', href: '/os/controlling' } },
+  { id: 'run_rate', label: 'Umsatz-Kurs', saeule: 'mt', gruppe: 'Wachstum', einheit: 'prozent', richtung: 'hoch', gruen: 100, rot: 70,
+    formel: 'Ø Monatsumsatz ÷ nötiger Monatsumsatz fürs Jahresziel', quelle: 'Jahresziel (gesamt: Controlling · je Firma: Einstellungen) + Ist-Monate',
+    luecke: 'Jahresumsatzziel oder Ist-Monate fehlen', pflegen: { text: 'Ziel eintragen', href: '/os/business#einstellungen' } },
   { id: 'win_rate', label: 'Win Rate', saeule: 'mt', gruppe: 'Vertrieb', einheit: 'prozent', richtung: 'hoch', gruen: 25, rot: 15,
     formel: 'gewonnen ÷ (gewonnen + verloren), ab Angebot', quelle: 'Deals (Pipeline)',
     luecke: 'Ab 10 Entscheidungen (gewonnen oder verloren) aussagekräftig', pflegen: { text: 'Deals pflegen', href: '/os/markttraktion' } },
-  { id: 'pipeline', label: 'Pipeline-Deckung', saeule: 'mt', gruppe: 'Vertrieb', einheit: 'faktor', richtung: 'hoch', gruen: 3, rot: 1, nurGesamt: true,
-    formel: 'gewichtete Pipeline ÷ Umsatzlücke zum Jahresziel', quelle: 'Deals + Controlling',
-    luecke: 'Jahresziel im Controlling fehlt', pflegen: { text: 'Deals pflegen', href: '/os/markttraktion' } },
+  { id: 'pipeline', label: 'Pipeline-Deckung', saeule: 'mt', gruppe: 'Vertrieb', einheit: 'faktor', richtung: 'hoch', gruen: 3, rot: 1,
+    formel: 'gewichtete Pipeline ÷ Umsatzlücke zum Jahresziel', quelle: 'Deals + Jahresziel',
+    luecke: 'Jahresumsatzziel fehlt', pflegen: { text: 'Ziel eintragen', href: '/os/business#einstellungen' } },
   { id: 'sales_cycle', label: 'Sales Cycle', saeule: 'mt', gruppe: 'Vertrieb', einheit: 'tage', richtung: 'niedrig', gruen: 60, rot: 120,
     formel: 'Ø Tage vom Anlegen eines Deals bis „gewonnen“ (12 Monate)', quelle: 'Deals mit Stufen-Verlauf',
     luecke: 'Mindestens 2 gewonnene Deals mit Verlauf nötig', pflegen: { text: 'Deals pflegen', href: '/os/markttraktion' } },
@@ -147,3 +147,19 @@ export const KENNZAHL = Object.fromEntries(KENNZAHLEN.map(k => [k.id, k])) as Re
 
 /** Die Kennzahlen, die in einer Sicht gelten. */
 export const kennzahlenFuer = (scope: Scope) => KENNZAHLEN.filter(k => scope === 'gesamt' || !k.nurGesamt);
+
+export interface Schwelle { gruen: number; rot: number }
+
+/**
+ * Eine eigene Schwelle prüfen (Feinjustierung): Zahlen, und die Richtung muss
+ * stimmen (hoch: grün > rot · niedrig: grün < rot) — sonst wäre die Ampel verdreht.
+ */
+export function schwelleSauber(id: string, roh: { gruen?: unknown; rot?: unknown }): { ok: true; schwelle: Schwelle } | { ok: false; fehler: string } {
+  const k = KENNZAHL[id];
+  if (!k) return { ok: false, fehler: 'Unbekannte Kennzahl.' };
+  const gruen = Number(roh.gruen), rot = Number(roh.rot);
+  if (!Number.isFinite(gruen) || !Number.isFinite(rot)) return { ok: false, fehler: 'Bitte zwei Zahlen eintragen.' };
+  if (k.richtung === 'hoch' ? !(gruen > rot) : !(gruen < rot)) return { ok: false, fehler: k.richtung === 'hoch' ? 'Grün muss über Rot liegen (mehr ist besser).' : 'Grün muss unter Rot liegen (weniger ist besser).' };
+  return { ok: true, schwelle: { gruen: Math.round(gruen * 1000) / 1000, rot: Math.round(rot * 1000) / 1000 } };
+}
+

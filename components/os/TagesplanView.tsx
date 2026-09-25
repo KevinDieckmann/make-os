@@ -340,7 +340,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
               ))}
               {/* Jetzt-Linie */}
               {istHeute && jetztMin !== null && jetztMin >= START && jetztMin <= ENDE && (
-                <div style={{ position: 'absolute', top: (jetztMin - START) * PX, left: 0, right: 0, borderTop: `2px solid ${LEUCHT.kritisch}`, boxShadow: `0 0 10px ${LEUCHT.kritisch}88`, zIndex: 3 }}>
+                <div style={{ position: 'absolute', top: (jetztMin - START) * PX, left: 0, right: 0, borderTop: `2px solid ${LEUCHT.kritisch}`, boxShadow: `0 0 10px ${LEUCHT.kritisch}33`, zIndex: 3 }}>
                   <span style={{ position: 'absolute', right: 6, top: -15, fontSize: 11, fontWeight: 700, color: LEUCHT.kritisch, fontVariantNumeric: 'tabular-nums' }}>{mm(jetztMin)}</span>
                 </div>
               )}
@@ -358,7 +358,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
                   <div key={b.id} draggable
                     onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ move: b.id }))}
                     onClick={() => setAktivBlock(aktiv ? null : b.id)}
-                    style={{ position: 'absolute', top: (b.startMin - START) * PX, height: Math.max(18, b.dauerMin * PX - 2), left: 4, right: 4, background: `${farbe}2A`, borderLeft: `3px solid ${farbe}`, borderRadius: 8, padding: '2px 8px', fontSize: 11.5, color: C.ink, overflow: 'hidden', cursor: 'grab', zIndex: aktiv ? 4 : 2, boxShadow: aktiv ? `0 0 0 1px ${farbe}, 0 0 14px ${farbe}66` : undefined, transition: 'box-shadow .2s ease' }}>
+                    style={{ position: 'absolute', top: (b.startMin - START) * PX, height: Math.max(18, b.dauerMin * PX - 2), left: 4, right: 4, background: `${farbe}2A`, borderLeft: `3px solid ${farbe}`, borderRadius: 8, padding: '2px 8px', fontSize: 11.5, color: C.ink, overflow: 'hidden', cursor: 'grab', zIndex: aktiv ? 4 : 2, boxShadow: aktiv ? `0 0 0 1px ${farbe}, 0 0 14px ${farbe}33` : undefined, transition: 'box-shadow .2s ease' }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: farbe, fontVariantNumeric: 'tabular-nums' }}>{mm(b.startMin)}</span> {b.titel}
                     {aktiv && (
                       <span style={{ position: 'absolute', right: 4, top: 2, display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>

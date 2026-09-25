@@ -67,7 +67,7 @@ export function JournalView() {
           return (
             <button key={n} onClick={() => set(n)} aria-label={`${label} ${n}`} className="fassbar" style={{
               width: 30, height: 30, borderRadius: 10, cursor: 'pointer', border: 'none', fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 700,
-              background: on ? c : 'rgba(255,255,255,.07)', color: on ? C.grund : C.inkLeise, boxShadow: on ? `0 0 10px ${c}66` : undefined, transition: 'background .15s ease',
+              background: on ? c : 'rgba(255,255,255,.07)', color: on ? C.grund : C.inkLeise, boxShadow: on ? `0 0 10px ${c}33` : undefined, transition: 'background .15s ease',
             }}>{n}</button>
           );
         })}

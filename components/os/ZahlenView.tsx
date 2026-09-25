@@ -14,6 +14,7 @@ import { eur } from '@/lib/make-one/finance-data';
 import { vorschau, businessFirmen, nurBusiness, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten } from '@/lib/make-one/liquiditaet';
 import { MONAT_KURZ, type Kennzahlen } from '@/lib/make-one/grundlage';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Zahl, Fortschritt, LEUCHT, Spalten, Spalte } from './schlank';
+import { IndexStreifen, STREIFEN } from './business/IndexStreifen';
 
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
 interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string; ort?: string }
@@ -67,6 +68,8 @@ export function ZahlenBusiness() {
 
   return (
     <>
+      {/* Business-Index (25.09.): die Finanz-Kennzahlen, dieselbe Zahl wie im Cockpit. */}
+      <IndexStreifen ids={STREIFEN.zahlen} titel="Business-Index · Finanzen" />
       <Karte i={0} akzent={LEUCHT.geld}>
         <Ueberschrift farbe={LEUCHT.geld}>Auf den Konten</Ueberschrift>
         <Zahl gross wert={plan ? eur(konten) : undefined} farbe={konten < 0 ? LEUCHT.kritisch : LEUCHT.geld} label="" />

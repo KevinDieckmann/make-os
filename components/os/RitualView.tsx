@@ -39,7 +39,7 @@ function Schritt({ nr, titel, done, children }: { nr: number; titel: string; don
         <span style={{
           width: 26, height: 26, borderRadius: '50%', flex: '0 0 auto', display: 'grid', placeItems: 'center',
           fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 700, transition: 'background .2s ease, box-shadow .2s ease',
-          background: done ? LEUCHT.gut : 'rgba(255,255,255,.08)', color: done ? C.grund : C.inkLeise, boxShadow: done ? `0 0 12px ${LEUCHT.gut}88` : undefined,
+          background: done ? LEUCHT.gut : 'rgba(255,255,255,.08)', color: done ? C.grund : C.inkLeise, boxShadow: done ? `0 0 12px ${LEUCHT.gut}33` : undefined,
         }}>{done ? <span className="check-pop">✓</span> : nr}</span>
         <span style={{ fontSize: TYP.body, fontWeight: 700, color: done ? C.inkDim : C.ink }}>{titel}</span>
       </div>
@@ -58,7 +58,7 @@ function Skala({ wert, setzen, farbe }: { wert?: number; setzen: (n: number) => 
           <button key={n} onClick={() => setzen(n)} aria-label={`${n}`} className="fassbar" style={{
             width: 24, height: 24, borderRadius: '50%', cursor: 'pointer', border: 'none', display: 'inline-grid', placeItems: 'center',
             fontFamily: SCHRIFT.display, fontSize: TYP.mikro, fontWeight: 700, transition: 'background .15s ease',
-            background: an ? farbe : 'rgba(255,255,255,.08)', color: an ? C.grund : C.inkLeise, boxShadow: an ? `0 0 8px ${farbe}66` : undefined,
+            background: an ? farbe : 'rgba(255,255,255,.08)', color: an ? C.grund : C.inkLeise, boxShadow: an ? `0 0 8px ${farbe}33` : undefined,
           }}>{n}</button>
         );
       })}
@@ -223,7 +223,7 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
       {/* Fortschritt als Segmente — ein Blick zeigt, was noch fehlt */}
       <div className="os-auf" style={{ display: 'flex', gap: 4 }}>
         {(modusTab === 'morgen' ? Object.values(mSchritte) : Object.values(aSchritte)).map((ok, i) => (
-          <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: ok ? LEUCHT.gut : 'rgba(255,255,255,.08)', boxShadow: ok ? `0 0 8px ${LEUCHT.gut}88` : undefined, transition: 'background .3s ease' }} />
+          <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: ok ? LEUCHT.gut : 'rgba(255,255,255,.08)', boxShadow: ok ? `0 0 8px ${LEUCHT.gut}33` : undefined, transition: 'background .3s ease' }} />
         ))}
       </div>
 

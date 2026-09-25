@@ -22,7 +22,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { FARBE as C, TYP } from '@/lib/make-one/design';
+import { FARBE as C, TYP, TIEF } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Leer, LEUCHT } from '../schlank';
 import type { Ergebnis, Aktivitaet } from '@/lib/make-one/crm';
 import type { KanalStatus } from '@/lib/crm/recht';
@@ -251,7 +251,7 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
               <div style={{ display: 'grid', gap: 6, marginTop: 14 }}>
                 <a href={anruf} onClick={() => setGewaehlt(k.id)} className="fassbar" title={tel.grund}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, minHeight: 52, width: '100%', maxWidth: 460, borderRadius: 14, textDecoration: 'none', fontWeight: 800, fontSize: 17, letterSpacing: '-.005em',
-                    background: LEUCHT.gut, color: C.grund, boxShadow: `0 8px 22px -8px ${LEUCHT.gut}aa` }}>
+                    ...TIEF.knopf(LEUCHT.gut) }}>
                   Anrufen<span style={{ fontWeight: 600, fontSize: 14, opacity: .75, fontVariantNumeric: 'tabular-nums' }}>{k.telefon}</span>
                 </a>
                 {tel.farbe === 'gelb' && <span style={{ fontSize: 12, color: C.inkLeise }}>Nur mit konkretem Anlass aus der Beziehung — {tel.grund}.</span>}

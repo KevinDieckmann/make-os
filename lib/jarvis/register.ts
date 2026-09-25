@@ -156,6 +156,20 @@ async function vsFokus(i: Record<string, unknown>): Promise<Vorschau> {
 const schlicht = (titel: string, nachher: (i: Record<string, unknown>) => string) =>
   async (i: Record<string, unknown>): Promise<Vorschau> => ({ titel, nachher: nachher(i) });
 
+const ABSCHLUSS_LABEL: Record<string, string> = { umsatz: 'Umsatz', kosten: 'Kosten', personal: 'Personal', marketingVertrieb: 'Marketing & Vertrieb', afa: 'AfA', eigenkapital: 'Eigenkapital', bilanzsumme: 'Bilanzsumme', kurzfrVerbindlichkeiten: 'kurzfr. Verbindlichkeiten', bankschulden: 'Bankschulden' };
+
+async function vsMonatsabschluss(i: Record<string, unknown>): Promise<Vorschau> {
+  const firma = i.firma === 'kdv' ? 'KD Ventures' : 'Consulting';
+  const monat = text(i.monat, 7);
+  const alt = ((await loadJson<{ eintraege?: Record<string, unknown>[] }>('business-abschluesse'))?.eintraege ?? []).find(e => e.firma === i.firma && e.monat === monat);
+  const zeile = (q: Record<string, unknown>) => Object.keys(ABSCHLUSS_LABEL).filter(k => typeof q[k] === 'number').map(k => `${ABSCHLUSS_LABEL[k]} ${eur(q[k])}`).join(' · ');
+  return {
+    titel: `Monatsabschluss ${firma} ${monat} ${alt ? 'ergänzen' : 'eintragen'}`,
+    vorher: alt ? zeile(alt) || 'leer' : undefined,
+    nachher: zeile(i) || 'keine Zahlen genannt',
+  };
+}
+
 // ── Das Register ───────────────────────────────────────────────────────────
 
 export const REGISTER: Record<string, Eintrag> = {
@@ -196,6 +210,12 @@ export const REGISTER: Record<string, Eintrag> = {
     gruppe: 'gedaechtnis', risiko: 'frei',
     vorschau: schlicht('Im Gedächtnis nachsehen', i => i.thema ? `zu „${text(i.thema)}"` : 'alles'),
   },
+  // Business-Index (25.09.): Lesen ist frei; einen Monatsabschluss schreiben sind Finanzzahlen → Freigabe.
+  business_index: {
+    gruppe: 'business', risiko: 'frei',
+    vorschau: schlicht('Business-Index lesen', i => `${text(i.sicht) || 'gesamt'}${i.kennzahl ? ` · ${text(i.kennzahl)}` : ''}`),
+  },
+  monatsabschluss_erfassen: { gruppe: 'finanzen', risiko: 'freigabe', vorschau: vsMonatsabschluss },
   // Ideen an MAKE OS selbst — landen in „Ideen“; gebaut wird erst, was Kevin oder Malin nach „Bereit“ ziehen.
   bauplan_notieren: {
     gruppe: 'bauplan', risiko: 'frei',

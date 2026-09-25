@@ -92,7 +92,7 @@ const Taste = ({ k }: { k: string }) => (
 const Avatar = ({ m, glanz }: { m: Msg; glanz?: boolean }) => {
   const f = srcColor(m.source);
   return (
-    <span style={{ width: 32, height: 32, borderRadius: 10, flex: '0 0 auto', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, color: f, background: `${f}22`, boxShadow: glanz ? `0 0 12px ${f}55` : undefined }}>
+    <span style={{ width: 32, height: 32, borderRadius: 10, flex: '0 0 auto', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, color: f, background: `${f}22`, boxShadow: glanz ? `0 0 12px ${f}33` : undefined }}>
       {initials(m.sender)}
     </span>
   );

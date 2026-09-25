@@ -122,10 +122,10 @@ export function Taktgeber() {
     <div className="karte os-auf" style={{
       position: 'fixed', bottom: 18, right: 18, zIndex: 90, maxWidth: 380,
       padding: '14px 16px', color: C.ink, fontFamily: SCHRIFT.text,
-      boxShadow: `inset 0 1px 0 rgba(255,255,255,.06), 0 12px 40px rgba(0,0,0,.45), inset 0 0 0 1px ${LEUCHT.achtung}26, 0 0 40px -12px ${LEUCHT.achtung}55`,
+      boxShadow: `inset 0 1px 0 rgba(255,255,255,.06), 0 12px 40px rgba(0,0,0,.45), inset 0 0 0 1px ${LEUCHT.achtung}26, 0 0 40px -12px ${LEUCHT.achtung}40`,
     }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <span style={{ color: LEUCHT.achtung, flex: '0 0 auto', textShadow: `0 0 10px ${LEUCHT.achtung}99` }}>⚠</span>
+        <span style={{ color: LEUCHT.achtung, flex: '0 0 auto', textShadow: `0 0 10px ${LEUCHT.achtung}33` }}>⚠</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={etikett(LEUCHT.achtung)}>Wächter</div>
           <div style={{ fontSize: TYP.bedien, color: C.ink, lineHeight: 1.5 }}>{alarm.text}</div>

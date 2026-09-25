@@ -8,6 +8,8 @@
 //   5. Speichern: Bericht, Freigabe-Liste (dedupliziert), letzter Lauf.
 // Nichts hier bewegt Geld. Der Agent schlägt vor; Menschen entscheiden.
 
+import { businessFuerChef } from '@/lib/business/fuer-chef';
+import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askText, extractJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, MODEL_BY_TIER } from '@/lib/agent-config';
@@ -35,7 +37,7 @@ export async function ladeEinstellung(): Promise<ChefEinstellung> {
 }
 
 /** Alle Quellen laden und das Finanzbild bauen. Haushalt nur, wenn übergeben. */
-export async function ladeFinanzbild(haushalt: string | null, heute = heuteBerlin()): Promise<{ bild: Finanzbild; einstellung: ChefEinstellung }> {
+export async function ladeFinanzbild(haushalt: string | null, heute = heuteBerlin()): Promise<{ bild: Finanzbild; einstellung: ChefEinstellung; business: Record<string, unknown> | null }> {
   const [finance, plan, liqui, grund, einstellung] = await Promise.all([
     loadJson<FinanceState>('finance'),
     loadJson<FinanzplanStand>('finanzplan'),
@@ -50,11 +52,19 @@ export async function ladeFinanzbild(haushalt: string | null, heute = heuteBerli
     steuer: { ...einstellung.steuer, ruecklageQuote: einstellung.ruecklageQuote },
     haushalt: hh,
   });
-  return { bild, einstellung };
+  // Business-Index (25.09.): rote Kennzahlen und ein fehlender Monatsabschluss werden Hinweise.
+  // Nur für den Haushalt des Inhabers (wie das Cockpit) — ein anderes Konto sieht den Index nicht.
+  const bi = haushalt && haushalt === await haushaltDesInhabers() ? await businessFuerChef(heute).catch(() => null) : null;
+  if (bi?.hinweise.length) {
+    const rang = { hoch: 0, mittel: 1, niedrig: 2 } as const;
+    bild.hinweise.push(...bi.hinweise);
+    bild.hinweise.sort((a, b) => rang[a.schwere] - rang[b.schwere]);
+  }
+  return { bild, einstellung, business: bi?.block ?? null };
 }
 
 /** Das Paket, das das Modell sieht — Meta, Einstellungen, Bedeutungen, Bild, frühere Vorschläge. */
-export async function datenpaket(bild: Finanzbild, einstellung: ChefEinstellung, stand: ChefStand, modus: Modus) {
+export async function datenpaket(bild: Finanzbild, einstellung: ChefEinstellung, stand: ChefStand, modus: Modus, business: Record<string, unknown> | null = null) {
   const s = await schwellen();
   return {
     meta: { heute: bild.stichtag, publikum: bild.umfang === 'business' ? 'business' : 'haushalt', modus, letzter_lauf: stand.letzte[modus] ?? null },
@@ -69,6 +79,8 @@ export async function datenpaket(bild: Finanzbild, einstellung: ChefEinstellung,
     },
     definitionen: DEFINITIONEN,
     ...bild,
+    // Dieselben Kennzahlen wie das Cockpit /os/business — eine Wahrheit.
+    business_index: business,
     crm: await crmFuerFinanzen(bild.stichtag),
     vorschlaege_offen: vorschlaegeFuerDaten(stand.vorschlaege),
   };
@@ -164,7 +176,7 @@ export async function chefLauf(a: LaufAuftrag): Promise<LaufErgebnis> {
   }
   await updateJson<ChefStand>(name, s => ({ ...leererStand(), ...(s ?? {}), versuche: { ...(s?.versuche ?? {}), [a.modus]: jetzt } }));
   const stand = { ...leererStand(), ...((await loadJson<ChefStand>(name)) ?? {}) };
-  const { bild, einstellung } = await ladeFinanzbild(a.haushalt);
+  const { bild, einstellung, business } = await ladeFinanzbild(a.haushalt);
 
   // Tagescheck: ohne dringende Punkte oder ohne Neues kein Modellaufruf.
   if (a.modus === 'tagescheck' && a.ausgeloest === 'takt') {
@@ -181,7 +193,7 @@ export async function chefLauf(a: LaufAuftrag): Promise<LaufErgebnis> {
   const agent = await resolveAgent('finanzchef');
   if (!agent.enabled) return { ok: false, fehler: 'Der Head of Finance ist ausgeschaltet (unter Agenten aktivierbar).' };
 
-  const daten = await datenpaket(bild, einstellung, stand, a.modus);
+  const daten = await datenpaket(bild, einstellung, stand, a.modus, business);
   const user = `<daten>\n${JSON.stringify(daten, null, 1)}\n</daten>\n\n${aufgabe(a.modus, { frage: a.frage, person: a.person, monat: a.monat, haushalt: !!a.haushalt })}`;
   const tools = a.modus === 'tagescheck' ? [] : a.haushalt && a.modus !== 'steuercheck' ? [RECHNE, SUCHE] : [RECHNE];
   const maxTokens = a.modus === 'tagescheck' || a.modus === 'frage' ? 6000 : 12000;

@@ -355,7 +355,7 @@ export function JarvisPanel() {
       <button onClick={() => setFenster(f => ({ ...f, offen: true }))} aria-label="Jarvis öffnen" title="Jarvis" className="jarvis-fab"
         style={{ position: 'fixed', right: 22, bottom: 22, zIndex: 70, width: 52, height: 52, borderRadius: '50%', border: 'none', background: FLAECHE, cursor: 'pointer', display: 'grid', placeItems: 'center', boxShadow: `0 8px 30px rgba(0,0,0,.45), 0 0 26px ${J}33, inset 0 1px 0 rgba(255,255,255,.08)` }}>
         <Orb size={30} puls />
-        {(thinking || stimme.hoert || stimme.spricht) && <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', background: stimme.hoert ? LEUCHT.kritisch : stimme.spricht ? J : LEUCHT.achtung, boxShadow: `0 0 8px ${stimme.hoert ? LEUCHT.kritisch : stimme.spricht ? J : LEUCHT.achtung}` }} />}
+        {(thinking || stimme.hoert || stimme.spricht) && <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', background: stimme.hoert ? LEUCHT.kritisch : stimme.spricht ? J : LEUCHT.achtung, boxShadow: `0 0 8px ${stimme.hoert ? LEUCHT.kritisch : stimme.spricht ? J : LEUCHT.achtung}33` }} />}
       </button>
     );
   }
@@ -374,7 +374,7 @@ export function JarvisPanel() {
         const f = e.dataTransfer.files?.[0];
         if (f) void belegLesen(f);
       }}
-      style={{ position: 'fixed', right: fenster.right, bottom: fenster.bottom, width: `min(${fenster.w}px, calc(100vw - 16px))`, height: `min(${fenster.h}px, calc(100vh - 16px))`, zIndex: 70, display: 'flex', flexDirection: 'column', background: FLAECHE, border: `1px solid ${ueberDatei ? C.aktiv : HAAR}`, borderRadius: 20, boxShadow: `0 24px 70px rgba(0,0,0,.55), 0 0 40px -10px ${J}44, inset 0 1px 0 rgba(255,255,255,.06)`, overflow: 'hidden', color: C.ink, fontFamily: SCHRIFT.text }}>
+      style={{ position: 'fixed', right: fenster.right, bottom: fenster.bottom, width: `min(${fenster.w}px, calc(100vw - 16px))`, height: `min(${fenster.h}px, calc(100vh - 16px))`, zIndex: 70, display: 'flex', flexDirection: 'column', background: FLAECHE, border: `1px solid ${ueberDatei ? C.aktiv : HAAR}`, borderRadius: 20, boxShadow: `0 24px 70px rgba(0,0,0,.55), 0 0 40px -10px ${J}40, inset 0 1px 0 rgba(255,255,255,.06)`, overflow: 'hidden', color: C.ink, fontFamily: SCHRIFT.text }}>
       {ueberDatei && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 5, background: `${C.aktiv}14`, border: `2px dashed ${C.aktiv}`, borderRadius: 20, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
           <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: C.aktiv }}>Beleg loslassen — ich lese die Zahlen heraus</span>
@@ -556,12 +556,12 @@ export function JarvisPanel() {
         )}
         {stimme.hoert && (
           <div style={{ fontSize: 12, fontWeight: 600, color: LEUCHT.kritisch, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span className="jarvis-orb-kern" style={{ width: 7, height: 7, borderRadius: '50%', background: LEUCHT.kritisch, boxShadow: `0 0 8px ${LEUCHT.kritisch}`, display: 'inline-block' }} />
+            <span className="jarvis-orb-kern" style={{ width: 7, height: 7, borderRadius: '50%', background: LEUCHT.kritisch, boxShadow: `0 0 8px ${LEUCHT.kritisch}33`, display: 'inline-block' }} />
             {stimme.teil ? stimme.teil : 'Ich höre …'}
           </div>
         )}
         {stimme.fehler && <div style={{ fontSize: TYP.mikro, color: LEUCHT.achtung, marginBottom: 6 }}>{stimme.fehler}</div>}
-        <div style={{ ...feld, display: 'flex', alignItems: 'flex-end', gap: 9, padding: '8px 10px', boxShadow: stimme.hoert ? `0 0 0 1px ${LEUCHT.kritisch}, 0 0 14px ${LEUCHT.kritisch}44` : undefined }}>
+        <div style={{ ...feld, display: 'flex', alignItems: 'flex-end', gap: 9, padding: '8px 10px', boxShadow: stimme.hoert ? `0 0 0 1px ${LEUCHT.kritisch}, 0 0 14px ${LEUCHT.kritisch}33` : undefined }}>
           <textarea value={ask} onChange={e => setAsk(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && ask.trim() && !thinking) { e.preventDefault(); send(ask.trim()); } }}
             placeholder={stimme.hoert ? 'Sprich einfach …' : 'Sprich mit Jarvis …'} aria-label="Nachricht an Jarvis" rows={fenster.h > 640 ? 2 : 1} disabled={thinking}
@@ -569,7 +569,7 @@ export function JarvisPanel() {
           {stimme.kannHoeren && (
             <button onClick={() => stimme.hoert ? stimme.hoerAuf() : stimme.hoerZu()} disabled={thinking}
               aria-label={stimme.hoert ? 'Aufnahme beenden' : 'Sprechen'} title={stimme.hoert ? 'Fertig — abschicken' : 'Mikrofon: sprich mit Jarvis'}
-              style={{ ...rund, cursor: thinking ? 'default' : 'pointer', background: stimme.hoert ? `${LEUCHT.kritisch}22` : 'rgba(255,255,255,.06)', color: stimme.hoert ? LEUCHT.kritisch : C.inkDim, boxShadow: stimme.hoert ? `0 0 12px ${LEUCHT.kritisch}66` : undefined }}>
+              style={{ ...rund, cursor: thinking ? 'default' : 'pointer', background: stimme.hoert ? `${LEUCHT.kritisch}22` : 'rgba(255,255,255,.06)', color: stimme.hoert ? LEUCHT.kritisch : C.inkDim, boxShadow: stimme.hoert ? `0 0 12px ${LEUCHT.kritisch}33` : undefined }}>
               {stimme.hoert ? '■' : <Mikro farbe={C.inkDim} />}
             </button>
           )}

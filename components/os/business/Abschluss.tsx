@@ -109,30 +109,41 @@ export function MonatsabschlussKarte({ eintraege, onGespeichert }: { eintraege: 
   );
 }
 
-export function KoepfeKarte({ fte, onGespeichert }: { fte: Partial<Record<Firma, number>>; onGespeichert: () => void }) {
-  const [w, setW] = useState<Record<Firma, string>>({ kdc: '', kdv: '' });
+export function EinstellungenKarte({ einstellungen, onGespeichert }: { einstellungen: { fte: Partial<Record<Firma, number>>; ziele?: Partial<Record<Firma, number>> }; onGespeichert: () => void }) {
+  const text = (n?: number) => (n != null ? String(n).replace('.', ',') : '');
+  const [fte, setFte] = useState<Record<Firma, string>>({ kdc: '', kdv: '' });
+  const [ziele, setZiele] = useState<Record<Firma, string>>({ kdc: '', kdv: '' });
   const [meldung, setMeldung] = useState<string | null>(null);
-  useEffect(() => { setW({ kdc: fte.kdc != null ? String(fte.kdc).replace('.', ',') : '', kdv: fte.kdv != null ? String(fte.kdv).replace('.', ',') : '' }); }, [fte.kdc, fte.kdv]);
+  useEffect(() => {
+    setFte({ kdc: text(einstellungen.fte.kdc), kdv: text(einstellungen.fte.kdv) });
+    setZiele({ kdc: text(einstellungen.ziele?.kdc), kdv: text(einstellungen.ziele?.kdv) });
+  }, [einstellungen.fte.kdc, einstellungen.fte.kdv, einstellungen.ziele?.kdc, einstellungen.ziele?.kdv]);
+  const zahl = (t: string, tausender: boolean) => (t.trim() ? Number((tausender ? t.replace(/\./g, '') : t).replace(',', '.')) : null);
   const speichern = async () => {
-    const r = await senden({ aktion: 'einstellungen', fte: { kdc: w.kdc.trim() ? Number(w.kdc.replace(',', '.')) : null, kdv: w.kdv.trim() ? Number(w.kdv.replace(',', '.')) : null } });
+    const r = await senden({ aktion: 'einstellungen', fte: { kdc: zahl(fte.kdc, false), kdv: zahl(fte.kdv, false) }, ziele: { kdc: zahl(ziele.kdc, true), kdv: zahl(ziele.kdv, true) } });
     setMeldung(r.ok ? 'Gespeichert.' : r.fehler ?? 'Nicht gespeichert.');
     if (r.ok) onGespeichert();
   };
   return (
     <Karte i={6}>
       <div id="einstellungen" style={{ scrollMarginTop: 90 }} />
-      <Ueberschrift farbe={LEUCHT.schlaf}>Köpfe (FTE)</Ueberschrift>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      <Ueberschrift farbe={LEUCHT.schlaf}>Köpfe und Jahresziele</Ueberschrift>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))', gap: 14 }}>
         {FIRMA_LISTE.map(f => (
-          <label key={f.id} style={{ display: 'grid', gap: 4 }}>
-            <span style={{ fontSize: 12.5, color: C.inkDim, fontWeight: 600 }}>{f.label}</span>
-            <input inputMode="decimal" value={w[f.id]} onChange={e => setW({ ...w, [f.id]: e.target.value })} placeholder="z. B. 1,5" style={{ ...feld, width: 120, fontSize: TYP.bedien, padding: '8px 11px' }} />
-          </label>
+          <div key={f.id} style={{ display: 'grid', gap: 8 }}>
+            <span style={{ fontSize: 12.5, color: C.ink, fontWeight: 700 }}>{f.label}</span>
+            <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12.5, color: C.inkDim }}>Köpfe (FTE)</span>
+              <input inputMode="decimal" value={fte[f.id]} onChange={e => setFte({ ...fte, [f.id]: e.target.value })} placeholder="z. B. 1,5" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} /></label>
+            <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12.5, color: C.inkDim }}>Jahresumsatzziel (€)</span>
+              <input inputMode="decimal" value={ziele[f.id]} onChange={e => setZiele({ ...ziele, [f.id]: e.target.value })} placeholder="z. B. 250.000" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', fontVariantNumeric: 'tabular-nums' }} /></label>
+          </div>
         ))}
+      </div>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
         <Knopf leise onClick={() => void speichern()}>Speichern</Knopf>
         {meldung && <span style={{ fontSize: 12.5, color: C.inkLeise }}>{meldung}</span>}
       </div>
-      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>Vollzeit-Köpfe, die im Geschäft arbeiten (Kevin 1,0 · Teilzeit anteilig). Grundlage für „Umsatz je Kopf“.</div>
+      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>Köpfe: Vollzeit-Köpfe im Geschäft (Kevin 1,0 · Teilzeit anteilig) — für „Umsatz je Kopf“. Jahresziele je Firma: für Umsatz-Kurs und Pipeline-Deckung der Firma; das Gesamtziel kommt aus dem Controlling.</div>
     </Karte>
   );
 }

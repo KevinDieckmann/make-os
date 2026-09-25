@@ -7,8 +7,8 @@
 // Kennzahlfarben, Ringe mit Glow, Zahlen, die hochzählen, Trendbalken, und
 // alles erscheint gestaffelt. Wer eine Seite baut, nimmt das hier.
 
-import { useEffect, useState, type ReactNode, type CSSProperties } from 'react';
-import { FARBE as C, LEUCHT, SCHRIFT, TYP, leuchtFarbe } from '@/lib/make-one/design';
+import { useEffect, useId, useState, type ReactNode, type CSSProperties } from 'react';
+import { FARBE as C, LEUCHT, SCHRIFT, TYP, TIEF, leuchtFarbe } from '@/lib/make-one/design';
 
 export { LEUCHT };
 
@@ -41,7 +41,7 @@ export function Seite({ titel, unter, rechts, children, breit = SEITE_BREIT }: {
 /** Eine Karte — dunkle Fläche mit Tiefe. `i` staffelt das Erscheinen, `akzent` legt einen farbigen Hauch an den Rand. */
 export function Karte({ children, i = 0, akzent, style }: { children: ReactNode; i?: number; akzent?: string; style?: CSSProperties }) {
   return (
-    <section className="karte os-auf" style={{ ['--i' as string]: i, ...(akzent ? { boxShadow: `inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35), inset 0 0 0 1px ${akzent}26, 0 0 40px -12px ${akzent}55` } : {}), ...style }}>
+    <section className="karte os-auf" style={{ ['--i' as string]: i, ...(akzent ? { boxShadow: `inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35), inset 0 0 0 1px ${akzent}1F, 0 0 44px -18px ${akzent}40` } : {}), ...style }}>
       {children}
     </section>
   );
@@ -84,7 +84,7 @@ export function Ueberschrift({ children, rechts, farbe }: { children: ReactNode;
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, margin: '0 0 10px' }}>
       <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: C.inkDim, letterSpacing: '.08em', textTransform: 'uppercase', margin: 0 }}>
-        {farbe && <span style={{ width: 8, height: 8, borderRadius: '50%', background: farbe, boxShadow: `0 0 8px ${farbe}` }} />}{children}
+        {farbe && <span style={{ width: 8, height: 8, borderRadius: '50%', background: farbe, boxShadow: `0 0 8px ${farbe}33` }} />}{children}
       </h2>
       {rechts && <span style={{ fontSize: 12, color: C.inkLeise, display: 'flex', gap: 12, alignItems: 'center' }}>{rechts}</span>}
     </div>
@@ -127,10 +127,10 @@ export function Leer({ children }: { children: ReactNode }) {
   return <div style={{ padding: '14px 2px', color: C.inkLeise, fontSize: TYP.bedien, lineHeight: 1.55 }}>{children}</div>;
 }
 
-/** Ein leuchtender Punkt in Zustandsfarbe. */
+/** Ein Punkt in Zustandsfarbe — tief, ohne Leuchtkranz (25.09.). */
 export function Punkt({ farbe, groesse = 9 }: { farbe: string; groesse?: number }) {
   const leise = farbe === C.inkLeise || farbe === C.linie;
-  return <span style={{ width: groesse, height: groesse, borderRadius: '50%', background: farbe, flex: '0 0 auto', display: 'inline-block', boxShadow: leise ? undefined : `0 0 10px ${farbe}99` }} />;
+  return <span style={{ width: groesse, height: groesse, borderRadius: '50%', background: farbe, flex: '0 0 auto', display: 'inline-block', boxShadow: leise ? undefined : `0 0 8px ${farbe}55` }} />;
 }
 
 /** Pille in Kennzahlfarbe — „Grün", „Prio A", „3 offen". */
@@ -143,7 +143,7 @@ export function Haken({ an, onChange, farbe }: { an: boolean; onChange: () => vo
   return (
     <button onClick={e => { e.stopPropagation(); onChange(); }} aria-label={an ? 'erledigt' : 'offen'} className="fassbar" style={{
       width: 24, height: 24, borderRadius: 8, flex: '0 0 auto', cursor: 'pointer', display: 'grid', placeItems: 'center', transition: 'background .2s ease, box-shadow .2s ease',
-      border: `2px solid ${an ? LEUCHT.gut : f}`, background: an ? LEUCHT.gut : 'transparent', color: C.grund, fontSize: 13, fontWeight: 800, boxShadow: an ? `0 0 12px ${LEUCHT.gut}88` : undefined,
+      border: `2px solid ${an ? TIEF.rand(LEUCHT.gut) : f}`, background: an ? TIEF.flaeche(LEUCHT.gut) : 'transparent', color: LEUCHT.gut, fontSize: 13, fontWeight: 800,
     }}>{an ? '✓' : ''}</button>
   );
 }
@@ -153,8 +153,10 @@ export function Knopf({ children, onClick, leise, aus, farbe }: { children: Reac
   return (
     <button onClick={onClick} disabled={aus} className="fassbar" style={{
       fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '9px 15px', borderRadius: 11, cursor: aus ? 'default' : 'pointer', transition: 'transform .15s ease, box-shadow .2s ease',
-      border: leise ? '1px solid rgba(255,255,255,.1)' : 'none', background: leise ? 'rgba(255,255,255,.04)' : aus ? 'rgba(255,255,255,.08)' : f, color: leise ? C.ink : aus ? C.inkLeise : C.grund,
-      boxShadow: !leise && !aus ? `0 6px 18px -6px ${f}99` : undefined,
+      // Tiefe Akzente (25.09.): der Hauptknopf getönt mit farbiger Kontur — nicht mehr Vollfarbe mit Leuchtschatten.
+      ...(leise ? { border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink }
+        : aus ? { border: '1px solid transparent', background: 'rgba(255,255,255,.08)', color: C.inkLeise }
+        : TIEF.knopf(f)),
     }}>{children}</button>
   );
 }
@@ -196,12 +198,22 @@ export function Ring({ wert, einheit, label, farbe, anteil, groesse = 'normal', 
   const px = groesse === 'gross' ? 'clamp(150px, 20vw, 190px)' : groesse === 'klein' ? 'clamp(58px, 9vw, 72px)' : 'clamp(104px, 13vw, 128px)';
   const fs = groesse === 'gross' ? 'clamp(40px,5vw,52px)' : groesse === 'klein' ? 'clamp(15px,2vw,18px)' : 'clamp(26px,3.4vw,32px)';
   const hat = wert != null && anteil != null;
+  const verlaufId = `ring-${useId().replace(/[^a-zA-Z0-9-]/g, '')}`;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: groesse === 'klein' ? 6 : 10 }}>
       <div style={{ position: 'relative', width: px, aspectRatio: '1' }}>
-        <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%', display: 'block', filter: hat ? `drop-shadow(0 0 ${groesse === 'klein' ? 5 : 10}px ${farbe}77)` : undefined }} aria-hidden>
+        <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%', display: 'block', filter: hat ? TIEF.svgSchein(farbe, groesse === 'klein' ? 6 : 12) : undefined }} aria-hidden>
+          {/* Tiefe Akzente (25.09.): kräftige Farbe mit Tiefe — Verlauf von der vollen Farbe in den tieferen
+              Ton, getönte Scheibe mit feiner Kontur (wie das Kürzel in der Akte), weicher Schein statt Neon. */}
+          <defs>
+            <linearGradient id={verlaufId} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor={farbe} />
+              <stop offset="100%" style={{ stopColor: TIEF.tiefer(farbe, 60) }} />
+            </linearGradient>
+          </defs>
+          {hat && <circle cx="60" cy="60" r={r - 7} fill={TIEF.flaeche(farbe)} stroke={`${farbe}26`} strokeWidth="1" />}
           <circle cx="60" cy="60" r={r} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={groesse === 'klein' ? 8 : 9} />
-          {hat && <circle cx="60" cy="60" r={r} fill="none" stroke={farbe} strokeWidth={groesse === 'klein' ? 8 : 9} strokeLinecap="round"
+          {hat && <circle cx="60" cy="60" r={r} fill="none" stroke={`url(#${verlaufId})`} strokeWidth={groesse === 'klein' ? 8 : 9} strokeLinecap="round"
             strokeDasharray={u.toFixed(1)} strokeDashoffset={(u * (1 - (an ? ziel : 0))).toFixed(1)} transform="rotate(-90 60 60)"
             style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(.22,1,.36,1)' }} />}
         </svg>
@@ -224,7 +236,7 @@ export function Balken({ werte, max, farbe, hoehe = 44, titel }: { werte: (numbe
       {werte.map((w, i) => {
         const letzte = i === werte.length - 1;
         const h = w == null ? 3 : Math.max(3, Math.round((Math.min(w, max) / max) * hoehe));
-        return <div key={i} className="balken-auf" title={titel?.[i]} style={{ ['--i' as string]: i, flex: 1, height: h, borderRadius: 3, background: w == null ? 'rgba(255,255,255,.08)' : farbe, opacity: w == null ? 1 : letzte ? 1 : .5, boxShadow: letzte && w != null ? `0 0 10px ${farbe}99` : undefined }} />;
+        return <div key={i} className="balken-auf" title={titel?.[i]} style={{ ['--i' as string]: i, flex: 1, height: h, borderRadius: 3, background: w == null ? 'rgba(255,255,255,.08)' : letzte ? `linear-gradient(180deg, ${farbe}, ${TIEF.tiefer(farbe, 60)})` : `${farbe}66`, boxShadow: letzte && w != null ? TIEF.schein(farbe, 16) : undefined }} />;
       })}
     </div>
   );
@@ -235,7 +247,7 @@ export function Zahl({ wert, label, farbe, gross }: { wert?: string; label: Reac
   const z = useHochzaehlen(wert);
   return (
     <div style={{ minWidth: 0 }}>
-      <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: gross ? 'clamp(38px,5.5vw,52px)' : 'clamp(20px,2.6vw,24px)', letterSpacing: '-.03em', lineHeight: 1.05, fontVariantNumeric: 'tabular-nums', color: wert == null ? C.inkLeise : farbe ?? C.ink, textShadow: gross && farbe ? `0 0 24px ${farbe}55` : undefined }}>{z ?? '—'}</div>
+      <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: gross ? 'clamp(38px,5.5vw,52px)' : 'clamp(20px,2.6vw,24px)', letterSpacing: '-.03em', lineHeight: 1.05, fontVariantNumeric: 'tabular-nums', color: wert == null ? C.inkLeise : farbe ?? C.ink }}>{z ?? '—'}</div>
       <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 4 }}>{label}</div>
     </div>
   );
@@ -247,7 +259,7 @@ export function Fortschritt({ anteil, farbe }: { anteil: number; farbe: string }
   useEffect(() => { const t = requestAnimationFrame(() => setAn(true)); return () => cancelAnimationFrame(t); }, []);
   return (
     <div style={{ height: 8, background: 'rgba(255,255,255,.07)', borderRadius: 4, overflow: 'hidden' }}>
-      <div style={{ width: `${Math.round(Math.max(0, Math.min(1, an ? anteil : 0)) * 100)}%`, height: '100%', background: farbe, borderRadius: 4, boxShadow: `0 0 12px ${farbe}88`, transition: 'width 1s cubic-bezier(.22,1,.36,1)' }} />
+      <div style={{ width: `${Math.round(Math.max(0, Math.min(1, an ? anteil : 0)) * 100)}%`, height: '100%', background: TIEF.verlauf(farbe), borderRadius: 4, boxShadow: TIEF.schein(farbe, 14), transition: 'width 1s cubic-bezier(.22,1,.36,1)' }} />
     </div>
   );
 }

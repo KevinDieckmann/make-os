@@ -229,7 +229,7 @@ function KarteMini({ k, namen, ich, heute, frisch, zieht, onOeffnen, onZiehStart
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOeffnen(); } }}
       className="fassbar bauplan-karte"
       style={{ display: 'grid', gap: 7, minWidth: 0, padding: '10px 12px', borderRadius: 12, cursor: 'grab', background: C.flaecheHoch, opacity: zieht ? 0.35 : 1,
-        border: `1px solid ${frisch ? LEUCHT.gut : 'rgba(255,255,255,.06)'}`, boxShadow: frisch ? `0 0 24px -6px ${LEUCHT.gut}88` : '0 4px 14px -8px rgba(0,0,0,.6)', transition: 'border-color .3s ease, box-shadow .3s ease' }}>
+        border: `1px solid ${frisch ? LEUCHT.gut : 'rgba(255,255,255,.06)'}`, boxShadow: frisch ? `0 0 24px -6px ${LEUCHT.gut}40` : '0 4px 14px -8px rgba(0,0,0,.6)', transition: 'border-color .3s ease, box-shadow .3s ease' }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 11.5, fontWeight: 700 }}>
         <span style={{ color: ART_FARBE[a] }}>● {ARTEN.find(x => x.id === a)?.label}</span>
         {k.bereich && <span style={{ color: C.inkLeise }}>{k.bereich}</span>}

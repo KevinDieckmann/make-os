@@ -4,9 +4,10 @@
 // Kachel je Kennzahl (Wert, Ampel, woraus gerechnet — oder die Messlücke mit
 // „so schließen“) und das Fenster dahinter (Formel, Schwellen, Punkte, Verlauf).
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Balken, LEUCHT } from '../schlank';
+import { Balken, Knopf, feld, LEUCHT } from '../schlank';
 import { Fenster } from '../Fenster';
 import type { KennzahlStand, Ampel } from '@/lib/business/index';
 
@@ -15,22 +16,8 @@ export const AMPEL_TEXT: Record<Ampel, string> = { gruen: 'gut', gelb: 'beobacht
 export const SAEULE_FARBE: Record<string, string> = { fh: LEUCHT.geld, ud: LEUCHT.schlaf, mt: LEUCHT.business };
 export const scoreFarbe = (n: number | null) => (n == null ? C.inkLeise : n >= 80 ? LEUCHT.gut : n >= 60 ? LEUCHT.puls : n >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
 
-const z = (n: number, s = 1) => n.toLocaleString('de-DE', { maximumFractionDigits: s });
-/** Eine Schwelle in der Einheit der Kennzahl. */
-export function schwelle(n: number, e: KennzahlStand['einheit']): string {
-  switch (e) {
-    case 'eur': return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
-    case 'prozent': return `${z(n)} %`;
-    case 'monate': return `${z(n)} Monate`;
-    case 'tage': return `${z(n, 0)} Tage`;
-    case 'faktor': return z(n, 2);
-    case 'stunden': return `${z(n)} h`;
-    case 'anzahl': return z(n);
-    case 'punkte': return `${z(n, 0)} Punkte`;
-  }
-}
-export const schwellenText = (k: Pick<KennzahlStand, 'richtung' | 'gruen' | 'rot' | 'einheit'>) =>
-  k.richtung === 'hoch' ? `grün ab ${schwelle(k.gruen, k.einheit)} · rot unter ${schwelle(k.rot, k.einheit)}` : `grün bis ${schwelle(k.gruen, k.einheit)} · rot über ${schwelle(k.rot, k.einheit)}`;
+export { schwelle, schwellenText } from '@/lib/business/text';
+import { schwelle, schwellenText } from '@/lib/business/text';
 
 export function KennzahlKachel({ k, onOeffnen }: { k: KennzahlStand; onOeffnen: () => void }) {
   const f = AMPEL_FARBE[k.ampel];
@@ -40,7 +27,7 @@ export function KennzahlKachel({ k, onOeffnen }: { k: KennzahlStand; onOeffnen: 
         background: k.gemessen ? `color-mix(in srgb, ${f} 7%, ${C.flaecheHoch})` : 'rgba(255,255,255,.025)', border: `1px solid ${k.gemessen ? `${f}33` : 'rgba(255,255,255,.07)'}`, color: C.ink }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
         <span style={{ fontSize: 12.5, fontWeight: 700, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.label}</span>
-        <span title={AMPEL_TEXT[k.ampel]} style={{ width: 9, height: 9, borderRadius: '50%', flex: '0 0 auto', background: f, boxShadow: k.gemessen ? `0 0 8px ${f}` : undefined }} />
+        <span title={AMPEL_TEXT[k.ampel]} style={{ width: 9, height: 9, borderRadius: '50%', flex: '0 0 auto', background: f, boxShadow: k.gemessen ? `0 0 8px ${f}33` : undefined }} />
       </div>
       {k.gemessen ? (
         <>
@@ -58,7 +45,53 @@ export function KennzahlKachel({ k, onOeffnen }: { k: KennzahlStand; onOeffnen: 
   );
 }
 
-export function KennzahlFenster({ k, saeule, verlauf, onZu }: { k: KennzahlStand; saeule: string; verlauf: { tag: string; wert: number | null }[]; onZu: () => void }) {
+const SICHT_LABEL: Record<string, string> = { gesamt: 'Gesamt', kdc: 'Consulting', kdv: 'KD Ventures' };
+const zahlText = (n: number) => String(n).replace('.', ',');
+
+/** Feinjustierung: eigene Schwellen für alle Sichten oder nur diese — mit Rückweg zum Standard. */
+function SchwellenAnpassen({ k, scope, onGespeichert }: { k: KennzahlStand; scope: string; onGespeichert: () => void }) {
+  const [offen, setOffen] = useState(false);
+  const [gruen, setGruen] = useState(zahlText(k.gruen));
+  const [rot, setRot] = useState(zahlText(k.rot));
+  const [sicht, setSicht] = useState<'alle' | string>('alle');
+  const [meldung, setMeldung] = useState<{ ok: boolean; text: string } | null>(null);
+  const senden = async (schwelle: Record<string, unknown>) => {
+    const r = await fetch('/api/business', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'einstellungen', schwelle }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    setMeldung(r.ok ? { ok: true, text: 'Gespeichert — der Index rechnet neu.' } : { ok: false, text: r.fehler ?? 'Nicht gespeichert.' });
+    if (r.ok) onGespeichert();
+  };
+  const zahl = (t: string) => Number(t.replace(/\./g, '').replace(',', '.'));
+  if (!offen) return (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+      <Knopf leise onClick={() => setOffen(true)}>Schwellen anpassen</Knopf>
+      {k.angepasst && <span style={{ fontSize: 12.5, color: LEUCHT.achtung }}>eigene Schwellen · Standard: {schwellenText({ ...k, gruen: k.standard.gruen, rot: k.standard.rot })}</span>}
+    </div>
+  );
+  const eingabe = { ...feld, width: 120, fontSize: TYP.bedien, padding: '8px 11px' };
+  return (
+    <div style={{ display: 'grid', gap: 10, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.07)' }}>
+      <div style={{ fontSize: 12.5, color: C.inkDim }}>{k.richtung === 'hoch' ? 'Mehr ist besser: grün ab …, rot unter …' : 'Weniger ist besser: grün bis …, rot über …'} · Standard: {schwellenText({ ...k, gruen: k.standard.gruen, rot: k.standard.rot })}</div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12.5, color: LEUCHT.gut, fontWeight: 600 }}>grün {k.richtung === 'hoch' ? 'ab' : 'bis'}</span><input inputMode="decimal" value={gruen} onChange={e => setGruen(e.target.value)} style={eingabe} /></label>
+        <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12.5, color: LEUCHT.kritisch, fontWeight: 600 }}>rot {k.richtung === 'hoch' ? 'unter' : 'über'}</span><input inputMode="decimal" value={rot} onChange={e => setRot(e.target.value)} style={eingabe} /></label>
+        <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12.5, color: C.inkDim, fontWeight: 600 }}>gilt für</span>
+          <select value={sicht} onChange={e => setSicht(e.target.value)} style={{ ...feld, width: 'auto', fontSize: TYP.bedien, padding: '8px 11px' }}>
+            <option value="alle">alle Sichten</option>
+            <option value={scope}>nur {SICHT_LABEL[scope] ?? scope}</option>
+          </select>
+        </label>
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <Knopf onClick={() => void senden({ id: k.id, sicht, gruen: zahl(gruen), rot: zahl(rot) })}>Speichern</Knopf>
+        {k.angepasst && <Knopf leise onClick={() => void senden({ id: k.id, sicht, zuruecksetzen: true })}>Standard wiederherstellen</Knopf>}
+        <Knopf leise onClick={() => setOffen(false)}>Schließen</Knopf>
+      </div>
+      {meldung && <div style={{ fontSize: 12.5, color: meldung.ok ? LEUCHT.gut : LEUCHT.kritisch }}>{meldung.text}</div>}
+    </div>
+  );
+}
+
+export function KennzahlFenster({ k, saeule, verlauf, scope, onZu, onGespeichert }: { k: KennzahlStand; saeule: string; verlauf: { tag: string; wert: number | null }[]; scope: string; onZu: () => void; onGespeichert: () => void }) {
   const f = AMPEL_FARBE[k.ampel];
   const mitWert = verlauf.filter(v => v.wert != null);
   const max = Math.max(...mitWert.map(v => Math.abs(v.wert as number)), k.gruen, k.rot, 1);
@@ -78,7 +111,7 @@ export function KennzahlFenster({ k, saeule, verlauf, onZu }: { k: KennzahlStand
         {zeile('Säule', `${saeule} · ${k.gruppe}`)}
         {zeile('Formel', k.formel)}
         {zeile(k.gemessen ? 'Gerechnet' : 'Es fehlt', k.quelle)}
-        {zeile('Schwellen', schwellenText(k))}
+        {zeile('Schwellen', <>{schwellenText(k)}{k.angepasst && <span style={{ color: LEUCHT.achtung }}> (eigene)</span>}</>)}
         {zeile('Punkte', k.einheit === 'punkte' ? 'Der Wert ist schon ein Score (0–100).' : 'An der roten Schwelle 20, an der grünen 100, dazwischen linear.')}
       </div>
       {mitWert.length > 1 && (
@@ -87,6 +120,7 @@ export function KennzahlFenster({ k, saeule, verlauf, onZu }: { k: KennzahlStand
           <Balken werte={verlauf.slice(-30).map(v => (v.wert == null ? null : Math.abs(v.wert)))} max={max} farbe={f} hoehe={48} titel={verlauf.slice(-30).map(v => `${v.tag}: ${v.wert == null ? '—' : schwelle(v.wert, k.einheit)}`)} />
         </div>
       )}
+      <SchwellenAnpassen key={`${k.id}-${k.gruen}-${k.rot}`} k={k} scope={scope} onGespeichert={onGespeichert} />
       {k.pflegen && (
         <div><Link href={k.pflegen.href} onClick={onZu} className="fassbar" style={{ display: 'inline-flex', textDecoration: 'none', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '9px 15px', borderRadius: 11, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink }}>{k.pflegen.text} ›</Link></div>
       )}

@@ -20,6 +20,7 @@ import { blockHaushalt } from '@/lib/finanzen/haushalt/jarvis';
 import { lies as liesFakten, fuerPrompt as faktenFuerPrompt } from '@/lib/jarvis/gedaechtnis';
 import { innenAdresse } from '@/lib/innen';
 import { ARTEN as BAU_ARTEN, BEREICHE as BAU_BEREICHE } from '@/lib/bauplan/form';
+import { KENNZAHLEN as BUSINESS_KENNZAHLEN } from '@/lib/business/register';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -239,6 +240,33 @@ export async function POST(req: Request) {
         }, required: ['an'] },
       },
     );
+    tools.push({
+      name: 'business_index',
+      description: 'Liest den Business-Index (unsere KSI-Logik mit eigenen Zahlen: Finanzielle Gesundheit 50 · Unternehmer-DNA 30 · Markttraktion 20) — gesamt oder je Firma, oder EINE Kennzahl mit Wert, Ampel, Schwellen, Formel und Quelle (bzw. was fehlt und wie man es schließt). Nutze das bei Fragen wie „Wie steht das Business?“, „Wie ist unser DSO / Runway / Win Rate?“, „Was ist rot?“. Nenne Zahlen genau so, wie sie kommen — nichts schätzen.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          sicht: { type: 'string', enum: ['gesamt', 'kdc', 'kdv'], description: 'gesamt (Standard), kdc = Kevin Dieckmann Consulting, kdv = KD Ventures' },
+          kennzahl: { type: 'string', enum: BUSINESS_KENNZAHLEN.map(k => k.id), description: BUSINESS_KENNZAHLEN.map(k => `${k.id} = ${k.label}`).join('; ') },
+        },
+      },
+    });
+    tools.push({
+      name: 'monatsabschluss_erfassen',
+      description: 'Trägt einen Monatsabschluss (BWA-Zahlen, netto in Euro) für eine Firma in den Business-Index ein — braucht Kevins Freigabe. Nur Zahlen, die genannt wurden; nichts schätzen oder ergänzen. Ein vorhandener Monat wird ergänzt, nicht gelöscht.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          firma: { type: 'string', enum: ['kdc', 'kdv'], description: 'kdc = Consulting, kdv = KD Ventures' },
+          monat: { type: 'string', description: 'YYYY-MM (ein abgeschlossener Monat)' },
+          umsatz: { type: 'number' }, kosten: { type: 'number', description: 'Kosten gesamt' }, personal: { type: 'number', description: 'davon Personal' },
+          marketingVertrieb: { type: 'number', description: 'davon Marketing & Vertrieb' }, afa: { type: 'number', description: 'Abschreibungen' },
+          eigenkapital: { type: 'number' }, bilanzsumme: { type: 'number' }, kurzfrVerbindlichkeiten: { type: 'number', description: 'kurzfristige Verbindlichkeiten' },
+          bankschulden: { type: 'number' }, notiz: { type: 'string' },
+        },
+        required: ['firma', 'monat'],
+      },
+    });
     tools.push({
       name: 'bauplan_notieren',
       description: 'Notiert eine Idee, einen Fehler oder einen Wunsch an MAKE OS SELBST im Bauplan (Spalte „Ideen“, dort entscheiden Kevin und Malin, was gebaut wird). Nutze das, wenn jemand sagt, dass an der Software etwas fehlt, nervt, kaputt ist oder besser sein soll („notier im Bauplan …“, „das müsste man verbessern“). NICHT für Aufgaben im echten Leben — die gehen mit create_task ins Board.',

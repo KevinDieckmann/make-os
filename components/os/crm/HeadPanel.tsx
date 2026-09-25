@@ -79,7 +79,7 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
   if (!auf) return (
     <Karte i={i} akzent={vorschlaege.length ? LEUCHT.agenten : undefined}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: LEUCHT.agenten, boxShadow: `0 0 8px ${LEUCHT.agenten}` }} />
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: LEUCHT.agenten, boxShadow: `0 0 8px ${LEUCHT.agenten}33` }} />
         <b style={{ fontSize: 12, fontWeight: 700, color: C.inkDim, letterSpacing: '.08em', textTransform: 'uppercase' }}>{name}</b>
         {bericht && <Chip farbe={STATUS_FARBE[bericht.antwort.status]}>{bericht.antwort.status}</Chip>}
         <span style={{ flex: 1, minWidth: 120, fontSize: 12.5, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bericht?.antwort.zusammenfassung ?? s?.ruhig?.text ?? 'Noch kein Lauf.'}</span>

@@ -50,7 +50,7 @@ function Wochenbalken({ wochen, hoehe }: { wochen: Woche[]; hoehe: number }) {
           const letzte = i === wochen.length - 1;
           return (
             <div key={w.von} className="balken-auf" title={`${w.label}: ${eur(w.stand)}${w.bewegungen.length ? `\n${w.bewegungen.map(b => `${datum(b.datum)} ${b.betrag > 0 ? '+' : ''}${b.betrag} € ${b.text}`).join('\n')}` : ''}`}
-              style={{ ['--i' as string]: i, flex: 1, height: Math.max(3, Math.round((Math.abs(w.stand) / maxAbs) * hoehe)), borderRadius: 3, background: farbe, opacity: letzte ? 1 : w.bewegungen.length ? .8 : .35, boxShadow: letzte ? `0 0 10px ${farbe}99` : undefined }} />
+              style={{ ['--i' as string]: i, flex: 1, height: Math.max(3, Math.round((Math.abs(w.stand) / maxAbs) * hoehe)), borderRadius: 3, background: farbe, opacity: letzte ? 1 : w.bewegungen.length ? .8 : .35, boxShadow: letzte ? `0 0 10px ${farbe}33` : undefined }} />
           );
         })}
       </div>
@@ -280,7 +280,7 @@ export function ControllingView() {
             const aktuell = i === m.aktMonatIdx;
             return (
               <div key={i} title={`${MONTHS_DE[i]}: ${eur(r.umsatz)}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}>
-                <div className="balken-auf" style={{ ['--i' as string]: i, width: '100%', height: `${(r.umsatz / maxBar) * 100}%`, minHeight: 3, background: r.umsatz > 0 ? (trifft ? LEUCHT.gut : LEUCHT.business) : 'rgba(255,255,255,.08)', borderRadius: 3, opacity: r.umsatz > 0 ? (aktuell ? 1 : .6) : 1, boxShadow: aktuell && r.umsatz > 0 ? `0 0 10px ${trifft ? LEUCHT.gut : LEUCHT.business}99` : undefined }} />
+                <div className="balken-auf" style={{ ['--i' as string]: i, width: '100%', height: `${(r.umsatz / maxBar) * 100}%`, minHeight: 3, background: r.umsatz > 0 ? (trifft ? LEUCHT.gut : LEUCHT.business) : 'rgba(255,255,255,.08)', borderRadius: 3, opacity: r.umsatz > 0 ? (aktuell ? 1 : .6) : 1, boxShadow: aktuell && r.umsatz > 0 ? `0 0 10px ${trifft ? LEUCHT.gut : LEUCHT.business}33` : undefined }} />
               </div>
             );
           })}

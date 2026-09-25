@@ -125,6 +125,34 @@ export const LEUCHT = {
   agenten: '#C77DFF',
 } as const;
 
+/**
+ * Tiefe Akzente (25.09., Kevin: „nicht diese Neonfarben, sondern diese schönen
+ * tiefen Akzente — genau so muss das überall durchgezogen werden“). Vorbild
+ * ist das Kürzel in der Kontakt-Akte: Die Farbe trägt die Aussage, aber nie
+ * grell. EIN Rezept für alles, was groß ist (Ringe, Balken, Kürzel, Karten):
+ *   fläche  — Akzent 9 % auf dem Grund (die getönte Scheibe)
+ *   rand    — Akzent ~55 %, halbtransparent statt Vollfarbe (Ring, Balken, Kontur)
+ *   schein  — weich und nach innen gezogen, kein Leuchtkranz
+ *   schrift — der Akzent selbst (wie die Initialen)
+ * Kleine Punkte und Chips bleiben farbig, aber ohne Leuchtkranz.
+ * Farben als 6-stelliges Hex übergeben (#RRGGBB) — Alpha wird angehängt.
+ */
+export const TIEF = {
+  flaeche: (f: string) => `${f}18`,
+  rand: (f: string) => `${f}8C`,
+  /** Balken/Ring-Füllung, etwas kräftiger als der Rand. */
+  fuellung: (f: string) => `${f}A6`,
+  schein: (f: string, px = 24) => `0 0 ${px}px -${Math.round(px / 4)}px ${f}`,
+  /** Für SVG-Filter (drop-shadow kennt keinen negativen Rand): leise statt grell. */
+  svgSchein: (f: string, px = 10) => `drop-shadow(0 0 ${px}px ${f}4D)`,
+  /** Der tiefere Ton einer Akzentfarbe — für Verläufe (Ring, Balken): Farbe mit Tiefe statt flach oder grell. */
+  tiefer: (f: string, anteil = 55) => `color-mix(in srgb, ${f} ${anteil}%, #0B0E10)`,
+  /** Balken-Füllung: vom tiefen Ton in die volle Farbe. */
+  verlauf: (f: string) => `linear-gradient(90deg, color-mix(in srgb, ${f} 55%, #0B0E10), ${f})`,
+  /** Hauptknopf: getönt, farbige Kontur und Schrift — statt Vollfarbe mit Leuchtschatten. */
+  knopf: (f: string) => ({ background: `${f}24`, border: `1px solid ${f}80`, color: f }),
+} as const;
+
 /** Zustandsfarbe in Leuchtstärke — dieselben Schwellen wie zustandFarbe. */
 export function leuchtFarbe(wert: number | null | undefined): string {
   if (wert == null) return FARBE.inkLeise;

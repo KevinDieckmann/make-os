@@ -109,7 +109,7 @@ export function Zeitstrahl({ von, bis, marker, ticks }: { von: string; bis: stri
                 : <span className="zeit-pill" title={titel} style={stil}>{inhalt}</span>}
               {/* Faden vom Pill zur Achse + Punkt auf der Achse */}
               <span style={{ position: 'absolute', left: p.cx - 0.5, top: top + LANE_H - 6, width: 1, height: achseY - (top + LANE_H - 6), background: `${p.m.farbe}40`, zIndex: 1 }} />
-              <span style={{ position: 'absolute', left: p.cx - 3, top: achseY - 3, width: 6, height: 6, borderRadius: '50%', background: p.m.farbe, boxShadow: vergangen ? undefined : `0 0 8px ${p.m.farbe}99`, opacity: vergangen ? 0.45 : 1, zIndex: 3 }} />
+              <span style={{ position: 'absolute', left: p.cx - 3, top: achseY - 3, width: 6, height: 6, borderRadius: '50%', background: p.m.farbe, boxShadow: vergangen ? undefined : `0 0 8px ${p.m.farbe}33`, opacity: vergangen ? 0.45 : 1, zIndex: 3 }} />
             </span>
           );
         })}
@@ -117,7 +117,7 @@ export function Zeitstrahl({ von, bis, marker, ticks }: { von: string; bis: stri
         {/* Überlauf jenseits der Lanes: nur der Punkt, Details im Hover-Titel */}
         {pills.filter(p => p.kompakt).map((p, i) => (
           <span key={`k-${i}`} title={p.m.titel ?? `${p.m.label} · ${p.m.date.slice(8)}.${p.m.date.slice(5, 7)}.`}
-            style={{ position: 'absolute', left: p.cx - 3, top: achseY - 3, width: 6, height: 6, borderRadius: '50%', background: p.m.farbe, boxShadow: `0 0 8px ${p.m.farbe}99`, zIndex: 3 }} />
+            style={{ position: 'absolute', left: p.cx - 3, top: achseY - 3, width: 6, height: 6, borderRadius: '50%', background: p.m.farbe, boxShadow: `0 0 8px ${p.m.farbe}33`, zIndex: 3 }} />
         ))}
 
         {!sichtbar.length && (
@@ -128,12 +128,12 @@ export function Zeitstrahl({ von, bis, marker, ticks }: { von: string; bis: stri
 
         {/* Achse: verstrichene Zeit gefüllt, Rest offen — der Zeitraum als Fortschritt */}
         <div style={{ position: 'absolute', left: 0, right: 0, top: achseY - 1, height: 2, background: ACHSE, borderRadius: 1 }} />
-        <div style={{ position: 'absolute', left: 0, top: achseY - 1, width: `${heuteX * 100}%`, height: 2, background: `linear-gradient(90deg, ${ZEIT}22, ${ZEIT}99)`, borderRadius: 1, boxShadow: `0 0 10px ${ZEIT}55` }} />
+        <div style={{ position: 'absolute', left: 0, top: achseY - 1, width: `${heuteX * 100}%`, height: 2, background: `linear-gradient(90deg, ${ZEIT}22, ${ZEIT}99)`, borderRadius: 1, boxShadow: `0 0 10px ${ZEIT}33` }} />
 
         {/* Heute-Anker */}
         {heuteDrin && (
           <>
-            <div className="zeit-puls" style={{ position: 'absolute', left: heuteX * breite - 4.5, top: achseY - 4.5, width: 9, height: 9, borderRadius: '50%', background: ZEIT, boxShadow: `0 0 12px ${ZEIT}99`, zIndex: 4 }} />
+            <div className="zeit-puls" style={{ position: 'absolute', left: heuteX * breite - 4.5, top: achseY - 4.5, width: 9, height: 9, borderRadius: '50%', background: ZEIT, boxShadow: `0 0 12px ${ZEIT}33`, zIndex: 4 }} />
             <div style={{ position: 'absolute', left: heuteX * breite, top: achseY + 9, transform: 'translateX(-50%)', fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 700, letterSpacing: '.12em', color: ZEIT, whiteSpace: 'nowrap' }}>HEUTE</div>
           </>
         )}

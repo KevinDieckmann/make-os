@@ -8,7 +8,7 @@
 //   2. Grundlage (V1-Export der Selbständigkeit) — nur für Consulting
 //   3. Controlling (Monatsumsatz/-kosten) — nur für die Gesamtsicht
 
-import type { Scope } from './register';
+import type { Scope, Schwelle } from './register';
 import type { FinanceState } from '@/lib/make-one/finance-data';
 import { computeMetrics } from '@/lib/make-one/finance-data';
 import type { Firma, Rechnung, Zahlung, Merkposten, Planposten } from '@/lib/make-one/liquiditaet';
@@ -54,6 +54,10 @@ export interface Bestand {
   fte: Partial<Record<'kdc' | 'kdv', number>>;
   /** MRR-Schnappschüsse: Monat → Kunde → MRR (nur diese Sicht) */
   mrrVerlauf: Record<string, Record<string, number>>;
+  /** Jahresumsatzziel je Firma (Feinjustierung); gesamt kommt aus dem Controlling. */
+  ziele?: Partial<Record<'kdc' | 'kdv', number>>;
+  /** Eigene Schwellen dieser Sicht (Feinjustierung) — überschreiben den Standard. */
+  schwellen?: Record<string, Schwelle>;
 }
 
 export type Messung = { wert: number; anzeige: string; quelle: string } | { luecke: string };
@@ -333,12 +337,11 @@ export const MESSEN: Record<string, (b: Bestand) => Messung> = {
     return { wert: b.traktion.score, anzeige: `${Math.round(b.traktion.score)}`, quelle: b.traktion.text };
   },
   run_rate(b) {
-    if (!b.finance || !(b.finance.zielUmsatz > 0)) return { luecke: 'Jahresziel im Controlling fehlt' };
-    const m = computeMetrics(b.finance, new Date(`${b.heute}T12:00:00`));
-    if (!m.aktiveMonate) return { luecke: 'Keine Ist-Monate im Controlling' };
-    if (m.runRateNoetig <= 0) return { wert: 200, anzeige: 'Ziel erreicht', quelle: `${euro(m.istUmsatz)} von ${euro(b.finance.zielUmsatz)}` };
-    const w = (m.runRateAktuell / m.runRateNoetig) * 100;
-    return { wert: w, anzeige: pz(w), quelle: `Ø ${euro(m.runRateAktuell)}/Monat von nötigen ${euro(m.runRateNoetig)}/Monat` };
+    const k = jahresKurs(b);
+    if ('luecke' in k) return k;
+    if (k.noetig <= 0) return { wert: 200, anzeige: 'Ziel erreicht', quelle: `${euro(k.ist)} von ${euro(k.ziel)} (${k.quelle})` };
+    const w = (k.aktuell / k.noetig) * 100;
+    return { wert: w, anzeige: pz(w), quelle: `Ø ${euro(k.aktuell)}/Monat von nötigen ${euro(k.noetig)}/Monat · Ziel ${euro(k.ziel)} (${k.quelle})` };
   },
   win_rate(b) {
     const q = gewinnquote(chancenInSicht(b));
@@ -346,12 +349,13 @@ export const MESSEN: Record<string, (b: Bestand) => Messung> = {
     return { wert: q.quote, anzeige: pz(q.quote), quelle: `${q.gewonnen} gewonnen, ${q.verloren} verloren (ab Angebot)` };
   },
   pipeline(b) {
-    if (!b.finance || !(b.finance.zielUmsatz > 0)) return { luecke: 'Jahresziel im Controlling fehlt' };
-    const m = computeMetrics(b.finance, new Date(`${b.heute}T12:00:00`));
+    const k = jahresKurs(b);
+    if ('luecke' in k && !k.luecke.startsWith('Keine Ist')) return k;
     const p = prognose(chancenInSicht(b), b.heute);
-    if (m.verbleibend <= 0) return { wert: 99, anzeige: 'Ziel erreicht', quelle: `gewichtete Pipeline ${euro(p.gewichtet)}` };
-    const w = p.gewichtet / m.verbleibend;
-    return { wert: w, anzeige: `${zahl(w, 1)}×`, quelle: `${euro(p.gewichtet)} gewichtet ÷ ${euro(m.verbleibend)} Lücke zum Ziel` };
+    const verbleibend = 'luecke' in k ? zielDer(b) ?? 0 : k.verbleibend;
+    if (verbleibend <= 0) return { wert: 99, anzeige: 'Ziel erreicht', quelle: `gewichtete Pipeline ${euro(p.gewichtet)}` };
+    const w = p.gewichtet / verbleibend;
+    return { wert: w, anzeige: `${zahl(w, 1)}×`, quelle: `${euro(p.gewichtet)} gewichtet ÷ ${euro(verbleibend)} Lücke zum Jahresziel` };
   },
   sales_cycle(b) {
     const grenze = tagMinus(b.heute, 365);
@@ -404,6 +408,35 @@ export const MESSEN: Record<string, (b: Bestand) => Messung> = {
     return { wert: w, anzeige: euro(w), quelle: `${euro(kosten)} Marketing & Vertrieb (12 M) ÷ ${neu} neue Kunden` };
   },
 };
+
+/** Das Jahresumsatzziel der Sicht: gesamt aus dem Controlling, je Firma aus den Einstellungen. */
+function zielDer(b: Bestand): number | null {
+  if (b.scope === 'gesamt') return b.finance && b.finance.zielUmsatz > 0 && b.finance.jahr === Number(b.heute.slice(0, 4)) ? b.finance.zielUmsatz : null;
+  const z = b.ziele?.[b.scope];
+  return z && z > 0 ? z : null;
+}
+
+/**
+ * Kurs aufs Jahresziel: Ist seit Jahresbeginn, Ø je aktivem Monat und der nötige
+ * Monatsumsatz für den Rest des Jahres (laufender Monat zählt als Rest).
+ * Gesamt rechnet wie das Controlling; je Firma aus den Ist-Monaten.
+ */
+function jahresKurs(b: Bestand): { ziel: number; ist: number; aktuell: number; noetig: number; verbleibend: number; quelle: string } | { luecke: string } {
+  const ziel = zielDer(b);
+  if (!ziel) return { luecke: b.scope === 'gesamt' ? 'Jahresziel im Controlling fehlt' : 'Jahresumsatzziel für diese Firma fehlt' };
+  if (b.scope === 'gesamt' && b.finance) {
+    const m = computeMetrics(b.finance, new Date(`${b.heute}T12:00:00`));
+    if (!m.aktiveMonate) return { luecke: 'Keine Ist-Monate im Controlling' };
+    return { ziel, ist: m.istUmsatz, aktuell: m.runRateAktuell, noetig: m.runRateNoetig, verbleibend: m.verbleibend, quelle: 'Controlling' };
+  }
+  const jahr = b.heute.slice(0, 4);
+  const ist = istMonate(b).filter(m => m.monat.startsWith(jahr));
+  if (!ist.length) return { luecke: 'Keine Ist-Monate in diesem Jahr' };
+  const summe = ist.reduce((s, m) => s + m.umsatz, 0);
+  const rest = 12 - (Number(b.heute.slice(5, 7)) - 1);
+  const verbleibend = Math.max(0, ziel - summe);
+  return { ziel, ist: summe, aktuell: summe / ist.length, noetig: rest > 0 ? verbleibend / rest : verbleibend, verbleibend, quelle: quellenText(ist) };
+}
 
 function tagMinus(tag: string, n: number): string {
   const d = new Date(`${tag}T12:00:00Z`);
