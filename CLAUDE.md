@@ -61,8 +61,8 @@ lokal, Route `/os`, Port 3001.
 - **Härtung:** `deploy/server-haerten.sh` (SSH nur Schlüssel, fail2ban, ufw, Auto-Updates
   mit Reboot 04:30, Docker-Log-Grenzen, sysctl), Login-/Code-Drossel (`lib/zugang/drossel.ts`),
   Sicherheits-Header (`deploy/caddy/Caddyfile`), Schriften selbst mitgeliefert (`app/schriften`).
-- **Sicherung:** nachts 03:15 verschlüsselt auf dem Server (14 Tage); Passwort hat Kevin.
-  Empfohlen zusätzlich: Hetzner-Backups.
+- **Sicherung:** nachts 03:15 verschlüsselt auf dem Server (14 Tage; Passwort hat Kevin)
+  und Hetzner-Backups (aktiv seit 25.09., 7 tägliche Abbilder außerhalb des Servers).
 
 ## Technik
 - TypeScript strikt: vor jedem Commit `npx tsc --noEmit` — null Fehler.
