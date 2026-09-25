@@ -24,15 +24,15 @@ export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string): Be
   if (ablauf.length) b.push({ prio: 1, titel: `${ablauf.length} Mandat${ablauf.length > 1 ? 'e' : ''}: Laufzeit endet oder ist vorbei`, grund: ablauf.map(m => m.kunde).join(', '), bereich: 'kunden' });
   const art = kontakte.filter(k => art14(k, heute)?.faellig);
   if (art.length) b.push({ prio: 2, titel: `${art.length} Personen nach Art. 14 informieren`, grund: 'Daten aus Recherche, Frist ein Monat', bereich: 'marketing' });
-  // Nur offene Chancen zählen — wie in der Chancen-Runde (lib/crm/runden.ts).
+  // Nur offene Chancen zählen — Ebene 1 (Leads) endet erst mit einem Deal.
   const mitChance = new Set(crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe)).flatMap(c => c.kontaktIds));
   const ohneChance = kontakte.filter(k => ['gespraech', 'termin', 'angebot'].includes(k.stufe) && !mitChance.has(k.id) && !k.werbesperre);
-  if (ohneChance.length) b.push({ prio: 2, titel: `${ohneChance.length} Kontakte im Gespräch ohne Chance`, grund: 'Chancen-Runde: Wert und nächsten Schritt je Person in wenigen Minuten festhalten', bereich: 'kontakte', ansicht: 'runde-chancen' });
+  if (ohneChance.length) b.push({ prio: 2, titel: `${ohneChance.length} Kontakte im Gespräch ohne Deal`, grund: 'Qualifizierungs-Runde: sechs Kernfragen je Lead — SQL-bereite werden Deals', bereich: 'kontakte', ansicht: 'runde-chancen' });
   // Ohne Kreis kein Pflege-Takt in der Power Hour — die Kreis-Runde sortiert Karte für Karte.
   const ohneKreis = kontakte.filter(k => !k.kreis && !k.werbesperre && (k.lebensphase === 'kunde' || k.prio === 'A' || k.prio === 'B' || ['gespraech', 'termin', 'angebot', 'gewonnen'].includes(k.stufe)));
   if (ohneKreis.length) b.push({ prio: 3, titel: `${ohneKreis.length} wichtige Kontakte ohne Kreis`, grund: 'Kreis-Runde: A/B/C/D und wer die Beziehung hält — dann greift der Pflege-Takt', bereich: 'kontakte', ansicht: 'runde-kreis' });
   const ohneSchritt = offen.filter(c => !c.naechsterSchritt);
-  if (ohneSchritt.length) b.push({ prio: 2, titel: `${ohneSchritt.length} Chancen ohne nächsten Schritt`, grund: 'Ohne Datum verliert sich jede Chance', bereich: 'pipeline' });
+  if (ohneSchritt.length) b.push({ prio: 2, titel: `${ohneSchritt.length} Deals ohne nächsten Schritt`, grund: 'Ohne Datum verliert sich jeder Deal', bereich: 'pipeline' });
   const widersprueche = crm.mandate.filter(m => m.status !== 'beendet' && m.offen.length);
   if (widersprueche.length) b.push({ prio: 3, titel: `${widersprueche.length} Mandate mit offenen Punkten`, grund: `${widersprueche.reduce((a, m) => a + m.offen.length, 0)} Widersprüche und Klärungen`, bereich: 'kunden' });
   const ohneAngaben = kontakte.filter(k => !k.herkunft || !k.rechtsgrundlage).length;

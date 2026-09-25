@@ -15,6 +15,7 @@ import type { Firma, FirmaRolle } from '@/lib/crm/typen';
 import { type CrmApi, datum, euro } from './daten';
 import { Feldzeile, Pillen, Feld, Verlauf } from './teile';
 import { Person } from './team';
+import { LeadBlock } from './Leads';
 import { haeltBeziehung, nameVon } from '@/lib/crm/team';
 
 export const ROLLEN: { id: FirmaRolle; label: string; farbe: string }[] = [
@@ -138,6 +139,7 @@ function FirmenKarte({ f, api, zuPerson }: { f: Firma; api: CrmApi; zuPerson: (i
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>{[f.branche, f.stadt, f.webseite ?? f.domain].filter(Boolean).join(' · ') || '—'}</div>
       </div>
       <Feldzeile label="Rolle"><Pillen liste={ROLLEN.map(r => ({ id: r.id, label: r.label }))} aktiv={f.rolle} onWahl={r => setze({ rolle: r, rolleVonHand: true })} /></Feldzeile>
+      <LeadBlock api={api} leadId={f.id} />
       <div>
         <Ueberschrift rechts={`${personen.length}`}>Personen</Ueberschrift>
         {personen.map(k => <button key={k.id} onClick={() => zuPerson(k.id)} style={{ display: 'flex', width: '100%', justifyContent: 'space-between', gap: 8, background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien, padding: '7px 0', textAlign: 'left' }}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', minWidth: 0 }}><span title={`Hält die Beziehung: ${nameVon(haeltBeziehung(k))}`} style={{ opacity: k.besitzer ? 1 : 0.45, display: 'inline-flex' }}><Person id={haeltBeziehung(k)} groesse={18} /></span>{anzeigename(k)} <span style={{ color: C.inkLeise }}>{k.position ?? k.jobtitel ?? ''}</span></span><span style={{ color: C.inkLeise }}>{k.letzterKontakt ? datum(k.letzterKontakt) : ''} ›</span></button>)}

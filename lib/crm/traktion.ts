@@ -33,7 +33,7 @@ export const WELTEN: { id: Welt; label: string; head: string; gewicht: number; s
 
 /** Welche Kennzahlen Traktion messen — der Rest ist Grundlage. */
 export const IM_SCORE: Record<Welt, string[]> = {
-  sales: ['power_hours', 'gespraeche', 'erstgespraeche', 'ohne_schritt', 'mrr'],
+  sales: ['power_hours', 'gespraeche', 'erstgespraeche', 'sql_30', 'ohne_schritt', 'mrr'],
   marketing: ['veroeffentlichungen', 'content_gespraeche', 'marketing_anteil', 'abmeldequote', 'newsletter_netto'],
   event: ['events_90', 'nachfassen_48h', 'folgegespraeche', 'erscheinen', 'mischung'],
 };

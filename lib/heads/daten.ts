@@ -13,6 +13,7 @@ import { eventZahlen, followUpBis, nachfassenRest } from '@/lib/crm/events';
 import { mix, checklisteStand, zielHinweis, budgetSumme, gaesteVorschlag } from '@/lib/crm/eventplanung';
 import type { HeadId } from './prompt';
 import { PLAYBOOKS, kundenprofil, aehnlicheFirmen, zielgruppe, kampagnenZahlen } from '@/lib/crm/kampagnen';
+import { leads as leadZeilen, fehltBisSql, sqlBereit, geklaert } from '@/lib/crm/leads';
 import { einstellungAus, marketingKennzahlen, wirkungZahlen, newsletterEmpfaenger, abmeldequote } from '@/lib/crm/marketing';
 import { kontextAus, segmentAuswerten } from '@/lib/crm/segmente';
 
@@ -102,6 +103,11 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
       mandate: crm.mandate.filter(m => m.status !== 'beendet').map(m => ({ id: m.id, kunde: m.kunde, titel: kurz(m.titel, 120), status: m.status, honorar: m.honorar, lage: mandatLage(m, heute), offene_punkte: m.offen.slice(0, 5).map(o => kurz(o, 200)), vertrag: m.vertragUnterschrieben, ansprechpartner: m.kontaktIds.map(id => nachId.get(id)).filter((k): k is Kontakt => !!k).slice(0, 2).map(p) })),
       mrr: mrr(crm.mandate), konzentration: konzentration(crm.mandate), gewinnquote: gewinnquote(crm.chancen),
       verlustgruende: Object.entries(verloren.reduce((x, c) => ({ ...x, [c.grund!]: (x[c.grund!] ?? 0) + 1 }), {} as Record<string, number>)),
+      // Ebene 1: Leads in Arbeit mit ihren Kernfragen — die Personen für Vorschläge stehen unter „hauptkontakt“.
+      leads_in_arbeit: leadZeilen(aktiv, crm).filter(z => ['kontaktiert', 'im_gespraech', 'qualifizierung'].includes(z.status) || (sqlBereit(z.kriterien) && !z.deal?.offen && z.status !== 'kunde')).slice(0, 25).map(z => {
+        const haupt = z.personen.map(x => nachId.get(x.id)).filter((k): k is Kontakt => !!k).sort((a, b) => (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? ''))[0];
+        return { lead_id: z.id, name: z.name, status: z.status, kriterien: z.kriterien, geklaert: geklaert(z.kriterien), sql_bereit: sqlBereit(z.kriterien), fehlt: fehltBisSql(z.kriterien), deal: z.deal ?? null, letzter_kontakt: z.letzterKontakt ?? null, hauptkontakt: haupt ? p(haupt) : null };
+      }),
       power_hours_4_wochen: crm.sitzungen.filter(s => s.datum >= new Date(Date.parse(heute) - 28 * 864e5).toISOString().slice(0, 10)).map(s => ({ datum: s.datum, person: s.person, versuche: s.karten.filter(k => k.ergebnis).length, gespraeche: s.karten.filter(k => k.ergebnis === 'gespraech' || k.ergebnis === 'termin').length, termine: s.karten.filter(k => k.ergebnis === 'termin').length })),
     };
   }

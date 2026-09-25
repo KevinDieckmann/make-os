@@ -19,7 +19,7 @@ export const HEAD_NAME: Record<HeadId, string> = { sales: 'Head of Sales', marke
 export const AGENT_ID: Record<HeadId, string> = { sales: 'head-sales', marketing: 'head-marketing', event: 'head-event' };
 
 export const MODI: Record<HeadId, { id: string; label: string }[]> = {
-  sales: [{ id: 'power_hour', label: 'Power Hour vorbereiten' }, { id: 'deal_review', label: 'Deal-Review' }, { id: 'kundenreview', label: 'Kundenreview' }, { id: 'kampagne', label: 'Kampagne planen' }, { id: 'wochenreview', label: 'Wochenreview' }, { id: 'frage', label: 'Frage' }],
+  sales: [{ id: 'power_hour', label: 'Power Hour vorbereiten' }, { id: 'lead_review', label: 'Leads qualifizieren' }, { id: 'deal_review', label: 'Deal-Review' }, { id: 'kundenreview', label: 'Kundenreview' }, { id: 'kampagne', label: 'Kampagne planen' }, { id: 'wochenreview', label: 'Wochenreview' }, { id: 'frage', label: 'Frage' }],
   marketing: [{ id: 'wochenplan', label: 'Wochenplan' }, { id: 'kampagne', label: 'Kampagne planen' }, { id: 'monatsreview', label: 'Monatsreview' }, { id: 'frage', label: 'Frage' }],
   event: [{ id: 'planung', label: 'Planung' }, { id: 'einladung', label: 'Gästeliste' }, { id: 'nachfassen', label: 'Nachfassen' }, { id: 'wirkung', label: 'Wirkung' }, { id: 'frage', label: 'Frage' }],
 };
@@ -28,7 +28,7 @@ export const MODI: Record<HeadId, { id: string; label: string }[]> = {
 export const REVIEW_MODI = new Set(['deal_review', 'kundenreview', 'kampagne', 'wochenreview', 'monatsreview', 'wirkung']);
 
 export const ARTEN: Record<HeadId, string[]> = {
-  sales: ['anrufen', 'nachfassen', 'intro_erbitten', 'angebot_nachfassen', 'qualifizierung_klaeren', 'chance_parken', 'verlaengerung_ansprechen', 'review_ansetzen', 'upsell_pruefen', 'winloss_gespraech', 'grundlage_klaeren', 'kampagne_planen', 'daten_pflegen', 'merken'],
+  sales: ['anrufen', 'nachfassen', 'intro_erbitten', 'sql_anlegen', 'angebot_nachfassen', 'qualifizierung_klaeren', 'chance_parken', 'verlaengerung_ansprechen', 'review_ansetzen', 'upsell_pruefen', 'winloss_gespraech', 'grundlage_klaeren', 'kampagne_planen', 'daten_pflegen', 'merken'],
   marketing: ['beitrag_entwurf', 'newsletter_ausgabe', 'fallstudie_anfragen', 'empfehlung_erbitten', 'lead_magnet', 'einwilligung_einholen', 'info_art14_nachholen', 'einwilligung_auffrischen', 'liste_bereinigen', 'positionierung_schaerfen', 'kampagne_planen', 'merken'],
   event: ['einladen', 'erinnern', 'nachruecken', 'intro_am_abend', 'nachfassen', 'folgetermin', 'format_anpassen', 'co_host_anfragen', 'fotofreigabe_einholen', 'ziel_schaerfen', 'merken'],
 };
@@ -115,9 +115,10 @@ export const SYSTEM: Record<HeadId, string> = {
 2. Tempo zählt: Eine frische Antwort oder ein Termin-Signal wird binnen eines Werktags beantwortet; je älter ein Signal, desto schwächer.
 3. Jeder Vorschlag hat Person, Kanal, Anlass und nächsten Schritt mit Datum — ohne Datum verliert sich jede Chance.
 4. Nur Kanäle aus kanal_erlaubt. Fehlt die Erlaubnis: „grundlage_klaeren“ oder persönliches Gespräch — Werbung ohne Grundlage ist abmahnfähig (§ 7 UWG) und schadet dem Ruf.
-5. Deal-Inspektion: Benenne die fehlende Qualifizierungsfrage (Schmerz, Entscheider, Budget, Zeitpunkt, Wirkung, Alternative) und die negativen Signale aus "signale", statt eine Chance schönzureden. Kein Abschlussdruck — bei Beratungsmandaten schadet er.
-6. Hängt mehr als die Hälfte des wiederkehrenden Umsatzes an einem Kunden, hat Neugeschäft Vorrang.
-7. Widersprüche in Mandaten (Honorar, USt, Laufzeit) sind Befunde — klären lassen, nicht glätten.
+5. Drei Ebenen: Leads (Kontakt/Firma) werden qualifiziert, bis sie SQL sind (Schmerz + Entscheider + Budget oder Zeitpunkt); erst dann Deal (Pipeline ab „SQL“); gewonnen → Mandat. Schlag nie einen Deal vor, dessen Lead nicht qualifiziert ist — schlag stattdessen die fehlende Kernfrage vor.
+6. Deal-Inspektion: Benenne die fehlende Qualifizierungsfrage (Schmerz, Entscheider, Budget, Zeitpunkt, Wirkung, Alternative) und die negativen Signale aus "signale", statt eine Chance schönzureden. Kein Abschlussdruck — bei Beratungsmandaten schadet er.
+7. Hängt mehr als die Hälfte des wiederkehrenden Umsatzes an einem Kunden, hat Neugeschäft Vorrang.
+8. Widersprüche in Mandaten (Honorar, USt, Laufzeit) sind Befunde — klären lassen, nicht glätten.
 </regeln>
 ${RAHMEN}
 ${BEISPIELE.sales}`,
@@ -145,6 +146,7 @@ ${BEISPIELE.event}`,
 
 const AUFGABEN: Record<string, string> = {
   power_hour: 'Bereite die heutige Power Hour vor: Gehe die Karten in "karten" und den "grundlauf" durch. Für die wichtigsten (höchstens fünf) je ein Vorschlag mit Aufhänger und — wenn der Kanal erlaubt ist — einem kurzen Entwurf. Sag in "zusammenfassung" in einem Satz, was heute der eine Schwerpunkt ist.',
+  lead_review: 'Ebene 1 — Leads qualifizieren: Gehe "leads_in_arbeit" durch. SQL-bereite Leads ohne Deal: art "sql_anlegen" (Deal anlegen, Ebene 2). Leads in Qualifizierung: die EINE fehlende Kernfrage ("fehlt") als art "qualifizierung_klaeren" mit der Frage, die man stellt, an den Hauptkontakt (kontakt_id aus "hauptkontakt"). Leads, die seit Wochen stehen: ehrlich „ruht“ vorschlagen statt schönreden.',
   deal_review: 'Prüfe die offenen Chancen mit ihren "signale" und "luecken": Was hängt, welche Qualifizierungsfrage fehlt, wo fehlt ein nächster Schritt mit Datum? Je Chance höchstens eine Handlung — die, die sie am ehesten bewegt.',
   kundenreview: 'Prüfe die Mandate: Laufzeitende, Health, offene Punkte und Widersprüche, Kundenkonzentration. Schlag Verlängerungs-, Review- und Klärungsgespräche vor; Widersprüche als Befunde.',
   wochenreview: 'Wochenrückblick Vertrieb: Power Hours, echte Gespräche, neue Chancen, Pipeline-Bewegung — je Person, wenn Kevin und Malin beide gearbeitet haben. Was lief, was fehlt, was ist nächste Woche der eine Hebel?',

@@ -244,8 +244,8 @@ describe('Wochen-Scoreboard als Nachricht (freitags)', () => {
     expect(t.split('\n')[0]).toBe('Wochen-Scoreboard KW 39 · 21.–27.09.');
     expect(t).toMatch(/• Power Hours: 1 von 4 \(Kevin 0, Malin 1\)/);
     expect(t).toMatch(/• Echte Gespräche: 2 von 8 \(Kevin 1, Malin 1\)/);
-    expect(t).toMatch(/• Neue Chancen: 1 von 1 ✓/);
-    expect(t).toMatch(/• Gewonnene Chancen: 1/);
+    expect(t).toMatch(/• Neue SQL → Deals: 1 von 1 ✓/);
+    expect(t).toMatch(/• Gewonnene Deals: 1/);
     expect(t).toMatch(/• Veröffentlichte Beiträge: 1 von 2/);
     expect(t).toMatch(/• Gespräche aus Content: 1/);
     expect(t).toMatch(/• Durchgeführte Events: 1/);

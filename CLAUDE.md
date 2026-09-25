@@ -140,6 +140,25 @@ lokal, Route `/os`, Port 3001.
   Pflichtangaben (Herkunft Art. 14 / Rechtsgrundlage Art. 6 nur als Vorschlag,
   Übernahme per Klick), Betroffenenanträge, Verzeichnis Art. 30, Export.
   Konzept: `docs/konzepte/crm-sales-marketing-events.md`.
+- **Sales in drei Ebenen (25.09.2026, Kevin: „klare Ebenen“):** `lib/crm/leads.ts`,
+  `/api/crm/lead`, `components/os/crm/Leads.tsx`. **Ebene 1 Leads** = Firma
+  (Account; ohne Firma die Person), `Firma.lead` / `Kontakt.lead` (`Lead`,
+  gesäubert in `lib/crm/lead-form.ts`): Status neu → kontaktiert → im Gespräch
+  → Qualifizierung → **SQL** (+ kein Fit, ruht, Kunde), sechs Kernfragen;
+  **SQL = Schmerz ja + Entscheider ja + (Budget ja oder Zeitpunkt ja)**. Ohne
+  gesetzten Status wird er aus den Personen abgeleitet. „Zum SQL → Deal
+  anlegen“ (Pflicht: nächster Schritt mit Datum) erzeugt den Deal, Kernfragen
+  wandern mit. **Ebene 2 Deals** = Chancen, Pipeline ab Stufe „SQL“ (id bleibt
+  `qualifiziert`); sichtbar heißt es überall „Deal“. Deal gewonnen/verloren
+  spiegelt sich im Lead (Kunde/ruht). **Ebene 3 Kunden**: gewonnener Deal →
+  „Mandat anlegen“ (Firma → Kunde, Personen → Lebensphase Kunde). Sales-Reiter:
+  Heute · 1 Leads · 2 Deals · 3 Kunden · Kampagnen, oben der **Trichter** mit
+  Gespräch→SQL und SQL→gewonnen. Verbunden: LeadBlock in Personen-/Firmenkarte,
+  Qualifizierungs-Runde (ersetzt Chancen-Runde), „+ Gespräch“ legt Deals nur über
+  SQL an, Kampagnen-„Interesse“ → Lead in Qualifizierung, Head of Sales Modus
+  `lead_review` (montags), KPI „Neue SQL · 30 Tage“, „Für dich“ (SQL-bereit,
+  in Qualifizierung), Jarvis `chance_anlegen` setzt den Lead auf SQL. Head-Block
+  in allen Ansichten standardmäßig zugeklappt.
 - **Markttraktion in der Praxis (25.09.2026 abends):** Erfassen ohne Reibung —
   Kanal-Chips sind Links (tel:/mailto:/LinkedIn, nur wenn die Ampel nicht rot
   ist), „Anrufen“ je Power-Hour-Karte, „Wie lief's?“ nach Kalenderterminen

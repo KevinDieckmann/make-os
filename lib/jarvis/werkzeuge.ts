@@ -702,7 +702,11 @@ async function chanceAnlegen(input: Record<string, unknown>, _o: string, person?
     qualifizierung: { schmerz: 'unklar', entscheider: 'unklar', budget: 'unklar', zeitpunkt: 'unklar', wirkung: 'unklar', alternative: 'unklar' },
     gesellschaft: 'offen', besitzer: person ?? 'kevin', angelegt: jetzt, geaendert: jetzt, letzteAktivitaet: jetzt.slice(0, 10),
   }] }));
-  return `Chance angelegt: „${titel}“ (${anzeigename(treffer)}) · Stufe ${stufe}${betrag ? ` · ${betrag} € ${basis === 'monat' ? 'im Monat' : 'einmalig'}` : ' · noch ohne Wert'}${schritt && datum ? ` · nächster Schritt ${datum}` : ' · ohne nächsten Schritt (gilt als gelb)'}. Sichtbar im CRM › Pipeline.`;
+  // Ebene 1 → 2: Der Lead (Firma, sonst Person) ist jetzt SQL — mit Verweis auf diesen Deal.
+  const lead = (alt?: import('@/lib/crm/typen').Lead) => ({ status: 'sql' as const, kriterien: alt?.kriterien ?? { schmerz: 'unklar' as const, entscheider: 'unklar' as const, budget: 'unklar' as const, zeitpunkt: 'unklar' as const, wirkung: 'unklar' as const, alternative: 'unklar' as const }, ...(alt?.notiz ? { notiz: alt.notiz } : {}), sqlAm: jetzt, chanceId: id, geaendert: jetzt, ...(person ? { geaendertVon: person } : {}) });
+  if (treffer.firmaId) await aendereCrm(c => ({ ...c, firmen: c.firmen.map(f => (f.id === treffer.firmaId ? { ...f, lead: lead(f.lead) } : f)) }));
+  else { const { updateJson } = await import('@/lib/store/local-db'); await updateJson<{ kontakte: import('@/lib/make-one/crm').Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === treffer.id ? { ...k, lead: lead(k.lead) } : k)) })); }
+  return `Deal angelegt (Lead ist jetzt SQL): „${titel}“ (${anzeigename(treffer)}) · Stufe ${stufe}${betrag ? ` · ${betrag} € ${basis === 'monat' ? 'im Monat' : 'einmalig'}` : ' · noch ohne Wert'}${schritt && datum ? ` · nächster Schritt ${datum}` : ' · ohne nächsten Schritt (gilt als gelb)'}. Sichtbar in Markttraktion › Sales › Deals.`;
 }
 
 async function crmLage(_i: Record<string, unknown>, _o: string, person?: string): Promise<string> {

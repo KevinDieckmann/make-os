@@ -12,6 +12,7 @@
 // Versendet wird nichts.
 
 import { NextResponse } from 'next/server';
+import { leereKriterien } from '@/lib/crm/leads';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/jarvis/raum';
 import { localDay, tagePlus } from '@/lib/zeit';
@@ -112,15 +113,14 @@ export async function POST(req: Request) {
     const jetzt = new Date().toISOString();
     await aendereCrm(c => {
       const neu = { ...c, kampagnen: c.kampagnen.map(x => (x.id === k.id ? { ...x, ergebnisse: [...x.ergebnisse, { kontaktId: kt.id, ergebnis: erg, am: heute, von }], status: x.status === 'entwurf' ? 'aktiv' as const : x.status, geaendert: jetzt, geaendertVon: person } : x)) };
-      if (erg === 'chance' && !c.chancen.some(ch => ch.kontaktIds.includes(kt.id) && ch.quelleBezug === k.id)) {
-        neu.chancen = [...c.chancen, {
-          id: `ch-${Date.now().toString(36)}`, titel: `${kt.firma ?? anzeigename(kt)} — ${k.name}`.slice(0, 160), kontaktIds: [kt.id], ...(kt.firma ? { firma: kt.firma } : {}),
-          art: 'retainer', wert: { betrag: 0, basis: 'monat' }, stufe: 'qualifiziert', historie: [{ stufe: 'qualifiziert', am: jetzt, von: person }], quelle: 'outreach', quelleBezug: k.id,
-          qualifizierung: { schmerz: 'unklar', entscheider: 'unklar', budget: 'unklar', zeitpunkt: 'unklar', wirkung: 'unklar', alternative: 'unklar' }, gesellschaft: 'offen', besitzer: von, angelegt: jetzt, geaendert: jetzt, letzteAktivitaet: heute,
-        }];
-      }
+      // Ebene 1 (25.09.): „Interesse“ aus einer Kampagne ist noch kein Deal — der Lead der Firma geht in die Qualifizierung.
+      if (erg === 'chance' && kt.firmaId) neu.firmen = c.firmen.map(f => (f.id === kt.firmaId && !['sql', 'kunde'].includes(f.lead?.status ?? '') ? { ...f, lead: { ...(f.lead ?? { kriterien: leereKriterien() }), status: 'qualifizierung' as const, notiz: `${f.lead?.notiz ? `${f.lead.notiz}\n` : ''}Interesse aus Kampagne „${k.name}“ (${heute})`, geaendert: jetzt, geaendertVon: person } } : f));
       return neu;
     });
+    // Ohne Firma liegt der Lead an der Person.
+    if (erg === 'chance' && !kt.firmaId && !['sql', 'kunde'].includes(kt.lead?.status ?? '')) {
+      await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(x => (x.id === kt.id ? { ...x, lead: { ...(x.lead ?? { kriterien: leereKriterien() }), status: 'qualifizierung' as const, notiz: `Interesse aus Kampagne „${k.name}“ (${heute})`, geaendert: jetzt, geaendertVon: person } } : x)) }));
+    }
     return NextResponse.json({ ok: true });
   }
   return NextResponse.json({ ok: false, fehler: 'aktion unbekannt.' }, { status: 400 });

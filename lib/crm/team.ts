@@ -18,6 +18,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
 import type { CrmBestand, CrmListe } from './typen';
 import type { Welt } from './traktion';
+import { leads, sqlBereit } from './leads';
 import { nachbereitung } from './erfassen';
 
 export interface Mitglied { id: string; name: string; farbe: string; verantwortet: Welt[] }
@@ -81,7 +82,7 @@ export function teamFeed(kontakte: Kontakt[], crm: CrmBestand, seit: string, max
     }
   }
   for (const c of crm.chancen) {
-    for (const h of c.historie.slice(1)) if (h.am >= seit && mensch(h.von)) r.push({ person: h.von, zeit: h.am, text: `Chance „${c.titel}“ → ${h.stufe}`, welt: 'sales', ziel: { s: 'sales', a: 'pipeline' } });
+    for (const h of c.historie.slice(1)) if (h.am >= seit && mensch(h.von)) r.push({ person: h.von, zeit: h.am, text: `Deal „${c.titel}“ → ${h.stufe}`, welt: 'sales', ziel: { s: 'sales', a: 'pipeline' } });
   }
   const geaendert = <T extends { geaendert: string; geaendertVon?: string }>(liste: T[], text: (x: T) => string, welt: Welt, ziel: TeamEreignis['ziel']) => {
     for (const x of liste) if (x.geaendert >= seit && mensch(x.geaendertVon)) r.push({ person: x.geaendertVon!, zeit: x.geaendert, text: text(x), welt, ziel });
@@ -111,7 +112,7 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   if (nachbereiten) l.push({ id: 'nachbereiten', welt: 'sales', titel: 'Termine nachbereiten', anzahl: nachbereiten, text: 'wie lief es? ein Tipp in der Power Hour', ziel: { s: 'sales', a: 'heute' } });
   const offen = crm.chancen.filter(c => ['qualifiziert', 'bedarf', 'diagnose', 'angebot', 'abschluss'].includes(c.stufe) && istMeins(c.besitzer, 'sales', person));
   const ohneSchritt = offen.filter(c => !c.naechsterSchritt).length;
-  if (ohneSchritt) l.push({ id: 'chancen-ohne-schritt', welt: 'sales', titel: 'Deine Chancen ohne nächsten Schritt', anzahl: ohneSchritt, text: `von ${offen.length} offenen`, ziel: { s: 'sales', a: 'pipeline' } });
+  if (ohneSchritt) l.push({ id: 'chancen-ohne-schritt', welt: 'sales', titel: 'Deine Deals ohne nächsten Schritt', anzahl: ohneSchritt, text: `von ${offen.length} offenen`, ziel: { s: 'sales', a: 'pipeline' } });
   const reviews = crm.mandate.filter(m => m.status === 'aktiv' && m.naechstesReview && m.naechstesReview <= bald && istMeins(m.zustaendig, 'sales', person)).length;
   if (reviews) l.push({ id: 'reviews', welt: 'sales', titel: 'Kundenreviews in 7 Tagen', anzahl: reviews, text: 'Health bewerten, offene Punkte klären', ziel: { s: 'sales', a: 'kunden' } });
   // Eine Beitrags-Freigabe zählt nur, solange sie nötig ist: an die jetzige Stimme, und die schreibt nicht selbst (lib/crm/marketing.ts freigabeStand).
@@ -132,6 +133,12 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   const nachfasser = (t: CrmBestand['teilnahmen'][number]) => { const e = wer(t.einladenDurch); if (e && e !== BEIDE) return e; const k = nachId.get(t.kontaktId); const h = k ? haeltBeziehung(k) : BEIDE; return h !== BEIDE ? h : zustaendig(eventVon.get(t.eventId)?.zustaendig, 'event'); };
   const nachfassen = crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm && eventIds.has(t.eventId) && nachfasser(t) === person).length;
   if (nachfassen) l.push({ id: 'nachfassen', welt: 'event', titel: 'Gäste nachfassen', anzahl: nachfassen, text: 'die du eingeladen hast oder deren Beziehung du hältst', ziel: { s: 'event' } });
+  // Ebene 1 → 2: Leads, die SQL-bereit sind, aber noch keinen Deal haben — und Leads in Qualifizierung.
+  const meineLeads = leads(kontakte, crm).filter(z => z.besitzer === person || z.besitzer === BEIDE);
+  const sqlOffen = meineLeads.filter(z => sqlBereit(z.kriterien) && !z.deal?.offen && z.status !== 'kunde' && z.status !== 'kein_fit' && z.status !== 'ruht').length;
+  if (sqlOffen) l.push({ id: 'sql_bereit', welt: 'sales', titel: 'SQL-bereit — Deal anlegen', anzahl: sqlOffen, text: 'Schmerz, Entscheider und Budget/Zeitpunkt geklärt', ziel: { s: 'sales', a: 'leads' } });
+  const inQuali = meineLeads.filter(z => z.status === 'qualifizierung' && !sqlBereit(z.kriterien)).length;
+  if (inQuali) l.push({ id: 'qualifizierung', welt: 'sales', titel: 'Leads in Qualifizierung', anzahl: inQuali, text: 'eine Kernfrage klären bringt sie zum SQL', ziel: { s: 'sales', a: 'leads' } });
   const kampagnen = (crm.kampagnen ?? []).filter(k => k.status === 'aktiv' && istMeins(k.zustaendig, 'sales', person));
   const kpOffen = kampagnen.reduce((a, k) => { const e = new Set(k.ergebnisse.map(x => x.kontaktId)); return a + k.kontaktIds.filter(id => !e.has(id)).length; }, 0);
   if (kpOffen) l.push({ id: 'kampagnen', welt: 'sales', titel: 'Personen aus deinen Kampagnen', anzahl: kpOffen, text: 'noch nicht angesprochen', ziel: { s: 'sales', a: 'kampagnen' } });

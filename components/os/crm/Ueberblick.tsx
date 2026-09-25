@@ -177,7 +177,8 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
             {!d.befunde.length ? <Leer>Nichts Rotes — alles im Rahmen.</Leer> : (
               <Liste>
                 {befunde.map((b, i) => {
-                  const w = BEFUND_WELT[b.bereich];
+                  // Runden aus der Kartei, die in Sales wirken (Qualifizierung), zählen zu Sales.
+                  const w = b.ansicht === 'runde-chancen' ? 'sales' : BEFUND_WELT[b.bereich];
                   return <Zeile key={i} onClick={() => zuBereich(b.bereich, b.ansicht)} links={<Punkt farbe={PRIO[b.prio]} />}
                     titel={<span style={{ whiteSpace: 'normal' }}>{b.titel}</span>} unter={<span style={{ whiteSpace: 'normal' }}>{b.grund}</span>}
                     rechts={<span style={{ fontSize: 11.5, color: w ? WELT_FARBE[w] : C.inkLeise, whiteSpace: 'nowrap' }}>{w ? WELT_LABEL[w] : 'Grundlage'} ›</span>} />;

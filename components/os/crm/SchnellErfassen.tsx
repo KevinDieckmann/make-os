@@ -24,7 +24,7 @@ import { anzeigename, findeKontakte, STUFE_LABEL, type Kontakt, type Ergebnis, t
 import { haeltBeziehung, BEIDE } from '@/lib/crm/team';
 import type { ChancenStufe, WertBasis } from '@/lib/crm/typen';
 import { localDay } from '@/lib/zeit';
-import { type CrmApi, neueId, plusTage } from './daten';
+import { type CrmApi, plusTage } from './daten';
 import { NotizFormular, Pillen, festhalten, hatMailEinwilligung, ERGEBNIS_KNOEPFE, type NotizErgebnis } from './teile';
 import { Person } from './team';
 
@@ -119,26 +119,29 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
     } finally { setLaeuft(false); }
   }
 
-  /** Mit Notiz: erst die Chance (damit die Aktivität an ihr hängt), dann Verlauf, dann ggf. die Einwilligung. */
+  /**
+   * Mit Notiz: erst der Deal (damit die Aktivität an ihm hängt), dann Verlauf, dann ggf. die Einwilligung.
+   * Der Deal entsteht über die Lead-Ebene (/api/crm/lead „sql“): Der Lead der Firma bzw. Person wird SQL —
+   * so bleiben die Ebenen sauber, auch wenn die Qualifizierung erst im Gespräch klar wurde (dann vermerkt).
+   */
   async function speichern(x: NotizErgebnis) {
     if (!k || laeuft) return;
     setLaeuft(true); setFehler('');
     try {
       let chanceId: string | undefined;
       if (chance && chance.titel.trim()) {
-        chanceId = neueId('ch');
         const betrag = Math.max(0, Math.round(Number(chance.betrag.replace(/\./g, '').replace(',', '.')) || 0));
         const schritt = chance.schritt.trim() ? { text: chance.schritt.trim(), datum: chance.datum } : x.naechster;
-        await api.setze('chancen', {
-          id: chanceId, titel: chance.titel.trim(), kontaktIds: [k.id], ...(k.firma ? { firma: k.firma } : {}),
-          art: chance.basis === 'monat' ? 'retainer' : 'projekt', wert: { betrag, basis: chance.basis }, stufe: chance.stufe,
-          historie: [], qualifizierung: {}, gesellschaft: 'offen', besitzer: besitzer(k), angelegt: new Date().toISOString(),
-          ...(schritt ? { naechsterSchritt: schritt } : {}),
-        });
+        if (!schritt) { setFehler('Für den Deal braucht es einen nächsten Schritt mit Datum.'); return; }
+        const r = await fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'sql', id: k.firmaId ?? k.id, trotzdem: true,
+          deal: { titel: chance.titel.trim(), art: chance.basis === 'monat' ? 'retainer' : 'projekt', betrag, basis: chance.basis, schritt, besitzer: besitzer(k), kontaktIds: [k.id] } }) }).then(y => y.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' }));
+        if (!r.ok) { setFehler(r.fehler ?? 'Deal nicht angelegt.'); return; }
+        chanceId = r.chanceId;
+        void api.laden();
       }
       const r = await festhalten(api, { id: k.id, art, ...(ergebnis ? { ergebnis } : {}), notiz: x.notiz, naechster: x.naechster, ...(chanceId ? { bezug: chanceId } : {}) }, x.einwilligung, heute);
       if (r.error || !r.kontakt) { setFehler(r.error ?? 'Nicht gespeichert.'); return; }
-      erledigt([`${anzeigename(k)} · festgehalten`, chanceId && 'Chance angelegt', x.einwilligung && 'Einwilligung für Mail', x.naechster && `nächster Schritt ${x.naechster.datum.slice(8, 10)}.${x.naechster.datum.slice(5, 7)}.`].filter(Boolean).join(' · '));
+      erledigt([`${anzeigename(k)} · festgehalten`, chanceId && 'SQL → Deal angelegt', x.einwilligung && 'Einwilligung für Mail', x.naechster && `nächster Schritt ${x.naechster.datum.slice(8, 10)}.${x.naechster.datum.slice(5, 7)}.`].filter(Boolean).join(' · '));
     } finally { setLaeuft(false); }
   }
 
@@ -223,7 +226,7 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
                     <div>
                       {!chance ? (
                         <button onClick={() => setChance({ titel: k.firma ?? anzeigename(k), betrag: '', basis: 'monat', stufe: stufen[0]?.id ?? 'qualifiziert', schritt: '', datum: plusTage(heute, 5) })}
-                          className="fassbar" style={{ minHeight: 40, padding: '8px 14px', borderRadius: 11, border: `1px dashed ${LEUCHT.achtung}66`, background: 'transparent', color: LEUCHT.achtung, fontWeight: 600, fontSize: TYP.bedien, cursor: 'pointer', fontFamily: SCHRIFT.text }}>+ Chance anlegen</button>
+                          className="fassbar" style={{ minHeight: 40, padding: '8px 14px', borderRadius: 11, border: `1px dashed ${LEUCHT.achtung}66`, background: 'transparent', color: LEUCHT.achtung, fontWeight: 600, fontSize: TYP.bedien, cursor: 'pointer', fontFamily: SCHRIFT.text }}>+ Deal anlegen (SQL)</button>
                       ) : (
                         <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: `${LEUCHT.achtung}0d`, border: `1px solid ${LEUCHT.achtung}33` }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -235,7 +238,7 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
                             <input value={chance.betrag} inputMode="numeric" aria-label="Wert in Euro" placeholder="Wert €" onChange={e => setChance({ ...chance, betrag: e.target.value })} style={{ ...feld, width: 130, fontSize: TYP.bedien, padding: '9px 12px' }} />
                             <Pillen liste={[{ id: 'monat', label: '€ / Monat' }, { id: 'einmalig', label: 'einmalig' }]} aktiv={chance.basis} onWahl={(basis: WertBasis) => setChance({ ...chance, basis })} farbe={LEUCHT.achtung} />
                           </div>
-                          {stufen.length > 0 && <Pillen liste={stufen.map(s => ({ id: s.id, label: s.label }))} aktiv={chance.stufe} onWahl={(stufe: ChancenStufe) => setChance({ ...chance, stufe })} farbe={LEUCHT.achtung} />}
+                          <div style={{ fontSize: 12, color: C.inkLeise }}>Der Deal startet in der Pipeline auf Stufe „SQL“ — der Lead wird SQL (Ebene 1 → 2).</div>
                           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                             <input value={chance.schritt} aria-label="Nächster Schritt der Chance" placeholder="Nächster Schritt (sonst der aus der Notiz)" onChange={e => setChance({ ...chance, schritt: e.target.value })} style={{ ...feld, flex: 1, minWidth: 180, fontSize: TYP.bedien, padding: '9px 12px' }} />
                             <input type="date" value={chance.datum} aria-label="Datum des nächsten Schritts" onChange={e => setChance({ ...chance, datum: e.target.value })} style={{ ...feld, width: 'auto', fontSize: TYP.bedien, padding: '9px 12px' }} />

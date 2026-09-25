@@ -41,6 +41,10 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
   const [ablehnen, setAblehnen] = useState<string | null>(null);
   const [bearbeiten, setBearbeiten] = useState<{ id: string; text: string } | null>(null);
   const [merk, setMerk] = useState('');
+  // Zugeklappt eine Zeile — sonst drückt der Head in jeder Ansicht die eigentliche Arbeit (Pipeline, Leads) nach unten. Je Head gemerkt.
+  const [auf, setAufRoh] = useState(false);
+  useEffect(() => { try { setAufRoh(localStorage.getItem(`mt-head-auf-${head}`) === '1'); } catch { /* egal */ } }, [head]);
+  const setAuf = (x: boolean) => { setAufRoh(x); try { localStorage.setItem(`mt-head-auf-${head}`, x ? '1' : '0'); } catch { /* egal */ } };
   const laden = useCallback(() => fetch(`/api/heads/${head}`, { cache: 'no-store' }).then(r => r.json()).then(d => d.ok && setS(d)).catch(() => {}), [head]);
   useEffect(() => { void laden(); }, [laden]);
   const post = (body: Record<string, unknown>) => fetch(`/api/heads/${head}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' }));
@@ -52,7 +56,8 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
     const b = r.bericht as HeadBericht | undefined;
     setMeldung(!r.ok ? r.fehler : r.ohneKi ? r.ruhigText : `${r.neu ?? 0} neue Vorschläge${r.auto ? ` · ${r.auto} selbst erledigt` : ''}${b?.quelle === 'regelwerk' ? ` · Regelwerk (${b.ohneKiGrund})` : ''}${b?.pruefung?.gestrichen?.length ? ` · ${b.pruefung.gestrichen.length} vom Prüfer gestrichen` : ''}`);
     if (modus === 'frage') setFrage('');
-    void laden(); setOffen(true);
+    // Nach einem Lauf aufklappen — man will sehen, was er vorschlägt.
+    void laden(); setOffen(true); if (r.ok && !r.ohneKi) setAuf(true);
   };
   const entscheide = async (id: string, status: string, extra: Record<string, unknown> = {}) => {
     const r = await post({ aktion: 'entscheiden', id, status, ...extra });
@@ -71,11 +76,26 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
   const name = s?.name ?? (head === 'sales' ? 'Head of Sales' : head === 'marketing' ? 'Head of Marketing' : 'Head of Event');
   const q = s?.qualitaet;
 
+  if (!auf) return (
+    <Karte i={i} akzent={vorschlaege.length ? LEUCHT.agenten : undefined}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: LEUCHT.agenten, boxShadow: `0 0 8px ${LEUCHT.agenten}` }} />
+        <b style={{ fontSize: 12, fontWeight: 700, color: C.inkDim, letterSpacing: '.08em', textTransform: 'uppercase' }}>{name}</b>
+        {bericht && <Chip farbe={STATUS_FARBE[bericht.antwort.status]}>{bericht.antwort.status}</Chip>}
+        <span style={{ flex: 1, minWidth: 120, fontSize: 12.5, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bericht?.antwort.zusammenfassung ?? s?.ruhig?.text ?? 'Noch kein Lauf.'}</span>
+        <Knopf leise aus={!!laeuft} onClick={() => lauf(standardModus)}>{laeuft === standardModus ? 'denkt …' : s?.modi.find(m => m.id === standardModus)?.label ?? 'Lauf'}</Knopf>
+        <Knopf leise onClick={() => setAuf(true)}>{vorschlaege.length ? `${vorschlaege.length} zur Freigabe ›` : 'öffnen ›'}</Knopf>
+      </div>
+      {meldung && <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
+    </Karte>
+  );
+
   return (
     <Karte i={i} akzent={LEUCHT.agenten}>
       <Ueberschrift farbe={LEUCHT.agenten} rechts={<span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         {bericht && <Chip farbe={STATUS_FARBE[bericht.antwort.status]}>{bericht.antwort.status}</Chip>}
         <Knopf leise aus={!!laeuft} onClick={() => lauf(standardModus)}>{laeuft === standardModus ? 'denkt …' : s?.modi.find(m => m.id === standardModus)?.label ?? 'Lauf'}</Knopf>
+        <button onClick={() => setAuf(false)} aria-label="Zuklappen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 14 }}>▴</button>
       </span>}>{name}{vorschlaege.length ? ` · ${vorschlaege.length} zur Freigabe` : ''}</Ueberschrift>
       {bericht ? <p style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.5, margin: 0 }}>{bericht.antwort.zusammenfassung}</p>
         : s?.ruhig ? <p style={{ fontSize: TYP.bedien, color: C.inkDim, margin: 0 }}>{s.ruhig.text}</p>

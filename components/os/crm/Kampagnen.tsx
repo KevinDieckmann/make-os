@@ -35,7 +35,7 @@ interface Daten {
 const STATUS: { id: Kampagne['status']; label: string }[] = [{ id: 'entwurf', label: 'Entwurf' }, { id: 'aktiv', label: 'Aktiv' }, { id: 'abgeschlossen', label: 'Abgeschlossen' }, { id: 'abgebrochen', label: 'Abgebrochen' }];
 const ERGEBNISSE: { id: KampagnenErgebnis; label: string; farbe: string }[] = [
   { id: 'angesprochen', label: 'angesprochen', farbe: LEUCHT.puls }, { id: 'reagiert', label: 'reagiert', farbe: LEUCHT.achtung }, { id: 'gespraech', label: 'Gespräch', farbe: LEUCHT.gut },
-  { id: 'chance', label: 'Chance', farbe: LEUCHT.business }, { id: 'kein_interesse', label: 'kein Interesse', farbe: C.inkLeise },
+  { id: 'chance', label: 'Interesse → Lead', farbe: LEUCHT.business }, { id: 'kein_interesse', label: 'kein Interesse', farbe: C.inkLeise },
 ];
 const KANAL_LABEL: Record<string, string> = { persoenlich: 'persönlich', telefon: 'Telefon', mail: 'Mail', linkedin: 'LinkedIn', event: 'Event', mix: 'gemischt' };
 /** Einzeländerung: nur diese Felder; „undefined“ heißt leeren (als '' gesendet — der Server lässt das Feld dann weg). */
@@ -100,7 +100,7 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
                 <div key={k.id}>
                   <Zeile onClick={() => setOffen(offen === k.id ? null : k.id)} aktiv={offen === k.id}
                     links={<Punkt farbe={k.status === 'aktiv' ? LEUCHT.gut : k.status === 'entwurf' ? LEUCHT.achtung : C.inkLeise} />}
-                    titel={k.name} unter={z ? `${z.personen} Personen · ${z.angesprochen} angesprochen · ${z.gespraeche} Gespräche · ${z.chancen} Chancen${z.schritteFaellig ? ` · ${z.schritteFaellig} Schritte fällig` : ''}` : ''}
+                    titel={k.name} unter={z ? `${z.personen} Personen · ${z.angesprochen} angesprochen · ${z.gespraeche} Gespräche · ${z.chancen} Leads${z.schritteFaellig ? ` · ${z.schritteFaellig} Schritte fällig` : ''}` : ''}
                     rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>{k.von !== 'hand' && <Chip farbe={LEUCHT.agenten}>{k.von === 'head-sales' ? 'Head of Sales' : 'Head of Marketing'}</Chip>}<Chip farbe={C.inkDim}>{STATUS.find(s => s.id === k.status)?.label}</Chip><Person id={zustaendig(k.zustaendig, 'sales')} groesse={18} /></span>} />
                   {offen === k.id && <KampagnenDetail k={k} api={api} pb={d.playbooks.find(p => p.id === k.playbook)} z={z} heute={d.heute} post={post} zuKontakt={zuKontakt} />}
                 </div>
@@ -182,7 +182,7 @@ function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagn
           {jePerson.map(x => (
             <span key={x.person || 'ohne'} style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
               {x.person ? <Person id={x.person} name groesse={18} /> : <span style={{ color: C.inkLeise }}>ohne Angabe</span>}
-              <span>{x.angesprochen} angesprochen · {x.gespraeche} Gespräche{x.chancen ? ` · ${x.chancen} Chancen` : ''}</span>
+              <span>{x.angesprochen} angesprochen · {x.gespraeche} Gespräche{x.chancen ? ` · ${x.chancen} Leads` : ''}</span>
             </span>
           ))}
         </div>
@@ -238,7 +238,7 @@ function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagn
         {!personen.length && <Leer>Keine Personen — über die Suche hinzufügen.</Leer>}
         <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Person hinzufügen …" aria-label="Person hinzufügen" style={{ marginTop: 8, width: '100%', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, padding: '8px 11px', color: C.ink, fontSize: TYP.bedien }} />
         {treffer.map(x => <button key={x.id} onClick={() => { void setze({ kontaktIds: [...k.kontaktIds, x.id] }); setSuche(''); }} style={{ display: 'block', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: '3px 0' }}>+ {anzeigename(x)}{x.firma ? ` · ${x.firma}` : ''}</button>)}
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Jedes Ergebnis landet im Verlauf der Person — mit dir als der Person, die angesprochen hat; „Chance“ legt eine Chance in der Pipeline an (Quelle: diese Kampagne, geführt von dir).</div>
+        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Jedes Ergebnis landet im Verlauf der Person — mit dir als der Person, die angesprochen hat; „Interesse → Lead“ setzt den Lead der Firma in die Qualifizierung (Ebene 1) — zum Deal wird er erst als SQL.</div>
       </div>
       <Feldzeile label="Notiz"><Feld wert={k.notiz} onFertig={notiz => setze({ notiz: notiz || undefined })} /></Feldzeile>
       <div><button onClick={() => { if (window.confirm('Kampagne löschen? Ergebnisse im Verlauf der Personen bleiben.')) void api.weg('kampagnen', k.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>Löschen</button></div>

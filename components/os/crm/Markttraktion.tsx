@@ -47,8 +47,8 @@ const GRUNDLAGE: { id: Bereich; label: string }[] = [{ id: 'kontakte', label: 'K
 const SALES: { id: SalesAnsicht; label: string }[] = [{ id: 'heute', label: 'Heute · Power Hour' }, { id: 'leads', label: '1 · Leads' }, { id: 'pipeline', label: '2 · Deals' }, { id: 'kunden', label: '3 · Kunden' }, { id: 'kampagnen', label: 'Kampagnen' }];
 
 const UNTER: Record<Bereich, string> = {
-  ueberblick: 'Sales, Marketing und Event als ein System — gemessen an Gesprächen und Chancen, nicht an Lautstärke.',
-  sales: 'Versprechen vor Signalen vor Chancen — und nur über Kanäle, die zulässig sind.',
+  ueberblick: 'Sales, Marketing und Event als ein System — gemessen an Gesprächen und Deals, nicht an Lautstärke.',
+  sales: 'Leads qualifizieren, Deals schließen, Kunden halten — nur über Kanäle, die zulässig sind.',
   marketing: 'Ansprechbar sein, nicht laut.',
   event: 'Erfolgreich ist ein Event, wenn danach die richtigen Gespräche stattfinden.',
   kontakte: 'Jede Person mit ihrer ganzen Geschichte.',
@@ -117,7 +117,7 @@ export function MarkttraktionSeite() {
           <SalesTrichter api={api} zuBereich={zuBereich} />
           <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={SALES} aktiv={sales} onWahl={a => gehe('sales', a === 'heute' ? undefined : a)} /></div>
           {sales === 'heute' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
-          {sales === 'leads' && <Leads api={api} zuKontakt={zuKontakt} zuDeal={() => gehe('sales', 'pipeline')} />}
+          {sales === 'leads' && <Leads api={api} zuKontakt={zuKontakt} zuDeal={() => gehe('sales', 'pipeline')} start={params.get('k') ?? undefined} />}
           {sales === 'pipeline' && <Pipeline api={api} zuKontakt={zuKontakt} zuLeads={() => gehe('sales', 'leads')} />}
           {sales === 'kunden' && <Kunden api={api} zuKontakt={zuKontakt} />}
           {sales === 'kampagnen' && <Kampagnen api={api} zuKontakt={zuKontakt} head="sales" />}

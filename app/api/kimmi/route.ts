@@ -464,7 +464,7 @@ export async function POST(req: Request) {
       },
       {
         name: 'chance_anlegen',
-        description: 'Legt eine Chance in der Pipeline an („für Acme eine Chance, 3.000 im Monat, nächster Schritt Angebot bis Freitag“). Ohne Wert und nächsten Schritt gilt sie als gelb.',
+        description: 'Legt einen Deal in der Pipeline an und macht den Lead (Firma bzw. Person) zum SQL — nur, wenn qualifiziert (Schmerz, Entscheider, Budget oder Zeitpunkt). Sonst lieber die fehlende Kernfrage klären. („für Acme eine Chance, 3.000 im Monat, nächster Schritt Angebot bis Freitag“). Ohne Wert und nächsten Schritt gilt sie als gelb.',
         input_schema: { type: 'object', properties: {
           kontakt: { type: 'string', description: 'Person: Name, Firma oder ID' },
           titel: { type: 'string' },

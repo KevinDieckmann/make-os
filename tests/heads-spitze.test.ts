@@ -42,7 +42,7 @@ describe('Grundlauf — Vorschläge ohne Modell', () => {
   it('ohne Daten: ruhig mit Datenlücke statt erfundener Arbeit', () => {
     const g = grundlauf('sales', 'deal_review', { meta: { heute: HEUTE }, chancen: [] }).antwort;
     expect(g.status).toBe('ruhig');
-    expect(g.datenluecken[0]).toContain('Keine offene Chance');
+    expect(g.datenluecken[0]).toContain('Kein offener Deal');
   });
 });
 

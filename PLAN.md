@@ -261,6 +261,14 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Daten nur eigene (Masterdatei + Brain). Offen: Anthropic-Guthaben aufladen
 > (Agenten laufen sonst nicht), Kaltakquise-Liste Berlin erst nach Kevins Wort.
 
+> **Nachtrag 25.09. (Nacht) — Sales in drei Ebenen.** Kevin: „Kontakt-/Firmen-Ebene,
+> wo wir qualifizieren und es ein SQL wird; im Closing Deal-Ebene und Pipeline —
+> sauber eingebaut, heute brauchbar.“ Gebaut: Leads (Firma/Person, Status bis SQL,
+> sechs Kernfragen), SQL → Deal mit einem Klick, Deals ab Stufe „SQL“, gewonnen →
+> Mandat; Trichter über alle Ebenen; überall verbunden (Kartei, Firmen, Runde,
+> „+ Gespräch“, Kampagnen, Head of Sales, KPI, Jarvis). Begriff „Chance“ heißt
+> sichtbar „Deal“. 618 Tests.
+
 > **Nachtrag 25.09. (spät) — Markttraktion in der Praxis.** Befund aus echten
 > Daten: 2 Aktivitäten in 453 Kontakten, 0 mit Rechtsgrundlage, 438 ohne Kreis,
 > 0 Chancen trotz 17 im Gespräch, kein Anruf-Link, kein Push. Gebaut: Erfassen

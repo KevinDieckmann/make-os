@@ -353,6 +353,6 @@ function KarteUebergeben({ k, api }: { k: HeuteKarte; api: CrmApi }) {
 function leerText(d: HeuteAntwort): string {
   const v = nameVon(d.verantwortlich);
   if (d.nurLesen) return `Bei ${nameVon(d.person)} liegt heute nichts. Kontakte verteilen: in Markttraktion › Kontakte eingrenzen (Suche oder Ansicht), dann „Diese … übergeben“ — oder einzeln an der Person „Übergeben“.`;
-  if (d.ich !== d.verantwortlich) return `Deine Liste ist heute leer. Sales verantwortet ${v}: ${v} verteilt Kontakte an dich (Markttraktion › Kontakte eingrenzen, dann „Diese … übergeben“) oder übergibt einzelne Personen, Chancen und Mandate — die tauchen dann hier auf. Eigene Kontakte trägst du in der Kartei unter „Hält die Beziehung“ auf dich ein.`;
-  return 'Heute ist niemand dran. Neue Chancen anlegen, Kreise vergeben oder Einwilligungen klären — dann füllt sich die Liste.';
+  if (d.ich !== d.verantwortlich) return `Deine Liste ist heute leer. Sales verantwortet ${v}: ${v} verteilt Kontakte an dich (Markttraktion › Kontakte eingrenzen, dann „Diese … übergeben“) oder übergibt einzelne Personen, Deals und Mandate — die tauchen dann hier auf. Eigene Kontakte trägst du in der Kartei unter „Hält die Beziehung“ auf dich ein.`;
+  return 'Heute ist niemand dran. Leads qualifizieren, Kreise vergeben oder Einwilligungen klären — dann füllt sich die Liste.';
 }

@@ -25,6 +25,7 @@ export function kennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: string):
   const gespraeche7 = akt.filter(a => a.am.slice(0, 10) >= vor7 && echtesGespraech(a)).length;
   const erste = kontakte.filter(k => { const g = (k.aktivitaeten ?? []).filter(echtesGespraech).map(a => a.am.slice(0, 10)).sort()[0]; return g && g >= vor30; }).length;
   const offen = crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe));
+  const sql30 = crm.chancen.filter(c => c.angelegt.slice(0, 10) >= vor30 && c.angelegt.slice(0, 10) <= heute).length;
   const ohneSchritt = offen.filter(c => !c.naechsterSchritt).length;
   const p = prognose(crm.chancen, heute, crm.wahrscheinlichkeiten);
   const m = mrr(crm.mandate), kz = konzentration(crm.mandate);
@@ -37,7 +38,9 @@ export function kennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: string):
     { id: 'power_hours', label: 'Power Hours · 7 Tage', wert: phJe ? ph7 : null, anzeige: phJe ? String(ph7) : '—', ampel: phJe ? stufe(ph7, 4, 2) : 'grau', ziel: '≥ 4 je Woche', quelle: `${crm.sitzungen.length} Power Hours insgesamt` },
     { id: 'gespraeche', label: 'Echte Gespräche · 7 Tage', wert: hatVerlauf ? gespraeche7 : null, anzeige: hatVerlauf ? String(gespraeche7) : '—', ampel: hatVerlauf ? stufe(gespraeche7, 8, 4) : 'grau', ziel: '≥ 8 je Woche', quelle: 'Gespräche und Termine im Verlauf' },
     { id: 'erstgespraeche', label: 'Neue Erstgespräche · 30 Tage', wert: hatVerlauf ? erste : null, anzeige: hatVerlauf ? String(erste) : '—', ampel: hatVerlauf ? stufe(erste, 4, 2) : 'grau', ziel: '≥ 4 je Monat', quelle: 'erstes Gespräch je Person' },
-    { id: 'ohne_schritt', label: 'Chancen ohne nächsten Schritt', wert: offen.length ? ohneSchritt : null, anzeige: offen.length ? String(ohneSchritt) : '—', ampel: offen.length ? stufe(ohneSchritt, 0, 2, false) : 'grau', ziel: '0', quelle: `${offen.length} offene Chancen` },
+    // Ebene 1 → 2 (25.09.): Wie viele Leads wurden in 30 Tagen zum SQL, also zum Deal?
+    { id: 'sql_30', label: 'Neue SQL · 30 Tage', wert: crm.chancen.length ? sql30 : null, anzeige: crm.chancen.length ? String(sql30) : '—', ampel: crm.chancen.length ? stufe(sql30, 2, 1) : 'grau', ziel: '≥ 2 je Monat', quelle: 'Leads, die zum Deal wurden (angelegte Deals)' },
+    { id: 'ohne_schritt', label: 'Deals ohne nächsten Schritt', wert: offen.length ? ohneSchritt : null, anzeige: offen.length ? String(ohneSchritt) : '—', ampel: offen.length ? stufe(ohneSchritt, 0, 2, false) : 'grau', ziel: '0', quelle: `${offen.length} offene Deals` },
     { id: 'pipeline', label: 'Pipeline gewichtet', wert: offen.length ? p.gewichtet : null, anzeige: offen.length ? `${Math.round(p.gewichtet / 1000)} T€` : '—', ampel: 'grau', ziel: '≥ 3 × Umsatzlücke 90 Tage', quelle: `offen ${Math.round(p.offen / 1000)} T€, Commit ${Math.round(p.commit / 1000)} T€` },
     { id: 'mrr', label: 'Wiederkehrend je Monat', wert: m || null, anzeige: m ? `${(m / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 })} T€` : '—', ampel: kz ? (kz.anteil > 50 ? 'rot' : 'gruen') : 'grau', ziel: 'größter Kunde ≤ 50 %', quelle: kz ? `größter Kunde ${kz.kunde}: ${kz.anteil} %` : 'keine aktiven Monatsmandate' },
     { id: 'ansprechbar', label: 'Ansprechbar', wert: ansprechbar, anzeige: `${ansprechbar}/${aktiv.length}`, ampel: aktiv.length ? stufe(ansprechbar / aktiv.length, 0.3, 0.15) : 'grau', ziel: 'Anteil mit zulässigem Kanal steigt', quelle: 'Kanal-Ampel grün oder gelb (ohne Vernetzen)' },

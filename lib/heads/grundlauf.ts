@@ -41,7 +41,7 @@ export function grundlauf(head: HeadId, modus: string, daten: Record<string, unk
   if (head === 'sales' && modus === 'power_hour') {
     const karten = (daten.karten as Karte[] | undefined) ?? [];
     const ART: Record<string, string> = { versprechen: 'nachfassen', signale: 'nachfassen', chancen: 'angebot_nachfassen', kunden: 'review_ansetzen', pflege: 'anrufen', neu: 'intro_erbitten' };
-    const VERB: Record<string, string> = { versprechen: 'Zusage einlösen', signale: 'Antworten', chancen: 'Chance bewegen', kunden: 'Kunde', pflege: 'Melden', neu: 'Erstkontakt' };
+    const VERB: Record<string, string> = { versprechen: 'Zusage einlösen', signale: 'Antworten', chancen: 'Deal bewegen', kunden: 'Kunde', pflege: 'Melden', neu: 'Erstkontakt' };
     const signal = (c: Karte): Vorschlag['signal'] => {
       const antwort = [...(c.verlauf ?? [])].reverse().find(x => x.art === 'antwort');
       if (c.kategorie === 'versprechen') return { typ: 'zusage', datum: c.naechster_schritt?.datum ?? heute, text: kurz(c.gruende[0], 90) };
@@ -62,6 +62,20 @@ export function grundlauf(head: HeadId, modus: string, daten: Record<string, unk
     if (karten.length) befunde.push({ titel: 'Schwerpunkt heute', text: zahl('versprechen') ? `${zahl('versprechen')} Zusage(n) zuerst — eine gebrochene Zusage kostet mehr als ein neuer Kontakt bringt.` : zahl('signale') ? `${zahl('signale')} Person(en) warten auf Antwort.` : `Pflege und neue Kontakte — ${karten.length} Karten.`, quelle: ['karten'] });
   }
 
+  if (head === 'sales' && modus === 'lead_review') {
+    type LeadD = { lead_id: string; name: string; status: string; sql_bereit: boolean; fehlt: string[]; geklaert: number; deal: { offen: boolean } | null; letzter_kontakt: string | null; hauptkontakt: P | null };
+    const ls = (daten.leads_in_arbeit as LeadD[] | undefined) ?? [];
+    const FRAGE: Record<string, string> = { Schmerz: 'Welches Problem kostet sie heute Geld oder Zeit?', Entscheider: 'Wer entscheidet und zahlt — sprechen wir mit ihr oder ihm?', 'Budget oder Zeitpunkt': 'Bis wann muss es gelöst sein, und gibt es einen Rahmen?' };
+    ls.forEach((l, i) => {
+      if (vs.length >= 5 || !l.hauptkontakt) return;
+      if (l.sql_bereit && !l.deal?.offen) vs.push(v({ art: 'sql_anlegen', titel: `Zum SQL machen: ${kurz(l.name, 60)} — Deal anlegen`, kontakt_id: l.hauptkontakt.id, frist: heute, prioritaet: 'mittel',
+        signal: { typ: 'chance', datum: l.letzter_kontakt, text: 'Schmerz, Entscheider und Budget/Zeitpunkt geklärt' }, begruendung: `Alle SQL-Kriterien sind geklärt, aber es gibt noch keinen Deal — ohne Deal fehlt er in Pipeline und Prognose.`, dedup_schluessel: `sql:${l.lead_id}`, quelle: [`leads_in_arbeit[${i}]`] }));
+      else if (l.fehlt.length) vs.push(v({ art: 'qualifizierung_klaeren', titel: `${l.fehlt[0]} klären: ${kurz(l.name, 60)}`, kontakt_id: l.hauptkontakt.id, frist: tagPlus(heute, 3), prioritaet: l.status === 'qualifizierung' ? 'mittel' : 'niedrig',
+        signal: { typ: 'pflege', datum: l.letzter_kontakt, text: `${l.geklaert} von 6 geklärt` }, begruendung: `Bis zum SQL fehlt: ${l.fehlt.join(', ')}. Frage im nächsten Gespräch: „${FRAGE[l.fehlt[0]] ?? l.fehlt[0]}“`, dedup_schluessel: `quali:${l.lead_id}:${l.fehlt[0]}`, quelle: [`leads_in_arbeit[${i}].fehlt`] }));
+    });
+    if (!ls.length) luecken.push('Keine Leads in Arbeit — neue kommen aus der Power Hour, aus Events und Kampagnen.');
+  }
+
   if (head === 'sales' && modus === 'deal_review') {
     const chancen = (daten.chancen as ChanceD[] | undefined) ?? [];
     chancen.forEach((c, i) => {
@@ -69,13 +83,13 @@ export function grundlauf(head: HeadId, modus: string, daten: Record<string, unk
       const p = c.personen[0];
       const fehlend = Object.entries(c.qualifizierung ?? {}).filter(([, w]) => w === 'unklar').map(([k]) => k);
       if (!c.naechster_schritt) vs.push(v({ art: 'qualifizierung_klaeren', titel: `Nächsten Schritt mit Datum festlegen: ${kurz(c.titel, 60)}`, chance_id: c.id, kontakt_id: p?.id ?? null, frist: tagPlus(heute, 2), prioritaet: c.wert_gesamt >= 10000 ? 'hoch' : 'mittel', signal: { typ: 'chance', datum: null, text: 'kein nächster Schritt mit Datum' },
-        begruendung: `Ohne nächsten Schritt mit Datum verliert sich die Chance (${c.stufe ?? '—'}, ${c.wert_gesamt} € gesamt).${fehlend.length ? ` Offen in der Qualifizierung: ${fehlend.slice(0, 3).join(', ')}.` : ''}${c.signale?.negativ.length ? ` Signale: ${c.signale.negativ.slice(0, 2).join('; ')}.` : ''}`, dedup_schluessel: `schritt:${c.id}`, quelle: [`chancen[${i}].naechster_schritt`] }));
+        begruendung: `Ohne nächsten Schritt mit Datum verliert sich der Deal (${c.stufe ?? '—'}, ${c.wert_gesamt} € gesamt).${fehlend.length ? ` Offen in der Qualifizierung: ${fehlend.slice(0, 3).join(', ')}.` : ''}${c.signale?.negativ.length ? ` Signale: ${c.signale.negativ.slice(0, 2).join('; ')}.` : ''}`, dedup_schluessel: `schritt:${c.id}`, quelle: [`chancen[${i}].naechster_schritt`] }));
       else if (c.ampel?.ampel === 'rot') vs.push(v({ art: c.stufe === 'Angebot' ? 'angebot_nachfassen' : 'qualifizierung_klaeren', titel: `Hängt: ${kurz(c.titel, 70)}`, chance_id: c.id, kontakt_id: p?.id ?? null, frist: tagPlus(heute, 1), prioritaet: 'hoch', signal: { typ: c.naechster_schritt.datum < heute ? 'zusage' : 'chance', datum: c.naechster_schritt.datum, text: kurz(c.ampel.gruende[0], 90) },
         begruendung: `${c.ampel.gruende.slice(0, 2).join('; ')}. Nächster Schritt war: ${kurz(c.naechster_schritt.text, 80)}.`, dedup_schluessel: `haengt:${c.id}`, quelle: [`chancen[${i}].ampel`] }));
       else if (c.entscheidung_bis && c.entscheidung_bis <= tagPlus(heute, 7)) vs.push(v({ art: 'angebot_nachfassen', titel: `Entscheidung bis ${c.entscheidung_bis} absichern: ${kurz(c.titel, 50)}`, chance_id: c.id, kontakt_id: p?.id ?? null, frist: tagPlus(heute, 1), prioritaet: 'hoch', signal: { typ: 'frist', datum: c.entscheidung_bis, text: 'Entscheidung erwartet' },
         begruendung: `Die Entscheidung ist für ${c.entscheidung_bis} erwartet — offene Einwände und den Entscheider jetzt klären.${fehlend.length ? ` Unklar: ${fehlend.slice(0, 3).join(', ')}.` : ''}`, dedup_schluessel: `entscheidung:${c.id}`, quelle: [`chancen[${i}].entscheidung_bis`] }));
     });
-    if (!chancen.length) luecken.push('Keine offene Chance — Gespräche mit Bedarf als Chance anlegen, sonst fehlen sie in der Prognose.');
+    if (!chancen.length) luecken.push('Kein offener Deal — Leads im Gespräch qualifizieren (Ebene 1), SQL-bereite als Deal anlegen, sonst fehlen sie in der Prognose.');
   }
 
   if (head === 'sales' && modus === 'kundenreview') {

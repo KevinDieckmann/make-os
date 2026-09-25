@@ -17,11 +17,12 @@ import { markttraktion } from '@/lib/crm/adresse';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT } from '../schlank';
 import type { LeadStatus, Kriterien, Qual, ChancenArt } from '@/lib/crm/typen';
-import { LEAD_STATUS, KRITERIEN, sqlBereit, fehltBisSql, geklaert, statusLabel, type LeadZeile, type Trichter } from '@/lib/crm/leads';
+import { leads, LEAD_STATUS, KRITERIEN, sqlBereit, fehltBisSql, geklaert, statusLabel, type LeadZeile, type Trichter } from '@/lib/crm/leads';
 import { STUFEN } from '@/lib/crm/pipeline';
 import { type CrmApi, datum, euro, plusTage } from './daten';
 import { Pillen, Feldzeile } from './teile';
 import { Person, ZustaendigWahl, WerFilter, useWerFilter, passtWer } from './team';
+import { HeadPanel } from './HeadPanel';
 
 interface Daten { leads: LeadZeile[]; trichter: Trichter }
 const STATUS_FARBE: Record<LeadStatus, string> = { neu: C.inkLeise, kontaktiert: LEUCHT.puls, im_gespraech: LEUCHT.business, qualifizierung: LEUCHT.achtung, sql: LEUCHT.gut, kunde: LEUCHT.geld, kein_fit: C.inkLeise, ruht: C.inkLeise };
@@ -68,12 +69,13 @@ export function SalesTrichter({ api, zuBereich }: { api: CrmApi; zuBereich: (s: 
 }
 
 type Filter = 'aktiv' | LeadStatus;
-export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id: string) => void; zuDeal: () => void }) {
+export function Leads({ api, zuKontakt, zuDeal, start }: { api: CrmApi; zuKontakt: (id: string) => void; zuDeal: () => void; /** Lead aus der Adresse (k=…) — aus Kartei und Firmen „Qualifizieren“. */ start?: string }) {
   const breit = useBreit();
   const { d, laden } = useLeads(api);
   const [filter, setFilter] = useState<Filter>('aktiv');
   const [suche, setSuche] = useState('');
-  const [wahl, setWahl] = useState<string | null>(null);
+  const [wahl, setWahl] = useState<string | null>(start ?? null);
+  useEffect(() => { if (start) setWahl(start); }, [start]);
   const [wer, setWer] = useWerFilter('leads');
   const ich = api.ich;
   const zeilen = useMemo(() => {
@@ -89,6 +91,8 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
     { id: 'kontaktiert', label: `Kontaktiert ${zahl('kontaktiert')}` }, { id: 'sql', label: `SQL ${zahl('sql')}` }, { id: 'neu', label: `Neu ${zahl('neu')}` }, { id: 'kunde', label: `Kunde ${zahl('kunde')}` }, { id: 'ruht', label: `Ruht · kein Fit ${zahl('ruht')}` },
   ];
   const aktiv = wahl ? d.leads.find(z => z.id === wahl) ?? null : breit ? zeilen[0] ?? null : null;
+  // Gewählt über die Adresse, aber im aktuellen Filter nicht sichtbar? Dann oben zeigen.
+  const zeigen = aktiv && !zeilen.some(z => z.id === aktiv.id) ? [aktiv, ...zeilen] : zeilen;
 
   const liste = (
     <Karte i={1}>
@@ -98,7 +102,7 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
       <div style={{ overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 8 }}><Pillen einzeilig liste={FILTER} aktiv={filter} onWahl={f => { setFilter(f); setWahl(null); }} farbe={LEUCHT.business} /></div>
       {!zeilen.length && <Leer>{filter === 'aktiv' ? 'Gerade nichts in Arbeit. Neue Leads kommen aus der Power Hour, Events und Kampagnen.' : 'Keine Leads in diesem Status.'}</Leer>}
       <div>
-        {zeilen.slice(0, 120).map(z => (
+        {zeigen.slice(0, 120).map(z => (
           <div key={z.id}>
             <div onClick={() => setWahl(aktiv?.id === z.id && !breit ? null : z.id)} className="zeile zeile-klick fassbar"
               style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 6px', margin: '0 -6px', borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer', borderRadius: aktiv?.id === z.id ? 10 : 0, background: aktiv?.id === z.id ? 'rgba(255,255,255,.05)' : 'transparent' }}>
@@ -119,8 +123,11 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
       </div>
     </Karte>
   );
-  if (!breit) return liste;
+  // Der Head of Sales qualifiziert mit (Modus „Leads qualifizieren“) — oben, wie in jeder Sales-Ansicht.
+  const head = <HeadPanel head="sales" standardModus="lead_review" zuKontakt={zuKontakt} i={0} nachEntscheid={() => void laden()} />;
+  if (!breit) return <>{head}{liste}</>;
   return (
+    <>{head}
     <Spalten verhaeltnis="1:1">
       <Spalte>{liste}</Spalte>
       <Spalte klebt>
@@ -129,6 +136,7 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
         </Karte>
       </Spalte>
     </Spalten>
+    </>
   );
 }
 
@@ -301,5 +309,29 @@ export function QualifizierungsRunde({ api, zuKontakt, zurueck }: { api: CrmApi;
         <Karte i={1}><Leer>{ids.length ? `Runde durch — ${sql} von ${ids.length} sind SQL. Die Deals laufen jetzt in der Pipeline.` : 'Gerade kein Lead in Arbeit. Neue kommen aus der Power Hour, aus Events und Kampagnen.'}</Leer>{sql > 0 && <Knopf onClick={zuDeals}>Zu den Deals</Knopf>}</Karte>
       )}
     </>
+  );
+}
+
+/**
+ * Der Lead in der Karteikarte (Person) und der Firmenkarte: Ebene 1 auf einen
+ * Blick — Status, sechs Kernfragen als Punkte, was bis zum SQL fehlt, ein
+ * laufender Deal — und „Qualifizieren“ springt in Sales › Leads zu genau
+ * diesem Lead. Mit Firma liegt der Lead an der Firma, sonst an der Person.
+ */
+export function LeadBlock({ api, leadId }: { api: CrmApi; leadId: string }) {
+  const router = useRouter();
+  const z = useMemo(() => (api.crm && api.kontakte ? leads(api.kontakte, api.crm.stand).find(x => x.id === leadId) : undefined), [api.crm, api.kontakte, leadId]);
+  if (!z) return null;
+  const fehlt = fehltBisSql(z.kriterien);
+  return (
+    <div>
+      <Ueberschrift rechts={<Knopf leise onClick={() => router.replace(markttraktion('sales', 'leads', z.id))}>{z.status === 'sql' || z.status === 'kunde' ? 'Zum Lead' : 'Qualifizieren'}</Knopf>}>Lead · Ebene 1{z.art === 'firma' ? ' (Firma)' : ''}</Ueberschrift>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien }}>
+        <Chip farbe={STATUS_FARBE[z.status]}>{statusLabel(z.status)}</Chip>
+        <KriterienPunkte k={z.kriterien} />
+        <span style={{ color: C.inkDim }}>{geklaert(z.kriterien)} von 6 geklärt{!sqlBereit(z.kriterien) && z.status !== 'sql' && z.status !== 'kunde' ? ` · bis SQL fehlt: ${fehlt.join(', ')}` : ''}</span>
+      </div>
+      {z.deal && <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 6 }}>Ebene 2 · Deal „{z.deal.titel}“ · {STUFEN.find(s => s.id === z.deal!.stufe)?.label}{z.deal.wert ? ` · ${euro(z.deal.wert)}` : ''}</div>}
+    </div>
   );
 }

@@ -28,7 +28,7 @@ export type Kategorie = 'versprechen' | 'signale' | 'chancen' | 'kunden' | 'pfle
 export const KATEGORIEN: { id: Kategorie; label: string; warum: string }[] = [
   { id: 'versprechen', label: 'Versprechen', warum: 'Zugesagt ist zugesagt' },
   { id: 'signale', label: 'Signale', warum: 'Jemand wartet auf dich' },
-  { id: 'chancen', label: 'Chancen', warum: 'Bewegung halten' },
+  { id: 'chancen', label: 'Deals', warum: 'Bewegung halten' },
   { id: 'kunden', label: 'Kunden', warum: 'Bestand sichern' },
   { id: 'pflege', label: 'Pflege', warum: 'Beziehung halten' },
   { id: 'neu', label: 'Neu', warum: 'Pipeline füllen' },

@@ -1,6 +1,6 @@
 'use client';
 
-// ─── Markttraktion · Sales › Pipeline — Chancen nach Stufen ───────────────────────────────────
+// ─── Markttraktion · Sales › Deals (Ebene 2) — Pipeline nach Stufen, ab SQL ───────────────────────────────────
 // Oben die Prognose (offen, gewichtet, Commit, Best Case) — jede Zahl mit
 // Herleitung. Darunter die Stufen mit ihrem Austrittskriterium: Eine Chance
 // rückt vor, wenn auf Kundenseite etwas passiert ist, nicht wenn wir hoffen.
@@ -53,7 +53,7 @@ export function Pipeline({ api, zuKontakt, zuLeads }: { api: CrmApi; zuKontakt: 
   const meine = ich ? jePerson.find(x => x.person === ich) : undefined;
   // Neue Chance: für die gefilterte Person, sonst für mich (im Team), sonst die Sales-Verantwortung.
   const neuFuer = wahl !== 'alle' && wahl !== 'ich' && mitglied(wahl) ? wahl : mitglied(ich)?.id ?? verantwortlich('sales');
-  const neu = () => { const id = neueId('ch'); void api.setze('chancen', { id, titel: 'Neue Chance', kontaktIds: [], art: 'retainer', wert: { betrag: 0, basis: 'monat' }, stufe: 'qualifiziert', historie: [], qualifizierung: {}, gesellschaft: 'offen', besitzer: neuFuer, angelegt: new Date().toISOString() }); setAuswahl(id); };
+  const neu = () => { const id = neueId('ch'); void api.setze('chancen', { id, titel: 'Neuer Deal', kontaktIds: [], art: 'retainer', wert: { betrag: 0, basis: 'monat' }, stufe: 'qualifiziert', historie: [], qualifizierung: {}, gesellschaft: 'offen', besitzer: neuFuer, angelegt: new Date().toISOString() }); setAuswahl(id); };
   const zu = chancen.filter(c => !istOffen(c));
   // Aus der Kartei: wer laut Masterdatei im Gespräch ist oder ein Angebot hat, aber noch keine Chance.
   const mitChance = new Set(crm.stand.chancen.flatMap(c => c.kontaktIds));
@@ -70,7 +70,7 @@ export function Pipeline({ api, zuKontakt, zuLeads }: { api: CrmApi; zuKontakt: 
         {breit && <Pillen liste={[{ id: 'board', label: 'Board' }, { id: 'liste', label: 'Liste' }]} aktiv={board ? 'board' : 'liste'} onWahl={x => setBoard(x === 'board')} />}
       </div>
       <Karte i={0}>
-        <Ueberschrift rechts={<Knopf onClick={neu}>+ Chance{neuFuer !== ich ? ` für ${nameVon(neuFuer)}` : ''}</Knopf>}>{wahl === 'alle' ? 'Prognose' : `Prognose · ${wahl === 'ich' ? 'meine' : nameVon(wahl)}`}</Ueberschrift>
+        <Ueberschrift rechts={<Knopf onClick={neu}>+ Deal{neuFuer !== ich ? ` für ${nameVon(neuFuer)}` : ''}</Knopf>}>{wahl === 'alle' ? 'Prognose' : `Prognose · ${wahl === 'ich' ? 'meine' : nameVon(wahl)}`}</Ueberschrift>
         <Raster min={150}>
           <Zahl wert={kurzEuro(p.offen)} label="offen" />
           <Zahl wert={kurzEuro(p.gewichtet)} label="gewichtet" farbe={LEUCHT.business} />
@@ -84,7 +84,7 @@ export function Pipeline({ api, zuKontakt, zuLeads }: { api: CrmApi; zuKontakt: 
             {jePerson.map(x => (
               <div key={x.person} style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim }}>
                 <span style={{ minWidth: 76 }}><Person id={x.person} name groesse={18} /></span>
-                <span>{x.anzahl} {x.anzahl === 1 ? 'Chance' : 'Chancen'}</span>
+                <span>{x.anzahl} {x.anzahl === 1 ? 'Deal' : 'Deals'}</span>
                 <span>gewichtet <b style={{ color: C.ink }}>{kurzEuro(x.gewichtet)}</b></span>
                 {x.commit > 0 && <span>Commit {kurzEuro(x.commit)}</span>}
                 {x.haengt > 0 && <span style={{ color: LEUCHT.kritisch }}>{x.haengt} hängt</span>}
@@ -94,7 +94,7 @@ export function Pipeline({ api, zuKontakt, zuLeads }: { api: CrmApi; zuKontakt: 
           </div>
         )}
         {meine && (meine.haengt > 0 || meine.ohneSchritt > 0) && (
-          <div style={{ fontSize: 12.5, color: C.ink, marginTop: 10 }}>Als Nächstes: {meine.haengt > 0 ? `${meine.haengt} deiner Chancen ${meine.haengt === 1 ? 'hängt' : 'hängen'} — nächsten Schritt mit Datum setzen, übergeben oder parken.` : `${meine.ohneSchritt} deiner Chancen ohne nächsten Schritt — einen mit Datum eintragen.`}</div>
+          <div style={{ fontSize: 12.5, color: C.ink, marginTop: 10 }}>Als Nächstes: {meine.haengt > 0 ? `${meine.haengt} deiner Deals ${meine.haengt === 1 ? 'hängt' : 'hängen'} — nächsten Schritt mit Datum setzen, übergeben oder parken.` : `${meine.ohneSchritt} deiner Deals ohne nächsten Schritt — einen mit Datum eintragen.`}</div>
         )}
         <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Wert = Monatshonorar × Laufzeit (ohne Angabe 12 Monate), gewichtet mit der Stufen-Wahrscheinlichkeit. Die Wahrscheinlichkeiten sind vorsichtige Startwerte und werden durch gemessene Quoten ersetzt.</div>
       </Karte>
@@ -154,7 +154,7 @@ export function Pipeline({ api, zuKontakt, zuLeads }: { api: CrmApi; zuKontakt: 
             <Liste>
               {l.map(c => <ChancenZeile key={c.id} c={c} api={api} offen={auswahl === c.id} onKlick={() => setAuswahl(auswahl === c.id ? null : c.id)} zuKontakt={zuKontakt} />)}
             </Liste>
-            {!l.length && <div style={{ fontSize: 12.5, color: C.inkLeise, padding: '6px 0' }}>Keine Chance in dieser Stufe.</div>}
+            {!l.length && <div style={{ fontSize: 12.5, color: C.inkLeise, padding: '6px 0' }}>Kein Deal in dieser Stufe.</div>}
           </Karte>
         );
       })}
@@ -164,7 +164,7 @@ export function Pipeline({ api, zuKontakt, zuLeads }: { api: CrmApi; zuKontakt: 
           <Ueberschrift rechts={zuLeads ? <Knopf leise onClick={zuLeads}>Zu den Leads (Ebene 1)</Knopf> : `${vorschlaege.length} aus der Kartei`}>Im Gespräch, noch kein Deal</Ueberschrift>
           <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Erst qualifizieren (Ebene 1: Schmerz, Entscheider, Budget oder Zeitpunkt), dann wird daraus ein Deal. Direkt anlegen nur, wenn die Qualifizierung schon feststeht.</div>
           <Liste>
-            {vorschlaege.slice(0, alleVorschlaege ? 40 : 6).map(k => <Zeile key={k.id} titel={<>{anzeigename(k)}{k.firma && <span style={{ color: C.inkLeise }}> · {k.firma}</span>}</>} unter={k.stufe === 'angebot' ? 'Angebot' : k.stufe === 'termin' ? 'Termin' : 'im Gespräch'} rechts={<Knopf leise onClick={() => ausKontakt(k)}>+ Chance</Knopf>} />)}
+            {vorschlaege.slice(0, alleVorschlaege ? 40 : 6).map(k => <Zeile key={k.id} titel={<>{anzeigename(k)}{k.firma && <span style={{ color: C.inkLeise }}> · {k.firma}</span>}</>} unter={k.stufe === 'angebot' ? 'Angebot' : k.stufe === 'termin' ? 'Termin' : 'im Gespräch'} rechts={<Knopf leise onClick={() => ausKontakt(k)}>+ Deal</Knopf>} />)}
           </Liste>
           {vorschlaege.length > 6 && <button onClick={() => setAlleVorschlaege(!alleVorschlaege)} style={{ marginTop: 8, background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>{alleVorschlaege ? 'weniger' : `alle ${vorschlaege.length} zeigen`}</button>}
         </Karte>
@@ -283,7 +283,7 @@ function ChancenDetail({ c, api, personen, zuKontakt }: { c: Chance; api: CrmApi
         </div>
       )}
       {c.stufe === 'gewonnen' && crm.stand.mandate.some(m => m.chanceId === c.id) && <div style={{ fontSize: 12.5, color: LEUCHT.gut }}>Mandat angelegt — Sales › Kunden.</div>}
-      <div><button onClick={() => { if (window.confirm('Chance löschen? Besser: als verloren markieren — dann lernt die Pipeline.')) void api.weg('chancen', c.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>Löschen</button> {' '}<Chip farbe={C.inkLeise}>angelegt {datum(c.angelegt)}</Chip></div>
+      <div><button onClick={() => { if (window.confirm('Deal löschen? Besser: als verloren markieren — dann lernt die Pipeline.')) void api.weg('chancen', c.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>Löschen</button> {' '}<Chip farbe={C.inkLeise}>angelegt {datum(c.angelegt)}</Chip></div>
     </div>
   );
 }

@@ -28,6 +28,7 @@ export function faelligeModi(head: HeadId, jetzt: Date, s: HeadStand, events: { 
   if (head === 'sales') {
     for (const p of personen) if (werktag && h >= 7 && !liefHeute(s, `power_hour:${p}`, heute) && !(p === 'kevin' && liefHeute(s, 'power_hour', heute))) raus.push({ modus: 'power_hour', grund: `Power Hour vorbereiten (${p.charAt(0).toUpperCase() + p.slice(1)})`, person: p });
     if (w === 5 && h >= 14 && !liefHeute(s, 'wochenreview', heute)) raus.push({ modus: 'wochenreview', grund: 'Wochenreview Vertrieb' });
+    if (w === 1 && h >= 9 && !liefHeute(s, 'lead_review', heute)) raus.push({ modus: 'lead_review', grund: 'Leads qualifizieren (Wochenstart)' });
     if (ersterWerktag && h >= 9 && !liefHeute(s, 'kundenreview', heute)) raus.push({ modus: 'kundenreview', grund: 'Kundenreview zum Monatsanfang' });
   }
   if (head === 'marketing') {
