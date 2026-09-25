@@ -17,8 +17,8 @@ Produktions-Build läuft (geprüft 24.09.).
 1. Code nach `make-os` pushen.
 2. Auf dem Server: `bash server-einrichten.sh <repo>` → Deploy-Schlüssel in beide Repos eintragen.
 3. `.env` aus `deploy/env.server.beispiel` — neue Schlüssel (`openssl rand -hex 32`).
-4. Vault: `deploy/vault.gitignore` als `.gitignore` in `~/Desktop/MAKE/Make.Claude`,
-   `git init`, nach `make-vault` pushen; auf dem Server nach `/srv/make-os/vault` klonen.
+4. Vault: `bash deploy/vault-hochladen.sh` (Kevin selbst, am Mac — legt `.gitignore` an,
+   `git init`, pusht nach `make-vault`); auf dem Server nach `/srv/make-os/vault` klonen.
 5. `bash deploy/daten-hochladen.sh <server>` — **ab da nur noch online arbeiten.**
 6. `docker compose up -d --build` → Adresse öffnen, anmelden, Stichproben.
 7. GitHub-Secrets `MAKE_OS_HOST`, `MAKE_OS_SSH_KEY` → jeder Push rollt geprüft aus.
