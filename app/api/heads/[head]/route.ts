@@ -2,7 +2,12 @@
 // GET  → Freigabe-Liste, letzte Berichte, Modi
 // POST { aktion: 'lauf', modus, frage? } → ein Lauf (Hand oder Jarvis)
 // POST { aktion: 'daten', modus } → das Datenpaket, das der Head sähe (ohne Modell)
-// POST { aktion: 'entscheiden', id, status } → angenommen: mit Person und
+// POST { aktion: 'merken', text } / { aktion: 'vergessen', id } → Gedächtnis des Heads
+// POST { aktion: 'autonomie', an } → interne Kleinigkeiten selbst erledigen an/aus
+// POST { aktion: 'rueckgaengig', id } → selbst Übernommenes zurücknehmen (zählt als „passt nicht“)
+// POST { aktion: 'entscheiden', id, status, grund?, entwurf? } → abgelehnt mit
+//      Grund (daraus lernt der Head), angenommen mit dem übernommenen Entwurf;
+//      art „merken“ angenommen → Merksatz ins Gedächtnis. Sonst: mit Person und
 //      Frist wird es deren nächster Schritt (erscheint dann in der Power
 //      Hour), sonst eine Aufgabe. Nichts wird versendet.
 
@@ -12,7 +17,10 @@ import { personAus } from '@/lib/jarvis/raum';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { HEADS, HEAD_NAME, MODI, AGENT_ID, type HeadId } from '@/lib/heads/prompt';
 import { headLauf } from '@/lib/heads/lauf';
-import { datenpaket } from '@/lib/heads/daten';
+import { vollesPaket } from '@/lib/heads/paket';
+import { lernstand, merksatzNeu, ABLEHNGRUENDE } from '@/lib/heads/lernen';
+import { ruecknehmbar } from '@/lib/heads/autonomie';
+import { uebersicht } from '@/lib/jarvis/verbrauch';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { PLAYBOOKS, planen } from '@/lib/crm/kampagnen';
 import { localDay } from '@/lib/zeit';
@@ -29,13 +37,29 @@ export async function GET(_: Request, { params }: { params: { head: string } }) 
   const h = headAus(params);
   if (!h) return NextResponse.json({ ok: false, fehler: 'Unbekannter Head.' }, { status: 404 });
   const s = { ...leererStand(), ...((await loadJson<HeadStand>(standName(h))) ?? {}) };
-  return NextResponse.json({ ok: true, head: h, name: HEAD_NAME[h], modi: MODI[h], vorschlaege: s.vorschlaege, berichte: s.berichte.slice(-5).reverse(), letzte: s.letzte, ruhig: s.ruhig ?? null });
+  const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
+  const l = lernstand(s.vorschlaege, kontakte, localDay(), undefined, await ladeCrm());
+  // Qualität auf einen Blick: Annahmequote, Wirkung, Läufe mit/ohne KI (30 Tage).
+  const vor30 = new Date(Date.now() - 30 * 864e5).toISOString();
+  const laeufe = s.berichte.filter(x => x.zeit >= vor30);
+  const an = l.je_art.reduce((a, x) => a + x.angenommen, 0), ab = l.je_art.reduce((a, x) => a + x.abgelehnt, 0);
+  const qualitaet = { laeufe: laeufe.length, mitKi: laeufe.filter(x => x.quelle !== 'regelwerk').length, regelwerk: laeufe.filter(x => x.quelle === 'regelwerk').length,
+    annahmequote: an + ab >= 3 ? Math.round((an / (an + ab)) * 100) : null, entschieden: an + ab,
+    wirkung: l.wirkung.ausgewertet ? `${l.wirkung.gewirkt} von ${l.wirkung.ausgewertet}${l.wirkung.termin || l.wirkung.chance ? ` · ${l.wirkung.termin} Termin, ${l.wirkung.chance} Chance` : ''}` : null, aenderungsgrad: l.aenderungsgrad,
+    gestrichen: laeufe.reduce((a, x) => a + x.pruefung.gestrichen.length, 0), korrigiert: laeufe.filter(x => x.pruefung.korrigiert).length,
+    // Kosten dieses Heads in 30 Tagen (US-Cent aus der Verbrauchs-Mitschrift, inkl. Cache).
+    cent: Math.round((await uebersicht(30)).jeZweck.filter(z => z.zweck.startsWith(`${AGENT_ID[h]}-`)).reduce((a, z) => a + z.cent, 0)),
+    cacheQuote: (() => { const v = laeufe.map(x => x.verbrauch).filter(Boolean); const ein = v.reduce((a, x) => a + x!.ein + x!.cacheLesen + x!.cacheSchreiben, 0); return ein ? Math.round((v.reduce((a, x) => a + x!.cacheLesen, 0) / ein) * 100) : null; })() };
+  const vor7 = new Date(Date.now() - 7 * 864e5).toISOString();
+  const auto = s.vorschlaege.filter(v => v.auto && v.auto.am >= vor7).sort((a, b) => b.auto!.am.localeCompare(a.auto!.am)).slice(0, 12);
+  return NextResponse.json({ ok: true, head: h, name: HEAD_NAME[h], modi: MODI[h], vorschlaege: s.vorschlaege, berichte: s.berichte.slice(-5).reverse(), letzte: s.letzte, ruhig: s.ruhig ?? null,
+    gedaechtnis: s.gedaechtnis ?? [], hinweise: l.hinweise, ablehngruende: ABLEHNGRUENDE, qualitaet, autonomie: s.autonomie ?? 'intern', auto });
 }
 
 export async function POST(req: Request, { params }: { params: { head: string } }) {
   const h = headAus(params);
   if (!h) return NextResponse.json({ ok: false, fehler: 'Unbekannter Head.' }, { status: 404 });
-  let b: { aktion?: string; modus?: string; frage?: string; ausgeloest?: string; id?: string; status?: string };
+  let b: { aktion?: string; modus?: string; frage?: string; ausgeloest?: string; id?: string; status?: string; grund?: string; entwurf?: string; text?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const person = personAus(req);
 
@@ -47,8 +71,39 @@ export async function POST(req: Request, { params }: { params: { head: string } 
   if (b.aktion === 'daten') {
     const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
     const st = { ...leererStand(), ...((await loadJson<HeadStand>(standName(h))) ?? {}) };
-    const d = datenpaket(h, String(b.modus ?? MODI[h][0].id), kontakte, await ladeCrm(), localDay(), person, st.vorschlaege.map(v => ({ titel: v.titel, status: v.status })));
+    const d = vollesPaket(h, String(b.modus ?? MODI[h][0].id), kontakte, await ladeCrm(), localDay(), person, st);
     return NextResponse.json({ ok: true, daten: d, zeichen: JSON.stringify(d).length });
+  }
+
+  if (b.aktion === 'merken' || b.aktion === 'vergessen') {
+    const jetzt = new Date().toISOString();
+    const st = await updateJson<HeadStand>(standName(h), s => {
+      const x = { ...leererStand(), ...(s ?? {}) };
+      const g = x.gedaechtnis ?? [];
+      return { ...x, gedaechtnis: b.aktion === 'merken' ? merksatzNeu(g, String(b.text ?? ''), person, jetzt, 'hand') : g.filter(m => m.id !== b.id) };
+    });
+    return NextResponse.json({ ok: true, gedaechtnis: st.gedaechtnis ?? [] });
+  }
+
+  if (b.aktion === 'autonomie') {
+    const st = await updateJson<HeadStand>(standName(h), s => ({ ...leererStand(), ...(s ?? {}), autonomie: (b as { an?: boolean }).an === false ? 'aus' : 'intern' }));
+    return NextResponse.json({ ok: true, autonomie: st.autonomie });
+  }
+
+  if (b.aktion === 'rueckgaengig') {
+    const jetzt = new Date().toISOString();
+    const st0 = { ...leererStand(), ...((await loadJson<HeadStand>(standName(h))) ?? {}) };
+    const v = st0.vorschlaege.find(x => x.id === b.id && x.auto);
+    if (!v) return NextResponse.json({ ok: false, fehler: 'Nichts selbst Übernommenes mit dieser Kennung.' }, { status: 404 });
+    const r = v.auto!.rueckgaengig!;
+    const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
+    const tasks = (await loadJson<{ tasks: Record<string, unknown>[] }>('tasks'))?.tasks ?? [];
+    const aufgabe = r.aufgabeId ? tasks.find(t => t.id === r.aufgabeId) as { status?: string; createdAt?: string; updatedAt?: string } | undefined : undefined;
+    if (!ruecknehmbar(v, kontakte.find(k => k.id === r.kontaktId), aufgabe)) return NextResponse.json({ ok: false, fehler: 'Inzwischen von Hand geändert — bitte dort anpassen.' }, { status: 409 });
+    if (r.art === 'schritt' && r.kontaktId) await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === r.kontaktId ? { ...k, naechsterSchritt: r.vorher ?? undefined, geaendertAm: jetzt.slice(0, 10) } : k)) }));
+    if (r.art === 'aufgabe' && r.aufgabeId) await updateJson<{ tasks: Record<string, unknown>[] }>('tasks', cur => ({ ...(cur ?? { tasks: [] }), tasks: (cur?.tasks ?? []).filter(t => t.id !== r.aufgabeId) }));
+    await updateJson<HeadStand>(standName(h), s => { const x = { ...leererStand(), ...(s ?? {}) }; return { ...x, vorschlaege: x.vorschlaege.map(y => (y.id === v.id ? { ...y, status: 'abgelehnt' as const, grund: 'unpassend', entschieden: jetzt, aktualisiert: jetzt, von: person } : y)) }; });
+    return NextResponse.json({ ok: true, text: `Zurückgenommen: ${v.auto!.wirkung}.` });
   }
 
   if (b.aktion === 'entscheiden') {
@@ -58,13 +113,19 @@ export async function POST(req: Request, { params }: { params: { head: string } 
     let v: HeadVorschlag | null = null;
     await updateJson<HeadStand>(standName(h), s => {
       const st = { ...leererStand(), ...(s ?? {}) };
-      st.vorschlaege = st.vorschlaege.map(x => (x.id === b.id ? (v = { ...x, status, entschieden: jetzt, aktualisiert: jetzt, von: person }) : x));
+      const grund = status === 'abgelehnt' && ABLEHNGRUENDE.some(g => g.id === b.grund) ? b.grund : undefined;
+      const entwurfFinal = status === 'angenommen' && typeof b.entwurf === 'string' && b.entwurf.trim() ? b.entwurf.trim().slice(0, 1500) : undefined;
+      st.vorschlaege = st.vorschlaege.map(x => (x.id === b.id ? (v = { ...x, status, entschieden: jetzt, aktualisiert: jetzt, von: person, ...(grund ? { grund } : {}), ...(entwurfFinal ? { entwurfFinal } : {}) }) : x));
+      // Ein angenommener Merksatz geht ins Gedächtnis des Heads — keine Aufgabe.
+      const merk = v as HeadVorschlag | null;
+      if (merk && merk.art === 'merken' && status === 'angenommen') st.gedaechtnis = merksatzNeu(st.gedaechtnis ?? [], merk.titel, person, jetzt, 'vorschlag');
       return st;
     });
     const t = v as HeadVorschlag | null;
     if (!t) return NextResponse.json({ ok: false, fehler: 'Vorschlag nicht gefunden.' }, { status: 404 });
     let wohin = '';
-    if (status === 'angenommen' && t.kampagne) {
+    if (status === 'angenommen' && t.art === 'merken') wohin = 'Gedächtnis des Heads';
+    else if (status === 'angenommen' && t.kampagne) {
       // Kampagnen-Vorschlag → Entwurf im Marketing › Kampagnen (Personen aus dem Vorschlag, sonst Zielgruppe des Playbooks).
       const pb = PLAYBOOKS.find(x => x.id === t.kampagne!.playbook);
       const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
@@ -84,7 +145,7 @@ export async function POST(req: Request, { params }: { params: { head: string } 
     } else if (status === 'angenommen' || status === 'erledigt') {
       // Die Aufgabe bekommt, wer die Beziehung hält — sonst die/der Verantwortliche der Welt (Sales: Kevin, Marketing/Event: Malin).
       const k = t.kontakt_id ? ((await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? []).find(x => x.id === t.kontakt_id) : undefined;
-      const fuer = k ? haeltBeziehung(k) : verantwortlich(h);
+      const fuer = t.fuer ?? (k ? haeltBeziehung(k) : verantwortlich(h));
       const bearbeiter = fuer === BEIDE ? person : fuer;
       await updateJson<{ tasks: Record<string, unknown>[] }>('tasks', cur => {
         const f = cur ?? { tasks: [] };

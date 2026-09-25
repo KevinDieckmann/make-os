@@ -54,6 +54,8 @@ export interface AskOptions {
   schema?: Record<string, unknown>;
   /** System-Text als Cache-Block markieren — lohnt bei langen, stabilen Prompts. */
   cacheSystem?: boolean;
+  /** Denktiefe (output_config.effort). Lehnt die API sie ab, läuft der Aufruf ohne — das Schema bleibt. */
+  effort?: 'low' | 'medium' | 'high';
 }
 
 export interface AskResult {
@@ -64,6 +66,10 @@ export interface AskResult {
   raw?: unknown;
   stopReason?: string;
   error?: string;
+  /** Verbrauch dieses Aufrufs — inklusive Cache (zeigt, ob der Prompt-Cache greift). */
+  usage?: { ein: number; aus: number; cacheLesen: number; cacheSchreiben: number };
+  /** request-id der API — für Rückfragen bei Anthropic. */
+  requestId?: string;
 }
 
 /** Zieht nur die echten Text-Blöcke (ignoriert thinking/tool_use). */
@@ -124,7 +130,7 @@ export async function askText(opts: AskOptions): Promise<AskResult> {
     messages: opts.messages ?? [{ role: 'user', content: opts.user }],
   };
   if (opts.tools && opts.tools.length) body.tools = opts.tools;
-  if (opts.schema) body.output_config = { format: { type: 'json_schema', schema: opts.schema } };
+  if (opts.schema || opts.effort) body.output_config = { ...(opts.schema ? { format: { type: 'json_schema', schema: opts.schema } } : {}), ...(opts.effort ? { effort: opts.effort } : {}) };
 
   const timeoutMs = opts.timeoutMs ?? 90_000;
   const maxAttempts = (opts.retries ?? 2) + 1;
@@ -145,12 +151,22 @@ export async function askText(opts: AskOptions): Promise<AskResult> {
         const detail = await res.text();
         // Strukturierte Ausgabe nicht verfügbar (Modell/Konto)? Einmal ohne —
         // der Aufrufer prüft das JSON ohnehin selbst.
+        // Denktiefe nicht unterstützt? Nur sie weglassen — das Schema bleibt.
+        const oc = body.output_config as Record<string, unknown> | undefined;
+        if (res.status === 400 && oc?.effort && /effort/i.test(detail)) {
+          delete oc.effort; if (!Object.keys(oc).length) delete body.output_config;
+          attempt--;
+          continue;
+        }
         if (res.status === 400 && body.output_config && /output_config|json_schema|format|schema/i.test(detail)) {
+          console.warn(`[anthropic] Schema abgelehnt, Aufruf ohne Schema (${opts.zweck ?? 'unbenannt'}): ${detail.slice(0, 160)}`);
           delete body.output_config;
           attempt--;
           continue;
         }
-        last = { ok: false, status: res.status, text: '', error: detail.slice(0, 220) };
+        last = { ok: false, status: res.status, text: '', error: detail.slice(0, 220), requestId: res.headers.get('request-id') ?? undefined };
+        // 429 ohne retry-after = Ausgabenlimit — nicht wiederholen.
+        if (res.status === 429 && !res.headers.get('retry-after')) return last;
         if (RETRYABLE.has(res.status) && attempt < maxAttempts) { await sleep(700 * attempt); continue; }
         return last;
       }
@@ -159,11 +175,13 @@ export async function askText(opts: AskOptions): Promise<AskResult> {
       // Modellaufruf geht. Je Route wäre es 21-mal dieselbe Zeile und beim
       // 22. Mal vergessen. Schlägt es fehl, ist das egal: eine fehlende
       // Kostenzeile darf niemals eine Antwort verhindern.
+      const u = (data as { usage?: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number } }).usage;
+      const usage = u ? { ein: u.input_tokens ?? 0, aus: u.output_tokens ?? 0, cacheLesen: u.cache_read_input_tokens ?? 0, cacheSchreiben: u.cache_creation_input_tokens ?? 0 } : undefined;
+      const requestId = res.headers.get('request-id') ?? undefined;
       try {
-        const u = (data as { usage?: { input_tokens?: number; output_tokens?: number } }).usage;
-        if (u) {
+        if (usage) {
           const { notiere } = await import('./jarvis/verbrauch');
-          void notiere(String(body.model), opts.zweck ?? 'unbenannt', u.input_tokens ?? 0, u.output_tokens ?? 0);
+          void notiere(String(body.model), opts.zweck ?? 'unbenannt', usage.ein, usage.aus, usage.cacheLesen, usage.cacheSchreiben);
         }
       } catch { /* still */ }
       const text = extractText(data);
@@ -173,16 +191,16 @@ export async function askText(opts: AskOptions): Promise<AskResult> {
         // max(), nicht min(): bei bereits großem Budget darf das Nachfassen es
         // nicht VERKLEINERN.
         body.max_tokens = Math.max(Number(body.max_tokens), Math.min(8000, Number(body.max_tokens) * 2));
-        last = { ok: false, status: 200, text: '', stopReason, error: 'leer (max_tokens im Denken verbraucht)' };
+        last = { ok: false, status: 200, text: '', stopReason, error: 'leer (max_tokens im Denken verbraucht)', usage, requestId };
         continue;
       }
       // Leere Antwort ist kein Erfolg — AUSSER das Modell hat ein Werkzeug
       // gerufen (stop_reason tool_use): dann steckt die Substanz in raw.
       if (!text && stopReason !== 'tool_use') {
-        return { ok: false, status: 200, text: '', stopReason, raw: data,
-          error: stopReason === 'max_tokens' ? 'leer (max_tokens im Denken verbraucht)' : 'leere Antwort' };
+        return { ok: false, status: 200, text: '', stopReason, raw: data, usage, requestId,
+          error: stopReason === 'max_tokens' ? 'leer (max_tokens im Denken verbraucht)' : stopReason === 'refusal' ? 'abgelehnt (refusal)' : 'leere Antwort' };
       }
-      return { ok: true, status: 200, text, stopReason, raw: data };
+      return { ok: true, status: 200, text, stopReason, raw: data, usage, requestId };
     } catch (err) {
       clearTimeout(timer);
       const aborted = err instanceof Error && err.name === 'AbortError';

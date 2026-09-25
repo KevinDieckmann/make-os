@@ -55,7 +55,9 @@ describe('Freigabe-Liste', () => {
 describe('Takt', () => {
   it('Sales werktags ab 7 Uhr einmal, Event nachfassen am Tag danach', () => {
     const do7 = new Date(2026, 8, 24, 7, 5);
-    expect(faelligeModi('sales', do7, leererStand(), [])).toEqual([{ modus: 'power_hour', grund: 'Power Hour vorbereiten' }]);
+    expect(faelligeModi('sales', do7, leererStand(), [])).toEqual([{ modus: 'power_hour', grund: 'Power Hour vorbereiten (Kevin)', person: 'kevin' }]);
+    // Zu zweit: je Person ein eigener Riegel — Kevins Lauf sperrt Malins nicht.
+    expect(faelligeModi('sales', do7, { ...leererStand(), letzte: { 'power_hour:kevin': '2026-09-24T05:10:00Z' } }, [], ['kevin', 'malin'])).toEqual([{ modus: 'power_hour', grund: 'Power Hour vorbereiten (Malin)', person: 'malin' }]);
     expect(faelligeModi('sales', do7, { ...leererStand(), letzte: { power_hour: '2026-09-24T05:10:00Z' } }, [])).toEqual([]);
     expect(faelligeModi('sales', new Date(2026, 8, 27, 9), leererStand(), [])).toEqual([]); // Sonntag
     expect(faelligeModi('event', new Date(2026, 8, 24, 9), leererStand(), [{ datum: '2026-09-23', status: 'durchgefuehrt' }])[0].modus).toBe('nachfassen');

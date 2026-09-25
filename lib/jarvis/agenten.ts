@@ -306,8 +306,10 @@ ${(a?.vorschlaege ?? []).map((v: { titel: string }) => `→ ${v.titel}`).join('\
         // Takt: „modus:power_hour“ — sonst eine Frage von Jarvis (Antwort im Gespräch, keine Freigabe-Liste).
         const head = id.slice(5);
         const modus = /modus:([a-z_]+)/.exec(auftrag)?.[1];
+        // „person:malin“ — die Power Hour wird je Person vorbereitet (ihre Karten, ihre Freigabe).
+        const person = /person:([a-z0-9-]{1,40})/.exec(auftrag)?.[1];
         const r = await fetch(`${origin}/api/heads/${head}`, {
-          method: 'POST', headers: H,
+          method: 'POST', headers: { ...H, ...(person ? { 'x-make-person': person } : {}) },
           body: JSON.stringify(modus ? { aktion: 'lauf', modus, ausgeloest: 'takt' } : { aktion: 'lauf', modus: 'frage', frage: auftrag || 'Wie ist die Lage?', ausgeloest: 'jarvis' }),
           signal: AbortSignal.timeout(400_000),
         });

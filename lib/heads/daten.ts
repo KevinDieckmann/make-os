@@ -29,6 +29,34 @@ export function person(k: Kontakt, ctx: { hatMandat?: boolean; hatChance?: boole
   };
 }
 
+/**
+ * Deal-Inspektion aus dem Code (MEDDICC-Gedanke, wie Gong/Outreach): Lücken in
+ * der Qualifizierung und positive/negative Signale je Chance — das Modell
+ * formuliert daraus die eine Frage, die die Chance bewegt.
+ */
+export function dealSignale(c: CrmBestand['chancen'][number], personen: Kontakt[], heute: string): { luecken: string[]; positiv: string[]; negativ: string[] } {
+  const tage = (d: string) => Math.round((Date.parse(`${heute}T12:00:00Z`) - Date.parse(`${d.slice(0, 10)}T12:00:00Z`)) / 864e5);
+  const NAMEN: Record<string, string> = { schmerz: 'Schmerz', entscheider: 'Entscheider', budget: 'Budget', zeitpunkt: 'Zeitpunkt', wirkung: 'Wirkung', alternative: 'Alternative' };
+  const luecken = Object.entries(c.qualifizierung ?? {}).filter(([, w]) => w !== 'ja').map(([k, w]) => `${NAMEN[k] ?? k}: ${w}`);
+  const negativ: string[] = [], positiv: string[] = [];
+  if (personen.length <= 1) negativ.push('nur ein Ansprechpartner');
+  if (!c.naechsterSchritt) negativ.push('kein datierter nächster Schritt');
+  else if (c.naechsterSchritt.datum < heute) negativ.push(`nächster Schritt seit ${tage(c.naechsterSchritt.datum)} Tagen überfällig`);
+  if (c.erwartetAm && c.erwartetAm < heute) negativ.push(`Entscheidungstermin ${c.erwartetAm} verstrichen`);
+  if (!c.wert?.betrag) negativ.push('ohne Wert');
+  const letzte = c.letzteAktivitaet ?? c.angelegt;
+  if (letzte && tage(letzte) > 14) negativ.push(`seit ${tage(letzte)} Tagen keine Aktivität`);
+  const akt = personen.flatMap(k => (k.aktivitaeten ?? []).filter(a => a.art !== 'system'));
+  const termin = akt.filter(a => (a.art === 'termin' || a.ergebnis === 'termin') && tage(a.am) <= 14).sort((a, b) => b.am.localeCompare(a.am))[0];
+  if (termin) positiv.push(`Termin vereinbart am ${termin.am.slice(0, 10)}`);
+  const antwort = akt.filter(a => a.art === 'antwort' && tage(a.am) <= 7).sort((a, b) => b.am.localeCompare(a.am))[0];
+  if (antwort) positiv.push(`Antwort am ${antwort.am.slice(0, 10)}`);
+  const vor = c.historie.length > 1 ? c.historie[c.historie.length - 1] : null;
+  if (vor && tage(vor.am) <= 14) positiv.push(`vorgerückt in ${vor.stufe} am ${vor.am.slice(0, 10)}`);
+  if (Object.values(c.qualifizierung ?? {}).filter(w => w === 'ja').length >= 4) positiv.push('mindestens vier Qualifizierungsfragen geklärt');
+  return { luecken, positiv, negativ };
+}
+
 export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, personName: string, frueher: { titel: string; status: string }[]) {
   const aktiv = kontakte.filter(k => !k.werbesperre);
   const nachId = new Map(aktiv.map(k => [k.id, k]));
@@ -68,6 +96,7 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
       chancen: offen.slice(0, 25).map(c => ({
         id: c.id, titel: c.titel, firma: c.firma, stufe: STUFEN.find(s => s.id === c.stufe)?.label, wert_gesamt: Math.round(gesamtwert(c)), wert: c.wert,
         ampel: gesundheit(c, heute), naechster_schritt: c.naechsterSchritt ?? null, qualifizierung: c.qualifizierung, entscheidung_bis: c.erwartetAm ?? null,
+        signale: dealSignale(c, c.kontaktIds.map(id => nachId.get(id)).filter((k): k is Kontakt => !!k), heute),
         personen: c.kontaktIds.map(id => nachId.get(id)).filter((k): k is Kontakt => !!k).map(p),
       })),
       mandate: crm.mandate.filter(m => m.status !== 'beendet').map(m => ({ id: m.id, kunde: m.kunde, titel: kurz(m.titel, 120), status: m.status, honorar: m.honorar, lage: mandatLage(m, heute), offene_punkte: m.offen.slice(0, 5).map(o => kurz(o, 200)), vertrag: m.vertragUnterschrieben, ansprechpartner: m.kontaktIds.map(id => nachId.get(id)).filter((k): k is Kontakt => !!k).slice(0, 2).map(p) })),

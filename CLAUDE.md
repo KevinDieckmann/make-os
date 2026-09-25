@@ -140,6 +140,29 @@ lokal, Route `/os`, Port 3001.
   Pflichtangaben (Herkunft Art. 14 / Rechtsgrundlage Art. 6 nur als Vorschlag,
   Übernahme per Klick), Betroffenenanträge, Verzeichnis Art. 30, Export.
   Konzept: `docs/konzepte/crm-sales-marketing-events.md`.
+- **Heads auf Spitzenniveau (25.09.2026, Recherche Best Practice der besten Agenten):**
+  fester Ablauf statt freiem Agenten (`lib/heads/lauf.ts`): volles Datenpaket
+  (`paket.ts`: Fachdaten + **Grundlauf** + Lernstand + Gedächtnis + Team +
+  Übergaben + Stimme) → **Grundlauf** (`grundlauf.ts`, Regelwerk ohne Modell —
+  bei leerem Guthaben/Ausfall IST er das Ergebnis) → Modell übernimmt/verwirft
+  mit Grund/ergänzt (Evaluator-Optimizer) → Prüfer (IDs, Kanal § 7 UWG, Vollzug,
+  Zahlen, **Qualitätsrubrik**: Frist, Beleg, Anrede Sie/Du, Platzhalter,
+  ≤ 90 Wörter; „hoch“ nur mit frischem **Signal** ≤ 14 Tage oder Frist/Zusage/
+  Pflicht) → eine Korrekturrunde → dringendes Regelwerk kommt zurück
+  (`pflichtZurueck`) → **Belege** je Vorschlag (`belege.ts`) → „fuer“ →
+  speichern → **Autonomie** (`autonomie.ts`, Kevin: interne Kleinigkeiten
+  selbst: nächster Schritt an der Person nur wenn leer, sonst Aufgabe; nie
+  Entwurf/Kampagne/Merksatz; nicht in Power Hour/Nachfassen; Rücknahme = Ablehnung).
+  **Lernen** (`lernen.ts`): Ablehnen mit Grund, Annahmequote je Art (ohne
+  Selbst-Übernommenes), Wirkungsleiter Aktivität→Antwort→Termin→Chance,
+  Änderungsgrad der Entwürfe, Beispiele nach Modus, **Gedächtnis** (Merksätze).
+  **Modell:** Reviews (deal/kunden/kampagne/wochen/monat/wirkung) Opus 5.5 mit
+  effort high, sonst Sonnet 5 medium; System-Text > 1.024 Token (Cache), zweiter
+  Cache-Punkt hinter dem Datenpaket, Datenblock `<daten_<zufall>>`. Verbrauch inkl.
+  Cache je Lauf. **Evals** (`eval.ts`, `/api/heads/eval`): jeder Lauf legt den Fall
+  in `.data/heads-replay-<head>` ab; GET = offline bewerten, POST = live k-mal
+  (pass^k) — vor jeder Prompt-/Modelländerung. Takt auch ohne Schlüssel
+  (Regelwerk), Power Hour je Team-Person mit Konto. Budget-Limit: Kevin „später“.
 - **Markttraktion zu zweit (25.09.2026, Kevins Entscheidungen):** `lib/crm/team.ts`.
   **Verantwortlich je Welt:** Sales Kevin (Malin macht auch Sales), Marketing +
   Event Malin. **Zuständig je Eintrag:** kevin | malin | beide (Kontakt `besitzer`

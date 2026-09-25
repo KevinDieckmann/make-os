@@ -13,10 +13,11 @@ import { localDay } from '@/lib/zeit';
 
 /**
  * Preise je Million Token, Stand 07.09.2026 (Eingabe / Ausgabe in US-Dollar).
- * Zwischengespeicherte Eingabe ist billiger; das rechnen wir hier bewusst
- * NICHT mit — lieber eine Zahl, die eher zu hoch als zu niedrig ist.
+ * Seit 25.09. mit Prompt-Cache: gelesen 0,1 ×, geschrieben 1,25 × Eingabepreis
+ * (5-Minuten-Cache) — so sieht man, ob der Cache greift und was er spart.
  */
 const PREIS: Record<string, { ein: number; aus: number }> = {
+  'claude-opus-5-5': { ein: 4, aus: 20 },
   'claude-opus-5': { ein: 5, aus: 25 },
   'claude-sonnet-5': { ein: 2, aus: 10 },
   'claude-haiku-4-5-20251001': { ein: 1, aus: 5 },
@@ -29,6 +30,8 @@ export interface Posten {
   zweck: string;
   ein: number;
   aus: number;
+  /** Aus dem Prompt-Cache gelesen / in ihn geschrieben (Token). */
+  cl?: number; cs?: number;
   /** Geschätzte Kosten in US-Cent. */
   cent: number;
   anzahl: number;
@@ -39,9 +42,9 @@ interface Stand { tage: Tag[] }
 /** So viele Tage bleiben stehen — reicht für „was hat der Monat gekostet". */
 const TAGE = 45;
 
-export function kosten(modell: string, ein: number, aus: number): number {
+export function kosten(modell: string, ein: number, aus: number, cacheLesen = 0, cacheSchreiben = 0): number {
   const p = PREIS[modell] ?? STANDARD;
-  return ((ein / 1e6) * p.ein + (aus / 1e6) * p.aus) * 100;
+  return ((ein / 1e6) * p.ein + (aus / 1e6) * p.aus + (cacheLesen / 1e6) * p.ein * 0.1 + (cacheSchreiben / 1e6) * p.ein * 1.25) * 100;
 }
 
 /**
@@ -49,8 +52,8 @@ export function kosten(modell: string, ein: number, aus: number): number {
  * sonst hätte die Datei nach einer Woche zehntausend Einträge und niemand
  * würde je hineinsehen.
  */
-export async function notiere(modell: string, zweck: string, ein: number, aus: number): Promise<void> {
-  if (!ein && !aus) return;
+export async function notiere(modell: string, zweck: string, ein: number, aus: number, cacheLesen = 0, cacheSchreiben = 0): Promise<void> {
+  if (!ein && !aus && !cacheLesen && !cacheSchreiben) return;
   const heute = localDay();
   await updateJson<Stand>('ki-verbrauch', current => {
     const tage = current?.tage ?? [];
@@ -58,10 +61,10 @@ export async function notiere(modell: string, zweck: string, ein: number, aus: n
     const rest = tage.filter(t => t.tag !== heute);
     const da = tag.posten.find(p => p.modell === modell && p.zweck === zweck);
     if (da) {
-      da.ein += ein; da.aus += aus; da.anzahl += 1;
-      da.cent = kosten(modell, da.ein, da.aus);
+      da.ein += ein; da.aus += aus; da.anzahl += 1; da.cl = (da.cl ?? 0) + cacheLesen; da.cs = (da.cs ?? 0) + cacheSchreiben;
+      da.cent = kosten(modell, da.ein, da.aus, da.cl, da.cs);
     } else {
-      tag.posten.push({ modell, zweck, ein, aus, anzahl: 1, cent: kosten(modell, ein, aus) });
+      tag.posten.push({ modell, zweck, ein, aus, anzahl: 1, ...(cacheLesen ? { cl: cacheLesen } : {}), ...(cacheSchreiben ? { cs: cacheSchreiben } : {}), cent: kosten(modell, ein, aus, cacheLesen, cacheSchreiben) });
     }
     return { tage: [tag, ...rest].slice(0, TAGE) };
   });

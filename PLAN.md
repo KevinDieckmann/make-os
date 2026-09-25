@@ -261,6 +261,18 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Daten nur eigene (Masterdatei + Brain). Offen: Anthropic-Guthaben aufladen
 > (Agenten laufen sonst nicht), Kaltakquise-Liste Berlin erst nach Kevins Wort.
 
+> **Nachtrag 25.09. (Abend) — Heads auf Spitzenniveau.** Kevin: „so tief wie
+> möglich, sehr smart — Best Practice der Top-1-%-Bots.“ Recherche (Anthropic,
+> OpenAI, 11x, Gong, Outreach, HubSpot, Evals-Literatur) → umgesetzt: Grundlauf
+> (Regelwerk, läuft auch ohne Guthaben), Evaluator-Optimizer, Signal-Pflicht
+> „warum jetzt“, Qualitätsrubrik, Belege, Deal-Signale (MEDDICC), Lernen mit
+> Ablehnungsgründen/Wirkungsleiter/Änderungsgrad/Gedächtnis, Autonomie für
+> Internes mit Rücknahme (Kevins Entscheidung), Modellwahl je Modus (Kevins
+> Entscheidung), Cache + Verbrauch je Lauf, Evals mit pass^k. 528 Tests.
+> Nächste Stufe (braucht Guthaben): LLM-Richter an Kevins Urteil kalibrieren,
+> zweistufig (Auswahl → Texter mit Stimmprofil), wöchentliches Verdichten von
+> Ablehnungen zu Merksatz-Vorschlägen, Budget-Riegel (Kevin: später).
+
 > **Nachtrag 25.09. (Nachmittag) — Markttraktion zu zweit.** Kevin: „Malin muss
 > auch Sales machen, ich habe dafür aber die Verantwortung.“ Verantwortung je
 > Welt (Sales Kevin, Marketing + Event Malin), Zuständigkeit je Eintrag

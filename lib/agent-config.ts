@@ -14,7 +14,7 @@ export type AgentConfigMap = Record<string, AgentConfig>;
 export const MODEL_BY_TIER: Record<ModelTier, string> = {
   schnell: 'claude-haiku-4-5-20251001',
   ausgewogen: 'claude-sonnet-5',
-  stark: 'claude-opus-5',
+  stark: 'claude-opus-5-5',
 };
 
 export interface ResolvedAgent {
