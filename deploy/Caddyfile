@@ -1,10 +1,19 @@
 # HTTPS für MAKE OS — Zertifikat holt Caddy selbst, sobald die Domain auf den Server zeigt.
+# Sicherheits-Kopfzeilen (25.09., „höchste Stufe“): nur HTTPS (HSTS), nie in
+# fremde Seiten eingebettet (Klick-Täuschung), Kamera/Mikrofon nur für MAKE OS
+# selbst (Visitenkarte, Stimme), keine Verrate-Kopfzeilen zu Server und Software.
 {$MAKE_OS_DOMAIN} {
 	encode zstd gzip
 	header {
-		Strict-Transport-Security "max-age=31536000"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+		Content-Security-Policy "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'"
+		Permissions-Policy "camera=(self), microphone=(self), geolocation=(), payment=(), usb=()"
+		Cross-Origin-Opener-Policy same-origin
+		-Server
+		-X-Powered-By
 	}
 	reverse_proxy app:3000
 }

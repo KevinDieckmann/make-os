@@ -1,13 +1,24 @@
 # ─── MAKE OS · Prüfen und ausrollen ─────────────────────────────────────────
-# Jeder Push auf main: Typen, Tests, Lint. Nur wenn alles grün ist, zieht der
-# Server den Stand und baut neu. Geheimnisse im Repo (Settings → Secrets):
-#   MAKE_OS_HOST     — Server-IP oder -Name
-#   MAKE_OS_SSH_KEY  — privater Schlüssel, dessen öffentlicher Teil bei make@Server liegt
+# Jeder Push auf main: Typen, Tests, Lint. Nur wenn alles grün ist, löst
+# GitHub auf dem Server das Ausrollen aus: git pull, neu bauen (die alte
+# Version läuft dabei weiter), tauschen. Seit 25.09. (Härtung):
+#   · Der Schlüssel darf auf dem Server NUR diesen einen Befehl auslösen
+#     (authorized_keys: command=…,restrict) — keine Konsole, kein Kopieren.
+#   · Der Server wird an seinem festen Fingerabdruck erkannt (kein
+#     „erster Kontakt vertraut allem“).
+#   · Nie zwei Auslieferungen gleichzeitig.
+# Geheimnisse im Repo (Settings → Secrets and variables → Actions):
+#   MAKE_OS_HOST     — Server-IP (2.28.108.162)
+#   MAKE_OS_SSH_KEY  — privater Ausroll-Schlüssel (~/.ssh/make-os-ausrollen auf Kevins Mac)
 name: Prüfen und ausrollen
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: ausrollen
+  cancel-in-progress: false
 
 jobs:
   pruefen:
@@ -33,5 +44,6 @@ jobs:
         run: |
           [ -n "$HOST" ] && [ -n "$KEY" ] || { echo "Noch kein Server hinterlegt — nur geprüft."; exit 0; }
           mkdir -p ~/.ssh && echo "$KEY" > ~/.ssh/id && chmod 600 ~/.ssh/id
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          ssh -i ~/.ssh/id make@"$HOST" 'cd /srv/make-os/app && git pull --ff-only && docker compose up -d --build && docker image prune -f'
+          # Fester Fingerabdruck des Servers (Hetzner, 25.09.) — bei einem neuen Server hier eintragen.
+          echo "2.28.108.162 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFzA26Sov+ko5Jhl02nX7Luik4N1wYVaEjl8ouH5FFNQ" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id -o StrictHostKeyChecking=yes -o BatchMode=yes make@"$HOST"

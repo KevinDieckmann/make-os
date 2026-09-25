@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { ladeKonten, aendereKonten, emailSauber, passwortTauglich, passwortHashen, speicherName, type Konto } from '@/lib/zugang/konten';
 import { mitSitzung } from '@/lib/zugang/antwort';
+import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,9 +19,14 @@ export async function POST(req: Request) {
   if (name.length < 2) return NextResponse.json({ error: 'Name fehlt.' }, { status: 400 });
   if (!passwortTauglich(b.passwort)) return NextResponse.json({ error: 'Passwort: mindestens 10 Zeichen.' }, { status: 400 });
 
+  // Bremse gegen das Raten von Einladungscodes (je Adresse).
+  const ip = `code:${adresse(req)}`;
+  const warte = pruefe(ip).warteSek;
+  if (warte > 0) return NextResponse.json({ error: `Zu viele Versuche — bitte in ${warte > 90 ? `${Math.ceil(warte / 60)} Minuten` : `${warte} Sekunden`} erneut.` }, { status: 429, headers: { 'Retry-After': String(warte) } });
   const s0 = await ladeKonten();
   const einladung = s0.einladungen.find(e => e.code === code && Date.parse(e.bis) > Date.now());
-  if (!einladung) return NextResponse.json({ error: 'Einladungscode unbekannt oder abgelaufen.' }, { status: 403 });
+  if (!einladung) { fehlschlag(ip); return NextResponse.json({ error: 'Einladungscode unbekannt oder abgelaufen.' }, { status: 403 }); }
+  erfolg(ip);
   if (s0.konten.some(k => k.email === email)) return NextResponse.json({ error: 'Diese E-Mail hat schon ein Konto — bitte anmelden.' }, { status: 409 });
 
   const { hash, salz } = await passwortHashen(b.passwort);

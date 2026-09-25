@@ -103,6 +103,20 @@ if [ ! -d .data ] && [ -d ../startbestand ]; then
   echo ""
 fi
 
+# ── 4a · Umgezogen? ──────────────────────────────────────────────────────────
+# Seit 25.09. liegen die Daten auf dem Server (Hetzner). Die Kopie hier ist
+# veraltet — wer hier weiterarbeitet, erzeugt einen zweiten Stand. Deshalb
+# öffnet start.sh dann die Server-Adresse. Entwickeln geht weiter lokal:
+#   ./start.sh --entwicklung
+if [ -f .data/umgezogen.json ] && [ "${1:-}" != "--entwicklung" ] && [ "${MAKE_OS_MODUS:-}" != "entwicklung" ]; then
+  SERVER=$(grep -o '"server": *"[^"]*"' .data/umgezogen.json | sed 's/.*"\(https[^"]*\)"/\1/')
+  echo "  MAKE OS läuft jetzt auf dem Server — ich öffne ihn:"
+  echo "  $SERVER"
+  echo ""
+  open "$SERVER" 2>/dev/null || true
+  exit 0
+fi
+
 # ── 4b · Modus: schnell (Produktion) oder Entwicklung ───────────────────────
 # 25.09., Kevin: „die Ladegeschwindigkeit ist nicht wirklich gut". MAKE OS lief
 # im Entwicklungsmodus: jede Seite wurde beim Aufruf erst übersetzt, der

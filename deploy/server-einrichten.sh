@@ -54,6 +54,9 @@ echo "▸ Cronjobs für make"
   echo "15 3 * * * bash /srv/make-os/app/deploy/sicherung.sh >> /srv/make-os/sicherungen/protokoll.txt 2>&1 # make-os"; \
   echo "*/10 * * * * bash /srv/make-os/app/deploy/vault-abgleich.sh /srv/make-os/vault >> /srv/make-os/vault-abgleich.txt 2>&1 # make-os" ) | sudo -u make crontab -
 
+echo "▸ Härten (SSH nur mit Schlüssel, fail2ban, nächtliche Updates, Protokollgrenzen)"
+bash "$(dirname "$0")/server-haerten.sh"
+
 cat <<TEXT
 
 ════════════════════════════════════════════════════════════════════
