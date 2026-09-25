@@ -1,7 +1,7 @@
 // ─── CRM — Bestand (Chancen, Mandate, Leistungen, Events, Sitzungen) ────────
 // GET   → Bestand + was der Code daraus rechnet (Prognose, MRR, Konzentration,
 //         Lage je Mandat, Ampel je Chance, Zahlen je Event)
-// PATCH → { ops: [{ liste, op: 'upsert'|'delete', eintrag|id }] } — Einzeländerungen,
+// PATCH → { ops: [{ liste, op: 'upsert'|'delete'|'teil', eintrag|id|felder }] } — Einzeländerungen,
 //         damit Kevin und Malin gleichzeitig arbeiten können.
 
 import { NextResponse } from 'next/server';
@@ -19,12 +19,12 @@ import type { CrmBestand } from '@/lib/crm/typen';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-async function antwort(b: CrmBestand) {
+async function antwort(b: CrmBestand, ich: string) {
   const heute = localDay();
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const rechnungen = (await loadJson<{ rechnungen?: RechnungKurz[] }>('finanzplan'))?.rechnungen ?? [];
   return {
-    ok: true, heute, stand: b,
+    ok: true, ich, heute, stand: b,
     stufen: STUFEN.map(s => ({ ...s, p: wahrscheinlichkeit(s.id, b.wahrscheinlichkeiten) })),
     prognose: prognose(b.chancen, heute, b.wahrscheinlichkeiten),
     gewinnquote: gewinnquote(b.chancen),
@@ -37,8 +37,8 @@ async function antwort(b: CrmBestand) {
   };
 }
 
-export async function GET() {
-  return NextResponse.json(await antwort(await ladeCrm()));
+export async function GET(req: Request) {
+  return NextResponse.json(await antwort(await ladeCrm(), personAus(req)));
 }
 
 export async function PATCH(req: Request) {
@@ -49,5 +49,5 @@ export async function PATCH(req: Request) {
   const person = personAus(req);
   let angewandt = 0;
   const b = await aendereCrm(cur => { const r = wendeCrmAn(cur, ops, new Date().toISOString(), person); angewandt = r.angewandt; return r.bestand; });
-  return NextResponse.json({ ...(await antwort(b)), angewandt });
+  return NextResponse.json({ ...(await antwort(b, person)), angewandt });
 }

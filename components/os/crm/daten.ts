@@ -16,6 +16,8 @@ import type { EventZahlen } from '@/lib/crm/events';
 
 export interface CrmAntwort {
   ok: boolean; heute: string; stand: CrmBestand;
+  /** Wer hier angemeldet ist (Team-Kürzel) — für „Meins“, Übergaben und Freigaben. */
+  ich: string;
   stufen: { id: ChancenStufe; label: string; p: number; weiterWenn: string; offen: boolean }[];
   prognose: Prognose; gewinnquote: { gewonnen: number; verloren: number; quote: number | null };
   ampel: Record<string, { ampel: Ampel; gruende: string[] }>;
@@ -66,6 +68,30 @@ export function useCrm() {
     finally { unterwegs.current--; }
   }, []);
 
+  /**
+   * Nur diese Felder ändern (Server vereint mit dem aktuellen Stand) — so
+   * überschreiben Kevin und Malin am selben Eintrag nie die Felder der/des anderen.
+   */
+  const teil = useCallback(async (liste: CrmListe, id: string, felder: Record<string, unknown>) => {
+    unterwegs.current++;
+    setCrm(alt => (alt ? { ...alt, stand: { ...alt.stand, [liste]: (alt.stand[liste] as unknown as { id: string }[]).map(x => (x.id === id ? { ...x, ...felder } : x)) } } : alt));
+    try {
+      const r = await fetch('/api/crm/bestand', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste, op: 'teil', id, felder }] }) }).then(x => x.json());
+      if (r.ok) setCrm(r); else setFehler(r.fehler ?? 'Nicht gespeichert.');
+    } catch { setFehler('Nicht gespeichert — keine Verbindung.'); }
+    finally { unterwegs.current--; }
+  }, []);
+
+  /** An Kevin oder Malin übergeben (/api/crm/uebergabe) — danach neu laden. */
+  const uebergeben = useCallback(async (body: { art: string; id?: string; ids?: string[]; an: string; notiz?: string; frist?: string }) => {
+    unterwegs.current++;
+    try {
+      const r = await fetch('/api/crm/uebergabe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'keine Verbindung' }));
+      if (!r.ok) setFehler(r.fehler ?? 'Nicht übergeben.');
+      return r as { ok: boolean; text?: string; fehler?: string };
+    } finally { unterwegs.current--; void laden(); }
+  }, [laden]);
+
   const weg = useCallback(async (liste: CrmListe, id: string) => {
     unterwegs.current++;
     try {
@@ -96,7 +122,7 @@ export function useCrm() {
     } finally { unterwegs.current--; }
   }, []);
 
-  return { crm, kontakte, fehler, setFehler, laden, setze, weg, kontaktSetzen, aktivitaet };
+  return { crm, kontakte, fehler, setFehler, laden, setze, teil, uebergeben, weg, kontaktSetzen, aktivitaet, ich: crm?.ich ?? null };
 }
 export type CrmApi = ReturnType<typeof useCrm>;
 

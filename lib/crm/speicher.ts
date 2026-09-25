@@ -6,7 +6,8 @@
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { STUFEN } from './pipeline';
-import { CRM_LISTEN, type CrmBestand, type CrmListe, type Firma, type FirmaRolle, type Antrag, type AntragArt, type Verarbeitung, type Segment, type SegmentKriterien, type Beitrag, type NewsletterAusgabe, type Kampagne, type Chance, type Mandat, type Leistung, type Event, type Teilnahme, type PowerHourSitzung, type ChancenStufe, type Qual } from './typen';
+import { CRM_LISTEN, type CrmBestand, type CrmListe, type Firma, type FirmaRolle, type Antrag, type AntragArt, type Verarbeitung, type Segment, type SegmentKriterien, type Beitrag, type NewsletterAusgabe, type Kampagne, type Chance, type Mandat, type Leistung, type Event, type Teilnahme, type PowerHourSitzung, type ChancenStufe, type Qual, type Freigabe } from './typen';
+import { wer, BEIDE, verantwortlich } from './team';
 
 export const CRM_SPEICHER = 'crm';
 export const leererBestand = (): CrmBestand => ({ firmen: [], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [], segmente: [], beitraege: [], newsletter: [], kampagnen: [] });
@@ -23,6 +24,15 @@ const aus = <T extends string>(v: unknown, liste: readonly T[], standard: T): T 
 const idOk = (v: unknown) => /^[a-z0-9][a-z0-9-]{1,63}$/.test(String(v ?? ''));
 const ids = (v: unknown) => (Array.isArray(v) ? v.map(String).filter(idOk).slice(0, 20) : []);
 const texte = (v: unknown, n = 30, l = 400) => (Array.isArray(v) ? v.map(x => txt(x, l)).filter(Boolean).slice(0, n) : []);
+/** Zuständigkeit (lib/crm/team.ts) — nur Team-Kürzel oder „beide“. */
+const zst = (o: Record<string, unknown>) => (wer(o.zustaendig) ? { zustaendig: wer(o.zustaendig) } : {});
+function freigabe(v: unknown): Freigabe | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const f = v as Record<string, unknown>;
+  const an = wer(f.an);
+  if (!an || an === BEIDE || !['offen', 'ok', 'aenderung'].includes(String(f.status))) return undefined;
+  return { status: f.status as Freigabe['status'], an, ...(wer(f.von) ? { von: wer(f.von) } : {}), ...(opt(f.am, 25) ? { am: opt(f.am, 25) } : {}), ...(opt(f.notiz, 600) ? { notiz: opt(f.notiz, 600) } : {}) };
+}
 const GES = ['kdv', 'kdc', 'ug', 'offen'] as const;
 const ARTEN = ['retainer', 'projekt', 'workshop', 'vermittlung', 'software'] as const;
 const Q = ['ja', 'nein', 'unklar'] as const;
@@ -46,7 +56,7 @@ function chance(o: Record<string, unknown>, jetzt: string, person: string): Chan
     qualifizierung: { schmerz: aus(ql.schmerz, Q, 'unklar') as Qual, entscheider: aus(ql.entscheider, Q, 'unklar') as Qual, budget: aus(ql.budget, Q, 'unklar') as Qual, zeitpunkt: aus(ql.zeitpunkt, Q, 'unklar') as Qual, wirkung: aus(ql.wirkung, Q, 'unklar') as Qual, alternative: aus(ql.alternative, Q, 'unklar') as Qual },
     ...(opt(o.grund, 300) ? { grund: opt(o.grund, 300) } : {}), ...(tag(o.wiedervorlage) ? { wiedervorlage: tag(o.wiedervorlage) } : {}),
     ...(tag(o.erwartetAm) ? { erwartetAm: tag(o.erwartetAm) } : {}),
-    gesellschaft: aus(o.gesellschaft, GES, 'offen'), besitzer: txt(o.besitzer, 40) || person,
+    gesellschaft: aus(o.gesellschaft, GES, 'offen'), besitzer: wer(o.besitzer) ?? (wer(person) && wer(person) !== BEIDE ? person : verantwortlich('sales')),
     ...(opt(o.selbstauskunft, 300) ? { selbstauskunft: opt(o.selbstauskunft, 300) } : {}),
     angelegt: txt(o.angelegt, 25) || jetzt, geaendert: jetzt, ...(tag(String(o.letzteAktivitaet ?? '').slice(0, 10)) ? { letzteAktivitaet: String(o.letzteAktivitaet).slice(0, 10) } : {}),
     ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}),
@@ -75,7 +85,7 @@ function mandat(o: Record<string, unknown>, jetzt: string): Mandat | null {
     ziele: Array.isArray(o.ziele) ? (o.ziele as Record<string, unknown>[]).slice(0, 12).map((z, i) => ({ id: txt(z.id, 40) || `z${i}`, text: txt(z.text, 300), ...(opt(z.ziel, 80) ? { ziel: opt(z.ziel, 80) } : {}), ...(opt(z.ist, 80) ? { ist: opt(z.ist, 80) } : {}) })).filter(z => z.text) : [],
     health: { beteiligung: hv(he.beteiligung), umsetzung: hv(he.umsetzung), wirkung: hv(he.wirkung), zahlung: hv(he.zahlung), stimmung: hv(he.stimmung) },
     leistungen: texte(o.leistungen, 30, 400), offen: texte(o.offen, 30, 800),
-    ...(opt(o.quelle, 600) ? { quelle: opt(o.quelle, 600) } : {}), ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}), geaendert: jetzt,
+    ...(opt(o.quelle, 600) ? { quelle: opt(o.quelle, 600) } : {}), ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}), ...zst(o), geaendert: jetzt,
   };
 }
 
@@ -115,11 +125,11 @@ function event(o: Record<string, unknown>, jetzt: string): Event | null {
     status: aus(o.status, ['idee', 'geplant', 'einladung', 'durchgefuehrt', 'abgesagt'] as const, 'idee'),
     ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}),
     ...(Array.isArray(o.ablauf) ? { ablauf: (o.ablauf as Record<string, unknown>[]).slice(0, 30).map(a => ({ zeit: txt(a.zeit, 5), punkt: txt(a.punkt, 200) })).filter(a => a.punkt) } : {}),
-    ...(Array.isArray(o.checkliste) ? { checkliste: (o.checkliste as Record<string, unknown>[]).slice(0, 60).map((c, i) => ({ id: txt(c.id, 40) || `cl${i}`, text: txt(c.text, 200), tageVorher: zahl(c.tageVorher, -30, 120), erledigt: c.erledigt === true, ...(opt(c.aufgabeId, 80) ? { aufgabeId: opt(c.aufgabeId, 80) } : {}) })).filter(c => c.text) } : {}),
+    ...(Array.isArray(o.checkliste) ? { checkliste: (o.checkliste as Record<string, unknown>[]).slice(0, 60).map((c, i) => ({ id: txt(c.id, 40) || `cl${i}`, text: txt(c.text, 200), tageVorher: zahl(c.tageVorher, -30, 120), erledigt: c.erledigt === true, ...(opt(c.aufgabeId, 80) ? { aufgabeId: opt(c.aufgabeId, 80) } : {}), ...(wer(c.wer) ? { wer: wer(c.wer) } : {}) })).filter(c => c.text) } : {}),
     ...(Array.isArray(o.budget) ? { budget: (o.budget as Record<string, unknown>[]).slice(0, 40).map((b, i) => ({ id: txt(b.id, 40) || `b${i}`, posten: txt(b.posten, 120), betrag: zahl(b.betrag, 0, 1e6) })).filter(b => b.posten) } : {}),
     ...(o.mixZiel && typeof o.mixZiel === 'object' ? { mixZiel: { zielkunden: zahl((o.mixZiel as Record<string, unknown>).zielkunden, 0, 100), kunden: zahl((o.mixZiel as Record<string, unknown>).kunden, 0, 100) } } : {}),
     ...(idOk(o.segmentId) ? { segmentId: String(o.segmentId) } : {}), ...(opt(o.vorlage, 40) ? { vorlage: opt(o.vorlage, 40) } : {}),
-    geaendert: jetzt,
+    ...zst(o), geaendert: jetzt,
   };
 }
 
@@ -132,6 +142,7 @@ function teilnahme(o: Record<string, unknown>, jetzt: string): Teilnahme | null 
     ...(['gast', 'co_host', 'speaker'].includes(String(o.rolle)) ? { rolle: o.rolle as Teilnahme['rolle'] } : {}),
     ...(typeof o.fotofreigabe === 'boolean' ? { fotofreigabe: o.fotofreigabe } : {}), ...(tag(o.eingeladenAm) ? { eingeladenAm: tag(o.eingeladenAm) } : {}),
     ...(['persoenlich', 'telefon', 'mail', 'linkedin'].includes(String(o.einladungsweg)) ? { einladungsweg: o.einladungsweg as Teilnahme['einladungsweg'] } : {}),
+    ...(wer(o.einladenDurch) && wer(o.einladenDurch) !== BEIDE ? { einladenDurch: wer(o.einladenDurch) } : {}),
     geaendert: jetzt,
   };
 }
@@ -186,7 +197,9 @@ function beitrag(o: Record<string, unknown>, jetzt: string): Beitrag | null {
     ...(opt(o.saeule, 60) ? { saeule: opt(o.saeule, 60) } : {}), status: aus(o.status, ['idee', 'entwurf', 'geplant', 'veroeffentlicht'] as const, 'idee'),
     ...(tag(o.datum) ? { datum: tag(o.datum) } : {}), ...(opt(o.text, 8000) ? { text: opt(o.text, 8000) } : {}), ...(opt(o.link, 400) ? { link: opt(o.link, 400) } : {}),
     wirkung: Array.isArray(o.wirkung) ? (o.wirkung as Record<string, unknown>[]).slice(0, 200).map(w => ({ kontaktId: txt(w.kontaktId, 80), art: aus(w.art, ['reaktion', 'gespraech', 'anfrage'] as const, 'reaktion'), am: tag(w.am) ?? jetzt.slice(0, 10), ...(opt(w.notiz, 300) ? { notiz: opt(w.notiz, 300) } : {}) })).filter(w => /^c-/.test(w.kontaktId)) : [],
-    quellen: strListe(o.quellen, 30, 80) ?? [], geaendert: jetzt,
+    quellen: strListe(o.quellen, 30, 80) ?? [], ...zst(o),
+    ...(wer(o.stimme) || o.stimme === 'marke' ? { stimme: o.stimme === 'marke' ? 'marke' : wer(o.stimme) } : {}),
+    ...(freigabe(o.freigabe) ? { freigabe: freigabe(o.freigabe) } : {}), geaendert: jetzt,
   };
 }
 function ausgabe(o: Record<string, unknown>, jetzt: string): NewsletterAusgabe | null {
@@ -196,6 +209,7 @@ function ausgabe(o: Record<string, unknown>, jetzt: string): NewsletterAusgabe |
     id: String(o.id), titel: txt(o.titel, 200), ...(tag(o.datum) ? { datum: tag(o.datum) } : {}), status: aus(o.status, ['entwurf', 'bereit', 'versendet'] as const, 'entwurf'),
     inhalt: txt(o.inhalt, 20000), beitragIds: ids(o.beitragIds),
     ...(n(o.empfaenger) !== undefined ? { empfaenger: n(o.empfaenger) } : {}), ...(n(o.antworten) !== undefined ? { antworten: n(o.antworten) } : {}), ...(n(o.abmeldungen) !== undefined ? { abmeldungen: n(o.abmeldungen) } : {}),
+    ...zst(o), ...(freigabe(o.freigabe) ? { freigabe: freigabe(o.freigabe) } : {}),
     geaendert: jetzt,
   };
 }
@@ -215,11 +229,16 @@ function kampagne(o: Record<string, unknown>, jetzt: string): Kampagne | null {
     schritte: Array.isArray(o.schritte) ? (o.schritte as Record<string, unknown>[]).slice(0, 40).map((x, i) => ({ id: txt(x.id, 40) || `s${i}`, text: txt(x.text, 240), tag: zahl(x.tag, -60, 365), erledigt: x.erledigt === true, ...(opt(x.aufgabeId, 80) ? { aufgabeId: opt(x.aufgabeId, 80) } : {}) })).filter(x => x.text) : [],
     kontaktIds: Array.isArray(o.kontaktIds) ? (o.kontaktIds as unknown[]).map(String).filter(x => /^c-[a-z0-9-]{4,60}$/.test(x)).slice(0, 500) : [],
     ergebnisse: Array.isArray(o.ergebnisse) ? (o.ergebnisse as Record<string, unknown>[]).slice(0, 1000).map(e => ({ kontaktId: txt(e.kontaktId, 80), ergebnis: aus(e.ergebnis, ['angesprochen', 'reagiert', 'gespraech', 'chance', 'kein_interesse'] as const, 'angesprochen'), am: tag(e.am) ?? jetzt.slice(0, 10) })).filter(e => /^c-/.test(e.kontaktId)) : [],
-    von: aus(o.von, ['hand', 'head-sales', 'head-marketing'] as const, 'hand'), ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}), geaendert: jetzt,
+    von: aus(o.von, ['hand', 'head-sales', 'head-marketing'] as const, 'hand'), ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}), ...zst(o), geaendert: jetzt,
   };
 }
 
+/** Geprüfter Eintrag — mit „geaendertVon“, wo die Liste ein „geaendert“ führt (für „Zuletzt im Team“). */
 export function saeubern(liste: CrmListe, roh: Record<string, unknown>, jetzt: string, person: string): Record<string, unknown> | null {
+  const e = saeubernRoh(liste, roh, jetzt, person);
+  return e && 'geaendert' in e && liste !== 'antraege' && liste !== 'verarbeitungen' ? { ...e, geaendertVon: person } : e;
+}
+function saeubernRoh(liste: CrmListe, roh: Record<string, unknown>, jetzt: string, person: string): Record<string, unknown> | null {
   switch (liste) {
     case 'firmen': return firma(roh, jetzt) as unknown as Record<string, unknown>;
     case 'antraege': return antrag(roh, jetzt, person) as unknown as Record<string, unknown>;

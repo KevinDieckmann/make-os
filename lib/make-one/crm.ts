@@ -28,8 +28,8 @@ export const STUFE_LABEL: Record<Stufe, string> = {
 /** Stufen, in denen ein Kontakt für die Tagesliste nicht mehr in Frage kommt. */
 export const ABGESCHLOSSEN: readonly Stufe[] = ['gewonnen', 'verloren', 'ruht'];
 
-export type AktivitaetArt = 'mail' | 'linkedin' | 'anruf' | 'antwort' | 'termin' | 'notiz' | 'stufe' | 'gespraech' | 'event' | 'system';
-export const AKTIVITAET_ARTEN: readonly AktivitaetArt[] = ['mail', 'linkedin', 'anruf', 'antwort', 'termin', 'notiz', 'stufe', 'gespraech', 'event', 'system'];
+export type AktivitaetArt = 'mail' | 'linkedin' | 'anruf' | 'antwort' | 'termin' | 'notiz' | 'stufe' | 'gespraech' | 'event' | 'system' | 'uebergabe';
+export const AKTIVITAET_ARTEN: readonly AktivitaetArt[] = ['mail', 'linkedin', 'anruf', 'antwort', 'termin', 'notiz', 'stufe', 'gespraech', 'event', 'system', 'uebergabe'];
 
 /** Ergebnis eines Anrufs oder Gesprächsversuchs (Power Hour). */
 export type Ergebnis = 'gespraech' | 'termin' | 'mailbox' | 'nicht_erreicht' | 'rueckruf' | 'kein_bedarf' | 'sperre';
@@ -146,6 +146,8 @@ export interface Kontakt {
   naechsterSchritt?: { text: string; datum: string };
   /** Nie in ein Agentenpaket. */
   privatNotiz?: string;
+  /** Wer die private Notiz geschrieben hat — nur diese Person sieht sie (Kevins Entscheidung 25.09.). */
+  privatNotizVon?: string;
   // ── Pipeline (lebt nur hier) ──
   stufe: Stufe;
   wiedervorlage?: string;
@@ -444,7 +446,7 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     ...(RECHTSGRUNDLAGEN.some(r => r.id === o.rechtsgrundlage) ? { rechtsgrundlage: o.rechtsgrundlage as Rechtsgrundlage } : {}),
     ...(o.fremddaten === true ? { fremddaten: true } : {}), ...(tag(o.art14InformiertAm) ? { art14InformiertAm: tag(o.art14InformiertAm) } : {}),
     ...(ns && txt(ns.text, 300) && tag(ns.datum) ? { naechsterSchritt: { text: txt(ns.text, 300)!, datum: tag(ns.datum)! } } : {}),
-    ...(txt(o.privatNotiz, 2000) ? { privatNotiz: txt(o.privatNotiz, 2000) } : {}),
+    ...(txt(o.privatNotiz, 2000) ? { privatNotiz: txt(o.privatNotiz, 2000), ...(/^[a-z0-9-]{1,40}$/.test(String(o.privatNotizVon ?? '')) ? { privatNotizVon: String(o.privatNotizVon) } : {}) } : {}),
     stufe: st, wiedervorlage: tag(o.wiedervorlage), letzterKontakt: tag(o.letzterKontakt),
     aktivitaeten: akt,
     importiertAm: String(o.importiertAm ?? '').slice(0, 10) || '', geaendertAm: String(o.geaendertAm ?? '').slice(0, 10) || '',
@@ -494,16 +496,41 @@ export function wendeAktivitaetAn(
  * ein Anhänge-Log — was der Server inzwischen angehängt hat, darf ein älterer
  * Stand nie wegwischen. Deshalb: Verlauf vereinen, letzter Kontakt = jüngster.
  */
-export function kontaktVereinen(neu: Kontakt, alt: Kontakt): Kontakt {
+export function kontaktVereinen(neu: Kontakt, alt: Kontakt, person?: string): Kontakt {
   const schluessel = (a: Aktivitaet) => `${a.am}|${a.art}|${a.bezug ?? ''}|${a.text ?? ''}`;
   const bekannt = new Set((neu.aktivitaeten ?? []).map(schluessel));
   const fehlend = (alt.aktivitaeten ?? []).filter(a => !bekannt.has(schluessel(a)));
   const letzter = [neu.letzterKontakt, alt.letzterKontakt].filter(Boolean).sort().pop();
   return {
-    ...neu,
+    ...privatNotizVereinen(neu, alt, person),
     aktivitaeten: fehlend.length ? [...(neu.aktivitaeten ?? []), ...fehlend].sort((a, b) => a.am.localeCompare(b.am)) : neu.aktivitaeten,
     ...(letzter ? { letzterKontakt: letzter } : {}),
   };
+}
+
+// ── Private Notiz: nur für die Person, die sie schrieb (Kevins Entscheidung 25.09.) ──
+/** Vor dem 25.09. schrieb nur Kevin private Notizen — ohne Verfasser gelten sie als seine. */
+export const privatNotizVerfasser = (k: Pick<Kontakt, 'privatNotiz' | 'privatNotizVon'>) => (k.privatNotiz ? k.privatNotizVon ?? 'kevin' : undefined);
+
+/**
+ * Die private Notiz beim Speichern: Wer nicht Verfasser ist, kann sie weder
+ * sehen noch überschreiben oder löschen — sein Stand trägt sie ja gar nicht.
+ * Der Verfasser (oder wer die erste Notiz schreibt) setzt sie frei.
+ */
+export function privatNotizVereinen(neu: Kontakt, alt: Kontakt | undefined, person?: string): Kontakt {
+  const { privatNotiz: _n, privatNotizVon: _v, ...rest } = neu;
+  const verfasser = alt ? privatNotizVerfasser(alt) : undefined;
+  if (verfasser && person && verfasser !== person) return { ...rest, privatNotiz: alt!.privatNotiz, privatNotizVon: verfasser };
+  if (!person) return neu.privatNotiz ? { ...rest, privatNotiz: neu.privatNotiz, privatNotizVon: neu.privatNotizVon ?? verfasser } : rest;
+  return neu.privatNotiz ? { ...rest, privatNotiz: neu.privatNotiz, privatNotizVon: person } : rest;
+}
+
+/** Für die Anzeige: fremde private Notizen entfernen. */
+export function fuerPerson(k: Kontakt, person: string): Kontakt {
+  const v = privatNotizVerfasser(k);
+  if (!v || v === person) return k;
+  const { privatNotiz: _n, privatNotizVon: _v, ...rest } = k;
+  return rest;
 }
 
 /** Kontakt nach Name, Firma, Mail oder Branche finden — für Jarvis und die Suche. */

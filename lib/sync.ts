@@ -10,7 +10,12 @@
 /** Die Listen des Finanzplans (Firmen/Konten, Rechnungen, Zahlungen, Merkposten, Produkte). */
 export const FINANZPLAN_LISTEN = ['firmen', 'rechnungen', 'zahlungen', 'merkposten', 'produkte'];
 
-export interface ListenOp { liste: string; op: 'upsert' | 'delete'; eintrag?: Record<string, unknown>; id?: string }
+/**
+ * upsert = ganzer Eintrag · delete = weg · teil = nur diese Felder in den
+ * vorhandenen Eintrag (25.09.: Kevin und Malin am selben Eintrag, ohne sich
+ * gegenseitig andere Felder zu überschreiben).
+ */
+export interface ListenOp { liste: string; op: 'upsert' | 'delete' | 'teil'; eintrag?: Record<string, unknown>; id?: string; felder?: Record<string, unknown> }
 export interface Aenderung { ops: ListenOp[]; felder: Record<string, unknown> }
 
 /** Listen und ihr Schlüsselfeld: ['rechnungen'] (Schlüssel „id“) oder { months: 'm' }. */
@@ -44,6 +49,14 @@ export function wendeAn<T extends Record<string, unknown>>(liste: T[], ops: List
   let angewandt = 0;
   for (const o of ops) {
     if (o.op === 'delete') { if (o.id != null && nach.delete(String(o.id))) angewandt++; continue; }
+    if (o.op === 'teil') {
+      // Nur in Vorhandenes — ein Teil legt nie etwas an; der Schlüssel bleibt, wie er ist.
+      const alt = o.id != null ? nach.get(String(o.id)) : undefined;
+      if (!alt || !o.felder || typeof o.felder !== 'object') continue;
+      const s = saeubern({ ...alt, ...o.felder, [feld]: alt[feld] });
+      if (s) { nach.set(String(alt[feld]), s); angewandt++; }
+      continue;
+    }
     const s = o.eintrag ? saeubern(o.eintrag) : null;
     if (s && s[feld] != null) { nach.set(String(s[feld]), s); angewandt++; }
   }

@@ -16,6 +16,7 @@ import { datenpaket } from '@/lib/heads/daten';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { PLAYBOOKS, planen } from '@/lib/crm/kampagnen';
 import { localDay } from '@/lib/zeit';
+import { wer, verantwortlich, haeltBeziehung, nameVon, BEIDE } from '@/lib/crm/team';
 import { leererStand, standName, type HeadStand, type HeadVorschlag, type Status } from '@/lib/heads/stand';
 
 export const runtime = 'nodejs';
@@ -71,8 +72,9 @@ export async function POST(req: Request, { params }: { params: { head: string } 
       const basis = pb ?? { ...PLAYBOOKS[0], id: 'eigen', name: t.kampagne.name, schritte: [{ text: 'Anlass und Botschaft festlegen', tag: 0 }, { text: 'Personen ansprechen', tag: 2 }, { text: 'Nachfassen', tag: 9 }] };
       const plan = planen(basis, kontakte, crm, localDay(), `kp-${Date.now().toString(36)}`, h === 'sales' ? 'head-sales' : 'head-marketing');
       const ids = t.kampagne.kontakt_ids.filter(id => kontakte.some(k => k.id === id && !k.werbesperre));
-      await aendereCrm(c => ({ ...c, kampagnen: [...c.kampagnen, { ...plan, name: t.kampagne!.name || plan.name, ziel: t.kampagne!.ziel || plan.ziel, kontaktIds: ids.length ? ids : plan.kontaktIds, notiz: t.begruendung.slice(0, 1000) }] }));
-      wohin = 'Kampagnen-Entwurf im Marketing';
+      // Zuständig: wer angenommen hat — die Kampagne gehört der Person, die sie führen will.
+      await aendereCrm(c => ({ ...c, kampagnen: [...c.kampagnen, { ...plan, name: t.kampagne!.name || plan.name, ziel: t.kampagne!.ziel || plan.ziel, kontaktIds: ids.length ? ids : plan.kontaktIds, notiz: t.begruendung.slice(0, 1000), zustaendig: wer(person) ?? verantwortlich(h), geaendertVon: person }] }));
+      wohin = `Kampagnen-Entwurf (${h === 'sales' ? 'Sales' : 'Marketing'} › Kampagnen)`;
     } else if (status === 'angenommen' && t.kontakt_id && t.frist) {
       await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
         const f = cur ?? { kontakte: [] };
@@ -80,16 +82,20 @@ export async function POST(req: Request, { params }: { params: { head: string } 
       });
       wohin = 'nächster Schritt an der Person';
     } else if (status === 'angenommen' || status === 'erledigt') {
+      // Die Aufgabe bekommt, wer die Beziehung hält — sonst die/der Verantwortliche der Welt (Sales: Kevin, Marketing/Event: Malin).
+      const k = t.kontakt_id ? ((await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? []).find(x => x.id === t.kontakt_id) : undefined;
+      const fuer = k ? haeltBeziehung(k) : verantwortlich(h);
+      const bearbeiter = fuer === BEIDE ? person : fuer;
       await updateJson<{ tasks: Record<string, unknown>[] }>('tasks', cur => {
         const f = cur ?? { tasks: [] };
         const tasks = [...(f.tasks ?? [])];
         const i = tasks.findIndex(x => x.id === `hd-${t.id}`);
         if (status === 'erledigt') { if (i >= 0) tasks[i] = { ...tasks[i], status: 'done', updatedAt: jetzt }; return { ...f, tasks }; }
         if (i >= 0) return f;
-        tasks.push({ id: `hd-${t.id}`, title: t.titel.slice(0, 200), description: `Vorschlag des ${HEAD_NAME[h]}: ${t.begruendung}${t.entwurf ? `\n\nEntwurf (${t.entwurf.kanal}):\n${t.entwurf.text}` : ''}`, status: 'todo', priority: t.prioritaet === 'hoch' ? 'high' : t.prioritaet === 'niedrig' ? 'low' : 'medium', assignee: person, tags: [AGENT_ID[h], 'crm'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, ...(t.frist ? { dueDate: t.frist } : {}) });
+        tasks.push({ id: `hd-${t.id}`, title: t.titel.slice(0, 200), description: `Vorschlag des ${HEAD_NAME[h]}: ${t.begruendung}${t.entwurf ? `\n\nEntwurf (${t.entwurf.kanal}):\n${t.entwurf.text}` : ''}`, status: 'todo', priority: t.prioritaet === 'hoch' ? 'high' : t.prioritaet === 'niedrig' ? 'low' : 'medium', assignee: bearbeiter, tags: [AGENT_ID[h], 'markttraktion'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, ...(t.frist ? { dueDate: t.frist } : {}) });
         return { ...f, tasks };
       });
-      wohin = 'Aufgabe';
+      wohin = bearbeiter === person ? 'Aufgabe' : `Aufgabe für ${nameVon(bearbeiter)}`;
     }
     return NextResponse.json({ ok: true, vorschlag: t, wohin });
   }

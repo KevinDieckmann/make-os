@@ -8,7 +8,11 @@
 //   5 Pflege       Kreis A/B, Takt überschritten (Rang = Tage seit Kontakt ÷ Takt)
 //   6 Neu          Prio A/B mit Aufhänger — erst Warm-Intro, dann Vernetzen
 // Harte Filter: Werbesperre, kein zulässiger Kanal, abgeschlossen, Kontakt vor
-// < 3 Werktagen (außer bei unbeantworteter Antwort), fremder Besitzer.
+// < 3 Werktagen (außer bei unbeantworteter Antwort), fremde Zuständigkeit.
+// Zu zweit (25.09.): Jede Karte gehört einer Person — der Chance, dem Mandat,
+// der Kampagne, der Einladung zum Event, sonst der Person, die die Beziehung
+// hält (ohne Eintrag: Sales-Verantwortung, also Kevin). So ruft nie jemand
+// an, den gerade die/der andere anruft.
 // Je Karte die Gründe im Klartext mit Punkten — wie die Warum-jetzt-Punkte in
 // KEMARIS Operations (dealScore.ts), damit keine Zahl eine Blackbox ist.
 
@@ -18,6 +22,7 @@ import { gesundheit, gesamtwert, OFFENE_STUFEN } from './pipeline';
 import { besterKanal, kanalStatus, type KanalStatus } from './recht';
 import { mandatLage } from './kunden';
 import { followUpBis } from './events';
+import { haeltBeziehung, zustaendig, BEIDE } from './team';
 
 export type Kategorie = 'versprechen' | 'signale' | 'chancen' | 'kunden' | 'pflege' | 'neu';
 export const KATEGORIEN: { id: Kategorie; label: string; warum: string }[] = [
@@ -56,7 +61,18 @@ export function unbeantwortet(k: Kontakt, heute?: string): boolean {
   return !heute || tage(l[l.length - 1].am, heute) <= 14;
 }
 
-export interface Auswahl { karten: Karte[]; ausgefiltert: { sperre: number; ohneKanal: number; kuerzlich: number } }
+export interface Auswahl { karten: Karte[]; ausgefiltert: { sperre: number; ohneKanal: number; kuerzlich: number; beiAnderen: number } }
+
+/** Wem eine Karte gehört: Chance → Mandat → Kampagne → Einladung zum Event → wer die Beziehung hält. */
+export function karteGehoert(c: Pick<Karte, 'kontakt' | 'chance' | 'bezug'>, crm: CrmBestand): string {
+  if (c.chance) return zustaendig(c.chance.besitzer, 'sales');
+  if (c.bezug) {
+    const m = crm.mandate.find(x => x.id === c.bezug); if (m) return zustaendig(m.zustaendig, 'sales');
+    const kp = (crm.kampagnen ?? []).find(x => x.id === c.bezug); if (kp) return zustaendig(kp.zustaendig, 'sales');
+    const t = crm.teilnahmen.find(x => x.eventId === c.bezug && x.kontaktId === c.kontakt.id); if (t?.einladenDurch) return t.einladenDurch;
+  }
+  return haeltBeziehung(c.kontakt);
+}
 
 export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, person: string, n = 12): Auswahl {
   const nachId = new Map(kontakte.map(k => [k.id, k]));
@@ -64,7 +80,7 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   for (const c of crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe))) for (const id of c.kontaktIds) chancenJe.set(id, [...(chancenJe.get(id) ?? []), c]);
   const mandatJe = new Set(crm.mandate.filter(m => m.status === 'aktiv' || m.status === 'verhandlung').flatMap(m => m.kontaktIds));
   const kandidaten = new Map<string, Karte>();
-  const aus = { sperre: 0, ohneKanal: 0, kuerzlich: 0 };
+  const aus = { sperre: 0, ohneKanal: 0, kuerzlich: 0, beiAnderen: 0 };
 
   const nimm = (k: Kontakt | undefined, kategorie: Kategorie, punkte: number, grund: string, extra: Partial<Karte> = {}) => {
     if (!k) return;
@@ -137,7 +153,8 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   for (const c of Array.from(kandidaten.values())) {
     const k = c.kontakt;
     if (k.werbesperre) { aus.sperre++; continue; }
-    if (k.besitzer && k.besitzer !== 'beide' && k.besitzer !== person) continue;
+    const wem = karteGehoert(c, crm);
+    if (wem !== person && wem !== BEIDE) { aus.beiAnderen++; continue; }
     if (!c.kanal) { aus.ohneKanal++; continue; }
     const kuerzlich = k.letzterKontakt && werktageSeit(k.letzterKontakt, heute) < 3;
     if (kuerzlich && c.kategorie !== 'signale' && c.kategorie !== 'versprechen') { aus.kuerzlich++; continue; }

@@ -39,6 +39,8 @@ export interface Chance {
   selbstauskunft?: string;
   angelegt: string;
   geaendert: string;
+  /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
+  geaendertVon?: string;
   letzteAktivitaet?: string;
   notiz?: string;
 }
@@ -76,7 +78,11 @@ export interface Mandat {
   offen: string[];
   quelle?: string;
   notiz?: string;
+  /** Wer es bearbeitet: Team-Kürzel (kevin, malin) oder „beide“ — fehlt es, gilt die/der Verantwortliche der Welt (lib/crm/team.ts). */
+  zustaendig?: string;
   geaendert: string;
+  /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
+  geaendertVon?: string;
 }
 
 export type LeistungTyp = 'diagnose' | 'workshop' | 'retainer' | 'sprint' | 'vermittlung' | 'software';
@@ -119,6 +125,8 @@ export interface Firma {
   marktinfo?: string;
   notiz?: string;
   geaendert: string;
+  /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
+  geaendertVon?: string;
 }
 
 export type EventFormat = 'stammtisch' | 'workshop' | 'dinner' | 'webinar' | 'messe' | 'sonstig';
@@ -140,7 +148,7 @@ export interface Event {
   /** Ablauf des Abends (Uhrzeit + Punkt). */
   ablauf?: { zeit: string; punkt: string }[];
   /** Checkliste mit Vorlauf in Tagen vor dem Event; angenommen → Aufgabe (aufgabeId). */
-  checkliste?: { id: string; text: string; tageVorher: number; erledigt: boolean; aufgabeId?: string }[];
+  checkliste?: { id: string; text: string; tageVorher: number; erledigt: boolean; aufgabeId?: string; /** Wer den Punkt erledigt — wird Bearbeiter der Aufgabe. */ wer?: string }[];
   /** Kostenpositionen — Summe ersetzt kostenEuro, sobald Positionen da sind. */
   budget?: { id: string; posten: string; betrag: number }[];
   /** Soll-Mischung der Gäste in Prozent (Zielkunden inkl. Interessenten; Kunden + Multiplikatoren). */
@@ -148,7 +156,11 @@ export interface Event {
   /** Gästeliste aus einem Segment vorgeschlagen. */
   segmentId?: string;
   vorlage?: string;
+  /** Wer es bearbeitet: Team-Kürzel (kevin, malin) oder „beide“ — fehlt es, gilt die/der Verantwortliche der Welt (lib/crm/team.ts). */
+  zustaendig?: string;
   geaendert: string;
+  /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
+  geaendertVon?: string;
 }
 export type TeilnahmeStatus = 'vorgemerkt' | 'eingeladen' | 'zugesagt' | 'abgesagt' | 'da' | 'no_show';
 export interface Teilnahme {
@@ -163,7 +175,11 @@ export interface Teilnahme {
   fotofreigabe?: boolean;
   eingeladenAm?: string;
   einladungsweg?: 'persoenlich' | 'telefon' | 'mail' | 'linkedin';
+  /** Wer die Person einlädt und nachfasst — hält meist die Beziehung. */
+  einladenDurch?: string;
   geaendert: string;
+  /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
+  geaendertVon?: string;
 }
 
 // ── Marketing (24.09. nachts) ────────────────────────────────────────────
@@ -175,7 +191,7 @@ export interface SegmentKriterien {
   kanal?: 'mail' | 'telefon' | 'linkedin' | 'newsletter' | 'einladung';
   mitChance?: boolean; ohneKontaktSeitTagen?: number;
 }
-export interface Segment { id: string; name: string; beschreibung?: string; kriterien: SegmentKriterien; geaendert: string }
+export interface Segment { id: string; name: string; beschreibung?: string; kriterien: SegmentKriterien; geaendert: string; geaendertVon?: string }
 export type BeitragKanal = 'linkedin' | 'newsletter' | 'blog' | 'podcast' | 'vortrag' | 'sonstig';
 export interface Beitrag {
   id: string; titel: string; kanal: BeitragKanal; saeule?: string;
@@ -185,14 +201,29 @@ export interface Beitrag {
   wirkung: { kontaktId: string; art: 'reaktion' | 'gespraech' | 'anfrage'; am: string; notiz?: string }[];
   /** Aus welchen Kundengesprächen das Thema stammt (Stimme der Kunden). */
   quellen: string[];
+  /** Wer es bearbeitet: Team-Kürzel (kevin, malin) oder „beide“ — fehlt es, gilt die/der Verantwortliche der Welt (lib/crm/team.ts). */
+  zustaendig?: string;
+  /** In wessen Namen es erscheint (LinkedIn-Profil, Absender): kevin, malin oder „marke“. */
+  stimme?: string;
+  /** Freigabe durch die Stimme, wenn jemand anderes schreibt. */
+  freigabe?: Freigabe;
   geaendert: string;
+  /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
+  geaendertVon?: string;
 }
+/** Freigabe zwischen Kevin und Malin: Wer schreibt, bittet die Stimme um ihr Okay. */
+export interface Freigabe { status: 'offen' | 'ok' | 'aenderung'; an: string; von?: string; am?: string; notiz?: string }
 export interface NewsletterAusgabe {
   id: string; titel: string; datum?: string; status: 'entwurf' | 'bereit' | 'versendet';
   inhalt: string; beitragIds: string[];
   /** Zahlen nach dem Versand (von Hand aus dem Versandwerkzeug) — keine Öffnungsraten. */
   empfaenger?: number; antworten?: number; abmeldungen?: number;
+  /** Wer es bearbeitet: Team-Kürzel (kevin, malin) oder „beide“ — fehlt es, gilt die/der Verantwortliche der Welt (lib/crm/team.ts). */
+  zustaendig?: string;
+  freigabe?: Freigabe;
   geaendert: string;
+  /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
+  geaendertVon?: string;
 }
 /** Kampagne: ein geplanter Anlauf auf eine Zielgruppe nach einem bewährten Vorgehen (Playbook). Versendet wird nichts. */
 export type KampagnenStatus = 'entwurf' | 'aktiv' | 'abgeschlossen' | 'abgebrochen';
@@ -209,7 +240,11 @@ export interface Kampagne {
   /** Wer sie angelegt hat — von Hand oder aus einem Vorschlag eines Heads. */
   von: 'hand' | 'head-sales' | 'head-marketing';
   notiz?: string;
+  /** Wer es bearbeitet: Team-Kürzel (kevin, malin) oder „beide“ — fehlt es, gilt die/der Verantwortliche der Welt (lib/crm/team.ts). */
+  zustaendig?: string;
   geaendert: string;
+  /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
+  geaendertVon?: string;
 }
 
 export interface MarketingEinstellung { positionierung: string; icp: string; ton: string; saeulen: { id: string; name: string; beschreibung: string }[] }

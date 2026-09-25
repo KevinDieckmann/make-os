@@ -38,7 +38,8 @@ export async function POST(req: Request) {
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false }, { status: 400 }); }
   // Seit den Konten (23.09.): die Person aus der Sitzung, nicht aus der Anfrage.
   const person = personAus(req);
-  const pfad = String(body.pfad ?? '').slice(0, 80);
+  // Mit Abfrage (Markttraktion: welcher Bereich, welche Person) — so sieht man „Malin ist gerade bei …“.
+  const pfad = String(body.pfad ?? '').slice(0, 160);
   if (!pfad.startsWith('/os')) return NextResponse.json({ ok: true, ignoriert: true });
 
   const jetzt = Date.now();

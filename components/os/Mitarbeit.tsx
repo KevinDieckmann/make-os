@@ -18,7 +18,7 @@ interface Aktiv { person: string; name: string; pfad: string; seitSek: number }
 
 const BEREICH: [RegExp, string][] = [
   [/^\/os\/finanzen/, 'Zahlen'], [/^\/os\/controlling/, 'Controlling'], [/^\/os\/aufgaben/, 'Aufgaben'], [/^\/os\/gesundheit/, 'Gesundheit'],
-  [/^\/os\/inbox/, 'Inbox'], [/^\/os\/(crm|netzwerk|kontakte)/, 'Kontakte'], [/^\/os\/wissen/, 'Wissen'], [/^\/os\/?$/, 'Heute'],
+  [/^\/os\/inbox/, 'Inbox'], [/^\/os\/(markttraktion|crm)/, 'Markttraktion'], [/^\/os\/(netzwerk|kontakte)/, 'Kontakte'], [/^\/os\/wissen/, 'Wissen'], [/^\/os\/?$/, 'Heute'],
 ];
 const bereich = (pfad: string) => BEREICH.find(([r]) => r.test(pfad))?.[1] ?? 'MAKE OS';
 
@@ -30,7 +30,7 @@ export function Mitarbeit() {
     const melden = async () => {
       if (document.visibilityState !== 'visible') return;
       try {
-        await fetch('/api/state/anwesenheit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pfad }) });
+        await fetch('/api/state/anwesenheit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pfad: pfad.startsWith('/os/markttraktion') ? `${pfad}${window.location.search}` : pfad }) });
         const d = await fetch('/api/state/anwesenheit').then(r => r.json());
         if (!weg) setAndere(((d.aktiv ?? []) as Aktiv[]).filter(a => a.person !== d.ich));
       } catch { /* still */ }
