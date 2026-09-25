@@ -14,6 +14,8 @@ import { firmenId, firmenDubletten } from '@/lib/crm/firmen';
 import type { Firma, FirmaRolle } from '@/lib/crm/typen';
 import { type CrmApi, datum, euro } from './daten';
 import { Feldzeile, Pillen, Feld, Verlauf } from './teile';
+import { Person } from './team';
+import { haeltBeziehung, nameVon } from '@/lib/crm/team';
 
 export const ROLLEN: { id: FirmaRolle; label: string; farbe: string }[] = [
   { id: 'kunde', label: 'Kunde', farbe: LEUCHT.gut }, { id: 'zielkunde', label: 'Zielkunde', farbe: LEUCHT.business }, { id: 'partner', label: 'Partner', farbe: LEUCHT.agenten },
@@ -138,7 +140,7 @@ function FirmenKarte({ f, api, zuPerson }: { f: Firma; api: CrmApi; zuPerson: (i
       <Feldzeile label="Rolle"><Pillen liste={ROLLEN.map(r => ({ id: r.id, label: r.label }))} aktiv={f.rolle} onWahl={r => setze({ rolle: r, rolleVonHand: true })} /></Feldzeile>
       <div>
         <Ueberschrift rechts={`${personen.length}`}>Personen</Ueberschrift>
-        {personen.map(k => <button key={k.id} onClick={() => zuPerson(k.id)} style={{ display: 'flex', width: '100%', justifyContent: 'space-between', gap: 8, background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien, padding: '7px 0', textAlign: 'left' }}><span>{anzeigename(k)} <span style={{ color: C.inkLeise }}>{k.position ?? k.jobtitel ?? ''}</span></span><span style={{ color: C.inkLeise }}>{k.letzterKontakt ? datum(k.letzterKontakt) : ''} ›</span></button>)}
+        {personen.map(k => <button key={k.id} onClick={() => zuPerson(k.id)} style={{ display: 'flex', width: '100%', justifyContent: 'space-between', gap: 8, background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien, padding: '7px 0', textAlign: 'left' }}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', minWidth: 0 }}><span title={`Hält die Beziehung: ${nameVon(haeltBeziehung(k))}`} style={{ opacity: k.besitzer ? 1 : 0.45, display: 'inline-flex' }}><Person id={haeltBeziehung(k)} groesse={18} /></span>{anzeigename(k)} <span style={{ color: C.inkLeise }}>{k.position ?? k.jobtitel ?? ''}</span></span><span style={{ color: C.inkLeise }}>{k.letzterKontakt ? datum(k.letzterKontakt) : ''} ›</span></button>)}
         {!personen.length && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Noch niemand zugeordnet.</div>}
         <input value={zuordnen} onChange={e => setZuordnen(e.target.value)} placeholder="Person zuordnen …" aria-label="Person zuordnen" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', marginTop: 8 }} />
         {kandidaten.map(k => <button key={k.id} onClick={() => { void api.kontaktSetzen({ ...k, firmaId: f.id, firma: f.name }); setZuordnen(''); }} style={{ display: 'block', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: '3px 0' }}>+ {anzeigename(k)}{k.firma ? ` · bisher ${k.firma}` : ''}</button>)}

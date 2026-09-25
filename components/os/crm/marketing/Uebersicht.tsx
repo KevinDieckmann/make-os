@@ -8,21 +8,44 @@
 // Selbstauskunft) und welche Themen nennen Kunden in Gesprächen (die „Stimme
 // der Kunden“ aus den Notizen — Rohstoff für Beiträge). Keine Likes, keine
 // Öffnungsraten.
+//
+// Zu zweit (25.09.): „Wartet auf Freigabe“ zeigt, was bei wem liegt (Beiträge
+// und Newsletter, am längsten Wartendes zuerst), „Beiträge je Person“ zählt
+// Veröffentlichungen und Gespräche/Anfragen aus deren Wirkung — jede Zahl mit
+// Beleg, grau statt erfundener Null (lib/crm/marketing.ts).
 
 import { useMemo } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Zahl, Raster, Fortschritt, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Leer, Zahl, Raster, Fortschritt, Liste, Zeile, Punkt, LEUCHT } from '../../schlank';
 import { anzeigename } from '@/lib/make-one/crm';
 import { kanalStatus, art14 } from '@/lib/crm/recht';
-import { marketingKennzahlen } from '@/lib/crm/marketing';
+import { TEAM, BEIDE, nameVon } from '@/lib/crm/team';
+import { marketingKennzahlen, freigabeLage, liegtBei, beitraegeJePerson, genitiv, type FreigabePosten } from '@/lib/crm/marketing';
 import { type CrmApi, datum } from '../daten';
-import { KpiLeiste } from './gemeinsam';
+import { Person } from '../team';
+import { KpiLeiste, AlsNaechstes, STAND_FARBE } from './gemeinsam';
 
-export function Uebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string) => void }) {
+/** Wohin ein Klick auf einen Posten führt — Redaktionsplan oder Newsletter mit geöffnetem Eintrag. */
+export type ZuEintrag = (ansicht: 'redaktion' | 'newsletter', id: string) => void;
+
+function postenText(p: FreigabePosten, heute: string): string {
+  const art = p.art === 'beitrag' ? 'Beitrag' : 'Newsletter';
+  const seit = p.seit ? datum(p.seit.slice(0, 10), heute) : '';
+  if (p.stand === 'offen') return `${art} · angefragt${p.von ? ` von ${nameVon(p.von)}` : ''}${seit ? ` · ${seit}` : ''}${p.datum ? ` · geplant ${datum(p.datum, heute)}` : ''}`;
+  if (p.stand === 'aenderung') return `${art} · ${nameVon(p.an)} wünscht eine Änderung${p.notiz ? `: „${p.notiz.length > 90 ? `${p.notiz.slice(0, 89)}…` : p.notiz}“` : ''}`;
+  return `${art} · geplant${p.datum ? ` ${datum(p.datum, heute)}` : ''} ohne ${genitiv(nameVon(p.an))} Okay`;
+}
+
+export function Uebersicht({ api, zuKontakt, zu }: { api: CrmApi; zuKontakt: (id: string) => void; zu?: ZuEintrag }) {
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
   const crm = api.crm;
+  const ich = api.ich;
   const heute = crm?.heute ?? new Date().toISOString().slice(0, 10);
   const kpis = useMemo(() => (crm ? marketingKennzahlen(kontakte, crm.stand, heute) : []), [kontakte, crm, heute]);
+  const lage = useMemo(() => (crm ? freigabeLage(crm.stand) : []), [crm]);
+  const jePerson = useMemo(() => (crm ? beitraegeJePerson(crm.stand.beitraege ?? [], heute) : []), [crm, heute]);
+  const beiWem = useMemo(() => [...TEAM.map(t => t.id), BEIDE].map(p => ({ person: p, posten: lage.filter(x => x.bei === p) })).filter(g => g.posten.length), [lage]);
+  const beiMir = lage.filter(x => liegtBei(x, ich));
   const z = useMemo(() => {
     const aktive = kontakte.filter(k => !k.werbesperre);
     const kreisAC = aktive.filter(k => k.kreis && k.kreis !== 'D');
@@ -46,13 +69,66 @@ export function Uebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: st
 
   return (
     <>
-      <Karte i={0}>
+      <Raster min={360}>
+        <Karte i={0} akzent={beiMir.length ? LEUCHT.achtung : undefined}>
+          <Ueberschrift farbe={lage.length ? LEUCHT.achtung : undefined} rechts={lage.length ? `${lage.length} offen` : undefined}>Wartet auf Freigabe</Ueberschrift>
+          {beiWem.length ? (
+            <div style={{ display: 'grid', gap: 12 }}>
+              {beiWem.map(g => (
+                <div key={g.person}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: C.inkDim }}>
+                    <Person id={g.person} name /> <span style={{ color: C.inkLeise }}>· {g.posten.length} {g.posten.length === 1 ? 'liegt' : 'liegen'} {g.person === BEIDE ? 'bei euch beiden' : `bei ${nameVon(g.person)}`}</span>
+                  </div>
+                  <Liste>
+                    {g.posten.map(p => (
+                      <Zeile key={`${p.art}-${p.id}`} onClick={zu ? () => zu(p.art === 'beitrag' ? 'redaktion' : 'newsletter', p.id) : undefined} titel={p.titel} unter={postenText(p, heute)}
+                        links={<Punkt farbe={STAND_FARBE[p.stand]} />} />
+                    ))}
+                  </Liste>
+                </div>
+              ))}
+              <AlsNaechstes>{beiMir.length
+                ? `${beiMir.length} ${beiMir.length === 1 ? 'Posten liegt' : 'Posten liegen'} bei dir — ${[
+                  beiMir.some(x => x.stand === 'offen') ? 'lesen, dann freigeben oder Änderung wünschen' : '',
+                  beiMir.some(x => x.stand === 'aenderung') ? 'Änderungswünsche einarbeiten und erneut schicken' : '',
+                  beiMir.some(x => x.stand === 'fehlt') ? 'Geplantes zur Freigabe schicken' : '',
+                ].filter(Boolean).join(' · ')}.`
+                : 'Bei dir liegt nichts — der Rest wartet auf die andere Seite.'}</AlsNaechstes>
+            </div>
+          ) : <Leer>Nichts offen. Erscheint ein Beitrag im Namen einer Person, die ihn nicht selbst schreibt, geht er vor dem Planen hierher — Newsletter auf Wunsch.</Leer>}
+        </Karte>
+
+        <Karte i={1}>
+          <Ueberschrift rechts="30 Tage">Beiträge je Person</Ueberschrift>
+          <div style={{ display: 'grid', gap: 14 }}>
+            {jePerson.map(p => (
+              <div key={p.person}>
+                <div style={{ marginBottom: 8 }}><Person id={p.person} name /></div>
+                <Raster min={110}>
+                  <Zahl wert={p.veroeffentlicht === null ? undefined : String(p.veroeffentlicht)} label="veröffentlicht" />
+                  <Zahl wert={p.gespraeche === null ? undefined : String(p.gespraeche)} label="Gespräche/Anfragen" farbe={p.gespraeche ? LEUCHT.gut : undefined} />
+                  <Zahl wert={p.inIhremNamen === null ? undefined : String(p.inIhremNamen)} label={`in ${genitiv(nameVon(p.person))} Namen`} />
+                </Raster>
+                {p.belege.length > 0 && (
+                  <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6, lineHeight: 1.5 }}>
+                    {p.belege.slice(0, 4).map((b, i) => <span key={b.id}>{i ? ' · ' : ''}{zu ? <button onClick={() => zu('redaktion', b.id)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12, padding: 0 }}>„{b.titel}“</button> : `„${b.titel}“`} {datum(b.datum, heute)}</span>)}
+                    {p.belege.length > 4 && <span> · und {p.belege.length - 4} weitere</span>}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 12, lineHeight: 1.5 }}>Gezählt beim Autor (wer schreibt); gemeinsame Beiträge zählen bei beiden. Gespräche/Anfragen aus der Wirkung an ihren Beiträgen, je Person und Beitrag einmal. — heißt: noch nichts, was sich zählen ließe.</div>
+        </Karte>
+      </Raster>
+
+      <Karte i={2}>
         <Ueberschrift rechts="grau = noch nichts gemessen">Wirkung</Ueberschrift>
         {crm ? <KpiLeiste liste={kpis} /> : <Leer>Lädt …</Leer>}
         <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 10 }}>Gemessen an Gesprächen und Chancen, nicht an Likes oder Öffnungsraten. Wirkung trägst du im Redaktionsplan am Beitrag ein.</div>
       </Karte>
 
-      <Karte i={1}>
+      <Karte i={3}>
         <Ueberschrift>Wen wir ansprechen dürfen</Ueberschrift>
         <Raster min={150}>
           <Zahl wert={String(z.mail)} label="Mail freigegeben" farbe={LEUCHT.gut} />
@@ -63,7 +139,7 @@ export function Uebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: st
         <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 10 }}>Ziel: Der Anteil von Kreis A–C mit gültiger Mail-Grundlage steigt. Einwilligungen holst du im Gespräch — Wortlaut in der Karteikarte festhalten.</div>
       </Karte>
 
-      <Karte i={2} akzent={z.art14.length ? LEUCHT.kritisch : undefined}>
+      <Karte i={4} akzent={z.art14.length ? LEUCHT.kritisch : undefined}>
         <Ueberschrift farbe={z.art14.length ? LEUCHT.kritisch : undefined} rechts={z.art14offen ? `${z.art14offen} laufen noch` : undefined}>Art. 14 — Informationspflicht</Ueberschrift>
         {z.art14.length ? (
           <div style={{ display: 'grid', gap: 4 }}>
@@ -73,7 +149,7 @@ export function Uebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: st
         ) : <Leer>Nichts fällig. Personen aus Recherche oder Listen in der Karteikarte als „Recherche/Liste“ markieren — dann läuft die Uhr.</Leer>}
       </Karte>
 
-      <Karte i={3}>
+      <Karte i={5}>
         <Ueberschrift>Woher Chancen kommen</Ueberschrift>
         {chancenGesamt ? (
           <div style={{ display: 'grid', gap: 8 }}>
@@ -88,7 +164,7 @@ export function Uebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: st
         ) : <Leer>Noch keine Chancen mit Quelle.</Leer>}
       </Karte>
 
-      <Karte i={4}>
+      <Karte i={6}>
         <Ueberschrift>Stimme der Kunden</Ueberschrift>
         {z.stimmen.length ? (
           <div style={{ display: 'grid', gap: 6 }}>

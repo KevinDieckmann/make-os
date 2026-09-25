@@ -12,10 +12,11 @@
 // MAKE OS versendet und veröffentlicht nichts — Export und Zahlen von Hand.
 
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
-import type { Beitrag, Chance, CrmBestand, MarketingEinstellung, NewsletterAusgabe, Segment, SegmentKriterien } from './typen';
+import type { Beitrag, Chance, CrmBestand, Freigabe, MarketingEinstellung, NewsletterAusgabe, Segment, SegmentKriterien } from './typen';
 import type { Kpi, KpiAmpel } from './kennzahlen';
 import { art14, kanalStatus, type Kanal, type Kontext } from './recht';
 import { segmentAuswerten, type SegmentKontext } from './segmente';
+import { TEAM, BEIDE, zustaendig, istMeins, mitglied, nameVon } from './team';
 
 // ── Kleine Helfer ───────────────────────────────────────────────────────────
 const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
@@ -287,4 +288,279 @@ export function segmentCsv(kontakte: Kontakt[], kriterien: SegmentKriterien, ctx
 /** Newsletter-Empfänger: ausschließlich Double-Opt-in, nur Name und Adresse. */
 export function newsletterCsv(kontakte: Kontakt[]): string {
   return csvText(['name', 'email'], newsletterEmpfaenger(kontakte).map(k => [anzeigename(k), k.email]));
+}
+
+// ── Zu zweit: Autor, Stimme, Freigabe (25.09.) ─────────────────────────────
+// Kevin: Marketing verantwortet Malin, beide sehen alles und arbeiten überall mit.
+//   Autor    `zustaendig` am Beitrag — wer schreibt. Ohne Eintrag die/der
+//            Verantwortliche für Marketing (Malin, lib/crm/team.ts).
+//   Stimme   `stimme` — in wessen Namen es erscheint: kevin, malin oder „marke“.
+//   Freigabe Erscheint ein Beitrag im Namen einer Person, die ihn nicht selbst
+//            schreibt, braucht er vor „geplant“/„veröffentlicht“ ihr Okay. Wer
+//            schreibt, bittet darum (offen, an = Stimme); die Stimme gibt frei
+//            (ok) oder wünscht eine Änderung (aenderung, mit Notiz). Plant die
+//            Stimme selbst, ist das ihr Okay. Das Okay gilt dem Text: Ändert
+//            danach jemand anderes Titel oder Text, liegt es wieder offen bei ihr.
+//   Newsletter  Freigabe freiwillig, Ziel wählbar (Kevin/Malin). Ist sie
+//            angefragt, gilt dieselbe Sperre vor „bereit“/„versendet“.
+// Alles hier liefert Einzeländerungen (Felder für api.teil) — `null` löscht ein Feld.
+
+export const MARKE = 'marke';
+/** Wählbare Stimmen: jede Person im Team und die Marke. */
+export const STIMMEN_WAHL: { id: string; label: string }[] = [...TEAM.map(t => ({ id: t.id, label: t.name })), { id: MARKE, label: 'Marke' }];
+/** Felder einer Einzeländerung — `null` löscht ein Feld (der Server-Säuberer lässt es weg). */
+export type Teil<T> = { [K in keyof T]?: T[K] | null };
+export type FreigabeStand = 'nicht_noetig' | 'fehlt' | 'offen' | 'aenderung' | 'ok';
+type ZuZweit = { zustaendig?: string | null; stimme?: string | null; freigabe?: Freigabe | null };
+type MitFreigabe = { zustaendig?: string | null; freigabe?: Freigabe | null };
+
+const NACH_AENDERUNG = 'Nach der Freigabe geändert — bitte noch einmal ansehen.';
+const kurzTag = (iso: string) => `${Number(iso.slice(8, 10))}.${Number(iso.slice(5, 7))}.`;
+/** „Kevins“, „Malins“ — bei Namen auf s/x/z/ß nur ein Apostroph. */
+export const genitiv = (name: string) => (/[sxzß]$/i.test(name) ? `${name}’` : `${name}s`);
+
+/** Person hinter der Stimme — null bei „Marke“ oder ohne Eintrag. */
+export function stimmPerson(b: { stimme?: string | null }): string | null {
+  const s = b.stimme ?? '';
+  return TEAM.some(t => t.id === s) ? s : null;
+}
+export const stimmeText = (s?: string | null) => (s === MARKE ? 'Marke' : mitglied(s)?.name ?? 'offen');
+/** Wer schreibt — die Eintragung, sonst die/der Verantwortliche für Marketing. */
+export const autorVon = (x: { zustaendig?: string | null }) => zustaendig(x.zustaendig ?? undefined, 'marketing');
+
+/** Braucht der Beitrag ein Okay? Ja, wenn er im Namen einer Person erscheint, die ihn nicht (mit)schreibt. */
+export function freigabeNoetig(b: { zustaendig?: string | null; stimme?: string | null }): boolean {
+  const p = stimmPerson(b);
+  if (!p) return false;
+  const a = autorVon(b);
+  return a !== p && a !== BEIDE;
+}
+
+/** Stand der Freigabe eines Beitrags. Eine Freigabe an jemand anderen als die jetzige Stimme zählt nicht. */
+export function freigabeStand(b: ZuZweit): FreigabeStand {
+  if (!freigabeNoetig(b)) return 'nicht_noetig';
+  const f = b.freigabe;
+  return f && f.an === stimmPerson(b) ? f.status : 'fehlt';
+}
+/** Newsletter: ohne Anfrage keine Freigabe nötig. */
+export const ausgabeFreigabeStand = (a: { freigabe?: Freigabe | null }): FreigabeStand => (a.freigabe ? a.freigabe.status : 'nicht_noetig');
+
+function sperreText(stand: FreigabeStand, an: string): string | null {
+  const n = nameVon(an);
+  if (stand === 'offen') return `Wartet auf ${genitiv(n)} Freigabe.`;
+  if (stand === 'aenderung') return `${n} wünscht eine Änderung — einarbeiten und erneut zur Freigabe schicken.`;
+  if (stand === 'fehlt') return `Erscheint in ${genitiv(n)} Namen — vor dem Planen zur Freigabe an ${n}.`;
+  return null;
+}
+
+/** Warum der Beitrag (noch) nicht geplant oder veröffentlicht werden darf — null = darf. Plant die Stimme selbst, ist das ihr Okay. */
+export function planSperre(b: ZuZweit, ich: string | null): string | null {
+  const stand = freigabeStand(b);
+  if (stand === 'nicht_noetig' || stand === 'ok') return null;
+  const p = stimmPerson(b)!;
+  return ich === p ? null : sperreText(stand, p);
+}
+export const darfPlanen = (b: ZuZweit, ich: string | null) => planSperre(b, ich) === null;
+
+/** Newsletter: Sperre vor „bereit“/„versendet“, solange eine angefragte Freigabe nicht erteilt ist. Die angefragte Person selbst darf — das ist ihr Okay. */
+export function ausgabeSperre(a: { freigabe?: Freigabe | null }, ich: string | null): string | null {
+  const f = a.freigabe;
+  if (!f || f.status === 'ok' || ich === f.an) return null;
+  return sperreText(f.status, f.an);
+}
+
+// Freigaben bauen — immer als ganzes Objekt (api.teil ersetzt das Feld „freigabe“ vollständig).
+export const freigabeAnfrage = (an: string, ich: string | null, jetzt: string): Freigabe => ({ status: 'offen', an, ...(ich && ich !== BEIDE ? { von: ich } : {}), am: jetzt });
+export const freigabeOk = (f: Freigabe | null | undefined, an: string, jetzt: string): Freigabe => ({ status: 'ok', an, ...(f?.von ? { von: f.von } : {}), am: jetzt });
+/** Änderungswunsch — nur mit Notiz (was soll anders werden?). */
+export function aenderungsWunsch(f: Freigabe | null | undefined, an: string, notiz: string, jetzt: string): Freigabe | null {
+  const t = notiz.trim().slice(0, 600);
+  return t ? { status: 'aenderung', an, ...(f?.von ? { von: f.von } : {}), am: jetzt, notiz: t } : null;
+}
+
+export type Wechsel<T> = { ok: true; felder: Teil<T> } | { ok: false; grund: string };
+
+/**
+ * Statuswechsel eines Beitrags. Vor „geplant“/„veröffentlicht“ gilt die
+ * Freigabe-Regel; setzt die Stimme selbst den Status, wird ihr Okay mit
+ * eingetragen. „Veröffentlicht“ ohne Datum bekommt heute.
+ */
+export function beitragStatusWechsel(b: ZuZweit & Pick<Beitrag, 'status' | 'datum'>, neu: Beitrag['status'], ich: string | null, heute: string, jetzt: string): Wechsel<Beitrag> {
+  const felder: Teil<Beitrag> = { status: neu };
+  if (neu === 'geplant' || neu === 'veroeffentlicht') {
+    const sperre = planSperre(b, ich);
+    if (sperre) return { ok: false, grund: sperre };
+    const stand = freigabeStand(b);
+    if (stand !== 'nicht_noetig' && stand !== 'ok' && ich) felder.freigabe = freigabeOk(b.freigabe, ich, jetzt);
+  }
+  if (neu === 'veroeffentlicht' && !b.datum) felder.datum = heute;
+  return { ok: true, felder };
+}
+
+/** Statuswechsel einer Newsletter-Ausgabe — dieselbe Regel vor „bereit“/„versendet“. */
+export function ausgabeStatusWechsel(a: Pick<NewsletterAusgabe, 'status' | 'datum'> & MitFreigabe, neu: NewsletterAusgabe['status'], ich: string | null, heute: string, jetzt: string): Wechsel<NewsletterAusgabe> {
+  const felder: Teil<NewsletterAusgabe> = { status: neu };
+  if (neu === 'bereit' || neu === 'versendet') {
+    const sperre = ausgabeSperre(a, ich);
+    if (sperre) return { ok: false, grund: sperre };
+    if (a.freigabe && a.freigabe.status !== 'ok' && ich === a.freigabe.an) felder.freigabe = freigabeOk(a.freigabe, ich, jetzt);
+  }
+  if (neu === 'versendet' && !a.datum) felder.datum = heute;
+  return { ok: true, felder };
+}
+
+/** Nach einer Änderung an Titel oder Text: Das Okay gilt dem freigegebenen Text. Null = Freigabe bleibt, wie sie ist. */
+export function beitragNachTextAenderung(b: ZuZweit & Pick<Beitrag, 'status'>, ich: string | null, jetzt: string): Freigabe | null {
+  if (b.status === 'veroeffentlicht' || freigabeStand(b) !== 'ok') return null;
+  const an = stimmPerson(b)!;
+  return ich === an ? null : { status: 'offen', an, ...(ich ? { von: ich } : b.freigabe?.von ? { von: b.freigabe.von } : {}), am: jetzt, notiz: NACH_AENDERUNG };
+}
+export function ausgabeNachTextAenderung(a: Pick<NewsletterAusgabe, 'status'> & MitFreigabe, ich: string | null, jetzt: string): Freigabe | null {
+  const f = a.freigabe;
+  if (a.status === 'versendet' || !f || f.status !== 'ok' || ich === f.an) return null;
+  return { status: 'offen', an: f.an, ...(ich ? { von: ich } : f.von ? { von: f.von } : {}), am: jetzt, notiz: NACH_AENDERUNG };
+}
+
+/**
+ * Autor oder Stimme wechseln. Passt eine vorhandene Freigabe danach nicht
+ * mehr (keine nötig oder an jemand anderen), fällt sie weg — sonst stünde
+ * sie weiter in „Warten auf deine Freigabe“.
+ */
+export function rollenWechsel(b: ZuZweit, neu: { zustaendig?: string | null; stimme?: string | null }): Teil<Beitrag> {
+  const danach = { zustaendig: 'zustaendig' in neu ? neu.zustaendig : b.zustaendig, stimme: 'stimme' in neu ? neu.stimme : b.stimme };
+  const f = b.freigabe;
+  const passt = !!f && freigabeNoetig(danach) && f.an === stimmPerson(danach);
+  return { ...neu, ...(f && !passt ? { freigabe: null } : {}) };
+}
+
+/** Was als Nächstes an diesem Beitrag zu tun ist — aus Sicht von `ich`. */
+export function naechsterSchritt(b: Beitrag, ich: string | null, heute: string): string {
+  const stand = freigabeStand(b);
+  const p = stimmPerson(b);
+  const n = p ? nameVon(p) : '';
+  if (b.status === 'veroeffentlicht') return (b.wirkung ?? []).length ? 'Wirkung weiter pflegen — wer kam darüber ins Gespräch?' : 'Wirkung eintragen: Wer hat reagiert, wer kam ins Gespräch?';
+  if (stand === 'offen') return ich === p ? 'Lesen, dann freigeben oder Änderung wünschen.' : `Wartet auf ${genitiv(n)} Freigabe.`;
+  if (stand === 'aenderung') return ich === p ? `Dein Änderungswunsch liegt bei ${nameVon(autorVon(b))}.` : `${genitiv(n)} Änderungswunsch einarbeiten, dann erneut zur Freigabe.`;
+  if (b.status === 'idee') return b.stimme ? 'Entwurf schreiben.' : 'Entwurf schreiben — und festlegen, in wessen Namen es erscheint.';
+  if (stand === 'fehlt') {
+    if (ich === p) return 'Erscheint in deinem Namen: lesen und freigeben.';
+    return b.status === 'geplant' ? `Geplant ohne ${genitiv(n)} Okay — zur Freigabe an ${n}.` : `Fertig? Zur Freigabe an ${n}.`;
+  }
+  if (b.status === 'entwurf') return b.datum ? `Fertig? Auf „Geplant“ für den ${kurzTag(b.datum)} setzen.` : 'Datum setzen und planen.';
+  if (!b.datum) return 'Datum setzen.';
+  if (b.datum < heute) return 'Überfällig — veröffentlichen oder neu planen.';
+  if (b.datum === heute) return 'Heute veröffentlichen, dann Status und Link eintragen.';
+  return `Erscheint am ${kurzTag(b.datum)} — veröffentlichen bleibt bei euch.`;
+}
+
+/** Was als Nächstes an einer Newsletter-Ausgabe zu tun ist. */
+export function ausgabeNaechsterSchritt(a: NewsletterAusgabe, ich: string | null, empfaenger: number): string {
+  const f = a.freigabe;
+  if (a.status === 'versendet') return a.empfaenger == null || a.abmeldungen == null ? 'Empfänger, Antworten und Abmeldungen aus dem Versandwerkzeug eintragen.' : 'Antworten nachfassen — wer antwortet, ist ein Gespräch.';
+  if (f?.status === 'offen') return ich === f.an ? 'Lesen, dann freigeben oder Änderung wünschen.' : `Wartet auf ${genitiv(nameVon(f.an))} Freigabe.`;
+  if (f?.status === 'aenderung') return ich === f.an ? `Dein Änderungswunsch liegt bei ${nameVon(autorVon(a))}.` : `${genitiv(nameVon(f.an))} Änderungswunsch einarbeiten, dann erneut zur Freigabe.`;
+  if (a.status === 'entwurf') return a.inhalt.trim() ? 'Fertig? Auf „Bereit“ setzen — oder vorher zur Freigabe schicken.' : 'Inhalt schreiben — eine Einsicht, konkret.';
+  return empfaenger ? 'Empfänger exportieren, im Versandwerkzeug verschicken, dann „Versendet“ setzen.' : 'Ohne Empfänger mit Double-Opt-in nicht versenden.';
+}
+
+// ── Was bei wem liegt ──────────────────────────────────────────────────────
+export interface FreigabePosten {
+  art: 'beitrag' | 'newsletter'; id: string; titel: string;
+  /** offen = liegt bei der freigebenden Person · aenderung = zurück beim Autor · fehlt = geplant, aber nie angefragt. */
+  stand: 'offen' | 'aenderung' | 'fehlt';
+  /** Bei wem es gerade liegt (Team-Kürzel oder „beide“). */
+  bei: string; an: string; autor: string; von?: string; seit?: string; notiz?: string; datum?: string;
+}
+/** Alle offenen Freigaben über Beiträge und Newsletter — am längsten Wartendes zuerst. Veröffentlichtes und Versendetes zählt nicht mehr. */
+export function freigabeLage(crm: { beitraege?: Beitrag[]; newsletter?: NewsletterAusgabe[] }): FreigabePosten[] {
+  const r: FreigabePosten[] = [];
+  for (const b of crm.beitraege ?? []) {
+    if (b.status === 'veroeffentlicht') continue;
+    const stand = freigabeStand(b);
+    if (stand !== 'offen' && stand !== 'aenderung' && !(stand === 'fehlt' && b.status === 'geplant')) continue;
+    const an = stimmPerson(b)!, autor = autorVon(b);
+    const f = stand === 'fehlt' ? undefined : b.freigabe ?? undefined;
+    r.push({ art: 'beitrag', id: b.id, titel: b.titel, stand, bei: stand === 'offen' ? an : autor, an, autor, ...(f?.von ? { von: f.von } : {}), ...(f?.am ? { seit: f.am } : {}), ...(f?.notiz ? { notiz: f.notiz } : {}), ...(b.datum ? { datum: b.datum } : {}) });
+  }
+  for (const a of crm.newsletter ?? []) {
+    const f = a.freigabe;
+    if (a.status === 'versendet' || !f || (f.status !== 'offen' && f.status !== 'aenderung')) continue;
+    const autor = autorVon(a);
+    r.push({ art: 'newsletter', id: a.id, titel: a.titel, stand: f.status, bei: f.status === 'offen' ? f.an : autor, an: f.an, autor, ...(f.von ? { von: f.von } : {}), ...(f.am ? { seit: f.am } : {}), ...(f.notiz ? { notiz: f.notiz } : {}), ...(a.datum ? { datum: a.datum } : {}) });
+  }
+  return r.sort((x, y) => (x.seit ?? '9999').localeCompare(y.seit ?? '9999') || x.titel.localeCompare(y.titel));
+}
+/** Liegt der Posten bei dieser Person? „beide“ liegt bei beiden. */
+export const liegtBei = (p: Pick<FreigabePosten, 'bei'>, person: string | null) => !!person && (p.bei === person || p.bei === BEIDE);
+
+// ── Für dich im Redaktionsplan ─────────────────────────────────────────────
+export interface RedaktionAufgabe { id: string; titel: string; was: string; art: 'freigabe' | 'aenderung' | 'faellig' | 'anfragen' | 'wirkung' }
+/**
+ * Was im Redaktionsplan bei dieser Person liegt, Wichtigstes zuerst:
+ * Freigaben in ihrem Namen → Änderungswünsche an ihren Texten → heute oder
+ * überfällig zu veröffentlichen → fertige Entwürfe, die noch zur Freigabe
+ * müssen → Veröffentlichtes der letzten 14 Tage ohne eingetragene Wirkung.
+ */
+export function redaktionFuerMich(beitraege: Beitrag[], ich: string | null, heute: string, max = 6): RedaktionAufgabe[] {
+  if (!ich) return [];
+  const vor14 = tagPlus(heute, -13);
+  const l: (RedaktionAufgabe & { rang: number; sort: string })[] = [];
+  for (const b of beitraege) {
+    const stand = freigabeStand(b);
+    const p = stimmPerson(b);
+    const meins = istMeins(b.zustaendig, 'marketing', ich);
+    const sort = b.datum ?? '9999';
+    if (stand === 'offen' && p === ich && b.status !== 'veroeffentlicht') l.push({ id: b.id, titel: b.titel, was: 'wartet auf deine Freigabe', art: 'freigabe', rang: 0, sort });
+    else if (stand === 'aenderung' && meins && b.status !== 'veroeffentlicht') l.push({ id: b.id, titel: b.titel, was: `${nameVon(p)} wünscht eine Änderung${b.freigabe?.notiz ? `: „${kurz(b.freigabe.notiz, 80)}“` : ''}`, art: 'aenderung', rang: 1, sort });
+    else if (b.status === 'geplant' && b.datum && b.datum <= heute && meins) l.push({ id: b.id, titel: b.titel, was: b.datum < heute ? 'überfällig — veröffentlichen oder neu planen' : 'heute veröffentlichen', art: 'faellig', rang: 2, sort });
+    else if (stand === 'fehlt' && meins && (b.status === 'geplant' || (b.status === 'entwurf' && (b.text ?? '').trim()))) l.push({ id: b.id, titel: b.titel, was: `zur Freigabe an ${nameVon(p)} schicken`, art: 'anfragen', rang: 3, sort });
+    else if (b.status === 'veroeffentlicht' && b.datum && b.datum >= vor14 && b.datum <= heute && !(b.wirkung ?? []).length && meins) l.push({ id: b.id, titel: b.titel, was: 'Wirkung eintragen', art: 'wirkung', rang: 4, sort });
+  }
+  return l.sort((a, b) => a.rang - b.rang || a.sort.localeCompare(b.sort)).slice(0, max).map(x => ({ id: x.id, titel: x.titel, was: x.was, art: x.art }));
+}
+
+// ── Diese Woche: wer schreibt was ──────────────────────────────────────────
+export interface WocheJePerson { von: string; bis: string; label: string; je: { person: string; beitraege: Beitrag[] }[] }
+/**
+ * Beiträge mit Datum in dieser Woche (Mo–So) je Autor — dazu Liegengebliebenes
+ * aus früheren Wochen (Datum vorbei, noch nicht veröffentlicht). Beide
+ * Personen stehen immer da, „Beide“ nur, wenn es Gemeinsames gibt.
+ */
+export function wocheWerSchreibt(beitraege: Beitrag[], heute: string): WocheJePerson {
+  const f = planFenster(heute, 'woche')!;
+  const drin = beitraege.filter(b => b.datum && ((b.datum >= f.von && b.datum <= f.bis) || (b.datum < f.von && b.status !== 'veroeffentlicht')));
+  const je = [...TEAM.map(t => t.id), BEIDE].map(person => ({ person, beitraege: drin.filter(b => autorVon(b) === person).sort((a, b) => a.datum!.localeCompare(b.datum!) || a.titel.localeCompare(b.titel)) }));
+  return { von: f.von, bis: f.bis, label: f.label, je: je.filter(x => x.person !== BEIDE || x.beitraege.length) };
+}
+
+// ── Beiträge je Person ─────────────────────────────────────────────────────
+export interface PersonBeitraege {
+  person: string;
+  /** Veröffentlicht im Zeitraum als Autor (gemeinsame zählen bei beiden) — null, solange die Person keinen Beitrag hat. */
+  veroeffentlicht: number | null;
+  /** Veröffentlicht im Zeitraum in ihrem Namen (Stimme) — null, solange nichts in ihrem Namen geplant ist. */
+  inIhremNamen: number | null;
+  /** Gespräche/Anfragen aus der Wirkung ihrer Beiträge im Zeitraum, je Person und Beitrag einmal — null, solange nichts veröffentlicht und nichts eingetragen ist. */
+  gespraeche: number | null;
+  /** Die gezählten Veröffentlichungen — damit jede Zahl belegbar ist. */
+  belege: { id: string; titel: string; datum: string }[];
+}
+export function beitraegeJePerson(beitraege: Beitrag[], heute: string, tage = 30): PersonBeitraege[] {
+  const von = tagPlus(heute, -(tage - 1));
+  const imZeitraum = (b: Beitrag) => b.status === 'veroeffentlicht' && !!b.datum && b.datum >= von && b.datum <= heute;
+  return TEAM.map(t => {
+    const eigene = beitraege.filter(b => { const a = autorVon(b); return a === t.id || a === BEIDE; });
+    const inNamen = beitraege.filter(b => stimmPerson(b) === t.id);
+    const pub = eigene.filter(imZeitraum).sort((a, b) => b.datum!.localeCompare(a.datum!));
+    const paare = new Set<string>();
+    for (const b of eigene) for (const w of b.wirkung ?? []) if ((w.art === 'gespraech' || w.art === 'anfrage') && w.am >= von && w.am <= heute) paare.add(`${b.id}|${w.kontaktId}`);
+    const messbar = eigene.some(b => b.status === 'veroeffentlicht' || (b.wirkung ?? []).length > 0);
+    return {
+      person: t.id,
+      veroeffentlicht: eigene.length ? pub.length : null,
+      inIhremNamen: inNamen.length ? inNamen.filter(imZeitraum).length : null,
+      gespraeche: messbar ? paare.size : null,
+      belege: pub.map(b => ({ id: b.id, titel: b.titel, datum: b.datum! })),
+    };
+  });
 }

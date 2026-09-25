@@ -2,9 +2,13 @@
 // GET  → Playbooks (mit Größe der Zielgruppe heute), Kundenprofil, „Kunden wie
 //        unsere besten“, Zahlen je Kampagne
 // POST { aktion: 'planen', playbook, segmentId? }        → Kampagne als Entwurf
+//        (zuständig: wer plant, sofern im Team)
 // POST { aktion: 'aufgaben', id }                       → offene Schritte als Aufgaben
-// POST { aktion: 'ergebnis', id, kontaktId, ergebnis }   → Ergebnis + Verlauf der Person
-//        (bei „chance“ entsteht eine Chance in der Pipeline mit Quelle Kampagne)
+//        (für die/den Zuständige/n der Kampagne; bei „beide“ für wen fragt)
+// POST { aktion: 'ergebnis', id, kontaktId, ergebnis, von? } → Ergebnis + Verlauf der Person
+//        (von = wer angesprochen hat, Team-Kürzel, sonst die angemeldete Person;
+//        bei „chance“ entsteht eine Chance in der Pipeline mit Quelle Kampagne,
+//        Besitzer ist, wer angesprochen hat)
 // Versendet wird nichts.
 
 import { NextResponse } from 'next/server';
@@ -14,6 +18,8 @@ import { localDay, tagePlus } from '@/lib/zeit';
 import { anzeigename, wendeAktivitaetAn, type Kontakt, type AktivitaetArt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { PLAYBOOKS, planen, zielgruppe, kundenprofil, aehnlicheFirmen, kampagnenZahlen } from '@/lib/crm/kampagnen';
+import { bearbeiterFuer } from '@/lib/crm/pipeline';
+import { wer, mitglied, nameVon, BEIDE } from '@/lib/crm/team';
 import type { Kampagne, KampagnenErgebnis } from '@/lib/crm/typen';
 
 export const runtime = 'nodejs';
@@ -38,7 +44,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  let b: { aktion?: string; playbook?: string; segmentId?: string; id?: string; kontaktId?: string; ergebnis?: string };
+  let b: { aktion?: string; playbook?: string; segmentId?: string; id?: string; kontaktId?: string; ergebnis?: string; von?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const heute = localDay();
   const person = personAus(req);
@@ -50,7 +56,9 @@ export async function POST(req: Request) {
     const pb = PLAYBOOKS.find(p => p.id === b.playbook);
     const basis = pb ?? { id: 'eigen', name: seg ? `Kampagne: ${seg.name}` : 'Eigene Kampagne', kurz: '', warum: '', zielgruppe: seg?.kriterien ?? {}, kanal: 'persoenlich' as const, schritte: [{ text: 'Anlass und Botschaft festlegen', tag: 0 }, { text: 'Personen ansprechen', tag: 2 }, { text: 'Nachfassen', tag: 9 }], kennzahl: 'Gespräche', recht: '', fuer: [] };
     const plan = planen(seg ? { ...basis, zielgruppe: seg.kriterien, zusatz: undefined } : basis, kontakte, crm, heute, `kp-${Date.now().toString(36)}`, 'hand');
-    const k: Kampagne = seg ? { ...plan, segmentId: seg.id, name: pb ? `${pb.name} · ${seg.name}` : plan.name } : plan;
+    // Wer plant, ist zuständig (Kevin oder Malin) — umstellen oder übergeben geht in der Kampagne.
+    const zst = mitglied(person) ? { zustaendig: person } : {};
+    const k: Kampagne = { ...(seg ? { ...plan, segmentId: seg.id, name: pb ? `${pb.name} · ${seg.name}` : plan.name } : plan), ...zst, geaendertVon: person };
     await aendereCrm(c => ({ ...c, kampagnen: [...c.kampagnen, k] }));
     return NextResponse.json({ ok: true, kampagne: k });
   }
@@ -62,18 +70,20 @@ export async function POST(req: Request) {
     const start = k.start ?? heute;
     const neu = k.schritte.filter(s => !s.erledigt && !s.aufgabeId);
     const jetzt = new Date().toISOString();
+    // Die Aufgaben gehen an die Zuständigkeit der Kampagne, nicht an wen gerade klickt.
+    const an = bearbeiterFuer(k.zustaendig, 'sales', person);
     await updateJson<{ tasks: Record<string, unknown>[] }>('tasks', cur => {
       const f = cur ?? { tasks: [] };
       const tasks = [...(f.tasks ?? [])];
       for (const s of neu) {
         const id = `kp-${k.id}-${s.id}`;
         if (tasks.some(t => t.id === id)) continue;
-        tasks.push({ id, title: `${s.text} — ${k.name}`.slice(0, 200), description: `Schritt der Kampagne „${k.name}“ (${k.kontaktIds.length} Personen). Versand und Ansprache bleiben bei dir.`, status: 'todo', priority: 'medium', assignee: person, tags: ['crm', 'kampagne'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, dueDate: tagePlus(start, s.tag) });
+        tasks.push({ id, title: `${s.text} — ${k.name}`.slice(0, 200), description: `Schritt der Kampagne „${k.name}“ (${k.kontaktIds.length} Personen).${an !== person ? ` Angelegt von ${nameVon(person)}.` : ''} Versand und Ansprache bleiben bei dir.`, status: 'todo', priority: 'medium', assignee: an, tags: ['crm', 'kampagne'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, dueDate: tagePlus(start, s.tag) });
       }
       return { ...f, tasks };
     });
-    await aendereCrm(c => ({ ...c, kampagnen: c.kampagnen.map(x => (x.id === k.id ? { ...x, schritte: x.schritte.map(s => (neu.some(n => n.id === s.id) ? { ...s, aufgabeId: `kp-${k.id}-${s.id}` } : s)), geaendert: jetzt } : x)) }));
-    return NextResponse.json({ ok: true, angelegt: neu.length });
+    await aendereCrm(c => ({ ...c, kampagnen: c.kampagnen.map(x => (x.id === k.id ? { ...x, schritte: x.schritte.map(s => (neu.some(n => n.id === s.id) ? { ...s, aufgabeId: `kp-${k.id}-${s.id}` } : s)), geaendert: jetzt, geaendertVon: person } : x)) }));
+    return NextResponse.json({ ok: true, angelegt: neu.length, an });
   }
 
   if (b.aktion === 'ergebnis') {
@@ -82,6 +92,9 @@ export async function POST(req: Request) {
     const crm = await ladeCrm();
     const k = crm.kampagnen.find(x => x.id === b.id);
     if (!k || !erg || !b.kontaktId) return NextResponse.json({ ok: false, fehler: 'id, kontaktId und ergebnis nötig.' }, { status: 400 });
+    // Wer angesprochen hat: ein Team-Kürzel (nicht „beide“), sonst die angemeldete Person.
+    const gesagt = wer(b.von);
+    const von = gesagt && gesagt !== BEIDE ? gesagt : person;
     const kanalArt: AktivitaetArt = k.kanal === 'telefon' ? 'anruf' : k.kanal === 'mail' ? 'mail' : k.kanal === 'linkedin' ? 'linkedin' : k.kanal === 'event' ? 'event' : 'notiz';
     const art: AktivitaetArt = erg === 'angesprochen' ? kanalArt : erg === 'reagiert' ? 'antwort' : erg === 'gespraech' || erg === 'chance' ? 'gespraech' : 'notiz';
     const text = `Kampagne „${k.name}“: ${({ angesprochen: 'angesprochen', reagiert: 'hat reagiert', gespraech: 'Gespräch', chance: 'Chance entstanden', kein_interesse: 'kein Interesse' } as const)[erg]}`;
@@ -90,7 +103,7 @@ export async function POST(req: Request) {
       const f = cur ?? { kontakte: [] };
       const i = f.kontakte.findIndex(x => x.id === b.kontaktId);
       if (i < 0) return f;
-      kontakt = wendeAktivitaetAn(f.kontakte[i], { art, text, von: person, bezug: k.id }, heute, new Date().toISOString(), tagePlus);
+      kontakt = wendeAktivitaetAn(f.kontakte[i], { art, text, von, bezug: k.id }, heute, new Date().toISOString(), tagePlus);
       f.kontakte[i] = kontakt;
       return f;
     });
@@ -98,12 +111,12 @@ export async function POST(req: Request) {
     if (!kt) return NextResponse.json({ ok: false, fehler: 'Person nicht gefunden.' }, { status: 404 });
     const jetzt = new Date().toISOString();
     await aendereCrm(c => {
-      const neu = { ...c, kampagnen: c.kampagnen.map(x => (x.id === k.id ? { ...x, ergebnisse: [...x.ergebnisse, { kontaktId: kt.id, ergebnis: erg, am: heute }], status: x.status === 'entwurf' ? 'aktiv' as const : x.status, geaendert: jetzt } : x)) };
+      const neu = { ...c, kampagnen: c.kampagnen.map(x => (x.id === k.id ? { ...x, ergebnisse: [...x.ergebnisse, { kontaktId: kt.id, ergebnis: erg, am: heute, von }], status: x.status === 'entwurf' ? 'aktiv' as const : x.status, geaendert: jetzt, geaendertVon: person } : x)) };
       if (erg === 'chance' && !c.chancen.some(ch => ch.kontaktIds.includes(kt.id) && ch.quelleBezug === k.id)) {
         neu.chancen = [...c.chancen, {
           id: `ch-${Date.now().toString(36)}`, titel: `${kt.firma ?? anzeigename(kt)} — ${k.name}`.slice(0, 160), kontaktIds: [kt.id], ...(kt.firma ? { firma: kt.firma } : {}),
           art: 'retainer', wert: { betrag: 0, basis: 'monat' }, stufe: 'qualifiziert', historie: [{ stufe: 'qualifiziert', am: jetzt, von: person }], quelle: 'outreach', quelleBezug: k.id,
-          qualifizierung: { schmerz: 'unklar', entscheider: 'unklar', budget: 'unklar', zeitpunkt: 'unklar', wirkung: 'unklar', alternative: 'unklar' }, gesellschaft: 'offen', besitzer: person, angelegt: jetzt, geaendert: jetzt, letzteAktivitaet: heute,
+          qualifizierung: { schmerz: 'unklar', entscheider: 'unklar', budget: 'unklar', zeitpunkt: 'unklar', wirkung: 'unklar', alternative: 'unklar' }, gesellschaft: 'offen', besitzer: von, angelegt: jetzt, geaendert: jetzt, letzteAktivitaet: heute,
         }];
       }
       return neu;

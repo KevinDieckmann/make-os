@@ -1,5 +1,7 @@
 // ─── CRM — Marketing ────────────────────────────────────────────────────────
-// GET                                   → { ok, heute, einstellung, kennzahlen, stimmen }
+// GET                                   → { ok, heute, ich, einstellung, kennzahlen, stimmen, freigaben, jePerson }
+//                                         freigaben: was bei wem zur Freigabe liegt (Beiträge, Newsletter)
+//                                         jePerson:  Beiträge je Person, 30 Tage (veröffentlicht, Gespräche/Anfragen)
 // GET ?segment=<id>&format=csv          → Mitglieder des Segments als CSV (UTF-8 mit BOM):
 //                                         name, firma, email (nur bei grüner Mail-Ampel),
 //                                         telefon, kreis, phase, kanal_status
@@ -12,11 +14,12 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
+import { personAus } from '@/lib/jarvis/raum';
 import { localDay } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { kontextAus } from '@/lib/crm/segmente';
-import { marketingKennzahlen, einstellungAus, saeubereEinstellung, stimmenAus, segmentCsv, newsletterCsv, dateiTeil } from '@/lib/crm/marketing';
+import { marketingKennzahlen, einstellungAus, saeubereEinstellung, stimmenAus, segmentCsv, newsletterCsv, dateiTeil, freigabeLage, beitraegeJePerson } from '@/lib/crm/marketing';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -45,10 +48,12 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({
-    ok: true, heute,
+    ok: true, heute, ich: personAus(req),
     einstellung: einstellungAus(crm),
     kennzahlen: marketingKennzahlen(kontakte, crm, heute),
     stimmen: stimmenAus(kontakte, 30),
+    freigaben: freigabeLage(crm),
+    jePerson: beitraegeJePerson(crm.beitraege ?? [], heute),
   });
 }
 

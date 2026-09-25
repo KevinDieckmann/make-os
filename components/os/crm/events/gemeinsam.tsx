@@ -1,18 +1,22 @@
 'use client';
 
 // ─── Markttraktion · Events — gemeinsame Listen, Schreibwege und kleine Bauteile ──────
-// Geschrieben wird immer der ganze Eintrag über api.setze (Einzeländerung,
-// der Server säubert ihn) — damit Kevin und Malin gleichzeitig am selben
-// Event arbeiten können.
+// Zu zweit am selben Event: geschrieben werden nur die Felder, die sich
+// wirklich ändern (api.teil — der Server vereint sie mit seinem Stand), nie
+// der ganze Eintrag. So überschreiben Kevin und Malin einander nichts, auch
+// nicht am Abend an zwei Geräten. Neu angelegt wird weiter mit api.setze;
+// Checklisten-Punkte gehen einzeln über /api/crm/events (Checkliste.tsx).
 
-import { useEffect, useState, type ReactNode } from 'react';
-import { FARBE as C, TYP } from '@/lib/make-one/design';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { feld, Chip, Fortschritt, LEUCHT } from '../../schlank';
 import { anzeigename } from '@/lib/make-one/crm';
 import type { Event, Teilnahme, TeilnahmeStatus } from '@/lib/crm/typen';
-import type { Mix, MixGruppe } from '@/lib/crm/eventplanung';
+import { teilAenderung, type Mix, type MixGruppe } from '@/lib/crm/eventplanung';
+import { TEAM, BEIDE, anderer, nameVon } from '@/lib/crm/team';
 import type { CrmApi } from '../daten';
 import { Feld } from '../teile';
+import { Person } from '../team';
 
 export const FORMATE = [{ id: 'stammtisch', label: 'Stammtisch' }, { id: 'workshop', label: 'Workshop' }, { id: 'dinner', label: 'Dinner' }, { id: 'webinar', label: 'Webinar' }, { id: 'messe', label: 'Messe' }, { id: 'sonstig', label: 'Sonstiges' }] as const;
 export const STATUS = [{ id: 'idee', label: 'Idee' }, { id: 'geplant', label: 'Geplant' }, { id: 'einladung', label: 'Einladung läuft' }, { id: 'durchgefuehrt', label: 'Durchgeführt' }, { id: 'abgesagt', label: 'Abgesagt' }] as const;
@@ -31,16 +35,62 @@ export const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.krit
 export type Reiter = 'ueberblick' | 'gaeste' | 'ablauf' | 'checkliste' | 'budget' | 'abend' | 'nachfassen';
 export interface ReiterProps { e: Event; api: CrmApi; zuKontakt: (id: string) => void }
 
-type Eintrag = { id: string } & Record<string, unknown>;
-export const eventSetzen = (api: CrmApi, e: Event, teil: Partial<Event>) => api.setze('events', { ...e, ...teil } as unknown as Eintrag);
-export const gastSetzen = (api: CrmApi, t: Teilnahme, teil: Partial<Teilnahme>) => api.setze('teilnahmen', { ...t, ...teil } as unknown as Eintrag);
+/** Event ändern: nur die geänderten Felder (api.teil). Unverändertes geht gar nicht erst raus. */
+export function eventSetzen(api: CrmApi, e: Event, teil: Partial<Event>): Promise<void> {
+  const felder = teilAenderung(e, teil);
+  return Object.keys(felder).length ? api.teil('events', e.id, felder) : Promise.resolve();
+}
+/** Teilnahme ändern (Status, Notiz, Nachfassen, Weg, lädt ein …): nur diese Felder — zwei Geräte am Einlass stören sich nicht. */
+export function gastSetzen(api: CrmApi, t: Teilnahme, teil: Partial<Teilnahme>): Promise<void> {
+  const felder = teilAenderung(t, teil);
+  return Object.keys(felder).length ? api.teil('teilnahmen', t.id, felder) : Promise.resolve();
+}
 
-/** Mehrzeilige Notiz, die beim Verlassen speichert (wie Feld, nur als Textfeld). */
+/**
+ * Mehrzeilige Notiz, die beim Verlassen speichert (wie Feld, nur als Textfeld).
+ * Solange hier getippt wird, überschreibt der Abgleich (alle 20 s) den Text nicht.
+ */
 export function Notizfeld({ wert = '', onFertig, platzhalter, zeilen = 2, gross }: { wert?: string; onFertig: (t: string) => void; platzhalter: string; zeilen?: number; gross?: boolean }) {
   const [t, setT] = useState(wert);
-  useEffect(() => { setT(wert); }, [wert]);
-  return <textarea value={t} rows={zeilen} placeholder={platzhalter} aria-label={platzhalter} onChange={x => setT(x.target.value)} onBlur={() => { if (t !== wert) onFertig(t); }}
+  const tippt = useRef(false);
+  useEffect(() => { if (!tippt.current) setT(wert); }, [wert]);
+  return <textarea value={t} rows={zeilen} placeholder={platzhalter} aria-label={platzhalter} onChange={x => setT(x.target.value)}
+    onFocus={() => { tippt.current = true; }} onBlur={() => { tippt.current = false; if (t !== wert) onFertig(t); }}
     style={{ ...feld, resize: 'vertical', fontSize: gross ? TYP.body : TYP.bedien, padding: gross ? '12px 14px' : '8px 11px', lineHeight: 1.5 }} />;
+}
+
+/**
+ * Kompakter Wechsel Kevin ⇄ Malin — zu zweit reicht ein Klick. Für „wer
+ * erledigt den Punkt“ und „wer lädt ein“. `standard` erklärt, woher der Wert
+ * kommt, solange niemand ihn eingetragen hat (z. B. „hält die Beziehung“).
+ */
+export function WerTausch({ wert, onWahl, label, standard, ich }: { wert: string; onWahl: (person: string) => void; label?: string; standard?: string; ich?: string | null }) {
+  const naechste = wert === BEIDE || !TEAM.some(m => m.id === wert) ? (ich ?? TEAM[0].id) : anderer(wert);
+  return (
+    <button onClick={x => { x.stopPropagation(); onWahl(naechste); }} className="fassbar"
+      title={`${label ? `${label}: ` : ''}${nameVon(wert)}${standard ? ` (${standard})` : ''} — Klick: ${nameVon(naechste)}`}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 9px 3px 4px', borderRadius: 999, cursor: 'pointer', border: '1px solid rgba(255,255,255,.1)', background: 'transparent', color: C.inkDim, fontSize: 12, fontWeight: 600, fontFamily: SCHRIFT.text, whiteSpace: 'nowrap' }}>
+      <Person id={wert} groesse={18} />
+      {label && <span style={{ color: C.inkLeise, fontWeight: 500 }}>{label}</span>}
+      <span style={{ color: C.ink }}>{nameVon(wert)}</span>
+      {standard && <span style={{ color: C.inkLeise, fontWeight: 500 }}>· {standard}</span>}
+      <span aria-hidden style={{ color: C.inkLeise }}>⇄</span>
+    </button>
+  );
+}
+
+/** „Kevin 6 · Malin 4“ — je Team-Mitglied eine Zahl mit Plakette; Nullen bleiben weg, außer alle sind null. */
+export function JePerson({ zahlen, einheit }: { zahlen: Record<string, number>; einheit?: (n: number) => string }) {
+  const liste = TEAM.filter(m => zahlen[m.id]);
+  return (
+    <span style={{ display: 'inline-flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
+      {(liste.length ? liste : TEAM).map(m => (
+        <span key={m.id} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', whiteSpace: 'nowrap' }}>
+          <Person id={m.id} groesse={18} />{m.name} <b style={{ color: C.ink, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{zahlen[m.id] ?? 0}</b>{einheit ? ` ${einheit(zahlen[m.id] ?? 0)}` : ''}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 /** Kleine Textschaltfläche (Löschen, Zur Person, Mehr zeigen). */

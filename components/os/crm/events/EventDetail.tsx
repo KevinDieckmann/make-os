@@ -4,13 +4,17 @@
 // Überblick → Gäste → Ablauf → Checkliste → Budget → Abend → Nachfassen.
 // Geöffnet wird, was gerade dran ist: am Tag selbst der Abend-Modus, danach
 // das Nachfassen, solange jemand offen ist, sonst der Überblick.
+// Im Kopf: wer zuständig ist und ob die/der andere gerade auch hier ist
+// (die Adresse trägt k=<Event-ID>, siehe Events.tsx).
 
 import { useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Knopf, LEUCHT } from '../../schlank';
 import { checklisteStand } from '@/lib/crm/eventplanung';
+import { zustaendig } from '@/lib/crm/team';
 import { datum } from '../daten';
 import { Pillen } from '../teile';
+import { Person, AuchHier } from '../team';
 import { FORMATE, type ReiterProps, type Reiter } from './gemeinsam';
 import { Ueberblick } from './Ueberblick';
 import { Gaeste } from './Gaeste';
@@ -38,6 +42,7 @@ export function EventDetail({ e, api, zuKontakt }: ReiterProps) {
     { id: 'nachfassen', label: nachfassenOffen ? `Nachfassen ${nachfassenOffen}` : 'Nachfassen' },
   ];
   const props = { e, api, zuKontakt };
+  const wer = zustaendig(e.zustaendig, 'event');
 
   return (
     <div style={{ display: 'grid', gap: 14 }}>
@@ -46,6 +51,12 @@ export function EventDetail({ e, api, zuKontakt }: ReiterProps) {
           <div style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, letterSpacing: '-.02em', lineHeight: 1.2 }}>{e.titel}</div>
           <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 4 }}>
             {[datum(e.datum, heute), e.uhrzeit ? `${e.uhrzeit} Uhr` : '', e.ort, FORMATE.find(f => f.id === e.format)?.label].filter(Boolean).join(' · ')}
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
+            <button onClick={() => setReiter('ueberblick')} title="Zuständigkeit im Überblick ändern" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: C.inkLeise }}>
+              zuständig <Person id={wer} name />
+            </button>
+            <AuchHier passt={pfad => new URLSearchParams(pfad.split('?')[1] ?? '').get('k') === e.id} was="bei diesem Event" />
           </div>
         </div>
         <Knopf leise onClick={() => { window.location.href = `/api/crm/events?ics=${encodeURIComponent(e.id)}`; }}>Kalender-Datei</Knopf>

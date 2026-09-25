@@ -3,13 +3,17 @@
 // ─── Event · Überblick — Ziel, Rahmen, Kennzahlen, Mischung, nächste Schritte ─
 // Vor dem Event zählt, ob Ziel und Gästeliste stimmen; danach, ob die
 // richtigen Gespräche folgen (drei in 30 Tagen) und was sie gekostet haben.
+// „Zu zweit“: wer zuständig ist (Standard Malin, änderbar, übergeben) und was
+// gerade bei wem liegt — Punkte, Einladungen, Nachfassen.
 
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Ueberschrift, Zahl, Raster, Chip, LEUCHT } from '../../schlank';
-import { mix, zielHinweis, checklisteStand, vorlageAnwenden, VORLAGEN, budgetSumme, type VorlageId } from '@/lib/crm/eventplanung';
+import { mix, zielHinweis, checklisteStand, vorlageAnwenden, VORLAGEN, budgetSumme, arbeitJePerson, punktWer, type VorlageId } from '@/lib/crm/eventplanung';
+import { TEAM, zustaendig } from '@/lib/crm/team';
 import type { Event } from '@/lib/crm/typen';
 import { datum, euro } from '../daten';
 import { Feldzeile, Pillen, Feld } from '../teile';
+import { Person, ZustaendigWahl, Uebergeben } from '../team';
 import { FORMATE, STATUS, MixAnzeige, Leise, eventSetzen, type ReiterProps, type Reiter } from './gemeinsam';
 
 const tageBis = (von: string, bis: string) => Math.round((Date.parse(`${bis}T12:00:00Z`) - Date.parse(`${von}T12:00:00Z`)) / 864e5);
@@ -26,6 +30,9 @@ export function Ueberblick({ e, api, zuReiter }: ReiterProps & { zuReiter: (r: R
   const vorbei = e.datum < heute;
   const noch = tageBis(heute, e.datum);
   const kosten = budgetSumme(e);
+  const wer = zustaendig(e.zustaendig, 'event');
+  const arbeit = arbeitJePerson(e, crm.stand.teilnahmen, api.kontakte ?? [], heute);
+  const punktNach = new Map((e.checkliste ?? []).map(p => [p.id, p]));
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -50,6 +57,39 @@ export function Ueberblick({ e, api, zuReiter }: ReiterProps & { zuReiter: (r: R
       ))}
 
       <div>
+        <Ueberschrift rechts={<Uebergeben api={api} art="event" id={e.id} jetzt={wer} klein />}>Zu zweit</Ueberschrift>
+        <Feldzeile label="Zuständig">
+          <div style={{ display: 'grid', gap: 4 }}>
+            <ZustaendigWahl wert={e.zustaendig} welt="event" onWahl={z => setze({ zustaendig: z })} />
+            <span style={{ fontSize: 12, color: C.inkLeise }}>Punkte ohne eigene Person gehen mit; schon angelegte Aufgaben bleiben, wo sie sind.</span>
+          </div>
+        </Feldzeile>
+        <div style={{ display: 'grid', gap: 6, marginTop: 6 }}>
+          {TEAM.map(m => {
+            const a = arbeit[m.id];
+            const teile: { text: string; reiter: Reiter; warn?: boolean }[] = [
+              ...(a.punkteFaellig ? [{ text: `${a.punkteFaellig} ${a.punkteFaellig === 1 ? 'Punkt' : 'Punkte'} fällig`, reiter: 'checkliste' as const, warn: true }] : []),
+              ...(a.punkteOffen > a.punkteFaellig ? [{ text: `${a.punkteOffen - a.punkteFaellig} ${a.punkteFaellig ? 'weitere' : a.punkteOffen - a.punkteFaellig === 1 ? 'Punkt' : 'Punkte'} offen`, reiter: 'checkliste' as const }] : []),
+              ...(a.einladen ? [{ text: `${a.einladen} ${a.einladen === 1 ? 'Gast' : 'Gäste'} einladen`, reiter: 'gaeste' as const, warn: !vorbei }] : []),
+              ...(a.gaeste ? [{ text: `${a.zugesagt} von ${a.gaeste} zugesagt`, reiter: 'gaeste' as const }] : []),
+              ...(a.nachfassen ? [{ text: `${a.nachfassen} nachfassen`, reiter: 'nachfassen' as const, warn: true }] : []),
+            ];
+            return (
+              <div key={m.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien }}>
+                <span style={{ minWidth: 110 }}><Person id={m.id} name />{m.id === api.ich ? <span style={{ fontSize: 12, color: C.inkLeise }}> (du)</span> : null}</span>
+                {teile.length ? teile.map((t, i) => (
+                  <span key={t.text} style={{ display: 'inline-flex', gap: 10, alignItems: 'center' }}>
+                    {i > 0 && <span style={{ color: C.inkLeise }}>·</span>}
+                    <Leise onClick={() => zuReiter(t.reiter)} farbe={t.warn ? LEUCHT.achtung : C.inkDim}>{t.text}</Leise>
+                  </span>
+                )) : <span style={{ color: C.inkLeise, fontSize: 12.5 }}>nichts offen</span>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
         <Feldzeile label="Titel"><Feld wert={e.titel} onFertig={titel => titel.trim() && setze({ titel: titel.trim() })} /></Feldzeile>
         <Feldzeile label="Ziel"><Feld wert={e.ziel} platzhalter="Messbar: „drei Folgegespräche mit Inhabern aus …“" onFertig={ziel => setze({ ziel })} /></Feldzeile>
         {hinweis && <div style={{ fontSize: 12.5, color: LEUCHT.achtung, margin: '2px 0 4px' }}>{hinweis}</div>}
@@ -68,6 +108,7 @@ export function Ueberblick({ e, api, zuReiter }: ReiterProps & { zuReiter: (r: R
             {cl.naechste.map(p => (
               <div key={p.id} style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: TYP.bedien }}>
                 <Chip farbe={p.ueberfaellig ? LEUCHT.kritisch : p.faelligAm <= heute ? LEUCHT.achtung : C.inkDim}>{p.ueberfaellig ? 'überfällig' : datum(p.faelligAm, heute)}</Chip>
+                <Person id={punktWer(punktNach.get(p.id) ?? {}, e)} groesse={18} />
                 <span style={{ color: C.ink }}>{p.text}</span>
               </div>
             ))}
@@ -94,7 +135,7 @@ export function Ueberblick({ e, api, zuReiter }: ReiterProps & { zuReiter: (r: R
         </Feldzeile>
         <Feldzeile label="Vorlage">
           <div style={{ display: 'grid', gap: 4 }}>
-            <Pillen liste={VORLAGEN.map(v => ({ id: v.id, label: v.label }))} aktiv={(e.vorlage as VorlageId | undefined) ?? null} onWahl={id => api.setze('events', vorlageAnwenden(e, id) as unknown as { id: string } & Record<string, unknown>)} />
+            <Pillen liste={VORLAGEN.map(v => ({ id: v.id, label: v.label }))} aktiv={(e.vorlage as VorlageId | undefined) ?? null} onWahl={id => setze(vorlageAnwenden(e, id))} />
             <span style={{ fontSize: 12, color: C.inkLeise }}>Ergänzt Ablauf, Checkliste und Budget — nur, was fehlt. Nichts wird überschrieben.</span>
           </div>
         </Feldzeile>

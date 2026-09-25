@@ -6,14 +6,24 @@
 // Stunde im Fokus: Karte für Karte, weicher 4-Minuten-Takt je Karte,
 // Ergebnis-Knopf setzt per Regel den nächsten Schritt, nach einem echten
 // Gespräch sind Notiz und nächster Schritt Pflicht. Am Ende das Protokoll.
+// Zu zweit (25.09.): Jede/r hat die eigene Liste („Deine Power Hour“) — die
+// Karten der anderen Person tauchen nicht auf, nur ihre Zahl; ansehen lässt
+// sich die andere Liste trotzdem (nur lesen — beide sehen alles). Wer Sales
+// verantwortet, sieht die Team-Zeile. Jede Karte zeigt, wem sie gehört, und
+// lässt sich übergeben.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Leer, LEUCHT } from '../schlank';
 import type { Ergebnis, Aktivitaet } from '@/lib/make-one/crm';
 import type { KanalStatus } from '@/lib/crm/recht';
+import type { TeamTag } from '@/lib/crm/pipeline';
+import { nameVon, anderer, BEIDE } from '@/lib/crm/team';
+import { markttraktion } from '@/lib/crm/adresse';
 import { type CrmApi, neueId, datum } from './daten';
 import { KanalAmpel, Grund, NotizFormular, Verlauf } from './teile';
+import { Person, Uebergeben } from './team';
 import { HeadPanel } from './HeadPanel';
 
 interface HeuteKarte {
@@ -21,8 +31,18 @@ interface HeuteKarte {
   kanal: KanalStatus | null; ampel: KanalStatus[]; telefon?: string; email?: string; linkedin?: string; aufhaenger?: string;
   kreis?: string; stufe: string; anrede?: string; naechsterSchritt?: { text: string; datum: string }; letzterKontakt?: string;
   letzte: Aktivitaet[]; chance?: { id: string; titel: string; stufe: string }; bezug?: string;
+  /** Wem die Karte gehört (kevin, malin, beide) und wer die Beziehung hält. */
+  gehoert: string; beziehung: string; bezugArt?: 'mandat' | 'kampagne' | 'event';
 }
-interface HeuteAntwort { heute: string; person: string; kategorien: { id: string; label: string; warum: string }[]; karten: HeuteKarte[]; ausgefiltert: { sperre: number; ohneKanal: number; kuerzlich: number }; sitzungen: { id: string; datum: string; karten: { ergebnis?: string }[] }[] }
+interface HeuteAntwort {
+  heute: string;
+  /** Wessen Liste es ist — und wer fragt. Bei nurLesen ist es die Liste der anderen Person. */
+  person: string; ich: string; nurLesen: boolean; verantwortlich: string;
+  kategorien: { id: string; label: string; warum: string }[]; karten: HeuteKarte[];
+  ausgefiltert: { sperre: number; ohneKanal: number; kuerzlich: number; beiAnderen: number };
+  sitzungen: { id: string; datum: string; karten: { ergebnis?: string }[] }[];
+  team: TeamTag[];
+}
 
 const KAT_FARBE: Record<string, string> = { versprechen: LEUCHT.kritisch, signale: LEUCHT.achtung, chancen: LEUCHT.business, kunden: LEUCHT.geld, pflege: LEUCHT.beziehung, neu: LEUCHT.puls };
 const ERGEBNIS_KNOEPFE: { id: Ergebnis; label: string; notiz: boolean }[] = [
@@ -37,6 +57,23 @@ function Uhr({ bis }: { bis: number }) {
   return <span style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.floor(rest / 60)}:{String(rest % 60).padStart(2, '0')}</span>;
 }
 
+/** Team-Zeile: Power Hours und echte Gespräche je Person, heute · sieben Tage. */
+function TeamZeile({ team }: { team: TeamTag[] }) {
+  return (
+    <div style={{ display: 'grid', gap: 6, padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
+      <div style={{ fontSize: TYP.mikro, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600 }}>Team · heute / 7 Tage</div>
+      {team.map(t => (
+        <div key={t.person} style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim }}>
+          <span style={{ minWidth: 76 }}><Person id={t.person} name groesse={18} /></span>
+          <span>Power Hours <b style={{ color: t.powerHours.heute ? LEUCHT.gut : C.ink }}>{t.powerHours.heute}</b> / {t.powerHours.woche}</span>
+          <span>Gespräche <b style={{ color: t.gespraeche.heute ? LEUCHT.gut : C.ink }}>{t.gespraeche.heute}</b> / {t.gespraeche.woche}</span>
+          {!t.powerHours.woche && <span style={{ color: C.inkLeise }}>noch keine Power Hour diese Woche</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string) => string; zuKontakt: (id: string) => void }) {
   const [d, setD] = useState<HeuteAntwort | null>(null);
   const [fokus, setFokus] = useState<{ id: string; start: string; bis: number; ziel: { gespraeche: number; termine: number }; index: number; ergebnisse: Record<string, string>; kartenStart: number } | null>(null);
@@ -44,9 +81,21 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
   const [gelernt, setGelernt] = useState('');
   const [offen, setOffen] = useState<{ id: string; ergebnis: Ergebnis } | null>(null);
   const [meldung, setMeldung] = useState('');
+  /** Die Liste der anderen Person ansehen (nur lesen) — null = die eigene. */
+  const [fuer, setFuer] = useState<string | null>(null);
+  const zug = useRef(0);
 
-  const laden = useCallback(() => fetch('/api/crm/heute?n=12', { cache: 'no-store' }).then(r => r.json()).then(setD).catch(() => {}), []);
-  useEffect(() => { void laden(); }, [laden]);
+  const laden = useCallback(async () => {
+    const nr = ++zug.current;
+    try {
+      const x = await fetch(`/api/crm/heute?n=12${fuer ? `&fuer=${encodeURIComponent(fuer)}` : ''}`, { cache: 'no-store' }).then(r => r.json());
+      // Nur die jüngste Antwort zählt — sonst stünde nach dem Umschalten kurz die falsche Liste da.
+      if (nr === zug.current && x.ok) setD(x);
+    } catch { /* bleibt beim letzten Stand */ }
+  }, [fuer]);
+  // Neu laden, wenn sich der Bestand ändert (Übergabe, Abgleich alle 20 s, die andere Person arbeitet) — nie mitten in der Power Hour.
+  const ruhig = !fokus;
+  useEffect(() => { if (ruhig) void laden(); }, [laden, ruhig, api.crm, api.kontakte]);
 
   const serie = useMemo(() => {
     const tage = new Set((d?.sitzungen ?? []).map(s => s.datum));
@@ -67,33 +116,51 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
     const r = await api.aktivitaet({ id: k.id, art: ergebnis === 'termin' ? 'termin' : art, ergebnis, bezug: k.chance?.id ?? k.bezug, ...extra });
     setMeldung(r.hinweis ?? (r.error ? r.error : ''));
     setOffen(null);
+    // Ohne Power Hour lädt die Liste über den geänderten Bestand neu.
     if (fokus) setFokus({ ...fokus, ergebnisse: { ...fokus.ergebnisse, [k.id]: ergebnis }, index: fokus.index + 1, kartenStart: Date.now() });
-    else void laden();
   }
 
   async function sitzungSpeichern() {
     if (!fokus) return;
     await api.setze('sitzungen', {
-      id: fokus.id, person: d!.person, datum: d!.heute, start: fokus.start, ende: new Date().toISOString(), ziel: fokus.ziel,
+      id: fokus.id, person: d!.ich, datum: d!.heute, start: fokus.start, ende: new Date().toISOString(), ziel: fokus.ziel,
       karten: d!.karten.map(k => ({ kontaktId: k.id, kategorie: k.kategorie, ...(fokus.ergebnisse[k.id] ? { ergebnis: fokus.ergebnisse[k.id] } : {}) })), ...(gelernt.trim() ? { gelernt: gelernt.trim() } : {}),
     });
-    setFokus(null); setEnde(false); setGelernt(''); void laden();
+    setFokus(null); setEnde(false); setGelernt('');
   }
 
+  const lesen = d.nurLesen;
+  const andere = anderer(d.ich);
+  const verantwortet = d.ich === d.verantwortlich;
   const kopf = (
-    <Karte i={0} akzent={fokus ? LEUCHT.gut : undefined}>
+    <Karte i={0} akzent={fokus ? LEUCHT.gut : lesen ? C.inkDim : undefined}>
       <Ueberschrift farbe={fokus ? LEUCHT.gut : LEUCHT.business} rechts={fokus ? <span style={{ fontSize: 22, fontWeight: 700, color: C.ink }}><Uhr bis={fokus.bis} /></span> : `${d.karten.length} Karten${serie ? ` · Serie ${serie}` : ''}`}>
-        {fokus ? 'Power Hour läuft' : 'Wer heute dran ist'}
+        {fokus ? `Power Hour läuft · ${nameVon(d.ich)}` : lesen ? `${nameVon(d.person)}s Liste · nur lesen` : `Deine Power Hour · ${nameVon(d.ich)}`}
       </Ueberschrift>
       {!fokus ? (
         <div style={{ display: 'grid', gap: 12 }}>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {d.kategorien.map(k => { const n = d.karten.filter(x => x.kategorie === k.id).length; return n ? <Chip key={k.id} farbe={KAT_FARBE[k.id]}>{k.label} · {n}</Chip> : null; })}
           </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Knopf farbe={LEUCHT.gut} aus={!d.karten.length} onClick={() => setFokus({ id: neueId('ph'), start: new Date().toISOString(), bis: Date.now() + 60 * 60_000, ziel: { gespraeche: 4, termine: 1 }, index: 0, ergebnisse: {}, kartenStart: Date.now() })}>Power Hour starten</Knopf>
-            <span style={{ fontSize: 12.5, color: C.inkLeise }}>Eine Stunde, Karte für Karte. Ziel: 4 Gespräche, 1 Termin.</span>
-          </div>
+          {lesen ? (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Knopf onClick={() => setFuer(null)}>Zurück zu deiner Power Hour</Knopf>
+              <span style={{ fontSize: 12.5, color: C.inkLeise }}>So sieht {nameVon(d.person)} die Liste heute. Festhalten kann nur {nameVon(d.person)} selbst — Karten verteilst du über „Übergeben“ oder in der Kartei.</span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Knopf farbe={LEUCHT.gut} aus={!d.karten.length} onClick={() => setFokus({ id: neueId('ph'), start: new Date().toISOString(), bis: Date.now() + 60 * 60_000, ziel: { gespraeche: 4, termine: 1 }, index: 0, ergebnisse: {}, kartenStart: Date.now() })}>Power Hour starten</Knopf>
+              <span style={{ fontSize: 12.5, color: C.inkLeise }}>{d.karten.length ? 'Eine Stunde, Karte für Karte. Ziel: 4 Gespräche, 1 Termin.' : 'Heute liegt keine Karte bei dir.'}</span>
+            </div>
+          )}
+          {!lesen && d.ausgefiltert.beiAnderen > 0 && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim }}>
+              <Person id={andere} groesse={18} />
+              <span>{d.ausgefiltert.beiAnderen} {d.ausgefiltert.beiAnderen === 1 ? 'Karte liegt' : 'Karten liegen'} bei {nameVon(andere)} — die ruft niemand doppelt an.</span>
+              {andere !== d.ich && <button onClick={() => setFuer(andere)} style={{ background: 'none', border: 'none', color: LEUCHT.business, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>{nameVon(andere)}s Liste ansehen →</button>}
+            </div>
+          )}
+          {verantwortet && d.team.length > 1 && <TeamZeile team={d.team} />}
           {(d.ausgefiltert.ohneKanal > 0 || d.ausgefiltert.sperre > 0) && (
             <div style={{ fontSize: 12.5, color: C.inkLeise }}>Nicht auf der Liste: {d.ausgefiltert.ohneKanal} ohne zulässigen Kanal{d.ausgefiltert.sperre ? ` · ${d.ausgefiltert.sperre} mit Werbesperre` : ''}{d.ausgefiltert.kuerzlich ? ` · ${d.ausgefiltert.kuerzlich} kürzlich gesprochen` : ''}. Grundlage klären in der Kartei.</div>
           )}
@@ -134,8 +201,13 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
   return (
     <>
       {kopf}
-      {!fokus && <HeadPanel head="sales" standardModus="power_hour" zuKontakt={zuKontakt} i={1} nachEntscheid={() => { void laden(); void api.laden(); }} />}
-      {!karten.length && <Karte i={1}><Leer>Heute ist niemand dran. Neue Chancen anlegen, Kreise vergeben oder Einwilligungen klären — dann füllt sich die Liste.</Leer></Karte>}
+      {!fokus && !lesen && <HeadPanel head="sales" standardModus="power_hour" zuKontakt={zuKontakt} i={1} nachEntscheid={() => { void laden(); void api.laden(); }} />}
+      {!karten.length && (
+        <Karte i={1}>
+          <Leer>{leerText(d)}</Leer>
+          <Link href={markttraktion('kontakte')} style={{ fontSize: TYP.bedien, color: LEUCHT.business, textDecoration: 'none' }}>{lesen ? 'Kontakte verteilen →' : 'Zur Kartei →'}</Link>
+        </Karte>
+      )}
       {karten.map((k, i) => {
         const f = KAT_FARBE[k.kategorie] ?? C.inkDim;
         const notizOffen = offen?.id === k.id;
@@ -144,6 +216,7 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span title={k.gehoert === BEIDE ? 'gehört euch beiden' : `gehört ${nameVon(k.gehoert)}`} style={{ display: 'inline-flex' }}><Person id={k.gehoert} groesse={20} /></span>
                   <Chip farbe={f}>{d.kategorien.find(c => c.id === k.kategorie)?.label}</Chip>
                   {k.kreis && <Chip farbe={C.inkDim}>Kreis {k.kreis}</Chip>}
                   {k.anrede && <Chip farbe={C.inkDim}>{k.anrede}</Chip>}
@@ -160,12 +233,16 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
             {k.naechsterSchritt && <div style={{ marginTop: 6, fontSize: TYP.bedien, color: C.inkDim }}><span style={{ color: C.inkLeise }}>Zugesagt:</span> {k.naechsterSchritt.text} · {datum(k.naechsterSchritt.datum, d.heute)}</div>}
             <Grund ampel={k.ampel} />
             {k.letzte.length > 0 && <div style={{ marginTop: 10 }}><Verlauf liste={[...k.letzte].reverse()} name={name} max={3} heute={d.heute} /></div>}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 14 }}>
-              {ERGEBNIS_KNOEPFE.map(e => (
-                <Knopf key={e.id} leise={!(notizOffen && offen?.ergebnis === e.id)} farbe={e.id === 'sperre' ? LEUCHT.kritisch : e.id === 'termin' || e.id === 'gespraech' ? LEUCHT.gut : undefined}
-                  onClick={() => (e.notiz ? setOffen({ id: k.id, ergebnis: e.id }) : void erfassen(k, e.id))}>{e.label}</Knopf>
-              ))}
-            </div>
+            {!lesen && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 14, alignItems: 'center' }}>
+                {ERGEBNIS_KNOEPFE.map(e => (
+                  <Knopf key={e.id} leise={!(notizOffen && offen?.ergebnis === e.id)} farbe={e.id === 'sperre' ? LEUCHT.kritisch : e.id === 'termin' || e.id === 'gespraech' ? LEUCHT.gut : undefined}
+                    onClick={() => (e.notiz ? setOffen({ id: k.id, ergebnis: e.id }) : void erfassen(k, e.id))}>{e.label}</Knopf>
+                ))}
+                <span style={{ marginLeft: 'auto' }}><KarteUebergeben k={k} api={api} /></span>
+              </div>
+            )}
+            {lesen && <div style={{ marginTop: 12 }}><Knopf leise onClick={() => zuKontakt(k.id)}>Zur Person</Knopf></div>}
             {notizOffen && offen && (
               <div style={{ marginTop: 12 }}>
                 <NotizFormular heute={d.heute} ergebnis={offen.ergebnis} knopf="Festhalten" onAbbruch={() => setOffen(null)}
@@ -177,4 +254,24 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
       })}
     </>
   );
+}
+
+/**
+ * Übergeben an der Karte — so, dass die Karte auch wirklich wandert: Hängt sie
+ * an einer Chance oder einem Mandat, wechselt deren Zuständigkeit; sonst die
+ * Beziehung („Hält die Beziehung“). Mit Notiz und Frist wird die Übergabe
+ * beim Kontakt zum nächsten Schritt in der Power Hour der anderen Person.
+ */
+function KarteUebergeben({ k, api }: { k: HeuteKarte; api: CrmApi }) {
+  if (k.chance) return <Uebergeben api={api} art="chance" id={k.chance.id} jetzt={k.gehoert} titel="Chance übergeben" klein />;
+  if (k.bezugArt === 'mandat' && k.bezug) return <Uebergeben api={api} art="mandat" id={k.bezug} jetzt={k.gehoert} titel="Mandat übergeben" klein />;
+  return <Uebergeben api={api} art="kontakt" id={k.id} jetzt={k.beziehung} klein />;
+}
+
+/** Leere Liste — sagt, woran es liegt und was als Nächstes zu tun ist. */
+function leerText(d: HeuteAntwort): string {
+  const v = nameVon(d.verantwortlich);
+  if (d.nurLesen) return `Bei ${nameVon(d.person)} liegt heute nichts. Kontakte verteilen: in Markttraktion › Kontakte eingrenzen (Suche oder Ansicht), dann „Diese … übergeben“ — oder einzeln an der Person „Übergeben“.`;
+  if (d.ich !== d.verantwortlich) return `Deine Liste ist heute leer. Sales verantwortet ${v}: ${v} verteilt Kontakte an dich (Markttraktion › Kontakte eingrenzen, dann „Diese … übergeben“) oder übergibt einzelne Personen, Chancen und Mandate — die tauchen dann hier auf. Eigene Kontakte trägst du in der Kartei unter „Hält die Beziehung“ auf dich ein.`;
+  return 'Heute ist niemand dran. Neue Chancen anlegen, Kreise vergeben oder Einwilligungen klären — dann füllt sich die Liste.';
 }

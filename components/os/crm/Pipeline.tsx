@@ -4,15 +4,21 @@
 // Oben die Prognose (offen, gewichtet, Commit, Best Case) — jede Zahl mit
 // Herleitung. Darunter die Stufen mit ihrem Austrittskriterium: Eine Chance
 // rückt vor, wenn auf Kundenseite etwas passiert ist, nicht wenn wir hoffen.
+// Zu zweit (25.09.): Filter „Alle · Meins · Malin“, an jeder Chance die
+// Plakette der Person, die sie führt (besitzer), Prognose und hängende
+// Chancen je Person. Änderungen gehen als Einzelfelder (api.teil) raus, damit
+// sich Kevin und Malin an derselben Chance nichts überschreiben.
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, useBreit, LEUCHT } from '../schlank';
 import { anzeigename } from '@/lib/make-one/crm';
-import { gesamtwert, VERLUSTGRUENDE } from '@/lib/crm/pipeline';
+import { gesamtwert, prognose, prognoseJePerson, werZahlen, VERLUSTGRUENDE } from '@/lib/crm/pipeline';
+import { zustaendig, haeltBeziehung, mitglied, nameVon, verantwortlich } from '@/lib/crm/team';
 import type { Chance, ChancenStufe, Qual } from '@/lib/crm/typen';
 import { type CrmApi, neueId, datum, euro, kurzEuro, plusTage } from './daten';
 import { Feldzeile, Pillen, Feld } from './teile';
+import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
 import { HeadPanel } from './HeadPanel';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
@@ -22,6 +28,9 @@ const QUAL: { id: keyof Chance['qualifizierung']; label: string }[] = [
   { id: 'schmerz', label: 'Schmerz' }, { id: 'entscheider', label: 'Entscheider' }, { id: 'budget', label: 'Budget' }, { id: 'zeitpunkt', label: 'Zeitpunkt' }, { id: 'wirkung', label: 'Wirkung' }, { id: 'alternative', label: 'Alternative' },
 ];
 const GES = [{ id: 'kdc', label: 'Selbstständigkeit' }, { id: 'kdv', label: 'KD Ventures' }, { id: 'ug', label: 'Neue UG' }, { id: 'offen', label: 'offen' }] as const;
+/** Einzeländerung: nur diese Felder; „undefined“ heißt leeren (als '' gesendet — der Server lässt das Feld dann weg). */
+const nurFelder = (t: Record<string, unknown>) => Object.fromEntries(Object.entries(t).map(([k, v]) => [k, v === undefined ? '' : v]));
+const wertText = (c: Chance) => (c.wert.betrag ? `${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/M' : c.wert.basis === 'jahr' ? '/J' : ''}` : 'ohne Wert');
 
 export function Pipeline({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string) => void }) {
   const [auswahl, setAuswahl] = useState<string | null>(null);
@@ -29,23 +38,39 @@ export function Pipeline({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
   const breit = useBreit();
   const [board, setBoard] = useState(true);
   const [alleVorschlaege, setAlleVorschlaege] = useState(false);
+  const [wahl, setWahl] = useWerFilter('pipeline');
   const crm = api.crm;
   if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
-  const p = crm.prognose;
+  const ich = api.ich;
   const offen = crm.stufen.filter(s => s.offen);
-  const neu = () => { const id = neueId('ch'); void api.setze('chancen', { id, titel: 'Neue Chance', kontaktIds: [], art: 'retainer', wert: { betrag: 0, basis: 'monat' }, stufe: 'qualifiziert', historie: [], qualifizierung: {}, gesellschaft: 'offen', besitzer: 'kevin', angelegt: new Date().toISOString() }); setAuswahl(id); };
-  const zu = crm.stand.chancen.filter(c => !offen.some(s => s.id === c.stufe));
+  const istOffen = (c: Chance) => offen.some(s => s.id === c.stufe);
+  // Filter „Alle · Meins · Malin“ — die Prognose rechnet für die Auswahl, die Zeile je Person immer für alle.
+  const passt = (c: Chance) => passtWer(wahl, c.besitzer, 'sales', ich);
+  const chancen = crm.stand.chancen.filter(passt);
+  const zahlen = werZahlen(crm.stand.chancen.filter(istOffen), c => c.besitzer, 'sales', ich);
+  const p = wahl === 'alle' ? crm.prognose : prognose(chancen, crm.heute, crm.stand.wahrscheinlichkeiten);
+  const jePerson = prognoseJePerson(crm.stand.chancen, crm.heute, crm.stand.wahrscheinlichkeiten);
+  const meine = ich ? jePerson.find(x => x.person === ich) : undefined;
+  // Neue Chance: für die gefilterte Person, sonst für mich (im Team), sonst die Sales-Verantwortung.
+  const neuFuer = wahl !== 'alle' && wahl !== 'ich' && mitglied(wahl) ? wahl : mitglied(ich)?.id ?? verantwortlich('sales');
+  const neu = () => { const id = neueId('ch'); void api.setze('chancen', { id, titel: 'Neue Chance', kontaktIds: [], art: 'retainer', wert: { betrag: 0, basis: 'monat' }, stufe: 'qualifiziert', historie: [], qualifizierung: {}, gesellschaft: 'offen', besitzer: neuFuer, angelegt: new Date().toISOString() }); setAuswahl(id); };
+  const zu = chancen.filter(c => !istOffen(c));
   // Aus der Kartei: wer laut Masterdatei im Gespräch ist oder ein Angebot hat, aber noch keine Chance.
   const mitChance = new Set(crm.stand.chancen.flatMap(c => c.kontaktIds));
-  const vorschlaege = (api.kontakte ?? []).filter(k => ['gespraech', 'termin', 'angebot'].includes(k.stufe) && !mitChance.has(k.id) && !k.werbesperre)
+  const vorschlaege = (api.kontakte ?? []).filter(k => ['gespraech', 'termin', 'angebot'].includes(k.stufe) && !mitChance.has(k.id) && !k.werbesperre && passtWer(wahl, k.besitzer, 'sales', ich))
     .sort((a, b) => (a.stufe === 'angebot' ? 0 : 1) - (b.stufe === 'angebot' ? 0 : 1));
-  const ausKontakt = (k: NonNullable<CrmApi['kontakte']>[number]) => { const id = neueId('ch'); void api.setze('chancen', { id, titel: k.firma ? `${k.firma}` : anzeigename(k), kontaktIds: [k.id], ...(k.firma ? { firma: k.firma } : {}), art: 'retainer', wert: { betrag: 0, basis: 'monat' }, stufe: k.stufe === 'angebot' ? 'angebot' : 'qualifiziert', historie: [], qualifizierung: {}, quelle: 'bestand', gesellschaft: 'offen', besitzer: 'kevin', angelegt: new Date().toISOString() }); setAuswahl(id); };
+  // Die Chance führt, wer die Beziehung hält — im Gespräch ist ja sie/er.
+  const ausKontakt = (k: NonNullable<CrmApi['kontakte']>[number]) => { const id = neueId('ch'); void api.setze('chancen', { id, titel: k.firma ? `${k.firma}` : anzeigename(k), kontaktIds: [k.id], ...(k.firma ? { firma: k.firma } : {}), art: 'retainer', wert: { betrag: 0, basis: 'monat' }, stufe: k.stufe === 'angebot' ? 'angebot' : 'qualifiziert', historie: [], qualifizierung: {}, quelle: 'bestand', gesellschaft: 'offen', besitzer: haeltBeziehung(k), angelegt: new Date().toISOString() }); setAuswahl(id); };
 
   return (
     <>
       <HeadPanel head="sales" standardModus="deal_review" zuKontakt={zuKontakt} i={0} nachEntscheid={() => void api.laden()} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} />
+        {breit && <Pillen liste={[{ id: 'board', label: 'Board' }, { id: 'liste', label: 'Liste' }]} aktiv={board ? 'board' : 'liste'} onWahl={x => setBoard(x === 'board')} />}
+      </div>
       <Karte i={0}>
-        <Ueberschrift rechts={<Knopf onClick={neu}>+ Chance</Knopf>}>Prognose</Ueberschrift>
+        <Ueberschrift rechts={<Knopf onClick={neu}>+ Chance{neuFuer !== ich ? ` für ${nameVon(neuFuer)}` : ''}</Knopf>}>{wahl === 'alle' ? 'Prognose' : `Prognose · ${wahl === 'ich' ? 'meine' : nameVon(wahl)}`}</Ueberschrift>
         <Raster min={150}>
           <Zahl wert={kurzEuro(p.offen)} label="offen" />
           <Zahl wert={kurzEuro(p.gewichtet)} label="gewichtet" farbe={LEUCHT.business} />
@@ -54,12 +79,25 @@ export function Pipeline({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
           <Zahl wert={String(p.ohneSchritt)} label="ohne nächsten Schritt" farbe={p.ohneSchritt ? LEUCHT.achtung : undefined} />
           <Zahl wert={crm.gewinnquote.quote !== null ? `${crm.gewinnquote.quote} %` : `${crm.gewinnquote.gewonnen} · ${crm.gewinnquote.verloren}`} label={crm.gewinnquote.quote !== null ? 'Gewinnquote ab Angebot' : 'gewonnen · verloren (Quote ab 10)'} />
         </Raster>
+        {jePerson.length > 1 && (
+          <div style={{ display: 'grid', gap: 5, marginTop: 12 }}>
+            {jePerson.map(x => (
+              <div key={x.person} style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim }}>
+                <span style={{ minWidth: 76 }}><Person id={x.person} name groesse={18} /></span>
+                <span>{x.anzahl} {x.anzahl === 1 ? 'Chance' : 'Chancen'}</span>
+                <span>gewichtet <b style={{ color: C.ink }}>{kurzEuro(x.gewichtet)}</b></span>
+                {x.commit > 0 && <span>Commit {kurzEuro(x.commit)}</span>}
+                {x.haengt > 0 && <span style={{ color: LEUCHT.kritisch }}>{x.haengt} hängt</span>}
+                {x.ohneSchritt > 0 && <span style={{ color: LEUCHT.achtung }}>{x.ohneSchritt} ohne nächsten Schritt</span>}
+              </div>
+            ))}
+          </div>
+        )}
+        {meine && (meine.haengt > 0 || meine.ohneSchritt > 0) && (
+          <div style={{ fontSize: 12.5, color: C.ink, marginTop: 10 }}>Als Nächstes: {meine.haengt > 0 ? `${meine.haengt} deiner Chancen ${meine.haengt === 1 ? 'hängt' : 'hängen'} — nächsten Schritt mit Datum setzen, übergeben oder parken.` : `${meine.ohneSchritt} deiner Chancen ohne nächsten Schritt — einen mit Datum eintragen.`}</div>
+        )}
         <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Wert = Monatshonorar × Laufzeit (ohne Angabe 12 Monate), gewichtet mit der Stufen-Wahrscheinlichkeit. Die Wahrscheinlichkeiten sind vorsichtige Startwerte und werden durch gemessene Quoten ersetzt.</div>
       </Karte>
-
-      {breit && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Pillen liste={[{ id: 'board', label: 'Board' }, { id: 'liste', label: 'Liste' }]} aktiv={board ? 'board' : 'liste'} onWahl={x => setBoard(x === 'board')} /></div>
-      )}
 
       {breit && board && (() => {
         const sel = auswahl ? crm.stand.chancen.find(c => c.id === auswahl) : null;
@@ -67,7 +105,7 @@ export function Pipeline({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
           <>
             <div style={{ display: 'grid', gridTemplateColumns: `repeat(${offen.length}, minmax(0, 1fr))`, gap: 12, alignItems: 'start' }}>
               {offen.map(s => {
-                const l = crm.stand.chancen.filter(c => c.stufe === s.id);
+                const l = chancen.filter(c => c.stufe === s.id);
                 const js = p.jeStufe.find(x => x.stufe === s.id);
                 return (
                   <div key={s.id} style={{ background: 'rgba(255,255,255,.025)', borderRadius: 14, padding: 10, minHeight: 160 }}>
@@ -80,9 +118,12 @@ export function Pipeline({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
                         const a = crm.ampel[c.id];
                         return (
                           <button key={c.id} onClick={() => setAuswahl(auswahl === c.id ? null : c.id)} className="fassbar" style={{ textAlign: 'left', cursor: 'pointer', border: `1px solid ${auswahl === c.id ? LEUCHT.business : 'rgba(255,255,255,.06)'}`, borderLeft: `3px solid ${a ? AMPEL[a.ampel] : C.inkLeise}`, background: 'rgba(255,255,255,.04)', borderRadius: 10, padding: '9px 10px', color: C.ink, display: 'grid', gap: 3 }}>
-                            <span style={{ fontSize: TYP.bedien, fontWeight: 600, lineHeight: 1.3 }}>{c.titel}</span>
+                            <span style={{ display: 'flex', justifyContent: 'space-between', gap: 6, alignItems: 'flex-start' }}>
+                              <span style={{ fontSize: TYP.bedien, fontWeight: 600, lineHeight: 1.3 }}>{c.titel}</span>
+                              <Person id={zustaendig(c.besitzer, 'sales')} groesse={16} />
+                            </span>
                             {c.firma && c.firma !== c.titel && <span style={{ fontSize: 12, color: C.inkLeise }}>{c.firma}</span>}
-                            <span style={{ fontSize: 12, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{c.wert.betrag ? `${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/M' : c.wert.basis === 'jahr' ? '/J' : ''}` : 'ohne Wert'}</span>
+                            <span style={{ fontSize: 12, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{wertText(c)}</span>
                             <span style={{ fontSize: 11.5, color: c.naechsterSchritt && c.naechsterSchritt.datum < crm.heute ? LEUCHT.kritisch : C.inkLeise }}>{c.naechsterSchritt ? `→ ${datum(c.naechsterSchritt.datum, crm.heute)}` : 'kein nächster Schritt'}</span>
                           </button>
                         );
@@ -104,7 +145,7 @@ export function Pipeline({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
       })()}
 
       {(!breit || !board) && offen.map((s, i) => {
-        const l = crm.stand.chancen.filter(c => c.stufe === s.id);
+        const l = chancen.filter(c => c.stufe === s.id);
         const js = p.jeStufe.find(x => x.stufe === s.id);
         return (
           <Karte key={s.id} i={i + 1}>
@@ -147,7 +188,7 @@ function ChancenZeile({ c, api, offen, onKlick, zuKontakt }: { c: Chance; api: C
       <Zeile onClick={onKlick} aktiv={offen} links={<Punkt farbe={a ? AMPEL[a.ampel] : C.inkLeise} />}
         titel={<>{c.titel}{c.firma && <span style={{ color: C.inkLeise }}> · {c.firma}</span>}</>}
         unter={[c.naechsterSchritt ? `→ ${c.naechsterSchritt.text} · ${datum(c.naechsterSchritt.datum, crm.heute)}` : 'kein nächster Schritt', a?.gruende[0]].filter(Boolean).join(' · ')}
-        rechts={<span style={{ fontVariantNumeric: 'tabular-nums', fontSize: TYP.bedien, color: C.inkDim }}>{c.wert.betrag ? `${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/M' : c.wert.basis === 'jahr' ? '/J' : ''}` : '—'}</span>} />
+        rechts={<span style={{ display: 'flex', gap: 10, alignItems: 'center' }}><span style={{ fontVariantNumeric: 'tabular-nums', fontSize: TYP.bedien, color: C.inkDim }}>{c.wert.betrag ? wertText(c) : '—'}</span><Person id={zustaendig(c.besitzer, 'sales')} groesse={18} /></span>} />
       {offen && <ChancenDetail c={c} api={api} personen={personen as NonNullable<typeof personen[number]>[]} zuKontakt={zuKontakt} />}
     </div>
   );
@@ -157,18 +198,27 @@ function ChancenDetail({ c, api, personen, zuKontakt }: { c: Chance; api: CrmApi
   const crm = api.crm!;
   const [wechsel, setWechsel] = useState<{ ziel: ChancenStufe; grund: string; wiedervorlage: string } | null>(null);
   const [suche, setSuche] = useState('');
-  const setze = (teil: Partial<Chance>) => api.setze('chancen', { ...c, ...teil } as unknown as { id: string } & Record<string, unknown>);
+  // Nur die geänderten Felder — die andere Person kann gleichzeitig an derselben Chance arbeiten.
+  const setze = (teil: Partial<Chance>) => api.teil('chancen', c.id, nurFelder(teil));
   const wechsle = (ziel: ChancenStufe, extra: { grund?: string; wiedervorlage?: string } = {}) => {
+    if (ziel === c.stufe) return setWechsel(null);
     if (ziel === 'verloren' && !extra.grund) return setWechsel({ ziel, grund: '', wiedervorlage: '' });
     if (ziel === 'geparkt' && !extra.wiedervorlage) return setWechsel({ ziel, grund: '', wiedervorlage: plusTage(crm.heute, 60) });
     const jetzt = new Date().toISOString();
     void setze({ stufe: ziel, historie: [...c.historie, { stufe: ziel, am: jetzt, von: '' /* der Server trägt die angemeldete Person ein */ }], letzteAktivitaet: jetzt.slice(0, 10), ...(extra.grund ? { grund: extra.grund } : {}), ...(extra.wiedervorlage ? { wiedervorlage: extra.wiedervorlage } : {}) });
     setWechsel(null);
   };
+  const fuehrt = zustaendig(c.besitzer, 'sales');
   const treffer = suche.trim().length >= 2 ? (api.kontakte ?? []).filter(k => `${anzeigename(k)} ${k.firma ?? ''}`.toLowerCase().includes(suche.toLowerCase())).slice(0, 6) : [];
 
   return (
     <div style={{ padding: '10px 2px 18px', display: 'grid', gap: 12, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+      <Feldzeile label="Führt">
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <ZustaendigWahl wert={c.besitzer} welt="sales" onWahl={besitzer => void api.teil('chancen', c.id, { besitzer })} />
+          <Uebergeben api={api} art="chance" id={c.id} jetzt={fuehrt} klein />
+        </div>
+      </Feldzeile>
       <div>
         <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Stufe</div>
         <Pillen liste={crm.stufen.map(s => ({ id: s.id, label: s.label }))} aktiv={c.stufe} onWahl={wechsle} farbe={LEUCHT.business} />
@@ -180,7 +230,7 @@ function ChancenDetail({ c, api, personen, zuKontakt }: { c: Chance; api: CrmApi
             <Knopf leise onClick={() => setWechsel(null)}>Abbrechen</Knopf>
           </div>
         )}
-        {c.historie.length > 1 && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>{c.historie.map(h => `${crm.stufen.find(s => s.id === h.stufe)?.label} ${datum(h.am)}`).join(' → ')}</div>}
+        {c.historie.length > 1 && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>{c.historie.map(h => `${crm.stufen.find(s => s.id === h.stufe)?.label} ${datum(h.am)}${mitglied(h.von) ? ` (${nameVon(h.von)})` : ''}`).join(' → ')}</div>}
       </div>
       <Feldzeile label="Titel"><Feld wert={c.titel} onFertig={titel => titel.trim() && setze({ titel: titel.trim() })} /></Feldzeile>
       <Feldzeile label="Firma"><Feld wert={c.firma} onFertig={firma => setze({ firma: firma || undefined })} /></Feldzeile>

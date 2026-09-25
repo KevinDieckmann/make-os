@@ -7,6 +7,7 @@
 
 import type { Mandat } from './typen';
 import type { Planposten } from '@/lib/make-one/liquiditaet';
+import { TEAM, BEIDE, zustaendig } from './team';
 
 const tage = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 864e5);
 function plusMonate(datum: string, n: number): string {
@@ -111,4 +112,27 @@ export function planpostenAus(m: Mandat, heute: string): Planposten | null {
     ...(firma ? { firmaId: firma } : {}), kategorie: 'mandat',
     notiz: `Aus dem Mandat (CRM). ${m.honorar.netto ? `${m.honorar.betrag} € netto${m.ustSatz ? ` + ${m.ustSatz} % USt` : ', Reverse Charge'}` : `${m.honorar.betrag} €`}.`,
   };
+}
+
+// ── Kunden zu zweit (25.09.) ────────────────────────────────────────────────
+// Je Mandat ist jemand zuständig (Mandat.zustaendig; ohne Eintrag die
+// Sales-Verantwortung, also Kevin). Die Zeile je Person zeigt, was bei wem
+// liegt: aktive Mandate, wiederkehrender Umsatz, Reviews in sieben Tagen,
+// kritische Mandate (Ampel rot) und offene Punkte.
+
+export interface KundenJePerson { person: string; aktiv: number; mrr: number; reviews: number; kritisch: number; offen: number }
+export function kundenJePerson(mandate: Mandat[], heute: string, lage?: Record<string, Pick<MandatLage, 'ampel'> | undefined>): KundenJePerson[] {
+  const bald = plusTage(heute, 7);
+  const laufend = mandate.filter(m => m.status !== 'beendet');
+  const personen = [...TEAM.map(t => t.id), ...(laufend.some(m => zustaendig(m.zustaendig, 'sales') === BEIDE) ? [BEIDE] : [])];
+  return personen.map(person => {
+    const l = laufend.filter(m => zustaendig(m.zustaendig, 'sales') === person);
+    const aktiv = l.filter(m => m.status === 'aktiv');
+    return {
+      person, aktiv: aktiv.length, mrr: mrr(aktiv),
+      reviews: aktiv.filter(m => m.naechstesReview && m.naechstesReview <= bald).length,
+      kritisch: aktiv.filter(m => (lage?.[m.id] ?? mandatLage(m, heute)).ampel === 'rot').length,
+      offen: l.reduce((a, m) => a + m.offen.length, 0),
+    };
+  });
 }

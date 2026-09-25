@@ -56,7 +56,9 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
   const oeffne = (s: Segment) => setEntwurf(entwurf?.id === s.id ? null : { id: s.id, name: s.name, beschreibung: s.beschreibung ?? '', kriterien: { ...s.kriterien }, neu: false });
   const speichern = async (e: Entwurf) => {
     const kriterien = kriterienSauber(e.kriterien);
-    await api.setze('segmente', { id: e.id, name: e.name.trim(), ...(e.beschreibung.trim() ? { beschreibung: e.beschreibung.trim() } : {}), kriterien });
+    // Neu anlegen als ganzer Eintrag; ein bestehendes Segment nur in diesen Feldern ändern (Einzeländerung, null löscht die Beschreibung).
+    if (e.neu) await api.setze('segmente', { id: e.id, name: e.name.trim(), ...(e.beschreibung.trim() ? { beschreibung: e.beschreibung.trim() } : {}), kriterien });
+    else await api.teil('segmente', e.id, { name: e.name.trim(), beschreibung: e.beschreibung.trim() || null, kriterien });
     setMeldung(`„${e.name.trim()}“ gespeichert.`);
     setEntwurf({ ...e, name: e.name.trim(), beschreibung: e.beschreibung.trim(), kriterien, neu: false });
   };

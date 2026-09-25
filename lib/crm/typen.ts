@@ -177,6 +177,8 @@ export interface Teilnahme {
   einladungsweg?: 'persoenlich' | 'telefon' | 'mail' | 'linkedin';
   /** Wer die Person einlädt und nachfasst — hält meist die Beziehung. */
   einladenDurch?: string;
+  /** Wer beim Einlass „da“ oder „nicht gekommen“ gesetzt hat. */
+  eingechecktVon?: string;
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;

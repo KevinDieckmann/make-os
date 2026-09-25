@@ -61,7 +61,7 @@ export async function POST(req: Request) {
   if (bezug?.startsWith('kp-') && erg) {
     const kErg = erg === 'gespraech' || erg === 'termin' ? 'gespraech' : erg === 'kein_bedarf' || erg === 'sperre' ? 'kein_interesse' : 'angesprochen';
     const { aendereCrm } = await import('@/lib/crm/speicher');
-    await aendereCrm(c => ({ ...c, kampagnen: c.kampagnen.map(k => (k.id === bezug && k.kontaktIds.includes(id) ? { ...k, ergebnisse: [...k.ergebnisse, { kontaktId: id, ergebnis: kErg, am: heute }], geaendert: new Date().toISOString() } : k)) }));
+    await aendereCrm(c => ({ ...c, kampagnen: c.kampagnen.map(k => (k.id === bezug && k.kontaktIds.includes(id) ? { ...k, ergebnisse: [...k.ergebnisse, { kontaktId: id, ergebnis: kErg, am: heute, ...(von !== 'jarvis' ? { von } : {}) }], geaendert: new Date().toISOString(), geaendertVon: von } : k)) }));
   }
   return NextResponse.json({ ok: true, kontakt: ergebnis, hinweis: erg ? folgeAus(erg, heute, 'neu').hinweis : undefined });
 }

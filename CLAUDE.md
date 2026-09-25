@@ -140,6 +140,22 @@ lokal, Route `/os`, Port 3001.
   Pflichtangaben (Herkunft Art. 14 / Rechtsgrundlage Art. 6 nur als Vorschlag,
   Übernahme per Klick), Betroffenenanträge, Verzeichnis Art. 30, Export.
   Konzept: `docs/konzepte/crm-sales-marketing-events.md`.
+- **Markttraktion zu zweit (25.09.2026, Kevins Entscheidungen):** `lib/crm/team.ts`.
+  **Verantwortlich je Welt:** Sales Kevin (Malin macht auch Sales), Marketing +
+  Event Malin. **Zuständig je Eintrag:** kevin | malin | beide (Kontakt `besitzer`
+  = „Hält die Beziehung“, Chance `besitzer`, sonst `zustaendig`); ohne Eintrag
+  gilt die/der Verantwortliche. Beide sehen alles — **nur die private Notiz sieht
+  allein, wer sie schrieb** (`privatNotizVon`, GET /api/state/kontakte filtert,
+  `kontaktVereinen(neu, alt, person)` schützt sie). **Power Hour je Person**
+  (`karteGehoert`: Chance → Mandat → Kampagne → Einladung → Beziehung), damit
+  nie zwei dieselbe Person anrufen. **Teil-Änderungen** (`op: 'teil'`,
+  `api.teil`) statt ganzer Einträge, `geaendertVon` stempelt der Server.
+  **Übergabe** (`/api/crm/uebergabe`): Zuständigkeit + Verlauf + nächster
+  Schritt + Aufgabe für die andere Person. Head-Vorschläge gehen an die
+  zuständige Person. Überblick: „Für dich“ + „Zuletzt im Team“. Anwesenheit
+  meldet in der Markttraktion auch die Ansicht (`k=` → „Malin ist gerade hier“).
+  Beiträge/Newsletter mit Stimme + Freigabe (`Freigabe`-Typ), Events mit
+  Checklisten-„wer“ und Gast-„lädt ein“ (`einladenDurch`).
 - **Markttraktion verbunden (Nacht zum 25.09.2026, damals „CRM“):**
   - **Einstiege:** Kontakte und Firmen sind eigene Einstiege. Die Schnellsuche (⌘K) findet Personen, Firmen, Chancen und Mandate.
   - **Signale:** `lib/crm/signale.ts` übernimmt Mail und Kalender, aber nur aus den GESCHÄFTLICHEN Quellen. Das private Postfach und private Kalender bleiben draußen. Übernommen werden nur Betreff und Titel, und Funktionspostfächer zählen nicht.

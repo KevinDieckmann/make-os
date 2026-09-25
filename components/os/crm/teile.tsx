@@ -9,6 +9,8 @@ import { NOTIZ_FELDER, type Aktivitaet, type NotizVorlage, type Ergebnis } from 
 import type { KanalStatus } from '@/lib/crm/recht';
 import { datum, plusTage } from './daten';
 
+import { Person } from './team';
+
 export const AMPEL_FARBE = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 const KANAL_LABEL: Record<string, string> = { telefon: 'Telefon', mail: 'Mail', linkedin: 'LinkedIn', vernetzen: 'Vernetzen', newsletter: 'Newsletter', einladung: 'Einladung' };
 
@@ -38,7 +40,7 @@ export function Grund({ ampel }: { ampel: KanalStatus[] }) {
   return g ? <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>{KANAL_LABEL[g.kanal]}: {g.grund}</div> : null;
 }
 
-const ART_LABEL: Record<string, string> = { mail: 'Mail', linkedin: 'LinkedIn', anruf: 'Anruf', antwort: 'Antwort', termin: 'Termin', notiz: 'Notiz', stufe: 'Stufe', gespraech: 'Gespräch', event: 'Event', system: 'System' };
+const ART_LABEL: Record<string, string> = { uebergabe: 'Übergabe', mail: 'Mail', linkedin: 'LinkedIn', anruf: 'Anruf', antwort: 'Antwort', termin: 'Termin', notiz: 'Notiz', stufe: 'Stufe', gespraech: 'Gespräch', event: 'Event', system: 'System' };
 const ERG_LABEL: Record<string, string> = { gespraech: 'Gespräch', termin: 'Termin', mailbox: 'Mailbox', nicht_erreicht: 'nicht erreicht', rueckruf: 'Rückruf', kein_bedarf: 'kein Bedarf', sperre: 'Sperre' };
 
 /** Verlauf: jüngstes zuerst, Notizvorlage aufgeklappt. */
@@ -53,7 +55,7 @@ export function Verlauf({ liste, name, max = 50, heute }: { liste: Aktivitaet[];
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: TYP.bedien, color: C.ink }}>
               <b style={{ fontWeight: 600 }}>{ART_LABEL[a.art] ?? a.art}</b>{a.ergebnis && <span style={{ color: C.inkDim }}> · {ERG_LABEL[a.ergebnis]}</span>}
-              <span style={{ color: C.inkLeise }}> · {name(a.von)}</span>
+              <span style={{ color: C.inkLeise }}> · </span><span style={{ display: 'inline-flex', verticalAlign: 'middle', gap: 4, alignItems: 'center', color: C.inkLeise }}>{a.von !== 'system' && <Person id={a.von} groesse={14} />}{name(a.von)}</span>
             </div>
             {a.text && <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 2, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{a.text}</div>}
             {a.notiz && (

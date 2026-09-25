@@ -7,6 +7,9 @@
 // Kennzahlen, dann die Übergaben zwischen den Welten (was eine Welt der
 // anderen hingelegt hat) und was jetzt zu tun ist. Jede Zeile führt dorthin,
 // wo sie erledigt wird. Grau = noch nichts gemessen, nie eine erfundene Null.
+// Zu zweit (25.09.): ganz oben „Für dich“ (nur das Eigene der angemeldeten
+// Person) und „Zuletzt im Team“; die eigenen Welten stehen vorn, an jeder
+// Welt steht, wer sie verantwortet.
 
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP, leuchtFarbe } from '@/lib/make-one/design';
@@ -15,6 +18,9 @@ import { useAbgleich } from '@/hooks/useAbgleich';
 import type { Kpi } from '@/lib/crm/kennzahlen';
 import type { Befund } from '@/lib/crm/befunde';
 import type { Traktion, Uebergabe, Welt } from '@/lib/crm/traktion';
+import type { FuerDich, TeamEreignis } from '@/lib/crm/team';
+import { verantwortlich, nameVon } from '@/lib/crm/team';
+import { Person } from './team';
 import type { CrmApi } from './daten';
 import { datum } from './daten';
 
@@ -27,8 +33,8 @@ const STATUS = { ruhig: LEUCHT.gut, beobachten: LEUCHT.achtung, handeln: LEUCHT.
 const BEFUND_WELT: Record<Befund['bereich'], Welt | null> = { heute: 'sales', pipeline: 'sales', kunden: 'sales', marketing: 'marketing', events: 'event', kontakte: null, firmen: null, stammdaten: null };
 const PRIO = { 1: LEUCHT.kritisch, 2: LEUCHT.achtung, 3: LEUCHT.puls, 4: C.inkDim, 5: C.inkLeise } as const;
 
-interface HeadKurz { id: Welt; name: string; offen: number; status: 'ruhig' | 'beobachten' | 'handeln' | null; zeit: string | null; zusammenfassung: string | null }
-interface Daten { heute: string; traktion: Traktion; grundlage: Kpi[]; uebergaben: Uebergabe[]; befunde: Befund[]; heads: HeadKurz[]; bestand: Record<string, number> }
+interface HeadKurz { id: Welt; name: string; verantwortlich: string; offen: number; status: 'ruhig' | 'beobachten' | 'handeln' | null; zeit: string | null; zusammenfassung: string | null }
+interface Daten { heute: string; ich: string; fuerDich: FuerDich[]; teamFeed: TeamEreignis[]; traktion: Traktion; grundlage: Kpi[]; uebergaben: Uebergabe[]; befunde: Befund[]; heads: HeadKurz[]; bestand: Record<string, number> }
 
 function KpiZeile({ k }: { k: Kpi }) {
   return (
@@ -49,15 +55,49 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
   if (!d) return <Karte i={0}><Leer>{api.fehler ?? 'Lädt …'}</Leer></Karte>;
   const t = d.traktion;
   const befunde = alle ? d.befunde : d.befunde.slice(0, 5);
+  // Die eigenen Welten zuerst — Kevin sieht Sales vorn, Malin Marketing und Event.
+  const welten = [...t.welten].sort((a, b) => Number(verantwortlich(b.id) === d.ich) - Number(verantwortlich(a.id) === d.ich));
+  const zeit = (iso: string) => { const tg = iso.slice(0, 10); return tg === d.heute ? iso.slice(11, 16) : datum(tg, d.heute); };
 
   return (
     <>
-      <Karte i={0} akzent={t.score !== null ? leuchtFarbe(t.score) : undefined}>
+      <Spalten verhaeltnis="1:1">
+        <Spalte>
+          <Karte i={0} akzent={d.fuerDich.length ? LEUCHT.gut : undefined}>
+            <Ueberschrift rechts={<Person id={d.ich} name />}>Für dich</Ueberschrift>
+            {!d.fuerDich.length ? <Leer>Bei dir liegt gerade nichts Fälliges — Zeit für die Power Hour oder einen Beitrag.</Leer> : (
+              <Liste>
+                {d.fuerDich.map(f => (
+                  <Zeile key={f.id} onClick={() => zuBereich(f.ziel.s, f.ziel.a)} links={<Punkt farbe={WELT_FARBE[f.welt]} />}
+                    titel={<span style={{ whiteSpace: 'normal' }}>{f.titel}</span>} unter={<span style={{ whiteSpace: 'normal' }}>{WELT_LABEL[f.welt]} · {f.text}</span>}
+                    rechts={<Chip farbe={WELT_FARBE[f.welt]}>{f.anzahl}</Chip>} />
+                ))}
+              </Liste>
+            )}
+          </Karte>
+        </Spalte>
+        <Spalte>
+          <Karte i={1}>
+            <Ueberschrift rechts={<span>14 Tage</span>}>Zuletzt im Team</Ueberschrift>
+            {!d.teamFeed.length ? <Leer>Noch nichts festgehalten. Was Kevin und Malin notieren, übergeben und bearbeiten, steht hier.</Leer> : (
+              <Liste>
+                {d.teamFeed.slice(0, 7).map((e, i) => (
+                  <Zeile key={i} onClick={() => zuBereich(e.ziel.s, e.ziel.a)} links={<Person id={e.person} />}
+                    titel={<span style={{ whiteSpace: 'normal', fontSize: TYP.bedien }}>{e.text}</span>}
+                    unter={`${nameVon(e.person)} · ${zeit(e.zeit)}`} />
+                ))}
+              </Liste>
+            )}
+          </Karte>
+        </Spalte>
+      </Spalten>
+
+      <Karte i={2} akzent={t.score !== null ? leuchtFarbe(t.score) : undefined}>
         <Ueberschrift farbe={t.score !== null ? leuchtFarbe(t.score) : C.inkLeise}>Traction-Score</Ueberschrift>
         <div style={{ display: 'flex', gap: 'clamp(18px,3vw,36px)', alignItems: 'center', flexWrap: 'wrap' }}>
           <Ring label={t.vorlaeufig ? 'vorläufig' : 'Traktion'} wert={t.score !== null ? String(t.score) : undefined} anteil={t.score !== null ? t.score / 100 : undefined} farbe={t.score !== null ? leuchtFarbe(t.score) : C.inkLeise} />
           <div style={{ flex: 1, minWidth: 240, display: 'grid', gap: 14 }}>
-            {t.welten.map(w => (
+            {welten.map(w => (
               <button key={w.id} onClick={() => zuBereich(w.id)} className="fassbar" style={{ all: 'unset', cursor: 'pointer', display: 'grid', gap: 6 }}>
                 <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                   <Punkt farbe={WELT_FARBE[w.id]} groesse={8} />
@@ -77,11 +117,15 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
       </Karte>
 
       <Raster min={290}>
-        {t.welten.map((w, i) => {
+        {welten.map((w, i) => {
           const h = d.heads.find(x => x.id === w.id);
+          const v = verantwortlich(w.id);
           return (
-            <Karte key={w.id} i={i + 1}>
+            <Karte key={w.id} i={i + 3}>
               <Ueberschrift farbe={WELT_FARBE[w.id]} rechts={<button onClick={() => zuBereich(w.id)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>öffnen ›</button>}>{w.label}</Ueberschrift>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, fontSize: 12.5, color: C.inkDim }}>
+                <Person id={v} groesse={18} /> verantwortet {nameVon(v)}{v === d.ich ? ' · dein Bereich' : ''}
+              </div>
               <div style={{ display: 'grid', gap: 4, padding: '10px 12px', borderRadius: 12, background: 'rgba(199,125,255,.06)', marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <Punkt farbe={LEUCHT.agenten} groesse={7} />

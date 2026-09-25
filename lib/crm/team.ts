@@ -58,6 +58,7 @@ export const haeltBeziehung = (k: Pick<Kontakt, 'besitzer'>) => zustaendig(k.bes
 // ── Zuletzt im Team ────────────────────────────────────────────────────────
 export interface TeamEreignis { person: string; zeit: string; text: string; welt: Welt | null; ziel: { s: string; a?: string; k?: string } }
 
+const ART_TEXT: Record<string, string> = { mail: 'Mail an', linkedin: 'LinkedIn mit', anruf: 'Anruf bei', antwort: 'Antwort von', termin: 'Termin mit', notiz: 'Notiz zu', gespraech: 'Gespräch mit', event: 'Event mit' };
 const ERGEBNIS_TEXT: Record<string, string> = { gespraech: 'Gespräch', termin: 'Termin vereinbart', mailbox: 'Mailbox', nicht_erreicht: 'nicht erreicht', rueckruf: 'Rückruf vereinbart', kein_bedarf: 'kein Bedarf', sperre: 'Sperre' };
 
 /**
@@ -73,7 +74,8 @@ export function teamFeed(kontakte: Kontakt[], crm: CrmBestand, seit: string, max
       if (a.am < seit || !mensch(a.von) || a.art === 'system') continue;
       const was = a.art === 'uebergabe' ? `hat ${anzeigename(k)} übergeben${a.text ? `: ${a.text}` : ''}`
         : a.ergebnis ? `${anzeigename(k)}: ${ERGEBNIS_TEXT[a.ergebnis] ?? a.ergebnis}`
-        : a.art === 'notiz' ? `Notiz zu ${anzeigename(k)}` : `${a.art} · ${anzeigename(k)}`;
+        : a.art === 'stufe' ? `${anzeigename(k)}: Stufe${a.text ? ` ${a.text}` : ' geändert'}`
+        : `${ART_TEXT[a.art] ?? a.art} ${anzeigename(k)}`;
       r.push({ person: a.von, zeit: a.am, text: was, welt: 'sales', ziel: { s: 'kontakte', k: k.id } });
     }
   }
@@ -108,7 +110,9 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   if (ohneSchritt) l.push({ id: 'chancen-ohne-schritt', welt: 'sales', titel: 'Deine Chancen ohne nächsten Schritt', anzahl: ohneSchritt, text: `von ${offen.length} offenen`, ziel: { s: 'sales', a: 'pipeline' } });
   const reviews = crm.mandate.filter(m => m.status === 'aktiv' && m.naechstesReview && m.naechstesReview <= bald && istMeins(m.zustaendig, 'sales', person)).length;
   if (reviews) l.push({ id: 'reviews', welt: 'sales', titel: 'Kundenreviews in 7 Tagen', anzahl: reviews, text: 'Health bewerten, offene Punkte klären', ziel: { s: 'sales', a: 'kunden' } });
-  const freigaben = [...(crm.beitraege ?? []), ...(crm.newsletter ?? [])].filter(x => x.freigabe?.status === 'offen' && x.freigabe.an === person).length;
+  // Eine Beitrags-Freigabe zählt nur, solange sie nötig ist: an die jetzige Stimme, und die schreibt nicht selbst (lib/crm/marketing.ts freigabeStand).
+  const beitragFreigabe = (b: NonNullable<CrmBestand['beitraege']>[number]) => b.status !== 'veroeffentlicht' && b.freigabe?.status === 'offen' && b.freigabe.an === person && b.stimme === person && zustaendig(b.zustaendig, 'marketing') !== person && zustaendig(b.zustaendig, 'marketing') !== BEIDE;
+  const freigaben = (crm.beitraege ?? []).filter(beitragFreigabe).length + (crm.newsletter ?? []).filter(n => n.status !== 'versendet' && n.freigabe?.status === 'offen' && n.freigabe.an === person).length;
   if (freigaben) l.push({ id: 'freigaben', welt: 'marketing', titel: 'Warten auf deine Freigabe', anzahl: freigaben, text: 'Beiträge oder Newsletter in deinem Namen', ziel: { s: 'marketing', a: 'redaktion' } });
   const aenderungen = [...(crm.beitraege ?? []), ...(crm.newsletter ?? [])].filter(x => x.freigabe?.status === 'aenderung' && istMeins(x.zustaendig, 'marketing', person)).length;
   if (aenderungen) l.push({ id: 'aenderungen', welt: 'marketing', titel: 'Änderungswünsche zu deinen Texten', anzahl: aenderungen, text: 'die Stimme hat zurückgegeben', ziel: { s: 'marketing', a: 'redaktion' } });
@@ -119,7 +123,10 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   if (punkte) l.push({ id: 'checkliste', welt: 'event', titel: 'Event-Checkliste fällig', anzahl: punkte, text: 'Punkte, die bei dir liegen', ziel: { s: 'event' } });
   const eventIds = new Set(crm.events.map(e => e.id));
   const nachId = new Map(kontakte.map(k => [k.id, k]));
-  const nachfassen = crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm && eventIds.has(t.eventId) && (wer(t.einladenDurch) ?? (nachId.get(t.kontaktId) ? haeltBeziehung(nachId.get(t.kontaktId)!) : '')) === person).length;
+  // Wer nachfasst: wer eingeladen hat, sonst wer die Beziehung hält — bei „beide“ die Zuständigkeit des Events (wie in der Event-Ansicht).
+  const eventVon = new Map(crm.events.map(e => [e.id, e]));
+  const nachfasser = (t: CrmBestand['teilnahmen'][number]) => { const e = wer(t.einladenDurch); if (e && e !== BEIDE) return e; const k = nachId.get(t.kontaktId); const h = k ? haeltBeziehung(k) : BEIDE; return h !== BEIDE ? h : zustaendig(eventVon.get(t.eventId)?.zustaendig, 'event'); };
+  const nachfassen = crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm && eventIds.has(t.eventId) && nachfasser(t) === person).length;
   if (nachfassen) l.push({ id: 'nachfassen', welt: 'event', titel: 'Gäste nachfassen', anzahl: nachfassen, text: 'die du eingeladen hast oder deren Beziehung du hältst', ziel: { s: 'event' } });
   const kampagnen = (crm.kampagnen ?? []).filter(k => k.status === 'aktiv' && istMeins(k.zustaendig, 'sales', person));
   const kpOffen = kampagnen.reduce((a, k) => { const e = new Set(k.ergebnisse.map(x => x.kontaktId)); return a + k.kontaktIds.filter(id => !e.has(id)).length; }, 0);

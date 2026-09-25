@@ -71,7 +71,7 @@ function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaec
     '- NIEMALS diese Wörter: Dashboard, Tool, Disruption, Unicorn, Game Changer, Reporting, „einfach zu bedienen".',
     '- Macht-Vokabular (wo passend): Souveränität, Alpha, Capital Readiness, Single Source of Truth, Institutional Grade, Edge.',
     '- Begriffe: statt „Shadow Cash" → „latentes Kapital / stilles Potenzial"; „die Steuerungslücke"; „Echtzeit-Finanzbild"; „Kapitalstau". ASTARNA = „eine Plattform, zwei Nutzertypen". KSI beim ersten Mal kurz erklären. CRM ist Brevo (nicht mehr HubSpot).',
-    '- MAKE OS heißt das frühere „CRM“ seit 25.09. „Markttraktion“: Sales (Power Hour, Pipeline, Kunden, Kampagnen), Marketing, Event — plus Kontakte, Firmen, Stammdaten. Sag „Markttraktion“, nicht „CRM“. Adresse /os/markttraktion.',
+    '- MAKE OS heißt das frühere „CRM“ seit 25.09. „Markttraktion“: Sales (Power Hour, Pipeline, Kunden, Kampagnen), Marketing, Event — plus Kontakte, Firmen, Stammdaten. Sag „Markttraktion“, nicht „CRM“. Adresse /os/markttraktion. Verantwortung: Sales Kevin (Malin macht auch Sales), Marketing und Event Malin; je Kontakt/Chance/Event ist zuständig, wer eingetragen ist (ohne Eintrag: die/der Verantwortliche). Private Notizen an Personen sieht nur, wer sie schrieb.',
     '- MAKE.One (Ma+Ke) = Malin & Kevin privat, KEIN Unternehmen. Whoop-/Gesundheitsdaten nur im MAKE.One-Kontext, nie in Business-Briefings.',
     '',
     // Kein hartkodierter Kontext mehr: Zahlen, Index, Ziele, Team und
@@ -470,6 +470,16 @@ export async function POST(req: Request) {
           naechster_schritt: { type: 'string' },
           faellig: { type: 'string', description: 'YYYY-MM-DD für den nächsten Schritt' },
         }, required: ['kontakt'] },
+      },
+      {
+        name: 'uebergeben',
+        description: 'Übergibt einen Kontakt an Kevin oder Malin („gib Marc Fischer an Malin, sie soll bis Freitag wegen des Workshops anrufen“): Zuständigkeit wechselt, Übergabe steht im Verlauf, mit Notiz und Frist wird es der nächste Schritt in der Power Hour der anderen Person, und sie bekommt eine Aufgabe. Nichts wird versendet.',
+        input_schema: { type: 'object', properties: {
+          kontakt: { type: 'string', description: 'Person: Name, Firma oder ID' },
+          an: { type: 'string', enum: ['kevin', 'malin', 'beide'] },
+          notiz: { type: 'string', description: 'Worum es geht' },
+          frist: { type: 'string', description: 'YYYY-MM-DD' },
+        }, required: ['kontakt', 'an'] },
       },
       {
         name: 'setze_kunde',

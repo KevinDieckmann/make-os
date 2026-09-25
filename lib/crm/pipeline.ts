@@ -7,7 +7,10 @@
 // Wert wird je Basis normalisiert (monatlich × Laufzeit statt roher Betrag),
 // und Commit/Best-Case wird tatsächlich gerechnet.
 
-import type { Chance, ChancenStufe, CrmBestand } from './typen';
+import type { Kontakt, Aktivitaet } from '@/lib/make-one/crm';
+import type { Chance, ChancenStufe, CrmBestand, Kampagne, KampagnenErgebnis, PowerHourSitzung } from './typen';
+import type { Welt } from './traktion';
+import { TEAM, BEIDE, zustaendig } from './team';
 
 export const STUFEN: { id: ChancenStufe; label: string; p: number; weiterWenn: string; offen: boolean }[] = [
   { id: 'qualifiziert', label: 'Qualifiziert', p: 30, weiterWenn: 'Schmerz und Entscheider bekannt, Gespräch mit dem Entscheider vereinbart.', offen: true },
@@ -106,4 +109,84 @@ export function gewinnquote(chancen: Chance[]): { gewonnen: number; verloren: nu
   const g = chancen.filter(c => c.stufe === 'gewonnen' && warAngebot(c)).length;
   const v = chancen.filter(c => c.stufe === 'verloren' && warAngebot(c)).length;
   return { gewonnen: g, verloren: v, quote: g + v >= 10 ? Math.round((g / (g + v)) * 100) : null };
+}
+
+// ── Sales zu zweit (25.09.) ─────────────────────────────────────────────────
+// Kevin verantwortet Sales, Malin macht auch Sales. Die Zahlen je Person
+// zeigen, wo was liegt und was als Nächstes dran ist — kein Ranking. Die
+// Regeln (verantwortlich je Welt, zuständig je Eintrag) stehen in team.ts.
+
+/** Wer die Aufgabe zu einem Eintrag bekommt: die/der Zuständige — bei „beide“ die Person, die fragt. */
+export function bearbeiterFuer(z: string | undefined, welt: Welt, person: string): string {
+  const e = zustaendig(z, welt);
+  return e === BEIDE ? person : e;
+}
+
+/**
+ * Zahlen für den Filter „Alle · Meins · Malin“ (components/os/crm/team.tsx):
+ * je Wahl, wie viele Einträge passen — Gemeinsames („beide“) zählt bei beiden,
+ * genau wie passtWer() filtert.
+ */
+export function werZahlen<T>(liste: T[], z: (x: T) => string | undefined, welt: Welt, ich: string | null): Record<string, number> {
+  const zaehl = (p: string) => liste.filter(x => { const e = zustaendig(z(x), welt); return e === p || e === BEIDE; }).length;
+  const r: Record<string, number> = { alle: liste.length };
+  for (const t of TEAM) r[t.id] = zaehl(t.id);
+  if (ich) r.ich = r[ich] ?? zaehl(ich);
+  return r;
+}
+
+export interface PersonPrognose { person: string; anzahl: number; offen: number; gewichtet: number; commit: number; haengt: number; ohneSchritt: number }
+/** Prognose je Besitzer der Chance (ohne Eintrag: Sales-Verantwortung). „Beide“ nur, wenn es gemeinsame Chancen gibt. */
+export function prognoseJePerson(chancen: Chance[], heute: string, eigene?: CrmBestand['wahrscheinlichkeiten']): PersonPrognose[] {
+  return [...TEAM.map(t => t.id), BEIDE].map(person => {
+    const p = prognose(chancen.filter(c => zustaendig(c.besitzer, 'sales') === person), heute, eigene);
+    return {
+      person, anzahl: p.jeStufe.reduce((a, s) => a + s.anzahl, 0), offen: p.offen, gewichtet: p.gewichtet, commit: p.commit,
+      haengt: p.jeStufe.reduce((a, s) => a + s.haengt, 0), ohneSchritt: p.ohneSchritt,
+    };
+  }).filter(x => x.person !== BEIDE || x.anzahl > 0);
+}
+
+/** Ein echtes Gespräch: Ergebnis Gespräch oder Termin — oder ein Gespräch ohne Ergebnis-Knopf (z. B. aus einer Kampagne). */
+export const echtesGespraech = (a: Pick<Aktivitaet, 'art' | 'ergebnis'>) => a.ergebnis === 'gespraech' || a.ergebnis === 'termin' || (!a.ergebnis && a.art === 'gespraech');
+
+export interface TeamTag { person: string; powerHours: { heute: number; woche: number }; gespraeche: { heute: number; woche: number } }
+const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+/**
+ * Team-Zeile in der Power Hour: abgeschlossene Power Hours (Sitzungen je
+ * Person) und echte Gespräche (Verlauf, „von“) — heute und in den letzten
+ * sieben Tagen einschließlich heute. System, Jarvis und Signale zählen nicht.
+ */
+export function teamZahlen(kontakte: Pick<Kontakt, 'aktivitaeten'>[], sitzungen: Pick<PowerHourSitzung, 'person' | 'datum'>[], heute: string): TeamTag[] {
+  const ab = tagPlus(heute, -6);
+  const inWoche = (d: string) => d >= ab && d <= heute;
+  const gespraeche = new Map<string, string[]>();
+  for (const k of kontakte) for (const a of k.aktivitaeten ?? []) if (echtesGespraech(a)) gespraeche.set(a.von, [...(gespraeche.get(a.von) ?? []), a.am.slice(0, 10)]);
+  return TEAM.map(t => {
+    const s = sitzungen.filter(x => x.person === t.id).map(x => x.datum);
+    const g = gespraeche.get(t.id) ?? [];
+    return { person: t.id, powerHours: { heute: s.filter(d => d === heute).length, woche: s.filter(inWoche).length }, gespraeche: { heute: g.filter(d => d === heute).length, woche: g.filter(inWoche).length } };
+  });
+}
+
+export interface KampagnenBeitrag { person: string; angesprochen: number; gespraeche: number; chancen: number }
+/**
+ * Wer in einer Kampagne wen angesprochen hat (Ergebnisse mit „von“): je Person
+ * die Zahl der Personen, mit denen sie etwas festgehalten hat, und wie viele
+ * davon zum Gespräch oder zur Chance wurden. Ohne „von“ (ältere Einträge):
+ * person = ''.
+ */
+export function kampagneJePerson(k: Pick<Kampagne, 'ergebnisse'>): KampagnenBeitrag[] {
+  const je = new Map<string, Map<string, Set<KampagnenErgebnis>>>();
+  for (const e of k.ergebnisse) {
+    const p = e.von ?? '';
+    const m = je.get(p) ?? new Map<string, Set<KampagnenErgebnis>>();
+    m.set(e.kontaktId, (m.get(e.kontaktId) ?? new Set<KampagnenErgebnis>()).add(e.ergebnis));
+    je.set(p, m);
+  }
+  const rang = (p: string) => { const i = TEAM.findIndex(t => t.id === p); return i < 0 ? TEAM.length + (p ? 0 : 1) : i; };
+  return Array.from(je.entries()).sort((a, b) => rang(a[0]) - rang(b[0])).map(([person, m]) => {
+    const l = Array.from(m.values());
+    return { person, angesprochen: m.size, gespraeche: l.filter(s => s.has('gespraech')).length, chancen: l.filter(s => s.has('chance')).length };
+  });
 }

@@ -10,11 +10,18 @@
 //     Grundlage, sonst persönlich. Teilnahme ist KEINE Einwilligung.
 // Hier steht nur Rechnen — kein Speicher, kein Versand. Die Oberfläche
 // (components/os/crm/events) und die Route (app/api/crm/events) nutzen es.
+//
+// Zu zweit (25.09.): Event verantwortet Malin, Kevin arbeitet mit. Wer einen
+// Checklisten-Punkt erledigt, wer einen Gast einlädt und nachfasst, steht je
+// Punkt bzw. je Gast — ohne Eintrag gilt die Event-Zuständigkeit bzw. wer die
+// Beziehung hält (Abschnitt „Zu zweit“ unten, Regeln in lib/crm/team.ts).
 
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, Event, EventFormat, Firma, SegmentKriterien, Teilnahme } from './typen';
 import { kanalStatus, type KanalStatus } from './recht';
 import { kontextAus, imSegment } from './segmente';
+import { TEAM, BEIDE, wer, zustaendig, verantwortlich, haeltBeziehung, nameVon } from './team';
+import { markttraktion } from './adresse';
 
 const plusTage = (datum: string, n: number) => { const d = new Date(`${datum}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const tageZwischen = (von: string, bis: string) => Math.round((Date.parse(`${bis}T12:00:00Z`) - Date.parse(`${von}T12:00:00Z`)) / 864e5);
@@ -239,15 +246,22 @@ export type EventAufgabe = {
 
 const vorlaufText = (t: number) => (t > 0 ? `${t} Tage vorher` : t === 0 ? 'am Tag selbst' : `${-t} Tage danach`);
 
+/** Titel der Aufgabe zu einem Punkt — derselbe beim Anlegen und beim Nachziehen einer Textänderung. */
+const aufgabenTitel = (text: string, e: Pick<Event, 'titel'>) => `${text} — ${e.titel}`.slice(0, 200);
+
 /**
  * Offene Checklistenpunkte ohne Aufgabe → Aufgaben im Speicher „tasks“.
  * `vorhanden` sind die IDs, die dort schon stehen: die werden nur verknüpft,
  * nicht neu angelegt (wiederholbar). Ergebnis: neue Aufgaben + Punkt → Aufgaben-ID.
+ * Jede Aufgabe bekommt, wer den Punkt erledigt (punktWer: eingetragen, sonst
+ * die Event-Zuständigkeit; „beide“ heißt in der Aufgabenliste „both“).
+ * `person` ist, wer anlegt — steht in der Beschreibung.
  */
 export function checklisteAlsAufgaben(e: Event, vorhanden: Set<string>, person: string, jetzt: string): { neu: EventAufgabe[]; verknuepft: Record<string, string> } {
   const neu: EventAufgabe[] = [];
   const verknuepft: Record<string, string> = {};
   const schon = new Set(Array.from(vorhanden));
+  const link = markttraktion('event', undefined, e.id);
   for (const p of e.checkliste ?? []) {
     if (p.erledigt || p.aufgabeId) continue;
     const id = aufgabenId(e.id, p.id);
@@ -255,13 +269,200 @@ export function checklisteAlsAufgaben(e: Event, vorhanden: Set<string>, person: 
     if (schon.has(id)) continue;
     schon.add(id);
     neu.push({
-      id, title: `${p.text} — ${e.titel}`.slice(0, 200),
-      description: `Checkliste zum Event „${e.titel}“ am ${e.datum}${e.uhrzeit ? ` um ${e.uhrzeit}` : ''}${e.ort ? ` (${e.ort})` : ''} — ${vorlaufText(p.tageVorher)}. Aus dem CRM · Events.`,
-      status: 'todo', priority: 'medium', assignee: person, tags: ['crm', 'event'], subTasks: [], dependencies: [], sortOrder: 0,
+      id, title: aufgabenTitel(p.text, e),
+      description: `Checkliste zum Event „${e.titel}“ am ${e.datum}${e.uhrzeit ? ` um ${e.uhrzeit}` : ''}${e.ort ? ` (${e.ort})` : ''} — ${vorlaufText(p.tageVorher)}. Aus der Markttraktion · Event${person ? `, angelegt von ${nameVon(person)}` : ''}.\n\n${link}`,
+      status: 'todo', priority: 'medium', assignee: aufgabenBearbeiter(punktWer(p, e)), tags: ['crm', 'event'], subTasks: [], dependencies: [], sortOrder: 0,
       createdAt: jetzt, updatedAt: jetzt, dueDate: plusTage(e.datum, -p.tageVorher),
     });
   }
   return { neu, verknuepft };
+}
+
+// ── Zu zweit: wer macht was ─────────────────────────────────────────────────
+// Event verantwortet Malin (lib/crm/team.ts), beide sehen alles und arbeiten
+// mit. Drei Fragen, je eine Regel:
+//   Wer erledigt den Punkt?    eingetragen (wer), sonst die Event-Zuständigkeit
+//   Wer lädt ein, fasst nach?  eingetragen (einladenDurch), sonst wer die
+//                              Beziehung hält — immer genau eine Person
+//   Was liegt bei wem?         arbeitJePerson (Überblick, Gäste, Nachfassen)
+// Geschrieben wird zu zweit nur, was sich ändert (teilAenderung → api.teil;
+// Checklisten-Punkte einzeln auf dem Server → punktAendern).
+
+export type ChecklistenPunkt = NonNullable<Event['checkliste']>[number];
+
+/** Wer den Punkt erledigt: eingetragen, sonst die Zuständigkeit des Events (kann „beide“ sein). */
+export const punktWer = (p: Pick<ChecklistenPunkt, 'wer'>, e: Pick<Event, 'zustaendig'>): string => wer(p.wer) ?? zustaendig(e.zustaendig, 'event');
+
+/** Team-Kürzel → Bearbeiter in der Aufgabenliste (types/tasks.ts: „beide“ heißt dort „both“). */
+export const aufgabenBearbeiter = (person: string) => (person === BEIDE ? 'both' : person);
+const bearbeiterName = (a?: string) => nameVon(a === 'both' ? BEIDE : a);
+
+export type EinladerQuelle = 'eingetragen' | 'beziehung' | 'event';
+/**
+ * Wer den Gast einlädt und nachfasst — immer genau eine Person: eingetragen
+ * (einladenDurch), sonst wer die Beziehung hält (haeltBeziehung: ohne
+ * Eintrag am Kontakt die Sales-Verantwortung). Halten beide die Beziehung
+ * oder fehlt der Kontakt: die Event-Zuständigkeit — und ist die „beide“,
+ * die Event-Verantwortung.
+ */
+export function einladerMit(t: Pick<Teilnahme, 'einladenDurch'>, k: Pick<Kontakt, 'besitzer'> | undefined, e: Pick<Event, 'zustaendig'>): { person: string; quelle: EinladerQuelle } {
+  const eingetragen = wer(t.einladenDurch);
+  if (eingetragen && eingetragen !== BEIDE) return { person: eingetragen, quelle: 'eingetragen' };
+  const beziehung = k ? haeltBeziehung(k) : undefined;
+  if (beziehung && beziehung !== BEIDE) return { person: beziehung, quelle: 'beziehung' };
+  const ev = zustaendig(e.zustaendig, 'event');
+  return { person: ev === BEIDE ? verantwortlich('event') : ev, quelle: 'event' };
+}
+export const einlader = (t: Pick<Teilnahme, 'einladenDurch'>, k: Pick<Kontakt, 'besitzer'> | undefined, e: Pick<Event, 'zustaendig'>) => einladerMit(t, k, e).person;
+
+export interface EventArbeit {
+  /** Offene Checklisten-Punkte der Person („beide“ zählt bei beiden). */
+  punkteOffen: number;
+  /** Davon bis heute fällig (wie „Für dich“ in lib/crm/team.ts). */
+  punkteFaellig: number;
+  /** Gäste, die die Person einlädt (ganze Liste). */
+  gaeste: number;
+  /** Davon noch vorgemerkt — die Einladung steht aus. */
+  einladen: number;
+  zugesagt: number;
+  /** War da, noch nicht nachgefasst. */
+  nachfassen: number;
+}
+
+const kontaktMap = (kontakte: Kontakt[] | Map<string, Kontakt>) => (kontakte instanceof Map ? kontakte : new Map(kontakte.map(k => [k.id, k])));
+
+/** Was bei wem liegt — je Team-Mitglied, für den Überblick und die Zähler in Gäste und Nachfassen. */
+export function arbeitJePerson(e: Event, teilnahmen: Teilnahme[], kontakte: Kontakt[] | Map<string, Kontakt>, heute: string): Record<string, EventArbeit> {
+  const r: Record<string, EventArbeit> = Object.fromEntries(TEAM.map(m => [m.id, { punkteOffen: 0, punkteFaellig: 0, gaeste: 0, einladen: 0, zugesagt: 0, nachfassen: 0 }]));
+  const bei = (p: string) => (p === BEIDE ? TEAM.map(m => m.id) : r[p] ? [p] : []);
+  for (const p of e.checkliste ?? []) {
+    if (p.erledigt) continue;
+    const faellig = plusTage(e.datum, -p.tageVorher) <= heute;
+    for (const id of bei(punktWer(p, e))) { r[id].punkteOffen++; if (faellig) r[id].punkteFaellig++; }
+  }
+  const nachId = kontaktMap(kontakte);
+  for (const t of teilnahmen) {
+    if (t.eventId !== e.id) continue;
+    const x = r[einlader(t, nachId.get(t.kontaktId), e)];
+    if (!x) continue;
+    x.gaeste++;
+    if (t.status === 'vorgemerkt') x.einladen++;
+    if (t.status === 'zugesagt' || t.status === 'da') x.zugesagt++;
+    if (t.status === 'da' && !t.followUpAm) x.nachfassen++;
+  }
+  return r;
+}
+
+export interface NachfassGruppe<T> { person: string; eigene: boolean; liste: T[] }
+/**
+ * Nachfassen nach Person: „Deine Gäste“ zuerst, dann die der/des anderen —
+ * je Team-Mitglied eine Gruppe (auch leer, die Oberfläche entscheidet).
+ * Ohne Anmeldung (ich = null) in der Reihenfolge des Teams.
+ */
+export function nachfassGruppen<T extends { t: Teilnahme; k?: Pick<Kontakt, 'besitzer'> }>(eintraege: T[], e: Pick<Event, 'zustaendig'>, ich: string | null): NachfassGruppe<T>[] {
+  const reihe = [...TEAM.map(m => m.id)].sort((a, b) => Number(b === ich) - Number(a === ich));
+  const gruppen = reihe.map(person => ({ person, eigene: person === ich, liste: [] as T[] }));
+  for (const x of eintraege) gruppen.find(g => g.person === einlader(x.t, x.k, e))?.liste.push(x);
+  return gruppen;
+}
+
+/**
+ * Nur, was sich wirklich ändert — für api.teil (zu zweit am selben Eintrag).
+ * „Entfernen“ (undefined) geht als '' auf die Leitung: undefined fiele im
+ * JSON weg und der Server behielte den alten Wert; leere Werte lässt der
+ * Säuberer (lib/crm/speicher.ts) weg.
+ */
+export function teilAenderung<T extends object>(alt: T, teil: Partial<T>): Record<string, unknown> {
+  const r: Record<string, unknown> = {};
+  const vorher = alt as Record<string, unknown>;
+  for (const [k, v] of Object.entries(teil)) {
+    const a = vorher[k];
+    if (v === undefined || v === null) { if (a !== undefined && a !== null && a !== '') r[k] = ''; continue; }
+    if (JSON.stringify(a) !== JSON.stringify(v)) r[k] = v;
+  }
+  return r;
+}
+
+// ── Checklisten-Punkt einzeln ändern (Server, atomar) ───────────────────────
+
+export type PunktAenderung =
+  | { op: 'neu'; punkt: { id: string; text: string; tageVorher: number; wer?: string } }
+  | { op: 'weg'; id: string }
+  | { op: 'aendern'; id: string; felder: { text?: string; tageVorher?: number; erledigt?: boolean; wer?: string | null } };
+
+const PUNKT_ID = /^[a-z0-9][a-z0-9-]{0,39}$/i;
+const vorlaufOk = (n: unknown) => { const x = Math.round(Number(n)); return Number.isFinite(x) ? Math.max(-30, Math.min(120, x)) : null; };
+
+/**
+ * Eine Änderung an EINEM Punkt auf die aktuelle Checkliste legen — der
+ * Server macht das auf seinem Stand, so haken Kevin und Malin gleichzeitig
+ * verschiedene Punkte ab, ohne sich die Liste zu überschreiben. Geprüft wie
+ * im Säuberer: Text ≤ 200, Vorlauf −30…120, wer = Team-Kürzel oder „beide“
+ * ('' oder null nimmt die Eintragung weg → Standard Event-Zuständigkeit).
+ * null, wenn die Änderung nicht passt (unbekannter Punkt, leerer Text, doppelte ID).
+ */
+export function punktAendern(liste: ChecklistenPunkt[] | undefined, a: PunktAenderung): { liste: ChecklistenPunkt[]; vorher?: ChecklistenPunkt; nachher?: ChecklistenPunkt } | null {
+  const l = liste ?? [];
+  if (a.op === 'neu') {
+    const text = String(a.punkt.text ?? '').trim().slice(0, 200);
+    const tage = vorlaufOk(a.punkt.tageVorher);
+    if (!PUNKT_ID.test(String(a.punkt.id ?? '')) || !text || tage === null || l.some(p => p.id === a.punkt.id) || l.length >= 60) return null;
+    const w = wer(a.punkt.wer);
+    const nachher: ChecklistenPunkt = { id: a.punkt.id, text, tageVorher: tage, erledigt: false, ...(w ? { wer: w } : {}) };
+    return { liste: [...l, nachher], nachher };
+  }
+  const vorher = l.find(p => p.id === a.id);
+  if (!vorher) return null;
+  if (a.op === 'weg') return { liste: l.filter(p => p.id !== a.id), vorher };
+  const f = a.felder ?? {};
+  const nachher: ChecklistenPunkt = { ...vorher };
+  if (f.text !== undefined) { const t = String(f.text).trim().slice(0, 200); if (!t) return null; nachher.text = t; }
+  if (f.tageVorher !== undefined) { const t = vorlaufOk(f.tageVorher); if (t === null) return null; nachher.tageVorher = t; }
+  if (typeof f.erledigt === 'boolean') nachher.erledigt = f.erledigt;
+  if (f.wer !== undefined) { const w = wer(f.wer); if (w) nachher.wer = w; else delete nachher.wer; }
+  return { liste: l.map(p => (p.id === a.id ? nachher : p)), vorher, nachher };
+}
+
+/** Was von einer Aufgabe im Speicher „tasks“ hier zählt. */
+export type AufgabeStand = { status?: string; assignee?: string; dueDate?: string; title?: string };
+
+/**
+ * Punkt geändert → zieht die verknüpfte Aufgabe mit? Nur ohne Risiko:
+ *   abgehakt/geöffnet  Status folgt (wieder geöffnet nur, wenn sie erledigt war)
+ *   umverteilt         nur, solange sie offen ist und noch bei der bisherigen
+ *                      Person liegt — hat jemand sie in der Aufgabenliste von
+ *                      Hand umgehängt, bleibt sie dort (Hinweis statt Zugriff)
+ *   Vorlauf/Text       Fälligkeit und Titel nur, wenn sie noch dem alten
+ *                      Stand entsprechen (nicht von Hand geändert)
+ * Ergebnis: die Felder für die Aufgabe (leer = nichts tun) und Hinweise.
+ */
+export function aufgabeAbgleichen(aufgabe: AufgabeStand | undefined, e: Pick<Event, 'datum' | 'titel' | 'zustaendig'>, vorher: ChecklistenPunkt, nachher: ChecklistenPunkt): { patch: Partial<Record<'status' | 'assignee' | 'dueDate' | 'title', string>>; hinweise: string[] } {
+  const patch: Partial<Record<'status' | 'assignee' | 'dueDate' | 'title', string>> = {};
+  const hinweise: string[] = [];
+  const erledigtNeu = vorher.erledigt !== nachher.erledigt;
+  const altWer = aufgabenBearbeiter(punktWer(vorher, e)), neuWer = aufgabenBearbeiter(punktWer(nachher, e));
+  const vorlaufNeu = vorher.tageVorher !== nachher.tageVorher, textNeu = vorher.text !== nachher.text;
+  if (!aufgabe) {
+    if (erledigtNeu || altWer !== neuWer || vorlaufNeu) hinweise.push('Die verknüpfte Aufgabe steht nicht mehr in der Aufgabenliste.');
+    return { patch, hinweise };
+  }
+  if (erledigtNeu) {
+    if (nachher.erledigt && aufgabe.status !== 'done') patch.status = 'done';
+    if (!nachher.erledigt && aufgabe.status === 'done') patch.status = 'todo';
+  }
+  const offen = (patch.status ?? aufgabe.status) !== 'done';
+  if (altWer !== neuWer && aufgabe.assignee !== neuWer) {
+    if (!offen) hinweise.push(`Die Aufgabe ist schon erledigt — sie bleibt bei ${bearbeiterName(aufgabe.assignee)}.`);
+    else if (!aufgabe.assignee || aufgabe.assignee === altWer) patch.assignee = neuWer;
+    else hinweise.push(`Die Aufgabe liegt bei ${bearbeiterName(aufgabe.assignee)} (in der Aufgabenliste umgehängt) — dort bitte selbst umverteilen.`);
+  }
+  if (vorlaufNeu && offen) {
+    const alt = plusTage(e.datum, -vorher.tageVorher), neu = plusTage(e.datum, -nachher.tageVorher);
+    if (!aufgabe.dueDate || aufgabe.dueDate === alt) patch.dueDate = neu;
+    else if (aufgabe.dueDate !== neu) hinweise.push('Die Fälligkeit der Aufgabe wurde von Hand gesetzt — sie bleibt.');
+  }
+  if (textNeu && offen && aufgabe.title === aufgabenTitel(vorher.text, e)) patch.title = aufgabenTitel(nachher.text, e);
+  return { patch, hinweise };
 }
 
 // ── Budget ──────────────────────────────────────────────────────────────────

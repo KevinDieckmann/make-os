@@ -8,6 +8,10 @@
 // Filter) · Stammdaten (alle Felder der Masterdatei) · Recht (Art. 6/14/15/
 // 17/21, Einwilligungen, Werbesperre). Quelle ist die Masterdatei — das
 // Adressbuch der Kontakte-App bleibt bewusst draußen.
+// Zu zweit (25.09.): Filter „Alle · Meins · Malin“ nach „Hält die Beziehung“
+// (ohne Eintrag: Sales-Verantwortung, Kevin), gefilterte Kontakte gesammelt
+// übergeben, je Person „Übergeben“ und „Malin ist gerade hier“. Die private
+// Notiz sieht nur, wer sie schrieb (serverseitig).
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -22,6 +26,8 @@ import { dubletten } from '@/lib/crm/dubletten';
 import { type CrmApi, neueId, datum, euro } from './daten';
 import { KanalAmpel, Grund, NotizFormular, Verlauf, Feldzeile, Pillen, Feld, AMPEL_FARBE } from './teile';
 import { Firmen, neueFirma } from './Firmen';
+import { Person, ZustaendigWahl, WerFilter, useWerFilter, passtWer, Uebergeben, AuchHier } from './team';
+import { haeltBeziehung, anderer, nameVon, BEIDE } from '@/lib/crm/team';
 
 type Modus = 'personen' | 'firmen';
 type Ansicht = 'alle' | 'kunden' | 'kreis' | 'prio' | 'chancen' | 'mail' | 'anreichern' | 'art14' | 'gesperrt' | 'dubletten';
@@ -50,6 +56,10 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   const mitMandat = useMemo(() => new Set((crm?.stand.mandate ?? []).filter(m => m.status === 'aktiv').flatMap(m => m.kontaktIds)), [crm]);
   const paare = useMemo(() => dubletten(kontakte), [kontakte]);
   useEffect(() => { if (start === 'dubletten') setAnsicht('dubletten'); }, [start]);
+  const [wer, setWer] = useWerFilter('kontakte');
+  // Aus einer Übergabe-Aufgabe (…&wer=malin) direkt in die übergebenen Kontakte.
+  useEffect(() => { const w = new URLSearchParams(window.location.search).get('wer'); if (w) setWer(w === api.ich ? 'ich' : w); }, [api.ich]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ich = api.ich;
 
   const filter: Record<Ansicht, (k: Kontakt) => boolean> = {
     alle: () => true, kunden: k => k.lebensphase === 'kunde', kreis: k => k.kreis === 'A' || k.kreis === 'B', prio: k => k.prio === 'A',
@@ -62,14 +72,18 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
 
   const treffer = useMemo(() => {
     const q = suche.trim().toLowerCase();
-    let l = kontakte.filter(filter[ansicht]);
+    let l = kontakte.filter(filter[ansicht]).filter(k => passtWer(wer, k.besitzer, 'sales', ich));
     if (q) l = l.filter(k => [anzeigename(k), k.firma ?? '', k.email ?? '', k.firmaBranche ?? '', k.position ?? '', k.firmaStadt ?? '', k.telefon ?? ''].join(' ').toLowerCase().includes(q));
     const rang = (k: Kontakt) => (k.lebensphase === 'kunde' ? 0 : k.kreis === 'A' ? 1 : k.kreis === 'B' ? 2 : k.prio === 'A' ? 3 : k.prio === 'B' ? 4 : 5);
     return [...l].sort((a, b) => (ansicht === 'dubletten' ? anzeigename(a).localeCompare(anzeigename(b)) : rang(a) - rang(b) || anzeigename(a).localeCompare(anzeigename(b))));
-  }, [kontakte, suche, ansicht, mitChance, heute, paare]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [kontakte, suche, ansicht, mitChance, heute, paare, wer, ich]); // eslint-disable-line react-hooks/exhaustive-deps
   const sichtbar = treffer.slice(0, mehr);
   const erreichbar = kontakte.filter(k => k.email || k.telefon || k.sms).length;
   const freigegeben = kontakte.filter(k => kanalAmpel(k, { hatMandat: mitMandat.has(k.id) }).some(s => s.kanal === 'mail' && s.farbe === 'gruen')).length;
+  const werZahlen = ich ? { alle: kontakte.length, ich: kontakte.filter(k => passtWer('ich', k.besitzer, 'sales', ich)).length, [anderer(ich)]: kontakte.filter(k => passtWer(anderer(ich), k.besitzer, 'sales', ich)).length } : undefined;
+  // Gesammelt übergeben geht nur mit einer Eingrenzung — nie aus Versehen die ganze Kartei.
+  const eingegrenzt = !!suche.trim() || ansicht !== 'alle' || wer !== 'alle';
+  const sammel = eingegrenzt && treffer.length > 0 && treffer.length <= 300 ? treffer.filter(k => !k.werbesperre) : [];
 
   // Tastatur wie in einer guten Liste: / sucht, j/k blättert, Enter öffnet, Esc schließt.
   useEffect(() => {
@@ -127,7 +141,16 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
               <span title="Werbung per Mail zulässig (Einwilligung oder Bestandskunde)"><b style={{ color: C.ink }}>{freigegeben}</b> Mail freigegeben</span>
               {breit && <span style={{ marginLeft: 'auto', color: C.inkLeise, fontSize: 12 }}>/ suchen · j k blättern · Enter öffnen</span>}
             </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+              <WerFilter wahl={wer} onWahl={w => { setWer(w); setMehr(80); }} ich={ich} zahlen={werZahlen} />
+              <span style={{ fontSize: 12, color: C.inkLeise }}>nach „Hält die Beziehung“ · ohne Eintrag bei {nameVon('kevin')} (Sales-Verantwortung)</span>
+            </div>
             <div style={{ marginBottom: 10, overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={ANSICHTEN} aktiv={ansicht} onWahl={a => { setAnsicht(a); setMehr(80); }} /></div>
+            {sammel.length > 0 && ansicht !== 'dubletten' && (
+              <div style={{ marginBottom: 10 }}>
+                <Uebergeben api={api} art="kontakte" ids={sammel.map(x => x.id)} titel={`Diese ${sammel.length} übergeben`} klein />
+              </div>
+            )}
             {ansicht === 'dubletten' ? (
               <div style={{ display: 'grid', gap: 10 }}>
                 {paare.map(([a, b]) => (
@@ -143,7 +166,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
               <>
                 {breit && (
                   <div style={{ display: 'grid', gridTemplateColumns: KARTEI_SPALTEN, gap: 12, padding: '0 8px 6px', fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
-                    <span /><span>Name</span><span>Firma</span><span>Phase</span><span>Kanal</span><span style={{ textAlign: 'right' }}>Zuletzt</span>
+                    <span /><span /><span>Name</span><span>Firma</span><span>Phase</span><span>Kanal</span><span style={{ textAlign: 'right' }}>Zuletzt</span>
                   </div>
                 )}
                 <div>
@@ -173,7 +196,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   );
 }
 
-const KARTEI_SPALTEN = '10px minmax(0,1.6fr) minmax(0,1.2fr) 96px 64px 64px';
+const KARTEI_SPALTEN = '10px 22px minmax(0,1.6fr) minmax(0,1.2fr) 96px 64px 64px';
 
 function KarteiZeile({ k, firma, breit, aktiv, markiert, chance, mandat, heute, onClick }: { k: Kontakt; firma?: string; breit: boolean; aktiv: boolean; markiert: boolean; chance: boolean; mandat: boolean; heute: string; onClick: () => void }) {
   const kanal = besterKanal(k, { hatMandat: mandat, hatChance: chance });
@@ -188,6 +211,7 @@ function KarteiZeile({ k, firma, breit, aktiv, markiert, chance, mandat, heute, 
           <div style={{ fontSize: 12.5, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[k.position ?? k.jobtitel, k.naechsterSchritt ? `→ ${k.naechsterSchritt.text}` : ''].filter(Boolean).join(' · ')}</div>
         </div>
         {chance && <Chip farbe={LEUCHT.business}>Chance</Chip>}
+        <span style={{ opacity: k.besitzer ? 1 : 0.45, display: 'inline-flex' }}><Person id={haeltBeziehung(k)} groesse={18} /></span>
       </div>
     );
   }
@@ -196,6 +220,7 @@ function KarteiZeile({ k, firma, breit, aktiv, markiert, chance, mandat, heute, 
       style={{ display: 'grid', gridTemplateColumns: KARTEI_SPALTEN, gap: 12, alignItems: 'center', padding: '8px 8px', minHeight: 44, borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer', fontSize: TYP.bedien,
         background: aktiv ? 'rgba(255,255,255,.07)' : markiert ? 'rgba(88,217,205,.07)' : 'transparent', borderRadius: aktiv || markiert ? 8 : 0 }}>
       <Punkt farbe={k.werbesperre ? LEUCHT.kritisch : phaseFarbe(k.lebensphase)} groesse={8} />
+      <span title={`Hält die Beziehung: ${nameVon(haeltBeziehung(k))}${k.besitzer ? '' : ' (Sales-Verantwortung)'}`} style={{ opacity: k.besitzer ? 1 : 0.45, display: 'inline-flex' }}><Person id={haeltBeziehung(k)} groesse={18} /></span>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontWeight: 500, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anzeigename(k)}{k.prio === 'A' && <span style={{ color: LEUCHT.gut, marginLeft: 6, fontSize: 11 }}>A</span>}{a14?.faellig && <span style={{ color: LEUCHT.kritisch, marginLeft: 6, fontSize: 11 }}>Art. 14</span>}</div>
         <div style={{ fontSize: 12, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.naechsterSchritt ? `→ ${k.naechsterSchritt.text}` : (k.position ?? k.jobtitel ?? '')}</div>
@@ -226,7 +251,7 @@ function Anlegen({ api, heute, onFertig }: { api: CrmApi; heute: string; onFerti
     await api.kontaktSetzen({
       id, vorname: e.vorname.trim(), nachname: e.nachname.trim(), ...(e.email.trim() ? { email: e.email.trim().toLowerCase() } : {}), ...(e.telefon.trim() ? { telefon: e.telefon.trim() } : {}),
       ...(e.position.trim() ? { position: e.position.trim() } : {}), ...(e.firma.trim() ? { firma: firma?.name ?? e.firma.trim(), firmaId } : {}),
-      eignung: '', prio: '', stufe: 'neu', lebensphase: e.lebensphase, anrede: e.anrede, besitzer: 'kevin', ...(e.herkunft ? { herkunft: e.herkunft, ...(herk?.fremd ? { fremddaten: true } : {}) } : {}),
+      eignung: '', prio: '', stufe: 'neu', lebensphase: e.lebensphase, anrede: e.anrede, ...(api.ich ? { besitzer: api.ich } : {}), ...(e.herkunft ? { herkunft: e.herkunft, ...(herk?.fremd ? { fremddaten: true } : {}) } : {}),
       quelle: 'Von Hand angelegt', aktivitaeten: [{ am: new Date().toISOString(), art: 'system', text: 'Von Hand angelegt', von: 'system' }], importiertAm: heute, geaendertAm: heute,
     });
     onFertig(id);
@@ -297,6 +322,7 @@ function Karteikarte({ k, api, name, zuFirma }: { k: Kontakt; api: CrmApi; name:
         <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
           <Chip farbe={phaseFarbe(k.lebensphase)}>{phaseLabel(k.lebensphase)}</Chip>{k.kreis && <Chip farbe={LEUCHT.beziehung}>Kreis {k.kreis}</Chip>}
           <Chip farbe={C.inkDim}>{STUFE_LABEL[k.stufe]}</Chip>{k.prio && <Chip farbe={C.inkDim}>Prio {k.prio}</Chip>}
+          <AuchHier passt={p => p.includes(`k=${k.id}`)} was="bei dieser Person" />
         </div>
       </div>
       {k.werbesperre && <div style={{ padding: '10px 12px', borderRadius: 10, background: `${LEUCHT.kritisch}18`, color: LEUCHT.kritisch, fontSize: TYP.bedien }}>Werbesperre seit {datum(k.werbesperre.seit)} — {k.werbesperre.grund}. Kein Kanal, keine Liste, kein Agent.</div>}
@@ -323,10 +349,11 @@ function Karteikarte({ k, api, name, zuFirma }: { k: Kontakt; api: CrmApi; name:
             <Feldzeile label="Phase"><Pillen liste={PHASEN} aktiv={k.lebensphase ?? 'kontakt'} onWahl={lebensphase => setze({ lebensphase })} /></Feldzeile>
             <Feldzeile label="Stufe"><Pillen liste={STUFEN.map(s => ({ id: s, label: STUFE_LABEL[s] }))} aktiv={k.stufe} onWahl={(stufe: Stufe) => setze({ stufe })} /></Feldzeile>
             <Feldzeile label="Anrede"><Pillen liste={[{ id: 'Sie', label: 'Sie' }, { id: 'Du', label: 'Du' }]} aktiv={k.anrede} onWahl={anrede => setze({ anrede: anrede as 'Sie' | 'Du' })} /></Feldzeile>
-            <Feldzeile label="Hält die Beziehung"><Pillen liste={[{ id: 'kevin', label: 'Kevin' }, { id: 'malin', label: 'Malin' }, { id: 'beide', label: 'Beide' }]} aktiv={k.besitzer} onWahl={besitzer => setze({ besitzer })} /></Feldzeile>
+            <Feldzeile label="Hält die Beziehung"><ZustaendigWahl wert={k.besitzer} welt="sales" onWahl={besitzer => setze({ besitzer })} /></Feldzeile>
+            <div style={{ marginTop: 8 }}><Uebergeben api={api} art="kontakt" id={k.id} jetzt={haeltBeziehung(k)} /></div>
           </div>
           <div>
-            <Ueberschrift rechts={<Knopf leise onClick={() => void api.setze('chancen', { id: neueId('ch'), titel: firma?.name ?? k.firma ?? anzeigename(k), kontaktIds: [k.id], ...(firma || k.firma ? { firma: firma?.name ?? k.firma } : {}), art: 'retainer', wert: { betrag: 0, basis: 'monat' }, stufe: 'qualifiziert', historie: [], qualifizierung: {}, gesellschaft: 'offen', besitzer: k.besitzer && k.besitzer !== 'beide' ? k.besitzer : 'kevin', angelegt: new Date().toISOString() })}>+ Chance</Knopf>}>Chancen & Mandate</Ueberschrift>
+            <Ueberschrift rechts={<Knopf leise onClick={() => void api.setze('chancen', { id: neueId('ch'), titel: firma?.name ?? k.firma ?? anzeigename(k), kontaktIds: [k.id], ...(firma || k.firma ? { firma: firma?.name ?? k.firma } : {}), art: 'retainer', wert: { betrag: 0, basis: 'monat' }, stufe: 'qualifiziert', historie: [], qualifizierung: {}, gesellschaft: 'offen', besitzer: haeltBeziehung(k) === BEIDE ? api.ich ?? 'kevin' : haeltBeziehung(k), angelegt: new Date().toISOString() })}>+ Chance</Knopf>}>Chancen & Mandate</Ueberschrift>
             {chancen.map(c => <div key={c.id} style={{ fontSize: TYP.bedien, padding: '5px 0' }}><Punkt farbe={crm?.ampel[c.id]?.ampel === 'rot' ? LEUCHT.kritisch : crm?.ampel[c.id]?.ampel === 'gelb' ? LEUCHT.achtung : LEUCHT.gut} groesse={7} /> <b style={{ fontWeight: 600 }}>{c.titel}</b> <span style={{ color: C.inkLeise }}>· {crm?.stufen.find(s => s.id === c.stufe)?.label} · {c.wert.betrag ? euro(c.wert.betrag) + (c.wert.basis === 'monat' ? '/Monat' : '') : 'ohne Wert'}</span></div>)}
             {mandate.map(m => <div key={m.id} style={{ fontSize: TYP.bedien, padding: '5px 0' }}><Punkt farbe={LEUCHT.geld} groesse={7} /> <b style={{ fontWeight: 600 }}>{m.titel.slice(0, 70)}</b> <span style={{ color: C.inkLeise }}>· Mandat {m.status}</span></div>)}
             {!chancen.length && !mandate.length && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Noch keine Chance.</div>}
@@ -401,7 +428,7 @@ function Karteikarte({ k, api, name, zuFirma }: { k: Kontakt; api: CrmApi; name:
             {F('Quelle', 'quelle')}{F('Recherche-Stand', 'recherche')}{F('Owner (Import)', 'owner')}{F('Lifecycle (Import)', 'lifecycle')}{F('HubSpot-ID', 'hubspotId')}
             <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 4 }}>Importiert {datum(k.importiertAm)} · geändert {datum(k.geaendertAm)} · Kennung {k.id}</div>
           </div>
-          <div><Ueberschrift>Privat</Ueberschrift><Feldzeile label="Nie an Agenten"><Feld wert={k.privatNotiz} onFertig={privatNotiz => setze({ privatNotiz: privatNotiz || undefined })} /></Feldzeile></div>
+          <div><Ueberschrift rechts={<span>nur für dich sichtbar · nie an Agenten</span>}>Privat</Ueberschrift><Feldzeile label="Deine Notiz"><Feld wert={k.privatNotiz} onFertig={privatNotiz => setze({ privatNotiz: privatNotiz || undefined })} /></Feldzeile></div>
         </div>
       )}
 

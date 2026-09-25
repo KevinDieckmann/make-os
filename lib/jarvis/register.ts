@@ -253,6 +253,10 @@ export const REGISTER: Record<string, Eintrag> = {
     gruppe: 'kontakte', risiko: 'frei',
     vorschau: schlicht('Chance in der Pipeline anlegen', i => `${text(i.kontakt)}${i.titel ? ` · ${text(i.titel)}` : ''}`),
   },
+  uebergeben: {
+    gruppe: 'kontakte', risiko: 'frei',
+    vorschau: schlicht('Kontakt übergeben (Kevin/Malin)', i => `${text(i.kontakt)} → ${text(i.an)}`),
+  },
   crm_lage: {
     gruppe: 'kontakte', risiko: 'frei',
     vorschau: schlicht('Markttraktion lesen', () => 'Traction-Score, Übergaben, wer dran ist, Befunde'),

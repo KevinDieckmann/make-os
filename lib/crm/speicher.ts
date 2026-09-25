@@ -143,6 +143,7 @@ function teilnahme(o: Record<string, unknown>, jetzt: string): Teilnahme | null 
     ...(typeof o.fotofreigabe === 'boolean' ? { fotofreigabe: o.fotofreigabe } : {}), ...(tag(o.eingeladenAm) ? { eingeladenAm: tag(o.eingeladenAm) } : {}),
     ...(['persoenlich', 'telefon', 'mail', 'linkedin'].includes(String(o.einladungsweg)) ? { einladungsweg: o.einladungsweg as Teilnahme['einladungsweg'] } : {}),
     ...(wer(o.einladenDurch) && wer(o.einladenDurch) !== BEIDE ? { einladenDurch: wer(o.einladenDurch) } : {}),
+    ...(wer(o.eingechecktVon) && wer(o.eingechecktVon) !== BEIDE ? { eingechecktVon: wer(o.eingechecktVon) } : {}),
     geaendert: jetzt,
   };
 }

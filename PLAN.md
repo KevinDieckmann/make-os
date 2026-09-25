@@ -261,6 +261,21 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Daten nur eigene (Masterdatei + Brain). Offen: Anthropic-Guthaben aufladen
 > (Agenten laufen sonst nicht), Kaltakquise-Liste Berlin erst nach Kevins Wort.
 
+> **Nachtrag 25.09. (Nachmittag) — Markttraktion zu zweit.** Kevin: „Malin muss
+> auch Sales machen, ich habe dafür aber die Verantwortung.“ Verantwortung je
+> Welt (Sales Kevin, Marketing + Event Malin), Zuständigkeit je Eintrag
+> (kevin/malin/beide), beide sehen alles, private Notiz nur für den Verfasser.
+> Power Hour je Person (niemand ruft doppelt an), Übergeben einzeln/gesammelt/
+> per Jarvis (Verlauf + nächster Schritt + Aufgabe), Teil-Änderungen statt
+> ganzer Einträge, „Für dich“ und „Zuletzt im Team“ im Überblick, „Malin ist
+> gerade hier“. Sales: Team-Zeile, fremde Liste nur lesend, Pipeline/Kunden/
+> Kampagnen mit Filter und Zahlen je Person. Marketing: Autor + Stimme +
+> Freigabe (Malin schreibt in Kevins Namen → Kevin gibt frei). Event:
+> Zuständigkeit, Checkliste je Person (→ Aufgaben), „lädt ein“ je Gast,
+> Einlass auf zwei Geräten, Nachfassen je Person. 506 Tests.
+> Offen: Newsletter ohne eigene „Stimme“; Ablauf/Budget eines Events als
+> ganze Liste (gleichzeitige Änderung derselben Liste kann verloren gehen).
+
 > **Nachtrag 25.09. — aus dem CRM wird die Markttraktion.** Kevin: „alles, was
 > unter dem CRM läuft — Sales, Marketing, Event — heißt Markttraktion“, Umbenennung
 > überall. Neu: der **Überblick** mit Traction-Score (Gewichte aus dem
