@@ -7,7 +7,8 @@
 // eine andere Stufe ist nie ein Klick, sondern ein Fehler.
 
 import { NextResponse } from 'next/server';
-import { loadJson } from '@/lib/store/local-db';
+import { loadJson, speicherStand } from '@/lib/store/local-db';
+import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { listePatchen, opsLesen } from '@/lib/store/patch-liste';
 import { saeubereKontakt, kontaktVereinen, privatNotizVereinen, fuerPerson, massenStufe, pipelineStand, MASSEN_GRENZE, type Kontakt } from '@/lib/make-one/crm';
 import { personAus } from '@/lib/jarvis/raum';
@@ -18,11 +19,15 @@ export const dynamic = 'force-dynamic';
 type Bestand = { kontakte: Kontakt[] };
 
 export async function GET(req: Request) {
-  const f = await loadJson<Bestand>('kontakte');
   const person = personAus(req);
+  // Der Abgleich fragt alle 20 Sekunden — unverändert gibt es 304 statt 750 KB (lib/http/json-antwort.ts).
+  const etag = etagAus('k', await speicherStand(['kontakte']), person);
+  const gleich = unveraendert(req, etag);
+  if (gleich) return gleich;
+  const f = await loadJson<Bestand>('kontakte');
   // Private Notizen sieht nur, wer sie schrieb.
   const kontakte = (f?.kontakte ?? []).map(k => fuerPerson(k, person));
-  return NextResponse.json({ kontakte, stand: pipelineStand(kontakte) });
+  return jsonAntwort(req, { kontakte, stand: pipelineStand(kontakte) }, etag);
 }
 
 export async function PATCH(req: Request) {

@@ -11,7 +11,9 @@
 // Nichts wird versendet.
 
 import { NextResponse } from 'next/server';
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
+import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
+import { localDay } from '@/lib/zeit';
 import { personAus } from '@/lib/jarvis/raum';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
@@ -26,11 +28,14 @@ export const dynamic = 'force-dynamic';
 const neueId = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 const tagOk = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
 
-export async function GET() {
+export async function GET(req: Request) {
+  const etag = etagAus('l', await speicherStand(['crm', 'kontakte']), localDay());
+  const gleich = unveraendert(req, etag);
+  if (gleich) return gleich;
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const crm = await ladeCrm();
   const z = leads(kontakte, crm);
-  return NextResponse.json({ ok: true, leads: z, trichter: trichter(z, crm) });
+  return jsonAntwort(req, { ok: true, leads: z, trichter: trichter(z, crm) }, etag);
 }
 
 /** Lead an Firma oder Person schreiben — der Rest des Eintrags bleibt, wie er ist. */

@@ -103,6 +103,44 @@ if [ ! -d .data ] && [ -d ../startbestand ]; then
   echo ""
 fi
 
+# ── 4b · Modus: schnell (Produktion) oder Entwicklung ───────────────────────
+# 25.09., Kevin: „die Ladegeschwindigkeit ist nicht wirklich gut". MAKE OS lief
+# im Entwicklungsmodus: jede Seite wurde beim Aufruf erst übersetzt, der
+# Browser lud 3,2 MB JavaScript, die Kontaktliste stand nach 15 Sekunden. Im
+# Produktionsmodus steht sie nach einer. Deshalb startet MAKE OS jetzt schnell —
+# und baut sich vorher neu, wenn sich der Code seit dem letzten Bau geändert
+# hat (gut eine Minute). Der Bau liegt in .next-prod, getrennt vom
+# Entwicklungsmodus (.next); beide stören sich nicht.
+# Entwicklungsmodus (Code-Änderungen sofort sichtbar, dafür langsam):
+#   ./start.sh --entwicklung   oder   MAKE_OS_MODUS=entwicklung ./start.sh
+MODUS=produktion
+if [ "${1:-}" = "--entwicklung" ] || [ "${MAKE_OS_MODUS:-}" = "entwicklung" ]; then MODUS=entwicklung; fi
+
+if [ "$MODUS" = "produktion" ]; then
+  export MAKE_OS_DIST=.next-prod
+  NEU_BAUEN=0
+  if [ ! -f .next-prod/BUILD_ID ]; then
+    NEU_BAUEN=1
+  elif [ -n "$(find app components lib hooks public middleware.ts next.config.mjs package.json package-lock.json tsconfig.json -newer .next-prod/BUILD_ID -type f -print -quit 2>/dev/null)" ]; then
+    NEU_BAUEN=1
+  fi
+  if [ "$NEU_BAUEN" -eq 1 ]; then
+    echo "  Der Code hat sich geändert — ich baue MAKE OS neu. Das dauert gut eine Minute."
+    echo ""
+    mkdir -p .data
+    if node node_modules/next/dist/bin/next build > .data/bau.log 2>&1; then
+      echo "  Gebaut."
+      echo ""
+    else
+      echo "  Der Bau hat nicht geklappt (Details in .data/bau.log)."
+      echo "  Ich starte trotzdem — im langsameren Entwicklungsmodus."
+      echo ""
+      MODUS=entwicklung
+      unset MAKE_OS_DIST
+    fi
+  fi
+fi
+
 # ── 5 · Los ─────────────────────────────────────────────────────────────────
 # Der Empfang zuerst: Jarvis begrüßt, danach geht es zur Startfläche.
 ADRESSE="http://localhost:3001/anmelden"
@@ -120,7 +158,7 @@ echo ""
 
 # Browser öffnen, sobald der Server antwortet.
 (
-  for _ in $(seq 1 60); do
+  for _ in $(seq 1 120); do
     if curl -s -o /dev/null -m 2 "http://localhost:3001/jarvis"; then
       open "$ADRESSE" 2>/dev/null
       break
@@ -151,6 +189,12 @@ if grep -q '^TELEGRAM_BOT_TOKEN=..*' .env.local 2>/dev/null; then
   ( sleep 12; node bote.mjs ) >> .data/bote.log 2>&1 &
 fi
 
+if [ "$MODUS" = "produktion" ]; then
+  echo "  Modus: schnell (Produktion). Nach Änderungen am Code einfach neu starten."
+  exec node node_modules/next/dist/bin/next start -p 3001
+fi
+
+echo "  Modus: Entwicklung — Änderungen am Code sind sofort sichtbar, dafür langsamer."
 if [ "$NPM_DA" -eq 1 ]; then
   exec npm run dev -- -p 3001
 else

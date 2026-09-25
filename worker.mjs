@@ -13,7 +13,8 @@
 //
 // Start: node worker.mjs   (start.sh macht das automatisch)
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 
 const ORT = process.env.MAKE_OS_URL ?? 'http://localhost:3001';
@@ -31,6 +32,19 @@ if (!KEY) {
   console.error('[Arbeiter] Kein MAKE_OS_KEY gefunden — ohne den darf ich nichts. Beende.');
   process.exit(1);
 }
+
+// Nur ein Arbeiter je MAKE OS (25.09.): Seit MAKE OS im schnellen Modus läuft,
+// wird es nach Code-Änderungen neu gestartet — und start.sh startet dabei
+// jedes Mal einen Arbeiter. Der ältere tritt ab, statt doppelt mitzuarbeiten.
+const PID_DATEI = new URL('.data/worker.pid', import.meta.url);
+try {
+  const alt = Number(readFileSync(PID_DATEI, 'utf8').trim());
+  if (alt && alt !== process.pid && execFileSync('ps', ['-p', String(alt), '-o', 'command='], { encoding: 'utf8' }).includes('worker.mjs')) {
+    process.kill(alt, 'SIGTERM');
+    console.log(`[Arbeiter] Älterer Arbeiter (${alt}) tritt ab.`);
+  }
+} catch { /* keiner da oder schon weg */ }
+try { mkdirSync(new URL('.data/', import.meta.url), { recursive: true }); writeFileSync(PID_DATEI, String(process.pid)); } catch { /* ohne Datei geht es auch */ }
 
 const KERNE = os.cpus().length || 4;
 /** Obergrenze: die Arbeit ist Warten auf Netz und Modell, nicht Rechnen —

@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // 25.09.: start.sh baut den schnellen Produktionsmodus nach .next-prod —
+  // getrennt vom Entwicklungsmodus (.next), damit beide sich nie stören.
+  distDir: process.env.MAKE_OS_DIST || '.next',
   // Gesundheit ist seit 23.09. EINE Seite mit vier Segmenten. Die alten
   // Adressen bleiben gültig — Lesezeichen und Jarvis-Verweise landen richtig.
   async redirects() {

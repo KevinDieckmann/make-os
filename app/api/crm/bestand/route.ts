@@ -5,7 +5,8 @@
 //         damit Kevin und Malin gleichzeitig arbeiten können.
 
 import { NextResponse } from 'next/server';
-import { loadJson } from '@/lib/store/local-db';
+import { loadJson, speicherStand } from '@/lib/store/local-db';
+import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { personAus } from '@/lib/jarvis/raum';
 import { localDay } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
@@ -38,7 +39,12 @@ async function antwort(b: CrmBestand, ich: string) {
 }
 
 export async function GET(req: Request) {
-  return NextResponse.json(await antwort(await ladeCrm(), personAus(req)));
+  const person = personAus(req);
+  // Alles, woraus die Antwort entsteht: die vier Speicher, der Tag (Ampeln, Prognose) und wer fragt.
+  const etag = etagAus('b', await speicherStand(['crm', 'kontakte', 'finanzplan', 'crm-signale']), localDay(), person);
+  const gleich = unveraendert(req, etag);
+  if (gleich) return gleich;
+  return jsonAntwort(req, await antwort(await ladeCrm(), person), etag);
 }
 
 export async function PATCH(req: Request) {
@@ -49,5 +55,5 @@ export async function PATCH(req: Request) {
   const person = personAus(req);
   let angewandt = 0;
   const b = await aendereCrm(cur => { const r = wendeCrmAn(cur, ops, new Date().toISOString(), person); angewandt = r.angewandt; return r.bestand; });
-  return NextResponse.json({ ...(await antwort(b, person)), angewandt });
+  return jsonAntwort(req, { ...(await antwort(b, person)), angewandt });
 }

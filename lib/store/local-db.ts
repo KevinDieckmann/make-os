@@ -59,6 +59,21 @@ async function taeglicheSicherung(name: string, dest: string): Promise<void> {
   } catch { /* Sicherung ist best effort — Original existiert evtl. noch nicht */ }
 }
 
+/**
+ * Stand mehrerer Sammlungen als kurzer Text: Änderungszeit und Größe je Datei.
+ * Ändert sich eine Sammlung, ändert sich der Stand — daraus bauen große
+ * Abfragen ihr ETag, damit der 20-Sekunden-Abgleich nur Neues überträgt (25.09.).
+ * Schreiben geht immer über tmp + rename, die Änderungszeit springt also verlässlich.
+ */
+export async function speicherStand(namen: string[]): Promise<string> {
+  const teile = await Promise.all(namen.map(async name => {
+    pruefeName(name);
+    try { const st = await fs.stat(path.join(DATA_DIR, `${name}.json`)); return `${Math.round(st.mtimeMs).toString(36)}.${st.size.toString(36)}`; }
+    catch { return '0'; }
+  }));
+  return teile.join('-');
+}
+
 /** Liest eine Sammlung; null wenn noch nichts persistiert wurde.
  *
  *  Wichtig: „Datei fehlt" und „Datei kaputt" werden UNTERSCHIEDEN. Früher fing

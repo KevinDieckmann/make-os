@@ -11,7 +11,7 @@
 // Dazu `SalesTrichter`: die Leiste über allen Sales-Ansichten — Kontaktiert →
 // Im Gespräch → Qualifizierung → Deals → Gewonnen → Kunden, mit Umwandlungen.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { markttraktion } from '@/lib/crm/adresse';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -19,7 +19,7 @@ import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBrei
 import type { LeadStatus, Kriterien, Qual, ChancenArt } from '@/lib/crm/typen';
 import { leads, LEAD_STATUS, KRITERIEN, sqlBereit, fehltBisSql, geklaert, statusLabel, type LeadZeile, type Trichter } from '@/lib/crm/leads';
 import { STUFEN } from '@/lib/crm/pipeline';
-import { type CrmApi, datum, euro, plusTage } from './daten';
+import { type CrmApi, datum, euro, plusTage, holeMitStand } from './daten';
 import { Pillen, Feldzeile } from './teile';
 import { Person, ZustaendigWahl, WerFilter, useWerFilter, passtWer } from './team';
 import { HeadPanel } from './HeadPanel';
@@ -33,7 +33,9 @@ const SCHRITTE = ['Bedarfsgespräch mit dem Entscheider', 'Diagnose-Termin verei
 /** Leads laden — geteilt von der Trichter-Leiste und der Leads-Ansicht; lädt neu, wenn sich der Bestand ändert. */
 export function useLeads(api: CrmApi) {
   const [d, setD] = useState<Daten | null>(null);
-  const laden = useCallback(() => fetch('/api/crm/lead', { cache: 'no-store' }).then(r => r.json()).then(x => x.ok && setD(x)).catch(() => {}), []);
+  const staende = useRef(new Map<string, string>());
+  // Unverändert (304) bleibt der bisherige Stand stehen.
+  const laden = useCallback(() => holeMitStand<Daten & { ok?: boolean }>('/api/crm/lead', staende.current).then(x => { if (x?.ok) setD(x); }).catch(() => {}), []);
   useEffect(() => { void laden(); }, [laden, api.crm, api.kontakte]);
   return { d, laden };
 }

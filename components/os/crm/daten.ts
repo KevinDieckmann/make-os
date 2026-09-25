@@ -30,6 +30,21 @@ export interface CrmAntwort {
   termine: Record<string, { titel: string; start: string }>;
 }
 
+/**
+ * Große Abfrage mit Stand (ETag, lib/http/json-antwort.ts): Der Browser sagt,
+ * welchen Stand er hat; unverändert kommt 304 und hier null — dann bleibt alles,
+ * wie es ist, und nichts wird neu gezeichnet. `staende` merkt sich je Adresse
+ * den letzten Stand.
+ */
+export async function holeMitStand<T>(url: string, staende: Map<string, string>): Promise<T | null> {
+  const alt = staende.get(url);
+  const r = await fetch(url, { cache: 'no-store', headers: alt ? { 'If-None-Match': alt } : {} });
+  if (r.status === 304) return null;
+  const e = r.headers.get('etag');
+  if (e && r.ok) staende.set(url, e); else staende.delete(url);
+  return (await r.json()) as T;
+}
+
 export const neueId = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
 export function useCrm() {
@@ -37,15 +52,19 @@ export function useCrm() {
   const [kontakte, setKontakte] = useState<Kontakt[] | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const unterwegs = useRef(0);
+  // Letzter Stand je Abfrage — der Abgleich holt nur, was sich geändert hat (25.09.).
+  const staende = useRef(new Map<string, string>());
+  /** Schreiben ging schief: beim nächsten Abgleich alles frisch holen, damit nichts Ungespeichertes stehen bleibt. */
+  const fehlschlag = (text: string) => { staende.current.clear(); setFehler(text); };
 
   const laden = useCallback(async () => {
     if (unterwegs.current) return;
     try {
-      const [a, b] = await Promise.all([fetch('/api/crm/bestand', { cache: 'no-store' }).then(r => r.json()), fetch('/api/state/kontakte', { cache: 'no-store' }).then(r => r.json())]);
-      if (a.ok) setCrm(a);
-      setKontakte(b.kontakte ?? []);
+      const [a, b] = await Promise.all([holeMitStand<CrmAntwort>('/api/crm/bestand', staende.current), holeMitStand<{ kontakte?: Kontakt[] }>('/api/state/kontakte', staende.current)]);
+      if (a?.ok) setCrm(a);
+      if (b) setKontakte(b.kontakte ?? []);
       setFehler(null);
-    } catch { setFehler('Nicht erreichbar.'); }
+    } catch { staende.current.clear(); setFehler('Nicht erreichbar.'); }
   }, []);
   useEffect(() => { void laden(); }, [laden]);
   // Signale aus Mail und Kalender (höchstens alle 5 Minuten, der Server entscheidet) — danach neu laden, wenn etwas dazukam.
@@ -63,8 +82,8 @@ export function useCrm() {
     });
     try {
       const r = await fetch('/api/crm/bestand', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste, op: 'upsert', eintrag }] }) }).then(x => x.json());
-      if (r.ok) setCrm(r); else setFehler(r.fehler ?? 'Nicht gespeichert.');
-    } catch { setFehler('Nicht gespeichert — keine Verbindung.'); }
+      if (r.ok) setCrm(r); else fehlschlag(r.fehler ?? 'Nicht gespeichert.');
+    } catch { fehlschlag('Nicht gespeichert — keine Verbindung.'); }
     finally { unterwegs.current--; }
   }, []);
 
@@ -77,8 +96,8 @@ export function useCrm() {
     setCrm(alt => (alt ? { ...alt, stand: { ...alt.stand, [liste]: (alt.stand[liste] as unknown as { id: string }[]).map(x => (x.id === id ? { ...x, ...felder } : x)) } } : alt));
     try {
       const r = await fetch('/api/crm/bestand', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste, op: 'teil', id, felder }] }) }).then(x => x.json());
-      if (r.ok) setCrm(r); else setFehler(r.fehler ?? 'Nicht gespeichert.');
-    } catch { setFehler('Nicht gespeichert — keine Verbindung.'); }
+      if (r.ok) setCrm(r); else fehlschlag(r.fehler ?? 'Nicht gespeichert.');
+    } catch { fehlschlag('Nicht gespeichert — keine Verbindung.'); }
     finally { unterwegs.current--; }
   }, []);
 
@@ -106,8 +125,8 @@ export function useCrm() {
     setKontakte(alt => (alt ? (alt.some(x => x.id === k.id) ? alt.map(x => (x.id === k.id ? k : x)) : [...alt, k]) : alt));
     try {
       const r = await fetch('/api/state/kontakte', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ op: 'upsert', eintrag: { ...k, geaendertAm: new Date().toISOString().slice(0, 10) } }] }) }).then(x => x.json());
-      if (!r.ok) setFehler(r.error ?? 'Nicht gespeichert.');
-    } catch { setFehler('Nicht gespeichert — keine Verbindung.'); }
+      if (!r.ok) fehlschlag(r.error ?? 'Nicht gespeichert.');
+    } catch { fehlschlag('Nicht gespeichert — keine Verbindung.'); }
     finally { unterwegs.current--; }
   }, []);
 
@@ -117,7 +136,7 @@ export function useCrm() {
     try {
       const r = await fetch('/api/crm/aktivitaet', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json());
       if (r.kontakt) setKontakte(alt => (alt ? alt.map(x => (x.id === r.kontakt.id ? r.kontakt : x)) : alt));
-      else setFehler(r.error ?? 'Nicht gespeichert.');
+      else fehlschlag(r.error ?? 'Nicht gespeichert.');
       return r as { ok?: boolean; kontakt?: Kontakt; hinweis?: string; error?: string };
     } finally { unterwegs.current--; }
   }, []);

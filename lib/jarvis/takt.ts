@@ -38,6 +38,26 @@ export function neuester<T extends { gestartet: string }>(liste: T[]): T | undef
   return liste.reduce<T | undefined>((a, b) => (!a || Date.parse(b.gestartet) > Date.parse(a.gestartet) ? b : a), undefined);
 }
 
+/** Was der Takt von einem Auftrag braucht, um nach einem Fehlschlag zu warten. */
+export interface AuftragSpur { name: string; tag: string; status: string; zeit: string; beendet?: string }
+
+/**
+ * Nach einem Fehlschlag nicht gleich wieder (25.09.). „morgen“ scheiterte am
+ * leeren KI-Guthaben, der Takt reihte ihn jede Minute neu ein — über 200
+ * Fehlläufe an einem Vormittag, jeder mit vollem Einlesen des Gehirns, und die
+ * Software wurde zäh. Jetzt wartet der Takt nach dem n-ten Fehlschlag des
+ * Tages 5 · 3^(n−1) Minuten (5, 15, 45, 135), höchstens drei Stunden.
+ * Rückgabe: Minuten, die noch zu warten sind — 0 heißt frei.
+ */
+export function wartenNachFehler(auftraege: AuftragSpur[], name: string, heute: string, jetzt: Date): number {
+  const fehl = auftraege.filter(a => a.name === name && a.tag === heute && a.status === 'fehler');
+  if (!fehl.length) return 0;
+  const letzte = Math.max(...fehl.map(a => Date.parse(a.beendet ?? a.zeit)));
+  const pause = Math.min(5 * 3 ** (fehl.length - 1), 180);
+  const seit = (jetzt.getTime() - letzte) / 60_000;
+  return seit >= pause ? 0 : Math.ceil(pause - seit);
+}
+
 export interface Faellig {
   id: string;
   grund: string;
@@ -54,6 +74,14 @@ interface NutzungStand { letzteAnalyse?: string }
  * wann etwas zuletzt lief.
  */
 export async function faellig(jetzt = new Date()): Promise<Faellig[]> {
+  const roh = await faelligOhnePause(jetzt);
+  if (!roh.length) return roh;
+  const auftraege = (await loadJson<{ auftraege?: AuftragSpur[] }>('jarvis-auftraege'))?.auftraege ?? [];
+  const heute = localDay(jetzt);
+  return roh.filter(f => wartenNachFehler(auftraege, f.auftrag.name, heute, jetzt) === 0);
+}
+
+async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
   const h = jetzt.getHours();
   if (h < VON || h >= BIS) return [];
 
