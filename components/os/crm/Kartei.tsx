@@ -227,7 +227,7 @@ function Anlegen({ api, heute, onFertig }: { api: CrmApi; heute: string; onFerti
       id, vorname: e.vorname.trim(), nachname: e.nachname.trim(), ...(e.email.trim() ? { email: e.email.trim().toLowerCase() } : {}), ...(e.telefon.trim() ? { telefon: e.telefon.trim() } : {}),
       ...(e.position.trim() ? { position: e.position.trim() } : {}), ...(e.firma.trim() ? { firma: firma?.name ?? e.firma.trim(), firmaId } : {}),
       eignung: '', prio: '', stufe: 'neu', lebensphase: e.lebensphase, anrede: e.anrede, besitzer: 'kevin', ...(e.herkunft ? { herkunft: e.herkunft, ...(herk?.fremd ? { fremddaten: true } : {}) } : {}),
-      quelle: 'Von Hand angelegt', aktivitaeten: [{ am: new Date().toISOString(), art: 'system', text: 'Angelegt', von: 'kevin' }], importiertAm: heute, geaendertAm: heute,
+      quelle: 'Von Hand angelegt', aktivitaeten: [{ am: new Date().toISOString(), art: 'system', text: 'Von Hand angelegt', von: 'system' }], importiertAm: heute, geaendertAm: heute,
     });
     onFertig(id);
   };

@@ -488,6 +488,24 @@ export function wendeAktivitaetAn(
   return out;
 }
 
+/**
+ * Zu zweit und mit Hintergrundläufen (Signale, Heads, Aktivitäts-Route):
+ * Die Oberfläche schickt den ganzen Kontakt aus IHREM Stand. Der Verlauf ist
+ * ein Anhänge-Log — was der Server inzwischen angehängt hat, darf ein älterer
+ * Stand nie wegwischen. Deshalb: Verlauf vereinen, letzter Kontakt = jüngster.
+ */
+export function kontaktVereinen(neu: Kontakt, alt: Kontakt): Kontakt {
+  const schluessel = (a: Aktivitaet) => `${a.am}|${a.art}|${a.bezug ?? ''}|${a.text ?? ''}`;
+  const bekannt = new Set((neu.aktivitaeten ?? []).map(schluessel));
+  const fehlend = (alt.aktivitaeten ?? []).filter(a => !bekannt.has(schluessel(a)));
+  const letzter = [neu.letzterKontakt, alt.letzterKontakt].filter(Boolean).sort().pop();
+  return {
+    ...neu,
+    aktivitaeten: fehlend.length ? [...(neu.aktivitaeten ?? []), ...fehlend].sort((a, b) => a.am.localeCompare(b.am)) : neu.aktivitaeten,
+    ...(letzter ? { letzterKontakt: letzter } : {}),
+  };
+}
+
 /** Kontakt nach Name, Firma, Mail oder Branche finden — für Jarvis und die Suche. */
 export function findeKontakte(kontakte: Kontakt[], frage: string, n = 5): Kontakt[] {
   const w = frage.toLowerCase().split(/\s+/).filter(Boolean);

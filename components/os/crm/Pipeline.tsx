@@ -162,7 +162,7 @@ function ChancenDetail({ c, api, personen, zuKontakt }: { c: Chance; api: CrmApi
     if (ziel === 'verloren' && !extra.grund) return setWechsel({ ziel, grund: '', wiedervorlage: '' });
     if (ziel === 'geparkt' && !extra.wiedervorlage) return setWechsel({ ziel, grund: '', wiedervorlage: plusTage(crm.heute, 60) });
     const jetzt = new Date().toISOString();
-    void setze({ stufe: ziel, historie: [...c.historie, { stufe: ziel, am: jetzt, von: 'kevin' }], letzteAktivitaet: jetzt.slice(0, 10), ...(extra.grund ? { grund: extra.grund } : {}), ...(extra.wiedervorlage ? { wiedervorlage: extra.wiedervorlage } : {}) });
+    void setze({ stufe: ziel, historie: [...c.historie, { stufe: ziel, am: jetzt, von: '' /* der Server trägt die angemeldete Person ein */ }], letzteAktivitaet: jetzt.slice(0, 10), ...(extra.grund ? { grund: extra.grund } : {}), ...(extra.wiedervorlage ? { wiedervorlage: extra.wiedervorlage } : {}) });
     setWechsel(null);
   };
   const treffer = suche.trim().length >= 2 ? (api.kontakte ?? []).filter(k => `${anzeigename(k)} ${k.firma ?? ''}`.toLowerCase().includes(suche.toLowerCase())).slice(0, 6) : [];

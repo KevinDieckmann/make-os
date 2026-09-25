@@ -44,6 +44,6 @@ export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string): Be
   const ohneZahlen = crm.newsletter.filter(a => a.status === 'versendet' && a.empfaenger === undefined).length;
   if (ohneZahlen) b.push({ prio: 5, titel: `${ohneZahlen} versendete Newsletter ohne Zahlen`, grund: 'Empfänger, Antworten, Abmeldungen nachtragen', bereich: 'marketing' });
   const letzte = crm.sitzungen.map(s => s.datum).sort().pop();
-  if (!letzte || !bald(letzte, 7) || letzte < (() => { const x = new Date(`${heute}T12:00:00Z`); x.setUTCDate(x.getUTCDate() - 6); return x.toISOString().slice(0, 10); })()) b.push({ prio: 4, titel: letzte ? 'Diese Woche noch keine Power Hour' : 'Erste Power Hour', grund: 'Vier Stunden pro Woche halten die Pipeline in Bewegung', bereich: 'heute' });
+  if (!letzte || letzte < vor7) b.push({ prio: 4, titel: letzte ? 'Diese Woche noch keine Power Hour' : 'Erste Power Hour', grund: 'Vier Stunden pro Woche halten die Pipeline in Bewegung', bereich: 'heute' });
   return b.sort((x, y) => x.prio - y.prio);
 }

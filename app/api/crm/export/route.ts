@@ -8,6 +8,7 @@ import { localDay } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { kanalStatus } from '@/lib/crm/recht';
+import { csvZelle } from '@/lib/crm/marketing';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,8 @@ const SPALTEN: [string, (k: Kontakt, f?: { name: string; branche?: string; stadt
   ['MAIL_ERLAUBT', k => kanalStatus(k, 'mail').farbe === 'gruen' ? 'ja' : 'nein'], ['NEWSLETTER_DOI', k => kanalStatus(k, 'newsletter').farbe === 'gruen' ? 'ja' : 'nein'],
   ['WERBESPERRE', k => (k.werbesperre ? `seit ${k.werbesperre.seit}` : '')], ['QUELLE', k => k.quelle],
 ];
-const zelle = (v?: string) => { const t = (v ?? '').replace(/\r?\n/g, ' '); return /[;"]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+// Dieselbe Zelle wie im Marketing-Export: maskiert ; und " und entschärft Formeln (=, @, +/- vor Buchstaben).
+const zelle = (v?: string) => csvZelle((v ?? '').replace(/\r?\n/g, ' '));
 
 export async function GET() {
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];

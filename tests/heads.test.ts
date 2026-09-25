@@ -80,3 +80,12 @@ describe('Kampagnen über die Heads', () => {
     expect(JSON.stringify(d)).not.toContain('c-s');
   });
 });
+
+describe('Prüfer — Verneinung ist kein Vollzug', () => {
+  it('„ist noch nicht eingeladen“ zählt nicht, „habe eingeladen“ schon', () => {
+    const a = normalisiere({ status: 'beobachten', zusammenfassung: 'Frau Y ist noch nicht eingeladen.', befunde: [], vorschlaege: [], fragen: [], datenluecken: [], antwort: '' }, 'event');
+    expect(pruefe(a, {}, [], leererBestand()).pruefung.verstoesse).toEqual([]);
+    const b = normalisiere({ status: 'beobachten', zusammenfassung: 'Ich habe Frau Y eingeladen.', befunde: [], vorschlaege: [], fragen: [], datenluecken: [], antwort: '' }, 'event');
+    expect(pruefe(b, {}, [], leererBestand()).pruefung.verstoesse.length).toBe(1);
+  });
+});

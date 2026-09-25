@@ -217,8 +217,8 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   ];
 
   // ── Business-Performance ──
-  const crmF = await ladeCrm();
-  const kz = kennzahlen((await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [], crmF, today);
+  const [crmF, kartei] = await Promise.all([ladeCrm(), loadJson<{ kontakte: Kontakt[] }>('kontakte')]);
+  const kz = kennzahlen(kartei?.kontakte ?? [], crmF, today);
   const kpi = (id: string) => kz.find(x => x.id === id)!;
   const offeneChancen = crmF.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe));
   const crmFaktoren: Faktor[] = [

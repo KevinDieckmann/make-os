@@ -86,7 +86,9 @@ export function pruefe(a: Antwort, daten: unknown, kontakte: Kontakt[], crm: Crm
   });
   const alle = [a.zusammenfassung, a.antwort, ...a.befunde.map(b => b.text), ...bleiben.flatMap(v => [v.titel, v.begruendung, v.entwurf?.text ?? ''])].join('\n');
   const verstoesse: string[] = [];
-  if (VOLLZUG.test(alle)) verstoesse.push('Vollzugsformulierung — der Head führt nichts aus, er schlägt vor.');
+  // „X ist noch nicht eingeladen“ ist ein Befund, keine Vollzugsmeldung.
+  const vollzug = Array.from(alle.matchAll(new RegExp(VOLLZUG.source, 'gi'))).some(m => !/\b(nicht|noch kein|kein|keine)\b/i.test(m[0]));
+  if (vollzug) verstoesse.push('Vollzugsformulierung — der Head führt nichts aus, er schlägt vor.');
   const z = pruefeText(alle, daten);
   return { antwort: { ...a, vorschlaege: bleiben }, pruefung: { gestrichen, unbelegt: z.unbelegt.map(f => f.text), verstoesse, geprueft: z.geprueft } };
 }

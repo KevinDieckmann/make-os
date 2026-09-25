@@ -37,3 +37,15 @@ describe('Signale — keine Funktionspostfächer, nur frische Antworten warten',
     expect(s).toEqual([]);
   });
 });
+
+import { kontaktVereinen } from '../lib/make-one/crm';
+describe('Kontakt vereinen (kein verlorener Verlauf)', () => {
+  it('ein älterer Client-Stand wischt serverseitig angehängte Aktivitäten nicht weg', () => {
+    const alt = k('a', { aktivitaeten: [{ am: '2026-09-20T10:00:00Z', art: 'mail', von: 'kevin' }, { am: '2026-09-24T09:00:00Z', art: 'antwort', text: 'Mail: Re', von: 'system', bezug: 'mail-x' }], letzterKontakt: '2026-09-24' });
+    const neu = k('a', { kreis: 'A', aktivitaeten: [{ am: '2026-09-20T10:00:00Z', art: 'mail', von: 'kevin' }], letzterKontakt: '2026-09-20' });
+    const v = kontaktVereinen(neu, alt);
+    expect(v.kreis).toBe('A');
+    expect(v.aktivitaeten.map(x => x.art)).toEqual(['mail', 'antwort']);
+    expect(v.letzterKontakt).toBe('2026-09-24');
+  });
+});

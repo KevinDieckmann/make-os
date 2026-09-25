@@ -14,14 +14,22 @@ export const dynamic = 'force-dynamic';
 
 const norm = (t?: string) => (t ?? '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '');
 
+// Beim Tippen kommen viele Anfragen kurz hintereinander — 15 Sekunden reichen als Frische.
+let zwischen: { t: number; kontakte: Kontakt[]; crm: Awaited<ReturnType<typeof ladeCrm>> } | null = null;
+async function bestand() {
+  if (zwischen && Date.now() - zwischen.t < 15_000) return zwischen;
+  const [k, crm] = await Promise.all([loadJson<{ kontakte: Kontakt[] }>('kontakte'), ladeCrm()]);
+  zwischen = { t: Date.now(), kontakte: k?.kontakte ?? [], crm };
+  return zwischen;
+}
+
 export async function GET(req: Request) {
   const q = norm(new URL(req.url).searchParams.get('q') ?? '').trim();
   if (q.length < 2) return NextResponse.json({ ok: true, treffer: [] });
   const w = q.split(/\s+/).filter(Boolean);
   const passt = (felder: (string | undefined)[]) => { const t = norm(felder.filter(Boolean).join(' ')); return w.every(x => t.includes(x)); };
   const punkte = (name: string) => (norm(name).startsWith(q) ? 3 : norm(name).includes(q) ? 2 : 1);
-  const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
-  const crm = await ladeCrm();
+  const { kontakte, crm } = await bestand();
   const firmen = new Map(crm.firmen.map(f => [f.id, f]));
   const personen = kontakte.filter(k => passt([anzeigename(k), k.firma, k.email, k.position, k.firmaStadt, k.telefon]))
     .map(k => ({ art: 'kontakt', id: k.id, titel: anzeigename(k), unter: [k.position ?? k.jobtitel, (k.firmaId && firmen.get(k.firmaId)?.name) ?? k.firma, k.werbesperre ? 'Werbesperre' : ''].filter(Boolean).join(' · '), href: `/os/crm?s=kontakte&k=${k.id}`, p: punkte(anzeigename(k)) + (k.lebensphase === 'kunde' ? 1 : 0) }))

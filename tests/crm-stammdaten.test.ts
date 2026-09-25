@@ -85,3 +85,15 @@ describe('Datenschutz als Code', () => {
     expect(b[0]).toMatchObject({ prio: 1, bereich: 'pipeline' });
   });
 });
+
+import { verweiseUmbiegen } from '../lib/crm/dubletten';
+describe('Zusammenführen biegt auch Kampagnen und Beiträge um', () => {
+  it('Kampagnen-Personen, Ergebnisse, Beitrags-Wirkung und Quellen', () => {
+    const crm = { ...leererBestand(),
+      kampagnen: [{ id: 'kp-1', name: 'x', playbook: 'empfehlung', ziel: '', zielgruppe: {}, kanal: 'persoenlich' as const, status: 'aktiv' as const, schritte: [], kontaktIds: ['c-b'], ergebnisse: [{ kontaktId: 'c-b', ergebnis: 'gespraech' as const, am: HEUTE }], von: 'hand' as const, geaendert: J }],
+      beitraege: [{ id: 'b-1', titel: 't', kanal: 'linkedin' as const, status: 'idee' as const, wirkung: [{ kontaktId: 'c-b', art: 'reaktion' as const, am: HEUTE }], quellen: ['c-b'], geaendert: J }] };
+    const r = verweiseUmbiegen(crm, 'c-b', 'c-a');
+    expect(r.kampagnen[0]).toMatchObject({ kontaktIds: ['c-a'], ergebnisse: [{ kontaktId: 'c-a' }] });
+    expect(r.beitraege[0]).toMatchObject({ quellen: ['c-a'], wirkung: [{ kontaktId: 'c-a' }] });
+  });
+});

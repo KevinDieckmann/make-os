@@ -9,7 +9,7 @@
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { listePatchen, opsLesen } from '@/lib/store/patch-liste';
-import { saeubereKontakt, massenStufe, pipelineStand, MASSEN_GRENZE, type Kontakt } from '@/lib/make-one/crm';
+import { saeubereKontakt, kontaktVereinen, massenStufe, pipelineStand, MASSEN_GRENZE, type Kontakt } from '@/lib/make-one/crm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -36,7 +36,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: `${wechsel} Kontakte würden die Stufe wechseln — das braucht eine ausdrückliche Bestätigung.`, wechsel }, { status: 409 });
   }
 
-  const r = await listePatchen<Kontakt, Bestand>('kontakte', 'kontakte', ops, 20);
+  const r = await listePatchen<Kontakt, Bestand>('kontakte', 'kontakte', ops, 20, kontaktVereinen);
   if (!r.ok) return NextResponse.json({ error: r.fehler }, { status: 409 });
   return NextResponse.json({ ok: true, angewandt: r.angewandt, stand: pipelineStand(r.next?.kontakte ?? []) });
 }

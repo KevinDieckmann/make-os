@@ -47,6 +47,9 @@ export async function POST(req: Request) {
     chancen: c.chancen.map(x => (x.kontaktIds.includes(id) ? { ...x, kontaktIds: x.kontaktIds.filter(y => y !== id) } : x)),
     mandate: c.mandate.map(x => (x.kontaktIds.includes(id) ? { ...x, kontaktIds: x.kontaktIds.filter(y => y !== id) } : x)),
     teilnahmen: c.teilnahmen.filter(t => t.kontaktId !== id),
+    // Auch Kampagnen und Beiträge — sonst bliebe die Kennung nach der Löschung stehen.
+    kampagnen: c.kampagnen.map(k => ({ ...k, kontaktIds: k.kontaktIds.filter(y => y !== id), ergebnisse: k.ergebnisse.filter(e => e.kontaktId !== id) })),
+    beitraege: c.beitraege.map(b => ({ ...b, quellen: b.quellen.filter(y => y !== id), wirkung: b.wirkung.filter(w => w.kontaktId !== id) })),
   }));
   await updateJson<{ eintraege: { id: string; datum: string; grund: string; von: string }[] }>('crm-loeschprotokoll', cur => ({ eintraege: [...(cur?.eintraege ?? []), { id, datum: localDay(), grund: String(b.grund ?? 'Art. 17 DSGVO').slice(0, 200), von: personAus(req) }] }));
   return NextResponse.json({ ok: true });

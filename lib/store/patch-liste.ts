@@ -55,6 +55,8 @@ export async function listePatchen<E extends { id: string }, T extends Record<st
   feld: keyof T & string,
   ops: ListenOp<E>[],
   abZahl = 10,
+  /** Optional: neuen Eintrag mit dem aktuellen Serverstand vereinen (z. B. anhängende Logs nie verlieren). */
+  vereinen?: (neu: E, alt: E) => E,
 ): Promise<PatchErgebnis<T>> {
   if (!ops.length) return { ok: false, angewandt: 0, fehler: 'Keine gültigen Änderungen.' };
 
@@ -72,7 +74,7 @@ export async function listePatchen<E extends { id: string }, T extends Record<st
     const nachId = new Map(liste.map(x => [x.id, x]));
     for (const o of ops) {
       if (o.op === 'delete') { if (nachId.delete(o.id!)) angewandt++; }
-      else { nachId.set(o.eintrag!.id, o.eintrag!); angewandt++; }
+      else { const alt = nachId.get(o.eintrag!.id); nachId.set(o.eintrag!.id, alt && vereinen ? vereinen(o.eintrag!, alt) : o.eintrag!); angewandt++; }
     }
     return { ...f, [feld]: Array.from(nachId.values()) };
   });
