@@ -49,9 +49,25 @@ lokal, Route `/os`, Port 3001.
 
 ## Technik
 - TypeScript strikt: vor jedem Commit `npx tsc --noEmit` — null Fehler.
-- Node liegt bei Kevin unter `/tmp/node-v22.16.0-darwin-arm64/bin` (nicht im
-  PATH). Server startet über `./start.sh` bzw. `.claude/launch.json` —
-  Dev-Server nie zusätzlich per Bash starten, wenn schon einer auf 3001 läuft.
+- Node liegt bei Kevin unter `~/.local/node22/bin` (nicht im PATH). Server
+  startet über `./start.sh` bzw. `.claude/launch.json` — nie zusätzlich per
+  Bash, wenn schon einer auf 3001 läuft.
+- **Schneller Modus (seit 25.09.2026, Kevin: „Ladegeschwindigkeit“):** `start.sh`
+  läuft als Produktion (`next start`, Bau in `.next-prod`, `MAKE_OS_DIST`) und
+  baut vorher selbst neu, wenn sich Code seit dem letzten Bau geändert hat
+  (~70 s, Log `.data/bau.log`; scheitert der Bau → Entwicklungsmodus). Nach
+  Code-Änderungen also die Vorschau **make-os neu starten**. Für schnelles
+  Iterieren: Vorschau **make-os-entwicklung** (`start.sh --entwicklung`, `.next`).
+  Nie in `.next-prod` bauen, während `next start` daraus läuft.
+  Gemessen: Kontaktliste 15–16 s (Entwicklung) → 0,4–0,6 s (Produktion).
+- Jede GET-Route trägt `export const dynamic = 'force-dynamic'` — sonst friert
+  `next build` sie ein (Test `schnittstellen-frisch`).
+- Große Abfragen (Kontakte, CRM-Bestand, Leads) über `lib/http/json-antwort.ts`:
+  gzip ab 16 KB und ETag aus `speicherStand()` → der 20-s-Abgleich bekommt 304,
+  wenn sich nichts geändert hat (Client: `holeMitStand` in `components/os/crm/daten.ts`).
+- Takt: nach Fehlschlägen pausiert ein Auftrag 5 · 3^(n−1) min, höchstens 3 h
+  (`wartenNachFehler`, lib/jarvis/takt.ts) — nie wieder Minuten-Schleifen.
+  Nur ein Arbeiter je MAKE OS (`.data/worker.pid`).
 - Stores: JSON-Dateien unter `.data/` via `lib/store/local-db.ts`
   (loadJson/updateJson). API-Gate: `x-make-key`-Header (MAKE_OS_KEY).
 - `route.ts` darf keine Extra-Exporte tragen (Next) — geteilte Typen in `lib/`.

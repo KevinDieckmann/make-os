@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { saveJson } from '@/lib/store/local-db';
 
+// Im schnellen Modus (next start) würde Next eine GET-Route ohne Anfragebezug beim Bauen einfrieren — hier soll immer der aktuelle Stand kommen.
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 // ─── KEMARIS (Microsoft 365) Kalender — via Claude MCP geholt ────────────────
 // Konto: k.dieckmann@kemaris.de (M365). Zeiten sind bereits auf Europe/Berlin
 // (Sommerzeit, UTC+2) umgerechnet und als lokale Wall-Clock-ISO gespeichert —

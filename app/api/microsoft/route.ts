@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 
+// Im schnellen Modus (next start) würde Next eine GET-Route ohne Anfragebezug beim Bauen einfrieren — hier soll immer der aktuelle Stand kommen.
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 // ─── Microsoft 365 (KEMARIS) — Postfach als Bestand ─────────────────────────
 // Die Mails leben seit 03.08. in .data/m365-postfach.json und werden über PUT
 // aktualisiert — Kevin sagt Claude „KEMARIS-Postfach aktualisieren", Claude
