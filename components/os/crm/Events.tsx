@@ -1,6 +1,6 @@
 'use client';
 
-// ─── CRM · Events — Stammtisch, Workshop, Dinner, Webinar ───────────────────
+// ─── Markttraktion · Event — Stammtisch, Workshop, Dinner, Webinar ───────────────────
 // Ein Event ist erfolgreich, wenn danach die richtigen Gespräche stattfinden.
 // Deshalb: ein messbares Ziel, eine bewusste Gästeliste aus der Kartei
 // (Mischung gegen das Soll), sechs Wochen Vorlauf als Checkliste, Zusage und

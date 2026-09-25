@@ -1,6 +1,6 @@
 'use client';
 
-// ─── CRM · Marketing › Übersicht ───────────────────────────────────────────
+// ─── Markttraktion · Marketing › Übersicht ───────────────────────────────────────────
 // Oben die Wirkung (Kennzahlen aus lib/crm/marketing.ts, grau solange nichts
 // gemessen ist). Darunter, was Marketing hier steuert: Wie viele Menschen
 // dürfen wir überhaupt ansprechen (Einwilligungsbestand je Kanal), wo läuft

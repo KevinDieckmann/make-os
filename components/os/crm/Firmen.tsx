@@ -1,6 +1,6 @@
 'use client';
 
-// ─── CRM · Kartei › Firmen — ein Unternehmen, alle Beziehungen ─────────────
+// ─── Markttraktion · Firmen — ein Unternehmen, alle Beziehungen ─────────────
 // Die Firma ist eigene Stammdaten (lib/crm/firmen.ts): Branche, Größe, Ort,
 // Webseite an EINER Stelle. Die Karteikarte zeigt alle Personen, Chancen,
 // Mandate und den gemeinsamen Verlauf. Rolle wird aus den Personen

@@ -1,6 +1,6 @@
 'use client';
 
-// ─── CRM · Marketing › Positionierung — Kevins eigene Worte ────────────────
+// ─── Markttraktion · Marketing › Positionierung — Kevins eigene Worte ────────────────
 // Positionierung, Zielgruppe (ICP), Ton und Themensäulen. Der Head of
 // Marketing liest diesen Text als Grundlage für Themen und Entwürfe; die
 // Säulen ordnen im Redaktionsplan jeden Beitrag ein. Gespeichert wird über

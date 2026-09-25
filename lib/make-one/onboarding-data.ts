@@ -146,8 +146,8 @@ export const SCHRITTE: Schritt[] = [
     id: 'kevin-kontakte', spur: 'kevin', minuten: 5,
     titel: 'Kartei prüfen und sortieren',
     warum: 'Power Hour und Pipeline rechnen mit der Kartei. Kreis, Lebensphase und Herkunft müssen stimmen, sonst schlägt das System die Falschen vor.',
-    wie: ['Im CRM › Stammdaten die Pflichtangaben (Herkunft, Rechtsgrundlage) übernehmen.', 'Bei den wichtigsten 20 Menschen den Kreis A oder B setzen.', 'Die restlichen Dubletten zusammenführen.'],
-    wo: { href: '/os/crm?s=kontakte', label: 'CRM › Kontakte' },
+    wie: ['In der Markttraktion › Stammdaten die Pflichtangaben (Herkunft, Rechtsgrundlage) übernehmen.', 'Bei den wichtigsten 20 Menschen den Kreis A oder B setzen.', 'Die restlichen Dubletten zusammenführen.'],
+    wo: { href: '/os/markttraktion?s=kontakte', label: 'Markttraktion › Kontakte' },
     pruefung: 'kontakte',
   },
   {

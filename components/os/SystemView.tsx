@@ -16,7 +16,7 @@ const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: s
     { href: '/os/gesundheit', label: 'Gesundheit', was: 'Körper, Journal, Ernährung' },
     { href: '/os/finanzen', label: 'Zahlen', was: 'Privat, Business, Gesamt, Head of Finance' },
     { href: '/os/familie', label: 'Familie & Partnerschaft', was: 'wir zwei zuerst, dann die Familie' },
-    { href: '/os/crm', label: 'CRM', was: 'Kartei, wer heute dran ist, Kunden und Mandate' },
+    { href: '/os/markttraktion', label: 'Markttraktion', was: 'Sales, Marketing und Event — Traction-Score, Power Hour, Kampagnen, Kontakte und Firmen' },
   ] },
   { titel: 'Jarvis', eintraege: [
     { href: '/os/stapel', label: 'Aufträge & Freigaben', was: 'was vorbereitet ist und auf dich wartet' },

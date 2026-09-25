@@ -1,6 +1,6 @@
 'use client';
 
-// ─── Ein Head im CRM: Lauf starten, Lage lesen, Vorschläge entscheiden ──────
+// ─── Ein Head in der Markttraktion: Lauf starten, Lage lesen, Vorschläge entscheiden ──────
 // Angenommen wird ein Vorschlag mit Person und Frist zum nächsten Schritt
 // an der Person (erscheint dann in der Power Hour), sonst zur Aufgabe.
 // Entwürfe lassen sich kopieren — versendet wird hier nichts.
@@ -50,7 +50,7 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
       </span>}>{name}{vorschlaege.length ? ` · ${vorschlaege.length} zur Freigabe` : ''}</Ueberschrift>
       {bericht ? <p style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.5, margin: 0 }}>{bericht.antwort.zusammenfassung}</p>
         : s?.ruhig ? <p style={{ fontSize: TYP.bedien, color: C.inkDim, margin: 0 }}>{s.ruhig.text}</p>
-        : <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: 0 }}>Noch kein Lauf. Der Head liest Kartei und CRM, ordnet ein und legt Vorschläge zur Freigabe vor — versendet wird nichts.</p>}
+        : <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: 0 }}>Noch kein Lauf. Der Head liest Kartei und Bestand, ordnet ein und legt Vorschläge zur Freigabe vor — versendet wird nichts.</p>}
       {bericht && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>{datum(bericht.zeit)} · {s?.modi.find(m => m.id === bericht.modus)?.label ?? bericht.modus}{bericht.pruefung.gestrichen.length ? ` · ${bericht.pruefung.gestrichen.length} vom Prüfer gestrichen` : ''}{bericht.pruefung.unbelegt.length ? ` · ${bericht.pruefung.unbelegt.length} Zahl(en) unbelegt` : ''}</div>}
       {meldung && <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
 

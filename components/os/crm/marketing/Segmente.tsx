@@ -1,6 +1,6 @@
 'use client';
 
-// ─── CRM · Marketing › Segmente — „wen meinen wir?“ ────────────────────────
+// ─── Markttraktion · Marketing › Segmente — „wen meinen wir?“ ────────────────────────
 // Gespeicherte Filter über die Kartei mit Live-Zahl und Kanal-Aufteilung
 // (lib/crm/segmente.ts). Gesperrte Personen sind nie Mitglied; mit einem
 // Kanal-Kriterium zählt nur, wer darüber zulässig erreichbar ist. Der Export

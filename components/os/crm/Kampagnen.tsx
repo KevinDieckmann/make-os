@@ -1,6 +1,6 @@
 'use client';
 
-// ─── CRM · Marketing › Kampagnen — nach bewährtem Vorgehen, auf Basis der Kunden ─
+// ─── Markttraktion · Kampagnen (in Sales und Marketing) — nach bewährtem Vorgehen, auf Basis der Kunden ─
 // Kevin: „immer wieder auf Best Practice zurückgreifen und neue Kampagnen
 // planen können auf Basis der Kunden, die wir haben — vom Head of Marketing
 // genauso wie vom Head of Sales.“ Oben: wer unsere Kunden sind und welche
@@ -32,7 +32,8 @@ const ERGEBNISSE: { id: KampagnenErgebnis; label: string; farbe: string }[] = [
 ];
 const KANAL_LABEL: Record<string, string> = { persoenlich: 'persönlich', telefon: 'Telefon', mail: 'Mail', linkedin: 'LinkedIn', event: 'Event', mix: 'gemischt' };
 
-export function Kampagnen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string) => void }) {
+/** Kampagnen planen beide Heads (Kevin, 25.09.): in Sales mit dem Head of Sales, in Marketing mit dem Head of Marketing — dieselben Kampagnen. */
+export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi; zuKontakt: (id: string) => void; head?: 'sales' | 'marketing' }) {
   const [d, setD] = useState<Daten | null>(null);
   const [offen, setOffen] = useState<string | null>(null);
   const [meldung, setMeldung] = useState('');
@@ -53,7 +54,7 @@ export function Kampagnen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: str
 
   return (
     <>
-      <HeadPanel head="marketing" standardModus="kampagne" zuKontakt={zuKontakt} i={0} nachEntscheid={() => { void laden(); void api.laden(); }} />
+      <HeadPanel head={head} standardModus="kampagne" zuKontakt={zuKontakt} i={0} nachEntscheid={() => { void laden(); void api.laden(); }} />
       {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{meldung}</div>}
 
       {segment && (
@@ -97,7 +98,7 @@ export function Kampagnen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: str
             <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>
               {d.profil.branchen.length ? <>Branchen: {d.profil.branchen.join(' · ')}. </> : <>Bei den Kunden-Firmen fehlt die Branche — in der Firmenkarte pflegen, dann findet „Kunden wie unsere besten“ ähnliche Firmen. </>}
               {d.profil.staedte.length ? <>Orte: {d.profil.staedte.join(', ')}. </> : null}
-              {d.profil.groesse ? <>Größe {d.profil.groesse.min}–{d.profil.groesse.max} Mitarbeitende.</> : null}
+              {d.profil.groesse ? <>Größe {d.profil.groesse.min === d.profil.groesse.max ? d.profil.groesse.min : `${d.profil.groesse.min}–${d.profil.groesse.max}`} Mitarbeitende.</> : null}
             </div>
           </div>
         ) : <Leer>Noch keine Kunden-Firmen erkannt — Mandate und Firmen verknüpfen.</Leer>}

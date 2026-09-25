@@ -1,6 +1,6 @@
 'use client';
 
-// ─── CRM · Stammdaten — sauber halten, was alles andere trägt ───────────────
+// ─── Markttraktion · Stammdaten — sauber halten, was alles andere trägt ───────────────
 // Übersicht (Selbstprüfung + was zu tun ist) · Datenqualität (Vollständigkeit,
 // Dubletten, Firmen-Abgleich) · Wertelisten (Stufen mit Wahrscheinlichkeit,
 // Verlustgründe, Herkunft, Rechtsgrundlagen) · Datenschutz (Pflichtangaben,

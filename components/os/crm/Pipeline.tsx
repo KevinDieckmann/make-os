@@ -1,6 +1,6 @@
 'use client';
 
-// ─── CRM · Pipeline — Chancen nach Stufen ───────────────────────────────────
+// ─── Markttraktion · Sales › Pipeline — Chancen nach Stufen ───────────────────────────────────
 // Oben die Prognose (offen, gewichtet, Commit, Best Case) — jede Zahl mit
 // Herleitung. Darunter die Stufen mit ihrem Austrittskriterium: Eine Chance
 // rückt vor, wenn auf Kundenseite etwas passiert ist, nicht wenn wir hoffen.

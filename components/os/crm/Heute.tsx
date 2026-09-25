@@ -1,6 +1,6 @@
 'use client';
 
-// ─── CRM · Heute — Wer ist heute dran? (Sales Power Hour) ───────────────────
+// ─── Markttraktion · Sales › Heute — wer ist dran? (Power Hour) ───────────────────
 // Die Liste baut der Code (lib/crm/heute.ts): Versprechen → Signale →
 // Chancen → Kunden → Pflege → Neu. Mit „Power Hour starten“ läuft eine
 // Stunde im Fokus: Karte für Karte, weicher 4-Minuten-Takt je Karte,
@@ -15,7 +15,6 @@ import type { KanalStatus } from '@/lib/crm/recht';
 import { type CrmApi, neueId, datum } from './daten';
 import { KanalAmpel, Grund, NotizFormular, Verlauf } from './teile';
 import { HeadPanel } from './HeadPanel';
-import { Lage } from './Lage';
 
 interface HeuteKarte {
   id: string; name: string; firma?: string; position?: string; kategorie: string; punkte: number; gruende: string[];
@@ -38,7 +37,7 @@ function Uhr({ bis }: { bis: number }) {
   return <span style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.floor(rest / 60)}:{String(rest % 60).padStart(2, '0')}</span>;
 }
 
-export function Heute({ api, name, zuKontakt, zuBereich }: { api: CrmApi; name: (p: string) => string; zuKontakt: (id: string) => void; zuBereich: (b: string, a?: string) => void }) {
+export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string) => string; zuKontakt: (id: string) => void }) {
   const [d, setD] = useState<HeuteAntwort | null>(null);
   const [fokus, setFokus] = useState<{ id: string; start: string; bis: number; ziel: { gespraeche: number; termine: number }; index: number; ergebnisse: Record<string, string>; kartenStart: number } | null>(null);
   const [ende, setEnde] = useState(false);
@@ -134,7 +133,6 @@ export function Heute({ api, name, zuKontakt, zuBereich }: { api: CrmApi; name: 
 
   return (
     <>
-      {!fokus && <Lage zuBereich={zuBereich} takt={Object.keys(d.sitzungen).length} />}
       {kopf}
       {!fokus && <HeadPanel head="sales" standardModus="power_hour" zuKontakt={zuKontakt} i={1} nachEntscheid={() => { void laden(); void api.laden(); }} />}
       {!karten.length && <Karte i={1}><Leer>Heute ist niemand dran. Neue Chancen anlegen, Kreise vergeben oder Einwilligungen klären — dann füllt sich die Liste.</Leer></Karte>}

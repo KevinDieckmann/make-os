@@ -1,6 +1,6 @@
 'use client';
 
-// ─── CRM · Marketing › Redaktionsplan — Themen aus Kundengesprächen ────────
+// ─── Markttraktion · Marketing › Redaktionsplan — Themen aus Kundengesprächen ────────
 // Beiträge wandern Idee → Entwurf → Geplant → Veröffentlicht. Themen kommen
 // aus der „Stimme der Kunden“ (Bedarf/Schmerz aus den Gesprächsnotizen) —
 // ein Klick macht daraus eine Idee, die Person bleibt als Quelle verknüpft,

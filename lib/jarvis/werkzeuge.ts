@@ -61,7 +61,7 @@ async function planBlock(input: Record<string, unknown>): Promise<string> {
 
 // ─── Jarvis als Eingabe-Schicht: Kevin ruft zu, Jarvis schreibt in die Stores.
 // Interne Buchführung (nichts geht nach außen) — jede Erfassung wird im Chat
-// knapp bestätigt und erscheint sofort in Finanzplanung/Meilensteinen/CRM.
+// knapp bestätigt und erscheint sofort in Finanzplanung/Meilensteinen/Markttraktion.
 
 const eurW = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(n || 0));
 const firmaId = (rein: unknown): 'kdv' | 'kdc' => (/ventures|kdv/i.test(String(rein ?? '')) ? 'kdv' : 'kdc');
@@ -257,7 +257,7 @@ async function setzeKunde(input: Record<string, unknown>): Promise<string> {
       health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: schritt ? [`Nächster Schritt: ${schritt}`] : [], geaendert: jetzt,
     }] };
   });
-  return `Erfasst: ${aktion}. Sichtbar im CRM unter Kunden.`;
+  return `Erfasst: ${aktion}. Sichtbar in der Markttraktion unter Sales › Kunden.`;
 }
 
 /**
@@ -557,7 +557,7 @@ async function notizErgaenzen(input: Record<string, unknown>, _o: string, person
 }
 
 
-// ── CRM: Kontakte finden, notieren, ansprechen ──────────────────────────────
+// ── Markttraktion (Kartei): Kontakte finden, notieren, ansprechen ──────────────────────────────
 // Kevins Ansage vom 18.09.: „damit wir Kunden ansprechen können." Drei
 // Werkzeuge, alle frei — sie schaffen Struktur und Entwürfe. Es gibt bewusst
 // KEIN Werkzeug zum Versenden: das bleibt eiserne Regel 3.
@@ -583,7 +583,7 @@ async function sucheKontakt(input: Record<string, unknown>): Promise<string> {
   const { findeKontakte, anzeigename, STUFE_LABEL } = await import('@/lib/make-one/crm');
   const { ampel } = await import('@/lib/crm/recht');
   const alle = await ladeKontakte();
-  if (!alle.length) return 'Das CRM ist leer — die Masterliste wurde noch nicht importiert (/os/crm → Import).';
+  if (!alle.length) return 'Die Kartei ist leer — die Masterliste wurde noch nicht importiert (Markttraktion › Stammdaten › Import).';
   const l = findeKontakte(alle, frage, Math.min(8, Math.max(1, Number(input.anzahl) || 5)));
   if (!l.length) return `Kein Kontakt zu „${frage}" (${alle.length} durchsucht).`;
   return `KONTAKTE — ${l.length} Treffer:\n\n` + l.map(k =>
@@ -645,13 +645,13 @@ async function entwurfAnsprache(input: Record<string, unknown>): Promise<string>
   return `ANSPRACHE-ENTWURF für ${anzeigename(treffer)}${treffer.firma ? ` (${treffer.firma})` : ''} — Kanäle: ${wege}\n\nBETREFF: ${r.entwurf.betreff}\n\nE-MAIL:\n${r.entwurf.email}\n\nLINKEDIN:\n${r.entwurf.linkedin}\n\n${r.entwurf.hinweis}\nNichts wurde versendet. Wenn Kevin es geschickt hat, mit notiere_kontakt (art: mail oder linkedin) festhalten.`;
 }
 
-// ─── CRM (24.09. nachts): Chance anlegen, Lage abfragen ─────────────────────
+// ─── Markttraktion (24.09. nachts): Chance anlegen, Lage abfragen ─────────────────────
 
 async function chanceAnlegen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
   const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
   if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
   const { treffer, mehrere } = await kontaktFinden(hinweis);
-  if (!treffer) return `Kein Kontakt zu „${hinweis}" — erst mit suche_kontakt nachsehen oder im CRM anlegen.`;
+  if (!treffer) return `Kein Kontakt zu „${hinweis}" — erst mit suche_kontakt nachsehen oder in der Markttraktion › Kontakte anlegen.`;
   const { anzeigename } = await import('@/lib/make-one/crm');
   if (mehrere) return `Mehrdeutig — ${mehrere.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}? Bitte mit der ID.`;
   const { aendereCrm } = await import('@/lib/crm/speicher');
@@ -681,13 +681,19 @@ async function crmLage(_i: Record<string, unknown>, _o: string, person?: string)
   const { werIstDran } = await import('@/lib/crm/heute');
   const { kennzahlen } = await import('@/lib/crm/kennzahlen');
   const { befunde } = await import('@/lib/crm/befunde');
+  const { marketingKennzahlen } = await import('@/lib/crm/marketing');
+  const { eventKennzahlen, traktion, uebergaben } = await import('@/lib/crm/traktion');
   const kontakte = (await loadJson<{ kontakte: import('@/lib/make-one/crm').Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const crm = await ladeCrm();
   const heute = localDay();
   const a = werIstDran(kontakte, crm, heute, person ?? 'kevin', 8);
+  const t = traktion({ sales: kennzahlen(kontakte, crm, heute), marketing: marketingKennzahlen(kontakte, crm, heute), event: eventKennzahlen(kontakte, crm, heute) });
+  const kz = (l: import('@/lib/crm/kennzahlen').Kpi[]) => l.map(k => `${k.label} ${k.anzeige}${k.ampel !== 'grau' ? ` (${k.ampel})` : ''}`).join(' · ');
+  const ue = uebergaben(kontakte, crm, heute);
   return [
-    `CRM-LAGE ${heute}`,
-    `Kennzahlen: ${kennzahlen(kontakte, crm, heute).map(k => `${k.label} ${k.anzeige}${k.ampel !== 'grau' ? ` (${k.ampel})` : ''}`).join(' · ')}`,
+    `MARKTTRAKTION ${heute} — Traction-Score ${t.score ?? '—'} (${t.hinweis})`,
+    ...t.welten.map(w => `${w.label} (${w.gewicht} %): ${w.score ?? '—'} · ${kz(w.kpis)}`),
+    `Übergaben: ${ue.map(u => `${u.titel} ${u.anzahl} (${u.von}→${u.an})`).join(' · ') || 'nichts offen'}`,
     `Wer heute dran ist (${a.karten.length}):`,
     ...a.karten.map(c => `- ${c.name}${c.kontakt.firma ? ` · ${c.kontakt.firma}` : ''} [${c.kontakt.id}] — ${c.kategorie}: ${c.gruende[0]}${c.kanal ? ` · Kanal ${c.kanal.kanal} (${c.kanal.farbe})` : ''}`),
     `Was zu tun ist: ${befunde(kontakte, crm, heute).slice(0, 6).map(b => b.titel).join(' · ') || 'nichts Rotes'}`,

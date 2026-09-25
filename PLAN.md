@@ -261,6 +261,20 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Daten nur eigene (Masterdatei + Brain). Offen: Anthropic-Guthaben aufladen
 > (Agenten laufen sonst nicht), Kaltakquise-Liste Berlin erst nach Kevins Wort.
 
+> **Nachtrag 25.09. — aus dem CRM wird die Markttraktion.** Kevin: „alles, was
+> unter dem CRM läuft — Sales, Marketing, Event — heißt Markttraktion“, Umbenennung
+> überall. Neu: der **Überblick** mit Traction-Score (Gewichte aus dem
+> KEMARIS-Konzept: Sales 50 / Marketing 40 / Event 10, geometrisches Mittel,
+> ehrlich „vorläufig“, solange eine Welt nichts misst), je Welt Head + Kennzahlen,
+> die **Übergaben** zwischen den Welten (Event → Sales Nachfassen, Content-Anfragen
+> ohne Chance, Stimmen der Kunden ohne Thema, Kampagnen-Personen, Gäste fürs
+> nächste Event) und „Was jetzt zu tun ist“. Sales bündelt Heute · Pipeline ·
+> Kunden · Kampagnen (Kampagnen dort mit dem Head of Sales, in Marketing mit dem
+> Head of Marketing). Event-Kennzahlen neu (Events/Quartal, Nachfassen 48 h,
+> Folgegespräche, Erscheinen, Mischung). Der Business-Score nimmt den
+> Traction-Score statt „Pipeline gepflegt“ + „Vertriebsrhythmus“ (keine
+> Doppelzählung). Alte Links leiten um; Jarvis spricht von Markttraktion.
+
 > **Nachtrag Nacht zum 25.09. — CRM zusammengeführt (autonom, Kevin schlief).**
 > Kontakte und Firmen sind eigene Einstiege (Aufbau wie in KEMARIS Operations), und die Schnellsuche ⌘K funktioniert von überall.
 >

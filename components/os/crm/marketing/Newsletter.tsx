@@ -1,6 +1,6 @@
 'use client';
 
-// ─── CRM · Marketing › Newsletter — nur mit Double-Opt-in ──────────────────
+// ─── Markttraktion · Marketing › Newsletter — nur mit Double-Opt-in ──────────────────
 // Empfänger sind ausschließlich Personen mit Newsletter-Einwilligung per
 // Double-Opt-in (R6/R7) — eine Mail-Einwilligung oder ein Mandat reicht nicht.
 // MAKE OS versendet nichts: Ausgabe hier schreiben, Empfänger exportieren,

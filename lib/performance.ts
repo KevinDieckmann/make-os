@@ -23,6 +23,8 @@ import { privatFaktoren, finanzSaeule } from '@/lib/finanzen/haushalt/score';
 import { ladeFamilie } from '@/lib/familie/speicher';
 import { ladeCrm, kundenAusMandaten } from '@/lib/crm/speicher';
 import { kennzahlen } from '@/lib/crm/kennzahlen';
+import { marketingKennzahlen } from '@/lib/crm/marketing';
+import { eventKennzahlen, traktion } from '@/lib/crm/traktion';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { pflegeRhythmus, type Rhythmus } from '@/lib/familie/logik';
@@ -218,14 +220,14 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
 
   // ── Business-Performance ──
   const [crmF, kartei] = await Promise.all([ladeCrm(), loadJson<{ kontakte: Kontakt[] }>('kontakte')]);
-  const kz = kennzahlen(kartei?.kontakte ?? [], crmF, today);
-  const kpi = (id: string) => kz.find(x => x.id === id)!;
+  // 25.09.: Die Markttraktion (Sales, Marketing, Event) geht als ihr Traction-Score ein —
+  // eine Zahl statt zwei Einzelteilen, damit Power Hours und Chancen nicht doppelt zählen.
+  const kontakteF = kartei?.kontakte ?? [];
+  const tr = traktion({ sales: kennzahlen(kontakteF, crmF, today), marketing: marketingKennzahlen(kontakteF, crmF, today), event: eventKennzahlen(kontakteF, crmF, today) });
   const offeneChancen = crmF.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe));
   const crmFaktoren: Faktor[] = [
-    { label: 'Pipeline gepflegt', wert: offeneChancen.length ? clamp(((offeneChancen.length - offeneChancen.filter(c => !c.naechsterSchritt).length) / offeneChancen.length) * 100) : 0, echt: offeneChancen.length > 0,
-      quelle: offeneChancen.length ? `${offeneChancen.length} offene Chancen, ${kpi('ohne_schritt').anzeige} ohne nächsten Schritt` : 'noch keine Chance im CRM' },
-    { label: 'Vertriebsrhythmus', wert: clamp(((kpi('power_hours').wert ?? 0) / 4) * 50 + ((kpi('gespraeche').wert ?? 0) / 8) * 50), echt: kpi('power_hours').ampel !== 'grau' || kpi('gespraeche').ampel !== 'grau',
-      quelle: `${kpi('power_hours').anzeige} Power Hours, ${kpi('gespraeche').anzeige} echte Gespräche in 7 Tagen (4 und 8 = 100)` },
+    { label: 'Markttraktion', wert: tr.score ?? 0, echt: tr.score !== null,
+      quelle: tr.score !== null ? `Traction-Score ${tr.score} · ${tr.welten.map(w => `${w.label} ${w.score ?? '—'}`).join(' · ')}${tr.vorlaeufig ? ' (vorläufig)' : ''}` : `noch nichts gemessen · ${offeneChancen.length} offene Chancen` },
   ];
   const m = fin ? computeMetrics(mitKasse(fin, fplanF?.firmen)) : null;
   const hatZahlen = !!m && m.aktiveMonate > 0;
@@ -235,7 +237,7 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
       quelle: hatZahlen ? `${Math.round(m!.fortschritt * 100)}% von 1 Mio €` : 'keine Ist-Zahlen im Controlling' },
     { label: 'Run-Rate hält Kurs', wert: hatZahlen && m!.runRateNoetig > 0 ? clamp((m!.runRateAktuell / m!.runRateNoetig) * 100) : 0, echt: hatZahlen,
       quelle: hatZahlen ? `Ø ${Math.round(m!.runRateAktuell / 1000)}k von nötigen ${Math.round(m!.runRateNoetig / 1000)}k` : 'keine Ist-Zahlen' },
-    // 24.09.: Pipeline und Vertriebsrhythmus aus dem CRM (vorher: fünf Firmen aus einer externen Zielliste).
+    // 24.09.: aus der Markttraktion (vorher: fünf Firmen aus einer externen Zielliste).
     ...crmFaktoren,
     { label: 'Meilenstein-Kurs', ...msKurs('business') },
     // ── Mandate: zahlende Kunden sind der ehrlichste Business-Beweis. ──

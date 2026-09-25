@@ -3,7 +3,7 @@
 // sieben Bereichen. 24.09. abends, Kevin: „Wir haben oben alle Sachen sauber
 // verlinkt, das bedeutet wir brauchen auf der linken Seite nicht alles —
 // das doppelt sich." Links stehen jetzt nur die Arbeitsräume: Jarvis, Brain,
-// CRM, Fokus, Aufgaben. Heute, Inbox, Wachstum, Gesundheit, Business,
+// Markttraktion, Fokus, Aufgaben. Heute, Inbox, Wachstum, Gesundheit, Business,
 // Planung, Zahlen, Familie und Agenten erreicht man über den Kopf oben
 // (WachstumsKopf) — auf dem Handy genauso.
 //
@@ -11,7 +11,7 @@
 // Adresse erreichbar und die Leiste zeigt trotzdem, wo man ist.
 
 import type { LucideIcon } from 'lucide-react';
-import { ListChecks, Users, Brain, Sparkles, Settings, Crosshair } from 'lucide-react';
+import { ListChecks, TrendingUp, Brain, Sparkles, Settings, Crosshair } from 'lucide-react';
 
 export interface Eintrag { href: string; label: string; icon: LucideIcon; passt: string[] }
 
@@ -20,8 +20,8 @@ export const HAUPT: Eintrag[] = [
   { href: '/jarvis', label: 'Jarvis', icon: Sparkles, passt: ['/jarvis'] },
   // Kevin: „Wissen, wo ich aber gerne Brain für haben möchte." Obsidian ist Wissensbank Nr. 1.
   { href: '/os/wissen', label: 'Brain', icon: Brain, passt: ['/os/wissen'] },
-  // Kevin: „das Thema CRM, was jetzt gerade noch Kontakte ist."
-  { href: '/os/crm', label: 'CRM', icon: Users, passt: ['/os/crm', '/os/prospecting'] },
+  // Kevin: „das Thema CRM, was jetzt gerade noch Kontakte ist." — seit 25.09. „Markttraktion" (Sales, Marketing, Event).
+  { href: '/os/markttraktion', label: 'Markttraktion', icon: TrendingUp, passt: ['/os/markttraktion', '/os/crm', '/os/prospecting'] },
   // Kevin: „Fokus, das haben wir ja auch als riesiges Thema."
   { href: '/os/fokus', label: 'Fokus', icon: Crosshair, passt: ['/os/fokus', '/os/kompass', '/os/planung/fokus'] },
   { href: '/os/aufgaben', label: 'Aufgaben', icon: ListChecks, passt: ['/os/aufgaben', '/os/planung/woche', '/os/planung/monat', '/os/planung/quartal', '/os/planung/jahr', '/os/planung/routinen', '/os/meeting', '/os/board'] },

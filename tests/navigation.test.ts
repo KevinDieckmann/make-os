@@ -3,12 +3,14 @@ import { describe, it, expect } from 'vitest';
 import { HAUPT, HANDY, aktiverEintrag } from '../lib/make-one/navigation';
 
 describe('Navigation', () => {
-  it('links stehen genau Jarvis, Brain, CRM, Fokus, Aufgaben', () => {
-    expect(HAUPT.map(e => e.label)).toEqual(['Jarvis', 'Brain', 'CRM', 'Fokus', 'Aufgaben']);
+  it('links stehen genau Jarvis, Brain, Markttraktion, Fokus, Aufgaben', () => {
+    expect(HAUPT.map(e => e.label)).toEqual(['Jarvis', 'Brain', 'Markttraktion', 'Fokus', 'Aufgaben']);
     expect(HANDY).toEqual(HAUPT.map(e => e.href));
   });
   it('markiert den richtigen Eintrag — auch für Unterseiten', () => {
-    expect(aktiverEintrag('/os/prospecting')?.label).toBe('CRM');
+    expect(aktiverEintrag('/os/prospecting')?.label).toBe('Markttraktion');
+    expect(aktiverEintrag('/os/crm')?.label).toBe('Markttraktion');
+    expect(aktiverEintrag('/os/markttraktion')?.label).toBe('Markttraktion');
     expect(aktiverEintrag('/os/kompass')?.label).toBe('Fokus');
     expect(aktiverEintrag('/os/planung/woche')?.label).toBe('Aufgaben');
     expect(aktiverEintrag('/os/agenten')?.label).toBe('System');

@@ -1,6 +1,6 @@
 'use client';
 
-// ─── CRM · Marketing — gemeinsame Bauteile ─────────────────────────────────
+// ─── Markttraktion · Marketing — gemeinsame Bauteile ─────────────────────────────────
 // Kennzahl-Leiste (grau = noch nichts gemessen), Mehrfachwahl aus Pillen,
 // Personenwahl mit Suche (ohne gesperrte Personen), Textfeld, das beim
 // Verlassen speichert.

@@ -12,10 +12,12 @@ import { LEUCHT } from './schlank';
 
 interface Treffer { art: string; id: string; titel: string; unter?: string; href: string }
 const SEITEN: Treffer[] = [
-  { art: 'seite', id: 'crm', titel: 'CRM · Heute (Power Hour)', href: '/os/crm' }, { art: 'seite', id: 'kontakte', titel: 'CRM · Kontakte', href: '/os/crm?s=kontakte' },
-  { art: 'seite', id: 'firmen', titel: 'CRM · Firmen', href: '/os/crm?s=firmen' }, { art: 'seite', id: 'pipeline', titel: 'CRM · Pipeline', href: '/os/crm?s=pipeline' },
-  { art: 'seite', id: 'kunden', titel: 'CRM · Kunden & Mandate', href: '/os/crm?s=kunden' }, { art: 'seite', id: 'marketing', titel: 'CRM · Marketing & Kampagnen', href: '/os/crm?s=marketing' },
-  { art: 'seite', id: 'events', titel: 'CRM · Events', href: '/os/crm?s=events' }, { art: 'seite', id: 'stammdaten', titel: 'CRM · Stammdaten', href: '/os/crm?s=stammdaten' },
+  { art: 'seite', id: 'markttraktion', titel: 'Markttraktion · Überblick', href: '/os/markttraktion' }, { art: 'seite', id: 'powerhour', titel: 'Sales · Heute (Power Hour)', href: '/os/markttraktion?s=sales' },
+  { art: 'seite', id: 'kontakte', titel: 'Markttraktion · Kontakte', href: '/os/markttraktion?s=kontakte' },
+  { art: 'seite', id: 'firmen', titel: 'Markttraktion · Firmen', href: '/os/markttraktion?s=firmen' }, { art: 'seite', id: 'pipeline', titel: 'Sales · Pipeline', href: '/os/markttraktion?s=sales&a=pipeline' },
+  { art: 'seite', id: 'kunden', titel: 'Sales · Kunden & Mandate', href: '/os/markttraktion?s=sales&a=kunden' }, { art: 'seite', id: 'kampagnen', titel: 'Kampagnen', href: '/os/markttraktion?s=sales&a=kampagnen' },
+  { art: 'seite', id: 'marketing', titel: 'Marketing', href: '/os/markttraktion?s=marketing' },
+  { art: 'seite', id: 'events', titel: 'Event', href: '/os/markttraktion?s=event' }, { art: 'seite', id: 'stammdaten', titel: 'Markttraktion · Stammdaten', href: '/os/markttraktion?s=stammdaten' },
   { art: 'seite', id: 'aufgaben', titel: 'Aufgaben', href: '/os/aufgaben' }, { art: 'seite', id: 'finanzen', titel: 'Zahlen', href: '/os/finanzen' },
   { art: 'seite', id: 'familie', titel: 'Familie & Partnerschaft', href: '/os/familie' }, { art: 'seite', id: 'fokus', titel: 'Fokus', href: '/os/fokus' },
   { art: 'seite', id: 'gesundheit', titel: 'Gesundheit', href: '/os/gesundheit' }, { art: 'seite', id: 'wissen', titel: 'Brain', href: '/os/wissen' },

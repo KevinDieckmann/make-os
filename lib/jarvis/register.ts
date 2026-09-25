@@ -237,13 +237,13 @@ export const REGISTER: Record<string, Eintrag> = {
   },
   setze_kunde: {
     gruppe: 'kunden', risiko: 'frei',
-    vorschau: schlicht('Kunde im CRM pflegen', i => `${text(i.name)}${i.status ? ` · ${String(i.status)}` : ''}`),
+    vorschau: schlicht('Kunde in der Markttraktion pflegen', i => `${text(i.name)}${i.status ? ` · ${String(i.status)}` : ''}`),
   },
   // CRM (18.09.): finden, notieren, entwerfen — alles frei, weil nichts davon
   // das System verlässt. Ein Werkzeug zum VERSENDEN gibt es absichtlich nicht.
   suche_kontakt: {
     gruppe: 'kontakte', risiko: 'frei',
-    vorschau: schlicht('Kontakt im CRM suchen', i => text(i.frage)),
+    vorschau: schlicht('Kontakt in der Kartei suchen', i => text(i.frage)),
   },
   notiere_kontakt: {
     gruppe: 'kontakte', risiko: 'frei',
@@ -255,7 +255,7 @@ export const REGISTER: Record<string, Eintrag> = {
   },
   crm_lage: {
     gruppe: 'kontakte', risiko: 'frei',
-    vorschau: schlicht('CRM-Lage lesen', () => 'wer dran ist, Kennzahlen, Befunde'),
+    vorschau: schlicht('Markttraktion lesen', () => 'Traction-Score, Übergaben, wer dran ist, Befunde'),
   },
   entwurf_ansprache: {
     gruppe: 'kontakte', risiko: 'frei',

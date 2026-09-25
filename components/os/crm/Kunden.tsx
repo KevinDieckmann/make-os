@@ -1,6 +1,6 @@
 'use client';
 
-// ─── CRM · Kunden & Mandate — und der Leistungskatalog ─────────────────────
+// ─── Markttraktion · Sales › Kunden & Mandate — und der Leistungskatalog ─────────────────────
 // Oben MRR und Kundenkonzentration. Je Mandat: Status, Laufzeit und Frist,
 // Health (DEAR: Beteiligung, Umsetzung, Wirkung, Zahlung, Stimmung), die
 // offenen Punkte und Widersprüche — sichtbar, nicht geglättet — und ob das

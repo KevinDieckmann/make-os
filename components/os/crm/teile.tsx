@@ -1,6 +1,6 @@
 'use client';
 
-// Gemeinsame CRM-Bauteile: Kanal-Ampel, Notizvorlage, Verlauf, kleine Eingaben.
+// Gemeinsame Bauteile der Markttraktion: Kanal-Ampel, Notizvorlage, Verlauf, kleine Eingaben.
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';

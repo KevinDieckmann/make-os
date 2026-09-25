@@ -85,7 +85,7 @@ async function crmFuerFinanzen(heute: string) {
     const posten = (await loadJson<{ posten?: Planposten[] }>('liquiplan'))?.posten ?? [];
     const p = prognose(crm.chancen, heute, crm.wahrscheinlichkeiten);
     return {
-      hinweis: 'Pipeline ist Szenario, nie Basisplan. Mandate ohne Liquiplan-Posten sind Kandidaten für die Planung (Kevin entscheidet im CRM).',
+      hinweis: 'Pipeline ist Szenario, nie Basisplan. Mandate ohne Liquiplan-Posten sind Kandidaten für die Planung (Kevin entscheidet in der Markttraktion › Sales › Kunden).',
       mrr_netto: mrr(crm.mandate), konzentration: konzentration(crm.mandate),
       mandate_auslaufend_90_tage: crm.mandate.filter(m => m.status === 'aktiv').map(m => ({ kunde: m.kunde, titel: m.titel.slice(0, 80), ende_in_tagen: mandatLage(m, heute).endeIn })).filter(x => x.ende_in_tagen !== null && x.ende_in_tagen <= 90),
       mandate_ohne_liquiplan: crm.mandate.map(m => ({ m, v: planpostenAus(m, heute) })).filter(x => x.v && !posten.some(pp => pp.id === x.v!.id)).map(x => ({ kunde: x.m.kunde, status: x.m.status, betrag_brutto: x.v!.betrag, rhythmus: x.v!.rhythmus })),

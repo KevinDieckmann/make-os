@@ -38,7 +38,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
   content: 'Text-Entwurf in der Marken-Sprache (auftrag = Thema)',
   meeting: 'Transkript zu Protokoll und Aufgaben (auftrag = Transkript)',
   outreach: 'Erstansprache entwerfen (auftrag = Name oder Firma — aus dem CRM, sonst aus der Zielliste)',
-  crm: 'Wer ist heute im CRM dran — Tagesliste mit Grund, Aufhänger und Kanal',
+  crm: 'Wer ist heute in der Markttraktion dran — Tagesliste mit Grund, Aufhänger und Kanal',
   'head-sales': 'Head of Sales — Vertriebslage, Pipeline, Mandate, wer heute dran ist (auftrag = Frage, oder modus:power_hour | deal_review | kundenreview | wochenreview)',
   'head-marketing': 'Head of Marketing — Einwilligungsbestand, Art.-14-Fristen, Themen aus der Stimme der Kunden (auftrag = Frage, oder modus:wochenplan | monatsreview)',
   'head-event': 'Head of Event — Events planen, Gäste, Nachfassen in 48 h, Wirkung (auftrag = Frage, oder modus:planung | einladung | nachfassen | wirkung)',
@@ -228,7 +228,7 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string)
         const d = await get('/api/crm/ansprechen?n=8');
         const liste = (d?.liste ?? []) as { kontakt: { id: string; vorname: string; nachname: string; firma?: string; position?: string; aufhaenger?: string; stufe: string; prio: string }; grund: string; kanaele: { art: string }[] }[];
         const st = d?.stand ?? {};
-        if (!liste.length) return gut(`CRM: niemand fällig. Stand: ${st.gesamt ?? 0} Kontakte, ${st.ansprechbar ?? 0} ansprechbar.`);
+        if (!liste.length) return gut(`Markttraktion: niemand fällig. Stand: ${st.gesamt ?? 0} Kontakte, ${st.ansprechbar ?? 0} ansprechbar.`);
         return gut(`HEUTE ANSPRECHEN — ${liste.length} von ${st.ansprechbar ?? '?'} ansprechbaren (${st.gesamt ?? '?'} gesamt):\n\n` + liste.map((p, i) =>
           `${i + 1}. ${p.kontakt.vorname} ${p.kontakt.nachname}${p.kontakt.firma ? ` · ${p.kontakt.firma}` : ''}${p.kontakt.position ? ` · ${p.kontakt.position}` : ''} [${p.kontakt.id}]\n   ${p.grund} · Kanal: ${p.kanaele.map(c => c.art).join(', ')}\n   Aufhänger: ${kuerze(p.kontakt.aufhaenger, 200)}`,
         ).join('\n\n') + '\n\nEntwurf je Kontakt mit entwurf_ansprache; Versand bleibt bei Kevin.');
@@ -259,7 +259,7 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string)
         const ziel = auftrag
           ? liste.find(p => (p.company ?? '').toLowerCase().includes(auftrag.toLowerCase()))
           : liste.filter(p => p.status !== 'kontaktiert').sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0];
-        if (!ziel) return fehl(auftrag ? `Weder im CRM noch in der Zielliste: „${auftrag}".` : 'Niemand fällig im CRM und kein unkontaktierter Treffer in der Zielliste.');
+        if (!ziel) return fehl(auftrag ? `Weder in der Kartei noch in der Zielliste: „${auftrag}".` : 'Niemand fällig in der Markttraktion und kein unkontaktierter Treffer in der Zielliste.');
         const d = await post('/api/outreach', { prospect: ziel, icp: String(st?.state?.icp ?? st?.icp ?? '') }, 150_000);
         const entwurf = d.reply ?? d.entwurf ?? d.text ?? d.email;
         if (!entwurf) return fehl(`Outreach fehlgeschlagen: ${kuerze(d.error, 200)}`);

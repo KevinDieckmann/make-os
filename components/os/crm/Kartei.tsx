@@ -1,6 +1,6 @@
 'use client';
 
-// ─── CRM · Kartei — Personen und Firmen ────────────────────────────────────
+// ─── Markttraktion · Kontakte und Firmen (die Kartei) ────────────────────────────────────
 // Personen: Kennzahlen im Kopf, gespeicherte Ansichten, Suche, Tastatur
 // (/ sucht, j/k blättert, Enter öffnet, Esc schließt), Anlegen mit
 // Dublettenprüfung. Die Karteikarte hat vier Reiter: Überblick (Kanäle,

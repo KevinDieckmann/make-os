@@ -177,7 +177,7 @@ function WerkzeugBusiness() {
       </Karte>
       {/* Geld & Mandate — die ehrlichen Bestandszahlen */}
       <Karte i={2}>
-        <Ueberschrift farbe={LEUCHT.geld} rechts={<><Link href="/os/finanzen" style={link}>Finanzplanung ›</Link><Link href="/os/crm" style={link}>CRM ›</Link></>}>Geld & Mandate</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.geld} rechts={<><Link href="/os/finanzen" style={link}>Finanzplanung ›</Link><Link href="/os/markttraktion?s=sales&a=kunden" style={link}>Kunden ›</Link></>}>Geld & Mandate</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
           <Zahl wert={gestellt.length ? eur(sum(gestellt)) : undefined} label="offene Forderungen" farbe={ueberfaellig.length ? LEUCHT.kritisch : LEUCHT.achtung} />
           <Zahl wert={geplantR.length ? eur(sum(geplantR)) : undefined} label="in Vorbereitung" />

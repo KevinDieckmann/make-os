@@ -102,7 +102,7 @@ lokal, Route `/os`, Port 3001.
   je Haushalt gleichzeitig; Haushalts-Ergebnisse in Warteschlange/Agenten-Log
   nur als Zähler. Speicher: `finanzchef` (Business) · `haushalt-chef--<h>`.
 - **Navigation (24.09.2026, Kevins Vorgabe):** links nur Jarvis · Brain (Wissen) ·
-  CRM · Fokus · Aufgaben (`lib/make-one/navigation.ts`, Test `navigation.test.ts`);
+  Markttraktion · Fokus · Aufgaben (`lib/make-one/navigation.ts`, Test `navigation.test.ts`);
   alles andere oben im `WachstumsKopf` (Heute, Inbox, Säulen-Ringe). `/os/fokus`
   ist eine eigene Seite (Fokus je Horizont, Tagesform, Regler).
 - **Familie & Partnerschaft (24.09.2026):** `/os/familie`, Logik `lib/familie/`,
@@ -112,8 +112,19 @@ lokal, Route `/os`, Port 3001.
   Reparatur-Reflexionen sieht und ändert nur, wer sie schrieb (serverseitig
   erzwungen). Säule „Familie & Partnerschaft“ im Score = Pflege-Rhythmus.
   Konzept: `docs/konzepte/familie-und-partnerschaft.md`.
-- **CRM (24.09.2026): alles zur Kundengewinnung unter `/os/crm`** — Heute (Power
-  Hour) · Kartei · Pipeline · Kunden · Marketing · Events. Personen im Speicher
+- **Markttraktion (25.09.2026, vorher „CRM“): alles zur Kundengewinnung unter
+  `/os/markttraktion`** (`/os/crm` leitet mit allen Parametern um; Adressen und
+  alte Bereiche in `lib/crm/adresse.ts`). Aufbau: **Überblick** (Traction-Score,
+  drei Heads, Übergaben, Befunde — `/api/crm/traktion`) · **Sales** (Heute/Power
+  Hour · Pipeline · Kunden · Kampagnen) · **Marketing** · **Event** · dazu die
+  Grundlage Kontakte · Firmen · Stammdaten. **Traction-Score** (`lib/crm/traktion.ts`):
+  Gewichte aus dem KEMARIS-Konzept (Sichtbarkeit 15, Marketing 25, Vertrieb 30,
+  Events 10, Conversions 20) → Sales 50 · Marketing 40 · Event 10; Punkte aus der
+  Ampel, grau zählt nicht, gesamt = gewichtetes geometrisches Mittel, fehlende
+  Welten → „vorläufig“; Grundlage (Datenreife, Art. 14, Ansprechbar) zählt NICHT.
+  Er ist der Faktor „Markttraktion“ im Business-Score. Im Code heißt die
+  Datenschicht weiter `crm` (lib/crm, /api/crm, Speicher `crm`) — das ist die
+  Kartei darunter, nicht der Name; sichtbar und für Jarvis heißt es Markttraktion. Personen im Speicher
   `kontakte` (Modell `lib/make-one/crm.ts`), alles daran im Speicher `crm`
   (`lib/crm/`: pipeline, recht, heute, kunden, events, dubletten, umzug).
   Grundkonzept aus der Markttraktion (KEMARIS Operations) — **Daten nur eigene**
@@ -129,7 +140,7 @@ lokal, Route `/os`, Port 3001.
   Pflichtangaben (Herkunft Art. 14 / Rechtsgrundlage Art. 6 nur als Vorschlag,
   Übernahme per Klick), Betroffenenanträge, Verzeichnis Art. 30, Export.
   Konzept: `docs/konzepte/crm-sales-marketing-events.md`.
-- **CRM verbunden (Nacht zum 25.09.2026):**
+- **Markttraktion verbunden (Nacht zum 25.09.2026, damals „CRM“):**
   - **Einstiege:** Kontakte und Firmen sind eigene Einstiege. Die Schnellsuche (⌘K) findet Personen, Firmen, Chancen und Mandate.
   - **Signale:** `lib/crm/signale.ts` übernimmt Mail und Kalender, aber nur aus den GESCHÄFTLICHEN Quellen. Das private Postfach und private Kalender bleiben draußen. Übernommen werden nur Betreff und Titel, und Funktionspostfächer zählen nicht.
   - **Zahlung:** Der Health-Faktor Zahlung kommt aus den Rechnungen im Finanzplan.

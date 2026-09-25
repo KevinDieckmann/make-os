@@ -1,6 +1,6 @@
 'use client';
 
-// ─── CRM · Events — gemeinsame Listen, Schreibwege und kleine Bauteile ──────
+// ─── Markttraktion · Events — gemeinsame Listen, Schreibwege und kleine Bauteile ──────
 // Geschrieben wird immer der ganze Eintrag über api.setze (Einzeländerung,
 // der Server säubert ihn) — damit Kevin und Malin gleichzeitig am selben
 // Event arbeiten können.
