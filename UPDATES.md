@@ -22,7 +22,7 @@ Stand hier und einen Stand, der online ist.“
 - Bauplan als Board (Ideen → Bereit → In Arbeit → Zum Testen → Fertig), Knopf „Idee“, Planung mit Etappen
 - Produkte & Mandate
 - Kalender oben neben der Inbox (Woche mit Terminen, Blöcken, Aufgaben, Fristen) — **iCloud verbunden seit 25.09. 19:14**
-  (Privat Kevin, Privat Malin; gemeinsamer Kalender heißt in den Einstellungen „Gemeinsam“ — sobald er in iCloud angelegt und mit Malin geteilt ist, erscheint er von selbst)
+  (Privat Kevin, Privat Malin und seit 25.09. abends „MAKE Gemeinsam“ — in iCloud angelegt, mit Malin geteilt, in den Einstellungen als gemeinsamer Kalender eingetragen)
 - iCloud-Skript vereinfacht (Update 25.09. abends, `3b042a7`)
 
 ## Nächstes Update — vorbereitet, noch nicht online
