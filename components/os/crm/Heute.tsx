@@ -11,6 +11,14 @@
 // sich die andere Liste trotzdem (nur lesen — beide sehen alles). Wer Sales
 // verantwortet, sieht die Team-Zeile. Jede Karte zeigt, wem sie gehört, und
 // lässt sich übergeben.
+// Erfassen ohne Reibung (25.09.): In der Kartei standen bei 453 Personen zwei
+// echte Aktivitäten — die Gespräche fanden statt, kamen aber nie hier an. Jetzt
+// hat jede Karte einen großen „Anrufen“-Knopf (tel:, nur wenn die Ampel
+// Telefon erlaubt; am Handy der Hauptweg), die Karte bleibt danach stehen und
+// darunter die Ergebnis-Knöpfe. Oben steht „Nachbereiten“: Termine aus dem
+// Geschäftskalender der letzten drei Tage, nach denen noch nichts festgehalten
+// ist — ein Tipp: gut gelaufen, kein Bedarf, fand nicht statt. Fällt im
+// Gespräch ein ausdrückliches Ja zur Mail, wird es als Einwilligung übernommen.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -21,8 +29,9 @@ import type { KanalStatus } from '@/lib/crm/recht';
 import type { TeamTag } from '@/lib/crm/pipeline';
 import { nameVon, anderer, BEIDE } from '@/lib/crm/team';
 import { markttraktion } from '@/lib/crm/adresse';
+import { kanalLink, nachbereitung, type Nachbereitung } from '@/lib/crm/erfassen';
 import { type CrmApi, neueId, datum } from './daten';
-import { KanalAmpel, Grund, NotizFormular, Verlauf } from './teile';
+import { KanalAmpel, Grund, NotizFormular, Verlauf, festhalten, hatMailEinwilligung, ERGEBNIS_KNOEPFE, type NotizErgebnis } from './teile';
 import { Person, Uebergeben } from './team';
 import { HeadPanel } from './HeadPanel';
 
@@ -45,10 +54,6 @@ interface HeuteAntwort {
 }
 
 const KAT_FARBE: Record<string, string> = { versprechen: LEUCHT.kritisch, signale: LEUCHT.achtung, chancen: LEUCHT.business, kunden: LEUCHT.geld, pflege: LEUCHT.beziehung, neu: LEUCHT.puls };
-const ERGEBNIS_KNOEPFE: { id: Ergebnis; label: string; notiz: boolean }[] = [
-  { id: 'gespraech', label: 'Gespräch', notiz: true }, { id: 'termin', label: 'Termin', notiz: true }, { id: 'rueckruf', label: 'Rückruf', notiz: true },
-  { id: 'mailbox', label: 'Mailbox', notiz: false }, { id: 'nicht_erreicht', label: 'Nicht erreicht', notiz: false }, { id: 'kein_bedarf', label: 'Kein Bedarf', notiz: false }, { id: 'sperre', label: 'Sperre', notiz: false },
-];
 
 function Uhr({ bis }: { bis: number }) {
   const [jetzt, setJetzt] = useState(Date.now());
@@ -81,6 +86,8 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
   const [gelernt, setGelernt] = useState('');
   const [offen, setOffen] = useState<{ id: string; ergebnis: Ergebnis } | null>(null);
   const [meldung, setMeldung] = useState('');
+  /** Karte, auf der gerade „Anrufen“ getippt wurde — sie bleibt stehen, das Ergebnis kommt danach. */
+  const [gewaehlt, setGewaehlt] = useState<string | null>(null);
   /** Die Liste der anderen Person ansehen (nur lesen) — null = die eigene. */
   const [fuer, setFuer] = useState<string | null>(null);
   const zug = useRef(0);
@@ -97,6 +104,9 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
   const ruhig = !fokus;
   useEffect(() => { if (ruhig) void laden(); }, [laden, ruhig, api.crm, api.kontakte]);
 
+  // „Wie lief's?“ — aus der Kartei auf der Seite, damit ein Tipp die Karte sofort verschwinden lässt.
+  const nachbereiten = useMemo(() => (d ? nachbereitung(api.kontakte ?? [], d.heute, d.ich) : []), [api.kontakte, d]);
+
   const serie = useMemo(() => {
     const tage = new Set((d?.sitzungen ?? []).map(s => s.datum));
     let n = 0; const t = new Date(`${d?.heute ?? '2000-01-01'}T12:00:00Z`);
@@ -110,12 +120,12 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
   const gezaehlt = fokus ? Object.values(fokus.ergebnisse) : [];
   const zaehl = (x: string) => gezaehlt.filter(e => e === x).length;
 
-  async function erfassen(k: HeuteKarte, ergebnis: Ergebnis, extra: Record<string, unknown> = {}) {
+  async function erfassen(k: HeuteKarte, ergebnis: Ergebnis, x?: NotizErgebnis) {
     if (ergebnis === 'sperre' && !window.confirm(`${k.name} widerspricht Werbung? Die Person wird gesperrt und taucht nirgends mehr auf.`)) return;
     const art = ergebnis === 'gespraech' || ergebnis === 'termin' ? (k.kanal?.kanal === 'telefon' || !k.kanal ? 'anruf' : 'gespraech') : 'anruf';
-    const r = await api.aktivitaet({ id: k.id, art: ergebnis === 'termin' ? 'termin' : art, ergebnis, bezug: k.chance?.id ?? k.bezug, ...extra });
-    setMeldung(r.hinweis ?? (r.error ? r.error : ''));
-    setOffen(null);
+    const r = await festhalten(api, { id: k.id, art: ergebnis === 'termin' ? 'termin' : art, ergebnis, bezug: k.chance?.id ?? k.bezug, ...(x ? { notiz: x.notiz, naechster: x.naechster } : {}) }, x?.einwilligung, d!.heute);
+    setMeldung([r.hinweis ?? (r.error ? r.error : ''), x?.einwilligung && r.kontakt ? 'Einwilligung für Mail festgehalten.' : ''].filter(Boolean).join(' '));
+    setOffen(null); setGewaehlt(null);
     // Ohne Power Hour lädt die Liste über den geänderten Bestand neu.
     if (fokus) setFokus({ ...fokus, ergebnisse: { ...fokus.ergebnisse, [k.id]: ergebnis }, index: fokus.index + 1, kartenStart: Date.now() });
   }
@@ -201,6 +211,7 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
   return (
     <>
       {kopf}
+      {!fokus && !lesen && <Nachbereiten liste={nachbereiten} api={api} heute={d.heute} zuKontakt={zuKontakt} />}
       {!fokus && !lesen && <HeadPanel head="sales" standardModus="power_hour" zuKontakt={zuKontakt} i={1} nachEntscheid={() => { void laden(); void api.laden(); }} />}
       {!karten.length && (
         <Karte i={1}>
@@ -211,6 +222,9 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
       {karten.map((k, i) => {
         const f = KAT_FARBE[k.kategorie] ?? C.inkDim;
         const notizOffen = offen?.id === k.id;
+        const tel = k.ampel.find(s => s.kanal === 'telefon');
+        const anruf = tel ? kanalLink(tel, { telefon: k.telefon }) : null;
+        const kk = api.kontakte?.find(x => x.id === k.id);
         return (
           <Karte key={k.id} i={i + 1} akzent={fokus ? f : undefined}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -233,6 +247,17 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
             {k.naechsterSchritt && <div style={{ marginTop: 6, fontSize: TYP.bedien, color: C.inkDim }}><span style={{ color: C.inkLeise }}>Zugesagt:</span> {k.naechsterSchritt.text} · {datum(k.naechsterSchritt.datum, d.heute)}</div>}
             <Grund ampel={k.ampel} />
             {k.letzte.length > 0 && <div style={{ marginTop: 10 }}><Verlauf liste={[...k.letzte].reverse()} name={name} max={3} heute={d.heute} /></div>}
+            {!lesen && anruf && tel && (
+              <div style={{ display: 'grid', gap: 6, marginTop: 14 }}>
+                <a href={anruf} onClick={() => setGewaehlt(k.id)} className="fassbar" title={tel.grund}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, minHeight: 52, width: '100%', maxWidth: 460, borderRadius: 14, textDecoration: 'none', fontWeight: 800, fontSize: 17, letterSpacing: '-.005em',
+                    background: LEUCHT.gut, color: C.grund, boxShadow: `0 8px 22px -8px ${LEUCHT.gut}aa` }}>
+                  Anrufen<span style={{ fontWeight: 600, fontSize: 14, opacity: .75, fontVariantNumeric: 'tabular-nums' }}>{k.telefon}</span>
+                </a>
+                {tel.farbe === 'gelb' && <span style={{ fontSize: 12, color: C.inkLeise }}>Nur mit konkretem Anlass aus der Beziehung — {tel.grund}.</span>}
+                {gewaehlt === k.id && !notizOffen && <span style={{ fontSize: 12.5, color: LEUCHT.gut }}>Wie lief’s? Ergebnis tippen — dann ist es festgehalten.</span>}
+              </div>
+            )}
             {!lesen && (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 14, alignItems: 'center' }}>
                 {ERGEBNIS_KNOEPFE.map(e => (
@@ -245,14 +270,70 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
             {lesen && <div style={{ marginTop: 12 }}><Knopf leise onClick={() => zuKontakt(k.id)}>Zur Person</Knopf></div>}
             {notizOffen && offen && (
               <div style={{ marginTop: 12 }}>
-                <NotizFormular heute={d.heute} ergebnis={offen.ergebnis} knopf="Festhalten" onAbbruch={() => setOffen(null)}
-                  onFertig={x => void erfassen(k, offen.ergebnis, { notiz: x.notiz, naechster: x.naechster })} />
+                <NotizFormular heute={d.heute} ergebnis={offen.ergebnis} knopf="Festhalten" onAbbruch={() => setOffen(null)} einwilligung={!hatMailEinwilligung(kk)} anrede={kk?.anrede ?? k.anrede as 'Sie' | 'Du' | undefined}
+                  onFertig={x => void erfassen(k, offen.ergebnis, x)} />
               </div>
             )}
           </Karte>
         );
       })}
     </>
+  );
+}
+
+/**
+ * „Wie lief's?“ — Termine aus dem Geschäftskalender der letzten drei Tage, nach
+ * denen noch nichts festgehalten ist (lib/crm/erfassen.ts nachbereitung). Drei
+ * Tipps: „Gut gelaufen“ öffnet die Notizvorlage (Gespräch, nächster Schritt
+ * Pflicht), „Kein Bedarf“ lässt die Person ruhen, „Fand nicht statt“ notiert
+ * genau das. Alles hängt am Termin (bezug) — danach verschwindet er hier.
+ */
+function Nachbereiten({ liste, api, heute, zuKontakt }: { liste: Nachbereitung[]; api: CrmApi; heute: string; zuKontakt: (id: string) => void }) {
+  const [offen, setOffen] = useState<string | null>(null);
+  const [meldung, setMeldung] = useState('');
+  const [laeuft, setLaeuft] = useState<string | null>(null);
+  async function tipp(n: Nachbereitung, body: Record<string, unknown>, x?: NotizErgebnis) {
+    setLaeuft(n.kontaktId);
+    try {
+      const r = await festhalten(api, { id: n.kontaktId, bezug: n.bezug, art: 'gespraech', ...body }, x?.einwilligung, heute);
+      setMeldung(r.error ? r.error : `${n.name}: ${r.hinweis ?? 'festgehalten.'}${x?.einwilligung ? ' Einwilligung für Mail festgehalten.' : ''}`);
+      setOffen(null);
+    } finally { setLaeuft(null); }
+  }
+  // Nichts offen: keine Karte — außer der Bestätigung für den letzten Tipp.
+  if (!liste.length && !meldung) return null;
+  return (
+    <Karte i={1} akzent={LEUCHT.puls}>
+      <Ueberschrift farbe={LEUCHT.puls} rechts={`${liste.length} ${liste.length === 1 ? 'Termin' : 'Termine'}`}>Nachbereiten · wie lief’s?</Ueberschrift>
+      {!liste.length && <Leer>Alle Termine nachbereitet.</Leer>}
+      <div style={{ display: 'grid', gap: 12 }}>
+        {liste.map(n => {
+          const kk = api.kontakte?.find(x => x.id === n.kontaktId);
+          const uhr = /T\d{2}:\d{2}/.test(n.am) ? ` · ${n.am.slice(11, 16)}` : '';
+          return (
+            <div key={n.kontaktId} style={{ display: 'grid', gap: 8, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,.05)' }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span title={n.fuer === BEIDE ? 'bei euch beiden' : `bei ${nameVon(n.fuer)}`} style={{ display: 'inline-flex' }}><Person id={n.fuer} groesse={20} /></span>
+                <button onClick={() => zuKontakt(n.kontaktId)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.ink, fontSize: TYP.body, fontWeight: 700, textAlign: 'left' }}>{n.name}</button>
+                {n.firma && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{n.firma}</span>}
+              </div>
+              <div style={{ fontSize: TYP.bedien, color: C.inkDim }}><span style={{ color: C.inkLeise }}>{datum(n.tag, heute)}{uhr}:</span> {n.titel}</div>
+              {offen !== n.kontaktId ? (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <Knopf farbe={LEUCHT.gut} aus={laeuft === n.kontaktId} onClick={() => setOffen(n.kontaktId)}>Gut gelaufen</Knopf>
+                  <Knopf leise aus={laeuft === n.kontaktId} onClick={() => void tipp(n, { ergebnis: 'kein_bedarf' })}>Kein Bedarf</Knopf>
+                  <Knopf leise aus={laeuft === n.kontaktId} onClick={() => void tipp(n, { art: 'notiz', text: 'Termin fand nicht statt' })}>Fand nicht statt</Knopf>
+                </div>
+              ) : (
+                <NotizFormular heute={heute} ergebnis="gespraech" knopf="Festhalten" onAbbruch={() => setOffen(null)} einwilligung={!hatMailEinwilligung(kk)} anrede={kk?.anrede}
+                  onFertig={x => void tipp(n, { ergebnis: 'gespraech', notiz: x.notiz, naechster: x.naechster }, x)} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {meldung && <div style={{ marginTop: 10, fontSize: 12.5, color: C.inkDim }}>{meldung}</div>}
+    </Karte>
   );
 }
 

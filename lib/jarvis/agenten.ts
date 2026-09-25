@@ -15,7 +15,7 @@ export const AUSFUEHRBAR = [
   'head-sales', 'head-marketing', 'head-event',
   // Systemläufe: kein Fach-Agent, sondern der Takt selbst. Sie stehen hier,
   // damit der Arbeiter sie wie alles andere aus der Warteschlange holt.
-  'tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit',
+  'tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion',
 ] as const;
 export type Ausfuehrbar = typeof AUSFUEHRBAR[number];
 
@@ -49,6 +49,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
   abend: 'Der Abendlauf — was blieb liegen, was muss morgen früh stehen',
   selbstbild: 'Schreibt fort, was die Software über sich selbst im Gehirn hat',
   gesundheit: 'Der Gesundheits-Takt — schickt Kevin und Malin morgens, mittags, abends die Nachricht aufs Handy (auftrag = morgen | mittag | abend | woche, sonst was fällig ist)',
+  markttraktion: 'Der Markttraktion-Takt — schickt Kevin und Malin werktags morgens, was in der Markttraktion bei ihnen liegt, und freitags das Wochen-Scoreboard aufs Handy (auftrag = morgen | woche, optional person:kevin|malin — schickt sofort; leer = was fällig ist)',
 };
 
 /**
@@ -59,7 +60,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
  * eigenen Kopie. Eine zweite Liste hätte genau einen Zweck: irgendwann von
  * dieser abzuweichen.
  */
-export const SYSTEM_LAEUFE = ['tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit'] as const;
+export const SYSTEM_LAEUFE = ['tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion'] as const;
 const SYSTEM = new Set<string>(SYSTEM_LAEUFE);
 
 const kuerze = (t: unknown, n = 1600) => String(t ?? '').slice(0, n);
@@ -273,6 +274,11 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string)
         const r = await gesundheitsLauf(origin, slot);
         return r.ok ? gut(r.text) : fehl(r.text);
       }
+      case 'markttraktion': {
+        // Morgen-Nachricht und Freitags-Scoreboard — deterministisch, ohne
+        // Modell, nur an Kevin und Malin selbst (siehe markttraktionLauf).
+        return await markttraktionLauf(auftrag);
+      }
       case 'selbstbild': {
         const d = await post('/api/jarvis/selbstbild', {}, 120_000);
         if (!d.ok) return fehl(`Selbstbild fehlgeschlagen: ${kuerze(d.ergebnisse?.[0]?.fehler ?? d.error, 200)}`);
@@ -334,4 +340,46 @@ ${(a?.vorschlaege ?? []).map((v: { titel: string }) => `→ ${v.titel}`).join('\
     return fehl(`${id} nicht erreichbar: ${err instanceof Error ? err.message.slice(0, 150) : 'Fehler'}`);
   }
   return fehl('Unbekannter Agent.');
+}
+
+// ── Markttraktion im Takt (25.09.) ─────────────────────────────────────────
+// Was der Lauf „markttraktion“ tut: für jede fällige Person (Team, Konto,
+// gekoppelt) den Text bauen (lib/crm/scoreboard.ts — morgenText werktags,
+// wochenText freitags), per Telegram schicken und den Riegel setzen. Die
+// Nachricht geht an Kevin oder Malin selbst, nie an Kunden; sie trägt nur
+// Zahlen, keine Beträge und keine Namen von Kontakten. Nicht zugestellt →
+// ein Fehlversuch, nach drei ist für den Tag Ruhe (kein Minutentakt).
+// Ein Slot als Auftrag („woche“, „morgen person:malin“) schickt sofort —
+// für Jarvis auf Zuruf.
+async function markttraktionLauf(auftrag: string, jetzt = new Date()): Promise<AgentLauf> {
+  const { telegramKonfiguriert, ladeStand, chatsFuerPerson, sendeAnPerson } = await import('@/lib/telegram');
+  if (!telegramKonfiguriert()) return fehl('Kein Telegram-Token — die Markttraktion hat keinen Weg aufs Handy.');
+  const { loadJson, updateJson } = await import('@/lib/store/local-db');
+  const { ladeCrm } = await import('@/lib/crm/speicher');
+  const { alleSpeicher } = await import('@/lib/zugang/konten');
+  const { aussenAdresse } = await import('@/lib/innen');
+  const { TEAM, nameVon } = await import('@/lib/crm/team');
+  const S = await import('@/lib/crm/scoreboard');
+
+  const heute = localDay(jetzt);
+  const [mitKonto, tg, riegel] = await Promise.all([alleSpeicher(), ladeStand(), loadJson<unknown>(S.RHYTHMUS_SPEICHER)]);
+  const personen = TEAM.map(t => t.id).filter(p => mitKonto.includes(p) && chatsFuerPerson(tg, p).length > 0);
+  const zwang = S.RHYTHMUS_SLOTS.find(s => new RegExp(`(^|\\s)${s}(\\s|$)`).test(auftrag.trim()));
+  const nur = /person:([a-z0-9-]{1,40})/.exec(auftrag)?.[1];
+  const dran = zwang
+    ? personen.filter(p => !nur || p === nur).map(person => ({ person, slot: zwang }))
+    : S.faelligeRhythmen(S.rhythmusStand(riegel), personen, jetzt);
+  if (!dran.length) return gut(personen.length ? 'MARKTTRAKTION: nichts fällig.' : 'MARKTTRAKTION: niemand im Team ist mit Telegram gekoppelt.');
+
+  const [roh, crm] = await Promise.all([loadJson<{ kontakte?: import('@/lib/make-one/crm').Kontakt[] }>('kontakte'), ladeCrm()]);
+  const kontakte = roh?.kontakte ?? [];
+  const o = { adresse: aussenAdresse() };
+  const ergebnisse: { person: string; slot: typeof dran[number]['slot']; ok: boolean; zeile: string }[] = [];
+  for (const { person, slot } of dran) {
+    const text = slot === 'morgen' ? S.morgenText(person, kontakte, crm, heute, o) : S.wochenText(person, kontakte, crm, heute, o);
+    const r = await sendeAnPerson(person, text);
+    ergebnisse.push({ person, slot, ok: r.erreicht > 0, zeile: `${nameVon(person)} · ${slot === 'morgen' ? 'Morgen' : 'Wochen-Scoreboard'}: ${r.erreicht > 0 ? 'gesendet' : r.fehler ?? 'nicht zugestellt'}` });
+  }
+  await updateJson<unknown>(S.RHYTHMUS_SPEICHER, cur => ergebnisse.reduce((s, e) => S.markiereRhythmus(s, e.person, e.slot, heute, e.ok), S.rhythmusStand(cur)));
+  return gut(`MARKTTRAKTION: ${ergebnisse.map(e => e.zeile).join(' · ')}`);
 }

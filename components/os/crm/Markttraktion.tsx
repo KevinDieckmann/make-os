@@ -98,12 +98,11 @@ export function MarkttraktionSeite() {
   const runde = bereich === 'kontakte' && ansicht?.startsWith('runde-') ? (ansicht.slice(6) as RundenArt) : null;
 
   return (
-    <Seite titel="Markttraktion" unter={UNTER[bereich]}>
+    // „+ Gespräch“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (in der Reiterleiste rutschte er aus dem Bild).
+    <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<button onClick={() => setErfassen(true)} className="fassbar" style={{ flex: '0 0 auto', padding: '10px 16px', borderRadius: 12, border: 'none', cursor: 'pointer', background: C.aktiv, color: C.grund, fontWeight: 700, fontSize: TYP.bedien, fontFamily: SCHRIFT.text, whiteSpace: 'nowrap', boxShadow: `0 6px 18px -6px ${C.aktiv}99` }}>+ Gespräch festhalten</button>}>
       <nav aria-label="Markttraktion" style={{ display: 'flex', gap: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none', margin: '-4px 0 2px', paddingBottom: 2 }}>
         <Reiter liste={WELTEN} aktiv={bereich} onWahl={b => gehe(b)} />
         <Reiter leise liste={GRUNDLAGE} aktiv={bereich} onWahl={b => gehe(b)} />
-        <span style={{ flex: 1 }} />
-        <button onClick={() => setErfassen(true)} className="fassbar" style={{ flex: '0 0 auto', padding: '8px 14px', borderRadius: 11, border: 'none', cursor: 'pointer', background: C.aktiv, color: C.grund, fontWeight: 700, fontSize: TYP.bedien, fontFamily: SCHRIFT.text, whiteSpace: 'nowrap' }}>+ Gespräch</button>
       </nav>
       <SchnellErfassen api={api} offen={erfassen} onZu={() => setErfassen(false)} kontaktId={bereich === 'kontakte' && auswahl && !auswahl.startsWith('f-') ? auswahl : undefined} />
       {api.fehler && <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{api.fehler}</div>}

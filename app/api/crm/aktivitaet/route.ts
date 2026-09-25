@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server';
 import { updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/jarvis/raum';
-import { wendeAktivitaetAn, STUFEN, AKTIVITAET_ARTEN, ERGEBNISSE, NOTIZ_FELDER, type Kontakt, type AktivitaetArt, type Stufe, type Ergebnis, type NotizVorlage } from '@/lib/make-one/crm';
+import { fuerPerson, wendeAktivitaetAn, STUFEN, AKTIVITAET_ARTEN, ERGEBNISSE, NOTIZ_FELDER, type Kontakt, type AktivitaetArt, type Stufe, type Ergebnis, type NotizVorlage } from '@/lib/make-one/crm';
 import { folgeAus } from '@/lib/crm/heute';
 import { localDay, tagePlus } from '@/lib/zeit';
 
@@ -63,5 +63,6 @@ export async function POST(req: Request) {
     const { aendereCrm } = await import('@/lib/crm/speicher');
     await aendereCrm(c => ({ ...c, kampagnen: c.kampagnen.map(k => (k.id === bezug && k.kontaktIds.includes(id) ? { ...k, ergebnisse: [...k.ergebnisse, { kontaktId: id, ergebnis: kErg, am: heute, ...(von !== 'jarvis' ? { von } : {}) }], geaendert: new Date().toISOString(), geaendertVon: von } : k)) }));
   }
-  return NextResponse.json({ ok: true, kontakt: ergebnis, hinweis: erg ? folgeAus(erg, heute, 'neu').hinweis : undefined });
+  // Private Notizen sieht nur, wer sie schrieb — auch in dieser Antwort.
+  return NextResponse.json({ ok: true, kontakt: ergebnis ? fuerPerson(ergebnis, personAus(req)) : ergebnis, hinweis: erg ? folgeAus(erg, heute, 'neu').hinweis : undefined });
 }

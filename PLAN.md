@@ -261,6 +261,15 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Daten nur eigene (Masterdatei + Brain). Offen: Anthropic-Guthaben aufladen
 > (Agenten laufen sonst nicht), Kaltakquise-Liste Berlin erst nach Kevins Wort.
 
+> **Nachtrag 25.09. (spät) — Markttraktion in der Praxis.** Befund aus echten
+> Daten: 2 Aktivitäten in 453 Kontakten, 0 mit Rechtsgrundlage, 438 ohne Kreis,
+> 0 Chancen trotz 17 im Gespräch, kein Anruf-Link, kein Push. Gebaut: Erfassen
+> ohne Reibung (Anrufen per Tipp, „Wie lief's?“ nach Terminen, Einwilligung im
+> Gespräch, „+ Gespräch festhalten“, Jarvis-Schnellnotiz), geführte Runden
+> (Kreis, Chancen), Rhythmus (Verlauf, Wochen-Scoreboard, Telegram morgens und
+> freitags), Visitenkarte → Kontakt. 620 Tests. Braucht Kevin: Pflichtangaben-
+> Klick, Telegram-Bot-Token + Kopplung, MAKE_OS_ADRESSE, Guthaben, Server.
+
 > **Nachtrag 25.09. (Abend) — Heads auf Spitzenniveau.** Kevin: „so tief wie
 > möglich, sehr smart — Best Practice der Top-1-%-Bots.“ Recherche (Anthropic,
 > OpenAI, 11x, Gong, Outreach, HubSpot, Evals-Literatur) → umgesetzt: Grundlauf

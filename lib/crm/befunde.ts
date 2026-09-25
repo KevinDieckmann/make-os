@@ -24,7 +24,8 @@ export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string): Be
   if (ablauf.length) b.push({ prio: 1, titel: `${ablauf.length} Mandat${ablauf.length > 1 ? 'e' : ''}: Laufzeit endet oder ist vorbei`, grund: ablauf.map(m => m.kunde).join(', '), bereich: 'kunden' });
   const art = kontakte.filter(k => art14(k, heute)?.faellig);
   if (art.length) b.push({ prio: 2, titel: `${art.length} Personen nach Art. 14 informieren`, grund: 'Daten aus Recherche, Frist ein Monat', bereich: 'marketing' });
-  const mitChance = new Set(crm.chancen.flatMap(c => c.kontaktIds));
+  // Nur offene Chancen zählen — wie in der Chancen-Runde (lib/crm/runden.ts).
+  const mitChance = new Set(crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe)).flatMap(c => c.kontaktIds));
   const ohneChance = kontakte.filter(k => ['gespraech', 'termin', 'angebot'].includes(k.stufe) && !mitChance.has(k.id) && !k.werbesperre);
   if (ohneChance.length) b.push({ prio: 2, titel: `${ohneChance.length} Kontakte im Gespräch ohne Chance`, grund: 'Chancen-Runde: Wert und nächsten Schritt je Person in wenigen Minuten festhalten', bereich: 'kontakte', ansicht: 'runde-chancen' });
   // Ohne Kreis kein Pflege-Takt in der Power Hour — die Kreis-Runde sortiert Karte für Karte.

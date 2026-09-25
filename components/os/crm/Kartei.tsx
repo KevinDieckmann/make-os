@@ -24,10 +24,11 @@ import { ampel as kanalAmpel, art14, besterKanal } from '@/lib/crm/recht';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { dubletten } from '@/lib/crm/dubletten';
 import { type CrmApi, neueId, datum, euro } from './daten';
-import { KanalAmpel, Grund, NotizFormular, Verlauf, Feldzeile, Pillen, Feld, AMPEL_FARBE } from './teile';
+import { KanalAmpel, Grund, NotizFormular, Verlauf, Feldzeile, Pillen, Feld, AMPEL_FARBE, festhalten, hatMailEinwilligung } from './teile';
 import { Firmen, neueFirma } from './Firmen';
 import { Person, ZustaendigWahl, WerFilter, useWerFilter, passtWer, Uebergeben, AuchHier } from './team';
 import { VisitenkarteKnopf } from './Visitenkarte';
+import { gleicherName } from '@/lib/crm/visitenkarte';
 import { haeltBeziehung, anderer, nameVon, BEIDE } from '@/lib/crm/team';
 
 type Modus = 'personen' | 'firmen';
@@ -238,30 +239,33 @@ function KarteiZeile({ k, firma, breit, aktiv, markiert, chance, mandat, heute, 
 }
 
 function Anlegen({ api, heute, onFertig }: { api: CrmApi; heute: string; onFertig: (id: string | null) => void }) {
-  const [e, setE] = useState({ vorname: '', nachname: '', email: '', telefon: '', position: '', firma: '', lebensphase: 'kontakt' as Lebensphase, herkunft: undefined as Herkunft | undefined, anrede: 'Sie' as 'Sie' | 'Du' });
+  // linkedin/webseite/mobil kommen nur von der Visitenkarte (keine eigenen Eingabefelder) und werden mit gespeichert.
+  const [e, setE] = useState({ vorname: '', nachname: '', email: '', telefon: '', position: '', firma: '', lebensphase: 'kontakt' as Lebensphase, herkunft: undefined as Herkunft | undefined, anrede: 'Sie' as 'Sie' | 'Du', linkedin: '', webseite: '', mobil: '', vonKarte: false });
   const firmen = api.crm?.stand.firmen ?? [];
   const dublette = e.email.includes('@') ? (api.kontakte ?? []).find(k => (k.email ?? '').toLowerCase() === e.email.trim().toLowerCase()) : undefined;
-  const namensgleich = e.nachname.trim() ? (api.kontakte ?? []).find(k => `${k.vorname} ${k.nachname}`.trim().toLowerCase() === `${e.vorname} ${e.nachname}`.trim().toLowerCase()) : undefined;
+  // Ohne Titel verglichen: „Dr. Anna Weber“ von der Karte ist „Anna Weber“ in der Kartei.
+  const namensgleich = e.nachname.trim() ? (api.kontakte ?? []).find(k => gleicherName(k, e)) : undefined;
   const firma = firmen.find(f => f.name.toLowerCase() === e.firma.trim().toLowerCase());
   const ok = e.nachname.trim() && !dublette;
   const anlegen = async () => {
     if (!ok) return;
     let firmaId = firma?.id;
-    if (!firmaId && e.firma.trim()) { const f = neueFirma(e.firma); firmaId = f.id; await api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>); }
+    if (!firmaId && e.firma.trim()) { const f = { ...neueFirma(e.firma), ...(e.webseite ? { webseite: e.webseite } : {}) }; firmaId = f.id; await api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>); }
     const id = `c-neu-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
     const herk = HERKUNFT.find(h => h.id === e.herkunft);
     await api.kontaktSetzen({
       id, vorname: e.vorname.trim(), nachname: e.nachname.trim(), ...(e.email.trim() ? { email: e.email.trim().toLowerCase() } : {}), ...(e.telefon.trim() ? { telefon: e.telefon.trim() } : {}),
       ...(e.position.trim() ? { position: e.position.trim() } : {}), ...(e.firma.trim() ? { firma: firma?.name ?? e.firma.trim(), firmaId } : {}),
+      ...(e.mobil ? { sms: e.mobil } : {}), ...(e.linkedin ? { linkedin: e.linkedin } : {}), ...(e.webseite ? { firmaWebseite: e.webseite } : {}),
       eignung: '', prio: '', stufe: 'neu', lebensphase: e.lebensphase, anrede: e.anrede, ...(api.ich ? { besitzer: api.ich } : {}), ...(e.herkunft ? { herkunft: e.herkunft, ...(herk?.fremd ? { fremddaten: true } : {}) } : {}),
-      quelle: 'Von Hand angelegt', aktivitaeten: [{ am: new Date().toISOString(), art: 'system', text: 'Von Hand angelegt', von: 'system' }], importiertAm: heute, geaendertAm: heute,
+      quelle: e.vonKarte ? 'Visitenkarte' : 'Von Hand angelegt', aktivitaeten: [{ am: new Date().toISOString(), art: 'system', text: e.vonKarte ? 'Per Visitenkarte angelegt' : 'Von Hand angelegt', von: 'system' }], importiertAm: heute, geaendertAm: heute,
     });
     onFertig(id);
   };
   return (
     <div style={{ display: 'grid', gap: 10, marginTop: 14, padding: 14, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
       {/* Visitenkarte fotografieren → Felder vorausgefüllt; die Karte kam von der Person selbst (keine Art.-14-Pflicht, aber keine Einwilligung). */}
-      <VisitenkarteKnopf onErkannt={d => setE({ ...e, vorname: d.vorname ?? e.vorname, nachname: d.nachname ?? e.nachname, email: d.email ?? e.email, telefon: d.telefon ?? e.telefon, position: d.position ?? e.position, firma: d.firma ?? e.firma, herkunft: e.herkunft ?? 'selbst' })} />
+      <VisitenkarteKnopf onErkannt={d => setE({ ...e, vorname: d.vorname ?? e.vorname, nachname: d.nachname ?? e.nachname, email: d.email ?? e.email, telefon: d.telefon ?? e.telefon, position: d.position ?? e.position, firma: d.firma ?? e.firma, linkedin: d.linkedin ?? e.linkedin, webseite: d.webseite ?? e.webseite, mobil: d.mobil ?? e.mobil, vonKarte: true, herkunft: e.herkunft ?? 'selbst' })} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))', gap: 8 }}>
         <Feld wert={e.vorname} platzhalter="Vorname" onFertig={vorname => setE({ ...e, vorname })} />
         <Feld wert={e.nachname} platzhalter="Nachname *" onFertig={nachname => setE({ ...e, nachname })} />
@@ -399,7 +403,7 @@ function Karteikarte({ k, api, name, zuFirma }: { k: Kontakt; api: CrmApi; name:
             {!notiz && <Knopf onClick={() => setNotiz(true)}>+ Gesprächsnotiz</Knopf>}
             {[['anruf', 'Angerufen'], ['mail', 'Mail geschickt'], ['linkedin', 'LinkedIn'], ['antwort', 'Antwort erhalten'], ['termin', 'Termin']].map(([a, l]) => <Knopf key={a} leise onClick={() => void log(a)}>{l}</Knopf>)}
           </div>
-          {notiz && <div style={{ marginBottom: 10 }}><NotizFormular heute={heute} onAbbruch={() => setNotiz(false)} onFertig={x => { void log('gespraech', { notiz: x.notiz, naechster: x.naechster }); setNotiz(false); }} /></div>}
+          {notiz && <div style={{ marginBottom: 10 }}><NotizFormular heute={heute} anrede={k.anrede} einwilligung={!hatMailEinwilligung(k)} onAbbruch={() => setNotiz(false)} onFertig={x => { void festhalten(api, { id: k.id, art: 'gespraech', notiz: x.notiz, naechster: x.naechster }, x.einwilligung, heute); setNotiz(false); }} /></div>}
           {arten.length > 1 && <div style={{ marginBottom: 8 }}><Pillen liste={[{ id: 'alle', label: 'Alle' }, ...arten.map(a => ({ id: a, label: a }))] as { id: 'alle' | AktivitaetArt; label: string }[]} aktiv={artFilter} onWahl={setArtFilter} /></div>}
           <Verlauf liste={verlauf} name={name} heute={heute} max={60} />
         </div>
@@ -458,7 +462,7 @@ function Karteikarte({ k, api, name, zuFirma }: { k: Kontakt; api: CrmApi; name:
                 <Pillen liste={GRUNDLAGEN} aktiv={ew.grundlage} onWahl={grundlage => setEw({ ...ew, grundlage })} />
                 <input value={ew.nachweis} onChange={e => setEw({ ...ew, nachweis: e.target.value })} placeholder="Nachweis: Wortlaut oder Beleg („im Gespräch am …: Darf ich Ihnen … schicken? — ja“)" aria-label="Nachweis" style={{ ...feld, fontSize: TYP.bedien }} />
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <Knopf aus={!ew.nachweis.trim()} onClick={() => { const neu: Einwilligung = { kanal: ew.kanal, grundlage: ew.grundlage, erteiltAm: heute, nachweis: ew.nachweis.trim() }; void setze({ einwilligungen: [...(k.einwilligungen ?? []), neu], ...(ew.grundlage === 'einwilligung' ? { rechtsgrundlage: 'einwilligung' as Rechtsgrundlage } : {}) }); setEw(null); }}>Festhalten</Knopf>
+                  <Knopf aus={!ew.nachweis.trim()} onClick={() => { const neu: Einwilligung = { kanal: ew.kanal, grundlage: ew.grundlage, erteiltAm: heute, nachweis: ew.nachweis.trim() }; void setze({ einwilligungen: [...(k.einwilligungen ?? []), neu], ...(ew.grundlage === 'einwilligung' && !k.rechtsgrundlage ? { rechtsgrundlage: 'einwilligung' as Rechtsgrundlage } : {}) }); setEw(null); }}>Festhalten</Knopf>
                   <Knopf leise onClick={() => setEw(null)}>Abbrechen</Knopf>
                 </div>
                 <div style={{ fontSize: 12, color: C.inkLeise }}>Eine Visitenkarte ist keine Einwilligung. Newsletter nur per Double-Opt-in.</div>

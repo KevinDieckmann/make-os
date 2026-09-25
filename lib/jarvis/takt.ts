@@ -9,6 +9,8 @@
 // zusätzlich alle paar Minuten, falls kein Arbeiter läuft. Beides ist
 // gefahrlos, weil die Fälligkeit hier aus dem ECHTEN Zustand kommt und nicht
 // aus einem eigenen Zähler — zwei Frager erzeugen deshalb keinen zweiten Lauf.
+//
+// 25.09.: dazu der Markttraktion-Takt (Morgen-Nachricht, Freitags-Scoreboard).
 
 import { loadJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
@@ -71,6 +73,32 @@ export async function faellig(jetzt = new Date()): Promise<Faellig[]> {
         grund: `Gesundheits-Takt fällig: ${offen.join(', ')}`,
         auftrag: { art: 'agent', name: 'gesundheit', anlass: 'Takt: Gesundheit' },
       });
+    }
+  }
+
+  // 0b) Markttraktion (25.09.): werktags ab 7:30 die Morgen-Nachricht, freitags
+  //     ab 15 Uhr das Wochen-Scoreboard — je Person im Team mit Konto, und nur,
+  //     wer mit Telegram gekoppelt ist (sonst stünde der Auftrag jede Minute
+  //     neu in der Schlange, ohne dass ihn jemand zustellen kann). Wie der
+  //     Gesundheits-Takt unabhängig vom Morgenlauf. Riegel je Person und Slot
+  //     in markttraktion-takt.json (lib/crm/scoreboard.ts).
+  if (telegramKonfiguriert()) {
+    try {
+      const { faelligeRhythmen, rhythmusStand, RHYTHMUS_SPEICHER } = await import('@/lib/crm/scoreboard');
+      const { TEAM } = await import('@/lib/crm/team');
+      const { ladeStand, chatsFuerPerson } = await import('@/lib/telegram');
+      const [mitKonto, tg, riegel] = await Promise.all([alleSpeicher(), ladeStand(), loadJson<unknown>(RHYTHMUS_SPEICHER)]);
+      const personen = TEAM.map(t => t.id).filter(p => mitKonto.includes(p) && chatsFuerPerson(tg, p).length > 0);
+      const dran = faelligeRhythmen(rhythmusStand(riegel), personen, jetzt);
+      if (dran.length) {
+        raus.push({
+          id: 'markttraktion',
+          grund: `Markttraktion fällig: ${dran.map(d => `${d.person}:${d.slot}`).join(', ')}`,
+          auftrag: { art: 'agent', name: 'markttraktion', anlass: 'Takt: Markttraktion' },
+        });
+      }
+    } catch (err) {
+      console.error('[MAKE OS] Markttraktion-Takt übersprungen:', err);
     }
   }
 

@@ -9,6 +9,8 @@
 // nur diesen einen Gast und nur dieses Feld (api.teil), nie das Event. Der
 // Stand kommt hier alle 8 Sekunden neu, an jedem Gast steht, wer ihn zuletzt
 // geändert hat (eingecheckt von …), und wessen Gast er ist (lädt ein).
+// Spontan und noch nicht in der Kartei (25.09.): Visitenkarte fotografieren →
+// neue Person (Herkunft „Veranstaltung“, keine Einwilligung), gleich „da“.
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -18,9 +20,13 @@ import { einlader } from '@/lib/crm/eventplanung';
 import { TEAM, nameVon } from '@/lib/crm/team';
 import type { Teilnahme, TeilnahmeStatus } from '@/lib/crm/typen';
 import { neueId } from '../daten';
-import { Pillen } from '../teile';
+import { Pillen, Feld } from '../teile';
 import { Person } from '../team';
 import { Notizfeld, KarteiSuche, JePerson, gastSetzen, type ReiterProps } from './gemeinsam';
+import { VisitenkarteKnopf } from '../Visitenkarte';
+import { neueFirma } from '../Firmen';
+import { kartenDubletten, firmaZurKarte, kontaktAusKarte, emailNormal, type VisitenkartenDaten } from '@/lib/crm/visitenkarte';
+import { domainVon } from '@/lib/crm/firmen';
 
 function GrossKnopf({ an, farbe, onClick, children }: { an: boolean; farbe: string; onClick: () => void; children: string }) {
   return (
@@ -123,6 +129,110 @@ export function Abend({ e, api, zuKontakt }: ReiterProps) {
         <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Spontan dabei — aus der Kartei, direkt als „da“:</div>
         <KarteiSuche api={api} e={e} platzhalter="Name suchen …" onWahl={kontaktId => api.setze('teilnahmen', { id: neueId('t'), eventId: e.id, kontaktId, status: 'da', rolle: 'gast' })} />
       </div>
+      <div>
+        <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Noch nicht in der Kartei? Visitenkarte fotografieren — neue Person, direkt als „da“:</div>
+        <SpontanPerKarte e={e} api={api} zuKontakt={zuKontakt} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Spontaner Gast, der noch nicht in der Kartei steht: Visitenkarte
+ * fotografieren → Felder prüfen → als neue Person anlegen (Herkunft
+ * „Veranstaltung“ — keine Art.-14-Pflicht, aber KEINE Einwilligung) und gleich
+ * als „da“ eintragen. Steht die Mail schon in der Kartei, wird nicht doppelt
+ * angelegt, sondern die bestehende Person eingecheckt; bei gleichem Namen
+ * (ohne Titel) fragt die Karte nach.
+ */
+function SpontanPerKarte({ e, api, zuKontakt }: ReiterProps) {
+  const crm = api.crm!;
+  const [karte, setKarte] = useState<VisitenkartenDaten | null>(null);
+  const [laeuft, setLaeuft] = useState(false);
+  const [erledigt, setErledigt] = useState<{ id: string; name: string; neu: boolean } | null>(null);
+  // Nach dem Anlegen/Verwerfen startet der Knopf frisch (ohne Vorschau der letzten Karte).
+  const [runde, setRunde] = useState(0);
+  const dubl: { mail?: Kontakt; name?: Kontakt } = karte ? kartenDubletten(karte, api.kontakte ?? []) : {};
+  const emailOk = !karte?.email || !!emailNormal(karte.email);
+  const ok = !!karte?.nachname?.trim() && !dubl.mail && emailOk && !laeuft;
+  const setze = (teil: Partial<VisitenkartenDaten>) => setKarte(k => (k ? { ...k, ...teil } : k));
+  const fertig = (x: { id: string; name: string; neu: boolean }) => { setErledigt(x); setKarte(null); setRunde(r => r + 1); };
+
+  /** Als „da“ eintragen — steht die Person schon auf der Liste (z. B. eingeladen), nur ihren Status ändern. */
+  const eintragen = async (kontaktId: string) => {
+    const t = crm.stand.teilnahmen.find(x => x.eventId === e.id && x.kontaktId === kontaktId);
+    if (t) await gastSetzen(api, t, { status: 'da', eingechecktVon: api.ich ?? undefined });
+    else await api.setze('teilnahmen', { id: neueId('t'), eventId: e.id, kontaktId, status: 'da', rolle: 'gast', ...(api.ich ? { eingechecktVon: api.ich } : {}) });
+  };
+  const bestehend = async (k: Kontakt) => {
+    if (laeuft) return;
+    setLaeuft(true);
+    try { await eintragen(k.id); fertig({ id: k.id, name: anzeigename(k), neu: false }); } finally { setLaeuft(false); }
+  };
+  const anlegen = async () => {
+    if (!karte || !ok) return;
+    setLaeuft(true);
+    try {
+      const d: VisitenkartenDaten = { ...karte, email: karte.email ? emailNormal(karte.email) : undefined };
+      let firma = firmaZurKarte(d, crm.stand.firmen);
+      if (!firma && d.firma?.trim()) {
+        const domain = domainVon({ email: d.email, firmaWebseite: d.webseite });
+        firma = { ...neueFirma(d.firma), ...(d.webseite ? { webseite: d.webseite } : {}), ...(domain ? { domain } : {}) };
+        await api.setze('firmen', firma as unknown as { id: string } & Record<string, unknown>);
+      }
+      const id = `c-neu-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+      const k = kontaktAusKarte(d, { id, heute: crm.heute, jetzt: new Date().toISOString(), von: api.ich, herkunft: 'veranstaltung', firma, anlass: `Per Visitenkarte am Einlass angelegt — ${e.titel}` });
+      await api.kontaktSetzen(k);
+      await eintragen(id);
+      fertig({ id, name: anzeigename(k), neu: true });
+    } finally { setLaeuft(false); }
+  };
+
+  return (
+    <div style={{ display: 'grid', gap: 10 }}>
+      <VisitenkarteKnopf key={runde} gross onErkannt={d => { setErledigt(null); setKarte(d); }} />
+      {erledigt && !karte && (
+        <div style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>
+          ✓ {erledigt.name} {erledigt.neu ? 'angelegt und ' : ''}als da eingetragen ·{' '}
+          <button onClick={() => zuKontakt(erledigt.id)} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Zur Person</button>
+        </div>
+      )}
+      {karte && (
+        <div style={{ display: 'grid', gap: 10, padding: 14, borderRadius: 14, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.06)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))', gap: 8 }}>
+            <Feld wert={karte.vorname ?? ''} platzhalter="Vorname" onFertig={v => setze({ vorname: v.trim() || undefined })} />
+            <Feld wert={karte.nachname ?? ''} platzhalter="Nachname *" onFertig={v => setze({ nachname: v.trim() || undefined })} />
+            <Feld wert={karte.firma ?? ''} platzhalter="Firma" onFertig={v => setze({ firma: v.trim() || undefined })} />
+            <Feld wert={karte.position ?? ''} platzhalter="Position" onFertig={v => setze({ position: v.trim() || undefined })} />
+            <Feld wert={karte.email ?? ''} platzhalter="E-Mail (Dublettenschlüssel)" onFertig={v => setze({ email: v.trim().toLowerCase() || undefined })} />
+            <Feld wert={karte.telefon ?? ''} platzhalter="Telefon" onFertig={v => setze({ telefon: v.trim() || undefined })} />
+          </div>
+          {dubl.mail && (
+            <div style={{ display: 'grid', gap: 8 }}>
+              <div style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>Diese Mail gehört schon zu {anzeigename(dubl.mail)}{dubl.mail.firma ? ` (${dubl.mail.firma})` : ''} — nicht doppelt anlegen.</div>
+              <GrossKnopf an farbe={LEUCHT.gut} onClick={() => void bestehend(dubl.mail!)}>{`${anzeigename(dubl.mail)} als da eintragen`}</GrossKnopf>
+            </div>
+          )}
+          {!dubl.mail && dubl.name && (
+            <div style={{ display: 'grid', gap: 8 }}>
+              <div style={{ fontSize: 12.5, color: LEUCHT.achtung }}>Achtung: {anzeigename(dubl.name)}{dubl.name.firma ? ` (${dubl.name.firma})` : ''} gibt es schon — gleiche Person?</div>
+              <GrossKnopf an={false} farbe={LEUCHT.gut} onClick={() => void bestehend(dubl.name!)}>{`Ja — ${anzeigename(dubl.name)} als da eintragen`}</GrossKnopf>
+            </div>
+          )}
+          {!emailOk && <div style={{ fontSize: 12.5, color: LEUCHT.achtung }}>Die E-Mail sieht unvollständig aus — bitte prüfen oder leeren.</div>}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {!dubl.mail && (
+              <GrossKnopf an={ok} farbe={LEUCHT.gut} onClick={() => void anlegen()}>
+                {laeuft ? 'legt an …' : dubl.name ? 'Nein — neu anlegen und als da eintragen' : 'Anlegen und als da eintragen'}
+              </GrossKnopf>
+            )}
+            <GrossKnopf an={false} farbe={C.inkDim} onClick={() => { setKarte(null); setRunde(r => r + 1); }}>Verwerfen</GrossKnopf>
+          </div>
+          <div style={{ fontSize: 12, color: C.inkLeise }}>
+            {karte.nachname?.trim() ? 'Herkunft: Veranstaltung · keine Einwilligung — Einladungen per Mail erst nach Double-Opt-in.' : 'Nachname fehlt — bitte eintragen, dann anlegen.'}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

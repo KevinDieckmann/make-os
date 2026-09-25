@@ -445,12 +445,16 @@ export async function POST(req: Request) {
       },
       {
         name: 'notiere_kontakt',
-        description: 'Hält eine Aktivität an einer Person fest („habe X angerufen / angeschrieben / Antwort erhalten / Termin vereinbart“). Setzt letzten Kontakt, Stufe (nur vorwärts) und Wiedervorlage.',
+        description: 'Hält fest, was mit einer Person war — Verlauf, Notiz und nächster Schritt in EINEM Aufruf („habe X angerufen / angeschrieben / getroffen / Antwort erhalten“). Beispiel „Hab mit Marc telefoniert, will Angebot bis Freitag“ → art anruf, ergebnis gespraech, bedarf „Angebot“, naechster_schritt „Angebot schicken“, faellig = Datum dieses Freitags. Setzt letzten Kontakt, Stufe (nur vorwärts) und Wiedervorlage nach denselben Regeln wie die Power Hour. Versendet nichts.',
         input_schema: { type: 'object', properties: {
           kontakt: { type: 'string', description: 'Name, Firma oder ID' },
-          art: { type: 'string', enum: ['mail', 'linkedin', 'anruf', 'antwort', 'termin', 'notiz'] },
+          art: { type: 'string', enum: ['mail', 'linkedin', 'anruf', 'antwort', 'termin', 'gespraech', 'notiz'], description: 'Wie: anruf (Telefon), gespraech (persönlich/Video), termin (Termin fand statt oder ist vereinbart), mail, linkedin, antwort (die Person hat sich gemeldet), notiz' },
+          ergebnis: { type: 'string', enum: ['gespraech', 'termin', 'rueckruf', 'mailbox', 'nicht_erreicht', 'kein_bedarf', 'sperre'], description: 'Wie es ausging (optional): gespraech = erreicht und gesprochen · termin = Termin vereinbart · rueckruf · mailbox · nicht_erreicht · kein_bedarf · sperre NUR bei ausdrücklichem Werbewiderspruch (sperrt die Person sofort und dauerhaft)' },
           text: { type: 'string', description: 'Kurz, was passiert ist (optional)' },
-          wiedervorlage: { type: 'string', description: 'YYYY-MM-DD (optional)' },
+          bedarf: { type: 'string', description: 'Bedarf/Schmerz der Person in ihren Worten (landet in der Notiz, optional)' },
+          naechster_schritt: { type: 'string', description: 'Was WIR als Nächstes tun, z. B. „Angebot schicken“ (optional)' },
+          faellig: { type: 'string', description: 'YYYY-MM-DD für den nächsten Schritt — relative Angaben („bis Freitag“) in ein Datum umrechnen; ohne Datum gilt heute + 5 Tage' },
+          wiedervorlage: { type: 'string', description: 'YYYY-MM-DD (optional; ohne gilt der nächste Schritt bzw. die Regel zum Ergebnis)' },
         }, required: ['kontakt', 'art'] },
       },
       {

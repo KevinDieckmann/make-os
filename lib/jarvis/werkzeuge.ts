@@ -596,38 +596,55 @@ async function sucheKontakt(input: Record<string, unknown>): Promise<string> {
   ).join('\n\n───\n\n');
 }
 
+/**
+ * notiere_kontakt — seit 25.09. die Schnellnotiz: „Hab mit Marc telefoniert,
+ * will Angebot bis Freitag“ setzt Verlauf (art + ergebnis), Notiz (bedarf)
+ * und nächsten Schritt in EINEM Aufruf. Die Regeln sind dieselben wie in der
+ * Power Hour (folgeAus + erfassungAnwenden, wie app/api/crm/aktivitaet):
+ * Stufe nur vorwärts, Wiedervorlage = nächster Schritt, „sperre“ sperrt sofort.
+ */
 async function notiereKontakt(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
   const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
-  const art = String(input.art ?? 'notiz');
   if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
-  if (!['mail', 'linkedin', 'anruf', 'antwort', 'termin', 'notiz', 'stufe'].includes(art)) return 'Fehlgeschlagen: art muss mail|linkedin|anruf|antwort|termin|notiz|stufe sein.';
+  const { localDay } = await import('@/lib/zeit');
+  const { jarvisNotiz, erfassungAnwenden } = await import('@/lib/crm/erfassen');
+  const heute = localDay();
+  const e = jarvisNotiz(input, heute);
+  if (typeof e === 'string') return e;
   const { treffer, mehrere } = await kontaktFinden(hinweis);
   if (!treffer) return `Kein Kontakt zu „${hinweis}" gefunden — erst mit suche_kontakt nachsehen.`;
   if (mehrere) {
     const { anzeigename } = await import('@/lib/make-one/crm');
     return `Mehrdeutig — meinst du ${mehrere.map(k => `${anzeigename(k)}${k.firma ? ` (${k.firma})` : ''} [${k.id}]`).join(' oder ')}? Bitte mit der ID erneut.`;
   }
-  const { wendeAktivitaetAn, STUFEN, STUFE_LABEL, anzeigename } = await import('@/lib/make-one/crm');
+  const { STUFEN, STUFE_LABEL, anzeigename } = await import('@/lib/make-one/crm');
+  const { folgeAus } = await import('@/lib/crm/heute');
   const { updateJson } = await import('@/lib/store/local-db');
-  const { localDay, tagePlus } = await import('@/lib/zeit');
   const stufe = STUFEN.includes(input.stufe as never) ? (input.stufe as import('@/lib/make-one/crm').Stufe) : undefined;
-  const wv = /^\d{4}-\d{2}-\d{2}$/.test(String(input.wiedervorlage ?? '')) ? String(input.wiedervorlage) : undefined;
   let nachher: import('@/lib/make-one/crm').Kontakt | null = null;
+  let folgeHinweis = '';
   await updateJson<{ kontakte: import('@/lib/make-one/crm').Kontakt[] }>('kontakte', current => {
     const f = current ?? { kontakte: [] };
     const i = f.kontakte.findIndex(k => k.id === treffer.id);
     if (i < 0) return f;
-    nachher = wendeAktivitaetAn(f.kontakte[i], {
-      art: art as import('@/lib/make-one/crm').AktivitaetArt,
-      text: String(input.text ?? '').trim().slice(0, 1200) || undefined,
-      von: person ?? 'jarvis', stufe, wiedervorlage: wv,
-    }, localDay(), new Date().toISOString(), tagePlus);
+    const alt = f.kontakte[i];
+    const folge = e.ergebnis ? folgeAus(e.ergebnis, heute, alt.stufe) : null;
+    folgeHinweis = folge?.hinweis ?? '';
+    nachher = erfassungAnwenden(alt, {
+      art: e.art, text: e.text, von: person ?? 'jarvis', ergebnis: e.ergebnis, notiz: e.notiz, stufe, wiedervorlage: e.wiedervorlage, naechster: e.naechster,
+    }, folge, heute, new Date().toISOString());
     f.kontakte[i] = nachher;
     return f;
   });
   if (!nachher) return 'Fehlgeschlagen: Kontakt beim Schreiben nicht mehr gefunden.';
   const n = nachher as import('@/lib/make-one/crm').Kontakt;
-  return `Notiert: ${anzeigename(n)} · ${art} · jetzt ${STUFE_LABEL[n.stufe]}${n.wiedervorlage ? ` · Wiedervorlage ${n.wiedervorlage}` : ''}.`;
+  const teile = [
+    `Notiert: ${anzeigename(n)} · ${e.art}${e.ergebnis ? ` · ${e.ergebnis}` : ''}`,
+    e.notiz?.bedarf ? `Bedarf: ${e.notiz.bedarf}` : '',
+    e.naechster ? `nächster Schritt „${e.naechster.text}“ bis ${e.naechster.datum}${e.datumAngenommen ? ' (kein Datum genannt — in 5 Tagen angenommen, bei Bedarf ändern)' : ''}` : '',
+    n.werbesperre ? 'WERBESPERRE gesetzt' : `jetzt ${STUFE_LABEL[n.stufe]}${n.wiedervorlage ? ` · Wiedervorlage ${n.wiedervorlage}` : ''}`,
+  ].filter(Boolean);
+  return `${teile.join(' · ')}.${folgeHinweis ? ` ${folgeHinweis}` : ''}`;
 }
 
 async function entwurfAnsprache(input: Record<string, unknown>): Promise<string> {

@@ -18,6 +18,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
 import type { CrmBestand, CrmListe } from './typen';
 import type { Welt } from './traktion';
+import { nachbereitung } from './erfassen';
 
 export interface Mitglied { id: string; name: string; farbe: string; verantwortet: Welt[] }
 export const TEAM: Mitglied[] = [
@@ -105,6 +106,9 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   const meineKontakte = kontakte.filter(k => !k.werbesperre && (haeltBeziehung(k) === person || haeltBeziehung(k) === BEIDE));
   const faellig = meineKontakte.filter(k => k.naechsterSchritt && k.naechsterSchritt.datum <= heute).length;
   if (faellig) l.push({ id: 'zusagen', welt: 'sales', titel: 'Zugesagte nächste Schritte fällig', anzahl: faellig, text: 'stehen oben in deiner Power Hour', ziel: { s: 'sales', a: 'heute' } });
+  // „Wie lief's?“ (25.09.): Termine aus dem Geschäftskalender, nach denen noch nichts festgehalten ist (lib/crm/erfassen.ts).
+  const nachbereiten = nachbereitung(kontakte, heute, person).length;
+  if (nachbereiten) l.push({ id: 'nachbereiten', welt: 'sales', titel: 'Termine nachbereiten', anzahl: nachbereiten, text: 'wie lief es? ein Tipp in der Power Hour', ziel: { s: 'sales', a: 'heute' } });
   const offen = crm.chancen.filter(c => ['qualifiziert', 'bedarf', 'diagnose', 'angebot', 'abschluss'].includes(c.stufe) && istMeins(c.besitzer, 'sales', person));
   const ohneSchritt = offen.filter(c => !c.naechsterSchritt).length;
   if (ohneSchritt) l.push({ id: 'chancen-ohne-schritt', welt: 'sales', titel: 'Deine Chancen ohne nächsten Schritt', anzahl: ohneSchritt, text: `von ${offen.length} offenen`, ziel: { s: 'sales', a: 'pipeline' } });

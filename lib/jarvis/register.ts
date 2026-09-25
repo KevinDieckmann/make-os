@@ -247,7 +247,7 @@ export const REGISTER: Record<string, Eintrag> = {
   },
   notiere_kontakt: {
     gruppe: 'kontakte', risiko: 'frei',
-    vorschau: schlicht('Aktivität am Kontakt notieren', i => `${text(i.kontakt)} · ${text(i.art) || 'notiz'}`),
+    vorschau: schlicht('Aktivität am Kontakt notieren', i => `${text(i.kontakt)} · ${text(i.art) || 'notiz'}${i.ergebnis ? ` · ${text(i.ergebnis)}` : ''}${i.naechster_schritt ? ` · nächster Schritt ${text(i.naechster_schritt, 60)}` : ''}`),
   },
   chance_anlegen: {
     gruppe: 'kontakte', risiko: 'frei',

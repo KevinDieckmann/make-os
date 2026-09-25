@@ -98,7 +98,8 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
       const d = tage(k.wiedervorlage, heute);
       nimm(k, 'versprechen', 40 + Math.min(20, d), d > 0 ? `Wiedervorlage seit ${d} Tagen überfällig` : 'Wiedervorlage heute');
     }
-    if (k.naechsterSchritt && k.naechsterSchritt.datum <= heute) nimm(k, 'versprechen', 40 + Math.min(20, tage(k.naechsterSchritt.datum, heute)), `Zugesagt: ${k.naechsterSchritt.text}`);
+    // Zusagen gelten auch bei Kunden (gewonnen) — nur bei „ruht“ und „verloren“ nicht mehr.
+    if (k.naechsterSchritt && k.naechsterSchritt.datum <= heute && k.stufe !== 'ruht' && k.stufe !== 'verloren') nimm(k, 'versprechen', 40 + Math.min(20, tage(k.naechsterSchritt.datum, heute)), `Zugesagt: ${k.naechsterSchritt.text}`);
   }
   for (const t of crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm)) {
     const ev = crm.events.find(e => e.id === t.eventId);

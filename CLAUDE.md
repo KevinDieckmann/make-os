@@ -140,6 +140,23 @@ lokal, Route `/os`, Port 3001.
   Pflichtangaben (Herkunft Art. 14 / Rechtsgrundlage Art. 6 nur als Vorschlag,
   Übernahme per Klick), Betroffenenanträge, Verzeichnis Art. 30, Export.
   Konzept: `docs/konzepte/crm-sales-marketing-events.md`.
+- **Markttraktion in der Praxis (25.09.2026 abends):** Erfassen ohne Reibung —
+  Kanal-Chips sind Links (tel:/mailto:/LinkedIn, nur wenn die Ampel nicht rot
+  ist), „Anrufen“ je Power-Hour-Karte, „Wie lief's?“ nach Kalenderterminen
+  (`lib/crm/erfassen.ts nachbereitung`), Einwilligung im Gespräch mit Wortlaut
+  (überschreibt keine vorhandene Rechtsgrundlage), „+ Gespräch festhalten“ von
+  überall (`SchnellErfassen.tsx`), Jarvis `notiere_kontakt` mit Ergebnis/Bedarf/
+  nächstem Schritt. **Geführte Runden** (`lib/crm/runden.ts`, `Runden.tsx`,
+  `?s=kontakte&a=runde-kreis|runde-chancen`): Kreis A–D + Beziehung/Anrede;
+  Chancen für alle im Gespräch — **Wert startet leer**, Katalogpreis nur als
+  Vorschlag (nie erfundene Pipeline). **Rhythmus** (`lib/crm/scoreboard.ts`):
+  Traction-Verlauf (`traktion-verlauf`), Wochen-Scoreboard 8 KW mit Zielen je
+  Woche und je Person, Morgen-Nachricht werktags ab 7:30 und Freitags-Scoreboard
+  per Telegram (Agent `markttraktion`, Riegel `markttraktion-takt`, nur mit
+  Token + Kopplung). **Visitenkarte → Kontakt** (`/api/crm/visitenkarte`, Haiku,
+  Bild wird nicht gespeichert; Herkunft „selbst“/„veranstaltung“, KEINE
+  Einwilligung), auch am Einlass. Antworten der Aktivitäts-Route filtern
+  fremde private Notizen.
 - **Heads auf Spitzenniveau (25.09.2026, Recherche Best Practice der besten Agenten):**
   fester Ablauf statt freiem Agenten (`lib/heads/lauf.ts`): volles Datenpaket
   (`paket.ts`: Fachdaten + **Grundlauf** + Lernstand + Gedächtnis + Team +
