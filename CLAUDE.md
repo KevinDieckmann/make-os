@@ -54,6 +54,9 @@ lokal, Route `/os`, Port 3001.
 - **Daten liegen NUR auf dem Server.** `deploy/daten-hochladen.sh` nie wieder ausführen
   (überschriebe den Server mit der alten Mac-Kopie). Lokal nur `start.sh --entwicklung`;
   der Marker `.data/umgezogen.json` lässt `start.sh` sonst den Server öffnen.
+- **Zwei Stände (seit 25.09., Kevin):** gebaut wird auf `entwicklung`, online ist `main`.
+  Nichts einzeln hochladen — Updates werden gesammelt und geplant (`UPDATES.md`: Liste,
+  Checkliste, offene Einmal-Schritte). Nur ein Push auf `main` rollt aus.
 - **Updates:** commit → `git push` (macht Kevin) → GitHub Action (tsc, vitest, lint) →
   Ausrollen über einen Schlüssel, der auf dem Server nur `git pull && docker compose up
   -d --build` darf (authorized_keys `command=…,restrict`, fester Host-Fingerabdruck im
