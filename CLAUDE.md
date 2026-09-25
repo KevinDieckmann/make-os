@@ -192,6 +192,12 @@ lokal, Route `/os`, Port 3001.
   Rechts-Ampel). LinkedIn-Export (Connections.csv) gleicht nur mit vorhandenen
   Kontakten ab und markiert Annahmen. Head of Marketing Modus `netzwerk` (werktags ab
   8, reines Regelwerk, Art `vernetzen_runde`). MAKE OS versendet nichts.
+- **Produkte & Mandate (25.09.2026, Kevin: „Mandaten-Abteil links unter Aufgaben“):** `/os/mandate`
+  (`components/os/mandate/`, Regeln `lib/crm/produkte.ts`). Reiter Mandate (die frühere
+  Kunden-Ansicht, `MandateUebersicht` in `crm/Kunden.tsx`, jetzt mit Produkt + Phase) und
+  Produkte (Katalog = Liste `leistungen`, nach Linien, Zahlen je Produkt, Ablauf in Phasen,
+  Unterlagen als https-/Brain-Links). Sales › 3 · Kunden ist nur noch `KundenKurz` mit Sprung
+  dorthin; Links: `mandateLink(s, k)` in `lib/crm/adresse.ts`.
 - **Kontaktakte (25.09.2026, Kevin: „die ganze Matrix … auf einem Bild“):**
   Karteikarte oben rechts „Akte öffnen ⤢“ → `/os/markttraktion?s=kontakte&a=akte&k=<id>`
   (`components/os/crm/Akte.tsx`, Regeln `lib/crm/akte.ts`). Kopf: Zurück (Knopf, Esc,
