@@ -21,15 +21,15 @@ Stand hier und einen Stand, der online ist.“
 
 - Bauplan als Board (Ideen → Bereit → In Arbeit → Zum Testen → Fertig), Knopf „Idee“, Planung mit Etappen
 - Produkte & Mandate
-- Kalender oben neben der Inbox (Woche mit Terminen, Blöcken, Aufgaben, Fristen) — **iCloud noch nicht verbunden**:
-  bis dahin zeigt er den Mac-Stand von heute Mittag (nur lesen)
+- Kalender oben neben der Inbox (Woche mit Terminen, Blöcken, Aufgaben, Fristen) — **iCloud verbunden seit 25.09. 19:14**
+  (Privat Kevin, Privat Malin; gemeinsamer Kalender heißt in den Einstellungen „Gemeinsam“ — sobald er in iCloud angelegt und mit Malin geteilt ist, erscheint er von selbst)
+- iCloud-Skript vereinfacht (Update 25.09. abends, `3b042a7`)
 
 ## Nächstes Update — vorbereitet, noch nicht online
 
 _(hier sammeln, was auf `entwicklung` fertig ist)_
 
-- Update 25.09. abends: Doku „zwei Stände“ (diese Datei, CLAUDE.md) — nur Text, keine Funktion.
-- iCloud-Skript einfacher: Apple-ID im Befehl, nur noch das App-Passwort einfügen (mit Kontrolle der letzten 4 Zeichen, bis zu 3 Versuche statt Abbruch).
+- Kalender: gemeinsamer Kalender heißt standardmäßig „Gemeinsam“; beim Anlegen werden nur Kalender angeboten, die es in iCloud gibt.
 
 ## Ablauf eines Updates (Checkliste)
 
@@ -43,7 +43,7 @@ _(hier sammeln, was auf `entwicklung` fertig ist)_
 
 ## Einmalige Schritte, die noch offen sind
 
-- **iCloud-Kalender verbinden** (nach dem Update, von einer Verbindung, die nicht gesperrt ist):
+- ~~iCloud-Kalender verbinden~~ — erledigt 25.09. (Befehl bleibt zum Wechseln des Passworts):
   vorher bei Apple ein app-spezifisches Passwort „MAKE OS“ anlegen (appleid.apple.com → Anmelden & Sicherheit), dann
   `ssh -t root@2.28.108.162 bash /srv/make-os/app/deploy/icloud-verbinden.sh <apple-id>` (fragt dann nur das App-Passwort)
   — Alternative ohne Terminal: eine Eingabe „iCloud verbinden“ unter System (nur Inhaber, verschlüsselt gespeichert), wenn gewünscht.

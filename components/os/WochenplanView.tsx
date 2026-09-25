@@ -579,9 +579,15 @@ export function WochenplanView() {
         {neuArt === 'termin' && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
             <span style={{ fontSize: 12.5, color: C.inkLeise }}>In wessen Kalender?</span>
-            {(['kevin', 'malin', 'beide'] as const).map(w => (
-              <button key={w} className="fassbar" onClick={() => setNeuWer(w)} style={wahl(neuWer === w, WER_FARBE[w])}>{WER_LABEL[w]}{kal?.einstellungen ? ` · ${kal.einstellungen.kalender[w]}` : ''}</button>
-            ))}
+            {(['kevin', 'malin', 'beide'] as const).map(w => {
+              // Nur anbieten, was es in iCloud gibt und was beschreibbar ist — sonst scheitert das Anlegen erst beim Klick.
+              const name = kal?.einstellungen?.kalender[w];
+              const da = !!name && (kal?.kalender ?? []).some(k => k.schreibbar && k.name.trim().toLowerCase() === name.trim().toLowerCase());
+              return (
+                <button key={w} className="fassbar" disabled={!da} onClick={() => setNeuWer(w)} title={da ? undefined : `Kalender „${name ?? '—'}“ gibt es in iCloud (noch) nicht`}
+                  style={{ ...wahl(neuWer === w && da, WER_FARBE[w]), opacity: da ? 1 : 0.4 }}>{WER_LABEL[w]}{name ? ` · ${name}` : ''}</button>
+              );
+            })}
           </div>
         )}
         <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>{neuArt === 'termin' ? 'Dann unten in den Tag klicken — der Termin entsteht sofort in Apple, auf allen Geräten.' : 'Dann unten in den Tag klicken — dort, wo der Block liegen soll.'}</div>

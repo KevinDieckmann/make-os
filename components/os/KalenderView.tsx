@@ -24,7 +24,7 @@ interface Einstellungen {
   standardSicht: 'alle' | Wer;
 }
 const EINST_LEER: Einstellungen = {
-  kalender: { kevin: 'Privat Kevin', malin: 'Privat Malin', beide: 'Kalender' },
+  kalender: { kevin: 'Privat Kevin', malin: 'Privat Malin', beide: 'Gemeinsam' },
   dauer: { termin: 60, fokus: 90, routine: 30, aufgabe: 45, reha: 30 },
   vonStunde: 7, bisStunde: 20, standardSicht: 'alle',
 };
