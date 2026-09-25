@@ -14,6 +14,10 @@
 
 import { NextResponse } from 'next/server';
 import { AUF_DEM_MAC, nurMac } from '@/lib/mac';
+import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
+import { verbunden, anlegen, loeschen, frischerStand, KalenderFehler } from '@/lib/kalender/icloud';
+import { ladeEinstellungen } from '@/lib/kalender/einstellungen';
+import { wandAus } from '@/lib/kalender/zeit';
 import { spawn } from 'child_process';
 import { loadJson } from '@/lib/store/local-db';
 
@@ -54,7 +58,30 @@ async function zielKalender(): Promise<string> {
   return e?.appleKalender?.trim() || 'Privat Kevin';
 }
 
+/** Wessen Kalender: die Person, die plant (Malin → ihr Kalender), sonst Kevins. */
+async function kalenderFuer(person: string): Promise<string> {
+  const e = await ladeEinstellungen();
+  return person === 'malin' ? e.kalender.malin : e.kalender.kevin;
+}
+const fehlerText = (e: unknown) => (e instanceof KalenderFehler ? e.message : 'iCloud nicht erreichbar.');
+
 export async function POST(req: Request) {
+  const wer = await kalenderZugang(req);
+  if (!wer) return NextResponse.json(KEIN_KALENDER, { status: 403 });
+  if (verbunden()) {
+    // iCloud (Server): dieselben Eingaben wie am Mac, gleiche Antwort ({ ok, uid, kalender }).
+    let b: { titel?: string; date?: string; startMin?: number; dauerMin?: number; notiz?: string };
+    try { b = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein JSON.' }, { status: 400 }); }
+    const titel = String(b.titel ?? '').trim().slice(0, 200);
+    const date = String(b.date ?? ''), startMin = Number(b.startMin), dauerMin = Number(b.dauerMin);
+    if (!titel || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !isFinite(startMin) || startMin < 0 || startMin > 1440 || !isFinite(dauerMin) || dauerMin < 5 || dauerMin > 720) {
+      return NextResponse.json({ ok: false, error: 'Titel, Tag oder Zeit fehlen oder passen nicht.' }, { status: 400 });
+    }
+    try {
+      const r = await anlegen({ titel, kalender: await kalenderFuer(wer.person), start: wandAus(date, startMin), ende: wandAus(date, startMin + dauerMin), notiz: b.notiz ? String(b.notiz).slice(0, 500) : undefined });
+      return NextResponse.json({ ok: true, uid: r.uid, kalender: r.kalender });
+    } catch (e) { return NextResponse.json({ ok: false, error: fehlerText(e) }, { status: 200 }); }
+  }
   if (!AUF_DEM_MAC) return nurMac();
   let body: { titel?: string; date?: string; startMin?: number; dauerMin?: number; notiz?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein JSON.' }, { status: 400 }); }
@@ -97,9 +124,13 @@ end tell`;
 
 /** Termin wieder entfernen — wenn der Block im Planer gelöscht wird. */
 export async function DELETE(req: Request) {
-  if (!AUF_DEM_MAC) return nurMac();
+  if (!(await kalenderZugang(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
   const uid = new URL(req.url).searchParams.get('uid') ?? '';
   if (!uid) return NextResponse.json({ ok: false, error: 'uid fehlt.' }, { status: 400 });
+  if (verbunden()) {
+    try { await loeschen(uid); return NextResponse.json({ ok: true, geloescht: 1 }); } catch (e) { return NextResponse.json({ ok: false, error: fehlerText(e) }, { status: 200 }); }
+  }
+  if (!AUF_DEM_MAC) return nurMac();
   const kalender = await zielKalender();
   const script = `
 tell application "Calendar"
@@ -120,7 +151,13 @@ end tell`;
 }
 
 /** Welche Kalender beschreibbar sind — für die Auswahl in den Einstellungen. */
-export async function GET() {
+export async function GET(req: Request) {
+  const wer = await kalenderZugang(req);
+  if (!wer) return NextResponse.json(KEIN_KALENDER, { status: 403 });
+  if (verbunden()) {
+    const st = await frischerStand();
+    return NextResponse.json({ ok: true, kalender: st.kalender.filter(k => k.schreibbar).map(k => k.name), gewaehlt: await kalenderFuer(wer.person) });
+  }
   if (!AUF_DEM_MAC) return nurMac();
   try {
     const roh = await osascript(`

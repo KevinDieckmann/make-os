@@ -14,7 +14,7 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Ring, Chip, zoneFarbe, LEUCHT } from './schlank';
 import { SCORE_NEU } from './WhoopImport';
-import { Sun, Inbox as InboxIcon, Search, Lightbulb } from 'lucide-react';
+import { Sun, Inbox as InboxIcon, Search, Lightbulb, CalendarDays } from 'lucide-react';
 
 interface Saeule { key: string; label: string; score: number | null; zuDuenn: boolean }
 interface Antwort { aktuell: { index: number | null; label: string; hebel: string | null; stand: string; saeulen: Saeule[] }; verlauf: { date: string; index: number | null }[] }
@@ -24,7 +24,12 @@ const KURZ: Record<string, string> = { health: 'Gesundheit', business: 'Business
 // Jeder Score springt dorthin, wo es weitergeht (Kevin, 24.09.). Seit 24.09.
 // abends ist der Kopf die Navigation für alles, was nicht links steht.
 const HREF: Record<string, string> = { health: '/os/gesundheit', business: '/os/saeule/business', planning: '/os/saeule/planning', finance: '/os/finanzen', social: '/os/familie', agents: '/os/agenten' };
-const SCHNELL = [{ href: '/os', label: 'Heute', Icon: Sun }, { href: '/os/inbox', label: 'Inbox', Icon: InboxIcon }];
+// Kalender (25.09.): die Woche mit Terminen aus Apple, Blöcken, Aufgaben und Fristen — leuchtet im ganzen Planer.
+const SCHNELL = [
+  { href: '/os', label: 'Heute', Icon: Sun, passt: ['/os'] },
+  { href: '/os/inbox', label: 'Inbox', Icon: InboxIcon, passt: ['/os/inbox'] },
+  { href: '/os/planung/woche', label: 'Kalender', Icon: CalendarDays, passt: ['/os/planung', '/os/kalender'] },
+];
 
 // Der Score rechnet über viele Dateien — einmal je fünf Minuten reicht, nicht
 // bei jedem Seitenwechsel. Der Bereich Wachstum lädt ihn ohnehin frisch.
@@ -102,8 +107,8 @@ export function WachstumsKopf() {
             <span className="wachstum-kopf-label" style={{ fontSize: 11, color: C.inkLeise }}>Idee</span>
           </div>
         </button>
-        {SCHNELL.map(({ href, label, Icon }) => {
-          const an = href === '/os' ? pfad === '/os' : pfad.startsWith(href);
+        {SCHNELL.map(({ href, label, Icon, passt }) => {
+          const an = href === '/os' ? pfad === '/os' : passt.some(p => pfad.startsWith(p));
           return (
             <Link key={href} href={href} title={label} style={{ textDecoration: 'none', color: 'inherit' }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>

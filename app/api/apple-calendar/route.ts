@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { AUF_DEM_MAC } from '@/lib/mac';
+import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
+import { verbunden, frischerStand } from '@/lib/kalender/icloud';
 import { spawn } from 'child_process';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 
@@ -101,9 +103,17 @@ function runOsascript(script: string): Promise<string> {
 // ─── Route handler ────────────────────────────────────────────────────────────
 
 export async function GET(req: Request) {
+  if (!(await kalenderZugang(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
   const force = new URL(req.url).searchParams.get('refresh') === '1';
-  const cached = await loadJson<CalCache>(CACHE);
 
+  // Seit 25.09.: iCloud direkt (Server) — der Abgleich schreibt den calendar-cache.
+  if (verbunden()) {
+    const s = await frischerStand();
+    const c = await loadJson<CalCache>(CACHE);
+    return NextResponse.json(c?.events ?? [], { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'icloud', ...(c?.at ? { 'X-Stand': c.at } : {}), ...(s.fehler && s.fehlerAt && (!s.at || s.fehlerAt > s.at) ? { 'X-Eingefroren': '1' } : {}) } });
+  }
+
+  const cached = await loadJson<CalCache>(CACHE);
   // Auf dem Server gibt es kein osascript: dort gilt, was der Mac zugeliefert hat.
   if (!AUF_DEM_MAC) {
     return NextResponse.json(cached?.events ?? [], { headers: { 'Cache-Control': 'no-store', 'X-Cache': cached ? 'zulieferung' : 'leer', ...(cached?.at ? { 'X-Stand': cached.at } : { 'X-Nur-Mac': '1' }) } });

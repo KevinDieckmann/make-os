@@ -78,6 +78,26 @@ lokal, Route `/os`, Port 3001.
   Kommentar zurück nach „Bereit“ (oben).
 - Bilder liegen unter `.data/bauplan-bilder` (auf dem Server in `daten`, mit gesichert).
 
+## Kalender — iCloud direkt (seit 25.09.2026)
+- Kopf-Knopf „Kalender“ → `/os/planung/woche` (der Wochenplaner ist der Kalender): Termine
+  aus iCloud (anlegen, ziehen = verschieben, ändern, löschen mit Rückfrage), Blöcke, eine
+  Ganztags-Zeile (Aufgaben mit Datum, Überfälliges als eine Pille, Apple-Erinnerungen,
+  Fristen: Meilensteine, Bauplan-Etappen, Mandate, Zahlungen/Eingänge), Sicht
+  Kevin/Malin/Gemeinsam, Ebenen. `/os/kalender` = Kalender-Agent (Konflikte, Vorschläge,
+  Zuordnung „welcher Kalender gehört wem“).
+- Server spricht CalDAV mit iCloud: `lib/kalender/` (zeit, dav, ics mit ical.js, icloud,
+  eintraege, zugang, einstellungen), API `app/api/kalender` (+ `/termin`). Die alten Wege
+  (`/api/apple-calendar`, `/termin`, `/create`) laufen auf dem Server über iCloud; der
+  Abgleich schreibt `calendar-cache` für alle bisherigen Leser (Heute, Tag, Jarvis, Morgenlauf).
+- Zugang: `ICLOUD_APPLE_ID`/`ICLOUD_APP_PASSWORT` (app-spezifisch) NUR in der Server-.env —
+  einrichten/trennen mit `deploy/icloud-verbinden.sh` (Kevin, per `ssh -t`). Zugangsdaten
+  gehen nur an *.icloud.com. Nach abgelehnter Anmeldung erst nach 30 Min. neu (Apple sperrt sonst).
+- Nie in MAKE OS geändert: Serien und Termine mit Teilnehmern (iCloud würde Einladungen
+  verschicken) — die Oberfläche sagt „in Apple ändern“. Neue Termine haben nie Teilnehmer.
+- Sehen darf den Kalender nur der Haushalt des Inhabers (+ Dienstweg), kein anderes Konto.
+- Apple-Erinnerungen gibt iCloud nicht per CalDAV heraus — die kommen nur, wenn der Mac
+  zuliefert (`zulieferer.mjs`); den Kalender vom Mac nimmt der Server nicht mehr an.
+
 ## Technik
 - TypeScript strikt: vor jedem Commit `npx tsc --noEmit` — null Fehler.
 - Node liegt bei Kevin unter `~/.local/node22/bin` (nicht im PATH). Server

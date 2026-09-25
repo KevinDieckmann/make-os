@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# ─── MAKE OS · iCloud-Kalender verbinden (auf dem Server) ───────────────────
+# Einmal ausführen — vom Mac aus, im Terminal:
+#   ssh -t root@2.28.108.162 bash /srv/make-os/app/deploy/icloud-verbinden.sh
+#
+# Vorher bei Apple ein app-spezifisches Passwort anlegen:
+#   appleid.apple.com → Anmelden & Sicherheit → App-spezifische Passwörter → „MAKE OS“
+# (NIE das normale Apple-Passwort — das app-spezifische lässt sich jederzeit
+# einzeln widerrufen und öffnet weder Fotos noch iCloud Drive.)
+#
+# Das Skript fragt Apple-ID und Passwort (verdeckt), prüft die Anmeldung bei
+# iCloud, schreibt beides in /srv/make-os/app/.env (nur für den Nutzer make
+# lesbar), startet MAKE OS neu und holt die Kalender einmal. Das Passwort
+# erscheint nirgends: nicht auf dem Bildschirm, nicht in der Prozessliste,
+# nicht im Log, nicht im Repo.
+#
+# Trennen: das Passwort bei Apple widerrufen und dieses Skript mit --trennen.
+set -euo pipefail
+cd /srv/make-os/app
+ENV_DATEI=/srv/make-os/app/.env
+[[ -f "$ENV_DATEI" ]] || { echo "Keine $ENV_DATEI gefunden — ist das der MAKE-OS-Server?"; exit 1; }
+
+schreibe_env() { # $1 = zusätzliche Zeilen (leer beim Trennen)
+  local tmp; tmp="$(mktemp /srv/make-os/.env-neu.XXXXXX)"   # außerhalb des Git-Ordners, gleiches Laufwerk
+  chmod 600 "$tmp"
+  grep -v -E '^ICLOUD_(APPLE_ID|APP_PASSWORT)=' "$ENV_DATEI" > "$tmp" || true
+  [[ -n "$1" ]] && printf '%s\n' "$1" >> "$tmp"
+  chown --reference="$ENV_DATEI" "$tmp"
+  mv "$tmp" "$ENV_DATEI"
+}
+
+neu_starten() {
+  echo "Starte MAKE OS neu (etwa eine halbe Minute) …"
+  docker compose up -d --force-recreate app arbeiter >/dev/null 2>&1
+  for _ in $(seq 1 40); do
+    [[ "$(docker compose ps app --format '{{.Status}}')" == *"(healthy)"* ]] && return 0
+    sleep 3
+  done
+  echo "MAKE OS braucht länger als sonst — bitte in ein paar Minuten die Seite öffnen."
+}
+
+if [[ "${1:-}" == "--trennen" ]]; then
+  schreibe_env ""
+  neu_starten
+  echo "Getrennt. Bitte das app-spezifische Passwort auch bei Apple widerrufen."
+  exit 0
+fi
+
+read -rp "Apple-ID (E-Mail-Adresse): " APPLE_ID
+read -rsp "App-spezifisches Passwort (xxxx-xxxx-xxxx-xxxx): " PASSWORT; echo
+APPLE_ID="$(printf '%s' "$APPLE_ID" | tr -d '[:space:]')"
+PASSWORT="$(printf '%s' "$PASSWORT" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+if [[ -z "$APPLE_ID" || -z "$PASSWORT" ]]; then echo "Abbruch: beides wird gebraucht."; exit 1; fi
+if [[ ! "$PASSWORT" =~ ^[a-z]{4}-[a-z]{4}-[a-z]{4}-[a-z]{4}$ ]]; then
+  echo "Abbruch: Das sieht nicht wie ein app-spezifisches Passwort aus (xxxx-xxxx-xxxx-xxxx)."
+  echo "Bitte NICHT das normale Apple-Passwort verwenden."
+  exit 1
+fi
+if [[ "$APPLE_ID" == *'"'* || "$APPLE_ID" == *'\'* ]]; then echo "Abbruch: ungewöhnliche Zeichen in der Apple-ID."; exit 1; fi
+
+echo "Prüfe die Anmeldung bei iCloud …"
+# Zugang über die Standardeingabe an curl (-K -): printf ist eingebaut — nichts davon steht in der Prozessliste.
+CODE="$(printf 'user = "%s:%s"\n' "$APPLE_ID" "$PASSWORT" | curl -s -o /dev/null -w '%{http_code}' -K - \
+  -X PROPFIND -H 'Depth: 0' -H 'Content-Type: application/xml; charset=utf-8' \
+  --data '<?xml version="1.0" encoding="UTF-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:current-user-principal/></d:prop></d:propfind>' \
+  https://caldav.icloud.com/ || true)"
+if [[ "$CODE" != "207" ]]; then
+  unset PASSWORT
+  echo "iCloud lehnt ab (HTTP ${CODE:-keine Antwort}). Apple-ID und app-spezifisches Passwort prüfen — nichts gespeichert."
+  exit 1
+fi
+echo "Anmeldung klappt."
+
+schreibe_env "ICLOUD_APPLE_ID=${APPLE_ID}
+ICLOUD_APP_PASSWORT=${PASSWORT}"
+unset PASSWORT
+echo "Gespeichert (nur für den Nutzer make lesbar)."
+neu_starten
+
+echo "Hole die Kalender …"
+docker compose exec -T app node -e "fetch('http://localhost:3000/api/kalender',{method:'POST',headers:{'Content-Type':'application/json','x-make-key':process.env.MAKE_OS_KEY},body:JSON.stringify({aktion:'abgleichen'})}).then(r=>r.json()).then(d=>console.log(d.ok?('Verbunden: '+d.kalender+' Kalender. Öffnet in MAKE OS oben „Kalender“.'):('Noch nicht: '+d.fehler))).catch(e=>console.log('Noch nicht erreichbar: '+e.message))"

@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { SPEICHER, ZULIEFERUNGEN, type Gemerkt, type Zulieferung } from '@/lib/mac';
+import { verbunden } from '@/lib/kalender/icloud';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,8 @@ export async function POST(req: Request) {
   if (!art) return NextResponse.json({ ok: false, fehler: `art muss eins sein von: ${ZULIEFERUNGEN.join(', ')}` }, { status: 400 });
   const at = typeof b.at === 'string' && !Number.isNaN(Date.parse(b.at)) ? new Date(b.at).toISOString() : new Date().toISOString();
   if (art === 'kalender') {
+    // Seit 25.09. kommt der Kalender direkt aus iCloud — ein Mac-Stand würde ihn nur überschreiben.
+    if (verbunden()) return NextResponse.json({ ok: true, art, uebersprungen: 'Kalender kommt direkt aus iCloud.' });
     if (!Array.isArray(b.daten)) return NextResponse.json({ ok: false, fehler: 'Kalender: daten muss eine Liste von Terminen sein.' }, { status: 400 });
     await saveJson(SPEICHER.kalender, { events: b.daten, at });
     return NextResponse.json({ ok: true, art, anzahl: b.daten.length, at });

@@ -4,6 +4,10 @@
 
 import { NextResponse } from 'next/server';
 import { AUF_DEM_MAC, nurMac } from '@/lib/mac';
+import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
+import { verbunden, anlegen, KalenderFehler } from '@/lib/kalender/icloud';
+import { ladeEinstellungen } from '@/lib/kalender/einstellungen';
+import { wandAus } from '@/lib/kalender/zeit';
 import { spawn } from 'child_process';
 import { loadJson } from '@/lib/store/local-db';
 
@@ -53,11 +57,28 @@ function blockFor(e: NewEvent, erlaubt: Set<string>, standard: string): string |
 }
 
 export async function POST(req: Request) {
-  if (!AUF_DEM_MAC) return nurMac();
+  if (!(await kalenderZugang(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
+  if (!verbunden() && !AUF_DEM_MAC) return nurMac();
   let payload: { events?: NewEvent[] };
   try { payload = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const list = Array.isArray(payload.events) ? payload.events.slice(0, 30) : [];
   if (!list.length) return NextResponse.json({ ok: false, error: 'Keine Termine übergeben.' }, { status: 400 });
+
+  // iCloud (Server, seit 25.09.): nacheinander anlegen, gleiche Prüfung wie am Mac.
+  if (verbunden()) {
+    const e = await ladeEinstellungen();
+    const namen = [e.kalender.kevin, e.kalender.malin, e.kalender.beide, ...Array.from(ALLOWED_CALENDARS)];
+    let created = 0; let fehler: string | undefined;
+    for (const ev of list) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ev.date ?? '')) || !String(ev.title ?? '').trim()) continue;
+      const start = Math.max(0, Math.min(23, Math.floor(Number(ev.startHour) || 0))) * 60 + Math.max(0, Math.min(59, Math.floor(Number(ev.startMin) || 0)));
+      const dauer = Math.max(5, Math.min(600, Math.floor(Number(ev.durationMin) || 60)));
+      const kal = ev.calendar && namen.some(n => n.toLowerCase() === ev.calendar!.toLowerCase()) ? ev.calendar : e.kalender.beide;
+      try { await anlegen({ titel: String(ev.title).trim().slice(0, 200), kalender: kal, start: wandAus(ev.date, start), ende: wandAus(ev.date, start + dauer) }); created++; }
+      catch (x) { fehler = x instanceof KalenderFehler ? x.message : 'iCloud nicht erreichbar.'; }
+    }
+    return created ? NextResponse.json({ ok: true, created, ...(fehler ? { teilweise: fehler } : {}) }) : NextResponse.json({ ok: false, error: fehler ?? 'Ungültige Termindaten.' }, { status: fehler ? 502 : 400 });
+  }
 
   // Welche Kalender erlaubt sind, steht in den Einstellungen — sonst landet
   // Malins Termin in Kevins Kalender und niemand sieht, wem er gehört.

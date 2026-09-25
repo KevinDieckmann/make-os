@@ -26,8 +26,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
+# local env files — und die Server-.env (Geheimnisse), nie ins Repo
 .env*.local
+.env
+.env-neu.*
 
 # vercel
 .vercel

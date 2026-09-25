@@ -104,7 +104,7 @@ export function DatenbasisView() {
 
   const verbindungen: { name: string; status: string; ton: Ton; href: string }[] = [
     { name: 'Apple Mail', status: 'läuft — beide Postfächer live in der Inbox', ton: 'ok', href: '/os/inbox' },
-    { name: 'Apple Kalender', status: 'läuft — lesen & schreiben (Termine, Blöcke)', ton: 'ok', href: '/os/kalender' },
+    { name: 'Apple Kalender', status: 'iCloud direkt — Termine lesen & schreiben (Stand oben im Kalender)', ton: 'ok', href: '/os/planung/woche' },
     { name: 'Apple Erinnerungen', status: 'braucht einmalige macOS-Freigabe (Systemeinstellungen → Datenschutz)', ton: 'acht', href: '/os/aufgaben' },
     ...verb.map(v => ({
       name: v.name,

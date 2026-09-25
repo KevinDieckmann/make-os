@@ -31,6 +31,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.4.0",
     "framer-motion": "^12.40.0",
+    "ical.js": "2.2.1",
     "lucide-react": "^1.21.0",
     "next": "14.2.35",
     "pdfjs-dist": "4.10.38",

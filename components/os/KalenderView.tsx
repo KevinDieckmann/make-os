@@ -8,6 +8,7 @@
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Chips, Leuchtfarben).
 
 import { useEffect, useState, type CSSProperties } from 'react';
+import Link from 'next/link';
 import { FARBE as C, MIKRO, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Segmente, feld, LEUCHT } from './schlank';
@@ -23,7 +24,7 @@ interface Einstellungen {
   standardSicht: 'alle' | Wer;
 }
 const EINST_LEER: Einstellungen = {
-  kalender: { kevin: 'Privat Kevin', malin: 'Malin', beide: 'Kalender' },
+  kalender: { kevin: 'Privat Kevin', malin: 'Privat Malin', beide: 'Kalender' },
   dauer: { termin: 60, fokus: 90, routine: 30, aufgabe: 45, reha: 30 },
   vonStunde: 7, bisStunde: 20, standardSicht: 'alle',
 };
@@ -214,8 +215,8 @@ export function KalenderView() {
 
   return (
     <Seite
-      titel="Kalender"
-      unter="Die Woche schützt sich selbst: echte Termine aus Apple Kalender, Konflikte markiert. Der Agent schlägt Reha- & Fokus-Blöcke in die freien Lücken vor — eintragen tust du auf Klick."
+      titel="Kalender-Agent"
+      unter={<>Die Woche schützt sich selbst: Konflikte markiert, Reha- & Fokus-Blöcke in den freien Lücken vorgeschlagen — eintragen tust du auf Klick. Hier stellst du auch ein, welcher Kalender wem gehört. Den Kalender selbst findest du oben unter <Link href="/os/planung/woche" style={{ color: LEUCHT.puls, textDecoration: 'none', fontWeight: 600 }}>Kalender ›</Link></>}
       rechts={<Chip farbe={LEUCHT.puls}>live · mit Freigabe</Chip>}
     >
       {/* Eingefroren: lieber sagen, dass es ein alter Stand ist, als so tun,

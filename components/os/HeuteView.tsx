@@ -90,7 +90,7 @@ export function HeuteView() {
       </Karte>
 
       <Karte i={1}>
-        <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href="/os/kalender" style={{ color: C.inkLeise, textDecoration: 'none' }}>Kalender ›</Link>}>Termine</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href="/os/planung/woche" style={{ color: C.inkLeise, textDecoration: 'none' }}>Kalender ›</Link>}>Termine</Ueberschrift>
         <Liste>
           {termine.length === 0 && <Leer>Keine Termine heute — freie Bahn.</Leer>}
           {termine.map((t, i) => (

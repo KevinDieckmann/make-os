@@ -59,7 +59,8 @@ export const BEREICHE: Bereich[] = [
       { href: '/os/planung', label: 'Tag', icon: Target, hinweis: 'Der Tagesplan' },
       { href: '/os/ritual', label: 'Tagesstart & -ende', icon: Sunrise },
       { href: '/os/tageslauf', label: 'Tageslauf', icon: Activity },
-      { href: '/os/kalender', label: 'Kalender', icon: CalendarRange },
+      { href: '/os/planung/woche', label: 'Kalender', icon: CalendarRange },
+      { href: '/os/kalender', label: 'Kalender-Agent', icon: CalendarRange },
     ],
   },
   {

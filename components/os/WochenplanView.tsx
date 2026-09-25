@@ -1,12 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-// ─── MAKE OS — Wochenplaner (beweglich) ─────────────────────────────────────
-// Kevins 5-Minuten-Morgenblick: feste Termine stehen unverrückbar im Raster,
-// alles andere — Fokus, Reha, Routinen, Pausen, Aufgaben — ziehst du aus der
-// Leiste in den Tag und schiebst es frei herum. Kein Gespräch nötig: gucken,
-// schieben, fertig. Gespeichert wird von selbst.
+// ─── MAKE OS — Kalender (Woche) ─────────────────────────────────────────────
+// Kevins 5-Minuten-Morgenblick: Termine, Blöcke und alles, was dran ist. Fokus,
+// Reha, Routinen, Pausen, Aufgaben ziehst du aus der Leiste in den Tag und
+// schiebst sie frei herum. Kein Gespräch nötig: gucken, schieben, fertig.
+// Gespeichert wird von selbst.
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Chips, Leuchtfarben).
+// 25.09.: der Kalender (Kopf-Knopf „Kalender“). Termine kommen direkt aus
+// iCloud und lassen sich hier anlegen, verschieben, ändern, löschen; oben je
+// Tag die Ganztags-Zeile mit Aufgaben, Erinnerungen und Fristen; Sicht
+// Kevin/Malin/Gemeinsam und Ebenen zum Ein- und Ausblenden.
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
@@ -19,9 +23,13 @@ import { wochenplanSchreiben } from '@/lib/make-one/wochenplan-sync';
 import { verteileSpuren, spurStil, titelStil } from '@/lib/make-one/spuren';
 import { SAEULE_VON_PROJEKT, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, Segmente, feld, LEUCHT } from './schlank';
+import { useKalender, GanztagsZelle, TerminFenster, WER_FARBE, WER_LABEL, EBENEN, type KTermin, type Ebene, type Wer } from './kalender/teile';
+import { tagPlus, wandAus } from '@/lib/kalender/zeit';
 // Routinen kommen aus dem Routine-Planer — nicht mehr aus der Konstante.
 
-interface FixTermin { titel: string; date: string; startMin: number; dauerMin: number; quelle: string }
+interface FixTermin { titel: string; date: string; startMin: number; dauerMin: number; quelle: string; termin?: KTermin }
+
+const EBENEN_SPEICHER = 'make-kalender-ebenen';
 
 const WD = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
@@ -71,10 +79,19 @@ function Ziehbar({ farbe, daten, children, breit }: { farbe: string; daten: obje
 
 export function WochenplanView() {
   const router = useRouter();
-  const { state: tasksState } = useTasks();
+  const { state: tasksState, dispatch: tasksDispatch } = useTasks();
   const [offset, setOffset] = useState(0);
   const [bloecke, setBloecke] = useState<PlanBlock[]>([]);
-  const [fix, setFix] = useState<FixTermin[]>([]);
+  const [kemaris, setKemaris] = useState<{ titel: string; start?: string; ende?: string }[]>([]);
+  // Kalender: Sicht (wessen Termine) und Ebenen (was zu sehen ist) — die Ebenen merkt sich der Browser.
+  const [sicht, setSicht] = useState<'alle' | Wer>('alle');
+  const [versteckt, setVersteckt] = useState<Ebene[]>([]);
+  useEffect(() => { try { const v = JSON.parse(localStorage.getItem(EBENEN_SPEICHER) ?? '[]'); if (Array.isArray(v)) setVersteckt(v); } catch { /* ohne Speicher alles sichtbar */ } }, []);
+  const umschalten = (e: Ebene) => setVersteckt(v => { const n = v.includes(e) ? v.filter(x => x !== e) : [...v, e]; try { localStorage.setItem(EBENEN_SPEICHER, JSON.stringify(n)); } catch { /* egal */ } return n; });
+  const zeigt = (e: Ebene) => !versteckt.includes(e);
+  const [offenTermin, setOffenTermin] = useState<KTermin | null>(null);
+  const [neuWer, setNeuWer] = useState<Wer>('kevin');
+  const [abgleich, setAbgleich] = useState(false);
   const [aktivBlock, setAktivBlock] = useState<string | null>(null);
   // Ziele beim Planen sichtbar — und Jarvis' Wochenvorschlag (Human-in-the-Loop).
   const [ziele, setZiele] = useState<{ monat: { titel: string; fortschritt: number; erledigt?: boolean }[]; quartal: { titel: string; fortschritt: number; erledigt?: boolean }[]; fokus?: { woche?: string; monat?: string; quartal?: string } }>({ monat: [], quartal: [] });
@@ -91,7 +108,7 @@ export function WochenplanView() {
   // Selbst anlegen + Spiegelung nach Apple.
   const [neuTitel, setNeuTitel] = useState('');
   const [neuDauer, setNeuDauer] = useState(60);
-  const [neuArt, setNeuArt] = useState<PlanBlock['art']>('block');
+  const [neuArt, setNeuArt] = useState<PlanBlock['art'] | 'termin'>('block');
   const [appleSync, setAppleSync] = useState(false);
   const [appleKalender, setAppleKalender] = useState<string>('');
   const [syncLaeuft, setSyncLaeuft] = useState<string | null>(null);
@@ -103,6 +120,7 @@ export function WochenplanView() {
     const d = new Date(mo); d.setDate(d.getDate() + i); return localDay(d);
   }), [offset]); // eslint-disable-line react-hooks/exhaustive-deps
   const wochenKey = tage[0];
+  const { daten: kal, laden: kalLaden, setDaten: setKal } = useKalender(tage[0], tagPlus(tage[6], 1));
 
   useEffect(() => {
     fetch('/api/state/routinen').then(r => r.json()).then(d => setRoutinen((d.routinen ?? []).filter((x: { aktiv: boolean }) => x.aktiv))).catch(() => {});
@@ -110,6 +128,10 @@ export function WochenplanView() {
     fetch('/api/state/fokus-regler').then(r => r.json()).then(d => setRegler(d.regler ?? {})).catch(() => {});
     // Welcher Kalender beschrieben würde — nur zur Anzeige, ohne zu schreiben.
     fetch('/api/apple-calendar/termin').then(r => r.json()).then(d => { if (d.ok) setAppleKalender(d.gewaehlt ?? ''); }).catch(() => {});
+    // Neue Termine standardmäßig in den eigenen Kalender.
+    fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich?.speicher === 'malin') setNeuWer('malin'); }).catch(() => {});
+    // KEMARIS (Microsoft 365) — zusätzlich, nur lesen.
+    fetch('/api/kemaris-calendar').then(r => r.json()).then(k => setKemaris(((k?.events ?? []) as { title?: string; start?: string; end?: string }[]).map(e => ({ titel: e.title ?? '', start: e.start, ende: e.end })))).catch(() => {});
   }, []);
 
   // Verschiebbare Blöcke der Woche laden.
@@ -140,34 +162,61 @@ export function WochenplanView() {
     return () => clearInterval(iv);
   }, [wochenKey]);
 
-  // Feste Termine aus beiden Kalendern (Apple-Cache + KEMARIS/M365), dedupliziert.
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/apple-calendar').then(r => r.json()).catch(() => []),
-      fetch('/api/kemaris-calendar').then(r => r.json()).catch(() => ({ events: [] })),
-    ]).then(([apple, kem]) => {
-      const roh: { titel: string; start?: string; ende?: string }[] = [
-        ...(Array.isArray(apple) ? apple : []).map((e: { title?: string; startDate?: string; endDate?: string; allDay?: boolean }) =>
-          e.allDay ? null : { titel: e.title ?? '', start: e.startDate, ende: e.endDate }).filter(Boolean) as { titel: string; start?: string; ende?: string }[],
-        ...((kem?.events ?? []) as { title?: string; start?: string; end?: string }[]).map(e => ({ titel: e.title ?? '', start: e.start, ende: e.end })),
-      ];
-      const gesehen = new Set<string>();
-      const liste: FixTermin[] = [];
-      for (const e of roh) {
-        if (!e.start) continue;
-        const date = e.start.slice(0, 10);
-        if (!tage.includes(date)) continue;
-        const key = `${e.titel.toLowerCase().trim()}|${e.start.slice(0, 16)}`;
-        if (gesehen.has(key)) continue;
-        gesehen.add(key);
-        const s = new Date(e.start), en = e.ende ? new Date(e.ende) : null;
-        const startMin = s.getHours() * 60 + s.getMinutes();
-        const dauerMin = en ? Math.max(15, Math.round((en.getTime() - s.getTime()) / 60000)) : 60;
-        liste.push({ titel: e.titel, date, startMin, dauerMin, quelle: 'Kalender' });
-      }
-      setFix(liste);
-    });
-  }, [wochenKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Termine mit Uhrzeit aus Apple (iCloud) + KEMARIS/M365, dedupliziert — gefiltert nach Sicht.
+  const sichtbar = (t: KTermin) => sicht === 'alle' || t.wer === sicht;
+  const fix = useMemo<FixTermin[]>(() => {
+    if (!zeigt('termine')) return [];
+    const gesehen = new Set<string>();
+    const liste: FixTermin[] = [];
+    const dazu = (titel: string, start: string, ende: string | undefined, quelle: string, termin?: KTermin) => {
+      const date = start.slice(0, 10);
+      if (!tage.includes(date)) return;
+      const key = `${titel.toLowerCase().trim()}|${start.slice(0, 16)}`;
+      if (gesehen.has(key)) return;
+      gesehen.add(key);
+      const s0 = new Date(start), en = ende ? new Date(ende) : null;
+      const startMin = s0.getHours() * 60 + s0.getMinutes();
+      const dauerMin = en ? Math.max(15, Math.round((en.getTime() - s0.getTime()) / 60000)) : 60;
+      liste.push({ titel, date, startMin, dauerMin, quelle, ...(termin ? { termin } : {}) });
+    };
+    for (const t of kal?.termine ?? []) if (!t.ganztags && sichtbar(t)) dazu(t.titel, t.start, t.ende, t.kalender, t);
+    if (sicht === 'alle' || sicht === 'kevin') for (const e of kemaris) if (e.start) dazu(e.titel, e.start, e.ende, 'KEMARIS');
+    return liste;
+  }, [kal, kemaris, tage, sicht, versteckt]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Termin anlegen (Apple, über iCloud) — Klick in den Tag, wenn „Termin“ gewählt ist. */
+  async function terminAnlegen(date: string, startMin: number) {
+    setSyncLaeuft('neu');
+    const r = await fetch('/api/kalender/termin', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titel: neuTitel.trim() || 'Termin', wer: neuWer, start: wandAus(date, startMin), ende: wandAus(date, startMin + neuDauer) }),
+    }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    setSyncLaeuft(null);
+    if (r.ok) { setNeuTitel(''); setSyncMeldung(null); void kalLaden(); }
+    else setSyncMeldung(r.fehler ?? 'Termin konnte nicht angelegt werden.');
+  }
+
+  /** Termin im Raster verschoben → in Apple verschieben (Dauer bleibt). Sofort sichtbar, dann der echte Stand. */
+  async function terminVerschieben(uid: string, date: string, startMin: number) {
+    const t = kal?.termine.find(x => x.uid === uid);
+    if (!t || !t.bearbeitbar) return;
+    const dauer = Math.max(15, Math.round((new Date(t.ende).getTime() - new Date(t.start).getTime()) / 60000));
+    const start = wandAus(date, startMin), ende = wandAus(date, startMin + dauer);
+    if (start === t.start) return;
+    setKal(k => (k ? { ...k, termine: k.termine.map(x => (x.uid === uid ? { ...x, start, ende } : x)) } : k));
+    const r = await fetch('/api/kalender/termin', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid, start, ende }) })
+      .then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    if (!r.ok) setSyncMeldung(r.fehler ?? 'Termin konnte nicht verschoben werden.');
+    void kalLaden();
+  }
+
+  async function jetztAbgleichen() {
+    setAbgleich(true);
+    const r = await fetch('/api/kalender', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'abgleichen' }) }).then(x => x.json()).catch(() => ({ ok: false }));
+    if (!r.ok && r.fehler) setSyncMeldung(r.fehler);
+    await kalLaden();
+    setAbgleich(false);
+  }
 
   // Zwei-Fenster-Fundament: nur die Unterschiede schreiben, nicht die Woche.
   function speichern(next: PlanBlock[]) {
@@ -219,6 +268,7 @@ export function WochenplanView() {
 
   /** Selbst anlegen: Klick auf freie Fläche → Block an dieser Uhrzeit. */
   function eigenerBlock(date: string, startMin: number) {
+    if (neuArt === 'termin') { void terminAnlegen(date, startMin); return; }
     const b: PlanBlock = {
       id: `pb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
       date, startMin, dauerMin: neuDauer, titel: neuTitel.trim() || 'Blockzeit', art: neuArt,
@@ -238,8 +288,10 @@ export function WochenplanView() {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const startMin = Math.max(START, Math.min(ENDE - 15, START + snap((e.clientY - rect.top) / PX)));
     try {
-      const p = JSON.parse(daten) as { move?: string; neu?: { art: PlanBlock['art']; titel: string; dauerMin: number }; aufgabe?: { taskId: string; titel: string } };
-      if (p.move) {
+      const p = JSON.parse(daten) as { move?: string; termin?: string; neu?: { art: PlanBlock['art']; titel: string; dauerMin: number }; aufgabe?: { taskId: string; titel: string } };
+      if (p.termin) {
+        void terminVerschieben(p.termin, date, startMin);
+      } else if (p.move) {
         speichern(bloecke.map(b => b.id === p.move ? { ...b, date, startMin } : b));
       } else if (p.neu) {
         speichern([...bloecke, { id: `pb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, date, startMin, dauerMin: p.neu.dauerMin, titel: p.neu.titel, art: p.neu.art }]);
@@ -275,6 +327,15 @@ export function WochenplanView() {
   }
 
   const stunden = Array.from({ length: (ENDE - START) / 60 }, (_, i) => START / 60 + i);
+
+  // Ganztags-Zeile: ganztägige Termine (auch über mehrere Tage), Aufgaben mit Datum (heute auch die überfälligen), Erinnerungen, Fristen.
+  const ganztags = (date: string) => (zeigt('termine') ? (kal?.termine ?? []).filter(t => t.ganztags && sichtbar(t) && t.start.slice(0, 10) <= date && t.ende.slice(0, 10) > date) : []);
+  const aufgabenAm = (date: string) => (zeigt('aufgaben') ? tasksState.tasks.filter(t => t.dueDate === date) : [])
+    .map(t => ({ id: t.id, title: t.title, done: t.status === 'done', priority: t.priority }));
+  // Überfälliges steht heute als EINE Pille (Link zu den Aufgaben) — nicht einzeln.
+  const ueberfaellig = zeigt('aufgaben') && tage.includes(heute) ? tasksState.tasks.filter(t => t.dueDate && t.dueDate < heute && t.status !== 'done').length : 0;
+  const ganztagsDa = ueberfaellig > 0 || tage.some(d => ganztags(d).length || aufgabenAm(d).length
+    || (zeigt('fristen') && (kal?.fristen ?? []).some(f => f.tag === d)) || (zeigt('erinnerungen') && (kal?.erinnerungen ?? []).some(e => e.tag === d)));
   const wochenLabel = `${tage[0].slice(8)}.${tage[0].slice(5, 7)}. – ${tage[6].slice(8)}.${tage[6].slice(5, 7)}.${tage[6].slice(0, 4)}`;
 
   // Wochen-Kapazität: was ist verplant, was drückt an Aufgabenlast?
@@ -290,10 +351,10 @@ export function WochenplanView() {
   return (
     <Seite
       breit={1200}
-      titel="Wochenplaner"
+      titel="Kalender"
       unter={<div>
-        Die Woche, beweglich. Feste Termine stehen fest — alles andere ziehst du aus der Leiste in den Tag und schiebst es, bis der Tag passt.
-        Blöcke: <b style={{ color: C.ink }}>anfassen & ziehen</b> zum Verschieben · <b style={{ color: C.ink }}>−/＋</b> für die Dauer · <b style={{ color: C.ink }}>✕</b> löschen.
+        Die Woche an einem Ort: Termine aus Apple, eure Blöcke und alles, was dran ist — Aufgaben, Erinnerungen, Fristen.
+        Termine und Blöcke: <b style={{ color: C.ink }}>anfassen & ziehen</b> verschiebt (Termine auch in Apple) · <b style={{ color: C.ink }}>Klick</b> öffnet · in eine freie Stelle klicken legt an.
         <div style={{ marginTop: 12 }}><PlanerLeiste aktiv="woche" /></div>
       </div>}
       rechts={<div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -315,6 +376,152 @@ export function WochenplanView() {
         </div>
       </Karte>
 
+      {/* Raster — der Kalender selbst, gleich unter den Zahlen */}
+      <Karte i={1}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+          <Segmente liste={[{ id: 'alle' as const, label: 'Alle' }, { id: 'kevin' as const, label: 'Kevin' }, { id: 'malin' as const, label: 'Malin' }, { id: 'beide' as const, label: 'Gemeinsam' }]} aktiv={sicht} onWahl={setSicht} />
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+            {EBENEN.map(e => (
+              <button key={e.id} className="fassbar" onClick={() => umschalten(e.id)} aria-pressed={zeigt(e.id)}
+                style={{ fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${zeigt(e.id) ? `${e.farbe}66` : 'rgba(255,255,255,.1)'}`, background: zeigt(e.id) ? `${e.farbe}1c` : 'transparent', color: zeigt(e.id) ? e.farbe : C.inkLeise, textDecoration: zeigt(e.id) ? 'none' : 'line-through' }}>{e.label}</button>
+            ))}
+          </div>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: C.inkLeise }}>
+            {kal?.quelle === 'icloud' && <span title={kal.konto ?? undefined}>Apple Kalender · iCloud · Stand {kal.stand ? new Date(kal.stand).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '—'}</span>}
+            {kal && !kal.icloud && <span style={{ color: LEUCHT.achtung }}>Noch nicht mit iCloud verbunden{kal.stand ? ` — Mac-Stand vom ${new Date(kal.stand).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}</span>}
+            {kal?.icloud && <button onClick={() => void jetztAbgleichen()} disabled={abgleich} style={{ background: 'none', border: 'none', color: LEUCHT.puls, cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: 0 }}>{abgleich ? 'gleicht ab …' : 'jetzt abgleichen'}</button>}
+          </div>
+        </div>
+        {kal?.fehler && <div style={{ marginBottom: 10, fontSize: TYP.bedien, color: LEUCHT.achtung, background: `${LEUCHT.achtung}14`, borderRadius: 10, padding: '8px 12px' }}>{kal.fehler}</div>}
+        <div style={{ overflowX: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '46px repeat(7, minmax(120px, 1fr))', gap: 4 }}>
+            {/* Zeile 1: Tage — Zeile 2: ganztags — Zeile 3: Stunden */}
+            <div />
+            {tage.map((date, di) => {
+              const istHeute = date === heute;
+              const belegtMin = (zeigt('bloecke') ? bloecke.filter(b => b.date === date).reduce((s, b) => s + b.dauerMin, 0) : 0) + fix.filter(f => f.date === date).reduce((s, f) => s + f.dauerMin, 0);
+              const belegtH = belegtMin / 60;
+              const lastFarbe = belegtH > 10 ? LEUCHT.kritisch : belegtH > 8 ? LEUCHT.achtung : C.inkLeise;
+              return (
+                <div key={date} style={{ height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 10, background: istHeute ? `${LEUCHT.puls}1F` : 'rgba(255,255,255,.05)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: istHeute ? LEUCHT.puls : C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{WD[di]} {date.slice(8)}.{date.slice(5, 7)}.</span>
+                  {belegtMin > 0 && <span title={belegtH > 10 ? 'überladen — Ruhe braucht Luft' : belegtH > 8 ? 'voll — Pausen ernst nehmen' : 'Auslastung'}
+                    style={{ fontSize: 11, fontWeight: 700, color: lastFarbe, fontVariantNumeric: 'tabular-nums' }}>{fmtH(belegtH)}h</span>}
+                </div>
+              );
+            })}
+            {ganztagsDa && <div style={{ ...zeit, textAlign: 'right', paddingRight: 6, paddingTop: 4 }}>ganz&shy;tags</div>}
+            {ganztagsDa && tage.map(date => (
+              <GanztagsZelle key={date}
+                termine={ganztags(date)}
+                fristen={zeigt('fristen') ? (kal?.fristen ?? []).filter(f => f.tag === date) : []}
+                erinnerungen={zeigt('erinnerungen') ? (kal?.erinnerungen ?? []).filter(e => e.tag === date) : []}
+                aufgaben={aufgabenAm(date)}
+                ueberfaellig={date === heute ? ueberfaellig : 0}
+                onTermin={setOffenTermin}
+                onAufgabeHaken={id => tasksDispatch({ type: 'TOGGLE_TASK', payload: { id } })} />
+            ))}
+            {/* Zeitspalte */}
+            <div>
+              <div style={{ position: 'relative', height: H }}>
+                {stunden.map(h => (
+                  <div key={h} style={{ position: 'absolute', top: (h * 60 - START) * PX - 7, right: 6, ...zeit }}>{String(h).padStart(2, '0')}</div>
+                ))}
+              </div>
+            </div>
+
+            {tage.map(date => {
+              const istHeute = date === heute;
+              // Feste Termine UND Blöcke gemeinsam verteilen — sie liegen in
+              // derselben Spalte und dürfen sich deshalb nicht zudecken.
+              const tagesFix = fix.filter(f => f.date === date);
+              const tagesBloecke = zeigt('bloecke') ? bloecke.filter(b => b.date === date) : [];
+              const spuren = verteileSpuren([
+                ...tagesFix.map((f, i) => ({ id: `fix-${i}`, startMin: f.startMin, dauerMin: f.dauerMin })),
+                ...tagesBloecke.map(b => ({ id: b.id, startMin: b.startMin, dauerMin: b.dauerMin })),
+              ]);
+              return (
+                <div key={date} style={{ minWidth: 0 }}>
+                  <div
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={e => dropAufTag(e, date)}
+                    // Klick auf freie Fläche legt dort einen Block an — Kevins
+                    // Ansage: „Ich will auch selber Blöcke anlegen können."
+                    onClick={e => {
+                      if (e.target !== e.currentTarget) return;   // nur die leere Fläche
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      eigenerBlock(date, Math.max(START, Math.min(ENDE - 15, START + snap((e.clientY - rect.top) / PX))));
+                    }}
+                    title="Auf eine freie Stelle klicken, um dort einen Block anzulegen"
+                    style={{ position: 'relative', height: H, background: istHeute ? `${LEUCHT.puls}0A` : 'rgba(255,255,255,.03)', boxShadow: istHeute ? `inset 0 0 0 1px ${LEUCHT.puls}33` : undefined, borderRadius: 12, marginTop: 4, cursor: 'copy' }}
+                  >
+                    {/* Stundenlinien */}
+                    {stunden.map(h => (
+                      <div key={h} style={{ position: 'absolute', top: (h * 60 - START) * PX, left: 0, right: 0, borderTop: '1px solid rgba(255,255,255,.045)' }} />
+                    ))}
+
+                    {/* Termine (Apple) — ziehbar, wo MAKE OS sie ändern darf; 🔒 = nur in Apple */}
+                    {tagesFix.map((f, fi) => {
+                      const top = Math.max(0, (f.startMin - START) * PX);
+                      const hoehe = Math.max(16, Math.min(H - top, f.dauerMin * PX));
+                      const lage = spuren.get(`fix-${fi}`);
+                      const n = lage?.spuren ?? 1;
+                      const t = f.termin;
+                      const farbe = t ? WER_FARBE[t.wer] : C.inkDim;
+                      const ziehbar = !!t?.bearbeitbar;
+                      return (
+                        <div key={fi} draggable={ziehbar}
+                          onDragStart={ziehbar ? e => e.dataTransfer.setData('text/plain', JSON.stringify({ termin: t!.uid })) : undefined}
+                          onClick={t ? () => setOffenTermin(t) : undefined}
+                          title={`${f.titel} · ${mmss(f.startMin)}–${mmss(f.startMin + f.dauerMin)} · ${f.quelle}${ziehbar ? '' : ' (nur in Apple änderbar)'}`}
+                          style={{ position: 'absolute', top, ...spurStil(lage), height: hoehe, background: `color-mix(in srgb, ${farbe} 16%, ${C.flaecheHoch})`, borderLeft: `3px solid ${farbe}`, boxShadow: n > 1 ? `0 0 0 1px ${C.grund}` : undefined, borderRadius: 7, padding: n > 2 ? '2px 4px' : '3px 6px', overflow: 'hidden', zIndex: 2, cursor: ziehbar ? 'grab' : t ? 'pointer' : 'default' }}>
+                          <div style={titelStil(n, farbe)}>{n > 2 || ziehbar ? '' : '🔒 '}{f.titel}</div>
+                          {hoehe > 30 && n < 3 && <div style={zeit}>{mmss(f.startMin)}–{mmss(f.startMin + f.dauerMin)}</div>}
+                        </div>
+                      );
+                    })}
+
+                    {/* Verschiebbare Blöcke */}
+                    {tagesBloecke.map(b => {
+                      const top = Math.max(0, (b.startMin - START) * PX);
+                      const hoehe = Math.max(18, Math.min(H - top, b.dauerMin * PX));
+                      const farbe = ART_FARBE[b.art];
+                      const aktivB = aktivBlock === b.id;
+                      const lage = spuren.get(b.id);
+                      return (
+                        <div key={b.id} draggable
+                          onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ move: b.id }))}
+                          onClick={() => setAktivBlock(aktivB ? null : b.id)}
+                          title={`${b.titel} · ${mmss(b.startMin)}–${mmss(b.startMin + b.dauerMin)}`}
+                          style={{ position: 'absolute', top, ...spurStil(lage), height: hoehe, cursor: 'grab', background: `${farbe}26`, backdropFilter: 'blur(2px)', borderLeft: `3px solid ${farbe}`, boxShadow: aktivB ? `0 0 0 1px ${farbe}, 0 0 14px ${farbe}66` : undefined, borderRadius: 7, padding: '3px 6px', overflow: 'hidden', zIndex: aktivB ? 8 : 3, transition: 'box-shadow .2s ease' }}>
+                          <div style={titelStil(lage?.spuren ?? 1, farbe)}>{b.titel}</div>
+                          {hoehe > 30 && (lage?.spuren ?? 1) < 3 && <div style={zeit}>{mmss(b.startMin)}–{mmss(b.startMin + b.dauerMin)}</div>}
+                          {aktivB && (
+                            <div style={{ position: 'absolute', top: 2, right: 4, display: 'flex', gap: 3 }} onClick={e => e.stopPropagation()}>
+                              <button onClick={() => speichern(bloecke.map(x => x.id === b.id ? { ...x, dauerMin: Math.max(15, x.dauerMin - 30) } : x))} style={miniBtn(farbe)}>−</button>
+                              <button onClick={() => speichern(bloecke.map(x => x.id === b.id ? { ...x, dauerMin: Math.min(480, x.dauerMin + 30) } : x))} style={miniBtn(farbe)}>＋</button>
+                              <button onClick={() => blockLoeschen(b)} title={b.appleUid ? 'Block und Apple-Termin löschen' : 'Block löschen'} style={miniBtn(LEUCHT.kritisch)}>✕</button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', alignItems: 'center', fontSize: 12, color: C.inkLeise, marginTop: 14, lineHeight: 1.6 }}>
+          {(['kevin', 'malin', 'beide'] as const).map(w => <span key={w} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: WER_FARBE[w] }}><Punkt farbe={WER_FARBE[w]} groesse={7} />{WER_LABEL[w]}</span>)}
+          <span>🔒 nur in Apple änderbar (Serie, Einladung)</span>
+          {(['fokus', 'reha', 'routine', 'aufgabe', 'pause'] as const).map(a => (
+            <span key={a} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: ART_FARBE[a] }}><Punkt farbe={ART_FARBE[a]} groesse={7} />{a === 'fokus' ? 'Fokus' : a === 'reha' ? 'Reha' : a === 'routine' ? 'Routine' : a === 'aufgabe' ? 'Aufgabe' : 'Pause'}</span>
+          ))}
+          <span>— alles wird automatisch gespeichert.</span>
+        </div>
+      </Karte>
       {/* Ziele im Blick — die Woche plant man gegen Ziele, nicht ins Blaue */}
       {(ziele.monat.length > 0 || ziele.quartal.length > 0) && (
         <Karte i={1}>
@@ -355,7 +562,7 @@ export function WochenplanView() {
 
       {/* Eigener Block: Titel, Dauer, Art — dann in den Tag klicken */}
       <Karte i={3}>
-        <Ueberschrift farbe={ART_FARBE[neuArt]}>Eigener Block</Ueberschrift>
+        <Ueberschrift farbe={neuArt === 'termin' ? WER_FARBE[neuWer] : ART_FARBE[neuArt]}>{neuArt === 'termin' ? 'Neuer Termin (Apple)' : 'Eigener Block'}</Ueberschrift>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <input value={neuTitel} onChange={e => setNeuTitel(e.target.value)}
             placeholder="Wofür? z. B. Steuerberater anrufen"
@@ -366,9 +573,18 @@ export function WochenplanView() {
             {(['block', 'fokus', 'reha', 'pause'] as const).map(a => (
               <button key={a} className="fassbar" onClick={() => setNeuArt(a)} style={wahl(neuArt === a, ART_FARBE[a])}>{ART_LABEL[a]}</button>
             ))}
+            <button className="fassbar" onClick={() => setNeuArt('termin')} disabled={!kal?.icloud} title={kal?.icloud ? 'Echter Termin in Apple Kalender' : 'Erst iCloud verbinden'} style={{ ...wahl(neuArt === 'termin', WER_FARBE[neuWer]), opacity: kal?.icloud ? 1 : 0.45 }}>Termin (Apple)</button>
           </div>
         </div>
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Dann unten in den Tag klicken — dort, wo der Block liegen soll.</div>
+        {neuArt === 'termin' && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
+            <span style={{ fontSize: 12.5, color: C.inkLeise }}>In wessen Kalender?</span>
+            {(['kevin', 'malin', 'beide'] as const).map(w => (
+              <button key={w} className="fassbar" onClick={() => setNeuWer(w)} style={wahl(neuWer === w, WER_FARBE[w])}>{WER_LABEL[w]}{kal?.einstellungen ? ` · ${kal.einstellungen.kalender[w]}` : ''}</button>
+            ))}
+          </div>
+        )}
+        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>{neuArt === 'termin' ? 'Dann unten in den Tag klicken — der Termin entsteht sofort in Apple, auf allen Geräten.' : 'Dann unten in den Tag klicken — dort, wo der Block liegen soll.'}</div>
 
         {/* Spiegelung nach Apple — bewusst ein Schalter, kein Automatismus */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.06)' }}>
@@ -424,116 +640,7 @@ export function WochenplanView() {
         </div>
       </Karte>
 
-      {/* Raster */}
-      <Karte i={5}>
-        <div style={{ overflowX: 'auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '46px repeat(7, minmax(120px, 1fr))', gap: 4 }}>
-            {/* Zeitspalte */}
-            <div>
-              <div style={{ height: 34 }} />
-              <div style={{ position: 'relative', height: H }}>
-                {stunden.map(h => (
-                  <div key={h} style={{ position: 'absolute', top: (h * 60 - START) * PX - 7, right: 6, ...zeit }}>{String(h).padStart(2, '0')}</div>
-                ))}
-              </div>
-            </div>
-
-            {tage.map((date, di) => {
-              const istHeute = date === heute;
-              // Kapazität: verplante Stunden (Blöcke + feste Termine) je Tag —
-              // ehrliche Auslastung statt gefühlter Fülle. >8h gelb, >10h rot.
-              const belegtMin = bloecke.filter(b => b.date === date).reduce((s, b) => s + b.dauerMin, 0)
-                + fix.filter(f => f.date === date).reduce((s, f) => s + f.dauerMin, 0);
-              const belegtH = belegtMin / 60;
-              const lastFarbe = belegtH > 10 ? LEUCHT.kritisch : belegtH > 8 ? LEUCHT.achtung : C.inkLeise;
-              // Feste Termine UND Blöcke gemeinsam verteilen — sie liegen in
-              // derselben Spalte und dürfen sich deshalb nicht zudecken.
-              const tagesFix = fix.filter(f => f.date === date);
-              const tagesBloecke = bloecke.filter(b => b.date === date);
-              const spuren = verteileSpuren([
-                ...tagesFix.map((f, i) => ({ id: `fix-${i}`, startMin: f.startMin, dauerMin: f.dauerMin })),
-                ...tagesBloecke.map(b => ({ id: b.id, startMin: b.startMin, dauerMin: b.dauerMin })),
-              ]);
-              return (
-                <div key={date} style={{ minWidth: 0 }}>
-                  <div style={{ height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 10, background: istHeute ? `${LEUCHT.puls}1F` : 'rgba(255,255,255,.05)' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: istHeute ? LEUCHT.puls : C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{WD[di]} {date.slice(8)}.{date.slice(5, 7)}.</span>
-                    {belegtMin > 0 && <span title={belegtH > 10 ? 'überladen — Ruhe braucht Luft' : belegtH > 8 ? 'voll — Pausen ernst nehmen' : 'Auslastung'}
-                      style={{ fontSize: 11, fontWeight: 700, color: lastFarbe, fontVariantNumeric: 'tabular-nums' }}>{fmtH(belegtH)}h</span>}
-                  </div>
-                  <div
-                    onDragOver={e => e.preventDefault()}
-                    onDrop={e => dropAufTag(e, date)}
-                    // Klick auf freie Fläche legt dort einen Block an — Kevins
-                    // Ansage: „Ich will auch selber Blöcke anlegen können."
-                    onClick={e => {
-                      if (e.target !== e.currentTarget) return;   // nur die leere Fläche
-                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                      eigenerBlock(date, Math.max(START, Math.min(ENDE - 15, START + snap((e.clientY - rect.top) / PX))));
-                    }}
-                    title="Auf eine freie Stelle klicken, um dort einen Block anzulegen"
-                    style={{ position: 'relative', height: H, background: istHeute ? `${LEUCHT.puls}0A` : 'rgba(255,255,255,.03)', boxShadow: istHeute ? `inset 0 0 0 1px ${LEUCHT.puls}33` : undefined, borderRadius: 12, marginTop: 4, cursor: 'copy' }}
-                  >
-                    {/* Stundenlinien */}
-                    {stunden.map(h => (
-                      <div key={h} style={{ position: 'absolute', top: (h * 60 - START) * PX, left: 0, right: 0, borderTop: '1px solid rgba(255,255,255,.045)' }} />
-                    ))}
-
-                    {/* Feste Termine (unverrückbar) */}
-                    {tagesFix.map((f, fi) => {
-                      const top = Math.max(0, (f.startMin - START) * PX);
-                      const hoehe = Math.max(16, Math.min(H - top, f.dauerMin * PX));
-                      const lage = spuren.get(`fix-${fi}`);
-                      const n = lage?.spuren ?? 1;
-                      return (
-                        <div key={fi} title={`${f.titel} · ${mmss(f.startMin)}–${mmss(f.startMin + f.dauerMin)} (fest)`}
-                          style={{ position: 'absolute', top, ...spurStil(lage), height: hoehe, background: C.flaecheHoch, borderLeft: `3px solid ${C.inkDim}`, boxShadow: n > 1 ? `0 0 0 1px ${C.grund}` : undefined, borderRadius: 7, padding: n > 2 ? '2px 4px' : '3px 6px', overflow: 'hidden', zIndex: 1 }}>
-                          <div style={titelStil(n, C.inkDim)}>{n > 2 ? '' : '🔒 '}{f.titel}</div>
-                          {hoehe > 30 && n < 3 && <div style={zeit}>{mmss(f.startMin)}–{mmss(f.startMin + f.dauerMin)}</div>}
-                        </div>
-                      );
-                    })}
-
-                    {/* Verschiebbare Blöcke */}
-                    {tagesBloecke.map(b => {
-                      const top = Math.max(0, (b.startMin - START) * PX);
-                      const hoehe = Math.max(18, Math.min(H - top, b.dauerMin * PX));
-                      const farbe = ART_FARBE[b.art];
-                      const aktivB = aktivBlock === b.id;
-                      const lage = spuren.get(b.id);
-                      return (
-                        <div key={b.id} draggable
-                          onDragStart={e => e.dataTransfer.setData('text/plain', JSON.stringify({ move: b.id }))}
-                          onClick={() => setAktivBlock(aktivB ? null : b.id)}
-                          title={`${b.titel} · ${mmss(b.startMin)}–${mmss(b.startMin + b.dauerMin)}`}
-                          style={{ position: 'absolute', top, ...spurStil(lage), height: hoehe, cursor: 'grab', background: `${farbe}26`, backdropFilter: 'blur(2px)', borderLeft: `3px solid ${farbe}`, boxShadow: aktivB ? `0 0 0 1px ${farbe}, 0 0 14px ${farbe}66` : undefined, borderRadius: 7, padding: '3px 6px', overflow: 'hidden', zIndex: aktivB ? 8 : 3, transition: 'box-shadow .2s ease' }}>
-                          <div style={titelStil(lage?.spuren ?? 1, farbe)}>{b.titel}</div>
-                          {hoehe > 30 && (lage?.spuren ?? 1) < 3 && <div style={zeit}>{mmss(b.startMin)}–{mmss(b.startMin + b.dauerMin)}</div>}
-                          {aktivB && (
-                            <div style={{ position: 'absolute', top: 2, right: 4, display: 'flex', gap: 3 }} onClick={e => e.stopPropagation()}>
-                              <button onClick={() => speichern(bloecke.map(x => x.id === b.id ? { ...x, dauerMin: Math.max(15, x.dauerMin - 30) } : x))} style={miniBtn(farbe)}>−</button>
-                              <button onClick={() => speichern(bloecke.map(x => x.id === b.id ? { ...x, dauerMin: Math.min(480, x.dauerMin + 30) } : x))} style={miniBtn(farbe)}>＋</button>
-                              <button onClick={() => blockLoeschen(b)} title={b.appleUid ? 'Block und Apple-Termin löschen' : 'Block löschen'} style={miniBtn(LEUCHT.kritisch)}>✕</button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', alignItems: 'center', fontSize: 12, color: C.inkLeise, marginTop: 14, lineHeight: 1.6 }}>
-          <span>🔒 feste Termine (Apple + KEMARIS)</span>
-          {(['fokus', 'reha', 'routine', 'aufgabe', 'pause'] as const).map(a => (
-            <span key={a} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: ART_FARBE[a] }}><Punkt farbe={ART_FARBE[a]} groesse={7} />{a === 'fokus' ? 'Fokus' : a === 'reha' ? 'Reha' : a === 'routine' ? 'Routine' : a === 'aufgabe' ? 'Aufgabe' : 'Pause'}</span>
-          ))}
-          <span>— alles wird automatisch gespeichert.</span>
-        </div>
-      </Karte>
+      {offenTermin && <TerminFenster key={offenTermin.id} termin={offenTermin} icloud={!!kal?.icloud} onZu={() => setOffenTermin(null)} onGespeichert={() => void kalLaden()} />}
     </Seite>
   );
 }

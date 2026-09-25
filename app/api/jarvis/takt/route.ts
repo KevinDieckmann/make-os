@@ -9,6 +9,15 @@
 import { NextResponse } from 'next/server';
 import { faellig } from '@/lib/jarvis/takt';
 import { reihe } from '@/lib/jarvis/auftraege';
+import { verbunden, ladeStand, abgleichen, naechsterVersuchFaellig } from '@/lib/kalender/icloud';
+
+/** Kalender im Hintergrund frisch halten (alle 10 Min.) — Jarvis, Morgenlauf und Heute lesen den Stand, auch wenn keine Seite offen ist. */
+async function kalenderFrischHalten() {
+  if (!verbunden()) return;
+  const s = await ladeStand();
+  const zuletzt = Date.parse(s.at ?? '') || 0;
+  if (Date.now() - zuletzt > 10 * 60_000 && naechsterVersuchFaellig(s)) void abgleichen().catch(() => { /* Fehler steht im Stand */ });
+}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,6 +36,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST() {
+  await kalenderFrischHalten().catch(() => {});
   const dran = await faellig();
   if (!dran.length) return NextResponse.json({ ok: true, eingereiht: 0 });
   const { angelegt, schonDa } = await reihe(dran.map(f => f.auftrag));
