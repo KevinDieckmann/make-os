@@ -28,7 +28,7 @@ Stand hier und einen Stand, der online ist.“
 
 _(hier sammeln, was auf `entwicklung` fertig ist)_
 
-- …
+- Update 25.09. abends: Doku „zwei Stände“ (diese Datei, CLAUDE.md) — nur Text, keine Funktion.
 
 ## Ablauf eines Updates (Checkliste)
 
