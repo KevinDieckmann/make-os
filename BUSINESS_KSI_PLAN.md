@@ -5,7 +5,7 @@ Kevin 25.09.2026: „Das CapOS-Operationssystem einmal mit in den Business-Berei
 kompletten Business-Bereich — darauf können wir sämtliche Berechnungen
 innerhalb des Business anstellen.“
 
-Status: **Plan, noch nichts gebaut.** Umsetzung auf `entwicklung`, online mit
+Status: **Plan entschieden (25.09.), noch nichts gebaut.** Umsetzung auf `entwicklung`, online mit
 einem geplanten Update (siehe `UPDATES.md`).
 
 ---
@@ -123,10 +123,12 @@ DevSpec-Kennzahlen, die mit Mandaten/Pipeline rechenbar sind:
 5. **Einbindung** (1 T): Wachstums-Score, Jarvis/Head of Finance, Hinweise,
    Führung & Team.
 
-## 6. Entscheidungen
+## 6. Entscheidungen (Kevin, 25.09.2026)
 
-1. **Name:** eigener Name (z. B. „Business-Index“) oder „KSI“?
-2. **Führung & Team:** Unternehmer-DNA (Vorschlag) · klassische MDNA · vorerst 0 %?
-3. **Wachstums-Score:** Business-Säule = Business-Index (und Finanzen-Business-
-   Hälfte = Finanzielle Gesundheit), damit es EINE Wahrheit gibt — oder getrennt?
-4. **Gesellschaften:** je Gesellschaft (Consulting, KD Ventures) + gesamt, oder nur gesamt?
+1. **Name:** „Business-Index“ — eigene Bezeichnung, gleiche Logik 50/30/20.
+2. **Führung & Team:** Unternehmer-DNA (Umsatz je Kopf, Personalquote, Fokuszeit,
+   Meeting-Last, Delegation); klassische MDNA kommt dazu, sobald ein Team da ist.
+3. **Eine Wahrheit:** Die Business-Säule des Wachstums-Scores IST der
+   Business-Index; die Business-Hälfte der Finanzen-Säule ist die Finanzielle
+   Gesundheit.
+4. **Gesellschaften:** je Firma (Consulting, KD Ventures) + gesamt, Umschalter im Cockpit.
