@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # ─── MAKE OS · iCloud-Kalender verbinden (auf dem Server) ───────────────────
-# Einmal ausführen — vom Mac aus, im Terminal:
-#   ssh -t root@2.28.108.162 bash /srv/make-os/app/deploy/icloud-verbinden.sh
+# Einmal ausführen — vom Mac aus, im Terminal (Apple-ID gleich mitgeben):
+#   ssh -t root@2.28.108.162 bash /srv/make-os/app/deploy/icloud-verbinden.sh <apple-id>
+# Dann fragt es nur noch das App-Passwort (Einfügen reicht, mit oder ohne
+# Bindestriche) und zeigt zur Kontrolle die letzten vier Zeichen. Falsches
+# oder leeres Passwort → es fragt noch einmal, statt abzubrechen.
 #
 # Vorher bei Apple ein app-spezifisches Passwort anlegen:
 #   appleid.apple.com → Anmelden & Sicherheit → App-spezifische Passwörter → „MAKE OS“
@@ -46,17 +49,28 @@ if [[ "${1:-}" == "--trennen" ]]; then
   exit 0
 fi
 
-read -rp "Apple-ID (E-Mail-Adresse): " APPLE_ID
-read -rsp "App-spezifisches Passwort (xxxx-xxxx-xxxx-xxxx): " PASSWORT; echo
-APPLE_ID="$(printf '%s' "$APPLE_ID" | tr -d '[:space:]')"
-PASSWORT="$(printf '%s' "$PASSWORT" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
-if [[ -z "$APPLE_ID" || -z "$PASSWORT" ]]; then echo "Abbruch: beides wird gebraucht."; exit 1; fi
-if [[ ! "$PASSWORT" =~ ^[a-z]{4}-[a-z]{4}-[a-z]{4}-[a-z]{4}$ ]]; then
-  echo "Abbruch: Das sieht nicht wie ein app-spezifisches Passwort aus (xxxx-xxxx-xxxx-xxxx)."
-  echo "Bitte NICHT das normale Apple-Passwort verwenden."
-  exit 1
-fi
-if [[ "$APPLE_ID" == *'"'* || "$APPLE_ID" == *'\'* ]]; then echo "Abbruch: ungewöhnliche Zeichen in der Apple-ID."; exit 1; fi
+# Apple-ID: aus dem Befehl (empfohlen) oder abgefragt.
+APPLE_ID="$(printf '%s' "${1:-}" | tr -d '[:space:]')"
+if [[ -z "$APPLE_ID" ]]; then read -rp "Apple-ID (E-Mail-Adresse), dann Enter: " APPLE_ID; APPLE_ID="$(printf '%s' "$APPLE_ID" | tr -d '[:space:]')"; fi
+if [[ ! "$APPLE_ID" =~ ^[^@[:space:]\"\\]+@[^@[:space:]\"\\]+\.[a-z]{2,}$ ]]; then echo "Abbruch: „$APPLE_ID“ sieht nicht wie eine Apple-ID (E-Mail-Adresse) aus."; exit 1; fi
+echo "Apple-ID: $APPLE_ID"
+
+# App-Passwort: verdeckt, bis zu drei Versuche. Einfügen genügt — Leerzeichen,
+# Großbuchstaben und fehlende Bindestriche werden ausgeglichen.
+PASSWORT=""
+for versuch in 1 2 3; do
+  read -rsp "App-spezifisches Passwort einfügen, dann Enter (man sieht nichts): " ROH; echo
+  ROH="$(printf '%s' "$ROH" | tr -d '[:space:]-' | tr '[:upper:]' '[:lower:]')"
+  if [[ "$ROH" =~ ^[a-z]{16}$ ]]; then
+    PASSWORT="${ROH:0:4}-${ROH:4:4}-${ROH:8:4}-${ROH:12:4}"
+    echo "Erkannt: ••••-••••-••••-${PASSWORT:15:4}"
+    break
+  fi
+  if [[ -z "$ROH" ]]; then echo "Da kam nichts an — bitte das Passwort einfügen (Cmd+V), dann Enter."
+  else echo "Das sieht nicht wie ein app-spezifisches Passwort aus (16 Buchstaben, xxxx-xxxx-xxxx-xxxx). NICHT das normale Apple-Passwort."; fi
+done
+unset ROH
+if [[ -z "$PASSWORT" ]]; then echo "Abbruch nach drei Versuchen — nichts gespeichert."; exit 1; fi
 
 echo "Prüfe die Anmeldung bei iCloud …"
 # Zugang über die Standardeingabe an curl (-K -): printf ist eingebaut — nichts davon steht in der Prozessliste.
@@ -66,7 +80,8 @@ CODE="$(printf 'user = "%s:%s"\n' "$APPLE_ID" "$PASSWORT" | curl -s -o /dev/null
   https://caldav.icloud.com/ || true)"
 if [[ "$CODE" != "207" ]]; then
   unset PASSWORT
-  echo "iCloud lehnt ab (HTTP ${CODE:-keine Antwort}). Apple-ID und app-spezifisches Passwort prüfen — nichts gespeichert."
+  echo "iCloud lehnt ab (HTTP ${CODE:-keine Antwort}) — nichts gespeichert."
+  echo "Prüfen: stimmt die Apple-ID ($APPLE_ID)? Ist das App-Passwort bei Apple noch aktiv (nicht gelöscht)?"
   exit 1
 fi
 echo "Anmeldung klappt."

@@ -29,6 +29,7 @@ Stand hier und einen Stand, der online ist.“
 _(hier sammeln, was auf `entwicklung` fertig ist)_
 
 - Update 25.09. abends: Doku „zwei Stände“ (diese Datei, CLAUDE.md) — nur Text, keine Funktion.
+- iCloud-Skript einfacher: Apple-ID im Befehl, nur noch das App-Passwort einfügen (mit Kontrolle der letzten 4 Zeichen, bis zu 3 Versuche statt Abbruch).
 
 ## Ablauf eines Updates (Checkliste)
 
@@ -44,5 +45,5 @@ _(hier sammeln, was auf `entwicklung` fertig ist)_
 
 - **iCloud-Kalender verbinden** (nach dem Update, von einer Verbindung, die nicht gesperrt ist):
   vorher bei Apple ein app-spezifisches Passwort „MAKE OS“ anlegen (appleid.apple.com → Anmelden & Sicherheit), dann
-  `ssh -t root@2.28.108.162 bash /srv/make-os/app/deploy/icloud-verbinden.sh`
+  `ssh -t root@2.28.108.162 bash /srv/make-os/app/deploy/icloud-verbinden.sh <apple-id>` (fragt dann nur das App-Passwort)
   — Alternative ohne Terminal: eine Eingabe „iCloud verbinden“ unter System (nur Inhaber, verschlüsselt gespeichert), wenn gewünscht.

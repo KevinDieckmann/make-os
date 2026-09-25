@@ -93,7 +93,7 @@ lokal, Route `/os`, Port 3001.
   (`/api/apple-calendar`, `/termin`, `/create`) laufen auf dem Server über iCloud; der
   Abgleich schreibt `calendar-cache` für alle bisherigen Leser (Heute, Tag, Jarvis, Morgenlauf).
 - Zugang: `ICLOUD_APPLE_ID`/`ICLOUD_APP_PASSWORT` (app-spezifisch) NUR in der Server-.env —
-  einrichten/trennen mit `deploy/icloud-verbinden.sh` (Kevin, per `ssh -t`). Zugangsdaten
+  einrichten/trennen mit `deploy/icloud-verbinden.sh <apple-id>` (Kevin, per `ssh -t`; fragt nur das App-Passwort). Zugangsdaten
   gehen nur an *.icloud.com. Nach abgelehnter Anmeldung erst nach 30 Min. neu (Apple sperrt sonst).
 - Nie in MAKE OS geändert: Serien und Termine mit Teilnehmern (iCloud würde Einladungen
   verschicken) — die Oberfläche sagt „in Apple ändern“. Neue Termine haben nie Teilnehmer.
