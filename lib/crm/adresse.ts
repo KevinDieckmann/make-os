@@ -3,7 +3,8 @@
 //   s: ueberblick (Start) · sales · marketing · event · kontakte · firmen · stammdaten
 //   a: sales     → heute (Start) · leads (Ebene 1) · pipeline (Deals, Ebene 2) · kunden (Ebene 3) · kampagnen
 //      marketing → uebersicht (Start) · segmente · kampagnen · redaktion · newsletter · positionierung
-//      kontakte/stammdaten → die gespeicherte Ansicht bzw. der Reiter
+//      kontakte   → die gespeicherte Ansicht, eine Runde (runde-…) oder akte (die Kontaktakte zu k)
+//      stammdaten → der Reiter
 // Alte CRM-Adressen (/os/crm?s=heute|pipeline|kunden|events|kartei …) bleiben
 // gültig: /os/crm leitet um, und `aufloesen` übersetzt die alten Bereiche.
 

@@ -140,6 +140,17 @@ lokal, Route `/os`, Port 3001.
   Pflichtangaben (Herkunft Art. 14 / Rechtsgrundlage Art. 6 nur als Vorschlag,
   Übernahme per Klick), Betroffenenanträge, Verzeichnis Art. 30, Export.
   Konzept: `docs/konzepte/crm-sales-marketing-events.md`.
+- **Kontaktakte (25.09.2026, Kevin: „die ganze Matrix … auf einem Bild“):**
+  Karteikarte oben rechts „Akte öffnen ⤢“ → `/os/markttraktion?s=kontakte&a=akte&k=<id>`
+  (`components/os/crm/Akte.tsx`, Regeln `lib/crm/akte.ts`). Kopf: Zurück (Knopf, Esc,
+  Browser) · Name, Kanäle · sechs Kennzahlen (letzter Kontakt, nächster Schritt,
+  Takt, Gespräche, Deals, Vollständigkeit). Spalten: Stammdaten (die **Matrix**: jedes
+  Feld der Masterdatei, antippen zum Bearbeiten; Firmenfelder aus dem Firmeneintrag,
+  sonst aus dem Import) · Aktivitäten (ganzer Verlauf) · Sales, Beziehung,
+  Verbindungen (Kollegen, Deals der Firma, Events, Kampagnen, Beiträge, Power Hour,
+  Anträge), Recht. Breit 3, Laptop 2, Handy 1 Spalte. Karteikarte und Akte teilen
+  die Bausteine in `components/os/crm/kontakt-teile.tsx`. Gescrollt wird in `<main>`,
+  nicht im Fenster.
 - **Sales in drei Ebenen (25.09.2026, Kevin: „klare Ebenen“):** `lib/crm/leads.ts`,
   `/api/crm/lead`, `components/os/crm/Leads.tsx`. **Ebene 1 Leads** = Firma
   (Account; ohne Firma die Person), `Firma.lead` / `Kontakt.lead` (`Lead`,

@@ -4,46 +4,38 @@
 // Personen: Kennzahlen im Kopf, gespeicherte Ansichten, Suche, Tastatur
 // (/ sucht, j/k blättert, Enter öffnet, Esc schließt), Anlegen mit
 // Dublettenprüfung. Die Karteikarte hat vier Reiter: Überblick (Kanäle,
-// Beziehung, nächster Schritt, Chancen, Entwurf) · Verlauf (Notizvorlage,
-// Filter) · Stammdaten (alle Felder der Masterdatei) · Recht (Art. 6/14/15/
-// 17/21, Einwilligungen, Werbesperre). Quelle ist die Masterdatei — das
-// Adressbuch der Kontakte-App bleibt bewusst draußen.
+// Beziehung, nächster Schritt, Deals, Entwurf) · Verlauf (Notizvorlage,
+// Filter) · Stammdaten (die Matrix aller Felder der Masterdatei) · Recht
+// (Art. 6/14/15/17/21, Einwilligungen, Werbesperre). Oben rechts „Akte
+// öffnen“: dieselbe Person auf einer ganzen Seite (Akte.tsx), mit Zurück in die
+// Kartei. Die Bausteine teilen sich Karte und Akte (kontakt-teile.tsx).
+// Quelle ist die Masterdatei — das Adressbuch der Kontakte-App bleibt bewusst draußen.
 // Zu zweit (25.09.): Filter „Alle · Meins · Malin“ nach „Hält die Beziehung“
 // (ohne Eintrag: Sales-Verantwortung, Kevin), gefilterte Kontakte gesammelt
 // übergeben, je Person „Übergeben“ und „Malin ist gerade hier“. Die private
 // Notiz sieht nur, wer sie schrieb (serverseitig).
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, feld, Spalten, Spalte, useBreit, LEUCHT } from '../schlank';
-import {
-  anzeigename, STUFE_LABEL, STUFEN, KREIS_TAKT, HERKUNFT, RECHTSGRUNDLAGEN,
-  type Kontakt, type Kreis, type Lebensphase, type Einwilligung, type EinwilligungKanal, type Grundlage, type Stufe, type Herkunft, type Rechtsgrundlage, type AktivitaetArt,
-} from '@/lib/make-one/crm';
+import { anzeigename, STUFE_LABEL, HERKUNFT, type Kontakt, type Lebensphase, type Herkunft } from '@/lib/make-one/crm';
 import { ampel as kanalAmpel, art14, besterKanal } from '@/lib/crm/recht';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { dubletten } from '@/lib/crm/dubletten';
-import { type CrmApi, neueId, datum, euro } from './daten';
-import { KanalAmpel, Grund, NotizFormular, Verlauf, Feldzeile, Pillen, Feld, AMPEL_FARBE, festhalten, hatMailEinwilligung } from './teile';
+import { type CrmApi, datum } from './daten';
+import { KanalAmpel, Grund, Feldzeile, Pillen, Feld, AMPEL_FARBE } from './teile';
 import { Firmen, neueFirma } from './Firmen';
-import { Person, ZustaendigWahl, WerFilter, useWerFilter, passtWer, Uebergeben, AuchHier } from './team';
+import { Person, WerFilter, useWerFilter, passtWer, Uebergeben, AuchHier } from './team';
 import { VisitenkarteKnopf } from './Visitenkarte';
 import { LeadBlock } from './Leads';
+import { PHASEN, phaseFarbe, phaseLabel, Hinweise, NaechsterSchrittTeil, BeziehungTeil, DealsTeil, EntwurfTeil, VerlaufTeil, RechtTeil, Matrix } from './kontakt-teile';
 import { gleicherName } from '@/lib/crm/visitenkarte';
-import { haeltBeziehung, anderer, nameVon, BEIDE } from '@/lib/crm/team';
+import { haeltBeziehung, anderer, nameVon } from '@/lib/crm/team';
 
 type Modus = 'personen' | 'firmen';
 type Ansicht = 'alle' | 'kunden' | 'kreis' | 'prio' | 'chancen' | 'mail' | 'anreichern' | 'art14' | 'gesperrt' | 'dubletten';
-const PHASEN: { id: Lebensphase; label: string }[] = [
-  { id: 'kontakt', label: 'Kontakt' }, { id: 'interessent', label: 'Interessent' }, { id: 'kunde', label: 'Kunde' }, { id: 'ex_kunde', label: 'Ex-Kunde' }, { id: 'partner', label: 'Partner' }, { id: 'multiplikator', label: 'Multiplikator' },
-];
-const KREISE: { id: Kreis; label: string }[] = (['A', 'B', 'C', 'D'] as Kreis[]).map(k => ({ id: k, label: `${k} · ${KREIS_TAKT[k]} T` }));
-const EW_KANAL: { id: EinwilligungKanal; label: string }[] = [{ id: 'mail', label: 'Mail' }, { id: 'telefon', label: 'Telefon' }, { id: 'social', label: 'LinkedIn/Social' }, { id: 'newsletter', label: 'Newsletter' }, { id: 'einladung', label: 'Einladungen' }];
-const GRUNDLAGEN: { id: Grundlage; label: string }[] = [{ id: 'einwilligung', label: 'Einwilligung' }, { id: 'anfrage', label: 'Anfrage' }, { id: 'intro_akzeptiert', label: 'Intro akzeptiert' }, { id: 'vertrag', label: 'Vertrag' }];
-const phaseFarbe = (p?: string) => (p === 'kunde' ? LEUCHT.gut : p === 'partner' || p === 'multiplikator' ? LEUCHT.agenten : p === 'interessent' ? LEUCHT.business : p === 'ex_kunde' ? C.inkLeise : LEUCHT.puls);
-const phaseLabel = (p?: string) => PHASEN.find(x => x.id === p)?.label ?? 'Kontakt';
 
-export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFirma, start, zuRunde }: { api: CrmApi; name: (p: string) => string; modus: Modus; auswahl: string | null; setAuswahl: (id: string | null) => void; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; start?: string; zuRunde?: (art: 'kreis' | 'chancen') => void }) {
+export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFirma, start, zuRunde, zuAkte }: { api: CrmApi; name: (p: string) => string; modus: Modus; auswahl: string | null; setAuswahl: (id: string | null) => void; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; start?: string; zuRunde?: (art: 'kreis' | 'chancen') => void; zuAkte?: (id: string) => void }) {
   const breit = useBreit();
   const [suche, setSuche] = useState('');
   const [ansicht, setAnsicht] = useState<Ansicht>(start === 'dubletten' ? 'dubletten' : 'alle');
@@ -105,6 +97,18 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
     return () => window.removeEventListener('keydown', taste);
   }, [modus, sichtbar, markiert, setAuswahl]);
   useEffect(() => { setMarkiert(0); }, [suche, ansicht]);
+  // Zurück aus der Akte (oder ein Link mit ?k=): die gewählte Person steht einmal sichtbar in der Liste — späteres Anklicken springt nicht.
+  const erstesMal = useRef(true);
+  useEffect(() => {
+    if (!erstesMal.current || modus !== 'personen' || !kontakte.length) return;
+    const i = auswahl ? treffer.findIndex(x => x.id === auswahl) : -1;
+    if (i >= mehr) { setMehr(i + 20); return; }
+    erstesMal.current = false;
+    if (i < 0) return;
+    setMarkiert(i);
+    // Erst scrollen, wenn das Layout steht: useBreit meldet die Spalten einen Takt nach dem ersten Zeichnen.
+    setTimeout(() => document.querySelector(`[data-kid="${auswahl}"]`)?.scrollIntoView({ block: 'center' }), 150);
+  }, [modus, auswahl, treffer, mehr, kontakte.length]);
 
   const zusammen = async (behalten: string, weg: string) => {
     const r = await fetch('/api/crm/dubletten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ behalten, weg }) }).then(x => x.json()).catch(() => null);
@@ -175,10 +179,10 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
                 )}
                 <div>
                   {sichtbar.map((x, i) => (
-                    <div key={x.id}>
+                    <div key={x.id} data-kid={x.id}>
                       <KarteiZeile k={x} firma={x.firmaId ? firmen.get(x.firmaId)?.name : undefined} breit={breit} aktiv={auswahl === x.id} markiert={i === markiert && breit}
                         chance={mitChance.has(x.id)} mandat={mitMandat.has(x.id)} heute={heute} onClick={() => { setMarkiert(i); setAuswahl(auswahl === x.id ? null : x.id); }} />
-                      {auswahl === x.id && !breit && <div style={{ padding: '8px 0 18px' }}><Karteikarte k={x} api={api} name={name} zuFirma={zuFirma} /></div>}
+                      {auswahl === x.id && !breit && <div style={{ padding: '8px 0 18px' }}><Karteikarte k={x} api={api} name={name} zuFirma={zuFirma} zuAkte={zuAkte} /></div>}
                     </div>
                   ))}
                 </div>
@@ -191,7 +195,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
         {breit && (
           <Spalte klebt>
             <Karte i={2} akzent={k ? phaseFarbe(k.lebensphase) : undefined}>
-              {k ? <Karteikarte k={k} api={api} name={name} zuFirma={zuFirma} /> : <Leer>Eine Person anklicken oder mit j/k wählen und Enter — Verlauf, Notiz, Kanäle, Stammdaten und Recht erscheinen hier.</Leer>}
+              {k ? <Karteikarte k={k} api={api} name={name} zuFirma={zuFirma} zuAkte={zuAkte} /> : <Leer>Eine Person anklicken oder mit j/k wählen und Enter — Verlauf, Notiz, Kanäle, Stammdaten und Recht erscheinen hier. „Akte öffnen“ zeigt alles auf einer Seite.</Leer>}
             </Karte>
           </Spalte>
         )}
@@ -290,84 +294,50 @@ function Anlegen({ api, heute, onFertig }: { api: CrmApi; heute: string; onFerti
 }
 
 type Reiter = 'ueberblick' | 'verlauf' | 'stamm' | 'recht';
-function Karteikarte({ k, api, name, zuFirma }: { k: Kontakt; api: CrmApi; name: (p: string) => string; zuFirma: (id: string) => void }) {
+function Karteikarte({ k, api, name, zuFirma, zuAkte }: { k: Kontakt; api: CrmApi; name: (p: string) => string; zuFirma: (id: string) => void; zuAkte?: (id: string) => void }) {
   const crm = api.crm;
   const heute = crm?.heute ?? new Date().toISOString().slice(0, 10);
   const [reiter, setReiter] = useState<Reiter>('ueberblick');
-  const [notiz, setNotiz] = useState(false);
-  const [artFilter, setArtFilter] = useState<'alle' | AktivitaetArt>('alle');
-  const [ew, setEw] = useState<{ kanal: EinwilligungKanal; grundlage: Grundlage; nachweis: string } | null>(null);
-  const [entwurf, setEntwurf] = useState<{ betreff: string; email: string; linkedin: string; hinweis: string } | 'laedt' | null>(null);
-  useEffect(() => { setEntwurf(null); setNotiz(false); setEw(null); }, [k.id]);
   const firma = k.firmaId ? crm?.stand.firmen.find(f => f.id === k.firmaId) : undefined;
   const chancen = (crm?.stand.chancen ?? []).filter(c => c.kontaktIds.includes(k.id));
   const mandate = (crm?.stand.mandate ?? []).filter(m => m.kontaktIds.includes(k.id));
   const ctx = { hatMandat: mandate.some(m => m.status === 'aktiv'), hatChance: chancen.some(c => OFFENE_STUFEN.includes(c.stufe)) };
   const ampel = kanalAmpel(k, ctx);
-  const a14 = art14(k, heute);
   const setze = (teil: Partial<Kontakt>) => api.kontaktSetzen({ ...k, ...teil });
-  const log = (art: string, extra: Record<string, unknown> = {}) => api.aktivitaet({ id: k.id, art, ...extra });
   const mailOk = ampel.some(s => s.kanal === 'mail' && s.farbe !== 'rot');
-  const entwerfen = async () => {
-    setEntwurf('laedt');
-    const r = await fetch('/api/crm/entwurf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: k.id }) }).then(x => x.json()).catch(() => ({ error: 'nicht erreichbar' }));
-    if (r.error) { api.setFehler(r.error); setEntwurf(null); return; }
-    setEntwurf(r);
-  };
-  const verlauf = (k.aktivitaeten ?? []).filter(a => artFilter === 'alle' || a.art === artFilter);
-  const arten = Array.from(new Set((k.aktivitaeten ?? []).map(a => a.art)));
-  const F = (label: string, feldname: keyof Kontakt): ReactNode => (
-    <Feldzeile key={feldname} label={label}><Feld wert={String(k[feldname] ?? '')} onFertig={v => setze({ [feldname]: (feldname === 'email' ? v.trim().toLowerCase() : v.trim()) || undefined } as Partial<Kontakt>)} /></Feldzeile>
-  );
 
   return (
     <div style={{ display: 'grid', gap: 14 }}>
-      <div>
-        <div style={{ fontFamily: SCHRIFT.display, fontSize: 21, fontWeight: 700, letterSpacing: '-.015em' }}>{anzeigename(k)}</div>
-        <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>
-          {k.position ?? k.jobtitel ?? ''}{(k.position ?? k.jobtitel) && (firma || k.firma) ? ' · ' : ''}
-          {firma ? <button onClick={() => zuFirma(firma.id)} style={{ background: 'none', border: 'none', padding: 0, color: C.ink, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,.2)', fontSize: TYP.bedien }}>{firma.name}</button> : k.firma}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: SCHRIFT.display, fontSize: 21, fontWeight: 700, letterSpacing: '-.015em' }}>{anzeigename(k)}</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>
+            {k.position ?? k.jobtitel ?? ''}{(k.position ?? k.jobtitel) && (firma || k.firma) ? ' · ' : ''}
+            {firma ? <button onClick={() => zuFirma(firma.id)} style={{ background: 'none', border: 'none', padding: 0, color: C.ink, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,.2)', fontSize: TYP.bedien }}>{firma.name}</button> : k.firma}
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-          <Chip farbe={phaseFarbe(k.lebensphase)}>{phaseLabel(k.lebensphase)}</Chip>{k.kreis && <Chip farbe={LEUCHT.beziehung}>Kreis {k.kreis}</Chip>}
-          <Chip farbe={C.inkDim}>{STUFE_LABEL[k.stufe]}</Chip>{k.prio && <Chip farbe={C.inkDim}>Prio {k.prio}</Chip>}
-          <AuchHier passt={p => p.includes(`k=${k.id}`)} was="bei dieser Person" />
-        </div>
+        {/* Kevin 25.09.: „rechts in dem Feld oben“ — die ganze Akte auf einer Seite, mit Zurück in die Kartei. */}
+        {zuAkte && <button onClick={() => zuAkte(k.id)} className="fassbar" title="Alle Stammdaten, der ganze Verlauf und jede Verbindung auf einer Seite"
+          style={{ flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 13px', borderRadius: 11, cursor: 'pointer', border: `1px solid ${LEUCHT.business}55`, background: `${LEUCHT.business}14`, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, whiteSpace: 'nowrap' }}>
+          Akte öffnen <span aria-hidden style={{ color: LEUCHT.business }}>⤢</span>
+        </button>}
       </div>
-      {k.werbesperre && <div style={{ padding: '10px 12px', borderRadius: 10, background: `${LEUCHT.kritisch}18`, color: LEUCHT.kritisch, fontSize: TYP.bedien }}>Werbesperre seit {datum(k.werbesperre.seit)} — {k.werbesperre.grund}. Kein Kanal, keine Liste, kein Agent.</div>}
-      {a14 && <div style={{ padding: '10px 12px', borderRadius: 10, background: `${a14.faellig ? LEUCHT.kritisch : LEUCHT.achtung}14`, fontSize: TYP.bedien, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{ color: a14.faellig ? LEUCHT.kritisch : LEUCHT.achtung }}>Art. 14: Daten stammen nicht von der Person — seit {a14.tage} Tagen nicht informiert (Frist ein Monat).</span>
-        <Knopf leise onClick={() => setze({ art14InformiertAm: heute })}>Informiert</Knopf>
-      </div>}
+      <div style={{ display: 'flex', gap: 6, marginTop: -6, flexWrap: 'wrap' }}>
+        <Chip farbe={phaseFarbe(k.lebensphase)}>{phaseLabel(k.lebensphase)}</Chip>{k.kreis && <Chip farbe={LEUCHT.beziehung}>Kreis {k.kreis}</Chip>}
+        <Chip farbe={C.inkDim}>{STUFE_LABEL[k.stufe]}</Chip>{k.prio && <Chip farbe={C.inkDim}>Prio {k.prio}</Chip>}
+        <AuchHier passt={p => p.includes(`k=${k.id}`)} was="bei dieser Person" />
+      </div>
+      <Hinweise k={k} heute={heute} setze={setze} />
       <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen liste={[{ id: 'ueberblick', label: 'Überblick' }, { id: 'verlauf', label: `Verlauf ${(k.aktivitaeten ?? []).length}` }, { id: 'stamm', label: 'Stammdaten' }, { id: 'recht', label: 'Recht' }]} aktiv={reiter} onWahl={setReiter} farbe={LEUCHT.business} einzeilig /></div>
 
       {reiter === 'ueberblick' && (
         <>
           {crm?.termine?.[k.id] && <div style={{ padding: '10px 12px', borderRadius: 10, background: `${LEUCHT.puls}14`, fontSize: TYP.bedien, color: C.ink }}>Nächster Termin: <b style={{ fontWeight: 600 }}>{crm.termine[k.id].titel}</b> · {datum(crm.termine[k.id].start.slice(0, 10), heute)} {crm.termine[k.id].start.slice(11, 16)}</div>}
           <div><Ueberschrift>Kanäle</Ueberschrift><KanalAmpel ampel={ampel} ziele={{ telefon: k.telefon ?? k.sms, email: k.email, linkedin: k.linkedin }} /><Grund ampel={ampel} /></div>
-          <div>
-            <Ueberschrift rechts={k.naechsterSchritt ? <button onClick={() => setze({ naechsterSchritt: undefined })} style={{ background: 'none', border: 'none', color: LEUCHT.gut, cursor: 'pointer', fontSize: 12 }}>✓ erledigt</button> : undefined}>Nächster Schritt</Ueberschrift>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <div style={{ flex: 1 }}><Feld wert={k.naechsterSchritt?.text} platzhalter="Was als Nächstes passiert" onFertig={text => setze({ naechsterSchritt: text.trim() ? { text: text.trim(), datum: k.naechsterSchritt?.datum ?? heute } : undefined })} /></div>
-              <Feld typ="date" wert={k.naechsterSchritt?.datum} breite={150} platzhalter="Datum" onFertig={d2 => k.naechsterSchritt && setze({ naechsterSchritt: { ...k.naechsterSchritt, datum: d2 } })} />
-            </div>
-          </div>
+          <NaechsterSchrittTeil k={k} heute={heute} setze={setze} />
           <LeadBlock api={api} leadId={k.firmaId ?? k.id} />
-          <div>
-            <Ueberschrift>Beziehung</Ueberschrift>
-            <Feldzeile label="Kreis"><Pillen liste={KREISE} aktiv={k.kreis} onWahl={kreis => setze({ kreis: kreis === k.kreis ? undefined : kreis })} farbe={LEUCHT.beziehung} /></Feldzeile>
-            <Feldzeile label="Phase"><Pillen liste={PHASEN} aktiv={k.lebensphase ?? 'kontakt'} onWahl={lebensphase => setze({ lebensphase })} /></Feldzeile>
-            <Feldzeile label="Ansprache"><Pillen liste={STUFEN.map(s => ({ id: s, label: STUFE_LABEL[s] }))} aktiv={k.stufe} onWahl={(stufe: Stufe) => setze({ stufe })} /></Feldzeile>
-            <Feldzeile label="Anrede"><Pillen liste={[{ id: 'Sie', label: 'Sie' }, { id: 'Du', label: 'Du' }]} aktiv={k.anrede} onWahl={anrede => setze({ anrede: anrede as 'Sie' | 'Du' })} /></Feldzeile>
-            <Feldzeile label="Hält die Beziehung"><ZustaendigWahl wert={k.besitzer} welt="sales" onWahl={besitzer => setze({ besitzer })} /></Feldzeile>
-            <div style={{ marginTop: 8 }}><Uebergeben api={api} art="kontakt" id={k.id} jetzt={haeltBeziehung(k)} /></div>
-          </div>
-          <div>
-            <Ueberschrift rechts={<Knopf leise onClick={() => void api.setze('chancen', { id: neueId('ch'), titel: firma?.name ?? k.firma ?? anzeigename(k), kontaktIds: [k.id], ...(firma || k.firma ? { firma: firma?.name ?? k.firma } : {}), art: 'retainer', wert: { betrag: 0, basis: 'monat' }, stufe: 'qualifiziert', historie: [], qualifizierung: {}, gesellschaft: 'offen', besitzer: haeltBeziehung(k) === BEIDE ? api.ich ?? 'kevin' : haeltBeziehung(k), angelegt: new Date().toISOString() })}>+ Deal</Knopf>}>Deals & Mandate</Ueberschrift>
-            {chancen.map(c => <div key={c.id} style={{ fontSize: TYP.bedien, padding: '5px 0' }}><Punkt farbe={crm?.ampel[c.id]?.ampel === 'rot' ? LEUCHT.kritisch : crm?.ampel[c.id]?.ampel === 'gelb' ? LEUCHT.achtung : LEUCHT.gut} groesse={7} /> <b style={{ fontWeight: 600 }}>{c.titel}</b> <span style={{ color: C.inkLeise }}>· {crm?.stufen.find(s => s.id === c.stufe)?.label} · {c.wert.betrag ? euro(c.wert.betrag) + (c.wert.basis === 'monat' ? '/Monat' : '') : 'ohne Wert'}</span></div>)}
-            {mandate.map(m => <div key={m.id} style={{ fontSize: TYP.bedien, padding: '5px 0' }}><Punkt farbe={LEUCHT.geld} groesse={7} /> <b style={{ fontWeight: 600 }}>{m.titel.slice(0, 70)}</b> <span style={{ color: C.inkLeise }}>· Mandat {m.status}</span></div>)}
-            {!chancen.length && !mandate.length && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Noch kein Deal.</div>}
-          </div>
+          <BeziehungTeil k={k} api={api} setze={setze} />
+          <DealsTeil k={k} api={api} />
           {(k.aufhaenger || k.signale || k.marktinfo) && (
             <div>
               <Ueberschrift>Einordnung</Ueberschrift>
@@ -376,121 +346,13 @@ function Karteikarte({ k, api, name, zuFirma }: { k: Kontakt; api: CrmApi; name:
               {k.marktinfo && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}><span style={{ color: C.inkLeise }}>Markt:</span> {k.marktinfo}</div>}
             </div>
           )}
-          {!k.werbesperre && (
-            <div>
-              <Ueberschrift>Entwurf</Ueberschrift>
-              {!entwurf && <Knopf leise onClick={entwerfen}>Jarvis entwerfen lassen</Knopf>}
-              {entwurf === 'laedt' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Jarvis schreibt …</span>}
-              {entwurf && entwurf !== 'laedt' && (
-                <div style={{ display: 'grid', gap: 8 }}>
-                  <div style={{ fontWeight: 600 }}>{entwurf.betreff}</div>
-                  <pre style={{ whiteSpace: 'pre-wrap', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.55 }}>{entwurf.email}</pre>
-                  {entwurf.linkedin && <pre style={{ whiteSpace: 'pre-wrap', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.55, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 8 }}>{entwurf.linkedin}</pre>}
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {mailOk && <Knopf onClick={() => fetch('/api/apple-mail/draft', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: k.email ?? '', subject: entwurf.betreff, body: entwurf.email }) })}>In Mail öffnen</Knopf>}
-                    <Knopf leise onClick={() => { try { void navigator.clipboard.writeText(entwurf.linkedin || entwurf.email); } catch { /* egal */ } }}>Text kopieren</Knopf>
-                    <Knopf leise onClick={() => setEntwurf(null)}>Verwerfen</Knopf>
-                  </div>
-                  <div style={{ fontSize: 12, color: C.inkLeise }}>{mailOk ? entwurf.hinweis : 'Mail ist für diese Person nicht freigegeben (Ampel) — den Text nur für ein persönliches Gespräch oder eine Vernetzungsanfrage ohne Werbung nutzen.'}</div>
-                </div>
-              )}
-            </div>
-          )}
+          <EntwurfTeil k={k} mailOk={mailOk} />
         </>
       )}
 
-      {reiter === 'verlauf' && (
-        <div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-            {!notiz && <Knopf onClick={() => setNotiz(true)}>+ Gesprächsnotiz</Knopf>}
-            {[['anruf', 'Angerufen'], ['mail', 'Mail geschickt'], ['linkedin', 'LinkedIn'], ['antwort', 'Antwort erhalten'], ['termin', 'Termin']].map(([a, l]) => <Knopf key={a} leise onClick={() => void log(a)}>{l}</Knopf>)}
-          </div>
-          {notiz && <div style={{ marginBottom: 10 }}><NotizFormular heute={heute} anrede={k.anrede} einwilligung={!hatMailEinwilligung(k)} onAbbruch={() => setNotiz(false)} onFertig={x => { void festhalten(api, { id: k.id, art: 'gespraech', notiz: x.notiz, naechster: x.naechster }, x.einwilligung, heute); setNotiz(false); }} /></div>}
-          {arten.length > 1 && <div style={{ marginBottom: 8 }}><Pillen liste={[{ id: 'alle', label: 'Alle' }, ...arten.map(a => ({ id: a, label: a }))] as { id: 'alle' | AktivitaetArt; label: string }[]} aktiv={artFilter} onWahl={setArtFilter} /></div>}
-          <Verlauf liste={verlauf} name={name} heute={heute} max={60} />
-        </div>
-      )}
-
-      {reiter === 'stamm' && (
-        <div style={{ display: 'grid', gap: 12 }}>
-          <div><Ueberschrift>Person</Ueberschrift>
-            {F('Vorname', 'vorname')}{F('Nachname', 'nachname')}{F('Position', 'position')}{F('Jobtitel', 'jobtitel')}{F('Seniorität', 'senioritaet')}
-            {F('E-Mail', 'email')}{F('Telefon', 'telefon')}{F('Mobil / SMS', 'sms')}{F('LinkedIn', 'linkedin')}{F('Über die Person', 'personInfo')}
-          </div>
-          <div><Ueberschrift rechts={firma ? <button onClick={() => zuFirma(firma.id)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>Firma öffnen ›</button> : undefined}>Firma</Ueberschrift>
-            <Feldzeile label="Firma">
-              <div>
-                <input list="crm-firmen-karte" defaultValue={firma?.name ?? k.firma ?? ''} key={k.id} aria-label="Firma" placeholder="Firma zuordnen …"
-                  onBlur={async e => { const n = e.target.value.trim(); if (n === (firma?.name ?? k.firma ?? '')) return; if (!n) return void setze({ firma: undefined, firmaId: undefined }); const f = (crm?.stand.firmen ?? []).find(x => x.name.toLowerCase() === n.toLowerCase()) ?? neueFirma(n); if (!(crm?.stand.firmen ?? []).some(x => x.id === f.id)) await api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>); void setze({ firma: f.name, firmaId: f.id }); }}
-                  style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} />
-                <datalist id="crm-firmen-karte">{(crm?.stand.firmen ?? []).slice(0, 400).map(f => <option key={f.id} value={f.name} />)}</datalist>
-              </div>
-            </Feldzeile>
-            {firma && <div style={{ fontSize: 12.5, color: C.inkLeise, padding: '4px 0' }}>{[firma.branche, firma.stadt, firma.mitarbeiter ? `${firma.mitarbeiter} MA` : '', firma.webseite].filter(Boolean).join(' · ') || 'Firmendetails in der Firmenkarte pflegen'}</div>}
-          </div>
-          <div><Ueberschrift>Einordnung</Ueberschrift>
-            <Feldzeile label="Prio"><Pillen liste={[{ id: 'A', label: 'A' }, { id: 'B', label: 'B' }, { id: 'C', label: 'C' }, { id: '', label: '—' }]} aktiv={k.prio} onWahl={p => setze({ prio: p as Kontakt['prio'] })} /></Feldzeile>
-            <Feldzeile label="Eignung"><Pillen liste={[{ id: 'ja', label: 'ja' }, { id: 'vielleicht', label: 'vielleicht' }, { id: 'nein', label: 'nein' }, { id: '', label: '—' }]} aktiv={k.eignung} onWahl={x => setze({ eignung: x as Kontakt['eignung'] })} /></Feldzeile>
-            {F('Typ', 'typ')}{F('Kategorie', 'kategorie')}{F('Aufhänger', 'aufhaenger')}{F('Signale', 'signale')}{F('Marktinfo', 'marktinfo')}{F('KI-Bezug', 'kiBezug')}{F('Steckbrief', 'steckbrief')}
-            {F('Vorgestellt durch', 'vorgestelltDurch')}{F('Notiz', 'notiz')}
-          </div>
-          <div><Ueberschrift>Herkunft der Daten</Ueberschrift>
-            {F('Quelle', 'quelle')}{F('Recherche-Stand', 'recherche')}{F('Owner (Import)', 'owner')}{F('Lifecycle (Import)', 'lifecycle')}{F('HubSpot-ID', 'hubspotId')}
-            <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 4 }}>Importiert {datum(k.importiertAm)} · geändert {datum(k.geaendertAm)} · Kennung {k.id}</div>
-          </div>
-          <div><Ueberschrift rechts={<span>nur für dich sichtbar · nie an Agenten</span>}>Privat</Ueberschrift><Feldzeile label="Deine Notiz"><Feld wert={k.privatNotiz} onFertig={privatNotiz => setze({ privatNotiz: privatNotiz || undefined })} /></Feldzeile></div>
-        </div>
-      )}
-
-      {reiter === 'recht' && (
-        <div style={{ display: 'grid', gap: 14 }}>
-          <div><Ueberschrift>Grundlage</Ueberschrift>
-            <Feldzeile label="Rechtsgrundlage (Art. 6)"><Pillen liste={RECHTSGRUNDLAGEN.map(r => ({ id: r.id, label: r.label }))} aktiv={k.rechtsgrundlage} onWahl={(r: Rechtsgrundlage) => setze({ rechtsgrundlage: r })} /></Feldzeile>
-            <Feldzeile label="Herkunft (Art. 14)"><Pillen liste={HERKUNFT.map(h => ({ id: h.id, label: h.label }))} aktiv={k.herkunft} onWahl={(h: Herkunft) => setze({ herkunft: h, ...(HERKUNFT.find(x => x.id === h)?.fremd ? { fremddaten: true } : { fremddaten: undefined }) })} /></Feldzeile>
-            {k.fremddaten && <Feldzeile label="Informiert"><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkDim }}>{k.art14InformiertAm ? `am ${datum(k.art14InformiertAm)}` : 'noch nicht'}</span>{!k.art14InformiertAm && <Knopf leise onClick={() => setze({ art14InformiertAm: heute })}>Heute informiert</Knopf>}</div></Feldzeile>}
-          </div>
-          <div>
-            <Ueberschrift rechts={!ew ? <Knopf leise onClick={() => setEw({ kanal: 'mail', grundlage: 'einwilligung', nachweis: '' })}>+ Einwilligung</Knopf> : undefined}>Einwilligungen</Ueberschrift>
-            {(k.einwilligungen ?? []).map((e, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, padding: '4px 0', color: e.widerrufenAm ? C.inkLeise : C.ink }}>
-                <span>{EW_KANAL.find(x => x.id === e.kanal)?.label} · {GRUNDLAGEN.find(x => x.id === e.grundlage)?.label ?? e.grundlage} · {datum(e.erteiltAm)}{e.nachweis ? ` · „${e.nachweis.slice(0, 60)}“` : ''}{e.widerrufenAm ? ` · widerrufen ${datum(e.widerrufenAm)}` : ''}</span>
-                {!e.widerrufenAm && <button onClick={() => setze({ einwilligungen: (k.einwilligungen ?? []).map((x, j) => (j === i ? { ...x, widerrufenAm: heute } : x)) })} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>Widerruf</button>}
-              </div>
-            ))}
-            {!(k.einwilligungen ?? []).length && !ew && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Keine. Einwilligung im Gespräch einholen und den Wortlaut festhalten.</div>}
-            {ew && (
-              <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
-                <Pillen liste={EW_KANAL} aktiv={ew.kanal} onWahl={kanal => setEw({ ...ew, kanal })} />
-                <Pillen liste={GRUNDLAGEN} aktiv={ew.grundlage} onWahl={grundlage => setEw({ ...ew, grundlage })} />
-                <input value={ew.nachweis} onChange={e => setEw({ ...ew, nachweis: e.target.value })} placeholder="Nachweis: Wortlaut oder Beleg („im Gespräch am …: Darf ich Ihnen … schicken? — ja“)" aria-label="Nachweis" style={{ ...feld, fontSize: TYP.bedien }} />
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <Knopf aus={!ew.nachweis.trim()} onClick={() => { const neu: Einwilligung = { kanal: ew.kanal, grundlage: ew.grundlage, erteiltAm: heute, nachweis: ew.nachweis.trim() }; void setze({ einwilligungen: [...(k.einwilligungen ?? []), neu], ...(ew.grundlage === 'einwilligung' && !k.rechtsgrundlage ? { rechtsgrundlage: 'einwilligung' as Rechtsgrundlage } : {}) }); setEw(null); }}>Festhalten</Knopf>
-                  <Knopf leise onClick={() => setEw(null)}>Abbrechen</Knopf>
-                </div>
-                <div style={{ fontSize: 12, color: C.inkLeise }}>Eine Visitenkarte ist keine Einwilligung. Newsletter nur per Double-Opt-in.</div>
-              </div>
-            )}
-          </div>
-          <div>
-            <Ueberschrift>Werbewiderspruch (Art. 21)</Ueberschrift>
-            {!k.werbesperre
-              ? <Knopf leise onClick={() => { if (window.confirm('Werbewiderspruch eintragen? Die Person wird aus allen Listen genommen — dauerhaft.')) void setze({ werbesperre: { seit: heute, grund: 'Widerspruch' }, wiedervorlage: undefined, naechsterSchritt: undefined }); }}>Werbesperre eintragen</Knopf>
-              : <Knopf leise onClick={() => { if (window.confirm('Sperre aufheben? Nur, wenn die Person ausdrücklich wieder eingewilligt hat.')) void setze({ werbesperre: undefined }); }}>Sperre aufheben (nur nach neuer Einwilligung)</Knopf>}
-          </div>
-          <div>
-            <Ueberschrift>Betroffenenrechte</Ueberschrift>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <Knopf leise onClick={() => { window.location.href = `/api/crm/datenschutz?id=${k.id}`; }}>Auskunft (Art. 15) als Datei</Knopf>
-              <Knopf leise onClick={async () => {
-                if (!window.confirm(`${anzeigename(k)} endgültig löschen (Art. 17)? Besser oft: Werbesperre — dann bleibt „nicht anschreiben“ erhalten.`)) return;
-                const grund = window.prompt('Grund (für das Löschprotokoll, ohne Personendaten)', 'Löschverlangen Art. 17') ?? '';
-                const r = await fetch('/api/crm/datenschutz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: k.id, grund }) }).then(x => x.json()).catch(() => null);
-                if (r?.ok) void api.laden(); else api.setFehler('Nicht gelöscht.');
-              }}>Löschen (Art. 17)</Knopf>
-            </div>
-          </div>
-        </div>
-      )}
+      {reiter === 'verlauf' && <VerlaufTeil k={k} api={api} name={name} heute={heute} />}
+      {reiter === 'stamm' && <Matrix k={k} api={api} setze={setze} zuFirma={zuFirma} />}
+      {reiter === 'recht' && <RechtTeil k={k} api={api} heute={heute} setze={setze} />}
     </div>
   );
 }

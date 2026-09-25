@@ -10,7 +10,8 @@
 //   Marketing   Übersicht · Segmente · Kampagnen · Redaktionsplan ·
 //               Newsletter · Positionierung                     — Head of Marketing
 //   Event       Events mit Gästen, Checkliste, Abend, Nachfassen  — Head of Event
-//   Kontakte · Firmen · Stammdaten — die gemeinsame Grundlage aller drei Welten
+//   Kontakte · Firmen · Stammdaten — die gemeinsame Grundlage aller drei Welten;
+//               „Akte öffnen“ zeigt eine Person auf einer ganzen Seite (a=akte)
 // Kampagnen planen beide Heads (Sales und Marketing) auf denselben Daten.
 // Das Grundkonzept (Stufen mit Austrittskriterium, Warum-jetzt-Punkte,
 // Sperre statt Löschen, Score aus fünf Säulen) stammt aus der Markttraktion in
@@ -22,7 +23,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, LEUCHT } from '../schlank';
-import { aufloesen, PFAD, type Bereich, type SalesAnsicht } from '@/lib/crm/adresse';
+import { aufloesen, markttraktion, PFAD, type Bereich, type SalesAnsicht } from '@/lib/crm/adresse';
 import { useCrm } from './daten';
 import { Pillen } from './teile';
 import { Ueberblick, WELT_FARBE } from './Ueberblick';
@@ -37,6 +38,7 @@ import { Stammdaten } from './Stammdaten';
 import { SchnellErfassen } from './SchnellErfassen';
 import { Runden, type RundenArt } from './Runden';
 import { Leads, SalesTrichter } from './Leads';
+import { KontaktAkte } from './Akte';
 
 const WELTEN: { id: Bereich; label: string; farbe?: string }[] = [
   { id: 'ueberblick', label: 'Überblick' }, { id: 'sales', label: 'Sales', farbe: WELT_FARBE.sales },
@@ -99,6 +101,9 @@ export function MarkttraktionSeite() {
   // Gespräch festhalten — von überall in der Markttraktion, ein Knopf oben rechts.
   const [erfassen, setErfassen] = useState(false);
   const runde = bereich === 'kontakte' && ansicht?.startsWith('runde-') ? (ansicht.slice(6) as RundenArt) : null;
+  // Die Akte einer Person (Kevin 25.09.): eigener Eintrag im Verlauf des Browsers — „Zurück“ dort führt ebenfalls in die Kartei.
+  const akteId = bereich === 'kontakte' && ansicht === 'akte' ? kParam : null;
+  const zuAkte = (id: string) => { setAuswahl(id); router.push(markttraktion('kontakte', 'akte', id), { scroll: false }); };
 
   return (
     // „+ Gespräch“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (in der Reiterleiste rutschte er aus dem Bild).
@@ -127,7 +132,8 @@ export function MarkttraktionSeite() {
       {bereich === 'event' && <Events api={api} zuKontakt={zuKontakt} start={params.get('k') ?? undefined} onAuswahl={id => gehe('event', undefined, id ?? undefined)} />}
 
       {runde && <Runden api={api} art={runde} name={name} zuKontakt={zuKontakt} zurueck={() => gehe('kontakte')} />}
-      {!runde && (bereich === 'kontakte' || bereich === 'firmen') && <Kartei api={api} name={name} modus={bereich === 'firmen' ? 'firmen' : 'personen'} auswahl={auswahl} setAuswahl={setAuswahl} zuKontakt={zuKontakt} zuFirma={zuFirma} start={ansicht} zuRunde={a => gehe('kontakte', `runde-${a}`)} />}
+      {akteId && <KontaktAkte api={api} id={akteId} name={name} zurueck={() => gehe('kontakte', undefined, akteId)} zuFirma={zuFirma} zuAkte={zuAkte} />}
+      {!runde && !akteId && (bereich === 'kontakte' || bereich === 'firmen') && <Kartei api={api} name={name} modus={bereich === 'firmen' ? 'firmen' : 'personen'} auswahl={auswahl} setAuswahl={setAuswahl} zuKontakt={zuKontakt} zuFirma={zuFirma} start={ansicht === 'akte' ? undefined : ansicht} zuRunde={a => gehe('kontakte', `runde-${a}`)} zuAkte={zuAkte} />}
       {bereich === 'stammdaten' && <Stammdaten api={api} zuBereich={zuBereich} zuKontakt={zuKontakt} start={ansicht} />}
     </Seite>
   );

@@ -630,3 +630,10 @@ Danach Phase 4 und 5, jeweils erst, wenn die vorherige im Alltag läuft.
 - **Tests bleiben Pflicht** für Regeln (`.ts`), nicht für Oberflächen.
 - **`main` ist immer live-fähig.** Was auf `main` liegt, geht auf den Server.
 - **Kevin entscheidet das Was, Claude das Wie.** Bei Richtungsfragen: klickbare Runde, dann los.
+
+> **Nachtrag 25.09. (Mittag) — Kontaktakte.** Kevin: rechts oben in der Karteikarte
+> ein Knopf auf „die ganze Matrix“ zur Person, mit Aktivitäten, alles auf einem Bild,
+> und ein Zurück. Gebaut: „Akte öffnen“ → Vollansicht mit Stammdaten-Matrix (alle
+> Felder der Masterdatei, direkt bearbeitbar, Vollständigkeit je Gruppe), ganzem
+> Verlauf, Sales (nächster Schritt, Lead, Deals, Entwurf), Beziehung, Verbindungen
+> und Recht; Zurück führt in die Kartei zur selben Person. Tests: `markttraktion-akte`.
