@@ -14,6 +14,10 @@ import { WillkommenMalin } from '@/components/os/WillkommenMalin';
 import { Schnellsuche } from '@/components/os/Schnellsuche';
 import { wache } from '@/lib/zugang/wache';
 
+// Alles hinter der Anmeldung wird je Anfrage gebaut (25.09., schneller Modus): Die Wache liest das
+// Sitzungs-Cookie — beim Vorab-Erzeugen während `next build` gibt es keins.
+export const dynamic = 'force-dynamic';
+
 export default async function OsLayout({ children }: { children: React.ReactNode }) {
   // Seit 23.09.: ohne gültiges Konto keine Seite — die Middleware prüft die
   // Unterschrift, die Wache prüft, ob es das Konto noch gibt.

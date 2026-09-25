@@ -23,4 +23,10 @@ describe('Schnittstellen', () => {
     });
     expect(eingefroren, `Ohne force-dynamic:\n${eingefroren.join('\n')}`).toEqual([]);
   });
+  it('Seiten hinter der Anmeldung werden nie beim Bauen vorab erzeugt', () => {
+    const seiten = (o: string): string[] => readdirSync(o).flatMap(n => { const p = join(o, n); return statSync(p).isDirectory() ? seiten(p) : n === 'page.tsx' ? [p] : []; });
+    expect(readFileSync('app/os/layout.tsx', 'utf8')).toContain("export const dynamic = 'force-dynamic'");
+    expect(readFileSync('app/jarvis/page.tsx', 'utf8')).toContain("export const dynamic = 'force-dynamic'");
+    expect(seiten('app/os').filter(p => readFileSync(p, 'utf8').includes('generateStaticParams'))).toEqual([]);
+  });
 });

@@ -3,10 +3,6 @@ import { notFound } from 'next/navigation';
 
 const GUELTIG = ['monat', 'quartal', 'jahr'] as const;
 
-export function generateStaticParams() {
-  return GUELTIG.map(horizont => ({ horizont }));
-}
-
 export default function HorizontPage({ params }: { params: { horizont: string } }) {
   if (!(GUELTIG as readonly string[]).includes(params.horizont)) notFound();
   return <HorizontView horizont={params.horizont as typeof GUELTIG[number]} />;
