@@ -16,6 +16,13 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -q && apt-get upgrade -yq
 apt-get install -yq ca-certificates curl git ufw openssl unattended-upgrades
 
+echo "▸ Auslagerungsspeicher, wenn der Arbeitsspeicher knapp ist (Bauen braucht ~2 GB)"
+if [ "$(awk '/MemTotal/ {print $2}' /proc/meminfo)" -lt 3500000 ] && ! swapon --show | grep -q /swapfile; then
+  fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile >/dev/null && swapon /swapfile
+  grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  sysctl -q vm.swappiness=10 && echo 'vm.swappiness=10' > /etc/sysctl.d/99-make-os.conf
+fi
+
 echo "▸ Docker aus der offiziellen Paketquelle"
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
@@ -43,7 +50,7 @@ echo "▸ Sicherungs-Passwort (einmalig erzeugt — in den Passwort-Manager!)"
 [ -f /srv/make-os/.sicherung-passwort ] || { openssl rand -base64 32 > /srv/make-os/.sicherung-passwort; chown make:make /srv/make-os/.sicherung-passwort; chmod 600 /srv/make-os/.sicherung-passwort; }
 
 echo "▸ Cronjobs für make"
-( sudo -u make crontab -l 2>/dev/null | grep -v make-os ; \
+( { sudo -u make crontab -l 2>/dev/null | grep -v make-os || true; } ; \
   echo "15 3 * * * bash /srv/make-os/app/deploy/sicherung.sh >> /srv/make-os/sicherungen/protokoll.txt 2>&1 # make-os"; \
   echo "*/10 * * * * bash /srv/make-os/app/deploy/vault-abgleich.sh /srv/make-os/vault >> /srv/make-os/vault-abgleich.txt 2>&1 # make-os" ) | sudo -u make crontab -
 
