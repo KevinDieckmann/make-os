@@ -26,7 +26,10 @@ export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string): Be
   if (art.length) b.push({ prio: 2, titel: `${art.length} Personen nach Art. 14 informieren`, grund: 'Daten aus Recherche, Frist ein Monat', bereich: 'marketing' });
   const mitChance = new Set(crm.chancen.flatMap(c => c.kontaktIds));
   const ohneChance = kontakte.filter(k => ['gespraech', 'termin', 'angebot'].includes(k.stufe) && !mitChance.has(k.id) && !k.werbesperre);
-  if (ohneChance.length) b.push({ prio: 2, titel: `${ohneChance.length} Kontakte im Gespräch ohne Chance`, grund: 'Wert und nächsten Schritt festhalten, sonst fehlen sie in der Prognose', bereich: 'pipeline' });
+  if (ohneChance.length) b.push({ prio: 2, titel: `${ohneChance.length} Kontakte im Gespräch ohne Chance`, grund: 'Chancen-Runde: Wert und nächsten Schritt je Person in wenigen Minuten festhalten', bereich: 'kontakte', ansicht: 'runde-chancen' });
+  // Ohne Kreis kein Pflege-Takt in der Power Hour — die Kreis-Runde sortiert Karte für Karte.
+  const ohneKreis = kontakte.filter(k => !k.kreis && !k.werbesperre && (k.lebensphase === 'kunde' || k.prio === 'A' || k.prio === 'B' || ['gespraech', 'termin', 'angebot', 'gewonnen'].includes(k.stufe)));
+  if (ohneKreis.length) b.push({ prio: 3, titel: `${ohneKreis.length} wichtige Kontakte ohne Kreis`, grund: 'Kreis-Runde: A/B/C/D und wer die Beziehung hält — dann greift der Pflege-Takt', bereich: 'kontakte', ansicht: 'runde-kreis' });
   const ohneSchritt = offen.filter(c => !c.naechsterSchritt);
   if (ohneSchritt.length) b.push({ prio: 2, titel: `${ohneSchritt.length} Chancen ohne nächsten Schritt`, grund: 'Ohne Datum verliert sich jede Chance', bereich: 'pipeline' });
   const widersprueche = crm.mandate.filter(m => m.status !== 'beendet' && m.offen.length);

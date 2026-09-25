@@ -27,6 +27,7 @@ import { type CrmApi, neueId, datum, euro } from './daten';
 import { KanalAmpel, Grund, NotizFormular, Verlauf, Feldzeile, Pillen, Feld, AMPEL_FARBE } from './teile';
 import { Firmen, neueFirma } from './Firmen';
 import { Person, ZustaendigWahl, WerFilter, useWerFilter, passtWer, Uebergeben, AuchHier } from './team';
+import { VisitenkarteKnopf } from './Visitenkarte';
 import { haeltBeziehung, anderer, nameVon, BEIDE } from '@/lib/crm/team';
 
 type Modus = 'personen' | 'firmen';
@@ -40,7 +41,7 @@ const GRUNDLAGEN: { id: Grundlage; label: string }[] = [{ id: 'einwilligung', la
 const phaseFarbe = (p?: string) => (p === 'kunde' ? LEUCHT.gut : p === 'partner' || p === 'multiplikator' ? LEUCHT.agenten : p === 'interessent' ? LEUCHT.business : p === 'ex_kunde' ? C.inkLeise : LEUCHT.puls);
 const phaseLabel = (p?: string) => PHASEN.find(x => x.id === p)?.label ?? 'Kontakt';
 
-export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFirma, start }: { api: CrmApi; name: (p: string) => string; modus: Modus; auswahl: string | null; setAuswahl: (id: string | null) => void; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; start?: string }) {
+export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFirma, start, zuRunde }: { api: CrmApi; name: (p: string) => string; modus: Modus; auswahl: string | null; setAuswahl: (id: string | null) => void; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; start?: string; zuRunde?: (art: 'kreis' | 'chancen') => void }) {
   const breit = useBreit();
   const [suche, setSuche] = useState('');
   const [ansicht, setAnsicht] = useState<Ansicht>(start === 'dubletten' ? 'dubletten' : 'alle');
@@ -112,6 +113,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   const kopf = (
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
       <input ref={sucheRef} value={suche} onChange={e => setSuche(e.target.value)} placeholder={modus === 'personen' ? 'Suchen: Name, Firma, Branche, Ort …  ( / )' : 'Firma, Domain, Branche, Ort …'} aria-label="Suchen" style={{ ...feld, flex: 1, minWidth: 200, padding: '9px 13px', fontSize: TYP.bedien }} />
+      {modus === 'personen' && zuRunde && <><Knopf leise onClick={() => zuRunde('kreis')}>Kreis-Runde</Knopf><Knopf leise onClick={() => zuRunde('chancen')}>Chancen-Runde</Knopf></>}
       {modus === 'personen' ? <Knopf onClick={() => setAnlegen(!anlegen)}>+ Person</Knopf>
         : <Knopf onClick={() => { const n = window.prompt('Name der Firma'); if (n?.trim()) { const f = neueFirma(n); void api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>).then(() => zuFirma(f.id)); } }}>+ Firma</Knopf>}
     </div>
@@ -258,6 +260,8 @@ function Anlegen({ api, heute, onFertig }: { api: CrmApi; heute: string; onFerti
   };
   return (
     <div style={{ display: 'grid', gap: 10, marginTop: 14, padding: 14, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
+      {/* Visitenkarte fotografieren → Felder vorausgefüllt; die Karte kam von der Person selbst (keine Art.-14-Pflicht, aber keine Einwilligung). */}
+      <VisitenkarteKnopf onErkannt={d => setE({ ...e, vorname: d.vorname ?? e.vorname, nachname: d.nachname ?? e.nachname, email: d.email ?? e.email, telefon: d.telefon ?? e.telefon, position: d.position ?? e.position, firma: d.firma ?? e.firma, herkunft: e.herkunft ?? 'selbst' })} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))', gap: 8 }}>
         <Feld wert={e.vorname} platzhalter="Vorname" onFertig={vorname => setE({ ...e, vorname })} />
         <Feld wert={e.nachname} platzhalter="Nachname *" onFertig={nachname => setE({ ...e, nachname })} />

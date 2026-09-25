@@ -21,6 +21,7 @@ import type { Traktion, Uebergabe, Welt } from '@/lib/crm/traktion';
 import type { FuerDich, TeamEreignis } from '@/lib/crm/team';
 import { verantwortlich, nameVon } from '@/lib/crm/team';
 import { Person } from './team';
+import { Scoreboard } from './Scoreboard';
 import type { CrmApi } from './daten';
 import { datum } from './daten';
 
@@ -115,6 +116,8 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
           {t.hinweis}. Die fünf Säulen des Markttraktion-Konzepts (Sichtbarkeit, Marketing, Vertrieb, Events, Conversions) liegen in den drei Welten. Punkte je Kennzahl aus der Ampel (grün 100, gelb 60, rot 20), gesamt als gewichtetes geometrisches Mittel — ein Ungleichgewicht zwischen den Welten kostet mehr als ein Durchschnitt.
         </p>
       </Karte>
+
+      <Scoreboard api={api} />
 
       <Raster min={290}>
         {welten.map((w, i) => {

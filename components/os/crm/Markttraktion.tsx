@@ -33,6 +33,8 @@ import { Kampagnen } from './Kampagnen';
 import { Marketing } from './Marketing';
 import { Events } from './Events';
 import { Stammdaten } from './Stammdaten';
+import { SchnellErfassen } from './SchnellErfassen';
+import { Runden, type RundenArt } from './Runden';
 
 const WELTEN: { id: Bereich; label: string; farbe?: string }[] = [
   { id: 'ueberblick', label: 'Überblick' }, { id: 'sales', label: 'Sales', farbe: WELT_FARBE.sales },
@@ -91,13 +93,19 @@ export function MarkttraktionSeite() {
   useEffect(() => { if (kParam) setAuswahl(kParam); }, [kParam]);
   const name = (p: string) => (p ? p.charAt(0).toUpperCase() + p.slice(1) : '—');
   const sales = (ansicht ?? 'heute') as SalesAnsicht;
+  // Gespräch festhalten — von überall in der Markttraktion, ein Knopf oben rechts.
+  const [erfassen, setErfassen] = useState(false);
+  const runde = bereich === 'kontakte' && ansicht?.startsWith('runde-') ? (ansicht.slice(6) as RundenArt) : null;
 
   return (
     <Seite titel="Markttraktion" unter={UNTER[bereich]}>
       <nav aria-label="Markttraktion" style={{ display: 'flex', gap: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none', margin: '-4px 0 2px', paddingBottom: 2 }}>
         <Reiter liste={WELTEN} aktiv={bereich} onWahl={b => gehe(b)} />
         <Reiter leise liste={GRUNDLAGE} aktiv={bereich} onWahl={b => gehe(b)} />
+        <span style={{ flex: 1 }} />
+        <button onClick={() => setErfassen(true)} className="fassbar" style={{ flex: '0 0 auto', padding: '8px 14px', borderRadius: 11, border: 'none', cursor: 'pointer', background: C.aktiv, color: C.grund, fontWeight: 700, fontSize: TYP.bedien, fontFamily: SCHRIFT.text, whiteSpace: 'nowrap' }}>+ Gespräch</button>
       </nav>
+      <SchnellErfassen api={api} offen={erfassen} onZu={() => setErfassen(false)} kontaktId={bereich === 'kontakte' && auswahl && !auswahl.startsWith('f-') ? auswahl : undefined} />
       {api.fehler && <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{api.fehler}</div>}
 
       {bereich === 'ueberblick' && <Ueberblick api={api} zuBereich={zuBereich} />}
@@ -114,7 +122,8 @@ export function MarkttraktionSeite() {
       {bereich === 'marketing' && <Marketing api={api} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('marketing', a === 'uebersicht' ? undefined : a)} />}
       {bereich === 'event' && <Events api={api} zuKontakt={zuKontakt} start={params.get('k') ?? undefined} onAuswahl={id => gehe('event', undefined, id ?? undefined)} />}
 
-      {(bereich === 'kontakte' || bereich === 'firmen') && <Kartei api={api} name={name} modus={bereich === 'firmen' ? 'firmen' : 'personen'} auswahl={auswahl} setAuswahl={setAuswahl} zuKontakt={zuKontakt} zuFirma={zuFirma} start={ansicht} />}
+      {runde && <Runden api={api} art={runde} name={name} zuKontakt={zuKontakt} zurueck={() => gehe('kontakte')} />}
+      {!runde && (bereich === 'kontakte' || bereich === 'firmen') && <Kartei api={api} name={name} modus={bereich === 'firmen' ? 'firmen' : 'personen'} auswahl={auswahl} setAuswahl={setAuswahl} zuKontakt={zuKontakt} zuFirma={zuFirma} start={ansicht} zuRunde={a => gehe('kontakte', `runde-${a}`)} />}
       {bereich === 'stammdaten' && <Stammdaten api={api} zuBereich={zuBereich} zuKontakt={zuKontakt} start={ansicht} />}
     </Seite>
   );
