@@ -15,6 +15,7 @@ import { useSpeichern } from '@/hooks/useSpeichern';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import { FINANZPLAN_LISTEN } from '@/lib/sync';
 import { localDay } from '@/lib/zeit';
+import { useZiel, useZuZiel, zielRahmen } from './ziel';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Zahl, feld, LEUCHT } from './schlank';
 
 interface Firma { id: string; name: string; bank: string; kontostand: number | null; stand: string | null }
@@ -83,6 +84,9 @@ export function FinanzplanungView() {
     fetch('/api/state/finance').then(r => r.json()).then(d => setFinance(d.state ?? d)).catch(() => {});
   }, [ladePlan]);
   useAbgleich(ladePlan, { pausiert: planSpeichern.hatOffenes });
+  // Aus einem Link (?r=<Rechnung> bzw. ?z=<Zahlung>, z. B. hinter „Überfällige Forderungen“): hinspringen und hervorheben.
+  const zielR = useZiel('r'), zielZ = useZiel('z');
+  useZuZiel(zielR ?? zielZ, !!plan);
   function speichern(next: Plan) {
     setPlan(next);
     planSpeichern.speichern(next);
@@ -206,7 +210,7 @@ export function FinanzplanungView() {
           {plan.rechnungen.map(r => {
             const spaet = r.status === 'gestellt' && r.faellig && r.faellig < heute;
             return (
-              <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderBottom: `1px solid ${HAAR}`, padding: '10px 0' }}>
+              <div key={r.id} id={`ziel-${r.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderBottom: `1px solid ${HAAR}`, padding: '10px 0', ...zielRahmen(zielR === r.id, spaet ? LEUCHT.kritisch : LEUCHT.gut) }}>
                 <ChipKnopf farbe={STATUS_FARBE[r.status]} onClick={() => rechnungAendern(r.id, { status: STATUS_NEXT[r.status] })} title="Status wechseln">{r.status}</ChipKnopf>
                 <span style={{ fontSize: TYP.body, fontWeight: 600, color: C.ink }}>{r.kunde}</span>
                 <span style={{ fontSize: TYP.bedien, color: C.inkDim, flex: 1, minWidth: 140 }}>{r.titel}</span>
@@ -268,7 +272,7 @@ export function FinanzplanungView() {
           {plan.zahlungen.map((z, i) => {
             const spaet = z.status === 'offen' && z.faellig && z.faellig < heute;
             return (
-              <div key={z.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderBottom: `1px solid ${HAAR}`, padding: '10px 0', opacity: z.status === 'bezahlt' ? 0.5 : 1 }}>
+              <div key={z.id} id={`ziel-${z.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderBottom: `1px solid ${HAAR}`, padding: '10px 0', opacity: z.status === 'bezahlt' ? 0.5 : 1, ...zielRahmen(zielZ === z.id, LEUCHT.achtung) }}>
                 <span style={{ fontFamily: SCHRIFT.display, fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: i === 0 && z.status === 'offen' ? LEUCHT.kritisch : C.inkLeise, width: 24, textAlign: 'right' }}>{i + 1}.</span>
                 <span style={{ display: 'flex', gap: 3 }}>
                   <Zeichen onClick={() => zahlungBewegen(z.id, -1)} aus={i === 0} label="nach oben">▲</Zeichen>

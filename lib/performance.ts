@@ -17,8 +17,8 @@ import { agentenFaktoren, agentenEingabe } from '@/lib/agenten-score';
 import { DEPARTMENTS } from '@/lib/make-one/agents-data';
 import { ladeStand as ladeTelegram, chatsFuerPerson, telegramKonfiguriert } from '@/lib/telegram';
 import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
-import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
-import { privatFaktoren, finanzSaeule } from '@/lib/finanzen/haushalt/score';
+import { finanzSaeule } from '@/lib/finanzen/haushalt/score';
+import { privatIndexFuer } from '@/lib/privat/speicher';
 import { ladeFamilie } from '@/lib/familie/speicher';
 import { berechne } from '@/lib/business/index';
 import { ladeRoh as ladeBusinessRoh, bestandFuer } from '@/lib/business/speicher';
@@ -276,9 +276,14 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
     quelle: fh.score == null ? 'noch nichts gemessen' : `Business-Index · ${fh.kennzahlen.filter(k => k.gemessen).length} von ${fh.kennzahlen.length} Kennzahlen (Liquidität, Forderungen, Ausgaben, Kapital)`,
   }];
 
-  // ── Finanzen, private Hälfte (24.09.) — nur für Personen mit Haushalt ──
+  // ── Finanzen, private Hälfte = Privat-Index (25.09.) — nur für Personen mit Haushalt ──
+  // Veraltete Buchungen (> 45 Tage) sind eine Lücke, kein schlechter Wert.
   const zugang = await haushaltFuer(person).catch(() => null);
-  const privat: Faktor[] = zugang ? privatFaktoren(await ladeHaushalt(zugang.haushalt), today) : [];
+  const pIdx = zugang ? await privatIndexFuer(zugang.haushalt, today).catch(() => null) : null;
+  const privat: Faktor[] = pIdx ? [{
+    label: 'Privat-Index', wert: pIdx.pi.index ?? 0, echt: pIdx.pi.index != null && pIdx.frisch,
+    quelle: pIdx.pi.index == null ? 'noch nichts gemessen' : `${pIdx.pi.label} · ${pIdx.pi.saeulen.map(s => `${s.label} ${s.score ?? '—'}`).join(' · ')}${pIdx.frisch ? '' : ' — Buchungen älter als 45 Tage, zählt nicht'}`,
+  }] : [];
   const finanzenGesamt: Faktor[] = [
     ...finanzen.map(f => ({ ...f, label: `Business · ${f.label}` })),
     ...privat.map(f => ({ ...f, label: `Privat · ${f.label}` })),

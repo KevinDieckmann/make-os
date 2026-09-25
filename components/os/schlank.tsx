@@ -39,9 +39,9 @@ export function Seite({ titel, unter, rechts, children, breit = SEITE_BREIT }: {
 }
 
 /** Eine Karte — dunkle Fläche mit Tiefe. `i` staffelt das Erscheinen, `akzent` legt einen farbigen Hauch an den Rand. */
-export function Karte({ children, i = 0, akzent, style }: { children: ReactNode; i?: number; akzent?: string; style?: CSSProperties }) {
+export function Karte({ children, i = 0, akzent, style, id }: { children: ReactNode; i?: number; akzent?: string; style?: CSSProperties; id?: string }) {
   return (
-    <section className="karte os-auf" style={{ ['--i' as string]: i, ...(akzent ? { boxShadow: `inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35), inset 0 0 0 1px ${akzent}1F, 0 0 44px -18px ${akzent}40` } : {}), ...style }}>
+    <section id={id} className="karte os-auf" style={{ ['--i' as string]: i, ...(akzent ? { boxShadow: `inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35), inset 0 0 0 1px ${akzent}1F, 0 0 44px -18px ${akzent}40` } : {}), ...style }}>
       {children}
     </section>
   );

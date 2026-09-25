@@ -11,6 +11,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, LEUCHT } from '../schlank';
 import { AMPEL_FARBE, scoreFarbe } from './teile';
 import type { BusinessIndex, KennzahlStand } from '@/lib/business/index';
+import { WEG } from '@/lib/wege';
 
 /** Welche Kennzahlen eine Fachseite zeigt. */
 export const STREIFEN = {
@@ -32,7 +33,7 @@ export function IndexStreifen({ ids, titel = 'Business-Index', i = 0 }: { ids: r
   const farbe = scoreFarbe(bi?.index ?? null);
   return (
     <Karte i={i}>
-      <Ueberschrift farbe={farbe} rechts={<Link href="/os/business" style={{ color: C.inkLeise, textDecoration: 'none' }}>Cockpit ›</Link>}>
+      <Ueberschrift farbe={farbe} rechts={<Link href={WEG.business()} style={{ color: C.inkLeise, textDecoration: 'none' }}>Cockpit ›</Link>}>
         {titel}{bi?.index != null && <span style={{ color: C.ink, marginLeft: 6, letterSpacing: 0 }}>{bi.index}</span>}{bi && <span style={{ color: C.inkLeise, fontWeight: 600, letterSpacing: 0, textTransform: 'none', marginLeft: 6 }}>{bi.label}</span>}
       </Ueberschrift>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 160px), 1fr))', gap: 8 }}>
@@ -41,7 +42,7 @@ export function IndexStreifen({ ids, titel = 'Business-Index', i = 0 }: { ids: r
           const k = 'label' in x ? (x as KennzahlStand) : null;
           const f = k ? AMPEL_FARBE[k.ampel] : C.inkLeise;
           return (
-            <Link key={x.id} href={`/os/business?k=${x.id}`} className="fassbar" title={k ? `${k.label}: ${k.quelle}` : undefined}
+            <Link key={x.id} href={WEG.business({ k: x.id })} className="fassbar" title={k ? `${k.label}: ${k.quelle}` : undefined}
               style={{ display: 'grid', gap: 3, padding: '9px 11px', borderRadius: 12, textDecoration: 'none', minWidth: 0,
                 background: k?.gemessen ? `color-mix(in srgb, ${f} 7%, ${C.flaecheHoch})` : 'rgba(255,255,255,.025)', border: `1px solid ${k?.gemessen ? `${f}33` : 'rgba(255,255,255,.06)'}` }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

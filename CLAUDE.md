@@ -119,6 +119,25 @@ lokal, Route `/os`, Port 3001.
   Monatsabschluss (`lib/business/fuer-chef.ts`); Feinjustierung: eigene Schwellen je
   Kennzahl (alle Sichten oder eine Firma), Jahresziele je Firma, Verlauf 90 Tage.
 
+## Business-Modell, Privat-Index, Steuern (seit 25.09.2026, auf `entwicklung`)
+- **Alles unter Zahlen** (`components/os/FinanzenView.tsx`): Privat · Business · Steuern · Gesamt ·
+  Head of Finance. Business = Cockpit (`BusinessCockpit eingebettet`); `/os/business` leitet um.
+- **Gemeinsamer Kern** `lib/kennzahlen/kern.ts` (Punkte, Ampel, Gewichte, Details) — Business-Index
+  und Privat-Index rechnen damit. Neue Indizes: Register + Messungen, nie eigene Punkte-Logik.
+- **Jede Kennzahl liefert `details`** (2–3 Punkte mit `href`) — alle Links über `lib/wege.ts` (WEG),
+  nie Pfade von Hand. Zielseiten lesen den Link: Rechnung `?r=`, Zahlung `?z=`, Planposten `?p=`,
+  Woche `?tag=`, Buchungen `?monat=&kat=&q=`, Anker `#abschluss` usw. (`components/os/ziel.ts`).
+  Beendete Mandate und geschlossene Deals öffnen sich über den Link auch hinter Filtern.
+  `tests/business-modell.test.ts` prüft, dass kein Link ins Leere zeigt.
+- **Privat-Index** `lib/privat/` + `/api/privat`: nur der eigene Haushalt (`haushaltVon`), nur
+  `einheit: privat`; Rücklage/Schwellen/Verlauf in `privat-index--<haushalt>`. Private Hälfte der
+  Finanzen im Wachstums-Score = Privat-Index (veraltet > 45 Tage = Lücke).
+- **Steuern** `lib/steuern/` + `/api/steuern`: nur Haushalt des Inhabers. Hinweis, keine
+  Steuerberatung — Termine gerechnet (§ 108 AO), Beträge mit offengelegten Annahmen. Aufgaben vor
+  Fristen heißen `steuer-<frist>` (private tragen „haushalt“), ohne Betrag im Titel.
+- Lokaler Dev-Server: kommen Änderungen an bestehenden Dateien nicht an (alter Stand im Bundle),
+  die Vorschau „make-os-entwicklung“ einmal neu starten.
+
 ## Technik
 - TypeScript strikt: vor jedem Commit `npx tsc --noEmit` — null Fehler.
 - Node liegt bei Kevin unter `~/.local/node22/bin` (nicht im PATH). Server

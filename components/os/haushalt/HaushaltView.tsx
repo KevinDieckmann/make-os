@@ -24,6 +24,7 @@ import { UmzugDialog } from './Umzug';
 import { PrueflisteDialog } from './Pruefliste';
 import { KategorienDialog } from './Kategorien';
 import { StammdatenDialog } from './Stammdaten';
+import { PrivatIndex } from '../privat/PrivatIndex';
 
 type Reiter = 'uebersicht' | 'buchungen' | 'einnahmen' | 'analyse' | 'fixkosten' | 'plan' | 'schulden';
 const REITER: { id: Reiter; label: string }[] = [
@@ -71,6 +72,8 @@ export function HaushaltView({ reiter, onReiter }: { reiter: string | null; onRe
         </Karte>
       ) : (
         <>
+          {/* Privat-Index (25.09.): oben auf der Übersicht — dieselbe Logik wie der Business-Index. */}
+          {aktiv === 'uebersicht' && <PrivatIndex stand={h} />}
           {aktiv === 'uebersicht' && <Uebersicht h={h} katName={katName} />}
           {aktiv === 'buchungen' && <Buchungen h={h} katName={katName} patch={patch} aktion={aktion} melde={melde} laden={laden} onImport={() => setImportAuf(true)} />}
           {aktiv === 'einnahmen' && <Einnahmen h={h} katName={katName} patch={patch} aktion={aktion} melde={melde} laden={laden} />}

@@ -23,7 +23,7 @@ const FARBE_JE: Record<string, string> = { health: LEUCHT.gut, business: LEUCHT.
 const KURZ: Record<string, string> = { health: 'Gesundheit', business: 'Business', planning: 'Planung', finance: 'Finanzen', social: 'Familie', agents: 'Agenten' };
 // Jeder Score springt dorthin, wo es weitergeht (Kevin, 24.09.). Seit 24.09.
 // abends ist der Kopf die Navigation für alles, was nicht links steht.
-const HREF: Record<string, string> = { health: '/os/gesundheit', business: '/os/business', planning: '/os/saeule/planning', finance: '/os/finanzen', social: '/os/familie', agents: '/os/agenten' };
+const HREF: Record<string, string> = { health: '/os/gesundheit', business: '/os/finanzen?s=business', planning: '/os/saeule/planning', finance: '/os/finanzen', social: '/os/familie', agents: '/os/agenten' };
 // Kalender (25.09.): die Woche mit Terminen aus Apple, Blöcken, Aufgaben und Fristen — leuchtet im ganzen Planer.
 const SCHNELL = [
   { href: '/os', label: 'Heute', Icon: Sun, passt: ['/os'] },

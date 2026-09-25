@@ -6,8 +6,11 @@
 // Unternehmer-DNA 30 % · Markttraktion 20 % — je Firma und gesamt, jede Zahl
 // mit Formel und Quelle, jede fehlende mit dem Weg, sie zu schließen.
 // Der Wachstums-Score nimmt genau diese Zahl als seine Business-Säule.
+// Seit 25.09. lebt das Cockpit unter Zahlen → Business (/os/finanzen?s=business);
+// /os/business leitet dorthin um. Hinter jeder Kachel stehen die Punkte, aus
+// denen sie besteht — jeder ein Link dorthin, wo man handelt.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Ring, Fortschritt, Segmente, Chip, LEUCHT } from '../schlank';
@@ -15,6 +18,9 @@ import { useLinkAuswahl } from '../Verlauf';
 import { KennzahlKachel, KennzahlFenster, SAEULE_FARBE, AMPEL_FARBE, scoreFarbe } from './teile';
 import { MonatsabschlussKarte, EinstellungenKarte } from './Abschluss';
 import { VerlaufKarte } from './Verlauf';
+import { ModellKarte } from './Modell';
+import { useZuZiel } from '../ziel';
+import type { Geschaeftsmodell } from '@/lib/business/modell';
 import type { BusinessIndex } from '@/lib/business/index';
 import type { Monatsabschluss } from '@/lib/business/messen';
 import type { Scope } from '@/lib/business/register';
@@ -26,15 +32,17 @@ interface Antwort {
   wechsel: { id: string; von: string; nach: string; seit: string }[];
   verlauf: { tag: string; index: number | null; saeulen: Record<string, number | null>; werte: Record<string, number | null> }[];
   abschluesse: Monatsabschluss[];
-  einstellungen: { fte: Partial<Record<'kdc' | 'kdv', number>>; ziele?: Partial<Record<'kdc' | 'kdv', number>> };
+  einstellungen: { fte: Partial<Record<'kdc' | 'kdv', number>>; ziele?: Partial<Record<'kdc' | 'kdv', number>>; kapazitaet?: Partial<Record<'kdc' | 'kdv', number>> };
+  modell?: Geschaeftsmodell;
   fehler?: string;
 }
 
 const SCOPE_LABEL: Record<Scope, string> = { gesamt: 'Gesamt', kdc: 'Consulting', kdv: 'KD Ventures' };
 
-export function BusinessCockpit() {
+/** eingebettet = als Reiter „Business“ unter Zahlen (ohne eigenen Seitenrahmen). */
+export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet?: boolean; darunter?: ReactNode } = {}) {
   const router = useRouter();
-  const pfad = usePathname() ?? '/os/business';
+  const pfad = usePathname() ?? '/os/finanzen';
   const params = useSearchParams();
   const scope: Scope = (['kdc', 'kdv'] as const).find(s => s === params.get('f')) ?? 'gesamt';
   const [d, setD] = useState<Antwort | null>(null);
@@ -48,6 +56,8 @@ export function BusinessCockpit() {
     } catch { setFehler('Keine Verbindung.'); }
   }, [scope]);
   useEffect(() => { void laden(); }, [laden]);
+  // #abschluss, #einstellungen, #modell aus einem Link: hinspringen, sobald die Karten stehen.
+  useZuZiel(null, !!d);
 
   const wechsle = (s: Scope) => {
     const q = new URLSearchParams(params.toString());
@@ -62,11 +72,15 @@ export function BusinessCockpit() {
   const offeneK = bi && offen ? bi.saeulen.flatMap(s => s.kennzahlen.map(k => ({ k, s }))).find(x => x.k.id === offen) : undefined;
   const alleK = bi?.saeulen.flatMap(s => s.kennzahlen) ?? [];
 
-  return (
-    <Seite titel="Business-Index" breit={1440}
-      unter="Unsere KSI-Logik mit unseren Zahlen: Finanzielle Gesundheit 50 % · Unternehmer-DNA 30 % · Markttraktion 20 %. Jede Zahl mit Formel und Quelle — Privates zählt nie."
-      rechts={<Segmente liste={(['gesamt', 'kdc', 'kdv'] as Scope[]).map(s => ({ id: s, label: d?.sichten?.[s]?.index != null ? `${SCOPE_LABEL[s]} · ${d.sichten[s].index}` : SCOPE_LABEL[s] }))} aktiv={scope} onWahl={wechsle} />}>
-
+  const sichtWahl = <Segmente liste={(['gesamt', 'kdc', 'kdv'] as Scope[]).map(s => ({ id: s, label: d?.sichten?.[s]?.index != null ? `${SCOPE_LABEL[s]} · ${d.sichten[s].index}` : SCOPE_LABEL[s] }))} aktiv={scope} onWahl={wechsle} />;
+  const inhalt = (
+    <>
+      {eingebettet && (
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12.5, color: C.inkLeise, maxWidth: 640, lineHeight: 1.5 }}>Business-Index: Finanzielle Gesundheit 50 % · Unternehmer-DNA 30 % · Markttraktion 20 % — jede Zahl mit Formel, Quelle und den Punkten dahinter. Privates zählt nie.</span>
+          {sichtWahl}
+        </div>
+      )}
       {fehler && <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{fehler}</div>}
 
       {/* Der Index */}
@@ -124,7 +138,11 @@ export function BusinessCockpit() {
         );
       })}
 
+      {d?.modell && <ModellKarte m={d.modell} />}
+
       {d && d.verlauf.length > 0 && <VerlaufKarte punkte={d.verlauf} />}
+
+      {darunter}
 
       {d && <MonatsabschlussKarte eintraege={d.abschluesse} onGespeichert={() => void laden()} />}
       {d && <EinstellungenKarte einstellungen={d.einstellungen} onGespeichert={() => void laden()} />}
@@ -139,6 +157,14 @@ export function BusinessCockpit() {
         <KennzahlFenster key={offeneK.k.id} k={offeneK.k} saeule={offeneK.s.label} scope={scope} onZu={() => setOffen(null)} onGespeichert={() => void laden()}
           verlauf={d.verlauf.map(v => ({ tag: v.tag, wert: v.werte?.[offeneK.k.id] ?? null }))} />
       )}
+    </>
+  );
+  if (eingebettet) return inhalt;
+  return (
+    <Seite titel="Business-Index" breit={1440}
+      unter="Unsere KSI-Logik mit unseren Zahlen: Finanzielle Gesundheit 50 % · Unternehmer-DNA 30 % · Markttraktion 20 %. Jede Zahl mit Formel und Quelle — Privates zählt nie."
+      rechts={sichtWahl}>
+      {inhalt}
     </Seite>
   );
 }

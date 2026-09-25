@@ -26,6 +26,8 @@ export interface BusinessEinstellungen {
   fte: Partial<Record<'kdc' | 'kdv', number>>;
   /** Jahresumsatzziel je Firma (gesamt: Controlling). */
   ziele?: Partial<Record<'kdc' | 'kdv', number>>;
+  /** Verfügbare Beratertage je Monat und Firma — Grundlage der Auslastung. */
+  kapazitaet?: Partial<Record<'kdc' | 'kdv', number>>;
   /** Eigene Schwellen: „alle“ gilt überall, eine Sicht überschreibt „alle“. */
   schwellen?: Partial<Record<'alle' | Scope, Record<string, Schwelle>>>;
 }
@@ -46,26 +48,27 @@ const zahlOder = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? 
 
 export async function ladeEinstellungen(): Promise<BusinessEinstellungen> {
   const e = await loadJson<BusinessEinstellungen>(EINSTELLUNGEN);
-  return { fte: e?.fte ?? {}, ziele: e?.ziele ?? {}, schwellen: e?.schwellen ?? {} };
+  return { fte: e?.fte ?? {}, ziele: e?.ziele ?? {}, kapazitaet: e?.kapazitaet ?? {}, schwellen: e?.schwellen ?? {} };
 }
 
 /** Die geltenden eigenen Schwellen einer Sicht: „alle“, überschrieben von der Sicht selbst. */
 export const schwellenFuer = (e: BusinessEinstellungen, scope: Scope): Record<string, Schwelle> => ({ ...(e.schwellen?.alle ?? {}), ...(e.schwellen?.[scope] ?? {}) });
 
 /**
- * Einstellungen ändern — Köpfe, Jahresziele je Firma, eigene Schwellen
+ * Einstellungen ändern — Köpfe, Jahresziele und Kapazität (Beratertage/Monat) je Firma, eigene Schwellen
  * ({ schwelle: { id, sicht: 'alle'|Sicht, gruen, rot } } oder { …, zuruecksetzen: true }).
  */
 export async function speichereEinstellungen(roh: Record<string, unknown>): Promise<{ ok: true; einstellungen: BusinessEinstellungen } | { ok: false; fehler: string }> {
   let fehler: string | null = null;
   const e = await updateJson<BusinessEinstellungen>(EINSTELLUNGEN, alt => {
-    const neu: BusinessEinstellungen = { fte: { ...(alt?.fte ?? {}) }, ziele: { ...(alt?.ziele ?? {}) }, schwellen: { ...(alt?.schwellen ?? {}) } };
+    const neu: BusinessEinstellungen = { fte: { ...(alt?.fte ?? {}) }, ziele: { ...(alt?.ziele ?? {}) }, kapazitaet: { ...(alt?.kapazitaet ?? {}) }, schwellen: { ...(alt?.schwellen ?? {}) } };
     const zahlen = (quelle: unknown, ziel: Partial<Record<'kdc' | 'kdv', number>>, max: number, stellen: number) => {
       const r = (quelle ?? {}) as Record<string, unknown>;
       for (const f of FIRMEN) if (f in r) { const n = zahlOder(r[f]); if (n == null || n <= 0) delete ziel[f]; else ziel[f] = Math.min(max, Math.round(n * stellen) / stellen); }
     };
     if (roh.fte) zahlen(roh.fte, neu.fte, 500, 10);
     if (roh.ziele) zahlen(roh.ziele, neu.ziele!, 1e9, 1);
+    if (roh.kapazitaet) zahlen(roh.kapazitaet, neu.kapazitaet!, 31 * 20, 2);
     if (roh.schwelle && typeof roh.schwelle === 'object') {
       const s = roh.schwelle as Record<string, unknown>;
       const sicht = (['alle', ...SCOPES.map(x => x.id)] as const).find(x => x === s.sicht);
@@ -90,7 +93,7 @@ export async function ladeAbschluesse(): Promise<Monatsabschluss[]> {
   return (await loadJson<{ eintraege: Monatsabschluss[] }>(ABSCHLUESSE))?.eintraege ?? [];
 }
 
-export const ABSCHLUSS_FELDER = ['umsatz', 'kosten', 'personal', 'marketingVertrieb', 'afa', 'eigenkapital', 'bilanzsumme', 'kurzfrVerbindlichkeiten', 'bankschulden'] as const;
+export const ABSCHLUSS_FELDER = ['umsatz', 'kosten', 'personal', 'marketingVertrieb', 'afa', 'fakturierteTage', 'eigenkapital', 'bilanzsumme', 'kurzfrVerbindlichkeiten', 'bankschulden'] as const;
 
 /** Monatsabschluss eintragen oder ändern (je Firma und Monat). Leeres Feld = entfernen. */
 export async function speichereAbschluss(roh: Record<string, unknown>, von: string): Promise<{ ok: true; eintrag: Monatsabschluss } | { ok: false; fehler: string }> {
@@ -132,8 +135,8 @@ export async function ladeRoh(heute = localDay()) {
     loadJson<{ kontakte: Kontakt[] }>('kontakte'),
     loadJson<{ events?: { startDate?: string; endDate?: string; allDay?: boolean; owner?: string }[]; quelle?: string }>('calendar-cache'),
     loadJson<Record<string, PlanBlock[]>>('wochenplan'),
-    loadJson<{ auftraege?: { status: string; beendet?: string; zeit?: string; anlass?: string }[] }>('jarvis-auftraege'),
-    loadJson<{ meilensteine?: { bereich: string; faellig?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
+    loadJson<{ auftraege?: { status: string; beendet?: string; zeit?: string; anlass?: string; name?: string; auftrag?: string }[] }>('jarvis-auftraege'),
+    loadJson<{ meilensteine?: { id?: string; titel?: string; bereich: string; faellig?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
     ladeEinstellungen(),
     loadJson<BusinessVerlauf>(VERLAUF),
   ]);
@@ -156,15 +159,17 @@ export async function ladeRoh(heute = localDay()) {
     planposten: lp?.posten ?? [], finance: fin ?? null,
     grundlageMonate: g ? monatsBild(g).map(m => ({ monat: m.monat, umsatzNetto: m.umsatzNetto, kostenNetto: m.kostenNetto })) : [],
     grundlageFixkosten,
-    abschluesse, mandate: crm.mandate, chancen: crm.chancen,
-    traktion: { score: tr.score, text: tr.score != null ? `${tr.welten.map(w => `${w.label} ${w.score ?? '—'}`).join(' · ')}${tr.vorlaeufig ? ' (vorläufig)' : ''}` : tr.hinweis },
+    abschluesse, mandate: crm.mandate, chancen: crm.chancen, leistungen: crm.leistungen,
+    traktion: { score: tr.score, text: tr.score != null ? `${tr.welten.map(w => `${w.label} ${w.score ?? '—'}`).join(' · ')}${tr.vorlaeufig ? ' (vorläufig)' : ''}` : tr.hinweis, welten: tr.welten.map(w => ({ id: w.id, label: w.label, score: w.score })) },
     termine: (cal?.events ?? []).filter(e => !e.allDay && e.startDate && e.endDate).map(e => ({ start: e.startDate!, ende: e.endDate!, owner: e.owner })),
     termineVollstaendig: cal?.quelle === 'icloud',
     bloecke: Object.entries(plan ?? {}).filter(([woche]) => woche >= localDay(new Date(ab.getTime() - 7 * 86_400_000))).flatMap(([, l]) => (l ?? []).filter(x => x.date >= abTag)).map(x => ({ date: x.date, dauerMin: x.dauerMin, art: x.art })),
-    auftraege: auftraege?.auftraege ?? [],
+    // Nur die Felder, die der Index braucht (Auftragstexte können lang sein).
+    auftraege: (auftraege?.auftraege ?? []).map(a => ({ status: a.status, beendet: a.beendet, zeit: a.zeit, anlass: a.anlass, name: a.name, auftrag: typeof a.auftrag === 'string' ? a.auftrag.slice(0, 120) : undefined })),
     meilensteine: ms?.meilensteine ?? [],
     fte: einst.fte,
     ziele: einst.ziele ?? {},
+    kapazitaet: einst.kapazitaet ?? {},
     einstellungen: einst,
     verlauf: verlauf ?? { tage: {}, mrr: {} },
   };
@@ -177,7 +182,7 @@ export function bestandFuer(r: Roh, scope: Scope): Bestand {
   for (const [m, je] of Object.entries(r.verlauf.mrr ?? {})) if (je[scope]) mrrVerlauf[m] = je[scope]!;
   // Der laufende Monat immer aus dem aktuellen Stand.
   mrrVerlauf[r.heute.slice(0, 7)] = mrrJeKunde(r.mandate, scope);
-  const { verlauf: _v, einstellungen, ...rest } = r;
+  const { verlauf: _v, einstellungen, leistungen: _l, ...rest } = r;
   return { ...rest, scope, mrrVerlauf, schwellen: schwellenFuer(einstellungen, scope) };
 }
 

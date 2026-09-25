@@ -1,7 +1,9 @@
-import { Suspense } from 'react';
-import { BusinessCockpit } from '@/components/os/business/BusinessCockpit';
+import { redirect } from 'next/navigation';
 
-// Business-Index (25.09.): liest den Link (?f= Firma, ?k= offene Kennzahl) — deshalb in Suspense.
-export default function BusinessPage() {
-  return <Suspense><BusinessCockpit /></Suspense>;
+// Seit 25.09. lebt das Business-Cockpit unter Zahlen → Business. Alte Links
+// (/os/business?f=…&k=…) bleiben gültig und landen an derselben Stelle.
+export default function BusinessPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  const q = new URLSearchParams({ s: 'business' });
+  for (const k of ['f', 'k'] as const) { const v = searchParams[k]; if (typeof v === 'string' && /^[a-z0-9_-]{1,40}$/i.test(v)) q.set(k, v); }
+  redirect(`/os/finanzen?${q.toString()}`);
 }

@@ -330,7 +330,7 @@ function blockBusiness(b: Brain): string {
   if (!bi) return '';
   const saeulen = bi.saeulen.map(x => `${x.label} ${x.score ?? '—'}`).join(' · ');
   return `\nBUSINESS-INDEX (Finanzielle Gesundheit 50 · Unternehmer-DNA 30 · Markttraktion 20, nur eigene Zahlen): ${bi.index ?? '—'} (${bi.label}). ${saeulen}.` +
-    `${bi.rot.length ? ` Rot: ${bi.rot.join(', ')}.` : ''}${bi.hebel ? ` Größter Hebel: ${bi.hebel}.` : ''} ${bi.luecken} Messlücken — Cockpit /os/business (Monatsabschluss schließt die meisten).`;
+    `${bi.rot.length ? ` Rot: ${bi.rot.join(', ')}.` : ''}${bi.hebel ? ` Größter Hebel: ${bi.hebel}.` : ''} ${bi.luecken} Messlücken — Cockpit /os/finanzen?s=business (Monatsabschluss schließt die meisten).`;
 }
 
 export function blockVitals(b: Brain, person: string = 'kevin'): string {

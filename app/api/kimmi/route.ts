@@ -261,6 +261,7 @@ export async function POST(req: Request) {
           monat: { type: 'string', description: 'YYYY-MM (ein abgeschlossener Monat)' },
           umsatz: { type: 'number' }, kosten: { type: 'number', description: 'Kosten gesamt' }, personal: { type: 'number', description: 'davon Personal' },
           marketingVertrieb: { type: 'number', description: 'davon Marketing & Vertrieb' }, afa: { type: 'number', description: 'Abschreibungen' },
+          fakturierteTage: { type: 'number', description: 'fakturierte Beratertage im Monat (für Auslastung und Tagessatz)' },
           eigenkapital: { type: 'number' }, bilanzsumme: { type: 'number' }, kurzfrVerbindlichkeiten: { type: 'number', description: 'kurzfristige Verbindlichkeiten' },
           bankschulden: { type: 'number' }, notiz: { type: 'string' },
         },

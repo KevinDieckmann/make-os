@@ -14,6 +14,7 @@ import Link from 'next/link';
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
+import { useZiel } from './ziel';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { ART_FARBE, type PlanBlock } from '@/types/planer';
 import { PlanerLeiste } from './PlanerLeiste';
@@ -81,6 +82,13 @@ export function WochenplanView() {
   const router = useRouter();
   const { state: tasksState, dispatch: tasksDispatch } = useTasks();
   const [offset, setOffset] = useState(0);
+  // ?tag=YYYY-MM-DD (z. B. hinter „Fokuszeit“ im Business-Index): die Woche dieses Tages zeigen.
+  const zielTag = useZiel('tag');
+  useEffect(() => {
+    if (!zielTag || !/^\d{4}-\d{2}-\d{2}$/.test(zielTag)) return;
+    const diff = Math.round((Date.parse(`${zielTag}T12:00:00`) - montag(0).getTime()) / 86_400_000);
+    setOffset(Math.floor(diff / 7));
+  }, [zielTag]);
   const [bloecke, setBloecke] = useState<PlanBlock[]>([]);
   const [kemaris, setKemaris] = useState<{ titel: string; start?: string; ende?: string }[]>([]);
   // Kalender: Sicht (wessen Termine) und Ebenen (was zu sehen ist) — die Ebenen merkt sich der Browser.

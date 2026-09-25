@@ -18,6 +18,7 @@ import {
   vorschau, KATEGORIEN, KATEGORIE, SZENARIO_LABEL,
   type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Rhythmus, type Szenario, type Woche,
 } from '@/lib/make-one/liquiditaet';
+import { useZiel, useZuZiel, zielRahmen } from './ziel';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, Segmente, feld, LEUCHT } from './schlank';
 
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
@@ -74,6 +75,10 @@ export function LiquiditaetView() {
   const [szenario, setSzenario] = useState<Szenario>('real');
   const [nurFirma, setNurFirma] = useState<string>('alle');
   const [offen, setOffen] = useState<string | null>(null);
+  // Aus einem Link (?p=<Posten>, z. B. hinter der Fixkostenquote): Posten öffnen und hinspringen; #kontostaende springt zu den Kontoständen.
+  const zielPosten = useZiel('p');
+  useEffect(() => { if (zielPosten) setOffen(zielPosten); }, [zielPosten]);
+  useZuZiel(zielPosten, geladen && !!plan);
   const heute = localDay();
 
   // Zu zweit: nur Einzeländerungen; Malins Änderungen kommen per Abgleich herein.
@@ -160,7 +165,7 @@ export function LiquiditaetView() {
     const auf = offen === p.id;
     const raus = p.betrag < 0;
     return (
-      <div key={p.id}>
+      <div key={p.id} id={`ziel-${p.id}`} style={zielRahmen(zielPosten === p.id, raus ? LEUCHT.achtung : LEUCHT.gut)}>
         <Zeile onClick={() => setOffen(auf ? null : p.id)} aktiv={auf} titel={p.titel} unter={RHYTHMUS_LABEL[p.rhythmus]}
           rechts={<>
             {!p.sicher && <Chip farbe={LEUCHT.achtung}>unsicher</Chip>}
@@ -308,7 +313,7 @@ export function LiquiditaetView() {
 
           {/* Kontostände */}
           {plan && (
-            <Karte i={2}>
+            <Karte i={2} id="kontostaende">
               <Ueberschrift farbe={LEUCHT.geld} rechts="der Startpunkt">Kontostände</Ueberschrift>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 {plan.firmen.map(f => (

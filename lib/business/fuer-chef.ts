@@ -45,7 +45,7 @@ export async function businessFuerChef(heute = localDay()): Promise<{ block: Rec
     }
   }
   for (const f of abschlussFehlt) {
-    hinweise.push({ schwere: 'niedrig', bereich: 'daten', text: `Monatsabschluss ${f.monat} für ${FIRMA[f.firma]} fehlt — er schließt Quick Ratio, Eigenkapitalquote, Personalquote und mehr (/os/business).`, quelle: 'business-index.abschluss' });
+    hinweise.push({ schwere: 'niedrig', bereich: 'daten', text: `Monatsabschluss ${f.monat} für ${FIRMA[f.firma]} fehlt — er schließt Quick Ratio, Eigenkapitalquote, Personalquote und mehr (/os/finanzen?s=business#abschluss).`, quelle: 'business-index.abschluss' });
   }
   const block = {
     erklaerung: 'Business-Index = unsere KSI-Logik mit eigenen Zahlen: Finanzielle Gesundheit 50 % · Unternehmer-DNA 30 % · Markttraktion 20 %. Punkte je Kennzahl: rote Schwelle 20, grüne 100. Eine Säule zählt ab 40 % gemessener Kennzahlen.',
@@ -70,7 +70,7 @@ export async function businessText(sicht: Scope, kennzahl?: string, heute = loca
     if (!def) return `Unbekannte Kennzahl „${kennzahl}“.`;
     if (!k) return `${def.label} gibt es in der Sicht ${FIRMA[sicht]} nicht (nur gesamt).`;
     return k.gemessen
-      ? `${k.label} (${FIRMA[sicht]}): ${k.anzeige} — ${k.ampel === 'gruen' ? 'grün' : k.ampel === 'gelb' ? 'gelb' : 'rot'} (${schwellenText(k)}${k.angepasst ? ', eigene Schwellen' : ''}). Formel: ${k.formel}. Gerechnet: ${k.quelle}. Cockpit: /os/business?k=${k.id}`
+      ? `${k.label} (${FIRMA[sicht]}): ${k.anzeige} — ${k.ampel === 'gruen' ? 'grün' : k.ampel === 'gelb' ? 'gelb' : 'rot'} (${schwellenText(k)}${k.angepasst ? ', eigene Schwellen' : ''}). Formel: ${k.formel}. Gerechnet: ${k.quelle}. Cockpit: /os/finanzen?s=business${sicht !== 'gesamt' ? `&f=${sicht}` : ''}&k=${k.id}`
       : `${k.label} (${FIRMA[sicht]}) ist noch nicht messbar: ${k.quelle}.${k.pflegen ? ` So schließen: ${k.pflegen.text} (${k.pflegen.href}).` : ''}`;
   }
   const saeulen = bi.saeulen.map(s => `${s.label} ${s.zuDuenn ? '— (zu wenig Daten)' : s.score ?? '—'}`).join(' · ');
@@ -78,5 +78,5 @@ export async function businessText(sicht: Scope, kennzahl?: string, heute = loca
   const gelb = bi.saeulen.flatMap(s => s.kennzahlen.filter(k => k.ampel === 'gelb').map(k => `${k.label} ${k.anzeige}`));
   return `Business-Index ${FIRMA[sicht]}: ${bi.index ?? '—'} (${bi.label}), ${Math.round(bi.abdeckung * 100)} % auf echten Daten. ${saeulen}.` +
     `${rot.length ? ` Rot: ${rot.join(', ')}.` : ' Nichts rot.'}${gelb.length ? ` Gelb: ${gelb.join(', ')}.` : ''}` +
-    `${bi.hebel ? ` Größter Hebel: ${bi.hebel.label}.` : ''} ${bi.luecken} Messlücken. Cockpit: /os/business${sicht !== 'gesamt' ? `?f=${sicht}` : ''}`;
+    `${bi.hebel ? ` Größter Hebel: ${bi.hebel.label}.` : ''} ${bi.luecken} Messlücken. Cockpit: /os/finanzen?s=business${sicht !== 'gesamt' ? `&f=${sicht}` : ''}`;
 }

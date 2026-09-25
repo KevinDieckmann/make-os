@@ -58,7 +58,10 @@ export function Pipeline({ api, zuKontakt, zuLeads }: { api: CrmApi; zuKontakt: 
   // Neue Chance: für die gefilterte Person, sonst für mich (im Team), sonst die Sales-Verantwortung.
   const neuFuer = wahl !== 'alle' && wahl !== 'ich' && mitglied(wahl) ? wahl : mitglied(ich)?.id ?? verantwortlich('sales');
   const neu = () => { const id = neueId('ch'); void api.setze('chancen', { id, titel: 'Neuer Deal', kontaktIds: [], art: 'retainer', wert: { betrag: 0, basis: 'monat' }, stufe: 'qualifiziert', historie: [], qualifizierung: {}, gesellschaft: 'offen', besitzer: neuFuer, angelegt: new Date().toISOString() }); setAuswahl(id); };
-  const zu = chancen.filter(c => !istOffen(c));
+  // Ein geschlossener Deal aus einem Link (z. B. hinter der Win Rate) wird gezeigt, auch wenn der Filter ihn sonst verbirgt.
+  const gewaehlt = auswahl ? crm.stand.chancen.find(c => c.id === auswahl) : undefined;
+  const zu = [...chancen.filter(c => !istOffen(c)), ...(gewaehlt && !istOffen(gewaehlt) && !passt(gewaehlt) ? [gewaehlt] : [])];
+  const zeigeZu = geschlossen || (!!gewaehlt && !istOffen(gewaehlt));
   // Aus der Kartei: wer laut Masterdatei im Gespräch ist oder ein Angebot hat, aber noch keine Chance.
   const mitChance = new Set(crm.stand.chancen.flatMap(c => c.kontaktIds));
   const vorschlaege = (api.kontakte ?? []).filter(k => ['gespraech', 'termin', 'angebot'].includes(k.stufe) && !mitChance.has(k.id) && !k.werbesperre && passtWer(wahl, k.besitzer, 'sales', ich))
@@ -175,8 +178,8 @@ export function Pipeline({ api, zuKontakt, zuLeads }: { api: CrmApi; zuKontakt: 
       )}
 
       <Karte i={7}>
-        <Ueberschrift rechts={<button onClick={() => setGeschlossen(!geschlossen)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>{geschlossen ? 'ausblenden' : `${zu.length} zeigen`}</button>}>Gewonnen · Verloren · Geparkt</Ueberschrift>
-        {geschlossen && <Liste>{zu.map(c => <ChancenZeile key={c.id} c={c} api={api} offen={auswahl === c.id} onKlick={() => setAuswahl(auswahl === c.id ? null : c.id)} zuKontakt={zuKontakt} />)}</Liste>}
+        <Ueberschrift rechts={<button onClick={() => { if (zeigeZu && gewaehlt && !istOffen(gewaehlt)) setAuswahl(null); setGeschlossen(!zeigeZu); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>{zeigeZu ? 'ausblenden' : `${zu.length} zeigen`}</button>}>Gewonnen · Verloren · Geparkt</Ueberschrift>
+        {zeigeZu && <Liste>{zu.map(c => <ChancenZeile key={c.id} c={c} api={api} offen={auswahl === c.id} onKlick={() => setAuswahl(auswahl === c.id ? null : c.id)} zuKontakt={zuKontakt} />)}</Liste>}
       </Karte>
     </>
   );

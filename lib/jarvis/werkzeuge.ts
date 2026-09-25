@@ -525,7 +525,7 @@ async function monatsabschlussErfassen(input: Record<string, unknown>, _origin: 
   const roh = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined && v !== null && v !== ''));
   const r = await speichereAbschluss(roh, person ?? 'kevin');
   if (!r.ok) return `Nicht eingetragen: ${r.fehler}`;
-  return `Monatsabschluss ${r.eintrag.firma === 'kdv' ? 'KD Ventures' : 'Consulting'} ${r.eintrag.monat} gespeichert — der Business-Index rechnet damit (/os/business).`;
+  return `Monatsabschluss ${r.eintrag.firma === 'kdv' ? 'KD Ventures' : 'Consulting'} ${r.eintrag.monat} gespeichert — der Business-Index rechnet damit (/os/finanzen?s=business).`;
 }
 
 /** Idee, Fehler oder Wunsch an MAKE OS selbst — landet im Bauplan unter „Ideen“ (nie direkt in „Bereit“). */

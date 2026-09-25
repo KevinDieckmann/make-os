@@ -79,7 +79,7 @@ export async function datenpaket(bild: Finanzbild, einstellung: ChefEinstellung,
     },
     definitionen: DEFINITIONEN,
     ...bild,
-    // Dieselben Kennzahlen wie das Cockpit /os/business — eine Wahrheit.
+    // Dieselben Kennzahlen wie das Cockpit unter Zahlen → Business — eine Wahrheit.
     business_index: business,
     crm: await crmFuerFinanzen(bild.stichtag),
     vorschlaege_offen: vorschlaegeFuerDaten(stand.vorschlaege),

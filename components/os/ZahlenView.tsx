@@ -28,8 +28,8 @@ const BEREICHE = [
   { href: '/os/finanzen/dashboard', titel: 'Business-Altbestand', satz: 'Malins erstes Cockpit — dort wird die Selbstständigkeit noch gepflegt; Privates steht jetzt unter Privat' },
 ];
 
-/** Business: die bisherigen Zahlen (Firmen, Liquidität, Grundlage). Eingebettet in FinanzenView. */
-export function ZahlenBusiness() {
+/** Business: Konten, Fälliges, Monat, Grundlage, Belege, Bereiche. Unter Zahlen → Business steht es unter dem Cockpit (ohne eigenen Index-Streifen). */
+export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolean } = {}) {
   const heute = localDay();
   const [plan, setPlan] = useState<Plan | null>(null);
   const [posten, setPosten] = useState<Planposten[]>([]);
@@ -69,7 +69,7 @@ export function ZahlenBusiness() {
   return (
     <>
       {/* Business-Index (25.09.): die Finanz-Kennzahlen, dieselbe Zahl wie im Cockpit. */}
-      <IndexStreifen ids={STREIFEN.zahlen} titel="Business-Index · Finanzen" />
+      {!ohneStreifen && <IndexStreifen ids={STREIFEN.zahlen} titel="Business-Index · Finanzen" />}
       <Karte i={0} akzent={LEUCHT.geld}>
         <Ueberschrift farbe={LEUCHT.geld}>Auf den Konten</Ueberschrift>
         <Zahl gross wert={plan ? eur(konten) : undefined} farbe={konten < 0 ? LEUCHT.kritisch : LEUCHT.geld} label="" />
@@ -154,7 +154,7 @@ function BelegeBusiness() {
   const heute = localDay();
   return (
     <Karte i={5}>
-      <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href="/os/finanzen?s=privat&t=schulden" style={{ color: C.inkLeise, textDecoration: 'none' }}>pflegen ›</Link>}>Rechnungen & Belege · Selbstständigkeit / UG</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href="/os/finanzen?s=steuern#ust" style={{ color: C.inkLeise, textDecoration: 'none' }}>erledigen ›</Link>}>Rechnungen & Belege · Selbstständigkeit / UG</Ueberschrift>
       <Liste>
         {!liste.length && <Leer>Nichts offen.</Leer>}
         {liste.slice(0, 8).map(b => (

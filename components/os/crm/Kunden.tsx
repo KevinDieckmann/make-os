@@ -30,6 +30,7 @@ import { type CrmApi, neueId, datum, euro, kurzEuro } from './daten';
 import { Feldzeile, Pillen, Feld } from './teile';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
 import { HeadPanel } from './HeadPanel';
+import { useZiel, useZuZiel } from '../ziel';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 const STATUS: { id: Mandat['status']; label: string }[] = [{ id: 'angebot', label: 'Angebot' }, { id: 'verhandlung', label: 'Verhandlung' }, { id: 'aktiv', label: 'Aktiv' }, { id: 'pausiert', label: 'Pausiert' }, { id: 'beendet', label: 'Beendet' }];
@@ -48,6 +49,8 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   const [liqui, setLiqui] = useState<{ mandate: LiquiLage[]; freiePosten: { id: string; titel: string; betrag: number }[] } | null>(null);
   const [alle, setAlle] = useState(false);
   const [wahl, setWahl] = useWerFilter('kunden');
+  // Kommt man über einen Link auf ein Mandat, springt die Liste einmal dorthin.
+  useZuZiel(useZiel('k'), !!api.crm);
   const ladeLiqui = () => fetch('/api/crm/liquiplan').then(r => r.json()).then(d => d.ok && setLiqui(d)).catch(() => {});
   useEffect(() => { void ladeLiqui(); }, []);
   const crm = api.crm;
@@ -57,7 +60,10 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   const mandate = [...crm.stand.mandate].sort((a, b) => REIHE.indexOf(a.status) - REIHE.indexOf(b.status) || a.kunde.localeCompare(b.kunde));
   const laufend = mandate.filter(m => m.status !== 'beendet');
   const gefiltert = mandate.filter(m => passtWer(wahl, m.zustaendig, 'sales', ich));
-  const sichtbar = alle ? gefiltert : gefiltert.filter(m => m.status !== 'beendet');
+  // Ein Mandat aus einem Link (z. B. hinter der Kündigungsrate) ist immer sichtbar — auch beendet oder bei jemand anderem.
+  const gewaehlt = auswahl ? mandate.find(m => m.id === auswahl) : undefined;
+  const basis = alle ? gefiltert : gefiltert.filter(m => m.status !== 'beendet');
+  const sichtbar = gewaehlt && !basis.includes(gewaehlt) ? [...basis, gewaehlt] : basis;
   const beendetVerborgen = gefiltert.length - gefiltert.filter(m => m.status !== 'beendet').length;
   const zahlen = werZahlen(laufend, m => m.zustaendig, 'sales', ich);
   const offenePunkte = laufend.reduce((a, m) => a + m.offen.length, 0);
@@ -110,7 +116,7 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
             const l = crm.mandate[m.id];
             const lq = liqui?.mandate.find(x => x.id === m.id);
             return (
-              <div key={m.id}>
+              <div key={m.id} id={`ziel-${m.id}`}>
                 <Zeile onClick={() => setAuswahl(auswahl === m.id ? null : m.id)} aktiv={auswahl === m.id}
                   links={<Punkt farbe={l?.ampel ? AMPEL[l.ampel] : statusFarbe(m.status)} />}
                   titel={<>{m.kunde}<span style={{ color: C.inkLeise }}> · {m.titel}</span></>}

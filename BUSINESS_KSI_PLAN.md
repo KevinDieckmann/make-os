@@ -158,3 +158,13 @@ DevSpec-Kennzahlen, die mit Mandaten/Pipeline rechenbar sind:
   Standard), Jahresumsatzziele je Firma (Umsatz-Kurs und Pipeline-Deckung jetzt auch je Firma),
   Verlaufs-Diagramm (Index + drei Säulen, 90 Tage).
 
+
+## 9. Business-Modell maximal (25.09.2026, Kevin: „hinter jeder Kachel 2–3 Punkte“, Geschäftsmodell, Index verfeinern)
+
+- Kern `lib/kennzahlen/kern.ts`: gewichtete Säulen (Liquidität, Runway 1,5 · 13-Wochen-Deckung,
+  Überfällige Forderungen, Break-even 1,25), Details je Kennzahl (bis 8, Kachel zeigt 3).
+- Neue Kennzahlen: Break-even-Abstand, Auslastung, effektiver Tagessatz, wiederkehrender Umsatz,
+  Kundenwert (LTV), LTV ÷ CAC. `nichtFuer: ['kdv']` für Vertrieb/Beratung — KD Ventures ist Holding.
+- Geschäftsmodell-Karte (`lib/business/modell.ts`): Umsatz je Produktlinie/Produkt, Mandate mit Anteil
+  und Fixkosten-Deckung. Echter Deckungsbeitrag je Mandat braucht direkte Kosten — noch nicht erfasst.
+- Cockpit lebt unter Zahlen → Business; alle Links über `lib/wege.ts`.

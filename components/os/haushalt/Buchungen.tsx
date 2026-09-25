@@ -5,7 +5,7 @@
 // mit aufklappbaren Empfängern, darunter jede Buchung einzeln zuordenbar,
 // änderbar und löschbar. Zuordnen lernt eine Regel — auf Wunsch rückwirkend.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import type { Buchung, Turnus } from '@/lib/finanzen/haushalt/typen';
 import { eur, zuCent } from '@/lib/finanzen/haushalt/typen';
@@ -31,6 +31,18 @@ export function Buchungen({ h, katName, patch, aktion, melde, laden, onImport }:
   const monate = useMemo(() => monateMitDaten(h.buchungen), [h.buchungen]);
   const [f, setF] = useState({ konto: '', monat: letzterMonatMitDaten(h.buchungen), kategorie: '', suche: '' });
   const [offeneBereiche, setOffen] = useState<Record<string, boolean>>({});
+  // Filter aus dem Link (?monat=YYYY-MM|alle&kat=<Kategorie-Id>|__offen&q=…&konto=…) — z. B. hinter einer Kachel des Privat-Index.
+  useEffect(() => {
+    const u = new URLSearchParams(window.location.search);
+    if (!['monat', 'kat', 'q', 'konto'].some(k => u.has(k))) return;
+    const m = u.get('monat');
+    setF(alt => ({
+      konto: u.get('konto') ?? alt.konto,
+      monat: m === 'alle' ? '' : m && /^\d{4}-\d{2}$/.test(m) ? m : alt.monat,
+      kategorie: u.get('kat') ?? alt.kategorie,
+      suche: u.get('q') ?? alt.suche,
+    }));
+  }, []);
   const [zeigen, setZeigen] = useState(SEITE);
   const [merken, setMerken] = useState<{ b: Buchung; katId: string } | null>(null);
   const [bearb, setBearb] = useState<Buchung | 'neu' | null>(null);

@@ -1,9 +1,10 @@
 // ─── Business-Index (25.09.) ────────────────────────────────────────────────
 // GET  ?scope=gesamt|kdc|kdv → Index, Säulen, Kennzahlen (Wert, Ampel, Formel,
-//      Quelle oder Messlücke), Trend, Ampel-Wechsel, Monatsabschlüsse, Einstellungen
+//      Quelle oder Messlücke, die Punkte dahinter mit Links), Trend, Ampel-Wechsel,
+//      Monatsabschlüsse, Einstellungen, Geschäftsmodell (Umsatz je Linie/Produkt/Mandat)
 // POST { aktion: 'abschluss', firma, monat, umsatz?, kosten?, personal?, … }
 //      { aktion: 'abschluss_weg', firma, monat }
-//      { aktion: 'einstellungen', fte?: { kdc?, kdv? }, ziele?: { kdc?, kdv? },
+//      { aktion: 'einstellungen', fte?: { kdc?, kdv? }, ziele?: { kdc?, kdv? }, kapazitaet?: { kdc?, kdv? },
 //        schwelle?: { id, sicht: 'alle'|'gesamt'|'kdc'|'kdv', gruen, rot } | { id, sicht, zuruecksetzen: true } }
 // GET  ?kompakt=1 → nur diese Sicht, ohne Verlauf/Abschlüsse (für die Fachseiten)
 // Nur der Haushalt des Inhabers (Kevin & Malin) und der Dienstweg.
@@ -12,6 +13,8 @@ import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { alleSichten, vergleich, speichereAbschluss, loescheAbschluss, speichereEinstellungen, ladeEinstellungen, ladeRoh, bestandFuer } from '@/lib/business/speicher';
 import { berechne } from '@/lib/business/index';
+import { fixkostenDer } from '@/lib/business/messen';
+import { geschaeftsmodell } from '@/lib/business/modell';
 import { SCOPES, type Scope } from '@/lib/business/register';
 
 export const runtime = 'nodejs';
@@ -41,6 +44,7 @@ export async function GET(req: Request) {
     vor30, wechsel, verlauf,
     abschluesse: roh.abschluesse.slice(0, 36),
     einstellungen: await ladeEinstellungen(),
+    modell: geschaeftsmodell(roh.mandate, roh.leistungen, scope, fixkostenDer(bestandFuer(roh, scope))),
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
