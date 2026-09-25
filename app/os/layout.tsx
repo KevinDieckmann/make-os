@@ -12,6 +12,7 @@ import { Protokollant } from '@/components/os/Protokollant';
 import { Mitarbeit } from '@/components/os/Mitarbeit';
 import { WillkommenMalin } from '@/components/os/WillkommenMalin';
 import { Schnellsuche } from '@/components/os/Schnellsuche';
+import { IdeeErfassen } from '@/components/os/bauplan/IdeeErfassen';
 import { wache } from '@/lib/zugang/wache';
 
 // Alles hinter der Anmeldung wird je Anfrage gebaut (25.09., schneller Modus): Die Wache liest das
@@ -42,6 +43,8 @@ export default async function OsLayout({ children }: { children: React.ReactNode
       <JarvisPanel />
       {/* ⌘K von überall: Kontakte, Firmen, Chancen, Mandate, Bereiche (24.09.). */}
       <Schnellsuche />
+      {/* „Idee“ von jeder Seite → Bauplan (25.09.). */}
+      <IdeeErfassen />
       {/* Zu zweit: wer ist gerade wo (24.09.). */}
       <Mitarbeit />
       {/* Einmaliger Gruß beim allerersten Öffnen. */}

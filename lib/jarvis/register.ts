@@ -196,6 +196,11 @@ export const REGISTER: Record<string, Eintrag> = {
     gruppe: 'gedaechtnis', risiko: 'frei',
     vorschau: schlicht('Im Gedächtnis nachsehen', i => i.thema ? `zu „${text(i.thema)}"` : 'alles'),
   },
+  // Ideen an MAKE OS selbst — landen in „Ideen“; gebaut wird erst, was Kevin oder Malin nach „Bereit“ ziehen.
+  bauplan_notieren: {
+    gruppe: 'bauplan', risiko: 'frei',
+    vorschau: schlicht('Im Bauplan notieren', i => `„${text(i.titel, 160)}“`),
+  },
   create_task: {
     gruppe: 'aufgaben', risiko: 'frei',
     vorschau: schlicht('Aufgabe anlegen', i => `„${text(i.title, 200)}"${i.priority && i.priority !== 'medium' ? ` (${String(i.priority)})` : ''}`),

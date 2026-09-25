@@ -19,6 +19,7 @@ import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { blockHaushalt } from '@/lib/finanzen/haushalt/jarvis';
 import { lies as liesFakten, fuerPrompt as faktenFuerPrompt } from '@/lib/jarvis/gedaechtnis';
 import { innenAdresse } from '@/lib/innen';
+import { ARTEN as BAU_ARTEN, BEREICHE as BAU_BEREICHE } from '@/lib/bauplan/form';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -238,6 +239,24 @@ export async function POST(req: Request) {
         }, required: ['an'] },
       },
     );
+    tools.push({
+      name: 'bauplan_notieren',
+      description: 'Notiert eine Idee, einen Fehler oder einen Wunsch an MAKE OS SELBST im Bauplan (Spalte „Ideen“, dort entscheiden Kevin und Malin, was gebaut wird). Nutze das, wenn jemand sagt, dass an der Software etwas fehlt, nervt, kaputt ist oder besser sein soll („notier im Bauplan …“, „das müsste man verbessern“). NICHT für Aufgaben im echten Leben — die gehen mit create_task ins Board.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          titel: { type: 'string', description: 'Kurz, worum es geht (ein Satz)' },
+          art: { type: 'string', enum: BAU_ARTEN.map(a => a.id), description: 'fehler = etwas ist kaputt; verbesserung = gibt es, soll besser werden; neu = neue Funktion; anbindung = Datenquelle/Dienst anbinden; frage = unklar, erst klären' },
+          bereich: { type: 'string', enum: [...BAU_BEREICHE], description: 'Welcher Teil von MAKE OS' },
+          prio: { type: 'number', enum: [1, 2, 3], description: '1 = jetzt, 2 = bald (Standard), 3 = irgendwann' },
+          problem: { type: 'string', description: 'Was ist das Problem? (optional)' },
+          wunsch: { type: 'string', description: 'Was wird gewünscht? (optional)' },
+          warum: { type: 'string', description: 'Warum ist es wichtig? (optional)' },
+          fertigWenn: { type: 'string', description: 'Woran man merkt, dass es fertig ist (optional)' },
+        },
+        required: ['titel'],
+      },
+    });
     tools.push({
       name: 'fakt_merken',
       description: 'Merkt sich einen dauerhaften Fakt. Nutze das SOFORT und ungefragt, wenn im Gespräch etwas fällt, das länger gilt: eine Person wechselt die Firma, eine Vorliebe, eine Entscheidung, eine wiederkehrende Zahl. NICHT für Tagesdaten, die ohnehin im Live-Zustand stehen. Kündige es nicht an — merk es dir einfach und rede weiter.',

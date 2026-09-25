@@ -64,6 +64,20 @@ lokal, Route `/os`, Port 3001.
 - **Sicherung:** nachts 03:15 verschlüsselt auf dem Server (14 Tage; Passwort hat Kevin)
   und Hetzner-Backups (aktiv seit 25.09., 7 tägliche Abbilder außerhalb des Servers).
 
+## Bauplan — so arbeiten Kevin, Malin und Claude (seit 25.09.2026)
+- `/os/bauplan` ist ein Board: **Ideen → Bereit → In Arbeit → Zum Testen → Fertig**,
+  dazu „Planung“ (Etappen mit Zieldatum). Karten kommen vom Knopf „Idee“ oben auf
+  jeder Seite (nimmt die Seite mit), aus dem Board („+ Karte“, mit Bildschirmfoto)
+  und von Jarvis (`bauplan_notieren`). Logik: `lib/bauplan/board.ts` (getestet),
+  API `app/api/bauplan` (+ `/bild`), Oberfläche `components/os/bauplan/`.
+- **Bau-Sessions:** Den Stand vom Server holen (`GET /api/bauplan` → `warteschlange`
+  = „Bereit“ von oben, ohne Karten, die auf Kevin warten) und von oben abarbeiten.
+  Beim Start `verschieben` nach `arbeit`; fertig gebaut → `abgeben { id, ergebnis,
+  testen }` („So testet ihr“ konkret, in Klicks). **Nie selbst nach „Fertig“** —
+  das macht nur die Abnahme durch Kevin oder Malin; „Passt noch nicht“ kommt mit
+  Kommentar zurück nach „Bereit“ (oben).
+- Bilder liegen unter `.data/bauplan-bilder` (auf dem Server in `daten`, mit gesichert).
+
 ## Technik
 - TypeScript strikt: vor jedem Commit `npx tsc --noEmit` — null Fehler.
 - Node liegt bei Kevin unter `~/.local/node22/bin` (nicht im PATH). Server

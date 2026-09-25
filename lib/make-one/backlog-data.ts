@@ -37,6 +37,34 @@ export interface BacklogItem {
   /** Zieldatum (YYYY-MM-DD) — macht den Punkt auf dem Zeitstrahl planbar. */
   ziel?: string;
   angelegt: string;
+  // ── Bauplan als Board (25.09., lib/bauplan/board.ts) — alles optional, alte Punkte gelten weiter ──
+  /** Spalte im Board; fehlt sie, gilt sie aus dem Status (offen+P1 → bereit, offen → idee, laufend → arbeit, erledigt → fertig). */
+  spalte?: import('@/lib/bauplan/form').Spalte;
+  /** Reihenfolge in der Spalte (kleiner = weiter oben). */
+  rang?: number;
+  art?: import('@/lib/bauplan/form').Art;
+  bereich?: string;
+  /** Wer es eingetragen hat (kevin, malin, claude, loop). */
+  von?: string;
+  /** Vorlage: Was ist das Problem, was wünschst du dir, woran merken wir, dass es fertig ist. */
+  problem?: string;
+  wunsch?: string;
+  fertigWenn?: string;
+  /** Auf welcher Seite es aufgefallen ist (Pfad). */
+  seite?: string;
+  /** Bildschirmfotos (Dateinamen unter .data/bauplan-bilder). */
+  bilder?: string[];
+  /** Wer die Karte hochstuft (kevin, malin). */
+  daumen?: string[];
+  kommentare?: { von: string; am: string; text: string }[];
+  /** Was gebaut wurde und wie ihr es testet — schreibt Claude beim Abgeben. */
+  ergebnis?: string;
+  testen?: string;
+  abgenommen?: { von: string; am: string };
+  /** Etappe der Planung (id aus meilensteine). */
+  etappe?: string;
+  verworfen?: boolean;
+  geaendert?: string;
 }
 
 /** Startbestand: alles, was aus Audit, Review und Gesprächen offen ist. */

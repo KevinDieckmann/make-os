@@ -440,3 +440,10 @@ nav a:hover { transform: translateX(2px); }
 
 /* Zu zweit (24.09.): „Malin ist auch hier“ — auf dem Handy über der unteren Leiste. */
 @media (max-width: 767px) { .os-mitarbeit { bottom: 84px !important; left: 12px !important; right: auto !important; justify-items: start !important; } }
+
+/* Bauplan-Board (25.09.): fünf Spalten passen auf einen Laptop; am Handy
+   wischt man spaltenweise (je Spalte fast die ganze Breite). */
+.bauplan-board { display: grid; grid-template-columns: repeat(5, minmax(205px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x proximity; align-items: start; }
+@media (max-width: 720px) {
+  .bauplan-board { grid-template-columns: repeat(5, 84vw); margin: 0 -18px; padding: 0 18px 8px; scroll-padding: 0 18px; }
+}

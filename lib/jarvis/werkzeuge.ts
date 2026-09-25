@@ -507,6 +507,16 @@ async function faktMerken(input: Record<string, unknown>, _origin: string, perso
     : `Wusste ich schon: ${thema} — ${satz} (nicht doppelt abgelegt).`;
 }
 
+/** Idee, Fehler oder Wunsch an MAKE OS selbst — landet im Bauplan unter „Ideen“ (nie direkt in „Bereit“). */
+async function bauplanNotieren(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
+  const { karteAnlegen } = await import('@/lib/bauplan/speicher');
+  const { ARTEN } = await import('@/lib/bauplan/form');
+  // Bilder und Seite kommen nur aus der Oberfläche, nie aus dem Gespräch.
+  const k = await karteAnlegen({ ...input, bilder: undefined, seite: undefined, quelle: 'Jarvis' }, person ?? 'kevin');
+  if (!k) return 'Fehlgeschlagen: titel nötig.';
+  return `Im Bauplan notiert (Ideen): „${k.titel}“ — ${ARTEN.find(a => a.id === k.art)?.label ?? 'Verbesserung'}, Bereich ${k.bereich}.`;
+}
+
 /** Im eigenen Gedächtnis nachsehen, bevor geraten wird. */
 async function fragGedaechtnis(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
   const { lies } = await import('./gedaechtnis');
@@ -804,6 +814,7 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: (input: Record<st
   create_task: { gruppe: 'aufgaben', lauf: erstelleAufgabe },
   starte_auftraege: { gruppe: 'auftraege', lauf: starteAuftraege },
   fakt_merken: { gruppe: 'gedaechtnis', lauf: faktMerken },
+  bauplan_notieren: { gruppe: 'bauplan', lauf: bauplanNotieren },
   suche_wissen: { gruppe: 'wissen', lauf: sucheWissen },
   lies_notiz: { gruppe: 'wissen', lauf: liesNotiz },
   notiz_anlegen: { gruppe: 'wissen', lauf: notizAnlegen },

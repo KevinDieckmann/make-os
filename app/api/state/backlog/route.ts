@@ -11,7 +11,8 @@ import { SEED, type BacklogItem } from '@/lib/make-one/backlog-data';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface BacklogFile { items: BacklogItem[] }
+// Seit 25.09. trägt die Datei auch die Etappen der Planung (lib/bauplan) — jeder Schreibweg behält sie.
+interface BacklogFile { items: BacklogItem[]; etappen?: unknown[] }
 
 const seeded = (): BacklogItem[] => {
   const now = new Date().toISOString();
@@ -34,7 +35,8 @@ export async function PUT(req: Request) {
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const b = body as { items?: BacklogItem[] };
   if (!b || !Array.isArray(b.items)) return NextResponse.json({ ok: false, error: 'items fehlt.' }, { status: 400 });
-  const { ok } = await updateGeschuetzt<BacklogFile>('backlog', { items: b.items! }, s => s.items?.length ?? 0);
+  const etappen = (await loadJson<BacklogFile>('backlog'))?.etappen;
+  const { ok } = await updateGeschuetzt<BacklogFile>('backlog', { items: b.items!, ...(etappen ? { etappen } : {}) }, s => s.items?.length ?? 0);
   if (!ok) return NextResponse.json({ ok: false, error: 'Abgelehnt: das haette ueber die Haelfte der Bauplan-Punkte geloescht.' }, { status: 409 });
   return NextResponse.json({ ok: true });
 }
@@ -64,8 +66,8 @@ export async function POST(req: Request) {
     const items = Array.isArray(current?.items) && current.items.length ? current.items : seeded();
     // Gleiche id → aktualisieren statt doppelt anlegen.
     const i = items.findIndex(x => x.id === item.id);
-    if (i >= 0) { const copy = [...items]; copy[i] = { ...copy[i], ...item, angelegt: copy[i].angelegt }; return { items: copy }; }
-    return { items: [...items, item] };
+    if (i >= 0) { const copy = [...items]; copy[i] = { ...copy[i], ...item, angelegt: copy[i].angelegt }; return { ...(current ?? {}), items: copy }; }
+    return { ...(current ?? {}), items: [...items, item] };
   });
 
   return NextResponse.json({ ok: true, id: item.id, anzahl: next.items.length });
