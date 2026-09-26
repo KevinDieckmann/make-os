@@ -11,6 +11,7 @@
 //      Frist wird es deren nächster Schritt (erscheint dann in der Power
 //      Hour), sonst eine Aufgabe. Nichts wird versendet.
 
+import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { WEG } from '@/lib/wege';
 import { markttraktion, mandateLink } from '@/lib/crm/adresse';
 import { NextResponse } from 'next/server';
@@ -73,6 +74,8 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
   const params = await props.params;
   const h = headAus(params);
   if (!h) return NextResponse.json({ ok: false, fehler: 'Unbekannter Head.' }, { status: 404 });
+  // Der Schalter unter /os/agenten gilt auch für den direkten Aufruf (27.09.) — vorher nur für Jarvis und den Takt.
+  const agentCfg = await resolveAgent(AGENT_ID[h]); if (!agentCfg.enabled) return NextResponse.json({ ok: false, fehler: disabledResponse(agentCfg).error, disabled: true }, { status: 409 });
   let b: { aktion?: string; modus?: string; frage?: string; ausgeloest?: string; id?: string; status?: string; grund?: string; entwurf?: string; text?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const person = personAus(req);

@@ -130,6 +130,17 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
     }
   }
 
+  // 0c) Head of IT (27.09.): ab 7:45 der Tagesbericht (einmal), danach stündlich der Blick auf NEUES Rot —
+  //     den nur, wenn ein Bote da ist, der es zustellen kann. Riegel in hoi-meldung.json (der Lauf schreibt ihn).
+  try {
+    const hm = (await loadJson<{ berichtTag?: string; zuletzt?: string }>('hoi-meldung')) ?? {};
+    const minuten = h * 60 + jetzt.getMinutes();
+    if (minuten >= 7 * 60 + 45 && hm.berichtTag !== heute) raus.push({ id: 'hoi-bericht', grund: 'Head of IT: Tagesbericht', auftrag: { art: 'agent', name: 'hoi', auftrag: 'bericht', anlass: 'Takt: Head of IT' } });
+    else if (telegramKonfiguriert() && (!hm.zuletzt || jetzt.getTime() - Date.parse(hm.zuletzt) >= 55 * 60_000)) raus.push({ id: `hoi-${h}`, grund: 'Head of IT: Stundenblick auf neues Rot', auftrag: { art: 'agent', name: 'hoi', auftrag: 'pruefen', anlass: 'Takt: Head of IT' } });
+  } catch (err) {
+    console.error('[MAKE OS] HOI-Takt übersprungen:', err);
+  }
+
   // 1) Der Morgenlauf — einmal am Tag, ab 7 Uhr.
   const start = await loadJson<TagesstartStand>('tagesstart');
   if (start?.lastRun !== heute) {

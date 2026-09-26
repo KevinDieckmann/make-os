@@ -16,7 +16,7 @@ export const FREMD_WERKZEUGE: Record<string, string> = {
 
 /** Agent (run_agent) → Quellenname; Agenten mit reinen Zahlen fehlen bewusst. */
 export const FREMD_AGENTEN: Record<string, string> = {
-  research: 'web', content: 'web', prospecting: 'web',
+  research: 'web', content: 'web', prospect: 'web', prospecting: 'web',
   inbox: 'postfach', meeting: 'meeting',
   crm: 'crm', outreach: 'crm',
 };

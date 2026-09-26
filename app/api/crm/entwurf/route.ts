@@ -1,6 +1,7 @@
 // ─── MAKE OS — Entwurf für einen Kontakt ────────────────────────────────────
 // POST { id } → Betreff, E-Mail, LinkedIn-Nachricht. Kein Versand.
 
+import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
@@ -13,6 +14,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  const agentCfg = await resolveAgent('crm'); if (!agentCfg.enabled) return NextResponse.json(disabledResponse(agentCfg), { status: 409 });
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let b: { id?: string };

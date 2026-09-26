@@ -11,11 +11,21 @@ import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { eur } from '@/lib/make-one/finance-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, feld, LEUCHT, Spalten, Spalte } from './schlank';
+import { WEG } from '@/lib/wege';
+import { markttraktion } from '@/lib/crm/adresse';
 
 interface Vorschlag { id: string; zeit: string; werkzeug: string; gruppe: string; titel: string; vorher?: string; nachher: string; eingabe: Record<string, unknown>; anlass?: string; status: 'offen' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen'; ergebnis?: string; grund?: string }
 interface Auftrag { id: string; zeit: string; art: string; name: string; auftrag?: string; status: 'offen' | 'laeuft' | 'fertig' | 'fehler'; ergebnis?: string; fehler?: string }
 interface Fakt { id: string; tag: string; art: string; thema: string; satz: string }
 interface Kosten { heuteCent: number; summeCent: number; jeZweck: { zweck: string; cent: number; anzahl: number }[] }
+/** Die Freigabe-Listen der Heads (eigene Speicher, eigene Seiten) — hier gebündelt sichtbar (27.09.). */
+interface HeadFreigaben { id: string; name: string; href: string; offen: number; titel: string[]; fehler?: boolean }
+const HEADS_QUELLEN: { id: string; name: string; api: string; href: string }[] = [
+  { id: 'sales', name: 'Head of Sales', api: '/api/heads/sales', href: WEG.powerHour() },
+  { id: 'marketing', name: 'Head of Marketing', api: '/api/heads/marketing', href: markttraktion('marketing') },
+  { id: 'event', name: 'Head of Event', api: '/api/heads/event', href: markttraktion('event') },
+  { id: 'finanzchef', name: 'Head of Finance', api: '/api/finanzchef', href: WEG.chef() },
+];
 
 const GRUPPE: Record<string, { label: string; href: string; farbe: string }> = {
   finanzen: { label: 'Geld', href: '/os/finanzen', farbe: LEUCHT.geld }, meilensteine: { label: 'Meilensteine', href: '/os/roadmap', farbe: LEUCHT.schlaf },
@@ -34,6 +44,7 @@ export function StapelView() {
   const [auftraege, setAuftraege] = useState<Auftrag[]>([]);
   const [fakten, setFakten] = useState<Fakt[]>([]);
   const [kosten, setKosten] = useState<Kosten | null>(null);
+  const [heads, setHeads] = useState<HeadFreigaben[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [offenId, setOffenId] = useState<string | null>(null);
   const [grund, setGrund] = useState<Record<string, string>>({});
@@ -48,6 +59,19 @@ export function StapelView() {
     setLaedt(false);
   }, []);
   useEffect(() => { void laden(); fetch('/api/jarvis/verbrauch').then(r => r.json()).then(d => { if (d.ok) setKosten(d); }).catch(() => {}); }, [laden]);
+  // Die Heads führen ihre Freigaben selbst — hier die Summe, damit EINE Seite zeigt, was überall wartet.
+  useEffect(() => {
+    let aktiv = true;
+    void Promise.all(HEADS_QUELLEN.map(async q => {
+      try {
+        const d = await fetch(q.api, { cache: 'no-store' }).then(r => r.json());
+        const offen = (Array.isArray(d?.vorschlaege) ? d.vorschlaege : []).filter((v: { status?: string }) => v.status === 'offen') as { titel?: string }[];
+        return { id: q.id, name: q.name, href: q.href, offen: offen.length, titel: offen.slice(0, 2).map(v => String(v.titel ?? '')).filter(Boolean) };
+      } catch { return { id: q.id, name: q.name, href: q.href, offen: 0, titel: [], fehler: true }; }
+    })).then(l => { if (aktiv) setHeads(l); });
+    return () => { aktiv = false; };
+  }, []);
+  const headsOffen = heads.reduce((s, h) => s + h.offen, 0);
   const inArbeit = auftraege.filter(a => a.status === 'laeuft' || a.status === 'offen').length;
   useEffect(() => { if (!inArbeit) return; const iv = setInterval(() => { void laden(); }, 3000); return () => clearInterval(iv); }, [inArbeit, laden]);
 
@@ -117,14 +141,27 @@ export function StapelView() {
             {auftraege.slice(0, 8).map(a => <Zeile key={a.id} links={<Punkt farbe={STATUS[a.status]?.farbe ?? C.inkLeise} />} titel={a.auftrag ?? a.name} unter={`${a.name} · ${her(a.zeit)}${a.fehler ? ` · ${a.fehler}` : a.ergebnis ? ` · ${a.ergebnis.slice(0, 80)}` : ''}`} rechts={<Chip farbe={STATUS[a.status]?.farbe ?? C.inkLeise}>{STATUS[a.status]?.label ?? a.status}</Chip>} />)}
           </Liste>
         </Karte>
-        <Karte i={2}>
+        <Karte i={2} akzent={headsOffen ? LEUCHT.achtung : undefined}>
+          <Ueberschrift farbe={headsOffen ? LEUCHT.achtung : C.inkLeise} rechts={heads.length ? `${headsOffen} offen` : undefined}>Freigaben der Heads</Ueberschrift>
+          <Liste>
+            {heads.length === 0 && <Leer>Wird gelesen …</Leer>}
+            {heads.map(h => (
+              <Link key={h.id} href={h.href} style={{ textDecoration: 'none', color: 'inherit' }}>
+                <Zeile onClick={() => {}} links={<Punkt farbe={h.fehler ? C.inkLeise : h.offen ? LEUCHT.achtung : LEUCHT.gut} />} titel={h.name}
+                  unter={h.fehler ? 'nicht lesbar' : h.offen ? `${h.offen} offen${h.titel.length ? ` · ${h.titel.join(' · ')}` : ''}` : 'nichts offen'} rechts={<span style={{ color: C.inkLeise }}>›</span>} />
+              </Link>
+            ))}
+          </Liste>
+          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Entschieden wird beim Head selbst — dort steht die Begründung und der Prüfer-Vermerk.</div>
+        </Karte>
+        <Karte i={3}>
           <Ueberschrift farbe={LEUCHT.schlaf}>Zuletzt entschieden</Ueberschrift>
           <Liste>
             {entschieden.length === 0 && <Leer>Noch nichts entschieden.</Leer>}
             {entschieden.map(v => <Zeile key={v.id} links={<Punkt farbe={STATUS[v.status]?.farbe ?? C.inkLeise} />} titel={v.titel} unter={`${g(v.gruppe).label} · ${her(v.zeit)}${v.grund ? ` · ${v.grund}` : v.ergebnis ? ` · ${v.ergebnis.slice(0, 80)}` : ''}`} rechts={<Chip farbe={STATUS[v.status]?.farbe ?? C.inkLeise}>{STATUS[v.status]?.label ?? v.status}</Chip>} />)}
           </Liste>
         </Karte>
-        <Karte i={3}>
+        <Karte i={4}>
           <Ueberschrift farbe={LEUCHT.agenten} rechts={`${fakten.length}`}>Gedächtnis</Ueberschrift>
           <Liste>
             {fakten.length === 0 && <Leer>Jarvis hat sich noch nichts gemerkt. Sag ihm „merk dir …“.</Leer>}

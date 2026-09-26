@@ -15,7 +15,7 @@ export const AUSFUEHRBAR = [
   'head-sales', 'head-marketing', 'head-event',
   // Systemläufe: kein Fach-Agent, sondern der Takt selbst. Sie stehen hier,
   // damit der Arbeiter sie wie alles andere aus der Warteschlange holt.
-  'tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion',
+  'tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi',
 ] as const;
 export type Ausfuehrbar = typeof AUSFUEHRBAR[number];
 
@@ -50,6 +50,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
   selbstbild: 'Schreibt fort, was die Software über sich selbst im Gehirn hat',
   gesundheit: 'Der Gesundheits-Takt — schickt Kevin und Malin morgens, mittags, abends die Nachricht aufs Handy (auftrag = morgen | mittag | abend | woche, sonst was fällig ist)',
   markttraktion: 'Der Markttraktion-Takt — schickt Kevin und Malin werktags morgens, was in der Markttraktion bei ihnen liegt, und freitags das Wochen-Scoreboard aufs Handy (auftrag = morgen | woche, optional person:kevin|malin — schickt sofort; leer = was fällig ist)',
+  hoi: 'Der Head of IT — Lagebild aus Server, App, Sicherheit und Außenblick; ohne KI (auftrag = bericht | pruefen)',
 };
 
 /**
@@ -60,7 +61,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
  * eigenen Kopie. Eine zweite Liste hätte genau einen Zweck: irgendwann von
  * dieser abzuweichen.
  */
-export const SYSTEM_LAEUFE = ['tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion'] as const;
+export const SYSTEM_LAEUFE = ['tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi'] as const;
 const SYSTEM = new Set<string>(SYSTEM_LAEUFE);
 
 const kuerze = (t: unknown, n = 1600) => String(t ?? '').slice(0, n);
@@ -95,16 +96,22 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
   // Ein „person:x“ im Auftragstext darf nur der Takt setzen (Systemlauf ohne Person) — sonst könnte
   // ein Konto als jemand anderes laufen lassen (26.09.).
   const personAusText = (text: string) => person ?? /person:([a-z0-9-]{1,40})/.exec(text)?.[1];
-  const post = async (pfad: string, body: unknown, timeoutMs = 90_000) => {
-    const r = await fetch(`${origin}${pfad}`, {
-      method: 'POST', headers: H, body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs),
-    });
-    return r.json();
+  // ok-Vertrag (27.09.): eine Route, die mit Fehlerstatus, { ok:false } oder { error } antwortet, ist ein
+  // FEHLSCHLAG des Laufs — vorher wurde so etwas in einigen Fällen als „0 Vorschläge“ oder „niemand
+  // fällig“ gelesen und stand als Erfolg in der Warteschlange (verbesserung, task, crm, tagesstart).
+  // Die Routen antworten unterschiedlich geformt — die Fälle unten lesen die Felder selbst (wie vorher r.json()).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const gepruft = async (r: Response, pfad: string): Promise<any> => {
+    const d = await r.json().catch(() => ({})) as Record<string, unknown>;
+    const fehltext = typeof d.error === 'string' ? d.error : typeof d.fehler === 'string' ? d.fehler : '';
+    if (!r.ok) throw new Error(`${pfad} antwortet ${r.status}${fehltext ? `: ${kuerze(fehltext, 160)}` : ''}`);
+    if (d.ok === false || (fehltext && d.ok !== true && !('reply' in d) && !('headline' in d))) throw new Error(kuerze(fehltext || `${pfad}: nicht ok`, 200));
+    return d;
   };
-  const get = async (pfad: string, timeoutMs = 60_000) => {
-    const r = await fetch(`${origin}${pfad}`, { headers: H, signal: AbortSignal.timeout(timeoutMs) });
-    return r.json();
-  };
+  const post = async (pfad: string, body: unknown, timeoutMs = 90_000) => gepruft(await fetch(`${origin}${pfad}`, {
+    method: 'POST', headers: H, body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs),
+  }), pfad);
+  const get = async (pfad: string, timeoutMs = 60_000) => gepruft(await fetch(`${origin}${pfad}`, { headers: H, signal: AbortSignal.timeout(timeoutMs) }), pfad);
 
   try {
     switch (id) {
@@ -222,11 +229,13 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
       case 'morgen': {
         const d = await post('/api/jarvis/morgen', {}, 200_000);
         if (!d.ok) return fehl(`Morgenlauf fehlgeschlagen: ${kuerze(d.error, 200)}`);
+        if (d.ohneKi) return gut(`MORGENLAUF (Regelwerk, ${d.grund}): ${kuerze(d.bericht, 500)}`);
         return gut(`MORGENLAUF: ${d.gestapelt ?? 0} Vorschläge im Stapel. ${kuerze(d.bericht, 500)}`);
       }
       case 'abend': {
         const d = await post('/api/jarvis/morgen', { zeit: 'abend' }, 200_000);
         if (!d.ok) return fehl(`Abendlauf fehlgeschlagen: ${kuerze(d.error, 200)}`);
+        if (d.ohneKi) return gut(`ABENDLAUF (Regelwerk, ${d.grund}): ${kuerze(d.bericht, 500)}`);
         return gut(`ABENDLAUF: ${d.gestapelt ?? 0} Vorschläge für morgen. ${kuerze(d.bericht, 500)}`);
       }
       case 'crm': {
@@ -282,6 +291,28 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
         // Morgen-Nachricht und Freitags-Scoreboard — deterministisch, ohne
         // Modell, nur an Kevin und Malin selbst (siehe markttraktionLauf).
         return await markttraktionLauf(auftrag, new Date(), person);
+      }
+      case 'hoi': {
+        // Head of IT (27.09.): ohne Modell. „bericht“ = Tagesbericht aufs Handy (einmal je Tag), „pruefen“ = nur
+        // melden, was NEU rot ist. Riegel in hoi-meldung.json; die Nachricht geht an den Inhaber, nie an Dritte.
+        const { lage } = await import('@/lib/hoi/innen');
+        const l = await lage();
+        const rot = l.befunde.filter(b => b.ampel === 'rot').map(b => b.id);
+        const { loadJson, updateJson } = await import('@/lib/store/local-db');
+        const heute = localDay();
+        interface HoiMeldung { berichtTag?: string; gemeldet?: string[]; zuletzt?: string; ampel?: string }
+        const r = (await loadJson<HoiMeldung>('hoi-meldung')) ?? {};
+        const bericht = auftrag === 'bericht';
+        const neuRot = rot.filter(x => !(r.gemeldet ?? []).includes(x));
+        let telegram = '';
+        const { telegramKonfiguriert, sendeAnPerson } = await import('@/lib/telegram');
+        if (telegramKonfiguriert() && ((bericht && r.berichtTag !== heute) || neuRot.length)) {
+          const { ladeKonten } = await import('@/lib/zugang/konten');
+          const inhaber = (await ladeKonten()).konten.find(k => k.rolle === 'inhaber')?.speicher;
+          if (inhaber) { const s = await sendeAnPerson(inhaber as Parameters<typeof sendeAnPerson>[0], l.kurz); telegram = s.erreicht > 0 ? 'Telegram gesendet' : `Telegram: ${s.fehler ?? 'nicht zugestellt'}`; }
+        }
+        await updateJson<HoiMeldung>('hoi-meldung', cur => ({ ...(cur ?? {}), gemeldet: rot, ...(bericht ? { berichtTag: heute } : {}), zuletzt: new Date().toISOString(), ampel: l.gesamt.ampel }));
+        return gut(`HEAD OF IT (${bericht ? 'Tagesbericht' : 'Stundenblick'}): ${l.gesamt.ampel} — ${l.gesamt.rot} rot · ${l.gesamt.gelb} gelb · ${l.gesamt.gruen} grün${neuRot.length ? ` · neu rot: ${neuRot.join(', ')}` : ''}${telegram ? ` · ${telegram}` : ''}`);
       }
       case 'selbstbild': {
         const d = await post('/api/jarvis/selbstbild', {}, 120_000);
@@ -341,7 +372,7 @@ ${(a?.vorschlaege ?? []).map((v: { titel: string }) => `→ ${v.titel}`).join('\
       }
     }
   } catch (err) {
-    return fehl(`${id} nicht erreichbar: ${err instanceof Error ? err.message.slice(0, 150) : 'Fehler'}`);
+    return fehl(`${id} fehlgeschlagen: ${err instanceof Error ? err.message.slice(0, 200) : 'Fehler'}`);
   }
   return fehl('Unbekannter Agent.');
 }

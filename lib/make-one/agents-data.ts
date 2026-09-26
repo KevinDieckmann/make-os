@@ -125,6 +125,9 @@ export const DEPARTMENTS: Department[] = [
   {
     id: 'product', name: 'Product (CapOS / MAKE OS)', mission: 'Das Produkt bauen & schärfen.', color: '#7BC950', lead: 'Product Lead',
     agents: [
+      { id: 'hoi', name: 'Head of IT', role: 'Überwacht das System — innen, auf dem Server und von außen; Sicherheit, Betrieb, Code-Wache', status: 'live', autonomy: 'autonom', model: 'schnell', href: '/os/hoi',
+        funktionen: ['Lagebild mit Ampeln (Server, App, Sicherheit, Sicherung, Außenblick)', 'Kurzbericht täglich und bei neuem Rot aufs Handy', 'CSP-Verstöße, Fehlanmeldungen, KI-Guthaben, Arbeiter-Takt im Blick', 'Code-Wache in der CI (npm audit, gitleaks, knip, Dependabot)'],
+        bauplan: 'GEBAUT 27.09. ohne KI-Aufruf: lib/hoi (lage, innen, rechnen), Seite /os/hoi, Routen /api/hoi/{lage,aussen,csp}, Host-Sammler deploy/lage-sammeln.sh (Cron), GitHub-Aktion hoi-aussenblick.yml mit eingeschränktem Schlüssel MAKE_OS_KEY_HOI. Offen: Mozilla-Observatory-Note, Code-Verbesserungsvorschläge (kommen aus dem Verbesserungs-Loop).' },
       { id: 'roadmap', name: 'Roadmap-/Spec-Agent', role: 'PRDs, Priorisierung', status: 'geplant', autonomy: 'entwurf', model: 'stark',
         funktionen: ['PRDs entwerfen', 'RICE-Priorisierung', 'Roadmap-Vorschlag'],
         bauplan: 'NICHT GEBAUT — und beim Nachsehen am 07.09. stellt sich heraus: die Aufgabe ist schon vergeben. Der Bauplan unter /os/bauplan IST die Roadmap, und der Verbesserungs-Loop schreibt wöchentlich hinein. Ein zweiter Agent daneben würde dieselbe Liste ein zweites Mal führen. Eher streichen als bauen.' },

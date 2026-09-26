@@ -99,6 +99,25 @@ Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen un
   - Tests: `crm-deal-regeln` (Server-Regeln), `crm-fundament` angepasst (Upsert neuer Deals ist jetzt ein Fehler). Stand: 100 Dateien · 877 Tests grün, tsc und Lint sauber.
   - **Offen (Kevin entscheidet):** Farbe des Reiters „Firmen“ (heute neutral wie Kontakte, obwohl die Leads darin liegen); ob „Meins/Malin“-Filter auch im Board sichtbar sein soll.
 
+### Agenten live-fähig, Runde 1 (27.09. nachts, nur lokal)
+
+Kevin: „Arbeite alle Agenten, die wir machen wollten, weiter aus, dass sie live gehen können.“ Zuerst das Querliegende, an dem jeder Agent hängt:
+
+- **Guthaben-Schalter** (`lib/anthropic.ts`): die Antwort „credit balance too low“ merkt sich die eine Stelle, durch die jeder Modellaufruf geht — danach 30 Minuten
+  kein Aufruf mehr (sofort „guthaben-leer“ statt Gehirn einlesen und scheitern). Der Head of IT zeigt den Stand als Befund „KI-Guthaben“ (grau ohne Schlüssel, rot leer).
+- **ok-Vertrag der Läufe** (`lib/jarvis/agenten.ts`): antwortet eine Route mit Fehlerstatus, `ok:false` oder `error`, ist der Lauf ein Fehlschlag — vorher stand so etwas
+  bei Verbesserungs-Loop, Delegation, CRM-Tagesliste und Tagesstart als „Erfolg mit 0 Ergebnissen“ in der Warteschlange (und der Takt wartete nicht).
+- **Regelwerk statt Ausfall:** Morgen- und Abendlauf liefern ohne KI (kein Schlüssel / Guthaben leer) einen ehrlichen Lagesatz aus den Zahlen (`lib/jarvis/regelwerk.ts`) —
+  Aufgaben überfällig/heute/kritisch, Termine, überfällige Forderungen, Frühwarnungen — und stapeln nichts. Der Takt zählt das als Erfolg.
+- **Head of IT im Takt:** ab 7:45 der Tagesbericht, danach stündlich der Blick auf NEUES Rot (nur mit Boten); Nachricht an den Inhaber per Telegram, Riegel `hoi-meldung`.
+  Im Agenten-Katalog steht der HOI als live (Product), ohne KI.
+- **Schalter wirken überall:** „Aus“ unter /os/agenten galt nur für Jarvis und den Takt — jetzt auch für den direkten Aufruf von Wochenplan, CRM-Entwurf, Head of Finance und den Heads (409).
+- **Eine Freigabe-Sicht:** /os/stapel zeigt zusätzlich „Freigaben der Heads“ (Sales, Marketing, Event, Finance) mit Anzahl und Titeln — entschieden wird weiter beim Head.
+- **Fremd-Regel:** der Prospecting-Agent heißt `prospect` — der Eintrag in `FREMD_AGENTEN` zeigte auf `prospecting` und griff nie.
+- Tests: `anthropic-guthaben`, `regelwerk`, `hoi-lage` erweitert. Stand: 103 Dateien · 887 Tests grün, tsc und Lint sauber.
+- **Offen (Runde 2):** Ergebnisse der halb gebauten Agenten (Delegation, Wochenplan, Content, Meeting, Prospecting) landen nur als Text in der Warteschlange — sie brauchen
+  je einen Platz (Aufgaben-Vorschlag, Planer, Content-Seite, Meeting-Seite, Zielliste) statt einer Textwand; die geplanten Agenten Funnel, SEO, Team bleiben geplant (siehe Bauplan-Sätze im Katalog).
+
 ### Sicherheit & Head of IT (27.09. nachts, nur lokal)
 
 Kevin: „Geh an die Sicherheit … und baue den HOI, den Head of IT: überwacht das ganze System, achtet auf Sicherheit, verbessert den Code — auch von außen.“

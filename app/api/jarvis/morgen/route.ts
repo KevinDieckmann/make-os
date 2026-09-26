@@ -13,7 +13,8 @@
 // Was Jarvis nachts allein erarbeitet, soll Kevin einmal gesehen haben.
 
 import { NextResponse } from 'next/server';
-import { askText, hasAnthropicKey } from '@/lib/anthropic';
+import { askText, hasAnthropicKey, guthabenLeer } from '@/lib/anthropic';
+import { regelBericht } from '@/lib/jarvis/regelwerk';
 import { gatherBrain, promptBrain } from '@/lib/brain';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
@@ -69,7 +70,7 @@ const WERKZEUGE = [
   },
 ];
 
-export type Tageszeit = 'morgen' | 'abend';
+type Tageszeit = import('@/lib/jarvis/regelwerk').Tageszeit;
 
 function anweisung(person: Person, lage: string, zeit: Tageszeit, liegt: string): string {
   if (zeit === 'abend') return anweisungAbend(person, lage, liegt);
@@ -135,7 +136,6 @@ function anweisungAbend(person: Person, lage: string, liegt: string): string {
 
 export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
-  if (!hasAnthropicKey()) return NextResponse.json({ ok: false, error: 'Kein Anthropic-Schlüssel.' }, { status: 200 });
   const person = personAus(req);
   const origin = innenAdresse(req);
   let body: { zeit?: Tageszeit } = {};
@@ -144,7 +144,12 @@ export async function POST(req: Request) {
 
   let lage = '';
   try {
-    lage = promptBrain(await gatherBrain(undefined, person));
+    const brain = await gatherBrain(undefined, person);
+    // Regelwerk statt Fehlschlag, wenn die KI nicht kann (27.09.).
+    if (!hasAnthropicKey() || guthabenLeer()) {
+      return NextResponse.json({ ok: true, zeit, ohneKi: true, grund: !hasAnthropicKey() ? 'kein Schlüssel' : 'Guthaben leer', bericht: regelBericht(brain, zeit), gestapelt: 0, offen: await offeneAnzahl().catch(() => 0) });
+    }
+    lage = promptBrain(brain);
     // Haushalt (24.09.): Kevin hat Beträge im Briefing ausdrücklich erlaubt — nur mit benannter Person.
     const hz = await haushaltVon(req).catch(() => null);
     if (hz) lage += `\n\n${blockHaushalt(await ladeHaushalt(hz.haushalt))}`;

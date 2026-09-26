@@ -47,6 +47,8 @@ export interface InnenLage {
   anmeldungen: { fehl24h: number; neueNetze7d: number };
   csp: { meldungen7d: number; top?: string };
   verschluesselt: boolean;
+  /** KI-Schlüssel da? Guthaben leer (seit)? — aus lib/anthropic.ts, dem einen Weg für alle Modellaufrufe. */
+  ki: { schluessel: boolean; guthabenLeerSeit: string | null };
 }
 
 const uhr = (h: number) => (h < 1 ? `${Math.round(h * 60)} min` : h < 48 ? `${Math.round(h)} h` : `${Math.round(h / 24)} Tage`);
@@ -81,6 +83,8 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
 
   // ── App (innen) ──
   b.push({ id: 'verschluesselt', bereich: 'sicherheit', label: 'Bestände im Ruhezustand', ampel: innen.verschluesselt ? 'gruen' : 'rot', wert: innen.verschluesselt ? 'verschlüsselt' : 'Klartext', satz: innen.verschluesselt ? 'AES-256-GCM je Datei' : 'MAKE_OS_DATEN_SCHLUESSEL fehlt in der .env' });
+  const ki = innen.ki;
+  b.push({ id: 'ki', bereich: 'app', label: 'KI-Guthaben', ampel: !ki.schluessel ? 'grau' : ki.guthabenLeerSeit ? 'rot' : 'gruen', wert: !ki.schluessel ? 'kein Schlüssel' : ki.guthabenLeerSeit ? `leer seit ${ki.guthabenLeerSeit.slice(11, 16)} Uhr` : 'verfügbar', satz: !ki.schluessel ? 'ANTHROPIC_API_KEY fehlt — Agenten mit KI stehen, Regel-Läufe laufen' : ki.guthabenLeerSeit ? 'console.anthropic.com aufladen — bis dahin pausieren alle KI-Aufrufe (halbstündlich ein Versuch), Regel-Läufe laufen weiter' : 'Modellaufrufe gehen durch' });
   const t = innen.takt;
   b.push({ id: 'takt', bereich: 'app', label: 'Arbeiter (Takt)', ampel: t.letzterLaufMinuten === null ? 'grau' : t.letzterLaufMinuten <= 5 ? 'gruen' : t.letzterLaufMinuten <= 30 ? 'gelb' : 'rot', wert: t.letzterLaufMinuten === null ? 'noch kein Lauf' : `vor ${t.letzterLaufMinuten} min · ${t.laufend} laufend · ${t.wartend} wartend`, satz: t.letzterLaufMinuten === null ? 'Arbeiter hat noch nichts gemeldet' : t.letzterLaufMinuten <= 5 ? 'holt fällige Läufe' : 'holt nichts mehr — Container arbeiter prüfen' });
   if (t.fehlerquote24h !== null) b.push({ id: 'fehlerquote', bereich: 'app', label: 'Fehlerquote der Läufe · 24 h', ampel: t.fehlerquote24h < 10 ? 'gruen' : t.fehlerquote24h < 30 ? 'gelb' : 'rot', wert: `${t.fehlerquote24h} %`, satz: t.fehlerquote24h < 10 ? 'Läufe laufen durch' : 'viele Fehlschläge — Guthaben, Schlüssel oder eine defekte Route' });

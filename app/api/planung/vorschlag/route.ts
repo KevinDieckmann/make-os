@@ -5,6 +5,7 @@
 // festen Termine HERUM. Das Ergebnis ist ein VORSCHLAG: Kevin übernimmt ihn im
 // Planer per Klick und schiebt dann zurecht. Nichts wird hier gespeichert.
 
+import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
@@ -29,6 +30,7 @@ const ARTEN = new Set(['fokus', 'reha', 'routine', 'pause', 'aufgabe', 'block'])
 const mm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
 export async function POST(req: Request) {
+  const agentCfg = await resolveAgent('planung'); if (!agentCfg.enabled) return NextResponse.json(disabledResponse(agentCfg), { status: 409 });
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { woche?: string; hinweis?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }

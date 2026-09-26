@@ -11,6 +11,7 @@ import { lies, stand } from '@/lib/jarvis/auftraege';
 import { alle } from '@/lib/zugang/anmeldungen';
 import { befundeAus, gesamt, kurzbericht, nachRang, type InnenLage, type HostLage, type AussenLage, type Befund } from './lage';
 import { fehlerquote24h, fehlanmeldungen24h, neueNetze7d, cspBild, type CspMeldung } from './rechnen';
+import { hasAnthropicKey, guthabenStand } from '@/lib/anthropic';
 
 export const HOI_AUSSEN = 'hoi-aussen';
 export const HOI_CSP = 'hoi-csp';
@@ -56,6 +57,7 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     anmeldungen: { fehl24h: fehlanmeldungen24h(anmeldungen, jetzt), neueNetze7d: neueNetze7d(anmeldungen, jetzt) },
     csp: cspBild(csp?.meldungen ?? [], jetzt),
     verschluesselt: datenSchluessel() !== null,
+    ki: { schluessel: hasAnthropicKey(), guthabenLeerSeit: guthabenStand().leerSeit },
   };
 }
 

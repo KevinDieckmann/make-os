@@ -24,6 +24,44 @@ export function fremd(quelle: string, text: string): string {
   return `<fremde_daten quelle="${quelle.replace(/"/g, "'")}">\n${sauber}\n</fremde_daten>`;
 }
 
+// ─── Guthaben-Schalter (27.09.) ─────────────────────────────────────────────
+// Am 25.09. lief das Guthaben leer, und jeder Lauf schlug einzeln dagegen: der
+// Takt reihte Morgenlauf, Heads und Loops neu ein, jeder las das ganze Gehirn
+// ein, um dann an derselben 400-Antwort zu scheitern. Jetzt merkt sich DIESE
+// eine Stelle die Antwort „credit balance too low“ und lässt für eine halbe
+// Stunde keinen Aufruf mehr hinaus — sofort mit klarem Fehler „guthaben-leer“.
+// Regel-Läufe (Heads-Grundlauf, Gesundheits-Takt, HOI) brauchen kein Guthaben
+// und laufen weiter. Die Seite Head of IT zeigt den Stand.
+const GUTHABEN_PAUSE_MS = 30 * 60_000;
+export const KI_STAND = 'ki-stand';
+export interface KiStand { guthabenLeerSeit?: string; letzterFehler?: string; letzterErfolg?: string }
+let guthabenLeerSeit = 0;
+let letzterErfolg = 0;
+
+/** Ist das Guthaben (nach der letzten Antwort) leer und die Pause noch nicht vorbei? */
+export function guthabenLeer(jetzt = Date.now()): boolean {
+  return guthabenLeerSeit > 0 && jetzt - guthabenLeerSeit < GUTHABEN_PAUSE_MS;
+}
+/** Für die Lage: seit wann leer (ISO) — null, wenn nicht. */
+export function guthabenStand(): { leerSeit: string | null; naechsterVersuch: string | null; letzterErfolg: string | null } {
+  const leer = guthabenLeer();
+  return { leerSeit: leer ? new Date(guthabenLeerSeit).toISOString() : null, naechsterVersuch: leer ? new Date(guthabenLeerSeit + GUTHABEN_PAUSE_MS).toISOString() : null, letzterErfolg: letzterErfolg ? new Date(letzterErfolg).toISOString() : null };
+}
+export function istGuthabenFehler(status: number, detail: string): boolean {
+  return status === 400 && /credit balance|insufficient.*credit|billing/i.test(detail);
+}
+function merkeGuthabenLeer(detail: string): void {
+  guthabenLeerSeit = Date.now();
+  void import('./store/local-db').then(({ updateJson }) => updateJson<KiStand>(KI_STAND, cur => ({ ...(cur ?? {}), guthabenLeerSeit: new Date(guthabenLeerSeit).toISOString(), letzterFehler: detail.slice(0, 200) }))).catch(() => { /* still */ });
+}
+function merkeErfolg(): void {
+  const vorher = letzterErfolg; letzterErfolg = Date.now(); guthabenLeerSeit = 0;
+  // Höchstens einmal je Stunde in den Bestand — der Zeitstempel ist Zierde, nicht Buchführung.
+  if (letzterErfolg - vorher > 3_600_000) void import('./store/local-db').then(({ updateJson }) => updateJson<KiStand>(KI_STAND, cur => ({ ...(cur ?? {}), guthabenLeerSeit: undefined, letzterErfolg: new Date(letzterErfolg).toISOString() }))).catch(() => { /* still */ });
+}
+/** Für Tests: Schalter zurücksetzen bzw. setzen. */
+export function _guthabenSetzen(leerSeitMs: number): void { guthabenLeerSeit = leerSeitMs; }
+
 export function hasAnthropicKey(): boolean {
   return !!process.env.ANTHROPIC_API_KEY;
 }
@@ -119,6 +157,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 export async function askText(opts: AskOptions): Promise<AskResult> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return { ok: false, status: 0, text: '', error: 'no-key' };
+  if (guthabenLeer()) return { ok: false, status: 402, text: '', error: 'guthaben-leer' };
 
   const body: Record<string, unknown> = {
     model: opts.model ?? MODEL,
@@ -165,12 +204,15 @@ export async function askText(opts: AskOptions): Promise<AskResult> {
           continue;
         }
         last = { ok: false, status: res.status, text: '', error: detail.slice(0, 220), requestId: res.headers.get('request-id') ?? undefined };
+        // Guthaben leer: merken und für alle weiteren Aufrufe sofort abbrechen (Schalter oben).
+        if (istGuthabenFehler(res.status, detail)) { merkeGuthabenLeer(detail); return { ...last, status: 402, error: 'guthaben-leer' }; }
         // 429 ohne retry-after = Ausgabenlimit — nicht wiederholen.
         if (res.status === 429 && !res.headers.get('retry-after')) return last;
         if (RETRYABLE.has(res.status) && attempt < maxAttempts) { await sleep(700 * attempt); continue; }
         return last;
       }
       const data = await res.json();
+      merkeErfolg();
       // Verbrauch mitschreiben — an DIESER einen Stelle, durch die jeder
       // Modellaufruf geht. Je Route wäre es 21-mal dieselbe Zeile und beim
       // 22. Mal vergessen. Schlägt es fehl, ist das egal: eine fehlende

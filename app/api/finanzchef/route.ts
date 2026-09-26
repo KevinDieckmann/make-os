@@ -5,6 +5,7 @@
 // Haushalt), alle anderen nur Business. Die Prüfung ist streng (haushaltVon,
 // ohne Rückfall auf eine Person).
 
+import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, saveJson } from '@/lib/store/local-db';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
@@ -88,6 +89,7 @@ import { istDienst as dienst } from '@/lib/zugang/dienst';
 const ohneBetraege = (t: string) => t.replace(/[+−-]?\d{1,3}(?:\.\d{3})*(?:,\d+)?\s?(?:€|EUR)/g, '…').replace(/\s{2,}/g, ' ').trim();
 
 export async function POST(req: Request) {
+  const agentCfg = await resolveAgent('finanzchef'); if (!agentCfg.enabled) return NextResponse.json(disabledResponse(agentCfg), { status: 409 });
   let b: Record<string, unknown>;
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const u = await umfangVon(req, typeof b.umfang === 'string' ? b.umfang : null);

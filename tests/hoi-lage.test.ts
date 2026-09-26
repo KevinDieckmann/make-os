@@ -7,7 +7,7 @@ const innen: InnenLage = {
   zeit: JETZT, prozess: { laufzeitStunden: 30, heapMb: 200, rssMb: 620, node: 'v22' },
   bestaende: { anzahl: 40, gesamtMb: 6.2, groesste: [{ name: 'grundlage', mb: 1.5 }, { name: 'kontakte', mb: 0.9 }] },
   takt: { letzterLaufMinuten: 2, fehlerquote24h: 4, wartend: 1, laufend: 0 },
-  fehler: { client24h: 0 }, anmeldungen: { fehl24h: 1, neueNetze7d: 0 }, csp: { meldungen7d: 0 }, verschluesselt: true,
+  fehler: { client24h: 0 }, anmeldungen: { fehl24h: 1, neueNetze7d: 0 }, csp: { meldungen7d: 0 }, verschluesselt: true, ki: { schluessel: true, guthabenLeerSeit: null },
 };
 const host: HostLage = {
   zeit: '2026-09-27T06:27:00.000Z', platte: { frei_gb: 18, belegt_prozent: 41 }, speicher: { frei_mb: 620, gesamt_mb: 1900, swap_belegt_mb: 300 }, last: { m5: 0.4, kerne: 1 },
@@ -23,6 +23,9 @@ describe('HOI · Lage', () => {
     expect(b.find(x => x.id === 'aussen')?.ampel).toBe('grau');
     expect(b.find(x => x.id === 'takt')?.ampel).toBe('gruen');
     expect(b.find(x => x.id === 'verschluesselt')?.ampel).toBe('gruen');
+    expect(b.find(x => x.id === 'ki')?.ampel).toBe('gruen');
+    expect(befundeAus({ ...innen, ki: { schluessel: true, guthabenLeerSeit: '2026-09-27T09:00:00.000Z' } }, null, null, JETZT).find(x => x.id === 'ki')?.ampel).toBe('rot');
+    expect(befundeAus({ ...innen, ki: { schluessel: false, guthabenLeerSeit: null } }, null, null, JETZT).find(x => x.id === 'ki')?.ampel).toBe('grau');
     expect(gesamt(b).ampel).toBe('gruen');
   });
   it('bewertet Host und Außen mit Schwellen', () => {
