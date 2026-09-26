@@ -18,7 +18,7 @@ import { Zeitstrahl, type StrahlMarker, type StrahlTick } from './Zeitstrahl';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Haken, Zahl, feld, prioFarbe, LEUCHT } from './schlank';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
 import { useSpace } from '@/hooks/useSpace';
-import { SPACE_LABEL, SPACE_FARBE, type SpaceId } from '@/lib/make-one/space-regeln';
+import { SPACE_LABEL, SPACE_FARBE, spaceVonAufgabe, type SpaceId } from '@/lib/make-one/space-regeln';
 
 interface Ziel { id: string; titel: string; fortschritt: number; notiz?: string; erledigt?: boolean; space?: 'privat' | 'business' }
 interface Meilenstein { id: string; titel: string; bereich: 'business' | 'gesundheit'; faellig?: string; zeitfenster?: string; messlatte?: string; fortschritt: number; erledigt: boolean; erledigtAm?: string }
@@ -85,6 +85,8 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   // Meilensteine — pflegbarer Store (Jahr verwaltet, Monat zeigt die nächsten).
   const [ms, setMs] = useState<Meilenstein[]>([]);
   const [msNeu, setMsNeu] = useState({ titel: '', bereich: 'business' as Meilenstein['bereich'], faellig: '' });
+  // Meilensteine folgen dem Space (26.09.): privat = Gesundheit, Business = Business.
+  useEffect(() => { if (spaceFilter !== 'alle') setMsNeu(m => ({ ...m, bereich: spaceFilter === 'privat' ? 'gesundheit' : 'business' })); }, [spaceFilter]);
   const msTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
     fetch('/api/state/meilensteine').then(r => r.json()).then(d => { const l = Array.isArray(d.meilensteine) ? d.meilensteine : []; gespeichert.current = l; setMs(l); }).catch(() => {});
@@ -128,7 +130,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   // Aufgaben, die in diesem Zeitraum fällig sind.
   const heute = localDay();
   const faellig = tasksState.tasks
-    .filter(t => t.status !== 'done' && t.dueDate && t.dueDate >= zr.von && t.dueDate <= zr.bis)
+    .filter(t => t.status !== 'done' && t.dueDate && t.dueDate >= zr.von && t.dueDate <= zr.bis && (spaceFilter === 'alle' || spaceVonAufgabe(t) === spaceFilter))
     .sort((a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? ''));
 
   const schnitt = ziele.length ? Math.round(ziele.reduce((s, z) => s + (z.erledigt ? 100 : z.fortschritt), 0) / ziele.length) : null;
@@ -285,8 +287,8 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
               <input type="date" value={msNeu.faellig} onChange={e => setMsNeu({ ...msNeu, faellig: e.target.value })} aria-label="Fällig am"
                 style={{ ...feld, width: 'auto', flex: '0 1 160px', colorScheme: 'dark' }} />
               <select value={msNeu.bereich} onChange={e => setMsNeu({ ...msNeu, bereich: e.target.value as Meilenstein['bereich'] })} aria-label="Bereich" style={wahl}>
-                <option value="business">Business</option>
-                <option value="gesundheit">Gesundheit</option>
+                {spaceFilter !== 'privat' && <option value="business">Business</option>}
+                {spaceFilter !== 'business' && <option value="gesundheit">Gesundheit</option>}
               </select>
               <Knopf onClick={() => {
                 if (!msNeu.titel.trim()) return;
