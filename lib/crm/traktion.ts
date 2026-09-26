@@ -136,7 +136,7 @@ export function uebergaben(kontakte: Kontakt[], crm: CrmBestand, heute: string):
   if (nachfassen.length) {
     const ueberfaellig = nachfassen.filter(t => followUpBis(events.get(t.eventId)!) < heute).length;
     liste.push({ id: 'event-nachfassen', von: 'event', an: 'sales', titel: 'Gäste nachfassen', anzahl: nachfassen.length,
-      text: `stehen in der Power Hour${ueberfaellig ? ` · ${ueberfaellig} über der 48-Stunden-Frist` : ''}`, ziel: { s: 'sales', a: 'heute' } });
+      text: `stehen in der Power Hour${ueberfaellig ? ` · ${ueberfaellig} über der 48-Stunden-Frist` : ''}`, ziel: { s: 'followup', a: 'powerhour' } });
   }
 
   // Marketing → Sales: Gespräche und Anfragen aus Beiträgen (60 Tage) ohne offene Chance.
@@ -144,7 +144,7 @@ export function uebergaben(kontakte: Kontakt[], crm: CrmBestand, heute: string):
   const ausContent = new Set((crm.beitraege ?? []).flatMap(b => (b.wirkung ?? []).filter(w => (w.art === 'gespraech' || w.art === 'anfrage') && w.am.slice(0, 10) >= vor60).map(w => w.kontaktId))
     .filter(id => nachId.has(id) && !offeneChance.has(id) && !nachId.get(id)!.werbesperre));
   if (ausContent.size) liste.push({ id: 'content-ohne-chance', von: 'marketing', an: 'sales', titel: 'Anfragen aus Content ohne Chance', anzahl: ausContent.size,
-    text: 'Wert und nächsten Schritt festhalten — sonst fehlen sie in der Prognose', ziel: { s: 'sales', a: 'pipeline' } });
+    text: 'Wert und nächsten Schritt festhalten — sonst fehlen sie in der Prognose', ziel: { s: 'deals' } });
 
   // Sales → Marketing: Stimmen der Kunden, die noch kein Thema im Redaktionsplan sind.
   const genutzt = new Set((crm.beitraege ?? []).flatMap(b => b.quellen ?? []));
@@ -156,7 +156,7 @@ export function uebergaben(kontakte: Kontakt[], crm: CrmBestand, heute: string):
   const kampagnenOffen = (crm.kampagnen ?? []).filter(k => k.status === 'aktiv')
     .reduce((a, k) => { const erledigt = new Set(k.ergebnisse.map(e => e.kontaktId)); return a + k.kontaktIds.filter(id => !erledigt.has(id) && nachId.has(id)).length; }, 0);
   if (kampagnenOffen) liste.push({ id: 'kampagne-offen', von: 'marketing', an: 'sales', titel: 'Kampagnen-Personen noch nicht angesprochen', anzahl: kampagnenOffen,
-    text: 'kommen als „Neu“ mit Kampagnen-Bezug in die Power Hour', ziel: { s: 'sales', a: 'heute' } });
+    text: 'kommen als „Neu“ mit Kampagnen-Bezug in die Power Hour', ziel: { s: 'followup', a: 'powerhour' } });
 
   // Sales → Event: nächstes Event mit freien Plätzen oder verfehlter Mischung.
   const naechstes = crm.events.filter(e => e.status !== 'abgesagt' && e.status !== 'durchgefuehrt' && e.datum >= heute).sort((a, b) => a.datum.localeCompare(b.datum))[0];

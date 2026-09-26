@@ -2,7 +2,7 @@
 
 // ─── Mandate (Produkte & Mandate, /os/mandate) — und die Kurzfassung für Sales ───
 // Seit 25.09. leben die Mandate im eigenen Bereich links unter Aufgaben (Kevin:
-// „Mandaten-Abteil … Produkte und Mandate“); Sales › 3 · Kunden zeigt nur noch
+// „Mandaten-Abteil … Produkte und Mandate“); Deals › Kunden zeigt nur noch
 // die Kurzfassung mit Sprung dorthin (KundenKurz). Je Mandat jetzt auch das
 // Produkt und die Phase in dessen Ablauf. Die Produkte: components/os/mandate/Produkte.tsx.
 // Oben MRR und Kundenkonzentration. Je Mandat: Status, Laufzeit und Frist,
@@ -249,7 +249,7 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
 }
 
 /**
- * Sales › 3 · Kunden (seit 25.09.): nur noch die Kurzfassung — Monatsumsatz,
+ * Deals › Kunden (seit 25.09., Reiter seit 27.09.): nur noch die Kurzfassung — Monatsumsatz,
  * laufende Mandate, ein Klick öffnet das Mandat unter Produkte & Mandate.
  */
 export function KundenKurz({ api }: { api: CrmApi }) {

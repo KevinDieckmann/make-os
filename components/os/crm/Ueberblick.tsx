@@ -70,7 +70,7 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
       <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: C.inkDim, flexWrap: 'wrap' }}>
           <Person id={v} groesse={18} /> verantwortet {nameVon(v)}{v === d.ich ? ' · dein Bereich' : ''}
-          <button onClick={() => zuBereich(w)} style={{ ...leise, marginLeft: 'auto' }}>{WELT_LABEL[w]} öffnen ›</button>
+          <button onClick={() => zuBereich(w === 'sales' ? 'deals' : w)} style={{ ...leise, marginLeft: 'auto' }}>{WELT_LABEL[w]} öffnen ›</button>
         </div>
         <div style={{ display: 'grid', gap: 4, padding: '10px 12px', borderRadius: 12, background: 'rgba(199,125,255,.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

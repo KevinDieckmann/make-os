@@ -199,7 +199,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte }: { api: 
 
   const sales = (
     <Karte i={3} akzent={offeneDeals.length ? LEUCHT.gut : undefined}>
-      <KartenKopf titel="Sales" unter="Lead (Ebene 1) → Deal (Ebene 2) → Kunde (Ebene 3)" />
+      <KartenKopf titel="Vertrieb" unter="Lead → Deal → Kunde" />
       <div style={{ display: 'grid', gap: 18 }}>
         <NaechsterSchrittTeil k={k} heute={heute} setze={setze} />
         <LeadBlock api={api} leadId={k.firmaId ?? k.id} />

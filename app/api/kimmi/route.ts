@@ -565,7 +565,7 @@ export async function POST(req: Request) {
       },
       {
         name: 'setze_kunde',
-        description: 'Aktualisiert oder erfasst einen Kunden als Mandat in der Markttraktion (Sales › Kunden; Status, Honorar €/Monat, nächster Schritt als offener Punkt).',
+        description: 'Aktualisiert oder erfasst einen Kunden als Mandat in der Markttraktion (Deals › Kunden; Status, Honorar €/Monat, nächster Schritt als offener Punkt).',
         input_schema: { type: 'object', properties: {
           name: { type: 'string' },
           status: { type: 'string', enum: ['aktiv', 'gespraech', 'ruht'] },

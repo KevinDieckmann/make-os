@@ -80,7 +80,7 @@ describe('Übergaben zwischen den Welten', () => {
   it('Event → Sales: Gäste ohne Nachfassen, mit überschrittener Frist', () => {
     const crm = { ...leererBestand(), events: [ev()], teilnahmen: [t('a', 'da'), t('b', 'da', { followUpAm: '2026-09-11' })] };
     const u = uebergaben([k('a'), k('b')], crm, HEUTE).find(x => x.id === 'event-nachfassen')!;
-    expect(u).toMatchObject({ von: 'event', an: 'sales', anzahl: 1, ziel: { s: 'sales', a: 'heute' } });
+    expect(u).toMatchObject({ von: 'event', an: 'sales', anzahl: 1, ziel: { s: 'followup', a: 'powerhour' } }); // 27.09.: Nachfassen lebt im Follow-up
     expect(u.text).toContain('1 über der 48-Stunden-Frist');
   });
 

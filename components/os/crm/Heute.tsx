@@ -1,6 +1,6 @@
 'use client';
 
-// ─── Markttraktion · Sales › Heute — wer ist dran? (Power Hour) ───────────────────
+// ─── Markttraktion · Follow-up › Power Hour — wer ist dran? ───────────────────────
 // Die Liste baut der Code (lib/crm/heute.ts): Versprechen → Signale →
 // Chancen → Kunden → Pflege → Neu. Mit „Power Hour starten“ läuft eine
 // Stunde im Fokus: Karte für Karte, weicher 4-Minuten-Takt je Karte,

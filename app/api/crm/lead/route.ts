@@ -6,7 +6,7 @@
 //      Pipeline (Stufe „SQL“) — Kernfragen, Personen, Firma wandern mit.
 //      Pflicht: nächster Schritt mit Datum. Ohne erfüllte SQL-Kriterien nur mit
 //      `trotzdem: true` (dann steht es in der Notiz).
-// POST { aktion: 'mandat', chanceId }   → gewonnener Deal wird Mandat (Sales ›
+// POST { aktion: 'mandat', chanceId }   → gewonnener Deal wird Mandat (Deals ›
 //      Kunden); Firma wird Kunde, Personen Lebensphase „Kunde“.
 // Nichts wird versendet.
 

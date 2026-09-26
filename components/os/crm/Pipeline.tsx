@@ -1,6 +1,6 @@
 'use client';
 
-// ─── Markttraktion · Sales › Deals (Ebene 2) — Pipeline nach Stufen, ab SQL ───────────────────────────────────
+// ─── Markttraktion · Deals (Ebene 2) — Board, Liste, Akte und Auswertung, ab SQL ──────────────────────────────
 // Oben die Prognose (offen, gewichtet, Commit, Best Case) — jede Zahl mit
 // Herleitung. Darunter die Stufen mit ihrem Austrittskriterium: Eine Chance
 // rückt vor, wenn auf Kundenseite etwas passiert ist, nicht wenn wir hoffen.
@@ -15,7 +15,7 @@ import { WEG } from '@/lib/wege';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, useBreit, LEUCHT, feld } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, useBreit, LEUCHT, feld } from '../schlank';
 import { anzeigename } from '@/lib/make-one/crm';
 import { gesamtwert, prognose, prognoseJePerson, werZahlen, verlustgruende } from '@/lib/crm/pipeline';
 import { zustaendig, mitglied, nameVon, verantwortlich } from '@/lib/crm/team';
@@ -193,8 +193,8 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
 
       {vorschlaege.length > 0 && (
         <Karte i={1}>
-          <Ueberschrift rechts={zuLeads ? <Knopf leise onClick={zuLeads}>Zu den Leads (Ebene 1)</Knopf> : `${vorschlaege.length} aus der Kartei`}>Im Gespräch, noch kein Deal</Ueberschrift>
-          <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Erst qualifizieren (Ebene 1: Schmerz, Entscheider, Budget oder Zeitpunkt), dann wird daraus ein Deal. Direkt anlegen nur, wenn die Qualifizierung schon feststeht.</div>
+          <Ueberschrift rechts={zuLeads ? <Knopf leise onClick={zuLeads}>Zu den Leads (Firmen)</Knopf> : `${vorschlaege.length} aus der Kartei`}>Im Gespräch, noch kein Deal</Ueberschrift>
+          <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Erst qualifizieren (Firmen › Leads: Schmerz, Entscheider, Budget oder Zeitpunkt), dann wird daraus ein Deal. Direkt anlegen nur, wenn die Qualifizierung schon feststeht.</div>
           <Liste>
             {vorschlaege.slice(0, alleVorschlaege ? 40 : 6).map(k => <Zeile key={k.id} titel={<>{anzeigename(k)}{k.firma && <span style={{ color: C.inkLeise }}> · {k.firma}</span>}</>} unter={k.stufe === 'angebot' ? 'Angebot' : k.stufe === 'termin' ? 'Termin' : 'im Gespräch'} rechts={<Knopf leise onClick={() => ausKontakt(k)}>+ Deal</Knopf>} />)}
           </Liste>
@@ -328,12 +328,15 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
       {c.grund && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Grund: {c.grund}{c.wiedervorlage ? ` · Wiedervorlage ${datum(c.wiedervorlage)}` : ''}</div>}
       {c.stufe === 'gewonnen' && !crm.stand.mandate.some(m => m.chanceId === c.id) && (
         <div style={{ padding: '10px 12px', borderRadius: 12, background: `${LEUCHT.gut}12`, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: TYP.bedien }}>Gewonnen — jetzt Ebene 3: aus dem Deal wird ein Mandat (Vertrag, Kickoff, Health).</span>
+          <span style={{ fontSize: TYP.bedien }}>Gewonnen — jetzt Kunde: aus dem Deal wird ein Mandat (Vertrag, Kickoff, Health).</span>
           <Knopf farbe={LEUCHT.gut} onClick={async () => { const r = await fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'mandat', chanceId: c.id }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' })); if (!r.ok) api.setFehler(r.fehler); void api.laden(); }}>Mandat anlegen</Knopf>
         </div>
       )}
       {c.stufe === 'gewonnen' && crm.stand.mandate.some(m => m.chanceId === c.id) && <div style={{ fontSize: 12.5, color: LEUCHT.gut }}>Mandat angelegt — <Link href={mandateLink('mandate', crm.stand.mandate.find(m => m.chanceId === c.id)!.id)} style={{ color: LEUCHT.gut }}>unter Produkte & Mandate öffnen ›</Link></div>}
-      <div><button onClick={() => { if (window.confirm('Deal löschen? Besser: als verloren markieren — dann lernt die Pipeline.')) void api.weg('chancen', c.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>Löschen</button> {' '}<Chip farbe={C.inkLeise}>angelegt {datum(c.angelegt)}</Chip></div>
+      {/* Sperre statt Löschen (Konzept): ein Deal mit Geschichte wird verloren oder geparkt — löschen geht nur bei einer Fehlanlage. */}
+      {c.historie.length <= 1 && !c.wert.betrag && !(c.notiz ?? '').trim()
+        ? <div><button onClick={() => { if (window.confirm('Fehlanlage löschen? Ein Deal mit Geschichte wird stattdessen als verloren oder geparkt markiert.')) void api.weg('chancen', c.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>Fehlanlage löschen</button></div>
+        : <div style={{ fontSize: 12, color: C.inkLeise }}>Löschen gibt es nicht — ein Deal mit Geschichte wird verloren oder geparkt, damit die Pipeline lernt.</div>}
     </div>
   );
 }

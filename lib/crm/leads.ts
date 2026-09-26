@@ -10,7 +10,8 @@
 //   Ebene 2  DEAL    Aus dem SQL wird mit einem Klick ein Deal (Chance) in der
 //                    Pipeline: SQL → Bedarf → Diagnose → Angebot → Abschluss →
 //                    gewonnen/verloren. Die Kernfragen wandern mit.
-//   Ebene 3  KUNDE   Gewonnen → Mandat (Produkte & Mandate, /os/mandate; in Sales › Kunden verlinkt).
+//   Ebene 3  KUNDE   Gewonnen → Mandat (Produkte & Mandate, /os/mandate; unter Deals › Kunden verlinkt).
+// Seit 27.09. liegen die Ebenen auf den Reitern Firmen › Leads (1), Deals (2) und Deals › Kunden (3).
 // Solange niemand den Status gesetzt hat, wird er aus den Personen abgeleitet
 // (Kontaktstufe, Lebensphase, offener Deal) — so ist die Liste sofort gefüllt,
 // ohne 450 Einträge von Hand.
@@ -138,12 +139,12 @@ export function trichter(zeilen: LeadZeile[], crm: CrmBestand): Trichter {
   const warenImGespraech = sqlJe + n('im_gespraech') + n('qualifizierung');
   return {
     stufen: [
-      { id: 'kontaktiert', label: 'Kontaktiert', anzahl: n('kontaktiert'), ebene: 1, ziel: { s: 'sales', a: 'leads' } },
-      { id: 'im_gespraech', label: 'Im Gespräch', anzahl: n('im_gespraech'), ebene: 1, ziel: { s: 'sales', a: 'leads' } },
-      { id: 'qualifizierung', label: 'Qualifizierung', anzahl: n('qualifizierung'), ebene: 1, ziel: { s: 'sales', a: 'leads' } },
-      { id: 'deals', label: 'Deals offen', anzahl: offen.length, wert: Math.round(offen.reduce((a, c) => a + gesamtwert(c), 0)), ebene: 2, ziel: { s: 'sales', a: 'pipeline' } },
-      { id: 'gewonnen', label: 'Gewonnen', anzahl: gewonnen.length, ebene: 2, ziel: { s: 'sales', a: 'pipeline' } },
-      { id: 'kunden', label: 'Kunden', anzahl: crm.mandate.filter(m => m.status === 'aktiv').length, ebene: 3, ziel: { s: 'sales', a: 'kunden' } },
+      { id: 'kontaktiert', label: 'Kontaktiert', anzahl: n('kontaktiert'), ebene: 1, ziel: { s: 'firmen', a: 'leads' } },
+      { id: 'im_gespraech', label: 'Im Gespräch', anzahl: n('im_gespraech'), ebene: 1, ziel: { s: 'firmen', a: 'leads' } },
+      { id: 'qualifizierung', label: 'Qualifizierung', anzahl: n('qualifizierung'), ebene: 1, ziel: { s: 'firmen', a: 'leads' } },
+      { id: 'deals', label: 'Deals offen', anzahl: offen.length, wert: Math.round(offen.reduce((a, c) => a + gesamtwert(c), 0)), ebene: 2, ziel: { s: 'deals' } },
+      { id: 'gewonnen', label: 'Gewonnen', anzahl: gewonnen.length, ebene: 2, ziel: { s: 'deals', a: 'auswertung' } },
+      { id: 'kunden', label: 'Kunden', anzahl: crm.mandate.filter(m => m.status === 'aktiv').length, ebene: 3, ziel: { s: 'deals', a: 'kunden' } },
     ],
     gespraechZuSql: warenImGespraech >= 3 ? Math.round((sqlJe / warenImGespraech) * 100) : null,
     sqlZuGewonnen: gewonnen.length + verloren.length >= 3 ? Math.round((gewonnen.length / (gewonnen.length + verloren.length)) * 100) : null,

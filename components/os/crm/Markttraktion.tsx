@@ -1,23 +1,21 @@
 'use client';
 
-// ─── MAKE OS — Markttraktion (25.09.) ───────────────────────────────────────
+// ─── MAKE OS — Markttraktion (25.09., Reiter neu 27.09.) ────────────────────
 // Kevin: „alles, was unter dem CRM läuft — Sales, Marketing, Event — heißt
-// Markttraktion.“ Aufbau:
-//   Überblick   Traction-Score über die drei Welten, die drei Heads, die
-//               Übergaben zwischen den Welten, was jetzt zu tun ist
-//   Sales       Heute (Power Hour) · 1 Leads (qualifizieren → SQL) · 2 Deals (Pipeline,
-//               Closing) · 3 Kunden (Mandate) · Kampagnen — Head of Sales; oben der Trichter
-//   Marketing   Übersicht · Segmente · Kampagnen · Redaktionsplan ·
-//               Newsletter · Positionierung                     — Head of Marketing
-//   Event       Events mit Gästen, Checkliste, Abend, Nachfassen  — Head of Event
-//   Kontakte · Firmen · Stammdaten — die gemeinsame Grundlage aller drei Welten;
-//               „Akte öffnen“ zeigt eine Person auf einer ganzen Seite (a=akte)
-// Kampagnen planen beide Heads (Sales und Marketing) auf denselben Daten.
-// Das Grundkonzept (Stufen mit Austrittskriterium, Warum-jetzt-Punkte,
-// Sperre statt Löschen, Score aus fünf Säulen) stammt aus der Markttraktion in
-// KEMARIS Operations; die Daten sind ausschließlich unsere eigenen
-// (Masterdatei + Brain). Technisch heißt die Datenschicht weiter „crm“
-// (lib/crm, /api/crm) — das ist die Kartei darunter, nicht der Name.
+// Markttraktion.“ Reiter in Kevins Reihenfolge (27.09.):
+//   Überblick   Traktions-Index über die drei Welten, die Heads, Übergaben, was jetzt zu tun ist
+//   Kontakte    jede Person mit ihrer Geschichte (Kartei, Runden, Akte)
+//   Firmen      ein Unternehmen, alle Beziehungen — und die Leads (Ebene 1: qualifizieren → SQL)
+//   Deals       ab SQL im Closing (Ebene 2): Board mit Ziehen, Liste, Deal-Akte, Auswertung, Kunden (Ebene 3 → Mandate)
+//   Follow-up   was dran ist: Zusagen, Wiedervorlagen, Deal-Schritte, Nachfassen, Kadenz — dazu die Power Hour
+//   Marketing   Übersicht · Segmente · Kampagnen · Redaktionsplan · Newsletter · Positionierung — Head of Marketing
+//   Events      Events mit Gästen, Checkliste, Abend, Nachfassen, Feedback, Budget — Head of Event
+//   Stammdaten  Qualität, Wertelisten, Datenschutz, Import & Export
+// Der frühere Reiter „Sales“ ist darin aufgegangen; alte Adressen übersetzt lib/crm/adresse.ts.
+// Das Grundkonzept (Stufen mit Austrittskriterium, Warum-jetzt-Punkte, Sperre statt
+// Löschen, Score aus den Welten) stammt aus der Markttraktion in KEMARIS Operations;
+// die Daten sind ausschließlich unsere eigenen (Masterdatei + Brain). Technisch heißt
+// die Datenschicht weiter „crm“ (lib/crm, /api/crm) — das ist die Kartei darunter, nicht der Name.
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';

@@ -82,16 +82,16 @@ export function teamFeed(kontakte: Kontakt[], crm: CrmBestand, seit: string, max
     }
   }
   for (const c of crm.chancen) {
-    for (const h of c.historie.slice(1)) if (h.am >= seit && mensch(h.von)) r.push({ person: h.von, zeit: h.am, text: `Deal „${c.titel}“ → ${h.stufe}`, welt: 'sales', ziel: { s: 'sales', a: 'pipeline' } });
+    for (const h of c.historie.slice(1)) if (h.am >= seit && mensch(h.von)) r.push({ person: h.von, zeit: h.am, text: `Deal „${c.titel}“ → ${h.stufe}`, welt: 'sales', ziel: { s: 'deals' } });
   }
   const geaendert = <T extends { geaendert: string; geaendertVon?: string }>(liste: T[], text: (x: T) => string, welt: Welt, ziel: TeamEreignis['ziel']) => {
     for (const x of liste) if (x.geaendert >= seit && mensch(x.geaendertVon)) r.push({ person: x.geaendertVon!, zeit: x.geaendert, text: text(x), welt, ziel });
   };
   geaendert(crm.events, e => `Event „${e.titel}“ bearbeitet`, 'event', { s: 'event' });
-  geaendert(crm.kampagnen ?? [], k => `Kampagne „${k.name}“ bearbeitet`, 'sales', { s: 'sales', a: 'kampagnen' });
+  geaendert(crm.kampagnen ?? [], k => `Kampagne „${k.name}“ bearbeitet`, 'sales', { s: 'marketing', a: 'kampagnen' });
   geaendert(crm.beitraege ?? [], b => `Beitrag „${b.titel}“ · ${b.status}`, 'marketing', { s: 'marketing', a: 'redaktion' });
   geaendert(crm.newsletter ?? [], n => `Newsletter „${n.titel}“ · ${n.status}`, 'marketing', { s: 'marketing', a: 'newsletter' });
-  geaendert(crm.mandate, m => `Mandat ${m.kunde} bearbeitet`, 'sales', { s: 'sales', a: 'kunden' });
+  geaendert(crm.mandate, m => `Mandat ${m.kunde} bearbeitet`, 'sales', { s: 'deals', a: 'kunden' });
   return r.sort((a, b) => b.zeit.localeCompare(a.zeit)).slice(0, max);
 }
 
@@ -106,15 +106,15 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   const bald = tagPlus(heute, 7);
   const meineKontakte = kontakte.filter(k => !k.werbesperre && (haeltBeziehung(k) === person || haeltBeziehung(k) === BEIDE));
   const faellig = meineKontakte.filter(k => k.naechsterSchritt && k.naechsterSchritt.datum <= heute).length;
-  if (faellig) l.push({ id: 'zusagen', welt: 'sales', titel: 'Zugesagte nächste Schritte fällig', anzahl: faellig, text: 'stehen oben in deiner Power Hour', ziel: { s: 'sales', a: 'heute' } });
+  if (faellig) l.push({ id: 'zusagen', welt: 'sales', titel: 'Zugesagte nächste Schritte fällig', anzahl: faellig, text: 'stehen oben in deiner Power Hour', ziel: { s: 'followup', a: 'powerhour' } });
   // „Wie lief's?“ (25.09.): Termine aus dem Geschäftskalender, nach denen noch nichts festgehalten ist (lib/crm/erfassen.ts).
   const nachbereiten = nachbereitung(kontakte, heute, person).length;
-  if (nachbereiten) l.push({ id: 'nachbereiten', welt: 'sales', titel: 'Termine nachbereiten', anzahl: nachbereiten, text: 'wie lief es? ein Tipp in der Power Hour', ziel: { s: 'sales', a: 'heute' } });
+  if (nachbereiten) l.push({ id: 'nachbereiten', welt: 'sales', titel: 'Termine nachbereiten', anzahl: nachbereiten, text: 'wie lief es? ein Tipp in der Power Hour', ziel: { s: 'followup', a: 'powerhour' } });
   const offen = crm.chancen.filter(c => ['qualifiziert', 'bedarf', 'diagnose', 'angebot', 'abschluss'].includes(c.stufe) && istMeins(c.besitzer, 'sales', person));
   const ohneSchritt = offen.filter(c => !c.naechsterSchritt).length;
-  if (ohneSchritt) l.push({ id: 'chancen-ohne-schritt', welt: 'sales', titel: 'Deine Deals ohne nächsten Schritt', anzahl: ohneSchritt, text: `von ${offen.length} offenen`, ziel: { s: 'sales', a: 'pipeline' } });
+  if (ohneSchritt) l.push({ id: 'chancen-ohne-schritt', welt: 'sales', titel: 'Deine Deals ohne nächsten Schritt', anzahl: ohneSchritt, text: `von ${offen.length} offenen`, ziel: { s: 'deals' } });
   const reviews = crm.mandate.filter(m => m.status === 'aktiv' && m.naechstesReview && m.naechstesReview <= bald && istMeins(m.zustaendig, 'sales', person)).length;
-  if (reviews) l.push({ id: 'reviews', welt: 'sales', titel: 'Kundenreviews in 7 Tagen', anzahl: reviews, text: 'Health bewerten, offene Punkte klären', ziel: { s: 'sales', a: 'kunden' } });
+  if (reviews) l.push({ id: 'reviews', welt: 'sales', titel: 'Kundenreviews in 7 Tagen', anzahl: reviews, text: 'Health bewerten, offene Punkte klären', ziel: { s: 'deals', a: 'kunden' } });
   // Eine Beitrags-Freigabe zählt nur, solange sie nötig ist: an die jetzige Stimme, und die schreibt nicht selbst (lib/crm/marketing.ts freigabeStand).
   const beitragFreigabe = (b: NonNullable<CrmBestand['beitraege']>[number]) => b.status !== 'veroeffentlicht' && b.freigabe?.status === 'offen' && b.freigabe.an === person && b.stimme === person && zustaendig(b.zustaendig, 'marketing') !== person && zustaendig(b.zustaendig, 'marketing') !== BEIDE;
   const freigaben = (crm.beitraege ?? []).filter(beitragFreigabe).length + (crm.newsletter ?? []).filter(n => n.status !== 'versendet' && n.freigabe?.status === 'offen' && n.freigabe.an === person).length;
@@ -136,11 +136,11 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   // Ebene 1 → 2: Leads, die SQL-bereit sind, aber noch keinen Deal haben — und Leads in Qualifizierung.
   const meineLeads = leads(kontakte, crm).filter(z => z.besitzer === person || z.besitzer === BEIDE);
   const sqlOffen = meineLeads.filter(z => sqlBereit(z.kriterien) && !z.deal?.offen && z.status !== 'kunde' && z.status !== 'kein_fit' && z.status !== 'ruht').length;
-  if (sqlOffen) l.push({ id: 'sql_bereit', welt: 'sales', titel: 'SQL-bereit — Deal anlegen', anzahl: sqlOffen, text: 'Schmerz, Entscheider und Budget/Zeitpunkt geklärt', ziel: { s: 'sales', a: 'leads' } });
+  if (sqlOffen) l.push({ id: 'sql_bereit', welt: 'sales', titel: 'SQL-bereit — Deal anlegen', anzahl: sqlOffen, text: 'Schmerz, Entscheider und Budget/Zeitpunkt geklärt', ziel: { s: 'firmen', a: 'leads' } });
   const inQuali = meineLeads.filter(z => z.status === 'qualifizierung' && !sqlBereit(z.kriterien)).length;
-  if (inQuali) l.push({ id: 'qualifizierung', welt: 'sales', titel: 'Leads in Qualifizierung', anzahl: inQuali, text: 'eine Kernfrage klären bringt sie zum SQL', ziel: { s: 'sales', a: 'leads' } });
+  if (inQuali) l.push({ id: 'qualifizierung', welt: 'sales', titel: 'Leads in Qualifizierung', anzahl: inQuali, text: 'eine Kernfrage klären bringt sie zum SQL', ziel: { s: 'firmen', a: 'leads' } });
   const kampagnen = (crm.kampagnen ?? []).filter(k => k.status === 'aktiv' && istMeins(k.zustaendig, 'sales', person));
   const kpOffen = kampagnen.reduce((a, k) => { const e = new Set(k.ergebnisse.map(x => x.kontaktId)); return a + k.kontaktIds.filter(id => !e.has(id)).length; }, 0);
-  if (kpOffen) l.push({ id: 'kampagnen', welt: 'sales', titel: 'Personen aus deinen Kampagnen', anzahl: kpOffen, text: 'noch nicht angesprochen', ziel: { s: 'sales', a: 'kampagnen' } });
+  if (kpOffen) l.push({ id: 'kampagnen', welt: 'sales', titel: 'Personen aus deinen Kampagnen', anzahl: kpOffen, text: 'noch nicht angesprochen', ziel: { s: 'marketing', a: 'kampagnen' } });
   return l;
 }

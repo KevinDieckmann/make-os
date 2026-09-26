@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 
-// ─── Markttraktion · Sales › Leads (Ebene 1) — qualifizieren bis zum SQL ────
+// ─── Markttraktion · Firmen › Leads (Ebene 1) — qualifizieren bis zum SQL ────
 // Kevin (25.09.): „Dort arbeiten wir über die Kontakt-/Firmen-Ebene, wo wir
 // qualifizieren und es ein SQL-Lead wird.“ Je Firma eine Zeile (mit ihren
 // Personen), Personen ohne Firma einzeln. Rechts die Qualifizierung: Status,
 // sechs Kernfragen (ja/nein/unklar, mit der Frage, die man stellt), und sobald
 // Schmerz + Entscheider + Budget oder Zeitpunkt geklärt sind: „Zum SQL → Deal
-// anlegen“ — der Deal steht dann in der Pipeline (Ebene 2). Logik in
+// anlegen“ — der Deal steht dann unter Deals (Ebene 2). Logik in
 // lib/crm/leads.ts, Schreibwege über /api/crm/lead.
 // Dazu `SalesTrichter`: die Leiste über allen Sales-Ansichten — Kontaktiert →
 // Im Gespräch → Qualifizierung → Deals → Gewonnen → Kunden, mit Umwandlungen.
@@ -102,7 +102,7 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
 
   const liste = (
     <Karte i={1}>
-      <Ueberschrift rechts={<WerFilter wahl={wer} onWahl={setWer} ich={ich} />}>Leads · Ebene 1</Ueberschrift>
+      <Ueberschrift rechts={<WerFilter wahl={wer} onWahl={setWer} ich={ich} />}>Leads · qualifizieren bis SQL</Ueberschrift>
       <div style={{ fontSize: 12.5, color: C.inkLeise, marginBottom: 10, lineHeight: 1.5 }}>Qualifizieren, bis es ein SQL ist: Schmerz und Entscheider geklärt, dazu Budget oder Zeitpunkt. Dann wird es ein Deal in der Pipeline.</div>
       <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Firma, Person, Branche, Ort …" aria-label="Leads suchen" style={{ ...feld, fontSize: TYP.bedien, padding: '9px 13px', marginBottom: 10 }} />
       <div style={{ overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 8 }}><Pillen einzeilig liste={FILTER} aktiv={filter} onWahl={f => { setFilter(f); setWahl(null); }} farbe={LEUCHT.business} /></div>
@@ -194,7 +194,7 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
 
       {z.deal && (
         <div style={{ padding: '10px 12px', borderRadius: 12, background: `${z.deal.offen ? LEUCHT.gut : C.inkLeise}14`, fontSize: TYP.bedien, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span>Ebene 2 · Deal „{z.deal.titel}“ · {STUFEN.find(s => s.id === z.deal!.stufe)?.label}{z.deal.wert ? ` · ${euro(z.deal.wert)}` : ' · ohne Wert'}</span>
+          <span>Deal „{z.deal.titel}“ · {STUFEN.find(s => s.id === z.deal!.stufe)?.label}{z.deal.wert ? ` · ${euro(z.deal.wert)}` : ' · ohne Wert'}</span>
           <Knopf leise onClick={() => zuDeal(z.deal!.id)}>Zum Deal</Knopf>
         </div>
       )}
@@ -203,7 +203,7 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
         <Ueberschrift>Status</Ueberschrift>
         <Pillen liste={LEAD_STATUS.filter(s => s.id !== 'sql' && s.id !== 'kunde').map(s => ({ id: s.id, label: s.label }))} aktiv={status === 'sql' || status === 'kunde' ? undefined : status}
           onWahl={s => { setStatus(s); void setze({ status: s, ...(s === 'kein_fit' || s === 'ruht' ? { grund: window.prompt(s === 'kein_fit' ? 'Warum kein Fit? (kurz)' : 'Warum ruht es? (kurz)') ?? '' } : {}) }); }} />
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>{status === 'sql' ? 'SQL — der Deal läuft in der Pipeline.' : status === 'kunde' ? 'Kunde — siehe Produkte & Mandate.' : `Weiter, wenn: ${LEAD_STATUS.find(s => s.id === status)?.weiterWenn}`}{z.grund ? ` · Grund: ${z.grund}` : ''}{!z.gesetzt ? ' · Status aus den Personen abgeleitet' : ''}</div>
+        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>{status === 'sql' ? 'SQL — der Deal läuft unter Deals.' : status === 'kunde' ? 'Kunde — siehe Produkte & Mandate.' : `Weiter, wenn: ${LEAD_STATUS.find(s => s.id === status)?.weiterWenn}`}{z.grund ? ` · Grund: ${z.grund}` : ''}{!z.gesetzt ? ' · Status aus den Personen abgeleitet' : ''}</div>
       </div>
 
       <div>
@@ -290,12 +290,12 @@ export function QualifizierungsRunde({ api, zuKontakt, zurueck }: { api: CrmApi;
   if (!d || !ids) return <Karte i={0}><Leer>Lädt die Leads …</Leer></Karte>;
   const z = ids[pos] ? d.leads.find(x => x.id === ids[pos]) : undefined;
   const sql = ids.filter(id => d.leads.find(x => x.id === id)?.status === 'sql').length;
-  const zuDeals = () => router.push(markttraktion('sales', 'pipeline'));
+  const zuDeals = () => router.push(markttraktion('deals'));
   return (
     <>
       <Karte i={0} akzent={LEUCHT.business}>
         <Ueberschrift farbe={LEUCHT.business} rechts={<span>{Math.min(pos + 1, ids.length)} von {ids.length}</span>}>Qualifizierungs-Runde</Ueberschrift>
-        <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>Ebene 1 → 2: Je Lead die sechs Kernfragen klären. Sind Schmerz und Entscheider geklärt, dazu Budget oder Zeitpunkt, wird es ein SQL — und der Deal steht in der Pipeline.</div>
+        <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.5 }}>Je Lead die sechs Kernfragen klären. Sind Schmerz und Entscheider geklärt, dazu Budget oder Zeitpunkt, wird es ein SQL — und der Deal steht in der Pipeline.</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
           <Chip farbe={LEUCHT.gut}>{sql} SQL</Chip>
           <span style={{ flex: 1 }} />
@@ -312,7 +312,7 @@ export function QualifizierungsRunde({ api, zuKontakt, zurueck }: { api: CrmApi;
           </div>
         </Karte>
       ) : (
-        <Karte i={1}><Leer>{ids.length ? `Runde durch — ${sql} von ${ids.length} sind SQL. Die Deals laufen jetzt in der Pipeline.` : 'Gerade kein Lead in Arbeit. Neue kommen aus der Power Hour, aus Events und Kampagnen.'}</Leer>{sql > 0 && <Knopf onClick={zuDeals}>Zu den Deals</Knopf>}</Karte>
+        <Karte i={1}><Leer>{ids.length ? `Runde durch — ${sql} von ${ids.length} sind SQL. Die Deals laufen jetzt unter Deals.` : 'Gerade kein Lead in Arbeit. Neue kommen aus der Power Hour, aus Events und Kampagnen.'}</Leer>{sql > 0 && <Knopf onClick={zuDeals}>Zu den Deals</Knopf>}</Karte>
       )}
     </>
   );
@@ -321,7 +321,7 @@ export function QualifizierungsRunde({ api, zuKontakt, zurueck }: { api: CrmApi;
 /**
  * Der Lead in der Karteikarte (Person) und der Firmenkarte: Ebene 1 auf einen
  * Blick — Status, sechs Kernfragen als Punkte, was bis zum SQL fehlt, ein
- * laufender Deal — und „Qualifizieren“ springt in Sales › Leads zu genau
+ * laufender Deal — und „Qualifizieren“ springt in Firmen › Leads zu genau
  * diesem Lead. Mit Firma liegt der Lead an der Firma, sonst an der Person.
  */
 export function LeadBlock({ api, leadId }: { api: CrmApi; leadId: string }) {
@@ -331,7 +331,7 @@ export function LeadBlock({ api, leadId }: { api: CrmApi; leadId: string }) {
   const fehlt = fehltBisSql(z.kriterien);
   return (
     <div>
-      <Ueberschrift rechts={<Knopf leise onClick={() => router.push(markttraktion('sales', 'leads', z.id))}>{z.status === 'sql' || z.status === 'kunde' ? 'Zum Lead' : 'Qualifizieren'}</Knopf>}>Lead · Ebene 1{z.art === 'firma' ? ' (Firma)' : ''}</Ueberschrift>
+      <Ueberschrift rechts={<Knopf leise onClick={() => router.push(markttraktion('firmen', 'leads', z.id))}>{z.status === 'sql' || z.status === 'kunde' ? 'Zum Lead' : 'Qualifizieren'}</Knopf>}>Lead · Ebene 1{z.art === 'firma' ? ' (Firma)' : ''}</Ueberschrift>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien }}>
         <Chip farbe={STATUS_FARBE[z.status]}>{statusLabel(z.status)}</Chip>
         <KriterienPunkte k={z.kriterien} />

@@ -15,7 +15,7 @@ import type { CrmBestand, CrmListe } from './typen';
 export const UEBERGABE_ARTEN = ['kontakt', 'kontakte', 'chance', 'mandat', 'event', 'kampagne', 'beitrag', 'newsletter'] as const;
 type Art = typeof UEBERGABE_ARTEN[number];
 const LISTE: Partial<Record<Art, CrmListe>> = { chance: 'chancen', mandat: 'mandate', event: 'events', kampagne: 'kampagnen', beitrag: 'beitraege', newsletter: 'newsletter' };
-const ZIEL: Partial<Record<Art, [string, string?]>> = { chance: ['sales', 'pipeline'], mandat: ['sales', 'kunden'], event: ['event'], kampagne: ['sales', 'kampagnen'], beitrag: ['marketing', 'redaktion'], newsletter: ['marketing', 'newsletter'] };
+const ZIEL: Partial<Record<Art, [string, string?]>> = { chance: ['deals', 'akte'], mandat: ['deals', 'kunden'], event: ['event'], kampagne: ['sales', 'kampagnen'], beitrag: ['marketing', 'redaktion'], newsletter: ['marketing', 'newsletter'] };
 const tagOk = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
 
 export interface UebergabeEingabe { art?: string; id?: string; ids?: string[]; an?: string; notiz?: string; frist?: string }
