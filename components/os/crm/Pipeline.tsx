@@ -13,17 +13,21 @@ import { useLinkAuswahl } from '../Verlauf';
 import { mandateLink } from '@/lib/crm/adresse';
 import { WEG } from '@/lib/wege';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, useBreit, LEUCHT, feld } from '../schlank';
 import { anzeigename } from '@/lib/make-one/crm';
 import { gesamtwert, prognose, prognoseJePerson, werZahlen, VERLUSTGRUENDE } from '@/lib/crm/pipeline';
-import { zustaendig, haeltBeziehung, mitglied, nameVon, verantwortlich } from '@/lib/crm/team';
+import { zustaendig, mitglied, nameVon, verantwortlich } from '@/lib/crm/team';
 import type { Chance, ChancenStufe, Qual } from '@/lib/crm/typen';
-import { type CrmApi, neueId, datum, euro, kurzEuro, plusTage } from './daten';
+import { type CrmApi, datum, euro, kurzEuro, plusTage } from './daten';
 import { Feldzeile, Pillen, Feld } from './teile';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
 import { HeadPanel } from './HeadPanel';
+import { DealAnlegen } from './DealAnlegen';
+import { DealAkte, DealAuswertung } from './DealAkte';
+import { firmenName } from '@/lib/crm/firmen-bezug';
+import type { DealsAnsicht } from '@/lib/crm/adresse';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 const ARTEN = [{ id: 'retainer', label: 'Retainer' }, { id: 'projekt', label: 'Projekt' }, { id: 'workshop', label: 'Workshop' }, { id: 'vermittlung', label: 'Vermittlung' }, { id: 'software', label: 'Software' }] as const;
@@ -36,12 +40,15 @@ const GES = [{ id: 'kdc', label: 'Selbstständigkeit' }, { id: 'kdv', label: 'KD
 const nurFelder = (t: Record<string, unknown>) => Object.fromEntries(Object.entries(t).map(([k, v]) => [k, v === undefined ? '' : v]));
 const wertText = (c: Chance) => (c.wert.betrag ? `${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/M' : c.wert.basis === 'jahr' ? '/J' : ''}` : 'ohne Wert');
 
-export function Pipeline({ api, zuKontakt, zuLeads }: { api: CrmApi; zuKontakt: (id: string) => void; /** Ebene 1 — wer im Gespräch ist, wird erst dort qualifiziert. */ zuLeads?: () => void }) {
+export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, zurueck }: { api: CrmApi; ansicht?: DealsAnsicht; zuKontakt: (id: string) => void; /** Ebene 1 — wer im Gespräch ist, wird erst dort qualifiziert. */ zuLeads?: () => void; /** Deal-Akte öffnen (27.09.). */ zuAkte?: (id: string) => void; zurueck?: () => void }) {
   // Offener Deal im Link (k): Zurück schließt ihn wieder.
   const [auswahl, setAuswahl] = useLinkAuswahl();
   const [geschlossen, setGeschlossen] = useState(false);
   const breit = useBreit();
-  const [board, setBoard] = useState(true);
+  const board = ansicht !== 'liste';
+  // Deal anlegen: ein Dialog für alle Wege (27.09.).
+  const [anlegen, setAnlegen] = useState<{ kontaktId?: string } | null>(null);
+  const [wunsch, setWunsch] = useState<{ id: string; ziel: ChancenStufe } | null>(null);
   const [alleVorschlaege, setAlleVorschlaege] = useState(false);
   const [wahl, setWahl] = useWerFilter('pipeline');
   const crm = api.crm;
@@ -58,7 +65,7 @@ export function Pipeline({ api, zuKontakt, zuLeads }: { api: CrmApi; zuKontakt: 
   const meine = ich ? jePerson.find(x => x.person === ich) : undefined;
   // Neue Chance: für die gefilterte Person, sonst für mich (im Team), sonst die Sales-Verantwortung.
   const neuFuer = wahl !== 'alle' && wahl !== 'ich' && mitglied(wahl) ? wahl : mitglied(ich)?.id ?? verantwortlich('sales');
-  const neu = () => { const id = neueId('ch'); void api.setze('chancen', { id, titel: 'Neuer Deal', kontaktIds: [], art: 'retainer', wert: { betrag: 0, basis: 'monat' }, stufe: 'qualifiziert', historie: [], qualifizierung: {}, gesellschaft: 'offen', besitzer: neuFuer, angelegt: new Date().toISOString() }); setAuswahl(id); };
+  const neu = () => setAnlegen({});
   // Ein geschlossener Deal aus einem Link (z. B. hinter der Win Rate) wird gezeigt, auch wenn der Filter ihn sonst verbirgt.
   const gewaehlt = auswahl ? crm.stand.chancen.find(c => c.id === auswahl) : undefined;
   const zu = [...chancen.filter(c => !istOffen(c)), ...(gewaehlt && !istOffen(gewaehlt) && !passt(gewaehlt) ? [gewaehlt] : [])];
@@ -68,14 +75,25 @@ export function Pipeline({ api, zuKontakt, zuLeads }: { api: CrmApi; zuKontakt: 
   const vorschlaege = (api.kontakte ?? []).filter(k => ['gespraech', 'termin', 'angebot'].includes(k.stufe) && !mitChance.has(k.id) && !k.werbesperre && passtWer(wahl, k.besitzer, 'sales', ich))
     .sort((a, b) => (a.stufe === 'angebot' ? 0 : 1) - (b.stufe === 'angebot' ? 0 : 1));
   // Die Chance führt, wer die Beziehung hält — im Gespräch ist ja sie/er.
-  const ausKontakt = (k: NonNullable<CrmApi['kontakte']>[number]) => { const id = neueId('ch'); void api.setze('chancen', { id, titel: k.firma ? `${k.firma}` : anzeigename(k), kontaktIds: [k.id], ...(k.firma ? { firma: k.firma } : {}), art: 'retainer', wert: { betrag: 0, basis: 'monat' }, stufe: k.stufe === 'angebot' ? 'angebot' : 'qualifiziert', historie: [], qualifizierung: {}, quelle: 'bestand', gesellschaft: 'offen', besitzer: haeltBeziehung(k), angelegt: new Date().toISOString() }); setAuswahl(id); };
+  const ausKontakt = (k: NonNullable<CrmApi['kontakte']>[number]) => setAnlegen({ kontaktId: k.id });
+
+  if (ansicht === 'akte' && auswahl) return <DealAkte api={api} id={auswahl} zuKontakt={zuKontakt} zurueck={() => (zurueck ? zurueck() : setAuswahl(null))} />;
+  if (ansicht === 'auswertung') return <DealAuswertung api={api} zuAkte={id => (id ? zuAkte?.(id) : zurueck?.())} />;
+  // Ziehen im Board (27.09.): auf eine offene Stufe → Stufenwechsel (der Server prüft den nächsten Schritt); auf Gewonnen/Verloren/Geparkt → Detail mit Nachfrage.
+  const zieheNach = (id: string, ziel: ChancenStufe) => {
+    const c = crm.stand.chancen.find(x => x.id === id);
+    if (!c || c.stufe === ziel) return;
+    if (ziel === 'verloren' || ziel === 'geparkt') { setAuswahl(id); setWunsch({ id, ziel }); return; }
+    void api.teil('chancen', id, { stufe: ziel });
+  };
+  const zieh = (e: React.DragEvent, ziel: ChancenStufe) => { e.preventDefault(); const id = e.dataTransfer.getData('text/plain'); if (id) zieheNach(id, ziel); };
 
   return (
     <>
       <HeadPanel head="sales" standardModus="deal_review" zuKontakt={zuKontakt} i={0} nachEntscheid={() => void api.laden()} />
+      {anlegen && <DealAnlegen api={api} kontaktId={anlegen.kontaktId} onFertig={id => { setAnlegen(null); if (zuAkte) zuAkte(id); else setAuswahl(id); }} onAbbruch={() => setAnlegen(null)} zuDeal={zuAkte} />}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} />
-        {breit && <Pillen liste={[{ id: 'board', label: 'Board' }, { id: 'liste', label: 'Liste' }]} aktiv={board ? 'board' : 'liste'} onWahl={x => setBoard(x === 'board')} />}
       </div>
       <Karte i={0}>
         <Ueberschrift rechts={<Knopf onClick={neu}>+ Deal{neuFuer !== ich ? ` für ${nameVon(neuFuer)}` : ''}</Knopf>}>{wahl === 'alle' ? 'Prognose' : `Prognose · ${wahl === 'ich' ? 'meine' : nameVon(wahl)}`}</Ueberschrift>
@@ -116,7 +134,7 @@ export function Pipeline({ api, zuKontakt, zuLeads }: { api: CrmApi; zuKontakt: 
                 const l = chancen.filter(c => c.stufe === s.id);
                 const js = p.jeStufe.find(x => x.stufe === s.id);
                 return (
-                  <div key={s.id} style={{ background: 'rgba(255,255,255,.025)', borderRadius: 14, padding: 10, minHeight: 160 }}>
+                  <div key={s.id} onDragOver={e => e.preventDefault()} onDrop={e => zieh(e, s.id)} style={{ background: 'rgba(255,255,255,.025)', borderRadius: 14, padding: 10, minHeight: 160 }}>
                     <div title={`Weiter, wenn: ${s.weiterWenn}`} style={{ padding: '2px 4px 10px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6, fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.inkDim }}><span>{s.label}</span><span style={{ color: C.inkLeise }}>{s.p} %</span></div>
                       <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 2 }}>{l.length} · {kurzEuro(js?.wert ?? 0)}{js?.haengt ? <span style={{ color: LEUCHT.kritisch }}> · {js.haengt} hängt</span> : null}</div>
@@ -125,12 +143,12 @@ export function Pipeline({ api, zuKontakt, zuLeads }: { api: CrmApi; zuKontakt: 
                       {l.map(c => {
                         const a = crm.ampel[c.id];
                         return (
-                          <button key={c.id} onClick={() => setAuswahl(auswahl === c.id ? null : c.id)} className="fassbar" style={{ textAlign: 'left', cursor: 'pointer', border: `1px solid ${auswahl === c.id ? LEUCHT.business : 'rgba(255,255,255,.06)'}`, borderLeft: `3px solid ${a ? AMPEL[a.ampel] : C.inkLeise}`, background: 'rgba(255,255,255,.04)', borderRadius: 10, padding: '9px 10px', color: C.ink, display: 'grid', gap: 3 }}>
+                          <button key={c.id} draggable onDragStart={e => { e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; }} onDoubleClick={() => zuAkte?.(c.id)} title="Klick: Details · Doppelklick: Akte · Ziehen: Stufe wechseln" onClick={() => setAuswahl(auswahl === c.id ? null : c.id)} className="fassbar" style={{ textAlign: 'left', cursor: 'grab', border: `1px solid ${auswahl === c.id ? LEUCHT.business : 'rgba(255,255,255,.06)'}`, borderLeft: `3px solid ${a ? AMPEL[a.ampel] : C.inkLeise}`, background: 'rgba(255,255,255,.04)', borderRadius: 10, padding: '9px 10px', color: C.ink, display: 'grid', gap: 3 }}>
                             <span style={{ display: 'flex', justifyContent: 'space-between', gap: 6, alignItems: 'flex-start' }}>
                               <span style={{ fontSize: TYP.bedien, fontWeight: 600, lineHeight: 1.3 }}>{c.titel}</span>
                               <Person id={zustaendig(c.besitzer, 'sales')} groesse={16} />
                             </span>
-                            {c.firma && c.firma !== c.titel && <span style={{ fontSize: 12, color: C.inkLeise }}>{c.firma}</span>}
+                            {firmenName(c, crm.stand.firmen) && firmenName(c, crm.stand.firmen) !== c.titel && <span style={{ fontSize: 12, color: C.inkLeise }}>{firmenName(c, crm.stand.firmen)}</span>}
                             <span style={{ fontSize: 12, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{wertText(c)}</span>
                             <span style={{ fontSize: 11.5, color: c.naechsterSchritt && c.naechsterSchritt.datum < crm.heute ? LEUCHT.kritisch : C.inkLeise }}>{c.naechsterSchritt ? `→ ${datum(c.naechsterSchritt.datum, crm.heute)}` : 'kein nächster Schritt'}</span>
                           </button>
@@ -142,10 +160,16 @@ export function Pipeline({ api, zuKontakt, zuLeads }: { api: CrmApi; zuKontakt: 
                 );
               })}
             </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+              {(['gewonnen', 'verloren', 'geparkt'] as ChancenStufe[]).map(z => (
+                <div key={z} onDragOver={e => e.preventDefault()} onDrop={e => zieh(e, z)} style={{ border: `1px dashed ${z === 'gewonnen' ? LEUCHT.gut : z === 'verloren' ? LEUCHT.kritisch : 'rgba(255,255,255,.2)'}55`, borderRadius: 12, padding: '8px 12px', fontSize: 12, color: C.inkLeise, textAlign: 'center' }}>hierher ziehen: {crm.stufen.find(s => s.id === z)?.label}</div>
+              ))}
+            </div>
             {sel && offen.some(s => s.id === sel.stufe) && (
               <Karte i={2} akzent={LEUCHT.business}>
                 <Ueberschrift rechts={<button onClick={() => setAuswahl(null)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 14 }}>✕</button>}>{sel.titel}</Ueberschrift>
-                <ChancenDetail c={sel} api={api} personen={sel.kontaktIds.map(id => (api.kontakte ?? []).find(k => k.id === id)).filter((k): k is NonNullable<typeof k> => !!k)} zuKontakt={zuKontakt} />
+                {zuAkte && <div style={{ marginBottom: 8 }}><Knopf leise onClick={() => zuAkte(sel.id)}>Akte öffnen ›</Knopf></div>}
+                <ChancenDetail c={sel} api={api} personen={sel.kontaktIds.map(id => (api.kontakte ?? []).find(k => k.id === id)).filter((k): k is NonNullable<typeof k> => !!k)} zuKontakt={zuKontakt} wunsch={wunsch?.id === sel.id ? wunsch.ziel : undefined} wunschWeg={() => setWunsch(null)} />
               </Karte>
             )}
           </>
@@ -202,9 +226,10 @@ function ChancenZeile({ c, api, offen, onKlick, zuKontakt }: { c: Chance; api: C
   );
 }
 
-function ChancenDetail({ c, api, personen, zuKontakt }: { c: Chance; api: CrmApi; personen: NonNullable<CrmApi['kontakte']>; zuKontakt: (id: string) => void }) {
+export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }: { c: Chance; api: CrmApi; personen: NonNullable<CrmApi['kontakte']>; zuKontakt: (id: string) => void; /** Stufe, die per Ziehen gewünscht wurde (Verloren/Geparkt) — öffnet die Nachfrage. */ wunsch?: ChancenStufe; wunschWeg?: () => void }) {
   const crm = api.crm!;
   const [wechsel, setWechsel] = useState<{ ziel: ChancenStufe; grund: string; wiedervorlage: string } | null>(null);
+  useEffect(() => { if (wunsch) { setWechsel({ ziel: wunsch, grund: '', wiedervorlage: plusTage(crm.heute, 60) }); wunschWeg?.(); } }, [wunsch, wunschWeg, crm.heute]);
   const [suche, setSuche] = useState('');
   // Nur die geänderten Felder — die andere Person kann gleichzeitig an derselben Chance arbeiten.
   const setze = (teil: Partial<Chance>) => api.teil('chancen', c.id, nurFelder(teil));
@@ -213,7 +238,7 @@ function ChancenDetail({ c, api, personen, zuKontakt }: { c: Chance; api: CrmApi
     if (ziel === 'verloren' && !extra.grund) return setWechsel({ ziel, grund: '', wiedervorlage: '' });
     if (ziel === 'geparkt' && !extra.wiedervorlage) return setWechsel({ ziel, grund: '', wiedervorlage: plusTage(crm.heute, 60) });
     const jetzt = new Date().toISOString();
-    void setze({ stufe: ziel, historie: [...c.historie, { stufe: ziel, am: jetzt, von: '' /* der Server trägt die angemeldete Person ein */ }], letzteAktivitaet: jetzt.slice(0, 10), ...(extra.grund ? { grund: extra.grund } : {}), ...(extra.wiedervorlage ? { wiedervorlage: extra.wiedervorlage } : {}) });
+    void setze({ stufe: ziel, letzteAktivitaet: jetzt.slice(0, 10), ...(extra.grund ? { grund: extra.grund } : {}), ...(extra.wiedervorlage ? { wiedervorlage: extra.wiedervorlage } : {}) });
     setWechsel(null);
   };
   const fuehrt = zustaendig(c.besitzer, 'sales');

@@ -54,6 +54,8 @@ export async function PATCH(req: Request) {
   if (!ops.length) return NextResponse.json({ ok: false, fehler: 'Keine Änderungen.' }, { status: 400 });
   const person = personAus(req);
   let angewandt = 0;
-  const b = await aendereCrm(cur => { const r = wendeCrmAn(cur, ops, new Date().toISOString(), person); angewandt = r.angewandt; return r.bestand; });
-  return jsonAntwort(req, { ...(await antwort(b, person)), angewandt });
+  let fehler: string[] = [];
+  const b = await aendereCrm(cur => { const r = wendeCrmAn(cur, ops, new Date().toISOString(), person); angewandt = r.angewandt; fehler = r.fehler; return r.bestand; });
+  // Abgelehnte Stufenwechsel (Regeln, 27.09.) kommen als `fehler` mit — der Stand ist trotzdem der aktuelle.
+  return jsonAntwort(req, { ...(await antwort(b, person)), angewandt, fehler });
 }

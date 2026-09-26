@@ -15,7 +15,7 @@
 //   Gesundheit  /os/gesundheit?fuer=<person>#morgen|routinen|haut|streak|index
 //   Markttraktion über lib/crm/adresse.ts (s · a · k)
 
-import { mandateLink, markttraktion } from '@/lib/crm/adresse';
+import { mandateLink, markttraktion, dealAkte } from '@/lib/crm/adresse';
 
 const q = (basis: string, p: Record<string, string | undefined | null>, hash?: string) => {
   const s = new URLSearchParams();
@@ -58,8 +58,10 @@ export const WEG = {
 
   mandat: (id?: string) => mandateLink('mandate', id),
   produkt: (id?: string) => mandateLink('produkte', id),
-  deal: (id?: string) => markttraktion('sales', 'pipeline', id),
-  deals: () => markttraktion('sales', 'pipeline'),
+  // Deal-Ebene (27.09.): eigener Reiter; ein Deal öffnet seine Akte.
+  deal: (id?: string) => (id ? dealAkte(id) : markttraktion('deals')),
+  deals: () => markttraktion('deals'),
+  followup: (a?: 'woche' | 'powerhour' | 'kadenz') => markttraktion('followup', a),
   markttraktion: () => markttraktion(),
 
   woche: (tag?: string) => q('/os/planung/woche', { tag }),
@@ -80,9 +82,9 @@ export const WEG = {
   akte: (id: string) => markttraktion('kontakte', 'akte', id),
   kontakt: (id?: string) => markttraktion('kontakte', undefined, id),
   firma: (id?: string) => markttraktion('firmen', undefined, id),
-  powerHour: () => markttraktion('sales', 'heute'),
-  leads: () => markttraktion('sales', 'leads'),
-  kunden: () => markttraktion('sales', 'kunden'),
+  powerHour: () => markttraktion('followup', 'powerhour'),
+  leads: () => markttraktion('firmen', 'leads'),
+  kunden: () => markttraktion('deals', 'kunden'),
   kampagne: (id?: string, head: 'sales' | 'marketing' = 'sales') => markttraktion(head, 'kampagnen', id),
   marketing: (a?: 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung', k?: string) => markttraktion('marketing', a, k),
   event: (id?: string, r?: 'gaeste' | 'ablauf' | 'checkliste' | 'budget' | 'abend' | 'nachfassen') => `${markttraktion('event', undefined, id)}${r ? `${id ? '&' : '?'}r=${r}` : ''}`,

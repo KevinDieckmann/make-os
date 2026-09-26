@@ -778,34 +778,25 @@ async function kontaktUebergeben(input: Record<string, unknown>, _o: string, per
 }
 
 async function chanceAnlegen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+  // Seit 27.09. über den EINEN Anlageweg (lib/crm/deal-anlegen.ts): Firma per Kennung, Kernfragen vom Lead,
+  // Pflicht zum nächsten Schritt, kein zweiter offener Deal ohne Absicht, Lead wird SQL.
   const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
   if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
   const { treffer, mehrere } = await kontaktFinden(hinweis);
   if (!treffer) return `Kein Kontakt zu „${hinweis}" — erst mit suche_kontakt nachsehen oder in der Markttraktion › Kontakte anlegen.`;
   const { anzeigename } = await import('@/lib/make-one/crm');
   if (mehrere) return `Mehrdeutig — ${mehrere.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}? Bitte mit der ID.`;
-  const { aendereCrm } = await import('@/lib/crm/speicher');
+  const { dealAnlegen } = await import('@/lib/crm/deal-anlegen');
   const { STUFEN } = await import('@/lib/crm/pipeline');
-  const stufe = STUFEN.some(x => x.id === input.stufe && x.offen) ? String(input.stufe) : 'qualifiziert';
+  const stufe = STUFEN.some(x => x.id === input.stufe && x.offen) ? (String(input.stufe) as import('@/lib/crm/typen').ChancenStufe) : undefined;
   const betrag = Number(input.wert_monat) > 0 ? Math.round(Number(input.wert_monat)) : Number(input.wert_einmalig) > 0 ? Math.round(Number(input.wert_einmalig)) : 0;
   const basis = Number(input.wert_monat) > 0 ? 'monat' : 'einmalig';
-  const jetzt = new Date().toISOString();
-  const titel = String(input.titel ?? '').trim().slice(0, 160) || `${treffer.firma ?? anzeigename(treffer)} — Chance`;
   const schritt = String(input.naechster_schritt ?? '').trim().slice(0, 300);
   const datum = /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined;
-  const id = `ch-${Date.now().toString(36)}`;
-  await aendereCrm(c => ({ ...c, chancen: [...c.chancen, {
-    id, titel, kontaktIds: [treffer.id], ...(treffer.firma ? { firma: treffer.firma } : {}), art: 'retainer', wert: { betrag, basis: basis as 'monat' | 'einmalig' },
-    stufe: stufe as 'qualifiziert', historie: [{ stufe: stufe as 'qualifiziert', am: jetzt, von: person ?? 'jarvis' }],
-    ...(schritt && datum ? { naechsterSchritt: { text: schritt, datum } } : {}), quelle: 'bestand',
-    qualifizierung: { schmerz: 'unklar', entscheider: 'unklar', budget: 'unklar', zeitpunkt: 'unklar', wirkung: 'unklar', alternative: 'unklar' },
-    gesellschaft: 'offen', besitzer: person ?? 'kevin', angelegt: jetzt, geaendert: jetzt, letzteAktivitaet: jetzt.slice(0, 10),
-  }] }));
-  // Ebene 1 → 2: Der Lead (Firma, sonst Person) ist jetzt SQL — mit Verweis auf diesen Deal.
-  const lead = (alt?: import('@/lib/crm/typen').Lead) => ({ status: 'sql' as const, kriterien: alt?.kriterien ?? { schmerz: 'unklar' as const, entscheider: 'unklar' as const, budget: 'unklar' as const, zeitpunkt: 'unklar' as const, wirkung: 'unklar' as const, alternative: 'unklar' as const }, ...(alt?.notiz ? { notiz: alt.notiz } : {}), sqlAm: jetzt, chanceId: id, geaendert: jetzt, ...(person ? { geaendertVon: person } : {}) });
-  if (treffer.firmaId) await aendereCrm(c => ({ ...c, firmen: c.firmen.map(f => (f.id === treffer.firmaId ? { ...f, lead: lead(f.lead) } : f)) }));
-  else { const { updateJson } = await import('@/lib/store/local-db'); await updateJson<{ kontakte: import('@/lib/make-one/crm').Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === treffer.id ? { ...k, lead: lead(k.lead) } : k)) })); }
-  return `Deal angelegt (Lead ist jetzt SQL): „${titel}“ (${anzeigename(treffer)}) · Stufe ${stufe}${betrag ? ` · ${betrag} € ${basis === 'monat' ? 'im Monat' : 'einmalig'}` : ' · noch ohne Wert'}${schritt && datum ? ` · nächster Schritt ${datum}` : ' · ohne nächsten Schritt (gilt als gelb)'}. Sichtbar in Markttraktion › Sales › Deals.`;
+  if (!schritt || !datum) return 'Fehlgeschlagen: naechster_schritt und faellig (YYYY-MM-DD) sind Pflicht — ohne nächsten Schritt verliert sich der Deal.';
+  const r = await dealAnlegen({ titel: String(input.titel ?? '').trim().slice(0, 160) || undefined, kontaktIds: [treffer.id], art: 'retainer', wert: { betrag, basis }, schritt: { text: schritt, datum }, quelle: 'bestand', stufe, besitzer: person, trotzdem: input.trotzdem === true }, person ?? 'kevin');
+  if (!r.ok) return `Fehlgeschlagen: ${r.fehler}${r.offen ? ` (offener Deal: ${r.offen.id})` : ''}`;
+  return `Deal angelegt (Lead ist jetzt SQL): „${r.chance.titel}“ (${anzeigename(treffer)}) · Stufe ${r.chance.stufe}${betrag ? ` · ${betrag} € ${basis === 'monat' ? 'im Monat' : 'einmalig'}` : ' · noch ohne Wert'} · nächster Schritt ${datum}: ${schritt}`;
 }
 
 async function crmLage(_i: Record<string, unknown>, _o: string, person?: string): Promise<string> {

@@ -29,7 +29,9 @@ export interface Lead {
 export type ChancenStufe = 'qualifiziert' | 'bedarf' | 'diagnose' | 'angebot' | 'abschluss' | 'gewonnen' | 'verloren' | 'geparkt';
 export type ChancenArt = 'retainer' | 'projekt' | 'workshop' | 'vermittlung' | 'software';
 export type WertBasis = 'monat' | 'jahr' | 'einmalig';
-export type Quelle = 'empfehlung' | 'event' | 'content' | 'outreach' | 'bestand' | 'inbound';
+export type Quelle = 'empfehlung' | 'event' | 'content' | 'outreach' | 'bestand' | 'inbound' | 'kampagne';
+/** Rolle einer Person im Deal (27.09., Deal-Ebene): wer entscheidet, wer wirbt für uns, wer nutzt, wer bremst. */
+export type DealRolle = 'entscheider' | 'fuersprecher' | 'nutzer' | 'blocker';
 export type Qual = 'ja' | 'nein' | 'unklar';
 export type Gesellschaft = 'kdv' | 'kdc' | 'ug' | 'offen';
 
@@ -37,7 +39,12 @@ export interface Chance {
   id: string;
   titel: string;
   kontaktIds: string[];
+  /** Anzeigename der Firma — seit 27.09. nur noch Anzeige; die Verbindung läuft über firmaId. */
   firma?: string;
+  /** Die Firma per Kennung (f-…) — Umbenennen reißt die Verbindung nicht mehr (27.09.). */
+  firmaId?: string;
+  /** Rolle je Person im Deal (kontaktId → Rolle). */
+  personenRollen?: Record<string, DealRolle>;
   art: ChancenArt;
   leistungId?: string;
   wert: { betrag: number; basis: WertBasis; laufzeitMonate?: number };
@@ -68,6 +75,8 @@ export type MandatStatus = 'angebot' | 'verhandlung' | 'aktiv' | 'pausiert' | 'b
 export interface Mandat {
   id: string;
   kunde: string;
+  /** Die Firma per Kennung (f-…), 27.09. — `kunde` bleibt der Anzeigename. */
+  firmaId?: string;
   kontaktIds: string[];
   titel: string;
   art: ChancenArt;
@@ -206,6 +215,8 @@ export interface Teilnahme {
   rolle?: 'gast' | 'co_host' | 'speaker';
   /** Fotos nur mit ausdrücklicher Freigabe. */
   fotofreigabe?: boolean;
+  /** Rückmeldung des Gastes nach dem Event (27.09.): Note 1–5 und ein Satz. */
+  feedback?: { note?: number; text?: string; am?: string };
   eingeladenAm?: string;
   einladungsweg?: 'persoenlich' | 'telefon' | 'mail' | 'linkedin';
   /** Wer die Person einlädt und nachfasst — hält meist die Beziehung. */
@@ -238,6 +249,8 @@ export interface Beitrag {
   wirkung: { kontaktId: string; art: 'reaktion' | 'gespraech' | 'anfrage'; am: string; notiz?: string }[];
   /** Aus welchen Kundengesprächen das Thema stammt (Stimme der Kunden). */
   quellen: string[];
+  /** Kosten des Beitrags in Euro (27.09., für Kosten je Anfrage) — Anzeigen, Produktion, Tools. */
+  kostenEuro?: number;
   /** Wer es bearbeitet: Team-Kürzel (kevin, malin) oder „beide“ — fehlt es, gilt die/der Verantwortliche der Welt (lib/crm/team.ts). */
   zustaendig?: string;
   /** In wessen Namen es erscheint (LinkedIn-Profil, Absender): kevin, malin oder „marke“. */
@@ -255,6 +268,8 @@ export interface NewsletterAusgabe {
   inhalt: string; beitragIds: string[];
   /** Zahlen nach dem Versand (von Hand aus dem Versandwerkzeug) — keine Öffnungsraten. */
   empfaenger?: number; antworten?: number; abmeldungen?: number;
+  /** In wessen Namen die Ausgabe erscheint (27.09.): kevin, malin oder „marke“. */
+  stimme?: string;
   /** Wer es bearbeitet: Team-Kürzel (kevin, malin) oder „beide“ — fehlt es, gilt die/der Verantwortliche der Welt (lib/crm/team.ts). */
   zustaendig?: string;
   freigabe?: Freigabe;
@@ -276,6 +291,8 @@ export interface Kampagne {
   ergebnisse: { kontaktId: string; ergebnis: KampagnenErgebnis; am: string; /** Wer angesprochen hat. */ von?: string }[];
   /** Wer sie angelegt hat — von Hand oder aus einem Vorschlag eines Heads. */
   von: 'hand' | 'head-sales' | 'head-marketing';
+  /** Kosten der Kampagne in Euro (27.09.) — für Kosten je qualifiziertem Lead. */
+  kostenEuro?: number;
   notiz?: string;
   /** Nur Playbook „vernetzen“: Texte, Thema, Folgetage und Tagesportion — modular je Kampagne (lib/crm/netzwerk.ts). */
   vernetzen?: import('./netzwerk-form').VernetzenEinstellung;
@@ -306,6 +323,53 @@ export interface Antrag { id: string; art: AntragArt; name: string; email?: stri
 /** Verzeichnis der Verarbeitungstätigkeiten (Art. 30 DSGVO). */
 export interface Verarbeitung { id: string; name: string; zweck: string; personen: string; daten: string; rechtsgrundlage: string; empfaenger: string; drittland: string; loeschfrist: string; toms: string; verantwortlich: string; stand: string }
 
+// ── Follow-up-Ebene (27.09., Kevin: „die ganze Follow-up-Ebene sauber einpflegen“) ──
+// Bisher lagen Nachfass-Termine an acht Stellen (nächster Schritt und Wiedervorlage am
+// Kontakt, am Deal, Teilnahme.followUpAm, Mandat.naechstesReview, Kampagnen-Schritte,
+// Aufgaben, Inbox-Wiedervorlage). Jetzt gibt es EIN Objekt mit Bezug, Art, Fälligkeit,
+// Zuständigkeit, Status und Ergebnis — mehrere je Person, mit Herkunft.
+export type FollowUpBezugArt = 'kontakt' | 'firma' | 'chance' | 'mandat' | 'event';
+export type FollowUpArt = 'anruf' | 'mail' | 'linkedin' | 'termin' | 'nachricht' | 'sonstig';
+export type FollowUpStatus = 'offen' | 'erledigt' | 'verpasst' | 'abgesagt';
+export type FollowUpQuelle = 'hand' | 'regel' | 'kadenz' | 'kampagne' | 'event' | 'head' | 'jarvis' | 'deal';
+export interface FollowUp {
+  id: string;
+  /** Woran es hängt — immer mit der Person, die man anspricht (kontaktId), wenn es eine gibt. */
+  bezug: { art: FollowUpBezugArt; id: string };
+  kontaktId?: string;
+  art: FollowUpArt;
+  text: string;
+  /** Tag YYYY-MM-DD. */
+  faellig: string;
+  /** Uhrzeit HH:MM, wenn es einen Termin gibt. */
+  uhrzeit?: string;
+  zustaendig: string;
+  status: FollowUpStatus;
+  /** Was dabei herauskam (Gesprächsergebnis wie in erfassen.ts) — beim Erledigen. */
+  ergebnis?: string;
+  notiz?: string;
+  quelle: FollowUpQuelle;
+  /** Verknüpfte Aufgabe im Board, wenn man es sich dorthin geholt hat. */
+  aufgabeId?: string;
+  /** Wie oft verschoben — ab dem dritten Mal ist es ehrlicherweise keine Zusage mehr. */
+  verschoben?: number;
+  erledigtAm?: string;
+  angelegt: string;
+  geaendert: string;
+  geaendertVon?: string;
+}
+
+/** Pflegbare Wertelisten (27.09., Stammdaten) — was frei ist, steht hier; woran Programmlogik hängt, bleibt fest im Code. */
+export interface Wertelisten {
+  verlustgruende?: string[];
+  /** Kadenz je Kreis in Tagen (kern/aktiv/weit) — wann eine Beziehung ohne Kontakt als „fällig“ gilt. */
+  kadenzTage?: Record<string, number>;
+  /** Gesprächsergebnisse (frei erweiterbar; die festen bleiben). */
+  ergebnisse?: string[];
+  /** Ziele je Monat: Umsatz neu (€), SQL, Gespräche — für die Kennzahlen gegen Ziel. */
+  ziele?: { umsatzNeuMonat?: number; sqlMonat?: number; gespraecheWoche?: number };
+}
+
 export interface CrmBestand {
   firmen: Firma[];
   chancen: Chance[];
@@ -320,10 +384,14 @@ export interface CrmBestand {
   beitraege: Beitrag[];
   newsletter: NewsletterAusgabe[];
   kampagnen: Kampagne[];
+  /** Follow-up-Ebene (27.09.). */
+  followups: FollowUp[];
   marketing?: MarketingEinstellung;
+  /** Pflegbare Wertelisten (27.09.). */
+  wertelisten?: Wertelisten;
   /** Wahrscheinlichkeiten je Stufe, von Hand überschreibbar (wie in KEMARIS Operations „von_hand“). */
   wahrscheinlichkeiten?: Partial<Record<ChancenStufe, number>>;
 }
 
-export const CRM_LISTEN = ['firmen', 'chancen', 'mandate', 'leistungen', 'events', 'teilnahmen', 'sitzungen', 'antraege', 'verarbeitungen', 'segmente', 'beitraege', 'newsletter', 'kampagnen'] as const;
+export const CRM_LISTEN = ['firmen', 'chancen', 'mandate', 'leistungen', 'events', 'teilnahmen', 'sitzungen', 'antraege', 'verarbeitungen', 'segmente', 'beitraege', 'newsletter', 'kampagnen', 'followups'] as const;
 export type CrmListe = typeof CRM_LISTEN[number];

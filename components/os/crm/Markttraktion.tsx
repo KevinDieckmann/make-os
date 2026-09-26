@@ -23,7 +23,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
 import { Seite, LEUCHT } from '../schlank';
-import { aufloesen, markttraktion, PFAD, type Bereich, type SalesAnsicht } from '@/lib/crm/adresse';
+import { aufloesen, markttraktion, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht } from '@/lib/crm/adresse';
 import { useCrm } from './daten';
 import { Pillen } from './teile';
 import { Ueberblick, WELT_FARBE } from './Ueberblick';
@@ -31,7 +31,7 @@ import { Heute } from './Heute';
 import { Kartei } from './Kartei';
 import { Pipeline } from './Pipeline';
 import { KundenKurz } from './Kunden';
-import { Kampagnen } from './Kampagnen';
+import { FollowUp } from './FollowUp';
 import { Marketing } from './Marketing';
 import { Events } from './Events';
 import { Stammdaten } from './Stammdaten';
@@ -42,21 +42,26 @@ import { useZurueck, nachOben } from '../Verlauf';
 import { KontaktAkte } from './Akte';
 import { IndexStreifen, STREIFEN } from '../business/IndexStreifen';
 
-const WELTEN: { id: Bereich; label: string; farbe?: string }[] = [
-  { id: 'ueberblick', label: 'Überblick' }, { id: 'sales', label: 'Sales', farbe: WELT_FARBE.sales },
-  { id: 'marketing', label: 'Marketing', farbe: WELT_FARBE.marketing }, { id: 'event', label: 'Event', farbe: WELT_FARBE.event },
+// Reiter in Kevins Reihenfolge (27.09.): Überblick · Kontakte · Firmen · Deals · Follow-up · Marketing · Events · Stammdaten.
+// Der Reiter „Sales“ ist aufgegangen: Leads leben bei den Firmen, die Power Hour im Follow-up, Kampagnen im Marketing.
+const HAUPT: { id: Bereich; label: string; farbe?: string }[] = [
+  { id: 'ueberblick', label: 'Überblick' },
+  { id: 'kontakte', label: 'Kontakte' }, { id: 'firmen', label: 'Firmen' },
+  { id: 'deals', label: 'Deals', farbe: WELT_FARBE.sales }, { id: 'followup', label: 'Follow-up', farbe: WELT_FARBE.sales },
+  { id: 'marketing', label: 'Marketing', farbe: WELT_FARBE.marketing }, { id: 'event', label: 'Events', farbe: WELT_FARBE.event },
+  { id: 'stammdaten', label: 'Stammdaten' },
 ];
-const GRUNDLAGE: { id: Bereich; label: string }[] = [{ id: 'kontakte', label: 'Kontakte' }, { id: 'firmen', label: 'Firmen' }, { id: 'stammdaten', label: 'Stammdaten' }];
-// Sales in drei Ebenen (Kevin 25.09.): Leads qualifizieren → Deals im Closing → Kunden. Dazu der Tag (Power Hour) und Kampagnen.
-const SALES: { id: SalesAnsicht; label: string }[] = [{ id: 'heute', label: 'Heute · Power Hour' }, { id: 'leads', label: '1 · Leads' }, { id: 'pipeline', label: '2 · Deals' }, { id: 'kunden', label: '3 · Kunden' }, { id: 'kampagnen', label: 'Kampagnen' }];
+const DEALS: { id: DealsAnsicht; label: string }[] = [{ id: 'board', label: 'Board' }, { id: 'liste', label: 'Liste' }, { id: 'auswertung', label: 'Auswertung' }, { id: 'kunden', label: 'Kunden' }];
+const FOLLOWUP: { id: FollowupAnsicht; label: string }[] = [{ id: 'faellig', label: 'Fällig' }, { id: 'woche', label: 'Woche' }, { id: 'powerhour', label: 'Power Hour' }, { id: 'kadenz', label: 'Kadenz' }];
 
 const UNTER: Record<Bereich, string> = {
   ueberblick: 'Sales, Marketing und Event als ein System — gemessen an Gesprächen und Deals, nicht an Lautstärke.',
-  sales: 'Leads qualifizieren, Deals schließen, Kunden halten — nur über Kanäle, die zulässig sind.',
+  kontakte: 'Jede Person mit ihrer ganzen Geschichte.',
+  firmen: 'Ein Unternehmen, alle Beziehungen — hier wird qualifiziert, bis es ein SQL ist.',
+  deals: 'Ab SQL im Closing: jede Stufe endet mit einem Ereignis auf Kundenseite.',
+  followup: 'Was heute dran ist — Zusagen, Wiedervorlagen, Kadenz. Nichts fällt runter.',
   marketing: 'Ansprechbar sein, nicht laut.',
   event: 'Erfolgreich ist ein Event, wenn danach die richtigen Gespräche stattfinden.',
-  kontakte: 'Jede Person mit ihrer ganzen Geschichte.',
-  firmen: 'Ein Unternehmen, alle Beziehungen.',
   stammdaten: 'Sauber halten, was alles andere trägt: Qualität, Werte, Datenschutz.',
 };
 
@@ -112,7 +117,8 @@ export function MarkttraktionSeite() {
   const zuKontakt = (id: string) => gehe('kontakte', undefined, id);
   const zuFirma = (id: string) => gehe('firmen', undefined, id);
   const name = (p: string) => (p ? p.charAt(0).toUpperCase() + p.slice(1) : '—');
-  const sales = (ansicht ?? 'heute') as SalesAnsicht;
+  const dealsAnsicht = (bereich === 'deals' ? (ansicht ?? 'board') : 'board') as DealsAnsicht;
+  const followupAnsicht = (bereich === 'followup' ? (ansicht ?? 'faellig') : 'faellig') as FollowupAnsicht;
   // Gespräch festhalten — von überall in der Markttraktion, ein Knopf oben rechts.
   const [erfassen, setErfassen] = useState(false);
   const runde = bereich === 'kontakte' && ansicht?.startsWith('runde-') ? (ansicht.slice(6) as RundenArt) : null;
@@ -124,24 +130,33 @@ export function MarkttraktionSeite() {
     // „+ Gespräch“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (in der Reiterleiste rutschte er aus dem Bild).
     <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<button onClick={() => setErfassen(true)} className="fassbar" style={{ flex: '0 0 auto', padding: '10px 16px', borderRadius: 12, cursor: 'pointer', ...TIEF.knopf(C.aktiv), fontWeight: 700, fontSize: TYP.bedien, fontFamily: SCHRIFT.text, whiteSpace: 'nowrap' }}>+ Gespräch festhalten</button>}>
       <nav aria-label="Markttraktion" style={{ display: 'flex', gap: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none', margin: '-4px 0 2px', paddingBottom: 2 }}>
-        <Reiter liste={WELTEN} aktiv={bereich} onWahl={b => gehe(b)} />
-        <Reiter leise liste={GRUNDLAGE} aktiv={bereich} onWahl={b => gehe(b)} />
+        <Reiter liste={HAUPT} aktiv={bereich} onWahl={b => gehe(b)} />
       </nav>
       <SchnellErfassen api={api} offen={erfassen} onZu={() => setErfassen(false)} kontaktId={bereich === 'kontakte' && auswahl && !auswahl.startsWith('f-') ? auswahl : undefined} />
       {api.fehler && <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{api.fehler}</div>}
 
+      {bereich === 'firmen' && !akteId && <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={[{ id: 'kartei', label: 'Alle Firmen' }, { id: 'leads', label: 'Leads · qualifizieren' }]} aktiv={ansicht === 'leads' ? 'leads' : 'kartei'} onWahl={a => gehe('firmen', a === 'leads' ? 'leads' : undefined)} /></div>}
       {bereich === 'ueberblick' && <IndexStreifen ids={STREIFEN.markttraktion} titel="Business-Index · Markttraktion" />}
       {bereich === 'ueberblick' && <Ueberblick api={api} zuBereich={zuBereich} />}
 
-      {bereich === 'sales' && (
+      {bereich === 'firmen' && ansicht === 'leads' && (
         <>
           <SalesTrichter api={api} zuBereich={zuBereich} />
-          <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={SALES} aktiv={sales} onWahl={a => gehe('sales', a === 'heute' ? undefined : a)} /></div>
-          {sales === 'heute' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
-          {sales === 'leads' && <Leads api={api} zuKontakt={zuKontakt} zuDeal={id => gehe('sales', 'pipeline', id)} />}
-          {sales === 'pipeline' && <Pipeline api={api} zuKontakt={zuKontakt} zuLeads={() => gehe('sales', 'leads')} />}
-          {sales === 'kunden' && <KundenKurz api={api} />}
-          {sales === 'kampagnen' && <Kampagnen api={api} zuKontakt={zuKontakt} head="sales" />}
+          <Leads api={api} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} />
+        </>
+      )}
+      {bereich === 'deals' && (
+        <>
+          {dealsAnsicht !== 'akte' && <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={DEALS} aktiv={dealsAnsicht} onWahl={a => gehe('deals', a === 'board' ? undefined : a)} /></div>}
+          {(dealsAnsicht === 'board' || dealsAnsicht === 'liste' || dealsAnsicht === 'akte' || dealsAnsicht === 'auswertung') && <Pipeline api={api} ansicht={dealsAnsicht} zuKontakt={zuKontakt} zuLeads={() => gehe('firmen', 'leads')} zuAkte={id => gehe('deals', 'akte', id)} zurueck={() => zurueckWie(markttraktion('deals'))} />}
+          {dealsAnsicht === 'kunden' && <KundenKurz api={api} />}
+        </>
+      )}
+      {bereich === 'followup' && (
+        <>
+          <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={FOLLOWUP} aktiv={followupAnsicht} onWahl={a => gehe('followup', a === 'faellig' ? undefined : a)} /></div>
+          {followupAnsicht === 'powerhour' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
+          {followupAnsicht !== 'powerhour' && <FollowUp api={api} ansicht={followupAnsicht} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} zuAkte={zuAkte} />}
         </>
       )}
       {bereich === 'marketing' && <Marketing api={api} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('marketing', a === 'uebersicht' ? undefined : a)} />}
@@ -150,7 +165,7 @@ export function MarkttraktionSeite() {
       {runde && <Runden api={api} art={runde} name={name} zuKontakt={zuKontakt} zurueck={() => zurueckWie(markttraktion('kontakte'))}
         kampagneId={kParam?.startsWith('kp-') ? kParam : undefined} zuKampagne={id => gehe('kontakte', 'runde-vernetzen', id ?? undefined, 'replace')} />}
       {akteId && <KontaktAkte api={api} id={akteId} name={name} zurueck={() => zurueckWie(markttraktion('kontakte', undefined, akteId))} zuFirma={zuFirma} zuAkte={zuAkte} />}
-      {!runde && !akteId && (bereich === 'kontakte' || bereich === 'firmen') && <Kartei api={api} name={name} modus={bereich === 'firmen' ? 'firmen' : 'personen'} auswahl={auswahl} setAuswahl={setAuswahl} zuKontakt={zuKontakt} zuFirma={zuFirma} start={ansicht === 'akte' ? undefined : ansicht} zuRunde={a => gehe('kontakte', `runde-${a}`)} zuAkte={zuAkte} />}
+      {!runde && !akteId && (bereich === 'kontakte' || (bereich === 'firmen' && ansicht !== 'leads')) && <Kartei api={api} name={name} modus={bereich === 'firmen' ? 'firmen' : 'personen'} auswahl={auswahl} setAuswahl={setAuswahl} zuKontakt={zuKontakt} zuFirma={zuFirma} start={ansicht === 'akte' ? undefined : ansicht} zuRunde={a => gehe('kontakte', `runde-${a}`)} zuAkte={zuAkte} />}
       {bereich === 'stammdaten' && <Stammdaten api={api} zuBereich={zuBereich} zuKontakt={zuKontakt} start={ansicht} />}
     </Seite>
   );

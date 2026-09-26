@@ -82,7 +82,7 @@ export function useCrm() {
     });
     try {
       const r = await fetch('/api/crm/bestand', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste, op: 'upsert', eintrag }] }) }).then(x => x.json());
-      if (r.ok) setCrm(r); else fehlschlag(r.fehler ?? 'Nicht gespeichert.');
+      if (r.ok) { setCrm(r); if (Array.isArray(r.fehler) && r.fehler.length) setFehler(r.fehler.join(' · ')); } else fehlschlag(r.fehler ?? 'Nicht gespeichert.');
     } catch { fehlschlag('Nicht gespeichert — keine Verbindung.'); }
     finally { unterwegs.current--; }
   }, []);
@@ -96,7 +96,8 @@ export function useCrm() {
     setCrm(alt => (alt ? { ...alt, stand: { ...alt.stand, [liste]: (alt.stand[liste] as unknown as { id: string }[]).map(x => (x.id === id ? { ...x, ...felder } : x)) } } : alt));
     try {
       const r = await fetch('/api/crm/bestand', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste, op: 'teil', id, felder }] }) }).then(x => x.json());
-      if (r.ok) setCrm(r); else fehlschlag(r.fehler ?? 'Nicht gespeichert.');
+      // Der Server wendet die Regeln an (27.09.): ein abgelehnter Stufenwechsel kommt als Fehlertext, der Stand ist der aktuelle.
+      if (r.ok) { setCrm(r); if (Array.isArray(r.fehler) && r.fehler.length) setFehler(r.fehler.join(' · ')); } else fehlschlag(r.fehler ?? 'Nicht gespeichert.');
     } catch { fehlschlag('Nicht gespeichert — keine Verbindung.'); }
     finally { unterwegs.current--; }
   }, []);

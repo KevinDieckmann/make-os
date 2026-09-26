@@ -7,6 +7,7 @@
 // Schritt, Beziehung, Deals & Mandate, Entwurf, Verlauf, Recht und die Matrix
 // aller Stammdaten (Felder aus lib/crm/akte.ts).
 
+import { DealAnlegen } from './DealAnlegen';
 import { useEffect, useState, type ReactNode, type KeyboardEvent as TastenEreignis } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Ueberschrift, Knopf, Punkt, feld, LEUCHT } from '../schlank';
@@ -15,11 +16,11 @@ import { anzeigename, STUFE_LABEL, STUFEN, KREIS_TAKT, HERKUNFT, RECHTSGRUNDLAGE
 import type { Firma } from '@/lib/crm/typen';
 import { art14 } from '@/lib/crm/recht';
 import { PERSON_FELDER, FIRMA_FELDER, FIRMA_FELDER_IMPORT, EINORDNUNG_FELDER, HERKUNFT_FELDER, gefuellt, vollstaendigkeit, type MatrixFeld } from '@/lib/crm/akte';
-import { haeltBeziehung, BEIDE, TEAM, nameVon } from '@/lib/crm/team';
+import { haeltBeziehung, TEAM, nameVon } from '@/lib/crm/team';
 import { netzStufe, profilAdresse, suchLink } from '@/lib/crm/netzwerk';
 import { markttraktion, mandateLink } from '@/lib/crm/adresse';
 import Link from 'next/link';
-import { type CrmApi, neueId, datum, euro } from './daten';
+import { type CrmApi, datum, euro } from './daten';
 import { NotizFormular, Verlauf, Feldzeile, Pillen, Feld, festhalten, hatMailEinwilligung, MehrfachPillen } from './teile';
 import { ZustaendigWahl, Uebergeben, Person } from './team';
 import { neueFirma, ROLLEN } from './Firmen';
@@ -119,13 +120,14 @@ export function LinkedInTeil({ k, api }: { k: Kontakt; api: CrmApi }) {
 
 export function DealsTeil({ k, api }: { k: Kontakt; api: CrmApi }) {
   const crm = api.crm;
-  const firma = k.firmaId ? crm?.stand.firmen.find(f => f.id === k.firmaId) : undefined;
   const chancen = (crm?.stand.chancen ?? []).filter(c => c.kontaktIds.includes(k.id));
   const mandate = (crm?.stand.mandate ?? []).filter(m => m.kontaktIds.includes(k.id));
-  const neuerDeal = () => void api.setze('chancen', { id: neueId('ch'), titel: firma?.name ?? k.firma ?? anzeigename(k), kontaktIds: [k.id], ...(firma || k.firma ? { firma: firma?.name ?? k.firma } : {}), art: 'retainer', wert: { betrag: 0, basis: 'monat' }, stufe: 'qualifiziert', historie: [], qualifizierung: {}, gesellschaft: 'offen', besitzer: haeltBeziehung(k) === BEIDE ? api.ich ?? 'kevin' : haeltBeziehung(k), angelegt: new Date().toISOString() });
+  const [anlegen, setAnlegen] = useState(false);
+  const neuerDeal = () => setAnlegen(true);
   return (
     <div>
       <Ueberschrift rechts={<Knopf leise onClick={neuerDeal}>+ Deal</Knopf>}>Deals & Mandate</Ueberschrift>
+      {anlegen && <div style={{ marginBottom: 10 }}><DealAnlegen api={api} kontaktId={k.id} onFertig={() => setAnlegen(false)} onAbbruch={() => setAnlegen(false)} /></div>}
       {chancen.map(c => <Link key={c.id} href={WEG.deal(c.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '5px 0', color: C.ink, textDecoration: 'none' }}><Punkt farbe={crm?.ampel[c.id]?.ampel === 'rot' ? LEUCHT.kritisch : crm?.ampel[c.id]?.ampel === 'gelb' ? LEUCHT.achtung : LEUCHT.gut} groesse={7} /> <b style={{ fontWeight: 600 }}>{c.titel}</b> <span style={{ color: C.inkLeise }}>· {crm?.stufen.find(s => s.id === c.stufe)?.label} · {c.wert.betrag ? euro(c.wert.betrag) + (c.wert.basis === 'monat' ? '/Monat' : '') : 'ohne Wert'} ›</span></Link>)}
       {mandate.map(m => <Link key={m.id} href={mandateLink('mandate', m.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '5px 0', color: C.ink, textDecoration: 'none' }}><Punkt farbe={LEUCHT.geld} groesse={7} /> <b style={{ fontWeight: 600 }}>{m.titel.slice(0, 70)}</b> <span style={{ color: C.inkLeise }}>· Mandat {m.status} ›</span></Link>)}
       {!chancen.length && !mandate.length && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Noch kein Deal.</div>}

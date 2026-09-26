@@ -82,8 +82,8 @@ describe('Punkte hinter den Kacheln', () => {
   });
   it('Win Rate und Pipeline führen zu den Deals', () => {
     const b = leer({ chancen: [chance('g', 'gewonnen'), chance('v', 'verloren', { grund: 'Budget' }), chance('o', 'angebot')] });
-    expect(MESSEN.win_rate(b).details?.map(d => d.href)).toEqual(expect.arrayContaining(['/os/markttraktion?s=sales&a=pipeline&k=g', '/os/markttraktion?s=sales&a=pipeline&k=v']));
-    expect(MESSEN.pipeline(b).details?.[0]).toMatchObject({ titel: 'o', href: '/os/markttraktion?s=sales&a=pipeline&k=o' });
+    expect(MESSEN.win_rate(b).details?.map(d => d.href)).toEqual(expect.arrayContaining(['/os/markttraktion?s=deals&a=akte&k=g', '/os/markttraktion?s=deals&a=akte&k=v']));
+    expect(MESSEN.pipeline(b).details?.[0]).toMatchObject({ titel: 'o', href: '/os/markttraktion?s=deals&a=akte&k=o' });
   });
   it('Fokuszeit: vier Wochen, jede verlinkt auf ihre Woche im Kalender', () => {
     const b = leer({ bloecke: [{ date: '2026-09-22', dauerMin: 240, art: 'fokus' }] });

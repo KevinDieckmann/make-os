@@ -5,17 +5,20 @@
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { wendeAn, type ListenOp } from '@/lib/sync';
-import { STUFEN } from './pipeline';
-import { CRM_LISTEN, type CrmBestand, type CrmListe, type Firma, type FirmaRolle, type Antrag, type AntragArt, type Verarbeitung, type Segment, type SegmentKriterien, type Beitrag, type NewsletterAusgabe, type Kampagne, type Chance, type Mandat, type Leistung, type Event, type Teilnahme, type PowerHourSitzung, type ChancenStufe, type Qual, type Freigabe } from './typen';
+import { STUFEN, wechsleStufe } from './pipeline';
+import { firmaIdsErgaenzen } from './firmen-bezug';
+import { CRM_LISTEN, type CrmBestand, type CrmListe, type Firma, type FirmaRolle, type Antrag, type AntragArt, type Verarbeitung, type Segment, type SegmentKriterien, type Beitrag, type NewsletterAusgabe, type Kampagne, type Chance, type Mandat, type Leistung, type Event, type Teilnahme, type PowerHourSitzung, type ChancenStufe, type Qual, type Freigabe, type FollowUp } from './typen';
 import { wer, BEIDE, verantwortlich } from './team';
 import { leadSaeubern } from './lead-form';
 import { vernetzenSaeubern } from './netzwerk-form';
 
 export const CRM_SPEICHER = 'crm';
-export const leererBestand = (): CrmBestand => ({ firmen: [], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [], segmente: [], beitraege: [], newsletter: [], kampagnen: [] });
+export const leererBestand = (): CrmBestand => ({ firmen: [], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [], segmente: [], beitraege: [], newsletter: [], kampagnen: [], followups: [] });
 
 export async function ladeCrm(): Promise<CrmBestand> {
-  return { ...leererBestand(), ...((await loadJson<CrmBestand>(CRM_SPEICHER)) ?? {}) };
+  const roh = { ...leererBestand(), ...((await loadJson<CrmBestand>(CRM_SPEICHER)) ?? {}) };
+  // 27.09.: alte Deals und Mandate bekommen die Firmen-Kennung nachgetragen (nur im Speicher; geschrieben wird sie mit der nächsten Änderung).
+  return firmaIdsErgaenzen(roh).bestand;
 }
 
 const txt = (v: unknown, n = 300) => String(v ?? '').replace(/\u0000/g, '').trim().slice(0, n);
@@ -53,7 +56,7 @@ function chance(o: Record<string, unknown>, jetzt: string, person: string): Chan
     wert: { betrag: zahl(w.betrag), basis: aus(w.basis, ['monat', 'jahr', 'einmalig'] as const, 'monat'), ...(zahl(w.laufzeitMonate, 0, 120) ? { laufzeitMonate: zahl(w.laufzeitMonate, 0, 120) } : {}) },
     stufe, historie: hist.length ? hist : [{ stufe, am: jetzt, von: person }],
     ...(ns && txt(ns.text) && tag(ns.datum) ? { naechsterSchritt: { text: txt(ns.text, 300), datum: tag(ns.datum)! } } : {}),
-    ...(o.quelle ? { quelle: aus(o.quelle, ['empfehlung', 'event', 'content', 'outreach', 'bestand', 'inbound'] as const, 'outreach') } : {}),
+    ...(o.quelle ? { quelle: aus(o.quelle, ['empfehlung', 'event', 'content', 'outreach', 'bestand', 'inbound', 'kampagne'] as const, 'outreach') } : {}),
     ...(opt(o.quelleBezug, 80) ? { quelleBezug: opt(o.quelleBezug, 80) } : {}),
     qualifizierung: { schmerz: aus(ql.schmerz, Q, 'unklar') as Qual, entscheider: aus(ql.entscheider, Q, 'unklar') as Qual, budget: aus(ql.budget, Q, 'unklar') as Qual, zeitpunkt: aus(ql.zeitpunkt, Q, 'unklar') as Qual, wirkung: aus(ql.wirkung, Q, 'unklar') as Qual, alternative: aus(ql.alternative, Q, 'unklar') as Qual },
     ...(opt(o.grund, 300) ? { grund: opt(o.grund, 300) } : {}), ...(tag(o.wiedervorlage) ? { wiedervorlage: tag(o.wiedervorlage) } : {}),
@@ -247,10 +250,59 @@ function kampagne(o: Record<string, unknown>, jetzt: string): Kampagne | null {
   };
 }
 
+const firmaId = (v: unknown) => (typeof v === 'string' && /^f-[a-z0-9-]{2,63}$/.test(v) ? v : undefined);
+const DEAL_ROLLEN = ['entscheider', 'fuersprecher', 'nutzer', 'blocker'] as const;
+/** Die Felder vom 27.09. je Liste — hier an einer Stelle, statt in jedem Säuberer. */
+function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unknown> {
+  switch (liste) {
+    case 'chancen': {
+      const rollen = o.personenRollen && typeof o.personenRollen === 'object'
+        ? Object.fromEntries(Object.entries(o.personenRollen as Record<string, unknown>).filter(([k, v]) => idOk(k) && (DEAL_ROLLEN as readonly string[]).includes(String(v))).slice(0, 20))
+        : undefined;
+      return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(rollen && Object.keys(rollen).length ? { personenRollen: rollen } : {}) };
+    }
+    case 'mandate': return firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {};
+    case 'kampagnen': case 'beitraege': return zahl(o.kostenEuro, 0, 1e7) ? { kostenEuro: zahl(o.kostenEuro, 0, 1e7) } : {};
+    case 'newsletter': return wer(o.stimme) || o.stimme === 'marke' ? { stimme: String(o.stimme) } : {};
+    case 'teilnahmen': {
+      const f = o.feedback as Record<string, unknown> | undefined;
+      if (!f || typeof f !== 'object') return {};
+      const note = Number(f.note);
+      const fb = { ...(Number.isFinite(note) && note >= 1 && note <= 5 ? { note: Math.round(note) } : {}), ...(opt(f.text, 600) ? { text: opt(f.text, 600) } : {}), ...(opt(f.am, 25) ? { am: opt(f.am, 25) } : {}) };
+      return Object.keys(fb).length ? { feedback: fb } : {};
+    }
+    default: return {};
+  }
+}
+
+const FU_BEZUG = ['kontakt', 'firma', 'chance', 'mandat', 'event'] as const;
+const FU_ART = ['anruf', 'mail', 'linkedin', 'termin', 'nachricht', 'sonstig'] as const;
+const FU_STATUS = ['offen', 'erledigt', 'verpasst', 'abgesagt'] as const;
+const FU_QUELLE = ['hand', 'regel', 'kadenz', 'kampagne', 'event', 'head', 'jarvis', 'deal'] as const;
+function followup(o: Record<string, unknown>, jetzt: string, person: string): FollowUp | null {
+  const bz = (o.bezug ?? {}) as Record<string, unknown>;
+  if (!idOk(o.id) || !idOk(bz.id) || !txt(o.text) || !tag(o.faellig)) return null;
+  const status = aus(o.status, FU_STATUS, 'offen');
+  return {
+    id: String(o.id), bezug: { art: aus(bz.art, FU_BEZUG, 'kontakt'), id: String(bz.id) },
+    ...(idOk(o.kontaktId) ? { kontaktId: String(o.kontaktId) } : {}),
+    art: aus(o.art, FU_ART, 'sonstig'), text: txt(o.text, 300), faellig: tag(o.faellig)!,
+    ...(typeof o.uhrzeit === 'string' && /^\d{2}:\d{2}$/.test(o.uhrzeit) ? { uhrzeit: o.uhrzeit } : {}),
+    zustaendig: wer(o.zustaendig) ?? (wer(person) && wer(person) !== BEIDE ? person : verantwortlich('sales')),
+    status, ...(opt(o.ergebnis, 60) ? { ergebnis: opt(o.ergebnis, 60) } : {}), ...(opt(o.notiz, 1000) ? { notiz: opt(o.notiz, 1000) } : {}),
+    quelle: aus(o.quelle, FU_QUELLE, 'hand'), ...(opt(o.aufgabeId, 80) ? { aufgabeId: opt(o.aufgabeId, 80) } : {}),
+    ...(zahl(o.verschoben, 0, 99) ? { verschoben: zahl(o.verschoben, 0, 99) } : {}),
+    ...(status === 'erledigt' ? { erledigtAm: opt(o.erledigtAm, 25) ?? jetzt } : {}),
+    angelegt: txt(o.angelegt, 25) || jetzt, geaendert: jetzt,
+  };
+}
+
 /** Geprüfter Eintrag — mit „geaendertVon“, wo die Liste ein „geaendert“ führt (für „Zuletzt im Team“). */
 export function saeubern(liste: CrmListe, roh: Record<string, unknown>, jetzt: string, person: string): Record<string, unknown> | null {
   const e = saeubernRoh(liste, roh, jetzt, person);
-  return e && 'geaendert' in e && liste !== 'antraege' && liste !== 'verarbeitungen' ? { ...e, geaendertVon: person } : e;
+  if (!e) return e;
+  const mit = { ...e, ...zusatz(liste, roh) };
+  return 'geaendert' in mit && liste !== 'antraege' && liste !== 'verarbeitungen' ? { ...mit, geaendertVon: person } : mit;
 }
 function saeubernRoh(liste: CrmListe, roh: Record<string, unknown>, jetzt: string, person: string): Record<string, unknown> | null {
   switch (liste) {
@@ -267,11 +319,45 @@ function saeubernRoh(liste: CrmListe, roh: Record<string, unknown>, jetzt: strin
     case 'events': return event(roh, jetzt) as unknown as Record<string, unknown>;
     case 'teilnahmen': return teilnahme(roh, jetzt) as unknown as Record<string, unknown>;
     case 'sitzungen': return sitzung(roh, person) as unknown as Record<string, unknown>;
+    case 'followups': return followup(roh, jetzt, person) as unknown as Record<string, unknown>;
   }
 }
 
-export function wendeCrmAn(b: CrmBestand, ops: ListenOp[], jetzt: string, person: string): { bestand: CrmBestand; angewandt: number } {
+/**
+ * Stufenwechsel am Deal gelten nur mit Regel (27.09., bis dahin prüfte nur der Browser):
+ * verloren braucht einen Grund, geparkt eine Wiedervorlage, eine offene Zielstufe einen
+ * nächsten Schritt mit Datum; die Historie hängt der SERVER an — was der Browser mitschickt,
+ * zählt nicht. Ein abgelehnter Wechsel wird übersprungen und als Fehler zurückgegeben.
+ */
+export function dealRegeln(b: CrmBestand, ops: ListenOp[], jetzt: string, person: string): { ops: ListenOp[]; fehler: string[] } {
+  const fehler: string[] = [];
+  const raus: ListenOp[] = [];
+  for (const o of ops) {
+    if (o.liste !== 'chancen' || o.op === 'delete') { raus.push(o); continue; }
+    const felder = (o.op === 'teil' ? o.felder : o.eintrag) ?? {};
+    const id = String(o.op === 'teil' ? o.id : o.eintrag?.id ?? '');
+    const alt = b.chancen.find(c => c.id === id);
+    const ziel = typeof felder.stufe === 'string' ? (felder.stufe as ChancenStufe) : undefined;
+    if (!alt || !ziel || ziel === alt.stufe) {
+      // Kein Stufenwechsel: die Historie darf der Browser nicht umschreiben.
+      if (alt && 'historie' in felder) { const { historie: _h, ...rest } = felder; raus.push(o.op === 'teil' ? { ...o, felder: { ...rest, historie: alt.historie } } : { ...o, eintrag: { ...rest, historie: alt.historie } }); }
+      else raus.push(o);
+      continue;
+    }
+    const r = wechsleStufe(alt, ziel, person, jetzt, { grund: typeof felder.grund === 'string' ? felder.grund : undefined, wiedervorlage: typeof felder.wiedervorlage === 'string' ? felder.wiedervorlage : undefined });
+    if (!r.ok) { fehler.push(`„${alt.titel}“: ${r.fehler}`); continue; }
+    const offenZiel = STUFEN.find(s => s.id === ziel)?.offen;
+    const schritt = (felder.naechsterSchritt as { text?: string; datum?: string } | undefined) ?? alt.naechsterSchritt;
+    if (offenZiel && !(schritt?.text && schritt.datum && schritt.datum >= jetzt.slice(0, 10))) { fehler.push(`„${alt.titel}“: Für ${STUFEN.find(s => s.id === ziel)?.label} braucht es einen nächsten Schritt mit Datum.`); continue; }
+    const neuFelder = { ...felder, stufe: ziel, historie: r.chance.historie, letzteAktivitaet: r.chance.letzteAktivitaet, ...(r.chance.grund ? { grund: r.chance.grund } : {}), ...(r.chance.wiedervorlage ? { wiedervorlage: r.chance.wiedervorlage } : {}) };
+    raus.push(o.op === 'teil' ? { ...o, felder: neuFelder } : { ...o, eintrag: neuFelder });
+  }
+  return { ops: raus, fehler };
+}
+
+export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person: string): { bestand: CrmBestand; angewandt: number; fehler: string[] } {
   let angewandt = 0;
+  const { ops, fehler } = dealRegeln(b, roh, jetzt, person);
   const neu = { ...b };
   for (const l of CRM_LISTEN) {
     const eigene = ops.filter(o => o.liste === l);
@@ -280,7 +366,7 @@ export function wendeCrmAn(b: CrmBestand, ops: ListenOp[], jetzt: string, person
     (neu as Record<string, unknown>)[l] = r.liste;
     angewandt += r.angewandt;
   }
-  return { bestand: neu, angewandt };
+  return { bestand: neu, angewandt, fehler };
 }
 
 export async function aendereCrm(mut: (b: CrmBestand) => CrmBestand): Promise<CrmBestand> {

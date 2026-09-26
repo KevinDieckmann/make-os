@@ -112,21 +112,22 @@ describe('Übergaben zwischen den Welten', () => {
 
 describe('Adressen — alte CRM-Links bleiben gültig', () => {
   it('alte Bereiche landen in ihrer Welt', () => {
-    expect(aufloesen('heute')).toEqual({ s: 'sales', a: 'heute' });
-    expect(aufloesen('pipeline')).toEqual({ s: 'sales', a: 'pipeline' });
-    expect(aufloesen('kunden')).toEqual({ s: 'sales', a: 'kunden' });
+    // 27.09.: der Sales-Reiter ist in Deals, Follow-up, Firmen und Marketing aufgegangen — alte Links landen dort.
+    expect(aufloesen('heute')).toEqual({ s: 'followup', a: 'powerhour' });
+    expect(aufloesen('pipeline')).toEqual({ s: 'deals' });
+    expect(aufloesen('kunden')).toEqual({ s: 'deals', a: 'kunden' });
     expect(aufloesen('events')).toEqual({ s: 'event' });
     expect(aufloesen('kartei', 'dubletten')).toEqual({ s: 'kontakte', a: 'dubletten' });
     expect(aufloesen('marketing', 'kampagnen')).toEqual({ s: 'marketing', a: 'kampagnen' });
     expect(aufloesen(null)).toEqual({ s: 'ueberblick' });
     expect(aufloesen('quatsch')).toEqual({ s: 'ueberblick' });
-    expect(aufloesen('sales', 'quatsch')).toEqual({ s: 'sales', a: 'heute' });
+    expect(aufloesen('sales', 'quatsch')).toEqual({ s: 'followup', a: 'powerhour' });
   });
 
   it('Links bauen: kurz und eindeutig', () => {
     expect(markttraktion()).toBe('/os/markttraktion');
-    expect(markttraktion('heute')).toBe('/os/markttraktion?s=sales');
-    expect(markttraktion('pipeline')).toBe('/os/markttraktion?s=sales&a=pipeline');
+    expect(markttraktion('heute')).toBe('/os/markttraktion?s=followup&a=powerhour');
+    expect(markttraktion('pipeline')).toBe('/os/markttraktion?s=deals');
     expect(markttraktion('kontakte', undefined, 'c-1')).toBe('/os/markttraktion?s=kontakte&k=c-1');
     expect(markttraktion('events')).toBe('/os/markttraktion?s=event');
   });

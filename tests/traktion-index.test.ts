@@ -75,9 +75,9 @@ describe('Traktions-Index', () => {
     expect(kz(pi, 'gespraeche').details.map(d => d.href)).toEqual(expect.arrayContaining(['/os/markttraktion?s=kontakte&a=akte&k=c-cara']));
     expect(kz(pi, 'erstgespraeche')).toMatchObject({ wert: 3, ampel: 'gelb' });   // ben, cara, dan — anna sprach schon vor 40 Tagen
     expect(kz(pi, 'sql_30')).toMatchObject({ wert: 2, ampel: 'gruen' });
-    expect(kz(pi, 'sql_30').details.map(d => d.href)).toEqual(['/os/markttraktion?s=sales&a=pipeline&k=ch-a', '/os/markttraktion?s=sales&a=pipeline&k=ch-b']);
+    expect(kz(pi, 'sql_30').details.map(d => d.href)).toEqual(['/os/markttraktion?s=deals&a=akte&k=ch-a', '/os/markttraktion?s=deals&a=akte&k=ch-b']);
     expect(kz(pi, 'ohne_schritt')).toMatchObject({ wert: 1, ampel: 'gelb' });
-    expect(kz(pi, 'ohne_schritt').details).toEqual([expect.objectContaining({ ampel: 'rot', href: '/os/markttraktion?s=sales&a=pipeline&k=ch-b' })]);
+    expect(kz(pi, 'ohne_schritt').details).toEqual([expect.objectContaining({ ampel: 'rot', href: '/os/markttraktion?s=deals&a=akte&k=ch-b' })]);
     expect(kz(pi, 'mrr')).toMatchObject({ wert: 75, ampel: 'rot' });              // Alpha 3.000 von 4.000
     expect(kz(pi, 'mrr').anzeige).toContain('75 %');
   });
