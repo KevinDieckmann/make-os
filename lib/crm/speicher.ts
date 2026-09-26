@@ -262,6 +262,7 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
       return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(rollen && Object.keys(rollen).length ? { personenRollen: rollen } : {}) };
     }
     case 'mandate': return firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {};
+    case 'events': return opt(o.kalenderUid, 120) ? { kalenderUid: opt(o.kalenderUid, 120) } : {};
     case 'kampagnen': case 'beitraege': return zahl(o.kostenEuro, 0, 1e7) ? { kostenEuro: zahl(o.kostenEuro, 0, 1e7) } : {};
     case 'newsletter': return wer(o.stimme) || o.stimme === 'marke' ? { stimme: String(o.stimme) } : {};
     case 'teilnahmen': {

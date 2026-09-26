@@ -135,6 +135,8 @@ export const KATEGORIEN: { id: string; label: string; farbe: string; art: 'ein' 
   { id: 'steuern', label: 'Steuern & Abgaben', farbe: '#E4572E', art: 'aus' },
   { id: 'kredite', label: 'Kredite & Tilgung', farbe: '#C9603A', art: 'aus' },
   { id: 'betrieb', label: 'Betrieb & Werkzeuge', farbe: '#8A9BA8', art: 'aus' },
+  // 27.09.: Event-Budgets aus der Markttraktion (Planposten ev-<eventId>).
+  { id: 'marketing/event', label: 'Marketing & Events', farbe: '#A79BFF', art: 'aus' },
   { id: 'privat', label: 'Privates', farbe: '#58D9CD', art: 'aus' },
 ];
 export const KATEGORIE = Object.fromEntries(KATEGORIEN.map(k => [k.id, k])) as Record<string, typeof KATEGORIEN[number]>;

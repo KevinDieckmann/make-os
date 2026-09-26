@@ -44,6 +44,7 @@ export function Ueberblick({ e, api, zuReiter }: ReiterProps & { zuReiter: (r: R
           <Zahl wert={euro(z.beeinflusst)} label="beeinflusste Pipeline" />
           {z.kostenJeFolgegespraech !== null && <Zahl wert={euro(z.kostenJeFolgegespraech)} label="Kosten je Folgegespräch" />}
           {z.nachfassenOffen > 0 && <Zahl wert={String(z.nachfassenOffen)} label="nachfassen offen" farbe={LEUCHT.achtung} />}
+          {z.rueckmeldungen > 0 && <Zahl wert={z.noteSchnitt !== null ? `Ø ${z.noteSchnitt.toLocaleString('de-DE', { maximumFractionDigits: 1 })}` : String(z.rueckmeldungen)} label={z.noteSchnitt !== null ? `Note · ${z.rueckmeldungen} ${z.rueckmeldungen === 1 ? 'Rückmeldung' : 'Rückmeldungen'}` : 'Rückmeldungen'} farbe={z.noteSchnitt !== null && z.noteSchnitt >= 4 ? LEUCHT.gut : undefined} />}
         </Raster>
       ) : (
         <Raster min={120}>

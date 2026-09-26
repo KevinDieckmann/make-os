@@ -11,7 +11,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 import { useState, useEffect } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, LEUCHT } from '../../schlank';
+import { LEUCHT } from '../../schlank';
 import { checklisteStand } from '@/lib/crm/eventplanung';
 import { zustaendig } from '@/lib/crm/team';
 import { datum } from '../daten';
@@ -25,6 +25,7 @@ import { Checkliste } from './Checkliste';
 import { Budget } from './Budget';
 import { Abend } from './Abend';
 import { Nachfassen } from './Nachfassen';
+import { Kalender } from './Kalender';
 
 export function EventDetail({ e, api, zuKontakt }: ReiterProps) {
   const crm = api.crm!;
@@ -67,7 +68,7 @@ export function EventDetail({ e, api, zuKontakt }: ReiterProps) {
             <AuchHier passt={pfad => new URLSearchParams(pfad.split('?')[1] ?? '').get('k') === e.id} was="bei diesem Event" />
           </div>
         </div>
-        <Knopf leise onClick={() => { window.location.href = `/api/crm/events?ics=${encodeURIComponent(e.id)}`; }}>Kalender-Datei</Knopf>
+        <Kalender e={e} />
       </div>
       <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={REITER} aktiv={reiter} onWahl={setReiter} farbe={LEUCHT.beziehung} /></div>
       {reiter === 'ueberblick' && <Ueberblick {...props} zuReiter={setReiter} />}

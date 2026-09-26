@@ -198,6 +198,8 @@ export interface Event {
   /** Gästeliste aus einem Segment vorgeschlagen. */
   segmentId?: string;
   vorlage?: string;
+  /** Kennung des Termins im Kalender, wenn das Event dort angelegt wurde (27.09.) — verhindert einen zweiten Termin. */
+  kalenderUid?: string;
   /** Wer es bearbeitet: Team-Kürzel (kevin, malin) oder „beide“ — fehlt es, gilt die/der Verantwortliche der Welt (lib/crm/team.ts). */
   zustaendig?: string;
   geaendert: string;

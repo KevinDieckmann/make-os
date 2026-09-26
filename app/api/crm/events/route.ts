@@ -16,13 +16,29 @@
 //      kommt ein Hinweis zurück.
 // POST { aktion: 'aufgabe-status', eventId, punktId, erledigt } → (älterer
 //      Weg, bleibt gültig) verknüpfte Aufgabe abhaken oder wieder öffnen.
+// POST { aktion: 'nachfassen', eventId, teilnahmeId, ergebnis } → (Brücke,
+//      lib/crm/event-bruecke.ts) Teilnahme.followUpAm = heute; bei „gespraech“
+//      oder „termin“ rückt der Lead der Firma (ohne Firma: der Person) auf
+//      „Im Gespräch“, wenn er darunter liegt. Die Aktivität an der Person
+//      schreibt die Oberfläche über den bestehenden Weg /api/crm/aktivitaet.
+// POST { aktion: 'liquiplan', eventId } → Budget als Planposten „Event: <Titel>“
+//      in den Liquiditätsplan (Speicher „liquiplan“), Kennung ev-<eventId>:
+//      einmal angelegt, danach nur Betrag und Datum nachgezogen — nie doppelt.
+// GET  ?liquiplan=<eventId> → wo das Event im Plan steht (fehlt · ok · abweichend).
 // Alles nur auf Klick von Kevin oder Malin — hier wird nichts versendet.
 
 import { NextResponse } from 'next/server';
-import { updateJson } from '@/lib/store/local-db';
+import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/jarvis/raum';
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { localDay } from '@/lib/zeit';
+import type { Kontakt } from '@/lib/make-one/crm';
+import type { Planposten } from '@/lib/make-one/liquiditaet';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { icsText, icsDateiname, checklisteAlsAufgaben, punktAendern, aufgabeAbgleichen, type PunktAenderung, type ChecklistenPunkt } from '@/lib/crm/eventplanung';
+import { leadNachGespraech, leadZiel, hebtLead, planpostenAusEvent, planpostenId, liquiplanStand, type NachfassErgebnis } from '@/lib/crm/event-bruecke';
+import { leadSaeubern } from '@/lib/crm/lead-form';
+import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,9 +46,22 @@ export const dynamic = 'force-dynamic';
 const ID = /^[a-z0-9][a-z0-9-]{1,63}$/;
 type Aufgabe = { id: string; status?: string; assignee?: string; dueDate?: string; title?: string } & Record<string, unknown>;
 type Aufgaben = { tasks?: Aufgabe[] } & Record<string, unknown>;
+type Liquiplan = { posten: Planposten[] };
+const NACHFASS: NachfassErgebnis[] = ['gespraech', 'termin', 'erledigt'];
 
 export async function GET(req: Request) {
-  const id = new URL(req.url).searchParams.get('ics') ?? '';
+  const q = new URL(req.url).searchParams;
+  const liqui = q.get('liquiplan');
+  if (liqui !== null) {
+    // Business-Zahlen: nur der Haushalt des Inhabers (wie /api/business).
+    if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+    if (!ID.test(liqui)) return NextResponse.json({ ok: false, fehler: 'liquiplan=<Event-ID> nötig.' }, { status: 400 });
+    const e = (await ladeCrm()).events.find(x => x.id === liqui);
+    if (!e) return NextResponse.json({ ok: false, fehler: 'Event nicht gefunden.' }, { status: 404 });
+    const posten = (await loadJson<Liquiplan>('liquiplan'))?.posten ?? [];
+    return NextResponse.json({ ok: true, ...liquiplanStand(e, posten.find(p => p.id === planpostenId(e.id)) ?? null, localDay()) }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+  const id = q.get('ics') ?? '';
   if (!ID.test(id)) return NextResponse.json({ ok: false, fehler: 'ics=<Event-ID> nötig.' }, { status: 400 });
   const e = (await ladeCrm()).events.find(x => x.id === id);
   if (!e) return NextResponse.json({ ok: false, fehler: 'Event nicht gefunden.' }, { status: 404 });
@@ -63,14 +92,66 @@ function aenderungAus(v: unknown): PunktAenderung | null {
 }
 
 export async function POST(req: Request) {
-  let b: { aktion?: string; eventId?: string; punktId?: string; erledigt?: boolean; aenderung?: unknown };
+  let b: { aktion?: string; eventId?: string; punktId?: string; erledigt?: boolean; aenderung?: unknown; teilnahmeId?: string; ergebnis?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const eventId = String(b.eventId ?? '');
   if (!ID.test(eventId)) return NextResponse.json({ ok: false, fehler: 'eventId nötig.' }, { status: 400 });
-  const e = (await ladeCrm()).events.find(x => x.id === eventId);
+  const crm = await ladeCrm();
+  const e = crm.events.find(x => x.id === eventId);
   if (!e) return NextResponse.json({ ok: false, fehler: 'Event nicht gefunden.' }, { status: 404 });
   const person = personAus(req);
   const jetzt = new Date().toISOString();
+  const heute = localDay();
+
+  if (b.aktion === 'nachfassen') {
+    const teilnahmeId = String(b.teilnahmeId ?? '');
+    const ergebnis = NACHFASS.includes(b.ergebnis as NachfassErgebnis) ? (b.ergebnis as NachfassErgebnis) : null;
+    const t = crm.teilnahmen.find(x => x.id === teilnahmeId && x.eventId === eventId);
+    if (!t || !ergebnis) return NextResponse.json({ ok: false, fehler: 'teilnahmeId und ergebnis (gespraech | termin | erledigt) nötig.' }, { status: 400 });
+    if (t.status !== 'da') return NextResponse.json({ ok: false, fehler: 'Nachgefasst wird nur, wer da war.' }, { status: 400 });
+    // 1 · Nachgefasst am Gast — bleibt beim ersten Datum, wenn schon eins steht.
+    const followUpAm = t.followUpAm ?? heute;
+    await aendereCrm(c => ({ ...c, teilnahmen: c.teilnahmen.map(x => (x.id === t.id ? { ...x, followUpAm, geaendert: jetzt, geaendertVon: person } : x)) }));
+    // 2 · Lead heben (Firma, ohne Firma die Person) — nur bei Gespräch oder Termin.
+    let lead: { ziel: { art: 'firma' | 'person'; id: string; name: string }; von: string; nach: string; geaendert: boolean; grund?: string } | null = null;
+    if (hebtLead(ergebnis)) {
+      const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
+      const k = kontakte.find(x => x.id === t.kontaktId);
+      if (k) {
+        const ziel = leadZiel(k);
+        const firma = ziel.art === 'firma' ? crm.firmen.find(f => f.id === ziel.id) : undefined;
+        // Wie in lib/crm/leads.ts: Gesperrte zählen für den abgeleiteten Stand nicht mit.
+        const personen = ziel.art === 'firma' ? kontakte.filter(x => x.firmaId === ziel.id && !x.werbesperre) : [k];
+        const ids = new Set(personen.map(p => p.id));
+        const offen = crm.chancen.some(c => OFFENE_STUFEN.includes(c.stufe) && (c.kontaktIds.some(id => ids.has(id)) || (!!firma && c.firmaId === firma.id)));
+        const r = leadNachGespraech(firma ? firma.lead : k.lead, personen, offen, jetzt, person);
+        if (r.geaendert && r.lead) {
+          const neu = leadSaeubern(r.lead);
+          if (ziel.art === 'firma') await aendereCrm(c => ({ ...c, firmen: c.firmen.map(f => (f.id === ziel.id && neu ? { ...f, lead: neu, geaendert: jetzt, geaendertVon: person } : f)) }));
+          else await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(x => (x.id === ziel.id && neu ? { ...x, lead: neu, geaendertAm: heute } : x)) }));
+        }
+        lead = { ziel: { ...ziel, name: firma?.name ?? k.firma ?? `${k.vorname} ${k.nachname}`.trim() }, von: r.von, nach: r.nach, geaendert: r.geaendert, ...(r.grund ? { grund: r.grund } : {}) };
+      }
+    }
+    return NextResponse.json({ ok: true, followUpAm, lead });
+  }
+
+  if (b.aktion === 'liquiplan') {
+
+    if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+    const p = planpostenAusEvent(e, heute);
+    if (!p) return NextResponse.json({ ok: false, fehler: liquiplanStand(e, null, heute).hinweis }, { status: 400 });
+    let neu = false;
+    const stand = await updateJson<Liquiplan>('liquiplan', cur => {
+      const l = cur?.posten ?? [];
+      const alt = l.find(x => x.id === p.id);
+      neu = !alt;
+      // Vorhanden: Betrag, Datum und Sicherheit nachziehen; der Stempel „übernommen am“ bleibt der erste.
+      return { posten: alt ? l.map(x => (x.id === p.id ? { ...x, ...p, notiz: alt.notiz ?? p.notiz } : x)) : [...l, p] };
+    });
+    const posten = stand.posten.find(x => x.id === p.id) ?? p;
+    return NextResponse.json({ ok: true, neu, ...liquiplanStand(e, posten, heute) });
+  }
 
   if (b.aktion === 'checkliste-aufgaben') {
     let angelegt = 0;
@@ -153,5 +234,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, geaendert });
   }
 
-  return NextResponse.json({ ok: false, fehler: 'aktion: checkliste-aufgaben, punkt oder aufgabe-status.' }, { status: 400 });
+  return NextResponse.json({ ok: false, fehler: 'aktion: checkliste-aufgaben, punkt, aufgabe-status, nachfassen oder liquiplan.' }, { status: 400 });
 }

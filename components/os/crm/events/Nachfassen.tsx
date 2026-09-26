@@ -3,36 +3,50 @@
 // ─── Event · Nachfassen — binnen 48 Stunden, je Gast mit der Notiz vom Abend ─
 // Danach verblasst die Erinnerung. Hier stehen alle, die da waren und noch
 // nicht nachgefasst sind: Reststunden bis zur Frist, die Notiz vom Abend,
-// die zulässigen Wege (Ampel) und „Erledigt“, das das Nachfassen am Gast
-// (followUpAm) und im Verlauf der Person festhält. Geschrieben und gesendet
-// wird von Kevin oder Malin selbst.
+// die zulässigen Wege (Ampel) und das Ergebnis — „Gespräch“ oder „Termin“
+// hält das Nachfassen am Gast (followUpAm) und im Verlauf der Person fest
+// UND hebt den Lead der Firma auf „Im Gespräch“ (Brücke, lib/crm/event-
+// bruecke.ts); „Nur erledigt“ lässt den Lead, wie er ist. „Deal daraus“
+// öffnet den einen Deal-Dialog (Quelle: dieses Event). Wer noch nicht dran
+// war, bekommt auf Klick ein echtes Follow-up (Frist 48 h). Je Gast die
+// Rückmeldung: Note 1–5 und ein Satz. Geschrieben und gesendet wird von
+// Kevin oder Malin selbst.
 // Zu zweit: nach Person gruppiert — „Deine Gäste“ zuerst, dann die der/des
 // anderen. Wer nachfasst, ist wer einlädt (eingetragen, sonst wer die
 // Beziehung hält); ein Klick gibt den Gast an die/den anderen.
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Ueberschrift, Knopf, Chip, Leer, LEUCHT } from '../../schlank';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { ampel } from '@/lib/crm/recht';
 import { kontextAus } from '@/lib/crm/segmente';
-import { followUpBis, nachfassenRest } from '@/lib/crm/events';
+import { followUpBis, nachfassenRest, feedbackZahlen } from '@/lib/crm/events';
 import { nachfassGruppen, einladerMit } from '@/lib/crm/eventplanung';
+import { NACHFASS_ERGEBNISSE, followUpMoeglich } from '@/lib/crm/event-bruecke';
+import { dealAkte } from '@/lib/crm/adresse';
 import { nameVon } from '@/lib/crm/team';
 import type { Teilnahme } from '@/lib/crm/typen';
 import { datum } from '../daten';
 import { KanalAmpel } from '../teile';
 import { Person } from '../team';
-import { gastSetzen, WerTausch, type ReiterProps } from './gemeinsam';
+import { DealAnlegen } from '../DealAnlegen';
+import { gastSetzen, nachfassen, followUpAnlegen, Feedback, WerTausch, type ReiterProps } from './gemeinsam';
 
 const stunden = (h: number) => (h >= 48 ? `noch ${Math.floor(h / 24)} Tage` : h >= 0 ? `noch ${h} Std.` : h > -48 ? `seit ${-h} Std. vorbei` : `seit ${Math.floor(-h / 24)} Tagen vorbei`);
 const fristFarbe = (h: number) => (h > 24 ? LEUCHT.gut : h >= 0 ? LEUCHT.achtung : LEUCHT.kritisch);
+const note = (n: number) => n.toLocaleString('de-DE', { maximumFractionDigits: 1 });
 
 export function Nachfassen({ e, api, zuKontakt }: ReiterProps) {
   const crm = api.crm!;
   const heute = crm.heute;
   const ich = api.ich;
+  const router = useRouter();
   const [jetzt] = useState(() => Date.now());
+  const [meldung, setMeldung] = useState('');
+  const [laeuft, setLaeuft] = useState<string | null>(null);
+  const [deal, setDeal] = useState<{ teilnahmeId: string; kontaktId: string } | null>(null);
   const ctx = useMemo(() => kontextAus(crm.stand, heute), [crm.stand, heute]);
   const nachId = new Map((api.kontakte ?? []).map(k => [k.id, k]));
   const liste = crm.stand.teilnahmen.filter(t => t.eventId === e.id)
@@ -47,21 +61,46 @@ export function Nachfassen({ e, api, zuKontakt }: ReiterProps) {
   const fristgerecht = erledigt.filter(x => (x.t.followUpAm ?? '') <= bis).length;
   const quote = da.length ? fristgerecht / da.length : null;
   const gruppen = nachfassGruppen(offen, e, ich);
+  const fb = feedbackZahlen(crm.stand.teilnahmen, e.id);
+  // Echte Follow-ups zu diesem Event — damit der Knopf nicht ein zweites anlegt.
+  const mitFollowUp = new Set((crm.stand.followups ?? []).filter(f => f.bezug.art === 'event' && f.bezug.id === e.id && f.status === 'offen' && f.kontaktId).map(f => f.kontaktId!));
+  // Deals, die aus diesem Event entstanden sind — je Person.
+  const dealVon = (kontaktId: string) => crm.stand.chancen.find(c => c.quelle === 'event' && c.quelleBezug === e.id && c.kontaktIds.includes(kontaktId));
 
-  if (e.datum > heute) return <Leer>Nach dem Event stehen hier alle, die da waren — nach Person gruppiert (wer einlädt, fasst nach), mit der 48-Stunden-Frist (bis {datum(bis)}) und ihrer Notiz vom Abend.</Leer>;
+  if (e.datum > heute) return <Leer>Nach dem Event stehen hier alle, die da waren — nach Person gruppiert (wer einlädt, fasst nach), mit der 48-Stunden-Frist (bis {datum(bis)}), ihrer Notiz vom Abend, dem Ergebnis des Nachfassens und ihrer Rückmeldung.</Leer>;
 
-  const erledigen = (t: Teilnahme, k: Kontakt) => {
-    void gastSetzen(api, t, { followUpAm: heute });
-    void api.aktivitaet({ id: k.id, art: 'event', text: `Nachgefasst nach „${e.titel}“`, bezug: e.id });
+  const ergebnis = async (t: Teilnahme, k: Kontakt, id: 'gespraech' | 'termin' | 'erledigt') => {
+    setLaeuft(t.id); setMeldung('');
+    const r = await nachfassen(api, e, t, k, id);
+    setLaeuft(null); setMeldung(r.text);
+  };
+  const followUp = async (t: Teilnahme) => {
+    setLaeuft(t.id); setMeldung('');
+    const r = await followUpAnlegen(api, e, t);
+    setLaeuft(null); setMeldung(r.ok ? `${r.text} Steht unter Follow-up.` : r.text);
   };
   /** Nachfassen an die/den anderen geben — zurück auf den Standard (Beziehung) nimmt den Eintrag weg. */
   const geben = (t: Teilnahme, k: Kontakt, person: string) => {
     const standard = einladerMit({}, k, e).person;
     void gastSetzen(api, t, { einladenDurch: person === standard ? undefined : person });
   };
+  /** Deal angelegt: Quelle „event“ mit Bezug nachtragen (der Dialog kennt die Quelle nicht als Eingabe), dann in die Deal-Akte. */
+  const dealFertig = async (chanceId: string) => {
+    setDeal(null);
+    await api.teil('chancen', chanceId, { quelle: 'event', quelleBezug: e.id });
+    setMeldung('Deal angelegt — Quelle: dieses Event.');
+    router.push(dealAkte(chanceId));
+  };
+
+  const dealKnopf = (t: Teilnahme, k: Kontakt) => {
+    const d = dealVon(k.id);
+    if (d) return <Knopf leise onClick={() => router.push(dealAkte(d.id))}>Zum Deal „{d.titel}“</Knopf>;
+    return <Knopf leise farbe={LEUCHT.business} onClick={() => setDeal(deal?.teilnahmeId === t.id ? null : { teilnahmeId: t.id, kontaktId: k.id })}>{deal?.teilnahmeId === t.id ? 'Deal abbrechen' : 'Deal daraus'}</Knopf>;
+  };
 
   const karte = ({ t, k }: { t: Teilnahme; k: Kontakt }) => {
     const wer = einladerMit(t, k, e);
+    const busy = laeuft === t.id;
     return (
       <div key={t.id} style={{ padding: 14, borderRadius: 14, background: 'rgba(255,255,255,.03)', display: 'grid', gap: 8 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -74,20 +113,29 @@ export function Nachfassen({ e, api, zuKontakt }: ReiterProps) {
         </div>
         <KanalAmpel ampel={ampel(k, { hatMandat: ctx.mitMandat.has(k.id), hatChance: ctx.mitChance.has(k.id) })} ziele={{ telefon: k.telefon ?? k.sms, email: k.email, linkedin: k.linkedin }} />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Knopf onClick={() => erledigen(t, k)}>Erledigt</Knopf>
+          <span style={{ fontSize: 12, color: C.inkLeise }}>Ergebnis</span>
+          {NACHFASS_ERGEBNISSE.map(x => <span key={x.id} title={x.hinweis}><Knopf leise={!x.hebt} aus={busy} onClick={() => void ergebnis(t, k, x.id)}>{busy ? '…' : x.label}</Knopf></span>)}
+          {dealKnopf(t, k)}
+          {followUpMoeglich(e, t, heute) && !mitFollowUp.has(k.id) && <Knopf leise aus={busy} onClick={() => void followUp(t)}>Follow-up anlegen</Knopf>}
+          {mitFollowUp.has(k.id) && <Chip farbe={C.inkDim}>Follow-up steht</Chip>}
           <Knopf leise onClick={() => zuKontakt(k.id)}>Zur Person</Knopf>
           <span style={{ marginLeft: 'auto' }}><WerTausch label="fasst nach" wert={wer.person} ich={ich} standard={wer.quelle === 'beziehung' ? 'hält die Beziehung' : wer.quelle === 'event' ? 'wie Event' : undefined} onWahl={person => geben(t, k, person)} /></span>
         </div>
+        {deal?.teilnahmeId === t.id && <DealAnlegen api={api} kontaktId={k.id} onFertig={id => void dealFertig(id)} onAbbruch={() => setDeal(null)} zuDeal={id => router.push(dealAkte(id))} />}
+        <Feedback api={api} t={t} heute={heute} />
       </div>
     );
   };
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <Ueberschrift rechts={<span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <Ueberschrift rechts={<span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         {offen.length > 0 && <Chip farbe={fristFarbe(rest)}>{stunden(rest)}</Chip>}
         {quote !== null && <Chip farbe={quote >= 1 ? LEUCHT.gut : quote >= 0.8 ? LEUCHT.achtung : LEUCHT.kritisch}>{fristgerecht} von {da.length} fristgerecht</Chip>}
+        {fb.rueckmeldungen > 0 && <Chip farbe={fb.noteSchnitt !== null && fb.noteSchnitt >= 4 ? LEUCHT.gut : C.inkDim} >{fb.noteSchnitt !== null ? `Ø Note ${note(fb.noteSchnitt)} · ` : ''}{fb.rueckmeldungen} {fb.rueckmeldungen === 1 ? 'Rückmeldung' : 'Rückmeldungen'}</Chip>}
       </span>}>Nachfassen bis {datum(bis, heute)}</Ueberschrift>
+      <div style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5 }}>„Gespräch“ oder „Termin“ hebt den Lead der Firma auf „Im Gespräch“ und schreibt den Verlauf der Person; „Nur erledigt“ lässt den Lead, wie er ist. Der Deal entsteht erst auf „Deal daraus“ — Quelle: dieses Event.</div>
+      {meldung && <div style={{ fontSize: 12.5, color: C.inkDim }}>{meldung}</div>}
 
       {gruppen.filter(g => g.liste.length || g.eigene).map(g => (
         <div key={g.person} style={{ display: 'grid', gap: 10 }}>
@@ -105,13 +153,21 @@ export function Nachfassen({ e, api, zuKontakt }: ReiterProps) {
       {erledigt.length > 0 && (
         <div>
           <div style={{ fontSize: 12, color: C.inkLeise, margin: '4px 0 6px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Nachgefasst</div>
-          {erledigt.map(({ t, k }) => (
-            <div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
-              <Person id={einladerMit(t, k, e).person} groesse={18} />
-              <button onClick={() => zuKontakt(k.id)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, flex: 1, textAlign: 'left' }}>{anzeigename(k)}{k.firma ? ` · ${k.firma}` : ''}</button>
-              <Chip farbe={(t.followUpAm ?? '') <= bis ? LEUCHT.gut : LEUCHT.achtung}>{datum(t.followUpAm, heute)}</Chip>
-            </div>
-          ))}
+          {erledigt.map(({ t, k }) => {
+            const d = dealVon(k.id);
+            return (
+              <div key={t.id} style={{ display: 'grid', gap: 6, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Person id={einladerMit(t, k, e).person} groesse={18} />
+                  <button onClick={() => zuKontakt(k.id)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, flex: 1, textAlign: 'left', minWidth: 120 }}>{anzeigename(k)}{k.firma ? ` · ${k.firma}` : ''}</button>
+                  {d ? <Knopf leise onClick={() => router.push(dealAkte(d.id))}>Deal „{d.titel}“</Knopf> : dealKnopf(t, k)}
+                  <Chip farbe={(t.followUpAm ?? '') <= bis ? LEUCHT.gut : LEUCHT.achtung}>{datum(t.followUpAm, heute)}</Chip>
+                </div>
+                {deal?.teilnahmeId === t.id && <DealAnlegen api={api} kontaktId={k.id} onFertig={id => void dealFertig(id)} onAbbruch={() => setDeal(null)} zuDeal={id => router.push(dealAkte(id))} />}
+                <Feedback api={api} t={t} heute={heute} kompakt />
+              </div>
+            );
+          })}
         </div>
       )}
       {nichtGekommen.length > 0 && (

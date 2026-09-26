@@ -34,6 +34,22 @@ export interface EventZahlen {
   /** Budget-Summe, sonst die Pauschale (lib/crm/eventplanung.ts budgetSumme). */
   kosten: number;
   kostenJeFolgegespraech: number | null;
+  /** Rückmeldungen der Gäste (Teilnahme.feedback, 27.09.): wie viele, und die Note im Schnitt. */
+  rueckmeldungen: number;
+  /** Ø Note 1–5 auf eine Stelle gerundet — null ohne Noten. */
+  noteSchnitt: number | null;
+}
+
+export interface FeedbackZahlen { rueckmeldungen: number; noteSchnitt: number | null }
+
+/**
+ * Rückmeldungen je Event: eine Rückmeldung zählt, sobald Note ODER Satz da
+ * ist; der Schnitt nur über die Noten (1–5, eine Nachkommastelle).
+ */
+export function feedbackZahlen(teilnahmen: Teilnahme[], eventId: string): FeedbackZahlen {
+  const mit = teilnahmen.filter(t => t.eventId === eventId && t.feedback && (typeof t.feedback.note === 'number' || !!t.feedback.text?.trim()));
+  const noten = mit.map(t => t.feedback?.note).filter((n): n is number => typeof n === 'number' && n >= 1 && n <= 5);
+  return { rueckmeldungen: mit.length, noteSchnitt: noten.length ? Math.round((noten.reduce((a, n) => a + n, 0) / noten.length) * 10) / 10 : null };
 }
 
 export function eventZahlen(e: Event, teilnahmen: Teilnahme[], kontakte: Kontakt[], chancen: Chance[]): EventZahlen {
@@ -56,5 +72,6 @@ export function eventZahlen(e: Event, teilnahmen: Teilnahme[], kontakte: Kontakt
     verursacht: Math.round(verursacht.reduce((a, c) => a + gesamtwert(c), 0)),
     kosten,
     kostenJeFolgegespraech: kosten && folge ? Math.round(kosten / folge) : null,
+    ...feedbackZahlen(t, e.id),
   };
 }

@@ -10,12 +10,14 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { feld, Chip, Fortschritt, LEUCHT } from '../../schlank';
-import { anzeigename } from '@/lib/make-one/crm';
-import type { Event, Teilnahme, TeilnahmeStatus } from '@/lib/crm/typen';
+import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
+import type { Event, Teilnahme, TeilnahmeStatus, LeadStatus } from '@/lib/crm/typen';
 import { teilAenderung, type Mix, type MixGruppe } from '@/lib/crm/eventplanung';
+import { followUpEingabe, hebtLead, type NachfassErgebnis } from '@/lib/crm/event-bruecke';
+import { statusLabel } from '@/lib/crm/leads';
 import { TEAM, BEIDE, anderer, nameVon } from '@/lib/crm/team';
-import type { CrmApi } from '../daten';
-import { Feld } from '../teile';
+import { datum, type CrmApi } from '../daten';
+import { Feld, Pillen } from '../teile';
 import { Person } from '../team';
 
 export const FORMATE = [{ id: 'stammtisch', label: 'Stammtisch' }, { id: 'workshop', label: 'Workshop' }, { id: 'dinner', label: 'Dinner' }, { id: 'webinar', label: 'Webinar' }, { id: 'messe', label: 'Messe' }, { id: 'sonstig', label: 'Sonstiges' }] as const;
@@ -44,6 +46,68 @@ export function eventSetzen(api: CrmApi, e: Event, teil: Partial<Event>): Promis
 export function gastSetzen(api: CrmApi, t: Teilnahme, teil: Partial<Teilnahme>): Promise<void> {
   const felder = teilAenderung(t, teil);
   return Object.keys(felder).length ? api.teil('teilnahmen', t.id, felder) : Promise.resolve();
+}
+
+// ── Brücke Teilnahme → Lead → Follow-up (lib/crm/event-bruecke.ts) ──────────
+
+type Antwort = { ok: boolean; fehler?: string } & Record<string, unknown>;
+/** POST an /api/crm/events — immer mit der Event-ID. */
+export const eventsPost = (eventId: string, body: Record<string, unknown>): Promise<Antwort> =>
+  fetch('/api/crm/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventId, ...body }) })
+    .then(r => r.json() as Promise<Antwort>).catch(() => ({ ok: false, fehler: 'Nicht gespeichert — keine Verbindung.' }));
+
+export interface LeadMeldung { ziel: { art: 'firma' | 'person'; id: string; name: string }; von: LeadStatus; nach: LeadStatus; geaendert: boolean; grund?: string }
+
+/**
+ * Nachfassen mit Ergebnis: Aktivität an der Person (bestehender Weg
+ * /api/crm/aktivitaet, mit dem Event als Bezug), dann die Brücke in der
+ * Route: followUpAm am Gast, Lead der Firma auf „Im Gespräch“ bei Gespräch
+ * oder Termin. Liefert die Meldung für die Oberfläche.
+ */
+export async function nachfassen(api: CrmApi, e: Event, t: Teilnahme, k: Kontakt, ergebnis: NachfassErgebnis): Promise<{ ok: boolean; text: string; lead?: LeadMeldung }> {
+  const label = ergebnis === 'gespraech' ? 'Gespräch' : ergebnis === 'termin' ? 'Termin' : null;
+  await api.aktivitaet({
+    id: k.id, art: ergebnis === 'erledigt' ? 'event' : ergebnis, bezug: e.id,
+    text: label ? `Nachgefasst nach „${e.titel}“ — ${label}` : `Nachgefasst nach „${e.titel}“`,
+    ...(hebtLead(ergebnis) ? { ergebnis } : {}),
+  });
+  const r = await eventsPost(e.id, { aktion: 'nachfassen', teilnahmeId: t.id, ergebnis });
+  void api.laden();
+  if (!r.ok) return { ok: false, text: r.fehler ?? 'Nicht gespeichert.' };
+  const lead = (r.lead as LeadMeldung | null) ?? undefined;
+  const text = !lead ? `${anzeigename(k)} nachgefasst.`
+    : lead.geaendert ? `${anzeigename(k)} nachgefasst · Lead „${lead.ziel.name}“ von ${statusLabel(lead.von)} auf ${statusLabel(lead.nach)}.`
+    : `${anzeigename(k)} nachgefasst · ${lead.grund ?? `Lead „${lead.ziel.name}“ bleibt auf ${statusLabel(lead.von)}.`}`;
+  return { ok: true, text, lead };
+}
+
+/** Echtes Follow-up für einen Gast, der da war (POST /api/crm/followup) — Frist 48 h nach dem Event, Quelle „event“. */
+export async function followUpAnlegen(api: CrmApi, e: Event, t: Teilnahme): Promise<{ ok: boolean; text: string }> {
+  type FuAntwort = { ok: boolean; text?: string; fehler?: string };
+  const r: FuAntwort = await fetch('/api/crm/followup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(followUpEingabe(e, t)) })
+    .then(x => x.json() as Promise<FuAntwort>).catch((): FuAntwort => ({ ok: false, fehler: 'Nicht angelegt — keine Verbindung.' }));
+  void api.laden();
+  return { ok: !!r.ok, text: r.ok ? (r.text ?? 'Follow-up steht.') : (r.fehler ?? 'Nicht angelegt.') };
+}
+
+const NOTEN: { id: '1' | '2' | '3' | '4' | '5'; label: string }[] = [{ id: '1', label: '1' }, { id: '2', label: '2' }, { id: '3', label: '3' }, { id: '4', label: '4' }, { id: '5', label: '5' }];
+
+/** Rückmeldung des Gastes: Note 1–5 (5 = sehr gut) und ein Satz — Teilnahme.feedback, geschrieben als Teil-Änderung. */
+export function Feedback({ api, t, heute, kompakt }: { api: CrmApi; t: Teilnahme; heute: string; kompakt?: boolean }) {
+  const f = t.feedback ?? {};
+  const setze = (teil: { note?: number; text?: string }) => {
+    const neu = { ...f, ...teil, am: heute };
+    if (neu.text === '') delete neu.text;
+    void gastSetzen(api, t, { feedback: neu.note === undefined && !neu.text ? undefined : neu });
+  };
+  return (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+      <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{kompakt ? 'Note' : 'Rückmeldung des Gastes'}</span>
+      <Pillen liste={NOTEN} aktiv={f.note ? (String(f.note) as '1' | '2' | '3' | '4' | '5') : null} onWahl={n => setze({ note: Number(n) })} farbe={LEUCHT.gut} />
+      <div style={{ flex: 1, minWidth: kompakt ? 160 : 220 }}><Feld wert={f.text ?? ''} platzhalter="Ein Satz — was hat der Gast gesagt?" onFertig={text => setze({ text: text.trim() })} /></div>
+      {f.am && <span style={{ fontSize: 11.5, color: C.inkLeise, whiteSpace: 'nowrap' }} title={f.am}>{datum(f.am, heute)}</span>}
+    </div>
+  );
 }
 
 /**

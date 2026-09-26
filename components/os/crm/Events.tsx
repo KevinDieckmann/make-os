@@ -26,6 +26,7 @@ import { type CrmApi, neueId, datum, plusTage } from './daten';
 import { HeadPanel } from './HeadPanel';
 import { Person, WerFilter, useWerFilter, passtWer } from './team';
 import { EventDetail } from './events/EventDetail';
+import { Start } from './events/Start';
 import { FORMATE, STATUS } from './events/gemeinsam';
 
 export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKontakt: (id: string) => void; /** Event aus der Adresse (k=…) — zum Wiederfinden und für „Malin ist gerade hier“. */ start?: string; onAuswahl?: (id: string | null, wie?: 'push' | 'replace') => void }) {
@@ -70,6 +71,16 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
   if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
 
   const waehle = (id: string | null) => { setLokal(id); onAuswahl?.(id, start && id ? 'replace' : id ? 'push' : 'replace'); };
+
+  // Start ohne Daten (E8): kein Event → statt der leeren Liste der geführte Start; der Head of Event bleibt oben.
+  if (!events.length) {
+    return (
+      <>
+        <HeadPanel head="event" standardModus="wirkung" zuKontakt={zuKontakt} i={0} />
+        <Karte i={1} akzent={LEUCHT.beziehung}><Start api={api} onFertig={id => waehle(id)} /></Karte>
+      </>
+    );
+  }
   const andere = ich ? anderer(ich) : null;
   const zahlen: Record<string, number> = { alle: kommendAlle.length };
   if (ich) zahlen.ich = kommendAlle.filter(e => passtWer('ich', e.zustaendig, 'event', ich)).length;

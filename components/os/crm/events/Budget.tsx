@@ -5,14 +5,64 @@
 // beeinflusste Pipeline geteilt durch die Kosten — Ziel ≥ 5, aussagekräftig
 // erst nach 90 Tagen. Ohne Positionen zählt die Pauschale.
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Ueberschrift, Knopf, Zahl, Raster, Leer, feld, LEUCHT } from '../../schlank';
+import { Ueberschrift, Knopf, Zahl, Raster, Leer, Chip, feld, LEUCHT } from '../../schlank';
 import { budgetSumme, VORLAGEN } from '@/lib/crm/eventplanung';
+import { LIQUIPLAN_STATUS, type LiquiplanStand } from '@/lib/crm/event-bruecke';
 import type { Event } from '@/lib/crm/typen';
-import { neueId, euro, plusTage } from '../daten';
+import { neueId, euro, plusTage, datum } from '../daten';
 import { Feld, Feldzeile } from '../teile';
-import { eventSetzen, type ReiterProps } from './gemeinsam';
+import { eventSetzen, eventsPost, type ReiterProps } from './gemeinsam';
+
+const LAGE_FARBE: Record<LiquiplanStand['lage'], string> = { ok: LEUCHT.gut, abweichend: LEUCHT.achtung, fehlt: C.inkDim, 'kein-posten': C.inkLeise };
+const LAGE_TEXT: Record<LiquiplanStand['lage'], string> = { ok: 'übernommen', abweichend: 'abweichend', fehlt: 'noch nicht übernommen', 'kein-posten': 'kein Posten' };
+
+/**
+ * Kosten in die Finanzen (Brücke, lib/crm/event-bruecke.ts): ein Planposten
+ * „Event: <Titel>“ im Liquiditätsplan, Kennung ev-<eventId> — einmal, nie
+ * doppelt. Der Stand kommt von der Route (GET ?liquiplan=), weil das Event
+ * selbst kein Feld dafür hat; „übernommen am“ steht im Notiz-Stempel.
+ */
+function Liquiplan({ e, kosten }: { e: Event; kosten: number }) {
+  const [stand, setStand] = useState<LiquiplanStand | null>(null);
+  const [laeuft, setLaeuft] = useState(false);
+  const [meldung, setMeldung] = useState('');
+  const { id, status, datum: tag } = e;
+  // Neu holen, wenn sich ändert, was den Posten ausmacht — nicht bei jedem Abgleich.
+  const holen = useCallback(() => fetch(`/api/crm/events?liquiplan=${encodeURIComponent(id)}`, { cache: 'no-store' }).then(r => r.json()).then(d => { if (d?.ok) setStand(d as LiquiplanStand); }).catch(() => {}), [id]);
+  useEffect(() => { void holen(); }, [holen, status, tag, kosten]);
+  const uebernehmen = async () => {
+    setLaeuft(true); setMeldung('');
+    const r = await eventsPost(id, { aktion: 'liquiplan' });
+    setLaeuft(false);
+    if (!r.ok) { setMeldung(r.fehler ?? 'Nicht übernommen.'); return; }
+    setStand(r as unknown as LiquiplanStand);
+    setMeldung(r.neu ? 'Im Liquiditätsplan angelegt — Zahlen › Planung zeigt ihn.' : 'Posten im Liquiditätsplan nachgezogen.');
+  };
+  const kann = kosten > 0 && LIQUIPLAN_STATUS.includes(status);
+  const lage = stand?.lage ?? (kann ? 'fehlt' : 'kein-posten');
+  return (
+    <div>
+      <Ueberschrift rechts={<Chip farbe={LAGE_FARBE[lage]}>{LAGE_TEXT[lage]}</Chip>}>Liquiditätsplanung</Ueberschrift>
+      <div style={{ display: 'grid', gap: 8 }}>
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>
+          {stand ? stand.hinweis : kann ? `Noch nicht im Liquiditätsplan — ${euro(kosten)} am ${datum(tag)}.` : !LIQUIPLAN_STATUS.includes(status) ? 'In den Plan geht ein Event ab Status „Geplant“ oder „Einladung läuft“.' : 'Ohne Budget gibt es nichts zu übernehmen — Positionen oder Pauschale eintragen.'}
+        </div>
+        {stand?.vorhanden && (
+          <div style={{ fontSize: 12.5, color: C.inkLeise }}>
+            Posten „{stand.vorhanden.titel}“ · {euro(Math.abs(stand.vorhanden.betrag))} · fällig {datum(stand.vorhanden.ab)} · {stand.vorhanden.sicher ? 'sicher' : `${stand.vorhanden.wahrscheinlich ?? 80} % wahrscheinlich`}{stand.uebernommenAm ? ` · übernommen am ${datum(stand.uebernommenAm)}` : ''}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {kann && lage !== 'ok' && <Knopf aus={laeuft} onClick={() => void uebernehmen()}>{laeuft ? 'überträgt …' : lage === 'abweichend' ? 'Im Liquiditätsplan nachziehen' : 'In die Liquiditätsplanung übernehmen'}</Knopf>}
+          {meldung && <span style={{ fontSize: 12.5, color: C.inkDim }}>{meldung}</span>}
+        </div>
+        <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.5 }}>Betrag = Summe des Budgets (geht raus), fällig am Eventdatum, Kategorie „marketing/event“. Sicher, sobald die Einladung läuft; geplant zählt mit 80 %. Ändert sich das Budget, steht hier „abweichend“ — nachziehen ist ein Klick, doppelt wird nichts.</div>
+      </div>
+    </div>
+  );
+}
 
 type Posten = NonNullable<Event['budget']>[number];
 /** „1.234,50“, „1500“, „12,5“ oder „12.50“ → Zahl; Punkt als Tausender nur in der Form 1.500. */
@@ -82,6 +132,8 @@ export function Budget({ e, api }: ReiterProps) {
         </Feldzeile>
       )}
       <div style={{ fontSize: 12, color: C.inkLeise, lineHeight: 1.5 }}>Sobald Positionen einen Betrag haben, ersetzt ihre Summe die Pauschale. Kosten je Folgegespräch: Gespräche mit Gästen innerhalb von 30 Tagen nach dem Event.</div>
+
+      <Liquiplan e={e} kosten={kosten} />
     </div>
   );
 }

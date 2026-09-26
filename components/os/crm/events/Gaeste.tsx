@@ -17,12 +17,13 @@ import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { kanalStatus, type KanalStatus } from '@/lib/crm/recht';
 import { kontextAus, segmentAuswerten } from '@/lib/crm/segmente';
 import { mix, mixGruppe, gaesteVorschlag, einladerMit, arbeitJePerson, type EinladerQuelle } from '@/lib/crm/eventplanung';
+import { followUpMoeglich } from '@/lib/crm/event-bruecke';
 import { haeltBeziehung, anderer, nameVon } from '@/lib/crm/team';
 import type { Teilnahme, TeilnahmeStatus } from '@/lib/crm/typen';
 import { neueId, datum } from '../daten';
 import { Pillen, Feld } from '../teile';
 import { Person, WerFilter, useWerFilter, passtWer } from '../team';
-import { GAST, ROLLEN, WEGE, MIX, AMPEL, MixAnzeige, KarteiSuche, Leise, WerTausch, JePerson, gastSetzen, eventSetzen, type ReiterProps, type Weg } from './gemeinsam';
+import { GAST, ROLLEN, WEGE, MIX, AMPEL, MixAnzeige, KarteiSuche, Leise, WerTausch, JePerson, gastSetzen, eventSetzen, followUpAnlegen, type ReiterProps, type Weg } from './gemeinsam';
 
 const FOTO = [{ id: 'ja', label: 'Fotos ja' }, { id: 'nein', label: 'Fotos nein' }] as const;
 const WEG_LABEL: Record<Weg, string> = { persoenlich: 'persönlich', telefon: 'Telefon', mail: 'Mail', linkedin: 'LinkedIn' };
@@ -40,11 +41,15 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
   const [segmentId, setSegmentId] = useState<string>(e.segmentId && segmente.some(s => s.id === e.segmentId) ? e.segmentId : 'kartei');
   const [mehr, setMehr] = useState(false);
   const [laeuft, setLaeuft] = useState(false);
+  const [meldung, setMeldung] = useState('');
   const [wahl, setWahl] = useWerFilter('event-gaeste');
   const ich = api.ich;
   const segment = segmente.find(s => s.id === segmentId);
 
   const gaeste = crm.stand.teilnahmen.filter(t => t.eventId === e.id);
+  // Echte Follow-ups zu diesem Event (Brücke, lib/crm/event-bruecke.ts) — der Knopf legt kein zweites an.
+  const mitFollowUp = new Set((crm.stand.followups ?? []).filter(f => f.bezug.art === 'event' && f.bezug.id === e.id && f.status === 'offen' && f.kontaktId).map(f => f.kontaktId!));
+  const followUp = async (t: Teilnahme) => { setMeldung(''); const r = await followUpAnlegen(api, e, t); setMeldung(r.ok ? `${r.text} Steht unter Follow-up.` : r.text); };
   const m = mix(e, crm.stand.teilnahmen, kontakte, crm.stand.firmen);
   const vorschlaege = useMemo(() => gaesteVorschlag(kontakte, crm.stand, e, heute, segment?.kriterien, 24), [kontakte, crm.stand, e, heute, segment]);
   const ausSegment = useMemo(() => {
@@ -111,6 +116,7 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
           <span style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
             {t.eingeladenAm && <span style={{ fontSize: 12, color: C.inkLeise }}>eingeladen {datum(t.eingeladenAm, heute)}</span>}
             {t.status === 'da' && !t.followUpAm && <Knopf leise onClick={() => { void gastSetzen(api, t, { followUpAm: heute }); void api.aktivitaet({ id: k.id, art: 'event', text: `Nachgefasst nach „${e.titel}“`, bezug: e.id }); }}>Nachgefasst</Knopf>}
+            {followUpMoeglich(e, t, heute) && (mitFollowUp.has(k.id) ? <Chip farbe={C.inkDim}>Follow-up steht</Chip> : <Knopf leise onClick={() => void followUp(t)}>Follow-up anlegen</Knopf>)}
             {t.followUpAm && <Chip farbe={LEUCHT.gut}>nachgefasst {datum(t.followUpAm)}</Chip>}
             <button onClick={() => { if (window.confirm(`${anzeigename(k)} von der Liste nehmen?`)) void api.weg('teilnahmen', t.id); }} aria-label="Gast entfernen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.body }}>×</button>
           </span>
@@ -138,6 +144,7 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
       <div>
         <Ueberschrift rechts={`${gaeste.length}${e.kapazitaet ? ` / ${e.kapazitaet} Plätze` : ' Gäste'}`}>Gästeliste</Ueberschrift>
         <MixAnzeige m={m} />
+        {meldung && <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
       </div>
 
       {gaeste.length > 0 && (
