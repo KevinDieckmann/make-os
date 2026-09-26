@@ -17,6 +17,8 @@ export interface KalenderEinstellungen {
   bisStunde: number;
   /** Welche Sicht beim Öffnen steht. */
   standardSicht: 'alle' | Wer;
+  /** Welcher Kalender zu welchem Space gehört (26.09.): Name → privat|business. Ohne Eintrag: KEMARIS/Arbeit = Business, sonst Privat. */
+  space: Record<string, 'privat' | 'business'>;
 }
 
 export const EINSTELLUNGEN_LEER: KalenderEinstellungen = {
@@ -25,6 +27,7 @@ export const EINSTELLUNGEN_LEER: KalenderEinstellungen = {
   vonStunde: 7,
   bisStunde: 20,
   standardSicht: 'alle',
+  space: {},
 };
 
 const zahl = (v: unknown, min: number, max: number, sonst: number) => {
@@ -45,8 +48,11 @@ export function einstellungenSauber(d: Partial<KalenderEinstellungen> | null): K
     vonStunde: zahl(d?.vonStunde, 0, 23, L.vonStunde),
     bisStunde: zahl(d?.bisStunde, 1, 24, L.bisStunde),
     standardSicht: sicht,
+    space: Object.fromEntries(Object.entries((d?.space && typeof d.space === 'object' ? d.space : {}) as Record<string, unknown>).slice(0, 40).map(([k, v]) => [String(k).trim().slice(0, 60), v]).filter(([k, v]) => k && (v === 'privat' || v === 'business'))) as Record<string, 'privat' | 'business'>,
   };
 }
+
+export { spaceVonKalender } from './space';
 
 export async function ladeEinstellungen(): Promise<KalenderEinstellungen> {
   return einstellungenSauber(await loadJson<KalenderEinstellungen>('kalender-einstellungen'));

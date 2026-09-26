@@ -13,6 +13,8 @@ import { FARBE as C, MIKRO, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Segmente, feld, LEUCHT } from './schlank';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
+import { spaceVonKalender } from '@/lib/kalender/space';
+import { SPACE_LABEL, SPACE_FARBE } from '@/lib/make-one/space-regeln';
 
 interface Ev { id: string; title: string; startDate: string; endDate: string; allDay?: boolean; calendarName?: string; location?: string; category?: string; }
 
@@ -23,8 +25,11 @@ interface Einstellungen {
   dauer: Record<ArtId, number>;
   vonStunde: number; bisStunde: number;
   standardSicht: 'alle' | Wer;
+  /** Kalender → Space (26.09.) */
+  space: Record<string, 'privat' | 'business'>;
 }
 const EINST_LEER: Einstellungen = {
+  space: {},
   kalender: { kevin: 'Privat Kevin', malin: 'Privat Malin', beide: 'Gemeinsam' },
   dauer: { termin: 60, fokus: 90, routine: 30, aufgabe: 45, reha: 30 },
   vonStunde: 7, bisStunde: 20, standardSicht: 'alle',
@@ -314,6 +319,23 @@ export function KalenderView() {
                   placeholder="Name in der Kalender-App" style={feld} />
               </label>
             ))}
+          </div>
+          {/* Kalender → Space (26.09.): im Privat-Space zeigt der Planer Business-Termine als „belegt“ und umgekehrt. */}
+          <div style={{ marginBottom: 12 }}>
+            <span style={MIKRO}>Welcher Kalender gehört zu welchem Space</span>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+              {Array.from(new Set([...Object.values(einst.kalender), ...upcoming.map(e => (e.calendarName ?? '').trim())].filter(Boolean))).map(name => {
+                const sp = spaceVonKalender(einst, name);
+                return (
+                  <span key={name} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 8px 5px 12px', borderRadius: 999, background: 'rgba(255,255,255,.04)', fontSize: 12.5 }}>
+                    <span style={{ color: C.inkDim }}>{name}</span>
+                    {(['privat', 'business'] as const).map(k => (
+                      <button key={k} onClick={() => einstSetzen({ space: { ...einst.space, [name]: k } })} style={{ border: `1px solid ${sp === k ? SPACE_FARBE[k] : 'rgba(255,255,255,.1)'}`, background: sp === k ? `${SPACE_FARBE[k]}22` : 'transparent', color: sp === k ? SPACE_FARBE[k] : C.inkLeise, borderRadius: 999, padding: '3px 9px', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: SCHRIFT.text }}>{SPACE_LABEL[k]}</button>
+                    ))}
+                  </span>
+                );
+              })}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {ARTEN.map(a => (

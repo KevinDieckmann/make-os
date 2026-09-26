@@ -80,7 +80,14 @@ sehen beides.
   und lässt sich per Einstellung auf einen Space begrenzen.
 - Beleg-Aufgaben aus den Haushaltsfinanzen tragen den Space ihrer Einheit (Selbständigkeit/UG = Business, privat =
   Privat); bestehende werden beim nächsten Abgleich nachgezogen.
-- Noch offen in der Aufteilung: Ziele je Space, Kalender (Kalender → Space), Inbox nach Adresse, Kontaktbuch privat.
+- **Ziele je Space:** in Monat/Quartal/Jahr Pillen Privat · Business · Alle; jedes Ziel ist Privat, Business oder
+  gemeinsam (Klick auf das Etikett wechselt); neue Ziele landen im gewählten Space.
+- **Kalender → Space:** in den Kalender-Einstellungen bekommt jeder Kalender Privat oder Business (ohne Eintrag:
+  KEMARIS/Arbeit = Business). Der Wochenplaner zeigt im Privat-Space Business-Termine als „belegt“ (gedimmt) und
+  umgekehrt — nichts wird doppelt gebucht.
+- **Inbox nach Postfach:** unten in der Inbox lassen sich Postfächer (Apple-Konten, Microsoft 365) Privat oder
+  Business zuordnen (`/api/state/spaces`); „Inbox privat/Business“ im Menü filtern danach.
+- Noch offen: Kontaktbuch privat (eigene Seite), Jarvis kennt den aktiven Space.
 
 **Bauplan-Punkte von Kevin & Malin (26.09., erste Runde: die schnellen Fixes)**
 - **Erfassen-Karte ohne Kürzung** (Kevin: „so genau wie möglich beschreiben“): vorher schnitt der Titel bei 160 und die

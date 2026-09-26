@@ -17,8 +17,10 @@ import { NORDSTERN } from '@/lib/make-one/nordstern-data';
 import { Zeitstrahl, type StrahlMarker, type StrahlTick } from './Zeitstrahl';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Haken, Zahl, feld, prioFarbe, LEUCHT } from './schlank';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
+import { useSpace } from '@/hooks/useSpace';
+import { SPACE_LABEL, SPACE_FARBE, type SpaceId } from '@/lib/make-one/space-regeln';
 
-interface Ziel { id: string; titel: string; fortschritt: number; notiz?: string; erledigt?: boolean }
+interface Ziel { id: string; titel: string; fortschritt: number; notiz?: string; erledigt?: boolean; space?: 'privat' | 'business' }
 interface Meilenstein { id: string; titel: string; bereich: 'business' | 'gesundheit'; faellig?: string; zeitfenster?: string; messlatte?: string; fortschritt: number; erledigt: boolean; erledigtAm?: string }
 type Horizont = 'monat' | 'quartal' | 'jahr';
 
@@ -59,6 +61,11 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   const farbe = HFARBE[horizont];
   const { state: tasksState } = useTasks();
   const [ziele, setZiele] = useState<Ziel[]>([]);
+  // Ziele je Space (26.09., Kevin): Privat, Business, gemeinsam (ohne Space) — der Filter folgt der Adresse oder dem Merker.
+  const { space: aktiverSpace, ausAdresse: spaceAusAdresse, setzen: spaceSetzen } = useSpace();
+  const [spaceFilter, setSpaceFilter] = useState<SpaceId | 'alle'>('alle');
+  useEffect(() => { setSpaceFilter(spaceAusAdresse ?? aktiverSpace); }, [spaceAusAdresse, aktiverSpace]);
+  const zieleImSpace = ziele.filter(z => spaceFilter === 'alle' || !z.space || z.space === spaceFilter);
   const [fokus, setFokus] = useState('');
   const [neu, setNeu] = useState('');
   const [geladen, setGeladen] = useState(false);
@@ -114,7 +121,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   const addZiel = () => {
     const t = neu.trim();
     if (!t) return;
-    persist([...ziele, { id: `z-${Date.now().toString(36)}`, titel: t, fortschritt: 0 }]);
+    persist([...ziele, { id: `z-${Date.now().toString(36)}`, titel: t, fortschritt: 0, ...(spaceFilter !== 'alle' ? { space: spaceFilter } : {}) }]);
     setNeu('');
   };
 
@@ -296,14 +303,19 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
             placeholder={`Neues ${horizont === 'jahr' ? 'Jahres' : horizont === 'quartal' ? 'Quartals' : 'Monats'}ziel …`}
             style={{ ...feld, width: 'auto', flex: '1 1 200px', minWidth: 0 }} />
           <Knopf onClick={addZiel}>+ Ziel</Knopf>
+          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+            {(['privat', 'business', 'alle'] as const).map(k => (
+              <button key={k} onClick={() => { setSpaceFilter(k); if (k !== 'alle') spaceSetzen(k); }} className="fassbar" title={k === 'alle' ? 'Privat, Business und gemeinsame Ziele' : `Nur ${SPACE_LABEL[k]} (und gemeinsame)`} style={{ fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${spaceFilter === k ? (k === 'alle' ? C.aktiv : SPACE_FARBE[k]) : 'rgba(255,255,255,.1)'}`, background: spaceFilter === k ? `${k === 'alle' ? C.aktiv : SPACE_FARBE[k]}22` : 'transparent', color: spaceFilter === k ? (k === 'alle' ? C.aktiv : SPACE_FARBE[k]) : C.inkDim }}>{k === 'alle' ? 'Alle' : SPACE_LABEL[k]}</button>
+            ))}
+          </span>
         </div>
         {!geladen ? (
           <Leer>lade …</Leer>
-        ) : !ziele.length ? (
-          <Leer>Noch keine Ziele für {zr.label}. Was soll am Ende stehen?</Leer>
+        ) : !zieleImSpace.length ? (
+          <Leer>Noch keine Ziele für {zr.label}{spaceFilter !== 'alle' ? ` in ${SPACE_LABEL[spaceFilter]}` : ''}. Was soll am Ende stehen?</Leer>
         ) : (
           <Liste>
-            {ziele.map(z => {
+            {zieleImSpace.map(z => {
               const v = z.erledigt ? 100 : z.fortschritt;
               return (
                 <Zeile key={z.id}
@@ -311,6 +323,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
                   titel={<span style={{ fontWeight: 600, color: z.erledigt ? C.inkLeise : C.ink, textDecoration: z.erledigt ? 'line-through' : 'none' }}>{z.titel}</span>}
                   rechts={
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '0 0 auto', opacity: z.erledigt ? 0.6 : 1 }}>
+                      <button onClick={() => persist(ziele.map(x => x.id === z.id ? { ...x, space: x.space === 'privat' ? 'business' : x.space === 'business' ? undefined : 'privat' } : x))} title={z.space ? `${SPACE_LABEL[z.space]} — Klick wechselt` : 'gemeinsam (Privat und Business) — Klick wechselt'} style={{ border: `1px solid ${z.space ? SPACE_FARBE[z.space] : 'rgba(255,255,255,.14)'}`, background: z.space ? `${SPACE_FARBE[z.space]}22` : 'transparent', color: z.space ? SPACE_FARBE[z.space] : C.inkLeise, borderRadius: 999, padding: '2px 8px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: SCHRIFT.text }}>{z.space ? SPACE_LABEL[z.space] : 'gemeinsam'}</button>
                       <input type="range" min={0} max={100} step={5} value={v} aria-label="Fortschritt"
                         onChange={e => persist(ziele.map(x => x.id === z.id ? { ...x, fortschritt: Number(e.target.value) } : x))}
                         disabled={z.erledigt} style={{ width: 'clamp(70px, 14vw, 120px)', accentColor: col(v) }} />

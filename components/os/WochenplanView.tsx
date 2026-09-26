@@ -1,4 +1,7 @@
 'use client';
+import { useSpace } from '@/hooks/useSpace';
+import { spaceVonKalender } from '@/lib/kalender/space';
+import { SPACE_LABEL } from '@/lib/make-one/space-regeln';
 
 import Link from 'next/link';
 // ─── MAKE OS — Kalender (Woche) ─────────────────────────────────────────────
@@ -28,7 +31,7 @@ import { useKalender, GanztagsZelle, TerminFenster, WER_FARBE, WER_LABEL, EBENEN
 import { tagPlus, wandAus } from '@/lib/kalender/zeit';
 // Routinen kommen aus dem Routine-Planer — nicht mehr aus der Konstante.
 
-interface FixTermin { titel: string; date: string; startMin: number; dauerMin: number; quelle: string; termin?: KTermin }
+interface FixTermin { titel: string; date: string; startMin: number; dauerMin: number; quelle: string; termin?: KTermin; space: 'privat' | 'business'; /** aus dem anderen Space — nur „belegt“ (26.09.) */ fremd: boolean }
 
 const EBENEN_SPEICHER = 'make-kalender-ebenen';
 
@@ -79,6 +82,8 @@ function Ziehbar({ farbe, daten, children, breit }: { farbe: string; daten: obje
 }
 
 export function WochenplanView() {
+  // Space aus der Adresse (26.09., Malin): Termine des anderen Space bleiben als „belegt“ sichtbar, damit nichts doppelt gebucht wird.
+  const { ausAdresse: spaceAusAdresse } = useSpace();
   const router = useRouter();
   const { state: tasksState, dispatch: tasksDispatch } = useTasks();
   const [offset, setOffset] = useState(0);
@@ -185,12 +190,13 @@ export function WochenplanView() {
       const s0 = new Date(start), en = ende ? new Date(ende) : null;
       const startMin = s0.getHours() * 60 + s0.getMinutes();
       const dauerMin = en ? Math.max(15, Math.round((en.getTime() - s0.getTime()) / 60000)) : 60;
-      liste.push({ titel, date, startMin, dauerMin, quelle, ...(termin ? { termin } : {}) });
+      const space = quelle === 'KEMARIS' ? 'business' : spaceVonKalender(kal?.einstellungen, quelle);
+      liste.push({ titel, date, startMin, dauerMin, quelle, space, fremd: !!spaceAusAdresse && space !== spaceAusAdresse, ...(termin ? { termin } : {}) });
     };
     for (const t of kal?.termine ?? []) if (!t.ganztags && sichtbar(t)) dazu(t.titel, t.start, t.ende, t.kalender, t);
     if (sicht === 'alle' || sicht === 'kevin') for (const e of kemaris) if (e.start) dazu(e.titel, e.start, e.ende, 'KEMARIS');
     return liste;
-  }, [kal, kemaris, tage, sicht, versteckt]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [kal, kemaris, tage, sicht, versteckt, spaceAusAdresse]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Termin anlegen (Apple, über iCloud) — Klick in den Tag, wenn „Termin“ gewählt ist. */
   async function terminAnlegen(date: string, startMin: number) {
@@ -481,9 +487,9 @@ export function WochenplanView() {
                         <div key={fi} draggable={ziehbar}
                           onDragStart={ziehbar ? e => e.dataTransfer.setData('text/plain', JSON.stringify({ termin: t!.uid })) : undefined}
                           onClick={t ? () => setOffenTermin(t) : undefined}
-                          title={`${f.titel} · ${mmss(f.startMin)}–${mmss(f.startMin + f.dauerMin)} · ${f.quelle}${ziehbar ? '' : ' (nur in Apple änderbar)'}`}
-                          style={{ position: 'absolute', top, ...spurStil(lage), height: hoehe, background: `color-mix(in srgb, ${farbe} 16%, ${C.flaecheHoch})`, borderLeft: `3px solid ${farbe}`, boxShadow: n > 1 ? `0 0 0 1px ${C.grund}` : undefined, borderRadius: 7, padding: n > 2 ? '2px 4px' : '3px 6px', overflow: 'hidden', zIndex: 2, cursor: ziehbar ? 'grab' : t ? 'pointer' : 'default' }}>
-                          <div style={titelStil(n, farbe)}>{n > 2 || ziehbar ? '' : '🔒 '}{f.titel}</div>
+                          title={`${f.fremd ? `belegt (${SPACE_LABEL[f.space]}) · ` : ''}${f.titel} · ${mmss(f.startMin)}–${mmss(f.startMin + f.dauerMin)} · ${f.quelle}${ziehbar ? '' : ' (nur in Apple änderbar)'}`}
+                          style={{ position: 'absolute', top, ...spurStil(lage), height: hoehe, opacity: f.fremd ? 0.45 : 1, background: `color-mix(in srgb, ${farbe} 16%, ${C.flaecheHoch})`, borderLeft: `3px solid ${farbe}`, boxShadow: n > 1 ? `0 0 0 1px ${C.grund}` : undefined, borderRadius: 7, padding: n > 2 ? '2px 4px' : '3px 6px', overflow: 'hidden', zIndex: 2, cursor: ziehbar ? 'grab' : t ? 'pointer' : 'default' }}>
+                          <div style={titelStil(n, farbe)}>{f.fremd ? 'belegt · ' : n > 2 || ziehbar ? '' : '🔒 '}{f.fremd && n > 2 ? '' : f.titel}</div>
                           {hoehe > 30 && n < 3 && <div style={zeit}>{mmss(f.startMin)}–{mmss(f.startMin + f.dauerMin)}</div>}
                         </div>
                       );

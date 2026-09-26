@@ -1,4 +1,6 @@
 'use client';
+import { spaceVonPostfach, spaceEinstellungenSauber, SPACE_EINSTELLUNGEN_LEER, type SpaceEinstellungen } from '@/lib/make-one/space-einstellungen';
+import { SPACE_LABEL, SPACE_FARBE } from '@/lib/make-one/space-regeln';
 
 import type { Owner } from '@/types/common';
 
@@ -62,7 +64,12 @@ export function InboxSchlank() {
   // Space aus der Adresse (26.09., Malin): Privat = Apple-Postfächer, Business = Microsoft 365 — bis Adressen einzeln zugeordnet sind.
   const [space, setSpace] = useState<'privat' | 'business' | null>(null);
   useEffect(() => { const q = new URLSearchParams(window.location.search).get('space'); setSpace(q === 'privat' || q === 'business' ? q : null); }, []);
-  const msgsImSpace = useMemo(() => msgs.filter(m => !space || (space === 'privat' ? m.source === 'apple' : m.source === 'ms')), [msgs, space]);
+  const [spaces, setSpaces] = useState<SpaceEinstellungen>(SPACE_EINSTELLUNGEN_LEER);
+  useEffect(() => { fetch('/api/state/spaces').then(r => r.json()).then(d => setSpaces(spaceEinstellungenSauber(d))).catch(() => {}); }, []);
+  const postfach = (m: Msg) => (m.source === 'apple' ? m.account : 'M365 · KEMARIS');
+  const postfachSetzen = (konto: string, sp: 'privat' | 'business') => { const next = { postfaecher: { ...spaces.postfaecher, [konto]: sp } }; setSpaces(next); fetch('/api/state/spaces', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {}); };
+  const msgsImSpace = useMemo(() => msgs.filter(m => !space || spaceVonPostfach(spaces, postfach(m)) === space), [msgs, space, spaces]);
+  const postfaecher = useMemo(() => Array.from(new Set(msgs.map(postfach))), [msgs]);
   // Offene Mail im Link (?offen=): Zurück schließt sie wieder, statt die Seite zu verlassen (25.09.).
   const [offenId, setOffenId] = useLinkAuswahl('offen');
   const [body, setBody] = useState<Record<string, string>>({});
@@ -269,7 +276,18 @@ export function InboxSchlank() {
           </Spalte>
         )}
       </Spalten>
-      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 28 }}>{space && <span style={{ color: C.inkDim, fontWeight: 600 }}>Space {space === 'privat' ? 'Privat · nur Apple-Postfächer' : 'Business · nur Microsoft 365'} · </span>}Apple Mail {quelle.apple} · Microsoft 365 {quelle.ms} · Tasten: j/k wandern · e erledigt · a Aufgabe · s morgen</div>
+      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 28 }}>{space && <span style={{ color: C.inkDim, fontWeight: 600 }}>Space {space === 'privat' ? 'Privat' : 'Business'} · </span>}Apple Mail {quelle.apple} · Microsoft 365 {quelle.ms} · Tasten: j/k wandern · e erledigt · a Aufgabe · s morgen</div>
+      {postfaecher.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 10, fontSize: 12, color: C.inkLeise }}>
+          <span>Postfächer → Space:</span>
+          {postfaecher.map(k => { const sp = spaceVonPostfach(spaces, k); return (
+            <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px 4px 10px', borderRadius: 999, background: 'rgba(255,255,255,.04)' }}>
+              <span style={{ color: C.inkDim }}>{k}</span>
+              {(['privat', 'business'] as const).map(x => <button key={x} onClick={() => postfachSetzen(k, x)} style={{ border: `1px solid ${sp === x ? SPACE_FARBE[x] : 'rgba(255,255,255,.1)'}`, background: sp === x ? `${SPACE_FARBE[x]}22` : 'transparent', color: sp === x ? SPACE_FARBE[x] : C.inkLeise, borderRadius: 999, padding: '2px 8px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: SCHRIFT.text }}>{SPACE_LABEL[x]}</button>)}
+            </span>
+          ); })}
+        </div>
+      )}
     </Seite>
   );
 }

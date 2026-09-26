@@ -18,6 +18,8 @@ export interface Ziel {
   fortschritt: number;
   notiz?: string;
   erledigt?: boolean;
+  /** Space (26.09.): Privat oder Business — ohne Angabe gemeinsam sichtbar in beiden. */
+  space?: 'privat' | 'business';
 }
 export type Horizont = 'monat' | 'quartal' | 'jahr';
 /** Fokus gibt es feiner als Ziele: auch je Tag und Woche (Kevins Umschalter). */
@@ -77,6 +79,7 @@ export async function PUT(req: Request) {
     fortschritt: Math.max(0, Math.min(100, Math.round(Number(z.fortschritt) || 0))),
     notiz: z.notiz ? String(z.notiz).slice(0, 400) : undefined,
     erledigt: z.erledigt === true,
+    ...(z.space === 'privat' || z.space === 'business' ? { space: z.space } : {}),
   })).filter(z => z.titel);
 
   const next = await updateJson<ZieleFile>(sp.name, current => {
