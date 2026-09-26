@@ -71,6 +71,14 @@ zuhause haben soll benutzt werden, an jedem Gericht das Rezept“)** — Gesundh
   Haushalt), Menge, für wen, von wem, Quelle; Eingabe versteht „2x Tomaten“, „500 g Lachs“; **„Warenkorb kopieren“** als
   Text für REWE Lieferservice/Picnic; Lebensmittel-Budget des Monats aus Zahlen → Privat steht dabei.
 - **Jarvis per Zuruf:** „setz Tomaten und 500 g Lachs auf die Liste“ (`einkauf_setzen`).
+- **Unsere Gerichte (Kevin 26.09.: „ein Bereich, wo wir unsere Gerichte abspeichern“):** die Bibliothek unter der
+  Essens-Woche — alle Rezepte (von Jarvis' Wochen und von Hand), Suche über Name/Zutat/Tag, Tag-Chips, ★ Lieblinge;
+  ein Klick öffnet das Rezept mit Notiz („Malin ohne Feta“), „in den Plan“ (Tag + Mahlzeit), „fehlende Zutaten auf die
+  Liste“, bearbeiten, löschen (mit Rückfrage). **„+ Gericht“** dreifach: von Hand (Zutaten und Schritte je Zeile —
+  „200 g Lachs“, „Olivenöl – 2 EL“), ✨ Jarvis schreibt (Name + Wunsch), Rezept einfügen (kopierter Text wird in Form
+  gebracht, nichts dazuerfunden). Ein Plan-Feld, das wie ein gespeichertes Gericht heißt, bekommt sein Rezept
+  automatisch; leere Plan-Felder bieten „aus euren Gerichten wählen“. Jarvis kennt beim Planen eure Gerichte (Lieblinge
+  zuerst) und schreibt für sie kein neues Rezept. Direktlink `?s=ernaehrung&g=<id>` (`WEG.gericht`).
 - Technik: `lib/ernaehrung/modell.ts` (rein, getestet), Änderungen in kleinen Schritten (PATCH) — zu zweit am Handy
   überschreibt niemand den anderen; Zugriff nur Haushalt des Inhabers.
 

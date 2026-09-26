@@ -11,13 +11,17 @@
 //   Vorrat        → was da ist (Jarvis verbraucht es, die Liste lässt es weg)
 //   Stammliste    → bevorzugte Lebensmittel mit Hinweis, ein Tipp → Liste
 //   Profile       → je Person; Gäste für den Haushalt
+//   Unsere Gerichte → die Bibliothek: suchen, Lieblinge, einplanen, Zutaten → Liste, von Hand /
+//                   von Jarvis / aus eingefügtem Text anlegen, bearbeiten, Notiz (Kevin 26.09.)
 // Jede Änderung ist ein kleiner Schritt (PATCH) — zu zweit am Handy überschreibt niemand den anderen.
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import {
   TAGE, TAG_LABEL, MAHLZEITEN, KATEGORIEN, KATEGORIE_LABEL, sauberDatei, wendeAn, postenParsen, postenAus, fehlendeZutaten, warenkorbText, gruppiert, imVorrat, aufDerListe, gefuellt, kategorieRaten, neueId,
+  gerichteFiltern, tagsHaeufig, imPlan, gerichtZuName, zutatenAusText, schritteAusText,
   type ErnaehrungFile, type Mahlzeiten, type Tag, type Mahlzeit, type Op, type Gericht, type EinkaufPosten, type Profil, type Kategorie, type PlanGerichte,
 } from '@/lib/ernaehrung/modell';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, feld, LEUCHT, Spalten, Spalte, useBreit } from './schlank';
@@ -48,12 +52,23 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
   const [neuVorrat, setNeuVorrat] = useState('');
   const [neuStamm, setNeuStamm] = useState({ name: '', hinweis: '', menge: '', kategorie: '' as Kategorie | '' });
   const [neuGast, setNeuGast] = useState('');
+  // Bibliothek: gewähltes Gericht (aus der Liste oder per Link ?g=…), Suche, Tag-Filter, offenes Formular (neu | Gericht-Id)
+  const [gewaehlt, setGewaehlt] = useState<string | null>(null);
+  const [suche, setSuche] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
+  const [nurLieblinge, setNurLieblinge] = useState(false);
+  const [formular, setFormular] = useState<'neu' | string | null>(null);
+  const rezeptRef = useRef<HTMLDivElement>(null);
+  const params = useSearchParams();
   // Am Handy steht der Wochentag über seinen drei Feldern, am Rechner davor.
   const breit = useBreit();
   const planTimer = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const laden = useCallback(() => fetch('/api/state/ernaehrung', { cache: 'no-store' }).then(r => r.json()).then(d => { if (d.error) setFehler(d.error); else setDaten(d); }).catch(() => setFehler('Nicht erreichbar.')), []);
   useEffect(() => { void laden(); }, [laden]);
+  useEffect(() => { const g = params.get('g'); if (g && /^[a-z0-9-]{1,40}$/i.test(g)) { setGewaehlt(g); setOffen(null); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Kommt man per Link (?g=…), steht das Rezept nach dem Laden im Bild — am Handy liegt es sonst unter dem Plan.
+  useEffect(() => { if (daten && params.get('g')) setTimeout(() => rezeptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }, [!!daten]); // eslint-disable-line react-hooks/exhaustive-deps
   const melde = (t: string) => { setMeld(t); setTimeout(() => setMeld(''), 3000); };
 
   /** Kleine Schritte: sofort im Bild, dann zum Server; die Antwort ist der wahre Stand. */
@@ -69,7 +84,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
     setDaten(d => (d ? { ...d, plan: { ...d.plan, [tag]: { ...d.plan[tag], [k]: wert } } } : d));
     const key = `${tag}.${k}`;
     clearTimeout(planTimer.current[key]);
-    planTimer.current[key] = setTimeout(() => { void patch([{ feld: 'plan', tag, mahlzeit: k, wert, gerichtId: wert.trim() ? daten?.planGerichte[tag]?.[k] ?? null : null }]); }, 600);
+    planTimer.current[key] = setTimeout(() => { void patch([{ feld: 'plan', tag, mahlzeit: k, wert, gerichtId: wert.trim() ? gerichtZuName(daten?.gerichte ?? [], wert)?.id ?? daten?.planGerichte[tag]?.[k] ?? null : null }]); }, 600);
   };
 
   async function jarvisPlant() {
@@ -90,13 +105,37 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
     for (const p of vorschlag.einkauf) if (!aufDerListe(p.text, daten.einkauf) && !imVorrat(p.text, daten.vorrat)) ops.push({ liste: 'einkauf', op: 'upsert', eintrag: { ...postenAus(p.text, daten.lebensmittel, { menge: p.menge, kategorie: p.kategorie, quelle: 'plan' }) } });
     void patch(ops); setVorschlag(null); melde('Woche übernommen — Rezepte und Liste stehen.');
   }
+  async function rezeptAnfordern(body: { name: string; tag?: Tag; mahlzeit?: Mahlzeit; beschreibung?: string; text?: string }): Promise<Gericht | null> {
+    setRezeptLaeuft(true);
+    const r = await fetch('/api/ernaehrung/rezept', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ error: 'Nicht erreichbar.' }));
+    setRezeptLaeuft(false);
+    if (r.error) { melde(r.error); return null; }
+    await laden();
+    return (r.gericht as Gericht) ?? null;
+  }
   async function rezeptSchreiben(tag: Tag, k: Mahlzeit) {
     if (!daten) return;
     const name = daten.plan[tag][k].trim(); if (!name) return;
-    setRezeptLaeuft(true);
-    const r = await fetch('/api/ernaehrung/rezept', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, tag, mahlzeit: k }) }).then(x => x.json()).catch(() => ({ error: 'Nicht erreichbar.' }));
-    setRezeptLaeuft(false);
-    if (r.error) melde(r.error); else void laden();
+    await rezeptAnfordern({ name, tag, mahlzeit: k });
+  }
+  /** Bibliothek: Jarvis schreibt zu Name + Wunsch, oder bringt einen eingefügten Rezept-Text in Form. */
+  async function gerichtVonJarvis(name: string, beschreibung: string, text: string) {
+    const g = await rezeptAnfordern({ name, beschreibung: beschreibung || undefined, text: text || undefined });
+    if (g) { setFormular(null); oeffneGericht(g.id); melde('Rezept gespeichert.'); }
+  }
+  function oeffneGericht(id: string) { setOffen(null); setGewaehlt(id); setTimeout(() => rezeptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }
+  function zutatenAufListe(g: Gericht) {
+    if (!daten) return;
+    const fehlt = fehlendeZutaten(g, daten.vorrat, daten.einkauf);
+    if (!fehlt.length) { melde('Alles da oder schon auf der Liste.'); return; }
+    void patch(fehlt.map(z => ({ liste: 'einkauf', op: 'upsert', eintrag: { ...postenAus(z.name, daten.lebensmittel, { menge: z.menge || undefined, quelle: 'rezept' }) } })));
+    melde(`${fehlt.length} Zutaten auf die Liste gesetzt.`);
+  }
+  function gerichtSpeichern(eintrag: Record<string, unknown>) {
+    void patch([{ liste: 'gerichte', op: 'upsert', eintrag }]);
+    setFormular(null);
+    if (typeof eintrag.id === 'string') oeffneGericht(eintrag.id);
+    melde('Gericht gespeichert.');
   }
   function warenkorb() {
     if (!daten) return;
@@ -118,7 +157,11 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
   const nameVon = (id?: string) => (id ? daten.personen.find(p => p.id === id)?.name ?? daten.profile.find(p => p.person === id)?.name ?? id : '');
   const gastProfile = daten.profile.filter(p => !p.konto);
   const gerichtFuer = (tag: Tag, k: Mahlzeit): Gericht | undefined => { const id = daten.planGerichte[tag]?.[k]; return id ? daten.gerichte.find(g => g.id === id) : undefined; };
-  const offenesGericht = offen ? gerichtFuer(offen.tag, offen.k) : undefined;
+  const offenesGericht = offen ? gerichtFuer(offen.tag, offen.k) : gewaehlt ? daten.gerichte.find(g => g.id === gewaehlt) : undefined;
+  const rezeptOffen = !!offen || (!!gewaehlt && !!offenesGericht);
+  const bibliothek = gerichteFiltern(daten.gerichte, suche, tagFilter).filter(g => !nurLieblinge || g.favorit);
+  const tagsOben = tagsHaeufig(daten.gerichte);
+  const gerichteSortiert = gerichteFiltern(daten.gerichte);
   const stammSchnell = daten.lebensmittel.filter(l => l.bevorzugt && !aufDerListe(l.name, daten.einkauf)).slice(0, 10);
   const b = daten.budget;
   const budgetFarbe = b && b.budget ? (b.ausgegeben > b.budget ? LEUCHT.kritisch : b.ausgegeben > b.budget * 0.85 ? LEUCHT.achtung : LEUCHT.gut) : C.inkLeise;
@@ -172,27 +215,80 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
           {vorschlag && <p style={{ fontSize: 12, color: LEUCHT.achtung, margin: '10px 0 0' }}>Vorschau — mit „Übernehmen“ wird sie euer Plan.</p>}
         </Karte>
 
-        {/* ── Rezept ── */}
-        {offen && (
+        {/* ── Rezept (aus dem Plan-Feld oder aus der Bibliothek) ── */}
+        {rezeptOffen && (
+          <div ref={rezeptRef} style={{ scrollMarginTop: 16 }}>
           <Karte i={1} akzent={LEUCHT.gut}>
-            <Ueberschrift farbe={LEUCHT.gut} rechts={<button type="button" onClick={() => setOffen(null)} style={nackt}>✕</button>}>
-              {daten.plan[offen.tag][offen.k] || 'Gericht'} <span style={{ color: C.inkLeise, fontWeight: 500 }}>· {TAG_LABEL[offen.tag]}, {MAHLZEITEN.find(m => m.k === offen.k)?.label}</span>
+            <Ueberschrift farbe={LEUCHT.gut} rechts={<button type="button" onClick={() => { setOffen(null); setGewaehlt(null); setFormular(null); }} style={nackt}>✕</button>}>
+              {offen ? (daten.plan[offen.tag][offen.k] || 'Gericht') : offenesGericht?.name}
+              <span style={{ color: C.inkLeise, fontWeight: 500 }}> · {offen ? `${TAG_LABEL[offen.tag]}, ${MAHLZEITEN.find(m => m.k === offen.k)?.label}` : 'aus euren Gerichten'}</span>
             </Ueberschrift>
-            {!offenesGericht ? (
+            {!offenesGericht && offen ? (
               <div style={{ display: 'grid', gap: 10 }}>
                 <Leer>Noch kein Rezept zu diesem Gericht.</Leer>
-                <div><Knopf farbe={LEUCHT.agenten} onClick={() => void rezeptSchreiben(offen.tag, offen.k)} aus={rezeptLaeuft}>{rezeptLaeuft ? 'Jarvis schreibt …' : '✨ Rezept schreiben lassen'}</Knopf></div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <Knopf farbe={LEUCHT.agenten} onClick={() => void rezeptSchreiben(offen.tag, offen.k)} aus={rezeptLaeuft}>{rezeptLaeuft ? 'Jarvis schreibt …' : '✨ Rezept schreiben lassen'}</Knopf>
+                  {gerichteSortiert.length > 0 && (
+                    <select value="" onChange={e => { const g = daten.gerichte.find(x => x.id === e.target.value); if (g) void patch([{ feld: 'plan', tag: offen.tag, mahlzeit: offen.k, wert: g.name, gerichtId: g.id }]); }} aria-label="Aus euren Gerichten wählen" style={{ ...klein, width: 'auto', colorScheme: 'dark' }}>
+                      <option value="">… oder aus euren Gerichten wählen</option>
+                      {gerichteSortiert.map(g => <option key={g.id} value={g.id}>{g.favorit ? '★ ' : ''}{g.name}</option>)}
+                    </select>
+                  )}
+                </div>
               </div>
-            ) : (
-              <RezeptKarte g={offenesGericht} daten={daten} nameVon={nameVon}
-                aufListe={() => { const fehlt = fehlendeZutaten(offenesGericht, daten.vorrat, daten.einkauf); if (!fehlt.length) { melde('Alles da oder schon auf der Liste.'); return; } void patch(fehlt.map(z => ({ liste: 'einkauf', op: 'upsert', eintrag: { ...postenAus(z.name, daten.lebensmittel, { menge: z.menge || undefined, quelle: 'rezept' }) } }))); melde(`${fehlt.length} Zutaten auf die Liste gesetzt.`); }}
-                neuSchreiben={() => void rezeptSchreiben(offen.tag, offen.k)} laeuft={rezeptLaeuft} />
-            )}
+            ) : offenesGericht && formular === offenesGericht.id ? (
+              <GerichtForm g={offenesGericht} personen={[...daten.personen, ...gastProfile.map(g => ({ id: g.person, name: g.name }))]} onSpeichern={gerichtSpeichern} onAbbruch={() => setFormular(null)} />
+            ) : offenesGericht ? (
+              <RezeptKarte g={offenesGericht} daten={daten} nameVon={nameVon} patch={patch}
+                aufListe={() => zutatenAufListe(offenesGericht)}
+                neuSchreiben={offen ? () => void rezeptSchreiben(offen.tag, offen.k) : undefined} laeuft={rezeptLaeuft}
+                bearbeiten={() => setFormular(offenesGericht.id)}
+                loeschen={() => { void patch([{ liste: 'gerichte', op: 'delete', id: offenesGericht.id }]); setGewaehlt(null); setOffen(null); melde('Gericht gelöscht.'); }} />
+            ) : null}
           </Karte>
+          </div>
         )}
 
+        {/* ── Unsere Gerichte (Bibliothek) ── */}
+        <Karte i={2} akzent={LEUCHT.gut} id="gerichte">
+          <Ueberschrift farbe={LEUCHT.gut} rechts={<Chip farbe={daten.gerichte.length ? LEUCHT.gut : C.inkLeise}>{daten.gerichte.length === 1 ? '1 Gericht' : `${daten.gerichte.length} Gerichte`}</Chip>}>Unsere Gerichte</Ueberschrift>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+            <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Suchen — Name, Zutat, Tag" style={{ ...klein, flex: '1 1 180px' }} />
+            <Knopf farbe={LEUCHT.gut} onClick={() => { setFormular(f => (f === 'neu' ? null : 'neu')); setOffen(null); setGewaehlt(null); }}>{formular === 'neu' ? 'Schließen' : '+ Gericht'}</Knopf>
+          </div>
+          {(tagsOben.length > 0 || daten.gerichte.some(g => g.favorit)) && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+              {daten.gerichte.some(g => g.favorit) && <button type="button" onClick={() => setNurLieblinge(v => !v)} style={{ ...nackt, padding: '4px 10px', borderRadius: 999, background: nurLieblinge ? `${LEUCHT.achtung}22` : 'rgba(255,255,255,.05)', color: nurLieblinge ? LEUCHT.achtung : C.inkDim }}>★ Lieblinge</button>}
+              {tagsOben.map(t => <button key={t} type="button" onClick={() => setTagFilter(f => (f === t ? '' : t))} style={{ ...nackt, padding: '4px 10px', borderRadius: 999, background: tagFilter === t ? `${LEUCHT.gut}22` : 'rgba(255,255,255,.05)', color: tagFilter === t ? LEUCHT.gut : C.inkDim }}>{t}</button>)}
+            </div>
+          )}
+          {formular === 'neu' && (
+            <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
+              <GerichtForm personen={[...daten.personen, ...gastProfile.map(g => ({ id: g.person, name: g.name }))]} onSpeichern={gerichtSpeichern} onAbbruch={() => setFormular(null)} jarvis={gerichtVonJarvis} laeuft={rezeptLaeuft} />
+            </div>
+          )}
+          {meld && !formular && <p style={{ fontSize: 12, color: LEUCHT.gut, margin: '0 0 8px' }}>{meld}</p>}
+          <div style={{ maxHeight: 460, overflowY: 'auto' }}>
+            <Liste>
+              {bibliothek.map(g => {
+                const wo = imPlan(daten.planGerichte, g.id);
+                return (
+                  <Zeile key={g.id} onClick={() => oeffneGericht(g.id)} aktiv={gewaehlt === g.id && !offen}
+                    links={<button type="button" onClick={e => { e.stopPropagation(); void patch([{ liste: 'gerichte', op: 'upsert', eintrag: { id: g.id, favorit: !g.favorit } }]); }} title={g.favorit ? 'Liebling — Klick nimmt den Stern weg' : 'Als Liebling markieren'} style={{ ...nackt, color: g.favorit ? LEUCHT.achtung : C.inkLeise, fontSize: 16 }}>{g.favorit ? '★' : '☆'}</button>}
+                    titel={g.name}
+                    unter={[g.dauerMin != null ? `${g.dauerMin} Min` : '', `${g.portionen} Port.`, g.tags.slice(0, 3).join(', '), wo.length ? `diese Woche: ${wo.map(w => TAG_LABEL[w.tag].slice(0, 2)).join(', ')}` : ''].filter(Boolean).join(' · ')}
+                    rechts={<button type="button" onClick={e => { e.stopPropagation(); zutatenAufListe(g); }} title="Fehlende Zutaten auf die Liste" style={nackt}>🛒</button>} />
+                );
+              })}
+            </Liste>
+            {!daten.gerichte.length && <Leer>Noch keine Gerichte. Die Wochenrezepte von Jarvis landen hier von selbst — oder „+ Gericht“: von Hand, von Jarvis oder aus einem eingefügten Rezept.</Leer>}
+            {daten.gerichte.length > 0 && !bibliothek.length && <Leer>Nichts passt zu Suche oder Filter.</Leer>}
+          </div>
+          <p style={{ fontSize: 12, color: C.inkLeise, margin: '10px 0 0', lineHeight: 1.5 }}>Ein Klick öffnet Rezept, Notiz und „in den Plan“. Lieblinge plant Jarvis gern wieder ein; steht ein Plan-Feld genauso wie ein Gericht hier, hängt das Rezept automatisch dran.</p>
+        </Karte>
+
         {/* ── Profile ── */}
-        <Karte i={2} akzent={LEUCHT.schlaf}>
+        <Karte i={3} akzent={LEUCHT.schlaf}>
           <Ueberschrift farbe={LEUCHT.schlaf} rechts={<span>jeder pflegt sein eigenes</span>}>Bedürfnisse & Vorlieben</Ueberschrift>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
             {daten.personen.map(p => <ProfilKarte key={p.id} person={p.id} name={p.name} profil={daten.profile.find(x => x.person === p.id)} darf={p.id === daten.ich} konto patch={patch} />)}
@@ -321,15 +417,32 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
   return <Seite titel="Ernährung" unter="Die Woche, die ihr durchhaltet — mit euren Lebensmitteln, eurem Vorrat und je Person ihren Bedürfnissen.">{inhalt}</Seite>;
 }
 
-function RezeptKarte({ g, daten, nameVon, aufListe, neuSchreiben, laeuft }: { g: Gericht; daten: Daten; nameVon: (id?: string) => string; aufListe: () => void; neuSchreiben: () => void; laeuft: boolean }) {
+function RezeptKarte({ g, daten, nameVon, patch, aufListe, neuSchreiben, laeuft, bearbeiten, loeschen }: {
+  g: Gericht; daten: Daten; nameVon: (id?: string) => string; patch: (ops: Op[]) => Promise<void>;
+  aufListe: () => void; neuSchreiben?: () => void; laeuft: boolean; bearbeiten: () => void; loeschen: () => void;
+}) {
   const fehlt = useMemo(() => fehlendeZutaten(g, daten.vorrat, daten.einkauf), [g, daten.vorrat, daten.einkauf]);
+  const wo = imPlan(daten.planGerichte, g.id);
+  const heute = TAGE[(new Date().getDay() + 6) % 7];
+  const [ziel, setZiel] = useState<{ tag: Tag; k: Mahlzeit }>({ tag: heute, k: 'abend' });
+  const [notiz, setNotiz] = useState(g.notiz);
+  const [sicher, setSicher] = useState(false);
+  useEffect(() => { setNotiz(g.notiz); setSicher(false); }, [g.id, g.notiz]);
+  const einplanen = () => { void patch([{ feld: 'plan', tag: ziel.tag, mahlzeit: ziel.k, wert: g.name, gerichtId: g.id }]); };
   return (
     <div style={{ display: 'grid', gap: 12 }}>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <button type="button" onClick={() => void patch([{ liste: 'gerichte', op: 'upsert', eintrag: { id: g.id, favorit: !g.favorit } }])} title={g.favorit ? 'Liebling — Klick nimmt den Stern weg' : 'Als Liebling markieren'} style={{ ...nackt, color: g.favorit ? LEUCHT.achtung : C.inkLeise, fontSize: 18, padding: '0 2px' }}>{g.favorit ? '★' : '☆'}</button>
         {g.dauerMin != null && <Chip farbe={C.inkDim}>{g.dauerMin} Min</Chip>}
         <Chip farbe={C.inkDim}>{g.portionen} Portionen</Chip>
         {g.fuer.length > 0 && <Chip farbe={LEUCHT.schlaf}>für {g.fuer.map(nameVon).join(' & ')}</Chip>}
         {g.tags.map(t => <Chip key={t} farbe={C.inkLeise}>{t}</Chip>)}
+        <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 10, fontSize: 12 }}>
+          <button type="button" onClick={bearbeiten} style={{ ...nackt, padding: 0, textDecoration: 'underline' }}>bearbeiten</button>
+          {sicher
+            ? <span style={{ color: LEUCHT.kritisch }}>wirklich? <button type="button" onClick={loeschen} style={{ ...nackt, padding: 0, color: LEUCHT.kritisch, textDecoration: 'underline' }}>löschen</button> · <button type="button" onClick={() => setSicher(false)} style={{ ...nackt, padding: 0, textDecoration: 'underline' }}>nein</button></span>
+            : <button type="button" onClick={() => setSicher(true)} style={{ ...nackt, padding: 0, textDecoration: 'underline' }}>löschen</button>}
+        </span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
         <div>
@@ -339,6 +452,7 @@ function RezeptKarte({ g, daten, nameVon, aufListe, neuSchreiben, laeuft }: { g:
               const da = imVorrat(z.name, daten.vorrat), liste = !da && aufDerListe(z.name, daten.einkauf);
               return <Zeile key={i} links={<span style={{ color: da ? LEUCHT.gut : liste ? LEUCHT.achtung : C.inkLeise, fontSize: 13, width: 14, display: 'inline-block' }}>{da ? '✓' : liste ? '🛒' : '·'}</span>} titel={<span>{z.menge ? <b style={{ fontWeight: 600 }}>{z.menge} </b> : ''}{z.name}</span>} unter={da ? 'im Vorrat' : liste ? 'auf der Liste' : undefined} />;
             })}
+            {!g.zutaten.length && <Leer>Keine Zutaten eingetragen.</Leer>}
           </Liste>
           <div style={{ marginTop: 8 }}><Knopf leise onClick={aufListe} aus={!fehlt.length}>{fehlt.length ? `${fehlt.length} fehlende auf die Liste` : 'alles da'}</Knopf></div>
         </div>
@@ -347,9 +461,97 @@ function RezeptKarte({ g, daten, nameVon, aufListe, neuSchreiben, laeuft }: { g:
           <ol style={{ margin: 0, paddingLeft: 22, listStyle: 'decimal', display: 'grid', gap: 6, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>
             {g.zubereitung.map((s, i) => <li key={i}>{s}</li>)}
           </ol>
-          <div style={{ marginTop: 10, fontSize: 12, color: C.inkLeise }}>{g.quelle === 'jarvis' ? 'von Jarvis' : 'von Hand'} · <button type="button" onClick={neuSchreiben} disabled={laeuft} style={{ ...nackt, padding: 0, textDecoration: 'underline' }}>{laeuft ? 'schreibt …' : 'neu schreiben lassen'}</button></div>
+          {!g.zubereitung.length && <Leer>Keine Schritte eingetragen.</Leer>}
+          <div style={{ marginTop: 10, fontSize: 12, color: C.inkLeise }}>
+            {g.quelle === 'jarvis' ? 'von Jarvis' : 'von Hand'}
+            {neuSchreiben && <> · <button type="button" onClick={neuSchreiben} disabled={laeuft} style={{ ...nackt, padding: 0, textDecoration: 'underline' }}>{laeuft ? 'schreibt …' : 'neu schreiben lassen'}</button></>}
+          </div>
         </div>
       </div>
+      {/* Notiz + in den Plan */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, alignItems: 'start' }}>
+        <div>
+          <div style={{ ...mikro, marginBottom: 6 }}>Notiz</div>
+          <textarea value={notiz} onChange={e => setNotiz(e.target.value)} onBlur={() => { if (notiz !== g.notiz) void patch([{ liste: 'gerichte', op: 'upsert', eintrag: { id: g.id, notiz } }]); }} rows={2} placeholder="z. B. „Malin ohne Feta“, „Reste am nächsten Tag“" style={{ ...klein, resize: 'vertical', lineHeight: 1.5 }} />
+        </div>
+        <div>
+          <div style={{ ...mikro, marginBottom: 6 }}>In den Plan</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <select value={ziel.tag} onChange={e => setZiel(z => ({ ...z, tag: e.target.value as Tag }))} aria-label="Tag" style={{ ...klein, width: 'auto', colorScheme: 'dark' }}>{TAGE.map(t => <option key={t} value={t}>{TAG_LABEL[t]}</option>)}</select>
+            <select value={ziel.k} onChange={e => setZiel(z => ({ ...z, k: e.target.value as Mahlzeit }))} aria-label="Mahlzeit" style={{ ...klein, width: 'auto', colorScheme: 'dark' }}>{MAHLZEITEN.map(m => <option key={m.k} value={m.k}>{m.label}</option>)}</select>
+            <Knopf leise onClick={einplanen}>einplanen</Knopf>
+          </div>
+          <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>{wo.length ? `Diese Woche: ${wo.map(w => `${TAG_LABEL[w.tag]} ${MAHLZEITEN.find(m => m.k === w.mahlzeit)?.label}`).join(', ')}` : 'Diese Woche noch nicht eingeplant.'}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Gericht anlegen oder bearbeiten — von Hand, von Jarvis (Name + Wunsch) oder aus eingefügtem Text. */
+function GerichtForm({ g, personen, onSpeichern, onAbbruch, jarvis, laeuft }: {
+  g?: Gericht; personen: { id: string; name: string }[]; onSpeichern: (eintrag: Record<string, unknown>) => void; onAbbruch: () => void;
+  jarvis?: (name: string, beschreibung: string, text: string) => Promise<void>; laeuft?: boolean;
+}) {
+  const [art, setArt] = useState<'hand' | 'jarvis' | 'text'>('hand');
+  const [f, setF] = useState({
+    name: g?.name ?? '', zutaten: (g?.zutaten ?? []).map(z => (z.menge ? `${z.menge} ${z.name}` : z.name)).join('\n'), zubereitung: (g?.zubereitung ?? []).join('\n'),
+    dauer: g?.dauerMin != null ? String(g.dauerMin) : '', portionen: String(g?.portionen ?? 2), fuer: g?.fuer ?? [], tags: (g?.tags ?? []).join(', '), wunsch: '', text: '',
+  });
+  const set = (k: keyof typeof f, v: string | string[]) => setF(x => ({ ...x, [k]: v }));
+  const name = f.name.trim();
+  const speichern = () => {
+    if (!name) return;
+    const dauer = parseInt(f.dauer, 10), portionen = parseInt(f.portionen, 10);
+    onSpeichern({
+      ...(g ? { id: g.id, angelegt: g.angelegt, favorit: g.favorit, notiz: g.notiz } : { id: neueId('g') }),
+      name, zutaten: zutatenAusText(f.zutaten), zubereitung: schritteAusText(f.zubereitung),
+      dauerMin: isFinite(dauer) && dauer > 0 ? dauer : null, portionen: isFinite(portionen) && portionen > 0 ? portionen : 2,
+      fuer: f.fuer, tags: textListe(f.tags), quelle: 'hand',
+    });
+  };
+  const wahl: CSSProperties = { ...nackt, padding: '5px 11px', borderRadius: 999 };
+  return (
+    <div style={{ display: 'grid', gap: 8 }}>
+      {!g && jarvis && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {([['hand', 'von Hand'], ['jarvis', '✨ Jarvis schreibt'], ['text', 'Rezept einfügen']] as const).map(([k, l]) => (
+            <button key={k} type="button" onClick={() => setArt(k)} style={{ ...wahl, background: art === k ? `${LEUCHT.gut}22` : 'rgba(255,255,255,.05)', color: art === k ? LEUCHT.gut : C.inkDim }}>{l}</button>
+          ))}
+        </div>
+      )}
+      <input value={f.name} onChange={e => set('name', e.target.value)} placeholder="Name des Gerichts" style={klein} autoFocus />
+      {art === 'hand' || g ? (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
+            <textarea value={f.zutaten} onChange={e => set('zutaten', e.target.value)} rows={6} placeholder={'Zutaten, eine je Zeile\n200 g Lachs\nZitrone\nOlivenöl – 2 EL'} style={{ ...klein, resize: 'vertical', lineHeight: 1.5 }} />
+            <textarea value={f.zubereitung} onChange={e => set('zubereitung', e.target.value)} rows={6} placeholder={'Zubereitung, ein Schritt je Zeile\nOfen auf 200 °C\nFisch würzen\n20 Min backen'} style={{ ...klein, resize: 'vertical', lineHeight: 1.5 }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input value={f.dauer} onChange={e => set('dauer', e.target.value)} inputMode="numeric" placeholder="Minuten" style={{ ...klein, width: 90 }} />
+            <input value={f.portionen} onChange={e => set('portionen', e.target.value)} inputMode="numeric" placeholder="Portionen" style={{ ...klein, width: 100 }} />
+            <input value={f.tags} onChange={e => set('tags', e.target.value)} placeholder="Tags (schnell, abends, Meal-Prep)" style={{ ...klein, flex: '1 1 180px' }} />
+          </div>
+          {personen.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: 12, color: C.inkLeise }}>
+              für:
+              {personen.map(p => <button key={p.id} type="button" onClick={() => set('fuer', f.fuer.includes(p.id) ? f.fuer.filter(x => x !== p.id) : [...f.fuer, p.id])} style={{ ...wahl, background: f.fuer.includes(p.id) ? `${LEUCHT.schlaf}22` : 'rgba(255,255,255,.05)', color: f.fuer.includes(p.id) ? LEUCHT.schlaf : C.inkDim }}>{p.name}</button>)}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf farbe={LEUCHT.gut} onClick={speichern} aus={!name}>{g ? 'Änderungen speichern' : 'Gericht speichern'}</Knopf><Knopf leise onClick={onAbbruch}>Abbrechen</Knopf></div>
+        </>
+      ) : art === 'jarvis' ? (
+        <>
+          <input value={f.wunsch} onChange={e => set('wunsch', e.target.value)} placeholder="Wunsch (optional): „schnell, ohne Milch, für 4“" style={klein} />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf farbe={LEUCHT.agenten} onClick={() => void jarvis?.(name, f.wunsch.trim(), '')} aus={!name || !!laeuft}>{laeuft ? 'Jarvis schreibt …' : '✨ Rezept schreiben lassen'}</Knopf><Knopf leise onClick={onAbbruch}>Abbrechen</Knopf></div>
+          <p style={{ fontSize: 12, color: C.inkLeise, margin: 0 }}>Jarvis schreibt mit euren Profilen, Grundsätzen und bevorzugten Lebensmitteln.</p>
+        </>
+      ) : (
+        <>
+          <textarea value={f.text} onChange={e => set('text', e.target.value)} rows={8} placeholder="Rezept-Text hier einfügen (z. B. von einer Webseite kopiert) — Jarvis bringt Zutaten und Schritte in Form, ohne etwas dazuzuerfinden." style={{ ...klein, resize: 'vertical', lineHeight: 1.5 }} />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf farbe={LEUCHT.agenten} onClick={() => void jarvis?.(name, '', f.text.trim())} aus={!name || f.text.trim().length < 20 || !!laeuft}>{laeuft ? 'Jarvis liest …' : 'Übernehmen'}</Knopf><Knopf leise onClick={onAbbruch}>Abbrechen</Knopf></div>
+        </>
+      )}
     </div>
   );
 }

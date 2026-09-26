@@ -2,7 +2,9 @@
 // raten, Posten parsen, Vorrat/Liste abgleichen, fehlende Zutaten, Warenkorb-Text,
 // Änderungen in kleinen Schritten mit Profil-Schutz. Nur erfundene Daten.
 import { describe, it, expect } from 'vitest';
-import { sauberDatei, kategorieRaten, postenParsen, gleichesLebensmittel, fehlendeZutaten, warenkorbText, gruppiert, wendeAn, postenAus, gefuellt, type ErnaehrungFile } from '../lib/ernaehrung/modell';
+import {
+  zutatenAusText, schritteAusText, gerichteFiltern, tagsHaeufig, imPlan, gerichtZuName,
+  sauberDatei, kategorieRaten, postenParsen, gleichesLebensmittel, fehlendeZutaten, warenkorbText, gruppiert, wendeAn, postenAus, gefuellt, type ErnaehrungFile } from '../lib/ernaehrung/modell';
 
 const J = '2026-09-26T10:00:00.000Z';
 const leer = (): ErnaehrungFile => sauberDatei(null, J);
@@ -97,5 +99,38 @@ describe('Ernährung · Modell', () => {
     // Plan-Feld leeren löst das Rezept
     f = wendeAn(f, [{ feld: 'plan', tag: 'mo', mahlzeit: 'abend', wert: '' }], 'kevin', J).datei;
     expect(f.planGerichte.mo?.abend).toBeUndefined();
+  });
+
+  it('Gerichte-Bibliothek: Favorit & Notiz, Freitext-Zutaten, Suche, Wo-im-Plan, Löschen', () => {
+    let f = leer();
+    f = wendeAn(f, [
+      { liste: 'gerichte', op: 'upsert', eintrag: { id: 'g1', name: 'Lachs mit Ofengemüse', zutaten: [{ name: 'Lachs', menge: '2 Filets' }, { name: 'Zucchini', menge: '1' }], zubereitung: ['Ofen an'], tags: ['schnell', 'abends'], quelle: 'hand' } },
+      { liste: 'gerichte', op: 'upsert', eintrag: { id: 'g2', name: 'Porridge', zutaten: [{ name: 'Haferflocken', menge: '80 g' }], zubereitung: ['Kochen'], tags: ['schnell', 'früh'], angelegt: '2026-09-20T06:00:00.000Z' } },
+      { feld: 'plan', tag: 'di', mahlzeit: 'abend', wert: 'Lachs mit Ofengemüse', gerichtId: 'g1' },
+      { feld: 'plan', tag: 'fr', mahlzeit: 'abend', wert: 'Lachs mit Ofengemüse', gerichtId: 'g1' },
+    ], 'kevin', J).datei;
+    expect(f.gerichte.map(g => [g.id, g.favorit, g.notiz, g.quelle])).toEqual([['g1', false, '', 'hand'], ['g2', false, '', 'jarvis']]);
+    // Stern und Notiz ändern nur das Feld — Zutaten bleiben
+    f = wendeAn(f, [{ liste: 'gerichte', op: 'upsert', eintrag: { id: 'g2', favorit: true } }, { liste: 'gerichte', op: 'upsert', eintrag: { id: 'g1', notiz: 'Malin ohne Feta' } }], 'malin', J).datei;
+    expect(f.gerichte.find(g => g.id === 'g2')).toMatchObject({ favorit: true, zutaten: [{ name: 'Haferflocken', menge: '80 g' }] });
+    expect(f.gerichte.find(g => g.id === 'g1')?.notiz).toBe('Malin ohne Feta');
+    // Ordnung: Liebling zuerst, dann das Neueste; Suche über Zutaten; Tag-Filter
+    expect(gerichteFiltern(f.gerichte).map(g => g.id)).toEqual(['g2', 'g1']);
+    expect(gerichteFiltern(f.gerichte, 'zucchini').map(g => g.id)).toEqual(['g1']);
+    expect(gerichteFiltern(f.gerichte, '', 'früh').map(g => g.id)).toEqual(['g2']);
+    expect(tagsHaeufig(f.gerichte)).toEqual(['schnell', 'abends', 'früh']);
+    expect(imPlan(f.planGerichte, 'g1')).toEqual([{ tag: 'di', mahlzeit: 'abend' }, { tag: 'fr', mahlzeit: 'abend' }]);
+    expect(gerichtZuName(f.gerichte, 'porridge')?.id).toBe('g2');
+    expect(gerichtZuName(f.gerichte, 'Pizza')).toBeUndefined();
+    // Freitext für die Hand-Eingabe
+    expect(zutatenAusText('200 g Lachs\nZitrone\nSalz: 1 Prise\nOlivenöl – 2 EL')).toEqual([
+      { name: 'Lachs', menge: '200 g' }, { name: 'Zitrone', menge: '' }, { name: 'Salz', menge: '1 Prise' }, { name: 'Olivenöl', menge: '2 EL' },
+    ]);
+    expect(schritteAusText('1. Ofen an\n2) Fisch würzen\n- 20 Min backen\n\n')).toEqual(['Ofen an', 'Fisch würzen', '20 Min backen']);
+    // Löschen nimmt das Gericht aus der Bibliothek; der Plan-Text bleibt, das Feld zeigt kein Rezept mehr
+    f = wendeAn(f, [{ liste: 'gerichte', op: 'delete', id: 'g1' }], 'kevin', J).datei;
+    expect(f.gerichte.map(g => g.id)).toEqual(['g2']);
+    expect(f.plan.di.abend).toBe('Lachs mit Ofengemüse');
+    expect(imPlan(f.planGerichte, 'g1')).toHaveLength(2);
   });
 });

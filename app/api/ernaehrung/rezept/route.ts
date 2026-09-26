@@ -1,11 +1,12 @@
 // ─── MAKE OS — Ein Rezept zu einem Gericht (26.09.) ─────────────────────────
-// POST { name, tag?, mahlzeit? } → Jarvis schreibt Zutaten, Zubereitung, Dauer,
-// Portionen für die Profile des Haushalts; das Rezept wird gespeichert und —
-// wenn Tag/Mahlzeit dabei sind — dem Plan-Feld zugeordnet.
+// POST { name, beschreibung?, text?, tag?, mahlzeit? } → Jarvis schreibt Zutaten,
+// Zubereitung, Dauer, Portionen für die Profile des Haushalts — oder bringt ein
+// eingefügtes Rezept (`text`, z. B. aus einer Webseite kopiert) in diese Form.
+// Das Rezept wird gespeichert und, wenn Tag/Mahlzeit dabei sind, dem Plan-Feld zugeordnet.
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { askJson, hasAnthropicKey } from '@/lib/anthropic';
+import { askJson, hasAnthropicKey, fremd } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { modellSchranke } from '@/lib/zugang/umfang';
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
   const z = await imHaushaltDesInhabers(req);
   if (!z) return NextResponse.json({ error: 'Nur für den Haushalt des Inhabers.' }, { status: 403 });
   const schranke = modellSchranke(req); if (schranke) return schranke;
-  let body: { name?: string; tag?: string; mahlzeit?: string } = {};
+  let body: { name?: string; beschreibung?: string; text?: string; tag?: string; mahlzeit?: string } = {};
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const name = String(body.name ?? '').trim().slice(0, 120);
   if (!name) return NextResponse.json({ error: 'Gericht fehlt.' }, { status: 400 });
@@ -36,7 +37,12 @@ export async function POST(req: Request) {
     'Antworte NUR als JSON: {"name":"…","zutaten":[{"name":"…","menge":"…"}],"zubereitung":["Schritt 1","…"],"dauerMin":25,"portionen":2,"fuer":["…"],"tags":["…"]} — Zutaten mit Mengen für alle zusammen, 3–8 Schritte, kein Vorwort.',
   ].filter(Boolean).join('\n');
 
-  const r = await askJson<Partial<Gericht>>({ zweck: 'ernaehrung-rezept', system, user: `Gericht: ${name}`, maxTokens: 2500, model: agent.model, timeoutMs: 120_000 });
+  const text = String(body.text ?? '').slice(0, 6000).trim();
+  const beschreibung = String(body.beschreibung ?? '').slice(0, 400).trim();
+  const user = text
+    ? `Gericht: ${name}\nBring dieses eingefügte Rezept in die JSON-Form — Mengen und Schritte übernehmen, nichts erfinden, nur kürzen:\n${fremd('rezept-text', text)}`
+    : `Gericht: ${name}${beschreibung ? `\nWunsch: ${beschreibung}` : ''}`;
+  const r = await askJson<Partial<Gericht>>({ zweck: 'ernaehrung-rezept', system, user, maxTokens: 2500, model: agent.model, timeoutMs: 120_000 });
   if (!r.ok || !r.data?.zutaten) return NextResponse.json({ error: r.error ?? 'Kein Rezept erhalten.' }, { status: 200 });
 
   const jetzt = new Date().toISOString();

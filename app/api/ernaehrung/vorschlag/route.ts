@@ -46,6 +46,8 @@ export async function POST(req: Request) {
   const namen = profile.map(p => p.name || p.person);
   const bevorzugt = f.lebensmittel.filter(l => l.bevorzugt).map(l => (l.hinweis ? `${l.name} (${l.hinweis})` : l.name));
   const vorrat = f.vorrat.map(v => (v.menge ? `${v.name} (${v.menge})` : v.name));
+  // Eure gespeicherten Gerichte — Lieblinge zuerst; passt eines, soll es genau so heißen (dann hängt das Rezept schon dran).
+  const gespeichert = f.gerichte.slice().sort((a, b) => Number(b.favorit) - Number(a.favorit)).slice(0, 40).map(g => `${g.favorit ? '★ ' : ''}${g.name}${g.tags.length ? ` [${g.tags.join(', ')}]` : ''}`);
 
   const system = [
     `Du planst die Essens-Woche eines Haushalts — Alltagsküche für ${namen.length ? namen.join(' und ') : 'zwei Personen'}. Dein Job: eine Woche, die sie wirklich durchhalten.`,
@@ -53,6 +55,7 @@ export async function POST(req: Request) {
     profile.length ? 'PROFILE (verbindlich — Unverträgliches und „Nie“ sind absolut):\n' + profile.map(profilText).join('\n') : 'PROFILE: keine hinterlegt — plane ausgewogen.',
     bevorzugt.length ? `BEVORZUGTE LEBENSMITTEL (zuerst nehmen, so benennen): ${bevorzugt.join('; ')}` : '',
     vorrat.length ? `VORRAT ZUHAUSE (verbrauchen! kommt NICHT auf die Einkaufsliste): ${vorrat.join('; ')}` : '',
+    gespeichert.length ? `UNSERE GERICHTE (★ = Lieblinge; gern wieder einplanen, dann EXAKT diesen Namen verwenden und KEIN neues Rezept dafür schreiben): ${gespeichert.join('; ')}` : '',
     'REGELN:',
     '- Je Mahlzeit EIN Gericht, Name max 8 Wörter. Gemeinsame Gerichte; braucht eine Person eine Variante, steht sie im Namen („… (für Malin ohne Feta)“).',
     '- Frühstück und Mittag alltagstauglich schnell; 2–3 Gerichte dürfen sich wiederholen (Meal-Prep), aber nicht alles. Abends leicht. Freitag/Samstag darf EIN Genuss-Gericht sein.',
@@ -80,7 +83,9 @@ export async function POST(req: Request) {
   for (const t of TAGE) for (const m of MAHLZEITEN) {
     const name = plan[t][m.k];
     if (!name) continue;
-    const g = gerichte.find(x => x.name.toLowerCase() === name.toLowerCase()) ?? gerichte.find(x => gleichesLebensmittel(x.name, name));
+    // Ein gespeichertes Gericht gewinnt vor einem neu geschriebenen — das Rezept bleibt eures.
+    const alt = f.gerichte.find(x => x.name.toLowerCase() === name.toLowerCase());
+    const g = alt ?? gerichte.find(x => x.name.toLowerCase() === name.toLowerCase()) ?? gerichte.find(x => gleichesLebensmittel(x.name, name));
     if (g) planGerichte[t] = { ...(planGerichte[t] ?? {}), [m.k]: g.id };
   }
   const einkauf: EinkaufPosten[] = (Array.isArray(r.data.einkauf) ? r.data.einkauf : []).map(x => {
@@ -90,6 +95,8 @@ export async function POST(req: Request) {
     return { id: neueId('e'), text, erledigt: false, ...(o.menge ? { menge: String(o.menge).slice(0, 30) } : {}), kategorie, quelle: 'plan' as const };
   }).filter(p => p.text && !f.vorrat.some(v => gleichesLebensmittel(v.name, p.text))).slice(0, 60);
 
-  await logRun('health', 'Essens-Woche vorgeschlagen', { posten: einkauf.length, gerichte: gerichte.length, personen: namen.length });
-  return NextResponse.json({ begruendung: String(r.data.begruendung ?? '').slice(0, 400), plan, planGerichte, gerichte, einkauf, hinweis: CARE });
+  // Neu geschriebene Rezepte, die es schon gibt, nicht doppelt anlegen.
+  const neueGerichte = gerichte.filter(g => !f.gerichte.some(x => x.name.toLowerCase() === g.name.toLowerCase()));
+  await logRun('health', 'Essens-Woche vorgeschlagen', { posten: einkauf.length, gerichte: neueGerichte.length, personen: namen.length });
+  return NextResponse.json({ begruendung: String(r.data.begruendung ?? '').slice(0, 400), plan, planGerichte, gerichte: neueGerichte, einkauf, hinweis: CARE });
 }

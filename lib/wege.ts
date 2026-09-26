@@ -65,6 +65,7 @@ export const WEG = {
   gesundheit: (abschnitt?: 'morgen' | 'routinen' | 'haut' | 'streak' | 'index', fuer?: string) => q('/os/gesundheit', { fuer }, abschnitt),
   journal: () => '/os/journal',
   ernaehrung: () => '/os/ernaehrung',
+  gericht: (id: string) => `/os/gesundheit?s=ernaehrung&g=${encodeURIComponent(id)}`,
   energie: () => '/os/energie',
   verbindungen: () => '/os/verbindungen',
   saeule: (key: 'health' | 'planning' | 'finance' | 'social' | 'agents') => `/os/saeule/${key}`,

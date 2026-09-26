@@ -56,6 +56,10 @@ export interface Zutat { name: string; menge: string }
 export interface Gericht {
   id: string; name: string; zutaten: Zutat[]; zubereitung: string[]; dauerMin: number | null; portionen: number;
   fuer: string[]; tags: string[]; quelle: 'jarvis' | 'hand'; angelegt: string;
+  /** Lieblingsgericht — Jarvis plant es gern wieder ein, steht oben in „Unsere Gerichte“. */
+  favorit: boolean;
+  /** Eigene Notiz („Malin mag es ohne Feta“, „Reste am nächsten Tag“). */
+  notiz: string;
 }
 export type PlanGerichte = Partial<Record<Tag, Partial<Record<Mahlzeit, string>>>>;
 
@@ -127,6 +131,7 @@ export function sauberDatei(f: Partial<ErnaehrungFile> | null, jetzt = new Date(
       portionen: typeof g?.portionen === 'number' && isFinite(g.portionen) ? Math.max(1, Math.min(20, Math.round(g.portionen))) : 2,
       fuer: liste(g?.fuer, 8, 40), tags: liste(g?.tags, 8, 30),
       quelle: (g?.quelle === 'hand' ? 'hand' : 'jarvis') as Gericht['quelle'], angelegt: s(g?.angelegt, 30) || jetzt,
+      favorit: g?.favorit === true, notiz: s(g?.notiz, 400),
     })).filter(g => g.name),
   };
 }
@@ -221,6 +226,52 @@ export type Op =
   | { feld: 'grundsaetze'; wert: string }
   | { feld: 'erledigtWeg' }
   | { feld: 'erledigtInVorrat'; von: string };
+
+// ── Gerichte-Bibliothek (26.09., Kevin: „ein Bereich, wo wir unsere Gerichte abspeichern“) ──
+
+/** Zutaten aus Freitext, eine je Zeile: „200 g Lachs“, „Lachs – 2 Filets“, „Salz: 1 Prise“, „Zitrone“. */
+export function zutatenAusText(text: string): Zutat[] {
+  return text.split(/\n|;/).map(z => z.trim()).filter(Boolean).slice(0, 40).map(z => {
+    const m = /^(.+?)\s*[–—:-]\s*(.+)$/.exec(z);
+    if (m && !/^\d/.test(m[1])) return { name: m[1].trim().slice(0, 80), menge: m[2].trim().slice(0, 40) };
+    const p = postenParsen(z);
+    return { name: p.text.slice(0, 80), menge: (p.menge ?? '').slice(0, 40) };
+  }).filter(z => z.name);
+}
+
+/** Zubereitung aus Freitext: eine Zeile je Schritt, führende Nummern („1.“, „2)“) fallen weg. */
+export function schritteAusText(text: string): string[] {
+  return text.split('\n').map(z => z.replace(/^\s*(?:\d+[.)]|[-–•*])\s*/, '').trim()).filter(Boolean).slice(0, 20).map(z => z.slice(0, 400));
+}
+
+/** Die Bibliothek durchsuchen (Name, Zutaten, Tags) und ordnen: Lieblinge zuerst, dann die neuesten. */
+export function gerichteFiltern(gerichte: Gericht[], suche = '', tag = ''): Gericht[] {
+  const q = normal(suche);
+  return gerichte
+    .filter(g => !tag || g.tags.some(t => t.toLowerCase() === tag.toLowerCase()))
+    .filter(g => !q || normal(g.name).includes(q) || g.zutaten.some(z => normal(z.name).includes(q)) || g.tags.some(t => normal(t).includes(q)))
+    .slice().sort((a, b) => Number(b.favorit) - Number(a.favorit) || b.angelegt.localeCompare(a.angelegt) || a.name.localeCompare(b.name));
+}
+
+/** Die häufigsten Tags der Bibliothek — als Filter-Chips. */
+export function tagsHaeufig(gerichte: Gericht[], n = 8): string[] {
+  const z = new Map<string, number>();
+  for (const g of gerichte) for (const t of g.tags) { const k = t.trim(); if (k) z.set(k, (z.get(k) ?? 0) + 1); }
+  return [...z.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, n).map(e => e[0]);
+}
+
+/** Wo ein Gericht diese Woche im Plan steht. */
+export function imPlan(planGerichte: PlanGerichte, gerichtId: string): { tag: Tag; mahlzeit: Mahlzeit }[] {
+  const aus: { tag: Tag; mahlzeit: Mahlzeit }[] = [];
+  for (const t of TAGE) for (const m of MAHLZEITEN) if (planGerichte[t]?.[m.k] === gerichtId) aus.push({ tag: t, mahlzeit: m.k });
+  return aus;
+}
+
+/** Ein gespeichertes Gericht zu einem getippten Plan-Text (gleicher Name) — dann hängt das Rezept automatisch dran. */
+export function gerichtZuName(gerichte: Gericht[], name: string): Gericht | undefined {
+  const n = normal(name);
+  return n ? gerichte.find(g => normal(g.name) === n) : undefined;
+}
 
 export function wendeAn(f: ErnaehrungFile, ops: Op[], person: string, jetzt = new Date().toISOString()): { datei: ErnaehrungFile; abgelehnt: string[] } {
   const abgelehnt: string[] = [];
