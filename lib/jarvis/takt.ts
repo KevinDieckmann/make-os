@@ -66,7 +66,7 @@ export interface Faellig {
 
 interface TageslaufStand { laeufe?: { art: LaufArt; gestartet: string }[] }
 interface TagesstartStand { lastRun?: string }
-interface NutzungStand { letzteAnalyse?: string }
+interface NutzungStand { letzteAnalyse?: string; /** letzter echter Versuch des Loops — auch ein übersprungener (27.09.) */ letzterLoopVersuch?: string }
 
 /**
  * Was ist jetzt dran? Liest den echten Zustand der beteiligten Speicher,
@@ -239,7 +239,9 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
   const tageSeitAnalyse = nu?.letzteAnalyse
     ? (jetzt.getTime() - Date.parse(nu.letzteAnalyse)) / 864e5
     : Infinity;
-  if (h >= 9 && tageSeitAnalyse >= 7) {
+  // Nach einem Versuch (auch einem übersprungenen) einen Tag Ruhe — sonst stand der Loop bis 27.09. jede Minute neu in der Schlange.
+  const stundenSeitVersuch = nu?.letzterLoopVersuch ? (jetzt.getTime() - Date.parse(nu.letzterLoopVersuch)) / 3_600_000 : Infinity;
+  if (h >= 9 && tageSeitAnalyse >= 7 && stundenSeitVersuch >= 24) {
     raus.push({
       id: 'verbesserung',
       grund: nu?.letzteAnalyse ? `letzte Analyse vor ${Math.round(tageSeitAnalyse)} Tagen` : 'noch nie gelaufen',

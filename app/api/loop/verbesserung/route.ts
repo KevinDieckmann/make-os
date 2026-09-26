@@ -52,6 +52,11 @@ export async function POST(req: Request) {
     }
   }
 
+  // Riegel (27.09.): der Takt reihte den Loop jede Minute neu ein, sobald er 7 Tage her war — auch wenn er hier
+  // gleich wieder aussprang (zu wenig Nutzung, kein Schlüssel, Modellfehler). Jeder ECHTE Versuch wird vermerkt,
+  // der Takt wartet danach 24 Stunden (lib/jarvis/takt.ts liest letzterLoopVersuch).
+  await updateJson<{ letzterLoopVersuch?: string }>('nutzung', cur => ({ ...(cur ?? {}), letzterLoopVersuch: new Date().toISOString() })).catch(() => { /* Riegel ist Komfort, kein Muss */ });
+
   const seiten = Object.entries(nutzung?.seiten ?? {}).map(([pfad, s]) => ({ pfad, ...s }));
   const gesamt = seiten.reduce((s, x) => s + x.anzahl, 0);
   if (gesamt < 20 && !erzwingen) {

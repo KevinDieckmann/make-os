@@ -113,6 +113,8 @@ Kevin: „Arbeite alle Agenten, die wir machen wollten, weiter aus, dass sie liv
   Im Agenten-Katalog steht der HOI als live (Product), ohne KI.
 - **Schalter wirken überall:** „Aus“ unter /os/agenten galt nur für Jarvis und den Takt — jetzt auch für den direkten Aufruf von Wochenplan, CRM-Entwurf, Head of Finance und den Heads (409).
 - **Eine Freigabe-Sicht:** /os/stapel zeigt zusätzlich „Freigaben der Heads“ (Sales, Marketing, Event, Finance) mit Anzahl und Titeln — entschieden wird weiter beim Head.
+- **Verbesserungs-Loop mit Riegel:** jeder echte Versuch (auch ein übersprungener: zu wenig Nutzung, kein Schlüssel) wird in `nutzung.letzterLoopVersuch` vermerkt, der Takt wartet danach 24 h —
+  bis dahin stand der Loop, sobald er 7 Tage her war, jede Minute neu in der Warteschlange (8 Läufe in 3 Stunden, alle „0 Vorschläge“).
 - **Fremd-Regel:** der Prospecting-Agent heißt `prospect` — der Eintrag in `FREMD_AGENTEN` zeigte auf `prospecting` und griff nie.
 - Tests: `anthropic-guthaben`, `regelwerk`, `hoi-lage` erweitert. Stand: 103 Dateien · 887 Tests grün, tsc und Lint sauber.
 - **Runde 2 — jedes Ergebnis hat einen Platz** (vorher nur Text in der Warteschlange, wenn Jarvis oder der Takt den Agenten liefen):
