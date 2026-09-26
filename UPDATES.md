@@ -79,6 +79,10 @@ zuhause haben soll benutzt werden, an jedem Gericht das Rezept“)** — Gesundh
   gebracht, nichts dazuerfunden). Ein Plan-Feld, das wie ein gespeichertes Gericht heißt, bekommt sein Rezept
   automatisch; leere Plan-Felder bieten „aus euren Gerichten wählen“. Jarvis kennt beim Planen eure Gerichte (Lieblinge
   zuerst) und schreibt für sie kein neues Rezept. Direktlink `?s=ernaehrung&g=<id>` (`WEG.gericht`).
+- **Gerichte schlanker + Foto (Kevin 26.09.):** Anlegen ist ein Schritt — Name tippen, Enter, Jarvis schreibt das
+  Rezept; „von Hand“ und „Text einfügen“ nur als kleine Zusatzwege (kann Jarvis nicht, geht es mit dem Namen von Hand
+  weiter). Je Gericht ein Foto vom Handy (wird vor dem Hochladen auf 1280 px verkleinert, `/api/ernaehrung/bild`,
+  Dateien unter `.data/bilder-gerichte`, nur Haushalt) — sichtbar im Rezept, in der Bibliothek und am Plan-Feld.
 - Technik: `lib/ernaehrung/modell.ts` (rein, getestet), Änderungen in kleinen Schritten (PATCH) — zu zweit am Handy
   überschreibt niemand den anderen; Zugriff nur Haushalt des Inhabers.
 

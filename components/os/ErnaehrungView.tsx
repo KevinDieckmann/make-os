@@ -25,6 +25,7 @@ import {
   type ErnaehrungFile, type Mahlzeiten, type Tag, type Mahlzeit, type Op, type Gericht, type EinkaufPosten, type Profil, type Kategorie, type PlanGerichte,
 } from '@/lib/ernaehrung/modell';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, feld, LEUCHT, Spalten, Spalte, useBreit } from './schlank';
+import { bildVerkleinern } from '@/lib/bilder/client';
 
 interface Daten extends ErnaehrungFile { ich: string; personen: { id: string; name: string }[]; budget: { monat: string; ausgegeben: number; budget: number | null } | null }
 interface Vorschlag { begruendung: string; plan: Record<Tag, Mahlzeiten>; planGerichte: PlanGerichte; gerichte: Gericht[]; einkauf: EinkaufPosten[]; hinweis: string }
@@ -37,6 +38,7 @@ const euro = (cent: number) => `${Math.round(cent / 100).toLocaleString('de-DE')
 const kuerzel = (name: string) => name.trim().charAt(0).toUpperCase() || '?';
 const listeText = (l: string[]) => l.join(', ');
 const textListe = (t: string) => t.split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
+const bildUrl = (g?: Gericht | null) => (g?.bild ? `/api/ernaehrung/bild?name=${encodeURIComponent(g.bild)}` : '');
 
 export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean } = {}) {
   const [daten, setDaten] = useState<Daten | null>(null);
@@ -57,7 +59,9 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
   const [suche, setSuche] = useState('');
   const [tagFilter, setTagFilter] = useState('');
   const [nurLieblinge, setNurLieblinge] = useState(false);
-  const [formular, setFormular] = useState<'neu' | string | null>(null);
+  // 'neu' = von Hand, 'neu-text' = Rezept-Text einfügen, sonst die Id des Gerichts, das bearbeitet wird
+  const [formular, setFormular] = useState<'neu' | 'neu-text' | string | null>(null);
+  const [neuGericht, setNeuGericht] = useState('');
   const rezeptRef = useRef<HTMLDivElement>(null);
   const params = useSearchParams();
   // Am Handy steht der Wochentag über seinen drei Feldern, am Rechner davor.
@@ -121,7 +125,20 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
   /** Bibliothek: Jarvis schreibt zu Name + Wunsch, oder bringt einen eingefügten Rezept-Text in Form. */
   async function gerichtVonJarvis(name: string, beschreibung: string, text: string) {
     const g = await rezeptAnfordern({ name, beschreibung: beschreibung || undefined, text: text || undefined });
-    if (g) { setFormular(null); oeffneGericht(g.id); melde('Rezept gespeichert.'); }
+    if (g) { setFormular(null); setNeuGericht(''); oeffneGericht(g.id); melde('Rezept gespeichert.'); return; }
+    // Jarvis konnte nicht (kein Guthaben, kein Netz): der Name bleibt stehen, von Hand geht es weiter.
+    if (!text) setFormular('neu');
+  }
+  async function fotoSetzen(g: Gericht, datei: File) {
+    try {
+      const daten = await bildVerkleinern(datei);
+      const r = await fetch('/api/ernaehrung/bild', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: g.id, daten }) }).then(x => x.json());
+      if (r.ok) { await laden(); melde('Foto gespeichert.'); } else melde(r.error ?? 'Foto nicht gespeichert.');
+    } catch (e) { melde(e instanceof Error ? e.message : 'Foto nicht lesbar.'); }
+  }
+  async function fotoWeg(g: Gericht) {
+    const r = await fetch('/api/ernaehrung/bild', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: g.id }) }).then(x => x.json()).catch(() => null);
+    if (r?.ok) await laden();
   }
   function oeffneGericht(id: string) { setOffen(null); setGewaehlt(id); setTimeout(() => rezeptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }
   function zutatenAufListe(g: Gericht) {
@@ -202,6 +219,10 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
                       <input value={(vorschlag ? vorschlag.plan[t][m.k] : daten.plan[t][m.k]) ?? ''} readOnly={!!vorschlag}
                         onChange={e => planSetzen(t, m.k, e.target.value)} placeholder={m.label}
                         style={{ ...klein, flex: 1, minWidth: 0, opacity: vorschlag ? 0.75 : 1, borderStyle: vorschlag ? 'dashed' : 'solid', outline: aktiv ? `1px solid ${LEUCHT.gut}` : undefined }} />
+                      {!vorschlag && g?.bild && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={bildUrl(g)} alt="" onClick={() => setOffen(aktiv ? null : { tag: t, k: m.k })} style={{ width: 26, height: 26, borderRadius: 8, objectFit: 'cover', flex: '0 0 auto', cursor: 'pointer' }} />
+                      )}
                       {!vorschlag && daten.plan[t][m.k].trim() && (
                         <button type="button" onClick={() => setOffen(aktiv ? null : { tag: t, k: m.k })} title={g ? 'Rezept öffnen' : 'Rezept schreiben lassen'}
                           style={{ ...nackt, color: g ? LEUCHT.gut : C.inkLeise, fontSize: 15, lineHeight: 1 }}>{g ? '📖' : '＋'}</button>
@@ -237,9 +258,10 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
                 </div>
               </div>
             ) : offenesGericht && formular === offenesGericht.id ? (
-              <GerichtForm g={offenesGericht} personen={[...daten.personen, ...gastProfile.map(g => ({ id: g.person, name: g.name }))]} onSpeichern={gerichtSpeichern} onAbbruch={() => setFormular(null)} />
+              <GerichtForm g={offenesGericht} art="hand" personen={[...daten.personen, ...gastProfile.map(g => ({ id: g.person, name: g.name }))]} onSpeichern={gerichtSpeichern} onAbbruch={() => setFormular(null)} />
             ) : offenesGericht ? (
               <RezeptKarte g={offenesGericht} daten={daten} nameVon={nameVon} patch={patch}
+                foto={datei => void fotoSetzen(offenesGericht, datei)} fotoWeg={() => void fotoWeg(offenesGericht)}
                 aufListe={() => zutatenAufListe(offenesGericht)}
                 neuSchreiben={offen ? () => void rezeptSchreiben(offen.tag, offen.k) : undefined} laeuft={rezeptLaeuft}
                 bearbeiten={() => setFormular(offenesGericht.id)}
@@ -252,19 +274,27 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
         {/* ── Unsere Gerichte (Bibliothek) ── */}
         <Karte i={2} akzent={LEUCHT.gut} id="gerichte">
           <Ueberschrift farbe={LEUCHT.gut} rechts={<Chip farbe={daten.gerichte.length ? LEUCHT.gut : C.inkLeise}>{daten.gerichte.length === 1 ? '1 Gericht' : `${daten.gerichte.length} Gerichte`}</Chip>}>Unsere Gerichte</Ueberschrift>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
-            <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Suchen — Name, Zutat, Tag" style={{ ...klein, flex: '1 1 180px' }} />
-            <Knopf farbe={LEUCHT.gut} onClick={() => { setFormular(f => (f === 'neu' ? null : 'neu')); setOffen(null); setGewaehlt(null); }}>{formular === 'neu' ? 'Schließen' : '+ Gericht'}</Knopf>
+          {/* Anlegen ist ein Schritt (Kevin 26.09.): Name tippen, Enter — Jarvis schreibt das Rezept. Von Hand oder aus Text nur als Zusatz. */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+            <input value={neuGericht} onChange={e => setNeuGericht(e.target.value)} disabled={rezeptLaeuft}
+              onKeyDown={e => { if (e.key === 'Enter' && neuGericht.trim() && !rezeptLaeuft) { setFormular(null); void gerichtVonJarvis(neuGericht.trim(), '', ''); } }}
+              placeholder={rezeptLaeuft ? `Jarvis schreibt „${neuGericht.trim()}“ …` : 'Neues Gericht … Enter — Jarvis schreibt das Rezept'}
+              style={{ ...klein, flex: '1 1 220px', borderColor: rezeptLaeuft ? LEUCHT.agenten : undefined }} />
+            <span style={{ fontSize: 12, color: C.inkLeise, display: 'inline-flex', gap: 8 }}>
+              <button type="button" onClick={() => { setFormular(f => (f === 'neu' ? null : 'neu')); setOffen(null); setGewaehlt(null); }} style={{ ...nackt, padding: 0, textDecoration: 'underline', color: formular === 'neu' ? LEUCHT.gut : C.inkLeise }}>von Hand</button>
+              <button type="button" onClick={() => { setFormular(f => (f === 'neu-text' ? null : 'neu-text')); setOffen(null); setGewaehlt(null); }} style={{ ...nackt, padding: 0, textDecoration: 'underline', color: formular === 'neu-text' ? LEUCHT.gut : C.inkLeise }}>Text einfügen</button>
+            </span>
           </div>
+          {(formular === 'neu' || formular === 'neu-text') && (
+            <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
+              <GerichtForm art={formular === 'neu-text' ? 'text' : 'hand'} nameStart={neuGericht} personen={[...daten.personen, ...gastProfile.map(g => ({ id: g.person, name: g.name }))]} onSpeichern={e => { gerichtSpeichern(e); setNeuGericht(''); }} onAbbruch={() => setFormular(null)} jarvis={gerichtVonJarvis} laeuft={rezeptLaeuft} />
+            </div>
+          )}
+          {daten.gerichte.length > 3 && <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Suchen — Name, Zutat, Tag" style={{ ...klein, marginBottom: 10 }} />}
           {(tagsOben.length > 0 || daten.gerichte.some(g => g.favorit)) && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
               {daten.gerichte.some(g => g.favorit) && <button type="button" onClick={() => setNurLieblinge(v => !v)} style={{ ...nackt, padding: '4px 10px', borderRadius: 999, background: nurLieblinge ? `${LEUCHT.achtung}22` : 'rgba(255,255,255,.05)', color: nurLieblinge ? LEUCHT.achtung : C.inkDim }}>★ Lieblinge</button>}
               {tagsOben.map(t => <button key={t} type="button" onClick={() => setTagFilter(f => (f === t ? '' : t))} style={{ ...nackt, padding: '4px 10px', borderRadius: 999, background: tagFilter === t ? `${LEUCHT.gut}22` : 'rgba(255,255,255,.05)', color: tagFilter === t ? LEUCHT.gut : C.inkDim }}>{t}</button>)}
-            </div>
-          )}
-          {formular === 'neu' && (
-            <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
-              <GerichtForm personen={[...daten.personen, ...gastProfile.map(g => ({ id: g.person, name: g.name }))]} onSpeichern={gerichtSpeichern} onAbbruch={() => setFormular(null)} jarvis={gerichtVonJarvis} laeuft={rezeptLaeuft} />
             </div>
           )}
           {meld && !formular && <p style={{ fontSize: 12, color: LEUCHT.gut, margin: '0 0 8px' }}>{meld}</p>}
@@ -274,17 +304,21 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
                 const wo = imPlan(daten.planGerichte, g.id);
                 return (
                   <Zeile key={g.id} onClick={() => oeffneGericht(g.id)} aktiv={gewaehlt === g.id && !offen}
-                    links={<button type="button" onClick={e => { e.stopPropagation(); void patch([{ liste: 'gerichte', op: 'upsert', eintrag: { id: g.id, favorit: !g.favorit } }]); }} title={g.favorit ? 'Liebling — Klick nimmt den Stern weg' : 'Als Liebling markieren'} style={{ ...nackt, color: g.favorit ? LEUCHT.achtung : C.inkLeise, fontSize: 16 }}>{g.favorit ? '★' : '☆'}</button>}
+                    links={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <button type="button" onClick={e => { e.stopPropagation(); void patch([{ liste: 'gerichte', op: 'upsert', eintrag: { id: g.id, favorit: !g.favorit } }]); }} title={g.favorit ? 'Liebling — Klick nimmt den Stern weg' : 'Als Liebling markieren'} style={{ ...nackt, color: g.favorit ? LEUCHT.achtung : C.inkLeise, fontSize: 16 }}>{g.favorit ? '★' : '☆'}</button>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {g.bild ? <img src={bildUrl(g)} alt="" style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'cover' }} /> : <span style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(255,255,255,.04)', display: 'grid', placeItems: 'center', fontSize: 16 }}>🍽</span>}
+                    </span>}
                     titel={g.name}
                     unter={[g.dauerMin != null ? `${g.dauerMin} Min` : '', `${g.portionen} Port.`, g.tags.slice(0, 3).join(', '), wo.length ? `diese Woche: ${wo.map(w => TAG_LABEL[w.tag].slice(0, 2)).join(', ')}` : ''].filter(Boolean).join(' · ')}
                     rechts={<button type="button" onClick={e => { e.stopPropagation(); zutatenAufListe(g); }} title="Fehlende Zutaten auf die Liste" style={nackt}>🛒</button>} />
                 );
               })}
             </Liste>
-            {!daten.gerichte.length && <Leer>Noch keine Gerichte. Die Wochenrezepte von Jarvis landen hier von selbst — oder „+ Gericht“: von Hand, von Jarvis oder aus einem eingefügten Rezept.</Leer>}
+            {!daten.gerichte.length && <Leer>Noch keine Gerichte. Oben den Namen tippen, Enter — Jarvis schreibt das Rezept. Die Wochenrezepte von Jarvis landen hier von selbst.</Leer>}
             {daten.gerichte.length > 0 && !bibliothek.length && <Leer>Nichts passt zu Suche oder Filter.</Leer>}
           </div>
-          <p style={{ fontSize: 12, color: C.inkLeise, margin: '10px 0 0', lineHeight: 1.5 }}>Ein Klick öffnet Rezept, Notiz und „in den Plan“. Lieblinge plant Jarvis gern wieder ein; steht ein Plan-Feld genauso wie ein Gericht hier, hängt das Rezept automatisch dran.</p>
+          <p style={{ fontSize: 12, color: C.inkLeise, margin: '10px 0 0', lineHeight: 1.5 }}>Ein Klick öffnet Rezept, Foto, Notiz und „in den Plan“. Lieblinge plant Jarvis gern wieder ein; steht ein Plan-Feld genauso wie ein Gericht hier, hängt das Rezept automatisch dran.</p>
         </Karte>
 
         {/* ── Profile ── */}
@@ -417,10 +451,12 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
   return <Seite titel="Ernährung" unter="Die Woche, die ihr durchhaltet — mit euren Lebensmitteln, eurem Vorrat und je Person ihren Bedürfnissen.">{inhalt}</Seite>;
 }
 
-function RezeptKarte({ g, daten, nameVon, patch, aufListe, neuSchreiben, laeuft, bearbeiten, loeschen }: {
+function RezeptKarte({ g, daten, nameVon, patch, aufListe, neuSchreiben, laeuft, bearbeiten, loeschen, foto, fotoWeg }: {
   g: Gericht; daten: Daten; nameVon: (id?: string) => string; patch: (ops: Op[]) => Promise<void>;
   aufListe: () => void; neuSchreiben?: () => void; laeuft: boolean; bearbeiten: () => void; loeschen: () => void;
+  foto: (datei: File) => void; fotoWeg: () => void;
 }) {
+  const dateiRef = useRef<HTMLInputElement>(null);
   const fehlt = useMemo(() => fehlendeZutaten(g, daten.vorrat, daten.einkauf), [g, daten.vorrat, daten.einkauf]);
   const wo = imPlan(daten.planGerichte, g.id);
   const heute = TAGE[(new Date().getDay() + 6) % 7];
@@ -444,6 +480,20 @@ function RezeptKarte({ g, daten, nameVon, patch, aufListe, neuSchreiben, laeuft,
             : <button type="button" onClick={() => setSicher(true)} style={{ ...nackt, padding: 0, textDecoration: 'underline' }}>löschen</button>}
         </span>
       </div>
+      {/* Foto (Kevin 26.09.): vom Handy, wird vor dem Hochladen verkleinert */}
+      <input ref={dateiRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) foto(f); e.target.value = ''; }} />
+      {g.bild ? (
+        <div style={{ position: 'relative' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={bildUrl(g)} alt={g.name} style={{ width: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 14, display: 'block' }} />
+          <div style={{ position: 'absolute', right: 8, bottom: 8, display: 'flex', gap: 6 }}>
+            <button type="button" onClick={() => dateiRef.current?.click()} style={{ ...nackt, padding: '5px 10px', borderRadius: 999, background: 'rgba(0,0,0,.55)', color: C.ink, fontSize: 12 }}>Foto ändern</button>
+            <button type="button" onClick={fotoWeg} style={{ ...nackt, padding: '5px 10px', borderRadius: 999, background: 'rgba(0,0,0,.55)', color: C.ink, fontSize: 12 }}>✕</button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={() => dateiRef.current?.click()} style={{ ...nackt, padding: '12px 14px', borderRadius: 12, border: '1px dashed rgba(255,255,255,.14)', color: C.inkDim, textAlign: 'left', width: '100%' }}>📷 Foto hinzufügen — vom Handy oder aus dem Album</button>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
         <div>
           <div style={{ ...mikro, marginBottom: 6 }}>Zutaten</div>
@@ -489,14 +539,13 @@ function RezeptKarte({ g, daten, nameVon, patch, aufListe, neuSchreiben, laeuft,
 }
 
 /** Gericht anlegen oder bearbeiten — von Hand, von Jarvis (Name + Wunsch) oder aus eingefügtem Text. */
-function GerichtForm({ g, personen, onSpeichern, onAbbruch, jarvis, laeuft }: {
-  g?: Gericht; personen: { id: string; name: string }[]; onSpeichern: (eintrag: Record<string, unknown>) => void; onAbbruch: () => void;
+function GerichtForm({ g, art, nameStart = '', personen, onSpeichern, onAbbruch, jarvis, laeuft }: {
+  g?: Gericht; art: 'hand' | 'text'; nameStart?: string; personen: { id: string; name: string }[]; onSpeichern: (eintrag: Record<string, unknown>) => void; onAbbruch: () => void;
   jarvis?: (name: string, beschreibung: string, text: string) => Promise<void>; laeuft?: boolean;
 }) {
-  const [art, setArt] = useState<'hand' | 'jarvis' | 'text'>('hand');
   const [f, setF] = useState({
-    name: g?.name ?? '', zutaten: (g?.zutaten ?? []).map(z => (z.menge ? `${z.menge} ${z.name}` : z.name)).join('\n'), zubereitung: (g?.zubereitung ?? []).join('\n'),
-    dauer: g?.dauerMin != null ? String(g.dauerMin) : '', portionen: String(g?.portionen ?? 2), fuer: g?.fuer ?? [], tags: (g?.tags ?? []).join(', '), wunsch: '', text: '',
+    name: g?.name ?? nameStart, zutaten: (g?.zutaten ?? []).map(z => (z.menge ? `${z.menge} ${z.name}` : z.name)).join('\n'), zubereitung: (g?.zubereitung ?? []).join('\n'),
+    dauer: g?.dauerMin != null ? String(g.dauerMin) : '', portionen: String(g?.portionen ?? 2), fuer: g?.fuer ?? [], tags: (g?.tags ?? []).join(', '), text: '',
   });
   const set = (k: keyof typeof f, v: string | string[]) => setF(x => ({ ...x, [k]: v }));
   const name = f.name.trim();
@@ -504,7 +553,7 @@ function GerichtForm({ g, personen, onSpeichern, onAbbruch, jarvis, laeuft }: {
     if (!name) return;
     const dauer = parseInt(f.dauer, 10), portionen = parseInt(f.portionen, 10);
     onSpeichern({
-      ...(g ? { id: g.id, angelegt: g.angelegt, favorit: g.favorit, notiz: g.notiz } : { id: neueId('g') }),
+      ...(g ? { id: g.id, angelegt: g.angelegt, favorit: g.favorit, notiz: g.notiz, bild: g.bild } : { id: neueId('g') }),
       name, zutaten: zutatenAusText(f.zutaten), zubereitung: schritteAusText(f.zubereitung),
       dauerMin: isFinite(dauer) && dauer > 0 ? dauer : null, portionen: isFinite(portionen) && portionen > 0 ? portionen : 2,
       fuer: f.fuer, tags: textListe(f.tags), quelle: 'hand',
@@ -513,13 +562,7 @@ function GerichtForm({ g, personen, onSpeichern, onAbbruch, jarvis, laeuft }: {
   const wahl: CSSProperties = { ...nackt, padding: '5px 11px', borderRadius: 999 };
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      {!g && jarvis && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {([['hand', 'von Hand'], ['jarvis', '✨ Jarvis schreibt'], ['text', 'Rezept einfügen']] as const).map(([k, l]) => (
-            <button key={k} type="button" onClick={() => setArt(k)} style={{ ...wahl, background: art === k ? `${LEUCHT.gut}22` : 'rgba(255,255,255,.05)', color: art === k ? LEUCHT.gut : C.inkDim }}>{l}</button>
-          ))}
-        </div>
-      )}
+      <div style={{ ...mikro }}>{g ? 'Gericht bearbeiten' : art === 'text' ? 'Rezept-Text einfügen' : 'Gericht von Hand'}</div>
       <input value={f.name} onChange={e => set('name', e.target.value)} placeholder="Name des Gerichts" style={klein} autoFocus />
       {art === 'hand' || g ? (
         <>
@@ -539,12 +582,6 @@ function GerichtForm({ g, personen, onSpeichern, onAbbruch, jarvis, laeuft }: {
             </div>
           )}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf farbe={LEUCHT.gut} onClick={speichern} aus={!name}>{g ? 'Änderungen speichern' : 'Gericht speichern'}</Knopf><Knopf leise onClick={onAbbruch}>Abbrechen</Knopf></div>
-        </>
-      ) : art === 'jarvis' ? (
-        <>
-          <input value={f.wunsch} onChange={e => set('wunsch', e.target.value)} placeholder="Wunsch (optional): „schnell, ohne Milch, für 4“" style={klein} />
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf farbe={LEUCHT.agenten} onClick={() => void jarvis?.(name, f.wunsch.trim(), '')} aus={!name || !!laeuft}>{laeuft ? 'Jarvis schreibt …' : '✨ Rezept schreiben lassen'}</Knopf><Knopf leise onClick={onAbbruch}>Abbrechen</Knopf></div>
-          <p style={{ fontSize: 12, color: C.inkLeise, margin: 0 }}>Jarvis schreibt mit euren Profilen, Grundsätzen und bevorzugten Lebensmitteln.</p>
         </>
       ) : (
         <>

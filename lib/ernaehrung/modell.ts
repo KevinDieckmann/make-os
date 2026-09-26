@@ -60,6 +60,8 @@ export interface Gericht {
   favorit: boolean;
   /** Eigene Notiz („Malin mag es ohne Feta“, „Reste am nächsten Tag“). */
   notiz: string;
+  /** Foto (Dateiname unter .data/bilder-gerichte, vergeben von /api/ernaehrung/bild) — leer = keins. */
+  bild: string;
 }
 export type PlanGerichte = Partial<Record<Tag, Partial<Record<Mahlzeit, string>>>>;
 
@@ -131,7 +133,7 @@ export function sauberDatei(f: Partial<ErnaehrungFile> | null, jetzt = new Date(
       portionen: typeof g?.portionen === 'number' && isFinite(g.portionen) ? Math.max(1, Math.min(20, Math.round(g.portionen))) : 2,
       fuer: liste(g?.fuer, 8, 40), tags: liste(g?.tags, 8, 30),
       quelle: (g?.quelle === 'hand' ? 'hand' : 'jarvis') as Gericht['quelle'], angelegt: s(g?.angelegt, 30) || jetzt,
-      favorit: g?.favorit === true, notiz: s(g?.notiz, 400),
+      favorit: g?.favorit === true, notiz: s(g?.notiz, 400), bild: /^[a-f0-9-]{10,60}\.(jpg|png|webp)$/.test(s(g?.bild, 80)) ? s(g?.bild, 80) : '',
     })).filter(g => g.name),
   };
 }
