@@ -106,12 +106,14 @@ function taskSauber(o: unknown): Task | null {
     assignee: S(t.assignee, 40) ?? 'kevin',
     tags: Array.isArray(t.tags) ? t.tags.slice(0, 20).map(x => String(x).slice(0, 40)) : [],
     dueDate: S(t.dueDate, 40), completedAt: S(t.completedAt, 40),
+    // Space (26.09.): Abweichung vom Ort — nur privat|business, sonst weg.
+    space: t.space === 'privat' || t.space === 'business' ? (t.space as 'privat' | 'business') : undefined,
     subTasks: Array.isArray(t.subTasks) ? (t.subTasks as Record<string, unknown>[]).slice(0, 50).filter(x => x && typeof x === 'object').map(x => ({ id: String(x.id ?? '').slice(0, 80), taskId: id, title: String(x.title ?? '').slice(0, 300), completed: x.completed === true, sortOrder: Number(x.sortOrder) || 0, createdAt: S(x.createdAt, 40) ?? jetzt, updatedAt: S(x.updatedAt, 40) ?? jetzt })) : [],
     dependencies: Array.isArray(t.dependencies) ? (t.dependencies as Record<string, unknown>[]).slice(0, 50).filter(x => x && typeof x === 'object' && typeof x.blockedByTaskId === 'string').map(x => ({ blockedByTaskId: String(x.blockedByTaskId).slice(0, 80), ...(typeof x.resolvedAt === 'string' ? { resolvedAt: x.resolvedAt.slice(0, 40) } : {}) })) : [],
     sortOrder: Number(t.sortOrder) || 0,
     createdAt: S(t.createdAt, 40) ?? jetzt, updatedAt: S(t.updatedAt, 40) ?? jetzt,
   };
-  for (const k of ['description', 'dueDate', 'completedAt'] as const) if (raus[k] === undefined) delete raus[k];
+  for (const k of ['description', 'dueDate', 'completedAt', 'space'] as const) if (raus[k] === undefined) delete raus[k];
   return raus as unknown as Task;
 }
 

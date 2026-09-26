@@ -8,7 +8,9 @@
 import { TextMitLinks } from './TextMitLinks';
 import { useLinkAuswahl } from './Verlauf';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSpace } from '@/hooks/useSpace';
+import { spaceVonAufgabe, SPACE_LABEL, SPACE_FARBE, type SpaceId } from '@/lib/make-one/space-regeln';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import { parseSchnell } from '@/lib/make-one/schnell-anlegen';
@@ -24,6 +26,9 @@ const WER: Record<string, string> = { kevin: 'K', malin: 'M', both: 'K+M' };
 export function AufgabenSchlank() {
   const heute = localDay();
   const { state, dispatch } = useTasks();
+  const { space: aktiverSpace, ausAdresse: spaceAusAdresse, setzen: spaceSetzen } = useSpace();
+  const [spaceFilter, setSpaceFilter] = useState<SpaceId | 'alle'>('alle');
+  useEffect(() => { setSpaceFilter(spaceAusAdresse ?? aktiverSpace); }, [spaceAusAdresse, aktiverSpace]);
   const [neu, setNeu] = useState('');
   const [zeigeErledigt, setZeigeErledigt] = useState(false);
   // Offene Aufgabe im Link (?offen=): Zurück schließt sie wieder, statt die Seite zu verlassen (25.09.).
@@ -36,15 +41,17 @@ export function AufgabenSchlank() {
     const p = parseSchnell(roh, state.projects);
     if (!p.title) return;
     dispatch({ type: 'ADD_TASK', payload: {
-      projectId: p.projectId ?? state.projects[0]?.id ?? '', title: p.title, description: '', status: 'todo',
+      projectId: p.projectId ?? state.projects[0]?.id ?? '', ...(spaceFilter !== 'alle' ? { space: spaceFilter } : {}), title: p.title, description: '', status: 'todo',
       priority: p.priority, assignee: p.assignee === 'both' ? 'both' : p.assignee, tags: [], subTasks: [], dependencies: [], sortOrder: 0,
       ...(p.dueDate ? { dueDate: p.dueDate } : {}),
     } });
     setNeu('');
   };
 
-  const offen = state.tasks.filter(t => t.status !== 'done');
-  const erledigt = state.tasks.filter(t => t.status === 'done').sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? '')).slice(0, 20);
+  // Space (26.09.): im Privat-Space nur Privates, im Business-Space nur Business — „Alle“ zeigt beides.
+  const imSpace = (t: Task) => spaceFilter === 'alle' || spaceVonAufgabe(t) === spaceFilter;
+  const offen = state.tasks.filter(t => t.status !== 'done' && imSpace(t));
+  const erledigt = state.tasks.filter(t => t.status === 'done' && imSpace(t)).sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? '')).slice(0, 20);
   const wochenEnde = tagePlus(heute, 7);
   const gruppen: { titel: string; farbe: string; liste: Task[] }[] = [
     { titel: 'Überfällig', farbe: LEUCHT.kritisch, liste: offen.filter(t => t.dueDate && t.dueDate < heute) },
@@ -74,6 +81,11 @@ export function AufgabenSchlank() {
         </select>
         <select value={t.projectId} onChange={e => aendern(t.id, { projectId: e.target.value })} style={wahl}>
           {state.projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+        </select>
+        <select value={t.space ?? 'auto'} onChange={e => aendern(t.id, { space: e.target.value === 'auto' ? undefined : (e.target.value as SpaceId) })} title="Space — ohne Angabe gibt der Ort den Space vor" style={wahl}>
+          <option value="auto">Space: {SPACE_LABEL[spaceVonAufgabe(t)]} (aus dem Ort)</option>
+          <option value="privat">Privat</option>
+          <option value="business">Business</option>
         </select>
         <button onClick={() => { dispatch({ type: 'DELETE_TASK', payload: { id: t.id } }); setOffenId(null); }} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>Löschen</button>
       </div>
@@ -106,7 +118,12 @@ export function AufgabenSchlank() {
   );
 
   return (
-    <Seite titel="Aufgaben" rechts={<Link href="/os/aufgaben/board" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Board &amp; Zeitstrahl ›</Link>}>
+    <Seite titel={spaceFilter === 'alle' ? 'Aufgaben' : `Aufgaben · ${SPACE_LABEL[spaceFilter]}`} rechts={<span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+      {(['privat', 'business', 'alle'] as const).map(k => (
+        <button key={k} onClick={() => { setSpaceFilter(k); if (k !== 'alle') spaceSetzen(k); }} className="fassbar" title={k === 'alle' ? 'Privat und Business zusammen' : `Nur ${SPACE_LABEL[k]}`} style={{ fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${spaceFilter === k ? (k === 'alle' ? C.aktiv : SPACE_FARBE[k]) : 'rgba(255,255,255,.1)'}`, background: spaceFilter === k ? `${k === 'alle' ? C.aktiv : SPACE_FARBE[k]}22` : 'transparent', color: spaceFilter === k ? (k === 'alle' ? C.aktiv : SPACE_FARBE[k]) : C.inkDim }}>{k === 'alle' ? 'Alle' : SPACE_LABEL[k]}</button>
+      ))}
+      <Link href={spaceFilter === 'alle' ? '/os/aufgaben/board' : `/os/aufgaben/board?space=${spaceFilter}`} style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none', marginLeft: 6 }}>Board &amp; Zeitstrahl ›</Link>
+    </span>}>
       <Karte i={0} akzent={LEUCHT.achtung}>
         <input value={neu} onChange={e => setNeu(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') anlegen(); }}
           placeholder="Neue Aufgabe … (!! kritisch · heute / mo–so / 24.09. · #projekt · @malin)" style={{ ...feld, fontSize: TYP.body }} />

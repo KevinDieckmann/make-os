@@ -31,6 +31,8 @@ export interface Task extends Timestamps {
   dependencies: Dependency[];
   sortOrder: number;
   completedAt?: string;
+  /** Abweichung vom Ort (26.09.): Privat oder Business — ohne Angabe gibt der Ort den Space vor. */
+  space?: 'privat' | 'business';
 }
 
 export interface Project extends Timestamps {

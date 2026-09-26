@@ -70,6 +70,18 @@ _(hier sammeln, was auf `entwicklung` fertig ist)_
 - Empfehlung an Kevin: Server auf 2 vCPU / 4 GB heben (Hetzner CX32, wenige Euro mehr) — der Arbeiter, Caddy und Next
   teilen sich heute einen Kern.
 
+**Aufteilung Privat/Business greift in den Aufgaben (26.09. abends, Kevin: „im Business wie privat Aufgaben — muss bei
+beiden hin“)** — Grundregel (Kevins Entscheidung): jeder Eintrag trägt seinen Space; der Space filtert, Heute und Jarvis
+sehen beides.
+- **Aufgaben:** der Ort (KD Ventures, Consulting, KEMARIS = Business · Privat = Privat) gibt den Space vor, eine
+  Aufgabe kann per Klick abweichen (Detail → Space, „wieder aus dem Ort“). Aufgaben-Seite: Pillen Privat · Business ·
+  Alle (aus dem Menü kommt der Space mit, `?space=`); Zähler, Kritisch, Aufwand folgen dem Filter; neue Aufgaben
+  landen im gerade gewählten Space. Beide Spaces haben „Aufgaben“ im Menü. Heute-Widget zeigt beide mit Space-Hinweis
+  und lässt sich per Einstellung auf einen Space begrenzen.
+- Beleg-Aufgaben aus den Haushaltsfinanzen tragen den Space ihrer Einheit (Selbständigkeit/UG = Business, privat =
+  Privat); bestehende werden beim nächsten Abgleich nachgezogen.
+- Noch offen in der Aufteilung: Ziele je Space, Kalender (Kalender → Space), Inbox nach Adresse, Kontaktbuch privat.
+
 **Bauplan-Punkte von Kevin & Malin (26.09., erste Runde: die schnellen Fixes)**
 - **Erfassen-Karte ohne Kürzung** (Kevin: „so genau wie möglich beschreiben“): vorher schnitt der Titel bei 160 und die
   Beschreibung bei 800 Zeichen ab — deshalb enden eure fünf Punkte vom 26.09. mitten im Satz. Jetzt: keine praktische

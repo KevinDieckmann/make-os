@@ -12,7 +12,10 @@ import { heuteBerlin } from './monat';
 interface Aufgabe {
   id: string; title: string; description?: string; status: string; priority: string; assignee?: string;
   tags?: string[]; subTasks?: unknown[]; dependencies?: unknown[]; sortOrder?: number; createdAt?: string; updatedAt?: string; dueDate?: string; projectId?: string;
+  /** Space (26.09.): Belege der Selbständigkeit/UG sind Business, private Belege Privat. */
+  space?: 'privat' | 'business';
 }
+const spaceVon = (einheit: string | undefined) => (einheit === 'privat' ? 'privat' : 'business') as 'privat' | 'business';
 
 export const istEchterHaushalt = (h: string) => h !== 'test' && !h.endsWith('-probe');
 
@@ -31,7 +34,8 @@ export async function belegAufgabenAbgleichen(haushalt: string): Promise<{ neu: 
       if (!b) { if (t.status !== 'done') { erledigt++; return { ...t, status: 'done', updatedAt: jetzt }; } return t; }
       offen.delete(t.id);
       const titel = `Beleg nachreichen: ${b.bezeichnung}`.slice(0, 200);
-      return titel === t.title && (b.faellig_am ?? undefined) === t.dueDate ? t : { ...t, title: titel, dueDate: b.faellig_am ?? undefined, updatedAt: jetzt };
+      const space = spaceVon(b.einheit);
+      return titel === t.title && (b.faellig_am ?? undefined) === t.dueDate && t.space === space ? t : { ...t, title: titel, dueDate: b.faellig_am ?? undefined, space, updatedAt: jetzt };
     });
     for (const [id, b] of Array.from(offen.entries())) {
       neu++;
@@ -39,7 +43,7 @@ export async function belegAufgabenAbgleichen(haushalt: string): Promise<{ neu: 
       tasks.push({
         id, title: `Beleg nachreichen: ${b.bezeichnung}`.slice(0, 200), description: 'Aus den Haushaltsfinanzen: dieser Beleg fehlt der Buchhaltung (sevdesk/Vivid).',
         status: 'todo', priority: b.faellig_am && b.faellig_am < heute ? 'high' : 'medium', assignee: wer === 'malin' ? 'malin' : 'kevin',
-        tags: ['haushalt', 'beleg'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, ...(b.faellig_am ? { dueDate: b.faellig_am } : {}),
+        tags: ['haushalt', 'beleg'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, space: spaceVon(b.einheit), ...(b.faellig_am ? { dueDate: b.faellig_am } : {}),
       });
     }
     return { ...f, tasks };

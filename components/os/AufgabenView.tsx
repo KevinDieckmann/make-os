@@ -28,6 +28,8 @@ import { wertVon, STANDARD_MODUS, type ReglerId } from '@/lib/make-one/kompass-d
 import { Zeitstrahl, type StrahlMarker } from './Zeitstrahl';
 import { parseSchnell, tagInT } from '@/lib/make-one/schnell-anlegen';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, Chip, Haken, feld, prioFarbe, LEUCHT } from './schlank';
+import { useSpace } from '@/hooks/useSpace';
+import { spaceVonAufgabe, SPACE_LABEL, SPACE_FARBE, type SpaceId } from '@/lib/make-one/space-regeln';
 
 const PRIO_ZYKLUS: Priority[] = ['low', 'medium', 'high', 'critical'];
 const PRIO_RANG: Record<Priority, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -191,6 +193,11 @@ export function AufgabenView() {
   const [prioFilter, setPrioFilter] = useState<Priority | 'alle'>('alle');
   const [themaFilter, setThemaFilter] = useState<string | 'alle'>('alle');
   const [orgFilter, setOrgFilter] = useState<string | 'alle'>('alle');
+  // Space (26.09.): im Privat-Space nur Privates, im Business-Space nur Business — „Alle“ zeigt beides.
+  const { space: aktiverSpace, ausAdresse: spaceAusAdresse, setzen: spaceSetzen } = useSpace();
+  const [spaceFilter, setSpaceFilter] = useState<SpaceId | 'alle'>('alle');
+  useEffect(() => { setSpaceFilter(spaceAusAdresse ?? aktiverSpace); }, [spaceAusAdresse, aktiverSpace]);
+  const imSpace = (t: { id: string; title: string; description?: string; projectId: string; space?: SpaceId }) => spaceFilter === 'alle' || spaceVonAufgabe(t, orgZuord) === spaceFilter;
   /** Termin-Lage: alles · nur ohne Datum · nur überfällig. */
   const [datumFilter, setDatumFilter] = useState<'alle' | 'ohne' | 'spaet'>('alle');
   const [werFilter, setWerFilter] = useState<Wer | 'alle'>('alle');
@@ -228,7 +235,7 @@ export function AufgabenView() {
     const p = parseSchnell(neuTitel, state.projects);
     if (!p.title) return;
     dispatch({ type: 'ADD_TASK', payload: {
-      projectId: p.projectId ?? state.projects[0]?.id ?? '',
+      projectId: p.projectId ?? state.projects[0]?.id ?? '', ...(spaceFilter !== 'alle' ? { space: spaceFilter } : {}),
       title: p.title, description: '', status: 'todo', priority: p.priority,
       assignee: p.assignee, tags: [], subTasks: [], dependencies: [], sortOrder: 0,
       ...(p.dueDate ? { dueDate: p.dueDate } : {}),
@@ -246,7 +253,7 @@ export function AufgabenView() {
     if (!roh) return;
     const p = parseSchnell(roh, state.projects);
     dispatch({ type: 'ADD_TASK', payload: {
-      projectId: p.projectId ?? state.projects[0]?.id ?? '',
+      projectId: p.projectId ?? state.projects[0]?.id ?? '', ...(spaceFilter !== 'alle' ? { space: spaceFilter } : {}),
       title: p.title || roh, description: '', status: 'todo',
       priority: neuPrio, assignee: neuWer,
       tags: [], subTasks: [], dependencies: [], sortOrder: 0,
@@ -286,6 +293,7 @@ export function AufgabenView() {
       if (prioFilter !== 'alle' && t.priority !== prioFilter) return false;
       if (themaFilter !== 'alle' && themaVon(t, zuordnung) !== themaFilter) return false;
       if (stichFilter && !stichworteVon(t, handStich, stichListe).includes(stichFilter)) return false;
+      if (!imSpace(t)) return false;
       if (orgFilter !== 'alle' && orgVon(t, orgZuord) !== orgFilter) return false;
       if (datumFilter === 'ohne' && t.dueDate) return false;
       if (datumFilter === 'spaet' && !(t.dueDate && t.dueDate < heute && t.status !== 'done')) return false;
@@ -326,7 +334,7 @@ export function AufgabenView() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.tasks, seg, bes, prioFilter, themaFilter, stichFilter, orgFilter, datumFilter, werFilter, aktiverFilter, eigeneFilter, stichListe, handStich, orgZuord, regler, zuordnung, themaRang, heute]);
+  }, [state.tasks, seg, bes, prioFilter, themaFilter, stichFilter, orgFilter, spaceFilter, datumFilter, werFilter, aktiverFilter, eigeneFilter, stichListe, handStich, orgZuord, regler, zuordnung, themaRang, heute]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Zähler für die Termin-Chips — über ALLE offenen Aufgaben, nicht über die
   // gerade gefilterte Liste: sonst zeigt „ohne Datum 0", während 20 offen sind.
@@ -345,8 +353,8 @@ export function AufgabenView() {
     datumFilter !== 'alle', werFilter !== 'alle', !!stichFilter, !!aktiverFilter,
   ].filter(Boolean).length;
 
-  const ohneDatumAnzahl = useMemo(() => state.tasks.filter(t => t.status !== 'done' && !t.dueDate).length, [state.tasks]);
-  const ueberfaelligAnzahl = useMemo(() => state.tasks.filter(t => t.status !== 'done' && t.dueDate && t.dueDate < heute).length, [state.tasks, heute]);
+  const ohneDatumAnzahl = useMemo(() => state.tasks.filter(t => t.status !== 'done' && !t.dueDate && imSpace(t)).length, [state.tasks, spaceFilter, orgZuord]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ueberfaelligAnzahl = useMemo(() => state.tasks.filter(t => t.status !== 'done' && t.dueDate && t.dueDate < heute && imSpace(t)).length, [state.tasks, heute, spaceFilter, orgZuord]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Stichwort-Register: was gerade wirklich anliegt, nach Dringlichkeit ──
   const stichStand = useMemo(() => {
@@ -400,10 +408,10 @@ export function AufgabenView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deleg, delegSort, state.tasks, themaRang, zuordnung]);
 
-  const openCount = state.tasks.filter(t => t.status !== 'done').length;
+  const openCount = state.tasks.filter(t => t.status !== 'done' && imSpace(t)).length;
   /** Gesamtaufwand der aktuellen Auswahl — sagt, ob der Plan in einen Tag passt. */
   const lastMin = useMemo(() => list.filter(t => t.status !== 'done').reduce((s, t) => s + einschaetzen(t).dauer, 0), [list]);
-  const kritischOffen = state.tasks.filter(t => t.status !== 'done' && t.priority === 'critical').length;
+  const kritischOffen = state.tasks.filter(t => t.status !== 'done' && t.priority === 'critical' && imSpace(t)).length;
   const fromInbox = (desc?: string) => !!desc && desc.startsWith('Aus Inbox');
 
   const segBtn = (key: 'offen' | 'erledigt' | 'alle', label: string, n?: number) => (
@@ -581,6 +589,14 @@ export function AufgabenView() {
                 ))}
               </div>
 
+              <DetailLabel>Space</DetailLabel>
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+                {(['privat', 'business'] as const).map(k => (
+                  <Pille key={k} an={spaceVonAufgabe(t, orgZuord) === k} farbe={SPACE_FARBE[k]} title={t.space ? 'von Hand gesetzt' : 'aus dem Ort'} onClick={() => dispatch({ type: 'UPDATE_TASK', payload: { id: t.id, space: k } })}>{SPACE_LABEL[k]}</Pille>
+                ))}
+                {t.space && <button onClick={() => dispatch({ type: 'UPDATE_TASK', payload: { id: t.id, space: undefined } })} style={{ background: 'none', border: 'none', color: C.inkLeise, fontSize: 12, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>wieder aus dem Ort</button>}
+              </div>
+
               <DetailLabel>Thema</DetailLabel>
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                 {themen.map(b => (
@@ -690,7 +706,12 @@ export function AufgabenView() {
           </span>
         </span>
       }
-      rechts={<Link href="/os/aufgaben" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Liste ›</Link>}>
+      rechts={<span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        {(['privat', 'business', 'alle'] as const).map(k => (
+          <Pille key={k} an={spaceFilter === k} farbe={k === 'alle' ? C.aktiv : SPACE_FARBE[k]} onClick={() => { setSpaceFilter(k); if (k !== 'alle') spaceSetzen(k); }} title={k === 'alle' ? 'Privat und Business zusammen' : `Nur ${SPACE_LABEL[k]}`}>{k === 'alle' ? 'Alle' : SPACE_LABEL[k]}</Pille>
+        ))}
+        <Link href="/os/aufgaben" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none', marginLeft: 6 }}>Liste ›</Link>
+      </span>}>
 
       {/* ─── Anlegen: schnell tippen ODER mit dem ＋ alles anklicken.
           Kevins Ansage: „dass ich selber Sachen anlegen kann — mit einem

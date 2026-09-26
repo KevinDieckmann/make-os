@@ -211,6 +211,11 @@ lokal, Route `/os`, Port 3001.
   `markttraktion-ueberblick`, `finanzchef`, `loops`, `kalender`. Weitere Karten-Seiten nach demselben Muster anschließen
   (offen: Wochen-/Tagesplaner, Aufgaben-Board, Inbox, Kompass, Säulen, Stapel, CRM-Unterseiten, Finanz-Details).
 
+## Spaces Privat/Business (26.09.)
+- Grundregel (Kevin): jeder Eintrag trägt seinen Space, der Space filtert, Heute/Jarvis sehen beides. Regeln in
+  `lib/make-one/space-regeln.ts` (`spaceVonAufgabe`: Ort gibt vor, `task.space` weicht ab). Menü/Kopf: `lib/make-one/spaces.ts`,
+  `hooks/useSpace.ts` (Adresse `?space=` gewinnt, sonst Merker). Neue Bereiche: Space aus der Adresse lesen, nie stumm mischen.
+
 ## Tempo (26.09.)
 - Teure Berechnungen (Indizes, Familie, Bauplan) laufen durch `merken(schluessel, ttl, rechne)` aus `lib/store/memo.ts`;
   jede Schreibung über local-db setzt den Speicher zurück. Schlüssel MÜSSEN Person/Haushalt tragen. Neue teure Routen

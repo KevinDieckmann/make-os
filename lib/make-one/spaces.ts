@@ -31,7 +31,7 @@ export const SPACES: Space[] = [
     eintraege: [
       { href: '/os/finanzen?s=privat', label: 'Finanzen', icon: Wallet, passt: ['/os/finanzen?s=privat'] },
       { href: '/os/fokus', label: 'Ziele & Fokus', icon: Crosshair, passt: ['/os/fokus', '/os/kompass', '/os/planung/fokus'] },
-      { href: '/os/aufgaben', label: 'Aufgaben', icon: ListChecks, passt: ['/os/aufgaben', '/os/board'] },
+      { href: '/os/aufgaben?space=privat', label: 'Aufgaben', icon: ListChecks, passt: ['/os/aufgaben?space=privat'] },
       { href: '/os/gesundheit', label: 'Gesundheit', icon: HeartPulse, passt: ['/os/gesundheit', '/os/journal', '/os/ernaehrung', '/os/ritual', '/os/energie', '/os/tageslauf'] },
       { href: '/os/familie', label: 'Familie', icon: Users, passt: ['/os/familie'] },
       { href: '/os/familie?b=familie', label: 'Menschen', icon: BookUser, passt: ['/os/familie?b=familie'] },
@@ -45,6 +45,7 @@ export const SPACES: Space[] = [
     suche: 'In Business suchen: Rechnungen, Mandate, Kontakte',
     eintraege: [
       { href: '/os/finanzen?s=business', label: 'Finanzen', icon: Wallet, passt: ['/os/finanzen?s=business', '/os/finanzen?s=steuern', '/os/finanzen?s=gesamt', '/os/finanzen?s=chef', '/os/finanzen/', '/os/controlling', '/os/business'] },
+      { href: '/os/aufgaben?space=business', label: 'Aufgaben', icon: ListChecks, passt: ['/os/aufgaben?space=business'] },
       { href: '/os/planung', label: 'Planung', icon: Target, passt: ['/os/planung', '/os/meeting', '/os/okr', '/os/saeule'] },
       { href: '/os/markttraktion', label: 'Markttraktion', icon: TrendingUp, passt: ['/os/markttraktion', '/os/crm', '/os/prospecting', '/os/research', '/os/content'] },
       { href: '/os/mandate', label: 'Mandate', icon: Briefcase, passt: ['/os/mandate'] },
