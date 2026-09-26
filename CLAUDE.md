@@ -142,7 +142,7 @@ lokal, Route `/os`, Port 3001.
   Monatsabschluss (`lib/business/fuer-chef.ts`); Feinjustierung: eigene Schwellen je
   Kennzahl (alle Sichten oder eine Firma), Jahresziele je Firma, Verlauf 90 Tage.
 
-## Business-Modell, Privat-Index, Steuern (seit 25.09.2026, auf `entwicklung`)
+## Business-Modell, Privat-Index, Steuern (seit 25.09.2026, online)
 - **Alles unter Zahlen** (`components/os/FinanzenView.tsx`): Privat · Business · Steuern · Gesamt ·
   Head of Finance. Business = Cockpit (`BusinessCockpit eingebettet`); `/os/business` leitet um.
 - **Gemeinsamer Kern** `lib/kennzahlen/kern.ts` (Punkte, Ampel, Gewichte, Details) — Business-Index
@@ -163,7 +163,7 @@ lokal, Route `/os`, Port 3001.
   npx next build`, dann Vorschau „make-os-pruefbau“ (Port 3011, mit CSP) — danach `.next-pruefbau` löschen.
 - Next 15.5 (seit 26.09.): `params`/`searchParams`/`cookies()` sind Promises (`await`).
 
-## Gesundheits-Index & Traktions-Index (seit 26.09.2026, auf `entwicklung`)
+## Gesundheits-Index & Traktions-Index (seit 26.09.2026, online)
 - **Ein Kern für alle Indizes:** `lib/kennzahlen/kern.ts` (`berechneModell`, `geometrisch` für den
   Traktions-Score) + `lib/kennzahlen/speicher.ts` (Verlauf 400 Tage, Schwellen, `fortschreiben`,
   `speichereSchwelle`, Speichername `^[a-z0-9][a-z0-9-]*$`) + `components/os/kennzahlen/IndexAnsicht.tsx`
@@ -182,7 +182,7 @@ lokal, Route `/os`, Port 3001.
   `bu-re-<id>` (`rechnungId`), Rechnung trägt `mandatId`. Umleitungen in `next.config.mjs` nur für Adressen,
   die es nicht mehr gibt — nie für Seiten, auf die noch verlinkt wird (Journal, Ritual).
 
-## Ernährung & Einkauf zu zweit (seit 26.09.2026, auf `entwicklung`)
+## Ernährung & Einkauf zu zweit (seit 26.09.2026, online)
 - Modell `lib/ernaehrung/modell.ts` (rein): Profile je Person (Konto = nur selbst, Gast = Haushalt), Stammliste
   (bevorzugte Lebensmittel + Hinweis), Vorrat, Gerichte (Rezepte), Plan + `planGerichte`, Einkauf mit Menge/Kategorie/
   für/von/Quelle. Helfer: `kategorieRaten`, `postenParsen`, `gleichesLebensmittel`, `fehlendeZutaten`, `warenkorbText`,
@@ -196,7 +196,7 @@ lokal, Route `/os`, Port 3001.
   (Wunsch) oder `text` (eingefügtes Rezept, als `fremd()`); `/vorschlag` listet gespeicherte Gerichte (★ zuerst) und
   legt für sie kein neues Rezept an. Deep-Link `WEG.gericht(id)` → `?s=ernaehrung&g=<id>`.
 
-## Flächen & Widgets (seit 26.09.2026, auf `entwicklung`)
+## Flächen & Widgets (seit 26.09.2026, online)
 - Kevins Ansage: alle Karten-Seiten je Person gestaltbar; Stift + langer Druck; Breite ⅓/½/⅔/voll; ausblenden;
   Einstellungen; Katalog aus dem Bestand; Standard = heutiger Aufbau (wird NIE gespeichert, `istStandard`).
 - Modell `lib/flaeche/modell.ts` (`anwenden(standard, gespeichert)`, `wende(layout, op, standard)`), Store je Person
@@ -216,7 +216,7 @@ lokal, Route `/os`, Port 3001.
   („Klickdummy“). Nach `main`/Hetzner geht NICHTS ohne Kevins ausdrückliche Freigabe für genau diesen Stand — auch keine
   Tempo-Fixes, keine Deploy-Skripte. Frühere Freigaben gelten nicht pauschal.
 
-## Spaces Privat/Business (26.09., Stand abends — nur lokal, bis Kevin das Hochladen freigibt)
+## Spaces Privat/Business (26.09., online seit 22:47)
 - Grundregel (Kevin): jeder Eintrag trägt seinen Space, der Space filtert, Home/Heute/Jarvis sehen beides. Regeln in
   `lib/make-one/space-regeln.ts` (`spaceVonAufgabe`: Ort gibt vor, `task.space` weicht ab; `fokusSchluessel`/`fokusFuerSpace`:
   Fokus gemeinsam oder `privat:jahr`/`business:jahr`). Menü/Kopf: `lib/make-one/spaces.ts` (SPACES · EIGEN · UNTEN,

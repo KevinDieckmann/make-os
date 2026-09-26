@@ -53,6 +53,12 @@ Ansage stehen, bis das nächste Update sie ablöst.
 
 ## Nächstes Update — vorbereitet, noch nicht online
 
+_(noch leer — ab hier wird wieder nur lokal gebaut; Hochladen erst auf Kevins klares Wort)_
+
+## Online seit 26.09.2026 spät (Stand `59f275e`, ausgerollt 22:47 auf Kevins Wort)
+
+Alles, was unten in diesem Block steht, ist seit 22:47 online: Tempo, Aufteilung Privat/Business, Spaces zweite Fassung (Home · Heute · Wachstum · Agenten · einklappbare Leiste · Übersicht je Space · Fokus je Space · Jarvis kennt den Space), Durchsicht der ganzen Software. Geprüft 22:50: Server auf `59f275e`, App und Arbeiter gesund.
+
 _(hier sammeln, was auf `entwicklung` fertig ist)_
 
 **Spaces, zweite Fassung — nur lokal, noch nicht hochgeladen (26.09. abends, Kevin: „vieles macht noch keinen
