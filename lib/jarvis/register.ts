@@ -143,11 +143,13 @@ async function vsMeilenstein(i: Record<string, unknown>): Promise<Vorschau> {
 async function vsFokus(i: Record<string, unknown>): Promise<Vorschau> {
   const h = String(i.horizont ?? '');
   const z = await loadJson<{ fokus?: Record<string, string> }>('ziele');
+  const sp = i.space === 'privat' || i.space === 'business' ? String(i.space) : null;
+  const key = sp ? `${sp}:${h}` : h;
   return {
-    titel: `Fokus (${h}) setzen`,
-    vorher: z?.fokus?.[h] ? `„${z.fokus[h]}"` : 'nicht gesetzt',
+    titel: `Fokus (${h}${sp ? `, ${sp}` : ''}) setzen`,
+    vorher: z?.fokus?.[key] ? `„${z.fokus[key]}"` : 'nicht gesetzt',
     nachher: `„${text(i.text, 300)}"`,
-    zurueck: { werkzeug: 'setze_fokus', eingabe: { horizont: h, text: z?.fokus?.[h] ?? '' } },
+    zurueck: { werkzeug: 'setze_fokus', eingabe: { horizont: h, ...(sp ? { space: sp } : {}), text: z?.fokus?.[key] ?? '' } },
   };
 }
 

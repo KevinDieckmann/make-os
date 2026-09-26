@@ -1,2 +1,2 @@
-import { HeuteFestView } from '@/components/os/HeuteFestView';
-export default function HeutePage() { return <HeuteFestView />; }
+import { HeuteView } from '@/components/os/HeuteView';
+export default function HeutePage() { return <HeuteView />; }

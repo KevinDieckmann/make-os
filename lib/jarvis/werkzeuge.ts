@@ -153,12 +153,15 @@ async function setzeMeilenstein(input: Record<string, unknown>): Promise<string>
 async function setzeFokus(input: Record<string, unknown>): Promise<string> {
   const h = String(input.horizont ?? '');
   if (!['tag', 'woche', 'monat', 'quartal', 'jahr'].includes(h)) return 'Fehlgeschlagen: horizont tag|woche|monat|quartal|jahr nötig.';
+  // Fokus je Space (26.09.): ohne Angabe der gemeinsame Satz, sonst „privat:jahr“ / „business:jahr“.
+  const space = input.space === 'privat' || input.space === 'business' ? String(input.space) : null;
+  const key = space ? `${space}:${h}` : h;
   const text = String(input.text ?? '').slice(0, 300);
   await updateJson<{ fokus?: Record<string, string> } & Record<string, unknown>>('ziele', current => {
     const f = current ?? {};
-    return { ...f, fokus: { ...(f.fokus ?? {}), [h]: text } };
+    return { ...f, fokus: { ...(f.fokus ?? {}), [key]: text } };
   });
-  return `Erfasst: Fokus (${h}) = „${text}". Steht auf dem Dashboard und lenkt die Planung.`;
+  return `Erfasst: Fokus (${h}${space ? `, ${space}` : ''}) = „${text}". Steht auf Home, in der Übersicht und lenkt die Planung.`;
 }
 
 // ── Gesundheit (23.09.): die Griffe, die ein Satz auslöst ───────────────────

@@ -13,6 +13,8 @@ import { LEUCHT } from './schlank';
 
 interface Treffer { art: string; id: string; titel: string; unter?: string; href: string; space?: 'privat' | 'business' }
 const SEITEN: Treffer[] = [
+  { art: 'seite', id: 'home', titel: 'Home · dein Dashboard', href: '/os' }, { art: 'seite', id: 'heute', titel: 'Heute', href: '/os/heute' }, { art: 'seite', id: 'wachstum', titel: 'Wachstum · Gesamtansicht & Score', href: '/os/wachstum' },
+  { art: 'seite', id: 'uebersicht-privat', titel: 'Privat · Übersicht', href: '/os/uebersicht?space=privat', space: 'privat' }, { art: 'seite', id: 'uebersicht-business', titel: 'Business · Übersicht', href: '/os/uebersicht?space=business', space: 'business' },
   { art: 'seite', id: 'markttraktion', titel: 'Markttraktion · Überblick', href: '/os/markttraktion', space: 'business' }, { art: 'seite', id: 'powerhour', titel: 'Sales · Heute (Power Hour)', href: '/os/markttraktion?s=sales', space: 'business' },
   { art: 'seite', id: 'kontakte', titel: 'Markttraktion · Kontakte', href: '/os/markttraktion?s=kontakte', space: 'business' },
   { art: 'seite', id: 'firmen', titel: 'Markttraktion · Firmen', href: '/os/markttraktion?s=firmen', space: 'business' }, { art: 'seite', id: 'pipeline', titel: 'Sales · Pipeline', href: '/os/markttraktion?s=sales&a=pipeline', space: 'business' },

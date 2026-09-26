@@ -3,7 +3,7 @@
 // Bereichs-Cockpit, Bauzeit-Hinweis, Onboarding-Erinnerung und Zurufe. Was
 // mitläuft, muss etwas tun, nicht nur da sein.
 import { Taktgeber } from '@/components/os/Taktgeber';
-import { WachstumsKopf } from '@/components/os/WachstumsKopf';
+import { Kopf } from '@/components/os/Kopf';
 import { Leiste } from '@/components/os/Leiste';
 import { JarvisPanel } from '@/components/os/JarvisPanel';
 import { FehlerMelder } from '@/components/os/FehlerMelder';
@@ -31,11 +31,11 @@ export default async function OsLayout({ children }: { children: React.ReactNode
       <Protokollant />
       {/* Schreibt leise mit, welche Seiten benutzt werden — Grundlage der Verbesserungs-Vorschläge. */}
       <NutzungsMelder />
-      {/* Eine Ebene, sechs Einträge (23.09.). */}
+      {/* Die Leiste (26.09.): Home · Wachstum · Privat · Business · Agenten, unten Jarvis · Brain · System. */}
       <Leiste />
       <main style={{ flex: 1, minWidth: 0, height: '100vh', overflowY: 'auto', overflowX: 'hidden' }}>
-        {/* Der Wachstums-Score über allem (24.09.) — der Score, auf den wir hinarbeiten. */}
-        <WachstumsKopf />
+        {/* Der Kopf (26.09.): Suche im Space · Idee · Heute · Inbox · Kalender · Index des Space. */}
+        <Kopf />
         <Taktgeber />
         {children}
       </main>

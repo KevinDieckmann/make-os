@@ -11,7 +11,9 @@ import { Flaeche, Kachel } from './flaeche/Flaeche';
 const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: string }[] }[] = [
   // Alles, was seit 24.09. abends im Kopf oben liegt — hier noch einmal zum Nachschlagen.
   { titel: 'Alle Bereiche', eintraege: [
-    { href: '/os', label: 'Heute', was: 'der Tag auf einen Blick' },
+    { href: '/os', label: 'Home', was: 'dein Dashboard, frei gestaltbar' },
+    { href: '/os/heute', label: 'Heute', was: 'der Tag auf einen Blick' },
+    { href: '/os/wachstum', label: 'Wachstum', was: 'die Gesamtansicht und der Score' },
     { href: '/os/inbox', label: 'Inbox', was: 'Postfächer, priorisiert' },
     { href: '/os/wachstum', label: 'Wachstum', was: 'der Score über allem' },
     { href: '/os/gesundheit', label: 'Gesundheit', was: 'Körper, Journal, Ernährung' },

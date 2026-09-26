@@ -74,6 +74,9 @@ Sinn, überarbeite das Ganze hier auf dem Klickdummy“)**
   Termine, Körper, Jarvis, Essen). Home (links oben) ist das frei gestaltbare Dashboard, Startstand = Überblick Privat
   und Business. **Wachstum** steht als eigener Knopf unter Home und führt auf die Gesamtansicht: erst die sechs Säulen,
   danach der Score (Kevin: „das zentrale Stück“).
+- **Aufgeräumt (Architektur):** `Kopf.tsx` (vorher WachstumsKopf), `HomeView` (/os) und `HeuteView` (/os/heute) klar getrennt,
+  alte Navigation (`lib/make-one/navigation.ts`) entfernt, Adressen in `WEG` (home, heute, uebersicht, menschen), Schnellsuche kennt
+  Home/Heute/Wachstum/Übersichten, Idee-Erfassung ordnet neue Seiten richtig zu, Jarvis `setze_fokus` je Space; Tests für die Spaces.
 - **Leiste einklappbar** (Kevin): das Zeichen oben rechts in der Leiste klappt sie auf eine schmale Symbolspalte zusammen
   (Home, Wachstum, Privat, Business, Agenten, Jarvis, Brain, System, Konto als Symbole mit Tooltip); der Stand bleibt gemerkt.
 - **Agenten als eigener Knopf** unter den beiden Spaces (Kevin: „das Agenten-Thema einzeln unter Business“) — nicht mehr

@@ -438,9 +438,10 @@ export async function POST(req: Request) {
       },
       {
         name: 'setze_fokus',
-        description: 'Setzt den Fokus-Satz für einen Horizont („Fokus der Woche: …").',
+        description: 'Setzt den Fokus-Satz für einen Horizont („Fokus der Woche: …") — gemeinsam oder je Space (Privat/Business; Standard: der aktive Space, wenn der Nutzer in einem ist).',
         input_schema: { type: 'object', properties: {
           horizont: { type: 'string', enum: ['tag', 'woche', 'monat', 'quartal', 'jahr'] },
+          space: { type: 'string', enum: ['privat', 'business'], description: 'Optional: Fokus nur für diesen Space' },
           text: { type: 'string' },
         }, required: ['horizont', 'text'] },
       },

@@ -27,6 +27,11 @@ const q = (basis: string, p: Record<string, string | undefined | null>, hash?: s
 export type ZahlenReiter = 'privat' | 'business' | 'steuern' | 'gesamt' | 'chef';
 
 export const WEG = {
+  /** Home (das eigene Dashboard) · Heute (die feste Tagesseite) · Übersicht je Space · Kontakte privat (26.09.). */
+  home: () => '/os',
+  heute: () => '/os/heute',
+  uebersicht: (space: 'privat' | 'business') => `/os/uebersicht?space=${space}`,
+  menschen: () => '/os/menschen',
   zahlen: (s?: ZahlenReiter) => q('/os/finanzen', { s }),
   /** Business-Cockpit: Sicht (gesamt weglassen), Kennzahl, Abschnitt. */
   business: (o: { f?: string; k?: string; abschnitt?: 'abschluss' | 'einstellungen' | 'modell' | 'verlauf' } = {}) =>

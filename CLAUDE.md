@@ -216,10 +216,20 @@ lokal, Route `/os`, Port 3001.
   („Klickdummy“). Nach `main`/Hetzner geht NICHTS ohne Kevins ausdrückliche Freigabe für genau diesen Stand — auch keine
   Tempo-Fixes, keine Deploy-Skripte. Frühere Freigaben gelten nicht pauschal.
 
-## Spaces Privat/Business (26.09.)
-- Grundregel (Kevin): jeder Eintrag trägt seinen Space, der Space filtert, Heute/Jarvis sehen beides. Regeln in
-  `lib/make-one/space-regeln.ts` (`spaceVonAufgabe`: Ort gibt vor, `task.space` weicht ab). Menü/Kopf: `lib/make-one/spaces.ts`,
-  `hooks/useSpace.ts` (Adresse `?space=` gewinnt, sonst Merker). Neue Bereiche: Space aus der Adresse lesen, nie stumm mischen.
+## Spaces Privat/Business (26.09., Stand abends — nur lokal, bis Kevin das Hochladen freigibt)
+- Grundregel (Kevin): jeder Eintrag trägt seinen Space, der Space filtert, Home/Heute/Jarvis sehen beides. Regeln in
+  `lib/make-one/space-regeln.ts` (`spaceVonAufgabe`: Ort gibt vor, `task.space` weicht ab; `fokusSchluessel`/`fokusFuerSpace`:
+  Fokus gemeinsam oder `privat:jahr`/`business:jahr`). Menü/Kopf: `lib/make-one/spaces.ts` (SPACES · EIGEN · UNTEN,
+  `passtZu` Pfad+Parameter), `hooks/useSpace.ts` (Adresse `?space=` gewinnt, sonst Merker). Tests `tests/spaces.test.ts`.
+- Seiten: `/os` = Home (`HomeView`, gestaltbare Fläche, Standard = Privat+Business zusammen) · `/os/heute` = feste Tagesseite
+  (`HeuteView`) · `/os/wachstum` = Gesamtansicht + Score · `/os/uebersicht?space=` = Dashboard je Space (`SpaceUebersichtView`) ·
+  `/os/menschen` = Kontakte privat. Leiste `components/os/Leiste.tsx` (einklappbar, Merker `make-leiste`), Kopf `components/os/Kopf.tsx`.
+- Je Space 6 Punkte: Übersicht · Finanzen · Aufgaben · Ziele & Planung + (Privat: Gesundheit · Familie · Kontakte | Business:
+  Markttraktion · Mandate). Agenten eigener Kasten. Inbox/Kalender im Kopf folgen dem Space (`?space=`). Postfächer → Space in
+  `spaces.json` (`lib/make-one/space-einstellungen.ts`), Kalender → Space in den Kalender-Einstellungen (`lib/kalender/space.ts`, client-sicher).
+- Neue Bereiche: Space aus der Adresse lesen (`useSpace().ausAdresse`), nie stumm mischen; Adressen in `lib/wege.ts` eintragen;
+  neue Seite in `lib/make-one/spaces.ts` (passt) und `components/os/Schnellsuche.tsx` (SEITEN) anschließen. Keine Weiterleitung
+  in `next.config.mjs` darf eine echte Seite verdecken (`/os/uebersicht` war so ein Fall).
 
 ## Tempo (26.09.)
 - Teure Berechnungen (Indizes, Familie, Bauplan) laufen durch `merken(schluessel, ttl, rechne)` aus `lib/store/memo.ts`;

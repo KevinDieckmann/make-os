@@ -48,7 +48,7 @@ export const SPACES: Space[] = [
       { href: '/os/uebersicht?space=business', label: 'Übersicht', icon: LayoutGrid, passt: ['/os/uebersicht?space=business'] },
       { href: '/os/finanzen?s=business', label: 'Finanzen', icon: Wallet, passt: ['/os/finanzen?s=business', '/os/finanzen?s=steuern', '/os/finanzen?s=chef', '/os/finanzen/', '/os/controlling', '/os/business'] },
       { href: '/os/aufgaben?space=business', label: 'Aufgaben', icon: ListChecks, passt: ['/os/aufgaben?space=business', '/os/board?space=business', '/os/meeting'] },
-      { href: '/os/planung/jahr?space=business', label: 'Ziele & Planung', icon: Target, passt: ['/os/planung?space=business', '/os/fokus?space=business', '/os/kompass?space=business', '/os/okr', '/os/saeule'] },
+      { href: '/os/planung/jahr?space=business', label: 'Ziele & Planung', icon: Target, passt: ['/os/planung?space=business', '/os/fokus?space=business', '/os/kompass?space=business', '/os/okr'] },
       { href: '/os/markttraktion', label: 'Markttraktion', icon: TrendingUp, passt: ['/os/markttraktion', '/os/crm', '/os/prospecting', '/os/research', '/os/content'] },
       { href: '/os/mandate', label: 'Mandate', icon: Briefcase, passt: ['/os/mandate'] },
     ],

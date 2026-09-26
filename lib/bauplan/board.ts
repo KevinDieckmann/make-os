@@ -101,7 +101,7 @@ export function bereichAusSeite(pfad?: string): string {
     [/^\/jarvis/, 'Jarvis'], [/^\/os\/wissen/, 'Brain'], [/^\/os\/(markttraktion|crm|prospecting)/, 'Markttraktion'], [/^\/os\/mandate/, 'Mandate'],
     [/^\/os\/(fokus|kompass)/, 'Fokus'], [/^\/os\/(aufgaben|board|meeting)/, 'Aufgaben'], [/^\/os\/planung/, 'Planung'], [/^\/os\/(finanzen|zahlen|controlling|liquiditaet)/, 'Zahlen'],
     [/^\/os\/(gesundheit|energie|ernaehrung)/, 'Gesundheit'], [/^\/os\/familie/, 'Familie'], [/^\/os\/inbox/, 'Inbox'], [/^\/os\/(agenten|stapel)/, 'Agenten'],
-    [/^\/os\/(system|bauplan|roadmap|konto|verbindungen|datenbasis|stammdaten)/, 'System'], [/^\/os\/?$/, 'Heute'],
+    [/^\/os\/(system|bauplan|roadmap|konto|verbindungen|datenbasis|stammdaten)/, 'System'], [/^\/os\/menschen/, 'Familie'], [/^\/os\/(heute|uebersicht|wachstum)/, 'Heute'], [/^\/os\/?$/, 'Heute'],
   ];
   return regeln.find(([r]) => r.test(p))?.[1] ?? 'Allgemein';
 }

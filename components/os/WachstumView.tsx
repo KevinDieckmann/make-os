@@ -24,7 +24,7 @@ interface Ziele { monat: Ziel[]; quartal: Ziel[]; jahr: Ziel[]; fokus: { monat?:
 
 const FARBE_JE: Record<string, string> = { health: LEUCHT.gut, business: LEUCHT.business, planning: LEUCHT.planung, finance: LEUCHT.geld, social: LEUCHT.beziehung, agents: LEUCHT.agenten };
 const KURZ: Record<string, string> = { health: 'Gesundheit', business: 'Business', planning: 'Planung', finance: 'Finanzen', social: 'Familie', agents: 'Agenten' };
-// Dieselben Ziele wie die Ringe im Kopf (WachstumsKopf) — eine Quelle (26.09.).
+// Dieselben Ziele wie das Score-Widget auf Home — eine Quelle (26.09.).
 const HREF: Record<string, string> = { health: '/os/gesundheit?s=index', business: '/os/finanzen?s=business', planning: '/os/saeule/planning', finance: '/os/finanzen', social: '/os/familie', agents: '/os/agenten' };
 
 export function WachstumView() {

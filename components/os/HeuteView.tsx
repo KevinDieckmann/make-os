@@ -1,50 +1,46 @@
 'use client';
 
-// ─── MAKE OS — Home ─────────────────────────────────────────────────────────
-// Die Seite nach der Anmeldung. Eine Frage: Was ist heute dran? Der
-// Seit 26.09. abends heißt sie „Home“ (Kevin): der Überblick über Privat und Business
-// zusammen, jede Person klickt sich ihr eigenes Dashboard zusammen. Seit 26.09. ist Heute eine Fläche (Kevin:
-// „seine eigene Seite vorne soll man sich selber gestalten“): jede Person
-// ordnet, blendet aus, stellt ein, holt Widgets aus dem Katalog — der
-// Standard unten ist der Aufbau, den Kevin und Malin bisher hatten.
+// ─── MAKE OS — Heute (26.09. abends, Kevin: „oben wieder Heute, Heute soll ein
+// eigenes Bild haben — der Home-Bildschirm wird für jeden selbst aufgebaut“) ──
+// Die feste Tagesseite: Gruß, Datum, Tagesstart/-ende, dann das, was HEUTE
+// zählt — Fokus, Aufgaben (beide Spaces), Termine, Körper, Jarvis. Nicht
+// gestaltbar; das Dashboard zum Selberbauen ist Home.
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { FARBE as C } from '@/lib/make-one/design';
-import { Seite } from './schlank';
-import { Flaeche } from './flaeche/Flaeche';
-import type { StandardPlatz } from '@/lib/flaeche/modell';
-
-/** Der Startstand: oben Score · Fokus · Jarvis, dann Aufgaben (⅔) + Körper, Termine (⅔) + Finanzen privat, Wer dran ist. */
-export const HEUTE_STANDARD: StandardPlatz[] = [
-  // Home (Kevin 26.09.): „erstmal der Überblick über Business und Privat jeweils zusammengeholt“ —
-  // links Privat, rechts Business; jede Person baut sich das über „Anpassen“ um.
-  { id: 'index-privat', art: 'index', breite: 3, einstellungen: { saeule: 'privat' }, titel: 'Privat · Index' },
-  { id: 'index-business', art: 'index', breite: 3, einstellungen: { saeule: 'business' }, titel: 'Business · Index' },
-  { id: 'aufgaben-privat', art: 'aufgaben', breite: 3, einstellungen: { space: 'privat', nur: 'dran' }, titel: 'Aufgaben · Privat' },
-  { id: 'aufgaben-business', art: 'aufgaben', breite: 3, einstellungen: { space: 'business', nur: 'dran' }, titel: 'Aufgaben · Business' },
-  { id: 'finanzen-privat', art: 'finanzen-privat', breite: 3 },
-  { id: 'dran', art: 'dran', breite: 3 },
-  { id: 'koerper', art: 'koerper', breite: 3 },
-  { id: 'jarvis', art: 'jarvis', breite: 3, einstellungen: { inbox: true } },
-  { id: 'termine', art: 'termine', breite: 3, einstellungen: { tage: 3, business: true }, titel: 'Nächste 3 Tage' },
-  { id: 'fokus', art: 'fokus', breite: 3 },
-  { id: 'score', art: 'score', breite: 3 },
-];
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { Seite, Spalten, Spalte } from './schlank';
+import { WIDGETS } from './flaeche/widgets';
 
 export function HeuteView() {
   const [datum, setDatum] = useState('');
   const [gruss, setGruss] = useState('Hallo');
   const [vorname, setVorname] = useState('');
+  const [abend, setAbend] = useState(false);
   useEffect(() => {
     const jetzt = new Date();
     setDatum(jetzt.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }));
     setGruss(jetzt.getHours() < 11 ? 'Guten Morgen' : jetzt.getHours() < 18 ? 'Guten Tag' : 'Guten Abend');
+    setAbend(jetzt.getHours() >= 17);
     fetch('/api/konto/ich').then(r => r.json()).then(d => setVorname((d.ich?.name ?? '').split(' ')[0])).catch(() => {});
   }, []);
+  const W = WIDGETS;
   return (
-    <Seite titel="Home" unter={<span suppressHydrationWarning>{gruss}{vorname ? `, ${vorname}` : ''} · {datum} · dein Dashboard, Privat und Business zusammen — über „Anpassen“ frei gestaltbar · <Link href="/os/heute" style={{ color: C.inkDim }}>Heute ›</Link></span>}>
-      <Flaeche seite="heute" widgets={HEUTE_STANDARD} />
+    <Seite titel={<>{gruss}{vorname ? `, ${vorname}` : ''}</>} unter={<span suppressHydrationWarning>{datum} · <Link href={`/os/ritual?modus=${abend ? 'abend' : 'morgen'}`} style={{ color: C.inkDim }}>{abend ? 'Tagesende' : 'Tagesstart'} ›</Link></span>}>
+      {/* Der Tag in einer Zeile: was heute zählt */}
+      <div style={{ fontFamily: SCHRIFT.display, fontSize: TYP.mikro, letterSpacing: '.12em', textTransform: 'uppercase', color: C.inkLeise, margin: '-6px 0 14px', fontWeight: 600 }}>Was heute zählt</div>
+      <Spalten verhaeltnis="2:1">
+        <Spalte>
+          <W.fokus.Komponente e={{ horizont: 'tag' }} i={0} />
+          <W.aufgaben.Komponente e={{ nur: 'dran', anzahl: 10 }} titel="Heute dran" i={1} />
+          <W.termine.Komponente e={{ tage: 1, business: true }} titel="Termine heute" i={2} />
+        </Spalte>
+        <Spalte>
+          <W.koerper.Komponente e={{}} i={1} />
+          <W.jarvis.Komponente e={{ inbox: true }} i={2} />
+          <W.essen.Komponente e={{}} i={3} />
+        </Spalte>
+      </Spalten>
     </Seite>
   );
 }

@@ -1,2 +1,2 @@
-import { HeuteView } from '@/components/os/HeuteView';
-export default function OsPage() { return <HeuteView />; }
+import { HomeView } from '@/components/os/HomeView';
+export default function OsPage() { return <HomeView />; }

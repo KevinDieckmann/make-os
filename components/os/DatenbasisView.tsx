@@ -61,7 +61,7 @@ export function DatenbasisView() {
 
       // ── Richtung (Kevins Revier) ──
       const fokus = ziele?.fokus ?? {};
-      z.push({ bereich: 'Fokus (Tag · Woche · Monat)', wer: 'Kevin', href: '/os',
+      z.push({ bereich: 'Fokus (Tag · Woche · Monat)', wer: 'Kevin', href: '/os/kompass',
         status: [fokus.tag && 'Tag', fokus.woche && 'Woche', fokus.monat && 'Monat'].filter(Boolean).join(' · ') || 'nicht gesetzt',
         ton: fokus.monat ? 'ok' : 'acht' });
       const zieleN = (ziele?.monat?.length ?? 0) + (ziele?.quartal?.length ?? 0) + (ziele?.jahr?.length ?? 0);

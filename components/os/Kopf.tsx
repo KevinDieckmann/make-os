@@ -1,6 +1,7 @@
 'use client';
 
 // ─── MAKE OS — Der Kopf über jeder Seite (26.09. abends, Malins Bild) ───────
+// Datei hieß bis 26.09. WachstumsKopf.tsx — der Score wohnt jetzt auf Home und unter Wachstum.
 // Links das Suchfeld, das im aktiven Space sucht (⌘K), dann Idee · Heute ·
 // Inbox · Kalender, rechts der Index des Space (Privat- oder Business-Index).
 // Der Wachstums-Score stand seit 24.09. hier oben; seit heute steht er auf
@@ -52,7 +53,7 @@ function SpaceIndex({ space }: { space: SpaceId }) {
 
 const rund = (an: boolean) => ({ width: 34, height: 34, borderRadius: '50%', display: 'grid', placeItems: 'center', border: `2px solid ${an ? C.aktiv : 'rgba(255,255,255,.1)'}`, color: an ? C.aktiv : C.inkDim } as const);
 
-export function WachstumsKopf() {
+export function Kopf() {
   const pfad = usePathname() ?? '';
   const { space } = useSpace();
   const sp = spaceVon(space);
