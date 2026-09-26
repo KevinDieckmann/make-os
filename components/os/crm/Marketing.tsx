@@ -19,7 +19,7 @@
 // („· 2 für dich“), und aus der Übersicht springt ein Klick direkt in den
 // Beitrag oder die Ausgabe.
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FARBE as C } from '@/lib/make-one/design';
 import { verantwortlich } from '@/lib/crm/team';
@@ -55,7 +55,15 @@ export function Marketing({ api, zuKontakt, start, onAnsicht }: { api: CrmApi; z
     waehle('kampagnen');
   };
   // Aus der Übersicht in einen Beitrag oder eine Ausgabe springen — die Ansicht öffnet ihn aufgeklappt.
-  const [fokus, setFokus] = useState<{ ansicht: Unter; id: string } | null>(null);
+  // Auch aus einem Link (?a=redaktion&k=<beitrag>) — z. B. aus dem Traktions-Index (26.09.).
+  const [fokus, setFokus] = useState<{ ansicht: Unter; id: string } | null>(() => {
+    const k = params.get('k');
+    return k && (wunsch === 'redaktion' || wunsch === 'newsletter') ? { ansicht: wunsch, id: k } : null;
+  });
+  useEffect(() => {
+    const k = params.get('k');
+    if (k && (unter === 'redaktion' || unter === 'newsletter')) setFokus({ ansicht: unter, id: k });
+  }, [params, unter]);
   const zuEintrag = (ansicht: 'redaktion' | 'newsletter', id: string) => { setFokus({ ansicht, id }); waehle(ansicht); };
   const ich = api.ich;
   const fuerMich = useMemo(() => {

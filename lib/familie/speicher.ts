@@ -81,6 +81,8 @@ export function setzeFelder(f: Familie, felder: Record<string, unknown>, person:
       ...(Array.isArray(e.businessFrei) ? { businessFrei: e.businessFrei.slice(0, 10).map(b => ({ tage: (b.tage ?? []).map(Number).filter(x => x >= 0 && x <= 6), von: text(b.von, 5), bis: text(b.bis, 5) })) } : {}),
       ...(typeof e.kinder === 'boolean' ? { kinder: e.kinder } : {}),
       ...('ausnahmeBis' in e ? { ausnahmeBis: tag(e.ausnahmeBis) } : {}),
+      // Kalender-Uids je Gesprächstag — höchstens 30, nur echte Tage.
+      ...(e.kalenderTermine && typeof e.kalenderTermine === 'object' ? { kalenderTermine: Object.fromEntries(Object.entries(e.kalenderTermine as Record<string, unknown>).filter(([k, v]) => /^\d{4}-\d{2}-\d{2}$/.test(k) && typeof v === 'string' && v.length <= 300).slice(-30).map(([k, v]) => [k, v as string])) } : {}),
     };
   }
   // Profil: jeder pflegt nur sein eigenes.

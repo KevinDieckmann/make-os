@@ -21,6 +21,8 @@ export interface Einstellungen {
   kinder: boolean;
   /** Urlaub, Krankheit, Geburt — der Rhythmus pausiert. */
   ausnahmeBis: string | null;
+  /** Paar-Gespräche im gemeinsamen iCloud-Kalender: Datum → Termin-Uid (26.09.). */
+  kalenderTermine?: Record<string, string>;
 }
 
 export interface Gespraech extends Basis {
@@ -35,7 +37,7 @@ export interface Vereinbarung extends Basis { text: string; wer: string; faellig
 export interface Wertschaetzung extends Basis { an: string; text: string; datum: string }
 export interface Ritualtag { datum: string; erledigt: string[] }   // Ritual-Kennungen, gemeinsam
 export interface DateIdee extends Basis { titel: string; tags: string[]; aufwand: 1 | 2 | 3; kosten: 0 | 1 | 2 | 3; dauer: 'abend' | 'halbtag' | 'tag' | 'wochenende'; neu: boolean }
-export interface Date extends Basis { titel: string; ideeId: string | null; datum: string; planer: string; status: 'geplant' | 'stattgefunden' | 'abgesagt'; neuesErlebnis: boolean; nachklang: { von: string; text: string }[] }
+export interface Date extends Basis { titel: string; ideeId: string | null; datum: string; planer: string; status: 'geplant' | 'stattgefunden' | 'abgesagt'; neuesErlebnis: boolean; nachklang: { von: string; text: string }[]; /** Termin im gemeinsamen iCloud-Kalender (26.09.). */ kalenderUid?: string }
 export interface LoveMapAntwort extends Basis { frageId: string; person: string; antwort: string }
 export interface Wunsch extends Basis { text: string; kategorie: 'alltag' | 'zeit' | 'naehe' | 'erlebnis' | 'geschenk'; status: 'offen' | 'erfuellt' | 'zurueckgezogen' }
 export interface Profil { person: string; stress: string; traeume: string; wasMirGuttut: string; stand: string }

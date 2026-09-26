@@ -22,7 +22,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { FARBE as C, TYP, TIEF } from '@/lib/make-one/design';
+import { FARBE as C, TYP, TIEF, SCHRIFT } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Leer, LEUCHT } from '../schlank';
 import type { Ergebnis, Aktivitaet } from '@/lib/make-one/crm';
 import type { KanalStatus } from '@/lib/crm/recht';
@@ -49,7 +49,7 @@ interface HeuteAntwort {
   person: string; ich: string; nurLesen: boolean; verantwortlich: string;
   kategorien: { id: string; label: string; warum: string }[]; karten: HeuteKarte[];
   ausgefiltert: { sperre: number; ohneKanal: number; kuerzlich: number; beiAnderen: number };
-  sitzungen: { id: string; datum: string; karten: { ergebnis?: string }[] }[];
+  sitzungen: { id: string; datum: string; karten: { ergebnis?: string }[]; gelernt?: string }[];
   team: TeamTag[];
 }
 
@@ -277,7 +277,35 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
           </Karte>
         );
       })}
+      {!fokus && !lesen && <LetztePowerHours sitzungen={d.sitzungen} heute={d.heute} />}
     </>
+  );
+}
+
+const tagMinus = (t: string, n: number) => { const d = new Date(`${t}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); };
+
+/** Die letzten Power Hours — hierher führen die Punkte im Traktions-Index (26.09.). */
+function LetztePowerHours({ sitzungen, heute }: { sitzungen: HeuteAntwort['sitzungen']; heute: string }) {
+  const l = sitzungen.slice().sort((a, b) => b.datum.localeCompare(a.datum)).slice(0, 5);
+  const vor7 = tagMinus(heute, 6);
+  const woche = sitzungen.filter(s => s.datum >= vor7 && s.datum <= heute).length;
+  return (
+    <Karte i={4}>
+      <Ueberschrift rechts={<span>{woche} in 7 Tagen · Ziel 4</span>}>Letzte Power Hours</Ueberschrift>
+      {!l.length ? <Leer>Noch keine Power Hour abgeschlossen — die erste zählt ab heute.</Leer> : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {l.map(s => {
+            const gespraeche = s.karten.filter(k => k.ergebnis === 'gespraech' || k.ergebnis === 'termin').length;
+            return (
+              <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '64px 1fr', gap: 12, alignItems: 'baseline', fontSize: TYP.bedien }}>
+                <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: C.inkDim }}>{s.datum.slice(8, 10)}.{s.datum.slice(5, 7)}.</span>
+                <span style={{ color: C.inkDim }}>{s.karten.length} Karten · {gespraeche} {gespraeche === 1 ? 'Gespräch' : 'Gespräche'}{s.gelernt ? <span style={{ color: C.inkLeise }}> · „{s.gelernt.slice(0, 90)}“</span> : ''}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Karte>
   );
 }
 

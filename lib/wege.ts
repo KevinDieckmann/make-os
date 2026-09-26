@@ -78,7 +78,7 @@ export const WEG = {
   leads: () => markttraktion('sales', 'leads'),
   kunden: () => markttraktion('sales', 'kunden'),
   kampagne: (id?: string, head: 'sales' | 'marketing' = 'sales') => markttraktion(head, 'kampagnen', id),
-  marketing: (a?: 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung') => markttraktion('marketing', a),
+  marketing: (a?: 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung', k?: string) => markttraktion('marketing', a, k),
   event: (id?: string, r?: 'gaeste' | 'ablauf' | 'checkliste' | 'budget' | 'abend' | 'nachfassen') => `${markttraktion('event', undefined, id)}${r ? `${id ? '&' : '?'}r=${r}` : ''}`,
   stammdaten: (tab?: string) => markttraktion('stammdaten', tab),
   jahr: () => '/os/planung/jahr',

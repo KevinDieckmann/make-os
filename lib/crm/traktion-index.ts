@@ -113,7 +113,7 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
   },
   veroeffentlichungen(b) {
     return (b.crm.beitraege ?? []).filter(x => x.status === 'veroeffentlicht' && x.datum).sort((x, y) => y.datum!.localeCompare(x.datum!)).slice(0, 3)
-      .map(x => ({ titel: x.titel, wert: tagKurz(x.datum!), unter: `${x.kanal} · ${(x.wirkung ?? []).length} Reaktionen`, href: WEG.marketing('redaktion') }));
+      .map(x => ({ titel: x.titel, wert: tagKurz(x.datum!), unter: `${x.kanal} · ${(x.wirkung ?? []).length} Reaktionen`, href: WEG.marketing('redaktion', x.id) }));
   },
   content_gespraeche(b) {
     const vor30 = tagMinus(b.heute, 29);
@@ -129,7 +129,7 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
   },
   abmeldequote(b) {
     return (b.crm.newsletter ?? []).filter(a => abmeldequote(a) !== null).sort((x, y) => (y.datum ?? '').localeCompare(x.datum ?? '')).slice(0, 3)
-      .map(a => ({ titel: a.titel, wert: `${(abmeldequote(a)! * 100).toLocaleString('de-DE', { maximumFractionDigits: 2 })} %`, unter: `${a.abmeldungen} von ${a.empfaenger}${a.datum ? ` · ${tagKurz(a.datum)}` : ''}`, href: WEG.marketing('newsletter') }));
+      .map(a => ({ titel: a.titel, wert: `${(abmeldequote(a)! * 100).toLocaleString('de-DE', { maximumFractionDigits: 2 })} %`, unter: `${a.abmeldungen} von ${a.empfaenger}${a.datum ? ` · ${tagKurz(a.datum)}` : ''}`, href: WEG.marketing('newsletter', a.id) }));
   },
   newsletter_netto(b) {
     const vor30 = tagMinus(b.heute, 29);

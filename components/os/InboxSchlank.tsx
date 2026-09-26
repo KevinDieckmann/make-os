@@ -1,5 +1,7 @@
 'use client';
 
+import type { Owner } from '@/types/common';
+
 // ─── MAKE OS — Inbox ────────────────────────────────────────────────────────
 // Eine Liste, eine Entscheidung je Mail. Jarvis stuft ein (wichtig · normal ·
 // rauschen), fällige Wiedervorlagen stehen oben, Rauschen ist eingeklappt und
@@ -51,6 +53,8 @@ export function InboxSchlank() {
   const heute = localDay();
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [status, setStatus] = useState<StatusMap>({});
+  // Wer sonst noch ein Konto hat — „Delegiert“ legt für die Person eine Aufgabe an (26.09.).
+  const [andere, setAndere] = useState<{ speicher: string; name: string }[]>([]);
   const [triage, setTriage] = useState<TriageMap>({});
   const [absender, setAbsender] = useState<Record<string, { status: string }>>({});
   const [quelle, setQuelle] = useState<{ apple: string; ms: string }>({ apple: 'lädt …', ms: 'lädt …' });
@@ -72,6 +76,7 @@ export function InboxSchlank() {
   useEffect(() => {
     fetch('/api/state/inbox').then(r => r.json()).then(d => setStatus(d.status ?? {})).catch(() => {});
     fetch('/api/inbox/triage').then(r => r.json()).then(d => setTriage(d.triage ?? {})).catch(() => {});
+    fetch('/api/konto/ich').then(r => r.json()).then(d => setAndere(Array.isArray(d.andere) ? d.andere.map((k: { speicher: string; name: string }) => ({ speicher: k.speicher, name: k.name })) : [])).catch(() => {});
     fetch('/api/state/inbox-absender').then(r => r.json()).then(d => setAbsender(d.bekannt ?? {})).catch(() => {});
     fetch('/api/microsoft').then(r => r.json()).then(d => {
       const ms: Msg[] = (d.emails ?? []).map((e: Record<string, unknown>) => ({
@@ -116,6 +121,12 @@ export function InboxSchlank() {
     const schonDa = state.tasks.find(t => t.status !== 'done' && t.title.trim().toLowerCase() === m.subject.trim().toLowerCase() && (t.description ?? '').startsWith('Aus Inbox'));
     if (!schonDa) dispatch({ type: 'ADD_TASK', payload: { projectId: state.projects[0]?.id ?? '', title: m.subject, description: `Aus Inbox · ${m.sender}${m.senderEmail ? ` <${m.senderEmail}>` : ''}`, status: 'todo', priority: m.importance === 'high' ? 'high' : 'medium', assignee: 'kevin', tags: [], subTasks: [], dependencies: [], sortOrder: 0 } });
     setzen([{ id: m.id, status: 'aufgabe' }]); setMeldung(schonDa ? `Aufgabe gab es schon: ${m.subject}` : `Aufgabe angelegt: ${m.subject}`);
+  };
+  const delegieren = (m: Msg, an: { speicher: string; name: string }) => {
+    const kennung = `Aus Inbox · an ${an.name}`;
+    const schonDa = state.tasks.find(t => t.status !== 'done' && t.title.trim().toLowerCase() === m.subject.trim().toLowerCase() && (t.description ?? '').startsWith(kennung));
+    if (!schonDa) dispatch({ type: 'ADD_TASK', payload: { projectId: state.projects[0]?.id ?? '', title: m.subject, description: `${kennung} · ${m.sender}${m.senderEmail ? ` <${m.senderEmail}>` : ''}`, status: 'todo', priority: m.importance === 'high' ? 'high' : 'medium', assignee: an.speicher as Owner, tags: [], subTasks: [], dependencies: [], sortOrder: 0 } });
+    setzen([{ id: m.id, status: 'delegiert' }]); setMeldung(schonDa ? `Aufgabe für ${an.name} gab es schon: ${m.subject}` : `Aufgabe für ${an.name} angelegt: ${m.subject}`);
   };
   const oeffnen = async (m: Msg) => {
     const zu = offenId === m.id; setOffenId(zu ? null : m.id); setEntwurf(null);
@@ -186,7 +197,8 @@ export function InboxSchlank() {
           <Knopf leise onClick={() => aufgabe(m)}>Aufgabe</Knopf>
           <Knopf leise onClick={() => setzen([{ id: m.id, status: 'snoozed', bis: tagIn(1) }])}>Morgen</Knopf>
           <Knopf leise onClick={() => setzen([{ id: m.id, status: 'snoozed', bis: naechsterMontag() }])}>Montag</Knopf>
-          <Knopf leise onClick={() => setzen([{ id: m.id, status: 'delegiert' }])}>Delegiert</Knopf>
+          {andere.map(p => <span key={p.speicher} title={`Aufgabe für ${p.name} anlegen`}><Knopf leise onClick={() => delegieren(m, p)}>An {p.name.split(' ')[0]}</Knopf></span>)}
+          <span title="Außerhalb von MAKE OS abgegeben — nur als delegiert markieren"><Knopf leise onClick={() => setzen([{ id: m.id, status: 'delegiert' }])}>Delegiert (extern)</Knopf></span>
           {!entwurf && <Knopf leise onClick={() => antworten(m)} aus={schreibt}>{schreibt ? 'Jarvis schreibt …' : 'Antwort'}</Knopf>}
           <button onClick={() => blocken(m)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>Absender blocken</button>
         </>) : <Knopf leise onClick={() => setzen([{ id: m.id, status: 'offen' }])}>Wieder öffnen</Knopf>}

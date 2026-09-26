@@ -13,6 +13,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { SITZUNG_COOKIE, sitzungPruefen, sitzungsGeheimnis, gleich } from '@/lib/zugang/sitzung';
+import { standGueltig } from '@/lib/zugang/stand-pruefung';
 
 /** Ohne Sitzung erreichbar: die Anmeldung selbst und ihre Schnittstellen. */
 const OFFEN = [/^\/anmelden$/, /^\/api\/konto\/(status|anmelden|einrichten|beitreten)$/];
@@ -61,7 +62,8 @@ export async function middleware(req: NextRequest) {
   if (OFFEN.some(r => r.test(pfad))) return NextResponse.next({ request: { headers: kopf } });
 
   const sitzung = await sitzungPruefen(sitzungsGeheimnis(), req.cookies.get(SITZUNG_COOKIE)?.value);
-  if (sitzung) {
+  // Passt der Zettel noch zum Passwort? (nach einem Wechsel: alle anderen Geräte binnen einer Minute raus)
+  if (sitzung && await standGueltig(req, sitzung.speicher, sitzung.stand, schluessel)) {
     kopf.set('x-make-user', sitzung.speicher);
     return NextResponse.next({ request: { headers: kopf } });
   }

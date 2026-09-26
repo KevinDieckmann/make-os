@@ -44,6 +44,8 @@ export function WirZwei({ api, onGespraech }: { api: FamilieApi; onGespraech: ()
             </div>
             <Reihe>
               <Knopf onClick={onGespraech} farbe={ROSA}>{g.laufend ? 'Gespräch fortsetzen' : 'Gespräch starten'}</Knopf>
+              <InKalender vorhanden={f.einstellungen.kalenderTermine?.[g.datum]} titel="Paar-Gespräch" start={`${g.datum}T${uhr.uhrzeit}`} dauerMin={uhr.dauerMin}
+                merken={uid => api.felder({ einstellungen: { kalenderTermine: { ...(f.einstellungen.kalenderTermine ?? {}), [g.datum]: uid } } })} />
               <Klein>{d.agenda.offeneThemen.length === 1 ? '1 Thema' : `${d.agenda.offeneThemen.length} Themen`} im Parkplatz · {d.agenda.offeneVereinbarungen.length === 1 ? '1 Vereinbarung' : `${d.agenda.offeneVereinbarungen.length} Vereinbarungen`} offen</Klein>
             </Reihe>
           </div>
@@ -114,6 +116,31 @@ function Heute({ api, partner }: { api: FamilieApi; partner: string | null }) {
   );
 }
 
+// ── In den gemeinsamen Kalender (26.09.) ──
+// Paar-Gespräch und Dates landen auf Wunsch im Kalender „Gemeinsam“ (iCloud, mit Malin geteilt) — ohne
+// Teilnehmer, also ohne Einladungs-Mail. Einmal angelegt, merkt sich MAKE OS die Uid: kein Doppel.
+const plusMin = (start: string, min: number) => { const d = new Date(`${start}:00Z`); d.setUTCMinutes(d.getUTCMinutes() + min); return d.toISOString().slice(0, 16); };
+const plusTag = (tag: string, n: number) => { const d = new Date(`${tag}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+function InKalender({ vorhanden, titel, start, dauerMin, ganztags, merken }: { vorhanden?: string; titel: string; start: string; dauerMin?: number; ganztags?: boolean; merken: (uid: string) => Promise<unknown> }) {
+  const [lage, setLage] = useState<'still' | 'laeuft' | 'fehler'>('still');
+  const [fehler, setFehler] = useState('');
+  if (vorhanden) return <Klein>im Kalender ✓</Klein>;
+  const anlegen = async () => {
+    setLage('laeuft');
+    const ende = ganztags ? plusTag(start, 1) : plusMin(start, dauerMin ?? 45);
+    const r = await fetch('/api/kalender/termin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ titel, wer: 'beide', start, ende, ganztags: !!ganztags, notiz: 'Aus MAKE OS · Familie & Partnerschaft' }) })
+      .then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    if (r.ok && typeof r.uid === 'string') { await merken(r.uid); setLage('still'); }
+    else { setFehler(r.fehler ?? 'Nicht angelegt.'); setLage('fehler'); }
+  };
+  return (
+    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+      <Knopf leise aus={lage === 'laeuft'} onClick={() => void anlegen()}>{lage === 'laeuft' ? 'legt an …' : 'in den Kalender'}</Knopf>
+      {lage === 'fehler' && <Klein>{fehler}</Klein>}
+    </span>
+  );
+}
+
 // ── Zeit zu zweit ──
 function Dates({ api }: { api: FamilieApi }) {
   const d = api.d!;
@@ -150,7 +177,7 @@ function Dates({ api }: { api: FamilieApi }) {
             rechts={<Reihe gap={4}><Knopf leise onClick={() => api.setze('dates', { ...x, status: 'stattgefunden' })}>Ja</Knopf><Knopf leise onClick={() => api.setze('dates', { ...x, status: 'abgesagt' })}>Nein</Knopf></Reihe>} />
         ))}
         {kommend.map(x => (
-          <Zeile key={x.id} titel={x.titel} unter={`${datumLang(x.datum, d.heute)} · plant ${api.name(x.planer)}`} rechts={<>{x.neuesErlebnis && <Chip farbe={ROSA}>Neu</Chip>}<Symbol titel="Absagen" onClick={() => api.setze('dates', { ...x, status: 'abgesagt' })}>×</Symbol></>} />
+          <Zeile key={x.id} titel={x.titel} unter={`${datumLang(x.datum, d.heute)} · plant ${api.name(x.planer)}`} rechts={<>{x.neuesErlebnis && <Chip farbe={ROSA}>Neu</Chip>}<InKalender vorhanden={x.kalenderUid} titel={`Date: ${x.titel}`} start={x.datum} ganztags merken={uid => api.setze('dates', { ...x, kalenderUid: uid })} /><Symbol titel="Absagen" onClick={() => api.setze('dates', { ...x, status: 'abgesagt' })}>×</Symbol></>} />
         ))}
       </Liste>
       {!kommend.length && !vorbei.length && <Leer>Kein Date geplant. Eine Idee aus dem Pool übernehmen — wer plant, plant komplett, inklusive Reservierung.</Leer>}

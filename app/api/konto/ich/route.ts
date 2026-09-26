@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server';
 import { personAus } from '@/lib/jarvis/raum';
 import { ladeKonten, aendereKonten, oeffentlich, passwortTauglich, passwortHashen, passwortStimmt } from '@/lib/zugang/konten';
+import { mitSitzung } from '@/lib/zugang/antwort';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,5 +34,11 @@ export async function PUT(req: Request) {
     neu = await passwortHashen(b.passwortNeu);
   }
   await aendereKonten(st => ({ ...st, konten: st.konten.map(k => k.speicher === wer ? { ...k, ...(name && name.length >= 2 ? { name } : {}), ...(neu ?? {}) } : k) }));
+  // Neues Passwort → neuer Stand: dieses Gerät bekommt sofort einen passenden Zettel, alle anderen
+  // fallen binnen einer Minute raus (lib/zugang/stand-pruefung.ts).
+  if (neu) {
+    const frisch = (await ladeKonten()).konten.find(k => k.speicher === wer);
+    if (frisch) return mitSitzung(frisch);
+  }
   return NextResponse.json({ ok: true });
 }

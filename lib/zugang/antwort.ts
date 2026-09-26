@@ -1,6 +1,6 @@
 // ─── MAKE OS — Sitzung in die Antwort schreiben ─────────────────────────────
 import { NextResponse } from 'next/server';
-import { SITZUNG_COOKIE, WER_COOKIE, SITZUNG_TAGE, sitzungAusstellen, sitzungsGeheimnis } from './sitzung';
+import { SITZUNG_COOKIE, WER_COOKIE, SITZUNG_TAGE, sitzungAusstellen, sitzungsGeheimnis, kontoStand } from './sitzung';
 import type { Konto } from './konten';
 import { oeffentlich } from './konten';
 
@@ -9,7 +9,7 @@ import { oeffentlich } from './konten';
 const nurHttps = () => (process.env.MAKE_OS_ADRESSE ?? '').trim().startsWith('https://');
 
 export async function mitSitzung(konto: Konto, extra: Record<string, unknown> = {}): Promise<NextResponse> {
-  const zettel = await sitzungAusstellen(sitzungsGeheimnis(), konto.speicher);
+  const zettel = await sitzungAusstellen(sitzungsGeheimnis(), konto.speicher, await kontoStand(konto.salz));
   const res = NextResponse.json({ ok: true, konto: oeffentlich(konto), ...extra });
   const alter = 60 * 60 * 24 * SITZUNG_TAGE;
   res.cookies.set(SITZUNG_COOKIE, zettel, { httpOnly: true, sameSite: 'lax', maxAge: alter, path: '/', secure: nurHttps() });

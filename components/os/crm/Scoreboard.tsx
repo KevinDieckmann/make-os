@@ -19,6 +19,7 @@
 
 import { useCallback, useEffect, useId, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
+import { markttraktion } from '@/lib/crm/adresse';
 import { FARBE as C, TYP, leuchtFarbe } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Punkt, LEUCHT } from '../schlank';
 import { useAbgleich } from '@/hooks/useAbgleich';
@@ -160,6 +161,9 @@ function Tabelle({ sb }: { sb: ScoreboardDaten }) {
   );
 }
 
+/** Scoreboard-Zeile → Kennzahl im Traktions-Index (öffnet das Fenster oben auf der Seite). */
+const SCORE_ZU_KENNZAHL: Record<string, string> = { power_hours: 'power_hours', gespraeche: 'gespraeche', neue_chancen: 'sql_30', beitraege: 'veroeffentlichungen', content_gespraeche: 'content_gespraeche', events: 'events_90', nachfassen_48h: 'nachfassen_48h' };
+
 function Gruppe({ welt, zeilen, sb, erste }: { welt: Welt; zeilen: ScoreZeile[]; sb: ScoreboardDaten; erste: CSSProperties }) {
   const v = verantwortlich(welt);
   return (
@@ -178,7 +182,9 @@ function Gruppe({ welt, zeilen, sb, erste }: { welt: Welt; zeilen: ScoreZeile[];
           <th scope="row" title={z.quelle} style={{ ...erste, fontWeight: 400, paddingLeft: z.person ? 18 : 2 }}>
             {z.person
               ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.inkLeise }}><Person id={z.person} groesse={16} />{nameVon(z.person)}</span>
-              : <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{z.label}</span>}
+              : SCORE_ZU_KENNZAHL[z.id]
+                ? <Link href={markttraktion(undefined, undefined, SCORE_ZU_KENNZAHL[z.id])} scroll={false} title="Kennzahl im Traktions-Index öffnen" style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none', borderBottom: '1px dotted rgba(255,255,255,.25)' }}>{z.label}</Link>
+                : <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{z.label}</span>}
           </th>
           <td title={z.person ? 'Anteil am Teamziel' : z.ziel === null ? 'kein Wochenziel' : 'Ziel je Woche'} style={{ textAlign: 'center', fontSize: 12.5, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', padding: '3px 4px' }}>{z.zielText}</td>
           {z.werte.map((wert, i) => {

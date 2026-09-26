@@ -2,7 +2,11 @@
 // Kevins Entscheidung vom 23.09.: „dieses Kevin/Malin-Thema geht raus" —
 // echte Konten, echter Login. Eine Sitzung ist ein signierter Zettel:
 //
-//   <speicher>.<ablauf>.<signatur>
+//   <speicher>.<ablauf>.<stand>.<signatur>
+//
+// „stand“ ist der Fingerabdruck des Passwort-Salzes (26.09.): ändert jemand sein
+// Passwort, bekommt das Salz einen neuen Wert — alte Zettel passen nicht mehr
+// (die Middleware fragt den Stand beim Server ab, höchstens einmal je Minute).
 //
 // Die Signatur ist HMAC-SHA256 über die ersten beiden Teile mit einem
 // Geheimnis, das nur der Server kennt. Wer den Zettel fälschen will, braucht
@@ -33,22 +37,29 @@ export function gleich(a: string, b: string): boolean {
   return d === 0;
 }
 
-export async function sitzungAusstellen(geheimnis: string, speicher: string, jetzt = Date.now()): Promise<string> {
+/** Fingerabdruck des Passwort-Salzes — kein Geheimnis, aber nur mit dem Salz zu bilden. */
+export async function kontoStand(salz: string): Promise<string> {
+  const h = await crypto.subtle.digest('SHA-256', enc.encode(`stand:${salz}`));
+  return Array.from(new Uint8Array(h)).slice(0, 6).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function sitzungAusstellen(geheimnis: string, speicher: string, stand: string, jetzt = Date.now()): Promise<string> {
   const ablauf = jetzt + SITZUNG_TAGE * 864e5;
-  const kern = `${speicher}.${ablauf}`;
+  const kern = `${speicher}.${ablauf}.${stand}`;
   return `${kern}.${await signiere(geheimnis, kern)}`;
 }
 
-export async function sitzungPruefen(geheimnis: string, zettel: string | undefined, jetzt = Date.now()): Promise<{ speicher: string } | null> {
+export async function sitzungPruefen(geheimnis: string, zettel: string | undefined, jetzt = Date.now()): Promise<{ speicher: string; stand: string } | null> {
   if (!zettel) return null;
   const teile = zettel.split('.');
-  if (teile.length !== 3) return null;
-  const [speicher, ablaufText, sig] = teile;
-  if (!/^[a-z0-9-]{1,40}$/.test(speicher)) return null;
+  // Zettel ohne Stand (vor 26.09.) gelten nicht mehr — einmal neu anmelden.
+  if (teile.length !== 4) return null;
+  const [speicher, ablaufText, stand, sig] = teile;
+  if (!/^[a-z0-9-]{1,40}$/.test(speicher) || !/^[a-f0-9]{12}$/.test(stand)) return null;
   const ablauf = Number(ablaufText);
   if (!isFinite(ablauf) || ablauf < jetzt) return null;
-  const soll = await signiere(geheimnis, `${speicher}.${ablaufText}`);
-  return gleich(soll, sig) ? { speicher } : null;
+  const soll = await signiere(geheimnis, `${speicher}.${ablaufText}.${stand}`);
+  return gleich(soll, sig) ? { speicher, stand } : null;
 }
 
 /** Das Geheimnis der Sitzungen. Eigener Wert, sonst der Zugangsschlüssel. */

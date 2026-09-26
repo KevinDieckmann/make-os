@@ -99,12 +99,25 @@ Kapazität und im Monatsabschluss die fakturierten Tage.
   eigene Seiten (die Umleitung hatte sie unerreichbar gemacht), `/os/saeule/health` führt zum Gesundheits-Index;
   „Chance“ heißt überall „Deal“.
 
-Nach dem Update: alle müssen sich einmal neu anmelden (Sitzungsgeheimnis). Einmalig auf dem Server, falls
+**Zweite Welle (26.09., nachmittags)**
+- **Passwortwechsel meldet andere Geräte ab:** die Sitzung trägt den Passwort-Stand; wer sein Passwort ändert,
+  bleibt auf dem eigenen Gerät drin, alle anderen Zettel sind ab dem nächsten Klick ungültig (Middleware fragt den
+  Stand beim Server nach, höchstens einmal je Minute je Konto). Alte Zettel (ohne Stand) gelten nicht mehr.
+- **Markttraktion:** die Punkte hinter „Veröffentlichungen“ und „Abmeldequote“ öffnen den Beitrag bzw. die
+  Ausgabe direkt (`?a=redaktion&k=…`); die Zeilen im Wochen-Scoreboard öffnen ihre Kennzahl im Traktions-Index;
+  Sales → Heute zeigt „Letzte Power Hours“ (Datum, Karten, Gespräche, Gelerntes) — dorthin führen die Punkte.
+- **Inbox:** „Delegiert“ legt jetzt eine Aufgabe für die gewählte Person an (An Malin / An Kevin …); „Delegiert
+  (extern)“ markiert nur.
+- **Familie:** Paar-Gespräch und Dates lassen sich mit einem Klick in den gemeinsamen iCloud-Kalender legen
+  (ohne Teilnehmer, keine Einladungs-Mail; MAKE OS merkt sich die Uid — kein Doppel).
+- **Aufgaben:** iCloud-Erinnerungen lassen sich als Aufgabe übernehmen („→ Aufgabe“, mit Fälligkeit und Liste im
+  Text); übernommene sind markiert. Nach iCloud wird nie zurückgeschrieben.
+
+Nach dem Update: alle müssen sich einmal neu anmelden (Sitzungsgeheimnis und neues Sitzungsformat). Einmalig auf dem Server, falls
 `SESSION_SECRET` dort noch fehlt:
 `ssh root@2.28.108.162 'grep -q SESSION_SECRET /srv/make-os/.env || echo SESSION_SECRET=$(openssl rand -hex 32) >> /srv/make-os/.env && cd /srv/make-os && docker compose up -d'`
 Malin einladen: unter Konto → Einladung im Feld „Vorname“ **Malin** eintragen — dann bekommt sie ihre Bestände.
-Offen (bewusst): Sitzungen werden bei Passwortwechsel nicht ungültig; `public/make-os.html` (Juli-Klickdummy)
-könnte ganz raus — Kevins Entscheidung.
+Offen (bewusst): `public/make-os.html` (Juli-Klickdummy) könnte ganz raus — Kevins Entscheidung.
 
 ## Ablauf eines Updates (Checkliste)
 

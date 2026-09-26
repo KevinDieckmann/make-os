@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { speicherName, emailSauber, passwortTauglich, neuerEinladungscode, passwortHashen, passwortStimmt } from '../lib/zugang/konten';
-import { sitzungAusstellen, sitzungPruefen } from '../lib/zugang/sitzung';
+import { sitzungAusstellen, sitzungPruefen, kontoStand } from '../lib/zugang/sitzung';
 
 describe('Speichername', () => {
   it('macht aus Kevin „kevin" und aus Malin „malin" — damit die alten Dateien passen', () => {
@@ -54,28 +54,39 @@ describe('Passwort', () => {
 
 describe('Sitzung', () => {
   const G = 'TESTGEHEIMNIS-nicht-echt';
+  const ST = 'abcdef012345';
 
   it('stellt einen Zettel aus, den nur dasselbe Geheimnis prüft', async () => {
-    const z = await sitzungAusstellen(G, 'kevin');
-    expect(await sitzungPruefen(G, z)).toEqual({ speicher: 'kevin' });
+    const z = await sitzungAusstellen(G, 'kevin', ST);
+    expect(await sitzungPruefen(G, z)).toEqual({ speicher: 'kevin', stand: ST });
     expect(await sitzungPruefen('anderes', z)).toBeNull();
   });
 
   it('lehnt einen veränderten Zettel ab', async () => {
-    const z = await sitzungAusstellen(G, 'kevin');
+    const z = await sitzungAusstellen(G, 'kevin', ST);
     expect(await sitzungPruefen(G, z.replace('kevin', 'malin'))).toBeNull();
+    expect(await sitzungPruefen(G, z.replace(ST, 'abcdef012346'))).toBeNull();
     // Letztes Zeichen wirklich ändern — endet die Signatur zufällig auf 0,
     // wäre „+ '0'" keine Veränderung (Zufallsfehler vom 23.09.).
     expect(await sitzungPruefen(G, z.slice(0, -1) + (z.endsWith('0') ? '1' : '0'))).toBeNull();
   });
 
   it('lässt Zettel ablaufen', async () => {
-    const z = await sitzungAusstellen(G, 'kevin', Date.now() - 40 * 864e5);
+    const z = await sitzungAusstellen(G, 'kevin', ST, Date.now() - 40 * 864e5);
     expect(await sitzungPruefen(G, z)).toBeNull();
   });
 
   it('nimmt keinen Speichernamen mit fremden Zeichen', async () => {
-    const z = await sitzungAusstellen(G, '../etc');
+    const z = await sitzungAusstellen(G, '../etc', ST);
     expect(await sitzungPruefen(G, z)).toBeNull();
+  });
+
+  it('Zettel ohne Passwort-Stand (vor 26.09.) gelten nicht mehr; der Stand folgt dem Salz', async () => {
+    const alt = `kevin.${Date.now() + 864e5}.` ;
+    expect(await sitzungPruefen(G, `${alt}deadbeef`)).toBeNull();
+    const a = await kontoStand('salz-1'), b = await kontoStand('salz-2');
+    expect(a).toMatch(/^[a-f0-9]{12}$/);
+    expect(a).not.toBe(b);
+    expect(await kontoStand('salz-1')).toBe(a);
   });
 });

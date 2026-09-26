@@ -261,6 +261,16 @@ export function AufgabenView() {
 
   const heute = localDay();
   const patchTask = (id: string, p: Record<string, unknown>) => dispatch({ type: 'UPDATE_TASK', payload: { id, ...p } });
+  /** Eine iCloud-Erinnerung als Aufgabe übernehmen (26.09.) — MAKE OS schreibt nie nach iCloud zurück. */
+  const erinnerungAlsAufgabe = (r: Reminder) => {
+    const due = r.due ? new Date(r.due) : null;
+    const dueDate = due && !Number.isNaN(due.getTime()) ? localDay(due) : undefined;
+    dispatch({ type: 'ADD_TASK', payload: {
+      projectId: state.projects[0]?.id ?? '', title: r.title, description: `Aus Erinnerung · ${r.list}`, status: 'todo',
+      priority: r.priority >= 5 ? 'high' : 'medium', assignee: neuWer, tags: [], subTasks: [], dependencies: [], sortOrder: 0,
+      ...(dueDate ? { dueDate } : {}),
+    } });
+  };
   const meinThema = (t: { id: string; title: string; description?: string; projectId: string }) => themaVon(t, zuordnung);
   const meineStich = (t: { id: string; title: string; description?: string }) => stichworteVon(t, handStich);
   const meineOrg = (t: { id: string; title: string; description?: string; projectId: string }) => orgVon(t, orgZuord);
@@ -1119,11 +1129,19 @@ export function AufgabenView() {
                   <span style={zahl}>{items.length}</span>
                 </div>
                 <Liste>
-                  {items.slice(0, 10).map(r => (
-                    <Zeile key={r.id} links={<Punkt farbe={C.inkLeise} groesse={8} />}
+                  {items.slice(0, 10).map(r => {
+                    const uebernommen = state.tasks.some(t => t.status !== 'done' && (t.description ?? '').startsWith('Aus Erinnerung') && t.title.trim().toLowerCase() === r.title.trim().toLowerCase());
+                    return (
+                    <Zeile key={r.id} links={<Punkt farbe={uebernommen ? LEUCHT.gut : C.inkLeise} groesse={8} />}
                       titel={<span style={{ color: C.inkDim, fontWeight: 400 }}>{r.title}</span>}
-                      rechts={r.due ? <span style={{ ...zahl, color: LEUCHT.achtung }}>{new Date(r.due).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}</span> : undefined} />
-                  ))}
+                      rechts={<span style={{ display: 'inline-flex', gap: 10, alignItems: 'center' }}>
+                        {r.due && <span style={{ ...zahl, color: LEUCHT.achtung }}>{new Date(r.due).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}</span>}
+                        {uebernommen
+                          ? <span style={{ ...zahl, color: LEUCHT.gut }}>Aufgabe ✓</span>
+                          : <button type="button" onClick={() => erinnerungAlsAufgabe(r)} style={textKnopf} title="Als Aufgabe in MAKE OS übernehmen — die Erinnerung bleibt in iCloud">→ Aufgabe</button>}
+                      </span>} />
+                    );
+                  })}
                 </Liste>
                 {items.length > 10 && <div style={{ fontSize: 11, color: C.inkLeise, marginTop: 8 }}>+{items.length - 10} weitere</div>}
               </div>

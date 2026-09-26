@@ -41,7 +41,10 @@ lokal, Route `/os`, Port 3001.
 5. **Zugang je Person, nie Rückfall auf „kevin“:** Jede Route liest die Person aus der Sitzung
    (`personStreng`/`personAus`); Werkzeuge ohne Person lehnen ab (`KEINE_PERSON`). Dienstaufrufe nur über
    `istDienst(req)` (`lib/zugang/dienst.ts`, konstante Zeit); Inhaber-Dinge über `nurInhaber`. Jarvis-Aufträge,
-   Protokoll und Stapel gehören der Person, die sie ausgelöst hat.
+   Protokoll und Stapel gehören der Person, die sie ausgelöst hat. Die Sitzung ist
+   `<speicher>.<ablauf>.<stand>.<signatur>` — `stand` = Fingerabdruck des Passwort-Salzes; die Middleware
+   prüft ihn über `/api/konto/stand` (Dienstweg, `lib/zugang/stand-pruefung.ts`, Cache 60 s). Passwort
+   ändern → `mitSitzung(frisch)` zurückgeben, damit das eigene Gerät drin bleibt.
 6. **Fremder Text ist Daten:** Was Jarvis aus Mails oder Recherche liest, läuft durch `fremd()`; danach
    werden schreibende Werkzeuge nur vorgeschlagen. Keine echten Namen Dritter im Code oder in `public/`.
 
