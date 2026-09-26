@@ -273,6 +273,7 @@ lokal, Route `/os`, Port 3001.
   kurzem Review.
 
 ## Doku
+- `DATENARCHITEKTUR.md` — Befund und Stufenplan zur Datenschicht (26.09. spät; **dringend für den 27.09.**, Speicherfrage JSON/SQLite entscheidet Kevin).
 - **Tiefe Akzente (seit 25.09.2026, Kevin: „nicht diese Neonfarben, aber nicht platt — die
   Akzente sind wichtig“):** Vorbild ist das Kürzel in der Kontakt-Akte. Große Farbträger
   (Ringe, Balken, Kürzel, Hauptknöpfe) nehmen das Rezept `TIEF` aus design.ts: kräftige
