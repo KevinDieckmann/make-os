@@ -175,6 +175,10 @@ UND Sicherungen unlesbar — die nächtliche Sicherung packt die verschlüsselte
 Passwort bzw. age). Zurückholen braucht deshalb beides: Sicherung entpacken, `.env` mit dem Datenschlüssel,
 fertig — oder zum Umzug einmal `--entschluesseln`.
 
+**Rotieren** (Schlüssel ist irgendwo aufgetaucht): `bash /srv/make-os/app/deploy/datenschluessel-rotieren.sh` als `make` —
+eine Minute Unterbrechung, danach den neuen Schlüssel in der eigenen Terminal-App auslesen (nie über Claude oder
+in einen Chat: alles, was dort steht, gilt als kompromittiert). Am 26.09. einmal so gemacht.
+
 Nicht verschlüsselt: Bilder unter `daten/bauplan-bilder`, das Archiv `daten/archiv` (Umzugs-Stände) und das
 Obsidian-Hirn (eigenes Git-Repo). Das sind bewusste Ausnahmen; die JSON-Bestände sind das, worum es geht.
 
