@@ -47,6 +47,9 @@ async function startOffset() {
 let offset = await startOffset();
 let weiter = true;
 let appWeg = 0;
+// Sicherheit (27.09.): ein unbehandelter Fehler darf den Bote nicht still lahmlegen — laut melden und beenden, Docker startet ihn neu.
+process.on('unhandledRejection', err => { console.error(`[${zeit()}] Bote: unbehandelte Ablehnung`, err); setTimeout(() => process.exit(1), 200); });
+process.on('uncaughtException', err => { console.error(`[${zeit()}] Bote: unbehandelter Fehler`, err); setTimeout(() => process.exit(1), 200); });
 for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
   process.on(sig, () => { console.log(`[${zeit()}] Bote hört auf.`); weiter = false; setTimeout(() => process.exit(0), 300); });
 }

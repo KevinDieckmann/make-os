@@ -6,6 +6,7 @@
 // Beides zusammen erzeugt nichts doppelt: die Fälligkeit kommt aus dem echten
 // Zustand, und die Warteschlange lässt denselben Auftrag nur einmal offen.
 
+import { herzschlag } from '@/lib/hoi/innen';
 import { NextResponse } from 'next/server';
 import { faellig } from '@/lib/jarvis/takt';
 import { reihe } from '@/lib/jarvis/auftraege';
@@ -47,6 +48,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST() {
+  void herzschlag();
   await kalenderFrischHalten().catch(() => {});
   void businessTagesstand();
   const dran = await faellig();

@@ -17,6 +17,9 @@ import { standGueltig } from '@/lib/zugang/stand-pruefung';
 
 /** Ohne Sitzung erreichbar: die Anmeldung selbst und ihre Schnittstellen. */
 const OFFEN = [/^\/anmelden$/, /^\/api\/konto\/(status|anmelden|einrichten|beitreten)$/];
+// Der Browser meldet CSP-Verstöße ohne Sitzung und ohne verlässlichen Origin-Kopf (27.09.) — die Route
+// nimmt nur Zähler an (Richtlinie, blockierte Quelle, Seite ohne Parameter) und begrenzt die Rate selbst.
+const CSP_MELDEWEG = /^\/api\/hoi\/csp$/;
 
 function adresseHost(): string | null {
   try { const a = process.env.MAKE_OS_ADRESSE?.trim(); return a ? new URL(a).host : null; } catch { return null; }
@@ -34,7 +37,7 @@ export async function middleware(req: NextRequest) {
   if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) return new NextResponse('MAKE OS ist nicht eingerichtet (SESSION_SECRET fehlt in .env).', { status: 503 });
 
   // CSRF-Schutz: Schreibzugriffe aus fremden Browser-Kontexten abweisen.
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
+  if (req.method !== 'GET' && req.method !== 'HEAD' && !CSP_MELDEWEG.test(req.nextUrl.pathname)) {
     const origin = req.headers.get('origin');
     if (origin) {
       // Die eigene Adresse ist, was der Browser als Host schickt — hinter einem
@@ -62,6 +65,17 @@ export async function middleware(req: NextRequest) {
   // Alles andere darf sich NICHT selbst benennen.
   kopf.delete('x-make-user');
   kopf.delete('x-make-person');
+  kopf.delete('x-make-hoi');
+
+  // Eingeschränkter Schlüssel des Head of IT (27.09.): öffnet NUR /api/hoi/* — damit meldet der
+  // GitHub-Läufer den Außenblick, ohne den Dienstschlüssel zu kennen. Für alles andere: 401.
+  const hoiSchluessel = process.env.MAKE_OS_KEY_HOI?.trim();
+  if (dienstKopf && hoiSchluessel && hoiSchluessel.length >= 24 && gleich(dienstKopf, hoiSchluessel)) {
+    if (!pfad.startsWith('/api/hoi/')) return verweigertApi();
+    kopf.set('x-make-hoi', '1');
+    return NextResponse.next({ request: { headers: kopf } });
+  }
+  if (CSP_MELDEWEG.test(pfad) && req.method === 'POST') return NextResponse.next({ request: { headers: kopf } });
 
   // Eine Schnittstelle ist nie das Ziel einer Navigation von einer fremden Seite (26.09.): so kann kein
   // fremder Link mit dem Cookie im Gepäck eine GET-Route mit Wirkung auslösen.

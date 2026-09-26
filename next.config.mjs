@@ -20,7 +20,9 @@ const nextConfig = {
           "default-src 'self'", "script-src 'self' 'unsafe-inline'", "style-src 'self' 'unsafe-inline'",
           "img-src 'self' data: blob:", "font-src 'self' data:", "connect-src 'self'", "worker-src 'self' blob:",
           "media-src 'self' blob:", "frame-src 'self'", "frame-ancestors 'none'", "base-uri 'self'", "form-action 'self'", "object-src 'none'",
-        ].join('; ') }]
+          // Verstöße gehen an den Head of IT (27.09.): alter Weg (report-uri) und neuer (report-to) — der Browser nimmt, was er kann.
+          'report-uri /api/hoi/csp', 'report-to csp',
+        ].join('; ') }, { key: 'Reporting-Endpoints', value: 'csp="/api/hoi/csp"' }]
       : [];
     return [
       { source: '/finanz-dashboard.html', headers: basis.filter(h => h.key !== 'X-Frame-Options').concat([{ key: 'X-Frame-Options', value: 'SAMEORIGIN' }]) },

@@ -1,0 +1,55 @@
+# ─── MAKE OS · Head of IT: der Blick von außen (27.09.) ──────────────────────
+# Alle sechs Stunden prüft ein GitHub-Läufer die Live-Adresse wie ein Fremder:
+# antwortet /anmelden mit 200, wie schnell, welche Sicherheits-Kopfzeilen kommen,
+# wie lange das Zertifikat noch gilt. Das Ergebnis geht an die App
+# (POST /api/hoi/aussen mit dem eingeschränkten Schlüssel MAKE_OS_KEY_HOI, der
+# NUR /api/hoi/* öffnet). Ohne die zwei Einstellungen läuft die Prüfung trotzdem
+# und schreibt nur ins Lauf-Protokoll.
+#
+# Einrichten (Repo → Settings → Secrets and variables → Actions):
+#   Variable MAKE_OS_ADRESSE   z. B. https://2-28-108-162.sslip.io
+#   Secret   MAKE_OS_KEY_HOI   derselbe Wert wie MAKE_OS_KEY_HOI in der Server-.env (zufällig, 32+ Zeichen)
+name: HOI Außenblick
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  aussenblick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prüfen und melden
+        env:
+          ADRESSE: ${{ vars.MAKE_OS_ADRESSE }}
+          KEY: ${{ secrets.MAKE_OS_KEY_HOI }}
+        run: |
+          set -u
+          ADRESSE="${ADRESSE:-https://2-28-108-162.sslip.io}"
+          HOST=$(echo "$ADRESSE" | sed -E 's#https?://##; s#/.*##')
+          echo "▸ $ADRESSE"
+          # Status, Antwortzeit, Kopfzeilen
+          KOPF=$(mktemp)
+          STATUS=$(curl -sS -o /dev/null -D "$KOPF" -w '%{http_code} %{time_total}' --max-time 30 "$ADRESSE/anmelden" || echo "000 0")
+          CODE=${STATUS%% *}; ZEIT=${STATUS##* }
+          MS=$(awk -v z="$ZEIT" 'BEGIN{printf "%d", z*1000}')
+          hat() { grep -qi "^$1:" "$KOPF" && echo true || echo false; }
+          KOPFZEILEN=$(printf '{"strict-transport-security":%s,"content-security-policy":%s,"x-content-type-options":%s,"referrer-policy":%s,"x-frame-options":%s,"permissions-policy":%s,"cross-origin-opener-policy":%s}' \
+            "$(hat strict-transport-security)" "$(hat content-security-policy)" "$(hat x-content-type-options)" "$(hat referrer-policy)" "$(hat x-frame-options)" "$(hat permissions-policy)" "$(hat cross-origin-opener-policy)")
+          # Zertifikat
+          ENDE=$(echo | timeout 15 openssl s_client -servername "$HOST" -connect "$HOST:443" 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2 || true)
+          TLS=null
+          if [ -n "$ENDE" ]; then TLS=$(( ( $(date -d "$ENDE" +%s) - $(date +%s) ) / 86400 )); fi
+          BODY=$(printf '{"zeit":"%s","status":%s,"ms":%s,"tlsTage":%s,"kopfzeilen":%s,"laeufer":"github"}' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$CODE" "$MS" "$TLS" "$KOPFZEILEN")
+          echo "$BODY"
+          if [ -n "${KEY:-}" ]; then
+            curl -sS --max-time 30 -X POST -H "Content-Type: application/json" -H "x-make-key: $KEY" --data "$BODY" "$ADRESSE/api/hoi/aussen" && echo && echo "▸ an MAKE OS gemeldet"
+          else
+            echo "▸ MAKE_OS_KEY_HOI fehlt — nur geprüft, nicht gemeldet."
+          fi
+          # Der Lauf ist rot, wenn die Seite nicht antwortet oder das Zertifikat unter 7 Tage hat.
+          [ "$CODE" = "200" ] || { echo "::error::Status $CODE von $ADRESSE"; exit 1; }
+          if [ "$TLS" != "null" ] && [ "$TLS" -lt 7 ]; then echo "::error::Zertifikat läuft in $TLS Tagen ab"; exit 1; fi

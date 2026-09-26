@@ -1,16 +1,20 @@
 # Dependabot (26.09.): Sicherheitsupdates für npm, Docker-Basisbilder und die Actions —
-# wöchentlich, als Pull Request; ausgerollt wird erst, wenn Kevin nach main zusammenführt.
+# wöchentlich, als Pull Request gegen `entwicklung` (27.09.: nie gegen main — dort würde jeder Merge ausrollen);
+# ausgerollt wird erst, wenn Kevin nach main zusammenführt.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
+    target-branch: entwicklung
     schedule: { interval: weekly, day: monday, time: "06:00", timezone: Europe/Berlin }
     open-pull-requests-limit: 5
     groups:
       sicherheit: { applies-to: security-updates, patterns: ["*"] }
   - package-ecosystem: docker
     directory: /
+    target-branch: entwicklung
     schedule: { interval: weekly }
   - package-ecosystem: github-actions
     directory: /
+    target-branch: entwicklung
     schedule: { interval: weekly }

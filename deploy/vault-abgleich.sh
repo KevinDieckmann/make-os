@@ -22,3 +22,5 @@ if ! git pull -q --rebase --autostash; then
   exit 1
 fi
 git push -q || echo "$(date '+%F %T') Push fehlgeschlagen — nächster Versuch in 10 Minuten"
+# Dead-Man-Meldung (27.09.): optionale Ping-Adresse neben dem Vault (…/.healthchecks-vault) — nur auf dem Server sinnvoll.
+HC="$(dirname "$VAULT")/.healthchecks-vault"; [ -s "$HC" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$(cat "$HC")" || true

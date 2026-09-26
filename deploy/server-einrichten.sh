@@ -54,7 +54,8 @@ echo "▸ Sicherungs-Passwort (einmalig erzeugt — in den Passwort-Manager!)"
 echo "▸ Cronjobs für make"
 ( { sudo -u make crontab -l 2>/dev/null | grep -v make-os || true; } ; \
   echo "15 3 * * * bash /srv/make-os/app/deploy/sicherung.sh >> /srv/make-os/sicherungen/protokoll.txt 2>&1 # make-os"; \
-  echo "*/10 * * * * bash /srv/make-os/app/deploy/vault-abgleich.sh /srv/make-os/vault >> /srv/make-os/vault-abgleich.txt 2>&1 # make-os" ) | sudo -u make crontab -
+  echo "*/10 * * * * bash /srv/make-os/app/deploy/vault-abgleich.sh /srv/make-os/vault >> /srv/make-os/vault-abgleich.txt 2>&1 # make-os"; \
+  echo "*/5 * * * * bash /srv/make-os/app/deploy/lage-sammeln.sh >> /srv/make-os/lage-sammeln.txt 2>&1 # make-os" ) | sudo -u make crontab -
 
 echo "▸ Härten (SSH nur mit Schlüssel, fail2ban, nächtliche Updates, Protokollgrenzen)"
 bash "$(dirname "$0")/server-haerten.sh"

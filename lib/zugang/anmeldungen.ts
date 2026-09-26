@@ -20,6 +20,11 @@ export async function notiere(e: Omit<Anmeldung, 'zeit'>): Promise<void> {
   await updateJson<{ eintraege: Anmeldung[] }>(STORE, alt => ({ eintraege: [...(alt?.eintraege ?? []), { zeit: new Date().toISOString(), ...e }].slice(-MAX) })).catch(() => null);
 }
 
+/** Das ganze Protokoll (höchstens MAX Einträge) — für den Anmelde-Alarm. */
+export async function alle(): Promise<Anmeldung[]> {
+  return (await loadJson<{ eintraege: Anmeldung[] }>(STORE))?.eintraege ?? [];
+}
+
 export async function letzte(speicher: string, n = 5): Promise<Anmeldung[]> {
   const f = await loadJson<{ eintraege: Anmeldung[] }>(STORE);
   return (f?.eintraege ?? []).filter(e => e.speicher === speicher).slice(-n).reverse();

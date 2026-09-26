@@ -99,6 +99,30 @@ Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen un
   - Tests: `crm-deal-regeln` (Server-Regeln), `crm-fundament` angepasst (Upsert neuer Deals ist jetzt ein Fehler). Stand: 100 Dateien · 877 Tests grün, tsc und Lint sauber.
   - **Offen (Kevin entscheidet):** Farbe des Reiters „Firmen“ (heute neutral wie Kontakte, obwohl die Leads darin liegen); ob „Meins/Malin“-Filter auch im Board sichtbar sein soll.
 
+### Sicherheit & Head of IT (27.09. nachts, nur lokal)
+
+Kevin: „Geh an die Sicherheit … und baue den HOI, den Head of IT: überwacht das ganze System, achtet auf Sicherheit, verbessert den Code — auch von außen.“
+Recherche und Zielbild in `HOI_RECHERCHE.md`. Der HOI arbeitet ohne KI-Aufruf: reine Zahlen, Ampeln, Schwellen.
+
+- **Seite `/os/hoi` (System › Head of IT):** Gesamtampel, dann je Bereich (Von außen · Sicherheit · Server · App · Sicherung) die Befunde mit Wert und Satz,
+  Kurzbericht (derselbe Text geht später an Telegram). Grau sagt jeweils, welcher einmalige Schritt fehlt.
+- **Drei Quellen:** innen (`lib/hoi/innen.ts`: Prozess, Bestände, Arbeiter-Herzschlag `system/takt.txt`, Fehlerquote der Läufe, Oberflächenfehler,
+  Fehlanmeldungen und neue Netze, CSP-Meldungen) · Host (`deploy/lage-sammeln.sh`, Cron alle 5 min → `daten/system/lage.json`: Platte, Speicher, Last,
+  Container, fail2ban, Zertifikat, Sicherung, Vault, Updates) · außen (`.github/workflows/hoi-aussenblick.yml`, alle 6 h wie ein Fremder: Status, Antwortzeit,
+  Sicherheits-Kopfzeilen, Zertifikatsrest). Bewertung rein und getestet in `lib/hoi/lage.ts`.
+- **Routen:** `GET /api/hoi/lage` (Haushalt des Inhabers oder HOI-Schlüssel), `POST/GET /api/hoi/aussen` (Meldung des Läufers, letzte 60),
+  `POST /api/hoi/csp` (offen für den Browser: nur Zähler — Richtlinie, Quelle ohne Pfad, Seite ohne Parameter; 60/min; 30 Tage; 200 Einträge).
+- **Eingeschränkter Schlüssel `MAKE_OS_KEY_HOI`:** öffnet in der Middleware NUR `/api/hoi/*` — der GitHub-Läufer kennt den Dienstschlüssel nicht.
+- **CSP meldet Verstöße** (`report-uri` + `report-to` → `/api/hoi/csp`, nur im Produktionsbau, wo die CSP gilt).
+- **Anmelde-Alarm** (`lib/zugang/anmelde-alarm.ts`): Anmeldung aus einem neuen Netz und 5+ Fehlversuche in 15 Minuten melden sich bei der Person (Telegram, sobald der Bote läuft) — nie blockierend.
+- **Betrieb gehärtet:** `compose.yml` mit Protokollgrenzen (10 MB × 3) und Speichergrenzen (App 1280 MB · Arbeiter 384 MB · Caddy 128 MB);
+  Arbeiter und Bote beenden sich bei unbehandelten Fehlern sauber (Docker startet neu, statt halb tot weiterzulaufen);
+  `sicherung.sh`/`vault-abgleich.sh` können einen Dead-Man-Ping senden (Datei `.healthchecks-sicherung` / `.healthchecks-vault` mit der URL).
+- **Code-Wache in der CI:** Job `sicherheit` (npm audit hoch, gitleaks, knip — meldet, blockiert nicht); Dependabot zielt auf `entwicklung`.
+- **Client-Fehler löschen** nur noch der Inhaber.
+- Tests: `hoi-lage`, `hoi-rechnen`, `anmelde-alarm`. Stand: tsc, Lint und alle Tests grün.
+- **Offen (Kevin):** Telegram-Meldung des Kurzberichts bei Rot (braucht den Boten mit Token); Mozilla-Observatory-Note im Außenblick (die Aktion kann sie holen, wenn gewünscht).
+
 ### Zeit & Fokus + Kopf (26.09. spät, nur lokal)
 
 - **Schalter oben rechts:** der Index-Chip wechselt per Klick den Modus Privat ↔ Business (Index und Seiten folgen; auf einer
@@ -432,6 +456,12 @@ Offen (bewusst): `public/make-os.html` (Juli-Klickdummy) könnte ganz raus — K
 
 ## Einmalige Schritte, die noch offen sind
 
+- **Head of IT scharf schalten (27.09.):**
+  1. Server: `openssl rand -hex 32` → als `MAKE_OS_KEY_HOI=` in `/srv/make-os/app/.env` (nach dem nächsten Ausrollen; `docker compose up -d` liest sie neu).
+  2. GitHub → Settings → Secrets and variables → Actions: Secret `MAKE_OS_KEY_HOI` (derselbe Wert), Variable `MAKE_OS_ADRESSE` (`https://2-28-108-162.sslip.io`).
+  3. Cron für den Lage-Sammler: `deploy/server-einrichten.sh` trägt ihn beim nächsten Lauf ein — oder einmal von Hand als make:
+     `( crontab -l; echo '*/5 * * * * bash /srv/make-os/app/deploy/lage-sammeln.sh >> /srv/make-os/lage-sammeln.txt 2>&1 # make-os' ) | crontab -`
+  4. Optional Dead-Man-Ping (healthchecks.io, kostenlos): URL in `/srv/make-os/.healthchecks-sicherung` bzw. `.healthchecks-vault` legen.
 - ~~iCloud-Kalender verbinden~~ — erledigt 25.09. (Befehl bleibt zum Wechseln des Passworts):
   vorher bei Apple ein app-spezifisches Passwort „MAKE OS“ anlegen (appleid.apple.com → Anmelden & Sicherheit), dann
   `ssh -t make@2.28.108.162 sudo bash /srv/make-os/app/deploy/icloud-verbinden.sh <apple-id>` (fragt dann nur das App-Passwort)

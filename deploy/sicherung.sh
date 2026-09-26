@@ -18,5 +18,7 @@ else
   tar czf - -C "$BASIS" daten | openssl enc -aes-256-cbc -pbkdf2 -salt -pass "file:$BASIS/.sicherung-passwort" -out "$ZIEL"
 fi
 chmod 600 "$ZIEL"
+# Dead-Man-Meldung (27.09.): steht in $BASIS/.healthchecks-sicherung eine Ping-Adresse (z. B. Healthchecks.io), meldet die Sicherung „gelaufen“ — bleibt sie aus, schlägt der Dienst Alarm.
+HC="$BASIS/.healthchecks-sicherung"; [ -s "$HC" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$(cat "$HC")" || true
 find "$BASIS/sicherungen" \( -name 'make-os-*.tar.gz.enc' -o -name 'make-os-*.tar.gz.age' \) -mtime +14 -delete
 echo "$(date '+%F %T') Sicherung $(basename "$ZIEL") $(du -h "$ZIEL" | cut -f1)"

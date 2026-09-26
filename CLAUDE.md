@@ -248,6 +248,13 @@ lokal, Route `/os`, Port 3001.
 - **Auswertung:** `lib/crm/deal-auswertung.ts` (Verweildauer, Umwandlung, Win/Loss, Zyklus, Prognose nach Monat, hängt nach Wert; `MINDESTMENGE` 5).
 - Wertelisten (`CrmBestand.wertelisten`: Verlustgründe, Kadenz je Kreis, Ergebnisse, Ziele) pflegt Stammdaten; Verbraucher lesen sie mit Rückfall auf die Konstanten.
 
+## Head of IT (HOI)
+- Der HOI ist kein KI-Agent, sondern ein Lagebild aus Zahlen: `lib/hoi/lage.ts` (rein: Befunde + Ampeln), `lib/hoi/innen.ts` (einsammeln), `lib/hoi/rechnen.ts` (Zähler), Seite `/os/hoi`, Routen `/api/hoi/{lage,aussen,csp}`.
+- Drei Quellen: innen (App), Host (`deploy/lage-sammeln.sh` → `<daten>/system/lage.json`, Klartext, nur Zähler), außen (`.github/workflows/hoi-aussenblick.yml`).
+- `MAKE_OS_KEY_HOI` ist ein eingeschränkter Schlüssel: die Middleware öffnet damit NUR `/api/hoi/*` (Kopf `x-make-hoi: 1`). Nie den Dienstschlüssel an GitHub geben.
+- `/api/hoi/csp` (POST) ist bewusst offen (Browser-Berichte kommen ohne Sitzung): nur Zähler speichern, Rate begrenzen, nie Inhalte. Neue Befunde: Schwelle + Satz in `lage.ts`, Test in `tests/hoi-lage.test.ts`.
+- Grundsatz: keine Personen, keine Adressen, keine Inhalte im Lagebild — Zähler und Zustände.
+
 ## Zeit & Fokus (26.09. spät, nur lokal)
 - **Modell:** `lib/zeitmessung/modell.ts` (rein, getestet): Zeit je Person, Tag und Schlüssel
   `space:bereich`, zwei Arten — `auto` (Anwesenheits-Ping alle 30 s, Differenz ≤ 90 s zählt)

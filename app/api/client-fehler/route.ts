@@ -6,6 +6,7 @@
 // POST → eine Meldung anhängen (vom Fehler-Melder im /os-Layout)
 // DELETE → Liste leeren, wenn alles behoben ist
 
+import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, saveJson } from '@/lib/store/local-db';
 
@@ -56,7 +57,9 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE() {
+export async function DELETE(req: Request) {
+  // Sicherheit (27.09.): das Fehlerprotokoll leert nur der Inhaber — sonst könnte ein Konto Spuren löschen.
+  if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, fehler: 'Nur der Inhaber.' }, { status: 403 });
   await saveJson<Datei>('client-fehler', { meldungen: [] });
   return NextResponse.json({ ok: true });
 }

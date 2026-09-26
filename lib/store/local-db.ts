@@ -11,6 +11,8 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypt
 
 // Tests dürfen den Ordner umbiegen — nie die echten Bestände anfassen (26.09.).
 const DATA_DIR = process.env.MAKE_OS_DATEN_DIR || path.join(process.cwd(), '.data');
+/** Der Datenordner (Pfad) — für den Head of IT (Größen der Bestände, Lagebericht des Hosts unter system/). */
+export const datenOrdner = () => DATA_DIR;
 
 // ── Verschlüsselung im Ruhezustand (26.09.) ───────────────────────────────────
 // Kevin: „extrem sicher — unsere privatesten Themen.“ Liegt MAKE_OS_DATEN_SCHLUESSEL
