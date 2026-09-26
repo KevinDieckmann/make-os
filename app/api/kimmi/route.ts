@@ -483,6 +483,11 @@ export async function POST(req: Request) {
         }, required: ['juckreiz'] },
       },
       {
+        name: 'einkauf_setzen',
+        description: 'Setzt Posten auf die gemeinsame Einkaufsliste (Ernährung). Nutze das bei „setz … auf die Liste“, „wir brauchen …“, „Einkauf: …“. Mengen mitgeben, wie genannt („500 g Lachs“, „2x Tomaten“).',
+        input_schema: { type: 'object', properties: { posten: { type: 'array', items: { type: 'string' }, description: 'Ein Eintrag je Lebensmittel, Menge davor' } }, required: ['posten'] },
+      },
+      {
         name: 'journal_eintrag',
         description: 'Journal für den Tag: was lief gut, wofür dankbar, wo hart zu sich; dazu Stimmung/Energie/Stress 1–5. Nutze das für die Abendantwort und für alles, was nach Reflexion klingt. Nur übernehmen, was gesagt wurde.',
         input_schema: { type: 'object', properties: {

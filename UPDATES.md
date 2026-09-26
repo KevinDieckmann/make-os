@@ -55,6 +55,25 @@ Ansage stehen, bis das nächste Update sie ablöst.
 
 _(hier sammeln, was auf `entwicklung` fertig ist)_
 
+**Ernährung & Einkauf zu zweit (26.09., Kevin: „Lebensmittel bevorzugt nehmen, meine Bedürfnisse und Malins, was wir
+zuhause haben soll benutzt werden, an jedem Gericht das Rezept“)** — Gesundheit → Ernährung
+- **Profile je Person:** Bedürfnisse & Regeln, Verträgt nicht, Nie, Gern, Ziel — jeder pflegt sein eigenes (Malin ihres in
+  ihrem Konto), beide sehen beide; Gäste/Kinder als eigene Profile, die der Haushalt pflegt und beim Planen anklickt.
+- **Stammliste „unsere Lebensmittel“:** Lebensmittel + Hinweis („Haferflocken · Bio, grob“), Kategorie, Standardmenge,
+  Stern = bevorzugt. Ein Tipp → auf die Liste. Jarvis nimmt sie zuerst und benennt sie so.
+- **Vorrat „was da ist“:** eintragen, was zuhause ist — Jarvis plant damit und lässt es auf der Liste weg; „Eingekauft →
+  Vorrat“ schiebt Abgehaktes hinein; „→ Liste“ zum Nachkaufen; Rezepte zeigen je Zutat „im Vorrat / auf der Liste / fehlt“.
+- **Rezepte an jedem Gericht:** 📖 am Plan-Feld öffnet Zutaten mit Mengen, Zubereitung in Schritten, Dauer, Portionen,
+  für wen; „＋“ lässt Jarvis das Rezept schreiben; „fehlende auf die Liste“ setzt nur, was nicht da ist.
+- **Jarvis plant die Woche für alle** (Profile, Grundsätze, bevorzugte Lebensmittel, Vorrat, Hinweis): Plan + Rezepte +
+  Liste mit Mengen und Kategorien; „Übernehmen“ ergänzt die Liste (nichts doppelt, nichts aus dem Vorrat).
+- **Einkaufsliste wie ein Einkauf:** nach Kategorie (Obst & Gemüse → Frische → Vorrat → Tiefkühl → Getränke →
+  Haushalt), Menge, für wen, von wem, Quelle; Eingabe versteht „2x Tomaten“, „500 g Lachs“; **„Warenkorb kopieren“** als
+  Text für REWE Lieferservice/Picnic; Lebensmittel-Budget des Monats aus Zahlen → Privat steht dabei.
+- **Jarvis per Zuruf:** „setz Tomaten und 500 g Lachs auf die Liste“ (`einkauf_setzen`).
+- Technik: `lib/ernaehrung/modell.ts` (rein, getestet), Änderungen in kleinen Schritten (PATCH) — zu zweit am Handy
+  überschreibt niemand den anderen; Zugriff nur Haushalt des Inhabers.
+
 **Sicherheits-Welle 4 (26.09., „extrem sicher — unsere privatesten Themen“)**
 - **Zweiter Faktor (Authenticator-App):** unter Konto → „Zweiter Faktor“ einrichten — Schlüssel in Apple
   Passwörter / Google Authenticator / 1Password (am Handy per Link), Sechssteller bestätigen, acht

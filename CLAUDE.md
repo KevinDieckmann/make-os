@@ -182,6 +182,16 @@ lokal, Route `/os`, Port 3001.
   `bu-re-<id>` (`rechnungId`), Rechnung trägt `mandatId`. Umleitungen in `next.config.mjs` nur für Adressen,
   die es nicht mehr gibt — nie für Seiten, auf die noch verlinkt wird (Journal, Ritual).
 
+## Ernährung & Einkauf zu zweit (seit 26.09.2026, auf `entwicklung`)
+- Modell `lib/ernaehrung/modell.ts` (rein): Profile je Person (Konto = nur selbst, Gast = Haushalt), Stammliste
+  (bevorzugte Lebensmittel + Hinweis), Vorrat, Gerichte (Rezepte), Plan + `planGerichte`, Einkauf mit Menge/Kategorie/
+  für/von/Quelle. Helfer: `kategorieRaten`, `postenParsen`, `gleichesLebensmittel`, `fehlendeZutaten`, `warenkorbText`,
+  `wendeAn` (PATCH-Schritte). Tests `tests/ernaehrung.test.ts`.
+- Route `/api/state/ernaehrung`: GET (+ `ich`, `personen`, `budget`), **PATCH `{ ops }`** für alle Änderungen (kein
+  Voll-Stand zurückschreiben — zu zweit am Handy), PUT nur Altweg. `/api/ernaehrung/vorschlag` (Woche für alle Profile,
+  mit Rezepten, Vorrat abgezogen), `/api/ernaehrung/rezept` (ein Rezept, hängt am Plan-Feld). Nur Haushalt des Inhabers.
+- Ansicht `components/os/ErnaehrungView.tsx` (in Gesundheit → Ernährung eingebettet); Jarvis `einkauf_setzen` (frei).
+
 ## Technik
 - TypeScript strikt: vor jedem Commit `npx tsc --noEmit` — null Fehler.
 - Node liegt bei Kevin unter `~/.local/node22/bin` (nicht im PATH). Server

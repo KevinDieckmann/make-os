@@ -9,6 +9,7 @@
 // die Route.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import type { Op as EinkaufOp } from '@/lib/ernaehrung/modell';
 import { localDay } from '@/lib/zeit';
 import type { FaktArt } from './gedaechtnis';
 
@@ -200,6 +201,30 @@ async function hautEintrag(input: Record<string, unknown>, _o: string, person?: 
   const t = hautTrend(log, localDay());
   const trend = t.richtung === 'besser' ? ' Die Woche ist besser als die davor.' : t.richtung === 'schlechter' ? ' Die Woche ist schlechter als die davor.' : '';
   return `Haut notiert: Juckreiz ${e.juckreiz}/10${e.schub ? ', Schub' : ''}${e.ausloeser ? `, Auslöser ${e.ausloeser}` : ''}.${trend}`;
+}
+
+/** „Setz Tomaten und 500 g Lachs auf die Liste“ — Einkaufsliste des Haushalts (26.09.). */
+async function einkaufSetzen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+  if (!person) return KEINE_PERSON;
+  const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
+  if (!(await personImHaushaltDesInhabers(person))) return 'Fehlgeschlagen: die Einkaufsliste gehört zum Haushalt des Inhabers.';
+  const roh = Array.isArray(input.posten) ? input.posten : [input.posten];
+  const posten = roh.map(x => String(x ?? '').trim()).filter(Boolean).slice(0, 20);
+  if (!posten.length) return 'Fehlgeschlagen: keine Posten genannt.';
+  const { sauberDatei, wendeAn, postenParsen, postenAus, aufDerListe } = await import('@/lib/ernaehrung/modell');
+  const gesetzt: string[] = [], schonDa: string[] = [];
+  await updateJson('ernaehrung', cur => {
+    const f = sauberDatei(cur as Parameters<typeof sauberDatei>[0]);
+    const ops: EinkaufOp[] = [];
+    for (const t of posten) {
+      const { text, menge } = postenParsen(t);
+      if (aufDerListe(text, f.einkauf)) { schonDa.push(text); continue; }
+      ops.push({ liste: 'einkauf', op: 'upsert', eintrag: { ...postenAus(text, f.lebensmittel, { menge, quelle: 'jarvis' }) } });
+      gesetzt.push(menge ? `${menge} ${text}` : text);
+    }
+    return ops.length ? wendeAn(f, ops, person).datei : f;
+  });
+  return `${gesetzt.length ? `Auf der Einkaufsliste: ${gesetzt.join(', ')}.` : ''}${schonDa.length ? ` Stand schon drauf: ${schonDa.join(', ')}.` : ''}`.trim() || 'Nichts zu tun.';
 }
 
 async function journalEintrag(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
@@ -900,6 +925,7 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: (input: Record<st
   gesundheits_index: { gruppe: 'gesundheit', lauf: gesundheitsIndex },
   haut_eintrag: { gruppe: 'gesundheit', lauf: hautEintrag },
   journal_eintrag: { gruppe: 'gesundheit', lauf: journalEintrag },
+  einkauf_setzen: { gruppe: 'gesundheit', lauf: einkaufSetzen },
   streak_eintrag: { gruppe: 'gesundheit', lauf: streakEintrag },
   suche_kontakt: { gruppe: 'kontakte', lauf: sucheKontakt },
   notiere_kontakt: { gruppe: 'kontakte', lauf: notiereKontakt },

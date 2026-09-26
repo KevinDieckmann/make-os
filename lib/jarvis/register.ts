@@ -257,6 +257,10 @@ export const REGISTER: Record<string, Eintrag> = {
     gruppe: 'gesundheit', risiko: 'frei',
     vorschau: schlicht('Haut-Tagebuch', i => `Juckreiz ${Number(i.juckreiz)}/10${i.schub ? ' · Schub' : ''}${i.ausloeser ? ` · ${text(i.ausloeser, 40)}` : ''}`),
   },
+  einkauf_setzen: {
+    gruppe: 'gesundheit', risiko: 'frei',
+    vorschau: schlicht('Einkaufsliste', i => (Array.isArray(i.posten) ? i.posten.map(String).join(', ') : String(i.posten ?? '')) || 'Posten'),
+  },
   journal_eintrag: {
     gruppe: 'gesundheit', risiko: 'frei',
     vorschau: schlicht('Journal', i => ['gut', 'dankbar', 'hart', 'text'].filter(k => i[k]).join(', ') || 'Tages-Check'),
