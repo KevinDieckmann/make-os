@@ -10,6 +10,7 @@
 // angemeldeten Person.
 
 import { NextResponse } from 'next/server';
+import { AUF_DEM_MAC } from '@/lib/mac';
 import { readdir, readFile, stat } from 'fs/promises';
 import { homedir } from 'os';
 import { join } from 'path';
@@ -41,8 +42,9 @@ async function neuesterExport(): Promise<{ pfad: string; name: string; zeit: Dat
 /** GET → welcher Export läge im Downloads-Ordner bereit (für den Knopf). */
 export async function GET(req: Request) {
   if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
-  const n = await neuesterExport();
-  return NextResponse.json({ ok: true, downloads: n ? { name: n.name, zeit: n.zeit.toISOString() } : null });
+  // Auf dem Server gibt es keinen Downloads-Ordner — die Oberfläche zeigt dann nur die Dateiauswahl (26.09.).
+  const n = AUF_DEM_MAC ? await neuesterExport() : null;
+  return NextResponse.json({ ok: true, aufDemMac: AUF_DEM_MAC, downloads: n ? { name: n.name, zeit: n.zeit.toISOString() } : null });
 }
 
 export async function POST(req: Request) {

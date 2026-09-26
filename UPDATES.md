@@ -40,9 +40,22 @@ Stand hier und einen Stand, der online ist.“
 Einmalig danach: im Cockpit `/os/business` Köpfe (FTE) und Jahresziele je Firma eintragen, dazu den
 Monatsabschluss August — das schließt die meisten Messlücken.
 
+## Online seit 26.09.2026 (Stand `ba4ef3a`, ausgerollt 11:44)
+
+Alles aus dem Block „Nächstes Update“ unten ist seit 26.09. mittags online (Next 15.5, Sicherheits-Wellen 1–3,
+Gesundheits-Index, Traktions-Index, keine toten Stellen). Der Block bleibt als Ansage stehen, bis das nächste
+Update ihn ablöst.
+
 ## Nächstes Update — vorbereitet, noch nicht online
 
 _(hier sammeln, was auf `entwicklung` fertig ist)_
+
+- **Whoop-Import online:** auf dem Server gibt es keinen Downloads-Ordner — der Knopf „Aus Downloads einlesen“
+  erscheint dort nicht mehr; stattdessen „ZIP oder CSV wählen“ mit Hinweis (am Handy die Datei erst in „Dateien“
+  sichern). Die Dateiauswahl funktionierte schon, war aber nicht als der Weg erkennbar.
+- **Caddy überschrieb die App-Kopfzeilen:** Content-Security-Policy und X-Frame-Options kommen jetzt nur aus der
+  App (je Pfad) — damit gilt online die volle CSP, und der Altbestand `/finanz-dashboard.html` darf wieder im
+  eigenen Rahmen laufen (Caddys `frame-ancestors 'none'` hatte ihn im iframe blockiert).
 
 **Business-Modell, Privat-Index, Steuern — „Verbindungen, die nicht enden“ (25.09. abends)**
 - **Alles unter Zahlen:** Reiter Privat · Business · Steuern · Gesamt · Head of Finance. Business ist jetzt
