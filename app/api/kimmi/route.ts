@@ -40,8 +40,10 @@ async function liveContext(person: string = 'kevin'): Promise<string> {
     return '(Brain gerade nicht erreichbar — antworte vorsichtig und sag das offen.)';
   }
 }
-function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaechtnis = '', person: string = 'kevin', brain = ''): string {
+function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaechtnis = '', person: string = 'kevin', brain = '', space: 'privat' | 'business' | null = null): string {
   return [
+    // Der aktive Space (26.09.): Privat oder Business — Jarvis legt Neues dort ab und antwortet aus dieser Sicht.
+    space ? `AKTIVER SPACE: ${space === 'privat' ? 'PRIVAT (Familie, Gesundheit, Haushalt, private Ziele)' : 'BUSINESS (KD Ventures, Consulting, KEMARIS, Markttraktion, Mandate)'}. Der Nutzer schaut gerade auf diesen Space. Aufgaben und Ziele, die du anlegst, gehören in diesen Space (Feld „space“), außer er sagt ausdrücklich etwas anderes. Antworte aus dieser Sicht; Dinge aus dem anderen Space erwähnst du nur, wenn sie hier wichtig sind.` : '',
     // 24.09.: Die Identität kommt live aus Kevins Obsidian-Brain (AGENTS.md §5).
     brain ? `DEINE GRUNDLAGE AUS KEVINS OBSIDIAN-BRAIN — gilt für jede Antwort. Die Regeln dieser Software unten gehen bei Widerspruch vor (Werkzeuge, Freigaben, Live-Zahlen).\n\n${brain}` : '',
     fortsetzung
@@ -108,7 +110,7 @@ export async function POST(req: Request) {
   // Kostenschutz (26.09.): je Person höchstens 40 Züge in 10 Minuten.
   const schranke = modellSchranke(req); if (schranke) return schranke;
   if (zuGross(req, 2_000_000)) return ZU_GROSS(2_000_000);
-  let payload: { message?: string; context?: string; noTools?: boolean; verlauf?: VerlaufNachricht[] };
+  let payload: { message?: string; context?: string; noTools?: boolean; verlauf?: VerlaufNachricht[]; space?: string };
   try { payload = await req.json(); } catch { return NextResponse.json({ reply: 'Ich habe die Anfrage nicht verstanden.' }); }
   const message = String(payload.message ?? '').trim().slice(0, 8000);
   // Verlauf und Zusatz begrenzt — der Prompt darf nicht beliebig wachsen (26.09.).
@@ -152,6 +154,7 @@ export async function POST(req: Request) {
           why: { type: 'string', description: '1 kurzer Satz Kontext/Begründung (optional)' },
           wer: { type: 'string', enum: ['kevin', 'malin', 'both'], description: 'Wer macht es (optional, Standard Kevin)' },
           faellig: { type: 'string', description: 'Fällig am, YYYY-MM-DD (optional)' },
+          space: { type: 'string', enum: ['privat', 'business'], description: 'Privat oder Business — Standard: der aktive Space' },
         },
         required: ['title'],
       },
@@ -603,7 +606,7 @@ export async function POST(req: Request) {
     // Grundlage aus dem Obsidian-Brain (00_JARVIS_AGENT + Vertraulichkeitsregeln), eine Minute zwischengespeichert.
     const brain = await brainAnweisung().catch(() => '');
     for (let runde = 0; runde < 3; runde++) {
-      const r = await askText({ system: systemPrompt(payload.context, live, !!vorgeschichte.length, gedaechtnis, person, brain), user: message, messages: msgs, maxTokens: 4000, tools, timeoutMs: 180_000, zweck: 'jarvis-gespraech' });
+      const r = await askText({ system: systemPrompt(payload.context, live, !!vorgeschichte.length, gedaechtnis, person, brain, payload.space === 'privat' || payload.space === 'business' ? payload.space : null), user: message, messages: msgs, maxTokens: 4000, tools, timeoutMs: 180_000, zweck: 'jarvis-gespraech' });
       if (!r.ok) {
         return NextResponse.json(
           { reply: `Anthropic hat abgelehnt (${r.status || 'offline'}). Prüf den Key/das Modell.`, error: r.error?.slice(0, 300) },

@@ -233,11 +233,14 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
       {/* Jahr: Nordstern + Meilenstein-Verwaltung (Business & Gesundheit) */}
       {horizont === 'jahr' && (
         <>
-          <Karte i={k++}>
-            <Ueberschrift farbe={LEUCHT.schlaf}>Nordstern</Ueberschrift>
-            <p style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.55, margin: 0 }}>{NORDSTERN}</p>
-          </Karte>
-          {(['business', 'gesundheit'] as const).map(bereich => {
+          {/* Der Nordstern ist Business — im Privat-Space steht er nicht (26.09.). */}
+          {spaceFilter !== 'privat' && (
+            <Karte i={k++}>
+              <Ueberschrift farbe={LEUCHT.schlaf}>Nordstern</Ueberschrift>
+              <p style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.55, margin: 0 }}>{NORDSTERN}</p>
+            </Karte>
+          )}
+          {(['business', 'gesundheit'] as const).filter(b => spaceFilter === 'alle' || (spaceFilter === 'business' ? b === 'business' : b === 'gesundheit')).map(bereich => {
             const bf = bereich === 'gesundheit' ? LEUCHT.gut : LEUCHT.business;
             const meine = ms.filter(m => m.bereich === bereich);
             return (

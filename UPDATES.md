@@ -69,6 +69,10 @@ Sinn, überarbeite das Ganze hier auf dem Klickdummy“)**
   Gesamt, Head of Finance. Der Planer (Tag/Woche/Monat/Quartal/Jahr/Routinen) nimmt den Space in allen Reitern mit.
 - **Farben:** Privat Bernstein, Business Indigo wie in Malins Bild — keine Neonfarben; Leiste nach Malins Aufbau
   (Kästen mit Pfeil, Punkte darunter, unten Jarvis · Brain · System · Konto).
+- **Jarvis kennt den aktiven Space:** jede Nachricht trägt Privat/Business mit; Jarvis antwortet aus dieser Sicht und
+  legt Aufgaben im aktiven Space an (Werkzeug `create_task` hat das Feld `space`). Die Jahresseite zeigt im
+  Privat-Space keinen Nordstern und nur Gesundheits-Meilensteine, im Business-Space Nordstern und Business-Meilensteine.
+  Die Schnellsuche (⌘K) sucht im Privat-Space eure Menschen statt der Kartei.
 
 **Tempo (26.09. abends, Kevin: „die Ladezeit ist extrem langsam“)**
 - **Ursache 1 — Bauen auf dem Server:** jede Auslieferung baute das Docker-Image auf dem 1-CPU-Server, 8–12 Minuten

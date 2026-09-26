@@ -26,7 +26,7 @@ const SEITEN: Treffer[] = [
 ];
 const ART: Record<string, { label: string; farbe: string }> = {
   kontakt: { label: 'Person', farbe: LEUCHT.business }, firma: { label: 'Firma', farbe: LEUCHT.puls }, chance: { label: 'Deal', farbe: LEUCHT.achtung },
-  mandat: { label: 'Mandat', farbe: LEUCHT.geld }, kampagne: { label: 'Kampagne', farbe: LEUCHT.beziehung }, seite: { label: 'Bereich', farbe: C.inkDim },
+  mandat: { label: 'Mandat', farbe: LEUCHT.geld }, kampagne: { label: 'Kampagne', farbe: LEUCHT.beziehung }, seite: { label: 'Bereich', farbe: C.inkDim }, mensch: { label: 'Mensch', farbe: LEUCHT.beziehung },
 };
 
 export function Schnellsuche() {
@@ -55,6 +55,16 @@ export function Schnellsuche() {
     if (t.length < 2) { setTreffer(seiten.slice(0, 8)); setI(0); return; }
     const ab = new AbortController();
     const timer = setTimeout(() => {
+      if (space === 'privat') {
+        // Privat-Space (26.09.): eure Menschen statt der Kartei — das Business-Kontaktbuch ist die Markttraktion.
+        fetch('/api/familie', { signal: ab.signal }).then(r => (r.ok ? r.json() : null)).then(d => {
+          const menschen = ((d?.familie?.menschen ?? []) as { id: string; name: string; rolle: string; notiz?: string }[])
+            .filter(m => `${m.name} ${m.rolle} ${m.notiz ?? ''}`.toLowerCase().includes(t.toLowerCase())).slice(0, 8)
+            .map(m => ({ art: 'mensch', id: m.id, titel: m.name, unter: m.rolle, href: '/os/menschen' }));
+          setTreffer([...menschen, ...seiten.slice(0, 3)]); setI(0);
+        }).catch(() => {});
+        return;
+      }
       fetch(`/api/crm/suche?q=${encodeURIComponent(t)}`, { signal: ab.signal }).then(r => r.json()).then(d => { setTreffer([...(d.treffer ?? []), ...seiten.slice(0, 3)]); setI(0); }).catch(() => {});
     }, 140);
     return () => { clearTimeout(timer); ab.abort(); };

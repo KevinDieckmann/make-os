@@ -460,6 +460,8 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string, p
     priority: PRIOS.includes(String(input.priority)) ? String(input.priority) : 'medium',
     owner: WER.includes(String(input.wer)) ? String(input.wer) : undefined,
     dueDate: /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined,
+    // Space (26.09.): Jarvis kennt den aktiven Space und legt die Aufgabe dort ab.
+    space: input.space === 'privat' || input.space === 'business' ? String(input.space) : undefined,
   };
   try {
     const r = await fetch(`${origin}/api/tasks/create`, {

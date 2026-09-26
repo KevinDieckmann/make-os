@@ -28,6 +28,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Rich } from './Rich';
 import { Chip, Knopf, feld, LEUCHT } from './schlank';
+import { useSpace } from '@/hooks/useSpace';
 import { useStimme } from '@/hooks/useStimme';
 import { fuerStimme, titelAus, wannText, type Gespraech, type VerlaufNachricht } from '@/lib/make-one/jarvis-verlauf';
 
@@ -109,6 +110,8 @@ const ausNachrichten = (ns: VerlaufNachricht[]): Msg[] => ns.map(n => ({
 }));
 
 export function JarvisPanel() {
+  // Der aktive Space geht mit jeder Nachricht mit (26.09.): Jarvis antwortet aus dieser Sicht und legt Neues dort ab.
+  const { space: aktiverSpace } = useSpace();
   const [fenster, setFenster] = useState<Fenster>(STANDARD);
   const [convo, setConvo] = useState<Msg[]>([]);
   const [ask, setAsk] = useState('');
@@ -294,7 +297,7 @@ export function JarvisPanel() {
       const r = await fetch('/api/kimmi', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         // Der bisherige Zug geht mit — das ist Jarvis' Gedächtnis.
-        body: JSON.stringify({ message: q, verlauf: zuNachrichten(vorher) }),
+        body: JSON.stringify({ message: q, verlauf: zuNachrichten(vorher), space: aktiverSpace }),
       });
       const d = await r.json();
       if (typeof d.stapelOffen === 'number') setStapelOffen(d.stapelOffen);

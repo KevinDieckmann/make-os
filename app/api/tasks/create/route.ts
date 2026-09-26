@@ -11,7 +11,7 @@ import type { Owner, Priority } from '@/types/common';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface NewTask { title?: string; description?: string; projectId?: string; owner?: Owner; priority?: Priority; dueDate?: string; }
+interface NewTask { title?: string; description?: string; projectId?: string; owner?: Owner; priority?: Priority; dueDate?: string; space?: string }
 
 export async function POST(req: Request) {
   let body: NewTask;
@@ -48,6 +48,8 @@ export async function POST(req: Request) {
     assignee,
     tags: [],
     dueDate: body.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(body.dueDate) ? body.dueDate : undefined,
+    // Space (26.09.): Privat oder Business — ohne Angabe gibt der Ort den Space vor.
+    ...(body.space === 'privat' || body.space === 'business' ? { space: body.space as 'privat' | 'business' } : {}),
     subTasks: [],
     dependencies: [],
     // max+1 statt length: nach Loeschungen sonst doppelte Sortierwerte.
