@@ -33,7 +33,8 @@ export const WELTEN: { id: Welt; label: string; head: string; gewicht: number; s
 
 /** Welche Kennzahlen Traktion messen — der Rest ist Grundlage. */
 export const IM_SCORE: Record<Welt, string[]> = {
-  sales: ['power_hours', 'gespraeche', 'erstgespraeche', 'sql_30', 'ohne_schritt', 'mrr'],
+  // 27.09.: Deal- und Follow-up-Ebene — Win Rate, Zyklus, hängender Wert, Pünktlichkeit, Überfälliges, Neuumsatz gegen Ziel.
+  sales: ['power_hours', 'gespraeche', 'erstgespraeche', 'sql_30', 'ohne_schritt', 'mrr', 'win_rate', 'zyklus', 'haengt_wert', 'followup_puenktlich', 'ueberfaellig', 'umsatz_ziel'],
   marketing: ['veroeffentlichungen', 'content_gespraeche', 'marketing_anteil', 'abmeldequote', 'newsletter_netto'],
   event: ['events_90', 'nachfassen_48h', 'folgegespraeche', 'erscheinen', 'mischung'],
 };

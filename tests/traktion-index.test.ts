@@ -108,7 +108,8 @@ describe('Traktions-Index', () => {
     expect(t.vorlaeufig).toBe(true);
     expect(t.hinweis).toContain('Event');
     expect(t.welten.map(w => [w.id, w.score === null])).toEqual([['sales', false], ['marketing', false], ['event', true]]);
-    expect(t.welten[0].gemessen).toBe(6);
+    // 27.09.: Sales hat jetzt 12 Kennzahlen; in den Beispieldaten sind acht gemessen (die sechs alten plus „hängt nach Wert“ und „überfällige Follow-ups“).
+    expect(t.welten[0].gemessen).toBe(8);
   });
 
   it('eigene Schwellen gelten; alle Wege führen in die Software', () => {

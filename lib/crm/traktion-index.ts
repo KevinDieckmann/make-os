@@ -13,7 +13,9 @@ import type { CrmBestand, Chance, Mandat } from './typen';
 import { kennzahlen, type Kpi } from './kennzahlen';
 import { marketingKennzahlen, ausMarketing, abmeldequote } from './marketing';
 import { eventKennzahlen, WELTEN, IM_SCORE, GRUNDLAGE, type Welt, type Traktion } from './traktion';
-import { OFFENE_STUFEN } from './pipeline';
+import { OFFENE_STUFEN, gesundheit, gesamtwert } from './pipeline';
+import { verweildauer } from './deal-auswertung';
+import { faellige } from './followup';
 import { eventZahlen, followUpBis } from './events';
 import { art14, ampel as kanalAmpel } from './recht';
 import { berechneModell, type KennzahlDefBasis, type SaeuleDef, type Messung, type Detail, type Ampel, type Schwelle, type IndexErgebnis } from '@/lib/kennzahlen/kern';
@@ -38,6 +40,13 @@ export const TRAKTION_KENNZAHLEN: KennzahlDefBasis[] = [
   D({ id: 'sql_30', label: 'Neue SQL · 30 Tage', saeule: 'sales', gruppe: 'Conversions', einheit: 'anzahl', richtung: 'hoch', gruen: 2, rot: 1, formel: 'In 30 Tagen angelegte Deals (Ebene 1 → 2)', quelle: 'Deals', luecke: 'Noch kein Deal angelegt', pflegen: { text: 'Deals öffnen', href: WEG.deals() } }),
   D({ id: 'ohne_schritt', label: 'Deals ohne nächsten Schritt', saeule: 'sales', gruppe: 'Conversions', einheit: 'anzahl', richtung: 'niedrig', gruen: 0, rot: 2, formel: 'Offene Deals ohne festgehaltenen nächsten Schritt', quelle: 'Deals', luecke: 'Kein offener Deal', pflegen: { text: 'Deals öffnen', href: WEG.deals() } }),
   D({ id: 'mrr', label: 'Größter Kunde am MRR', saeule: 'sales', gruppe: 'Conversions', einheit: 'prozent', richtung: 'niedrig', gruen: 50, rot: 70, formel: 'Anteil des größten Kunden am wiederkehrenden Monatsumsatz', quelle: 'Aktive Mandate mit Monatshonorar', luecke: 'Keine aktiven Monatsmandate', pflegen: { text: 'Mandate pflegen', href: WEG.mandat() } }),
+  // ── Deal- und Follow-up-Ebene (27.09.)
+  D({ id: 'win_rate', label: 'Win Rate · 180 Tage', saeule: 'sales', gruppe: 'Deals', gewicht: 1.25, einheit: 'prozent', richtung: 'hoch', gruen: 40, rot: 20, formel: 'gewonnen ÷ (gewonnen + verloren), Entscheidungen der letzten 180 Tage, erst ab 5', quelle: 'Deals mit Stufe gewonnen/verloren', luecke: 'Noch keine 5 Entscheidungen', pflegen: { text: 'Deals öffnen', href: markttraktion('deals', 'auswertung') } }),
+  D({ id: 'zyklus', label: 'Sales-Zyklus · Median', saeule: 'sales', gruppe: 'Deals', einheit: 'tage', richtung: 'niedrig', gruen: 60, rot: 120, formel: 'Median der Tage von Anlage bis gewonnen, erst ab 5 gewonnenen', quelle: 'Historie der gewonnenen Deals', luecke: 'Noch keine 5 gewonnenen Deals', pflegen: { text: 'Auswertung öffnen', href: markttraktion('deals', 'auswertung') } }),
+  D({ id: 'haengt_wert', label: 'Hängt · nach Wert', saeule: 'sales', gruppe: 'Deals', einheit: 'prozent', richtung: 'niedrig', gruen: 15, rot: 40, formel: 'Wert der roten Deals ÷ Wert aller offenen Deals', quelle: 'Ampel je Deal (überfällig oder > 30 Tage still)', luecke: 'Keine offenen Deals mit Wert', pflegen: { text: 'Board öffnen', href: markttraktion('deals') } }),
+  D({ id: 'followup_puenktlich', label: 'Follow-ups pünktlich · 30 Tage', saeule: 'sales', gruppe: 'Follow-up', einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 60, formel: 'erledigt am oder vor dem Termin ÷ (erledigt + verpasst), erst ab 5', quelle: 'Follow-up-Ebene', luecke: 'Noch keine 5 erledigten Follow-ups', pflegen: { text: 'Follow-up öffnen', href: markttraktion('followup') } }),
+  D({ id: 'ueberfaellig', label: 'Überfällige Follow-ups', saeule: 'sales', gruppe: 'Follow-up', einheit: 'anzahl', richtung: 'niedrig', gruen: 0, rot: 5, formel: 'Offene Follow-ups mit Termin vor heute (Zusagen, Wiedervorlagen, Deal-Schritte, Nachfassen, Kadenz)', quelle: 'Follow-up-Ebene', luecke: 'Noch keine Zusagen oder Wiedervorlagen', pflegen: { text: 'Fällige öffnen', href: markttraktion('followup') } }),
+  D({ id: 'umsatz_ziel', label: 'Neuumsatz gegen Ziel · Monat', saeule: 'sales', gruppe: 'Deals', einheit: 'prozent', richtung: 'hoch', gruen: 100, rot: 50, formel: 'Gesamtwert der im Monat gewonnenen Deals ÷ Monatsziel', quelle: 'Ziel aus Stammdaten › Wertelisten', luecke: 'Monatsziel fehlt — Stammdaten › Wertelisten › Ziele', pflegen: { text: 'Ziel eintragen', href: markttraktion('stammdaten', 'wertelisten') } }),
   // ── Marketing
   D({ id: 'veroeffentlichungen', label: 'Veröffentlichungen · 7 Tage', saeule: 'marketing', gruppe: 'Sichtbarkeit', gewicht: 1.25, einheit: 'anzahl', richtung: 'hoch', gruen: 2, rot: 1, formel: 'Veröffentlichte Beiträge der letzten 7 Tage', quelle: 'Redaktionsplan', luecke: 'Noch kein Beitrag im Redaktionsplan', pflegen: { text: 'Redaktionsplan', href: WEG.marketing('redaktion') } }),
   D({ id: 'content_gespraeche', label: 'Gespräche aus Content · 30 Tage', saeule: 'marketing', gruppe: 'Marketing', gewicht: 1.25, einheit: 'anzahl', richtung: 'hoch', gruen: 2, rot: 1, formel: 'Wirkung „Gespräch“ oder „Anfrage“ an Beiträgen, je Person und Beitrag einmal', quelle: 'Redaktionsplan · Wirkung', luecke: 'Noch kein veröffentlichter Beitrag', pflegen: { text: 'Wirkung festhalten', href: WEG.marketing('redaktion') } }),
@@ -110,6 +119,32 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
     const g = grenzen(b, 'mrr');
     return Array.from(je.entries()).sort((x, y) => y[1].mrr - x[1].mrr).slice(0, 3)
       .map(([kunde, x]) => ({ titel: kunde, wert: `${Math.round((x.mrr / gesamt) * 100)} %`, unter: `${euro(x.mrr)}/Monat`, href: WEG.mandat(x.m.id), ampel: ampelVon((x.mrr / gesamt) * 100, g) }));
+  },
+  win_rate(b) {
+    const entschieden = (c: Chance) => c.historie.filter(h => h.stufe === 'gewonnen' || h.stufe === 'verloren').pop()?.am.slice(0, 10);
+    return b.crm.chancen.filter(c => (c.stufe === 'gewonnen' || c.stufe === 'verloren') && (entschieden(c) ?? '') >= tagMinus(b.heute, 179)).sort((x, y) => (entschieden(y) ?? '').localeCompare(entschieden(x) ?? '')).slice(0, 6)
+      .map(c => dealDetail(c, c.stufe === 'gewonnen' ? 'gewonnen' : 'verloren', `${tagKurz(entschieden(c) ?? b.heute)}${c.grund ? ` · ${c.grund}` : ''}`, c.stufe === 'gewonnen' ? 'gruen' : 'rot'));
+  },
+  zyklus(b) {
+    return b.crm.chancen.filter(c => c.stufe === 'gewonnen').map(c => ({ c, v: verweildauer(c, b.heute) })).sort((x, y) => y.c.geaendert.localeCompare(x.c.geaendert)).slice(0, 4)
+      .map(({ c, v }) => dealDetail(c, `${v.slice(0, -1).reduce((a, s) => a + s.tage, 0)} Tage`, c.firma ?? undefined));
+  },
+  haengt_wert(b) {
+    return b.crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe) && gesundheit(c, b.heute).ampel === 'rot').sort((x, y) => gesamtwert(y) - gesamtwert(x)).slice(0, 4)
+      .map(c => dealDetail(c, euro(gesamtwert(c)), gesundheit(c, b.heute).gruende[0], 'rot'));
+  },
+  followup_puenktlich(b) {
+    return (b.crm.followups ?? []).filter(f => f.status === 'erledigt' || f.status === 'verpasst').sort((x, y) => (y.erledigtAm ?? y.geaendert).localeCompare(x.erledigtAm ?? x.geaendert)).slice(0, 4)
+      .map(f => { const p = f.status === 'erledigt' && (f.erledigtAm ?? '').slice(0, 10) <= f.faellig; const k = f.kontaktId ? person(b, f.kontaktId) : undefined; return { titel: k ? anzeigename(k) : f.text, wert: p ? 'pünktlich' : f.status === 'verpasst' ? 'verpasst' : 'verspätet', unter: `${f.text.slice(0, 50)} · fällig ${tagKurz(f.faellig)}`, href: k ? WEG.akte(k.id) : WEG.followup(), ampel: (p ? 'gruen' : 'rot') as Ampel }; });
+  },
+  ueberfaellig(b) {
+    return faellige(b.kontakte, b.crm, b.heute, { wertelisten: b.crm.wertelisten }).filter(f => f.gruppe === 'ueberfaellig').slice(0, 4)
+      .map(f => ({ titel: f.name, wert: `${f.tageUeber} Tage`, unter: f.text.slice(0, 60), href: f.bezug.art === 'chance' ? WEG.deal(f.bezug.id) : f.kontaktId ? WEG.akte(f.kontaktId) : WEG.followup(), ampel: 'rot' as Ampel }));
+  },
+  umsatz_ziel(b) {
+    const monat = b.heute.slice(0, 7);
+    return b.crm.chancen.filter(c => c.stufe === 'gewonnen' && (c.historie.filter(h => h.stufe === 'gewonnen').pop()?.am ?? c.geaendert).slice(0, 7) === monat).slice(0, 4)
+      .map(c => dealDetail(c, euro(gesamtwert(c)), c.firma ?? undefined, 'gruen'));
   },
   veroeffentlichungen(b) {
     return (b.crm.beitraege ?? []).filter(x => x.status === 'veroeffentlicht' && x.datum).sort((x, y) => y.datum!.localeCompare(x.datum!)).slice(0, 3)
