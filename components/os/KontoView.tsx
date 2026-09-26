@@ -10,7 +10,7 @@ import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, feld, LEUCHT, Spalten, Spalte } from './schlank';
 import { HaushaltZuordnung } from './HaushaltZuordnung';
 
-interface Ich { speicher: string; email: string; name: string; rolle: 'inhaber' | 'mitglied'; teilt: { gesundheit: string[] }; angelegt: string }
+interface Ich { speicher: string; email: string; name: string; rolle: 'inhaber' | 'mitglied'; teilt: { gesundheit: string[] }; angelegt: string; zweiterFaktorAn?: boolean }
 interface Andere { speicher: string; name: string; rolle: string; teiltGesundheitMitMir: boolean }
 interface Telegram { konfiguriert: boolean; bot?: string; chats: number; code?: string; minuten?: number; fehler?: string }
 
@@ -49,6 +49,12 @@ export function KontoView() {
     const r = await fetch('/api/konto/einladen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fuer }) }).then(x => x.json()).catch(() => ({ error: 'nicht erreichbar' }));
     if (r.code) setEinladung({ code: r.code, stunden: r.stunden, link: `${r.adresse || window.location.origin}/anmelden?code=${r.code}` }); else setMeldung(r.error ?? 'Fehler');
   }
+  // Zweiter Faktor (26.09.): einrichten → Code bestätigen → Wiederherstellungscodes einmal zeigen.
+  const [zf, setZf] = useState<{ phase: 'aus' | 'einrichten' | 'codes'; geheimnis?: string; link?: string; codes?: string[]; code: string; passwort: string }>({ phase: 'aus', code: '', passwort: '' });
+  const zfPost = (body: Record<string, unknown>) => fetch('/api/konto/zwei-faktor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
+  async function zfBeginnen() { const r = await zfPost({ aktion: 'beginnen' }); if (r.error) setMeldung(r.error); else setZf({ phase: 'einrichten', geheimnis: r.geheimnis, link: r.link, code: '', passwort: '' }); }
+  async function zfBestaetigen() { const r = await zfPost({ aktion: 'bestaetigen', code: zf.code }); if (r.error) setMeldung(r.error); else { setZf({ phase: 'codes', codes: r.codes ?? [], code: '', passwort: '' }); setMeldung('Zweiter Faktor ist an — alle anderen Geräte sind abgemeldet.'); void laden(); } }
+  async function zfAus() { const r = await zfPost({ aktion: 'aus', passwort: zf.passwort }); if (r.error) setMeldung(r.error); else { setZf({ phase: 'aus', code: '', passwort: '' }); setMeldung('Zweiter Faktor ist aus.'); void laden(); } }
   async function abmelden() { await fetch('/api/konto/abmelden', { method: 'POST' }).catch(() => {}); window.location.assign('/anmelden'); }
   // Alle anderen Geräte raus — dieses bleibt drin (der Server stellt einen neuen Zettel aus).
   async function alleAbmelden() {
@@ -80,6 +86,36 @@ export function KontoView() {
         <input type="password" placeholder="neues, mindestens 10 Zeichen" value={pw.neu} onChange={e => setPw(p => ({ ...p, neu: e.target.value }))} style={feld} autoComplete="new-password" />
         <Knopf leise onClick={() => speichern({ passwortAlt: pw.alt, passwortNeu: pw.neu }, 'Passwort geändert.')} aus={pw.neu.length < 10 || !pw.alt}>Ändern</Knopf>
       </div>
+      </Karte>
+      <Karte i={2} akzent={ich.zweiterFaktorAn ? LEUCHT.gut : LEUCHT.achtung}>
+        <Ueberschrift farbe={ich.zweiterFaktorAn ? LEUCHT.gut : LEUCHT.achtung} rechts={<span>{ich.zweiterFaktorAn ? 'an' : 'aus'}</span>}>Zweiter Faktor · Authenticator</Ueberschrift>
+        {zf.phase === 'codes' && zf.codes && (
+          <div style={{ display: 'grid', gap: 8 }}>
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Diese acht Wiederherstellungscodes gelten je einmal, falls das Handy weg ist. Jetzt in den Passwort-Manager — sie werden nie wieder angezeigt.</div>
+            <div style={{ ...mono, fontSize: 15, lineHeight: 1.8, columns: 2 }}>{zf.codes.map(c => <div key={c}>{c}</div>)}</div>
+            <div><Knopf onClick={() => setZf({ phase: 'aus', code: '', passwort: '' })}>Ich habe sie gesichert</Knopf></div>
+          </div>
+        )}
+        {zf.phase === 'einrichten' && zf.geheimnis && (
+          <div style={{ display: 'grid', gap: 10 }}>
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>In der Passwörter- oder Authenticator-App einen neuen Eintrag anlegen — am Handy über den Link, sonst den Schlüssel eintippen. Dann den Sechssteller aus der App hier bestätigen.</div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <code style={{ ...mono, fontSize: 15, letterSpacing: '.12em' }}>{zf.geheimnis.replace(/(.{4})/g, '$1 ').trim()}</code>
+              <a href={zf.link} style={{ fontSize: TYP.bedien, color: C.aktiv }}>In der App öffnen ›</a>
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <input placeholder="Code aus der App" value={zf.code} onChange={e => setZf(z => ({ ...z, code: e.target.value }))} style={{ ...feld, width: 180, fontFamily: SCHRIFT.mono, letterSpacing: '.15em' }} inputMode="numeric" autoComplete="one-time-code" />
+              <Knopf onClick={zfBestaetigen} aus={zf.code.replace(/\s/g, '').length !== 6}>Bestätigen</Knopf>
+              <Knopf leise onClick={() => setZf({ phase: 'aus', code: '', passwort: '' })}>Abbrechen</Knopf>
+            </div>
+          </div>
+        )}
+        {zf.phase === 'aus' && !ich.zweiterFaktorAn && (
+          <Zeile titel="Zweiten Faktor einrichten" unter="Beim Anmelden zusätzlich ein Sechssteller aus der Authenticator-App (Apple Passwörter, Google Authenticator, 1Password). Das ist der wichtigste Schutz für ein Login im offenen Netz." rechts={<Knopf farbe={LEUCHT.gut} onClick={zfBeginnen}>Einrichten</Knopf>} />
+        )}
+        {zf.phase === 'aus' && ich.zweiterFaktorAn && (
+          <Zeile titel="Zweiter Faktor ist an" unter="Ausschalten nur mit Passwort — danach genügt beim Anmelden wieder das Passwort allein." rechts={<span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input type="password" placeholder="Passwort" value={zf.passwort} onChange={e => setZf(z => ({ ...z, passwort: e.target.value }))} style={{ ...feld, width: 150, padding: '8px 10px', fontSize: TYP.bedien }} autoComplete="current-password" /><Knopf leise onClick={zfAus} aus={!zf.passwort}>Ausschalten</Knopf></span>} />
+        )}
       </Karte>
       {ich.rolle === 'inhaber' && (
         <Karte i={4} akzent={LEUCHT.schlaf}>

@@ -20,7 +20,9 @@
 // Laufzeitmodell ohne Node-Module, und Node 22 hat Web Crypto ebenfalls.
 // EINE Implementierung für beide Seiten — sonst laufen sie auseinander.
 
-export const SITZUNG_COOKIE = 'make-os-sitzung';
+// In Produktion mit __Host-: nur über HTTPS, nur für genau diesen Host, keine Domain-Cookies von
+// Nachbarn unter derselben Endung (sslip.io) — der Browser erzwingt das am Präfix (26.09.).
+export const SITZUNG_COOKIE = process.env.NODE_ENV === 'production' ? '__Host-make-os-sitzung' : 'make-os-sitzung';
 /** Nicht signiert, nicht geheim: nur damit der Browser weiß, wer da ist. */
 export const WER_COOKIE = 'make-os-wer';
 export const SITZUNG_TAGE = 14;

@@ -27,7 +27,9 @@ export function Anmelden() {
   const codeAusLink = (params.get('code') ?? '').toUpperCase();
   const [eingerichtet, setEingerichtet] = useState<boolean | null>(null);
   const [art, setArt] = useState<Art>('anmelden');
-  const [f, setF] = useState({ email: '', passwort: '', name: '', schluessel: '', code: codeAusLink });
+  const [f, setF] = useState({ email: '', passwort: '', name: '', schluessel: '', code: codeAusLink, faktor: '' });
+  // Zweiter Faktor (26.09.): Passwort stimmt, der Server will noch den Code aus der App.
+  const [zweiter, setZweiter] = useState(false);
   const [fehler, setFehler] = useState('');
   const [laeuft, setLaeuft] = useState(false);
 
@@ -47,9 +49,11 @@ export function Anmelden() {
     setFehler(''); setLaeuft(true);
     const pfad = art === 'anmelden' ? '/api/konto/anmelden' : art === 'einrichten' ? '/api/konto/einrichten' : '/api/konto/beitreten';
     try {
-      const r = await fetch(pfad, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(f) });
+      const body = art === 'anmelden' ? { email: f.email, passwort: f.passwort, ...(zweiter ? { code: f.faktor } : {}) } : f;
+      const r = await fetch(pfad, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const d = await r.json();
       if (!r.ok || d.error) { setFehler(d.error ?? `Fehler ${r.status}`); setLaeuft(false); return; }
+      if (d.zweiterFaktor) { setZweiter(true); setLaeuft(false); return; }
       // Volles Neuladen, kein Seitenwechsel im Browser: die Datenkontexte (Aufgaben,
       // Kalender) starten sonst ohne Sitzung und zeigten den Beispiel-Zustand. (23.09.)
       window.location.assign(zu);
@@ -90,6 +94,12 @@ export function Anmelden() {
         <input type="email" placeholder="E-Mail" value={f.email} onChange={s('email')} style={feld} autoComplete="email" autoFocus />
         <input type="password" placeholder={art === 'anmelden' ? 'Passwort' : 'Passwort (mindestens 10 Zeichen)'} value={f.passwort} onChange={s('passwort')} style={feld} autoComplete={art === 'anmelden' ? 'current-password' : 'new-password'} />
 
+        {zweiter && (
+          <>
+            <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, margin: 0 }}>Zweiter Faktor: den Sechssteller aus deiner Authenticator-App — oder einen Wiederherstellungscode.</p>
+            <input placeholder="Code" value={f.faktor} onChange={s('faktor')} style={{ ...feld, fontFamily: SCHRIFT.mono, letterSpacing: '.15em' }} autoComplete="one-time-code" inputMode="numeric" autoFocus />
+          </>
+        )}
         {fehler && <div style={{ fontSize: TYP.bedien, color: C.kritisch, lineHeight: 1.4 }}>{fehler}</div>}
 
         <button type="submit" disabled={laeuft || eingerichtet === null} className="fassbar" style={{
@@ -97,7 +107,7 @@ export function Anmelden() {
           cursor: laeuft ? 'default' : 'pointer', background: laeuft ? 'rgba(255,255,255,.08)' : C.aktiv, color: laeuft ? C.inkLeise : C.grund,
           boxShadow: laeuft ? undefined : `0 8px 24px -8px ${C.aktiv}99`,
         }}>
-          {laeuft ? '…' : art === 'anmelden' ? 'Anmelden' : art === 'einrichten' ? 'Konto anlegen' : 'Beitreten'}
+          {laeuft ? '…' : art === 'anmelden' ? (zweiter ? 'Bestätigen' : 'Anmelden') : art === 'einrichten' ? 'Konto anlegen' : 'Beitreten'}
         </button>
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: A.l, marginTop: A.s, fontSize: TYP.bedien }}>

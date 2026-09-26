@@ -16,6 +16,7 @@
 
 import { scrypt, randomBytes, timingSafeEqual } from 'node:crypto';
 import { loadJson, updateJson, beschaedigt } from '@/lib/store/local-db';
+import type { Wiederherstellung } from './totp';
 
 export type Rolle = 'inhaber' | 'mitglied';
 
@@ -43,6 +44,10 @@ export interface Konto {
   sitzungenAb?: string;
   /** Beim Abmelden widerrufene Zettel (Kennung + Ablauf, danach entfällt der Eintrag). */
   widerrufen?: { sid: string; bis: number }[];
+  /** Zweiter Faktor (TOTP, 26.09.): Geheimnis (Base32), seit wann, zuletzt genutzte Zeitstufe, Wiederherstellungscodes (nur Hashes). */
+  zweiterFaktor?: { geheimnis: string; seit: string; letzteStufe?: number; wiederherstellung: Wiederherstellung[] };
+  /** Einrichtung begonnen, noch nicht mit einem Code bestätigt. */
+  zweiterFaktorEntwurf?: { geheimnis: string; seit: string };
 }
 
 /** `speicher`: vom Inhaber festgelegter Speichername (z. B. „malin“, damit bestehende Bestände am Konto hängen). */
@@ -87,9 +92,9 @@ export function neuerEinladungscode(zufall: () => number = Math.random): string 
 export function leererStand(): KontenStand { return { konten: [], einladungen: [] }; }
 
 /** Was der Browser über ein Konto wissen darf — nie Hash oder Salz. */
-export function oeffentlich(k: Konto): Omit<Konto, 'hash' | 'salz' | 'widerrufen'> {
-  const { hash: _h, salz: _s, widerrufen: _w, ...rest } = k;
-  return rest;
+export function oeffentlich(k: Konto): Omit<Konto, 'hash' | 'salz' | 'widerrufen' | 'zweiterFaktor' | 'zweiterFaktorEntwurf'> & { zweiterFaktorAn: boolean } {
+  const { hash: _h, salz: _s, widerrufen: _w, zweiterFaktor: _z, zweiterFaktorEntwurf: _e, ...rest } = k;
+  return { ...rest, zweiterFaktorAn: !!k.zweiterFaktor };
 }
 
 // ── Passwort ─────────────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@
 
 import { updateJson, loadJson } from '@/lib/store/local-db';
 
-export type AnmeldeArt = 'anmelden' | 'passwort' | 'alle-abgemeldet' | 'abmelden';
+export type AnmeldeArt = 'anmelden' | 'passwort' | 'alle-abgemeldet' | 'abmelden' | 'zweiter-faktor-an' | 'zweiter-faktor-aus';
 export interface Anmeldung { zeit: string; speicher: string | null; art: AnmeldeArt; ok: boolean; adresse: string }
 const STORE = 'anmeldungen';
 const MAX = 300;

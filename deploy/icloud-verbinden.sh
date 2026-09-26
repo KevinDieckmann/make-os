@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ─── MAKE OS · iCloud-Kalender verbinden (auf dem Server) ───────────────────
 # Einmal ausführen — vom Mac aus, im Terminal (Apple-ID gleich mitgeben):
-#   ssh -t root@2.28.108.162 bash /srv/make-os/app/deploy/icloud-verbinden.sh <apple-id>
+#   ssh -t make@2.28.108.162 sudo bash /srv/make-os/app/deploy/icloud-verbinden.sh <apple-id>
 # Dann fragt es nur noch das App-Passwort (Einfügen reicht, mit oder ohne
 # Bindestriche) und zeigt zur Kontrolle die letzten vier Zeichen. Falsches
 # oder leeres Passwort → es fragt noch einmal, statt abzubrechen.

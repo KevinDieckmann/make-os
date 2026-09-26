@@ -30,6 +30,8 @@ export async function middleware(req: NextRequest) {
   const schluessel = process.env.MAKE_OS_KEY;
   // Ohne konfigurierten Schlüssel bleibt alles zu — lieber gesperrt als offen.
   if (!schluessel) return new NextResponse('MAKE OS ist nicht eingerichtet (MAKE_OS_KEY fehlt).', { status: 503 });
+  // Auf dem Server ist das Sitzungsgeheimnis Pflicht (26.09.) — kein Rückfall auf den Dienstschlüssel.
+  if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) return new NextResponse('MAKE OS ist nicht eingerichtet (SESSION_SECRET fehlt in .env).', { status: 503 });
 
   // CSRF-Schutz: Schreibzugriffe aus fremden Browser-Kontexten abweisen.
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -40,7 +42,9 @@ export async function middleware(req: NextRequest) {
       // X-Forwarded-Host, und fest eingetragen in MAKE_OS_ADRESSE. Ein Browser
       // kann X-Forwarded-Host bei einer fremden Seite nicht setzen, ohne an
       // der Vorabprüfung zu scheitern — der Schutz bleibt also dicht.
-      const eigene = [req.headers.get('host'), req.headers.get('x-forwarded-host'), adresseHost()].filter(Boolean);
+      // X-Forwarded-Host nur hinter dem eigenen Vorbau (Caddy) — direkt gesetzt wäre er frei wählbar (26.09.).
+      const vorbau = process.env.NODE_ENV === 'production' || process.env.TRUST_PROXY === '1';
+      const eigene = [req.headers.get('host'), vorbau ? req.headers.get('x-forwarded-host') : null, adresseHost()].filter(Boolean);
       try { if (!eigene.includes(new URL(origin).host)) return verweigertApi(); }
       catch { return verweigertApi(); }
     }

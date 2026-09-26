@@ -1,7 +1,7 @@
 // ─── MAKE OS — Gilt ein Sitzungszettel noch? (26.09.) ───────────────────────
 // Die Middleware läuft am Rand (kein Dateizugriff). Sie fragt deshalb den
-// Server nach dem Stand des Kontos — mit dem Dienstschlüssel, höchstens einmal
-// je Minute je Konto (bei einem unpassenden Zettel einmal sofort). Drei Dinge
+// Server nach dem Stand des Kontos — mit dem Dienstschlüssel, höchstens alle 15 Sekunden
+// je Konto (bei einem unpassenden Zettel einmal sofort). Drei Dinge
 // machen einen signierten Zettel ungültig: ein neues Passwort (Stand), „alle
 // anderen Geräte abmelden“ (ausgestellt vor `ab`) und Abmelden (Widerruf der
 // Kennung). Ist der Server gerade nicht erreichbar (Start), gilt der signierte
@@ -10,10 +10,11 @@
 import { innenAdresse } from '@/lib/innen';
 import type { Sitzung } from '@/lib/zugang/sitzung';
 
-const TTL_MS = 60_000;
+// 15 Sekunden: ein beim Abmelden widerrufener (etwa gestohlener) Zettel stirbt binnen dieser Frist überall.
+const TTL_MS = 15_000;
 /** Ein schon abgelehnter Zettel wird frühestens nach so vielen ms erneut beim Server nachgefragt. */
 const NACHFRAGE_MS = 5_000;
-interface Stand { stand: string; ab: number; widerrufen: string[]; bis: number; abgelehnt: Map<string, number> }
+interface Stand { stand: string; ab: number; widerrufen: string[]; bis: number; geholt: number; abgelehnt: Map<string, number> }
 /** speicher → Stand laut Server (stand '' = Konto gibt es nicht mehr). */
 const gemerkt = new Map<string, Stand>();
 
@@ -23,7 +24,11 @@ export async function standGueltig(req: Request, s: Sitzung, schluessel: string)
   const jetzt = Date.now();
   const alt = gemerkt.get(s.speicher);
   const kennung = `${s.stand}.${s.sid}`;
-  if (alt && alt.bis > jetzt) {
+  // Ein Zettel, der NACH dem letzten Nachfragen ausgestellt wurde (frische Anmeldung, „alle anderen Geräte
+  // abmelden“, zweiter Faktor an), erzwingt ein Nachfragen — so fliegen die anderen Geräte sofort, nicht erst
+  // nach einer Minute.
+  const frisch = !!alt && s.ausgestellt > alt.geholt;
+  if (alt && alt.bis > jetzt && !frisch) {
     if (passt(alt, s)) return true;
     // Unpassend: ein noch nie gesehener Zettel (gerade Passwort geändert / neu angemeldet) wird sofort
     // nachgefragt, ein schon abgelehnter (altes Gerät) frühestens nach fünf Sekunden wieder.
@@ -38,7 +43,7 @@ export async function standGueltig(req: Request, s: Sitzung, schluessel: string)
     const neu: Stand = {
       stand: d.stand, ab: typeof d.ab === 'number' ? d.ab : 0,
       widerrufen: Array.isArray(d.widerrufen) ? d.widerrufen.filter((x): x is string => typeof x === 'string') : [],
-      bis: jetzt + TTL_MS, abgelehnt: alt?.abgelehnt ?? new Map<string, number>(),
+      bis: jetzt + TTL_MS, geholt: jetzt, abgelehnt: alt?.abgelehnt ?? new Map<string, number>(),
     };
     const ok = passt(neu, s);
     if (!ok) neu.abgelehnt.set(kennung, jetzt);

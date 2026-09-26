@@ -50,6 +50,20 @@ Update ihn ablöst.
 
 _(hier sammeln, was auf `entwicklung` fertig ist)_
 
+**Sicherheits-Welle 4 (26.09., „extrem sicher — unsere privatesten Themen“)**
+- **Zweiter Faktor (Authenticator-App):** unter Konto → „Zweiter Faktor“ einrichten — Schlüssel in Apple
+  Passwörter / Google Authenticator / 1Password (am Handy per Link), Sechssteller bestätigen, acht
+  Wiederherstellungscodes einmalig sichern. Danach fragt die Anmeldung nach Passwort UND Code; ein Code gilt
+  nur einmal, fünf Fehlversuche bremsen. Ausschalten nur mit Passwort. Einrichten meldet alle anderen Geräte ab.
+  **Bitte beide einschalten** — das ist der wichtigste Schutz für ein Login im offenen Netz.
+- **Sitzungs-Cookie mit `__Host-`** in Produktion (nur HTTPS, nur dieser Host — kein Nachbar unter sslip.io kann
+  ein Cookie unterschieben); `SESSION_SECRET` ist auf dem Server Pflicht (503 statt Rückfall); „alle anderen
+  Geräte abmelden“ wirkt sofort, nicht erst nach einer Minute.
+- **Server:** root-Login per SSH ist aus, Verwaltung als `make` mit `sudo` (`ssh make@… sudo …`), SSH nur für
+  `make`, kein Port-Forwarding; Datendateien nicht mehr weltlesbar.
+- **Lieferkette:** Docker-Basisbilder und GitHub-Actions per Digest/SHA festgenagelt (Dependabot hält sie
+  aktuell), Action nur mit Leserecht.
+
 - **Whoop-Import online:** auf dem Server gibt es keinen Downloads-Ordner — der Knopf „Aus Downloads einlesen“
   erscheint dort nicht mehr; stattdessen „ZIP oder CSV wählen“ mit Hinweis (am Handy die Datei erst in „Dateien“
   sichern). Die Dateiauswahl funktionierte schon, war aber nicht als der Weg erkennbar.
@@ -154,7 +168,8 @@ Kapazität und im Monatsabschluss die fakturierten Tage.
 Nach dem Update: alle müssen sich einmal neu anmelden (Sitzungsgeheimnis und neues Sitzungsformat).
 `SESSION_SECRET` liegt auf dem Server schon in der `.env` — der Einzeiler unten ist nur Rückfall. Einmalig auf dem Server, falls
 `SESSION_SECRET` dort noch fehlt:
-`ssh root@2.28.108.162 'grep -q SESSION_SECRET /srv/make-os/.env || echo SESSION_SECRET=$(openssl rand -hex 32) >> /srv/make-os/.env && cd /srv/make-os && docker compose up -d'`
+`ssh make@2.28.108.162 'grep -q SESSION_SECRET /srv/make-os/app/.env || echo SESSION_SECRET=$(openssl rand -hex 32) >> /srv/make-os/app/.env && cd /srv/make-os/app && docker compose up -d'`
+(seit 26.09. mittags: SSH nur noch als `make`, Verwaltung mit `sudo`; root-Login ist aus)
 Malin einladen: unter Konto → Einladung im Feld „Vorname“ **Malin** eintragen — dann bekommt sie ihre Bestände.
 Offen (bewusst): `public/make-os.html` (Juli-Klickdummy) könnte ganz raus — Kevins Entscheidung.
 
@@ -172,5 +187,5 @@ Offen (bewusst): `public/make-os.html` (Juli-Klickdummy) könnte ganz raus — K
 
 - ~~iCloud-Kalender verbinden~~ — erledigt 25.09. (Befehl bleibt zum Wechseln des Passworts):
   vorher bei Apple ein app-spezifisches Passwort „MAKE OS“ anlegen (appleid.apple.com → Anmelden & Sicherheit), dann
-  `ssh -t root@2.28.108.162 bash /srv/make-os/app/deploy/icloud-verbinden.sh <apple-id>` (fragt dann nur das App-Passwort)
+  `ssh -t make@2.28.108.162 sudo bash /srv/make-os/app/deploy/icloud-verbinden.sh <apple-id>` (fragt dann nur das App-Passwort)
   — Alternative ohne Terminal: eine Eingabe „iCloud verbinden“ unter System (nur Inhaber, verschlüsselt gespeichert), wenn gewünscht.
