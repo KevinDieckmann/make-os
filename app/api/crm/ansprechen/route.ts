@@ -11,6 +11,7 @@ import { personAus } from '@/lib/jarvis/raum';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { werIstDran } from '@/lib/crm/heute';
 import { ampel } from '@/lib/crm/recht';
+import { fuerPerson } from '@/lib/make-one/crm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
   const a = werIstDran(kontakte, crm, heute, personAus(req), n);
   const ziel = (k: Kontakt, kanal: string) => (kanal === 'telefon' ? k.telefon ?? k.sms : kanal === 'mail' ? k.email : k.linkedin) ?? '';
   const liste = a.karten.map(c => ({
-    kontakt: c.kontakt, grund: c.gruende.join(' · '), kategorie: c.kategorie,
+    kontakt: fuerPerson(c.kontakt, personAus(req)), grund: c.gruende.join(' · '), kategorie: c.kategorie,
     kanaele: ampel(c.kontakt).filter(x => x.farbe !== 'rot').map(x => ({ art: x.kanal, ziel: ziel(c.kontakt, x.kanal), farbe: x.farbe, grund: x.grund })),
   }));
   return NextResponse.json({ heute, liste, stand: pipelineStand(kontakte), ausgefiltert: a.ausgefiltert });

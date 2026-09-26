@@ -8,6 +8,8 @@
 
 import { NextResponse } from 'next/server';
 import { logRun, recentRuns } from '@/lib/agent-log';
+import { istDienst } from '@/lib/zugang/dienst';
+import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,6 +24,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  // Agentenläufe steuern den Wochen-Loop — nur Dienstweg oder Inhaber tragen ein (26.09.).
+  if (!istDienst(req) && !(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   let body: { agent?: string; title?: string; payload?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const agent = (body.agent ?? '').trim();

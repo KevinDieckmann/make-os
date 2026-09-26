@@ -59,11 +59,15 @@ export async function middleware(req: NextRequest) {
   kopf.delete('x-make-user');
   kopf.delete('x-make-person');
 
+  // Eine Schnittstelle ist nie das Ziel einer Navigation von einer fremden Seite (26.09.): so kann kein
+  // fremder Link mit dem Cookie im Gepäck eine GET-Route mit Wirkung auslösen.
+  if (pfad.startsWith('/api/') && req.headers.get('sec-fetch-site') === 'cross-site' && req.headers.get('sec-fetch-mode') === 'navigate') return verweigertApi();
+
   if (OFFEN.some(r => r.test(pfad))) return NextResponse.next({ request: { headers: kopf } });
 
   const sitzung = await sitzungPruefen(sitzungsGeheimnis(), req.cookies.get(SITZUNG_COOKIE)?.value);
   // Passt der Zettel noch zum Passwort? (nach einem Wechsel: alle anderen Geräte binnen einer Minute raus)
-  if (sitzung && await standGueltig(req, sitzung.speicher, sitzung.stand, schluessel)) {
+  if (sitzung && await standGueltig(req, sitzung, schluessel)) {
     kopf.set('x-make-user', sitzung.speicher);
     return NextResponse.next({ request: { headers: kopf } });
   }

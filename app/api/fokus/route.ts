@@ -9,11 +9,13 @@ import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { zoneOf, vitalsHint } from '@/lib/vitals';
 import { gatherBrain, blockAufgaben } from '@/lib/brain';
 import { personAus } from '@/lib/jarvis/raum';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   const b = await gatherBrain(undefined, personAus(req));
   const v = b.vitals;
   const rec = v.rec;

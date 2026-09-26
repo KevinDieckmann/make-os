@@ -8,11 +8,19 @@
 #   /srv/make-os/vault   → Obsidian-Hirn (privates Git-Repo, vault-abgleich.sh)
 # Geheimnisse stehen in /srv/make-os/app/.env (Vorlage: deploy/env.server.beispiel).
 
+# Härtung (26.09.): kein Rechte-Zuwachs im Container, keine Kernel-Fähigkeiten, Speichergrenzen;
+# der Arbeiter bekommt nur den Dienstschlüssel — nicht die iCloud-/Telegram-/Anthropic-Geheimnisse.
+x-haertung: &haertung
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+
 services:
   app:
+    <<: *haertung
     build: .
     image: make-os:aktuell
     restart: unless-stopped
+    mem_limit: 1536m
     env_file: .env
     environment:
       PORT: "3000"
@@ -30,13 +38,15 @@ services:
       retries: 3
 
   arbeiter:
+    <<: *haertung
     image: make-os:aktuell
     restart: unless-stopped
-    env_file: .env
+    mem_limit: 512m
     command: ["node", "worker.mjs"]
     environment:
       TZ: Europe/Berlin
       MAKE_OS_URL: http://app:3000
+      MAKE_OS_KEY: ${MAKE_OS_KEY}
     depends_on:
       app:
         condition: service_healthy
@@ -44,6 +54,10 @@ services:
   caddy:
     image: caddy:2
     restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    mem_limit: 256m
     ports: ["80:80", "443:443"]
     environment:
       MAKE_OS_DOMAIN: ${MAKE_OS_DOMAIN}

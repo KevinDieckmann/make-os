@@ -132,7 +132,7 @@ export async function GET(req: Request) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[Apple Mail API]', msg);
     return NextResponse.json(
-      { error: 'Kein Zugriff auf Apple Mail', detail: msg },
+      { error: 'Kein Zugriff auf Apple Mail' },
       { status: 500 },
     );
   }

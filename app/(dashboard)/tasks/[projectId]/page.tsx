@@ -1,9 +1,10 @@
 import { ProjectDetail } from '@/components/tasks/ProjectDetail';
 
 interface Props {
-  params: { projectId: string };
+  params: Promise<{ projectId: string }>;
 }
 
-export default function ProjectPage({ params }: Props) {
+export default async function ProjectPage(props: Props) {
+  const params = await props.params;
   return <ProjectDetail projectId={params.projectId} />;
 }

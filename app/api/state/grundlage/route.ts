@@ -10,16 +10,22 @@
 import { NextResponse } from 'next/server';
 import { loadJson, updateGeschuetzt } from '@/lib/store/local-db';
 import { lesen, kennzahlen, monatsBild, kostenNachKategorie, type MalinExport } from '@/lib/make-one/grundlage';
+import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+// Business-Zahlen gehören zum Haushalt des Inhabers — wie der Business-Index (26.09.).
+const KEIN_HAUSHALT = { ok: false, error: 'Kein Zugang zu den Business-Zahlen — sie gehören zum Haushalt des Inhabers (System → Konto).' };
 
 interface Datei { roh: MalinExport; stand: string; geladen: string }
 
 const positionen = (d: Datei | null) =>
   (d?.roh?.s?.invOut?.length ?? 0) + (d?.roh?.p?.bank?.length ?? 0) + (d?.roh?.p?.sch?.length ?? 0);
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   const d = await loadJson<Datei>('grundlage');
   if (!d?.roh) {
     return NextResponse.json({ vorhanden: false, hinweis: 'Noch kein Export aus Malins Finanz-Dashboard geladen.' });
@@ -42,6 +48,8 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
+  if (zuGross(req, 4000000)) return ZU_GROSS(4000000);
   let body: { roh?: MalinExport; stand?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const roh = body.roh;

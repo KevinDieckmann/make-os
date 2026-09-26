@@ -8,6 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { personAus } from '@/lib/jarvis/raum';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -36,7 +37,7 @@ export async function PUT(req: Request) {
     woran: String(body.woran ?? '').slice(0, 140),
     // Beim Einschalten neu stempeln, beim Weiterlaufen den alten Start behalten.
     seit: aktiv ? (current?.aktiv && current.seit ? current.seit : new Date().toISOString()) : null,
-    von: String(body.von ?? 'Kevin').slice(0, 40),
+    von: (p => p.charAt(0).toUpperCase() + p.slice(1))(personAus(req)),
   }));
   return NextResponse.json({ ok: true, ...next });
 }

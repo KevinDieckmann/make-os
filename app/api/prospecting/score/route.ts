@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,7 @@ export const dynamic = 'force-dynamic';
 interface ProspectIn { company?: string; domain?: string; industry?: string; size?: string; region?: string; }
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { prospect?: ProspectIn; icp?: string };
   try { payload = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const p = payload.prospect ?? {};

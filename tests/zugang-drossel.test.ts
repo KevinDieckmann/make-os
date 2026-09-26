@@ -28,8 +28,13 @@ describe('Drossel', () => {
     for (let i = 0; i < 4; i++) fehlschlag('mail:c', t + 16 * 60_000);
     expect(pruefe('mail:c', t + 16 * 60_000).erlaubt).toBe(true);
   });
-  it('Adresse: der letzte Eintrag in X-Forwarded-For (den setzt der eigene Vorbau)', () => {
+  it('Adresse: X-Forwarded-For zählt nur hinter dem eigenen Vorbau (letzter Eintrag) — sonst „direkt“ (26.09.)', () => {
+    const alt = process.env.TRUST_PROXY;
+    delete process.env.TRUST_PROXY;
+    expect(adresse(new Request('http://x', { headers: { 'x-forwarded-for': '6.6.6.6, 203.0.113.9' } }))).toBe('direkt');
+    process.env.TRUST_PROXY = '1';
     expect(adresse(new Request('http://x', { headers: { 'x-forwarded-for': '6.6.6.6, 203.0.113.9' } }))).toBe('203.0.113.9');
     expect(adresse(new Request('http://x'))).toBe('unbekannt');
+    if (alt === undefined) delete process.env.TRUST_PROXY; else process.env.TRUST_PROXY = alt;
   });
 });

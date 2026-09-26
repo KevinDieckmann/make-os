@@ -43,7 +43,8 @@ export const PROVIDER: Record<string, OAuthProvider> = {
   },
 };
 
-export const REDIRECT_URI = 'http://localhost:3001/api/oauth/callback';
+// Die Adresse, unter der der Browser nach Whoop/M365 zurückkommt — auf dem Server die öffentliche (26.09.).
+export const REDIRECT_URI = `${(process.env.MAKE_OS_ADRESSE ?? '').trim().replace(/\/+$/, '') || 'http://localhost:3001'}/api/oauth/callback`;
 
 interface TokenSatz {
   access_token: string;

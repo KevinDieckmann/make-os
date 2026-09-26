@@ -57,8 +57,8 @@ describe('Sitzung', () => {
   const ST = 'abcdef012345';
 
   it('stellt einen Zettel aus, den nur dasselbe Geheimnis prüft', async () => {
-    const z = await sitzungAusstellen(G, 'kevin', ST);
-    expect(await sitzungPruefen(G, z)).toEqual({ speicher: 'kevin', stand: ST });
+    const z = await sitzungAusstellen(G, 'kevin', ST, 1_000_000, 'abcdefabcdef');
+    expect(await sitzungPruefen(G, z, 1_000_000)).toMatchObject({ speicher: 'kevin', stand: ST, sid: 'abcdefabcdef', ausgestellt: 1_000_000 });
     expect(await sitzungPruefen('anderes', z)).toBeNull();
   });
 
@@ -84,6 +84,7 @@ describe('Sitzung', () => {
   it('Zettel ohne Passwort-Stand (vor 26.09.) gelten nicht mehr; der Stand folgt dem Salz', async () => {
     const alt = `kevin.${Date.now() + 864e5}.` ;
     expect(await sitzungPruefen(G, `${alt}deadbeef`)).toBeNull();
+    expect(await sitzungPruefen(G, `${alt}${ST}.deadbeef`)).toBeNull();
     const a = await kontoStand('salz-1'), b = await kontoStand('salz-2');
     expect(a).toMatch(/^[a-f0-9]{12}$/);
     expect(a).not.toBe(b);

@@ -18,6 +18,9 @@ const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
 import { localDay as localKey } from '@/lib/zeit';
 import { innenAdresse } from '@/lib/innen';
+import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
+import { personAus } from '@/lib/jarvis/raum';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 // Overlap-Erkennung: echte Zeit-Kollisionen (keine Ganztags-Events).
 function findConflicts(events: Ev[]): Conflict[] {
@@ -53,6 +56,9 @@ function scheduleText(events: Ev[], from: number): string {
 }
 
 export async function POST(req: Request) {
+  // Der Kalender gehört dem Haushalt des Inhabers (26.09.) — wer ihn nicht lesen darf, lässt ihn auch nicht analysieren.
+  if (!(await kalenderZugang(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { events?: Ev[]; today?: string };
   try { payload = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const events = Array.isArray(payload.events) ? payload.events : [];
@@ -117,7 +123,7 @@ export async function POST(req: Request) {
       const origin = innenAdresse(req);
       const res = await fetch(`${origin}/api/apple-calendar/create`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '' },
+        headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', 'x-make-person': personAus(req) },
         body: JSON.stringify({ events: vorschlaege }),
         signal: AbortSignal.timeout(60_000),
       });

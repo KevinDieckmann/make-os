@@ -11,6 +11,8 @@
 import { NextResponse } from 'next/server';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { loadJson } from '@/lib/store/local-db';
+import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -47,6 +49,8 @@ const SYSTEM = [
 ].join('\n');
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
+  if (zuGross(req, 12000000)) return ZU_GROSS(12000000);
   if (!hasAnthropicKey()) {
     return NextResponse.json({ ok: false, error: 'Kein ANTHROPIC_API_KEY — ohne den kann Jarvis den Beleg nicht lesen.' }, { status: 200 });
   }

@@ -6,11 +6,13 @@
 import { NextResponse } from 'next/server';
 import { askText, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   let p: { sender?: string; senderEmail?: string; subject?: string; body?: string; hint?: string };
   try { p = await req.json(); } catch { return NextResponse.json({ draft: '', error: 'Kein gültiges JSON.' }, { status: 400 }); }
 

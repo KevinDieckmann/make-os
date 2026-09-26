@@ -15,7 +15,7 @@
 // wer später verkauft, zieht diese Datei je Kunde einmal hoch.
 
 import { scrypt, randomBytes, timingSafeEqual } from 'node:crypto';
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson, updateJson, beschaedigt } from '@/lib/store/local-db';
 
 export type Rolle = 'inhaber' | 'mitglied';
 
@@ -39,6 +39,10 @@ export interface Konto {
    * Zugriff auf private Finanzen — auch keine Summen.
    */
   haushalt?: string;
+  /** Zettel, die vor diesem Zeitpunkt ausgestellt wurden, gelten nicht mehr („alle anderen Geräte abmelden“, 26.09.). */
+  sitzungenAb?: string;
+  /** Beim Abmelden widerrufene Zettel (Kennung + Ablauf, danach entfällt der Eintrag). */
+  widerrufen?: { sid: string; bis: number }[];
 }
 
 /** `speicher`: vom Inhaber festgelegter Speichername (z. B. „malin“, damit bestehende Bestände am Konto hängen). */
@@ -83,8 +87,8 @@ export function neuerEinladungscode(zufall: () => number = Math.random): string 
 export function leererStand(): KontenStand { return { konten: [], einladungen: [] }; }
 
 /** Was der Browser über ein Konto wissen darf — nie Hash oder Salz. */
-export function oeffentlich(k: Konto): Omit<Konto, 'hash' | 'salz'> {
-  const { hash: _h, salz: _s, ...rest } = k;
+export function oeffentlich(k: Konto): Omit<Konto, 'hash' | 'salz' | 'widerrufen'> {
+  const { hash: _h, salz: _s, widerrufen: _w, ...rest } = k;
   return rest;
 }
 
@@ -109,7 +113,13 @@ export async function passwortStimmt(passwort: string, konto: Pick<Konto, 'hash'
 
 export async function ladeKonten(): Promise<KontenStand> {
   const s = await loadJson<KontenStand>(STORE);
-  return s && Array.isArray(s.konten) ? { konten: s.konten, einladungen: Array.isArray(s.einladungen) ? s.einladungen : [] } : leererStand();
+  if (!s || !Array.isArray(s.konten)) {
+    // Fail-closed (26.09.): ist die Datei beschädigt (beiseitegelegt als .corrupt-*), gibt es KEINEN leeren
+    // Stand — sonst stünde das Erstkonto wieder offen. Erst die Sicherung zurückholen.
+    if (await beschaedigt(STORE)) throw new Error('Kontenbestand beschädigt — Sicherung zurückspielen (konten.json.corrupt-*).');
+    return leererStand();
+  }
+  return { konten: s.konten, einladungen: Array.isArray(s.einladungen) ? s.einladungen : [] };
 }
 
 export async function aendereKonten(mut: (s: KontenStand) => KontenStand): Promise<KontenStand> {

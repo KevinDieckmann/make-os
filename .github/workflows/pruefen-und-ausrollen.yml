@@ -20,6 +20,10 @@ concurrency:
   group: ausrollen
   cancel-in-progress: false
 
+# Die Action braucht nur Lesen (26.09.) — kein Schreiben ins Repo, keine Pakete.
+permissions:
+  contents: read
+
 jobs:
   pruefen:
     runs-on: ubuntu-latest

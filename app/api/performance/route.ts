@@ -9,6 +9,8 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
 import { computeIndex } from '@/lib/performance';
+import { modellSchranke } from '@/lib/zugang/umfang';
+import { speicherFuer } from '@/lib/jarvis/raum';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,15 +35,15 @@ interface PerfFile { snapshots: PerfSnapshot[] }
 
 const MAX = 180; // gut ein halbes Jahr Verlauf
 
-async function history(): Promise<PerfSnapshot[]> {
-  const f = await loadJson<PerfFile>('performance');
+async function history(person: string): Promise<PerfSnapshot[]> {
+  const f = await loadJson<PerfFile>(speicherFuer('performance', person));
   return Array.isArray(f?.snapshots) ? f.snapshots : [];
 }
 
 export async function GET(req: Request) {
   // Der Score hängt an persönlichen Beständen (Gesundheit, Journal,
   // Routinen) — er gehört deshalb der Person, die fragt.
-  const [aktuell, verlauf] = await Promise.all([computeIndex(undefined, personAus(req)), history()]);
+  const [aktuell, verlauf] = await Promise.all([computeIndex(undefined, personAus(req)), history(personAus(req))]);
   // Der Verlauf wächst von selbst: der ERSTE Aufruf des Tages hält den Punkt
   // fest (idempotent — spätere GETs schreiben nicht; POST/Analyse erneuert).
   if (aktuell.index != null && !verlauf.some(s => s.date === aktuell.stand)) {
@@ -51,7 +53,7 @@ export async function GET(req: Request) {
       saeulen: Object.fromEntries(aktuell.saeulen.map(s => [s.key, s.score])),
       abdeckung: aktuell.abdeckung,
     };
-    const file = await updateJson<PerfFile>('performance', current => {
+    const file = await updateJson<PerfFile>(speicherFuer('performance', personAus(req)), current => {
       const list = Array.isArray(current?.snapshots) ? current.snapshots : [];
       if (list.some(s => s.date === snap.date)) return { snapshots: list };
       return { snapshots: [...list, mitNotiz(snap, aktuell, list)].sort((a, b) => a.date.localeCompare(b.date)).slice(-MAX) };
@@ -62,6 +64,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { analyse?: boolean } = {};
   try { body = await req.json(); } catch { /* ohne Body ist ok */ }
 

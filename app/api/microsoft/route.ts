@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { loadJson, saveJson } from '@/lib/store/local-db';
+import { istDienst } from '@/lib/zugang/dienst';
+import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 
 // Im schnellen Modus (next start) würde Next eine GET-Route ohne Anfragebezug beim Bauen einfrieren — hier soll immer der aktuelle Stand kommen.
 export const runtime = 'nodejs';
@@ -65,6 +67,8 @@ export async function GET() {
  * Postfach ist ein Spiegel, kein Archiv; gelöschte Mails sollen verschwinden.
  */
 export async function PUT(req: Request) {
+  // Der Spiegel fließt in Kontaktverläufe und Jarvis — nur der Zulieferer (Dienst) oder der Inhaber schreibt ihn (26.09.).
+  if (!istDienst(req) && !(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   let body: { mails?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein JSON.' }, { status: 400 }); }
   if (!Array.isArray(body.mails)) return NextResponse.json({ ok: false, error: 'Feld "mails" (Liste) fehlt.' }, { status: 400 });

@@ -13,6 +13,8 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { localDay } from '@/lib/zeit';
 import { ALLE_SEITEN } from '@/lib/make-one/bereiche';
+import { modellSchranke } from '@/lib/zugang/umfang';
+import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,7 +32,9 @@ const QUELLE = 'Verbesserungs-Loop';
 const ABSTAND_TAGE = 7;
 
 export async function POST(req: Request) {
-  const erzwingen = new URL(req.url).searchParams.get('jetzt') === '1';
+  const schranke = modellSchranke(req); if (schranke) return schranke;
+  // „jetzt=1“ umgeht den 7-Tage-Abstand — nur der Inhaber (26.09.).
+  const erzwingen = new URL(req.url).searchParams.get('jetzt') === '1' && (await nurInhaber(req));
 
   const [nutzung, backlog, fehler, aenderungen] = await Promise.all([
     loadJson<{ seiten?: Record<string, Seitennutzung>; tage?: Record<string, number>; letzteAnalyse?: string }>('nutzung'),

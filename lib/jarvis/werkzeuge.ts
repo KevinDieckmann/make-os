@@ -312,7 +312,8 @@ async function liesPostfach(input: Record<string, unknown>, origin: string, pers
  * Kevin gehört hat, direkt ablegen kann, statt ihn auf /os/gesundheit zu
  * schicken. Nur was übergeben wurde, wird geschrieben.
  */
-async function setzeVitalwerte(input: Record<string, unknown>, origin: string): Promise<string> {
+async function setzeVitalwerte(input: Record<string, unknown>, origin: string, person?: string): Promise<string> {
+  if (!person) return KEINE_PERSON;
   const zahl = (v: unknown, min: number, max: number) => {
     const n = Number(v);
     return isFinite(n) && n >= min && n <= max ? n : undefined;
@@ -331,7 +332,7 @@ async function setzeVitalwerte(input: Record<string, unknown>, origin: string): 
   try {
     const r = await fetch(`${origin}/api/state/vitals`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '' },
+      headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', 'x-make-person': person },
       body: JSON.stringify({ date: datum, vitals }),
       signal: AbortSignal.timeout(30_000),
     });
@@ -421,7 +422,7 @@ async function erfassePlanposten(input: Record<string, unknown>): Promise<string
  * Die Route hat eine eigene Dublettensperre — dieselbe Aufgabe zweimal
  * anzulegen ist also auch dann ausgeschlossen, wenn zwei Wege sie erzeugen.
  */
-async function erstelleAufgabe(input: Record<string, unknown>, origin: string): Promise<string> {
+async function erstelleAufgabe(input: Record<string, unknown>, origin: string, person?: string): Promise<string> {
   const title = String(input.title ?? '').trim().slice(0, 300);
   if (!title) return 'Fehlgeschlagen: title fehlt.';
   const PRIOS = ['low', 'medium', 'high', 'critical'];
@@ -436,7 +437,7 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string): 
   try {
     const r = await fetch(`${origin}/api/tasks/create`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '' },
+      headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', ...(person ? { 'x-make-person': person } : {}) },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(30_000),
     });
@@ -458,7 +459,7 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string): 
  * nebeneinander laufen, so viele wie die Maschine trägt. Kevin bekommt sofort
  * eine Antwort und sieht die Ergebnisse einlaufen.
  */
-async function starteAuftraege(input: Record<string, unknown>, origin: string): Promise<string> {
+async function starteAuftraege(input: Record<string, unknown>, origin: string, person?: string): Promise<string> {
   const roh = Array.isArray(input.auftraege) ? input.auftraege : [];
   const auftraege = roh
     .map(x => (x && typeof x === 'object' ? x as Record<string, unknown> : null))
@@ -476,7 +477,7 @@ async function starteAuftraege(input: Record<string, unknown>, origin: string): 
   try {
     const r = await fetch(`${origin}/api/jarvis/auftraege`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '' },
+      headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', ...(person ? { 'x-make-person': person } : {}) },
       body: JSON.stringify({ auftraege }),
       signal: AbortSignal.timeout(20_000),
     });

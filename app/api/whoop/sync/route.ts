@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { gueltigesToken, PROVIDER, konfiguriert } from '@/lib/oauth';
 import { updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
+import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,7 @@ export const dynamic = 'force-dynamic';
 const API = 'https://api.prod.whoop.com/developer/v1';
 
 export async function POST(req: Request) {
+  if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   if (!konfiguriert(PROVIDER.whoop)) {
     return NextResponse.json({ error: 'Whoop ist nicht konfiguriert — Client-ID/Secret in .env.local, dann /os/verbindungen.' }, { status: 200 });
   }

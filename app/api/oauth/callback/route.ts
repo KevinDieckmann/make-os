@@ -5,13 +5,16 @@
 
 import { NextResponse } from 'next/server';
 import { PROVIDER, REDIRECT_URI, stateEinloesen, tokensSpeichern } from '@/lib/oauth';
+import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { aussenAdresse } from '@/lib/innen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const zurueck = (status: string) => NextResponse.redirect(`http://localhost:3001/os/verbindungen?status=${status}`);
+const zurueck = (status: string) => NextResponse.redirect(`${aussenAdresse() ?? 'http://localhost:3001'}/os/verbindungen?status=${status}`);
 
 export async function GET(req: Request) {
+  if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   const url = new URL(req.url);
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');

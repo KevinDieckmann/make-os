@@ -19,6 +19,8 @@ import {
 } from '@/lib/tageslauf';
 import { innenAdresse } from '@/lib/innen';
 import { personAus } from '@/lib/jarvis/raum';
+import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,6 +42,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { art?: LaufArt } = {};
   try { body = await req.json(); } catch { /* ohne Body ok */ }
   const art: LaufArt = (['voll', 'kurz', 'puls'] as const).includes(body.art as never) ? body.art! : 'voll';
@@ -78,7 +81,11 @@ export async function POST(req: Request) {
   // ── 1. Postfächer ──
   let neueMails: Mail[] = [];
   await schritt('postfach', async () => {
-    const r = await fetch(`${origin}/api/apple-mail`, { headers: { 'x-make-key': process.env.MAKE_OS_KEY ?? '' }, signal: AbortSignal.timeout(70_000) });
+    // Kevins Mac-Postfach gehört dem Inhaber (26.09.): andere Konten bekommen nur den M365-Spiegel.
+    const darfPostfach = await nurInhaber(req);
+    const r = darfPostfach
+      ? await fetch(`${origin}/api/apple-mail`, { headers: { 'x-make-key': process.env.MAKE_OS_KEY ?? '', 'x-make-person': personAus(req) }, signal: AbortSignal.timeout(70_000) })
+      : new Response('[]', { headers: { 'Content-Type': 'application/json' } });
     const d = await r.json();
     // Beide Postfächer: Apple live + KEMARIS/M365 aus dem Brain-Snapshot.
     const apple = Array.isArray(d) ? (d as Mail[]).filter(m => !m.isRead) : [];
@@ -239,7 +246,7 @@ export async function POST(req: Request) {
           if (!p.titel) continue;
           const res = await fetch(`${origin}/api/tasks/create`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '' },
+            headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', 'x-make-person': personAus(req) },
             body: JSON.stringify({
               title: p.titel,
               description: [p.warum, p.wann ? `Wann: ${p.wann}` : '', 'Automatisch aus der Tages-Ausrichtung (Task-Agent: autonom).'].filter(Boolean).join(' · '),
@@ -269,7 +276,9 @@ export async function POST(req: Request) {
   };
   const file = await updateJson<LaufFile>('tageslauf', current => {
     const l = Array.isArray(current?.laeufe) ? current.laeufe : [];
-    return { laeufe: [...l, lauf].slice(-MAX_LAEUFE) };
+    // Gespeichert ohne `detail` (Absender, Betreffe): der Bestand ist für alle Konten lesbar (26.09.).
+    const ohneDetail = { ...lauf, schritte: lauf.schritte.map(s => ({ ...s, detail: undefined })) };
+    return { laeufe: [...l, ohneDetail].slice(-MAX_LAEUFE) };
   });
   await logRun(`tageslauf-${art}`, `Tageslauf ${art} ${heute}`, {
     schritte: schritte.map(s => ({ name: s.name, stand: s.stand, kurz: s.kurz })),

@@ -8,9 +8,13 @@
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, updateGeschuetztListen } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+// Business-Zahlen gehören zum Haushalt des Inhabers — wie der Business-Index (26.09.).
+const KEIN_HAUSHALT = { ok: false, error: 'Kein Zugang zu den Business-Zahlen — sie gehören zum Haushalt des Inhabers (System → Konto).' };
 
 export interface Firma {
   id: string;
@@ -192,7 +196,8 @@ function sauberFile(f: Partial<FinanzplanFile> | null): FinanzplanFile {
   };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   let f = await loadJson<FinanzplanFile>('finanzplan');
   if (!f || !Array.isArray(f.firmen) || !f.firmen.length) {
     f = await updateJson<FinanzplanFile>('finanzplan', () => SEED);
@@ -211,6 +216,7 @@ export async function GET() {
 
 /** Kompletten Stand setzen (die Seite verwaltet die Listen). */
 export async function PUT(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   let body: Partial<FinanzplanFile>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const sauber = sauberFile(body);
@@ -250,6 +256,7 @@ const PATCHBAR = ['firmen', 'rechnungen', 'zahlungen', 'merkposten', 'produkte']
 type PatchListe = typeof PATCHBAR[number];
 
 export async function PATCH(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   let body: { ops?: unknown; felder?: Record<string, unknown> };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const roh = Array.isArray(body.ops) ? body.ops.slice(0, 100) : (body.felder ? [] : null);

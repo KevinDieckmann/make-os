@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { loadJson, updateGeschuetzt } from '@/lib/store/local-db';
 import type { ProspectsState } from '@/lib/make-one/prospecting-data';
+import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,7 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
+  if (zuGross(req, 2000000)) return ZU_GROSS(2000000);
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const s = body as Partial<ProspectsState>;

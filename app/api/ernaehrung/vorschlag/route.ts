@@ -10,6 +10,7 @@ import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
 import { TAGE, type ErnaehrungFile, type Tag, type Mahlzeiten } from '@/lib/make-one/ernaehrung-data';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,7 @@ const CARE =
   'Alltagsküche, kein Medizin- oder Ernährungsrat — Psoriasis-Fragen gehören zu Arzt/Ernährungsberatung.';
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { hinweis?: string } = {};
   try { body = await req.json(); } catch { /* leer ok */ }
   if (!hasAnthropicKey()) return NextResponse.json({ error: 'Kein Anthropic-Key.' }, { status: 200 });

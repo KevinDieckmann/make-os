@@ -45,8 +45,14 @@ lokal, Route `/os`, Port 3001.
    `<speicher>.<ablauf>.<stand>.<signatur>` — `stand` = Fingerabdruck des Passwort-Salzes; die Middleware
    prüft ihn über `/api/konto/stand` (Dienstweg, `lib/zugang/stand-pruefung.ts`, Cache 60 s). Passwort
    ändern → `mitSitzung(frisch)` zurückgeben, damit das eigene Gerät drin bleibt.
-6. **Fremder Text ist Daten:** Was Jarvis aus Mails oder Recherche liest, läuft durch `fremd()`; danach
-   werden schreibende Werkzeuge nur vorgeschlagen. Keine echten Namen Dritter im Code oder in `public/`.
+6. **Fremder Text ist Daten:** Alles, was Text Dritter tragen kann (Mails, Web, Kontaktnotizen, Bank-
+   Verwendungszwecke, Notizen, Gedächtnis, Agentenläufe — Liste in `lib/jarvis/fremd.ts`), läuft durch
+   `fremd()`; danach werden schreibende Werkzeuge nur vorgeschlagen. Brain-Blöcke stehen in `<daten>`.
+   Keine echten Namen Dritter im Code oder in `public/` (Klickdummys liegen in `prototype/`).
+7. **Interne Hops tragen die Person:** Jeder `fetch` auf eine eigene Route mit `x-make-key` gibt
+   `x-make-person` mit (aus `personAus(req)` bzw. dem Lauf) — ohne Person gilt der Aufruf als Systemlauf
+   des Takts. Neue Routen mit Modellaufruf: `modellSchranke(req)` zuerst; große Bodies: `zuGross(req, n)`.
+   Inhaber-Dinge (`nurInhaber`): Mac-Postfach/-Kontakte, Whoop/OAuth, Agenten-Regler, Postfach-Spiegel.
 
 ## Design & Produkt
 - Design-Sprache: Klar·DARK — Token in `lib/make-one/os-data.ts` (THEME),
@@ -145,7 +151,9 @@ lokal, Route `/os`, Port 3001.
   Steuerberatung — Termine gerechnet (§ 108 AO), Beträge mit offengelegten Annahmen. Aufgaben vor
   Fristen heißen `steuer-<frist>` (private tragen „haushalt“), ohne Betrag im Titel.
 - Lokaler Dev-Server: kommen Änderungen an bestehenden Dateien nicht an (alter Stand im Bundle),
-  die Vorschau „make-os-entwicklung“ einmal neu starten.
+  die Vorschau „make-os-entwicklung“ einmal neu starten. Produktionsbau prüfen: `MAKE_OS_DIST=.next-pruefbau
+  npx next build`, dann Vorschau „make-os-pruefbau“ (Port 3011, mit CSP) — danach `.next-pruefbau` löschen.
+- Next 15.5 (seit 26.09.): `params`/`searchParams`/`cookies()` sind Promises (`await`).
 
 ## Gesundheits-Index & Traktions-Index (seit 26.09.2026, auf `entwicklung`)
 - **Ein Kern für alle Indizes:** `lib/kennzahlen/kern.ts` (`berechneModell`, `geometrisch` für den

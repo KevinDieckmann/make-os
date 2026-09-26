@@ -10,13 +10,14 @@ import { lesen, kennzahlen as finanzKennzahlen, type MalinExport } from '@/lib/m
 import { LIVE_AGENTS } from '@/lib/make-one/agents-data';
 import { fortschritt } from '@/lib/onboarding-status';
 import { computeIndex, indexLabel } from '@/lib/performance';
+import { personAus, darfGesundheitSehen } from '@/lib/jarvis/raum';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 interface Aufgabe { status?: string; priority?: string; dueDate?: string }
 
-export async function GET() {
+export async function GET(req: Request) {
   const heute = localDay();
   const [ob, tasks, perf, netz, plan, grund] = await Promise.all([
     fortschritt(),
@@ -44,9 +45,12 @@ export async function GET() {
   // Der MAKE Score steht dauerhaft oben auf der Startfläche (Kevins Ansage:
   // „nicht auf Knopfdruck, sondern permanent") — mit Einordnung, nicht nur Zahl.
   // Gerechnet wird mit computeIndex, damit es NICHT zwei Sätze Schwellen gibt.
-  const idx = await computeIndex();
-  // Malins eigener Score — eigene Gesundheit, eigenes Journal, eigene Rituale.
-  const idxMalin = await computeIndex(undefined, 'malin');
+  // Je Person ihr Score — Gesundheit, Journal, Rituale sind persönlich; den der anderen Person nur mit Freigabe (26.09.).
+  const ich = personAus(req);
+  const idx = await computeIndex(undefined, ich);
+  const andere = ich === 'kevin' ? 'malin' : 'kevin';
+  const idxAndere = (await darfGesundheitSehen(req, andere)) ? await computeIndex(undefined, andere) : null;
+  const idxKevin = ich === 'kevin' ? idx : idxAndere, idxMalin = ich === 'malin' ? idx : idxAndere;
   const reihe = (perf?.snapshots ?? []).slice().sort((a, b) => a.date.localeCompare(b.date));
   const vorher = reihe.filter(s => s.date < idx.stand).at(-1);
   /**
@@ -87,8 +91,8 @@ export async function GET() {
     modi: Object.fromEntries(Object.entries(SAEULEN_JE_MODUS).map(([m, keys]) => [m, teilIndex(keys, m === 'business' || m === 'privat' ? m : undefined)])),
     // Und je Person: Malin hat eine andere Gesundheit und andere Ziele.
     person: {
-      kevin: { index: idx.index, label: idx.label, abdeckung: idx.abdeckung },
-      malin: { index: idxMalin.index, label: idxMalin.label, abdeckung: idxMalin.abdeckung },
+      kevin: idxKevin ? { index: idxKevin.index, label: idxKevin.label, abdeckung: idxKevin.abdeckung } : null,
+      malin: idxMalin ? { index: idxMalin.index, label: idxMalin.label, abdeckung: idxMalin.abdeckung } : null,
     },
   };
 

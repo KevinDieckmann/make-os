@@ -17,10 +17,11 @@ import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import { homedir } from 'os';
 import path from 'path';
-import { loadJson, saveJson } from '@/lib/store/local-db';
+import { loadJson, updateJson } from '@/lib/store/local-db';
 import { randomUUID } from 'crypto';
 import type { TasksState, Task } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
+import { personAus } from '@/lib/jarvis/raum';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -88,9 +89,9 @@ async function datei(): Promise<string | null> {
 export async function GET() {
   const inhalt = await datei();
   if (inhalt === null) {
-    return NextResponse.json({ da: false, ordner: ORDNER, zeilen: [], hinweis: 'Datei noch nicht angelegt — POST mit {anlegen:true} erstellt sie.' });
+    return NextResponse.json({ da: false, zeilen: [], hinweis: 'Datei noch nicht angelegt — POST mit {anlegen:true} erstellt sie.' });
   }
-  return NextResponse.json({ da: true, zeilen: lies(inhalt), datei: DATEI });
+  return NextResponse.json({ da: true, zeilen: lies(inhalt) });
 }
 
 export async function POST(req: Request) {
@@ -127,7 +128,7 @@ export async function POST(req: Request) {
       try {
         await fetch(`http://127.0.0.1:${process.env.PORT ?? 3001}/api/state/backlog`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '' },
+          headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', 'x-make-person': personAus(req) },
           body: JSON.stringify({ titel: z.text, warum: 'Von Malin über den gemeinsamen Ordner notiert.', kategorie: 'qualitaet', prio: 2, block: 'frei', quelle: 'Eingang · Malin' }),
         });
         notizen++;
@@ -150,7 +151,7 @@ export async function POST(req: Request) {
     });
   }
 
-  if (neue.length) await saveJson<TasksState>('tasks', { projects: state.projects, tasks: [...state.tasks, ...neue] });
+  if (neue.length) await updateJson<TasksState>('tasks', cur => ({ projects: cur?.projects ?? state.projects, tasks: [...(cur?.tasks ?? []), ...neue.filter(n => !(cur?.tasks ?? []).some(t => t.id === n.id))] }));
 
   // Verarbeitete Zeilen abhaken, damit nichts doppelt ankommt.
   let neuerInhalt = inhalt;

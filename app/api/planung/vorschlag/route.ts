@@ -13,6 +13,7 @@ import { personAus } from '@/lib/jarvis/raum';
 import { localDay } from '@/lib/zeit';
 import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
 import { SAEULE_VON_PROJEKT, SAEULE_LABEL } from '@/lib/make-one/fokus-data';
+import { modellSchranke } from '@/lib/zugang/umfang';
 interface RoutineDef { label: string; wann: 'morgen' | 'tag' | 'abend'; dauerMin: number; aktiv: boolean }
 
 export const runtime = 'nodejs';
@@ -28,6 +29,7 @@ const ARTEN = new Set(['fokus', 'reha', 'routine', 'pause', 'aufgabe', 'block'])
 const mm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { woche?: string; hinweis?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const woche = body.woche ?? '';

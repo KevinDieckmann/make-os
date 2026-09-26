@@ -8,6 +8,7 @@ import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { localDay } from '@/lib/zeit';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,6 +24,7 @@ const PROJECTS = [
 ];
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { transcript?: string; datum?: string };
   try { payload = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const transcript = (payload.transcript ?? '').trim();

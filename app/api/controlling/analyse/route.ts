@@ -8,11 +8,18 @@ import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { computeMetrics, mitKasse, eur, MONTHS_DE, type FinanceState } from '@/lib/make-one/finance-data';
 import { loadJson } from '@/lib/store/local-db';
+import { modellSchranke } from '@/lib/zugang/umfang';
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// Business-Zahlen gehören zum Haushalt des Inhabers — wie der Business-Index (26.09.).
+const KEIN_HAUSHALT = { ok: false, error: 'Kein Zugang zu den Business-Zahlen — sie gehören zum Haushalt des Inhabers (System → Konto).' };
+
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { state?: FinanceState };
   try { payload = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Ohne Body: Server liest selbst — damit Jarvis den Agenten direkt ausführen kann.

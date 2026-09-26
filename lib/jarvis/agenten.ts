@@ -78,7 +78,8 @@ export interface AgentLauf { ok: boolean; text: string }
 const gut = (text: string): AgentLauf => ({ ok: true, text });
 const fehl = (text: string): AgentLauf => ({ ok: false, text });
 
-export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string): Promise<AgentLauf> {
+/** `person` = für wen der Lauf arbeitet (Sitzung bzw. Auftrag). Ohne Person ist es ein Systemlauf des Takts (26.09.). */
+export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string, person?: string): Promise<AgentLauf> {
   // Der Agenten-Schalter unter /os/agenten gilt weiterhin. Ausgeschaltet ist
   // ausgeschaltet — auch für Jarvis.
   if (!SYSTEM.has(id)) {
@@ -90,7 +91,10 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string)
     if (!cfg.enabled) return fehl(`${cfg.name} ist ausgeschaltet (unter /os/agenten aktivierbar).`);
   }
 
-  const H = { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '' };
+  const H = { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', ...(person ? { 'x-make-person': person } : {}) };
+  // Ein „person:x“ im Auftragstext darf nur der Takt setzen (Systemlauf ohne Person) — sonst könnte
+  // ein Konto als jemand anderes laufen lassen (26.09.).
+  const personAusText = (text: string) => person ?? /person:([a-z0-9-]{1,40})/.exec(text)?.[1];
   const post = async (pfad: string, body: unknown, timeoutMs = 90_000) => {
     const r = await fetch(`${origin}${pfad}`, {
       method: 'POST', headers: H, body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs),
@@ -277,7 +281,7 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string)
       case 'markttraktion': {
         // Morgen-Nachricht und Freitags-Scoreboard — deterministisch, ohne
         // Modell, nur an Kevin und Malin selbst (siehe markttraktionLauf).
-        return await markttraktionLauf(auftrag);
+        return await markttraktionLauf(auftrag, new Date(), person);
       }
       case 'selbstbild': {
         const d = await post('/api/jarvis/selbstbild', {}, 120_000);
@@ -289,9 +293,9 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string)
         // dann läuft er mit Haushalt, und das Ergebnis hier trägt KEINE Beträge,
         // weil die Warteschlange allen Konten gehört. Ohne Person (Jarvis): nur Business.
         const modus = /modus:(tagescheck|wochenreview|monatsabschluss|steuercheck)/.exec(auftrag)?.[1];
-        const person = /person:([a-z0-9-]{1,40})/.exec(auftrag)?.[1];
+        const fuer = personAusText(auftrag);
         const r = await fetch(`${origin}/api/finanzchef`, {
-          method: 'POST', headers: { ...H, ...(person ? { 'x-make-person': person } : {}) },
+          method: 'POST', headers: { ...H, ...(fuer ? { 'x-make-person': fuer } : {}) },
           body: JSON.stringify(modus ? { aktion: 'lauf', modus, ausgeloest: 'takt' } : { aktion: 'lauf', modus: 'frage', frage: auftrag || 'Wie ist die Finanzlage?', ausgeloest: 'jarvis', umfang: 'business' }),
           signal: AbortSignal.timeout(400_000),
         });
@@ -313,9 +317,9 @@ ${(a?.vorschlaege ?? []).map((v: { titel: string }) => `→ ${v.titel}`).join('\
         const head = id.slice(5);
         const modus = /modus:([a-z_]+)/.exec(auftrag)?.[1];
         // „person:malin“ — die Power Hour wird je Person vorbereitet (ihre Karten, ihre Freigabe).
-        const person = /person:([a-z0-9-]{1,40})/.exec(auftrag)?.[1];
+        const fuer = personAusText(auftrag);
         const r = await fetch(`${origin}/api/heads/${head}`, {
-          method: 'POST', headers: { ...H, ...(person ? { 'x-make-person': person } : {}) },
+          method: 'POST', headers: { ...H, ...(fuer ? { 'x-make-person': fuer } : {}) },
           body: JSON.stringify(modus ? { aktion: 'lauf', modus, ausgeloest: 'takt' } : { aktion: 'lauf', modus: 'frage', frage: auftrag || 'Wie ist die Lage?', ausgeloest: 'jarvis' }),
           signal: AbortSignal.timeout(400_000),
         });
@@ -351,7 +355,7 @@ ${(a?.vorschlaege ?? []).map((v: { titel: string }) => `→ ${v.titel}`).join('\
 // ein Fehlversuch, nach drei ist für den Tag Ruhe (kein Minutentakt).
 // Ein Slot als Auftrag („woche“, „morgen person:malin“) schickt sofort —
 // für Jarvis auf Zuruf.
-async function markttraktionLauf(auftrag: string, jetzt = new Date()): Promise<AgentLauf> {
+async function markttraktionLauf(auftrag: string, jetzt = new Date(), person?: string): Promise<AgentLauf> {
   const { telegramKonfiguriert, ladeStand, chatsFuerPerson, sendeAnPerson } = await import('@/lib/telegram');
   if (!telegramKonfiguriert()) return fehl('Kein Telegram-Token — die Markttraktion hat keinen Weg aufs Handy.');
   const { loadJson, updateJson } = await import('@/lib/store/local-db');
@@ -365,7 +369,8 @@ async function markttraktionLauf(auftrag: string, jetzt = new Date()): Promise<A
   const [mitKonto, tg, riegel] = await Promise.all([alleSpeicher(), ladeStand(), loadJson<unknown>(S.RHYTHMUS_SPEICHER)]);
   const personen = TEAM.map(t => t.id).filter(p => mitKonto.includes(p) && chatsFuerPerson(tg, p).length > 0);
   const zwang = S.RHYTHMUS_SLOTS.find(s => new RegExp(`(^|\\s)${s}(\\s|$)`).test(auftrag.trim()));
-  const nur = /person:([a-z0-9-]{1,40})/.exec(auftrag)?.[1];
+  // Sofort-Versand nur an die Person des Laufs; „person:x“ im Text gilt nur für den Takt (26.09.).
+  const nur = person ?? /person:([a-z0-9-]{1,40})/.exec(auftrag)?.[1];
   const dran = zwang
     ? personen.filter(p => !nur || p === nur).map(person => ({ person, slot: zwang }))
     : S.faelligeRhythmen(S.rhythmusStand(riegel), personen, jetzt);

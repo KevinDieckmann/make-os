@@ -35,7 +35,8 @@ export function mailSignale(kontakte: Kontakt[], mails: MailEin[]): Signal[] {
     if (!k) continue;
     const bezug = bezugMail(m.id);
     if ((k.aktivitaeten ?? []).some(a => a.bezug === bezug) || raus.some(r => r.aktivitaet.bezug === bezug)) continue;
-    raus.push({ kontaktId: k.id, aktivitaet: { am: m.am, art: 'antwort', text: `Mail: ${m.betreff.slice(0, 200)}`, von: 'system', bezug } });
+    // Betreff ist Text eines Dritten: gekürzt, in einer Zeile, als „Betreff“ gekennzeichnet (26.09.).
+    raus.push({ kontaktId: k.id, aktivitaet: { am: m.am, art: 'antwort', text: `Betreff: ${m.betreff.replace(/\s+/g, ' ').trim().slice(0, 120)}`, von: 'system', bezug } });
   }
   return raus;
 }

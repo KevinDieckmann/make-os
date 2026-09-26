@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { personAus } from '@/lib/jarvis/raum';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,9 +19,9 @@ export async function GET() {
 
 /** Als gesehen stempeln — danach kommt der Gruß nie wieder. */
 export async function POST(req: Request) {
-  let body: { person?: string };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false }, { status: 400 }); }
-  const person = body.person === 'malin' ? 'malin' : 'kevin';
+  // Die Person kommt aus der Sitzung, nicht aus dem Body (26.09.).
+  try { await req.json(); } catch { return NextResponse.json({ ok: false }, { status: 400 }); }
+  const person = personAus(req);
   const next = await updateJson<Datei>('willkommen', current => {
     const f = current ?? { gesehen: {} };
     f.gesehen = f.gesehen ?? {};

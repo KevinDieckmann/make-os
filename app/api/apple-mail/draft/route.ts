@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { AUF_DEM_MAC, nurMac } from '@/lib/mac';
 import { spawn } from 'child_process';
+import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,7 @@ function runOsascript(script: string, timeoutMs = 20_000): Promise<string> {
 }
 
 export async function POST(req: Request) {
+  if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   if (!AUF_DEM_MAC) return nurMac();
   let p: { to?: string; subject?: string; body?: string };
   try { p = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }

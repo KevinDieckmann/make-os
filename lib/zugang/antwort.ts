@@ -6,7 +6,8 @@ import { oeffentlich } from './konten';
 
 /** Hinter HTTPS (Server) dürfen die Cookies nur verschlüsselt reisen. Lokal über
  *  http://localhost bzw. Tailscale-http ginge ein „secure“-Cookie verloren. */
-const nurHttps = () => (process.env.MAKE_OS_ADRESSE ?? '').trim().startsWith('https://');
+// Auf dem Server (production) immer „secure“ — auch wenn MAKE_OS_ADRESSE einmal fehlt (26.09.).
+const nurHttps = () => (process.env.MAKE_OS_ADRESSE ?? '').trim().startsWith('https://') || process.env.NODE_ENV === 'production';
 
 export async function mitSitzung(konto: Konto, extra: Record<string, unknown> = {}): Promise<NextResponse> {
   const zettel = await sitzungAusstellen(sitzungsGeheimnis(), konto.speicher, await kontoStand(konto.salz));

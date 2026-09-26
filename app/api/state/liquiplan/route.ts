@@ -8,9 +8,13 @@
 import { NextResponse } from 'next/server';
 import { loadJson, updateGeschuetzt, updateJson } from '@/lib/store/local-db';
 import { wendeAn, type ListenOp } from '@/lib/sync';
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+// Business-Zahlen gehören zum Haushalt des Inhabers — wie der Business-Index (26.09.).
+const KEIN_HAUSHALT = { ok: false, error: 'Kein Zugang zu den Business-Zahlen — sie gehören zum Haushalt des Inhabers (System → Konto).' };
 
 export type Rhythmus = 'einmalig' | 'monatlich' | 'quartal' | 'jaehrlich';
 export interface Planposten {
@@ -65,12 +69,14 @@ function sauber(p: Partial<Planposten>, i: number): Planposten | null {
   };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   const f = await loadJson<Datei>('liquiplan');
   return NextResponse.json({ posten: Array.isArray(f?.posten) ? f.posten : [] });
 }
 
 export async function PUT(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   let body: Partial<Datei>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!Array.isArray(body.posten)) return NextResponse.json({ ok: false, error: 'posten fehlt.' }, { status: 400 });
@@ -86,6 +92,7 @@ export async function PUT(req: Request) {
  * Vorher schrieb die Seite die ganze Liste; wer zuletzt tippte, überschrieb den anderen.
  */
 export async function PATCH(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   let body: { ops?: ListenOp[] };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const ops = (Array.isArray(body.ops) ? body.ops : []).filter(o => o.liste === 'posten').slice(0, 300);

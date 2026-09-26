@@ -23,7 +23,8 @@ export function KontoView() {
   const [einladung, setEinladung] = useState<{ code: string; stunden: number; link: string } | null>(null);
   const [tg, setTg] = useState<Telegram | null>(null);
 
-  const laden = () => fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich) { setIch(d.ich); setName(d.ich.name); setAndere(d.andere ?? []); } }).catch(() => {});
+  const [anmeldungen, setAnmeldungen] = useState<{ zeit: string; art: string; ok: boolean; adresse: string }[]>([]);
+  const laden = () => fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich) { setIch(d.ich); setName(d.ich.name); setAndere(d.andere ?? []); setAnmeldungen(Array.isArray(d.anmeldungen) ? d.anmeldungen : []); } }).catch(() => {});
   const ladeTg = () => fetch('/api/telegram/koppeln').then(r => r.json()).then(d => setTg(t => ({ ...d, code: t?.code, minuten: t?.minuten }))).catch(() => {});
   useEffect(() => { void laden(); void ladeTg(); }, []);
 
@@ -49,14 +50,20 @@ export function KontoView() {
     if (r.code) setEinladung({ code: r.code, stunden: r.stunden, link: `${r.adresse || window.location.origin}/anmelden?code=${r.code}` }); else setMeldung(r.error ?? 'Fehler');
   }
   async function abmelden() { await fetch('/api/konto/abmelden', { method: 'POST' }).catch(() => {}); window.location.assign('/anmelden'); }
+  // Alle anderen Geräte raus — dieses bleibt drin (der Server stellt einen neuen Zettel aus).
+  async function alleAbmelden() {
+    const r = await fetch('/api/konto/abmelden', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alle: true }) }).then(x => x.json()).catch(() => ({ ok: false }));
+    setMeldung(r.ok ? 'Alle anderen Geräte sind abgemeldet.' : 'Das hat nicht geklappt.'); void laden();
+  }
   const kopieren = (t: string) => { try { void navigator.clipboard.writeText(t); setMeldung('Link kopiert — persönlich weitergeben.'); } catch { setMeldung(t); } };
 
   if (!ich) return <Seite titel="Konto"><Leer>lade …</Leer></Seite>;
   const mono: React.CSSProperties = { fontFamily: SCHRIFT.mono, fontWeight: 700, color: C.aktiv, letterSpacing: '.08em' };
 
   return (
-    <Seite titel={<>Konto <span style={{ color: C.inkLeise, fontWeight: 500, fontSize: 15 }}>{ich.rolle === 'inhaber' ? 'Inhaber' : 'Mitglied'}</span></>} rechts={<Knopf leise onClick={abmelden}>Abmelden</Knopf>}>
+    <Seite titel={<>Konto <span style={{ color: C.inkLeise, fontWeight: 500, fontSize: 15 }}>{ich.rolle === 'inhaber' ? 'Inhaber' : 'Mitglied'}</span></>} rechts={<span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf leise onClick={alleAbmelden}>Alle anderen Geräte abmelden</Knopf><Knopf leise onClick={abmelden}>Abmelden</Knopf></span>}>
       <Karte i={0}><div style={{ fontSize: TYP.body }}>{ich.email}<span style={{ color: C.inkLeise }}> · Daten unter <code style={{ fontFamily: SCHRIFT.mono, fontSize: 13 }}>{ich.speicher}</code> · seit {ich.angelegt.slice(8, 10)}.{ich.angelegt.slice(5, 7)}.{ich.angelegt.slice(0, 4)}</span></div>
+        {anmeldungen.length > 0 && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 6 }}>Zuletzt: {anmeldungen.map(e => `${e.zeit.slice(8, 10)}.${e.zeit.slice(5, 7)}. ${e.zeit.slice(11, 16)} ${e.art}${e.ok ? '' : ' (fehlgeschlagen)'} · ${e.adresse}`).join(' · ')}</div>}
       {meldung && <div style={{ fontSize: TYP.bedien, color: meldung.includes('nicht') || meldung.includes('Fehler') ? LEUCHT.kritisch : LEUCHT.gut, marginTop: 10 }}>{meldung}</div>}</Karte>
       <Spalten verhaeltnis="1:1">
         <Spalte>

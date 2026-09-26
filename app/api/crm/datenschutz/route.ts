@@ -13,6 +13,7 @@ import { personAus } from '@/lib/jarvis/raum';
 import { localDay } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
+import { fuerPerson } from '@/lib/make-one/crm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,7 +25,8 @@ export async function GET(req: Request) {
   const crm = await ladeCrm();
   const auskunft = {
     erstellt: new Date().toISOString(), verantwortlich: 'Kevin Dieckmann (KD Ventures / Kevin Dieckmann Consulting)',
-    person: k, firma: k.firmaId ? crm.firmen.find(f => f.id === k.firmaId) ?? null : null,
+    // Private Notizen sieht nur, wer sie schrieb — auch in der Auskunft (26.09.).
+    person: fuerPerson(k, personAus(req)), firma: k.firmaId ? crm.firmen.find(f => f.id === k.firmaId) ?? null : null,
     chancen: crm.chancen.filter(c => c.kontaktIds.includes(id)), mandate: crm.mandate.filter(m => m.kontaktIds.includes(id)),
     events: crm.teilnahmen.filter(t => t.kontaktId === id).map(t => ({ ...t, event: crm.events.find(e => e.id === t.eventId)?.titel })),
   };

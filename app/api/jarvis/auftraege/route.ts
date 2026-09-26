@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { reihe, lies, stand, type NeuerAuftrag } from '@/lib/jarvis/auftraege';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { auftraege?: NeuerAuftrag[] };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Die Person kommt aus der Sitzung (bzw. dem Dienstkopf), nie aus dem Body —

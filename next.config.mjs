@@ -5,6 +5,28 @@ const nextConfig = {
   distDir: process.env.MAKE_OS_DIST || '.next',
   // Nicht verraten, womit gebaut ist (25.09., Härtung).
   poweredByHeader: false,
+  // Sicherheits-Kopfzeilen aus der App selbst (26.09.) — gelten auch lokal und über Tailscale, nicht nur
+  // hinter Caddy. Die Content-Security-Policy nur im Produktionsbau (der Entwicklungsmodus braucht eval).
+  // Der Altbestand /finanz-dashboard.html lädt Firebase von außen — er bekommt keine CSP.
+  async headers() {
+    const basis = [
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      { key: 'X-Frame-Options', value: 'DENY' },
+      { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=(), payment=(), usb=()' },
+    ];
+    const csp = process.env.NODE_ENV === 'production'
+      ? [{ key: 'Content-Security-Policy', value: [
+          "default-src 'self'", "script-src 'self' 'unsafe-inline'", "style-src 'self' 'unsafe-inline'",
+          "img-src 'self' data: blob:", "font-src 'self' data:", "connect-src 'self'", "worker-src 'self' blob:",
+          "media-src 'self' blob:", "frame-src 'self'", "frame-ancestors 'none'", "base-uri 'self'", "form-action 'self'", "object-src 'none'",
+        ].join('; ') }]
+      : [];
+    return [
+      { source: '/finanz-dashboard.html', headers: basis.filter(h => h.key !== 'X-Frame-Options').concat([{ key: 'X-Frame-Options', value: 'SAMEORIGIN' }]) },
+      { source: '/((?!finanz-dashboard\\.html).*)', headers: [...basis, ...csp] },
+    ];
+  },
   // Gesundheit ist seit 23.09. EINE Seite mit vier Segmenten. Die alten
   // Adressen bleiben gültig — Lesezeichen und Jarvis-Verweise landen richtig.
   async redirects() {

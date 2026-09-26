@@ -4,7 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { loadJson, saveJson } from '@/lib/store/local-db';
+import { loadJson, updateJson } from '@/lib/store/local-db';
 import type { TasksState, Task, TaskStatus } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
 
@@ -56,6 +56,6 @@ export async function POST(req: Request) {
     updatedAt: now,
   };
 
-  await saveJson<TasksState>('tasks', { projects: state.projects, tasks: [...state.tasks, task] });
+  await updateJson<TasksState>('tasks', cur => ({ projects: cur?.projects ?? state.projects, tasks: [...(cur?.tasks ?? []).filter(t => t.id !== task.id), task] }));
   return NextResponse.json({ ok: true, id: task.id });
 }

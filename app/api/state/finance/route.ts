@@ -4,11 +4,16 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { schwellen } from '@/lib/schwellen';
 import { geschaeftsKasse, DEFAULT_FINANCE, type FinanceState, type MonthRow } from '@/lib/make-one/finance-data';
 import { wendeAn, type ListenOp } from '@/lib/sync';
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+// Business-Zahlen gehören zum Haushalt des Inhabers — wie der Business-Index (26.09.).
+const KEIN_HAUSHALT = { ok: false, error: 'Kein Zugang zu den Business-Zahlen — sie gehören zum Haushalt des Inhabers (System → Konto).' };
+
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   const [roh, plan, grenzen, ab] = await Promise.all([
     loadJson<FinanceState>('finance'),
     loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[] }>('finanzplan'),
@@ -30,6 +35,7 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const s = body as Partial<FinanceState>;
@@ -73,6 +79,7 @@ export async function PUT(req: Request) {
  * und Einzelfelder ({ felder: { zielUmsatz, zielGewinn, cash, startMonat, jahr } }).
  */
 export async function PATCH(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   let body: { ops?: ListenOp[]; felder?: Record<string, unknown> };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const zahl = (v: unknown) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : undefined);

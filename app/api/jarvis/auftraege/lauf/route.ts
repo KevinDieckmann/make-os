@@ -32,7 +32,7 @@ export async function POST(req: Request) {
       // Der Lauf sagt selbst, ob er geklappt hat. Vorher wurde das am Text
       // erraten — und ein gutes Board-Pack dreimal wiederholt, weil darin
       // „… ist nicht erreichbar" über die Run-Rate stand (gefunden 07.09.).
-      const lauf = await runAgent(a.name as Ausfuehrbar, a.auftrag ?? '', origin);
+      const lauf = await runAgent(a.name as Ausfuehrbar, a.auftrag ?? '', origin, a.person ?? undefined);
       // Ein abgeschalteter Agent ist eine Entscheidung, kein Aussetzer —
       // den Auftrag deshalb nicht wieder in die Schlange legen.
       const abgeschaltet = /ist ausgeschaltet/.test(lauf.text);

@@ -5,11 +5,13 @@
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { PROVIDER, REDIRECT_URI, konfiguriert, stateMerken } from '@/lib/oauth';
+import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
+  if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   const url = new URL(req.url);
   const p = PROVIDER[url.searchParams.get('provider') ?? ''];
   if (!p) return NextResponse.json({ error: 'Unbekannter Anbieter.' }, { status: 400 });

@@ -2,7 +2,11 @@
 // Kevins Entscheidung vom 23.09.: „dieses Kevin/Malin-Thema geht raus" —
 // echte Konten, echter Login. Eine Sitzung ist ein signierter Zettel:
 //
-//   <speicher>.<ablauf>.<stand>.<signatur>
+//   <speicher>.<ablauf>.<stand>.<sid>.<signatur>
+//
+// „sid“ ist die Kennung des Zettels: Abmelden trägt sie in die Widerrufsliste des
+// Kontos ein (26.09.) — ein gestohlener Zettel stirbt damit beim Abmelden, nicht
+// erst nach 14 Tagen. „Alle anderen Geräte abmelden“ setzt `sitzungenAb`.
 //
 // „stand“ ist der Fingerabdruck des Passwort-Salzes (26.09.): ändert jemand sein
 // Passwort, bekommt das Salz einen neuen Wert — alte Zettel passen nicht mehr
@@ -19,7 +23,7 @@
 export const SITZUNG_COOKIE = 'make-os-sitzung';
 /** Nicht signiert, nicht geheim: nur damit der Browser weiß, wer da ist. */
 export const WER_COOKIE = 'make-os-wer';
-export const SITZUNG_TAGE = 30;
+export const SITZUNG_TAGE = 14;
 
 const enc = new TextEncoder();
 
@@ -43,26 +47,36 @@ export async function kontoStand(salz: string): Promise<string> {
   return Array.from(new Uint8Array(h)).slice(0, 6).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-export async function sitzungAusstellen(geheimnis: string, speicher: string, stand: string, jetzt = Date.now()): Promise<string> {
+/** Kennung eines Zettels — zufällig, 12 Hex. */
+export function neueSid(): string {
+  const b = new Uint8Array(6); crypto.getRandomValues(b);
+  return Array.from(b).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+export async function sitzungAusstellen(geheimnis: string, speicher: string, stand: string, jetzt = Date.now(), sid = neueSid()): Promise<string> {
   const ablauf = jetzt + SITZUNG_TAGE * 864e5;
-  const kern = `${speicher}.${ablauf}.${stand}`;
+  const kern = `${speicher}.${ablauf}.${stand}.${sid}`;
   return `${kern}.${await signiere(geheimnis, kern)}`;
 }
 
-export async function sitzungPruefen(geheimnis: string, zettel: string | undefined, jetzt = Date.now()): Promise<{ speicher: string; stand: string } | null> {
+export interface Sitzung { speicher: string; stand: string; sid: string; /** Zeitpunkt der Ausstellung (ms). */ ausgestellt: number; ablauf: number }
+
+export async function sitzungPruefen(geheimnis: string, zettel: string | undefined, jetzt = Date.now()): Promise<Sitzung | null> {
   if (!zettel) return null;
   const teile = zettel.split('.');
-  // Zettel ohne Stand (vor 26.09.) gelten nicht mehr — einmal neu anmelden.
-  if (teile.length !== 4) return null;
-  const [speicher, ablaufText, stand, sig] = teile;
-  if (!/^[a-z0-9-]{1,40}$/.test(speicher) || !/^[a-f0-9]{12}$/.test(stand)) return null;
+  // Zettel ohne Stand und Kennung (vor 26.09.) gelten nicht mehr — einmal neu anmelden.
+  if (teile.length !== 5) return null;
+  const [speicher, ablaufText, stand, sid, sig] = teile;
+  if (!/^[a-z0-9-]{1,40}$/.test(speicher) || !/^[a-f0-9]{12}$/.test(stand) || !/^[a-f0-9]{12}$/.test(sid)) return null;
   const ablauf = Number(ablaufText);
   if (!isFinite(ablauf) || ablauf < jetzt) return null;
-  const soll = await signiere(geheimnis, `${speicher}.${ablaufText}.${stand}`);
-  return gleich(soll, sig) ? { speicher, stand } : null;
+  const soll = await signiere(geheimnis, `${speicher}.${ablaufText}.${stand}.${sid}`);
+  return gleich(soll, sig) ? { speicher, stand, sid, ausgestellt: ablauf - SITZUNG_TAGE * 864e5, ablauf } : null;
 }
 
 /** Das Geheimnis der Sitzungen. Eigener Wert, sonst der Zugangsschlüssel. */
+let gewarnt = false;
 export function sitzungsGeheimnis(): string {
+  if (!process.env.SESSION_SECRET && !gewarnt) { gewarnt = true; console.warn('[MAKE OS] SESSION_SECRET fehlt — Sitzungen werden mit MAKE_OS_KEY signiert. Bitte in .env setzen (start.sh legt ihn lokal an).'); }
   return process.env.SESSION_SECRET || process.env.MAKE_OS_KEY || '';
 }

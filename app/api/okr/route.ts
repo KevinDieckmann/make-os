@@ -9,6 +9,7 @@ import { gatherBrain } from '@/lib/brain';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { computeMetrics, eur, type FinanceState } from '@/lib/make-one/finance-data';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,6 +17,7 @@ export const dynamic = 'force-dynamic';
 interface TaskLite { title?: string; status?: string; priority?: string; description?: string; }
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { finance?: FinanceState; tasks?: TaskLite[] };
   try { payload = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Server-seitig aus dem Brain; Body bleibt optionaler Override.

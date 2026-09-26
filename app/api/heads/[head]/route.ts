@@ -34,7 +34,8 @@ export const maxDuration = 400;
 
 const headAus = (p: { head: string }) => (HEADS.includes(p.head as HeadId) ? (p.head as HeadId) : null);
 
-export async function GET(_: Request, { params }: { params: { head: string } }) {
+export async function GET(_: Request, props: { params: Promise<{ head: string }> }) {
+  const params = await props.params;
   const h = headAus(params);
   if (!h) return NextResponse.json({ ok: false, fehler: 'Unbekannter Head.' }, { status: 404 });
   const s = { ...leererStand(), ...((await loadJson<HeadStand>(standName(h))) ?? {}) };
@@ -67,7 +68,8 @@ function ort(t: { art?: string; kontakt_id?: string | null; chance_id?: string |
   return null;
 }
 
-export async function POST(req: Request, { params }: { params: { head: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ head: string }> }) {
+  const params = await props.params;
   const h = headAus(params);
   if (!h) return NextResponse.json({ ok: false, fehler: 'Unbekannter Head.' }, { status: 404 });
   let b: { aktion?: string; modus?: string; frage?: string; ausgeloest?: string; id?: string; status?: string; grund?: string; entwurf?: string; text?: string };

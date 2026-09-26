@@ -22,6 +22,8 @@ import { innenAdresse } from '@/lib/innen';
 import { ARTEN as BAU_ARTEN, BEREICHE as BAU_BEREICHE } from '@/lib/bauplan/form';
 import { KENNZAHLEN as BUSINESS_KENNZAHLEN } from '@/lib/business/register';
 import { GESUNDHEIT_KENNZAHLEN } from '@/lib/gesundheit/index';
+import { modellSchranke, zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
+import { FREMD_WERKZEUGE, FREMD_AGENTEN } from '@/lib/jarvis/fremd';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -103,9 +105,15 @@ function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaec
 }
 
 export async function POST(req: Request) {
+  // Kostenschutz (26.09.): je Person höchstens 40 Züge in 10 Minuten.
+  const schranke = modellSchranke(req); if (schranke) return schranke;
+  if (zuGross(req, 2_000_000)) return ZU_GROSS(2_000_000);
   let payload: { message?: string; context?: string; noTools?: boolean; verlauf?: VerlaufNachricht[] };
   try { payload = await req.json(); } catch { return NextResponse.json({ reply: 'Ich habe die Anfrage nicht verstanden.' }); }
-  const message = (payload.message ?? '').trim();
+  const message = String(payload.message ?? '').trim().slice(0, 8000);
+  // Verlauf und Zusatz begrenzt — der Prompt darf nicht beliebig wachsen (26.09.).
+  if (Array.isArray(payload.verlauf)) payload.verlauf = payload.verlauf.slice(-40).map(v => ({ ...v, text: typeof v.text === 'string' ? v.text.slice(0, 8000) : '' }));
+  if (typeof payload.context === 'string') payload.context = fremd('client', payload.context.slice(0, 4000));
   if (!message) return NextResponse.json({ reply: 'Sag mir, woran ich arbeiten soll.' });
   // Gedächtnis: die bisherigen Züge dieses Gesprächs. Ohne das fing Jarvis bei
   // jeder Nachricht bei null an — „mach das nochmal für Juli" war unmöglich.
@@ -585,7 +593,7 @@ export async function POST(req: Request) {
     // Prompt-Injection-Schutz (26.09.): Sobald Fremdinhalt gelesen wurde (Postfach, Web),
     // wirken schreibende Werkzeuge in diesem Gespräch nur noch als Vorschlag (Freigabe).
     let fremdGelesen = false;
-    const LESEND = new Set(['lies_postfach', 'suche_wissen', 'lies_notiz', 'frag_gedaechtnis', 'business_index', 'crm_lage', 'haushalt_stand', 'haushalt_buchungen', 'gesundheits_index', 'finde_kontakt', 'lies_kontakt']);
+    const LESEND = new Set(['lies_postfach', 'suche_wissen', 'lies_notiz', 'frag_gedaechtnis', 'business_index', 'crm_lage', 'haushalt_stand', 'haushalt_buchungen', 'gesundheits_index', 'finde_kontakt', 'lies_kontakt', 'suche_kontakt']);
 
     // Grundlage aus dem Obsidian-Brain (00_JARVIS_AGENT + Vertraulichkeitsregeln), eine Minute zwischengespeichert.
     const brain = await brainAnweisung().catch(() => '');
@@ -625,15 +633,16 @@ export async function POST(req: Request) {
         }
         const agentId = String(l.input?.agent ?? '');
         const gueltig = (AUSFUEHRBAR as readonly string[]).includes(agentId) && laufBudget-- > 0;
-        return { l, agentId, gueltig, lauf: async () => (await runAgent(agentId as Ausfuehrbar, String(l.input?.auftrag ?? ''), origin)).text };
+        return { l, agentId, gueltig, lauf: async () => (await runAgent(agentId as Ausfuehrbar, String(l.input?.auftrag ?? ''), origin, person)).text };
       });
       const outs = await Promise.all(zulaessig.map(z =>
         z.gueltig ? z.lauf() : Promise.resolve('Nicht ausgeführt (unbekannter Agent oder Lauf-Budget erschöpft).')
       ));
       const results: unknown[] = zulaessig.map((z, zi) => {
         ran.push({ agent: z.agentId, ok: z.gueltig && !/fehlgeschlagen|nicht erreichbar|Kollision|Nicht ausgeführt|Kein Meilenstein/i.test(outs[zi]) });
-        // Fremde Inhalte (Mails, Web) gekapselt zurückgeben — Daten, keine Anweisungen.
-        const fremdQuelle = z.agentId === 'lies_postfach' ? 'postfach' : z.l.name === 'run_agent' && z.agentId === 'research' ? 'web' : null;
+        // Fremde Inhalte gekapselt zurückgeben — Daten, keine Anweisungen. Seit 26.09. für ALLE Kanäle mit
+        // Text Dritter: Mails, Web, Kontaktnotizen, Bank-Verwendungszwecke, Notizen, Gedächtnis, Agentenläufe.
+        const fremdQuelle = z.l.name === 'run_agent' ? (FREMD_AGENTEN[z.agentId] ?? null) : (FREMD_WERKZEUGE[z.agentId] ?? null);
         if (fremdQuelle && z.gueltig) { fremdGelesen = true; return { type: 'tool_result', tool_use_id: z.l.id, content: fremd(fremdQuelle, outs[zi]) }; }
         return { type: 'tool_result', tool_use_id: z.l.id, content: outs[zi] };
       });

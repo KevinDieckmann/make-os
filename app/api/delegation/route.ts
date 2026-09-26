@@ -14,6 +14,7 @@ import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
 import { TEAM, teamZeilen } from '@/lib/make-one/team-data';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -31,7 +32,8 @@ export interface Vorschlag {
   uebergabe?: string;
 }
 
-export async function POST() {
+export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   if (!sperren('delegation')) return NextResponse.json({ error: 'Die Delegations-Runde läuft gerade schon — einen Moment.' }, { status: 200 });
   if (!hasAnthropicKey()) return NextResponse.json({ error: 'Kein Anthropic-Key.' }, { status: 200 });
   const agent = await resolveAgent('task');

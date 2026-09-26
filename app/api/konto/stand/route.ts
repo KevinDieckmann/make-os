@@ -17,5 +17,10 @@ export async function GET(req: Request) {
   const speicher = new URL(req.url).searchParams.get('speicher') ?? '';
   const k = (await ladeKonten()).konten.find(x => x.speicher === speicher);
   if (!k) return NextResponse.json({ error: 'Konto nicht gefunden.' }, { status: 404 });
-  return NextResponse.json({ ok: true, stand: await kontoStand(k.salz) }, { headers: { 'Cache-Control': 'no-store' } });
+  const jetzt = Date.now();
+  return NextResponse.json({
+    ok: true, stand: await kontoStand(k.salz),
+    ab: k.sitzungenAb ? Date.parse(k.sitzungenAb) || 0 : 0,
+    widerrufen: (k.widerrufen ?? []).filter(w => w.bis > jetzt).map(w => w.sid),
+  }, { headers: { 'Cache-Control': 'no-store' } });
 }

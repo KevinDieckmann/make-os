@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { pruefeAlles, type Handisch } from '@/lib/onboarding-status';
+import { personAus } from '@/lib/jarvis/raum';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const id = String(body.id ?? '').slice(0, 60);
   if (!id) return NextResponse.json({ ok: false, error: 'id fehlt.' }, { status: 400 });
-  const von = body.von === 'malin' ? 'Malin' : 'Kevin';
+  const p = personAus(req); const von = p.charAt(0).toUpperCase() + p.slice(1);
 
   const next = await updateJson<Handisch>('onboarding', current => {
     const f = current ?? { erledigt: {} };

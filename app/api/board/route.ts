@@ -12,6 +12,7 @@ import { localDay } from '@/lib/zeit';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { computeMetrics, eur, type FinanceState } from '@/lib/make-one/finance-data';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,7 @@ interface ProspectLite { status?: string; score?: number; company?: string; }
 interface TaskLite { title?: string; status?: string; priority?: string; dueDate?: string; }
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   let p: { finance?: FinanceState; prospects?: ProspectLite[]; tasks?: TaskLite[]; today?: string };
   try { p = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
 

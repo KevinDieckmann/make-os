@@ -22,6 +22,7 @@ export const dynamic = 'force-dynamic';
 const WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
 import { localDay as localKey } from '@/lib/zeit';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 // ── Gemeinsame Datensammlung: kommt jetzt aus dem Brain ──
 // Gleiche Rückgabeform wie früher, damit die Loop-Zweige unverändert bleiben.
@@ -59,6 +60,7 @@ const fmtEvent = (e: { title?: string; startDate?: string; allDay?: boolean }) =
 };
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { loop?: string; today?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const loop = body.loop ?? 'morgen';

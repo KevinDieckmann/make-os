@@ -113,7 +113,33 @@ Kapazität und im Monatsabschluss die fakturierten Tage.
 - **Aufgaben:** iCloud-Erinnerungen lassen sich als Aufgabe übernehmen („→ Aufgabe“, mit Fälligkeit und Liste im
   Text); übernommene sind markiert. Nach iCloud wird nie zurückgeschrieben.
 
-Nach dem Update: alle müssen sich einmal neu anmelden (Sitzungsgeheimnis und neues Sitzungsformat). Einmalig auf dem Server, falls
+**Sicherheits-Welle 3 (26.09., „sicher auf Hetzner“ — zwei Audits, Betrieb + Anwendung)**
+- **Next.js 15.5.26** statt 14.2 (die 14er-Linie hatte ~20 offene Advisories: Bildoptimierer-RCE, SSRF,
+  DoS, Cache-Poisoning). Codemod für `params`/`searchParams`/`cookies()`; alles geprüft.
+- **Zugriff je Person, lückenlos:** interne Dienstaufrufe reichen die anfragende Person weiter (Tageslauf,
+  Tagesstart, Agenten, Jarvis-Werkzeuge) — Kevins Mac-Postfach ist damit wirklich nur für den Inhaber;
+  Tageslauf-Bestand ohne Mail-Details; `person:` im Auftragstext gilt nur für den Takt; Whoop-Sync/-Import,
+  OAuth (Whoop/M365), Mail-Entwurf, Agenten-Regler, Postfach-Spiegel, Agentenlog nur Inhaber bzw. Dienstweg;
+  Business-Zahlen (Finanzen, Finanzplan, Buchungen, Liquiplan, Grundlage, Controlling) nur für den Haushalt
+  des Inhabers (Malin ist drin); Privatnotizen bleiben auch in „Heute ansprechen“, Auskunft und Dubletten
+  beim Verfasser; Startfläche/Verlauf je Person.
+- **Jarvis gegen eingeschleuste Anweisungen:** alle Kanäle mit Text Dritter (Kontaktnotizen, Bank-
+  Verwendungszwecke, Notizen, Gedächtnis, Agentenläufe, Web, Postfach) sind gekapselt — danach nur noch
+  Vorschläge statt Ausführung; Termine, Aufgaben, Deals und Läufe stehen im Prompt als Daten mit Regel.
+- **Kostenschutz:** höchstens 40 Modellzüge je Person in 10 Minuten (Takt 120), Body-Grenzen (Jarvis 2 MB,
+  Beleg 12 MB, Grundlage 4 MB, Zielkunden 2 MB), `heads/eval` und Loop-„jetzt“ nur Inhaber.
+- **Sitzungen:** 14 Tage; Abmelden widerruft den Zettel; „Alle anderen Geräte abmelden“ (Konto);
+  Anmelde-Protokoll (Konto → „Zuletzt: …“); Passwortwechsel gebremst; Erstkonto: Schlüsselvergleich in
+  konstanter Zeit, Bremse, fail-closed bei beschädigter Kontendatei; Drossel traut X-Forwarded-For nur hinter
+  Caddy; Sperre je Paar Adresse+E-Mail (kein Aussperren von außen); `secure`-Cookie in Produktion immer.
+- **Middleware:** Navigation von fremden Seiten auf `/api/*` wird abgewiesen (kein GET mit Wirkung per Link).
+- **Betrieb:** Container ohne Rechte-Zuwachs/Fähigkeiten, Speichergrenzen, Arbeiter nur mit Dienstschlüssel;
+  Sicherheits-Kopfzeilen + CSP aus der App; `deploy/ausrollen.sh` als prüfbarer Forced Command; Sicherung
+  optional mit `age` (nur Kevin kann entschlüsseln); Dependabot; Klickdummys aus `public/` nach `prototype/`;
+  auf dem Server bereits erledigt: Datendateien nicht mehr weltlesbar, SSH ohne Port-Forwarding.
+
+Nach dem Update: alle müssen sich einmal neu anmelden (Sitzungsgeheimnis und neues Sitzungsformat).
+`SESSION_SECRET` liegt auf dem Server schon in der `.env` — der Einzeiler unten ist nur Rückfall. Einmalig auf dem Server, falls
 `SESSION_SECRET` dort noch fehlt:
 `ssh root@2.28.108.162 'grep -q SESSION_SECRET /srv/make-os/.env || echo SESSION_SECRET=$(openssl rand -hex 32) >> /srv/make-os/.env && cd /srv/make-os && docker compose up -d'`
 Malin einladen: unter Konto → Einladung im Feld „Vorname“ **Malin** eintragen — dann bekommt sie ihre Bestände.

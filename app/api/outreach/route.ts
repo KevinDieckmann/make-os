@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,6 +23,7 @@ const RECHT =
   'B2B-Kaltansprache per E-Mail ist in DE nur mit mutmaßlicher Einwilligung sauber (§7 UWG) — bei kaltem Kontakt ist LinkedIn oder Telefon der sichere erste Kanal. Versand bleibt bei dir.';
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { prospect?: ProspectIn; icp?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const p = body.prospect;

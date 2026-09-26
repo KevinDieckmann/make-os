@@ -16,6 +16,7 @@ import { blockHaushalt } from '@/lib/finanzen/haushalt/jarvis';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { offeneAnzahl } from '@/lib/jarvis/stapel';
 import { personAus, type Person } from '@/lib/jarvis/raum';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -58,6 +59,7 @@ function anweisung(person: Person, offen: number): string {
 }
 
 export async function GET(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   const person = personAus(req);
   const stunde = stundeJetzt();
   const schluessel = `${person}:${stunde}`;

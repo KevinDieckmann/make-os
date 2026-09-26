@@ -14,7 +14,7 @@ import { SITZUNG_COOKIE, sitzungPruefen, sitzungsGeheimnis } from './sitzung';
 import { kontoFuerSpeicher, type Konto } from './konten';
 
 export async function angemeldetesKonto(): Promise<Konto | null> {
-  const zettel = cookies().get(SITZUNG_COOKIE)?.value;
+  const zettel = (await cookies()).get(SITZUNG_COOKIE)?.value;
   const s = await sitzungPruefen(sitzungsGeheimnis(), zettel);
   if (!s) return null;
   return (await kontoFuerSpeicher(s.speicher)) ?? null;

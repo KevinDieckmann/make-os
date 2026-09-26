@@ -18,6 +18,7 @@ import { NextResponse } from 'next/server';
 import { askText, extractJson, hasAnthropicKey } from '@/lib/anthropic';
 import { MODEL_BY_TIER } from '@/lib/agent-config';
 import { pruefeBild, saeubereKarte, hatInhalt, ROH_FELDER, MAX_BILD_MB } from '@/lib/crm/visitenkarte';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -60,6 +61,7 @@ const SCHEMA: Record<string, unknown> = {
 const antwort = (body: Record<string, unknown>, status = 200) => NextResponse.json(body, { status });
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   // Grob vorab: Base64 ist ~4/3 der Bildgröße — was deutlich darüber liegt, wird gar nicht erst gelesen.
   const laenge = Number(req.headers.get('content-length') ?? 0);
   if (laenge > (MAX_BILD_MB * 4 / 3 + 1) * 1024 * 1024) {

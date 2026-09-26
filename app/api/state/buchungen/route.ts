@@ -5,9 +5,13 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateGeschuetzt, updateJson } from '@/lib/store/local-db';
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+// Business-Zahlen gehören zum Haushalt des Inhabers — wie der Business-Index (26.09.).
+const KEIN_HAUSHALT = { ok: false, error: 'Kein Zugang zu den Business-Zahlen — sie gehören zum Haushalt des Inhabers (System → Konto).' };
 
 export interface Buchung {
   id: string;
@@ -54,13 +58,15 @@ function sauber(b: Partial<Buchung>, i: number): Buchung | null {
   };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   const f = await loadJson<Datei>('buchungen');
   const buchungen = Array.isArray(f?.buchungen) ? f.buchungen : [];
   return NextResponse.json({ buchungen, anzahl: buchungen.length });
 }
 
 export async function PUT(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   let body: Partial<Datei>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!Array.isArray(body.buchungen)) return NextResponse.json({ ok: false, error: 'buchungen fehlt.' }, { status: 400 });
@@ -81,6 +87,7 @@ export async function PUT(req: Request) {
  * des anderen. Jetzt geht nur noch raus, was ein Fenster selbst geändert hat.
  */
 export async function PATCH(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   let body: { ops?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const roh = Array.isArray(body.ops) ? body.ops.slice(0, 200) : null;

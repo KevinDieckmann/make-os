@@ -4,11 +4,13 @@
 
 import { NextResponse } from 'next/server';
 import { PROVIDER, konfiguriert, tokenStatus, trennen } from '@/lib/oauth';
+import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   const liste = await Promise.all(Object.values(PROVIDER).map(async p => {
     const s = await tokenStatus(p.id);
     return {
@@ -28,6 +30,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   let body: { provider?: string; aktion?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (body.aktion !== 'trennen' || !PROVIDER[body.provider ?? '']) {

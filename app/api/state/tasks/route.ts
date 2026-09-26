@@ -31,6 +31,8 @@ export async function PUT(req: Request) {
   if (!s || !Array.isArray(s.tasks) || !Array.isArray(s.projects)) {
     return NextResponse.json({ ok: false, error: 'Ungültiger Zustand: tasks/projects fehlen.' }, { status: 400 });
   }
+  // Auch der Voll-Stand geht durch dieselbe Säuberung wie PATCH (26.09.).
+  s.tasks = s.tasks.slice(0, 5000).map(t => taskSauber(t)).filter((t): t is Task => !!t);
 
   let abgelehnt = false;
   // Zweiter Weg, auf dem Arbeit verschwindet: nicht löschen, sondern zuklappen.

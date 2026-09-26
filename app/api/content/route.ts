@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,7 @@ const FORMATS: Record<string, { label: string; guide: string }> = {
 };
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { format?: string; thema?: string; notizen?: string };
   try { payload = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const fmt = FORMATS[payload.format ?? ''] ?? FORMATS.linkedin;

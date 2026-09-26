@@ -17,6 +17,7 @@ import { gunzipSync } from 'zlib';
 import { updateJson } from '@/lib/store/local-db';
 import { personAus, speicherFuer } from '@/lib/jarvis/raum';
 import { zipEintrag, zyklenLesen, einmischen, istZyklenDatei, type WhoopLog } from '@/lib/whoop-export';
+import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -38,12 +39,14 @@ async function neuesterExport(): Promise<{ pfad: string; name: string; zeit: Dat
 }
 
 /** GET → welcher Export läge im Downloads-Ordner bereit (für den Knopf). */
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   const n = await neuesterExport();
   return NextResponse.json({ ok: true, downloads: n ? { name: n.name, zeit: n.zeit.toISOString() } : null });
 }
 
 export async function POST(req: Request) {
+  if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   let csv: string | null = null, quelle = '';
   const typ = req.headers.get('content-type') ?? '';
   try {

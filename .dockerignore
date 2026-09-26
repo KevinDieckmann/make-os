@@ -9,3 +9,5 @@ node_modules
 tests
 *.log
 public/pdf.worker.min.mjs
+# Klickdummys aus dem Juli — nicht im Bild, nicht ausgeliefert (26.09.)
+prototype

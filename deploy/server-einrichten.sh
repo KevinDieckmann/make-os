@@ -14,7 +14,7 @@ REPO="${1:-}"
 echo "▸ System aktualisieren"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q && apt-get upgrade -yq
-apt-get install -yq ca-certificates curl git ufw openssl unattended-upgrades
+apt-get install -yq ca-certificates curl git ufw openssl unattended-upgrades age
 
 echo "▸ Auslagerungsspeicher, wenn der Arbeitsspeicher knapp ist (Bauen braucht ~2 GB)"
 if [ "$(awk '/MemTotal/ {print $2}' /proc/meminfo)" -lt 3500000 ] && ! swapon --show | grep -q /swapfile; then
@@ -36,7 +36,9 @@ ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443/tcp && ufw --force enable
 echo "▸ Nutzer make (UID 1000 = Nutzer im Container)"
 id make >/dev/null 2>&1 || useradd -m -u 1000 -s /bin/bash -G docker make
 mkdir -p /home/make/.ssh && cp /root/.ssh/authorized_keys /home/make/.ssh/ 2>/dev/null || true
-chown -R make:make /home/make/.ssh && chmod 700 /home/make/.ssh
+chown -R make:make /home/make/.ssh && chmod 700 /home/make/.ssh && chmod 600 /home/make/.ssh/authorized_keys 2>/dev/null || true
+# make darf verwalten (sudo) — dann kann root-Login später aus (server-haerten.sh, 26.09.).
+echo 'make ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/make && chmod 440 /etc/sudoers.d/make
 
 echo "▸ Ordner"
 mkdir -p /srv/make-os/{daten,vault,sicherungen}
@@ -69,8 +71,12 @@ $(cat /home/make/.ssh/github.pub)
     (Jarvis schreibt ins Log).
 
  2) Als make:  git clone $REPO /srv/make-os/app
-              cp /srv/make-os/app/deploy/env.server.beispiel /srv/make-os/app/.env
-              nano /srv/make-os/app/.env        (Werte eintragen)
+              install -m 600 /srv/make-os/app/deploy/env.server.beispiel /srv/make-os/app/.env
+              nano /srv/make-os/app/.env        (Werte eintragen; Datei bleibt 600)
+              Ausroll-Schlüssel in ~/.ssh/authorized_keys mit Forced Command:
+              command="/srv/make-os/app/deploy/ausrollen.sh",restrict ssh-ed25519 AAAA… make-os-ausrollen
+              Sicherung mit age (Empfänger = Kevins öffentlicher Schlüssel, Mac: age-keygen):
+              echo 'age1…' > /srv/make-os/sicherung.pub
 
  3) Sicherungs-Passwort in den Passwort-Manager übertragen:
               cat /srv/make-os/.sicherung-passwort

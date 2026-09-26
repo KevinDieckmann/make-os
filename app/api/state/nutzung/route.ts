@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
+import { personAus } from '@/lib/jarvis/raum';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false }, { status: 400 }); }
   const pfad = String(body.pfad ?? '').slice(0, 120);
   if (!pfad.startsWith('/os')) return NextResponse.json({ ok: true, ignoriert: true });
-  const person = body.person === 'malin' ? 'malin' : 'kevin';
+  const person = personAus(req);
   // Deckel auch serverseitig — ein offenes Fenster ist keine Arbeitszeit.
   const sek = Math.max(0, Math.min(2700, Math.round(Number(body.sekunden) || 0)));
   const heute = localDay();

@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { askWithSearch, hasAnthropicKey } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,7 @@ const SYSTEM = [
 ].join('\n');
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { query?: string };
   try { payload = await req.json(); } catch { return NextResponse.json({ reply: '', error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const query = (payload.query ?? '').trim();

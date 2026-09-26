@@ -35,6 +35,11 @@ const BACKUPS_BEHALTEN = 14;
  * und handgemachte Sicherungen wie `vitals-vor-whoop-…` zu `vitals` und wurden
  * beim Aufräumen mitgelöscht. Jetzt nur `<name>-JJJJ-MM-TT.json`.
  */
+/** Liegt neben dem Bestand eine beiseitegelegte, beschädigte Fassung (26.09.)? */
+export async function beschaedigt(name: string): Promise<boolean> {
+  try { return (await fs.readdir(DATA_DIR)).some(f => f.startsWith(`${name}.json.corrupt-`)); } catch { return false; }
+}
+
 export function sicherungenVon(name: string, dateien: string[]): string[] {
   const muster = new RegExp(`^${name}-\\d{4}-\\d{2}-\\d{2}\\.json$`);
   return dateien.filter(f => muster.test(f)).sort();
@@ -120,7 +125,8 @@ export async function saveJson<T>(name: string, data: T): Promise<void> {
     // Eindeutiger Temp-Name: zwei Prozesse/Läufe dürfen sich nicht dieselbe
     // .tmp-Datei wegziehen.
     const tmp = `${dest}.${process.pid}.${Math.random().toString(36).slice(2, 10)}.tmp`;
-    await fs.writeFile(tmp, JSON.stringify(data, null, 2), 'utf8');
+    // Nur der Besitzer liest die Bestände (26.09.) — auf dem Server ist das der Container-Nutzer = make.
+    await fs.writeFile(tmp, JSON.stringify(data, null, 2), { encoding: 'utf8', mode: 0o600 });
     await fs.rename(tmp, dest);
   });
   writeChain.set(name, run);
@@ -143,7 +149,7 @@ export async function updateJson<T>(name: string, mutate: (current: T | null) =>
     const dest = path.join(DATA_DIR, `${name}.json`);
     await taeglicheSicherung(name, dest);
     const tmp = `${dest}.${process.pid}.${Math.random().toString(36).slice(2, 10)}.tmp`;
-    await fs.writeFile(tmp, JSON.stringify(next, null, 2), 'utf8');
+    await fs.writeFile(tmp, JSON.stringify(next, null, 2), { encoding: 'utf8', mode: 0o600 });
     await fs.rename(tmp, dest);
     return next;
   });

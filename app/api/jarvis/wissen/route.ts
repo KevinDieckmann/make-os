@@ -17,6 +17,7 @@ import { bestand, darfSehen, neueste, notiz, suche, WURZELN } from '@/lib/jarvis
 import { personAus } from '@/lib/jarvis/raum';
 import { frageBrain, type Zug } from '@/lib/jarvis/brain-chat';
 import { hasAnthropicKey } from '@/lib/anthropic';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -69,6 +70,7 @@ export async function GET(req: Request) {
 
 /** Mit dem Brain chatten: eine Frage, dazu der bisherige Verlauf (nur Text). */
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
   let b: { frage?: unknown; verlauf?: unknown };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   const frage = String(b.frage ?? '').trim().slice(0, 1500);

@@ -11,6 +11,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { recentRuns } from '@/lib/agent-log';
 import { resolveVitals, localDay } from '@/lib/vitals';
 import { innenAdresse } from '@/lib/innen';
+import { personAus } from '@/lib/jarvis/raum';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
   //    ist zäh (bis ~55s), das muss nicht jeden Morgen sein.
   if (st.kalenderAlterStd == null || st.kalenderAlterStd > 12) {
     try {
-      const r = await fetch(`${origin}/api/apple-calendar?refresh=1`, { headers: { 'x-make-key': process.env.MAKE_OS_KEY ?? '' }, signal: AbortSignal.timeout(75_000) });
+      const r = await fetch(`${origin}/api/apple-calendar?refresh=1`, { headers: { 'x-make-key': process.env.MAKE_OS_KEY ?? '', 'x-make-person': personAus(req) }, signal: AbortSignal.timeout(75_000) });
       const d = await r.json();
       schritte.push({ name: 'Kalender', ok: Array.isArray(d), info: Array.isArray(d) ? `${d.length} Termine` : 'Zugriff fehlt' });
     } catch {
@@ -80,7 +81,7 @@ export async function POST(req: Request) {
   let loop: unknown = null;
   try {
     const r = await fetch(`${origin}/api/tageslauf`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', 'x-make-person': personAus(req) },
       body: JSON.stringify({ art: 'voll' }),
       signal: AbortSignal.timeout(240_000),
     });
@@ -94,7 +95,7 @@ export async function POST(req: Request) {
 
   // 3) Performance-Schnappschuss — nur so entsteht ein Verlauf.
   try {
-    await fetch(`${origin}/api/performance`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '' }, body: '{}', signal: AbortSignal.timeout(20_000) });
+    await fetch(`${origin}/api/performance`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY ?? '', 'x-make-person': personAus(req) }, body: '{}', signal: AbortSignal.timeout(20_000) });
     schritte.push({ name: 'Index', ok: true });
   } catch {
     schritte.push({ name: 'Index', ok: false });

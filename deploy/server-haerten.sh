@@ -14,16 +14,21 @@ set -euo pipefail
 
 echo "▸ SSH nur mit Schlüssel"
 # 00- steht vor der Datei von cloud-init (50-…) — bei sshd gilt der erste Wert.
-cat > /etc/ssh/sshd_config.d/00-make-os.conf <<'CONF'
+# root nur noch, solange „make“ nicht selbst verwalten kann (Schlüssel + sudo) — sonst sperrt man sich aus (26.09.).
+ROOT_LOGIN="prohibit-password"
+if [ -s /home/make/.ssh/authorized_keys ] && sudo -l -U make 2>/dev/null | grep -q '(ALL'; then ROOT_LOGIN="no"; fi
+cat > /etc/ssh/sshd_config.d/00-make-os.conf <<CONF
 PasswordAuthentication no
 KbdInteractiveAuthentication no
-PermitRootLogin prohibit-password
+PermitRootLogin $ROOT_LOGIN
 PubkeyAuthentication yes
 MaxAuthTries 3
 LoginGraceTime 30
 X11Forwarding no
 AllowAgentForwarding no
+AllowTcpForwarding no
 CONF
+[ "$ROOT_LOGIN" = no ] || echo "  Hinweis: root-Login per Schlüssel bleibt erlaubt, bis make einen Schlüssel UND sudo hat (deploy/server-einrichten.sh).
 sshd -t && systemctl reload ssh
 
 echo "▸ Firewall drosselt SSH-Fluten"
@@ -43,6 +48,11 @@ CONF
 systemctl enable --now fail2ban >/dev/null 2>&1 && systemctl restart fail2ban
 
 echo "▸ Sicherheitsupdates, Neustart bei Bedarf nachts"
+cat > /etc/apt/apt.conf.d/20auto-upgrades <<'CONF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";
+CONF
 cat > /etc/apt/apt.conf.d/52make-os <<'CONF'
 Unattended-Upgrade::Automatic-Reboot "true";
 Unattended-Upgrade::Automatic-Reboot-Time "04:30";

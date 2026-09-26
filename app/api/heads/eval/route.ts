@@ -18,6 +18,9 @@ import { HEADS, SYSTEM, SCHEMA, AGENT_ID, REVIEW_MODI, aufgabe, datenBlock, type
 import { normalisiere } from '@/lib/heads/pruefer';
 import { bewerte, passK, type Bewertung } from '@/lib/heads/eval';
 import type { ReplayStand } from '@/lib/heads/lauf';
+import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -36,6 +39,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const schranke = modellSchranke(req); if (schranke) return schranke;
+  if (zuGross(req, 1000000)) return ZU_GROSS(1000000);
+  if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   let b: { head?: string; n?: number; k?: number; modus?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const h = headAus(b.head);

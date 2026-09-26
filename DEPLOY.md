@@ -126,3 +126,33 @@ Mikrofon frei (Jarvis per Sprache) und legt keine App auf den Home-Bildschirm.
 
 **Grenze:** Malin ist nur drin, solange der Mac läuft, MAKE OS gestartet ist
 und der Mac online ist. Deckel zu heißt: Mac schläft, Malin draußen.
+
+## Härtung (Audit 26.09.)
+
+Was im Repo steht und mit dem nächsten Ausrollen wirkt:
+- **Container:** `no-new-privileges`, alle Kernel-Fähigkeiten weg (Caddy behält `NET_BIND_SERVICE`), Speichergrenzen;
+  der Arbeiter bekommt nur `MAKE_OS_KEY` statt der ganzen `.env`.
+- **Kopfzeilen aus der App** (`next.config.mjs`): X-Content-Type-Options, Referrer-Policy, X-Frame-Options,
+  Permissions-Policy; im Produktionsbau eine Content-Security-Policy (`default-src 'self'` …). Caddy setzt
+  zusätzlich HSTS. Der Altbestand `/finanz-dashboard.html` bleibt ohne CSP (lädt Firebase).
+- **Sitzungen:** 14 Tage; Abmelden widerruft den Zettel; „Alle anderen Geräte abmelden“ unter Konto;
+  Passwortwechsel meldet andere Geräte ab; Anmelde-Protokoll unter Konto („Zuletzt: …“).
+- **Ausrollen:** `deploy/ausrollen.sh` ist der Forced Command des Ausroll-Schlüssels (nur `git merge --ff-only`
+  + `docker compose up -d --build`). In `/home/make/.ssh/authorized_keys` muss die Zeile so aussehen:
+  `command="/srv/make-os/app/deploy/ausrollen.sh",restrict ssh-ed25519 AAAA… make-os-ausrollen`
+- **Sicherung:** liegt `/srv/make-os/sicherung.pub` (öffentlicher age-Schlüssel), verschlüsselt der Server damit —
+  entschlüsseln kann nur Kevin. Erzeugen auf dem Mac: `age-keygen -o ~/make-os-sicherung.txt` (Datei in den
+  Passwort-Manager), die Zeile `age1…` nach `/srv/make-os/sicherung.pub`. Bis dahin gilt weiter das
+  openssl-Passwort. Zweiter Ablageort (Storage Box / anderer Anbieter) ist noch offen.
+- **SSH:** `server-haerten.sh` setzt `PermitRootLogin no`, sobald `make` einen Schlüssel und sudo hat
+  (`server-einrichten.sh` richtet beides ein); `AllowTcpForwarding no`; Sicherheitsupdates explizit täglich.
+
+Einmalig auf dem Server (als root, lesend prüfen, dann ausführen):
+```bash
+chmod 600 /srv/make-os/app/.env /srv/make-os/.sicherung-passwort
+echo 'make ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/make && chmod 440 /etc/sudoers.d/make
+bash /srv/make-os/app/deploy/server-haerten.sh
+```
+
+Bei GitHub (Kevin, im Browser): Branch-Schutz für `main` (kein Force-Push), 2FA für beide Konten,
+Dependabot-PRs wöchentlich ansehen. Hetzner: Backups im Server-Menü aktiv lassen.

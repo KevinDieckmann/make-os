@@ -9,6 +9,7 @@ import { personAus } from '@/lib/jarvis/raum';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { aendereCrm } from '@/lib/crm/speicher';
 import { dubletten, zusammenfuehren, verweiseUmbiegen } from '@/lib/crm/dubletten';
+import { fuerPerson } from '@/lib/make-one/crm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,5 +34,5 @@ export async function POST(req: Request) {
   });
   if (!ergebnis) return NextResponse.json({ ok: false, fehler: 'Kontakt nicht gefunden.' }, { status: 404 });
   await aendereCrm(c => verweiseUmbiegen(c, body.weg!, body.behalten!));
-  return NextResponse.json({ ok: true, kontakt: ergebnis });
+  return NextResponse.json({ ok: true, kontakt: fuerPerson(ergebnis, person) });
 }

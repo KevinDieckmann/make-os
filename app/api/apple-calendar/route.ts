@@ -189,7 +189,7 @@ export async function GET(req: Request) {
       return NextResponse.json(cached.events, { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'stale', 'X-Stand': cached.at, 'X-Grund': kopfTauglich(msg) } });
     }
     return NextResponse.json(
-      { error: 'Kein Zugriff auf Apple Kalender', detail: msg },
+      { error: 'Kein Zugriff auf Apple Kalender' },
       { status: 500 },
     );
   }

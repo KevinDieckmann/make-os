@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   }
   let text: string;
   try { text = await readFile(pfad, 'utf8'); }
-  catch { return NextResponse.json({ error: `Datei nicht lesbar: ${pfad.replace(homedir(), '~')}` }, { status: 404 }); }
+  catch { return NextResponse.json({ error: 'Datei nicht lesbar.' }, { status: 404 }); }
 
   const zeilen = csvLesen(text, trennerVon(text));
   if (!zeilen.length) return NextResponse.json({ error: 'Keine Zeilen in der Datei.' }, { status: 400 });
