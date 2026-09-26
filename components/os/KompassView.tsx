@@ -12,6 +12,8 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { useNachspeichern } from '@/lib/make-one/nachspeichern';
+import { useSpace } from '@/hooks/useSpace';
+import { SPACE_LABEL, SPACE_FARBE, fokusSchluessel, type SpaceId } from '@/lib/make-one/space-regeln';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
@@ -74,6 +76,11 @@ export function KompassView() {
   // Wessen Fokus (26.09., Malin: „selektieren als Kevin, Malin einzeln“): wir · ich · die andere Person (nur lesen)
   const [wessen, setWessen] = useState<'wir' | 'ich' | string>('wir');
   const [fokusLesend, setFokusLesend] = useState(false);
+  // Fokus je Space (26.09., Kevin): gemeinsam · Privat · Business — Schlüssel „privat:jahr“ usw.
+  const { ausAdresse: spaceAusAdresse } = useSpace();
+  const [fokusSpace, setFokusSpace] = useState<SpaceId | null>(null);
+  useEffect(() => { setFokusSpace(spaceAusAdresse); }, [spaceAusAdresse]);
+  const kf = (h: string) => fokusSchluessel(h, fokusSpace);
   const [personen, setPersonen] = useState<{ ich: string; andere: { speicher: string; name: string }[] }>({ ich: '', andere: [] });
 
   useEffect(() => {
@@ -326,7 +333,7 @@ export function KompassView() {
     </div>
   );
 
-  const gesetzt = HORIZONTE.filter(h => (fokus[h.id] ?? '').trim()).length;
+  const gesetzt = HORIZONTE.filter(h => (fokus[kf(h.id)] ?? '').trim()).length;
   let k = 0; // laufender Karten-Index fürs gestaffelte Erscheinen
 
   return (
@@ -403,18 +410,24 @@ export function KompassView() {
           {personen.andere.map(a => chip(wessen === a.speicher, LEUCHT.beziehung, a.name, () => setWessen(a.speicher), a.speicher))}
           <span style={{ fontSize: 12, color: C.inkLeise }}>{fokusLesend ? 'nur lesen — jeder pflegt seinen eigenen' : wessen === 'wir' ? 'gemeinsam, beide dürfen ändern' : 'nur du, die andere Person kann ihn sehen'}</span>
         </div>
+        {/* Welcher Space (26.09.): gemeinsam, Privat, Business — jeder Space hat seinen eigenen Satz je Horizont. */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+          {chip(fokusSpace === null, C.aktiv, 'Gemeinsam', () => setFokusSpace(null), 'sp-gemeinsam')}
+          {(['privat', 'business'] as const).map(sp => chip(fokusSpace === sp, SPACE_FARBE[sp], SPACE_LABEL[sp], () => setFokusSpace(sp), `sp-${sp}`))}
+          <span style={{ fontSize: 12, color: C.inkLeise }}>{fokusSpace ? `nur ${SPACE_LABEL[fokusSpace]} — Planer und Jarvis nehmen ihn im ${SPACE_LABEL[fokusSpace]}-Space` : 'gilt überall, wo kein Space-Fokus steht'}</span>
+        </div>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 10 }}>Ein Satz je Horizont. Was hier steht, taucht im Tag, in der Woche und bei Jarvis wieder auf.</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {HORIZONTE.map(h => (
             <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ ...MIKRO, width: 62, flex: '0 0 auto' }}>{h.label}</span>
               <input
-                value={fokus[h.id] ?? ''}
+                value={fokus[kf(h.id)] ?? ''}
                 readOnly={fokusLesend}
-                onChange={e => fokusSetzen(h.id, e.target.value)}
+                onChange={e => fokusSetzen(kf(h.id), e.target.value)}
                 placeholder={fokusLesend ? '—' : h.frage}
                 aria-label={`Fokus ${h.label}`}
-                style={{ ...feld, fontWeight: fokus[h.id] ? 600 : 400, opacity: fokusLesend ? 0.8 : 1 }}
+                style={{ ...feld, fontWeight: fokus[kf(h.id)] ? 600 : 400, opacity: fokusLesend ? 0.8 : 1 }}
               />
             </div>
           ))}
@@ -427,12 +440,12 @@ export function KompassView() {
               <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.zahl, fontWeight: 700, color: b.farbe, width: 28, textAlign: 'center', flex: '0 0 auto', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
               <span style={{ ...MIKRO, width: 110, flex: '0 0 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={b.label}>{b.label}</span>
               <input
-                value={fokus[`prio:${b.id}`] ?? ''}
+                value={fokus[kf(`prio:${b.id}`)] ?? ''}
                 readOnly={fokusLesend}
-                onChange={e => fokusSetzen(`prio:${b.id}`, e.target.value)}
+                onChange={e => fokusSetzen(kf(`prio:${b.id}`), e.target.value)}
                 placeholder={fokusLesend ? '—' : `Worauf es bei „${b.label}“ gerade ankommt`}
                 aria-label={`Fokus ${b.label}`}
-                style={{ ...feld, fontWeight: fokus[`prio:${b.id}`] ? 600 : 400, opacity: fokusLesend ? 0.8 : 1 }}
+                style={{ ...feld, fontWeight: fokus[kf(`prio:${b.id}`)] ? 600 : 400, opacity: fokusLesend ? 0.8 : 1 }}
               />
             </div>
           ))}

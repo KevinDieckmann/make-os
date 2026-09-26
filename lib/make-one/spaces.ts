@@ -12,7 +12,7 @@
 // Space (lib/make-one/space-regeln.ts); Heute und Jarvis sehen beides.
 
 import type { LucideIcon } from 'lucide-react';
-import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Bot, Brain, Sparkles } from 'lucide-react';
+import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Bot, Brain, Sparkles, LayoutGrid } from 'lucide-react';
 import { SPACE_FARBE, type SpaceId } from './space-regeln';
 
 export type { SpaceId };
@@ -27,10 +27,11 @@ export interface Space {
 
 export const SPACES: Space[] = [
   {
-    id: 'privat', label: 'Privat', farbe: SPACE_FARBE.privat, icon: Home, start: '/os/finanzen?s=privat',
+    id: 'privat', label: 'Privat', farbe: SPACE_FARBE.privat, icon: Home, start: '/os/uebersicht?space=privat',
     index: { label: 'Privat-Index', ziel: '/os/finanzen?s=privat#index' },
     suche: 'In Privat suchen: Familie, Gesundheit, Zahlen',
     eintraege: [
+      { href: '/os/uebersicht?space=privat', label: 'Übersicht', icon: LayoutGrid, passt: ['/os/uebersicht?space=privat'] },
       { href: '/os/finanzen?s=privat', label: 'Finanzen', icon: Wallet, passt: ['/os/finanzen?s=privat'] },
       { href: '/os/aufgaben?space=privat', label: 'Aufgaben', icon: ListChecks, passt: ['/os/aufgaben?space=privat', '/os/board?space=privat'] },
       { href: '/os/planung/jahr?space=privat', label: 'Ziele & Planung', icon: Target, passt: ['/os/planung?space=privat', '/os/fokus?space=privat', '/os/kompass?space=privat'] },
@@ -40,10 +41,11 @@ export const SPACES: Space[] = [
     ],
   },
   {
-    id: 'business', label: 'Business', farbe: SPACE_FARBE.business, icon: Briefcase, start: '/os/finanzen?s=business',
+    id: 'business', label: 'Business', farbe: SPACE_FARBE.business, icon: Briefcase, start: '/os/uebersicht?space=business',
     index: { label: 'Business-Index', ziel: '/os/finanzen?s=business' },
     suche: 'In Business suchen: Rechnungen, Mandate, Kontakte',
     eintraege: [
+      { href: '/os/uebersicht?space=business', label: 'Übersicht', icon: LayoutGrid, passt: ['/os/uebersicht?space=business'] },
       { href: '/os/finanzen?s=business', label: 'Finanzen', icon: Wallet, passt: ['/os/finanzen?s=business', '/os/finanzen?s=steuern', '/os/finanzen?s=chef', '/os/finanzen/', '/os/controlling', '/os/business'] },
       { href: '/os/aufgaben?space=business', label: 'Aufgaben', icon: ListChecks, passt: ['/os/aufgaben?space=business', '/os/board?space=business', '/os/meeting'] },
       { href: '/os/planung/jahr?space=business', label: 'Ziele & Planung', icon: Target, passt: ['/os/planung?space=business', '/os/fokus?space=business', '/os/kompass?space=business', '/os/okr', '/os/saeule'] },

@@ -29,7 +29,8 @@ type ZieleFile = Record<Horizont, Ziel[]> & { fokus?: Partial<Record<FokusHorizo
 const LEER: ZieleFile = { monat: [], quartal: [], jahr: [], fokus: {} };
 const HORIZONTE: Horizont[] = ['monat', 'quartal', 'jahr'];
 /** Fokus je Priorität (Malin 26.09.: „die Kreise 1–4“): Schlüssel `prio:<thema>`. */
-const FOKUS_SCHLUESSEL = /^(tag|woche|monat|quartal|jahr|prio:[a-z0-9-]{1,40})$/;
+/** Fokus-Schlüssel: Horizont oder Priorität, optional je Space („privat:jahr“, „business:prio:umsatz“) — 26.09. */
+const FOKUS_SCHLUESSEL = /^(?:(?:privat|business):)?(?:tag|woche|monat|quartal|jahr|prio:[a-z0-9-]{1,40})$/;
 
 /**
  * Wessen Ziele/Fokus (26.09., Kevin: „Malin hat ihre eigenen Ziele, wir haben gemeinsame“):

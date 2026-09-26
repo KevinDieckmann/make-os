@@ -19,3 +19,18 @@ export const spaceVonOrg = (org: string): SpaceId => (org === 'privat' ? 'privat
 export function spaceVonAufgabe(t: { id: string; title: string; description?: string; projectId: string; space?: SpaceId }, orgZuordnung: Record<string, string> = {}): SpaceId {
   return t.space ?? spaceVonOrg(orgVon(t, orgZuordnung));
 }
+
+// ── Fokus je Space (26.09., Kevin: „Privat und Business separat aufbauen“) ──
+// Der Fokus-Satz je Horizont liegt gemeinsam (Schlüssel „jahr“) und je Space
+// („privat:jahr“, „business:jahr“). Sichten in einem Space zeigen den Space-
+// Fokus und fallen auf den gemeinsamen zurück, wenn er leer ist.
+export const FOKUS_HORIZONTE = ['tag', 'woche', 'monat', 'quartal', 'jahr'] as const;
+export const fokusSchluessel = (h: string, space: SpaceId | null | undefined): string => (space ? `${space}:${h}` : h);
+export function fokusFuerSpace(alle: Record<string, string> | null | undefined, space: SpaceId | null | undefined): Record<string, string> {
+  const a = alle ?? {};
+  if (!space) return a;
+  const aus: Record<string, string> = { ...a };
+  for (const h of FOKUS_HORIZONTE) { const v = a[`${space}:${h}`]; if (v && v.trim()) aus[h] = v; }
+  return aus;
+}
+

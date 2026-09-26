@@ -18,7 +18,7 @@ import { Zeitstrahl, type StrahlMarker, type StrahlTick } from './Zeitstrahl';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Haken, Zahl, feld, prioFarbe, LEUCHT } from './schlank';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
 import { useSpace } from '@/hooks/useSpace';
-import { SPACE_LABEL, SPACE_FARBE, spaceVonAufgabe, type SpaceId } from '@/lib/make-one/space-regeln';
+import { SPACE_LABEL, SPACE_FARBE, spaceVonAufgabe, fokusSchluessel, type SpaceId } from '@/lib/make-one/space-regeln';
 
 interface Ziel { id: string; titel: string; fortschritt: number; notiz?: string; erledigt?: boolean; space?: 'privat' | 'business' }
 interface Meilenstein { id: string; titel: string; bereich: 'business' | 'gesundheit'; faellig?: string; zeitfenster?: string; messlatte?: string; fortschritt: number; erledigt: boolean; erledigtAm?: string }
@@ -66,7 +66,10 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   const [spaceFilter, setSpaceFilter] = useState<SpaceId | 'alle'>('alle');
   useEffect(() => { setSpaceFilter(spaceAusAdresse ?? aktiverSpace); }, [spaceAusAdresse, aktiverSpace]);
   const zieleImSpace = ziele.filter(z => spaceFilter === 'alle' || !z.space || z.space === spaceFilter);
-  const [fokus, setFokus] = useState('');
+  // Fokus je Space (26.09.): im Space der Space-Satz, ohne Space der gemeinsame.
+  const [fokusAlle, setFokusAlle] = useState<Record<string, string>>({});
+  const fokusKey = fokusSchluessel(horizont, spaceFilter === 'alle' ? null : spaceFilter);
+  const fokus = fokusAlle[fokusKey] ?? '';
   const [neu, setNeu] = useState('');
   const [geladen, setGeladen] = useState(false);
   useZuZiel(zielM, geladen);
@@ -77,7 +80,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   useEffect(() => {
     fetch('/api/state/ziele').then(r => r.json()).then(d => {
       setZiele(Array.isArray(d[horizont]) ? d[horizont] : []);
-      setFokus(d.fokus?.[horizont] ?? '');
+      setFokusAlle(d.fokus && typeof d.fokus === 'object' ? d.fokus : {});
       setGeladen(true);
     }).catch(() => setGeladen(true));
   }, [horizont]);
@@ -113,10 +116,10 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
 
   const fokusTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   function fokusSetzen(v: string) {
-    setFokus(v);
+    setFokusAlle(a => ({ ...a, [fokusKey]: v }));
     clearTimeout(fokusTimer.current);
     fokusTimer.current = setTimeout(() => {
-      fetch('/api/state/ziele', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ horizont, fokus: v }) }).catch(() => {});
+      fetch('/api/state/ziele', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ horizont: fokusKey, fokus: v }) }).catch(() => {});
     }, 600);
   }
 
@@ -174,7 +177,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   const prognoseFarbe = prognose == null ? C.inkLeise : prognose >= 95 ? LEUCHT.gut : prognose >= 70 ? LEUCHT.achtung : LEUCHT.kritisch;
 
   const offeneMs = ms.filter(m => !m.erledigt).sort((a, b) => (a.faellig ?? '9999').localeCompare(b.faellig ?? '9999'));
-  const fokusTitel = horizont === 'jahr' ? 'Fokus des Jahres' : horizont === 'quartal' ? 'Fokus des Quartals' : 'Fokus des Monats';
+  const fokusTitel = `${horizont === 'jahr' ? 'Fokus des Jahres' : horizont === 'quartal' ? 'Fokus des Quartals' : 'Fokus des Monats'}${spaceFilter === 'alle' ? ' · gemeinsam' : ` · ${SPACE_LABEL[spaceFilter]}`}`;
   let k = 0; // laufender Karten-Index fürs gestaffelte Erscheinen
 
   return (

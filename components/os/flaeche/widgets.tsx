@@ -20,7 +20,8 @@ import { WEG } from '@/lib/wege';
 import { markttraktion } from '@/lib/crm/adresse';
 import { TAGE, MAHLZEITEN, type ErnaehrungFile } from '@/lib/ernaehrung/modell';
 import type { Breite, Einstellungen, Wert } from '@/lib/flaeche/modell';
-import { spaceVonAufgabe, SPACE_LABEL, SPACE_FARBE } from '@/lib/make-one/space-regeln';
+import { spaceVonAufgabe, fokusFuerSpace, SPACE_LABEL, SPACE_FARBE } from '@/lib/make-one/space-regeln';
+import { spaceVonKalender } from '@/lib/kalender/space';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Fortschritt, feld, zoneFarbe, prioFarbe } from '../schlank';
 import { WhoopImport } from '../WhoopImport';
 
@@ -95,8 +96,9 @@ function AufgabenWidget({ e, titel, i }: WidgetProps) {
 }
 
 // ── Termine (heute / nächste Tage) ──────────────────────────────────────────
-interface Termin { id?: string; title?: string; startDate?: string; endDate?: string; allDay?: boolean; quelle?: 'privat' | 'business' }
-function useTermine(tage: number, mitBusiness: boolean): Termin[] | undefined {
+interface Termin { id?: string; title?: string; startDate?: string; endDate?: string; allDay?: boolean; calendarName?: string; quelle?: 'privat' | 'business' }
+function useTermine(tage: number, mitBusiness: boolean, space: 'alle' | 'privat' | 'business' = 'alle'): Termin[] | undefined {
+  const einst = useDaten<object>('/api/state/kalender-einstellungen', d => (d as object) ?? null);
   const heute = localDay();
   const bis = plusTage(heute, tage - 1);
   const apple = useDaten<Termin[]>('/api/apple-calendar', d => (Array.isArray(d) ? (d as Termin[]) : null));
@@ -106,15 +108,18 @@ function useTermine(tage: number, mitBusiness: boolean): Termin[] | undefined {
   });
   return useMemo(() => {
     if (apple === undefined) return undefined;
-    const alle = [...(apple ?? []).map(t => ({ ...t, quelle: 'privat' as const })), ...(mitBusiness ? kem ?? [] : [])];
+    // Je Termin der Space seines Kalenders (26.09.): KEMARIS = Business, Apple-Kalender nach Einstellung.
+    const alle = [...(apple ?? []).map(t => ({ ...t, quelle: spaceVonKalender(einst ?? null, t.calendarName ?? '') })), ...(mitBusiness || space === 'business' ? kem ?? [] : [])]
+      .filter(t => space === 'alle' || t.quelle === space);
     return alle.filter(t => { const d = (t.startDate ?? '').slice(0, 10); return d >= heute && d <= bis; }).sort((a, b) => (a.startDate ?? '').localeCompare(b.startDate ?? ''));
-  }, [apple, kem, heute, bis, mitBusiness]);
+  }, [apple, kem, heute, bis, mitBusiness, space, einst]);
 }
 function TermineWidget({ e, titel, i }: WidgetProps) {
   const router = useRouter();
   const heute = localDay();
   const tage = num(e.tage, 1);
-  const termine = useTermine(tage, e.business === true);
+  const sp = str(e.space, 'alle') as 'alle' | 'privat' | 'business';
+  const termine = useTermine(tage, e.business === true, sp);
   const gruppen = useMemo(() => {
     const m = new Map<string, Termin[]>();
     for (const t of termine ?? []) { const d = (t.startDate ?? '').slice(0, 10); m.set(d, [...(m.get(d) ?? []), t]); }
@@ -122,7 +127,7 @@ function TermineWidget({ e, titel, i }: WidgetProps) {
   }, [termine]);
   return (
     <Karte i={i}>
-      <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href="/os/planung/woche" style={link}>Kalender ›</Link>}>{titel ?? (tage === 1 ? 'Termine' : `Nächste ${tage} Tage`)}</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href={sp === 'alle' ? '/os/planung/woche' : `/os/planung/woche?space=${sp}`} style={link}>Kalender ›</Link>}>{titel ?? `${tage === 1 ? 'Termine' : `Nächste ${tage} Tage`}${sp === 'alle' ? '' : ` · ${SPACE_LABEL[sp]}`}`}</Ueberschrift>
       <Liste>
         {termine && termine.length === 0 && <Leer>{tage === 1 ? 'Keine Termine heute — freie Bahn.' : 'Nichts eingetragen — freie Bahn.'}</Leer>}
         {termine === undefined && <Leer>lade …</Leer>}
@@ -160,12 +165,13 @@ function DranWidget({ titel, i }: WidgetProps) {
 function FokusWidget({ e, titel, i }: WidgetProps) {
   const f = useDaten<{ tag?: string; woche?: string; monat?: string }>('/api/state/ziele', d => ((d as { state?: { fokus?: object } }).state ?? (d as { fokus?: object }))?.fokus ?? {});
   const h = str(e.horizont, 'auto');
-  const fokus = f ?? {};
+  const sp = str(e.space, 'alle');
+  const fokus = fokusFuerSpace(f ?? {}, sp === 'privat' || sp === 'business' ? sp : null);
   const text = h === 'tag' ? fokus.tag : h === 'woche' ? fokus.woche : h === 'monat' ? fokus.monat : fokus.tag || fokus.woche || fokus.monat;
   const wann = h === 'tag' ? 'heute' : h === 'woche' ? 'diese Woche' : h === 'monat' ? 'diesen Monat' : fokus.tag ? 'heute' : fokus.woche ? 'diese Woche' : 'diesen Monat';
   return (
     <Karte i={i} akzent={text ? LEUCHT.schlaf : undefined}>
-      <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/fokus" style={link}>Fokus ›</Link>}>{titel ?? (h === 'woche' ? 'Wochenfokus' : h === 'monat' ? 'Monatsfokus' : 'Fokus')} {text && h === 'auto' ? wann : ''}</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href={sp === 'privat' || sp === 'business' ? `/os/kompass?space=${sp}` : '/os/fokus'} style={link}>Fokus ›</Link>}>{titel ?? `${h === 'woche' ? 'Wochenfokus' : h === 'monat' ? 'Monatsfokus' : 'Fokus'}${sp === 'privat' || sp === 'business' ? ` · ${SPACE_LABEL[sp]}` : ''}`} {text && h === 'auto' ? wann : ''}</Ueberschrift>
       {text
         ? <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(17px,2.2vw,20px)', fontWeight: 600, letterSpacing: '-.01em', lineHeight: 1.3 }}>{text}</div>
         : <Leer>{f === undefined ? 'lade …' : <>Noch kein Fokus {wann} — <Link href="/os/fokus" style={{ color: C.inkDim }}>worauf kommt es an? ›</Link></>}</Leer>}
@@ -382,9 +388,9 @@ export const WIDGETS: Record<string, WidgetDef> = {
   aufgaben: { art: 'aufgaben', label: 'Aufgaben', bereich: 'Tag', beschreibung: 'Fällige und kritische Aufgaben, Schnellanlage', breite: 4, Komponente: AufgabenWidget,
     einstellungen: [{ k: 'nur', label: 'Zeigt', art: 'wahl', optionen: [{ w: 'dran', label: 'fällig & kritisch' }, { w: 'alle', label: 'alle offenen' }], standard: 'dran' }, { k: 'space', label: 'Space', art: 'wahl', optionen: [{ w: 'alle', label: 'Privat und Business' }, { w: 'privat', label: 'nur Privat' }, { w: 'business', label: 'nur Business' }], standard: 'alle' }, { k: 'anzahl', label: 'Anzahl', art: 'wahl', optionen: [{ w: 5, label: '5' }, { w: 8, label: '8' }, { w: 12, label: '12' }], standard: 8 }] },
   termine: { art: 'termine', label: 'Termine', bereich: 'Tag', beschreibung: 'Heute oder die nächsten Tage aus dem Kalender', breite: 4, Komponente: TermineWidget,
-    einstellungen: [TAGE_WAHL, { k: 'business', label: 'KEMARIS-Termine dazu', art: 'schalter', standard: false }] },
+    einstellungen: [TAGE_WAHL, { k: 'space', label: 'Space', art: 'wahl', optionen: [{ w: 'alle', label: 'Privat und Business' }, { w: 'privat', label: 'nur Privat' }, { w: 'business', label: 'nur Business' }], standard: 'alle' }, { k: 'business', label: 'KEMARIS-Termine dazu', art: 'schalter', standard: false }] },
   fokus: { art: 'fokus', label: 'Fokus', bereich: 'Tag', beschreibung: 'Worauf es heute, diese Woche oder diesen Monat ankommt', breite: 2, Komponente: FokusWidget,
-    einstellungen: [{ k: 'horizont', label: 'Horizont', art: 'wahl', optionen: [{ w: 'auto', label: 'der nächste gesetzte' }, { w: 'tag', label: 'heute' }, { w: 'woche', label: 'Woche' }, { w: 'monat', label: 'Monat' }], standard: 'auto' }] },
+    einstellungen: [{ k: 'horizont', label: 'Horizont', art: 'wahl', optionen: [{ w: 'auto', label: 'der nächste gesetzte' }, { w: 'tag', label: 'heute' }, { w: 'woche', label: 'Woche' }, { w: 'monat', label: 'Monat' }], standard: 'auto' }, { k: 'space', label: 'Space', art: 'wahl', optionen: [{ w: 'alle', label: 'gemeinsam' }, { w: 'privat', label: 'Privat' }, { w: 'business', label: 'Business' }], standard: 'alle' }] },
   koerper: { art: 'koerper', label: 'Körper', bereich: 'Gesundheit', beschreibung: 'Recovery und Routinen von heute', breite: 2, Komponente: KoerperWidget },
   routinen: { art: 'routinen', label: 'Routinen & Streak', bereich: 'Gesundheit', beschreibung: 'Welche Routinen heute schon stehen, dein Streak', breite: 2, Komponente: RoutinenWidget },
   essen: { art: 'essen', label: 'Essen heute', bereich: 'Gesundheit', beschreibung: 'Die drei Mahlzeiten von heute mit Rezept und die offene Einkaufsliste', breite: 2, Komponente: EssenWidget },

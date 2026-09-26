@@ -1,7 +1,7 @@
 'use client';
 import { useSpace } from '@/hooks/useSpace';
 import { spaceVonKalender } from '@/lib/kalender/space';
-import { SPACE_LABEL } from '@/lib/make-one/space-regeln';
+import { SPACE_LABEL, fokusFuerSpace } from '@/lib/make-one/space-regeln';
 
 import Link from 'next/link';
 // ─── MAKE OS — Kalender (Woche) ─────────────────────────────────────────────
@@ -541,9 +541,9 @@ export function WochenplanView() {
         <Karte i={1}>
           <Ueberschrift farbe={LEUCHT.schlaf} rechts={!ziele.monat.length ? <Link href="/os/planung/monat" style={verweis}>Monatsziele anlegen ›</Link> : undefined}>Ziele</Ueberschrift>
           {!ziele.monat.length && !ziele.quartal.length && <Leer>Noch kein Monats- oder Quartalsziel — die Woche plant man gegen Ziele, nicht ins Blaue.</Leer>}
-          {(ziele.fokus?.woche || ziele.fokus?.monat) && (
+          {(fokusFuerSpace(ziele.fokus as Record<string, string> | undefined, spaceAusAdresse).woche || fokusFuerSpace(ziele.fokus as Record<string, string> | undefined, spaceAusAdresse).monat) && (
             <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(16px,2vw,18px)', fontWeight: 600, lineHeight: 1.4, marginBottom: 4 }}>
-              <span style={{ color: LEUCHT.schlaf }}>◎</span> {ziele.fokus?.woche || ziele.fokus?.monat}
+              <span style={{ color: LEUCHT.schlaf }}>◎</span> {fokusFuerSpace(ziele.fokus as Record<string, string> | undefined, spaceAusAdresse).woche || fokusFuerSpace(ziele.fokus as Record<string, string> | undefined, spaceAusAdresse).monat}
             </div>
           )}
           <Liste>

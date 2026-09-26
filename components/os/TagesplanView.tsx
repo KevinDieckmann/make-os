@@ -1,4 +1,6 @@
 'use client';
+import { useSpace } from '@/hooks/useSpace';
+import { fokusFuerSpace } from '@/lib/make-one/space-regeln';
 
 import Link from 'next/link';
 // ─── MAKE OS — Tagesplanung ─────────────────────────────────────────────────
@@ -75,6 +77,7 @@ function Ziehbar({ farbe, daten, children, breit }: { farbe: string; daten: obje
 }
 
 export function TagesplanView({ tag }: { tag?: string } = {}) {
+  const { ausAdresse: spaceAusAdresse } = useSpace();
   // Kevins Ansage: den nächsten Tag angucken können. Ohne Anker ist es heute.
   const heute = tag ?? localDay();
   const istHeute = heute === localDay();
@@ -190,8 +193,10 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   }
 
   // Der Fokus des Tages — fällt auf Woche, dann Monat zurück.
-  const fokusText = fokusAlle.tag || fokusAlle.woche || fokusAlle.monat || '';
-  const fokusQuelle = fokusAlle.tag ? 'Tag' : fokusAlle.woche ? 'Woche' : fokusAlle.monat ? 'Monat' : '';
+  // Im Space zählt der Space-Fokus, sonst der gemeinsame (26.09.).
+  const fokusSicht = fokusFuerSpace(fokusAlle, spaceAusAdresse);
+  const fokusText = fokusSicht.tag || fokusSicht.woche || fokusSicht.monat || '';
+  const fokusQuelle = fokusSicht.tag ? 'Tag' : fokusSicht.woche ? 'Woche' : fokusSicht.monat ? 'Monat' : '';
 
   // ── Fokusbereiche: Regler ≥ Schwelle + grobe Stichwort-Erkennung aus den Fokus-Texten ──
   const fokusSaeulen = useMemo(() => {

@@ -69,6 +69,14 @@ Sinn, überarbeite das Ganze hier auf dem Klickdummy“)**
   Gesamt, Head of Finance. Der Planer (Tag/Woche/Monat/Quartal/Jahr/Routinen) nimmt den Space in allen Reitern mit.
 - **Farben:** Privat Bernstein, Business Indigo wie in Malins Bild — keine Neonfarben; Leiste nach Malins Aufbau
   (Kästen mit Pfeil, Punkte darunter, unten Jarvis · Brain · System · Konto).
+- **Übersicht je Space** (Kevin: „Privat und Business separat aufbauen“): jeder Space hat als ersten Punkt seine
+  eigene Übersicht — ein eigenes Dashboard nur mit dem, was zu ihm gehört (Privat: Privat-Index, Fokus, Körper,
+  Aufgaben, Finanzen, Termine, Familie, Essen, Routinen, Jarvis · Business: Business-Index, Fokus, Traktion, Aufgaben,
+  Wer dran, Termine, Jarvis, Score). Home bleibt der Überblick über beide.
+- **Fokus je Space:** der Fokus-Satz je Horizont gibt es gemeinsam, privat und business (Kompass: Gemeinsam · Privat ·
+  Business; Jahres-/Quartals-/Monatsseite im Space schreibt den Space-Satz). Tages- und Wochenplaner zeigen im Space
+  den Space-Fokus, sonst den gemeinsamen. Widgets Fokus und Termine lassen sich auf einen Space begrenzen; Termine
+  tragen den Space ihres Kalenders.
 - **Jarvis kennt den aktiven Space:** jede Nachricht trägt Privat/Business mit; Jarvis antwortet aus dieser Sicht und
   legt Aufgaben im aktiven Space an (Werkzeug `create_task` hat das Feld `space`). Die Jahresseite zeigt im
   Privat-Space keinen Nordstern und nur Gesundheits-Meilensteine, im Business-Space Nordstern und Business-Meilensteine.
