@@ -196,6 +196,18 @@ lokal, Route `/os`, Port 3001.
   (Wunsch) oder `text` (eingefügtes Rezept, als `fremd()`); `/vorschlag` listet gespeicherte Gerichte (★ zuerst) und
   legt für sie kein neues Rezept an. Deep-Link `WEG.gericht(id)` → `?s=ernaehrung&g=<id>`.
 
+## Flächen & Widgets (seit 26.09.2026, auf `entwicklung`)
+- Kevins Ansage: alle Karten-Seiten je Person gestaltbar; Stift + langer Druck; Breite ⅓/½/⅔/voll; ausblenden;
+  Einstellungen; Katalog aus dem Bestand; Standard = heutiger Aufbau (wird NIE gespeichert, `istStandard`).
+- Modell `lib/flaeche/modell.ts` (`anwenden(standard, gespeichert)`, `wende(layout, op, standard)`), Store je Person
+  `speicherFuer('flaeche', person)`, Route `/api/state/flaeche?seite=` (GET/PUT). Tests `tests/flaeche.test.ts`.
+- Bauteil `components/os/flaeche/Flaeche.tsx`: `<Flaeche seite="x" widgets={[…]}>` für Katalog-Widgets und
+  `<Kachel id titel breite><Karte>…</Karte></Kachel>` für feste Karten einer Seite — beides in EINEM Raster
+  (6 Spalten, 8-px-Zeilen, ResizeObserver-Spans, dense). Neue Seite anschließen = Karten in `Kachel` wickeln, `seite`-Id
+  vergeben. Widgets in `components/os/flaeche/widgets.tsx` (selbstladend, `null` wenn es nichts gibt; Einstellungen
+  per `EinstellungDef`; Katalog-Einträge dürfen Voreinstellungen tragen).
+- Heute (`components/os/HeuteView.tsx`) ist die erste Fläche (`HEUTE_STANDARD`).
+
 ## Technik
 - TypeScript strikt: vor jedem Commit `npx tsc --noEmit` — null Fehler.
 - Node liegt bei Kevin unter `~/.local/node22/bin` (nicht im PATH). Server

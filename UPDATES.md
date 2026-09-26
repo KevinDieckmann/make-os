@@ -55,6 +55,20 @@ Ansage stehen, bis das nächste Update sie ablöst.
 
 _(hier sammeln, was auf `entwicklung` fertig ist)_
 
+**Seiten selbst gestalten — Flächen & Widgets (26.09., Kevin: „alle Widgets immer zu bearbeiten, andere hinzufügen;
+seine eigene Seite vorne soll man sich selber gestalten — auch wenn wir am Anfang unsere jetzt lassen“)**
+- **Heute ist die erste Fläche:** oben rechts „✎ Anpassen“ oder eine Karte länger gedrückt halten → Bearbeiten-Modus.
+  Dort: am ⋮⋮ ziehen (Maus und Finger), Breite ⅓ · ½ · ⅔ · volle Breite, ✕ ausblenden, ⚙ Einstellungen je Widget,
+  „+ Widget“ aus dem Katalog, „Zurücksetzen“. Jede Person hat ihr eigenes Layout (Kevin und Malin unabhängig);
+  der heutige Aufbau bleibt der Startstand, solange niemand etwas ändert.
+- **Katalog aus dem Bestand:** Aufgaben (fällig/alle, Anzahl), Termine heute, Nächste 7 Tage (privat + KEMARIS),
+  Fokus / Wochenfokus / Monatsfokus, Körper, Routinen & Streak, Essen heute (mit Foto und Rezept-Link, offene
+  Einkaufsliste), Business-/Privat-/Gesundheits-Index und Traktions-Score (mit Säulen), Finanzen · privat,
+  Jarvis & Inbox, Wer heute dran ist, Familie & Partnerschaft. Widgets zeigen nur, was es für die Person gibt.
+- Technik: `lib/flaeche/modell.ts` (rein, getestet), `/api/state/flaeche` je Person, `components/os/flaeche/`
+  (Flaeche + Kachel + Widget-Register). Raster mit 6 Spalten und dichtem Packen, am Handy eine Spalte. Weitere
+  Karten-Seiten folgen mit demselben Bauteil; die alte Startflächen-Schnittstelle ohne Oberfläche ist entfernt.
+
 **Ernährung & Einkauf zu zweit (26.09., Kevin: „Lebensmittel bevorzugt nehmen, meine Bedürfnisse und Malins, was wir
 zuhause haben soll benutzt werden, an jedem Gericht das Rezept“)** — Gesundheit → Ernährung
 - **Profile je Person:** Bedürfnisse & Regeln, Verträgt nicht, Nie, Gern, Ziel — jeder pflegt sein eigenes (Malin ihres in
