@@ -61,6 +61,16 @@ export type Kreis = 'A' | 'B' | 'C' | 'D';
 export const KREIS_TAKT: Record<Kreis, number> = { A: 30, B: 60, C: 90, D: 180 };
 export type Lebensphase = 'kontakt' | 'interessent' | 'kunde' | 'ex_kunde' | 'partner' | 'multiplikator';
 export const LEBENSPHASEN: readonly Lebensphase[] = ['kontakt', 'interessent', 'kunde', 'ex_kunde', 'partner', 'multiplikator'];
+/** Rollen (26.09., Kevin: „immer alles mehrfach klickbar — er kann Kunde, Multiplikator und Partner sein“): beliebig viele je Person, unabhängig von der Lebensphase. */
+export type Rolle = 'partner' | 'multiplikator' | 'dienstleister' | 'investor' | 'netzwerk' | 'freund';
+export const ROLLEN: readonly Rolle[] = ['partner', 'multiplikator', 'dienstleister', 'investor', 'netzwerk', 'freund'];
+export const ROLLE_LABEL: Record<Rolle, string> = { partner: 'Partner', multiplikator: 'Multiplikator', dienstleister: 'Dienstleister', investor: 'Investor', netzwerk: 'Netzwerk', freund: 'Freund' };
+/** Alle Rollen einer Person — die alte Lebensphase „partner/multiplikator“ zählt weiter als Rolle. */
+export function rollenVon(k: { rollen?: Rolle[]; lebensphase?: string }): Rolle[] {
+  const r = [...(k.rollen ?? [])];
+  if ((k.lebensphase === 'partner' || k.lebensphase === 'multiplikator') && !r.includes(k.lebensphase)) r.push(k.lebensphase);
+  return r;
+}
 
 export type Herkunft = 'selbst' | 'bekannt' | 'hubspot' | 'empfehlung' | 'recherche' | 'veranstaltung' | 'vertrag';
 export const HERKUNFT: { id: Herkunft; label: string; fremd: boolean }[] = [
@@ -141,6 +151,8 @@ export interface Kontakt {
   /** Beim Anreichern kein LinkedIn-Profil gefunden (Tag) — fällt aus der Vernetzen-Runde, bis ein Profil eingetragen wird. */
   linkedinNichtGefunden?: string;
   lebensphase?: Lebensphase;
+  /** Mehrfach: Partner, Multiplikator, Dienstleister, Investor, Netzwerk, Freund (26.09.). */
+  rollen?: Rolle[];
   anrede?: 'Sie' | 'Du';
   vorgestelltDurch?: string;
   einwilligungen?: Einwilligung[];
@@ -429,6 +441,7 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
   const ns = o.naechsterSchritt && typeof o.naechsterSchritt === 'object' ? o.naechsterSchritt as Record<string, unknown> : null;
   const kreis = ['A', 'B', 'C', 'D'].includes(String(o.kreis)) ? String(o.kreis) as Kreis : undefined;
   const lebensphase = LEBENSPHASEN.includes(o.lebensphase as Lebensphase) ? o.lebensphase as Lebensphase : undefined;
+  const rollen = Array.isArray(o.rollen) ? Array.from(new Set((o.rollen as unknown[]).filter((r): r is Rolle => ROLLEN.includes(r as Rolle)))).slice(0, ROLLEN.length) : undefined;
   const takt = Number(o.taktTage);
   const k: Kontakt = {
     id, vorname: String(o.vorname ?? '').trim().slice(0, 80), nachname: String(o.nachname ?? '').trim().slice(0, 80),
@@ -447,7 +460,7 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     notiz: txt(o.notiz, 2000), hubspotId: txt(o.hubspotId, 40), steckbrief: txt(o.steckbrief, 400),
     ...(/^f-[a-z0-9-]{2,60}$/.test(String(o.firmaId ?? '')) ? { firmaId: String(o.firmaId) } : {}),
     ...(kreis ? { kreis } : {}), ...(takt >= 7 && takt <= 730 ? { taktTage: Math.round(takt) } : {}),
-    ...(txt(o.besitzer, 40) ? { besitzer: txt(o.besitzer, 40) } : {}), ...(lebensphase ? { lebensphase } : {}), ...(leadSaeubern(o.lead) ? { lead: leadSaeubern(o.lead) } : {}),
+    ...(txt(o.besitzer, 40) ? { besitzer: txt(o.besitzer, 40) } : {}), ...(lebensphase ? { lebensphase } : {}), ...(rollen?.length ? { rollen } : {}), ...(leadSaeubern(o.lead) ? { lead: leadSaeubern(o.lead) } : {}),
     ...(netzwerkSaeubern(o.netzwerk) ? { netzwerk: netzwerkSaeubern(o.netzwerk) } : {}), ...(tag(o.linkedinNichtGefunden) ? { linkedinNichtGefunden: tag(o.linkedinNichtGefunden) } : {}),
     ...(o.anrede === 'Sie' || o.anrede === 'Du' ? { anrede: o.anrede } : {}), ...(txt(o.vorgestelltDurch, 60) ? { vorgestelltDurch: txt(o.vorgestelltDurch, 60) } : {}),
     ...(einwilligungen?.length ? { einwilligungen } : {}),

@@ -5,6 +5,7 @@
 // sind (Ampel grün); ohne Kanal zeigt die Auswertung die Aufteilung.
 
 import type { Kontakt } from '@/lib/make-one/crm';
+import { rollenVon } from '@/lib/make-one/crm';
 import type { CrmBestand, Firma, SegmentKriterien } from './typen';
 import { kanalStatus } from './recht';
 import { OFFENE_STUFEN } from './pipeline';
@@ -27,6 +28,7 @@ export function imSegment(k: Kontakt, kr: SegmentKriterien, ctx: SegmentKontext)
   if (k.werbesperre) return false;
   const f = k.firmaId ? ctx.firmen.get(k.firmaId) : undefined;
   if (kr.lebensphase?.length && !kr.lebensphase.includes(k.lebensphase ?? 'kontakt')) return false;
+  if (kr.rollen?.length && !rollenVon(k).some(r => kr.rollen!.includes(r))) return false;
   if (kr.kreis?.length && !kr.kreis.includes(k.kreis ?? '')) return false;
   if (kr.prio?.length && !kr.prio.includes(k.prio)) return false;
   if (kr.herkunft?.length && !kr.herkunft.includes(k.herkunft ?? '')) return false;

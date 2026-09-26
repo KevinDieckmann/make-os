@@ -67,6 +67,14 @@ _(hier sammeln, was auf `entwicklung` fertig ist)_
 - **Masterdatei online abgleichen** (Malin: „Datei nicht lesbar“): Markttraktion → Stammdaten → Import & Export hat
   jetzt „CSV-Datei wählen und abgleichen“ — die Datei wird hochgeladen (UTF-8 oder Excel-Export, bis 12 MB), dann läuft
   derselbe Abgleich wie vom Mac-Schreibtisch. Der Schreibtisch-Weg bleibt als zweiter Knopf (nur am Mac).
+- **Mehrfach-Zuordnung** (Kevin: „er kann Kunde, Multiplikator und Partner sein“): Kontakte haben jetzt **Rollen**
+  (mehrere zugleich: Partner, Multiplikator, Dienstleister, Investor, Netzwerk, Freund) neben der Lebensphase — in der
+  Akte unter Beziehung anklickbar, als Chips in Kartei und Akte, als Filter in Segmenten. Alte Lebensphase
+  „Partner/Multiplikator“ zählt weiter als Rolle.
+- **Fokus je Priorität und je Person** (Malin: „die Kreise 1–4, dann Kevin/Malin einzeln“): Kompass → Fokus hat oben
+  „Wir · Ich · <andere Person>“ — gemeinsamer Fokus, eigener Fokus (nur selbst änderbar), der der anderen Person nur
+  lesbar; unter den Horizonten je Satz für die vier obersten Prioritäten. Eigene Ziele/Fokus liegen je Person
+  (`ziele-eigen--<person>`), die gemeinsamen bleiben in `ziele`.
 
 **Seiten selbst gestalten — Flächen & Widgets (26.09., Kevin: „alle Widgets immer zu bearbeiten, andere hinzufügen;
 seine eigene Seite vorne soll man sich selber gestalten — auch wenn wir am Anfang unsere jetzt lassen“)**

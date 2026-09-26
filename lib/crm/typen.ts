@@ -221,6 +221,8 @@ export interface Teilnahme {
 /** Ein Segment = gespeicherter Filter über die Kartei (für Kampagnen, Einladungen, Newsletter). */
 export interface SegmentKriterien {
   lebensphase?: string[]; kreis?: string[]; prio?: string[]; firmaRolle?: string[]; herkunft?: string[];
+  /** Rollen der Person (mehrfach, 26.09.) — trifft, wenn eine der gewählten dabei ist. */
+  rollen?: string[];
   branche?: string; stadt?: string; stichwort?: string;
   /** Nur, wer über diesen Kanal zulässig erreichbar ist (Ampel grün, bei 'persoenlich' alle). */
   kanal?: 'mail' | 'telefon' | 'linkedin' | 'newsletter' | 'einladung';

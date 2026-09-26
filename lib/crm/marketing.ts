@@ -245,6 +245,7 @@ const KANAL_TEXT: Record<string, string> = { mail: 'Mail', telefon: 'Telefon', l
 export function kriterienText(kr: SegmentKriterien): string {
   const t: string[] = [];
   if (kr.lebensphase?.length) t.push(kr.lebensphase.map(p => PHASE_TEXT[p] ?? p).join(', '));
+  if (kr.rollen?.length) t.push(`Rolle ${kr.rollen.join(', ')}`);
   if (kr.kreis?.length) t.push(`Kreis ${kr.kreis.join(', ')}`);
   if (kr.prio?.length) t.push(`Prio ${kr.prio.join(', ')}`);
   if (kr.firmaRolle?.length) t.push(`Firma: ${kr.firmaRolle.join(', ')}`);

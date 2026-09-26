@@ -11,10 +11,7 @@ import { useEffect, useState, type ReactNode, type KeyboardEvent as TastenEreign
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Ueberschrift, Knopf, Punkt, feld, LEUCHT } from '../schlank';
 import { WEG } from '@/lib/wege';
-import {
-  anzeigename, STUFE_LABEL, STUFEN, KREIS_TAKT, HERKUNFT, RECHTSGRUNDLAGEN,
-  type Kontakt, type Kreis, type Lebensphase, type Einwilligung, type EinwilligungKanal, type Grundlage, type Stufe, type Herkunft, type Rechtsgrundlage, type AktivitaetArt,
-} from '@/lib/make-one/crm';
+import { anzeigename, STUFE_LABEL, STUFEN, KREIS_TAKT, HERKUNFT, RECHTSGRUNDLAGEN, type Kontakt, type Kreis, type Lebensphase, type Einwilligung, type EinwilligungKanal, type Grundlage, type Stufe, type Herkunft, type Rechtsgrundlage, type AktivitaetArt, ROLLEN as KONTAKT_ROLLEN, ROLLE_LABEL, rollenVon, type Rolle } from '@/lib/make-one/crm';
 import type { Firma } from '@/lib/crm/typen';
 import { art14 } from '@/lib/crm/recht';
 import { PERSON_FELDER, FIRMA_FELDER, FIRMA_FELDER_IMPORT, EINORDNUNG_FELDER, HERKUNFT_FELDER, gefuellt, vollstaendigkeit, type MatrixFeld } from '@/lib/crm/akte';
@@ -23,7 +20,7 @@ import { netzStufe, profilAdresse, suchLink } from '@/lib/crm/netzwerk';
 import { markttraktion, mandateLink } from '@/lib/crm/adresse';
 import Link from 'next/link';
 import { type CrmApi, neueId, datum, euro } from './daten';
-import { NotizFormular, Verlauf, Feldzeile, Pillen, Feld, festhalten, hatMailEinwilligung } from './teile';
+import { NotizFormular, Verlauf, Feldzeile, Pillen, Feld, festhalten, hatMailEinwilligung, MehrfachPillen } from './teile';
 import { ZustaendigWahl, Uebergeben, Person } from './team';
 import { neueFirma, ROLLEN } from './Firmen';
 
@@ -71,6 +68,7 @@ export function BeziehungTeil({ k, api, setze }: { k: Kontakt; api: CrmApi; setz
       <Ueberschrift>Beziehung</Ueberschrift>
       <Feldzeile label="Kreis"><Pillen liste={KREISE} aktiv={k.kreis} onWahl={kreis => void setze({ kreis: kreis === k.kreis ? undefined : kreis })} farbe={LEUCHT.beziehung} /></Feldzeile>
       <Feldzeile label="Phase"><Pillen liste={PHASEN} aktiv={k.lebensphase ?? 'kontakt'} onWahl={lebensphase => void setze({ lebensphase })} /></Feldzeile>
+      <Feldzeile label="Rollen"><MehrfachPillen liste={KONTAKT_ROLLEN.map(r => ({ id: r, label: ROLLE_LABEL[r] }))} aktiv={rollenVon(k)} onWahl={(rollen: Rolle[]) => void setze({ rollen })} farbe={LEUCHT.business} /></Feldzeile>
       <Feldzeile label="Ansprache"><Pillen liste={STUFEN.map(s => ({ id: s, label: STUFE_LABEL[s] }))} aktiv={k.stufe} onWahl={(stufe: Stufe) => void setze({ stufe })} /></Feldzeile>
       <Feldzeile label="Anrede"><Pillen liste={[{ id: 'Sie', label: 'Sie' }, { id: 'Du', label: 'Du' }]} aktiv={k.anrede} onWahl={anrede => void setze({ anrede: anrede as 'Sie' | 'Du' })} /></Feldzeile>
       <Feldzeile label="Hält die Beziehung"><ZustaendigWahl wert={k.besitzer} welt="sales" onWahl={besitzer => void setze({ besitzer })} /></Feldzeile>

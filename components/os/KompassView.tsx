@@ -71,6 +71,10 @@ export function KompassView() {
   // Der Fokus je Horizont liegt in denselben Zielen, aus denen Tag, Woche und
   // Jarvis lesen — hier wird er gesetzt, dort wirkt er.
   const [fokus, setFokus] = useState<Record<string, string>>({});
+  // Wessen Fokus (26.09., Malin: „selektieren als Kevin, Malin einzeln“): wir · ich · die andere Person (nur lesen)
+  const [wessen, setWessen] = useState<'wir' | 'ich' | string>('wir');
+  const [fokusLesend, setFokusLesend] = useState(false);
+  const [personen, setPersonen] = useState<{ ich: string; andere: { speicher: string; name: string }[] }>({ ich: '', andere: [] });
 
   useEffect(() => {
     fetch('/api/state/kompass').then(r => r.json()).then(d => {
@@ -81,20 +85,26 @@ export function KompassView() {
     fetch('/api/state/ordnung').then(r => r.json()).then(d => {
       if (Array.isArray(d.reihenfolge) && d.reihenfolge.length) setReihenfolge(d.reihenfolge);
     }).catch(() => {});
-    fetch('/api/state/ziele').then(r => r.json()).then(d => setFokus(d.fokus ?? {})).catch(() => {});
+    fetch('/api/konto/ich').then(r => r.json()).then((d: { ich?: { speicher: string }; andere?: { speicher: string; name?: string; haushalt?: string }[] }) => {
+      if (d.ich) setPersonen({ ich: d.ich.speicher, andere: (d.andere ?? []).map(a => ({ speicher: a.speicher, name: (a.name ?? a.speicher).split(' ')[0] })) });
+    }).catch(() => {});
   }, []);
+  useEffect(() => {
+    fetch(`/api/state/ziele?fuer=${encodeURIComponent(wessen)}`).then(r => r.json()).then(d => { setFokus(d.fokus ?? {}); setFokusLesend(d.darfSchreiben === false); }).catch(() => {});
+  }, [wessen]);
 
   // Die Route nimmt einen Horizont je Aufruf — genau den geänderten.
-  const fokusSpaeter = useNachspeichern<{ h: string; text: string }>(({ h, text }) => {
+  const fokusSpaeter = useNachspeichern<{ h: string; text: string; fuer: string }>(({ h, text, fuer }) => {
     fetch('/api/state/ziele', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ horizont: h, fokus: text }), keepalive: true,
+      body: JSON.stringify({ horizont: h, fokus: text, fuer }), keepalive: true,
     }).catch(() => {});
   }, 500);
 
   /** Fokus-Satz setzen — sofort sichtbar, kurz gebündelt geschrieben. */
   function fokusSetzen(h: string, text: string) {
-    fokusSpaeter({ h, text });
+    if (fokusLesend) return;
+    fokusSpaeter({ h, text, fuer: wessen });
     setFokus(prev => {
       const next = { ...prev, [h]: text };
       return next;
@@ -386,7 +396,13 @@ export function KompassView() {
           geben und welchen Fokus." Der Satz je Horizont steht in denselben
           Daten, aus denen Jarvis, der Tagesplan und die Wochensicht lesen. */}
       <Karte i={k++}>
-        <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Chip farbe={gesetzt === HORIZONTE.length ? LEUCHT.gut : gesetzt ? LEUCHT.achtung : C.inkLeise}>{gesetzt} von {HORIZONTE.length} gesetzt</Chip>}>Unser Fokus</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Chip farbe={gesetzt === HORIZONTE.length ? LEUCHT.gut : gesetzt ? LEUCHT.achtung : C.inkLeise}>{gesetzt} von {HORIZONTE.length} gesetzt</Chip>}>{wessen === 'wir' ? 'Unser Fokus' : wessen === 'ich' ? 'Mein Fokus' : `Fokus von ${personen.andere.find(a => a.speicher === wessen)?.name ?? wessen}`}</Ueberschrift>
+        {/* Wessen Fokus (26.09.): gemeinsam, meiner, der der anderen Person (nur lesen) */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+          {([['wir', 'Wir'], ['ich', 'Ich']] as const).map(([id, label]) => chip(wessen === id, LEUCHT.schlaf, label, () => setWessen(id), id))}
+          {personen.andere.map(a => chip(wessen === a.speicher, LEUCHT.beziehung, a.name, () => setWessen(a.speicher), a.speicher))}
+          <span style={{ fontSize: 12, color: C.inkLeise }}>{fokusLesend ? 'nur lesen — jeder pflegt seinen eigenen' : wessen === 'wir' ? 'gemeinsam, beide dürfen ändern' : 'nur du, die andere Person kann ihn sehen'}</span>
+        </div>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 10 }}>Ein Satz je Horizont. Was hier steht, taucht im Tag, in der Woche und bei Jarvis wieder auf.</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {HORIZONTE.map(h => (
@@ -394,10 +410,29 @@ export function KompassView() {
               <span style={{ ...MIKRO, width: 62, flex: '0 0 auto' }}>{h.label}</span>
               <input
                 value={fokus[h.id] ?? ''}
+                readOnly={fokusLesend}
                 onChange={e => fokusSetzen(h.id, e.target.value)}
-                placeholder={h.frage}
+                placeholder={fokusLesend ? '—' : h.frage}
                 aria-label={`Fokus ${h.label}`}
-                style={{ ...feld, fontWeight: fokus[h.id] ? 600 : 400 }}
+                style={{ ...feld, fontWeight: fokus[h.id] ? 600 : 400, opacity: fokusLesend ? 0.8 : 1 }}
+              />
+            </div>
+          ))}
+        </div>
+        {/* Fokus je Priorität (Malin 26.09.: „die Kreise 1–4“): die vier obersten Prioritäten bekommen je einen Satz. */}
+        <div style={{ ...MIKRO, margin: '16px 0 8px' }}>Je Priorität</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {themen.slice(0, 4).map((b, i) => (
+            <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.zahl, fontWeight: 700, color: b.farbe, width: 28, textAlign: 'center', flex: '0 0 auto', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
+              <span style={{ ...MIKRO, width: 110, flex: '0 0 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={b.label}>{b.label}</span>
+              <input
+                value={fokus[`prio:${b.id}`] ?? ''}
+                readOnly={fokusLesend}
+                onChange={e => fokusSetzen(`prio:${b.id}`, e.target.value)}
+                placeholder={fokusLesend ? '—' : `Worauf es bei „${b.label}“ gerade ankommt`}
+                aria-label={`Fokus ${b.label}`}
+                style={{ ...feld, fontWeight: fokus[`prio:${b.id}`] ? 600 : 400, opacity: fokusLesend ? 0.8 : 1 }}
               />
             </div>
           ))}

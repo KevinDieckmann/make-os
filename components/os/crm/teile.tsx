@@ -177,6 +177,18 @@ export function Feldzeile({ label, children }: { label: string; children: ReactN
   );
 }
 
+/** Mehrere Pillen zugleich an (26.09., Kevin: „immer alles mehrfach klickbar“). */
+export function MehrfachPillen<T extends string>({ liste, aktiv, onWahl, farbe = C.aktiv }: { liste: { id: T; label: string }[]; aktiv: T[]; onWahl: (ids: T[]) => void; farbe?: string }) {
+  return (
+    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+      {liste.map(l => {
+        const an = aktiv.includes(l.id);
+        return <button key={l.id} onClick={e => { e.stopPropagation(); onWahl(an ? aktiv.filter(x => x !== l.id) : [...aktiv, l.id]); }} className="fassbar" aria-pressed={an} style={{ fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${an ? farbe : 'rgba(255,255,255,.1)'}`, background: an ? `${farbe}22` : 'transparent', color: an ? farbe : C.inkDim }}>{an ? '✓ ' : ''}{l.label}</button>;
+      })}
+    </div>
+  );
+}
+
 export function Pillen<T extends string>({ liste, aktiv, onWahl, farbe = C.aktiv, einzeilig }: { liste: { id: T; label: string }[]; aktiv: T | null | undefined; onWahl: (id: T) => void; farbe?: string; einzeilig?: boolean }) {
   return (
     <div style={{ display: 'flex', gap: 4, flexWrap: einzeilig ? 'nowrap' : 'wrap', whiteSpace: einzeilig ? 'nowrap' : undefined }}>
