@@ -36,8 +36,8 @@ export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: Crm
   const breit = useBreit();
   const [ansicht, setAnsicht] = useState<Ansicht>('alle');
   const [mehr, setMehr] = useState(80);
-  const firmen = api.crm?.stand.firmen ?? [];
-  const kontakte = api.kontakte ?? [];
+  const firmen = useMemo(() => api.crm?.stand.firmen ?? [], [api.crm]);
+  const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
   const personenJe = useMemo(() => { const m = new Map<string, number>(); for (const k of kontakte) if (k.firmaId) m.set(k.firmaId, (m.get(k.firmaId) ?? 0) + 1); return m; }, [kontakte]);
   const dubl = useMemo(() => (ansicht === 'dubletten' ? firmenDubletten(firmen) : []), [ansicht, firmen]);
   const ANSICHTEN: { id: Ansicht; label: string }[] = [

@@ -45,7 +45,10 @@ const nextConfig = {
       { source: '/os/kunden', destination: '/os/crm?s=kunden', permanent: false },
       { source: '/os/ernaehrung', destination: '/os/gesundheit?s=ernaehrung', permanent: false },
       { source: '/os/energie', destination: '/os/gesundheit?s=koerper', permanent: false },
-      { source: '/os/woche', destination: '/os/gesundheit?s=koerper', permanent: false },
+      // 26.09.: der alte Wochen-Rhythmus lebt im Wochenplaner (nicht mehr unter Gesundheit).
+      { source: '/os/woche', destination: '/os/planung/woche', permanent: false },
+      // 02.08.: die Fokus-Regler leben im Kompass.
+      { source: '/os/planung/fokus', destination: '/os/kompass', permanent: false },
     ];
   },
 };

@@ -25,7 +25,7 @@ export function Abhaengigkeit({ t, alle, patchTask }: {
   const [suche, setSuche] = useState('');
   const [auf, setAuf] = useState(false);
 
-  const deps = t.dependencies ?? [];
+  const deps = useMemo(() => t.dependencies ?? [], [t.dependencies]);
   const nachId = useMemo(() => new Map(alle.map(x => [x.id, x])), [alle]);
   const blocker = deps.map(d => ({ d, b: nachId.get(d.blockedByTaskId) })).filter(x => x.b);
   const konflikt = terminKonflikt(t, alle);

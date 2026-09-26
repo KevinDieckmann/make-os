@@ -46,7 +46,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   const [markiert, setMarkiert] = useState(0);
   const [anlegen, setAnlegen] = useState(false);
   const sucheRef = useRef<HTMLInputElement>(null);
-  const kontakte = api.kontakte ?? [];
+  const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
   const crm = api.crm;
   const heute = crm?.heute ?? new Date().toISOString().slice(0, 10);
   const firmen = useMemo(() => new Map((crm?.stand.firmen ?? []).map(f => [f.id, f])), [crm]);

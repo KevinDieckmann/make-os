@@ -211,7 +211,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   const passtZumFokus = (r: Routine) => fokusSaeulen.has(KATEGORIE_ZU_SAEULE[r.kategorie] ?? '');
 
   // Routine-Häkchen — derselbe Store wie im Gesundheits-Cockpit.
-  const erledigt = new Set(hlog[heute] ?? []);
+  const erledigt = useMemo(() => new Set(hlog[heute] ?? []), [hlog, heute]);
   function toggleRoutine(id: string) {
     const tag = new Set(hlog[heute] ?? []);
     if (tag.has(id)) tag.delete(id); else tag.add(id);
@@ -256,7 +256,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   // ── Durchgeplant-Check (deterministisch, keine KI) ──
   const faelligHeute = tasksState.tasks.filter(t => t.status !== 'done' && t.dueDate === heute);
   const ueberfaellig = tasksState.tasks.filter(t => t.status !== 'done' && t.dueDate && t.dueDate < heute);
-  const geplantTasks = new Set(meine.filter(b => b.taskId).map(b => b.taskId));
+  const geplantTasks = useMemo(() => new Set(meine.filter(b => b.taskId).map(b => b.taskId)), [meine]);
   const check = useMemo(() => {
     const fokusMin = meine.filter(b => b.art === 'fokus').reduce((s, b) => s + b.dauerMin, 0);
     const wochenende = [0, 6].includes(new Date(`${heute}T12:00:00`).getDay());

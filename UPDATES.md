@@ -341,6 +341,19 @@ Nach dem Update: alle müssen sich einmal neu anmelden (Sitzungsgeheimnis und ne
 Malin einladen: unter Konto → Einladung im Feld „Vorname“ **Malin** eintragen — dann bekommt sie ihre Bestände.
 Offen (bewusst): `public/make-os.html` (Juli-Klickdummy) könnte ganz raus — Kevins Entscheidung.
 
+### Durchsicht der ganzen Software (26.09. spät, nur lokal)
+
+- Prod-Bau geprüft (Port 3011, Testkonto): rund 100 GET-Routen und 70 Seiten — keine 500er, keine React-Laufzeitfehler.
+  Alle Routen zusammen 0,9 s, alle Seiten 0,5 s. Die „extrem langsame Ladezeit“ lokal war die Dev-Kompilierung (bis 55 s je Route beim ersten Treffer), nicht die Software.
+- Behoben: doppelte Weiterleitungen — die Seiten unter `/os/ernaehrung`, `/os/energie`, `/os/woche`, `/os/planung/fokus` waren toter Code,
+  weil `next.config.mjs` gewinnt; `/os/woche` zeigte dadurch auf Gesundheit statt auf den Wochenplaner. Alt-Adressen leben jetzt nur noch in `next.config.mjs`.
+  Ernährung/Energie-Verweise (`WEG`) gehen ohne Umweg ans Ziel. Das alte V1-Cockpit (`public/finanz-dashboard.html`) warf in der Jahresübersicht einen Fehler.
+  9 Lint-Warnungen (unnötige Neuberechnungen in Tagesplaner, Inbox, Kartei, Firmen, Abhängigkeiten) — Lint, tsc und 771 Tests sauber.
+- Offen, braucht Kevins Wort (Löschen): alte englische Seitengruppe `/dashboard`, `/tasks`, `/calendar`, `/wellness`, `/dog`, `/groceries`, `/routines`
+  (Juli-Prototyp, 65 Dateien, nirgends verlinkt, per Adresse erreichbar); tote API-Routen ohne Aufrufer (`/api/startflaeche`, `/api/state/dashboard`,
+  `/api/state/arbeitsplatz`, `/api/apple-contacts`, `/api/netzwerk/*`, `/api/state/netzwerk`, `/api/eingang`, `/api/crm/umzug`);
+  ungenutzte Pakete (`@radix-ui/*`, `class-variance-authority`, `cmdk`).
+
 ## Ablauf eines Updates (Checkliste)
 
 1. Auf `entwicklung`: `tsc`, `next lint`, `vitest run` grün; Probe-Build (`MAKE_OS_DIST=.next-pruefbau npx next build`, danach Ordner löschen).

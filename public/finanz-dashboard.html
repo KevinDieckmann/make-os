@@ -2862,7 +2862,7 @@ function renderMonat(){
 }
 
 function renderJahr(){
-  var c=S.s.cfg;
+  var c=S.s.cfg,mon=S.s.mon||[];
   var sb=_sbCalc();
   var t=sb.t;
   txt('ov-ja-umsatz',E(sb.n>0?sb.tu/sb.n:0));txt('ov-ja-gewinn',E(sb.n>0?sb.tg/sb.n:0));txt('ov-ja-prog',E(sb.n>0?sb.tu/sb.n*12:0));txt('ov-ja-tax',E(t.tot));

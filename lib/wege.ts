@@ -69,9 +69,9 @@ export const WEG = {
   // Gesundheit — persönlich; `fuer` zeigt die andere Person, wenn sie teilt.
   gesundheit: (abschnitt?: 'morgen' | 'routinen' | 'haut' | 'streak' | 'index', fuer?: string) => q('/os/gesundheit', { fuer }, abschnitt),
   journal: () => '/os/journal',
-  ernaehrung: () => '/os/ernaehrung',
+  ernaehrung: () => '/os/gesundheit?s=ernaehrung',
   gericht: (id: string) => `/os/gesundheit?s=ernaehrung&g=${encodeURIComponent(id)}`,
-  energie: () => '/os/energie',
+  energie: () => '/os/gesundheit?s=koerper',
   verbindungen: () => '/os/verbindungen',
   saeule: (key: 'health' | 'planning' | 'finance' | 'social' | 'agents') => `/os/saeule/${key}`,
   wachstum: () => '/os/wachstum',

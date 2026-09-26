@@ -261,6 +261,12 @@ lokal, Route `/os`, Port 3001.
 - Stores: JSON-Dateien unter `.data/` via `lib/store/local-db.ts`
   (loadJson/updateJson). API-Gate: `x-make-key`-Header (MAKE_OS_KEY).
 - `route.ts` darf keine Extra-Exporte tragen (Next) — geteilte Typen in `lib/`.
+- Alt-Adressen nur in `next.config.mjs` `redirects()` — keine Weiterleitungs-Seiten
+  unter `app/` (die Config gewinnt, die Seite wird toter Code; am 26.09. zeigte
+  `/os/woche` so aufs falsche Ziel). Umgekehrt darf eine echte Seite keine
+  Config-Weiterleitung mehr haben (Falle `/os/uebersicht`). Prüfrezept für die
+  ganze Software: Prod-Bau `make-os-pruefbau` (3011) + Testkonto + Seiten-Crawl
+  (siehe UPDATES.md „Durchsicht 26.09.“).
 - Seiteneffekte nie im setState-Updater (StrictMode führt doppelt aus).
 - KI-Aufrufe über `lib/anthropic.ts` (askText/askJson) — nie direkt.
 - `main` bleibt immer lauffähig: Feature-Branches, kleine Commits, Merge nach

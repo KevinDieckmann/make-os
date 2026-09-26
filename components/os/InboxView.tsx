@@ -9,7 +9,7 @@
 // Farben aus design.ts) — gleiche Funktion, neue Darstellung.
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useNachspeichern } from '@/lib/make-one/nachspeichern';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
@@ -206,7 +206,7 @@ export function InboxView() {
       setLoading(false);
     }).catch(() => { setSync(s => ({ ...s, apple: 'nicht erreichbar' })); setLoading(false); });
   }
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- einmal beim Öffnen laden
 
   // ── Jarvis-Triage: Cache laden, dann alles Uneingeteilte automatisch einstufen ──
   useEffect(() => {
@@ -240,18 +240,19 @@ export function InboxView() {
     setStatus({ ...status, [id]: { status: s, at: new Date().toISOString(), ...(bis ? { bis } : {}) } });
     merken(id, s, bis);
   }
-  const statusOf = (id: string) => status[id]?.status ?? 'offen';
   const heuteTag = localDay();
+  // Die drei Helfer sind gemerkt, damit die gefilterte Liste unten nur bei echten Änderungen neu rechnet.
+  const statusOf = useCallback((id: string) => status[id]?.status ?? 'offen', [status]);
   /** Offen JETZT: snoozed mit bis in der Zukunft ist unsichtbar — danach ⏰ Wiedervorlage. */
-  const istOffen = (id: string) => {
+  const istOffen = useCallback((id: string) => {
     const e = status[id];
     if (!e || OPEN.has(e.status)) {
       if (e?.status === 'snoozed' && e.bis && e.bis > heuteTag) return false;
       return !e || OPEN.has(e.status);
     }
     return false;
-  };
-  const istWiedervorlage = (id: string) => status[id]?.status === 'snoozed' && !!status[id]?.bis && status[id]!.bis! <= heuteTag;
+  }, [status, heuteTag]);
+  const istWiedervorlage = useCallback((id: string) => status[id]?.status === 'snoozed' && !!status[id]?.bis && status[id]!.bis! <= heuteTag, [status, heuteTag]);
 
   // ── „→ Aufgabe" aus einer Mail ──
   // Duplikat-Wache: zu zweit landet dieselbe Mail schnell zweimal im Board —
@@ -410,7 +411,7 @@ export function InboxView() {
       (istWiedervorlage(b.id) ? 1 : 0) - (istWiedervorlage(a.id) ? 1 : 0) ||
       stufeRang(triage[fpOf(a)]?.stufe) - stufeRang(triage[fpOf(b)]?.stufe) ||
       b.receivedAt.localeCompare(a.receivedAt));
-  }, [msgs, status, seg, srcFilter, fachFilter, q, triage, absender]);
+  }, [msgs, seg, srcFilter, fachFilter, q, triage, absender, statusOf, istOffen, istWiedervorlage]);
 
   /** Wie viel liegt in jedem Fach — Zahlen an den Reitern. */
   const fachZahlen = useMemo(() => {
