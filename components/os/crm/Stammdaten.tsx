@@ -1,60 +1,68 @@
 'use client';
 
 // ─── Markttraktion · Stammdaten — sauber halten, was alles andere trägt ───────────────
-// Übersicht (Selbstprüfung + was zu tun ist) · Datenqualität (Vollständigkeit,
-// Dubletten, Firmen-Abgleich) · Wertelisten (Stufen mit Wahrscheinlichkeit,
-// Verlustgründe, Herkunft, Rechtsgrundlagen) · Datenschutz (Pflichtangaben,
-// Löschkonzept, Betroffenenanträge, Verzeichnis nach Art. 30) · Import & Export.
+// Übersicht (Selbstprüfung + was zu tun ist + Bestand + Verweise auf Produkte,
+// Segmente, Team) · Datenqualität (Vollständigkeit, Dubletten, Firmen-Abgleich)
+// · Wertelisten (Stufen mit Wahrscheinlichkeit, Verlustgründe, Kadenz je Kreis,
+// Gesprächsergebnisse, Ziele, Herkunft, Rechtsgrundlagen — stammdaten/Wertelisten.tsx)
+// · Datenschutz (Pflichtangaben, Betroffenenanträge, Löschkonzept, Verzeichnis
+// nach Art. 30) · Import & Export (stammdaten/Austausch.tsx).
+// Adresse: /os/markttraktion?s=stammdaten&a=<Unter-Reiter> — der Unter-Reiter
+// kommt als `start` herein und geht über `onAnsicht` zurück in den Link.
 // Grundkonzept aus den Stammdaten von KEMARIS Operations, eigener Code.
 
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, Zahl, Raster, Fortschritt, Liste, Zeile, Punkt, LEUCHT } from '../schlank';
-import { HERKUNFT, RECHTSGRUNDLAGEN, ERGEBNISSE } from '@/lib/make-one/crm';
+import { HERKUNFT, RECHTSGRUNDLAGEN } from '@/lib/make-one/crm';
 import type { Antrag, AntragArt, Verarbeitung } from '@/lib/crm/typen';
-import type { Kpi } from '@/lib/crm/kennzahlen';
 import type { Befund } from '@/lib/crm/befunde';
-import type { Pruefpunkt } from '@/lib/crm/datenschutz';
 import { type CrmApi, neueId, datum } from './daten';
 import { Pillen, Feld, Feldzeile } from './teile';
+import type { StammdatenDaten as Daten, StammdatenPost } from './stammdaten/typen';
+import { Laedt } from './stammdaten/Laden';
+import { Wertelisten } from './stammdaten/Wertelisten';
+import { Austausch } from './stammdaten/Austausch';
+import { Verweise } from './stammdaten/Verweise';
 
 type Unter = 'uebersicht' | 'qualitaet' | 'wertelisten' | 'datenschutz' | 'austausch';
 const UNTER: { id: Unter; label: string }[] = [{ id: 'uebersicht', label: 'Übersicht' }, { id: 'qualitaet', label: 'Datenqualität' }, { id: 'wertelisten', label: 'Wertelisten' }, { id: 'datenschutz', label: 'Datenschutz' }, { id: 'austausch', label: 'Import & Export' }];
+const unterAus = (a?: string): Unter => UNTER.find(u => u.id === a)?.id ?? 'uebersicht';
 const P_FARBE = { erfuellt: LEUCHT.gut, teilweise: LEUCHT.achtung, offen: LEUCHT.kritisch } as const;
 const ANTRAG_ART: { id: AntragArt; label: string }[] = [{ id: 'auskunft', label: 'Auskunft (Art. 15)' }, { id: 'berichtigung', label: 'Berichtigung (16)' }, { id: 'loeschung', label: 'Löschung (17)' }, { id: 'einschraenkung', label: 'Einschränkung (18)' }, { id: 'uebertragbarkeit', label: 'Übertragbarkeit (20)' }, { id: 'widerspruch', label: 'Widerspruch (21)' }];
-const ERG_LABEL: Record<string, string> = { gespraech: 'Gespräch', termin: 'Termin', mailbox: 'Mailbox', nicht_erreicht: 'nicht erreicht', rueckruf: 'Rückruf', kein_bedarf: 'kein Bedarf', sperre: 'Sperre (Widerspruch)' };
 
-interface Daten {
-  heute: string; kennzahlen: Kpi[]; befunde: Befund[]; selbstpruefung: Pruefpunkt[];
-  qualitaet: { kontakte: number; firmen: number; vollstaendigkeit: { feld: string; label: string; anzahl: number; anteil: number }[]; dublettenPersonen: number; dublettenFirmen: number; ohneFirmenverweis: number; art14: number; speicherbegrenzung: number; werbesperren: { id: string; seit: string }[] };
-  wertelisten: { stufen: { id: string; label: string; standard: number; p: number; vonHand: boolean; weiterWenn: string; offen: boolean }[]; verlustgruende: { grund: string; anzahl: number }[] };
-  letzterImport: { zeit: string; text: string } | null;
-  pflichtangaben: { anzahl: number; herkunft: Record<string, number>; rechtsgrundlage: Record<string, number>; fremddaten: number; beispiele: { name: string; herkunft?: string; rechtsgrundlage?: string; fremddaten: boolean; grund: string }[] };
-  loeschregeln: { id: string; titel: string; frist: string; aktion: string; norm: string }[];
-  speicherbegrenzung: { id: string; name: string; seit: string }[];
-  antraege: Antrag[]; verarbeitungen: Verarbeitung[]; loeschprotokoll: { id: string; datum: string; grund: string; von: string }[];
-}
+export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { api: CrmApi; zuBereich: (b: string, ansicht?: string) => void; zuKontakt: (id: string) => void; start?: string; onAnsicht?: (a: string) => void }) {
+  // Mit `onAnsicht` ist der Link die Wahrheit (Zurück führt zum vorigen Unter-Reiter); ohne läuft es lokal wie bisher.
+  const [lokal, setLokal] = useState<Unter>(unterAus(start));
+  const unter: Unter = onAnsicht ? unterAus(start) : lokal;
+  const waehle = (u: Unter) => { setLokal(u); onAnsicht?.(u === 'uebersicht' ? '' : u); };
+  useEffect(() => { if (start && UNTER.some(u => u.id === start)) setLokal(start as Unter); }, [start]);
 
-export function Stammdaten({ api, zuBereich, zuKontakt, start }: { api: CrmApi; zuBereich: (b: string, ansicht?: string) => void; zuKontakt: (id: string) => void; start?: string }) {
-  const [unter, setUnter] = useState<Unter>((UNTER.find(u => u.id === start)?.id) ?? 'uebersicht');
   const [d, setD] = useState<Daten | null>(null);
+  const [ladeFehler, setLadeFehler] = useState<string | null>(null);
   const [meldung, setMeldung] = useState('');
   const [laeuft, setLaeuft] = useState(false);
-  const laden = useCallback(() => fetch('/api/crm/stammdaten', { cache: 'no-store' }).then(r => r.json()).then(x => x.ok && setD(x)).catch(() => {}), []);
+  const laden = useCallback(async () => {
+    setLadeFehler(null);
+    try {
+      const r = await fetch('/api/crm/stammdaten', { cache: 'no-store' });
+      const x = await r.json().catch(() => null);
+      if (x?.ok) setD(x); else setLadeFehler(x?.fehler ?? `Antwort ${r.status}.`);
+    } catch { setLadeFehler('Keine Verbindung.'); }
+  }, []);
   useEffect(() => { void laden(); }, [laden]);
-  useEffect(() => { if (start && UNTER.some(u => u.id === start)) setUnter(start as Unter); }, [start]);
-  const post = async (body: Record<string, unknown>) => {
+  const post: StammdatenPost = async body => {
     setLaeuft(true);
-    const r = await fetch('/api/crm/stammdaten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false }));
+    const r = await fetch('/api/crm/stammdaten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
     setLaeuft(false); await laden(); void api.laden();
     return r;
   };
-  if (!d) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
+  if (!d) return <Karte i={0}><Laedt fehler={ladeFehler ?? api.fehler} nochEinmal={() => { void laden(); void api.laden(); }} /></Karte>;
   const offenePruefung = d.selbstpruefung.filter(p => p.status !== 'erfuellt').length;
 
   return (
     <>
-      <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={UNTER} aktiv={unter} onWahl={setUnter} /></div>
+      <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={UNTER} aktiv={unter} onWahl={waehle} /></div>
       {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{meldung}</div>}
 
       {unter === 'uebersicht' && (
@@ -65,13 +73,13 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start }: { api: CrmApi; 
             <Liste>
               {d.selbstpruefung.map(p => (
                 <Zeile key={p.id} links={<Punkt farbe={P_FARBE[p.status]} />} titel={p.titel} unter={`${p.befund} · ${p.norm}`}
-                  rechts={p.status !== 'erfuellt' && (p.id === 'rechtsgrundlage' || p.id === 'herkunft' || p.id === 'art14' || p.id === 'antraege') ? <Knopf leise onClick={() => setUnter('datenschutz')}>Beheben</Knopf> : <Chip farbe={P_FARBE[p.status]}>{p.status === 'erfuellt' ? 'erfüllt' : p.status}</Chip>} />
+                  rechts={p.status !== 'erfuellt' && (p.id === 'rechtsgrundlage' || p.id === 'herkunft' || p.id === 'art14' || p.id === 'antraege') ? <Knopf leise onClick={() => waehle('datenschutz')}>Beheben</Knopf> : <Chip farbe={P_FARBE[p.status]}>{p.status === 'erfuellt' ? 'erfüllt' : p.status}</Chip>} />
               ))}
             </Liste>
           </Karte>
           <Karte i={1}>
             <Ueberschrift>Was jetzt zu tun ist</Ueberschrift>
-            <Befunde liste={d.befunde} zuBereich={(b, a) => (b === 'stammdaten' && a ? setUnter(a as Unter) : zuBereich(b, a))} />
+            <Befunde liste={d.befunde} zuBereich={(b, a) => (b === 'stammdaten' && a ? waehle(unterAus(a)) : zuBereich(b, a))} />
           </Karte>
           <Karte i={2}>
             <Ueberschrift>Bestand</Ueberschrift>
@@ -81,6 +89,7 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start }: { api: CrmApi; 
               <Zahl wert={String(d.qualitaet.werbesperren.length)} label="Werbesperren" /><Zahl wert={d.kennzahlen.find(k => k.id === 'reife')?.anzeige ?? '—'} label="Datenreife" />
             </Raster>
           </Karte>
+          <Verweise api={api} zuBereich={zuBereich} ab={3} />
         </>
       )}
 
@@ -100,7 +109,7 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start }: { api: CrmApi; 
             <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Kreis, Anrede und Lebensphase pflegst du in der Karteikarte — sie steuern Power Hour und Entwürfe.</div>
           </Karte>
           <Karte i={1}>
-            <Ueberschrift rechts={<Knopf leise aus={laeuft} onClick={async () => { const r = await post({ aktion: 'firmen-abgleich' }); setMeldung(r.ok ? `Firmen-Abgleich: ${r.neu} neu, ${r.verknuepft} Personen verknüpft, ${r.ergaenzt} ergänzt.` : 'Abgleich fehlgeschlagen.'); }}>Firmen abgleichen</Knopf>}>Firmen</Ueberschrift>
+            <Ueberschrift rechts={<Knopf leise aus={laeuft} onClick={async () => { const r = await post({ aktion: 'firmen-abgleich' }); setMeldung(r.ok ? `Firmen-Abgleich: ${r.neu} neu, ${r.verknuepft} Personen verknüpft, ${r.ergaenzt} ergänzt.` : `Abgleich fehlgeschlagen${r.fehler ? `: ${r.fehler}` : '.'}`); }}>Firmen abgleichen</Knopf>}>Firmen</Ueberschrift>
             <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>
               {d.qualitaet.firmen} Firmen · {d.qualitaet.ohneFirmenverweis} Personen mit Firmenname, aber ohne Verknüpfung · {d.qualitaet.dublettenFirmen} Firmen-Dubletten.
               Der Abgleich legt fehlende Firmen an, verknüpft Personen und füllt nur leere Felder — Gepflegtes bleibt.
@@ -114,47 +123,12 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start }: { api: CrmApi; 
         </>
       )}
 
-      {unter === 'wertelisten' && (
-        <>
-          <Karte i={0}>
-            <Ueberschrift>Pipeline-Stufen</Ueberschrift>
-            <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 8 }}>Die Wahrscheinlichkeiten sind vorsichtige Startwerte. Sobald je Stufe genug Abschlüsse da sind, ersetzt du sie durch gemessene Quoten — von Hand gesetzte Werte sind markiert.</div>
-            <Liste>
-              {d.wertelisten.stufen.map(s => (
-                <Zeile key={s.id} titel={s.label} unter={s.offen ? `Weiter, wenn: ${s.weiterWenn}` : 'Endzustand'}
-                  rechts={s.offen ? <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    {s.vonHand && <Chip farbe={LEUCHT.achtung}>von Hand</Chip>}
-                    <Feld typ="number" breite={80} wert={String(s.p)} platzhalter="%" onFertig={x => void post({ aktion: 'wahrscheinlichkeit', stufe: s.id, p: x === '' ? null : Number(x) })} />
-                    <span style={{ fontSize: 12, color: C.inkLeise }}>%</span>
-                    {s.vonHand && <button onClick={() => void post({ aktion: 'wahrscheinlichkeit', stufe: s.id, p: null })} title={`Zurück auf ${s.standard} %`} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>↺ {s.standard}</button>}
-                  </span> : <Chip farbe={C.inkDim}>{s.p} %</Chip>} />
-              ))}
-            </Liste>
-          </Karte>
-          <Karte i={1}>
-            <Ueberschrift>Verlustgründe</Ueberschrift>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{d.wertelisten.verlustgruende.map(v => <Chip key={v.grund} farbe={v.anzahl ? LEUCHT.kritisch : C.inkDim}>{v.grund}{v.anzahl ? ` · ${v.anzahl}` : ''}</Chip>)}</div>
-            <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Pflicht beim Verlieren einer Chance — daraus lernt die Pipeline (Win/Loss).</div>
-          </Karte>
-          <Karte i={2}>
-            <Ueberschrift>Gesprächsergebnisse</Ueberschrift>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{ERGEBNISSE.map(e => <Chip key={e} farbe={C.inkDim}>{ERG_LABEL[e]}</Chip>)}</div>
-            <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Jedes Ergebnis setzt per Regel den nächsten Schritt (nicht erreicht → 2 Werktage, Mailbox → 3, Sperre → Werbesperre).</div>
-          </Karte>
-          <Karte i={3}>
-            <Ueberschrift>Herkunft & Rechtsgrundlage</Ueberschrift>
-            <div style={{ display: 'grid', gap: 8 }}>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{HERKUNFT.map(h => <Chip key={h.id} farbe={h.fremd ? LEUCHT.achtung : C.inkDim}>{h.label}{h.fremd ? ' · Art. 14' : ''}</Chip>)}</div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{RECHTSGRUNDLAGEN.map(r => <Chip key={r.id} farbe={C.inkDim}>{r.label} · {r.norm}</Chip>)}</div>
-            </div>
-          </Karte>
-        </>
-      )}
+      {unter === 'wertelisten' && <Wertelisten w={d.wertelisten} post={post} laeuft={laeuft} zuBereich={zuBereich} />}
 
       {unter === 'datenschutz' && (
         <>
           <Karte i={0} akzent={d.pflichtangaben.anzahl ? LEUCHT.achtung : undefined}>
-            <Ueberschrift rechts={d.pflichtangaben.anzahl ? <Knopf aus={laeuft} onClick={async () => { const r = await post({ aktion: 'pflichtangaben' }); setMeldung(r.ok ? `${r.gesetzt} Kontakte ergänzt.` : 'Nicht übernommen.'); }}>{d.pflichtangaben.anzahl} übernehmen</Knopf> : undefined}>Pflichtangaben</Ueberschrift>
+            <Ueberschrift rechts={d.pflichtangaben.anzahl ? <Knopf aus={laeuft} onClick={async () => { const r = await post({ aktion: 'pflichtangaben' }); setMeldung(r.ok ? `${r.gesetzt} Kontakte ergänzt.` : `Nicht übernommen${r.fehler ? `: ${r.fehler}` : '.'}`); }}>{d.pflichtangaben.anzahl} übernehmen</Knopf> : undefined}>Pflichtangaben</Ueberschrift>
             {d.pflichtangaben.anzahl ? (
               <div style={{ display: 'grid', gap: 10 }}>
                 <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>Herkunft (Art. 14) und Rechtsgrundlage (Art. 6) per Regel vorgeschlagen — erste passende Regel, im Zweifel die schwächere Grundlage, nie geratene Einwilligung. Übernommen werden nur leere Felder.</div>
@@ -185,43 +159,7 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start }: { api: CrmApi; 
         </>
       )}
 
-      {unter === 'austausch' && (
-        <>
-          <Karte i={0}>
-            <Ueberschrift>Masterdatei abgleichen</Ueberschrift>
-            <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>Die Masterliste als CSV (Semikolon oder Komma, UTF-8 oder Excel-Export) hochladen — wiederholbar: neue Zeilen kommen dazu, Stammdaten werden aufgefrischt, die Arbeit im CRM (Stufe, Verlauf, Kreis, Einwilligungen, Werbesperre) bleibt unberührt. Danach laufen der Firmen-Abgleich und die Dublettenprüfung.</div>
-            {d.letzterImport && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 8 }}>Zuletzt: {datum(d.letzterImport.zeit)} — {d.letzterImport.text}</div>}
-            <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <label className="fassbar" style={{ display: 'inline-block' }}>
-                <span style={{ display: 'inline-block', padding: '9px 15px', borderRadius: 11, fontSize: TYP.bedien, fontWeight: 700, cursor: laeuft ? 'default' : 'pointer', background: `${LEUCHT.gut}22`, color: LEUCHT.gut, border: `1px solid ${LEUCHT.gut}55` }}>{laeuft ? 'Gleicht ab …' : 'CSV-Datei wählen und abgleichen'}</span>
-                <input type="file" accept=".csv,text/csv,text/plain" disabled={laeuft} style={{ display: 'none' }} onChange={async e => {
-                  const datei = e.target.files?.[0]; e.target.value = '';
-                  if (!datei) return;
-                  setLaeuft(true);
-                  // Excel schreibt oft Windows-1252: erst als UTF-8 versuchen, sonst umkodieren — so bleiben Umlaute heil.
-                  const roh = await datei.arrayBuffer();
-                  let csv: string;
-                  try { csv = new TextDecoder('utf-8', { fatal: true }).decode(roh); } catch { csv = new TextDecoder('windows-1252').decode(roh); }
-                  const r = await fetch('/api/crm/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csv, name: datei.name }) }).then(x => x.json()).catch(() => ({ error: 'nicht erreichbar' }));
-                  setLaeuft(false); setMeldung(r.error ? r.error : `${datei.name}: ${r.zeilen} Zeilen — ${r.neu} neu, ${r.aktualisiert} aktualisiert, ${r.unveraendert} unverändert · Firmen: ${r.firmen?.neu ?? 0} neu.`);
-                  void laden(); void api.laden();
-                }} />
-              </label>
-              <Knopf leise aus={laeuft} onClick={async () => {
-                setLaeuft(true);
-                const r = await fetch('/api/crm/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(x => x.json()).catch(() => ({ error: 'nicht erreichbar' }));
-                setLaeuft(false); setMeldung(r.error ? r.error : `${r.zeilen} Zeilen: ${r.neu} neu, ${r.aktualisiert} aktualisiert, ${r.unveraendert} unverändert · Firmen: ${r.firmen?.neu ?? 0} neu.`);
-                void laden(); void api.laden();
-              }}>Vom Mac-Schreibtisch (CRM Leadordner)</Knopf>
-            </div>
-          </Karte>
-          <Karte i={1}>
-            <Ueberschrift>Export</Ueberschrift>
-            <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>Die Kartei als CSV (Semikolon, UTF-8) mit Firma, Kreis, Phase, Stufe, nächstem Schritt und der Kanal-Freigabe je Person. Ohne Privatnotiz und Verlauf; gesperrte Personen sind markiert, damit keine Werbeliste sie trifft.</div>
-            <div style={{ marginTop: 12 }}><Knopf leise onClick={() => { window.location.href = '/api/crm/export'; }}>Kartei als CSV</Knopf></div>
-          </Karte>
-        </>
-      )}
+      {unter === 'austausch' && <Austausch d={d} api={api} laeuft={laeuft} setLaeuft={setLaeuft} setMeldung={setMeldung} laden={() => void laden()} />}
     </>
   );
 }

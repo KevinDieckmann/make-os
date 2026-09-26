@@ -8,7 +8,7 @@
 // und Commit/Best-Case wird tatsächlich gerechnet.
 
 import type { Kontakt, Aktivitaet } from '@/lib/make-one/crm';
-import type { Chance, ChancenStufe, CrmBestand, Kampagne, KampagnenErgebnis, PowerHourSitzung } from './typen';
+import type { Chance, ChancenStufe, CrmBestand, Kampagne, KampagnenErgebnis, PowerHourSitzung, Wertelisten } from './typen';
 import type { Welt } from './traktion';
 import { TEAM, BEIDE, zustaendig } from './team';
 
@@ -25,6 +25,24 @@ export const STUFEN: { id: ChancenStufe; label: string; p: number; weiterWenn: s
 ];
 export const OFFENE_STUFEN = STUFEN.filter(s => s.offen).map(s => s.id);
 export const VERLUSTGRUENDE = ['Preis', 'Kein Bedarf', 'Zeitpunkt', 'Wettbewerb', 'Kein Entscheider', 'Intern gelöst', 'Keine Rückmeldung'];
+
+/**
+ * Verlustgründe zur Auswahl (27.09., Stammdaten › Wertelisten): die festen aus
+ * dem Code plus die eigenen aus `crm.wertelisten.verlustgruende` — ohne
+ * Doppelung (Groß-/Kleinschreibung egal). Pipeline und Deal-Akte nehmen das
+ * hier statt `VERLUSTGRUENDE`, damit Gepflegtes sofort greift.
+ */
+export function verlustgruende(wertelisten?: Pick<Wertelisten, 'verlustgruende'> | null): string[] {
+  const gesehen = new Set(VERLUSTGRUENDE.map(g => g.toLowerCase()));
+  const eigene: string[] = [];
+  for (const roh of wertelisten?.verlustgruende ?? []) {
+    const g = String(roh ?? '').replace(/\s+/g, ' ').trim();
+    if (!g || gesehen.has(g.toLowerCase())) continue;
+    gesehen.add(g.toLowerCase());
+    eigene.push(g);
+  }
+  return [...VERLUSTGRUENDE, ...eigene];
+}
 
 export function wahrscheinlichkeit(stufe: ChancenStufe, eigene?: CrmBestand['wahrscheinlichkeiten']): number {
   const v = eigene?.[stufe];

@@ -1,12 +1,15 @@
 // ─── CRM — Stammdaten ───────────────────────────────────────────────────────
 // GET  → Datenqualität (Vollständigkeit je Feld, Dubletten, Firmen ohne
 //        Verknüpfung, Art. 14, Speicherbegrenzung, Werbesperren), Kennzahlen,
-//        Wertelisten (Stufen mit Wahrscheinlichkeit, Verlustgründe), letzter Import
+//        Wertelisten vollständig (Stufen mit Wahrscheinlichkeit, Verlustgründe
+//        fest + eigene, Kadenz je Kreis, Gesprächsergebnisse, Ziele + Ist), letzter Import
 //        + Selbstprüfung, Pflichtangaben-Vorschlag, Löschkonzept, Anträge,
 //        Verarbeitungsverzeichnis (beim ersten Aufruf mit Startbestand), Befunde
 // POST { aktion: 'firmen-abgleich' }                        → Firmen anlegen/verknüpfen
 // POST { aktion: 'pflichtangaben' }                          → Vorschläge übernehmen (nur leere Felder)
 // POST { aktion: 'wahrscheinlichkeit', stufe, p | null }     → von Hand setzen / zurücksetzen
+// POST { aktion: 'wertelisten', wertelisten: Teil }          → Verlustgründe, Kadenz, Ergebnisse, Ziele
+//                                                              (Teil-Update, lib/crm/wertelisten.ts prüft und säubert)
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -22,7 +25,8 @@ import { firmenDubletten } from '@/lib/crm/firmen';
 import { dubletten } from '@/lib/crm/dubletten';
 import { kennzahlen, vollstaendigkeit, speicherbegrenzung } from '@/lib/crm/kennzahlen';
 import { art14 } from '@/lib/crm/recht';
-import { STUFEN, VERLUSTGRUENDE, wahrscheinlichkeit } from '@/lib/crm/pipeline';
+import { STUFEN, OFFENE_STUFEN, gesamtwert, wahrscheinlichkeit } from '@/lib/crm/pipeline';
+import { wertelistenVollstaendig, wertelistenPruefen, type Pruefung } from '@/lib/crm/wertelisten';
 import type { ChancenStufe } from '@/lib/crm/typen';
 
 export const runtime = 'nodejs';
@@ -41,9 +45,16 @@ export async function GET() {
   const letzterImport = [...log].reverse().find(e => e.agent === 'crm' && (e.title ?? '').startsWith('Import'));
   const verlust: Record<string, number> = {};
   for (const c of crm.chancen.filter(c => c.stufe === 'verloren' && c.grund)) verlust[c.grund!] = (verlust[c.grund!] ?? 0) + 1;
+  const kpis = kennzahlen(kontakte, crm, heute);
+  const voll = wertelistenVollstaendig(crm.wertelisten);
+  // Ist zu den Zielen: Umsatz neu = Gesamtwert der in den letzten 30 Tagen gewonnenen Deals; SQL und Gespräche aus den Kennzahlen (null = noch nichts gemessen).
+  const vor30 = new Date(`${heute}T12:00:00Z`); vor30.setUTCDate(vor30.getUTCDate() - 29);
+  const ab = vor30.toISOString().slice(0, 10);
+  const gewonnenAm = (c: (typeof crm.chancen)[number]) => (c.historie.filter(h => h.stufe === 'gewonnen').pop()?.am ?? c.geaendert).slice(0, 10);
+  const umsatzNeu30 = crm.chancen.filter(c => c.stufe === 'gewonnen' && gewonnenAm(c) >= ab && gewonnenAm(c) <= heute).reduce((a, c) => a + gesamtwert(c), 0);
   return NextResponse.json({
     ok: true, heute,
-    kennzahlen: kennzahlen(kontakte, crm, heute),
+    kennzahlen: kpis,
     qualitaet: {
       kontakte: kontakte.length, firmen: crm.firmen.length,
       vollstaendigkeit: vollstaendigkeit(kontakte),
@@ -55,7 +66,12 @@ export async function GET() {
     },
     wertelisten: {
       stufen: STUFEN.map(s => ({ id: s.id, label: s.label, standard: s.p, p: wahrscheinlichkeit(s.id, crm.wahrscheinlichkeiten), vonHand: typeof crm.wahrscheinlichkeiten?.[s.id] === 'number', weiterWenn: s.weiterWenn, offen: s.offen })),
-      verlustgruende: VERLUSTGRUENDE.map(g => ({ grund: g, anzahl: verlust[g] ?? 0 })),
+      verlustgruende: voll.verlustgruende.map(g => ({ grund: g.wert, fest: g.fest, anzahl: verlust[g.wert] ?? 0 })),
+      kadenzTage: voll.kadenzTage, kadenzStandard: voll.kadenzStandard,
+      kadenzPersonen: Object.fromEntries((['A', 'B', 'C', 'D'] as const).map(k => [k, kontakte.filter(x => x.kreis === k && !x.werbesperre).length])),
+      ergebnisse: voll.ergebnisse,
+      ziele: voll.ziele,
+      ist: { umsatzNeu30: crm.chancen.some(c => c.stufe === 'gewonnen') ? umsatzNeu30 : null, sql30: kpis.find(k => k.id === 'sql_30')?.wert ?? null, gespraecheWoche: kpis.find(k => k.id === 'gespraeche')?.wert ?? null, dealsOffen: crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe)).length },
     },
     letzterImport: letzterImport ? { zeit: letzterImport.ts, text: letzterImport.title ?? '' } : null,
     selbstpruefung: selbstpruefung(kontakte, crm, heute, { konten: konten.length, mitPasswort: konten.filter(k => !!k.hash).length }),
@@ -72,7 +88,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  let b: { aktion?: string; stufe?: string; p?: number | null };
+  let b: { aktion?: string; stufe?: string; p?: number | null; wertelisten?: unknown };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (b.aktion === 'firmen-abgleich') return NextResponse.json({ ok: true, ...(await firmenAbgleichen()) });
   if (b.aktion === 'pflichtangaben') {
@@ -101,6 +117,14 @@ export async function POST(req: Request) {
       return { ...cur, wahrscheinlichkeiten: w };
     });
     return NextResponse.json({ ok: true });
+  }
+  if (b.aktion === 'wertelisten') {
+    // Prüfen und schreiben in EINEM Schritt gegen den aktuellen Stand — kein Fenster, in dem Malins Änderung verloren ginge.
+    const halter: { p?: Pruefung } = {};
+    await aendereCrm(cur => { halter.p = wertelistenPruefen(b.wertelisten, cur.wertelisten); return halter.p.ok ? { ...cur, wertelisten: halter.p.wertelisten } : cur; });
+    const p = halter.p!;
+    if (!p.ok) return NextResponse.json({ ok: false, fehler: p.fehler.join(' · ') }, { status: 400 });
+    return NextResponse.json({ ok: true, wertelisten: wertelistenVollstaendig(p.wertelisten) });
   }
   return NextResponse.json({ ok: false, fehler: 'aktion unbekannt.' }, { status: 400 });
 }

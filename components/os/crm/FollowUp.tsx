@@ -10,11 +10,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { anzeigename, type Ergebnis } from '@/lib/make-one/crm';
+import { anzeigename } from '@/lib/make-one/crm';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, LEUCHT, feld } from '../schlank';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import { type CrmApi, holeMitStand, datum, plusTage } from './daten';
 import { Pillen, Feldzeile, ERGEBNIS_KNOEPFE } from './teile';
+import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
 import { Person, ZustaendigWahl, WerFilter, useWerFilter, passtWer } from './team';
 import { FOLLOWUP_ARTEN, VERSCHIEBEN_TAGE, type Faellig, type Gruppe } from '@/lib/crm/followup';
 import type { FollowUpArt } from '@/lib/crm/typen';
@@ -59,6 +60,8 @@ export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: Crm
   const [neu, setNeu] = useState(false);
   const [hinweis, setHinweis] = useState<string | null>(null);
   const ich = api.ich;
+  // Eigene Gesprächsergebnisse aus Stammdaten › Wertelisten (die festen lösen die Regeln aus, eigene sind Freitext).
+  const eigene = useMemo(() => wertelistenVollstaendig(api.crm?.stand.wertelisten).ergebnisse.filter(e => !e.fest).map(e => ({ wert: e.wert, label: e.label })), [api.crm?.stand.wertelisten]);
   const liste = useMemo(() => (d?.liste ?? []).filter(f => passtWer(wahl, f.zustaendig, 'sales', ich)), [d, wahl, ich]);
   const zahlen = useMemo(() => {
     const alle = d?.liste ?? [];
@@ -97,7 +100,7 @@ export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: Crm
         return (
           <Karte key={g.id} i={i + 1} akzent={l.length && g.id !== 'spaeter' ? g.farbe : undefined}>
             <Ueberschrift farbe={g.farbe} rechts={`${l.length}`}>{g.label}</Ueberschrift>
-            {l.length ? <Liste>{l.map(f => <FollowUpZeile key={f.id} f={f} heute={d.heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={nachAktion} />)}</Liste>
+            {l.length ? <Liste>{l.map(f => <FollowUpZeile key={f.id} f={f} heute={d.heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={nachAktion} eigene={eigene} />)}</Liste>
               : <Leer>{g.id === 'ueberfaellig' ? 'Nichts überfällig — so soll es sein.' : g.id === 'heute' ? 'Heute nichts fällig.' : 'Diese Woche nichts weiter.'}</Leer>}
           </Karte>
         );
@@ -109,7 +112,7 @@ export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: Crm
   );
 }
 
-function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion }: { f: Faellig; heute: string; zuKontakt: (id: string) => void; zuDeal: (id: string) => void; zuAkte: (id: string) => void; aktion: (b: Record<string, unknown>) => Promise<void> }) {
+function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [] }: { f: Faellig; heute: string; zuKontakt: (id: string) => void; zuDeal: (id: string) => void; zuAkte: (id: string) => void; aktion: (b: Record<string, unknown>) => Promise<void>; eigene?: { wert: string; label: string }[] }) {
   const [offen, setOffen] = useState(false);
   const [erledigen, setErledigen] = useState(false);
   const farbe = GRUPPEN.find(g => g.id === f.gruppe)!.farbe;
@@ -135,7 +138,7 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion }: { f: Fae
             {(f.bezug.art === 'chance' || f.kontaktId) && <Knopf leise onClick={ziel}>{f.bezug.art === 'chance' ? 'Deal öffnen' : 'Akte'}</Knopf>}
           </div>
           {f.verschoben ? <div style={{ fontSize: 12, color: f.verschoben >= 3 ? LEUCHT.kritisch : C.inkLeise }}>{f.verschoben}× verschoben{f.verschoben >= 3 ? ' — ehrlicherweise keine Zusage mehr.' : ''}</div> : null}
-          {erledigen && <Erledigen f={f} heute={heute} onFertig={async b => { await aktion({ aktion: 'erledigen', id: f.id, ...b }); setErledigen(false); setOffen(false); }} onAbbruch={() => setErledigen(false)} />}
+          {erledigen && <Erledigen f={f} heute={heute} eigene={eigene} onFertig={async b => { await aktion({ aktion: 'erledigen', id: f.id, ...b }); setErledigen(false); setOffen(false); }} onAbbruch={() => setErledigen(false)} />}
         </div>
       )}
     </div>
@@ -143,8 +146,8 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion }: { f: Fae
 }
 
 /** Erledigen: Ergebnis (setzt Stufe/Wiedervorlage per Regel), kurze Notiz, und — Pflichtfrage — was als Nächstes passiert. */
-function Erledigen({ f, heute, onFertig, onAbbruch }: { f: Faellig; heute: string; onFertig: (b: Record<string, unknown>) => Promise<void>; onAbbruch: () => void }) {
-  const [ergebnis, setErgebnis] = useState<Ergebnis | null>(null);
+function Erledigen({ f, heute, onFertig, onAbbruch, eigene = [] }: { f: Faellig; heute: string; onFertig: (b: Record<string, unknown>) => Promise<void>; onAbbruch: () => void; /** Eigene Gesprächsergebnisse aus den Stammdaten (Wertelisten). */ eigene?: { wert: string; label: string }[] }) {
+  const [ergebnis, setErgebnis] = useState<string | null>(null);
   const [notiz, setNotiz] = useState('');
   const [naechster, setNaechster] = useState<{ text: string; faellig: string; art: FollowUpArt }>({ text: '', faellig: plusTage(heute, 7), art: f.art });
   const [kein, setKein] = useState(false);
@@ -153,7 +156,7 @@ function Erledigen({ f, heute, onFertig, onAbbruch }: { f: Faellig; heute: strin
     <div style={{ display: 'grid', gap: 10, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
       {f.kontaktId && (
         <Feldzeile label="Ergebnis">
-          <Pillen liste={ERGEBNIS_KNOEPFE.map(e => ({ id: e.id, label: e.label }))} aktiv={ergebnis} onWahl={setErgebnis} farbe={LEUCHT.gut} />
+          <Pillen liste={[...ERGEBNIS_KNOEPFE.map(e => ({ id: e.id as string, label: e.label })), ...eigene.map(e => ({ id: e.wert, label: e.label }))]} aktiv={ergebnis} onWahl={setErgebnis} farbe={LEUCHT.gut} />
         </Feldzeile>
       )}
       <Feldzeile label="Notiz"><input value={notiz} onChange={e => setNotiz(e.target.value)} placeholder="Ein Satz, was besprochen wurde" style={{ ...feld }} /></Feldzeile>

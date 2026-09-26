@@ -36,6 +36,10 @@ export function kennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: string):
   const reif = kontakte.filter(k => (k.email || k.telefon) && (k.firma || k.firmaId) && (k.position || k.jobtitel)).length;
   const reife = kontakte.length ? Math.round((reif / kontakte.length) * 100) : null;
   const hatVerlauf = akt.some(a => a.art !== 'system');
+  // Ziele aus Stammdaten › Wertelisten sind die Messlatte (27.09.): grün = Ziel erreicht, rot = unter der Hälfte. Ohne Ziel gelten die Startschwellen.
+  const zielG = crm.wertelisten?.ziele?.gespraecheWoche, zielS = crm.wertelisten?.ziele?.sqlMonat;
+  const gGruen = zielG && zielG > 0 ? zielG : 8, gGelb = zielG && zielG > 0 ? Math.ceil(zielG / 2) : 4;
+  const sGruen = zielS && zielS > 0 ? zielS : 2, sGelb = zielS && zielS > 0 ? Math.ceil(zielS / 2) : 1;
   // ── Deal- und Follow-up-Ebene (27.09.): Win Rate, Zyklus, hängender Wert, Pünktlichkeit, Überfälliges, Neuumsatz gegen Ziel ──
   const wl = winLoss(crm.chancen, heute);
   const zy = dealZyklus(crm.chancen);
@@ -53,10 +57,10 @@ export function kennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: string):
   const tEuro = (n: number) => `${(n / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 })} T€`;
   return [
     { id: 'power_hours', label: 'Power Hours · 7 Tage', wert: phJe ? ph7 : null, anzeige: phJe ? String(ph7) : '—', ampel: phJe ? stufe(ph7, 4, 2) : 'grau', ziel: '≥ 4 je Woche', quelle: `${crm.sitzungen.length} Power Hours insgesamt` },
-    { id: 'gespraeche', label: 'Echte Gespräche · 7 Tage', wert: hatVerlauf ? gespraeche7 : null, anzeige: hatVerlauf ? String(gespraeche7) : '—', ampel: hatVerlauf ? stufe(gespraeche7, 8, 4) : 'grau', ziel: '≥ 8 je Woche', quelle: 'Gespräche und Termine im Verlauf' },
+    { id: 'gespraeche', label: 'Echte Gespräche · 7 Tage', wert: hatVerlauf ? gespraeche7 : null, anzeige: hatVerlauf ? String(gespraeche7) : '—', ampel: hatVerlauf ? stufe(gespraeche7, gGruen, gGelb) : 'grau', ziel: `≥ ${gGruen} je Woche${zielG ? ' (Ziel)' : ''}`, quelle: 'Gespräche und Termine im Verlauf' },
     { id: 'erstgespraeche', label: 'Neue Erstgespräche · 30 Tage', wert: hatVerlauf ? erste : null, anzeige: hatVerlauf ? String(erste) : '—', ampel: hatVerlauf ? stufe(erste, 4, 2) : 'grau', ziel: '≥ 4 je Monat', quelle: 'erstes Gespräch je Person' },
     // Ebene 1 → 2 (25.09.): Wie viele Leads wurden in 30 Tagen zum SQL, also zum Deal?
-    { id: 'sql_30', label: 'Neue SQL · 30 Tage', wert: crm.chancen.length ? sql30 : null, anzeige: crm.chancen.length ? String(sql30) : '—', ampel: crm.chancen.length ? stufe(sql30, 2, 1) : 'grau', ziel: '≥ 2 je Monat', quelle: 'Leads, die zum Deal wurden (angelegte Deals)' },
+    { id: 'sql_30', label: 'Neue SQL · 30 Tage', wert: crm.chancen.length ? sql30 : null, anzeige: crm.chancen.length ? String(sql30) : '—', ampel: crm.chancen.length ? stufe(sql30, sGruen, sGelb) : 'grau', ziel: `≥ ${sGruen} je Monat${zielS ? ' (Ziel)' : ''}`, quelle: 'Leads, die zum Deal wurden (angelegte Deals)' },
     { id: 'ohne_schritt', label: 'Deals ohne nächsten Schritt', wert: offen.length ? ohneSchritt : null, anzeige: offen.length ? String(ohneSchritt) : '—', ampel: offen.length ? stufe(ohneSchritt, 0, 2, false) : 'grau', ziel: '0', quelle: `${offen.length} offene Deals` },
     { id: 'pipeline', label: 'Pipeline gewichtet', wert: offen.length ? p.gewichtet : null, anzeige: offen.length ? `${Math.round(p.gewichtet / 1000)} T€` : '—', ampel: 'grau', ziel: '≥ 3 × Umsatzlücke 90 Tage', quelle: `offen ${Math.round(p.offen / 1000)} T€, Commit ${Math.round(p.commit / 1000)} T€` },
     { id: 'mrr', label: 'Wiederkehrend je Monat', wert: m || null, anzeige: m ? `${(m / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 })} T€` : '—', ampel: kz ? (kz.anteil > 50 ? 'rot' : 'gruen') : 'grau', ziel: 'größter Kunde ≤ 50 %', quelle: kz ? `größter Kunde ${kz.kunde}: ${kz.anteil} %` : 'keine aktiven Monatsmandate' },

@@ -17,7 +17,7 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, useBreit, LEUCHT, feld } from '../schlank';
 import { anzeigename } from '@/lib/make-one/crm';
-import { gesamtwert, prognose, prognoseJePerson, werZahlen, VERLUSTGRUENDE } from '@/lib/crm/pipeline';
+import { gesamtwert, prognose, prognoseJePerson, werZahlen, verlustgruende } from '@/lib/crm/pipeline';
 import { zustaendig, mitglied, nameVon, verantwortlich } from '@/lib/crm/team';
 import type { Chance, ChancenStufe, Qual } from '@/lib/crm/typen';
 import { type CrmApi, datum, euro, kurzEuro, plusTage } from './daten';
@@ -258,7 +258,7 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
         {wechsel && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
             {wechsel.ziel === 'verloren'
-              ? <Pillen liste={VERLUSTGRUENDE.map(g => ({ id: g, label: g }))} aktiv={wechsel.grund} onWahl={grund => wechsle('verloren', { grund })} farbe={LEUCHT.kritisch} />
+              ? <Pillen liste={verlustgruende(crm.stand.wertelisten).map(g => ({ id: g, label: g }))} aktiv={wechsel.grund} onWahl={grund => wechsle('verloren', { grund })} farbe={LEUCHT.kritisch} />
               : <><input type="date" value={wechsel.wiedervorlage} onChange={e => setWechsel({ ...wechsel, wiedervorlage: e.target.value })} aria-label="Wiedervorlage" style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, padding: '7px 10px', color: C.ink }} /><Knopf onClick={() => wechsle('geparkt', { wiedervorlage: wechsel.wiedervorlage })}>Parken bis dahin</Knopf></>}
             <Knopf leise onClick={() => setWechsel(null)}>Abbrechen</Knopf>
           </div>
