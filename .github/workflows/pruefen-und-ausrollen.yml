@@ -1,7 +1,8 @@
 # ─── MAKE OS · Prüfen und ausrollen ─────────────────────────────────────────
 # Jeder Push auf main: Typen, Tests, Lint. Nur wenn alles grün ist, löst
-# GitHub auf dem Server das Ausrollen aus: git pull, neu bauen (die alte
-# Version läuft dabei weiter), tauschen. Seit 25.09. (Härtung):
+# GitHub auf dem Server das Ausrollen aus: der Server zieht den Stand, das
+# Bild wird auf GitHub gebaut und fertig hingeschickt (seit 26.09. abends —
+# vorher baute der 1-CPU-Server selbst und war dabei 10 Minuten kaum benutzbar). Seit 25.09. (Härtung):
 #   · Der Schlüssel darf auf dem Server NUR diesen einen Befehl auslösen
 #     (authorized_keys: command=…,restrict) — keine Konsole, kein Kopieren.
 #   · Der Server wird an seinem festen Fingerabdruck erkannt (kein
@@ -41,7 +42,11 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ vars.AUSROLLEN != 'aus' }}
     steps:
-      - name: Server zieht und baut
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # Seit 26.09. abends: Das Bild entsteht HIER, nicht auf dem 1-CPU-Server (der war beim Bauen 10 Minuten kaum benutzbar).
+      - name: Bild bauen
+        run: docker build --pull -t make-os:aktuell .
+      - name: Server zieht den Stand und bekommt das Bild
         env:
           HOST: ${{ secrets.MAKE_OS_HOST }}
           KEY: ${{ secrets.MAKE_OS_SSH_KEY }}
@@ -50,4 +55,11 @@ jobs:
           mkdir -p ~/.ssh && echo "$KEY" > ~/.ssh/id && chmod 600 ~/.ssh/id
           # Fester Fingerabdruck des Servers (Hetzner, 25.09.) — bei einem neuen Server hier eintragen.
           echo "2.28.108.162 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFzA26Sov+ko5Jhl02nX7Luik4N1wYVaEjl8ouH5FFNQ" > ~/.ssh/known_hosts
-          ssh -i ~/.ssh/id -o StrictHostKeyChecking=yes -o BatchMode=yes make@"$HOST"
+          SSH="ssh -i ~/.ssh/id -o StrictHostKeyChecking=yes -o BatchMode=yes make@$HOST"
+          AUSGABE="$($SSH ziehen </dev/null)"; echo "$AUSGABE"
+          if echo "$AUSGABE" | grep -q "ausrollen-v2"; then
+            echo "▸ Bild zum Server schicken"
+            docker save make-os:aktuell | gzip -1 | $SSH bild
+          else
+            echo "▸ Server hat noch das alte Skript — dort wurde gezogen und gebaut."
+          fi

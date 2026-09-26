@@ -12,6 +12,7 @@
 // Versendet wird nichts; Bilder über /api/bauplan/bild.
 
 import { NextResponse } from 'next/server';
+import { merken } from '@/lib/store/memo';
 import { personAus } from '@/lib/jarvis/raum';
 import { ladeBauplan, aendereBauplan, karteAnlegen } from '@/lib/bauplan/speicher';
 import { verschieben, felderSaeubern, statusAus, warteschlange, SPALTEN, type Spalte, type Etappe } from '@/lib/bauplan/board';
@@ -20,8 +21,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const d = await ladeBauplan();
-  return NextResponse.json({ ok: true, items: d.items, etappen: d.etappen ?? [], warteschlange: warteschlange(d.items).map(i => i.id) });
+  const body = await merken('bauplan', 20_000, async () => { const d = await ladeBauplan(); return { ok: true, items: d.items, etappen: d.etappen ?? [], warteschlange: warteschlange(d.items).map(i => i.id) }; });
+  return NextResponse.json(body);
 }
 
 const txt = (v: unknown, n: number) => String(v ?? '').replace(/\u0000/g, '').trim().slice(0, n);

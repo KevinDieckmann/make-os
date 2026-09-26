@@ -15,15 +15,17 @@ import { Seite } from './schlank';
 import { Flaeche } from './flaeche/Flaeche';
 import type { StandardPlatz } from '@/lib/flaeche/modell';
 
-/** Der Startstand: links (⅔) Aufgaben, Termine, Wer dran ist — rechts (⅓) Fokus, Körper, Finanzen privat, Jarvis. */
+/** Der Startstand: oben Score · Fokus · Jarvis, dann Aufgaben (⅔) + Körper, Termine (⅔) + Finanzen privat, Wer dran ist. */
 export const HEUTE_STANDARD: StandardPlatz[] = [
-  { id: 'aufgaben', art: 'aufgaben', breite: 4 },
+  // 26.09. abends: der Wachstums-Score steht nicht mehr über jeder Seite, sondern hier oben (und groß unter Wachstum).
+  { id: 'score', art: 'score', breite: 2 },
   { id: 'fokus', art: 'fokus', breite: 2 },
-  { id: 'termine', art: 'termine', breite: 4 },
-  { id: 'koerper', art: 'koerper', breite: 2 },
-  { id: 'dran', art: 'dran', breite: 4 },
-  { id: 'finanzen-privat', art: 'finanzen-privat', breite: 2 },
   { id: 'jarvis', art: 'jarvis', breite: 2 },
+  { id: 'aufgaben', art: 'aufgaben', breite: 4 },
+  { id: 'koerper', art: 'koerper', breite: 2 },
+  { id: 'termine', art: 'termine', breite: 4 },
+  { id: 'finanzen-privat', art: 'finanzen-privat', breite: 2 },
+  { id: 'dran', art: 'dran', breite: 4 },
 ];
 
 export function HeuteView() {

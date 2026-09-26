@@ -5,6 +5,7 @@
 // anderer Haushalt.
 
 import { updateJson } from '@/lib/store/local-db';
+import { merken } from '@/lib/store/memo';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
@@ -28,6 +29,9 @@ export interface PrivatStand extends IndexVerlauf { pi: PrivatIndex; frisch: boo
 
 /** Rechnet den Index des Haushalts, schreibt einmal am Tag den Schnappschuss (nur mit Buchungen). */
 export async function privatStand(haushalt: string, heute = heuteBerlin()): Promise<PrivatStand> {
+  return merken(`privat:${haushalt}:${heute}`, 2 * 60_000, () => privatStandFrisch(haushalt, heute));
+}
+async function privatStandFrisch(haushalt: string, heute: string): Promise<PrivatStand> {
   const [h, d] = await Promise.all([ladeHaushalt(haushalt), ladePrivatDatei(haushalt)]);
   const bestand = { heute, haushalt: h, ruecklage: d.ruecklage, schwellen: d.schwellen };
   const pi = berechnePrivat(bestand);

@@ -4,6 +4,7 @@
 // liegen die Daten" kennt — später 1:1 gegen Supabase/SQLite tauschbar,
 // ohne dass API-Routes oder UI das merken.
 
+import { standErhoehen } from './memo';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
@@ -174,6 +175,7 @@ export async function saveJson<T>(name: string, data: T): Promise<void> {
     // Nur der Besitzer liest die Bestände (26.09.) — auf dem Server ist das der Container-Nutzer = make.
     await fs.writeFile(tmp, zumSchreiben(JSON.stringify(data, null, 2)), { encoding: 'utf8', mode: 0o600 });
     await fs.rename(tmp, dest);
+    standErhoehen();
   });
   writeChain.set(name, run);
   try {
@@ -197,6 +199,7 @@ export async function updateJson<T>(name: string, mutate: (current: T | null) =>
     const tmp = `${dest}.${process.pid}.${Math.random().toString(36).slice(2, 10)}.tmp`;
     await fs.writeFile(tmp, zumSchreiben(JSON.stringify(next, null, 2)), { encoding: 'utf8', mode: 0o600 });
     await fs.rename(tmp, dest);
+    standErhoehen();
     return next;
   });
   writeChain.set(name, run);

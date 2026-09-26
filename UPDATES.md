@@ -55,6 +55,21 @@ Ansage stehen, bis das nächste Update sie ablöst.
 
 _(hier sammeln, was auf `entwicklung` fertig ist)_
 
+**Tempo (26.09. abends, Kevin: „die Ladezeit ist extrem langsam“)**
+- **Ursache 1 — Bauen auf dem Server:** jede Auslieferung baute das Docker-Image auf dem 1-CPU-Server, 8–12 Minuten
+  Volllast, 667 MB im Auslagerungsspeicher; an einem Tag mit sieben Auslieferungen war die App über eine Stunde zäh.
+  Jetzt baut GitHub das Bild und schickt es fertig (`docker save | gzip | ssh … bild`); der Server lädt es nur noch.
+  `deploy/ausrollen.sh` kennt drei Modi (ziehen · bild · Altweg). Die ERSTE Auslieferung nach diesem Stand baut noch
+  einmal auf dem Server (altes Skript), ab der zweiten nicht mehr.
+- **Ursache 2 — Indizes bei jedem Seitenwechsel neu gerechnet:** Wachstums-Score, Business-, Privat-, Gesundheits-
+  Index, Traktion, Familie, Bauplan rechnen jetzt einmal und merken sich das Ergebnis kurz (`lib/store/memo.ts`,
+  1–5 Minuten; jede Schreibung in einen Bestand setzt alles zurück, Schlüssel je Person/Haushalt).
+- **Ursache 3 — der Kopf über jeder Seite holte den Score:** der Wachstums-Score steht jetzt als Widget auf Heute
+  (oben links, Standard) und groß im Bereich Wachstum; der Kopf ist Malins Bild: Suchfeld im Space, Idee, Heute,
+  Inbox, Kalender, rechts der Index des Space (fünf Minuten gemerkt). Widgets holen dieselbe Adresse nur einmal je 20 s.
+- Empfehlung an Kevin: Server auf 2 vCPU / 4 GB heben (Hetzner CX32, wenige Euro mehr) — der Arbeiter, Caddy und Next
+  teilen sich heute einen Kern.
+
 **Bauplan-Punkte von Kevin & Malin (26.09., erste Runde: die schnellen Fixes)**
 - **Erfassen-Karte ohne Kürzung** (Kevin: „so genau wie möglich beschreiben“): vorher schnitt der Titel bei 160 und die
   Beschreibung bei 800 Zeichen ab — deshalb enden eure fünf Punkte vom 26.09. mitten im Satz. Jetzt: keine praktische

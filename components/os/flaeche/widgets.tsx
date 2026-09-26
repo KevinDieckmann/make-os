@@ -33,12 +33,23 @@ const link: CSSProperties = { color: C.inkLeise, textDecoration: 'none' };
 const str = (v: Wert | undefined, std: string) => (typeof v === 'string' && v ? v : std);
 const num = (v: Wert | undefined, std: number) => (typeof v === 'number' ? v : typeof v === 'string' && v && isFinite(Number(v)) ? Number(v) : std);
 
+// Tempo (26.09.): dieselbe Adresse innerhalb von 20 s nur einmal holen — Körper und Routinen teilen sich /api/gesundheit/stand,
+// ein Zurückwechseln auf Heute lädt nicht alles neu. Schreibende Seiten setzen den Speicher über `datenVergessen()` zurück.
+const datenZwischen = new Map<string, { t: number; p: Promise<unknown> }>();
+export function datenVergessen(): void { datenZwischen.clear(); }
+function holen(url: string): Promise<unknown> {
+  const z = datenZwischen.get(url);
+  if (z && Date.now() - z.t < 20_000) return z.p;
+  const p = fetch(url, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  datenZwischen.set(url, { t: Date.now(), p });
+  return p;
+}
 /** Einmal laden; `undefined` = lädt, `null` = nichts/kein Zugang. */
 function useDaten<T>(url: string, ok: (d: unknown) => T | null): T | null | undefined {
   const [d, setD] = useState<T | null | undefined>(undefined);
   useEffect(() => {
     let aktiv = true;
-    fetch(url, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(x => { if (aktiv) setD(x == null ? null : ok(x)); }).catch(() => { if (aktiv) setD(null); });
+    holen(url).then(x => { if (aktiv) setD(x == null ? null : ok(x)); });
     return () => { aktiv = false; };
   }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
   return d;
@@ -331,9 +342,41 @@ function FamilieWidget({ titel, i }: WidgetProps) {
   );
 }
 
+// ── Wachstums-Score (26.09.: vom Kopf auf Heute gewandert) ──────────────────
+interface ScoreAntwort { aktuell: { index: number | null; label: string; hebel: string | null; hebelKey?: string | null; stand: string; saeulen: { key: string; label: string; score: number | null }[] }; verlauf: { date: string; index: number | null }[] }
+const SAEULE_FARBE: Record<string, string> = { health: LEUCHT.gut, business: LEUCHT.business, planning: LEUCHT.planung, finance: LEUCHT.geld, social: LEUCHT.beziehung, agents: LEUCHT.agenten };
+const SAEULE_KURZ: Record<string, string> = { health: 'Gesundheit', business: 'Business', planning: 'Planung', finance: 'Finanzen', social: 'Familie', agents: 'Agenten' };
+function ScoreWidget({ titel, i }: WidgetProps) {
+  const d = useDaten<ScoreAntwort>('/api/performance', x => ((x as ScoreAntwort).aktuell ? (x as ScoreAntwort) : null));
+  const p = d?.aktuell;
+  const zone = zoneFarbe(p?.index);
+  const v = d?.verlauf ?? [];
+  const letzte = v.at(-1)?.index, davor = v.at(-2)?.index;
+  const delta = letzte != null && davor != null ? letzte - davor : null;
+  return (
+    <Karte i={i} akzent={p?.index != null ? zone : undefined}>
+      <Ueberschrift farbe={zone} rechts={<Link href={WEG.wachstum()} style={link}>Wachstum ›</Link>}>{titel ?? 'Wachstums-Score'}</Ueberschrift>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <Link href={WEG.wachstum()} style={{ textDecoration: 'none', color: 'inherit' }}><Ring groesse="klein" label="" wert={p?.index != null ? String(p.index) : undefined} farbe={zone} anteil={p?.index != null ? p.index / 100 : undefined} /></Link>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: TYP.body, fontWeight: 600 }}>
+            {d === undefined ? 'lade …' : p?.index != null ? p.label : 'Noch keine Messung'}
+            {delta != null && delta !== 0 && <span style={{ fontSize: 12, fontWeight: 700, color: delta > 0 ? LEUCHT.gut : LEUCHT.kritisch }}>{delta > 0 ? '▲' : '▼'} {Math.abs(delta)}</span>}
+          </div>
+          <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 4 }}>{p?.hebel ? <>Größter Hebel: {p.hebel}</> : p ? `Stand ${p.stand.slice(8)}.${p.stand.slice(5, 7)}.` : 'Der Score, auf den wir hinarbeiten'}</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+            {(p?.saeulen ?? []).map(s => <span key={s.key} title={SAEULE_KURZ[s.key] ?? s.label} style={{ fontSize: 11.5, fontVariantNumeric: 'tabular-nums', color: s.score == null ? C.inkLeise : SAEULE_FARBE[s.key] ?? C.inkDim }}>{(SAEULE_KURZ[s.key] ?? s.label).slice(0, 3)} {s.score ?? '—'}</span>)}
+          </div>
+        </div>
+      </div>
+    </Karte>
+  );
+}
+
 // ── Register + Katalog ──────────────────────────────────────────────────────
 const TAGE_WAHL: EinstellungDef = { k: 'tage', label: 'Zeitraum', art: 'wahl', optionen: [{ w: 1, label: 'heute' }, { w: 3, label: '3 Tage' }, { w: 7, label: '7 Tage' }, { w: 14, label: '14 Tage' }], standard: 1 };
 export const WIDGETS: Record<string, WidgetDef> = {
+  score: { art: 'score', label: 'Wachstums-Score', bereich: 'Tag', beschreibung: 'Der Score, auf den wir hinarbeiten — mit den sechs Säulen', breite: 2, Komponente: ScoreWidget },
   aufgaben: { art: 'aufgaben', label: 'Aufgaben', bereich: 'Tag', beschreibung: 'Fällige und kritische Aufgaben, Schnellanlage', breite: 4, Komponente: AufgabenWidget,
     einstellungen: [{ k: 'nur', label: 'Zeigt', art: 'wahl', optionen: [{ w: 'dran', label: 'fällig & kritisch' }, { w: 'alle', label: 'alle offenen' }], standard: 'dran' }, { k: 'anzahl', label: 'Anzahl', art: 'wahl', optionen: [{ w: 5, label: '5' }, { w: 8, label: '8' }, { w: 12, label: '12' }], standard: 8 }] },
   termine: { art: 'termine', label: 'Termine', bereich: 'Tag', beschreibung: 'Heute oder die nächsten Tage aus dem Kalender', breite: 4, Komponente: TermineWidget,
@@ -352,6 +395,7 @@ export const WIDGETS: Record<string, WidgetDef> = {
   familie: { art: 'familie', label: 'Familie & Partnerschaft', bereich: 'Familie', beschreibung: 'Paar-Gespräch, wichtige Tage, wer einen Anruf verdient, Frage der Woche', breite: 2, Komponente: FamilieWidget },
 };
 export const KATALOG: KatalogEintrag[] = [
+  { art: 'score', label: 'Wachstums-Score', beschreibung: WIDGETS.score.beschreibung, bereich: 'Tag', breite: 2 },
   { art: 'aufgaben', label: 'Aufgaben', beschreibung: WIDGETS.aufgaben.beschreibung, bereich: 'Tag', breite: 4 },
   { art: 'termine', label: 'Termine heute', beschreibung: 'Die Termine von heute', bereich: 'Tag', breite: 4 },
   { art: 'termine', label: 'Nächste 7 Tage', beschreibung: 'Was in der Woche ansteht — privat und KEMARIS', bereich: 'Tag', breite: 4, voreinstellung: { tage: 7, business: true } },

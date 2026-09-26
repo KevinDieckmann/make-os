@@ -4,6 +4,7 @@
 // Schnappschuss (Verlauf für Trends, Ampel-Wechsel und den MRR für die NRR).
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { merken } from '@/lib/store/memo';
 import type { FinanceState } from '@/lib/make-one/finance-data';
 import type { Firma, Rechnung, Zahlung, Merkposten, Planposten } from '@/lib/make-one/liquiditaet';
 import { lesen, monatsBild, type MalinExport } from '@/lib/make-one/grundlage';
@@ -124,6 +125,10 @@ const monatlich = (f: { brutto: number; rhythmus: string }) => (f.rhythmus === '
 
 /** Alles, was der Index braucht — einmal geladen, für alle drei Sichten. */
 export async function ladeRoh(heute = localDay()) {
+  // Tempo (26.09.): vierzehn Bestände lesen und aufbereiten — zwei Minuten merken (jede Schreibung setzt zurück).
+  return merken(`business-roh:${heute}`, 2 * 60_000, () => ladeRohFrisch(heute));
+}
+async function ladeRohFrisch(heute: string) {
   const [fp, lp, fin, grund, abschluesse, crm, kartei, cal, plan, auftraege, ms, einst, verlauf, traktionDatei] = await Promise.all([
     loadJson<{ firmen?: Firma[]; rechnungen?: (Rechnung & { firmaId?: string })[]; zahlungen?: Zahlung[]; merkposten?: Merkposten[] }>('finanzplan'),
     loadJson<{ posten?: Planposten[] }>('liquiplan'),

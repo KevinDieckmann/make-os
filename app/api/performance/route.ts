@@ -4,6 +4,7 @@
 // POST {analyse} → zusätzlich: MAKE ordnet die Lage ein und benennt den Hebel
 
 import { NextResponse } from 'next/server';
+import { merken } from '@/lib/store/memo';
 import { personAus } from '@/lib/jarvis/raum';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
@@ -43,7 +44,8 @@ async function history(person: string): Promise<PerfSnapshot[]> {
 export async function GET(req: Request) {
   // Der Score hängt an persönlichen Beständen (Gesundheit, Journal,
   // Routinen) — er gehört deshalb der Person, die fragt.
-  const [aktuell, verlauf] = await Promise.all([computeIndex(undefined, personAus(req)), history(personAus(req))]);
+  // Tempo (26.09.): der Score rechnet über viele Bestände — fünf Minuten merken, jede Schreibung setzt zurück.
+  const [aktuell, verlauf] = await Promise.all([merken(`performance:${personAus(req)}`, 5 * 60_000, () => computeIndex(undefined, personAus(req))), history(personAus(req))]);
   // Der Verlauf wächst von selbst: der ERSTE Aufruf des Tages hält den Punkt
   // fest (idempotent — spätere GETs schreiben nicht; POST/Analyse erneuert).
   if (aktuell.index != null && !verlauf.some(s => s.date === aktuell.stand)) {

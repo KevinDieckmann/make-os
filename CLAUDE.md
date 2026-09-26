@@ -211,6 +211,12 @@ lokal, Route `/os`, Port 3001.
   `markttraktion-ueberblick`, `finanzchef`, `loops`, `kalender`. Weitere Karten-Seiten nach demselben Muster anschließen
   (offen: Wochen-/Tagesplaner, Aufgaben-Board, Inbox, Kompass, Säulen, Stapel, CRM-Unterseiten, Finanz-Details).
 
+## Tempo (26.09.)
+- Teure Berechnungen (Indizes, Familie, Bauplan) laufen durch `merken(schluessel, ttl, rechne)` aus `lib/store/memo.ts`;
+  jede Schreibung über local-db setzt den Speicher zurück. Schlüssel MÜSSEN Person/Haushalt tragen. Neue teure Routen
+  genauso kapseln, nie Rohdaten je Seitenwechsel neu lesen. Client: Widgets holen über `useDaten` (20 s), Kopf-Index 5 min.
+- Nie auf dem Server bauen: Auslieferung = Bild von GitHub (siehe DEPLOY.md). Server ist 1 vCPU/2 GB.
+
 ## Technik
 - TypeScript strikt: vor jedem Commit `npx tsc --noEmit` — null Fehler.
 - Node liegt bei Kevin unter `~/.local/node22/bin` (nicht im PATH). Server

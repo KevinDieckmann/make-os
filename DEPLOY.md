@@ -182,3 +182,10 @@ in einen Chat: alles, was dort steht, gilt als kompromittiert). Am 26.09. einmal
 Nicht verschlüsselt: Bilder unter `daten/bauplan-bilder`, das Archiv `daten/archiv` (Umzugs-Stände) und das
 Obsidian-Hirn (eigenes Git-Repo). Das sind bewusste Ausnahmen; die JSON-Bestände sind das, worum es geht.
 
+## Ausrollen seit 26.09. abends: Bild kommt fertig von GitHub
+Die Action baut das Docker-Image auf dem GitHub-Rechner (`docker build`) und schickt es per SSH-Stdin an den Server
+(`docker save | gzip | ssh make@… bild`). `deploy/ausrollen.sh` (Forced Command) unterscheidet über
+`SSH_ORIGINAL_COMMAND`: `ziehen` (nur `git merge --ff-only`), `bild` (Stdin → `docker load` → `compose up --no-build`),
+leer = Altweg (ziehen + auf dem Server bauen). Die Action prüft an der Ausgabe `ausrollen-v2`, ob das neue Skript schon
+auf dem Server liegt; sonst hat der Altweg gebaut. Vorteil: kein Bau auf dem 1-CPU-Server, die App bleibt beim Ausrollen
+flott; Rückfall bleibt möglich (`ssh make@… ` ohne Modus).

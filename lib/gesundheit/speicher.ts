@@ -5,6 +5,7 @@
 // `gesundheit-index[--person]` (lib/kennzahlen/speicher).
 
 import { loadJson } from '@/lib/store/local-db';
+import { merken } from '@/lib/store/memo';
 import { speicherFuer } from '@/lib/jarvis/raum';
 import { localDay } from '@/lib/zeit';
 import type { VitalsLog } from '@/lib/vitals';
@@ -54,6 +55,9 @@ export interface GesundheitStand extends IndexVerlauf { pi: GesundheitsIndex; pe
 
 /** Rechnen, Schnappschuss des Tages festhalten (nur wenn es Werte gibt), Verlauf liefern. */
 export async function gesundheitStand(person: string, heute = localDay()): Promise<GesundheitStand> {
+  return merken(`gesundheit:${person}:${heute}`, 2 * 60_000, () => gesundheitStandFrisch(person, heute));
+}
+async function gesundheitStandFrisch(person: string, heute: string): Promise<GesundheitStand> {
   const [b, d] = await Promise.all([ladeGesundheitBestand(person, heute), ladeIndexDatei(name(person))]);
   const pi = berechneGesundheit(b);
   const hatWerte = Object.keys(b.vitals).length > 0 || Object.keys(b.log).length > 0 || Object.keys(b.journal).length > 0;

@@ -5,6 +5,7 @@
 // Nur Haushaltsmitglieder (haushaltVon, streng). Kein Business-Agent liest das.
 
 import { NextResponse } from 'next/server';
+import { merken } from '@/lib/store/memo';
 import { updateJson } from '@/lib/store/local-db';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
@@ -53,7 +54,7 @@ async function antwort(f: Familie, person: string, haushalt: string) {
 export async function GET(req: Request) {
   const z = await haushaltVon(req);
   if (!z) return NextResponse.json(KEIN, { status: 403 });
-  return NextResponse.json(await antwort(await ladeFamilie(z.haushalt), z.person, z.haushalt));
+  return NextResponse.json(await merken(`familie:${z.haushalt}:${z.person}`, 30_000, async () => antwort(await ladeFamilie(z.haushalt), z.person, z.haushalt)));
 }
 
 export async function PATCH(req: Request) {

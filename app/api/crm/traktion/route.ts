@@ -12,6 +12,7 @@
 //       Telegram-Bote für die angemeldete Person bereitsteht.
 
 import { NextResponse } from 'next/server';
+import { merken } from '@/lib/store/memo';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm } from '@/lib/crm/speicher';
@@ -51,8 +52,10 @@ async function schnappschuss(eintrag: VerlaufTag, heute: string): Promise<Verlau
 }
 
 export async function GET(req: Request) {
-  const heute = localDay();
   const ich = personAus(req);
+  // Tempo (26.09.): die ganze Antwort eine Minute merken (je Person) — jede Schreibung setzt zurück.
+  const body = await merken(`traktion:${ich}:${localDay()}`, 60_000, async () => {
+  const heute = localDay();
   const [roh, crm, ...staende] = await Promise.all([
     loadJson<{ kontakte: Kontakt[] }>('kontakte'), ladeCrm(),
     ...HEADS.map(h => loadJson<HeadStand>(standName(h))),
@@ -76,7 +79,7 @@ export async function GET(req: Request) {
     ladeTelegram().catch(() => null),
     fortschreiben('traktion-index', datei, index, heute, kontakte.length > 0),
   ]);
-  return NextResponse.json({
+  return {
     ok: true, heute, ich, team: TEAM,
     fuerDich: fuerDich(ich, kontakte, crm, heute),
     teamFeed: teamFeed(kontakte, crm, new Date(Date.now() - 14 * 864e5).toISOString(), 14),
@@ -90,7 +93,9 @@ export async function GET(req: Request) {
     befunde: befunde(kontakte, crm, heute),
     heads,
     bestand: { kontakte: kontakte.length, firmen: crm.firmen.length, chancen: crm.chancen.length, mandate: crm.mandate.length, events: crm.events.length, kampagnen: (crm.kampagnen ?? []).length },
+  };
   });
+  return NextResponse.json(body);
 }
 
 /** Eigene Schwelle einer Traktions-Kennzahl setzen oder zurücksetzen (Team-weit). */
