@@ -40,11 +40,16 @@ Stand hier und einen Stand, der online ist.“
 Einmalig danach: im Cockpit `/os/business` Köpfe (FTE) und Jahresziele je Firma eintragen, dazu den
 Monatsabschluss August — das schließt die meisten Messlücken.
 
-## Online seit 26.09.2026 (Stand `ba4ef3a`, ausgerollt 11:44)
+## Online seit 26.09.2026 (Stand `400c9a1`, letztes Ausrollen 13:45)
 
-Alles aus dem Block „Nächstes Update“ unten ist seit 26.09. mittags online (Next 15.5, Sicherheits-Wellen 1–3,
-Gesundheits-Index, Traktions-Index, keine toten Stellen). Der Block bleibt als Ansage stehen, bis das nächste
-Update ihn ablöst.
+Alles aus den Blöcken „Nächstes Update“ unten ist seit 26.09. online: Next 15.5, Sicherheits-Wellen 1–4 (zuletzt
+zweiter Faktor, `__Host`-Cookie, Verschlüsselung im Ruhezustand — auf dem Server eingeschaltet, 151 Bestände
+umgestellt), Gesundheits-Index, Traktions-Index, keine toten Stellen, Whoop-Import online. Die Blöcke bleiben als
+Ansage stehen, bis das nächste Update sie ablöst.
+
+**Für Kevin und Malin jetzt:** einmal neu anmelden → Konto → „Zweiter Faktor“ einrichten. Kevin: die Zeile
+`MAKE_OS_DATEN_SCHLUESSEL=…` aus `/srv/make-os/app/.env` in den Passwort-Manager
+(`ssh make@2.28.108.162 grep MAKE_OS_DATEN_SCHLUESSEL /srv/make-os/app/.env`).
 
 ## Nächstes Update — vorbereitet, noch nicht online
 
