@@ -6,10 +6,10 @@
 // Middleware schon am Schlüssel erkannt hat.
 
 import { ladeKonten } from '@/lib/zugang/konten';
+import { istDienst } from '@/lib/zugang/dienst';
 
 export async function imHaushaltDesInhabers(req: Request): Promise<{ person: string; dienst: boolean } | null> {
-  const schluessel = process.env.MAKE_OS_KEY;
-  if (schluessel && req.headers.get('x-make-key') === schluessel) {
+  if (istDienst(req)) {
     const p = req.headers.get('x-make-person');
     return { person: p && /^[a-z0-9-]{1,40}$/.test(p) ? p : 'kevin', dienst: true };
   }
@@ -27,6 +27,25 @@ export async function personImHaushaltDesInhabers(person: string | undefined | n
   if (!inhaber || !ich) return false;
   if (ich.speicher === inhaber.speicher) return true;
   return !!inhaber.haushalt && ich.haushalt === inhaber.haushalt;
+}
+
+/** Ist diese Person der Inhaber (Rolle)? */
+export async function istInhaber(person: string | null | undefined): Promise<boolean> {
+  if (!person) return false;
+  const { konten } = await ladeKonten();
+  return konten.find(k => k.speicher === person)?.rolle === 'inhaber';
+}
+
+/**
+ * Kevins Mac-Postfach und Adressbuch (26.09.): nur der Inhaber selbst. Der
+ * Dienstweg ohne Person ist ein Systemlauf (Zulieferer, Signale) und darf;
+ * handelt er für eine Person (Jarvis), gilt deren Recht.
+ */
+export async function nurInhaber(req: Request): Promise<boolean> {
+  const w = await imHaushaltDesInhabers(req);
+  if (!w) return false;
+  if (w.dienst && !req.headers.get('x-make-person')) return true;
+  return istInhaber(w.person);
 }
 
 /** Der Haushalt des Inhabers — Kalender und Business-Index gehören genau diesem Haushalt. */

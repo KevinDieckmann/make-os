@@ -7,6 +7,8 @@
 // Nichts davon ist neu; es ist das alte Finanz-Dashboard ohne Kacheln.
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { WEG } from '@/lib/wege';
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
@@ -30,6 +32,7 @@ const BEREICHE = [
 
 /** Business: Konten, Fälliges, Monat, Grundlage, Belege, Bereiche. Unter Zahlen → Business steht es unter dem Cockpit (ohne eigenen Index-Streifen). */
 export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolean } = {}) {
+  const router = useRouter();
   const heute = localDay();
   const [plan, setPlan] = useState<Plan | null>(null);
   const [posten, setPosten] = useState<Planposten[]>([]);
@@ -72,11 +75,11 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
       {!ohneStreifen && <IndexStreifen ids={STREIFEN.zahlen} titel="Business-Index · Finanzen" />}
       <Karte i={0} akzent={LEUCHT.geld}>
         <Ueberschrift farbe={LEUCHT.geld}>Auf den Konten</Ueberschrift>
-        <Zahl gross wert={plan ? eur(konten) : undefined} farbe={konten < 0 ? LEUCHT.kritisch : LEUCHT.geld} label="" />
+        <Link href={WEG.kontostaende()} style={{ textDecoration: 'none', color: 'inherit' }}><Zahl gross wert={plan ? eur(konten) : undefined} farbe={konten < 0 ? LEUCHT.kritisch : LEUCHT.geld} label="Kontostand · pflegen ›" /></Link>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginTop: 14 }}>
-          <Zahl wert={stand12 != null ? eur(stand12) : undefined} label={v?.engpass ? `in 12 Wochen · eng ab ${v.engpass.label}` : v ? `in 12 Wochen · Tief ${eur(v.tiefpunkt.stand)}` : 'in 12 Wochen'} farbe={v ? (v.engpass ? LEUCHT.kritisch : (stand12 ?? 0) < 2000 ? LEUCHT.achtung : LEUCHT.gut) : C.inkLeise} />
-          <Zahl wert={plan ? eur(mussRaus.reduce((s, z) => s + z.betrag, 0)) : undefined} label={`muss raus · ${mussRaus.length} Posten`} farbe={mussRaus.length ? LEUCHT.achtung : C.inkLeise} />
-          <Zahl wert={plan ? eur(kommtRein.reduce((s, r) => s + r.betrag, 0)) : undefined} label={`kommt rein · ${kommtRein.length} Rechnungen`} farbe={kommtRein.length ? LEUCHT.gut : C.inkLeise} />
+          <Link href={WEG.liquiditaet()} style={{ textDecoration: 'none', color: 'inherit' }}><Zahl wert={stand12 != null ? eur(stand12) : undefined} label={`${v?.engpass ? `in 12 Wochen · eng ab ${v.engpass.label}` : v ? `in 12 Wochen · Tief ${eur(v.tiefpunkt.stand)}` : 'in 12 Wochen'} ›`} farbe={v ? (v.engpass ? LEUCHT.kritisch : (stand12 ?? 0) < 2000 ? LEUCHT.achtung : LEUCHT.gut) : C.inkLeise} /></Link>
+          <Link href={WEG.rechnungen()} style={{ textDecoration: 'none', color: 'inherit' }}><Zahl wert={plan ? eur(mussRaus.reduce((s, z) => s + z.betrag, 0)) : undefined} label={`muss raus · ${mussRaus.length} Posten ›`} farbe={mussRaus.length ? LEUCHT.achtung : C.inkLeise} /></Link>
+          <Link href={WEG.rechnungen()} style={{ textDecoration: 'none', color: 'inherit' }}><Zahl wert={plan ? eur(kommtRein.reduce((s, r) => s + r.betrag, 0)) : undefined} label={`kommt rein · ${kommtRein.length} Rechnungen ›`} farbe={kommtRein.length ? LEUCHT.gut : C.inkLeise} /></Link>
         </div>
       </Karte>
       <Spalten verhaeltnis="3:2">
@@ -87,7 +90,7 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
           {plan && !faellig.length && <Leer>Nichts offen.</Leer>}
           {faellig.map(z => {
             const spaet = !!z.faellig && z.faellig < heute;
-            return <Zeile key={z.id} links={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: spaet ? LEUCHT.kritisch : C.inkDim, width: 48 }}>{datum(z.faellig)}</span>}
+            return <Zeile key={z.id} onClick={() => router.push(WEG.zahlung(z.id))} links={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: spaet ? LEUCHT.kritisch : C.inkDim, width: 48 }}>{datum(z.faellig)}</span>}
               titel={z.an} unter={z.titel} rechts={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 15, fontVariantNumeric: 'tabular-nums', color: spaet ? LEUCHT.kritisch : C.ink }}>{eur(z.betrag)}</span>} />;
           })}
         </Liste>
@@ -101,11 +104,11 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
           </div>
           <div style={{ display: 'grid', gap: 9 }}>
             {monat.top.map(x => (
-              <div key={x.k} style={{ display: 'grid', gridTemplateColumns: 'minmax(90px,150px) 1fr 84px', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: TYP.bedien, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.k}</span>
+              <Link key={x.k} href={`/os/finanzen/buchungen?monat=${monat.zeige}&kat=${encodeURIComponent(x.k)}&ort=geschaeft`} style={{ display: 'grid', gridTemplateColumns: 'minmax(90px,150px) 1fr 84px', alignItems: 'center', gap: 12, textDecoration: 'none', color: 'inherit' }}>
+                <span style={{ fontSize: TYP.bedien, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.k} ›</span>
                 <Fortschritt anteil={x.s / Math.max(monat.top[0]?.s ?? 1, 1)} farbe={LEUCHT.achtung} />
                 <span style={{ fontFamily: SCHRIFT.display, fontWeight: 600, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: C.inkDim, textAlign: 'right' }}>{eur(x.s)}</span>
-              </div>
+              </Link>
             ))}
           </div>
         </Karte>

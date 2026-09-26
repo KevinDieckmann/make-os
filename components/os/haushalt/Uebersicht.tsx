@@ -1,5 +1,7 @@
 'use client';
 
+import { WEG } from '@/lib/wege';
+
 // Übersicht — Malins Leitfrage: Wo stehen wir, wo sollten wir stehen, und was
 // ist die wichtigste Entscheidung diese Woche? Kennzahlen des jüngsten Monats
 // MIT Daten (nicht des laufenden — sonst stehen bei Rückstand überall Nullen).
@@ -39,11 +41,11 @@ export function Uebersicht({ h, katName }: { h: HaushaltDaten; katName: KatName 
       <Karte i={1} akzent={LEUCHT.geld}>
         <Ueberschrift farbe={LEUCHT.geld} rechts={m !== monatVon(heute) ? `jüngster Monat mit Buchungen` : 'laufender Monat'}>{monatName(m)}</Ueberschrift>
         <Kacheln>
-          <Kachel titel="Einnahmen" wert={eur(d.ein)} farbe={LEUCHT.gut} zusatz={vergleich(d.ein, v.ein, true)} />
-          <Kachel titel="Ausgaben" wert={eur(d.aus)} farbe={LEUCHT.achtung} zusatz={vergleich(d.aus, v.aus, false)} />
-          <Kachel titel="Saldo" wert={eur(d.saldo)} farbe={d.saldo >= 0 ? LEUCHT.gut : LEUCHT.kritisch} zusatz={d.saldo >= 0 ? 'im Plus' : 'im Minus'} />
-          <Kachel titel="Noch zu zahlen" wert={eur(nochZuZahlen)} zusatz={`${rechnungen.length} offene Rechnung${rechnungen.length === 1 ? '' : 'en'}`} />
-          <Kachel titel="Restschuld" wert={eur(rest)} zusatz={`${eur(rate)} pro Monat`} />
+          <Kachel href={WEG.privat('einnahmen')} titel="Einnahmen" wert={eur(d.ein)} farbe={LEUCHT.gut} zusatz={vergleich(d.ein, v.ein, true)} />
+          <Kachel href={WEG.privat('buchungen', { monat: m })} titel="Ausgaben" wert={eur(d.aus)} farbe={LEUCHT.achtung} zusatz={vergleich(d.aus, v.aus, false)} />
+          <Kachel href={WEG.privat('analyse')} titel="Saldo" wert={eur(d.saldo)} farbe={d.saldo >= 0 ? LEUCHT.gut : LEUCHT.kritisch} zusatz={d.saldo >= 0 ? 'im Plus' : 'im Minus'} />
+          <Kachel href={WEG.privat('schulden')} titel="Noch zu zahlen" wert={eur(nochZuZahlen)} zusatz={`${rechnungen.length} offene Rechnung${rechnungen.length === 1 ? '' : 'en'}`} />
+          <Kachel href={WEG.privat('schulden')} titel="Restschuld" wert={eur(rest)} zusatz={`${eur(rate)} pro Monat`} />
         </Kacheln>
         {(d.geliehen > 0 || d.durchlauf > 0) && (
           <Hinweis>

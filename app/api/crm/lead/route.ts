@@ -63,6 +63,8 @@ export async function POST(req: Request) {
     if (crm.mandate.some(m => m.chanceId === c.id)) return NextResponse.json({ ok: false, fehler: 'Zu diesem Deal gibt es schon ein Mandat.' }, { status: 409 });
     const m: Mandat = {
       id: neueId('m'), kunde: c.firma ?? c.titel, kontaktIds: c.kontaktIds, titel: c.titel, art: c.art, chanceId: c.id, gesellschaft: c.gesellschaft, status: 'aktiv',
+      // Das Produkt reist mit (26.09.) — sonst sieht die Produkt-Auswertung das Mandat nie.
+      ...(c.leistungId ? { leistungId: c.leistungId } : {}),
       vertragUnterschrieben: false, start: jetzt.slice(0, 10), verlaengerung: 'offen',
       honorar: { betrag: c.wert.basis === 'jahr' ? Math.round(c.wert.betrag / 12) : c.wert.betrag, basis: c.wert.basis === 'einmalig' ? 'einmalig' : 'monat', netto: true },
       ustSatz: 19, rechnungsrhythmus: c.wert.basis === 'einmalig' ? 'einmalig' : 'monatlich', zahlungszielTage: 14, ziele: [],
@@ -72,7 +74,7 @@ export async function POST(req: Request) {
     const ids = new Set(c.kontaktIds);
     await aendereCrm(x => ({ ...x, mandate: [...x.mandate, m], firmen: x.firmen.map(f => (f.name === c.firma && !f.rolleVonHand ? { ...f, rolle: 'kunde' } : f)) }));
     await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (ids.has(k.id) ? { ...k, lebensphase: 'kunde', stufe: 'gewonnen', geaendertAm: jetzt.slice(0, 10) } : k)) }));
-    return NextResponse.json({ ok: true, mandatId: m.id, text: `Mandat „${m.kunde}“ angelegt — in Sales › Kunden: Vertrag und Kickoff klären.` });
+    return NextResponse.json({ ok: true, mandatId: m.id, text: `Mandat „${m.kunde}“ angelegt — unter Produkte & Mandate: Vertrag und Kickoff klären.` });
   }
 
   const id = String(b.id ?? '');

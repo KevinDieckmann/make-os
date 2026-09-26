@@ -54,6 +54,13 @@ if [ ! -d node_modules ]; then
   echo ""
 fi
 
+# ── 2b · Sitzungsgeheimnis (26.09.) ─────────────────────────────────────────
+# Die Anmelde-Zettel werden mit einem eigenen Geheimnis signiert, nicht mit
+# dem Dienstschlüssel. Fehlt es, wird es einmal erzeugt (ab dann bleibt es).
+if [ -f .env.local ] && ! grep -q '^SESSION_SECRET=' .env.local; then
+  echo "SESSION_SECRET=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 48)" >> .env.local
+fi
+
 # ── 3 · Zugangsdaten ────────────────────────────────────────────────────────
 # Entscheidend ist nicht, OB die Datei existiert, sondern ob ein brauchbarer
 # Schlüssel drinsteht. Eine leere Zeile MAKE_OS_KEY= (etwa aus einer Vorlage)

@@ -18,6 +18,7 @@ import { nameVon } from '@/lib/jarvis/raum';
 import { nachrichtFuer } from '@/lib/gesundheit/lauf';
 import { faelligeSlots, type TaktStand } from '@/lib/gesundheit/takt';
 import { loadJson } from '@/lib/store/local-db';
+import { istDienst } from '@/lib/zugang/dienst';
 import { localDay } from '@/lib/zeit';
 import { innenAdresse } from '@/lib/innen';
 
@@ -45,6 +46,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  // Nur der Bote (Dienstschlüssel) liefert Telegram-Updates an — sonst könnte jede Sitzung als gekoppelte Person schreiben (26.09.).
+  if (!istDienst(req)) return NextResponse.json({ error: 'Nur der Bote.' }, { status: 403 });
   let b: { update?: Update };
   try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const u = b.update;

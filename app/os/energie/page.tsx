@@ -1,7 +1,4 @@
-import { EnergieView } from '@/components/os/EnergieView';
+import { redirect } from 'next/navigation';
 
-export const metadata = { title: 'Energie erhöhen — MAKE OS' };
-
-export default function EnergiePage() {
-  return <EnergieView />;
-}
+// Körper & Aufbau ist ein Reiter der Gesundheitsseite (26.09.).
+export default function EnergiePage() { redirect('/os/gesundheit?s=koerper'); }

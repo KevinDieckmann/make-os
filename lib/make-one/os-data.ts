@@ -53,22 +53,6 @@ export function msiLabel(v: number): string {
   return 'Kritisch';
 }
 
-// ─── Module-Kacheln ─────────────────────────────────────────────────────────
-export interface ModuleCell {
-  dom: string; val: string; sub: string; subTone?: 'att' | 'crit';
-  score?: number; tag?: { text: string; tone: 'att' | 'ok' }; href?: string;
-}
-export const MODULES: ModuleCell[] = [
-  // Ehrlichkeit vor Deko: Kacheln behaupten keine Zahlen mehr, die niemand
-  // misst. Der einzige Wert (Performance) wird live vom echten Index ersetzt.
-  { dom: 'Performance · Index', val: 'Performance-Index', sub: 'ein Score aus echten Daten — mit Herleitung', subTone: 'att', score: 0, tag: { text: 'Output', tone: 'att' }, href: '/os/performance' },
-  { dom: 'KEMARIS · Business', val: 'CapOS & Traktion', sub: 'Pipeline, Zielliste, Wettbewerb — Säule Business', href: '/os/saeule/business', tag: { text: 'F&F 01.08', tone: 'att' } },
-  { dom: 'KD Ventures · Holding', val: 'Ziel: 1 Mio € Umsatz', sub: '→ min. 300k Gewinn für Kevin & Malin · Kurs im Controlling', href: '/os/controlling', tag: { text: 'Nordstern', tone: 'att' } },
-  { dom: 'Team · Delegation', val: 'Wer was trägt', sub: 'Verantwortung aus dem Miro-Board · Rituale', href: '/os/saeule/social' },
-  { dom: 'Gesundheit · Aufbau', val: 'Morgen-Check & Reha', sub: 'Vitals, Routinen, Journal — privat (MAKE.One)', href: '/os/gesundheit', tag: { text: 'live', tone: 'ok' } },
-  { dom: 'System · Roadmap', val: 'Was wir bauen', sub: '7 Phasen · Bauplan, Fortschritt, nächste Schritte', href: '/os/roadmap', tag: { text: 'im Bau', tone: 'ok' } },
-];
-
 // ─── Lebensrad (Bodo Schäfer · Mut zum Glücklich sein) ──────────────────────
 export interface LifeArea { label: string; score: number; } // 0–10
 export const LIFE_WHEEL: LifeArea[] = [

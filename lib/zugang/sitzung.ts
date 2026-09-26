@@ -26,7 +26,7 @@ async function signiere(geheimnis: string, text: string): Promise<string> {
 }
 
 /** Ein Vergleich, der nicht am ersten falschen Zeichen aufgibt. */
-function gleich(a: string, b: string): boolean {
+export function gleich(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let d = 0;
   for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);

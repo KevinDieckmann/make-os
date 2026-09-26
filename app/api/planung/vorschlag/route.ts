@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveVitals, vitalsHint } from '@/lib/vitals';
+import { personAus } from '@/lib/jarvis/raum';
 import { localDay } from '@/lib/zeit';
 import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
 import { SAEULE_VON_PROJEKT, SAEULE_LABEL } from '@/lib/make-one/fokus-data';
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
     loadJson<{ events: KemEvent[] }>('kemaris-calendar'),
     loadJson<{ tasks: Task[] }>('tasks'),
     loadJson<Record<string, { titel: string; fortschritt: number; erledigt?: boolean }[]> & { fokus?: Record<string, string> }>('ziele'),
-    resolveVitals(),
+    resolveVitals(undefined, personAus(req)),
     loadJson<{ routinen: RoutineDef[] }>('routinen'),
     loadJson<{ regler: Record<string, number> }>('fokus-regler'),
   ]);

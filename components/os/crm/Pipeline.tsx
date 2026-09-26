@@ -11,10 +11,11 @@
 
 import { useLinkAuswahl } from '../Verlauf';
 import { mandateLink } from '@/lib/crm/adresse';
+import { WEG } from '@/lib/wege';
 import Link from 'next/link';
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, useBreit, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, useBreit, LEUCHT, feld } from '../schlank';
 import { anzeigename } from '@/lib/make-one/crm';
 import { gesamtwert, prognose, prognoseJePerson, werZahlen, VERLUSTGRUENDE } from '@/lib/crm/pipeline';
 import { zustaendig, haeltBeziehung, mitglied, nameVon, verantwortlich } from '@/lib/crm/team';
@@ -269,7 +270,24 @@ function ChancenDetail({ c, api, personen, zuKontakt }: { c: Chance; api: CrmApi
           ))}
         </div>
       </div>
-      <Feldzeile label="Quelle"><Pillen liste={[...QUELLEN]} aktiv={c.quelle} onWahl={quelle => setze({ quelle })} /></Feldzeile>
+      <Feldzeile label="Produkt">
+        <select value={c.leistungId ?? ''} aria-label="Produkt" onChange={e => setze({ leistungId: e.target.value || undefined })} style={{ ...feld, width: 'auto', maxWidth: '100%', fontSize: TYP.bedien, padding: '8px 11px' }}>
+          <option value="">— ohne Produkt —</option>
+          {crm.stand.leistungen.filter(x => x.status !== 'eingestellt' || x.id === c.leistungId).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+      </Feldzeile>
+      <Feldzeile label="Quelle"><Pillen liste={[...QUELLEN]} aktiv={c.quelle} onWahl={quelle => setze({ quelle, quelleBezug: undefined })} /></Feldzeile>
+      {(c.quelle === 'event' || c.quelle === 'content') && (
+        <Feldzeile label={c.quelle === 'event' ? 'Welches Event' : 'Welcher Beitrag'}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <select value={c.quelleBezug ?? ''} aria-label="Bezug" onChange={e => setze({ quelleBezug: e.target.value || undefined })} style={{ ...feld, width: 'auto', maxWidth: '100%', fontSize: TYP.bedien, padding: '8px 11px' }}>
+              <option value="">— wählen —</option>
+              {c.quelle === 'event' ? crm.stand.events.map(x => <option key={x.id} value={x.id}>{x.titel} · {x.datum}</option>) : (crm.stand.beitraege ?? []).map(x => <option key={x.id} value={x.id}>{x.titel}</option>)}
+            </select>
+            {c.quelleBezug && <Link href={c.quelle === 'event' ? WEG.event(c.quelleBezug) : WEG.marketing('redaktion')} style={{ fontSize: 12.5, color: C.inkDim, textDecoration: 'none' }}>öffnen ›</Link>}
+          </div>
+        </Feldzeile>
+      )}
       <Feldzeile label="Selbstauskunft"><Feld wert={c.selbstauskunft} platzhalter="„Wie sind Sie auf uns aufmerksam geworden?“" onFertig={s => setze({ selbstauskunft: s || undefined })} /></Feldzeile>
       <Feldzeile label="Gesellschaft"><Pillen liste={[...GES]} aktiv={c.gesellschaft} onWahl={gesellschaft => setze({ gesellschaft })} /></Feldzeile>
       <Feldzeile label="Personen">

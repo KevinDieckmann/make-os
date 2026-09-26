@@ -379,8 +379,8 @@ export function WochenplanView() {
           <Zahl wert={gesamtH ? fmtH(gesamtH) : undefined} label="h belegt" farbe={ueberladen ? LEUCHT.achtung : LEUCHT.puls} />
           <Zahl wert={fixMin ? fmtH(fixMin / 60) : undefined} label="h Termine" />
           <Zahl wert={planMin ? fmtH(planMin / 60) : undefined} label="h Blöcke" />
-          <Zahl wert={offeneN ? String(offeneN) : undefined} label="Aufgaben offen" />
-          <Zahl wert={faelligWoche ? String(faelligWoche) : undefined} label="fällig diese Woche" farbe={faelligWoche ? LEUCHT.achtung : undefined} />
+          <Link href="/os/aufgaben" style={{ textDecoration: 'none', color: 'inherit' }}><Zahl wert={offeneN ? String(offeneN) : undefined} label="Aufgaben offen ›" /></Link>
+          <Link href="/os/aufgaben" style={{ textDecoration: 'none', color: 'inherit' }}><Zahl wert={faelligWoche ? String(faelligWoche) : undefined} label="fällig diese Woche ›" farbe={faelligWoche ? LEUCHT.achtung : undefined} /></Link>
         </div>
       </Karte>
 
@@ -396,7 +396,7 @@ export function WochenplanView() {
           </div>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: C.inkLeise }}>
             {kal?.quelle === 'icloud' && <span title={kal.konto ?? undefined}>Apple Kalender · iCloud · Stand {kal.stand ? new Date(kal.stand).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '—'}</span>}
-            {kal && !kal.icloud && <span style={{ color: LEUCHT.achtung }}>Noch nicht mit iCloud verbunden{kal.stand ? ` — Mac-Stand vom ${new Date(kal.stand).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}</span>}
+            {kal && !kal.icloud && <span style={{ color: LEUCHT.achtung }}>Noch nicht mit iCloud verbunden{kal.stand ? ` — Mac-Stand vom ${new Date(kal.stand).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''} · <Link href="/os/system" style={{ color: LEUCHT.achtung }}>verbinden ›</Link></span>}
             {kal?.icloud && <button onClick={() => void jetztAbgleichen()} disabled={abgleich} style={{ background: 'none', border: 'none', color: LEUCHT.puls, cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: 0 }}>{abgleich ? 'gleicht ab …' : 'jetzt abgleichen'}</button>}
           </div>
         </div>
@@ -531,9 +531,10 @@ export function WochenplanView() {
         </div>
       </Karte>
       {/* Ziele im Blick — die Woche plant man gegen Ziele, nicht ins Blaue */}
-      {(ziele.monat.length > 0 || ziele.quartal.length > 0) && (
+      {(
         <Karte i={1}>
           <Ueberschrift farbe={LEUCHT.schlaf} rechts={!ziele.monat.length ? <Link href="/os/planung/monat" style={verweis}>Monatsziele anlegen ›</Link> : undefined}>Ziele</Ueberschrift>
+          {!ziele.monat.length && !ziele.quartal.length && <Leer>Noch kein Monats- oder Quartalsziel — die Woche plant man gegen Ziele, nicht ins Blaue.</Leer>}
           {(ziele.fokus?.woche || ziele.fokus?.monat) && (
             <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(16px,2vw,18px)', fontWeight: 600, lineHeight: 1.4, marginBottom: 4 }}>
               <span style={{ color: LEUCHT.schlaf }}>◎</span> {ziele.fokus?.woche || ziele.fokus?.monat}

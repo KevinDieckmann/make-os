@@ -13,7 +13,7 @@ import { verbunden } from '@/lib/kalender/icloud';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const dienst = (req: Request) => !!process.env.MAKE_OS_KEY && req.headers.get('x-make-key') === process.env.MAKE_OS_KEY;
+import { istDienst as dienst } from '@/lib/zugang/dienst';
 const MAX_BYTES = 3_000_000;
 
 export async function POST(req: Request) {

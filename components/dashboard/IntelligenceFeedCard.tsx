@@ -61,7 +61,7 @@ interface MsData {
   calendar: MsCalEvent[];
   teams: MsTeamsMsg[];
   documents: MsDoc[];
-  lastUpdated: string;
+  lastUpdated: string | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ export function IntelligenceFeedCard() {
           </div>
           {data && (
             <span className="text-[9px] text-white/20 font-mono">
-              Sync {format(parseISO(data.lastUpdated), 'HH:mm')}
+              Sync {data.lastUpdated ? format(parseISO(data.lastUpdated), 'HH:mm') : '—'}
             </span>
           )}
         </div>

@@ -18,6 +18,7 @@ import {
   type LaufArt, type Lauf, type LaufFile, type SchrittErgebnis,
 } from '@/lib/tageslauf';
 import { innenAdresse } from '@/lib/innen';
+import { personAus } from '@/lib/jarvis/raum';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
   const geplant = schritteFuer(art);
   const schritte: SchrittErgebnis[] = [];
   // EIN Brain-Zug für die ganze Kette — statt dass jeder Schritt selbst liest.
-  const b = await gatherBrain(heute);
+  const b = await gatherBrain(heute, personAus(req));
 
   /** Kapselt einen Schritt: Fehler beenden nie die Kette. */
   async function schritt(id: string, fn: () => Promise<Omit<SchrittErgebnis, 'id' | 'name' | 'ms'>>) {

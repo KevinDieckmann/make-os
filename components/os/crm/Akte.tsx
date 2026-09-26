@@ -15,6 +15,8 @@
 // Akte mit der Karteikarte (kontakt-teile.tsx), die Regeln stehen in lib/crm/akte.ts.
 
 import { nachOben } from '../Verlauf';
+import { useRouter } from 'next/navigation';
+import { WEG } from '@/lib/wege';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Chip, Punkt, Fortschritt, LEUCHT, SPALTEN_AB } from '../schlank';
@@ -90,6 +92,7 @@ function Abschnitt({ titel, children }: { titel: string; children: ReactNode }) 
 }
 
 export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte }: { api: CrmApi; id: string; name: (p: string) => string; zurueck: () => void; zuFirma: (id: string) => void; zuAkte: (id: string) => void }) {
+  const router = useRouter();
   const spalten = useSpalten();
   const crm = api.crm;
   const heute = crm?.heute ?? new Date().toISOString().slice(0, 10);
@@ -220,22 +223,22 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte }: { api: 
           {v.kollegen.length > 12 && <div style={{ fontSize: 12, color: C.inkLeise }}>… und {v.kollegen.length - 12} weitere in der Firmenkarte.</div>}
         </Abschnitt>}
         {firmenDeals.length > 0 && <Abschnitt titel="Deals der Firma">
-          {firmenDeals.map(d => <VZeile key={d.id} farbe={OFFENE_STUFEN.includes(d.stufe) ? LEUCHT.business : C.inkLeise} titel={d.titel} zusatz={`${crm?.stufen.find(s => s.id === d.stufe)?.label ?? d.stufe}${d.wert.betrag ? ` · ${euro(d.wert.betrag)}${d.wert.basis === 'monat' ? '/Monat' : ''}` : ''} · ohne diese Person`} am={d.geaendert} heute={heute} />)}
+          {firmenDeals.map(d => <VZeile key={d.id} farbe={OFFENE_STUFEN.includes(d.stufe) ? LEUCHT.business : C.inkLeise} titel={d.titel} zusatz={`${crm?.stufen.find(s => s.id === d.stufe)?.label ?? d.stufe}${d.wert.betrag ? ` · ${euro(d.wert.betrag)}${d.wert.basis === 'monat' ? '/Monat' : ''}` : ''} · ohne diese Person`} am={d.geaendert} heute={heute} onClick={() => router.push(WEG.deal(d.id))} />)}
         </Abschnitt>}
         {v.events.length > 0 && <Abschnitt titel="Events">
-          {v.events.map(e => <VZeile key={e.teilnahme.id} farbe={e.teilnahme.status === 'da' ? LEUCHT.gut : e.teilnahme.status === 'no_show' || e.teilnahme.status === 'abgesagt' ? C.inkLeise : LEUCHT.puls} titel={e.event.titel} zusatz={TEILNAHME_LABEL[e.teilnahme.status]} am={e.event.datum} heute={heute} />)}
+          {v.events.map(e => <VZeile key={e.teilnahme.id} farbe={e.teilnahme.status === 'da' ? LEUCHT.gut : e.teilnahme.status === 'no_show' || e.teilnahme.status === 'abgesagt' ? C.inkLeise : LEUCHT.puls} titel={e.event.titel} zusatz={TEILNAHME_LABEL[e.teilnahme.status]} am={e.event.datum} heute={heute} onClick={() => router.push(WEG.event(e.event.id))} />)}
         </Abschnitt>}
         {v.kampagnen.length > 0 && <Abschnitt titel="Kampagnen">
-          {v.kampagnen.map(x => <VZeile key={x.kampagne.id} farbe={x.ergebnis === 'gespraech' || x.ergebnis === 'chance' ? LEUCHT.gut : x.ergebnis ? LEUCHT.puls : C.inkLeise} titel={x.kampagne.name} zusatz={x.ergebnis ? KAMPAGNEN_ERGEBNIS_LABEL[x.ergebnis] : 'noch nicht angesprochen'} am={x.am} heute={heute} />)}
+          {v.kampagnen.map(x => <VZeile key={x.kampagne.id} farbe={x.ergebnis === 'gespraech' || x.ergebnis === 'chance' ? LEUCHT.gut : x.ergebnis ? LEUCHT.puls : C.inkLeise} titel={x.kampagne.name} zusatz={x.ergebnis ? KAMPAGNEN_ERGEBNIS_LABEL[x.ergebnis] : 'noch nicht angesprochen'} am={x.am} heute={heute} onClick={() => router.push(WEG.kampagne(x.kampagne.id))} />)}
         </Abschnitt>}
         {v.beitraege.length > 0 && <Abschnitt titel="Marketing-Wirkung">
-          {v.beitraege.map((b, i) => <VZeile key={`${b.beitrag.id}-${i}`} farbe={LEUCHT.agenten} titel={b.beitrag.titel} zusatz={b.art} am={b.am} heute={heute} />)}
+          {v.beitraege.map((b, i) => <VZeile key={`${b.beitrag.id}-${i}`} farbe={LEUCHT.agenten} titel={b.beitrag.titel} zusatz={b.art} am={b.am} heute={heute} onClick={() => router.push(WEG.marketing('redaktion'))} />)}
         </Abschnitt>}
         {v.powerHour.length > 0 && <Abschnitt titel="Power Hour">
-          {v.powerHour.slice(0, 8).map((p, i) => <VZeile key={i} farbe={LEUCHT.puls} titel={nameVon(p.person)} zusatz={[p.ergebnis, p.notiz].filter(Boolean).join(' · ') || 'auf der Liste'} am={p.datum} heute={heute} />)}
+          {v.powerHour.slice(0, 8).map((p, i) => <VZeile key={i} farbe={LEUCHT.puls} titel={nameVon(p.person)} zusatz={[p.ergebnis, p.notiz].filter(Boolean).join(' · ') || 'auf der Liste'} am={p.datum} heute={heute} onClick={() => router.push(WEG.powerHour())} />)}
         </Abschnitt>}
         {v.antraege.length > 0 && <Abschnitt titel="Betroffenenanträge">
-          {v.antraege.map(a => <VZeile key={a.id} farbe={a.status === 'offen' ? LEUCHT.kritisch : C.inkLeise} titel={a.art} zusatz={a.status === 'offen' ? `Frist ${datum(a.frist, heute)}` : 'erledigt'} am={a.eingang} heute={heute} />)}
+          {v.antraege.map(a => <VZeile key={a.id} farbe={a.status === 'offen' ? LEUCHT.kritisch : C.inkLeise} titel={a.art} zusatz={a.status === 'offen' ? `Frist ${datum(a.frist, heute)}` : 'erledigt'} am={a.eingang} heute={heute} onClick={() => router.push(WEG.stammdaten('datenschutz'))} />)}
         </Abschnitt>}
         {nichtsVerbunden && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Noch keine Kollegen, Events, Kampagnen oder Beiträge mit dieser Person.</div>}
       </div>

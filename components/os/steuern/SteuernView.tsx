@@ -117,6 +117,7 @@ export function SteuernView() {
               titel={<span style={{ opacity: f.erledigt ? 0.55 : 1 }}><span style={{ color: EINHEIT_FARBE[f.einheit], fontWeight: 700 }}>{EINHEIT_LABEL[f.einheit]}</span> · {f.titel}</span>}
               unter={`${deutsch(f.datum)} · ${f.hinweis}${!f.erledigt && f.tage >= 0 ? ` · Aufgabe ab ${deutsch(f.aufgabeAb)}` : ''}`}
               rechts={<span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {!f.erledigt && f.aufgabeAb <= d.heute && f.tage >= -30 && <Link href={`/os/aufgaben?offen=${encodeURIComponent(`steuer-${f.id}`)}`} style={{ color: C.inkLeise, textDecoration: 'none', fontSize: 12 }}>Aufgabe ›</Link>}
                 {f.betrag != null && <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>{euro(f.betrag)}</span>}
                 <Link href={f.href} style={{ color: C.inkLeise, textDecoration: 'none', fontSize: 15 }} aria-label="dazu">›</Link>
               </span>} />

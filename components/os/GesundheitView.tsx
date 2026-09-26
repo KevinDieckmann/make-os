@@ -21,14 +21,20 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT, ABSTAND as A } from '@/lib/make-one/design';
 import { WhoopImport } from './WhoopImport';
 import { Seite, Karte, Ueberschrift, Ring, Segmente, Chip, Fortschritt, Balken as Trend, feld, LEUCHT, Spalten, Spalte } from './schlank';
-import { BESCHWERDEN, HEBEL, AUFBAU, HGOALS, ZUSAMMENHAENGE, CARE_NOTE } from '@/lib/make-one/health-data';
+import { BESCHWERDEN, HEBEL, AUFBAU, ZUSAMMENHAENGE, CARE_NOTE } from '@/lib/make-one/health-data';
+
+/** Welche Kennzahl des Gesundheits-Index hinter einem Hebel steht (26.09.). */
+const HEBEL_KENNZAHL: Record<string, string> = { Ernährung: 'essen', Stress: 'stress', Bewegung: 'reha', Schlaf: 'schlaf', Cannabis: 'streak', Haut: 'haut' };
 import { localDay } from '@/lib/zeit';
 import { ErnaehrungView } from './ErnaehrungView';
 import { EnergieView } from './EnergieView';
+import { GesundheitIndex, GesundheitIndexKurz } from './gesundheit/GesundheitIndex';
+import { useZuZiel } from './ziel';
+import { WEG } from '@/lib/wege';
 
-type Segment = 'heute' | 'verlauf' | 'ernaehrung' | 'koerper';
+type Segment = 'heute' | 'index' | 'verlauf' | 'ernaehrung' | 'koerper';
 const SEGMENTE: { id: Segment; label: string }[] = [
-  { id: 'heute', label: 'Heute' }, { id: 'verlauf', label: 'Verlauf' }, { id: 'ernaehrung', label: 'Ernährung' }, { id: 'koerper', label: 'Körper' },
+  { id: 'heute', label: 'Heute' }, { id: 'index', label: 'Index' }, { id: 'verlauf', label: 'Verlauf' }, { id: 'ernaehrung', label: 'Ernährung' }, { id: 'koerper', label: 'Körper' },
 ];
 
 interface Vitals { rec: number; sleep: number; hrv: number; rhr: number; stand: string; heute: boolean; alterTage: number; fallback: boolean }
@@ -56,7 +62,7 @@ function Schalter({ an, onChange, aus }: { an: boolean; onChange?: () => void; a
   );
 }
 
-function Zeile({ wann, titel, unter, kinder }: { wann?: string; titel: string; unter?: string; kinder: React.ReactNode }) {
+function Zeile({ wann, titel, unter, kinder }: { wann?: string; titel: React.ReactNode; unter?: React.ReactNode; kinder: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 2px', borderBottom: `1px solid ${C.linie}`, minHeight: 48 }}>
       {wann && <span style={{ fontSize: 11, color: C.inkLeise, width: 56, letterSpacing: '.04em', textTransform: 'uppercase', flex: '0 0 auto' }}>{wann}</span>}
@@ -103,15 +109,21 @@ export function GesundheitView() {
   const segment = (SEGMENTE.find(s => s.id === params.get('s'))?.id ?? 'heute') as Segment;
   const heute = localDay();
 
-  const [ansicht, setAnsicht] = useState('');
+  // ?fuer=<person> zeigt die andere Person (wenn sie teilt) — z. B. aus einem Index-Link (26.09.).
+  const [ansicht, setAnsicht] = useState(() => { const f = params.get('fuer'); return f && /^[a-z0-9-]{1,40}$/.test(f) ? f : ''; });
   const [personen, setPersonen] = useState<{ speicher: string; name: string }[]>([]);
   const [stand, setStand] = useState<Stand | null>(null);
   const [hl, setHl] = useState<Record<string, string[]>>({});
   const [juckreiz, setJuckreiz] = useState<number | null>(null);
   const [fragen, setFragen] = useState({ gut: '', dankbar: '', hart: '' });
   const [verlauf, setVerlauf] = useState<{ vitals: Record<string, { rec?: number; sleep?: number; hrv?: number; rhr?: number }>; haut: Record<string, { juckreiz: number }> } | null>(null);
+  // Körper-Reiter (26.09.): die Hebel kommen live aus dem Gesundheits-Index, nicht mehr aus Konstanten vom 29.07.
+  const [hebel, setHebel] = useState<{ id: string; label: string; anzeige: string | null; ampel: string; gemessen: boolean }[] | null>(null);
+  const [etappen, setEtappen] = useState<{ id: string; titel: string; faellig?: string; fortschritt: number; erledigt: boolean; bereich: string }[]>([]);
   const eigene = !stand || stand.ich === ansicht;
   const q = ansicht ? `?fuer=${ansicht}` : '';
+  // #morgen · #routinen · #haut · #streak aus einem Link: hinspringen, sobald der Stand da ist.
+  useZuZiel(null, !!stand);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const laden = () => fetch(`/api/gesundheit/stand${q}`).then(r => r.json()).then((d: Stand & { error?: string }) => {
@@ -134,6 +146,12 @@ export function GesundheitView() {
     fetch(`/api/state/health${q}`).then(r => r.json()).then(d => setHl(d.log ?? {})).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ansicht]);
+  useEffect(() => {
+    if (segment !== 'koerper') return;
+    fetch(`/api/gesundheit/index${q}`, { cache: 'no-store' }).then(r => r.json()).then(d => { if (d.ok) setHebel((d.pi.saeulen as { kennzahlen: { id: string; label: string; anzeige: string | null; ampel: string; gemessen: boolean }[] }[]).flatMap(s => s.kennzahlen)); }).catch(() => {});
+    fetch('/api/state/meilensteine').then(r => r.json()).then(d => setEtappen((d.meilensteine ?? []).filter((m: { bereich: string }) => m.bereich === 'gesundheit'))).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [segment, ansicht]);
   useEffect(() => {
     if (segment !== 'verlauf' || verlauf) return;
     Promise.all([fetch(`/api/state/vitals${q}`).then(r => r.json()), fetch(`/api/state/haut${q}`).then(r => r.json())])
@@ -162,6 +180,12 @@ export function GesundheitView() {
   };
   const streakSetzen = (sauber: boolean) => {
     fetch('/api/state/streak', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eintrag: { sauber } }) }).then(() => laden()).catch(() => {});
+  };
+  // Anspannung 1–5 direkt hier — vorher nur über den Boten (26.09.).
+  const anspannungSetzen = (n: number) => {
+    if (!eigene) return;
+    setStand(s => (s ? { ...s, journal: { ...s.journal, heute: { ...(s.journal.heute ?? {}), stress: n } } } : s));
+    fetch('/api/state/journal', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ datum: heute, eintrag: { stress: n } }) }).catch(() => {});
   };
   const frageSpeichern = (feld: 'gut' | 'dankbar' | 'hart') => {
     const wert = fragen[feld].trim();
@@ -200,17 +224,21 @@ export function GesundheitView() {
         <>
           <Spalten verhaeltnis="1:1">
           <Spalte>
-          <Karte i={0} akzent={rec != null ? zone(rec) : undefined}>
+          <GesundheitIndexKurz fuer={!eigene ? ansicht : undefined} onOeffnen={() => geheZu('index')} stand={hl} />
+          <Karte i={0} akzent={rec != null ? zone(rec) : undefined} id="morgen" style={{ scrollMarginTop: 90 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 'clamp(8px,2vw,20px)', margin: '4px 0 8px' }}>
-              <Ring label="Recovery" wert={rec != null ? String(rec) : undefined} einheit="%" farbe={zone(rec)} anteil={rec != null ? rec / 100 : undefined}
-                unter={rec != null ? <Chip farbe={zone(rec)}>{rec >= 66 ? 'Grün' : rec >= 40 ? 'Gelb' : 'Rot'}</Chip> : undefined} />
-              <Ring label="Schlaf" wert={schlaf != null ? String(schlaf).replace('.', ',') : undefined} einheit="h" farbe={LEUCHT.schlaf} anteil={schlaf != null ? schlaf / 8 : undefined} />
-              <Ring label="Anspannung" wert={anspannung != null ? String(anspannung) : undefined} einheit="/5" farbe={anspannung != null && anspannung >= 4 ? LEUCHT.kritisch : anspannung != null && anspannung >= 3 ? LEUCHT.achtung : LEUCHT.puls} anteil={anspannung != null ? anspannung / 5 : undefined} />
+              <button type="button" onClick={() => geheZu('verlauf')} className="fassbar" title="Verlauf 30 Tage" style={{ all: 'unset', cursor: 'pointer' }}><Ring label="Recovery" wert={rec != null ? String(rec) : undefined} einheit="%" farbe={zone(rec)} anteil={rec != null ? rec / 100 : undefined}
+                unter={rec != null ? <Chip farbe={zone(rec)}>{rec >= 66 ? 'Grün' : rec >= 40 ? 'Gelb' : 'Rot'}</Chip> : undefined} /></button>
+              <button type="button" onClick={() => geheZu('verlauf')} className="fassbar" title="Verlauf 30 Tage" style={{ all: 'unset', cursor: 'pointer' }}><Ring label="Schlaf" wert={schlaf != null ? String(schlaf).replace('.', ',') : undefined} einheit="h" farbe={LEUCHT.schlaf} anteil={schlaf != null ? schlaf / 8 : undefined} /></button>
+              <div style={{ display: 'grid', justifyItems: 'center', gap: 6 }}>
+                <Ring label="Anspannung" wert={anspannung != null ? String(anspannung) : undefined} einheit="/5" farbe={anspannung != null && anspannung >= 4 ? LEUCHT.kritisch : anspannung != null && anspannung >= 3 ? LEUCHT.achtung : LEUCHT.puls} anteil={anspannung != null ? anspannung / 5 : undefined} />
+                {eigene && <div style={{ display: 'flex', gap: 4 }}>{[1, 2, 3, 4, 5].map(n => <button key={n} type="button" onClick={() => anspannungSetzen(n)} aria-label={`Anspannung ${n}`} className="fassbar" style={{ width: 24, height: 24, borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: SCHRIFT.display, fontSize: 12, fontWeight: 700, background: (anspannung ?? 0) >= n ? (n >= 4 ? LEUCHT.kritisch : n >= 3 ? LEUCHT.achtung : LEUCHT.puls) : 'rgba(255,255,255,.07)', color: (anspannung ?? 0) >= n ? C.grund : C.inkLeise }}>{n}</button>)}</div>}
+              </div>
             </div>
             <p style={{ textAlign: 'center', color: C.inkDim, fontSize: TYP.body, margin: '14px 0 0', lineHeight: 1.5 }}>
               {satz ? <><b style={{ color: C.ink, fontWeight: 600 }}>{satz.split('.')[0]}.</b> {satz.split('.').slice(1).join('.').trim()}</> : null}
               {stand && rec == null && <> Whoop-Export einlesen oder morgens dem Boten sagen.</>}
-              {stand && anspannung == null && rec != null && <> Anspannung fragt der Bote mittags.</>}
+              {stand && anspannung == null && rec != null && eigene && <> Anspannung: oben 1–5 tippen (oder dem Boten mittags sagen).</>}
             </p>
             {stand && rec == null && eigene && <div style={{ marginTop: 14, display: 'flex', justifyContent: 'center' }}><WhoopImport kurz onFertig={() => { void laden(); setVerlauf(null); }} /></div>}
           </Karte>
@@ -220,6 +248,12 @@ export function GesundheitView() {
             <div style={{ marginTop: 16, color: C.inkLeise, fontSize: TYP.bedien, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <span>Bote: {!stand ? '…' : !stand.telegram.konfiguriert ? <Link href="/os/konto" style={{ color: C.inkDim }}>Telegram einrichten</Link> : stand.telegram.gekoppelt ? 'Telegram gekoppelt' : <Link href="/os/konto" style={{ color: C.inkDim }}>Telegram koppeln</Link>}</span>
               <span>{v?.heute ? 'Whoop heute' : <Link href="/os/verbindungen" style={{ color: C.inkDim }}>Whoop verbinden</Link>}</span>
+            </div>
+            <div style={{ marginTop: 10, display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: TYP.bedien }}>
+              <Link href="/os/ritual?modus=morgen" style={{ color: C.inkDim }}>Tagesstart ›</Link>
+              <Link href={WEG.journal()} style={{ color: C.inkDim }}>Journal ›</Link>
+              <Link href={WEG.routinen()} style={{ color: C.inkDim }}>Routinen planen ›</Link>
+              <Link href={WEG.saeule('health')} style={{ color: C.inkDim }}>Säule im Wachstums-Score ›</Link>
             </div>
           </Karte>
           {eigene && (
@@ -234,8 +268,8 @@ export function GesundheitView() {
           )}
           </Spalte>
           <Spalte>
-          <Karte i={1}>
-            <Ueberschrift farbe={LEUCHT.gut} rechts={`${heuteDrin.size} von ${anzahl}`}>Heute</Ueberschrift>
+          <Karte i={1} id="routinen" style={{ scrollMarginTop: 90 }}>
+            <Ueberschrift farbe={LEUCHT.gut} rechts={<span>{heuteDrin.size} von {anzahl} · <Link href={WEG.routinen()} style={{ color: C.inkLeise, textDecoration: 'none' }}>planen ›</Link></span>}>Heute</Ueberschrift>
             <Fortschritt anteil={anzahl ? heuteDrin.size / anzahl : 0} farbe={LEUCHT.gut} />
             <div style={{ marginTop: 6 }}>
               {(stand?.routinen.liste ?? []).map(r => (
@@ -243,6 +277,7 @@ export function GesundheitView() {
                   unter={r.id === 'essen' ? 'dein Hebel gegen die Schübe' : undefined}
                   kinder={<Schalter an={heuteDrin.has(r.id)} onChange={() => hake(r.id)} aus={!eigene} />} />
               ))}
+              <div id="haut" style={{ scrollMarginTop: 90 }} />
               <Zeile wann="Abend" titel="Haut · Juckreiz"
                 unter={stand?.haut.trend.juckreiz7 != null ? `Ø ${stand.haut.trend.juckreiz7} diese Woche${stand.haut.trend.richtung === 'besser' ? ', besser als die Woche davor' : stand.haut.trend.richtung === 'schlechter' ? ', schlechter als die Woche davor' : ''}` : 'noch kein Eintrag'}
                 kinder={
@@ -252,6 +287,7 @@ export function GesundheitView() {
                     <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 16, width: 22, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: juckreiz == null ? C.inkLeise : C.ink }}>{juckreiz ?? '—'}</span>
                   </div>
                 } />
+              <div id="streak" style={{ scrollMarginTop: 90 }} />
               {(ansicht === 'kevin' || (stand?.streak.eintraege30 ?? 0) > 0) && (
                 <Zeile wann="Abend" titel="Sauber geblieben"
                   unter={stand?.streak.aktuell ? `Tag ${stand.streak.sauberTage} seit dem letzten Rückfall` : stand?.streak.eintraege30 ? 'seit über drei Tagen kein Eintrag' : 'noch nicht angefangen'}
@@ -266,6 +302,8 @@ export function GesundheitView() {
           </Spalten>
         </>
       )}
+
+      {segment === 'index' && <GesundheitIndex fuer={!eigene ? ansicht : undefined} ich={stand?.ich} stand={hl} />}
 
       {segment === 'verlauf' && (
         <Karte i={0}>
@@ -295,8 +333,9 @@ export function GesundheitView() {
           <Spalte>
           <EnergieView eingebettet />
           <Karte i={4}>
-            <Ueberschrift farbe={LEUCHT.schlaf}>Ziele</Ueberschrift>
-            {HGOALS.map(g => <div key={g.title}><Zeile titel={g.title} unter={g.why} kinder={<span style={{ fontSize: 12, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{g.progress} %</span>} /><div style={{ margin: '-4px 0 10px' }}><Fortschritt anteil={g.progress / 100} farbe={LEUCHT.schlaf} /></div></div>)}
+            <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/planung/jahr" style={{ color: C.inkLeise, textDecoration: 'none' }}>pflegen ›</Link>}>Gesundheits-Meilensteine</Ueberschrift>
+            {!etappen.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch keiner — <Link href="/os/planung/jahr" style={{ color: C.inkDim }}>in der Jahresplanung anlegen ›</Link></div>}
+            {etappen.map(g => { const spaet = !!g.faellig && g.faellig < heute && !g.erledigt; return <Link key={g.id} href={`/os/planung/jahr?m=${encodeURIComponent(g.id)}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}><Zeile titel={<span style={{ textDecoration: g.erledigt ? 'line-through' : 'none', color: g.erledigt ? C.inkLeise : C.ink }}>{g.titel}</span>} unter={spaet ? `überfällig seit ${g.faellig!.slice(8)}.${g.faellig!.slice(5, 7)}. — zählt 0 im Index` : g.faellig ? `fällig ${g.faellig.slice(8)}.${g.faellig.slice(5, 7)}.` : undefined} kinder={<span style={{ fontSize: 12, color: spaet ? LEUCHT.kritisch : C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{g.fortschritt} %</span>} /><div style={{ margin: '-4px 0 10px' }}><Fortschritt anteil={g.fortschritt / 100} farbe={spaet ? LEUCHT.kritisch : LEUCHT.schlaf} /></div></Link>; })}
           </Karte>
           <Karte i={5}>
             <Ueberschrift>Zusammenhänge</Ueberschrift>
@@ -306,16 +345,20 @@ export function GesundheitView() {
           </Spalte>
           <Spalte>
           <Karte i={1}>
-            <Ueberschrift farbe={LEUCHT.puls}>Profil · Stand 29.07.</Ueberschrift>
+            <Ueberschrift farbe={LEUCHT.puls} rechts={<button onClick={() => geheZu('verlauf')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>aktuell im Verlauf ›</button>}>Profil · Stand 29.07.</Ueberschrift>
             {AUFBAU.map(s => <Zeile key={s.phase} wann={s.state === 'now' ? 'Jetzt' : s.state === 'next' ? 'Danach' : 'Später'} titel={`${s.phase} · ${s.name}`} unter={s.desc} kinder={<span />} />)}
           </Karte>
           <Karte i={2}>
-            <Ueberschrift farbe={LEUCHT.achtung}>Was Aufmerksamkeit braucht</Ueberschrift>
+            <Ueberschrift farbe={LEUCHT.achtung} rechts={<span>Stand 29.07. · <button onClick={() => geheZu('verlauf')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>aktuell ›</button></span>}>Was Aufmerksamkeit braucht</Ueberschrift>
             {BESCHWERDEN.map(b => <Zeile key={b.name} titel={b.name} unter={b.note} kinder={<Chip farbe={b.tone === 'crit' ? LEUCHT.kritisch : b.tone === 'watch' ? LEUCHT.achtung : LEUCHT.gut}>{b.status}</Chip>} />)}
           </Karte>
           <Karte i={3}>
-            <Ueberschrift farbe={LEUCHT.gut}>Hebel</Ueberschrift>
-            {HEBEL.map(h => <Zeile key={h.name} titel={h.name} unter={h.note} kinder={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 18, color: h.tone === 'crit' ? LEUCHT.kritisch : h.tone === 'watch' ? LEUCHT.achtung : LEUCHT.gut }}>{h.score}</span>} />)}
+            <Ueberschrift farbe={LEUCHT.gut} rechts={<button onClick={() => geheZu('index')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>Index ›</button>}>Hebel · live</Ueberschrift>
+            {HEBEL.map(h => {
+              const k = hebel?.find(x => x.id === HEBEL_KENNZAHL[h.name]);
+              const f = !k || !k.gemessen ? C.inkLeise : k.ampel === 'gruen' ? LEUCHT.gut : k.ampel === 'gelb' ? LEUCHT.achtung : LEUCHT.kritisch;
+              return <Link key={h.name} href={`/os/gesundheit?s=index${!eigene ? `&fuer=${ansicht}` : ''}&k=${HEBEL_KENNZAHL[h.name] ?? ''}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}><Zeile titel={h.name} unter={k ? (k.gemessen ? k.label : `${k.label} · noch nicht messbar`) : h.note} kinder={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 16, color: f }}>{k?.gemessen ? k.anzeige : '—'}</span>} /></Link>;
+            })}
           </Karte>
           </Spalte>
           </Spalten>

@@ -67,9 +67,13 @@ export interface IndexErgebnis {
 export function berechneModell<B>(m: {
   saeulen: SaeuleDef[]; kennzahlen: KennzahlDefBasis[]; messen: Record<string, (b: B) => Messung>;
   bestand: B; schwellen?: Record<string, Schwelle>; stand: string; scope: string;
+  /** Gesamt als gewichtetes geometrisches Mittel (bestraft Ungleichgewicht — Traktions-Score, KEMARIS-Konzept). */
+  geometrisch?: boolean;
 }): IndexErgebnis {
   const messe = (id: string): Messung => {
-    try { return m.messen[id](m.bestand); } catch (e) { return { luecke: `Rechenfehler: ${e instanceof Error ? e.message : 'unbekannt'}` }; }
+    const f = m.messen[id];
+    if (!f) return { luecke: 'Keine Messung hinterlegt' };
+    try { return f(m.bestand); } catch (e) { return { luecke: `Rechenfehler: ${e instanceof Error ? e.message : 'unbekannt'}` }; }
   };
   const saeulen: SaeulenStand[] = m.saeulen.map(s => {
     const kennzahlen: KennzahlStand[] = m.kennzahlen.filter(k => k.saeule === s.id).map(def => {
@@ -92,9 +96,12 @@ export function berechneModell<B>(m: {
     const abdeckung = alleG ? gsum / alleG : 0;
     return { id: s.id, label: s.label, gewicht: s.gewicht, satz: s.satz, score, abdeckung, zuDuenn: score != null && abdeckung < MIN_ABDECKUNG, kennzahlen };
   });
-  const zaehlt = saeulen.filter(s => s.score != null && !s.zuDuenn);
+  // Säulen mit Gewicht 0 (z. B. „Grundlage“ der Markttraktion) werden gezeigt, zählen aber nicht.
+  const zaehlt = saeulen.filter(s => s.score != null && !s.zuDuenn && s.gewicht > 0);
   const gw = zaehlt.reduce((a, s) => a + s.gewicht, 0);
-  const index = gw > 0 ? Math.round(zaehlt.reduce((a, s) => a + (s.score as number) * s.gewicht, 0) / gw) : null;
+  const index = gw <= 0 ? null
+    : m.geometrisch ? Math.round(Math.exp(zaehlt.reduce((a, s) => a + s.gewicht * Math.log(Math.max(1, s.score as number)), 0) / gw))
+    : Math.round(zaehlt.reduce((a, s) => a + (s.score as number) * s.gewicht, 0) / gw);
   const abdeckung = saeulen.reduce((a, s) => a + (s.zuDuenn || s.score == null ? 0 : s.abdeckung) * s.gewicht, 0);
   let hebel: IndexErgebnis['hebel'] = null, best = -1;
   for (const s of zaehlt) for (const k of s.kennzahlen) {

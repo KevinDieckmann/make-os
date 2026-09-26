@@ -1,5 +1,4 @@
-import { WochenView } from '@/components/os/WochenView';
+import { redirect } from 'next/navigation';
 
-export default function WochePage() {
-  return <WochenView />;
-}
+// Der Wochen-Rhythmus war eine feste Tabelle vom 29.07. — die Woche lebt im Kalender (26.09.).
+export default function WochePage() { redirect('/os/planung/woche'); }

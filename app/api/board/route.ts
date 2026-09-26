@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server';
 import { logRun } from '@/lib/agent-log';
 import { loadJson } from '@/lib/store/local-db';
 import { gatherBrain } from '@/lib/brain';
+import { personAus } from '@/lib/jarvis/raum';
 import { localDay } from '@/lib/zeit';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
 
   // Server-seitig aus dem Brain — der Browser ist nicht mehr der Datenlieferant.
   // POST-Body bleibt als Override erlaubt (Tests), sonst gilt das Brain.
-  const brain = await gatherBrain();
+  const brain = await gatherBrain(undefined, personAus(req));
   const fin = p.finance ?? brain.finance ?? undefined;
   const prospects = Array.isArray(p.prospects) && p.prospects.length ? p.prospects : brain.prospects;
   let tasks: TaskLite[];

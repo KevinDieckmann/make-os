@@ -16,7 +16,7 @@ import { localDay } from '@/lib/zeit';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Zahl, LEUCHT, Spalten, Spalte } from './schlank';
 
 interface Termin { titel: string; date: string; zeit: string }
-interface Meilenstein { titel: string; faellig?: string; zeitfenster?: string; messlatte?: string; fortschritt: number; erledigt: boolean; bereich: string }
+interface Meilenstein { id?: string; titel: string; faellig?: string; zeitfenster?: string; messlatte?: string; fortschritt: number; erledigt: boolean; bereich: string }
 
 const GES_TERMIN = /arzt|dr\.|physio|reha|spritze|infiltration|neurolog|orthop|training|sport|gym|fitness|schwimm|massage|therapie/i;
 const GES_BLOCK = /sport|train|gym|lauf|schwimm|spazier|bewegung|yoga|dehn/i;
@@ -148,11 +148,11 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
     <>
       {/* Etappen + Ernährung + Routinen */}
         <Abschnitt eingebettet={eingebettet} i={1}>
-          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/planung/jahr" style={link}>pflegen ›</Link>}>Etappen</Ueberschrift>
+          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/planung/jahr" style={link}>pflegen ›</Link>}>Gesundheits-Meilensteine</Ueberschrift>
           {etappen.length ? (
             <Liste>
               {etappen.map((m, i) => (
-                <Zeile key={i} titel={m.titel} unter={m.messlatte} rechts={<Chip farbe={m.fortschritt >= 60 ? LEUCHT.gut : LEUCHT.schlaf}>{m.fortschritt} %</Chip>} />
+                <Link key={i} href={m.id ? `/os/planung/jahr?m=${encodeURIComponent(m.id)}` : '/os/planung/jahr'} style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}><Zeile titel={m.titel} unter={[m.faellig && m.faellig < heute ? `überfällig seit ${m.faellig.slice(8)}.${m.faellig.slice(5, 7)}. — zählt 0 im Index` : m.faellig ? `fällig ${m.faellig.slice(8)}.${m.faellig.slice(5, 7)}.` : '', m.messlatte].filter(Boolean).join(' · ') || undefined} rechts={<Chip farbe={m.faellig && m.faellig < heute ? LEUCHT.kritisch : m.fortschritt >= 60 ? LEUCHT.gut : LEUCHT.schlaf}>{m.fortschritt} %</Chip>} /></Link>
               ))}
             </Liste>
           ) : <Leer>keine offenen</Leer>}

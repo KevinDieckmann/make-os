@@ -163,12 +163,15 @@ async function setzeFokus(input: Record<string, unknown>): Promise<string> {
 // dankbar für den Anruf mit Malin" — und Jarvis schreibt vier Bestände. Jedes
 // Werkzeug ist frei: es erfasst nur, was die Person selbst gesagt hat.
 
+/** Persönliche Bestände brauchen eine ausdrücklich benannte Person — kein Rückfall auf den Inhaber (26.09.). */
+const KEINE_PERSON = 'Nicht ausgeführt: Dieses Werkzeug braucht eine angemeldete Person (kein Systemlauf).';
 const HEUTE_ODER = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : localDay());
 
 async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
   const { routineAusZuruf } = await import('@/lib/gesundheit/eintraege');
   const { speicherFuer } = await import('./raum');
-  const wer = person ?? 'kevin';
+  if (!person) return KEINE_PERSON;
+  const wer = person;
   const f = await loadJson<{ routinen?: { id: string; label: string; aktiv: boolean }[] }>('routinen');
   const alle = (f?.routinen ?? []).filter(r => r.aktiv);
   const zurufe = Array.isArray(input.routinen) ? (input.routinen as unknown[]).map(String) : [String(input.routine ?? '')];
@@ -189,16 +192,18 @@ async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: 
 async function hautEintrag(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
   const { saeubereHaut, hautTrend } = await import('@/lib/gesundheit/eintraege');
   const { speicherFuer } = await import('./raum');
+  if (!person) return KEINE_PERSON;
   const e = saeubereHaut(input, new Date().toISOString());
   if (!e) return 'Fehlgeschlagen: juckreiz (0–10) fehlt.';
   const datum = HEUTE_ODER(input.datum);
-  const log = await updateJson<Record<string, typeof e>>(speicherFuer('haut', person ?? 'kevin'), current => ({ ...(current ?? {}), [datum]: e }));
+  const log = await updateJson<Record<string, typeof e>>(speicherFuer('haut', person), current => ({ ...(current ?? {}), [datum]: e }));
   const t = hautTrend(log, localDay());
   const trend = t.richtung === 'besser' ? ' Die Woche ist besser als die davor.' : t.richtung === 'schlechter' ? ' Die Woche ist schlechter als die davor.' : '';
   return `Haut notiert: Juckreiz ${e.juckreiz}/10${e.schub ? ', Schub' : ''}${e.ausloeser ? `, Auslöser ${e.ausloeser}` : ''}.${trend}`;
 }
 
 async function journalEintrag(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+  if (!person) return KEINE_PERSON;
   const { speicherFuer } = await import('./raum');
   const datum = HEUTE_ODER(input.datum);
   const t = (v: unknown, n = 800) => { const s = String(v ?? '').trim().slice(0, n); return s || undefined; };
@@ -213,7 +218,7 @@ async function journalEintrag(input: Record<string, unknown>, _o: string, person
     ...(z(input.stress) ? { stress: z(input.stress) } : {}),
   };
   if (!Object.keys(neu).length) return 'Fehlgeschlagen: nichts zum Eintragen (gut, dankbar, hart, text, stimmung, energie, stress).';
-  await updateJson<Record<string, Record<string, unknown>>>(speicherFuer('journal', person ?? 'kevin'), current => {
+  await updateJson<Record<string, Record<string, unknown>>>(speicherFuer('journal', person), current => {
     const log = current ?? {};
     return { ...log, [datum]: { ...(log[datum] ?? {}), ...neu, at: new Date().toISOString() } };
   });
@@ -223,10 +228,11 @@ async function journalEintrag(input: Record<string, unknown>, _o: string, person
 async function streakEintrag(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
   const { saeubereStreak, streakStand } = await import('@/lib/gesundheit/eintraege');
   const { speicherFuer } = await import('./raum');
+  if (!person) return KEINE_PERSON;
   const e = saeubereStreak({ ...input, craving: input.verlangen ?? input.craving }, new Date().toISOString());
   if (!e) return 'Fehlgeschlagen: sauber (true/false) fehlt.';
   const datum = HEUTE_ODER(input.datum);
-  const log = await updateJson<Record<string, typeof e>>(speicherFuer('streak', person ?? 'kevin'), current => ({ ...(current ?? {}), [datum]: e }));
+  const log = await updateJson<Record<string, typeof e>>(speicherFuer('streak', person), current => ({ ...(current ?? {}), [datum]: e }));
   const st = streakStand(log, localDay());
   if (!e.sauber) return 'Notiert. Ein Datum, kein Urteil — morgen zählt wieder von vorn.';
   return `Sauber seit ${st.sauberTage} Tag${st.sauberTage === 1 ? '' : 'en'}${typeof e.craving === 'number' ? `, Verlangen ${e.craving}/10` : ''}.`;
@@ -268,10 +274,11 @@ async function setzeKunde(input: Record<string, unknown>): Promise<string> {
  * erst der Kopf (billig), Text nur bei Treffern. Read-only — es wird nie
  * geantwortet, verschoben oder gelöscht.
  */
-async function liesPostfach(input: Record<string, unknown>, origin: string): Promise<string> {
+async function liesPostfach(input: Record<string, unknown>, origin: string, person?: string): Promise<string> {
   const suche = String(input.suche ?? '').trim().slice(0, 60);
   const anzahl = Math.min(5, Math.max(1, Number(input.anzahl) || 1));
-  const H = { 'x-make-key': process.env.MAKE_OS_KEY ?? '' };
+  // Die Person reist mit: das Postfach gehört dem Inhaber, die Route prüft das (26.09.).
+  const H = { 'x-make-key': process.env.MAKE_OS_KEY ?? '', ...(person ? { 'x-make-person': person } : {}) };
 
   try {
     if (!suche) {
@@ -493,11 +500,12 @@ async function faktMerken(input: Record<string, unknown>, _origin: string, perso
   const thema = String(input.thema ?? '').trim().slice(0, 120);
   const satz = String(input.satz ?? '').trim().slice(0, 500);
   if (!thema || !satz) return 'Fehlgeschlagen: thema und satz nötig.';
+  if (!person) return KEINE_PERSON;
   const { merke } = await import('./gedaechtnis');
   const GEMEINSAM = ['gemeinsam', 'beide', 'both'];
   const { neu } = await merke({
     art: (ARTEN.includes(String(input.art)) ? String(input.art) : 'sonstiges') as FaktArt,
-    raum: GEMEINSAM.includes(String(input.raum ?? '')) ? 'gemeinsam' : (person ?? 'kevin'),
+    raum: GEMEINSAM.includes(String(input.raum ?? '')) ? 'gemeinsam' : person,
     thema, satz,
     woher: input.woher ? String(input.woher).slice(0, 200) : undefined,
     bis: /^\d{4}-\d{2}-\d{2}$/.test(String(input.bis ?? '')) ? String(input.bis) : undefined,
@@ -510,7 +518,7 @@ async function faktMerken(input: Record<string, unknown>, _origin: string, perso
 /** Business-Index lesen (25.09.) — nur für den Haushalt des Inhabers, wie das Cockpit. */
 async function businessIndex(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
   const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
-  if (!(await personImHaushaltDesInhabers(person ?? 'kevin'))) return 'Kein Zugang: Der Business-Index gehört zum Haushalt des Inhabers.';
+  if (!person || !(await personImHaushaltDesInhabers(person))) return 'Kein Zugang: Der Business-Index gehört zum Haushalt des Inhabers.';
   const { businessText } = await import('@/lib/business/fuer-chef');
   const sicht = input.sicht === 'kdc' || input.sicht === 'kdv' ? input.sicht : 'gesamt';
   return businessText(sicht, typeof input.kennzahl === 'string' && input.kennzahl ? input.kennzahl : undefined);
@@ -519,13 +527,39 @@ async function businessIndex(input: Record<string, unknown>, _origin: string, pe
 /** Monatsabschluss eintragen (25.09.) — läuft nur nach Freigabe (Register: freigabe). */
 async function monatsabschlussErfassen(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
   const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
-  if (!(await personImHaushaltDesInhabers(person ?? 'kevin'))) return 'Kein Zugang: Der Business-Index gehört zum Haushalt des Inhabers.';
+  if (!person || !(await personImHaushaltDesInhabers(person))) return 'Kein Zugang: Der Business-Index gehört zum Haushalt des Inhabers.';
   const { speichereAbschluss } = await import('@/lib/business/speicher');
   // Nur genannte Zahlen weitergeben — fehlende Felder bleiben, wie sie sind.
   const roh = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined && v !== null && v !== ''));
-  const r = await speichereAbschluss(roh, person ?? 'kevin');
+  const r = await speichereAbschluss(roh, person);
   if (!r.ok) return `Nicht eingetragen: ${r.fehler}`;
   return `Monatsabschluss ${r.eintrag.firma === 'kdv' ? 'KD Ventures' : 'Consulting'} ${r.eintrag.monat} gespeichert — der Business-Index rechnet damit (/os/finanzen?s=business).`;
+}
+
+/** Gesundheits-Index lesen (26.09.): die eigene Person — oder eine, die ihre Gesundheit teilt. */
+async function gesundheitsIndex(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
+  if (!person) return KEINE_PERSON;
+  const fuer = typeof input.person === 'string' && /^[a-z0-9-]{1,40}$/.test(input.person) ? input.person : person;
+  if (fuer !== person) {
+    const { kontoFuerSpeicher } = await import('@/lib/zugang/konten');
+    const k = await kontoFuerSpeicher(fuer);
+    if (!k?.teilt.gesundheit.includes(person)) return 'Kein Zugang: Diese Person teilt ihre Gesundheitsdaten nicht.';
+  }
+  const { gesundheitsIndexFuer } = await import('@/lib/gesundheit/speicher');
+  const { schwellenText } = await import('@/lib/business/text');
+  const pi = await gesundheitsIndexFuer(fuer);
+  const alle = pi.saeulen.flatMap(s => s.kennzahlen);
+  const AMPEL = { gruen: 'grün', gelb: 'gelb', rot: 'rot', grau: 'fehlt' } as const;
+  if (typeof input.kennzahl === 'string' && input.kennzahl) {
+    const k = alle.find(x => x.id === input.kennzahl);
+    if (!k) return `Unbekannte Kennzahl „${input.kennzahl}“. Es gibt: ${alle.map(x => x.id).join(', ')}`;
+    if (!k.gemessen) return `${k.label}: noch nicht messbar — ${k.quelle}.${k.pflegen ? ` Schließen: ${k.pflegen.text} (${k.pflegen.href}).` : ''}`;
+    const punkte = k.details.slice(0, 3).map(d => `${d.titel}${d.wert ? ` ${d.wert}` : ''}${d.unter ? ` (${d.unter})` : ''}`).join(' · ');
+    return `${k.label}: ${k.anzeige} — ${AMPEL[k.ampel]} (${schwellenText(k)}). Formel: ${k.formel}. Gerechnet: ${k.quelle}.${punkte ? ` Dahinter: ${punkte}.` : ''}`;
+  }
+  const rot = alle.filter(k => k.ampel === 'rot').map(k => `${k.label} ${k.anzeige}`);
+  return `Gesundheits-Index ${fuer === person ? '' : `von ${fuer} `}: ${pi.index ?? '—'} (${pi.label}) · ${pi.saeulen.map(s => `${s.label} ${s.score ?? '—'}`).join(' · ')}.` +
+    `${rot.length ? ` Rot: ${rot.join(', ')}.` : ' Nichts rot.'}${pi.hebel ? ` Größter Hebel: ${pi.hebel.label}.` : ''} ${pi.luecken} Messlücke${pi.luecken === 1 ? '' : 'n'} — /os/gesundheit?s=index. Struktur und Tracking, keine ärztliche Beratung.`;
 }
 
 /** Idee, Fehler oder Wunsch an MAKE OS selbst — landet im Bauplan unter „Ideen“ (nie direkt in „Bereit“). */
@@ -543,7 +577,8 @@ async function fragGedaechtnis(input: Record<string, unknown>, _origin: string, 
   const { lies } = await import('./gedaechtnis');
   const thema = input.thema ? String(input.thema).slice(0, 120) : undefined;
   // Nur der eigene und der gemeinsame Raum — aus dem der anderen Person nichts.
-  const treffer = await lies({ thema, anzahl: 30, raum: person ?? 'kevin' });
+  if (!person) return KEINE_PERSON;
+  const treffer = await lies({ thema, anzahl: 30, raum: person });
   if (!treffer.length) return thema ? `Nichts gemerkt zu „${thema}".` : 'Das Gedächtnis ist noch leer.';
   return `GEDÄCHTNIS (${treffer.length}):\n` + treffer.map(f => `• [${f.art}] ${f.thema}: ${f.satz}${f.woher ? ` (${f.woher})` : ''}`).join('\n');
 }
@@ -861,6 +896,7 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: (input: Record<st
   setze_fokus: { gruppe: 'fokus', lauf: setzeFokus },
   setze_kunde: { gruppe: 'kunden', lauf: setzeKunde },
   hake_routine: { gruppe: 'gesundheit', lauf: hakeRoutine },
+  gesundheits_index: { gruppe: 'gesundheit', lauf: gesundheitsIndex },
   haut_eintrag: { gruppe: 'gesundheit', lauf: hautEintrag },
   journal_eintrag: { gruppe: 'gesundheit', lauf: journalEintrag },
   streak_eintrag: { gruppe: 'gesundheit', lauf: streakEintrag },

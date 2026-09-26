@@ -208,7 +208,7 @@ function beitrag(o: Record<string, unknown>, jetzt: string): Beitrag | null {
   return {
     id: String(o.id), titel: txt(o.titel, 200), kanal: aus(o.kanal, ['linkedin', 'newsletter', 'blog', 'podcast', 'vortrag', 'sonstig'] as const, 'linkedin'),
     ...(opt(o.saeule, 60) ? { saeule: opt(o.saeule, 60) } : {}), status: aus(o.status, ['idee', 'entwurf', 'geplant', 'veroeffentlicht'] as const, 'idee'),
-    ...(tag(o.datum) ? { datum: tag(o.datum) } : {}), ...(opt(o.text, 8000) ? { text: opt(o.text, 8000) } : {}), ...(opt(o.link, 400) ? { link: opt(o.link, 400) } : {}),
+    ...(tag(o.datum) ? { datum: tag(o.datum) } : {}), ...(opt(o.text, 8000) ? { text: opt(o.text, 8000) } : {}), ...(unterlageLink(o.link) ? { link: unterlageLink(o.link)! } : {}),
     wirkung: Array.isArray(o.wirkung) ? (o.wirkung as Record<string, unknown>[]).slice(0, 200).map(w => ({ kontaktId: txt(w.kontaktId, 80), art: aus(w.art, ['reaktion', 'gespraech', 'anfrage'] as const, 'reaktion'), am: tag(w.am) ?? jetzt.slice(0, 10), ...(opt(w.notiz, 300) ? { notiz: opt(w.notiz, 300) } : {}) })).filter(w => /^c-/.test(w.kontaktId)) : [],
     quellen: strListe(o.quellen, 30, 80) ?? [], ...zst(o),
     ...(wer(o.stimme) || o.stimme === 'marke' ? { stimme: o.stimme === 'marke' ? 'marke' : wer(o.stimme) } : {}),

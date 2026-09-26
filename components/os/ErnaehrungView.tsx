@@ -171,7 +171,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
           </details>
           <p style={{ fontSize: 12, color: C.inkLeise, margin: '14px 0 0', lineHeight: 1.5 }}>
             Alltagsküche, kein Medizin- oder Ernährungsrat — Psoriasis-Fragen gehören zu Arzt/Ernährungsberatung.
-            {' '}<Link href="/os/gesundheit" style={link}>Zum Cockpit ›</Link>
+            {!eingebettet && <>{' '}<Link href="/os/gesundheit" style={link}>Gesundheit ›</Link></>}
           </p>
         </Abschnitt>
       </Spalte>

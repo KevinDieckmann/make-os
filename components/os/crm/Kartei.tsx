@@ -34,11 +34,14 @@ import { haeltBeziehung, anderer, nameVon } from '@/lib/crm/team';
 
 type Modus = 'personen' | 'firmen';
 type Ansicht = 'alle' | 'kunden' | 'kreis' | 'prio' | 'chancen' | 'mail' | 'anreichern' | 'art14' | 'gesperrt' | 'dubletten';
+const ANSICHT_IDS: Ansicht[] = ['alle', 'kunden', 'kreis', 'prio', 'chancen', 'mail', 'anreichern', 'art14', 'gesperrt', 'dubletten'];
+const istAnsicht = (a?: string): a is Ansicht => !!a && (ANSICHT_IDS as string[]).includes(a);
 
 export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFirma, start, zuRunde, zuAkte }: { api: CrmApi; name: (p: string) => string; modus: Modus; auswahl: string | null; setAuswahl: (id: string | null) => void; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; start?: string; zuRunde?: (art: 'kreis' | 'chancen' | 'vernetzen') => void; zuAkte?: (id: string) => void }) {
   const breit = useBreit();
   const [suche, setSuche] = useState('');
-  const [ansicht, setAnsicht] = useState<Ansicht>(start === 'dubletten' ? 'dubletten' : 'alle');
+  // Die Ansicht kommt aus der Adresse (?a=art14|anreichern|gesperrt|…) — Befunde, Index-Punkte und Übergaben landen so auf der richtigen Liste (26.09.).
+  const [ansicht, setAnsicht] = useState<Ansicht>(istAnsicht(start) ? start : 'alle');
   const [mehr, setMehr] = useState(80);
   const [markiert, setMarkiert] = useState(0);
   const [anlegen, setAnlegen] = useState(false);
@@ -50,7 +53,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   const mitChance = useMemo(() => new Set((crm?.stand.chancen ?? []).filter(c => OFFENE_STUFEN.includes(c.stufe)).flatMap(c => c.kontaktIds)), [crm]);
   const mitMandat = useMemo(() => new Set((crm?.stand.mandate ?? []).filter(m => m.status === 'aktiv').flatMap(m => m.kontaktIds)), [crm]);
   const paare = useMemo(() => dubletten(kontakte), [kontakte]);
-  useEffect(() => { if (start === 'dubletten') setAnsicht('dubletten'); }, [start]);
+  useEffect(() => { if (istAnsicht(start)) setAnsicht(start); }, [start]);
   const [wer, setWer] = useWerFilter('kontakte');
   // Aus einer Übergabe-Aufgabe (…&wer=malin) direkt in die übergebenen Kontakte.
   useEffect(() => { const w = new URLSearchParams(window.location.search).get('wer'); if (w) setWer(w === api.ich ? 'ich' : w); }, [api.ich]); // eslint-disable-line react-hooks/exhaustive-deps

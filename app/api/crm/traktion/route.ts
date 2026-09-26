@@ -17,7 +17,9 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { kennzahlen } from '@/lib/crm/kennzahlen';
 import { marketingKennzahlen } from '@/lib/crm/marketing';
-import { eventKennzahlen, traktion, uebergaben, GRUNDLAGE, type Welt } from '@/lib/crm/traktion';
+import { eventKennzahlen, uebergaben, GRUNDLAGE } from '@/lib/crm/traktion';
+import { traktionsIndex, alsTraktion, TRAKTION_KENNZAHLEN } from '@/lib/crm/traktion-index';
+import { ladeIndexDatei, fortschreiben, speichereSchwelle } from '@/lib/kennzahlen/speicher';
 import { befunde } from '@/lib/crm/befunde';
 import { HEADS, HEAD_NAME } from '@/lib/heads/prompt';
 import { leererStand, standName, type HeadStand } from '@/lib/heads/stand';
@@ -59,22 +61,27 @@ export async function GET(req: Request) {
   const sales = kennzahlen(kontakte, crm, heute);
   const marketing = marketingKennzahlen(kontakte, crm, heute);
   const event = eventKennzahlen(kontakte, crm, heute);
-  const kpis: Record<Welt, typeof sales> = { sales, marketing, event };
+  // Traktions-Index (26.09.): derselbe Kern wie Business und Privat — mit eigenen Schwellen und Verlauf.
+  const datei = await ladeIndexDatei('traktion-index');
+  const index = traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen });
+  void event;
   const heads = HEADS.map((h, i) => {
     const s = { ...leererStand(), ...(staende[i] ?? {}) };
     const b = s.berichte[s.berichte.length - 1];
     return { id: h, name: HEAD_NAME[h], verantwortlich: verantwortlich(h), offen: s.vorschlaege.filter(v => v.status === 'offen').length, status: b?.antwort.status ?? null, zeit: b?.zeit ?? null, zusammenfassung: b?.antwort.zusammenfassung ?? s.ruhig?.text ?? null };
   });
-  const t = traktion(kpis);
-  const [verlauf, tg] = await Promise.all([
+  const t = alsTraktion(index);
+  const [verlauf, tg, indexVerlauf] = await Promise.all([
     schnappschuss(verlaufEintrag(t, heute, jePersonSieben(kontakte, crm, heute)), heute),
     ladeTelegram().catch(() => null),
+    fortschreiben('traktion-index', datei, index, heute, kontakte.length > 0),
   ]);
   return NextResponse.json({
     ok: true, heute, ich, team: TEAM,
     fuerDich: fuerDich(ich, kontakte, crm, heute),
     teamFeed: teamFeed(kontakte, crm, new Date(Date.now() - 14 * 864e5).toISOString(), 14),
     traktion: t,
+    index, indexVerlauf,
     verlauf,
     scoreboard: wochenScoreboard(kontakte, crm, heute),
     telegram: { konfiguriert: telegramKonfiguriert(), gekoppelt: !!tg && chatsFuerPerson(tg, ich).length > 0 },
@@ -84,4 +91,13 @@ export async function GET(req: Request) {
     heads,
     bestand: { kontakte: kontakte.length, firmen: crm.firmen.length, chancen: crm.chancen.length, mandate: crm.mandate.length, events: crm.events.length, kampagnen: (crm.kampagnen ?? []).length },
   });
+}
+
+/** Eigene Schwelle einer Traktions-Kennzahl setzen oder zurücksetzen (Team-weit). */
+export async function POST(req: Request) {
+  let b: Record<string, unknown>;
+  try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  if (!b.schwelle || typeof b.schwelle !== 'object') return NextResponse.json({ ok: false, fehler: 'Schwelle fehlt.' }, { status: 400 });
+  const r = await speichereSchwelle('traktion-index', TRAKTION_KENNZAHLEN, b.schwelle as Record<string, unknown>);
+  return NextResponse.json(r, { status: r.ok ? 200 : 400 });
 }

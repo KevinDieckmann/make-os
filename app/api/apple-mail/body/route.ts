@@ -4,6 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { AUF_DEM_MAC, nurMac } from '@/lib/mac';
+import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { spawn } from 'child_process';
 
 export const runtime = 'nodejs';
@@ -24,6 +25,7 @@ function runOsascript(script: string, timeoutMs = 30_000): Promise<string> {
 }
 
 export async function GET(req: Request) {
+  if (!(await nurInhaber(req))) return NextResponse.json({ error: 'Das Postfach gehört dem Inhaber.' }, { status: 403 });
   if (!AUF_DEM_MAC) return nurMac();
   const url = new URL(req.url);
   const account = (url.searchParams.get('account') ?? '').trim();

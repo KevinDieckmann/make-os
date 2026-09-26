@@ -168,3 +168,19 @@ DevSpec-Kennzahlen, die mit Mandaten/Pipeline rechenbar sind:
 - Geschäftsmodell-Karte (`lib/business/modell.ts`): Umsatz je Produktlinie/Produkt, Mandate mit Anteil
   und Fixkosten-Deckung. Echter Deckungsbeitrag je Mandat braucht direkte Kosten — noch nicht erfasst.
 - Cockpit lebt unter Zahlen → Business; alle Links über `lib/wege.ts`.
+
+## 10. Ein Kern, drei weitere Indizes (26.09.2026, Kevin: „Gesundheit und Markttraktion auf denselben Kern")
+
+- **Gesundheits-Index** (`lib/gesundheit/index.ts`): Erholung & Schlaf 40 · Bewegung & Aufbau 30 · Ernährung &
+  Körper 30 — 19 Kennzahlen aus den eigenen Beständen der Person (Whoop, Journal, Routinen, Wochenplan,
+  Kalender, Meilensteine, Essensplan, Haut, Streak). Haut/Streak zählen nur, wenn geführt. Die
+  Gesundheits-Säule des Wachstums-Scores ist dieser Index; der alte Faktor-Block in `performance.ts` ist weg.
+- **Traktions-Index** (`lib/crm/traktion-index.ts`): die Kennzahlen der drei Welten laufen durch den Kern —
+  Sales 50 · Marketing 40 · Event 10 als gewichtetes geometrisches Mittel (KEMARIS-Konzept, `geometrisch`),
+  Grundlage (Ansprechbar, Datenreife, Art. 14) sichtbar mit Gewicht 0. `mrr` = Anteil des größten Kunden,
+  `ansprechbar` = Anteil statt Anzahl, direkte Ampeln (Gästemischung) 100/60/20. `events_90`: grün ab 1,
+  rot bei 0 (26.09. korrigiert — Grün = Rot ergab 20 Punkte trotz grüner Ampel).
+- **Gemeinsamer Speicher** `lib/kennzahlen/speicher.ts` für Business, Privat, Gesundheit, Traktion: Tages-
+  Schnappschuss, 90 Tage Verlauf, Vergleich zu vor 30 Tagen, Ampel-Wechsel, eigene Schwellen.
+- Tests: `tests/gesundheit-index.test.ts`, `tests/traktion-index.test.ts`, `tests/kennzahlen-speicher.test.ts`.
+

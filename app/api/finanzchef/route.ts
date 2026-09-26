@@ -84,7 +84,7 @@ export async function GET(req: Request) {
   });
 }
 
-const dienst = (req: Request) => !!process.env.MAKE_OS_KEY && req.headers.get('x-make-key') === process.env.MAKE_OS_KEY;
+import { istDienst as dienst } from '@/lib/zugang/dienst';
 const ohneBetraege = (t: string) => t.replace(/[+−-]?\d{1,3}(?:\.\d{3})*(?:,\d+)?\s?(?:€|EUR)/g, '…').replace(/\s{2,}/g, ' ').trim();
 
 export async function POST(req: Request) {

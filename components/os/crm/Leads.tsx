@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 // ─── Markttraktion · Sales › Leads (Ebene 1) — qualifizieren bis zum SQL ────
 // Kevin (25.09.): „Dort arbeiten wir über die Kontakt-/Firmen-Ebene, wo wir
 // qualifizieren und es ein SQL-Lead wird.“ Je Firma eine Zeile (mit ihren
@@ -15,6 +17,7 @@ import { useLinkAuswahl } from '../Verlauf';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { markttraktion } from '@/lib/crm/adresse';
+import { WEG } from '@/lib/wege';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT } from '../schlank';
 import type { LeadStatus, Kriterien, Qual, ChancenArt } from '@/lib/crm/typen';
@@ -72,7 +75,7 @@ export function SalesTrichter({ api, zuBereich }: { api: CrmApi; zuBereich: (s: 
 }
 
 type Filter = 'aktiv' | LeadStatus;
-export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id: string) => void; zuDeal: () => void }) {
+export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id: string) => void; zuDeal: (id?: string) => void }) {
   const breit = useBreit();
   const { d, laden } = useLeads(api);
   const [filter, setFilter] = useState<Filter>('aktiv');
@@ -152,7 +155,7 @@ function KriterienPunkte({ k }: { k: Kriterien }) {
   );
 }
 
-function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; api: CrmApi; laden: () => void; zuKontakt: (id: string) => void; zuDeal: () => void }) {
+function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; api: CrmApi; laden: () => void; zuKontakt: (id: string) => void; zuDeal: (id?: string) => void }) {
   const heute = api.crm?.heute ?? new Date().toISOString().slice(0, 10);
   const [k, setK] = useState<Kriterien>(z.kriterien);
   const [status, setStatus] = useState<LeadStatus>(z.status);
@@ -192,7 +195,7 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
       {z.deal && (
         <div style={{ padding: '10px 12px', borderRadius: 12, background: `${z.deal.offen ? LEUCHT.gut : C.inkLeise}14`, fontSize: TYP.bedien, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <span>Ebene 2 · Deal „{z.deal.titel}“ · {STUFEN.find(s => s.id === z.deal!.stufe)?.label}{z.deal.wert ? ` · ${euro(z.deal.wert)}` : ' · ohne Wert'}</span>
-          <Knopf leise onClick={zuDeal}>Zum Deal</Knopf>
+          <Knopf leise onClick={() => zuDeal(z.deal!.id)}>Zum Deal</Knopf>
         </div>
       )}
 
@@ -334,7 +337,7 @@ export function LeadBlock({ api, leadId }: { api: CrmApi; leadId: string }) {
         <KriterienPunkte k={z.kriterien} />
         <span style={{ color: C.inkDim }}>{geklaert(z.kriterien)} von 6 geklärt{!sqlBereit(z.kriterien) && z.status !== 'sql' && z.status !== 'kunde' ? ` · bis SQL fehlt: ${fehlt.join(', ')}` : ''}</span>
       </div>
-      {z.deal && <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 6 }}>Ebene 2 · Deal „{z.deal.titel}“ · {STUFEN.find(s => s.id === z.deal!.stufe)?.label}{z.deal.wert ? ` · ${euro(z.deal.wert)}` : ''}</div>}
+      {z.deal && <Link href={WEG.deal(z.deal.id)} style={{ display: 'block', fontSize: 12.5, color: C.inkDim, marginTop: 6, textDecoration: 'none' }}>Ebene 2 · Deal „{z.deal.titel}“ · {STUFEN.find(s => s.id === z.deal!.stufe)?.label}{z.deal.wert ? ` · ${euro(z.deal.wert)}` : ''} ›</Link>}
     </div>
   );
 }

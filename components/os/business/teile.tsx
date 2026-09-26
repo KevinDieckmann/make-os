@@ -89,7 +89,7 @@ const SICHT_LABEL: Record<string, string> = { gesamt: 'Gesamt', kdc: 'Consulting
 const zahlText = (n: number) => String(n).replace('.', ',');
 
 /** Feinjustierung: eigene Schwellen für alle Sichten oder nur diese — mit Rückweg zum Standard. */
-type SchwelleSenden = (schwelle: Record<string, unknown>) => Promise<{ ok: boolean; fehler?: string }>;
+export type SchwelleSenden = (schwelle: Record<string, unknown>) => Promise<{ ok: boolean; fehler?: string }>;
 const businessSenden: SchwelleSenden = schwelle => fetch('/api/business', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'einstellungen', schwelle }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
 
 function SchwellenAnpassen({ k, scope, onGespeichert, senden: sender = businessSenden }: { k: KennzahlStand; scope: string; onGespeichert: () => void; senden?: SchwelleSenden }) {

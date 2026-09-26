@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import { sperren } from '@/lib/lauf-sperre';
 import { logRun, recentRuns } from '@/lib/agent-log';
 import { askJson } from '@/lib/anthropic';
+import { personAus } from '@/lib/jarvis/raum';
 import { gatherBrain } from '@/lib/brain';
 import { vitalsHint } from '@/lib/vitals';
 import { computeMetrics, eur } from '@/lib/make-one/finance-data';
@@ -24,8 +25,8 @@ import { localDay as localKey } from '@/lib/zeit';
 
 // ── Gemeinsame Datensammlung: kommt jetzt aus dem Brain ──
 // Gleiche Rückgabeform wie früher, damit die Loop-Zweige unverändert bleiben.
-async function gather(today: string) {
-  const b = await gatherBrain(today);
+async function gather(today: string, person: string) {
+  const b = await gatherBrain(today, person);
   // Für den Rückblick brauchen wir die vollen Payloads der Loop-Läufe.
   const loopLog = await recentRuns(undefined, 30, 'loop-').then(l => [...l].reverse());
   return {
@@ -65,7 +66,7 @@ export async function POST(req: Request) {
   const today = body.today && /^\d{4}-\d{2}-\d{2}$/.test(body.today) ? body.today : localKey(new Date());
   const wd = WD[new Date(`${today}T12:00:00`).getDay()];
 
-  const g = await gather(today);
+  const g = await gather(today, personAus(req));
 
   // ───────────────────────────────── MORGEN-LOOP ─────────────────────────────
   if (loop === 'morgen') {

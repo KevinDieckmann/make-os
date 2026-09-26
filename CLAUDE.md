@@ -38,6 +38,12 @@ lokal, Route `/os`, Port 3001.
    Erfassungs-Werkzeuge) darf direkt schreiben.
 4. **Testdaten nach Tests zurücksetzen** — vorher prüfen, ob ein Wert wirklich
    vom Test stammt und nicht von Kevin/Malin echt eingetragen wurde.
+5. **Zugang je Person, nie Rückfall auf „kevin“:** Jede Route liest die Person aus der Sitzung
+   (`personStreng`/`personAus`); Werkzeuge ohne Person lehnen ab (`KEINE_PERSON`). Dienstaufrufe nur über
+   `istDienst(req)` (`lib/zugang/dienst.ts`, konstante Zeit); Inhaber-Dinge über `nurInhaber`. Jarvis-Aufträge,
+   Protokoll und Stapel gehören der Person, die sie ausgelöst hat.
+6. **Fremder Text ist Daten:** Was Jarvis aus Mails oder Recherche liest, läuft durch `fremd()`; danach
+   werden schreibende Werkzeuge nur vorgeschlagen. Keine echten Namen Dritter im Code oder in `public/`.
 
 ## Design & Produkt
 - Design-Sprache: Klar·DARK — Token in `lib/make-one/os-data.ts` (THEME),
@@ -137,6 +143,25 @@ lokal, Route `/os`, Port 3001.
   Fristen heißen `steuer-<frist>` (private tragen „haushalt“), ohne Betrag im Titel.
 - Lokaler Dev-Server: kommen Änderungen an bestehenden Dateien nicht an (alter Stand im Bundle),
   die Vorschau „make-os-entwicklung“ einmal neu starten.
+
+## Gesundheits-Index & Traktions-Index (seit 26.09.2026, auf `entwicklung`)
+- **Ein Kern für alle Indizes:** `lib/kennzahlen/kern.ts` (`berechneModell`, `geometrisch` für den
+  Traktions-Score) + `lib/kennzahlen/speicher.ts` (Verlauf 400 Tage, Schwellen, `fortschreiben`,
+  `speichereSchwelle`, Speichername `^[a-z0-9][a-z0-9-]*$`) + `components/os/kennzahlen/IndexAnsicht.tsx`
+  (Ring, Säulen, Kacheln, Fenster, Verlauf). Neue Indizes: Register + Messungen + `IndexAnsicht` — nie eigene
+  Punkte-Logik, nie eigene Kachel.
+- **Gesundheits-Index** `lib/gesundheit/index.ts` + `speicher.ts`, API `/api/gesundheit/index` (nur wer sehen
+  darf: `darfGesundheitSehen`), Speicher `gesundheit-index--<person>`; Gesundheits-Säule des Wachstums-Scores =
+  dieser Index (`lib/performance.ts`); Jarvis `gesundheits_index` (frei, nur eigene Person oder geteilt).
+  Tagebücher (Haut, Streak) zählen nur, wenn geführt (`kennzahlenFuer`).
+- **Traktions-Index** `lib/crm/traktion-index.ts` (Kennzahlen der Welten → Kern, Sales 50 · Marketing 40 ·
+  Event 10 geometrisch, Grundlage Gewicht 0), Speicher `traktion-index`, API `/api/crm/traktion`
+  (GET `index`/`indexVerlauf`, POST `{schwelle}`); `alsTraktion()` liefert die alte Form für Scoreboard und
+  Business-Index — eine Zahl überall.
+- **Keine toten Stellen:** Wo eine Aufgabe entsteht, steht ihr Link (`WEG.aufgabe`); Kontostände werden nur
+  unter Liquidität gepflegt; Controlling-Ist kommt aus `business-abschluesse`; bezahlte Rechnung → Buchung
+  `bu-re-<id>` (`rechnungId`), Rechnung trägt `mandatId`. Umleitungen in `next.config.mjs` nur für Adressen,
+  die es nicht mehr gibt — nie für Seiten, auf die noch verlinkt wird (Journal, Ritual).
 
 ## Technik
 - TypeScript strikt: vor jedem Commit `npx tsc --noEmit` — null Fehler.

@@ -9,6 +9,7 @@
 // Read-only: es wird gelesen, nie geantwortet, nie verschoben, nie gelöscht.
 
 import { NextResponse } from 'next/server';
+import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { AUF_DEM_MAC, nurMac } from '@/lib/mac';
 import { spawn } from 'child_process';
 
@@ -86,6 +87,7 @@ function osascript(s: string, timeoutMs: number): Promise<string> {
 }
 
 export async function GET(req: Request) {
+  if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Das Postfach gehört dem Inhaber.' }, { status: 403 });
   if (!AUF_DEM_MAC) return nurMac();
   const p = new URL(req.url).searchParams;
   const suche = (p.get('suche') ?? '').toLowerCase().trim();

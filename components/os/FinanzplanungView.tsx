@@ -8,6 +8,7 @@
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Leuchtfarben, Listen).
 
 import Link from 'next/link';
+import { WEG } from '@/lib/wege';
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { computeMetrics, eur, type FinanceState } from '@/lib/make-one/finance-data';
@@ -21,7 +22,7 @@ import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Zah
 interface Firma { id: string; name: string; bank: string; kontostand: number | null; stand: string | null }
 type RStatus = 'geplant' | 'gestellt' | 'bezahlt';
 interface Rechnung {
-  id: string; firmaId: string; kunde: string; titel: string; betrag: number; status: RStatus; faellig?: string; notiz?: string;
+  id: string; firmaId: string; kunde: string; titel: string; betrag: number; status: RStatus; faellig?: string; notiz?: string; mandatId?: string;
   /** Der Vorgang: Angebot → Rechnung → Eingang (Kevins Ansage 02.08.). */
   nummer?: string; datum?: string; angebot?: string; angebotAm?: string; bezahltAm?: string;
   netto?: number; ustSatz?: number; leistungVon?: string; leistungBis?: string;
@@ -105,7 +106,14 @@ export function FinanzplanungView() {
   const firmaName = (id: string) => plan.firmen.find(f => f.id === id)?.name ?? id;
 
   function rechnungAendern(id: string, patch: Partial<Rechnung>) {
-    speichern({ ...plan!, rechnungen: plan!.rechnungen.map(r => r.id === id ? { ...r, ...patch } : r) });
+    const r = plan!.rechnungen.find(x => x.id === id);
+    const wirdBezahlt = patch.status === 'bezahlt' && !!r && r.status !== 'bezahlt';
+    const p2 = wirdBezahlt && !r!.bezahltAm ? { ...patch, bezahltAm: heute } : patch;
+    speichern({ ...plan!, rechnungen: plan!.rechnungen.map(x => x.id === id ? { ...x, ...p2 } : x) });
+    // Rechnung → Buchung (26.09.): der Zahlungseingang steht in den Buchungen, mit Bezug zur Rechnung.
+    if (wirdBezahlt && r && r.betrag > 0) {
+      fetch('/api/state/buchungen', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ op: 'upsert', buchung: { id: `bu-re-${r.id}`, datum: p2.bezahltAm ?? heute, wer: r.kunde, betrag: r.betrag, kategorie: 'Umsatz', zweck: r.titel, ort: r.firmaId === 'kdv' ? 'kdv' : 'kdc', rechnungId: r.id } }] }) }).catch(() => {});
+    }
   }
   function zahlungBewegen(id: string, richtung: -1 | 1) {
     const z = [...plan!.zahlungen];
@@ -188,10 +196,8 @@ export function FinanzplanungView() {
               <Ueberschrift farbe={offen.length ? LEUCHT.achtung : LEUCHT.gut} rechts={f.bank}>{f.name}</Ueberschrift>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Kontostand</span>
-                <input type="number" value={f.kontostand ?? ''} placeholder="—" aria-label={`Kontostand ${f.name}`}
-                  onChange={e => speichern({ ...plan, firmen: plan.firmen.map(x => x.id === f.id ? { ...x, kontostand: e.target.value === '' ? null : Number(e.target.value) } : x) })}
-                  style={{ ...eingabe, width: 130, fontFamily: SCHRIFT.display, fontSize: 17, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }} />
-                <span style={leise}>€{f.stand ? ` · Stand ${datum(f.stand)}` : ''}</span>
+                <Link href={WEG.kontostaende()} style={{ fontFamily: SCHRIFT.display, fontSize: 17, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: f.kontostand == null ? C.inkLeise : C.ink, textDecoration: 'none' }}>{f.kontostand == null ? 'eintragen' : eur(f.kontostand)} ›</Link>
+                <span style={leise}>{f.stand ? `Stand ${datum(f.stand)} · ` : ''}gepflegt unter Liquidität</span>
               </div>
               <div style={{ marginTop: 10 }}>
                 <Chip farbe={offen.length ? LEUCHT.achtung : C.inkLeise}>
@@ -239,6 +245,8 @@ export function FinanzplanungView() {
                   <span style={leise}>
                     netto {(r.netto ?? r.betrag / 1.19).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                     {r.ustSatz != null ? ` · ${r.ustSatz}% USt` : ' · 19% angenommen'}
+                    {r.mandatId && <> · <Link href={WEG.mandat(r.mandatId)} style={{ color: C.inkDim }}>Mandat ›</Link></>}
+                    {r.status === 'bezahlt' && <> · <Link href={`/os/finanzen/buchungen?q=${encodeURIComponent(r.kunde)}`} style={{ color: C.inkDim }}>Buchung ›</Link></>}
                   </span>
                 </div>
               </div>
@@ -261,7 +269,7 @@ export function FinanzplanungView() {
           }}>+ Rechnung</Knopf>
         </div>
         <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 12, lineHeight: 1.6 }}>
-          Bezahlt? Dann den Betrag im <Link href="/os/controlling" style={{ color: C.aktiv, textDecoration: 'none' }}>Controlling</Link> als Monats-Umsatz erfassen — dort zählt er aufs Jahresziel.
+          Bezahlt? Der Zahlungseingang wird automatisch als Buchung angelegt; der Monatsumsatz kommt aus dem <Link href={WEG.abschluss()} style={{ color: C.aktiv, textDecoration: 'none' }}>Monatsabschluss</Link> (Zahlen → Business) — dort zählt er aufs Jahresziel.
         </div>
       </Karte>
 

@@ -12,7 +12,7 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { SITZUNG_COOKIE, sitzungPruefen, sitzungsGeheimnis } from '@/lib/zugang/sitzung';
+import { SITZUNG_COOKIE, sitzungPruefen, sitzungsGeheimnis, gleich } from '@/lib/zugang/sitzung';
 
 /** Ohne Sitzung erreichbar: die Anmeldung selbst und ihre Schnittstellen. */
 const OFFEN = [/^\/anmelden$/, /^\/api\/konto\/(status|anmelden|einrichten|beitreten)$/];
@@ -50,7 +50,8 @@ export async function middleware(req: NextRequest) {
 
   // Interner Dienstweg: Arbeiter, Bote, Takt. Sie dürfen die Person im Kopf
   // mitgeben (x-make-person) — sie handeln im Auftrag.
-  if (req.headers.get('x-make-key') === schluessel) {
+  const dienstKopf = req.headers.get('x-make-key');
+  if (dienstKopf && gleich(dienstKopf, schluessel)) {
     return NextResponse.next({ request: { headers: kopf } });
   }
   // Alles andere darf sich NICHT selbst benennen.

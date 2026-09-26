@@ -8,9 +8,8 @@ import type { FinanceState } from '@/lib/make-one/finance-data';
 import type { Firma, Rechnung, Zahlung, Merkposten, Planposten } from '@/lib/make-one/liquiditaet';
 import { lesen, monatsBild, type MalinExport } from '@/lib/make-one/grundlage';
 import { ladeCrm } from '@/lib/crm/speicher';
-import { kennzahlen } from '@/lib/crm/kennzahlen';
-import { marketingKennzahlen } from '@/lib/crm/marketing';
-import { eventKennzahlen, traktion } from '@/lib/crm/traktion';
+import { traktionsIndex, alsTraktion } from '@/lib/crm/traktion-index';
+import { ladeIndexDatei } from '@/lib/kennzahlen/speicher';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { PlanBlock } from '@/types/planer';
 import { localDay } from '@/lib/zeit';
@@ -125,7 +124,7 @@ const monatlich = (f: { brutto: number; rhythmus: string }) => (f.rhythmus === '
 
 /** Alles, was der Index braucht — einmal geladen, für alle drei Sichten. */
 export async function ladeRoh(heute = localDay()) {
-  const [fp, lp, fin, grund, abschluesse, crm, kartei, cal, plan, auftraege, ms, einst, verlauf] = await Promise.all([
+  const [fp, lp, fin, grund, abschluesse, crm, kartei, cal, plan, auftraege, ms, einst, verlauf, traktionDatei] = await Promise.all([
     loadJson<{ firmen?: Firma[]; rechnungen?: (Rechnung & { firmaId?: string })[]; zahlungen?: Zahlung[]; merkposten?: Merkposten[] }>('finanzplan'),
     loadJson<{ posten?: Planposten[] }>('liquiplan'),
     loadJson<FinanceState>('finance'),
@@ -139,6 +138,7 @@ export async function ladeRoh(heute = localDay()) {
     loadJson<{ meilensteine?: { id?: string; titel?: string; bereich: string; faellig?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
     ladeEinstellungen(),
     loadJson<BusinessVerlauf>(VERLAUF),
+    ladeIndexDatei('traktion-index'),
   ]);
   // V1-Export: nur die Business-Teile. Umsatz/Kosten = Selbständigkeit (Consulting);
   // Fixkosten getrennt: s = Selbständigkeit, u = UG. Private Kredite (p.sch) bleiben draußen.
@@ -150,7 +150,9 @@ export async function ladeRoh(heute = localDay()) {
     kdv: fixListe.slice(0, fixU).reduce((s, f) => s + monatlich(f), 0),
   };
   const kontakte = kartei?.kontakte ?? [];
-  const tr = traktion({ sales: kennzahlen(kontakte, crm, heute), marketing: marketingKennzahlen(kontakte, crm, heute), event: eventKennzahlen(kontakte, crm, heute) });
+  // Traktions-Index (26.09.): dieselbe Zahl wie im Markttraktion-Überblick — eine Wahrheit.
+  const ti = traktionsIndex({ kontakte, crm, heute, schwellen: traktionDatei.schwellen });
+  const tr = alsTraktion(ti);
   const ab = new Date(`${heute}T12:00:00`); ab.setDate(ab.getDate() - 35);
   const abTag = localDay(ab);
   return {

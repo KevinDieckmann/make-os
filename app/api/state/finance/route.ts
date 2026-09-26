@@ -9,11 +9,22 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const [state, plan, grenzen] = await Promise.all([
+  const [roh, plan, grenzen, ab] = await Promise.all([
     loadJson<FinanceState>('finance'),
     loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[] }>('finanzplan'),
     schwellen(),
+    loadJson<{ eintraege?: { firma: string; monat: string; umsatz?: number; kosten?: number }[] }>('business-abschluesse'),
   ]);
+  // Eine Wahrheit (26.09.): liegt ein Monatsabschluss (je Firma, Business-Index) vor, gilt er — die
+  // hier gepflegten Monate sind nur noch Rückfall. So zählt derselbe Umsatz nicht doppelt.
+  const state = roh && ab?.eintraege?.length ? {
+    ...roh,
+    months: roh.months.map((m, i) => {
+      const key = `${roh.jahr}-${String(i + 1).padStart(2, '0')}`;
+      const je = ab.eintraege!.filter(e => e.monat === key && (e.umsatz != null || e.kosten != null));
+      return je.length ? { ...m, umsatz: je.reduce((s, e) => s + (e.umsatz ?? 0), 0), kosten: je.reduce((s, e) => s + (e.kosten ?? 0), 0) } : m;
+    }),
+  } : roh;
   // Die Kasse kommt aus den Firmenkonten; `state.cash` bleibt nur Rückfall.
   return NextResponse.json({ state, kasse: geschaeftsKasse(plan?.firmen, state?.cash), runway: { rot: grenzen.runwayRot, amber: grenzen.runwayAmber } });
 }

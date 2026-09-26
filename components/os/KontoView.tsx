@@ -43,8 +43,9 @@ export function KontoView() {
     setTg(t => ({ ...(t ?? { konfiguriert: true, chats: 0 }), ...(r.error ? { fehler: r.error } : { code: r.code, minuten: r.minuten, bot: r.bot }) }));
   }
   async function tgWeg() { await fetch('/api/telegram/koppeln', { method: 'DELETE' }).catch(() => {}); setTg(null); void ladeTg(); }
+  const [fuer, setFuer] = useState('');
   async function einladen() {
-    const r = await fetch('/api/konto/einladen', { method: 'POST' }).then(x => x.json()).catch(() => ({ error: 'nicht erreichbar' }));
+    const r = await fetch('/api/konto/einladen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fuer }) }).then(x => x.json()).catch(() => ({ error: 'nicht erreichbar' }));
     if (r.code) setEinladung({ code: r.code, stunden: r.stunden, link: `${r.adresse || window.location.origin}/anmelden?code=${r.code}` }); else setMeldung(r.error ?? 'Fehler');
   }
   async function abmelden() { await fetch('/api/konto/abmelden', { method: 'POST' }).catch(() => {}); window.location.assign('/anmelden'); }
@@ -86,7 +87,7 @@ export function KontoView() {
                   <span style={{ fontSize: TYP.bedien, color: C.inkLeise, wordBreak: 'break-all' }}>{einladung.link}</span>
                 </div>
               </div>
-            ) : <Zeile titel="Jemanden einladen" unter={'Die Person öffnet den Link, trägt Vorname, E-Mail und Passwort ein — fertig. Malin nimmt den Vornamen „Malin“, dann hängen ihre bisherigen Bestände am Konto.'} rechts={<Knopf onClick={einladen}>Link erzeugen</Knopf>} />}
+            ) : <Zeile titel="Jemanden einladen" unter={'Die Person öffnet den Link, trägt Vorname, E-Mail und Passwort ein — fertig. Für Malin hier „Malin“ eintragen: dann hängen ihre bisherigen Bestände am Konto (ohne diese Bindung bekommt niemand ihren Namen).'} rechts={<span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input value={fuer} onChange={e => setFuer(e.target.value)} placeholder="Vorname (optional)" aria-label="Für wen" style={{ ...feld, width: 150, padding: '8px 10px', fontSize: TYP.bedien }} /><Knopf onClick={einladen}>Link erzeugen</Knopf></span>} />}
           </Liste>
         </Karte>
       )}

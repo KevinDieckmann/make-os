@@ -8,10 +8,7 @@
 // ausgelassen und die Säule aus dem Rest gebildet.
 
 import { loadJson } from '@/lib/store/local-db';
-import { resolveVitals } from '@/lib/vitals';
-import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
-// `routineQuote` heißt weiter unten schon eine Zahl — deshalb der Alias.
-import { hautTrend, streakStand, routineQuote as quoteFuer, type HautLog, type StreakLog } from '@/lib/gesundheit/eintraege';
+import { gesundheitsIndexFuer } from '@/lib/gesundheit/speicher';
 import { RITUALE } from '@/lib/make-one/team-data';
 import { agentenFaktoren, agentenEingabe } from '@/lib/agenten-score';
 import { DEPARTMENTS } from '@/lib/make-one/agents-data';
@@ -32,6 +29,8 @@ export interface Faktor {
   quelle: string;
   /** false = keine echten Daten vorhanden, Faktor zählt nicht mit. */
   echt: boolean;
+  /** Wohin ein Klick führt — dorthin, wo man den Faktor bewegt (26.09.). */
+  href?: string;
 }
 
 export interface Saeule {
@@ -63,6 +62,7 @@ export interface PerfIndex {
   abdeckung: number;
   /** Die Säule mit dem größten Hebel (niedrig × schwer). */
   hebel: string | null;
+  hebelKey?: string | null;
   stand: string;
   /** Der Business-Index (Gesamtsicht) — die Business-Säule im Detail (25.09.). */
   business?: { index: number | null; label: string; saeulen: { label: string; score: number | null }[]; rot: string[]; luecken: number; hebel: string | null };
@@ -113,19 +113,11 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   const p = (name: string) => (PERSOENLICH.includes(name) ? personDatei(name, person) : name);
   // Haut-Tagebuch und Streak (23.09.) — die zwei Hebel, die Kevin am 29.07.
   // genannt hat und die bis dahin nirgends gemessen wurden.
-  const [hautLog, streakLog] = await Promise.all([
-    loadJson<HautLog>(p('haut')),
-    loadJson<StreakLog>(p('streak')),
-  ]);
-  const [vitals, healthLog, tasksState, journal, cal, ritualLog, routinenF, msF] = await Promise.all([
-    resolveVitals(today, person),
-    loadJson<Record<string, string[]>>(p('health-log')),
+  const [tasksState, journal, cal, ritualLog] = await Promise.all([
     loadJson<{ tasks: { status: string; priority: string; dueDate?: string; assignee?: string }[] }>('tasks'),
     loadJson<Record<string, JournalTag>>(p('journal')),
     loadJson<CalCache>('calendar-cache'),
     loadJson<Record<string, string[]>>(p('rituale')),
-    loadJson<{ routinen: { aktiv: boolean }[] }>('routinen'),
-    loadJson<{ meilensteine: { bereich: string; faellig?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
   ]);
 
   // Agenten (24.09.): was Jarvis und die Agenten abnehmen — sechste Säule.
@@ -136,81 +128,19 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
     ladeTelegram().catch(() => null),
   ]);
 
-  // ── Meilenstein-Kurs je Bereich: Ø Fortschritt der OFFENEN Meilensteine;
-  //    Überfällige zählen als 0 — Ehrlichkeit schlägt Schönrechnen. ──
-  const msKurs = (bereich: 'business' | 'gesundheit') => {
-    const offene = (msF?.meilensteine ?? []).filter(m => m.bereich === bereich && !m.erledigt);
-    if (!offene.length) return { wert: 100, echt: (msF?.meilensteine ?? []).some(m => m.bereich === bereich), quelle: 'alle Meilensteine erledigt' };
-    const ueberfaellig = offene.filter(m => m.faellig && m.faellig < today).length;
-    const punkte = offene.map(m => (m.faellig && m.faellig < today ? 0 : m.fortschritt));
-    const wert = clamp(punkte.reduce((a, b) => a + b, 0) / offene.length);
-    return { wert, echt: true, quelle: `Ø Fortschritt ${offene.length} offener Meilensteine${ueberfaellig ? `, ${ueberfaellig} überfällig (zählt 0)` : ''}` };
-  };
-
-  // ── Gesundheit & Energie ──
-  const log = healthLog ?? {};
-  const letzte7 = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(`${today}T12:00:00`); d.setDate(d.getDate() - i);
-    return localDay(d);
-  });
-  const routineTage = letzte7.filter(d => (log[d]?.length ?? 0) > 0).length;
-  // Quote gegen die AKTIVEN Routinen aus dem Planer (Fallback: Konstante).
-  const routinenAnzahl = Math.max(1, (routinenF?.routinen ?? []).filter(r => r.aktiv).length || ROUTINE_ITEMS.length);
-  const routineQuote = letzte7.reduce((s, d) => s + (log[d]?.length ?? 0), 0) / (7 * routinenAnzahl);
-
+  const letzte7 = Array.from({ length: 7 }, (_, i) => { const d = new Date(`${today}T12:00:00`); d.setDate(d.getDate() - i); return localDay(d); });
   const journalTage = letzte7.filter(d => journal?.[d]);
-  const energien = journalTage.map(d => journal![d].energy).filter((n): n is number => typeof n === 'number');
-  const stress = journalTage.map(d => journal![d].stress).filter((n): n is number => typeof n === 'number');
 
-  const gesundheit: Faktor[] = [
-    { label: 'Recovery', wert: clamp(vitals.rec), echt: vitals.heute || vitals.alterTage <= 2,
-      quelle: vitals.heute ? `Whoop heute: ${vitals.rec}%` : `letzter Stand ${vitals.stand}: ${vitals.rec}%` },
-    { label: 'Schlaf', wert: clamp((vitals.sleep / 8) * 100), echt: vitals.heute || vitals.alterTage <= 2,
-      quelle: `${vitals.sleep}h — 8h = 100` },
-    { label: 'Routinen', wert: clamp(routineQuote * 100), echt: routineTage > 0,
-      quelle: routineTage > 0 ? `${routineTage}/7 Tage aktiv, ${Math.round(routineQuote * 100)}% der Häkchen` : 'noch keine Routinen abgehakt' },
-    { label: 'Energie (Journal)', wert: energien.length ? clamp((energien.reduce((a, b) => a + b, 0) / energien.length / 5) * 100) : 0, echt: energien.length > 0,
-      quelle: energien.length ? `Ø ${(energien.reduce((a, b) => a + b, 0) / energien.length).toFixed(1)}/5 aus ${energien.length} Einträgen` : 'kein Journal-Eintrag in 7 Tagen' },
-    { label: 'Stress (invers)', wert: stress.length ? clamp(100 - ((stress.reduce((a, b) => a + b, 0) / stress.length / 5) * 100)) : 0, echt: stress.length > 0,
-      quelle: stress.length ? `Ø ${(stress.reduce((a, b) => a + b, 0) / stress.length).toFixed(1)}/5 — niedriger ist besser` : 'kein Journal-Eintrag in 7 Tagen' },
-    // Haut (23.09.): aus dem Haut-Tagebuch, nicht mehr aus dem Journal-Flag.
-    // Juckreiz 0 = 100, Juckreiz 10 = 0. Sieben Tage Schnitt — ein einzelner
-    // schlechter Abend kippt die Säule nicht.
-    (() => {
-      const ht = hautTrend(hautLog ?? {}, today);
-      const echt = typeof ht.juckreiz7 === 'number';
-      return {
-        label: 'Haut (Juckreiz)',
-        wert: echt ? clamp(100 - ht.juckreiz7! * 10) : 0,
-        echt,
-        quelle: echt
-          ? `Ø ${ht.juckreiz7}/10 über 7 Tage${ht.richtung !== 'unbekannt' ? `, ${ht.richtung} als die Woche davor` : ''}${ht.schuebe30 ? `, ${ht.schuebe30} Schub-Tage/30` : ''}`
-          : 'kein Haut-Eintrag in 7 Tagen',
-      };
-    })(),
-    // Die beiden Hebel gegen die Schübe, einzeln sichtbar — nicht in der
-    // Routinen-Quote versteckt, wo sie niemand findet.
-    (() => {
-      const q = quoteFuer(log, ['essen'], today, 7);
-      return { label: 'Regelmäßig gegessen', wert: clamp(q.quote * 100), echt: q.tage > 0, quelle: q.tage ? `${Math.round(q.quote * 7)}/7 Tage abgehakt` : 'noch nicht abgehakt' };
-    })(),
-    (() => {
-      const q = quoteFuer(log, ['reha'], today, 7);
-      return { label: 'Reha & Mobilität', wert: clamp(q.quote * 100), echt: q.tage > 0, quelle: q.tage ? `${Math.round(q.quote * 7)}/7 Tage` : 'noch nicht abgehakt' };
-    })(),
-    // Der Streak zählt nur für die Person, die ihn führt. 30 saubere Tage = 100.
-    ...(() => {
-      const st = streakStand(streakLog ?? {}, today);
-      if (!st.eintraege30) return [] as Faktor[];
-      return [{
-        label: 'Sauber (Streak)',
-        wert: st.aktuell ? clamp((Math.min(30, st.sauberTage) / 30) * 100) : 0,
-        echt: st.aktuell,
-        quelle: st.aktuell ? `${st.sauberTage} Tage seit dem letzten Rückfall` : 'seit über 3 Tagen kein Eintrag',
-      }];
-    })(),
-    { label: 'Gesundheits-Meilensteine', ...msKurs('gesundheit') },
-  ];
+  // ── Gesundheit & Energie = Gesundheits-Index (26.09., „eine Wahrheit“) ──
+  // Erholung & Schlaf 40 · Bewegung & Aufbau 30 · Ernährung & Körper 30
+  // (lib/gesundheit). Die Säule IST dieser Index; die Faktoren zeigen seine
+  // drei Säulen. Recovery, Schlaf, Routinen, Haut, Streak und Journal stecken
+  // jetzt dort als Kennzahlen — mit Schwellen, Verlauf und den Punkten dahinter.
+  const gi = await gesundheitsIndexFuer(person, today).catch(() => null);
+  const gesundheit: Faktor[] = (gi?.saeulen ?? []).map(s => ({
+    label: s.label, wert: s.score ?? 0, echt: s.score != null && !s.zuDuenn, href: `/os/gesundheit?s=index${person !== 'kevin' ? `&fuer=${person}` : ''}`,
+    quelle: s.score == null ? 'noch nichts gemessen' : `${s.kennzahlen.filter(k => k.gemessen).length} von ${s.kennzahlen.length} Kennzahlen gemessen${s.zuDuenn ? ' — zu wenig, zählt noch nicht' : ''}`,
+  }));
 
   // ── Business-Performance = Business-Index (25.09., „eine Wahrheit“) ──
   // Unsere KSI-Logik — Finanzielle Gesundheit 50 · Unternehmer-DNA 30 ·
@@ -220,7 +150,7 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   const bi = berechne(bestandFuer(await ladeBusinessRoh(today), 'gesamt'));
   const fh = bi.saeulen.find(s => s.id === 'fh')!;
   const business: Faktor[] = bi.saeulen.map(s => ({
-    label: `${s.label} (${Math.round(s.gewicht * 100)} %)`, wert: s.score ?? 0, echt: s.score != null && !s.zuDuenn,
+    label: `${s.label} (${Math.round(s.gewicht * 100)} %)`, wert: s.score ?? 0, echt: s.score != null && !s.zuDuenn, href: '/os/finanzen?s=business',
     quelle: s.score == null ? 'noch nichts gemessen' : `${s.kennzahlen.filter(k => k.gemessen).length} von ${s.kennzahlen.length} Kennzahlen gemessen${s.zuDuenn ? ' — zu wenig, zählt noch nicht' : ''}`,
   }));
 
@@ -256,23 +186,23 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   ).length;
 
   const planung: Faktor[] = [
-    { label: 'Vormittage frei', wert: clamp((freieVormittage / 5) * 100), echt: calFrisch,
+    { label: 'Vormittage frei', wert: clamp((freieVormittage / 5) * 100), echt: calFrisch, href: '/os/planung/woche',
       quelle: calFrisch ? `${freieVormittage} von 7 Tagen ohne Vormittagstermin — 5 = 100` : 'Kalender-Stand zu alt, /os/kalender öffnen' },
-    { label: 'Keine Terminkollisionen', wert: clamp(100 - kollisionen * 25), echt: calFrisch,
+    { label: 'Keine Terminkollisionen', wert: clamp(100 - kollisionen * 25), echt: calFrisch, href: '/os/planung/woche',
       quelle: calFrisch ? `${kollisionen} Überschneidung(en) diese Woche` : 'Kalender-Stand zu alt' },
-    { label: 'Nichts überfällig', wert: offen.length ? clamp(100 - (overdue / offen.length) * 100) : 100, echt: alle.length > 0,
+    { label: 'Nichts überfällig', href: '/os/aufgaben', wert: offen.length ? clamp(100 - (overdue / offen.length) * 100) : 100, echt: alle.length > 0,
       quelle: alle.length ? `${overdue} von ${offen.length} überfällig` : 'keine Aufgaben' },
-    { label: 'Last tragbar', wert: clamp(100 - Math.max(0, offen.length - 12) * 6), echt: alle.length > 0,
+    { label: 'Last tragbar', href: '/os/aufgaben', wert: clamp(100 - Math.max(0, offen.length - 12) * 6), echt: alle.length > 0,
       quelle: `${offen.length} offen — bis 12 gilt als tragbar` },
-    { label: 'Kritisches im Griff', wert: clamp(100 - kritisch * 18), echt: alle.length > 0,
+    { label: 'Kritisches im Griff', href: '/os/aufgaben', wert: clamp(100 - kritisch * 18), echt: alle.length > 0,
       quelle: `${kritisch} kritische Aufgaben offen` },
-    { label: 'Es fließt', wert: offen.length ? clamp((inArbeit / Math.min(offen.length, 5)) * 100) : 0, echt: alle.length > 0,
+    { label: 'Es fließt', href: '/os/aufgaben', wert: offen.length ? clamp((inArbeit / Math.min(offen.length, 5)) * 100) : 0, echt: alle.length > 0,
       quelle: `${inArbeit} in Arbeit, ${erledigt} erledigt` },
   ];
 
   // ── Finanzen, Business-Hälfte = Finanzielle Gesundheit des Business-Index (25.09.) ──
   const finanzen: Faktor[] = [{
-    label: 'Finanzielle Gesundheit', wert: fh.score ?? 0, echt: fh.score != null && !fh.zuDuenn,
+    label: 'Finanzielle Gesundheit', wert: fh.score ?? 0, echt: fh.score != null && !fh.zuDuenn, href: '/os/finanzen?s=business',
     quelle: fh.score == null ? 'noch nichts gemessen' : `Business-Index · ${fh.kennzahlen.filter(k => k.gemessen).length} von ${fh.kennzahlen.length} Kennzahlen (Liquidität, Forderungen, Ausgaben, Kapital)`,
   }];
 
@@ -281,7 +211,7 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   const zugang = await haushaltFuer(person).catch(() => null);
   const pIdx = zugang ? await privatIndexFuer(zugang.haushalt, today).catch(() => null) : null;
   const privat: Faktor[] = pIdx ? [{
-    label: 'Privat-Index', wert: pIdx.pi.index ?? 0, echt: pIdx.pi.index != null && pIdx.frisch,
+    label: 'Privat-Index', wert: pIdx.pi.index ?? 0, echt: pIdx.pi.index != null && pIdx.frisch, href: '/os/finanzen?s=privat#index',
     quelle: pIdx.pi.index == null ? 'noch nichts gemessen' : `${pIdx.pi.label} · ${pIdx.pi.saeulen.map(s => `${s.label} ${s.score ?? '—'}`).join(' · ')}${pIdx.frisch ? '' : ' — Buchungen älter als 45 Tage, zählt nicht'}`,
   }] : [];
   const finanzenGesamt: Faktor[] = [
@@ -386,5 +316,6 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
     saeulen: bi.saeulen.map(x => ({ label: x.label, score: x.zuDuenn ? null : x.score })),
     rot: bi.saeulen.flatMap(x => x.kennzahlen.filter(k => k.ampel === 'rot').map(k => `${k.label} ${k.anzeige}`)),
   };
-  return { index, label: indexLabel(index), saeulen, abdeckung, hebel, stand: today, business: businessDetail };
+  const hebelKey = hebel ? saeulen.find(s => s.label === hebel)?.key ?? null : null;
+  return { index, label: indexLabel(index), saeulen, abdeckung, hebel, hebelKey, stand: today, business: businessDetail };
 }

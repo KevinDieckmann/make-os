@@ -12,6 +12,8 @@
 // Plakette, Übergeben. Ergebnisse halten fest, wer angesprochen hat („von“);
 // Schritt-Aufgaben gehen an die Zuständigkeit. Änderungen als Einzelfelder.
 
+import Link from 'next/link';
+import { WEG } from '@/lib/wege';
 import { useLinkAuswahl } from '../Verlauf';
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -213,7 +215,7 @@ function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagn
             <div key={s.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.04)', fontSize: TYP.bedien }}>
               <input type="checkbox" checked={s.erledigt} onChange={um} aria-label={s.text} />
               <span style={{ flex: 1, color: s.erledigt ? C.inkLeise : C.ink, textDecoration: s.erledigt ? 'line-through' : 'none' }}>{s.text}</span>
-              {s.aufgabeId && <Chip farbe={C.inkDim}>Aufgabe</Chip>}
+              {s.aufgabeId && <Link href={WEG.aufgabe(s.aufgabeId)} style={{ textDecoration: 'none' }}><Chip farbe={C.inkDim}>Aufgabe ›</Chip></Link>}
               <span style={{ fontSize: 12, color: !s.erledigt && faellig && faellig <= heute ? LEUCHT.achtung : C.inkLeise }}>{faellig ? datum(faellig, heute) : `Tag ${s.tag}`}</span>
             </div>
           );

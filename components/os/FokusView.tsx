@@ -54,10 +54,10 @@ export function FokusView() {
     setBusy(false);
   }
 
-  const zone = rec == null ? null : rec >= 67 ? 'Grün' : rec >= 34 ? 'Gelb' : 'Rot';
+  const zone = rec == null ? null : rec >= 66 ? 'Grün' : rec >= 40 ? 'Gelb' : 'Rot';
   const zoneText = rec == null ? 'Noch keine Recovery von heute — der Tag wird nach Prioritäten geplant.'
-    : rec >= 67 ? 'Grün: Tiefe Arbeit zuerst. Der schwerste Block gehört in den Vormittag.'
-    : rec >= 34 ? 'Gelb: Eine tiefe Einheit, dann Routine. Keine neuen Großbaustellen.'
+    : rec >= 66 ? 'Grün: Tiefe Arbeit zuerst. Der schwerste Block gehört in den Vormittag.'
+    : rec >= 40 ? 'Gelb: Eine tiefe Einheit, dann Routine. Keine neuen Großbaustellen.'
     : 'Rot: Nur das Nötige. Termine schieben, Erholung einplanen.';
 
   return (

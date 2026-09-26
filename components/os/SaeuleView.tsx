@@ -12,7 +12,6 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import type { PerfIndex, Saeule } from '@/lib/performance';
 import { TEAM, RITUALE } from '@/lib/make-one/team-data';
 import { eur, computeMetrics, type FinanceState, type Kasse } from '@/lib/make-one/finance-data';
-import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
 import { localDay } from '@/lib/zeit';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Ring, Zahl, Balken, Fortschritt, Haken, feld, LEUCHT } from './schlank';
 
@@ -21,7 +20,7 @@ export const SAEULEN_META: Record<string, { titel: string; claim: string; hin: s
   business: { titel: 'Business-Performance', claim: 'Der Weg auf 1 Mio.', hin: 'Umsatz-Kurs und Pipeline' },
   planning: { titel: 'Planung & Execution', claim: 'Ob aus Vorhaben Erledigtes wird.', hin: 'Aufgabenlage und Fluss' },
   finance: { titel: 'Finanzen', claim: 'Wie lange du durchhältst.', hin: 'Runway, Gewinn, Marge' },
-  social: { titel: 'Beziehung & Team', claim: 'Wer mitträgt — und wer zu kurz kommt.', hin: 'Rituale, Delegation, Stimmung' },
+  social: { titel: 'Familie & Partnerschaft', claim: 'Wer mitträgt — und wer zu kurz kommt.', hin: 'Rituale, Delegation, Stimmung' },
   agents: { titel: 'Agenten', claim: 'Was Jarvis und die Agenten dir abnehmen.', hin: 'Läufe, Aufträge, Stapel, Bote' },
 };
 
@@ -34,7 +33,6 @@ const linkKnopf: CSSProperties = {
   fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '9px 15px', borderRadius: 11, whiteSpace: 'nowrap',
   background: 'rgba(255,255,255,.06)', color: C.ink, textDecoration: 'none',
 };
-const legende: CSSProperties = { fontSize: TYP.mikro, color: C.inkLeise, marginTop: 8, letterSpacing: '.04em', textTransform: 'uppercase' };
 const absatz: CSSProperties = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, margin: 0 };
 const tage = (n: number, bis = new Date()) =>
   Array.from({ length: n }, (_, i) => {
@@ -43,61 +41,6 @@ const tage = (n: number, bis = new Date()) =>
     return localDay(d);
   });
 const kurzDatum = (d: string) => `${d.slice(8)}.${d.slice(5, 7)}.`;
-
-// ───────────────────────── Gesundheit ─────────────────────────
-function WerkzeugGesundheit() {
-  const [vit, setVit] = useState<Record<string, { rec?: number; sleep?: number }>>({});
-  const [log, setLog] = useState<Record<string, string[]>>({});
-  useEffect(() => {
-    fetch('/api/state/vitals')
-      .then(r => r.json())
-      .then(d => setVit(d.log ?? {}))
-      .catch(() => {});
-    fetch('/api/state/health')
-      .then(r => r.json())
-      .then(d => setLog(d.log ?? {}))
-      .catch(() => {});
-  }, []);
-  const t14 = tage(14);
-  const werte = t14.map(d => ({ d, rec: vit[d]?.rec, sleep: vit[d]?.sleep, routinen: log[d]?.length ?? 0 }));
-  const hatWerte = werte.some(w => w.rec != null);
-  const streak = (() => {
-    let s = 0;
-    for (let i = t14.length - 1; i >= 0; i--) {
-      if ((log[t14[i]]?.length ?? 0) >= 4) s++;
-      else break;
-    }
-    return s;
-  })();
-  const titel = werte.map(w => `${kurzDatum(w.d)} · Recovery ${w.rec ?? '—'}, Schlaf ${w.sleep ?? '—'}h`);
-
-  return (
-    <>
-      <Karte i={1}>
-        <Ueberschrift farbe={LEUCHT.gut} rechts={<Link href="/os/gesundheit" style={link}>Morgen-Check ›</Link>}>Recovery & Schlaf · 14 Tage</Ueberschrift>
-        {!hatWerte ? (
-          <Leer>Noch keine eingetragenen Werte. Jeder Morgen-Check setzt hier einen Punkt — nach ein paar Tagen siehst du, ob Schlaf und Erholung zusammenhängen.</Leer>
-        ) : (
-          <>
-            <Balken werte={werte.map(w => w.rec ?? null)} max={100} farbe={LEUCHT.gut} hoehe={56} titel={titel} />
-            <div style={{ marginTop: 6 }}>
-              <Balken werte={werte.map(w => w.sleep ?? null)} max={9} farbe={LEUCHT.schlaf} hoehe={28} titel={titel} />
-            </div>
-          </>
-        )}
-        <div style={legende}>oben Recovery · unten Schlaf</div>
-      </Karte>
-      <Karte i={2}>
-        <Ueberschrift farbe={LEUCHT.gut} rechts={<Chip farbe={streak > 0 ? LEUCHT.gut : C.inkLeise}>{streak} Tage in Folge</Chip>}>Routinen</Ueberschrift>
-        <Balken werte={t14.map(d => log[d]?.length ?? 0)} max={ROUTINE_ITEMS.length} farbe={LEUCHT.gut} hoehe={32} titel={t14.map(d => `${kurzDatum(d)} · ${log[d]?.length ?? 0}/${ROUTINE_ITEMS.length}`)} />
-        <p style={{ ...absatz, marginTop: 10 }}>
-          Vier von {ROUTINE_ITEMS.length} Häkchen zählen als gehaltener Tag.{' '}
-          <Link href="/os/gesundheit" style={link}>Heute abhaken ›</Link>
-        </p>
-      </Karte>
-    </>
-  );
-}
 
 // ───────────────────────── Business ─────────────────────────
 interface Prospect {
@@ -413,7 +356,7 @@ function WerkzeugSozial() {
   return (
     <>
       <Karte i={1}>
-        <Ueberschrift farbe={LEUCHT.beziehung} rechts={<Link href="/os/gesundheit" style={link}>Journal ›</Link>}>Stimmung · 14 Tage</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.beziehung} rechts={<Link href="/os/journal" style={link}>Journal ›</Link>}>Stimmung · 14 Tage</Ueberschrift>
         {!hatStimmung ? (
           <Leer>Diese Säule hat noch keine Datenquelle. Ein Journal-Eintrag pro Woche genügt, damit sie mitzählt.</Leer>
         ) : (
@@ -454,67 +397,9 @@ function WerkzeugSozial() {
 
 // Verbindung, nach der der Rückblick-Loop selbst gefragt hat: hängt die
 // Tagesform mit dem zusammen, was tatsächlich fertig wurde?
-function WerkzeugZusammenhang() {
-  const [vit, setVit] = useState<Record<string, { rec?: number; sleep?: number }>>({});
-  const [tasks, setTasks] = useState<{ completedAt?: string; status: string }[]>([]);
-  useEffect(() => {
-    fetch('/api/state/vitals')
-      .then(r => r.json())
-      .then(d => setVit(d.log ?? {}))
-      .catch(() => {});
-    fetch('/api/state/tasks')
-      .then(r => r.json())
-      .then(d => setTasks(d.state?.tasks ?? []))
-      .catch(() => {});
-  }, []);
-  const t21 = tage(21);
-  const zeilen = t21.map(d => ({ d, rec: vit[d]?.rec, fertig: tasks.filter(t => t.completedAt?.slice(0, 10) === d).length })).filter(z => z.rec != null);
-  if (zeilen.length < 5) {
-    return (
-      <Karte i={3}>
-        <Ueberschrift farbe={LEUCHT.puls} rechts={`${zeilen.length} von 5 Tagen`}>Zusammenhang · Tagesform & Erledigtes</Ueberschrift>
-        <Leer>
-          Ab etwa fünf Tagen mit Morgen-Check zeige ich hier, ob niedrige Recovery und liegengebliebene Aufgaben zusammenfallen — der Zusammenhang, den man im Alltag nie sieht.
-          {' '}Aktuell {zeilen.length} von 5.
-        </Leer>
-      </Karte>
-    );
-  }
-  const gute = zeilen.filter(z => (z.rec as number) >= 60);
-  const schlechte = zeilen.filter(z => (z.rec as number) < 60);
-  const schnitt = (a: typeof zeilen) => (a.length ? a.reduce((s, z) => s + z.fertig, 0) / a.length : 0);
-  const gS = schnitt(gute),
-    sS = schnitt(schlechte);
-  const spanne = Math.max(1, ...zeilen.map(z => z.fertig));
-  const titel = zeilen.map(z => `${kurzDatum(z.d)} · Recovery ${z.rec}, ${z.fertig} erledigt`);
-  return (
-    <Karte i={3}>
-      <Ueberschrift farbe={LEUCHT.puls} rechts={`${zeilen.length} Tage`}>Zusammenhang · Tagesform & Erledigtes</Ueberschrift>
-      <Balken werte={zeilen.map(z => z.fertig)} max={spanne} farbe={LEUCHT.puls} hoehe={44} titel={titel} />
-      <div style={{ marginTop: 6 }}>
-        <Balken werte={zeilen.map(z => z.rec as number)} max={100} farbe={LEUCHT.gut} hoehe={28} titel={titel} />
-      </div>
-      <div style={legende}>oben erledigt · unten Recovery</div>
-      <p style={{ ...absatz, marginTop: 14 }}>
-        An Tagen mit Recovery ab 60 wurden im Schnitt <b style={{ color: LEUCHT.gut }}>{gS.toFixed(1)}</b> Aufgaben fertig, darunter{' '}
-        <b style={{ color: sS < gS ? LEUCHT.achtung : LEUCHT.gut }}>{sS.toFixed(1)}</b>.
-        {gute.length >= 3 && schlechte.length >= 3
-          ? gS - sS >= 0.7
-            ? ' Der Zusammenhang ist da — an schwachen Tagen weniger vornehmen ist keine Schwäche, sondern Rechnen.'
-            : ' Bisher kein klarer Zusammenhang — deine Ausführung hängt offenbar an etwas anderem als der Erholung.'
-          : ' Für ein Urteil fehlen noch Tage in beiden Gruppen.'}
-      </p>
-    </Karte>
-  );
-}
 
 const WERKZEUGE: Record<string, () => JSX.Element> = {
-  health: () => (
-    <>
-      <WerkzeugGesundheit />
-      <WerkzeugZusammenhang />
-    </>
-  ),
+  // 26.09.: die Säule IST der Gesundheits-Index — hier der ganze Index, darunter der Zusammenhang.
   business: WerkzeugBusiness,
   planning: WerkzeugPlanung,
   finance: WerkzeugFinanzen,
@@ -560,7 +445,7 @@ export function SaeuleView({ keyName }: { keyName: string }) {
             {s.faktoren.map((f, i) => (
               <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 200px) 1fr 44px', alignItems: 'center', gap: 12, padding: '6px 0', opacity: f.echt ? 1 : 0.6 }}>
                 <span style={{ fontSize: TYP.bedien, color: f.echt ? C.ink : C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${f.label}${f.quelle ? ` · ${f.quelle}` : ''}`}>
-                  {f.label}<span style={{ color: f.echt ? C.inkLeise : LEUCHT.achtung, marginLeft: 8, fontSize: 11.5 }}>{f.quelle}</span>
+                  {f.href ? <Link href={f.href} style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dotted rgba(255,255,255,.3)' }}>{f.label}</Link> : f.label}<span style={{ color: f.echt ? C.inkLeise : LEUCHT.achtung, marginLeft: 8, fontSize: 11.5 }}>{f.quelle}</span>
                 </span>
                 <Fortschritt anteil={f.echt ? f.wert / 100 : 0} farbe={f.echt ? col(f.wert) : saeulenFarbe} />
                 <span style={{ fontFamily: SCHRIFT.display, fontWeight: 600, fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', color: f.echt ? col(f.wert) : C.inkLeise, textAlign: 'right' }}>{f.echt ? f.wert : '—'}</span>

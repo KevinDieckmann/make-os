@@ -294,7 +294,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
         <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(17px,2.2vw,20px)', fontWeight: 600, lineHeight: 1.35 }}>
           {fokusText
             ? <><span style={{ color: LEUCHT.schlaf }}>◎</span> {fokusText}</>
-            : <>Worauf es heute ankommt <Link href="/os" style={{ ...verweis, fontSize: TYP.bedien, marginLeft: 6 }}>Fokus setzen ›</Link></>}
+            : <>Worauf es heute ankommt <Link href="/os/fokus" style={{ ...verweis, fontSize: TYP.bedien, marginLeft: 6 }}>Fokus setzen ›</Link></>}
         </div>
         {(fokusSaeulen.size > 0 || ziele.length > 0) && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
@@ -315,7 +315,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
             <Fortschritt anteil={okN / check.length} farbe={checkFarbe} />
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
               {check.map((c, i) => <Chip key={i} farbe={c.ok ? LEUCHT.gut : LEUCHT.kritisch}>{c.ok ? '✓' : '✗'} {c.text}</Chip>)}
-              {ueberfaellig.length > 0 && <Chip farbe={LEUCHT.achtung}>⚠ {ueberfaellig.length} überfällig</Chip>}
+              {ueberfaellig.length > 0 && <Link href="/os/aufgaben" style={{ textDecoration: 'none' }}><Chip farbe={LEUCHT.achtung}>⚠ {ueberfaellig.length} überfällig ›</Chip></Link>}
             </div>
           </div>
         </div>

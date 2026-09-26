@@ -14,7 +14,7 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Ring, Balken, Chip, Fortschritt, Zahl, zoneFarbe, LEUCHT, Spalten, Spalte } from './schlank';
 
-interface Faktor { label: string; wert: number; echt: boolean; quelle?: string }
+interface Faktor { label: string; wert: number; echt: boolean; quelle?: string; href?: string }
 interface Saeule { key: string; label: string; gewicht: number; score: number | null; zuDuenn: boolean; faktoren?: Faktor[] }
 interface Perf { index: number | null; label: string; hebel: string | null; abdeckung: number; stand: string; saeulen: Saeule[] }
 interface Messung { date: string; index: number | null }
@@ -22,8 +22,9 @@ interface Ziel { id: string; titel: string; fortschritt: number; erledigt: boole
 interface Ziele { monat: Ziel[]; quartal: Ziel[]; jahr: Ziel[]; fokus: { monat?: string; woche?: string; tag?: string } }
 
 const FARBE_JE: Record<string, string> = { health: LEUCHT.gut, business: LEUCHT.business, planning: LEUCHT.planung, finance: LEUCHT.geld, social: LEUCHT.beziehung, agents: LEUCHT.agenten };
-const KURZ: Record<string, string> = { health: 'Gesundheit', business: 'Business', planning: 'Planung', finance: 'Finanzen', social: 'Beziehung', agents: 'Agenten' };
-const HREF: Record<string, string> = { health: '/os/gesundheit', finance: '/os/finanzen', agents: '/os/agenten' };
+const KURZ: Record<string, string> = { health: 'Gesundheit', business: 'Business', planning: 'Planung', finance: 'Finanzen', social: 'Familie', agents: 'Agenten' };
+// Dieselben Ziele wie die Ringe im Kopf (WachstumsKopf) — eine Quelle (26.09.).
+const HREF: Record<string, string> = { health: '/os/gesundheit?s=index', business: '/os/finanzen?s=business', planning: '/os/saeule/planning', finance: '/os/finanzen', social: '/os/familie', agents: '/os/agenten' };
 
 export function WachstumView() {
   const [perf, setPerf] = useState<Perf | null>(null);
@@ -92,7 +93,7 @@ export function WachstumView() {
                   <div style={{ padding: '4px 2px 14px 82px' }}>
                     {(s.faktoren ?? []).map(x => (
                       <div key={x.label} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 200px) 1fr 44px', alignItems: 'center', gap: 12, padding: '6px 0' }}>
-                        <span style={{ fontSize: TYP.bedien, color: x.echt ? C.ink : C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={x.quelle}>{x.label}</span>
+                        <span style={{ fontSize: TYP.bedien, color: x.echt ? C.ink : C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={x.quelle}>{x.href ? <Link href={x.href} style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dotted rgba(255,255,255,.3)' }}>{x.label}</Link> : x.label}</span>
                         <Fortschritt anteil={x.echt ? x.wert / 100 : 0} farbe={f} />
                         <span style={{ fontFamily: SCHRIFT.display, fontWeight: 600, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: x.echt ? C.inkDim : C.inkLeise, textAlign: 'right' }}>{x.echt ? x.wert : '—'}</span>
                       </div>

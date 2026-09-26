@@ -9,7 +9,7 @@
 // fünf Säulen als winzige Ringe. Ein Klick führt in den Bereich Wachstum.
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useId, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
 import { Ring, Chip, zoneFarbe, LEUCHT } from './schlank';
@@ -17,13 +17,14 @@ import { SCORE_NEU } from './WhoopImport';
 import { Sun, Inbox as InboxIcon, Search, Lightbulb, CalendarDays } from 'lucide-react';
 
 interface Saeule { key: string; label: string; score: number | null; zuDuenn: boolean }
-interface Antwort { aktuell: { index: number | null; label: string; hebel: string | null; stand: string; saeulen: Saeule[] }; verlauf: { date: string; index: number | null }[] }
+interface Antwort { aktuell: { index: number | null; label: string; hebel: string | null; hebelKey?: string | null; stand: string; saeulen: Saeule[] }; verlauf: { date: string; index: number | null }[] }
 
 const FARBE_JE: Record<string, string> = { health: LEUCHT.gut, business: LEUCHT.business, planning: LEUCHT.planung, finance: LEUCHT.geld, social: LEUCHT.beziehung, agents: LEUCHT.agenten };
 const KURZ: Record<string, string> = { health: 'Gesundheit', business: 'Business', planning: 'Planung', finance: 'Finanzen', social: 'Familie', agents: 'Agenten' };
 // Jeder Score springt dorthin, wo es weitergeht (Kevin, 24.09.). Seit 24.09.
 // abends ist der Kopf die Navigation für alles, was nicht links steht.
 const HREF: Record<string, string> = { health: '/os/gesundheit', business: '/os/finanzen?s=business', planning: '/os/saeule/planning', finance: '/os/finanzen', social: '/os/familie', agents: '/os/agenten' };
+// Das Label der Familien-Säule heißt überall gleich (26.09.).
 // Kalender (25.09.): die Woche mit Terminen aus Apple, Blöcken, Aufgaben und Fristen — leuchtet im ganzen Planer.
 const SCHNELL = [
   { href: '/os', label: 'Heute', Icon: Sun, passt: ['/os'] },
@@ -59,6 +60,7 @@ function Winzig({ wert, farbe, label }: { wert?: number; farbe: string; label: s
 }
 
 export function WachstumsKopf() {
+  const router = useRouter();
   const pfad = usePathname() ?? '';
   const [d, setD] = useState<Antwort | null>(zwischen?.d ?? null);
   useEffect(() => {
@@ -93,7 +95,7 @@ export function WachstumsKopf() {
             </span>
           </div>
           <div className="wachstum-kopf-unter" style={{ fontSize: 12, color: C.inkLeise, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {p ? (p.hebel ? `Größter Hebel: ${p.hebel}` : `Stand ${p.stand.slice(8)}.${p.stand.slice(5, 7)}.`) : 'Der Score, auf den wir hinarbeiten'}
+            {p ? (p.hebel ? <>Größter Hebel: {p.hebelKey && HREF[p.hebelKey] ? <span role="link" tabIndex={0} onClick={e => { e.preventDefault(); e.stopPropagation(); router.push(HREF[p.hebelKey!]); }} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); router.push(HREF[p.hebelKey!]); } }} style={{ cursor: 'pointer', borderBottom: '1px dotted rgba(255,255,255,.35)' }}>{p.hebel}</span> : p.hebel}</> : `Stand ${p.stand.slice(8)}.${p.stand.slice(5, 7)}.`) : 'Der Score, auf den wir hinarbeiten'}
           </div>
         </div>
       </Link>

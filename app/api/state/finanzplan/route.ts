@@ -25,6 +25,8 @@ export type RechnungStatus = 'geplant' | 'gestellt' | 'bezahlt';
 export interface Rechnung {
   id: string;
   firmaId: string;
+  /** Das Mandat, aus dem die Rechnung stammt (26.09.). */
+  mandatId?: string;
   kunde: string;
   titel: string;
   betrag: number;
@@ -148,6 +150,7 @@ function sauberFile(f: Partial<FinanzplanFile> | null): FinanzplanFile {
       bezahltAm: tag(x.bezahltAm),
       netto: x.netto == null || !isFinite(Number(x.netto)) ? undefined : Math.round(Number(x.netto) * 100) / 100,
       ustSatz: x.ustSatz == null || !isFinite(Number(x.ustSatz)) ? undefined : Math.max(0, Math.min(30, Number(x.ustSatz))),
+      mandatId: x.mandatId ? String(x.mandatId).slice(0, 40) : undefined,
       leistungVon: tag(x.leistungVon),
       leistungBis: tag(x.leistungBis),
       notiz: x.notiz ? String(x.notiz).slice(0, 300) : undefined,

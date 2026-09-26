@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 // ─── Haushaltsfinanzen: gemeinsame Bausteine der Oberfläche ─────────────────
 // Datenzugriff mit Konfliktbehandlung, eigene Dialoge (Malins Fallstrick:
 // Browser-Dialoge können abgeschaltet sein und liefern dann still „nein“),
@@ -150,7 +152,8 @@ export function Hinweis({ children, farbe }: { children: ReactNode; farbe?: stri
 }
 
 /** Kachelzeile: große Zahl, darunter Beschriftung und Zusatz. */
-export function Kachel({ titel, wert, zusatz, farbe }: { titel: string; wert: ReactNode; zusatz?: ReactNode; farbe?: string }) {
+export function Kachel({ titel, wert, zusatz, farbe, href }: { titel: string; wert: ReactNode; zusatz?: ReactNode; farbe?: string; href?: string }) {
+  if (href) return <Link href={href} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}><Kachel titel={`${titel} ›`} wert={wert} zusatz={zusatz} farbe={farbe} /></Link>;
   return (
     <div style={{ minWidth: 0 }}>
       <div style={{ fontSize: 12, color: C.inkLeise, letterSpacing: '.04em', textTransform: 'uppercase', fontWeight: 700 }}>{titel}</div>

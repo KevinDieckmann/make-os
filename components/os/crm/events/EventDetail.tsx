@@ -1,5 +1,7 @@
 'use client';
 
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+
 // ─── Event · Detail — sieben Reiter entlang des Lebenslaufs eines Events ────
 // Überblick → Gäste → Ablauf → Checkliste → Budget → Abend → Nachfassen.
 // Geöffnet wird, was gerade dran ist: am Tag selbst der Abend-Modus, danach
@@ -7,7 +9,7 @@
 // Im Kopf: wer zuständig ist und ob die/der andere gerade auch hier ist
 // (die Adresse trägt k=<Event-ID>, siehe Events.tsx).
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Knopf, LEUCHT } from '../../schlank';
 import { checklisteStand } from '@/lib/crm/eventplanung';
@@ -30,7 +32,13 @@ export function EventDetail({ e, api, zuKontakt }: ReiterProps) {
   const gaeste = crm.stand.teilnahmen.filter(t => t.eventId === e.id);
   const nachfassenOffen = gaeste.filter(t => t.status === 'da' && !t.followUpAm).length;
   const cl = checklisteStand(e, heute);
-  const [reiter, setReiter] = useState<Reiter>(() => (e.datum === heute ? 'abend' : e.datum < heute && nachfassenOffen ? 'nachfassen' : 'ueberblick'));
+  // Der Reiter steht im Link (?r=gaeste|nachfassen|…) — Übergaben, „Für dich“ und Index-Punkte landen so direkt richtig (26.09.).
+  const router = useRouter(); const params = useSearchParams(); const pfad = usePathname() ?? '';
+  const REITER_IDS: Reiter[] = ['ueberblick', 'gaeste', 'ablauf', 'checkliste', 'budget', 'abend', 'nachfassen'];
+  const ausLink = params.get('r') as Reiter | null;
+  const [reiter, setReiterRoh] = useState<Reiter>(() => (ausLink && REITER_IDS.includes(ausLink) ? ausLink : e.datum === heute ? 'abend' : e.datum < heute && nachfassenOffen ? 'nachfassen' : 'ueberblick'));
+  useEffect(() => { if (ausLink && REITER_IDS.includes(ausLink)) setReiterRoh(ausLink); }, [ausLink]); // eslint-disable-line react-hooks/exhaustive-deps
+  const setReiter = (r: Reiter) => { setReiterRoh(r); const q = new URLSearchParams(params.toString()); if (r === 'ueberblick') q.delete('r'); else q.set('r', r); router.replace(`${pfad}?${q}`, { scroll: false }); };
   const faellig = cl.ueberfaellig + cl.bald;
   const REITER: { id: Reiter; label: string }[] = [
     { id: 'ueberblick', label: 'Überblick' },

@@ -26,7 +26,7 @@ export const HAUPT: Eintrag[] = [
   { href: '/os/fokus', label: 'Fokus', icon: Crosshair, passt: ['/os/fokus', '/os/kompass', '/os/planung/fokus'] },
   { href: '/os/aufgaben', label: 'Aufgaben', icon: ListChecks, passt: ['/os/aufgaben', '/os/planung/woche', '/os/planung/monat', '/os/planung/quartal', '/os/planung/jahr', '/os/planung/routinen', '/os/meeting', '/os/board'] },
   // 25.09., Kevin: „Das Mandaten-Abteil auf die linke Seite unter Aufgaben — Produkte und Mandate.“
-  { href: '/os/mandate', label: 'Mandate', icon: Briefcase, passt: ['/os/mandate', '/os/kunden'] },
+  { href: '/os/mandate', label: 'Mandate', icon: Briefcase, passt: ['/os/mandate'] },
 ];
 
 /** Die Handy-Leiste: dieselben Arbeitsräume wie links, dazu das Zahnrad. */

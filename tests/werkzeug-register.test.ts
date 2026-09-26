@@ -26,9 +26,11 @@ describe('Werkzeug-Register', () => {
   });
 
   it('lässt Aufgaben, Postfach, eigenen Kalender und CRM durchlaufen', () => {
-    for (const name of ['plan_block', 'lies_postfach', 'setze_vitalwerte', 'setze_kunde']) {
+    for (const name of ['plan_block', 'lies_postfach', 'setze_vitalwerte']) {
       expect(risikoVon(name), name).toBe('frei');
     }
+    // 26.09.: Honorare wirken auf MRR und Business-Index — Freigabe.
+    expect(risikoVon('setze_kunde')).toBe('freigabe');
   });
 
   it('behandelt ein unbekanntes Werkzeug als freigabepflichtig, nicht als frei', () => {

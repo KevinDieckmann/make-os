@@ -40,7 +40,6 @@ export interface Bereich {
  * werden Prioritäten und Fokus gesetzt, und darüber wird fast alles gesteuert.
  */
 export const EINSTIEGE: BereichItem[] = [
-  { href: '/os/start', label: 'Startfläche', icon: LayoutGrid },
   { href: '/os', label: 'Heute', icon: Sunrise },
   { href: '/os/inbox', label: 'Inbox', icon: Inbox },
   { href: '/os/kompass', label: 'Kompass', icon: Compass, hinweis: 'steuert' },
@@ -115,10 +114,10 @@ export const BEREICHE: Bereich[] = [
     items: [
       { href: '/os/gesundheit', label: 'Heute', icon: HeartPulse },
       { href: '/os/journal', label: 'Journal', icon: Salad },
-      { href: '/os/ernaehrung', label: 'Ernährung', icon: Utensils },
-      { href: '/os/energie', label: 'Körper & Aufbau', icon: Flame },
-      { href: '/os/woche', label: 'Wochen-Rhythmus', icon: Repeat },
-      { href: '/os/performance', label: 'Der Score', icon: Gauge },
+      { href: '/os/gesundheit?s=index', label: 'Gesundheits-Index', icon: Gauge },
+      { href: '/os/gesundheit?s=ernaehrung', label: 'Ernährung', icon: Utensils },
+      { href: '/os/gesundheit?s=koerper', label: 'Körper & Aufbau', icon: Flame },
+      { href: '/os/wachstum', label: 'Der Score', icon: Repeat },
       { href: '/os/saeule/health', label: 'Säule Gesundheit & Energie', icon: HeartPulse, versteckt: true },
       { href: '/os/business', label: 'Business-Index', icon: TrendingUp, modus: 'business', versteckt: true },
       { href: '/os/saeule/planning', label: 'Säule Planung & Execution', icon: ListChecks, versteckt: true },

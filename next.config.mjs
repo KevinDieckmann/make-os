@@ -14,9 +14,9 @@ const nextConfig = {
       { source: '/os/brain', destination: '/os/wissen', permanent: false },
       { source: '/os/uebersicht', destination: '/os', permanent: false },
       { source: '/os/start', destination: '/os', permanent: false },
-      { source: '/os/journal', destination: '/os/gesundheit', permanent: false },
-      { source: '/os/ritual', destination: '/os/gesundheit', permanent: false },
-      { source: '/os/saeule/health', destination: '/os/gesundheit?s=verlauf', permanent: false },
+      // 26.09.: die Gesundheits-Säule IST der Gesundheits-Index; das Journal (/os/journal) ist wieder eine eigene Seite —
+      // dort stehen Energie, Stress und die Flags, aus denen der Index rechnet.
+      { source: '/os/saeule/health', destination: '/os/gesundheit?s=index', permanent: false },
       { source: '/os/saeule/social', destination: '/os/familie', permanent: false },
       // 24.09.: eine Kartei im CRM statt Netzwerk + Kontakte + Kunden
       { source: '/os/netzwerk', destination: '/os/crm?s=kontakte', permanent: false },

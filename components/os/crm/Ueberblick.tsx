@@ -1,25 +1,26 @@
 'use client';
 
 // ─── Markttraktion · Überblick ──────────────────────────────────────────────
-// Oben der Traction-Score über Sales (50 %), Marketing (40 %) und Event
-// (10 %) — Gewichte aus dem KEMARIS-Konzept, Rechnung in lib/crm/traktion.ts.
-// Darunter je Welt ihr Head (Status, was zur Freigabe liegt) und ihre
-// Kennzahlen, dann die Übergaben zwischen den Welten (was eine Welt der
-// anderen hingelegt hat) und was jetzt zu tun ist. Jede Zeile führt dorthin,
-// wo sie erledigt wird. Grau = noch nichts gemessen, nie eine erfundene Null.
-// Zu zweit (25.09.): ganz oben „Für dich“ (nur das Eigene der angemeldeten
-// Person) und „Zuletzt im Team“; die eigenen Welten stehen vorn, an jeder
-// Welt steht, wer sie verantwortet.
+// Oben „Für dich“ und „Zuletzt im Team“, dann der Traktions-Index (26.09.):
+// derselbe Kern wie Business- und Privat-Index — Sales 50 % · Marketing 40 % ·
+// Event 10 % (KEMARIS-Konzept, geometrisches Mittel), dazu die Grundlage, die
+// nicht zählt. Jede Kennzahl mit Ampel, den Punkten dahinter (Personen, Deals,
+// Beiträge, Events — je mit Weg dorthin) und Fenster mit Formel, Schwellen,
+// Verlauf. In jeder Welt steht ihr Head. Darunter Scoreboard, Übergaben, Befunde.
 
 import { useCallback, useEffect, useState } from 'react';
-import { FARBE as C, TYP, leuchtFarbe } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Ring, Fortschritt, Raster, Spalten, Spalte, LEUCHT } from '../schlank';
+import Link from 'next/link';
+import { FARBE as C, TYP } from '@/lib/make-one/design';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Spalten, Spalte, LEUCHT } from '../schlank';
 import { useAbgleich } from '@/hooks/useAbgleich';
-import type { Kpi } from '@/lib/crm/kennzahlen';
 import type { Befund } from '@/lib/crm/befunde';
 import type { Traktion, Uebergabe, Welt } from '@/lib/crm/traktion';
 import type { FuerDich, TeamEreignis } from '@/lib/crm/team';
 import { verantwortlich, nameVon } from '@/lib/crm/team';
+import type { IndexErgebnis, SaeulenStand } from '@/lib/kennzahlen/kern';
+import type { IndexVerlauf } from '@/lib/kennzahlen/speicher';
+import { IndexAnsicht } from '../kennzahlen/IndexAnsicht';
+import { WEG } from '@/lib/wege';
 import { Person } from './team';
 import { Scoreboard } from './Scoreboard';
 import type { CrmApi } from './daten';
@@ -28,37 +29,63 @@ import { datum } from './daten';
 /** Farbe je Welt — dieselbe in der Leiste, im Überblick und an den Übergaben. */
 export const WELT_FARBE: Record<Welt, string> = { sales: LEUCHT.business, marketing: LEUCHT.puls, event: LEUCHT.beziehung };
 const WELT_LABEL: Record<Welt, string> = { sales: 'Sales', marketing: 'Marketing', event: 'Event' };
-const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch, grau: C.inkLeise } as const;
+const INDEX_FARBE: Record<string, string> = { ...WELT_FARBE, grundlage: C.inkLeise };
 const STATUS = { ruhig: LEUCHT.gut, beobachten: LEUCHT.achtung, handeln: LEUCHT.kritisch } as const;
 /** Wohin ein Befund gehört — für die Farbe am Rand. */
 const BEFUND_WELT: Record<Befund['bereich'], Welt | null> = { heute: 'sales', pipeline: 'sales', kunden: 'sales', marketing: 'marketing', events: 'event', kontakte: null, firmen: null, stammdaten: null };
 const PRIO = { 1: LEUCHT.kritisch, 2: LEUCHT.achtung, 3: LEUCHT.puls, 4: C.inkDim, 5: C.inkLeise } as const;
 
 interface HeadKurz { id: Welt; name: string; verantwortlich: string; offen: number; status: 'ruhig' | 'beobachten' | 'handeln' | null; zeit: string | null; zusammenfassung: string | null }
-interface Daten { heute: string; ich: string; fuerDich: FuerDich[]; teamFeed: TeamEreignis[]; traktion: Traktion; grundlage: Kpi[]; uebergaben: Uebergabe[]; befunde: Befund[]; heads: HeadKurz[]; bestand: Record<string, number> }
+interface Daten { heute: string; ich: string; fuerDich: FuerDich[]; teamFeed: TeamEreignis[]; traktion: Traktion; index: IndexErgebnis; indexVerlauf: IndexVerlauf; uebergaben: Uebergabe[]; befunde: Befund[]; heads: HeadKurz[]; bestand: Record<string, number> }
 
-function KpiZeile({ k }: { k: Kpi }) {
-  return (
-    <div title={`${k.quelle} · Ziel ${k.ziel}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
-      <Punkt farbe={AMPEL[k.ampel]} groesse={7} />
-      <span style={{ flex: 1, minWidth: 0, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.35 }}>{k.label}</span>
-      <span style={{ fontSize: TYP.body, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: k.ampel === 'grau' ? C.inkLeise : C.ink, whiteSpace: 'nowrap' }}>{k.anzeige}</span>
-    </div>
-  );
-}
+const leise = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 } as const;
 
-export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: string, a?: string) => void }) {
+export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: string, a?: string, k?: string) => void }) {
   const [d, setD] = useState<Daten | null>(null);
   const [alle, setAlle] = useState(false);
   const laden = useCallback(() => fetch('/api/crm/traktion', { cache: 'no-store' }).then(r => r.json()).then(x => x.ok && setD(x)).catch(() => {}), []);
   useEffect(() => { void laden(); }, [laden]);
   useAbgleich(laden, { alle: 60_000 });
   if (!d) return <Karte i={0}><Leer>{api.fehler ?? 'Lädt …'}</Leer></Karte>;
-  const t = d.traktion;
   const befunde = alle ? d.befunde : d.befunde.slice(0, 5);
-  // Die eigenen Welten zuerst — Kevin sieht Sales vorn, Malin Marketing und Event.
-  const welten = [...t.welten].sort((a, b) => Number(verantwortlich(b.id) === d.ich) - Number(verantwortlich(a.id) === d.ich));
   const zeit = (iso: string) => { const tg = iso.slice(0, 10); return tg === d.heute ? iso.slice(11, 16) : datum(tg, d.heute); };
+  const zahl = (n: number, wort: string, href: string) => <Link href={href} style={{ color: C.inkDim, textDecoration: 'none', borderBottom: '1px dotted rgba(255,255,255,.25)' }}>{n} {wort}</Link>;
+
+  /** Oben in jeder Welt-Karte: wer sie verantwortet und was ihr Head zuletzt gesagt hat; in der Grundlage der Bestand. */
+  const saeuleKopf = (s: SaeulenStand) => {
+    if (s.id === 'grundlage') {
+      const b = d.bestand;
+      return (
+        <div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 12, display: 'flex', gap: '4px 10px', flexWrap: 'wrap' }}>
+          {zahl(b.kontakte, 'Kontakte', WEG.kontakt())} · {zahl(b.firmen, 'Firmen', WEG.firma())} · {zahl(b.chancen, 'Deals', WEG.deals())} · {zahl(b.mandate, 'Mandate', WEG.mandat())} · {zahl(b.events, 'Events', WEG.event())} · {zahl(b.kampagnen, 'Kampagnen', WEG.kampagne())}
+          <button onClick={() => zuBereich('stammdaten')} style={leise}>Stammdaten ›</button>
+        </div>
+      );
+    }
+    const w = s.id as Welt;
+    const h = d.heads.find(x => x.id === w);
+    const v = verantwortlich(w);
+    return (
+      <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: C.inkDim, flexWrap: 'wrap' }}>
+          <Person id={v} groesse={18} /> verantwortet {nameVon(v)}{v === d.ich ? ' · dein Bereich' : ''}
+          <button onClick={() => zuBereich(w)} style={{ ...leise, marginLeft: 'auto' }}>{WELT_LABEL[w]} öffnen ›</button>
+        </div>
+        <div style={{ display: 'grid', gap: 4, padding: '10px 12px', borderRadius: 12, background: 'rgba(199,125,255,.06)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <Punkt farbe={LEUCHT.agenten} groesse={7} />
+            <span style={{ fontSize: TYP.bedien, fontWeight: 600 }}>{h?.name ?? 'Head'}</span>
+            {h?.status && <Chip farbe={STATUS[h.status]}>{h.status}</Chip>}
+            {!!h?.offen && <Link href="/os/stapel" style={{ textDecoration: 'none' }}><Chip farbe={LEUCHT.agenten}>{h.offen} zur Freigabe</Chip></Link>}
+          </div>
+          <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            {h?.zusammenfassung ?? 'Noch kein Lauf — der Head liest Kartei und Bestand und legt Vorschläge zur Freigabe vor.'}
+          </div>
+          {h?.zeit && <div style={{ fontSize: 11.5, color: C.inkLeise }}>{datum(h.zeit, d.heute)}</div>}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -83,7 +110,7 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
             {!d.teamFeed.length ? <Leer>Noch nichts festgehalten. Was Kevin und Malin notieren, übergeben und bearbeiten, steht hier.</Leer> : (
               <Liste>
                 {d.teamFeed.slice(0, 7).map((e, i) => (
-                  <Zeile key={i} onClick={() => zuBereich(e.ziel.s, e.ziel.a)} links={<Person id={e.person} />}
+                  <Zeile key={i} onClick={() => zuBereich(e.ziel.s, e.ziel.a, e.ziel.k)} links={<Person id={e.person} />}
                     titel={<span style={{ whiteSpace: 'normal', fontSize: TYP.bedien }}>{e.text}</span>}
                     unter={`${nameVon(e.person)} · ${zeit(e.zeit)}`} />
                 ))}
@@ -93,63 +120,15 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
         </Spalte>
       </Spalten>
 
-      <Karte i={2} akzent={t.score !== null ? leuchtFarbe(t.score) : undefined}>
-        <Ueberschrift farbe={t.score !== null ? leuchtFarbe(t.score) : C.inkLeise}>Traction-Score</Ueberschrift>
-        <div style={{ display: 'flex', gap: 'clamp(18px,3vw,36px)', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Ring label={t.vorlaeufig ? 'vorläufig' : 'Traktion'} wert={t.score !== null ? String(t.score) : undefined} anteil={t.score !== null ? t.score / 100 : undefined} farbe={t.score !== null ? leuchtFarbe(t.score) : C.inkLeise} />
-          <div style={{ flex: 1, minWidth: 240, display: 'grid', gap: 14 }}>
-            {welten.map(w => (
-              <button key={w.id} onClick={() => zuBereich(w.id)} className="fassbar" style={{ all: 'unset', cursor: 'pointer', display: 'grid', gap: 6 }}>
-                <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <Punkt farbe={WELT_FARBE[w.id]} groesse={8} />
-                  <b style={{ fontSize: TYP.body, fontWeight: 600 }}>{w.label}</b>
-                  <span style={{ fontSize: 12, color: C.inkLeise }}>{w.gewicht} % · {w.saeulen}</span>
-                  <span style={{ marginLeft: 'auto', fontSize: TYP.body, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: w.score === null ? C.inkLeise : C.ink }}>{w.score ?? '—'}</span>
-                </span>
-                <Fortschritt anteil={(w.score ?? 0) / 100} farbe={w.score === null ? 'rgba(255,255,255,.08)' : WELT_FARBE[w.id]} />
-                <span style={{ fontSize: 12, color: C.inkLeise }}>{w.gemessen} von {w.von} Kennzahlen gemessen</span>
-              </button>
-            ))}
-          </div>
-        </div>
-        <p style={{ fontSize: 12.5, color: C.inkLeise, margin: '14px 0 0', lineHeight: 1.5 }}>
-          {t.hinweis}. Die fünf Säulen des Markttraktion-Konzepts (Sichtbarkeit, Marketing, Vertrieb, Events, Conversions) liegen in den drei Welten. Punkte je Kennzahl aus der Ampel (grün 100, gelb 60, rot 20), gesamt als gewichtetes geometrisches Mittel — ein Ungleichgewicht zwischen den Welten kostet mehr als ein Durchschnitt.
-        </p>
-      </Karte>
-
-      <Scoreboard api={api} />
-
-      <Raster min={290}>
-        {welten.map((w, i) => {
-          const h = d.heads.find(x => x.id === w.id);
-          const v = verantwortlich(w.id);
-          return (
-            <Karte key={w.id} i={i + 3}>
-              <Ueberschrift farbe={WELT_FARBE[w.id]} rechts={<button onClick={() => zuBereich(w.id)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>öffnen ›</button>}>{w.label}</Ueberschrift>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, fontSize: 12.5, color: C.inkDim }}>
-                <Person id={v} groesse={18} /> verantwortet {nameVon(v)}{v === d.ich ? ' · dein Bereich' : ''}
-              </div>
-              <div style={{ display: 'grid', gap: 4, padding: '10px 12px', borderRadius: 12, background: 'rgba(199,125,255,.06)', marginBottom: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <Punkt farbe={LEUCHT.agenten} groesse={7} />
-                  <span style={{ fontSize: TYP.bedien, fontWeight: 600 }}>{w.head}</span>
-                  {h?.status && <Chip farbe={STATUS[h.status]}>{h.status}</Chip>}
-                  {!!h?.offen && <Chip farbe={LEUCHT.agenten}>{h.offen} zur Freigabe</Chip>}
-                </div>
-                <div style={{ fontSize: 12.5, color: C.inkDim, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {h?.zusammenfassung ?? 'Noch kein Lauf — der Head liest Kartei und Bestand und legt Vorschläge zur Freigabe vor.'}
-                </div>
-                {h?.zeit && <div style={{ fontSize: 11.5, color: C.inkLeise }}>{datum(h.zeit, d.heute)}</div>}
-              </div>
-              {w.kpis.map(k => <KpiZeile key={k.id} k={k} />)}
-            </Karte>
-          );
-        })}
-      </Raster>
+      <IndexAnsicht d={{ pi: d.index, ...d.indexVerlauf }} name="Traktion" chip="Traktions-Index" farben={INDEX_FARBE} scope="markttraktion" i0={2}
+        chips={d.traktion.vorlaeufig ? <Chip farbe={LEUCHT.achtung}>vorläufig</Chip> : undefined}
+        schwelleSenden={schwelle => fetch('/api/crm/traktion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ schwelle }) }).then(r => r.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }))}
+        onGespeichert={() => void laden()} saeuleKopf={saeuleKopf} zwischen={<Scoreboard api={api} />}
+        hinweis={<>{d.traktion.hinweis}. Die fünf Säulen des Markttraktion-Konzepts (Sichtbarkeit, Marketing, Vertrieb, Events, Conversions) liegen in den drei Welten. Punkte je Kennzahl: an der roten Schwelle 20, an der grünen 100, dazwischen linear; gesamt als gewichtetes geometrisches Mittel — ein Ungleichgewicht zwischen den Welten kostet mehr als ein Durchschnitt. Dieselbe Zahl steht als „Traktions-Score“ im Business-Index.</>} />
 
       <Spalten verhaeltnis="1:1">
         <Spalte>
-          <Karte i={4}>
+          <Karte i={8}>
             <Ueberschrift rechts={<span>was eine Welt der anderen hinlegt</span>}>Übergaben</Ueberschrift>
             {!d.uebergaben.length ? <Leer>Nichts liegt zwischen den Welten — alles ist übergeben.</Leer> : (
               <Liste>
@@ -163,16 +142,9 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
               </Liste>
             )}
           </Karte>
-          <Karte i={6}>
-            <Ueberschrift rechts={<button onClick={() => zuBereich('stammdaten')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>Stammdaten ›</button>}>Grundlage</Ueberschrift>
-            {d.grundlage.map(k => <KpiZeile key={k.id} k={k} />)}
-            <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>
-              {d.bestand.kontakte} Kontakte · {d.bestand.firmen} Firmen · {d.bestand.chancen} Chancen · {d.bestand.mandate} Mandate · {d.bestand.events} Events · {d.bestand.kampagnen} Kampagnen — Pflicht, keine Traktion: zählt nicht in den Score.
-            </div>
-          </Karte>
         </Spalte>
         <Spalte>
-          <Karte i={5}>
+          <Karte i={9}>
             <Ueberschrift rechts={d.befunde.length ? <span>{d.befunde.length}</span> : undefined}>Was jetzt zu tun ist</Ueberschrift>
             {!d.befunde.length ? <Leer>Nichts Rotes — alles im Rahmen.</Leer> : (
               <Liste>
@@ -185,7 +157,7 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
                 })}
               </Liste>
             )}
-            {d.befunde.length > 5 && <button onClick={() => setAlle(!alle)} style={{ marginTop: 6, background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>{alle ? 'weniger' : `alle ${d.befunde.length}`}</button>}
+            {d.befunde.length > 5 && <button onClick={() => setAlle(!alle)} style={{ marginTop: 6, ...leise }}>{alle ? 'weniger' : `alle ${d.befunde.length}`}</button>}
           </Karte>
         </Spalte>
       </Spalten>

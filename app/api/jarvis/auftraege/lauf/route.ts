@@ -9,11 +9,13 @@ import { lies, melde } from '@/lib/jarvis/auftraege';
 import { fuehreAus } from '@/lib/jarvis/ausfuehren';
 import { runAgent, AUSFUEHRBAR, type Ausfuehrbar } from '@/lib/jarvis/agenten';
 import { innenAdresse } from '@/lib/innen';
+import { istDienst } from '@/lib/zugang/dienst';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  if (!istDienst(req)) return NextResponse.json({ ok: false, error: 'Nur der Arbeiter (Dienstschlüssel).' }, { status: 403 });
   let body: { id?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const id = String(body.id ?? '');

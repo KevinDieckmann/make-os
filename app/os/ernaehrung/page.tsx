@@ -1,7 +1,4 @@
-import { ErnaehrungView } from '@/components/os/ErnaehrungView';
+import { redirect } from 'next/navigation';
 
-export const metadata = { title: 'Ernährung — MAKE OS' };
-
-export default function ErnaehrungPage() {
-  return <ErnaehrungView />;
-}
+// Ernährung ist ein Reiter der Gesundheitsseite (26.09.).
+export default function ErnaehrungPage() { redirect('/os/gesundheit?s=ernaehrung'); }

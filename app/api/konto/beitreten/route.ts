@@ -2,7 +2,7 @@
 // Code + E-Mail + Name + Passwort → Konto als Mitglied. Der Speichername kommt
 // aus dem Vornamen: Malin wird „malin" — und findet ihre bestehenden Bestände.
 import { NextResponse } from 'next/server';
-import { ladeKonten, aendereKonten, emailSauber, passwortTauglich, passwortHashen, speicherName, type Konto } from '@/lib/zugang/konten';
+import { ladeKonten, aendereKonten, emailSauber, passwortTauglich, passwortHashen, speicherName, RESERVIERTE_SPEICHER, type Konto } from '@/lib/zugang/konten';
 import { mitSitzung } from '@/lib/zugang/antwort';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
 
@@ -33,7 +33,11 @@ export async function POST(req: Request) {
   let konto: Konto | undefined;
   await aendereKonten(s => {
     if (!s.einladungen.some(e => e.code === code)) return s;
-    konto = { id: `k-${Date.now().toString(36)}`, speicher: speicherName(name, s.konten.map(k => k.speicher)), email, name, rolle: 'mitglied', hash, salz, angelegt: new Date().toISOString(), teilt: { gesundheit: [] }, eingeladenVon: einladung.von };
+    // Der Speichername kommt aus der Einladung (vom Inhaber gebunden) — sonst aus dem Vornamen,
+    // aber nie ein reservierter Name: „Malin“ als Vorname übernimmt nicht Malins Bestände (26.09.).
+    const vergeben = s.konten.map(k => k.speicher);
+    const gebunden = einladung.speicher && !vergeben.includes(einladung.speicher) ? einladung.speicher : undefined;
+    konto = { id: `k-${Date.now().toString(36)}`, speicher: gebunden ?? speicherName(name, [...vergeben, ...RESERVIERTE_SPEICHER]), email, name, rolle: 'mitglied', hash, salz, angelegt: new Date().toISOString(), teilt: { gesundheit: [] }, eingeladenVon: einladung.von };
     return { konten: [...s.konten, konto], einladungen: s.einladungen.filter(e => e.code !== code) };
   });
   if (!konto) return NextResponse.json({ error: 'Der Code wurde gerade eingelöst.' }, { status: 409 });

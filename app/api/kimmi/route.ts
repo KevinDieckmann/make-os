@@ -6,7 +6,7 @@
 import { NextResponse } from 'next/server';
 import { agentRoster, LIVE_AGENTS } from '@/lib/make-one/agents-data';
 import { gatherBrain, promptBrain } from '@/lib/brain';
-import { askText, hasAnthropicKey } from '@/lib/anthropic';
+import { askText, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import { fuerPrompt, type VerlaufNachricht } from '@/lib/make-one/jarvis-verlauf';
 import { WERKZEUGE } from '@/lib/jarvis/werkzeuge';
 import { AUSFUEHRBAR, AGENT_ZWECK, runAgent, type Ausfuehrbar } from '@/lib/jarvis/agenten';
@@ -21,6 +21,7 @@ import { lies as liesFakten, fuerPrompt as faktenFuerPrompt } from '@/lib/jarvis
 import { innenAdresse } from '@/lib/innen';
 import { ARTEN as BAU_ARTEN, BEREICHE as BAU_BEREICHE } from '@/lib/bauplan/form';
 import { KENNZAHLEN as BUSINESS_KENNZAHLEN } from '@/lib/business/register';
+import { GESUNDHEIT_KENNZAHLEN } from '@/lib/gesundheit/index';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -44,6 +45,7 @@ function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaec
     fortsetzung
       ? 'GEDÄCHTNIS: Die vorherigen Züge dieses Gesprächs stehen dir zur Verfügung. Beziehe dich darauf, statt Fragen zu wiederholen — „das", „nochmal", „und für Juli" meint das, worüber ihr gerade geredet habt. Keine erneute Begrüßung, keine Zusammenfassung des bisherigen Gesprächs, es sei denn Kevin fragt danach.'
       : '',
+    FREMD_REGEL,
     'Du bist JARVIS — die zentrale Intelligenz und Chief of Staff von Kevins persönlichem Betriebssystem „MAKE OS". Kevin hat dich nach dem Vorbild benannt: ruhig, allgegenwärtig, einen Schritt voraus.',
     'WAS DU WIRST: die Familien-KI von Kevin und Malin. Nicht ein Werkzeug für Aufgaben, sondern ein Begleiter fürs ganze Leben — der im Hintergrund steuert, mit dem gesprochen wird und dem viel anvertraut wird, damit er wirklich helfen kann. Sie bauen dich bewusst unabhängig auf ihren eigenen Rechnern, weil sie in den nächsten Jahren Firmen kaufen, verkaufen, aufbauen und skalieren werden — und danach auch Maschinen zu steuern haben. Denke und antworte in diesem Maßstab: langfristig, mitschreibend, auf Wiederholbarkeit gebaut, und mit Gesundheit und Beziehung gleichrangig neben dem Geschäft.',
     // Kevin am 06.09.: Malin bekommt „einen eigenen Jarvis mit eigenem
@@ -248,6 +250,17 @@ export async function POST(req: Request) {
         properties: {
           sicht: { type: 'string', enum: ['gesamt', 'kdc', 'kdv'], description: 'gesamt (Standard), kdc = Kevin Dieckmann Consulting, kdv = KD Ventures' },
           kennzahl: { type: 'string', enum: BUSINESS_KENNZAHLEN.map(k => k.id), description: BUSINESS_KENNZAHLEN.map(k => `${k.id} = ${k.label}`).join('; ') },
+        },
+      },
+    });
+    tools.push({
+      name: 'gesundheits_index',
+      description: 'Liest den Gesundheits-Index der Person (Erholung & Schlaf 40 · Bewegung & Aufbau 30 · Ernährung & Körper 30) — gesamt oder EINE Kennzahl mit Wert, Ampel, Schwellen, Formel, Quelle und den Punkten dahinter. Nutze das bei „Wie steht meine Gesundheit?“, „Wie war mein Schlaf diese Woche?“, „Was ist rot?“. Zahlen genau so nennen, wie sie kommen; Struktur und Tracking, keine ärztliche Beratung.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          kennzahl: { type: 'string', enum: GESUNDHEIT_KENNZAHLEN.map(k => k.id), description: GESUNDHEIT_KENNZAHLEN.map(k => `${k.id} = ${k.label}`).join('; ') },
+          person: { type: 'string', description: 'Nur, wenn ausdrücklich nach der anderen Person gefragt wird (sie muss ihre Gesundheit teilen).' },
         },
       },
     });
@@ -569,6 +582,10 @@ export async function POST(req: Request) {
     const ran: { agent: string; ok: boolean }[] = [];
     let laufBudget = 8;
     let werkBudget = 14;
+    // Prompt-Injection-Schutz (26.09.): Sobald Fremdinhalt gelesen wurde (Postfach, Web),
+    // wirken schreibende Werkzeuge in diesem Gespräch nur noch als Vorschlag (Freigabe).
+    let fremdGelesen = false;
+    const LESEND = new Set(['lies_postfach', 'suche_wissen', 'lies_notiz', 'frag_gedaechtnis', 'business_index', 'crm_lage', 'haushalt_stand', 'haushalt_buchungen', 'gesundheits_index', 'finde_kontakt', 'lies_kontakt']);
 
     // Grundlage aus dem Obsidian-Brain (00_JARVIS_AGENT + Vertraulichkeitsregeln), eine Minute zwischengespeichert.
     const brain = await brainAnweisung().catch(() => '');
@@ -598,9 +615,12 @@ export async function POST(req: Request) {
           const gueltig = werkBudget-- > 0;
           // Über fuehreAus — dort sitzen Risiko-Stufe, Trockenlauf, Stapel und
           // Protokoll. Es gibt bewusst keinen zweiten Weg zur Wirkung.
+          // Eine Werbesperre ist dauerhaft — sie geht immer über den Stapel.
+          const sperre = name === 'notiere_kontakt' && String(l.input?.ergebnis ?? '') === 'sperre';
+          const vorschlagen = sperre || (fremdGelesen && !LESEND.has(name));
           return {
             l, agentId: name, gueltig,
-            lauf: async () => (await fuehreAus(name, l.input ?? {}, origin, { anlass: message.slice(0, 200), person })).text,
+            lauf: async () => (await fuehreAus(name, l.input ?? {}, origin, { anlass: message.slice(0, 200), person, ...(vorschlagen ? { vorschlagen: true } : {}) })).text,
           };
         }
         const agentId = String(l.input?.agent ?? '');
@@ -612,6 +632,9 @@ export async function POST(req: Request) {
       ));
       const results: unknown[] = zulaessig.map((z, zi) => {
         ran.push({ agent: z.agentId, ok: z.gueltig && !/fehlgeschlagen|nicht erreichbar|Kollision|Nicht ausgeführt|Kein Meilenstein/i.test(outs[zi]) });
+        // Fremde Inhalte (Mails, Web) gekapselt zurückgeben — Daten, keine Anweisungen.
+        const fremdQuelle = z.agentId === 'lies_postfach' ? 'postfach' : z.l.name === 'run_agent' && z.agentId === 'research' ? 'web' : null;
+        if (fremdQuelle && z.gueltig) { fremdGelesen = true; return { type: 'tool_result', tool_use_id: z.l.id, content: fremd(fremdQuelle, outs[zi]) }; }
         return { type: 'tool_result', tool_use_id: z.l.id, content: outs[zi] };
       });
       // open_agent/create_task in derselben Runde: leere Ergebnisse zurückgeben,

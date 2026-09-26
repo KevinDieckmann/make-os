@@ -41,7 +41,10 @@ export interface Konto {
   haushalt?: string;
 }
 
-export interface Einladung { code: string; von: string; bis: string }
+/** `speicher`: vom Inhaber festgelegter Speichername (z. B. „malin“, damit bestehende Bestände am Konto hängen). */
+export interface Einladung { code: string; von: string; bis: string; speicher?: string }
+/** Namen, die nur über eine gebundene Einladung vergeben werden — nie durch den frei gewählten Vornamen. */
+export const RESERVIERTE_SPEICHER = ['kevin', 'malin'];
 
 export interface KontenStand { konten: Konto[]; einladungen: Einladung[] }
 

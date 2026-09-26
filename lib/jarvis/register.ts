@@ -211,6 +211,11 @@ export const REGISTER: Record<string, Eintrag> = {
     vorschau: schlicht('Im Gedächtnis nachsehen', i => i.thema ? `zu „${text(i.thema)}"` : 'alles'),
   },
   // Business-Index (25.09.): Lesen ist frei; einen Monatsabschluss schreiben sind Finanzzahlen → Freigabe.
+  // Gesundheits-Index (26.09.): Lesen ist frei — nur die eigene Person oder wer teilt.
+  gesundheits_index: {
+    gruppe: 'gesundheit', risiko: 'frei',
+    vorschau: schlicht('Gesundheits-Index lesen', i => i.kennzahl ? `Kennzahl ${text(i.kennzahl)}` : 'gesamt'),
+  },
   business_index: {
     gruppe: 'business', risiko: 'frei',
     vorschau: schlicht('Business-Index lesen', i => `${text(i.sicht) || 'gesamt'}${i.kennzahl ? ` · ${text(i.kennzahl)}` : ''}`),
@@ -260,8 +265,9 @@ export const REGISTER: Record<string, Eintrag> = {
     gruppe: 'gesundheit', risiko: 'frei',
     vorschau: schlicht('Streak', i => i.sauber === false ? 'Rückfall notieren' : 'sauber geblieben'),
   },
+  // 26.09.: Honorare landen im MRR und im Business-Index — Freigabe statt frei.
   setze_kunde: {
-    gruppe: 'kunden', risiko: 'frei',
+    gruppe: 'kunden', risiko: 'freigabe',
     vorschau: schlicht('Kunde in der Markttraktion pflegen', i => `${text(i.name)}${i.status ? ` · ${String(i.status)}` : ''}`),
   },
   // CRM (18.09.): finden, notieren, entwerfen — alles frei, weil nichts davon

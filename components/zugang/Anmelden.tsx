@@ -20,7 +20,9 @@ const feld: React.CSSProperties = { ...feldBasis, fontSize: 16, padding: '13px 1
 export function Anmelden() {
   const params = useSearchParams();
   // 24.09.: nach der Anmeldung direkt Heute — Jarvis ist ein Eintrag links, kein Vorspann.
-  const zu = params.get('zu') || '/os';
+  // Nur eigene Pfade — kein Open Redirect, kein javascript: (26.09.).
+  const zuRoh = params.get('zu') ?? '';
+  const zu = /^\/(?!\/)[^\s]*$/.test(zuRoh) ? zuRoh : '/os';
   // Einladungslink: /anmelden?code=XXXX-XXXX — der Code steht schon drin.
   const codeAusLink = (params.get('code') ?? '').toUpperCase();
   const [eingerichtet, setEingerichtet] = useState<boolean | null>(null);

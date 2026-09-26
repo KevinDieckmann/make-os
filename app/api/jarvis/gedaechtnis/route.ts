@@ -26,6 +26,9 @@ export async function GET(req: Request) {
 export async function DELETE(req: Request) {
   const id = new URL(req.url).searchParams.get('id') ?? '';
   if (!id) return NextResponse.json({ ok: false, error: 'Keine id.' }, { status: 400 });
+  // Nur Fakten des eigenen oder gemeinsamen Raums (26.09.).
+  const eigene = await lies({ raum: personAus(req), anzahl: 500 });
+  if (!eigene.some(f => f.id === id)) return NextResponse.json({ ok: false, error: 'Nicht gefunden.' });
   const weg = await vergiss(id);
   return NextResponse.json({ ok: weg, ...(weg ? {} : { error: 'Nicht gefunden.' }) });
 }

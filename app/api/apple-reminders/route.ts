@@ -6,6 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { AUF_DEM_MAC, merke, vomMac } from '@/lib/mac';
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { spawn } from 'child_process';
 
 export const runtime = 'nodejs';
@@ -63,7 +64,8 @@ function parseDate(s: string): string | undefined {
   return isNaN(d.getTime()) ? undefined : d.toISOString();
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ error: 'Erinnerungen gehören zum Haushalt des Inhabers.' }, { status: 403 });
   if (!AUF_DEM_MAC) return vomMac('erinnerungen', []);
   try {
     const stdout = await runOsascript(SCRIPT);

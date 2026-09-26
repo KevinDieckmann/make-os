@@ -107,7 +107,8 @@ export function MarkttraktionSeite() {
   };
   /** In der Kartei eine Person oder Firma wählen: die erste öffnet (Zurück schließt sie wieder), jede weitere tauscht nur. */
   const setAuswahl = (id: string | null) => gehe(bereich, ansicht, id ?? undefined, auswahl && id ? 'replace' : id ? 'push' : 'replace');
-  const zuBereich = (b: string, a?: string) => { const z = aufloesen(b, a); gehe(z.s, z.a); };
+  // Ziel mit Objekt (Person, Deal, Event): der Team-Feed und die Index-Punkte geben `k` mit (26.09.).
+  const zuBereich = (b: string, a?: string, k?: string) => { const z = aufloesen(b, a); gehe(z.s, z.a, k); };
   const zuKontakt = (id: string) => gehe('kontakte', undefined, id);
   const zuFirma = (id: string) => gehe('firmen', undefined, id);
   const name = (p: string) => (p ? p.charAt(0).toUpperCase() + p.slice(1) : '—');
@@ -137,7 +138,7 @@ export function MarkttraktionSeite() {
           <SalesTrichter api={api} zuBereich={zuBereich} />
           <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={SALES} aktiv={sales} onWahl={a => gehe('sales', a === 'heute' ? undefined : a)} /></div>
           {sales === 'heute' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
-          {sales === 'leads' && <Leads api={api} zuKontakt={zuKontakt} zuDeal={() => gehe('sales', 'pipeline')} />}
+          {sales === 'leads' && <Leads api={api} zuKontakt={zuKontakt} zuDeal={id => gehe('sales', 'pipeline', id)} />}
           {sales === 'pipeline' && <Pipeline api={api} zuKontakt={zuKontakt} zuLeads={() => gehe('sales', 'leads')} />}
           {sales === 'kunden' && <KundenKurz api={api} />}
           {sales === 'kampagnen' && <Kampagnen api={api} zuKontakt={zuKontakt} head="sales" />}

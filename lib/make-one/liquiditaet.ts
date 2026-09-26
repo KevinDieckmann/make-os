@@ -32,6 +32,8 @@ export interface Rechnung {
   /** Netto, wenn abweichend gerechnet wird. */
   netto?: number;
   ustSatz?: number;
+  /** Das Mandat, aus dem die Rechnung stammt (26.09.) — Rechnung ↔ Mandat ohne Namensheuristik. */
+  mandatId?: string;
   /** Leistungszeitraum, für die Buchhaltung. */
   leistungVon?: string;
   leistungBis?: string;

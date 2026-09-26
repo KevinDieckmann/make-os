@@ -5,12 +5,13 @@
 // damit man Fragen beantworten kann wie „wofür ging im Juli das Geld drauf".
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Leuchtfarben, Listen).
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { eur } from '@/lib/make-one/finance-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, feld, LEUCHT } from './schlank';
 
-interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string; konto?: string; ort?: string }
+interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string; konto?: string; ort?: string; rechnungId?: string }
 
 const geld: CSSProperties = { fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 15, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textAlign: 'right', minWidth: 88 };
 const tag: CSSProperties = { fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: C.inkDim, width: 48, flex: '0 0 auto' };
@@ -37,6 +38,12 @@ export function BuchungenView() {
   const [ort, setOrt] = useState('alle');
 
   useEffect(() => {
+    // Filter aus dem Link (?monat=YYYY-MM&kat=…&q=…&ort=kdc) — z. B. von einer Rechnung oder Kachel (26.09.).
+    const u = new URLSearchParams(window.location.search);
+    if (u.get('monat')) setMonat(u.get('monat')!);
+    if (u.get('kat')) setKategorie(u.get('kat')!);
+    if (u.get('q')) setSuche(u.get('q')!);
+    if (u.get('ort')) setOrt(u.get('ort')!);
     fetch('/api/state/buchungen').then(r => r.json()).then(d => {
       setAlle(Array.isArray(d.buchungen) ? d.buchungen : []);
       setGeladen(true);
@@ -138,6 +145,7 @@ export function BuchungenView() {
           {sichtbar.slice(0, 300).map(b => (
             <Zeile key={b.id} links={<span style={tag}>{b.datum.slice(8)}.{b.datum.slice(5, 7)}.</span>} titel={b.wer} unter={b.zweck}
               rechts={<>
+                {b.rechnungId && <Link href={`/os/finanzen/planung?r=${encodeURIComponent(b.rechnungId)}`} style={{ textDecoration: 'none' }}><Chip farbe={LEUCHT.gut}>Rechnung ›</Chip></Link>}
                 <Chip farbe={C.inkDim}>{b.kategorie}</Chip>
                 <span style={{ ...geld, color: b.betrag > 0 ? LEUCHT.gut : C.ink }}>{b.betrag > 0 ? '+' : '−'}{eur(Math.abs(b.betrag))}</span>
               </>} />
@@ -145,7 +153,7 @@ export function BuchungenView() {
           {sichtbar.length > 300 && <Leer>+{sichtbar.length - 300} weitere — Monat oder Kategorie wählen</Leer>}
         </Liste>
         <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 14, lineHeight: 1.6 }}>
-          Übernommen aus eurem Finanz-Dashboard. Neue Buchungen kommen dort rein und werden hier ergänzt.
+          Buchungen kommen aus dem Beleg-Werkzeug (Jarvis), aus bezahlten <Link href="/os/finanzen/planung" style={{ color: C.inkDim }}>Rechnungen</Link> und aus dem Altbestand des Finanz-Dashboards.
         </div>
       </Karte>
     </Seite>

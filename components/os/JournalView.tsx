@@ -6,12 +6,12 @@
 
 import Link from 'next/link';
 import { localDay } from '@/lib/zeit';
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNachspeichern } from '@/lib/make-one/nachspeichern';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Balken, feld, LEUCHT } from './schlank';
 
-interface Entry { text?: string; mood?: number; energy?: number; stress?: number; haut?: string; ruecken?: string; flags?: string[]; at?: string; }
+interface Entry { text?: string; mood?: number; energy?: number; stress?: number; haut?: string; ruecken?: string; flags?: string[]; at?: string; gut?: string; dankbar?: string; hart?: string; tagesnote?: string }
 type Journal = Record<string, Entry>;
 const ymd = (d: Date) => localDay(d);
 
@@ -38,8 +38,12 @@ export function JournalView() {
     fetch('/api/state/journal').then(r => r.json()).then((d: { journal: Journal }) => setJournal(d.journal ?? {})).catch(() => {});
   }, []);
 
-  const spaeter = useNachspeichern<Journal>(next => {
-    fetch('/api/state/journal', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) })
+  // Nur die geänderten Felder des Tages (PATCH) — kein Zurückschreiben der ganzen Datei, das überschriebe,
+  // was Gesundheit, Tagesstart, Vitals-Merge und Jarvis inzwischen eingetragen haben (26.09.).
+  const offen = useRef<Partial<Entry>>({});
+  const spaeter = useNachspeichern<Partial<Entry>>(eintrag => {
+    offen.current = {};
+    fetch('/api/state/journal', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ datum: today, eintrag }) })
       .then(() => setSaved(true)).catch(() => {});
   }, 500);
 
@@ -49,12 +53,24 @@ export function JournalView() {
     const cur = journal[today] ?? {};
     const next: Journal = { ...journal, [today]: { ...cur, ...p, at: new Date().toISOString() } };
     setJournal(next);
-    spaeter(next);
+    offen.current = { ...offen.current, ...p };
+    spaeter(offen.current);
   }
+  // „Kein Cannabis“ ist der Streak, „Bewegt / Reha“ die Reha-Routine — beides landet dort, wo es zählt.
+  const nebenwirkung = (id: string, an: boolean) => {
+    if (id === 'keincannabis' && an) fetch('/api/state/streak', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eintrag: { sauber: true } }) }).catch(() => {});
+    if (id === 'bewegt' && an) fetch('/api/state/routinen').then(r => r.json()).then(d => {
+      const reha = (d.routinen ?? []).find((r: { id: string; label: string; aktiv: boolean }) => r.aktiv && /reha|mobil|beweg/i.test(`${r.id} ${r.label}`));
+      if (!reha) return;
+      return fetch('/api/state/health').then(r => r.json()).then(h => { const log = h.log ?? {}; const tag = new Set<string>(log[today] ?? []); tag.add(reha.id); return fetch('/api/state/health', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...log, [today]: Array.from(tag) }) }); });
+    }).catch(() => {});
+  };
   const toggleFlag = (id: string) => {
     const f = new Set(entry.flags ?? []);
-    if (f.has(id)) f.delete(id); else f.add(id);
+    const an = !f.has(id);
+    if (an) f.add(id); else f.delete(id);
     patch({ flags: Array.from(f) });
+    nebenwirkung(id, an);
   };
 
   const dots = (label: string, val: number | undefined, set: (n: number) => void, bad = false) => (
@@ -74,19 +90,6 @@ export function JournalView() {
       </div>
     </div>
   );
-  const choice = (label: string, val: string | undefined, opts: { v: string; l: string; bad?: boolean }[], key: 'haut' | 'ruecken') => (
-    <div>
-      <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 6 }}>{label}</div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {opts.map(o => {
-          const on = val === o.v;
-          const c = o.bad ? LEUCHT.kritisch : LEUCHT.gut;
-          return <button key={o.v} onClick={() => patch({ [key]: on ? '' : o.v } as Partial<Entry>)} className="fassbar" style={pille(on, c)}>{o.l}</button>;
-        })}
-      </div>
-    </div>
-  );
-
   // Verlauf (ohne heute) + Trend
   const history = useMemo(() => Object.entries(journal).filter(([d]) => d !== today).sort((a, b) => b[0].localeCompare(a[0])), [journal, today]);
   const last14 = useMemo(() => Array.from({ length: 14 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - (13 - i)); return { tag: ymd(d), e: journal[ymd(d)] ?? {} }; }), [journal]);
@@ -108,16 +111,12 @@ export function JournalView() {
       </div>}
     >
       <Karte i={0} akzent={LEUCHT.gut}>
-        <Ueberschrift farbe={LEUCHT.gut}>Tages-Check</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.gut} rechts={<Link href="/os/gesundheit#haut" style={{ color: C.inkLeise, textDecoration: 'none' }}>Haut & Streak auf Gesundheit ›</Link>}>Journal</Ueberschrift>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div style={{ display: 'flex', gap: 26, flexWrap: 'wrap' }}>
             {dots('Stimmung', entry.mood, n => patch({ mood: n }))}
             {dots('Energie', entry.energy, n => patch({ energy: n }))}
             {dots('Stress', entry.stress, n => patch({ stress: n }), true)}
-          </div>
-          <div style={{ display: 'flex', gap: 26, flexWrap: 'wrap' }}>
-            {choice('Haut (Psoriasis)', entry.haut, [{ v: 'ruhig', l: 'ruhig' }, { v: 'schub', l: 'Schub', bad: true }], 'haut')}
-            {choice('Rücken (Bandscheibe)', entry.ruecken, [{ v: 'ok', l: 'ok' }, { v: 'schmerz', l: 'Schmerz', bad: true }], 'ruecken')}
           </div>
           <div>
             <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 8 }}>Heute gelungen</div>
@@ -157,11 +156,14 @@ export function JournalView() {
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim }}>{new Date(date + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })}</span>
                 {typeof e.mood === 'number' && <Chip farbe={LEUCHT.gut}>Stimmung {e.mood}</Chip>}
+                {typeof e.energy === 'number' && <Chip farbe={LEUCHT.gut}>Energie {e.energy}</Chip>}
                 {typeof e.stress === 'number' && <Chip farbe={LEUCHT.kritisch}>Stress {e.stress}</Chip>}
+                {(e.flags ?? []).map(f => <Chip key={f} farbe={C.inkDim}>{FLAGS.find(x => x.id === f)?.label ?? f}</Chip>)}
                 {e.haut === 'schub' && <Chip farbe={LEUCHT.kritisch}>Haut-Schub</Chip>}
                 {e.ruecken === 'schmerz' && <Chip farbe={LEUCHT.kritisch}>Rücken-Schmerz</Chip>}
               </div>
               {e.text && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 6, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{e.text}</div>}
+              {(e.gut || e.dankbar || e.hart || e.tagesnote) && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 6, lineHeight: 1.5, display: 'grid', gap: 2 }}>{e.gut && <span>Gut: {e.gut}</span>}{e.dankbar && <span>Dankbar: {e.dankbar}</span>}{e.hart && <span>Hart zu mir: {e.hart}</span>}{e.tagesnote && <span>Tagesnotiz: {e.tagesnote}</span>}</div>}
             </div>
           ))}
         </Liste>

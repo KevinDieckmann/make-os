@@ -23,7 +23,7 @@ const SEITEN: Treffer[] = [
   { art: 'seite', id: 'gesundheit', titel: 'Gesundheit', href: '/os/gesundheit' }, { art: 'seite', id: 'wissen', titel: 'Brain', href: '/os/wissen' },
 ];
 const ART: Record<string, { label: string; farbe: string }> = {
-  kontakt: { label: 'Person', farbe: LEUCHT.business }, firma: { label: 'Firma', farbe: LEUCHT.puls }, chance: { label: 'Chance', farbe: LEUCHT.achtung },
+  kontakt: { label: 'Person', farbe: LEUCHT.business }, firma: { label: 'Firma', farbe: LEUCHT.puls }, chance: { label: 'Deal', farbe: LEUCHT.achtung },
   mandat: { label: 'Mandat', farbe: LEUCHT.geld }, kampagne: { label: 'Kampagne', farbe: LEUCHT.beziehung }, seite: { label: 'Bereich', farbe: C.inkDim },
 };
 

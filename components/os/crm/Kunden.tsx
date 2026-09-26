@@ -18,6 +18,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { mandateLink } from '@/lib/crm/adresse';
+import { WEG } from '@/lib/wege';
+import { rechnungPasst } from '@/lib/crm/kunden';
 import { mandatPhase, portfolio } from '@/lib/crm/produkte';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, feld, useBreit, LEUCHT } from '../schlank';
@@ -171,6 +173,7 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
           <Uebergeben api={api} art="mandat" id={m.id} jetzt={zustaendig(m.zustaendig, 'sales')} klein />
         </div>
       </Feldzeile>
+      {m.chanceId && <Feldzeile label="Deal"><Link href={WEG.deal(m.chanceId)} style={{ fontSize: 12.5, color: C.inkDim, textDecoration: 'none' }}>Deal öffnen ›</Link></Feldzeile>}
       <Feldzeile label="Status"><Pillen liste={STATUS} aktiv={m.status} onWahl={status => setze({ status })} /></Feldzeile>
       <Feldzeile label="Vertrag"><Pillen liste={[{ id: 'ja', label: 'unterschrieben' }, { id: 'nein', label: 'nicht unterschrieben' }]} aktiv={m.vertragUnterschrieben ? 'ja' : 'nein'} onWahl={x => setze({ vertragUnterschrieben: x === 'ja' })} /></Feldzeile>
       <Feldzeile label="Kunde"><Feld wert={m.kunde} onFertig={kunde => kunde.trim() && setze({ kunde: kunde.trim() })} /></Feldzeile>
@@ -222,7 +225,7 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
         </div>
       </div>
       <Feldzeile label="Liquiditätsplan">
-        {lq?.lage === 'ok' && <span style={{ fontSize: 12.5, color: LEUCHT.gut }}>steht drin ({lq.vorhanden?.id})</span>}
+        {lq?.lage === 'ok' && <Link href={WEG.planposten(lq.vorhanden?.id)} style={{ fontSize: 12.5, color: LEUCHT.gut, textDecoration: 'none' }}>steht drin — Posten öffnen ›</Link>}
         {lq?.lage === 'kein-posten' && <span style={{ fontSize: 12.5, color: C.inkLeise }}>kein Posten (Status oder Honorar fehlt)</span>}
         {(lq?.lage === 'fehlt' || lq?.lage === 'abweichend') && (
           <div style={{ display: 'grid', gap: 6 }}>
@@ -237,6 +240,7 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
       <Feldzeile label="Ansprechpartner">
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{personen.map(k => <button key={k.id} onClick={() => zuKontakt(k.id)} style={{ background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 999, padding: '5px 10px', color: C.ink, cursor: 'pointer', fontSize: 12.5 }}>{anzeigename(k)}</button>)}{!personen.length && <span style={{ fontSize: 12.5, color: C.inkLeise }}>—</span>}</div>
       </Feldzeile>
+      <MandatRechnungen m={m} />
       {m.leistungen.length > 0 && <div><div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 4 }}>Leistungen</div><ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 3 }}>{m.leistungen.map((x, i) => <li key={i} style={{ fontSize: 12.5, color: C.inkDim }}>{x}</li>)}</ul></div>}
       <Feldzeile label="Offener Punkt"><Feld platzhalter="Neuer offener Punkt …" onFertig={t => t.trim() && setze({ offen: [...m.offen, t.trim()] })} /></Feldzeile>
       {m.quelle && <div style={{ fontSize: 12, color: C.inkLeise }}>Quelle: {m.quelle}</div>}
@@ -274,5 +278,45 @@ export function KundenKurz({ api }: { api: CrmApi }) {
       </Liste>
       {!laufend.length && <Leer>Noch keine laufenden Mandate.</Leer>}
     </Karte>
+  );
+}
+
+interface RechnungKurz { id: string; kunde: string; titel: string; betrag: number; status: string; faellig?: string; bezahltAm?: string; mandatId?: string; firmaId?: string }
+
+/** Rechnungen zum Mandat (26.09.): was gestellt, offen, überfällig ist — je Zeile die Rechnung; „Rechnung anlegen“ legt sie vorbelegt an. */
+function MandatRechnungen({ m }: { m: Mandat }) {
+  const router = useRouter();
+  const [liste, setListe] = useState<RechnungKurz[] | null>(null);
+  const heute = new Date().toISOString().slice(0, 10);
+  useEffect(() => { fetch('/api/state/finanzplan').then(r => r.json()).then(d => setListe((d.rechnungen ?? []) as RechnungKurz[])).catch(() => setListe([])); }, [m.id]);
+  const eigene = (liste ?? []).filter(r => r.mandatId === m.id || (!r.mandatId && rechnungPasst(m, r))).sort((a, b) => (b.faellig ?? '').localeCompare(a.faellig ?? ''));
+  const offen = eigene.filter(r => r.status === 'gestellt');
+  const ueber = offen.filter(r => r.faellig && r.faellig < heute);
+  const anlegen = async () => {
+    const id = `r-${Date.now().toString(36)}`;
+    const brutto = m.honorar.netto ? Math.round(m.honorar.betrag * (1 + m.ustSatz / 100)) : m.honorar.betrag;
+    const eintrag = { id, kunde: m.kunde, titel: m.titel, betrag: brutto, status: 'geplant', firmaId: m.gesellschaft === 'kdv' ? 'kdv' : 'kdc', mandatId: m.id, ustSatz: m.ustSatz, ...(m.honorar.netto ? { netto: m.honorar.betrag } : {}), faellig: new Date(Date.now() + m.zahlungszielTage * 864e5).toISOString().slice(0, 10) };
+    const r = await fetch('/api/state/finanzplan', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste: 'rechnungen', op: 'upsert', eintrag }] }) }).then(x => x.json()).catch(() => null);
+    if (r?.ok !== false) router.push(WEG.rechnung(id));
+  };
+  return (
+    <Feldzeile label="Rechnungen">
+      <div style={{ display: 'grid', gap: 6 }}>
+        {liste === null && <span style={{ fontSize: 12.5, color: C.inkLeise }}>lädt …</span>}
+        {liste && !eigene.length && <span style={{ fontSize: 12.5, color: C.inkLeise }}>noch keine Rechnung zu diesem Mandat</span>}
+        {eigene.slice(0, 5).map(r => (
+          <Link key={r.id} href={WEG.rechnung(r.id)} style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 12.5, color: C.ink, textDecoration: 'none' }}>
+            <Punkt farbe={r.status === 'bezahlt' ? LEUCHT.gut : r.faellig && r.faellig < heute ? LEUCHT.kritisch : r.status === 'gestellt' ? LEUCHT.achtung : C.inkLeise} groesse={7} />
+            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.titel || r.kunde} <span style={{ color: C.inkLeise }}>· {r.status}{r.faellig ? ` · fällig ${datum(r.faellig)}` : ''}</span></span>
+            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{euro(r.betrag)}</span><span style={{ color: C.inkLeise }}>›</span>
+          </Link>
+        ))}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {m.honorar.betrag > 0 && <Knopf leise onClick={() => void anlegen()}>+ Rechnung aus dem Honorar</Knopf>}
+          {ueber.length > 0 && <span style={{ fontSize: 12, color: LEUCHT.kritisch }}>{ueber.length} überfällig</span>}
+          {eigene.length > 5 && <Link href={WEG.rechnungen()} style={{ fontSize: 12, color: C.inkLeise }}>alle ›</Link>}
+        </div>
+      </div>
+    </Feldzeile>
   );
 }

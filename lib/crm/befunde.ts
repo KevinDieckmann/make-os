@@ -19,7 +19,7 @@ export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string): Be
   if (antraege.length) b.push({ prio: 1, titel: `${antraege.length} Betroffenenantrag${antraege.length > 1 ? 'e' : ''} mit knapper Frist`, grund: 'Monatsfrist nach Art. 12 DSGVO', bereich: 'stammdaten', ansicht: 'datenschutz' });
   const offen = crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe));
   const haengt = offen.filter(c => gesundheit(c, heute).ampel === 'rot');
-  if (haengt.length) b.push({ prio: 1, titel: `${haengt.length} Chance${haengt.length > 1 ? 'n hängen' : ' hängt'}`, grund: 'Schritt überfällig oder über 30 Tage ohne Bewegung', bereich: 'pipeline' });
+  if (haengt.length) b.push({ prio: 1, titel: `${haengt.length} Deal${haengt.length > 1 ? 's hängen' : ' hängt'}`, grund: 'Schritt überfällig oder über 30 Tage ohne Bewegung', bereich: 'pipeline' });
   const ablauf = crm.mandate.filter(m => m.status === 'aktiv' && (mandatLage(m, heute).endeIn ?? 999) <= 60);
   if (ablauf.length) b.push({ prio: 1, titel: `${ablauf.length} Mandat${ablauf.length > 1 ? 'e' : ''}: Laufzeit endet oder ist vorbei`, grund: ablauf.map(m => m.kunde).join(', '), bereich: 'kunden' });
   const art = kontakte.filter(k => art14(k, heute)?.faellig);

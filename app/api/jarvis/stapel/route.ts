@@ -11,7 +11,22 @@ import { lies, hole, entscheide } from '@/lib/jarvis/stapel';
 import { fuehreAus } from '@/lib/jarvis/ausfuehren';
 import { personAus } from '@/lib/jarvis/raum';
 import { innenAdresse } from '@/lib/innen';
-import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
+import { haushaltVon, personStreng } from '@/lib/finanzen/haushalt/zugriff';
+
+/** „Ändern & freigeben“: nur einfache Werte, begrenzt — den Rest prüft das Werkzeug selbst (26.09.). */
+function eingabeSauber(v: unknown): Record<string, unknown> | null {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+  const raus: Record<string, unknown> = {};
+  for (const [k, w] of Object.entries(v as Record<string, unknown>).slice(0, 40)) {
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]{0,40}$/.test(k)) continue;
+    if (w === null || typeof w === 'boolean' || (typeof w === 'number' && Number.isFinite(w))) raus[k] = w;
+    else if (typeof w === 'string') raus[k] = w.slice(0, 4000);
+    else if (Array.isArray(w)) raus[k] = w.slice(0, 100).filter(x => ['string', 'number', 'boolean'].includes(typeof x)).map(x => (typeof x === 'string' ? x.slice(0, 1000) : x));
+  }
+  return raus;
+}
+/** Sehen und entscheiden: eigene Vorschläge, die des Systems, und Haushalts-Vorschläge für Haushaltsmitglieder. */
+const meiner = (v: { person?: string; gruppe: string }, person: string | null, z: unknown, HH: string) => (!v.person || v.person === person) && (z || v.gruppe !== HH);
 
 // Haushaltsfinanzen (24.09.): Vorschläge der Gruppe „haushalt“ sieht und
 // entscheidet nur, wer einem Haushalt angehört — mit ausdrücklich benannter
@@ -24,7 +39,8 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   const alle = new URL(req.url).searchParams.get('alle') === '1';
   const z = await haushaltVon(req);
-  const liste = (await lies(alle ? undefined : 'offen')).filter(v => z || v.gruppe !== HAUSHALT);
+  const person = personStreng(req);
+  const liste = (await lies(alle ? undefined : 'offen')).filter(v => meiner(v, person, z, HAUSHALT));
   return NextResponse.json({ ok: true, vorschlaege: liste, offen: liste.filter(v => v.status === 'offen').length });
 }
 
@@ -48,7 +64,7 @@ export async function POST(req: Request) {
 
   // ── Sammel-Freigabe: „durcharbeiten" ──
   if (body.alle) {
-    const offen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && (z || v.gruppe !== HAUSHALT));
+    const offen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && meiner(v, personStreng(req), z, HAUSHALT));
     if (!offen.length) return NextResponse.json({ ok: true, erledigt: 0, ergebnisse: [] });
     // Nacheinander, nicht parallel: mehrere Vorschläge fassen oft denselben
     // Bestand an (zwei Rechnungen desselben Kunden). Parallel würde der eine
@@ -66,14 +82,14 @@ export async function POST(req: Request) {
   const v = id ? await hole(id) : null;
   if (!v) return NextResponse.json({ ok: false, error: 'Vorschlag nicht gefunden.' }, { status: 404 });
   if (v.status !== 'offen') return NextResponse.json({ ok: false, error: `Schon entschieden (${v.status}).` }, { status: 409 });
-  if (v.gruppe === HAUSHALT && !z) return NextResponse.json({ ok: false, error: 'Vorschlag nicht gefunden.' }, { status: 404 });
+  if (!meiner(v, personStreng(req), z, HAUSHALT)) return NextResponse.json({ ok: false, error: 'Vorschlag nicht gefunden.' }, { status: 404 });
 
   if (body.entscheidung === 'ablehnen') {
     const raus = await entscheide(id, 'abgelehnt', { grund: String(body.grund ?? '').slice(0, 400) });
     return NextResponse.json({ ok: true, vorschlag: raus });
   }
 
-  const eingabe = body.eingabe && typeof body.eingabe === 'object' ? body.eingabe : v.eingabe;
+  const eingabe = eingabeSauber(body.eingabe) ?? v.eingabe;
   const lauf = await fuehreAus(v.werkzeug, eingabe, origin, { erzwingen: true, person: v.gruppe === HAUSHALT ? z!.person : person });
   const raus = await entscheide(id, lauf.ok ? 'freigegeben' : 'fehlgeschlagen', { ergebnis: lauf.text, eingabe });
   return NextResponse.json({ ok: lauf.ok, ergebnis: lauf.text, vorschlag: raus });

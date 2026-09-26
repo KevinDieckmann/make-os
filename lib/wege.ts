@@ -12,6 +12,8 @@
 //   Rechnung    /os/finanzen/planung?r=<id>        (springt hin und hebt hervor)
 //   Planposten  /os/finanzen/liquiditaet?p=<id>    (öffnet den Posten) · #kontostaende
 //   Woche       /os/planung/woche?tag=YYYY-MM-DD
+//   Gesundheit  /os/gesundheit?fuer=<person>#morgen|routinen|haut|streak|index
+//   Markttraktion über lib/crm/adresse.ts (s · a · k)
 
 import { mandateLink, markttraktion } from '@/lib/crm/adresse';
 
@@ -56,6 +58,29 @@ export const WEG = {
   markttraktion: () => markttraktion(),
 
   woche: (tag?: string) => q('/os/planung/woche', { tag }),
+  tag: (tag?: string) => q('/os/planung', { tag }),
+  routinen: () => '/os/planung/routinen',
+
+  // Gesundheit — persönlich; `fuer` zeigt die andere Person, wenn sie teilt.
+  gesundheit: (abschnitt?: 'morgen' | 'routinen' | 'haut' | 'streak' | 'index', fuer?: string) => q('/os/gesundheit', { fuer }, abschnitt),
+  journal: () => '/os/journal',
+  ernaehrung: () => '/os/ernaehrung',
+  energie: () => '/os/energie',
+  verbindungen: () => '/os/verbindungen',
+  saeule: (key: 'health' | 'planning' | 'finance' | 'social' | 'agents') => `/os/saeule/${key}`,
+  wachstum: () => '/os/wachstum',
+
+  // Markttraktion — die Kartei darunter heißt technisch weiter „crm“.
+  akte: (id: string) => markttraktion('kontakte', 'akte', id),
+  kontakt: (id?: string) => markttraktion('kontakte', undefined, id),
+  firma: (id?: string) => markttraktion('firmen', undefined, id),
+  powerHour: () => markttraktion('sales', 'heute'),
+  leads: () => markttraktion('sales', 'leads'),
+  kunden: () => markttraktion('sales', 'kunden'),
+  kampagne: (id?: string, head: 'sales' | 'marketing' = 'sales') => markttraktion(head, 'kampagnen', id),
+  marketing: (a?: 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung') => markttraktion('marketing', a),
+  event: (id?: string, r?: 'gaeste' | 'ablauf' | 'checkliste' | 'budget' | 'abend' | 'nachfassen') => `${markttraktion('event', undefined, id)}${r ? `${id ? '&' : '?'}r=${r}` : ''}`,
+  stammdaten: (tab?: string) => markttraktion('stammdaten', tab),
   jahr: () => '/os/planung/jahr',
   agenten: () => '/os/agenten',
   aufgabe: (id: string) => q('/os/aufgaben', { offen: id }),

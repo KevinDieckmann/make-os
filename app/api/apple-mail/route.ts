@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { AUF_DEM_MAC, merke, vomMac } from '@/lib/mac';
+import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { spawn } from 'child_process';
 
 // ─── AppleScript — liest die neuesten Mails je aktivem Postfach ──────────────
@@ -89,7 +90,9 @@ function parseAppleDate(str: string): string {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
+  // Kevins Postfach: nur der Inhaber (26.09.).
+  if (!(await nurInhaber(req))) return NextResponse.json({ error: 'Das Postfach gehört dem Inhaber.' }, { status: 403 });
   if (!AUF_DEM_MAC) return vomMac('mail', []);
   try {
     const stdout = await runOsascript(SCRIPT);

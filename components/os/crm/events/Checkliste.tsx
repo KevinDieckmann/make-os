@@ -14,6 +14,8 @@
 // Vorlauf), wenn das ohne Risiko geht — sonst kommt ein Hinweis.
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { WEG } from '@/lib/wege';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Ueberschrift, Knopf, Chip, Leer, Haken, Fortschritt, feld, LEUCHT } from '../../schlank';
 import { checklisteFaellig, checklisteStand, vorlageAnwenden, VORLAGEN, punktAendern, punktWer, arbeitJePerson, type FaelligerPunkt, type PunktAenderung, type ChecklistenPunkt } from '@/lib/crm/eventplanung';
@@ -127,7 +129,7 @@ export function Checkliste({ e, api }: ReiterProps) {
           <div style={{ fontSize: TYP.bedien, color: p.erledigt ? C.inkLeise : C.ink, textDecoration: p.erledigt ? 'line-through' : undefined }}>{p.text}</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: C.inkLeise, marginTop: 4 }}>
             <WerTausch wert={wer.get(p.id) ?? standard} ich={ich} standard={eigen ? undefined : 'wie Event'} onWahl={person => umverteilen(p, person)} />
-            <span>fällig {datum(p.faelligAm, heute)} · {vorlauf(p.tageVorher)}{p.aufgabeId ? ' · als Aufgabe angelegt' : ''}</span>
+            <span>fällig {datum(p.faelligAm, heute)} · {vorlauf(p.tageVorher)}{p.aufgabeId ? <> · <Link href={WEG.aufgabe(p.aufgabeId)} style={{ color: C.inkDim }}>Aufgabe ›</Link></> : ''}</span>
           </div>
         </div>
         {!p.erledigt && <Chip farbe={farbe}>{p.ueberfaellig ? `${-p.tage} T überfällig` : p.tage === 0 ? 'heute' : `in ${p.tage} T`}</Chip>}

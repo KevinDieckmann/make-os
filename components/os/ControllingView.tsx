@@ -99,14 +99,6 @@ export function ControllingView() {
     .then((d: FinanzplanStand) => { if (planSpeichern.hatOffenes()) return; setFplan(d); planSpeichern.kenne(d); })
     .catch(err => console.error('[MAKE OS] Finanzplan für die Liquiditäts-Vorschau nicht ladbar.', err)), [planSpeichern]);
   useEffect(() => { void ladePlan(); }, [ladePlan]);
-  function kontostandSetzen(firmaId: string, wert: string) {
-    if (!fplan) return;
-    const zahl = wert.trim() === '' ? null : Math.round(Number(wert));
-    if (zahl !== null && !Number.isFinite(zahl)) return;
-    const next = { ...fplan, firmen: fplan.firmen.map(f => f.id === firmaId ? { ...f, kontostand: zahl } : f) };
-    setFplan(next);
-    planSpeichern.speichern(next);
-  }
   // Speichert auch dann, wenn du sofort die Seite wechselst oder den Tab
   // schließt — beim nächsten Öffnen steht derselbe Stand da. Zu zweit: Monate
   // und Felder einzeln; was Malin in anderen Monaten tippt, bleibt erhalten.
@@ -223,12 +215,11 @@ export function ControllingView() {
 
             <Wochenbalken wochen={v.wochen} hoehe={90} />
 
-            {/* Kontostände direkt hier pflegen — sie sind der Startpunkt der Rechnung */}
+            {/* Kontostände werden an EINER Stelle gepflegt (Liquidität) — hier nur Anzeige + Weg dorthin (26.09.). */}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 16, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)' }}>
               {fplan.firmen.map(f => (
                 <Feld key={f.id} label={<>{f.name}{f.stand ? ` · ${datum(f.stand)}` : ''}</>}>
-                  <input type="number" value={f.kontostand ?? ''} onChange={e => kontostandSetzen(f.id, e.target.value)}
-                    placeholder="Kontostand" aria-label={`Kontostand ${f.name}`} style={{ ...zahlFeld, width: 140 }} />
+                  <Link href="/os/finanzen/liquiditaet#kontostaende" style={{ ...zahlFeld, width: 140, display: 'inline-block', textDecoration: 'none', color: f.kontostand == null ? C.inkLeise : C.ink }}>{f.kontostand == null ? 'eintragen ›' : `${eur(f.kontostand)} ›`}</Link>
                 </Feld>
               ))}
               <div style={{ fontSize: 12, color: C.inkLeise, paddingBottom: 8, lineHeight: 1.5 }}>
@@ -340,8 +331,11 @@ export function ControllingView() {
 
       {/* Eingabe */}
       <Karte i={6}>
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
+          Die Ist-Monate kommen aus dem <Link href="/os/finanzen?s=business#abschluss" style={{ color: C.aktiv, textDecoration: 'none' }}>Monatsabschluss je Firma</Link> (Zahlen → Business) — eine Eingabe, eine Wahrheit (26.09.). Liegt für einen Monat noch kein Abschluss vor, gilt der hier gepflegte Wert.
+        </div>
         <details open={loaded && m.aktiveMonate === 0}>
-          <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700, color: C.inkDim, letterSpacing: '.08em', textTransform: 'uppercase', listStyle: 'none' }}>Zahlen pflegen ▸</summary>
+          <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700, color: C.inkLeise, letterSpacing: '.08em', textTransform: 'uppercase', listStyle: 'none', marginTop: 10 }}>Altbestand pflegen ▸</summary>
           <div style={{ ...mikro, margin: '12px 0 8px' }}>Ist je Monat — Umsatz / Kosten</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
             {s.months.map((r, i) => (

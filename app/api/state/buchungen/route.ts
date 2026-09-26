@@ -26,6 +26,8 @@ export interface Buchung {
    * beiden Firmen kann man auch mal zusammenfassen." Genau dafür.
    */
   ort?: 'privat' | 'kdv' | 'kdc';
+  /** Die Rechnung, deren Zahlungseingang diese Buchung ist (26.09.). */
+  rechnungId?: string;
 }
 
 // Nicht exportieren: eine Route darf nur ihre Handler nach außen geben.
@@ -48,6 +50,7 @@ function sauber(b: Partial<Buchung>, i: number): Buchung | null {
     konto: b.konto ? String(b.konto).slice(0, 60) : undefined,
     // Ohne Angabe: privat — die Altbestände kommen alle vom Privatkonto.
     ort: (ORTE as readonly string[]).includes(String(b.ort)) ? b.ort as Buchung['ort'] : 'privat',
+    ...(b.rechnungId ? { rechnungId: String(b.rechnungId).slice(0, 40) } : {}),
   };
 }
 

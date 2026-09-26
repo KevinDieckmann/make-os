@@ -1,5 +1,8 @@
 'use client';
 
+import Link from 'next/link';
+import { WEG } from '@/lib/wege';
+
 // ─── Markttraktion · Firmen — ein Unternehmen, alle Beziehungen ─────────────
 // Die Firma ist eigene Stammdaten (lib/crm/firmen.ts): Branche, Größe, Ort,
 // Webseite an EINER Stelle. Die Karteikarte zeigt alle Personen, Chancen,
@@ -149,9 +152,9 @@ function FirmenKarte({ f, api, zuPerson }: { f: Firma; api: CrmApi; zuPerson: (i
       </div>
       {(chancen.length > 0 || mandate.length > 0) && (
         <div>
-          <Ueberschrift>Chancen & Mandate</Ueberschrift>
-          {chancen.map(c => <div key={c.id} style={{ fontSize: TYP.bedien, padding: '4px 0' }}>{c.titel} <span style={{ color: C.inkLeise }}>· {crm.stufen.find(s => s.id === c.stufe)?.label}{c.wert.betrag ? ` · ${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/M' : ''}` : ''}</span></div>)}
-          {mandate.map(m => <div key={m.id} style={{ fontSize: TYP.bedien, padding: '4px 0' }}>{m.titel.slice(0, 80)} <span style={{ color: C.inkLeise }}>· Mandat {m.status}{m.honorar.betrag ? ` · ${euro(m.honorar.betrag)}` : ''}</span></div>)}
+          <Ueberschrift>Deals & Mandate</Ueberschrift>
+          {chancen.map(c => <Link key={c.id} href={WEG.deal(c.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{c.titel} <span style={{ color: C.inkLeise }}>· {crm.stufen.find(s => s.id === c.stufe)?.label}{c.wert.betrag ? ` · ${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/M' : ''}` : ''} ›</span></Link>)}
+          {mandate.map(m => <Link key={m.id} href={WEG.mandat(m.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{m.titel.slice(0, 80)} <span style={{ color: C.inkLeise }}>· Mandat {m.status}{m.honorar.betrag ? ` · ${euro(m.honorar.betrag)}` : ''} ›</span></Link>)}
         </div>
       )}
       <div>

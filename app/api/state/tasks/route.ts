@@ -87,6 +87,32 @@ export async function PUT(req: Request) {
  * Schreibvorgänge serialisiert aus, zwei gleichzeitige Klicks gehen also
  * beide durch.
  */
+const STATUS = ['backlog', 'todo', 'in-progress', 'blocked', 'done'];
+const PRIO = ['low', 'medium', 'high', 'critical'];
+const S = (v: unknown, n: number) => (typeof v === 'string' ? v.slice(0, n) : undefined);
+/** Eine Aufgabe von außen: nur bekannte Felder, begrenzt — die Liste lesen viele Seiten und Prompts (26.09.). */
+function taskSauber(o: unknown): Task | null {
+  if (!o || typeof o !== 'object') return null;
+  const t = o as Record<string, unknown>;
+  const id = S(t.id, 80), title = S(t.title, 300);
+  if (!id || !title) return null;
+  const jetzt = new Date().toISOString();
+  const raus = {
+    id, title, projectId: S(t.projectId, 80) ?? '', description: S(t.description, 4000),
+    status: STATUS.includes(String(t.status)) ? t.status : 'todo',
+    priority: PRIO.includes(String(t.priority)) ? t.priority : 'medium',
+    assignee: S(t.assignee, 40) ?? 'kevin',
+    tags: Array.isArray(t.tags) ? t.tags.slice(0, 20).map(x => String(x).slice(0, 40)) : [],
+    dueDate: S(t.dueDate, 40), completedAt: S(t.completedAt, 40),
+    subTasks: Array.isArray(t.subTasks) ? (t.subTasks as Record<string, unknown>[]).slice(0, 50).filter(x => x && typeof x === 'object').map(x => ({ id: String(x.id ?? '').slice(0, 80), taskId: id, title: String(x.title ?? '').slice(0, 300), completed: x.completed === true, sortOrder: Number(x.sortOrder) || 0, createdAt: S(x.createdAt, 40) ?? jetzt, updatedAt: S(x.updatedAt, 40) ?? jetzt })) : [],
+    dependencies: Array.isArray(t.dependencies) ? (t.dependencies as Record<string, unknown>[]).slice(0, 50).filter(x => x && typeof x === 'object' && typeof x.blockedByTaskId === 'string').map(x => ({ blockedByTaskId: String(x.blockedByTaskId).slice(0, 80), ...(typeof x.resolvedAt === 'string' ? { resolvedAt: x.resolvedAt.slice(0, 40) } : {}) })) : [],
+    sortOrder: Number(t.sortOrder) || 0,
+    createdAt: S(t.createdAt, 40) ?? jetzt, updatedAt: S(t.updatedAt, 40) ?? jetzt,
+  };
+  for (const k of ['description', 'dueDate', 'completedAt'] as const) if (raus[k] === undefined) delete raus[k];
+  return raus as unknown as Task;
+}
+
 export async function PATCH(req: Request) {
   let body: { ops?: unknown; massenAenderung?: boolean; projekte?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
@@ -99,10 +125,8 @@ export async function PATCH(req: Request) {
   interface Op { op: 'upsert' | 'delete'; task?: Task; id?: string }
   const ops: Op[] = [];
   for (const o of roh as Record<string, unknown>[]) {
-    if (o?.op === 'delete' && typeof o.id === 'string') ops.push({ op: 'delete', id: o.id });
-    else if (o?.op === 'upsert' && o.task && typeof (o.task as Task).id === 'string' && typeof (o.task as Task).title === 'string') {
-      ops.push({ op: 'upsert', task: o.task as Task });
-    }
+    if (o?.op === 'delete' && typeof o.id === 'string') ops.push({ op: 'delete', id: o.id.slice(0, 80) });
+    else if (o?.op === 'upsert') { const t = taskSauber(o.task); if (t) ops.push({ op: 'upsert', task: t }); }
   }
   if (!ops.length && !projekte) return NextResponse.json({ ok: false, error: 'Keine gültigen Änderungen.' }, { status: 400 });
 

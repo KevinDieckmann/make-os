@@ -19,6 +19,8 @@ import type { Termin } from '@/lib/finanzen/chef/steuertermine';
 import type { Modus } from '@/lib/finanzen/chef/prompt';
 import type { Schritt } from '@/lib/finanzen/chef/ist-stand';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { WEG } from '@/lib/wege';
 
 interface Stand {
   ok: boolean; umfang: 'business' | 'business+haushalt'; haushaltZugang: boolean;
@@ -48,6 +50,7 @@ function markiert(text: string, unbelegt: string[]): ReactNode {
 }
 
 export function FinanzchefView() {
+  const router = useRouter();
   const [s, setS] = useState<Stand | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [laeuft, setLaeuft] = useState<string | null>(null);
@@ -214,7 +217,7 @@ export function FinanzchefView() {
             {!!laufend.length && (
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: TYP.mikro, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, marginBottom: 4 }}>Angenommen, läuft</div>
-                {laufend.map(v => <Zeile key={v.id} titel={v.titel} unter={v.frist ? `bis ${datum(v.frist)}` : 'als Aufgabe angelegt'} rechts={<Knopf leise onClick={() => entscheide(v, 'erledigt')}>erledigt</Knopf>} />)}
+                {laufend.map(v => <Zeile key={v.id} onClick={() => router.push(WEG.aufgabe(`hof-${v.id}`))} titel={v.titel} unter={`${v.frist ? `bis ${datum(v.frist)}` : 'als Aufgabe angelegt'} · Aufgabe öffnen ›`} rechts={<Knopf leise onClick={() => entscheide(v, 'erledigt')}>erledigt</Knopf>} />)}
               </div>
             )}
           </Karte>
@@ -222,10 +225,10 @@ export function FinanzchefView() {
           <Karte i={2}>
             <Ueberschrift>Lage · vom Code gerechnet</Ueberschrift>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 14, marginBottom: 12 }}>
-              <Zahl wert={s.lage.kasse.quelle === 'keine' ? undefined : eur(s.lage.kasse.betrag)} label={s.lage.kasse.quelle === 'konten' ? `Kasse · ${s.lage.kasse.konten} Firmenkonten` : 'Kasse Business'} farbe={LEUCHT.geld} />
-              <Zahl wert={s.lage.runway != null ? `${s.lage.runway.toFixed(1).replace('.', ',')} Mon.` : undefined} label="Runway" />
-              {s.lage.haushalt && <Zahl wert={eur(s.lage.haushalt.luft)} label="Luft privat / Monat" farbe={s.lage.haushalt.luft < 0 ? LEUCHT.kritisch : LEUCHT.gut} />}
-              {s.lage.deckung != null && <Zahl wert={`${Math.round(s.lage.deckung)} %`} label="Mindestumsatz gedeckt" farbe={s.lage.deckung < 100 ? LEUCHT.achtung : LEUCHT.gut} />}
+              <Link href={WEG.kontostaende()} style={{ textDecoration: 'none', color: 'inherit' }}><Zahl wert={s.lage.kasse.quelle === 'keine' ? undefined : eur(s.lage.kasse.betrag)} label={s.lage.kasse.quelle === 'konten' ? `Kontostand · ${s.lage.kasse.konten} Firmenkonten ›` : 'Kontostand Business ›'} farbe={LEUCHT.geld} /></Link>
+              <Link href={WEG.business({ k: 'runway' })} style={{ textDecoration: 'none', color: 'inherit' }}><Zahl wert={s.lage.runway != null ? `${s.lage.runway.toFixed(1).replace('.', ',')} Mon.` : undefined} label="Runway ›" /></Link>
+              {s.lage.haushalt && <Link href={WEG.privatIndex('index', 'luft')} style={{ textDecoration: 'none', color: 'inherit' }}><Zahl wert={eur(s.lage.haushalt.luft)} label="Luft privat / Monat ›" farbe={s.lage.haushalt.luft < 0 ? LEUCHT.kritisch : LEUCHT.gut} /></Link>}
+              {s.lage.deckung != null && <Link href={WEG.gesamt()} style={{ textDecoration: 'none', color: 'inherit' }}><Zahl wert={`${Math.round(s.lage.deckung)} %`} label="Mindestumsatz gedeckt ›" farbe={s.lage.deckung < 100 ? LEUCHT.achtung : LEUCHT.gut} /></Link>}
             </div>
             {s.lage.hinweise.length ? s.lage.hinweise.slice(0, 8).map((h, i) => (
               <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '6px 0', fontSize: TYP.bedien, lineHeight: 1.5 }}>

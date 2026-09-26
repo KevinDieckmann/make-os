@@ -16,6 +16,7 @@ import { localDay } from '@/lib/zeit';
 import { NORDSTERN } from '@/lib/make-one/nordstern-data';
 import { Zeitstrahl, type StrahlMarker, type StrahlTick } from './Zeitstrahl';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Haken, Zahl, feld, prioFarbe, LEUCHT } from './schlank';
+import { useZiel, useZuZiel, zielRahmen } from './ziel';
 
 interface Ziel { id: string; titel: string; fortschritt: number; notiz?: string; erledigt?: boolean }
 interface Meilenstein { id: string; titel: string; bereich: 'business' | 'gesundheit'; faellig?: string; zeitfenster?: string; messlatte?: string; fortschritt: number; erledigt: boolean; erledigtAm?: string }
@@ -51,6 +52,8 @@ function zeitraum(h: Horizont): { von: string; bis: string; label: string } {
 }
 
 export function HorizontView({ horizont }: { horizont: Horizont }) {
+  // ?m=<Meilenstein> aus einem Link (Kalender, Energie, Monat): hinspringen und hervorheben (26.09.).
+  const zielM = useZiel('m');
   const meta = META[horizont];
   const zr = zeitraum(horizont);
   const farbe = HFARBE[horizont];
@@ -59,6 +62,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   const [fokus, setFokus] = useState('');
   const [neu, setNeu] = useState('');
   const [geladen, setGeladen] = useState(false);
+  useZuZiel(zielM, geladen);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   /** Zuletzt gelesener/geschriebener Stand — Basis für die Unterschiede. */
   const gespeichert = useRef<Meilenstein[] | null>(null);
@@ -143,7 +147,8 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
     faellig.forEach(t => { proTag[t.dueDate!] = [...(proTag[t.dueDate!] ?? []), t.title]; });
     Object.keys(proTag).forEach(d => {
       const titel = proTag[d];
-      strahlMarker.push({ date: d, label: titel.length === 1 ? titel[0] : `${titel.length} Aufgaben`, farbe: C.inkDim, symbol: '●', titel: titel.join(' · '), href: '/os/aufgaben' });
+      const ids = faellig.filter(t => t.dueDate === d).map(t => t.id);
+      strahlMarker.push({ date: d, label: titel.length === 1 ? titel[0] : `${titel.length} Aufgaben`, farbe: C.inkDim, symbol: '●', titel: titel.join(' · '), href: ids.length === 1 ? `/os/aufgaben?offen=${encodeURIComponent(ids[0])}` : '/os/aufgaben' });
     });
   }
 
@@ -207,11 +212,11 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
               const spaet = !!m.faellig && m.faellig < localDay();
               const wann = msFaelligLabel(m);
               return (
-                <Zeile key={m.id}
+                <Link key={m.id} href={`/os/planung/jahr?m=${encodeURIComponent(m.id)}`} style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}><Zeile
                   links={<Punkt farbe={spaet ? LEUCHT.kritisch : LEUCHT.achtung} />}
                   titel={m.titel}
                   unter={[wann ? `${spaet ? 'überfällig ' : ''}${wann}` : '', m.messlatte ?? ''].filter(Boolean).join(' · ') || undefined}
-                  rechts={<Chip farbe={col(m.fortschritt)}>{m.fortschritt} %</Chip>} />
+                  rechts={<Chip farbe={col(m.fortschritt)}>{m.fortschritt} %</Chip>} /></Link>
               );
             })}
           </Liste>
@@ -230,14 +235,14 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
             const meine = ms.filter(m => m.bereich === bereich);
             return (
               <Karte key={bereich} i={k++}>
-                <Ueberschrift farbe={bf} rechts="fließen in den MAKE Score">Meilensteine · {bereich === 'gesundheit' ? 'Gesundheit' : 'Business'}</Ueberschrift>
+                <Ueberschrift farbe={bf} rechts={<Link href={bereich === 'gesundheit' ? '/os/gesundheit?s=index' : '/os/finanzen?s=business'} style={{ color: C.inkLeise, textDecoration: 'none' }}>{bereich === 'gesundheit' ? 'zählen im Gesundheits-Index ›' : 'zählen im Business-Index ›'}</Link>}>Meilensteine · {bereich === 'gesundheit' ? 'Gesundheit' : 'Business'}</Ueberschrift>
                 {!meine.length && <Leer>Noch kein Meilenstein — unten einen anlegen.</Leer>}
                 <Liste>
                   {meine.map(m => {
                     const spaet = !!m.faellig && m.faellig < localDay() && !m.erledigt;
                     const wann = msFaelligLabel(m);
                     return (
-                      <Zeile key={m.id}
+                      <div key={m.id} id={`ziel-${m.id}`} style={zielRahmen(zielM === m.id, bf)}><Zeile
                         links={<Haken an={m.erledigt} farbe={bf} onChange={() => msPatch(m.id, { erledigt: !m.erledigt, fortschritt: !m.erledigt ? 100 : m.fortschritt, erledigtAm: !m.erledigt ? localDay() : undefined })} />}
                         titel={<span style={{ color: m.erledigt ? C.inkLeise : C.ink, textDecoration: m.erledigt ? 'line-through' : 'none' }}>{m.titel}</span>}
                         unter={wann || m.messlatte ? (
@@ -255,7 +260,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
                             <span style={{ ...prozent, color: col(m.fortschritt) }}>{m.fortschritt} %</span>
                             <button onClick={() => msPersist(ms.filter(x => x.id !== m.id))} aria-label="Meilenstein löschen" style={loeschen}>✕</button>
                           </span>
-                        ) : <Chip farbe={bf}>erledigt</Chip>} />
+                        ) : <Chip farbe={bf}>erledigt</Chip>} /></div>
                     );
                   })}
                 </Liste>
@@ -325,7 +330,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
         {!faellig.length && <Leer>Keine terminierten Aufgaben in diesem Zeitraum.</Leer>}
         <Liste>
           {faellig.slice(0, 15).map(t => (
-            <Link key={t.id} href="/os/aufgaben" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
+            <Link key={t.id} href={`/os/aufgaben?offen=${encodeURIComponent(t.id)}`} style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
               <Zeile
                 links={<span style={{ fontSize: TYP.bedien, fontFamily: SCHRIFT.display, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: t.dueDate && t.dueDate < heute ? LEUCHT.kritisch : C.inkLeise, flex: '0 0 auto', width: 78 }}>{t.dueDate}</span>}
                 titel={t.title}

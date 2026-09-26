@@ -9,6 +9,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { markttraktion } from '@/lib/crm/adresse';
+import { WEG } from '@/lib/wege';
+import { WhoopImport } from './WhoopImport';
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
@@ -71,7 +73,7 @@ export function HeuteView() {
   const koerperFarbe = koerper?.frisch ? zoneFarbe(koerper.rec) : C.inkLeise;
 
   return (
-    <Seite titel={<>{gruss}{vorname ? `, ${vorname}` : ''}</>} unter={<span suppressHydrationWarning>{datum}</span>}>
+    <Seite titel={<>{gruss}{vorname ? `, ${vorname}` : ''}</>} unter={<span suppressHydrationWarning>{datum} · <Link href={`/os/ritual?modus=${new Date().getHours() >= 17 ? 'abend' : 'morgen'}`} style={{ color: C.inkDim }}>{new Date().getHours() >= 17 ? 'Tagesende' : 'Tagesstart'} ›</Link></span>}>
       <Spalten verhaeltnis="2:1">
         <Spalte>
       <Karte i={2}>
@@ -80,7 +82,7 @@ export function HeuteView() {
         <Liste>
           {dran.length === 0 && <Leer>{offen.length ? 'Nichts fällig, nichts kritisch.' : 'Keine Aufgaben. Eine Zeile oben, Enter — oder Jarvis sagen.'}</Leer>}
           {dran.map(t => (
-            <Zeile key={t.id}
+            <Zeile key={t.id} onClick={() => router.push(WEG.aufgabe(t.id))}
               links={<Haken an={false} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />}
               titel={t.title}
               unter={[projekt(t.projectId), t.dueDate && t.dueDate < heute ? `überfällig seit ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : t.dueDate === heute ? 'heute' : ''].filter(Boolean).join(' · ')}
@@ -94,7 +96,7 @@ export function HeuteView() {
         <Liste>
           {termine.length === 0 && <Leer>Keine Termine heute — freie Bahn.</Leer>}
           {termine.map((t, i) => (
-            <Zeile key={t.id ?? i} links={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums', color: LEUCHT.puls, width: 52 }}>{t.allDay ? 'Tag' : uhr(t.startDate)}</span>} titel={t.title ?? '—'} unter={t.endDate && !t.allDay ? `bis ${uhr(t.endDate)}` : undefined} />
+            <Zeile key={t.id ?? i} onClick={() => router.push(WEG.woche(heute))} links={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums', color: LEUCHT.puls, width: 52 }}>{t.allDay ? 'Tag' : uhr(t.startDate)}</span>} titel={t.title ?? '—'} unter={t.endDate && !t.allDay ? `bis ${uhr(t.endDate)}` : undefined} />
           ))}
         </Liste>
       </Karte>
@@ -110,37 +112,38 @@ export function HeuteView() {
 
         </Spalte>
         <Spalte>
-      {fokusText && (
-        <Karte i={0} akzent={LEUCHT.schlaf}>
-          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/wachstum" style={{ color: C.inkLeise, textDecoration: 'none' }}>Wachstum ›</Link>}>Fokus {fokusWann}</Ueberschrift>
-          <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(17px,2.2vw,20px)', fontWeight: 600, letterSpacing: '-.01em', lineHeight: 1.3 }}>{fokusText}</div>
-        </Karte>
-      )}
+      <Karte i={0} akzent={fokusText ? LEUCHT.schlaf : undefined}>
+        <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/fokus" style={{ color: C.inkLeise, textDecoration: 'none' }}>Fokus ›</Link>}>Fokus {fokusText ? fokusWann : ''}</Ueberschrift>
+        {fokusText
+          ? <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(17px,2.2vw,20px)', fontWeight: 600, letterSpacing: '-.01em', lineHeight: 1.3 }}>{fokusText}</div>
+          : <Leer>Noch kein Fokus gesetzt — <Link href="/os/fokus" style={{ color: C.inkDim }}>worauf kommt es heute an? ›</Link></Leer>}
+      </Karte>
 
         <Karte i={3} akzent={koerper?.frisch ? koerperFarbe : undefined}>
           <Ueberschrift farbe={LEUCHT.gut} rechts={<Link href="/os/gesundheit" style={{ color: C.inkLeise, textDecoration: 'none' }}>Gesundheit ›</Link>}>Körper</Ueberschrift>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-            <Ring groesse="klein" label="Recovery" wert={koerper?.frisch && koerper.rec != null ? String(koerper.rec) : undefined} einheit="%" farbe={koerperFarbe} anteil={koerper?.frisch && koerper.rec != null ? koerper.rec / 100 : undefined} />
+            <Link href="/os/gesundheit" style={{ textDecoration: 'none', color: 'inherit' }}><Ring groesse="klein" label="Recovery" wert={koerper?.frisch && koerper.rec != null ? String(koerper.rec) : undefined} einheit="%" farbe={koerperFarbe} anteil={koerper?.frisch && koerper.rec != null ? koerper.rec / 100 : undefined} /></Link>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: TYP.body, fontWeight: 600 }}>{koerper?.frisch ? (koerper.rec! >= 66 ? 'Grün — heute darf es Druck sein.' : koerper.rec! >= 40 ? 'Gelb — fokussiert, mit Puffer.' : 'Rot — heute nur das Nötige.') : 'Noch keine Werte von heute'}</div>
-              <div style={{ fontSize: 12.5, color: C.inkDim, margin: '6px 0 8px' }}>{koerper ? `${koerper.routinen} von ${koerper.von} Routinen` : '—'}</div>
+              <div style={{ fontSize: 12.5, color: C.inkDim, margin: '6px 0 8px' }}>{koerper ? <Link href="/os/gesundheit#routinen" style={{ color: C.inkDim }}>{koerper.routinen} von {koerper.von} Routinen ›</Link> : '—'}</div>
+              {koerper && !koerper.frisch && <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}><WhoopImport kurz /><Link href="/os/ritual?modus=morgen" style={{ fontSize: 12.5, color: C.inkDim }}>von Hand eintragen ›</Link></div>}
               {koerper && koerper.von > 0 && <Fortschritt anteil={koerper.routinen / koerper.von} farbe={LEUCHT.gut} />}
             </div>
           </div>
         </Karte>
         {finanzen && (
           <Karte i={4} akzent={finanzen.some(t => /Überfällig|kein Kontoauszug/.test(t)) ? LEUCHT.kritisch : undefined}>
-            <Ueberschrift farbe={LEUCHT.geld} rechts={<Link href="/os/finanzen" style={{ color: C.inkLeise, textDecoration: 'none' }}>Zahlen ›</Link>}>Finanzen · privat</Ueberschrift>
+            <Ueberschrift farbe={LEUCHT.geld} rechts={<Link href={WEG.zahlen('privat')} style={{ color: C.inkLeise, textDecoration: 'none' }}>Privat ›</Link>}>Finanzen · privat</Ueberschrift>
             <Liste>
               {!finanzen.length && <Leer>Nichts fällig. Alles bezahlt.</Leer>}
-              {finanzen.slice(0, 4).map(t => <Zeile key={t} links={<Punkt farbe={/Überfällig|kein Kontoauszug/.test(t) ? LEUCHT.kritisch : LEUCHT.achtung} />} titel={<span style={{ whiteSpace: 'normal' }}>{t}</span>} />)}
+              {finanzen.slice(0, 4).map(t => <Zeile key={t} onClick={() => router.push(/Rechnung|Rate/.test(t) ? WEG.privat('schulden') : /Kontoauszug/.test(t) ? WEG.privat('buchungen') : WEG.privatIndex())} links={<Punkt farbe={/Überfällig|kein Kontoauszug/.test(t) ? LEUCHT.kritisch : LEUCHT.achtung} />} titel={<span style={{ whiteSpace: 'normal' }}>{t}</span>} />)}
             </Liste>
           </Karte>
         )}
         <Karte i={4} akzent={stapel ? LEUCHT.achtung : undefined}>
           <Ueberschrift farbe={stapel ? LEUCHT.achtung : C.inkLeise} rechts={<Link href="/os/stapel" style={{ color: C.inkLeise, textDecoration: 'none' }}>Stapel ›</Link>}>Jarvis</Ueberschrift>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-            <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 'clamp(34px,4vw,44px)', letterSpacing: '-.04em', lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: stapel ? LEUCHT.achtung : C.inkLeise, textShadow: stapel ? `0 0 24px ${LEUCHT.achtung}33` : undefined }}>{stapel == null ? '—' : stapel === 0 ? '0' : stapel}</div>
+            <Link href="/os/stapel" style={{ textDecoration: 'none', fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 'clamp(34px,4vw,44px)', letterSpacing: '-.04em', lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: stapel ? LEUCHT.achtung : C.inkLeise, textShadow: stapel ? `0 0 24px ${LEUCHT.achtung}33` : undefined }}>{stapel == null ? '—' : stapel === 0 ? '0' : stapel}</Link>
             <div style={{ fontSize: TYP.body, fontWeight: 600, lineHeight: 1.35 }}>{stapel == null ? 'Jarvis' : stapel === 0 ? 'Nichts vorbereitet — alles erledigt.' : `Vorschl${stapel === 1 ? 'ag wartet' : 'äge warten'} auf dich`}</div>
           </div>
         </Karte>

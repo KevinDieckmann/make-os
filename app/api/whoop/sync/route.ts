@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 
 const API = 'https://api.prod.whoop.com/developer/v1';
 
-export async function POST() {
+export async function POST(req: Request) {
   if (!konfiguriert(PROVIDER.whoop)) {
     return NextResponse.json({ error: 'Whoop ist nicht konfiguriert — Client-ID/Secret in .env.local, dann /os/verbindungen.' }, { status: 200 });
   }
@@ -47,7 +47,9 @@ export async function POST() {
     if (!Object.keys(vitals).length) return NextResponse.json({ error: 'Whoop hat keine verwertbaren Werte geliefert.' }, { status: 200 });
 
     const heute = localDay();
-    await updateJson<Record<string, Record<string, unknown>>>('vitals', current => {
+    // In den Bestand der anfragenden Person — nicht immer in Kevins (26.09.).
+    const { personAus, speicherFuer } = await import('@/lib/jarvis/raum');
+    await updateJson<Record<string, Record<string, unknown>>>(speicherFuer('vitals', personAus(req)), current => {
       const log = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
       return { ...log, [heute]: { ...(log[heute] ?? {}), ...vitals, note: String((log[heute] as { note?: string } | undefined)?.note ?? '') || undefined } };
     });
