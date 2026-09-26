@@ -231,6 +231,23 @@ lokal, Route `/os`, Port 3001.
   neue Seite in `lib/make-one/spaces.ts` (passt) und `components/os/Schnellsuche.tsx` (SEITEN) anschließen. Keine Weiterleitung
   in `next.config.mjs` darf eine echte Seite verdecken (`/os/uebersicht` war so ein Fall).
 
+## Markttraktion — Deal- und Follow-up-Ebene (27.09., nur lokal)
+- **Reiter** (`lib/crm/adresse.ts` `BEREICHE`): ueberblick · kontakte · firmen (a=leads) · deals (a=board|liste|akte|kunden|auswertung) ·
+  followup (a=faellig|woche|powerhour|kadenz) · marketing · event · stammdaten. `aufloesen()` übersetzt den alten Sales-Reiter — alte
+  Links NIE umschreiben, sondern dort ergänzen. `WEG.deal(id)` öffnet die Deal-Akte.
+- **Firma per Kennung:** `Chance.firmaId`, `Mandat.firmaId` (`lib/crm/firmen-bezug.ts`: `firmaVonDeal`, `dealZuFirma`, `firmenName`,
+  `firmaIdsErgaenzen` beim Laden in `ladeCrm`). Neue Stellen vergleichen nie mehr `c.firma === f.name`.
+- **Deals anlegen nur über `lib/crm/deal-anlegen.ts`** (`dealAnlegen`, Route `POST /api/crm/deal`, Dialog `components/os/crm/DealAnlegen.tsx`):
+  nächster Schritt Pflicht, 409 bei zweitem offenen Deal (mit `trotzdem`), Lead wird SQL. Kein `api.setze('chancen', …)` für neue Deals mehr.
+- **Stufenwechsel** prüft der Server (`lib/crm/speicher.ts` `dealRegeln` in `wendeCrmAn`; `wechsleStufe` aus pipeline.ts): der Browser schickt nur
+  `stufe` (+ `grund`/`wiedervorlage`/`naechsterSchritt`), nie `historie`. Abgelehntes kommt als `fehler[]` in der Antwort von `PATCH /api/crm/bestand`.
+- **Follow-up-Ebene:** Typ `FollowUp` (typen.ts), Bestand `crm.followups`; reine Logik `lib/crm/followup.ts` (`faellige` = echte + virtuelle aus
+  Kontakt.naechsterSchritt/wiedervorlage, Chance.naechsterSchritt, Teilnahme.followUpAm, Mandat.naechstesReview, Kadenz je Kreis; Kennungen `v:<quelle>:<id>`),
+  Route `/api/crm/followup` (anlegen/erledigen/verschieben/absagen; Erledigen schreibt eine Aktivität mit denselben Regeln wie /api/crm/aktivitaet),
+  Ansicht `components/os/crm/FollowUp.tsx`. Neue Nachfass-Logik kommt hierher, nicht in ein neuntes Feld.
+- **Auswertung:** `lib/crm/deal-auswertung.ts` (Verweildauer, Umwandlung, Win/Loss, Zyklus, Prognose nach Monat, hängt nach Wert; `MINDESTMENGE` 5).
+- Wertelisten (`CrmBestand.wertelisten`: Verlustgründe, Kadenz je Kreis, Ergebnisse, Ziele) pflegt Stammdaten; Verbraucher lesen sie mit Rückfall auf die Konstanten.
+
 ## Zeit & Fokus (26.09. spät, nur lokal)
 - **Modell:** `lib/zeitmessung/modell.ts` (rein, getestet): Zeit je Person, Tag und Schlüssel
   `space:bereich`, zwei Arten — `auto` (Anwesenheits-Ping alle 30 s, Differenz ≤ 90 s zählt)

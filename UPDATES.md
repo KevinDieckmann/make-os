@@ -53,6 +53,25 @@ Ansage stehen, bis das nächste Update sie ablöst.
 
 ## Nächstes Update — vorbereitet, noch nicht online
 
+### Markttraktion komplett (27.09. nachts, nur lokal)
+
+Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen und Kontakten Deals einpflegen, dann Follow-up-Ebene, dann erst Stammdaten. Deal- und Follow-up-Ebene sauber, das ganze System dahinter sauber aufgesetzt.“
+
+- **Reiter in Kevins Reihenfolge:** Überblick · Kontakte · Firmen · Deals · Follow-up · Marketing · Events · Stammdaten. Der Reiter „Sales“ ist aufgegangen:
+  Leads stehen bei den Firmen (Alle Firmen · Leads qualifizieren), die Power Hour im Follow-up, Kampagnen im Marketing. Alle alten Links laufen weiter.
+- **Fundament:** Deals und Mandate hängen an der Firma per Kennung (nicht mehr per Name; alte Einträge werden beim Laden nachgezogen).
+  Deals entstehen nur noch auf EINEM Weg (Dialog „Neuer Deal“ überall: Pipeline, Karteikarte, Leads, Jarvis) — Kernfragen vom Lead, nächster Schritt Pflicht,
+  kein zweiter offener Deal an derselben Firma ohne Absicht, der Lead wird SQL mit Verweis. Stufenwechsel prüft der Server: verloren nur mit Grund,
+  geparkt nur mit Wiedervorlage, eine offene Zielstufe nur mit nächstem Schritt; die Historie hängt der Server an.
+- **Deals:** Board mit Ziehen (auf Gewonnen/Verloren/Geparkt mit Nachfrage), Liste, **Deal-Akte** (Stufen-Treppe mit Austrittskriterium, Personen mit
+  Rolle Entscheider/Fürsprecher/Nutzer/Bremst, Verlauf mit Verweildauer, Aktivitäten der Beteiligten, offene Follow-ups), **Auswertung** (Prognose nach
+  Monat der Entscheidung, Win/Loss mit Gründen, Zyklus, Ø Deal-Größe, Verweildauer und Umwandlung je Stufe, hängt nach Wert). Quoten erst ab 5 Fällen.
+- **Follow-up (neu):** EINE Liste aus Zusagen, Wiedervorlagen, Deal-Schritten, Nachfassen nach Events, Reviews und der Kadenz je Kreis (A 30 · B 60 · C 90 · D 180 Tage) —
+  überfällig · heute · diese Woche · später, Filter Alle/Meins/Malin, Wochenansicht, Kadenz-Ansicht. Erledigen fragt Ergebnis und **nächsten Schritt**
+  (Pflichtfrage, bewusst „kein nächster Schritt“ möglich) und schreibt eine Aktivität an die Person; Verschieben +1/+3/+7 (ab dem dritten Mal ein Hinweis), Absagen. „+ Follow-up“ von Hand.
+- **Kennzahlen (Traktions-Index, Sales):** Win Rate 180 Tage, Sales-Zyklus Median, hängt nach Wert, Follow-ups pünktlich, überfällige Follow-ups, Neuumsatz gegen Monatsziel.
+- Stammdaten (pflegbare Wertelisten, Exporte), Marketing (Trichter, Anfragen, Kosten, Start) und Events (Start, Brücke zu Lead und Deal, Feedback, Kosten, Kalender) folgen in diesem Block.
+
 ### Zeit & Fokus + Kopf (26.09. spät, nur lokal)
 
 - **Schalter oben rechts:** der Index-Chip wechselt per Klick den Modus Privat ↔ Business (Index und Seiten folgen; auf einer
