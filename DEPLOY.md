@@ -156,3 +156,25 @@ bash /srv/make-os/app/deploy/server-haerten.sh
 
 Bei GitHub (Kevin, im Browser): Branch-Schutz für `main` (kein Force-Push), 2FA für beide Konten,
 Dependabot-PRs wöchentlich ansehen. Hetzner: Backups im Server-Menü aktiv lassen.
+
+## Verschlüsselung im Ruhezustand (26.09.)
+
+Alle Sammlungen in `/srv/make-os/daten` (und die Tagessicherungen darin) liegen als AES-256-GCM-Hülle, sobald in
+`/srv/make-os/app/.env` der Schlüssel steht:
+
+```
+MAKE_OS_DATEN_SCHLUESSEL=<64 Hex-Zeichen, openssl rand -hex 32>
+```
+
+Einschalten (einmalig, als `make`): Schlüssel in die `.env`, `docker compose up -d` (App und Arbeiter lesen die
+neue Umgebung), dann `docker compose exec -T app node scripts/daten-verschluesselung.mjs --verschluesseln`.
+Ab da schreibt die App nur noch verschlüsselt; Klartext von früher wäre sonst noch lesbar geblieben.
+
+**Der Schlüssel gehört in den Passwort-Manager** (Zeile aus der `.env` kopieren). Geht er verloren, sind Daten
+UND Sicherungen unlesbar — die nächtliche Sicherung packt die verschlüsselten Dateien (zweite Hülle: Sicherungs-
+Passwort bzw. age). Zurückholen braucht deshalb beides: Sicherung entpacken, `.env` mit dem Datenschlüssel,
+fertig — oder zum Umzug einmal `--entschluesseln`.
+
+Nicht verschlüsselt: Bilder unter `daten/bauplan-bilder`, das Archiv `daten/archiv` (Umzugs-Stände) und das
+Obsidian-Hirn (eigenes Git-Repo). Das sind bewusste Ausnahmen; die JSON-Bestände sind das, worum es geht.
+

@@ -57,6 +57,10 @@ lokal, Route `/os`, Port 3001.
    `zweiterFaktor` (Geheimnis, letzte Stufe, Wiederherstellungs-Hashes) — nie in Antworten (`oeffentlich()`
    liefert nur `zweiterFaktorAn`). Anmelden: Passwort → `{ zweiterFaktor: true }` → Passwort + `code`.
    Cookie heißt in Produktion `__Host-make-os-sitzung` (SITZUNG_COOKIE), Server-Admin: `ssh make@… sudo`.
+9. **Bestände verschlüsselt** (`lib/store/local-db.ts`): mit `MAKE_OS_DATEN_SCHLUESSEL` liegt auf der Platte
+   nur die Hülle `{ __verschluesselt: 1, iv, tag, daten }`; Lesen ohne/mit falschem Schlüssel wirft (nie null).
+   Wer `.data`-Dateien direkt liest, muss `entschluesseln()` nutzen. Umstellen/zurück:
+   `scripts/daten-verschluesselung.mjs`. Tests biegen den Ordner mit `MAKE_OS_DATEN_DIR` um.
 
 ## Design & Produkt
 - Design-Sprache: Klar·DARK — Token in `lib/make-one/os-data.ts` (THEME),

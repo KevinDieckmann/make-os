@@ -6,8 +6,46 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
 
-const DATA_DIR = path.join(process.cwd(), '.data');
+// Tests dürfen den Ordner umbiegen — nie die echten Bestände anfassen (26.09.).
+const DATA_DIR = process.env.MAKE_OS_DATEN_DIR || path.join(process.cwd(), '.data');
+
+// ── Verschlüsselung im Ruhezustand (26.09.) ───────────────────────────────────
+// Kevin: „extrem sicher — unsere privatesten Themen.“ Liegt MAKE_OS_DATEN_SCHLUESSEL
+// in der Umgebung, schreibt der Store jede Sammlung als AES-256-GCM-Hülle
+// ({ __verschluesselt: 1, iv, tag, daten }) — ein kopierter Datenordner, ein
+// Server-Abbild oder eine Sicherung ohne Schlüssel sind dann wertlos. Gelesen
+// werden beide Fassungen (Klartext von früher wird beim nächsten Schreiben
+// verschlüsselt). Ohne Schlüssel bleibt alles Klartext (lokale Entwicklung).
+// Verschlüsselt, aber kein oder falscher Schlüssel → Fehler, NIE „leer“:
+// sonst würde der nächste Schreibvorgang die Daten überschreiben.
+export const HUELLE = '__verschluesselt';
+export function datenSchluessel(): Buffer | null {
+  const s = process.env.MAKE_OS_DATEN_SCHLUESSEL?.trim();
+  return s ? createHash('sha256').update(`make-os-daten:${s}`).digest() : null;
+}
+export function verschluesseln(text: string, key: Buffer): string {
+  const iv = randomBytes(12);
+  const c = createCipheriv('aes-256-gcm', key, iv);
+  const enc = Buffer.concat([c.update(text, 'utf8'), c.final()]);
+  return JSON.stringify({ [HUELLE]: 1, iv: iv.toString('base64'), tag: c.getAuthTag().toString('base64'), daten: enc.toString('base64') });
+}
+export class SchluesselFehlt extends Error {}
+/** Hülle → Klartext; ist es keine Hülle, kommt der Text unverändert zurück. Wirft SchluesselFehlt bzw. bei falschem Schlüssel. */
+export function entschluesseln(json: string, key: Buffer | null): string {
+  const o = JSON.parse(json) as Record<string, unknown> | null;
+  if (!o || typeof o !== 'object' || o[HUELLE] !== 1) return json;
+  if (!key) throw new SchluesselFehlt('Der Bestand ist verschlüsselt, MAKE_OS_DATEN_SCHLUESSEL fehlt.');
+  const d = createDecipheriv('aes-256-gcm', key, Buffer.from(String(o.iv), 'base64'));
+  d.setAuthTag(Buffer.from(String(o.tag), 'base64'));
+  return Buffer.concat([d.update(Buffer.from(String(o.daten), 'base64')), d.final()]).toString('utf8');
+}
+/** Der Text, wie er auf die Platte geht. */
+function zumSchreiben(text: string): string {
+  const key = datenSchluessel();
+  return key ? verschluesseln(text, key) : text;
+}
 const BACKUP_DIR = path.join(DATA_DIR, 'backup');
 
 async function ensureDir(): Promise<void> {
@@ -98,8 +136,16 @@ export async function loadJson<T>(name: string): Promise<T | null> {
     console.error(`[local-db] ${name}: nicht lesbar (${code})`);
     return null;
   }
+  let klar: string;
   try {
-    return JSON.parse(buf) as T;
+    klar = entschluesseln(buf, datenSchluessel());
+  } catch (err) {
+    // Verschlüsselt ohne (passenden) Schlüssel: laut scheitern, nichts beiseitelegen.
+    if (!(err instanceof SyntaxError)) throw err instanceof SchluesselFehlt ? err : new Error(`[local-db] ${name}: Entschlüsselung fehlgeschlagen — stimmt MAKE_OS_DATEN_SCHLUESSEL?`);
+    klar = buf;
+  }
+  try {
+    return JSON.parse(klar) as T;
   } catch {
     const backup = `${file}.corrupt-${Date.now()}`;
     try { await fs.rename(file, backup); } catch { /* Rettung ist best effort */ }
@@ -126,7 +172,7 @@ export async function saveJson<T>(name: string, data: T): Promise<void> {
     // .tmp-Datei wegziehen.
     const tmp = `${dest}.${process.pid}.${Math.random().toString(36).slice(2, 10)}.tmp`;
     // Nur der Besitzer liest die Bestände (26.09.) — auf dem Server ist das der Container-Nutzer = make.
-    await fs.writeFile(tmp, JSON.stringify(data, null, 2), { encoding: 'utf8', mode: 0o600 });
+    await fs.writeFile(tmp, zumSchreiben(JSON.stringify(data, null, 2)), { encoding: 'utf8', mode: 0o600 });
     await fs.rename(tmp, dest);
   });
   writeChain.set(name, run);
@@ -149,7 +195,7 @@ export async function updateJson<T>(name: string, mutate: (current: T | null) =>
     const dest = path.join(DATA_DIR, `${name}.json`);
     await taeglicheSicherung(name, dest);
     const tmp = `${dest}.${process.pid}.${Math.random().toString(36).slice(2, 10)}.tmp`;
-    await fs.writeFile(tmp, JSON.stringify(next, null, 2), { encoding: 'utf8', mode: 0o600 });
+    await fs.writeFile(tmp, zumSchreiben(JSON.stringify(next, null, 2)), { encoding: 'utf8', mode: 0o600 });
     await fs.rename(tmp, dest);
     return next;
   });

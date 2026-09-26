@@ -63,6 +63,11 @@ _(hier sammeln, was auf `entwicklung` fertig ist)_
   `make`, kein Port-Forwarding; Datendateien nicht mehr weltlesbar.
 - **Lieferkette:** Docker-Basisbilder und GitHub-Actions per Digest/SHA festgenagelt (Dependabot hält sie
   aktuell), Action nur mit Leserecht.
+- **Verschlüsselung im Ruhezustand:** liegt `MAKE_OS_DATEN_SCHLUESSEL` in der Server-`.env`, schreibt MAKE OS
+  jede Sammlung in `.data` (und die Tagessicherungen) als AES-256-GCM-Hülle — ein kopierter Datenordner, ein
+  Server-Abbild oder eine Sicherung ohne Schlüssel sind wertlos. Ohne passenden Schlüssel bricht das Lesen laut
+  ab (nie „leer“). Einmalige Umstellung aller Bestände: `scripts/daten-verschluesselung.mjs --verschluesseln`.
+  **Der Schlüssel gehört in Kevins Passwort-Manager** — ohne ihn sind die Daten weg.
 
 - **Whoop-Import online:** auf dem Server gibt es keinen Downloads-Ordner — der Knopf „Aus Downloads einlesen“
   erscheint dort nicht mehr; stattdessen „ZIP oder CSV wählen“ mit Hinweis (am Handy die Datei erst in „Dateien“
