@@ -8,7 +8,8 @@
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Ring, Chip, Knopf, Leer, Liste, Zeile, Haken, Spalten, Spalte, Fortschritt, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Ring, Chip, Knopf, Leer, Liste, Zeile, Haken, Fortschritt, LEUCHT } from '../schlank';
+import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { DATE_IDEEN, REPARATUR_SAETZE, MUSTER, HILFE } from '@/lib/familie/katalog';
 import type { Thema, Wunsch, DateIdee, Reparatur } from '@/lib/familie/typen';
 import { type FamilieApi, neueId, datumLang } from './daten';
@@ -32,6 +33,8 @@ export function WirZwei({ api, onGespraech }: { api: FamilieApi; onGespraech: ()
 
   return (
     <>
+      <Flaeche seite="familie-wir">
+      <Kachel id="rhythmus" titel="Pflege-Rhythmus" breite={6}>
       <Karte i={0} akzent={ROSA}>
         <div className="heute-kopf" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'clamp(18px,4vw,40px)', alignItems: 'center' }}>
           <Ring label="Pflege-Rhythmus" wert={d.rhythmus.score != null ? String(d.rhythmus.score) : undefined} farbe={st.farbe}
@@ -63,19 +66,14 @@ export function WirZwei({ api, onGespraech }: { api: FamilieApi; onGespraech: ()
           </div>
         </Mehr>
       </Karte>
-
-      <Spalten verhaeltnis="1:1">
-        <Spalte>
-          <Heute api={api} partner={partner} />
-          <Dates api={api} />
-          <Wuensche api={api} partner={partner} />
-        </Spalte>
-        <Spalte>
-          <Themen api={api} />
-          <Reparatur api={api} partner={partner} />
-          <Vision api={api} />
-        </Spalte>
-      </Spalten>
+      </Kachel>
+        <Kachel id="heute" titel="Heute verbunden" breite={3}><Heute api={api} partner={partner} /></Kachel>
+        <Kachel id="themen" titel="Themen-Parkplatz" breite={3}><Themen api={api} /></Kachel>
+        <Kachel id="dates" titel="Zeit zu zweit" breite={3}><Dates api={api} /></Kachel>
+        <Kachel id="reparatur" titel="Wenn es hakt" breite={3}><Reparatur api={api} partner={partner} /></Kachel>
+        <Kachel id="wuensche" titel="Einander kennen" breite={3}><Wuensche api={api} partner={partner} /></Kachel>
+        <Kachel id="vision" titel="Unsere Vision" breite={3}><Vision api={api} /></Kachel>
+      </Flaeche>
     </>
   );
 }

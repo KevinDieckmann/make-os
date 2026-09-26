@@ -15,7 +15,8 @@ import { localDay } from '@/lib/zeit';
 import { eur } from '@/lib/make-one/finance-data';
 import { vorschau, businessFirmen, nurBusiness, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten } from '@/lib/make-one/liquiditaet';
 import { MONAT_KURZ, type Kennzahlen } from '@/lib/make-one/grundlage';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Zahl, Fortschritt, LEUCHT, Spalten, Spalte } from './schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Zahl, Fortschritt, LEUCHT } from './schlank';
+import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { IndexStreifen, STREIFEN } from './business/IndexStreifen';
 
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
@@ -73,6 +74,8 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
     <>
       {/* Business-Index (25.09.): die Finanz-Kennzahlen, dieselbe Zahl wie im Cockpit. */}
       {!ohneStreifen && <IndexStreifen ids={STREIFEN.zahlen} titel="Business-Index · Finanzen" />}
+      <Flaeche seite="zahlen">
+      <Kachel id="konten" titel="Auf den Konten" breite={6}>
       <Karte i={0} akzent={LEUCHT.geld}>
         <Ueberschrift farbe={LEUCHT.geld}>Auf den Konten</Ueberschrift>
         <Link href={WEG.kontostaende()} style={{ textDecoration: 'none', color: 'inherit' }}><Zahl gross wert={plan ? eur(konten) : undefined} farbe={konten < 0 ? LEUCHT.kritisch : LEUCHT.geld} label="Kontostand · pflegen ›" /></Link>
@@ -82,8 +85,8 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
           <Link href={WEG.rechnungen()} style={{ textDecoration: 'none', color: 'inherit' }}><Zahl wert={plan ? eur(kommtRein.reduce((s, r) => s + r.betrag, 0)) : undefined} label={`kommt rein · ${kommtRein.length} Rechnungen ›`} farbe={kommtRein.length ? LEUCHT.gut : C.inkLeise} /></Link>
         </div>
       </Karte>
-      <Spalten verhaeltnis="3:2">
-        <Spalte>
+      </Kachel>
+      <Kachel id="faellig" titel="Als Nächstes fällig" breite={4}>
       <Karte i={2} akzent={faellig.some(z => z.faellig && z.faellig < heute) ? LEUCHT.kritisch : undefined}>
         <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href="/os/finanzen/planung" style={{ color: C.inkLeise, textDecoration: 'none' }}>alle ›</Link>}>Als Nächstes fällig</Ueberschrift>
         <Liste>
@@ -95,7 +98,9 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
           })}
         </Liste>
       </Karte>
+      </Kachel>
       {monat.im.length > 0 && (
+        <Kachel id="monat" titel="Dieser Monat" breite={4}>
         <Karte i={3}>
           <Ueberschrift farbe={LEUCHT.puls} rechts={<Link href="/os/finanzen/buchungen" style={{ color: C.inkLeise, textDecoration: 'none' }}>{buchungen.length} Buchungen ›</Link>}>{monat.label}</Ueberschrift>
           <div style={{ display: 'flex', gap: 18, padding: '4px 0 12px', fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 17, fontVariantNumeric: 'tabular-nums' }}>
@@ -112,10 +117,10 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
             ))}
           </div>
         </Karte>
+        </Kachel>
       )}
-        </Spalte>
-        <Spalte>
       {k && (
+        <Kachel id="grundlage" titel="Grundlage · Malins Kassenbuch" breite={2}>
         <Karte i={1}>
           <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/finanzen/grundlage" style={{ color: C.inkLeise, textDecoration: 'none' }}>Stand {datum(grund?.stand)} ›</Link>}>Grundlage · Malins Kassenbuch</Ueberschrift>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, padding: '4px 0' }}>
@@ -126,8 +131,10 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
           </div>
           <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>{MONAT_KURZ(k.vonMonat)} bis {MONAT_KURZ(k.bisMonat)} {k.bisMonat.slice(0, 4)} · {k.monate} Monate seit dem ersten Beleg</div>
         </Karte>
+        </Kachel>
       )}
-      <BelegeBusiness />
+      <Kachel id="belege" titel="Rechnungen & Belege" breite={2}><BelegeBusiness /></Kachel>
+      <Kachel id="bereiche" titel="Bereiche" breite={2}>
       <Karte i={4}>
         <Ueberschrift>Bereiche</Ueberschrift>
         <Liste>
@@ -138,8 +145,8 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
           ))}
         </Liste>
       </Karte>
-        </Spalte>
-      </Spalten>
+      </Kachel>
+      </Flaeche>
     </>
   );
 }

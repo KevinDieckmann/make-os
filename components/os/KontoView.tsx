@@ -7,7 +7,8 @@
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, feld, LEUCHT, Spalten, Spalte } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, feld, LEUCHT } from './schlank';
+import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { HaushaltZuordnung } from './HaushaltZuordnung';
 
 interface Ich { speicher: string; email: string; name: string; rolle: 'inhaber' | 'mitglied'; teilt: { gesundheit: string[] }; angelegt: string; zweiterFaktorAn?: boolean }
@@ -71,8 +72,8 @@ export function KontoView() {
       <Karte i={0}><div style={{ fontSize: TYP.body }}>{ich.email}<span style={{ color: C.inkLeise }}> · Daten unter <code style={{ fontFamily: SCHRIFT.mono, fontSize: 13 }}>{ich.speicher}</code> · seit {ich.angelegt.slice(8, 10)}.{ich.angelegt.slice(5, 7)}.{ich.angelegt.slice(0, 4)}</span></div>
         {anmeldungen.length > 0 && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 6 }}>Zuletzt: {anmeldungen.map(e => `${e.zeit.slice(8, 10)}.${e.zeit.slice(5, 7)}. ${e.zeit.slice(11, 16)} ${e.art}${e.ok ? '' : ' (fehlgeschlagen)'} · ${e.adresse}`).join(' · ')}</div>}
       {meldung && <div style={{ fontSize: TYP.bedien, color: meldung.includes('nicht') || meldung.includes('Fehler') ? LEUCHT.kritisch : LEUCHT.gut, marginTop: 10 }}>{meldung}</div>}</Karte>
-      <Spalten verhaeltnis="1:1">
-        <Spalte>
+      <Flaeche seite="konto">
+      <Kachel id="zugang" titel="Name & Passwort" breite={3}>
       <Karte i={1}>
       <Ueberschrift>Name</Ueberschrift>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 18 }}>
@@ -87,6 +88,8 @@ export function KontoView() {
         <Knopf leise onClick={() => speichern({ passwortAlt: pw.alt, passwortNeu: pw.neu }, 'Passwort geändert.')} aus={pw.neu.length < 10 || !pw.alt}>Ändern</Knopf>
       </div>
       </Karte>
+      </Kachel>
+      <Kachel id="zwei-faktor" titel="Zweiter Faktor" breite={3}>
       <Karte i={2} akzent={ich.zweiterFaktorAn ? LEUCHT.gut : LEUCHT.achtung}>
         <Ueberschrift farbe={ich.zweiterFaktorAn ? LEUCHT.gut : LEUCHT.achtung} rechts={<span>{ich.zweiterFaktorAn ? 'an' : 'aus'}</span>}>Zweiter Faktor · Authenticator</Ueberschrift>
         {zf.phase === 'codes' && zf.codes && (
@@ -117,7 +120,9 @@ export function KontoView() {
           <Zeile titel="Zweiter Faktor ist an" unter="Ausschalten nur mit Passwort — danach genügt beim Anmelden wieder das Passwort allein." rechts={<span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input type="password" placeholder="Passwort" value={zf.passwort} onChange={e => setZf(z => ({ ...z, passwort: e.target.value }))} style={{ ...feld, width: 150, padding: '8px 10px', fontSize: TYP.bedien }} autoComplete="current-password" /><Knopf leise onClick={zfAus} aus={!zf.passwort}>Ausschalten</Knopf></span>} />
         )}
       </Karte>
+      </Kachel>
       {ich.rolle === 'inhaber' && (
+        <Kachel id="einladen" titel="Einladen" breite={3}>
         <Karte i={4} akzent={LEUCHT.schlaf}>
           <Ueberschrift farbe={LEUCHT.schlaf}>Einladen</Ueberschrift>
           <Liste>
@@ -133,10 +138,10 @@ export function KontoView() {
             ) : <Zeile titel="Jemanden einladen" unter={'Die Person öffnet den Link, trägt Vorname, E-Mail und Passwort ein — fertig. Für Malin hier „Malin“ eintragen: dann hängen ihre bisherigen Bestände am Konto (ohne diese Bindung bekommt niemand ihren Namen).'} rechts={<span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input value={fuer} onChange={e => setFuer(e.target.value)} placeholder="Vorname (optional)" aria-label="Für wen" style={{ ...feld, width: 150, padding: '8px 10px', fontSize: TYP.bedien }} /><Knopf onClick={einladen}>Link erzeugen</Knopf></span>} />}
           </Liste>
         </Karte>
+        </Kachel>
       )}
-      {ich.rolle === 'inhaber' && <HaushaltZuordnung />}
-        </Spalte>
-        <Spalte>
+      {ich.rolle === 'inhaber' && <Kachel id="haushalt" titel="Haushalt" breite={3}><HaushaltZuordnung /></Kachel>}
+      <Kachel id="teilen" titel="Gesundheit teilen" breite={3}>
       <Karte i={2}>
       <Ueberschrift farbe={LEUCHT.gut}>Gesundheit teilen</Ueberschrift>
       <Liste>
@@ -148,6 +153,8 @@ export function KontoView() {
         })}
       </Liste>
       </Karte>
+      </Kachel>
+      <Kachel id="bote" titel="Der Bote · Telegram" breite={3}>
       <Karte i={3}>
       <Ueberschrift farbe={LEUCHT.puls}>Der Bote · Telegram</Ueberschrift>
       <Liste>
@@ -159,8 +166,8 @@ export function KontoView() {
         {tg?.fehler && <Leer><span style={{ color: LEUCHT.kritisch }}>{tg.fehler}</span></Leer>}
       </Liste>
       </Karte>
-        </Spalte>
-      </Spalten>
+      </Kachel>
+      </Flaeche>
     </Seite>
   );
 }

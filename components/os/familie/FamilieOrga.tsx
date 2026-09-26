@@ -7,7 +7,8 @@
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Leer, Liste, Zeile, Haken, Spalten, Spalte, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Knopf, Chip, Leer, Liste, Zeile, Haken, LEUCHT } from '../schlank';
+import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { KINDER_KARTEN } from '@/lib/familie/katalog';
 import type { Karte as KarteT, WichtigerTag, Mensch } from '@/lib/familie/typen';
 import { type FamilieApi, neueId, datumLang } from './daten';
@@ -32,16 +33,12 @@ function datumAus(t: string): string | null {
 
 export function FamilieOrga({ api }: { api: FamilieApi }) {
   return (
-    <Spalten verhaeltnis="1:1">
-      <Spalte>
-        <Tage api={api} />
-        <Menschen api={api} />
-      </Spalte>
-      <Spalte>
-        <Karten api={api} />
-        <Rituale api={api} />
-      </Spalte>
-    </Spalten>
+    <Flaeche seite="familie-orga">
+      <Kachel id="tage" titel="Wichtige Tage" breite={3}><Tage api={api} /></Kachel>
+      <Kachel id="karten" titel="Wer trägt was" breite={3}><Karten api={api} /></Kachel>
+      <Kachel id="menschen" titel="Unsere Menschen" breite={3}><Menschen api={api} /></Kachel>
+      <Kachel id="rituale" titel="Unsere Traditionen" breite={3}><Rituale api={api} /></Kachel>
+    </Flaeche>
   );
 }
 

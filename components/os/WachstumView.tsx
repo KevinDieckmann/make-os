@@ -12,7 +12,8 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Ring, Balken, Chip, Fortschritt, Zahl, zoneFarbe, LEUCHT, Spalten, Spalte } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Ring, Balken, Chip, Fortschritt, Zahl, zoneFarbe, LEUCHT } from './schlank';
+import { Flaeche, Kachel } from './flaeche/Flaeche';
 
 interface Faktor { label: string; wert: number; echt: boolean; quelle?: string; href?: string }
 interface Saeule { key: string; label: string; gewicht: number; score: number | null; zuDuenn: boolean; faktoren?: Faktor[] }
@@ -72,8 +73,8 @@ export function WachstumView() {
         </div>
       </Karte>
 
-      <Spalten verhaeltnis="3:2">
-        <Spalte>
+      <Flaeche seite="wachstum">
+      <Kachel id="saeulen" titel="Die sechs Säulen" breite={4}>
       <Karte i={1}>
         <Ueberschrift rechts="Klick zeigt die Faktoren">Die sechs Säulen</Ueberschrift>
         <Liste>
@@ -110,9 +111,8 @@ export function WachstumView() {
           {perf && !perf.saeulen.length && <Leer>Noch keine Säulen berechnet.</Leer>}
         </Liste>
       </Karte>
-
-        </Spalte>
-        <Spalte>
+      </Kachel>
+      <Kachel id="fokus" titel="Fokus" breite={2}>
       <Karte i={5} akzent={LEUCHT.schlaf}>
         <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/kompass" style={{ color: C.inkLeise, textDecoration: 'none' }}>Kompass ›</Link>}>Fokus</Ueberschrift>
         <Liste>
@@ -122,10 +122,12 @@ export function WachstumView() {
           ))}
         </Liste>
       </Karte>
+      </Kachel>
         {horizonte.map((h, i) => {
           const liste = ziele?.[h.id] ?? [];
           return (
-            <Karte key={h.id} i={2 + i}>
+            <Kachel key={h.id} id={`ziele-${h.id}`} titel={`Ziele · ${h.label}`} breite={2}>
+            <Karte i={2 + i}>
               <Ueberschrift farbe={h.farbe} rechts={<Link href={h.href} style={{ color: C.inkLeise, textDecoration: 'none' }}>pflegen ›</Link>}>Ziele · {h.label}</Ueberschrift>
               {!liste.length && <Leer>Noch kein Ziel für {h.id === 'jahr' ? 'dieses Jahr' : h.id === 'quartal' ? 'dieses Quartal' : 'diesen Monat'}.</Leer>}
               {liste.map(z => (
@@ -138,10 +140,10 @@ export function WachstumView() {
                 </div>
               ))}
             </Karte>
+            </Kachel>
           );
         })}
-        </Spalte>
-      </Spalten>
+      </Flaeche>
     </Seite>
   );
 }

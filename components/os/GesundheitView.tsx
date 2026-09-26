@@ -20,7 +20,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT, ABSTAND as A } from '@/lib/make-one/design';
 import { WhoopImport } from './WhoopImport';
-import { Seite, Karte, Ueberschrift, Ring, Segmente, Chip, Fortschritt, Balken as Trend, feld, LEUCHT, Spalten, Spalte } from './schlank';
+import { Seite, Karte, Ueberschrift, Ring, Segmente, Chip, Fortschritt, Balken as Trend, feld, LEUCHT } from './schlank';
+import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { BESCHWERDEN, HEBEL, AUFBAU, ZUSAMMENHAENGE, CARE_NOTE } from '@/lib/make-one/health-data';
 
 /** Welche Kennzahl des Gesundheits-Index hinter einem Hebel steht (26.09.). */
@@ -222,9 +223,9 @@ export function GesundheitView() {
 
       {segment === 'heute' && (
         <>
-          <Spalten verhaeltnis="1:1">
-          <Spalte>
-          <GesundheitIndexKurz fuer={!eigene ? ansicht : undefined} onOeffnen={() => geheZu('index')} stand={hl} />
+          <Flaeche seite="gesundheit-heute">
+          <Kachel id="index-kurz" titel="Gesundheits-Index" breite={3}><GesundheitIndexKurz fuer={!eigene ? ansicht : undefined} onOeffnen={() => geheZu('index')} stand={hl} /></Kachel>
+          <Kachel id="morgen" titel="Morgen-Check" breite={3}>
           <Karte i={0} akzent={rec != null ? zone(rec) : undefined} id="morgen" style={{ scrollMarginTop: 90 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 'clamp(8px,2vw,20px)', margin: '4px 0 8px' }}>
               <button type="button" onClick={() => geheZu('verlauf')} className="fassbar" title="Verlauf 30 Tage" style={{ all: 'unset', cursor: 'pointer' }}><Ring label="Recovery" wert={rec != null ? String(rec) : undefined} einheit="%" farbe={zone(rec)} anteil={rec != null ? rec / 100 : undefined}
@@ -242,6 +243,8 @@ export function GesundheitView() {
             </p>
             {stand && rec == null && eigene && <div style={{ marginTop: 14, display: 'flex', justifyContent: 'center' }}><WhoopImport kurz onFertig={() => { void laden(); setVerlauf(null); }} /></div>}
           </Karte>
+          </Kachel>
+          <Kachel id="sieben-tage" titel="Sieben Tage Routinen" breite={3}>
           <Karte i={3}>
             <Ueberschrift rechts={`Ø ${stand?.routinen.quote7 ?? '—'} %`}>Sieben Tage Routinen</Ueberschrift>
             <Trend werte={sieben.map(t => t.n || null)} max={anzahl} farbe={LEUCHT.gut} hoehe={44} titel={sieben.map(t => `${t.d.slice(8)}.${t.d.slice(5, 7)}. · ${t.n}/${anzahl}`)} />
@@ -256,7 +259,9 @@ export function GesundheitView() {
               <Link href={WEG.saeule('health')} style={{ color: C.inkDim }}>Säule im Wachstums-Score ›</Link>
             </div>
           </Karte>
+          </Kachel>
           {eigene && (
+            <Kachel id="drei-fragen" titel="Drei Fragen" breite={3}>
             <Karte i={2} akzent={LEUCHT.schlaf}>
               <Ueberschrift farbe={LEUCHT.schlaf}>Drei Fragen</Ueberschrift>
               <div style={{ display: 'grid', gap: 8 }}>
@@ -265,9 +270,9 @@ export function GesundheitView() {
                 ))}
               </div>
             </Karte>
+            </Kachel>
           )}
-          </Spalte>
-          <Spalte>
+          <Kachel id="routinen" titel="Routinen heute" breite={3}>
           <Karte i={1} id="routinen" style={{ scrollMarginTop: 90 }}>
             <Ueberschrift farbe={LEUCHT.gut} rechts={<span>{heuteDrin.size} von {anzahl} · <Link href={WEG.routinen()} style={{ color: C.inkLeise, textDecoration: 'none' }}>planen ›</Link></span>}>Heute</Ueberschrift>
             <Fortschritt anteil={anzahl ? heuteDrin.size / anzahl : 0} farbe={LEUCHT.gut} />
@@ -298,8 +303,8 @@ export function GesundheitView() {
               )}
             </div>
           </Karte>
-          </Spalte>
-          </Spalten>
+          </Kachel>
+          </Flaeche>
         </>
       )}
 
@@ -329,29 +334,35 @@ export function GesundheitView() {
 
       {segment === 'koerper' && (
         <>
-          <Spalten verhaeltnis="1:1">
-          <Spalte>
-          <EnergieView eingebettet />
+          <Flaeche seite="gesundheit-koerper">
+          <Kachel id="energie" titel="Energie" breite={3}><EnergieView eingebettet /></Kachel>
+          <Kachel id="meilensteine" titel="Gesundheits-Meilensteine" breite={3}>
           <Karte i={4}>
             <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/planung/jahr" style={{ color: C.inkLeise, textDecoration: 'none' }}>pflegen ›</Link>}>Gesundheits-Meilensteine</Ueberschrift>
             {!etappen.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch keiner — <Link href="/os/planung/jahr" style={{ color: C.inkDim }}>in der Jahresplanung anlegen ›</Link></div>}
             {etappen.map(g => { const spaet = !!g.faellig && g.faellig < heute && !g.erledigt; return <Link key={g.id} href={`/os/planung/jahr?m=${encodeURIComponent(g.id)}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}><Zeile titel={<span style={{ textDecoration: g.erledigt ? 'line-through' : 'none', color: g.erledigt ? C.inkLeise : C.ink }}>{g.titel}</span>} unter={spaet ? `überfällig seit ${g.faellig!.slice(8)}.${g.faellig!.slice(5, 7)}. — zählt 0 im Index` : g.faellig ? `fällig ${g.faellig.slice(8)}.${g.faellig.slice(5, 7)}.` : undefined} kinder={<span style={{ fontSize: 12, color: spaet ? LEUCHT.kritisch : C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{g.fortschritt} %</span>} /><div style={{ margin: '-4px 0 10px' }}><Fortschritt anteil={g.fortschritt / 100} farbe={spaet ? LEUCHT.kritisch : LEUCHT.schlaf} /></div></Link>; })}
           </Karte>
+          </Kachel>
+          <Kachel id="zusammenhaenge" titel="Zusammenhänge" breite={3}>
           <Karte i={5}>
             <Ueberschrift>Zusammenhänge</Ueberschrift>
             {ZUSAMMENHAENGE.map(z => <Zeile key={z} titel={z} kinder={<span />} />)}
             <p style={{ fontSize: 12, color: C.inkLeise, marginTop: A.xl, lineHeight: 1.5 }}>{CARE_NOTE}</p>
           </Karte>
-          </Spalte>
-          <Spalte>
+          </Kachel>
+          <Kachel id="profil" titel="Profil" breite={3}>
           <Karte i={1}>
             <Ueberschrift farbe={LEUCHT.puls} rechts={<button onClick={() => geheZu('verlauf')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>aktuell im Verlauf ›</button>}>Profil · Stand 29.07.</Ueberschrift>
             {AUFBAU.map(s => <Zeile key={s.phase} wann={s.state === 'now' ? 'Jetzt' : s.state === 'next' ? 'Danach' : 'Später'} titel={`${s.phase} · ${s.name}`} unter={s.desc} kinder={<span />} />)}
           </Karte>
+          </Kachel>
+          <Kachel id="aufmerksamkeit" titel="Was Aufmerksamkeit braucht" breite={3}>
           <Karte i={2}>
             <Ueberschrift farbe={LEUCHT.achtung} rechts={<span>Stand 29.07. · <button onClick={() => geheZu('verlauf')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>aktuell ›</button></span>}>Was Aufmerksamkeit braucht</Ueberschrift>
             {BESCHWERDEN.map(b => <Zeile key={b.name} titel={b.name} unter={b.note} kinder={<Chip farbe={b.tone === 'crit' ? LEUCHT.kritisch : b.tone === 'watch' ? LEUCHT.achtung : LEUCHT.gut}>{b.status}</Chip>} />)}
           </Karte>
+          </Kachel>
+          <Kachel id="hebel" titel="Hebel · live" breite={3}>
           <Karte i={3}>
             <Ueberschrift farbe={LEUCHT.gut} rechts={<button onClick={() => geheZu('index')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>Index ›</button>}>Hebel · live</Ueberschrift>
             {HEBEL.map(h => {
@@ -360,8 +371,8 @@ export function GesundheitView() {
               return <Link key={h.name} href={`/os/gesundheit?s=index${!eigene ? `&fuer=${ansicht}` : ''}&k=${HEBEL_KENNZAHL[h.name] ?? ''}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}><Zeile titel={h.name} unter={k ? (k.gemessen ? k.label : `${k.label} · noch nicht messbar`) : h.note} kinder={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 16, color: f }}>{k?.gemessen ? k.anzeige : '—'}</span>} /></Link>;
             })}
           </Karte>
-          </Spalte>
-          </Spalten>
+          </Kachel>
+          </Flaeche>
         </>
       )}
     </Seite>

@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Segmente, Leer, Knopf, LEUCHT } from '../schlank';
+import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { useFamilie, WOCHENTAGE, type FamilieApi } from './daten';
 import { WirZwei } from './WirZwei';
 import { Gespraech } from './Gespraech';
@@ -50,6 +51,8 @@ function Rahmen({ api }: { api: FamilieApi }) {
   const zeit = (v: string, onW: (x: string) => void, label: string) => <input type="time" value={v} aria-label={label} onChange={x => onW(x.target.value)} style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, padding: '8px 10px', color: C.ink }} />;
   return (
     <>
+      <Flaeche seite="familie-rahmen">
+      <Kachel id="gespraech" titel="Unser Paar-Gespräch" breite={3}>
       <Karte i={0} akzent={LEUCHT.beziehung}>
         <Ueberschrift farbe={LEUCHT.beziehung}>Unser Paar-Gespräch</Ueberschrift>
         <Klein>Ein fester Termin pro Woche, 30 bis 45 Minuten, immer mit derselben Agenda. Er ist wichtiger als jedes Business-Meeting — und wird genauso geschützt.</Klein>
@@ -61,7 +64,9 @@ function Rahmen({ api }: { api: FamilieApi }) {
           </Reihe>
         </div>
       </Karte>
+      </Kachel>
 
+      <Kachel id="business-frei" titel="Business-freie Zeiten" breite={3}>
       <Karte i={1}>
         <Ueberschrift farbe={LEUCHT.beziehung}>Business-freie Zeiten</Ueberschrift>
         <Klein>Ehe ist kein Business. In diesen Zeiten gibt es keine Business-Themen — MAKE OS erinnert euch im Paar-Gespräch daran, ob es geklappt hat.</Klein>
@@ -83,7 +88,9 @@ function Rahmen({ api }: { api: FamilieApi }) {
           <div><Knopf leise onClick={() => setze({ businessFrei: [...e.businessFrei, { tage: [6], von: '18:00', bis: '23:59' }] })}>+ Zeitfenster</Knopf></div>
         </div>
       </Karte>
+      </Kachel>
 
+      <Kachel id="ausnahme" titel="Ausnahmezeit" breite={3}>
       <Karte i={2}>
         <Ueberschrift>Ausnahmezeit</Ueberschrift>
         <Klein>Urlaub, Krankheit, Geburt, Umzug: Der Rhythmus pausiert, statt euch zu bewerten.</Klein>
@@ -93,7 +100,9 @@ function Rahmen({ api }: { api: FamilieApi }) {
           {e.ausnahmeBis && <Knopf leise onClick={() => { setAusnahme(''); setze({ ausnahmeBis: null }); }}>Pause beenden</Knopf>}
         </Reihe>
       </Karte>
+      </Kachel>
 
+      <Kachel id="kinder" titel="Kinder" breite={3}>
       <Karte i={3}>
         <Ueberschrift>Kinder</Ueberschrift>
         <Reihe>
@@ -101,6 +110,8 @@ function Rahmen({ api }: { api: FamilieApi }) {
           <Klein>Mit Kindern kommen eigene Aufgabenkarten dazu (Kita, Bringen, Kinderarzt, Einzelzeit).</Klein>
         </Reihe>
       </Karte>
+      </Kachel>
+      </Flaeche>
     </>
   );
 }

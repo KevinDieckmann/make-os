@@ -24,7 +24,8 @@ import {
   gerichteFiltern, tagsHaeufig, imPlan, gerichtZuName, zutatenAusText, schritteAusText,
   type ErnaehrungFile, type Mahlzeiten, type Tag, type Mahlzeit, type Op, type Gericht, type EinkaufPosten, type Profil, type Kategorie, type PlanGerichte,
 } from '@/lib/ernaehrung/modell';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, feld, LEUCHT, Spalten, Spalte, useBreit } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, feld, LEUCHT, useBreit } from './schlank';
+import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { bildVerkleinern } from '@/lib/bilder/client';
 
 interface Daten extends ErnaehrungFile { ich: string; personen: { id: string; name: string }[]; budget: { monat: string; ausgegeben: number; budget: number | null } | null }
@@ -184,9 +185,9 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
   const budgetFarbe = b && b.budget ? (b.ausgegeben > b.budget ? LEUCHT.kritisch : b.ausgegeben > b.budget * 0.85 ? LEUCHT.achtung : LEUCHT.gut) : C.inkLeise;
 
   const inhalt = (
-    <Spalten verhaeltnis="2:1">
-      <Spalte>
+    <Flaeche seite="ernaehrung">
         {/* ── Essens-Woche ── */}
+        <Kachel id="woche" titel="Essens-Woche" breite={4}>
         <Karte i={0} akzent={LEUCHT.gut}>
           <Ueberschrift farbe={geplantN >= 15 ? LEUCHT.gut : LEUCHT.achtung} rechts={<Chip farbe={geplantN >= 15 ? LEUCHT.gut : C.inkLeise}>{geplantN}/21 geplant</Chip>}>Essens-Woche</Ueberschrift>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
@@ -235,9 +236,11 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
           </div>
           {vorschlag && <p style={{ fontSize: 12, color: LEUCHT.achtung, margin: '10px 0 0' }}>Vorschau — mit „Übernehmen“ wird sie euer Plan.</p>}
         </Karte>
+        </Kachel>
 
         {/* ── Rezept (aus dem Plan-Feld oder aus der Bibliothek) ── */}
         {rezeptOffen && (
+          <Kachel id="rezept" titel="Rezept" breite={4}>
           <div ref={rezeptRef} style={{ scrollMarginTop: 16 }}>
           <Karte i={1} akzent={LEUCHT.gut}>
             <Ueberschrift farbe={LEUCHT.gut} rechts={<button type="button" onClick={() => { setOffen(null); setGewaehlt(null); setFormular(null); }} style={nackt}>✕</button>}>
@@ -269,9 +272,11 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
             ) : null}
           </Karte>
           </div>
+          </Kachel>
         )}
 
         {/* ── Unsere Gerichte (Bibliothek) ── */}
+        <Kachel id="gerichte" titel="Unsere Gerichte" breite={4}>
         <Karte i={2} akzent={LEUCHT.gut} id="gerichte">
           <Ueberschrift farbe={LEUCHT.gut} rechts={<Chip farbe={daten.gerichte.length ? LEUCHT.gut : C.inkLeise}>{daten.gerichte.length === 1 ? '1 Gericht' : `${daten.gerichte.length} Gerichte`}</Chip>}>Unsere Gerichte</Ueberschrift>
           {/* Anlegen ist ein Schritt (Kevin 26.09.): Name tippen, Enter — Jarvis schreibt das Rezept. Von Hand oder aus Text nur als Zusatz. */}
@@ -320,8 +325,10 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
           </div>
           <p style={{ fontSize: 12, color: C.inkLeise, margin: '10px 0 0', lineHeight: 1.5 }}>Ein Klick öffnet Rezept, Foto, Notiz und „in den Plan“. Lieblinge plant Jarvis gern wieder ein; steht ein Plan-Feld genauso wie ein Gericht hier, hängt das Rezept automatisch dran.</p>
         </Karte>
+        </Kachel>
 
         {/* ── Profile ── */}
+        <Kachel id="profile" titel="Bedürfnisse & Vorlieben" breite={4}>
         <Karte i={3} akzent={LEUCHT.schlaf}>
           <Ueberschrift farbe={LEUCHT.schlaf} rechts={<span>jeder pflegt sein eigenes</span>}>Bedürfnisse & Vorlieben</Ueberschrift>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
@@ -334,10 +341,10 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
             <span style={{ fontSize: 12, color: C.inkLeise }}>Gäste plant Jarvis mit, wenn ihr sie oben anklickt.</span>
           </div>
         </Karte>
-      </Spalte>
+        </Kachel>
 
-      <Spalte>
         {/* ── Einkaufsliste ── */}
+        <Kachel id="einkauf" titel="Einkaufsliste" breite={2}>
         <Karte i={1} akzent={LEUCHT.geld}>
           <Ueberschrift farbe={LEUCHT.geld} rechts={<Chip farbe={offene.length ? LEUCHT.achtung : LEUCHT.gut}>{offene.length} offen</Chip>}>Einkaufsliste</Ueberschrift>
           {b && (
@@ -379,8 +386,10 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
             </div>
           )}
         </Karte>
+        </Kachel>
 
         {/* ── Vorrat ── */}
+        <Kachel id="vorrat" titel="Vorrat" breite={2}>
         <Karte i={2}>
           <Ueberschrift farbe={LEUCHT.puls} rechts={<span>{daten.vorrat.length === 1 ? '1 Ding' : `${daten.vorrat.length} Dinge`} zuhause</span>}>Vorrat · was da ist</Ueberschrift>
           <div style={{ maxHeight: 300, overflowY: 'auto' }}>
@@ -400,8 +409,10 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
               onKeyDown={e => { if (e.key === 'Enter' && neuVorrat.trim()) { const { text, menge } = postenParsen(neuVorrat); void patch([{ liste: 'vorrat', op: 'upsert', eintrag: { name: text, menge: menge ?? '', kategorie: kategorieRaten(text) } }]); setNeuVorrat(''); } }} />
           </div>
         </Karte>
+        </Kachel>
 
         {/* ── Stammliste ── */}
+        <Kachel id="stammliste" titel="Stammliste" breite={2}>
         <Karte i={3}>
           <Ueberschrift farbe={LEUCHT.achtung} rechts={<span>bevorzugt nehmen</span>}>Stammliste · unsere Lebensmittel</Ueberschrift>
           <div style={{ maxHeight: 300, overflowY: 'auto' }}>
@@ -430,8 +441,10 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
             {KATEGORIEN.map(k => <option key={k.id} value={k.id}>{k.label}</option>)}
           </select>
         </Karte>
+        </Kachel>
 
         {/* ── Grundsätze ── */}
+        <Kachel id="grundsaetze" titel="Grundsätze" breite={2}>
         <Karte i={4}>
           <Ueberschrift farbe={LEUCHT.agenten} rechts="für alle">Grundsätze</Ueberschrift>
           <details>
@@ -443,8 +456,8 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
             {!eingebettet && <>{' '}<Link href="/os/gesundheit" style={link}>Gesundheit ›</Link></>}
           </p>
         </Karte>
-      </Spalte>
-    </Spalten>
+        </Kachel>
+    </Flaeche>
   );
 
   if (eingebettet) return inhalt;

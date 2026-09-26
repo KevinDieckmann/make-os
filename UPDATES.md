@@ -68,6 +68,9 @@ seine eigene Seite vorne soll man sich selber gestalten — auch wenn wir am Anf
 - Technik: `lib/flaeche/modell.ts` (rein, getestet), `/api/state/flaeche` je Person, `components/os/flaeche/`
   (Flaeche + Kachel + Widget-Register). Raster mit 6 Spalten und dichtem Packen, am Handy eine Spalte. Weitere
   Karten-Seiten folgen mit demselben Bauteil; die alte Startflächen-Schnittstelle ohne Oberfläche ist entfernt.
+- **Weitere Flächen (gleiche Bedienung, je Person):** Gesundheit → Heute und Körper, Ernährung, Zahlen → Business,
+  Konto, Wachstum, Familie → Wir zwei / Familie / Rahmen. Feste Karten einer Seite lassen sich ordnen, in der Breite
+  ändern und ausblenden (kommen über „+ Widget → Ausgeblendet“ zurück); Katalog-Widgets kann man überall dazunehmen.
 
 **Ernährung & Einkauf zu zweit (26.09., Kevin: „Lebensmittel bevorzugt nehmen, meine Bedürfnisse und Malins, was wir
 zuhause haben soll benutzt werden, an jedem Gericht das Rezept“)** — Gesundheit → Ernährung

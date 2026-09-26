@@ -206,7 +206,8 @@ lokal, Route `/os`, Port 3001.
   (6 Spalten, 8-px-Zeilen, ResizeObserver-Spans, dense). Neue Seite anschließen = Karten in `Kachel` wickeln, `seite`-Id
   vergeben. Widgets in `components/os/flaeche/widgets.tsx` (selbstladend, `null` wenn es nichts gibt; Einstellungen
   per `EinstellungDef`; Katalog-Einträge dürfen Voreinstellungen tragen).
-- Heute (`components/os/HeuteView.tsx`) ist die erste Fläche (`HEUTE_STANDARD`).
+- Flächen bisher: Heute (`HEUTE_STANDARD`), `gesundheit-heute`, `gesundheit-koerper`, `ernaehrung`, `zahlen`, `konto`,
+  `wachstum`, `familie-wir`, `familie-orga`, `familie-rahmen`. Weitere Karten-Seiten nach demselben Muster anschließen.
 
 ## Technik
 - TypeScript strikt: vor jedem Commit `npx tsc --noEmit` — null Fehler.
