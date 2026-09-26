@@ -1,4 +1,5 @@
 'use client';
+import { useSpace } from '@/hooks/useSpace';
 
 // ─── MAKE OS — Schnellsuche (⌘K / Strg+K) ──────────────────────────────────
 // Von jeder Seite aus: Kontakte, Firmen, Chancen, Mandate, Kampagnen — und die
@@ -10,17 +11,18 @@ import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { LEUCHT } from './schlank';
 
-interface Treffer { art: string; id: string; titel: string; unter?: string; href: string }
+interface Treffer { art: string; id: string; titel: string; unter?: string; href: string; space?: 'privat' | 'business' }
 const SEITEN: Treffer[] = [
-  { art: 'seite', id: 'markttraktion', titel: 'Markttraktion · Überblick', href: '/os/markttraktion' }, { art: 'seite', id: 'powerhour', titel: 'Sales · Heute (Power Hour)', href: '/os/markttraktion?s=sales' },
-  { art: 'seite', id: 'kontakte', titel: 'Markttraktion · Kontakte', href: '/os/markttraktion?s=kontakte' },
-  { art: 'seite', id: 'firmen', titel: 'Markttraktion · Firmen', href: '/os/markttraktion?s=firmen' }, { art: 'seite', id: 'pipeline', titel: 'Sales · Pipeline', href: '/os/markttraktion?s=sales&a=pipeline' },
-  { art: 'seite', id: 'kunden', titel: 'Produkte & Mandate', href: '/os/mandate' }, { art: 'seite', id: 'produkte', titel: 'Produkte (Leistungskatalog)', href: '/os/mandate?s=produkte' }, { art: 'seite', id: 'kampagnen', titel: 'Kampagnen', href: '/os/markttraktion?s=sales&a=kampagnen' },
-  { art: 'seite', id: 'marketing', titel: 'Marketing', href: '/os/markttraktion?s=marketing' },
-  { art: 'seite', id: 'events', titel: 'Event', href: '/os/markttraktion?s=event' }, { art: 'seite', id: 'stammdaten', titel: 'Markttraktion · Stammdaten', href: '/os/markttraktion?s=stammdaten' },
-  { art: 'seite', id: 'aufgaben', titel: 'Aufgaben', href: '/os/aufgaben' }, { art: 'seite', id: 'finanzen', titel: 'Zahlen', href: '/os/finanzen' },
-  { art: 'seite', id: 'familie', titel: 'Familie & Partnerschaft', href: '/os/familie' }, { art: 'seite', id: 'fokus', titel: 'Fokus', href: '/os/fokus' },
-  { art: 'seite', id: 'gesundheit', titel: 'Gesundheit', href: '/os/gesundheit' }, { art: 'seite', id: 'wissen', titel: 'Brain', href: '/os/wissen' },
+  { art: 'seite', id: 'markttraktion', titel: 'Markttraktion · Überblick', href: '/os/markttraktion', space: 'business' }, { art: 'seite', id: 'powerhour', titel: 'Sales · Heute (Power Hour)', href: '/os/markttraktion?s=sales', space: 'business' },
+  { art: 'seite', id: 'kontakte', titel: 'Markttraktion · Kontakte', href: '/os/markttraktion?s=kontakte', space: 'business' },
+  { art: 'seite', id: 'firmen', titel: 'Markttraktion · Firmen', href: '/os/markttraktion?s=firmen', space: 'business' }, { art: 'seite', id: 'pipeline', titel: 'Sales · Pipeline', href: '/os/markttraktion?s=sales&a=pipeline', space: 'business' },
+  { art: 'seite', id: 'kunden', titel: 'Produkte & Mandate', href: '/os/mandate', space: 'business' }, { art: 'seite', id: 'produkte', titel: 'Produkte (Leistungskatalog)', href: '/os/mandate?s=produkte', space: 'business' }, { art: 'seite', id: 'kampagnen', titel: 'Kampagnen', href: '/os/markttraktion?s=sales&a=kampagnen', space: 'business' },
+  { art: 'seite', id: 'marketing', titel: 'Marketing', href: '/os/markttraktion?s=marketing', space: 'business' },
+  { art: 'seite', id: 'events', titel: 'Event', href: '/os/markttraktion?s=event', space: 'business' }, { art: 'seite', id: 'stammdaten', titel: 'Markttraktion · Stammdaten', href: '/os/markttraktion?s=stammdaten', space: 'business' },
+  { art: 'seite', id: 'finanzen-business', titel: 'Zahlen · Business', href: '/os/finanzen?s=business', space: 'business' }, { art: 'seite', id: 'agenten', titel: 'Agenten', href: '/os/agenten', space: 'business' },
+  { art: 'seite', id: 'aufgaben', titel: 'Aufgaben', href: '/os/aufgaben' }, { art: 'seite', id: 'finanzen', titel: 'Zahlen · Privat', href: '/os/finanzen?s=privat', space: 'privat' },
+  { art: 'seite', id: 'familie', titel: 'Familie & Partnerschaft', href: '/os/familie', space: 'privat' }, { art: 'seite', id: 'fokus', titel: 'Fokus', href: '/os/fokus' },
+  { art: 'seite', id: 'gesundheit', titel: 'Gesundheit', href: '/os/gesundheit', space: 'privat' }, { art: 'seite', id: 'ernaehrung', titel: 'Ernährung & Einkauf', href: '/os/gesundheit?s=ernaehrung', space: 'privat' }, { art: 'seite', id: 'wissen', titel: 'Brain', href: '/os/wissen' },
 ];
 const ART: Record<string, { label: string; farbe: string }> = {
   kontakt: { label: 'Person', farbe: LEUCHT.business }, firma: { label: 'Firma', farbe: LEUCHT.puls }, chance: { label: 'Deal', farbe: LEUCHT.achtung },
@@ -28,6 +30,7 @@ const ART: Record<string, { label: string; farbe: string }> = {
 };
 
 export function Schnellsuche() {
+  const { space } = useSpace();
   const router = useRouter();
   const [offen, setOffen] = useState(false);
   const [q, setQ] = useState('');
@@ -47,21 +50,22 @@ export function Schnellsuche() {
   useEffect(() => {
     if (!offen) return;
     const t = q.trim();
-    const seiten = SEITEN.filter(s => !t || s.titel.toLowerCase().includes(t.toLowerCase()));
+    // Im aktiven Space zuerst (Malin 26.09.): Seiten des anderen Space nur, wenn der Begriff sie direkt trifft.
+    const seiten = SEITEN.filter(s => (!t || s.titel.toLowerCase().includes(t.toLowerCase())) && (!s.space || s.space === space || !!t));
     if (t.length < 2) { setTreffer(seiten.slice(0, 8)); setI(0); return; }
     const ab = new AbortController();
     const timer = setTimeout(() => {
       fetch(`/api/crm/suche?q=${encodeURIComponent(t)}`, { signal: ab.signal }).then(r => r.json()).then(d => { setTreffer([...(d.treffer ?? []), ...seiten.slice(0, 3)]); setI(0); }).catch(() => {});
     }, 140);
     return () => { clearTimeout(timer); ab.abort(); };
-  }, [q, offen]);
+  }, [q, offen, space]);
 
   const oeffne = (t: Treffer) => { schliessen(); router.push(t.href); };
   if (!offen) return null;
   return (
     <div onClick={schliessen} style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(5,7,8,.62)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', paddingTop: '12vh', paddingInline: 16 }}>
       <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Schnellsuche" style={{ width: 'min(640px, 100%)', background: C.flaeche, borderRadius: 16, boxShadow: '0 30px 80px -20px rgba(0,0,0,.8)', border: '1px solid rgba(255,255,255,.07)', overflow: 'hidden' }}>
-        <input ref={feldRef} value={q} onChange={e => setQ(e.target.value)} placeholder="Person, Firma, Chance, Mandat oder Bereich …" aria-label="Suchen"
+        <input ref={feldRef} value={q} onChange={e => setQ(e.target.value)} placeholder={space === 'business' ? 'Business: Person, Firma, Chance, Mandat oder Seite …' : 'Privat: Familie, Gesundheit, Zahlen oder Seite …'} aria-label="Suchen"
           onKeyDown={e => {
             if (e.key === 'Escape') schliessen();
             else if (e.key === 'ArrowDown') { e.preventDefault(); setI(x => Math.min(treffer.length - 1, x + 1)); }

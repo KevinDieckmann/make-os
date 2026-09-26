@@ -75,6 +75,15 @@ _(hier sammeln, was auf `entwicklung` fertig ist)_
   „Wir · Ich · <andere Person>“ — gemeinsamer Fokus, eigener Fokus (nur selbst änderbar), der der anderen Person nur
   lesbar; unter den Horizonten je Satz für die vier obersten Prioritäten. Eigene Ziele/Fokus liegen je Person
   (`ziele-eigen--<person>`), die gemeinsamen bleiben in `ziele`.
+- **Menü mit zwei Spaces (Malins Vorschlag, erste Fassung):** links „Privat“ (rosé) und „Business“ (indigo), ein Tipp
+  klappt das Untermenü auf — Privat: Finanzen, Ziele & Fokus, Aufgaben, Gesundheit, Familie, Menschen, Inbox privat,
+  Kalender privat · Business: Finanzen, Planung, Markttraktion, Mandate, Agenten, Inbox Business, Kalender Business.
+  Unten gesondert Jarvis und Brain, darunter System und Konto. Oben: Suchfeld, das im aktiven Space sucht (⌘K), und
+  der Index des Space (Privat-/Business-Index) neben dem Wachstums-Score; die sechs Säulen-Ringe stecken im Bereich
+  Wachstum. Der Space merkt sich die letzte Wahl; eine Business-Seite schaltet automatisch um. Handy: Leiste unten
+  Heute · Privat · Business · Jarvis · System, Privat/Business öffnen ihr Untermenü als Blatt.
+  Inbox mit `?space=`: Privat zeigt Apple-Postfächer, Business Microsoft 365 (Trennung nach Adresse folgt).
+  Noch offen: Kalender zeigt den anderen Space als „belegt“; eigenes Kontaktbuch für Privat.
 
 **Seiten selbst gestalten — Flächen & Widgets (26.09., Kevin: „alle Widgets immer zu bearbeiten, andere hinzufügen;
 seine eigene Seite vorne soll man sich selber gestalten — auch wenn wir am Anfang unsere jetzt lassen“)**

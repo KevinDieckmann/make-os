@@ -59,6 +59,10 @@ export function InboxSchlank() {
   const [absender, setAbsender] = useState<Record<string, { status: string }>>({});
   const [quelle, setQuelle] = useState<{ apple: string; ms: string }>({ apple: 'lädt …', ms: 'lädt …' });
   const [seg, setSeg] = useState<Segment>('offen');
+  // Space aus der Adresse (26.09., Malin): Privat = Apple-Postfächer, Business = Microsoft 365 — bis Adressen einzeln zugeordnet sind.
+  const [space, setSpace] = useState<'privat' | 'business' | null>(null);
+  useEffect(() => { const q = new URLSearchParams(window.location.search).get('space'); setSpace(q === 'privat' || q === 'business' ? q : null); }, []);
+  const msgsImSpace = useMemo(() => msgs.filter(m => !space || (space === 'privat' ? m.source === 'apple' : m.source === 'ms')), [msgs, space]);
   // Offene Mail im Link (?offen=): Zurück schließt sie wieder, statt die Seite zu verlassen (25.09.).
   const [offenId, setOffenId] = useLinkAuswahl('offen');
   const [body, setBody] = useState<Record<string, string>>({});
@@ -152,10 +156,10 @@ export function InboxSchlank() {
     setMeldung(`${m.sender} kommt nicht mehr in die Inbox.`);
   };
 
-  const sichtbar = useMemo(() => msgs.filter(m => seg === 'offen' ? istOffen(m.id) && absender[absenderKey(m)]?.status !== 'geblockt' : ERLEDIGT.has(status[m.id]?.status ?? ''))
+  const sichtbar = useMemo(() => msgsImSpace.filter(m => seg === 'offen' ? istOffen(m.id) && absender[absenderKey(m)]?.status !== 'geblockt' : ERLEDIGT.has(status[m.id]?.status ?? ''))
     .sort((a, b) => (istFaellig(b.id) ? 1 : 0) - (istFaellig(a.id) ? 1 : 0) || (RANG[stufe(a) ?? 'normal'] - RANG[stufe(b) ?? 'normal']) || b.receivedAt.localeCompare(a.receivedAt)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [msgs, status, triage, absender, seg]);
+    [msgsImSpace, status, triage, absender, seg]);
   const gruppen = seg === 'offen'
     ? [
       { titel: 'Wiedervorlage', liste: sichtbar.filter(m => istFaellig(m.id)) },
@@ -265,7 +269,7 @@ export function InboxSchlank() {
           </Spalte>
         )}
       </Spalten>
-      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 28 }}>Apple Mail {quelle.apple} · Microsoft 365 {quelle.ms} · Tasten: j/k wandern · e erledigt · a Aufgabe · s morgen</div>
+      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 28 }}>{space && <span style={{ color: C.inkDim, fontWeight: 600 }}>Space {space === 'privat' ? 'Privat · nur Apple-Postfächer' : 'Business · nur Microsoft 365'} · </span>}Apple Mail {quelle.apple} · Microsoft 365 {quelle.ms} · Tasten: j/k wandern · e erledigt · a Aufgabe · s morgen</div>
     </Seite>
   );
 }

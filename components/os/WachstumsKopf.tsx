@@ -1,4 +1,6 @@
 'use client';
+import { useSpace } from '@/hooks/useSpace';
+import { spaceVon, type SpaceId } from '@/lib/make-one/spaces';
 
 // ─── MAKE OS — Der Wachstums-Score über allem ───────────────────────────────
 // Kevin, 24.09.: „Ich möchte, dass der Wachstumsscore oben drüber steht und im
@@ -10,8 +12,8 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useId, useState } from 'react';
-import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
+import { useEffect, useState } from 'react';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Ring, Chip, zoneFarbe, LEUCHT } from './schlank';
 import { SCORE_NEU } from './WhoopImport';
 import { Sun, Inbox as InboxIcon, Search, Lightbulb, CalendarDays } from 'lucide-react';
@@ -19,8 +21,6 @@ import { Sun, Inbox as InboxIcon, Search, Lightbulb, CalendarDays } from 'lucide
 interface Saeule { key: string; label: string; score: number | null; zuDuenn: boolean }
 interface Antwort { aktuell: { index: number | null; label: string; hebel: string | null; hebelKey?: string | null; stand: string; saeulen: Saeule[] }; verlauf: { date: string; index: number | null }[] }
 
-const FARBE_JE: Record<string, string> = { health: LEUCHT.gut, business: LEUCHT.business, planning: LEUCHT.planung, finance: LEUCHT.geld, social: LEUCHT.beziehung, agents: LEUCHT.agenten };
-const KURZ: Record<string, string> = { health: 'Gesundheit', business: 'Business', planning: 'Planung', finance: 'Finanzen', social: 'Familie', agents: 'Agenten' };
 // Jeder Score springt dorthin, wo es weitergeht (Kevin, 24.09.). Seit 24.09.
 // abends ist der Kopf die Navigation für alles, was nicht links steht.
 const HREF: Record<string, string> = { health: '/os/gesundheit', business: '/os/finanzen?s=business', planning: '/os/saeule/planning', finance: '/os/finanzen', social: '/os/familie', agents: '/os/agenten' };
@@ -36,32 +36,35 @@ const SCHNELL = [
 // bei jedem Seitenwechsel. Der Bereich Wachstum lädt ihn ohnehin frisch.
 let zwischen: { t: number; d: Antwort } | null = null;
 
-function Winzig({ wert, farbe, label }: { wert?: number; farbe: string; label: string }) {
-  const r = 13, u = 2 * Math.PI * r;
-  const [an, setAn] = useState(false);
-  useEffect(() => { const t = requestAnimationFrame(() => setAn(true)); return () => cancelAnimationFrame(t); }, []);
-  const anteil = wert != null ? Math.max(0.03, Math.min(1, wert / 100)) : 0;
-  const id = `winzig-${useId().replace(/[^a-zA-Z0-9-]/g, '')}`;
+
+/** Der Index des aktiven Space (Malin 26.09.: „daneben der Index des Space“) — Business- oder Privat-Index, klein. */
+function SpaceIndex({ space }: { space: SpaceId }) {
+  const s = spaceVon(space);
+  const [w, setW] = useState<{ index: number | null; label: string } | null>(null);
+  useEffect(() => {
+    setW(null);
+    const url = space === 'business' ? '/api/business?scope=gesamt&kompakt=1' : '/api/privat?kompakt=1';
+    fetch(url, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(d => {
+      if (!d) return;
+      const bi = space === 'business' ? d.bi : d;
+      if (bi && typeof bi === 'object') setW({ index: bi.index ?? null, label: bi.label ?? '' });
+    }).catch(() => {});
+  }, [space]);
+  const farbe = w?.index != null ? zoneFarbe(w.index) : C.inkLeise;
   return (
-    <div title={`${label}: ${wert ?? '—'}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-      <div style={{ position: 'relative', width: 34, height: 34 }}>
-        <svg viewBox="0 0 34 34" style={{ width: 34, height: 34, display: 'block', filter: wert != null ? TIEF.svgSchein(farbe, 4) : undefined }} aria-hidden>
-          {/* Tiefe Akzente (25.09.): Verlauf in den tieferen Ton, getönte Scheibe — wie die großen Ringe. */}
-          <defs><linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor={farbe} /><stop offset="100%" style={{ stopColor: TIEF.tiefer(farbe, 60) }} /></linearGradient></defs>
-          {wert != null && <circle cx="17" cy="17" r={r - 3} fill={TIEF.flaeche(farbe)} />}
-          <circle cx="17" cy="17" r={r} fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="4" />
-          {wert != null && <circle cx="17" cy="17" r={r} fill="none" stroke={`url(#${id})`} strokeWidth="4" strokeLinecap="round" strokeDasharray={u.toFixed(1)} strokeDashoffset={(u * (1 - (an ? anteil : 0))).toFixed(1)} transform="rotate(-90 17 17)" style={{ transition: 'stroke-dashoffset 1s cubic-bezier(.22,1,.36,1)' }} />}
-        </svg>
-        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 11, fontVariantNumeric: 'tabular-nums', color: wert == null ? C.inkLeise : C.ink }}>{wert ?? '—'}</div>
-      </div>
-      <span className="wachstum-kopf-label" style={{ fontSize: 11, color: C.inkLeise, letterSpacing: '.01em' }}>{label}</span>
-    </div>
+    <Link href={s.index.ziel} title={`${s.index.label} öffnen`} className="wachstum-kopf-space" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 999, textDecoration: 'none', border: `1px solid ${s.farbe}44`, background: `${s.farbe}12`, color: C.ink, whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+      <span style={{ fontSize: 12, color: s.farbe, fontWeight: 700 }}>{s.index.label}</span>
+      <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, color: farbe, fontVariantNumeric: 'tabular-nums' }}>{w?.index != null ? Math.round(w.index) : '—'}</span>
+      {w?.label && <span className="wachstum-kopf-label" style={{ fontSize: 12, color: C.inkDim }}>· {w.label}</span>}
+    </Link>
   );
 }
 
 export function WachstumsKopf() {
   const router = useRouter();
   const pfad = usePathname() ?? '';
+  const { space } = useSpace();
+  const sp = spaceVon(space);
   const [d, setD] = useState<Antwort | null>(zwischen?.d ?? null);
   useEffect(() => {
     if (zwischen && Date.now() - zwischen.t < 5 * 60_000) { setD(zwischen.d); return; }
@@ -99,8 +102,14 @@ export function WachstumsKopf() {
           </div>
         </div>
       </Link>
-      <div className="wachstum-kopf-saeulen" style={{ display: 'flex', gap: 12, marginLeft: 'auto', alignItems: 'flex-start', minWidth: 0 }}>
-        <button onClick={() => window.dispatchEvent(new Event('make-suche'))} title="Suchen (⌘K)" aria-label="Suchen" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}>
+      {/* Suchfeld im aktiven Space (Malin 26.09.) — öffnet die Schnellsuche (⌘K) */}
+      <button onClick={() => window.dispatchEvent(new CustomEvent('make-suche', { detail: { space } }))} title="Suchen (⌘K)" aria-label="Suchen" className="wachstum-kopf-suche fassbar" style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1 260px', minWidth: 0, maxWidth: 520, marginLeft: 8, padding: '9px 14px', borderRadius: 12, cursor: 'text', border: '1px solid rgba(255,255,255,.08)', background: 'rgba(255,255,255,.04)', color: C.inkLeise, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, textAlign: 'left' }}>
+        <Search size={15} strokeWidth={1.9} style={{ flex: '0 0 auto' }} />
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{sp.suche}</span>
+        <span className="nur-tastatur" style={{ fontSize: 11, border: '1px solid rgba(255,255,255,.12)', borderRadius: 6, padding: '1px 6px', color: C.inkLeise }}>⌘K</span>
+      </button>
+      <div className="wachstum-kopf-saeulen" style={{ display: 'flex', gap: 12, marginLeft: 'auto', alignItems: 'center', minWidth: 0 }}>
+        <button className="wachstum-kopf-lupe" onClick={() => window.dispatchEvent(new CustomEvent('make-suche', { detail: { space } }))} title="Suchen (⌘K)" aria-label="Suchen" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
             <div style={{ width: 34, height: 34, borderRadius: '50%', display: 'grid', placeItems: 'center', border: '2px solid rgba(255,255,255,.1)', color: C.inkDim }}><Search size={15} strokeWidth={1.9} /></div>
             <span className="wachstum-kopf-label" style={{ fontSize: 11, color: C.inkLeise }}>Suche</span>
@@ -125,13 +134,9 @@ export function WachstumsKopf() {
           );
         })}
         <span aria-hidden style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,.06)', margin: '0 2px' }} />
-        {(p?.saeulen ?? []).map(s => (
-          <Link key={s.key} href={HREF[s.key] ?? `/os/saeule/${s.key}`} title={`${KURZ[s.key] ?? s.label} — weiter`} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <Winzig wert={s.score == null || s.score === 0 ? undefined : s.score} farbe={FARBE_JE[s.key] ?? C.inkLeise} label={KURZ[s.key] ?? s.label} />
-          </Link>
-        ))}
+        {/* Der Index des aktiven Space — die sechs Säulen-Ringe stecken im Bereich Wachstum (Klick auf den Score). */}
+        <SpaceIndex space={space} />
       </div>
-      <Link href="/os/wachstum" title="Zum Bereich Wachstum" style={{ color: C.inkLeise, fontSize: 18, textDecoration: 'none' }}>›</Link>
       </div>
     </div>
   );
