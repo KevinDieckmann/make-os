@@ -5,7 +5,8 @@
 
 import Link from 'next/link';
 import { FARBE as C } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Raster } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile } from './schlank';
+import { Flaeche, Kachel } from './flaeche/Flaeche';
 
 const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: string }[] }[] = [
   // Alles, was seit 24.09. abends im Kopf oben liegt — hier noch einmal zum Nachschlagen.
@@ -41,9 +42,10 @@ const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: s
 export function SystemView() {
   return (
     <Seite titel="System" unter="Alles, was nicht täglich ist: Jarvis, Zugang, Bauen.">
-      <Raster min={380}>
+      <Flaeche seite="system">
       {GRUPPEN.map((g, i) => (
-        <Karte key={g.titel} i={i}>
+        <Kachel key={g.titel} id={g.titel.toLowerCase().replace(/[^a-z0-9]+/g, '-')} titel={g.titel} breite={2}>
+        <Karte i={i}>
           <Ueberschrift>{g.titel}</Ueberschrift>
           <Liste>
             {g.eintraege.map(e => (
@@ -53,8 +55,9 @@ export function SystemView() {
             ))}
           </Liste>
         </Karte>
+        </Kachel>
       ))}
-      </Raster>
+      </Flaeche>
     </Seite>
   );
 }

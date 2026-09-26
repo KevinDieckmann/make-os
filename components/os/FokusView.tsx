@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Rich } from './Rich';
 import { Seite, Karte, Ueberschrift, Ring, Chip, Knopf, Leer, feld, zoneFarbe, LEUCHT } from './schlank';
+import { Flaeche, Kachel } from './flaeche/Flaeche';
 
 type Horizont = 'tag' | 'woche' | 'monat';
 const HORIZONTE: { id: Horizont; label: string; frage: string }[] = [
@@ -62,6 +63,8 @@ export function FokusView() {
 
   return (
     <Seite titel="Fokus" unter="Worauf es heute, diese Woche und diesen Monat ankommt — und ob der Körper mitmacht.">
+      <Flaeche seite="fokus">
+      <Kachel id="fokus" titel="Unser Fokus" breite={6}>
       <Karte i={0} akzent={LEUCHT.planung}>
         <Ueberschrift farbe={LEUCHT.planung}>Unser Fokus</Ueberschrift>
         <div style={{ display: 'grid', gap: 14 }}>
@@ -77,7 +80,9 @@ export function FokusView() {
           ))}
         </div>
       </Karte>
+      </Kachel>
 
+      <Kachel id="tagesform" titel="Tagesform" breite={3}>
       <Karte i={1} akzent={zone ? zoneFarbe(rec) : undefined}>
         <Ueberschrift farbe={zone ? zoneFarbe(rec) : undefined} rechts={<Link href="/os/gesundheit" style={{ color: C.inkLeise, textDecoration: 'none', fontSize: TYP.bedien }}>Gesundheit ›</Link>}>Tagesform</Ueberschrift>
         <div className="heute-kopf" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'clamp(18px,4vw,40px)', alignItems: 'center' }}>
@@ -90,7 +95,9 @@ export function FokusView() {
         </div>
         {plan && <div style={{ marginTop: 16 }}><Rich text={plan} /></div>}
       </Karte>
+      </Kachel>
 
+      <Kachel id="regler" titel="Worauf die Energie geht" breite={3}>
       <Karte i={2}>
         <Ueberschrift rechts={<Link href="/os/kompass" style={{ color: C.inkLeise, textDecoration: 'none', fontSize: TYP.bedien }}>Im Kompass ändern ›</Link>}>Worauf die Energie geht</Ueberschrift>
         {regler ? (
@@ -109,6 +116,8 @@ export function FokusView() {
           </div>
         ) : <Leer>Noch keine Regler gesetzt — im Kompass einstellen.</Leer>}
       </Karte>
+      </Kachel>
+      </Flaeche>
     </Seite>
   );
 }

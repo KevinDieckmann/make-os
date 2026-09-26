@@ -11,7 +11,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Spalten, Spalte, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, LEUCHT } from '../schlank';
+import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import type { Befund } from '@/lib/crm/befunde';
 import type { Traktion, Uebergabe, Welt } from '@/lib/crm/traktion';
@@ -89,8 +90,8 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
 
   return (
     <>
-      <Spalten verhaeltnis="1:1">
-        <Spalte>
+      <Flaeche seite="markttraktion-ueberblick">
+          <Kachel id="fuer-dich" titel="Für dich" breite={3}>
           <Karte i={0} akzent={d.fuerDich.length ? LEUCHT.gut : undefined}>
             <Ueberschrift rechts={<Person id={d.ich} name />}>Für dich</Ueberschrift>
             {!d.fuerDich.length ? <Leer>Bei dir liegt gerade nichts Fälliges — Zeit für die Power Hour oder einen Beitrag.</Leer> : (
@@ -103,8 +104,8 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
               </Liste>
             )}
           </Karte>
-        </Spalte>
-        <Spalte>
+          </Kachel>
+          <Kachel id="team" titel="Zuletzt im Team" breite={3}>
           <Karte i={1}>
             <Ueberschrift rechts={<span>14 Tage</span>}>Zuletzt im Team</Ueberschrift>
             {!d.teamFeed.length ? <Leer>Noch nichts festgehalten. Was Kevin und Malin notieren, übergeben und bearbeiten, steht hier.</Leer> : (
@@ -117,17 +118,17 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
               </Liste>
             )}
           </Karte>
-        </Spalte>
-      </Spalten>
+          </Kachel>
 
+      <Kachel id="traktion" titel="Traktions-Score" breite={6}>
       <IndexAnsicht d={{ pi: d.index, ...d.indexVerlauf }} name="Traktion" chip="Traktions-Index" farben={INDEX_FARBE} scope="markttraktion" i0={2}
         chips={d.traktion.vorlaeufig ? <Chip farbe={LEUCHT.achtung}>vorläufig</Chip> : undefined}
         schwelleSenden={schwelle => fetch('/api/crm/traktion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ schwelle }) }).then(r => r.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }))}
         onGespeichert={() => void laden()} saeuleKopf={saeuleKopf} zwischen={<Scoreboard api={api} />}
         hinweis={<>{d.traktion.hinweis}. Die fünf Säulen des Markttraktion-Konzepts (Sichtbarkeit, Marketing, Vertrieb, Events, Conversions) liegen in den drei Welten. Punkte je Kennzahl: an der roten Schwelle 20, an der grünen 100, dazwischen linear; gesamt als gewichtetes geometrisches Mittel — ein Ungleichgewicht zwischen den Welten kostet mehr als ein Durchschnitt. Dieselbe Zahl steht als „Traktions-Score“ im Business-Index.</>} />
+      </Kachel>
 
-      <Spalten verhaeltnis="1:1">
-        <Spalte>
+          <Kachel id="uebergaben" titel="Übergaben" breite={3}>
           <Karte i={8}>
             <Ueberschrift rechts={<span>was eine Welt der anderen hinlegt</span>}>Übergaben</Ueberschrift>
             {!d.uebergaben.length ? <Leer>Nichts liegt zwischen den Welten — alles ist übergeben.</Leer> : (
@@ -142,8 +143,8 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
               </Liste>
             )}
           </Karte>
-        </Spalte>
-        <Spalte>
+          </Kachel>
+          <Kachel id="befunde" titel="Was jetzt zu tun ist" breite={3}>
           <Karte i={9}>
             <Ueberschrift rechts={d.befunde.length ? <span>{d.befunde.length}</span> : undefined}>Was jetzt zu tun ist</Ueberschrift>
             {!d.befunde.length ? <Leer>Nichts Rotes — alles im Rahmen.</Leer> : (
@@ -159,8 +160,8 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
             )}
             {d.befunde.length > 5 && <button onClick={() => setAlle(!alle)} style={{ marginTop: 6, ...leise }}>{alle ? 'weniger' : `alle ${d.befunde.length}`}</button>}
           </Karte>
-        </Spalte>
-      </Spalten>
+          </Kachel>
+      </Flaeche>
     </>
   );
 }

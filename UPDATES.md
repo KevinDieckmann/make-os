@@ -71,6 +71,9 @@ seine eigene Seite vorne soll man sich selber gestalten — auch wenn wir am Anf
 - **Weitere Flächen (gleiche Bedienung, je Person):** Gesundheit → Heute und Körper, Ernährung, Zahlen → Business,
   Konto, Wachstum, Familie → Wir zwei / Familie / Rahmen. Feste Karten einer Seite lassen sich ordnen, in der Breite
   ändern und ausblenden (kommen über „+ Widget → Ausgeblendet“ zurück); Katalog-Widgets kann man überall dazunehmen.
+- **Dritte Runde Flächen:** Fokus, Journal, Der Weg auf 1 Mio. (OKR), System, Business-Index, Markttraktion → Überblick,
+  Zahlen → Head of Finance, Loops, Kalender-Agent. Noch feste Seiten: Wochen-/Tagesplaner, Aufgaben-Board, Inbox,
+  Kompass, Säulen-Seiten, Stapel, CRM-Unterseiten, Finanz-Details — folgen häppchenweise.
 
 **Ernährung & Einkauf zu zweit (26.09., Kevin: „Lebensmittel bevorzugt nehmen, meine Bedürfnisse und Malins, was wir
 zuhause haben soll benutzt werden, an jedem Gericht das Rezept“)** — Gesundheit → Ernährung

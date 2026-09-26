@@ -207,7 +207,9 @@ lokal, Route `/os`, Port 3001.
   vergeben. Widgets in `components/os/flaeche/widgets.tsx` (selbstladend, `null` wenn es nichts gibt; Einstellungen
   per `EinstellungDef`; Katalog-Einträge dürfen Voreinstellungen tragen).
 - Flächen bisher: Heute (`HEUTE_STANDARD`), `gesundheit-heute`, `gesundheit-koerper`, `ernaehrung`, `zahlen`, `konto`,
-  `wachstum`, `familie-wir`, `familie-orga`, `familie-rahmen`. Weitere Karten-Seiten nach demselben Muster anschließen.
+  `wachstum`, `familie-wir`, `familie-orga`, `familie-rahmen`, `fokus`, `journal`, `okr`, `system`, `business`,
+  `markttraktion-ueberblick`, `finanzchef`, `loops`, `kalender`. Weitere Karten-Seiten nach demselben Muster anschließen
+  (offen: Wochen-/Tagesplaner, Aufgaben-Board, Inbox, Kompass, Säulen, Stapel, CRM-Unterseiten, Finanz-Details).
 
 ## Technik
 - TypeScript strikt: vor jedem Commit `npx tsc --noEmit` — null Fehler.

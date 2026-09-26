@@ -10,7 +10,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { bloecke } from '@/lib/make-one/markdown';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Punkt, Chip, Knopf, Segmente, Spalten, Spalte, Zahl, feld, LEUCHT } from './schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Punkt, Chip, Knopf, Segmente, Zahl, feld, LEUCHT } from './schlank';
+import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { block } from './WissenView';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import type { Bericht, ChefVorschlag, ChefEinstellung } from '@/lib/finanzen/chef/stand';
@@ -95,7 +96,9 @@ export function FinanzchefView() {
 
   return (
     <>
-      <IstStand liste={s.istStand ?? []} />
+      <Flaeche seite="finanzchef">
+      <Kachel id="ist-stand" titel="Ist-Stand" breite={6}><IstStand liste={s.istStand ?? []} /></Kachel>
+      <Kachel id="bericht-kopf" titel="Head of Finance" breite={6}>
       <Karte i={0}>
         <Ueberschrift farbe={LEUCHT.geld} rechts={<Chip farbe={s.umfang === 'business' ? LEUCHT.business : LEUCHT.geld}>{s.umfang === 'business' ? 'nur Business' : 'Haushalt + Business'}</Chip>}>Head of Finance</Ueberschrift>
         {a ? (
@@ -143,10 +146,10 @@ export function FinanzchefView() {
         {laeuft && <div style={{ marginTop: 10, fontSize: TYP.bedien, color: LEUCHT.geld }}>{laeuft}</div>}
         {fehler && <div style={{ marginTop: 10, fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div>}
       </Karte>
+      </Kachel>
 
-      <Spalten verhaeltnis="3:2">
-        <Spalte>
           {a && !!a.befunde.length && (
+            <Kachel id="befunde" titel="Befunde" breite={4}>
             <Karte i={1}>
               <Ueberschrift>Befunde</Ueberschrift>
               <div style={{ display: 'grid', gap: 14 }}>
@@ -166,20 +169,26 @@ export function FinanzchefView() {
                 ))}
               </div>
             </Karte>
+            </Kachel>
           )}
           {a && (!!a.fragen.length || !!a.datenluecken.length) && (
+            <Kachel id="offen" titel="Offen" breite={4}>
             <Karte i={2}>
               <Ueberschrift>Offen</Ueberschrift>
               {a.fragen.map((f, i) => <Zeile key={`f${i}`} links={<Chip farbe={LEUCHT.puls}>{f.an}</Chip>} titel={f.frage} unter={f.warum} />)}
               {a.datenluecken.map((d, i) => <Zeile key={`d${i}`} links={<Chip farbe={C.inkLeise}>Daten</Chip>} titel={d.was} unter={d.auswirkung} />)}
             </Karte>
+            </Kachel>
           )}
           {a?.bericht_markdown && (
+            <Kachel id="bericht" titel="Bericht" breite={4}>
             <Karte i={3}>
               <Ueberschrift rechts={<Knopf leise onClick={() => setBerichtAuf(!berichtAuf)}>{berichtAuf ? 'zuklappen' : 'ganzer Bericht'}</Knopf>}>Bericht</Ueberschrift>
               {berichtAuf && <div style={{ fontSize: TYP.body, lineHeight: 1.6, maxWidth: 760 }}>{bloecke(a.bericht_markdown).map((b, i) => block(b, i, () => {}))}</div>}
             </Karte>
+            </Kachel>
           )}
+          <Kachel id="laeufe" titel="Frühere Läufe" breite={4}>
           <Karte i={4}>
             <Ueberschrift>Frühere Läufe</Ueberschrift>
             {s.berichte.length ? (
@@ -192,9 +201,9 @@ export function FinanzchefView() {
               </Liste>
             ) : <Leer>Noch keine.</Leer>}
           </Karte>
-        </Spalte>
+          </Kachel>
 
-        <Spalte>
+          <Kachel id="freigabe" titel="Zur Freigabe" breite={2}>
           <Karte i={1}>
             <Ueberschrift farbe={offen.length ? LEUCHT.achtung : undefined}>Zur Freigabe{offen.length ? ` · ${offen.length}` : ''}</Ueberschrift>
             {offen.length ? offen.map(v => (
@@ -221,7 +230,9 @@ export function FinanzchefView() {
               </div>
             )}
           </Karte>
+          </Kachel>
 
+          <Kachel id="lage" titel="Lage" breite={2}>
           <Karte i={2}>
             <Ueberschrift>Lage · vom Code gerechnet</Ueberschrift>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 14, marginBottom: 12 }}>
@@ -236,16 +247,18 @@ export function FinanzchefView() {
               </div>
             )) : <Leer>Keine Hinweise — die Daten sind vollständig und nichts ist auffällig.</Leer>}
           </Karte>
+          </Kachel>
 
+          <Kachel id="fristen" titel="Fristen · 60 Tage" breite={2}>
           <Karte i={3}>
             <Ueberschrift>Fristen · 60 Tage</Ueberschrift>
             {s.lage.termine.length ? s.lage.termine.map(t => <Zeile key={`${t.datum}${t.art}`} links={<span style={{ fontVariantNumeric: 'tabular-nums', color: C.inkDim, fontSize: TYP.bedien, minWidth: 44 }}>{datum(t.datum)}</span>} titel={t.titel} unter={t.hinweis} />) : <Leer>Keine Steuertermine in den nächsten 60 Tagen — laut Einstellung unten.</Leer>}
             <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Gerechnet aus der Einstellung, inkl. Wochenend- und Feiertagsregel. Hinweis, keine Steuerberatung.</div>
           </Karte>
+          </Kachel>
 
-          <Einstellung e={s.einstellung} onGespeichert={laden} />
-        </Spalte>
-      </Spalten>
+          <Kachel id="einstellung" titel="Steuer-Annahmen" breite={2}><Einstellung e={s.einstellung} onGespeichert={laden} /></Kachel>
+      </Flaeche>
     </>
   );
 }

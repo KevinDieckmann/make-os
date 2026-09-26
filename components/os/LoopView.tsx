@@ -9,7 +9,8 @@
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, LEUCHT, Spalten, Spalte } from './schlank';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, LEUCHT } from './schlank';
+import { Flaeche, Kachel } from './flaeche/Flaeche';
 
 type LoopKind = 'morgen' | 'woche' | 'rueckblick' | 'finanzen' | 'sales' | 'marketing' | 'operations' | 'kunden' | 'gesundheit';
 interface Prio { titel: string; warum?: string; wann?: string }
@@ -76,8 +77,8 @@ export function LoopView() {
 
   return (
     <Seite titel="Loops" unter="Der Rhythmus des Systems: echte Daten zusammenziehen, eine Handlung ableiten, das Ergebnis merken.">
-      <Spalten verhaeltnis="2:1">
-        <Spalte>
+      <Flaeche seite="loops">
+      <Kachel id="wahl" titel="Welcher Loop" breite={4}>
       <Karte i={0}>
         <Ueberschrift farbe={loop.farbe} rechts={cur?.stats ? Object.entries(cur.stats).map(([k, v]) => `${v} ${k}`).join(' · ') : undefined}>Welcher Loop</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 8 }}>
@@ -94,7 +95,10 @@ export function LoopView() {
           {!cur && !busy && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Termine, Aufgaben, Zahlen, Recovery — alles echt.</span>}
         </div>
       </Karte>
+      </Kachel>
 
+      <Kachel id="ergebnis" titel="Ergebnis des Laufs" breite={4}>
+      <div style={{ display: 'grid', gap: 14 }}>
       {cur?.error && <Karte i={1} akzent={LEUCHT.kritisch}><Absatz farbe={LEUCHT.kritisch}>{cur.error}</Absatz></Karte>}
       {cur?.hinweis && <Karte i={1}><Leer>{cur.hinweis}</Leer></Karte>}
 
@@ -141,21 +145,24 @@ export function LoopView() {
           {cur.eineSache && <Karte i={3} akzent={LEUCHT.achtung}><Ueberschrift farbe={LEUCHT.achtung}>Die eine Sache</Ueberschrift><div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(17px,2.2vw,20px)', fontWeight: 600 }}>{cur.eineSache}</div></Karte>}
         </>
       )}
-        </Spalte>
-        <Spalte>
+      </div>
+      </Kachel>
+      <Kachel id="verbesserung" titel="Verbesserungs-Loop" breite={2}>
       <Karte i={8} akzent={LEUCHT.agenten}>
         <Ueberschrift farbe={LEUCHT.agenten} rechts={<Knopf leise onClick={verbessern} aus={vbBusy}>{vbBusy ? 'schaut nach …' : 'Jetzt vorschlagen lassen'}</Knopf>}>Verbesserungs-Loop</Ueberschrift>
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Schaut auf die Software statt aufs Geschäft: was ihr benutzt, was seit Wochen niemand öffnet, welche Fehler auflaufen — und schlägt Änderungen vor. Läuft von selbst höchstens alle sieben Tage.</div>
         {vbInfo && <div style={{ fontSize: TYP.bedien, color: vbInfo.includes('Vorschläge') ? LEUCHT.gut : C.inkLeise, marginTop: 8 }}>{vbInfo}</div>}
       </Karte>
+      </Kachel>
       {history.length > 0 && (
+        <Kachel id="gedaechtnis" titel="Gedächtnis" breite={2}>
         <Karte i={9}>
           <Ueberschrift rechts={`${history.length}`}>Gedächtnis · frühere Läufe</Ueberschrift>
           <Liste>{history.slice(0, 12).map(h => <Zeile key={h.id} links={<span style={{ fontFamily: SCHRIFT.mono, fontSize: 11, color: C.inkLeise, width: 88 }}>{h.ts.slice(0, 16).replace('T', ' ')}</span>} titel={h.title} />)}</Liste>
         </Karte>
+        </Kachel>
       )}
-        </Spalte>
-      </Spalten>
+      </Flaeche>
     </Seite>
   );
 }

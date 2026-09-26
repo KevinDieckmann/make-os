@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { FARBE as C, MIKRO, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Segmente, feld, LEUCHT } from './schlank';
+import { Flaeche, Kachel } from './flaeche/Flaeche';
 
 interface Ev { id: string; title: string; startDate: string; endDate: string; allDay?: boolean; calendarName?: string; location?: string; category?: string; }
 
@@ -221,7 +222,9 @@ export function KalenderView() {
     >
       {/* Eingefroren: lieber sagen, dass es ein alter Stand ist, als so tun,
           als wäre er aktuell. */}
+      <Flaeche seite="kalender">
       {eingefroren && (
+        <Kachel id="eingefroren" titel="Kalender-Stand" breite={6}>
         <Karte i={0} akzent={LEUCHT.achtung}>
           <Ueberschrift farbe={LEUCHT.achtung} rechts={<Knopf leise onClick={() => fetch('/api/apple-calendar?refresh=1').then(load)}>Nochmal versuchen</Knopf>}>
             Eingefrorener Stand{stand ? ` vom ${new Date(stand).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} Uhr` : ''}
@@ -232,9 +235,11 @@ export function KalenderView() {
             {frostGrund && <span style={{ color: C.inkLeise }}> ({frostGrund})</span>}
           </Absatz>
         </Karte>
+        </Kachel>
       )}
 
       {/* Sicht + Aktionen */}
+      <Kachel id="sicht" titel="Sicht" breite={6}>
       <Karte i={1}>
         <Ueberschrift farbe={LEUCHT.puls} rechts={loading ? 'lade …' : loadErr ? undefined : `${upcoming.length} Termine · ${conflicts.length} Konflikte`}>Sicht</Ueberschrift>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -249,9 +254,11 @@ export function KalenderView() {
           <Knopf leise onClick={load}>↻ Termine neu laden</Knopf>
         </div>
       </Karte>
+      </Kachel>
 
       {/* Selbst eintragen — Termin, Fokus, Routine, Aufgabe oder Reha */}
       {anlegen && (
+        <Kachel id="neu" titel="Neuer Eintrag" breite={6}>
         <Karte i={2} akzent={artAktiv?.farbe}>
           <Ueberschrift farbe={artAktiv?.farbe}>Neuer Eintrag</Ueberschrift>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -291,10 +298,12 @@ export function KalenderView() {
             Landet in „{einst.kalender[wer]}“ — gepflegt wird weiter im Apple-Kalender, MAKE OS schreibt nur hinein.
           </div>
         </Karte>
+        </Kachel>
       )}
 
       {/* Einstellungen: welcher Kalender gehört wem, wie lange dauert was */}
       {zeigeEinst && (
+        <Kachel id="einstellungen" titel="Kalender-Einstellungen" breite={6}>
         <Karte i={3}>
           <Ueberschrift>Kalender-Einstellungen</Ueberschrift>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -320,25 +329,31 @@ export function KalenderView() {
             Die Namen müssen genau so heißen wie in der Kalender-App — sonst landet alles im gemeinsamen Kalender.
           </div>
         </Karte>
+        </Kachel>
       )}
 
       {loadErr && (
+        <Kachel id="kein-zugriff" titel="Kein Kalender-Zugriff" breite={6}>
         <Karte i={4} akzent={LEUCHT.kritisch}>
           <Ueberschrift farbe={LEUCHT.kritisch}>Kein Kalender-Zugriff</Ueberschrift>
           <Absatz>Systemeinstellungen → Datenschutz & Sicherheit → Kalender → Node.js/Terminal erlauben. <span style={{ color: C.inkLeise }}>({loadErr.slice(0, 120)})</span></Absatz>
         </Karte>
+        </Kachel>
       )}
 
       {/* KI-Briefing */}
       {briefing && (
+        <Kachel id="briefing" titel="Briefing" breite={3}>
         <Karte i={4} akzent={LEUCHT.agenten}>
           <Ueberschrift farbe={LEUCHT.agenten}>Briefing</Ueberschrift>
           <div style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.55 }}>{briefing}</div>
         </Karte>
+        </Kachel>
       )}
 
       {/* Konflikte */}
       {conflicts.length > 0 && (
+        <Kachel id="konflikte" titel="Konflikte" breite={3}>
         <Karte i={5} akzent={LEUCHT.kritisch}>
           <Ueberschrift farbe={LEUCHT.kritisch} rechts={`${conflicts.length}`}>Konflikte</Ueberschrift>
           <Liste>
@@ -349,10 +364,12 @@ export function KalenderView() {
             ))}
           </Liste>
         </Karte>
+        </Kachel>
       )}
 
       {/* Vorschläge */}
       {blocks.length > 0 && (
+        <Kachel id="bloecke" titel="Schutz-Blöcke" breite={3}>
         <Karte i={6}>
           <Ueberschrift farbe={LEUCHT.schlaf} rechts={<><span>{blocks.length}</span><Knopf leise onClick={addAll}>Alle eintragen</Knopf></>}>Schutz-Blöcke</Ueberschrift>
           <Liste>
@@ -372,10 +389,12 @@ export function KalenderView() {
             ))}
           </Liste>
         </Karte>
+        </Kachel>
       )}
 
       {/* Wochen-Übersicht */}
       {!loadErr && (
+        <Kachel id="sieben-tage" titel="Deine nächsten 7 Tage" breite={3}>
         <Karte i={7}>
           <Ueberschrift farbe={LEUCHT.puls} rechts={!loading && days.length ? `${days.length} Tage` : undefined}>Deine nächsten 7 Tage</Ueberschrift>
           {loading ? (
@@ -410,7 +429,9 @@ export function KalenderView() {
             </div>
           )}
         </Karte>
+        </Kachel>
       )}
+      </Flaeche>
     </Seite>
   );
 }

@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNachspeichern } from '@/lib/make-one/nachspeichern';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Balken, feld, LEUCHT } from './schlank';
+import { Flaeche, Kachel } from './flaeche/Flaeche';
 
 interface Entry { text?: string; mood?: number; energy?: number; stress?: number; haut?: string; ruecken?: string; flags?: string[]; at?: string; gut?: string; dankbar?: string; hart?: string; tagesnote?: string }
 type Journal = Record<string, Entry>;
@@ -110,6 +111,8 @@ export function JournalView() {
         <Link href="/os/gesundheit" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Gesundheit ›</Link>
       </div>}
     >
+      <Flaeche seite="journal">
+      <Kachel id="journal" titel="Journal" breite={6}>
       <Karte i={0} akzent={LEUCHT.gut}>
         <Ueberschrift farbe={LEUCHT.gut} rechts={<Link href="/os/gesundheit#haut" style={{ color: C.inkLeise, textDecoration: 'none' }}>Haut & Streak auf Gesundheit ›</Link>}>Journal</Ueberschrift>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -131,22 +134,24 @@ export function JournalView() {
           </div>
         </div>
       </Karte>
+      </Kachel>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
         {trend.map((t, i) => {
           const werte = last14.map(x => t.pick(x.e) ?? null);
           const hat = werte.some(w => w != null);
           return (
-            <Karte key={t.name} i={1 + i}>
+            <Kachel key={t.name} id={`trend-${t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`} titel={`${t.name} · 14 Tage`} breite={2}>
+            <Karte i={1 + i}>
               <Ueberschrift farbe={t.c} rechts="14 Tage">{t.name}</Ueberschrift>
               {hat
                 ? <Balken werte={werte} max={5} farbe={t.c} hoehe={40} titel={last14.map(x => `${datumKurz(x.tag)} · ${t.pick(x.e) ?? '—'}`)} />
                 : <Leer>Noch nichts eingetragen.</Leer>}
             </Karte>
+            </Kachel>
           );
         })}
-      </div>
 
+      <Kachel id="verlauf" titel="Verlauf" breite={6}>
       <Karte i={4}>
         <Ueberschrift rechts={history.length ? `${history.length} Einträge` : undefined}>Verlauf</Ueberschrift>
         {history.length === 0 && <Leer>Noch keine früheren Einträge — heute ist der Anfang. 🌱</Leer>}
@@ -168,6 +173,8 @@ export function JournalView() {
           ))}
         </Liste>
       </Karte>
+      </Kachel>
+      </Flaeche>
     </Seite>
   );
 }

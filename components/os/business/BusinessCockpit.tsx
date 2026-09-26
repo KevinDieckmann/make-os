@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Ring, Fortschritt, Segmente, Chip, LEUCHT } from '../schlank';
+import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { useLinkAuswahl } from '../Verlauf';
 import { KennzahlKachel, KennzahlFenster, SAEULE_FARBE, AMPEL_FARBE, scoreFarbe } from './teile';
 import { MonatsabschlussKarte, EinstellungenKarte } from './Abschluss';
@@ -83,7 +84,9 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
       )}
       {fehler && <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{fehler}</div>}
 
+      <Flaeche seite="business">
       {/* Der Index */}
+      <Kachel id="index" titel="Business-Index" breite={6}>
       <Karte i={0} akzent={farbe}>
         <div style={{ display: 'flex', gap: 'clamp(18px, 4vw, 44px)', alignItems: 'center', flexWrap: 'wrap' }}>
           <Ring groesse="gross" wert={bi?.index != null ? String(bi.index) : undefined} anteil={bi?.index != null ? bi.index / 100 : undefined} farbe={farbe} label={bi ? bi.label : 'lädt …'} />
@@ -114,12 +117,14 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
           </div>
         )}
       </Karte>
+      </Kachel>
 
       {/* Die drei Säulen */}
       {bi?.saeulen.map((s, i) => {
         const gruppen = Array.from(new Set(s.kennzahlen.map(k => k.gruppe)));
         return (
-          <Karte key={s.id} i={i + 1} akzent={SAEULE_FARBE[s.id]}>
+          <Kachel key={s.id} id={`saeule-${s.id}`} titel={s.label} breite={6}>
+          <Karte i={i + 1} akzent={SAEULE_FARBE[s.id]}>
             <Ueberschrift farbe={SAEULE_FARBE[s.id]} rechts={<span>{s.kennzahlen.filter(k => k.gemessen).length} von {s.kennzahlen.length} gemessen{s.zuDuenn ? ' · zählt noch nicht' : ''}</span>}>
               {s.label} · {Math.round(s.gewicht * 100)} % {s.score != null && <span style={{ color: C.ink, marginLeft: 6, letterSpacing: 0 }}>{s.score}</span>}
             </Ueberschrift>
@@ -135,8 +140,10 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
               ))}
             </div>
           </Karte>
+          </Kachel>
         );
       })}
+      </Flaeche>
 
       {d?.modell && <ModellKarte m={d.modell} />}
 
