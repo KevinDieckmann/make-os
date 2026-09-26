@@ -8,6 +8,7 @@
 // register.ts; ob es ausgeführt oder in den Stapel gelegt wird, entscheidet
 // die Route.
 
+import { speicherFuer } from '@/lib/jarvis/raum';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import type { Op as EinkaufOp } from '@/lib/ernaehrung/modell';
 import { localDay } from '@/lib/zeit';
@@ -19,7 +20,7 @@ import type { FaktArt } from './gedaechtnis';
 const PLAN_ARTEN = ['fokus', 'reha', 'routine', 'pause', 'aufgabe', 'block'] as const;
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
-async function planBlock(input: Record<string, unknown>): Promise<string> {
+async function planBlock(input: Record<string, unknown>, _o?: unknown, person = 'kevin'): Promise<string> {
   const date = String(input.date ?? '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Fehlgeschlagen: date muss YYYY-MM-DD sein.';
   if (date < localDay()) return `Fehlgeschlagen: ${date} liegt in der Vergangenheit — plane ab heute (${localDay()}).`;
@@ -51,7 +52,8 @@ async function planBlock(input: Record<string, unknown>): Promise<string> {
   const woche = localDay(mo);
   interface PB { id: string; date: string; startMin: number; dauerMin: number; titel: string; art: string }
   const block: PB = { id: `pb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, date, startMin, dauerMin, titel, art };
-  await updateJson<Record<string, PB[]>>('wochenplan', current => {
+  // Seit 26.09. in den Plan der Person, die Jarvis gerade bittet (Malin hat ihren eigenen).
+  await updateJson<Record<string, PB[]>>(speicherFuer('wochenplan', person), current => {
     const f = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
     const liste = Array.isArray(f[woche]) ? f[woche] : [];
     if (liste.length >= 120) return f;

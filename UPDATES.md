@@ -84,6 +84,10 @@ _(hier sammeln, was auf `entwicklung` fertig ist)_
   Heute · Privat · Business · Jarvis · System, Privat/Business öffnen ihr Untermenü als Blatt.
   Inbox mit `?space=`: Privat zeigt Apple-Postfächer, Business Microsoft 365 (Trennung nach Adresse folgt).
   Noch offen: Kalender zeigt den anderen Space als „belegt“; eigenes Kontaktbuch für Privat.
+- **Wochenplanung je Person** (Kevin: „Malin hat ihre eigene Planung“): der Wochenplaner (Blöcke: Fokus, Reha,
+  Routinen, Pausen, eingeplante Aufgaben) liegt jetzt je Person — Kevin behält seinen gewachsenen Plan, Malin bekommt
+  ihren eigenen; der Gesundheits-Index und Jarvis' Einplanen nehmen den Plan der jeweiligen Person. Den Plan der
+  anderen Person kann man lesen (`?fuer=`), schreiben nur den eigenen. Feste Termine kommen weiter aus den Kalendern.
 
 **Seiten selbst gestalten — Flächen & Widgets (26.09., Kevin: „alle Widgets immer zu bearbeiten, andere hinzufügen;
 seine eigene Seite vorne soll man sich selber gestalten — auch wenn wir am Anfang unsere jetzt lassen“)**

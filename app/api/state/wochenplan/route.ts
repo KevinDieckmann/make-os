@@ -3,9 +3,13 @@
 // Feste Termine kommen NICHT hierher — die leben in den Kalendern und werden
 // im Planer nur angezeigt. Hier liegt, was Kevin frei schiebt: Fokus, Reha,
 // Routinen, Pausen, eingeplante Aufgaben.
+// Seit 26.09. je Person (Kevin: „Malin hat ihre eigene Planung“): Kevin behält
+// den gewachsenen Speicher, Malin bekommt `wochenplan--malin`; lesen darf man
+// den Plan der anderen Person über ?fuer=<person>, schreiben nur den eigenen.
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { personAus, ansichtPerson, speicherFuer } from '@/lib/jarvis/raum';
 import { PLAN_ARTEN, type PlanBlock } from '@/types/planer';
 // Wiederausfuhr für Bestandsimporte — die Wahrheit liegt in types/planer.
 export type { PlanBlock };
@@ -20,7 +24,7 @@ const WOCHE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export async function GET(req: Request) {
   const woche = new URL(req.url).searchParams.get('woche') ?? '';
   if (!WOCHE_RE.test(woche)) return NextResponse.json({ ok: false, error: 'woche=YYYY-MM-DD (Montag) nötig.' }, { status: 400 });
-  const f = (await loadJson<PlanFile>('wochenplan')) ?? {};
+  const f = (await loadJson<PlanFile>(speicherFuer('wochenplan', ansichtPerson(req)))) ?? {};
   return NextResponse.json({ bloecke: Array.isArray(f[woche]) ? f[woche] : [] });
 }
 
@@ -48,7 +52,7 @@ export async function PUT(req: Request) {
 
   const sauber: PlanBlock[] = body.bloecke.slice(0, 120).map(b => sauberBlock(b, woche));
 
-  const next = await updateJson<PlanFile>('wochenplan', current => {
+  const next = await updateJson<PlanFile>(speicherFuer('wochenplan', personAus(req)), current => {
     const f = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
     // Nur die letzten 12 Wochen behalten — alte Pläne braucht niemand.
     const keys = Object.keys(f).sort().slice(-11);
@@ -88,7 +92,7 @@ export async function PATCH(req: Request) {
   if (!ops.length) return NextResponse.json({ ok: false, error: 'Keine gültigen Änderungen.' }, { status: 400 });
 
   let angewandt = 0;
-  const next = await updateJson<PlanFile>('wochenplan', current => {
+  const next = await updateJson<PlanFile>(speicherFuer('wochenplan', personAus(req)), current => {
     const f = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
     const nachId = new Map((Array.isArray(f[woche]) ? f[woche] : []).map(b => [b.id, b]));
     for (const o of ops) {

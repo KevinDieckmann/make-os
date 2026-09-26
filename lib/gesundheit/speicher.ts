@@ -25,7 +25,7 @@ export async function ladeGesundheitBestand(person: string, heute = localDay()):
     loadJson<HautLog>(speicherFuer('haut', person)),
     loadJson<StreakLog>(speicherFuer('streak', person)),
     loadJson<{ routinen?: { id: string; label: string; wann?: string; aktiv: boolean; kategorie?: string }[] }>('routinen'),
-    loadJson<Record<string, PlanBlock[]>>('wochenplan'),
+    loadJson<Record<string, PlanBlock[]>>(speicherFuer('wochenplan', person)),
     loadJson<{ events?: { title?: string; startDate?: string; endDate?: string; allDay?: boolean; owner?: string }[]; at?: string; quelle?: string }>('calendar-cache'),
     loadJson<{ meilensteine?: GesundheitBestand['meilensteine'] }>('meilensteine'),
     loadJson<ErnaehrungFile>('ernaehrung'),
