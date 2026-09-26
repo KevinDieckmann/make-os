@@ -31,7 +31,7 @@ import type { DealsAnsicht } from '@/lib/crm/adresse';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 const ARTEN = [{ id: 'retainer', label: 'Retainer' }, { id: 'projekt', label: 'Projekt' }, { id: 'workshop', label: 'Workshop' }, { id: 'vermittlung', label: 'Vermittlung' }, { id: 'software', label: 'Software' }] as const;
-const QUELLEN = [{ id: 'empfehlung', label: 'Empfehlung' }, { id: 'event', label: 'Event' }, { id: 'content', label: 'Content' }, { id: 'outreach', label: 'Ansprache' }, { id: 'bestand', label: 'Bestand' }, { id: 'inbound', label: 'Anfrage' }] as const;
+const QUELLEN = [{ id: 'empfehlung', label: 'Empfehlung' }, { id: 'event', label: 'Event' }, { id: 'content', label: 'Content' }, { id: 'kampagne', label: 'Kampagne' }, { id: 'outreach', label: 'Ansprache' }, { id: 'bestand', label: 'Bestand' }, { id: 'inbound', label: 'Anfrage' }] as const;
 const QUAL: { id: keyof Chance['qualifizierung']; label: string }[] = [
   { id: 'schmerz', label: 'Schmerz' }, { id: 'entscheider', label: 'Entscheider' }, { id: 'budget', label: 'Budget' }, { id: 'zeitpunkt', label: 'Zeitpunkt' }, { id: 'wirkung', label: 'Wirkung' }, { id: 'alternative', label: 'Alternative' },
 ];
@@ -302,14 +302,14 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
         </select>
       </Feldzeile>
       <Feldzeile label="Quelle"><Pillen liste={[...QUELLEN]} aktiv={c.quelle} onWahl={quelle => setze({ quelle, quelleBezug: undefined })} /></Feldzeile>
-      {(c.quelle === 'event' || c.quelle === 'content') && (
-        <Feldzeile label={c.quelle === 'event' ? 'Welches Event' : 'Welcher Beitrag'}>
+      {(c.quelle === 'event' || c.quelle === 'content' || c.quelle === 'kampagne') && (
+        <Feldzeile label={c.quelle === 'event' ? 'Welches Event' : c.quelle === 'kampagne' ? 'Welche Kampagne' : 'Welcher Beitrag'}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <select value={c.quelleBezug ?? ''} aria-label="Bezug" onChange={e => setze({ quelleBezug: e.target.value || undefined })} style={{ ...feld, width: 'auto', maxWidth: '100%', fontSize: TYP.bedien, padding: '8px 11px' }}>
               <option value="">— wählen —</option>
-              {c.quelle === 'event' ? crm.stand.events.map(x => <option key={x.id} value={x.id}>{x.titel} · {x.datum}</option>) : (crm.stand.beitraege ?? []).map(x => <option key={x.id} value={x.id}>{x.titel}</option>)}
+              {c.quelle === 'event' ? crm.stand.events.map(x => <option key={x.id} value={x.id}>{x.titel} · {x.datum}</option>) : c.quelle === 'kampagne' ? (crm.stand.kampagnen ?? []).map(x => <option key={x.id} value={x.id}>{x.name}</option>) : (crm.stand.beitraege ?? []).map(x => <option key={x.id} value={x.id}>{x.titel}</option>)}
             </select>
-            {c.quelleBezug && <Link href={c.quelle === 'event' ? WEG.event(c.quelleBezug) : WEG.marketing('redaktion')} style={{ fontSize: 12.5, color: C.inkDim, textDecoration: 'none' }}>öffnen ›</Link>}
+            {c.quelleBezug && <Link href={c.quelle === 'event' ? WEG.event(c.quelleBezug) : c.quelle === 'kampagne' ? WEG.kampagne(c.quelleBezug, 'marketing') : WEG.marketing('redaktion', c.quelleBezug)} style={{ fontSize: 12.5, color: C.inkDim, textDecoration: 'none' }}>öffnen ›</Link>}
           </div>
         </Feldzeile>
       )}

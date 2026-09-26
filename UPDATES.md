@@ -70,7 +70,17 @@ Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen un
   überfällig · heute · diese Woche · später, Filter Alle/Meins/Malin, Wochenansicht, Kadenz-Ansicht. Erledigen fragt Ergebnis und **nächsten Schritt**
   (Pflichtfrage, bewusst „kein nächster Schritt“ möglich) und schreibt eine Aktivität an die Person; Verschieben +1/+3/+7 (ab dem dritten Mal ein Hinweis), Absagen. „+ Follow-up“ von Hand.
 - **Kennzahlen (Traktions-Index, Sales):** Win Rate 180 Tage, Sales-Zyklus Median, hängt nach Wert, Follow-ups pünktlich, überfällige Follow-ups, Neuumsatz gegen Monatsziel.
-- Stammdaten (pflegbare Wertelisten, Exporte), Marketing (Trichter, Anfragen, Kosten, Start) und Events (Start, Brücke zu Lead und Deal, Feedback, Kosten, Kalender) folgen in diesem Block.
+- **Stammdaten:** Wertelisten pflegbar (Verlustgründe, Kadenz je Kreis, Gesprächsergebnisse, Ziele je Monat — Ziele sind die Messlatte für Gespräche/Woche und SQL/Monat),
+  fünf CSV-Exporte (Kontakte, Firmen, Deals, Follow-ups, Mandate; nie die private Notiz), Karten Produkte/Segmente/Team, Unter-Reiter in der Adresse, Ladefehler mit „Noch einmal“.
+- **Marketing:** oben die **Marketing-Strecke** Reichweite → Resonanz → Anfragen → Übergabe (30/90 Tage) mit Kosten je Anfrage und je SQL; neuer Reiter **Anfragen** (Eingang: Person
+  vorhanden oder neu, Kanal, Bezug Beitrag/Kampagne/Event → Aktivität, Follow-up „Anfrage beantworten“, Lead „kontaktiert“, Wirkung am Beitrag); Startassistent, wenn Positionierung
+  und Beiträge fehlen (Positionierung mit drei Säulen → erster Beitrag → erste Zielgruppe); Kosten (€) an Kampagne und Beitrag; „Deal aus dieser Kampagne“ (Quelle Kampagne am Deal);
+  Newsletter mit Stimme (Kevin/Malin/Marke). Recht: eine Anfrage erlaubt die Antwort, keine Werbung — die braucht weiter die Einwilligung.
+- **Events:** Start ohne Daten (Vorlage, Ziel Pflicht — „Netzwerken“ ist kein Ziel), Nachfassen hebt den Lead der Firma auf „Im Gespräch“, „Deal daraus“ (Quelle Event),
+  „Follow-up anlegen“ für Gäste ohne Nachfassen, Feedback je Gast (Note 1–5 + Satz, Ø Note je Event), Budget → Planposten in der Liquiditätsplanung (Kategorie Marketing & Events,
+  nie doppelt), Termin im Kalender „Gemeinsam“ (drei Stunden, ohne Gäste) mit Kennung am Event.
+- **Kennzahlen (Traktions-Index, Marketing):** Anfragen · 90 Tage, Kosten je Anfrage.
+- **Feinschliff:** alle Ziele, Texte und die Schnellsuche zeigen auf die neuen Reiter; Deal löschen nur noch bei Fehlanlagen (Sperre statt Löschen).
 
 ### Zeit & Fokus + Kopf (26.09. spät, nur lokal)
 

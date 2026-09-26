@@ -111,7 +111,7 @@ describe('„Wie lief\'s?“ — Termine nachbereiten', () => {
   });
   it('steht in „Für dich“ als „Termine nachbereiten“ → Power Hour', () => {
     const f = fuerDich('kevin', [k('a', { aktivitaeten: [termin('2026-09-24T10:00:00')] })], leererBestand(), HEUTE);
-    expect(f.find(x => x.id === 'nachbereiten')).toMatchObject({ welt: 'sales', titel: 'Termine nachbereiten', anzahl: 1, ziel: { s: 'sales', a: 'heute' } });
+    expect(f.find(x => x.id === 'nachbereiten')).toMatchObject({ welt: 'sales', titel: 'Termine nachbereiten', anzahl: 1, ziel: { s: 'followup', a: 'powerhour' } }); // 27.09.: Power Hour lebt im Follow-up
     expect(fuerDich('malin', [k('a', { aktivitaeten: [termin('2026-09-24T10:00:00')] })], leererBestand(), HEUTE).some(x => x.id === 'nachbereiten')).toBe(false);
   });
 });

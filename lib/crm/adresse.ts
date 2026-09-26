@@ -6,7 +6,7 @@
 //      firmen     → (leer) Kartei · leads (Ebene 1: qualifizieren → SQL)
 //      deals      → board (Start) · liste · akte (Deal-Akte zu k) · kunden · auswertung
 //      followup   → faellig (Start) · woche · powerhour · kadenz
-//      marketing  → uebersicht (Start) · segmente · kampagnen · redaktion · newsletter · positionierung
+//      marketing  → uebersicht (Start) · anfragen · segmente · kampagnen · redaktion · newsletter · positionierung
 //      stammdaten → der Reiter
 // Alte Adressen bleiben gültig: /os/crm leitet um; `aufloesen` übersetzt die alten
 // Bereiche (heute/pipeline/kunden/events/kartei) UND den Reiter „Sales“ vom 25./26.09.

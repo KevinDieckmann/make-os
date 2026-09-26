@@ -13,23 +13,34 @@
 // und Newsletter, am längsten Wartendes zuerst), „Beiträge je Person“ zählt
 // Veröffentlichungen und Gespräche/Anfragen aus deren Wirkung — jede Zahl mit
 // Beleg, grau statt erfundener Null (lib/crm/marketing.ts).
+//
+// Marketing-Strecke (27.09., Kevin: „das ganze Thema Marketing haben wir noch
+// gar nicht angepasst“): oben der Trichter Reichweite → Resonanz → Anfragen →
+// Übergabe an Sales mit Umwandlung je Stufe, darunter die Kosten (Beiträge +
+// Kampagnen) als Kosten je Anfrage und je SQL — Quoten erst ab fünf Fällen
+// (marketingTrichter). Leerzustände führen zur Handlung: ersten Beitrag planen,
+// Anfrage erfassen, Positionierung schreiben.
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Zahl, Raster, Fortschritt, Liste, Zeile, Punkt, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Leer, Zahl, Raster, Fortschritt, Liste, Zeile, Punkt, Knopf, LEUCHT } from '../../schlank';
 import { anzeigename } from '@/lib/make-one/crm';
 import { kanalStatus, art14 } from '@/lib/crm/recht';
 import { TEAM, BEIDE, nameVon } from '@/lib/crm/team';
-import { marketingKennzahlen, freigabeLage, liegtBei, beitraegeJePerson, genitiv, type FreigabePosten } from '@/lib/crm/marketing';
-import { type CrmApi, datum } from '../daten';
+import { marketingKennzahlen, marketingTrichter, freigabeLage, liegtBei, beitraegeJePerson, genitiv, einstellungAus, MINDESTMENGE, type FreigabePosten, type TrichterStufe } from '@/lib/crm/marketing';
+import { type CrmApi, datum, euro } from '../daten';
 import { Person } from '../team';
 import { KpiLeiste, AlsNaechstes, STAND_FARBE } from './gemeinsam';
+import { Pillen } from '../teile';
 import Link from 'next/link';
 import { netzRunde } from '@/lib/crm/netzwerk';
 import { markttraktion } from '@/lib/crm/adresse';
 
 /** Wohin ein Klick auf einen Posten führt — Redaktionsplan oder Newsletter mit geöffnetem Eintrag. */
 export type ZuEintrag = (ansicht: 'redaktion' | 'newsletter', id: string) => void;
+/** Reiter im Marketing, zu denen die Übersicht springt (Leerzustände mit Handlung). */
+export type ZuAnsicht = (ansicht: 'anfragen' | 'redaktion' | 'positionierung' | 'kampagnen' | 'segmente' | 'newsletter') => void;
+const STUFEN_FARBE: Record<TrichterStufe['id'], string> = { reichweite: LEUCHT.puls, resonanz: LEUCHT.achtung, anfragen: LEUCHT.business, uebergabe: LEUCHT.gut };
 
 function postenText(p: FreigabePosten, heute: string): string {
   const art = p.art === 'beitrag' ? 'Beitrag' : 'Newsletter';
@@ -39,12 +50,15 @@ function postenText(p: FreigabePosten, heute: string): string {
   return `${art} · geplant${p.datum ? ` ${datum(p.datum, heute)}` : ''} ohne ${genitiv(nameVon(p.an))} Okay`;
 }
 
-export function Uebersicht({ api, zuKontakt, zu }: { api: CrmApi; zuKontakt: (id: string) => void; zu?: ZuEintrag }) {
+export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuKontakt: (id: string) => void; zu?: ZuEintrag; zuAnsicht?: ZuAnsicht }) {
+  const [tage, setTage] = useState<30 | 90>(90);
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
   const crm = api.crm;
   const ich = api.ich;
   const heute = crm?.heute ?? new Date().toISOString().slice(0, 10);
   const kpis = useMemo(() => (crm ? marketingKennzahlen(kontakte, crm.stand, heute) : []), [kontakte, crm, heute]);
+  const trichter = useMemo(() => (crm ? marketingTrichter(kontakte, crm.stand, heute, tage) : null), [kontakte, crm, heute, tage]);
+  const positionierungFehlt = !einstellungAus(crm?.stand ?? {}).positionierung.trim();
   const lage = useMemo(() => (crm ? freigabeLage(crm.stand) : []), [crm]);
   const jePerson = useMemo(() => (crm ? beitraegeJePerson(crm.stand.beitraege ?? [], heute) : []), [crm, heute]);
   const beiWem = useMemo(() => [...TEAM.map(t => t.id), BEIDE].map(p => ({ person: p, posten: lage.filter(x => x.bei === p) })).filter(g => g.posten.length), [lage]);
@@ -69,11 +83,63 @@ export function Uebersicht({ api, zuKontakt, zu }: { api: CrmApi; zuKontakt: (id
   }, [kontakte, crm, heute]);
   // LinkedIn-Netzwerk je Profil (25.09.): was heute in der Vernetzen-Runde ansteht.
   const netz = useMemo(() => TEAM.map(t => ({ id: t.id, z: netzRunde(kontakte, t.id, heute).zahlen })), [kontakte, heute]);
-  const QLABEL: Record<string, string> = { empfehlung: 'Empfehlung', event: 'Event', content: 'Content', outreach: 'Ansprache', bestand: 'Bestand', inbound: 'Anfrage', unbekannt: 'nicht erfasst' };
+  const QLABEL: Record<string, string> = { empfehlung: 'Empfehlung', event: 'Event', content: 'Content', kampagne: 'Kampagne', outreach: 'Ansprache', bestand: 'Bestand', inbound: 'Anfrage', unbekannt: 'nicht erfasst' };
   const chancenGesamt = z.quellen.reduce((a, [, n]) => a + n, 0);
+
+  const k = trichter?.kosten;
+  const leerHandlungen = trichter && !trichter.reichweite.messbar && !trichter.anfragen.messbar;
 
   return (
     <>
+      <Karte i={0} akzent={LEUCHT.puls}>
+        <Ueberschrift farbe={LEUCHT.puls} rechts={<Pillen liste={[{ id: '30', label: '30 Tage' }, { id: '90', label: '90 Tage' }]} aktiv={String(tage)} onWahl={t => setTage(t === '30' ? 30 : 90)} />}>Marketing-Strecke</Ueberschrift>
+        {trichter ? (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: 8, alignItems: 'stretch' }}>
+              {trichter.stufen.map((s, i) => (
+                <div key={s.id} style={{ display: 'grid', gap: 6, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,.03)', borderLeft: `3px solid ${s.wert === null ? C.inkLeise : STUFEN_FARBE[s.id]}`, alignContent: 'start' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>{i + 1} · {s.label}</div>
+                  <Zahl wert={s.wert === null ? undefined : String(s.wert)} label={s.unter} farbe={STUFEN_FARBE[s.id]} />
+                  {s.umwandlung && <div style={{ fontSize: 12, color: s.umwandlung.wert === null ? C.inkLeise : C.inkDim, lineHeight: 1.4 }}>↓ {s.umwandlung.text}</div>}
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <Raster min={150}>
+                <Zahl wert={k?.messbar ? euro(k.gesamt) : undefined} label={k?.messbar ? `Kosten · ${euro(k.beitraege)} Beiträge, ${euro(k.kampagnen)} Kampagnen` : 'Kosten — noch keine eingetragen'} />
+                <Zahl wert={k?.jeAnfrage !== null && k?.jeAnfrage !== undefined ? euro(k.jeAnfrage) : undefined} label={k?.jeAnfrage !== null && k?.jeAnfrage !== undefined ? `je Anfrage · ${trichter.anfragen.gesamt} Anfragen` : `je Anfrage — ab ${MINDESTMENGE} Anfragen${k?.messbar ? '' : ' und Kosten'}`} farbe={LEUCHT.business} />
+                <Zahl wert={k?.jeSql !== null && k?.jeSql !== undefined ? euro(k.jeSql) : undefined} label={k?.jeSql !== null && k?.jeSql !== undefined ? `je SQL aus Marketing · ${trichter.uebergabe.sql} SQL` : `je SQL — ab ${MINDESTMENGE} SQL${k?.messbar ? '' : ' und Kosten'}`} farbe={LEUCHT.gut} />
+                <Zahl wert={trichter.anfragen.messbar ? String(trichter.anfragen.offen) : undefined} label="Anfragen offen" farbe={trichter.anfragen.offen ? LEUCHT.achtung : undefined} />
+              </Raster>
+            </div>
+            {leerHandlungen ? (
+              <div style={{ marginTop: 12 }}>
+                <AlsNaechstes>
+                  <span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span>Die Strecke ist leer — so beginnt sie:</span>
+                    {positionierungFehlt && zuAnsicht && <Knopf leise onClick={() => zuAnsicht('positionierung')}>Positionierung schreiben</Knopf>}
+                    {zuAnsicht && <Knopf leise onClick={() => zuAnsicht('redaktion')}>Ersten Beitrag planen</Knopf>}
+                    {zuAnsicht && <Knopf leise onClick={() => zuAnsicht('anfragen')}>Anfrage erfassen</Knopf>}
+                  </span>
+                </AlsNaechstes>
+              </div>
+            ) : (
+              <div style={{ marginTop: 12 }}>
+                <AlsNaechstes>
+                  <span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span>{trichter.anfragen.offen ? `${trichter.anfragen.offen} ${trichter.anfragen.offen === 1 ? 'Anfrage wartet' : 'Anfragen warten'} auf Antwort.` : !trichter.reichweite.beitraege ? `Kein veröffentlichter Beitrag in ${tage} Tagen — Reichweite entsteht nur durch Regelmäßigkeit.` : !trichter.kosten.messbar ? 'Kosten an Beiträgen und Kampagnen eintragen — dann rechnet sich, was eine Anfrage kostet.' : trichter.uebergabe.sql ? 'Läuft. Quoten je Stufe zeigen, wo die Strecke reißt.' : 'Anfragen werden erst zu SQL, wenn Sales qualifiziert — Übergabe über Leads.'}</span>
+                    {zuAnsicht && trichter.anfragen.offen > 0 && <Knopf leise onClick={() => zuAnsicht('anfragen')}>Zu den Anfragen</Knopf>}
+                    {zuAnsicht && !trichter.reichweite.beitraege && <Knopf leise onClick={() => zuAnsicht('redaktion')}>Beitrag planen</Knopf>}
+                    {positionierungFehlt && zuAnsicht && <Knopf leise onClick={() => zuAnsicht('positionierung')}>Positionierung schreiben</Knopf>}
+                  </span>
+                </AlsNaechstes>
+              </div>
+            )}
+            <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>Reichweite: veröffentlichte Beiträge und versendete Ausgaben. Resonanz: Reaktionen an Beiträgen, je Person und Beitrag einmal. Anfragen: Wirkung „Anfrage“ an Beiträgen und der Anfragen-Eingang, je Person und Tag einmal. Übergabe: Deals mit Quelle Content, Anfrage oder Kampagne — oder mit einer Person, die in den 90 Tagen davor über einen Beitrag oder eine Anfrage kam; ein Deal in der Pipeline ist das SQL. Quoten und Kosten je Stück erst ab {MINDESTMENGE} Fällen.</div>
+          </>
+        ) : <Leer>Lädt …</Leer>}
+      </Karte>
+
       <Raster min={360}>
         <Karte i={0} akzent={netz.some(n => n.z.schreiben) ? LEUCHT.gut : undefined}>
           <Ueberschrift farbe={LEUCHT.business} rechts={<Link href={markttraktion('kontakte', 'runde-vernetzen')} style={{ color: LEUCHT.business, textDecoration: 'none', fontSize: 12.5, fontWeight: 600 }}>Vernetzen-Runde ›</Link>}>LinkedIn-Netzwerk</Ueberschrift>
@@ -183,7 +249,7 @@ export function Uebersicht({ api, zuKontakt, zu }: { api: CrmApi; zuKontakt: (id
             {z.selbstauskunft.map((s, i) => <div key={i} style={{ fontSize: 12.5, color: C.inkDim }}>„{s.text}“ <span style={{ color: C.inkLeise }}>— {s.titel}</span></div>)}
             <div style={{ fontSize: 12.5, color: C.inkLeise }}>Die Selbstauskunft („Wie sind Sie auf uns aufmerksam geworden?“) ist ehrlicher als jede Klick-Zuordnung.</div>
           </div>
-        ) : <Leer>Noch keine Chancen mit Quelle.</Leer>}
+        ) : <Leer>Noch keine Deals mit Quelle. Ein Deal aus einer Anfrage oder Kampagne bringt seine Quelle mit — {zuAnsicht ? <button onClick={() => zuAnsicht('anfragen')} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Anfrage erfassen</button> : 'Anfrage erfassen'}.</Leer>}
       </Karte>
 
       <Karte i={6}>

@@ -11,8 +11,8 @@
 //   · Privatnotizen verlassen die Kartei nie
 // MAKE OS versendet und veröffentlicht nichts — Export und Zahlen von Hand.
 
-import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
-import type { Beitrag, Chance, CrmBestand, Freigabe, MarketingEinstellung, NewsletterAusgabe, Segment, SegmentKriterien } from './typen';
+import { anzeigename, type Aktivitaet, type Kontakt } from '@/lib/make-one/crm';
+import type { Beitrag, Chance, CrmBestand, Freigabe, MarketingEinstellung, NewsletterAusgabe, Quelle, Segment, SegmentKriterien } from './typen';
 import type { Kpi, KpiAmpel } from './kennzahlen';
 import { art14, kanalStatus, type Kanal, type Kontext } from './recht';
 import { segmentAuswerten, type SegmentKontext } from './segmente';
@@ -42,6 +42,22 @@ export const AUSGABE_STATUS: { id: NewsletterAusgabe['status']; label: string }[
 ];
 /** Chancen-Quellen, die Marketing zugerechnet werden. Events zählt der Head of Event. */
 export const MARKETING_QUELLEN: readonly NonNullable<Chance['quelle']>[] = ['content', 'inbound'];
+/** Quellen, die im Marketing-Trichter als „Übergabe“ zählen (27.09.): Content, Anfrage — und Kampagnen, die beide Heads planen. */
+export const TRICHTER_QUELLEN: readonly Quelle[] = ['content', 'inbound', 'kampagne'];
+
+// ── Anfragen (27.09.) — die Marke im Verlauf, an der man eine Anfrage erkennt ──
+// Der Anfragen-Eingang (lib/crm/anfragen.ts) schreibt an die Person eine Aktivität
+// der Art „antwort“ mit dem Text „Anfrage über <Kanal>: …“ und legt ein Follow-up
+// „Anfrage beantworten“ an. Trichter und Liste lesen genau diese zwei Marken —
+// nichts anderes zählt als Anfrage, damit kein Gespräch versehentlich mitgezählt wird.
+export const ANFRAGE_PRAEFIX = 'Anfrage über ';
+export const ANFRAGE_FOLLOWUP = 'Anfrage beantworten';
+export const istAnfrage = (a: Pick<Aktivitaet, 'art' | 'text'>) => a.art === 'antwort' && (a.text ?? '').startsWith(ANFRAGE_PRAEFIX);
+/** Ein Follow-up aus dem Anfragen-Eingang — erkennbar am Text. */
+export const istAnfrageFollowUp = (f: { text: string }) => f.text.startsWith(ANFRAGE_FOLLOWUP);
+/** Quoten und Kosten je Stück erst ab fünf Fällen im Nenner — darunter ist es Rauschen, keine Zahl. */
+export const MINDESTMENGE = 5;
+export const quote = (zaehler: number, nenner: number, mindest = MINDESTMENGE): number | null => (nenner >= mindest ? zaehler / nenner : null);
 
 // ── Einstellung (Positionierung, ICP, Ton, Säulen) ─────────────────────────
 export const EINSTELLUNG_GRENZEN = { positionierung: 3000, icp: 3000, ton: 300, saeulen: 8, name: 60, beschreibung: 400 } as const;
@@ -171,6 +187,7 @@ export const quotenAmpel = (q: number): KpiAmpel => (q < 0.005 ? 'gruen' : q <= 
 
 // ── Kennzahlen ─────────────────────────────────────────────────────────────
 export function marketingKennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: string): Kpi[] {
+  const trichter = marketingTrichter(kontakte, crm, heute);
   const beitraege = crm.beitraege ?? [];
   const ausgaben = crm.newsletter ?? [];
   const vor7 = tagPlus(heute, -6), vor28 = tagPlus(heute, -27), vor30 = tagPlus(heute, -29), vor90 = tagPlus(heute, -89);
@@ -205,6 +222,9 @@ export function marketingKennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute:
     { id: 'marketing_anteil', label: 'Neue Deals aus Marketing · 90 Tage', wert: anteil, anzeige: anteil === null ? '—' : `${Math.round(anteil * 100)} %`, ampel: anteil === null ? 'grau' : stufe(anteil, 0.25, 0.1), ziel: '≥ 25 %', quelle: neu.length ? `${ausMk} von ${neu.length} neuen Deals · Quelle Content/Anfrage oder Gespräch aus einem Beitrag` : 'kein neuer Deal in 90 Tagen' },
     { id: 'abmeldequote', label: 'Abmeldequote letzte Ausgabe', wert: quote, anzeige: quote === null ? '—' : prozent(quote), ampel: quote === null ? 'grau' : quotenAmpel(quote), ziel: '< 0,5 %', quelle: letzte ? `„${kurz(letzte.titel, 60)}“: ${letzte.abmeldungen} von ${letzte.empfaenger}` : 'noch keine versendete Ausgabe mit Zahlen' },
     { id: 'newsletter_netto', label: 'Newsletter netto · 30 Tage', wert: nl.length ? netto : null, anzeige: nl.length ? (netto > 0 ? `+${netto}` : String(netto)) : '—', ampel: nl.length ? (netto > 0 ? 'gruen' : netto === 0 ? 'gelb' : 'rot') : 'grau', ziel: '> 0 je Monat', quelle: nl.length ? `${doi} mit Double-Opt-in · ${zugang} neu, ${abgang} weg` : 'noch keine Newsletter-Einwilligung' },
+    // 27.09.: Anfragen (Eingang + Wirkung an Beiträgen) und Kosten je Anfrage aus der Marketing-Strecke.
+    { id: 'anfragen_90', label: 'Anfragen · 90 Tage', wert: trichter.anfragen.messbar ? trichter.anfragen.gesamt : null, anzeige: trichter.anfragen.messbar ? String(trichter.anfragen.gesamt) : '—', ampel: trichter.anfragen.messbar ? stufe(trichter.anfragen.gesamt, 6, 2) : 'grau', ziel: '≥ 6 je Quartal', quelle: trichter.anfragen.messbar ? `${trichter.anfragen.ausEingang} über den Eingang, ${trichter.anfragen.anBeitraegen} an Beiträgen · ${trichter.anfragen.offen} offen` : 'noch keine Beiträge oder Anfragen' },
+    { id: 'kosten_je_anfrage', label: 'Kosten je Anfrage · 90 Tage', wert: trichter.kosten.jeAnfrage, anzeige: trichter.kosten.jeAnfrage !== null ? `${Math.round(trichter.kosten.jeAnfrage)} €` : '—', ampel: trichter.kosten.jeAnfrage !== null ? (trichter.kosten.jeAnfrage <= 100 ? 'gruen' : trichter.kosten.jeAnfrage <= 300 ? 'gelb' : 'rot') : 'grau', ziel: '≤ 100 €', quelle: trichter.kosten.jeAnfrage !== null ? `${Math.round(trichter.kosten.gesamt)} € Kosten ÷ ${trichter.anfragen.gesamt} Anfragen` : trichter.kosten.gesamt > 0 ? `${Math.round(trichter.kosten.gesamt)} € Kosten, erst ab ${MINDESTMENGE} Anfragen eine Quote` : 'Kosten an Beiträgen und Kampagnen eintragen' },
     { id: 'art14', label: 'Art. 14 überfällig', wert: kontakte.length ? faellig : null, anzeige: kontakte.length ? String(faellig) : '—', ampel: kontakte.length ? (faellig ? 'rot' : 'gruen') : 'grau', ziel: '0', quelle: `${laufend} Fristen laufen noch` },
   ];
 }
@@ -564,4 +584,115 @@ export function beitraegeJePerson(beitraege: Beitrag[], heute: string, tage = 30
       belege: pub.map(b => ({ id: b.id, titel: b.titel, datum: b.datum! })),
     };
   });
+}
+
+// ── Marketing-Trichter (27.09.) — Reichweite → Resonanz → Anfrage → Übergabe, mit Kosten ──
+// Kevin (26.09.): Marketing braucht dieselbe Ebene wie Sales — eine Strecke mit
+// Zahlen, Umwandlung und Kosten. Vier Stufen im Fenster (Standard 90 Tage):
+//   Reichweite  veröffentlichte Beiträge (dazu fest 30/90 Tage), versendete
+//               Ausgaben, Newsletter-Empfänger mit Double-Opt-in
+//   Resonanz    Reaktionen an Beiträgen (je Person und Beitrag einmal)
+//   Anfragen    Wirkung „Anfrage“ an Beiträgen + Anfragen aus dem Eingang
+//               (Aktivität „Anfrage über …“), je Person und Tag einmal —
+//               so zählt eine Anfrage mit Beitragsbezug nicht doppelt
+//   Übergabe    Deals mit Quelle Content/Anfrage/Kampagne oder Attribution über
+//               die Person (Wirkung, Anfrage in den 90 Tagen vor Anlage) — ein
+//               Deal in der Pipeline IST das SQL; dazu Leads im Prozess
+//               (Personen mit Anfrage, deren Lead noch vor dem SQL steht)
+//   Kosten      kostenEuro der Beiträge (Datum im Fenster) und Kampagnen (Zeitraum
+//               schneidet das Fenster) → Kosten je Anfrage, Kosten je SQL
+// Quoten und Kosten je Stück erst ab MINDESTMENGE im Nenner; jede Stufe ist
+// „grau“ (messbar false), solange es nichts zu zählen gibt.
+
+export type TrichterStufeId = 'reichweite' | 'resonanz' | 'anfragen' | 'uebergabe';
+export interface TrichterStufe {
+  id: TrichterStufeId; label: string;
+  /** null = noch nichts messbar. */
+  wert: number | null;
+  /** Kurzer Beleg unter der Zahl. */
+  unter: string;
+  /** Umwandlung zur nächsten Stufe — null ohne Mindestmenge; text erklärt, was gerechnet wird. */
+  umwandlung: { wert: number | null; text: string } | null;
+}
+export interface MarketingTrichter {
+  tage: number; von: string; bis: string;
+  reichweite: { beitraege: number; beitraege30: number; beitraege90: number; ausgaben: number; newsletterEmpfaenger: number; messbar: boolean };
+  resonanz: { reaktionen: number; personen: number; jeBeitrag: number | null; messbar: boolean };
+  anfragen: { gesamt: number; anBeitraegen: number; ausEingang: number; offen: number; personen: string[]; quote: number | null; messbar: boolean };
+  uebergabe: { leads: number; deals: number; sql: number; quote: number | null; dealIds: string[]; messbar: boolean };
+  kosten: { gesamt: number; beitraege: number; kampagnen: number; jeAnfrage: number | null; jeSql: number | null; messbar: boolean };
+  stufen: TrichterStufe[];
+}
+
+const LEAD_VOR_SQL = new Set(['kontaktiert', 'im_gespraech', 'qualifizierung']);
+
+export function marketingTrichter(kontakte: Kontakt[], crm: CrmBestand, heute: string, tage = 90): MarketingTrichter {
+  const bis = heute, von = tagPlus(heute, -(tage - 1));
+  const im = (t: string | undefined) => !!t && t >= von && t <= bis;
+  const beitraege = crm.beitraege ?? [];
+  const ausgaben = crm.newsletter ?? [];
+  const chancen = crm.chancen ?? [];
+  const veroeffentlicht = beitraege.filter(b => b.status === 'veroeffentlicht' && b.datum);
+  const zaehl = (v: string) => veroeffentlicht.filter(b => b.datum! >= v && b.datum! <= bis).length;
+
+  // Reichweite
+  const reichweite = {
+    beitraege: zaehl(von), beitraege30: zaehl(tagPlus(heute, -29)), beitraege90: zaehl(tagPlus(heute, -89)),
+    ausgaben: ausgaben.filter(a => a.status === 'versendet' && im(a.datum)).length,
+    newsletterEmpfaenger: newsletterEmpfaenger(kontakte).length,
+    messbar: beitraege.length > 0 || ausgaben.length > 0,
+  };
+
+  // Resonanz
+  const reakt = new Set<string>(), reaktPersonen = new Set<string>();
+  for (const b of beitraege) for (const w of b.wirkung ?? []) if (w.art === 'reaktion' && im(w.am)) { reakt.add(`${b.id}|${w.kontaktId}`); reaktPersonen.add(w.kontaktId); }
+  const hatWirkung = beitraege.some(b => (b.wirkung ?? []).length > 0);
+  const resonanz = { reaktionen: reakt.size, personen: reaktPersonen.size, jeBeitrag: quote(reakt.size, reichweite.beitraege), messbar: veroeffentlicht.length > 0 || hatWirkung };
+
+  // Anfragen — je Person und Tag einmal, egal ob am Beitrag, im Verlauf oder beides.
+  const anBeitraegen = new Set<string>(), ausEingang = new Set<string>();
+  const anfrageTage = new Map<string, string[]>(); // kontaktId → Tage mit Anfrage (auch außerhalb des Fensters, für die Attribution)
+  const merke = (id: string, t: string) => anfrageTage.set(id, [...(anfrageTage.get(id) ?? []), t]);
+  for (const b of beitraege) for (const w of b.wirkung ?? []) if (w.art === 'anfrage') { merke(w.kontaktId, w.am); if (im(w.am)) anBeitraegen.add(`${w.kontaktId}|${w.am}`); }
+  let eingangJe = false;
+  for (const k of kontakte) for (const a of k.aktivitaeten ?? []) if (istAnfrage(a)) { eingangJe = true; const t = tag(a.am); merke(k.id, t); if (im(t)) ausEingang.add(`${k.id}|${t}`); }
+  const alle = new Set([...anBeitraegen, ...ausEingang]);
+  const personen = Array.from(new Set(Array.from(alle).map(x => x.split('|')[0])));
+  const offen = (crm.followups ?? []).filter(f => f.status === 'offen' && istAnfrageFollowUp(f)).length;
+  const anfragen = { gesamt: alle.size, anBeitraegen: anBeitraegen.size, ausEingang: ausEingang.size, offen, personen, quote: quote(alle.size, resonanz.personen), messbar: resonanz.messbar || eingangJe };
+
+  // Übergabe — Deals aus Marketing im Fenster (Quelle oder Attribution über die Person).
+  const ausAnfrage = (c: Pick<Chance, 'kontaktIds' | 'angelegt'>) => { const b2 = tag(c.angelegt), v2 = tagPlus(b2, -90); return c.kontaktIds.some(id => (anfrageTage.get(id) ?? []).some(t => t >= v2 && t <= b2)); };
+  const deals = chancen.filter(c => im(tag(c.angelegt)) && ((c.quelle && TRICHTER_QUELLEN.includes(c.quelle)) || ausMarketing(c, beitraege) || ausAnfrage(c)));
+  const imDeal = new Set(deals.flatMap(c => c.kontaktIds));
+  const firmen = new Map(crm.firmen.map(f => [f.id, f]));
+  const leadEinheiten = new Set<string>();
+  for (const id of personen) {
+    if (imDeal.has(id)) continue;
+    const k = kontakte.find(x => x.id === id);
+    if (!k || k.werbesperre) continue;
+    const status = (k.firmaId ? firmen.get(k.firmaId)?.lead?.status : undefined) ?? k.lead?.status;
+    // Ohne gesetzten Status gilt: die Anfrage selbst ist der Kontakt — im Prozess, vor dem SQL.
+    if (status === undefined || LEAD_VOR_SQL.has(status)) leadEinheiten.add(k.firmaId ?? k.id);
+  }
+  const uebergabe = { leads: leadEinheiten.size, deals: deals.length, sql: deals.length, quote: quote(deals.length, alle.size), dealIds: deals.map(c => c.id), messbar: chancen.length > 0 || anfragen.messbar };
+
+  // Kosten
+  const kostenBeitraege = beitraege.filter(b => im(b.datum ?? tag(b.geaendert))).reduce((s, b) => s + (b.kostenEuro ?? 0), 0);
+  const kostenKampagnen = (crm.kampagnen ?? []).filter(k => { const s = k.start ?? tag(k.geaendert), e = k.ende ?? bis; return s <= bis && e >= von; }).reduce((s, k) => s + (k.kostenEuro ?? 0), 0);
+  const kostenMessbar = beitraege.some(b => (b.kostenEuro ?? 0) > 0) || (crm.kampagnen ?? []).some(k => (k.kostenEuro ?? 0) > 0);
+  const gesamt = kostenBeitraege + kostenKampagnen;
+  const kosten = { gesamt, beitraege: kostenBeitraege, kampagnen: kostenKampagnen, jeAnfrage: kostenMessbar ? quote(gesamt, alle.size) : null, jeSql: kostenMessbar ? quote(gesamt, deals.length) : null, messbar: kostenMessbar };
+
+  const pz = (q: number | null) => (q === null ? '' : `${Math.round(q * 100)} %`);
+  const stufen: TrichterStufe[] = [
+    { id: 'reichweite', label: 'Reichweite', wert: reichweite.messbar ? reichweite.beitraege : null, unter: reichweite.messbar ? `${reichweite.beitraege} Beiträge${reichweite.ausgaben ? ` · ${reichweite.ausgaben} Ausgaben` : ''} · ${reichweite.newsletterEmpfaenger} Newsletter-Empfänger` : 'noch kein Beitrag',
+      umwandlung: { wert: resonanz.jeBeitrag, text: resonanz.jeBeitrag === null ? `Reaktionen je Beitrag ab ${MINDESTMENGE} Beiträgen` : `${resonanz.jeBeitrag.toLocaleString('de-DE', { maximumFractionDigits: 1 })} Reaktionen je Beitrag` } },
+    { id: 'resonanz', label: 'Resonanz', wert: resonanz.messbar ? resonanz.reaktionen : null, unter: resonanz.messbar ? `${resonanz.reaktionen} Reaktionen von ${resonanz.personen} Personen` : 'Wirkung am Beitrag eintragen',
+      umwandlung: { wert: anfragen.quote, text: anfragen.quote === null ? `Anfragen je reagierende Person ab ${MINDESTMENGE} Personen` : `${pz(anfragen.quote)} der Reagierenden fragen an` } },
+    { id: 'anfragen', label: 'Anfragen', wert: anfragen.messbar ? anfragen.gesamt : null, unter: anfragen.messbar ? `${anfragen.anBeitraegen} an Beiträgen · ${anfragen.ausEingang} im Eingang${anfragen.offen ? ` · ${anfragen.offen} offen` : ''}` : 'Anfrage erfassen, sobald eine kommt',
+      umwandlung: { wert: uebergabe.quote, text: uebergabe.quote === null ? `SQL je Anfrage ab ${MINDESTMENGE} Anfragen` : `${pz(uebergabe.quote)} der Anfragen werden SQL` } },
+    { id: 'uebergabe', label: 'Übergabe an Sales', wert: uebergabe.messbar ? uebergabe.sql : null, unter: uebergabe.messbar ? `${uebergabe.sql} SQL (Deals) · ${uebergabe.leads} Leads im Prozess` : 'noch kein Deal aus Marketing', umwandlung: null },
+  ];
+  return { tage, von, bis, reichweite, resonanz, anfragen, uebergabe, kosten, stufen };
 }

@@ -14,7 +14,8 @@ import { mix, checklisteStand, zielHinweis, budgetSumme, gaesteVorschlag } from 
 import type { HeadId } from './prompt';
 import { PLAYBOOKS, kundenprofil, aehnlicheFirmen, zielgruppe, kampagnenZahlen } from '@/lib/crm/kampagnen';
 import { leads as leadZeilen, fehltBisSql, sqlBereit, geklaert } from '@/lib/crm/leads';
-import { einstellungAus, marketingKennzahlen, wirkungZahlen, newsletterEmpfaenger, abmeldequote } from '@/lib/crm/marketing';
+import { einstellungAus, marketingKennzahlen, wirkungZahlen, newsletterEmpfaenger, abmeldequote, marketingTrichter } from '@/lib/crm/marketing';
+import { anfragenListe } from '@/lib/crm/anfragen';
 import { kontextAus, segmentAuswerten } from '@/lib/crm/segmente';
 import { netzRunde } from '@/lib/crm/netzwerk';
 import { TEAM } from '@/lib/crm/team';
@@ -126,6 +127,9 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
       meta,
       positionierung: { text: kurz(einst.positionierung, 1500), zielgruppe: kurz(einst.icp, 1500), ton: einst.ton, saeulen: einst.saeulen.map(x => ({ name: x.name, beschreibung: kurz(x.beschreibung, 200) })) },
       kennzahlen: marketingKennzahlen(aktiv, crm, heute).map(x => ({ label: x.label, wert: x.anzeige, ampel: x.ampel, ziel: x.ziel })),
+      // 27.09.: die Marketing-Strecke und die offenen Anfragen — der Head sieht, was hängt.
+      trichter: (() => { const t = marketingTrichter(aktiv, crm, heute); return { reichweite: t.reichweite, resonanz: t.resonanz, anfragen: { gesamt: t.anfragen.gesamt, offen: t.anfragen.offen, quote: t.anfragen.quote }, uebergabe: t.uebergabe, kosten: t.kosten }; })(),
+      anfragen_offen: anfragenListe(aktiv, crm, heute, 30).filter(a => a.offen).slice(0, 10).map(a => ({ name: a.name, kanal: a.kanal, datum: a.am.slice(0, 10), text: kurz(a.text, 200) })),
       content_log: crm.beitraege.filter(b => !b.datum || b.datum >= vor60).slice(-30).map(b => ({
         titel: b.titel, kanal: b.kanal, saeule: saeule(b.saeule), status: b.status, datum: b.datum ?? null, wirkung: wirkungZahlen(b),
         reagiert: b.wirkung.map(w => nachId.get(w.kontaktId)).filter((k): k is Kontakt => !!k).slice(0, 5).map(k => ({ id: k.id, name: anzeigename(k), firma: k.firma })),

@@ -17,6 +17,8 @@
 // wer schreibt was“ zeigen, was bei wem liegt. Jede Änderung ist eine
 // Einzeländerung (api.teil) — Kevin und Malin überschreiben sich nie.
 // MAKE OS veröffentlicht nichts: Text kopieren, selbst posten, hier eintragen.
+// Kosten (27.09.): je Beitrag pflegbar (Anzeigen, Produktion) — der Marketing-
+// Trichter rechnet daraus Kosten je Anfrage und je SQL.
 
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -294,6 +296,12 @@ function BeitragKarte({ b, api, einstellung, heute, zuKontakt, schliessen, melde
       <Feldzeile label="Säule">{einstellung.saeulen.length ? <Pillen liste={SAEULEN} aktiv={b.saeule ?? ''} onWahl={s => void teil({ saeule: s || null })} /> : <span style={{ fontSize: 12.5, color: C.inkLeise }}>Themensäulen legst du unter „Positionierung“ an.</span>}</Feldzeile>
       <Feldzeile label="Datum"><Feld typ="date" breite={170} wert={b.datum ?? ''} platzhalter="Datum" onFertig={d => void teil({ datum: d || null })} /></Feldzeile>
       <Feldzeile label="Link"><Feld wert={b.link ?? ''} platzhalter="https://… (nach dem Veröffentlichen)" onFertig={l => void teil({ link: l.trim() || null })} /></Feldzeile>
+      <Feldzeile label="Kosten (€)">
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Feld typ="number" breite={140} wert={b.kostenEuro ? String(b.kostenEuro) : ''} platzhalter="0" onFertig={t => { const n = Math.round(Number(t)); void teil({ kostenEuro: Number.isFinite(n) && n > 0 ? n : null }); }} />
+          <span style={{ fontSize: 12, color: C.inkLeise }}>Anzeigen, Produktion, Tools — für „Kosten je Anfrage“ in der Marketing-Strecke.</span>
+        </div>
+      </Feldzeile>
       <div style={{ marginTop: 6 }}><Textfeld wert={b.text ?? ''} zeilen={8} max={8000} platzhalter="Text des Beitrags" onFertig={t => void textAendern({ text: t || null })} /></div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
         <Knopf leise aus={!b.text} onClick={async () => melde((await kopieren(`${b.text ?? ''}`)) ? 'Text kopiert — veröffentlichen bleibt bei euch.' : 'Kopieren nicht möglich.')}>Text kopieren</Knopf>

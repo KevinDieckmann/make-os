@@ -11,7 +11,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
 import type { CrmBestand, Chance, Mandat } from './typen';
 import { kennzahlen, type Kpi } from './kennzahlen';
-import { marketingKennzahlen, ausMarketing, abmeldequote } from './marketing';
+import { marketingKennzahlen, ausMarketing, abmeldequote, marketingTrichter } from './marketing';
 import { eventKennzahlen, WELTEN, IM_SCORE, GRUNDLAGE, type Welt, type Traktion } from './traktion';
 import { OFFENE_STUFEN, gesundheit, gesamtwert } from './pipeline';
 import { verweildauer } from './deal-auswertung';
@@ -53,6 +53,8 @@ export const TRAKTION_KENNZAHLEN: KennzahlDefBasis[] = [
   D({ id: 'marketing_anteil', label: 'Neue Deals aus Marketing · 90 Tage', saeule: 'marketing', gruppe: 'Marketing', einheit: 'prozent', richtung: 'hoch', gruen: 25, rot: 10, skala: 100, formel: 'Deals mit Quelle Content/Anfrage oder Gespräch aus einem Beitrag ÷ neue Deals', quelle: 'Deals + Redaktionsplan', luecke: 'Kein neuer Deal in 90 Tagen', pflegen: { text: 'Deals öffnen', href: WEG.deals() } }),
   D({ id: 'abmeldequote', label: 'Abmeldequote letzte Ausgabe', saeule: 'marketing', gruppe: 'Sichtbarkeit', einheit: 'prozent', richtung: 'niedrig', gruen: 0.5, rot: 1, skala: 100, formel: 'Abmeldungen ÷ Empfänger der letzten versendeten Ausgabe', quelle: 'Newsletter', luecke: 'Noch keine versendete Ausgabe mit Zahlen', pflegen: { text: 'Newsletter', href: WEG.marketing('newsletter') } }),
   D({ id: 'newsletter_netto', label: 'Newsletter netto · 30 Tage', saeule: 'marketing', gruppe: 'Sichtbarkeit', einheit: 'anzahl', richtung: 'hoch', gruen: 1, rot: 0, formel: 'Neue Double-Opt-ins minus Widerrufe und Sperren in 30 Tagen', quelle: 'Einwilligungen der Kartei', luecke: 'Noch keine Newsletter-Einwilligung', pflegen: { text: 'Kartei', href: WEG.kontakt() } }),
+  D({ id: 'anfragen_90', label: 'Anfragen · 90 Tage', saeule: 'marketing', gruppe: 'Marketing', einheit: 'anzahl', richtung: 'hoch', gruen: 6, rot: 2, formel: 'Anfragen über den Eingang + Wirkung „Anfrage“ an Beiträgen, je Person und Tag einmal, 90 Tage', quelle: 'Marketing › Anfragen', luecke: 'Noch keine Beiträge oder Anfragen', pflegen: { text: 'Anfrage erfassen', href: markttraktion('marketing', 'anfragen') } }),
+  D({ id: 'kosten_je_anfrage', label: 'Kosten je Anfrage · 90 Tage', saeule: 'marketing', gruppe: 'Marketing', einheit: 'eur', richtung: 'niedrig', gruen: 100, rot: 300, formel: 'Kosten an Beiträgen und Kampagnen ÷ Anfragen, erst ab 5 Anfragen', quelle: 'Kosten (€) am Beitrag und an der Kampagne', luecke: 'Kosten oder Anfragen fehlen', pflegen: { text: 'Kosten eintragen', href: markttraktion('marketing', 'kampagnen') } }),
   // ── Event
   D({ id: 'events_90', label: 'Events · 90 Tage', saeule: 'event', gruppe: 'Events', gewicht: 1.25, einheit: 'anzahl', richtung: 'hoch', gruen: 1, rot: 0, formel: 'Stattgefundene Events der letzten 90 Tage (geplantes Event = gelb)', quelle: 'Events', luecke: 'Noch kein Event angelegt', pflegen: { text: 'Event anlegen', href: WEG.event() } }),
   D({ id: 'nachfassen_48h', label: 'Nachgefasst binnen 48 h', saeule: 'event', gruppe: 'Events', einheit: 'prozent', richtung: 'hoch', gruen: 90, rot: 60, skala: 100, formel: 'Gäste, die binnen 48 h nachgefasst wurden ÷ Gäste mit abgelaufener Frist (90 Tage)', quelle: 'Teilnahmen', luecke: 'Noch kein Gast mit abgelaufener Frist', pflegen: { text: 'Nachfassen', href: WEG.event() } }),
@@ -145,6 +147,18 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
     const monat = b.heute.slice(0, 7);
     return b.crm.chancen.filter(c => c.stufe === 'gewonnen' && (c.historie.filter(h => h.stufe === 'gewonnen').pop()?.am ?? c.geaendert).slice(0, 7) === monat).slice(0, 4)
       .map(c => dealDetail(c, euro(gesamtwert(c)), c.firma ?? undefined, 'gruen'));
+  },
+  anfragen_90(b) {
+    const t = marketingTrichter(b.kontakte, b.crm, b.heute);
+    return t.anfragen.personen.slice(0, 4).map(id => personDetail(b, id, 'Anfrage', undefined)).filter((d): d is Detail => !!d);
+  },
+  kosten_je_anfrage(b) {
+    const t = marketingTrichter(b.kontakte, b.crm, b.heute);
+    return [
+      { titel: 'Kosten Beiträge', wert: euro(t.kosten.beitraege), href: WEG.marketing('redaktion') },
+      { titel: 'Kosten Kampagnen', wert: euro(t.kosten.kampagnen), href: WEG.kampagne(undefined, 'marketing') },
+      { titel: 'Anfragen', wert: String(t.anfragen.gesamt), href: WEG.marketing('anfragen') },
+    ];
   },
   veroeffentlichungen(b) {
     return (b.crm.beitraege ?? []).filter(x => x.status === 'veroeffentlicht' && x.datum).sort((x, y) => y.datum!.localeCompare(x.datum!)).slice(0, 3)

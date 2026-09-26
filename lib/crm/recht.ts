@@ -51,7 +51,9 @@ export function kanalStatus(k: Kontakt, kanal: Kanal, ctx: Kontext = {}): KanalS
   }
   if (kanal === 'mail' || kanal === 'linkedin' || kanal === 'einladung') {
     const e = gueltig(k, kanal === 'linkedin' ? 'social' : kanal === 'einladung' ? 'einladung' : 'mail') ?? (kanal === 'einladung' ? gueltig(k, 'mail') : undefined);
-    if (e) return { kanal, farbe: 'gruen', grund: e.grundlage === 'anfrage' ? 'Antwort auf Anfrage' : `Einwilligung vom ${e.erteiltAm}`, grundlage: e.grundlage };
+    // Eine Anfrage erlaubt die Antwort (Vertragsanbahnung), keine Werbung — die braucht weiter die Einwilligung (27.09.).
+    if (e && e.grundlage === 'anfrage') return { kanal, farbe: 'gelb', grund: 'Antwort auf Anfrage: antworten ja, Werbung erst mit Einwilligung', grundlage: e.grundlage };
+    if (e) return { kanal, farbe: 'gruen', grund: `Einwilligung vom ${e.erteiltAm}`, grundlage: e.grundlage };
     if (mandat) return { kanal, farbe: 'gruen', grund: 'laufendes Mandat (Bestandskunde) — Widerspruchshinweis in jede Werbung', grundlage: 'bestandskunde_7_3' };
     if (bekannt(k)) return { kanal, farbe: 'gelb', grund: 'persönlich bekannt: persönliche Nachricht ja, Werbung erst mit Einwilligung' };
     return { kanal, farbe: 'rot', grund: kanal === 'linkedin' ? 'LinkedIn-Nachricht zählt als elektronische Post — ohne Einwilligung nur Vernetzen' : 'Werbe-Mail ohne Einwilligung ist abmahnfähig — Grundlage klären' };

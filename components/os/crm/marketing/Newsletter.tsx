@@ -12,6 +12,8 @@
 // Kevin oder Malin. Ist sie angefragt, geht die Ausgabe erst mit Okay auf
 // „Bereit“ oder „Versendet“ (lib/crm/marketing.ts, ausgabeStatusWechsel).
 // Jede Änderung ist eine Einzeländerung (api.teil).
+// Stimme (27.09.): in wessen Namen die Ausgabe erscheint — Kevin, Malin oder die
+// Marke (Absender im Versandwerkzeug). Plakette in der Liste: Autor › Stimme.
 
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -19,13 +21,13 @@ import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Zahl, Raster, fel
 import type { NewsletterAusgabe, Beitrag } from '@/lib/crm/typen';
 import { TEAM, anderer, nameVon } from '@/lib/crm/team';
 import {
-  AUSGABE_STATUS, newsletterEmpfaenger, abmeldequote, quotenAmpel, prozent,
+  AUSGABE_STATUS, STIMMEN_WAHL, newsletterEmpfaenger, abmeldequote, quotenAmpel, prozent, stimmeText,
   autorVon, ausgabeFreigabeStand, ausgabeSperre, ausgabeStatusWechsel, ausgabeNachTextAenderung, ausgabeNaechsterSchritt, freigabeAnfrage, freigabeOk, aenderungsWunsch, type Teil,
 } from '@/lib/crm/marketing';
 import { type CrmApi, neueId, datum } from '../daten';
 import { Pillen, Feld, Feldzeile } from '../teile';
-import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer, type WerWahl } from '../team';
-import { KPI_FARBE, Textfeld, kopieren, FreigabeChip, FreigabeBlock, AlsNaechstes } from './gemeinsam';
+import { ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer, type WerWahl } from '../team';
+import { KPI_FARBE, Textfeld, kopieren, FreigabeChip, FreigabeBlock, AlsNaechstes, AutorStimme } from './gemeinsam';
 
 const STATUS_FARBE: Record<NewsletterAusgabe['status'], string> = { entwurf: C.inkDim, bereit: LEUCHT.achtung, versendet: LEUCHT.gut };
 const alsEintrag = (a: NewsletterAusgabe) => a as unknown as { id: string } & Record<string, unknown>;
@@ -96,8 +98,8 @@ export function Newsletter({ api, fokus }: { api: CrmApi; fokus?: string }) {
             const stand = a.status === 'versendet' ? 'nicht_noetig' : ausgabeFreigabeStand(a);
             return (
               <div key={a.id}>
-                <Zeile onClick={() => setOffen(offen === a.id ? null : a.id)} aktiv={offen === a.id} titel={a.titel} links={<Person id={autorVon(a)} groesse={20} />}
-                  unter={[a.datum ? datum(a.datum, heute) : 'ohne Datum', a.beitragIds.length ? `${a.beitragIds.length} Beiträge` : '', a.status === 'versendet' && a.empfaenger ? `${a.empfaenger} Empfänger` : '', a.antworten ? `${a.antworten} Antworten` : '', q !== null ? `Abmeldungen ${prozent(q)}` : ''].filter(Boolean).join(' · ')}
+                <Zeile onClick={() => setOffen(offen === a.id ? null : a.id)} aktiv={offen === a.id} titel={a.titel} links={<AutorStimme autor={autorVon(a)} stimme={a.stimme} groesse={20} />}
+                  unter={[a.datum ? datum(a.datum, heute) : 'ohne Datum', a.stimme ? `als ${stimmeText(a.stimme)}` : '', a.beitragIds.length ? `${a.beitragIds.length} Beiträge` : '', a.status === 'versendet' && a.empfaenger ? `${a.empfaenger} Empfänger` : '', a.antworten ? `${a.antworten} Antworten` : '', q !== null ? `Abmeldungen ${prozent(q)}` : ''].filter(Boolean).join(' · ')}
                   rechts={<span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>{stand !== 'ok' && <FreigabeChip stand={stand} an={a.freigabe?.an} />}<Chip farbe={STATUS_FARBE[a.status]}>{AUSGABE_STATUS.find(s => s.id === a.status)?.label}</Chip></span>} />
                 {offen === a.id && <AusgabeFormular a={a} api={api} heute={heute} empfaenger={empfaenger} beitraege={crm.stand.beitraege ?? []} schliessen={() => setOffen(null)} melde={setMeldung} />}
               </div>
@@ -145,6 +147,12 @@ function AusgabeFormular({ a, api, heute, empfaenger, beitraege, schliessen, mel
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <ZustaendigWahl wert={a.zustaendig} welt="marketing" onWahl={z => void teil({ zustaendig: z })} />
           <Uebergeben api={api} art="newsletter" id={a.id} jetzt={autor} klein />
+        </div>
+      </Feldzeile>
+      <Feldzeile label="Erscheint als">
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Pillen liste={STIMMEN_WAHL} aktiv={a.stimme ?? null} onWahl={s => void teil({ stimme: s })} />
+          {!a.stimme && <span style={{ fontSize: 12, color: C.inkLeise }}>Absender im Versandwerkzeug — Kevin, Malin oder die Marke?</span>}
         </div>
       </Feldzeile>
       <Feldzeile label="Freigabe">

@@ -11,24 +11,31 @@
 // Eintrag Kevin als Sales-Verantwortung) — Filter „Alle · Meins · Malin“,
 // Plakette, Übergeben. Ergebnisse halten fest, wer angesprochen hat („von“);
 // Schritt-Aufgaben gehen an die Zuständigkeit. Änderungen als Einzelfelder.
+// Kosten (27.09.): je Kampagne pflegbar — der Marketing-Trichter rechnet daraus
+// Kosten je Anfrage und je SQL. „Deal anlegen“ an einer Person mit Ergebnis
+// „Interesse → Lead“: über POST /api/crm/deal mit Quelle Kampagne und Bezug
+// (marketing/DealAusQuelle.tsx) — der Lead wird SQL, der Deal trägt die Herkunft.
 
 import Link from 'next/link';
 import { WEG } from '@/lib/wege';
 import { useLinkAuswahl } from '../Verlauf';
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { dealAkte } from '@/lib/crm/adresse';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, Zahl, LEUCHT } from '../schlank';
 import { anzeigename } from '@/lib/make-one/crm';
 import { kanalStatus } from '@/lib/crm/recht';
 import type { Kampagne, KampagnenErgebnis } from '@/lib/crm/typen';
 import type { Playbook, KampagnenZahlen } from '@/lib/crm/kampagnen';
-import { werZahlen, bearbeiterFuer, kampagneJePerson } from '@/lib/crm/pipeline';
+import { werZahlen, bearbeiterFuer, kampagneJePerson, OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { zustaendig, nameVon, BEIDE } from '@/lib/crm/team';
 import { type CrmApi, datum, euro, plusTage } from './daten';
 import { Pillen, Feld, Feldzeile, AMPEL_FARBE } from './teile';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
 import { HeadPanel } from './HeadPanel';
 import { VernetzenEinstellungen } from './Vernetzen';
+import { DealAusQuelle } from './marketing/DealAusQuelle';
 
 interface Daten {
   heute: string; playbooks: (Playbook & { anzahl: number })[];
@@ -105,7 +112,7 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
                 <div key={k.id}>
                   <Zeile onClick={() => setOffen(offen === k.id ? null : k.id)} aktiv={offen === k.id}
                     links={<Punkt farbe={k.status === 'aktiv' ? LEUCHT.gut : k.status === 'entwurf' ? LEUCHT.achtung : C.inkLeise} />}
-                    titel={k.name} unter={z ? `${z.personen} Personen · ${z.angesprochen} angesprochen · ${z.gespraeche} Gespräche · ${z.chancen} Leads${z.schritteFaellig ? ` · ${z.schritteFaellig} Schritte fällig` : ''}` : ''}
+                    titel={k.name} unter={z ? `${z.personen} Personen · ${z.angesprochen} angesprochen · ${z.gespraeche} Gespräche · ${z.chancen} Leads${z.schritteFaellig ? ` · ${z.schritteFaellig} Schritte fällig` : ''}${k.kostenEuro ? ` · ${euro(k.kostenEuro)} Kosten` : ''}` : ''}
                     rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>{k.von !== 'hand' && <Chip farbe={LEUCHT.agenten}>{k.von === 'head-sales' ? 'Head of Sales' : 'Head of Marketing'}</Chip>}<Chip farbe={C.inkDim}>{STATUS.find(s => s.id === k.status)?.label}</Chip><Person id={zustaendig(k.zustaendig, 'sales')} groesse={18} /></span>} />
                   {offen === k.id && <KampagnenDetail k={k} api={api} pb={d.playbooks.find(p => p.id === k.playbook)} z={z} heute={d.heute} post={post} zuKontakt={zuKontakt} />}
                 </div>
@@ -158,9 +165,13 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
 }
 
 function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagne; api: CrmApi; pb?: Playbook; z?: KampagnenZahlen; heute: string; post: (b: Record<string, unknown>) => Promise<{ ok?: boolean; angelegt?: number; an?: string }>; zuKontakt: (id: string) => void }) {
+  const router = useRouter();
   const [suche, setSuche] = useState('');
   const [alle, setAlle] = useState(false);
   const [hinweis, setHinweis] = useState('');
+  // „Deal anlegen“ an einer Person mit Interesse — offen für genau eine Person.
+  const [dealFuer, setDealFuer] = useState<string | null>(null);
+  const zuDeal = (id: string) => router.push(dealAkte(id));
   // Nur die geänderten Felder — Kevin und Malin können gleichzeitig an derselben Kampagne arbeiten.
   const setze = (teil: Partial<Kampagne>) => api.teil('kampagnen', k.id, nurFelder(teil));
   const nachId = new Map((api.kontakte ?? []).map(x => [x.id, x]));
@@ -177,6 +188,8 @@ function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagn
     : z.personen ? 'Alle angesprochen — Kampagne abschließen und in der Notiz festhalten, was funktioniert hat.' : 'Personen hinzufügen — über die Suche unten.';
   const kanal = k.kanal === 'telefon' || k.kanal === 'mail' || k.kanal === 'linkedin' ? k.kanal : null;
   const treffer = suche.trim().length >= 2 ? (api.kontakte ?? []).filter(x => !k.kontaktIds.includes(x.id) && !x.werbesperre && `${anzeigename(x)} ${x.firma ?? ''}`.toLowerCase().includes(suche.toLowerCase())).slice(0, 6) : [];
+  // Offener Deal mit dieser Person — dann führt „Deal“ dorthin statt einen zweiten anzulegen.
+  const offenerDeal = (kontaktId: string) => (api.crm?.stand.chancen ?? []).find(c => OFFENE_STUFEN.includes(c.stufe) && c.kontaktIds.includes(kontaktId));
   const personen = k.kontaktIds.map(id => nachId.get(id)).filter((x): x is NonNullable<typeof x> => !!x);
   return (
     <div style={{ padding: '10px 2px 18px', display: 'grid', gap: 12, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
@@ -205,6 +218,12 @@ function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagn
       <Feldzeile label="Ziel"><Feld wert={k.ziel} onFertig={ziel => setze({ ziel })} /></Feldzeile>
       <Feldzeile label="Start"><Feld typ="date" breite={160} wert={k.start} platzhalter="Start" onFertig={start => setze({ start: start || undefined })} /></Feldzeile>
       <Feldzeile label="Kanal"><Pillen liste={Object.entries(KANAL_LABEL).map(([id, label]) => ({ id: id as Kampagne['kanal'], label }))} aktiv={k.kanal} onWahl={kanal => setze({ kanal })} /></Feldzeile>
+      <Feldzeile label="Kosten (€)">
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Feld typ="number" breite={140} wert={k.kostenEuro ? String(k.kostenEuro) : ''} platzhalter="0" onFertig={t => { const n = Math.round(Number(t)); setze({ kostenEuro: Number.isFinite(n) && n > 0 ? n : undefined }); }} />
+          <span style={{ fontSize: 12, color: C.inkLeise }}>Anzeigen, Tools, Zukauf — geht in „Kosten je Anfrage“ und „je SQL“ der Marketing-Strecke ein.</span>
+        </div>
+      </Feldzeile>
       <div>
         <Ueberschrift rechts={<Knopf leise onClick={async () => { const r = await post({ aktion: 'aufgaben', id: k.id }); if (r.ok) setHinweis(r.angelegt ? `${r.angelegt} ${r.angelegt === 1 ? 'Aufgabe' : 'Aufgaben'} für ${nameVon(r.an ?? aufgabenAn)} angelegt.` : 'Alle offenen Schritte haben schon eine Aufgabe.'); }}>Offene Schritte als Aufgaben für {nameVon(aufgabenAn)}</Knopf>}>Schritte</Ueberschrift>
         {hinweis && <div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 6 }}>{hinweis}</div>}
@@ -236,7 +255,15 @@ function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagn
                 {st && <span title={st.grund} style={{ fontSize: 11.5, color: AMPEL_FARBE[st.farbe] }}>● {KANAL_LABEL[kanal!]}: {st.farbe === 'gruen' ? 'zulässig' : st.farbe === 'gelb' ? 'nur persönlich/mit Anlass' : 'nicht zulässig'}</span>}
                 <button onClick={() => setze({ kontaktIds: k.kontaktIds.filter(i => i !== x.id) })} aria-label="Aus der Kampagne nehmen" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>×</button>
               </div>
-              <Pillen liste={ERGEBNISSE} aktiv={e} onWahl={ergebnis => void post({ aktion: 'ergebnis', id: k.id, kontaktId: x.id, ergebnis, ...(api.ich ? { von: api.ich } : {}) })} farbe={ERGEBNISSE.find(r => r.id === e)?.farbe ?? LEUCHT.puls} />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Pillen liste={ERGEBNISSE} aktiv={e} onWahl={ergebnis => void post({ aktion: 'ergebnis', id: k.id, kontaktId: x.id, ergebnis, ...(api.ich ? { von: api.ich } : {}) })} farbe={ERGEBNISSE.find(r => r.id === e)?.farbe ?? LEUCHT.puls} />
+                {e === 'chance' && (offenerDeal(x.id)
+                  ? <Knopf leise onClick={() => zuDeal(offenerDeal(x.id)!.id)}>Zum Deal ›</Knopf>
+                  : <Knopf leise farbe={LEUCHT.business} onClick={() => setDealFuer(dealFuer === x.id ? null : x.id)}>{dealFuer === x.id ? 'Abbrechen' : 'Deal aus dieser Kampagne'}</Knopf>)}
+              </div>
+              {dealFuer === x.id && !offenerDeal(x.id) && (
+                <DealAusQuelle api={api} kontaktId={x.id} quelle="kampagne" quelleBezug={k.id} bezugTitel={k.name} onFertig={id => { setDealFuer(null); zuDeal(id); }} onAbbruch={() => setDealFuer(null)} zuDeal={zuDeal} />
+              )}
             </div>
           );
         })}
@@ -244,7 +271,7 @@ function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagn
         {!personen.length && <Leer>Keine Personen — über die Suche hinzufügen.</Leer>}
         <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Person hinzufügen …" aria-label="Person hinzufügen" style={{ marginTop: 8, width: '100%', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, padding: '8px 11px', color: C.ink, fontSize: TYP.bedien }} />
         {treffer.map(x => <button key={x.id} onClick={() => { void setze({ kontaktIds: [...k.kontaktIds, x.id] }); setSuche(''); }} style={{ display: 'block', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: '3px 0' }}>+ {anzeigename(x)}{x.firma ? ` · ${x.firma}` : ''}</button>)}
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Jedes Ergebnis landet im Verlauf der Person — mit dir als der Person, die angesprochen hat; „Interesse → Lead“ setzt den Lead der Firma in die Qualifizierung (Ebene 1) — zum Deal wird er erst als SQL.</div>
+        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Jedes Ergebnis landet im Verlauf der Person — mit dir als der Person, die angesprochen hat; „Interesse → Lead“ setzt den Lead der Firma in die Qualifizierung (Ebene 1). Wird daraus ein echter Bedarf: „Deal aus dieser Kampagne“ — der Deal trägt Quelle Kampagne, der Lead wird SQL.</div>
       </div>
       <Feldzeile label="Notiz"><Feld wert={k.notiz} onFertig={notiz => setze({ notiz: notiz || undefined })} /></Feldzeile>
       <div><button onClick={() => { if (window.confirm('Kampagne löschen? Ergebnisse im Verlauf der Personen bleiben.')) void api.weg('kampagnen', k.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>Löschen</button></div>

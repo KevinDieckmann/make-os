@@ -1,7 +1,8 @@
 // ─── CRM — Marketing ────────────────────────────────────────────────────────
-// GET                                   → { ok, heute, ich, einstellung, kennzahlen, stimmen, freigaben, jePerson }
+// GET                                   → { ok, heute, ich, einstellung, kennzahlen, stimmen, freigaben, jePerson, trichter }
 //                                         freigaben: was bei wem zur Freigabe liegt (Beiträge, Newsletter)
 //                                         jePerson:  Beiträge je Person, 30 Tage (veröffentlicht, Gespräche/Anfragen)
+//                                         trichter:  Reichweite → Resonanz → Anfragen → Übergabe mit Kosten (90 Tage; ?tage=30 für 30)
 // GET ?segment=<id>&format=csv          → Mitglieder des Segments als CSV (UTF-8 mit BOM):
 //                                         name, firma, email (nur bei grüner Mail-Ampel),
 //                                         telefon, kreis, phase, kanal_status
@@ -19,7 +20,7 @@ import { localDay } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { kontextAus } from '@/lib/crm/segmente';
-import { marketingKennzahlen, einstellungAus, saeubereEinstellung, stimmenAus, segmentCsv, newsletterCsv, dateiTeil, freigabeLage, beitraegeJePerson } from '@/lib/crm/marketing';
+import { marketingKennzahlen, einstellungAus, saeubereEinstellung, stimmenAus, segmentCsv, newsletterCsv, dateiTeil, freigabeLage, beitraegeJePerson, marketingTrichter } from '@/lib/crm/marketing';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -54,6 +55,7 @@ export async function GET(req: Request) {
     stimmen: stimmenAus(kontakte, 30),
     freigaben: freigabeLage(crm),
     jePerson: beitraegeJePerson(crm.beitraege ?? [], heute),
+    trichter: marketingTrichter(kontakte, crm, heute, url.searchParams.get('tage') === '30' ? 30 : 90),
   });
 }
 

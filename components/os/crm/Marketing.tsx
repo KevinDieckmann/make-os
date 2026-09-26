@@ -1,10 +1,13 @@
 'use client';
 
 // ─── Markttraktion · Marketing — ansprechbar sein, nicht laut ─────────────────────────
-// Oben der Head of Marketing (Lauf, Vorschläge zur Freigabe). Darunter sechs
+// Oben der Head of Marketing (Lauf, Vorschläge zur Freigabe). Darunter sieben
 // Reiter:
-//   Übersicht       Wirkung (Kennzahlen mit Ampel), Einwilligungsbestand,
-//                   Art. 14, Quellen der Chancen, Stimme der Kunden
+//   Übersicht       Marketing-Strecke (Reichweite → Resonanz → Anfragen →
+//                   Übergabe, Kosten je Anfrage/SQL), Wirkung, Einwilligungs-
+//                   bestand, Art. 14, Quellen der Deals, Stimme der Kunden
+//   Anfragen        der Eingang (27.09.): Anfrage erfassen → Person, Verlauf,
+//                   Follow-up, Lead; Liste der letzten 30 Tage
 //   Segmente        gespeicherte Filter über die Kartei, Export nur mit Ampel
 //   Kampagnen       Playbooks auf Basis der Kunden (./Kampagnen.tsx)
 //   Redaktionsplan  Beiträge von der Idee bis zur Wirkung je Person
@@ -18,28 +21,35 @@
 // mit; was auf dein Okay wartet oder zurückkam, zählt an den Reitern
 // („· 2 für dich“), und aus der Übersicht springt ein Klick direkt in den
 // Beitrag oder die Ausgabe.
+// Start (27.09.): Ohne Positionierung und ohne Beitrag zeigt die Übersicht den
+// Startassistenten (drei Schritte) — bis er fertig ist oder übersprungen wurde.
 
 import { useMemo, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FARBE as C } from '@/lib/make-one/design';
 import { verantwortlich } from '@/lib/crm/team';
-import { freigabeLage, liegtBei } from '@/lib/crm/marketing';
+import { freigabeLage, liegtBei, einstellungAus } from '@/lib/crm/marketing';
+import { anfragenListe } from '@/lib/crm/anfragen';
 import { HeadPanel } from './HeadPanel';
 import { Person, AuchHier } from './team';
 import { Pillen } from './teile';
 import type { CrmApi } from './daten';
 import { Kampagnen } from './Kampagnen';
 import { Uebersicht } from './marketing/Uebersicht';
+import { Anfragen } from './marketing/Anfragen';
+import { Start } from './marketing/Start';
 import { Segmente } from './marketing/Segmente';
 import { Redaktionsplan } from './marketing/Redaktionsplan';
 import { Newsletter } from './marketing/Newsletter';
 import { Positionierung } from './marketing/Positionierung';
 
-type Unter = 'uebersicht' | 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung';
+type Unter = 'uebersicht' | 'anfragen' | 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung';
 const UNTER: { id: Unter; label: string }[] = [
-  { id: 'uebersicht', label: 'Übersicht' }, { id: 'segmente', label: 'Segmente' }, { id: 'kampagnen', label: 'Kampagnen' },
+  { id: 'uebersicht', label: 'Übersicht' }, { id: 'anfragen', label: 'Anfragen' }, { id: 'segmente', label: 'Segmente' }, { id: 'kampagnen', label: 'Kampagnen' },
   { id: 'redaktion', label: 'Redaktionsplan' }, { id: 'newsletter', label: 'Newsletter' }, { id: 'positionierung', label: 'Positionierung' },
 ];
+/** Der Start wurde in dieser Sitzung übersprungen — nicht wieder aufdrängen. */
+const START_SCHLUESSEL = 'crm-marketing-start-uebersprungen';
 /** Kampagnen-Ansicht liest diesen Schlüssel und öffnet den Planer mit dem Segment. */
 const KAMPAGNE_SEGMENT_SCHLUESSEL = 'crm-kampagne-segment';
 
@@ -70,8 +80,19 @@ export function Marketing({ api, zuKontakt, start, onAnsicht }: { api: CrmApi; z
     const l = api.crm ? freigabeLage(api.crm.stand).filter(x => liegtBei(x, ich)) : [];
     return { redaktion: l.filter(x => x.art === 'beitrag').length, newsletter: l.filter(x => x.art === 'newsletter').length } as Partial<Record<Unter, number>>;
   }, [api.crm, ich]);
-  const n = { segmente: api.crm?.stand.segmente?.length ?? 0, redaktion: api.crm?.stand.beitraege?.length ?? 0, newsletter: api.crm?.stand.newsletter?.length ?? 0 } as Partial<Record<Unter, number>>;
-  const liste = UNTER.map(u => ({ id: u.id, label: `${n[u.id] ? `${u.label} ${n[u.id]}` : u.label}${fuerMich[u.id] ? ` · ${fuerMich[u.id]} für dich` : ''}` }));
+  const anfragen = useMemo(() => (api.crm ? anfragenListe(api.kontakte ?? [], api.crm.stand, api.crm.heute) : []), [api.crm, api.kontakte]);
+  const n = { anfragen: anfragen.length, segmente: api.crm?.stand.segmente?.length ?? 0, kampagnen: api.crm?.stand.kampagnen?.length ?? 0, redaktion: api.crm?.stand.beitraege?.length ?? 0, newsletter: api.crm?.stand.newsletter?.length ?? 0 } as Partial<Record<Unter, number>>;
+  const offeneAnfragen = anfragen.filter(a => a.offen).length;
+  // Start (27.09.): leer heißt keine Positionierung UND kein Beitrag — einmal beim Laden entschieden, damit der Assistent nicht mitten im ersten Schritt verschwindet.
+  const [startAktiv, setStartAktiv] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (startAktiv !== null || !api.crm) return;
+    let uebersprungen = false;
+    try { uebersprungen = sessionStorage.getItem(START_SCHLUESSEL) === '1'; } catch { /* ohne Speicher zeigen */ }
+    setStartAktiv(!uebersprungen && !einstellungAus(api.crm.stand).positionierung.trim() && !(api.crm.stand.beitraege ?? []).length);
+  }, [api.crm, startAktiv]);
+  const startBeenden = (merken: boolean) => { setStartAktiv(false); if (merken) { try { sessionStorage.setItem(START_SCHLUESSEL, '1'); } catch { /* egal */ } } };
+  const liste = UNTER.map(u => ({ id: u.id, label: `${n[u.id] ? `${u.label} ${n[u.id]}` : u.label}${fuerMich[u.id] ? ` · ${fuerMich[u.id]} für dich` : ''}${u.id === 'anfragen' && offeneAnfragen ? ` · ${offeneAnfragen} offen` : ''}` }));
   const fuehrt = verantwortlich('marketing');
 
   return (
@@ -85,7 +106,8 @@ export function Marketing({ api, zuKontakt, start, onAnsicht }: { api: CrmApi; z
       {/* Die Kampagnen-Ansicht bringt ihren eigenen Head-Lauf (Modus „kampagne“) mit. */}
       {unter !== 'kampagnen' && <HeadPanel head="marketing" standardModus="wochenplan" zuKontakt={zuKontakt} i={0} />}
       <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={liste} aktiv={unter} onWahl={u => { setFokus(null); waehle(u); }} /></div>
-      {unter === 'uebersicht' && <Uebersicht api={api} zuKontakt={zuKontakt} zu={zuEintrag} />}
+      {unter === 'uebersicht' && (startAktiv ? <Start api={api} onFertig={() => startBeenden(false)} onUeberspringen={() => startBeenden(true)} /> : <Uebersicht api={api} zuKontakt={zuKontakt} zu={zuEintrag} zuAnsicht={a => { setFokus(null); waehle(a); }} />)}
+      {unter === 'anfragen' && <Anfragen api={api} zuKontakt={zuKontakt} />}
       {unter === 'segmente' && <Segmente api={api} zuKontakt={zuKontakt} zuKampagne={zuKampagne} />}
       {unter === 'kampagnen' && <Kampagnen api={api} zuKontakt={zuKontakt} />}
       {unter === 'redaktion' && <Redaktionsplan api={api} zuKontakt={zuKontakt} fokus={fokus?.ansicht === 'redaktion' ? fokus.id : undefined} />}
