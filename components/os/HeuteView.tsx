@@ -1,6 +1,6 @@
 'use client';
 
-// ─── MAKE OS — Heute ────────────────────────────────────────────────────────
+// ─── MAKE OS — Home ─────────────────────────────────────────────────────────
 // Die Seite nach der Anmeldung. Eine Frage: Was ist heute dran? Der
 // Seit 26.09. abends heißt sie „Home“ (Kevin): der Überblick über Privat und Business
 // zusammen, jede Person klickt sich ihr eigenes Dashboard zusammen. Seit 26.09. ist Heute eine Fläche (Kevin:
@@ -42,9 +42,8 @@ export function HeuteView() {
     setGruss(jetzt.getHours() < 11 ? 'Guten Morgen' : jetzt.getHours() < 18 ? 'Guten Tag' : 'Guten Abend');
     fetch('/api/konto/ich').then(r => r.json()).then(d => setVorname((d.ich?.name ?? '').split(' ')[0])).catch(() => {});
   }, []);
-  const abend = new Date().getHours() >= 17;
   return (
-    <Seite titel={<>{gruss}{vorname ? `, ${vorname}` : ''}</>} unter={<span suppressHydrationWarning>{datum} · <Link href={`/os/ritual?modus=${abend ? 'abend' : 'morgen'}`} style={{ color: C.inkDim }}>{abend ? 'Tagesende' : 'Tagesstart'} ›</Link></span>}>
+    <Seite titel="Home" unter={<span suppressHydrationWarning>{gruss}{vorname ? `, ${vorname}` : ''} · {datum} · dein Dashboard, Privat und Business zusammen — über „Anpassen“ frei gestaltbar · <Link href="/os/heute" style={{ color: C.inkDim }}>Heute ›</Link></span>}>
       <Flaeche seite="heute" widgets={HEUTE_STANDARD} />
     </Seite>
   );

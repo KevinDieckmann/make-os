@@ -50,31 +50,8 @@ export function WachstumView() {
 
   return (
     <Seite titel="Wachstum" unter="Der Score, auf den wir hinarbeiten: wachsen, uns optimieren, Unternehmertum, Firmen optimieren, mehr Geld verdienen. Gesundheit ist die Basis.">
-      <Karte i={0} akzent={perf?.index != null ? zone : undefined}>
-        <Ueberschrift farbe={zone} rechts={perf?.stand ? `Stand ${datum(perf.stand)}` : undefined}>Wachstums-Score</Ueberschrift>
-        <div className="heute-kopf" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'clamp(18px,4vw,44px)', alignItems: 'center' }}>
-          <Ring groesse="gross" label="Wachstums-Score" wert={perf?.index != null ? String(perf.index) : undefined} farbe={zone} anteil={perf?.index != null ? perf.index / 100 : undefined}
-            unter={perf?.index != null ? <Chip farbe={zone}>{perf.label}</Chip> : undefined} />
-          <div style={{ minWidth: 0, width: '100%' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 16 }}>
-              <Zahl wert={perf ? `${Math.round(perf.abdeckung * 100)}` : undefined} label="% der Messpunkte echt gemessen" farbe={perf ? (perf.abdeckung >= 0.6 ? LEUCHT.gut : perf.abdeckung >= 0.4 ? LEUCHT.achtung : LEUCHT.kritisch) : undefined} />
-              <Zahl wert={bester?.index != null ? String(bester.index) : undefined} label={bester ? `Bestwert · ${datum(bester.date)}` : 'Bestwert'} farbe={zoneFarbe(bester?.index)} />
-              <Zahl wert={verlauf.length ? String(verlauf.length) : undefined} label={erste ? `Messungen seit ${datum(erste)}` : 'Messungen'} />
-            </div>
-            {perf?.hebel && <p style={{ fontSize: TYP.body, color: C.inkDim, margin: '16px 0 0' }}>Größter Hebel: <b style={{ color: C.ink, fontWeight: 600 }}>{perf.hebel}</b></p>}
-            {perf && perf.index == null && <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '16px 0 0' }}>Noch zu wenig gemessen, um einen Score zu nennen — unter 40 % Abdeckung gibt es keine Zahl.</p>}
-            {verlauf.length > 1 && (
-              <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 11.5, color: C.inkLeise, marginBottom: 6, letterSpacing: '.04em', textTransform: 'uppercase' }}>Verlauf</div>
-                <Balken werte={verlauf.slice(-30).map(m => m.index)} max={100} farbe={zone} hoehe={44} titel={verlauf.slice(-30).map(m => `${datum(m.date)} · ${m.index ?? '—'}`)} />
-              </div>
-            )}
-          </div>
-        </div>
-      </Karte>
-
       <Flaeche seite="wachstum">
-      <Kachel id="saeulen" titel="Die sechs Säulen" breite={4}>
+      <Kachel id="saeulen" titel="Die sechs Säulen · Gesamtansicht" breite={6}>
       <Karte i={1}>
         <Ueberschrift rechts="Klick zeigt die Faktoren">Die sechs Säulen</Ueberschrift>
         <Liste>
@@ -110,6 +87,31 @@ export function WachstumView() {
           })}
           {perf && !perf.saeulen.length && <Leer>Noch keine Säulen berechnet.</Leer>}
         </Liste>
+      </Karte>
+      </Kachel>
+      {/* Kevin 26.09.: Gesamtansicht zuerst, der Score danach */}
+      <Kachel id="score" titel="Wachstums-Score" breite={6}>
+      <Karte i={0} akzent={perf?.index != null ? zone : undefined}>
+        <Ueberschrift farbe={zone} rechts={perf?.stand ? `Stand ${datum(perf.stand)}` : undefined}>Wachstums-Score</Ueberschrift>
+        <div className="heute-kopf" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'clamp(18px,4vw,44px)', alignItems: 'center' }}>
+          <Ring groesse="gross" label="Wachstums-Score" wert={perf?.index != null ? String(perf.index) : undefined} farbe={zone} anteil={perf?.index != null ? perf.index / 100 : undefined}
+            unter={perf?.index != null ? <Chip farbe={zone}>{perf.label}</Chip> : undefined} />
+          <div style={{ minWidth: 0, width: '100%' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 16 }}>
+              <Zahl wert={perf ? `${Math.round(perf.abdeckung * 100)}` : undefined} label="% der Messpunkte echt gemessen" farbe={perf ? (perf.abdeckung >= 0.6 ? LEUCHT.gut : perf.abdeckung >= 0.4 ? LEUCHT.achtung : LEUCHT.kritisch) : undefined} />
+              <Zahl wert={bester?.index != null ? String(bester.index) : undefined} label={bester ? `Bestwert · ${datum(bester.date)}` : 'Bestwert'} farbe={zoneFarbe(bester?.index)} />
+              <Zahl wert={verlauf.length ? String(verlauf.length) : undefined} label={erste ? `Messungen seit ${datum(erste)}` : 'Messungen'} />
+            </div>
+            {perf?.hebel && <p style={{ fontSize: TYP.body, color: C.inkDim, margin: '16px 0 0' }}>Größter Hebel: <b style={{ color: C.ink, fontWeight: 600 }}>{perf.hebel}</b></p>}
+            {perf && perf.index == null && <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '16px 0 0' }}>Noch zu wenig gemessen, um einen Score zu nennen — unter 40 % Abdeckung gibt es keine Zahl.</p>}
+            {verlauf.length > 1 && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 11.5, color: C.inkLeise, marginBottom: 6, letterSpacing: '.04em', textTransform: 'uppercase' }}>Verlauf</div>
+                <Balken werte={verlauf.slice(-30).map(m => m.index)} max={100} farbe={zone} hoehe={44} titel={verlauf.slice(-30).map(m => `${datum(m.date)} · ${m.index ?? '—'}`)} />
+              </div>
+            )}
+          </div>
+        </div>
       </Karte>
       </Kachel>
       <Kachel id="fokus" titel="Fokus" breite={2}>

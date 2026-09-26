@@ -12,13 +12,13 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { zoneFarbe } from './schlank';
-import { LayoutDashboard, Inbox as InboxIcon, Search, Lightbulb, CalendarDays } from 'lucide-react';
+import { Sun, Inbox as InboxIcon, Search, Lightbulb, CalendarDays } from 'lucide-react';
 import { useSpace } from '@/hooks/useSpace';
 import { spaceVon, type SpaceId } from '@/lib/make-one/spaces';
 
 // Inbox und Kalender folgen dem aktiven Space (zweite Fassung 26.09.: dafür stehen sie nicht mehr im Untermenü).
 const SCHNELL = (space: SpaceId) => [
-  { href: '/os', label: 'Home', Icon: LayoutDashboard, passt: ['/os'] },
+  { href: '/os/heute', label: 'Heute', Icon: Sun, passt: ['/os/heute'] },
   { href: `/os/inbox?space=${space}`, label: 'Inbox', Icon: InboxIcon, passt: ['/os/inbox'] },
   { href: `/os/planung/woche?space=${space}`, label: 'Kalender', Icon: CalendarDays, passt: ['/os/planung/woche', '/os/kalender'] },
 ];
@@ -75,7 +75,7 @@ export function WachstumsKopf() {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}><div style={rund(false)}><Lightbulb size={15} strokeWidth={1.9} /></div><span className="wachstum-kopf-label" style={{ fontSize: 11, color: C.inkLeise }}>Idee</span></div>
           </button>
           {SCHNELL(space).map(({ href, label, Icon, passt }) => {
-            const an = href === '/os' ? pfad === '/os' : passt.some(p => pfad.startsWith(p));
+            const an = passt.some(p => pfad === p || pfad.startsWith(`${p}/`) || (p !== '/os/heute' && pfad.startsWith(p)));
             return (
               <Link key={href} href={href} title={label} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}><div style={rund(an)}><Icon size={15} strokeWidth={1.9} /></div><span className="wachstum-kopf-label" style={{ fontSize: 11, color: an ? C.aktiv : C.inkLeise }}>{label}</span></div>

@@ -51,9 +51,13 @@ export const SPACES: Space[] = [
       { href: '/os/planung/jahr?space=business', label: 'Ziele & Planung', icon: Target, passt: ['/os/planung?space=business', '/os/fokus?space=business', '/os/kompass?space=business', '/os/okr', '/os/saeule'] },
       { href: '/os/markttraktion', label: 'Markttraktion', icon: TrendingUp, passt: ['/os/markttraktion', '/os/crm', '/os/prospecting', '/os/research', '/os/content'] },
       { href: '/os/mandate', label: 'Mandate', icon: Briefcase, passt: ['/os/mandate'] },
-      { href: '/os/agenten', label: 'Agenten', icon: Bot, passt: ['/os/agenten', '/os/stapel', '/os/loop'] },
     ],
   },
+];
+
+/** Eigener Knopf unter den Spaces (Kevin 26.09.: „das Agenten-Thema einzeln unter Business“). */
+export const EIGEN: SpaceEintrag[] = [
+  { href: '/os/agenten', label: 'Agenten', icon: Bot, passt: ['/os/agenten', '/os/stapel', '/os/loop'] },
 ];
 
 /** Unten links, gesondert: Jarvis und Brain (Malin), dann System. */
@@ -81,7 +85,7 @@ export function aktiverSpaceEintrag(pfad: string, suche = ''): { space: SpaceId 
   const treffer: { space: SpaceId | null; eintrag: SpaceEintrag; l: number }[] = [];
   const pruefe = (space: SpaceId | null, e: SpaceEintrag) => { for (const m of e.passt) if (passtZu(pfad, suche, m)) treffer.push({ space, eintrag: e, l: m.length }); };
   for (const s of SPACES) for (const e of s.eintraege) pruefe(s.id, e);
-  for (const e of UNTEN) pruefe(null, e);
+  for (const e of [...EIGEN, ...UNTEN]) pruefe(null, e);
   treffer.sort((x, y) => y.l - x.l);
   return treffer.length ? { space: treffer[0].space, eintrag: treffer[0].eintrag } : { space: null, eintrag: null };
 }

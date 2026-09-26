@@ -69,6 +69,15 @@ Sinn, überarbeite das Ganze hier auf dem Klickdummy“)**
   Gesamt, Head of Finance. Der Planer (Tag/Woche/Monat/Quartal/Jahr/Routinen) nimmt den Space in allen Reitern mit.
 - **Farben:** Privat Bernstein, Business Indigo wie in Malins Bild — keine Neonfarben; Leiste nach Malins Aufbau
   (Kästen mit Pfeil, Punkte darunter, unten Jarvis · Brain · System · Konto).
+- **Heute und Home getrennt** (Kevin: „oben wieder Heute, Heute mit eigenem Bild, Home baut jeder selbst“): oben im
+  Kopf steht wieder „Heute“ → feste Tagesseite (Gruß, Datum, Tagesstart/-ende, Fokus heute, Aufgaben beider Spaces,
+  Termine, Körper, Jarvis, Essen). Home (links oben) ist das frei gestaltbare Dashboard, Startstand = Überblick Privat
+  und Business. **Wachstum** steht als eigener Knopf unter Home und führt auf die Gesamtansicht: erst die sechs Säulen,
+  danach der Score (Kevin: „das zentrale Stück“).
+- **Leiste einklappbar** (Kevin): das Zeichen oben rechts in der Leiste klappt sie auf eine schmale Symbolspalte zusammen
+  (Home, Wachstum, Privat, Business, Agenten, Jarvis, Brain, System, Konto als Symbole mit Tooltip); der Stand bleibt gemerkt.
+- **Agenten als eigener Knopf** unter den beiden Spaces (Kevin: „das Agenten-Thema einzeln unter Business“) — nicht mehr
+  im Business-Untermenü; Business hat damit Übersicht · Finanzen · Aufgaben · Ziele & Planung · Markttraktion · Mandate.
 - **Übersicht je Space** (Kevin: „Privat und Business separat aufbauen“): jeder Space hat als ersten Punkt seine
   eigene Übersicht — ein eigenes Dashboard nur mit dem, was zu ihm gehört (Privat: Privat-Index, Fokus, Körper,
   Aufgaben, Finanzen, Termine, Familie, Essen, Routinen, Jarvis · Business: Business-Index, Fokus, Traktion, Aufgaben,

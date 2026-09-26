@@ -328,7 +328,7 @@ function JarvisWidget({ e, titel, i }: WidgetProps) {
 }
 
 // ── Familie & Partnerschaft ─────────────────────────────────────────────────
-interface FamilieStand { gespraech?: { datum: string }; tage?: { id: string; titel: string; wer: string; am: string; inTagen: number; erledigt: boolean }[]; frage?: string; kontakte?: { id: string; name: string; faellig: boolean; seit: number | null }[]; heute?: string }
+interface FamilieStand { gespraech?: { datum: string }; tage?: { id: string; titel: string; wer: string; am: string; inTagen: number; erledigt: boolean }[]; frage?: string | { text?: string }; kontakte?: { id: string; name: string; faellig: boolean; seit: number | null }[]; heute?: string }
 function FamilieWidget({ titel, i }: WidgetProps) {
   const d = useDaten<FamilieStand>('/api/familie', x => ((x as { ok?: boolean }).ok ? (x as FamilieStand) : null));
   if (d === null) return null;
@@ -343,7 +343,7 @@ function FamilieWidget({ titel, i }: WidgetProps) {
           {d.gespraech && <Zeile links={<Punkt farbe={LEUCHT.beziehung} />} titel="Paar-Gespräch" unter={d.gespraech.datum === d.heute ? 'heute' : `am ${tagKurz(d.gespraech.datum)}`} />}
           {tage.map(t => <Zeile key={t.id} links={<Punkt farbe={t.inTagen <= 7 ? LEUCHT.achtung : C.inkLeise} />} titel={`${t.titel} · ${t.wer}`} unter={t.inTagen === 0 ? 'heute!' : t.inTagen === 1 ? 'morgen' : `in ${t.inTagen} Tagen`} />)}
           {faellig.map(k => <Zeile key={k.id} links={<Punkt farbe={LEUCHT.achtung} />} titel={`${k.name} anrufen`} unter={k.seit == null ? 'noch nie' : `zuletzt vor ${k.seit} Tagen`} />)}
-          {d.frage && <Zeile links={<span style={{ color: LEUCHT.beziehung }}>?</span>} titel={<span style={{ whiteSpace: 'normal', fontWeight: 500 }}>{d.frage}</span>} unter="Frage der Woche" />}
+          {(() => { const frage = typeof d.frage === 'string' ? d.frage : d.frage?.text; return frage ? <Zeile links={<span style={{ color: LEUCHT.beziehung }}>?</span>} titel={<span style={{ whiteSpace: 'normal', fontWeight: 500 }}>{frage}</span>} unter="Frage der Woche" /> : null; })()}
         </Liste>
       )}
     </Karte>
