@@ -74,6 +74,24 @@ export function verschieben(items: BacklogItem[], id: string, ziel: Spalte, inde
 const t = (v: unknown, n: number) => String(v ?? '').replace(/\u0000/g, '').trim().slice(0, n);
 const opt = (v: unknown, n: number) => t(v, n) || undefined;
 const tagOk = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
+
+/** Textgrenzen (26.09., Kevin: „so genau wie möglich beschreiben“) — vorher schnitt der Titel bei 160 Zeichen ab, ohne dass jemand es merkte. */
+export const GRENZE = { titel: 200, text: 4000, kurz: 2000, ergebnis: 6000 } as const;
+
+/**
+ * Ein langer Titel wird zu Titel + Rest: Kevin und Malin tippen oft den ganzen
+ * Gedanken in die erste Zeile. Der erste Satz (höchstens 140 Zeichen) bleibt
+ * Titel, alles danach wandert in „Problem“ — nichts geht mehr verloren.
+ */
+export function titelTeilen(text: string): { titel: string; rest: string } {
+  const ganz = text.replace(/\s+/g, ' ').trim();
+  if (ganz.length <= 140 && !text.includes('\n')) return { titel: ganz, rest: '' };
+  const erster = /^(.{20,140}?[.!?])\s+/.exec(ganz);
+  if (erster) return { titel: erster[1], rest: ganz.slice(erster[0].length).trim() };
+  const schnitt = ganz.lastIndexOf(' ', 120);
+  const bei = schnitt > 40 ? schnitt : 120;
+  return { titel: ganz.slice(0, bei).trim() + ' …', rest: ganz.slice(bei).trim() };
+}
 export const bildNameOk = (v: unknown): v is string => typeof v === 'string' && /^[a-z0-9-]{8,60}\.(jpg|png|webp)$/.test(v);
 
 /** Bereich aus dem Pfad der Seite, auf der es aufgefallen ist. */
@@ -94,19 +112,22 @@ export function bereichAusSeite(pfad?: string): string {
  * höchstens vier Bilder mit gültigem Namen. Neu landet sie in „Ideen“ oben.
  */
 export function neueKarte(roh: Record<string, unknown>, von: string, jetzt: string, id: string): BacklogItem | null {
-  const titel = t(roh.titel, 160);
+  const geteilt = titelTeilen(t(roh.titel, GRENZE.text));
+  const titel = t(geteilt.titel, GRENZE.titel);
   if (!titel) return null;
+  // Der Rest eines langen Titels steht VOR dem, was im Problem-Feld stand.
+  const problem = [geteilt.rest, opt(roh.problem, GRENZE.text)].filter(Boolean).join('\n\n').slice(0, GRENZE.text) || undefined;
   const art = ARTEN.some(a => a.id === roh.art) ? (roh.art as Art) : 'verbesserung';
   // Nur Seiten dieser App (kein „//fremd.de“) — die Karte verlinkt dorthin zurück.
   const seite = typeof roh.seite === 'string' && /^\/(os|jarvis)(\/|\?|$)/.test(roh.seite) ? t(roh.seite, 200) : undefined;
   const bereich = (BEREICHE as readonly string[]).includes(String(roh.bereich)) ? String(roh.bereich) : bereichAusSeite(seite);
   const prio = [1, 2, 3].includes(Number(roh.prio)) ? (Number(roh.prio) as 1 | 2 | 3) : 2;
   return {
-    id, titel, warum: t(roh.warum, 800), art, bereich, prio,
+    id, titel, warum: t(roh.warum, GRENZE.text), art, bereich, prio,
     kategorie: art === 'anbindung' ? 'anbindung' : art === 'neu' ? 'idee' : 'qualitaet',
     status: 'offen', spalte: 'idee', rang: 0, block: 'frei', von, angelegt: jetzt, geaendert: jetzt,
-    ...(opt(roh.problem, 800) ? { problem: opt(roh.problem, 800) } : {}), ...(opt(roh.wunsch, 800) ? { wunsch: opt(roh.wunsch, 800) } : {}),
-    ...(opt(roh.fertigWenn, 600) ? { fertigWenn: opt(roh.fertigWenn, 600) } : {}), ...(seite ? { seite } : {}),
+    ...(problem ? { problem } : {}), ...(opt(roh.wunsch, GRENZE.text) ? { wunsch: opt(roh.wunsch, GRENZE.text) } : {}),
+    ...(opt(roh.fertigWenn, GRENZE.kurz) ? { fertigWenn: opt(roh.fertigWenn, GRENZE.kurz) } : {}), ...(seite ? { seite } : {}),
     ...(Array.isArray(roh.bilder) && roh.bilder.filter(bildNameOk).length ? { bilder: (roh.bilder as unknown[]).filter(bildNameOk).slice(0, 4) } : {}),
     ...(tagOk(roh.ziel) ? { ziel: tagOk(roh.ziel) } : {}), ...(opt(roh.quelle, 120) ? { quelle: opt(roh.quelle, 120) } : {}),
   };
@@ -115,8 +136,8 @@ export function neueKarte(roh: Record<string, unknown>, von: string, jetzt: stri
 /** Änderbare Felder einer Karte säubern — nur was erlaubt ist, im erlaubten Format. */
 export function felderSaeubern(f: Record<string, unknown>): Partial<BacklogItem> {
   const raus: Partial<BacklogItem> = {};
-  if ('titel' in f && t(f.titel, 160)) raus.titel = t(f.titel, 160);
-  for (const [k, n] of [['warum', 800], ['problem', 800], ['wunsch', 800], ['fertigWenn', 600], ['brauche', 600], ['ergebnis', 2000], ['testen', 1500]] as const) if (k in f) (raus as Record<string, unknown>)[k] = t(f[k], n) || undefined;
+  if ('titel' in f && t(f.titel, GRENZE.titel)) raus.titel = t(f.titel, GRENZE.titel);
+  for (const [k, n] of [['warum', GRENZE.text], ['problem', GRENZE.text], ['wunsch', GRENZE.text], ['fertigWenn', GRENZE.kurz], ['brauche', GRENZE.kurz], ['ergebnis', GRENZE.ergebnis], ['testen', GRENZE.text]] as const) if (k in f) (raus as Record<string, unknown>)[k] = t(f[k], n) || undefined;
   if ('art' in f && ARTEN.some(a => a.id === f.art)) raus.art = f.art as Art;
   if ('bereich' in f && (BEREICHE as readonly string[]).includes(String(f.bereich))) raus.bereich = String(f.bereich);
   if ('prio' in f && [1, 2, 3].includes(Number(f.prio))) raus.prio = Number(f.prio) as 1 | 2 | 3;

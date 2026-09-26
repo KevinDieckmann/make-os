@@ -106,7 +106,7 @@ export function Bilder({ namen, onAendern, max = 4 }: { namen: string[]; onAende
           </label>
         )}
       </div>
-      {onAendern && <div style={klein}>Bildschirmfoto: Datei wählen oder einfach mit Cmd+V einfügen (höchstens {max}).</div>}
+      {onAendern && <div style={klein}>Bildschirmfoto: <b style={{ color: C.inkDim }}>Cmd+Ctrl+Shift+4</b> kopiert es in die Zwischenablage, dann hier <b style={{ color: C.inkDim }}>Cmd+V</b>. Oder das Vorschaubild unten rechts (bzw. die Datei vom Schreibtisch) einfach in dieses Fenster ziehen. Am Handy: „+ Bild“ → Kamera oder Album. Höchstens {max}.</div>}
       {fehler && <div style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{fehler}</div>}
       {gross && (
         <div onClick={() => setGross(null)} style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(0,0,0,.88)', display: 'grid', placeItems: 'center', padding: 20, cursor: 'zoom-out' }}>
@@ -115,8 +115,32 @@ export function Bilder({ namen, onAendern, max = 4 }: { namen: string[]; onAende
         </div>
       )}
       <EinfuegenHorcher aktiv={!!onAendern && namen.length < max} onBild={b => void dazu([b])} />
+      <AblegenHorcher aktiv={!!onAendern && namen.length < max} onBilder={b => void dazu(b)} />
     </div>
   );
+}
+
+/** Bilder ins Fenster ziehen (Vorschaubild nach Cmd+Shift+4 oder Datei vom Schreibtisch) → hochladen. */
+function AblegenHorcher({ aktiv, onBilder }: { aktiv: boolean; onBilder: (b: Blob[]) => void }) {
+  const ref = useRef(onBilder); ref.current = onBilder;
+  const [ueber, setUeber] = useState(false);
+  useEffect(() => {
+    if (!aktiv) return;
+    let tiefe = 0;
+    const rein = (e: DragEvent) => { if (Array.from(e.dataTransfer?.types ?? []).includes('Files')) { tiefe++; setUeber(true); } };
+    const raus = () => { tiefe = Math.max(0, tiefe - 1); if (!tiefe) setUeber(false); };
+    const drueber = (e: DragEvent) => { if (Array.from(e.dataTransfer?.types ?? []).includes('Files')) { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; } };
+    const ablegen = (e: DragEvent) => {
+      const bilder = Array.from(e.dataTransfer?.files ?? []).filter(f => f.type.startsWith('image/'));
+      tiefe = 0; setUeber(false);
+      if (!bilder.length) return;
+      e.preventDefault(); ref.current(bilder);
+    };
+    window.addEventListener('dragenter', rein); window.addEventListener('dragleave', raus); window.addEventListener('dragover', drueber); window.addEventListener('drop', ablegen);
+    return () => { window.removeEventListener('dragenter', rein); window.removeEventListener('dragleave', raus); window.removeEventListener('dragover', drueber); window.removeEventListener('drop', ablegen); };
+  }, [aktiv]);
+  if (!aktiv || !ueber) return null;
+  return <div style={{ position: 'fixed', inset: 0, zIndex: 119, background: 'rgba(61,226,139,.10)', border: `3px dashed ${LEUCHT.gut}`, display: 'grid', placeItems: 'center', pointerEvents: 'none', fontSize: TYP.body, fontWeight: 700, color: LEUCHT.gut }}>Bild hier ablegen</div>;
 }
 
 /** Cmd+V mit einem Bild in der Zwischenablage → hochladen (nur solange das Formular offen ist). */
@@ -139,10 +163,12 @@ function EinfuegenHorcher({ aktiv, onBild }: { aktiv: boolean; onBild: (b: Blob)
 export function ErfassenFormular({ seite, onFertig, onAbbruch }: { seite?: string; onFertig: (k: BacklogItem) => void; onAbbruch: () => void }) {
   const [f, setF] = useState({ titel: '', art: 'verbesserung' as Art, bereich: bereichAusSeite(seite), prio: '2' as '1' | '2' | '3', problem: '', wunsch: '', warum: '', fertigWenn: '' });
   const [bilder, setBilder] = useState<string[]>([]);
-  const [mehr, setMehr] = useState(false);
+  // Kevin (26.09.): „So genau wie möglich beschreiben“ — die Felder sind deshalb von Anfang an offen.
+  const [mehr, setMehr] = useState(true);
   const [fehler, setFehler] = useState<string | null>(null);
   const [laeuft, setLaeuft] = useState(false);
   const titelRef = useRef<HTMLInputElement>(null);
+  const problemRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => { titelRef.current?.focus(); }, []);
   const anlegen = async () => {
     if (!f.titel.trim() || laeuft) return;
@@ -154,12 +180,16 @@ export function ErfassenFormular({ seite, onFertig, onAbbruch }: { seite?: strin
   const eingabe = { ...feld, fontSize: TYP.bedien, padding: '9px 12px' };
   const feldText = (k: 'problem' | 'wunsch' | 'warum' | 'fertigWenn', label: string, platz: string) => (
     <label style={{ display: 'grid', gap: 4 }}><span style={klein}>{label}</span>
-      <textarea value={f[k]} onChange={e => setF({ ...f, [k]: e.target.value })} rows={2} placeholder={platz} style={{ ...eingabe, resize: 'vertical', lineHeight: 1.5 }} /></label>
+      <textarea ref={k === 'problem' ? problemRef : undefined} value={f[k]} onChange={e => setF({ ...f, [k]: e.target.value })} rows={k === 'problem' ? 4 : 2} placeholder={platz} style={{ ...eingabe, resize: 'vertical', lineHeight: 1.5 }} /></label>
   );
   return (
     <div style={{ display: 'grid', gap: 14 }}>
-      <input ref={titelRef} value={f.titel} onChange={e => setF({ ...f, titel: e.target.value })} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey || !mehr)) { e.preventDefault(); void anlegen(); } }}
-        placeholder="Was ist dir aufgefallen? (kurz)" aria-label="Titel" style={{ ...eingabe, fontSize: TYP.body, padding: '11px 14px' }} />
+      <div style={{ display: 'grid', gap: 4 }}>
+        <input ref={titelRef} value={f.titel} onChange={e => setF({ ...f, titel: e.target.value })}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (e.metaKey || e.ctrlKey) void anlegen(); else problemRef.current?.focus(); } }}
+          placeholder="Was ist dir aufgefallen? (ein Satz)" aria-label="Titel" style={{ ...eingabe, fontSize: TYP.body, padding: '11px 14px' }} />
+        <span style={klein}>{f.titel.length > 140 ? 'Lang — der erste Satz bleibt Titel, der Rest wandert von selbst nach „Problem“.' : 'Enter springt zur Beschreibung, Cmd+Enter speichert. Keine Längenbegrenzung — je genauer, desto besser.'}</span>
+      </div>
       <div><h3 style={titelKlein}>Art</h3><Pillen liste={ARTEN} aktiv={f.art} onWahl={art => setF({ ...f, art })} farbe={ART_FARBE[f.art]} /></div>
       <div><h3 style={titelKlein}>Bereich</h3><Pillen liste={BEREICHE.map(b => ({ id: b, label: b }))} aktiv={f.bereich} onWahl={bereich => setF({ ...f, bereich })} /></div>
       <div><h3 style={titelKlein}>Wie dringend?</h3><Pillen liste={PRIO} aktiv={f.prio} onWahl={prio => setF({ ...f, prio })} /></div>

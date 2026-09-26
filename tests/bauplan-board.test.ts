@@ -1,7 +1,7 @@
 // Bauplan als Board (25.09.): Spalten, Ziehen, Eingang, Etappen, Warteschlange.
 import { describe, it, expect } from 'vitest';
 import type { BacklogItem } from '../lib/make-one/backlog-data';
-import { spalteVon, statusAus, artVon, board, verschieben, neueKarte, felderSaeubern, bereichAusSeite, etappenStand, warteschlange, bildNameOk } from '../lib/bauplan/board';
+import { spalteVon, statusAus, artVon, board, verschieben, neueKarte, felderSaeubern, bereichAusSeite, etappenStand, warteschlange, bildNameOk, titelTeilen, GRENZE } from '../lib/bauplan/board';
 
 const J = '2026-09-25T10:00:00.000Z';
 const k = (id: string, x: Partial<BacklogItem> = {}): BacklogItem => ({ id, titel: id, warum: '', kategorie: 'idee', status: 'offen', prio: 2, block: 'frei', angelegt: J, ...x });
@@ -57,5 +57,22 @@ describe('Planung und Warteschlange', () => {
     const items = [k('a', { etappe: 'e-1', spalte: 'fertig' }), k('b', { etappe: 'e-1', spalte: 'test' }), k('c', { etappe: 'e-1', spalte: 'bereit', rang: 20 }), k('d', { spalte: 'bereit', rang: 10, block: 'kevin' }), k('e', { spalte: 'bereit', rang: 30 })];
     expect(etappenStand(items, { id: 'e-1' })).toEqual({ gesamt: 3, fertig: 1, imTest: 1, anteil: 1 / 3 });
     expect(warteschlange(items).map(i => i.id)).toEqual(['c', 'e']);
+  });
+
+  it('langer Titel: erster Satz bleibt Titel, der Rest wandert nach Problem — nichts wird abgeschnitten (26.09.)', () => {
+    const lang = 'Wir brauchen einen sauberen Prozess, wie wir die Kontakte einmal mit echten Daten befüllen. Ich werde nachher Malins Daten reingeben, die noch nicht perfekt ergänzt sind, und dann schauen wir gemeinsam drüber. '.repeat(3);
+    const g = titelTeilen(lang);
+    expect(g.titel).toBe('Wir brauchen einen sauberen Prozess, wie wir die Kontakte einmal mit echten Daten befüllen.');
+    expect(g.rest.startsWith('Ich werde nachher')).toBe(true);
+    expect(titelTeilen('Kurzer Titel')).toEqual({ titel: 'Kurzer Titel', rest: '' });
+    const k = neueKarte({ titel: lang, problem: 'Dazu ein Foto.' }, 'kevin', '2026-09-26T10:00:00.000Z', 'bp-1')!;
+    expect(k.titel.length).toBeLessThanOrEqual(GRENZE.titel);
+    expect(k.problem?.startsWith('Ich werde nachher')).toBe(true);
+    expect(k.problem?.endsWith('Dazu ein Foto.')).toBe(true);
+    // ohne Satzende: Wortgrenze + „…“
+    const ohne = titelTeilen('a'.repeat(30) + ' ' + 'b'.repeat(60) + ' ' + 'c'.repeat(60) + ' ' + 'd'.repeat(30));
+    expect(ohne.titel.endsWith(' …')).toBe(true);
+    expect(ohne.titel.length).toBeLessThanOrEqual(124);
+    expect(ohne.rest.length).toBeGreaterThan(0);
   });
 });

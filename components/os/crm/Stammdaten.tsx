@@ -189,14 +189,31 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start }: { api: CrmApi; 
         <>
           <Karte i={0}>
             <Ueberschrift>Masterdatei abgleichen</Ueberschrift>
-            <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>Quelle: <b style={{ color: C.ink }}>Schreibtisch › CRM Leadordner › CRM_MASTER_Hauptdatei.csv</b>. Wiederholbar: neue Zeilen kommen dazu, Stammdaten werden aufgefrischt, die Arbeit im CRM (Stufe, Verlauf, Kreis, Einwilligungen, Werbesperre) bleibt unberührt. Danach laufen der Firmen-Abgleich und die Dublettenprüfung.</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>Die Masterliste als CSV (Semikolon oder Komma, UTF-8 oder Excel-Export) hochladen — wiederholbar: neue Zeilen kommen dazu, Stammdaten werden aufgefrischt, die Arbeit im CRM (Stufe, Verlauf, Kreis, Einwilligungen, Werbesperre) bleibt unberührt. Danach laufen der Firmen-Abgleich und die Dublettenprüfung.</div>
             {d.letzterImport && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 8 }}>Zuletzt: {datum(d.letzterImport.zeit)} — {d.letzterImport.text}</div>}
-            <div style={{ marginTop: 12 }}><Knopf aus={laeuft} onClick={async () => {
-              setLaeuft(true);
-              const r = await fetch('/api/crm/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(x => x.json()).catch(() => ({ error: 'nicht erreichbar' }));
-              setLaeuft(false); setMeldung(r.error ? r.error : `${r.zeilen} Zeilen: ${r.neu} neu, ${r.aktualisiert} aktualisiert, ${r.unveraendert} unverändert · Firmen: ${r.firmen?.neu ?? 0} neu.`);
-              void laden(); void api.laden();
-            }}>Jetzt abgleichen</Knopf></div>
+            <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <label className="fassbar" style={{ display: 'inline-block' }}>
+                <span style={{ display: 'inline-block', padding: '9px 15px', borderRadius: 11, fontSize: TYP.bedien, fontWeight: 700, cursor: laeuft ? 'default' : 'pointer', background: `${LEUCHT.gut}22`, color: LEUCHT.gut, border: `1px solid ${LEUCHT.gut}55` }}>{laeuft ? 'Gleicht ab …' : 'CSV-Datei wählen und abgleichen'}</span>
+                <input type="file" accept=".csv,text/csv,text/plain" disabled={laeuft} style={{ display: 'none' }} onChange={async e => {
+                  const datei = e.target.files?.[0]; e.target.value = '';
+                  if (!datei) return;
+                  setLaeuft(true);
+                  // Excel schreibt oft Windows-1252: erst als UTF-8 versuchen, sonst umkodieren — so bleiben Umlaute heil.
+                  const roh = await datei.arrayBuffer();
+                  let csv: string;
+                  try { csv = new TextDecoder('utf-8', { fatal: true }).decode(roh); } catch { csv = new TextDecoder('windows-1252').decode(roh); }
+                  const r = await fetch('/api/crm/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csv, name: datei.name }) }).then(x => x.json()).catch(() => ({ error: 'nicht erreichbar' }));
+                  setLaeuft(false); setMeldung(r.error ? r.error : `${datei.name}: ${r.zeilen} Zeilen — ${r.neu} neu, ${r.aktualisiert} aktualisiert, ${r.unveraendert} unverändert · Firmen: ${r.firmen?.neu ?? 0} neu.`);
+                  void laden(); void api.laden();
+                }} />
+              </label>
+              <Knopf leise aus={laeuft} onClick={async () => {
+                setLaeuft(true);
+                const r = await fetch('/api/crm/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(x => x.json()).catch(() => ({ error: 'nicht erreichbar' }));
+                setLaeuft(false); setMeldung(r.error ? r.error : `${r.zeilen} Zeilen: ${r.neu} neu, ${r.aktualisiert} aktualisiert, ${r.unveraendert} unverändert · Firmen: ${r.firmen?.neu ?? 0} neu.`);
+                void laden(); void api.laden();
+              }}>Vom Mac-Schreibtisch (CRM Leadordner)</Knopf>
+            </div>
           </Karte>
           <Karte i={1}>
             <Ueberschrift>Export</Ueberschrift>

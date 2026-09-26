@@ -55,6 +55,19 @@ Ansage stehen, bis das nächste Update sie ablöst.
 
 _(hier sammeln, was auf `entwicklung` fertig ist)_
 
+**Bauplan-Punkte von Kevin & Malin (26.09., erste Runde: die schnellen Fixes)**
+- **Erfassen-Karte ohne Kürzung** (Kevin: „so genau wie möglich beschreiben“): vorher schnitt der Titel bei 160 und die
+  Beschreibung bei 800 Zeichen ab — deshalb enden eure fünf Punkte vom 26.09. mitten im Satz. Jetzt: keine praktische
+  Grenze (4000 Zeichen je Feld), ein langer Titel wird von selbst geteilt (erster Satz = Titel, Rest → Problem), die
+  Felder Problem/Wunsch/Warum/Fertig-wenn sind von Anfang an offen, Enter springt zur Beschreibung, Cmd+Enter speichert.
+- **Bildschirmfoto einfügen** (Kevin): Bilder ins Erfassen- oder Karten-Fenster **ziehen** (Vorschaubild nach
+  Cmd+Shift+4 oder Datei vom Schreibtisch) → hochgeladen; Cmd+V geht weiter (Cmd+Ctrl+Shift+4 kopiert direkt in die
+  Zwischenablage — steht jetzt als Hinweis dabei). Cmd+Shift+3/4 allein legt nur eine Datei auf den Schreibtisch, das
+  kann keine Web-App von selbst holen.
+- **Masterdatei online abgleichen** (Malin: „Datei nicht lesbar“): Markttraktion → Stammdaten → Import & Export hat
+  jetzt „CSV-Datei wählen und abgleichen“ — die Datei wird hochgeladen (UTF-8 oder Excel-Export, bis 12 MB), dann läuft
+  derselbe Abgleich wie vom Mac-Schreibtisch. Der Schreibtisch-Weg bleibt als zweiter Knopf (nur am Mac).
+
 **Seiten selbst gestalten — Flächen & Widgets (26.09., Kevin: „alle Widgets immer zu bearbeiten, andere hinzufügen;
 seine eigene Seite vorne soll man sich selber gestalten — auch wenn wir am Anfang unsere jetzt lassen“)**
 - **Heute ist die erste Fläche:** oben rechts „✎ Anpassen“ oder eine Karte länger gedrückt halten → Bearbeiten-Modus.
