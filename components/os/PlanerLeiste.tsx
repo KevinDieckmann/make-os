@@ -15,7 +15,7 @@
 // aber Links, damit Vorladen und Verlauf weiter funktionieren.
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 
@@ -62,14 +62,18 @@ export function PlanerLeiste({ aktiv, tag }: { aktiv: Horizont; tag?: string }) 
   const router = useRouter();
   const heute = localDay();
   const anker = tag ?? heute;
+  // Der Space (Privat/Business) wandert durch alle Reiter mit (26.09.).
+  const sp = useSearchParams().get('space');
+  const space = sp === 'privat' || sp === 'business' ? sp : null;
+  const mit = (href: string) => (space ? `${href}${href.includes('?') ? '&' : '?'}space=${space}` : href);
 
-  const springe = (n: number) => router.push(`/os/planung?tag=${tagPlus(anker, n)}`);
+  const springe = (n: number) => router.push(mit(`/os/planung?tag=${tagPlus(anker, n)}`));
 
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={pille}>
         {HORIZONTE.map(h => (
-          <Link key={h.id} href={h.href} style={reiter(aktiv === h.id)}>{h.label}</Link>
+          <Link key={h.id} href={mit(h.href)} style={reiter(aktiv === h.id)}>{h.label}</Link>
         ))}
       </div>
 
@@ -83,13 +87,13 @@ export function PlanerLeiste({ aktiv, tag }: { aktiv: Horizont; tag?: string }) 
               const d = tagPlus(heute, n);
               const an = d === anker;
               return (
-                <Link key={n} href={`/os/planung?tag=${d}`} style={reiter(an, true)}>{tagLabel(d, heute)}</Link>
+                <Link key={n} href={mit(`/os/planung?tag=${d}`)} style={reiter(an, true)}>{tagLabel(d, heute)}</Link>
               );
             })}
             <button onClick={() => springe(1)} aria-label="Tag vor" style={{ ...reiter(false, true), padding: '6px 10px' }}>›</button>
           </div>
           {anker !== heute && (
-            <Link href="/os/planung" style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, color: C.aktiv, textDecoration: 'none', marginLeft: 4 }}>↩ zurück zu heute</Link>
+            <Link href={mit('/os/planung')} style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, color: C.aktiv, textDecoration: 'none', marginLeft: 4 }}>↩ zurück zu heute</Link>
           )}
         </div>
       )}

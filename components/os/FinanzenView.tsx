@@ -50,13 +50,17 @@ export function FinanzenView() {
     router.push(`${pfad}?${q.toString()}`, { scroll: false });
   };
   const chef = { id: 'chef' as Sicht, label: 'Head of Finance' };
-  const liste = zugang
-    ? [{ id: 'privat' as Sicht, label: 'Privat' }, { id: 'business' as Sicht, label: 'Business' }, ...(inhaber ? [{ id: 'steuern' as Sicht, label: 'Steuern' }] : []), { id: 'gesamt' as Sicht, label: 'Gesamt' }, chef]
-    : [{ id: 'business' as Sicht, label: 'Business' }, chef];
+  // Reiter je Space (26.09. abends, Kevin: „im Business nur Business, im Privat nur Privat“). „Gesamt“ ist die Brücke und steht in beiden.
+  const imPrivat = sicht === 'privat' || (sicht === 'gesamt' && p.get('space') === 'privat');
+  const liste = !zugang
+    ? [{ id: 'business' as Sicht, label: 'Business' }, chef]
+    : imPrivat
+      ? [{ id: 'privat' as Sicht, label: 'Privat' }, { id: 'gesamt' as Sicht, label: 'Gesamt' }]
+      : [{ id: 'business' as Sicht, label: 'Business' }, ...(inhaber ? [{ id: 'steuern' as Sicht, label: 'Steuern' }] : []), { id: 'gesamt' as Sicht, label: 'Gesamt' }, chef];
 
   return (
     <Seite titel="Zahlen" breit={sicht === 'business' || sicht === 'steuern' || sicht === 'privat' ? 1440 : undefined} unter={UNTER[sicht]}
-      rechts={zugang !== null ? <div style={{ overflowX: 'auto', maxWidth: '100%' }}><Segmente liste={liste} aktiv={sicht} onWahl={s => setze({ s, t: null, k: null, f: null, monat: null, kat: null, q: null })} /></div> : undefined}>
+      rechts={zugang !== null ? <div style={{ overflowX: 'auto', maxWidth: '100%' }}><Segmente liste={liste} aktiv={sicht} onWahl={s => setze({ s, space: s === 'gesamt' ? (imPrivat ? 'privat' : 'business') : null, t: null, k: null, f: null, monat: null, kat: null, q: null })} /></div> : undefined}>
       {zugang === null && sicht === 'privat' ? null
         : sicht === 'privat' ? <HaushaltView reiter={p.get('t')} onReiter={t => setze({ t, k: null, monat: null, kat: null, q: null })} />
         : sicht === 'gesamt' ? <GesamtView />

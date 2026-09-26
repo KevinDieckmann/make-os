@@ -55,6 +55,21 @@ Ansage stehen, bis das nächste Update sie ablöst.
 
 _(hier sammeln, was auf `entwicklung` fertig ist)_
 
+**Spaces, zweite Fassung — nur lokal, noch nicht hochgeladen (26.09. abends, Kevin: „vieles macht noch keinen
+Sinn, überarbeite das Ganze hier auf dem Klickdummy“)**
+- **Home-Knopf** über den Spaces (Kevin): das eigene Dashboard, frei gestaltbar über „Anpassen“. Startstand: Überblick
+  Privat und Business zusammen — Privat-Index | Business-Index, Aufgaben Privat | Aufgaben Business, Finanzen privat |
+  Wer heute dran ist, Körper | Jarvis & Inbox, Nächste 3 Tage | Fokus, Wachstums-Score.
+- **Spaces klappen sofort auf** (Kevin: „muss immer sauber aufgehen“): ein Tipp auf Privat/Business klappt den Kasten
+  auf und den anderen zu — ohne wegzuspringen; die Seite wählt man aus den Punkten.
+- **Sechs Punkte je Space, symmetrisch:** Privat = Finanzen · Aufgaben · Ziele & Planung · Gesundheit · Familie ·
+  Kontakte (neue Seite „Kontakte · privat“ = eure Menschen + wichtige Tage). Business = Finanzen · Aufgaben · Ziele &
+  Planung · Markttraktion · Mandate · Agenten. Inbox und Kalender stehen im Kopf oben und folgen dem aktiven Space.
+- **Seiten passen zum Space:** Zahlen zeigt im Privat-Space nur Privat + Gesamt, im Business-Space Business, Steuern,
+  Gesamt, Head of Finance. Der Planer (Tag/Woche/Monat/Quartal/Jahr/Routinen) nimmt den Space in allen Reitern mit.
+- **Farben:** Privat Bernstein, Business Indigo wie in Malins Bild — keine Neonfarben; Leiste nach Malins Aufbau
+  (Kästen mit Pfeil, Punkte darunter, unten Jarvis · Brain · System · Konto).
+
 **Tempo (26.09. abends, Kevin: „die Ladezeit ist extrem langsam“)**
 - **Ursache 1 — Bauen auf dem Server:** jede Auslieferung baute das Docker-Image auf dem 1-CPU-Server, 8–12 Minuten
   Volllast, 667 MB im Auslagerungsspeicher; an einem Tag mit sieben Auslieferungen war die App über eine Stunde zäh.

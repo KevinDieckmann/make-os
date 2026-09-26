@@ -42,7 +42,7 @@ export function FamilieOrga({ api }: { api: FamilieApi }) {
   );
 }
 
-function Tage({ api }: { api: FamilieApi }) {
+export function Tage({ api }: { api: FamilieApi }) {
   const d = api.d!;
   const [neu, setNeu] = useState<{ titel: string; datum: string; art: WichtigerTag['art']; aktion: WichtigerTag['aktion']; wer: string; vorlaufTage: number } | null>(null);
   const [alle, setAlle] = useState(false);
@@ -95,7 +95,7 @@ function Tage({ api }: { api: FamilieApi }) {
   );
 }
 
-function Menschen({ api }: { api: FamilieApi }) {
+export function Menschen({ api }: { api: FamilieApi }) {
   const d = api.d!;
   const [rolle, setRolle] = useState<Mensch['rolle']>('eltern');
   const [takt, setTakt] = useState<number | null>(7);

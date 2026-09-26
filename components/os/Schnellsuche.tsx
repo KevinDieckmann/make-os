@@ -21,7 +21,7 @@ const SEITEN: Treffer[] = [
   { art: 'seite', id: 'events', titel: 'Event', href: '/os/markttraktion?s=event', space: 'business' }, { art: 'seite', id: 'stammdaten', titel: 'Markttraktion · Stammdaten', href: '/os/markttraktion?s=stammdaten', space: 'business' },
   { art: 'seite', id: 'finanzen-business', titel: 'Zahlen · Business', href: '/os/finanzen?s=business', space: 'business' }, { art: 'seite', id: 'agenten', titel: 'Agenten', href: '/os/agenten', space: 'business' },
   { art: 'seite', id: 'aufgaben', titel: 'Aufgaben', href: '/os/aufgaben' }, { art: 'seite', id: 'finanzen', titel: 'Zahlen · Privat', href: '/os/finanzen?s=privat', space: 'privat' },
-  { art: 'seite', id: 'familie', titel: 'Familie & Partnerschaft', href: '/os/familie', space: 'privat' }, { art: 'seite', id: 'fokus', titel: 'Fokus', href: '/os/fokus' },
+  { art: 'seite', id: 'familie', titel: 'Familie & Partnerschaft', href: '/os/familie', space: 'privat' }, { art: 'seite', id: 'menschen', titel: 'Kontakte · privat (unsere Menschen)', href: '/os/menschen', space: 'privat' }, { art: 'seite', id: 'fokus', titel: 'Fokus', href: '/os/fokus' },
   { art: 'seite', id: 'gesundheit', titel: 'Gesundheit', href: '/os/gesundheit', space: 'privat' }, { art: 'seite', id: 'ernaehrung', titel: 'Ernährung & Einkauf', href: '/os/gesundheit?s=ernaehrung', space: 'privat' }, { art: 'seite', id: 'wissen', titel: 'Brain', href: '/os/wissen' },
 ];
 const ART: Record<string, { label: string; farbe: string }> = {

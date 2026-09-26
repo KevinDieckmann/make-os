@@ -2,8 +2,8 @@
 
 // ─── MAKE OS — Heute ────────────────────────────────────────────────────────
 // Die Seite nach der Anmeldung. Eine Frage: Was ist heute dran? Der
-// Wachstums-Score steht seit 24.09. als Kopf über JEDER Seite (WachstumsKopf),
-// deshalb hier nicht noch einmal. Seit 26.09. ist Heute eine Fläche (Kevin:
+// Seit 26.09. abends heißt sie „Home“ (Kevin): der Überblick über Privat und Business
+// zusammen, jede Person klickt sich ihr eigenes Dashboard zusammen. Seit 26.09. ist Heute eine Fläche (Kevin:
 // „seine eigene Seite vorne soll man sich selber gestalten“): jede Person
 // ordnet, blendet aus, stellt ein, holt Widgets aus dem Katalog — der
 // Standard unten ist der Aufbau, den Kevin und Malin bisher hatten.
@@ -17,15 +17,19 @@ import type { StandardPlatz } from '@/lib/flaeche/modell';
 
 /** Der Startstand: oben Score · Fokus · Jarvis, dann Aufgaben (⅔) + Körper, Termine (⅔) + Finanzen privat, Wer dran ist. */
 export const HEUTE_STANDARD: StandardPlatz[] = [
-  // 26.09. abends: der Wachstums-Score steht nicht mehr über jeder Seite, sondern hier oben (und groß unter Wachstum).
-  { id: 'score', art: 'score', breite: 2 },
-  { id: 'fokus', art: 'fokus', breite: 2 },
-  { id: 'jarvis', art: 'jarvis', breite: 2 },
-  { id: 'aufgaben', art: 'aufgaben', breite: 4 },
-  { id: 'koerper', art: 'koerper', breite: 2 },
-  { id: 'termine', art: 'termine', breite: 4 },
-  { id: 'finanzen-privat', art: 'finanzen-privat', breite: 2 },
-  { id: 'dran', art: 'dran', breite: 4 },
+  // Home (Kevin 26.09.): „erstmal der Überblick über Business und Privat jeweils zusammengeholt“ —
+  // links Privat, rechts Business; jede Person baut sich das über „Anpassen“ um.
+  { id: 'index-privat', art: 'index', breite: 3, einstellungen: { saeule: 'privat' }, titel: 'Privat · Index' },
+  { id: 'index-business', art: 'index', breite: 3, einstellungen: { saeule: 'business' }, titel: 'Business · Index' },
+  { id: 'aufgaben-privat', art: 'aufgaben', breite: 3, einstellungen: { space: 'privat', nur: 'dran' }, titel: 'Aufgaben · Privat' },
+  { id: 'aufgaben-business', art: 'aufgaben', breite: 3, einstellungen: { space: 'business', nur: 'dran' }, titel: 'Aufgaben · Business' },
+  { id: 'finanzen-privat', art: 'finanzen-privat', breite: 3 },
+  { id: 'dran', art: 'dran', breite: 3 },
+  { id: 'koerper', art: 'koerper', breite: 3 },
+  { id: 'jarvis', art: 'jarvis', breite: 3, einstellungen: { inbox: true } },
+  { id: 'termine', art: 'termine', breite: 3, einstellungen: { tage: 3, business: true }, titel: 'Nächste 3 Tage' },
+  { id: 'fokus', art: 'fokus', breite: 3 },
+  { id: 'score', art: 'score', breite: 3 },
 ];
 
 export function HeuteView() {
