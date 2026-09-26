@@ -92,8 +92,13 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
     planTimer.current[key] = setTimeout(() => { void patch([{ feld: 'plan', tag, mahlzeit: k, wert, gerichtId: wert.trim() ? gerichtZuName(daten?.gerichte ?? [], wert)?.id ?? daten?.planGerichte[tag]?.[k] ?? null : null }]); }, 600);
   };
 
+  // Ein Vorschlag aus dem Hintergrund (Jarvis, Takt) liegt bereit, bis ihn jemand übernimmt oder neu planen lässt (27.09.).
+  const [vorschlagVon, setVorschlagVon] = useState<string | null>(null);
+  useEffect(() => {
+    fetch('/api/ernaehrung/vorschlag', { cache: 'no-store' }).then(r => r.json()).then(d => { if (d?.vorschlag?.plan) { setVorschlag(d.vorschlag); setVorschlagVon(d.zeit ?? null); } }).catch(() => {});
+  }, []);
   async function jarvisPlant() {
-    setDenkt(true); setVorschlag(null);
+    setDenkt(true); setVorschlag(null); setVorschlagVon(null);
     try {
       const r = await fetch('/api/ernaehrung/vorschlag', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hinweis, gaeste }) });
       const d = await r.json();
@@ -204,7 +209,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
           </div>
           {vorschlag && (
             <div style={{ background: `${LEUCHT.agenten}14`, borderRadius: 12, padding: '12px 14px', marginBottom: 12 }}>
-              <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, margin: '0 0 10px' }}><b style={{ color: LEUCHT.agenten }}>Jarvis:</b> {vorschlag.begruendung} <span style={{ color: C.inkLeise }}>({vorschlag.gerichte.length} Rezepte · {vorschlag.einkauf.length} Posten, Vorrat abgezogen)</span></p>
+              <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, margin: '0 0 10px' }}><b style={{ color: LEUCHT.agenten }}>Jarvis:</b> {vorschlag.begruendung}{vorschlagVon ? ` · Vorschlag von Jarvis, ${new Date(vorschlagVon).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}` : ''} <span style={{ color: C.inkLeise }}>({vorschlag.gerichte.length} Rezepte · {vorschlag.einkauf.length} Posten, Vorrat abgezogen)</span></p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf onClick={uebernehmen} farbe={LEUCHT.gut}>Übernehmen — Plan, Rezepte, Liste ergänzen</Knopf><Knopf leise onClick={() => setVorschlag(null)}>Verwerfen</Knopf></div>
             </div>
           )}

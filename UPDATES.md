@@ -115,8 +115,11 @@ Kevin: „Arbeite alle Agenten, die wir machen wollten, weiter aus, dass sie liv
 - **Eine Freigabe-Sicht:** /os/stapel zeigt zusätzlich „Freigaben der Heads“ (Sales, Marketing, Event, Finance) mit Anzahl und Titeln — entschieden wird weiter beim Head.
 - **Fremd-Regel:** der Prospecting-Agent heißt `prospect` — der Eintrag in `FREMD_AGENTEN` zeigte auf `prospecting` und griff nie.
 - Tests: `anthropic-guthaben`, `regelwerk`, `hoi-lage` erweitert. Stand: 103 Dateien · 887 Tests grün, tsc und Lint sauber.
-- **Offen (Runde 2):** Ergebnisse der halb gebauten Agenten (Delegation, Wochenplan, Content, Meeting, Prospecting) landen nur als Text in der Warteschlange — sie brauchen
-  je einen Platz (Aufgaben-Vorschlag, Planer, Content-Seite, Meeting-Seite, Zielliste) statt einer Textwand; die geplanten Agenten Funnel, SEO, Team bleiben geplant (siehe Bauplan-Sätze im Katalog).
+- **Runde 2 — jedes Ergebnis hat einen Platz** (vorher nur Text in der Warteschlange, wenn Jarvis oder der Takt den Agenten liefen):
+  Wochenplan → jeder Block ein `plan_block`-Vorschlag im Stapel (Freigeben trägt ein) · Meeting → Aufgaben aus dem Protokoll als `create_task`-Vorschläge ·
+  Prospecting → Scores wirklich in der Zielliste gespeichert (stand bisher nur im Text) · Content → Ablage „Entwürfe von Jarvis“ auf der Content-Seite (Öffnen/Löschen) ·
+  Delegation → letzte Runde erscheint unter Aufgaben („Runde von Jarvis · Datum“, 7 Tage) · Ernährung → Vorschlag wartet auf der Ernährungs-Seite auf „Übernehmen“ (14 Tage).
+- **Bleibt geplant** (Katalog sagt jeweils warum): Funnel, SEO, Roadmap, Feedback, Eng/QA, Team.
 
 ### Sicherheit & Head of IT (27.09. nachts, nur lokal)
 

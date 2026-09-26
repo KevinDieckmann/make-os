@@ -8,7 +8,7 @@
 // wird per Klick. Kein Medizin-/Ernährungsrat.
 
 import { NextResponse } from 'next/server';
-import { loadJson } from '@/lib/store/local-db';
+import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey, fremd } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
@@ -30,12 +30,22 @@ const profilText = (p: ErnaehrungFile['profile'][number]) => [
   p.ziel ? `Ziel: ${p.ziel}` : '',
 ].filter(Boolean).join(' ');
 
+const VORSCHLAG = 'ernaehrung-vorschlag';
+
+/** Der abgelegte Vorschlag (höchstens 14 Tage alt). */
+export async function GET() {
+  const s = await loadJson<{ zeit: string; vorschlag: unknown }>(VORSCHLAG);
+  const frisch = s && Date.now() - Date.parse(s.zeit) < 14 * 864e5 ? s : null;
+  return NextResponse.json({ ok: true, ...(frisch ?? { zeit: null, vorschlag: null }) }, { headers: { 'Cache-Control': 'no-store' } });
+}
+
 export async function POST(req: Request) {
   const z = await imHaushaltDesInhabers(req);
   if (!z) return NextResponse.json({ error: 'Nur für den Haushalt des Inhabers.' }, { status: 403 });
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { hinweis?: string; gaeste?: string[] } = {};
   try { body = await req.json(); } catch { /* leer ok */ }
+  const ablegen = (body as { ablegen?: boolean })?.ablegen === true;
   if (!hasAnthropicKey()) return NextResponse.json({ error: 'Kein Anthropic-Key.' }, { status: 200 });
   const agent = await resolveAgent('health');
   if (!agent.enabled) return NextResponse.json(disabledResponse(agent));
@@ -98,5 +108,8 @@ export async function POST(req: Request) {
   // Neu geschriebene Rezepte, die es schon gibt, nicht doppelt anlegen.
   const neueGerichte = gerichte.filter(g => !f.gerichte.some(x => x.name.toLowerCase() === g.name.toLowerCase()));
   await logRun('health', 'Essens-Woche vorgeschlagen', { posten: einkauf.length, gerichte: neueGerichte.length, personen: namen.length });
-  return NextResponse.json({ begruendung: String(r.data.begruendung ?? '').slice(0, 400), plan, planGerichte, gerichte: neueGerichte, einkauf, hinweis: CARE });
+  const antwort = { begruendung: String(r.data.begruendung ?? '').slice(0, 400), plan, planGerichte, gerichte: neueGerichte, einkauf, hinweis: CARE };
+  // Hintergrundlauf (Jarvis, Takt): der Vorschlag wartet auf der Ernährungs-Seite, bis ihn jemand übernimmt oder ein neuer kommt (27.09.).
+  if (ablegen) await updateJson<{ zeit: string; vorschlag: typeof antwort }>(VORSCHLAG, () => ({ zeit: jetzt, vorschlag: antwort })).catch(() => { /* nur im Lauf-Text */ });
+  return NextResponse.json({ ...antwort, abgelegt: ablegen });
 }

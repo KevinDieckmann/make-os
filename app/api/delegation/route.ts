@@ -9,7 +9,7 @@
 
 import { NextResponse } from 'next/server';
 import { sperren } from '@/lib/lauf-sperre';
-import { loadJson } from '@/lib/store/local-db';
+import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
@@ -32,7 +32,20 @@ export interface Vorschlag {
   uebergabe?: string;
 }
 
+interface DelegationRunde { zeit: string; vorschlaege: Vorschlag[]; privatAnzahl: number }
+const RUNDE = 'delegation-runde';
+
+/** Die letzte abgelegte Runde (höchstens 7 Tage alt) — für die Aufgaben-Seite. */
+export async function GET() {
+  const r = await loadJson<DelegationRunde>(RUNDE);
+  const frisch = r && Date.now() - Date.parse(r.zeit) < 7 * 864e5 ? r : null;
+  return NextResponse.json({ ok: true, runde: frisch }, { headers: { 'Cache-Control': 'no-store' } });
+}
+
 export async function POST(req: Request) {
+  // Hintergrundlauf (Jarvis, Takt) legt die Runde ab — die Aufgaben-Seite zeigt sie dann als „von Jarvis“ (27.09.).
+  let ablegen = false;
+  try { ablegen = (await req.json())?.ablegen === true; } catch { /* ohne Rumpf: nicht ablegen */ }
   const schranke = modellSchranke(req); if (schranke) return schranke;
   if (!sperren('delegation')) return NextResponse.json({ error: 'Die Delegations-Runde läuft gerade schon — einen Moment.' }, { status: 200 });
   if (!hasAnthropicKey()) return NextResponse.json({ error: 'Kein Anthropic-Key.' }, { status: 200 });
@@ -100,5 +113,6 @@ export async function POST(req: Request) {
   const abgabe = vorschlaege.filter(v => v.empfehlung === 'abgeben').length;
   await logRun('task', `Delegations-Runde: ${abgabe} von ${vorschlaege.length} abgebbar`, { abgabe, gesamt: vorschlaege.length, privatAusgeblendet: privatAnzahl });
 
-  return NextResponse.json({ vorschlaege, privatAnzahl });
+  if (ablegen) await updateJson<DelegationRunde>(RUNDE, () => ({ zeit: new Date().toISOString(), vorschlaege, privatAnzahl })).catch(() => { /* Runde nur im Lauf-Text */ });
+  return NextResponse.json({ vorschlaege, privatAnzahl, abgelegt: ablegen });
 }

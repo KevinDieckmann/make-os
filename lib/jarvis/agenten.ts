@@ -67,6 +67,22 @@ const SYSTEM = new Set<string>(SYSTEM_LAEUFE);
 const kuerze = (t: unknown, n = 1600) => String(t ?? '').slice(0, n);
 
 /**
+ * Ergebnisse halb gebauter Agenten bekommen einen Platz (27.09.): statt einer Textwand in der
+ * Warteschlange werden sie Vorschläge im Stapel — über dasselbe Werkzeug, das Kevin auch im
+ * Gespräch freigäbe (`vorschlagen: true`, Quelle „lauf“). Nichts davon wird ausgeführt.
+ */
+async function stapleAlle(liste: readonly (readonly [string, Record<string, unknown>])[], origin: string, person: string | undefined, anlass: string): Promise<number> {
+  if (!liste.length) return 0;
+  const { fuehreAus } = await import('./ausfuehren');
+  let n = 0;
+  for (const [werkzeug, eingabe] of liste) {
+    try { const r = await fuehreAus(werkzeug, eingabe, origin, { vorschlagen: true, quelle: 'lauf', anlass, ...(person ? { person: person as import('./raum').Person } : {}) }); if (r.gestapelt) n++; }
+    catch { /* ein Vorschlag weniger — der Text des Laufs sagt, wie viele liegen */ }
+  }
+  return n;
+}
+
+/**
  * Ergebnis eines Agentenlaufs.
  *
  * Warum nicht einfach ein Text: die Warteschlange hat am 07.09. ein
@@ -161,10 +177,10 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
         return gut(`POSTFACH EINGESTUFT (${d.neu ?? 0} neu bewertet):\nwichtig ${zaehl.wichtig} · normal ${zaehl.normal} · Rauschen ${zaehl.rauschen}. Steht in der Inbox, Zero-Durchlauf startet dort.`);
       }
       case 'task': {
-        const d = await post('/api/delegation', {}, 120_000);
+        const d = await post('/api/delegation', { ablegen: true }, 120_000);
         const v = (d.vorschlaege ?? []) as { titel?: string; an?: string; warum?: string }[];
         if (!v.length) return gut(`DELEGATION: nichts zum Abgeben gefunden${d.privatAnzahl ? ` (${d.privatAnzahl} private Aufgaben bleiben außen vor)` : ''}.`);
-        return gut(`DELEGATION — ${v.length} Vorschläge:\n` + v.slice(0, 8).map(x => `• ${x.titel} → ${x.an}${x.warum ? ` (${x.warum})` : ''}`).join('\n'));
+        return gut(`DELEGATION — ${v.length} Vorschläge${d.abgelegt ? ' (liegen unter Aufgaben › Delegation)' : ''}:\n` + v.slice(0, 8).map(x => `• ${x.titel} → ${x.an}${x.warum ? ` (${x.warum})` : ''}`).join('\n'));
       }
       case 'prospect': {
         const st = await get('/api/state/prospects');
@@ -177,7 +193,15 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
           const e = ergebnisse[i] as { score?: number; fit?: string } | null;
           return e?.score != null ? `• ${p.company}: ${e.score}/100 — ${kuerze(e.fit, 90)}` : `• ${p.company}: nicht bewertbar`;
         });
-        return gut(`PROSPECTING — ${offen.length} von ${liste.length} bewertet:\n${zeilen.join('\n')}\n(Die Werte stehen in der Zielliste.)`);
+        // „Die Werte stehen in der Zielliste“ stimmte bis 27.09. nicht — die Route bewertet nur, gespeichert hat bisher allein der Browser.
+        let gespeichert = 0;
+        try {
+          const frisch = await get('/api/state/prospects');
+          const alle = (frisch?.state?.prospects ?? []) as Record<string, unknown>[];
+          const neu = alle.map(p => { const i = offen.findIndex(o => o.company === p.company); const e = i >= 0 ? ergebnisse[i] as { score?: number; fit?: string; angle?: string } | null : null; if (!e || e.score == null) return p; gespeichert++; return { ...p, score: e.score, fit: e.fit ?? '', angle: e.angle ?? '', bewertet: new Date().toISOString() }; });
+          if (gespeichert) await fetch(`${origin}/api/state/prospects`, { method: 'PUT', headers: H, body: JSON.stringify({ icp: String(frisch?.state?.icp ?? icp), prospects: neu }), signal: AbortSignal.timeout(30_000) });
+        } catch { gespeichert = 0; }
+        return gut(`PROSPECTING — ${offen.length} von ${liste.length} bewertet:\n${zeilen.join('\n')}\n(${gespeichert ? `${gespeichert} Werte in der Zielliste gespeichert.` : 'Speichern in die Zielliste nicht gelungen — Werte oben.'})`);
       }
       case 'planung': {
         const mo = new Date(); mo.setDate(mo.getDate() - ((mo.getDay() + 6) % 7));
@@ -185,15 +209,18 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
         const b = (d.bloecke ?? []) as { titel?: string; date?: string; startMin?: number }[];
         if (!b.length) return fehl(`Planungs-Vorschlag fehlgeschlagen: ${kuerze(d.error ?? d.begruendung, 200)}`);
         const hh = (m?: number) => `${String(Math.floor((m ?? 0) / 60)).padStart(2, '0')}:${String((m ?? 0) % 60).padStart(2, '0')}`;
+        // Ein Platz für das Ergebnis (27.09.): jeder Block wird ein plan_block-Vorschlag im Stapel (Gruppe Planung) —
+        // vorher stand der Plan nur als Text in der Warteschlange, und niemand konnte ihn annehmen.
+        const gestapelt = await stapleAlle(b.slice(0, 6).map(x => ['plan_block', { date: x.date, startMin: x.startMin, dauerMin: (x as { dauerMin?: number }).dauerMin ?? 60, titel: x.titel, art: (x as { art?: string }).art ?? 'block' }] as const), origin, person, `Wochenplan-Agent: ${kuerze(d.begruendung, 140)}`);
         return gut(`WOCHENPLAN-VORSCHLAG (${b.length} Blöcke${d.verworfen ? `, ${d.verworfen} wegen Kollision verworfen` : ''}):\n${kuerze(d.begruendung, 500)}\n`
           + b.slice(0, 10).map(x => `• ${x.date} ${hh(x.startMin)} — ${x.titel}`).join('\n')
-          + '\n(Kevin bestätigt die Blöcke im Planer.)');
+          + `\n(${gestapelt} Blöcke liegen als Vorschläge im Stapel — Freigeben trägt sie ein.)`);
       }
       case 'ernaehrung': {
-        const d = await post('/api/ernaehrung/vorschlag', { hinweis: auftrag || undefined }, 120_000);
+        const d = await post('/api/ernaehrung/vorschlag', { hinweis: auftrag || undefined, ablegen: true }, 240_000);
         if (!d.begruendung && !d.plan) return fehl(`Ernährung fehlgeschlagen: ${kuerze(d.error, 200)}`);
         const tage = Array.isArray(d.plan) ? d.plan.length : 0;
-        return gut(`ESSENSPLAN (${tage} Tage):\n${kuerze(d.begruendung, 500)}\nEinkaufsliste: ${(d.einkauf ?? []).length} Posten. Steht unter /os/ernaehrung.`);
+        return gut(`ESSENSPLAN (${tage} Tage):\n${kuerze(d.begruendung, 500)}\nEinkaufsliste: ${(d.einkauf ?? []).length} Posten. ${d.abgelegt ? 'Wartet unter Gesundheit › Ernährung auf „Übernehmen“.' : 'Steht unter /os/ernaehrung.'}`);
       }
       case 'performance': {
         const d = await post('/api/performance', { analyse: true }, 150_000);
@@ -204,8 +231,9 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
       }
       case 'content': {
         if (!auftrag) return fehl('Content-Agent braucht ein Thema — frag Kevin, worüber geschrieben werden soll.');
-        const d = await post('/api/content', { thema: auftrag, format: 'linkedin' }, 150_000);
-        return d.reply ? gut(`ENTWURF (${d.format}):\n${kuerze(d.reply, 2000)}\n(Veröffentlichen bleibt bei Kevin.)`) : fehl(`Content fehlgeschlagen: ${kuerze(d.error, 200)}`);
+        const d = await post('/api/content', { thema: auftrag, format: 'linkedin', ablegen: true }, 150_000);
+        if (!d.reply || d.needsKey) return fehl(`Content fehlgeschlagen: ${kuerze(d.error ?? d.reply, 200)}`);
+        return gut(`ENTWURF (${d.format}):\n${kuerze(d.reply, 2000)}\n(${d.abgelegt ? 'Liegt unter Content › Entwürfe von Jarvis. ' : ''}Veröffentlichen bleibt bei Kevin.)`);
       }
       // ── Systemläufe ──
       case 'tagesstart': {
@@ -366,9 +394,11 @@ ${(a?.vorschlaege ?? []).map((v: { titel: string }) => `→ ${v.titel}`).join('\
         if (!auftrag || auftrag.length < 80) return fehl('Meeting-Agent braucht ein Transkript oder ausführliche Notizen — bitte Kevin, sie einzusprechen oder einzufügen.');
         const d = await post('/api/meeting', { transcript: auftrag }, 180_000);
         if (d.error) return fehl(`Meeting fehlgeschlagen: ${kuerze(d.error, 200)}`);
-        const items = (d.actionItems ?? []) as { titel?: string; owner?: string }[];
+        const items = (d.actionItems ?? []) as { titel?: string; owner?: string; prio?: string; due?: string }[];
+        // Ein Platz für das Ergebnis (27.09.): die Aufgaben aus dem Protokoll werden create_task-Vorschläge im Stapel.
+        const gestapelt = await stapleAlle(items.slice(0, 8).filter(x => x.titel).map(x => ['create_task', { title: x.titel, why: `Aus dem Meeting „${kuerze(d.titel ?? 'Meeting', 80)}“`, priority: x.prio, wer: x.owner, faellig: x.due, space: 'business' }] as const), origin, person, `Meeting-Agent: ${kuerze(d.titel ?? 'Protokoll', 100)}`);
         return gut(`PROTOKOLL: ${kuerze(d.titel ?? d.summary, 300)}\nEntscheidungen: ${(d.entscheidungen ?? []).join(' · ') || 'keine'}\n`
-          + `Aufgaben (${items.length}): ${items.slice(0, 8).map(x => `${x.titel}${x.owner ? ` (${x.owner})` : ''}`).join(' · ')}\n(Übernahme in echte Aufgaben mit Kevins Klick unter /os/meeting.)`);
+          + `Aufgaben (${items.length}): ${items.slice(0, 8).map(x => `${x.titel}${x.owner ? ` (${x.owner})` : ''}`).join(' · ')}\n(${gestapelt} davon liegen als Aufgaben-Vorschläge im Stapel.)`);
       }
     }
   } catch (err) {

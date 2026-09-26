@@ -2,6 +2,7 @@
 // Entwürfe in Kevins/KEMARIS-CI. Autonomie: Entwurf — Publizieren bleibt dein
 // Klick (Human-in-the-Loop). Anthropic Messages API.
 
+import { loadJson, updateJson } from '@/lib/store/local-db';
 import { NextResponse } from 'next/server';
 import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
@@ -27,9 +28,12 @@ const FORMATS: Record<string, { label: string; guide: string }> = {
   email: { label: 'Kalt-E-Mail', guide: 'Eine kurze Erstansprache-E-Mail (max ~120 Wörter) an eine kaufm. Leitung/CFO im Mittelstand. Betreff + Text. Persönlich, ein konkreter Aufhänger, eine niedrigschwellige Frage. Kein Verkaufsdruck.' },
 };
 
+interface ContentEntwurf { id: string; zeit: string; format: string; thema: string; text: string; quelle: 'jarvis' }
+const ENTWUERFE = 'content-entwuerfe';
+
 export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
-  let payload: { format?: string; thema?: string; notizen?: string };
+  let payload: { format?: string; thema?: string; notizen?: string; ablegen?: boolean };
   try { payload = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const fmt = FORMATS[payload.format ?? ''] ?? FORMATS.linkedin;
   const thema = (payload.thema ?? '').trim();
@@ -54,5 +58,27 @@ export async function POST(req: Request) {
   if (!r.ok || !r.text) return NextResponse.json({ reply: r.error ?? 'Konnte gerade keinen Entwurf erzeugen — nochmal versuchen.' });
 
   await logRun('content', `${fmt.label}: ${thema.slice(0, 80)}`, { format: fmt.label, thema, entwurf: r.text.slice(0, 2000) });
-  return NextResponse.json({ reply: r.text, format: fmt.label });
+  // Ein Platz für den Entwurf (27.09.): läuft der Agent im Hintergrund (Jarvis, Takt), legt er den Text hier ab —
+  // sonst stünde er nur in der Warteschlange. Höchstens 30 Entwürfe, älteste fallen raus.
+  let abgelegt = false;
+  if (payload.ablegen) {
+    try {
+      await updateJson<{ entwuerfe: ContentEntwurf[] }>(ENTWUERFE, cur => ({ entwuerfe: [{ id: `ce-${Date.now().toString(36)}`, zeit: new Date().toISOString(), format: fmt.label, thema: thema.slice(0, 160), text: r.text.slice(0, 12000), quelle: 'jarvis' as const }, ...(cur?.entwuerfe ?? [])].slice(0, 30) }));
+      abgelegt = true;
+    } catch { abgelegt = false; }
+  }
+  return NextResponse.json({ reply: r.text, format: fmt.label, abgelegt });
+}
+
+/** Die abgelegten Entwürfe (Content › Entwürfe von Jarvis). */
+export async function GET() {
+  const s = await loadJson<{ entwuerfe: ContentEntwurf[] }>(ENTWUERFE);
+  return NextResponse.json({ ok: true, entwuerfe: s?.entwuerfe ?? [] }, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+export async function DELETE(req: Request) {
+  const id = new URL(req.url).searchParams.get('id') ?? '';
+  if (!/^ce-[a-z0-9]+$/.test(id)) return NextResponse.json({ ok: false, error: 'id fehlt.' }, { status: 400 });
+  await updateJson<{ entwuerfe: ContentEntwurf[] }>(ENTWUERFE, cur => ({ entwuerfe: (cur?.entwuerfe ?? []).filter(e => e.id !== id) }));
+  return NextResponse.json({ ok: true });
 }

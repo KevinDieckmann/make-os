@@ -145,8 +145,15 @@ export function AufgabenView() {
   const THEMA_EIGEN = useMemo(() => themenMit(eigeneNamen), [eigeneNamen]);
   const themaRang = useMemo(() => Object.fromEntries(themen.map((b, i) => [b.id, i])) as Record<string, number>, [themen]);
 
+  // Eine Runde, die Jarvis im Hintergrund gedreht hat, liegt bereit — sie erscheint, bis eine neue läuft (27.09.).
+  const [delegVon, setDelegVon] = useState<string | null>(null);
+  useEffect(() => {
+    fetch('/api/delegation', { cache: 'no-store' }).then(r => r.json()).then(d => {
+      if (d?.runde && Array.isArray(d.runde.vorschlaege) && d.runde.vorschlaege.length) { setDeleg(d.runde.vorschlaege); setDelegPrivat(d.runde.privatAnzahl ?? 0); setDelegVon(d.runde.zeit); }
+    }).catch(() => {});
+  }, []);
   async function delegationsRunde() {
-    setDelegBusy(true); setDeleg(null); setDelegStatus({});
+    setDelegBusy(true); setDeleg(null); setDelegStatus({}); setDelegVon(null);
     try {
       const r = await fetch('/api/delegation', { method: 'POST' });
       const d = await r.json();
@@ -926,6 +933,7 @@ export function AufgabenView() {
       </Karte>
 
       {/* ─── Delegations-Vorschläge: Kevin behält nur, was nur er kann ─── */}
+      {deleg && delegVon && <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Runde von Jarvis · {new Date(delegVon).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}</div>}
       {deleg && (
         <Karte i={ki++} akzent={C.aktiv}>
           <Ueberschrift farbe={C.aktiv} rechts={<>

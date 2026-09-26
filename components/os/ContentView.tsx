@@ -5,10 +5,13 @@
 // Veröffentlichen bleibt Kevins Klick.
 // 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Knopf aus schlank).
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Rich } from '@/components/os/Rich';
-import { Seite, Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT, Liste, Zeile } from './schlank';
+
+/** Entwürfe, die der Agent im Hintergrund (Jarvis, Takt) abgelegt hat — GET /api/content (27.09.). */
+interface Entwurf { id: string; zeit: string; format: string; thema: string; text: string }
 
 const FORMATS = [
   { id: 'linkedin', label: 'LinkedIn-Post', hint: 'Hook + Haltung, Einladung zum Gespräch' },
@@ -26,6 +29,10 @@ export function ContentView() {
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [entwuerfe, setEntwuerfe] = useState<Entwurf[]>([]);
+  const ladeEntwuerfe = () => fetch('/api/content', { cache: 'no-store' }).then(r => r.json()).then(d => setEntwuerfe(Array.isArray(d.entwuerfe) ? d.entwuerfe : [])).catch(() => {});
+  useEffect(() => { void ladeEntwuerfe(); }, []);
+  const her = (iso: string) => new Date(iso).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
 
   async function generate() {
     if (!thema.trim() || busy) return;
@@ -83,6 +90,22 @@ export function ContentView() {
           </Ueberschrift>
           {busy ? <Leer>schreibe in CI …</Leer> : <Rich text={draft} />}
           {draft && !busy && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 14 }}>Entwurf — gegenlesen &amp; selbst veröffentlichen.</div>}
+        </Karte>
+      )}
+
+      {entwuerfe.length > 0 && (
+        <Karte i={2}>
+          <Ueberschrift farbe={LEUCHT.agenten} rechts={`${entwuerfe.length}`}>Entwürfe von Jarvis</Ueberschrift>
+          <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 8 }}>Was der Agent im Hintergrund geschrieben hat (Auftrag an Jarvis oder Takt). Öffnen lädt den Text oben; Löschen räumt ab.</div>
+          <Liste>
+            {entwuerfe.map(e => (
+              <Zeile key={e.id} titel={e.thema} unter={`${e.format} · ${her(e.zeit)} · ${e.text.replace(/\s+/g, ' ').slice(0, 90)}…`}
+                rechts={<span style={{ display: 'flex', gap: 6 }}>
+                  <Knopf leise onClick={() => { setDraft(e.text); setThema(e.thema); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Öffnen</Knopf>
+                  <Knopf leise onClick={() => { void fetch(`/api/content?id=${encodeURIComponent(e.id)}`, { method: 'DELETE' }).then(() => ladeEntwuerfe()); }}>Löschen</Knopf>
+                </span>} />
+            ))}
+          </Liste>
         </Karte>
       )}
     </Seite>
