@@ -15,14 +15,15 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
-import { ChevronDown, Settings, LayoutDashboard, TrendingUp, PanelLeftClose, PanelLeftOpen, type LucideIcon } from 'lucide-react';
+import { ChevronDown, Settings, LayoutDashboard, PanelLeftClose, PanelLeftOpen, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { SPACES, UNTEN, EIGEN, aktiverSpaceEintrag, type SpaceId, type SpaceEintrag } from '@/lib/make-one/spaces';
 import { useSpace } from '@/hooks/useSpace';
 
 const SYSTEM: SpaceEintrag = { href: '/os/system', label: 'System', icon: Settings, passt: ['/os/system', '/os/verbindungen', '/os/konto', '/os/datenbasis', '/os/stammdaten', '/os/bauplan', '/os/roadmap', '/os/onboarding'] };
 /** Unter Home (Kevin 26.09.): Wachstum — die Gesamtansicht, das zentrale Stück. */
-const WACHSTUM: SpaceEintrag = { href: '/os/wachstum', label: 'Wachstum', icon: TrendingUp, passt: ['/os/wachstum', '/os/saeule'] };
+// Der Wachstum-Knopf stand vom 26.09. abends bis spät hier unter Home — seitdem ist der Score
+// oben im Kopf als Zahl (Kevin), und /os/wachstum öffnet sich über diese Zahl oder ⌘K.
 const MERKER = 'make-leiste';
 
 export function Leiste() {
@@ -104,7 +105,6 @@ export function Leiste() {
         {/* Home: das eigene Dashboard */}
         {kasten('/os', 'Home', LayoutDashboard, pfad === '/os')}
         {/* Wachstum: die Gesamtansicht */}
-        {kasten(WACHSTUM.href, WACHSTUM.label, WACHSTUM.icon, passt(WACHSTUM))}
 
         {SPACES.map(s => {
           const an = auf === s.id;

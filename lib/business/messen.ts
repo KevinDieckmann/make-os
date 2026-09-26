@@ -9,6 +9,8 @@
 //   3. Controlling (Monatsumsatz/-kosten) — nur für die Gesamtsicht
 
 import type { Scope, Schwelle } from './register';
+import type { ZeitBild } from '@/lib/zeitmessung/modell';
+import { fzMessen } from '@/lib/zeitmessung/kennzahlen';
 import type { FinanceState } from '@/lib/make-one/finance-data';
 import { computeMetrics } from '@/lib/make-one/finance-data';
 import type { Firma, Rechnung, Zahlung, Merkposten, Planposten } from '@/lib/make-one/liquiditaet';
@@ -64,6 +66,8 @@ export interface Bestand {
   kapazitaet?: Partial<Record<'kdc' | 'kdv', number>>;
   /** Eigene Schwellen dieser Sicht (Feinjustierung) — überschreiben den Standard. */
   schwellen?: Record<string, Schwelle>;
+  /** Zeit & Fokus der anfragenden Person (26.09. spät) — die Säule „Fokus & Zeit“ ist persönlich. */
+  zeit?: ZeitBild | null;
 }
 
 export type { Messung, Detail } from '@/lib/kennzahlen/kern';
@@ -309,6 +313,7 @@ export const MESSEN_MODELL: Record<string, (b: Bestand) => Messung> = {
 
 export const MESSEN: Record<string, (b: Bestand) => Messung> = {
   ...MESSEN_MODELL,
+  ...fzMessen<Bestand>('business', b => b.zeit),
   liquiditaet(b) {
     const k = kasse(b), mk = monatsKosten(b);
     if (!k) return { luecke: 'Kontostände der Geschäftskonten fehlen', details: kontenDetails(b) };

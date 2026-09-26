@@ -11,6 +11,7 @@ import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
 import { ladeIndexDatei, fortschreiben, speichereSchwelle, indexName, type IndexDatei, type IndexVerlauf } from '@/lib/kennzahlen/speicher';
 import { berechnePrivat, privatFrisch, PRIVAT_KENNZAHLEN, type PrivatIndex } from './index';
+import type { ZeitBild } from '@/lib/zeitmessung/modell';
 
 interface Extra { ruecklage: { betrag: number; stand: string; von: string } | null }
 export type PrivatDatei = IndexDatei & Extra;
@@ -28,21 +29,22 @@ export async function ladePrivatDatei(haushalt: string): Promise<PrivatDatei> {
 export interface PrivatStand extends IndexVerlauf { pi: PrivatIndex; frisch: boolean; ruecklage: PrivatDatei['ruecklage'] }
 
 /** Rechnet den Index des Haushalts, schreibt einmal am Tag den Schnappschuss (nur mit Buchungen). */
-export async function privatStand(haushalt: string, heute = heuteBerlin()): Promise<PrivatStand> {
-  return merken(`privat:${haushalt}:${heute}`, 2 * 60_000, () => privatStandFrisch(haushalt, heute));
+export async function privatStand(haushalt: string, heute = heuteBerlin(), zeit?: ZeitBild | null, person = '-'): Promise<PrivatStand> {
+  // Die Zeit ist persönlich — deshalb steckt die Person im Schlüssel des Zwischenspeichers (26.09. spät).
+  return merken(`privat:${haushalt}:${person}:${heute}`, 2 * 60_000, () => privatStandFrisch(haushalt, heute, zeit));
 }
-async function privatStandFrisch(haushalt: string, heute: string): Promise<PrivatStand> {
+async function privatStandFrisch(haushalt: string, heute: string, zeit?: ZeitBild | null): Promise<PrivatStand> {
   const [h, d] = await Promise.all([ladeHaushalt(haushalt), ladePrivatDatei(haushalt)]);
-  const bestand = { heute, haushalt: h, ruecklage: d.ruecklage, schwellen: d.schwellen };
+  const bestand = { heute, haushalt: h, ruecklage: d.ruecklage, schwellen: d.schwellen, zeit: zeit ?? null };
   const pi = berechnePrivat(bestand);
   const v = await fortschreiben(name(haushalt), d, pi, heute, h.buchungen.length > 0);
   return { pi, frisch: privatFrisch(bestand), ruecklage: d.ruecklage, ...v };
 }
 
 /** Nur rechnen, nichts schreiben — für den Wachstums-Score. */
-export async function privatIndexFuer(haushalt: string, heute = heuteBerlin()): Promise<{ pi: PrivatIndex; frisch: boolean }> {
+export async function privatIndexFuer(haushalt: string, heute = heuteBerlin(), zeit?: ZeitBild | null): Promise<{ pi: PrivatIndex; frisch: boolean }> {
   const [h, d] = await Promise.all([ladeHaushalt(haushalt), ladePrivatDatei(haushalt)]);
-  const bestand = { heute, haushalt: h, ruecklage: d.ruecklage, schwellen: d.schwellen };
+  const bestand = { heute, haushalt: h, ruecklage: d.ruecklage, schwellen: d.schwellen, zeit: zeit ?? null };
   return { pi: berechnePrivat(bestand), frisch: privatFrisch(bestand) };
 }
 

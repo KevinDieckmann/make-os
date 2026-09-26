@@ -16,6 +16,8 @@ import { berechne } from '@/lib/business/index';
 import { fixkostenDer } from '@/lib/business/messen';
 import { geschaeftsmodell } from '@/lib/business/modell';
 import { SCOPES, type Scope } from '@/lib/business/register';
+import { personAus } from '@/lib/jarvis/raum';
+import { zeitBildFuer } from '@/lib/zeitmessung/speicher';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,12 +29,14 @@ export async function GET(req: Request) {
   const q = new URL(req.url).searchParams;
   const s = q.get('scope');
   const scope: Scope = SCOPES.some(x => x.id === s) ? (s as Scope) : 'gesamt';
+  // Zeit & Fokus der anfragenden Person — vierte Säule, persönlich (26.09. spät).
+  const zeit = await zeitBildFuer(personAus(req)).catch(() => null);
   if (q.get('kompakt') === '1') {
     // Fachseiten (Zahlen, Markttraktion, Mandate): nur diese Sicht, schnell.
     const roh = await ladeRoh();
-    return NextResponse.json({ ok: true, scope, bi: berechne(bestandFuer(roh, scope)) }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ ok: true, scope, bi: berechne(bestandFuer(roh, scope, zeit)) }, { headers: { 'Cache-Control': 'no-store' } });
   }
-  const { roh, ergebnis } = await alleSichten();
+  const { roh, ergebnis } = await alleSichten(undefined, zeit);
   const bi = ergebnis[scope];
   const { vor30, wechsel } = vergleich(roh.verlauf, scope, roh.heute, bi);
   const verlauf = Object.entries(roh.verlauf.tage ?? {}).filter(([t]) => t < roh.heute).sort(([a], [b]) => a.localeCompare(b)).slice(-90)
@@ -44,7 +48,7 @@ export async function GET(req: Request) {
     vor30, wechsel, verlauf,
     abschluesse: roh.abschluesse.slice(0, 36),
     einstellungen: await ladeEinstellungen(),
-    modell: geschaeftsmodell(roh.mandate, roh.leistungen, scope, fixkostenDer(bestandFuer(roh, scope))),
+    modell: geschaeftsmodell(roh.mandate, roh.leistungen, scope, fixkostenDer(bestandFuer(roh, scope, zeit))),
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
 

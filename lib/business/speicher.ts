@@ -3,6 +3,7 @@
 // hält Monatsabschlüsse und Einstellungen und schreibt einmal am Tag einen
 // Schnappschuss (Verlauf für Trends, Ampel-Wechsel und den MRR für die NRR).
 
+import type { ZeitBild } from '@/lib/zeitmessung/modell';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { merken } from '@/lib/store/memo';
 import type { FinanceState } from '@/lib/make-one/finance-data';
@@ -184,13 +185,13 @@ async function ladeRohFrisch(heute: string) {
 
 export type Roh = Awaited<ReturnType<typeof ladeRoh>>;
 
-export function bestandFuer(r: Roh, scope: Scope): Bestand {
+export function bestandFuer(r: Roh, scope: Scope, zeit?: ZeitBild | null): Bestand {
   const mrrVerlauf: Record<string, Record<string, number>> = {};
   for (const [m, je] of Object.entries(r.verlauf.mrr ?? {})) if (je[scope]) mrrVerlauf[m] = je[scope]!;
   // Der laufende Monat immer aus dem aktuellen Stand.
   mrrVerlauf[r.heute.slice(0, 7)] = mrrJeKunde(r.mandate, scope);
   const { verlauf: _v, einstellungen, leistungen: _l, ...rest } = r;
-  return { ...rest, scope, mrrVerlauf, schwellen: schwellenFuer(einstellungen, scope) };
+  return { ...rest, scope, mrrVerlauf, schwellen: schwellenFuer(einstellungen, scope), zeit: zeit ?? null };
 }
 
 function tagesstand(bi: BusinessIndex): Tagesstand {
@@ -232,9 +233,9 @@ export function vergleich(v: BusinessVerlauf, scope: Scope, heute: string, jetzt
 }
 
 /** Alle drei Sichten auf einmal (und der Schnappschuss des Tages, falls noch keiner da ist). */
-export async function alleSichten(heute = localDay()): Promise<{ roh: Roh; ergebnis: Record<Scope, BusinessIndex> }> {
+export async function alleSichten(heute = localDay(), zeit?: ZeitBild | null): Promise<{ roh: Roh; ergebnis: Record<Scope, BusinessIndex> }> {
   const roh = await ladeRoh(heute);
-  const ergebnis = Object.fromEntries(SCOPES.map(s => [s.id, berechne(bestandFuer(roh, s.id))])) as Record<Scope, BusinessIndex>;
+  const ergebnis = Object.fromEntries(SCOPES.map(s => [s.id, berechne(bestandFuer(roh, s.id, zeit))])) as Record<Scope, BusinessIndex>;
   if (!roh.verlauf.tage?.[heute]) await schnappschuss(roh, ergebnis).catch(() => {});
   return { roh, ergebnis };
 }

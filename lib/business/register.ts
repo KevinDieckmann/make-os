@@ -10,7 +10,7 @@
 // Jede Kennzahl sagt, wie sie rechnet (formel), woher (quelle), was gut ist
 // (gruen/rot) und — wenn Daten fehlen — wie man die Lücke schließt.
 
-export type SaeuleId = 'fh' | 'ud' | 'mt';
+export type SaeuleId = 'fh' | 'ud' | 'mt' | 'fz';
 export type Scope = 'gesamt' | 'kdc' | 'kdv';
 export const SCOPES: { id: Scope; label: string }[] = [
   { id: 'gesamt', label: 'Gesamt' },
@@ -18,14 +18,19 @@ export const SCOPES: { id: Scope; label: string }[] = [
   { id: 'kdv', label: 'KD Ventures' },
 ];
 
+// 26.09. spät: vierte Säule „Fokus & Zeit“ (10 %, Kevin). Die drei KSI-Säulen behalten ihr
+// Verhältnis 50/30/20 — sie sind um denselben Faktor 0,9 skaliert. Fehlt die Zeitmessung noch,
+// zählt die Säule nicht, und der Index ist exakt der alte.
 export const SAEULEN: { id: SaeuleId; label: string; gewicht: number; satz: string }[] = [
-  { id: 'fh', label: 'Finanzielle Gesundheit', gewicht: 0.5, satz: 'Liquidität, Forderungen, Ausgaben, Kapital' },
-  { id: 'ud', label: 'Unternehmer-DNA', gewicht: 0.3, satz: 'Produktivität und wie der Unternehmer arbeitet' },
-  { id: 'mt', label: 'Markttraktion', gewicht: 0.2, satz: 'Vertrieb, Kunden, Wachstum' },
+  { id: 'fh', label: 'Finanzielle Gesundheit', gewicht: 0.5 * (1 - FZ_GEWICHT), satz: 'Liquidität, Forderungen, Ausgaben, Kapital' },
+  { id: 'ud', label: 'Unternehmer-DNA', gewicht: 0.3 * (1 - FZ_GEWICHT), satz: 'Produktivität und wie der Unternehmer arbeitet' },
+  { id: 'mt', label: 'Markttraktion', gewicht: 0.2 * (1 - FZ_GEWICHT), satz: 'Vertrieb, Kunden, Wachstum' },
+  { ...FZ_SAEULE, id: 'fz' },
 ];
 
 import type { KennzahlDefBasis, Schwelle as KernSchwelle } from '@/lib/kennzahlen/kern';
 import { WEG } from '@/lib/wege';
+import { FZ_SAEULE, FZ_GEWICHT, fzKennzahlen } from '@/lib/zeitmessung/kennzahlen';
 export type { Einheit, Richtung } from '@/lib/kennzahlen/kern';
 
 export interface KennzahlDef extends KennzahlDefBasis {
@@ -151,6 +156,9 @@ export const KENNZAHLEN: KennzahlDef[] = [
     formel: '(Marketing + Vertrieb, 12 Monate) ÷ neue Kunden', quelle: 'Monatsabschluss (Marketing & Vertrieb) + Mandate',
     luecke: 'Marketing-/Vertriebskosten oder neue Kunden fehlen', pflegen: ABSCHLUSS },
 ];
+
+// Fokus & Zeit (26.09. spät): dieselben vier Kennzahlen wie im Privat-Index, mit Business-Schwellen.
+KENNZAHLEN.push(...fzKennzahlen('business').map(k => ({ ...k, saeule: 'fz' as SaeuleId })));
 
 export const KENNZAHL = Object.fromEntries(KENNZAHLEN.map(k => [k.id, k])) as Record<string, KennzahlDef>;
 

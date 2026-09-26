@@ -19,13 +19,18 @@ import { kennzahlen, schuldenbild, istWert, sollWert, inMonaten } from '@/lib/fi
 import { luft } from '@/lib/finanzen/haushalt/fixkosten';
 import { vollMonate, monatVon, monatKurz, tageZwischen, tagPlus, datumDe } from '@/lib/finanzen/haushalt/monat';
 import { WEG } from '@/lib/wege';
+import { FZ_SAEULE, FZ_GEWICHT, fzKennzahlen, fzMessen } from '@/lib/zeitmessung/kennzahlen';
+import type { ZeitBild } from '@/lib/zeitmessung/modell';
 
 export type PrivatIndex = IndexErgebnis;
 
+// 26.09. spät: vierte Säule „Fokus & Zeit“ (10 %, Kevin) — die drei Finanz-Säulen behalten ihr
+// Verhältnis 40/35/25 (Faktor 0,9). Ohne Zeitmessung zählt die Säule nicht.
 export const PRIVAT_SAEULEN: SaeuleDef[] = [
-  { id: 'rl', label: 'Reserve & Liquidität', gewicht: 0.4, satz: 'Wie lange ihr ohne Einkommen durchkommt und was jeden Monat übrig bleibt' },
-  { id: 'ab', label: 'Ausgaben & Budget', gewicht: 0.35, satz: 'Wofür das Geld geht und ob es im Plan bleibt' },
-  { id: 'vs', label: 'Vermögen & Schulden', gewicht: 0.25, satz: 'Was aufgebaut und was abgebaut wird' },
+  { id: 'rl', label: 'Reserve & Liquidität', gewicht: 0.4 * (1 - FZ_GEWICHT), satz: 'Wie lange ihr ohne Einkommen durchkommt und was jeden Monat übrig bleibt' },
+  { id: 'ab', label: 'Ausgaben & Budget', gewicht: 0.35 * (1 - FZ_GEWICHT), satz: 'Wofür das Geld geht und ob es im Plan bleibt' },
+  { id: 'vs', label: 'Vermögen & Schulden', gewicht: 0.25 * (1 - FZ_GEWICHT), satz: 'Was aufgebaut und was abgebaut wird' },
+  FZ_SAEULE,
 ];
 
 const RUECKLAGE = { text: 'Rücklage eintragen', href: WEG.privatIndex('ruecklage') };
@@ -79,6 +84,8 @@ export const PRIVAT_KENNZAHLEN: KennzahlDefBasis[] = [
   { id: 'schuldenfrei', label: 'Schuldenfrei in', saeule: 'vs', gruppe: 'Schulden', einheit: 'monate', richtung: 'niedrig', gruen: 36, rot: 84,
     formel: 'Restschuld ÷ Ø Tilgung je Monat', quelle: 'Schulden-Liste + Tilgungs-Buchungen',
     luecke: 'Keine Tilgung in den letzten 6 Monaten', pflegen: SCHULDEN },
+  // ── Fokus & Zeit (26.09. spät) — dieselben vier Kennzahlen wie im Business-Index, mit Privat-Schwellen
+  ...fzKennzahlen('privat'),
 ];
 
 export interface PrivatBestand {
@@ -87,6 +94,8 @@ export interface PrivatBestand {
   /** Notgroschen/Rücklage in Cent, mit Stand. */
   ruecklage: { betrag: number; stand: string } | null;
   schwellen?: Record<string, Schwelle>;
+  /** Zeit & Fokus der anfragenden Person (26.09. spät) — die Säule „Fokus & Zeit“ ist persönlich, nicht je Haushalt. */
+  zeit?: ZeitBild | null;
 }
 
 // ── Hilfen ──────────────────────────────────────────────────────────────────
@@ -136,6 +145,7 @@ function ausgabenJeKategorie(s: Sicht, monat: string): Map<string, number> {
 // ── Die Kennzahlen ──────────────────────────────────────────────────────────
 
 export const PRIVAT_MESSEN: Record<string, (s: Sicht) => Messung> = {
+  ...fzMessen<Sicht>('privat', s => s.b.zeit),
   notgroschen(s) {
     const l = luft(s.buchungen, s.schulden, s.katName, s.b.heute);
     const r = s.b.ruecklage;

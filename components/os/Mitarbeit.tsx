@@ -13,6 +13,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
 import { LEUCHT } from '@/lib/make-one/design';
+import { useSpace } from '@/hooks/useSpace';
 
 interface Aktiv { person: string; name: string; pfad: string; seitSek: number }
 
@@ -24,13 +25,15 @@ const bereich = (pfad: string) => BEREICH.find(([r]) => r.test(pfad))?.[1] ?? 'M
 
 export function Mitarbeit() {
   const pfad = usePathname() ?? '/os';
+  const { space } = useSpace();
   const [andere, setAndere] = useState<Aktiv[]>([]);
   useEffect(() => {
     let weg = false;
     const melden = async () => {
       if (document.visibilityState !== 'visible') return;
       try {
-        await fetch('/api/state/anwesenheit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pfad: pfad.startsWith('/os/markttraktion') ? `${pfad}${window.location.search}` : pfad }) });
+        // Seit 26.09. spät auch Abfrage und Modus: daraus misst der Server die Zeit je Space und Bereich (Zeit & Fokus).
+        await fetch('/api/state/anwesenheit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pfad: pfad.startsWith('/os/markttraktion') ? `${pfad}${window.location.search}` : pfad, suche: window.location.search, space }) });
         const d = await fetch('/api/state/anwesenheit').then(r => r.json());
         if (!weg) setAndere(((d.aktiv ?? []) as Aktiv[]).filter(a => a.person !== d.ich));
       } catch { /* still */ }
@@ -38,7 +41,7 @@ export function Mitarbeit() {
     void melden();
     const t = setInterval(melden, 30_000);
     return () => { weg = true; clearInterval(t); };
-  }, [pfad]);
+  }, [pfad, space]);
   if (!andere.length) return null;
   return (
     <div style={{ position: 'fixed', right: 96, bottom: 26, zIndex: 60, display: 'grid', gap: 6, justifyItems: 'end', pointerEvents: 'none' }} className="os-mitarbeit">

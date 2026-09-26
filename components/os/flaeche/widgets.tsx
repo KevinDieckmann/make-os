@@ -22,6 +22,8 @@ import { TAGE, MAHLZEITEN, type ErnaehrungFile } from '@/lib/ernaehrung/modell';
 import type { Breite, Einstellungen, Wert } from '@/lib/flaeche/modell';
 import { spaceVonAufgabe, fokusFuerSpace, SPACE_LABEL, SPACE_FARBE } from '@/lib/make-one/space-regeln';
 import { spaceVonKalender } from '@/lib/kalender/space';
+import { bereicheNachZeit, zeitText, type ZeitBild } from '@/lib/zeitmessung/modell';
+import { bereichLabel } from '@/lib/zeitmessung/kennzahlen';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Fortschritt, feld, zoneFarbe, prioFarbe } from '../schlank';
 import { WhoopImport } from '../WhoopImport';
 
@@ -383,6 +385,48 @@ function ScoreWidget({ titel, i }: WidgetProps) {
 
 // ── Register + Katalog ──────────────────────────────────────────────────────
 const TAGE_WAHL: EinstellungDef = { k: 'tage', label: 'Zeitraum', art: 'wahl', optionen: [{ w: 1, label: 'heute' }, { w: 3, label: '3 Tage' }, { w: 7, label: '7 Tage' }, { w: 14, label: '14 Tage' }], standard: 1 };
+// ── Zeit & Fokus (26.09. spät) ──────────────────────────────────────────────
+// Wo die Zeit hingeht: heute, die letzten 7 Tage und der bewusste Anteil je Modus,
+// darunter die Bereiche nach Zeit. Quelle: Anwesenheit + Fokus-Zähler (/api/state/zeit).
+function ZeitWidget({ e, titel, i }: WidgetProps) {
+  const space = (str(e.space, 'privat') === 'business' ? 'business' : 'privat') as 'privat' | 'business';
+  const d = useDaten<ZeitBild>('/api/state/zeit', x => ((x as { bild?: ZeitBild }).bild ?? null));
+  if (d === null) return null;
+  const farbe = SPACE_FARBE[space];
+  const heute = d?.tagHeute.gesamt[space] ?? 0, sieben = d?.sieben.gesamt[space] ?? 0, bewusst = d?.sieben.bewusst[space] ?? 0;
+  const bereiche = d ? bereicheNachZeit(d.sieben, space, 5) : [];
+  const max = bereiche[0]?.sek || 1;
+  const zahl = (label: string, sek: number, unter?: string) => (
+    <div key={label} style={{ display: 'grid', gap: 2 }}>
+      <span style={{ fontSize: 11, color: C.inkLeise, textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</span>
+      <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 18, color: sek ? C.ink : C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{zeitText(sek)}</span>
+      {unter && <span style={{ fontSize: 11, color: C.inkDim }}>{unter}</span>}
+    </div>
+  );
+  return (
+    <Karte i={i} akzent={sieben ? farbe : undefined}>
+      <Ueberschrift farbe={farbe} rechts={<Link href={`/os/uebersicht?space=${space}`} style={link}>{SPACE_LABEL[space]} ›</Link>}>{titel ?? `Zeit & Fokus · ${SPACE_LABEL[space]}`}</Ueberschrift>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginBottom: 10 }}>
+        {zahl('Heute', heute)}
+        {zahl('7 Tage', sieben)}
+        {zahl('Bewusst', bewusst, sieben ? `${Math.round((bewusst / sieben) * 100)} % Fokus` : undefined)}
+      </div>
+      {d === undefined ? <div style={{ fontSize: TYP.body, color: C.inkLeise }}>lade …</div>
+        : bereiche.length ? (
+          <div style={{ display: 'grid', gap: 6 }}>
+            {bereiche.map(b => (
+              <div key={b.bereich} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center', fontSize: 12.5, color: C.inkDim }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bereichLabel(b.bereich)}{b.bewusst ? <span style={{ color: C.inkLeise }}> · {zeitText(b.bewusst)} bewusst</span> : null}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', color: C.ink }}>{zeitText(b.sek)}</span>
+                <div style={{ gridColumn: '1 / -1' }}><Fortschritt anteil={b.sek / max} farbe={farbe} /></div>
+              </div>
+            ))}
+          </div>
+        ) : <Leer>Noch nichts gemessen — im {SPACE_LABEL[space]}-Modus arbeiten oder oben „Fokus“ starten.</Leer>}
+    </Karte>
+  );
+}
+
 export const WIDGETS: Record<string, WidgetDef> = {
   score: { art: 'score', label: 'Wachstums-Score', bereich: 'Tag', beschreibung: 'Der Score, auf den wir hinarbeiten — mit den sechs Säulen', breite: 2, Komponente: ScoreWidget },
   aufgaben: { art: 'aufgaben', label: 'Aufgaben', bereich: 'Tag', beschreibung: 'Fällige und kritische Aufgaben, Schnellanlage', breite: 4, Komponente: AufgabenWidget,
@@ -401,6 +445,8 @@ export const WIDGETS: Record<string, WidgetDef> = {
     einstellungen: [{ k: 'inbox', label: 'Inbox dazu', art: 'schalter', standard: false }] },
   dran: { art: 'dran', label: 'Wer heute dran ist', bereich: 'Business', beschreibung: 'Die wichtigsten Kontakte der Power Hour', breite: 4, Komponente: DranWidget },
   familie: { art: 'familie', label: 'Familie & Partnerschaft', bereich: 'Familie', beschreibung: 'Paar-Gespräch, wichtige Tage, wer einen Anruf verdient, Frage der Woche', breite: 2, Komponente: FamilieWidget },
+  zeit: { art: 'zeit', label: 'Zeit & Fokus', bereich: 'Tag', beschreibung: 'Wo deine Zeit hingeht: heute, 7 Tage, bewusster Fokus und die Bereiche', breite: 2, Komponente: ZeitWidget,
+    einstellungen: [{ k: 'space', label: 'Modus', art: 'wahl', optionen: [{ w: 'privat', label: 'Privat' }, { w: 'business', label: 'Business' }], standard: 'privat' }] },
 };
 export const KATALOG: KatalogEintrag[] = [
   { art: 'score', label: 'Wachstums-Score', beschreibung: WIDGETS.score.beschreibung, bereich: 'Tag', breite: 2 },
@@ -409,6 +455,8 @@ export const KATALOG: KatalogEintrag[] = [
   { art: 'termine', label: 'Nächste 7 Tage', beschreibung: 'Was in der Woche ansteht — privat und KEMARIS', bereich: 'Tag', breite: 4, voreinstellung: { tage: 7, business: true } },
   { art: 'fokus', label: 'Fokus', beschreibung: 'Der nächste gesetzte Fokus', bereich: 'Tag', breite: 2 },
   { art: 'fokus', label: 'Wochenfokus', beschreibung: 'Worauf es diese Woche ankommt', bereich: 'Tag', breite: 2, voreinstellung: { horizont: 'woche' } },
+  { art: 'zeit', label: 'Zeit & Fokus · Privat', beschreibung: WIDGETS.zeit.beschreibung, bereich: 'Tag', breite: 2 },
+  { art: 'zeit', label: 'Zeit & Fokus · Business', beschreibung: WIDGETS.zeit.beschreibung, bereich: 'Tag', breite: 2, voreinstellung: { space: 'business' } },
   { art: 'koerper', label: 'Körper', beschreibung: WIDGETS.koerper.beschreibung, bereich: 'Gesundheit', breite: 2 },
   { art: 'routinen', label: 'Routinen & Streak', beschreibung: WIDGETS.routinen.beschreibung, bereich: 'Gesundheit', breite: 2 },
   { art: 'essen', label: 'Essen heute', beschreibung: WIDGETS.essen.beschreibung, bereich: 'Gesundheit', breite: 2 },

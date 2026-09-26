@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import { haushaltVon, KEIN_ZUGANG } from '@/lib/finanzen/haushalt/zugriff';
 import { privatStand, speicherePrivat } from '@/lib/privat/speicher';
+import { zeitBildFuer } from '@/lib/zeitmessung/speicher';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,8 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   const z = await haushaltVon(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
-  const st = await privatStand(z.haushalt);
+  // Zeit & Fokus der Person fließt als vierte Säule ein (26.09. spät).
+  const st = await privatStand(z.haushalt, undefined, await zeitBildFuer(z.person).catch(() => null), z.person);
   if (new URL(req.url).searchParams.get('kompakt') === '1') {
     return NextResponse.json({ ok: true, index: st.pi.index, label: st.pi.label, frisch: st.frisch, saeulen: st.pi.saeulen.map(s => ({ id: s.id, label: s.label, score: s.score })) }, { headers: { 'Cache-Control': 'no-store' } });
   }

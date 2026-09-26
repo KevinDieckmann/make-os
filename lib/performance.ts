@@ -19,6 +19,7 @@ import { privatIndexFuer } from '@/lib/privat/speicher';
 import { ladeFamilie } from '@/lib/familie/speicher';
 import { berechne } from '@/lib/business/index';
 import { ladeRoh as ladeBusinessRoh, bestandFuer } from '@/lib/business/speicher';
+import { zeitBildFuer } from '@/lib/zeitmessung/speicher';
 import { pflegeRhythmus, type Rhythmus } from '@/lib/familie/logik';
 
 export interface Faktor {
@@ -147,7 +148,9 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   // Markttraktion 20 — in der Gesamtsicht (lib/business). Die Säule IST dieser
   // Index; die Faktoren zeigen seine drei Säulen. Umsatz-Kurs, Traktion,
   // Meilensteine, Forderungen und Kunden stecken jetzt dort als Kennzahlen.
-  const bi = berechne(bestandFuer(await ladeBusinessRoh(today), 'gesamt'));
+  // Zeit & Fokus der Person (26.09. spät): vierte Säule in Business- und Privat-Index.
+  const zeit = await zeitBildFuer(person, today).catch(() => null);
+  const bi = berechne(bestandFuer(await ladeBusinessRoh(today), 'gesamt', zeit));
   const fh = bi.saeulen.find(s => s.id === 'fh')!;
   const business: Faktor[] = bi.saeulen.map(s => ({
     label: `${s.label} (${Math.round(s.gewicht * 100)} %)`, wert: s.score ?? 0, echt: s.score != null && !s.zuDuenn, href: '/os/finanzen?s=business',
@@ -209,7 +212,7 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   // ── Finanzen, private Hälfte = Privat-Index (25.09.) — nur für Personen mit Haushalt ──
   // Veraltete Buchungen (> 45 Tage) sind eine Lücke, kein schlechter Wert.
   const zugang = await haushaltFuer(person).catch(() => null);
-  const pIdx = zugang ? await privatIndexFuer(zugang.haushalt, today).catch(() => null) : null;
+  const pIdx = zugang ? await privatIndexFuer(zugang.haushalt, today, zeit).catch(() => null) : null;
   const privat: Faktor[] = pIdx ? [{
     label: 'Privat-Index', wert: pIdx.pi.index ?? 0, echt: pIdx.pi.index != null && pIdx.frisch, href: '/os/finanzen?s=privat#index',
     quelle: pIdx.pi.index == null ? 'noch nichts gemessen' : `${pIdx.pi.label} · ${pIdx.pi.saeulen.map(s => `${s.label} ${s.score ?? '—'}`).join(' · ')}${pIdx.frisch ? '' : ' — Buchungen älter als 45 Tage, zählt nicht'}`,

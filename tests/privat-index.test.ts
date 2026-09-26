@@ -4,6 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { berechnePrivat, privatFrisch, PRIVAT_KENNZAHLEN, PRIVAT_SAEULEN, type PrivatBestand } from '../lib/privat/index';
 import type { Buchung, Kategorie, Schuld, Beleg, Planwert, Konto } from '../lib/finanzen/haushalt/typen';
+import { bild, type ZeitDatei } from '../lib/zeitmessung/modell';
 
 const HEUTE = '2026-09-25';
 let n = 0;
@@ -35,12 +36,21 @@ const k = (pi: ReturnType<typeof berechnePrivat>, id: string) => pi.saeulen.flat
 
 describe('Privat-Index', () => {
   it('Aufbau: drei Säulen 40/35/25, Schwellen in der richtigen Reihenfolge', () => {
-    expect(PRIVAT_SAEULEN.map(s => [s.id, s.gewicht])).toEqual([['rl', 0.4], ['ab', 0.35], ['vs', 0.25]]);
+    // 26.09. spät: vierte Säule „Fokus & Zeit“ (10 %) — die drei Finanz-Säulen behalten ihr Verhältnis 40/35/25.
+    expect(PRIVAT_SAEULEN.map(s => [s.id, Math.round(s.gewicht * 1000) / 1000])).toEqual([['rl', 0.36], ['ab', 0.315], ['vs', 0.225], ['fz', 0.1]]);
     for (const x of PRIVAT_KENNZAHLEN) expect(x.richtung === 'hoch' ? x.gruen > x.rot : x.gruen < x.rot, x.id).toBe(true);
   });
 
+  // Zeit & Fokus (26.09. spät): 3 h mitgelaufen + 1 h bewusst in Gesundheit, alles heute.
+  const zeitDatei: ZeitDatei = { tage: { [HEUTE]: { auto: { 'privat:gesundheit': 3 * 3600 }, bewusst: { 'privat:gesundheit': 3600 }, bloecke: [{ von: `${HEUTE}T09:00:00.000Z`, bis: `${HEUTE}T10:00:00.000Z`, schluessel: 'privat:gesundheit', label: 'Gesundheit', sek: 3600 }] } } };
+  const zeit = bild(zeitDatei, HEUTE);
+
   it('rechnet jede Kennzahl aus den Buchungen — nur Privat, nie Selbständigkeit', () => {
-    const pi = berechnePrivat(bestand({ ruecklage: { betrag: 1_080_000, stand: '2026-09-01' } }));
+    const pi = berechnePrivat(bestand({ ruecklage: { betrag: 1_080_000, stand: '2026-09-01' }, zeit }));
+    expect(k(pi, 'zeit_woche')).toMatchObject({ wert: 4, ampel: 'gelb' });          // 4 h von 8 h grün
+    expect(k(pi, 'bewusst_woche')).toMatchObject({ wert: 1, ampel: 'gelb' });
+    expect(k(pi, 'fokus_tage')).toMatchObject({ wert: 1, ampel: 'gelb' });
+    expect(k(pi, 'bereich_zeit')).toMatchObject({ wert: 4, ampel: 'gruen' });       // Gesundheit ≥ 3 h
     expect(k(pi, 'notgroschen')).toMatchObject({ wert: 6, ampel: 'gruen' });     // 10.800 € ÷ (1.500 Miete + 300 Rate)
     expect(k(pi, 'luft')).toMatchObject({ wert: 2200, ampel: 'gruen' });         // 4.000 − 1.800
     expect(k(pi, 'planbar').wert).toBeCloseTo(4000 / 1800, 5);
@@ -57,6 +67,23 @@ describe('Privat-Index', () => {
     expect(k(pi, 'rechnungen')).toMatchObject({ wert: 1, ampel: 'gelb' });
     expect(pi.index).toBeGreaterThan(60);
     expect(pi.luecken).toBe(0);
+  });
+
+  it('unter einer Stunde in 7 Tagen ist Fokus & Zeit eine Lücke mit Stand, keine Note', () => {
+    const wenig = bild({ tage: { [HEUTE]: { auto: { 'privat:home': 600 }, bewusst: { 'privat:gesundheit': 6 }, bloecke: [] } } }, HEUTE);
+    const pi = berechnePrivat(bestand({ ruecklage: { betrag: 1_080_000, stand: '2026-09-01' }, zeit: wenig }));
+    expect(pi.saeulen.find(s => s.id === 'fz')!.score).toBeNull();
+    expect(k(pi, 'zeit_woche')).toMatchObject({ gemessen: false, quelle: expect.stringContaining('Erst 10 min gemessen') });
+  });
+
+  it('ohne Zeitmessung zählt Fokus & Zeit nicht — der Index ist exakt der Finanz-Index (40/35/25)', () => {
+    const pi = berechnePrivat(bestand({ ruecklage: { betrag: 1_080_000, stand: '2026-09-01' } }));
+    const fz = pi.saeulen.find(s => s.id === 'fz')!;
+    expect(fz.score).toBeNull();
+    expect(fz.kennzahlen.every(x => !x.gemessen)).toBe(true);
+    expect(pi.luecken).toBe(4);
+    const s = (id: string) => pi.saeulen.find(x => x.id === id)!.score as number;
+    expect(pi.index).toBe(Math.round(s('rl') * 0.4 + s('ab') * 0.35 + s('vs') * 0.25));
   });
 
   it('ohne Rücklage ist der Notgroschen eine Messlücke mit Weg zur Eingabe', () => {

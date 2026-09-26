@@ -13,6 +13,9 @@
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus, nameVon } from '@/lib/jarvis/raum';
+import { istSpace } from '@/lib/make-one/space-regeln';
+import { zeitSchluessel } from '@/lib/zeitmessung/bereich';
+import { verbucheAnwesenheit } from '@/lib/zeitmessung/speicher';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,7 +37,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  let body: { person?: string; pfad?: string };
+  let body: { person?: string; pfad?: string; suche?: string; space?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false }, { status: 400 }); }
   // Seit den Konten (23.09.): die Person aus der Sitzung, nicht aus der Anfrage.
   const person = personAus(req);
@@ -53,5 +56,9 @@ export async function POST(req: Request) {
     }
     return f;
   });
+  // Zeit & Fokus (26.09. spät): jeder Ping schreibt die Zeit seit dem letzten dem Bereich gut, in dem man war.
+  const suche = String(body.suche ?? '').slice(0, 200);
+  const { schluessel } = zeitSchluessel(pfad.split('?')[0], suche || (pfad.includes('?') ? `?${pfad.split('?')[1]}` : ''), istSpace(body.space) ? body.space : null);
+  await verbucheAnwesenheit(person, new Date(jetzt).toISOString(), schluessel).catch(() => {});
   return NextResponse.json({ ok: true });
 }

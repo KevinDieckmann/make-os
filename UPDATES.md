@@ -53,7 +53,21 @@ Ansage stehen, bis das nächste Update sie ablöst.
 
 ## Nächstes Update — vorbereitet, noch nicht online
 
-_(noch leer — ab hier wird wieder nur lokal gebaut; Hochladen erst auf Kevins klares Wort)_
+### Zeit & Fokus + Kopf (26.09. spät, nur lokal)
+
+- **Schalter oben rechts:** der Index-Chip wechselt per Klick den Modus Privat ↔ Business (Index und Seiten folgen; auf einer
+  Space-Seite geht es zur Übersicht des anderen Space, gemeinsame Seiten wie Home/Heute bleiben). Der kleine Pfeil öffnet die Index-Seite.
+  Im Chip steht die Zeit von heute in diesem Modus.
+- **Zeit läuft mit:** die Anwesenheit (alle 30 s, nur sichtbares Fenster) schreibt die Zeit dem Bereich gut, in dem man war
+  (Gesundheit, Finanzen, Markttraktion, Home …), je Modus. Gemeinsame Seiten zählen für den Modus, in dem man gerade ist.
+- **Fokus-Zähler im Kopf:** „Fokus“ startet bewusste Zeit für den aktuellen Bereich, läuft über Seitenwechsel weiter, Stopp verbucht den Block.
+- **Säule „Fokus & Zeit“ (10 %) in Privat- und Business-Index:** Zeit im Modus (7 Tage), bewusste Fokus-Zeit (wiegt 1,25), Fokus-Tage,
+  Zeit für Gesundheit bzw. in Markttraktion. Die anderen Säulen behalten ihr Verhältnis (50/30/20 bzw. 40/35/25). Unter einer Stunde
+  in 7 Tagen zählt die Säule noch nicht (Anlaufphase). Über die Indizes fließt sie in den Wachstums-Score.
+- **Widget „Zeit & Fokus“** (Privat/Business) im Katalog: heute, 7 Tage, bewusster Anteil, Bereiche nach Zeit.
+- **Wachstums-Score oben links** als Zahl (Klick → Wachstum), Suchfeld ausgeglichen in der Mitte; der Wachstum-Knopf in der Leiste ist weg.
+- Neuer Bestand je Person: `zeit` / `zeit--<person>` (400 Tage), Route `/api/state/zeit`. Schwellen sind Annahmen und über die Index-Seite anpassbar.
+
 
 ## Online seit 26.09.2026 spät (Stand `59f275e`, ausgerollt 22:47 auf Kevins Wort)
 

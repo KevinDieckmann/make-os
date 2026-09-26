@@ -231,6 +231,27 @@ lokal, Route `/os`, Port 3001.
   neue Seite in `lib/make-one/spaces.ts` (passt) und `components/os/Schnellsuche.tsx` (SEITEN) anschließen. Keine Weiterleitung
   in `next.config.mjs` darf eine echte Seite verdecken (`/os/uebersicht` war so ein Fall).
 
+## Zeit & Fokus (26.09. spät, nur lokal)
+- **Modell:** `lib/zeitmessung/modell.ts` (rein, getestet): Zeit je Person, Tag und Schlüssel
+  `space:bereich`, zwei Arten — `auto` (Anwesenheits-Ping alle 30 s, Differenz ≤ 90 s zählt)
+  und `bewusst` (Fokus-Zähler). `bild(datei, heute)` liefert heute/7 Tage je Space und Bereich,
+  Fokus-Tage (≥ 25 min bewusst), Blöcke. Bereich aus der Adresse: `lib/zeitmessung/bereich.ts`
+  (Menüpunkte der Spaces + feste Namen home/heute/wachstum/system/jarvis/inbox/kalender).
+- **Speicher:** `lib/zeitmessung/speicher.ts`, Bestand `zeit`/`zeit--<person>`; Pings werden
+  120 s gepuffert (keine Schreibung alle 30 s). Route `/api/state/zeit` (GET Bild, POST Fokus-Block).
+  Der Ping in `components/os/Mitarbeit.tsx` schickt `pfad`, `suche`, `space`; verbucht wird in
+  `app/api/state/anwesenheit/route.ts`.
+- **Kopf (`components/os/Kopf.tsx`):** ganz links `WachstumsZahl` (Score, Klick → Wachstum),
+  Suchfeld mittig, `FokusZaehler` (localStorage `make-fokus`), rechts `SpaceSchalter` (Klick =
+  Modus-Wechsel, Pfeil = Index-Seite, Zeit heute). Ereignis `make-zeit-geaendert` frischt auf.
+- **Säule `fz` „Fokus & Zeit“** in beiden Indizes: `lib/zeitmessung/kennzahlen.ts` (`FZ_SAEULE`,
+  `fzKennzahlen(space)`, `fzMessen`). Gewicht 10 %, andere Säulen ×0,9 (Verhältnis bleibt; Tests
+  prüfen das). Unter 1 h in 7 Tagen: Lücke, keine Note (`MIN_MESSUNG_SEK`). Die Zeit ist
+  persönlich: `privatStand(haushalt, heute, zeit, person)` trägt die Person im Memo-Schlüssel,
+  `bestandFuer(roh, scope, zeit)` im Business; Routen `/api/privat`, `/api/business` und
+  `lib/performance.ts` laden `zeitBildFuer(person)`.
+- Widget `zeit` in `components/os/flaeche/widgets.tsx` (Einstellung `space`).
+
 ## Tempo (26.09.)
 - Teure Berechnungen (Indizes, Familie, Bauplan) laufen durch `merken(schluessel, ttl, rechne)` aus `lib/store/memo.ts`;
   jede Schreibung über local-db setzt den Speicher zurück. Schlüssel MÜSSEN Person/Haushalt tragen. Neue teure Routen
