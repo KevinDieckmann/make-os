@@ -211,6 +211,11 @@ lokal, Route `/os`, Port 3001.
   `markttraktion-ueberblick`, `finanzchef`, `loops`, `kalender`. Weitere Karten-Seiten nach demselben Muster anschließen
   (offen: Wochen-/Tagesplaner, Aufgaben-Board, Inbox, Kompass, Säulen, Stapel, CRM-Unterseiten, Finanz-Details).
 
+## Hochladen nur auf Kevins Wort (26.09. abends)
+- Gebaut und überarbeitet wird lokal auf `entwicklung`; Kevin klickt den Stand im Dev-Server (`localhost:3001`) durch
+  („Klickdummy“). Nach `main`/Hetzner geht NICHTS ohne Kevins ausdrückliche Freigabe für genau diesen Stand — auch keine
+  Tempo-Fixes, keine Deploy-Skripte. Frühere Freigaben gelten nicht pauschal.
+
 ## Spaces Privat/Business (26.09.)
 - Grundregel (Kevin): jeder Eintrag trägt seinen Space, der Space filtert, Heute/Jarvis sehen beides. Regeln in
   `lib/make-one/space-regeln.ts` (`spaceVonAufgabe`: Ort gibt vor, `task.space` weicht ab). Menü/Kopf: `lib/make-one/spaces.ts`,
