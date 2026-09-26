@@ -1,4 +1,5 @@
-import { SaeuleView, SAEULEN_META } from '@/components/os/SaeuleView';
+import { SaeuleView } from '@/components/os/SaeuleView';
+import { SAEULEN_META } from '@/lib/make-one/saeulen-meta';
 import { notFound, redirect } from 'next/navigation';
 
 export default async function SaeulePage(props: { params: Promise<{ key: string }> }) {

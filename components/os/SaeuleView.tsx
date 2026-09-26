@@ -1,5 +1,7 @@
 'use client';
 
+import { SAEULEN_META } from '@/lib/make-one/saeulen-meta';
+
 // ─── MAKE OS — Säule ────────────────────────────────────────────────────────
 // Eine Seite je Säule des Wachstums-Scores: oben der gerechnete Wert mit seiner
 // Herleitung, darunter Werkzeuge, die genau diesen Bereich bewegen. Kein
@@ -15,14 +17,7 @@ import { eur, computeMetrics, type FinanceState, type Kasse } from '@/lib/make-o
 import { localDay } from '@/lib/zeit';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Ring, Zahl, Balken, Fortschritt, Haken, feld, LEUCHT } from './schlank';
 
-export const SAEULEN_META: Record<string, { titel: string; claim: string; hin: string }> = {
-  health: { titel: 'Gesundheit & Energie', claim: 'Der Körper trägt alles andere.', hin: 'Recovery, Schlaf, Routinen, Journal' },
-  business: { titel: 'Business-Performance', claim: 'Der Weg auf 1 Mio.', hin: 'Umsatz-Kurs und Pipeline' },
-  planning: { titel: 'Planung & Execution', claim: 'Ob aus Vorhaben Erledigtes wird.', hin: 'Aufgabenlage und Fluss' },
-  finance: { titel: 'Finanzen', claim: 'Wie lange du durchhältst.', hin: 'Runway, Gewinn, Marge' },
-  social: { titel: 'Familie & Partnerschaft', claim: 'Wer mitträgt — und wer zu kurz kommt.', hin: 'Rituale, Delegation, Stimmung' },
-  agents: { titel: 'Agenten', claim: 'Was Jarvis und die Agenten dir abnehmen.', hin: 'Läufe, Aufträge, Stapel, Bote' },
-};
+export { SAEULEN_META };
 
 /** Eine Farbe je Säule — dieselbe wie auf der Wachstums-Seite. */
 const SAEULEN_FARBE: Record<string, string> = { health: LEUCHT.gut, business: LEUCHT.business, planning: LEUCHT.puls, finance: LEUCHT.geld, social: LEUCHT.beziehung, agents: LEUCHT.agenten };
