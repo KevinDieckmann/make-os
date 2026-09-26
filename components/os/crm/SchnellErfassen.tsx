@@ -222,7 +222,7 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
 
                 {mitNotiz && (
                   <>
-                    {/* Chance optional gleich mit */}
+                    {/* Deal optional gleich mit */}
                     <div>
                       {!chance ? (
                         <button onClick={() => setChance({ titel: k.firma ?? anzeigename(k), betrag: '', basis: 'monat', stufe: stufen[0]?.id ?? 'qualifiziert', schritt: '', datum: plusTage(heute, 5) })}
@@ -230,10 +230,10 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
                       ) : (
                         <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: `${LEUCHT.achtung}0d`, border: `1px solid ${LEUCHT.achtung}33` }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 style={{ ...titelKlein, margin: 0 }}>Chance</h3>
+                            <h3 style={{ ...titelKlein, margin: 0 }}>Deal</h3>
                             <button onClick={() => setChance(null)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5, minHeight: 32 }}>entfernen</button>
                           </div>
-                          <input value={chance.titel} aria-label="Titel der Chance" placeholder="Titel (Firma)" onChange={e => setChance({ ...chance, titel: e.target.value })} style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px' }} />
+                          <input value={chance.titel} aria-label="Titel des Deals" placeholder="Titel (Firma)" onChange={e => setChance({ ...chance, titel: e.target.value })} style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px' }} />
                           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                             <input value={chance.betrag} inputMode="numeric" aria-label="Wert in Euro" placeholder="Wert €" onChange={e => setChance({ ...chance, betrag: e.target.value })} style={{ ...feld, width: 130, fontSize: TYP.bedien, padding: '9px 12px' }} />
                             <Pillen liste={[{ id: 'monat', label: '€ / Monat' }, { id: 'einmalig', label: 'einmalig' }]} aktiv={chance.basis} onWahl={(basis: WertBasis) => setChance({ ...chance, basis })} farbe={LEUCHT.achtung} />

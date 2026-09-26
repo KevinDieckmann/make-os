@@ -9,6 +9,7 @@
 //   3  Erste Zielgruppe Ein Segment aus den Vorlagen (Live-Zahl aus der Kartei)
 // Jeder Schritt lässt sich überspringen; danach übernimmt die normale Übersicht.
 
+import { localDay } from '@/lib/zeit';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Liste, Zeile, feld, LEUCHT } from '../../schlank';
@@ -27,7 +28,7 @@ export function Start({ api, onFertig, onUeberspringen }: { api: CrmApi; onFerti
   const crm = api.crm;
   const ich = api.ich;
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
-  const heute = crm?.heute ?? new Date().toISOString().slice(0, 10);
+  const heute = crm?.heute ?? localDay();
   const gespeichert = useMemo(() => einstellungAus(crm?.stand ?? {}), [crm]);
   const [schritt, setSchritt] = useState<Schritt>(1);
   const [meldung, setMeldung] = useState('');

@@ -10,6 +10,7 @@
 // Seit 26.09. (Malin: „Datei nicht lesbar“ online): { csv, name } schickt die
 // Datei selbst — auf Hetzner gibt es keinen Schreibtisch. Höchstens 12 MB.
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -31,6 +32,7 @@ const STANDARD = join(ORDNER, 'CRM_MASTER_Hauptdatei.csv');
 interface Bestand { kontakte: Kontakt[] }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   if (zuGross(req, 12_000_000)) return ZU_GROSS(12_000_000);
   let body: { pfad?: string; csv?: string; name?: string } = {};
   try { body = await req.json(); } catch { /* ohne Body: Standarddatei */ }

@@ -21,6 +21,7 @@ import { anzeigename } from '@/lib/make-one/crm';
 import type { CrmBestand, Chance, Firma, Kriterien, Lead, LeadStatus, Qual } from './typen';
 import { OFFENE_STUFEN, gesamtwert } from './pipeline';
 import { haeltBeziehung } from './team';
+import { dealZuFirma } from './firmen-bezug';
 
 export const LEAD_STATUS: { id: LeadStatus; label: string; weiterWenn: string; aktiv: boolean }[] = [
   { id: 'neu', label: 'Neu', weiterWenn: 'Erste Ansprache über einen zulässigen Kanal.', aktiv: false },
@@ -87,7 +88,7 @@ export function leads(kontakte: Kontakt[], crm: CrmBestand): LeadZeile[] {
   const offeneDeals = crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe));
   const dealVon = (ids: string[], firma?: Firma): Chance | undefined =>
     (firma?.lead?.chanceId ? crm.chancen.find(c => c.id === firma.lead!.chanceId) : undefined)
-    ?? offeneDeals.find(c => c.kontaktIds.some(id => ids.includes(id)) || (!!firma && c.firma === firma.name))
+    ?? offeneDeals.find(c => c.kontaktIds.some(id => ids.includes(id)) || (!!firma && dealZuFirma(c, firma)))
     ?? crm.chancen.find(c => c.kontaktIds.some(id => ids.includes(id)));
   const jeFirma = new Map<string, Kontakt[]>();
   const ohneFirma: Kontakt[] = [];
@@ -129,7 +130,7 @@ export interface Trichter {
   gespraechZuSql: number | null; sqlZuGewonnen: number | null;
 }
 
-/** Der Trichter über alle drei Ebenen — für die Leiste oben im Sales. */
+/** Der Trichter über alle drei Ebenen — für die Leiste über den Leads (Firmen › Leads). */
 export function trichter(zeilen: LeadZeile[], crm: CrmBestand): Trichter {
   const n = (s: LeadStatus) => zeilen.filter(z => z.status === s).length;
   const offen = crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe));

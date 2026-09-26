@@ -13,6 +13,7 @@
 // wird nichts — der Export ist für Kevins eigenes Versandwerkzeug.
 // Die Rechnung steckt in lib/crm/marketing.ts (rein, getestet).
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/jarvis/raum';
@@ -30,6 +31,7 @@ const csvAntwort = (inhalt: string, datei: string) => new Response(inhalt, {
 });
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const url = new URL(req.url);
   const heute = localDay();
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
@@ -60,6 +62,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let body: { aktion?: unknown; einstellung?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (body?.aktion !== 'einstellung') return NextResponse.json({ ok: false, fehler: 'Unbekannte Aktion.' }, { status: 400 });

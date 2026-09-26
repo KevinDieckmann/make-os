@@ -67,7 +67,7 @@ Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen un
   Rolle Entscheider/Fürsprecher/Nutzer/Bremst, Verlauf mit Verweildauer, Aktivitäten der Beteiligten, offene Follow-ups), **Auswertung** (Prognose nach
   Monat der Entscheidung, Win/Loss mit Gründen, Zyklus, Ø Deal-Größe, Verweildauer und Umwandlung je Stufe, hängt nach Wert). Quoten erst ab 5 Fällen.
 - **Follow-up (neu):** EINE Liste aus Zusagen, Wiedervorlagen, Deal-Schritten, Nachfassen nach Events, Reviews und der Kadenz je Kreis (A 30 · B 60 · C 90 · D 180 Tage) —
-  überfällig · heute · diese Woche · später, Filter Alle/Meins/Malin, Wochenansicht, Kadenz-Ansicht. Erledigen fragt Ergebnis und **nächsten Schritt**
+  überfällig · heute · diese Woche · später, Filter Alle / je Person (aus dem Team), Wochenansicht (mit „Nächste Woche“ darunter), Kadenz-Ansicht. Erledigen fragt Ergebnis und **nächsten Schritt**
   (Pflichtfrage, bewusst „kein nächster Schritt“ möglich) und schreibt eine Aktivität an die Person; Verschieben +1/+3/+7 (ab dem dritten Mal ein Hinweis), Absagen. „+ Follow-up“ von Hand.
 - **Kennzahlen (Traktions-Index, Sales):** Win Rate 180 Tage, Sales-Zyklus Median, hängt nach Wert, Follow-ups pünktlich, überfällige Follow-ups, Neuumsatz gegen Monatsziel.
 - **Stammdaten:** Wertelisten pflegbar (Verlustgründe, Kadenz je Kreis, Gesprächsergebnisse, Ziele je Monat — Ziele sind die Messlatte für Gespräche/Woche und SQL/Monat),
@@ -81,6 +81,23 @@ Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen un
   nie doppelt), Termin im Kalender „Gemeinsam“ (drei Stunden, ohne Gäste) mit Kennung am Event.
 - **Kennzahlen (Traktions-Index, Marketing):** Anfragen · 90 Tage, Kosten je Anfrage.
 - **Feinschliff:** alle Ziele, Texte und die Schnellsuche zeigen auf die neuen Reiter; Deal löschen nur noch bei Fehlanlagen (Sperre statt Löschen).
+- **Feinschliff 2 (Prüfbericht, 57 Punkte):**
+  - **Zugang:** jede `/api/crm/*`-Route prüft jetzt den Haushalt des Inhabers (vorher nur die Anmeldung) — ein fremdes Konto sieht kein CRM.
+  - **Ein Deal-Weg wirklich überall:** Leads › SQL, Event „Deal daraus“ (Quelle geht in den Dialog, kein Nach-PATCH), Jarvis — alles durch `dealAnlegen`,
+    Prüfen und Schreiben in einer Schreibsperre (keine zwei offenen Deals bei gleichzeitiger Anlage); Schritt-Datum in der Vergangenheit wird abgelehnt.
+  - **Server-Regeln geschärft:** neue Deals nicht per Upsert, Löschen nur bei Fehlanlagen, `letzteAktivitaet` setzt nur der Server, Vergleich auf den
+    lokalen Tag (nachts kein UTC-Versatz mehr — auch in Win Rate, Zyklus, Neuumsatz), überfälliger Schritt wird beim Ziehen im Board genannt, statt still zu scheitern.
+  - **Follow-up-Route neu:** Erledigen liest den Bestand frisch (kein Überschreiben paralleler Änderungen), fasst Personen-Felder nur an, wenn sie die Quelle sind,
+    „Als Nächstes“ am Deal wird sein nächster Schritt, Event-Follow-up erledigt = Gast nachgefasst + Lead gehoben, Kadenz verschieben/absagen legt einen echten
+    Termin im nächsten Takt an, Vergangenheit wird abgelehnt, überfällig abgesagt = „verpasst“.
+  - **Firma per Kennung überall:** Deal-Karte wählt die Firma aus der Liste (setzt Kennung + Name), Listenzeile, Akte, Leads und Export lesen über die Kennung.
+  - **Deal-Akte:** Treppe zeigt bei verloren/geparkt die letzte erreichte offene Stufe, Follow-ups nur zum Deal und zu den Beteiligten (keine Kadenz-Erinnerungen),
+    Verlauf sortiert, Win Rate und „hängt“ mit denselben Schwellen wie die Kennzahlen (40/20 % · 15/40 %).
+  - **Nachfragen im Fenster** statt Browser-`prompt` (Firma anlegen, Lead-Grund, Antrag erledigt, Löschgrund) — Escape bricht ab, Enter übernimmt.
+  - Kleinigkeiten: Deal-Pillen Board · Liste · Kunden · Auswertung; Art.-14-Befund führt zu den Kontakten; eigener Kadenz-Takt ab 1 Tag; „Deal“ statt „Chance“ im Sichtbaren;
+    Löschen meldet Fehler; „heute“-Rückfall im Browser lokal statt UTC; Gäste „Nachgefasst“ nutzt denselben Weg wie das Nachfassen; Suche führt Deals in die Akte.
+  - Tests: `crm-deal-regeln` (Server-Regeln), `crm-fundament` angepasst (Upsert neuer Deals ist jetzt ein Fehler). Stand: 100 Dateien · 877 Tests grün, tsc und Lint sauber.
+  - **Offen (Kevin entscheidet):** Farbe des Reiters „Firmen“ (heute neutral wie Kontakte, obwohl die Leads darin liegen); ob „Meins/Malin“-Filter auch im Board sichtbar sein soll.
 
 ### Zeit & Fokus + Kopf (26.09. spät, nur lokal)
 

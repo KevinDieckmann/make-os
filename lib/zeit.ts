@@ -23,3 +23,9 @@ export function alterStunden(iso?: string | null): number | null {
   if (isNaN(t)) return null;
   return (Date.now() - t) / 3_600_000;
 }
+
+/** Lokaler Tag (YYYY-MM-DD) eines ISO-Zeitpunkts — statt `.slice(0, 10)`, das den UTC-Tag nimmt (nachts ab 0 Uhr MESZ liegt der um einen Tag daneben). */
+export function tagVon(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso.slice(0, 10) : localDay(d);
+}

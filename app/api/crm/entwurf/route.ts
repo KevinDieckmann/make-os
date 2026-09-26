@@ -1,6 +1,7 @@
 // ─── MAKE OS — Entwurf für einen Kontakt ────────────────────────────────────
 // POST { id } → Betreff, E-Mail, LinkedIn-Nachricht. Kein Versand.
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { hasAnthropicKey } from '@/lib/anthropic';
@@ -12,6 +13,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let b: { id?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }

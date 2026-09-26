@@ -11,6 +11,7 @@
 // Follow-up-Ebene und „Deal anlegen“ mit Quelle Anfrage/Content/Kampagne.
 // MAKE OS versendet nichts — beantwortet wird im eigenen Postfach.
 
+import { localDay } from '@/lib/zeit';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -42,7 +43,7 @@ export function Anfragen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
   useEffect(() => { void laden(); }, [laden, api.crm, api.kontakte]);
   const crm = api.crm;
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
-  const heute = crm?.heute ?? new Date().toISOString().slice(0, 10);
+  const heute = crm?.heute ?? localDay();
 
   // Formular
   const [art, setArt] = useState<PersonWahlArt>('vorhanden');

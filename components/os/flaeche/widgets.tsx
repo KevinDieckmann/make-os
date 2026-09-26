@@ -155,7 +155,7 @@ function DranWidget({ titel, i }: WidgetProps) {
   if (!d) return null;
   return (
     <Karte i={i}>
-      <Ueberschrift farbe={LEUCHT.business} rechts={<Link href="/os/markttraktion?s=sales" style={link}>Power Hour ›</Link>}>{titel ?? 'Wer heute dran ist'} · {d.n}</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.business} rechts={<Link href={WEG.powerHour()} style={link}>Power Hour ›</Link>}>{titel ?? 'Wer heute dran ist'} · {d.n}</Ueberschrift>
       <Liste>
         {d.karten.map(k => <Zeile key={k.id} onClick={() => router.push(markttraktion('kontakte', undefined, k.id))} links={<Punkt farbe={k.kategorie === 'versprechen' ? LEUCHT.kritisch : k.kategorie === 'signale' ? LEUCHT.achtung : LEUCHT.business} />} titel={<>{k.name}{k.firma && <span style={{ color: C.inkLeise }}> · {k.firma}</span>}</>} unter={k.gruende[0]} />)}
       </Liste>
@@ -264,7 +264,7 @@ const INDEX_QUELLEN: Record<string, { url: string; label: string; farbe: string;
   business: { url: '/api/business?scope=gesamt&kompakt=1', label: 'Business-Index', farbe: LEUCHT.business, ziel: WEG.business(), lies: d => { const bi = (d as { bi?: { index: number | null; label: string; saeulen: { id: string; label: string; score: number | null }[] } }).bi; return bi ? { index: bi.index, label: bi.label, saeulen: bi.saeulen } : null; } },
   privat: { url: '/api/privat?kompakt=1', label: 'Privat-Index', farbe: LEUCHT.geld, ziel: WEG.privatIndex(), lies: d => { const r = d as { ok?: boolean; index?: number | null; label?: string; saeulen?: { id: string; label: string; score: number | null }[] }; return r?.ok ? { index: r.index ?? null, label: r.label ?? '', saeulen: r.saeulen ?? [] } : null; } },
   gesundheit: { url: '/api/gesundheit/index?kompakt=1', label: 'Gesundheits-Index', farbe: LEUCHT.gut, ziel: WEG.gesundheit('index'), lies: d => { const r = d as { ok?: boolean; index?: number | null; label?: string; saeulen?: { id: string; label: string; score: number | null }[] }; return r?.ok ? { index: r.index ?? null, label: r.label ?? '', saeulen: r.saeulen ?? [] } : null; } },
-  traktion: { url: '/api/crm/traktion', label: 'Traktions-Score', farbe: LEUCHT.business, ziel: markttraktion('sales'), lies: d => { const r = (d as { index?: { index: number | null; label: string; saeulen: { id: string; label: string; score: number | null }[] } }).index; return r ? { index: r.index, label: r.label, saeulen: r.saeulen } : null; } },
+  traktion: { url: '/api/crm/traktion', label: 'Traktions-Score', farbe: LEUCHT.business, ziel: markttraktion(), lies: d => { const r = (d as { index?: { index: number | null; label: string; saeulen: { id: string; label: string; score: number | null }[] } }).index; return r ? { index: r.index, label: r.label, saeulen: r.saeulen } : null; } },
 };
 function IndexWidget({ e, titel, i }: WidgetProps) {
   const q = INDEX_QUELLEN[str(e.saeule, 'business')] ?? INDEX_QUELLEN.business;

@@ -6,9 +6,10 @@
 // derselben Firma ohne Absicht, und der Lead wird SQL mit Verweis auf den Deal.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { localDay } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
-import { ladeCrm, aendereCrm } from './speicher';
+import { aendereCrm } from './speicher';
 import { leads, leereKriterien, type LeadZeile } from './leads';
 import { OFFENE_STUFEN } from './pipeline';
 import { wer, BEIDE, verantwortlich } from './team';
@@ -45,6 +46,7 @@ export type DealErgebnis = { ok: true; chance: Chance; leadId?: string; text: st
 export function dealBauen(e: DealEingabe, ctx: { kontakte: Kontakt[]; firmen: { id: string; name: string; lead?: Lead }[]; chancen: Chance[]; leadZeilen: LeadZeile[]; person: string; jetzt: string; id?: string }): DealErgebnis {
   const schritt = e.schritt && String(e.schritt.text ?? '').trim() && tagOk(e.schritt.datum) ? { text: String(e.schritt.text).trim().slice(0, 300), datum: tagOk(e.schritt.datum)! } : null;
   if (!schritt) return { ok: false, fehler: 'Nächster Schritt mit Datum ist Pflicht — ohne ihn verliert sich der Deal.', status: 400 };
+  if (schritt.datum < ctx.jetzt.slice(0, 10) && schritt.datum < localDay(new Date(ctx.jetzt))) return { ok: false, fehler: 'Der nächste Schritt liegt in der Vergangenheit — ein Deal startet mit einem Termin vor sich.', status: 400 };
   const kontaktIds = Array.from(new Set((e.kontaktIds ?? []).filter(idOk))).slice(0, 20);
   const personen = kontaktIds.map(id => ctx.kontakte.find(k => k.id === id)).filter((k): k is Kontakt => !!k);
   const firmaId = idOk(e.firmaId) && ctx.firmen.some(f => f.id === e.firmaId) ? e.firmaId! : personen.map(k => k.firmaId).find(id => id && ctx.firmen.some(f => f.id === id));
@@ -81,14 +83,24 @@ export function dealBauen(e: DealEingabe, ctx: { kontakte: Kontakt[]; firmen: { 
 /** Deal anlegen und schreiben: Chance in den CRM-Bestand, Lead wird SQL mit Verweis. */
 export async function dealAnlegen(e: DealEingabe, person: string, jetzt = new Date().toISOString()): Promise<DealErgebnis> {
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
-  const crm = await ladeCrm();
-  const r = dealBauen(e, { kontakte, firmen: crm.firmen, chancen: crm.chancen, leadZeilen: leads(kontakte, crm), person, jetzt });
-  if (!r.ok) return r;
-  const c = r.chance;
-  await aendereCrm(x => ({ ...x, chancen: [...x.chancen, c] }));
-  // Ebene 1 → 2: der Lead (Firma, sonst Person ohne Firma) ist jetzt SQL — mit Verweis auf den Deal.
-  const sql = (alt?: Lead): Lead => ({ status: 'sql', kriterien: alt?.kriterien ?? c.qualifizierung, ...(alt?.fit ? { fit: alt.fit } : {}), ...(alt?.notiz ? { notiz: alt.notiz } : {}), sqlAm: jetzt, chanceId: c.id, geaendert: jetzt, geaendertVon: person });
-  if (c.firmaId) await aendereCrm(x => ({ ...x, firmen: x.firmen.map(f => (f.id === c.firmaId ? { ...f, lead: sql(f.lead), geaendert: jetzt, geaendertVon: person } : f)) }));
-  else if (c.kontaktIds[0]) await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === c.kontaktIds[0] && !k.firmaId ? { ...k, lead: sql(k.lead), geaendertAm: jetzt } : k)) }));
-  return r;
+  // Prüfen (Dublette!) und Schreiben in EINER Schreibsperre — zwei gleichzeitige Anlagen (Jarvis + Browser) ergeben sonst zwei offene Deals (Prüfbericht 27.09., Punkt 18).
+  let r: DealErgebnis | null = null;
+  await aendereCrm(x => {
+    r = dealBauen(e, { kontakte, firmen: x.firmen, chancen: x.chancen, leadZeilen: leads(kontakte, x), person, jetzt });
+    if (!r.ok) return x;
+    const c = r.chance;
+    // Ebene 1 → 2: der Lead der Firma ist jetzt SQL — mit Verweis auf den Deal, in derselben Mutation.
+    const sql = (alt?: Lead): Lead => ({ status: 'sql', kriterien: alt?.kriterien ?? c.qualifizierung, ...(alt?.fit ? { fit: alt.fit } : {}), ...(alt?.notiz ? { notiz: alt.notiz } : {}), sqlAm: jetzt, chanceId: c.id, geaendert: jetzt, geaendertVon: person });
+    return { ...x, chancen: [...x.chancen, c], firmen: c.firmaId ? x.firmen.map(f => (f.id === c.firmaId ? { ...f, lead: sql(f.lead), geaendert: jetzt, geaendertVon: person } : f)) : x.firmen };
+  });
+  const ergebnis = r as DealErgebnis | null;
+  if (!ergebnis) return { ok: false, fehler: 'Deal nicht angelegt.', status: 500 };
+  if (!ergebnis.ok) return ergebnis;
+  const c = ergebnis.chance;
+  // Person ohne Firma: der Lead hängt an ihr (anderer Bestand).
+  if (!c.firmaId && c.kontaktIds[0]) {
+    const sql = (alt?: Lead): Lead => ({ status: 'sql', kriterien: alt?.kriterien ?? c.qualifizierung, ...(alt?.fit ? { fit: alt.fit } : {}), ...(alt?.notiz ? { notiz: alt.notiz } : {}), sqlAm: jetzt, chanceId: c.id, geaendert: jetzt, geaendertVon: person });
+    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === c.kontaktIds[0] && !k.firmaId ? { ...k, lead: sql(k.lead), geaendertAm: jetzt } : k)) }));
+  }
+  return ergebnis;
 }

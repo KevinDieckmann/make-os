@@ -4,6 +4,7 @@
 // Wiedervorlage angelegt. Wer es war, kommt aus dem Raum (Kevin oder Malin),
 // nicht aus dem Body — sonst könnte ein Fenster im falschen Namen schreiben.
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/jarvis/raum';
@@ -21,6 +22,7 @@ const ARTEN: readonly AktivitaetArt[] = AKTIVITAET_ARTEN.filter(a => a !== 'syst
 // „Sperre“ setzt die Werbesperre — sofort und dauerhaft (Art. 21 DSGVO).
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: { id?: string; art?: string; text?: string; stufe?: string; wiedervorlage?: string; von?: 'jarvis'; ergebnis?: string; notiz?: Record<string, unknown>; naechster?: { text?: string; datum?: string }; bezug?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const id = String(b.id ?? '').trim();

@@ -372,7 +372,7 @@ function Nachbereiten({ liste, api, heute, zuKontakt }: { liste: Nachbereitung[]
  * beim Kontakt zum nächsten Schritt in der Power Hour der anderen Person.
  */
 function KarteUebergeben({ k, api }: { k: HeuteKarte; api: CrmApi }) {
-  if (k.chance) return <Uebergeben api={api} art="chance" id={k.chance.id} jetzt={k.gehoert} titel="Chance übergeben" klein />;
+  if (k.chance) return <Uebergeben api={api} art="chance" id={k.chance.id} jetzt={k.gehoert} titel="Deal übergeben" klein />;
   if (k.bezugArt === 'mandat' && k.bezug) return <Uebergeben api={api} art="mandat" id={k.bezug} jetzt={k.gehoert} titel="Mandat übergeben" klein />;
   return <Uebergeben api={api} art="kontakt" id={k.id} jetzt={k.beziehung} klein />;
 }

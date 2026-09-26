@@ -44,10 +44,11 @@ const leise = { background: 'none', border: 'none', color: C.inkLeise, cursor: '
 export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: string, a?: string, k?: string) => void }) {
   const [d, setD] = useState<Daten | null>(null);
   const [alle, setAlle] = useState(false);
-  const laden = useCallback(() => fetch('/api/crm/traktion', { cache: 'no-store' }).then(r => r.json()).then(x => x.ok && setD(x)).catch(() => {}), []);
+  const [fehler, setFehler] = useState<string | null>(null);
+  const laden = useCallback(() => fetch('/api/crm/traktion', { cache: 'no-store' }).then(r => (r.ok ? r.json() : Promise.reject(new Error(`Antwort ${r.status}`)))).then(x => { if (x.ok) { setD(x); setFehler(null); } else setFehler(x.fehler ?? 'Überblick nicht ladbar.'); }).catch(e => setFehler(e instanceof Error ? e.message : 'Nicht erreichbar.')), []);
   useEffect(() => { void laden(); }, [laden]);
   useAbgleich(laden, { alle: 60_000 });
-  if (!d) return <Karte i={0}><Leer>{api.fehler ?? 'Lädt …'}</Leer></Karte>;
+  if (!d) return <Karte i={0}>{fehler || api.fehler ? <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span>Überblick konnte nicht geladen werden: {fehler ?? api.fehler}</span><button onClick={() => void laden()} style={{ background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 8, padding: '5px 10px', color: C.ink, cursor: 'pointer' }}>Noch einmal</button></div> : <Leer>Lädt …</Leer>}</Karte>;
   const befunde = alle ? d.befunde : d.befunde.slice(0, 5);
   const zeit = (iso: string) => { const tg = iso.slice(0, 10); return tg === d.heute ? iso.slice(11, 16) : datum(tg, d.heute); };
   const zahl = (n: number, wort: string, href: string) => <Link href={href} style={{ color: C.inkDim, textDecoration: 'none', borderBottom: '1px dotted rgba(255,255,255,.25)' }}>{n} {wort}</Link>;

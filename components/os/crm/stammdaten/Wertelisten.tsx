@@ -76,7 +76,7 @@ export function Wertelisten({ w, post, laeuft, zuBereich }: { w: WertelistenAntw
     <>
       {fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div>}
       <Karte i={0}>
-        <Ueberschrift>Pipeline-Stufen</Ueberschrift>
+        <Ueberschrift>Deal-Stufen</Ueberschrift>
         <div style={{ ...hinweis, marginBottom: 8 }}>Die Wahrscheinlichkeiten sind vorsichtige Startwerte. Sobald je Stufe genug Abschlüsse da sind, ersetzt du sie durch gemessene Quoten — von Hand gesetzte Werte sind markiert.</div>
         <Liste>
           {lokal.stufen.map(s => (

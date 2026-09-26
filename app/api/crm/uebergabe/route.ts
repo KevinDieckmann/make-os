@@ -9,6 +9,7 @@
 // anderen Person). Und die andere Person bekommt eine Aufgabe mit Link.
 // Nichts wird versendet.
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { personAus } from '@/lib/jarvis/raum';
 import { uebergeben, type UebergabeEingabe } from '@/lib/crm/uebergabe';
@@ -17,6 +18,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: UebergabeEingabe;
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const r = await uebergeben(b, personAus(req));

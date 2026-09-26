@@ -5,6 +5,7 @@
 //        die kommenden Termine. Höchstens alle 5 Minuten (sonst „frisch“).
 // GET  → die kommenden Termine je Person (für Karteikarte und Power Hour)
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, saveJson, updateJson } from '@/lib/store/local-db';
 import type { Kontakt } from '@/lib/make-one/crm';
@@ -16,12 +17,14 @@ export const dynamic = 'force-dynamic';
 interface Stand { letzter?: string; kommend?: Record<string, { titel: string; start: string }>; neu?: number }
 const NAME = 'crm-signale';
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const s = (await loadJson<Stand>(NAME)) ?? {};
   return NextResponse.json({ ok: true, letzter: s.letzter ?? null, kommend: s.kommend ?? {} });
 }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const erzwingen = new URL(req.url).searchParams.get('jetzt') === '1';
   const alt = (await loadJson<Stand>(NAME)) ?? {};
   if (!erzwingen && alt.letzter && Date.now() - Date.parse(alt.letzter) < 5 * 60_000) return NextResponse.json({ ok: true, frisch: true, neu: 0 });

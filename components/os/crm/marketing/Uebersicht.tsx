@@ -21,6 +21,7 @@
 // (marketingTrichter). Leerzustände führen zur Handlung: ersten Beitrag planen,
 // Anfrage erfassen, Positionierung schreiben.
 
+import { localDay } from '@/lib/zeit';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Zahl, Raster, Fortschritt, Liste, Zeile, Punkt, Knopf, LEUCHT } from '../../schlank';
@@ -55,7 +56,7 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
   const crm = api.crm;
   const ich = api.ich;
-  const heute = crm?.heute ?? new Date().toISOString().slice(0, 10);
+  const heute = crm?.heute ?? localDay();
   const kpis = useMemo(() => (crm ? marketingKennzahlen(kontakte, crm.stand, heute) : []), [kontakte, crm, heute]);
   const trichter = useMemo(() => (crm ? marketingTrichter(kontakte, crm.stand, heute, tage) : null), [kontakte, crm, heute, tage]);
   const positionierungFehlt = !einstellungAus(crm?.stand ?? {}).positionierung.trim();

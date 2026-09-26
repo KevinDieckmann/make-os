@@ -6,6 +6,7 @@
 // Stufenwechsel laufen weiter über PATCH /api/crm/bestand (op teil) — die Regeln
 // prüft der Server dort (lib/crm/speicher.ts dealRegeln).
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { personAus } from '@/lib/jarvis/raum';
 import { dealAnlegen, type DealEingabe } from '@/lib/crm/deal-anlegen';
@@ -14,6 +15,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: DealEingabe & { aktion?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (b.aktion !== 'anlegen') return NextResponse.json({ ok: false, fehler: 'aktion: anlegen.' }, { status: 400 });

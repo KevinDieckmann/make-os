@@ -14,6 +14,7 @@
 // und kostet einen Bruchteil. Die Notbremse ANTHROPIC_MODEL gilt wie überall.
 // Geputzt wird die Antwort in lib/crm/visitenkarte.ts (rein, getestet).
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { askText, extractJson, hasAnthropicKey } from '@/lib/anthropic';
 import { MODEL_BY_TIER } from '@/lib/agent-config';
@@ -61,6 +62,7 @@ const SCHEMA: Record<string, unknown> = {
 const antwort = (body: Record<string, unknown>, status = 200) => NextResponse.json(body, { status });
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const schranke = modellSchranke(req); if (schranke) return schranke;
   // Grob vorab: Base64 ist ~4/3 der Bildgröße — was deutlich darüber liegt, wird gar nicht erst gelesen.
   const laenge = Number(req.headers.get('content-length') ?? 0);

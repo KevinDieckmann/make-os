@@ -3,6 +3,7 @@
 // POST { behalten, weg } → zusammenführen (Verlauf, Einwilligungen, Sperre,
 //      Verweise in Chancen/Mandaten/Events). Bewusste Handlung, einzeln.
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/jarvis/raum';
@@ -14,12 +15,14 @@ import { fuerPerson } from '@/lib/make-one/crm';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const k = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   return NextResponse.json({ ok: true, paare: dubletten(k).map(([a, b]) => ({ a: { id: a.id, name: anzeigename(a), email: a.email, firma: a.firma, verlauf: a.aktivitaeten?.length ?? 0 }, b: { id: b.id, name: anzeigename(b), email: b.email, firma: b.firma, verlauf: b.aktivitaeten?.length ?? 0 } })) });
 }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let body: { behalten?: string; weg?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (!body.behalten || !body.weg || body.behalten === body.weg) return NextResponse.json({ ok: false, fehler: 'behalten und weg nötig.' }, { status: 400 });

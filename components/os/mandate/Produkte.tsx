@@ -10,13 +10,14 @@
 // und welche Mandate und Deals darauf laufen. Gerechnet wird in
 // lib/crm/produkte.ts. Änderungen gehen als Einzelfelder raus (api.teil).
 
+import { WEG } from '@/lib/wege';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, feld, LEUCHT } from '../schlank';
 import type { Leistung, ProduktPhase, Unterlage, UnterlageArt } from '@/lib/crm/typen';
 import { LINIEN, linienGruppen, linieVon, produktZahlen, portfolio, neuePhasenId } from '@/lib/crm/produkte';
-import { mandateLink, markttraktion } from '@/lib/crm/adresse';
+import { mandateLink } from '@/lib/crm/adresse';
 import { type CrmApi, neueId, euro, kurzEuro } from '../crm/daten';
 import { Feldzeile, Pillen, Feld } from '../crm/teile';
 import { useLinkAuswahl } from '../Verlauf';
@@ -213,7 +214,7 @@ function ProduktDetail({ l, api }: { l: Leistung; api: CrmApi }) {
           <div style={{ display: 'grid', gap: 2, marginTop: 6 }}>
             <div style={kopf}>Deals</div>
             {deals.map(c => (
-              <Zeile key={c.id} onClick={() => router.push(markttraktion('sales', 'pipeline', c.id))} links={<Punkt farbe={c.stufe === 'gewonnen' ? LEUCHT.gut : c.stufe === 'verloren' ? C.inkLeise : LEUCHT.business} />}
+              <Zeile key={c.id} onClick={() => router.push(WEG.deal(c.id))} links={<Punkt farbe={c.stufe === 'gewonnen' ? LEUCHT.gut : c.stufe === 'verloren' ? C.inkLeise : LEUCHT.business} />}
                 titel={c.titel} unter={`${crm.stufen.find(s => s.id === c.stufe)?.label ?? c.stufe}${c.wert.betrag ? ` · ${euro(c.wert.betrag)}` : ''}`} />
             ))}
           </div>

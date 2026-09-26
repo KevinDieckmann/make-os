@@ -8,6 +8,7 @@
 // Beantwortet wird über /api/crm/followup { aktion: 'erledigen', id } — dieselbe
 // Follow-up-Ebene wie überall. Versendet wird nichts.
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
@@ -24,6 +25,7 @@ const neueId = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().to
 const kontakteLaden = async () => (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const etag = etagAus('anf', await speicherStand(['crm', 'kontakte']), localDay());
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
@@ -34,6 +36,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: Partial<AnfrageEingabe> & { aktion?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (b.aktion !== 'anlegen') return NextResponse.json({ ok: false, fehler: 'aktion: anlegen.' }, { status: 400 });

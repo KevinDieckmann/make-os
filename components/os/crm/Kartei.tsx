@@ -15,6 +15,8 @@
 // übergeben, je Person „Übergeben“ und „Malin ist gerade hier“. Die private
 // Notiz sieht nur, wer sie schrieb (serverseitig).
 
+import { useNachfrage } from './Nachfrage';
+import { localDay } from '@/lib/zeit';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, feld, Spalten, Spalte, useBreit, LEUCHT } from '../schlank';
@@ -48,7 +50,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   const sucheRef = useRef<HTMLInputElement>(null);
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
   const crm = api.crm;
-  const heute = crm?.heute ?? new Date().toISOString().slice(0, 10);
+  const heute = crm?.heute ?? localDay();
   const firmen = useMemo(() => new Map((crm?.stand.firmen ?? []).map(f => [f.id, f])), [crm]);
   const mitChance = useMemo(() => new Set((crm?.stand.chancen ?? []).filter(c => OFFENE_STUFEN.includes(c.stufe)).flatMap(c => c.kontaktIds)), [crm]);
   const mitMandat = useMemo(() => new Set((crm?.stand.mandate ?? []).filter(m => m.status === 'aktiv').flatMap(m => m.kontaktIds)), [crm]);
@@ -119,12 +121,14 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   };
 
   const k = auswahl && !auswahl.startsWith('f-') ? kontakte.find(x => x.id === auswahl) ?? null : null;
+  const { frage, dialog: nachfrage } = useNachfrage();
   const kopf = (
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
       <input ref={sucheRef} value={suche} onChange={e => setSuche(e.target.value)} placeholder={modus === 'personen' ? 'Suchen: Name, Firma, Branche, Ort …  ( / )' : 'Firma, Domain, Branche, Ort …'} aria-label="Suchen" style={{ ...feld, flex: 1, minWidth: 200, padding: '9px 13px', fontSize: TYP.bedien }} />
       {modus === 'personen' && zuRunde && <><Knopf leise onClick={() => zuRunde('kreis')}>Kreis-Runde</Knopf><Knopf leise onClick={() => zuRunde('chancen')}>Qualifizierungs-Runde</Knopf><Knopf leise onClick={() => zuRunde('vernetzen')}>Vernetzen-Runde</Knopf></>}
       {modus === 'personen' ? <Knopf onClick={() => setAnlegen(!anlegen)}>+ Person</Knopf>
-        : <Knopf onClick={() => { const n = window.prompt('Name der Firma'); if (n?.trim()) { const f = neueFirma(n); void api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>).then(() => zuFirma(f.id)); } }}>+ Firma</Knopf>}
+        : <Knopf onClick={async () => { const n = await frage('Name der Firma', { hinweis: 'Rechtsform gern dazu — Dubletten prüft die Kartei danach.' }); if (n?.trim()) { const f = neueFirma(n); void api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>).then(() => zuFirma(f.id)); } }}>+ Firma</Knopf>}
+      {nachfrage}
     </div>
   );
 
@@ -221,7 +225,7 @@ function KarteiZeile({ k, firma, breit, aktiv, markiert, chance, mandat, heute, 
           <div style={{ fontSize: TYP.body, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anzeigename(k)}{f && <span style={{ color: C.inkLeise }}> · {f}</span>}</div>
           <div style={{ fontSize: 12.5, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[k.position ?? k.jobtitel, k.naechsterSchritt ? `→ ${k.naechsterSchritt.text}` : ''].filter(Boolean).join(' · ')}</div>
         </div>
-        {chance && <Chip farbe={LEUCHT.business}>Chance</Chip>}
+        {chance && <Chip farbe={LEUCHT.business}>Deal</Chip>}
         <span style={{ opacity: k.besitzer ? 1 : 0.45, display: 'inline-flex' }}><Person id={haeltBeziehung(k)} groesse={18} /></span>
       </div>
     );
@@ -299,7 +303,7 @@ function Anlegen({ api, heute, onFertig }: { api: CrmApi; heute: string; onFerti
 type Reiter = 'ueberblick' | 'verlauf' | 'stamm' | 'recht';
 function Karteikarte({ k, api, name, zuFirma, zuAkte }: { k: Kontakt; api: CrmApi; name: (p: string) => string; zuFirma: (id: string) => void; zuAkte?: (id: string) => void }) {
   const crm = api.crm;
-  const heute = crm?.heute ?? new Date().toISOString().slice(0, 10);
+  const heute = crm?.heute ?? localDay();
   const [reiter, setReiter] = useState<Reiter>('ueberblick');
   const firma = k.firmaId ? crm?.stand.firmen.find(f => f.id === k.firmaId) : undefined;
   const chancen = (crm?.stand.chancen ?? []).filter(c => c.kontaktIds.includes(k.id));

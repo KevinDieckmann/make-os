@@ -6,6 +6,7 @@
 // stehen mit Markierung drin, damit eine Werbeliste sie ausschließen kann —
 // nie stillschweigend weglassen.
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
@@ -17,6 +18,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const was = new URL(req.url).searchParams.get('was') ?? 'kontakte';
   if (!istExportArt(was)) return NextResponse.json({ ok: false, fehler: `was: ${EXPORTE.join(' | ')}` }, { status: 400 });
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];

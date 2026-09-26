@@ -6,6 +6,7 @@
 // an der Firma schon einen offenen Deal, sagt der Server das — und man kann
 // dorthin springen oder bewusst einen zweiten anlegen.
 
+import { localDay } from '@/lib/zeit';
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { anzeigename } from '@/lib/make-one/crm';
@@ -18,8 +19,8 @@ import type { ChancenArt, Quelle, WertBasis } from '@/lib/crm/typen';
 const ARTEN: { id: ChancenArt; label: string }[] = [{ id: 'retainer', label: 'Retainer' }, { id: 'projekt', label: 'Projekt' }, { id: 'workshop', label: 'Workshop' }, { id: 'vermittlung', label: 'Vermittlung' }, { id: 'software', label: 'Software' }];
 const QUELLEN: { id: Quelle; label: string }[] = [{ id: 'empfehlung', label: 'Empfehlung' }, { id: 'event', label: 'Event' }, { id: 'content', label: 'Content' }, { id: 'kampagne', label: 'Kampagne' }, { id: 'outreach', label: 'Ansprache' }, { id: 'bestand', label: 'Bestand' }, { id: 'inbound', label: 'Inbound' }];
 
-export function DealAnlegen({ api, kontaktId, firmaId, onFertig, onAbbruch, zuDeal }: { api: CrmApi; kontaktId?: string; firmaId?: string; onFertig: (chanceId: string) => void; onAbbruch: () => void; zuDeal?: (id: string) => void }) {
-  const heute = api.crm?.heute ?? new Date().toISOString().slice(0, 10);
+export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, quelleBezug, onFertig, onAbbruch, zuDeal }: { api: CrmApi; kontaktId?: string; firmaId?: string; quelle?: Quelle; quelleBezug?: string; onFertig: (chanceId: string) => void; onAbbruch: () => void; zuDeal?: (id: string) => void }) {
+  const heute = api.crm?.heute ?? localDay();
   const kontakte = api.kontakte ?? [];
   const firmen = api.crm?.stand.firmen ?? [];
   const [suche, setSuche] = useState('');
@@ -31,7 +32,7 @@ export function DealAnlegen({ api, kontaktId, firmaId, onFertig, onAbbruch, zuDe
   const [basis, setBasis] = useState<WertBasis>('monat');
   const [laufzeit, setLaufzeit] = useState('');
   const [schritt, setSchritt] = useState({ text: '', datum: plusTage(heute, 3) });
-  const [quelle, setQuelle] = useState<Quelle | undefined>(undefined);
+  const [quelle, setQuelle] = useState<Quelle | undefined>(vorgabeQuelle);
   const [besitzer, setBesitzer] = useState<string | undefined>(undefined);
   const [erwartetAm, setErwartetAm] = useState('');
   const [fehler, setFehler] = useState<{ text: string; offen?: { id: string; titel: string } } | null>(null);
@@ -46,7 +47,7 @@ export function DealAnlegen({ api, kontaktId, firmaId, onFertig, onAbbruch, zuDe
     setLaeuft(true); setFehler(null);
     const r = await fetch('/api/crm/deal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
       aktion: 'anlegen', titel: titel.trim() || undefined, kontaktIds: personen, firmaId: firma, art, wert: { betrag: Number(betrag) || 0, basis, laufzeitMonate: Number(laufzeit) || undefined },
-      schritt, quelle, besitzer, erwartetAm: erwartetAm || undefined, trotzdem,
+      schritt, quelle, ...(quelle && quelle === vorgabeQuelle && quelleBezug ? { quelleBezug } : {}), besitzer, erwartetAm: erwartetAm || undefined, trotzdem,
     }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
     setLaeuft(false);
     if (!r.ok) { setFehler({ text: r.fehler ?? 'Nicht angelegt.', offen: r.offen }); return; }

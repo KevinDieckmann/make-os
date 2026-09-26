@@ -116,8 +116,9 @@ export function useCrm() {
     unterwegs.current++;
     try {
       const r = await fetch('/api/crm/bestand', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste, op: 'delete', id }] }) }).then(x => x.json());
-      if (r.ok) setCrm(r);
-    } finally { unterwegs.current--; }
+      if (r.ok) { setCrm(r); if (Array.isArray(r.fehler) && r.fehler.length) setFehler(r.fehler.join(' · ')); } else setFehler(r.fehler ?? 'Nicht gelöscht.');
+    } catch { setFehler('Nicht gelöscht — keine Verbindung.'); }
+    finally { unterwegs.current--; }
   }, []);
 
   /** Kartei: einen Kontakt ändern (ganzer Eintrag, Einzeländerung). */

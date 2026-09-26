@@ -5,6 +5,7 @@
 // GET  → je Mandat der Posten, den es erzeugen würde, und ob er schon da ist
 // POST { mandatId, aktion: 'anlegen' | 'verknuepfen', postenId? }
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
@@ -15,7 +16,8 @@ import { planpostenAus } from '@/lib/crm/kunden';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const heute = localDay();
   const crm = await ladeCrm();
   const posten = (await loadJson<{ posten: Planposten[] }>('liquiplan'))?.posten ?? [];
@@ -36,6 +38,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: { mandatId?: string; aktion?: string; postenId?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const crm = await ladeCrm();

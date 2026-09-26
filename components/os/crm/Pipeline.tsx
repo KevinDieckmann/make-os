@@ -27,6 +27,7 @@ import { HeadPanel } from './HeadPanel';
 import { DealAnlegen } from './DealAnlegen';
 import { DealAkte, DealAuswertung } from './DealAkte';
 import { firmenName } from '@/lib/crm/firmen-bezug';
+import { winLoss } from '@/lib/crm/deal-auswertung';
 import type { DealsAnsicht } from '@/lib/crm/adresse';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
@@ -62,6 +63,8 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
   const zahlen = werZahlen(crm.stand.chancen.filter(istOffen), c => c.besitzer, 'sales', ich);
   const p = wahl === 'alle' ? crm.prognose : prognose(chancen, crm.heute, crm.stand.wahrscheinlichkeiten);
   const jePerson = prognoseJePerson(crm.stand.chancen, crm.heute, crm.stand.wahrscheinlichkeiten);
+  // Eine Definition für die Win Rate überall (Auswertung, Kennzahl, hier): 180 Tage, ab 5 Entscheidungen.
+  const wl = winLoss(crm.stand.chancen, crm.heute);
   const meine = ich ? jePerson.find(x => x.person === ich) : undefined;
   // Neue Chance: für die gefilterte Person, sonst für mich (im Team), sonst die Sales-Verantwortung.
   const neuFuer = wahl !== 'alle' && wahl !== 'ich' && mitglied(wahl) ? wahl : mitglied(ich)?.id ?? verantwortlich('sales');
@@ -84,6 +87,12 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
     const c = crm.stand.chancen.find(x => x.id === id);
     if (!c || c.stufe === ziel) return;
     if (ziel === 'verloren' || ziel === 'geparkt') { setAuswahl(id); setWunsch({ id, ziel }); return; }
+    // Offene Zielstufe braucht einen nächsten Schritt mit Datum vor sich (Server-Regel) — sonst die Karte öffnen und sagen, was fehlt.
+    if (offen.some(s => s.id === ziel) && !(c.naechsterSchritt && c.naechsterSchritt.datum >= crm.heute)) {
+      setAuswahl(id);
+      api.setFehler(c.naechsterSchritt ? `„${c.titel}“: der nächste Schritt vom ${c.naechsterSchritt.datum} ist überfällig — unten ein neues Datum setzen, dann die Stufe wechseln.` : `„${c.titel}“: erst einen nächsten Schritt mit Datum festhalten, dann die Stufe wechseln.`);
+      return;
+    }
     void api.teil('chancen', id, { stufe: ziel });
   };
   const zieh = (e: React.DragEvent, ziel: ChancenStufe) => { e.preventDefault(); const id = e.dataTransfer.getData('text/plain'); if (id) zieheNach(id, ziel); };
@@ -103,7 +112,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
           <Zahl wert={kurzEuro(p.commit)} label="Commit · Abschluss" farbe={LEUCHT.gut} />
           <Zahl wert={kurzEuro(p.bestCase)} label="Best Case · ab Angebot" />
           <Zahl wert={String(p.ohneSchritt)} label="ohne nächsten Schritt" farbe={p.ohneSchritt ? LEUCHT.achtung : undefined} />
-          <Zahl wert={crm.gewinnquote.quote !== null ? `${crm.gewinnquote.quote} %` : `${crm.gewinnquote.gewonnen} · ${crm.gewinnquote.verloren}`} label={crm.gewinnquote.quote !== null ? 'Gewinnquote ab Angebot' : 'gewonnen · verloren (Quote ab 10)'} />
+          <Zahl wert={wl.quote !== null ? `${wl.quote} %` : `${wl.gewonnen} · ${wl.verloren}`} label={wl.quote !== null ? 'Win Rate · 180 Tage' : 'gewonnen · verloren (Quote ab 5)'} />
         </Raster>
         {jePerson.length > 1 && (
           <div style={{ display: 'grid', gap: 5, marginTop: 12 }}>
@@ -218,7 +227,7 @@ function ChancenZeile({ c, api, offen, onKlick, zuKontakt }: { c: Chance; api: C
   return (
     <div>
       <Zeile onClick={onKlick} aktiv={offen} links={<Punkt farbe={a ? AMPEL[a.ampel] : C.inkLeise} />}
-        titel={<>{c.titel}{c.firma && <span style={{ color: C.inkLeise }}> · {c.firma}</span>}</>}
+        titel={<>{c.titel}{firmenName(c, crm.stand.firmen) && <span style={{ color: C.inkLeise }}> · {firmenName(c, crm.stand.firmen)}</span>}</>}
         unter={[c.naechsterSchritt ? `→ ${c.naechsterSchritt.text} · ${datum(c.naechsterSchritt.datum, crm.heute)}` : 'kein nächster Schritt', a?.gruende[0]].filter(Boolean).join(' · ')}
         rechts={<span style={{ display: 'flex', gap: 10, alignItems: 'center' }}><span style={{ fontVariantNumeric: 'tabular-nums', fontSize: TYP.bedien, color: C.inkDim }}>{c.wert.betrag ? wertText(c) : '—'}</span><Person id={zustaendig(c.besitzer, 'sales')} groesse={18} /></span>} />
       {offen && <ChancenDetail c={c} api={api} personen={personen as NonNullable<typeof personen[number]>[]} zuKontakt={zuKontakt} />}
@@ -266,7 +275,15 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
         {c.historie.length > 1 && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>{c.historie.map(h => `${crm.stufen.find(s => s.id === h.stufe)?.label} ${datum(h.am)}${mitglied(h.von) ? ` (${nameVon(h.von)})` : ''}`).join(' → ')}</div>}
       </div>
       <Feldzeile label="Titel"><Feld wert={c.titel} onFertig={titel => titel.trim() && setze({ titel: titel.trim() })} /></Feldzeile>
-      <Feldzeile label="Firma"><Feld wert={c.firma} onFertig={firma => setze({ firma: firma || undefined })} /></Feldzeile>
+      <Feldzeile label="Firma">
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <select value={c.firmaId ?? ''} aria-label="Firma" onChange={e => { const f = crm.stand.firmen.find(x => x.id === e.target.value); void setze(f ? { firmaId: f.id, firma: f.name } : { firmaId: undefined, firma: undefined }); }} style={{ ...feld, width: 'auto', maxWidth: '100%', fontSize: TYP.bedien, padding: '8px 11px' }}>
+            <option value="">— keine Firma —</option>
+            {[...crm.stand.firmen].sort((a, b) => a.name.localeCompare(b.name)).map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+          {!c.firmaId && c.firma && <span style={{ fontSize: 12, color: LEUCHT.achtung }}>„{c.firma}“ ist keiner Firma zugeordnet — oben wählen.</span>}
+        </div>
+      </Feldzeile>
       <Feldzeile label="Art"><Pillen liste={[...ARTEN]} aktiv={c.art} onWahl={art => setze({ art })} /></Feldzeile>
       <Feldzeile label="Wert">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

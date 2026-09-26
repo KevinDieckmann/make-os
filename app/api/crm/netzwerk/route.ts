@@ -18,6 +18,7 @@
 //                                 ohne `uebernehmen` nur die Vorschau.
 // MAKE OS versendet nichts — es merkt sich, was Kevin oder Malin in LinkedIn tun.
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/jarvis/raum';
@@ -35,6 +36,7 @@ type Bestand = { kontakte: Kontakt[] };
 const kpOk = (v: unknown) => (/^kp-[a-z0-9-]{1,60}$/.test(String(v ?? '')) ? String(v) : undefined);
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const person = personAus(req);
   const kampagneId = kpOk(new URL(req.url).searchParams.get('kampagne'));
   const [kontakte, crm] = await Promise.all([loadJson<Bestand>('kontakte').then(f => f?.kontakte ?? []), ladeCrm()]);
@@ -68,6 +70,7 @@ async function kampagnenErgebnis(kampagneId: string | undefined, kontaktId: stri
 }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: { aktion?: string; id?: string; url?: string; kampagneId?: string; text?: string; art?: string; wortlaut?: string; csv?: string; uebernehmen?: boolean };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const person = personAus(req);

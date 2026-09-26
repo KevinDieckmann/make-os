@@ -7,6 +7,7 @@
 // enthält Mail-Adressen nur, wo die Mail-Ampel grün ist. Drei Vorlagen
 // werden erst auf Klick angelegt.
 
+import { localDay } from '@/lib/zeit';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, feld, LEUCHT } from '../../schlank';
@@ -45,7 +46,7 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
   const [meldung, setMeldung] = useState('');
   const crm = api.crm;
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
-  const heute = crm?.heute ?? new Date().toISOString().slice(0, 10);
+  const heute = crm?.heute ?? localDay();
   const ctx = useMemo(() => (crm ? kontextAus(crm.stand, heute) : null), [crm, heute]);
   const segmente = useMemo(() => [...(crm?.stand.segmente ?? [])].sort((a, b) => a.name.localeCompare(b.name)), [crm]);
   const zahlen = useMemo(() => new Map(ctx ? segmente.map(s => [s.id, segmentAuswerten(kontakte, s.kriterien, ctx)]) : []), [segmente, kontakte, ctx]);

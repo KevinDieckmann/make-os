@@ -20,6 +20,7 @@
 // Kosten (27.09.): je Beitrag pflegbar (Anzeigen, Produktion) — der Marketing-
 // Trichter rechnet daraus Kosten je Anfrage und je SQL.
 
+import { localDay } from '@/lib/zeit';
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, feld, LEUCHT } from '../../schlank';
@@ -72,7 +73,7 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
   const crm = api.crm;
   const ich = api.ich;
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
-  const heute = crm?.heute ?? new Date().toISOString().slice(0, 10);
+  const heute = crm?.heute ?? localDay();
   const beitraege = useMemo(() => crm?.stand.beitraege ?? [], [crm]);
   const einstellung = useMemo(() => einstellungAus(crm?.stand ?? {}), [crm]);
   const fenster = useMemo(() => planFenster(heute, sicht, versatz), [heute, sicht, versatz]);

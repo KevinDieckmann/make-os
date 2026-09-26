@@ -11,6 +11,7 @@
 //      Frist wird es deren nächster Schritt (erscheint dann in der Power
 //      Hour), sonst eine Aufgabe. Nichts wird versendet.
 
+import { WEG } from '@/lib/wege';
 import { markttraktion, mandateLink } from '@/lib/crm/adresse';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -61,7 +62,7 @@ export async function GET(_: Request, props: { params: Promise<{ head: string }>
 /** Wo der Vorschlag hingehört — als Pfad in der Aufgabe, dort wird er ein Link (components/os/TextMitLinks.tsx). */
 function ort(t: { art?: string; kontakt_id?: string | null; chance_id?: string | null; mandat_id?: string | null; event_id?: string | null }): string | null {
   if (t.art === 'vernetzen_runde') return markttraktion('kontakte', 'runde-vernetzen');
-  if (t.chance_id) return markttraktion('sales', 'pipeline', t.chance_id);
+  if (t.chance_id) return WEG.deal(t.chance_id);
   if (t.mandat_id) return mandateLink('mandate', t.mandat_id);
   if (t.event_id) return markttraktion('event', undefined, t.event_id);
   if (t.kontakt_id) return markttraktion('kontakte', 'akte', t.kontakt_id);

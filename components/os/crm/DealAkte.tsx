@@ -37,9 +37,14 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
   const a = crm.ampel[c.id];
   const firma = firmaVonDeal(c, crm.stand.firmen);
   const stufen = crm.stufen;
-  const aktuell = stufen.findIndex(s => s.id === c.stufe);
+  const offeneStufen = stufen.filter(s => s.offen);
+  // Bei verloren/geparkt gilt die letzte OFFENE Stufe aus der Historie als erreicht — nicht der Index im Gesamt-Array.
+  const letzteOffene = [...c.historie].reverse().find(h => offeneStufen.some(s => s.id === h.stufe))?.stufe;
+  const aktuell = offeneStufen.findIndex(s => s.id === (offeneStufen.some(s => s.id === c.stufe) ? c.stufe : letzteOffene));
   const verlauf = verweildauer(c, crm.heute);
-  const folgen = (fu?.liste ?? []).filter(f => (f.bezug.art === 'chance' && f.bezug.id === c.id) || (f.kontaktId && c.kontaktIds.includes(f.kontaktId)));
+  const historieSortiert = [...c.historie].sort((a, b) => a.am.localeCompare(b.am));
+  // Follow-ups zum Deal selbst — und Zusagen an die beteiligten Personen, aber keine Kadenz-Erinnerungen zu anderen Themen.
+  const folgen = (fu?.liste ?? []).filter(f => (f.bezug.art === 'chance' && f.bezug.id === c.id) || (f.kontaktId && c.kontaktIds.includes(f.kontaktId) && f.quelle !== 'kadenz' && f.bezug.art !== 'event' && f.bezug.art !== 'mandat'));
   const aktivitaeten = personen.flatMap(k => (k.aktivitaeten ?? []).map(x => ({ ...x, wer: anzeigename(k) }))).sort((x, y) => y.am.localeCompare(x.am)).slice(0, 40);
   const setzeRolle = (pid: string, rolle: DealRolle | null) => {
     const alt = { ...(c.personenRollen ?? {}) };
@@ -69,6 +74,7 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${stufen.filter(s => s.offen).length}, minmax(0, 1fr))`, gap: 4, marginTop: 16 }}>
           {stufen.filter(s => s.offen).map((s, i) => {
             const erreicht = aktuell >= i || c.stufe === 'gewonnen';
+            // (bei verloren/geparkt: erreicht bis zur letzten offenen Stufe, nicht darüber)
             const ist = c.stufe === s.id;
             return (
               <div key={s.id} title={`Weiter, wenn: ${s.weiterWenn}`} style={{ padding: '8px 6px', borderRadius: 8, background: ist ? `${LEUCHT.business}22` : 'rgba(255,255,255,.03)', borderBottom: `2px solid ${erreicht ? LEUCHT.business : 'rgba(255,255,255,.08)'}` }}>
@@ -116,7 +122,7 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
             <div style={{ display: 'grid', gap: 6 }}>
               {verlauf.map((v, i) => (
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center', fontSize: 12.5 }}>
-                  <span style={{ color: i === verlauf.length - 1 ? C.ink : C.inkDim }}>{stufen.find(s => s.id === v.stufe)?.label ?? v.stufe} <span style={{ color: C.inkLeise }}>ab {datum(v.von)}{c.historie[i]?.von && mitglied(c.historie[i].von) ? ` · ${mitglied(c.historie[i].von)!.name}` : ''}</span></span>
+                  <span style={{ color: i === verlauf.length - 1 ? C.ink : C.inkDim }}>{stufen.find(s => s.id === v.stufe)?.label ?? v.stufe} <span style={{ color: C.inkLeise }}>ab {datum(v.von)}{historieSortiert[i]?.von && mitglied(historieSortiert[i].von) ? ` · ${mitglied(historieSortiert[i].von)!.name}` : ''}</span></span>
                   <span style={{ fontVariantNumeric: 'tabular-nums', color: v.tage > 30 && !v.bis ? LEUCHT.kritisch : C.inkDim }}>{v.tage} T</span>
                 </div>
               ))}
@@ -160,12 +166,12 @@ export function DealAuswertung({ api, zuAkte }: { api: CrmApi; zuAkte: (id: stri
       <Karte i={1}>
         <Ueberschrift>Gewonnen · Verloren · Zyklus</Ueberschrift>
         <Raster min={150}>
-          <Zahl wert={wl.quote !== null ? `${wl.quote} %` : `${wl.gewonnen} · ${wl.verloren}`} label={wl.quote !== null ? 'Win Rate · 180 Tage' : `gewonnen · verloren (Quote ab ${MINDESTMENGE})`} farbe={wl.quote !== null ? (wl.quote >= 40 ? LEUCHT.gut : LEUCHT.achtung) : undefined} />
+          <Zahl wert={wl.quote !== null ? `${wl.quote} %` : `${wl.gewonnen} · ${wl.verloren}`} label={wl.quote !== null ? 'Win Rate · 180 Tage' : `gewonnen · verloren (Quote ab ${MINDESTMENGE})`} farbe={wl.quote !== null ? (wl.quote >= 40 ? LEUCHT.gut : wl.quote >= 20 ? LEUCHT.achtung : LEUCHT.kritisch) : undefined} />
           <Zahl wert={kurzEuro(wl.wertGewonnen)} label="gewonnen · Wert" farbe={wl.wertGewonnen ? LEUCHT.gut : undefined} />
           <Zahl wert={kurzEuro(wl.wertVerloren)} label="verloren · Wert" farbe={wl.wertVerloren ? LEUCHT.kritisch : undefined} />
           <Zahl wert={zy.median !== null ? `${zy.median} T` : `${zy.n} gew.`} label={zy.median !== null ? 'Zyklus · Median' : `Zyklus ab ${MINDESTMENGE} gewonnenen`} />
           <Zahl wert={zy.dealGroesse !== null ? kurzEuro(zy.dealGroesse) : '—'} label="Ø Deal-Größe (gewonnen)" />
-          <Zahl wert={hw.anteil !== null ? `${hw.anteil} %` : '—'} label="hängt · nach Wert" farbe={hw.anteil ? (hw.anteil > 30 ? LEUCHT.kritisch : LEUCHT.achtung) : undefined} />
+          <Zahl wert={hw.anteil !== null ? `${hw.anteil} %` : '—'} label="hängt · nach Wert" farbe={hw.anteil ? (hw.anteil > 40 ? LEUCHT.kritisch : hw.anteil > 15 ? LEUCHT.achtung : LEUCHT.gut) : undefined} />
         </Raster>
         {wl.gruende.length > 0 && (
           <div style={{ marginTop: 12 }}>
@@ -195,7 +201,7 @@ export function DealAuswertung({ api, zuAkte }: { api: CrmApi; zuAkte: (id: stri
           <Liste>{haengende.map(c => <Zeile key={c.id} onClick={() => zuAkte(c.id)} links={<Punkt farbe={LEUCHT.kritisch} />} titel={c.titel} unter={crm.ampel[c.id]?.gruende.join(' · ')} rechts={<span style={{ fontSize: 12.5, color: C.inkDim }}>{kurzEuro(gesamtwert(c))}</span>} />)}</Liste>
         </Karte>
       )}
-      <div style={{ fontSize: 12, color: C.inkLeise }}>Alle Zahlen rechnen aus den eigenen Deals; Quoten erst ab {MINDESTMENGE} Fällen. Knopf <Knopf leise onClick={() => zuAkte('')}>Board</Knopf></div>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: C.inkLeise }}><span>Alle Zahlen rechnen aus den eigenen Deals; Quoten erst ab {MINDESTMENGE} Fällen.</span><Knopf leise onClick={() => zuAkte('')}>Zurück zum Board</Knopf></div>
     </>
   );
 }

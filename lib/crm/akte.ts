@@ -10,6 +10,7 @@
 // sie bleibt bei der Person, die sie schrieb.
 
 import { KREIS_TAKT, type Kontakt } from '@/lib/make-one/crm';
+import { dealZuFirma } from './firmen-bezug';
 import type { CrmBestand, Firma, Chance, Mandat, Event, Teilnahme, TeilnahmeStatus, Kampagne, KampagnenErgebnis, Beitrag, Antrag } from './typen';
 
 export interface MatrixFeld<K extends string = string> {
@@ -107,7 +108,7 @@ export interface AkteVerbindungen {
 export function verbindungen(k: Kontakt, kontakte: Kontakt[], stand: CrmBestand): AkteVerbindungen {
   const firma = k.firmaId ? stand.firmen.find(f => f.id === k.firmaId) : undefined;
   const direkt = stand.chancen.filter(c => c.kontaktIds.includes(k.id));
-  const ueberFirma = firma ? stand.chancen.filter(c => !c.kontaktIds.includes(k.id) && c.firma === firma.name).map(c => ({ ...c, ueberFirma: true })) : [];
+  const ueberFirma = firma ? stand.chancen.filter(c => !c.kontaktIds.includes(k.id) && dealZuFirma(c, firma)).map(c => ({ ...c, ueberFirma: true })) : [];
   const neu = (a?: string, b?: string) => (b ?? '').localeCompare(a ?? '');
   const eventNach = new Map(stand.events.map(e => [e.id, e]));
   const rang = (x: Kontakt) => (x.lebensphase === 'kunde' ? 0 : x.kreis === 'A' ? 1 : x.kreis === 'B' ? 2 : x.prio === 'A' ? 3 : 4);

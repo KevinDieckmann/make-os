@@ -9,6 +9,7 @@
 // (api.setze), danach springt die Ansicht ins Event. Ab dem ersten Event
 // zeigt die Liste wieder „+ Event“.
 
+import { localDay } from '@/lib/zeit';
 import { useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Knopf, feld, LEUCHT } from '../../schlank';
@@ -27,7 +28,7 @@ const OHNE = { id: 'ohne' as const, label: 'Ohne Vorlage' };
 const zielReicht = (ziel: string, hinweis: string | null) => !!ziel.trim() && !(hinweis && /kein Ziel/.test(hinweis));
 
 export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) => void }) {
-  const heute = api.crm?.heute ?? new Date().toISOString().slice(0, 10);
+  const heute = api.crm?.heute ?? localDay();
   const [wahl, setWahl] = useState<Wahl>('stammtisch');
   const vorlage = VORLAGEN.find(v => v.id === wahl);
   const [titel, setTitel] = useState('');

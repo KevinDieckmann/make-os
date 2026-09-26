@@ -13,6 +13,7 @@
 // Sales-Verantwortung) — Filter „Alle · Meins · Malin“, Plakette, Zeile je
 // Person, Übergeben. Änderungen gehen als Einzelfelder raus (api.teil).
 
+import { localDay } from '@/lib/zeit';
 import { useLinkAuswahl } from '../Verlauf';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -287,7 +288,7 @@ interface RechnungKurz { id: string; kunde: string; titel: string; betrag: numbe
 function MandatRechnungen({ m }: { m: Mandat }) {
   const router = useRouter();
   const [liste, setListe] = useState<RechnungKurz[] | null>(null);
-  const heute = new Date().toISOString().slice(0, 10);
+  const heute = localDay();
   useEffect(() => { fetch('/api/state/finanzplan').then(r => r.json()).then(d => setListe((d.rechnungen ?? []) as RechnungKurz[])).catch(() => setListe([])); }, [m.id]);
   const eigene = (liste ?? []).filter(r => r.mandatId === m.id || (!r.mandatId && rechnungPasst(m, r))).sort((a, b) => (b.faellig ?? '').localeCompare(a.faellig ?? ''));
   const offen = eigene.filter(r => r.status === 'gestellt');

@@ -23,7 +23,7 @@ import type { Teilnahme, TeilnahmeStatus } from '@/lib/crm/typen';
 import { neueId, datum } from '../daten';
 import { Pillen, Feld } from '../teile';
 import { Person, WerFilter, useWerFilter, passtWer } from '../team';
-import { GAST, ROLLEN, WEGE, MIX, AMPEL, MixAnzeige, KarteiSuche, Leise, WerTausch, JePerson, gastSetzen, eventSetzen, followUpAnlegen, type ReiterProps, type Weg } from './gemeinsam';
+import { GAST, ROLLEN, WEGE, MIX, AMPEL, MixAnzeige, KarteiSuche, Leise, WerTausch, JePerson, gastSetzen, eventSetzen, followUpAnlegen, nachfassen, type ReiterProps, type Weg } from './gemeinsam';
 
 const FOTO = [{ id: 'ja', label: 'Fotos ja' }, { id: 'nein', label: 'Fotos nein' }] as const;
 const WEG_LABEL: Record<Weg, string> = { persoenlich: 'persönlich', telefon: 'Telefon', mail: 'Mail', linkedin: 'LinkedIn' };
@@ -115,7 +115,7 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
           {k.kreis && <span style={{ fontSize: 12, color: C.inkLeise }}>Kreis {k.kreis}</span>}
           <span style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
             {t.eingeladenAm && <span style={{ fontSize: 12, color: C.inkLeise }}>eingeladen {datum(t.eingeladenAm, heute)}</span>}
-            {t.status === 'da' && !t.followUpAm && <Knopf leise onClick={() => { void gastSetzen(api, t, { followUpAm: heute }); void api.aktivitaet({ id: k.id, art: 'event', text: `Nachgefasst nach „${e.titel}“`, bezug: e.id }); }}>Nachgefasst</Knopf>}
+            {t.status === 'da' && !t.followUpAm && <Knopf leise onClick={() => void nachfassen(api, e, t, k, 'erledigt')}>Nachgefasst</Knopf>}
             {followUpMoeglich(e, t, heute) && (mitFollowUp.has(k.id) ? <Chip farbe={C.inkDim}>Follow-up steht</Chip> : <Knopf leise onClick={() => void followUp(t)}>Follow-up anlegen</Knopf>)}
             {t.followUpAm && <Chip farbe={LEUCHT.gut}>nachgefasst {datum(t.followUpAm)}</Chip>}
             <button onClick={() => { if (window.confirm(`${anzeigename(k)} von der Liste nehmen?`)) void api.weg('teilnahmen', t.id); }} aria-label="Gast entfernen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.body }}>×</button>

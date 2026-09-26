@@ -11,13 +11,14 @@
 // POST { aktion: 'wertelisten', wertelisten: Teil }          → Verlustgründe, Kadenz, Ergebnisse, Ziele
 //                                                              (Teil-Update, lib/crm/wertelisten.ts prüft und säubert)
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { anzeigename } from '@/lib/make-one/crm';
 import { pflichtangaben, selbstpruefung, verarbeitungenStart, LOESCHREGELN } from '@/lib/crm/datenschutz';
 import { befunde } from '@/lib/crm/befunde';
-import { localDay } from '@/lib/zeit';
+import { localDay, tagVon } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { firmenAbgleichen } from '@/lib/crm/abgleich';
@@ -32,7 +33,8 @@ import type { ChancenStufe } from '@/lib/crm/typen';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const heute = localDay();
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   let crm = await ladeCrm();
@@ -50,7 +52,7 @@ export async function GET() {
   // Ist zu den Zielen: Umsatz neu = Gesamtwert der in den letzten 30 Tagen gewonnenen Deals; SQL und Gespräche aus den Kennzahlen (null = noch nichts gemessen).
   const vor30 = new Date(`${heute}T12:00:00Z`); vor30.setUTCDate(vor30.getUTCDate() - 29);
   const ab = vor30.toISOString().slice(0, 10);
-  const gewonnenAm = (c: (typeof crm.chancen)[number]) => (c.historie.filter(h => h.stufe === 'gewonnen').pop()?.am ?? c.geaendert).slice(0, 10);
+  const gewonnenAm = (c: (typeof crm.chancen)[number]) => tagVon(c.historie.filter(h => h.stufe === 'gewonnen').pop()?.am ?? c.geaendert);
   const umsatzNeu30 = crm.chancen.filter(c => c.stufe === 'gewonnen' && gewonnenAm(c) >= ab && gewonnenAm(c) <= heute).reduce((a, c) => a + gesamtwert(c), 0);
   return NextResponse.json({
     ok: true, heute,
@@ -88,6 +90,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: { aktion?: string; stufe?: string; p?: number | null; wertelisten?: unknown };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (b.aktion === 'firmen-abgleich') return NextResponse.json({ ok: true, ...(await firmenAbgleichen()) });

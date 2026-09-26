@@ -4,6 +4,7 @@
 // „grau“, solange es noch nichts zu messen gibt — nie eine erfundene Null.
 // Operations-Prinzip übernommen: Datenreife als eigene Kennzahl.
 
+import { tagVon } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand } from './typen';
 import { OFFENE_STUFEN, prognose, gesundheit, gesamtwert } from './pipeline';
@@ -50,7 +51,7 @@ export function kennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: string):
   const ueberfaellig = faellig.filter(f => f.gruppe === 'ueberfaellig').length;
   const hatFollowups = fus.length > 0 || faellig.length > 0;
   const monat = heute.slice(0, 7);
-  const gewonnenMonat = crm.chancen.filter(c => c.stufe === 'gewonnen' && (c.historie.filter(h => h.stufe === 'gewonnen').pop()?.am ?? c.geaendert).slice(0, 7) === monat);
+  const gewonnenMonat = crm.chancen.filter(c => c.stufe === 'gewonnen' && tagVon(c.historie.filter(h => h.stufe === 'gewonnen').pop()?.am ?? c.geaendert).slice(0, 7) === monat);
   const neuumsatz = gewonnenMonat.reduce((a, c) => a + gesamtwert(c), 0);
   const zielUmsatz = crm.wertelisten?.ziele?.umsatzNeuMonat ?? 0;
   const zielQuote = zielUmsatz > 0 ? Math.round((neuumsatz / zielUmsatz) * 100) : null;

@@ -60,7 +60,7 @@ export function gruppeVon(faellig: string, heute: string): Gruppe {
 
 /** Takt einer Person: eigener Takt, sonst der Kreis, sonst nichts (keine Kadenz ohne Kreis). */
 export function taktVon(k: Pick<Kontakt, 'kreis' | 'taktTage'>, wertelisten?: Wertelisten): number | null {
-  if (k.taktTage && k.taktTage >= 7) return k.taktTage;
+  if (k.taktTage && k.taktTage >= 1) return k.taktTage;
   if (!k.kreis) return null;
   return wertelisten?.kadenzTage?.[k.kreis] ?? KREIS_TAKT[k.kreis];
 }

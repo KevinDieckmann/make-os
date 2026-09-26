@@ -4,6 +4,7 @@
 // Win/Loss nach Grund, Ø Deal-Größe, Zykluslänge. Mindestmengen, bevor eine
 // Quote gezeigt wird — sonst erzählen zwei Deals eine Geschichte, die keine ist.
 
+import { tagVon } from '@/lib/zeit';
 import type { Chance, ChancenStufe } from './typen';
 import { STUFEN, OFFENE_STUFEN, gesamtwert, wahrscheinlichkeit } from './pipeline';
 
@@ -41,7 +42,7 @@ export function umwandlung(chancen: Chance[]): { von: ChancenStufe; nach: Chance
 
 /** Win/Loss der letzten `tage` Tage: Gründe, Werte, Quote (ab MINDESTMENGE Entscheidungen). */
 export function winLoss(chancen: Chance[], heute: string, tageZurueck = 180): { gewonnen: number; verloren: number; wertGewonnen: number; wertVerloren: number; quote: number | null; gruende: { grund: string; anzahl: number; wert: number }[] } {
-  const entschieden = (c: Chance) => c.historie.filter(h => h.stufe === 'gewonnen' || h.stufe === 'verloren').pop()?.am.slice(0, 10);
+  const entschieden = (c: Chance) => { const am = c.historie.filter(h => h.stufe === 'gewonnen' || h.stufe === 'verloren').pop()?.am; return am ? tagVon(am) : undefined; };
   const inFenster = chancen.filter(c => { const d = entschieden(c); return d && tage(d, heute) <= tageZurueck; });
   const g = inFenster.filter(c => c.stufe === 'gewonnen'), v = inFenster.filter(c => c.stufe === 'verloren');
   const je = new Map<string, { anzahl: number; wert: number }>();

@@ -8,6 +8,7 @@
 // (Ergebnis + nächstes Follow-up), verschieben (1/3/7 Tage) oder absagen. Die
 // Logik liegt in lib/crm/followup.ts, die Regeln in /api/crm/followup.
 
+import { localDay } from '@/lib/zeit';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { anzeigename } from '@/lib/make-one/crm';
@@ -17,6 +18,7 @@ import { type CrmApi, holeMitStand, datum, plusTage } from './daten';
 import { Pillen, Feldzeile, ERGEBNIS_KNOEPFE } from './teile';
 import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
 import { Person, ZustaendigWahl, WerFilter, useWerFilter, passtWer } from './team';
+import { TEAM, BEIDE } from '@/lib/crm/team';
 import { FOLLOWUP_ARTEN, VERSCHIEBEN_TAGE, type Faellig, type Gruppe } from '@/lib/crm/followup';
 import type { FollowUpArt } from '@/lib/crm/typen';
 import type { FollowupAnsicht } from '@/lib/crm/adresse';
@@ -66,7 +68,7 @@ export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: Crm
   const zahlen = useMemo(() => {
     const alle = d?.liste ?? [];
     const z: Record<string, number> = { alle: alle.length };
-    for (const p of ['kevin', 'malin']) z[p] = alle.filter(f => f.zustaendig === p || f.zustaendig === 'beide').length;
+    for (const p of TEAM.map(t => t.id)) z[p] = alle.filter(f => f.zustaendig === p || f.zustaendig === BEIDE).length;
     if (ich) z.ich = z[ich] ?? 0;
     return z;
   }, [d, ich]);
@@ -149,7 +151,8 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [
 function Erledigen({ f, heute, onFertig, onAbbruch, eigene = [] }: { f: Faellig; heute: string; onFertig: (b: Record<string, unknown>) => Promise<void>; onAbbruch: () => void; /** Eigene Gesprächsergebnisse aus den Stammdaten (Wertelisten). */ eigene?: { wert: string; label: string }[] }) {
   const [ergebnis, setErgebnis] = useState<string | null>(null);
   const [notiz, setNotiz] = useState('');
-  const [naechster, setNaechster] = useState<{ text: string; faellig: string; art: FollowUpArt }>({ text: '', faellig: plusTage(heute, 7), art: f.art });
+  // Vorgabe wie in der Pipeline: Deals in drei Tagen weiter, alles andere in einer Woche.
+  const [naechster, setNaechster] = useState<{ text: string; faellig: string; art: FollowUpArt }>({ text: '', faellig: plusTage(heute, f.bezug.art === 'chance' ? 3 : 7), art: f.art });
   const [kein, setKein] = useState(false);
   const bereit = kein || (naechster.text.trim() && naechster.faellig);
   return (
@@ -181,7 +184,7 @@ function Erledigen({ f, heute, onFertig, onAbbruch, eigene = [] }: { f: Faellig;
 }
 
 function NeuesFollowUp({ api, onFertig, onAbbruch }: { api: CrmApi; onFertig: (b: Record<string, unknown>) => Promise<void>; onAbbruch: () => void }) {
-  const heute = api.crm?.heute ?? new Date().toISOString().slice(0, 10);
+  const heute = api.crm?.heute ?? localDay();
   const [suche, setSuche] = useState('');
   const [kontaktId, setKontaktId] = useState<string | null>(null);
   const [art, setArt] = useState<FollowUpArt>('anruf');
@@ -226,11 +229,13 @@ function Wochenansicht({ liste, heute, zuKontakt, zuDeal, zuAkte, aktion }: { li
   const mo = plusTage(heute, -((d.getUTCDay() + 6) % 7));
   const tage = Array.from({ length: 7 }, (_, i) => plusTage(mo, i));
   const ueber = liste.filter(f => f.faellig < mo);
+  const danach = liste.filter(f => f.faellig > tage[6]);
   return (
     <>
       {ueber.length > 0 && <Karte i={1} akzent={LEUCHT.kritisch}><Ueberschrift farbe={LEUCHT.kritisch} rechts={`${ueber.length}`}>Aus den Vorwochen</Ueberschrift><Liste>{ueber.map(f => <FollowUpZeile key={f.id} f={f} heute={heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={aktion} />)}</Liste></Karte>}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
         {tage.map((t, i) => {
+          // (Einträge nach dem Sonntag stehen darunter unter „Nächste Woche“)
           const l = liste.filter(f => f.faellig === t);
           const istHeute = t === heute;
           return (
@@ -239,7 +244,7 @@ function Wochenansicht({ liste, heute, zuKontakt, zuDeal, zuAkte, aktion }: { li
               <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
                 {l.map(f => (
                   <button key={f.id} onClick={() => (f.bezug.art === 'chance' ? zuDeal(f.bezug.id) : f.kontaktId ? zuAkte(f.kontaktId) : undefined)} className="fassbar" style={{ textAlign: 'left', cursor: 'pointer', border: '1px solid rgba(255,255,255,.06)', background: 'rgba(255,255,255,.03)', borderRadius: 10, padding: '7px 9px', color: C.ink, display: 'grid', gap: 2 }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 600, lineHeight: 1.3 }}>{f.name}</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, lineHeight: 1.3, color: f.gruppe === 'ueberfaellig' ? LEUCHT.kritisch : C.ink }}>{f.name}</span>
                     <span style={{ fontSize: 11.5, color: C.inkLeise }}>{f.uhrzeit ? `${f.uhrzeit} · ` : ''}{ART_LABEL[f.art]} · {f.text}</span>
                   </button>
                 ))}
@@ -249,6 +254,7 @@ function Wochenansicht({ liste, heute, zuKontakt, zuDeal, zuAkte, aktion }: { li
           );
         })}
       </div>
+      {danach.length > 0 && <Karte i={2}><Ueberschrift rechts={`${danach.length}`}>Nächste Woche</Ueberschrift><Liste>{danach.map(f => <FollowUpZeile key={f.id} f={f} heute={heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={aktion} />)}</Liste></Karte>}
     </>
   );
 }

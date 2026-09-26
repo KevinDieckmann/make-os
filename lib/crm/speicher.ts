@@ -7,6 +7,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { STUFEN, wechsleStufe } from './pipeline';
 import { firmaIdsErgaenzen } from './firmen-bezug';
+import { localDay } from '@/lib/zeit';
 import { CRM_LISTEN, type CrmBestand, type CrmListe, type Firma, type FirmaRolle, type Antrag, type AntragArt, type Verarbeitung, type Segment, type SegmentKriterien, type Beitrag, type NewsletterAusgabe, type Kampagne, type Chance, type Mandat, type Leistung, type Event, type Teilnahme, type PowerHourSitzung, type ChancenStufe, type Qual, type Freigabe, type FollowUp } from './typen';
 import { wer, BEIDE, verantwortlich } from './team';
 import { leadSaeubern } from './lead-form';
@@ -17,7 +18,7 @@ export const leererBestand = (): CrmBestand => ({ firmen: [], chancen: [], manda
 
 export async function ladeCrm(): Promise<CrmBestand> {
   const roh = { ...leererBestand(), ...((await loadJson<CrmBestand>(CRM_SPEICHER)) ?? {}) };
-  // 27.09.: alte Deals und Mandate bekommen die Firmen-Kennung nachgetragen (nur im Speicher; geschrieben wird sie mit der nächsten Änderung).
+  // 27.09.: alte Deals und Mandate bekommen die Firmen-Kennung nachgetragen — hier im Speicher, dauerhaft mit der nächsten Änderung (aendereCrm).
   return firmaIdsErgaenzen(roh).bestand;
 }
 
@@ -334,14 +335,24 @@ export function dealRegeln(b: CrmBestand, ops: ListenOp[], jetzt: string, person
   const fehler: string[] = [];
   const raus: ListenOp[] = [];
   for (const o of ops) {
-    if (o.liste !== 'chancen' || o.op === 'delete') { raus.push(o); continue; }
+    if (o.liste !== 'chancen') { raus.push(o); continue; }
+    if (o.op === 'delete') {
+      // Sperre statt Löschen (Konzept): ein Deal mit Geschichte wird verloren oder geparkt — löschen nur eine Fehlanlage.
+      const alt = b.chancen.find(c => c.id === String(o.id));
+      if (alt && !(alt.historie.length <= 1 && !alt.wert.betrag && !(alt.notiz ?? '').trim())) { fehler.push(`„${alt.titel}“: Deals mit Geschichte werden nicht gelöscht — als verloren oder geparkt markieren.`); continue; }
+      raus.push(o); continue;
+    }
     const felder = (o.op === 'teil' ? o.felder : o.eintrag) ?? {};
     const id = String(o.op === 'teil' ? o.id : o.eintrag?.id ?? '');
     const alt = b.chancen.find(c => c.id === id);
+    // Neue Deals entstehen nur über /api/crm/deal (Prüfbericht 27.09., Punkt 4) — ein Upsert ohne Bestand wird abgelehnt.
+    if (!alt) { fehler.push(`Deal „${String(felder.titel ?? id)}“: neue Deals nur über den Anlage-Dialog (/api/crm/deal).`); continue; }
+    // „letzteAktivitaet“ setzt nur der Server (Aktivität, Stufenwechsel) — sonst ließe sich die Ampel „hängt“ von Hand grün stellen (Punkt 23).
+    if ('letzteAktivitaet' in felder) delete (felder as Record<string, unknown>).letzteAktivitaet;
     const ziel = typeof felder.stufe === 'string' ? (felder.stufe as ChancenStufe) : undefined;
-    if (!alt || !ziel || ziel === alt.stufe) {
+    if (!ziel || ziel === alt.stufe) {
       // Kein Stufenwechsel: die Historie darf der Browser nicht umschreiben.
-      if (alt && 'historie' in felder) { const { historie: _h, ...rest } = felder; raus.push(o.op === 'teil' ? { ...o, felder: { ...rest, historie: alt.historie } } : { ...o, eintrag: { ...rest, historie: alt.historie } }); }
+      if ('historie' in felder) { const { historie: _h, ...rest } = felder; raus.push(o.op === 'teil' ? { ...o, felder: { ...rest, historie: alt.historie } } : { ...o, eintrag: { ...rest, historie: alt.historie } }); }
       else raus.push(o);
       continue;
     }
@@ -349,7 +360,11 @@ export function dealRegeln(b: CrmBestand, ops: ListenOp[], jetzt: string, person
     if (!r.ok) { fehler.push(`„${alt.titel}“: ${r.fehler}`); continue; }
     const offenZiel = STUFEN.find(s => s.id === ziel)?.offen;
     const schritt = (felder.naechsterSchritt as { text?: string; datum?: string } | undefined) ?? alt.naechsterSchritt;
-    if (offenZiel && !(schritt?.text && schritt.datum && schritt.datum >= jetzt.slice(0, 10))) { fehler.push(`„${alt.titel}“: Für ${STUFEN.find(s => s.id === ziel)?.label} braucht es einen nächsten Schritt mit Datum.`); continue; }
+    const heuteTag = localDay(new Date(jetzt));
+    if (offenZiel && !(schritt?.text && schritt.datum && schritt.datum >= heuteTag)) {
+      fehler.push(schritt?.datum && schritt.datum < heuteTag ? `„${alt.titel}“: der nächste Schritt vom ${schritt.datum} ist überfällig — erst ein neues Datum setzen, dann die Stufe wechseln.` : `„${alt.titel}“: Für ${STUFEN.find(s => s.id === ziel)?.label} braucht es einen nächsten Schritt mit Datum.`);
+      continue;
+    }
     const neuFelder = { ...felder, stufe: ziel, historie: r.chance.historie, letzteAktivitaet: r.chance.letzteAktivitaet, ...(r.chance.grund ? { grund: r.chance.grund } : {}), ...(r.chance.wiedervorlage ? { wiedervorlage: r.chance.wiedervorlage } : {}) };
     raus.push(o.op === 'teil' ? { ...o, felder: neuFelder } : { ...o, eintrag: neuFelder });
   }
@@ -371,7 +386,8 @@ export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person
 }
 
 export async function aendereCrm(mut: (b: CrmBestand) => CrmBestand): Promise<CrmBestand> {
-  return updateJson<CrmBestand>(CRM_SPEICHER, cur => mut({ ...leererBestand(), ...(cur ?? {}) }));
+  // Die nachgetragenen Firmen-Kennungen (ladeCrm) werden hier mit der nächsten Schreibung dauerhaft (Prüfbericht 27.09., Punkt 11).
+  return updateJson<CrmBestand>(CRM_SPEICHER, cur => mut(firmaIdsErgaenzen({ ...leererBestand(), ...(cur ?? {}) }).bestand));
 }
 
 /** Kunden-Sicht aus den Mandaten — für Score, Jarvis-Kontext und Loops (vorher eigener Speicher „kunden“). */

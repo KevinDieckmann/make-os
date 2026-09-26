@@ -7,6 +7,7 @@
 // Hinter jeder Kennzahl die Punkte: die Personen, Deals, Beiträge, Events —
 // jeder mit Weg dorthin, wo man handelt.
 
+import { tagVon } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
 import type { CrmBestand, Chance, Mandat } from './typen';
@@ -123,7 +124,7 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
       .map(([kunde, x]) => ({ titel: kunde, wert: `${Math.round((x.mrr / gesamt) * 100)} %`, unter: `${euro(x.mrr)}/Monat`, href: WEG.mandat(x.m.id), ampel: ampelVon((x.mrr / gesamt) * 100, g) }));
   },
   win_rate(b) {
-    const entschieden = (c: Chance) => c.historie.filter(h => h.stufe === 'gewonnen' || h.stufe === 'verloren').pop()?.am.slice(0, 10);
+    const entschieden = (c: Chance) => { const am = c.historie.filter(h => h.stufe === 'gewonnen' || h.stufe === 'verloren').pop()?.am; return am ? tagVon(am) : undefined; };
     return b.crm.chancen.filter(c => (c.stufe === 'gewonnen' || c.stufe === 'verloren') && (entschieden(c) ?? '') >= tagMinus(b.heute, 179)).sort((x, y) => (entschieden(y) ?? '').localeCompare(entschieden(x) ?? '')).slice(0, 6)
       .map(c => dealDetail(c, c.stufe === 'gewonnen' ? 'gewonnen' : 'verloren', `${tagKurz(entschieden(c) ?? b.heute)}${c.grund ? ` · ${c.grund}` : ''}`, c.stufe === 'gewonnen' ? 'gruen' : 'rot'));
   },
@@ -145,7 +146,7 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
   },
   umsatz_ziel(b) {
     const monat = b.heute.slice(0, 7);
-    return b.crm.chancen.filter(c => c.stufe === 'gewonnen' && (c.historie.filter(h => h.stufe === 'gewonnen').pop()?.am ?? c.geaendert).slice(0, 7) === monat).slice(0, 4)
+    return b.crm.chancen.filter(c => c.stufe === 'gewonnen' && tagVon(c.historie.filter(h => h.stufe === 'gewonnen').pop()?.am ?? c.geaendert).slice(0, 7) === monat).slice(0, 4)
       .map(c => dealDetail(c, euro(gesamtwert(c)), c.firma ?? undefined, 'gruen'));
   },
   anfragen_90(b) {

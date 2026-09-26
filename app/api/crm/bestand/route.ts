@@ -4,6 +4,7 @@
 // PATCH → { ops: [{ liste, op: 'upsert'|'delete'|'teil', eintrag|id|felder }] } — Einzeländerungen,
 //         damit Kevin und Malin gleichzeitig arbeiten können.
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
@@ -39,6 +40,7 @@ async function antwort(b: CrmBestand, ich: string) {
 }
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const person = personAus(req);
   // Alles, woraus die Antwort entsteht: die vier Speicher, der Tag (Ampeln, Prognose) und wer fragt.
   const etag = etagAus('b', await speicherStand(['crm', 'kontakte', 'finanzplan', 'crm-signale']), localDay(), person);
@@ -48,6 +50,7 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let body: { ops?: ListenOp[] };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const ops = (Array.isArray(body.ops) ? body.ops : []).slice(0, 200);

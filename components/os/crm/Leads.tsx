@@ -1,5 +1,7 @@
 'use client';
 
+import { useNachfrage } from './Nachfrage';
+import { localDay } from '@/lib/zeit';
 import Link from 'next/link';
 
 // ─── Markttraktion · Firmen › Leads (Ebene 1) — qualifizieren bis zum SQL ────
@@ -156,13 +158,14 @@ function KriterienPunkte({ k }: { k: Kriterien }) {
 }
 
 function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; api: CrmApi; laden: () => void; zuKontakt: (id: string) => void; zuDeal: (id?: string) => void }) {
-  const heute = api.crm?.heute ?? new Date().toISOString().slice(0, 10);
+  const heute = api.crm?.heute ?? localDay();
   const [k, setK] = useState<Kriterien>(z.kriterien);
   const [status, setStatus] = useState<LeadStatus>(z.status);
   const [notiz, setNotiz] = useState(z.notiz ?? '');
   const [meldung, setMeldung] = useState('');
   const [deal, setDeal] = useState({ titel: z.name.replace(/ \(.*\)$/, ''), art: 'retainer' as ChancenArt, betrag: '', basis: 'monat' as 'monat' | 'einmalig', schritt: '', datum: plusTage(heute, 3), erwartetAm: '', besitzer: z.besitzer === 'beide' ? api.ich ?? 'kevin' : z.besitzer });
   const [trotzdem, setTrotzdem] = useState(false);
+  const { frage, dialog: nachfrage } = useNachfrage();
   const post = (body: Record<string, unknown>) => fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' }));
   const setze = async (felder: Record<string, unknown>) => { const r = await post({ aktion: 'setze', id: z.id, felder }); if (!r.ok) setMeldung(r.fehler); void laden(); };
   const kriterium = (id: keyof Kriterien, w: Qual) => {
@@ -202,7 +205,11 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
       <div>
         <Ueberschrift>Status</Ueberschrift>
         <Pillen liste={LEAD_STATUS.filter(s => s.id !== 'sql' && s.id !== 'kunde').map(s => ({ id: s.id, label: s.label }))} aktiv={status === 'sql' || status === 'kunde' ? undefined : status}
-          onWahl={s => { setStatus(s); void setze({ status: s, ...(s === 'kein_fit' || s === 'ruht' ? { grund: window.prompt(s === 'kein_fit' ? 'Warum kein Fit? (kurz)' : 'Warum ruht es? (kurz)') ?? '' } : {}) }); }} />
+          onWahl={async s => {
+            if (s === 'kein_fit' || s === 'ruht') { const grund = await frage(s === 'kein_fit' ? 'Warum kein Fit?' : 'Warum ruht es?', { hinweis: 'Ein kurzer Satz — steht später an der Firma.' }); if (grund === null) return; setStatus(s); void setze({ status: s, grund }); return; }
+            setStatus(s); void setze({ status: s });
+          }} />
+        {nachfrage}
         <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>{status === 'sql' ? 'SQL — der Deal läuft unter Deals.' : status === 'kunde' ? 'Kunde — siehe Produkte & Mandate.' : `Weiter, wenn: ${LEAD_STATUS.find(s => s.id === status)?.weiterWenn}`}{z.grund ? ` · Grund: ${z.grund}` : ''}{!z.gesetzt ? ' · Status aus den Personen abgeleitet' : ''}</div>
       </div>
 

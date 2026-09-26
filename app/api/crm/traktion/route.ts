@@ -11,6 +11,7 @@
 //       Wochen-Scoreboard (8 Kalenderwochen, lib/crm/scoreboard.ts) und ob der
 //       Telegram-Bote für die angemeldete Person bereitsteht.
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { merken } from '@/lib/store/memo';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -52,6 +53,7 @@ async function schnappschuss(eintrag: VerlaufTag, heute: string): Promise<Verlau
 }
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const ich = personAus(req);
   // Tempo (26.09.): die ganze Antwort eine Minute merken (je Person) — jede Schreibung setzt zurück.
   const body = await merken(`traktion:${ich}:${localDay()}`, 60_000, async () => {
@@ -100,6 +102,7 @@ export async function GET(req: Request) {
 
 /** Eigene Schwelle einer Traktions-Kennzahl setzen oder zurücksetzen (Team-weit). */
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: Record<string, unknown>;
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (!b.schwelle || typeof b.schwelle !== 'object') return NextResponse.json({ ok: false, fehler: 'Schwelle fehlt.' }, { status: 400 });

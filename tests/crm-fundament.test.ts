@@ -1,4 +1,5 @@
 // CRM-Fundament: Pipeline aus KEMARIS Operations, Kanal-Ampel (§ 7 UWG), Power Hour, Mandate, Events.
+import type { CrmBestand } from '@/lib/crm/typen';
 import { describe, it, expect } from 'vitest';
 import type { Kontakt } from '../lib/make-one/crm';
 import { gesamtwert, gesundheit, prognose, wechsleStufe, gewinnquote } from '../lib/crm/pipeline';
@@ -137,12 +138,18 @@ describe('Events', () => {
 
 describe('Speicher', () => {
   it('Einzeländerungen säubern je Liste — Unbekanntes fällt weg', () => {
-    const r = wendeCrmAn(leererBestand(), [
-      { liste: 'chancen', op: 'upsert', eintrag: { id: 'ch-x', titel: 'Neu', stufe: 'quatsch', wert: { betrag: '3000', basis: 'monat' }, boese: 'x' } },
+    // Seit 27.09. entstehen Deals nur über /api/crm/deal — ein Upsert ohne Bestand wird abgelehnt (dealRegeln) …
+    const neu = wendeCrmAn(leererBestand(), [{ liste: 'chancen', op: 'upsert', eintrag: { id: 'ch-x', titel: 'Neu', stufe: 'qualifiziert' } }], `${HEUTE}T10:00`, 'kevin');
+    expect(neu.angewandt).toBe(0);
+    expect(neu.fehler).toHaveLength(1);
+    // … bestehende Deals werden je Liste gesäubert: Unbekanntes fällt weg, Zahlen werden Zahlen.
+    const alt = { ...leererBestand(), chancen: [{ id: 'ch-x', titel: 'Alt', kontaktIds: [], art: 'retainer', wert: { betrag: 1, basis: 'monat' }, stufe: 'qualifiziert', historie: [], gesellschaft: 'offen', besitzer: 'kevin', angelegt: `${HEUTE}T09:00`, geaendert: `${HEUTE}T09:00` } as unknown as CrmBestand['chancen'][number]] };
+    const r = wendeCrmAn(alt, [
+      { liste: 'chancen', op: 'teil', id: 'ch-x', felder: { titel: 'Neu', wert: { betrag: '3000', basis: 'monat' }, boese: 'x' } },
       { liste: 'mandate', op: 'upsert', eintrag: { id: 'BÖSE ID', kunde: 'x', titel: 'y' } },
     ], `${HEUTE}T10:00`, 'kevin');
     expect(r.angewandt).toBe(1);
-    expect(r.bestand.chancen[0]).toMatchObject({ stufe: 'qualifiziert', wert: { betrag: 3000, basis: 'monat' }, besitzer: 'kevin' });
+    expect(r.bestand.chancen[0]).toMatchObject({ titel: 'Neu', stufe: 'qualifiziert', wert: { betrag: 3000, basis: 'monat' }, besitzer: 'kevin' });
     expect('boese' in r.bestand.chancen[0]).toBe(false);
   });
 });

@@ -10,6 +10,7 @@
 //      Kunden); Firma wird Kunde, Personen Lebensphase „Kunde“.
 // Nichts wird versendet.
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
@@ -17,7 +18,8 @@ import { localDay } from '@/lib/zeit';
 import { personAus } from '@/lib/jarvis/raum';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
-import { leads, trichter, dealAusLead, sqlBereit, fehltBisSql, leereKriterien } from '@/lib/crm/leads';
+import { leads, trichter, sqlBereit, fehltBisSql, leereKriterien } from '@/lib/crm/leads';
+import { dealAnlegen } from '@/lib/crm/deal-anlegen';
 import { leadSaeubern } from '@/lib/crm/lead-form';
 import { wer, BEIDE } from '@/lib/crm/team';
 import type { Lead, Mandat } from '@/lib/crm/typen';
@@ -29,6 +31,7 @@ const neueId = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().to
 const tagOk = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const etag = etagAus('l', await speicherStand(['crm', 'kontakte']), localDay());
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
@@ -50,7 +53,8 @@ async function leadSchreiben(id: string, mut: (alt: Lead | undefined) => Lead | 
 }
 
 export async function POST(req: Request) {
-  let b: { aktion?: string; id?: string; felder?: Record<string, unknown>; deal?: Record<string, unknown>; trotzdem?: boolean; chanceId?: string };
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+  let b: { aktion?: string; id?: string; felder?: Record<string, unknown>; deal?: Record<string, unknown>; trotzdem?: boolean; zweiter?: boolean; chanceId?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const person = personAus(req);
   const jetzt = new Date().toISOString();
@@ -94,16 +98,22 @@ export async function POST(req: Request) {
   }
 
   if (b.aktion === 'sql') {
+    // Seit 27.09. über den EINEN Anlageweg (lib/crm/deal-anlegen.ts): Firma per Kennung, Dubletten-Prüfung, Lead wird SQL.
+    // `trotzdem` hier = SQL-Kriterien bewusst übergehen (steht dann in der Notiz); ein zweiter offener Deal braucht `zweiter: true`.
     const d = b.deal ?? {};
     const schritt = d.schritt as { text?: string; datum?: string } | undefined;
     if (!schritt?.text?.trim() || !tagOk(schritt.datum)) return NextResponse.json({ ok: false, fehler: 'Nächster Schritt mit Datum ist Pflicht — ohne ihn verliert sich der Deal.' }, { status: 400 });
-    if (!sqlBereit(zeile.kriterien) && !b.trotzdem) return NextResponse.json({ ok: false, fehler: `Noch kein SQL — es fehlt: ${fehltBisSql(zeile.kriterien).join(', ')}.`, fehlt: fehltBisSql(zeile.kriterien) }, { status: 409 });
-    if (zeile.deal?.offen) return NextResponse.json({ ok: false, fehler: `Es gibt schon einen offenen Deal: „${zeile.deal.titel}“.` }, { status: 409 });
+    if (!sqlBereit(zeile.kriterien) && !b.trotzdem) return NextResponse.json({ ok: false, fehler: `Noch kein SQL — es fehlt: ${fehltBisSql(zeile.kriterien).join(', ')}.`, fehlt: fehltBisSql(zeile.kriterien) }, { status: 400 });
     const besitzer = wer(d.besitzer) && wer(d.besitzer) !== BEIDE ? wer(d.besitzer)! : zeile.besitzer === BEIDE ? person : zeile.besitzer;
-    const chance = dealAusLead(zeile, { id: neueId('ch'), titel: String(d.titel ?? ''), art: (['retainer', 'projekt', 'workshop', 'vermittlung', 'software'].includes(String(d.art)) ? d.art : 'retainer') as never, betrag: Number(d.betrag) || 0, basis: d.basis === 'einmalig' ? 'einmalig' : 'monat', schritt: { text: schritt.text!.trim().slice(0, 300), datum: schritt.datum! }, ...(tagOk(d.erwartetAm) ? { erwartetAm: tagOk(d.erwartetAm) } : {}), besitzer, jetzt, kontaktIds: Array.isArray(d.kontaktIds) ? (d.kontaktIds as string[]) : undefined });
-    await aendereCrm(c => ({ ...c, chancen: [...c.chancen, { ...chance, historie: [{ stufe: 'qualifiziert', am: jetzt, von: person }], geaendertVon: person }] }));
-    await leadSchreiben(id, alt => ({ ...basis(alt), status: 'sql', sqlAm: jetzt, chanceId: chance.id, ...(b.trotzdem && !sqlBereit(zeile.kriterien) ? { notiz: `${basis(alt).notiz ? `${basis(alt).notiz}\n` : ''}SQL ohne alle Kriterien (${fehltBisSql(zeile.kriterien).join(', ')} offen) — ${person}, ${jetzt.slice(0, 10)}` } : {}), geaendert: jetzt, geaendertVon: person }));
-    return NextResponse.json({ ok: true, chanceId: chance.id, text: `SQL: Deal „${chance.titel}“ steht in der Pipeline (Stufe SQL).` });
+    const kontaktIds = Array.isArray(d.kontaktIds) && d.kontaktIds.length ? (d.kontaktIds as string[]) : zeile.personen.map(p => p.id);
+    const r = await dealAnlegen({
+      titel: String(d.titel ?? ''), kontaktIds, ...(zeile.art === 'firma' ? { firmaId: zeile.id } : {}),
+      art: d.art as never, wert: { betrag: Number(d.betrag) || 0, basis: d.basis === 'einmalig' ? 'einmalig' : d.basis === 'jahr' ? 'jahr' : 'monat' },
+      schritt: { text: String(schritt.text), datum: String(schritt.datum) }, ...(tagOk(d.erwartetAm) ? { erwartetAm: tagOk(d.erwartetAm) } : {}), besitzer, trotzdem: b.zweiter === true,
+    }, person, jetzt);
+    if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler, ...(r.offen ? { offen: r.offen } : {}) }, { status: r.status });
+    if (b.trotzdem && !sqlBereit(zeile.kriterien)) await leadSchreiben(id, alt => ({ ...basis(alt), status: 'sql', sqlAm: jetzt, chanceId: r.chance.id, notiz: `${basis(alt).notiz ? `${basis(alt).notiz}\n` : ''}SQL ohne alle Kriterien angelegt (${fehltBisSql(zeile.kriterien).join(', ')} offen).`, geaendert: jetzt, geaendertVon: person }));
+    return NextResponse.json({ ok: true, chanceId: r.chance.id, text: `SQL: Deal „${r.chance.titel}“ steht unter Deals (Stufe SQL).` });
   }
 
   return NextResponse.json({ ok: false, fehler: 'aktion: setze, sql oder mandat.' }, { status: 400 });

@@ -7,6 +7,8 @@
 // Schritt, Beziehung, Deals & Mandate, Entwurf, Verlauf, Recht und die Matrix
 // aller Stammdaten (Felder aus lib/crm/akte.ts).
 
+import { useNachfrage } from './Nachfrage';
+import { localDay } from '@/lib/zeit';
 import { DealAnlegen } from './DealAnlegen';
 import { useEffect, useState, type ReactNode, type KeyboardEvent as TastenEreignis } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -85,7 +87,7 @@ export function BeziehungTeil({ k, api, setze }: { k: Kontakt; api: CrmApi; setz
  */
 export function LinkedInTeil({ k, api }: { k: Kontakt; api: CrmApi }) {
   const ich = api.ich ?? 'kevin';
-  const heute = api.crm?.heute ?? new Date().toISOString().slice(0, 10);
+  const heute = api.crm?.heute ?? localDay();
   const profil = profilAdresse(k.linkedin);
   const [url, setUrl] = useState('');
   const [fehler, setFehler] = useState<string | null>(null);
@@ -193,6 +195,7 @@ export function VerlaufTeil({ k, api, name, heute, max = 60 }: { k: Kontakt; api
 
 /** Rechtsgrundlage, Herkunft (Art. 14), Einwilligungen, Werbewiderspruch, Auskunft und Löschung. */
 export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; heute: string; setze: Setze }) {
+  const { frage, dialog: nachfrage } = useNachfrage();
   const [ew, setEw] = useState<{ kanal: EinwilligungKanal; grundlage: Grundlage; nachweis: string } | null>(null);
   useEffect(() => { setEw(null); }, [k.id]);
   return (
@@ -236,10 +239,12 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
           <Knopf leise onClick={() => { window.location.href = `/api/crm/datenschutz?id=${k.id}`; }}>Auskunft (Art. 15) als Datei</Knopf>
           <Knopf leise onClick={async () => {
             if (!window.confirm(`${anzeigename(k)} endgültig löschen (Art. 17)? Besser oft: Werbesperre — dann bleibt „nicht anschreiben“ erhalten.`)) return;
-            const grund = window.prompt('Grund (für das Löschprotokoll, ohne Personendaten)', 'Löschverlangen Art. 17') ?? '';
+            const grund = await frage('Grund für das Löschprotokoll', { vorgabe: 'Löschverlangen Art. 17', hinweis: 'Ohne Personendaten — der Eintrag bleibt als Nachweis.' });
+            if (grund === null) return;
             const r = await fetch('/api/crm/datenschutz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: k.id, grund }) }).then(x => x.json()).catch(() => null);
             if (r?.ok) void api.laden(); else api.setFehler('Nicht gelöscht.');
           }}>Löschen (Art. 17)</Knopf>
+          {nachfrage}
         </div>
       </div>
     </div>

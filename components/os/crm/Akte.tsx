@@ -14,6 +14,7 @@
 // Browser) führt in die Kartei mit derselben Person. Die Bausteine teilt die
 // Akte mit der Karteikarte (kontakt-teile.tsx), die Regeln stehen in lib/crm/akte.ts.
 
+import { localDay } from '@/lib/zeit';
 import { nachOben } from '../Verlauf';
 import { useRouter } from 'next/navigation';
 import { WEG } from '@/lib/wege';
@@ -95,7 +96,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte }: { api: 
   const router = useRouter();
   const spalten = useSpalten();
   const crm = api.crm;
-  const heute = crm?.heute ?? new Date().toISOString().slice(0, 10);
+  const heute = crm?.heute ?? localDay();
   const k = api.kontakte?.find(x => x.id === id) ?? null;
 
   // Oben anfangen — die Kartei war vielleicht weit nach unten gescrollt. Gescrollt wird in <main> der Oberfläche, nicht im Fenster.

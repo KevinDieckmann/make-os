@@ -49,7 +49,7 @@ const HAUPT: { id: Bereich; label: string; farbe?: string }[] = [
   { id: 'marketing', label: 'Marketing', farbe: WELT_FARBE.marketing }, { id: 'event', label: 'Events', farbe: WELT_FARBE.event },
   { id: 'stammdaten', label: 'Stammdaten' },
 ];
-const DEALS: { id: DealsAnsicht; label: string }[] = [{ id: 'board', label: 'Board' }, { id: 'liste', label: 'Liste' }, { id: 'auswertung', label: 'Auswertung' }, { id: 'kunden', label: 'Kunden' }];
+const DEALS: { id: DealsAnsicht; label: string }[] = [{ id: 'board', label: 'Board' }, { id: 'liste', label: 'Liste' }, { id: 'kunden', label: 'Kunden' }, { id: 'auswertung', label: 'Auswertung' }];
 const FOLLOWUP: { id: FollowupAnsicht; label: string }[] = [{ id: 'faellig', label: 'Fällig' }, { id: 'woche', label: 'Woche' }, { id: 'powerhour', label: 'Power Hour' }, { id: 'kadenz', label: 'Kadenz' }];
 
 const UNTER: Record<Bereich, string> = {

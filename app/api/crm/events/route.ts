@@ -32,13 +32,11 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/jarvis/raum';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { localDay } from '@/lib/zeit';
-import type { Kontakt } from '@/lib/make-one/crm';
 import type { Planposten } from '@/lib/make-one/liquiditaet';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { icsText, icsDateiname, checklisteAlsAufgaben, punktAendern, aufgabeAbgleichen, type PunktAenderung, type ChecklistenPunkt } from '@/lib/crm/eventplanung';
-import { leadNachGespraech, leadZiel, hebtLead, planpostenAusEvent, planpostenId, liquiplanStand, type NachfassErgebnis } from '@/lib/crm/event-bruecke';
-import { leadSaeubern } from '@/lib/crm/lead-form';
-import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
+import { hebtLead, planpostenAusEvent, planpostenId, liquiplanStand, type NachfassErgebnis } from '@/lib/crm/event-bruecke';
+import { leadHebenNachGespraech } from '@/lib/crm/lead-heben';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -50,11 +48,11 @@ type Liquiplan = { posten: Planposten[] };
 const NACHFASS: NachfassErgebnis[] = ['gespraech', 'termin', 'erledigt'];
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const q = new URL(req.url).searchParams;
   const liqui = q.get('liquiplan');
   if (liqui !== null) {
-    // Business-Zahlen: nur der Haushalt des Inhabers (wie /api/business).
-    if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+    // (Haushalts-Schutz steht oben für die ganze Route.)
     if (!ID.test(liqui)) return NextResponse.json({ ok: false, fehler: 'liquiplan=<Event-ID> nötig.' }, { status: 400 });
     const e = (await ladeCrm()).events.find(x => x.id === liqui);
     if (!e) return NextResponse.json({ ok: false, fehler: 'Event nicht gefunden.' }, { status: 404 });
@@ -92,6 +90,7 @@ function aenderungAus(v: unknown): PunktAenderung | null {
 }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: { aktion?: string; eventId?: string; punktId?: string; erledigt?: boolean; aenderung?: unknown; teilnahmeId?: string; ergebnis?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const eventId = String(b.eventId ?? '');
@@ -112,33 +111,13 @@ export async function POST(req: Request) {
     // 1 · Nachgefasst am Gast — bleibt beim ersten Datum, wenn schon eins steht.
     const followUpAm = t.followUpAm ?? heute;
     await aendereCrm(c => ({ ...c, teilnahmen: c.teilnahmen.map(x => (x.id === t.id ? { ...x, followUpAm, geaendert: jetzt, geaendertVon: person } : x)) }));
-    // 2 · Lead heben (Firma, ohne Firma die Person) — nur bei Gespräch oder Termin.
-    let lead: { ziel: { art: 'firma' | 'person'; id: string; name: string }; von: string; nach: string; geaendert: boolean; grund?: string } | null = null;
-    if (hebtLead(ergebnis)) {
-      const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
-      const k = kontakte.find(x => x.id === t.kontaktId);
-      if (k) {
-        const ziel = leadZiel(k);
-        const firma = ziel.art === 'firma' ? crm.firmen.find(f => f.id === ziel.id) : undefined;
-        // Wie in lib/crm/leads.ts: Gesperrte zählen für den abgeleiteten Stand nicht mit.
-        const personen = ziel.art === 'firma' ? kontakte.filter(x => x.firmaId === ziel.id && !x.werbesperre) : [k];
-        const ids = new Set(personen.map(p => p.id));
-        const offen = crm.chancen.some(c => OFFENE_STUFEN.includes(c.stufe) && (c.kontaktIds.some(id => ids.has(id)) || (!!firma && c.firmaId === firma.id)));
-        const r = leadNachGespraech(firma ? firma.lead : k.lead, personen, offen, jetzt, person);
-        if (r.geaendert && r.lead) {
-          const neu = leadSaeubern(r.lead);
-          if (ziel.art === 'firma') await aendereCrm(c => ({ ...c, firmen: c.firmen.map(f => (f.id === ziel.id && neu ? { ...f, lead: neu, geaendert: jetzt, geaendertVon: person } : f)) }));
-          else await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(x => (x.id === ziel.id && neu ? { ...x, lead: neu, geaendertAm: heute } : x)) }));
-        }
-        lead = { ziel: { ...ziel, name: firma?.name ?? k.firma ?? `${k.vorname} ${k.nachname}`.trim() }, von: r.von, nach: r.nach, geaendert: r.geaendert, ...(r.grund ? { grund: r.grund } : {}) };
-      }
-    }
+    // 2 · Lead heben (Firma, ohne Firma die Person) — nur bei Gespräch oder Termin; derselbe Weg wie beim Erledigen eines Follow-ups (lib/crm/lead-heben.ts).
+    const lead = hebtLead(ergebnis) ? await leadHebenNachGespraech(t.kontaktId, jetzt, person, heute) : null;
     return NextResponse.json({ ok: true, followUpAm, lead });
   }
 
   if (b.aktion === 'liquiplan') {
 
-    if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
     const p = planpostenAusEvent(e, heute);
     if (!p) return NextResponse.json({ ok: false, fehler: liquiplanStand(e, null, heute).hinweis }, { status: 400 });
     let neu = false;

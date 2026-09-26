@@ -7,6 +7,7 @@
 // Je Karte steht, wem sie gehört; dazu die Team-Zeile (Power Hours und echte
 // Gespräche je Person, heute und sieben Tage).
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/jarvis/raum';
@@ -22,6 +23,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const q = new URL(req.url).searchParams;
   const n = Math.max(3, Math.min(30, Number(q.get('n')) || 12));
   const ich = personAus(req);

@@ -11,6 +11,7 @@
 // kommt als `start` herein und geht über `onAnsicht` zurück in den Link.
 // Grundkonzept aus den Stammdaten von KEMARIS Operations, eigener Code.
 
+import { useNachfrage } from './Nachfrage';
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, Zahl, Raster, Fortschritt, Liste, Zeile, Punkt, LEUCHT } from '../schlank';
@@ -179,6 +180,7 @@ function Antraege({ d, api, laden, zuKontakt }: { d: Daten; api: CrmApi; laden: 
   const offen = d.antraege.filter(a => a.status === 'offen').sort((a, b) => a.frist.localeCompare(b.frist));
   const erledigt = d.antraege.filter(a => a.status === 'erledigt').slice(-5).reverse();
   const setze = async (a: Partial<Antrag> & { id: string }) => { await api.setze('antraege', a as unknown as { id: string } & Record<string, unknown>); laden(); };
+  const { frage, dialog: nachfrage } = useNachfrage();
   const tage = (f: string) => Math.round((Date.parse(`${f}T12:00:00Z`) - Date.parse(`${d.heute}T12:00:00Z`)) / 864e5);
   const passend = (name: string) => (api.kontakte ?? []).find(k => `${k.vorname} ${k.nachname}`.trim().toLowerCase() === name.trim().toLowerCase());
   return (
@@ -212,7 +214,8 @@ function Antraege({ d, api, laden, zuKontakt }: { d: Daten; api: CrmApi; laden: 
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {a.kontaktId && <Knopf leise onClick={() => { window.location.href = `/api/crm/datenschutz?id=${a.kontaktId}`; }}>Datenkopie (JSON)</Knopf>}
                 {a.kontaktId && <Knopf leise onClick={() => zuKontakt(a.kontaktId!)}>Zur Person</Knopf>}
-                <Knopf onClick={() => { const e = window.prompt('Ergebnis (z. B. „Auskunft am … per Mail übermittelt“)') ?? ''; if (e.trim()) void setze({ ...a, status: 'erledigt', ergebnis: e.trim(), erledigtAm: d.heute }); }}>Erledigt</Knopf>
+                <Knopf onClick={async () => { const e = await frage('Ergebnis festhalten', { hinweis: 'z. B. „Auskunft am … per Mail übermittelt“ — steht im Nachweis.' }); if (e?.trim()) void setze({ ...a, status: 'erledigt', ergebnis: e.trim(), erledigtAm: d.heute }); }}>Erledigt</Knopf>
+                {nachfrage}
               </div>
             </div>
           );

@@ -11,6 +11,7 @@
 //        Besitzer ist, wer angesprochen hat)
 // Versendet wird nichts.
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { leereKriterien } from '@/lib/crm/leads';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -28,7 +29,8 @@ export const dynamic = 'force-dynamic';
 
 const kontakteLaden = async () => (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const heute = localDay();
   const kontakte = await kontakteLaden();
   const crm = await ladeCrm();
@@ -45,6 +47,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: { aktion?: string; playbook?: string; segmentId?: string; id?: string; kontaktId?: string; ergebnis?: string; von?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const heute = localDay();

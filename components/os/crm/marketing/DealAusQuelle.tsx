@@ -8,6 +8,7 @@
 // Firma per Kennung, Kernfragen vom Lead, Lead wird SQL. Gibt es an der Firma schon
 // einen offenen Deal, sagt der Server das — zum Deal springen oder bewusst einen zweiten.
 
+import { localDay } from '@/lib/zeit';
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { anzeigename } from '@/lib/make-one/crm';
@@ -26,7 +27,7 @@ export function DealAusQuelle({ api, kontaktId, quelle, quelleBezug, bezugTitel,
   quelleBezug?: string; bezugTitel?: string;
   onFertig: (chanceId: string) => void; onAbbruch: () => void; zuDeal?: (id: string) => void;
 }) {
-  const heute = api.crm?.heute ?? new Date().toISOString().slice(0, 10);
+  const heute = api.crm?.heute ?? localDay();
   const k = (api.kontakte ?? []).find(x => x.id === kontaktId);
   const firma = k?.firmaId ? api.crm?.stand.firmen.find(f => f.id === k.firmaId) : undefined;
   const [titel, setTitel] = useState('');

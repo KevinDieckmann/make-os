@@ -3,6 +3,7 @@
 // fällige Wiedervorlagen zuerst, dann Prio A, dann B — nur, wer erreichbar
 // ist und einen Aufhänger hat.
 
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { pipelineStand, type Kontakt } from '@/lib/make-one/crm';
@@ -21,6 +22,7 @@ export const dynamic = 'force-dynamic';
 // Kaltkontakten vorschlug; die zählen als elektronische Post). Antwortform
 // bleibt für Jarvis und den Crm-Agenten gleich.
 export async function GET(req: Request) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const n = Math.max(1, Math.min(30, Number(new URL(req.url).searchParams.get('n')) || 10));
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const heute = localDay();

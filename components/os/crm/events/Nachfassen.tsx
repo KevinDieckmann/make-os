@@ -84,10 +84,9 @@ export function Nachfassen({ e, api, zuKontakt }: ReiterProps) {
     const standard = einladerMit({}, k, e).person;
     void gastSetzen(api, t, { einladenDurch: person === standard ? undefined : person });
   };
-  /** Deal angelegt: Quelle „event“ mit Bezug nachtragen (der Dialog kennt die Quelle nicht als Eingabe), dann in die Deal-Akte. */
-  const dealFertig = async (chanceId: string) => {
+  /** Deal angelegt (Quelle „event“ + Bezug gehen als Vorgabe in den Dialog, kein Nach-PATCH) → in die Deal-Akte. */
+  const dealFertig = (chanceId: string) => {
     setDeal(null);
-    await api.teil('chancen', chanceId, { quelle: 'event', quelleBezug: e.id });
     setMeldung('Deal angelegt — Quelle: dieses Event.');
     router.push(dealAkte(chanceId));
   };
@@ -121,7 +120,7 @@ export function Nachfassen({ e, api, zuKontakt }: ReiterProps) {
           <Knopf leise onClick={() => zuKontakt(k.id)}>Zur Person</Knopf>
           <span style={{ marginLeft: 'auto' }}><WerTausch label="fasst nach" wert={wer.person} ich={ich} standard={wer.quelle === 'beziehung' ? 'hält die Beziehung' : wer.quelle === 'event' ? 'wie Event' : undefined} onWahl={person => geben(t, k, person)} /></span>
         </div>
-        {deal?.teilnahmeId === t.id && <DealAnlegen api={api} kontaktId={k.id} onFertig={id => void dealFertig(id)} onAbbruch={() => setDeal(null)} zuDeal={id => router.push(dealAkte(id))} />}
+        {deal?.teilnahmeId === t.id && <DealAnlegen quelle="event" quelleBezug={e.id} api={api} kontaktId={k.id} onFertig={id => void dealFertig(id)} onAbbruch={() => setDeal(null)} zuDeal={id => router.push(dealAkte(id))} />}
         <Feedback api={api} t={t} heute={heute} />
       </div>
     );
