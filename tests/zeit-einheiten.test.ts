@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { LEER_ZEIT, fokusVerbuchen, blockZuordnen, bild, type ZeitDatei, type FokusBlock } from '../lib/zeitmessung/modell';
+import { LEER_ZEIT, fokusVerbuchen, blockZuordnen, blockUmbuchen, bild, type ZeitDatei, type FokusBlock } from '../lib/zeitmessung/modell';
 import {
   zuordnungSaeubern, einheitVonBlock, aufgabeKurz, zeitraumVon, kalenderwoche, berlinTag, bloeckeImZeitraum, auswerten, zeitJeEinheit,
   TOP_AUFGABEN, type AufgabeKurz,
@@ -181,5 +181,50 @@ describe('Zeit je Einheit — Auswertung', () => {
     expect(r.personen[2].auswertung.sek).toBe(0);
     expect(r.personen[2].auswertung.zeilen.every(z => z.sek === 0)).toBe(true);
     expect(r).toMatchObject({ zeitraum: 'woche', von: '2026-09-21', bis: '2026-09-27', label: 'KW 39' });
+  });
+});
+
+describe('Zeit je Einheit — Umbuchen Privat ↔ Business', () => {
+  const von = '2026-09-24T08:00:00.000Z', bis = '2026-09-24T08:30:00.000Z';
+  const privat = fokusVerbuchen(LEER_ZEIT, { von, bis, schluessel: 'privat:gesundheit', label: 'Gesundheit' });
+  const tag = Object.keys(privat.tage)[0];
+
+  it('ins Business: Schlüssel wechselt, bewusste Sekunden wandern mit, danach zuordenbar und gezählt', () => {
+    const r = blockUmbuchen(privat, von, 'business');
+    expect(r.gefunden).toBe(true);
+    const t = r.datei.tage[tag];
+    expect(t.bloecke[0].schluessel).toBe('business:gesundheit');
+    expect(t.bewusst).toEqual({ 'business:gesundheit': 1800 });
+    const z = blockZuordnen(r.datei, von, { einheit: 'KD Ventures' }).datei;
+    const a = auswerten(bloeckeImZeitraum(z, '2026-09-21', '2026-09-27'), new Map());
+    expect(a.zeilen.find(x => x.label === 'KD Ventures')?.sek).toBe(1800);
+    expect(bild(z, tag).tagHeute.bewusst).toMatchObject({ business: 1800, privat: 0 });
+  });
+
+  it('zurück nach Privat verwirft Aufgabe und Einheit und zählt nicht mehr im Business', () => {
+    const b = blockZuordnen(blockUmbuchen(privat, von, 'business').datei, von, { aufgabeId: 'a1', einheit: 'MAKE OS UG' }).datei;
+    const r = blockUmbuchen(b, von, 'privat');
+    const x = r.datei.tage[tag].bloecke[0];
+    expect(x.schluessel).toBe('privat:gesundheit');
+    expect(x).not.toHaveProperty('aufgabeId');
+    expect(x).not.toHaveProperty('einheit');
+    expect(r.datei.tage[tag].bewusst).toEqual({ 'privat:gesundheit': 1800 });
+    expect(bloeckeImZeitraum(r.datei, '2026-09-21', '2026-09-27')).toHaveLength(0);
+  });
+
+  it('andere Blöcke desselben Bereichs behalten ihre Zeit; gleicher Space und fremde Blöcke ändern nichts', () => {
+    const zwei = fokusVerbuchen(privat, { von: '2026-09-24T09:00:00.000Z', bis: '2026-09-24T09:10:00.000Z', schluessel: 'privat:gesundheit', label: 'Gesundheit' });
+    const r = blockUmbuchen(zwei, von, 'business');
+    expect(r.datei.tage[tag].bewusst).toEqual({ 'privat:gesundheit': 600, 'business:gesundheit': 1800 });
+    expect(blockUmbuchen(privat, von, 'privat')).toEqual({ datei: privat, gefunden: true });
+    expect(blockUmbuchen(privat, '2026-01-01T00:00:00.000Z', 'business')).toEqual({ datei: privat, gefunden: false });
+  });
+
+  it('Privat-Blöcke einer anderen Person zählen nie — auch nicht im Haushalt gesamt', () => {
+    const p2 = datei(B('2026-09-22T08:00:00Z', 90, { schluessel: 'privat:gesundheit' }), B('2026-09-22T10:00:00Z', 30, { einheit: 'KD Ventures' }));
+    const r = zeitJeEinheit([{ person: 'p1', name: 'Eins', datei: LEER_ZEIT }, { person: 'p2', name: 'Zwei', datei: p2 }], [], 'woche', '2026-09-27');
+    expect(r.gesamt.sek).toBe(1800);
+    expect(r.personen[1].auswertung.sek).toBe(1800);
+    expect(JSON.stringify(r)).not.toContain('gesundheit');
   });
 });

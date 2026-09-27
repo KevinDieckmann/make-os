@@ -5,10 +5,10 @@
 // sehen (Selbstständigkeit · KD Ventures · MAKE OS UG).“
 //   EinheitBalken       — die Zeilen: Einheit, Balken, Zeit, Top-Aufgaben (auch im Widget `zeit`)
 //   ZeitJeEinheitKarte  — Woche/Monat, blättern, je Person und gesamt (Seite Fokus)
-//   FokusBloeckeKarte   — die eigenen Business-Blöcke der letzten 7 Tage, nachträglich zuordnen
+//   FokusBloeckeKarte   — die eigenen Blöcke der letzten 7 Tage: Business zuordnen, Privat ins Business umbuchen
 // Rechnung: lib/zeitmessung/einheiten.ts über /api/state/zeit/einheiten (gemerkt je Haushalt).
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { zeitText, teile, type ZeitBild, type FokusBlock } from '@/lib/zeitmessung/modell';
 import { bereichLabel } from '@/lib/zeitmessung/kennzahlen';
@@ -109,47 +109,85 @@ const wann = (b: FokusBlock) => {
   return `${v.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' })} · ${v.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
 };
 
-/** Die eigenen Business-Blöcke der letzten 7 Tage — nachträglich einer Aufgabe oder Einheit zuordnen. */
+/**
+ * Die eigenen Blöcke der letzten 7 Tage: Business-Blöcke nachträglich einer Aufgabe oder Einheit zuordnen; darunter
+ * abgesetzt die eigenen Privat-Blöcke mit „ins Business“ (Kevin 27.09. spät) — Rückweg „nach Privat“ verwirft die
+ * Zuordnung. Das Bild von /api/state/zeit ist immer nur das eigene; die andere Person sieht man hier nie.
+ */
 export function FokusBloeckeKarte({ i = 0 }: { i?: number }) {
   const [bild, setBild] = useState<ZeitBild | null | undefined>(undefined);
   const [fehler, setFehler] = useState<string | null>(null);
+  const [laeuft, setLaeuft] = useState<string | null>(null);
   useEffect(() => {
     const laden = () => fetch('/api/state/zeit', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(x => setBild(x?.bild ?? null)).catch(() => setBild(null));
     void laden();
     window.addEventListener(ZEIT_EREIGNIS, laden);
     return () => window.removeEventListener(ZEIT_EREIGNIS, laden);
   }, []);
-  const zuordnen = async (b: FokusBlock, z: Zuordnung) => {
+  const senden = async (koerper: Record<string, unknown>) => {
     setFehler(null);
-    // Sofort zeigen, dann den gesäuberten Stand des Servers übernehmen.
-    setBild(alt => alt && { ...alt, bloecke: alt.bloecke.map(x => (x.von === b.von ? { ...x, aufgabeId: z.aufgabeId, einheit: z.einheit } : x)) });
     try {
-      const r = await fetch('/api/state/zeit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'zuordnen', von: b.von, ...z }) });
+      const r = await fetch('/api/state/zeit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(koerper) });
       const x = await r.json().catch(() => null);
-      if (!r.ok || !x?.ok) { setFehler(x?.error ?? 'Nicht gespeichert.'); }
+      if (!r.ok || !x?.ok) setFehler(x?.error ?? 'Nicht gespeichert.');
       if (x?.bild) setBild(x.bild as ZeitBild);
     } catch { setFehler('Nicht erreichbar — nicht gespeichert.'); }
     window.dispatchEvent(new Event(ZEIT_EREIGNIS));
   };
-  const bloecke = (bild?.bloecke ?? []).filter(b => teile(b.schluessel).space === 'business');
-  const offen = bloecke.filter(b => !b.aufgabeId && !b.einheit).length;
+  const zuordnen = (b: FokusBlock, z: Zuordnung) => {
+    // Sofort zeigen, dann den gesäuberten Stand des Servers übernehmen.
+    setBild(alt => alt && { ...alt, bloecke: alt.bloecke.map(x => (x.von === b.von ? { ...x, aufgabeId: z.aufgabeId, einheit: z.einheit } : x)) });
+    return senden({ aktion: 'zuordnen', von: b.von, ...z });
+  };
+  const umbuchen = async (b: FokusBlock, space: 'privat' | 'business') => {
+    setLaeuft(b.von);
+    await senden({ aktion: 'umbuchen', von: b.von, space });
+    setLaeuft(null);
+  };
+  const alle = bild?.bloecke ?? [];
+  const business = alle.filter(b => teile(b.schluessel).space === 'business');
+  const privat = alle.filter(b => teile(b.schluessel).space !== 'business');
+  const offen = business.filter(b => !b.aufgabeId && !b.einheit).length;
+  const kopf = (b: FokusBlock) => (
+    <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+      <div style={{ fontSize: TYP.bedien, color: C.ink, fontVariantNumeric: 'tabular-nums' }}>{zeitText(b.sek)} <span style={{ color: C.inkLeise }}>· {b.label || bereichLabel(teile(b.schluessel).bereich)}</span></div>
+      <div style={{ fontSize: 12, color: C.inkLeise }}>{wann(b)}</div>
+    </div>
+  );
+  const zeile: CSSProperties = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 12px', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.05)' };
+  const leise: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, padding: '2px 4px', textDecoration: 'underline' };
   return (
     <Karte i={i}>
-      <Ueberschrift rechts={bloecke.length ? `${offen} ohne Zuordnung` : undefined}>Fokus-Blöcke · Business</Ueberschrift>
+      <Ueberschrift rechts={business.length ? `${offen} ohne Zuordnung` : undefined}>Fokus-Blöcke</Ueberschrift>
       {bild === undefined ? <Leer>lade …</Leer>
-        : !bloecke.length ? <Leer>In den letzten 7 Tagen keine Fokus-Blöcke im Business. Im Business-Modus oben „Fokus“ starten — oder aus einer Aufgabe heraus.</Leer>
+        : !alle.length ? <Leer>In den letzten 7 Tagen keine Fokus-Blöcke. Oben „Fokus“ starten — oder aus einer Aufgabe heraus.</Leer>
           : (
-            <div style={{ display: 'grid' }}>
-              {bloecke.map(b => (
-                <div key={b.von} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 12px', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
-                  <div style={{ flex: '1 1 160px', minWidth: 0 }}>
-                    <div style={{ fontSize: TYP.bedien, color: C.ink, fontVariantNumeric: 'tabular-nums' }}>{zeitText(b.sek)} <span style={{ color: C.inkLeise }}>· {b.label || bereichLabel(teile(b.schluessel).bereich)}</span></div>
-                    <div style={{ fontSize: 12, color: C.inkLeise }}>{wann(b)}</div>
+            <>
+              {!business.length && <Leer>Keine Business-Blöcke in den letzten 7 Tagen.</Leer>}
+              <div style={{ display: 'grid' }}>
+                {business.map(b => (
+                  <div key={b.von} style={zeile}>
+                    {kopf(b)}
+                    <ZuordnungWahl klein wert={{ aufgabeId: b.aufgabeId, einheit: b.einheit }} setzen={z => void zuordnen(b, z)} />
+                    <button onClick={() => void umbuchen(b, 'privat')} disabled={laeuft === b.von} title="Zurück nach Privat — Aufgabe und Einheit fallen weg" className="fassbar" style={leise}>nach Privat</button>
                   </div>
-                  <ZuordnungWahl klein wert={{ aufgabeId: b.aufgabeId, einheit: b.einheit }} setzen={z => void zuordnen(b, z)} />
+                ))}
+              </div>
+              {privat.length > 0 && (
+                <div style={{ marginTop: 14, padding: '6px 12px', borderRadius: 12, background: 'rgba(255,255,255,.025)' }}>
+                  <div style={{ fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, padding: '6px 0 2px' }}>Privat · nur deine</div>
+                  {privat.map(b => (
+                    <div key={b.von} style={{ ...zeile, opacity: 0.85 }}>
+                      {kopf(b)}
+                      <button onClick={() => void umbuchen(b, 'business')} disabled={laeuft === b.von} title="Ins Business umbuchen — danach Aufgabe oder Einheit zuordnen" className="fassbar"
+                        style={{ fontFamily: 'inherit', fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${LEUCHT.business}66`, background: `${LEUCHT.business}14`, color: LEUCHT.business }}>
+                        {laeuft === b.von ? '…' : 'ins Business'}
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
       {fehler && <div role="alert" style={{ fontSize: 12.5, color: LEUCHT.kritisch, marginTop: 8 }}>{fehler}</div>}
     </Karte>

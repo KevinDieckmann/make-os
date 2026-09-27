@@ -4,12 +4,15 @@
 // POST { aktion: 'fokus', von, bis, schluessel, label, aufgabeId?, einheit? } → ein bewusster Block ist zu Ende.
 // POST { aktion: 'zuordnen', von, aufgabeId?, einheit? } → einen eigenen Block nachträglich einer Aufgabe/Einheit
 //        zuordnen (leer = Zuordnung entfernen). Säuberung: lib/zeitmessung/einheiten.ts `zuordnungSaeubern`.
+// POST { aktion: 'umbuchen', von, space: 'privat'|'business' } → einen eigenen Block in den anderen Space umbuchen
+//        (nach Privat fallen Aufgabe/Einheit weg). Alle POST nur mit ausdrücklicher Person (401), nur im eigenen Bestand.
 // Zeit je Einheit (Woche/Monat, je Person und gesamt): /api/state/zeit/einheiten.
 // Die laufende Messung kommt über die Anwesenheit (/api/state/anwesenheit).
 
 import { NextResponse } from 'next/server';
 import { personAus } from '@/lib/zoe/raum';
-import { fokusAbschliessen, fokusZuordnen, aufgabenKurz, zeitBildFuer } from '@/lib/zeitmessung/speicher';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { fokusAbschliessen, fokusZuordnen, fokusUmbuchen, aufgabenKurz, zeitBildFuer } from '@/lib/zeitmessung/speicher';
 import { zuordnungSaeubern, AUFGABE_ID_MAX, type AufgabeKurz } from '@/lib/zeitmessung/einheiten';
 import { bild } from '@/lib/zeitmessung/modell';
 import { localDay } from '@/lib/zeit';
@@ -33,14 +36,24 @@ async function aufgabeZu(id: unknown): Promise<AufgabeKurz | null | undefined> {
 }
 
 export async function POST(req: Request) {
-  let b: { aktion?: string; von?: unknown; bis?: unknown; schluessel?: unknown; label?: unknown; aufgabeId?: unknown; einheit?: unknown };
+  // Schreiben nur mit ausdrücklicher Person (Sitzung oder Dienstweg mit Person) — nie der Rückfall auf „kevin“.
+  const person = personStreng(req);
+  if (!person) return NextResponse.json({ ok: false, error: 'Keine Person.' }, { status: 401 });
+  let b: { aktion?: string; von?: unknown; bis?: unknown; schluessel?: unknown; label?: unknown; aufgabeId?: unknown; einheit?: unknown; space?: unknown };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  if (b.aktion === 'umbuchen') {
+    const von = iso(b.von);
+    const ziel = b.space === 'privat' || b.space === 'business' ? b.space : null;
+    if (!von || !ziel) return NextResponse.json({ ok: false, error: 'von und space (privat|business) nötig.' }, { status: 400 });
+    const d = await fokusUmbuchen(person, von, ziel);
+    if (!d) return NextResponse.json({ ok: false, error: 'Block nicht gefunden.' }, { status: 404 });
+    return NextResponse.json({ ok: true, bild: bild(d, localDay()) }, { headers: { 'Cache-Control': 'no-store' } });
+  }
   if (b.aktion === 'zuordnen') {
     const von = iso(b.von);
     if (!von) return NextResponse.json({ ok: false, error: 'von nötig.' }, { status: 400 });
     const aufgabe = await aufgabeZu(b.aufgabeId);
     if (aufgabe === null) return NextResponse.json({ ok: false, error: 'Aufgabe nicht gefunden.' }, { status: 404 });
-    const person = personAus(req);
     const d = await fokusZuordnen(person, von, schluessel => zuordnungSaeubern(schluessel, b, aufgabe));
     if (!d) return NextResponse.json({ ok: false, error: 'Block nicht gefunden.' }, { status: 404 });
     return NextResponse.json({ ok: true, bild: bild(d, localDay()) }, { headers: { 'Cache-Control': 'no-store' } });
@@ -53,7 +66,6 @@ export async function POST(req: Request) {
   // Eine verschwundene Aufgabe kostet nicht den Block: dann eben ohne Aufgabe (die Einheit bleibt, wenn gewählt).
   const aufgabe = await aufgabeZu(b.aufgabeId);
   const zuordnung = zuordnungSaeubern(schluessel, b, aufgabe ?? undefined);
-  const person = personAus(req);
   const d = await fokusAbschliessen(person, { von, bis, schluessel, label: typeof b.label === 'string' ? b.label : '', ...zuordnung });
   return NextResponse.json({ ok: true, bild: bild(d, localDay()) }, { headers: { 'Cache-Control': 'no-store' } });
 }

@@ -125,7 +125,7 @@ export function FokusView() {
       <Kachel id="zeit-einheit" titel="Zeit je Einheit" breite={3}>
         <ZeitJeEinheitKarte i={3} />
       </Kachel>
-      <Kachel id="fokus-bloecke" titel="Fokus-Blöcke · Business" breite={3}>
+      <Kachel id="fokus-bloecke" titel="Fokus-Blöcke" breite={3}>
         <FokusBloeckeKarte i={4} />
       </Kachel>
       </Flaeche>

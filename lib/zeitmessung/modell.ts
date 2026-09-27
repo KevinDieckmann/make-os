@@ -107,6 +107,34 @@ export function blockZuordnen(d: ZeitDatei, von: string, z: BlockZuordnung): { d
   return { datei: d, gefunden: false };
 }
 
+/**
+ * Umbuchen (27.09. spät, Kevin: „Privat-Blöcke nachträglich ins Business umbuchen können“): der Block bekommt den Space
+ * `ziel` (Bereich bleibt), seine Sekunden wandern im selben Tag vom alten zum neuen Schlüssel der bewussten Zeit. Nach
+ * Privat fallen Aufgabe und Einheit weg (Privat trägt keine). Gleicher Space → unverändert, `gefunden: true`.
+ */
+export function blockUmbuchen(d: ZeitDatei, von: string, ziel: 'privat' | 'business'): { datei: ZeitDatei; gefunden: boolean } {
+  const tagDirekt = tagVon(von);
+  const tage = [tagDirekt, ...Object.keys(d.tage).filter(t => t !== tagDirekt)];
+  for (const tag of tage) {
+    const t = d.tage[tag];
+    const i = t?.bloecke?.findIndex(b => b.von === von) ?? -1;
+    if (!t || i < 0) continue;
+    const alt = t.bloecke[i];
+    const { space, bereich } = teile(alt.schluessel);
+    if (space === ziel) return { datei: d, gefunden: true };
+    const neuSchluessel = schluesselFuer(ziel, bereich);
+    const bewusst = { ...t.bewusst };
+    const rest = ganz((bewusst[alt.schluessel] ?? 0) - alt.sek);
+    if (rest > 0) bewusst[alt.schluessel] = rest; else delete bewusst[alt.schluessel];
+    bewusst[neuSchluessel] = ganz((bewusst[neuSchluessel] ?? 0) + alt.sek);
+    const { aufgabeId: _a, einheit: _e, ...ohne } = alt;
+    const bloecke = [...t.bloecke];
+    bloecke[i] = ziel === 'privat' ? { ...ohne, schluessel: neuSchluessel } : { ...alt, schluessel: neuSchluessel };
+    return { datei: { ...d, tage: { ...d.tage, [tag]: { ...t, bewusst, bloecke } } }, gefunden: true };
+  }
+  return { datei: d, gefunden: false };
+}
+
 /** Alte Tage wegräumen, damit die Datei nicht endlos wächst. */
 export function aufraeumen(d: ZeitDatei, heute: string, behalten = BEHALTEN_TAGE): ZeitDatei {
   const tage = Object.keys(d.tage).sort();

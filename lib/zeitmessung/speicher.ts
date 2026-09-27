@@ -10,7 +10,7 @@
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { speicherFuer, type Person } from '@/lib/zoe/raum';
 import { localDay } from '@/lib/zeit';
-import { LEER_ZEIT, verbuchen, fokusVerbuchen, blockZuordnen, aufraeumen, bild, type ZeitDatei, type ZeitBild, type BlockZuordnung } from './modell';
+import { LEER_ZEIT, verbuchen, fokusVerbuchen, blockZuordnen, blockUmbuchen, aufraeumen, bild, type ZeitDatei, type ZeitBild, type BlockZuordnung } from './modell';
 import { aufgabeKurz, type AufgabeKurz } from './einheiten';
 import type { TasksState } from '@/types/tasks';
 
@@ -71,13 +71,30 @@ export async function fokusAbschliessen(person: Person, block: { von: string; bi
 }
 
 /** Nachträglich zuordnen — nur im eigenen Bestand. `null`, wenn es den Block nicht gibt. */
+const hatBlock = (d: ZeitDatei, von: string) => Object.values(d.tage).some(t => (t.bloecke ?? []).some(b => b.von === von));
+
 export async function fokusZuordnen(person: Person, von: string, zuordnung: (schluessel: string) => BlockZuordnung): Promise<ZeitDatei | null> {
+  // Erst lesen: gibt es den Block nicht, wird nichts geschrieben (auch kein leerer Bestand angelegt).
+  if (!hatBlock(await ladeZeit(person), von)) return null;
   let gefunden = false;
   const d = await updateJson<ZeitDatei>(speicherFuer(NAME, person), current => {
     const alt = current ?? LEER_ZEIT;
     const block = Object.values(alt.tage).flatMap(t => t.bloecke ?? []).find(b => b.von === von);
     if (!block) return alt;
     const r = blockZuordnen(alt, von, zuordnung(block.schluessel));
+    gefunden = r.gefunden;
+    return r.datei;
+  });
+  if (gefunden) bloeckeStand++;
+  return gefunden ? d : null;
+}
+
+/** Einen eigenen Block in einen anderen Space umbuchen. `null`, wenn es den Block nicht gibt. */
+export async function fokusUmbuchen(person: Person, von: string, ziel: 'privat' | 'business'): Promise<ZeitDatei | null> {
+  if (!hatBlock(await ladeZeit(person), von)) return null;
+  let gefunden = false;
+  const d = await updateJson<ZeitDatei>(speicherFuer(NAME, person), current => {
+    const r = blockUmbuchen(current ?? LEER_ZEIT, von, ziel);
     gefunden = r.gefunden;
     return r.datei;
   });
