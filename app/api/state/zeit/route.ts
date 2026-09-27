@@ -1,12 +1,16 @@
 // ─── MAKE OS — Zeit & Fokus ─────────────────────────────────────────────────
 // GET  → das Bild der Person: heute und die letzten 7 Tage je Space und Bereich,
 //        bewusste Fokus-Zeit, Fokus-Tage, die letzten Blöcke.
-// POST { aktion: 'fokus', von, bis, schluessel, label } → ein bewusster Block ist zu Ende.
+// POST { aktion: 'fokus', von, bis, schluessel, label, aufgabeId?, einheit? } → ein bewusster Block ist zu Ende.
+// POST { aktion: 'zuordnen', von, aufgabeId?, einheit? } → einen eigenen Block nachträglich einer Aufgabe/Einheit
+//        zuordnen (leer = Zuordnung entfernen). Säuberung: lib/zeitmessung/einheiten.ts `zuordnungSaeubern`.
+// Zeit je Einheit (Woche/Monat, je Person und gesamt): /api/state/zeit/einheiten.
 // Die laufende Messung kommt über die Anwesenheit (/api/state/anwesenheit).
 
 import { NextResponse } from 'next/server';
 import { personAus } from '@/lib/zoe/raum';
-import { fokusAbschliessen, zeitBildFuer } from '@/lib/zeitmessung/speicher';
+import { fokusAbschliessen, fokusZuordnen, aufgabenKurz, zeitBildFuer } from '@/lib/zeitmessung/speicher';
+import { zuordnungSaeubern, AUFGABE_ID_MAX, type AufgabeKurz } from '@/lib/zeitmessung/einheiten';
 import { bild } from '@/lib/zeitmessung/modell';
 import { localDay } from '@/lib/zeit';
 
@@ -21,15 +25,35 @@ export async function GET(req: Request) {
 const SCHLUESSEL = /^(privat|business|gemeinsam):[a-z0-9-]{1,40}$/;
 const iso = (v: unknown): string | null => (typeof v === 'string' && Number.isFinite(Date.parse(v)) ? new Date(v).toISOString() : null);
 
+/** Die Aufgabe hinter einer Zuordnung — nur gelesen, wenn eine Kennung kommt. `undefined` = keine gewünscht, `null` = nicht gefunden. */
+async function aufgabeZu(id: unknown): Promise<AufgabeKurz | null | undefined> {
+  if (id == null || id === '') return undefined;
+  if (typeof id !== 'string' || !id.trim() || id.length > AUFGABE_ID_MAX) return null;
+  return (await aufgabenKurz()).find(a => a.id === id.trim()) ?? null;
+}
+
 export async function POST(req: Request) {
-  let b: { aktion?: string; von?: unknown; bis?: unknown; schluessel?: unknown; label?: unknown };
+  let b: { aktion?: string; von?: unknown; bis?: unknown; schluessel?: unknown; label?: unknown; aufgabeId?: unknown; einheit?: unknown };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  if (b.aktion === 'zuordnen') {
+    const von = iso(b.von);
+    if (!von) return NextResponse.json({ ok: false, error: 'von nötig.' }, { status: 400 });
+    const aufgabe = await aufgabeZu(b.aufgabeId);
+    if (aufgabe === null) return NextResponse.json({ ok: false, error: 'Aufgabe nicht gefunden.' }, { status: 404 });
+    const person = personAus(req);
+    const d = await fokusZuordnen(person, von, schluessel => zuordnungSaeubern(schluessel, b, aufgabe));
+    if (!d) return NextResponse.json({ ok: false, error: 'Block nicht gefunden.' }, { status: 404 });
+    return NextResponse.json({ ok: true, bild: bild(d, localDay()) }, { headers: { 'Cache-Control': 'no-store' } });
+  }
   if (b.aktion !== 'fokus') return NextResponse.json({ ok: false, error: 'Unbekannte Aktion.' }, { status: 400 });
   const von = iso(b.von), bis = iso(b.bis) ?? new Date().toISOString();
   const schluessel = typeof b.schluessel === 'string' && SCHLUESSEL.test(b.schluessel) ? b.schluessel : null;
   if (!von || !schluessel) return NextResponse.json({ ok: false, error: 'von und schluessel nötig.' }, { status: 400 });
   if (Date.parse(bis) <= Date.parse(von)) return NextResponse.json({ ok: false, error: 'Ende liegt vor dem Anfang.' }, { status: 400 });
+  // Eine verschwundene Aufgabe kostet nicht den Block: dann eben ohne Aufgabe (die Einheit bleibt, wenn gewählt).
+  const aufgabe = await aufgabeZu(b.aufgabeId);
+  const zuordnung = zuordnungSaeubern(schluessel, b, aufgabe ?? undefined);
   const person = personAus(req);
-  const d = await fokusAbschliessen(person, { von, bis, schluessel, label: typeof b.label === 'string' ? b.label : '' });
+  const d = await fokusAbschliessen(person, { von, bis, schluessel, label: typeof b.label === 'string' ? b.label : '', ...zuordnung });
   return NextResponse.json({ ok: true, bild: bild(d, localDay()) }, { headers: { 'Cache-Control': 'no-store' } });
 }

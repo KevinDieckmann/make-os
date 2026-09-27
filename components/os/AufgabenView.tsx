@@ -31,6 +31,7 @@ import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt,
 import { useSpace } from '@/hooks/useSpace';
 import { spaceVonAufgabe, SPACE_LABEL, SPACE_FARBE, type SpaceId } from '@/lib/make-one/space-regeln';
 import { EinheitWahl, EinheitFilterPillen, useEinheiten, einheitGemerkt, einheitMerken } from './aufgaben/Einheit';
+import { fokusFuerAufgabe } from '@/lib/zeitmessung/fokus-laufend';
 import { EINHEIT_ALLE, einheitFilterOptionen, passtEinheitFilter, vorgabeEinheit, type EinheitFilter } from '@/lib/aufgaben/einheit';
 
 const PRIO_ZYKLUS: Priority[] = ['low', 'medium', 'high', 'critical'];
@@ -622,6 +623,11 @@ export function AufgabenView() {
               {istBusiness(t) && <>
                 <DetailLabel>Einheit</DetailLabel>
                 <div><EinheitWahl wert={t.einheit} setzen={e => patchTask(t.id, { einheit: e })} einheiten={einheiten} anlegen={einheitAnlegen} /></div>
+                {!done && <>
+                  {/* Zeit & Fokus (27.09. spät): der Block zählt auf diese Aufgabe und ihre Einheit — Zähler oben im Kopf. */}
+                  <DetailLabel>Fokus</DetailLabel>
+                  <div><Pille farbe={C.aktiv} title="Fokus-Zähler oben starten (oder den laufenden Block dieser Aufgabe zuordnen)" onClick={() => fokusFuerAufgabe({ id: t.id, einheit: t.einheit })}>▶ Fokus auf diese Aufgabe</Pille></div>
+                </>}
               </>}
 
               <DetailLabel>Thema</DetailLabel>

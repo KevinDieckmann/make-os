@@ -16,7 +16,14 @@ import { localDay } from '@/lib/zeit';
 
 export type ZeitSpace = SpaceId | 'gemeinsam';
 
-export interface FokusBlock { von: string; bis: string; schluessel: string; label: string; sek: number }
+/**
+ * Ein bewusster Block. Seit 27.09. spät (Kevin: „Fokus-Blöcke einer Aufgabe zuordnen, damit wir die Zeit je Einheit
+ * sehen“) optional mit `aufgabeId` und `einheit` — beides nur im Business, gesäubert im Schreibweg
+ * (lib/zeitmessung/einheiten.ts `zuordnungSaeubern`). Altbestand ohne die Felder bleibt gültig („ohne Einheit“).
+ */
+export interface FokusBlock { von: string; bis: string; schluessel: string; label: string; sek: number; aufgabeId?: string; einheit?: string }
+/** Zuordnung eines Blocks — nur die gesetzten Felder werden gespeichert. */
+export interface BlockZuordnung { aufgabeId?: string; einheit?: string }
 export interface ZeitTag { auto: Record<string, number>; bewusst: Record<string, number>; bloecke: FokusBlock[] }
 export interface ZeitDatei {
   tage: Record<string, ZeitTag>;
@@ -63,15 +70,41 @@ export function verbuchen(d: ZeitDatei, at: string, schluessel: string): ZeitDat
   return { ...d, tage, letzter: { at, schluessel } };
 }
 
-/** Ein bewusster Fokus-Block ist zu Ende: Sekunden gutschreiben und den Block merken. */
-export function fokusVerbuchen(d: ZeitDatei, block: { von: string; bis: string; schluessel: string; label: string }): ZeitDatei {
+/** Nur gesetzte Zuordnungs-Felder übernehmen (kein `aufgabeId: undefined` im Bestand). */
+const mitZuordnung = (b: Omit<FokusBlock, 'aufgabeId' | 'einheit'>, z: BlockZuordnung): FokusBlock =>
+  ({ ...b, ...(z.aufgabeId ? { aufgabeId: z.aufgabeId } : {}), ...(z.einheit ? { einheit: z.einheit } : {}) });
+
+/** Ein bewusster Fokus-Block ist zu Ende: Sekunden gutschreiben und den Block merken. Die Zuordnung muss schon gesäubert sein. */
+export function fokusVerbuchen(d: ZeitDatei, block: { von: string; bis: string; schluessel: string; label: string } & BlockZuordnung): ZeitDatei {
   const sek = Math.min(MAX_FOKUS_SEK, ganz((Date.parse(block.bis) - Date.parse(block.von)) / 1000));
   if (!Number.isFinite(sek) || sek <= 0) return d;
   const tag = tagVon(block.von);
   const alt = d.tage[tag] ?? leererTag();
-  const t: ZeitTag = { ...alt, bewusst: { ...alt.bewusst }, bloecke: [...alt.bloecke, { ...block, label: block.label.slice(0, 60), sek }].slice(-60) };
+  const { von, bis, schluessel, label } = block;
+  const neu = mitZuordnung({ von, bis, schluessel, label: label.slice(0, 60), sek }, block);
+  const t: ZeitTag = { ...alt, bewusst: { ...alt.bewusst }, bloecke: [...alt.bloecke, neu].slice(-60) };
   t.bewusst[block.schluessel] = ganz((t.bewusst[block.schluessel] ?? 0) + sek);
   return { ...d, tage: { ...d.tage, [tag]: t } };
+}
+
+/**
+ * Nachträglich zuordnen (27.09. spät): den Block mit diesem Anfang finden (zuerst am eigenen Tag, sonst überall) und
+ * `aufgabeId`/`einheit` ersetzen — leere Felder entfernen die Zuordnung. Sekunden und Summen bleiben unverändert.
+ * `gefunden: false` → Datei unverändert.
+ */
+export function blockZuordnen(d: ZeitDatei, von: string, z: BlockZuordnung): { datei: ZeitDatei; gefunden: boolean } {
+  const tagDirekt = tagVon(von);
+  const tage = [tagDirekt, ...Object.keys(d.tage).filter(t => t !== tagDirekt)];
+  for (const tag of tage) {
+    const t = d.tage[tag];
+    const i = t?.bloecke?.findIndex(b => b.von === von) ?? -1;
+    if (!t || i < 0) continue;
+    const { aufgabeId: _a, einheit: _e, ...rest } = t.bloecke[i];
+    const bloecke = [...t.bloecke];
+    bloecke[i] = mitZuordnung(rest, z);
+    return { datei: { ...d, tage: { ...d.tage, [tag]: { ...t, bloecke } } }, gefunden: true };
+  }
+  return { datei: d, gefunden: false };
 }
 
 /** Alte Tage wegräumen, damit die Datei nicht endlos wächst. */

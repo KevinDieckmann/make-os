@@ -13,13 +13,16 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { zoneFarbe } from './schlank';
-import { Sun, Inbox as InboxIcon, Search, CalendarDays, ArrowUpRight, Timer, Square } from 'lucide-react';
+import { Sun, Inbox as InboxIcon, Search, CalendarDays, ArrowUpRight, Timer, Square, Tag } from 'lucide-react';
 import { useSpace } from '@/hooks/useSpace';
 import { spaceVon, type SpaceId } from '@/lib/make-one/spaces';
-import { zeitText } from '@/lib/zeitmessung/modell';
+import { zeitText, teile } from '@/lib/zeitmessung/modell';
+import { gemerkterFokus, fokusMerken, FOKUS_MERKER, FOKUS_EREIGNIS, type LaufenderFokus } from '@/lib/zeitmessung/fokus-laufend';
+import { useTasks } from '@/context/TasksContext';
+import { ZuordnungWahl } from './zeit/Zuordnung';
 import { WEG } from '@/lib/wege';
 import { zeitSchluessel } from '@/lib/zeitmessung/bereich';
 
@@ -126,20 +129,64 @@ function SpaceSchalter({ space, ausAdresse, setzen }: { space: SpaceId; ausAdres
 
 // ── Fokus-Zähler (Kevin 26.09. spät: „mit Fokus auch wieder messen“) ────────
 // Startet bewusste Zeit für den Bereich, auf dem man gerade ist. Läuft über Seitenwechsel
-// hinweg (localStorage) und wird beim Stopp als Block verbucht (/api/state/zeit).
-const FOKUS_MERKER = 'make-fokus';
-interface Laufend { von: string; schluessel: string; label: string }
-function gemerkterFokus(): Laufend | null {
-  try { const v = localStorage.getItem(FOKUS_MERKER); return v ? (JSON.parse(v) as Laufend) : null; } catch { return null; }
-}
+// hinweg (localStorage, lib/zeitmessung/fokus-laufend.ts) und wird beim Stopp als Block verbucht
+// (/api/state/zeit). Seit 27.09. spät: im Business lässt sich der laufende Block gleich einer
+// Aufgabe oder Einheit zuordnen (Chip neben dem Zähler); das Aufgaben-Detail kann ihn starten.
 const uhr = (sek: number) => {
   const h = Math.floor(sek / 3600), m = Math.floor((sek % 3600) / 60), s = sek % 60;
   return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
 };
+/**
+ * Zuordnen im Kopf (27.09. spät): ein kleiner Knopf neben dem laufenden Zähler öffnet ein Feld mit Aufgabe und Einheit —
+ * zwei Chips direkt im Kopf hätten ihn überlaufen lassen. Punkt am Knopf = zugeordnet.
+ */
+const MENUES = '[data-wahl-menue],.wahl-hinter,[role="listbox"],[role="menu"]';
+function FokusZuordnenKnopf({ wert, setzen }: { wert: { aufgabeId?: string; einheit?: string }; setzen: (z: { aufgabeId?: string; einheit?: string }) => void }) {
+  const [auf, setAuf] = useState(false);
+  const feldRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!auf) return;
+    // Die Menüs der Chips hängen als Portal am Seitenende — ein Klick dort schließt das Feld nicht.
+    const weg = (e: MouseEvent) => {
+      const z = e.target as HTMLElement | null;
+      if (feldRef.current?.contains(z) || z?.closest?.(MENUES)) return;
+      setAuf(false);
+    };
+    const taste = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector(MENUES)) setAuf(false); };
+    document.addEventListener('mousedown', weg);
+    document.addEventListener('keydown', taste);
+    return () => { document.removeEventListener('mousedown', weg); document.removeEventListener('keydown', taste); };
+  }, [auf]);
+  const gesetzt = !!(wert.aufgabeId || wert.einheit);
+  return (
+    <span ref={feldRef} className="wachstum-kopf-label" style={{ position: 'relative', display: 'inline-flex' }}>
+      <button type="button" onClick={() => setAuf(a => !a)} aria-expanded={auf} aria-label="Fokus einer Aufgabe oder Einheit zuordnen" title={gesetzt ? 'Zuordnung ändern' : 'Einer Aufgabe oder Einheit zuordnen'} className="fassbar"
+        style={{ ...rund(gesetzt), width: 30, height: 30, position: 'relative', cursor: 'pointer', background: 'none' }}>
+        <Tag size={14} strokeWidth={1.9} />
+      </button>
+      {auf && (
+        <span role="group" aria-label="Fokus zuordnen" style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, zIndex: 40, display: 'grid', gap: 8, padding: '12px 14px', minWidth: 280, maxWidth: 380, borderRadius: 14, background: C.flaeche, border: '1px solid rgba(255,255,255,.08)', boxShadow: '0 18px 50px -12px rgba(0,0,0,.75)' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>Fokus zuordnen</span>
+          <ZuordnungWahl klein wert={wert} setzen={setzen} />
+          <span style={{ fontSize: 12, color: C.inkLeise }}>Zählt auf die Einheit der Aufgabe — oder auf die gewählte Einheit.</span>
+        </span>
+      )}
+    </span>
+  );
+}
+
 function FokusZaehler({ pfad, space }: { pfad: string; space: SpaceId }) {
-  const [laufend, setLaufend] = useState<Laufend | null>(null);
+  const [laufend, setLaufend] = useState<LaufenderFokus | null>(null);
   const [jetzt, setJetzt] = useState(0);
-  useEffect(() => { setLaufend(gemerkterFokus()); setJetzt(Date.now()); }, []);
+  const { state } = useTasks();
+  useEffect(() => {
+    const lesen = () => { setLaufend(gemerkterFokus()); setJetzt(Date.now()); };
+    lesen();
+    const fremd = (e: StorageEvent) => { if (e.key === FOKUS_MERKER) lesen(); };
+    window.addEventListener(FOKUS_EREIGNIS, lesen);
+    window.addEventListener('storage', fremd);
+    return () => { window.removeEventListener(FOKUS_EREIGNIS, lesen); window.removeEventListener('storage', fremd); };
+  }, []);
   useEffect(() => {
     if (!laufend) return;
     const t = setInterval(() => setJetzt(Date.now()), 1000);
@@ -147,29 +194,38 @@ function FokusZaehler({ pfad, space }: { pfad: string; space: SpaceId }) {
   }, [laufend]);
   const starten = () => {
     const { schluessel, bereich } = zeitSchluessel(pfad, window.location.search, space);
-    const l: Laufend = { von: new Date().toISOString(), schluessel, label: bereich.label };
-    try { localStorage.setItem(FOKUS_MERKER, JSON.stringify(l)); } catch { /* egal */ }
-    setLaufend(l); setJetzt(Date.now());
+    fokusMerken({ von: new Date().toISOString(), schluessel, label: bereich.label });
+  };
+  const zuordnen = (z: { aufgabeId?: string; einheit?: string }) => {
+    if (!laufend) return;
+    const { aufgabeId: _a, einheit: _e, ...rest } = laufend;
+    fokusMerken({ ...rest, ...(z.aufgabeId ? { aufgabeId: z.aufgabeId } : {}), ...(z.einheit ? { einheit: z.einheit } : {}) });
   };
   const stoppen = async () => {
     if (!laufend) return;
     const l = laufend;
-    setLaufend(null);
-    try { localStorage.removeItem(FOKUS_MERKER); } catch { /* egal */ }
+    fokusMerken(null);
     try {
-      await fetch('/api/state/zeit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'fokus', von: l.von, bis: new Date().toISOString(), schluessel: l.schluessel, label: l.label }) });
+      await fetch('/api/state/zeit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'fokus', von: l.von, bis: new Date().toISOString(), schluessel: l.schluessel, label: l.label, aufgabeId: l.aufgabeId, einheit: l.einheit }) });
     } catch { /* der Block ist dann weg — besser als ein hängender Zähler */ }
     window.dispatchEvent(new Event(ZEIT_EREIGNIS));
   };
   if (laufend) {
     const sek = Math.max(0, Math.round((jetzt - Date.parse(laufend.von)) / 1000));
+    const aufgabe = laufend.aufgabeId ? state.tasks.find(t => t.id === laufend.aufgabeId)?.title : undefined;
+    const text = aufgabe ? (aufgabe.length > 22 ? `${aufgabe.slice(0, 21)}…` : aufgabe) : laufend.label;
     return (
-      <button onClick={stoppen} title={`Fokus „${laufend.label}“ beenden`} className="fassbar fokus-laeuft" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 999, border: `1px solid ${C.aktiv}66`, background: `${C.aktiv}14`, color: C.ink, cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
-        <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: C.aktiv, boxShadow: `0 0 8px ${C.aktiv}` }} />
-        <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>{uhr(sek)}</span>
-        <span className="wachstum-kopf-label" style={{ fontSize: 12, color: C.inkDim }}>{laufend.label}</span>
-        <Square size={10} fill="currentColor" strokeWidth={0} style={{ color: C.inkLeise }} />
-      </button>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flex: '0 0 auto', minWidth: 0 }}>
+        <button onClick={stoppen} title={`Fokus „${aufgabe ?? laufend.label}“ beenden`} className="fassbar fokus-laeuft" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 999, border: `1px solid ${C.aktiv}66`, background: `${C.aktiv}14`, color: C.ink, cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+          <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: C.aktiv, boxShadow: `0 0 8px ${C.aktiv}` }} />
+          <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>{uhr(sek)}</span>
+          <span className="wachstum-kopf-label" style={{ fontSize: 12, color: C.inkDim }}>{text}</span>
+          <Square size={10} fill="currentColor" strokeWidth={0} style={{ color: C.inkLeise }} />
+        </button>
+        {teile(laufend.schluessel).space === 'business' && (
+          <FokusZuordnenKnopf wert={{ aufgabeId: laufend.aufgabeId, einheit: laufend.einheit }} setzen={zuordnen} />
+        )}
+      </span>
     );
   }
   return (
@@ -191,8 +247,9 @@ export function Kopf() {
       <div className="wachstum-kopf-innen">
         {/* Ganz links der Wachstums-Score als Zahl (Kevin 26.09. spät), dann das Suchfeld ausgeglichen in der Mitte */}
         <WachstumsZahl />
-        {/* Suchfeld im aktiven Space — auf dem Handy nur die Lupe */}
-        <button onClick={suchen} title="Suchen (⌘K)" aria-label="Suchen" className="wachstum-kopf-suche fassbar" style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1 520px', minWidth: 0, maxWidth: 960, margin: '0 auto', padding: '9px 14px', borderRadius: 12, cursor: 'text', border: '1px solid rgba(255,255,255,.08)', background: 'rgba(255,255,255,.04)', color: C.inkLeise, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, textAlign: 'left' }}>
+        {/* Suchfeld im aktiven Space — auf dem Handy nur die Lupe. Es gibt zuerst nach (flex-shrink 1000), damit ein laufender
+            Fokus-Zähler rechts den Kopf nicht überlaufen lässt (27.09. spät). */}
+        <button onClick={suchen} title="Suchen (⌘K)" aria-label="Suchen" className="wachstum-kopf-suche fassbar" style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1000 520px', minWidth: 0, maxWidth: 960, margin: '0 auto', padding: '9px 14px', borderRadius: 12, cursor: 'text', border: '1px solid rgba(255,255,255,.08)', background: 'rgba(255,255,255,.04)', color: C.inkLeise, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, textAlign: 'left' }}>
           <Search size={15} strokeWidth={1.9} style={{ flex: '0 0 auto' }} />
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{sp.suche}</span>
           <span className="nur-tastatur" style={{ fontSize: 11, border: '1px solid rgba(255,255,255,.12)', borderRadius: 6, padding: '1px 6px', color: C.inkLeise }}>⌘K</span>

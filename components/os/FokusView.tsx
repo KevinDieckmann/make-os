@@ -7,6 +7,8 @@
 //   1. Unser Fokus — ein Satz für heute, die Woche, den Monat (ziele.fokus)
 //   2. Tagesform — die echte Recovery von heute, auf Wunsch mit KI-Einordnung
 //   3. Worauf die Energie geht — die Fokus-Regler je Säule (gepflegt im Kompass)
+//   4. Zeit je Einheit + Fokus-Blöcke (27.09. spät) — bewusste Business-Zeit je Selbstständigkeit ·
+//      KD Ventures · MAKE OS UG, Blöcke nachträglich einer Aufgabe/Einheit zuordnen
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -14,6 +16,7 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Rich } from './Rich';
 import { Seite, Karte, Ueberschrift, Ring, Chip, Knopf, Leer, feld, zoneFarbe, LEUCHT } from './schlank';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
+import { ZeitJeEinheitKarte, FokusBloeckeKarte } from './zeit/ZeitJeEinheit';
 
 type Horizont = 'tag' | 'woche' | 'monat';
 const HORIZONTE: { id: Horizont; label: string; frage: string }[] = [
@@ -116,6 +119,14 @@ export function FokusView() {
           </div>
         ) : <Leer>Noch keine Regler gesetzt — im Kompass einstellen.</Leer>}
       </Karte>
+      </Kachel>
+
+      {/* Zeit & Fokus (27.09. spät, Kevin: „Zeit je Einheit sehen“) — Auswertung und nachträgliches Zuordnen der Blöcke */}
+      <Kachel id="zeit-einheit" titel="Zeit je Einheit" breite={3}>
+        <ZeitJeEinheitKarte i={3} />
+      </Kachel>
+      <Kachel id="fokus-bloecke" titel="Fokus-Blöcke · Business" breite={3}>
+        <FokusBloeckeKarte i={4} />
       </Kachel>
       </Flaeche>
     </Seite>

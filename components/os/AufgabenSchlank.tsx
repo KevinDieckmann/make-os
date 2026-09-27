@@ -19,6 +19,7 @@ import type { Task } from '@/types/tasks';
 import type { Owner } from '@/types/common';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, feld, prioFarbe, LEUCHT, Spalten, Spalte } from './schlank';
 import { EinheitWahl, EinheitFilterPillen, useEinheiten, einheitGemerkt, einheitMerken } from './aufgaben/Einheit';
+import { fokusFuerAufgabe } from '@/lib/zeitmessung/fokus-laufend';
 import { EINHEIT_ALLE, EINHEIT_OHNE, einheitFilterOptionen, passtEinheitFilter, vorgabeEinheit, type EinheitFilter } from '@/lib/aufgaben/einheit';
 
 const wahl: React.CSSProperties = { background: C.flaeche, border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark' };
@@ -99,6 +100,11 @@ export function AufgabenSchlank() {
           {state.projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
         </select>
         {istBusiness(t) && <EinheitWahl wert={t.einheit} setzen={e => aendern(t.id, { einheit: e })} einheiten={einheiten} anlegen={einheitAnlegen} />}
+        {/* Zeit & Fokus (27.09. spät): Fokus-Zähler oben für diese Aufgabe starten — die Zeit zählt auf ihre Einheit. */}
+        {istBusiness(t) && t.status !== 'done' && (
+          <button onClick={() => fokusFuerAufgabe({ id: t.id, einheit: t.einheit })} title="Fokus-Zähler oben starten (oder den laufenden Block dieser Aufgabe zuordnen)"
+            className="fassbar" style={{ ...wahl, cursor: 'pointer', color: C.aktiv }}>▶ Fokus</button>
+        )}
         <select value={t.space ?? 'auto'} onChange={e => aendern(t.id, { space: e.target.value === 'auto' ? undefined : (e.target.value as SpaceId) })} title="Space — ohne Angabe gibt der Ort den Space vor" style={wahl}>
           <option value="auto">Space: {SPACE_LABEL[spaceVonAufgabe(t)]} (aus dem Ort)</option>
           <option value="privat">Privat</option>

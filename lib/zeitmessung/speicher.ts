@@ -10,7 +10,9 @@
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { speicherFuer, type Person } from '@/lib/zoe/raum';
 import { localDay } from '@/lib/zeit';
-import { LEER_ZEIT, verbuchen, fokusVerbuchen, aufraeumen, bild, type ZeitDatei, type ZeitBild } from './modell';
+import { LEER_ZEIT, verbuchen, fokusVerbuchen, blockZuordnen, aufraeumen, bild, type ZeitDatei, type ZeitBild, type BlockZuordnung } from './modell';
+import { aufgabeKurz, type AufgabeKurz } from './einheiten';
+import type { TasksState } from '@/types/tasks';
 
 const NAME = 'zeit';
 export const PUFFER_MS = 120_000;
@@ -54,9 +56,41 @@ export async function pufferLeeren(person: Person): Promise<void> {
   await schreibe(person, p.pings);
 }
 
-/** Ein bewusster Fokus-Block ist zu Ende. */
-export async function fokusAbschliessen(person: Person, block: { von: string; bis: string; schluessel: string; label: string }): Promise<ZeitDatei> {
-  return updateJson<ZeitDatei>(speicherFuer(NAME, person), current => aufraeumen(fokusVerbuchen(current ?? LEER_ZEIT, block), localDay()));
+/**
+ * Stand der bewussten Blöcke (Prozess-Zähler, 27.09. spät): `zeit` ist Memo-Rauschen (lib/store/memo.ts), eine Schreibung
+ * macht also nichts ungültig. Wer über Blöcke rechnet (Zeit je Einheit), nimmt diesen Stand in den Memo-Schlüssel.
+ */
+let bloeckeStand = 0;
+export const zeitBloeckeStand = (): number => bloeckeStand;
+
+/** Ein bewusster Fokus-Block ist zu Ende. Die Zuordnung muss gesäubert sein (`zuordnungSaeubern`). */
+export async function fokusAbschliessen(person: Person, block: { von: string; bis: string; schluessel: string; label: string } & BlockZuordnung): Promise<ZeitDatei> {
+  const d = await updateJson<ZeitDatei>(speicherFuer(NAME, person), current => aufraeumen(fokusVerbuchen(current ?? LEER_ZEIT, block), localDay()));
+  bloeckeStand++;
+  return d;
+}
+
+/** Nachträglich zuordnen — nur im eigenen Bestand. `null`, wenn es den Block nicht gibt. */
+export async function fokusZuordnen(person: Person, von: string, zuordnung: (schluessel: string) => BlockZuordnung): Promise<ZeitDatei | null> {
+  let gefunden = false;
+  const d = await updateJson<ZeitDatei>(speicherFuer(NAME, person), current => {
+    const alt = current ?? LEER_ZEIT;
+    const block = Object.values(alt.tage).flatMap(t => t.bloecke ?? []).find(b => b.von === von);
+    if (!block) return alt;
+    const r = blockZuordnen(alt, von, zuordnung(block.schluessel));
+    gefunden = r.gefunden;
+    return r.datei;
+  });
+  if (gefunden) bloeckeStand++;
+  return gefunden ? d : null;
+}
+
+/** Die Aufgaben als Kurzform (Space und Einheit wie im Aufgaben-Schreibweg, Orte aus `ordnung`). */
+export async function aufgabenKurz(): Promise<AufgabeKurz[]> {
+  const state = await loadJson<TasksState>('tasks');
+  const ordnung = await loadJson<{ orgs?: Record<string, string> }>('ordnung');
+  const orgs = ordnung?.orgs && typeof ordnung.orgs === 'object' ? ordnung.orgs : {};
+  return (state?.tasks ?? []).map(t => aufgabeKurz(t, orgs));
 }
 
 /**
