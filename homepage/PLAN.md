@@ -49,7 +49,35 @@ Kevin: „Grundgedanken sehr gut, CI gefällt mir. Logo noch nicht so. Nie echte
 4. Geprüft: Desktop 1440 (headless), Handy 375 (Pane-Emulation: keine Seitenverschiebung, Burger sichtbar, Konsole leer), Reduced-Motion, Tastatur-Fokus, `pruefen.mjs` grün.
 5. Kevin testet: Preview „make-os-homepage“ (Port 3012). Hosten nur auf sein Wort.
 
-## Offen für Kevin
+## Dritter Durchgang (27.09.): Brain-Effekt und Abenteuer
+Kevin: „Der Schieber reicht da nicht. Überarbeite das Ganze. Malin ist eher Rot, Kevin Grün. Bau uns daraus ein Abenteuer, das verkauft.“
+
+**Gebaut**
+1. **Das Brain (`js/brain.js`, ~330 Zeilen, keine Bibliothek).** Ein 2D-Canvas als Sticky-Bühne hinter den ersten fünf Kapiteln (`.odyssee` → `.buehne`). 548 Knoten (Handy 244) auf einer Hirnform — Fibonacci-Kugel, breiter als hoch, Furche in der Mitte, Windungen als Sinus-Wellen im Radius — plus Kernknoten. Linke Hälfte Granat (Malin), rechte Hälfte Smaragd (Kevin), Synapsen über die Furche und der Kern in Türkis (das Produkt). Kanten sind die zwei nächsten Nachbarn im Raum (einmal gerechnet). Das Netz dreht sich langsam, neigt sich zum Zeiger, Knoten weichen der Maus (Handy: dem Finger) aus, Verbindungen leuchten dort türkis auf.
+2. **Die Verwandlung folgt dem Scrollen, nie umgekehrt.** Aus der Lage des Abschnitts wird ein kontinuierlicher Kapitelindex f ∈ [0, 4] mit ruhigen Fenstern um jede Kapitelmitte; daraus Gewichte je Kapitel (Dach-Funktionen), die Zielpositionen mischen: **00 Hero** ein Brain aus zwei Hälften · **01 Zwei Leben** die Hälften treiben auseinander · **02 Das Chaos** alles zerfällt in neun graue App-Haufen mit Chips (Wearable, Kalender, CRM … jede „alles gut“) · **03 Ein Brain** die Haufen finden sich hinter der Score-Scheibe wieder (Glas: das Netz schimmert durch) · **04 Jarvis** ein Impuls läuft per Breitensuche vom Kern nach außen, bleibt am Stapel-Knoten stehen (gelb, „Wartet auf dein Ja“) und wird beim Weiterscrollen grün („Freigegeben — von dir“). Am Ende der Bühne blendet das Canvas aus.
+3. **Das M (`#make-m`).** Zweites Netz im Founder-Abschnitt: Granat- und Smaragd-Wolken treiben, formen beim Einscrollen die zwei Striche von Logo F und treffen sich in der Fuge — dort ein türkiser Funke. Darunter weiter die MALIN + KEVIN → MAKE-Animation, jetzt mit MA in Granat und KE in Smaragd.
+4. **Kapitel-Dramaturgie.** Zehn Stationen mit Rail rechts (Desktop) und Kapitel-Label im Kopf (Handy): 00 Start · 01 Zwei Leben · 02 Das Chaos · 03 Ein Brain · 04 Jarvis · 05 Die Bereiche · 06 Dein Server · 07 MA + KE (Founder + Zu zweit) · 08 Was drinsteckt (Zahlen, Für wen, Entwicklung, Fragen) · 09 Einmal testen. Der Vorher/Nachher-Regler und die Sticky-Story sind im Effekt aufgegangen (Chaos → Brain). Kapiteltexte blenden über der Bühne ein und aus; im langen Jarvis-Kapitel bleibt der Text stehen, während der Impuls läuft. Kevins Texte, die App-Rahmen, Zähler, Reiter, Chat, Weg eines Vorschlags, Garantien, FAQ, Formular bleiben.
+5. **Granat und Smaragd als Erzählfarben** (`--granat:#D13A55`, `--smaragd:#22B577` in `site.css`; `ci.css` unverändert): Logo F (linker Strich Granat, rechter Smaragd — `logo.svg`, `logo-app.svg`, `logo-hell.svg`, `favicon.svg`), Wortmarke nach MAKE-CI (Buchstaben weiß, Granat-Strich unter MA, Smaragd-Strich unter KE — Nav, Footer, `wortmarke.svg`), Founder-Karten, Räume privat-malin/privat-kevin, Fortschrittsbalken, Aurora. Türkis bleibt Produkt-Akzent (CTA, Ring, Kern, Synapsen).
+6. **Standbild und Fallbacks.** `assets/brain-standbild.svg` (63 KB, gleiche Geometrie, fester Blickwinkel) liegt unter dem Canvas und bleibt ohne JS oder ohne Canvas stehen; `prefers-reduced-motion` schaltet den Dauerlauf ab — ein Bild je Scroll-Stand, Übergänge springen. Handy: weniger Knoten, Haufen enger, Text unten mit Scrim, Score-Scheibe unter dem Text.
+7. **Behobene Falle:** `body{overflow-x:hidden}` machte den Body zum Scroll-Container — `position:sticky` (Nav und Bühne) griff nicht. Jetzt `overflow-x:clip`.
+8. **Prüfung:** `pruefen.mjs` prüft jetzt Seite **und** Code (css/js) auf gesperrte Namen (inkl. Vorbild-Firma und -Gründer), verbotene Wörter, eingebundene Skripte und das Standbild. Headless-Screenshots 1440×900 (Hero, jedes Kapitel, Übergang, MA + KE) und 390×844 (Hero, Kapitel, Bereiche) — keine horizontale Verschiebung, Konsole leer.
+
+**Stellschrauben (alle in `js/brain.js`, oben in `grosseBuehne` / `kleineBuehne`)**
+- Knotenzahl `N_OBER`/`N_KERN` (470/78 Desktop, 210/34 Handy) · Nachbarn `nachbarn(P, 3, 2)` (2 → dichter mit 3) · Drehung `winkel += dt * .00011` · Trägheit `k = .1` · Zeiger-Radius `RM` (150/90) und Kraft `* 14`.
+- Lage: `grund()` (Desktop Mittelpunkt 70 % Breite, Radius min(36 % Höhe, 19 % Breite); Handy 50 %/30 %) · Spalt in „Zwei Leben“ `R * .5` · Chaos-Raster `HAUFEN`, Streuung `hx/hy/rC`.
+- Kapitelfenster: `spanne(u, .22, .78)` (ruhige Zone ±22 % um jede Mitte) · Kapitellängen in `site.css` (`.kapitel` 100 svh, `.kapitel.lang` 190 svh) · Ausblenden am Ende `max − vh * .45`.
+- Impuls: `front = u4 * (maxHop + 3)`, Freigabe bei `u4 > .78`, Stapel-Knoten = weit außen rechts oben.
+- Farben nur in `F` (brain.js), `:root` (site.css) und den Logo-SVGs.
+- Bilder: `node …/standbild.mjs` (Skript im Scratchpad dieser Session; bei Geometrie-Änderung neu erzeugen — Rezept steht im Kopf von `brain.js`).
+
+**Offen für Kevin**
+- Farbwerte final: Granat `#D13A55` / Smaragd `#22B577` sind aus der MAKE-CI abgeleitet, nicht daraus kopiert (die PDF nennt Namen, keine Hex-Werte) — gegen die Original-CI prüfen.
+- Hero-Bild: Brain allein (jetzt) oder Brain + kleine Score-Scheibe wie im zweiten Durchgang?
+- Das Chaos-Kapitel nennt Gattungen (Wearable, CRM, Banking …) — sollen echte Produktnamen als Gegner genannt werden (verkauft härter, ist aber angreifbar)?
+- Kapitel 06 „Dein Server“ könnte ein drittes Netz bekommen (Brain in einem Server-Rahmen, eine Linie geht raus und kommt zurück) — bewusst noch nicht gebaut, damit der Effekt nicht inflationär wird.
+- Ton auf dem Handy: die Bühne liegt hinter dem Text (Scrim); Alternative wäre Bühne oben, Text darunter ohne Überlappung (ruhiger, aber weniger Kino).
+
+## Offen für Kevin (zweiter Durchgang, weiter gültig)
 - „Life & Business **Operating** System“ (englisch korrekt) oder „Operation System“ wie im Auftrag und in `Terminologie_Brain`?
 - Echte Porträts von Malin und Kevin (die CI verlangt sie — Initialen-Karten sitzen in „Warum MAKE“).
 - Mail-Adresse für „Einmal testen“ (Platzhalter in `js/site.js`, Konstante `EMPFAENGER`) und Domain (make.one/.build waren am 21.09. frei; „MAKE“ in Klasse 35 fremd belegt).

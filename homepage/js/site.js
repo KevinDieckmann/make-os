@@ -1,21 +1,28 @@
-// ─── MAKE OS Homepage — Bewegung mit Maß, v2 (27.09.) ───────────────────────
+// ─── MAKE OS Homepage — Bewegung mit Maß, v3 (27.09.) ───────────────────────
 // Zierde über einer Seite, die ohne JS vollständig lesbar ist. reduced-motion
-// schaltet Zähler, Ring, Regler-Intro und Reveals auf „sofort da“.
+// schaltet Zähler, Ring und Reveals auf „sofort da“. Das Brain lebt in brain.js.
 (() => {
   const ruhig = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const maus = matchMedia('(hover:hover) and (pointer:fine)').matches;
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 
-  // Fortschritt, Nach-oben, Scrollspy
-  const fortschritt = $('.fortschritt'), nachoben = $('.nachoben'), links = $$('.nav nav a[href^="#"]');
-  const abschnitte = links.map(a => $(a.getAttribute('href'))).filter(Boolean);
+  // Fortschritt, Nach-oben, Kapitel-Anzeige (Rail rechts, Label im Handy-Kopf, Nav-Links)
+  const fortschritt = $('.fortschritt'), nachoben = $('.nachoben'), links = $$('.nav nav a[href^="#"]'), railLinks = $$('.rail a'), kapLabel = $('.kap-label');
+  const kapitelEls = $$('[data-kapitel]');
+  const kapitelName = Object.fromEntries(railLinks.map(a => [a.dataset.nr, a.querySelector('span')?.textContent || '']));
+  let letzteNr = null;
   const beimScrollen = () => {
     const h = document.documentElement; const max = h.scrollHeight - h.clientHeight;
     if (fortschritt) fortschritt.style.width = `${max > 0 ? (h.scrollTop / max) * 100 : 0}%`;
     if (nachoben) nachoben.classList.toggle('da', h.scrollTop > 700);
-    let aktiv = null; for (const s of abschnitte) if (s.getBoundingClientRect().top - 120 <= 0) aktiv = s;
-    links.forEach(a => a.classList.toggle('aktiv', !!aktiv && a.getAttribute('href') === `#${aktiv.id}`));
+    const grenze = innerHeight * .45; let aktiv = null;
+    for (const el of kapitelEls) if (el.getBoundingClientRect().top <= grenze) aktiv = el;
+    const nr = aktiv ? aktiv.dataset.kapitel : '00';
+    if (nr === letzteNr) return; letzteNr = nr;
+    railLinks.forEach(a => a.classList.toggle('aktiv', a.dataset.nr === nr));
+    links.forEach(a => { const ziel = $(a.getAttribute('href')); a.classList.toggle('aktiv', !!ziel && (ziel.dataset.kapitel === nr || ziel.closest('[data-kapitel]')?.dataset.kapitel === nr)); });
+    if (kapLabel) kapLabel.textContent = nr === '00' ? '' : `${nr} · ${kapitelName[nr] || ''}`;
   };
   addEventListener('scroll', beimScrollen, { passive: true }); beimScrollen();
   nachoben?.addEventListener('click', () => scrollTo({ top: 0, behavior: ruhig ? 'auto' : 'smooth' }));
@@ -59,23 +66,8 @@
     $$('.saeule').forEach((s, i) => { s.querySelector('span').textContent = d.namen[i]; s.querySelector('i').style.width = `${d.werte[i]}%`; s.querySelector('b').textContent = String(d.werte[i]); });
   };
   $$('.schalter button').forEach(b => b.addEventListener('click', () => setzeModus(b.dataset.modus)));
-  const heroApp = $('#hero-app');
-  if (heroApp) { const io = new IntersectionObserver(es => { if (es[0].isIntersecting) { setzeModus('privat'); io.disconnect(); } }, { threshold: .3 }); io.observe(heroApp); }
-
-  // Spotlight + Aurora folgen sanft der Maus
-  const hero = $('#hero'), spot = $('.spot'), aurora = $('.aurora');
-  if (hero && !ruhig && maus) hero.addEventListener('pointermove', e => {
-    const r = hero.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
-    spot?.style.setProperty('--mx', `${x * 100}%`); spot?.style.setProperty('--my', `${y * 100}%`);
-    if (aurora) aurora.style.transform = `translate(${(x - .5) * -14}px, ${(y - .5) * -10}px)`;
-  });
-
-  // Sticky-Story
-  const schritte = $$('.story-schritt'), bilder = $$('.story-bild > div');
-  if (schritte.length) {
-    const io = new IntersectionObserver(es => es.forEach(e => { if (!e.isIntersecting) return; const n = e.target.dataset.schritt; schritte.forEach(s => s.classList.toggle('aktiv', s === e.target)); bilder.forEach(b => b.classList.toggle('aktiv', b.dataset.bild === n)); }), { rootMargin: '-45% 0px -45% 0px' });
-    schritte.forEach(s => io.observe(s)); schritte[0].classList.add('aktiv');
-  }
+  const scoreApp = $('#score-app');
+  if (scoreApp) { const io = new IntersectionObserver(es => { if (es[0].isIntersecting) { setzeModus('privat'); io.disconnect(); } }, { threshold: .3 }); io.observe(scoreApp); }
 
   // Chat Zug um Zug, danach der Weg eines Vorschlags
   const chat = $('#chat');
@@ -99,7 +91,7 @@
   // Kippen (nur Hero-Fenster), Magnet (nur Hero-CTA), Cursor-Licht
   if (!ruhig && maus) {
     $$('.tilt').forEach(el => {
-      el.addEventListener('pointermove', e => { const r = el.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width - .5; const y = (e.clientY - r.top) / r.height - .5; el.style.transform = `perspective(1200px) rotateX(${(-y * 4).toFixed(2)}deg) rotateY(${(x * 5).toFixed(2)}deg) translateY(-2px)`; });
+      el.addEventListener('pointermove', e => { const r = el.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width - .5; const y = (e.clientY - r.top) / r.height - .5; el.style.transform = `perspective(1200px) rotateX(${(-y * 2.5).toFixed(2)}deg) rotateY(${(x * 3).toFixed(2)}deg)`; });
       el.addEventListener('pointerleave', () => { el.style.transform = ''; });
     });
     $$('.magnet').forEach(k => {
@@ -107,15 +99,6 @@
       k.addEventListener('pointerleave', () => { k.style.transform = ''; });
     });
     $$('.raum,.garantie,.schritt,.zahl-karte,.person,.eintrag').forEach(k => k.addEventListener('pointermove', e => { const r = k.getBoundingClientRect(); k.style.setProperty('--x', `${e.clientX - r.left}px`); k.style.setProperty('--y', `${e.clientY - r.top}px`); }));
-  }
-
-  // Regler
-  const griff = $('.regler-griff'), nachher = $('.regler-buehne .nachher'), linie = $('.regler-linie');
-  if (griff && nachher && linie) {
-    const setze = v => { nachher.style.clipPath = `inset(0 0 0 ${v}%)`; linie.style.left = `${v}%`; griff.setAttribute('aria-valuetext', `${v} Prozent`); };
-    griff.addEventListener('input', () => setze(Number(griff.value)));
-    const io = new IntersectionObserver(es => { if (!es[0].isIntersecting) return; io.disconnect(); if (ruhig) return; const t0 = performance.now(); const tick = t => { const p = Math.min(1, (t - t0) / 1400); const v = Math.round(50 + Math.sin(p * Math.PI) * 22); setze(v); griff.value = String(v); if (p < 1) requestAnimationFrame(tick); else { setze(50); griff.value = '50'; } }; requestAnimationFrame(tick); }, { threshold: .5 });
-    io.observe(griff);
   }
 
   // MALIN + KEVIN → MAKE
