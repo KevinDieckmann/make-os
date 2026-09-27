@@ -99,6 +99,32 @@ Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen un
   - Tests: `crm-deal-regeln` (Server-Regeln), `crm-fundament` angepasst (Upsert neuer Deals ist jetzt ein Fehler). Stand: 100 Dateien · 877 Tests grün, tsc und Lint sauber.
   - **Offen (Kevin entscheidet):** Farbe des Reiters „Firmen“ (heute neutral wie Kontakte, obwohl die Leads darin liegen); ob „Meins/Malin“-Filter auch im Board sichtbar sein soll.
 
+### Brain-Abteilung (27.09., nur lokal)
+
+Kevin: „wie ein Wikipedia mit allen Infos chatten … alle wichtigen Regeln fürs Brain festlegen … ein Gedächtnis auf dem Hetzner-Server, das die KI selbst ausbaut.“
+Recherche mit 70 Quellen in `BRAIN_RECHERCHE.md`; Kevins Entscheidungen (klickbar, 27.09.): Volltext-Index **und** lokale Embeddings · Jarvis nur Vorschläge + eigenes Log · Konstitution + Regelregister · nächtliche Konsolidierung.
+
+- **Brain-Index** (`lib/brain/index.ts`): SQLite FTS5 (Node-eigen, kein Zusatzpaket) über **Abschnitte** der Notizen (an Überschriften geschnitten, mit Kontextzeile
+  „Notiz › H1 › H2 · tags“, ~2.000 Zeichen, 10 % Überlappung), inkrementell je Notiz-Hash, Wikilinks als Nachbarschaft (1 Hop), Sicht (scope/owner) vor dem Ranking,
+  Titel-/Überschriften-Treffer wiegen extra. Alle 10 Minuten vom Takt abgeglichen; die Suche des Vaults (Jarvis, Wissen-Seite, Brain-Chat) läuft darüber, Rückfall ist die alte Dateisuche.
+  Datei `.data/brain-index.sqlite` — Klartext wie der Vault selbst, außerhalb des Vault-Git-Repos, jederzeit neu baubar.
+- **Lokale Embeddings** (`lib/brain/einbettung.ts`): multilingual-e5-small (Transformers.js/ONNX, int8, 384 Dim.), faul geladen, Vektoren im Index, Kosinus im Speicher,
+  **hybrid** mit BM25 per Reciprocal Rank Fusion. Gemessen auf dem Mac: Laden 7 s, drei Einbettungen 47 ms, Prozess ~600 MB. Auf dem 2-GB-Server knapp: Ladeschutz
+  unter 400 MB frei, Schalter `MAKE_OS_EMBEDDINGS=aus`; der Head of IT zeigt den Hinweis. Modell-Cache außerhalb der Daten (`/srv/make-os/modelle`, `~/.cache/make-os/modelle`).
+- **Konstitution + Regelregister** (`lib/brain/regeln.ts`, Wissen › Regeln): `00. Fundament/KONSTITUTION.md` (≤ 250 Zeilen, in jedem Jarvis-Gespräch geladen) und Regel-Notizen
+  `00. Fundament/Regeln/*.md` mit Frontmatter (Priorität 0–3, gilt_fuer kevin/malin/beide/jarvis, Status entwurf/aktiv/abgelöst, Quelle, erstellt/geändert/freigegeben von+am).
+  Anlegen, freigeben, ablösen in MAKE OS; nur **aktive** Regeln gehen in den Prompt (Jarvis und Brain-Chat), hart zuerst. Versionen über das Git-Repo des Vaults.
+- **Brain-Inbox** (`lib/brain/inbox.ts`, Wissen › Inbox): Jarvis legt Vorschläge nach `_inbox/jarvis/` (neue Notiz, Ergänzung einer Notiz, Regel) mit Begründung, Quelle und
+  Vertraulichkeit (gemeinsam · privat-kevin · privat-malin). Annehmen macht Wissen daraus — mit Provenienz (`erstellt_von: jarvis`, `freigegeben_von: <Person>`); Ablehnen bewahrt den Grund.
+  `_inbox` ist aus der Suche ausgeschlossen: ein Vorschlag ist kein Wissen, bis ihn ein Mensch freigibt.
+- **Nächtliche Konsolidierung** (`lib/brain/konsolidierung.ts`, Systemlauf `konsolidierung` ab 21 Uhr): verdichtet neue Gedächtnis-Fakten, das Jarvis-Log und heute geänderte
+  Protokolle zu höchstens fünf Vorschlägen (Fremdtext als Daten, Widersprüche als eigener Vorschlag). Ohne KI-Guthaben als Regelwerk: die Fakten des Tages als ein Vorschlag. Auf Zuruf per Knopf.
+- **Brain-Chat:** zitiert `[[Titel#Abschnitt]]`, kennzeichnet Unbelegtes als „(Vermutung)“, kennt Konstitution und Regeln.
+- Von mir gesetzt (Recherche-Empfehlung): Vault-Markdown bleibt die Wahrheit, ein Vault mit Sicht-Filter, Git des Vaults für Versionen, Ton bleibt Du.
+- Tests: `brain-chunks`, `brain-index`, `brain-einbettung`, `brain-regeln`, `brain-inbox`, `brain-konsolidierung` (Test-Vaults im Temp-Ordner, nie der echte).
+- **Offen (Kevin):** Server-RAM für Embeddings (2 GB reichen kaum neben App und Arbeiter — Upgrade auf 4 GB oder `MAKE_OS_EMBEDDINGS=aus`); Eval-Set mit 40 Fragen aus dem echten
+  Vault (`scripts/`, braucht den Vault — kommt als nächster Schritt); Kern-Blöcke (Profil Kevin/Malin, laufende Projekte) als eigene Notizen anlegen, dann lädt Jarvis sie immer.
+
 ### Datenschicht Stufe 2 — zu zweit sicher (27.09., nur lokal)
 
 Kevin (27.09., klickbar): JSON bleibt, Stufe 2 jetzt; danach Brain, dann Kalender.

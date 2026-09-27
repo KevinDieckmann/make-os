@@ -605,7 +605,7 @@ export async function POST(req: Request) {
     const LESEND = new Set(['lies_postfach', 'suche_wissen', 'lies_notiz', 'frag_gedaechtnis', 'business_index', 'crm_lage', 'haushalt_stand', 'haushalt_buchungen', 'gesundheits_index', 'finde_kontakt', 'lies_kontakt', 'suche_kontakt']);
 
     // Grundlage aus dem Obsidian-Brain (00_JARVIS_AGENT + Vertraulichkeitsregeln), eine Minute zwischengespeichert.
-    const brain = await brainAnweisung().catch(() => '');
+    const brain = await brainAnweisung(person).catch(() => '');
     for (let runde = 0; runde < 3; runde++) {
       const r = await askText({ system: systemPrompt(payload.context, live, !!vorgeschichte.length, gedaechtnis, person, brain, payload.space === 'privat' || payload.space === 'business' ? payload.space : null), user: message, messages: msgs, maxTokens: 4000, tools, timeoutMs: 180_000, zweck: 'jarvis-gespraech' });
       if (!r.ok) {

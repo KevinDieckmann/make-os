@@ -42,7 +42,9 @@ describe('Kopf und gültiger Stand', () => {
 
   it('liest den YAML-Kopf ohne Zusatzpaket', () => {
     const { kopf, rumpf } = leseKopf(text);
-    expect(kopf).toEqual({ typ: 'steckbrief', scope: 'privat', owner: 'kevin', stand: '2026-09-21', tags: ['firma', 'kemaris'] });
+    expect(kopf).toMatchObject({ typ: 'steckbrief', scope: 'privat', owner: 'kevin', stand: '2026-09-21', tags: ['firma', 'kemaris'] });
+    // Seit 27.09. liegen alle Felder roh bei (Regeln, Vorschläge, Provenienz)
+    expect(kopf.felder.type).toBe('steckbrief');
     expect(rumpf.startsWith('# Titel')).toBe(true);
   });
 

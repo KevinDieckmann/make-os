@@ -13,6 +13,7 @@
 
 import { askText, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import { suche, notiz, type Sicht, type Treffer } from './vault';
+import { regelnFuerPrompt } from '@/lib/brain/regeln';
 import { nameVon } from './raum';
 
 export interface Zug { rolle: 'ich' | 'brain'; text: string }
@@ -46,7 +47,7 @@ const WERKZEUGE = [
   },
 ];
 
-export function systemText(person: string, heute = new Date()): string {
+export function systemText(person: string, heute = new Date(), regeln = ''): string {
   const datum = heute.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Berlin' });
   return [
     `Du bist das Obsidian-Brain — die Wissensbank von Kevin und Malin (Vault „MAKE", Ordner Make.Claude, dazu die Doku der Software MAKE OS). Gerade chattet ${nameVon(person)} direkt mit dir. Heute ist ${datum}.`,
@@ -55,19 +56,21 @@ export function systemText(person: string, heute = new Date()): string {
     '- Nur aus den Notizen. Steht etwas nicht drin, sag das klar („Dazu steht nichts im Brain.") und erfinde nichts. Allgemeinwissen nur, wenn ausdrücklich danach gefragt wird, und dann als solches gekennzeichnet.',
     '- Zu jeder Frage liegen dir erste Suchtreffer bei. Reichen sie nicht, suche mit anderen Begriffen (suche_wissen). Geht es um Zahlen, Vereinbarungen, Termine oder Personen, lies die passende Notiz ganz (lies_notiz) — der Ausschnitt reicht dafür nicht.',
     '- In Wissensnotizen ist der oberste „## 🔴 UPDATE"-Block der gültige Stand, ältere Blöcke sind Historie. In Protokollen und Logs ist der letzte Eintrag der neueste. Achte auf „stand:" und nenne ihn, wenn er für die Antwort zählt.',
-    '- Nenne die Quelle direkt an der Aussage als [[Titel]] — exakt der Notiztitel aus TITEL. Widersprechen sich Notizen, sag es und nenne beide mit Stand.',
+    '- Nenne die Quelle direkt an der Aussage als [[Titel]] — exakt der Notiztitel aus TITEL; kennst du den Abschnitt (ABSCHNITT), schreibe [[Titel#Abschnitt]]. Widersprechen sich Notizen, sag es und nenne beide mit Stand.',
+    '- Kannst du eine Aussage NICHT belegen, kennzeichne sie mit „(Vermutung)“ — oder lass sie weg.',
     '- Deutsch, du-Form, knapp: erst die Antwort, dann das Nötige. Markdown ist erlaubt (Listen, Tabellen, **fett**). Keine Floskeln, keine Einleitung.',
     '- Notizen mit 🔒 PRIVAT darfst du hier verwenden: die Person fragt ihr eigenes Brain, die Antwort sieht nur sie.',
     '- Du kannst nichts anlegen, ändern oder verschicken. Will die Person etwas festhalten, sag ihr, dass Jarvis das kann.',
     '',
     FREMD_REGEL,
+    ...(regeln ? ['', regeln] : []),
   ].join('\n');
 }
 
 export function trefferText(treffer: Treffer[], durchsucht: number): string {
   if (!treffer.length) return `Keine Treffer (${durchsucht} Notizen durchsucht).`;
   return `${treffer.length} Treffer aus ${durchsucht} Notizen:\n\n` + treffer.map(t =>
-    `QUELLE ${t.id}\nTITEL ${t.titel} · ${t.bereich}${t.scope === 'privat' ? ' · 🔒 PRIVAT' : ''}${t.stand ? ` · stand: ${t.stand}` : ''}\n${t.ausschnitt}`,
+    `QUELLE ${t.id}\nTITEL ${t.titel} · ${t.bereich}${t.scope === 'privat' ? ' · 🔒 PRIVAT' : ''}${t.stand ? ` · stand: ${t.stand}` : ''}${(t as { abschnitt?: string }).abschnitt ? `\nABSCHNITT ${(t as { abschnitt?: string }).abschnitt}` : ''}\n${t.ausschnitt}`,
   ).join('\n\n───\n\n');
 }
 
@@ -128,7 +131,8 @@ export async function frageBrain(frage: string, verlauf: Zug[], sicht: Sicht): P
     ...verlaufNachrichten(verlauf),
     { role: 'user', content: `${frage}\n\nErste Treffer aus dem Brain:\n${fremd('obsidian-brain', trefferText(erste.treffer, erste.durchsucht))}` },
   ];
-  const system = systemText(sicht.person);
+  const regeln = await regelnFuerPrompt(sicht.person).catch(() => '');
+  const system = systemText(sicht.person, new Date(), regeln);
   let antwort = '';
 
   for (let runde = 0; runde < RUNDEN; runde++) {

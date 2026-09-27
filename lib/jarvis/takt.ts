@@ -141,6 +141,13 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
     console.error('[MAKE OS] HOI-Takt übersprungen:', err);
   }
 
+  // 0d) Brain-Konsolidierung (27.09.): ab 21 Uhr einmal am Tag — verdichtet den Tag zu Vorschlägen in der Brain-Inbox.
+  //     Riegel im eigenen Bestand (brain-konsolidierung), der Lauf schreibt ihn.
+  try {
+    const bk = (await loadJson<{ letzterTag?: string }>('brain-konsolidierung')) ?? {};
+    if (h >= 21 && bk.letzterTag !== heute) raus.push({ id: 'konsolidierung', grund: 'Brain: den Tag verdichten', auftrag: { art: 'agent', name: 'konsolidierung', anlass: 'Takt: Brain-Konsolidierung' } });
+  } catch (err) { console.error('[MAKE OS] Konsolidierungs-Takt übersprungen:', err); }
+
   // 1) Der Morgenlauf — einmal am Tag, ab 7 Uhr.
   const start = await loadJson<TagesstartStand>('tagesstart');
   if (start?.lastRun !== heute) {

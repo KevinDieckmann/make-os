@@ -31,9 +31,12 @@ services:
       TZ: Europe/Berlin
       MAKE_OS_INTERN: http://localhost:3000
       MAKE_VAULT_DIR: /vault
+      # Brain-Embeddings (27.09.): Modell-Cache außerhalb der Daten (nicht in jeder Sicherung); MAKE_OS_EMBEDDINGS=aus schaltet auf reinen Volltext.
+      MAKE_OS_MODELLE_DIR: /modelle
     volumes:
       - ${MAKE_OS_DATEN:-/srv/make-os/daten}:/app/.data
       - ${MAKE_OS_VAULT:-/srv/make-os/vault}:/vault
+      - ${MAKE_OS_MODELLE:-/srv/make-os/modelle}:/modelle
     expose: ["3000"]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/anmelden').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]

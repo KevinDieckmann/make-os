@@ -232,6 +232,12 @@ Rahmen: Hetzner 1 vCPU / 2 GB (Upgrade möglich), Next.js/TypeScript, JSON-Store
 
 ---
 
+## Umsetzungsstand (27.09., lokal)
+
+Kevin hat entschieden: 1 → A und lokal (FTS5 + e5-small) · 3 → B · 6 → C · 7 → A. Von mir gesetzt: 2 → A, 4 → A, 5 → A, 8 → A.
+Gebaut: Punkte 1 (teilweise: Regeln/Konstitution als Kern, Episoden = Gedächtnis + Jarvis_Log), 2, 3 (FREMD_REGEL + Inbox), 4 (FTS5 + Vektoren, ohne sqlite-vec — Kosinus im Speicher), 5, 6, 7, 8, 9, 10 (Git des Vaults), 11, 14, 21 (Regeln/Inbox-Ansicht), 24, 25 (Hash-Abgleich alle 10 min statt Watcher).
+Offen: 12 (Reflexionsnotizen), 13 (Vergessen mit Maß), 15 (Konfliktregel zwei Personen), 16 (Löschung als eine Funktion), 17 (Audit-Log), 18/19/20 (Notiztypen, MOCs, Atomar-Regel), 22 (Eval-Set), 23 (Kontext-Haushalt).
+
 ## Offene Entscheidungen für Kevin
 
 1. **Embeddings — lokal oder API?**

@@ -30,7 +30,7 @@ const HEIM = homedir();
 const ausHeim = (p: string) => p.replace(/^~(?=$|\/)/, HEIM);
 
 /** Das Brain — Nummer eins. */
-const BRAIN = process.env.MAKE_VAULT_DIR?.trim() ? ausHeim(process.env.MAKE_VAULT_DIR.trim()) : join(HEIM, 'Desktop', 'MAKE', 'Make.Claude');
+export const BRAIN = process.env.MAKE_VAULT_DIR?.trim() ? ausHeim(process.env.MAKE_VAULT_DIR.trim()) : join(HEIM, 'Desktop', 'MAKE', 'Make.Claude');
 const ICLOUD = join(HEIM, 'Library/Mobile Documents/com~apple~CloudDocs/Make Privat ❤️/MAKE OS');
 
 export interface Wurzel {
@@ -46,13 +46,15 @@ export interface Wurzel {
 /** Reihenfolge = Rang: bei inhaltsgleichen Notizen gewinnt die erste Wurzel. */
 export const WURZELN: Wurzel[] = [
   { id: 'make', name: 'Obsidian · MAKE Brain', pfad: BRAIN, vault: dirname(BRAIN), obsidian: basename(dirname(BRAIN)) },
-  { id: 'makeos', name: 'MAKE OS · Doku (iCloud)', pfad: ICLOUD, vault: ICLOUD, obsidian: basename(ICLOUD) },
+  // Tests und Proben mit eigenem Vault (MAKE_OS_DOKU_WURZEL=aus) lesen die iCloud-Doku nicht mit (27.09.).
+  ...(process.env.MAKE_OS_DOKU_WURZEL === 'aus' ? [] : [{ id: 'makeos', name: 'MAKE OS · Doku (iCloud)', pfad: ICLOUD, vault: ICLOUD, obsidian: basename(ICLOUD) }]),
 ];
 
 /** Technischer Ballast — nichts davon ist Wissen. */
 const TECHNIK = new Set(['node_modules', '.git', '.next', '_build', 'dist', '.obsidian', '.claude', 'build', 'scripts']);
 /** Aus AGENTS.md §5: Archiv, Vorlagen, Kopien und Exporte sind keine Quellen. */
-const AUSGESCHLOSSEN = ['_Archiv', '_Vorlagen', '_to_delete', 'MakeOS-Blueprint', 'OneDrive_Export', 'KEMA_Brain Kopie'];
+// _inbox (27.09.): Vorschläge von Jarvis sind kein Wissen, bis jemand sie annimmt (lib/brain/inbox.ts).
+const AUSGESCHLOSSEN = ['_Archiv', '_Vorlagen', '_to_delete', '_inbox', 'MakeOS-Blueprint', 'OneDrive_Export', 'KEMA_Brain Kopie'];
 export const istAusgeschlossen = (name: string) => TECHNIK.has(name) || AUSGESCHLOSSEN.some(a => name.startsWith(a));
 
 /**
@@ -69,12 +71,12 @@ export function istPrivat(segment: string): boolean {
 
 // ── Kopf einer Notiz ────────────────────────────────────────────────────────
 
-export interface Kopf { typ?: string; scope?: string; owner?: string; stand?: string; tags: string[] }
+export interface Kopf { typ?: string; scope?: string; owner?: string; stand?: string; tags: string[]; /** alle Felder roh (Regeln, Vorschläge, Provenienz — 27.09.) */ felder: Record<string, string | string[]> }
 
 /** YAML-Kopf, die Untermenge „key: value" und „key: [a, b]" — ohne Zusatzpaket. */
 export function leseKopf(text: string): { kopf: Kopf; rumpf: string } {
   const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
-  if (!m) return { kopf: { tags: [] }, rumpf: text };
+  if (!m) return { kopf: { tags: [], felder: {} }, rumpf: text };
   const roh: Record<string, string | string[]> = {};
   for (const zeile of m[1].split(/\r?\n/)) {
     const kv = zeile.match(/^([A-Za-z_][\w-]*):\s*(.*)$/);
@@ -86,7 +88,7 @@ export function leseKopf(text: string): { kopf: Kopf; rumpf: string } {
   }
   const s = (k: string) => (typeof roh[k] === 'string' ? (roh[k] as string) : undefined);
   const tags = Array.isArray(roh.tags) ? roh.tags : s('tags') ? s('tags')!.split(/[,\s]+/).filter(Boolean) : [];
-  return { kopf: { typ: s('type'), scope: s('scope')?.toLowerCase(), owner: s('owner')?.toLowerCase(), stand: s('stand'), tags: tags.slice(0, 12) }, rumpf: text.slice(m[0].length) };
+  return { kopf: { typ: s('type'), scope: s('scope')?.toLowerCase(), owner: s('owner')?.toLowerCase(), stand: s('stand'), tags: tags.slice(0, 12), felder: roh }, rumpf: text.slice(m[0].length) };
 }
 
 /** Der gültige Stand: erster „## 🔴 UPDATE"-Block bis zur nächsten ##-Überschrift. */
@@ -153,6 +155,8 @@ export interface Bestand { notizen: Notiz[]; gelesen: number; dubletten: number;
  * die Kevin gerade in Obsidian anlegt, ist bis zu fünf Minuten unsichtbar.
  */
 let zwischenspeicher: { bestand: Bestand; zeit: number } | null = null;
+/** Nach eigenen Schreibungen (Regeln, Inbox): Bestand beim nächsten Lesen neu einlesen. */
+export function bestandVergessen(): void { zwischenspeicher = null; }
 const FRISCH_MS = 5 * 60_000;
 
 /** Was Kevin in Obsidian unter „Ausgeschlossene Dateien" eingetragen hat. */
@@ -251,6 +255,19 @@ export interface Treffer {
  * Das Brain führt (+8), Frisches schlägt Altes sanft.
  */
 export async function suche(frage: string, anzahl = 6, sicht: Sicht = AGENT, bereich?: string): Promise<{ treffer: Treffer[]; durchsucht: number }> {
+  // Brain-Index (27.09.): steht der FTS5-Index bereit, sucht er — über Abschnitte, mit Sicht vor dem Ranking.
+  // Sonst (erster Start, Index veraltet, Fehler) die bisherige Volltextsuche über alle Dateien.
+  if (process.env.MAKE_OS_BRAIN_INDEX !== 'aus') {
+    try {
+      const ix = await import('@/lib/brain/index');
+      if (ix.indexBereit()) { const r = await ix.hybridSuche(frage, anzahl, sicht, bereich); return { treffer: r.treffer, durchsucht: r.durchsucht }; }
+    } catch { /* Rückfall unten */ }
+  }
+  return sucheOhneIndex(frage, anzahl, sicht, bereich);
+}
+
+/** Die Suche ohne Index — liest jede sichtbare Notiz (Rückfall und Vergleichsmaßstab). */
+export async function sucheOhneIndex(frage: string, anzahl = 6, sicht: Sicht = AGENT, bereich?: string): Promise<{ treffer: Treffer[]; durchsucht: number }> {
   // Ohne Unicode-Flag (das Projekt übersetzt nach ES5): Trennzeichen sind alles
   // außer Buchstaben, Ziffern und deutschen Umlauten.
   const begriffe = frage.toLowerCase().split(/[^a-z0-9äöüß]+/).filter(w => w.length > 2).slice(0, 8);
@@ -346,16 +363,20 @@ export async function notiz(id: string, maxZeichen = 12_000, sicht: Sicht = AGEN
 // AGENTS.md §5: „Identität aus 00_JARVIS_AGENT". Dazu die Vertraulichkeits-
 // regeln, weil sie für jede Antwort gelten. Eine Minute zwischengespeichert.
 
-let anweisungSpeicher: { zeit: number; text: string } | null = null;
-export async function brainAnweisung(): Promise<string> {
-  if (anweisungSpeicher && Date.now() - anweisungSpeicher.zeit < 60_000) return anweisungSpeicher.text;
+const anweisungSpeicher = new Map<string, { zeit: number; text: string }>();
+/** Identität, Vertraulichkeitsregeln — und seit 27.09. Konstitution + aktive Regeln für diese Person (lib/brain/regeln.ts). */
+export async function brainAnweisung(person = 'kevin'): Promise<string> {
+  const p = /^[a-z0-9-]{1,40}$/.test(person) ? person : 'kevin';
+  const alt = anweisungSpeicher.get(p);
+  if (alt && Date.now() - alt.zeit < 60_000) return alt.text;
   const teile: string[] = [];
   for (const [name, max] of [['00_JARVIS_AGENT', 7000], ['Vertraulichkeitsregeln', 4500]] as const) {
     const d = await notiz(name, max, { person: 'kevin' });
     if (d.ok && d.wurzel === 'make' && d.text) teile.push(`── ${name} (${d.pfad}${d.stand ? `, Stand ${d.stand}` : ''}) ──\n${d.text.trim()}`);
   }
+  try { const { regelnFuerPrompt } = await import('@/lib/brain/regeln'); const r = await regelnFuerPrompt(p); if (r) teile.push(r); } catch { /* ohne Regeln weiter */ }
   const text = teile.length ? teile.join('\n\n') : '';
-  anweisungSpeicher = { zeit: Date.now(), text };
+  anweisungSpeicher.set(p, { zeit: Date.now(), text });
   return text;
 }
 
@@ -396,7 +417,7 @@ export async function legeAn(titel: string, text: string, opt: { person?: string
       const kopf = `---\ntype: protokoll\nscope: ${opt.scope === 'privat' ? 'privat' : 'intern'}\nowner: ${person}\nstand: ${heuteISO()}\ntags: [protokoll, jarvis]\n---\n\n# ${name}\n\n*${heuteDE()} · festgehalten von Jarvis für ${person}*\n\n`;
       await writeFile(ziel, `${kopf}${text.trim()}\n`, { encoding: 'utf8', flag: 'wx' });
     }
-    zwischenspeicher = null;
+    zwischenspeicher = null; anweisungSpeicher.clear();
     return { ok: true, pfad: `make/${relative(dirname(BRAIN), ziel).split(sep).join('/')}` };
   } catch (err) {
     return { ok: false, fehler: err instanceof Error ? err.message.slice(0, 140) : 'nicht schreibbar' };

@@ -15,7 +15,7 @@ export const AUSFUEHRBAR = [
   'head-sales', 'head-marketing', 'head-event',
   // Systemläufe: kein Fach-Agent, sondern der Takt selbst. Sie stehen hier,
   // damit der Arbeiter sie wie alles andere aus der Warteschlange holt.
-  'tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi',
+  'tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi', 'konsolidierung',
 ] as const;
 export type Ausfuehrbar = typeof AUSFUEHRBAR[number];
 
@@ -51,6 +51,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
   gesundheit: 'Der Gesundheits-Takt — schickt Kevin und Malin morgens, mittags, abends die Nachricht aufs Handy (auftrag = morgen | mittag | abend | woche, sonst was fällig ist)',
   markttraktion: 'Der Markttraktion-Takt — schickt Kevin und Malin werktags morgens, was in der Markttraktion bei ihnen liegt, und freitags das Wochen-Scoreboard aufs Handy (auftrag = morgen | woche, optional person:kevin|malin — schickt sofort; leer = was fällig ist)',
   hoi: 'Der Head of IT — Lagebild aus Server, App, Sicherheit und Außenblick; ohne KI (auftrag = bericht | pruefen)',
+  konsolidierung: 'Die nächtliche Brain-Konsolidierung — verdichtet Fakten, Log und Protokolle des Tages zu Vorschlägen in der Brain-Inbox (auftrag = jetzt erzwingt)',
 };
 
 /**
@@ -61,7 +62,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
  * eigenen Kopie. Eine zweite Liste hätte genau einen Zweck: irgendwann von
  * dieser abzuweichen.
  */
-export const SYSTEM_LAEUFE = ['tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi'] as const;
+export const SYSTEM_LAEUFE = ['tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi', 'konsolidierung'] as const;
 const SYSTEM = new Set<string>(SYSTEM_LAEUFE);
 
 const kuerze = (t: unknown, n = 1600) => String(t ?? '').slice(0, n);
@@ -341,6 +342,12 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
         }
         await updateJson<HoiMeldung>('hoi-meldung', cur => ({ ...(cur ?? {}), gemeldet: rot, ...(bericht ? { berichtTag: heute } : {}), zuletzt: new Date().toISOString(), ampel: l.gesamt.ampel }));
         return gut(`HEAD OF IT (${bericht ? 'Tagesbericht' : 'Stundenblick'}): ${l.gesamt.ampel} — ${l.gesamt.rot} rot · ${l.gesamt.gelb} gelb · ${l.gesamt.gruen} grün${neuRot.length ? ` · neu rot: ${neuRot.join(', ')}` : ''}${telegram ? ` · ${telegram}` : ''}`);
+      }
+      case 'konsolidierung': {
+        // Brain (27.09.): schreibt nur in die Inbox; ohne KI Regelwerk. „jetzt“ übergeht den Tages-Riegel.
+        const { konsolidieren } = await import('@/lib/brain/konsolidierung');
+        const k = await konsolidieren(new Date().toISOString(), auftrag === 'jetzt');
+        return k.ok ? gut(`BRAIN-KONSOLIDIERUNG${k.ohneKi ? ' (Regelwerk)' : ''}: ${k.text}`) : fehl(`Konsolidierung: ${k.text}`);
       }
       case 'selbstbild': {
         const d = await post('/api/jarvis/selbstbild', {}, 120_000);

@@ -18,8 +18,11 @@ import { useZurueck, nachOben } from './Verlauf';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { bloecke, inline, sichererLink, type Block, type Teil } from '@/lib/make-one/markdown';
 import { Seite, Karte, Ueberschrift, Leer, Knopf, Segmente, Punkt, Chip, Zahl, feld, LEUCHT, Spalten, Spalte, useBreit } from './schlank';
+import { Regeln } from './wissen/Regeln';
+import { Inbox } from './wissen/Inbox';
 
 interface Stand {
+  person?: string;
   notizen: number; privat: number; jeBereich: Record<string, number>; jeWurzel: Record<string, number>;
   wurzeln: { id: string; name: string; obsidian: string }[];
 }
@@ -34,8 +37,8 @@ interface Voll {
 
 interface Quelle { id: string; titel: string; bereich: string; scope?: string }
 interface ChatZug { rolle: 'ich' | 'brain'; text: string; quellen?: Quelle[]; fehler?: boolean }
-type Modus = 'fragen' | 'stoebern';
-const MODI: { id: Modus; label: string }[] = [{ id: 'fragen', label: 'Fragen' }, { id: 'stoebern', label: 'Stöbern' }];
+type Modus = 'fragen' | 'stoebern' | 'regeln' | 'inbox';
+const MODI: { id: Modus; label: string }[] = [{ id: 'fragen', label: 'Fragen' }, { id: 'stoebern', label: 'Stöbern' }, { id: 'regeln', label: 'Regeln' }, { id: 'inbox', label: 'Inbox' }];
 const CHAT_MERKER = 'make-os:brain-chat';
 const VORSCHLAEGE = ['Was ist der aktuelle Ist-Stand?', 'Welche offenen Fragen stehen im Brain?', 'Was steht in den letzten Protokollen?', 'Wer ist wer im Team?'];
 
@@ -425,7 +428,7 @@ export function WissenView() {
     >
       {breit ? (
         <Spalten verhaeltnis="1:1">
-          <Spalte>{modus === 'fragen' ? chatKarte : listeKarte}</Spalte>
+          <Spalte>{modus === 'fragen' ? chatKarte : modus === 'stoebern' ? listeKarte : <><Karte i={0}>{umschalter}</Karte>{modus === 'regeln' ? <Regeln ich={stand?.person ?? 'kevin'} /> : <Inbox ich={stand?.person ?? 'kevin'} oeffne={oeffne} />}</>}</Spalte>
           <Spalte klebt><div ref={lesefenster}>{leseKarte}</div></Spalte>
         </Spalten>
       ) : offen ? leseKarte : (

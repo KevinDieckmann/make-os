@@ -49,6 +49,8 @@ export async function GET(req: Request) {
 
 export async function POST() {
   void herzschlag();
+  // Brain-Index alle 10 Minuten leise mit dem Vault abgleichen (27.09.) — nie blockierend.
+  void import('@/lib/brain/index').then(ix => ix.indexFrischHalten(10)).catch(() => {});
   await kalenderFrischHalten().catch(() => {});
   void businessTagesstand();
   const dran = await faellig();
