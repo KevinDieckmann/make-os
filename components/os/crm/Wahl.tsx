@@ -92,7 +92,7 @@ export function Wahl<T extends string>({ liste, wert, onWahl, onLeeren, label, l
   const gesetzt = wert != null && wert !== '';
   const v = !gesetzt && vorschlag && liste.some(e => e.id === vorschlag.id) ? vorschlag : null;
   const oeffnen = () => { if (aus || !knopf.current) return; menueOeffnen(ich, () => setAnker(null)); setAnker(knopf.current); };
-  const schliessen = (fokus: boolean) => { setAnker(null); menueZu(ich); if (fokus) requestAnimationFrame(() => knopf.current?.focus()); };
+  const schliessen = (fokus: boolean) => { setAnker(null); menueZu(ich); if (fokus) setTimeout(() => knopf.current?.focus(), 0); };
   const tasteAmChip = (e: TastenEreignis) => { if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !offen) { e.preventDefault(); oeffnen(); } };
   const aria = { 'aria-haspopup': 'listbox' as const, 'aria-expanded': offen, 'aria-controls': offen ? menuId : undefined };
   const name = wahlLabel(liste, wert);
@@ -141,7 +141,7 @@ export function WahlMehrfach<T extends string>({ liste, wert, onWahl, label, lee
   const vorschlaege = (vorschlag ? (Array.isArray(vorschlag) ? vorschlag : [vorschlag]) as readonly WahlVorschlag<T>[] : [])
     .filter(v => !wert.includes(v.id) && liste.some(e => e.id === v.id));
   const oeffnen = () => { if (aus || !knopf.current) return; menueOeffnen(ich, () => setAnker(null)); setAnker(knopf.current); };
-  const schliessen = (fokus: boolean) => { setAnker(null); menueZu(ich); if (fokus) requestAnimationFrame(() => knopf.current?.focus()); };
+  const schliessen = (fokus: boolean) => { setAnker(null); menueZu(ich); if (fokus) setTimeout(() => knopf.current?.focus(), 0); };
   const umschalten = (x: T) => onWahl(wert.includes(x) ? wert.filter(y => y !== x) : [...wert, x]);
   return (
     // Klicks (auch aus dem Menü, das über ein Portal am Seitenende hängt) sollen keine Zeile dahinter öffnen.
@@ -216,14 +216,15 @@ function WahlMenue<T extends string>({ anker, menuId, liste, label, farbe, gewae
   const schliessenRef = useRef(onSchliessen);
   useEffect(() => { schliessenRef.current = onSchliessen; }, [onSchliessen]);
   useEffect(() => {
-    const t = requestAnimationFrame(() => (mitSuche ? suchfeld.current : listeRef.current)?.focus({ preventScroll: true }));
+    // Direkt nach dem Einhängen (kein requestAnimationFrame — der ruht in Hintergrund-Tabs).
+    const t = setTimeout(() => (mitSuche ? suchfeld.current : listeRef.current)?.focus({ preventScroll: true }), 0);
     const daneben = (e: PointerEvent) => {
       const z = e.target as Node;
       if (box.current?.contains(z) || anker.contains(z)) return;
       schliessenRef.current(false);
     };
     document.addEventListener('pointerdown', daneben, true);
-    return () => { cancelAnimationFrame(t); document.removeEventListener('pointerdown', daneben, true); };
+    return () => { clearTimeout(t); document.removeEventListener('pointerdown', daneben, true); };
   }, [anker, mitSuche]);
 
   // Der aktive Eintrag bleibt sichtbar.
