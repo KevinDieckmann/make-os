@@ -248,6 +248,12 @@ lokal, Route `/os`, Port 3001.
 - **Auswertung:** `lib/crm/deal-auswertung.ts` (Verweildauer, Umwandlung, Win/Loss, Zyklus, Prognose nach Monat, hängt nach Wert; `MINDESTMENGE` 5).
 - Wertelisten (`CrmBestand.wertelisten`: Verlustgründe, Kadenz je Kreis, Ergebnisse, Ziele) pflegt Stammdaten; Verbraucher lesen sie mit Rückfall auf die Konstanten.
 
+## Kalender-Oberfläche (components/os/kalender, seit 27.09.)
+- `/os/kalender` = `Kalender.tsx` (Tag/Woche/Monat/Agenda). Daten nur über `useKalender` (`/api/kalender`), Schreiben nur über `/api/kalender/termin` (iCloud) — nie mehr über `/api/apple-calendar/create`.
+- Zeiten sind Berliner Wandzeit `YYYY-MM-DDTHH:mm:ss` (`lib/kalender/zeit.ts wandAus`), Raster 15 Minuten. Überlappung über `lib/kalender/layout.ts spaltenLegen`.
+- Schnelleingabe `lib/kalender/schnell.ts` (rein, getestet) — neue Muster dort ergänzen, nie im Dialog parsen.
+- Serien/Erinnerungen entstehen beim Anlegen (`rruleText`, VALARM); Ändern von Serien bleibt in Apple (`aendereTermin` lehnt ab).
+
 ## Brain (lib/brain, seit 27.09.)
 - Wahrheit ist der Vault (Markdown, Obsidian). Der Index (`lib/brain/index.ts`, SQLite FTS5 + Vektoren) ist abgeleitet — bei Zweifel Datei löschen, der Takt baut neu.
 - Suche immer über `suche()` in `lib/jarvis/vault.ts` (nimmt den Index, sonst Dateisuche). Sicht (`darfSehen`) gilt VOR dem Ranking — nie nachträglich filtern.

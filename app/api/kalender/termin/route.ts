@@ -41,8 +41,17 @@ export async function POST(req: Request) {
   const einst = await ladeEinstellungen();
   const wer = (['kevin', 'malin', 'beide'] as Wer[]).find(w => w === b.wer);
   const kalender = txt(b.kalender, 100) || einst.kalender[wer ?? 'kevin'];
+  // Serie und Erinnerung (27.09.)
+  const w = b.wiederholung && typeof b.wiederholung === 'object' ? b.wiederholung as Record<string, unknown> : null;
+  const freq = (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).find(f => f === w?.freq);
+  const wiederholung = w && freq ? {
+    freq, ...(Number(w.intervall) > 1 ? { intervall: Math.min(365, Math.round(Number(w.intervall))) } : {}),
+    ...(Number(w.anzahl) > 0 ? { anzahl: Math.min(999, Math.round(Number(w.anzahl))) } : {}), ...(typeof w.bis === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(w.bis) ? { bis: w.bis } : {}),
+    ...(Array.isArray(w.tage) ? { tage: (w.tage as unknown[]).filter((x): x is 'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU' => ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'].includes(String(x))) } : {}),
+  } : undefined;
+  const erinnerungMin = typeof b.erinnerungMin === 'number' && b.erinnerungMin >= 0 && b.erinnerungMin <= 60 * 24 * 14 ? Math.round(b.erinnerungMin) : undefined;
   try {
-    const r = await anlegen({ titel, kalender, start, ende, ganztags, ort: txt(b.ort, 300), notiz: txt(b.notiz, 2000) });
+    const r = await anlegen({ titel, kalender, start, ende, ganztags, ort: txt(b.ort, 300), notiz: txt(b.notiz, 2000), ...(wiederholung ? { wiederholung } : {}), ...(erinnerungMin !== undefined ? { erinnerungMin } : {}) });
     return NextResponse.json({ ok: true, ...r });
   } catch (e) { return antwortFehler(e); }
 }

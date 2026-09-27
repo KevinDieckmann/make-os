@@ -17,7 +17,7 @@
 import { randomUUID } from 'node:crypto';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { antworten, istTerminKalender, text, adresse, etagSauber, klartext } from './dav';
-import { termineAus, baueTermin, aendereTermin, uidVon, nichtBearbeitbar, type KalenderObjekt, type Termin, type Aenderung } from './ics';
+import { termineAus, baueTermin, aendereTermin, uidVon, nichtBearbeitbar, type KalenderObjekt, type Termin, type Aenderung, type Wiederholung } from './ics';
 import { tagPlus } from './zeit';
 import { localDay } from '@/lib/zeit';
 
@@ -233,7 +233,7 @@ function findeObjekt(s: IcloudStand, uid: string): { kal: KalenderEintrag; obj: 
   return null;
 }
 
-export interface NeuEingabe { titel: string; kalender: string; start: string; ende: string; ganztags?: boolean; ort?: string; notiz?: string }
+export interface NeuEingabe { titel: string; kalender: string; start: string; ende: string; ganztags?: boolean; ort?: string; notiz?: string; wiederholung?: Wiederholung; erinnerungMin?: number }
 
 /** Neuen Termin anlegen. Liefert die UID. */
 export async function anlegen(e: NeuEingabe): Promise<{ uid: string; kalender: string }> {

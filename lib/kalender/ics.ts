@@ -161,6 +161,10 @@ export function nichtBearbeitbar(ics: string): string | null {
 /** Text für eine iCalendar-Eigenschaft: ohne Steuerzeichen, begrenzt. */
 const sauber = (s: string, n: number) => s.replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, ' ').trim().slice(0, n);
 
+export type WiederholungFreq = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
+/** Serie (27.09.): wie Google Kalender — täglich/wöchentlich/monatlich/jährlich, Abstand, Ende nach Anzahl oder bis Datum, Wochentage. */
+export interface Wiederholung { freq: WiederholungFreq; intervall?: number; anzahl?: number; bis?: string; tage?: ('MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU')[] }
+
 export interface NeuerTermin {
   uid: string;
   titel: string;
@@ -170,6 +174,20 @@ export interface NeuerTermin {
   ganztags?: boolean;
   ort?: string;
   notiz?: string;
+  /** Serie — als RRULE; Apple zeigt sie wie eigene Serien. */
+  wiederholung?: Wiederholung;
+  /** Erinnerung in Minuten vor Beginn — als VALARM (DISPLAY), Apple/iPhone melden sie. */
+  erinnerungMin?: number;
+}
+
+/** RRULE-Text aus der Wiederholung (rein, getestet). */
+export function rruleText(w: Wiederholung): string {
+  const teile = [`FREQ=${w.freq}`];
+  if (w.intervall && w.intervall > 1) teile.push(`INTERVAL=${Math.min(365, Math.round(w.intervall))}`);
+  if (w.tage?.length && w.freq === 'WEEKLY') teile.push(`BYDAY=${Array.from(new Set(w.tage)).join(',')}`);
+  if (w.anzahl && w.anzahl > 0) teile.push(`COUNT=${Math.min(999, Math.round(w.anzahl))}`);
+  else if (w.bis && /^\d{4}-\d{2}-\d{2}$/.test(w.bis)) teile.push(`UNTIL=${w.bis.replace(/-/g, '')}T215959Z`);
+  return teile.join(';');
 }
 
 function zeitFuer(wand: string, ganztags: boolean): ICAL.Time {
@@ -212,6 +230,15 @@ export function baueTermin(t: NeuerTermin, jetzt = new Date()): string {
   setzeZeit(v, 'dtend', zeitFuer(t.ende, !!t.ganztags));
   if (t.ort) v.updatePropertyWithValue('location', sauber(t.ort, 300));
   if (t.notiz) v.updatePropertyWithValue('description', sauber(t.notiz, 2000));
+  if (t.wiederholung) v.updatePropertyWithValue('rrule', ICAL.Recur.fromString(rruleText(t.wiederholung)));
+  if (t.erinnerungMin !== undefined && t.erinnerungMin >= 0) {
+    const a = new ICAL.Component('valarm');
+    a.updatePropertyWithValue('action', 'DISPLAY');
+    a.updatePropertyWithValue('description', sauber(t.titel, 300) || 'Termin');
+    const min = Math.min(60 * 24 * 14, Math.round(t.erinnerungMin));
+    const p = new ICAL.Property('trigger', a); p.setValue(ICAL.Duration.fromString(`${min > 0 ? '-' : ''}PT${min}M`)); a.addProperty(p);
+    v.addSubcomponent(a);
+  }
   if (!t.ganztags) mitBerlinZone(cal);
   cal.addSubcomponent(v);
   return cal.toString();

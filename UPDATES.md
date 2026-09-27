@@ -99,6 +99,23 @@ Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen un
   - Tests: `crm-deal-regeln` (Server-Regeln), `crm-fundament` angepasst (Upsert neuer Deals ist jetzt ein Fehler). Stand: 100 Dateien · 877 Tests grün, tsc und Lint sauber.
   - **Offen (Kevin entscheidet):** Farbe des Reiters „Firmen“ (heute neutral wie Kontakte, obwohl die Leads darin liegen); ob „Meins/Malin“-Filter auch im Board sichtbar sein soll.
 
+### Kalender neu (27.09., nur lokal)
+
+Kevin: „Der Kalender ist wirklich noch grausig … guck bei Google Kalender, wie die das aufgebaut haben, und statte unseren mit mehr Funktionen aus — auch zum Befüllen mit Terminen.“
+
+- **Vier Ansichten** (`components/os/kalender/Kalender.tsx`): Tag · Woche · Monat · Agenda, Heute-Knopf, Pfeile, KW im Titel; Mini-Monat, Sicht (Alle/Kevin/Malin/Gemeinsam),
+  Kalender einzeln ein- und ausblendbar (Farbe aus iCloud), Ebenen Fristen/Erinnerungen/Aufgaben, Suche über Titel, Ort, Kalender, Notiz.
+- **Zeitraster** (`Zeitraster.tsx`): 0–24 Uhr, 15-Minuten-Raster, rote Jetzt-Linie, überlappende Termine nebeneinander (`lib/kalender/layout.ts`), Klick in eine Lücke legt an,
+  Anfassen verschiebt (auch auf einen anderen Tag), untere Kante ändert die Dauer — nur, was MAKE OS ändern darf (🔒 Serie/Teilnehmer/fremder Kalender).
+- **Termin anlegen** (`NeuerTermin.tsx`): Schnelleingabe wie Google („Mo 10 Uhr Kaffee mit Frank 45min“, „morgen 14-16 Steuerberater @kevin in Berlin“, „3.10. Geburtstag ganztags“,
+  „Fr 9 Uhr Power Hour jede Woche“ — `lib/kalender/schnell.ts`, getestet), darunter die Felder; **Serie** (täglich/wöchentlich/monatlich/jährlich, optional bis) als RRULE und
+  **Erinnerung** (pünktlich bis 1 Tag) als VALARM — iPhone und Mac melden sie (`lib/kalender/ics.ts`). Kein Versand, keine Teilnehmer.
+- **Tastatur:** t heute · ← → blättern · d/w/m/a Ansicht · n neuer Termin.
+- **Agent und Einstellungen** in der Leiste: „Woche prüfen“ (Konflikte, Schutz-Blöcke — eintragen über iCloud statt über den Mac), Kalender je Person, Standarddauer, Kalender → Space.
+- Die alte Seite (Liste + Agent, `KalenderView.tsx`) ist ersetzt; der Wochenplaner (`/os/planung/woche`, Blöcke, Routinen) bleibt und ist verlinkt.
+- Tests: `kalender-schnell` (Parser + Layout), `kalender-serie` (RRULE/VALARM). Lokal ohne iCloud-Zugang zeigt der Kalender den Mac-Stand nur lesend; Anlegen/Ziehen greift auf dem Server.
+- **Offen (Kevin):** Termine aus Aufgaben/Follow-ups direkt in den Kalender ziehen (Wochenplaner kann Blöcke, der Kalender noch nicht); Serie nachträglich ändern bleibt in Apple; Einladungen nie.
+
 ### Brain-Abteilung (27.09., nur lokal)
 
 Kevin: „wie ein Wikipedia mit allen Infos chatten … alle wichtigen Regeln fürs Brain festlegen … ein Gedächtnis auf dem Hetzner-Server, das die KI selbst ausbaut.“
