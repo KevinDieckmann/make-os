@@ -1,10 +1,13 @@
 // ─── MAKE OS — Planung: Business-Einheiten ──────────────────────────────────
 // Kevin (27.09.): Ziele und Meilensteine im Business nach Einheit zuordnen und
-// filtern — vorbelegt Selbstständigkeit · KD Ventures · Kunden, weitere frei
+// filtern — vorbelegt Selbstständigkeit · KD Ventures · MAKE OS UG (lib/einheiten.ts,
+// eine Quelle mit Aufgaben und CRM) · Kunden, weitere frei
 // anlegbar. Die Liste gehört dem Haushalt (Speicher planung-einheiten--<h>).
 // Privat kennt keine Einheiten.
 
-export const EINHEITEN_STANDARD: readonly string[] = ['Selbstständigkeit', 'KD Ventures', 'Kunden'];
+import { KERN_EINHEITEN_NAMEN, einheitName } from '@/lib/einheiten';
+
+export const EINHEITEN_STANDARD: readonly string[] = [...KERN_EINHEITEN_NAMEN, 'Kunden'];
 export const EINHEIT_MIN = 2;
 export const EINHEIT_MAX = 40;
 export const EINHEITEN_HOECHSTENS = 30;
@@ -13,7 +16,7 @@ export interface EinheitenDatei { eigene: string[] }
 
 /** Einen Namen säubern — null, wenn unbrauchbar. */
 export function sauberEinheit(roh: unknown): string | null {
-  const s = String(roh ?? '').replace(/\s+/g, ' ').trim().slice(0, EINHEIT_MAX);
+  const s = (einheitName(String(roh ?? '').replace(/\s+/g, ' ').trim()) ?? '').slice(0, EINHEIT_MAX);
   return s.length >= EINHEIT_MIN ? s : null;
 }
 

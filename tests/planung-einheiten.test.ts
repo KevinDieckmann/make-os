@@ -1,4 +1,4 @@
-// Business-Einheiten: Vorbelegung Selbstständigkeit · KD Ventures · Kunden, frei anlegbar, ohne Doppelte.
+// Business-Einheiten: Vorbelegung Selbstständigkeit · KD Ventures · MAKE OS UG · Kunden, frei anlegbar, ohne Doppelte.
 
 import { describe, expect, it } from 'vitest';
 import { EINHEITEN_STANDARD, einheitenListe, einheitHinzufuegen, sauberEinheit, sauberEinheitenDatei, passtEinheit } from '@/lib/planung/einheiten';
@@ -38,5 +38,10 @@ describe('Datei und Filter', () => {
     expect(passtEinheit(undefined, 'alle')).toBe(true);
     expect(passtEinheit('Kunden', 'Kunden')).toBe(true);
     expect(passtEinheit(undefined, 'Kunden')).toBe(false);
+  });
+  it('Kerneinheiten aus lib/einheiten.ts, alte Schreibweisen werden vereinheitlicht', () => {
+    expect(EINHEITEN_STANDARD.slice(0, 3)).toEqual(['Selbstständigkeit', 'KD Ventures', 'MAKE OS UG']);
+    expect(sauberEinheit('Neue UG')).toBe('MAKE OS UG');
+    expect(einheitHinzufuegen([], 'neue ug')).toEqual({ eigene: [], einheit: 'MAKE OS UG', neuAngelegt: false });
   });
 });
