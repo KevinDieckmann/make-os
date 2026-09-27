@@ -67,7 +67,7 @@
   };
   
 
-  // Chat Zug um Zug (Zoe), danach der Weg eines Vorschlags
+  // Chat Zug um Zug (ZOE), danach der Weg eines Vorschlags
   const chat = $('#chat');
   if (chat) {
     const blasen = $$('.blase', chat);

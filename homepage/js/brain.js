@@ -11,7 +11,7 @@
 //   02 Sieben Apps   alles zerfällt in neun graue Haufen mit Chips („alles gut“)
 //   03 Messbar       die Haufen finden sich zu EINEM Ring: der Index füllt sich
 //                    in der Farbe der gewählten Sicht, die Zahl zählt hoch
-//   04 Zoe hilft     der Ring wird zum Brain (die Helferin): ein Impuls läuft vom
+//   04 ZOE hilft     der Ring wird zum Brain (die Helferin): ein Impuls läuft vom
 //                    Kern nach außen, bleibt im Stapel stehen, wartet auf dein Ja
 // Dazu die kleine Bühne im Founder-Abschnitt (Granat + Smaragd → M) und ein sehr
 // leises Netz hinter der Score-Scheibe im Hero (≈10 % Deckkraft, aus bei reduced-motion).
@@ -138,7 +138,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════
-  // 1. Die große Bühne: Zwei Welten → Sieben Apps → Messbar → Zoe hilft
+  // 1. Die große Bühne: Zwei Welten → Sieben Apps → Messbar → ZOE hilft
   // ═══════════════════════════════════════════════════════════════════════════════
   function grosseBuehne() {
     const odyssee = document.querySelector('.odyssee'), buehne = odyssee?.querySelector('.buehne'), canvas = document.getElementById('brain');
@@ -218,7 +218,7 @@
         break;
       }
       const wWelt = hut(f, 0), wChaos = hut(f, 1), wRing = hut(f, 2), wBrain = hut(f, 3);
-      const wZoe = spanne(f, 2.3, 2.95);
+      const wZOE = spanne(f, 2.3, 2.95);
       const letzte = kapitel.length - 1, u4 = clamp((S - oben[letzte]) / Math.max(1, hoehen[letzte] - vh), 0, 1);
       const ausblenden = 1 - spanne(S, max - vh * .22, max);
       const herz = ruhig ? .5 : .5 + .5 * Math.sin(t * .0022);
@@ -271,9 +271,9 @@
       }
       // Impuls: die Front läuft mit dem Scrollen vom Kern nach außen (erreicht den Stapel bei ~40 % des Kapitels);
       // danach atmet das Netz mit einem leisen Dauer-Impuls weiter. Freigabe bei 55 %, Ausblenden erst ab ~75 %.
-      const front = u4 * (maxHop + 3) * 2.4, stapelErreicht = wZoe > .5 && front >= hop[stapelIdx] - .3;
+      const front = u4 * (maxHop + 3) * 2.4, stapelErreicht = wZOE > .5 && front >= hop[stapelIdx] - .3;
       const front2 = ruhig ? -99 : (t * .0035) % (maxHop + 8);
-      const boost = i => { if (!wZoe) return 0; const d1 = hop[i] - front, d2 = hop[i] - front2; return Math.max(Math.exp(-d1 * d1 / 1.6), .45 * Math.exp(-d2 * d2 / 1.2) * spanne(u4, .35, .5)) * wZoe; };
+      const boost = i => { if (!wZOE) return 0; const d1 = hop[i] - front, d2 = hop[i] - front2; return Math.max(Math.exp(-d1 * d1 / 1.6), .45 * Math.exp(-d2 * d2 / 1.2) * spanne(u4, .35, .5)) * wZOE; };
       // Kanten je Form — auf dem Weg werden sie kurz und blass, sonst gibt es Spaghetti.
       const lensX = R * .22;
       if (wWelt > .01) for (let e = 0; e < KW; e++) {
