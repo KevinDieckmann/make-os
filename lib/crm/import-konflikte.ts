@@ -25,6 +25,6 @@ export const segmentVernetzen = (jetzt: string): Segment => ({
   id: SEGMENT_VERNETZEN_ID, name: 'Vernetzen · kalte Leads',
   beschreibung: 'Kalte Leads aus der Masterliste — erst vernetzen, dann qualifizieren.',
   // `temperatur` kommt parallel in SegmentKriterien (lib/crm/typen.ts + segmente.ts) — bis dahin gecastet.
-  kriterien: { temperatur: ['kalt'] } as unknown as SegmentKriterien,
+  kriterien: { temperatur: ['kalt'] } as SegmentKriterien,
   geaendert: jetzt, geaendertVon: 'system',
 });
