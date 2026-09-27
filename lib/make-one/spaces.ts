@@ -12,7 +12,7 @@
 // Space (lib/make-one/space-regeln.ts); Heute und Jarvis sehen beides.
 
 import type { LucideIcon } from 'lucide-react';
-import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Bot, Brain, Sparkles, LayoutGrid } from 'lucide-react';
+import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Bot, Brain, Sparkles, LayoutGrid, Calculator } from 'lucide-react';
 import { SPACE_FARBE, type SpaceId } from './space-regeln';
 
 export type { SpaceId };
@@ -58,6 +58,8 @@ export const SPACES: Space[] = [
 /** Eigener Knopf unter den Spaces (Kevin 26.09.: „das Agenten-Thema einzeln unter Business“). */
 export const EIGEN: SpaceEintrag[] = [
   { href: '/os/agenten', label: 'Agenten', icon: Bot, passt: ['/os/agenten', '/os/stapel', '/os/loop'] },
+  // Finanzplanung jetzt (Kevin 27.09.): eigener Bereich unter den Agenten, bis die Teile unter Privat › Finanzen und Business wandern.
+  { href: '/os/finanzplan', label: 'Finanzplanung jetzt', icon: Calculator, passt: ['/os/finanzplan'] },
 ];
 
 /** Unten links, gesondert: Jarvis und Brain (Malin), dann System. */

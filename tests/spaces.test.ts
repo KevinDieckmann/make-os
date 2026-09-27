@@ -32,7 +32,7 @@ describe('Spaces', () => {
       expect(new Set(s.eintraege.map(e => e.href)).size).toBe(s.eintraege.length);
       expect(s.eintraege[0].label).toBe('Übersicht');
     }
-    expect(EIGEN.map(e => e.label)).toEqual(['Agenten']);
+    expect(EIGEN.map(e => e.label)).toEqual(['Agenten', 'Finanzplanung jetzt']); // 27.09.: Finanzplanung jetzt unter den Agenten (Kevin)
     expect(UNTEN.map(e => e.label)).toEqual(['Jarvis', 'Brain']);
   });
 });
