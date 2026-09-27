@@ -2,141 +2,79 @@
 
 import Link from 'next/link';
 // ─── MAKE OS — Planung nach Horizont (Monat · Quartal · Jahr) ───────────────
-// Eine Seite je Zeithorizont: Ziele (editierbar, mit Fortschritt) + die
-// Aufgaben, die in diesem Zeitraum fällig sind + beim Jahr die Meilensteine
-// und der Nordstern. Die Zielebene ÜBER dem Taskmanagement.
+// Eine Seite je Zeithorizont: Fokus, Zeitstrahl, Forecast — und darunter
+// Ziele links, Meilensteine rechts (Malins Rückmeldung 27.09.), mit Priorität
+// per Pfeil, Erledigtem unten, Business-Einheiten und der Ziel-Kaskade aus dem
+// Jahr. Das Bauteil dafür ist components/os/planung/ZieleMeilensteine.tsx —
+// dasselbe steht auch in Woche und Tag.
 // 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Zeile/Haken/Zahl).
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { listeSchreiben } from '@/lib/make-one/liste-sync';
 import { PlanerLeiste } from './PlanerLeiste';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { NORDSTERN } from '@/lib/make-one/nordstern-data';
 import { Zeitstrahl, type StrahlMarker, type StrahlTick } from './Zeitstrahl';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Haken, Zahl, feld, prioFarbe, LEUCHT } from './schlank';
-import { useZiel, useZuZiel, zielRahmen } from './ziel';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Zahl, feld, prioFarbe, LEUCHT } from './schlank';
+import { useZiel, useZuZiel } from './ziel';
 import { useSpace } from '@/hooks/useSpace';
-import { SPACE_LABEL, SPACE_FARBE, spaceVonAufgabe, fokusSchluessel, type SpaceId } from '@/lib/make-one/space-regeln';
+import { SPACE_LABEL, spaceVonAufgabe, fokusSchluessel, type SpaceId } from '@/lib/make-one/space-regeln';
+import { zeitraum } from '@/lib/planung/zeitraum';
+import type { Meilenstein, Ziel } from '@/lib/planung/typen';
+import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
+import type { PlanungStand } from './planung/usePlanung';
 
-interface Ziel { id: string; titel: string; fortschritt: number; notiz?: string; erledigt?: boolean; space?: 'privat' | 'business' }
-interface Meilenstein { id: string; titel: string; bereich: 'business' | 'gesundheit'; faellig?: string; zeitfenster?: string; messlatte?: string; fortschritt: number; erledigt: boolean; erledigtAm?: string }
 type Horizont = 'monat' | 'quartal' | 'jahr';
 
 const META: Record<Horizont, { titel: string; claim: string; hinweis: string }> = {
   monat: { titel: 'Monatsplanung', claim: 'Was diesen Monat zählt.', hinweis: '3–5 Ziele — mehr ist Verzettelung.' },
   quartal: { titel: 'Quartalsplanung', claim: 'Die Etappe zum Jahresziel.', hinweis: 'Welche 3 Dinge müssen in 3 Monaten stehen?' },
-  jahr: { titel: 'Jahresplanung & Ziele', claim: 'Das Jahr, an dem du dich misst.', hinweis: 'Nordstern + Meilensteine + deine Jahresziele.' },
+  jahr: { titel: 'Jahresplanung & Ziele', claim: 'Das Jahr, an dem du dich misst.', hinweis: 'Nordstern + Meilensteine + deine Jahresziele — Zahlen und Termine kaskadieren nach unten.' },
 };
 /** Eine Farbe je Horizont — dieselbe wie auf der Wachstums-Seite. */
 const HFARBE: Record<Horizont, string> = { jahr: LEUCHT.schlaf, quartal: LEUCHT.puls, monat: LEUCHT.gut };
 
 const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
-const prozent = { fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' as const, width: 40, textAlign: 'right' as const, flex: '0 0 auto' };
-const loeschen = { fontSize: TYP.bedien, color: C.inkLeise, background: 'transparent', border: 'none', cursor: 'pointer', flex: '0 0 auto', padding: '2px 4px' } as const;
-const wahl = { background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark' as const, outline: 'none' };
-
-/** Zeitraum-Grenzen des Horizonts (lokal). */
-function zeitraum(h: Horizont): { von: string; bis: string; label: string } {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, '0');
-  const y = d.getFullYear();
-  if (h === 'monat') {
-    const m = d.getMonth();
-    return { von: `${y}-${p(m + 1)}-01`, bis: `${y}-${p(m + 1)}-${p(new Date(y, m + 1, 0).getDate())}`, label: d.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' }) };
-  }
-  if (h === 'quartal') {
-    const q = Math.floor(d.getMonth() / 3);
-    return { von: `${y}-${p(q * 3 + 1)}-01`, bis: `${y}-${p(q * 3 + 3)}-${p(new Date(y, q * 3 + 3, 0).getDate())}`, label: `Q${q + 1} ${y}` };
-  }
-  return { von: `${y}-01-01`, bis: `${y}-12-31`, label: String(y) };
-}
 
 export function HorizontView({ horizont }: { horizont: Horizont }) {
   // ?m=<Meilenstein> aus einem Link (Kalender, Energie, Monat): hinspringen und hervorheben (26.09.).
   const zielM = useZiel('m');
   const meta = META[horizont];
-  const zr = zeitraum(horizont);
+  const heute = localDay();
+  const zr = zeitraum(horizont, heute);
   const farbe = HFARBE[horizont];
   const { state: tasksState } = useTasks();
+
+  // Der Stand kommt aus dem Ziele/Meilensteine-Bauteil (usePlanung) — hier nur für Forecast, Zeitstrahl, Fokus.
   const [ziele, setZiele] = useState<Ziel[]>([]);
+  const [ms, setMs] = useState<Meilenstein[]>([]);
+  const [fokusAlle, setFokusAlle] = useState<Record<string, string>>({});
+  const [geladen, setGeladen] = useState(false);
+  const fokusSetzenRef = useRef<PlanungStand['fokusSetzen'] | null>(null);
+  const onStand = useCallback((s: PlanungStand) => { setZiele(s.ziele); setMs(s.ms); setFokusAlle(s.fokus); setGeladen(s.geladen); fokusSetzenRef.current = s.fokusSetzen; }, []);
+
   // Ziele je Space (26.09., Kevin): Privat, Business, gemeinsam (ohne Space) — der Filter folgt der Adresse oder dem Merker.
-  const { space: aktiverSpace, ausAdresse: spaceAusAdresse, setzen: spaceSetzen } = useSpace();
+  const { space: aktiverSpace, ausAdresse: spaceAusAdresse } = useSpace();
   const [spaceFilter, setSpaceFilter] = useState<SpaceId | 'alle'>('alle');
   useEffect(() => { setSpaceFilter(spaceAusAdresse ?? aktiverSpace); }, [spaceAusAdresse, aktiverSpace]);
   const zieleImSpace = ziele.filter(z => spaceFilter === 'alle' || !z.space || z.space === spaceFilter);
   // Fokus je Space (26.09.): im Space der Space-Satz, ohne Space der gemeinsame.
-  const [fokusAlle, setFokusAlle] = useState<Record<string, string>>({});
   const fokusKey = fokusSchluessel(horizont, spaceFilter === 'alle' ? null : spaceFilter);
   const fokus = fokusAlle[fokusKey] ?? '';
-  const [neu, setNeu] = useState('');
-  const [geladen, setGeladen] = useState(false);
   useZuZiel(zielM, geladen);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  /** Zuletzt gelesener/geschriebener Stand — Basis für die Unterschiede. */
-  const gespeichert = useRef<Meilenstein[] | null>(null);
 
-  useEffect(() => {
-    fetch('/api/state/ziele').then(r => r.json()).then(d => {
-      setZiele(Array.isArray(d[horizont]) ? d[horizont] : []);
-      setFokusAlle(d.fokus && typeof d.fokus === 'object' ? d.fokus : {});
-      setGeladen(true);
-    }).catch(() => setGeladen(true));
-  }, [horizont]);
-
-  // Meilensteine — pflegbarer Store (Jahr verwaltet, Monat zeigt die nächsten).
-  const [ms, setMs] = useState<Meilenstein[]>([]);
-  const [msNeu, setMsNeu] = useState({ titel: '', bereich: 'business' as Meilenstein['bereich'], faellig: '' });
-  // Meilensteine folgen dem Space (26.09.): privat = Gesundheit, Business = Business.
-  useEffect(() => { if (spaceFilter !== 'alle') setMsNeu(m => ({ ...m, bereich: spaceFilter === 'privat' ? 'gesundheit' : 'business' })); }, [spaceFilter]);
-  const msTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => {
-    fetch('/api/state/meilensteine').then(r => r.json()).then(d => { const l = Array.isArray(d.meilensteine) ? d.meilensteine : []; gespeichert.current = l; setMs(l); }).catch(() => {});
-  }, [horizont]);
-  function msPersist(next: Meilenstein[]) {
-    setMs(next);
-    clearTimeout(msTimer.current);
-    msTimer.current = setTimeout(() => {
-      const alt = gespeichert.current;
-      gespeichert.current = next;
-      void listeSchreiben<Meilenstein>('/api/state/meilensteine', 'meilensteine', alt, next);
-    }, 500);
-  }
-  const msPatch = (id: string, p: Partial<Meilenstein>) => msPersist(ms.map(m => m.id === id ? { ...m, ...p } : m));
-  const msFaelligLabel = (m: Meilenstein) => m.faellig ? `${m.faellig.slice(8)}.${m.faellig.slice(5, 7)}.` : (m.zeitfenster ?? '');
-
-  function persist(next: Ziel[]) {
-    setZiele(next);
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      fetch('/api/state/ziele', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ horizont, ziele: next }) }).catch(() => {});
-    }, 500);
-  }
-
-  const fokusTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   function fokusSetzen(v: string) {
     setFokusAlle(a => ({ ...a, [fokusKey]: v }));
-    clearTimeout(fokusTimer.current);
-    fokusTimer.current = setTimeout(() => {
-      fetch('/api/state/ziele', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ horizont: fokusKey, fokus: v }) }).catch(() => {});
-    }, 600);
+    fokusSetzenRef.current?.(fokusKey, v);
   }
 
-  const addZiel = () => {
-    const t = neu.trim();
-    if (!t) return;
-    persist([...ziele, { id: `z-${Date.now().toString(36)}`, titel: t, fortschritt: 0, ...(spaceFilter !== 'alle' ? { space: spaceFilter } : {}) }]);
-    setNeu('');
-  };
-
   // Aufgaben, die in diesem Zeitraum fällig sind.
-  const heute = localDay();
   const faellig = tasksState.tasks
     .filter(t => t.status !== 'done' && t.dueDate && t.dueDate >= zr.von && t.dueDate <= zr.bis && (spaceFilter === 'alle' || spaceVonAufgabe(t) === spaceFilter))
     .sort((a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? ''));
 
-  const schnitt = ziele.length ? Math.round(ziele.reduce((s, z) => s + (z.erledigt ? 100 : z.fortschritt), 0) / ziele.length) : null;
+  const schnitt = zieleImSpace.length ? Math.round(zieleImSpace.reduce((s, z) => s + (z.erledigt ? 100 : z.fortschritt), 0) / zieleImSpace.length) : null;
 
   // Zeitstrahl: Ticks je Horizont, darauf offene Meilensteine + (Monat) fällige Aufgaben.
   const MON_KURZ = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
@@ -152,8 +90,8 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
     return [1, 8, 15, 22, 29].filter(t => t <= letzter).map(t => ({ date: `${zr.von.slice(0, 8)}${p2(t)}`, label: `${t}.` }));
   })();
   const strahlMarker: StrahlMarker[] = ms
-    .filter(m => !m.erledigt && m.faellig)
-    .map(m => ({ date: m.faellig!, label: m.titel, farbe: m.bereich === 'gesundheit' ? LEUCHT.gut : LEUCHT.achtung, symbol: '◇', href: horizont === 'jahr' ? undefined : '/os/planung/jahr' }));
+    .filter(m => !m.erledigt && m.faellig && (spaceFilter === 'alle' || (spaceFilter === 'privat' ? m.bereich === 'gesundheit' : m.bereich === 'business')))
+    .map(m => ({ date: m.faellig!, label: m.titel, farbe: m.bereich === 'gesundheit' ? LEUCHT.gut : LEUCHT.achtung, symbol: '◇', href: horizont === 'jahr' ? undefined : `/os/planung/jahr?m=${encodeURIComponent(m.id)}` }));
   if (horizont === 'monat') {
     const proTag: Record<string, string[]> = {};
     faellig.forEach(t => { proTag[t.dueDate!] = [...(proTag[t.dueDate!] ?? []), t.title]; });
@@ -167,7 +105,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   // Forecast: Zeit verstrichen vs. Fortschritt — ehrlich gerechnet, nicht geraten.
   const verstrichen = (() => {
     const von = new Date(`${zr.von}T00:00:00`).getTime();
-    const bis = new Date(`${zr.bis.slice(0, 8)}${Math.min(31, Number(zr.bis.slice(8)))}T23:59:59`).getTime();
+    const bis = new Date(`${zr.bis}T23:59:59`).getTime();
     const jetzt = Date.now();
     if (jetzt <= von) return 0;
     if (jetzt >= bis) return 100;
@@ -176,9 +114,11 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   const prognose = schnitt != null && verstrichen > 5 ? Math.min(150, Math.round((schnitt / verstrichen) * 100)) : null;
   const prognoseFarbe = prognose == null ? C.inkLeise : prognose >= 95 ? LEUCHT.gut : prognose >= 70 ? LEUCHT.achtung : LEUCHT.kritisch;
 
-  const offeneMs = ms.filter(m => !m.erledigt).sort((a, b) => (a.faellig ?? '9999').localeCompare(b.faellig ?? '9999'));
   const fokusTitel = `${horizont === 'jahr' ? 'Fokus des Jahres' : horizont === 'quartal' ? 'Fokus des Quartals' : 'Fokus des Monats'}${spaceFilter === 'alle' ? ' · gemeinsam' : ` · ${SPACE_LABEL[spaceFilter]}`}`;
-  let k = 0; // laufender Karten-Index fürs gestaffelte Erscheinen
+  // Karten-Indizes fürs gestaffelte Erscheinen (das Ziele/Meilensteine-Bauteil belegt drei).
+  const hatForecast = schnitt != null && prognose != null;
+  const hatNordstern = horizont === 'jahr' && spaceFilter !== 'privat';
+  const kForecast = 1, kNordstern = kForecast + (hatForecast ? 1 : 0), kZM = kNordstern + (hatNordstern ? 1 : 0), kAufgaben = kZM + 3;
 
   return (
     <Seite
@@ -189,7 +129,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
       <PlanerLeiste aktiv={horizont} />
 
       {/* Fokus dieses Horizonts — die eine Richtung, gegen die geplant wird */}
-      <Karte i={k++} akzent={farbe}>
+      <Karte i={0} akzent={farbe}>
         <Ueberschrift farbe={farbe} rechts="Sichtbar im Wochenplaner und in der Tagesplanung — ZOE plant dagegen.">{fokusTitel}</Ueberschrift>
         <input value={fokus} onChange={e => fokusSetzen(e.target.value)} aria-label={fokusTitel}
           placeholder={horizont === 'monat' ? 'z. B. Gesundheit stabilisieren + F&F-Kunden onboarden' : 'Woran richtet sich alles aus?'}
@@ -200,8 +140,8 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
       <Zeitstrahl von={zr.von} bis={zr.bis} ticks={ticks} marker={strahlMarker} />
 
       {/* Forecast — Zeit vs. Fortschritt, deterministisch */}
-      {schnitt != null && prognose != null && (
-        <Karte i={k++}>
+      {hatForecast && (
+        <Karte i={kForecast}>
           <Ueberschrift farbe={prognoseFarbe}>Forecast</Ueberschrift>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 16 }}>
             <Zahl wert={String(verstrichen)} label="% der Zeit vorbei" />
@@ -214,139 +154,19 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
         </Karte>
       )}
 
-      {/* Monat: die nächsten offenen Meilensteine — fällige zuerst, mit Fortschritt */}
-      {horizont === 'monat' && (
-        <Karte i={k++}>
-          <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href="/os/planung/jahr" style={{ color: C.inkLeise, textDecoration: 'none' }}>pflegen ›</Link>}>Meilensteine im Blick</Ueberschrift>
-          {!offeneMs.length && <Leer>Alle Meilensteine erledigt.</Leer>}
-          <Liste>
-            {offeneMs.slice(0, 6).map(m => {
-              const spaet = !!m.faellig && m.faellig < localDay();
-              const wann = msFaelligLabel(m);
-              return (
-                <Link key={m.id} href={`/os/planung/jahr?m=${encodeURIComponent(m.id)}`} style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}><Zeile
-                  links={<Punkt farbe={spaet ? LEUCHT.kritisch : LEUCHT.achtung} />}
-                  titel={m.titel}
-                  unter={[wann ? `${spaet ? 'überfällig ' : ''}${wann}` : '', m.messlatte ?? ''].filter(Boolean).join(' · ') || undefined}
-                  rechts={<Chip farbe={col(m.fortschritt)}>{m.fortschritt} %</Chip>} /></Link>
-              );
-            })}
-          </Liste>
+      {/* Jahr: der Nordstern ist Business — im Privat-Space steht er nicht (26.09.). */}
+      {hatNordstern && (
+        <Karte i={kNordstern}>
+          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href={spaceFilter === 'business' ? '/os/finanzen?s=business' : '/os/gesundheit?s=index'} style={{ color: C.inkLeise, textDecoration: 'none' }}>{spaceFilter === 'business' ? 'Meilensteine zählen im Business-Index ›' : 'Meilensteine zählen in den Indizes ›'}</Link>}>Nordstern</Ueberschrift>
+          <p style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.55, margin: 0 }}>{NORDSTERN}</p>
         </Karte>
       )}
 
-      {/* Jahr: Nordstern + Meilenstein-Verwaltung (Business & Gesundheit) */}
-      {horizont === 'jahr' && (
-        <>
-          {/* Der Nordstern ist Business — im Privat-Space steht er nicht (26.09.). */}
-          {spaceFilter !== 'privat' && (
-            <Karte i={k++}>
-              <Ueberschrift farbe={LEUCHT.schlaf}>Nordstern</Ueberschrift>
-              <p style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.55, margin: 0 }}>{NORDSTERN}</p>
-            </Karte>
-          )}
-          {(['business', 'gesundheit'] as const).filter(b => spaceFilter === 'alle' || (spaceFilter === 'business' ? b === 'business' : b === 'gesundheit')).map(bereich => {
-            const bf = bereich === 'gesundheit' ? LEUCHT.gut : LEUCHT.business;
-            const meine = ms.filter(m => m.bereich === bereich);
-            return (
-              <Karte key={bereich} i={k++}>
-                <Ueberschrift farbe={bf} rechts={<Link href={bereich === 'gesundheit' ? '/os/gesundheit?s=index' : '/os/finanzen?s=business'} style={{ color: C.inkLeise, textDecoration: 'none' }}>{bereich === 'gesundheit' ? 'zählen im Gesundheits-Index ›' : 'zählen im Business-Index ›'}</Link>}>Meilensteine · {bereich === 'gesundheit' ? 'Gesundheit' : 'Business'}</Ueberschrift>
-                {!meine.length && <Leer>Noch kein Meilenstein — unten einen anlegen.</Leer>}
-                <Liste>
-                  {meine.map(m => {
-                    const spaet = !!m.faellig && m.faellig < localDay() && !m.erledigt;
-                    const wann = msFaelligLabel(m);
-                    return (
-                      <div key={m.id} id={`ziel-${m.id}`} style={zielRahmen(zielM === m.id, bf)}><Zeile
-                        links={<Haken an={m.erledigt} farbe={bf} onChange={() => msPatch(m.id, { erledigt: !m.erledigt, fortschritt: !m.erledigt ? 100 : m.fortschritt, erledigtAm: !m.erledigt ? localDay() : undefined })} />}
-                        titel={<span style={{ color: m.erledigt ? C.inkLeise : C.ink, textDecoration: m.erledigt ? 'line-through' : 'none' }}>{m.titel}</span>}
-                        unter={wann || m.messlatte ? (
-                          <>
-                            {wann && <span style={{ color: spaet ? LEUCHT.kritisch : undefined }}>{spaet ? 'überfällig ' : ''}{wann}</span>}
-                            {wann && m.messlatte ? ' · ' : ''}
-                            {m.messlatte && <>Messlatte: {m.messlatte}</>}
-                          </>
-                        ) : undefined}
-                        rechts={!m.erledigt ? (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '0 0 auto' }}>
-                            <input type="range" min={0} max={100} step={5} value={m.fortschritt} aria-label="Fortschritt"
-                              onChange={e => msPatch(m.id, { fortschritt: Number(e.target.value) })}
-                              style={{ width: 'clamp(70px, 12vw, 110px)', accentColor: col(m.fortschritt) }} />
-                            <span style={{ ...prozent, color: col(m.fortschritt) }}>{m.fortschritt} %</span>
-                            <button onClick={() => msPersist(ms.filter(x => x.id !== m.id))} aria-label="Meilenstein löschen" style={loeschen}>✕</button>
-                          </span>
-                        ) : <Chip farbe={bf}>erledigt</Chip>} /></div>
-                    );
-                  })}
-                </Liste>
-              </Karte>
-            );
-          })}
-          <Karte i={k++}>
-            <Ueberschrift>Neuer Meilenstein</Ueberschrift>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <input value={msNeu.titel} onChange={e => setMsNeu({ ...msNeu, titel: e.target.value })} placeholder="Neuer Meilenstein …" aria-label="Titel"
-                style={{ ...feld, width: 'auto', flex: '1 1 180px', minWidth: 0 }} />
-              <input type="date" value={msNeu.faellig} onChange={e => setMsNeu({ ...msNeu, faellig: e.target.value })} aria-label="Fällig am"
-                style={{ ...feld, width: 'auto', flex: '0 1 160px', colorScheme: 'dark' }} />
-              <select value={msNeu.bereich} onChange={e => setMsNeu({ ...msNeu, bereich: e.target.value as Meilenstein['bereich'] })} aria-label="Bereich" style={wahl}>
-                {spaceFilter !== 'privat' && <option value="business">Business</option>}
-                {spaceFilter !== 'business' && <option value="gesundheit">Gesundheit</option>}
-              </select>
-              <Knopf onClick={() => {
-                if (!msNeu.titel.trim()) return;
-                msPersist([...ms, { id: `ms-${Date.now().toString(36)}`, titel: msNeu.titel.trim(), bereich: msNeu.bereich, faellig: msNeu.faellig || undefined, fortschritt: 0, erledigt: false }]);
-                setMsNeu({ titel: '', bereich: msNeu.bereich, faellig: '' });
-              }}>+ Meilenstein</Knopf>
-            </div>
-          </Karte>
-        </>
-      )}
-
-      {/* Ziele */}
-      <Karte i={k++}>
-        <Ueberschrift farbe={farbe} rechts={schnitt != null ? <span style={{ color: col(schnitt), fontWeight: 700 }}>Ø {schnitt} %</span> : undefined}>Ziele ({ziele.length})</Ueberschrift>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input value={neu} onChange={e => setNeu(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addZiel(); }} aria-label="Neues Ziel"
-            placeholder={`Neues ${horizont === 'jahr' ? 'Jahres' : horizont === 'quartal' ? 'Quartals' : 'Monats'}ziel …`}
-            style={{ ...feld, width: 'auto', flex: '1 1 200px', minWidth: 0 }} />
-          <Knopf onClick={addZiel}>+ Ziel</Knopf>
-          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-            {(['privat', 'business', 'alle'] as const).map(k => (
-              <button key={k} onClick={() => { setSpaceFilter(k); if (k !== 'alle') spaceSetzen(k); }} className="fassbar" title={k === 'alle' ? 'Privat, Business und gemeinsame Ziele' : `Nur ${SPACE_LABEL[k]} (und gemeinsame)`} style={{ fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${spaceFilter === k ? (k === 'alle' ? C.aktiv : SPACE_FARBE[k]) : 'rgba(255,255,255,.1)'}`, background: spaceFilter === k ? `${k === 'alle' ? C.aktiv : SPACE_FARBE[k]}22` : 'transparent', color: spaceFilter === k ? (k === 'alle' ? C.aktiv : SPACE_FARBE[k]) : C.inkDim }}>{k === 'alle' ? 'Alle' : SPACE_LABEL[k]}</button>
-            ))}
-          </span>
-        </div>
-        {!geladen ? (
-          <Leer>lade …</Leer>
-        ) : !zieleImSpace.length ? (
-          <Leer>Noch keine Ziele für {zr.label}{spaceFilter !== 'alle' ? ` in ${SPACE_LABEL[spaceFilter]}` : ''}. Was soll am Ende stehen?</Leer>
-        ) : (
-          <Liste>
-            {zieleImSpace.map(z => {
-              const v = z.erledigt ? 100 : z.fortschritt;
-              return (
-                <Zeile key={z.id}
-                  links={<Haken an={!!z.erledigt} farbe={farbe} onChange={() => persist(ziele.map(x => x.id === z.id ? { ...x, erledigt: !x.erledigt } : x))} />}
-                  titel={<span style={{ fontWeight: 600, color: z.erledigt ? C.inkLeise : C.ink, textDecoration: z.erledigt ? 'line-through' : 'none' }}>{z.titel}</span>}
-                  rechts={
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '0 0 auto', opacity: z.erledigt ? 0.6 : 1 }}>
-                      <button onClick={() => persist(ziele.map(x => x.id === z.id ? { ...x, space: x.space === 'privat' ? 'business' : x.space === 'business' ? undefined : 'privat' } : x))} title={z.space ? `${SPACE_LABEL[z.space]} — Klick wechselt` : 'gemeinsam (Privat und Business) — Klick wechselt'} style={{ border: `1px solid ${z.space ? SPACE_FARBE[z.space] : 'rgba(255,255,255,.14)'}`, background: z.space ? `${SPACE_FARBE[z.space]}22` : 'transparent', color: z.space ? SPACE_FARBE[z.space] : C.inkLeise, borderRadius: 999, padding: '2px 8px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: SCHRIFT.text }}>{z.space ? SPACE_LABEL[z.space] : 'gemeinsam'}</button>
-                      <input type="range" min={0} max={100} step={5} value={v} aria-label="Fortschritt"
-                        onChange={e => persist(ziele.map(x => x.id === z.id ? { ...x, fortschritt: Number(e.target.value) } : x))}
-                        disabled={z.erledigt} style={{ width: 'clamp(70px, 14vw, 120px)', accentColor: col(v) }} />
-                      <span style={{ ...prozent, color: col(v) }}>{v} %</span>
-                      <button onClick={() => persist(ziele.filter(x => x.id !== z.id))} aria-label="Ziel löschen" style={loeschen}>✕</button>
-                    </span>
-                  } />
-              );
-            })}
-          </Liste>
-        )}
-      </Karte>
+      {/* Ziele links, Meilensteine rechts — Priorität per Pfeil, Erledigtes unten, Einheiten im Business, Kaskade aus dem Jahr */}
+      <ZieleMeilensteine horizont={horizont} farbe={farbe} spaceFilter={spaceFilter} onSpace={setSpaceFilter} onStand={onStand} zielM={zielM} i={kZM} />
 
       {/* Aufgaben im Zeitraum */}
-      <Karte i={k++}>
+      <Karte i={kAufgaben}>
         <Ueberschrift farbe={LEUCHT.puls} rechts={faellig.length > 15 ? `die nächsten 15 von ${faellig.length}` : undefined}>Fällig in {zr.label} ({faellig.length})</Ueberschrift>
         {!faellig.length && <Leer>Keine terminierten Aufgaben in diesem Zeitraum.</Leer>}
         <Liste>

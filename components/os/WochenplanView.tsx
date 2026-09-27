@@ -16,7 +16,6 @@ import Link from 'next/link';
 // Kevin/Malin/Gemeinsam und Ebenen zum Ein- und Ausblenden.
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { useRouter } from 'next/navigation';
 import { useZiel } from './ziel';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { ART_FARBE, type PlanBlock } from '@/types/planer';
@@ -26,9 +25,10 @@ import { localDay } from '@/lib/zeit';
 import { wochenplanSchreiben } from '@/lib/make-one/wochenplan-sync';
 import { verteileSpuren, spurStil, titelStil } from '@/lib/make-one/spuren';
 import { SAEULE_VON_PROJEKT, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, Segmente, feld, LEUCHT } from './schlank';
+import { Seite, Karte, Ueberschrift, Leer, Chip, Knopf, Punkt, Zahl, Segmente, feld, LEUCHT } from './schlank';
 import { useKalender, GanztagsZelle, TerminFenster, WER_FARBE, WER_LABEL, EBENEN, type KTermin, type Ebene, type Wer } from './kalender/teile';
 import { tagPlus, wandAus } from '@/lib/kalender/zeit';
+import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
 // Routinen kommen aus dem Routine-Planer — nicht mehr aus der Konstante.
 
 interface FixTermin { titel: string; date: string; startMin: number; dauerMin: number; quelle: string; termin?: KTermin; space: 'privat' | 'business'; /** aus dem anderen Space — nur „belegt“ (26.09.) */ fremd: boolean }
@@ -84,7 +84,6 @@ function Ziehbar({ farbe, daten, children, breit }: { farbe: string; daten: obje
 export function WochenplanView() {
   // Space aus der Adresse (26.09., Malin): Termine des anderen Space bleiben als „belegt“ sichtbar, damit nichts doppelt gebucht wird.
   const { ausAdresse: spaceAusAdresse } = useSpace();
-  const router = useRouter();
   const { state: tasksState, dispatch: tasksDispatch } = useTasks();
   const [offset, setOffset] = useState(0);
   // ?tag=YYYY-MM-DD (z. B. hinter „Fokuszeit“ im Business-Index): die Woche dieses Tages zeigen.
@@ -360,8 +359,6 @@ export function WochenplanView() {
   const gesamtH = (planMin + fixMin) / 60;
   const ueberladen = gesamtH > 50;
 
-  const zielListe = [...ziele.monat.filter(z => !z.erledigt).slice(0, 3).map(z => ({ ...z, h: 'M' })), ...ziele.quartal.filter(z => !z.erledigt).slice(0, 2).map(z => ({ ...z, h: 'Q' }))];
-
   return (
     <Seite
       breit={1200}
@@ -536,25 +533,17 @@ export function WochenplanView() {
           <span>— alles wird automatisch gespeichert.</span>
         </div>
       </Karte>
-      {/* Ziele im Blick — die Woche plant man gegen Ziele, nicht ins Blaue */}
-      {(
+      {/* Ziele im Blick — die Woche plant man gegen Ziele, nicht ins Blaue. Seit 27.09.: Wochenziele links,
+          Meilensteine der Woche rechts (Priorität per Pfeil, Erledigtes unten, Kaskade aus dem Jahr). */}
+      {(fokusFuerSpace(ziele.fokus as Record<string, string> | undefined, spaceAusAdresse).woche || fokusFuerSpace(ziele.fokus as Record<string, string> | undefined, spaceAusAdresse).monat) && (
         <Karte i={1}>
-          <Ueberschrift farbe={LEUCHT.schlaf} rechts={!ziele.monat.length ? <Link href="/os/planung/monat" style={verweis}>Monatsziele anlegen ›</Link> : undefined}>Ziele</Ueberschrift>
-          {!ziele.monat.length && !ziele.quartal.length && <Leer>Noch kein Monats- oder Quartalsziel — die Woche plant man gegen Ziele, nicht ins Blaue.</Leer>}
-          {(fokusFuerSpace(ziele.fokus as Record<string, string> | undefined, spaceAusAdresse).woche || fokusFuerSpace(ziele.fokus as Record<string, string> | undefined, spaceAusAdresse).monat) && (
-            <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(16px,2vw,18px)', fontWeight: 600, lineHeight: 1.4, marginBottom: 4 }}>
-              <span style={{ color: LEUCHT.schlaf }}>◎</span> {fokusFuerSpace(ziele.fokus as Record<string, string> | undefined, spaceAusAdresse).woche || fokusFuerSpace(ziele.fokus as Record<string, string> | undefined, spaceAusAdresse).monat}
-            </div>
-          )}
-          <Liste>
-            {zielListe.map((z, i) => (
-              <Zeile key={i} onClick={() => router.push(z.h === 'M' ? '/os/planung/monat' : '/os/planung/quartal')}
-                links={<Chip farbe={z.h === 'M' ? LEUCHT.schlaf : LEUCHT.agenten}>{z.h}</Chip>} titel={z.titel}
-                rechts={<div style={{ width: 64, flex: '0 0 auto' }}><Fortschritt anteil={z.fortschritt / 100} farbe={z.fortschritt >= 70 ? LEUCHT.gut : z.fortschritt >= 40 ? LEUCHT.achtung : LEUCHT.kritisch} /></div>} />
-            ))}
-          </Liste>
+          <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/planung/monat" style={verweis}>Monatsziele ›</Link>}>Fokus</Ueberschrift>
+          <div style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(16px,2vw,18px)', fontWeight: 600, lineHeight: 1.4 }}>
+            <span style={{ color: LEUCHT.schlaf }}>◎</span> {fokusFuerSpace(ziele.fokus as Record<string, string> | undefined, spaceAusAdresse).woche || fokusFuerSpace(ziele.fokus as Record<string, string> | undefined, spaceAusAdresse).monat}
+          </div>
         </Karte>
       )}
+      <ZieleMeilensteine horizont="woche" farbe={LEUCHT.schlaf} i={1} kompakt />
 
       {/* ZOE belegt die Woche — Vorschlag, den du zurechtschiebst */}
       <Karte i={2} akzent={LEUCHT.agenten}>

@@ -8,7 +8,8 @@
 // Katalog „aus dem Bestand“: Aufgaben, Termine, Fokus/Wochenfokus, Körper,
 // Routinen & Streak, Essen heute, Index je Säule, Finanzen privat, ZOE &
 // Inbox, Wer heute dran ist, Familie, nächste Tage — seit 27.09. dazu
-// Kanal-Leistung und Nächstes Event · Make.One (Markttraktion).
+// Kanal-Leistung und Nächstes Event · Make.One (Markttraktion), „Routinen heute“
+// (27.09.: heute fällige Routinen je Person, Privat/Business, abhakbar).
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -30,7 +31,10 @@ import type { LeadZeile } from '@/lib/crm/leads';
 import type { Event as CrmEvent } from '@/lib/crm/typen';
 import type { EventZahlen } from '@/lib/crm/events';
 import { MARKE_EVENTS, markeVon } from '@/lib/crm/marke';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Fortschritt, feld, zoneFarbe, prioFarbe } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Fortschritt, Chip, feld, zoneFarbe, prioFarbe } from '../schlank';
+import { heuteFaellig, istGemeinsam, spaceVonRoutine } from '@/lib/planung/routinen';
+import { rhythmusKurz } from '@/lib/planung/rhythmus';
+import type { Routine as PlanungsRoutine } from '@/lib/planung/typen';
 import { WhoopImport } from '../WhoopImport';
 
 export interface WidgetProps { e: Einstellungen; titel?: string; i: number }
@@ -232,6 +236,59 @@ function RoutinenWidget({ titel, i }: WidgetProps) {
           <span style={{ fontSize: 12.5, color: C.inkDim }}>Tage Streak{d.routinen?.quote7 != null ? ` · 7-Tage-Quote ${Math.round(d.routinen.quote7 * 100)} %` : ''}</span>
         </div>
       )}
+    </Karte>
+  );
+}
+
+// ── Routinen heute (27.09.) ─────────────────────────────────────────────────
+// Was heute für diese Person dran ist — eigene und gemeinsame Routinen, nach
+// Rhythmus fällig (täglich, 3×/Woche, wöchentlich … jährlich), Privat oder
+// Business je Einstellung, abhakbar in den eigenen health-log. `null`, wenn
+// nichts fällig ist. Das Widget „Routinen & Streak“ (Gesundheit) bleibt daneben.
+function RoutinenHeuteWidget({ e, titel, i }: WidgetProps) {
+  const heute = localDay();
+  const sp = str(e.space, 'alle') as 'alle' | 'privat' | 'business';
+  const routinen = useDaten<PlanungsRoutine[]>('/api/state/routinen', x => (Array.isArray((x as { routinen?: unknown }).routinen) ? (x as { routinen: PlanungsRoutine[] }).routinen : null));
+  const ich = useDaten<string>('/api/konto/ich', x => ((x as { ich?: { speicher?: string } }).ich?.speicher ?? null));
+  const geladen = useDaten<Record<string, string[]>>('/api/state/health', x => ((x as { log?: Record<string, string[]> }).log ?? {}));
+  const [log, setLog] = useState<Record<string, string[]> | null>(null);
+  useEffect(() => { if (geladen) setLog(geladen); }, [geladen]);
+  const [speichern] = useState(() => {
+    let t: ReturnType<typeof setTimeout> | undefined;
+    return (next: Record<string, string[]>) => { clearTimeout(t); t = setTimeout(() => { fetch('/api/state/health', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {}); datenVergessen(); }, 300); };
+  });
+  if (routinen === undefined || ich === undefined || geladen === undefined) return null;
+  if (!routinen || !ich) return null;
+  const liste = heuteFaellig(routinen, ich, log ?? geladen, heute, sp);
+  if (!liste.length) return null;
+  const offen = liste.filter(x => !x.heuteErledigt).length;
+  const toggle = (id: string) => {
+    const basis = log ?? geladen ?? {};
+    const tag = new Set(basis[heute] ?? []);
+    if (tag.has(id)) tag.delete(id); else tag.add(id);
+    const next = { ...basis, [heute]: Array.from(tag) };
+    setLog(next); speichern(next);
+  };
+  const farbe = sp === 'business' ? SPACE_FARBE.business : sp === 'privat' ? SPACE_FARBE.privat : LEUCHT.gut;
+  return (
+    <Karte i={i} akzent={!offen ? LEUCHT.gut : undefined}>
+      <Ueberschrift farbe={farbe} rechts={<Link href="/os/planung/routinen" style={link}>{offen ? `${offen} offen ›` : 'alle erledigt ›'}</Link>}>{titel ?? `Routinen heute${sp !== 'alle' ? ` · ${SPACE_LABEL[sp]}` : ''}`}</Ueberschrift>
+      <Liste>
+        {liste.slice(0, 10).map(({ routine: r, f, heuteErledigt }) => (
+          <Zeile key={r.id} onClick={() => toggle(r.id)}
+            links={<Haken an={heuteErledigt} farbe={SPACE_FARBE[spaceVonRoutine(r)]} onChange={() => toggle(r.id)} />}
+            titel={<span style={{ color: heuteErledigt ? C.inkLeise : C.ink, textDecoration: heuteErledigt ? 'line-through' : 'none' }}>{r.label}</span>}
+            unter={[
+              sp === 'alle' ? SPACE_LABEL[spaceVonRoutine(r)] : '',
+              istGemeinsam(r) ? 'gemeinsam' : '',
+              (r.rhythmus ?? 'taeglich') !== 'taeglich' ? rhythmusKurz(r.rhythmus) : '',
+              f.ueberfaellig ? `seit ${f.naechstes.slice(8)}.${f.naechstes.slice(5, 7)}.` : '',
+              f.dieseWoche != null ? `${f.dieseWoche}/3 diese Woche` : '',
+            ].filter(Boolean).join(' · ') || undefined}
+            rechts={f.ueberfaellig && !heuteErledigt ? <Chip farbe={LEUCHT.achtung}>überfällig</Chip> : <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{r.dauerMin} min</span>} />
+        ))}
+      </Liste>
+      {liste.length > 10 && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>+ {liste.length - 10} weitere in der Tagesplanung</div>}
     </Karte>
   );
 }
@@ -510,6 +567,8 @@ export const WIDGETS: Record<string, WidgetDef> = {
     einstellungen: [{ k: 'horizont', label: 'Horizont', art: 'wahl', optionen: [{ w: 'auto', label: 'der nächste gesetzte' }, { w: 'tag', label: 'heute' }, { w: 'woche', label: 'Woche' }, { w: 'monat', label: 'Monat' }], standard: 'auto' }, { k: 'space', label: 'Space', art: 'wahl', optionen: [{ w: 'alle', label: 'gemeinsam' }, { w: 'privat', label: 'Privat' }, { w: 'business', label: 'Business' }], standard: 'alle' }] },
   koerper: { art: 'koerper', label: 'Körper', bereich: 'Gesundheit', beschreibung: 'Recovery und Routinen von heute', breite: 2, Komponente: KoerperWidget },
   routinen: { art: 'routinen', label: 'Routinen & Streak', bereich: 'Gesundheit', beschreibung: 'Welche Routinen heute schon stehen, dein Streak', breite: 2, Komponente: RoutinenWidget },
+  'routinen-heute': { art: 'routinen-heute', label: 'Routinen heute', bereich: 'Tag', beschreibung: 'Was heute dran ist — eigene und gemeinsame Routinen nach Rhythmus, abhakbar', breite: 2, Komponente: RoutinenHeuteWidget,
+    einstellungen: [{ k: 'space', label: 'Bereich', art: 'wahl', optionen: [{ w: 'alle', label: 'Privat und Business' }, { w: 'privat', label: 'nur Privat' }, { w: 'business', label: 'nur Business' }], standard: 'alle' }] },
   essen: { art: 'essen', label: 'Essen heute', bereich: 'Gesundheit', beschreibung: 'Die drei Mahlzeiten von heute mit Rezept und die offene Einkaufsliste', breite: 2, Komponente: EssenWidget },
   index: { art: 'index', label: 'Index je Säule', bereich: 'Zahlen', beschreibung: 'Business-, Privat-, Gesundheits-Index oder Traktions-Score mit Säulen', breite: 2, Komponente: IndexWidget,
     einstellungen: [{ k: 'saeule', label: 'Säule', art: 'wahl', optionen: [{ w: 'business', label: 'Business' }, { w: 'privat', label: 'Privat' }, { w: 'gesundheit', label: 'Gesundheit' }, { w: 'traktion', label: 'Traktion' }], standard: 'business' }] },
@@ -534,6 +593,8 @@ export const KATALOG: KatalogEintrag[] = [
   { art: 'zeit', label: 'Zeit & Fokus · Business', beschreibung: WIDGETS.zeit.beschreibung, bereich: 'Tag', breite: 2, voreinstellung: { space: 'business' } },
   { art: 'koerper', label: 'Körper', beschreibung: WIDGETS.koerper.beschreibung, bereich: 'Gesundheit', breite: 2 },
   { art: 'routinen', label: 'Routinen & Streak', beschreibung: WIDGETS.routinen.beschreibung, bereich: 'Gesundheit', breite: 2 },
+  { art: 'routinen-heute', label: 'Routinen heute · Privat', beschreibung: 'Heute fällige private Routinen — eigene und gemeinsame, abhakbar', bereich: 'Tag', breite: 2, voreinstellung: { space: 'privat' } },
+  { art: 'routinen-heute', label: 'Routinen heute · Business', beschreibung: 'Heute fällige Business-Routinen — eigene und gemeinsame, abhakbar', bereich: 'Business', breite: 2, voreinstellung: { space: 'business' } },
   { art: 'essen', label: 'Essen heute', beschreibung: WIDGETS.essen.beschreibung, bereich: 'Gesundheit', breite: 2 },
   { art: 'index', label: 'Business-Index', beschreibung: 'Der Index mit seinen Säulen', bereich: 'Zahlen', breite: 2, voreinstellung: { saeule: 'business' } },
   { art: 'index', label: 'Privat-Index', beschreibung: 'Der Privat-Index mit seinen Säulen', bereich: 'Zahlen', breite: 2, voreinstellung: { saeule: 'privat' } },

@@ -42,3 +42,11 @@ export interface RoutinesState {
   entries: RoutineEntry[];
   habits: HabitTracker[];
 }
+
+// ── Planung (27.09., Malins Rückmeldung) — additiv ─────────────────────────
+// Die gelebte Routine im Speicher `routinen` (Routine-Planer, Tagesplanung,
+// Home-Widget) ist `Routine` aus lib/planung/typen.ts: Space Privat/Business,
+// Owner (Person oder „beide“), Rhythmus mit Fälligkeit, Rang. Fehlendes `space`
+// = privat, fehlender Rhythmus = täglich, fehlender Owner = beide — bestehende
+// Einträge bleiben gültig, gesäubert wird im Schreibweg (lib/planung/routinen.ts).
+export type { Routine as PlanungsRoutine, Block as WochenBlock, Rhythmus, Wochentag } from '@/lib/planung/typen';

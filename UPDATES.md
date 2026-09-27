@@ -75,6 +75,45 @@ Ansage stehen, bis das nächste Update sie ablöst.
 
 ## Nächstes Update — vorbereitet, noch nicht online
 
+### Ziele & Planung: Ziele links, Meilensteine rechts, Kaskade, Routinen (27.09. abends, nur lokal — Malins Rückmeldung, Paket C)
+
+Malin: „Ziele links, Meilensteine rechts, + neu oben, Erledigtes unten, Priorität per Pfeil, Business nach Einheit, Jahresziel kaskadiert, Routinen Privat/Business je Person mit Rhythmus, Home zeigt, was heute dran ist.“
+
+- **Ziele links, Meilensteine rechts** auf jeder Ebene — Tag (`/os/planung`), Woche (`/os/planung/woche`), Monat, Quartal, Jahr: zwei Karten nebeneinander (am Handy untereinander), **„+ neu“ oben** in beiden, offene Einträge nach Priorität, **Erledigtes in einem eigenen Bereich unten** in derselben Karte (vier Zeilen sichtbar, der Rest scrollt, Zähler). Meilensteine eines Horizonts sind die mit Fälligkeit im Zeitraum (Jahr: auch ohne Datum); „+ Meilenstein“ ohne Datum nimmt das Ende des Zeitraums. Ein Bauteil für alle Ebenen: `components/os/planung/ZieleMeilensteine.tsx` + `usePlanung.ts`.
+- **Priorität per Pfeil ▲▼** rechts an jeder Zeile — Ziele, Meilensteine, Routinen, Blöcke. Gespeichert als `rang`, Sortierung stabil (ohne Rang hinten), Tastatur: Tab + Enter, Alt+↑/↓ (`components/os/planung/PfeilRang.tsx`, Logik `lib/planung/rang.ts`). Stift ✎ benennt um.
+- **Business-Einheiten:** Ziele und Meilensteine im Space Business tragen `einheit`. Werteliste je Haushalt (Speicher `planung-einheiten--<haushalt>`, ohne Haushalt je Person), vorbelegt **Selbstständigkeit · KD Ventures · Kunden**, **„+ neu“** direkt in der Wahl und als Pille. Filter-Pillen oben: Alle Einheiten · je Einheit. Privat kennt keine Einheiten (der Schreibweg wirft sie weg). Route `/api/planung/einheiten` (GET/POST), Logik `lib/planung/einheiten.ts`.
+- **Ziel-Kaskade (Kevins Entscheidung):** Ein Jahresziel kann eine **Zahl** (z. B. 120) und/oder einen **Termin** tragen (beides im „+ Ziel“ auf Jahr). Zahlen werden anteilig abgeleitet — 30 im Quartal, 10 im Monat, ≈ 2 je Woche (Rest 16 im Jahr), 0,3 je Tag — als Ziele auf Quartal/Monat/Woche/Tag, markiert „abgeleitet aus Jahresziel“. **Termin-Ziele werden Meilensteine** mit diesem Datum (liegen damit im passenden Quartal), Erledigt am Ziel erledigt den Meilenstein. Ändert sich das Jahresziel, wird neu gerechnet — nie dupliziert (eine Kennung je Elternziel und Ebene). Abgeleitetes lässt sich **lösen** (dann „angepasst“: bleibt, wird nicht mehr nachgezogen, darf gelöscht werden); Umbenennen eines Abgeleiteten setzt ebenfalls „angepasst“. Fällt das Jahresziel weg, verschwindet nicht Angepasstes, Angepasstes wird ein eigenes Ziel. Auf jeder Ebene weiter eigene Ziele. Rechenlogik rein in `lib/planung/kaskade.ts`; läuft im Schreibweg der Ziele (`/api/state/ziele`, jetzt fünf Horizonte `tag · woche · monat · quartal · jahr`, bis 40 je Ebene).
+- **Routinen** (`/os/planung/routinen`, Speicher `routinen`, additiv): **Space Privat/Business**, **Owner** je Person oder **gemeinsam** (`beide` — für beide sichtbar und abhakbar, jede Person im eigenen Log), **Rhythmus** täglich · 3×/Woche · wöchentlich · monatlich · quartalsweise · halbjährlich · jährlich mit **„nächstes Mal am“** (Arzt, Steuererklärung; Fälligkeit = Anker oder letzte Erledigung + Rhythmus, Monatsende geklemmt), Reihenfolge per Pfeil, Filter Privat/Business/Alle und je Person. Altbestand bleibt gültig: fehlendes `space` = privat, fehlender Owner = beide, fehlender Rhythmus = täglich (`lib/planung/routinen.ts`, `rhythmus.ts`). **Blöcke:** Wochenvorlage je Person (Mo–So Zeitfenster Privat/Business, Titel, Pfeil, Klick auf B/P wechselt), Schnellstart „Mo–Fr 09–18 Business anlegen“; liegen als `bloecke` im selben Bestand (`PUT { bloecke }`). Gesundheits-Stand (`/api/gesundheit/stand`) zählt nur noch eigene und gemeinsame Routinen.
+- **Home zeigt heute fällige Routinen:** Katalog-Widget **„Routinen heute“** (Einstellung Bereich: Privat · Business · beide; im Home-Standard je Space eine Karte) — eigene und gemeinsame Routinen, nach Rhythmus fällig (überfällig markiert, „2/3 diese Woche“), abhakbar in den eigenen `health-log`, `null` wenn nichts dran ist. „Routinen & Streak“ (Gesundheit) bleibt unverändert daneben.
+- Typen in `lib/planung/typen.ts` (eine Wahrheit für Ziel, Meilenstein, Routine, Block), Zeiträume in `lib/planung/zeitraum.ts`. Tests: `planung-kaskade` (18), `planung-rhythmus` (10), `planung-rang` (8), `planung-routinen` (12), `planung-einheiten` (7).
+- Offen (Kevin/Malin): Standard-Blöcke je Person (welche Zeiten gelten für Kevin, welche für Malin?), ob die Tagesplanung ihre Routinen-Liste ebenfalls nach Person und Fälligkeit filtern soll (heute zeigt sie alle aktiven), Umbenennen/Löschen von Einheiten (bewusst noch nicht — Ziele tragen den Namen als Text), ob Quartals-Zahlenziele ohne Jahresziel selbst weiter kaskadieren sollen.
+
+### Privatfinanzen: Fixkosten bearbeiten, Rhythmus klären, „Bezahlt“ (27.09. abends, nur lokal — Malins Rückmeldung, Paket B)
+- **Fixkosten bearbeiten** (Reiter „Fixkosten & Budget“): neue Karte „Eure Fixkosten“ mit allen Posten (Empfänger-Gruppen), je Zeile ✎ →
+  Name/Empfänger-Anzeige, Betrag je Zahlung (bei unterschiedlichen Beträgen mit Warnung), Rhythmus, Kategorie, Konto und die Einstufung
+  **Fixkosten ↔ Variabel**. Umstufen gilt **nur für diesen Posten** (Kevins Entscheidung); Häkchen „auch künftige Buchungen dieses
+  Empfängers“ (Standard aus) passt zusätzlich die Empfänger-Regel an. Rückweg „wieder fix“ über denselben Stift bei den wiederkehrenden
+  Zahlungen. Alles als EIN Patch über `PATCH /api/haushalt` mit dem Stand jeder Zeile (409 bei Konflikt), Cent wie im Modell.
+- **Budget je Kategorie zählt nur noch variable Ausgaben** (Fixkosten stehen oben) — ein umgestufter Posten erscheint sofort im Budget;
+  Ist gegen Soll/Analyse trennen fix/variabel über die eine Einordnung (Ausgaben-Summe bleibt gleich).
+- **„Rhythmus unklar“ klären:** Klick auf den Chip (Fixkosten-Posten und wiederkehrende Zahlungen) öffnet die Wahl monatlich ·
+  vierteljährlich · halbjährlich · jährlich · unregelmäßig mit Vorschlag aus den Buchungsabständen (`rhythmusVorschlag`, rein,
+  getestet). Gespeichert am Posten (`turnus_geklaert` auf den Buchungen + Regel), Chip verschwindet, Sockel rechnet mit dem Rhythmus
+  („unregelmäßig“ = Summe der zwölf Monate / 12). Neu im Modell: `Turnus` kennt `halbjahr` und `unregelmaessig`; Abstände, die um mehr
+  als zwei Monate streuen (1 · 5 · 1 · 6), gelten nicht mehr als „quartal“, sondern als unklar.
+- **Offene Rechnungen „Bezahlt“** (Reiter „Schulden & Rechnungen“): wirkt sofort (optimistisch), Zeile rutscht in den einklappbaren
+  Bereich „Bezahlt (n)“, Summe „offen“ zieht mit; „Doch nicht“ öffnet wieder. Fehler stehen **an der Zeile** („Nicht gespeichert: …“,
+  mit „Noch einmal“) statt nur als Meldung unten rechts. Ursache-Analyse: Der Schreibweg selbst war korrekt (Route-Test bestätigt);
+  eine Antwort ohne JSON (500 aus `updateJson`, Vorbau, abgelaufene Sitzung) wurde als „Keine Verbindung“ verschluckt und die
+  Erfolgsmeldung verschwand nach 5 s — jetzt liefern Route und `patchen` bei jedem Fehler JSON mit Text und Status, die Oberfläche zeigt
+  ihn an der Zeile. Route-Test `tests/haushalt-bezahlt-route.test.ts` (403 ohne Haushalt, bezahlt/wieder offen, 409, Fehler als JSON,
+  Umstufung fix↔variabel über den Patch-Weg).
+- Tests: `tests/haushalt-fixkosten-bearbeiten.test.ts` (Rhythmus-Vorschlag, Posten-Monatswert, unklar → geklärt, Umstufung wirkt in
+  Einordnung/Summen/Sockel/Ist-Soll, Stand-Prüfung). Sichtprüfung nur im Test-Haushalt mit erfundenen Zahlen.
+- **So testet ihr:** Zahlen › Privat › Fixkosten & Budget → bei einem Posten ✎ → „Variabel“ → Speichern: Posten verschwindet oben,
+  Budget-Kategorie steigt. Roter Chip „Rhythmus unklar ?“ → Wahl → „So ist es“. Schulden & Rechnungen → „Bezahlt“: Zeile wandert
+  sofort nach „Bezahlt (n)“, aufklappen, „Doch nicht“.
+
 ### Kontaktakte übersichtlich (Malins Rückmeldung 27.09., nur lokal)
 
 Malin: „Zu viel scrollen — Typ und Kategorie nach oben, Branchen vollständig.“

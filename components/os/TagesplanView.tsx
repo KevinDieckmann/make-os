@@ -22,6 +22,7 @@ import { localDay } from '@/lib/zeit';
 import { wochenplanSchreiben } from '@/lib/make-one/wochenplan-sync';
 import { SAEULE_VON_PROJEKT, KATEGORIE_ZU_SAEULE, SAEULE_LABEL, SAEULE_FARBE, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Haken, Fortschritt, Zahl, LEUCHT } from './schlank';
+import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
 
 interface Routine { id: string; label: string; wann: 'morgen' | 'tag' | 'abend'; kategorie: string; dauerMin: number; aktiv: boolean }
 interface Fix { titel: string; startMin: number; dauerMin: number }
@@ -325,6 +326,9 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
           </div>
         </div>
       </Karte>
+
+      {/* ── Tagesziele links, Meilensteine des Tages rechts (27.09.) — Kaskade aus dem Jahr, Priorität per Pfeil ── */}
+      <ZieleMeilensteine horizont="tag" farbe={LEUCHT.schlaf} i={2} kompakt />
 
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {/* ── Der Tag als Kalender — Lücken sichtbar, alles reinziehbar ── */}

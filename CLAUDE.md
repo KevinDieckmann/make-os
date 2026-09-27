@@ -193,6 +193,26 @@ lokal, Route `/os`, Port 3001.
 - Erholung belegt Schlaf/Puls/HRV aus `vitals--<person>` vor (Whoop-Export, Morgen-Check) — nur anzeigen, gespeichert wird erst auf „Speichern“ (`quelle: whoop`).
 - Wording: Vorschläge, keine Trainingsberatung (Hinweis auf jeder Karte, die plant). Läufe tragen `quelle` (`hand` | `apple-health` | `strava` | `whoop`) + `externeId`, damit ein Import später andockt.
 
+## Ziele & Planung — Ziele, Meilensteine, Kaskade, Routinen (27.09. abends, nur lokal)
+- Ein Bauteil für alle Ebenen Tag · Woche · Monat · Quartal · Jahr: `components/os/planung/ZieleMeilensteine.tsx` (Ziele links,
+  Meilensteine rechts, „+ neu“ oben, offen nach Rang, Erledigtes unten scrollend) + `usePlanung.ts` (laden/schreiben) +
+  `PfeilRang.tsx` (▲▼, Alt+↑/↓). Horizont-Seiten (`HorizontView`), Wochenplaner und Tagesplanung hängen es nur ein.
+- Typen EINMAL in `lib/planung/typen.ts` (Ziel, Meilenstein, Routine, Block); Routen exportieren sie nur weiter. Neue Felder
+  additiv, gesäubert im Schreibweg (`lib/planung/ziele.ts`, `routinen.ts`, Meilenstein-Route). Rang: `lib/planung/rang.ts`
+  (`sortiertNachRang`, `verschiebe` nur innerhalb der sichtbaren Teilmenge, `naechsterRang`).
+- **Kaskade** rein in `lib/planung/kaskade.ts`, läuft im PUT von `/api/state/ziele` (fünf Horizonte): Jahres-Zahlenziel →
+  Quartal/Monat/Woche/Tag (`abgeleitetVon`, Kennung `<eltern>~<ebene>`, nie doppelt), Jahres-Termin-Ziel → Meilenstein
+  `ms~<ziel>`. `angepasst` = nicht mehr nachziehen; Löschen nur nach „lösen“. Neue Ableitungsregeln dort ergänzen, nie in der Ansicht.
+- **Einheiten** (nur Business): `lib/planung/einheiten.ts` (Standard Selbstständigkeit · KD Ventures · Kunden), Speicher
+  `planung-einheiten--<haushalt>` über `/api/planung/einheiten`. Privat trägt nie eine Einheit.
+- **Routinen** (Speicher `routinen`): `space` (fehlt = privat), `owner` (Person oder `beide`, fehlt = beide), `rhythmus`
+  (fehlt = täglich) + `naechstesMal`, `rang`; Fälligkeit in `lib/planung/rhythmus.ts` (rein, YYYY-MM-DD, Monatsende geklemmt),
+  „heute dran“ je Person in `lib/planung/routinen.ts` (`heuteFaellig`, `sichtbarFuer`). Blöcke (Wochenvorlage je Person) liegen
+  als `bloecke` im selben Bestand. Wer Routinen liest, filtert mit `sichtbarFuer(…, person)`.
+- Home-Widget `routinen-heute` (Einstellung `space`) in `components/os/flaeche/widgets.tsx`, im `HOME_STANDARD` je Space.
+- Tests `tests/planung-*.test.ts`. Sichtprüfung nur mit Wegwerfkonto; Ziele/Meilensteine/Routinen sind GETEILTE Bestände —
+  Schreibtests nur über `fuer: 'ich'` (persönlicher Ziele-Speicher), nie in `ziele`/`meilensteine`/`routinen` selbst.
+
 ## Ernährung & Einkauf zu zweit (seit 26.09.2026, online)
 - Modell `lib/ernaehrung/modell.ts` (rein): Profile je Person (Konto = nur selbst, Gast = Haushalt), Stammliste
   (bevorzugte Lebensmittel + Hinweis), Vorrat, Gerichte (Rezepte), Plan + `planGerichte`, Einkauf mit Menge/Kategorie/
@@ -405,6 +425,10 @@ lokal, Route `/os`, Port 3001.
   über `blockHaushalt` in Gespräch/Morgen/Empfang, nie in `gatherBrain`.
   Test-Haushalt „test“ für Fotos, echte Prüfdaten nur in `.data/pruefdaten/`.
   Umzug: `app/api/haushalt/umzug`, Einfrieren: `docs/make-orga/`.
+  Fixkosten (27.09.): ein Posten = die Ausgaben-Buchungen eines Empfängers; Bearbeiten/Umstufen fix↔variabel = EIN Patch mit Stand
+  je Zeile, nur dieser Posten (Empfänger-Regel nur per Häkchen); `Turnus` hat fünf Werte (`TURNUS_REIHE`, `turnusName`), „Rhythmus
+  unklar“ endet mit `turnus_geklaert` auf den Buchungen (`rhythmusVorschlag` rein); Budget je Kategorie zählt nur variable Ausgaben;
+  Schreibfehler des Patch-Wegs kommen immer als JSON mit Text (Route + `patchen`), die Oberfläche zeigt sie an der Zeile.
 - **Head of Finance (24.09.2026): der Finanzagent auf allem.** `lib/finanzen/chef/`:
   `finanzbild.ts` rechnet ALLES deterministisch (Business, Haushalt nur mit
   Zugang, Brücke, Steuertermine, Hinweise); das Modell ordnet nur ein

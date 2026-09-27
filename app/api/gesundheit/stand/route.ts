@@ -11,11 +11,12 @@ import { localDay } from '@/lib/zeit';
 import { hautTrend, streakStand, routineQuote, tageZurueck, type HautLog, type StreakLog, type RoutinenLog } from '@/lib/gesundheit/eintraege';
 import { ladeStand, chatsFuerPerson, telegramKonfiguriert } from '@/lib/telegram';
 import type { TaktStand } from '@/lib/gesundheit/takt';
+import { sichtbarFuer } from '@/lib/planung/routinen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface Routine { id: string; label: string; wann: string; aktiv: boolean; kategorie?: string }
+interface Routine { id: string; label: string; wann: string; aktiv: boolean; kategorie?: string; owner?: string }
 
 export async function GET(req: Request) {
   const person = ansichtPerson(req);
@@ -32,7 +33,8 @@ export async function GET(req: Request) {
     ladeStand(),
     loadJson<TaktStand>('gesundheit-takt'),
   ]);
-  const routinen = (routinenF?.routinen ?? []).filter(r => r.aktiv);
+  // Nur, was diese Person sieht: eigene und gemeinsame Routinen (27.09.).
+  const routinen = sichtbarFuer((routinenF?.routinen ?? []).filter(r => r.aktiv), person);
   const t14 = tageZurueck(heute, 14);
   const q = routineQuote(hl ?? {}, routinen.map(r => r.id), heute, 7);
   const je = (id: string) => routineQuote(hl ?? {}, [id], heute, 7).quote;

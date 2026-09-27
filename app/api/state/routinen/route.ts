@@ -2,27 +2,28 @@
 // DIE Quelle für positive Routinen — Gesundheit, Leben, Business. Der
 // Routine-Planer pflegt sie, und alles andere greift darauf zu: der
 // Wochenplaner (Leiste + ZOE-Vorschlag), die Tagesplanung, das
-// Gesundheits-Cockpit (Häkchen) und der MAKE Score (Routinen-Quote).
-// Erststart wird aus den bisherigen ROUTINE_ITEMS geseedet — gleiche ids,
-// damit Streak und Verlauf nahtlos weiterlaufen.
+// Gesundheits-Cockpit (Häkchen), das Home-Widget „Routinen heute“ und der
+// MAKE Score (Routinen-Quote). Erststart wird aus den bisherigen
+// ROUTINE_ITEMS geseedet — gleiche ids, damit Streak und Verlauf weiterlaufen.
+//
+// Seit 27.09. (Malins Rückmeldung) trägt eine Routine zusätzlich `space`
+// (privat/business), `owner` (Person oder „beide“), `rhythmus` + `naechstesMal`
+// und `rang` — alles additiv, gesäubert in lib/planung/routinen.ts. Im selben
+// Bestand liegen die `bloecke`: die Wochenvorlage je Person (wann Privat, wann
+// Arbeit). GET liefert beides; PUT { routinen } oder { bloecke } setzt eine
+// Liste ganz, PATCH { ops } ändert einzelne Routinen.
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, updateGeschuetzt } from '@/lib/store/local-db';
 import { listePatchen, opsLesen } from '@/lib/store/patch-liste';
 import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
+import { sauberRoutine, sauberBlock } from '@/lib/planung/routinen';
+import type { Block, Routine, RoutinenDatei } from '@/lib/planung/typen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export interface Routine {
-  id: string;
-  label: string;
-  wann: 'morgen' | 'tag' | 'abend';
-  kategorie: 'gesundheit' | 'leben' | 'business';
-  dauerMin: number;
-  aktiv: boolean;
-}
-interface RoutinenFile { routinen: Routine[] }
+export type { Routine, Block };
 
 const seed = (): Routine[] => ROUTINE_ITEMS.map(r => ({
   id: r.id,
@@ -33,49 +34,49 @@ const seed = (): Routine[] => ROUTINE_ITEMS.map(r => ({
   aktiv: true,
 }));
 
-export async function GET() {
-  const f = await loadJson<RoutinenFile>('routinen');
-  if (!f || !Array.isArray(f.routinen) || !f.routinen.length) {
-    const next = await updateJson<RoutinenFile>('routinen', () => ({ routinen: seed() }));
-    return NextResponse.json({ routinen: next.routinen });
-  }
-  return NextResponse.json({ routinen: f.routinen });
-}
+const bloeckeVon = (f: RoutinenDatei | null | undefined): Block[] => (Array.isArray(f?.bloecke) ? f!.bloecke : []);
 
-/** Eine Routine, geprüft — von PUT und PATCH gemeinsam benutzt. */
-function sauberRoutine(roh: unknown): Routine | null {
-  const r = (roh ?? {}) as Partial<Routine>;
-  const label = String(r.label ?? '').slice(0, 120);
-  if (!label) return null;
-  return {
-    id: r.id || `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
-    label,
-    wann: (['morgen', 'tag', 'abend'] as const).includes(r.wann as Routine['wann']) ? r.wann as Routine['wann'] : 'morgen',
-    kategorie: (['gesundheit', 'leben', 'business'] as const).includes(r.kategorie as Routine['kategorie']) ? r.kategorie as Routine['kategorie'] : 'leben',
-    dauerMin: Math.max(5, Math.min(120, Math.round(Number(r.dauerMin)) || 15)),
-    aktiv: r.aktiv !== false,
-  };
+export async function GET() {
+  const f = await loadJson<RoutinenDatei>('routinen');
+  if (!f || !Array.isArray(f.routinen) || !f.routinen.length) {
+    const next = await updateJson<RoutinenDatei>('routinen', cur => ({ ...(cur ?? {}), routinen: seed() }));
+    return NextResponse.json({ routinen: next.routinen, bloecke: bloeckeVon(next) });
+  }
+  return NextResponse.json({ routinen: f.routinen, bloecke: bloeckeVon(f) });
 }
 
 export async function PUT(req: Request) {
-  let body: { routinen?: Routine[] };
+  let body: { routinen?: unknown; bloecke?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  if (!Array.isArray(body.routinen)) return NextResponse.json({ ok: false, error: 'routinen fehlt.' }, { status: 400 });
 
-  const sauber = body.routinen.slice(0, 40).map(sauberRoutine).filter((r): r is Routine => !!r);
+  if (Array.isArray(body.bloecke)) {
+    const sauber = body.bloecke.slice(0, 120).map(sauberBlock).filter((b): b is Block => !!b);
+    // Blöcke sind die Wochenvorlage — Schrumpf-Schutz wie bei den Routinen, ab 8 Einträgen.
+    let abgelehnt = false;
+    const next = await updateJson<RoutinenDatei>('routinen', cur => {
+      const alt = bloeckeVon(cur).length;
+      if (alt >= 8 && sauber.length < alt / 2) { abgelehnt = true; return cur ?? { routinen: seed() }; }
+      return { ...(cur ?? { routinen: seed() }), bloecke: sauber };
+    });
+    if (abgelehnt) return NextResponse.json({ ok: false, error: 'Abgelehnt: das hätte über die Hälfte der Blöcke gelöscht.' }, { status: 409 });
+    return NextResponse.json({ ok: true, bloecke: bloeckeVon(next) });
+  }
 
-  const { ok, next } = await updateGeschuetzt<RoutinenFile>('routinen', { routinen: sauber }, s => s.routinen?.length ?? 0, 4);
+  if (!Array.isArray(body.routinen)) return NextResponse.json({ ok: false, error: 'routinen oder bloecke fehlt.' }, { status: 400 });
+  const sauber = body.routinen.slice(0, 60).map(sauberRoutine).filter((r): r is Routine => !!r);
+  const bisher = await loadJson<RoutinenDatei>('routinen');
+  const { ok, next } = await updateGeschuetzt<RoutinenDatei>('routinen', { ...(bisher ?? {}), routinen: sauber }, s => s.routinen?.length ?? 0, 4);
   if (!ok) return NextResponse.json({ ok: false, error: 'Abgelehnt: das haette ueber die Haelfte der Routinen geloescht.' }, { status: 409 });
-  return NextResponse.json({ ok: true, routinen: next.routinen });
+  return NextResponse.json({ ok: true, routinen: next.routinen, bloecke: bloeckeVon(next) });
 }
 
 /** Einzelne Routinen ändern — Zwei-Fenster-Fundament. */
 export async function PATCH(req: Request) {
   let body: { ops?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  const ops = opsLesen<Routine>(body.ops, sauberRoutine, 40);
+  const ops = opsLesen<Routine>(body.ops, sauberRoutine, 60);
   if (!ops) return NextResponse.json({ ok: false, error: 'Feld "ops" (Liste) fehlt.' }, { status: 400 });
-  const r = await listePatchen<Routine, RoutinenFile & Record<string, unknown>>('routinen', 'routinen', ops, 4);
+  const r = await listePatchen<Routine, RoutinenDatei & Record<string, unknown>>('routinen', 'routinen', ops, 4);
   if (!r.ok) return NextResponse.json({ ok: false, error: r.fehler }, { status: r.fehler?.startsWith('Abgelehnt') ? 409 : 400 });
-  return NextResponse.json({ ok: true, angewandt: r.angewandt, routinen: r.next?.routinen });
+  return NextResponse.json({ ok: true, angewandt: r.angewandt, routinen: r.next?.routinen, bloecke: bloeckeVon(r.next) });
 }

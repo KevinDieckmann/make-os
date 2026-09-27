@@ -23,6 +23,9 @@ export const HOME_STANDARD: StandardPlatz[] = [
   { id: 'index-business', art: 'index', breite: 3, einstellungen: { saeule: 'business' }, titel: 'Business · Index' },
   { id: 'aufgaben-privat', art: 'aufgaben', breite: 3, einstellungen: { space: 'privat', nur: 'dran' }, titel: 'Aufgaben · Privat' },
   { id: 'aufgaben-business', art: 'aufgaben', breite: 3, einstellungen: { space: 'business', nur: 'dran' }, titel: 'Aufgaben · Business' },
+  // Heute fällige Routinen (27.09., Malin): je Space, abhakbar — verschwinden, wenn nichts dran ist.
+  { id: 'routinen-heute-privat', art: 'routinen-heute', breite: 3, einstellungen: { space: 'privat' }, titel: 'Routinen heute · Privat' },
+  { id: 'routinen-heute-business', art: 'routinen-heute', breite: 3, einstellungen: { space: 'business' }, titel: 'Routinen heute · Business' },
   { id: 'finanzen-privat', art: 'finanzen-privat', breite: 3 },
   { id: 'dran', art: 'dran', breite: 3 },
   { id: 'koerper', art: 'koerper', breite: 3 },

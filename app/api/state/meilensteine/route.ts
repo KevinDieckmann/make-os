@@ -7,25 +7,16 @@
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, updateGeschuetztListen } from '@/lib/store/local-db';
 import { listePatchen, opsLesen } from '@/lib/store/patch-liste';
+import type { Meilenstein } from '@/lib/planung/typen';
+import { sauberEinheit } from '@/lib/planung/einheiten';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export interface Meilenstein {
-  id: string;
-  titel: string;
-  bereich: 'business' | 'gesundheit';
-  /** Fester Tag YYYY-MM-DD … */
-  faellig?: string;
-  /** … oder freies Zeitfenster („Q3", „2028"). */
-  zeitfenster?: string;
-  /** Woran wird „fertig" gemessen? Macht den Meilenstein überprüfbar. */
-  messlatte?: string;
-  /** 0–100, ehrlich gepflegt. */
-  fortschritt: number;
-  erledigt: boolean;
-  erledigtAm?: string;
-}
+// Seit 27.09. zusätzlich (additiv, alte Einträge bleiben gültig): `rang` (Priorität per Pfeil),
+// `einheit` (Business-Einheit, nur Bereich Business), `abgeleitetVon`/`angepasst` (aus einem
+// Jahresziel mit Termin — lib/planung/kaskade.ts). Der Typ liegt in lib/planung/typen.ts.
+export type { Meilenstein };
 interface MeilensteinFile { meilensteine: Meilenstein[] }
 
 // Startbestand: Miro „Kevin & Frank" (Business) + Kevins echte Gesundheits-
@@ -48,17 +39,25 @@ const SEED: Meilenstein[] = [
 ];
 
 function sauberListe(rein: unknown): Meilenstein[] {
-  return (Array.isArray(rein) ? rein : []).slice(0, 60).map((m: Partial<Meilenstein>) => ({
-    id: String(m.id ?? '').slice(0, 40) || `ms-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
-    titel: String(m.titel ?? '').slice(0, 200),
-    bereich: (m.bereich === 'gesundheit' ? 'gesundheit' : 'business') as Meilenstein['bereich'],
-    faellig: typeof m.faellig === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(m.faellig) ? m.faellig : undefined,
-    zeitfenster: m.zeitfenster ? String(m.zeitfenster).slice(0, 40) : undefined,
-    messlatte: m.messlatte ? String(m.messlatte).slice(0, 300) : undefined,
-    fortschritt: isFinite(Number(m.fortschritt)) ? Math.max(0, Math.min(100, Math.round(Number(m.fortschritt)))) : 0,
-    erledigt: m.erledigt === true,
-    erledigtAm: typeof m.erledigtAm === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(m.erledigtAm) ? m.erledigtAm : undefined,
-  })).filter(m => m.titel);
+  return (Array.isArray(rein) ? rein : []).slice(0, 80).map((m: Partial<Meilenstein>) => {
+    const rang = Number(m.rang);
+    const bereich = (m.bereich === 'gesundheit' ? 'gesundheit' : 'business') as Meilenstein['bereich'];
+    const einheit = bereich === 'business' ? sauberEinheit(m.einheit) : null;
+    return {
+      id: String(m.id ?? '').slice(0, 80) || `ms-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+      titel: String(m.titel ?? '').slice(0, 200),
+      bereich,
+      faellig: typeof m.faellig === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(m.faellig) ? m.faellig : undefined,
+      zeitfenster: m.zeitfenster ? String(m.zeitfenster).slice(0, 40) : undefined,
+      messlatte: m.messlatte ? String(m.messlatte).slice(0, 300) : undefined,
+      fortschritt: isFinite(Number(m.fortschritt)) ? Math.max(0, Math.min(100, Math.round(Number(m.fortschritt)))) : 0,
+      erledigt: m.erledigt === true,
+      erledigtAm: typeof m.erledigtAm === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(m.erledigtAm) ? m.erledigtAm : undefined,
+      ...(Number.isInteger(rang) && rang > 0 ? { rang } : {}),
+      ...(einheit ? { einheit } : {}),
+      ...(typeof m.abgeleitetVon === 'string' && m.abgeleitetVon ? { abgeleitetVon: m.abgeleitetVon.slice(0, 80), ...(m.angepasst === true ? { angepasst: true } : {}) } : {}),
+    };
+  }).filter(m => m.titel);
 }
 
 export async function GET() {
@@ -92,7 +91,7 @@ export async function PUT(req: Request) {
 export async function PATCH(req: Request) {
   let body: { ops?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  const ops = opsLesen<Meilenstein>(body.ops, e => sauberListe([e])[0] ?? null, 60);
+  const ops = opsLesen<Meilenstein>(body.ops, e => sauberListe([e])[0] ?? null, 80);
   if (!ops) return NextResponse.json({ ok: false, error: 'Feld "ops" (Liste) fehlt.' }, { status: 400 });
   const r = await listePatchen<Meilenstein, MeilensteinFile & Record<string, unknown>>('meilensteine', 'meilensteine', ops, 6);
   if (!r.ok) return NextResponse.json({ ok: false, error: r.fehler }, { status: r.fehler?.startsWith('Abgelehnt') ? 409 : 400 });
