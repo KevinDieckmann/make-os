@@ -4,7 +4,7 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
-## Flächen für Sales, Marketing, Events · Marke Make.One (27.09.2026, nur lokal)
+## Flächen für Sales, Marketing, Events · Marke Make.One (Reiter heißt „Make.One“) (27.09.2026, nur lokal)
 
 - **Drei neue Flächen** in der Markttraktion — die Start-Ansicht je Reiter ist jetzt gestaltbar wie Heute und der Überblick (✎ Anpassen oder eine Karte länger drücken; je Person; Standard wird nie gespeichert):
   - **Sales** (`markttraktion-sales`, Pille „Head of Sales“): Head of Sales · Wochen-Scoreboard · Sales-Trichter (jetzt als eigene Karte) · Kanal-Leistung. Power Hour, Kampagnen, Auswertung bleiben feste Ansichten.

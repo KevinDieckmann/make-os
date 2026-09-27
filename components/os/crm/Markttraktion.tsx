@@ -52,7 +52,7 @@ const LINKS: { id: Bereich; label: string; farbe?: string }[] = [
 ];
 const RECHTS: { id: Bereich; label: string; farbe?: string }[] = [
   { id: 'qualifizierung', label: 'Qualifizierung' },
-  { id: 'sales', label: 'Sales', farbe: WELT_FARBE.sales }, { id: 'marketing', label: 'Marketing', farbe: WELT_FARBE.marketing }, { id: 'event', label: 'Events', farbe: WELT_FARBE.event },
+  { id: 'sales', label: 'Sales', farbe: WELT_FARBE.sales }, { id: 'marketing', label: 'Marketing', farbe: WELT_FARBE.marketing }, { id: 'event', label: 'Make.One', farbe: WELT_FARBE.event },
   { id: 'stammdaten', label: 'Stammdaten' },
 ];
 const SALES: { id: SalesReiterAnsicht; label: string }[] = [{ id: 'head', label: 'Head of Sales' }, { id: 'powerhour', label: 'Power Hour' }, { id: 'kampagnen', label: 'Kampagnen' }, { id: 'auswertung', label: 'Auswertung' }];
