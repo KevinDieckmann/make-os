@@ -50,12 +50,16 @@ export function rueckwirkendTreffer(muster: string, ganzesWort: boolean, buchung
 
 export const TURNUS: Record<Turnus, { faktor: number; name: string }> = {
   monatlich: { faktor: 1, name: 'monatlich' },
-  quartal: { faktor: 1 / 3, name: 'quartalsweise' },
+  quartal: { faktor: 1 / 3, name: 'vierteljährlich' },
+  halbjahr: { faktor: 1 / 6, name: 'halbjährlich' },
   jahr: { faktor: 1 / 12, name: 'jährlich' },
+  // Unregelmäßig: eine einzelne Zahlung wird wie eine Jahreszahlung verteilt; ein ganzer Posten rechnet mit Σ der zwölf Monate / 12 (fixkosten.ts).
+  unregelmaessig: { faktor: 1 / 12, name: 'unregelmäßig' },
 };
+export const TURNUS_REIHE: Turnus[] = ['monatlich', 'quartal', 'halbjahr', 'jahr', 'unregelmaessig'];
 
 export function turnusAus(roh: unknown): Turnus {
-  return roh === 'quartal' || roh === 'jahr' ? roh : 'monatlich';
+  return roh === 'quartal' || roh === 'halbjahr' || roh === 'jahr' || roh === 'unregelmaessig' ? roh : 'monatlich';
 }
 
 /** Monatswert einer Zahlung: Quartal durch 3, Jahr durch 12. Betrag in Cent, Ergebnis in Cent. */

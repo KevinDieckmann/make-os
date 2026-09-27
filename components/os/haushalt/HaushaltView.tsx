@@ -33,7 +33,7 @@ const REITER: { id: Reiter; label: string }[] = [
 ];
 
 export function HaushaltView({ reiter, onReiter }: { reiter: string | null; onReiter: (r: string) => void }) {
-  const { daten: h, kein, laden, patch, aktion, melde, meldungen, weg } = useHaushalt();
+  const { daten: h, kein, laden, patch, patchMitFehler, aktion, melde, meldungen, weg } = useHaushalt();
   const [importAuf, setImportAuf] = useState(false);
   const [umzugAuf, setUmzugAuf] = useState(false);
   const [pruefAuf, setPruefAuf] = useState(false);
@@ -80,7 +80,7 @@ export function HaushaltView({ reiter, onReiter }: { reiter: string | null; onRe
           {aktiv === 'analyse' && <Analyse h={h} katName={katName} />}
           {aktiv === 'fixkosten' && <Fixkosten h={h} katName={katName} patch={patch} aktion={aktion} melde={melde} laden={laden} />}
           {aktiv === 'plan' && <IstSoll h={h} katName={katName} patch={patch} melde={melde} />}
-          {aktiv === 'schulden' && <Schulden h={h} patch={patch} melde={melde} />}
+          {aktiv === 'schulden' && <Schulden h={h} patch={patch} patchMitFehler={patchMitFehler} melde={melde} />}
         </>
       )}
       {katAuf && <KategorienDialog aktion={aktion} laden={laden} melde={melde} onZu={() => setKatAuf(false)} />}

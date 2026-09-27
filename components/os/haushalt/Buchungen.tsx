@@ -12,7 +12,7 @@ import { eur, zuCent } from '@/lib/finanzen/haushalt/typen';
 import { summen, type KatName } from '@/lib/finanzen/haushalt/einordnung';
 import { aufschluesselung, monateMitDaten, letzterMonatMitDaten } from '@/lib/finanzen/haushalt/kennzahlen';
 import { monatVon, monatName, datumDe } from '@/lib/finanzen/haushalt/monat';
-import { normal } from '@/lib/finanzen/haushalt/regeln';
+import { normal, TURNUS_REIHE, turnusName } from '@/lib/finanzen/haushalt/regeln';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT } from '../schlank';
 import { Betrag, Dialog, Feld, Haken, Hinweis, KategorieOptionen, Leiste, auswahl, type HaushaltDaten, type Op } from './gemeinsam';
 
@@ -145,7 +145,7 @@ export function Buchungen({ h, katName, patch, aktion, melde, laden, onImport }:
                   <option value="">— offen —</option><KategorieOptionen kategorien={h.stamm.kategorien} />
                 </select>
                 {b.ist_umbuchung && <Chip farbe={C.inkDim}>Umbuchung</Chip>}
-                {b.ist_fixkosten && <Chip farbe={LEUCHT.schlaf}>Fixkosten{b.turnus !== 'monatlich' ? ` · ${b.turnus === 'quartal' ? 'Quartal' : 'Jahr'}` : ''}</Chip>}
+                {b.ist_fixkosten && <Chip farbe={LEUCHT.schlaf}>Fixkosten{b.turnus !== 'monatlich' ? ` · ${turnusName(b.turnus)}` : ''}</Chip>}
                 {b.notiz && <span style={{ fontSize: 12, color: C.inkLeise }} title={b.notiz}>✎</span>}
               </div>
               <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
@@ -193,7 +193,7 @@ function MerkenDialog({ b, katId, katName, aktion, melde, laden, onZu }: { b: Bu
       <Haken an={wort} onChange={setWort}>Nur als ganzes Wort suchen <span style={{ color: C.inkLeise }}>(empfohlen — verhindert Fehltreffer wie „mOBIlity“ auf „OBI“)</span></Haken>
       <Haken an={umb} onChange={setUmb}>Ist eine Umbuchung <span style={{ color: C.inkLeise }}>(zählt nicht als Ausgabe)</span></Haken>
       <Haken an={fix} onChange={setFix}>Ist ein Fixkostenposten <span style={{ color: C.inkLeise }}>(Miete, Abo, Versicherung)</span></Haken>
-      {fix && <Feld label="Wie oft kommt die Zahlung?"><select value={turnus} onChange={e => setTurnus(e.target.value as Turnus)} style={auswahl}><option value="monatlich">monatlich</option><option value="quartal">quartalsweise</option><option value="jahr">jährlich</option></select></Feld>}
+      {fix && <Feld label="Wie oft kommt die Zahlung?"><select value={turnus} onChange={e => setTurnus(e.target.value as Turnus)} style={auswahl}>{TURNUS_REIHE.map(t => <option key={t} value={t}>{turnusName(t)}</option>)}</select></Feld>}
       <Haken an={alt} onChange={v => { setAlt(v); setTreffer(null); }}>Auch auf vorhandene Buchungen anwenden <span style={{ color: C.inkLeise }}>(sonst gilt die Regel erst ab dem nächsten Import)</span></Haken>
       {alt && (treffer === null ? <div><Knopf leise onClick={() => void vorschau()}>Wie viele wären das?</Knopf></div> : <div style={{ color: C.inkDim }}>{treffer ? `${treffer} weitere Buchung${treffer === 1 ? '' : 'en'} würden mit zugeordnet.` : 'Keine weiteren Buchungen betroffen.'}</div>)}
     </Dialog>

@@ -49,7 +49,13 @@ export async function PATCH(req: Request) {
   const ops = (b.ops as Op[]).slice(0, 200).filter(o => o && (o.op === 'upsert' || o.op === 'delete'));
   // Wer anlegt, steht dabei — nicht, was der Browser behauptet.
   if (teil === 'buchungen') for (const o of ops) if (o.op === 'upsert' && o.eintrag && !o.eintrag.id) o.eintrag.erfasst_von = z.person;
-  const e = await patchen(z.haushalt, teil, ops);
+  let e: Awaited<ReturnType<typeof patchen>>;
+  try { e = await patchen(z.haushalt, teil, ops); }
+  catch (err) {
+    // Nie wieder ein 500 ohne JSON (27.09.): die Oberfläche braucht einen Text, den sie zeigen kann.
+    console.error('[haushalt PATCH]', teil, err instanceof Error ? err.message : err);
+    return NextResponse.json({ ok: false, fehler: 'Nicht gespeichert — unerwarteter Fehler beim Schreiben.' }, { status: 500 });
+  }
   if (e.ok && teil === 'belege') await belegAufgabenAbgleichen(z.haushalt).catch(() => null);
   return NextResponse.json(e, { status: e.ok ? 200 : e.status });
 }

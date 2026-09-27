@@ -4,6 +4,11 @@
 // RECHNUNG — ihr schuldet noch Geld (Betrag, Fälligkeit). BELEG — der
 // Buchhaltung fehlt nur Papier, kein Geldfluss. Belege der Selbstständigkeit
 // stehen unter Business; hier steht, was privat ist.
+//
+// 27.09. (Malins Rückmeldung „Bezahlt tut nichts“): „Bezahlt“ wirkt jetzt sofort
+// (optimistisch), die Zeile rutscht in den einklappbaren Bereich „Bezahlt“, die
+// Summe „offen“ zieht mit — und geht etwas schief, steht der Fehler AN DER ZEILE,
+// nicht nur als Meldung unten rechts (die am Handy leicht untergeht).
 
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -12,12 +17,18 @@ import { eur, zuCent } from '@/lib/finanzen/haushalt/typen';
 import { laufzeit, schuldenfreiAm, sondertilgung } from '@/lib/finanzen/haushalt/schulden';
 import { datumDe, tagPlus, heuteBerlin } from '@/lib/finanzen/haushalt/monat';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, Spalten, Spalte, LEUCHT } from '../schlank';
-import { Dialog, Feld, Hinweis, Kachel, Kacheln, Leiste, auswahl, type HaushaltDaten, type Op } from './gemeinsam';
+import { Dialog, Feld, Hinweis, Kachel, Kacheln, Leiste, auswahl, type HaushaltDaten, type Op, type PatchErgebnis } from './gemeinsam';
 
-interface Props { h: HaushaltDaten; patch: (teil: string, ops: Op[]) => Promise<boolean>; melde: (art: 'ok' | 'fehler' | 'info', titel: string, text?: string) => void }
+interface Props {
+  h: HaushaltDaten;
+  patch: (teil: string, ops: Op[]) => Promise<boolean>;
+  /** Wie `patch`, liefert aber den Fehlertext zurück — für die Anzeige an der Zeile. Optional, damit alte Aufrufer weiterlaufen. */
+  patchMitFehler?: (teil: string, ops: Op[]) => Promise<PatchErgebnis>;
+  melde: (art: 'ok' | 'fehler' | 'info', titel: string, text?: string) => void;
+}
 const klein = { background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: '4px 6px' } as const;
 
-export function Schulden({ h, patch, melde }: Props) {
+export function Schulden({ h, patch, patchMitFehler, melde }: Props) {
   const heute = heuteBerlin();
   const liste = h.schulden.filter(s => s.einheit === 'privat');
   const rest = liste.reduce((s, x) => s + x.restbetrag, 0), rate = liste.reduce((s, x) => s + (x.rate ?? 0), 0), start = liste.reduce((s, x) => s + x.startbetrag, 0);
@@ -28,16 +39,42 @@ export function Schulden({ h, patch, melde }: Props) {
   const [sonder, setSonder] = useState<Schuld | null>(null);
   const [loesch, setLoesch] = useState<{ teil: 'schulden' | 'belege'; id: string; stand: number; text: string } | null>(null);
   const [belegForm, setBelegForm] = useState<Partial<Beleg> | null>(null);
-  const [erledigte, setErledigte] = useState(false);
+  const [bezahlteAuf, setBezahlteAuf] = useState(false);
+  // Optimistisch: was gerade gespeichert wird, sieht sofort so aus — bis der frische Stand da ist oder der Fehler.
+  const [vorab, setVorab] = useState<Record<string, Pick<Beleg, 'erledigt' | 'bezahlt_am'>>>({});
+  const [zeilenFehler, setZeilenFehler] = useState<Record<string, string>>({});
+  const [laeuft, setLaeuft] = useState<Record<string, boolean>>({});
 
-  const belege = h.belege.filter(b => b.einheit === 'privat');
+  const belege = useMemo(() => h.belege.filter(b => b.einheit === 'privat').map(b => (vorab[b.id] ? { ...b, ...vorab[b.id] } : b)), [h.belege, vorab]);
   const anderswo = h.belege.filter(b => b.einheit !== 'privat' && !b.erledigt).length;
-  const rechnungen = useMemo(() => belege.filter(b => b.art === 'rechnung' && (erledigte || !b.erledigt)).sort(sortierung), [belege, erledigte]);
-  const offeneR = belege.filter(b => b.art === 'rechnung' && !b.erledigt);
+  const offeneR = useMemo(() => belege.filter(b => b.art === 'rechnung' && !b.erledigt).sort(sortierung), [belege]);
+  const bezahlteR = useMemo(() => belege.filter(b => b.art === 'rechnung' && b.erledigt).sort((a, b) => String(b.bezahlt_am ?? '').localeCompare(String(a.bezahlt_am ?? ''))), [belege]);
   const ueber = offeneR.filter(b => b.faellig_am && b.faellig_am < heute);
   const woche = offeneR.filter(b => b.faellig_am && b.faellig_am >= heute && b.faellig_am <= tagPlus(heute, 7));
-  const fehlend = belege.filter(b => b.art === 'beleg' && (erledigte || !b.erledigt)).sort(sortierung);
+  const fehlend = belege.filter(b => b.art === 'beleg' && !b.erledigt).sort(sortierung);
   const summe = (l: Beleg[]) => l.reduce((s, b) => s + (b.betrag ?? 0), 0);
+
+  /** Bezahlt setzen oder wieder öffnen — sofort sichtbar, Fehler an der Zeile. */
+  async function bezahlt(b: Beleg, an: boolean) {
+    const neu = { erledigt: an, bezahlt_am: an ? heute : null };
+    setVorab(v => ({ ...v, [b.id]: neu }));
+    setZeilenFehler(f => { const n = { ...f }; delete n[b.id]; return n; });
+    setLaeuft(l => ({ ...l, [b.id]: true }));
+    const ops: Op[] = [{ op: 'upsert', stand: b.stand, eintrag: { ...b, ...neu } }];
+    const e: PatchErgebnis = patchMitFehler ? await patchMitFehler('belege', ops) : ((await patch('belege', ops)) ? { ok: true } : { ok: false, status: 0, fehler: 'Nicht gespeichert.' });
+    setLaeuft(l => { const n = { ...l }; delete n[b.id]; return n; });
+    // Der frische Stand ist nach einem erfolgreichen Patch schon geladen — der Vorgriff kann weg, ohne dass die Zeile zurückspringt.
+    setVorab(v => { const n = { ...v }; delete n[b.id]; return n; });
+    if (e.ok) melde('ok', an ? 'Als bezahlt vermerkt' : 'Wieder offen', b.empfaenger || b.bezeichnung);
+    else setZeilenFehler(f => ({ ...f, [b.id]: e.fehler }));
+  }
+
+  const fehlerzeile = (b: Beleg, an: boolean) => zeilenFehler[b.id] ? (
+    <div role="alert" style={{ marginTop: 6, fontSize: 12.5, color: LEUCHT.kritisch, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+      <span>Nicht gespeichert: {zeilenFehler[b.id]}</span>
+      <button style={{ ...klein, color: LEUCHT.kritisch, textDecoration: 'underline' }} onClick={() => void bezahlt(b, an)}>Noch einmal</button>
+    </div>
+  ) : null;
 
   return (
     <>
@@ -88,38 +125,71 @@ export function Schulden({ h, patch, melde }: Props) {
               <Kachel titel="Überfällig" wert={eur(summe(ueber))} farbe={ueber.length ? LEUCHT.kritisch : undefined} zusatz={ueber.length ? `${ueber.length} sofort kümmern` : 'nichts überfällig'} />
               <Kachel titel="Diese Woche" wert={eur(summe(woche))} zusatz={`${woche.length} in den nächsten 7 Tagen`} />
             </Kacheln>
-            <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: C.inkDim, margin: '12px 0 4px' }}><input type="checkbox" checked={erledigte} onChange={e => setErledigte(e.target.checked)} /> auch bezahlte zeigen</label>
-            {!rechnungen.length && <Leer>Keine offenen Rechnungen. Alles bezahlt.</Leer>}
-            {rechnungen.map(b => {
-              const spaet = !b.erledigt && b.faellig_am && b.faellig_am < heute;
-              return (
-                <div key={b.id} style={{ padding: '9px 2px', borderBottom: '1px solid rgba(255,255,255,.06)', opacity: b.erledigt ? 0.55 : 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                    <div style={{ minWidth: 0 }}><strong>{b.empfaenger || '–'}</strong> <span style={{ fontSize: 12.5, color: C.inkDim }}>{b.bezeichnung}</span></div>
-                    <span style={{ fontVariantNumeric: 'tabular-nums', color: b.betrag ? C.ink : LEUCHT.achtung }}>{b.betrag ? eur(b.betrag) : 'Betrag fehlt'}</span>
+            <div style={{ marginTop: 10 }}>
+              {!offeneR.length && <Leer>Keine offenen Rechnungen. Alles bezahlt.</Leer>}
+              {offeneR.map(b => {
+                const spaet = b.faellig_am && b.faellig_am < heute;
+                return (
+                  <div key={b.id} style={{ padding: '9px 2px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                      <div style={{ minWidth: 0 }}><strong>{b.empfaenger || '–'}</strong> <span style={{ fontSize: 12.5, color: C.inkDim }}>{b.bezeichnung}</span></div>
+                      <span style={{ fontVariantNumeric: 'tabular-nums', color: b.betrag ? C.ink : LEUCHT.achtung }}>{b.betrag ? eur(b.betrag) : 'Betrag fehlt'}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: spaet ? LEUCHT.kritisch : C.inkDim, marginTop: 4 }}>
+                      <span>{b.faellig_am ? `fällig ${datumDe(b.faellig_am)}${spaet ? ' · überfällig' : ''}` : 'ohne Fälligkeit'}</span>{b.verursacher && <span>· {b.verursacher}</span>}
+                      <span style={{ flex: 1 }} />
+                      <button style={{ ...klein, color: LEUCHT.gut, fontWeight: 700, opacity: laeuft[b.id] ? 0.5 : 1 }} disabled={!!laeuft[b.id]} onClick={() => void bezahlt(b, true)}>{laeuft[b.id] ? 'Speichert …' : 'Bezahlt'}</button>
+                      <button style={klein} onClick={() => setBelegForm(b)}>Bearbeiten</button>
+                      <button style={{ ...klein, color: LEUCHT.kritisch }} onClick={() => setLoesch({ teil: 'belege', id: b.id, stand: b.stand, text: `„${b.bezeichnung}“` })}>Löschen</button>
+                    </div>
+                    {fehlerzeile(b, true)}
                   </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: spaet ? LEUCHT.kritisch : C.inkDim, marginTop: 4 }}>
-                    <span>{b.faellig_am ? `fällig ${datumDe(b.faellig_am)}${spaet ? ' · überfällig' : ''}` : 'ohne Fälligkeit'}</span>{b.verursacher && <span>· {b.verursacher}</span>}
-                    {b.erledigt ? <Chip farbe={LEUCHT.gut}>bezahlt {datumDe(b.bezahlt_am)}</Chip> : null}
-                    <span style={{ flex: 1 }} />
-                    <button style={klein} onClick={() => void patch('belege', [{ op: 'upsert', stand: b.stand, eintrag: { ...b, erledigt: !b.erledigt, bezahlt_am: b.erledigt ? null : heute } }]).then(ok => ok && melde('ok', b.erledigt ? 'Wieder offen' : 'Als bezahlt vermerkt', b.empfaenger || b.bezeichnung))}>{b.erledigt ? 'Doch nicht' : 'Bezahlt'}</button>
-                    <button style={klein} onClick={() => setBelegForm(b)}>Bearbeiten</button>
-                    <button style={{ ...klein, color: LEUCHT.kritisch }} onClick={() => setLoesch({ teil: 'belege', id: b.id, stand: b.stand, text: `„${b.bezeichnung}“` })}>Löschen</button>
-                  </div>
+                );
+              })}
+            </div>
+            {/* Bezahlte: eingeklappt, damit die Liste oben nur zeigt, was noch Geld kostet. */}
+            <div style={{ marginTop: 12 }}>
+              <button onClick={() => setBezahlteAuf(a => !a)} aria-expanded={bezahlteAuf} style={{ ...klein, padding: '4px 0', display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ display: 'inline-block', transition: 'transform .15s', transform: bezahlteAuf ? 'rotate(90deg)' : 'none' }}>›</span>
+                Bezahlt ({bezahlteR.length}){bezahlteR.length ? ` · ${eur(summe(bezahlteR))}` : ''}
+              </button>
+              {bezahlteAuf && (
+                <div>
+                  {!bezahlteR.length && <Leer>Noch nichts als bezahlt vermerkt.</Leer>}
+                  {bezahlteR.map(b => (
+                    <div key={b.id} style={{ padding: '8px 2px', borderBottom: '1px solid rgba(255,255,255,.05)', opacity: 0.7 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                        <div style={{ minWidth: 0 }}><strong>{b.empfaenger || '–'}</strong> <span style={{ fontSize: 12.5, color: C.inkDim }}>{b.bezeichnung}</span></div>
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{b.betrag ? eur(b.betrag) : '–'}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim, marginTop: 4 }}>
+                        <Chip farbe={LEUCHT.gut}>bezahlt {datumDe(b.bezahlt_am)}</Chip>
+                        {b.faellig_am && <span>war fällig {datumDe(b.faellig_am)}</span>}
+                        <span style={{ flex: 1 }} />
+                        <button style={{ ...klein, opacity: laeuft[b.id] ? 0.5 : 1 }} disabled={!!laeuft[b.id]} onClick={() => void bezahlt(b, false)}>{laeuft[b.id] ? 'Speichert …' : 'Doch nicht'}</button>
+                        <button style={klein} onClick={() => setBelegForm(b)}>Bearbeiten</button>
+                        <button style={{ ...klein, color: LEUCHT.kritisch }} onClick={() => setLoesch({ teil: 'belege', id: b.id, stand: b.stand, text: `„${b.bezeichnung}“` })}>Löschen</button>
+                      </div>
+                      {fehlerzeile(b, false)}
+                    </div>
+                  ))}
                 </div>
-              );
-            })}
+              )}
+            </div>
           </Karte>
           <Karte i={3}>
             <Ueberschrift rechts={<Knopf leise onClick={() => setBelegForm({ art: 'beleg', einheit: 'privat' })}>Beleg nachhalten</Knopf>}>Fehlende Belege</Ueberschrift>
             <div style={{ fontSize: 13, color: C.inkDim, marginBottom: 6 }}>Quittungen, die noch fehlen. Kein Geldfluss — nur Papier.</div>
             {!fehlend.length && <Leer>Nichts offen.</Leer>}
             {fehlend.map(b => (
-              <div key={b.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '7px 2px', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
-                <input type="checkbox" aria-label="erledigt" checked={b.erledigt} onChange={e => void patch('belege', [{ op: 'upsert', stand: b.stand, eintrag: { ...b, erledigt: e.target.checked } }])} />
-                <span style={{ flex: 1, textDecoration: b.erledigt ? 'line-through' : undefined, color: b.erledigt ? C.inkLeise : C.ink }}>{b.bezeichnung}</span>
-                <span style={{ fontSize: 12.5, color: b.faellig_am && b.faellig_am < heute ? LEUCHT.kritisch : C.inkDim }}>{datumDe(b.faellig_am)}</span>
-                <button style={klein} onClick={() => setBelegForm(b)}>Bearbeiten</button>
+              <div key={b.id} style={{ padding: '7px 2px', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <input type="checkbox" aria-label="erledigt" checked={b.erledigt} disabled={!!laeuft[b.id]} onChange={e => void bezahlt(b, e.target.checked)} />
+                  <span style={{ flex: 1, textDecoration: b.erledigt ? 'line-through' : undefined, color: b.erledigt ? C.inkLeise : C.ink }}>{b.bezeichnung}</span>
+                  <span style={{ fontSize: 12.5, color: b.faellig_am && b.faellig_am < heute ? LEUCHT.kritisch : C.inkDim }}>{datumDe(b.faellig_am)}</span>
+                  <button style={klein} onClick={() => setBelegForm(b)}>Bearbeiten</button>
+                </div>
+                {fehlerzeile(b, true)}
               </div>
             ))}
             {anderswo > 0 && <Hinweis>{anderswo} weitere offene Rechnung{anderswo === 1 ? '' : 'en'} oder Belege gehören zur Selbstständigkeit oder UG — die stehen unter Business.</Hinweis>}

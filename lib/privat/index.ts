@@ -14,6 +14,7 @@
 
 import { berechneModell, type KennzahlDefBasis, type SaeuleDef, type Messung, type Detail, type Ampel, type Schwelle, type IndexErgebnis } from '@/lib/kennzahlen/kern';
 import type { Buchung, Haushalt, Kategorie, Schuld, Beleg } from '@/lib/finanzen/haushalt/typen';
+import { turnusName } from '@/lib/finanzen/haushalt/regeln';
 import { katNamen, summen, artVon, TILGUNG, SPAREN, type KatName } from '@/lib/finanzen/haushalt/einordnung';
 import { kennzahlen, schuldenbild, istWert, sollWert, inMonaten } from '@/lib/finanzen/haushalt/kennzahlen';
 import { luft } from '@/lib/finanzen/haushalt/fixkosten';
@@ -201,7 +202,7 @@ export const PRIVAT_MESSEN: Record<string, (s: Sicht) => Messung> = {
     if (l.einnahmenSchnitt <= 0 || l.sockel.gesamt <= 0) return { luecke: 'Einkommen oder Fixkosten fehlen', details: [{ titel: 'Fixkosten markieren', href: WEG.privat('fixkosten') }] };
     const w = (l.sockel.gesamt / l.einnahmenSchnitt) * 100;
     return { wert: w, anzeige: pz(w), quelle: `${euro(l.sockel.gesamt)} Sockel ÷ ${euro(l.einnahmenSchnitt)} Ø Einkommen`,
-      details: l.sockel.posten.slice(0, 3).map(p => ({ titel: p.name, wert: `${euro(p.proMonat)}/Monat`, unter: `${p.turnus === 'monatlich' ? 'monatlich' : p.turnus === 'quartal' ? 'je Quartal' : 'jährlich'} · ${pz((p.proMonat / l.einnahmenSchnitt) * 100)} vom Einkommen`, href: WEG.privat('buchungen', { monat: 'alle', q: p.name.slice(0, 40) }) }))
+      details: l.sockel.posten.slice(0, 3).map(p => ({ titel: p.name, wert: `${euro(p.proMonat)}/Monat`, unter: `${turnusName(p.turnus)} · ${pz((p.proMonat / l.einnahmenSchnitt) * 100)} vom Einkommen`, href: WEG.privat('buchungen', { monat: 'alle', q: p.name.slice(0, 40) }) }))
         .concat(l.sockel.raten > 0 ? [{ titel: 'Kreditraten', wert: `${euro(l.sockel.raten)}/Monat`, unter: 'aus der Schulden-Liste', href: WEG.privat('schulden') }] : []) };
   },
   konsumquote(s) {

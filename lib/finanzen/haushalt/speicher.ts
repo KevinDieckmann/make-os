@@ -84,6 +84,7 @@ export function sauberBuchung(roh: Record<string, unknown>, stamm: Stamm): Omit<
     empfaenger: text(roh.empfaenger, 200),
     kategorie_id,
     ist_umbuchung: bool(roh.ist_umbuchung), ist_fixkosten: bool(roh.ist_fixkosten), turnus: turnusAus(roh.turnus),
+    ...(roh.turnus_geklaert === true ? { turnus_geklaert: true } : {}),
     einheit: einheit(roh.einheit ?? 'privat'),
     zeilen_hash: textOderNull(roh.zeilen_hash, 120), notiz: textOderNull(roh.notiz, 500),
     import_id: textOderNull(roh.import_id, 80), erfasst_von: textOderNull(roh.erfasst_von, 40),
@@ -225,15 +226,22 @@ export async function patchen(haushalt: string, teil: Exclude<Teil, 'stamm'> | '
         return f;
       }
     });
-  if (teil === 'buchungen') await lauf<Buchung>('buchungen', 'buchungen', r => ({ ...sauberBuchung(r, stamm!), geaendert: jetzt }), true);
-  else if (teil === 'schulden') await lauf<Schuld>('schulden', 'schulden', sauberSchuld);
-  else if (teil === 'belege') await lauf<Beleg>('belege', 'belege', sauberBeleg);
-  else if (teil === 'plan') await lauf<Planwert>('plan', 'planwerte', sauberPlanwert);
-  else if (teil === 'konten') await lauf<Konto>('stamm', 'konten', sauberKonto);
-  else if (teil === 'kategorien') await lauf<Kategorie>('stamm', 'kategorien', sauberKategorie);
-  else if (teil === 'regeln') {
-    const s = (await ladeHaushalt(haushalt)).stamm;
-    await lauf<Regel>('stamm', 'regeln', r => sauberRegel(r, s));
+  // Ein Schreibfehler (Bestand beschädigt beiseitegelegt, Schlüssel falsch, Platte voll) war bis 27.09. eine
+  // unbehandelte Ausnahme → 500 ohne JSON, und die Oberfläche zeigte „Keine Verbindung“. Jetzt eine klare Antwort.
+  try {
+    if (teil === 'buchungen') await lauf<Buchung>('buchungen', 'buchungen', r => ({ ...sauberBuchung(r, stamm!), geaendert: jetzt }), true);
+    else if (teil === 'schulden') await lauf<Schuld>('schulden', 'schulden', sauberSchuld);
+    else if (teil === 'belege') await lauf<Beleg>('belege', 'belege', sauberBeleg);
+    else if (teil === 'plan') await lauf<Planwert>('plan', 'planwerte', sauberPlanwert);
+    else if (teil === 'konten') await lauf<Konto>('stamm', 'konten', sauberKonto);
+    else if (teil === 'kategorien') await lauf<Kategorie>('stamm', 'kategorien', sauberKategorie);
+    else if (teil === 'regeln') {
+      const s = (await ladeHaushalt(haushalt)).stamm;
+      await lauf<Regel>('stamm', 'regeln', r => sauberRegel(r, s));
+    }
+  } catch (err) {
+    console.error('[haushalt/patchen]', teil, err instanceof Error ? err.message : err);
+    return { ok: false, status: 500, fehler: 'Nicht gespeichert — der Bestand konnte nicht geschrieben werden. Bitte gleich noch einmal; bleibt es, Kevin Bescheid geben.' };
   }
   return ergebnis;
 }

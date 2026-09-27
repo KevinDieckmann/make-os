@@ -18,6 +18,7 @@ import { LEUCHT, Knopf, feld } from '../schlank';
 export type HaushaltDaten = Haushalt & { meta: Meta; haushalt: string; person: string };
 export interface Meldung { id: number; art: 'ok' | 'fehler' | 'info'; titel: string; text?: string }
 export type Op = { op: 'upsert' | 'delete'; eintrag?: Record<string, unknown>; id?: string; stand?: number };
+export type PatchErgebnis = { ok: true } | { ok: false; status: number; fehler: string };
 
 export function useHaushalt() {
   const [daten, setDaten] = useState<HaushaltDaten | null>(null);
@@ -45,20 +46,27 @@ export function useHaushalt() {
   // Bearbeiten derselben Zeile fängt die Stand-Prüfung ab (409 → neu laden).
   useAbgleich(laden, { alle: 60_000 }); // 27.09.: jede Minute statt alle 20 s — die Antwort kommt mit ETag, meist 304
 
-  /** Einzeländerungen. Bei Konflikt: Meldung und frischer Stand statt stillem Überschreiben. */
-  const patch = useCallback(async (teil: string, ops: Op[]): Promise<boolean> => {
+  /**
+   * Einzeländerungen. Bei Konflikt: Meldung und frischer Stand statt stillem Überschreiben.
+   * 27.09. (Malins „Bezahlt tut nichts“): eine Antwort ohne JSON (Server-Fehler, Anmeldeseite, Vorbau) hieß bisher
+   * pauschal „Keine Verbindung“ — jetzt steht der Status dabei, und der Fehler wird zusätzlich zurückgegeben,
+   * damit eine Karte ihn direkt an der Zeile zeigen kann.
+   */
+  const patchMitFehler = useCallback(async (teil: string, ops: Op[]): Promise<PatchErgebnis> => {
+    let r: Response;
     try {
-      const r = await fetch('/api/haushalt', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ teil, ops }) });
-      const d = await r.json();
-      if (!d.ok) {
-        melde('fehler', r.status === 409 ? 'Inzwischen geändert' : 'Nicht gespeichert', d.fehler);
-        if (r.status === 409) await laden();
-        return false;
-      }
-      await laden();
-      return true;
-    } catch { melde('fehler', 'Nicht gespeichert', 'Keine Verbindung.'); return false; }
+      r = await fetch('/api/haushalt', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ teil, ops }) });
+    } catch { melde('fehler', 'Nicht gespeichert', 'Keine Verbindung — MAKE OS ist gerade nicht erreichbar.'); return { ok: false, status: 0, fehler: 'Keine Verbindung.' }; }
+    const text = await r.text().catch(() => '');
+    let d: { ok?: boolean; fehler?: string } = {};
+    try { d = text ? JSON.parse(text) : {}; } catch { d = {}; }
+    if (r.ok && d.ok) { await laden(); return { ok: true }; }
+    const fehler = d.fehler ?? (r.status === 401 ? 'Die Anmeldung ist abgelaufen — bitte neu anmelden.' : r.status === 403 ? 'Kein Zugang zu diesem Haushalt.' : `Der Server antwortete mit ${r.status}${r.statusText ? ` (${r.statusText})` : ''}.`);
+    melde('fehler', r.status === 409 ? 'Inzwischen geändert' : 'Nicht gespeichert', fehler);
+    if (r.status === 409) await laden();
+    return { ok: false, status: r.status, fehler };
   }, [laden, melde]);
+  const patch = useCallback(async (teil: string, ops: Op[]): Promise<boolean> => (await patchMitFehler(teil, ops)).ok, [patchMitFehler]);
 
   const aktion = useCallback(async <T = Record<string, unknown>>(body: Record<string, unknown>): Promise<(T & { ok: boolean; fehler?: string; text?: string }) | null> => {
     try {
@@ -69,7 +77,7 @@ export function useHaushalt() {
     } catch { melde('fehler', 'Keine Verbindung', 'MAKE OS ist gerade nicht erreichbar.'); return null; }
   }, [melde]);
 
-  return { daten, kein, laden, patch, aktion, melde, meldungen, weg };
+  return { daten, kein, laden, patch, patchMitFehler, aktion, melde, meldungen, weg };
 }
 
 export function Meldungen({ liste, weg }: { liste: Meldung[]; weg: (id: number) => void }) {

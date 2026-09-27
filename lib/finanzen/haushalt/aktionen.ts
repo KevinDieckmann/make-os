@@ -132,7 +132,8 @@ export async function turnusSetzen(haushalt: string, name: string, turnus: Turnu
   await aendereBuchungen(haushalt, liste => liste.map(b => {
     if (normal(b.empfaenger) !== n) return b;
     anzahl++;
-    return { ...b, turnus, stand: b.stand + 1, geaendert: jetzt };
+    // Von Hand gesetzt = geklärt (27.09.): der Chip „Rhythmus unklar“ verschwindet, auch wenn die Abstände weiter unklar aussehen.
+    return { ...b, turnus, turnus_geklaert: true, stand: b.stand + 1, geaendert: jetzt };
   }));
   await aendereStamm(haushalt, s => ({ ...s, regeln: s.regeln.map(x => normal(x.muster) === n ? { ...x, turnus, stand: x.stand + 1 } : x) }));
   return { anzahl };

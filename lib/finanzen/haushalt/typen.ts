@@ -15,7 +15,8 @@ export const EINHEIT_NAME: Record<Einheit, string> = {
   privat: 'Privat', selbststaendigkeit: 'Selbstständigkeit', ug: 'KD Management UG',
 };
 
-export type Turnus = 'monatlich' | 'quartal' | 'jahr';
+/** Rhythmus einer wiederkehrenden Zahlung. Seit 27.09. auch halbjährlich und „unregelmäßig“ (Malins Rückmeldung: „Rhythmus unklar“ muss klärbar sein). */
+export type Turnus = 'monatlich' | 'quartal' | 'halbjahr' | 'jahr' | 'unregelmaessig';
 export type KategorieTyp = 'ausgabe' | 'einnahme' | 'umbuchung';
 
 /** Jede gespeicherte Zeile: Kennung + Versionsstand. */
@@ -48,6 +49,8 @@ export interface Buchung extends Zeile {
   ist_umbuchung: boolean;
   ist_fixkosten: boolean;
   turnus: Turnus;
+  /** Rhythmus von Hand bestätigt (27.09.): dann fragt „Rhythmus unklar“ nicht mehr — auch wenn die Abstände weiter unklar aussehen. */
+  turnus_geklaert?: boolean;
   einheit: Einheit;
   zeilen_hash: string | null;      // Dublettenschutz je Konto
   notiz: string | null;
