@@ -20,11 +20,15 @@
 // Kampagnen) als Kosten je Anfrage und je SQL — Quoten erst ab fünf Fällen
 // (marketingTrichter). Leerzustände führen zur Handlung: ersten Beitrag planen,
 // Anfrage erfassen, Positionierung schreiben.
+//
+// Fläche (27.09.): die Übersicht ist eine gestaltbare Fläche (lib/crm/flaechen.ts
+// KACHELN.marketing) — jede Karte eine Kachel, dazu die Kurzkarten „Anfragen“
+// und „Segmente“; je Person anordnen, ausblenden, Katalog-Widgets dazulegen.
 
 import { localDay } from '@/lib/zeit';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Zahl, Raster, Fortschritt, Liste, Zeile, Punkt, Knopf, LEUCHT } from '../../schlank';
+import { Karte, Ueberschrift, Leer, Zahl, Raster, Fortschritt, Liste, Zeile, Punkt, Knopf, Chip, LEUCHT } from '../../schlank';
 import { anzeigename } from '@/lib/make-one/crm';
 import { kanalStatus, art14 } from '@/lib/crm/recht';
 import { TEAM, BEIDE, nameVon } from '@/lib/crm/team';
@@ -36,6 +40,12 @@ import { Pillen } from '../teile';
 import Link from 'next/link';
 import { netzRunde } from '@/lib/crm/netzwerk';
 import { markttraktion } from '@/lib/crm/adresse';
+import { anfragenListe, kanalInfo } from '@/lib/crm/anfragen';
+import { kontextAus, segmentAuswerten } from '@/lib/crm/segmente';
+import { Flaeche, Kachel } from '../../flaeche/Flaeche';
+import { FLAECHE, kachel, standardVon } from '@/lib/crm/flaechen';
+
+const K = (id: string) => kachel('marketing', id);
 
 /** Wohin ein Klick auf einen Posten führt — Redaktionsplan oder Newsletter mit geöffnetem Eintrag. */
 export type ZuEintrag = (ansicht: 'redaktion' | 'newsletter', id: string) => void;
@@ -89,9 +99,16 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
 
   const k = trichter?.kosten;
   const leerHandlungen = trichter && !trichter.reichweite.messbar && !trichter.anfragen.messbar;
+  // Kurzkarten der Fläche (27.09.): der Eingang und die Zielgruppen — offene Anfragen zuerst, Segmente mit Live-Zahl.
+  const anfragen = useMemo(() => (crm ? anfragenListe(kontakte, crm.stand, heute) : []).sort((a, b) => Number(b.offen) - Number(a.offen) || b.am.localeCompare(a.am)), [kontakte, crm, heute]);
+  const offeneAnfragen = anfragen.filter(a => a.offen).length;
+  const ctx = useMemo(() => (crm ? kontextAus(crm.stand, heute) : null), [crm, heute]);
+  const segmente = useMemo(() => (crm && ctx ? (crm.stand.segmente ?? []).map(sg => ({ id: sg.id, name: sg.name, anzahl: segmentAuswerten(kontakte, sg.kriterien, ctx).anzahl })) : []), [crm, ctx, kontakte]);
+  const leiseKnopf = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5, padding: 0 } as const;
 
   return (
-    <>
+    <Flaeche seite={FLAECHE.marketing} standard={standardVon('marketing')}>
+      <Kachel {...K('strecke')}>
       <Karte i={0} akzent={LEUCHT.puls}>
         <Ueberschrift farbe={LEUCHT.puls} rechts={<Pillen liste={[{ id: '30', label: '30 Tage' }, { id: '90', label: '90 Tage' }]} aktiv={String(tage)} onWahl={t => setTage(t === '30' ? 30 : 90)} />}>Marketing-Strecke</Ueberschrift>
         {trichter ? (
@@ -140,8 +157,36 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
           </>
         ) : <Leer>Lädt …</Leer>}
       </Karte>
+      </Kachel>
 
-      <Raster min={360}>
+      <Kachel {...K('anfragen')}>
+        <Karte i={0} akzent={offeneAnfragen ? LEUCHT.achtung : undefined}>
+          <Ueberschrift farbe={offeneAnfragen ? LEUCHT.achtung : undefined} rechts={zuAnsicht ? <button onClick={() => zuAnsicht('anfragen')} style={leiseKnopf}>{anfragen.length ? `alle ${anfragen.length} ›` : 'Anfragen ›'}</button> : undefined}>Anfragen · 30 Tage</Ueberschrift>
+          {anfragen.length ? (
+            <Liste>
+              {anfragen.slice(0, 5).map(a => (
+                <Zeile key={a.id} onClick={() => zuKontakt(a.kontaktId)} links={<Punkt farbe={a.offen ? LEUCHT.achtung : a.deal ? LEUCHT.gut : C.inkLeise} />}
+                  titel={<>{a.name}{a.firma && <span style={{ color: C.inkLeise }}> · {a.firma}</span>}</>} unter={`${kanalInfo(a.kanal)?.label ?? a.kanal} · ${datum(a.am.slice(0, 10), heute)}`}
+                  rechts={a.offen ? <Chip farbe={LEUCHT.achtung}>offen</Chip> : a.deal ? <Chip farbe={LEUCHT.gut}>Deal</Chip> : undefined} />
+              ))}
+            </Liste>
+          ) : <Leer>Keine Anfrage in 30 Tagen. {zuAnsicht ? <button onClick={() => zuAnsicht('anfragen')} style={{ ...leiseKnopf, color: C.inkDim }}>Anfrage erfassen ›</button> : null}</Leer>}
+        </Karte>
+      </Kachel>
+
+      <Kachel {...K('segmente')}>
+        <Karte i={0}>
+          <Ueberschrift rechts={zuAnsicht ? <button onClick={() => zuAnsicht('segmente')} style={leiseKnopf}>Segmente ›</button> : undefined}>Segmente</Ueberschrift>
+          {segmente.length ? (
+            <Liste>
+              {segmente.slice(0, 6).map(sg => <Zeile key={sg.id} onClick={zuAnsicht ? () => zuAnsicht('segmente') : undefined} titel={sg.name} rechts={<span style={{ fontVariantNumeric: 'tabular-nums', color: sg.anzahl ? C.ink : C.inkLeise }}>{sg.anzahl}</span>} />)}
+              {segmente.length > 6 && <div style={{ fontSize: 12, color: C.inkLeise, padding: '4px 2px' }}>und {segmente.length - 6} weitere</div>}
+            </Liste>
+          ) : <Leer>Noch kein Segment — ein gespeicherter Filter über die Kartei, eine Vorlage reicht. {zuAnsicht ? <button onClick={() => zuAnsicht('segmente')} style={{ ...leiseKnopf, color: C.inkDim }}>Anlegen ›</button> : null}</Leer>}
+        </Karte>
+      </Kachel>
+
+      <Kachel {...K('netzwerk')}>
         <Karte i={0} akzent={netz.some(n => n.z.schreiben) ? LEUCHT.gut : undefined}>
           <Ueberschrift farbe={LEUCHT.business} rechts={<Link href={markttraktion('kontakte', 'runde-vernetzen')} style={{ color: LEUCHT.business, textDecoration: 'none', fontSize: 12.5, fontWeight: 600 }}>Vernetzen-Runde ›</Link>}>LinkedIn-Netzwerk</Ueberschrift>
           <div style={{ display: 'grid', gap: 10 }}>
@@ -159,6 +204,8 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
           </div>
           <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Erst vernetzen, nach der Annahme schreiben — Texte je Kampagne „LinkedIn: vernetzen & anschreiben“. Den LinkedIn-Export importieren, dann kommen Annahmen von selbst.</div>
         </Karte>
+      </Kachel>
+      <Kachel {...K('freigabe')}>
         <Karte i={0} akzent={beiMir.length ? LEUCHT.achtung : undefined}>
           <Ueberschrift farbe={lage.length ? LEUCHT.achtung : undefined} rechts={lage.length ? `${lage.length} offen` : undefined}>Wartet auf Freigabe</Ueberschrift>
           {beiWem.length ? (
@@ -186,7 +233,9 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
             </div>
           ) : <Leer>Nichts offen. Erscheint ein Beitrag im Namen einer Person, die ihn nicht selbst schreibt, geht er vor dem Planen hierher — Newsletter auf Wunsch.</Leer>}
         </Karte>
+      </Kachel>
 
+      <Kachel {...K('je-person')}>
         <Karte i={1}>
           <Ueberschrift rechts="30 Tage">Beiträge je Person</Ueberschrift>
           <div style={{ display: 'grid', gap: 14 }}>
@@ -209,14 +258,17 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
           </div>
           <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 12, lineHeight: 1.5 }}>Gezählt beim Autor (wer schreibt); gemeinsame Beiträge zählen bei beiden. Gespräche/Anfragen aus der Wirkung an ihren Beiträgen, je Person und Beitrag einmal. — heißt: noch nichts, was sich zählen ließe.</div>
         </Karte>
-      </Raster>
+      </Kachel>
 
+      <Kachel {...K('wirkung')}>
       <Karte i={2}>
         <Ueberschrift rechts="grau = noch nichts gemessen">Wirkung</Ueberschrift>
         {crm ? <KpiLeiste liste={kpis} /> : <Leer>Lädt …</Leer>}
         <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 10 }}>Gemessen an Gesprächen und Chancen, nicht an Likes oder Öffnungsraten. Wirkung trägst du im Redaktionsplan am Beitrag ein.</div>
       </Karte>
+      </Kachel>
 
+      <Kachel {...K('duerfen')}>
       <Karte i={3}>
         <Ueberschrift>Wen wir ansprechen dürfen</Ueberschrift>
         <Raster min={150}>
@@ -227,7 +279,9 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
         </Raster>
         <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 10 }}>Ziel: Der Anteil von Kreis A–C mit gültiger Mail-Grundlage steigt. Einwilligungen holst du im Gespräch — Wortlaut in der Karteikarte festhalten.</div>
       </Karte>
+      </Kachel>
 
+      <Kachel {...K('art14')}>
       <Karte i={4} akzent={z.art14.length ? LEUCHT.kritisch : undefined}>
         <Ueberschrift farbe={z.art14.length ? LEUCHT.kritisch : undefined} rechts={z.art14offen ? `${z.art14offen} laufen noch` : undefined}>Art. 14 — Informationspflicht</Ueberschrift>
         {z.art14.length ? (
@@ -237,7 +291,9 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
           </div>
         ) : <Leer>Nichts fällig. Personen aus Recherche oder Listen in der Karteikarte als „Recherche/Liste“ markieren — dann läuft die Uhr.</Leer>}
       </Karte>
+      </Kachel>
 
+      <Kachel {...K('quellen')}>
       <Karte i={5}>
         <Ueberschrift>Woher Chancen kommen</Ueberschrift>
         {chancenGesamt ? (
@@ -252,7 +308,9 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
           </div>
         ) : <Leer>Noch keine Deals mit Quelle. Ein Deal aus einer Anfrage oder Kampagne bringt seine Quelle mit — {zuAnsicht ? <button onClick={() => zuAnsicht('anfragen')} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Anfrage erfassen</button> : 'Anfrage erfassen'}.</Leer>}
       </Karte>
+      </Kachel>
 
+      <Kachel {...K('stimme')}>
       <Karte i={6}>
         <Ueberschrift>Stimme der Kunden</Ueberschrift>
         {z.stimmen.length ? (
@@ -263,6 +321,7 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
         ) : <Leer>Sobald Gesprächsnotizen das Feld „Bedarf / Schmerz“ haben, sammeln sich hier die Themen.</Leer>}
         {z.alteEinwilligung.length > 0 && <div style={{ fontSize: 12.5, color: LEUCHT.achtung, marginTop: 10 }}>{z.alteEinwilligung.length} Einwilligungen sind älter als zwei Jahre — auffrischen.</div>}
       </Karte>
-    </>
+      </Kachel>
+    </Flaeche>
   );
 }

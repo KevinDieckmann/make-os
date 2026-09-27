@@ -1,6 +1,6 @@
 'use client';
 
-// ─── Markttraktion · Event — Stammtisch, Workshop, Dinner, Webinar ───────────────────
+// ─── Markttraktion · Events · Make.One — Stammtisch, Workshop, Dinner, Webinar ──────
 // Ein Event ist erfolgreich, wenn danach die richtigen Gespräche stattfinden.
 // Deshalb: ein messbares Ziel, eine bewusste Gästeliste aus der Kartei
 // (Mischung gegen das Soll), sechs Wochen Vorlauf als Checkliste, Zusage und
@@ -10,32 +10,60 @@
 // Zu zweit: Event verantwortet Malin, Kevin arbeitet mit. Je Event steht, wer
 // zuständig ist (Plakette in der Liste, Filter „Alle · Meins · …“); je Punkt,
 // wer ihn erledigt, und je Gast, wer einlädt und nachfasst.
-// Aufbau: Head of Event oben, links die Events (kommend, vergangen), rechts
-// das gewählte Event mit sieben Reitern (components/os/crm/events/*). Auf
-// schmalen Bildschirmen klappt das Event unter seiner Zeile auf. Das gewählte
-// Event steht in der Adresse (k=…) — Links aus Aufgaben führen direkt hin,
-// und die/der andere sieht „ist gerade bei diesem Event“.
+// Marke (Kevin 27.09.): unter den Events heißt unsere Marke Make.One — der
+// Kopf sagt es, neue Events tragen sie als Vorgabe (änderbar), alte gelten
+// abgeleitet als Make.One (lib/crm/marke.ts). Kein Logo, keine Homepage.
+// Aufbau (Fläche, 27.09.): Head of Event, links die Events (kommend), rechts
+// das gewählte Event mit sieben Reitern (components/os/crm/events/*), dazu
+// „Nachfassen offen“ über alle Events, die Wirkung der vergangenen Events und
+// die vergangenen Events — je Person anordnen, ausblenden, Widgets dazulegen
+// (Standard in lib/crm/flaechen.ts KACHELN.event). Auf schmalen Bildschirmen
+// klappt das Event unter seiner Zeile auf. Das gewählte Event steht in der
+// Adresse (k=…) — Links aus Aufgaben führen direkt hin, und die/der andere
+// sieht „ist gerade bei diesem Event“.
 
 import { useEffect, useMemo, useState } from 'react';
-import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, LEUCHT } from '../schlank';
+import { useRouter } from 'next/navigation';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, useBreit, LEUCHT } from '../schlank';
 import { VORLAGEN, vorlageAnwenden, checklisteStand, einlader, type VorlageId } from '@/lib/crm/eventplanung';
+import { MARKE_EVENTS, nachfassenRest } from '@/lib/crm/events';
 import { TEAM, verantwortlich, zustaendig, anderer, nameVon } from '@/lib/crm/team';
+import { anzeigename } from '@/lib/make-one/crm';
+import { WEG } from '@/lib/wege';
 import type { Event } from '@/lib/crm/typen';
-import { type CrmApi, neueId, datum, plusTage } from './daten';
+import { type CrmApi, neueId, datum, euro, plusTage } from './daten';
 import { HeadPanel } from './HeadPanel';
 import { Person, WerFilter, useWerFilter, passtWer } from './team';
 import { EventDetail } from './events/EventDetail';
 import { Start } from './events/Start';
 import { FORMATE, STATUS } from './events/gemeinsam';
+import { Flaeche, Kachel } from '../flaeche/Flaeche';
+import { FLAECHE, kachel, standardVon } from '@/lib/crm/flaechen';
+
+const K = (id: string) => kachel('event', id);
+const stunden = (h: number) => (h >= 48 ? `noch ${Math.floor(h / 24)} Tage` : h >= 0 ? `noch ${h} Std.` : h > -48 ? `seit ${-h} Std. vorbei` : `seit ${Math.floor(-h / 24)} Tagen vorbei`);
+const fristFarbe = (h: number) => (h > 24 ? LEUCHT.gut : h >= 0 ? LEUCHT.achtung : LEUCHT.kritisch);
+
+/** Kopf des Reiters: die Marke, unter der die Events laufen. */
+function Kopf() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+      <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, letterSpacing: '-.02em', lineHeight: 1.2 }}>Events · {MARKE_EVENTS}</span>
+      <span style={{ fontSize: 12.5, color: C.inkLeise }}>Unsere Veranstaltungsmarke — unter ihr laufen alle Events.</span>
+    </div>
+  );
+}
 
 export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKontakt: (id: string) => void; /** Event aus der Adresse (k=…) — zum Wiederfinden und für „Malin ist gerade hier“. */ start?: string; onAuswahl?: (id: string | null, wie?: 'push' | 'replace') => void }) {
   const breit = useBreit();
+  const router = useRouter();
   const [lokal, setLokal] = useState<string | null>(start ?? null);
   // Mit onAuswahl steht die Auswahl im Link (k) — Zurück und Vor zeigen dann dasselbe Event.
   const auswahl = onAuswahl ? start ?? null : lokal;
   const [neu, setNeu] = useState(false);
   const [wahl, setWahl] = useWerFilter('event');
+  const [jetzt] = useState(() => Date.now());
   const ich = api.ich;
 
   const crm = api.crm;
@@ -53,20 +81,34 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
   // Was rechts offen ist, steht auch in der Adresse (ersetzt, kein neuer Verlaufseintrag).
   useEffect(() => { if (aktivId && aktivId !== start) onAuswahl?.(aktivId, 'replace'); }, [aktivId, start, onAuswahl]);
 
-  // Nachfassen über alle Events — je Person, die einlädt und nachfasst.
-  const nachfassen = useMemo(() => {
+  // Nachfassen über alle Events — je Person, die einlädt und nachfasst, und als Liste für die Kachel (Event vorbei, war da, noch offen).
+  const { nachfassen, offenListe } = useMemo(() => {
     const r: Record<string, number> = {};
-    if (!crm) return r;
+    const liste: { t: { id: string; kontaktId: string }; e: Event; name: string; firma?: string }[] = [];
+    if (!crm) return { nachfassen: r, offenListe: liste };
     const nachId = new Map((api.kontakte ?? []).map(k => [k.id, k]));
     const eventVon = new Map(crm.stand.events.map(e => [e.id, e]));
     for (const t of crm.stand.teilnahmen) {
       const ev = t.status === 'da' && !t.followUpAm ? eventVon.get(t.eventId) : undefined;
       if (!ev) continue;
-      const p = einlader(t, nachId.get(t.kontaktId), ev);
+      const k = nachId.get(t.kontaktId);
+      const p = einlader(t, k, ev);
       r[p] = (r[p] ?? 0) + 1;
+      if (k && !t.nachfassenVerzichtet && ev.datum <= heute) liste.push({ t, e: ev, name: anzeigename(k), firma: k.firma });
     }
-    return r;
-  }, [crm, api.kontakte]);
+    liste.sort((a, b) => b.e.datum.localeCompare(a.e.datum));
+    return { nachfassen: r, offenListe: liste };
+  }, [crm, api.kontakte, heute]);
+
+  // Wirkung der vergangenen Events (nicht abgesagt) — aus den Zahlen des Servers (crm.events), keine zweite Rechnung.
+  const wirkung = useMemo(() => {
+    if (!crm) return null;
+    const gewesen = events.filter(e => e.datum < heute && e.status !== 'abgesagt');
+    const z = gewesen.map(e => crm.events[e.id]).filter(Boolean);
+    const sum = (f: (x: (typeof z)[number]) => number) => z.reduce((a, x) => a + f(x), 0);
+    const folge = sum(x => x.folgegespraeche), kosten = sum(x => x.kosten);
+    return { events: gewesen.length, da: sum(x => x.da), folge, beeinflusst: sum(x => x.beeinflusst), verursacht: sum(x => x.verursacht), kosten, jeGespraech: kosten && folge ? Math.round(kosten / folge) : null, nachfassenOffen: sum(x => x.nachfassenOffen) };
+  }, [crm, events, heute]);
 
   if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
 
@@ -76,6 +118,7 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
   if (!events.length) {
     return (
       <>
+        <Kopf />
         <HeadPanel head="event" standardModus="wirkung" zuKontakt={zuKontakt} i={0} />
         <Karte i={1} akzent={LEUCHT.beziehung}><Start api={api} onFertig={id => waehle(id)} /></Karte>
       </>
@@ -89,7 +132,8 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
 
   const anlegen = (v: VorlageId | null) => {
     const vorlage = VORLAGEN.find(x => x.id === v);
-    const basis: Event = { id: neueId('ev'), titel: vorlage?.label ?? 'Neues Event', format: 'sonstig', ziel: '', datum: plusTage(heute, 42), status: 'idee', geaendert: new Date().toISOString() };
+    // Neue Events tragen die Marke als Vorgabe (27.09.) — im Überblick des Events änderbar.
+    const basis: Event = { id: neueId('ev'), titel: vorlage?.label ?? 'Neues Event', format: 'sonstig', ziel: '', datum: plusTage(heute, 42), status: 'idee', marke: MARKE_EVENTS, geaendert: new Date().toISOString() };
     const e = vorlage ? vorlageAnwenden(basis, vorlage.id) : basis;
     void api.setze('events', e as unknown as { id: string } & Record<string, unknown>);
     waehle(e.id); setNeu(false);
@@ -117,50 +161,89 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
     );
   };
 
-  const listen = (
-    <>
-      <Karte i={1}>
-        <Ueberschrift rechts={<Knopf onClick={() => setNeu(!neu)}>{neu ? 'Abbrechen' : '+ Event'}</Knopf>}>Events</Ueberschrift>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
-          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: C.inkLeise }}>Verantwortung <Person id={verantwortlich('event')} name /></span>
-          <span style={{ fontSize: 12, color: C.inkLeise }}>· beide sehen alles und arbeiten mit</span>
-        </div>
-        <div style={{ marginBottom: 8 }}><WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} /></div>
-        {neu && (
-          <div style={{ padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', marginBottom: 12 }}>
-            <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 6 }}>Mit Vorlage starten: Ablauf, Checkliste mit sechs Wochen Vorlauf, Budgetposten und Soll-Mischung sind vorbereitet — das Ziel setzt du. Zuständig ist erst einmal {nameVon(verantwortlich('event'))}; im Überblick des Events änderbar.</div>
-            <Liste>
-              {VORLAGEN.map(v => (
-                <Zeile key={v.id} onClick={() => anlegen(v.id)} titel={v.label} unter={`${v.beschreibung} ${v.kapazitaet} Plätze · Soll ${v.mixZiel.zielkunden} % Zielkunden, ${v.mixZiel.kunden} % Kunden`}
-                  rechts={<span style={{ fontSize: 12, color: C.aktiv, fontWeight: 600 }}>anlegen</span>} />
-              ))}
-              <Zeile onClick={() => anlegen(null)} titel="Ohne Vorlage" unter="Leeres Event — Format, Ablauf und Checkliste selbst aufbauen" rechts={<span style={{ fontSize: 12, color: C.aktiv, fontWeight: 600 }}>anlegen</span>} />
-            </Liste>
-          </div>
-        )}
-        {nachfassenText && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginBottom: 8 }}>Nachfassen offen: {nachfassenText} — binnen 48 Stunden, sie stehen auch in der Power Hour.</div>}
-        <Liste>{kommend.map(zeile)}</Liste>
-        {!kommend.length && !neu && (kommendAlle.length
-          ? <Leer>Keine kommenden Events {wahl === 'ich' ? 'bei dir' : `bei ${nameVon(wahl)}`} — „Alle“ zeigt {kommendAlle.length === 1 ? 'eins' : kommendAlle.length}.</Leer>
-          : <Leer>Kein Event geplant. Sechs Wochen Vorlauf: Ziel, Format, Gästemischung (mindestens 40 % Zielkunden, 20 % Kunden und Multiplikatoren).</Leer>)}
-      </Karte>
-      {vorbei.length > 0 && <Karte i={2}><Ueberschrift>Vergangene Events</Ueberschrift><Liste>{vorbei.map(zeile)}</Liste></Karte>}
-    </>
-  );
-
   return (
     <>
-      <HeadPanel head="event" standardModus={kommendAlle.length ? 'planung' : 'wirkung'} zuKontakt={zuKontakt} i={0} />
-      {breit ? (
-        <Spalten verhaeltnis="1:2">
-          <Spalte>{listen}</Spalte>
-          <Spalte>
+      <Kopf />
+      <Flaeche seite={FLAECHE.event} standard={standardVon('event')}>
+        <Kachel {...K('head')}>
+          <HeadPanel head="event" standardModus={kommendAlle.length ? 'planung' : 'wirkung'} zuKontakt={zuKontakt} i={0} />
+        </Kachel>
+
+        <Kachel {...K('events')}>
+          <Karte i={1}>
+            <Ueberschrift rechts={<Knopf onClick={() => setNeu(!neu)}>{neu ? 'Abbrechen' : '+ Event'}</Knopf>}>Events</Ueberschrift>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+              <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: C.inkLeise }}>Verantwortung <Person id={verantwortlich('event')} name /></span>
+              <span style={{ fontSize: 12, color: C.inkLeise }}>· beide sehen alles und arbeiten mit</span>
+            </div>
+            <div style={{ marginBottom: 8 }}><WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} /></div>
+            {neu && (
+              <div style={{ padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', marginBottom: 12 }}>
+                <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 6 }}>Mit Vorlage starten: Ablauf, Checkliste mit sechs Wochen Vorlauf, Budgetposten und Soll-Mischung sind vorbereitet — das Ziel setzt du. Läuft unter {MARKE_EVENTS}; zuständig ist erst einmal {nameVon(verantwortlich('event'))}; im Überblick des Events änderbar.</div>
+                <Liste>
+                  {VORLAGEN.map(v => (
+                    <Zeile key={v.id} onClick={() => anlegen(v.id)} titel={v.label} unter={`${v.beschreibung} ${v.kapazitaet} Plätze · Soll ${v.mixZiel.zielkunden} % Zielkunden, ${v.mixZiel.kunden} % Kunden`}
+                      rechts={<span style={{ fontSize: 12, color: C.aktiv, fontWeight: 600 }}>anlegen</span>} />
+                  ))}
+                  <Zeile onClick={() => anlegen(null)} titel="Ohne Vorlage" unter="Leeres Event — Format, Ablauf und Checkliste selbst aufbauen" rechts={<span style={{ fontSize: 12, color: C.aktiv, fontWeight: 600 }}>anlegen</span>} />
+                </Liste>
+              </div>
+            )}
+            {nachfassenText && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginBottom: 8 }}>Nachfassen offen: {nachfassenText} — binnen 48 Stunden, sie stehen auch in der Power Hour.</div>}
+            <Liste>{kommend.map(zeile)}</Liste>
+            {!kommend.length && !neu && (kommendAlle.length
+              ? <Leer>Keine kommenden Events {wahl === 'ich' ? 'bei dir' : `bei ${nameVon(wahl)}`} — „Alle“ zeigt {kommendAlle.length === 1 ? 'eins' : kommendAlle.length}.</Leer>
+              : <Leer>Kein Event geplant. Sechs Wochen Vorlauf: Ziel, Format, Gästemischung (mindestens 40 % Zielkunden, 20 % Kunden und Multiplikatoren).</Leer>)}
+          </Karte>
+        </Kachel>
+
+        {/* Auf schmalen Bildschirmen klappt das Event unter seiner Zeile auf — die Kachel bleibt dann leer und verschwindet. */}
+        <Kachel {...K('detail')}>
+          {breit ? (
             <Karte i={2} akzent={aktiv ? LEUCHT.beziehung : undefined}>
               {aktiv ? <EventDetail key={aktiv.id} e={aktiv} api={api} zuKontakt={zuKontakt} /> : <Leer>Noch kein Event. „+ Event“ legt eins mit Vorlage an.</Leer>}
             </Karte>
-          </Spalte>
-        </Spalten>
-      ) : listen}
+          ) : null}
+        </Kachel>
+
+        <Kachel {...K('nachfassen')}>
+          <Karte i={3} akzent={offenListe.length ? LEUCHT.achtung : undefined}>
+            <Ueberschrift farbe={offenListe.length ? LEUCHT.achtung : undefined} rechts={offenListe.length ? <span>{offenListe.length}</span> : undefined}>Nachfassen offen</Ueberschrift>
+            {offenListe.length ? (
+              <Liste>
+                {offenListe.slice(0, 6).map(({ t, e, name, firma }) => {
+                  const rest = nachfassenRest(e, jetzt);
+                  return <Zeile key={t.id} onClick={() => router.push(WEG.event(e.id, 'nachfassen'))} links={<Punkt farbe={fristFarbe(rest)} />}
+                    titel={<>{name}{firma && <span style={{ color: C.inkLeise }}> · {firma}</span>}</>} unter={`${e.titel} · ${stunden(rest)}`} />;
+                })}
+                {offenListe.length > 6 && <div style={{ fontSize: 12, color: C.inkLeise, padding: '4px 2px' }}>und {offenListe.length - 6} weitere — je Event unter „Nachfassen“.</div>}
+              </Liste>
+            ) : <Leer>Niemand offen — binnen 48 Stunden nach dem Event stehen hier alle, die da waren und noch nicht nachgefasst sind.</Leer>}
+          </Karte>
+        </Kachel>
+
+        <Kachel {...K('wirkung')}>
+          <Karte i={4} akzent={wirkung?.folge ? LEUCHT.gut : undefined}>
+            <Ueberschrift rechts={wirkung?.events ? <span>{wirkung.events} {wirkung.events === 1 ? 'Event' : 'Events'}</span> : undefined}>Wirkung</Ueberschrift>
+            {wirkung?.events ? (
+              <>
+                <Raster min={100}>
+                  <Zahl wert={String(wirkung.da)} label="Gäste da" />
+                  <Zahl wert={String(wirkung.folge)} label="Folgegespräche (30 T)" farbe={wirkung.folge ? LEUCHT.gut : undefined} />
+                  <Zahl wert={euro(wirkung.beeinflusst)} label="beeinflusste Pipeline" />
+                  {wirkung.verursacht > 0 && <Zahl wert={euro(wirkung.verursacht)} label="daraus entstanden" farbe={LEUCHT.business} />}
+                  {wirkung.jeGespraech !== null && <Zahl wert={euro(wirkung.jeGespraech)} label="Kosten je Folgegespräch" />}
+                </Raster>
+                <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>Über alle vergangenen Events unter {MARKE_EVENTS}. Ein Event zählt, wenn danach die richtigen Gespräche stattfinden — Ziel sind drei je Event binnen 30 Tagen.</div>
+              </>
+            ) : <Leer>Noch kein Event durchgeführt. Die Wirkung zeigt sich 30 Tage danach: Folgegespräche, beeinflusste Pipeline, Kosten je Gespräch.</Leer>}
+          </Karte>
+        </Kachel>
+
+        <Kachel {...K('vergangen')}>
+          {vorbei.length > 0 ? <Karte i={5}><Ueberschrift>Vergangene Events</Ueberschrift><Liste>{vorbei.map(zeile)}</Liste></Karte> : null}
+        </Kachel>
+      </Flaeche>
     </>
   );
 }

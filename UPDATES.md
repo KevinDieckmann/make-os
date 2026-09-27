@@ -4,6 +4,19 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Flächen für Sales, Marketing, Events · Marke Make.One (27.09.2026, nur lokal)
+
+- **Drei neue Flächen** in der Markttraktion — die Start-Ansicht je Reiter ist jetzt gestaltbar wie Heute und der Überblick (✎ Anpassen oder eine Karte länger drücken; je Person; Standard wird nie gespeichert):
+  - **Sales** (`markttraktion-sales`, Pille „Head of Sales“): Head of Sales · Wochen-Scoreboard · Sales-Trichter (jetzt als eigene Karte) · Kanal-Leistung. Power Hour, Kampagnen, Auswertung bleiben feste Ansichten.
+  - **Marketing** (`markttraktion-marketing`, Reiter „Übersicht“): Marketing-Strecke · **Anfragen** (neu, kurz: offene zuerst, 30 Tage) · **Segmente** (neu, kurz: mit Live-Zahl) · Wartet auf Freigabe · LinkedIn-Netzwerk · Beiträge je Person · Wirkung · Wen wir ansprechen dürfen · Art. 14 · Woher Chancen kommen · Stimme der Kunden. Der Startassistent und die anderen Reiter sind unverändert.
+  - **Events** (`markttraktion-event`): Head of Event · Events (kommend, „+ Event“) · gewähltes Event (breit; am Handy weiter unter der Zeile) · **Nachfassen offen** (neu, über alle Events, mit 48-h-Frist, Klick öffnet das Event im Nachfassen) · **Wirkung** (neu, über alle vergangenen Events: Gäste da, Folgegespräche, beeinflusste Pipeline, Kosten je Gespräch) · Vergangene Events.
+  - Standardanordnung als Daten in `lib/crm/flaechen.ts` (`KACHELN`, getestet); Komponenten geben sie als `standard` an `<Flaeche>`.
+- **Zwei Katalog-Widgets** (Bereich Business, überall dazulegbar, selbstladend): **Kanal-Leistung** (aus `/api/crm/lead`) und **Nächstes Event · Make.One** (aus `/api/crm/bestand`: Datum, Zusagen, offenes Nachfassen).
+- **Behoben:** Flächen mit betitelten festen Karten galten immer als „verändert“ (`istStandard` verglich den Titel gegen leer) — „Zurücksetzen“ stand dauerhaft da und unveränderte Layouts wurden gespeichert. Jetzt zählt der Titel des Standards.
+- **Marke Make.One** (Kevin: „unter der Marke laufen die Events“): Kopf des Events-Reiters „Events · Make.One — Unsere Veranstaltungsmarke“; `Event.marke` (optional, Vorgabe Make.One beim Anlegen, als Chip im Formular und im Überblick änderbar, leer = Make.One); alte Events gelten abgeleitet als Make.One (nichts zurückgeschrieben). Nach außen: „Veranstalter: Make.One“ im Kalender-Export (ICS), „Nachfassen nach „Make.One · …““ im Follow-up und im Verlauf der Person, Chip im Kopf des Events. Konstante in `lib/crm/marke.ts` (`MARKE_EVENTS`, `markeVon`, `eventName`; `lib/crm/events.ts` reicht sie durch). Kein Logo, keine Homepage-Änderung.
+- Tests: `tests/markttraktion-marke.test.ts`, `tests/markttraktion-flaechen.test.ts`, Ergänzung in `tests/flaeche.test.ts`.
+- Offen (Kevins Wort): Logo/Wortmarke Make.One, Absender-Name und -Adresse für Einladungen, eigene Domain/Landing, ob der Kalender-Termin (`kalenderTermin`) die Marke im Titel tragen soll (derzeit nicht — sonst erkennt `terminBekannt` bestehende Termine nicht mehr).
+
 ## Lead-Score und Qualifizierungsrunde (27.09.2026)
 
 - **Lead-Score (0–100)** an jedem Lead, in vier sichtbaren Teilen: Fit 30 · Wärme 30 · Qualifizierung 30 · Erreichbarkeit 10. Daraus die Temperatur kalt (< 25) · lau · warm (≥ 50) · heiß (≥ 75). Nie gespeichert, immer abgeleitet — jede Teilzahl hat einen Grund im Klartext (`lib/crm/score.ts`).

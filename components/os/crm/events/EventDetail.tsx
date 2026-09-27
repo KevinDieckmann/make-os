@@ -11,8 +11,9 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 import { useState, useEffect } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { LEUCHT } from '../../schlank';
+import { Chip, LEUCHT } from '../../schlank';
 import { checklisteStand } from '@/lib/crm/eventplanung';
+import { markeVon } from '@/lib/crm/marke';
 import { zustaendig } from '@/lib/crm/team';
 import { datum } from '../daten';
 import { Pillen } from '../teile';
@@ -58,8 +59,9 @@ export function EventDetail({ e, api, zuKontakt }: ReiterProps) {
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, letterSpacing: '-.02em', lineHeight: 1.2 }}>{e.titel}</div>
-          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 4 }}>
-            {[datum(e.datum, heute), e.uhrzeit ? `${e.uhrzeit} Uhr` : '', e.ort, FORMATE.find(f => f.id === e.format)?.label].filter(Boolean).join(' · ')}
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 4, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Chip farbe={LEUCHT.beziehung}>{markeVon(e)}</Chip>
+            <span>{[datum(e.datum, heute), e.uhrzeit ? `${e.uhrzeit} Uhr` : '', e.ort, FORMATE.find(f => f.id === e.format)?.label].filter(Boolean).join(' · ')}</span>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
             <button onClick={() => setReiter('ueberblick')} title="Zuständigkeit im Überblick ändern" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: C.inkLeise }}>

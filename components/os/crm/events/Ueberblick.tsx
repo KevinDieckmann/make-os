@@ -14,7 +14,7 @@ import type { Event } from '@/lib/crm/typen';
 import { datum, euro } from '../daten';
 import { Feldzeile, Pillen, Feld } from '../teile';
 import { Person, ZustaendigWahl, Uebergeben } from '../team';
-import { FORMATE, STATUS, MixAnzeige, Leise, eventSetzen, type ReiterProps, type Reiter } from './gemeinsam';
+import { FORMATE, STATUS, MixAnzeige, MarkeWahl, Leise, eventSetzen, type ReiterProps, type Reiter } from './gemeinsam';
 
 const tageBis = (von: string, bis: string) => Math.round((Date.parse(`${bis}T12:00:00Z`) - Date.parse(`${von}T12:00:00Z`)) / 864e5);
 
@@ -134,6 +134,7 @@ export function Ueberblick({ e, api, zuReiter }: ReiterProps & { zuReiter: (r: R
             <div style={{ flex: 1, minWidth: 160 }}><Feld wert={e.coHost} platzhalter="Co-Host" onFertig={coHost => setze({ coHost: coHost || undefined })} /></div>
           </div>
         </Feldzeile>
+        <Feldzeile label="Marke"><MarkeWahl wert={e.marke} onWahl={marke => setze({ marke })} /></Feldzeile>
         <Feldzeile label="Vorlage">
           <div style={{ display: 'grid', gap: 4 }}>
             <Pillen liste={VORLAGEN.map(v => ({ id: v.id, label: v.label }))} aktiv={(e.vorlage as VorlageId | undefined) ?? null} onWahl={id => setze(vorlageAnwenden(e, id))} />

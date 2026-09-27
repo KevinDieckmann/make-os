@@ -36,8 +36,7 @@ import { Stammdaten } from './Stammdaten';
 import { SchnellErfassen } from './SchnellErfassen';
 import { Runden, type RundenArt } from './Runden';
 import { Leads, SalesTrichter } from './Leads';
-import { HeadPanel } from './HeadPanel';
-import { Scoreboard } from './Scoreboard';
+import { SalesStart } from './SalesStart';
 import { Kampagnen } from './Kampagnen';
 import { Qualifizierung, KanalLeistungLaden } from './Qualifizierung';
 import { useZurueck, nachOben } from '../Verlauf';
@@ -174,7 +173,7 @@ export function MarkttraktionSeite() {
       {bereich === 'sales' && (
         <>
           <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={SALES} aktiv={salesAnsicht} onWahl={a => gehe('sales', a === 'head' ? undefined : a)} /></div>
-          {salesAnsicht === 'head' && (<><HeadPanel head="sales" standardModus="deal_review" zuKontakt={zuKontakt} i={0} nachEntscheid={() => void api.laden()} /><Scoreboard api={api} /><SalesTrichter api={api} zuBereich={zuBereich} /></>)}
+          {salesAnsicht === 'head' && <SalesStart api={api} zuKontakt={zuKontakt} zuBereich={zuBereich} />}
           {salesAnsicht === 'powerhour' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
           {salesAnsicht === 'kampagnen' && <Kampagnen api={api} zuKontakt={zuKontakt} head="sales" />}
           {salesAnsicht === 'auswertung' && <KanalLeistungLaden i={0} />}

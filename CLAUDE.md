@@ -219,7 +219,10 @@ lokal, Route `/os`, Port 3001.
   per `EinstellungDef`; Katalog-Einträge dürfen Voreinstellungen tragen).
 - Flächen bisher: Heute (`HEUTE_STANDARD`), `gesundheit-heute`, `gesundheit-koerper`, `ernaehrung`, `zahlen`, `konto`,
   `wachstum`, `familie-wir`, `familie-orga`, `familie-rahmen`, `fokus`, `journal`, `okr`, `system`, `business`,
-  `markttraktion-ueberblick`, `finanzchef`, `loops`, `kalender`. Weitere Karten-Seiten nach demselben Muster anschließen
+  `markttraktion-ueberblick`, `finanzchef`, `loops`, `kalender`; seit 27.09. (nur lokal) `markttraktion-sales`, `markttraktion-marketing`,
+  `markttraktion-event` — Standardanordnung als Daten in `lib/crm/flaechen.ts` (`KACHELN`, an `<Flaeche standard={…}>` gegeben, getestet);
+  Katalog-Widgets `kanal` (Kanal-Leistung) und `event` (Nächstes Event · Make.One). `istStandard` vergleicht Titel gegen den Standard-Titel.
+  Weitere Karten-Seiten nach demselben Muster anschließen
   (offen: Wochen-/Tagesplaner, Aufgaben-Board, Inbox, Kompass, Säulen, Stapel, CRM-Unterseiten, Finanz-Details).
 
 ## Hochladen nur auf Kevins Wort (26.09. abends)
@@ -243,6 +246,9 @@ lokal, Route `/os`, Port 3001.
   in `next.config.mjs` darf eine echte Seite verdecken (`/os/uebersicht` war so ein Fall).
 
 ## Markttraktion — Deal- und Follow-up-Ebene (27.09., nur lokal)
+- **Marke Make.One (27.09.):** unter den Events läuft unsere Veranstaltungsmarke. `lib/crm/marke.ts` ist die eine Stelle (`MARKE_EVENTS`,
+  `markeVon` = gesetzt oder Make.One, `eventName` = „Make.One · Titel“); `Event.marke` optional, Vorgabe beim Anlegen, alte Events gelten
+  abgeleitet — nie zurückschreiben. Wo ein Event nach außen genannt wird (ICS, Nachfass-/Follow-up-Text), `markeVon`/`eventName` nehmen, nie den Text streuen.
 - **Reiter** (`lib/crm/adresse.ts` `BEREICHE`): ueberblick · kontakte · firmen (a=leads) · deals (a=board|liste|akte|kunden|auswertung) ·
   followup (a=faellig|woche|powerhour|kadenz) · marketing · event · stammdaten. `aufloesen()` übersetzt den alten Sales-Reiter — alte
   Links NIE umschreiben, sondern dort ergänzen. `WEG.deal(id)` öffnet die Deal-Akte.

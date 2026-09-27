@@ -7,7 +7,8 @@
 // Fläche blendet es dann aus. Einstellungen kommen aus dem Layout (`e`).
 // Katalog „aus dem Bestand“: Aufgaben, Termine, Fokus/Wochenfokus, Körper,
 // Routinen & Streak, Essen heute, Index je Säule, Finanzen privat, ZOE &
-// Inbox, Wer heute dran ist, Familie, nächste Tage.
+// Inbox, Wer heute dran ist, Familie, nächste Tage — seit 27.09. dazu
+// Kanal-Leistung und Nächstes Event · Make.One (Markttraktion).
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -24,6 +25,11 @@ import { spaceVonAufgabe, fokusFuerSpace, SPACE_LABEL, SPACE_FARBE } from '@/lib
 import { spaceVonKalender } from '@/lib/kalender/space';
 import { bereicheNachZeit, zeitText, type ZeitBild } from '@/lib/zeitmessung/modell';
 import { bereichLabel } from '@/lib/zeitmessung/kennzahlen';
+import { kanalLeistung, type KanalZeile } from '@/lib/crm/score';
+import type { LeadZeile } from '@/lib/crm/leads';
+import type { Event as CrmEvent } from '@/lib/crm/typen';
+import type { EventZahlen } from '@/lib/crm/events';
+import { MARKE_EVENTS, markeVon } from '@/lib/crm/marke';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Fortschritt, feld, zoneFarbe, prioFarbe } from '../schlank';
 import { WhoopImport } from '../WhoopImport';
 
@@ -427,6 +433,73 @@ function ZeitWidget({ e, titel, i }: WidgetProps) {
   );
 }
 
+// ── Kanal-Leistung (Markttraktion, 27.09.) ──────────────────────────────────
+// Welcher Herkunftskanal warme Leads und SQLs bringt — dieselbe Rechnung wie
+// unter Sales › Auswertung (lib/crm/score.ts kanalLeistung), aus /api/crm/lead.
+function KanalWidget({ titel, i }: WidgetProps) {
+  const d = useDaten<KanalZeile[]>('/api/crm/lead', x => { const r = x as { ok?: boolean; leads?: LeadZeile[] }; if (!r?.ok || !r.leads?.length) return null; const z = kanalLeistung(r.leads); return z.length ? z : null; });
+  if (d === null) return null;
+  const zeilen = (d ?? []).slice(0, 5);
+  const max = Math.max(1, ...zeilen.map(z => z.anzahl));
+  return (
+    <Karte i={i}>
+      <Ueberschrift farbe={LEUCHT.business} rechts={<Link href={markttraktion('sales', 'auswertung')} style={link}>Auswertung ›</Link>}>{titel ?? 'Kanal-Leistung'}</Ueberschrift>
+      {d === undefined && <Leer>lade …</Leer>}
+      {zeilen.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(80px, 120px) 1fr auto', gap: '6px 10px', alignItems: 'center', fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>
+          {zeilen.map(z => (
+            <div key={z.kanal} style={{ display: 'contents' }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.label}</span>
+              <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,.06)', overflow: 'hidden', display: 'flex' }}>
+                <div style={{ width: `${(100 * z.warm) / max}%`, background: LEUCHT.business }} />
+                <div style={{ width: `${(100 * (z.anzahl - z.warm)) / max}%`, background: 'rgba(255,255,255,.14)' }} />
+              </div>
+              <span style={{ color: C.inkDim, whiteSpace: 'nowrap' }}>{z.anzahl} · <span style={{ color: z.warm ? C.ink : C.inkLeise }}>{z.warm} warm+</span> · <span style={{ color: z.sql ? LEUCHT.gut : C.inkLeise }}>{z.sql} SQL</span></span>
+            </div>
+          ))}
+        </div>
+      )}
+      {d && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Leads je Kanal, davon warm oder heiß, davon SQL oder Kunde.</div>}
+    </Karte>
+  );
+}
+
+// ── Nächstes Event · Make.One (27.09.) ──────────────────────────────────────
+// Das nächste Event unter unserer Veranstaltungsmarke (lib/crm/marke.ts) mit
+// Zusagen und offenem Nachfassen — aus /api/crm/bestand (einmal je Anzeige,
+// gzip + ETag serverseitig), ohne zweite Rechnung: die Zahlen je Event kommen
+// vom Server (eventZahlen).
+interface EventBild { heute: string; e: CrmEvent | null; z?: EventZahlen; nachfassenOffen: number }
+function EventWidget({ titel, i }: WidgetProps) {
+  const router = useRouter();
+  const d = useDaten<EventBild>('/api/crm/bestand', x => {
+    const r = x as { ok?: boolean; heute?: string; stand?: { events?: CrmEvent[] }; events?: Record<string, EventZahlen> };
+    if (!r?.ok || !r.stand?.events?.length) return null;
+    const heute = r.heute ?? localDay();
+    const kommend = r.stand.events.filter(e => e.datum >= heute && e.status !== 'abgesagt').sort((a, b) => a.datum.localeCompare(b.datum));
+    const nachfassenOffen = r.stand.events.filter(e => e.datum <= heute).reduce((a, e) => a + (r.events?.[e.id]?.nachfassenOffen ?? 0), 0);
+    const e = kommend[0] ?? null;
+    return e || nachfassenOffen ? { heute, e, z: e ? r.events?.[e.id] : undefined, nachfassenOffen } : null;
+  });
+  if (d === null) return null;
+  const e = d?.e ?? null;
+  const tage = e ? Math.round((Date.parse(`${e.datum}T12:00:00Z`) - Date.parse(`${d!.heute}T12:00:00Z`)) / 864e5) : null;
+  return (
+    <Karte i={i} akzent={e ? LEUCHT.beziehung : undefined}>
+      <Ueberschrift farbe={LEUCHT.beziehung} rechts={<Link href={WEG.event()} style={link}>Events ›</Link>}>{titel ?? `Nächstes Event · ${MARKE_EVENTS}`}</Ueberschrift>
+      {d === undefined && <Leer>lade …</Leer>}
+      {e && (
+        <Zeile onClick={() => router.push(WEG.event(e.id))}
+          links={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 18, letterSpacing: '-.02em', fontVariantNumeric: 'tabular-nums', color: tage !== null && tage <= 7 ? LEUCHT.achtung : LEUCHT.beziehung, width: 52 }}>{tage === 0 ? 'heute' : tage === 1 ? 'morgen' : `${tage} T`}</span>}
+          titel={e.titel}
+          unter={[markeVon(e), tagKurz(e.datum), e.uhrzeit ? `${e.uhrzeit} Uhr` : '', e.ort, d?.z ? (d.z.zugesagt ? `${d.z.zugesagt} zugesagt` : d.z.eingeladen ? `${d.z.eingeladen} eingeladen` : '') : ''].filter(Boolean).join(' · ')} />
+      )}
+      {d && !e && <Leer>Kein Event geplant — sechs Wochen Vorlauf, Ziel zuerst.</Leer>}
+      {d && d.nachfassenOffen > 0 && <div style={{ fontSize: 12.5, color: LEUCHT.achtung, marginTop: 6 }}><Link href={WEG.event()} style={{ color: LEUCHT.achtung }}>{d.nachfassenOffen} {d.nachfassenOffen === 1 ? 'Gast' : 'Gäste'} nachfassen — binnen 48 Stunden ›</Link></div>}
+    </Karte>
+  );
+}
+
 export const WIDGETS: Record<string, WidgetDef> = {
   score: { art: 'score', label: 'Wachstums-Score', bereich: 'Tag', beschreibung: 'Der Score, auf den wir hinarbeiten — mit den sechs Säulen', breite: 2, Komponente: ScoreWidget },
   aufgaben: { art: 'aufgaben', label: 'Aufgaben', bereich: 'Tag', beschreibung: 'Fällige und kritische Aufgaben, Schnellanlage', breite: 4, Komponente: AufgabenWidget,
@@ -444,6 +517,8 @@ export const WIDGETS: Record<string, WidgetDef> = {
   zoe: { art: 'zoe', label: 'ZOE & Inbox', bereich: 'ZOE', beschreibung: 'Vorschläge im Stapel, offene Inbox', breite: 2, Komponente: ZoeWidget,
     einstellungen: [{ k: 'inbox', label: 'Inbox dazu', art: 'schalter', standard: false }] },
   dran: { art: 'dran', label: 'Wer heute dran ist', bereich: 'Business', beschreibung: 'Die wichtigsten Kontakte der Power Hour', breite: 4, Komponente: DranWidget },
+  kanal: { art: 'kanal', label: 'Kanal-Leistung', bereich: 'Business', beschreibung: 'Welcher Herkunftskanal warme Leads und SQLs bringt', breite: 2, Komponente: KanalWidget },
+  event: { art: 'event', label: `Nächstes Event · ${MARKE_EVENTS}`, bereich: 'Business', beschreibung: 'Das nächste Event unter unserer Marke — Datum, Zusagen, offenes Nachfassen', breite: 2, Komponente: EventWidget },
   familie: { art: 'familie', label: 'Familie & Partnerschaft', bereich: 'Familie', beschreibung: 'Paar-Gespräch, wichtige Tage, wer einen Anruf verdient, Frage der Woche', breite: 2, Komponente: FamilieWidget },
   zeit: { art: 'zeit', label: 'Zeit & Fokus', bereich: 'Tag', beschreibung: 'Wo deine Zeit hingeht: heute, 7 Tage, bewusster Fokus und die Bereiche', breite: 2, Komponente: ZeitWidget,
     einstellungen: [{ k: 'space', label: 'Modus', art: 'wahl', optionen: [{ w: 'privat', label: 'Privat' }, { w: 'business', label: 'Business' }], standard: 'privat' }] },
@@ -467,6 +542,8 @@ export const KATALOG: KatalogEintrag[] = [
   { art: 'finanzen-privat', label: 'Finanzen · privat', beschreibung: WIDGETS['finanzen-privat'].beschreibung, bereich: 'Zahlen', breite: 2 },
   { art: 'zoe', label: 'ZOE & Inbox', beschreibung: WIDGETS.zoe.beschreibung, bereich: 'ZOE', breite: 2, voreinstellung: { inbox: true } },
   { art: 'dran', label: 'Wer heute dran ist', beschreibung: WIDGETS.dran.beschreibung, bereich: 'Business', breite: 4 },
+  { art: 'kanal', label: 'Kanal-Leistung', beschreibung: WIDGETS.kanal.beschreibung, bereich: 'Business', breite: 2 },
+  { art: 'event', label: WIDGETS.event.label, beschreibung: WIDGETS.event.beschreibung, bereich: 'Business', breite: 2 },
   { art: 'familie', label: 'Familie & Partnerschaft', beschreibung: WIDGETS.familie.beschreibung, bereich: 'Familie', breite: 2 },
 ];
 export const widgetDef = (art: string): WidgetDef | undefined => WIDGETS[art];

@@ -19,7 +19,8 @@ import type { Event } from '@/lib/crm/typen';
 import { type CrmApi, neueId, plusTage } from '../daten';
 import { Pillen, Feldzeile } from '../teile';
 import { ZustaendigWahl } from '../team';
-import { FORMATE } from './gemeinsam';
+import { FORMATE, MarkeWahl } from './gemeinsam';
+import { MARKE_EVENTS } from '@/lib/crm/marke';
 
 type Wahl = VorlageId | 'ohne';
 const OHNE = { id: 'ohne' as const, label: 'Ohne Vorlage' };
@@ -40,6 +41,8 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
   const [kapazitaet, setKapazitaet] = useState(String(VORLAGEN[0].kapazitaet));
   const [mixZiel, setMixZiel] = useState({ ...VORLAGEN[0].mixZiel });
   const [zustaendig, setZustaendig] = useState<string | undefined>(undefined);
+  // Marke (27.09.): Vorgabe Make.One — undefined heißt abgeleitet, gespeichert wird sie beim Anlegen trotzdem ausdrücklich.
+  const [marke, setMarke] = useState<string | undefined>(undefined);
   const [laeuft, setLaeuft] = useState(false);
   const hinweis = zielHinweis(ziel);
   const bereit = zielReicht(ziel, hinweis) && /^\d{4}-\d{2}-\d{2}$/.test(datum) && !laeuft;
@@ -65,7 +68,7 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
       ...(uhrzeit ? { uhrzeit } : {}), ...(ort.trim() ? { ort: ort.trim() } : {}),
       ...(Number.isFinite(kap) && kap > 0 ? { kapazitaet: kap } : {}),
       mixZiel: { zielkunden: mixZiel.zielkunden, kunden: mixZiel.kunden },
-      status: 'geplant', ...(zustaendig ? { zustaendig } : {}), geaendert: new Date().toISOString(),
+      status: 'geplant', ...(zustaendig ? { zustaendig } : {}), marke: marke ?? MARKE_EVENTS, geaendert: new Date().toISOString(),
     };
     const e = vorlage ? vorlageAnwenden(basis, vorlage.id) : basis;
     await api.setze('events', e as unknown as { id: string } & Record<string, unknown>);
@@ -120,6 +123,7 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
           <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>Kunden/Multiplikatoren <input type="number" value={mixZiel.kunden} onChange={x => setMixZiel({ ...mixZiel, kunden: prozent(x.target.value, MIX_STANDARD.kunden) })} aria-label="Soll Kunden %" style={{ ...feld, width: 70, fontSize: TYP.bedien, padding: '6px 9px' }} /> %</span>
         </div>
       </Feldzeile>
+      <Feldzeile label="Marke"><MarkeWahl wert={marke} onWahl={setMarke} /></Feldzeile>
       <Feldzeile label="Zuständig">
         <div style={{ display: 'grid', gap: 4 }}>
           <ZustaendigWahl wert={zustaendig} welt="event" onWahl={setZustaendig} />

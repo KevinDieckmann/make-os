@@ -154,8 +154,10 @@ export function ausgeblendet(layout: Layout, standard: StandardPlatz[]): Standar
 /** Ist das Layout noch der reine Standard? Dann speichern wir nichts. */
 export function istStandard(layout: Layout, standard: StandardPlatz[]): boolean {
   if (layout.versteckt.length || layout.plaetze.length !== standard.length) return false;
+  // Titel gegen den Standard-Titel vergleichen (27.09.): feste Karten tragen ihren Titel schon im Standard —
+  // vorher galt jede Seite mit betitelten Kacheln als „verändert“ (Zurücksetzen immer sichtbar, Layout gespeichert).
   return layout.plaetze.every((p, i) => {
     const st = standard[i];
-    return p.id === st.id && p.breite === st.breite && !p.titel && JSON.stringify(p.einstellungen) === JSON.stringify(st.einstellungen ?? {});
+    return p.id === st.id && p.breite === st.breite && (p.titel ?? '') === (st.titel ?? '') && JSON.stringify(p.einstellungen) === JSON.stringify(st.einstellungen ?? {});
   });
 }

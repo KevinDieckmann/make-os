@@ -12,6 +12,7 @@ import { CRM_LISTEN, type CrmBestand, type CrmListe, type Firma, type FirmaRolle
 import { wer, BEIDE, verantwortlich } from './team';
 import { leadSaeubern } from './lead-form';
 import { vernetzenSaeubern } from './netzwerk-form';
+import { MARKE_MAX } from './marke';
 
 export const CRM_SPEICHER = 'crm';
 export const leererBestand = (): CrmBestand => ({ firmen: [], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [], segmente: [], beitraege: [], newsletter: [], kampagnen: [], followups: [] });
@@ -267,7 +268,8 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
       return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(rollen && Object.keys(rollen).length ? { personenRollen: rollen } : {}) };
     }
     case 'mandate': return firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {};
-    case 'events': return opt(o.kalenderUid, 120) ? { kalenderUid: opt(o.kalenderUid, 120) } : {};
+    // Marke (27.09.): durchreichen, wenn gesetzt — ohne Eintrag gilt Make.One abgeleitet (lib/crm/events.ts markeVon), nichts wird zurückgeschrieben.
+    case 'events': return { ...(opt(o.kalenderUid, 120) ? { kalenderUid: opt(o.kalenderUid, 120) } : {}), ...(opt(o.marke, MARKE_MAX) ? { marke: opt(o.marke, MARKE_MAX) } : {}) };
     case 'kampagnen': case 'beitraege': return zahl(o.kostenEuro, 0, 1e7) ? { kostenEuro: zahl(o.kostenEuro, 0, 1e7) } : {};
     case 'newsletter': return wer(o.stimme) || o.stimme === 'marke' ? { stimme: String(o.stimme) } : {};
     case 'teilnahmen': {

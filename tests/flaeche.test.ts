@@ -53,6 +53,15 @@ describe('Flächen-Modell', () => {
     expect(l.plaetze[0].breite).toBe(6);
   });
 
+  it('feste Karten mit Titel im Standard gelten als Standard — erst eine Änderung macht sie zum eigenen Layout (27.09.)', () => {
+    const mitTitel: StandardPlatz[] = [{ id: 'head', art: 'seite', breite: 6, titel: 'Head of Sales' }, { id: 'trichter', art: 'seite', breite: 3, titel: 'Sales-Trichter' }];
+    const l = anwenden(mitTitel, null);
+    expect(l.plaetze.map(p => p.titel)).toEqual(['Head of Sales', 'Sales-Trichter']);
+    expect(istStandard(l, mitTitel)).toBe(true);
+    expect(istStandard(wende(l, { op: 'breite', id: 'trichter', breite: 6 }, mitTitel, J), mitTitel)).toBe(false);
+    expect(istStandard(wende(l, { op: 'einstellen', id: 'trichter', titel: 'Mein Trichter' }, mitTitel, J), mitTitel)).toBe(false);
+  });
+
   it('säubert fremde Eingaben', () => {
     const l = sauberLayout({ plaetze: [{ id: 'a b', art: 'x' }, { id: 'ok', art: 'seite', breite: 5, einstellungen: { n: 3, t: 'x'.repeat(500), o: {} } }, { id: 'ok', art: 'seite' }], versteckt: ['ok', 'ok', '<script>'], stand: 5 });
     expect(l.plaetze).toHaveLength(1);

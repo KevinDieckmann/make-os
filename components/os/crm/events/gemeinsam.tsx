@@ -14,6 +14,7 @@ import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import type { Event, Teilnahme, TeilnahmeStatus, LeadStatus } from '@/lib/crm/typen';
 import { teilAenderung, type Mix, type MixGruppe } from '@/lib/crm/eventplanung';
 import { followUpEingabe, hebtLead, type NachfassErgebnis } from '@/lib/crm/event-bruecke';
+import { MARKE_EVENTS, eventName } from '@/lib/crm/marke';
 import { statusLabel } from '@/lib/crm/leads';
 import { TEAM, BEIDE, anderer, nameVon } from '@/lib/crm/team';
 import { datum, type CrmApi } from '../daten';
@@ -68,7 +69,7 @@ export async function nachfassen(api: CrmApi, e: Event, t: Teilnahme, k: Kontakt
   const label = ergebnis === 'gespraech' ? 'Gespräch' : ergebnis === 'termin' ? 'Termin' : null;
   await api.aktivitaet({
     id: k.id, art: ergebnis === 'erledigt' ? 'event' : ergebnis, bezug: e.id,
-    text: label ? `Nachgefasst nach „${e.titel}“ — ${label}` : `Nachgefasst nach „${e.titel}“`,
+    text: label ? `Nachgefasst nach „${eventName(e)}“ — ${label}` : `Nachgefasst nach „${eventName(e)}“`,
     ...(hebtLead(ergebnis) ? { ergebnis } : {}),
   });
   const r = await eventsPost(e.id, { aktion: 'nachfassen', teilnahmeId: t.id, ergebnis });
@@ -178,6 +179,30 @@ export function KarteiSuche({ api, e, platzhalter, onWahl }: { api: CrmApi; e: E
         </button>
       ))}
     </div>
+  );
+}
+
+/**
+ * Marke des Events (27.09.): als Chip — ein Klick öffnet das Feld, leer heißt
+ * wieder Make.One. Im Anlege-Formular mit eigenem Zustand, im Überblick über
+ * eventSetzen; `wert` ist die gespeicherte Marke (undefined = abgeleitet).
+ */
+export function MarkeWahl({ wert, onWahl }: { wert?: string; onWahl: (marke: string | undefined) => void }) {
+  const [offen, setOffen] = useState(false);
+  const marke = wert?.trim() || MARKE_EVENTS;
+  if (!offen) {
+    return (
+      <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <button type="button" onClick={() => setOffen(true)} title="Marke ändern" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}><Chip farbe={LEUCHT.beziehung}>{marke}</Chip></button>
+        <span style={{ fontSize: 12, color: C.inkLeise }}>{marke === MARKE_EVENTS ? 'unsere Veranstaltungsmarke' : `statt ${MARKE_EVENTS}`}</span>
+      </span>
+    );
+  }
+  return (
+    <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      <Feld wert={wert ?? ''} breite={180} platzhalter={MARKE_EVENTS} onFertig={t => { const m = t.trim().slice(0, 40); onWahl(m && m !== MARKE_EVENTS ? m : undefined); setOffen(false); }} />
+      <span style={{ fontSize: 12, color: C.inkLeise }}>leer = {MARKE_EVENTS}</span>
+    </span>
   );
 }
 

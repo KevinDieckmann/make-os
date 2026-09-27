@@ -218,6 +218,8 @@ export interface Event {
   kalenderUid?: string;
   /** Wer es bearbeitet: Team-Kürzel (kevin, malin) oder „beide“ — fehlt es, gilt die/der Verantwortliche der Welt (lib/crm/team.ts). */
   zustaendig?: string;
+  /** Veranstaltungsmarke, unter der das Event läuft (Kevin 27.09.: „Make.One“). Fehlt sie, gilt MARKE_EVENTS (lib/crm/events.ts) — abgeleitet, nie zurückgeschrieben. */
+  marke?: string;
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;

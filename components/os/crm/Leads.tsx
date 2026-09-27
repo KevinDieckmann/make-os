@@ -48,12 +48,12 @@ export function useLeads(api: CrmApi) {
   return { d, laden, fehler };
 }
 
-export function SalesTrichter({ api, zuBereich }: { api: CrmApi; zuBereich: (s: string, a?: string) => void }) {
+export function SalesTrichter({ api, zuBereich, karte, i = 0 }: { api: CrmApi; zuBereich: (s: string, a?: string) => void; /** Als eigene Karte mit Überschrift — für die Sales-Fläche (27.09.); ohne: die nackte Leiste über den Leads. */ karte?: boolean; i?: number }) {
   const { d } = useLeads(api);
   if (!d) return null;
   const t = d.trichter;
   const EBENE = { 1: 'Leads · qualifizieren', 2: 'Deals · Closing', 3: 'Kunden' } as const;
-  return (
+  const leiste = (
     <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'stretch', minWidth: 'min-content' }}>
         {t.stufen.map((s, i) => {
@@ -75,6 +75,14 @@ export function SalesTrichter({ api, zuBereich }: { api: CrmApi; zuBereich: (s: 
         </div>
       </div>
     </div>
+  );
+  if (!karte) return leiste;
+  return (
+    <Karte i={i}>
+      <Ueberschrift farbe={LEUCHT.business} rechts={<button onClick={() => zuBereich('firmen', 'leads')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>Leads ›</button>}>Sales-Trichter</Ueberschrift>
+      {leiste}
+      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>Ebene 1 qualifiziert bis zum SQL, Ebene 2 schließt, Ebene 3 sind Kunden — jede Stufe ist ein Sprung dorthin.</div>
+    </Karte>
   );
 }
 

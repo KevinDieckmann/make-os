@@ -58,7 +58,7 @@ describe('Brücke 1 · Lead heben nach Gespräch oder Termin', () => {
 describe('Brücke 2 · Follow-up aus der Teilnahme', () => {
   it('baut genau den Körper für /api/crm/followup: Nachricht, 48 h nach dem Event, Quelle event, Bezug Event', () => {
     const f = followUpEingabe(ev(), t('a', 'da'));
-    expect(f).toEqual({ aktion: 'anlegen', kontaktId: 'c-a', bezug: { art: 'event', id: 'ev-1' }, art: 'nachricht', text: 'Nachfassen nach „Stammtisch Maschinenbau“', faellig: '2026-09-27', quelle: 'event' });
+    expect(f).toEqual({ aktion: 'anlegen', kontaktId: 'c-a', bezug: { art: 'event', id: 'ev-1' }, art: 'nachricht', text: 'Nachfassen nach „Make.One · Stammtisch Maschinenbau“', faellig: '2026-09-27', quelle: 'event' });
     expect(followUpEingabe(ev(), t('a', 'da', { einladenDurch: 'malin' })).zustaendig).toBe('malin');
   });
   it('möglich nur für „da“ ohne followUpAm, sobald der Tag da ist', () => {

@@ -22,6 +22,7 @@ import { kanalStatus, type KanalStatus } from './recht';
 import { kontextAus, imSegment } from './segmente';
 import { TEAM, BEIDE, wer, zustaendig, verantwortlich, haeltBeziehung, nameVon } from './team';
 import { markttraktion } from './adresse';
+import { markeVon } from './marke';
 
 const plusTage = (datum: string, n: number) => { const d = new Date(`${datum}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const tageZwischen = (von: string, bis: string) => Math.round((Date.parse(`${bis}T12:00:00Z`) - Date.parse(`${von}T12:00:00Z`)) / 864e5);
@@ -581,7 +582,8 @@ export function icsText(e: Event, jetzt: string = new Date().toISOString()): str
   z.push(`SUMMARY:${icsEscape(e.titel)}`);
   if (e.ort) z.push(`LOCATION:${icsEscape(e.ort)}`);
   const ablauf = [...(e.ablauf ?? [])].sort((a, b) => a.zeit.localeCompare(b.zeit)).map(a => `${a.zeit} ${a.punkt}`.trim());
-  const text = [FORMAT_LABEL[e.format] ?? 'Event', e.coHost ? `gemeinsam mit ${e.coHost}` : '', ablauf.length ? `\nAblauf:\n${ablauf.join('\n')}` : ''].filter(Boolean).join('\n');
+  // Nach außen tritt die Veranstaltungsmarke auf (27.09.): „Veranstalter: Make.One“ — auch bei Events, die vor der Marke angelegt wurden.
+  const text = [FORMAT_LABEL[e.format] ?? 'Event', `Veranstalter: ${markeVon(e)}`, e.coHost ? `gemeinsam mit ${e.coHost}` : '', ablauf.length ? `\nAblauf:\n${ablauf.join('\n')}` : ''].filter(Boolean).join('\n');
   z.push(`DESCRIPTION:${icsEscape(text)}`);
   z.push(`STATUS:${e.status === 'abgesagt' ? 'CANCELLED' : e.status === 'idee' ? 'TENTATIVE' : 'CONFIRMED'}`, 'TRANSP:OPAQUE', 'END:VEVENT', 'END:VCALENDAR');
   return z.map(falten).join('\r\n') + '\r\n';

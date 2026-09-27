@@ -12,6 +12,9 @@ import { budgetSumme } from './eventplanung';
 
 const plusTage = (datum: string, n: number) => { const d = new Date(`${datum}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
+// Marke (27.09.): Konstante und Ableitung liegen in ./marke — hier nur durchgereicht.
+export { MARKE_EVENTS, markeVon, eventName } from './marke';
+
 /** Nachfassen innerhalb von 48 Stunden nach dem Event. */
 export const followUpBis = (e: Pick<Event, 'datum'>) => plusTage(e.datum, 2);
 
