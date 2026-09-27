@@ -2,6 +2,9 @@
 
 ## ▶ Live gehen — die Schritte (vorbereitet 24.09. abends)
 
+> **Stand 27.09. (nachgemessen per `nproc`/`free -m`):** der Server hat **1 vCPU und 1,9 GB RAM**, nicht CX22. Alles pro Anfrage reiht sich auf einem Kern; Embeddings bleiben deshalb aus (`lib/brain/einbettung.ts embeddingsErlaubt`), der Arbeiter fährt zwei Läufe. Empfehlung: auf 2 vCPU / 4 GB heben.
+
+
 Alles Technische liegt im Repo: `Dockerfile`, `compose.yml` (App, Arbeiter,
 Caddy mit HTTPS), `deploy/` (Einrichtung, Datenumzug, Sicherung, Vault-Abgleich,
 Zulieferer) und `.github/workflows/pruefen-und-ausrollen.yml`. Der

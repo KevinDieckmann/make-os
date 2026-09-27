@@ -51,3 +51,4 @@ make-orga-migration*.sql
 
 # pdf.js-Worker wird von scripts/pdf-worker.mjs kopiert (postinstall)
 public/pdf.worker.min.mjs
+.next-pruefbau/
