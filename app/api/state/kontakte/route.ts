@@ -20,7 +20,7 @@ import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { listePatchen, opsLesen } from '@/lib/store/patch-liste';
 import { mitStand } from '@/lib/store/fingerabdruck';
 import { deltaAus, staende, StandGedaechtnis } from '@/lib/kontakte/delta';
-import { saeubereKontakt, kontaktVereinen, privatNotizVereinen, fuerPerson, massenStufe, pipelineStand, MASSEN_GRENZE, type Kontakt } from '@/lib/make-one/crm';
+import { saeubereKontakt, kontaktVereinen, privatNotizVereinen, vonHandMarkieren, fuerPerson, massenStufe, pipelineStand, MASSEN_GRENZE, type Kontakt } from '@/lib/make-one/crm';
 import { personAus } from '@/lib/zoe/raum';
 
 export const runtime = 'nodejs';
@@ -61,7 +61,9 @@ export async function PATCH(req: Request) {
   const ops = roh.map(o => (o.op === 'upsert' && o.eintrag ? { ...o, eintrag: privatNotizVereinen(o.eintrag, undefined, person) } : o));
 
   const r = await listePatchen<Kontakt, Bestand>('kontakte', 'kontakte', ops, 20, undefined, {
-    vereinen: (neu, alt) => kontaktVereinen(neu, alt, person),
+    // Herkunft je Feld (27.09., „Online gewinnt“): was hier von Hand anders wird, überschreibt kein Import mehr.
+    vereinen: (neu, alt) => vonHandMarkieren(alt, kontaktVereinen(neu, alt, person)),
+    neu: eintrag => vonHandMarkieren(undefined, eintrag),
     // `teil`: Felder auf den gespeicherten Kontakt legen, dann dieselbe Prüfung wie für einen ganzen Eintrag.
     teil: (alt, felder) => { const { stand: _s, ...rest } = felder; return saeubereKontakt({ ...alt, ...rest, id: alt.id }); },
     // Massen-Wache INNERHALB der Sperre: wie viele Stufen würden sich ändern?

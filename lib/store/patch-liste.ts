@@ -38,6 +38,8 @@ export interface PatchOptionen<E> {
   vereinen?: (neu: E, alt: E) => E;
   /** `teil`: Felder auf den aktuellen Eintrag legen und prüfen — null, wenn das Ergebnis ungültig wäre. */
   teil?: (alt: E, felder: Record<string, unknown>) => E | null;
+  /** `upsert` ohne Altstand (neu angelegt): den Eintrag vor dem Speichern noch einmal anfassen (z. B. Herkunft je Feld setzen, 27.09.). */
+  neu?: (eintrag: E) => E;
   /** Läuft INNERHALB der Sperre über der aktuellen Liste — ein Text lehnt die ganze Änderung ab (Massen-Wache). */
   pruefen?: (liste: E[], ops: ListenOp<E>[]) => string | null;
 }
@@ -128,7 +130,7 @@ export async function listePatchen<E extends { id: string }, T extends Record<st
         const id = o.eintrag!.id;
         const alt = nachId.get(id);
         if (!passt(o, alt, id)) continue;
-        const fertig = alt && vereine ? vereine(o.eintrag!, alt) : o.eintrag!;
+        const fertig = alt ? (vereine ? vereine(o.eintrag!, alt) : o.eintrag!) : (opt.neu ? opt.neu(o.eintrag!) : o.eintrag!);
         neuListe.set(id, fertig); zeilen.push({ id, stand: abdruck(fertig) }); angewandt++;
       }
     }

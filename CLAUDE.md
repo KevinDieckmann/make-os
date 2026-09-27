@@ -247,6 +247,12 @@ lokal, Route `/os`, Port 3001.
   Ansicht `components/os/crm/FollowUp.tsx`. Neue Nachfass-Logik kommt hierher, nicht in ein neuntes Feld.
 - **Auswertung:** `lib/crm/deal-auswertung.ts` (Verweildauer, Umwandlung, Win/Loss, Zyklus, Prognose nach Monat, hängt nach Wert; `MINDESTMENGE` 5).
 - Wertelisten (`CrmBestand.wertelisten`: Verlustgründe, Kadenz je Kreis, Ergebnisse, Ziele) pflegt Stammdaten; Verbraucher lesen sie mit Rückfall auf die Konstanten.
+- **Masterlisten-Import „Online gewinnt“ (27.09.):** `lib/make-one/crm.ts` — `Kontakt.vonHand` (Stammdaten-Felder, die von Hand gesetzt wurden;
+  `vonHandMarkieren` läuft in `PATCH /api/state/kontakte` über die Haken `vereinen`/`neu` von `listePatchen`), `zusammenfuehren` füllt Lücken, liefert
+  `konflikte` statt zu überschreiben (`istVonHand`; Bestand ohne Liste: nach dem Import geändert ⇒ Konflikt), `schluessel` tolerant (`normName`/`normFirma`),
+  `besitzerAusOwner`, `moeglicheDubletten`. Route `POST /api/crm/import` mit `vorschau:true` (schreibt nichts), ohne → schreibt und legt Konflikte in
+  `crm-import-konflikte` ab (`lib/crm/import-konflikte.ts`), `aktion:'konflikt'` entscheidet einzeln, GET liefert den Stand. Segment `seg-vernetzen` entsteht
+  beim ersten Import. Neue Schreibwege für Stammdaten-Felder müssen `vonHandMarkieren` rufen — sonst überschreibt der nächste Import die Handarbeit.
 
 ## Kalender-Oberfläche (components/os/kalender, seit 27.09.)
 - `/os/kalender` = `Kalender.tsx` (Tag/Woche/Monat/Agenda). Daten nur über `useKalender` (`/api/kalender`), Schreiben nur über `/api/kalender/termin` (iCloud) — nie mehr über `/api/apple-calendar/create`.

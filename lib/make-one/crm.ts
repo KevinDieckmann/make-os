@@ -178,28 +178,90 @@ export interface Kontakt {
   geaendertAm: string;
   /** Fingerabdruck des gespeicherten Datensatzes (Stufe 2, 27.09.) — kommt vom Server, geht mit jeder Änderung zurück; nie gespeichert. */
   stand?: string;
+  /**
+   * Herkunft je Feld (27.09., „Online gewinnt“): Namen der Stammdaten-Felder, die online von Hand
+   * gesetzt wurden (Kartei, Akte, ZOE). Ein Import füllt solche Felder nur, wenn sie leer sind — weicht
+   * die Liste ab, wird das ein Konflikt, nie ein Überschreiben. Fehlt die Liste (Bestand vor dem 27.09.),
+   * gilt die Faustregel in `istVonHand`.
+   */
+  vonHand?: string[];
 }
 
 /** Felder, die der Import NIE anfasst — das ist die Arbeit im CRM. */
-const PIPELINE_FELDER: (keyof Kontakt)[] = ['stufe', 'wiedervorlage', 'letzterKontakt', 'aktivitaeten', 'importiertAm',
-  'firmaId', 'herkunft', 'rechtsgrundlage', 'kreis', 'taktTage', 'besitzer', 'lebensphase', 'anrede', 'vorgestelltDurch', 'einwilligungen', 'werbesperre', 'fremddaten', 'art14InformiertAm', 'naechsterSchritt', 'privatNotiz', 'netzwerk', 'linkedinNichtGefunden'];
+export const PIPELINE_FELDER: (keyof Kontakt)[] = ['stufe', 'wiedervorlage', 'letzterKontakt', 'aktivitaeten', 'importiertAm',
+  'firmaId', 'herkunft', 'rechtsgrundlage', 'kreis', 'taktTage', 'besitzer', 'lebensphase', 'anrede', 'vorgestelltDurch', 'einwilligungen', 'werbesperre', 'fremddaten', 'art14InformiertAm', 'naechsterSchritt', 'privatNotiz', 'netzwerk', 'linkedinNichtGefunden',
+  'lead', 'rollen', 'privatNotizVon', 'stand', 'vonHand'];
+
+/** Höchstens so viele Feldnamen in `vonHand` — mehr Stammdaten-Felder gibt es nicht. */
+export const VON_HAND_MAX = 60;
+
+/** Die Stammdaten-Felder — genau das, was `ausZeile` aus der Liste setzt und ein Import anfassen darf. */
+export const STAMMDATEN_FELDER: readonly (keyof Kontakt & string)[] = [
+  'vorname', 'nachname', 'email', 'telefon', 'sms', 'jobtitel', 'position', 'senioritaet', 'linkedin', 'personInfo',
+  'firma', 'firmaDomain', 'firmaWebseite', 'firmaBranche', 'firmaMitarbeiter', 'firmaUmsatz', 'firmaStadt', 'firmaGegruendet', 'firmaLinkedin', 'firmaTelefon', 'firmaEmail',
+  'marktinfo', 'signale', 'kiBezug', 'typ', 'eignung', 'prio', 'aufhaenger', 'kategorie', 'owner', 'lifecycle', 'quelle', 'recherche', 'notiz', 'hubspotId', 'steckbrief',
+];
+const STAMMDATEN = new Set<string>(STAMMDATEN_FELDER);
+/** Stammdaten-Feld = darf vom Import gefüllt und von Hand als „meins“ markiert werden (keine Pipeline, keine Kennung). */
+export const istStammdatenFeld = (f: string): f is keyof Kontakt & string => STAMMDATEN.has(f);
 
 const s = (v: unknown, n = 400) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 const norm = (v: string) => v.toLowerCase().replace(/[^a-z0-9äöüß@.]/g, '');
+
+// ── Tolerantes Matching (27.09.) ─────────────────────────────────────────────
+// Die Masterliste schreibt „Dr. Jörg Müller“ und „Müller, Jörg“, die Kartei
+// „Joerg Mueller“; die Firma heißt einmal „Testfirma GmbH & Co. KG“, einmal
+// „Testfirma“. Für den Schlüssel zählt nur der Kern: Umlaute aufgelöst, Titel
+// und Rechtsformen weg, Satzzeichen weg.
+const UMLAUTE: Record<string, string> = { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'ß': 'ss' };
+const entumlauten = (t: string) => t.toLowerCase().replace(/[äöüß]/g, c => UMLAUTE[c] ?? c).normalize('NFKD').replace(/[̀-ͯ]/g, '');
+const TITEL = new Set(['dr', 'prof', 'dipl', 'ing', 'mba', 'llm', 'phd', 'med', 'jur', 'rer', 'nat', 'pol', 'oec', 'habil', 'mag', 'msc', 'bsc', 'hc', 'dipling', 'diplkfm', 'kfm']);
+const RECHTSFORMEN = new Set(['gmbh', 'ag', 'ug', 'kg', 'ohg', 'gbr', 'se', 'kgaa', 'mbh', 'inc', 'ltd', 'llc', 'corp', 'plc', 'sa', 'sarl', 'bv', 'nv', 'partg', 'mbb', 'eg', 'ev', 'ek', 'haftungsbeschraenkt', 'co', 'cokg', 'und', 'and']);
+const woerter = (t: string) => entumlauten(t).replace(/\be\.\s?(k|v)\.?/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+
+/** Name ohne Titel, Umlaute und Satzzeichen — leer, wenn nichts übrig bleibt. */
+export function normName(vorname?: string, nachname?: string): string {
+  return woerter(`${vorname ?? ''} ${nachname ?? ''}`).filter(w => !TITEL.has(w)).join('');
+}
+/** Firma ohne Rechtsform, Umlaute und Satzzeichen. */
+export function normFirma(firma?: string): string {
+  return woerter(firma ?? '').filter(w => !RECHTSFORMEN.has(w)).join('');
+}
+/** Telefonnummer nur als Ziffern, Landesvorwahl 49 → 0. Leer unter sechs Ziffern (keine Durchwahl-Treffer). */
+export function normTelefon(t?: string): string {
+  const z = (t ?? '').replace(/\(0\)/g, '').replace(/[^0-9]/g, '').replace(/^0049/, '0').replace(/^49/, '0');
+  return z.length >= 6 ? z : '';
+}
 
 /**
  * Der Schlüssel, unter dem ein Kontakt wiedererkannt wird.
  *
  * Reihenfolge: E-Mail vor HubSpot-ID vor Name+Firma. E-Mail ist am stabilsten;
  * die HubSpot-ID kennt nur der HubSpot-Teil der Liste; Name+Firma ist der
- * Notnagel für die 324 Kontakte ohne Mail. Ohne diesen Schlüssel würde jeder
- * Import 443 neue Einträge anlegen.
+ * Notnagel für die Kontakte ohne Mail — seit 27.09. tolerant (normName/normFirma).
+ * Ohne diesen Schlüssel würde jeder Import alle Zeilen neu anlegen.
  */
 export function schluessel(k: { email?: string; hubspotId?: string; vorname?: string; nachname?: string; firma?: string }): string {
   const mail = norm(k.email ?? '');
   if (mail.includes('@')) return `m:${mail}`;
   if ((k.hubspotId ?? '').trim()) return `h:${norm(k.hubspotId!)}`;
-  return `n:${norm(`${k.vorname ?? ''}${k.nachname ?? ''}`)}|${norm(k.firma ?? '')}`;
+  return `n:${normName(k.vorname, k.nachname)}|${normFirma(k.firma)}`;
+}
+
+/**
+ * OWNER der Masterliste → Besitzer in der Kartei (Kevins Entscheidung 27.09.):
+ * „Malin …“ → malin · „Kevin …“ → kevin · „… & …“ → beide · „(kein Owner)“, leer
+ * oder ein fremder Name → kein Besitzer (bleibt für die Qualifizierungsrunde offen).
+ * Die Kürzel sind die aus lib/crm/team.ts (kevin, malin, BEIDE) — hier ohne
+ * Import, weil team.ts diese Datei einbindet.
+ */
+export function besitzerAusOwner(owner?: string): 'kevin' | 'malin' | 'beide' | undefined {
+  const o = (owner ?? '').toLowerCase();
+  const kevin = /\bkevin\b/.test(o), malin = /\bmalin\b/.test(o);
+  if (kevin && malin) return 'beide';
+  if (kevin) return 'kevin';
+  if (malin) return 'malin';
+  return undefined;
 }
 
 function prioAus(v: string): Prio {
@@ -254,6 +316,8 @@ export function ausZeile(z: Record<string, string>, heute: string): Kontakt {
     aktivitaeten: [],
     importiertAm: heute, geaendertAm: heute,
   };
+  const besitzer = besitzerAusOwner(k.owner);
+  if (besitzer) k.besitzer = besitzer;
   k.id = 'c-' + schluessel(k).replace(/[^a-z0-9]/g, '').slice(0, 40) + '-' + kurzHash(schluessel(k));
   return k;
 }
@@ -265,42 +329,156 @@ function kurzHash(t: string): string {
   return (h >>> 0).toString(36).slice(0, 6);
 }
 
+// ── Online gewinnt (Kevins Entscheidung 27.09.) ──────────────────────────────
+// Malin pflegt online, Kevin pflegt die Liste. Beim Import füllt die Liste nur
+// Lücken. Weicht ein gefülltes Feld ab, entscheidet die Herkunft: von Hand
+// gesetzt → Konflikt (Feld, online, Liste) und nichts überschreiben; nur vom
+// Import gesetzt → die Liste darf auffrischen wie bisher.
+
+/** Ein Feld, bei dem Liste und Kartei auseinanderliegen — wird nicht angewandt, sondern vorgelegt. */
+export interface Konflikt { kontaktId: string; feld: string; online: unknown; liste: unknown }
+
+/**
+ * Gilt dieses Feld als von Hand gesetzt? Mit `vonHand` ist die Antwort exakt.
+ * Ohne (Bestand vor dem 27.09.): konservativ — wurde der Kontakt nach dem
+ * Import noch geändert, könnte jedes Feld von Hand sein. Lieber ein Konflikt
+ * zu viel als Malins Arbeit weg.
+ */
+const nachImportGeaendert = (k: Pick<Kontakt, 'geaendertAm' | 'importiertAm'>) => !!k.geaendertAm && !!k.importiertAm && k.geaendertAm > k.importiertAm;
+export function istVonHand(k: Pick<Kontakt, 'vonHand' | 'geaendertAm' | 'importiertAm'>, feld: string): boolean {
+  if (k.vonHand) return k.vonHand.includes(feld);
+  return nachImportGeaendert(k);
+}
+
+const leer = (v: unknown) => v === undefined || v === null || v === '';
+const gleich = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
 /**
  * Bestehenden Kontakt mit frischen Stammdaten zusammenführen.
  * Die Pipeline-Felder bleiben, wie sie sind. Leere Felder im Import
  * überschreiben keine gefüllten — eine Excel-Zeile mit gelöschter Notiz soll
- * nicht die Notiz im CRM löschen.
+ * nicht die Notiz im CRM löschen. Gefüllte, von Hand gesetzte Felder werden
+ * nie überschrieben, sondern als Konflikt zurückgegeben.
+ * Der Besitzer ist Pipeline: die Liste setzt ihn nur, wenn online keiner steht.
  */
-export function zusammenfuehren(alt: Kontakt, neu: Kontakt, heute: string): { kontakt: Kontakt; geaendert: boolean } {
+export function zusammenfuehren(alt: Kontakt, neu: Kontakt, heute: string): { kontakt: Kontakt; geaendert: boolean; konflikte: Konflikt[] } {
   const out: Kontakt = { ...alt };
+  const konflikte: Konflikt[] = [];
   let geaendert = false;
+  const setze = (f: keyof Kontakt, v: unknown) => { (out as unknown as Record<string, unknown>)[f] = v; geaendert = true; };
   for (const f of Object.keys(neu) as (keyof Kontakt)[]) {
-    if (PIPELINE_FELDER.includes(f) || f === 'id' || f === 'geaendertAm') continue;
+    if (!istStammdatenFeld(f)) continue;
     const v = neu[f];
-    if (v === undefined || v === '' ) continue;
-    if (JSON.stringify(out[f]) !== JSON.stringify(v)) { (out as unknown as Record<string, unknown>)[f] = v; geaendert = true; }
+    if (leer(v)) continue;
+    const a = out[f];
+    if (gleich(a, v)) continue;
+    // Ausdrücklich von Hand geleert (steht in `vonHand`, ist aber leer): kein stilles Wiederauffüllen.
+    if (leer(a) && !(alt.vonHand?.includes(f))) { setze(f, v); continue; }
+    if (istVonHand(alt, f)) { konflikte.push({ kontaktId: alt.id, feld: f, online: a, liste: v }); continue; }
+    setze(f, v);
   }
-  if (geaendert) out.geaendertAm = heute;
-  return { kontakt: out, geaendert };
+  if (!alt.besitzer && neu.besitzer) setze('besitzer', neu.besitzer);
+  if (geaendert) {
+    out.geaendertAm = heute;
+    // Ohne Herkunftsliste und ohne Handänderung (Faustregel sagt „nur Import“): ab jetzt exakt führen —
+    // sonst würde das frische Änderungsdatum beim nächsten Import jede Abweichung zum Konflikt machen.
+    if (!alt.vonHand && !nachImportGeaendert(alt)) out.vonHand = [];
+  }
+  return { kontakt: out, geaendert, konflikte };
 }
 
-export interface ImportErgebnis { kontakte: Kontakt[]; neu: number; aktualisiert: number; unveraendert: number }
+/**
+ * Herkunft je Feld beim Schreiben von Hand (Kartei, Akte, ZOE): jedes Stammdaten-Feld, das sich gegenüber
+ * dem gespeicherten Stand ändert (auch Leeren), kommt in `vonHand`. Ohne Altstand (neu angelegt) zählt
+ * jedes gefüllte Feld. Was schon drinsteht, bleibt — ein älterer Browser-Stand ohne `vonHand` löscht nichts.
+ */
+export function vonHandMarkieren(alt: Kontakt | undefined, neu: Kontakt): Kontakt {
+  const felder = new Set<string>([...(alt?.vonHand ?? []), ...(neu.vonHand ?? [])]);
+  const alle = new Set([...Object.keys(neu), ...Object.keys(alt ?? {})]);
+  for (const f of alle) {
+    if (!istStammdatenFeld(f)) continue;
+    const v = neu[f], a = alt?.[f];
+    if (leer(v) && leer(a)) continue;
+    if (!gleich(v, a)) felder.add(f);
+  }
+  if (!felder.size && !alt?.vonHand && !neu.vonHand) return neu;
+  return { ...neu, vonHand: Array.from(felder).slice(0, VON_HAND_MAX) };
+}
 
-/** Ein Import über den ganzen Bestand — idempotent: zweimal laufen ändert nichts. */
+/** Kein sicherer Treffer, aber vielleicht derselbe Mensch — Vorschlag, nie automatisch verschmolzen. */
+export interface MoeglicheDublette { kontaktId: string; mitId?: string; grund: string }
+
+/**
+ * Mögliche Dubletten, die der Schlüssel nicht fängt: gleicher Name bei anderer
+ * Firma (Jobwechsel? zweiter Eintrag?) oder gleiche Telefonnummer. Nur Paare,
+ * an denen mindestens einer aus `nur` (die gerade importierten) beteiligt ist —
+ * den ganzen Bestand prüft Kontakte › Dubletten.
+ */
+export function moeglicheDubletten(kontakte: Kontakt[], nur?: Set<string>, max = 300): MoeglicheDublette[] {
+  const r: MoeglicheDublette[] = [];
+  const gesehen = new Set<string>();
+  const melde = (a: Kontakt, b: Kontakt, grund: string) => {
+    if (a.id === b.id || (nur && !nur.has(a.id) && !nur.has(b.id))) return;
+    const paar = [a.id, b.id].sort().join('|') + grund;
+    if (gesehen.has(paar) || r.length >= max) return;
+    gesehen.add(paar);
+    const [erst, zweit] = nur?.has(a.id) || !nur ? [a, b] : [b, a];
+    r.push({ kontaktId: erst.id, mitId: zweit.id, grund });
+  };
+  const jeName = new Map<string, Kontakt[]>();
+  const jeTel = new Map<string, Kontakt[]>();
+  for (const k of kontakte) {
+    const n = normName(k.vorname, k.nachname);
+    if (n.length >= 5) jeName.set(n, [...(jeName.get(n) ?? []), k]);
+    for (const t of [normTelefon(k.telefon), normTelefon(k.sms)]) if (t) jeTel.set(t, [...(jeTel.get(t) ?? []), k]);
+  }
+  for (const l of Array.from(jeName.values())) for (let i = 0; i < l.length; i++) for (let j = i + 1; j < l.length; j++) {
+    if (normFirma(l[i].firma) !== normFirma(l[j].firma)) melde(l[i], l[j], 'gleicher Name, andere Firma');
+  }
+  for (const l of Array.from(jeTel.values())) for (let i = 0; i < l.length; i++) for (let j = i + 1; j < l.length; j++) melde(l[i], l[j], 'gleiche Telefonnummer');
+  return r;
+}
+
+export interface ImportErgebnis {
+  kontakte: Kontakt[]; neu: number; aktualisiert: number; unveraendert: number;
+  /** Abweichungen, die NICHT angewandt wurden (online gewinnt). */
+  konflikte: Konflikt[];
+  /** Vorschläge, nichts verschmolzen. */
+  moeglicheDubletten: MoeglicheDublette[];
+  /** Importierte Zeilen, deren Kontakt danach keinen Besitzer hat — für die Qualifizierungsrunde. */
+  ohneBesitzer: number;
+  /** Kennungen aller Kontakte, die diese Liste getroffen hat (neu oder bestehend). */
+  betroffen: string[];
+}
+
+/** Ein Import über den ganzen Bestand — idempotent: zweimal laufen ändert nichts (Konflikte bleiben, bis sie gelöst sind). */
 export function importieren(bestand: Kontakt[], zeilen: Record<string, string>[], heute: string): ImportErgebnis {
   const nachSchluessel = new Map(bestand.map(k => [schluessel(k), k]));
-  let neu = 0, aktualisiert = 0, unveraendert = 0;
+  let neu = 0, aktualisiert = 0, unveraendert = 0, ohneBesitzer = 0;
+  const konflikte: Konflikt[] = [];
+  const hinweise: MoeglicheDublette[] = [];
+  const betroffen = new Set<string>();
   for (const z of zeilen) {
     const k = ausZeile(z, heute);
     if (!k.vorname && !k.nachname && !k.firma) continue;   // leere Zeile
     const key = schluessel(k);
     const alt = nachSchluessel.get(key);
-    if (!alt) { nachSchluessel.set(key, k); neu++; continue; }
-    const r = zusammenfuehren(alt, k, heute);
-    nachSchluessel.set(key, r.kontakt);
-    if (r.geaendert) aktualisiert++; else unveraendert++;
+    let fertig: Kontakt;
+    if (!alt) { nachSchluessel.set(key, k); neu++; fertig = k; }
+    else {
+      const r = zusammenfuehren(alt, k, heute);
+      nachSchluessel.set(key, r.kontakt);
+      konflikte.push(...r.konflikte);
+      if (r.geaendert) aktualisiert++; else unveraendert++;
+      fertig = r.kontakt;
+    }
+    betroffen.add(fertig.id);
+    if (!fertig.besitzer) ohneBesitzer++;
+    // Vermerk aus der Liste („⚠ Owner klären (Dublette Kevin/Malin)“) — als Hinweis, nicht als Feld.
+    if (/dublette/i.test(s(z.STATUS_RECHERCHE, 200))) hinweise.push({ kontaktId: fertig.id, grund: 'Liste: Owner klären' });
   }
-  return { kontakte: Array.from(nachSchluessel.values()), neu, aktualisiert, unveraendert };
+  const kontakte = Array.from(nachSchluessel.values());
+  return { kontakte, neu, aktualisiert, unveraendert, konflikte, ohneBesitzer, betroffen: Array.from(betroffen), moeglicheDubletten: [...moeglicheDubletten(kontakte, betroffen), ...hinweise] };
 }
 
 // ── Die Tagesliste ──────────────────────────────────────────────────────────
@@ -445,6 +623,8 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
   const lebensphase = LEBENSPHASEN.includes(o.lebensphase as Lebensphase) ? o.lebensphase as Lebensphase : undefined;
   const rollen = Array.isArray(o.rollen) ? Array.from(new Set((o.rollen as unknown[]).filter((r): r is Rolle => ROLLEN.includes(r as Rolle)))).slice(0, ROLLEN.length) : undefined;
   const takt = Number(o.taktTage);
+  // Herkunft je Feld (27.09.): nur bekannte Stammdaten-Feldnamen, höchstens VON_HAND_MAX.
+  const vonHand = Array.isArray(o.vonHand) ? Array.from(new Set((o.vonHand as unknown[]).filter((f): f is string => typeof f === 'string' && istStammdatenFeld(f)))).slice(0, VON_HAND_MAX) : undefined;
   const k: Kontakt = {
     id, vorname: String(o.vorname ?? '').trim().slice(0, 80), nachname: String(o.nachname ?? '').trim().slice(0, 80),
     email: txt(o.email, 160)?.toLowerCase(), telefon: txt(o.telefon, 60), sms: txt(o.sms, 60),
@@ -475,6 +655,7 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     stufe: st, wiedervorlage: tag(o.wiedervorlage), letzterKontakt: tag(o.letzterKontakt),
     aktivitaeten: akt,
     importiertAm: String(o.importiertAm ?? '').slice(0, 10) || '', geaendertAm: String(o.geaendertAm ?? '').slice(0, 10) || '',
+    ...(vonHand ? { vonHand } : {}),
   };
   if (!k.vorname && !k.nachname && !k.firma) return null;
   return k;

@@ -53,6 +53,19 @@ Ansage stehen, bis das nächste Update sie ablöst.
 
 ## Nächstes Update — vorbereitet, noch nicht online
 
+### Masterliste: Online gewinnt (27.09., nur lokal)
+
+Kevin vor dem Upload: Malins Leads sind in die Masterliste eingeflossen; die Liste soll online, ohne dass Malins Pflege in der Kartei verloren geht.
+
+- **Regel „Online gewinnt“:** Der Import füllt nur leere Felder. Weicht die Liste von einem Feld ab, das online von Hand gepflegt wurde, wird nichts überschrieben — das Feld landet in einer Konfliktliste (Feld, online, Liste). Felder, die nur vom Import stammen, frischt die Liste weiter auf. Die Pipeline (Stufe, Verlauf, Besitzer, Kreis, Einwilligungen, Werbesperre) bleibt wie bisher unberührt.
+- **Herkunft je Feld:** Jeder Kontakt merkt sich, welche Stammdaten-Felder von Hand gesetzt wurden (`vonHand`, gesetzt beim Speichern aus Kartei/Akte). Bestand ohne diese Liste: konservativ — nach dem Import geändert ⇒ Abweichung ist Konflikt.
+- **Ablauf in Stammdaten › Austausch:** Datei wählen → Vorschau (neu / aktualisiert / unverändert / Konflikte / mögliche Dubletten / ohne Besitzer, nichts geschrieben) → Übernehmen. Danach die Konfliktliste zum Durchklicken: „Online behalten“ oder „Liste übernehmen“ je Feld. Offene Konflikte bleiben gespeichert (`crm-import-konflikte`) und kehren mit dem nächsten Import wieder, bis sie entschieden sind.
+- **Tolerantes Matching:** Name+Firma ohne Umlaute, Titel (Dr., Prof.), Rechtsformen (GmbH, AG, UG, KG, e.K., & Co.) und Satzzeichen — „Dr. Jörg Müller, Testfirma GmbH & Co. KG“ ist derselbe wie „Joerg Mueller, Testfirma“. E-Mail und HubSpot-ID gehen weiter vor.
+- **Mögliche Dubletten (Vorschlag, nie verschmolzen):** gleicher Name bei anderer Firma, gleiche Telefonnummer, und der Listen-Vermerk „Dublette Kevin/Malin“. Stehen nach dem Import unter der Konfliktliste; sichere Paare weiter unter Kontakte › Dubletten.
+- **Owner aus der Liste:** „Malin …“ → Malin, „Kevin …“ → Kevin, „… & …“ → beide, „(kein Owner)“/leer/fremd → ohne Besitzer (Kevins Entscheidung: nicht Malin zuweisen). Der Import setzt einen Besitzer nur, wenn online keiner steht, und nie zurück. Hinweis nach dem Import: „N ohne Besitzer — in der Qualifizierungsrunde übernehmen“.
+- **Segment „Vernetzen · kalte Leads“** (`seg-vernetzen`) entsteht beim ersten Import im Marketing — kalte Leads gehen dorthin, nicht in Firmen › Leads.
+- Tests: `crm-import-online-gewinnt` (19), `crm-import-route` (6). Stand: 125 Dateien · 1031 Tests grün.
+
 ### Markttraktion komplett (27.09. nachts, nur lokal)
 
 Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen und Kontakten Deals einpflegen, dann Follow-up-Ebene, dann erst Stammdaten. Deal- und Follow-up-Ebene sauber, das ganze System dahinter sauber aufgesetzt.“
