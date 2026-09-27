@@ -41,16 +41,17 @@ Headline-Kandidaten (Entscheidung nach Recherche): „Das Betriebssystem für de
 - Top-1 %-Landingpages, Effekte, Positionierung im Life-OS-Feld, Founder-Sektionen, Logo-/Font-Trends → `homepage/RECHERCHE.md`.
 - Kevins Obsidian-Homepages → Muster, Wording, Name-Geschichte → fließt in Texte und Founder-Sektion.
 
-## Stand 27.09. (erster Durchgang fertig)
-1. Plan ✓ · Recherche ✓ (`RECHERCHE.md`, 95 Quellen · `VAULT_BEFUND.md`, Kevins Seiten-Standard und CI).
-2. Logo ✓ — Entwurf A gewählt (`assets/logo/logo.svg`, `logo-app.svg`, `logo-hell.svg`, `wortmarke.svg`, `favicon.svg`; die vier Entwürfe in `assets/logo/entwuerfe.html`). CI-Tokens aus der Software (`css/ci.css`), Schriften Archivo + Public Sans selbst gehostet.
-3. Seite ✓ — `index.html` (14 Sektionen), `css/site.css`, `js/site.js`; alle Produktbilder als Nachbau der Software mit Beispieldaten, kein Bild, kein Video.
-4. Geprüft: Desktop 1440, Handy 390 (Screenshots headless), Konsole ohne Fehler, Reduced-Motion, Tastatur-Fokus, Schriften lokal. Lighthouse-Lauf steht noch aus (kein Werkzeug in dieser Sitzung).
-5. Kevin testet einmal: Preview „make-os-homepage“ (Port 3012). Hosten nur auf sein Wort.
+## Stand 27.09. (zweiter Durchgang fertig — nach Kevins Feedback)
+Kevin: „Grundgedanken sehr gut, CI gefällt mir. Logo noch nicht so. Nie echte Namen, Termine oder Kundendaten. UX kann mehr geben.“
+1. **Datenhygiene:** alle Personen, Firmen, Termine, Protokolle und Firmenbezüge in den Bildern sind erfunden (Jonas Berg, Nordlicht GmbH, Kanzlei Weiß, Atelier Fuchs, Studio Lenz); Gesundheitsdetails und Firmennamen der Gründer raus; Fußzeile und FAQ sagen es ausdrücklich. `homepage/pruefen.mjs` (Sperrliste Namen/Kunden + verbotene Wörter) läuft vor jedem Stand: `node homepage/pruefen.mjs`.
+2. **Logo F** gewählt (`assets/logo/logo.svg`, `logo-app.svg`, `logo-hell.svg`, `logo-mono.svg`, `wortmarke.svg`, `favicon.svg`): zwei Hälften — MA hell, KE türkis — treffen sich in der Fuge zum M; Wortmarke teilt genauso. Runde 2 (E–I) in `assets/logo/entwuerfe.html`; Runde 1 gelöscht.
+3. **UX:** jedes Produktbild im App-Rahmen der Software (Fensterkopf, Leiste Home/Jarvis/System, Score-Chip) · Hero mit Aurora, Raster, Cursor-Licht, drei Fakten · Fortschrittsbalken, Scrollspy, Burger-Menü, Nach-oben · Weg eines Vorschlags (Erfassen → Vorschlag → Freigabe → Ausführung) animiert · Widgets „Größter Hebel“ und „Der Stapel“ im Start-Fenster · Mini-Verläufe in den Säulen · Founder-Karten mit Initialen in Personenfarbe · Regler auf Handy gestapelt · Korn-Overlay · Reiter per Pfeiltasten.
+4. Geprüft: Desktop 1440 (headless), Handy 375 (Pane-Emulation: keine Seitenverschiebung, Burger sichtbar, Konsole leer), Reduced-Motion, Tastatur-Fokus, `pruefen.mjs` grün.
+5. Kevin testet: Preview „make-os-homepage“ (Port 3012). Hosten nur auf sein Wort.
 
 ## Offen für Kevin
 - „Life & Business **Operating** System“ (englisch korrekt) oder „Operation System“ wie im Auftrag und in `Terminologie_Brain`?
-- Echte Porträts von Malin und Kevin (die CI verlangt sie — Platzhalter sitzen in „Warum MAKE“).
+- Echte Porträts von Malin und Kevin (die CI verlangt sie — Initialen-Karten sitzen in „Warum MAKE“).
 - Mail-Adresse für „Einmal testen“ (Platzhalter in `js/site.js`, Konstante `EMPFAENGER`) und Domain (make.one/.build waren am 21.09. frei; „MAKE“ in Klasse 35 fremd belegt).
 - Gründergeschichte in drei Sätzen (Kennenlernen, der Moment der Entscheidung) — steht nirgends im Vault.
 - Zweite Stufe des CTA: Read-only-Demo-Instanz mit Beispieldaten oder 14-Tage-Probe-Server.

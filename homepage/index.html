@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MAKE OS — Life & Business Operating System</title>
-<meta name="description" content="MAKE OS ist das Betriebssystem für dein Leben und dein Unternehmen: ein Wachstums-Score über Gesundheit, Beziehung, Finanzen und Business, ein KI-Assistent, der handelt — mit deinem Ja — und ein Brain auf deinem eigenen Server. Gebaut von Malin und Kevin.">
+<meta name="description" content="MAKE OS ist das Betriebssystem für dein Leben und dein Unternehmen: ein Wachstums-Score über Gesundheit, Beziehung, Finanzen und Business, ein Assistent, der handelt — mit deinem Ja — und ein Brain auf deinem eigenen Server. Gebaut von Malin und Kevin.">
 <meta property="og:title" content="MAKE OS — Life & Business Operating System">
 <meta property="og:description" content="Ein System. Beide Leben. Dein Server, dein Brain, deine Entscheidung.">
 <meta property="og:type" content="website">
@@ -16,10 +16,11 @@
 <body>
 
 <header class="nav">
+  <div class="fortschritt" aria-hidden="true"></div>
   <div class="wrap">
     <a class="marke" href="#top" aria-label="MAKE OS — nach oben">
-      <svg viewBox="0 0 240 240" aria-hidden="true"><path d="M52 176 L52 78 L120 146 L188 78 L188 176" fill="none" stroke="currentColor" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/><circle cx="120" cy="146" r="17" fill="#58D9CD"/></svg>
-      <span class="wort"><span class="ma">MA</span><span class="ke">KE</span></span>&nbsp;<b>OS</b>
+      <svg viewBox="0 0 240 240" aria-hidden="true"><path d="M50 176 L50 72 L119 141" fill="none" stroke="currentColor" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/><path d="M121 141 L190 72 L190 176" fill="none" stroke="#58D9CD" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="wort"><span class="ma">MA</span><span class="ke">KE</span><span class="os">OS</span></span>
     </a>
     <nav aria-label="Abschnitte">
       <a href="#system">Ein System</a>
@@ -30,22 +31,27 @@
       <a href="#fragen">Fragen</a>
     </nav>
     <a class="knopf" href="#testen">Einmal testen</a>
+    <button class="burger" type="button" aria-label="Menü" aria-expanded="false" aria-controls="mobilmenue"><span></span></button>
   </div>
 </header>
+<div class="mobilmenue" id="mobilmenue">
+  <a href="#system">Ein System</a><a href="#jarvis">Jarvis</a><a href="#bereiche">Bereiche</a><a href="#server">Dein Server</a><a href="#make">Warum MAKE</a><a href="#fragen">Fragen</a><a href="#testen" style="color:var(--aktiv)">Einmal testen</a>
+</div>
 
 <main id="top">
 
 <!-- ── Hero ─────────────────────────────────────────────────────────────── -->
 <section class="hero" id="hero">
-  <div class="spot" aria-hidden="true"></div>
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
   <div class="raster" aria-hidden="true"></div>
+  <div class="spot" aria-hidden="true"></div>
   <div class="wrap">
     <div class="hero-text">
-      <div class="chipzeile"><span class="status"><i></i>Aktiv · läuft seit September 2026 auf unserem eigenen Server</span><span class="mikro">Life &amp; Business Operating System</span></div>
+      <div class="chipzeile"><span class="status"><i></i>Läuft seit September 2026 auf unserem eigenen Server</span><span class="mikro">Life &amp; Business Operating System</span></div>
       <h1 aria-label="Das Betriebssystem für dein Leben und dein Unternehmen.">
         <span class="zeile"><span class="wort" style="--i:0">Das</span> <span class="wort" style="--i:1">Betriebssystem</span></span>
-        <span class="zeile"><span class="wort" style="--i:2">für</span> <span class="wort" style="--i:3">dein</span> <span class="wort" style="--i:4">Leben</span></span>
-        <span class="zeile"><span class="wort" style="--i:5">und</span> <span class="wort" style="--i:6">dein</span> <span class="wort" style="--i:7">Unternehmen.</span></span>
+        <span class="zeile"><span class="wort" style="--i:2">für</span> <span class="wort" style="--i:3">dein</span> <span class="wort akz" style="--i:4">Leben</span></span>
+        <span class="zeile"><span class="wort" style="--i:5">und</span> <span class="wort" style="--i:6">dein</span> <span class="wort akz" style="--i:7">Unternehmen.</span></span>
       </h1>
       <p>Gesundheit, Beziehung, Finanzen und Business in <strong>einer</strong> Zahl. Ein Assistent, der fragt, bevor er handelt. Ein Brain, das auf deinem eigenen Server wächst. Für Gründer, Selbstständige und Paare, die Leben und Unternehmen gleichzeitig führen.</p>
       <div class="hero-cta">
@@ -53,31 +59,45 @@
         <a class="knopf gross leise" href="#system">So funktioniert es</a>
         <span class="leise-note">Selbst gehostet in Deutschland · verschlüsselt · nichts geht ohne dich raus</span>
       </div>
+      <div class="hero-fakten">
+        <div><b>1 Zahl</b><span>für beide Leben</span></div>
+        <div><b>0 Nachrichten</b><span>je ohne dein Ja verschickt</span></div>
+        <div><b>3 Räume</b><span>privat, privat, gemeinsam</span></div>
+      </div>
     </div>
 
-    <div class="ring-karte tilt" data-reveal>
-      <div class="ring-kopf">
-        <span class="mikro">Wachstums-Score</span>
-        <div class="schalter" role="group" aria-label="Modus">
-          <button type="button" data-modus="privat" aria-pressed="true">Privat</button>
-          <button type="button" data-modus="business" aria-pressed="false">Business</button>
+    <div class="app tilt" id="hero-app" data-reveal>
+      <div class="app-kopf"><span class="punkte"><i></i><i></i><i></i></span><span class="titel">MAKE OS · Start</span><span class="rechts"><span>Heute</span><span class="score-chip" id="score-chip">78</span></span></div>
+      <div class="app-rumpf">
+        <div class="app-leiste" aria-hidden="true"><i class="an">H</i><i>J</i><i>S</i></div>
+        <div class="app-inhalt">
+          <div class="ring-kopf">
+            <span class="mikro">Wachstums-Score</span>
+            <div class="schalter" role="group" aria-label="Modus">
+              <button type="button" data-modus="privat" aria-pressed="true">Privat</button>
+              <button type="button" data-modus="business" aria-pressed="false">Business</button>
+            </div>
+          </div>
+          <div class="ring">
+            <svg viewBox="0 0 200 200" aria-hidden="true">
+              <circle cx="100" cy="100" r="84" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="14"/>
+              <circle id="ring-bogen" cx="100" cy="100" r="84" fill="none" stroke="#58D9CD" stroke-width="14" stroke-linecap="round" stroke-dasharray="527.8" stroke-dashoffset="116" transform="rotate(-90 100 100)" style="transition:stroke-dashoffset 1.6s cubic-bezier(.2,.7,.2,1),stroke .6s ease"/>
+              <text x="100" y="108" text-anchor="middle" class="zahl" id="ring-zahl">78</text>
+              <text x="100" y="134" text-anchor="middle" class="label" id="ring-label">SOLIDE</text>
+            </svg>
+            <div class="saeulen" id="saeulen">
+              <div class="saeule" style="--f:#3DE28B"><span>Gesundheit</span><div class="balken"><i style="width:74%"></i></div><b>74</b></div>
+              <div class="saeule" style="--f:#FF7EB6"><span>Beziehung</span><div class="balken"><i style="width:82%"></i></div><b>82</b></div>
+              <div class="saeule" style="--f:#58D9CD"><span>Finanzen</span><div class="balken"><i style="width:71%"></i></div><b>71</b></div>
+              <div class="saeule" style="--f:#8F86FF"><span>Fokus &amp; Zeit</span><div class="balken"><i style="width:88%"></i></div><b>88</b></div>
+            </div>
+          </div>
+          <div class="widgets">
+            <div class="widget"><div class="k"><span>Größter Hebel</span></div><div class="z" id="ring-hinweis">Schlaf vor Mitternacht</div></div>
+            <div class="widget"><div class="k"><span>Der Stapel</span><span style="color:#FFC93C">2 warten</span></div><div class="z" style="--f:#FFC93C"><i></i><span><b>Mail-Entwurf</b> an Jonas B.</span></div><div class="z" style="--f:#C77DFF"><i></i><span><b>Fokusblock</b> Di 10–12 Uhr</span></div></div>
+          </div>
         </div>
       </div>
-      <div class="ring">
-        <svg viewBox="0 0 200 200" aria-hidden="true">
-          <circle cx="100" cy="100" r="84" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="14"/>
-          <circle id="ring-bogen" cx="100" cy="100" r="84" fill="none" stroke="#58D9CD" stroke-width="14" stroke-linecap="round" stroke-dasharray="527.8" stroke-dashoffset="527.8" transform="rotate(-90 100 100)" style="transition:stroke-dashoffset 1.6s cubic-bezier(.2,.7,.2,1),stroke .6s ease"/>
-          <text x="100" y="108" text-anchor="middle" class="zahl" id="ring-zahl" data-count="78">0</text>
-          <text x="100" y="134" text-anchor="middle" class="label" id="ring-label">SOLIDE</text>
-        </svg>
-        <div class="saeulen" id="saeulen">
-          <div class="saeule" style="--f:#3DE28B"><span>Gesundheit</span><div class="balken"><i data-privat="74" data-business="0"></i></div><b>74</b></div>
-          <div class="saeule" style="--f:#FF7EB6"><span>Beziehung</span><div class="balken"><i data-privat="82" data-business="0"></i></div><b>82</b></div>
-          <div class="saeule" style="--f:#58D9CD"><span>Finanzen</span><div class="balken"><i data-privat="71" data-business="69"></i></div><b>71</b></div>
-          <div class="saeule" style="--f:#8F86FF"><span>Fokus &amp; Zeit</span><div class="balken"><i data-privat="88" data-business="61"></i></div><b>88</b></div>
-        </div>
-      </div>
-      <div class="ring-fuss"><span>Heute · 27. September</span><span id="ring-hinweis">Größter Hebel: Schlaf vor Mitternacht</span></div>
     </div>
   </div>
 </section>
@@ -92,18 +112,18 @@
     </div>
     <div class="story">
       <div class="story-text">
-        <div class="story-schritt" data-schritt="1"><h3>Die Körperdaten liegen in einer App, der Kalender in der zweiten, die Pipeline in der dritten.</h3><p class="dim">Notizen in der vierten, die Finanzen in der fünften. Jede sagt „alles gut“ — keine sieht, dass die Woche kippt.</p></div>
-        <div class="story-schritt" data-schritt="2"><h3>Die KI-Assistenten von heute lesen alles und dürfen nichts. Oder sie dürfen alles — und du erfährst es danach.</h3><p class="dim">Beides ist falsch. Ein Assistent muss handeln können. Und du musst das letzte Wort haben.</p></div>
-        <div class="story-schritt" data-schritt="3"><h3>Und alles davon liegt auf Servern, die dir nicht gehören.</h3><p class="dim">Dein Schlaf, deine Beziehung, deine Kunden, deine Kontostände — bei fünf Anbietern in drei Ländern.</p></div>
+        <div class="story-schritt" data-schritt="1"><span class="nr">01</span><h3>Die Körperdaten liegen in einer App, der Kalender in der zweiten, die Pipeline in der dritten.</h3><p class="dim">Notizen in der vierten, die Finanzen in der fünften. Jede sagt „alles gut“ — keine sieht, dass die Woche kippt.</p></div>
+        <div class="story-schritt" data-schritt="2"><span class="nr">02</span><h3>Die Assistenten von heute lesen alles und dürfen nichts. Oder sie dürfen alles — und du erfährst es danach.</h3><p class="dim">Beides ist falsch. Ein Assistent muss handeln können. Und du musst das letzte Wort haben.</p></div>
+        <div class="story-schritt" data-schritt="3"><span class="nr">03</span><h3>Und alles davon liegt auf Servern, die dir nicht gehören.</h3><p class="dim">Dein Schlaf, deine Beziehung, deine Kunden, deine Kontostände — bei fünf Anbietern in drei Ländern.</p></div>
       </div>
       <div class="story-bild" aria-hidden="true">
         <div data-bild="1" class="aktiv"><div class="chaos">
-          <span style="--i:0;--r:1">Whoop</span><span style="--i:1;--r:-1">Kalender</span><span style="--i:2;--r:1">CRM</span>
+          <span style="--i:0;--r:1">Wearable</span><span style="--i:1;--r:-1">Kalender</span><span style="--i:2;--r:1">CRM</span>
           <span style="--i:3;--r:-1">Notizen</span><span style="--i:4;--r:1">Banking</span><span style="--i:5;--r:-1">Aufgaben</span>
           <span style="--i:6;--r:1">Mail</span><span style="--i:7;--r:-1">Chat-KI</span><span style="--i:8;--r:1">Tabellen</span>
         </div></div>
         <div data-bild="2"><div class="eins">
-          <div class="zeile"><span class="punkt" style="--f:#C77DFF"></span>„Leg den Termin mit Frank auf Dienstag, 10 Uhr.“</div>
+          <div class="zeile"><span class="punkt" style="--f:#C77DFF"></span>„Leg den Termin mit Jonas auf Dienstag, 10 Uhr.“</div>
           <div class="zeile" style="border-color:rgba(255,201,60,.4)"><span class="punkt" style="--f:#FFC93C"></span>Vorschlag liegt im Stapel — <b>wartet auf dein Ja</b></div>
           <div class="zeile"><span class="punkt" style="--f:#3DE28B"></span>Freigegeben · eingetragen · nichts verschickt</div>
         </div></div>
@@ -123,22 +143,22 @@
     <div class="kopf" data-reveal>
       <span class="mikro">Ein System</span>
       <h2>Eine Zahl, an der sich alles misst.</h2>
-      <p>Der Wachstums-Score rechnet aus dem, was wirklich passiert: Schlaf und Erholung, Zeit zu zweit, Kontostände und Forderungen, Gespräche und Deals, gemessene Fokus-Zeit. Vier Säulen privat, drei im Business — <strong>ein Schalter</strong> oben rechts wechselt den Modus, die Zeit wird in beiden gemessen.</p>
+      <p>Der Wachstums-Score rechnet aus dem, was wirklich passiert: Schlaf und Erholung, Zeit zu zweit, Kontostände und Forderungen, Gespräche und Deals, gemessene Fokus-Zeit. Vier Säulen privat, drei im Business — <strong>ein Schalter</strong> wechselt den Modus, die Zeit wird in beiden gemessen.</p>
     </div>
     <div class="regler" data-reveal>
       <div class="regler-kopf"><span class="mikro">Vom Blindflug zur Klarheit</span><span class="leise" style="font-size:12px">ziehen</span></div>
       <div class="regler-buehne">
-        <div class="vorher"><div class="regler-text links">Sieben Apps, jede sagt „alles gut“.</div><div class="chaos klein"><span style="--i:0;--r:1">Whoop</span><span style="--i:1;--r:-1">Kalender</span><span style="--i:2;--r:1">CRM</span><span style="--i:3;--r:-1">Notizen</span><span style="--i:4;--r:1">Banking</span><span style="--i:5;--r:-1">Aufgaben</span></div></div>
+        <div class="vorher"><div class="regler-text links">Sieben Apps, jede sagt „alles gut“.</div><div class="chaos klein"><span style="--i:0;--r:1">Wearable</span><span style="--i:1;--r:-1">Kalender</span><span style="--i:2;--r:1">CRM</span><span style="--i:3;--r:-1">Notizen</span><span style="--i:4;--r:1">Banking</span><span style="--i:5;--r:-1">Aufgaben</span></div></div>
         <div class="nachher" style="clip-path:inset(0 0 0 50%)"><div class="eins"><div class="zeile"><span class="punkt" style="--f:#58D9CD"></span><b>Wachstums-Score 78</b> · Solide</div><div class="zeile"><span class="punkt" style="--f:#FFC93C"></span>Größter Hebel: Schlaf vor Mitternacht</div><div class="zeile"><span class="punkt" style="--f:#FF9F43"></span>2 Follow-ups überfällig · ein Deal ohne Schritt</div></div><div class="regler-text rechts">Ein System sagt, was heute zählt.</div></div>
         <input type="range" min="0" max="100" value="50" aria-label="Vorher und Nachher vergleichen" aria-valuetext="50 Prozent" class="regler-griff">
         <div class="regler-linie" style="left:50%"><span>⇔</span></div>
       </div>
     </div>
     <div class="raeume vier">
-      <div class="raum" data-reveal style="--f:#3DE28B;--d:0ms"><div class="kopfz"><i></i>Gesundheit</div><p>Whoop-Erholung, Schlaf, Journal, Haut, Ernährung — mit einem Takt aufs Handy, der morgens, mittags und abends das Richtige sagt.</p></div>
-      <div class="raum" data-reveal style="--f:#FF7EB6;--d:80ms"><div class="kopfz"><i></i>Beziehung &amp; Familie</div><p>Wir zwei zuerst, dann die Familie: gemeinsame Zeit, Rituale, Verabredungen — und ein Raum, der nur euch beiden gehört.</p></div>
-      <div class="raum" data-reveal style="--f:#58D9CD;--d:160ms"><div class="kopfz"><i></i>Finanzen</div><p>Privat und Business getrennt gerechnet, gemeinsam gesehen: Runway, Forderungen, Fixkosten, Steuertermine, ein Head of Finance mit Befunden.</p></div>
-      <div class="raum" data-reveal style="--f:#FF9F43;--d:240ms"><div class="kopfz"><i></i>Business</div><p>Markttraktion statt Lautstärke: Gespräche, Deals, Follow-ups, Events. Gemessen an dem, was Umsatz wird — nicht an Likes.</p></div>
+      <div class="raum" data-reveal style="--f:#3DE28B;--d:0ms"><div class="kopfz"><i></i>Gesundheit</div><p>Erholung, Schlaf, Journal, Ernährung, Routinen — mit einem Takt aufs Handy, der morgens, mittags und abends das Richtige sagt.</p><div class="mini" aria-hidden="true"><i style="--h:40%"></i><i style="--h:55%"></i><i style="--h:48%"></i><i style="--h:70%"></i><i style="--h:62%"></i><i style="--h:80%"></i><i style="--h:74%"></i></div></div>
+      <div class="raum" data-reveal style="--f:#FF7EB6;--d:80ms"><div class="kopfz"><i></i>Beziehung &amp; Familie</div><p>Wir zwei zuerst, dann die Familie: gemeinsame Zeit, Rituale, Verabredungen — und ein Raum, der nur euch beiden gehört.</p><div class="mini" aria-hidden="true"><i style="--h:60%"></i><i style="--h:64%"></i><i style="--h:58%"></i><i style="--h:72%"></i><i style="--h:80%"></i><i style="--h:78%"></i><i style="--h:82%"></i></div></div>
+      <div class="raum" data-reveal style="--f:#58D9CD;--d:160ms"><div class="kopfz"><i></i>Finanzen</div><p>Privat und Business getrennt gerechnet, gemeinsam gesehen: Runway, Forderungen, Fixkosten, Steuertermine, ein Head of Finance mit Befunden.</p><div class="mini" aria-hidden="true"><i style="--h:50%"></i><i style="--h:52%"></i><i style="--h:60%"></i><i style="--h:58%"></i><i style="--h:66%"></i><i style="--h:70%"></i><i style="--h:71%"></i></div></div>
+      <div class="raum" data-reveal style="--f:#FF9F43;--d:240ms"><div class="kopfz"><i></i>Business</div><p>Markttraktion statt Lautstärke: Gespräche, Deals, Follow-ups, Events. Gemessen an dem, was Umsatz wird — nicht an Likes.</p><div class="mini" aria-hidden="true"><i style="--h:30%"></i><i style="--h:44%"></i><i style="--h:40%"></i><i style="--h:56%"></i><i style="--h:52%"></i><i style="--h:60%"></i><i style="--h:64%"></i></div></div>
     </div>
   </div>
 </section>
@@ -151,19 +171,24 @@
       <h2>Er handelt. Du entscheidest.</h2>
       <p>Jarvis kennt deine Zahlen, dein Brain und deinen Tag. Er hat Werkzeuge und ein Team aus Agenten — Head of Sales, Marketing, Event, Finance, IT. Und eine Regel, die über allem steht: <strong>Nichts geht ohne dein Ja raus.</strong></p>
     </div>
-    <div class="jarvis">
-      <div class="chat" data-reveal id="chat">
-        <div class="kopfzeile"><i></i>Jarvis · Gespräch</div>
-        <div class="blase ich">Wie sieht meine Woche aus — und was sollte ich heute abschließen?</div>
-        <div class="blase jarvis">Drei Termine, ein Deal in der Angebotsphase ohne nächsten Schritt, Erholung bei 62 %. Heute lohnt sich der Anruf bei ACME — die Wiedervorlage ist seit zwei Tagen fällig. Soll ich den Schritt eintragen und den Anruf um 11 Uhr blocken?</div>
-        <div class="blase ich">Ja. Und schick Frank die Zusammenfassung.</div>
-        <div class="blase jarvis">Eingetragen und geblockt. Die Mail an Frank habe ich <em>nicht</em> verschickt — sie liegt als Entwurf im Stapel.
-          <div class="werkzeug" style="margin-top:8px"><i>✓</i>plan_block · 11:00–11:30</div>
-          <div class="werkzeug"><i>✓</i>chance_schritt · ACME · Angebot besprechen</div>
-        </div>
-        <div class="stapel blase" style="max-width:100%">
-          <div class="mikro" style="color:#FFC93C">Wartet auf dich</div>
-          <div class="zeile"><span>Mail an Frank: „Zusammenfassung Woche 40“</span><span><span class="ok">Freigeben</span> <span class="nein">Ablehnen</span></span></div>
+    <div class="jarvis-raster">
+      <div class="app" data-reveal>
+        <div class="app-kopf"><span class="punkte"><i></i><i></i><i></i></span><span class="titel">Jarvis · Gespräch</span><span class="rechts"><span>Sicht: privat-kevin</span></span></div>
+        <div class="app-rumpf">
+          <div class="app-leiste" aria-hidden="true"><i>H</i><i class="an">J</i><i>S</i></div>
+          <div class="app-inhalt chat" id="chat">
+            <div class="blase ich">Wie sieht meine Woche aus — und was sollte ich heute abschließen?</div>
+            <div class="blase jarvis">Drei Termine, ein Deal in der Angebotsphase ohne nächsten Schritt, Erholung bei 62 %. Heute lohnt sich der Anruf bei Nordlicht — die Wiedervorlage ist seit zwei Tagen fällig. Soll ich den Schritt eintragen und den Anruf um 11 Uhr blocken?</div>
+            <div class="blase ich">Ja. Und schick Jonas die Zusammenfassung.</div>
+            <div class="blase jarvis">Eingetragen und geblockt. Die Mail an Jonas habe ich <em>nicht</em> verschickt — sie liegt als Entwurf im Stapel.
+              <div class="werkzeug" style="margin-top:8px"><i>✓</i>plan_block · 11:00–11:30</div>
+              <div class="werkzeug"><i>✓</i>chance_schritt · Nordlicht · Angebot besprechen</div>
+            </div>
+            <div class="stapel blase" style="max-width:100%">
+              <div class="mikro" style="color:#FFC93C">Wartet auf dich</div>
+              <div class="zeile"><span>Mail an Jonas: „Zusammenfassung Woche 40“</span><span><span class="ok">Freigeben</span> <span class="nein">Ablehnen</span></span></div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="prinzipien">
@@ -172,6 +197,13 @@
         <div class="prinzip" data-reveal style="--d:160ms"><div class="nr">3</div><div><h3>Ein Team aus Heads</h3><p>Sales, Marketing, Event, Finance und IT als eigene Agenten mit Regelwerk — die auch ohne KI-Guthaben weiterlaufen, weil ihre Regeln nicht im Modell stecken, sondern im Code.</p></div></div>
         <div class="prinzip" data-reveal style="--d:240ms"><div class="nr">4</div><div><h3>Fremdtext ist Daten</h3><p>Was aus Mails, Notizen oder dem Web kommt, hat keine Anweisungsgewalt. Sobald Jarvis Fremdes gelesen hat, wird jedes schreibende Werkzeug zum Vorschlag.</p></div></div>
       </div>
+    </div>
+    <div class="weg" data-reveal aria-label="Der Weg eines Vorschlags">
+      <div class="fuellung" aria-hidden="true"></div>
+      <div class="schritt-w"><i>01</i><b>Erfassen</b><span>Jarvis liest Zahlen, Brain und Tag — mit deiner Sicht, nie mit allem.</span></div>
+      <div class="schritt-w"><i>02</i><b>Vorschlag</b><span>Was nach außen geht oder nachts entsteht, wird ein Vorschlag mit Begründung.</span></div>
+      <div class="schritt-w"><i>03</i><b>Freigabe</b><span>Du klickst Ja oder Nein. Kein Ja, keine Wirkung — egal wie klug der Vorschlag ist.</span></div>
+      <div class="schritt-w"><i>04</i><b>Ausführung</b><span>Eingetragen, protokolliert, mit deinem Namen dran — und jederzeit zurücknehmbar.</span></div>
     </div>
   </div>
 </section>
@@ -182,81 +214,87 @@
     <div class="kopf" data-reveal>
       <span class="mikro">Die Bereiche</span>
       <h2>Gebaut, wie ihr arbeitet — nicht wie eine Kategorie.</h2>
-      <p>Jeder Bereich folgt demselben Bauprinzip: Kennzahl → Abweichung → Handlung → Regelkreis. Wenige Zahlen, jede groß. Farbe bedeutet Zustand, nie Dekoration.</p>
+      <p>Jeder Bereich folgt demselben Bauprinzip: Kennzahl → Abweichung → Handlung → Regelkreis. Wenige Zahlen, jede groß. Farbe bedeutet Zustand, nie Dekoration. Alle Bilder zeigen Beispieldaten.</p>
     </div>
     <div class="tabs" role="tablist" aria-label="Bereiche">
       <button role="tab" aria-selected="true" data-tab="markt" style="--f:#FF9F43"><i></i>Markttraktion</button>
-      <button role="tab" aria-selected="false" data-tab="brain" style="--f:#C77DFF"><i></i>Brain</button>
-      <button role="tab" aria-selected="false" data-tab="kalender" style="--f:#4FC3F7"><i></i>Kalender</button>
-      <button role="tab" aria-selected="false" data-tab="zahlen" style="--f:#58D9CD"><i></i>Zahlen</button>
-      <button role="tab" aria-selected="false" data-tab="gesundheit" style="--f:#3DE28B"><i></i>Gesundheit</button>
-      <button role="tab" aria-selected="false" data-tab="hoi" style="--f:#FFC93C"><i></i>Head of IT</button>
+      <button role="tab" aria-selected="false" data-tab="brain" style="--f:#C77DFF" tabindex="-1"><i></i>Brain</button>
+      <button role="tab" aria-selected="false" data-tab="kalender" style="--f:#4FC3F7" tabindex="-1"><i></i>Kalender</button>
+      <button role="tab" aria-selected="false" data-tab="zahlen" style="--f:#58D9CD" tabindex="-1"><i></i>Zahlen</button>
+      <button role="tab" aria-selected="false" data-tab="gesundheit" style="--f:#3DE28B" tabindex="-1"><i></i>Gesundheit</button>
+      <button role="tab" aria-selected="false" data-tab="hoi" style="--f:#FFC93C" tabindex="-1"><i></i>Head of IT</button>
     </div>
 
     <div class="bereich aktiv" data-panel="markt" style="--f:#FF9F43">
       <div class="text"><h3>Markttraktion</h3><p>Kontakte, Firmen, Leads, Deals, Follow-ups, Marketing, Events — ein System mit einem Traktions-Index. Ein Deal entsteht nur auf einem Weg, jede Stufe endet mit einem Ereignis auf Kundenseite, kein Follow-up fällt runter.</p>
         <ul><li>Deal-Board mit Server-Regeln: verloren nur mit Grund, weiter nur mit nächstem Schritt</li><li>Follow-up-Ebene: Zusagen, Wiedervorlagen, Kadenz je Kreis — an einer Stelle</li><li>DSGVO im Code: Art. 14, Werbesperre, Einwilligung, Betroffenenanträge</li></ul></div>
-      <div class="schirm"><div class="titelzeile"><span>Deals · Board</span><span>Prognose 34,8 T€</span></div>
+      <div class="app"><div class="app-kopf"><span class="punkte"><i></i><i></i><i></i></span><span class="titel">Markttraktion · Deals</span><span class="rechts"><span>Prognose 34,8 T€</span></span></div>
+        <div class="app-rumpf"><div class="app-leiste" aria-hidden="true"><i>H</i><i>J</i><i class="an">S</i></div><div class="app-inhalt">
         <div class="spalten3">
-          <div><div class="mikro" style="margin-bottom:6px">SQL · 30 %</div><div class="deal"><b>Connect App</b><span class="leise">nächster Schritt: Bedarfsgespräch Do</span></div></div>
-          <div><div class="mikro" style="margin-bottom:6px">Angebot · 75 %</div><div class="deal" style="border-color:rgba(255,159,67,.4)"><b>ACME Venetian</b><span class="leise">Angebot besprechen · heute</span></div><div class="deal" style="margin-top:6px"><b>ILD Institute</b><span class="leise">Entscheidung 14.10.</span></div></div>
-          <div><div class="mikro" style="margin-bottom:6px">Abschluss · 90 %</div><div class="deal"><b>One Finance</b><span class="leise">Vertrag raus · Zahlungsweg geklärt</span></div></div>
+          <div><div class="mikro" style="margin-bottom:6px">SQL · 30 %</div><div class="deal"><b>Studio Lenz</b><span class="leise">nächster Schritt: Bedarfsgespräch Do</span></div></div>
+          <div><div class="mikro" style="margin-bottom:6px">Angebot · 75 %</div><div class="deal" style="border-color:rgba(255,159,67,.4)"><b>Nordlicht GmbH</b><span class="leise">Angebot besprechen · heute</span></div><div class="deal" style="margin-top:6px"><b>Kanzlei Weiß</b><span class="leise">Entscheidung 14.10.</span></div></div>
+          <div><div class="mikro" style="margin-bottom:6px">Abschluss · 90 %</div><div class="deal"><b>Atelier Fuchs</b><span class="leise">Vertrag raus · Zahlungsweg geklärt</span></div></div>
         </div>
-        <div class="karten" style="margin-top:12px"><div class="karte"><div class="k">Win Rate · 180 T</div><div class="z" style="color:#3DE28B">42 %</div><div class="u">5 von 12</div></div><div class="karte"><div class="k">Sales-Zyklus</div><div class="z">31 T</div><div class="u">Median</div></div><div class="karte"><div class="k">Überfällig</div><div class="z" style="color:#FFC93C">2</div><div class="u">Follow-ups</div></div></div>
-      </div>
+        <div class="karten"><div class="karte"><div class="k">Win Rate · 180 T</div><div class="z" style="color:#3DE28B">42 %</div><div class="u">5 von 12</div></div><div class="karte"><div class="k">Sales-Zyklus</div><div class="z">31 T</div><div class="u">Median</div></div><div class="karte"><div class="k">Überfällig</div><div class="z" style="color:#FFC93C">2</div><div class="u">Follow-ups</div></div></div>
+      </div></div></div>
     </div>
 
     <div class="bereich" data-panel="brain" style="--f:#C77DFF">
-      <div class="text"><h3>Brain</h3><p>Dein Obsidian-Vault ist die Wahrheit. MAKE OS baut darüber einen Index — Volltext und lokale Embeddings — und lässt dich mit deinem Wissen chatten wie mit einem Wikipedia, das nur aus deinen Notizen besteht. Jede Antwort mit Quelle und Abschnitt.</p>
+      <div class="text"><h3>Brain</h3><p>Dein Obsidian-Vault ist die Wahrheit. MAKE OS baut darüber einen Index — Volltext und lokale Embeddings — und lässt dich mit deinem Wissen sprechen wie mit einem Nachschlagewerk, das nur aus deinen Notizen besteht. Jede Antwort mit Quelle und Abschnitt.</p>
         <ul><li>Konstitution und Regelregister: was für Jarvis immer gilt, von euch freigegeben</li><li>Brain-Inbox: Jarvis schlägt vor, ihr nehmt an — mit Herkunft an jeder Notiz</li><li>Nächtliche Konsolidierung: der Tag wird zu Vorschlägen verdichtet</li></ul></div>
-      <div class="schirm"><div class="titelzeile"><span>Wissen · Fragen</span><span>458 Notizen · 3.751 Abschnitte</span></div>
+      <div class="app"><div class="app-kopf"><span class="punkte"><i></i><i></i><i></i></span><span class="titel">Wissen · Fragen</span><span class="rechts"><span>458 Notizen · 3.751 Abschnitte</span></span></div>
+        <div class="app-rumpf"><div class="app-leiste" aria-hidden="true"><i>H</i><i>J</i><i class="an">S</i></div><div class="app-inhalt">
         <div class="suche">
-          <div class="feld">Was haben wir mit Frank zur Kapitalseite vereinbart?</div>
-          <div class="treffer"><b>Frank Mathick › Rolle</b><small>Personen · Stand 20.09.</small><span>„Frank kümmert sich um die <mark>Kapitalseite</mark> und trifft Kevin dienstags …“</span></div>
-          <div class="treffer"><b>Protokoll 2026-08-30 › Beteiligung</b><small>Protokolle · Update-Block oben gilt</small><span>„… Beteiligung 20 Prozent, <mark>Kapital</mark>zusage bis Q4 …“</span></div>
+          <div class="feld">Was haben wir mit Jonas zum Pilotprojekt vereinbart?</div>
+          <div class="treffer"><b>Jonas Berg › Rolle</b><small>Personen · Stand 20.09.</small><span>„Jonas begleitet das <mark>Pilotprojekt</mark> bei Nordlicht und trifft uns dienstags …“</span></div>
+          <div class="treffer"><b>Protokoll 2026-09-12 › Nordlicht</b><small>Protokolle · Update-Block oben gilt</small><span>„… <mark>Pilot</mark> ab Oktober, drei Standorte, Entscheidung über den Ausbau im Q1 …“</span></div>
           <div class="leise" style="font-size:12px">Antwort nur aus dem Brain. Steht es nicht drin, sagt es das — statt zu raten.</div>
         </div>
-      </div>
+      </div></div></div>
     </div>
 
     <div class="bereich" data-panel="kalender" style="--f:#4FC3F7">
-      <div class="text"><h3>Kalender</h3><p>Tag, Woche, Monat, Agenda — direkt auf iCloud, mit euren Kalendern und Farben. „Mo 10 Uhr Kaffee mit Frank 45min“ reicht als Eingabe. Ziehen verschiebt, Serie und Erinnerung kommen mit, Fristen aus dem ganzen System liegen daneben.</p>
-        <ul><li>Der Agent prüft die Woche: Konflikte, Schutz-Blöcke für Reha und Fokus</li><li>Kalender je Person und Space — Privat und Business sehen sich als „belegt“</li><li>Nie Einladungen, nie Versand: MAKE OS schreibt, lädt aber niemanden ein</li></ul></div>
-      <div class="schirm"><div class="titelzeile"><span>KW 40 · Woche</span><span>iCloud · live</span></div>
+      <div class="text"><h3>Kalender</h3><p>Tag, Woche, Monat, Agenda — direkt auf iCloud, mit euren Kalendern und Farben. „Mo 10 Uhr Kaffee mit Jonas 45min“ reicht als Eingabe. Ziehen verschiebt, Serie und Erinnerung kommen mit, Fristen aus dem ganzen System liegen daneben.</p>
+        <ul><li>Der Agent prüft die Woche: Konflikte, Schutz-Blöcke für Training und Fokus</li><li>Kalender je Person und Raum — Privat und Business sehen sich als „belegt“</li><li>Nie Einladungen, nie Versand: MAKE OS schreibt, lädt aber niemanden ein</li></ul></div>
+      <div class="app"><div class="app-kopf"><span class="punkte"><i></i><i></i><i></i></span><span class="titel">Kalender · Woche 40</span><span class="rechts"><span>iCloud · live</span></span></div>
+        <div class="app-rumpf"><div class="app-leiste" aria-hidden="true"><i>H</i><i>J</i><i class="an">S</i></div><div class="app-inhalt">
         <div class="woche">
-          <div class="tag"><b>MO 28.</b><div class="termin" style="--f:#4FC3F7">Power Hour<small>09:00–10:00</small></div><div class="termin" style="--f:#8F86FF">Fokus: Markttraktion<small>10:30–12:00</small></div></div>
-          <div class="tag"><b>DI 29.</b><div class="termin" style="--f:#4FC3F7">Frank · Kapitalseite<small>10:00–11:00</small></div><div class="termin" style="--f:#FF7EB6">Abend zu zweit<small>19:00</small></div></div>
-          <div class="tag"><b>MI 30.</b><div class="termin" style="--f:#FF9F43">ACME · Angebot<small>11:00–11:30</small></div><div class="termin" style="--f:#3DE28B">Reha-Übungen<small>17:30</small></div></div>
+          <div class="tag"><b>MO 28.</b><div class="termin" style="--f:#4FC3F7">Power Hour<small>09:00–10:00</small></div><div class="termin" style="--f:#8F86FF">Fokus: Angebot<small>10:30–12:00</small></div></div>
+          <div class="tag"><b>DI 29.</b><div class="termin" style="--f:#4FC3F7">Jonas · Pilotprojekt<small>10:00–11:00</small></div><div class="termin" style="--f:#FF7EB6">Abend zu zweit<small>19:00</small></div></div>
+          <div class="tag"><b>MI 30.</b><div class="termin" style="--f:#FF9F43">Nordlicht · Angebot<small>11:00–11:30</small></div><div class="termin" style="--f:#3DE28B">Training<small>17:30</small></div></div>
           <div class="tag"><b>DO 1.</b><div class="termin" style="--f:#FFC93C">USt-Voranmeldung<small>Frist</small></div></div>
           <div class="tag"><b>FR 2.</b><div class="termin" style="--f:#4FC3F7">Wochenreview<small>14:00–15:00</small></div><div class="termin" style="--f:#58D9CD">Scoreboard<small>15:00</small></div></div>
         </div>
-      </div>
+      </div></div></div>
     </div>
 
     <div class="bereich" data-panel="zahlen" style="--f:#58D9CD">
       <div class="text"><h3>Zahlen</h3><p>Privat, Business, Gesamt — sauber getrennt, in einer Sicht. Kontostände, Liquiditätsvorschau, Forderungen, Fixkosten, Steuertermine. Ein Head of Finance liest die Lage, nennt Befunde und legt Vorschläge zur Freigabe.</p>
         <ul><li>Jede Zahl zeigt ihre Herkunft — keine Runway aus dem Bauch</li><li>Haushalt und Business rechnen getrennt, der Mindestumsatz verbindet beide</li><li>Steuern als Hinweis mit Terminen, keine Steuerberatung</li></ul></div>
-      <div class="schirm"><div class="titelzeile"><span>Zahlen · Business</span><span>Stand heute</span></div>
+      <div class="app"><div class="app-kopf"><span class="punkte"><i></i><i></i><i></i></span><span class="titel">Zahlen · Business</span><span class="rechts"><span>Stand heute</span></span></div>
+        <div class="app-rumpf"><div class="app-leiste" aria-hidden="true"><i>H</i><i>J</i><i class="an">S</i></div><div class="app-inhalt">
         <div class="karten"><div class="karte"><div class="k">Runway</div><div class="z">7,4 Mon</div><div class="u">bei heutiger Last</div></div><div class="karte"><div class="k">Forderungen</div><div class="z">12,6 T€</div><div class="u">2 überfällig</div></div><div class="karte"><div class="k">MRR</div><div class="z" style="color:#3DE28B">9,0 T€</div><div class="u">3 Mandate</div></div></div>
-        <div class="liste" style="margin-top:12px"><div class="z" style="--f:#FFC93C"><i></i><span>Rechnung One Finance · 14 Tage überfällig</span><small>Erinnern?</small></div><div class="z" style="--f:#58D9CD"><i></i><span>USt-Voranmeldung Q3 · 10.10.</span><small>Frist</small></div><div class="z" style="--f:#3DE28B"><i></i><span>Zahlungseingang ILD · 3.000 €</span><small>gestern</small></div></div>
-      </div>
+        <div class="liste"><div class="z" style="--f:#FFC93C"><i></i><span>Rechnung Atelier Fuchs · 14 Tage überfällig</span><small>Erinnern?</small></div><div class="z" style="--f:#58D9CD"><i></i><span>USt-Voranmeldung Q3 · 10.10.</span><small>Frist</small></div><div class="z" style="--f:#3DE28B"><i></i><span>Zahlungseingang Kanzlei Weiß · 3.000 €</span><small>gestern</small></div></div>
+      </div></div></div>
     </div>
 
     <div class="bereich" data-panel="gesundheit" style="--f:#3DE28B">
-      <div class="text"><h3>Gesundheit</h3><p>Erholung, Schlaf, Puls aus Whoop, dazu Journal, Haut, Ernährung und Routinen. Ein Takt aufs Handy — morgens, mittags, abends — der nur sagt, was heute zählt. Kein Gamification-Feuerwerk. Eine Zahl, ein Hebel.</p>
+      <div class="text"><h3>Gesundheit</h3><p>Erholung, Schlaf, Puls aus dem Wearable, dazu Journal, Ernährung und Routinen. Ein Takt aufs Handy — morgens, mittags, abends — der nur sagt, was heute zählt. Kein Punkte-Feuerwerk. Eine Zahl, ein Hebel.</p>
         <ul><li>Der Gesundheits-Index ist eine der vier Säulen des Wachstums-Scores</li><li>Ernährungs-Agent plant die Woche für den Haushalt, Einkaufsliste inklusive</li><li>Körperdaten sieht nur die Person selbst — auch Jarvis fragt vorher</li></ul></div>
-      <div class="schirm"><div class="titelzeile"><span>Gesundheit · heute</span><span>Whoop · 06:40</span></div>
+      <div class="app"><div class="app-kopf"><span class="punkte"><i></i><i></i><i></i></span><span class="titel">Gesundheit · heute</span><span class="rechts"><span>Wearable · 06:40</span></span></div>
+        <div class="app-rumpf"><div class="app-leiste" aria-hidden="true"><i class="an">H</i><i>J</i><i>S</i></div><div class="app-inhalt">
         <div class="karten"><div class="karte"><div class="k">Erholung</div><div class="z" style="color:#FFC93C">62 %</div><div class="u">gelb · leichter Tag</div></div><div class="karte"><div class="k">Schlaf</div><div class="z">6:48</div><div class="u">Ziel 7:30</div></div><div class="karte"><div class="k">HRV</div><div class="z">54</div><div class="u">Ø 7 Tage 51</div></div></div>
-        <div class="liste" style="margin-top:12px"><div class="z" style="--f:#3DE28B"><i></i><span>Reha-Übungen · 17:30 geblockt</span><small>Routine</small></div><div class="z" style="--f:#8F86FF"><i></i><span>Heute vor Mitternacht ins Bett — größter Hebel</span><small>Hinweis</small></div></div>
-      </div>
+        <div class="liste"><div class="z" style="--f:#3DE28B"><i></i><span>Training · 17:30 geblockt</span><small>Routine</small></div><div class="z" style="--f:#8F86FF"><i></i><span>Heute vor Mitternacht ins Bett — größter Hebel</span><small>Hinweis</small></div></div>
+      </div></div></div>
     </div>
 
     <div class="bereich" data-panel="hoi" style="--f:#FFC93C">
       <div class="text"><h3>Head of IT</h3><p>Die Software überwacht sich selbst — innen, auf dem Server und von außen wie ein Fremder. Platte, Speicher, Container, Fehlanmeldungen, Zertifikat, Sicherung, KI-Guthaben: Ampeln mit Schwelle und Satz. Und eine Code-Wache bei jedem Stand.</p>
         <ul><li>Außenblick alle sechs Stunden mit eingeschränktem Schlüssel</li><li>Anmelde-Alarm bei neuem Netz oder fünf Fehlversuchen</li><li>Kurzbericht aufs Handy, wenn etwas rot wird</li></ul></div>
-      <div class="schirm"><div class="titelzeile"><span>Head of IT · Lage</span><span style="color:#3DE28B">alles grün</span></div>
+      <div class="app"><div class="app-kopf"><span class="punkte"><i></i><i></i><i></i></span><span class="titel">Head of IT · Lage</span><span class="rechts"><span style="color:#3DE28B">alles grün</span></span></div>
+        <div class="app-rumpf"><div class="app-leiste" aria-hidden="true"><i>H</i><i>J</i><i class="an">S</i></div><div class="app-inhalt">
         <div class="ampeln"><div class="ampel" style="--f:#3DE28B"><i></i><span>Erreichbar von außen</span><small>Status 200 · 312 ms</small></div><div class="ampel" style="--f:#3DE28B"><i></i><span>Bestände im Ruhezustand</span><small>AES-256-GCM</small></div><div class="ampel" style="--f:#3DE28B"><i></i><span>Letzte Sicherung</span><small>vor 4 h</small></div><div class="ampel" style="--f:#FFC93C"><i></i><span>Sicherheitsupdates</span><small>3 offen · heute Nacht</small></div><div class="ampel" style="--f:#3DE28B"><i></i><span>Fehlanmeldungen · 24 h</span><small>0</small></div></div>
-      </div>
+      </div></div></div>
     </div>
   </div>
 </section>
@@ -322,8 +360,8 @@
       </div>
       <div data-reveal style="--d:120ms">
         <div class="personen">
-          <div class="person"><div class="bild">Foto Malin</div><b>Malin</b><span>Mitgründerin · Zahlen, Ordnung, Haushalt und das Auge für das, was fehlt. Hat mit dem Finanz-Cockpit den Grundstein für die privaten Finanzen gelegt.</span></div>
-          <div class="person"><div class="bild">Foto Kevin</div><b>Kevin Dieckmann</b><span>Mitgründer · Unternehmer und Berater (KEMARIS, KD Ventures). Baut MAKE OS mit KI als täglichem Werkzeug — und mit der Regel, dass die KI nie das letzte Wort hat.</span></div>
+          <div class="person" style="--f:#FF7EB6"><div class="bild" aria-label="Malin">M</div><b>Malin</b><span>Mitgründerin · Zahlen, Ordnung, Haushalt und das Auge für das, was fehlt. Hat mit dem ersten Finanz-Cockpit den Grundstein für die privaten Finanzen gelegt.</span></div>
+          <div class="person" style="--f:#58D9CD"><div class="bild" aria-label="Kevin">K</div><b>Kevin</b><span>Mitgründer · Unternehmer und Berater. Baut MAKE OS mit KI als täglichem Werkzeug — und mit der Regel, dass die KI nie das letzte Wort hat.</span></div>
         </div>
         <p class="zitat">„Wir wollten keine Auswertung, die uns hinterherrechnet. Wir wollten ein System, das uns beide führt — und das uns gehört.“</p>
       </div>
@@ -340,9 +378,9 @@
       <p>MAKE OS ist vor dem Start. Was wir zeigen können, ist, was gebaut ist — nicht, wer es angeblich benutzt.</p>
     </div>
     <div class="zahlen">
-      <div class="zahl-karte" data-reveal><div class="z"><span data-count="30">0</span></div><span>Agenten und Systemläufe — vom Head of Sales bis zur nächtlichen Brain-Konsolidierung</span></div>
-      <div class="zahl-karte" data-reveal style="--d:80ms"><div class="z"><span data-count="40">0</span><small>+</small></div><span>Werkzeuge, mit denen Jarvis einträgt, plant, merkt und vorschlägt</span></div>
-      <div class="zahl-karte" data-reveal style="--d:160ms"><div class="z"><span data-count="900">0</span><small>+</small></div><span>automatische Tests, die bei jedem Stand laufen — dazu Audit, Geheimnis- und Abhängigkeitsprüfung</span></div>
+      <div class="zahl-karte" data-reveal><div class="z"><span data-count="30">30</span></div><span>Agenten und Systemläufe — vom Head of Sales bis zur nächtlichen Brain-Konsolidierung</span></div>
+      <div class="zahl-karte" data-reveal style="--d:80ms"><div class="z"><span data-count="40">40</span><small>+</small></div><span>Werkzeuge, mit denen Jarvis einträgt, plant, merkt und vorschlägt</span></div>
+      <div class="zahl-karte" data-reveal style="--d:160ms"><div class="z"><span data-count="900">900</span><small>+</small></div><span>automatische Tests, die bei jedem Stand laufen — dazu Audit, Geheimnis- und Abhängigkeitsprüfung</span></div>
       <div class="zahl-karte" data-reveal style="--d:240ms"><div class="z"><span data-count="0">0</span></div><span>Nachrichten, die je ohne ein menschliches Ja verschickt wurden. Und das bleibt so.</span></div>
     </div>
   </div>
@@ -354,7 +392,7 @@
     <div class="kopf" data-reveal>
       <span class="mikro">Für wen</span>
       <h2>Für Menschen, die zwei Systeme gleichzeitig führen.</h2>
-      <p>MAKE OS ist kein Werkzeug für Teams und keine Vorlage für alle. Es ist für die, bei denen Leben und Unternehmen dieselbe Person sind.</p>
+      <p>MAKE OS ist keine Software für große Teams und keine Vorlage für alle. Es ist für die, bei denen Leben und Unternehmen dieselbe Person sind.</p>
     </div>
     <div class="raeume">
       <div class="raum" data-reveal style="--f:#4FC3F7"><div class="kopfz"><i></i>Die Gründerin, der Gründer</div><p>Du baust ein Unternehmen und bist zugleich sein wichtigstes Kapital. Du willst wissen, ob die Woche trägt — bevor der Körper es dir sagt.</p></div>
@@ -387,7 +425,7 @@
       <div class="eintrag" data-reveal style="--d:120ms"><time>27.09.</time><div><b>Head of IT</b><span>Lagebild innen, Host und von außen · CSP-Meldeweg · Anmelde-Alarm · Code-Wache bei jedem Stand</span></div></div>
       <div class="eintrag" data-reveal style="--d:180ms"><time>27.09.</time><div><b>Markttraktion komplett</b><span>Deals mit Server-Regeln · Follow-up-Ebene · Marketing-Strecke und Anfragen · Events mit Brücke zu Lead und Deal</span></div></div>
       <div class="eintrag" data-reveal style="--d:240ms"><time>26.09.</time><div><b>Verschlüsselung im Ruhezustand und 2FA</b><span>AES-256-GCM je Bestand · Zwei-Faktor-Anmeldung · Anmelde-Protokoll · Haushalts-Räume</span></div></div>
-      <div class="eintrag" data-reveal style="--d:300ms"><time>25.09.</time><div><b>Live auf dem eigenen Server</b><span>Hetzner, Deutschland · nächtliche verschlüsselte Sicherung · iCloud-Kalender direkt · Zeit &amp; Fokus als Säule</span></div></div>
+      <div class="eintrag" data-reveal style="--d:300ms"><time>25.09.</time><div><b>Live auf dem eigenen Server</b><span>Deutschland · nächtliche verschlüsselte Sicherung · iCloud-Kalender direkt · Zeit &amp; Fokus als Säule</span></div></div>
     </div>
   </div>
 </section>
@@ -404,8 +442,9 @@
       <details data-reveal style="--d:60ms"><summary>Welche KI steckt drin — und was bekommt sie zu sehen?</summary><p>Jarvis nutzt ein Sprachmodell über eine Schnittstelle. Es bekommt genau die Frage und die Arbeitsfelder, die dafür nötig sind — keine privaten Notizen, keine gesperrten Personen, nie den ganzen Bestand. Ohne Guthaben laufen die Regelwerke weiter.</p></details>
       <details data-reveal style="--d:120ms"><summary>Kann Jarvis etwas verschicken oder bezahlen?</summary><p>Nein. Alles Ausgehende — Mail, Nachricht, Einladung, Zahlung — entsteht als Vorschlag im Stapel und wartet auf dein Ja. Das ist keine Einstellung, sondern gebaut.</p></details>
       <details data-reveal style="--d:180ms"><summary>Brauche ich Obsidian?</summary><p>Dein Brain ist ein Ordner mit Markdown-Dateien. Obsidian ist der beste Editor dafür, aber kein Muss. MAKE OS liest und indexiert den Ordner — und schreibt nur, was du freigegeben hast.</p></details>
-      <details data-reveal style="--d:240ms"><summary>Funktioniert das zu zweit?</summary><p>Dafür ist es gebaut. Zwei Konten, drei Räume: privat-kevin, privat-malin, gemeinsam. Die Trennung passiert vor der Suche, nicht danach. Änderungen tragen einen Stand — niemand überschreibt still den anderen.</p></details>
-      <details data-reveal style="--d:300ms"><summary>Was kostet es?</summary><p>MAKE OS ist vor dem Start. Wir laden persönlich ein und sprechen über Server, Einrichtung und Begleitung — ohne Preisliste, die noch nicht stimmt.</p></details>
+      <details data-reveal style="--d:240ms"><summary>Funktioniert das zu zweit?</summary><p>Dafür ist es gebaut. Zwei Konten, drei Räume: privat, privat, gemeinsam. Die Trennung passiert vor der Suche, nicht danach. Änderungen tragen einen Stand — niemand überschreibt still den anderen.</p></details>
+      <details data-reveal style="--d:300ms"><summary>Sind die Namen auf dieser Seite echt?</summary><p>Nein. Alle Personen, Firmen und Termine in den Bildern sind erfunden. Echte Daten gehören auf euren Server — nicht auf eine Homepage.</p></details>
+      <details data-reveal style="--d:360ms"><summary>Was kostet es?</summary><p>MAKE OS ist vor dem Start. Wir laden persönlich ein und sprechen über Server, Einrichtung und Begleitung — ohne Preisliste, die noch nicht stimmt.</p></details>
     </div>
   </div>
 </section>
@@ -447,11 +486,14 @@
 
 <footer>
   <div class="wrap">
-    <span>© 2026 MAKE OS · Malin &amp; Kevin · Deutschland</span>
-    <span><a href="#impressum">Impressum</a> · <a href="#datenschutz">Datenschutz</a> · <span class="leise">Kein Tracking, keine Cookies, keine Schriften von Dritten.</span></span>
+    <div><a class="marke" href="#top" style="margin-bottom:10px"><svg viewBox="0 0 240 240" aria-hidden="true"><path d="M50 176 L50 72 L119 141" fill="none" stroke="currentColor" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/><path d="M121 141 L190 72 L190 176" fill="none" stroke="#58D9CD" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="wort"><span class="ma">MA</span><span class="ke">KE</span><span class="os">OS</span></span></a><span>Life &amp; Business Operating System.<br>Gebaut von Malin und Kevin. Läuft in Deutschland.</span></div>
+    <div><b>Seite</b><a href="#system">Ein System</a><a href="#jarvis">Jarvis</a><a href="#bereiche">Bereiche</a><a href="#server">Dein Server</a><a href="#make">Warum MAKE</a></div>
+    <div><b>Rechtliches</b><a href="#impressum">Impressum</a><a href="#datenschutz">Datenschutz</a><span>Kein Tracking, keine Cookies, keine Schriften von Dritten.</span></div>
+    <div class="unten"><span>© 2026 MAKE OS · Malin &amp; Kevin</span><span>Alle Namen, Firmen und Termine auf dieser Seite sind Beispiele.</span></div>
   </div>
 </footer>
 
+<button class="nachoben" type="button" aria-label="Nach oben">↑</button>
 <script src="js/site.js" defer></script>
 </body>
 </html>

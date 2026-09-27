@@ -99,6 +99,14 @@ Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen un
   - Tests: `crm-deal-regeln` (Server-Regeln), `crm-fundament` angepasst (Upsert neuer Deals ist jetzt ein Fehler). Stand: 100 Dateien · 877 Tests grün, tsc und Lint sauber.
   - **Offen (Kevin entscheidet):** Farbe des Reiters „Firmen“ (heute neutral wie Kontakte, obwohl die Leads darin liegen); ob „Meins/Malin“-Filter auch im Board sichtbar sein soll.
 
+### MAKE OS Homepage — zweiter Durchgang (27.09., nur lokal, `homepage/`)
+
+Kevin: „Grundgedanken sehr gut, CI gefällt mir. Logo noch nicht so. Nie echte Namen, Termine oder Kundendaten — du bist hier Marken- und Marketingprofi. UX kann mehr geben.“
+- **Nie wieder echte Daten:** alle Namen, Firmen, Termine und Protokolle in den Bildern erfunden; Gesundheitsdetails und Firmennamen der Gründer entfernt; `homepage/pruefen.mjs` prüft `index.html` gegen eine Sperrliste (CRM-/Kalender-/Vault-Namen, Firmen, verbotene Wörter) und bricht ab — vor jedem Stand laufen lassen.
+- **Logo F:** zwei Hälften (MA hell, KE türkis) werden in der Fuge ein M; Wortmarke gleich geteilt; App-Icon, hell, einfarbig, Favicon.
+- **UX:** App-Rahmen um jedes Produktbild (wie die Software: Fensterkopf, Leiste Home/Jarvis/System) · Aurora-Hero mit Fakten · Fortschrittsbalken, Scrollspy, Burger, Nach-oben · Weg eines Vorschlags als animierte Stufen · Start-Widgets · Founder-Initialen · Regler gestapelt auf Handy · Reiter per Pfeiltasten.
+- Behoben dabei: Klassen-Kollision `.jarvis` (Chat-Blasen wurden zu Rastern), Regler halbdurchsichtig, doppelter Hebel-Text.
+
 ### MAKE OS Homepage — erster Durchgang (27.09., nur lokal, `homepage/`)
 
 Kevin: „Homepage für MAKE OS auf dem UX-Design der Software, Logo entwerfen, USP selbst positionieren, Top-1 % als Maßstab, Founder Malin + Kevin = MA-KE, nur einmal testen.“
