@@ -22,6 +22,9 @@ Stellen: `components/os/HorizontView.tsx`, `app/os/planung/*`, `components/os/Ro
 10. **Ziel-Kaskade:** Jahresziel → Quartal → Woche → Tag automatisch abgeleitet (Zahlenziele anteilig, Termin-Ziele als Meilensteine im Quartal), abgeleitete Ziele sind als „abgeleitet“ markiert; auf jeder Ebene zusätzlich eigene Ziele anlegbar.
 11. **Routinen:** Trennung **Privat / Business**, **Blöcke** je Wochentag (wann Privat, wann Arbeit — Wochenvorlage je Person), Routinen **je Person** (Malin, Kevin) und **gemeinsam** zuschaltbar, **Rhythmus** täglich · 3×/Woche · wöchentlich · monatlich · quartalsweise · halbjährlich · jährlich (z. B. Arzt, Steuererklärung) mit Fälligkeit, **Home zeigt die heute fälligen Routinen** (Widget, abhakbar), Reihenfolge per Pfeil.
 
+## Paket D · Auswahl smarter (Kevin 27.09. abends, Nachtrag)
+„Das Rollen-Thema und das ständige Anklicken muss smarter werden — dass man immer alle sieht, ist nicht gut.“ Entscheidung: **Chip + Menü + Vorschlag**. Sichtbar nur der gesetzte Wert als Chip, Klick öffnet ein Menü; leere Felder zeigen „+ Rolle“ oder einen Vorschlag aus den Daten (z. B. Geschäftsführerin → Entscheider), Übernahme nur per Klick. Bauteil `components/os/crm/Wahl.tsx`, Vorschläge `lib/crm/vorschlaege.ts`. Angewendet auf Deal-Akte (Personen & Rollen), Kontaktakte (Beziehung, Datenschutz, Matrix), Deal-Detail, Mandat, Gäste, Anlege-Formulare. Pillenreihen bleiben nur für Filter, Reiter, Navigation und echte Zweier-Umschalter.
+
 ## Entscheidungen Kevin (27.09. abends)
 - Akte: **Reiter in der Akte** (Überblick · Stammdaten · Beziehung · Verlauf · Datenschutz), kompakter Kopf, je Reiter zwei Spalten.
 - Fixkosten umstufen: **nur dieser Posten** (keine Empfänger-Regel).
