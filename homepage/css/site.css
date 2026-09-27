@@ -136,8 +136,8 @@ body[data-spur=business] .hero h1 .akz{color:var(--leucht-business)}
 @media (max-width:520px){h1{font-size:clamp(30px,9vw,40px)}.hero-fakten{display:none}}
 
 /* Sicht-Pille: Privat | Business — erscheint nach dem Hero, die ganze Seite folgt */
-.spur{position:fixed;left:50%;bottom:18px;transform:translate(-50%,14px);z-index:45;display:inline-flex;align-items:center;gap:4px;padding:4px 4px 4px 14px;border-radius:999px;background:rgba(22,27,31,.94);border:1px solid rgba(255,255,255,.1);box-shadow:0 12px 32px rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .3s,transform .3s}
-.spur.da{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.spur{position:fixed;left:18px;bottom:18px;transform:translate(0,14px);z-index:45;display:inline-flex;align-items:center;gap:4px;padding:4px 4px 4px 14px;border-radius:999px;background:rgba(22,27,31,.94);border:1px solid rgba(255,255,255,.1);box-shadow:0 12px 32px rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .3s,transform .3s}
+.spur.da{opacity:1;transform:translate(0,0);pointer-events:auto}
 .spur .mikro{margin-right:6px}
 .spur button,.schalter button{border:none;background:transparent;color:var(--inkDim);font:inherit;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;cursor:pointer;transition:background .2s,color .2s}
 .spur button[aria-pressed=true],.schalter button[aria-pressed=true]{background:rgba(88,217,205,.18);color:var(--aktiv)}
