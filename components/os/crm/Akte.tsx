@@ -1,4 +1,5 @@
 'use client';
+import { phaseVon } from '@/lib/crm/phase';
 
 // ─── Markttraktion · Kontaktakte ────────────────────────────────────────────
 // Kevin 25.09.: rechts oben in der Karteikarte ein Knopf, dahinter „die ganze
@@ -138,7 +139,8 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte }: { api: 
   const zuletzt = k.letzterKontakt ?? vz.zuletzt;
   const termin = crm?.termine?.[k.id];
   const initialen = `${(k.vorname || '').charAt(0)}${(k.nachname || '').charAt(0)}`.toUpperCase() || '?';
-  const pf = phaseFarbe(k.lebensphase);
+  const ph = phaseVon(k, crm?.stand);
+  const pf = phaseFarbe(ph.phase);
   const dealWert = offeneDeals.reduce((s, d) => s + (d.wert.betrag || 0) * (d.wert.basis === 'monat' ? 12 : 1), 0);
   const schrittUeberfaellig = !!k.naechsterSchritt && k.naechsterSchritt.datum < heute;
 
@@ -157,7 +159,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte }: { api: 
             {firma ? <button onClick={() => zuFirma(firma.id)} style={{ background: 'none', border: 'none', padding: 0, color: C.ink, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,.2)', fontSize: TYP.body, fontFamily: SCHRIFT.text }}>{firma.name}</button> : k.firma}
           </div>
           <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Chip farbe={pf}>{phaseLabel(k.lebensphase)}</Chip>{rollenVon(k).map(r => <Chip key={r} farbe={LEUCHT.business}>{ROLLE_LABEL[r]}</Chip>)}{k.kreis && <Chip farbe={LEUCHT.beziehung}>Kreis {k.kreis}</Chip>}
+            <span title={ph.grund}><Chip farbe={pf}>{phaseLabel(ph.phase)}</Chip></span>{rollenVon(k).map(r => <Chip key={r} farbe={LEUCHT.business}>{ROLLE_LABEL[r]}</Chip>)}{k.kreis && <Chip farbe={LEUCHT.beziehung}>Kreis {k.kreis}</Chip>}
             <Chip farbe={C.inkDim}>{STUFE_LABEL[k.stufe]}</Chip>{k.prio && <Chip farbe={C.inkDim}>Prio {k.prio}</Chip>}
             {k.werbesperre && <Chip farbe={LEUCHT.kritisch}>Werbesperre</Chip>}
             <span title={`Hält die Beziehung: ${nameVon(haeltBeziehung(k))}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.inkLeise, marginLeft: 4 }}><Person id={haeltBeziehung(k)} groesse={18} />{nameVon(haeltBeziehung(k))}</span>

@@ -13,12 +13,15 @@
 // (s=sales&a=heute|leads|pipeline|kunden|kampagnen) auf die neuen Reiter — so
 // funktionieren alle Links aus Suche, Befunden, Jarvis und Telegram weiter.
 
-export type Bereich = 'ueberblick' | 'kontakte' | 'firmen' | 'deals' | 'followup' | 'marketing' | 'event' | 'stammdaten';
+export type Bereich = 'ueberblick' | 'kontakte' | 'firmen' | 'deals' | 'followup' | 'sales' | 'marketing' | 'event' | 'stammdaten';
+/** Der Reiter „Sales“ rechts (Kevin 27.09.): Head of Sales · Power Hour · Kampagnen · Auswertung. */
+export type SalesReiterAnsicht = 'head' | 'powerhour' | 'kampagnen' | 'auswertung';
+export const SALES_REITER_ANSICHTEN: SalesReiterAnsicht[] = ['head', 'powerhour', 'kampagnen', 'auswertung'];
 export type DealsAnsicht = 'board' | 'liste' | 'akte' | 'kunden' | 'auswertung';
 export type FollowupAnsicht = 'faellig' | 'woche' | 'powerhour' | 'kadenz';
 /** Der alte Sales-Reiter (bis 26.09.) — nur noch zum Übersetzen alter Adressen. */
 export type SalesAnsicht = 'heute' | 'leads' | 'pipeline' | 'kunden' | 'kampagnen';
-export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'marketing', 'event', 'stammdaten'];
+export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'sales', 'marketing', 'event', 'stammdaten'];
 export const DEALS_ANSICHTEN: DealsAnsicht[] = ['board', 'liste', 'akte', 'kunden', 'auswertung'];
 export const FOLLOWUP_ANSICHTEN: FollowupAnsicht[] = ['faellig', 'woche', 'powerhour', 'kadenz'];
 export const SALES_ANSICHTEN: SalesAnsicht[] = ['heute', 'leads', 'pipeline', 'kunden', 'kampagnen'];
@@ -26,11 +29,11 @@ export const PFAD = '/os/markttraktion';
 
 /** Wohin der alte Sales-Reiter zeigt. */
 const SALES_NEU: Record<SalesAnsicht, { s: Bereich; a?: string }> = {
-  heute: { s: 'followup', a: 'powerhour' },
+  heute: { s: 'sales', a: 'powerhour' },
   leads: { s: 'firmen', a: 'leads' },
   pipeline: { s: 'deals' },
   kunden: { s: 'deals', a: 'kunden' },
-  kampagnen: { s: 'marketing', a: 'kampagnen' },
+  kampagnen: { s: 'sales', a: 'kampagnen' },
 };
 
 /** Bereich + Ansicht aus der Adresse — alte CRM-Bereiche und der alte Sales-Reiter eingeschlossen. */
@@ -39,7 +42,9 @@ export function aufloesen(s?: string | null, a?: string | null): { s: Bereich; a
   if (s === 'heute' || s === 'pipeline' || s === 'kunden') return SALES_NEU[s];
   if (s === 'events') return { s: 'event', ...(ansicht ? { a: ansicht } : {}) };
   if (s === 'kartei') return { s: 'kontakte', ...(ansicht ? { a: ansicht } : {}) };
-  if (s === 'sales') return SALES_NEU[(ansicht && (SALES_ANSICHTEN as string[]).includes(ansicht) ? ansicht : 'heute') as SalesAnsicht];
+  // „Sales“ ist seit 27.09. wieder ein eigener Reiter (rechts); alte Sales-Ansichten (heute, leads, pipeline, kunden) werden übersetzt.
+  if (s === 'sales' && ansicht && (SALES_ANSICHTEN as string[]).includes(ansicht) && !(SALES_REITER_ANSICHTEN as string[]).includes(ansicht)) return SALES_NEU[ansicht as SalesAnsicht];
+  if (s === 'sales') return { s: 'sales', ...(ansicht && ansicht !== 'head' && (SALES_REITER_ANSICHTEN as string[]).includes(ansicht) ? { a: ansicht } : {}) };
   if (s && (BEREICHE as string[]).includes(s)) {
     const b = s as Bereich;
     if (b === 'deals') return { s: b, ...(ansicht && ansicht !== 'board' && (DEALS_ANSICHTEN as string[]).includes(ansicht) ? { a: ansicht } : {}) };

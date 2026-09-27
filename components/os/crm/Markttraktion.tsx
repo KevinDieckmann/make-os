@@ -21,7 +21,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
 import { Seite, LEUCHT } from '../schlank';
-import { aufloesen, markttraktion, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht } from '@/lib/crm/adresse';
+import { aufloesen, markttraktion, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type SalesReiterAnsicht } from '@/lib/crm/adresse';
 import { useCrm } from './daten';
 import { Pillen } from './teile';
 import { Ueberblick, WELT_FARBE } from './Ueberblick';
@@ -36,19 +36,25 @@ import { Stammdaten } from './Stammdaten';
 import { SchnellErfassen } from './SchnellErfassen';
 import { Runden, type RundenArt } from './Runden';
 import { Leads, SalesTrichter } from './Leads';
+import { HeadPanel } from './HeadPanel';
+import { Scoreboard } from './Scoreboard';
+import { Kampagnen } from './Kampagnen';
 import { useZurueck, nachOben } from '../Verlauf';
 import { KontaktAkte } from './Akte';
 import { IndexStreifen, STREIFEN } from '../business/IndexStreifen';
 
-// Reiter in Kevins Reihenfolge (27.09.): Überblick · Kontakte · Firmen · Deals · Follow-up · Marketing · Events · Stammdaten.
-// Der Reiter „Sales“ ist aufgegangen: Leads leben bei den Firmen, die Power Hour im Follow-up, Kampagnen im Marketing.
-const HAUPT: { id: Bereich; label: string; farbe?: string }[] = [
+// Zwei Gruppen (Kevin 27.09. abends): links die Arbeit — Überblick · Kontakte · Firmen · Deals · Follow-up —,
+// rechts die Welten mit ihrem Punkt — Sales · Marketing · Events — und die Stammdaten.
+const LINKS: { id: Bereich; label: string; farbe?: string }[] = [
   { id: 'ueberblick', label: 'Überblick' },
   { id: 'kontakte', label: 'Kontakte' }, { id: 'firmen', label: 'Firmen' },
-  { id: 'deals', label: 'Deals', farbe: WELT_FARBE.sales }, { id: 'followup', label: 'Follow-up', farbe: WELT_FARBE.sales },
-  { id: 'marketing', label: 'Marketing', farbe: WELT_FARBE.marketing }, { id: 'event', label: 'Events', farbe: WELT_FARBE.event },
+  { id: 'deals', label: 'Deals' }, { id: 'followup', label: 'Follow-up' },
+];
+const RECHTS: { id: Bereich; label: string; farbe?: string }[] = [
+  { id: 'sales', label: 'Sales', farbe: WELT_FARBE.sales }, { id: 'marketing', label: 'Marketing', farbe: WELT_FARBE.marketing }, { id: 'event', label: 'Events', farbe: WELT_FARBE.event },
   { id: 'stammdaten', label: 'Stammdaten' },
 ];
+const SALES: { id: SalesReiterAnsicht; label: string }[] = [{ id: 'head', label: 'Head of Sales' }, { id: 'powerhour', label: 'Power Hour' }, { id: 'kampagnen', label: 'Kampagnen' }, { id: 'auswertung', label: 'Auswertung' }];
 const DEALS: { id: DealsAnsicht; label: string }[] = [{ id: 'board', label: 'Board' }, { id: 'liste', label: 'Liste' }, { id: 'kunden', label: 'Kunden' }, { id: 'auswertung', label: 'Auswertung' }];
 const FOLLOWUP: { id: FollowupAnsicht; label: string }[] = [{ id: 'faellig', label: 'Fällig' }, { id: 'woche', label: 'Woche' }, { id: 'powerhour', label: 'Power Hour' }, { id: 'kadenz', label: 'Kadenz' }];
 
@@ -58,6 +64,7 @@ const UNTER: Record<Bereich, string> = {
   firmen: 'Ein Unternehmen, alle Beziehungen — hier wird qualifiziert, bis es ein SQL ist.',
   deals: 'Ab SQL im Closing: jede Stufe endet mit einem Ereignis auf Kundenseite.',
   followup: 'Was heute dran ist — Zusagen, Wiedervorlagen, Kadenz. Nichts fällt runter.',
+  sales: 'Vertrieb als System: der Head of Sales, die Power Hour, Kampagnen und die Auswertung.',
   marketing: 'Ansprechbar sein, nicht laut.',
   event: 'Erfolgreich ist ein Event, wenn danach die richtigen Gespräche stattfinden.',
   stammdaten: 'Sauber halten, was alles andere trägt: Qualität, Werte, Datenschutz.',
@@ -117,6 +124,7 @@ export function MarkttraktionSeite() {
   const name = (p: string) => (p ? p.charAt(0).toUpperCase() + p.slice(1) : '—');
   const dealsAnsicht = (bereich === 'deals' ? (ansicht ?? 'board') : 'board') as DealsAnsicht;
   const followupAnsicht = (bereich === 'followup' ? (ansicht ?? 'faellig') : 'faellig') as FollowupAnsicht;
+  const salesAnsicht = (bereich === 'sales' ? (ansicht ?? 'head') : 'head') as SalesReiterAnsicht;
   // Gespräch festhalten — von überall in der Markttraktion, ein Knopf oben rechts.
   const [erfassen, setErfassen] = useState(false);
   const runde = bereich === 'kontakte' && ansicht?.startsWith('runde-') ? (ansicht.slice(6) as RundenArt) : null;
@@ -128,7 +136,9 @@ export function MarkttraktionSeite() {
     // „+ Gespräch“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (in der Reiterleiste rutschte er aus dem Bild).
     <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<button onClick={() => setErfassen(true)} className="fassbar" style={{ flex: '0 0 auto', padding: '10px 16px', borderRadius: 12, cursor: 'pointer', ...TIEF.knopf(C.aktiv), fontWeight: 700, fontSize: TYP.bedien, fontFamily: SCHRIFT.text, whiteSpace: 'nowrap' }}>+ Gespräch festhalten</button>}>
       <nav aria-label="Markttraktion" style={{ display: 'flex', gap: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none', margin: '-4px 0 2px', paddingBottom: 2 }}>
-        <Reiter liste={HAUPT} aktiv={bereich} onWahl={b => gehe(b)} />
+        <Reiter liste={LINKS} aktiv={bereich} onWahl={b => gehe(b)} />
+        <span aria-hidden style={{ flex: '1 0 8px' }} />
+        <Reiter liste={RECHTS} aktiv={bereich} onWahl={b => gehe(b)} leise />
       </nav>
       <SchnellErfassen api={api} offen={erfassen} onZu={() => setErfassen(false)} kontaktId={bereich === 'kontakte' && auswahl && !auswahl.startsWith('f-') ? auswahl : undefined} />
       {api.fehler && <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{api.fehler}</div>}
@@ -155,6 +165,15 @@ export function MarkttraktionSeite() {
           <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={FOLLOWUP} aktiv={followupAnsicht} onWahl={a => gehe('followup', a === 'faellig' ? undefined : a)} /></div>
           {followupAnsicht === 'powerhour' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
           {followupAnsicht !== 'powerhour' && <FollowUp api={api} ansicht={followupAnsicht} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} zuAkte={zuAkte} />}
+        </>
+      )}
+      {bereich === 'sales' && (
+        <>
+          <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={SALES} aktiv={salesAnsicht} onWahl={a => gehe('sales', a === 'head' ? undefined : a)} /></div>
+          {salesAnsicht === 'head' && (<><HeadPanel head="sales" standardModus="deal_review" zuKontakt={zuKontakt} i={0} nachEntscheid={() => void api.laden()} /><Scoreboard api={api} /><SalesTrichter api={api} zuBereich={zuBereich} /></>)}
+          {salesAnsicht === 'powerhour' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
+          {salesAnsicht === 'kampagnen' && <Kampagnen api={api} zuKontakt={zuKontakt} head="sales" />}
+          {salesAnsicht === 'auswertung' && <Pipeline api={api} ansicht="auswertung" zuKontakt={zuKontakt} zuLeads={() => gehe('firmen', 'leads')} zuAkte={zuAkte} zurueck={() => gehe('sales')} />}
         </>
       )}
       {bereich === 'marketing' && <Marketing api={api} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('marketing', a === 'uebersicht' ? undefined : a)} />}

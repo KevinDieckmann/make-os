@@ -70,6 +70,7 @@ export async function GET(req: Request) {
       stufen: STUFEN.map(s => ({ id: s.id, label: s.label, standard: s.p, p: wahrscheinlichkeit(s.id, crm.wahrscheinlichkeiten), vonHand: typeof crm.wahrscheinlichkeiten?.[s.id] === 'number', weiterWenn: s.weiterWenn, offen: s.offen })),
       verlustgruende: voll.verlustgruende.map(g => ({ grund: g.wert, fest: g.fest, anzahl: verlust[g.wert] ?? 0 })),
       kadenzTage: voll.kadenzTage, kadenzStandard: voll.kadenzStandard,
+      branchen: voll.branchen, typen: voll.typen, kategorien: voll.kategorien,
       kadenzPersonen: Object.fromEntries((['A', 'B', 'C', 'D'] as const).map(k => [k, kontakte.filter(x => x.kreis === k && !x.werbesperre).length])),
       ergebnisse: voll.ergebnisse,
       ziele: voll.ziele,

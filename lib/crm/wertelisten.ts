@@ -22,6 +22,13 @@ export const GRUND_MIN = 2;
 export const GRUND_MAX = 60;
 export const ERGEBNIS_MIN = 2;
 export const ERGEBNIS_MAX = 40;
+export const WERT_MIN = 2;
+export const WERT_MAX = 60;
+
+// Vorbelegte Listen (Kevin 27.09.: „nicht selbst eintippen — vorsortiert, fünf bis zehn Stück“). Eigene kommen in den Stammdaten dazu.
+export const BRANCHEN_STANDARD = ['Software & IT', 'KI & Daten', 'Beratung', 'Finanzen & Fintech', 'Immobilien & Bau', 'Handwerk', 'Industrie & Maschinenbau', 'Handel & E-Commerce', 'Gesundheit', 'Bildung & Coaching', 'Marketing & Agentur', 'Recht & Steuern', 'Medien & Kreativ', 'Energie & Umwelt', 'Gastronomie & Tourismus', 'Öffentlich & Verbände'] as const;
+export const TYPEN_STANDARD = ['Zielkunde', 'Kunde', 'Netzwerk', 'Partner', 'Dienstleister', 'Investor', 'Multiplikator', 'Presse', 'Bewerber', 'Privat'] as const;
+export const KATEGORIEN_STANDARD = ['Tech-Gründer', 'KI-Gründer', 'Mittelstand', 'Berater', 'Investor', 'Agentur', 'Hochschule', 'Verband', 'Ehemalige Kollegen', 'Freunde & Familie'] as const;
 
 /** Lesbare Namen der festen Gesprächsergebnisse (Kennung → Anzeige). */
 export const ERGEBNIS_LABEL: Record<Ergebnis, string> = {
@@ -44,6 +51,9 @@ export interface WertelistenVoll {
   kadenzStandard: Record<Kreis, number>;
   ergebnisse: { wert: string; label: string; fest: boolean }[];
   ziele: Ziele;
+  branchen: { wert: string; fest: boolean }[];
+  typen: { wert: string; fest: boolean }[];
+  kategorien: { wert: string; fest: boolean }[];
 }
 
 const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
@@ -63,6 +73,14 @@ export function eigeneErgebnisse(w?: Wertelisten | null): string[] {
   }
   return raus;
 }
+
+/** Eigene Werte einer Standardliste — ohne die festen, ohne Doppelung. */
+function eigene(roh: unknown, feste: readonly string[]): string[] {
+  const gesehen = new Set(feste.map(schluessel)); const raus: string[] = [];
+  for (const x of Array.isArray(roh) ? roh : []) { const t = norm(String(x ?? '')); if (!t || gesehen.has(schluessel(t))) continue; gesehen.add(schluessel(t)); raus.push(t); }
+  return raus;
+}
+const mitFest = (feste: readonly string[], eig: string[]) => [...feste.map(wert => ({ wert, fest: true })), ...eig.map(wert => ({ wert, fest: false }))];
 
 /** Eigene Verlustgründe — ohne die festen, ohne Doppelung. */
 export const eigeneVerlustgruende = (w?: Wertelisten | null): string[] => verlustgruende(w).slice(VERLUSTGRUENDE.length);
@@ -84,6 +102,9 @@ export function wertelistenVollstaendig(w?: Wertelisten | null): WertelistenVoll
     kadenzTage, kadenzStandard: { ...KREIS_TAKT },
     ergebnisse: [...ERGEBNISSE.map(wert => ({ wert, label: ERGEBNIS_LABEL[wert], fest: true })), ...eigeneErgebnisse(w).map(wert => ({ wert, label: wert, fest: false }))],
     ziele,
+    branchen: mitFest(BRANCHEN_STANDARD, eigene(w?.branchen, BRANCHEN_STANDARD)),
+    typen: mitFest(TYPEN_STANDARD, eigene(w?.typen, TYPEN_STANDARD)),
+    kategorien: mitFest(KATEGORIEN_STANDARD, eigene(w?.kategorien, KATEGORIEN_STANDARD)),
   };
 }
 
@@ -118,7 +139,7 @@ export function wertelistenPruefen(roh: unknown, alt?: Wertelisten | null): Prue
   const neu: Wertelisten = { ...(alt ?? {}) };
   if (!istObjekt(roh)) return { ok: false, wertelisten: alt ?? {}, fehler: ['Wertelisten müssen ein Objekt sein.'] };
 
-  const liste = (feld: 'verlustgruende' | 'ergebnisse', min: number, max: number, feste: Set<string>, name: string) => {
+  const liste = (feld: 'verlustgruende' | 'ergebnisse' | 'branchen' | 'typen' | 'kategorien', min: number, max: number, feste: Set<string>, name: string) => {
     if (!(feld in roh)) return;
     const v = roh[feld];
     if (v === null) { delete neu[feld]; return; }
@@ -137,6 +158,9 @@ export function wertelistenPruefen(roh: unknown, alt?: Wertelisten | null): Prue
   };
   liste('verlustgruende', GRUND_MIN, GRUND_MAX, FESTE_GRUENDE, 'Verlustgrund');
   liste('ergebnisse', ERGEBNIS_MIN, ERGEBNIS_MAX, FESTE_ERGEBNISSE, 'Gesprächsergebnis');
+  liste('branchen', WERT_MIN, WERT_MAX, new Set(BRANCHEN_STANDARD.map(schluessel)), 'Branche');
+  liste('typen', WERT_MIN, WERT_MAX, new Set(TYPEN_STANDARD.map(schluessel)), 'Lead-Typ');
+  liste('kategorien', WERT_MIN, WERT_MAX, new Set(KATEGORIEN_STANDARD.map(schluessel)), 'Kategorie');
 
   if ('kadenzTage' in roh) {
     const v = roh.kadenzTage;

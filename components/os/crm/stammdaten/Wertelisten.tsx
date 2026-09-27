@@ -12,7 +12,7 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Chip, Knopf, Liste, Zeile, LEUCHT, feld } from '../../schlank';
 import { Feld } from '../teile';
 import { euro } from '../daten';
-import { KREISE, KREIS_WORT, ZIEL_FELDER, KADENZ_MIN, KADENZ_MAX, GRUND_MIN, GRUND_MAX, ERGEBNIS_MIN, ERGEBNIS_MAX } from '@/lib/crm/wertelisten';
+import { KREISE, KREIS_WORT, ZIEL_FELDER, KADENZ_MIN, KADENZ_MAX, GRUND_MIN, GRUND_MAX, ERGEBNIS_MIN, ERGEBNIS_MAX, WERT_MIN, WERT_MAX } from '@/lib/crm/wertelisten';
 import { HERKUNFT, RECHTSGRUNDLAGEN } from '@/lib/make-one/crm';
 import type { WertelistenAntwort, StammdatenPost } from './typen';
 
@@ -57,6 +57,9 @@ export function Wertelisten({ w, post, laeuft, zuBereich }: { w: WertelistenAntw
   const eigeneErgebnisse = lokal.ergebnisse.filter(e => !e.fest).map(e => e.wert);
   const setzeGruende = (liste: string[]) => sende({ verlustgruende: liste }, x => ({ ...x, verlustgruende: [...x.verlustgruende.filter(g => g.fest), ...liste.map(grund => ({ grund, fest: false, anzahl: x.verlustgruende.find(g => g.grund === grund)?.anzahl ?? 0 }))] }));
   const setzeErgebnisse = (liste: string[]) => sende({ ergebnisse: liste }, x => ({ ...x, ergebnisse: [...x.ergebnisse.filter(e => e.fest), ...liste.map(wert => ({ wert, label: wert, fest: false }))] }));
+  // Branchen · Lead-Typen · Kategorien (27.09.): vorbelegt, eigene dazu — wirken sofort als Pillen in der Akte.
+  const eigeneVon = (l: 'branchen' | 'typen' | 'kategorien') => (lokal[l] ?? []).filter(x => !x.fest).map(x => x.wert);
+  const setzeListe = (l: 'branchen' | 'typen' | 'kategorien', liste: string[]) => sende({ [l]: liste }, x => ({ ...x, [l]: [...(x[l] ?? []).filter(v => v.fest), ...liste.map(wert => ({ wert, fest: false }))] }));
   const setzeKadenz = (kreis: string, wert: string) => {
     const n = wert.trim() === '' ? null : Number(wert);
     return sende({ kadenzTage: { [kreis]: n } }, x => ({ ...x, kadenzTage: { ...x.kadenzTage, [kreis]: n === null || !Number.isFinite(n) ? x.kadenzStandard[kreis] : n } }));
@@ -130,7 +133,18 @@ export function Wertelisten({ w, post, laeuft, zuBereich }: { w: WertelistenAntw
         <div style={{ ...hinweis, marginTop: 8 }}>Die festen Ergebnisse setzen per Regel den nächsten Schritt (nicht erreicht → 2 Werktage, Mailbox → 3, Sperre → Werbesperre). Eigene Ergebnisse werden hier geführt und stehen für das Erledigen von Follow-ups bereit.</div>
       </Karte>
 
-      <Karte i={4}>
+      {([['branchen', 'Branchen', 'Mehrfach je Firma wählbar — in der Akte unter Firma.'], ['typen', 'Lead-Typen', 'Einordnung › Typ an der Person: Zielkunde, Kunde, Netzwerk, Partner …'], ['kategorien', 'Kategorien', 'Einordnung › Kategorie: wie ihr die Person einsortiert.']] as const).map(([l, titel, text], i) => (
+        <Karte key={l} i={4 + i}>
+          <Ueberschrift rechts={`${eigeneVon(l).length} eigene`}>{titel}</Ueberschrift>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {(lokal[l] ?? []).map(v => <WertChip key={v.wert} text={v.wert} fest={v.fest} onWeg={() => void setzeListe(l, eigeneVon(l).filter(x => x !== v.wert))} />)}
+          </div>
+          <NeuerWert platzhalter={`Eigener Wert (${WERT_MIN}–${WERT_MAX} Zeichen)`} max={WERT_MAX} aus={laeuft} onNeu={t => void setzeListe(l, [...eigeneVon(l), t])} />
+          <div style={{ ...hinweis, marginTop: 8 }}>{text} Graue Werte sind vorbelegt; eigene stehen sofort als Pillen zur Wahl.</div>
+        </Karte>
+      ))}
+
+      <Karte i={7}>
         <Ueberschrift rechts={`${lokal.ist.dealsOffen} offene Deals`}>Ziele je Monat</Ueberschrift>
         <div style={{ ...hinweis, marginBottom: 6 }}>Die Messlatte für die Kennzahlen: Umsatz neu, neue SQL und echte Gespräche. Daneben steht, was zuletzt gemessen wurde — leer = kein Ziel gesetzt.</div>
         <Liste>

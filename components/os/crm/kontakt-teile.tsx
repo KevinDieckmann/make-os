@@ -26,6 +26,8 @@ import { type CrmApi, datum, euro } from './daten';
 import { NotizFormular, Verlauf, Feldzeile, Pillen, Feld, festhalten, hatMailEinwilligung, MehrfachPillen } from './teile';
 import { ZustaendigWahl, Uebergeben, Person } from './team';
 import { neueFirma, ROLLEN } from './Firmen';
+import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
+import { phaseVon, PHASE_LABEL, type Phase } from '@/lib/crm/phase';
 
 export const PHASEN: { id: Lebensphase; label: string }[] = [
   { id: 'kontakt', label: 'Kontakt' }, { id: 'interessent', label: 'Interessent' }, { id: 'kunde', label: 'Kunde' }, { id: 'ex_kunde', label: 'Ex-Kunde' }, { id: 'partner', label: 'Partner' }, { id: 'multiplikator', label: 'Multiplikator' },
@@ -33,8 +35,8 @@ export const PHASEN: { id: Lebensphase; label: string }[] = [
 const KREISE: { id: Kreis; label: string }[] = (['A', 'B', 'C', 'D'] as Kreis[]).map(k => ({ id: k, label: `${k} · ${KREIS_TAKT[k]} T` }));
 const EW_KANAL: { id: EinwilligungKanal; label: string }[] = [{ id: 'mail', label: 'Mail' }, { id: 'telefon', label: 'Telefon' }, { id: 'social', label: 'LinkedIn/Social' }, { id: 'newsletter', label: 'Newsletter' }, { id: 'einladung', label: 'Einladungen' }];
 const GRUNDLAGEN: { id: Grundlage; label: string }[] = [{ id: 'einwilligung', label: 'Einwilligung' }, { id: 'anfrage', label: 'Anfrage' }, { id: 'intro_akzeptiert', label: 'Intro akzeptiert' }, { id: 'vertrag', label: 'Vertrag' }];
-export const phaseFarbe = (p?: string) => (p === 'kunde' ? LEUCHT.gut : p === 'partner' || p === 'multiplikator' ? LEUCHT.agenten : p === 'interessent' ? LEUCHT.business : p === 'ex_kunde' ? C.inkLeise : LEUCHT.puls);
-export const phaseLabel = (p?: string) => PHASEN.find(x => x.id === p)?.label ?? 'Kontakt';
+export const phaseFarbe = (p?: string) => (p === 'kunde' ? LEUCHT.gut : p === 'partner' || p === 'multiplikator' ? LEUCHT.agenten : p === 'interessent' || p === 'opportunity' ? LEUCHT.business : p === 'ex_kunde' ? C.inkLeise : LEUCHT.puls);
+export const phaseLabel = (p?: string) => (p && p in PHASE_LABEL ? PHASE_LABEL[p as Phase] : undefined) ?? PHASEN.find(x => x.id === p)?.label ?? 'Kontakt';
 
 /** Einen Kontakt ändern — immer der ganze Eintrag mit den geänderten Feldern. */
 export type Setze = (teil: Partial<Kontakt>) => Promise<void> | void;
@@ -66,14 +68,27 @@ export function NaechsterSchrittTeil({ k, heute, setze }: { k: Kontakt; heute: s
 }
 
 export function BeziehungTeil({ k, api, setze }: { k: Kontakt; api: CrmApi; setze: Setze }) {
+  // Phase abgeleitet (27.09.): aus Mandat, Deal, Lead — nicht getippt. Rollen, Ansprache und Anrede klein, aufklappbar.
+  const ph = phaseVon(k, api.crm?.stand);
+  const [mehr, setMehr] = useState(false);
+  const chip = (text: string, farbe: string) => <span style={{ fontSize: 11.5, fontWeight: 600, color: farbe, border: `1px solid ${farbe}55`, borderRadius: 999, padding: '2px 8px' }}>{text}</span>;
   return (
     <div>
       <Ueberschrift>Beziehung</Ueberschrift>
       <Feldzeile label="Kreis"><Pillen liste={KREISE} aktiv={k.kreis} onWahl={kreis => void setze({ kreis: kreis === k.kreis ? undefined : kreis })} farbe={LEUCHT.beziehung} /></Feldzeile>
-      <Feldzeile label="Phase"><Pillen liste={PHASEN} aktiv={k.lebensphase ?? 'kontakt'} onWahl={lebensphase => void setze({ lebensphase })} /></Feldzeile>
-      <Feldzeile label="Rollen"><MehrfachPillen liste={KONTAKT_ROLLEN.map(r => ({ id: r, label: ROLLE_LABEL[r] }))} aktiv={rollenVon(k)} onWahl={(rollen: Rolle[]) => void setze({ rollen })} farbe={LEUCHT.business} /></Feldzeile>
-      <Feldzeile label="Ansprache"><Pillen liste={STUFEN.map(s => ({ id: s, label: STUFE_LABEL[s] }))} aktiv={k.stufe} onWahl={(stufe: Stufe) => void setze({ stufe })} /></Feldzeile>
-      <Feldzeile label="Anrede"><Pillen liste={[{ id: 'Sie', label: 'Sie' }, { id: 'Du', label: 'Du' }]} aktiv={k.anrede} onWahl={anrede => void setze({ anrede: anrede as 'Sie' | 'Du' })} /></Feldzeile>
+      <Feldzeile label="Phase"><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>{chip(PHASE_LABEL[ph.phase], phaseFarbe(ph.phase))}<span style={{ fontSize: 12, color: C.inkLeise }}>{ph.grund}</span></span></Feldzeile>
+      <Feldzeile label={mehr ? 'Rollen' : 'Details'}>
+        {mehr ? <MehrfachPillen liste={KONTAKT_ROLLEN.map(r => ({ id: r, label: ROLLE_LABEL[r] }))} aktiv={rollenVon(k)} onWahl={(rollen: Rolle[]) => void setze({ rollen })} farbe={LEUCHT.business} />
+          : <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            {rollenVon(k).map(r => <span key={r}>{chip(ROLLE_LABEL[r], LEUCHT.business)}</span>)}{chip(STUFE_LABEL[k.stufe], C.inkDim)}{k.anrede && chip(k.anrede, C.inkDim)}
+            <button onClick={() => setMehr(true)} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12, padding: 0 }}>ändern ▾</button>
+          </span>}
+      </Feldzeile>
+      {mehr && <>
+        <Feldzeile label="Ansprache"><Pillen liste={STUFEN.map(s => ({ id: s, label: STUFE_LABEL[s] }))} aktiv={k.stufe} onWahl={(stufe: Stufe) => void setze({ stufe })} /></Feldzeile>
+        <Feldzeile label="Anrede"><Pillen liste={[{ id: 'Sie', label: 'Sie' }, { id: 'Du', label: 'Du' }]} aktiv={k.anrede} onWahl={anrede => void setze({ anrede: anrede as 'Sie' | 'Du' })} /></Feldzeile>
+        <Feldzeile label="Von Hand"><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><Pillen liste={[{ id: 'partner', label: 'Partner' }, { id: 'multiplikator', label: 'Multiplikator' }, { id: '', label: '—' }]} aktiv={k.lebensphase === 'partner' || k.lebensphase === 'multiplikator' ? k.lebensphase : ''} onWahl={p => void setze({ lebensphase: (p || undefined) as Lebensphase | undefined })} /><button onClick={() => setMehr(false)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>zuklappen ▴</button></span></Feldzeile>
+      </>}
       <Feldzeile label="Hält die Beziehung"><ZustaendigWahl wert={k.besitzer} welt="sales" onWahl={besitzer => void setze({ besitzer })} /></Feldzeile>
       <div style={{ marginTop: 8 }}><Uebergeben api={api} art="kontakt" id={k.id} jetzt={haeltBeziehung(k)} /></div>
     </div>
@@ -318,6 +333,18 @@ export function Matrix({ k, api, setze, zuFirma }: { k: Kontakt; api: CrmApi; se
   const firmen = crm?.stand.firmen ?? [];
   const firma: Firma | undefined = k.firmaId ? firmen.find(f => f.id === k.firmaId) : undefined;
   const v = vollstaendigkeit(k, firma);
+  const listen = wertelistenVollstaendig(crm?.stand.wertelisten);
+  /** Auswahl statt Tippen (27.09.): vorbelegte Werte als Pillen, ein fremder Bestandswert bleibt als eigene Pille sichtbar. */
+  const auswahl = (label: string, wert: string | undefined, liste: { wert: string }[], setzen: (w: string | undefined) => void) => {
+    const werte = liste.map(x => x.wert);
+    const optionen = [...werte, ...(wert && !werte.includes(wert) ? [wert] : [])].map(w => ({ id: w, label: w }));
+    return <MatrixRahmen key={label} label={label} mittig><Pillen liste={optionen} aktiv={wert ?? null} onWahl={w => setzen(w === wert ? undefined : w)} /></MatrixRahmen>;
+  };
+  const branchenWahl = (aktiv: string[], setzen: (b: string[]) => void) => {
+    const werte = listen.branchen.map(x => x.wert);
+    const optionen = [...werte, ...aktiv.filter(b => !werte.includes(b))].map(w => ({ id: w, label: w }));
+    return <MatrixRahmen label="Branchen" mittig><div style={{ display: 'grid', gap: 6 }}><MehrfachPillen liste={optionen} aktiv={aktiv} onWahl={setzen} /><Feld platzhalter="weitere Branche …" onFertig={t => { const b = t.trim(); if (b && !aktiv.includes(b)) setzen([...aktiv, b]); }} /></div></MatrixRahmen>;
+  };
   const kf = (m: MatrixFeld<keyof Kontakt>) => <MatrixZeile key={m.feld} label={m.label} lang={m.lang} link={m.link} wert={String(k[m.feld] ?? '')} onFertig={t => void setze({ [m.feld]: (m.feld === 'email' ? t.toLowerCase() : t) || undefined } as Partial<Kontakt>)} />;
   const ff = (f: Firma, m: MatrixFeld<keyof Firma>) => <MatrixZeile key={m.feld} label={m.label} lang={m.lang} link={m.link} wert={String(f[m.feld] ?? '')} onFertig={t => void api.teil('firmen', f.id, { [m.feld]: t })} />;
   const firmaZuordnen = async (n: string) => {
@@ -340,13 +367,15 @@ export function Matrix({ k, api, setze, zuFirma }: { k: Kontakt; api: CrmApi; se
           </div>
         </MatrixRahmen>
         {firma && <MatrixRahmen label="Rolle"><span style={{ fontSize: TYP.bedien, color: ROLLEN.find(r => r.id === firma.rolle)?.farbe ?? C.inkDim }}>{ROLLEN.find(r => r.id === firma.rolle)?.label ?? firma.rolle}</span></MatrixRahmen>}
-        {firma ? FIRMA_FELDER.map(m => ff(firma, m)) : FIRMA_FELDER_IMPORT.map(kf)}
+        {firma ? branchenWahl(firma.branchen ?? (firma.branche ? firma.branche.split(' · ').map(x => x.trim()).filter(Boolean) : []), b => void api.teil('firmen', firma.id, { branchen: b, branche: b.join(' · ') }))
+          : branchenWahl(k.firmaBranche ? k.firmaBranche.split(' · ').map(x => x.trim()).filter(Boolean) : [], b => void setze({ firmaBranche: b.join(' · ') || undefined }))}
+        {firma ? FIRMA_FELDER.filter(m => m.feld !== 'branche').map(m => ff(firma, m)) : FIRMA_FELDER_IMPORT.filter(m => m.feld !== 'firmaBranche').map(kf)}
         {firma && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>Firmenfelder gelten für alle Personen dieser Firma.</div>}
       </Gruppe>
       <Gruppe titel="Einordnung" zahl={v.gruppen.einordnung}>
         <MatrixRahmen label="Prio" mittig><Pillen liste={[{ id: 'A', label: 'A' }, { id: 'B', label: 'B' }, { id: 'C', label: 'C' }, { id: '', label: '—' }]} aktiv={k.prio} onWahl={p => void setze({ prio: p as Kontakt['prio'] })} /></MatrixRahmen>
         <MatrixRahmen label="Eignung" mittig><Pillen liste={[{ id: 'ja', label: 'ja' }, { id: 'vielleicht', label: 'vielleicht' }, { id: 'nein', label: 'nein' }, { id: '', label: '—' }]} aktiv={k.eignung} onWahl={x => void setze({ eignung: x as Kontakt['eignung'] })} /></MatrixRahmen>
-        {EINORDNUNG_FELDER.map(kf)}
+        {EINORDNUNG_FELDER.map(m => m.feld === 'typ' ? auswahl('Typ', k.typ, listen.typen, typ => void setze({ typ })) : m.feld === 'kategorie' ? auswahl('Kategorie', k.kategorie, listen.kategorien, kategorie => void setze({ kategorie })) : kf(m))}
       </Gruppe>
       <Gruppe titel="Herkunft der Daten">
         {HERKUNFT_FELDER.map(kf)}

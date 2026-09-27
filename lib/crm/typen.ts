@@ -151,6 +151,8 @@ export interface Firma {
   domain?: string;
   webseite?: string;
   branche?: string;
+  /** Mehrere Branchen (27.09.): `branche` bleibt der zusammengesetzte Anzeigetext. */
+  branchen?: string[];
   mitarbeiter?: string;
   umsatz?: string;
   stadt?: string;
@@ -371,6 +373,8 @@ export interface Wertelisten {
   ergebnisse?: string[];
   /** Ziele je Monat: Umsatz neu (€), SQL, Gespräche — für die Kennzahlen gegen Ziel. */
   ziele?: { umsatzNeuMonat?: number; sqlMonat?: number; gespraecheWoche?: number };
+  /** Eigene Einträge zu den Standardlisten (27.09.): Branchen (mehrfach je Firma), Lead-Typen, Kategorien. */
+  branchen?: string[]; typen?: string[]; kategorien?: string[];
 }
 
 export interface CrmBestand {

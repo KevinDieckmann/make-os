@@ -16,7 +16,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { zoneFarbe } from './schlank';
-import { Sun, Inbox as InboxIcon, Search, Lightbulb, CalendarDays, ArrowUpRight, Timer, Square } from 'lucide-react';
+import { Sun, Inbox as InboxIcon, Search, CalendarDays, ArrowUpRight, Timer, Square } from 'lucide-react';
 import { useSpace } from '@/hooks/useSpace';
 import { spaceVon, type SpaceId } from '@/lib/make-one/spaces';
 import { zeitText } from '@/lib/zeitmessung/modell';
@@ -192,7 +192,7 @@ export function Kopf() {
         {/* Ganz links der Wachstums-Score als Zahl (Kevin 26.09. spät), dann das Suchfeld ausgeglichen in der Mitte */}
         <WachstumsZahl />
         {/* Suchfeld im aktiven Space — auf dem Handy nur die Lupe */}
-        <button onClick={suchen} title="Suchen (⌘K)" aria-label="Suchen" className="wachstum-kopf-suche fassbar" style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1 320px', minWidth: 0, maxWidth: 640, margin: '0 auto', padding: '9px 14px', borderRadius: 12, cursor: 'text', border: '1px solid rgba(255,255,255,.08)', background: 'rgba(255,255,255,.04)', color: C.inkLeise, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, textAlign: 'left' }}>
+        <button onClick={suchen} title="Suchen (⌘K)" aria-label="Suchen" className="wachstum-kopf-suche fassbar" style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1 520px', minWidth: 0, maxWidth: 960, margin: '0 auto', padding: '9px 14px', borderRadius: 12, cursor: 'text', border: '1px solid rgba(255,255,255,.08)', background: 'rgba(255,255,255,.04)', color: C.inkLeise, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, textAlign: 'left' }}>
           <Search size={15} strokeWidth={1.9} style={{ flex: '0 0 auto' }} />
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{sp.suche}</span>
           <span className="nur-tastatur" style={{ fontSize: 11, border: '1px solid rgba(255,255,255,.12)', borderRadius: 6, padding: '1px 6px', color: C.inkLeise }}>⌘K</span>
@@ -200,10 +200,6 @@ export function Kopf() {
         <div className="wachstum-kopf-saeulen" style={{ display: 'flex', gap: 12, marginLeft: 'auto', alignItems: 'center', minWidth: 0 }}>
           <button className="wachstum-kopf-lupe" onClick={suchen} title="Suchen (⌘K)" aria-label="Suchen" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}><div style={rund(false)}><Search size={15} strokeWidth={1.9} /></div><span className="wachstum-kopf-label" style={{ fontSize: 11, color: C.inkLeise }}>Suche</span></div>
-          </button>
-          {/* Idee oder Fehler — von jeder Seite direkt in den Bauplan (25.09.). */}
-          <button onClick={() => window.dispatchEvent(new Event('make-idee'))} title="Idee oder Fehler in den Bauplan" aria-label="Idee notieren" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}><div style={rund(false)}><Lightbulb size={15} strokeWidth={1.9} /></div><span className="wachstum-kopf-label" style={{ fontSize: 11, color: C.inkLeise }}>Idee</span></div>
           </button>
           {SCHNELL(space).map(({ href, label, Icon, passt }) => {
             const an = passt.some(p => pfad === p || pfad.startsWith(`${p}/`) || (p !== '/os/heute' && pfad.startsWith(p)));
