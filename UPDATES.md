@@ -75,6 +75,16 @@ Ansage stehen, bis das nächste Update sie ablöst.
 
 ## Nächstes Update — vorbereitet, noch nicht online
 
+### Kontaktakte übersichtlich (Malins Rückmeldung 27.09., nur lokal)
+
+Malin: „Zu viel scrollen — Typ und Kategorie nach oben, Branchen vollständig.“
+
+- **Kompakter Kopf + Reiter** statt Endlos-Stapel: Kopf mit Name, Firma, Phase, Score, **Typ und Kategorie als Chips** (Tipp springt zu Stammdaten), Rollen, Kreis, wer die Beziehung hält, Kanäle und eine Zeile Kennzahlen. Darunter **Überblick · Stammdaten · Beziehung · Verlauf · Datenschutz** — je Reiter zwei Spalten ab Laptop, am Handy eine (Reiter als scrollbare Pillen). Abschnitte einklappbar, Zustand je Person im Browser gemerkt; der zuletzt gewählte Reiter je Person ebenfalls.
+- **Adresse:** `?s=kontakte&a=akte&k=<id>&t=<reiter>` — ohne `t` der Überblick; alle alten Links (Schnellsuche, Befunde, ZOE, Telegram) funktionieren unverändert. `kontaktAkte(id, t)` in `lib/crm/adresse.ts`.
+- **Überblick** = nächster Schritt, Deals & Mandate, Lead, Beziehung kurz, letzte 5 Aktivitäten, Notiz. **Stammdaten** = die Matrix mit **Typ und Kategorie als Erstes**, dann Person · Firma (Branchen) · Herkunft. **Beziehung** = Kreis/Takt/Rollen/Ansprache, LinkedIn, Verbindungen. **Verlauf** = alles + Entwurf. **Datenschutz** = Grundlage, Einwilligungen, Werbewiderspruch, Betroffenenrechte, Anträge, Privat.
+- **Branchen, Typ, Kategorie vollständig:** ein Bauteil `WertelistenWahl` — alle Werte der Werteliste als Pillen in einer scrollbaren Box (~4 Zeilen), Suchfeld ab 12 Werten, Mehrfachwahl (Branchen) bzw. Einzelwahl (Typ, Kategorie). **„+ neu“ direkt in der Akte:** Enter legt den Wert über die Stammdaten-Route an (geprüft, 2–60 Zeichen) und wählt ihn sofort; feste Standardwerte bleiben, Umbenennen/Löschen weiter unter Stammdaten › Wertelisten (Link „Pflegen ›“ daneben). Werte aus dem Import, die in keiner Liste stehen, bleiben als eigene Pille sichtbar.
+- Tests: Adresse mit `t` (alte Adressen unverändert), Routen-Test für die Anlage (`tests/crm-stammdaten-route.test.ts`), Wahl-Helfer in `tests/crm-wertelisten.test.ts`.
+
 ### Sport: Hyrox, Running, Gym, Erholung (27.09., nur lokal)
 
 Kevin: „Im Gesundheitsbereich einen Sport-Bereich einbauen. Ganz speziell für Malin einen Bereich, der ausgebaut ist mit Hyrox, Running, Gym und Erholung, damit sie ihre Ziele am Anfang schon perfekt planen kann.“

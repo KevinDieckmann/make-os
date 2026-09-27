@@ -27,6 +27,7 @@ import { NotizFormular, Verlauf, Feldzeile, Pillen, Feld, festhalten, hatMailEin
 import { ZustaendigWahl, Uebergeben, Person } from './team';
 import { neueFirma, ROLLEN } from './Firmen';
 import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
+import { WertelistenWahl } from './WertelistenWahl';
 import { phaseVon, PHASE_LABEL, type Phase } from '@/lib/crm/phase';
 
 export const PHASEN: { id: Lebensphase; label: string }[] = [
@@ -67,14 +68,14 @@ export function NaechsterSchrittTeil({ k, heute, setze }: { k: Kontakt; heute: s
   );
 }
 
-export function BeziehungTeil({ k, api, setze }: { k: Kontakt; api: CrmApi; setze: Setze }) {
+export function BeziehungTeil({ k, api, setze, ohneTitel }: { k: Kontakt; api: CrmApi; setze: Setze; /** In der Akte trägt der Abschnitt den Titel. */ ohneTitel?: boolean }) {
   // Phase abgeleitet (27.09.): aus Mandat, Deal, Lead — nicht getippt. Rollen, Ansprache und Anrede klein, aufklappbar.
   const ph = phaseVon(k, api.crm?.stand);
   const [mehr, setMehr] = useState(false);
   const chip = (text: string, farbe: string) => <span style={{ fontSize: 11.5, fontWeight: 600, color: farbe, border: `1px solid ${farbe}55`, borderRadius: 999, padding: '2px 8px' }}>{text}</span>;
   return (
     <div>
-      <Ueberschrift>Beziehung</Ueberschrift>
+      {!ohneTitel && <Ueberschrift>Beziehung</Ueberschrift>}
       <Feldzeile label="Kreis"><Pillen liste={KREISE} aktiv={k.kreis} onWahl={kreis => void setze({ kreis: kreis === k.kreis ? undefined : kreis })} farbe={LEUCHT.beziehung} /></Feldzeile>
       <Feldzeile label="Phase"><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>{chip(PHASE_LABEL[ph.phase], phaseFarbe(ph.phase))}<span style={{ fontSize: 12, color: C.inkLeise }}>{ph.grund}</span></span></Feldzeile>
       <Feldzeile label={mehr ? 'Rollen' : 'Details'}>
@@ -152,7 +153,7 @@ export function DealsTeil({ k, api }: { k: Kontakt; api: CrmApi }) {
   );
 }
 
-export function EntwurfTeil({ k, mailOk }: { k: Kontakt; mailOk: boolean }) {
+export function EntwurfTeil({ k, mailOk, ohneTitel }: { k: Kontakt; mailOk: boolean; ohneTitel?: boolean }) {
   const [entwurf, setEntwurf] = useState<{ betreff: string; email: string; linkedin: string; hinweis: string } | 'laedt' | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   useEffect(() => { setEntwurf(null); setFehler(null); }, [k.id]);
@@ -165,7 +166,7 @@ export function EntwurfTeil({ k, mailOk }: { k: Kontakt; mailOk: boolean }) {
   };
   return (
     <div>
-      <Ueberschrift>Entwurf</Ueberschrift>
+      {!ohneTitel && <Ueberschrift>Entwurf</Ueberschrift>}
       {!entwurf && <Knopf leise onClick={entwerfen}>ZOE entwerfen lassen</Knopf>}
       {fehler && <div style={{ fontSize: 12.5, color: LEUCHT.kritisch, marginTop: 6 }}>{fehler}</div>}
       {entwurf === 'laedt' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>ZOE schreibt …</span>}
@@ -282,7 +283,7 @@ function MatrixRahmen({ label, mittig, children }: { label: string; mittig?: boo
   );
 }
 
-function MatrixZeile({ label, wert, lang, link, onFertig }: { label: string; wert?: string; lang?: boolean; link?: boolean; onFertig: (t: string) => void }) {
+export function MatrixZeile({ label, wert, lang, link, onFertig }: { label: string; wert?: string; lang?: boolean; link?: boolean; onFertig: (t: string) => void }) {
   const [an, setAn] = useState(false);
   const [t, setT] = useState(wert ?? '');
   useEffect(() => { if (!an) setT(wert ?? ''); }, [wert, an]);
@@ -322,29 +323,34 @@ function Gruppe({ titel, zahl, rechts, children }: { titel: string; zahl?: [numb
   );
 }
 
+/** Die Gruppen der Matrix — die Akte verteilt sie auf Klapp-Abschnitte und zwei Spalten, die Karteikarte zeigt alle. */
+export type MatrixTeil = 'einordnung' | 'person' | 'firma' | 'herkunft' | 'privat';
+export const MATRIX_TEILE: MatrixTeil[] = ['einordnung', 'person', 'firma', 'herkunft', 'privat'];
+export const MATRIX_TEIL_LABEL: Record<MatrixTeil, string> = { einordnung: 'Einordnung', person: 'Person', firma: 'Firma', herkunft: 'Herkunft der Daten', privat: 'Privat' };
+
+type MatrixArgs = { k: Kontakt; api: CrmApi; setze: Setze; zuFirma: (id: string) => void };
+
 /**
- * Die Matrix: jedes Feld der Masterdatei für diese Person, gruppiert —
- * Person, Firma, Einordnung, Herkunft der Daten, dazu die private Notiz.
- * Gehört die Person zu einer Firma, bearbeitet die Firmengruppe den
- * Firmeneintrag (für alle ihre Personen); sonst die Firmenfelder aus dem Import.
+ * Inhalt und Kopfzeile je Gruppe der Matrix — jedes Feld der Masterdatei
+ * für diese Person: Einordnung (Typ und Kategorie zuerst — Malin 27.09.),
+ * Person, Firma (Branchen aus der Werteliste), Herkunft der Daten, private
+ * Notiz. Gehört die Person zu einer Firma, bearbeitet die Firmengruppe den
+ * Firmeneintrag (für alle ihre Personen); sonst die Firmenfelder aus dem
+ * Import. Typ, Kategorie und Branchen kommen aus den Wertelisten
+ * (WertelistenWahl: alle Werte, Suche, „+ neu“ legt in der Werteliste an).
  */
-export function Matrix({ k, api, setze, zuFirma }: { k: Kontakt; api: CrmApi; setze: Setze; zuFirma: (id: string) => void }) {
+function matrixTeile({ k, api, setze, zuFirma }: MatrixArgs): { inhalt: Record<MatrixTeil, ReactNode>; zahl: Partial<Record<MatrixTeil, [number, number]>>; rechts: Partial<Record<MatrixTeil, ReactNode>> } {
   const crm = api.crm;
   const firmen = crm?.stand.firmen ?? [];
   const firma: Firma | undefined = k.firmaId ? firmen.find(f => f.id === k.firmaId) : undefined;
   const v = vollstaendigkeit(k, firma);
   const listen = wertelistenVollstaendig(crm?.stand.wertelisten);
-  /** Auswahl statt Tippen (27.09.): vorbelegte Werte als Pillen, ein fremder Bestandswert bleibt als eigene Pille sichtbar. */
-  const auswahl = (label: string, wert: string | undefined, liste: { wert: string }[], setzen: (w: string | undefined) => void) => {
-    const werte = liste.map(x => x.wert);
-    const optionen = [...werte, ...(wert && !werte.includes(wert) ? [wert] : [])].map(w => ({ id: w, label: w }));
-    return <MatrixRahmen key={label} label={label} mittig><Pillen liste={optionen} aktiv={wert ?? null} onWahl={w => setzen(w === wert ? undefined : w)} /></MatrixRahmen>;
-  };
-  const branchenWahl = (aktiv: string[], setzen: (b: string[]) => void) => {
-    const werte = listen.branchen.map(x => x.wert);
-    const optionen = [...werte, ...aktiv.filter(b => !werte.includes(b))].map(w => ({ id: w, label: w }));
-    return <MatrixRahmen label="Branchen" mittig><div style={{ display: 'grid', gap: 6 }}><MehrfachPillen liste={optionen} aktiv={aktiv} onWahl={setzen} /><Feld platzhalter="weitere Branche …" onFertig={t => { const b = t.trim(); if (b && !aktiv.includes(b)) setzen([...aktiv, b]); }} /></div></MatrixRahmen>;
-  };
+  const einzel = (label: string, liste: 'typen' | 'kategorien', wert: string | undefined, setzen: (w: string | undefined) => void) => (
+    <MatrixRahmen key={label} label={label}><WertelistenWahl liste={liste} werte={listen[liste]} aktiv={wert ? [wert] : []} onWahl={a => setzen(a[0])} api={api} /></MatrixRahmen>
+  );
+  const branchenWahl = (aktiv: string[], setzen: (b: string[]) => void) => (
+    <MatrixRahmen label="Branchen"><WertelistenWahl liste="branchen" mehrfach werte={listen.branchen} aktiv={aktiv} onWahl={setzen} api={api} /></MatrixRahmen>
+  );
   const kf = (m: MatrixFeld<keyof Kontakt>) => <MatrixZeile key={m.feld} label={m.label} lang={m.lang} link={m.link} wert={String(k[m.feld] ?? '')} onFertig={t => void setze({ [m.feld]: (m.feld === 'email' ? t.toLowerCase() : t) || undefined } as Partial<Kontakt>)} />;
   const ff = (f: Firma, m: MatrixFeld<keyof Firma>) => <MatrixZeile key={m.feld} label={m.label} lang={m.lang} link={m.link} wert={String(f[m.feld] ?? '')} onFertig={t => void api.teil('firmen', f.id, { [m.feld]: t })} />;
   const firmaZuordnen = async (n: string) => {
@@ -354,34 +360,66 @@ export function Matrix({ k, api, setze, zuFirma }: { k: Kontakt; api: CrmApi; se
     if (!firmen.some(x => x.id === f.id)) await api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>);
     void setze({ firma: f.name, firmaId: f.id });
   };
+  const inhalt: Record<MatrixTeil, ReactNode> = {
+    einordnung: <>
+      {einzel('Typ', 'typen', k.typ, typ => void setze({ typ }))}
+      {einzel('Kategorie', 'kategorien', k.kategorie, kategorie => void setze({ kategorie }))}
+      <MatrixRahmen label="Prio" mittig><Pillen liste={[{ id: 'A', label: 'A' }, { id: 'B', label: 'B' }, { id: 'C', label: 'C' }, { id: '', label: '—' }]} aktiv={k.prio} onWahl={p => void setze({ prio: p as Kontakt['prio'] })} /></MatrixRahmen>
+      <MatrixRahmen label="Eignung" mittig><Pillen liste={[{ id: 'ja', label: 'ja' }, { id: 'vielleicht', label: 'vielleicht' }, { id: 'nein', label: 'nein' }, { id: '', label: '—' }]} aktiv={k.eignung} onWahl={x => void setze({ eignung: x as Kontakt['eignung'] })} /></MatrixRahmen>
+      {EINORDNUNG_FELDER.filter(m => m.feld !== 'typ' && m.feld !== 'kategorie').map(kf)}
+    </>,
+    person: <>{PERSON_FELDER.map(kf)}</>,
+    firma: <>
+      <MatrixRahmen label="Firma" mittig>
+        <div>
+          <input list="crm-firmen-matrix" defaultValue={firma?.name ?? k.firma ?? ''} key={`${k.id}-${firma?.id ?? ''}`} aria-label="Firma" placeholder="Firma zuordnen …"
+            onBlur={e => void firmaZuordnen(e.target.value.trim())} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+            style={{ ...feld, fontSize: TYP.bedien, padding: '7px 10px' }} />
+          <datalist id="crm-firmen-matrix">{firmen.slice(0, 400).map(f => <option key={f.id} value={f.name} />)}</datalist>
+        </div>
+      </MatrixRahmen>
+      {firma && <MatrixRahmen label="Rolle"><span style={{ fontSize: TYP.bedien, color: ROLLEN.find(r => r.id === firma.rolle)?.farbe ?? C.inkDim }}>{ROLLEN.find(r => r.id === firma.rolle)?.label ?? firma.rolle}</span></MatrixRahmen>}
+      {firma ? branchenWahl(firma.branchen ?? (firma.branche ? firma.branche.split(' · ').map(x => x.trim()).filter(Boolean) : []), b => void api.teil('firmen', firma.id, { branchen: b, branche: b.join(' · ') }))
+        : branchenWahl(k.firmaBranche ? k.firmaBranche.split(' · ').map(x => x.trim()).filter(Boolean) : [], b => void setze({ firmaBranche: b.join(' · ') || undefined }))}
+      {firma ? FIRMA_FELDER.filter(m => m.feld !== 'branche').map(m => ff(firma, m)) : FIRMA_FELDER_IMPORT.filter(m => m.feld !== 'firmaBranche').map(kf)}
+      {firma && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>Firmenfelder gelten für alle Personen dieser Firma.</div>}
+    </>,
+    herkunft: <>
+      {HERKUNFT_FELDER.map(kf)}
+      <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>Importiert {datum(k.importiertAm)} · geändert {datum(k.geaendertAm)} · Kennung {k.id}</div>
+    </>,
+    privat: <MatrixRahmen label="Deine Notiz" mittig><Feld wert={k.privatNotiz} onFertig={privatNotiz => void setze({ privatNotiz: privatNotiz || undefined })} /></MatrixRahmen>,
+  };
+  return {
+    inhalt,
+    zahl: { einordnung: v.gruppen.einordnung, person: v.gruppen.person, firma: v.gruppen.firma },
+    rechts: {
+      firma: firma ? <button onClick={() => zuFirma(firma.id)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>Firma öffnen ›</button> : undefined,
+      privat: <span>nur für dich sichtbar · nie an Agenten</span>,
+    },
+  };
+}
+
+/** Eine Gruppe der Matrix ohne eigene Überschrift — für die Klapp-Abschnitte der Akte, die den Titel selbst tragen. */
+export function MatrixTeilInhalt({ teil, ...args }: MatrixArgs & { teil: MatrixTeil }) {
+  return <>{matrixTeile(args).inhalt[teil]}</>;
+}
+
+/** Zähler „gefüllt/gesamt“ einer Gruppe — für die Kopfzeile eines Klapp-Abschnitts. */
+export function MatrixZahl({ teil, k, api }: { teil: MatrixTeil; k: Kontakt; api: CrmApi }) {
+  const firma = k.firmaId ? api.crm?.stand.firmen.find(f => f.id === k.firmaId) : undefined;
+  const v = vollstaendigkeit(k, firma).gruppen;
+  const z = teil === 'einordnung' ? v.einordnung : teil === 'person' ? v.person : teil === 'firma' ? v.firma : null;
+  if (!z) return null;
+  return <span style={{ fontVariantNumeric: 'tabular-nums', color: z[0] === z[1] ? LEUCHT.gut : C.inkLeise }}>{z[0]}/{z[1]}</span>;
+}
+
+/** Die ganze Matrix mit Gruppen-Überschriften (Karteikarte) — `teile` wählt Gruppen aus. */
+export function Matrix({ teile = MATRIX_TEILE, ...args }: MatrixArgs & { teile?: MatrixTeil[] }) {
+  const m = matrixTeile(args);
   return (
     <div style={{ display: 'grid', gap: 18 }}>
-      <Gruppe titel="Person" zahl={v.gruppen.person}>{PERSON_FELDER.map(kf)}</Gruppe>
-      <Gruppe titel="Firma" zahl={v.gruppen.firma} rechts={firma ? <button onClick={() => zuFirma(firma.id)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>Firma öffnen ›</button> : undefined}>
-        <MatrixRahmen label="Firma" mittig>
-          <div>
-            <input list="crm-firmen-matrix" defaultValue={firma?.name ?? k.firma ?? ''} key={`${k.id}-${firma?.id ?? ''}`} aria-label="Firma" placeholder="Firma zuordnen …"
-              onBlur={e => void firmaZuordnen(e.target.value.trim())} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-              style={{ ...feld, fontSize: TYP.bedien, padding: '7px 10px' }} />
-            <datalist id="crm-firmen-matrix">{firmen.slice(0, 400).map(f => <option key={f.id} value={f.name} />)}</datalist>
-          </div>
-        </MatrixRahmen>
-        {firma && <MatrixRahmen label="Rolle"><span style={{ fontSize: TYP.bedien, color: ROLLEN.find(r => r.id === firma.rolle)?.farbe ?? C.inkDim }}>{ROLLEN.find(r => r.id === firma.rolle)?.label ?? firma.rolle}</span></MatrixRahmen>}
-        {firma ? branchenWahl(firma.branchen ?? (firma.branche ? firma.branche.split(' · ').map(x => x.trim()).filter(Boolean) : []), b => void api.teil('firmen', firma.id, { branchen: b, branche: b.join(' · ') }))
-          : branchenWahl(k.firmaBranche ? k.firmaBranche.split(' · ').map(x => x.trim()).filter(Boolean) : [], b => void setze({ firmaBranche: b.join(' · ') || undefined }))}
-        {firma ? FIRMA_FELDER.filter(m => m.feld !== 'branche').map(m => ff(firma, m)) : FIRMA_FELDER_IMPORT.filter(m => m.feld !== 'firmaBranche').map(kf)}
-        {firma && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>Firmenfelder gelten für alle Personen dieser Firma.</div>}
-      </Gruppe>
-      <Gruppe titel="Einordnung" zahl={v.gruppen.einordnung}>
-        <MatrixRahmen label="Prio" mittig><Pillen liste={[{ id: 'A', label: 'A' }, { id: 'B', label: 'B' }, { id: 'C', label: 'C' }, { id: '', label: '—' }]} aktiv={k.prio} onWahl={p => void setze({ prio: p as Kontakt['prio'] })} /></MatrixRahmen>
-        <MatrixRahmen label="Eignung" mittig><Pillen liste={[{ id: 'ja', label: 'ja' }, { id: 'vielleicht', label: 'vielleicht' }, { id: 'nein', label: 'nein' }, { id: '', label: '—' }]} aktiv={k.eignung} onWahl={x => void setze({ eignung: x as Kontakt['eignung'] })} /></MatrixRahmen>
-        {EINORDNUNG_FELDER.map(m => m.feld === 'typ' ? auswahl('Typ', k.typ, listen.typen, typ => void setze({ typ })) : m.feld === 'kategorie' ? auswahl('Kategorie', k.kategorie, listen.kategorien, kategorie => void setze({ kategorie })) : kf(m))}
-      </Gruppe>
-      <Gruppe titel="Herkunft der Daten">
-        {HERKUNFT_FELDER.map(kf)}
-        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>Importiert {datum(k.importiertAm)} · geändert {datum(k.geaendertAm)} · Kennung {k.id}</div>
-      </Gruppe>
-      <div><Ueberschrift rechts={<span>nur für dich sichtbar · nie an Agenten</span>}>Privat</Ueberschrift><MatrixRahmen label="Deine Notiz" mittig><Feld wert={k.privatNotiz} onFertig={privatNotiz => void setze({ privatNotiz: privatNotiz || undefined })} /></MatrixRahmen></div>
+      {teile.map(t => <Gruppe key={t} titel={MATRIX_TEIL_LABEL[t]} zahl={m.zahl[t]} rechts={m.rechts[t]}>{m.inhalt[t]}</Gruppe>)}
     </div>
   );
 }

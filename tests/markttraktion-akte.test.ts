@@ -4,7 +4,7 @@ import type { Kontakt } from '../lib/make-one/crm';
 import type { Chance, Firma } from '../lib/crm/typen';
 import { leererBestand } from '../lib/crm/speicher';
 import { vollstaendigkeit, verbindungen, takt, verlaufZahlen, PERSON_FELDER, FIRMA_FELDER, EINORDNUNG_FELDER, HERKUNFT_FELDER } from '../lib/crm/akte';
-import { markttraktion, aufloesen } from '../lib/crm/adresse';
+import { markttraktion, aufloesen, akteReiter, kontaktAkte, AKTE_REITER } from '../lib/crm/adresse';
 
 const J = '2026-09-25T10:00:00.000Z';
 const k = (id: string, x: Partial<Kontakt> = {}): Kontakt => ({ id: `c-${id}`, vorname: id, nachname: 'Test', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-08-01', geaendertAm: '2026-08-01', ...x });
@@ -80,5 +80,22 @@ describe('Adresse der Akte', () => {
     expect(markttraktion('kontakte', 'akte', 'c-a')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a');
     expect(aufloesen('kontakte', 'akte')).toEqual({ s: 'kontakte', a: 'akte' });
     expect(markttraktion('kontakte', undefined, 'c-a')).toBe('/os/markttraktion?s=kontakte&k=c-a');
+  });
+  it('Reiter (27.09.): t nur in der Akte und nie für den Überblick — alte Adressen ohne t bleiben gültig', () => {
+    expect(kontaktAkte('c-a')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a');
+    expect(kontaktAkte('c-a', 'ueberblick')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a');
+    expect(kontaktAkte('c-a', 'stammdaten')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a&t=stammdaten');
+    expect(markttraktion('kontakte', 'akte', 'c-a', 'datenschutz')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a&t=datenschutz');
+    // Unbekannter Reiter → Überblick; außerhalb der Akte zählt t nicht.
+    expect(kontaktAkte('c-a', 'geheim')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a');
+    expect(markttraktion('kontakte', undefined, 'c-a', 'verlauf')).toBe('/os/markttraktion?s=kontakte&k=c-a');
+    expect(markttraktion('deals', 'akte', 'ch-1', 'verlauf')).toBe('/os/markttraktion?s=deals&a=akte&k=ch-1');
+  });
+  it('akteReiter: leer, null und Unbekanntes heißen Überblick; jeder Reiter der Leiste löst sich auf', () => {
+    expect(akteReiter(null)).toBe('ueberblick');
+    expect(akteReiter('')).toBe('ueberblick');
+    expect(akteReiter('stamm')).toBe('ueberblick');
+    for (const r of AKTE_REITER) expect(akteReiter(r.id)).toBe(r.id);
+    expect(AKTE_REITER.map(r => r.id)).toEqual(['ueberblick', 'stammdaten', 'beziehung', 'verlauf', 'datenschutz']);
   });
 });

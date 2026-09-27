@@ -108,6 +108,27 @@ export function wertelistenVollstaendig(w?: Wertelisten | null): WertelistenVoll
   };
 }
 
+/** Eine Pille in der Wertelisten-Wahl der Akte (27.09.). */
+export interface WahlOption { wert: string; fest: boolean; /** Bestandswert, der (noch) in keiner Liste steht — bleibt sichtbar, damit nichts verschwindet. */ fremd?: boolean }
+
+/**
+ * Was die Akte zur Wahl zeigt (Branchen, Typ, Kategorie): alle Werte der
+ * Liste, dazu gewählte Werte, die in keiner Liste stehen (Import-Altbestand),
+ * gefiltert nach einem Suchtext (ohne Groß/Klein, Teilwort genügt). Gewählte
+ * Werte bleiben bei der Suche stehen — man sieht immer, was gesetzt ist.
+ */
+export function wertelisteZurWahl(liste: readonly { wert: string; fest: boolean }[], aktiv: readonly string[], suche = ''): WahlOption[] {
+  const s = schluessel(suche);
+  const bekannt = new Set(liste.map(x => schluessel(x.wert)));
+  const alle: WahlOption[] = [...liste.map(x => ({ wert: x.wert, fest: x.fest })), ...aktiv.filter(a => a && !bekannt.has(schluessel(a))).map(wert => ({ wert, fest: false, fremd: true }))];
+  if (!s) return alle;
+  const gewaehlt = new Set(aktiv.map(schluessel));
+  return alle.filter(o => gewaehlt.has(schluessel(o.wert)) || schluessel(o.wert).includes(s));
+}
+
+/** Ab so vielen Werten bekommt die Wahl ein Suchfeld. */
+export const SUCHE_AB = 12;
+
 export type Pruefung = { ok: true; wertelisten: Wertelisten; fehler: [] } | { ok: false; wertelisten: Wertelisten; fehler: string[] };
 
 const istObjekt = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);

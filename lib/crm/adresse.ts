@@ -3,6 +3,8 @@
 //   s (Reiter, Kevins Reihenfolge 27.09.): ueberblick (Start) · kontakte · firmen ·
 //      deals · followup · qualifizierung (Runde, 27.09.) · sales · marketing · event · stammdaten
 //   a: kontakte   → die gespeicherte Ansicht, eine Runde (runde-…) oder akte (Kontaktakte zu k)
+//      t (nur in der Kontaktakte, 27.09.): Reiter ueberblick (Start, ohne t) · stammdaten · beziehung · verlauf · datenschutz —
+//      alte Links ohne t bleiben gültig und öffnen den Überblick
 //      firmen     → (leer) Kartei · leads (Ebene 1: qualifizieren → SQL)
 //      deals      → board (Start) · liste · akte (Deal-Akte zu k) · kunden · auswertung
 //      followup   → faellig (Start) · woche · powerhour · kadenz
@@ -26,6 +28,16 @@ export const DEALS_ANSICHTEN: DealsAnsicht[] = ['board', 'liste', 'akte', 'kunde
 export const FOLLOWUP_ANSICHTEN: FollowupAnsicht[] = ['faellig', 'woche', 'powerhour', 'kadenz'];
 export const SALES_ANSICHTEN: SalesAnsicht[] = ['heute', 'leads', 'pipeline', 'kunden', 'kampagnen'];
 export const PFAD = '/os/markttraktion';
+
+/** Die Reiter der Kontaktakte (Malins Rückmeldung 27.09.): Überblick ist der Start und steht nicht in der Adresse. */
+export type AkteReiter = 'ueberblick' | 'stammdaten' | 'beziehung' | 'verlauf' | 'datenschutz';
+export const AKTE_REITER: { id: AkteReiter; label: string }[] = [
+  { id: 'ueberblick', label: 'Überblick' }, { id: 'stammdaten', label: 'Stammdaten' }, { id: 'beziehung', label: 'Beziehung' }, { id: 'verlauf', label: 'Verlauf' }, { id: 'datenschutz', label: 'Datenschutz' },
+];
+/** Reiter aus `t` — leer oder unbekannt heißt Überblick (rückwärtskompatibel für Suche, Befunde, ZOE). */
+export function akteReiter(t?: string | null): AkteReiter {
+  return t && AKTE_REITER.some(r => r.id === t) ? (t as AkteReiter) : 'ueberblick';
+}
 
 /** Wohin der alte Sales-Reiter zeigt. */
 const SALES_NEU: Record<SalesAnsicht, { s: Bereich; a?: string }> = {
@@ -54,16 +66,21 @@ export function aufloesen(s?: string | null, a?: string | null): { s: Bereich; a
   return { s: 'ueberblick' };
 }
 
-/** Link in die Markttraktion — für Suche, Startseite, Befunde, ZOE. */
-export function markttraktion(s?: string, a?: string, k?: string): string {
+/** Link in die Markttraktion — für Suche, Startseite, Befunde, ZOE. `t` zählt nur in der Kontaktakte (Reiter außer Überblick). */
+export function markttraktion(s?: string, a?: string, k?: string, t?: string | null): string {
   const z = aufloesen(s, a);
   const q = new URLSearchParams();
   if (z.s !== 'ueberblick') q.set('s', z.s);
   if (z.a) q.set('a', z.a);
   if (k) q.set('k', k);
-  const t = q.toString();
-  return t ? `${PFAD}?${t}` : PFAD;
+  const reiter = akteReiter(t);
+  if (z.s === 'kontakte' && z.a === 'akte' && k && reiter !== 'ueberblick') q.set('t', reiter);
+  const text = q.toString();
+  return text ? `${PFAD}?${text}` : PFAD;
 }
+
+/** Die Kontaktakte (25.09., Reiter 27.09.): eine ganze Seite je Person, optional direkt auf einem Reiter. */
+export const kontaktAkte = (id: string, t?: AkteReiter | string | null): string => markttraktion('kontakte', 'akte', id, t);
 
 /** Die Deal-Akte (27.09.): eine ganze Seite je Deal. */
 export const dealAkte = (id: string): string => markttraktion('deals', 'akte', id);

@@ -486,6 +486,7 @@ lokal, Route `/os`, Port 3001.
   Anträge), Recht. Breit 3, Laptop 2, Handy 1 Spalte. Karteikarte und Akte teilen
   die Bausteine in `components/os/crm/kontakt-teile.tsx`. Gescrollt wird in `<main>`,
   nicht im Fenster.
+- **Akte mit Reitern (27.09., Malins Rückmeldung, nur lokal):** kompakter Kopf (Typ/Kategorie als Chips) + Reiter Überblick · Stammdaten · Beziehung · Verlauf · Datenschutz (`t=` in der Adresse, `kontaktAkte(id, t)`, ohne `t` = Überblick), zwei Spalten ab `SPALTEN_AB`, Abschnitte einklappbar (localStorage `mt-akte-zu-<id>`, Reiter `mt-akte-reiter-<id>`); Typ/Kategorie/Branchen über `WertelistenWahl` (alle Werte, Suche ab `SUCHE_AB`, „+ neu“ schreibt über `POST /api/crm/stammdaten` aktion `wertelisten`); Matrix-Gruppen einzeln als `MatrixTeilInhalt`.
 - **Sales in drei Ebenen (25.09.2026, Kevin: „klare Ebenen“):** `lib/crm/leads.ts`,
   `/api/crm/lead`, `components/os/crm/Leads.tsx`. **Ebene 1 Leads** = Firma
   (Account; ohne Firma die Person), `Firma.lead` / `Kontakt.lead` (`Lead`,

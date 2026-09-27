@@ -1,6 +1,6 @@
 // Wertelisten (Stammdaten, 27.09.): Standard + Eigenes, Prüfen/Säubern eines Teil-Updates, feste Werte bleiben. Erfundene Daten.
 import { describe, it, expect } from 'vitest';
-import { wertelistenVollstaendig, wertelistenPruefen, eigeneErgebnisse, eigeneVerlustgruende, ERGEBNIS_LABEL, ergebnisLabel, KADENZ_MIN, KADENZ_MAX } from '../lib/crm/wertelisten';
+import { wertelistenVollstaendig, wertelistenPruefen, eigeneErgebnisse, eigeneVerlustgruende, ERGEBNIS_LABEL, ergebnisLabel, KADENZ_MIN, KADENZ_MAX, wertelisteZurWahl, BRANCHEN_STANDARD, TYPEN_STANDARD, SUCHE_AB } from '../lib/crm/wertelisten';
 import { VERLUSTGRUENDE, verlustgruende } from '../lib/crm/pipeline';
 import { ERGEBNISSE, KREIS_TAKT } from '../lib/make-one/crm';
 import { taktVon } from '../lib/crm/followup';
@@ -97,5 +97,26 @@ describe('Wertelisten — Teil-Update prüfen und säubern', () => {
     const q = wertelistenPruefen({ ergebnisse: ['Nicht erreicht', 'Empfehlung erhalten'] }, undefined);
     expect(q.ok).toBe(true);
     expect(q.wertelisten.ergebnisse).toEqual(['Empfehlung erhalten']);
+  });
+});
+
+describe('Wertelisten — Wahl in der Akte (27.09.)', () => {
+  const liste = wertelistenVollstaendig({ branchen: ['Luftfahrt'] }).branchen;
+  it('zeigt alle Werte (fest + eigene) und hängt gewählte Bestandswerte an, die in keiner Liste stehen', () => {
+    const o = wertelisteZurWahl(liste, ['Handwerk', 'Altbestand XY']);
+    expect(o.map(x => x.wert)).toEqual([...BRANCHEN_STANDARD, 'Luftfahrt', 'Altbestand XY']);
+    expect(o.at(-1)).toEqual({ wert: 'Altbestand XY', fest: false, fremd: true });
+    expect(o.find(x => x.wert === 'Handwerk')).toEqual({ wert: 'Handwerk', fest: true });
+  });
+  it('sucht ohne Groß/Klein im Teilwort — Gewähltes bleibt stehen', () => {
+    const o = wertelisteZurWahl(liste, ['Handwerk'], 'fin');
+    expect(o.map(x => x.wert)).toEqual(['Finanzen & Fintech', 'Handwerk']);
+    expect(wertelisteZurWahl(liste, [], 'LUFT').map(x => x.wert)).toEqual(['Luftfahrt']);
+    expect(wertelisteZurWahl(liste, [], 'gibt es nicht')).toEqual([]);
+  });
+  it('Einzelwahl (Typ) mit leerem Bestand: nur die Liste; Suchfeld ab SUCHE_AB Werten', () => {
+    expect(wertelisteZurWahl(wertelistenVollstaendig(undefined).typen, []).map(x => x.wert)).toEqual([...TYPEN_STANDARD]);
+    expect(BRANCHEN_STANDARD.length).toBeGreaterThanOrEqual(SUCHE_AB);
+    expect(TYPEN_STANDARD.length).toBeLessThan(SUCHE_AB);
   });
 });

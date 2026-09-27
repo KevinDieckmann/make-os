@@ -21,7 +21,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
 import { Seite, LEUCHT } from '../schlank';
-import { aufloesen, markttraktion, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type SalesReiterAnsicht } from '@/lib/crm/adresse';
+import { aufloesen, markttraktion, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type SalesReiterAnsicht, type AkteReiter } from '@/lib/crm/adresse';
 import { useCrm } from './daten';
 import { Pillen } from './teile';
 import { Ueberblick, WELT_FARBE } from './Ueberblick';
@@ -107,11 +107,12 @@ export function MarkttraktionSeite() {
    * ersetzt den Eintrag (replace). Beim Wechsel des Bereichs oder der Ansicht
    * beginnt der Inhalt oben.
    */
-  const gehe = (s: Bereich, a?: string, k?: string, wie: 'push' | 'replace' = 'push') => {
+  const gehe = (s: Bereich, a?: string, k?: string, wie: 'push' | 'replace' = 'push', t?: string) => {
     const q = new URLSearchParams();
     if (s !== 'ueberblick') q.set('s', s);
     if (a) q.set('a', a);
     if (k) q.set('k', k);
+    if (t) q.set('t', t);
     const ziel = q.toString() ? `${PFAD}?${q}` : PFAD;
     if (ziel === `${PFAD}${params.toString() ? `?${params}` : ''}`) return;
     router[wie](ziel, { scroll: false });
@@ -133,6 +134,8 @@ export function MarkttraktionSeite() {
   // Die Akte einer Person (Kevin 25.09.): eigener Eintrag im Verlauf des Browsers — „Zurück“ dort führt ebenfalls in die Kartei.
   const akteId = bereich === 'kontakte' && ansicht === 'akte' ? kParam : null;
   const zuAkte = (id: string) => gehe('kontakte', 'akte', id);
+  // Reiter der Akte (27.09.): `t` in der Adresse, Wechsel ersetzt den Eintrag; Überblick steht nicht in der Adresse.
+  const akteReiterSetzen = (t: AkteReiter) => { if (akteId) gehe('kontakte', 'akte', akteId, 'replace', t === 'ueberblick' ? undefined : t); };
 
   return (
     // „+ Gespräch“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (in der Reiterleiste rutschte er aus dem Bild).
@@ -185,7 +188,7 @@ export function MarkttraktionSeite() {
 
       {runde && <Runden api={api} art={runde} name={name} zuKontakt={zuKontakt} zurueck={() => zurueckWie(markttraktion('kontakte'))}
         kampagneId={kParam?.startsWith('kp-') ? kParam : undefined} zuKampagne={id => gehe('kontakte', 'runde-vernetzen', id ?? undefined, 'replace')} />}
-      {akteId && <KontaktAkte api={api} id={akteId} name={name} zurueck={() => zurueckWie(markttraktion('kontakte', undefined, akteId))} zuFirma={zuFirma} zuAkte={zuAkte} />}
+      {akteId && <KontaktAkte api={api} id={akteId} name={name} zurueck={() => zurueckWie(markttraktion('kontakte', undefined, akteId))} zuFirma={zuFirma} zuAkte={zuAkte} t={params.get('t')} setReiter={akteReiterSetzen} />}
       {!runde && !akteId && (bereich === 'kontakte' || (bereich === 'firmen' && ansicht !== 'leads')) && <Kartei api={api} name={name} modus={bereich === 'firmen' ? 'firmen' : 'personen'} auswahl={auswahl} setAuswahl={setAuswahl} zuKontakt={zuKontakt} zuFirma={zuFirma} start={ansicht === 'akte' ? undefined : ansicht} zuRunde={a => gehe('kontakte', `runde-${a}`)} zuAkte={zuAkte} />}
       {bereich === 'stammdaten' && <Stammdaten api={api} zuBereich={zuBereich} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('stammdaten', a || undefined)} />}
     </Seite>
