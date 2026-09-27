@@ -19,7 +19,7 @@ import { WEG } from '@/lib/wege';
 import { eur, prozent, monatLabel, neueKennung } from '@/lib/finanzen/plan/hilfen';
 import type { Operation } from '@/lib/finanzen/plan/operationen';
 import {
-  planszenarienVon, neuesPlanszenario, neuerBaustein, betragImMonat, vergleich, STEUER_HINWEIS,
+  planszenarienVon, neuesPlanszenario, neuerBaustein, betragImMonat, vergleich, STEUER_HINWEIS, AUSSCHUETTUNG_STEUER_VORGABE,
   RHYTHMUS_LABEL, KOSTENART_LABEL, BAUSTEIN_EINHEIT_LABEL,
   type Planszenario, type Baustein, type Rhythmus, type KostenArt, type BausteinEinheit, type Regler,
 } from '@/lib/finanzen/szenarien';
@@ -240,8 +240,9 @@ export function Baukasten() {
               <Feld label="Zahlungsziel Umsatz UG"><Auswahl wert={String(ps.annahmen.zahlungsziel ?? 0)} onWahl={v => void setze('/annahmen/zahlungsziel', ps.annahmen.zahlungsziel, Number(v) || undefined, 'Zahlungsziel')} optionen={ZIELE} titel="Zahlungsziel" /></Feld>
               <Feld label="Ausschüttung UG → Privat je Monat"><ZahlFeld wert={ps.annahmen.ausschuettung?.betrag ?? null} leer platzhalter="keine" dezimal={0} breite="100%" onFertig={v => void setze('/annahmen/ausschuettung', ps.annahmen.ausschuettung, v ? { betrag: v, ab: ps.annahmen.ausschuettung?.ab ?? m0 } : undefined, 'Ausschüttung')} titel="Ausschüttung je Monat" /></Feld>
               <Feld label="Ausschüttung ab"><MonatWahl wert={ps.annahmen.ausschuettung?.ab ?? m0} onWahl={m => void setze('/annahmen/ausschuettung', ps.annahmen.ausschuettung, { betrag: ps.annahmen.ausschuettung?.betrag ?? 0, ab: m }, 'Ausschüttung ab')} monate={d.monate} /></Feld>
+              <Feld label={`Steuer auf Ausschüttung, pauschal (Vorgabe ${prozent(AUSSCHUETTUNG_STEUER_VORGABE, 1)})`}><ZahlFeld wert={ps.annahmen.ausschuettungSteuer ?? null} leer platzhalter={String(AUSSCHUETTUNG_STEUER_VORGABE).replace('.', ',')} dezimal={3} breite="100%" onFertig={v => void setze('/annahmen/ausschuettungSteuer', ps.annahmen.ausschuettungSteuer, v == null ? undefined : Math.max(0, Math.min(1, v)), 'Steuer auf Ausschüttung')} titel="Steuerquote auf die Ausschüttung als Dezimalzahl (0,264 = 26,4 %)" /></Feld>
             </Formular>
-            <Hinweis>Leer heißt: wie im Plan (Treiber &amp; Annahmen). Ausschüttung nimmt Geld aus der UG-Kasse und gibt es privat dazu — Steuer darauf ist hier nicht gerechnet. {STEUER_HINWEIS}</Hinweis>
+            <Hinweis>Leer heißt: wie im Plan (Treiber &amp; Annahmen). Ausschüttung nimmt Geld brutto aus der UG-Kasse; privat kommt brutto minus pauschale Steuer an (Vorgabe Kapitalertragsteuer + Soli {prozent(AUSSCHUETTUNG_STEUER_VORGABE, 1)}), der Abzug steht unter Gesamt bei den Übergängen. {STEUER_HINWEIS}</Hinweis>
           </Karte>
 
           <Karte i={3}>

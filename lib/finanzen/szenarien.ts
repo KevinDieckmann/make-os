@@ -65,9 +65,14 @@ export interface PlanAnnahmen {
   steuerUG?: number;
   /** Vorgabe Zahlungsziel in Monaten für Umsatz-Bausteine der UG. */
   zahlungsziel?: number;
-  /** Ausschüttung/Entnahme UG → Privat je Monat ab Plan-Monat. */
+  /** Ausschüttung/Entnahme UG → Privat je Monat ab Plan-Monat (brutto). */
   ausschuettung?: { betrag: number; ab: number };
+  /** Pauschale Steuerquote auf die Ausschüttung (0–1); fehlt: AUSSCHUETTUNG_STEUER_VORGABE. Hinweis, keine Steuerberatung. */
+  ausschuettungSteuer?: number;
 }
+/** Kevin 27.09.: Kapitalertragsteuer + Soli als Pauschale, je Szenario einstellbar. */
+export const AUSSCHUETTUNG_STEUER_VORGABE = 0.264;
+export const ausschuettungSteuerVon = (a: PlanAnnahmen): number => (typeof a.ausschuettungSteuer === 'number' && Number.isFinite(a.ausschuettungSteuer) ? Math.max(0, Math.min(1, a.ausschuettungSteuer)) : AUSSCHUETTUNG_STEUER_VORGABE);
 
 export interface Planszenario {
   id: string; name: string;
@@ -108,7 +113,7 @@ export function betragImMonat(b: Baustein, m: number): number {
 /** Alle Bausteine eines Szenarios zu Monatsreihen (Länge N) — Zahlungsziel verschiebt nur den Eingang. */
 export function reihen(ps: Planszenario, N: number): Zusatz {
   const leer = () => new Array<number>(N).fill(0);
-  const x: Required<Zusatz> = { ugUmsatz: leer(), ugEingang: leer(), ugPersonal: leer(), ugSach: leer(), ausschuettung: leer(), privatEin: leer(), privatAus: leer(), kdvEin: leer(), kdvAus: leer() };
+  const x: Required<Zusatz> = { ugUmsatz: leer(), ugEingang: leer(), ugPersonal: leer(), ugSach: leer(), ausschuettung: leer(), ausschuettungSteuer: leer(), privatEin: leer(), privatAus: leer(), kdvEin: leer(), kdvAus: leer() };
   const vorgabeZiel = Math.max(0, Math.round(fin(ps.annahmen.zahlungsziel)));
   for (const b of ps.bausteine) {
     const ziel = Math.max(0, Math.round(fin(b.zahlungsziel, vorgabeZiel)));
@@ -125,7 +130,7 @@ export function reihen(ps: Planszenario, N: number): Zusatz {
     }
   }
   const au = ps.annahmen.ausschuettung;
-  if (au && fin(au.betrag) > 0 && au.ab >= 1) for (let m = au.ab; m <= N; m++) x.ausschuettung[m - 1] += au.betrag;
+  if (au && fin(au.betrag) > 0 && au.ab >= 1) { const q = ausschuettungSteuerVon(ps.annahmen); for (let m = au.ab; m <= N; m++) { x.ausschuettung[m - 1] += au.betrag; x.ausschuettungSteuer[m - 1] += au.betrag * q; } }
   return x;
 }
 
@@ -177,8 +182,8 @@ export interface Auswertung {
   ziele: { imPlan: number; knapp: number; gekippt: number; gesamt: number; staende: ZielStand[] };
   /** Laufende UG-Kosten je Monat (Personal inkl. Stellen, Sach, Holding) — so viel Umsatz braucht die UG mindestens. */
   mindestumsatz: { jetzt: number; schnitt12: number; umsatzSchnitt12: number };
-  steuer: { ruecklage: number; ust: number; naechsteZahlung: { monat: number; betrag: number } | null };
-  uebergaenge: { gehaelterNetto: number; gehaelterBrutto: number; ausschuettung: number };
+  steuer: { ruecklage: number; ust: number; naechsteZahlung: { monat: number; betrag: number } | null; /** pauschale Steuer auf die Ausschüttung dieses Monats */ ausschuettung: number };
+  uebergaenge: { gehaelterNetto: number; gehaelterBrutto: number; /** brutto aus der UG */ ausschuettung: number; ausschuettungSteuer: number; ausschuettungNetto: number };
 }
 
 export function auswertung(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[]): Auswertung {
@@ -208,8 +213,8 @@ export function auswertung(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[]): Au
     runway,
     ziele: { imPlan, knapp, gekippt: staende.length - imPlan - knapp, gesamt: staende.length, staende },
     mindestumsatz: { jetzt: kosten(u0), schnitt12: schnitt(kosten), umsatzSchnitt12: schnitt(u => u.umsatz) },
-    steuer: { ruecklage: u0.steuerRuecklage, ust: u0.ustOffen, naechsteZahlung: naechste },
-    uebergaenge: { gehaelterNetto: p0.kevinNetto + p0.malinNetto, gehaelterBrutto: u0.kevinBrutto + u0.malinBrutto, ausschuettung: u0.ausschuettung },
+    steuer: { ruecklage: u0.steuerRuecklage, ust: u0.ustOffen, naechsteZahlung: naechste, ausschuettung: p0.ausschuettungSteuer },
+    uebergaenge: { gehaelterNetto: p0.kevinNetto + p0.malinNetto, gehaelterBrutto: u0.kevinBrutto + u0.malinBrutto, ausschuettung: u0.ausschuettung, ausschuettungSteuer: p0.ausschuettungSteuer, ausschuettungNetto: p0.ausschuettung },
   };
 }
 
@@ -318,6 +323,7 @@ export function pruefePlanszenarien(roh: unknown, treiberIds: string[]): Plansze
     const a = istObjekt(s.annahmen) ? s.annahmen : {};
     const annahmen: PlanAnnahmen = {};
     for (const k of ['kevinBrutto', 'malinBrutto', 'steuerUG', 'zahlungsziel'] as const) { const v = fin(a[k], NaN); if (Number.isFinite(v)) annahmen[k] = v; }
+    const q = fin(a.ausschuettungSteuer, NaN); if (Number.isFinite(q)) annahmen.ausschuettungSteuer = Math.max(0, Math.min(1, q));
     if (istObjekt(a.ausschuettung) && Number.isFinite(fin(a.ausschuettung.betrag, NaN))) annahmen.ausschuettung = { betrag: fin(a.ausschuettung.betrag), ab: Math.max(1, Math.round(fin(a.ausschuettung.ab, 1))) };
     const basis = typeof s.basis === 'string' && treiberIds.includes(s.basis) ? s.basis : treiberIds[0];
     const ps: Planszenario = {

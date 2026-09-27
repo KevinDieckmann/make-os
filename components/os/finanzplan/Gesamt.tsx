@@ -26,7 +26,7 @@ export function Gesamt() {
   const zeilen: BlattZeile[] = [
     { grp: 'Privat' },
     { name: 'Gehälter netto (aus der UG)', get: m => P(m).kevinNetto + P(m).malinNetto, ind: true },
-    { name: 'Ausschüttung aus der UG', get: m => P(m).ausschuettung, ind: true },
+    { name: 'Ausschüttung aus der UG (netto)', get: m => P(m).ausschuettung, ind: true },
     { name: 'Weitere Einnahmen & Bausteine', get: m => P(m).einnahmenWeitere + P(m).bausteineEin, ind: true },
     { name: 'Bedarf, Schulden, Ereignisse', get: m => -(P(m).bedarf + P(m).schulden + P(m).ereignisse + P(m).bausteineAus), ind: true },
     { name: 'Luft je Monat', sum: true, get: m => P(m).luft },
@@ -34,7 +34,9 @@ export function Gesamt() {
     { grp: 'Übergänge UG → Privat' },
     { name: 'Gehälter brutto', get: m => U(m).kevinBrutto + U(m).malinBrutto, ind: true },
     { name: 'davon Arbeitgeberanteil', get: m => U(m).kevin + U(m).malin - U(m).kevinBrutto - U(m).malinBrutto, ind: true },
-    { name: 'Ausschüttung', get: m => U(m).ausschuettung, ind: true },
+    { name: 'Ausschüttung brutto', get: m => U(m).ausschuettung, ind: true },
+    { name: 'davon Steuer, pauschal (Näherung)', get: m => -P(m).ausschuettungSteuer, ind: true },
+    { name: 'Ausschüttung netto an Privat', get: m => P(m).ausschuettung, ind: true },
     { grp: 'MAKE OS UG' },
     { name: 'Umsatz netto', get: m => U(m).umsatz, ind: true },
     { name: 'Mindestumsatz (laufende Kosten)', get: m => kosten(m), ind: true },
@@ -55,10 +57,10 @@ export function Gesamt() {
       <Kacheln min={170}>
         <Kachel label="Frei verfügbar jetzt" wert={<><Geld v={aw.frei.gesamt} /> €</>} unter={<>UG <Geld v={aw.frei.ug} farbe={C.inkDim} /> · KDV <Geld v={aw.frei.kdv} farbe={C.inkDim} /> · Privat <Geld v={aw.frei.privat} farbe={C.inkDim} /></>} />
         <Kachel label="Mindestumsatz UG je Monat" punkt={deckung >= 1 ? LEUCHT.gut : deckung >= 0.8 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={aw.mindestumsatz.schnitt12} /> €</>} unter={<>Ø 12 Monate · Umsatz Ø <Geld v={aw.mindestumsatz.umsatzSchnitt12} farbe={C.inkDim} /> € · Deckung {Math.round(deckung * 100)} %</>} />
-        <Kachel label="Steuerrücklage UG jetzt" punkt={LEUCHT.achtung} wert={<><Geld v={aw.steuer.ruecklage} /> €</>} unter={aw.steuer.naechsteZahlung ? <>nächste Zahlung {monatLabel(d, aw.steuer.naechsteZahlung.monat)}: <Geld v={aw.steuer.naechsteZahlung.betrag} farbe={C.inkDim} /> €</> : 'keine Zahlung im Planzeitraum'} />
+        <Kachel label="Steuerrücklage UG jetzt" punkt={LEUCHT.achtung} wert={<><Geld v={aw.steuer.ruecklage} /> €</>} unter={<>{aw.steuer.naechsteZahlung ? <>nächste Zahlung {monatLabel(d, aw.steuer.naechsteZahlung.monat)}: <Geld v={aw.steuer.naechsteZahlung.betrag} farbe={C.inkDim} /> €</> : 'keine Zahlung im Planzeitraum'}{aw.steuer.ausschuettung ? <> · Steuer auf Ausschüttung <Geld v={aw.steuer.ausschuettung} farbe={C.inkDim} /> €/M</> : null}</>} />
         <Kachel label="USt offen" wert={<><Geld v={aw.steuer.ust} /> €</>} unter="geht im Folgemonat ans Finanzamt" />
         <Kachel label="Gehälter UG → Privat" wert={<><Geld v={aw.uebergaenge.gehaelterNetto} /> €</>} unter={<>netto je Monat · brutto <Geld v={aw.uebergaenge.gehaelterBrutto} farbe={C.inkDim} /> €</>} />
-        <Kachel label="Ausschüttung UG → Privat" wert={<><Geld v={aw.uebergaenge.ausschuettung} /> €</>} unter={aw.uebergaenge.ausschuettung ? 'je Monat aus dem Szenario' : 'keine im Szenario'} />
+        <Kachel label="Ausschüttung UG → Privat" wert={<><Geld v={aw.uebergaenge.ausschuettungNetto} /> €</>} unter={aw.uebergaenge.ausschuettung ? <>netto je Monat · brutto <Geld v={aw.uebergaenge.ausschuettung} farbe={C.inkDim} /> € · Steuer pauschal <Geld v={aw.uebergaenge.ausschuettungSteuer} farbe={C.inkDim} /> €</> : 'keine im Szenario'} />
         <Kachel label="Selbstständigkeit 2026" wert={<><Geld v={selbst.frei} /> €</>} unter={<>frei nach Abschluss · Steuer <Geld v={selbst.est} farbe={C.inkDim} /> €</>} />
       </Kacheln>
       <Karte i={0}>

@@ -36,8 +36,10 @@ export interface Zusatz {
   ugPersonal?: number[];
   /** UG: weitere Sachkosten. */
   ugSach?: number[];
-  /** UG → Privat: Ausschüttung/Entnahme (Kasse UG raus, Privat rein; nicht im Gewinn). */
+  /** UG → Privat: Ausschüttung/Entnahme brutto (Kasse UG raus; nicht im Gewinn). */
   ausschuettung?: number[];
+  /** Pauschale Steuer auf die Ausschüttung — bleibt beim Finanzamt, privat kommt brutto − Steuer an (Näherung). */
+  ausschuettungSteuer?: number[];
   privatEin?: number[]; privatAus?: number[];
   kdvEin?: number[]; kdvAus?: number[];
 }
@@ -251,8 +253,8 @@ export interface MonatPrivat {
   fix: number; jahr: number; flex: number; sparenSoll: number; sparKum: number; angespart: number;
   /** Stand der Jahreskosten-Töpfe je Zeile. */
   toepfe: Record<string, number>;
-  /** Aus Bausteinen (Szenario-Baukasten) — 0 ohne Zusatz. Ausschüttung zählt zu verfuegbar, bausteineAus mindert die Luft. */
-  ausschuettung: number; bausteineEin: number; bausteineAus: number;
+  /** Aus Bausteinen (Szenario-Baukasten) — 0 ohne Zusatz. ausschuettung = netto (zählt zu verfuegbar), ausschuettungSteuer = pauschaler Abzug, bausteineAus mindert die Luft. */
+  ausschuettung: number; ausschuettungSteuer: number; bausteineEin: number; bausteineAus: number;
 }
 /** Sollwert einer Budgetzeile: bei Jahreskosten der Monatsanteil. */
 export function sollBudget(z: Zeile, m: number, plan: Record<string, number>): number {
@@ -270,7 +272,8 @@ export function rechnePrivat(d: FinanzDaten, ug: MonatUG[], sz?: Szenario, x?: Z
     const malinBrutto = m >= a.malinAb ? u.malinBrutto : ov('p.malinSelbst', m, a.malinBrutto, p);
     const kevinNetto = ov('p.kevinNetto', m, netto(kevinBrutto, a.nettoTabelle), p);
     const malinNetto = ov('p.malinNetto', m, netto(malinBrutto, a.nettoTabelle), p);
-    const bEin = zx(x?.privatEin, u.m - 1), bAus = zx(x?.privatAus, u.m - 1), ausschuettung = u.ausschuettung;
+    const bEin = zx(x?.privatEin, u.m - 1), bAus = zx(x?.privatAus, u.m - 1);
+    const ausschuettungSteuer = Math.min(u.ausschuettung, zx(x?.ausschuettungSteuer, u.m - 1)), ausschuettung = u.ausschuettung - ausschuettungSteuer;
     const verfuegbar = weitere + kevinNetto + malinNetto + bEin + ausschuettung;
     const teil = (t: string) => d.privatBudget.filter(z => (z.typ ?? 'flex') === t).reduce((s, z) => s + sollBudget(z, m, p), 0);
     const fix = teil('fix'), jahr = teil('jahr'), flex = teil('flex'), sparenSoll = teil('sparen');
@@ -286,7 +289,7 @@ export function rechnePrivat(d: FinanzDaten, ug: MonatUG[], sz?: Szenario, x?: Z
     }
     return { m, einnahmenWeitere: weitere, kevinBrutto, kevinNetto, malinBrutto, malinNetto, verfuegbar, bedarf, schulden, ereignisse,
       luft, luftKum: kum, sparen: sparenSoll + luft, fix, jahr, flex, sparenSoll, sparKum: spar, angespart: kum + spar, toepfe: { ...topf },
-      ausschuettung, bausteineEin: bEin, bausteineAus: bAus };
+      ausschuettung, ausschuettungSteuer, bausteineEin: bEin, bausteineAus: bAus };
   });
 }
 
@@ -416,7 +419,7 @@ export function zahlungskalender(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[
     add(m, 15, 'Eingang aus Bausteinen', u.bausteineEingang * (1 + d.annahmen.ust), 'ug');
     add(m, d.annahmen.gehaltTag ?? 28, 'Weitere Stellen inkl. Arbeitgeber', -u.stellen, 'ug');
     add(m, 1, 'Ausschüttung an Privat', -u.ausschuettung, 'ug');
-    add(m, 1, 'Ausschüttung aus der UG', u.ausschuettung, 'privat');
+    add(m, 1, 'Ausschüttung aus der UG (netto)', p.ausschuettung, 'privat');
     add(m, 1, 'Bausteine privat', p.bausteineEin - p.bausteineAus, 'privat');
   }
   return out.sort((a, b) => a.datum.localeCompare(b.datum));

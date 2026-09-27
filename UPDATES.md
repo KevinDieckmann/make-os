@@ -144,7 +144,8 @@ Produktseite gehen, damit wir das Ganze einmal sauber haben — clean von vorne 
 
 - **Szenarien selbst bauen** (Planen › Szenarien bauen): ein Szenario = Basis (Zeilen, Fixkosten, Treiber) + **Umsatzbausteine** (Produkt × Kunde/Segment ×
   Preis × Menge × monatlich/jährlich/einmalig × Start × Laufzeit × Zahlungsziel, Einheit UG · Privat · KD Ventures) + **Kostenbausteine** (Stelle mit
-  Arbeitgeberanteil · Software · Miete · Rate) + **eigene Annahmen** (Kevin/Malin brutto, Steuerquote UG, Zahlungsziel, Ausschüttung UG → Privat ab Monat).
+  Arbeitgeberanteil · Software · Miete · Rate) + **eigene Annahmen** (Kevin/Malin brutto, Steuerquote UG, Zahlungsziel, Ausschüttung UG → Privat ab Monat
+  mit pauschaler Steuerquote — Vorgabe 26,4 % Kapitalertragsteuer + Soli, je Szenario einstellbar; netto fließt privat an, der Abzug steht in Gesamt).
   Jede Änderung rechnet sofort (Kern), speichert als Operation, ist rückgängig. Szenarien anlegen, umbenennen, duplizieren, löschen, Treiber wechseln.
 - **Was wäre wenn:** Regler für Umsatz UG, Kevin/Malin brutto, Fixkosten privat ±, neue Rate privat, Steuerquote — Wirkung beim Ziehen, gespeichert beim
   Loslassen (Regler sind gewöhnliche Bausteine/Annahmen des Szenarios).

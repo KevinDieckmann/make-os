@@ -79,6 +79,10 @@ describe('reihen()', () => {
     expect(x.privatAus).toEqual([0, 80, 80, 80]); expect(x.privatEin).toEqual([30, 30, 30, 30]);
     expect(x.kdvAus).toEqual([10, 10, 10, 10]); expect(x.kdvEin).toEqual([20, 20, 20, 20]);
     expect(x.ausschuettung).toEqual([0, 0, 300, 300]);
+    expect((x.ausschuettungSteuer ?? []).map(v => Math.round(v * 100) / 100)).toEqual([0, 0, 79.2, 79.2]); // Vorgabe 26,4 %
+    const eigen = reihen(ps([], { ausschuettung: { betrag: 1000, ab: 1 }, ausschuettungSteuer: 0.3 }), 2);
+    expect(eigen.ausschuettungSteuer).toEqual([300, 300]);
+    expect(reihen(ps([], { ausschuettung: { betrag: 1000, ab: 1 }, ausschuettungSteuer: 0 }), 1).ausschuettungSteuer).toEqual([0]);
   });
 });
 
@@ -107,10 +111,16 @@ describe('Kern mit Zusatz — rechneMit() gegen den reinen Treiber', () => {
     expect(g.ug[1].gewinn).toBe(basis.ug[1].gewinn - 1250);
     expect(g.ug[0].gewinn).toBe(basis.ug[0].gewinn);
   });
-  it('Ausschüttung 300 ab Monat 1: UG-Kasse −300 je Monat, nicht im Gewinn; privat +300 verfügbar und Luft', () => {
+  it('Ausschüttung 300 ab Monat 1: UG-Kasse −300 brutto, nicht im Gewinn; privat kommt netto an (Vorgabe 26,4 % → 220,80), Steuer 79,20', () => {
     const g = rechneMit(d, ps([], { ausschuettung: { betrag: 300, ab: 1 } }));
-    expect(g.ug[0].konto).toBe(basis.ug[0].konto - 300); expect(g.ug[0].gewinn).toBe(basis.ug[0].gewinn);
-    expect(g.pr[0].ausschuettung).toBe(300); expect(g.pr[0].verfuegbar).toBe(basis.pr[0].verfuegbar + 300); expect(g.pr[0].luft).toBe(basis.pr[0].luft + 300);
+    expect(g.ug[0].konto).toBe(basis.ug[0].konto - 300); expect(g.ug[0].gewinn).toBe(basis.ug[0].gewinn); expect(g.ug[0].ausschuettung).toBe(300);
+    expect(g.pr[0].ausschuettung).toBeCloseTo(220.8, 6); expect(g.pr[0].ausschuettungSteuer).toBeCloseTo(79.2, 6);
+    expect(g.pr[0].verfuegbar).toBeCloseTo(basis.pr[0].verfuegbar + 220.8, 6); expect(g.pr[0].luft).toBeCloseTo(basis.pr[0].luft + 220.8, 6);
+    const eigen = rechneMit(d, ps([], { ausschuettung: { betrag: 300, ab: 1 }, ausschuettungSteuer: 0.5 }));
+    expect(eigen.pr[0].ausschuettung).toBe(150); expect(eigen.pr[0].ausschuettungSteuer).toBe(150);
+    const aw = auswertung(eigen.d, eigen.ug, eigen.pr);
+    expect(aw.uebergaenge).toMatchObject({ ausschuettung: 300, ausschuettungSteuer: 150, ausschuettungNetto: 150 }); expect(aw.steuer.ausschuettung).toBe(150);
+    expect(basis.pr[0].ausschuettungSteuer).toBe(0);
   });
   it('Private Bausteine: Rate mindert die Luft, private Einnahme erhöht sie; KDV-Bausteine bewegen das KDV-Konto', () => {
     const g = rechneMit(d, ps([b({ id: 'r', art: 'kosten', einheit: 'privat', kostenArt: 'rate', preis: 80, start: 1 }), b({ id: 'e', art: 'umsatz', einheit: 'privat', preis: 30, start: 1 }), b({ id: 'k', art: 'umsatz', einheit: 'kdv', preis: 20, start: 1 })]));
@@ -246,7 +256,7 @@ describe('Migration und Prüfung', () => {
   it('Planszenarien werden bereinigt: Unbrauchbares fällt weg, unbekannte Basis → erster Treiber, Arbeitsplan auf Unbekanntes → null', () => {
     const roh = leeresDokument(HEUTE) as unknown as Record<string, unknown>;
     roh.planszenarien = [
-      { id: 'ok', name: 'Gut', basis: 'gibtsnicht', bausteine: [{ id: 'b1', art: 'umsatz', preis: '12', start: 0 }, 'müll', { art: 'kosten' }], annahmen: { steuerUG: 0.25, zahlungsziel: 'x', ausschuettung: { betrag: 100 } } },
+      { id: 'ok', name: 'Gut', basis: 'gibtsnicht', bausteine: [{ id: 'b1', art: 'umsatz', preis: '12', start: 0 }, 'müll', { art: 'kosten' }], annahmen: { steuerUG: 0.25, zahlungsziel: 'x', ausschuettung: { betrag: 100 }, ausschuettungSteuer: 1.7 } },
       { id: 'ok', name: 'Doppelt' }, 'kein Objekt', { name: 'ohne id' },
     ];
     roh.arbeitsplan = 'unbekannt';
@@ -257,7 +267,7 @@ describe('Migration und Prüfung', () => {
     const s = p.dokument.planszenarien![0];
     expect(s.basis).toBe('basis'); expect(s.bausteine).toHaveLength(1);
     expect(s.bausteine[0]).toMatchObject({ id: 'b1', art: 'umsatz', einheit: 'ug', preis: 0, menge: 1, start: 1, an: true, rhythmus: 'monatlich' });
-    expect(s.annahmen).toEqual({ steuerUG: 0.25, ausschuettung: { betrag: 100, ab: 1 } });
+    expect(s.annahmen).toEqual({ steuerUG: 0.25, ausschuettung: { betrag: 100, ab: 1 }, ausschuettungSteuer: 1 });
     expect(p.dokument.arbeitsplan).toBeNull();
     expect(pruefePlanszenarien('nix', ['basis'])).toEqual([]);
     expect(pruefeBaustein({ id: 'k', art: 'kosten', kostenArt: 'quatsch', einheit: 'privat', preis: 5, laufzeit: 3.4, zahlungsziel: 1 })).toMatchObject({ kostenArt: 'sonstiges', einheit: 'privat', laufzeit: 3, zahlungsziel: 1 });

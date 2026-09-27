@@ -34,14 +34,16 @@ der Git-Geschichte (82e43c2).
   Zahlungsziel, Einheit UG · Privat · KD Ventures. `produktId` zeigt auf den Katalog; ohne = „ohne Produkt“.
 - **Kostenbaustein** = Art (Stelle · Software · Miete · Rate · Sonstiges) × Betrag × Menge × Rhythmus × Start × Laufzeit, Einheit wie oben.
   Stelle = Brutto, der Kern rechnet den Arbeitgeberanteil dazu; Software → Sachkosten; Miete/Rate wirken meist privat.
-- **Annahmen je Szenario** (`PlanAnnahmen`): Kevin/Malin brutto, Steuerquote UG, Vorgabe Zahlungsziel, Ausschüttung UG → Privat ab Monat.
-  Leer = wie im Dokument.
+- **Annahmen je Szenario** (`PlanAnnahmen`): Kevin/Malin brutto, Steuerquote UG, Vorgabe Zahlungsziel, Ausschüttung UG → Privat ab Monat (brutto) und
+  **pauschale Steuer auf die Ausschüttung** (`ausschuettungSteuer`, Vorgabe 26,4 % = Kapitalertragsteuer + Soli, Kevin 27.09.; Hinweis, keine
+  Steuerberatung). Leer = wie im Dokument bzw. Vorgabe.
 - **Regler** (Was wäre wenn) sind gewöhnliche Bausteine mit `regler`-Marke bzw. Annahmen — die Oberfläche findet sie wieder, die Rechnung nicht.
 - Jeder Baustein hat `an` (aus- und einschaltbar ohne Löschen).
 
 **Rechenweg.** `reihen(ps, N)` löst Bausteine in Monatsreihen `Zusatz` auf (Index = Plan-Monat − 1): `ugUmsatz` (Leistung, Gewinn), `ugEingang`
-(Kasse, um das Zahlungsziel verschoben; USt kommt wie beim Retainer obendrauf), `ugPersonal` (Brutto weiterer Stellen), `ugSach`, `ausschuettung`,
-`privatEin`/`privatAus`, `kdvEin`/`kdvAus`. `annahmenMit()` legt die Szenario-Annahmen über `d.annahmen`. `rechneMit(d, ps, treiber?)` ruft
+(Kasse, um das Zahlungsziel verschoben; USt kommt wie beim Retainer obendrauf), `ugPersonal` (Brutto weiterer Stellen), `ugSach`, `ausschuettung` (brutto,
+verlässt die UG-Kasse), `ausschuettungSteuer` (= brutto × Quote; privat kommt brutto − Steuer an, `MonatPrivat.ausschuettung` ist netto,
+`ausschuettungSteuer` der Abzug), `privatEin`/`privatAus`, `kdvEin`/`kdvAus`. `annahmenMit()` legt die Szenario-Annahmen über `d.annahmen`. `rechneMit(d, ps, treiber?)` ruft
 `rechneUG(d', sz, x)` und `rechnePrivat(d', ug, sz, x)` — der Kern **addiert** die Reihen nur (`+ zx(x?.…, i)`); ohne Zusatz rechnet er Zeile für Zeile wie
 bisher (Test „ohne Planszenario rechnet der Kern exakt wie bisher“). Neue Kern-Felder: `MonatUG.bausteineUmsatz/bausteineEingang/stellen/bausteineSach/
 ausschuettung/kdvBausteineEin/kdvBausteineAus`, `MonatPrivat.ausschuettung/bausteineEin/bausteineAus`; `toepfeUG` zählt Stellen zu den laufenden Kosten,
@@ -51,7 +53,7 @@ der Zahlungskalender zeigt Bausteine, Stellen und Ausschüttung.
 + (bekannte private Kontostände aus den Posten + Luft des Monats; fehlende Konten werden gezählt) · **Runway** UG = Monate ab jetzt bis `frei < 0`, Privat =
 bis (Konten + kumulierte Luft) < 0, sonst null (= über den Horizont) · **Ziele** im Plan/knapp/gekippt aus `zielStaende` · **Mindestumsatz** = Personal inkl.
 Stellen + Sachkosten + Holding je Monat (jetzt, Ø 12 Monate, gegen Umsatz Ø 12) · **Steuer** Rücklage jetzt, USt offen, nächste Ertragsteuerzahlung ·
-**Übergänge** Gehälter brutto/netto, Ausschüttung. `entscheidungen()` leitet daraus Punkte ab (UG unter null, Privat im Minus, Runway < 6, Umsatz unter
+**Übergänge** Gehälter brutto/netto, Ausschüttung brutto/Steuer/netto (Gesamt zeigt alle drei; die Steuer steht auch in der Steuerrücklage-Kachel). `entscheidungen()` leitet daraus Punkte ab (UG unter null, Privat im Minus, Runway < 6, Umsatz unter
 Mindestumsatz, Ziele gekippt/knapp, Steuer fällig, Konten fehlen, Buchungen offen, kein Arbeitsplan) — kritisch zuerst, jeder mit Sprung
 (`?u=planen&sz=…&feld=umsatz|privat`, `ziele`, `toepfe`, `posten`, `buchungen`, `gesamt`). `vergleich(d, [null, ps…], 3)` rechnet bis zu drei
 Spalten (null = Basis).
@@ -158,7 +160,7 @@ Alles nur lokal auf `entwicklung`; nichts gepusht. Sichtprüfung im Dev-Server s
 0. **Sanitizer im CRM** (`lib/crm/speicher.ts::leistung()`): `preis.basis`, `laufzeitMonate`, `aufwand` durchreichen — sonst gehen sie beim Speichern
    auf der Produktseite verloren. Dann auf der Produktseite je Produkt Basis, Laufzeit und Gesellschaft festziehen („für die Planung fehlt“ leer bekommen).
 0a. Erstes Szenario bauen: Planen › Szenarien bauen → „Aus Mandaten und gewonnenen Deals anlegen“ oder leer → Bausteine → ★ Arbeitsplan.
-0b. Entscheiden: Ausschüttung UG → Privat mit oder ohne Steuer rechnen (heute ohne); Selbstständigkeit 2026 als eigene Achse oder Abschlusszahl (heute Abschluss).
+0b. Entschieden (Kevin 27.09.): Ausschüttung mit pauschaler Steuerquote je Szenario (Vorgabe 26,4 %); Selbstständigkeit 2026 bleibt Abschlusszahl; „frei verfügbar“ bleibt wie definiert.
 1. Startbestand auf dem Server hochladen (Einrichtungskarte oder `POST /api/finanzplan/import`) — lokal liegt die Datei zur Prüfung unter `.data/`.
 2. Sichtprüfung im Dev-Server: Blatt am Handy (720 px), Kontextmenü per Langdruck, Verbergen, Rückgängig.
 3. Kontostände aller Konten eintragen (Verpflichtungen › Zu erledigen › Kontostände).
