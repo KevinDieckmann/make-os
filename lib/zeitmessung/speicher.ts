@@ -59,7 +59,13 @@ export async function fokusAbschliessen(person: Person, block: { von: string; bi
   return updateJson<ZeitDatei>(speicherFuer(NAME, person), current => aufraeumen(fokusVerbuchen(current ?? LEER_ZEIT, block), localDay()));
 }
 
+/**
+ * Das Bild für Kopf und Indizes — OHNE zu schreiben (27.09., Tempo-Prüfung): der Puffer wird nur im Speicher auf den
+ * Bestand gelegt. Vorher schrieb jeder Aufruf den Puffer weg, und weil das Bild im Lesepfad von /api/business, /api/privat
+ * und dem Score steht, machte jeder Seitenaufruf den Zwischenspeicher aller Indizes ungültig.
+ */
 export async function zeitBildFuer(person: Person, heute = localDay()): Promise<ZeitBild> {
-  await pufferLeeren(person).catch(() => {});
-  return bild(await ladeZeit(person), heute);
+  let d = await ladeZeit(person);
+  for (const p of puffer.get(person)?.pings ?? []) d = verbuchen(d, p.at, p.schluessel);
+  return bild(d, heute);
 }

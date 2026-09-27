@@ -7,8 +7,10 @@
 // laufen über /api/haushalt/aktion — mit Vorschau.
 
 import { NextResponse } from 'next/server';
+import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
+import { speicherStand } from '@/lib/store/local-db';
 import { haushaltVon, KEIN_ZUGANG } from '@/lib/finanzen/haushalt/zugriff';
-import { ladeHaushalt, patchen, type Op } from '@/lib/finanzen/haushalt/speicher';
+import { ladeHaushalt, patchen, type Op, speicherName } from '@/lib/finanzen/haushalt/speicher';
 import { belegAufgabenAbgleichen } from '@/lib/finanzen/haushalt/aufgaben';
 import { faelligeZeilen } from '@/lib/finanzen/haushalt/jarvis';
 
@@ -28,8 +30,12 @@ export async function GET(req: Request) {
     const h = await ladeHaushalt(z.haushalt);
     return NextResponse.json({ ok: true, punkte: h.buchungen.length ? faelligeZeilen(h) : [], leer: !h.buchungen.length });
   }
+  // Tempo (27.09.): der ganze Haushalt (≈1 MB) ging alle 20 s ungepackt raus — jetzt ETag aus den fünf Beständen, 304 wenn nichts neu ist, gepackt.
+  const etag = etagAus('hh', await speicherStand((['buchungen', 'stamm', 'schulden', 'belege', 'plan'] as Parameters<typeof speicherName>[0][]).map(t => speicherName(t, z.haushalt))), z.haushalt, z.person);
+  const gleich = unveraendert(req, etag);
+  if (gleich) return gleich;
   const h = await ladeHaushalt(z.haushalt);
-  return NextResponse.json({ ok: true, haushalt: z.haushalt, person: z.person, ...h });
+  return jsonAntwort(req, { ok: true, haushalt: z.haushalt, person: z.person, ...h }, etag);
 }
 
 export async function PATCH(req: Request) {

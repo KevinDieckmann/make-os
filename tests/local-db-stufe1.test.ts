@@ -77,7 +77,8 @@ describe('Stufe 1 — Zwischenspeicher je Bestand', () => {
     expect(await memo.merken('idx', 60_000, rechne)).toBe(1);
     memo.standErhoehen('kontakte');
     expect(await memo.merken('idx', 60_000, rechne)).toBe(2);
-    expect(memo.istRauschen('zeit')).toBe(false);
-    expect(memo.istRauschen('crm')).toBe(false);
+    // 27.09. (Tempo-Prüfung): Zeit & Fokus, Tageslauf, Kalender-Stände und Verläufe sind Rauschen — echte Index-Eingänge nicht.
+    for (const n of ['zeit', 'zeit--malin', 'tageslauf', 'calendar-cache', 'kalender-icloud', 'traktion-verlauf', 'performance--malin', 'crm-signale']) expect(memo.istRauschen(n)).toBe(true);
+    for (const n of ['crm', 'kontakte', 'grundlage', 'haushalt-buchungen--kevin-malin', 'vitals', 'tasks']) expect(memo.istRauschen(n)).toBe(false);
   });
 });

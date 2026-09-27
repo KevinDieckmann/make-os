@@ -3,6 +3,7 @@
 // Bereichs-Cockpit, Bauzeit-Hinweis, Onboarding-Erinnerung und Zurufe. Was
 // mitläuft, muss etwas tun, nicht nur da sein.
 import { Taktgeber } from '@/components/os/Taktgeber';
+import { AnfrageBuendel } from '@/components/os/AnfrageBuendel';
 import { Kopf } from '@/components/os/Kopf';
 import { Leiste } from '@/components/os/Leiste';
 import { JarvisPanel } from '@/components/os/JarvisPanel';
@@ -25,6 +26,8 @@ export default async function OsLayout({ children }: { children: React.ReactNode
   await wache('/os');
   return (
     <div className="os-shell" style={{ display: 'flex', minHeight: '100vh', alignItems: 'stretch' }}>
+      {/* Tempo (27.09.): gleiche GET-Abfragen an /api werden geteilt statt dreifach gestellt. */}
+      <AnfrageBuendel />
       {/* Schreibt Browser-Fehler mit, damit sie nicht nur auf dem Bildschirm stehen. */}
       <FehlerMelder />
       {/* Hält fest, wer welchen Bestand geändert hat. */}

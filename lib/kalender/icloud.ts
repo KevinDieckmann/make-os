@@ -144,11 +144,19 @@ export async function ladeStand(): Promise<IcloudStand> {
   return s && Array.isArray(s.kalender) ? { ...LEER, ...s } : { ...LEER };
 }
 
+/** Geparste Termine je (Stand, Zeitraum) — die Kalenderseite fragt denselben Zeitraum jede Minute, das ICS-Parsen aller Objekte kostete jedes Mal 100–700 ms (Tempo-Prüfung 27.09.). */
+const terminCache = new Map<string, Termin[]>();
+
 /** Alle Termine aller Kalender im Zeitraum [von, bis) — Berliner Tage. */
 export function termineImZeitraum(s: IcloudStand, von: string, bis: string): Termin[] {
+  const key = `${s.at ?? ''}|${von}|${bis}`;
+  const c = s.at ? terminCache.get(key) : undefined;
+  if (c) return c;
   const raus: Termin[] = [];
   for (const k of s.kalender) for (const o of s.objekte[k.id] ?? []) raus.push(...termineAus(o, k, von, bis));
-  return raus.sort((a, b) => a.start.localeCompare(b.start) || a.titel.localeCompare(b.titel));
+  raus.sort((a, b) => a.start.localeCompare(b.start) || a.titel.localeCompare(b.titel));
+  if (s.at) { if (terminCache.size >= 24) terminCache.clear(); terminCache.set(key, raus); }
+  return raus;
 }
 
 /** Wie der Mac-Kalender die Kalender eingeordnet hat — manche Leser färben danach. */

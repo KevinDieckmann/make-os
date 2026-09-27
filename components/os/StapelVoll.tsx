@@ -118,7 +118,7 @@ export function StapelView() {
   const inArbeit = auftraege.filter(a => a.status === 'laeuft' || a.status === 'offen');
   useEffect(() => {
     if (!inArbeit.length) return;
-    const iv = setInterval(() => { void laden(); }, 3000);
+    const iv = setInterval(() => { void laden(); }, 5000);
     return () => clearInterval(iv);
   }, [inArbeit.length, laden]);
 

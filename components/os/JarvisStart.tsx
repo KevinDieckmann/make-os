@@ -105,12 +105,13 @@ export function JarvisStart() {
 
   // Wie viel gerade läuft — das treibt den Puls des Hirns.
   useEffect(() => {
-    const holen = () => fetch('/api/jarvis/auftraege')
+    // Tempo (27.09.): alle 30 s statt alle 5 s, und nur, wenn der Tab sichtbar ist — jeder Ping liest den Auftragsbestand auf dem Server.
+    const holen = () => document.visibilityState !== 'visible' ? undefined : fetch('/api/jarvis/auftraege')
       .then(r => r.json())
       .then(d => setAktiv(Number(d?.stand?.laeuft ?? 0) + Number(d?.stand?.offen ?? 0)))
       .catch(() => {});
     holen();
-    const iv = setInterval(holen, 5000);
+    const iv = setInterval(holen, 30_000);
     return () => clearInterval(iv);
   }, []);
 

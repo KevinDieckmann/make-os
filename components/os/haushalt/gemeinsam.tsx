@@ -43,7 +43,7 @@ export function useHaushalt() {
   useEffect(() => { void laden(); }, [laden]);
   // Zu zweit (24.09.): Malins Änderungen erscheinen von selbst. Gleichzeitiges
   // Bearbeiten derselben Zeile fängt die Stand-Prüfung ab (409 → neu laden).
-  useAbgleich(laden, { alle: 20_000 });
+  useAbgleich(laden, { alle: 60_000 }); // 27.09.: jede Minute statt alle 20 s — die Antwort kommt mit ETag, meist 304
 
   /** Einzeländerungen. Bei Konflikt: Meldung und frischer Stand statt stillem Überschreiben. */
   const patch = useCallback(async (teil: string, ops: Op[]): Promise<boolean> => {

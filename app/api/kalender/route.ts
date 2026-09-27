@@ -8,7 +8,7 @@
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
-import { verbunden, frischerStand, abgleichen, termineImZeitraum, kontoAnzeige, CACHE } from '@/lib/kalender/icloud';
+import { verbunden, abgleichen, termineImZeitraum, kontoAnzeige, CACHE, ladeStand, naechsterVersuchFaellig } from '@/lib/kalender/icloud';
 import { fristen, erinnerungen, type Quellen } from '@/lib/kalender/eintraege';
 import { ladeEinstellungen, wemGehoert } from '@/lib/kalender/einstellungen';
 import { wandzeit, tagPlus } from '@/lib/kalender/zeit';
@@ -42,7 +42,10 @@ export async function GET(req: Request) {
   let kalender: { name: string; farbe?: string; schreibbar: boolean; wer: string }[] = [];
 
   if (verbunden()) {
-    const s = await frischerStand();
+    // Tempo (27.09.): nicht auf iCloud warten — Stand ausliefern, fälligen Abgleich im Hintergrund anstoßen (der Takt hält ihn alle 5 Min. frisch).
+    const s0 = await ladeStand();
+    let s = s0;
+    if (naechsterVersuchFaellig(s0)) { const lauf = abgleichen().catch(() => ladeStand()); if (!s0.at) s = await lauf; else void lauf; }
     termine = termineImZeitraum(s, von, bis);
     stand = s.at ?? null;
     fehler = s.fehler && (!s.at || (s.fehlerAt ?? '') > s.at) ? s.fehler : undefined;

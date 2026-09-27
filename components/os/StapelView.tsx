@@ -73,7 +73,7 @@ export function StapelView() {
   }, []);
   const headsOffen = heads.reduce((s, h) => s + h.offen, 0);
   const inArbeit = auftraege.filter(a => a.status === 'laeuft' || a.status === 'offen').length;
-  useEffect(() => { if (!inArbeit) return; const iv = setInterval(() => { void laden(); }, 3000); return () => clearInterval(iv); }, [inArbeit, laden]);
+  useEffect(() => { if (!inArbeit) return; const iv = setInterval(() => { void laden(); }, 5000); return () => clearInterval(iv); }, [inArbeit, laden]);
 
   async function entscheide(v: Vorschlag, entscheidung: 'freigeben' | 'ablehnen') {
     setBusy(v.id);

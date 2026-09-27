@@ -23,12 +23,12 @@ async function businessTagesstand() {
   await alleSichten(heute).catch(() => { businessTag = ''; });
 }
 
-/** Kalender im Hintergrund frisch halten (alle 10 Min.) — Jarvis, Morgenlauf und Heute lesen den Stand, auch wenn keine Seite offen ist. */
+/** Kalender im Hintergrund frisch halten (alle 5 Min., seit 27.09. — der Seitenpfad wartet nicht mehr auf iCloud) — Jarvis, Morgenlauf und Heute lesen den Stand, auch wenn keine Seite offen ist. */
 async function kalenderFrischHalten() {
   if (!verbunden()) return;
   const s = await ladeStand();
   const zuletzt = Date.parse(s.at ?? '') || 0;
-  if (Date.now() - zuletzt > 10 * 60_000 && naechsterVersuchFaellig(s)) void abgleichen().catch(() => { /* Fehler steht im Stand */ });
+  if (Date.now() - zuletzt > 5 * 60_000 && naechsterVersuchFaellig(s)) void abgleichen().catch(() => { /* Fehler steht im Stand */ });
 }
 
 export const runtime = 'nodejs';
@@ -49,8 +49,9 @@ export async function GET(req: Request) {
 
 export async function POST() {
   void herzschlag();
-  // Brain-Index alle 10 Minuten leise mit dem Vault abgleichen (27.09.) — nie blockierend.
-  void import('@/lib/brain/index').then(ix => ix.indexFrischHalten(10)).catch(() => {});
+  // Brain-Index alle 30 Minuten leise mit dem Vault abgleichen (27.09.; erst 10, seit der Tempo-Prüfung 30 — der Lauf
+  // liest alle Notizen und rechnet synchron in SQLite) — nie blockierend.
+  void import('@/lib/brain/index').then(ix => ix.indexFrischHalten(30)).catch(() => {});
   await kalenderFrischHalten().catch(() => {});
   void businessTagesstand();
   const dran = await faellig();

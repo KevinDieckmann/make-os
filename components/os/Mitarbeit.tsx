@@ -33,13 +33,13 @@ export function Mitarbeit() {
       if (document.visibilityState !== 'visible') return;
       try {
         // Seit 26.09. spät auch Abfrage und Modus: daraus misst der Server die Zeit je Space und Bereich (Zeit & Fokus).
-        await fetch('/api/state/anwesenheit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pfad: pfad.startsWith('/os/markttraktion') ? `${pfad}${window.location.search}` : pfad, suche: window.location.search, space }) });
-        const d = await fetch('/api/state/anwesenheit').then(r => r.json());
+        // Tempo (27.09.): die Meldung bringt die Antwort gleich mit — ein Aufruf statt zwei, jede Minute statt alle 30 s.
+        const d = await fetch('/api/state/anwesenheit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pfad: pfad.startsWith('/os/markttraktion') ? `${pfad}${window.location.search}` : pfad, suche: window.location.search, space }) }).then(r => r.json());
         if (!weg) setAndere(((d.aktiv ?? []) as Aktiv[]).filter(a => a.person !== d.ich));
       } catch { /* still */ }
     };
     void melden();
-    const t = setInterval(melden, 30_000);
+    const t = setInterval(melden, 60_000);
     return () => { weg = true; clearInterval(t); };
   }, [pfad, space]);
   if (!andere.length) return null;

@@ -14,7 +14,10 @@ const ablage = new Map<string, { v: number; t: number; wert: unknown; laeuft?: P
  * Verbrauch, Anmeldungen, Fehler, HOI-Zähler. Vorher machte jede dieser Schreibungen ALLES
  * Gemerkte ungültig — der Zwischenspeicher war praktisch nie warm.
  */
-const RAUSCHEN = /^(anwesenheit|nutzung|aenderungen|agent-log|jarvis-auftraege|jarvis-verlauf(--.*)?|verbrauch|anmeldungen|client-fehler|hoi-.*|ki-stand|delegation-runde|content-entwuerfe|ernaehrung-vorschlag|sitzungs-stand.*)$/;
+// 27.09. (Tempo-Prüfung): dazu Zeit & Fokus (`zeit`, schreibt alle zwei Minuten je Person), Tageslauf, CRM-Signale,
+// die Kalender-Stände von iCloud, Verläufe (Traktion, Business, Performance) und die Flächen-Gestaltung — keiner dieser
+// Bestände ist Eingang eines Index, aber jeder machte bis dahin ALLES Gemerkte ungültig; der Speicher war nie warm.
+const RAUSCHEN = /^(anwesenheit|nutzung|aenderungen|agent-log|jarvis-auftraege|jarvis-verlauf(--.*)?|verbrauch|anmeldungen|client-fehler|hoi-.*|ki-stand|delegation-runde|content-entwuerfe|ernaehrung-vorschlag|sitzungs-stand.*|zeit(--.*)?|tageslauf|crm-signale|kalender-icloud|calendar-cache|performance(--.*)?|.*-verlauf|flaeche(--.*)?|willkommen(--.*)?|brain-konsolidierung)$/;
 export const istRauschen = (name?: string): boolean => !!name && RAUSCHEN.test(name);
 
 /** local-db ruft das nach jedem Schreiben — dann rechnet der nächste Aufruf neu. Rauschen (siehe oben) lässt den Stand stehen. */
@@ -36,7 +39,9 @@ export async function merken<T>(schluessel: string, ttlMs: number, rechne: () =>
     return e.wert as T;
   }
   const v = stand.v;
-  const laeuft = rechne().then(wert => { if (stand.v === v) ablage.set(schluessel, { v, t: Date.now(), wert }); else ablage.delete(schluessel); return wert; }, err => { ablage.delete(schluessel); throw err; });
+  // Schreibt WÄHREND der Berechnung ein anderer Bestand, gilt das Ergebnis trotzdem — für höchstens eine TTL. Vorher wurde es
+  // verworfen, und weil die Indizes selbst Verläufe schreiben, war der Speicher unter Last nie gefüllt (Tempo-Prüfung 27.09.).
+  const laeuft = rechne().then(wert => { ablage.set(schluessel, { v: stand.v, t: Date.now(), wert }); return wert; }, err => { ablage.delete(schluessel); throw err; });
   ablage.set(schluessel, { v, t: Date.now(), wert: undefined, laeuft });
   return laeuft;
 }

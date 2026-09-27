@@ -50,7 +50,9 @@ const KERNE = os.cpus().length || 4;
 /** Obergrenze: die Arbeit ist Warten auf Netz und Modell, nicht Rechnen —
  *  deshalb darf es mehr als Kerne sein. Nach oben gedeckelt, damit ein
  *  Videocall nebenher nicht ruckelt. */
-const MAX_PARALLEL = Math.max(4, Math.min(12, Math.round(KERNE * 1.5)));
+// 27.09. (Tempo-Prüfung): auf dem Server mit 1–2 Kernen höchstens zwei Läufe nebeneinander — jeder Lauf liest ein Dutzend
+// Bestände und rechnet auf derselben CPU wie die Seiten.
+const MAX_PARALLEL = KERNE <= 2 ? 2 : Math.max(4, Math.min(12, Math.round(KERNE * 1.5)));
 
 /** Wie viel wir uns gerade zutrauen. Ist die Maschine schon ausgelastet,
  *  nehmen wir weniger — „drosselt selbst". */
@@ -149,6 +151,6 @@ while (weiter) {
     if (appWeg >= 20) { console.log(`[${zeit()}] App seit Langem nicht erreichbar. Arbeiter beendet sich.`); break; }
   }
   // Ruhig, wenn nichts los ist; sofort wieder da, sobald Arbeit kam.
-  const pause = stillGesehen === 0 ? 1200 : Math.min(15_000, 2000 + stillGesehen * 800);
+  const pause = stillGesehen === 0 ? 1200 : Math.min(KERNE <= 2 ? 30_000 : 15_000, 2000 + stillGesehen * 800);
   await new Promise(r => setTimeout(r, pause));
 }

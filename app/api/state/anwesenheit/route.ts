@@ -26,14 +26,17 @@ interface Datei { wer: Record<string, Eintrag> }
 /** Nach so langer Stille gilt jemand als weg. */
 const FRISCH_MS = 90_000;
 
+/** Wer in den letzten Minuten gemeldet hat — mit Name und Sekunden seit dem Ping. */
+function aktive(f: Datei | null, jetzt: number) {
+  return Object.values(f?.wer ?? {})
+    .filter(e => jetzt - Date.parse(e.at) < FRISCH_MS)
+    .map(e => ({ ...e, name: nameVon(e.person), seitSek: Math.round((jetzt - Date.parse(e.at)) / 1000) }));
+}
+
 export async function GET(req: Request) {
   const ich = personAus(req);
   const f = await loadJson<Datei>('anwesenheit');
-  const jetzt = Date.now();
-  const aktiv = Object.values(f?.wer ?? {})
-    .filter(e => jetzt - Date.parse(e.at) < FRISCH_MS)
-    .map(e => ({ ...e, name: nameVon(e.person), seitSek: Math.round((jetzt - Date.parse(e.at)) / 1000) }));
-  return NextResponse.json({ aktiv, ich }, { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ aktiv: aktive(f, Date.now()), ich }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: Request) {
@@ -46,7 +49,7 @@ export async function POST(req: Request) {
   if (!pfad.startsWith('/os')) return NextResponse.json({ ok: true, ignoriert: true });
 
   const jetzt = Date.now();
-  await updateJson<Datei>('anwesenheit', current => {
+  const neu = await updateJson<Datei>('anwesenheit', current => {
     const f = current ?? { wer: {} };
     f.wer = f.wer ?? {};
     f.wer[person] = { person, pfad, at: new Date().toISOString() };
@@ -60,5 +63,6 @@ export async function POST(req: Request) {
   const suche = String(body.suche ?? '').slice(0, 200);
   const { schluessel } = zeitSchluessel(pfad.split('?')[0], suche || (pfad.includes('?') ? `?${pfad.split('?')[1]}` : ''), istSpace(body.space) ? body.space : null);
   await verbucheAnwesenheit(person, new Date(jetzt).toISOString(), schluessel).catch(() => {});
-  return NextResponse.json({ ok: true });
+  // Tempo (27.09.): wer da ist, kommt gleich mit zurück — der Browser spart sich den zweiten Aufruf.
+  return NextResponse.json({ ok: true, aktiv: aktive(neu, jetzt), ich: person }, { headers: { 'Cache-Control': 'no-store' } });
 }

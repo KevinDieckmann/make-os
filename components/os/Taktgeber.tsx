@@ -57,13 +57,14 @@ export function Taktgeber() {
 
     /** Anklopfen: der Server entscheidet, ob etwas fällig ist. */
     const schlag = () => {
-      if (!aktiv) return;
+      // Tempo (27.09.): auf dem Server fragt der Arbeiter jede Minute — der Browser ist nur Rückfall, also selten und nur sichtbar.
+      if (!aktiv || document.visibilityState !== 'visible') return;
       fetch('/api/jarvis/takt', { method: 'POST' }).catch(() => {});
     };
 
     /** Nachsehen, ob im Hintergrund etwas gemeldet werden will. */
     async function nachsehen() {
-      if (!aktiv) return;
+      if (!aktiv || document.visibilityState !== 'visible') return;
       try {
         const [tl, auf] = await Promise.all([
           fetch('/api/tageslauf').then(r => r.json()) as Promise<{ laeufe?: Lauf[] }>,
@@ -89,9 +90,9 @@ export function Taktgeber() {
 
     // Dem Arbeiter den Vortritt lassen: erst nach einer Dreiviertelminute.
     const erster = setTimeout(schlag, 45_000);
-    const uhr = setInterval(schlag, 5 * MIN);
+    const uhr = setInterval(schlag, 15 * MIN);
     void nachsehen();
-    const blick = setInterval(nachsehen, 3 * MIN);
+    const blick = setInterval(nachsehen, 5 * MIN);
     return () => { aktiv = false; clearTimeout(erster); clearInterval(uhr); clearInterval(blick); };
   }, []);
 

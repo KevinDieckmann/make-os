@@ -24,6 +24,18 @@ export const modelleOrdner = () => process.env.MAKE_OS_MODELLE_DIR?.trim() || pa
 export const embeddingsAktiv = () => process.env.MAKE_OS_EMBEDDINGS !== 'aus' && process.env.NODE_ENV !== 'test';
 
 /**
+ * Tempo (27.09.): das Modell rechnet auf allen Kernen (ONNX-Thread-Pool — auf dem Mac 300 % CPU beim Auffüllen). Auf einem
+ * Server mit höchstens zwei CPUs würde es die Software selbst ausbremsen; dort bleibt es aus, es sei denn, jemand setzt
+ * MAKE_OS_EMBEDDINGS=an ausdrücklich. Rein, getestet.
+ */
+export function embeddingsErlaubt(cpus = os.cpus().length, env: Record<string, string | undefined> = process.env): { ok: boolean; grund?: string; faeden: number } {
+  const faeden = Math.max(1, Math.min(4, cpus - 2));
+  if (env.MAKE_OS_EMBEDDINGS === 'aus') return { ok: false, grund: 'Embeddings sind aus (MAKE_OS_EMBEDDINGS=aus).', faeden };
+  if (cpus <= 2 && env.MAKE_OS_EMBEDDINGS !== 'an') return { ok: false, grund: `Embeddings auf einem Rechner mit ${cpus} CPU${cpus === 1 ? '' : 's'} aus — sie würden die Software ausbremsen (MAKE_OS_EMBEDDINGS=an erzwingt, dann nur Volltext-Suche fehlt nichts).`, faeden };
+  return { ok: true, faeden };
+}
+
+/**
  * Verfügbarer Speicher in MB. `os.freemem()` zählt auf macOS und Linux nur wirklich ungenutzte Seiten — Dateicache
  * gilt als belegt, und der ist fast immer groß. Linux: MemAvailable aus /proc/meminfo (was ein Prozess bekäme).
  * Sonst: Gesamtspeicher minus eigener RSS als grobe Obergrenze, höchstens 4 GB angenommen.
@@ -48,13 +60,16 @@ export function modell(): Promise<Extraktor | null> {
   if (lader) return lader;
   lader = (async () => {
     if (!embeddingsAktiv()) { hinweis = 'Embeddings sind aus (MAKE_OS_EMBEDDINGS=aus).'; return null; }
+    const erlaubt = embeddingsErlaubt();
+    if (!erlaubt.ok) { hinweis = erlaubt.grund ?? null; return null; }
     const freiMb = speicherVerfuegbarMb();
     if (freiMb < 500) { hinweis = `zu wenig freier Speicher für das Modell (${Math.round(freiMb)} MB verfügbar) — nur Volltext`; return null; }
     try {
       const tf = await import('@huggingface/transformers');
       tf.env.cacheDir = modelleOrdner();
       tf.env.allowRemoteModels = true;
-      const p = await tf.pipeline('feature-extraction', MODELL, { dtype: 'q8' });
+      // Fäden begrenzen: nie alle Kerne, damit Seiten und Takt daneben flüssig bleiben.
+      const p = await tf.pipeline('feature-extraction', MODELL, { dtype: 'q8', session_options: { intraOpNumThreads: erlaubt.faeden, interOpNumThreads: 1 } } as Parameters<typeof tf.pipeline>[2]);
       hinweis = null;
       return p as unknown as Extraktor;
     } catch (err) {

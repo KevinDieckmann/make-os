@@ -14,3 +14,17 @@ describe('Embeddings — reine Teile', () => {
   });
   it('im Test sind Embeddings aus', () => { expect(embeddingsAktiv()).toBe(false); });
 });
+
+describe('Embeddings-Erlaubnis nach CPU-Zahl (Tempo 27.09.)', async () => {
+  const { embeddingsErlaubt } = await import('@/lib/brain/einbettung');
+  it('bleibt auf 1–2 CPUs aus, außer ausdrücklich an', () => {
+    expect(embeddingsErlaubt(1, {}).ok).toBe(false);
+    expect(embeddingsErlaubt(2, {}).ok).toBe(false);
+    expect(embeddingsErlaubt(2, { MAKE_OS_EMBEDDINGS: 'an' }).ok).toBe(true);
+  });
+  it('läuft auf größeren Rechnern mit begrenzten Fäden', () => {
+    expect(embeddingsErlaubt(4, {})).toMatchObject({ ok: true, faeden: 2 });
+    expect(embeddingsErlaubt(12, {}).faeden).toBe(4);
+    expect(embeddingsErlaubt(12, { MAKE_OS_EMBEDDINGS: 'aus' }).ok).toBe(false);
+  });
+});

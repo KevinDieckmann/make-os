@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { AUF_DEM_MAC } from '@/lib/mac';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
-import { verbunden, frischerStand } from '@/lib/kalender/icloud';
+import { verbunden, ladeStand, abgleichen, naechsterVersuchFaellig } from '@/lib/kalender/icloud';
 import { spawn } from 'child_process';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 
@@ -108,7 +108,11 @@ export async function GET(req: Request) {
 
   // Seit 25.09.: iCloud direkt (Server) — der Abgleich schreibt den calendar-cache.
   if (verbunden()) {
-    const s = await frischerStand();
+    // Tempo (27.09.): der Seitenpfad wartet nicht auf iCloud. Liegt ein Stand vor, geht er sofort raus und ein fälliger
+    // Abgleich läuft im Hintergrund (der Takt hält ihn ohnehin alle 5 Min. frisch). Nur ganz ohne Stand wird gewartet.
+    const s0 = await ladeStand();
+    let s = s0;
+    if (naechsterVersuchFaellig(s0)) { const lauf = abgleichen().catch(() => ladeStand()); if (!s0.at) s = await lauf; else void lauf; }
     const c = await loadJson<CalCache>(CACHE);
     return NextResponse.json(c?.events ?? [], { headers: { 'Cache-Control': 'no-store', 'X-Cache': 'icloud', ...(c?.at ? { 'X-Stand': c.at } : {}), ...(s.fehler && s.fehlerAt && (!s.at || s.fehlerAt > s.at) ? { 'X-Eingefroren': '1' } : {}) } });
   }

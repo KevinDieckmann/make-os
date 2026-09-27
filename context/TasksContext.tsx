@@ -243,7 +243,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       if (!hydrated.current || ladeFehler || speichernSteht.current || document.visibilityState !== 'visible') return;
       void rehydrate();
     };
-    const iv = setInterval(zug, 15_000);
+    const iv = setInterval(zug, 45_000); // 27.09. (Tempo): 45 s statt 15 s — Fokus/Sichtwechsel gleichen sofort ab
     const sicht = () => { if (document.visibilityState === 'visible') zug(); };
     window.addEventListener('focus', zug);
     document.addEventListener('visibilitychange', sicht);

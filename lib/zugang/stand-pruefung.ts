@@ -17,6 +17,29 @@ const NACHFRAGE_MS = 5_000;
 interface Stand { stand: string; ab: number; widerrufen: string[]; bis: number; geholt: number; abgelehnt: Map<string, number> }
 /** speicher → Stand laut Server (stand '' = Konto gibt es nicht mehr). */
 const gemerkt = new Map<string, Stand>();
+/** Läuft für ein Konto gerade eine Nachfrage, hängen sich alle anderen Anfragen daran (27.09., Tempo): ein Seitenstart
+ *  stellt ~28 Anfragen parallel — vorher fragte jede einzeln beim Server nach. */
+const laufend = new Map<string, Promise<Stand>>();
+
+async function nachfragen(req: Request, speicher: string, schluessel: string, alt: Stand | undefined, jetzt: number): Promise<Stand> {
+  const l = laufend.get(speicher);
+  if (l) return l;
+  const p = (async () => {
+    const r = await fetch(`${innenAdresse(req)}/api/konto/stand?speicher=${encodeURIComponent(speicher)}`, { headers: { 'x-make-key': schluessel }, cache: 'no-store' });
+    if (!r.ok && r.status !== 404) throw new Error(`Stand: ${r.status}`);
+    const d = r.status === 404 ? { stand: '', ab: 0, widerrufen: [] } : ((await r.json()) as { stand?: unknown; ab?: unknown; widerrufen?: unknown });
+    if (typeof d.stand !== 'string') throw new Error('Stand: keine Antwort');
+    const neu: Stand = {
+      stand: d.stand, ab: typeof d.ab === 'number' ? d.ab : 0,
+      widerrufen: Array.isArray(d.widerrufen) ? d.widerrufen.filter((x): x is string => typeof x === 'string') : [],
+      bis: jetzt + TTL_MS, geholt: jetzt, abgelehnt: alt?.abgelehnt ?? new Map<string, number>(),
+    };
+    gemerkt.set(speicher, neu);
+    return neu;
+  })().finally(() => { laufend.delete(speicher); });
+  laufend.set(speicher, p);
+  return p;
+}
 
 const passt = (m: Stand, s: Sitzung) => m.stand === s.stand && s.ausgestellt >= m.ab && !m.widerrufen.includes(s.sid);
 
@@ -36,19 +59,10 @@ export async function standGueltig(req: Request, s: Sitzung, schluessel: string)
     if (zuletzt && zuletzt + NACHFRAGE_MS > jetzt) return false;
   }
   try {
-    const r = await fetch(`${innenAdresse(req)}/api/konto/stand?speicher=${encodeURIComponent(s.speicher)}`, { headers: { 'x-make-key': schluessel }, cache: 'no-store' });
-    if (!r.ok && r.status !== 404) throw new Error(`Stand: ${r.status}`);
-    const d = r.status === 404 ? { stand: '', ab: 0, widerrufen: [] } : ((await r.json()) as { stand?: unknown; ab?: unknown; widerrufen?: unknown });
-    if (typeof d.stand !== 'string') throw new Error('Stand: keine Antwort');
-    const neu: Stand = {
-      stand: d.stand, ab: typeof d.ab === 'number' ? d.ab : 0,
-      widerrufen: Array.isArray(d.widerrufen) ? d.widerrufen.filter((x): x is string => typeof x === 'string') : [],
-      bis: jetzt + TTL_MS, geholt: jetzt, abgelehnt: alt?.abgelehnt ?? new Map<string, number>(),
-    };
+    const neu = await nachfragen(req, s.speicher, schluessel, alt, jetzt);
     const ok = passt(neu, s);
     if (!ok) neu.abgelehnt.set(kennung, jetzt);
     neu.abgelehnt.forEach((t, k) => { if (t + TTL_MS < jetzt) neu.abgelehnt.delete(k); });
-    gemerkt.set(s.speicher, neu);
     return ok;
   } catch {
     return alt ? passt(alt, s) : true;
