@@ -1,4 +1,4 @@
-// ─── MAKE OS Homepage — Die Bühne (27.09., vierter Durchgang) ──────────────────
+// ─── MAKE OS Homepage — Die Bühne (27.09., fünfter Durchgang) ──────────────────
 // Ein Netz aus Knoten und Verbindungen auf einem 2D-Canvas. Kein WebGL, keine
 // Bibliothek, kein Kopieren: alles hier ist eigene Geometrie.
 //
@@ -13,7 +13,9 @@
 //                    in der Farbe der gewählten Sicht, die Zahl zählt hoch
 //   04 Zoe hilft     der Ring wird zum Brain (die Helferin): ein Impuls läuft vom
 //                    Kern nach außen, bleibt im Stapel stehen, wartet auf dein Ja
-// Dazu die kleine Bühne im Founder-Abschnitt: Granat + Smaragd → M.
+// Dazu die kleine Bühne im Founder-Abschnitt (Granat + Smaragd → M) und ein sehr
+// leises Netz hinter der Score-Scheibe im Hero (≈10 % Deckkraft, aus bei reduced-motion).
+// Jeder Lauf pausiert, sobald seine Bühne den Viewport verlässt (IntersectionObserver).
 //
 // Regeln: Bewegung folgt dem Scrollen, nie umgekehrt (kein Scrolljacking).
 // prefers-reduced-motion → keine Dauerbewegung, nur der Zustand je Kapitel.
@@ -97,17 +99,42 @@
     return { W, H, dpr };
   }
 
-  // Ein Bild je Scroll-Stand (ruhig) oder Dauerlauf.
-  function starten(zeichne) {
+  // Ein Bild je Scroll-Stand (ruhig) oder Dauerlauf — der pausiert, wenn die Bühne nicht im Bild ist.
+  function starten(zeichne, beobachtet) {
     if (ruhig) {
       let angefordert = false;
       const einmal = () => { if (angefordert) return; angefordert = true; requestAnimationFrame(t => { angefordert = false; zeichne(t); }); };
       addEventListener('scroll', einmal, { passive: true }); addEventListener('resize', einmal);
       document.addEventListener('spur', einmal); einmal();
-    } else {
-      const lauf = t => { if (!document.hidden) zeichne(t); requestAnimationFrame(lauf); };
-      requestAnimationFrame(lauf);
+      return;
     }
+    let laeuft = false, raf = 0;
+    const lauf = t => { if (!laeuft) return; if (!document.hidden) zeichne(t); raf = requestAnimationFrame(lauf); };
+    const an = () => { if (laeuft) return; laeuft = true; raf = requestAnimationFrame(lauf); };
+    const aus = () => { laeuft = false; cancelAnimationFrame(raf); };
+    if (beobachtet && 'IntersectionObserver' in window) new IntersectionObserver(es => { es.some(e => e.isIntersecting) ? an() : aus(); }, { rootMargin: '160px 0px' }).observe(beobachtet);
+    else an();
+  }
+
+  // Die Hirnform: Fibonacci-Kugel mit Streuung, zur Hirnform verzogen (breiter als hoch, Furche, Windungen) + Kernpunkte.
+  function hirnPunkte(nOber, nKern) {
+    const N = nOber + nKern, P = new Float32Array(N * 3), seite = new Uint8Array(N), kern = new Uint8Array(N), GOLD = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < nOber; i++) {
+      const y0 = 1 - 2 * (i + .5) / nOber, r0 = Math.sqrt(1 - y0 * y0), phi = i * GOLD + (zufall() - .5) * .18;
+      let x = r0 * Math.cos(phi), y = y0 + (zufall() - .5) * .04, z = r0 * Math.sin(phi);
+      const theta = Math.acos(clamp(y, -1, 1));
+      let rad = 1 + .04 * Math.sin(7 * phi) * Math.sin(6 * theta) + .022 * Math.sin(11 * phi + 1.3) * Math.cos(4 * theta);
+      if (Math.abs(x) < .11 && y > -.35) rad *= .9;
+      x *= rad * 1.02; y *= rad * .84; z *= rad * .92;
+      if (y < -.55) y = -.55 - (y + .55) * .35;
+      P[i * 3] = x; P[i * 3 + 1] = y; P[i * 3 + 2] = z; seite[i] = x < 0 ? 0 : 1;
+    }
+    for (let i = nOber; i < N; i++) {
+      const u = zufall() * 2 - 1, phi = zufall() * TAU, r0 = Math.sqrt(1 - u * u), rr = .18 + .3 * Math.cbrt(zufall());
+      P[i * 3] = r0 * Math.cos(phi) * rr; P[i * 3 + 1] = u * rr * .8; P[i * 3 + 2] = r0 * Math.sin(phi) * rr;
+      seite[i] = P[i * 3] < 0 ? 0 : 1; kern[i] = 1;
+    }
+    return { N, P, seite, kern };
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════
@@ -127,27 +154,8 @@
     const SCORE = { privat: 78, business: 64 };
 
     // ── Geometrie ──
-    const N_OBER = handy ? 190 : 400, N_KERN = handy ? 30 : 64, N = N_OBER + N_KERN;
-    const P = new Float32Array(N * 3);            // Brain: Einheitskoordinaten (3D)
-    const seite = new Uint8Array(N);              // 0 links, 1 rechts (nur fürs Brain: Synapsen über die Furche)
-    const kern = new Uint8Array(N);
-    const GOLD = Math.PI * (3 - Math.sqrt(5));
-    for (let i = 0; i < N_OBER; i++) {
-      // Fibonacci-Kugel mit Streuung, zur Hirnform verzogen: breiter als hoch, Furche, Windungen.
-      const y0 = 1 - 2 * (i + .5) / N_OBER, r0 = Math.sqrt(1 - y0 * y0), phi = i * GOLD + (zufall() - .5) * .18;
-      let x = r0 * Math.cos(phi), y = y0 + (zufall() - .5) * .04, z = r0 * Math.sin(phi);
-      const theta = Math.acos(clamp(y, -1, 1));
-      let rad = 1 + .04 * Math.sin(7 * phi) * Math.sin(6 * theta) + .022 * Math.sin(11 * phi + 1.3) * Math.cos(4 * theta);
-      if (Math.abs(x) < .11 && y > -.35) rad *= .9;
-      x *= rad * 1.02; y *= rad * .84; z *= rad * .92;
-      if (y < -.55) y = -.55 - (y + .55) * .35;
-      P[i * 3] = x; P[i * 3 + 1] = y; P[i * 3 + 2] = z; seite[i] = x < 0 ? 0 : 1;
-    }
-    for (let i = N_OBER; i < N; i++) {
-      const u = zufall() * 2 - 1, phi = zufall() * TAU, r0 = Math.sqrt(1 - u * u), rr = .18 + .3 * Math.cbrt(zufall());
-      P[i * 3] = r0 * Math.cos(phi) * rr; P[i * 3 + 1] = u * rr * .8; P[i * 3 + 2] = r0 * Math.sin(phi) * rr;
-      seite[i] = P[i * 3] < 0 ? 0 : 1; kern[i] = 1;
-    }
+    const N_OBER = handy ? 190 : 400, N_KERN = handy ? 30 : 64;
+    const { N, P, seite, kern } = hirnPunkte(N_OBER, N_KERN);   // P: Einheitskoordinaten (3D); seite: Synapsen über die Furche
     const K_BRAIN = nachbarn(P, 3, 2), KB = K_BRAIN.length / 2;
 
     // Zwei Welten: jeder Knoten gehört zu einer Welt (0 privat, 1 business) und sitzt auf oder im Ring.
@@ -365,7 +373,7 @@
 
     // Startlage: sofort in der ersten Form (zwei Welten) — kein Sprung aus (0,0).
     { const { cx, cy, R } = grund(); for (let i = 0; i < N; i++) { const mx = cx + (welt[i] ? R * .5 : -R * .5); x[i] = mx + Math.cos(wAng[i]) * R * .72 * wRad[i]; y[i] = cy + Math.sin(wAng[i]) * R * .72 * wRad[i] * .92; } }
-    starten(zeichne);
+    starten(zeichne, odyssee);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════
@@ -432,9 +440,60 @@
       if (funke > .05) { ctx.beginPath(); ctx.arc(fx, fy, 1.6 * s + 2, 0, TAU); ctx.fillStyle = `rgba(${F.tuerkis},${funke.toFixed(2)})`; ctx.fill(); }
       if (!an) { an = true; buehne.classList.add('an'); }
     }
-    starten(zeichne);
+    starten(zeichne, buehne);
   }
 
-  const start = () => { try { grosseBuehne(); } catch (e) { console.error('Bühne:', e); } try { kleineBuehne(); } catch (e) { console.error('M:', e); } };
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // 3. Das leise Netz im Hero: lebt hinter der Score-Scheibe, ≈10 % Deckkraft,
+  //    dreht langsam, weicht der Maus schwach aus. Bei reduced-motion gar nicht erst da.
+  // ═══════════════════════════════════════════════════════════════════════════════
+  function heroNetz() {
+    if (ruhig) return;
+    const hero = document.querySelector('.hero'), canvas = document.getElementById('hero-netz'), scheibe = document.getElementById('score-app');
+    if (!hero || !canvas || !scheibe || !canvas.getContext) return;
+    const ctx = canvas.getContext('2d'); if (!ctx) return;
+    const eimer = new Eimer(ctx);
+    const { N, P, seite, kern } = hirnPunkte(handy ? 120 : 220, handy ? 16 : 30);
+    const K = nachbarn(P, 3, 2), KN = K.length / 2;
+    const x = new Float32Array(N), y = new Float32Array(N), ta = new Float32Array(N), sc = new Float32Array(N);
+    let W = 0, H = 0, dpr = 1, winkel = .4, letzteZeit = 0, bild = 0, rect = null, an = false;
+    function zeichne(t) {
+      const dt = letzteZeit ? Math.min(48, t - letzteZeit) : 16; letzteZeit = t; bild++;
+      ({ W, H, dpr } = leinwand(canvas, hero));
+      const hr = hero.getBoundingClientRect();
+      if (!rect || (bild & 7) === 0) rect = scheibe.getBoundingClientRect();
+      const cx = rect.left - hr.left + rect.width / 2, cy = rect.top - hr.top + rect.height / 2, R = Math.max(rect.width, rect.height) * (handy ? .72 : .7);
+      winkel += dt * .00005;
+      const cosA = Math.cos(winkel), sinA = Math.sin(winkel);
+      const zx = zeiger.x - hr.left, zy = zeiger.y - hr.top, RM = 160, RM2 = RM * RM;
+      for (let i = 0; i < N; i++) {
+        const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2];
+        const x1 = px * cosA + pz * sinA, z1 = -px * sinA + pz * cosA, persp = 1 / (1 + z1 * .28);
+        sc[i] = clamp(.35 + .65 * (1 - (z1 + 1) / 2), .2, 1); ta[i] = .32 + .68 * sc[i];
+        let tx = cx + x1 * R * persp, ty = cy + py * R * persp;
+        tx += Math.sin(t * .0007 + i * 1.7) * .8; ty += Math.cos(t * .0006 + i * 2.3) * .8;
+        x[i] += (tx - x[i]) * .08; y[i] += (ty - y[i]) * .08;
+        if (zeiger.an) { const dx = x[i] - zx, dy = y[i] - zy, d2 = dx * dx + dy * dy; if (d2 < RM2 && d2 > .01) { const d = Math.sqrt(d2), n = 1 - d / RM; x[i] += dx / d * n * n * 5; y[i] += dy / d * n * n * 5; } }
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+      ctx.globalAlpha = .11;
+      const langMax = R * 1.05, lang0 = R * .5;
+      for (let e = 0; e < KN; e++) {
+        const a = K[e * 2], b = K[e * 2 + 1], dx = x[a] - x[b], dy = y[a] - y[b], d = Math.sqrt(dx * dx + dy * dy);
+        if (d > langMax) continue;
+        const quer = seite[a] !== seite[b] || kern[a] || kern[b];
+        eimer.linie(quer ? F.tuerkis : F.teal, .9 * Math.min(ta[a], ta[b]) * (1 - clamp((d - lang0) / (langMax - lang0), 0, 1)), x[a], y[a], x[b], y[b], 1);
+      }
+      for (let i = 0; i < N; i++) eimer.punkt(kern[i] ? F.tuerkis : F.teal, ta[i], x[i], y[i], kern[i] ? 1.8 : 1.1 + 1.2 * sc[i]);
+      eimer.zeichnen();
+      ctx.globalAlpha = 1;
+      if (!an) { an = true; hero.classList.add('netz-an'); }
+    }
+    // Startlage: schon in Form.
+    { const hr = hero.getBoundingClientRect(), r0 = scheibe.getBoundingClientRect(); const cx = r0.left - hr.left + r0.width / 2, cy = r0.top - hr.top + r0.height / 2, R = Math.max(r0.width, r0.height) * .7; for (let i = 0; i < N; i++) { x[i] = cx + P[i * 3] * R; y[i] = cy + P[i * 3 + 1] * R; } }
+    starten(zeichne, hero);
+  }
+
+  const start = () => { try { grosseBuehne(); } catch (e) { console.error('Bühne:', e); } try { kleineBuehne(); } catch (e) { console.error('M:', e); } try { heroNetz(); } catch (e) { console.error('Hero-Netz:', e); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

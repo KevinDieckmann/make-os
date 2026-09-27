@@ -29,6 +29,7 @@
       <a href="#bereiche">Bereiche</a>
       <a href="#server">Dein Server</a>
       <a href="#make">MA + KE</a>
+      <a href="#preise">Preise</a>
       <a href="#fragen">Fragen</a>
     </nav>
     <a class="knopf" href="#testen">Einmal testen</a>
@@ -44,7 +45,8 @@
   <a href="#server">06 · Dein Server</a>
   <a href="#make">07 · MA + KE</a>
   <a href="#zahlen">08 · Was drinsteckt</a>
-  <a href="#start">09 · Einmal testen</a>
+  <a href="#preise">09 · Was es kostet</a>
+  <a href="#start">10 · Einmal testen</a>
 </div>
 
 <!-- Kapitel-Anzeige (Desktop): die Geschichte in zehn Stationen -->
@@ -58,7 +60,8 @@
   <a href="#server" data-nr="06"><span>Dein Server</span><i></i></a>
   <a href="#make" data-nr="07"><span>MA + KE</span><i></i></a>
   <a href="#zahlen" data-nr="08"><span>Was drinsteckt</span><i></i></a>
-  <a href="#start" data-nr="09"><span>Einmal testen</span><i></i></a>
+  <a href="#preise" data-nr="09"><span>Was es kostet</span><i></i></a>
+  <a href="#start" data-nr="10"><span>Einmal testen</span><i></i></a>
 </nav>
 
 <!-- Die Sicht: Privat oder Business — jederzeit wechselbar, die ganze Seite folgt -->
@@ -72,7 +75,7 @@
 
 <!-- ── 00 · Hero: das Schaubild aus der Software ───────────────────────────── -->
 <section class="hero" id="hero" data-kapitel="00">
-  <div class="hero-hintergrund" aria-hidden="true"><div class="aurora"><i></i><i></i></div><div class="raster"></div></div>
+  <div class="hero-hintergrund" aria-hidden="true"><div class="aurora"><i></i><i></i></div><div class="raster"></div><canvas id="hero-netz"></canvas></div>
   <div class="wrap">
     <div class="hero-text">
       <div class="chipzeile"><span class="status"><i></i>Läuft seit September 2026 auf unserem eigenen Server</span><span class="mikro">Life &amp; Business Operating System</span></div>
@@ -191,7 +194,7 @@
         <span class="mikro">Kapitel 03 · Messbar</span>
         <h2>Erst messbar. Dann planbar.</h2>
         <p><span class="sp">Der Privat-Index rechnet aus dem, was wirklich passiert: Schlaf und Erholung, Zeit zu zweit, Kontostände, gemessene Fokus-Zeit. Vier Säulen, eine Zahl — und der größte Hebel für heute.</span><span class="sb">Der Business-Index rechnet aus dem, was wirklich passiert: Runway und Forderungen, Führungs-Rhythmus, Gespräche und Deals, gemessene Fokus-Zeit. Drei Säulen plus Zeit, eine Zahl — und der größte Hebel für heute.</span></p>
-        <p class="dim">Beide Indizes bilden zusammen den Wachstums-Score. Farbe bedeutet Zustand, nie Dekoration. Eine Zahl, ein Hebel, eine Handlung — statt sieben Apps, die alle „alles gut“ sagen.</p>
+        <p class="dim">Beide Indizes bilden zusammen den Wachstums-Score. Farbe bedeutet Zustand, nie Dekoration: eine Zahl, ein Hebel, eine Handlung.</p>
       </div>
     </div>
   </div>
@@ -210,12 +213,12 @@
 </section>
 
 <!-- ── 04 · Zoe im Detail ──────────────────────────────────────────────────── -->
-<section id="zoe" data-kapitel="04">
+<section id="zoe" class="uebergang" data-kapitel="04">
   <div class="wrap">
     <div class="kopf" data-reveal>
       <span class="mikro">So sieht ein Gespräch aus</span>
       <h2>Werkzeuge mit Wirkung. Und ein Stapel davor.</h2>
-      <p>Zoe hat Werkzeuge und ein Team aus Agenten — Head of Sales, Marketing, Event, Finance, IT. Und eine Regel, die über allem steht: <strong>Nichts geht ohne dein Ja raus.</strong></p>
+      <p>Zoe arbeitet mit Werkzeugen und einem Team aus Agenten — Head of Sales, Marketing, Event, Finance, IT — und mit einer Regel über allem: <strong>Nichts geht ohne dein Ja raus.</strong></p>
     </div>
     <div class="zoe-raster">
       <div class="app" data-reveal>
@@ -255,12 +258,12 @@
 </section>
 
 <!-- ── 05 · Die Bereiche ───────────────────────────────────────────────────── -->
-<section id="bereiche" data-kapitel="05">
+<section id="bereiche" class="uebergang" data-kapitel="05">
   <div class="wrap">
     <div class="kopf" data-reveal>
       <span class="mikro">Kapitel 05 · Die Bereiche</span>
       <h2>Gebaut, wie ihr arbeitet — nicht wie eine Kategorie.</h2>
-      <p>Jeder Bereich folgt demselben Bauprinzip: Kennzahl → Abweichung → Handlung → Regelkreis. Wenige Zahlen, jede groß. Farbe bedeutet Zustand, nie Dekoration. Alle Bilder zeigen Beispieldaten.</p>
+      <p>Jeder Bereich folgt einem Bauprinzip: Kennzahl → Abweichung → Handlung → Regelkreis. Wenige Zahlen, jede groß; alle Bilder zeigen Beispieldaten.</p>
     </div>
     <div class="tabs" role="tablist" aria-label="Bereiche">
       <button role="tab" aria-selected="true" data-tab="gesundheit" style="--f:#3DE28B"><i></i>Gesundheit</button>
@@ -415,7 +418,7 @@
     <div class="kopf" data-reveal>
       <span class="mikro">Kapitel 08 · Was drinsteckt</span>
       <h2>Keine Kundenlogos. Systemzahlen.</h2>
-      <p>MAKE OS ist vor dem Start. Was wir zeigen können, ist, was gebaut ist — nicht, wer es angeblich benutzt.</p>
+      <p>MAKE OS ist vor dem Start — wir zeigen, was gebaut ist, nicht, wer es angeblich benutzt.</p>
     </div>
     <div class="zahlen">
       <div class="zahl-karte" data-reveal><div class="z"><span data-count="30">30</span></div><span>Agenten und Systemläufe — vom Head of Sales bis zur nächtlichen Brain-Konsolidierung</span></div>
@@ -431,12 +434,13 @@
     <div class="kopf" data-reveal>
       <span class="mikro">Für wen</span>
       <h2>Für Menschen, die zwei Welten gleichzeitig führen.</h2>
-      <p>MAKE OS ist keine Software für große Teams und keine Vorlage für alle. Es ist für die, bei denen Leben und Unternehmen dieselbe Person sind.</p>
+      <p>MAKE OS ist keine Software für große Teams und keine Vorlage für alle — sondern für die, bei denen Leben und Unternehmen dieselbe Person sind.</p>
     </div>
-    <div class="raeume">
-      <div class="raum" data-reveal style="--f:#4FC3F7"><div class="kopfz"><i></i>Die Gründerin, der Gründer</div><p>Du baust ein Unternehmen und bist zugleich sein wichtigstes Kapital. Du willst wissen, ob die Woche trägt — bevor der Körper es dir sagt.</p></div>
-      <div class="raum" data-reveal style="--f:#FF7EB6;--d:80ms"><div class="kopfz"><i></i>Das Gründerpaar</div><p>Ihr führt Leben und Geschäft zusammen. Ihr braucht ein gemeinsames Brain, eigene Räume und Übergaben mit Namen dran — nicht drei Chats und eine Tabelle.</p></div>
-      <div class="raum" data-reveal style="--f:#58D9CD;--d:160ms"><div class="kopfz"><i></i>Selbstständige mit Familie</div><p>Mandate, Rechnungen, Kinder, Gesundheit, Termine. Du willst eine Assistentin, die vorbereitet — und dich nichts kostet, was du nicht freigegeben hast.</p></div>
+    <div class="raeume vier">
+      <div class="raum" data-reveal style="--f:#4FC3F7"><div class="kopfz"><i></i>Die Gründerin, der Gründer</div><p>Du baust ein Unternehmen und bist zugleich sein wichtigstes Kapital. Du willst wissen, ob die Woche trägt — bevor der Körper es dir sagt.</p><p class="weg-tipp">Passender Weg: <a href="#preise">Begleitung</a> — das System plus ein Blick von außen jeden Monat.</p></div>
+      <div class="raum" data-reveal style="--f:#FF7EB6;--d:80ms"><div class="kopfz"><i></i>Das Gründerpaar</div><p>Ihr führt Leben und Geschäft zusammen. Ihr braucht ein gemeinsames Brain, eigene Räume und Übergaben mit Namen dran — nicht drei Chats und eine Tabelle.</p><p class="weg-tipp">Passender Weg: <a href="#preise">Begleitung</a> zu zweit — Review, Quartalsplanung, ein Kanal für beide.</p></div>
+      <div class="raum" data-reveal style="--f:#58D9CD;--d:160ms"><div class="kopfz"><i></i>Selbstständige mit Familie</div><p>Mandate, Rechnungen, Kinder, Gesundheit, Termine. Du willst eine Assistentin, die vorbereitet — und dich nichts kostet, was du nicht freigegeben hast.</p><p class="weg-tipp">Passender Weg: <a href="#preise">Software</a> — dein System auf deinem Server, du fährst selbst.</p></div>
+      <div class="raum" data-reveal style="--f:#FF9F43;--d:240ms"><div class="kopfz"><i></i>Tech- und KI-Gründer, Mittelstand</div><p>Das Produkt steht, der Vertrieb nicht — oder der Chef ist der Engpass. Du willst Traktion, die man messen kann, nicht Lautstärke.</p><p class="weg-tipp">Passender Weg: <a href="#preise">Consulting-Begleitung</a> — Vertrieb und Struktur, mit MAKE OS als Rückgrat.</p></div>
     </div>
     <div class="nicht" data-reveal>
       <span class="mikro">Was MAKE OS nicht ist</span>
@@ -481,16 +485,92 @@
       <details data-reveal style="--d:180ms"><summary>Brauche ich Obsidian?</summary><p>Dein Brain ist ein Ordner mit Markdown-Dateien. Obsidian ist der beste Editor dafür, aber kein Muss. MAKE OS liest und indexiert den Ordner — und schreibt nur, was du freigegeben hast.</p></details>
       <details data-reveal style="--d:240ms"><summary>Funktioniert das zu zweit?</summary><p>Dafür ist es gebaut. Zwei Konten, drei Räume: privat, privat, gemeinsam. Die Trennung passiert vor der Suche, nicht danach. Änderungen tragen einen Stand — niemand überschreibt still den anderen.</p></details>
       <details data-reveal style="--d:300ms"><summary>Sind die Namen auf dieser Seite echt?</summary><p>Nein. Alle Personen, Firmen und Termine in den Bildern sind erfunden. Echte Daten gehören auf euren Server — nicht auf eine Homepage.</p></details>
-      <details data-reveal style="--d:360ms"><summary>Was kostet es?</summary><p>MAKE OS ist vor dem Start. Wir laden persönlich ein und sprechen über Server, Einrichtung und Begleitung — ohne Preisliste, die noch nicht stimmt.</p></details>
+      <details data-reveal style="--d:360ms"><summary>Was kostet es?</summary><p>Drei Wege: nur die Software (149 € im Monat, Einrichtung einmalig 990 €), Software mit Begleitung (490 € im Monat, Einrichtung inklusive) oder die Consulting-Begleitung für Vertrieb und Struktur (3.000 € im Monat, sechs Monate). Das sind Startpreise, persönlich abgestimmt, zzgl. USt — <a href="#preise">Kapitel 09</a> zeigt, was drin ist.</p></details>
     </div>
   </div>
 </section>
 
-<!-- ── 09 · Einmal testen ──────────────────────────────────────────────────── -->
-<section id="start" data-kapitel="09">
+<!-- ── 09 · Was es kostet ──────────────────────────────────────────────────── -->
+<section id="preise" class="preise uebergang" data-kapitel="09">
   <div class="wrap">
     <div class="kopf" data-reveal>
-      <span class="mikro">Kapitel 09 · So geht es los</span>
+      <span class="mikro">Kapitel 09 · Was es kostet</span>
+      <h2>Drei Wege. Ein System.</h2>
+      <p>Nimm nur die Software — oder jemanden dazu, der mit dir draufschaut. <span class="preis-marke">Startpreise · persönlich abgestimmt · zzgl. USt</span></p>
+    </div>
+    <div class="wege">
+      <article class="weg-karte" data-reveal>
+        <span class="mikro">MAKE OS · Software</span>
+        <h3>Dein System auf deinem Server.</h3>
+        <div class="preis"><b>149 €</b><span>im Monat</span></div>
+        <div class="preis-zusatz">Einrichtung einmalig 990 € · monatlich kündbar</div>
+        <ul>
+          <li>Eigener Server in Deutschland, Updates, Sicherung jede Nacht</li>
+          <li>Head of IT wacht — innen, auf dem Server, von außen</li>
+          <li>Zoe mit Modellkosten inklusive, bis zu einem fairen Kontingent</li>
+          <li>Einrichtungs-Gespräch: Kalender, Zahlen, Brain, Kontakte</li>
+        </ul>
+        <p class="fuer">Für eine Person oder ein Paar, das selbst fährt.</p>
+        <a class="knopf leise" href="#testen">Einmal testen</a>
+      </article>
+      <article class="weg-karte hervor" data-reveal style="--d:80ms">
+        <span class="mikro">MAKE OS + Begleitung <em>Coaching</em></span>
+        <h3>Das System — plus jemanden, der mit dir draufschaut.</h3>
+        <div class="preis"><b>490 €</b><span>im Monat</span></div>
+        <div class="preis-zusatz">Einrichtung inklusive · mindestens 3 Monate</div>
+        <ul>
+          <li>Alles aus „Software“</li>
+          <li>Jeden Monat 60 Minuten Review mit Malin und Kevin: Wachstums-Score, Fokus, Zahlen, Beziehung und Zeit</li>
+          <li>Chat-Kanal für Fragen zwischen den Terminen</li>
+          <li>Gemeinsame Quartalsplanung</li>
+        </ul>
+        <p class="fuer">Für Gründer und Paare, die Struktur wollen, ohne alles allein zu tragen.</p>
+        <a class="knopf" href="#testen">Gespräch anfragen</a>
+      </article>
+      <article class="weg-karte" data-reveal style="--d:160ms">
+        <span class="mikro">Consulting · Vertrieb &amp; Struktur</span>
+        <h3>Vertrieb und Struktur — mit MAKE OS als Rückgrat.</h3>
+        <div class="preis"><b>3.000 €</b><span>im Monat</span></div>
+        <div class="preis-zusatz">6 Monate · Software inklusive</div>
+        <ul>
+          <li>Markttraktion aufsetzen: Leads, Deals, Follow-up, Events</li>
+          <li>Wöchentliche Arbeitssitzung, Power Hours gemeinsam</li>
+          <li>Positionierung und Kampagnen</li>
+          <li>Zahlen und Finanzplanung</li>
+        </ul>
+        <p class="fuer">Für Tech- und KI-Gründer mit Produkt, aber ohne Vertrieb — und für Mittelstand, in dem der Chef der Engpass ist (dort 6–12 Monate, Erfolgsbeteiligung möglich).</p>
+        <a class="knopf leise" href="#testen">Gespräch anfragen</a>
+      </article>
+    </div>
+    <div class="vergleich" data-reveal>
+      <span class="mikro">Was drin ist</span>
+      <table>
+        <thead><tr><th scope="col"><span class="sr">Leistung</span></th><th scope="col">Software</th><th scope="col">Begleitung</th><th scope="col">Consulting</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Eigener Server in Deutschland, Sicherung jede Nacht, Head of IT</th><td data-k="Software">✓</td><td data-k="Begleitung">✓</td><td data-k="Consulting">✓</td></tr>
+          <tr><th scope="row">Zoe mit Modellkosten (faires Kontingent)</th><td data-k="Software">✓</td><td data-k="Begleitung">✓</td><td data-k="Consulting">✓</td></tr>
+          <tr><th scope="row">Einrichtung und Einrichtungs-Gespräch</th><td data-k="Software">990 € einmalig</td><td data-k="Begleitung">inklusive</td><td data-k="Consulting">inklusive</td></tr>
+          <tr><th scope="row">Review mit Malin und Kevin</th><td data-k="Software">—</td><td data-k="Begleitung">60 Min. im Monat</td><td data-k="Consulting">wöchentliche Arbeitssitzung</td></tr>
+          <tr><th scope="row">Chat-Kanal und Quartalsplanung</th><td data-k="Software">—</td><td data-k="Begleitung">✓</td><td data-k="Consulting">✓</td></tr>
+          <tr><th scope="row">Markttraktion aufsetzen, Power Hours, Positionierung, Kampagnen</th><td data-k="Software">—</td><td data-k="Begleitung">—</td><td data-k="Consulting">✓</td></tr>
+          <tr><th scope="row">Zahlen und Finanzplanung</th><td data-k="Software">selbst</td><td data-k="Begleitung">im Review</td><td data-k="Consulting">gemeinsam</td></tr>
+          <tr><th scope="row">Laufzeit</th><td data-k="Software">monatlich kündbar</td><td data-k="Begleitung">ab 3 Monate</td><td data-k="Consulting">6 Monate · Mittelstand 6–12</td></tr>
+        </tbody>
+      </table>
+      <p class="preis-hinweis">Startpreise · persönlich abgestimmt · zzgl. USt. Jeden Preis bestätigen wir im Gespräch — nichts davon ist ein Warenkorb.</p>
+    </div>
+    <div class="preis-cta" data-reveal>
+      <p>Nicht sicher, welcher Weg? Ein Gespräch, eine Stunde, ohne Folien — danach weißt du es.</p>
+      <a class="knopf gross" href="#testen">Einmal testen</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── 10 · Einmal testen ──────────────────────────────────────────────────── -->
+<section id="start" data-kapitel="10">
+  <div class="wrap">
+    <div class="kopf" data-reveal>
+      <span class="mikro">Kapitel 10 · So geht es los</span>
       <h2>Drei Schritte. Kein Verkaufsgespräch.</h2>
     </div>
     <div class="schritte">
@@ -501,7 +581,7 @@
   </div>
 </section>
 
-<section id="testen" class="testen" data-kapitel="09">
+<section id="testen" class="testen" data-kapitel="10">
   <div class="wrap">
     <div class="box" data-reveal>
       <span class="mikro">Einmal testen</span>
@@ -523,7 +603,7 @@
 <footer>
   <div class="wrap">
     <div><a class="marke" href="#top" style="margin-bottom:10px"><svg viewBox="0 0 240 240" aria-hidden="true"><path d="M50 176 L50 72 L119 141" fill="none" stroke="var(--granat)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/><path d="M121 141 L190 72 L190 176" fill="none" stroke="var(--smaragd)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="wort"><span class="ma">MA</span><span class="ke">KE</span><span class="os">OS</span></span></a><span>Life &amp; Business Operating System.<br>Gebaut von Malin und Kevin. Läuft in Deutschland.</span></div>
-    <div><b>Kapitel</b><a href="#zwei-welten">Zwei Welten</a><a href="#messbar">Messbar</a><a href="#zoe-kapitel">Zoe</a><a href="#bereiche">Bereiche</a><a href="#server">Dein Server</a><a href="#make">MA + KE</a></div>
+    <div><b>Kapitel</b><a href="#zwei-welten">Zwei Welten</a><a href="#messbar">Messbar</a><a href="#zoe-kapitel">Zoe</a><a href="#bereiche">Bereiche</a><a href="#server">Dein Server</a><a href="#make">MA + KE</a><a href="#preise">Preise</a></div>
     <div><b>Rechtliches</b><a href="#impressum">Impressum</a><a href="#datenschutz">Datenschutz</a><span>Kein Tracking, keine Cookies, keine Schriften von Dritten.</span></div>
     <div class="unten"><span>© 2026 MAKE OS · Malin &amp; Kevin</span><span>Alle Namen, Firmen und Termine auf dieser Seite sind Beispiele.</span></div>
   </div>

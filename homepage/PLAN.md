@@ -116,6 +116,31 @@ Farben der Sichten wie in der Software: Privat Türkis `#58D9CD`, Business Orang
 - Drittes Bild für Kapitel 06 „Dein Server“ bewusst nicht gebaut — erst, wenn die Geschichte in 01–04 sitzt.
 - Echte Porträts, Gründergeschichte, Mail-Adresse und Domain (siehe zweiter Durchgang) bleiben offen.
 
+## Fünfter Durchgang (27.09.): Preise und Feinschliff
+Kevin: „wow, die Homepage ist stark … überarbeite sie nochmal, damit sie noch besser wird. Bring auch gerne Preise am Ende rein — für Coaching und Consulting-Begleitung dahinter, oder wenn man nur die Software nimmt.“
+
+**Preislogik in fünf Zeilen** (Kapitel 09 „Was es kostet“, vor „So geht es los“ / „Einmal testen“ = Kapitel 10)
+1. **MAKE OS · Software** — 149 € im Monat, Einrichtung einmalig 990 €, monatlich kündbar: eigener Server in Deutschland, Updates, Sicherung jede Nacht, Head of IT, Zoe mit Modellkosten bis zu einem fairen Kontingent, Einrichtungs-Gespräch. Für eine Person oder ein Paar, das selbst fährt.
+2. **MAKE OS + Begleitung (Coaching, hervorgehoben)** — 490 € im Monat, Einrichtung inklusive, mindestens 3 Monate: alles aus Software, jeden Monat 60 Minuten Review mit Malin und Kevin (Wachstums-Score, Fokus, Zahlen, Beziehung und Zeit), Chat-Kanal, gemeinsame Quartalsplanung. Für Gründer und Paare, die Struktur wollen, ohne alles allein zu tragen.
+3. **Consulting-Begleitung · Vertrieb & Struktur** — 3.000 € im Monat, 6 Monate, Software inklusive: Markttraktion aufsetzen (Leads, Deals, Follow-up, Events), wöchentliche Arbeitssitzung, Power Hours gemeinsam, Positionierung und Kampagnen, Zahlen und Finanzplanung. Für Tech- und KI-Gründer mit Produkt ohne Vertrieb; Mittelstand mit Chef als Engpass (6–12 Monate, Erfolgsbeteiligung möglich).
+4. Alles sind **Startpreise, persönlich abgestimmt, zzgl. USt** — auf der Seite als Pille im Kopf, als Hinweis unter der Tabelle und in der FAQ; kein Warenkorb, jeder Preis wird im Gespräch bestätigt. Keine Zähler auf Preisen.
+5. Darunter „Was drin ist“ als Vergleich (Handy: gestapelte Liste mit Spaltennamen je Zelle) und der Satz „Nicht sicher, welcher Weg? Ein Gespräch, eine Stunde, ohne Folien — danach weißt du es.“ → Einmal testen. „Für wen“ hat jetzt vier Karten mit je einer Zeile „Passender Weg“.
+
+**Herkunft der Anker:** Vertriebsaufbau-Retainer 3.000 € im Monat über sechs Monate für Tech- und KI-Gründer, Mittelstand 6–12 Monate mit möglicher Erfolgsbeteiligung — aus Kevins Strategie. Software 149 €/990 € und Begleitung 490 € sind daraus abgeleitete Startpreise für die Seite.
+
+**Was Kevin bestätigen muss**
+- Die drei Preise und die Laufzeiten (149 €/990 € · 490 €/mind. 3 Monate · 3.000 €/6 Monate) — sowie ob „monatlich kündbar“ für die Software gelten soll.
+- Das „faire Kontingent“ für Zoes Modellkosten (Zahl oder Formulierung) und ob Malin im Review verbindlich dabei ist.
+- Ob Erfolgsbeteiligung im Mittelstand auf der Seite stehen darf (steht jetzt in Klammern) und ob die Begleitung als „Coaching“ etikettiert werden soll.
+
+**Feinschliff umgesetzt**
+- Die drei offenen Entscheidungen gesetzt: Business-Zahl bleibt ehrlich (64, Im Aufbau) · hinter der Scheibe im Hero lebt ein sehr leises Netz (`#hero-netz`, ≈11 % Deckkraft, langsam, schwache Maus-Reaktion, gar nicht erst da bei reduced-motion) · Farbwerte bleiben, Herkunft als Kommentar über den Tokens `--granat`/`--smaragd` in `site.css` (ci.css unberührt).
+- Rhythmus/Typo: `h2,h3{text-wrap:balance}`, Zeilenlänge ≤ 62ch, Kapitel-Label einheitlich „Kapitel NN · Name“, Einleitungen gestrafft.
+- Übergänge: Hairline + weicher Schein am Kopf von Zoe, Bereiche und Preise (`.uebergang`, folgt der Sicht-Farbe); Reiter in „Bereiche“ mit 140 ms Aus- und Einblendung; Zähler laufen erst im Blick (bestehend).
+- Mikro-Interaktionen: Fokus-Ringe auf Knöpfen, Schaltern, Reitern; Karten-Hover ohne Bewegung (nur Rand/Fläche); Sicht-Schalter per Pfeiltasten, `aria-pressed`; Kapitel-Label im Handy-Kopf zeigt die Sicht als farbigen Punkt + Wort.
+- Tempo: jeder Canvas-Lauf pausiert per IntersectionObserver, sobald seine Bühne den Viewport verlässt; Hirnform-Generator einmal (`hirnPunkte`), von großer Bühne und Hero-Netz geteilt; keine Layout-Sprünge beim Umschalten (Säulen-Beschriftung einzeilig mit Ellipse, feste Mindesthöhen für Hebel und Fakten).
+- Handy: Preis-Karten untereinander (Begleitung zuerst), Vergleich als Liste, keine horizontale Verschiebung, Konsole leer.
+
 ## Offen für Kevin (zweiter Durchgang, weiter gültig)
 - „Life & Business **Operating** System“ (englisch korrekt) oder „Operation System“ wie im Auftrag und in `Terminologie_Brain`?
 - Echte Porträts von Malin und Kevin (die CI verlangt sie — Initialen-Karten sitzen in „Warum MAKE“).

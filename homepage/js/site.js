@@ -23,7 +23,7 @@
     if (nr === letzteNr) return; letzteNr = nr;
     railLinks.forEach(a => a.classList.toggle('aktiv', a.dataset.nr === nr));
     links.forEach(a => { const ziel = $(a.getAttribute('href')); a.classList.toggle('aktiv', !!ziel && (ziel.dataset.kapitel === nr || ziel.closest('[data-kapitel]')?.dataset.kapitel === nr)); });
-    if (kapLabel) kapLabel.textContent = nr === '00' ? '' : `${nr} · ${kapitelName[nr] || ''}`;
+    if (kapLabel) kapLabel.textContent = (nr === '00' ? '' : `${kapitelName[nr] || ''} · `) + (document.body.dataset.spur === 'business' ? 'Business' : 'Privat');
   };
   addEventListener('scroll', beimScrollen, { passive: true }); beimScrollen();
   nachoben?.addEventListener('click', () => scrollTo({ top: 0, behavior: ruhig ? 'auto' : 'smooth' }));
@@ -83,7 +83,13 @@
 
   // Bereiche als Reiter (Pfeiltasten)
   const tabs = $$('.tabs [role=tab]');
-  const waehle = t => { tabs.forEach(x => { x.setAttribute('aria-selected', String(x === t)); x.tabIndex = x === t ? 0 : -1; }); $$('.bereich').forEach(p => p.classList.toggle('aktiv', p.dataset.panel === t.dataset.tab)); };
+  const waehle = t => {
+    tabs.forEach(x => { x.setAttribute('aria-selected', String(x === t)); x.tabIndex = x === t ? 0 : -1; });
+    const neu = $$('.bereich').find(p => p.dataset.panel === t.dataset.tab), alt = $('.bereich.aktiv');
+    if (!neu || neu === alt) return;
+    const wechsel = () => { $$('.bereich').forEach(p => p.classList.remove('aktiv', 'geht')); neu.classList.add('aktiv'); };
+    if (alt && !ruhig) { alt.classList.add('geht'); setTimeout(wechsel, 140); } else wechsel();
+  };
   tabs.forEach((t, i) => { t.addEventListener('click', () => waehle(t)); t.addEventListener('keydown', e => { if (e.key === 'ArrowRight') { waehle(tabs[(i + 1) % tabs.length]); tabs[(i + 1) % tabs.length].focus(); } if (e.key === 'ArrowLeft') { waehle(tabs[(i - 1 + tabs.length) % tabs.length]); tabs[(i - 1 + tabs.length) % tabs.length].focus(); } }); });
 
   // Die Sicht: Privat oder Business. Ein Schalter (Scheibe im Hero, Pille unten) — Score, Texte (.sp/.sb), Reiter und Bühne folgen.
@@ -95,8 +101,16 @@
     const reiter = tabs.find(t => t.dataset.tab === (spur === 'business' ? 'markt' : 'gesundheit')); if (reiter && !still) waehle(reiter);
     document.dispatchEvent(new CustomEvent('spur', { detail: spur }));
   };
-  $$('button[data-spur]').forEach(b => b.addEventListener('click', () => setzeSpur(b.dataset.spur)));
+  $$('button[data-spur]').forEach(b => {
+    b.addEventListener('click', () => setzeSpur(b.dataset.spur));
+    b.addEventListener('keydown', e => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault(); const ziel = b.dataset.spur === 'privat' ? 'business' : 'privat'; setzeSpur(ziel);
+      const nachbar = b.parentElement.querySelector(`button[data-spur="${ziel}"]`); nachbar?.focus();
+    });
+  });
   setzeSpur('privat');
+  document.addEventListener('spur', () => { letzteNr = null; beimScrollen(); });
   if (spurPille) { const zeigePille = () => spurPille.classList.toggle('da', scrollY > innerHeight * .7); addEventListener('scroll', zeigePille, { passive: true }); zeigePille(); }
 
   // Kippen (nur Hero-Fenster), Magnet (nur Hero-CTA), Cursor-Licht
