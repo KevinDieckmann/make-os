@@ -74,6 +74,8 @@ export const WEG = {
   ernaehrung: () => '/os/gesundheit?s=ernaehrung',
   gericht: (id: string) => `/os/gesundheit?s=ernaehrung&g=${encodeURIComponent(id)}`,
   energie: () => '/os/gesundheit?s=koerper',
+  // Sport (27.09.): persönlich je Person — Reiter plan (Standard) · hyrox · lauf · gym · erholung.
+  sport: (reiter?: 'hyrox' | 'lauf' | 'gym' | 'erholung') => q('/os/sport', { s: reiter }),
   verbindungen: () => '/os/verbindungen',
   saeule: (key: 'health' | 'planning' | 'finance' | 'social' | 'agents') => `/os/saeule/${key}`,
   wachstum: () => '/os/wachstum',

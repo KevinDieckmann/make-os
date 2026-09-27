@@ -62,6 +62,28 @@ Ansage stehen, bis das nächste Update sie ablöst.
 
 ## Nächstes Update — vorbereitet, noch nicht online
 
+### Sport: Hyrox, Running, Gym, Erholung (27.09., nur lokal)
+
+Kevin: „Im Gesundheitsbereich einen Sport-Bereich einbauen. Ganz speziell für Malin einen Bereich, der ausgebaut ist mit Hyrox, Running, Gym und Erholung, damit sie ihre Ziele am Anfang schon perfekt planen kann.“
+
+- **Neue Seite `/os/sport`** (Privat › Gesundheit; Kachel „Sport“ auf der Gesundheitsseite, Eintrag in der Schnellsuche). Persönlich je Person
+  (Speicher `sport--<person>`, Kevin ohne Suffix) — jede Person sieht nur Eigenes, kein `?fuer=`.
+- **Geführter Einstieg** beim ersten Öffnen: Ziel (Hyrox / Lauf / Kraft / Grundlagen) → Zieldatum & Zielzeit → Ausgangswerte → Tage pro Woche mit
+  Wochenvorschlag (jeder Tag umstellbar) → fertig. Überall der Hinweis: Vorschläge, keine Trainingsberatung.
+- **Ziele & Plan:** Saisonziele mit Datum (Wochen bis dahin), Zielzeit/Zielpace/Kraftziel, Wochenstruktur (Art + Minuten je Tag, Ruhetag), Plan gegen Ist
+  über 8 Wochen, Deload-Rhythmus (alle 4 Wochen, gezählt ab Planstart).
+- **Hyrox:** die 8 Stationen + 8 × 1 km; Zielzeit-Rechner (Splits nach üblichen Anteilen, Läufe 52 %, Roxzone 6 %), Stationszeiten erfassen (Training /
+  Simulation / Wettkampf), Schwächen gegen das Ziel (teuerste Station zuerst), Bestzeit je Station, Prognose aus den Bestzeiten.
+- **Running:** Läufe (Datum, Distanz, Zeit, Art, Gefühl, Notiz; Pace automatisch, `quelle` für späteren Import), Wochenkilometer 12 Wochen mit Trend,
+  Bestzeiten 5 / 10 / 21,1 km (leicht längere Läufe hochgerechnet, sonst Riegel-Schätzung), Zielpace und Trainingsbereiche aus dem Laufziel.
+- **Gym:** Übungsbibliothek (17 Übungen, eigene ergänzbar), Einheiten mit Sätzen (kg × Wdh) aus Vorlage oder frei, e1RM nach Epley je Satz/Übung, Verlauf und
+  Rekorde je Übung, Vorlagen (Hyrox Kraft A/B, Stationen-Zirkel, Grundlagen) + eigene („als Vorlage merken“).
+- **Erholung:** Schlaf, Ruhepuls, HRV, Gefühl, Muskelkater je Tag (aus den Vitalwerten der Person vorbelegt, wenn vorhanden), Ampel „heute trainieren?“
+  aus Erholung + geplanter Belastung (HRV/Puls gegen den eigenen 7-Tage-Schnitt), Verlauf 14 Tage, Ruhetage und Deload.
+- Technik: Logik `lib/sport/` (modell · pace · hyrox · gym · plan · ampel, rein), Tests `tests/sport-*.test.ts` (49), Route `/api/sport` (GET mit ETag,
+  PUT `{ ops }` in einer Sperre — zu zweit am Handy überschreibt niemand den anderen), Oberfläche `components/os/sport/`.
+- Offen (Kevin/Malin): Wettkampfdatum und Zielzeit eintragen; Import Apple Health/Strava später über das Feld `quelle`.
+
 ### Masterliste: Online gewinnt (27.09., nur lokal)
 
 Kevin vor dem Upload: Malins Leads sind in die Masterliste eingeflossen; die Liste soll online, ohne dass Malins Pflege in der Kartei verloren geht.

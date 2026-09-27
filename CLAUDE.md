@@ -182,6 +182,17 @@ lokal, Route `/os`, Port 3001.
   `bu-re-<id>` (`rechnungId`), Rechnung trägt `mandatId`. Umleitungen in `next.config.mjs` nur für Adressen,
   die es nicht mehr gibt — nie für Seiten, auf die noch verlinkt wird (Journal, Ritual).
 
+## Sport: Hyrox, Running, Gym, Erholung (27.09., nur lokal)
+- `/os/sport` unter Privat › Gesundheit (Kachel „Sport“ auf der Gesundheitsseite, Schnellsuche, `WEG.sport(reiter)`), Reiter `?s=` plan · hyrox · lauf · gym · erholung.
+  **Persönlich je Person:** Speicher `speicherFuer('sport', person)`; Route `/api/sport` liest die Person nur aus der Sitzung (`personStreng`, sonst 401), kein `?fuer=`.
+- Modell `lib/sport/modell.ts` (rein): `SportStand` (einstieg, ziele, ausgang, woche, planStart, hyrox, laeufe, gym, erholung), `saeubere` (nichts Erfundenes, keine Null),
+  Schritte `Op` über `wendeAn` — die Route wendet `PUT { ops }` in EINER `updateJson`-Sperre an; ein ungültiger Schritt lässt den ganzen Stapel liegen (400).
+- Rechnung: `pace.ts` (Pace, Zeiten parsen/formatieren, Wochenkilometer, Bestzeiten 5/10/21,1 mit Hochrechnung ≤ 8 %, Riegel), `hyrox.ts` (Stationen mit Anteilen,
+  Splits aus Zielzeit, Schwächen, Prognose), `gym.ts` (Bibliothek, Vorlagen, Epley-e1RM, Verlauf, Rekorde), `plan.ts` (Wochenvorschlag je Disziplin, Plan/Ist, Deload alle 4 Wochen),
+  `ampel.ts` (Erholungspunkte = Mittel der gemessenen Merkmale, HRV/Puls gegen den 7-Tage-Bezug, Recovery aus Vitalwerten zählt mit). Tests `tests/sport-*.test.ts`.
+- Erholung belegt Schlaf/Puls/HRV aus `vitals--<person>` vor (Whoop-Export, Morgen-Check) — nur anzeigen, gespeichert wird erst auf „Speichern“ (`quelle: whoop`).
+- Wording: Vorschläge, keine Trainingsberatung (Hinweis auf jeder Karte, die plant). Läufe tragen `quelle` (`hand` | `apple-health` | `strava` | `whoop`) + `externeId`, damit ein Import später andockt.
+
 ## Ernährung & Einkauf zu zweit (seit 26.09.2026, online)
 - Modell `lib/ernaehrung/modell.ts` (rein): Profile je Person (Konto = nur selbst, Gast = Haushalt), Stammliste
   (bevorzugte Lebensmittel + Hinweis), Vorrat, Gerichte (Rezepte), Plan + `planGerichte`, Einkauf mit Menge/Kategorie/

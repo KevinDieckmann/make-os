@@ -35,7 +35,7 @@ export const SPACES: Space[] = [
       { href: '/os/finanzen?s=privat', label: 'Finanzen', icon: Wallet, passt: ['/os/finanzen?s=privat'] },
       { href: '/os/aufgaben?space=privat', label: 'Aufgaben', icon: ListChecks, passt: ['/os/aufgaben?space=privat', '/os/board?space=privat'] },
       { href: '/os/planung/jahr?space=privat', label: 'Ziele & Planung', icon: Target, passt: ['/os/planung?space=privat', '/os/fokus?space=privat', '/os/kompass?space=privat'] },
-      { href: '/os/gesundheit', label: 'Gesundheit', icon: HeartPulse, passt: ['/os/gesundheit', '/os/journal', '/os/ernaehrung', '/os/ritual', '/os/energie', '/os/tageslauf'] },
+      { href: '/os/gesundheit', label: 'Gesundheit', icon: HeartPulse, passt: ['/os/gesundheit', '/os/sport', '/os/journal', '/os/ernaehrung', '/os/ritual', '/os/energie', '/os/tageslauf'] },
       { href: '/os/familie', label: 'Familie', icon: Users, passt: ['/os/familie'] },
       { href: '/os/menschen', label: 'Kontakte', icon: BookUser, passt: ['/os/menschen'] },
     ],

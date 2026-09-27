@@ -30,6 +30,7 @@ import { localDay } from '@/lib/zeit';
 import { ErnaehrungView } from './ErnaehrungView';
 import { EnergieView } from './EnergieView';
 import { GesundheitIndex, GesundheitIndexKurz } from './gesundheit/GesundheitIndex';
+import { SportKurz } from './sport/SportKurz';
 import { useZuZiel } from './ziel';
 import { WEG } from '@/lib/wege';
 
@@ -244,6 +245,7 @@ export function GesundheitView() {
             {stand && rec == null && eigene && <div style={{ marginTop: 14, display: 'flex', justifyContent: 'center' }}><WhoopImport kurz onFertig={() => { void laden(); setVerlauf(null); }} /></div>}
           </Karte>
           </Kachel>
+          <Kachel id="sport" titel="Sport" breite={3}><SportKurz eigene={eigene} /></Kachel>
           <Kachel id="sieben-tage" titel="Sieben Tage Routinen" breite={3}>
           <Karte i={3}>
             <Ueberschrift rechts={`Ø ${stand?.routinen.quote7 ?? '—'} %`}>Sieben Tage Routinen</Ueberschrift>
