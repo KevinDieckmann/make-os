@@ -26,6 +26,18 @@
         "cd /Users/kevindieckmann/Claude/Projects/MakeOS && export PATH=$HOME/.local/node22/bin:$PATH && MAKE_OS_DIST=.next-pruefbau NODE_ENV=production PORT=3011 node node_modules/next/dist/bin/next start -p 3011"
       ],
       "port": 3011
+    },
+    {
+      "name": "make-os-homepage",
+      "runtimeExecutable": "/usr/bin/python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "3012",
+        "-d",
+        "/Users/kevindieckmann/Claude/Projects/MakeOS/homepage"
+      ],
+      "port": 3012
     }
   ]
 }

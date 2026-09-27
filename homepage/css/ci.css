@@ -1,0 +1,38 @@
+/* ─── MAKE OS Homepage — CI-Tokens (aus lib/make-one/design.ts der Software, 27.09.) ───
+   Farbe bedeutet Zustand, nicht Dekoration. Türkis ist die einzige Interaktionsfarbe. */
+:root {
+  color-scheme: dark;
+  --grund: #0B0E10;
+  --flaeche: #161B1F;
+  --flaecheHoch: #1B2126;
+  --linie: #1F262A;
+  --linieWeich: #1A2023;
+  --ink: #E8ECEA;
+  --inkDim: #A2ADB0;
+  --inkLeise: #6E7A7D;
+  --aktiv: #58D9CD;
+  --aktivSanft: rgba(88,217,205,.14);
+  --lavendel: #A79BFF;
+  --gut: #3DE28B;
+  --achtung: #FFC93C;
+  --kritisch: #FF5C5C;
+  --leucht-gut: #3DE28B;
+  --leucht-achtung: #FFC93C;
+  --leucht-kritisch: #FF5C5C;
+  --leucht-schlaf: #8F86FF;
+  --leucht-puls: #4FC3F7;
+  --leucht-geld: #58D9CD;
+  --leucht-business: #FF9F43;
+  --leucht-planung: #4FC3F7;
+  --leucht-beziehung: #FF7EB6;
+  --leucht-agenten: #C77DFF;
+  --schrift-display: 'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --schrift-text: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+  --held: 56px; --zahl: 26px; --titel: 20px; --body: 15px; --bedien: 13px; --mikro: 11px;
+  --xs: 4px; --s: 8px; --m: 12px; --l: 16px; --xl: 24px; --xxl: 32px; --xxxl: 48px;
+  --r-bauteil: 8px; --r-behaelter: 14px; --r-pille: 999px;
+  --ziel-min: 32px;
+}
+@font-face { font-family: 'Archivo'; src: url('../assets/fonts/archivo-latin.woff2') format('woff2'); font-weight: 500 700; font-display: swap; }
+@font-face { font-family: 'Public Sans'; src: url('../assets/fonts/public-sans-latin.woff2') format('woff2'); font-weight: 400 600; font-display: swap; }

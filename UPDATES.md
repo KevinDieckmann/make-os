@@ -99,6 +99,17 @@ Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen un
   - Tests: `crm-deal-regeln` (Server-Regeln), `crm-fundament` angepasst (Upsert neuer Deals ist jetzt ein Fehler). Stand: 100 Dateien · 877 Tests grün, tsc und Lint sauber.
   - **Offen (Kevin entscheidet):** Farbe des Reiters „Firmen“ (heute neutral wie Kontakte, obwohl die Leads darin liegen); ob „Meins/Malin“-Filter auch im Board sichtbar sein soll.
 
+### MAKE OS Homepage — erster Durchgang (27.09., nur lokal, `homepage/`)
+
+Kevin: „Homepage für MAKE OS auf dem UX-Design der Software, Logo entwerfen, USP selbst positionieren, Top-1 % als Maßstab, Founder Malin + Kevin = MA-KE, nur einmal testen.“
+- Eigenständige statische Seite (`homepage/index.html`, `css/`, `js/`), keine Abhängigkeit zur App, überall hostbar. Preview „make-os-homepage“ (Port 3012).
+- **Logo:** Bildmarke aus zwei Strichen (Malin, Kevin), die sich zum M treffen, mit türkisem Kern; Wortmarke MAKE OS mit zwei Strichen unter MA und KE (Kevins CI-Idee, Personenfarben der Software). Vier Entwürfe, A gewählt.
+- **CI** direkt aus `lib/make-one/design.ts` (Tokens, Farbe = Zustand, Türkis als einziger Akzent), Schriften der Software selbst gehostet.
+- **Positionierung** aus der Software: ein System für beides (Wachstums-Score), Jarvis handelt mit Freigabe, eigener Server in Deutschland verschlüsselt, zu zweit gebaut, Markttraktion statt Lautstärke, Head of IT wacht.
+- **14 Sektionen** nach Kevins Seiten-Standard und der Top-1 %-Recherche: Hero mit Status-Chip und lebendem Score-Ring (Privat/Business) · Problem als Sticky-Story · Regler „Vom Blindflug zur Klarheit“ · vier Säulen · Jarvis mit Stapel · sechs Bereichs-Schirme (Markttraktion, Brain, Kalender, Zahlen, Gesundheit, Head of IT) · Souveränität · Zu zweit · Warum MAKE (MALIN + KEVIN → MAKE animiert, Founder) · Systemzahlen · Für wen + „Was es nicht ist“ · Die Entwicklung (echte Einträge) · Häufige Fragen · So geht es los · Einmal testen (Mail, nichts gespeichert).
+- Effekte mit Maß und `prefers-reduced-motion`: Reveal einmalig nur Desktop, Zähler, Ring, Cursor-Licht, ein magnetischer Knopf, Kippen nur an der Score-Karte, Regler als ARIA-Slider.
+- Recherche: `homepage/RECHERCHE.md` (95 Quellen), Vault-Sichtung: `homepage/VAULT_BEFUND.md`. Offene Punkte für Kevin in `homepage/PLAN.md` (Operating/Operation, Fotos, Mail-Adresse und Domain, Gründergeschichte).
+
 ### Kalender neu (27.09., nur lokal)
 
 Kevin: „Der Kalender ist wirklich noch grausig … guck bei Google Kalender, wie die das aufgebaut haben, und statte unseren mit mehr Funktionen aus — auch zum Befüllen mit Terminen.“
