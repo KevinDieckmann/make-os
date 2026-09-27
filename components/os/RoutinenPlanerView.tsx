@@ -19,6 +19,7 @@ import { SPACE_FARBE, SPACE_LABEL, type SpaceId } from '@/lib/make-one/space-reg
 import { RHYTHMEN, WOCHENTAGE, OWNER_BEIDE, type Block, type Routine, type Wochentag } from '@/lib/planung/typen';
 import { sortiertNachRang, verschiebe, naechsterRang } from '@/lib/planung/rang';
 import { bloeckeFuer, standardBloecke, spaceVonRoutine, ownerVonRoutine } from '@/lib/planung/routinen';
+import { EinheitWahl, useEinheiten } from './aufgaben/Einheit';
 import { rhythmusKurz, naechstesMalNach } from '@/lib/planung/rhythmus';
 import { PlanerLeiste } from './PlanerLeiste';
 import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Knopf, Punkt, feld, LEUCHT } from './schlank';
@@ -56,7 +57,9 @@ export function RoutinenPlanerView() {
   const [personen, setPersonen] = useState<Person[]>([]);
   const [spaceFilter, setSpaceFilter] = useState<SpaceId | 'alle'>('alle');
   const [werFilter, setWerFilter] = useState<string>('alle');
-  const [neu, setNeu] = useState({ label: '', wann: 'morgen' as Routine['wann'], kat: 'gesundheit' as Routine['kategorie'], space: 'privat' as SpaceId, owner: OWNER_BEIDE, rhythmus: 'taeglich' as Routine['rhythmus'] | 'taeglich', naechstesMal: '' });
+  const [neu, setNeu] = useState({ label: '', wann: 'morgen' as Routine['wann'], kat: 'gesundheit' as Routine['kategorie'], space: 'privat' as SpaceId, owner: OWNER_BEIDE, rhythmus: 'taeglich' as Routine['rhythmus'] | 'taeglich', naechstesMal: '', einheit: undefined as string | undefined });
+  // Business-Einheit (27.09.) wie bei Zielen und Aufgaben — nur im Business.
+  const { einheiten, anlegen: einheitAnlegen } = useEinheiten();
   const [blockPerson, setBlockPerson] = useState<string>('');
   const [blockNeu, setBlockNeu] = useState({ wochentag: 1 as Wochentag, von: '09:00', bis: '18:00', art: 'business' as SpaceId, titel: '' });
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -104,14 +107,14 @@ export function RoutinenPlanerView() {
   }
 
   const nameVon = (sp: string) => (sp === OWNER_BEIDE ? 'gemeinsam' : personen.find(p => p.speicher === sp)?.name ?? (sp === ich ? 'ich' : sp));
-  const patch = (id: string, p: Partial<Routine>) => persist(routinen.map(x => (x.id === id ? { ...x, ...p } : x)));
+  const patch = (id: string, p: Partial<Routine>) => persist(routinen.map(x => (x.id === id ? { ...x, ...p, ...(p.space === 'privat' ? { einheit: undefined } : {}) } : x)));
 
   const add = () => {
     const l = neu.label.trim();
     if (!l) return;
     const r: Routine = {
       id: `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, label: l, wann: neu.wann, kategorie: neu.kat, dauerMin: 15, aktiv: true,
-      space: neu.space, owner: neu.owner, rang: naechsterRang(routinen),
+      space: neu.space, owner: neu.owner, rang: naechsterRang(routinen), ...(neu.space === 'business' && neu.einheit ? { einheit: neu.einheit } : {}),
       ...(neu.rhythmus !== 'taeglich' ? { rhythmus: neu.rhythmus } : {}),
       ...(neu.rhythmus !== 'taeglich' && neu.rhythmus !== '3x-woche' && neu.naechstesMal ? { naechstesMal: neu.naechstesMal } : {}),
     };
@@ -159,6 +162,7 @@ export function RoutinenPlanerView() {
           <select value={neu.space} onChange={e => setNeu({ ...neu, space: e.target.value as SpaceId, kat: e.target.value === 'business' ? 'business' : neu.kat === 'business' ? 'leben' : neu.kat })} aria-label="Space" style={{ ...wahl, color: SPACE_FARBE[neu.space] }}>
             <option value="privat">Privat</option><option value="business">Business</option>
           </select>
+          {neu.space === 'business' && <EinheitWahl wert={neu.einheit} setzen={e => setNeu({ ...neu, einheit: e })} einheiten={einheiten} anlegen={einheitAnlegen} titel="Einheit der Routine" />}
           <select value={neu.owner} onChange={e => setNeu({ ...neu, owner: e.target.value })} aria-label="Wer" style={wahl}>
             <option value={OWNER_BEIDE}>gemeinsam</option>
             {personen.map(p => <option key={p.speicher} value={p.speicher}>{p.name}</option>)}
@@ -218,6 +222,7 @@ export function RoutinenPlanerView() {
                       <input value={r.label} onChange={e => patch(r.id, { label: e.target.value })} aria-label="Routine"
                         style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.body, fontWeight: 500 }} />
                       <Chip farbe={SPACE_FARBE[sp]}>{SPACE_LABEL[sp]}</Chip>
+                      {sp === 'business' && <EinheitWahl wert={r.einheit} setzen={e => patch(r.id, { einheit: e })} einheiten={einheiten} anlegen={einheitAnlegen} titel="Einheit der Routine" />}
                       <Chip farbe={owner === OWNER_BEIDE ? LEUCHT.beziehung : LEUCHT.puls}>{nameVon(owner)}</Chip>
                       {rh !== 'taeglich' && <Chip farbe={LEUCHT.agenten}>{rhythmusKurz(rh)}{r.naechstesMal ? ` · ${dtKurz(r.naechstesMal)}` : ''}</Chip>}
                       <PfeilRang label={r.label} obenAus={pos === 0} untenAus={pos === eigene.length - 1} onAuf={() => persist(verschiebe(routinen, r.id, 'auf', ids))} onAb={() => persist(verschiebe(routinen, r.id, 'ab', ids))} />

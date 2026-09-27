@@ -14,6 +14,7 @@ import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeRoh, bestandFuer } from '@/lib/business/speicher';
 import { istMonate } from '@/lib/business/messen';
 import { localDay } from '@/lib/zeit';
+import { einheitAusGesellschaft } from '@/lib/einheiten';
 import {
   STANDARD_STEUERN, fristen, zeitraumVon, ustZeitraum, prognose, jahresgewinn, belegPunkte, uebergabeMonat, uebergabeJahr, HINWEIS,
   type SteuerEinstellungen, type FirmaSteuer, type Frist, type Grundlagenteil,
@@ -163,7 +164,10 @@ export async function steuernStand(heute = localDay()) {
   };
 }
 
-interface Aufgabe { id: string; title: string; description?: string; status: string; priority: string; assignee?: string; tags?: string[]; subTasks?: unknown[]; dependencies?: unknown[]; sortOrder?: number; createdAt?: string; updatedAt?: string; dueDate?: string }
+interface Aufgabe { id: string; title: string; description?: string; status: string; priority: string; assignee?: string; tags?: string[]; subTasks?: unknown[]; dependencies?: unknown[]; sortOrder?: number; createdAt?: string; updatedAt?: string; dueDate?: string; space?: 'privat' | 'business'; einheit?: string }
+
+/** Business-Einheit einer Steuer-Aufgabe aus ihrer Kennung `steuer-<kdc|kdv|privat>-…` (27.09.) — privat hat keine. */
+export const steuerEinheit = (aufgabeId: string): string | undefined => einheitAusGesellschaft(aufgabeId.replace(/^steuer-/, '').split('-')[0]);
 
 /**
  * Eine Aufgabe je Frist, sobald ihr Vorlauf beginnt (Standard 7 Tage) — ohne
@@ -179,8 +183,11 @@ export async function steuerAufgabenAbgleichen(f: Frist[], heute = localDay()): 
   let neu = 0, erledigt = 0;
   await updateJson<{ tasks: Aufgabe[] }>('tasks', cur => {
     const t = cur ?? { tasks: [] };
-    const tasks = (t.tasks ?? []).map(a => {
-      if (!a.id.startsWith('steuer-')) return a;
+    const tasks = (t.tasks ?? []).map(roh => {
+      if (!roh.id.startsWith('steuer-')) return roh;
+      // Ältere Steuer-Aufgaben bekommen ihre Einheit nachgetragen (Selbstständigkeit/KD Ventures) — ohne „geändert“-Stempel.
+      const e = roh.einheit ? undefined : steuerEinheit(roh.id);
+      const a: Aufgabe = e ? { ...roh, space: 'business', einheit: e } : roh;
       if (erledigtIds.has(a.id) && a.status !== 'done') { erledigt++; return { ...a, status: 'done', updatedAt: jetzt }; }
       dran.delete(a.id);
       return a;
@@ -192,6 +199,7 @@ export async function steuerAufgabenAbgleichen(f: Frist[], heute = localDay()): 
         description: `Steuerfrist ${x.datum.slice(8, 10)}.${x.datum.slice(5, 7)}.${x.datum.slice(0, 4)} — ${x.hinweis}. Abhaken unter Zahlen → Steuern. ${HINWEIS}`,
         status: 'todo', priority: x.tage <= 3 ? 'high' : 'medium', assignee: 'kevin',
         tags: ['steuern', ...(x.einheit === 'privat' ? ['haushalt'] : [])], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, dueDate: x.datum,
+        ...(steuerEinheit(id) ? { space: 'business' as const, einheit: steuerEinheit(id) } : {}),
       });
     }
     return { ...t, tasks };

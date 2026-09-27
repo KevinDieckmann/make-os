@@ -230,7 +230,7 @@ export const REGISTER: Record<string, Eintrag> = {
   },
   create_task: {
     gruppe: 'aufgaben', risiko: 'frei',
-    vorschau: schlicht('Aufgabe anlegen', i => `„${text(i.title, 200)}"${i.priority && i.priority !== 'medium' ? ` (${String(i.priority)})` : ''}`),
+    vorschau: schlicht('Aufgabe anlegen', i => `„${text(i.title, 200)}"${i.priority && i.priority !== 'medium' ? ` (${String(i.priority)})` : ''}${i.einheit && i.space !== 'privat' ? ` · ${text(i.einheit, 40)}` : ''}`),
   },
   plan_block: {
     gruppe: 'planer', risiko: 'frei',

@@ -20,6 +20,7 @@ import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Zahl, feld, prioF
 import { useZiel, useZuZiel } from './ziel';
 import { useSpace } from '@/hooks/useSpace';
 import { SPACE_LABEL, spaceVonAufgabe, fokusSchluessel, type SpaceId } from '@/lib/make-one/space-regeln';
+import { EinheitMarke } from './aufgaben/Einheit';
 import { zeitraum } from '@/lib/planung/zeitraum';
 import type { Meilenstein, Ziel } from '@/lib/planung/typen';
 import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
@@ -175,6 +176,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
               <Zeile
                 links={<span style={{ fontSize: TYP.bedien, fontFamily: SCHRIFT.display, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: t.dueDate && t.dueDate < heute ? LEUCHT.kritisch : C.inkLeise, flex: '0 0 auto', width: 78 }}>{t.dueDate}</span>}
                 titel={t.title}
+                unter={t.einheit && spaceVonAufgabe(t) === 'business' ? <EinheitMarke name={t.einheit} /> : undefined}
                 rechts={<Chip farbe={prioFarbe(t.priority)}>{t.priority}</Chip>} />
             </Link>
           ))}

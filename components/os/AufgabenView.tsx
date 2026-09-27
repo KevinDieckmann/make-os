@@ -30,6 +30,8 @@ import { parseSchnell, tagInT } from '@/lib/make-one/schnell-anlegen';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Segmente, Punkt, Chip, Haken, feld, prioFarbe, LEUCHT } from './schlank';
 import { useSpace } from '@/hooks/useSpace';
 import { spaceVonAufgabe, SPACE_LABEL, SPACE_FARBE, type SpaceId } from '@/lib/make-one/space-regeln';
+import { EinheitWahl, EinheitFilterPillen, useEinheiten, einheitGemerkt, einheitMerken } from './aufgaben/Einheit';
+import { EINHEIT_ALLE, einheitFilterOptionen, passtEinheitFilter, vorgabeEinheit, type EinheitFilter } from '@/lib/aufgaben/einheit';
 
 const PRIO_ZYKLUS: Priority[] = ['low', 'medium', 'high', 'critical'];
 const PRIO_RANG: Record<Priority, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -205,6 +207,17 @@ export function AufgabenView() {
   const [spaceFilter, setSpaceFilter] = useState<SpaceId | 'alle'>('alle');
   useEffect(() => { setSpaceFilter(spaceAusAdresse ?? aktiverSpace); }, [spaceAusAdresse, aktiverSpace]);
   const imSpace = (t: { id: string; title: string; description?: string; projectId: string; space?: SpaceId }) => spaceFilter === 'alle' || spaceVonAufgabe(t, orgZuord) === spaceFilter;
+  // Business-Einheit (27.09.): Filter-Pillen im Business, Vorgabe für neue Aufgaben = zuletzt gefiltert/gewählt.
+  const { einheiten, anlegen: einheitAnlegen } = useEinheiten();
+  const [einheitFilter, setEinheitFilterRoh] = useState<EinheitFilter>(EINHEIT_ALLE);
+  const [neuEinheit, setNeuEinheit] = useState<string | undefined>(undefined);
+  useEffect(() => { setNeuEinheit(vorgabeEinheit(EINHEIT_ALLE, einheitGemerkt())); }, []);
+  const setEinheitFilter = (f: EinheitFilter) => {
+    setEinheitFilterRoh(f);
+    if (f !== EINHEIT_ALLE) { const v = vorgabeEinheit(f, null); setNeuEinheit(v); if (v) einheitMerken(v); }
+  };
+  const imBusiness = spaceFilter === 'business';
+  const istBusiness = (t: { id: string; title: string; description?: string; projectId: string; space?: SpaceId }) => spaceVonAufgabe(t, orgZuord) === 'business';
   /** Termin-Lage: alles · nur ohne Datum · nur überfällig. */
   const [datumFilter, setDatumFilter] = useState<'alle' | 'ohne' | 'spaet'>('alle');
   const [werFilter, setWerFilter] = useState<Wer | 'alle'>('alle');
@@ -242,7 +255,7 @@ export function AufgabenView() {
     const p = parseSchnell(neuTitel, state.projects);
     if (!p.title) return;
     dispatch({ type: 'ADD_TASK', payload: {
-      projectId: p.projectId ?? state.projects[0]?.id ?? '', ...(spaceFilter !== 'alle' ? { space: spaceFilter } : {}),
+      projectId: p.projectId ?? state.projects[0]?.id ?? '', ...(spaceFilter !== 'alle' ? { space: spaceFilter } : {}), ...(imBusiness && neuEinheit ? { einheit: neuEinheit } : {}),
       title: p.title, description: '', status: 'todo', priority: p.priority,
       assignee: p.assignee, tags: [], subTasks: [], dependencies: [], sortOrder: 0,
       ...(p.dueDate ? { dueDate: p.dueDate } : {}),
@@ -260,7 +273,7 @@ export function AufgabenView() {
     if (!roh) return;
     const p = parseSchnell(roh, state.projects);
     dispatch({ type: 'ADD_TASK', payload: {
-      projectId: p.projectId ?? state.projects[0]?.id ?? '', ...(spaceFilter !== 'alle' ? { space: spaceFilter } : {}),
+      projectId: p.projectId ?? state.projects[0]?.id ?? '', ...(spaceFilter !== 'alle' ? { space: spaceFilter } : {}), ...(imBusiness && neuEinheit ? { einheit: neuEinheit } : {}),
       title: p.title || roh, description: '', status: 'todo',
       priority: neuPrio, assignee: neuWer,
       tags: [], subTasks: [], dependencies: [], sortOrder: 0,
@@ -301,6 +314,7 @@ export function AufgabenView() {
       if (themaFilter !== 'alle' && themaVon(t, zuordnung) !== themaFilter) return false;
       if (stichFilter && !stichworteVon(t, handStich, stichListe).includes(stichFilter)) return false;
       if (!imSpace(t)) return false;
+      if (imBusiness && !passtEinheitFilter(t.einheit, einheitFilter)) return false;
       if (orgFilter !== 'alle' && orgVon(t, orgZuord) !== orgFilter) return false;
       if (datumFilter === 'ohne' && t.dueDate) return false;
       if (datumFilter === 'spaet' && !(t.dueDate && t.dueDate < heute && t.status !== 'done')) return false;
@@ -341,7 +355,7 @@ export function AufgabenView() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.tasks, seg, bes, prioFilter, themaFilter, stichFilter, orgFilter, spaceFilter, datumFilter, werFilter, aktiverFilter, eigeneFilter, stichListe, handStich, orgZuord, regler, zuordnung, themaRang, heute]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state.tasks, seg, bes, prioFilter, themaFilter, stichFilter, orgFilter, spaceFilter, einheitFilter, datumFilter, werFilter, aktiverFilter, eigeneFilter, stichListe, handStich, orgZuord, regler, zuordnung, themaRang, heute]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Zähler für die Termin-Chips — über ALLE offenen Aufgaben, nicht über die
   // gerade gefilterte Liste: sonst zeigt „ohne Datum 0", während 20 offen sind.
@@ -492,6 +506,7 @@ export function AufgabenView() {
                 );
               })()}
               {zeigeThema && <span style={{ fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, color: ORG[meineOrg(t)]?.farbe, opacity: 0.85 }}>{ORG[meineOrg(t)]?.kurz}</span>}
+              {istBusiness(t) && (t.einheit || !done) && <EinheitWahl wert={t.einheit} setzen={e => patchTask(t.id, { einheit: e })} einheiten={einheiten} anlegen={einheitAnlegen} />}
               {meineStich(t).slice(0, 3).map(sid => (
                 <Pille key={sid} klein an={stichFilter === sid} title={`„${STICHWORT[sid]?.label}" — klicken, um die Stichworte zu ändern`}
                   onClick={e => { e.stopPropagation(); setMenue(m => m?.id === t.id && m.feld === 'stich' ? null : { id: t.id, feld: 'stich' }); }}>{STICHWORT[sid]?.label}</Pille>
@@ -603,6 +618,11 @@ export function AufgabenView() {
                 ))}
                 {t.space && <button onClick={() => dispatch({ type: 'UPDATE_TASK', payload: { id: t.id, space: undefined } })} style={{ background: 'none', border: 'none', color: C.inkLeise, fontSize: 12, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>wieder aus dem Ort</button>}
               </div>
+
+              {istBusiness(t) && <>
+                <DetailLabel>Einheit</DetailLabel>
+                <div><EinheitWahl wert={t.einheit} setzen={e => patchTask(t.id, { einheit: e })} einheiten={einheiten} anlegen={einheitAnlegen} /></div>
+              </>}
 
               <DetailLabel>Thema</DetailLabel>
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
@@ -724,12 +744,14 @@ export function AufgabenView() {
           Kevins Ansage: „dass ich selber Sachen anlegen kann — mit einem
           Plus, wo ich alles schnell ausklicken kann." */}
       <Karte i={ki++} akzent={LEUCHT.achtung}>
+        {imBusiness && <div style={{ marginBottom: 10 }}><EinheitFilterPillen optionen={einheitFilterOptionen(state.tasks.filter(t => t.status !== 'done' && istBusiness(t)).map(t => t.einheit), einheiten)} wert={einheitFilter} setzen={setEinheitFilter} /></div>}
         <div style={{ display: 'flex', gap: 8 }}>
           <input value={neuTitel} onChange={e => setNeuTitel(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { if (neuAuf) anlegenMitFeldern(); else schnellAnlegen(); } }}
             placeholder="Neue Aufgabe … (Enter)  ·  !! kritisch  ·  ! hoch  ·  heute / morgen / fr / 15.08.  ·  #capos  ·  @malin"
             aria-label="Neue Aufgabe anlegen"
             style={{ ...feld, flex: 1, minWidth: 0, width: 'auto', fontSize: TYP.body, boxShadow: neuAuf ? `0 0 0 1px ${C.aktiv}55` : undefined }} />
+          {imBusiness && !neuAuf && <span style={{ alignSelf: 'center' }}><EinheitWahl wert={neuEinheit} setzen={setNeuEinheit} einheiten={einheiten} anlegen={einheitAnlegen} titel="Einheit der neuen Aufgabe" merken /></span>}
           <button onClick={() => setNeuAuf(!neuAuf)} title={neuAuf ? 'Felder zuklappen' : 'Alles selbst festlegen: Stufe, Person, Termin, Ort'}
             aria-label="Aufgabe mit Feldern anlegen" className="fassbar"
             style={{
@@ -758,6 +780,11 @@ export function AufgabenView() {
                 <Pille key={o.id} an={neuOrg === o.id} farbe={o.farbe} onClick={() => setNeuOrg(o.id)}>{o.kurz}</Pille>
               ))}
             </Feldzeile>
+            {imBusiness && (
+              <Feldzeile titel="Einheit">
+                <EinheitWahl wert={neuEinheit} setzen={setNeuEinheit} einheiten={einheiten} anlegen={einheitAnlegen} titel="Einheit der neuen Aufgabe" merken />
+              </Feldzeile>
+            )}
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <Knopf onClick={anlegenMitFeldern} aus={!neuTitel.trim()}>Aufgabe anlegen</Knopf>
               <span style={{ fontSize: 12, color: C.inkLeise }}>

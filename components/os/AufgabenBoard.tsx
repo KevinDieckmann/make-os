@@ -20,6 +20,8 @@ import { ORG, ORGS } from '@/lib/make-one/organisation-data';
 import { Faelligkeit } from './Faelligkeit';
 import { BlockiertChip } from './Abhaengigkeit';
 import { Segmente, Punkt, Leer, prioFarbe, LEUCHT } from './schlank';
+import { EinheitMarke } from './aufgaben/Einheit';
+import { spaceVonOrg } from '@/lib/make-one/space-regeln';
 import type { Task, TaskStatus } from '@/types/tasks';
 
 const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise };
@@ -207,7 +209,9 @@ function Kanbankarte({ t, alleTasks, heute, org, greift, anfassen, loslassen, pa
         <Faelligkeit klein wert={t.dueDate} setzen={d => patchTask(t.id, { dueDate: d })} />
         <BlockiertChip klein t={t} alle={alleTasks} />
 
-        {o && <span style={{ fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, color: o.farbe, opacity: 0.9, marginLeft: 'auto' }}>{o.kurz}</span>}
+        {/* Business-Einheit (27.09.) — Anzeige; ändern im Detail der Liste. */}
+        {t.einheit && (t.space ?? spaceVonOrg(org)) === 'business' && <EinheitMarke name={t.einheit} stil={{ marginLeft: 'auto' }} />}
+        {o && <span style={{ fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, color: o.farbe, opacity: 0.9, marginLeft: t.einheit && (t.space ?? spaceVonOrg(org)) === 'business' ? 0 : 'auto' }}>{o.kurz}</span>}
       </div>
     </div>
   );

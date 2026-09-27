@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { brauchtBestaetigung, MASSEN_GRENZE } from '@/lib/store/massen-wache';
+import { aufgabeEinheit } from '@/lib/aufgaben/einheit';
 import type { Task, TasksState } from '@/types/tasks';
 
 export const runtime = 'nodejs';
@@ -32,7 +33,8 @@ export async function PUT(req: Request) {
     return NextResponse.json({ ok: false, error: 'Ungültiger Zustand: tasks/projects fehlen.' }, { status: 400 });
   }
   // Auch der Voll-Stand geht durch dieselbe Säuberung wie PATCH (26.09.).
-  s.tasks = s.tasks.slice(0, 5000).map(t => taskSauber(t)).filter((t): t is Task => !!t);
+  const orgs = await orgZuordnung();
+  s.tasks = s.tasks.slice(0, 5000).map(t => taskSauber(t, orgs)).filter((t): t is Task => !!t);
 
   let abgelehnt = false;
   // Zweiter Weg, auf dem Arbeit verschwindet: nicht löschen, sondern zuklappen.
@@ -92,8 +94,13 @@ export async function PUT(req: Request) {
 const STATUS = ['backlog', 'todo', 'in-progress', 'blocked', 'done'];
 const PRIO = ['low', 'medium', 'high', 'critical'];
 const S = (v: unknown, n: number) => (typeof v === 'string' ? v.slice(0, n) : undefined);
+/** Orte von Hand (Board › Ort) — entscheiden mit, ob eine Aufgabe im Business liegt und eine Einheit tragen darf. */
+async function orgZuordnung(): Promise<Record<string, string>> {
+  const f = await loadJson<{ orgs?: Record<string, string> }>('ordnung').catch(() => null);
+  return f?.orgs && typeof f.orgs === 'object' ? f.orgs : {};
+}
 /** Eine Aufgabe von außen: nur bekannte Felder, begrenzt — die Liste lesen viele Seiten und Prompts (26.09.). */
-function taskSauber(o: unknown): Task | null {
+function taskSauber(o: unknown, orgs: Record<string, string> = {}): Task | null {
   if (!o || typeof o !== 'object') return null;
   const t = o as Record<string, unknown>;
   const id = S(t.id, 80), title = S(t.title, 300);
@@ -112,8 +119,11 @@ function taskSauber(o: unknown): Task | null {
     dependencies: Array.isArray(t.dependencies) ? (t.dependencies as Record<string, unknown>[]).slice(0, 50).filter(x => x && typeof x === 'object' && typeof x.blockedByTaskId === 'string').map(x => ({ blockedByTaskId: String(x.blockedByTaskId).slice(0, 80), ...(typeof x.resolvedAt === 'string' ? { resolvedAt: x.resolvedAt.slice(0, 40) } : {}) })) : [],
     sortOrder: Number(t.sortOrder) || 0,
     createdAt: S(t.createdAt, 40) ?? jetzt, updatedAt: S(t.updatedAt, 40) ?? jetzt,
+    einheit: undefined as string | undefined,
   };
-  for (const k of ['description', 'dueDate', 'completedAt', 'space'] as const) if (raus[k] === undefined) delete raus[k];
+  // Einheit (27.09.): nur im Business, Namen aus der einen Quelle (lib/einheiten.ts), 2–40 Zeichen — Privat verwirft sie.
+  raus.einheit = aufgabeEinheit({ id, title, description: raus.description, projectId: raus.projectId, space: raus.space, einheit: t.einheit }, orgs);
+  for (const k of ['description', 'dueDate', 'completedAt', 'space', 'einheit'] as const) if (raus[k] === undefined) delete raus[k];
   return raus as unknown as Task;
 }
 
@@ -128,9 +138,10 @@ export async function PATCH(req: Request) {
 
   interface Op { op: 'upsert' | 'delete'; task?: Task; id?: string }
   const ops: Op[] = [];
+  const orgs = roh.length ? await orgZuordnung() : {};
   for (const o of roh as Record<string, unknown>[]) {
     if (o?.op === 'delete' && typeof o.id === 'string') ops.push({ op: 'delete', id: o.id.slice(0, 80) });
-    else if (o?.op === 'upsert') { const t = taskSauber(o.task); if (t) ops.push({ op: 'upsert', task: t }); }
+    else if (o?.op === 'upsert') { const t = taskSauber(o.task, orgs); if (t) ops.push({ op: 'upsert', task: t }); }
   }
   if (!ops.length && !projekte) return NextResponse.json({ ok: false, error: 'Keine gültigen Änderungen.' }, { status: 400 });
 

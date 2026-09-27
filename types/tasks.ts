@@ -33,6 +33,8 @@ export interface Task extends Timestamps {
   completedAt?: string;
   /** Abweichung vom Ort (26.09.): Privat oder Business — ohne Angabe gibt der Ort den Space vor. */
   space?: 'privat' | 'business';
+  /** Business-Einheit (27.09.): Selbstständigkeit · KD Ventures · MAKE OS UG oder eine eigene Einheit des Haushalts — nur im Business; Privat verwirft der Schreibweg. */
+  einheit?: string;
 }
 
 export interface Project extends Timestamps {

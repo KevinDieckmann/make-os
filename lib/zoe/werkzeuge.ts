@@ -465,6 +465,8 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string, p
     dueDate: /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined,
     // Space (26.09.): ZOE kennt den aktiven Space und legt die Aufgabe dort ab.
     space: input.space === 'privat' || input.space === 'business' ? String(input.space) : undefined,
+    // Einheit (27.09.): nur Business — Kerneinheit oder eigene; die Route säubert und verwirft sie bei Privat.
+    einheit: typeof input.einheit === 'string' && input.einheit.trim() && input.space !== 'privat' ? input.einheit.trim().slice(0, 40) : undefined,
   };
   try {
     const r = await fetch(`${origin}/api/tasks/create`, {
@@ -476,7 +478,7 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string, p
     const d = await r.json();
     if (!d.ok) return `Aufgabe nicht angelegt: ${String(d.error ?? '').slice(0, 160)}`;
     if (d.duplikat) return `Gab es schon: „${title}" steht bereits offen im Board — keine zweite angelegt.`;
-    return `Angelegt: „${title}"${body.priority !== 'medium' ? ` (${body.priority})` : ''}${body.dueDate ? `, fällig ${body.dueDate}` : ''}. Steht im Board.`;
+    return `Angelegt: „${title}"${body.priority !== 'medium' ? ` (${body.priority})` : ''}${body.dueDate ? `, fällig ${body.dueDate}` : ''}${body.einheit ? ` · ${body.einheit}` : ''}. Steht im Board.`;
   } catch (err) {
     return `Aufgabe nicht angelegt: ${err instanceof Error ? err.message.slice(0, 140) : 'Fehler'}`;
   }

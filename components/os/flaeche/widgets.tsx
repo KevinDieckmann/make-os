@@ -36,6 +36,10 @@ import { heuteFaellig, istGemeinsam, spaceVonRoutine } from '@/lib/planung/routi
 import { rhythmusKurz } from '@/lib/planung/rhythmus';
 import type { Routine as PlanungsRoutine } from '@/lib/planung/typen';
 import { WhoopImport } from '../WhoopImport';
+import { EinheitMarke } from '../aufgaben/Einheit';
+import type { Task } from '@/types/tasks';
+import { EINHEIT_OHNE, passtEinheitFilter } from '@/lib/aufgaben/einheit';
+import { KERN_EINHEITEN_NAMEN } from '@/lib/einheiten';
 
 export interface WidgetProps { e: Einstellungen; titel?: string; i: number }
 export interface EinstellungDef { k: string; label: string; art: 'wahl' | 'text' | 'schalter'; optionen?: { w: Wert; label: string }[]; standard: Wert }
@@ -78,20 +82,23 @@ function AufgabenWidget({ e, titel, i }: WidgetProps) {
   const heute = localDay();
   const { state, dispatch } = useTasks();
   const [neu, setNeu] = useState('');
-  const n = num(e.anzahl, 8), nur = str(e.nur, 'dran'), sp = str(e.space, 'alle');
-  // Heute sieht beides (Kevin 26.09.); ein Widget kann auf einen Space begrenzt sein.
-  const offen = state.tasks.filter(t => t.status !== 'done' && (sp === 'alle' || spaceVonAufgabe(t) === sp));
+  const n = num(e.anzahl, 8), nur = str(e.nur, 'dran'), sp = str(e.space, 'alle'), eh = str(e.einheit, 'alle');
+  // Heute sieht beides (Kevin 26.09.); ein Widget kann auf einen Space begrenzt sein —
+  // und im Business auf eine Einheit (27.09.): dann zählen nur Business-Aufgaben dieser Einheit.
+  const passtEh = (t: Task) => eh === 'alle' || (spaceVonAufgabe(t) === 'business' && passtEinheitFilter(t.einheit, eh === 'ohne' ? EINHEIT_OHNE : eh));
+  const offen = state.tasks.filter(t => t.status !== 'done' && (sp === 'alle' || spaceVonAufgabe(t) === sp) && passtEh(t));
   const liste = (nur === 'alle' ? offen : offen.filter(t => (t.dueDate && t.dueDate <= heute) || t.priority === 'critical'))
     .sort((a, b) => ((a.dueDate ?? '9') < (b.dueDate ?? '9') ? -1 : 1)).slice(0, n);
   const projekt = (id: string) => state.projects.find(p => p.id === id)?.title ?? '';
   const anlegen = () => {
     const p = parseSchnell(neu.trim(), state.projects); if (!p.title) return;
-    dispatch({ type: 'ADD_TASK', payload: { projectId: p.projectId ?? state.projects[0]?.id ?? '', title: p.title, description: '', status: 'todo', priority: p.priority, assignee: p.assignee, tags: [], subTasks: [], dependencies: [], sortOrder: 0, dueDate: p.dueDate ?? heute } });
+    const space = sp === 'privat' || sp === 'business' ? sp : eh !== 'alle' ? 'business' : undefined;
+    dispatch({ type: 'ADD_TASK', payload: { projectId: p.projectId ?? state.projects[0]?.id ?? '', ...(space ? { space } : {}), ...(space === 'business' && eh !== 'alle' && eh !== 'ohne' ? { einheit: eh } : {}), title: p.title, description: '', status: 'todo', priority: p.priority, assignee: p.assignee, tags: [], subTasks: [], dependencies: [], sortOrder: 0, dueDate: p.dueDate ?? heute } });
     setNeu('');
   };
   return (
     <Karte i={i}>
-      <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href={sp === 'alle' ? '/os/aufgaben' : `/os/aufgaben?space=${sp}`} style={link}>{offen.length} offen ›</Link>}>{titel ?? `${nur === 'alle' ? 'Aufgaben' : 'Aufgaben heute'}${sp === 'alle' ? '' : ` · ${SPACE_LABEL[sp as 'privat' | 'business']}`}`}</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href={sp === 'alle' ? '/os/aufgaben' : `/os/aufgaben?space=${sp}`} style={link}>{offen.length} offen ›</Link>}>{titel ?? `${nur === 'alle' ? 'Aufgaben' : 'Aufgaben heute'}${sp === 'alle' ? '' : ` · ${SPACE_LABEL[sp as 'privat' | 'business']}`}${eh === 'alle' ? '' : eh === 'ohne' ? ' · ohne Einheit' : ` · ${eh}`}`}</Ueberschrift>
       <input value={neu} onChange={x => setNeu(x.target.value)} onKeyDown={x => { if (x.key === 'Enter') anlegen(); }} placeholder="Neue Aufgabe für heute … (!! kritisch · fr · #projekt · @malin)" style={{ ...feld, marginBottom: 6 }} />
       <Liste>
         {liste.length === 0 && <Leer>{offen.length ? 'Nichts fällig, nichts kritisch.' : 'Keine Aufgaben. Eine Zeile oben, Enter — oder ZOE sagen.'}</Leer>}
@@ -99,7 +106,7 @@ function AufgabenWidget({ e, titel, i }: WidgetProps) {
           <Zeile key={t.id} onClick={() => router.push(WEG.aufgabe(t.id))}
             links={<Haken an={false} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />}
             titel={t.title}
-            unter={[sp === 'alle' ? <span key="s" style={{ color: SPACE_FARBE[spaceVonAufgabe(t)] }}>{SPACE_LABEL[spaceVonAufgabe(t)]}</span> : null, projekt(t.projectId), t.dueDate && t.dueDate < heute ? `überfällig seit ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : t.dueDate === heute ? 'heute' : t.dueDate ? `bis ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : ''].filter(Boolean).map((x, k, arr) => <span key={k}>{x}{k < arr.length - 1 ? ' · ' : ''}</span>)}
+            unter={[sp === 'alle' ? <span key="s" style={{ color: SPACE_FARBE[spaceVonAufgabe(t)] }}>{SPACE_LABEL[spaceVonAufgabe(t)]}</span> : null, eh === 'alle' && t.einheit && spaceVonAufgabe(t) === 'business' ? <EinheitMarke key="e" name={t.einheit} /> : null, projekt(t.projectId), t.dueDate && t.dueDate < heute ? `überfällig seit ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : t.dueDate === heute ? 'heute' : t.dueDate ? `bis ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : ''].filter(Boolean).map((x, k, arr) => <span key={k}>{x}{k < arr.length - 1 ? ' · ' : ''}</span>)}
             rechts={<Punkt farbe={prioFarbe(t.priority)} />} />
         ))}
       </Liste>
@@ -280,6 +287,7 @@ function RoutinenHeuteWidget({ e, titel, i }: WidgetProps) {
             titel={<span style={{ color: heuteErledigt ? C.inkLeise : C.ink, textDecoration: heuteErledigt ? 'line-through' : 'none' }}>{r.label}</span>}
             unter={[
               sp === 'alle' ? SPACE_LABEL[spaceVonRoutine(r)] : '',
+              spaceVonRoutine(r) === 'business' ? r.einheit ?? '' : '',
               istGemeinsam(r) ? 'gemeinsam' : '',
               (r.rhythmus ?? 'taeglich') !== 'taeglich' ? rhythmusKurz(r.rhythmus) : '',
               f.ueberfaellig ? `seit ${f.naechstes.slice(8)}.${f.naechstes.slice(5, 7)}.` : '',
@@ -560,7 +568,7 @@ function EventWidget({ titel, i }: WidgetProps) {
 export const WIDGETS: Record<string, WidgetDef> = {
   score: { art: 'score', label: 'Wachstums-Score', bereich: 'Tag', beschreibung: 'Der Score, auf den wir hinarbeiten — mit den sechs Säulen', breite: 2, Komponente: ScoreWidget },
   aufgaben: { art: 'aufgaben', label: 'Aufgaben', bereich: 'Tag', beschreibung: 'Fällige und kritische Aufgaben, Schnellanlage', breite: 4, Komponente: AufgabenWidget,
-    einstellungen: [{ k: 'nur', label: 'Zeigt', art: 'wahl', optionen: [{ w: 'dran', label: 'fällig & kritisch' }, { w: 'alle', label: 'alle offenen' }], standard: 'dran' }, { k: 'space', label: 'Space', art: 'wahl', optionen: [{ w: 'alle', label: 'Privat und Business' }, { w: 'privat', label: 'nur Privat' }, { w: 'business', label: 'nur Business' }], standard: 'alle' }, { k: 'anzahl', label: 'Anzahl', art: 'wahl', optionen: [{ w: 5, label: '5' }, { w: 8, label: '8' }, { w: 12, label: '12' }], standard: 8 }] },
+    einstellungen: [{ k: 'nur', label: 'Zeigt', art: 'wahl', optionen: [{ w: 'dran', label: 'fällig & kritisch' }, { w: 'alle', label: 'alle offenen' }], standard: 'dran' }, { k: 'space', label: 'Space', art: 'wahl', optionen: [{ w: 'alle', label: 'Privat und Business' }, { w: 'privat', label: 'nur Privat' }, { w: 'business', label: 'nur Business' }], standard: 'alle' }, { k: 'einheit', label: 'Einheit', art: 'wahl', optionen: [{ w: 'alle', label: 'alle' }, ...KERN_EINHEITEN_NAMEN.map(n => ({ w: n, label: `nur ${n}` })), { w: 'ohne', label: 'Business ohne Einheit' }], standard: 'alle' }, { k: 'anzahl', label: 'Anzahl', art: 'wahl', optionen: [{ w: 5, label: '5' }, { w: 8, label: '8' }, { w: 12, label: '12' }], standard: 8 }] },
   termine: { art: 'termine', label: 'Termine', bereich: 'Tag', beschreibung: 'Heute oder die nächsten Tage aus dem Kalender', breite: 4, Komponente: TermineWidget,
     einstellungen: [TAGE_WAHL, { k: 'space', label: 'Space', art: 'wahl', optionen: [{ w: 'alle', label: 'Privat und Business' }, { w: 'privat', label: 'nur Privat' }, { w: 'business', label: 'nur Business' }], standard: 'alle' }, { k: 'business', label: 'KEMARIS-Termine dazu', art: 'schalter', standard: false }] },
   fokus: { art: 'fokus', label: 'Fokus', bereich: 'Tag', beschreibung: 'Worauf es heute, diese Woche oder diesen Monat ankommt', breite: 2, Komponente: FokusWidget,

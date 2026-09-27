@@ -5,13 +5,14 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { aufgabeEinheit } from '@/lib/aufgaben/einheit';
 import type { TasksState, Task, TaskStatus } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface NewTask { title?: string; description?: string; projectId?: string; owner?: Owner; priority?: Priority; dueDate?: string; space?: string }
+interface NewTask { title?: string; description?: string; projectId?: string; owner?: Owner; priority?: Priority; dueDate?: string; space?: string; einheit?: string }
 
 export async function POST(req: Request) {
   let body: NewTask;
@@ -57,6 +58,10 @@ export async function POST(req: Request) {
     createdAt: now,
     updatedAt: now,
   };
+  // Einheit (27.09.): nur im Business, einheitlich geschrieben — Privat verwirft sie.
+  const orgs = (await loadJson<{ orgs?: Record<string, string> }>('ordnung').catch(() => null))?.orgs ?? {};
+  const einheit = aufgabeEinheit({ ...task, einheit: body.einheit }, orgs);
+  if (einheit) task.einheit = einheit;
 
   await updateJson<TasksState>('tasks', cur => ({ projects: cur?.projects ?? state.projects, tasks: [...(cur?.tasks ?? []).filter(t => t.id !== task.id), task] }));
   return NextResponse.json({ ok: true, id: task.id });

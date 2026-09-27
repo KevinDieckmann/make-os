@@ -42,7 +42,8 @@ function tasksReducer(state: TasksState, action: TasksAction): TasksState {
     case 'UPDATE_TASK':
       return {
         ...state,
-        tasks: state.tasks.map(t => t.id === action.payload.id ? { ...t, ...action.payload, updatedAt: now } : t),
+        // Wer eine Aufgabe nach Privat schiebt, nimmt ihr die Business-Einheit (27.09.) — der Schreibweg verwirft sie ohnehin.
+        tasks: state.tasks.map(t => t.id === action.payload.id ? { ...t, ...action.payload, ...(action.payload.space === 'privat' ? { einheit: undefined } : {}), updatedAt: now } : t),
       };
     case 'DELETE_TASK':
       return {

@@ -7,6 +7,7 @@
 import { istSpace } from '@/lib/make-one/space-regeln';
 import { OWNER_BEIDE, istRhythmus, type Block, type Routine, type SpaceId, type Wochentag } from './typen';
 import { faelligkeit, type Faelligkeit } from './rhythmus';
+import { sauberEinheit } from './einheiten';
 
 const ISO_TAG = /^\d{4}-\d{2}-\d{2}$/;
 const UHR = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -36,6 +37,9 @@ export function sauberRoutine(roh: unknown): Routine | null {
   if (istRhythmus(r.rhythmus) && r.rhythmus !== 'taeglich') aus.rhythmus = r.rhythmus;
   if (aus.rhythmus && aus.rhythmus !== '3x-woche' && typeof r.naechstesMal === 'string' && ISO_TAG.test(r.naechstesMal)) aus.naechstesMal = r.naechstesMal;
   if (Number.isInteger(rang) && rang > 0) aus.rang = rang;
+  // Einheit (27.09.): nur im Business, Namen aus der einen Quelle — Privat verwirft sie.
+  const einheit = aus.space === 'business' ? sauberEinheit(r.einheit) : null;
+  if (einheit) aus.einheit = einheit;
   return aus;
 }
 

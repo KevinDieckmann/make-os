@@ -42,9 +42,14 @@ export function automatisch(v: HeadVorschlag, k: Kontakt | undefined): AutoWirku
 
 export const aufgabeIdFuer = (v: Pick<HeadVorschlag, 'id'>) => `hd-${v.id}`;
 
-/** Die Aufgabe zu einem Vorschlag — dieselbe Form wie beim Annehmen von Hand. */
-export function aufgabeAus(v: HeadVorschlag, headName: string, agentId: string, bearbeiter: string, jetzt: string): Record<string, unknown> {
+/**
+ * Die Aufgabe zu einem Vorschlag — dieselbe Form wie beim Annehmen von Hand.
+ * `einheit` (27.09.): steht ein Deal/Mandat mit Gesellschaft dahinter, trägt die Aufgabe deren Business-Einheit
+ * (`einheitAusBezug` in lib/aufgaben/einheit.ts); ohne Bezug keine Einheit.
+ */
+export function aufgabeAus(v: HeadVorschlag, headName: string, agentId: string, bearbeiter: string, jetzt: string, einheit?: string): Record<string, unknown> {
   return {
+    ...(einheit ? { space: 'business', einheit } : {}),
     id: aufgabeIdFuer(v), title: v.titel.slice(0, 200),
     description: `Vorschlag des ${headName}: ${v.begruendung}${v.belege?.length ? `\n\nBelege: ${v.belege.join(' | ')}` : ''}`,
     status: 'todo', priority: v.prioritaet === 'hoch' ? 'high' : v.prioritaet === 'niedrig' ? 'low' : 'medium',

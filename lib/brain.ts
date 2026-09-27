@@ -32,7 +32,7 @@ export { NORDSTERN, MILESTONES } from '@/lib/make-one/nordstern-data';
 import { NORDSTERN, MILESTONES } from '@/lib/make-one/nordstern-data';
 
 // ── Formen ──
-interface StoredTask { id: string; title: string; status: string; priority: string; dueDate?: string; projectId?: string; assignee?: string }
+interface StoredTask { id: string; title: string; status: string; priority: string; dueDate?: string; projectId?: string; assignee?: string; /** Business-Einheit (27.09.) — nur im Business gesetzt. */ einheit?: string }
 interface StoredProject { id: string; title: string }
 interface CalEvent { title?: string; startDate?: string; endDate?: string; allDay?: boolean; calendarName?: string }
 export interface MsMail { id?: string; subject?: string; senderName?: string; senderEmail?: string; preview?: string; receivedAt?: string; isRead?: boolean; importance?: string }
@@ -270,7 +270,7 @@ function blockAufgabenRoh(b: Brain, max = 20): string {
     const ort = ORG[orgVon(zuordnung)]?.kurz ?? '—';
     const e = einschaetzen(t);
     const wer = e.wer === 'zoe' ? 'DU KANNST DAS' : e.wer === 'gemeinsam' ? 'du bereitest vor' : 'nur Kevin/Malin';
-    return `• ${t.title} [${t.priority}${t.dueDate ? `, fällig ${t.dueDate}` : ''}, ${thema}, ${ort}, ${t.assignee ?? '—'} · ${wer}, ~${dauerText(e.dauer)}]`;
+    return `• ${t.title} [${t.priority}${t.dueDate ? `, fällig ${t.dueDate}` : ''}, ${thema}, ${ort}${t.einheit ? ` · Einheit ${t.einheit}` : ''}, ${t.assignee ?? '—'} · ${wer}, ~${dauerText(e.dauer)}]`;
   });
   const zoeBar = b.tasks.offen.filter(t => einschaetzen(t).wer === 'zoe');
   const hinweis = zoeBar.length

@@ -29,6 +29,7 @@ import { PLAYBOOKS, planen } from '@/lib/crm/kampagnen';
 import { localDay } from '@/lib/zeit';
 import { wer, verantwortlich, haeltBeziehung, nameVon, BEIDE } from '@/lib/crm/team';
 import { leererStand, standName, type HeadStand, type HeadVorschlag, type Status } from '@/lib/heads/stand';
+import { einheitAusBezug } from '@/lib/aufgaben/einheit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -173,13 +174,15 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
       const k = t.kontakt_id ? ((await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? []).find(x => x.id === t.kontakt_id) : undefined;
       const fuer = t.fuer ?? (k ? haeltBeziehung(k) : verantwortlich(h));
       const bearbeiter = fuer === BEIDE ? person : fuer;
+      // Business-Einheit aus dem Deal/Mandat dahinter (27.09.) — ohne Bezug keine.
+      const einheit = status === 'angenommen' && (t.chance_id || t.mandat_id) ? einheitAusBezug(await ladeCrm().catch(() => null), { chanceId: t.chance_id, mandatId: t.mandat_id }) : undefined;
       await updateJson<{ tasks: Record<string, unknown>[] }>('tasks', cur => {
         const f = cur ?? { tasks: [] };
         const tasks = [...(f.tasks ?? [])];
         const i = tasks.findIndex(x => x.id === `hd-${t.id}`);
         if (status === 'erledigt') { if (i >= 0) tasks[i] = { ...tasks[i], status: 'done', updatedAt: jetzt }; return { ...f, tasks }; }
         if (i >= 0) return f;
-        tasks.push({ id: `hd-${t.id}`, title: t.titel.slice(0, 200), description: `Vorschlag des ${HEAD_NAME[h]}: ${t.begruendung}${t.entwurf ? `\n\nEntwurf (${t.entwurf.kanal}):\n${t.entwurf.text}` : ''}${ort(t) ? `\n\n${ort(t)}` : ''}`, status: 'todo', priority: t.prioritaet === 'hoch' ? 'high' : t.prioritaet === 'niedrig' ? 'low' : 'medium', assignee: bearbeiter, tags: [AGENT_ID[h], 'markttraktion'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, ...(t.frist ? { dueDate: t.frist } : {}) });
+        tasks.push({ id: `hd-${t.id}`, title: t.titel.slice(0, 200), description: `Vorschlag des ${HEAD_NAME[h]}: ${t.begruendung}${t.entwurf ? `\n\nEntwurf (${t.entwurf.kanal}):\n${t.entwurf.text}` : ''}${ort(t) ? `\n\n${ort(t)}` : ''}`, status: 'todo', priority: t.prioritaet === 'hoch' ? 'high' : t.prioritaet === 'niedrig' ? 'low' : 'medium', assignee: bearbeiter, tags: [AGENT_ID[h], 'markttraktion'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, ...(t.frist ? { dueDate: t.frist } : {}), ...(einheit ? { space: 'business', einheit } : {}) });
         return { ...f, tasks };
       });
       wohin = bearbeiter === person ? 'Aufgabe' : `Aufgabe für ${nameVon(bearbeiter)}`;

@@ -21,6 +21,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { ART_FARBE, type PlanBlock } from '@/types/planer';
 import { PlanerLeiste } from './PlanerLeiste';
 import { useTasks } from '@/context/TasksContext';
+import { einheitKurz } from '@/lib/aufgaben/einheit';
 import { localDay } from '@/lib/zeit';
 import { wochenplanSchreiben } from '@/lib/make-one/wochenplan-sync';
 import { verteileSpuren, spurStil, titelStil } from '@/lib/make-one/spuren';
@@ -641,7 +642,7 @@ export function WochenplanView() {
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {offeneAufgaben.map(t => (
                 <Ziehbar key={t.id} farbe={t.imFokus ? LEUCHT.schlaf : ART_FARBE.aufgabe} daten={{ aufgabe: { taskId: t.id, titel: t.title } }} breit={240}>
-                  {t.priority === 'critical' ? '‼ ' : ''}{t.imFokus ? '◎ ' : ''}{t.title}
+                  {t.priority === 'critical' ? '‼ ' : ''}{t.imFokus ? '◎ ' : ''}{t.einheit ? <span style={{ opacity: 0.75 }}>{einheitKurz(t.einheit)} · </span> : null}{t.title}
                 </Ziehbar>
               ))}
               {!offeneAufgaben.length && <Leer>Alles eingeplant oder erledigt.</Leer>}

@@ -28,6 +28,7 @@ import { grundlauf } from './grundlauf';
 import { normalisiere, pruefe, korrekturAuftrag, qualitaet, type Antwort, type Pruefung, type Vorschlag } from './pruefer';
 import { leererStand, standName, mischen, type HeadStand, type HeadBericht, type HeadVorschlag } from './stand';
 import { automatisch, aufgabeAus, OHNE_AUTO_MODI } from './autonomie';
+import { einheitAusBezug } from '@/lib/aufgaben/einheit';
 import { belege } from './belege';
 import { BEIDE } from '@/lib/crm/team';
 import { MODEL_BY_TIER } from '@/lib/agent-config';
@@ -204,12 +205,14 @@ async function autoUebernehmen(head: HeadId, berichtId: string, person: string, 
   }
   const aufgaben = plan.filter(p => p.w === 'aufgabe');
   if (aufgaben.length) {
+    // Business-Einheit aus dem Deal/Mandat dahinter (27.09.) — das CRM nur laden, wenn ein Vorschlag einen Bezug hat.
+    const crm = aufgaben.some(p => p.v.chance_id || p.v.mandat_id) ? await ladeCrm().catch(() => null) : null;
     await updateJson<{ tasks: Record<string, unknown>[] }>('tasks', cur => {
       const f = cur ?? { tasks: [] };
       const tasks = [...(f.tasks ?? [])];
       for (const { v } of aufgaben) {
         const bearbeiter = !v.fuer || v.fuer === BEIDE ? person : v.fuer;
-        const t = aufgabeAus(v, HEAD_NAME[head], AGENT_ID[head], bearbeiter, jetzt);
+        const t = aufgabeAus(v, HEAD_NAME[head], AGENT_ID[head], bearbeiter, jetzt, einheitAusBezug(crm, { chanceId: v.chance_id, mandatId: v.mandat_id }));
         if (!tasks.some(x => x.id === t.id)) tasks.push(t);
         erledigt.set(v.id, { am: jetzt, wirkung: `Aufgabe für ${bearbeiter.charAt(0).toUpperCase() + bearbeiter.slice(1)}`, rueckgaengig: { art: 'aufgabe', aufgabeId: String(t.id) } });
       }

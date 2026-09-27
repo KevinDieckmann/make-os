@@ -18,6 +18,8 @@ import { localDay, tagePlus } from '@/lib/zeit';
 import type { Task } from '@/types/tasks';
 import type { Owner } from '@/types/common';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, feld, prioFarbe, LEUCHT, Spalten, Spalte } from './schlank';
+import { EinheitWahl, EinheitFilterPillen, useEinheiten, einheitGemerkt, einheitMerken } from './aufgaben/Einheit';
+import { EINHEIT_ALLE, EINHEIT_OHNE, einheitFilterOptionen, passtEinheitFilter, vorgabeEinheit, type EinheitFilter } from '@/lib/aufgaben/einheit';
 
 const wahl: React.CSSProperties = { background: C.flaeche, border: 'none', borderRadius: 8, color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: '7px 10px', colorScheme: 'dark' };
 
@@ -31,6 +33,16 @@ export function AufgabenSchlank() {
   useEffect(() => { setSpaceFilter(spaceAusAdresse ?? aktiverSpace); }, [spaceAusAdresse, aktiverSpace]);
   const [neu, setNeu] = useState('');
   const [zeigeErledigt, setZeigeErledigt] = useState(false);
+  // Business-Einheit (27.09.): Filter-Pillen im Business, Vorgabe für neue Aufgaben = zuletzt gefiltert/gewählt.
+  const { einheiten, anlegen: einheitAnlegen } = useEinheiten();
+  const [einheitFilter, setEinheitFilterRoh] = useState<EinheitFilter>(EINHEIT_ALLE);
+  const [neuEinheit, setNeuEinheit] = useState<string | undefined>(undefined);
+  useEffect(() => { setNeuEinheit(vorgabeEinheit(EINHEIT_ALLE, einheitGemerkt())); }, []);
+  const setEinheitFilter = (f: EinheitFilter) => {
+    setEinheitFilterRoh(f);
+    if (f !== EINHEIT_ALLE) { const v = vorgabeEinheit(f, null); setNeuEinheit(v); if (v) einheitMerken(v); }
+  };
+  const imBusiness = spaceFilter === 'business';
   // Offene Aufgabe im Link (?offen=): Zurück schließt sie wieder, statt die Seite zu verlassen (25.09.).
   const [offenId, setOffenId] = useLinkAuswahl('offen');
   const aendern = (id: string, teil: Partial<Task>) => dispatch({ type: 'UPDATE_TASK', payload: { id, ...teil } });
@@ -41,7 +53,7 @@ export function AufgabenSchlank() {
     const p = parseSchnell(roh, state.projects);
     if (!p.title) return;
     dispatch({ type: 'ADD_TASK', payload: {
-      projectId: p.projectId ?? state.projects[0]?.id ?? '', ...(spaceFilter !== 'alle' ? { space: spaceFilter } : {}), title: p.title, description: '', status: 'todo',
+      projectId: p.projectId ?? state.projects[0]?.id ?? '', ...(spaceFilter !== 'alle' ? { space: spaceFilter } : {}), ...(imBusiness && neuEinheit ? { einheit: neuEinheit } : {}), title: p.title, description: '', status: 'todo',
       priority: p.priority, assignee: p.assignee === 'both' ? 'both' : p.assignee, tags: [], subTasks: [], dependencies: [], sortOrder: 0,
       ...(p.dueDate ? { dueDate: p.dueDate } : {}),
     } });
@@ -49,7 +61,11 @@ export function AufgabenSchlank() {
   };
 
   // Space (26.09.): im Privat-Space nur Privates, im Business-Space nur Business — „Alle“ zeigt beides.
-  const imSpace = (t: Task) => spaceFilter === 'alle' || spaceVonAufgabe(t) === spaceFilter;
+  const imSpace = (t: Task) => (spaceFilter === 'alle' || spaceVonAufgabe(t) === spaceFilter) && (!imBusiness || passtEinheitFilter(t.einheit, einheitFilter));
+  const einheitOptionen = imBusiness ? einheitFilterOptionen(state.tasks.filter(t => t.status !== 'done' && spaceVonAufgabe(t) === 'business').map(t => t.einheit), einheiten) : [];
+  const istBusiness = (t: Task) => spaceVonAufgabe(t) === 'business';
+  // Den Chip in der Zeile nur, wenn der Filter nicht ohnehin genau diese Einheit zeigt.
+  const zeigeEinheit = (t: Task) => istBusiness(t) && !!t.einheit && (einheitFilter === EINHEIT_ALLE || einheitFilter === EINHEIT_OHNE);
   const offen = state.tasks.filter(t => t.status !== 'done' && imSpace(t));
   const erledigt = state.tasks.filter(t => t.status === 'done' && imSpace(t)).sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? '')).slice(0, 20);
   const wochenEnde = tagePlus(heute, 7);
@@ -82,6 +98,7 @@ export function AufgabenSchlank() {
         <select value={t.projectId} onChange={e => aendern(t.id, { projectId: e.target.value })} style={wahl}>
           {state.projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
         </select>
+        {istBusiness(t) && <EinheitWahl wert={t.einheit} setzen={e => aendern(t.id, { einheit: e })} einheiten={einheiten} anlegen={einheitAnlegen} />}
         <select value={t.space ?? 'auto'} onChange={e => aendern(t.id, { space: e.target.value === 'auto' ? undefined : (e.target.value as SpaceId) })} title="Space — ohne Angabe gibt der Ort den Space vor" style={wahl}>
           <option value="auto">Space: {SPACE_LABEL[spaceVonAufgabe(t)]} (aus dem Ort)</option>
           <option value="privat">Privat</option>
@@ -107,6 +124,7 @@ export function AufgabenSchlank() {
               titel={t.title}
               unter={[projekt(t.projectId), t.assignee !== 'kevin' ? WER[t.assignee] : ''].filter(Boolean).join(' · ')}
               rechts={<span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {zeigeEinheit(t) && <EinheitWahl wert={t.einheit} setzen={e => aendern(t.id, { einheit: e })} einheiten={einheiten} anlegen={einheitAnlegen} />}
                 {t.dueDate && <span style={{ fontFamily: SCHRIFT.display, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute ? LEUCHT.kritisch : C.inkLeise }}>{datum(t.dueDate)}</span>}
                 <Punkt farbe={prioFarbe(t.priority)} />
               </span>} />
@@ -125,8 +143,12 @@ export function AufgabenSchlank() {
       <Link href={spaceFilter === 'alle' ? '/os/aufgaben/board' : `/os/aufgaben/board?space=${spaceFilter}`} style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none', marginLeft: 6 }}>Board &amp; Zeitstrahl ›</Link>
     </span>}>
       <Karte i={0} akzent={LEUCHT.achtung}>
-        <input value={neu} onChange={e => setNeu(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') anlegen(); }}
-          placeholder="Neue Aufgabe … (!! kritisch · heute / mo–so / 24.09. · #projekt · @malin)" style={{ ...feld, fontSize: TYP.body }} />
+        {imBusiness && <div style={{ marginBottom: 10 }}><EinheitFilterPillen optionen={einheitOptionen} wert={einheitFilter} setzen={setEinheitFilter} /></div>}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input value={neu} onChange={e => setNeu(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') anlegen(); }}
+            placeholder="Neue Aufgabe … (!! kritisch · heute / mo–so / 24.09. · #projekt · @malin)" style={{ ...feld, fontSize: TYP.body, flex: 1, minWidth: 0, width: 'auto' }} />
+          {imBusiness && <EinheitWahl wert={neuEinheit} setzen={setNeuEinheit} einheiten={einheiten} anlegen={einheitAnlegen} titel="Einheit der neuen Aufgabe" merken />}
+        </div>
         {offen.length === 0 && <Leer>Keine offenen Aufgaben. Eine Zeile oben, Enter — oder ZOE sagen.</Leer>}
       </Karte>
       <Spalten verhaeltnis="1:1">

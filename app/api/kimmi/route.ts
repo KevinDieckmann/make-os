@@ -155,6 +155,7 @@ export async function POST(req: Request) {
           wer: { type: 'string', enum: ['kevin', 'malin', 'both'], description: 'Wer macht es (optional, Standard Kevin)' },
           faellig: { type: 'string', description: 'Fällig am, YYYY-MM-DD (optional)' },
           space: { type: 'string', enum: ['privat', 'business'], description: 'Privat oder Business — Standard: der aktive Space' },
+          einheit: { type: 'string', description: 'Nur bei Business: zu welcher Einheit die Aufgabe gehört — „Selbstständigkeit“ (Kevin Dieckmann Consulting), „KD Ventures“ (die Beteiligungsgesellschaft) oder „MAKE OS UG“; auch eine eigene Einheit des Haushalts (z. B. „Kunden“). Nur setzen, wenn es aus dem Gespräch klar ist; bei Privat weglassen.' },
         },
         required: ['title'],
       },

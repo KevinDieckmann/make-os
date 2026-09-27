@@ -87,6 +87,8 @@ export interface Routine {
   /** Nächste Fälligkeit (YYYY-MM-DD) für Rhythmen ab wöchentlich — z. B. Arzt, Steuererklärung. */
   naechstesMal?: string;
   rang?: number;
+  /** Business-Einheit (27.09., wie bei Zielen) — nur bei `space: 'business'`. */
+  einheit?: string;
 }
 
 /** Wochentag 1 = Montag … 7 = Sonntag. */

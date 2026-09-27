@@ -10,6 +10,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { LEUCHT } from './schlank';
+import { useTasks } from '@/context/TasksContext';
+import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
+import { einheitName } from '@/lib/einheiten';
+import { WEG } from '@/lib/wege';
+import type { Task } from '@/types/tasks';
 
 interface Treffer { art: string; id: string; titel: string; unter?: string; href: string; space?: 'privat' | 'business' }
 const SEITEN: Treffer[] = [
@@ -30,11 +35,27 @@ const SEITEN: Treffer[] = [
 const ART: Record<string, { label: string; farbe: string }> = {
   kontakt: { label: 'Person', farbe: LEUCHT.business }, firma: { label: 'Firma', farbe: LEUCHT.puls }, chance: { label: 'Deal', farbe: LEUCHT.achtung },
   mandat: { label: 'Mandat', farbe: LEUCHT.geld }, kampagne: { label: 'Kampagne', farbe: LEUCHT.beziehung }, seite: { label: 'Bereich', farbe: C.inkDim }, mensch: { label: 'Mensch', farbe: LEUCHT.beziehung },
+  aufgabe: { label: 'Aufgabe', farbe: LEUCHT.achtung },
 };
+
+/** Offene Aufgaben des aktiven Space, deren Titel passt — im Business mit der Einheit im Untertitel (27.09.). */
+function aufgabenTreffer(tasks: readonly Task[], q: string, space: 'privat' | 'business'): Treffer[] {
+  const t = q.toLocaleLowerCase('de-DE');
+  return tasks
+    .filter(a => a.status !== 'done' && a.title.toLocaleLowerCase('de-DE').includes(t) && spaceVonAufgabe(a) === space)
+    .slice(0, 4)
+    .map(a => ({
+      art: 'aufgabe', id: a.id, titel: a.title, href: WEG.aufgabe(a.id), space,
+      unter: [space === 'business' ? einheitName(a.einheit) ?? 'ohne Einheit' : '', a.dueDate ? `fällig ${a.dueDate.slice(8)}.${a.dueDate.slice(5, 7)}.` : ''].filter(Boolean).join(' · ') || undefined,
+    }));
+}
 
 export function Schnellsuche() {
   const { space } = useSpace();
   const router = useRouter();
+  const { state: aufgabenStand } = useTasks();
+  const aufgabenRef = useRef<readonly Task[]>(aufgabenStand.tasks);
+  aufgabenRef.current = aufgabenStand.tasks;
   const [offen, setOffen] = useState(false);
   const [q, setQ] = useState('');
   const [treffer, setTreffer] = useState<Treffer[]>([]);
@@ -64,11 +85,11 @@ export function Schnellsuche() {
           const menschen = ((d?.familie?.menschen ?? []) as { id: string; name: string; rolle: string; notiz?: string }[])
             .filter(m => `${m.name} ${m.rolle} ${m.notiz ?? ''}`.toLowerCase().includes(t.toLowerCase())).slice(0, 8)
             .map(m => ({ art: 'mensch', id: m.id, titel: m.name, unter: m.rolle, href: '/os/menschen' }));
-          setTreffer([...menschen, ...seiten.slice(0, 3)]); setI(0);
+          setTreffer([...menschen, ...aufgabenTreffer(aufgabenRef.current, t, 'privat'), ...seiten.slice(0, 3)]); setI(0);
         }).catch(() => {});
         return;
       }
-      fetch(`/api/crm/suche?q=${encodeURIComponent(t)}`, { signal: ab.signal }).then(r => r.json()).then(d => { setTreffer([...(d.treffer ?? []), ...seiten.slice(0, 3)]); setI(0); }).catch(() => {});
+      fetch(`/api/crm/suche?q=${encodeURIComponent(t)}`, { signal: ab.signal }).then(r => r.json()).then(d => { setTreffer([...(d.treffer ?? []), ...aufgabenTreffer(aufgabenRef.current, t, 'business'), ...seiten.slice(0, 3)]); setI(0); }).catch(() => {});
     }, 140);
     return () => { clearTimeout(timer); ab.abort(); };
   }, [q, offen, space]);
@@ -78,7 +99,7 @@ export function Schnellsuche() {
   return (
     <div onClick={schliessen} style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(5,7,8,.62)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', paddingTop: '12vh', paddingInline: 16 }}>
       <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Schnellsuche" style={{ width: 'min(640px, 100%)', background: C.flaeche, borderRadius: 16, boxShadow: '0 30px 80px -20px rgba(0,0,0,.8)', border: '1px solid rgba(255,255,255,.07)', overflow: 'hidden' }}>
-        <input ref={feldRef} value={q} onChange={e => setQ(e.target.value)} placeholder={space === 'business' ? 'Business: Person, Firma, Chance, Mandat oder Seite …' : 'Privat: Familie, Gesundheit, Zahlen oder Seite …'} aria-label="Suchen"
+        <input ref={feldRef} value={q} onChange={e => setQ(e.target.value)} placeholder={space === 'business' ? 'Business: Person, Firma, Chance, Mandat, Aufgabe oder Seite …' : 'Privat: Familie, Aufgabe, Gesundheit, Zahlen oder Seite …'} aria-label="Suchen"
           onKeyDown={e => {
             if (e.key === 'Escape') schliessen();
             else if (e.key === 'ArrowDown') { e.preventDefault(); setI(x => Math.min(treffer.length - 1, x + 1)); }
