@@ -1,7 +1,7 @@
 'use client';
 
 // ─── MAKE OS — Agenten ──────────────────────────────────────────────────────
-// Jarvis dirigiert, darunter die Abteilungen. Seit 24.09. im lebendigen
+// ZOE dirigiert, darunter die Abteilungen. Seit 24.09. im lebendigen
 // Muster: der Agenten-Score als Ring, die letzten Läufe, je Abteilung eine
 // Karte mit den Agenten als Zeilen (Status, Autonomie als Chips), aufklappbar
 // für Autonomie, Modell, Status, Funktionen und Bauplan.

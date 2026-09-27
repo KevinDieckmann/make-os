@@ -79,7 +79,7 @@ Vorschlag „Unternehmer-DNA“ (passt zu 1–5 Personen, Daten hat MAKE OS scho
 | Personalaufwandsquote | Personal ÷ Umsatz | ≤ 60 / > 75 % | Kategorie „personal“ | 🟡 |
 | Fokuszeit | Fokus-Blöcke h/Woche | ≥ 10 / < 4 h | Planer | ✅ |
 | Meeting-Last | Termin-h/Woche | ≤ 20 / > 30 h | iCloud-Kalender | ✅ |
-| Delegation | erledigte Agenten-Aufträge ÷ Woche | Ziel einstellbar | Jarvis | ✅ |
+| Delegation | erledigte Agenten-Aufträge ÷ Woche | Ziel einstellbar | ZOE | ✅ |
 Klassische MDNA (Fluktuation, eNPS, Krankenquote) kommt dazu, sobald ein Team da ist.
 
 ### Markttraktion — 20 %
@@ -110,7 +110,7 @@ DevSpec-Kennzahlen, die mit Mandaten/Pipeline rechenbar sind:
 - **Oberfläche:** der Kopf-Ring „Business“ (`/os/saeule/business`) wird das
   Business-Cockpit: Index + drei Säulen, je Kennzahl Kachel mit Ampel,
   Formel/Quelle auf Klick, Messlücken mit „so schließen“, Verlauf.
-- **Jarvis & Head of Finance** bekommen den Index und die roten Kennzahlen.
+- **ZOE & Head of Finance** bekommen den Index und die roten Kennzahlen.
 
 ## 5. Ablauf (≈ 5 Arbeitstage, ein geplantes Update)
 
@@ -120,7 +120,7 @@ DevSpec-Kennzahlen, die mit Mandaten/Pipeline rechenbar sind:
 3. **Cockpit** (1 T): Business-Seite, Verlauf, Messlücken, Drilldown.
 4. **Lücken schließen** (1,5 T): Rechnungsdaten (gestellt/bezahlt), Monats-
    abschluss, Mandats-Verlauf (NRR/Churn), CAC.
-5. **Einbindung** (1 T): Wachstums-Score, Jarvis/Head of Finance, Hinweise,
+5. **Einbindung** (1 T): Wachstums-Score, ZOE/Head of Finance, Hinweise,
    Führung & Team.
 
 ## 6. Entscheidungen (Kevin, 25.09.2026)
@@ -144,14 +144,14 @@ DevSpec-Kennzahlen, die mit Mandaten/Pipeline rechenbar sind:
 - `lib/business/speicher.ts` + `app/api/business` — Monatsabschluss, Köpfe, täglicher Schnappschuss
   (Trend, Ampel-Wechsel, MRR für die NRR).
 - `/os/business` (Kopf-Ring „Business“) — Cockpit; Wachstums-Score: Business-Säule = Index,
-  Finanzen-Business-Hälfte = Finanzielle Gesundheit; Jarvis bekommt Index, Rotes und Messlücken.
+  Finanzen-Business-Hälfte = Finanzielle Gesundheit; ZOE bekommt Index, Rotes und Messlücken.
 - Tests: `tests/business-index.test.ts`.
 
-## 8. Tiefer verankert (25.09.2026, Kevin: Fachseiten · Jarvis & Head of Finance · Feinjustierung)
+## 8. Tiefer verankert (25.09.2026, Kevin: Fachseiten · ZOE & Head of Finance · Feinjustierung)
 
 - Fachseiten: `components/os/business/IndexStreifen.tsx` auf Zahlen (Business), Markttraktion
   (Überblick), Mandate — dieselbe Zahl wie im Cockpit, Klick öffnet die Kennzahl dort.
-- Jarvis: `business_index` (frei) · `monatsabschluss_erfassen` (Freigabe, nur genannte Zahlen).
+- ZOE: `business_index` (frei) · `monatsabschluss_erfassen` (Freigabe, nur genannte Zahlen).
 - Head of Finance: `business_index` im Datenpaket, Hinweise bei roter Kennzahl (FH = hoch) und
   fehlendem Monatsabschluss des Vormonats — nur für den Haushalt des Inhabers.
 - Feinjustierung: eigene Schwellen je Kennzahl (alle Sichten oder je Firma, mit Rückweg zum

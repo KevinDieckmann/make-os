@@ -2,7 +2,7 @@
 // Was aus Aufträgen, Anmeldungen, Oberflächenfehlern und CSP-Meldungen zu
 // Zählern wird. Keine Inhalte, keine Adressen: nur Zahlen und Kürzel.
 
-import type { Auftrag } from '@/lib/jarvis/auftraege';
+import type { Auftrag } from '@/lib/zoe/auftraege';
 import type { Anmeldung } from '@/lib/zugang/anmeldungen';
 import { adresseGekuerzt } from '@/lib/zugang/anmeldungen';
 

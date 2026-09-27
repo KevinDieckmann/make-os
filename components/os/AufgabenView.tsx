@@ -82,7 +82,7 @@ export function AufgabenView() {
   const [ansicht, setAnsicht] = useState<Ansicht>('jetzt');
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [remState, setRemState] = useState<'laden' | 'ok' | 'fehler'>('laden');
-  // Delegations-Runde: Jarvis schlägt vor, Kevin klickt — nichts geht automatisch raus.
+  // Delegations-Runde: ZOE schlägt vor, Kevin klickt — nichts geht automatisch raus.
   const [deleg, setDeleg] = useState<DelegVorschlag[] | null>(null);
   const [delegBusy, setDelegBusy] = useState(false);
   const [delegPrivat, setDelegPrivat] = useState(0);
@@ -145,7 +145,7 @@ export function AufgabenView() {
   const THEMA_EIGEN = useMemo(() => themenMit(eigeneNamen), [eigeneNamen]);
   const themaRang = useMemo(() => Object.fromEntries(themen.map((b, i) => [b.id, i])) as Record<string, number>, [themen]);
 
-  // Eine Runde, die Jarvis im Hintergrund gedreht hat, liegt bereit — sie erscheint, bis eine neue läuft (27.09.).
+  // Eine Runde, die ZOE im Hintergrund gedreht hat, liegt bereit — sie erscheint, bis eine neue läuft (27.09.).
   const [delegVon, setDelegVon] = useState<string | null>(null);
   useEffect(() => {
     fetch('/api/delegation', { cache: 'no-store' }).then(r => r.json()).then(d => {
@@ -485,9 +485,9 @@ export function AufgabenView() {
               {!done && (() => {
                 const e = einschaetzen(t);
                 return (
-                  <span title={`${WER_LABEL[e.wer]} — ${e.warum}${e.beitrag ? ` · Jarvis: ${e.beitrag}` : ''}`}
+                  <span title={`${WER_LABEL[e.wer]} — ${e.warum}${e.beitrag ? ` · ZOE: ${e.beitrag}` : ''}`}
                     style={{ fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, color: WER_FARBE[e.wer], opacity: 0.9 }}>
-                    {e.wer === 'jarvis' ? '⚡' : e.wer === 'gemeinsam' ? '◐' : '☺'} {dauerText(e.dauer)}
+                    {e.wer === 'zoe' ? '⚡' : e.wer === 'gemeinsam' ? '◐' : '☺'} {dauerText(e.dauer)}
                   </span>
                 );
               })()}
@@ -665,7 +665,7 @@ export function AufgabenView() {
             {/* 3 · Reihenfolge: was muss vorher fertig sein? */}
             {!done && <Abhaengigkeit t={t} alle={state.tasks} patchTask={patchTask} />}
 
-            {/* 4 · Fuß: Jarvis-Einschätzung als eine Zeile + Aktionen */}
+            {/* 4 · Fuß: ZOE-Einschätzung als eine Zeile + Aktionen */}
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', borderTop: `1px solid ${HAAR}`, paddingTop: 12 }}>
               {!done && (() => {
                 const e = einschaetzen(t);
@@ -689,8 +689,8 @@ export function AufgabenView() {
   /** Farben der Fällig-Gruppen in der Listen-Ansicht. */
   const gruppeFarbe = (key: string) => (key === 'spaet' ? LEUCHT.kritisch : key === 'heute' ? LEUCHT.gut : key === 'morgen' || key === 'woche' ? LEUCHT.achtung : key === 'spaeter' ? LEUCHT.puls : C.inkLeise);
 
-  const jarvisListe = list.filter(t => t.status !== 'done' && einschaetzen(t).wer === 'jarvis');
-  const jarvisMin = jarvisListe.reduce((s, t) => s + einschaetzen(t).dauer, 0);
+  const zoeListe = list.filter(t => t.status !== 'done' && einschaetzen(t).wer === 'zoe');
+  const zoeMin = zoeListe.reduce((s, t) => s + einschaetzen(t).dauer, 0);
   const ueberLast = lastMin > grenzeLast * 60;
 
   // Karten zählen hoch, damit sie gestaffelt erscheinen.
@@ -709,7 +709,7 @@ export function AufgabenView() {
           <span>
             · <b style={{ color: ueberLast ? LEUCHT.achtung : C.inkDim, fontWeight: 600 }}>{dauerText(lastMin)}</b> Aufwand
             {ueberLast && <> · <b style={{ color: LEUCHT.achtung }}>{dauerText(lastMin - grenzeLast * 60)} über {grenzeLast} h</b></>}
-            {jarvisListe.length > 0 && <> · <b style={{ color: WER_FARBE.jarvis, fontWeight: 600 }}>{jarvisListe.length} für Jarvis ({dauerText(jarvisMin)})</b></>}
+            {zoeListe.length > 0 && <> · <b style={{ color: WER_FARBE.zoe, fontWeight: 600 }}>{zoeListe.length} für ZOE ({dauerText(zoeMin)})</b></>}
           </span>
         </span>
       }
@@ -780,7 +780,7 @@ export function AufgabenView() {
             <Pille gross an={filterAuf || aktiveFilter > 0} onClick={() => setFilterAuf(!filterAuf)} title="Status, Person, Stufe, Termine, Ort, Weg, Thema">
               {filterAuf ? '▾' : '▸'} Filter{aktiveFilter ? ` · ${aktiveFilter}` : ''}
             </Pille>
-            <Knopf onClick={delegationsRunde} aus={delegBusy} farbe={LEUCHT.gut}>{delegBusy ? 'Jarvis prüft …' : '✨ Delegations-Runde'}</Knopf>
+            <Knopf onClick={delegationsRunde} aus={delegBusy} farbe={LEUCHT.gut}>{delegBusy ? 'ZOE prüft …' : '✨ Delegations-Runde'}</Knopf>
           </div>
         </div>
 
@@ -830,7 +830,7 @@ export function AufgabenView() {
               </Pille>
             ))}
             <Trenner />
-            {(['alle', 'jarvis', 'gemeinsam', 'mensch'] as const).map(k => (
+            {(['alle', 'zoe', 'gemeinsam', 'mensch'] as const).map(k => (
               <Pille key={k} an={werFilter === k} farbe={k === 'alle' ? C.aktiv : WER_FARBE[k]} onClick={() => setWerFilter(k)}>{k === 'alle' ? 'Alle Wege' : WER_LABEL[k]}</Pille>
             ))}
             <Trenner />
@@ -933,7 +933,7 @@ export function AufgabenView() {
       </Karte>
 
       {/* ─── Delegations-Vorschläge: Kevin behält nur, was nur er kann ─── */}
-      {deleg && delegVon && <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Runde von Jarvis · {new Date(delegVon).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}</div>}
+      {deleg && delegVon && <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Runde von ZOE · {new Date(delegVon).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}</div>}
       {deleg && (
         <Karte i={ki++} akzent={C.aktiv}>
           <Ueberschrift farbe={C.aktiv} rechts={<>
@@ -1033,7 +1033,7 @@ export function AufgabenView() {
             const kritisch = offen.filter(t => t.priority === 'critical').length;
             const spaet = offen.filter(t => t.dueDate && t.dueDate < heute).length;
             const minuten = offen.reduce((s, t) => s + einschaetzen(t).dauer, 0);
-            const jarvis = offen.filter(t => einschaetzen(t).wer === 'jarvis').length;
+            const zoe = offen.filter(t => einschaetzen(t).wer === 'zoe').length;
             const farbe = PERSON_FARBE[b.id];
             return (
               <Karte key={b.id} i={ki++} akzent={farbe}>
@@ -1043,7 +1043,7 @@ export function AufgabenView() {
                   <span style={{ color: kritisch ? LEUCHT.kritisch : C.inkLeise }}>{kritisch} kritisch</span>
                   <span style={{ color: spaet ? LEUCHT.kritisch : C.inkLeise }}>{spaet} überfällig</span>
                   <span style={{ color: C.inkLeise }}>{dauerText(minuten)}</span>
-                  {!!jarvis && <span style={{ color: WER_FARBE.jarvis }}>⚡ {jarvis}</span>}
+                  {!!zoe && <span style={{ color: WER_FARBE.zoe }}>⚡ {zoe}</span>}
                 </div>
                 <div style={{ fontSize: 11, color: C.inkLeise, marginTop: 6, marginBottom: 6 }}>
                   Übergeben: in der Zeile auf den Namen klicken

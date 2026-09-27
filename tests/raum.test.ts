@@ -7,7 +7,7 @@
 // sieht.
 
 import { describe, it, expect } from 'vitest';
-import { darfSehen, nurSichtbar, personAus, eigenerRaum } from '../lib/jarvis/raum';
+import { darfSehen, nurSichtbar, personAus, eigenerRaum } from '../lib/zoe/raum';
 
 const anfrage = (kopf: Record<string, string>) => new Request('http://x/', { headers: kopf });
 

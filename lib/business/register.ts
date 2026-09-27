@@ -115,7 +115,7 @@ export const KENNZAHLEN: KennzahlDef[] = [
     formel: 'Termin-Stunden je Woche in Kevins und den gemeinsamen Kalendern (Ø 4 Wochen)', quelle: 'Apple Kalender (iCloud)',
     luecke: 'Kalender-Stand fehlt', pflegen: { text: 'Kalender öffnen', href: WEG.woche() } },
   { id: 'delegation', label: 'Delegation an Agenten', saeule: 'ud', gruppe: 'Arbeitsweise', einheit: 'anzahl', richtung: 'hoch', gruen: 10, rot: 3, nurGesamt: true,
-    formel: 'erledigte Agenten-Aufträge je Woche, die ihr angestoßen habt (ohne Routine-Takt, Ø 4 Wochen)', quelle: 'Jarvis-Aufträge',
+    formel: 'erledigte Agenten-Aufträge je Woche, die ihr angestoßen habt (ohne Routine-Takt, Ø 4 Wochen)', quelle: 'ZOE-Aufträge',
     luecke: 'Noch keine Agenten-Aufträge', pflegen: { text: 'Agenten öffnen', href: WEG.agenten() } },
   { id: 'meilensteine', label: 'Meilenstein-Kurs', saeule: 'ud', gruppe: 'Arbeitsweise', einheit: 'prozent', richtung: 'hoch', gruen: 70, rot: 40, nurGesamt: true,
     formel: 'Ø Fortschritt offener Business-Meilensteine (überfällige zählen 0)', quelle: 'Meilensteine (Bereich Business)',

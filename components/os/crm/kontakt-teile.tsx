@@ -166,9 +166,9 @@ export function EntwurfTeil({ k, mailOk }: { k: Kontakt; mailOk: boolean }) {
   return (
     <div>
       <Ueberschrift>Entwurf</Ueberschrift>
-      {!entwurf && <Knopf leise onClick={entwerfen}>Jarvis entwerfen lassen</Knopf>}
+      {!entwurf && <Knopf leise onClick={entwerfen}>ZOE entwerfen lassen</Knopf>}
       {fehler && <div style={{ fontSize: 12.5, color: LEUCHT.kritisch, marginTop: 6 }}>{fehler}</div>}
-      {entwurf === 'laedt' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Jarvis schreibt …</span>}
+      {entwurf === 'laedt' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>ZOE schreibt …</span>}
       {entwurf && entwurf !== 'laedt' && (
         <div style={{ display: 'grid', gap: 8 }}>
           <div style={{ fontWeight: 600 }}>{entwurf.betreff}</div>

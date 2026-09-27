@@ -8,7 +8,7 @@
 // Eine Datei (`ernaehrung`, Haushalt des Inhabers):
 //   profile      — je Person (Konto oder Gast): Bedürfnisse, Unverträgliches, nie, gern, Ziel
 //   lebensmittel — die Stammliste: was ihr bevorzugt nehmt („Haferflocken · Bio, grob“)
-//   vorrat       — was gerade zuhause ist (Jarvis plant damit, die Liste lässt es weg)
+//   vorrat       — was gerade zuhause ist (ZOE plant damit, die Liste lässt es weg)
 //   gerichte     — Rezepte: Zutaten, Zubereitung, Dauer, Portionen, für wen
 //   plan         — 7 Tage × 3 Mahlzeiten (Text) + planGerichte (Verweis aufs Rezept)
 //   einkauf      — die Liste: Menge, Kategorie, für wen, von wem, Quelle
@@ -50,13 +50,13 @@ export interface Profil {
 }
 export interface Lebensmittel { id: string; name: string; hinweis: string; kategorie: Kategorie; menge: string; bevorzugt: boolean; von: string }
 export interface VorratPosten { id: string; name: string; menge: string; kategorie: Kategorie; seit: string; von: string }
-export type Quelle = 'plan' | 'hand' | 'jarvis' | 'rezept' | 'stamm';
+export type Quelle = 'plan' | 'hand' | 'zoe' | 'rezept' | 'stamm';
 export interface EinkaufPosten { id: string; text: string; erledigt: boolean; menge?: string; kategorie?: Kategorie; fuer?: string[]; von?: string; quelle?: Quelle }
 export interface Zutat { name: string; menge: string }
 export interface Gericht {
   id: string; name: string; zutaten: Zutat[]; zubereitung: string[]; dauerMin: number | null; portionen: number;
-  fuer: string[]; tags: string[]; quelle: 'jarvis' | 'hand'; angelegt: string;
-  /** Lieblingsgericht — Jarvis plant es gern wieder ein, steht oben in „Unsere Gerichte“. */
+  fuer: string[]; tags: string[]; quelle: 'zoe' | 'hand'; angelegt: string;
+  /** Lieblingsgericht — ZOE plant es gern wieder ein, steht oben in „Unsere Gerichte“. */
   favorit: boolean;
   /** Eigene Notiz („Malin mag es ohne Feta“, „Reste am nächsten Tag“). */
   notiz: string;
@@ -110,7 +110,7 @@ export function sauberDatei(f: Partial<ErnaehrungFile> | null, jetzt = new Date(
       ...(p?.kategorie ? { kategorie: kat(p.kategorie) } : {}),
       ...(Array.isArray(p?.fuer) && p!.fuer!.length ? { fuer: liste(p!.fuer, 8, 40) } : {}),
       ...(s(p?.von, 40) ? { von: s(p?.von, 40) } : {}),
-      ...(p?.quelle && ['plan', 'hand', 'jarvis', 'rezept', 'stamm'].includes(p.quelle) ? { quelle: p.quelle } : {}),
+      ...(p?.quelle && ['plan', 'hand', 'zoe', 'rezept', 'stamm'].includes(p.quelle) ? { quelle: p.quelle } : {}),
     })).filter(p => p.text),
     profile: (Array.isArray(f?.profile) ? f!.profile : []).slice(0, 12).map(p => ({
       person: s(p?.person, 40), name: s(p?.name, 60), bedarf: s(p?.bedarf, 1200),
@@ -132,7 +132,7 @@ export function sauberDatei(f: Partial<ErnaehrungFile> | null, jetzt = new Date(
       dauerMin: typeof g?.dauerMin === 'number' && isFinite(g.dauerMin) ? Math.max(0, Math.min(600, Math.round(g.dauerMin))) : null,
       portionen: typeof g?.portionen === 'number' && isFinite(g.portionen) ? Math.max(1, Math.min(20, Math.round(g.portionen))) : 2,
       fuer: liste(g?.fuer, 8, 40), tags: liste(g?.tags, 8, 30),
-      quelle: (g?.quelle === 'hand' ? 'hand' : 'jarvis') as Gericht['quelle'], angelegt: s(g?.angelegt, 30) || jetzt,
+      quelle: (g?.quelle === 'hand' ? 'hand' : 'zoe') as Gericht['quelle'], angelegt: s(g?.angelegt, 30) || jetzt,
       favorit: g?.favorit === true, notiz: s(g?.notiz, 400), bild: /^[a-f0-9-]{10,60}\.(jpg|png|webp)$/.test(s(g?.bild, 80)) ? s(g?.bild, 80) : '',
     })).filter(g => g.name),
   };
@@ -165,7 +165,7 @@ const STICHWORTE: [Kategorie, RegExp][] = [
   ['obst-gemuese', /\b(tomate|gurke|paprika|zucchini|aubergine|brokkoli|blumenkohl|spinat|salat|rucola|karotte|möhre|moehre|zwiebel|knoblauch|kartoffel|süßkartoffel|suesskartoffel|avocado|apfel|äpfel|aepfel|banane|beere|zitrone|limette|orange|ingwer|kräuter|kraeuter|petersilie|basilikum|pilz|champignon|lauch|sellerie|kohl|kürbis|kuerbis|mango|birne|trauben|obst|gemüse|gemuese)/i],
   ['vorrat', /\b(reis|quinoa|hafer|haferflocken|nudel|pasta|linsen|kichererbsen|bohnen|mehl|öl|oel|olivenöl|olivenoel|essig|nüsse|nuesse|mandel|walnuss|samen|leinsamen|chia|honig|gewürz|gewuerz|salz|pfeffer|kurkuma|zimt|brühe|bruehe|tomatenmark|passata|kokosmilch|konserve|dose|müsli|muesli|brot|knäcke|knaecke|dattel|rosine|kakao|schokolade)/i],
 ];
-/** Kategorie aus dem Namen raten — für Jarvis-Listen und Handeingaben ohne Wahl. */
+/** Kategorie aus dem Namen raten — für ZOE-Listen und Handeingaben ohne Wahl. */
 export function kategorieRaten(name: string): Kategorie {
   for (const [k, re] of STICHWORTE) if (re.test(name)) return k;
   return 'sonst';

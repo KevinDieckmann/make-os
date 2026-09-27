@@ -29,7 +29,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { localDay } from '@/lib/zeit';
 import type { Planposten } from '@/lib/make-one/liquiditaet';

@@ -82,7 +82,7 @@ export async function PUT(req: Request) {
  * Einzelne Buchungen ändern statt der ganzen Liste.
  *
  * Das Zwei-Fenster-Fundament für die Finanzen: Malin führt die Buchhaltung,
- * Kevin bucht nebenher Belege über Jarvis — vorher schrieb jeder Weg ALLE
+ * Kevin bucht nebenher Belege über ZOE — vorher schrieb jeder Weg ALLE
  * Buchungen zurück, und wer zuletzt speicherte, löschte still die Erfassung
  * des anderen. Jetzt geht nur noch raus, was ein Fenster selbst geändert hat.
  */

@@ -11,7 +11,7 @@
 // Alte Adressen bleiben gültig: /os/crm leitet um; `aufloesen` übersetzt die alten
 // Bereiche (heute/pipeline/kunden/events/kartei) UND den Reiter „Sales“ vom 25./26.09.
 // (s=sales&a=heute|leads|pipeline|kunden|kampagnen) auf die neuen Reiter — so
-// funktionieren alle Links aus Suche, Befunden, Jarvis und Telegram weiter.
+// funktionieren alle Links aus Suche, Befunden, ZOE und Telegram weiter.
 
 export type Bereich = 'ueberblick' | 'kontakte' | 'firmen' | 'deals' | 'followup' | 'sales' | 'marketing' | 'event' | 'stammdaten';
 /** Der Reiter „Sales“ rechts (Kevin 27.09.): Head of Sales · Power Hour · Kampagnen · Auswertung. */
@@ -54,7 +54,7 @@ export function aufloesen(s?: string | null, a?: string | null): { s: Bereich; a
   return { s: 'ueberblick' };
 }
 
-/** Link in die Markttraktion — für Suche, Startseite, Befunde, Jarvis. */
+/** Link in die Markttraktion — für Suche, Startseite, Befunde, ZOE. */
 export function markttraktion(s?: string, a?: string, k?: string): string {
   const z = aufloesen(s, a);
   const q = new URLSearchParams();

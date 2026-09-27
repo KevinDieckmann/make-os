@@ -18,4 +18,4 @@ export const ARTEN: { id: Art; label: string }[] = [
 ];
 
 /** Die Bereiche der Software — für Filter und Zuordnung. */
-export const BEREICHE = ['Heute', 'Jarvis', 'Brain', 'Markttraktion', 'Mandate', 'Fokus', 'Aufgaben', 'Planung', 'Zahlen', 'Gesundheit', 'Familie', 'Inbox', 'Agenten', 'System', 'Allgemein'] as const;
+export const BEREICHE = ['Heute', 'ZOE', 'Brain', 'Markttraktion', 'Mandate', 'Fokus', 'Aufgaben', 'Planung', 'Zahlen', 'Gesundheit', 'Familie', 'Inbox', 'Agenten', 'System', 'Allgemein'] as const;

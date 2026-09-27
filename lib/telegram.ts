@@ -1,18 +1,18 @@
 // ─── MAKE OS — Der Bote (Telegram) ──────────────────────────────────────────
-// Kevins Entscheidung vom 23.09.: Jarvis erreicht ihn über Telegram, wenn
+// Kevins Entscheidung vom 23.09.: ZOE erreicht ihn über Telegram, wenn
 // die App nicht offen ist. Ein Bot, zwei Chats — Kevin und Malin.
 //
 // Sicherheit, weil ein Bot im Netz von jedem angeschrieben werden kann:
 //   · Ein Chat wird erst durch einen Kopplungscode zu einer Person. Den Code
 //     erzeugt die Software für die angemeldete Person; er gilt 15 Minuten.
 //   · Ein unbekannter Chat bekommt genau einen Satz und sonst nichts —
-//     keine Daten, keine Werkzeuge, kein Jarvis.
+//     keine Daten, keine Werkzeuge, kein ZOE.
 //   · Der Bot-Token liegt nur in .env.local. Nie im Vault, nie im Repo.
 //
 // Die reinen Teile (Codes, Zuordnung) sind ohne Netz prüfbar.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import type { Person } from '@/lib/jarvis/raum';
+import type { Person } from '@/lib/zoe/raum';
 
 export interface Kopplung { chatId: number; person: Person; seit: string; name?: string }
 export interface TelegramStand {
@@ -117,7 +117,7 @@ export async function sendeAnChat(chatId: number, text: string): Promise<{ ok: b
     for (const stueck of teile(text)) {
       const r = await fetch(`${API()}/sendMessage`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        // Kein parse_mode: Jarvis' Antworten enthalten Sternchen und Klammern,
+        // Kein parse_mode: ZOE' Antworten enthalten Sternchen und Klammern,
         // und Markdown-Fehler lassen Telegram die ganze Nachricht ablehnen.
         body: JSON.stringify({ chat_id: chatId, text: stueck, disable_web_page_preview: true }),
         signal: AbortSignal.timeout(15_000),

@@ -9,7 +9,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { personAus, ansichtPerson, speicherFuer } from '@/lib/jarvis/raum';
+import { personAus, ansichtPerson, speicherFuer } from '@/lib/zoe/raum';
 import { PLAN_ARTEN, type PlanBlock } from '@/types/planer';
 // Wiederausfuhr für Bestandsimporte — die Wahrheit liegt in types/planer.
 export type { PlanBlock };

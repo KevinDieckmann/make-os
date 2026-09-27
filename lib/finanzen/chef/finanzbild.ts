@@ -13,7 +13,7 @@ import type { Meta } from '../haushalt/speicher';
 import { katNamen } from '../haushalt/einordnung';
 import { kennzahlen as hhKennzahlen, schuldenbild } from '../haushalt/kennzahlen';
 import { luft } from '../haushalt/fixkosten';
-import { faelligeZeilen } from '../haushalt/jarvis';
+import { faelligeZeilen } from '../haushalt/zoe';
 import { bruecke, ENTNAHME_KATEGORIEN } from '../haushalt/gesamt';
 import { vollMonate, monatVon, tageZwischen, tagPlus, monatPlus } from '../haushalt/monat';
 import { steuertermine, type SteuerEinstellung, type Termin } from './steuertermine';

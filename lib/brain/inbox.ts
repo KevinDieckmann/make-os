@@ -1,7 +1,7 @@
-// ─── Brain-Inbox: Vorschläge von Jarvis mit Freigabe (Server, 27.09.) ───────
-// Kevins Entscheidung 27.09.: Jarvis schreibt frei nur sein Episoden-Log
-// (Jarvis_Log); alles andere — neue Notizen, Ergänzungen, Regeln — legt er als
-// VORSCHLAG ab: <Brain>/_inbox/jarvis/<datum>-<kennung>.md mit Begründung und
+// ─── Brain-Inbox: Vorschläge von ZOE mit Freigabe (Server, 27.09.) ───────
+// Kevins Entscheidung 27.09.: ZOE schreibt frei nur sein Episoden-Log
+// (Zoe_Log); alles andere — neue Notizen, Ergänzungen, Regeln — legt er als
+// VORSCHLAG ab: <Brain>/_inbox/zoe/<datum>-<kennung>.md mit Begründung und
 // Quelle. Kevin oder Malin nehmen an (dann entsteht die Notiz / der Update-Block
 // / die Regel — mit Provenienz) oder lehnen ab (Vorschlag wandert nach
 // _inbox/abgelehnt, der Grund bleibt dran). _inbox ist aus der Suche
@@ -9,7 +9,7 @@
 
 import { readFile, writeFile, mkdir, readdir, rename, appendFile, access } from 'node:fs/promises';
 import { join, basename, dirname, relative, sep } from 'node:path';
-import { BRAIN, leseKopf, darfSehen, bestand, bestandVergessen, type Sicht } from '@/lib/jarvis/vault';
+import { BRAIN, leseKopf, darfSehen, bestand, bestandVergessen, type Sicht } from '@/lib/zoe/vault';
 import { regelAnlegen, type Prioritaet, type GiltFuer } from './regeln';
 import { localDay } from '@/lib/zeit';
 
@@ -27,7 +27,7 @@ export interface Vorschlag {
 }
 export interface NeuerVorschlag { titel: string; text: string; ziel: Ziel; zielNotiz?: string; zielOrdner?: string; begruendung: string; quelle: string; vertraulichkeit?: Vertraulichkeit; prioritaet?: Prioritaet; giltFuer?: GiltFuer; erstelltVon?: string }
 
-export const INBOX = () => join(BRAIN, '_inbox', 'jarvis');
+export const INBOX = () => join(BRAIN, '_inbox', 'zoe');
 const ERLEDIGT = () => join(BRAIN, '_inbox', 'erledigt');
 const ABGELEHNT = () => join(BRAIN, '_inbox', 'abgelehnt');
 const PROTOKOLLE = join('03. Protokolle', 'Protokolle');
@@ -46,7 +46,7 @@ function vorschlagText(v: Vorschlag): string {
     ...(v.prioritaet !== undefined ? [`prioritaet: ${v.prioritaet}`] : []), ...(v.giltFuer ? [`gilt_fuer: ${v.giltFuer}`] : []),
     `erstellt_von: ${v.erstelltVon}`, `erstellt_am: ${v.erstelltAm}`, `status: ${v.status}`,
     ...(v.entschiedenVon ? [`entschieden_von: ${v.entschiedenVon}`, `entschieden_am: ${v.entschiedenAm}`] : []), ...(v.grund ? [`grund: ${yaml(v.grund)}`] : []),
-    'tags: [vorschlag, jarvis]',
+    'tags: [vorschlag, zoe]',
   ];
   return `---\n${kopf.join('\n')}\n---\n\n# ${v.titel}\n\n${v.text.trim()}\n`;
 }
@@ -59,8 +59,8 @@ function vorschlagAus(id: string, text: string): Vorschlag | null {
     id, titel: s(f, 'titel') ?? basename(id, '.md'), text: rumpf.replace(/^\s*#\s+.+\n/, '').trim(), ziel: ziel(f.ziel), zielNotiz: s(f, 'ziel_notiz'), zielOrdner: s(f, 'ziel_ordner'),
     begruendung: s(f, 'begruendung') ?? '', quelle: s(f, 'quelle') ?? '', vertraulichkeit: vertr(f.vertraulichkeit),
     prioritaet: f.prioritaet !== undefined && [0, 1, 2, 3].includes(Number(f.prioritaet)) ? (Number(f.prioritaet) as Prioritaet) : undefined,
-    giltFuer: (['kevin', 'malin', 'beide', 'jarvis'] as const).includes(String(f.gilt_fuer) as GiltFuer) ? (String(f.gilt_fuer) as GiltFuer) : undefined,
-    erstelltVon: s(f, 'erstellt_von') ?? 'jarvis', erstelltAm: s(f, 'erstellt_am') ?? '', status: (['offen', 'angenommen', 'abgelehnt'] as const).find(x => x === s(f, 'status')) ?? 'offen',
+    giltFuer: (['kevin', 'malin', 'beide', 'zoe'] as const).includes(String(f.gilt_fuer) as GiltFuer) ? (String(f.gilt_fuer) as GiltFuer) : undefined,
+    erstelltVon: s(f, 'erstellt_von') ?? 'zoe', erstelltAm: s(f, 'erstellt_am') ?? '', status: (['offen', 'angenommen', 'abgelehnt'] as const).find(x => x === s(f, 'status')) ?? 'offen',
     entschiedenVon: s(f, 'entschieden_von'), entschiedenAm: s(f, 'entschieden_am'), grund: s(f, 'grund'),
   };
 }
@@ -72,7 +72,7 @@ export function darfVorschlagSehen(v: Pick<Vorschlag, 'vertraulichkeit'>, sicht:
   return v.vertraulichkeit === `privat-${sicht.person}`;
 }
 
-/** Vorschlag ablegen (Jarvis oder ein Lauf). Gleicher Titel am selben Tag = derselbe Vorschlag (kein Zweiter). */
+/** Vorschlag ablegen (ZOE oder ein Lauf). Gleicher Titel am selben Tag = derselbe Vorschlag (kein Zweiter). */
 export async function vorschlagAblegen(neu: NeuerVorschlag): Promise<{ ok: boolean; id?: string; schonDa?: boolean; fehler?: string }> {
   const titel = neu.titel.trim().slice(0, 120); const text = neu.text.trim().slice(0, 8000);
   if (!titel || !text) return { ok: false, fehler: 'Titel und Text sind Pflicht.' };
@@ -81,7 +81,7 @@ export async function vorschlagAblegen(neu: NeuerVorschlag): Promise<{ ok: boole
   const v: Vorschlag = { id, titel, text, ziel: ziel(neu.ziel), zielNotiz: neu.zielNotiz?.trim().slice(0, 160) || undefined, zielOrdner: sicherRel(neu.zielOrdner) || undefined,
     begruendung: neu.begruendung.trim().slice(0, 600), quelle: neu.quelle.trim().slice(0, 300), vertraulichkeit: vertr(neu.vertraulichkeit),
     ...(neu.prioritaet !== undefined ? { prioritaet: neu.prioritaet } : {}), ...(neu.giltFuer ? { giltFuer: neu.giltFuer } : {}),
-    erstelltVon: neu.erstelltVon && /^[a-z0-9-]{1,40}$/.test(neu.erstelltVon) ? neu.erstelltVon : 'jarvis', erstelltAm: heute, status: 'offen' };
+    erstelltVon: neu.erstelltVon && /^[a-z0-9-]{1,40}$/.test(neu.erstelltVon) ? neu.erstelltVon : 'zoe', erstelltAm: heute, status: 'offen' };
   try {
     await mkdir(INBOX(), { recursive: true });
     try { await access(join(INBOX(), id)); return { ok: true, id, schonDa: true }; } catch { /* neu */ }
@@ -110,7 +110,7 @@ const zwei = (n: number) => String(n).padStart(2, '0');
 const heuteDE = () => { const d = new Date(); return `${zwei(d.getDate())}.${zwei(d.getMonth() + 1)}.${d.getFullYear()}`; };
 
 /**
- * Annehmen: aus dem Vorschlag wird Wissen — mit Provenienz (erstellt_von jarvis, freigegeben_von Mensch).
+ * Annehmen: aus dem Vorschlag wird Wissen — mit Provenienz (erstellt_von zoe, freigegeben_von Mensch).
  *  neu        → neue Notiz im Zielordner (Standard: Protokolle), Frontmatter nach AGENTS.md §3
  *  ergaenzung → datierter „## 🔴 UPDATE“-Block an der Zielnotiz (nur, wenn die Person sie sehen darf)
  *  regel      → Regel (aktiv, freigegeben von der Person) im Regelregister
@@ -145,7 +145,7 @@ export async function vorschlagAnnehmen(id: string, person: string, sicht: Sicht
       const pfad = join(BRAIN, ordner, `${heute} ${name}.md`);
       if (!pfad.startsWith(BRAIN + sep)) return { ok: false, fehler: 'Zielordner liegt außerhalb des Brains.' };
       await mkdir(dirname(pfad), { recursive: true });
-      const kopf = `---\ntype: notiz\nscope: ${scope}\nowner: ${owner}\nstand: ${heute}\nerstellt_von: ${v.erstelltVon}\nerstellt_am: ${v.erstelltAm}\nfreigegeben_von: ${p}\nfreigegeben_am: ${heute}\nquelle: ${yaml(v.quelle || 'Vorschlag')}\ntags: [jarvis, freigegeben]\n---\n\n# ${name}\n\n`;
+      const kopf = `---\ntype: notiz\nscope: ${scope}\nowner: ${owner}\nstand: ${heute}\nerstellt_von: ${v.erstelltVon}\nerstellt_am: ${v.erstelltAm}\nfreigegeben_von: ${p}\nfreigegeben_am: ${heute}\nquelle: ${yaml(v.quelle || 'Vorschlag')}\ntags: [zoe, freigegeben]\n---\n\n# ${name}\n\n`;
       await writeFile(pfad, `${kopf}${v.text.trim()}\n\n*Begründung des Vorschlags: ${v.begruendung || '—'}*\n`, { encoding: 'utf8', flag: 'wx' });
       ergebnis = `Notiz „${name}“ angelegt in ${ordner} (freigegeben von ${p}).`;
     }

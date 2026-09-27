@@ -1,4 +1,4 @@
-// Business-Index tiefer verankert (25.09.): Jarvis liest und schreibt (mit Freigabe),
+// Business-Index tiefer verankert (25.09.): ZOE liest und schreibt (mit Freigabe),
 // der Head of Finance warnt bei Rot und fehlendem Monatsabschluss, eigene Schwellen
 // und Jahresziele werden gespeichert — alles nur für den Haushalt des Inhabers.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -17,8 +17,8 @@ vi.mock('@/lib/zugang/konten', () => ({
   ] }),
 }));
 
-import { WERKZEUGE } from '../lib/jarvis/werkzeuge';
-import { risikoVon } from '../lib/jarvis/register';
+import { WERKZEUGE } from '../lib/zoe/werkzeuge';
+import { risikoVon } from '../lib/zoe/register';
 import { businessFuerChef, businessText } from '../lib/business/fuer-chef';
 import { speichereEinstellungen, ladeEinstellungen, ladeRoh, bestandFuer } from '../lib/business/speicher';
 import { berechne } from '../lib/business/index';
@@ -36,7 +36,7 @@ beforeEach(() => {
   speicher.set('business-abschluesse', { eintraege: [{ firma: 'kdc', monat: '2026-07', umsatz: 8000, kosten: 6000 }, { firma: 'kdc', monat: '2026-06', umsatz: 8000, kosten: 6000 }] });
 });
 
-describe('Jarvis', () => {
+describe('ZOE', () => {
   it('Lesen ist frei, der Monatsabschluss braucht Freigabe', () => {
     expect(risikoVon('business_index')).toBe('frei');
     expect(risikoVon('monatsabschluss_erfassen')).toBe('freigabe');
@@ -50,12 +50,12 @@ describe('Jarvis', () => {
     expect(await WERKZEUGE.business_index.lauf({ kennzahl: 'ek_quote' }, '', 'kevin')).toMatch(/noch nicht messbar/);
     expect(await WERKZEUGE.business_index.lauf({}, '', 'gast')).toMatch(/Kein Zugang/);
   });
-  it('Monatsabschluss per Jarvis: ergänzt nur Genanntes, keine Zukunft, kein fremdes Konto', async () => {
+  it('Monatsabschluss per ZOE: ergänzt nur Genanntes, keine Zukunft, kein fremdes Konto', async () => {
     const r = await WERKZEUGE.monatsabschluss_erfassen.lauf({ firma: 'kdc', monat: '2026-07', personal: 2000 }, '', 'kevin');
     expect(r).toMatch(/gespeichert/);
     const e = (speicher.get('business-abschluesse') as { eintraege: { monat: string; umsatz?: number; personal?: number }[] }).eintraege.find(x => x.monat === '2026-07')!;
     expect(e).toMatchObject({ umsatz: 8000, personal: 2000 });
-    // Direkt danach liest Jarvis schon den neuen Stand (kein veralteter Zwischenspeicher).
+    // Direkt danach liest ZOE schon den neuen Stand (kein veralteter Zwischenspeicher).
     expect(await WERKZEUGE.business_index.lauf({ sicht: 'kdc', kennzahl: 'personalquote' }, '', 'kevin')).toMatch(/Personalaufwandsquote \(Consulting\): \d/);
     expect(await WERKZEUGE.monatsabschluss_erfassen.lauf({ firma: 'kdc', monat: '2030-01', umsatz: 1 }, '', 'kevin')).toMatch(/Nicht eingetragen/);
     expect(await WERKZEUGE.monatsabschluss_erfassen.lauf({ firma: 'kdc', monat: '2026-08', umsatz: 1 }, '', 'gast')).toMatch(/Kein Zugang/);

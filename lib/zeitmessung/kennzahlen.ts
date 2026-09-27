@@ -31,7 +31,7 @@ const SCHWELLEN: Record<SpaceId, Schwellen> = {
 export const fzZiel = (space: SpaceId): string => (space === 'privat' ? '/os/finanzen?s=privat#index' : '/os/finanzen?s=business');
 const start = (space: SpaceId) => ({ text: 'Oben im Kopf „Fokus“ starten', href: fzZiel(space) });
 const BEREICH_LABEL: Record<string, string> = {
-  home: 'Home', heute: 'Heute', wachstum: 'Wachstum', system: 'System', jarvis: 'Jarvis', inbox: 'Inbox', kalender: 'Kalender', uebersicht: 'Übersicht',
+  home: 'Home', heute: 'Heute', wachstum: 'Wachstum', system: 'System', zoe: 'ZOE', inbox: 'Inbox', kalender: 'Kalender', uebersicht: 'Übersicht',
   finanzen: 'Finanzen', aufgaben: 'Aufgaben', 'ziele-planung': 'Ziele & Planung', gesundheit: 'Gesundheit', familie: 'Familie', kontakte: 'Kontakte',
   markttraktion: 'Markttraktion', mandate: 'Mandate', agenten: 'Agenten', brain: 'Brain', sonstiges: 'MAKE OS',
 };

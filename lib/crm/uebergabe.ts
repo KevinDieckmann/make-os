@@ -1,5 +1,5 @@
 // ─── Markttraktion — Übergabe an Kevin oder Malin (Server) ──────────────────
-// Genutzt von /api/crm/uebergabe und Jarvis (Werkzeug uebergeben). Wirkung:
+// Genutzt von /api/crm/uebergabe und ZOE (Werkzeug uebergeben). Wirkung:
 // Zuständigkeit wechselt (Kontakt: „Hält die Beziehung“, Chance: besitzer,
 // sonst zustaendig), am Kontakt steht die Übergabe im Verlauf, mit Notiz und
 // Frist wird sie dort zum nächsten Schritt (→ Power Hour der anderen Person),

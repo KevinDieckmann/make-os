@@ -3,7 +3,7 @@
 import Link from 'next/link';
 // ─── MAKE OS — Routine-Planer ───────────────────────────────────────────────
 // Positive Routinen für Gesundheit, Leben und Business — HIER werden sie
-// geplant. Alles andere greift darauf zu: der Wochenplaner (Leiste + Jarvis),
+// geplant. Alles andere greift darauf zu: der Wochenplaner (Leiste + ZOE),
 // die Tagesplanung, das Gesundheits-Cockpit (Häkchen) und der MAKE Score.
 // 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Knopf/feld).
 
@@ -76,7 +76,7 @@ export function RoutinenPlanerView() {
   return (
     <Seite
       titel="Was dich jeden Tag trägt."
-      unter={<>Routine-Planer · Positive Routinen für Gesundheit, Leben und Business — hier geplant, überall wirksam: im <Link href="/os/planung/woche" style={linkStil}>Wochenplaner</Link> (Leiste + Jarvis-Vorschlag), in der <Link href="/os/planung" style={linkStil}>Tagesplanung</Link>, auf <Link href="/os/gesundheit" style={linkStil}>Gesundheit</Link> (Häkchen) und im <Link href="/os/gesundheit?s=index" style={linkStil}>Gesundheits-Index</Link>. Pausierte zählen nirgends mit.</>}
+      unter={<>Routine-Planer · Positive Routinen für Gesundheit, Leben und Business — hier geplant, überall wirksam: im <Link href="/os/planung/woche" style={linkStil}>Wochenplaner</Link> (Leiste + ZOE-Vorschlag), in der <Link href="/os/planung" style={linkStil}>Tagesplanung</Link>, auf <Link href="/os/gesundheit" style={linkStil}>Gesundheit</Link> (Häkchen) und im <Link href="/os/gesundheit?s=index" style={linkStil}>Gesundheits-Index</Link>. Pausierte zählen nirgends mit.</>}
       rechts={<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
         <Chip farbe={aktivN ? LEUCHT.gut : C.inkLeise}>{aktivN} aktive Routinen</Chip>
         {KAT.map(k => <Chip key={k.id} farbe={k.farbe}>{k.label}</Chip>)}

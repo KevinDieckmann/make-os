@@ -1,6 +1,6 @@
 // ─── MAKE OS — Der Gesundheits-Takt ─────────────────────────────────────────
 // Warum der Bereich bis heute tot war: alles wartete darauf, dass Kevin die
-// App öffnet. Das tut er nicht. Also dreht sich das um — Jarvis meldet sich,
+// App öffnet. Das tut er nicht. Also dreht sich das um — ZOE meldet sich,
 // dreimal am Tag, aufs Handy:
 //
 //   morgens   Lage (Recovery, Schlaf) + die Morgenroutinen + „Wie geht's?"
@@ -10,7 +10,7 @@
 //
 // Die Nachrichten sind BEWUSST ohne Modell gebaut: deterministisch, kurz,
 // jeden Tag verlässlich gleich aufgebaut. Das Modell kommt, wenn Kevin
-// antwortet — dann liest Jarvis den Satz und schreibt die Werte weg.
+// antwortet — dann liest ZOE den Satz und schreibt die Werte weg.
 //
 // Alles hier ist reine Logik; Uhrzeit und Bestände kommen von außen.
 

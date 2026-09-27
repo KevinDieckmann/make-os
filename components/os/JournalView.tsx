@@ -40,7 +40,7 @@ export function JournalView() {
   }, []);
 
   // Nur die geänderten Felder des Tages (PATCH) — kein Zurückschreiben der ganzen Datei, das überschriebe,
-  // was Gesundheit, Tagesstart, Vitals-Merge und Jarvis inzwischen eingetragen haben (26.09.).
+  // was Gesundheit, Tagesstart, Vitals-Merge und ZOE inzwischen eingetragen haben (26.09.).
   const offen = useRef<Partial<Entry>>({});
   const spaeter = useNachspeichern<Partial<Entry>>(eintrag => {
     offen.current = {};

@@ -7,23 +7,23 @@ import { NextResponse } from 'next/server';
 import { agentRoster, LIVE_AGENTS } from '@/lib/make-one/agents-data';
 import { gatherBrain, promptBrain } from '@/lib/brain';
 import { askText, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
-import { fuerPrompt, type VerlaufNachricht } from '@/lib/make-one/jarvis-verlauf';
-import { WERKZEUGE } from '@/lib/jarvis/werkzeuge';
-import { AUSFUEHRBAR, AGENT_ZWECK, runAgent, type Ausfuehrbar } from '@/lib/jarvis/agenten';
-import { fuehreAus } from '@/lib/jarvis/ausfuehren';
-import { offeneAnzahl } from '@/lib/jarvis/stapel';
-import { personAus } from '@/lib/jarvis/raum';
-import { brainAnweisung } from '@/lib/jarvis/vault';
+import { fuerPrompt, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
+import { WERKZEUGE } from '@/lib/zoe/werkzeuge';
+import { AUSFUEHRBAR, AGENT_ZWECK, runAgent, type Ausfuehrbar } from '@/lib/zoe/agenten';
+import { fuehreAus } from '@/lib/zoe/ausfuehren';
+import { offeneAnzahl } from '@/lib/zoe/stapel';
+import { personAus } from '@/lib/zoe/raum';
+import { brainAnweisung } from '@/lib/zoe/vault';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
-import { blockHaushalt } from '@/lib/finanzen/haushalt/jarvis';
-import { lies as liesFakten, fuerPrompt as faktenFuerPrompt } from '@/lib/jarvis/gedaechtnis';
+import { blockHaushalt } from '@/lib/finanzen/haushalt/zoe';
+import { lies as liesFakten, fuerPrompt as faktenFuerPrompt } from '@/lib/zoe/gedaechtnis';
 import { innenAdresse } from '@/lib/innen';
 import { ARTEN as BAU_ARTEN, BEREICHE as BAU_BEREICHE } from '@/lib/bauplan/form';
 import { KENNZAHLEN as BUSINESS_KENNZAHLEN } from '@/lib/business/register';
 import { GESUNDHEIT_KENNZAHLEN } from '@/lib/gesundheit/index';
 import { modellSchranke, zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
-import { FREMD_WERKZEUGE, FREMD_AGENTEN } from '@/lib/jarvis/fremd';
+import { FREMD_WERKZEUGE, FREMD_AGENTEN } from '@/lib/zoe/fremd';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,7 +42,7 @@ async function liveContext(person: string = 'kevin'): Promise<string> {
 }
 function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaechtnis = '', person: string = 'kevin', brain = '', space: 'privat' | 'business' | null = null): string {
   return [
-    // Der aktive Space (26.09.): Privat oder Business — Jarvis legt Neues dort ab und antwortet aus dieser Sicht.
+    // Der aktive Space (26.09.): Privat oder Business — ZOE legt Neues dort ab und antwortet aus dieser Sicht.
     space ? `AKTIVER SPACE: ${space === 'privat' ? 'PRIVAT (Familie, Gesundheit, Haushalt, private Ziele)' : 'BUSINESS (KD Ventures, Consulting, KEMARIS, Markttraktion, Mandate)'}. Der Nutzer schaut gerade auf diesen Space. Aufgaben und Ziele, die du anlegst, gehören in diesen Space (Feld „space“), außer er sagt ausdrücklich etwas anderes. Antworte aus dieser Sicht; Dinge aus dem anderen Space erwähnst du nur, wenn sie hier wichtig sind.` : '',
     // 24.09.: Die Identität kommt live aus Kevins Obsidian-Brain (AGENTS.md §5).
     brain ? `DEINE GRUNDLAGE AUS KEVINS OBSIDIAN-BRAIN — gilt für jede Antwort. Die Regeln dieser Software unten gehen bei Widerspruch vor (Werkzeuge, Freigaben, Live-Zahlen).\n\n${brain}` : '',
@@ -50,9 +50,9 @@ function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaec
       ? 'GEDÄCHTNIS: Die vorherigen Züge dieses Gesprächs stehen dir zur Verfügung. Beziehe dich darauf, statt Fragen zu wiederholen — „das", „nochmal", „und für Juli" meint das, worüber ihr gerade geredet habt. Keine erneute Begrüßung, keine Zusammenfassung des bisherigen Gesprächs, es sei denn Kevin fragt danach.'
       : '',
     FREMD_REGEL,
-    'Du bist JARVIS — die zentrale Intelligenz und Chief of Staff von Kevins persönlichem Betriebssystem „MAKE OS". Kevin hat dich nach dem Vorbild benannt: ruhig, allgegenwärtig, einen Schritt voraus.',
+    'Du bist ZOE — die zentrale Intelligenz und Chief of Staff von Kevins persönlichem Betriebssystem „MAKE OS". Kevin hat dich nach dem Vorbild benannt: ruhig, allgegenwärtig, einen Schritt voraus.',
     'WAS DU WIRST: die Familien-KI von Kevin und Malin. Nicht ein Werkzeug für Aufgaben, sondern ein Begleiter fürs ganze Leben — der im Hintergrund steuert, mit dem gesprochen wird und dem viel anvertraut wird, damit er wirklich helfen kann. Sie bauen dich bewusst unabhängig auf ihren eigenen Rechnern, weil sie in den nächsten Jahren Firmen kaufen, verkaufen, aufbauen und skalieren werden — und danach auch Maschinen zu steuern haben. Denke und antworte in diesem Maßstab: langfristig, mitschreibend, auf Wiederholbarkeit gebaut, und mit Gesundheit und Beziehung gleichrangig neben dem Geschäft.',
-    // Kevin am 06.09.: Malin bekommt „einen eigenen Jarvis mit eigenem
+    // Kevin am 06.09.: Malin bekommt „einen eigenen ZOE mit eigenem
     // Charakter" — dasselbe Gehirn, ein anderer Ton. Hier ist der Anfang
     // davon; den Feinschliff machen die beiden selbst.
     person === 'malin'
@@ -63,7 +63,7 @@ function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaec
     `RÄUME: Es gibt drei — Kevins, Malins und den gemeinsamen. Du arbeitest gerade für ${person === 'malin' ? 'MALIN' : 'KEVIN'}. Was du dir merkst und was du anlegst, gehört in ${person === 'malin' ? 'Malins' : 'Kevins'} Raum, außer es betrifft ausdrücklich beide — dann ist es gemeinsam. Finanzen, Ziele, Aufgaben, Kontakte und Gesundheit gibt es in allen drei Räumen. Aus dem Raum der anderen Person erzählst du nichts.`,
     // Der Name hat sich mehrfach geändert: CapOS → POINCAP → Liquido → ASTARNA.
     // Kevin hat ASTARNA am 07.09. bestätigt. Die alten Namen stehen dabei,
-    // weil sie in seinen älteren Notizen noch auftauchen — Jarvis soll sie
+    // weil sie in seinen älteren Notizen noch auftauchen — ZOE soll sie
     // wiedererkennen, aber nie selbst benutzen.
     'Kevin Dieckmann ist Gründer der KEMARIS Innovation Group (IG); Holding „KD Management" (KDM). Das Produkt heißt ASTARNA. Frühere Namen derselben Sache — CapOS, POINCAP, Liquido — stehen noch in älteren Notizen: erkenne sie wieder, sag aber immer ASTARNA.',
     '',
@@ -85,7 +85,7 @@ function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaec
     // Kein hartkodierter Kontext mehr: Zahlen, Index, Ziele, Team und
     // Meilensteine kommen ausschließlich aus dem Brain (live) — eine Wahrheit.
     gedaechtnis ? `WAS DU DIR GEMERKT HAST (dein Langzeit-Gedächtnis — benutze es, statt zu fragen, was du schon weißt):\n${gedaechtnis}` : '',
-    'DEIN GEHIRN: Kevins Obsidian-Brain (Vault „MAKE“, Ordner Make.Claude) ist deine Wissensbank Nummer eins; dazu die MAKE-OS-Doku in der iCloud. Mit suche_wissen und lies_notiz kommst du dran — nutze das, BEVOR du sagst, dass du etwas nicht weißt, und immer bei Fragen nach Personen, Firmen, Preisen, Vereinbarungen, Terminologie oder früheren Entscheidungen. Der oberste 🔴-UPDATE-Block einer Notiz ist ihr gültiger Stand. NENNE IMMER DIE QUELLE (die Kennung unter QUELLE). Mit 🔒 PRIVAT markierte Notizen nur im Gespräch mit der Person selbst verwenden, nie in Mails, Entwürfe, Briefings oder Texte nach außen. Schreiben nach den Regeln des Vaults: notiz_anlegen legt ein Protokoll an (03. Protokolle), notiz_ergaenzen hängt nur an Offene_Fragen_Brain, Taskmanagement_Brain oder Jarvis_Log an. Was nicht im Brain steht, erfindest du nicht — trag es als offene Frage in Offene_Fragen_Brain ein. Überschrieben oder gelöscht wird nie.',
+    'DEIN GEHIRN: Kevins Obsidian-Brain (Vault „MAKE“, Ordner Make.Claude) ist deine Wissensbank Nummer eins; dazu die MAKE-OS-Doku in der iCloud. Mit suche_wissen und lies_notiz kommst du dran — nutze das, BEVOR du sagst, dass du etwas nicht weißt, und immer bei Fragen nach Personen, Firmen, Preisen, Vereinbarungen, Terminologie oder früheren Entscheidungen. Der oberste 🔴-UPDATE-Block einer Notiz ist ihr gültiger Stand. NENNE IMMER DIE QUELLE (die Kennung unter QUELLE). Mit 🔒 PRIVAT markierte Notizen nur im Gespräch mit der Person selbst verwenden, nie in Mails, Entwürfe, Briefings oder Texte nach außen. Schreiben nach den Regeln des Vaults: notiz_anlegen legt ein Protokoll an (03. Protokolle), notiz_ergaenzen hängt nur an Offene_Fragen_Brain, Taskmanagement_Brain oder Zoe_Log an. Was nicht im Brain steht, erfindest du nicht — trag es als offene Frage in Offene_Fragen_Brain ein. Überschrieben oder gelöscht wird nie.',
     'WAS GILT: Bei Widersprüchen zwischen Vault und Software gilt die SOFTWARE. Zahlen, Aufgaben und Termine kommen aus dem Live-Zustand; der Vault liefert Zusammenhang und Wissen, keine aktuellen Werte. Sag es Kevin, wenn dir ein Widerspruch auffällt.',
     'MERKEN: Fällt im Gespräch ein dauerhafter Fakt („Frank ist jetzt bei der Volksbank", „Malin mag keine Termine vor 10", „wir haben uns gegen X entschieden"), dann leg ihn SOFORT mit fakt_merken ab — ohne zu fragen, ohne es anzukündigen. Kevin sieht alles Gemerkte in einer Liste und wirft raus, was nicht stimmt. Merke keine Tagesdaten, die ohnehin im Live-Zustand stehen (Kontostände, offene Aufgaben, Termine) — nur was länger gilt. Mit frag_gedaechtnis siehst du nach, bevor du rätst.',
     '',
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
   if (Array.isArray(payload.verlauf)) payload.verlauf = payload.verlauf.slice(-40).map(v => ({ ...v, text: typeof v.text === 'string' ? v.text.slice(0, 8000) : '' }));
   if (typeof payload.context === 'string') payload.context = fremd('client', payload.context.slice(0, 4000));
   if (!message) return NextResponse.json({ reply: 'Sag mir, woran ich arbeiten soll.' });
-  // Gedächtnis: die bisherigen Züge dieses Gesprächs. Ohne das fing Jarvis bei
+  // Gedächtnis: die bisherigen Züge dieses Gesprächs. Ohne das fing ZOE bei
   // jeder Nachricht bei null an — „mach das nochmal für Juli" war unmöglich.
   const vorgeschichte = Array.isArray(payload.verlauf) ? fuerPrompt(payload.verlauf) : [];
 
@@ -204,11 +204,11 @@ export async function POST(req: Request) {
       },
       {
         name: 'notiz_ergaenzen',
-        description: 'Hängt einen datierten 🔴-Block an — erlaubt NUR an Offene_Fragen_Brain (Fragen, die das Brain nicht beantwortet), Taskmanagement_Brain (Aufgaben) oder Jarvis_Log (was du festgehalten hast). Andere Notizen pflegt Kevin selbst in Obsidian.',
+        description: 'Hängt einen datierten 🔴-Block an — erlaubt NUR an Offene_Fragen_Brain (Fragen, die das Brain nicht beantwortet), Taskmanagement_Brain (Aufgaben) oder Zoe_Log (was du festgehalten hast). Andere Notizen pflegt Kevin selbst in Obsidian.',
         input_schema: {
           type: 'object',
           properties: {
-            notiz: { type: 'string', description: 'Offene_Fragen_Brain, Taskmanagement_Brain oder Jarvis_Log' },
+            notiz: { type: 'string', description: 'Offene_Fragen_Brain, Taskmanagement_Brain oder Zoe_Log' },
             titel: { type: 'string', description: 'Kurzer Titel des Blocks' },
             text: { type: 'string', description: 'Was angehängt wird, in Markdown' },
           },
@@ -372,7 +372,7 @@ export async function POST(req: Request) {
         required: ['date', 'startMin', 'dauerMin', 'titel'],
       },
     });
-    // ── Erfassen per Zuruf: Kevin diktiert, Jarvis schreibt in die Stores ──
+    // ── Erfassen per Zuruf: Kevin diktiert, ZOE schreibt in die Stores ──
     tools.push(
       {
         name: 'setze_ziele',
@@ -589,7 +589,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    // Tool-Use-Schleife: Jarvis darf Agenten ausführen (run_agent), bekommt die
+    // Tool-Use-Schleife: ZOE darf Agenten ausführen (run_agent), bekommt die
     // Ergebnisse zurück und antwortet erst dann. Max 3 Runden, max 4 Läufe.
     const origin = innenAdresse(req);
     const msgs: unknown[] = [...vorgeschichte, { role: 'user', content: message }];
@@ -604,10 +604,10 @@ export async function POST(req: Request) {
     let fremdGelesen = false;
     const LESEND = new Set(['lies_postfach', 'suche_wissen', 'lies_notiz', 'frag_gedaechtnis', 'business_index', 'crm_lage', 'haushalt_stand', 'haushalt_buchungen', 'gesundheits_index', 'finde_kontakt', 'lies_kontakt', 'suche_kontakt']);
 
-    // Grundlage aus dem Obsidian-Brain (00_JARVIS_AGENT + Vertraulichkeitsregeln), eine Minute zwischengespeichert.
+    // Grundlage aus dem Obsidian-Brain (00_ZOE_AGENT + Vertraulichkeitsregeln), eine Minute zwischengespeichert.
     const brain = await brainAnweisung(person).catch(() => '');
     for (let runde = 0; runde < 3; runde++) {
-      const r = await askText({ system: systemPrompt(payload.context, live, !!vorgeschichte.length, gedaechtnis, person, brain, payload.space === 'privat' || payload.space === 'business' ? payload.space : null), user: message, messages: msgs, maxTokens: 4000, tools, timeoutMs: 180_000, zweck: 'jarvis-gespraech' });
+      const r = await askText({ system: systemPrompt(payload.context, live, !!vorgeschichte.length, gedaechtnis, person, brain, payload.space === 'privat' || payload.space === 'business' ? payload.space : null), user: message, messages: msgs, maxTokens: 4000, tools, timeoutMs: 180_000, zweck: 'zoe-gespraech' });
       if (!r.ok) {
         return NextResponse.json(
           { reply: `Anthropic hat abgelehnt (${r.status || 'offline'}). Prüf den Key/das Modell.`, error: r.error?.slice(0, 300) },

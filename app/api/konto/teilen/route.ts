@@ -2,7 +2,7 @@
 // Das ersetzt Kevins Entscheidung „Malin sieht alles" vom Vormittag durch
 // eine Einstellung, die jede Person selbst trifft.
 import { NextResponse } from 'next/server';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { ladeKonten, aendereKonten } from '@/lib/zugang/konten';
 
 export const runtime = 'nodejs';

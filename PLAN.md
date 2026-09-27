@@ -17,9 +17,9 @@ läuft.
 | Frage | Entscheidung | Was das bedeutet |
 |---|---|---|
 | Neu oder Bestand? | **Bestand bleibt**, wird sauber strukturiert | Kein Neubau. 46.000 Zeilen, Regeln, Tests bleiben. Was nicht gebraucht wird, wird nicht angefasst — nur aus dem Weg geräumt. |
-| Wo läuft es? | **Hetzner** (Deutschland) | Beide von überall, auch vom Handy. Jarvis läuft, wenn der Mac aus ist. **Bricht bewusst die Regel „nichts in fremder Cloud"** — siehe Abschnitt 3. |
+| Wo läuft es? | **Hetzner** (Deutschland) | Beide von überall, auch vom Handy. ZOE läuft, wenn der Mac aus ist. **Bricht bewusst die Regel „nichts in fremder Cloud"** — siehe Abschnitt 3. |
 | Google? | **Alles** — Kalender, Gmail, Kontakte, Drive — **plus der Obsidian-Vault auf dem Server** | Google wird dritte Anbindung neben Apple und M365. Der Vault wandert per Git. |
-| Wer führt? | **MAKE OS steht über allem.** Jarvis wird angesprochen und setzt um. **Prozesse müssen Kevin und Malin selbst bauen können.** | Erinnerungen, Mail, Kalender sind Quellen, nicht Chefs. Jarvis bekommt Prozesse, nicht Code. Erster Prozess: ein Dokument kommt über die App herein und wird aufgenommen. |
+| Wer führt? | **MAKE OS steht über allem.** ZOE wird angesprochen und setzt um. **Prozesse müssen Kevin und Malin selbst bauen können.** | Erinnerungen, Mail, Kalender sind Quellen, nicht Chefs. ZOE bekommt Prozesse, nicht Code. Erster Prozess: ein Dokument kommt über die App herein und wird aufgenommen. |
 
 ---
 
@@ -31,8 +31,8 @@ nur halb da.
 | Fessel | Wo | Ersatz |
 |---|---|---|
 | **AppleScript** in 10 Routen (Kalender, Erinnerungen, Mail, Kontakte, Tagesstart) | `app/api/apple-*`, `app/api/tagesstart` | iCloud spricht offene Protokolle: **CalDAV** (Kalender + Erinnerungen), **CardDAV** (Kontakte), **IMAP/SMTP** (Mail). Ein App-Passwort je Person, läuft von jedem Linux aus. |
-| **Vault-Pfad** = iCloud-Ordner auf dem Mac | `lib/jarvis/vault.ts` | Der Vault wird ein **Git-Repo**. Kevin und Malin: Obsidian-Git-Plugin. Server zieht alle fünf Minuten. Pfade aus der Umgebung, nicht fest verdrahtet. |
-| **Ein Schlüssel für alle**, Person per Cookie | `middleware.ts`, `lib/jarvis/raum.ts` | **Zwei Konten** mit Passwort. Die Person kommt aus der Anmeldung, nicht aus einem Cookie, das jeder setzen kann. Der Schlüssel bleibt nur für den Arbeiter. |
+| **Vault-Pfad** = iCloud-Ordner auf dem Mac | `lib/zoe/vault.ts` | Der Vault wird ein **Git-Repo**. Kevin und Malin: Obsidian-Git-Plugin. Server zieht alle fünf Minuten. Pfade aus der Umgebung, nicht fest verdrahtet. |
+| **Ein Schlüssel für alle**, Person per Cookie | `middleware.ts`, `lib/zoe/raum.ts` | **Zwei Konten** mit Passwort. Die Person kommt aus der Anmeldung, nicht aus einem Cookie, das jeder setzen kann. Der Schlüssel bleibt nur für den Arbeiter. |
 | `start.sh`, `caffeinate`, Node in `~/.local` | Startskript | **Docker Compose**: App, Arbeiter, HTTPS-Proxy. Neustart von allein. |
 | Daten als JSON auf dem Mac | `.data/` | Bleibt JSON — **auf einem Server-Volume** mit nächtlicher Sicherung. 7 MB, zwei Nutzer, serialisierte Schreibvorgänge, Wächter: das reicht. Postgres erst, wenn Dritte dazukommen. |
 | Kein Git | Projektordner | `git init`, privates GitHub-Repo. **Ohne das geht nichts weiter** — zwei Leute an einem Code brauchen Git. |
@@ -63,7 +63,7 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > zuerst.** *„Gesundheit ist die Basis, deswegen bauen wir ihn zuerst und
 > bringen ihn live."* Der Bereich war gebaut, aber tot (Vitalwerte zuletzt
 > 03.08., Journal leer). Seit 23.09.: Telegram-Bote, Tagestakt morgens/
-> mittags/abends, Haut-Tagebuch, Streak, vier Jarvis-Werkzeuge, Malin sieht
+> mittags/abends, Haut-Tagebuch, Streak, vier ZOE-Werkzeuge, Malin sieht
 > alles. Was Kevin dafür tun muss: Bot-Token (@BotFather) und Whoop-Developer-
 > Zugang. Die Phasen unten gelten danach, in dieser Reihenfolge.
 
@@ -98,7 +98,7 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Ring, Segmente — keine Rahmen, nie eine Null):
 > - **Heute** (`/os`, `HeuteView`): Score-Ring mit den fünf Säulen, Fokus,
 >   Termine des Tages, fällige und kritische Aufgaben zum Abhaken, eine Zeile
->   Körper, eine Zeile Jarvis-Stapel. Das alte Dashboard liegt unter
+>   Körper, eine Zeile ZOE-Stapel. Das alte Dashboard liegt unter
 >   `/os/uebersicht` (über System erreichbar), bis nichts mehr fehlt.
 > - **Aufgaben** (`/os/aufgaben`, `AufgabenSchlank`): eine Zeile zum Anlegen
 >   mit Kürzeln (`!!` kritisch · `heute`/`fr`/`24.09.` · `#projekt` · `@malin`),
@@ -107,7 +107,7 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > - **Kontakte** (`/os/crm`, `KontakteView`): das CRM vom 18.09. hat jetzt
 >   eine Oberfläche. Heute = wer dran ist (Regel `tagesliste`), Alle = Suche
 >   über 443 Kontakte nach Priorität, Mandate = die bisherige Ansicht. Karte
->   je Kontakt: Aufhänger, Marktinfo, **Entwurf** (Jarvis schreibt Mail +
+>   je Kontakt: Aufhänger, Marktinfo, **Entwurf** (ZOE schreibt Mail +
 >   LinkedIn) → **In Mail öffnen** (Apple-Mail-Entwurf, Versand bleibt bei
 >   Kevin), Griffe LinkedIn/Mail geschickt · Antwort · Termin, Stufe als
 >   Auswahl. Erstimport der Masterliste per Knopf (443 gelesen, 130 ansprechbar).
@@ -118,10 +118,10 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 >
 > Nachtrag, dieselbe Nacht („los alles fertig machen"): **Inbox und Zahlen**
 > ebenfalls umgebaut — jetzt ist jeder Eintrag der Leiste im neuen Muster.
-> - **Inbox** (`/os/inbox`, `InboxSchlank`): eine Liste, Jarvis stuft ein
+> - **Inbox** (`/os/inbox`, `InboxSchlank`): eine Liste, ZOE stuft ein
 >   (Wichtig · Normal · Rauschen), fällige Wiedervorlagen oben, Rauschen
 >   eingeklappt und in einem Zug erledigt. Je Mail: Erledigt · Aufgabe ·
->   Morgen · Montag · Delegiert · Antwort (Jarvis schreibt, Apple Mail öffnet,
+>   Morgen · Montag · Delegiert · Antwort (ZOE schreibt, Apple Mail öffnet,
 >   gesendet wird von Hand) · Absender blocken. Tasten j/k/e/a/s bleiben.
 >   Fächer, Screener und Zero-Durchlauf liegen unter `/os/inbox/voll`.
 > - **Zahlen** (`/os/finanzen`, `ZahlenView`): Kontostand als Heldenzahl,
@@ -153,20 +153,20 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Puls, Geld, Business, Planung, Beziehung), **Ringe mit Glow** und der Zahl
 > innen, **Zahlen, die hochzählen**, **Trendbalken**, **Zone-Chips**, und alles
 > **erscheint gestaffelt** (`os-auf`). Begrüßung mit Namen auf Heute, die fünf
-> Säulen als kleine Ringe, Körper und Jarvis als zwei Karten. Bausteine in
+> Säulen als kleine Ringe, Körper und ZOE als zwei Karten. Bausteine in
 > `components/os/schlank.tsx`, alle sechs Seiten plus Konto darauf. Geprüft mit
 > kopflosem Chrome (Screenshots Rechner und Handy) und Wegwerfkonto.
 
-> **Nachtrag 24.09., Wachstum und Jarvis.** Kevin: *„Nimm Jarvis erst weg,
+> **Nachtrag 24.09., Wachstum und ZOE.** Kevin: *„Nimm ZOE erst weg,
 > dass er nicht immer vorweg kommt. Nimm als Score das ganze Thema Wachstum mit
-> rein, einen eigenen Bereich. Und nimm Jarvis links als eigene Seite mit rein."*
+> rein, einen eigenen Bereich. Und nimm ZOE links als eigene Seite mit rein."*
 > Gebaut: Nach der Anmeldung landet man auf **Heute**, nicht mehr im Empfang.
 > **Wachstum** (`/os/wachstum`, `WachstumView`) ist ein eigener Eintrag: der
 > MAKE Score groß mit Abdeckung, Bestwert und Verlauf; die fünf Säulen mit
 > Gewicht, Chip und aufklappbaren Faktoren (echt gemessen oder nicht, mit
 > Quelle); Ziele je Horizont (Jahr · Quartal · Monat) mit Fortschritt; Fokus.
-> `/os/performance` leitet dorthin. **Jarvis** steht als letzter Eintrag links
-> (`/jarvis`, der Empfang bleibt, man geht hin, wenn man will). Die Leiste hat
+> `/os/performance` leitet dorthin. **ZOE** steht als letzter Eintrag links
+> (`/zoe`, der Empfang bleibt, man geht hin, wenn man will). Die Leiste hat
 > jetzt acht Einträge plus System; auf dem Handy: Heute · Inbox · Gesundheit ·
 > Wachstum · System. System-Seite ebenfalls auf Karten. Kontrollgang: keine
 > alten Farben oder Haarlinien mehr in den neuen Ansichten.
@@ -198,7 +198,7 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Finanzen → /os/finanzen, Agenten → /os/agenten, der große Ring → Wachstum.
 
 > **Nachtrag 24.09., das Erscheinungsbild überall.** Kevin: *„passe überall
-> das CI an, auch Jarvis und die Agenten, das muss viel besser aussehen. N26
+> das CI an, auch ZOE und die Agenten, das muss viel besser aussehen. N26
 > und Whoop."* Drei Stufen: (1) Die gemeinsamen Werte gehoben — `THEME` in
 > os-data.ts und `FARBE` in design.ts tragen jetzt dieselben Leuchtfarben
 > (grün/gelb/rot), weichere Flächen, fast unsichtbare Haarlinien und die
@@ -209,7 +209,7 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Agenten aufklappbar mit Autonomie/Modell/Status), **Aufträge & Freigaben**
 > (offene Vorschläge je Gruppe mit Freigeben/Ablehnen, Arbeiter, Entschiedenes,
 > Gedächtnis, Verbrauch; alter Bau mit Protokoll/Rückgängig unter
-> `/os/stapel/voll`), **Loops**, **Verbindungen**. (3) Das Jarvis-Panel mit
+> `/os/stapel/voll`), **Loops**, **Verbindungen**. (3) Das ZOE-Panel mit
 > Tiefe und Glow, der Empfang erbt die Farben. Nicht neu gebaut, nur gehoben:
 > Kalender, Kompass, Planung, Säulen-Seiten, Zahlen-Unterseiten, Board,
 > Meeting, Netzwerk, Prospecting, Bauplan, Roadmap, Onboarding, Research,
@@ -229,7 +229,7 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Energie, Ernährung, Säulen-Seiten). Dazu die Anmeldeseite. 34 Ansichten,
 > 4.400 Zeilen neu. Am alten Schema hängen nur noch die Legacy-Fallbacks
 > (Übersicht alt, Aufgaben-Board, Inbox voll, Stapel voll, Startfläche) und
-> Mitläufer (Jarvis-Panel, Taktgeber) — die erben Farben und Flächen über die
+> Mitläufer (ZOE-Panel, Taktgeber) — die erben Farben und Flächen über die
 > gemeinsamen Werte. Der erste Lauf der Agenten scheiterte am Sitzungslimit
 > (23.09., 23:30), der zweite lief durch.
 
@@ -240,7 +240,7 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > PerformanceView, kit, Übersicht (alt) mit Tagesstart, Startfläche, Held,
 > Seitenkopf — 17 Bauteile. `/os/uebersicht` und `/os/start` leiten zu Heute.
 > Auf die Bausteine gezogen: Aufgaben-Board samt Zeitstrahl, Inbox voll,
-> Stapel voll, Jarvis-Panel, Rich, Taktgeber, WillkommenMalin, PlanerLeiste,
+> Stapel voll, ZOE-Panel, Rich, Taktgeber, WillkommenMalin, PlanerLeiste,
 > AgentenHirn. Kein Bauteil unter `components/os` nutzt mehr `THEME`.
 > ESLint lief seit Wochen gar nicht (kaputte Konfiguration) — repariert, 48
 > Fehler behoben; es bleiben 5 Hinweise zu Hook-Abhängigkeiten. Damit steht
@@ -248,7 +248,7 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Bau unter `/dashboard` (rund 70 Dateien, von der Prüfung ausgenommen).
 
 > **Nachtrag 24.09., Abend — fünf Punkte von Kevin.** (1) Navigation links nur
-> Jarvis · Brain · CRM · Fokus · Aufgaben, Rest oben; Fokus ist eine eigene Seite.
+> ZOE · Brain · CRM · Fokus · Aufgaben, Rest oben; Fokus ist eine eigene Seite.
 > (2) **Familie & Partnerschaft** (`/os/familie`): Paar-Gespräch mit Agenda und
 > Zeitbox, Rituale, Dates, Themen-Parkplatz, Reparatur, Vision, wichtige Tage,
 > Kontakt-Rhythmus, Aufgabenkarten; Säule im Score = Pflege-Rhythmus des Paares.
@@ -266,14 +266,14 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > sauber eingebaut, heute brauchbar.“ Gebaut: Leads (Firma/Person, Status bis SQL,
 > sechs Kernfragen), SQL → Deal mit einem Klick, Deals ab Stufe „SQL“, gewonnen →
 > Mandat; Trichter über alle Ebenen; überall verbunden (Kartei, Firmen, Runde,
-> „+ Gespräch“, Kampagnen, Head of Sales, KPI, Jarvis). Begriff „Chance“ heißt
+> „+ Gespräch“, Kampagnen, Head of Sales, KPI, ZOE). Begriff „Chance“ heißt
 > sichtbar „Deal“. 618 Tests.
 
 > **Nachtrag 25.09. (spät) — Markttraktion in der Praxis.** Befund aus echten
 > Daten: 2 Aktivitäten in 453 Kontakten, 0 mit Rechtsgrundlage, 438 ohne Kreis,
 > 0 Chancen trotz 17 im Gespräch, kein Anruf-Link, kein Push. Gebaut: Erfassen
 > ohne Reibung (Anrufen per Tipp, „Wie lief's?“ nach Terminen, Einwilligung im
-> Gespräch, „+ Gespräch festhalten“, Jarvis-Schnellnotiz), geführte Runden
+> Gespräch, „+ Gespräch festhalten“, ZOE-Schnellnotiz), geführte Runden
 > (Kreis, Chancen), Rhythmus (Verlauf, Wochen-Scoreboard, Telegram morgens und
 > freitags), Visitenkarte → Kontakt. 620 Tests. Braucht Kevin: Pflichtangaben-
 > Klick, Telegram-Bot-Token + Kopplung, MAKE_OS_ADRESSE, Guthaben, Server.
@@ -295,7 +295,7 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Welt (Sales Kevin, Marketing + Event Malin), Zuständigkeit je Eintrag
 > (kevin/malin/beide), beide sehen alles, private Notiz nur für den Verfasser.
 > Power Hour je Person (niemand ruft doppelt an), Übergeben einzeln/gesammelt/
-> per Jarvis (Verlauf + nächster Schritt + Aufgabe), Teil-Änderungen statt
+> per ZOE (Verlauf + nächster Schritt + Aufgabe), Teil-Änderungen statt
 > ganzer Einträge, „Für dich“ und „Zuletzt im Team“ im Überblick, „Malin ist
 > gerade hier“. Sales: Team-Zeile, fremde Liste nur lesend, Pipeline/Kunden/
 > Kampagnen mit Filter und Zahlen je Person. Marketing: Autor + Stimme +
@@ -317,7 +317,7 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Head of Marketing). Event-Kennzahlen neu (Events/Quartal, Nachfassen 48 h,
 > Folgegespräche, Erscheinen, Mischung). Der Business-Score nimmt den
 > Traction-Score statt „Pipeline gepflegt“ + „Vertriebsrhythmus“ (keine
-> Doppelzählung). Alte Links leiten um; Jarvis spricht von Markttraktion.
+> Doppelzählung). Alte Links leiten um; ZOE spricht von Markttraktion.
 
 > **Nachtrag Nacht zum 25.09. — CRM zusammengeführt (autonom, Kevin schlief).**
 > Kontakte und Firmen sind eigene Einstiege (Aufbau wie in KEMARIS Operations), und die Schnellsuche ⌘K funktioniert von überall.
@@ -332,7 +332,7 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > - Mail und Kalender aus geschäftlichen Quellen landen im Verlauf.
 > - Die Rechnungen bestimmen den Health-Faktor Zahlung.
 > - Die Startseite zeigt „Wer heute dran ist“.
-> - Jarvis hat die Werkzeuge crm_lage und chance_anlegen.
+> - ZOE hat die Werkzeuge crm_lage und chance_anlegen.
 > - Der Head of Finance sieht die Vertriebsseite.
 >
 > **Stand:** Der Produktions-Build läuft durch.
@@ -370,14 +370,14 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > `~/Desktop/MAKE/Make.Claude` (388 Notizen), dahinter die MAKE-OS-Doku in der
 > iCloud (41). Die Anbindung hält sich an die Regeln, die Kevin selbst im Vault
 > festgelegt hat (`AGENTS.md`, `Vertraulichkeitsregeln.md`): Notizen mit
-> `scope: privat` nutzt Jarvis nur im Gespräch mit Kevin, nie in Mails,
+> `scope: privat` nutzt ZOE nur im Gespräch mit Kevin, nie in Mails,
 > Entwürfen oder Briefings; Agenten und Hintergrundläufe bekommen sie nie;
 > Malin sieht alles außer Kevins Privatem; andere Konten nur `familie` und
 > `oeffentlich`. Geschrieben wird nur, was der Vault erlaubt: neue Notizen als
 > Protokoll in `03. Protokolle`, Anhängen nur an `Offene_Fragen_Brain`,
-> `Taskmanagement_Brain` und `Jarvis_Log`. Obsidians eigene Ausschlüsse
-> (`userIgnoreFilters`) gelten mit. Jarvis liest seine Grundlage
-> (`00_JARVIS_AGENT`) und die Vertraulichkeitsregeln bei jedem Gespräch live —
+> `Taskmanagement_Brain` und `Zoe_Log`. Obsidians eigene Ausschlüsse
+> (`userIgnoreFilters`) gelten mit. ZOE liest seine Grundlage
+> (`00_ZOE_AGENT`) und die Vertraulichkeitsregeln bei jedem Gespräch live —
 > vorher stand das nur in der Notiz, nicht im Code. Neue Seite **Wissen** in der
 > Leiste: links suchen und stöbern nach Bereich, rechts lesen (Tabellen,
 > Aufgaben, Callouts, klickbare `[[Wikilinks]]`, der oberste 🔴-Block als
@@ -389,10 +389,10 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Wissen steht links jetzt „Fragen | Stöbern“, Fragen ist der Start. Das Brain
 > sucht selbst weiter, liest Notizen bei Bedarf ganz (bis zu fünf Runden) und
 > antwortet nur aus den Notizen, mit `[[Quelle]]` an der Aussage; was nicht
-> drinsteht, sagt es. Ändern kann es nichts — dafür bleibt Jarvis. Quellen
+> drinsteht, sagt es. Ändern kann es nichts — dafür bleibt ZOE. Quellen
 > stehen unter der Antwort und öffnen sich rechts im Lesefenster. Der Chat
 > bleibt nur, solange der Tab offen ist. Sicht wie überall: die fragende Person
-> (`lib/jarvis/brain-chat.ts`, `POST /api/jarvis/wissen`). Beim ersten echten
+> (`lib/zoe/brain-chat.ts`, `POST /api/zoe/wissen`). Beim ersten echten
 > Test gefunden und behoben: lange Logs kamen nur mit ihrem Anfang an, das
 > Brain nannte deshalb einen Eintrag vom 07.09. als neuesten — Protokolle werden
 > jetzt so gekürzt, dass das Ende bleibt. Tests: 187 grün.
@@ -425,7 +425,7 @@ Was **nicht** auf den Server geht: die privaten Ordner von Malin im Vault
 > Zugriff nur für Konten mit Haushalt (Kevin: „kevin-malin“). Gesamt = Brücke
 > privater Sockel → nötige Entnahme → Mindestumsatz. Entflechtung: Privates
 > zählt in keiner Business-Rechnung mehr (roter Schild „6 überfällige
-> Zahlungen“ weg — die waren privat). Jarvis: Haushaltsblock + 5 Werkzeuge nur
+> Zahlungen“ weg — die waren privat). ZOE: Haushaltsblock + 5 Werkzeuge nur
 > im Gespräch/Briefing mit benannter Person; Business-Agenten bekommen nichts;
 > Verlauf je Person, Stapel/Protokoll gefiltert. Score: finanzSaeule 50/50.
 > Umzug: Probelauf direkt aus Supabase (blätternd, exakt gezählt), dann
@@ -510,8 +510,8 @@ und nichts geht verloren.
 Was da ist: Board, Delegation, Filter, Fälligkeit, Kevin/Malin-Trennung,
 Massen-Wache. Was fehlt:
 1. **Rückgängig** für Löschen und Erledigen (Bauplan Prio 1 — ohne das traut sich niemand zu klicken).
-2. **Schnell anlegen** von überall: eine Zeile, per Jarvis, per Stimme — landet richtig zugeordnet.
-3. **Zuweisen an Jarvis:** eine Aufgabe „an Jarvis" heißt: er versucht sie mit seinen Werkzeugen, legt das Ergebnis in den Stapel.
+2. **Schnell anlegen** von überall: eine Zeile, per ZOE, per Stimme — landet richtig zugeordnet.
+3. **Zuweisen an ZOE:** eine Aufgabe „an ZOE" heißt: er versucht sie mit seinen Werkzeugen, legt das Ergebnis in den Stapel.
 4. `AufgabenView.tsx` (1.275 Zeilen) in drei Teile — nicht aus Schönheit, sondern weil jede Änderung darin heute riskanter ist als nötig.
 5. Wochensicht prüfen: die Woche planen, ohne Überlappungen (Kevins Kritik vom 03.08.).
 
@@ -526,7 +526,7 @@ Massen-Wache. Was fehlt:
 Was da ist (18.09.): die Regeln in `lib/make-one/crm.ts` mit 23 Tests — Import
 der Masterliste ohne Dubletten, Tagesliste (fällige Wiedervorlagen, dann Prio
 A/B mit Aufhänger und Kanal), Stufen nur vorwärts, Wiedervorlage nach
-Ansprache. Fünf Routen. Drei Jarvis-Werkzeuge (`suche_kontakt`,
+Ansprache. Fünf Routen. Drei ZOE-Werkzeuge (`suche_kontakt`,
 `notiere_kontakt`, `entwurf_ansprache`). Agent `crm` live.
 
 Was fehlt:
@@ -555,13 +555,13 @@ MAKE OS an — von jedem Gerät, ohne dass ein Mac läuft.
 
 ### Phase 5 — Prozesse · ~5 Tage
 
-**Ziel:** Jarvis nimmt Arbeit ab — nach Regeln, die Kevin und Malin selbst
+**Ziel:** ZOE nimmt Arbeit ab — nach Regeln, die Kevin und Malin selbst
 schreiben, ohne Code.
 
-1. **Dokument-Aufnahme** — der erste Prozess, Kevins Beispiel: Ein Dokument kommt über die App (Upload), per Mail-Anhang oder in einen Drive-Ordner → Jarvis erkennt die Art (Rechnung, Vertrag, Beleg, Sonstiges) → zieht die Daten heraus → legt es nach Ordnerregel ab (iCloud-Belege / Drive) → schlägt vor, was folgt (Buchung, Aufgabe, Wiedervorlage) → in den Stapel.
+1. **Dokument-Aufnahme** — der erste Prozess, Kevins Beispiel: Ein Dokument kommt über die App (Upload), per Mail-Anhang oder in einen Drive-Ordner → ZOE erkennt die Art (Rechnung, Vertrag, Beleg, Sonstiges) → zieht die Daten heraus → legt es nach Ordnerregel ab (iCloud-Belege / Drive) → schlägt vor, was folgt (Buchung, Aufgabe, Wiedervorlage) → in den Stapel.
 2. **Prozess-Baukasten** `/os/prozesse`: ein Prozess ist eine Datenstruktur, kein Code — *Auslöser* (Dokument kommt · Mail von X · Zeitpunkt · Zuruf) → *Schritte* (Werkzeuge aus dem Register, mit Eingaben) → *Freigabe ja/nein*. Die Risikotabelle gilt weiter: ein Prozess kann nichts, was ein Werkzeug nicht darf.
-3. Jarvis liest die Prozesse in seine Anweisung und führt sie über `fuehreAus()` aus — derselbe eine Weg wie heute.
-4. Der Name „Jarvis" wird eine Einstellung. Kevin: *„dessen Name gerade noch Jarvis ist."*
+3. ZOE liest die Prozesse in seine Anweisung und führt sie über `fuehreAus()` aus — derselbe eine Weg wie heute.
+4. Der Name „ZOE" wird eine Einstellung. Kevin: *„dessen Name gerade noch ZOE ist."*
 
 **Fertig, wenn:** Kevin ein Foto einer Rechnung über die App schickt, sie abgelegt ist und die Buchung im Stapel liegt — ohne dass er etwas anderes getan hat.
 
@@ -580,7 +580,7 @@ dazukommen, dann „anderen freigeben".
 Aus dem Bauplan (72 offene Punkte). Nichts davon ist gelöscht — es steht nur
 nicht im Weg.
 
-- Neuronale Stimme für Jarvis · Empfangs-Effekte · Score-Vervollständigung · Firmensuche · Anwesenheits-Automatik · Live-Abgleich statt Poll · Säulen-Seiten zusammenlegen · Einkaufsliste teilen · Kunden-Ordner-Zugriff · Vault entdoppeln (Kevins Entscheidung, welche Fassung führt)
+- Neuronale Stimme für ZOE · Empfangs-Effekte · Score-Vervollständigung · Firmensuche · Anwesenheits-Automatik · Live-Abgleich statt Poll · Säulen-Seiten zusammenlegen · Einkaufsliste teilen · Kunden-Ordner-Zugriff · Vault entdoppeln (Kevins Entscheidung, welche Fassung führt)
 - Whoop, Vivid, Miro: gebaut, warten auf Zugänge
 
 ---
@@ -615,7 +615,7 @@ Server-Umgebung. Nie in Mail, Chat, Vault oder Repo.
 | 3 | Server: Compose, Caddy, Volume, Deploy-Action, erste Live-Adresse |
 | 4 | Vault per Git, Apple-Routen entschärft, `.data` umgezogen |
 | 5 | Sicherung, Malin meldet sich an — **Phase 1 fertig** |
-| 6–7 | Aufgaben: Rückgängig, Schnellanlage, „an Jarvis", View geteilt |
+| 6–7 | Aufgaben: Rückgängig, Schnellanlage, „an ZOE", View geteilt |
 | 8 | Aufgaben: Woche prüfen — **Phase 2 im Alltag** |
 | 9–10 | CRM-Oberfläche, Import, erste Ansprachen — **Phase 3 fertig** |
 
@@ -642,5 +642,5 @@ Danach Phase 4 und 5, jeweils erst, wenn die vorherige im Alltag läuft.
 > „alle Funktionen miteinander verbinden, dass wir überall sauber zurückkommen“ und
 > „ein Modus beim Head of Marketing … erst vernetzen, dann schreiben … kompletter Flow“.
 > Gebaut: Verlaufs-Regel für alle Seiten (Tiefe, Scrollposition, Auswahl im Link,
-> echte Ziele statt Umleitungen, /jarvis mit Zurück, Aufgaben mit Links), dazu die
+> echte Ziele statt Umleitungen, /zoe mit Zurück, Aufgaben mit Links), dazu die
 > Vernetzen-Runde mit Texten je Kampagne, Export-Import und Head-of-Marketing-Takt.

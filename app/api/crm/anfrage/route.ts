@@ -13,7 +13,7 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { localDay } from '@/lib/zeit';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { fuerPerson, type Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { anfrageBauen, anfragenListe, ANFRAGE_KANAELE, type AnfrageEingabe } from '@/lib/crm/anfragen';

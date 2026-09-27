@@ -11,7 +11,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/jarvis/raum';
+import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
 import { saeubereHaut, hautTrend, type HautLog } from '@/lib/gesundheit/eintraege';
 import { localDay } from '@/lib/zeit';
 

@@ -12,7 +12,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { personAus, nameVon } from '@/lib/jarvis/raum';
+import { personAus, nameVon } from '@/lib/zoe/raum';
 import { istSpace } from '@/lib/make-one/space-regeln';
 import { zeitSchluessel } from '@/lib/zeitmessung/bereich';
 import { verbucheAnwesenheit } from '@/lib/zeitmessung/speicher';

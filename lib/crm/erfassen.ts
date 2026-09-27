@@ -11,7 +11,7 @@
 //                        (lib/crm/signale.ts legt sie als System-Aktivität an).
 //   einwilligungUebernehmen  das ausdrückliche Ja im Gespräch als Einwilligung
 //                        mit Wortlaut — eine Visitenkarte ist keine Einwilligung.
-//   jarvisNotiz / erfassungAnwenden  die Jarvis-Schnellnotiz: Verlauf, Notiz und
+//   zoeNotiz / erfassungAnwenden  die ZOE-Schnellnotiz: Verlauf, Notiz und
 //                        nächster Schritt in einem Aufruf, nach denselben Regeln
 //                        wie die Power Hour (app/api/crm/aktivitaet/route.ts).
 
@@ -150,11 +150,11 @@ export function einwilligungUebernehmen(k: Kontakt, wortlaut: string, heute: str
   return { ...k, einwilligungen: [...(k.einwilligungen ?? []), { kanal: 'mail', grundlage: 'einwilligung', erteiltAm: heute, nachweis }], ...(k.rechtsgrundlage ? {} : { rechtsgrundlage: 'einwilligung' as const }) };
 }
 
-// ── Jarvis-Schnellnotiz ─────────────────────────────────────────────────────
+// ── ZOE-Schnellnotiz ─────────────────────────────────────────────────────
 
-export const JARVIS_ARTEN: readonly AktivitaetArt[] = ['mail', 'linkedin', 'anruf', 'antwort', 'termin', 'gespraech', 'notiz', 'stufe'];
+export const ZOE_ARTEN: readonly AktivitaetArt[] = ['mail', 'linkedin', 'anruf', 'antwort', 'termin', 'gespraech', 'notiz', 'stufe'];
 
-export interface JarvisNotiz {
+export interface ZoeNotiz {
   art: AktivitaetArt; ergebnis?: Ergebnis; text?: string; notiz?: NotizVorlage;
   naechster?: { text: string; datum: string };
   /** Kein Datum genannt — der nächste Schritt steht in fünf Tagen (wie in der Notizvorlage). */
@@ -167,9 +167,9 @@ export interface JarvisNotiz {
  * gespraech, bedarf „Angebot“, naechster_schritt „Angebot schicken“, faellig
  * = Freitag. Zerlegt die Werkzeug-Eingabe; bei ungültiger Art ein Fehlertext.
  */
-export function jarvisNotiz(input: Record<string, unknown>, heute: string): JarvisNotiz | string {
+export function zoeNotiz(input: Record<string, unknown>, heute: string): ZoeNotiz | string {
   const art = String(input.art ?? 'notiz') as AktivitaetArt;
-  if (!JARVIS_ARTEN.includes(art)) return `Fehlgeschlagen: art muss ${JARVIS_ARTEN.join('|')} sein.`;
+  if (!ZOE_ARTEN.includes(art)) return `Fehlgeschlagen: art muss ${ZOE_ARTEN.join('|')} sein.`;
   const ergebnis = ERGEBNISSE.includes(input.ergebnis as Ergebnis) ? (input.ergebnis as Ergebnis) : undefined;
   const text = String(input.text ?? '').trim().slice(0, 1200) || undefined;
   const bedarf = String(input.bedarf ?? '').trim().slice(0, 1500);

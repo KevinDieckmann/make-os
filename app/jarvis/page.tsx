@@ -1,13 +1,11 @@
-import { JarvisStart } from '@/components/os/JarvisStart';
-import { wache } from '@/lib/zugang/wache';
+// Alte Adresse /jarvis → /zoe (Umbenennung 27.09.). Lesezeichen und Verknüpfungen bleiben gültig.
+import { redirect } from 'next/navigation';
 
-export const metadata = { title: 'Jarvis · MAKE OS' };
-// Hinter der Anmeldung: je Anfrage bauen, nie beim Bauen vorab (die Wache liest das Cookie).
 export const dynamic = 'force-dynamic';
 
-// Bewusst AUSSERHALB von /os: der Empfang ist eine ganze Fläche, keine Seite
-// mit Seitenleiste. Wer Zahlen sehen will, geht von hier eine Ebene tiefer.
-export default async function Page() {
-  await wache('/jarvis');
-  return <JarvisStart />;
+export default async function AlteZoeSeite(props: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = (await props.searchParams) ?? {};
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) { if (typeof v === 'string') q.set(k, v); else if (Array.isArray(v)) v.forEach(x => q.append(k, x)); }
+  redirect(q.toString() ? `/zoe?${q}` : '/zoe');
 }

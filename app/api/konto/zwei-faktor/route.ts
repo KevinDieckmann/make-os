@@ -6,7 +6,7 @@
 // POST { aktion: 'aus', passwort }       → Faktor aus (Passwort nötig)
 import { NextResponse } from 'next/server';
 import { ladeKonten, aendereKonten, passwortStimmt } from '@/lib/zugang/konten';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { neuesGeheimnis, codePruefen, otpauthLink, neueWiederherstellungscodes, wiederherstellungHash } from '@/lib/zugang/totp';
 import { mitSitzung } from '@/lib/zugang/antwort';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';

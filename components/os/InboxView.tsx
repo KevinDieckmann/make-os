@@ -2,7 +2,7 @@
 
 // ─── MAKE OS — Inbox · volle Ansicht ────────────────────────────────────────
 // Fächer (Split Inbox), Türsteher (Screener) für unbekannte Absender, Zero-
-// Durchlauf mit den Tasten E/A/D/S, Jarvis-Triage, Antwort-Entwurf → Apple
+// Durchlauf mit den Tasten E/A/D/S, ZOE-Triage, Antwort-Entwurf → Apple
 // Mail, Snooze, „→ Aufgabe" mit Duplikat-Wache, Suche, Konten-Filter und die
 // Tasten j/k/e/a/s in der Liste. Die schlanke Schwester liegt unter /os/inbox.
 // 24.09.: auf das lebendige Muster umgezogen (Seite/Karte/Zeile aus schlank,
@@ -127,7 +127,7 @@ export function InboxView() {
   const [triage, setTriage] = useState<TriageMap>({});
   const [triageBusy, setTriageBusy] = useState(false);
   const [rauschenAuf, setRauschenAuf] = useState(false);
-  // Kommando-Zentrale: Jarvis-Meldungen (Shields) + Agenten-Ergebnisse als Eingänge.
+  // Kommando-Zentrale: ZOE-Meldungen (Shields) + Agenten-Ergebnisse als Eingänge.
   const [shields, setShields] = useState<{ id: string; stufe: 'rot' | 'amber'; text: string; href: string; label: string }[]>([]);
   const [laeufe, setLaeufe] = useState<{ agent: string; title: string; ts: string }[]>([]);
   useEffect(() => {
@@ -208,7 +208,7 @@ export function InboxView() {
   }
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- einmal beim Öffnen laden
 
-  // ── Jarvis-Triage: Cache laden, dann alles Uneingeteilte automatisch einstufen ──
+  // ── ZOE-Triage: Cache laden, dann alles Uneingeteilte automatisch einstufen ──
   useEffect(() => {
     fetch('/api/inbox/triage').then(r => r.json()).then(d => setTriage(d.triage ?? {})).catch(() => {});
   }, []);
@@ -505,7 +505,7 @@ export function InboxView() {
   const kopfFarbe = openCount > 40 ? LEUCHT.achtung : openCount ? C.ink : LEUCHT.gut;
   let karte = 0; // laufender Index — die Karten erscheinen gestaffelt
 
-  /** Eine Nachricht in der Liste: Kürzel, Absender · Betreff, Jarvis-Zeile, Zeit + Pillen. */
+  /** Eine Nachricht in der Liste: Kürzel, Absender · Betreff, ZOE-Zeile, Zeit + Pillen. */
   const mailZeile = (m: Msg) => {
     const st = statusOf(m.id);
     const tr = triage[fpOf(m)];
@@ -542,7 +542,7 @@ export function InboxView() {
               rechts={gruppe === 'neu' ? undefined : gruppe === 'rauschen'
                 ? <button onClick={() => setRauschenAuf(a => !a)} style={textKnopf}>{rauschenAuf ? 'einklappen' : `${anzahlJe.rauschen} anzeigen`}</button>
                 : `${gruppe === 'wichtig' ? anzahlJe.wichtig : anzahlJe.normal}`}>
-              {gruppe === 'neu' ? (triageBusy ? 'Jarvis stuft ein …' : 'Ohne Einstufung') : meta!.label}
+              {gruppe === 'neu' ? (triageBusy ? 'ZOE stuft ein …' : 'Ohne Einstufung') : meta!.label}
             </Ueberschrift>
           </div>,
         );
@@ -619,7 +619,7 @@ export function InboxView() {
       )}
 
       <Seite titel="Inbox · voll"
-        unter={<>Apple Mail {sync.apple} · Microsoft 365 {sync.ms}{triageBusy && <span style={{ color: LEUCHT.agenten }}> · Jarvis stuft ein …</span>}</>}
+        unter={<>Apple Mail {sync.apple} · Microsoft 365 {sync.ms}{triageBusy && <span style={{ color: LEUCHT.agenten }}> · ZOE stuft ein …</span>}</>}
         rechts={<span style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
           <Segmente liste={SEG} aktiv={seg} onWahl={setSeg} />
           <Link href="/os/inbox" style={verweis}>Schlanke Inbox ›</Link>
@@ -725,7 +725,7 @@ export function InboxView() {
           </Karte>
         )}
 
-        {/* Kommando-Zentrale: Meldungen von Jarvis & den Agenten — Eingänge ohne Absender */}
+        {/* Kommando-Zentrale: Meldungen von ZOE & den Agenten — Eingänge ohne Absender */}
         {seg === 'offen' && (shields.length > 0 || meldungen.length > 0) && (
           <Karte i={karte++} akzent={rotMeldung ? LEUCHT.kritisch : undefined}>
             <Ueberschrift farbe={rotMeldung ? LEUCHT.kritisch : LEUCHT.agenten}>Zentrale · Meldungen</Ueberschrift>

@@ -10,7 +10,7 @@
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { localDay } from '@/lib/zeit';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm } from '@/lib/crm/speicher';

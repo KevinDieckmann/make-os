@@ -21,7 +21,7 @@ import { listePatchen, opsLesen } from '@/lib/store/patch-liste';
 import { mitStand } from '@/lib/store/fingerabdruck';
 import { deltaAus, staende, StandGedaechtnis } from '@/lib/kontakte/delta';
 import { saeubereKontakt, kontaktVereinen, privatNotizVereinen, fuerPerson, massenStufe, pipelineStand, MASSEN_GRENZE, type Kontakt } from '@/lib/make-one/crm';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

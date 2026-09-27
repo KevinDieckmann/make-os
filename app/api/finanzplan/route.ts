@@ -1,7 +1,7 @@
 // ─── Finanzplanung jetzt: lesen und in Schritten ändern ──────────────────────
 // GET    → das ganze Dokument des Haushalts (ETag, gepackt) — `dokument: null`,
 //          solange noch kein Startbestand hochgeladen ist.
-// GET ?nur=kennzahlen → nur verdichtete Zahlen des aktiven Szenarios (Jarvis, Startfläche).
+// GET ?nur=kennzahlen → nur verdichtete Zahlen des aktiven Szenarios (ZOE, Startfläche).
 // PATCH  { basisStand, ops: [{ pfad, alt?, neu?, feld? }] } → Operationen mit
 //          Stand-Prüfung: 409 mit dem aktuellen Dokument, wenn jemand dazwischen war.
 // Zugang nur über den Haushalt der Person (haushaltVon) — Kevin und Malin sind einer.

@@ -30,7 +30,7 @@ const nextConfig = {
     ];
   },
   // Gesundheit ist seit 23.09. EINE Seite mit vier Segmenten. Die alten
-  // Adressen bleiben gültig — Lesezeichen und Jarvis-Verweise landen richtig.
+  // Adressen bleiben gültig — Lesezeichen und ZOE-Verweise landen richtig.
   async redirects() {
     return [
       { source: '/os/performance', destination: '/os/wachstum', permanent: false },

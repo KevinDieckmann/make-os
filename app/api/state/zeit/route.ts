@@ -5,7 +5,7 @@
 // Die laufende Messung kommt über die Anwesenheit (/api/state/anwesenheit).
 
 import { NextResponse } from 'next/server';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { fokusAbschliessen, zeitBildFuer } from '@/lib/zeitmessung/speicher';
 import { bild } from '@/lib/zeitmessung/modell';
 import { localDay } from '@/lib/zeit';

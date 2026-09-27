@@ -1,6 +1,6 @@
 // ─── Die Heads: Sales, Marketing, Event ─────────────────────────────────────
 // GET  → Freigabe-Liste, letzte Berichte, Modi
-// POST { aktion: 'lauf', modus, frage? } → ein Lauf (Hand oder Jarvis)
+// POST { aktion: 'lauf', modus, frage? } → ein Lauf (Hand oder ZOE)
 // POST { aktion: 'daten', modus } → das Datenpaket, das der Head sähe (ohne Modell)
 // POST { aktion: 'merken', text } / { aktion: 'vergessen', id } → Gedächtnis des Heads
 // POST { aktion: 'autonomie', an } → interne Kleinigkeiten selbst erledigen an/aus
@@ -16,14 +16,14 @@ import { WEG } from '@/lib/wege';
 import { markttraktion, mandateLink } from '@/lib/crm/adresse';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { HEADS, HEAD_NAME, MODI, AGENT_ID, type HeadId } from '@/lib/heads/prompt';
 import { headLauf } from '@/lib/heads/lauf';
 import { vollesPaket } from '@/lib/heads/paket';
 import { lernstand, merksatzNeu, ABLEHNGRUENDE } from '@/lib/heads/lernen';
 import { ruecknehmbar } from '@/lib/heads/autonomie';
-import { uebersicht } from '@/lib/jarvis/verbrauch';
+import { uebersicht } from '@/lib/zoe/verbrauch';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { PLAYBOOKS, planen } from '@/lib/crm/kampagnen';
 import { localDay } from '@/lib/zeit';
@@ -74,14 +74,14 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
   const params = await props.params;
   const h = headAus(params);
   if (!h) return NextResponse.json({ ok: false, fehler: 'Unbekannter Head.' }, { status: 404 });
-  // Der Schalter unter /os/agenten gilt auch für den direkten Aufruf (27.09.) — vorher nur für Jarvis und den Takt.
+  // Der Schalter unter /os/agenten gilt auch für den direkten Aufruf (27.09.) — vorher nur für ZOE und den Takt.
   const agentCfg = await resolveAgent(AGENT_ID[h]); if (!agentCfg.enabled) return NextResponse.json({ ok: false, fehler: disabledResponse(agentCfg).error, disabled: true }, { status: 409 });
   let b: { aktion?: string; modus?: string; frage?: string; ausgeloest?: string; id?: string; status?: string; grund?: string; entwurf?: string; text?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const person = personAus(req);
 
   if (b.aktion === 'lauf') {
-    const r = await headLauf({ head: h, modus: String(b.modus ?? 'frage'), person, frage: b.frage ? String(b.frage) : undefined, ausgeloest: b.ausgeloest === 'takt' ? 'takt' : b.ausgeloest === 'jarvis' ? 'jarvis' : 'hand' });
+    const r = await headLauf({ head: h, modus: String(b.modus ?? 'frage'), person, frage: b.frage ? String(b.frage) : undefined, ausgeloest: b.ausgeloest === 'takt' ? 'takt' : b.ausgeloest === 'zoe' ? 'zoe' : 'hand' });
     return NextResponse.json(r, { status: r.ok ? 200 : 400 });
   }
 

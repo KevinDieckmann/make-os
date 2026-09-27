@@ -42,7 +42,7 @@ export interface BusinessVerlauf {
 
 const FIRMEN = ['kdc', 'kdv'] as const;
 
-/** Zählt eigene Schreibvorgänge — Zwischenspeicher (Jarvis, Head of Finance) wissen so, wann sie neu rechnen müssen. */
+/** Zählt eigene Schreibvorgänge — Zwischenspeicher (ZOE, Head of Finance) wissen so, wann sie neu rechnen müssen. */
 let schreibStand = 0;
 export const businessSchreibStand = () => schreibStand;
 const zahlOder = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : Number.isFinite(Number(v)) && v !== '' && v != null ? Number(v) : undefined);
@@ -140,7 +140,7 @@ async function ladeRohFrisch(heute: string) {
     loadJson<{ kontakte: Kontakt[] }>('kontakte'),
     loadJson<{ events?: { startDate?: string; endDate?: string; allDay?: boolean; owner?: string }[]; quelle?: string }>('calendar-cache'),
     loadJson<Record<string, PlanBlock[]>>('wochenplan'),
-    loadJson<{ auftraege?: { status: string; beendet?: string; zeit?: string; anlass?: string; name?: string; auftrag?: string }[] }>('jarvis-auftraege'),
+    loadJson<{ auftraege?: { status: string; beendet?: string; zeit?: string; anlass?: string; name?: string; auftrag?: string }[] }>('zoe-auftraege'),
     loadJson<{ meilensteine?: { id?: string; titel?: string; bereich: string; faellig?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
     ladeEinstellungen(),
     loadJson<BusinessVerlauf>(VERLAUF),

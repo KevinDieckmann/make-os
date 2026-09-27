@@ -3,7 +3,7 @@
 // ─── MAKE OS — Heute (26.09. abends, Kevin: „oben wieder Heute, Heute soll ein
 // eigenes Bild haben — der Home-Bildschirm wird für jeden selbst aufgebaut“) ──
 // Die feste Tagesseite: Gruß, Datum, Tagesstart/-ende, dann das, was HEUTE
-// zählt — Fokus, Aufgaben (beide Spaces), Termine, Körper, Jarvis. Nicht
+// zählt — Fokus, Aufgaben (beide Spaces), Termine, Körper, ZOE. Nicht
 // gestaltbar; das Dashboard zum Selberbauen ist Home.
 
 import Link from 'next/link';
@@ -37,7 +37,7 @@ export function HeuteView() {
         </Spalte>
         <Spalte>
           <W.koerper.Komponente e={{}} i={1} />
-          <W.jarvis.Komponente e={{ inbox: true }} i={2} />
+          <W.zoe.Komponente e={{ inbox: true }} i={2} />
           <W.essen.Komponente e={{}} i={3} />
         </Spalte>
       </Spalten>

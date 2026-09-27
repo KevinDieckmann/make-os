@@ -1,4 +1,4 @@
-// ─── MAKE OS — Jarvis plant die Essens-Woche für den Haushalt ───────────────
+// ─── MAKE OS — ZOE plant die Essens-Woche für den Haushalt ───────────────
 // POST { hinweis?, gaeste?: string[] } → Vorschlag: 7 Tage × 3 Mahlzeiten, je
 // Gericht ein Rezept (Zutaten, Zubereitung, Dauer, Portionen, für wen) und die
 // Einkaufsliste mit Menge und Kategorie. Seit 26.09. für ALLE Profile des
@@ -88,7 +88,7 @@ export async function POST(req: Request) {
     plan[t] = { fruehstueck: String(m.fruehstueck ?? '').slice(0, 200), mittag: String(m.mittag ?? '').slice(0, 200), abend: String(m.abend ?? '').slice(0, 200) };
   }
   // Rezepte säubern, Ids vergeben, dem Plan zuordnen (Name → Rezept).
-  const gerichte: Gericht[] = sauberDatei({ gerichte: (Array.isArray(r.data.gerichte) ? r.data.gerichte : []).map(g => ({ ...(g as object), id: neueId('g'), quelle: 'jarvis', angelegt: jetzt })) as Gericht[] }, jetzt).gerichte;
+  const gerichte: Gericht[] = sauberDatei({ gerichte: (Array.isArray(r.data.gerichte) ? r.data.gerichte : []).map(g => ({ ...(g as object), id: neueId('g'), quelle: 'zoe', angelegt: jetzt })) as Gericht[] }, jetzt).gerichte;
   const planGerichte: PlanGerichte = {};
   for (const t of TAGE) for (const m of MAHLZEITEN) {
     const name = plan[t][m.k];
@@ -109,7 +109,7 @@ export async function POST(req: Request) {
   const neueGerichte = gerichte.filter(g => !f.gerichte.some(x => x.name.toLowerCase() === g.name.toLowerCase()));
   await logRun('health', 'Essens-Woche vorgeschlagen', { posten: einkauf.length, gerichte: neueGerichte.length, personen: namen.length });
   const antwort = { begruendung: String(r.data.begruendung ?? '').slice(0, 400), plan, planGerichte, gerichte: neueGerichte, einkauf, hinweis: CARE };
-  // Hintergrundlauf (Jarvis, Takt): der Vorschlag wartet auf der Ernährungs-Seite, bis ihn jemand übernimmt oder ein neuer kommt (27.09.).
+  // Hintergrundlauf (ZOE, Takt): der Vorschlag wartet auf der Ernährungs-Seite, bis ihn jemand übernimmt oder ein neuer kommt (27.09.).
   if (ablegen) await updateJson<{ zeit: string; vorschlag: typeof antwort }>(VORSCHLAG, () => ({ zeit: jetzt, vorschlag: antwort })).catch(() => { /* nur im Lauf-Text */ });
   return NextResponse.json({ ...antwort, abgelegt: ablegen });
 }

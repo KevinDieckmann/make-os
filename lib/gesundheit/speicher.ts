@@ -6,7 +6,7 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { merken } from '@/lib/store/memo';
-import { speicherFuer } from '@/lib/jarvis/raum';
+import { speicherFuer } from '@/lib/zoe/raum';
 import { localDay } from '@/lib/zeit';
 import type { VitalsLog } from '@/lib/vitals';
 import type { PlanBlock } from '@/types/planer';

@@ -1,6 +1,6 @@
-// ─── MAKE OS — Inbox-Triage (Jarvis sortiert vor) ───────────────────────────
+// ─── MAKE OS — Inbox-Triage (ZOE sortiert vor) ───────────────────────────
 // POST { nachrichten: [{ fp, sender, subject, account, preview? }] }
-// Jarvis stuft jede Mail ein (wichtig | normal | rauschen) und fasst sie in
+// ZOE stuft jede Mail ein (wichtig | normal | rauschen) und fasst sie in
 // einer Zeile zusammen — Kevin entscheidet nur noch. Ergebnisse werden je
 // Mail-Fingerabdruck gecacht (.data/inbox-triage.json): jede Mail wird genau
 // EINMAL eingestuft, egal wie oft die Inbox lädt.
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
   if (!agent.enabled) return NextResponse.json({ ...disabledResponse(agent), triage: cache });
 
   const system = [
-    'Du bist JARVIS und sortierst Kevins Post vor. Kevin ist Gründer (KEMARIS/POINCAP, KD Ventures, Kevin Dieckmann Consulting).',
+    'Du bist ZOE und sortierst Kevins Post vor. Kevin ist Gründer (KEMARIS/POINCAP, KD Ventures, Kevin Dieckmann Consulting).',
     'Stufe jede Nachricht ein:',
     '- "wichtig": Kunden (OneBanking, Gregor, ACME), Team (Alex, Frank, Björn, Jan, Lisa, Clemens), Malin, Geld/Verträge/Rechnungen, Steuerberater, Notariat, Rechtsanwalt, Inkasso, Banken, Behörden, Fristen.',
     '- "rauschen": Newsletter, Marketing, Produkt-Updates, Social-Media-Benachrichtigungen, Werbung.',

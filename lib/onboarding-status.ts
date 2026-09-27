@@ -31,7 +31,7 @@ export async function pruefeAlles(): Promise<Record<string, Befund>> {
     loadJson<{ firmen?: { name?: string; kontostand?: number | null }[]; zahlungen?: { status?: string; faellig?: string }[]; rechnungen?: unknown[] }>('finanzplan'),
     loadJson<Record<string, string[]>>('health-log'),
     loadJson<Record<string, unknown>>('agents-config'),
-    loadJson<{ gespraeche?: unknown[] }>('jarvis-verlauf'),
+    loadJson<{ gespraeche?: unknown[] }>('zoe-verlauf'),
     loadJson<{ roh: MalinExport; stand: string }>('grundlage'),
   ]);
 
@@ -87,7 +87,7 @@ export async function pruefeAlles(): Promise<Record<string, Befund>> {
     agenten: Object.keys(agenten ?? {}).length >= 6
       ? ja(`${Object.keys(agenten!).length} Agenten eingestellt`)
       : nein(`erst ${Object.keys(agenten ?? {}).length} von 12 eingestellt`),
-    jarvis: (verlauf?.gespraeche?.length ?? 0) > 0 ? ja(`${verlauf!.gespraeche!.length} Gespräche gespeichert`) : nein('noch kein Gespräch'),
+    zoe: (verlauf?.gespraeche?.length ?? 0) > 0 ? ja(`${verlauf!.gespraeche!.length} Gespräche gespeichert`) : nein('noch kein Gespräch'),
     luecken: kvPv > 0 && malinBrutto > 0
       ? ja('KV/PV und Gehalt hinterlegt')
       : nein([kvPv > 0 ? null : 'Kevins KV+PV = 0 €', malinBrutto > 0 ? null : 'Malins Gehalt = 0 €'].filter(Boolean).join(' · ')),

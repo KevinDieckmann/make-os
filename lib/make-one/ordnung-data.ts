@@ -37,7 +37,7 @@ export const THEMEN: Thema[] = [
     label: 'Produkt & System',
     satz: 'Die eigene Software und die Systeme dahinter — unser Hebel.',
     farbe: '#4A6CF7',
-    muster: /software|make os|capos|agent|system|bauplan|deploy|hetzner|github|datenbasis|stammdaten|dashboard|automatis|f&f|launch|jarvis|prototyp/i,
+    muster: /software|make os|capos|agent|system|bauplan|deploy|hetzner|github|datenbasis|stammdaten|dashboard|automatis|f&f|launch|zoe|prototyp/i,
   },
   {
     id: 'leben',

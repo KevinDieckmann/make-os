@@ -281,7 +281,7 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
 const FU_BEZUG = ['kontakt', 'firma', 'chance', 'mandat', 'event'] as const;
 const FU_ART = ['anruf', 'mail', 'linkedin', 'termin', 'nachricht', 'sonstig'] as const;
 const FU_STATUS = ['offen', 'erledigt', 'verpasst', 'abgesagt'] as const;
-const FU_QUELLE = ['hand', 'regel', 'kadenz', 'kampagne', 'event', 'head', 'jarvis', 'deal'] as const;
+const FU_QUELLE = ['hand', 'regel', 'kadenz', 'kampagne', 'event', 'head', 'zoe', 'deal'] as const;
 function followup(o: Record<string, unknown>, jetzt: string, person: string): FollowUp | null {
   const bz = (o.bezug ?? {}) as Record<string, unknown>;
   if (!idOk(o.id) || !idOk(bz.id) || !txt(o.text) || !tag(o.faellig)) return null;
@@ -391,7 +391,7 @@ export async function aendereCrm(mut: (b: CrmBestand) => CrmBestand): Promise<Cr
   return updateJson<CrmBestand>(CRM_SPEICHER, cur => mut(firmaIdsErgaenzen({ ...leererBestand(), ...(cur ?? {}) }).bestand));
 }
 
-/** Kunden-Sicht aus den Mandaten — für Score, Jarvis-Kontext und Loops (vorher eigener Speicher „kunden“). */
+/** Kunden-Sicht aus den Mandaten — für Score, ZOE-Kontext und Loops (vorher eigener Speicher „kunden“). */
 export function kundenAusMandaten(b: CrmBestand): { kunden: { name: string; status: 'aktiv' | 'gespraech' | 'ruht'; cashflow?: number }[] } {
   const je = new Map<string, { name: string; status: 'aktiv' | 'gespraech' | 'ruht'; cashflow: number }>();
   const rang = { aktiv: 0, gespraech: 1, ruht: 2 } as const;

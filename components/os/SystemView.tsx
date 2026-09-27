@@ -21,7 +21,7 @@ const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: s
     { href: '/os/familie', label: 'Familie & Partnerschaft', was: 'wir zwei zuerst, dann die Familie' },
     { href: '/os/markttraktion', label: 'Markttraktion', was: 'Sales, Marketing und Event — Traction-Score, Power Hour, Kampagnen, Kontakte und Firmen' },
   ] },
-  { titel: 'Jarvis', eintraege: [
+  { titel: 'ZOE', eintraege: [
     { href: '/os/stapel', label: 'Aufträge & Freigaben', was: 'was vorbereitet ist und auf dich wartet' },
     { href: '/os/agenten', label: 'Agenten', was: 'wer live ist, wer nicht — und warum' },
     { href: '/os/loop', label: 'Loops', was: 'die Regelkreise' },
@@ -44,7 +44,7 @@ const GRUPPEN: { titel: string; eintraege: { href: string; label: string; was: s
 
 export function SystemView() {
   return (
-    <Seite titel="System" unter="Alles, was nicht täglich ist: Jarvis, Zugang, Bauen.">
+    <Seite titel="System" unter="Alles, was nicht täglich ist: ZOE, Zugang, Bauen.">
       <Flaeche seite="system">
       {GRUPPEN.map((g, i) => (
         <Kachel key={g.titel} id={g.titel.toLowerCase().replace(/[^a-z0-9]+/g, '-')} titel={g.titel} breite={2}>

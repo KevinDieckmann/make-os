@@ -17,7 +17,7 @@ const ablage = new Map<string, { v: number; t: number; wert: unknown; laeuft?: P
 // 27.09. (Tempo-Prüfung): dazu Zeit & Fokus (`zeit`, schreibt alle zwei Minuten je Person), Tageslauf, CRM-Signale,
 // die Kalender-Stände von iCloud, Verläufe (Traktion, Business, Performance) und die Flächen-Gestaltung — keiner dieser
 // Bestände ist Eingang eines Index, aber jeder machte bis dahin ALLES Gemerkte ungültig; der Speicher war nie warm.
-const RAUSCHEN = /^(anwesenheit|nutzung|aenderungen|agent-log|jarvis-auftraege|jarvis-verlauf(--.*)?|verbrauch|anmeldungen|client-fehler|hoi-.*|ki-stand|delegation-runde|content-entwuerfe|ernaehrung-vorschlag|sitzungs-stand.*|zeit(--.*)?|tageslauf|crm-signale|kalender-icloud|calendar-cache|performance(--.*)?|.*-verlauf|flaeche(--.*)?|willkommen(--.*)?|brain-konsolidierung)$/;
+const RAUSCHEN = /^(anwesenheit|nutzung|aenderungen|agent-log|zoe-auftraege|zoe-verlauf(--.*)?|verbrauch|anmeldungen|client-fehler|hoi-.*|ki-stand|delegation-runde|content-entwuerfe|ernaehrung-vorschlag|sitzungs-stand.*|zeit(--.*)?|tageslauf|crm-signale|kalender-icloud|calendar-cache|performance(--.*)?|.*-verlauf|flaeche(--.*)?|willkommen(--.*)?|brain-konsolidierung)$/;
 export const istRauschen = (name?: string): boolean => !!name && RAUSCHEN.test(name);
 
 /** local-db ruft das nach jedem Schreiben — dann rechnet der nächste Aufruf neu. Rauschen (siehe oben) lässt den Stand stehen. */

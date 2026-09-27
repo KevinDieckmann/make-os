@@ -6,7 +6,7 @@
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { aendereCrm } from '@/lib/crm/speicher';
 import { dubletten, zusammenfuehren, verweiseUmbiegen } from '@/lib/crm/dubletten';

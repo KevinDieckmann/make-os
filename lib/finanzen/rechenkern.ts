@@ -1,7 +1,7 @@
 // ─── MAKE OS — Finanzplanung jetzt: Rechenkern v3 ───────────────────────────
 // Eine Rechnung für alles: MAKE OS UG · KD Ventures · Privat · Gruppe.
 // Deterministisch und client-safe (keine Server-Importe), damit Seite, Routen
-// und Jarvis dieselben Zahlen sehen. Gleiche Logik wie Finanzplan v4 (Excel),
+// und ZOE dieselben Zahlen sehen. Gleiche Logik wie Finanzplan v4 (Excel),
 // dort gegengerechnet. Monat 1 = Okt 26 … 27 = Dez 28.
 //
 // Übernommen am 27.09.2026 aus Kevins Einbaupaket (Modul_Finanzen/

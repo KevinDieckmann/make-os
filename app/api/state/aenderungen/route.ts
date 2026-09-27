@@ -8,7 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { personAus, nameVon } from '@/lib/jarvis/raum';
+import { personAus, nameVon } from '@/lib/zoe/raum';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

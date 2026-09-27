@@ -153,7 +153,7 @@ export function BuchungenView() {
           {sichtbar.length > 300 && <Leer>+{sichtbar.length - 300} weitere — Monat oder Kategorie wählen</Leer>}
         </Liste>
         <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 14, lineHeight: 1.6 }}>
-          Buchungen kommen aus dem Beleg-Werkzeug (Jarvis), aus bezahlten <Link href="/os/finanzen/planung" style={{ color: C.inkDim }}>Rechnungen</Link> und aus dem Altbestand des Finanz-Dashboards.
+          Buchungen kommen aus dem Beleg-Werkzeug (ZOE), aus bezahlten <Link href="/os/finanzen/planung" style={{ color: C.inkDim }}>Rechnungen</Link> und aus dem Altbestand des Finanz-Dashboards.
         </div>
       </Karte>
     </Seite>

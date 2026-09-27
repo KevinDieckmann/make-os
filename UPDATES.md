@@ -29,9 +29,9 @@ Stand hier und einen Stand, der online ist.“
 
 - Kalender: gemeinsamer Kalender heißt standardmäßig „Gemeinsam“; beim Anlegen werden nur Kalender angeboten, die es in iCloud gibt.
 - **Business-Index** (unsere KSI-Logik, eigene Zahlen): Cockpit `/os/business` hinter dem Kopf-Ring „Business“
-  mit 26 Kennzahlen, je Firma + gesamt, Monatsabschluss, Köpfe; Wachstums-Score und Jarvis rechnen damit
+  mit 26 Kennzahlen, je Firma + gesamt, Monatsabschluss, Köpfe; Wachstums-Score und ZOE rechnen damit
   („eine Wahrheit“). Nach dem Update: einmal Köpfe (FTE) und den letzten Monatsabschluss eintragen.
-- **Business-Index tiefer verankert:** Streifen auf Zahlen · Markttraktion · Mandate; Jarvis beantwortet
+- **Business-Index tiefer verankert:** Streifen auf Zahlen · Markttraktion · Mandate; ZOE beantwortet
   Kennzahl-Fragen und nimmt den Monatsabschluss auf (mit Freigabe); Head of Finance warnt bei Rot und
   fehlendem Abschluss; eigene Schwellen und Jahresziele je Firma; Verlauf 90 Tage.
 - **Design: tiefe Akzente überall** — Ringe, Balken, Kopf-Ringe, Hauptknöpfe, Häkchen im Stil des
@@ -60,7 +60,7 @@ Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen un
 - **Reiter in Kevins Reihenfolge:** Überblick · Kontakte · Firmen · Deals · Follow-up · Marketing · Events · Stammdaten. Der Reiter „Sales“ ist aufgegangen:
   Leads stehen bei den Firmen (Alle Firmen · Leads qualifizieren), die Power Hour im Follow-up, Kampagnen im Marketing. Alle alten Links laufen weiter.
 - **Fundament:** Deals und Mandate hängen an der Firma per Kennung (nicht mehr per Name; alte Einträge werden beim Laden nachgezogen).
-  Deals entstehen nur noch auf EINEM Weg (Dialog „Neuer Deal“ überall: Pipeline, Karteikarte, Leads, Jarvis) — Kernfragen vom Lead, nächster Schritt Pflicht,
+  Deals entstehen nur noch auf EINEM Weg (Dialog „Neuer Deal“ überall: Pipeline, Karteikarte, Leads, ZOE) — Kernfragen vom Lead, nächster Schritt Pflicht,
   kein zweiter offener Deal an derselben Firma ohne Absicht, der Lead wird SQL mit Verweis. Stufenwechsel prüft der Server: verloren nur mit Grund,
   geparkt nur mit Wiedervorlage, eine offene Zielstufe nur mit nächstem Schritt; die Historie hängt der Server an.
 - **Deals:** Board mit Ziehen (auf Gewonnen/Verloren/Geparkt mit Nachfrage), Liste, **Deal-Akte** (Stufen-Treppe mit Austrittskriterium, Personen mit
@@ -83,7 +83,7 @@ Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen un
 - **Feinschliff:** alle Ziele, Texte und die Schnellsuche zeigen auf die neuen Reiter; Deal löschen nur noch bei Fehlanlagen (Sperre statt Löschen).
 - **Feinschliff 2 (Prüfbericht, 57 Punkte):**
   - **Zugang:** jede `/api/crm/*`-Route prüft jetzt den Haushalt des Inhabers (vorher nur die Anmeldung) — ein fremdes Konto sieht kein CRM.
-  - **Ein Deal-Weg wirklich überall:** Leads › SQL, Event „Deal daraus“ (Quelle geht in den Dialog, kein Nach-PATCH), Jarvis — alles durch `dealAnlegen`,
+  - **Ein Deal-Weg wirklich überall:** Leads › SQL, Event „Deal daraus“ (Quelle geht in den Dialog, kein Nach-PATCH), ZOE — alles durch `dealAnlegen`,
     Prüfen und Schreiben in einer Schreibsperre (keine zwei offenen Deals bei gleichzeitiger Anlage); Schritt-Datum in der Vergangenheit wird abgelehnt.
   - **Server-Regeln geschärft:** neue Deals nicht per Upsert, Löschen nur bei Fehlanlagen, `letzteAktivitaet` setzt nur der Server, Vergleich auf den
     lokalen Tag (nachts kein UTC-Versatz mehr — auch in Win Rate, Zyklus, Neuumsatz), überfälliger Schritt wird beim Ziehen im Board genannt, statt still zu scheitern.
@@ -98,6 +98,14 @@ Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen un
     Löschen meldet Fehler; „heute“-Rückfall im Browser lokal statt UTC; Gäste „Nachgefasst“ nutzt denselben Weg wie das Nachfassen; Suche führt Deals in die Akte.
   - Tests: `crm-deal-regeln` (Server-Regeln), `crm-fundament` angepasst (Upsert neuer Deals ist jetzt ein Fehler). Stand: 100 Dateien · 877 Tests grün, tsc und Lint sauber.
   - **Offen (Kevin entscheidet):** Farbe des Reiters „Firmen“ (heute neutral wie Kontakte, obwohl die Leads darin liegen); ob „Meins/Malin“-Filter auch im Board sichtbar sein soll.
+
+### ZOE statt Jarvis (27.09., nur lokal)
+
+Kevin: „ZOE, immer groß geschrieben — komplett umbenennen.“ 266 Dateien, 1.100 Stellen, 35 Pfade: `lib/zoe`, `app/zoe`, `app/api/zoe/*`, `components/os/Zoe*`, Bestände `zoe-*`.
+- Sichtbar überall **ZOE**; Code-Bezeichner `zoe`/`Zoe…` (ZoePanel, zoe-fenster).
+- **Daten bleiben:** `zoe-*`-Bestände übernehmen beim ersten Lesen die alten `jarvis-*.json` (lib/store/local-db.ts, einmalige Umbenennung auf der Platte) — keine Migration auf dem Server nötig.
+- **Alte Adressen laufen weiter:** `/jarvis` → `/zoe`, `/api/jarvis/*` → `/api/zoe/*` (308, Methode und Körper bleiben) — ein noch laufender alter Arbeiter oder Bote landet richtig.
+- Offen: Texte, in denen ZOE noch als „er“ steht (Jarvis war männlich), nach und nach glätten.
 
 ### Finanzplanung jetzt (27.09., nur lokal)
 
@@ -117,7 +125,7 @@ Mock-up als Funktionsvorlage, Startbestand mit echten Zahlen — der kommt per U
   12 Monate), zurücksetzen, Notiz. Plan · IST · Abweichung, Jahr-Filter, IST-Historie Jan–Sep in Lila (Klick öffnet die Buchungen dahinter).
 - **Monat:** Balken je Topf mit Strich für heute, Prognose Monatsende, Rest je Tag, Monat abschließen mit Übertrag. Buchungen zuordnen, „merken“ = Regel
   für den Empfänger (rückwirkend), „+ Buchung“ für Bargeld.
-- **Speicher** `finanzen-plan--<haushalt>` (nur über `haushaltVon`), `GET` mit ETag, `?nur=kennzahlen` für Jarvis/Startfläche, Import über die
+- **Speicher** `finanzen-plan--<haushalt>` (nur über `haushaltVon`), `GET` mit ETag, `?nur=kennzahlen` für ZOE/Startfläche, Import über die
   Einrichtungskarte (Datei oder leer beginnen; ersetzen nur ausdrücklich).
 - Tests: Rechenkern (erfundene Zahlen), Operationen, Routen — 53 grün; tsc und Lint sauber. Sichtprüfung im Dev-Server steht aus.
 - **Nach dem Update einmalig:** Startbestand über die Einrichtungskarte hochladen (Kevin), Kontostände eintragen, Stichtag prüfen („auf heute setzen“).
@@ -126,7 +134,7 @@ Mock-up als Funktionsvorlage, Startbestand mit echten Zahlen — der kommt per U
 
 Kevin: „Die Software läuft noch extrem langsam.“ Gemessen im Produktionsbau mit den echten Beständen (Mac; Server ×3–5): die einzelnen Antworten sind schnell
 (Kontakte 0,2–0,5 s bei 754 KB, fast alles andere unter 50 ms) — langsam macht es die Menge und das Muster. Start 28 Abfragen, Heute 23, Kalender 17, viele doppelt;
-Apple-Kalender glich bei jedem Seitenaufruf live mit iCloud ab (1–2 s, zweimal je Seite); der Jarvis-Kopf fragte alle 5 s; und der Zwischenspeicher der Indizes war nie
+Apple-Kalender glich bei jedem Seitenaufruf live mit iCloud ab (1–2 s, zweimal je Seite); der ZOE-Kopf fragte alle 5 s; und der Zwischenspeicher der Indizes war nie
 warm, weil Zeit & Fokus im Lesepfad schrieb. Der Live-Server hat **eine CPU und 1,9 GB** (nicht CX22 wie in DEPLOY.md) — dort reiht sich alles hintereinander.
 Hinweis für die Einordnung: Port 3001 ist der Entwicklungsmodus (jede Seite wird beim ersten Aufruf übersetzt, Heute >60 s) — Tempo misst man auf dem Prüfbau (3011) oder dem Server.
 - **Anfrage-Bündler** (`lib/http/anfrage-buendel.ts`, `components/os/AnfrageBuendel.tsx`, im /os-Rahmen): gleiche GET-Abfragen an /api werden geteilt (laufend immer, fertig 8 s;
@@ -135,7 +143,7 @@ Hinweis für die Einordnung: Port 3001 ist der Entwicklungsmodus (jede Seite wir
   verworfen, wenn währenddessen ein anderer Bestand schrieb. `zeitBildFuer` schreibt nicht mehr (Puffer nur im Speicher aufgelegt).
 - **iCloud raus aus dem Seitenpfad:** `/api/apple-calendar` und `/api/kalender` liefern den Stand sofort, ein fälliger Abgleich läuft im Hintergrund (nur ganz ohne Stand wird gewartet);
   der Takt hält alle 5 Min. frisch; geparste Termine je Stand und Zeitraum gemerkt.
-- **Polling:** Jarvis-Kopf 5 s → 30 s (nur sichtbar) · Stapel 3 → 5 s · Anwesenheit ein Aufruf statt zwei, jede Minute · Taktgeber im Browser 15/5 Min. (nur sichtbar) ·
+- **Polling:** ZOE-Kopf 5 s → 30 s (nur sichtbar) · Stapel 3 → 5 s · Anwesenheit ein Aufruf statt zwei, jede Minute · Taktgeber im Browser 15/5 Min. (nur sichtbar) ·
   Aufgaben 45 s · Haushalt jede Minute mit ETag (vorher 1 MB alle 20 s).
 - **Middleware:** die Stand-Rückfrage je Konto wird zwischen gleichzeitigen Anfragen geteilt (ein Seitenstart = eine Rückfrage statt ~28).
 - **Embeddings** bleiben auf Rechnern mit ≤ 2 CPUs von selbst aus (`MAKE_OS_EMBEDDINGS=an` erzwingt), sonst mit begrenzten Fäden; Brain-Index-Abgleich alle 30 statt 10 Min.
@@ -169,8 +177,8 @@ Kevin: „Das Thema Markttraktion kann ja noch nicht fertig sein — schau da no
 Kevin: „Grundgedanken sehr gut, CI gefällt mir. Logo noch nicht so. Nie echte Namen, Termine oder Kundendaten — du bist hier Marken- und Marketingprofi. UX kann mehr geben.“
 - **Nie wieder echte Daten:** alle Namen, Firmen, Termine und Protokolle in den Bildern erfunden; Gesundheitsdetails und Firmennamen der Gründer entfernt; `homepage/pruefen.mjs` prüft `index.html` gegen eine Sperrliste (CRM-/Kalender-/Vault-Namen, Firmen, verbotene Wörter) und bricht ab — vor jedem Stand laufen lassen.
 - **Logo F:** zwei Hälften (MA hell, KE türkis) werden in der Fuge ein M; Wortmarke gleich geteilt; App-Icon, hell, einfarbig, Favicon.
-- **UX:** App-Rahmen um jedes Produktbild (wie die Software: Fensterkopf, Leiste Home/Jarvis/System) · Aurora-Hero mit Fakten · Fortschrittsbalken, Scrollspy, Burger, Nach-oben · Weg eines Vorschlags als animierte Stufen · Start-Widgets · Founder-Initialen · Regler gestapelt auf Handy · Reiter per Pfeiltasten.
-- Behoben dabei: Klassen-Kollision `.jarvis` (Chat-Blasen wurden zu Rastern), Regler halbdurchsichtig, doppelter Hebel-Text.
+- **UX:** App-Rahmen um jedes Produktbild (wie die Software: Fensterkopf, Leiste Home/ZOE/System) · Aurora-Hero mit Fakten · Fortschrittsbalken, Scrollspy, Burger, Nach-oben · Weg eines Vorschlags als animierte Stufen · Start-Widgets · Founder-Initialen · Regler gestapelt auf Handy · Reiter per Pfeiltasten.
+- Behoben dabei: Klassen-Kollision `.zoe` (Chat-Blasen wurden zu Rastern), Regler halbdurchsichtig, doppelter Hebel-Text.
 
 ### MAKE OS Homepage — erster Durchgang (27.09., nur lokal, `homepage/`)
 
@@ -178,8 +186,8 @@ Kevin: „Homepage für MAKE OS auf dem UX-Design der Software, Logo entwerfen, 
 - Eigenständige statische Seite (`homepage/index.html`, `css/`, `js/`), keine Abhängigkeit zur App, überall hostbar. Preview „make-os-homepage“ (Port 3012).
 - **Logo:** Bildmarke aus zwei Strichen (Malin, Kevin), die sich zum M treffen, mit türkisem Kern; Wortmarke MAKE OS mit zwei Strichen unter MA und KE (Kevins CI-Idee, Personenfarben der Software). Vier Entwürfe, A gewählt.
 - **CI** direkt aus `lib/make-one/design.ts` (Tokens, Farbe = Zustand, Türkis als einziger Akzent), Schriften der Software selbst gehostet.
-- **Positionierung** aus der Software: ein System für beides (Wachstums-Score), Jarvis handelt mit Freigabe, eigener Server in Deutschland verschlüsselt, zu zweit gebaut, Markttraktion statt Lautstärke, Head of IT wacht.
-- **14 Sektionen** nach Kevins Seiten-Standard und der Top-1 %-Recherche: Hero mit Status-Chip und lebendem Score-Ring (Privat/Business) · Problem als Sticky-Story · Regler „Vom Blindflug zur Klarheit“ · vier Säulen · Jarvis mit Stapel · sechs Bereichs-Schirme (Markttraktion, Brain, Kalender, Zahlen, Gesundheit, Head of IT) · Souveränität · Zu zweit · Warum MAKE (MALIN + KEVIN → MAKE animiert, Founder) · Systemzahlen · Für wen + „Was es nicht ist“ · Die Entwicklung (echte Einträge) · Häufige Fragen · So geht es los · Einmal testen (Mail, nichts gespeichert).
+- **Positionierung** aus der Software: ein System für beides (Wachstums-Score), ZOE handelt mit Freigabe, eigener Server in Deutschland verschlüsselt, zu zweit gebaut, Markttraktion statt Lautstärke, Head of IT wacht.
+- **14 Sektionen** nach Kevins Seiten-Standard und der Top-1 %-Recherche: Hero mit Status-Chip und lebendem Score-Ring (Privat/Business) · Problem als Sticky-Story · Regler „Vom Blindflug zur Klarheit“ · vier Säulen · ZOE mit Stapel · sechs Bereichs-Schirme (Markttraktion, Brain, Kalender, Zahlen, Gesundheit, Head of IT) · Souveränität · Zu zweit · Warum MAKE (MALIN + KEVIN → MAKE animiert, Founder) · Systemzahlen · Für wen + „Was es nicht ist“ · Die Entwicklung (echte Einträge) · Häufige Fragen · So geht es los · Einmal testen (Mail, nichts gespeichert).
 - Effekte mit Maß und `prefers-reduced-motion`: Reveal einmalig nur Desktop, Zähler, Ring, Cursor-Licht, ein magnetischer Knopf, Kippen nur an der Score-Karte, Regler als ARIA-Slider.
 - Recherche: `homepage/RECHERCHE.md` (95 Quellen), Vault-Sichtung: `homepage/VAULT_BEFUND.md`. Offene Punkte für Kevin in `homepage/PLAN.md` (Operating/Operation, Fotos, Mail-Adresse und Domain, Gründergeschichte).
 
@@ -203,35 +211,35 @@ Kevin: „Der Kalender ist wirklich noch grausig … guck bei Google Kalender, w
 ### Brain-Abteilung (27.09., nur lokal)
 
 Kevin: „wie ein Wikipedia mit allen Infos chatten … alle wichtigen Regeln fürs Brain festlegen … ein Gedächtnis auf dem Hetzner-Server, das die KI selbst ausbaut.“
-Recherche mit 70 Quellen in `BRAIN_RECHERCHE.md`; Kevins Entscheidungen (klickbar, 27.09.): Volltext-Index **und** lokale Embeddings · Jarvis nur Vorschläge + eigenes Log · Konstitution + Regelregister · nächtliche Konsolidierung.
+Recherche mit 70 Quellen in `BRAIN_RECHERCHE.md`; Kevins Entscheidungen (klickbar, 27.09.): Volltext-Index **und** lokale Embeddings · ZOE nur Vorschläge + eigenes Log · Konstitution + Regelregister · nächtliche Konsolidierung.
 
 - **Brain-Index** (`lib/brain/index.ts`): SQLite FTS5 (Node-eigen, kein Zusatzpaket) über **Abschnitte** der Notizen (an Überschriften geschnitten, mit Kontextzeile
   „Notiz › H1 › H2 · tags“, ~2.000 Zeichen, 10 % Überlappung), inkrementell je Notiz-Hash, Wikilinks als Nachbarschaft (1 Hop), Sicht (scope/owner) vor dem Ranking,
-  Titel-/Überschriften-Treffer wiegen extra. Alle 10 Minuten vom Takt abgeglichen; die Suche des Vaults (Jarvis, Wissen-Seite, Brain-Chat) läuft darüber, Rückfall ist die alte Dateisuche.
+  Titel-/Überschriften-Treffer wiegen extra. Alle 10 Minuten vom Takt abgeglichen; die Suche des Vaults (ZOE, Wissen-Seite, Brain-Chat) läuft darüber, Rückfall ist die alte Dateisuche.
   Datei `.data/brain-index.sqlite` — Klartext wie der Vault selbst, außerhalb des Vault-Git-Repos, jederzeit neu baubar.
 - **Lokale Embeddings** (`lib/brain/einbettung.ts`): multilingual-e5-small (Transformers.js/ONNX, int8, 384 Dim.), faul geladen, Vektoren im Index, Kosinus im Speicher,
   **hybrid** mit BM25 per Reciprocal Rank Fusion. Gemessen auf dem Mac: Laden 7 s, drei Einbettungen 47 ms, Prozess ~600 MB. Auf dem 2-GB-Server knapp: Ladeschutz
   unter 400 MB frei, Schalter `MAKE_OS_EMBEDDINGS=aus`; der Head of IT zeigt den Hinweis. Modell-Cache außerhalb der Daten (`/srv/make-os/modelle`, `~/.cache/make-os/modelle`).
-- **Konstitution + Regelregister** (`lib/brain/regeln.ts`, Wissen › Regeln): `00. Fundament/KONSTITUTION.md` (≤ 250 Zeilen, in jedem Jarvis-Gespräch geladen) und Regel-Notizen
-  `00. Fundament/Regeln/*.md` mit Frontmatter (Priorität 0–3, gilt_fuer kevin/malin/beide/jarvis, Status entwurf/aktiv/abgelöst, Quelle, erstellt/geändert/freigegeben von+am).
-  Anlegen, freigeben, ablösen in MAKE OS; nur **aktive** Regeln gehen in den Prompt (Jarvis und Brain-Chat), hart zuerst. Versionen über das Git-Repo des Vaults.
-- **Brain-Inbox** (`lib/brain/inbox.ts`, Wissen › Inbox): Jarvis legt Vorschläge nach `_inbox/jarvis/` (neue Notiz, Ergänzung einer Notiz, Regel) mit Begründung, Quelle und
-  Vertraulichkeit (gemeinsam · privat-kevin · privat-malin). Annehmen macht Wissen daraus — mit Provenienz (`erstellt_von: jarvis`, `freigegeben_von: <Person>`); Ablehnen bewahrt den Grund.
+- **Konstitution + Regelregister** (`lib/brain/regeln.ts`, Wissen › Regeln): `00. Fundament/KONSTITUTION.md` (≤ 250 Zeilen, in jedem ZOE-Gespräch geladen) und Regel-Notizen
+  `00. Fundament/Regeln/*.md` mit Frontmatter (Priorität 0–3, gilt_fuer kevin/malin/beide/zoe, Status entwurf/aktiv/abgelöst, Quelle, erstellt/geändert/freigegeben von+am).
+  Anlegen, freigeben, ablösen in MAKE OS; nur **aktive** Regeln gehen in den Prompt (ZOE und Brain-Chat), hart zuerst. Versionen über das Git-Repo des Vaults.
+- **Brain-Inbox** (`lib/brain/inbox.ts`, Wissen › Inbox): ZOE legt Vorschläge nach `_inbox/zoe/` (neue Notiz, Ergänzung einer Notiz, Regel) mit Begründung, Quelle und
+  Vertraulichkeit (gemeinsam · privat-kevin · privat-malin). Annehmen macht Wissen daraus — mit Provenienz (`erstellt_von: zoe`, `freigegeben_von: <Person>`); Ablehnen bewahrt den Grund.
   `_inbox` ist aus der Suche ausgeschlossen: ein Vorschlag ist kein Wissen, bis ihn ein Mensch freigibt.
-- **Nächtliche Konsolidierung** (`lib/brain/konsolidierung.ts`, Systemlauf `konsolidierung` ab 21 Uhr): verdichtet neue Gedächtnis-Fakten, das Jarvis-Log und heute geänderte
+- **Nächtliche Konsolidierung** (`lib/brain/konsolidierung.ts`, Systemlauf `konsolidierung` ab 21 Uhr): verdichtet neue Gedächtnis-Fakten, das ZOE-Log und heute geänderte
   Protokolle zu höchstens fünf Vorschlägen (Fremdtext als Daten, Widersprüche als eigener Vorschlag). Ohne KI-Guthaben als Regelwerk: die Fakten des Tages als ein Vorschlag. Auf Zuruf per Knopf.
 - **Brain-Chat:** zitiert `[[Titel#Abschnitt]]`, kennzeichnet Unbelegtes als „(Vermutung)“, kennt Konstitution und Regeln.
 - Von mir gesetzt (Recherche-Empfehlung): Vault-Markdown bleibt die Wahrheit, ein Vault mit Sicht-Filter, Git des Vaults für Versionen, Ton bleibt Du.
 - Tests: `brain-chunks`, `brain-index`, `brain-einbettung`, `brain-regeln`, `brain-inbox`, `brain-konsolidierung` (Test-Vaults im Temp-Ordner, nie der echte).
 - **Offen (Kevin):** Server-RAM für Embeddings (2 GB reichen kaum neben App und Arbeiter — Upgrade auf 4 GB oder `MAKE_OS_EMBEDDINGS=aus`); Eval-Set mit 40 Fragen aus dem echten
-  Vault (`scripts/`, braucht den Vault — kommt als nächster Schritt); Kern-Blöcke (Profil Kevin/Malin, laufende Projekte) als eigene Notizen anlegen, dann lädt Jarvis sie immer.
+  Vault (`scripts/`, braucht den Vault — kommt als nächster Schritt); Kern-Blöcke (Profil Kevin/Malin, laufende Projekte) als eigene Notizen anlegen, dann lädt ZOE sie immer.
 
 ### Datenschicht Stufe 2 — zu zweit sicher (27.09., nur lokal)
 
 Kevin (27.09., klickbar): JSON bleibt, Stufe 2 jetzt; danach Brain, dann Kalender.
 
 - **Stand je Kontakt:** jede Zeile trägt einen Fingerabdruck des gespeicherten Datensatzes. Der Browser schickt ihn mit jeder Änderung zurück — hat inzwischen jemand
-  anderes geschrieben (Malin, Jarvis, ein Signal), kommt 409 mit dem aktuellen Stand, die Kartei lädt neu und sagt es. Nichts wird mehr still überschrieben.
+  anderes geschrieben (Malin, ZOE, ein Signal), kommt 409 mit dem aktuellen Stand, die Kartei lädt neu und sagt es. Nichts wird mehr still überschrieben.
 - **Nur Felder ändern:** Akte, Kartei, Firmen-Zuordnung und Kreis-Runde senden nur noch die geänderten Felder (`teil`), nicht den ganzen Kontakt.
 - **Alles in der Sperre:** Massen-Wache (Stufenwechsel), Massenlösch-Schutz, Stand-Prüfung, CSV-Import (Einarbeiten + Schrumpf-Schutz) und Lead→Mandat prüfen und
   schreiben denselben Bestand — ein Doppelklick legt kein zweites Mandat mehr an.
@@ -257,22 +265,22 @@ Kevin: „Arbeite alle Agenten, die wir machen wollten, weiter aus, dass sie liv
 
 - **Guthaben-Schalter** (`lib/anthropic.ts`): die Antwort „credit balance too low“ merkt sich die eine Stelle, durch die jeder Modellaufruf geht — danach 30 Minuten
   kein Aufruf mehr (sofort „guthaben-leer“ statt Gehirn einlesen und scheitern). Der Head of IT zeigt den Stand als Befund „KI-Guthaben“ (grau ohne Schlüssel, rot leer).
-- **ok-Vertrag der Läufe** (`lib/jarvis/agenten.ts`): antwortet eine Route mit Fehlerstatus, `ok:false` oder `error`, ist der Lauf ein Fehlschlag — vorher stand so etwas
+- **ok-Vertrag der Läufe** (`lib/zoe/agenten.ts`): antwortet eine Route mit Fehlerstatus, `ok:false` oder `error`, ist der Lauf ein Fehlschlag — vorher stand so etwas
   bei Verbesserungs-Loop, Delegation, CRM-Tagesliste und Tagesstart als „Erfolg mit 0 Ergebnissen“ in der Warteschlange (und der Takt wartete nicht).
-- **Regelwerk statt Ausfall:** Morgen- und Abendlauf liefern ohne KI (kein Schlüssel / Guthaben leer) einen ehrlichen Lagesatz aus den Zahlen (`lib/jarvis/regelwerk.ts`) —
+- **Regelwerk statt Ausfall:** Morgen- und Abendlauf liefern ohne KI (kein Schlüssel / Guthaben leer) einen ehrlichen Lagesatz aus den Zahlen (`lib/zoe/regelwerk.ts`) —
   Aufgaben überfällig/heute/kritisch, Termine, überfällige Forderungen, Frühwarnungen — und stapeln nichts. Der Takt zählt das als Erfolg.
 - **Head of IT im Takt:** ab 7:45 der Tagesbericht, danach stündlich der Blick auf NEUES Rot (nur mit Boten); Nachricht an den Inhaber per Telegram, Riegel `hoi-meldung`.
   Im Agenten-Katalog steht der HOI als live (Product), ohne KI.
-- **Schalter wirken überall:** „Aus“ unter /os/agenten galt nur für Jarvis und den Takt — jetzt auch für den direkten Aufruf von Wochenplan, CRM-Entwurf, Head of Finance und den Heads (409).
+- **Schalter wirken überall:** „Aus“ unter /os/agenten galt nur für ZOE und den Takt — jetzt auch für den direkten Aufruf von Wochenplan, CRM-Entwurf, Head of Finance und den Heads (409).
 - **Eine Freigabe-Sicht:** /os/stapel zeigt zusätzlich „Freigaben der Heads“ (Sales, Marketing, Event, Finance) mit Anzahl und Titeln — entschieden wird weiter beim Head.
 - **Verbesserungs-Loop mit Riegel:** jeder echte Versuch (auch ein übersprungener: zu wenig Nutzung, kein Schlüssel) wird in `nutzung.letzterLoopVersuch` vermerkt, der Takt wartet danach 24 h —
   bis dahin stand der Loop, sobald er 7 Tage her war, jede Minute neu in der Warteschlange (8 Läufe in 3 Stunden, alle „0 Vorschläge“).
 - **Fremd-Regel:** der Prospecting-Agent heißt `prospect` — der Eintrag in `FREMD_AGENTEN` zeigte auf `prospecting` und griff nie.
 - Tests: `anthropic-guthaben`, `regelwerk`, `hoi-lage` erweitert. Stand: 103 Dateien · 887 Tests grün, tsc und Lint sauber.
-- **Runde 2 — jedes Ergebnis hat einen Platz** (vorher nur Text in der Warteschlange, wenn Jarvis oder der Takt den Agenten liefen):
+- **Runde 2 — jedes Ergebnis hat einen Platz** (vorher nur Text in der Warteschlange, wenn ZOE oder der Takt den Agenten liefen):
   Wochenplan → jeder Block ein `plan_block`-Vorschlag im Stapel (Freigeben trägt ein) · Meeting → Aufgaben aus dem Protokoll als `create_task`-Vorschläge ·
-  Prospecting → Scores wirklich in der Zielliste gespeichert (stand bisher nur im Text) · Content → Ablage „Entwürfe von Jarvis“ auf der Content-Seite (Öffnen/Löschen) ·
-  Delegation → letzte Runde erscheint unter Aufgaben („Runde von Jarvis · Datum“, 7 Tage) · Ernährung → Vorschlag wartet auf der Ernährungs-Seite auf „Übernehmen“ (14 Tage).
+  Prospecting → Scores wirklich in der Zielliste gespeichert (stand bisher nur im Text) · Content → Ablage „Entwürfe von ZOE“ auf der Content-Seite (Öffnen/Löschen) ·
+  Delegation → letzte Runde erscheint unter Aufgaben („Runde von ZOE · Datum“, 7 Tage) · Ernährung → Vorschlag wartet auf der Ernährungs-Seite auf „Übernehmen“ (14 Tage).
 - **Bleibt geplant** (Katalog sagt jeweils warum): Funnel, SEO, Roadmap, Feedback, Eng/QA, Team.
 
 ### Sicherheit & Head of IT (27.09. nachts, nur lokal)
@@ -317,7 +325,7 @@ Recherche und Zielbild in `HOI_RECHERCHE.md`. Der HOI arbeitet ohne KI-Aufruf: r
 
 ## Online seit 26.09.2026 spät (Stand `59f275e`, ausgerollt 22:47 auf Kevins Wort)
 
-Alles, was unten in diesem Block steht, ist seit 22:47 online: Tempo, Aufteilung Privat/Business, Spaces zweite Fassung (Home · Heute · Wachstum · Agenten · einklappbare Leiste · Übersicht je Space · Fokus je Space · Jarvis kennt den Space), Durchsicht der ganzen Software. Geprüft 22:50: Server auf `59f275e`, App und Arbeiter gesund.
+Alles, was unten in diesem Block steht, ist seit 22:47 online: Tempo, Aufteilung Privat/Business, Spaces zweite Fassung (Home · Heute · Wachstum · Agenten · einklappbare Leiste · Übersicht je Space · Fokus je Space · ZOE kennt den Space), Durchsicht der ganzen Software. Geprüft 22:50: Server auf `59f275e`, App und Arbeiter gesund.
 
 _(hier sammeln, was auf `entwicklung` fertig ist)_
 
@@ -325,7 +333,7 @@ _(hier sammeln, was auf `entwicklung` fertig ist)_
 Sinn, überarbeite das Ganze hier auf dem Klickdummy“)**
 - **Home-Knopf** über den Spaces (Kevin): das eigene Dashboard, frei gestaltbar über „Anpassen“. Startstand: Überblick
   Privat und Business zusammen — Privat-Index | Business-Index, Aufgaben Privat | Aufgaben Business, Finanzen privat |
-  Wer heute dran ist, Körper | Jarvis & Inbox, Nächste 3 Tage | Fokus, Wachstums-Score.
+  Wer heute dran ist, Körper | ZOE & Inbox, Nächste 3 Tage | Fokus, Wachstums-Score.
 - **Spaces klappen sofort auf** (Kevin: „muss immer sauber aufgehen“): ein Tipp auf Privat/Business klappt den Kasten
   auf und den anderen zu — ohne wegzuspringen; die Seite wählt man aus den Punkten.
 - **Sechs Punkte je Space, symmetrisch:** Privat = Finanzen · Aufgaben · Ziele & Planung · Gesundheit · Familie ·
@@ -334,28 +342,28 @@ Sinn, überarbeite das Ganze hier auf dem Klickdummy“)**
 - **Seiten passen zum Space:** Zahlen zeigt im Privat-Space nur Privat + Gesamt, im Business-Space Business, Steuern,
   Gesamt, Head of Finance. Der Planer (Tag/Woche/Monat/Quartal/Jahr/Routinen) nimmt den Space in allen Reitern mit.
 - **Farben:** Privat Bernstein, Business Indigo wie in Malins Bild — keine Neonfarben; Leiste nach Malins Aufbau
-  (Kästen mit Pfeil, Punkte darunter, unten Jarvis · Brain · System · Konto).
+  (Kästen mit Pfeil, Punkte darunter, unten ZOE · Brain · System · Konto).
 - **Heute und Home getrennt** (Kevin: „oben wieder Heute, Heute mit eigenem Bild, Home baut jeder selbst“): oben im
   Kopf steht wieder „Heute“ → feste Tagesseite (Gruß, Datum, Tagesstart/-ende, Fokus heute, Aufgaben beider Spaces,
-  Termine, Körper, Jarvis, Essen). Home (links oben) ist das frei gestaltbare Dashboard, Startstand = Überblick Privat
+  Termine, Körper, ZOE, Essen). Home (links oben) ist das frei gestaltbare Dashboard, Startstand = Überblick Privat
   und Business. **Wachstum** steht als eigener Knopf unter Home und führt auf die Gesamtansicht: erst die sechs Säulen,
   danach der Score (Kevin: „das zentrale Stück“).
 - **Aufgeräumt (Architektur):** `Kopf.tsx` (vorher WachstumsKopf), `HomeView` (/os) und `HeuteView` (/os/heute) klar getrennt,
   alte Navigation (`lib/make-one/navigation.ts`) entfernt, Adressen in `WEG` (home, heute, uebersicht, menschen), Schnellsuche kennt
-  Home/Heute/Wachstum/Übersichten, Idee-Erfassung ordnet neue Seiten richtig zu, Jarvis `setze_fokus` je Space; Tests für die Spaces.
+  Home/Heute/Wachstum/Übersichten, Idee-Erfassung ordnet neue Seiten richtig zu, ZOE `setze_fokus` je Space; Tests für die Spaces.
 - **Leiste einklappbar** (Kevin): das Zeichen oben rechts in der Leiste klappt sie auf eine schmale Symbolspalte zusammen
-  (Home, Wachstum, Privat, Business, Agenten, Jarvis, Brain, System, Konto als Symbole mit Tooltip); der Stand bleibt gemerkt.
+  (Home, Wachstum, Privat, Business, Agenten, ZOE, Brain, System, Konto als Symbole mit Tooltip); der Stand bleibt gemerkt.
 - **Agenten als eigener Knopf** unter den beiden Spaces (Kevin: „das Agenten-Thema einzeln unter Business“) — nicht mehr
   im Business-Untermenü; Business hat damit Übersicht · Finanzen · Aufgaben · Ziele & Planung · Markttraktion · Mandate.
 - **Übersicht je Space** (Kevin: „Privat und Business separat aufbauen“): jeder Space hat als ersten Punkt seine
   eigene Übersicht — ein eigenes Dashboard nur mit dem, was zu ihm gehört (Privat: Privat-Index, Fokus, Körper,
-  Aufgaben, Finanzen, Termine, Familie, Essen, Routinen, Jarvis · Business: Business-Index, Fokus, Traktion, Aufgaben,
-  Wer dran, Termine, Jarvis, Score). Home bleibt der Überblick über beide.
+  Aufgaben, Finanzen, Termine, Familie, Essen, Routinen, ZOE · Business: Business-Index, Fokus, Traktion, Aufgaben,
+  Wer dran, Termine, ZOE, Score). Home bleibt der Überblick über beide.
 - **Fokus je Space:** der Fokus-Satz je Horizont gibt es gemeinsam, privat und business (Kompass: Gemeinsam · Privat ·
   Business; Jahres-/Quartals-/Monatsseite im Space schreibt den Space-Satz). Tages- und Wochenplaner zeigen im Space
   den Space-Fokus, sonst den gemeinsamen. Widgets Fokus und Termine lassen sich auf einen Space begrenzen; Termine
   tragen den Space ihres Kalenders.
-- **Jarvis kennt den aktiven Space:** jede Nachricht trägt Privat/Business mit; Jarvis antwortet aus dieser Sicht und
+- **ZOE kennt den aktiven Space:** jede Nachricht trägt Privat/Business mit; ZOE antwortet aus dieser Sicht und
   legt Aufgaben im aktiven Space an (Werkzeug `create_task` hat das Feld `space`). Die Jahresseite zeigt im
   Privat-Space keinen Nordstern und nur Gesundheits-Meilensteine, im Business-Space Nordstern und Business-Meilensteine.
   Die Schnellsuche (⌘K) sucht im Privat-Space eure Menschen statt der Kartei.
@@ -376,7 +384,7 @@ Sinn, überarbeite das Ganze hier auf dem Klickdummy“)**
   teilen sich heute einen Kern.
 
 **Aufteilung Privat/Business greift in den Aufgaben (26.09. abends, Kevin: „im Business wie privat Aufgaben — muss bei
-beiden hin“)** — Grundregel (Kevins Entscheidung): jeder Eintrag trägt seinen Space; der Space filtert, Heute und Jarvis
+beiden hin“)** — Grundregel (Kevins Entscheidung): jeder Eintrag trägt seinen Space; der Space filtert, Heute und ZOE
 sehen beides.
 - **Aufgaben:** der Ort (KD Ventures, Consulting, KEMARIS = Business · Privat = Privat) gibt den Space vor, eine
   Aufgabe kann per Klick abweichen (Detail → Space, „wieder aus dem Ort“). Aufgaben-Seite: Pillen Privat · Business ·
@@ -392,7 +400,7 @@ sehen beides.
   umgekehrt — nichts wird doppelt gebucht.
 - **Inbox nach Postfach:** unten in der Inbox lassen sich Postfächer (Apple-Konten, Microsoft 365) Privat oder
   Business zuordnen (`/api/state/spaces`); „Inbox privat/Business“ im Menü filtern danach.
-- Noch offen: Kontaktbuch privat (eigene Seite), Jarvis kennt den aktiven Space.
+- Noch offen: Kontaktbuch privat (eigene Seite), ZOE kennt den aktiven Space.
 
 **Bauplan-Punkte von Kevin & Malin (26.09., erste Runde: die schnellen Fixes)**
 - **Erfassen-Karte ohne Kürzung** (Kevin: „so genau wie möglich beschreiben“): vorher schnitt der Titel bei 160 und die
@@ -417,15 +425,15 @@ sehen beides.
 - **Menü mit zwei Spaces (Malins Vorschlag, erste Fassung):** links „Privat“ (rosé) und „Business“ (indigo), ein Tipp
   klappt das Untermenü auf — Privat: Finanzen, Ziele & Fokus, Aufgaben, Gesundheit, Familie, Menschen, Inbox privat,
   Kalender privat · Business: Finanzen, Planung, Markttraktion, Mandate, Agenten, Inbox Business, Kalender Business.
-  Unten gesondert Jarvis und Brain, darunter System und Konto. Oben: Suchfeld, das im aktiven Space sucht (⌘K), und
+  Unten gesondert ZOE und Brain, darunter System und Konto. Oben: Suchfeld, das im aktiven Space sucht (⌘K), und
   der Index des Space (Privat-/Business-Index) neben dem Wachstums-Score; die sechs Säulen-Ringe stecken im Bereich
   Wachstum. Der Space merkt sich die letzte Wahl; eine Business-Seite schaltet automatisch um. Handy: Leiste unten
-  Heute · Privat · Business · Jarvis · System, Privat/Business öffnen ihr Untermenü als Blatt.
+  Heute · Privat · Business · ZOE · System, Privat/Business öffnen ihr Untermenü als Blatt.
   Inbox mit `?space=`: Privat zeigt Apple-Postfächer, Business Microsoft 365 (Trennung nach Adresse folgt).
   Noch offen: Kalender zeigt den anderen Space als „belegt“; eigenes Kontaktbuch für Privat.
 - **Wochenplanung je Person** (Kevin: „Malin hat ihre eigene Planung“): der Wochenplaner (Blöcke: Fokus, Reha,
   Routinen, Pausen, eingeplante Aufgaben) liegt jetzt je Person — Kevin behält seinen gewachsenen Plan, Malin bekommt
-  ihren eigenen; der Gesundheits-Index und Jarvis' Einplanen nehmen den Plan der jeweiligen Person. Den Plan der
+  ihren eigenen; der Gesundheits-Index und ZOE' Einplanen nehmen den Plan der jeweiligen Person. Den Plan der
   anderen Person kann man lesen (`?fuer=`), schreiben nur den eigenen. Feste Termine kommen weiter aus den Kalendern.
 
 **Seiten selbst gestalten — Flächen & Widgets (26.09., Kevin: „alle Widgets immer zu bearbeiten, andere hinzufügen;
@@ -437,7 +445,7 @@ seine eigene Seite vorne soll man sich selber gestalten — auch wenn wir am Anf
 - **Katalog aus dem Bestand:** Aufgaben (fällig/alle, Anzahl), Termine heute, Nächste 7 Tage (privat + KEMARIS),
   Fokus / Wochenfokus / Monatsfokus, Körper, Routinen & Streak, Essen heute (mit Foto und Rezept-Link, offene
   Einkaufsliste), Business-/Privat-/Gesundheits-Index und Traktions-Score (mit Säulen), Finanzen · privat,
-  Jarvis & Inbox, Wer heute dran ist, Familie & Partnerschaft. Widgets zeigen nur, was es für die Person gibt.
+  ZOE & Inbox, Wer heute dran ist, Familie & Partnerschaft. Widgets zeigen nur, was es für die Person gibt.
 - Technik: `lib/flaeche/modell.ts` (rein, getestet), `/api/state/flaeche` je Person, `components/os/flaeche/`
   (Flaeche + Kachel + Widget-Register). Raster mit 6 Spalten und dichtem Packen, am Handy eine Spalte. Weitere
   Karten-Seiten folgen mit demselben Bauteil; die alte Startflächen-Schnittstelle ohne Oberfläche ist entfernt.
@@ -453,27 +461,27 @@ zuhause haben soll benutzt werden, an jedem Gericht das Rezept“)** — Gesundh
 - **Profile je Person:** Bedürfnisse & Regeln, Verträgt nicht, Nie, Gern, Ziel — jeder pflegt sein eigenes (Malin ihres in
   ihrem Konto), beide sehen beide; Gäste/Kinder als eigene Profile, die der Haushalt pflegt und beim Planen anklickt.
 - **Stammliste „unsere Lebensmittel“:** Lebensmittel + Hinweis („Haferflocken · Bio, grob“), Kategorie, Standardmenge,
-  Stern = bevorzugt. Ein Tipp → auf die Liste. Jarvis nimmt sie zuerst und benennt sie so.
-- **Vorrat „was da ist“:** eintragen, was zuhause ist — Jarvis plant damit und lässt es auf der Liste weg; „Eingekauft →
+  Stern = bevorzugt. Ein Tipp → auf die Liste. ZOE nimmt sie zuerst und benennt sie so.
+- **Vorrat „was da ist“:** eintragen, was zuhause ist — ZOE plant damit und lässt es auf der Liste weg; „Eingekauft →
   Vorrat“ schiebt Abgehaktes hinein; „→ Liste“ zum Nachkaufen; Rezepte zeigen je Zutat „im Vorrat / auf der Liste / fehlt“.
 - **Rezepte an jedem Gericht:** 📖 am Plan-Feld öffnet Zutaten mit Mengen, Zubereitung in Schritten, Dauer, Portionen,
-  für wen; „＋“ lässt Jarvis das Rezept schreiben; „fehlende auf die Liste“ setzt nur, was nicht da ist.
-- **Jarvis plant die Woche für alle** (Profile, Grundsätze, bevorzugte Lebensmittel, Vorrat, Hinweis): Plan + Rezepte +
+  für wen; „＋“ lässt ZOE das Rezept schreiben; „fehlende auf die Liste“ setzt nur, was nicht da ist.
+- **ZOE plant die Woche für alle** (Profile, Grundsätze, bevorzugte Lebensmittel, Vorrat, Hinweis): Plan + Rezepte +
   Liste mit Mengen und Kategorien; „Übernehmen“ ergänzt die Liste (nichts doppelt, nichts aus dem Vorrat).
 - **Einkaufsliste wie ein Einkauf:** nach Kategorie (Obst & Gemüse → Frische → Vorrat → Tiefkühl → Getränke →
   Haushalt), Menge, für wen, von wem, Quelle; Eingabe versteht „2x Tomaten“, „500 g Lachs“; **„Warenkorb kopieren“** als
   Text für REWE Lieferservice/Picnic; Lebensmittel-Budget des Monats aus Zahlen → Privat steht dabei.
-- **Jarvis per Zuruf:** „setz Tomaten und 500 g Lachs auf die Liste“ (`einkauf_setzen`).
+- **ZOE per Zuruf:** „setz Tomaten und 500 g Lachs auf die Liste“ (`einkauf_setzen`).
 - **Unsere Gerichte (Kevin 26.09.: „ein Bereich, wo wir unsere Gerichte abspeichern“):** die Bibliothek unter der
-  Essens-Woche — alle Rezepte (von Jarvis' Wochen und von Hand), Suche über Name/Zutat/Tag, Tag-Chips, ★ Lieblinge;
+  Essens-Woche — alle Rezepte (von ZOE' Wochen und von Hand), Suche über Name/Zutat/Tag, Tag-Chips, ★ Lieblinge;
   ein Klick öffnet das Rezept mit Notiz („Malin ohne Feta“), „in den Plan“ (Tag + Mahlzeit), „fehlende Zutaten auf die
   Liste“, bearbeiten, löschen (mit Rückfrage). **„+ Gericht“** dreifach: von Hand (Zutaten und Schritte je Zeile —
-  „200 g Lachs“, „Olivenöl – 2 EL“), ✨ Jarvis schreibt (Name + Wunsch), Rezept einfügen (kopierter Text wird in Form
+  „200 g Lachs“, „Olivenöl – 2 EL“), ✨ ZOE schreibt (Name + Wunsch), Rezept einfügen (kopierter Text wird in Form
   gebracht, nichts dazuerfunden). Ein Plan-Feld, das wie ein gespeichertes Gericht heißt, bekommt sein Rezept
-  automatisch; leere Plan-Felder bieten „aus euren Gerichten wählen“. Jarvis kennt beim Planen eure Gerichte (Lieblinge
+  automatisch; leere Plan-Felder bieten „aus euren Gerichten wählen“. ZOE kennt beim Planen eure Gerichte (Lieblinge
   zuerst) und schreibt für sie kein neues Rezept. Direktlink `?s=ernaehrung&g=<id>` (`WEG.gericht`).
-- **Gerichte schlanker + Foto (Kevin 26.09.):** Anlegen ist ein Schritt — Name tippen, Enter, Jarvis schreibt das
-  Rezept; „von Hand“ und „Text einfügen“ nur als kleine Zusatzwege (kann Jarvis nicht, geht es mit dem Namen von Hand
+- **Gerichte schlanker + Foto (Kevin 26.09.):** Anlegen ist ein Schritt — Name tippen, Enter, ZOE schreibt das
+  Rezept; „von Hand“ und „Text einfügen“ nur als kleine Zusatzwege (kann ZOE nicht, geht es mit dem Namen von Hand
   weiter). Je Gericht ein Foto vom Handy (wird vor dem Hochladen auf 1280 px verkleinert, `/api/ernaehrung/bild`,
   Dateien unter `.data/bilder-gerichte`, nur Haushalt) — sichtbar im Rezept, in der Bibliothek und am Plan-Feld.
 - Technik: `lib/ernaehrung/modell.ts` (rein, getestet), Änderungen in kleinen Schritten (PATCH) — zu zweit am Handy
@@ -531,10 +539,10 @@ Vorauszahlungen laut Bescheid, Rücklage-Konten); unter Privat die Rücklage ein
 Kapazität und im Monatsabschluss die fakturierten Tage.
 
 **Sicherheit, Gesundheits-Index, Traktions-Index, keine toten Stellen (26.09.)**
-- **Sicherheit (Audit 26.09., alle kritischen und hohen Funde behoben):** Jarvis-Aufträge, Protokoll und
+- **Sicherheit (Audit 26.09., alle kritischen und hohen Funde behoben):** ZOE-Aufträge, Protokoll und
   Freigabe-Stapel sind je Person getrennt (kein Lesen oder Zurücknehmen fremder Schritte); Worker-Endpunkte
   und der Telegram-Eingang nur mit Dienstschlüssel (Vergleich in konstanter Zeit); die Anmeldung leitet nur
-  noch auf eigene Pfade weiter; Jarvis behandelt gelesene Mails und Recherche als fremden Text — danach werden
+  noch auf eigene Pfade weiter; ZOE behandelt gelesene Mails und Recherche als fremden Text — danach werden
   schreibende Werkzeuge nur noch vorgeschlagen (Freigabe), `setze_kunde` braucht immer Freigabe; Apple Mail und
   Kontakte nur für den Inhaber, Erinnerungen nur im Haushalt; Whoop-Sync, Fokus, Board, Loop und Tageslauf
   laufen je angemeldeter Person (kein Rückfall auf „kevin“); eine Einladung bindet den Speicher-Namen, der
@@ -545,7 +553,7 @@ Kapazität und im Monatsabschluss die fakturierten Tage.
   Bewegung & Aufbau 30 · Ernährung & Körper 30, 19 Kennzahlen aus Whoop, Journal, Routinen, Wochenplan,
   Kalender, Meilensteinen, Essensplan, Haut-Tagebuch und Streak (Tagebücher nur, wenn geführt); hinter jeder
   die Punkte mit Weg (Morgen-Check, Journal, Routinen, Woche, Ernährung). Die Gesundheits-Säule des
-  Wachstums-Scores IST dieser Index; Jarvis kennt `gesundheits_index`; Heute-Karte, Hebel und Meilensteine
+  Wachstums-Scores IST dieser Index; ZOE kennt `gesundheits_index`; Heute-Karte, Hebel und Meilensteine
   auf Gesundheit hängen daran. Anspannung 1–5 direkt auf Heute.
 - **Traktions-Index** (Markttraktion → Überblick): der Traktions-Score auf demselben Kern — Sales 50 ·
   Marketing 40 · Event 10 (geometrisch), Grundlage sichtbar ohne Gewicht; 19 Kennzahlen mit eigenen Schwellen,
@@ -578,16 +586,16 @@ Kapazität und im Monatsabschluss die fakturierten Tage.
 - **Next.js 15.5.26** statt 14.2 (die 14er-Linie hatte ~20 offene Advisories: Bildoptimierer-RCE, SSRF,
   DoS, Cache-Poisoning). Codemod für `params`/`searchParams`/`cookies()`; alles geprüft.
 - **Zugriff je Person, lückenlos:** interne Dienstaufrufe reichen die anfragende Person weiter (Tageslauf,
-  Tagesstart, Agenten, Jarvis-Werkzeuge) — Kevins Mac-Postfach ist damit wirklich nur für den Inhaber;
+  Tagesstart, Agenten, ZOE-Werkzeuge) — Kevins Mac-Postfach ist damit wirklich nur für den Inhaber;
   Tageslauf-Bestand ohne Mail-Details; `person:` im Auftragstext gilt nur für den Takt; Whoop-Sync/-Import,
   OAuth (Whoop/M365), Mail-Entwurf, Agenten-Regler, Postfach-Spiegel, Agentenlog nur Inhaber bzw. Dienstweg;
   Business-Zahlen (Finanzen, Finanzplan, Buchungen, Liquiplan, Grundlage, Controlling) nur für den Haushalt
   des Inhabers (Malin ist drin); Privatnotizen bleiben auch in „Heute ansprechen“, Auskunft und Dubletten
   beim Verfasser; Startfläche/Verlauf je Person.
-- **Jarvis gegen eingeschleuste Anweisungen:** alle Kanäle mit Text Dritter (Kontaktnotizen, Bank-
+- **ZOE gegen eingeschleuste Anweisungen:** alle Kanäle mit Text Dritter (Kontaktnotizen, Bank-
   Verwendungszwecke, Notizen, Gedächtnis, Agentenläufe, Web, Postfach) sind gekapselt — danach nur noch
   Vorschläge statt Ausführung; Termine, Aufgaben, Deals und Läufe stehen im Prompt als Daten mit Regel.
-- **Kostenschutz:** höchstens 40 Modellzüge je Person in 10 Minuten (Takt 120), Body-Grenzen (Jarvis 2 MB,
+- **Kostenschutz:** höchstens 40 Modellzüge je Person in 10 Minuten (Takt 120), Body-Grenzen (ZOE 2 MB,
   Beleg 12 MB, Grundlage 4 MB, Zielkunden 2 MB), `heads/eval` und Loop-„jetzt“ nur Inhaber.
 - **Sitzungen:** 14 Tage; Abmelden widerruft den Zettel; „Alle anderen Geräte abmelden“ (Konto);
   Anmelde-Protokoll (Konto → „Zuletzt: …“); Passwortwechsel gebremst; Erstkonto: Schlüsselvergleich in

@@ -8,7 +8,7 @@ import { logRun } from '@/lib/agent-log';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { zoneOf, vitalsHint } from '@/lib/vitals';
 import { gatherBrain, blockAufgaben } from '@/lib/brain';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';

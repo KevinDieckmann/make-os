@@ -41,7 +41,7 @@ describe('Eingang', () => {
     expect(neueKarte({ titel: 'a', art: 'quatsch', bereich: 'Nirgendwo' }, 'kevin', J, 'x')).toMatchObject({ art: 'verbesserung', bereich: 'Allgemein', prio: 2 });
   });
   it('Bereich aus dem Pfad; Bildnamen nur sicher', () => {
-    expect([bereichAusSeite('/os/mandate?s=produkte'), bereichAusSeite('/os'), bereichAusSeite('/os/bauplan'), bereichAusSeite('/jarvis'), bereichAusSeite('/os/finanzen?s=privat')]).toEqual(['Mandate', 'Heute', 'System', 'Jarvis', 'Zahlen']);
+    expect([bereichAusSeite('/os/mandate?s=produkte'), bereichAusSeite('/os'), bereichAusSeite('/os/bauplan'), bereichAusSeite('/zoe'), bereichAusSeite('/os/finanzen?s=privat')]).toEqual(['Mandate', 'Heute', 'System', 'ZOE', 'Zahlen']);
     expect(neueKarte({ titel: 'a', seite: '//boese.example' }, 'kevin', J, 'x')!.seite).toBeUndefined();
     expect(neueKarte({ titel: 'a', seite: '/os/fokus' }, 'kevin', J, 'x')).toMatchObject({ seite: '/os/fokus', bereich: 'Fokus' });
     expect(bildNameOk('abc.jpg')).toBe(false);

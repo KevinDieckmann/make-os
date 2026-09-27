@@ -6,7 +6,7 @@ import Link from 'next/link';
 // Tageslauf gestartet. Wer den Tab schloss, hielt das System an — und wer den
 // Rechner erst um neun aufklappte, bekam den Morgenlauf um neun statt um sieben.
 //
-// Der Takt liegt jetzt auf dem Server (lib/jarvis/takt.ts) und wird vom
+// Der Takt liegt jetzt auf dem Server (lib/zoe/takt.ts) und wird vom
 // Arbeiter jede Minute abgefragt. Diese Komponente hat zwei Aufgaben behalten:
 //
 //   1. RÜCKFALL — läuft gerade kein Arbeiter (etwa weil jemand nur
@@ -59,7 +59,7 @@ export function Taktgeber() {
     const schlag = () => {
       // Tempo (27.09.): auf dem Server fragt der Arbeiter jede Minute — der Browser ist nur Rückfall, also selten und nur sichtbar.
       if (!aktiv || document.visibilityState !== 'visible') return;
-      fetch('/api/jarvis/takt', { method: 'POST' }).catch(() => {});
+      fetch('/api/zoe/takt', { method: 'POST' }).catch(() => {});
     };
 
     /** Nachsehen, ob im Hintergrund etwas gemeldet werden will. */
@@ -68,7 +68,7 @@ export function Taktgeber() {
       try {
         const [tl, auf] = await Promise.all([
           fetch('/api/tageslauf').then(r => r.json()) as Promise<{ laeufe?: Lauf[] }>,
-          fetch('/api/jarvis/auftraege').then(r => r.json()) as Promise<{ auftraege?: Auftrag[] }>,
+          fetch('/api/zoe/auftraege').then(r => r.json()) as Promise<{ auftraege?: Auftrag[] }>,
         ]);
         if (!aktiv) return;
 

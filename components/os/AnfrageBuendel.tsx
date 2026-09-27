@@ -17,7 +17,7 @@ export function AnfrageBuendel() {
       // Der Verlauf und der Stapel wollen beim Nachfragen den echten Stand — die
       // Komponenten dort takten selbst; hier nur die kurze Teilung laufender Abfragen.
       frischMs: 8_000,
-      ausnahmen: ['/api/jarvis/chat', '/api/jarvis/stimme', '/api/hoi/'],
+      ausnahmen: ['/api/zoe/chat', '/api/zoe/stimme', '/api/hoi/'],
     });
     window.__makeAnfragen = b;
     window.fetch = b;

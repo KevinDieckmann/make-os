@@ -1,6 +1,6 @@
 // Der Chat mit dem Brain: Verlauf und Quellen sind reine Regeln — hier fest.
 import { describe, it, expect } from 'vitest';
-import { verlaufNachrichten, quellenAuswahl, systemText, type Quelle } from '../lib/jarvis/brain-chat';
+import { verlaufNachrichten, quellenAuswahl, systemText, type Quelle } from '../lib/zoe/brain-chat';
 
 describe('Chat mit dem Brain', () => {
   it('baut den Verlauf abwechselnd, beginnend mit einer Frage und endend mit einer Antwort', () => {
@@ -25,7 +25,7 @@ describe('Chat mit dem Brain', () => {
   it('stellt Gelesenes und Genanntes als Quellen unter die Antwort', () => {
     const bekannt = new Map<string, Quelle>([
       ['a', { id: 'a', titel: 'Ist-Stand', bereich: 'Business' }],
-      ['b', { id: 'b', titel: 'Jarvis_Log', bereich: 'Fundament' }],
+      ['b', { id: 'b', titel: 'Zoe_Log', bereich: 'Fundament' }],
       ['c', { id: 'c', titel: 'Personen', bereich: 'Business' }],
     ]);
     expect(quellenAuswahl('Laut [[Personen]] …', ['a'], bekannt).map(q => q.id)).toEqual(['a', 'c']);

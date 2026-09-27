@@ -162,7 +162,7 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
           <Ueberschrift farbe={LEUCHT.gut} rechts={<Link href="/os/gesundheit?s=ernaehrung" style={link}>Ernährung öffnen ›</Link>}>Ernährung</Ueberschrift>
           <Zahl wert={essenGeplant ? String(essenGeplant) : undefined} label="von 21 Mahlzeiten geplant" farbe={essenGeplant ? LEUCHT.gut : undefined} />
           <p style={{ fontSize: TYP.bedien, color: essenGeplant ? C.inkLeise : LEUCHT.achtung, lineHeight: 1.55, margin: '10px 0 0' }}>
-            {essenGeplant == null ? 'lade …' : essenGeplant ? `Essens-Woche: ${essenGeplant}/21 Mahlzeiten geplant.` : 'Keine Essens-Woche geplant — Jarvis macht dir in 30 Sekunden eine.'}
+            {essenGeplant == null ? 'lade …' : essenGeplant ? `Essens-Woche: ${essenGeplant}/21 Mahlzeiten geplant.` : 'Keine Essens-Woche geplant — ZOE macht dir in 30 Sekunden eine.'}
           </p>
         </Abschnitt>
 

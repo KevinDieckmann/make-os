@@ -1,5 +1,5 @@
 // Das CRM heißt seit 25.09. Markttraktion — alte Links (Lesezeichen, Brain,
-// Jarvis-Verlauf) landen hier und werden mit ihren Parametern umgeleitet.
+// ZOE-Verlauf) landen hier und werden mit ihren Parametern umgeleitet.
 import { redirect } from 'next/navigation';
 import { markttraktion } from '@/lib/crm/adresse';
 

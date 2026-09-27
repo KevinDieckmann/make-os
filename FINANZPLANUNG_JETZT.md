@@ -21,7 +21,7 @@ Startbestand `finanzen-plan.json` (🔒 echte Zahlen, nie ins Repo — kommt per
 
 ## Technik
 - **Rechenkern:** `lib/finanzen/rechenkern.ts` — Kevins v3 unverändert übernommen (nur Typ `fokus.entscheidung` ergänzt, zwei Non-Null-Behauptungen
-  im Zahlungskalender aufgelöst). EINE Wahrheit für Seite, Routen und Jarvis. Lokal gegen die echte Datei geprüft: Repo-Rechenkern = Mock-up-Rechenkern
+  im Zahlungskalender aufgelöst). EINE Wahrheit für Seite, Routen und ZOE. Lokal gegen die echte Datei geprüft: Repo-Rechenkern = Mock-up-Rechenkern
   in allen fünf Szenarien (11.122 Vergleiche, 0 Abweichungen, keine nicht endlichen Werte).
 - **Operationen:** `lib/finanzen/plan/operationen.ts` (rein, getestet) — Pfade `/plan/<zeile>:<monat>`, Listen über `id=<kennung>` oder Index, `/-` hängt an,
   fehlendes `neu` entfernt; gesperrt: version, stand, monate, historie, meta, protokoll. `/regeln/<empfänger>` merkt die Regel und ordnet rückwirkend zu
@@ -29,7 +29,7 @@ Startbestand `finanzen-plan.json` (🔒 echte Zahlen, nie ins Repo — kommt per
   `pruefeDokument` (strikt: version 3, szenarien, annahmen, Zeitachse Jan–Sep 26 + ≥ 15 Planmonate) und `leeresDokument`.
 - **Speicher:** `lib/finanzen/plan/speicher.ts` — Bestand `finanzen-plan--<haushalt>` (Kevin + Malin = ein Haushalt), Prüfung und Schreiben in EINER
   `updateJson`-Sperre, 409 mit aktuellem Dokument bei fremdem Stand, Import ersetzt nur mit ausdrücklichem `ersetzen`.
-- **Routen:** `GET /api/finanzplan` (ETag aus dem Dateistand, gepackt; `dokument: null` ohne Startbestand) · `GET ?nur=kennzahlen` (verdichtet, für Jarvis/
+- **Routen:** `GET /api/finanzplan` (ETag aus dem Dateistand, gepackt; `dokument: null` ohne Startbestand) · `GET ?nur=kennzahlen` (verdichtet, für ZOE/
   Startfläche) · `PATCH { basisStand, ops }` · `POST /api/finanzplan/import` (multipart `datei` oder JSON `{ leer: true }` / `{ dokument }`, `ersetzen`).
   Zugang überall nur `haushaltVon(req)`.
 - **Oberfläche:** `/os/finanzplan` (`app/os/finanzplan/page.tsx`, force-dynamic), `components/os/finanzplan/`: `Finanzplan.tsx` (Rahmen), `daten.ts`
@@ -86,6 +86,6 @@ Alles nur lokal auf `entwicklung`; nichts gepusht. Sichtprüfung im Dev-Server s
 3. Kontostände aller Konten eintragen (Verpflichtungen › Zu erledigen › Kontostände).
 4. Offene Familienposten klären; Jahreskosten-Topf füllen (welche Jahreszahlungen, welcher Monat); ein Konto oder drei.
 5. Finanz-Cockpit abschalten oder als Import-Werkzeug behalten; danach die Buchungen aus dem Haushalts-Import hier hinein (ein IST).
-6. Jarvis/Startfläche an `?nur=kennzahlen` anschließen; Export-Route; Schnellsuche und `lib/wege.ts` ergänzen.
+6. ZOE/Startfläche an `?nur=kennzahlen` anschließen; Export-Route; Schnellsuche und `lib/wege.ts` ergänzen.
 7. vitest: `esbuild: { jsx: 'automatic' }` in `vitest.config.ts`, damit der Ansichten-Test ins Repo kann.
 8. Danach: Privat-Teile unter Privat › Finanzen, UG/KD Ventures unter Business.

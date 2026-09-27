@@ -10,7 +10,7 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { resolveAgent } from '@/lib/agent-config';
-import type { Faellig } from '@/lib/jarvis/takt';
+import type { Faellig } from '@/lib/zoe/takt';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { AGENT_ID, HEAD_NAME, type HeadId } from './prompt';
 import { TEAM } from '@/lib/crm/team';

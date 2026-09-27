@@ -1,5 +1,5 @@
 // ─── MAKE OS — Inbox-Agent: Antwort-Entwurf ─────────────────────────────────
-// Jarvis schreibt eine Antwort in Kevins Stimme. NUR Entwurf — Versand macht
+// ZOE schreibt eine Antwort in Kevins Stimme. NUR Entwurf — Versand macht
 // Kevin selbst (öffnet in Apple Mail). Läuft über die gemeinsame KI-Schicht;
 // die fremde Mail geht als DATEN in den Prompt (Injection-Schutz).
 

@@ -1,6 +1,6 @@
 // ─── MAKE OS — Mail-Inhalt lesen ────────────────────────────────────────────
 // Die Liste (/api/apple-mail) liefert nur Absender und Betreff. Für „hol die
-// Whoop-Werte aus der Mail" braucht Jarvis den Text selbst.
+// Whoop-Werte aus der Mail" braucht ZOE den Text selbst.
 //
 // Gleiche Disziplin wie in der Liste: KEIN `whose`-Filter, der scannt in Mail
 // alle Nachrichten und braucht Minuten. Stattdessen die neuesten N greifen und

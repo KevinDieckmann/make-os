@@ -95,7 +95,7 @@ export interface HautTrend {
 
 /**
  * Was die Haut über einen Monat erzählt. Für Kevin beim Hautarzt und für
- * Jarvis, der den Zusammenhang Stress → Kratzen → Schub sichtbar machen soll.
+ * ZOE, der den Zusammenhang Stress → Kratzen → Schub sichtbar machen soll.
  */
 export function hautTrend(log: HautLog, heute: string): HautTrend {
   const t30 = tageZurueck(heute, 30);

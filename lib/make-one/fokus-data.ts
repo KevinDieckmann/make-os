@@ -1,7 +1,7 @@
 // ─── MAKE OS — Fokus-Zuordnung (client-sicher, keine fs-Imports) ────────────
 // DIE eine Quelle dafür, wie Aufgaben/Routinen den Score-Säulen zugeordnet
 // werden und wie die Säulen heißen/aussehen. Wird von Wochenplaner, Tages-
-// planung, Dashboard und Jarvis' Wochenvorschlag gemeinsam genutzt — damit
+// planung, Dashboard und ZOE' Wochenvorschlag gemeinsam genutzt — damit
 // der Fokus-Regler überall GLEICH lenkt.
 
 import { THEME } from './os-data';

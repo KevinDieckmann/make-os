@@ -28,7 +28,7 @@ const FORMATS: Record<string, { label: string; guide: string }> = {
   email: { label: 'Kalt-E-Mail', guide: 'Eine kurze Erstansprache-E-Mail (max ~120 Wörter) an eine kaufm. Leitung/CFO im Mittelstand. Betreff + Text. Persönlich, ein konkreter Aufhänger, eine niedrigschwellige Frage. Kein Verkaufsdruck.' },
 };
 
-interface ContentEntwurf { id: string; zeit: string; format: string; thema: string; text: string; quelle: 'jarvis' }
+interface ContentEntwurf { id: string; zeit: string; format: string; thema: string; text: string; quelle: 'zoe' }
 const ENTWUERFE = 'content-entwuerfe';
 
 export async function POST(req: Request) {
@@ -58,19 +58,19 @@ export async function POST(req: Request) {
   if (!r.ok || !r.text) return NextResponse.json({ reply: r.error ?? 'Konnte gerade keinen Entwurf erzeugen — nochmal versuchen.' });
 
   await logRun('content', `${fmt.label}: ${thema.slice(0, 80)}`, { format: fmt.label, thema, entwurf: r.text.slice(0, 2000) });
-  // Ein Platz für den Entwurf (27.09.): läuft der Agent im Hintergrund (Jarvis, Takt), legt er den Text hier ab —
+  // Ein Platz für den Entwurf (27.09.): läuft der Agent im Hintergrund (ZOE, Takt), legt er den Text hier ab —
   // sonst stünde er nur in der Warteschlange. Höchstens 30 Entwürfe, älteste fallen raus.
   let abgelegt = false;
   if (payload.ablegen) {
     try {
-      await updateJson<{ entwuerfe: ContentEntwurf[] }>(ENTWUERFE, cur => ({ entwuerfe: [{ id: `ce-${Date.now().toString(36)}`, zeit: new Date().toISOString(), format: fmt.label, thema: thema.slice(0, 160), text: r.text.slice(0, 12000), quelle: 'jarvis' as const }, ...(cur?.entwuerfe ?? [])].slice(0, 30) }));
+      await updateJson<{ entwuerfe: ContentEntwurf[] }>(ENTWUERFE, cur => ({ entwuerfe: [{ id: `ce-${Date.now().toString(36)}`, zeit: new Date().toISOString(), format: fmt.label, thema: thema.slice(0, 160), text: r.text.slice(0, 12000), quelle: 'zoe' as const }, ...(cur?.entwuerfe ?? [])].slice(0, 30) }));
       abgelegt = true;
     } catch { abgelegt = false; }
   }
   return NextResponse.json({ reply: r.text, format: fmt.label, abgelegt });
 }
 
-/** Die abgelegten Entwürfe (Content › Entwürfe von Jarvis). */
+/** Die abgelegten Entwürfe (Content › Entwürfe von ZOE). */
 export async function GET() {
   const s = await loadJson<{ entwuerfe: ContentEntwurf[] }>(ENTWUERFE);
   return NextResponse.json({ ok: true, entwuerfe: s?.entwuerfe ?? [] }, { headers: { 'Cache-Control': 'no-store' } });

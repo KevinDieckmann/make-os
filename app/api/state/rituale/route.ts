@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { personDatei } from '@/lib/performance';
 
 export const runtime = 'nodejs';

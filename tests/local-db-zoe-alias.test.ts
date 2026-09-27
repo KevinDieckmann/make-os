@@ -1,4 +1,4 @@
-// Umbenennung Jarvis → Zoe: alte Bestandsdateien werden beim ersten Lesen einmal umbenannt.
+// Umbenennung Jarvis → ZOE: alte Bestandsdateien werden beim ersten Lesen einmal umbenannt.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -11,7 +11,7 @@ let db: typeof import('@/lib/store/local-db');
 beforeAll(async () => { db = await import('@/lib/store/local-db'); });
 afterAll(() => rmSync(ordner, { recursive: true, force: true }));
 
-describe('Zoe liest alte Jarvis-Dateien', () => {
+describe('ZOE liest alte Jarvis-Dateien', () => {
   it('zoe-verlauf findet jarvis-verlauf.json, benennt um und liest den Inhalt', async () => {
     writeFileSync(path.join(ordner, 'jarvis-verlauf.json'), JSON.stringify({ eintraege: [{ text: 'alt' }] }));
     const d = await db.loadJson<{ eintraege: { text: string }[] }>('zoe-verlauf');

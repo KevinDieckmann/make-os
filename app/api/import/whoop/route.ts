@@ -16,7 +16,7 @@ import { homedir } from 'os';
 import { join } from 'path';
 import { gunzipSync } from 'zlib';
 import { updateJson } from '@/lib/store/local-db';
-import { personAus, speicherFuer } from '@/lib/jarvis/raum';
+import { personAus, speicherFuer } from '@/lib/zoe/raum';
 import { zipEintrag, zyklenLesen, einmischen, istZyklenDatei, type WhoopLog } from '@/lib/whoop-export';
 import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 

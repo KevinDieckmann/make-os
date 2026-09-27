@@ -40,9 +40,9 @@ describe('Anfrage-Bündler', () => {
   });
   it('lässt Fremdes, Signale und Ausnahmen unverändert durch', async () => {
     const { f, aufrufe } = fakeFetch();
-    const b = buendelnderFetch(f, 'http://x', { ausnahmen: ['/api/jarvis/chat'] });
+    const b = buendelnderFetch(f, 'http://x', { ausnahmen: ['/api/zoe/chat'] });
     const ac = new AbortController();
-    await Promise.all([b('https://fremd.example/api/x'), b('https://fremd.example/api/x'), b('/api/jarvis/chat'), b('/api/jarvis/chat'), b('/api/state/tasks', { signal: ac.signal }), b('/api/state/tasks', { signal: ac.signal })]);
+    await Promise.all([b('https://fremd.example/api/x'), b('https://fremd.example/api/x'), b('/api/zoe/chat'), b('/api/zoe/chat'), b('/api/state/tasks', { signal: ac.signal }), b('/api/state/tasks', { signal: ac.signal })]);
     expect(aufrufe.length).toBe(6);
   });
   it('unterscheidet Anfragen mit verschiedenem If-None-Match', async () => {

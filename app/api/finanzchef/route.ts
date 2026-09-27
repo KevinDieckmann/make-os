@@ -99,7 +99,7 @@ export async function POST(req: Request) {
     const modus = (MODI as readonly string[]).includes(String(b.modus)) ? b.modus as Modus : 'wochenreview';
     const frage = modus === 'frage' ? String(b.frage ?? '').trim().slice(0, 800) : undefined;
     if (modus === 'frage' && !frage) return NextResponse.json({ ok: false, fehler: 'Frage fehlt.' }, { status: 400 });
-    const ausgeloest = dienst(req) && ['takt', 'jarvis'].includes(String(b.ausgeloest)) ? b.ausgeloest as 'takt' | 'jarvis' : 'person';
+    const ausgeloest = dienst(req) && ['takt', 'zoe'].includes(String(b.ausgeloest)) ? b.ausgeloest as 'takt' | 'zoe' : 'person';
     const monat = modus === 'monatsabschluss' ? (/^\d{4}-\d{2}$/.test(String(b.monat ?? '')) ? String(b.monat) : monatPlus(heuteBerlin().slice(0, 7), -1)) : undefined;
     const r = await chefLauf({ modus, haushalt: u.haushalt, person: u.person ?? undefined, frage, monat, ausgeloest });
     return NextResponse.json(r, { status: r.ok ? 200 : 502 });

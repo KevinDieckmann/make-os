@@ -3,11 +3,11 @@
 //   { aktion: 'anlegen', titel, text, prioritaet, giltFuer, status, quelle, scope }
 //   { aktion: 'aendern', id, felder }  ·  { aktion: 'archivieren', id }
 //   { aktion: 'konstitution', text }
-// Menschen schreiben hier — Jarvis nur über die Inbox (Vorschlag mit Freigabe).
+// Menschen schreiben hier — ZOE nur über die Inbox (Vorschlag mit Freigabe).
 
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { regelnLesen, konstitutionLesen, konstitutionSchreiben, regelAnlegen, regelAendern, regelArchivieren, KONSTITUTION_MAX_ZEILEN, type NeueRegel } from '@/lib/brain/regeln';
 
 export const runtime = 'nodejs';

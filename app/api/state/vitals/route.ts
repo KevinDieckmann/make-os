@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/jarvis/raum';
+import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
 import { resolveVitals, localDay, type VitalsLog, type DayVitals } from '@/lib/vitals';
 
 export const runtime = 'nodejs';

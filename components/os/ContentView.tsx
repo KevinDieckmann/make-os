@@ -10,7 +10,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Rich } from '@/components/os/Rich';
 import { Seite, Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT, Liste, Zeile } from './schlank';
 
-/** Entwürfe, die der Agent im Hintergrund (Jarvis, Takt) abgelegt hat — GET /api/content (27.09.). */
+/** Entwürfe, die der Agent im Hintergrund (ZOE, Takt) abgelegt hat — GET /api/content (27.09.). */
 interface Entwurf { id: string; zeit: string; format: string; thema: string; text: string }
 
 const FORMATS = [
@@ -95,8 +95,8 @@ export function ContentView() {
 
       {entwuerfe.length > 0 && (
         <Karte i={2}>
-          <Ueberschrift farbe={LEUCHT.agenten} rechts={`${entwuerfe.length}`}>Entwürfe von Jarvis</Ueberschrift>
-          <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 8 }}>Was der Agent im Hintergrund geschrieben hat (Auftrag an Jarvis oder Takt). Öffnen lädt den Text oben; Löschen räumt ab.</div>
+          <Ueberschrift farbe={LEUCHT.agenten} rechts={`${entwuerfe.length}`}>Entwürfe von ZOE</Ueberschrift>
+          <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 8 }}>Was der Agent im Hintergrund geschrieben hat (Auftrag an ZOE oder Takt). Öffnen lädt den Text oben; Löschen räumt ab.</div>
           <Liste>
             {entwuerfe.map(e => (
               <Zeile key={e.id} titel={e.thema} unter={`${e.format} · ${her(e.zeit)} · ${e.text.replace(/\s+/g, ' ').slice(0, 90)}…`}

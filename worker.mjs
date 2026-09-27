@@ -7,7 +7,7 @@
 // Maschine trägt. Kevins Bedingung: „so viele wie der Mac verträgt."
 //
 // Er kennt bewusst KEINE Fachlogik. Für jeden Auftrag ruft er die App auf und
-// die führt ihn durch dieselbe eine Stelle aus wie Jarvis selbst — mit
+// die führt ihn durch dieselbe eine Stelle aus wie ZOE selbst — mit
 // Risiko-Stufe, Trockenlauf und Protokoll. Ein Werkzeug, das eine Freigabe
 // braucht, landet auch nachts im Stapel und nicht im Bestand.
 //
@@ -81,7 +81,7 @@ async function takt() {
   if (Date.now() - letzterTakt < 60_000) return;
   letzterTakt = Date.now();
   try {
-    const r = await fetch(`${ORT}/api/jarvis/takt`, { method: 'POST', headers: kopf, signal: AbortSignal.timeout(20_000) });
+    const r = await fetch(`${ORT}/api/zoe/takt`, { method: 'POST', headers: kopf, signal: AbortSignal.timeout(20_000) });
     const d = await r.json();
     if (d.eingereiht) console.log(`[${zeit()}] Takt: ${d.eingereiht} eingereiht — ${(d.was ?? []).join(', ')}`);
   } catch { /* nächste Minute wieder */ }
@@ -93,7 +93,7 @@ async function fuehreAus(auftrag) {
   laufend++;
   const start = Date.now();
   try {
-    const r = await fetch(`${ORT}/api/jarvis/auftraege/lauf`, {
+    const r = await fetch(`${ORT}/api/zoe/auftraege/lauf`, {
       method: 'POST', headers: kopf, body: JSON.stringify({ id: auftrag.id }),
       signal: AbortSignal.timeout(280_000),
     });
@@ -114,7 +114,7 @@ async function runde() {
   await takt();
   const frei = plaetze(laufend);
   if (frei <= 0) return false;
-  const r = await fetch(`${ORT}/api/jarvis/auftraege/nimm`, {
+  const r = await fetch(`${ORT}/api/zoe/auftraege/nimm`, {
     method: 'POST', headers: kopf, body: JSON.stringify({ anzahl: frei, pacht: 300 }),
     signal: AbortSignal.timeout(20_000),
   });

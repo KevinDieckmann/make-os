@@ -8,7 +8,7 @@
 // jede Minute denselben Auftrag einreihen, solange niemand gekoppelt ist.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { speicherFuer, nameVon, type Person } from '@/lib/jarvis/raum';
+import { speicherFuer, nameVon, type Person } from '@/lib/zoe/raum';
 import { alleSpeicher, namenVon } from '@/lib/zugang/konten';
 import { resolveVitals } from '@/lib/vitals';
 import { localDay } from '@/lib/zeit';
@@ -52,7 +52,7 @@ async function haushaltZeilen(person: Person): Promise<string> {
     const z = await haushaltFuer(person);
     if (!z) return '';
     const { ladeHaushalt } = await import('@/lib/finanzen/haushalt/speicher');
-    const { faelligeZeilen } = await import('@/lib/finanzen/haushalt/jarvis');
+    const { faelligeZeilen } = await import('@/lib/finanzen/haushalt/zoe');
     const zeilen = faelligeZeilen(await ladeHaushalt(z.haushalt)).slice(0, 4);
     return zeilen.length ? `\n\n💶 Finanzen\n${zeilen.map(t => `• ${t}`).join('\n')}` : '';
   } catch { return ''; }

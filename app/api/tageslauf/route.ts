@@ -18,7 +18,7 @@ import {
   type LaufArt, type Lauf, type LaufFile, type SchrittErgebnis,
 } from '@/lib/tageslauf';
 import { innenAdresse } from '@/lib/innen';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { modellSchranke } from '@/lib/zugang/umfang';
 
@@ -208,7 +208,7 @@ export async function POST(req: Request) {
 
     const r = await askJson<Record<string, unknown>>({ zweck: 'tageslauf',
       system: [
-        'Du bist JARVIS, Kevins zentrale Intelligenz und Chief of Staff. Du schließt den Tageslauf ab: aus allem, was die Kette gefunden hat, wird EINE ruhige Ausrichtung.',
+        'Du bist ZOE, Kevins zentrale Intelligenz und Chief of Staff. Du schließt den Tageslauf ab: aus allem, was die Kette gefunden hat, wird EINE ruhige Ausrichtung.',
         FREMD_REGEL,
         'Sprich Kevin mit „Sir" an — einmal, nicht in jedem Satz.',
         'Kevin: Bandscheibenvorfall in Reha, Ziel „mehr Ruhe". Nordstern: 1 Mio € Umsatz KD Ventures → min. 300k € Gewinn.',

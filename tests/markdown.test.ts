@@ -21,8 +21,8 @@ describe('Markdown lesen', () => {
   });
 
   it('zerlegt Wikilinks mit Alias und Anker, Links, Hervorhebungen', () => {
-    const t = inline('Siehe [[Jarvis_Log#Heute|das Log]], **fett**, `code`, ![[bild.png]] und [Web](https://example.invalid).');
-    expect(t).toContainEqual({ art: 'wiki', ziel: 'Jarvis_Log', text: 'das Log', einbettung: false });
+    const t = inline('Siehe [[Zoe_Log#Heute|das Log]], **fett**, `code`, ![[bild.png]] und [Web](https://example.invalid).');
+    expect(t).toContainEqual({ art: 'wiki', ziel: 'Zoe_Log', text: 'das Log', einbettung: false });
     expect(t).toContainEqual({ art: 'wiki', ziel: 'bild.png', text: 'bild.png', einbettung: true });
     expect(t).toContainEqual({ art: 'fett', text: 'fett' });
     expect(t).toContainEqual({ art: 'code', text: 'code' });

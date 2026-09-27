@@ -6,7 +6,7 @@
 // Sehen: die eigenen immer, fremde nur, wenn die Person teilt (Konto → teilt.gesundheit).
 
 import { NextResponse } from 'next/server';
-import { ansichtPerson, personAus, darfGesundheitSehen } from '@/lib/jarvis/raum';
+import { ansichtPerson, personAus, darfGesundheitSehen } from '@/lib/zoe/raum';
 import { gesundheitStand, speichereGesundheitSchwelle } from '@/lib/gesundheit/speicher';
 
 export const runtime = 'nodejs';

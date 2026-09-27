@@ -1,7 +1,7 @@
 'use client';
 
 // ─── MAKE OS — Aufträge & Freigaben (der Stapel) ────────────────────────────
-// Was Jarvis vorbereitet hat und auf dein Ja wartet. Seit 24.09. im
+// Was ZOE vorbereitet hat und auf dein Ja wartet. Seit 24.09. im
 // lebendigen Muster: offene Vorschläge je Gruppe mit Freigeben/Ablehnen,
 // zuletzt Entschiedenes, der Arbeiter mit seinen Aufträgen, Gedächtnis und
 // Verbrauch. Protokoll, Rückgängig und Felder-Ändern: /os/stapel/voll.
@@ -53,12 +53,12 @@ export function StapelView() {
 
   const laden = useCallback(async () => {
     try {
-      const [s, a, g] = await Promise.all([fetch('/api/jarvis/stapel?alle=1').then(r => r.json()), fetch('/api/jarvis/auftraege').then(r => r.json()), fetch('/api/jarvis/gedaechtnis').then(r => r.json())]);
+      const [s, a, g] = await Promise.all([fetch('/api/zoe/stapel?alle=1').then(r => r.json()), fetch('/api/zoe/auftraege').then(r => r.json()), fetch('/api/zoe/gedaechtnis').then(r => r.json())]);
       setVorschlaege(Array.isArray(s.vorschlaege) ? s.vorschlaege : []); setAuftraege(Array.isArray(a.auftraege) ? a.auftraege : []); setFakten(Array.isArray(g.fakten) ? g.fakten : []);
     } catch { /* offline — der alte Stand bleibt */ }
     setLaedt(false);
   }, []);
-  useEffect(() => { void laden(); fetch('/api/jarvis/verbrauch').then(r => r.json()).then(d => { if (d.ok) setKosten(d); }).catch(() => {}); }, [laden]);
+  useEffect(() => { void laden(); fetch('/api/zoe/verbrauch').then(r => r.json()).then(d => { if (d.ok) setKosten(d); }).catch(() => {}); }, [laden]);
   // Die Heads führen ihre Freigaben selbst — hier die Summe, damit EINE Seite zeigt, was überall wartet.
   useEffect(() => {
     let aktiv = true;
@@ -77,16 +77,16 @@ export function StapelView() {
 
   async function entscheide(v: Vorschlag, entscheidung: 'freigeben' | 'ablehnen') {
     setBusy(v.id);
-    const d = await fetch('/api/jarvis/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: v.id, entscheidung, ...(grund[v.id] ? { grund: grund[v.id] } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
+    const d = await fetch('/api/zoe/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: v.id, entscheidung, ...(grund[v.id] ? { grund: grund[v.id] } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
     setMeldung(d.ergebnis ?? (entscheidung === 'ablehnen' ? `Abgelehnt: ${v.titel}` : d.error ?? '')); setBusy(null); setOffenId(null); void laden();
   }
   async function alleFreigeben(gruppe?: string) {
     setBusy(gruppe ?? 'alle');
-    const d = await fetch('/api/jarvis/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alle: true, ...(gruppe ? { gruppe } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
+    const d = await fetch('/api/zoe/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alle: true, ...(gruppe ? { gruppe } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
     setMeldung(d.error ?? `${d.erledigt ?? 0} freigegeben und ausgeführt.`); setBusy(null); void laden();
   }
   async function vergiss(id: string) {
-    setBusy(id); await fetch(`/api/jarvis/gedaechtnis?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {}); setBusy(null); void laden();
+    setBusy(id); await fetch(`/api/zoe/gedaechtnis?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {}); setBusy(null); void laden();
   }
 
   const offen = vorschlaege.filter(v => v.status === 'offen');
@@ -95,14 +95,14 @@ export function StapelView() {
   const g = (id: string) => GRUPPE[id] ?? { label: id, href: '/os', farbe: C.inkLeise };
 
   return (
-    <Seite titel="Aufträge & Freigaben" unter="Was Jarvis vorbereitet hat und auf dein Ja wartet. Ohne dich passiert nichts." rechts={<Link href="/os/stapel/voll" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Protokoll & Rückgängig ›</Link>}>
+    <Seite titel="Aufträge & Freigaben" unter="Was ZOE vorbereitet hat und auf dein Ja wartet. Ohne dich passiert nichts." rechts={<Link href="/os/stapel/voll" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Protokoll & Rückgängig ›</Link>}>
       {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{meldung}</div>}
 
       <Spalten verhaeltnis="2:1">
         <Spalte>
       <Karte i={0} akzent={offen.length ? LEUCHT.achtung : undefined}>
         <Ueberschrift farbe={offen.length ? LEUCHT.achtung : C.inkLeise} rechts={offen.length > 1 ? <Knopf onClick={() => alleFreigeben()} aus={busy === 'alle'}>Alle {offen.length} freigeben</Knopf> : `${offen.length} offen`}>Wartet auf dich</Ueberschrift>
-        {!laedt && offen.length === 0 && <Leer>Nichts offen. Jarvis legt hier ab, was er vorbereitet hat — du entscheidest.</Leer>}
+        {!laedt && offen.length === 0 && <Leer>Nichts offen. ZOE legt hier ab, was er vorbereitet hat — du entscheidest.</Leer>}
         {gruppen.map(gr => (
           <div key={gr} style={{ marginTop: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '6px 0 2px' }}>
@@ -123,7 +123,7 @@ export function StapelView() {
                         <span style={{ color: C.inkLeise }}>Werkzeug</span><span style={{ fontFamily: SCHRIFT.mono, fontSize: 12 }}>{v.werkzeug}</span>
                         <span style={{ color: C.inkLeise }}>seit</span><span>{her(v.zeit)}</span>
                       </div>
-                      <input value={grund[v.id] ?? ''} onChange={e => setGrund(x => ({ ...x, [v.id]: e.target.value }))} placeholder="Grund fürs Ablehnen (optional) — Jarvis lernt daraus" style={{ ...feld, marginTop: 12 }} />
+                      <input value={grund[v.id] ?? ''} onChange={e => setGrund(x => ({ ...x, [v.id]: e.target.value }))} placeholder="Grund fürs Ablehnen (optional) — ZOE lernt daraus" style={{ ...feld, marginTop: 12 }} />
                     </div>
                   )}
                 </div>
@@ -164,7 +164,7 @@ export function StapelView() {
         <Karte i={4}>
           <Ueberschrift farbe={LEUCHT.agenten} rechts={`${fakten.length}`}>Gedächtnis</Ueberschrift>
           <Liste>
-            {fakten.length === 0 && <Leer>Jarvis hat sich noch nichts gemerkt. Sag ihm „merk dir …“.</Leer>}
+            {fakten.length === 0 && <Leer>ZOE hat sich noch nichts gemerkt. Sag ihm „merk dir …“.</Leer>}
             {fakten.slice(0, 10).map(f => <Zeile key={f.id} titel={f.satz} unter={`${f.thema} · ${f.tag}`} rechts={<button onClick={() => vergiss(f.id)} disabled={busy === f.id} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>vergessen</button>} />)}
           </Liste>
         </Karte>

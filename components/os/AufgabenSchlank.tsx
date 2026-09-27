@@ -127,7 +127,7 @@ export function AufgabenSchlank() {
       <Karte i={0} akzent={LEUCHT.achtung}>
         <input value={neu} onChange={e => setNeu(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') anlegen(); }}
           placeholder="Neue Aufgabe … (!! kritisch · heute / mo–so / 24.09. · #projekt · @malin)" style={{ ...feld, fontSize: TYP.body }} />
-        {offen.length === 0 && <Leer>Keine offenen Aufgaben. Eine Zeile oben, Enter — oder Jarvis sagen.</Leer>}
+        {offen.length === 0 && <Leer>Keine offenen Aufgaben. Eine Zeile oben, Enter — oder ZOE sagen.</Leer>}
       </Karte>
       <Spalten verhaeltnis="1:1">
         <Spalte>

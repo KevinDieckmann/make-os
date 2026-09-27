@@ -19,7 +19,7 @@ const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 import { localDay as localKey } from '@/lib/zeit';
 import { innenAdresse } from '@/lib/innen';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { modellSchranke } from '@/lib/zugang/umfang';
 
 // Overlap-Erkennung: echte Zeit-Kollisionen (keine Ganztags-Events).

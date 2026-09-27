@@ -130,17 +130,17 @@ nav a:hover { transform: translateX(2px); }
 @keyframes checkPop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }
 .check-pop { display: inline-block; animation: checkPop .28s var(--ease-feder); }
 
-/* Jarvis: federnder Auftritt aus der Ecke, Icon reagiert auf die Hand */
-@keyframes jarvisAuf { from { transform: translateY(14px) scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
-.jarvis-fenster { transform-origin: 100% 100%; animation: jarvisAuf .28s var(--ease-feder); }
-.jarvis-fab { transition: transform 180ms var(--ease-feder), box-shadow 220ms var(--ease-glatt); }
-.jarvis-fab:hover { transform: scale(1.08); box-shadow: 0 10px 36px rgba(33, 181, 170, .35) !important; }
+/* ZOE: federnder Auftritt aus der Ecke, Icon reagiert auf die Hand */
+@keyframes zoeAuf { from { transform: translateY(14px) scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+.zoe-fenster { transform-origin: 100% 100%; animation: zoeAuf .28s var(--ease-feder); }
+.zoe-fab { transition: transform 180ms var(--ease-feder), box-shadow 220ms var(--ease-glatt); }
+.zoe-fab:hover { transform: scale(1.08); box-shadow: 0 10px 36px rgba(33, 181, 170, .35) !important; }
 
-/* ─── Jarvis-Icon: ruhiger Puls — die Intelligenz geht überall mit ──────────── */
-@keyframes jarvisRing { 0% { transform: scale(.85); opacity: .7; } 70%, 100% { transform: scale(1.45); opacity: 0; } }
-@keyframes jarvisKern { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
-.jarvis-orb-ring { animation: jarvisRing 2.8s ease-out infinite; }
-.jarvis-orb-kern { animation: jarvisKern 2.8s ease-in-out infinite; }
+/* ─── ZOE-Icon: ruhiger Puls — die Intelligenz geht überall mit ──────────── */
+@keyframes zoeRing { 0% { transform: scale(.85); opacity: .7; } 70%, 100% { transform: scale(1.45); opacity: 0; } }
+@keyframes zoeKern { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+.zoe-orb-ring { animation: zoeRing 2.8s ease-out infinite; }
+.zoe-orb-kern { animation: zoeKern 2.8s ease-in-out infinite; }
 
 /* ─── Gesundheits-Kachel: ruhiger Herzschlag (Dashboard) ────────────────────── */
 @keyframes gesundRing { 0% { transform: scale(.7); opacity: .8; } 70%, 100% { transform: scale(1.35); opacity: 0; } }
@@ -164,7 +164,7 @@ nav a:hover { transform: translateX(2px); }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
-/* ─── Das Hirn: Jarvis' Startbild ───────────────────────────────────────────
+/* ─── Das Hirn: ZOE' Startbild ───────────────────────────────────────────
    Nach Kevins Vorlage vom 07.09. Der Puls hängt an der Warteschlange: im
    Leerlauf atmet es ruhig, unter Last schneller und heller. Die Dauern kommen
    als Inline-Stil aus der Komponente, hier steht nur die Bewegung. */
@@ -370,9 +370,9 @@ nav a:hover { transform: translateX(2px); }
   .leiste-mobil { display: flex; }
   .os-shell main { padding-bottom: 72px; }
 }
-/* Auf dem Handy sitzt der Jarvis-Knopf über der Leiste, nicht darauf. */
+/* Auf dem Handy sitzt der ZOE-Knopf über der Leiste, nicht darauf. */
 @media (max-width: 720px) {
-  .jarvis-fab { bottom: 86px !important; }
+  .zoe-fab { bottom: 86px !important; }
 }
 
 /* Heute auf dem Handy (23.09.): Ring oben, die fünf Säulen als Reihe darunter */

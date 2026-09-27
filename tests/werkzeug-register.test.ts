@@ -8,8 +8,8 @@
 // fail-closed (freigabe), aber unbemerkt bleiben soll es trotzdem nicht.
 
 import { describe, it, expect } from 'vitest';
-import { WERKZEUGE } from '../lib/jarvis/werkzeuge';
-import { REGISTER, risikoVon, fehlendeStufen } from '../lib/jarvis/register';
+import { WERKZEUGE } from '../lib/zoe/werkzeuge';
+import { REGISTER, risikoVon, fehlendeStufen } from '../lib/zoe/register';
 
 describe('Werkzeug-Register', () => {
   it('kennt jedes Werkzeug, das es gibt', () => {

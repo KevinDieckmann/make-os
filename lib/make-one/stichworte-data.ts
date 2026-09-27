@@ -106,7 +106,7 @@ export const STICHWORTE: Stichwort[] = [
 
   // ── PRODUKT & SYSTEM ──────────────────────────────────────────────────────
   { id: 'makeos', label: 'MAKE OS', thema: 'produkt', muster: /make ?os|make\.one|unser system|eigene software/i },
-  { id: 'jarvis', label: 'Jarvis', thema: 'produkt', muster: /jarvis|zentrale intelligenz|assistent/i },
+  { id: 'zoe', label: 'ZOE', thema: 'produkt', muster: /zoe|zentrale intelligenz|assistent/i },
   { id: 'kemaris', label: 'KEMARIS', thema: 'produkt', muster: /kemaris|innovation group|\bkig\b/i },
   { id: 'capos', label: 'CapOS', thema: 'produkt', muster: /capos|cap.?os\b|capital operations|capital readiness/i },
   { id: 'connect', label: 'KEMARIS Connect', thema: 'produkt', muster: /\bconnect\b|inner circle|community/i },

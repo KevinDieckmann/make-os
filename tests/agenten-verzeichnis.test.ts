@@ -1,15 +1,15 @@
 // ─── Das Agentenverzeichnis muss die Wahrheit sagen ─────────────────────────
 // Am 07.09. beim Nachsehen gefunden: „wissen" stand auf geplant, obwohl die
 // Vault-Suche an dem Tag gebaut wurde. „brain" stand auf teil, obwohl das
-// Gedächtnis lief. Und „outreach" war live, aber Jarvis kam nicht dran.
+// Gedächtnis lief. Und „outreach" war live, aber ZOE kam nicht dran.
 //
 // Ein Verzeichnis, das mehr verspricht als da ist, ist schlimmer als keins:
-// Kevin plant damit, und Jarvis liest es in jeden Prompt. Diese Tests halten
+// Kevin plant damit, und ZOE liest es in jeden Prompt. Diese Tests halten
 // es an der Wirklichkeit fest.
 
 import { describe, it, expect } from 'vitest';
 import { DEPARTMENTS } from '../lib/make-one/agents-data';
-import { AUSFUEHRBAR, AGENT_ZWECK, SYSTEM_LAEUFE } from '../lib/jarvis/agenten';
+import { AUSFUEHRBAR, AGENT_ZWECK, SYSTEM_LAEUFE } from '../lib/zoe/agenten';
 
 const alle = DEPARTMENTS.flatMap(d => d.agents);
 // Die Systemläufe kommen aus derselben Quelle wie im Code — eine Kopie hier
@@ -23,18 +23,18 @@ describe('Agentenverzeichnis', () => {
     expect(new Set(ids).size, `doppelte id: ${ids.filter((x, i) => ids.indexOf(x) !== i)}`).toBe(ids.length);
   });
 
-  it('gibt jedem als live geführten Agenten auch einen Weg — Jarvis oder Oberfläche', () => {
+  it('gibt jedem als live geführten Agenten auch einen Weg — ZOE oder Oberfläche', () => {
     const ohneWeg = alle
       .filter(a => a.status === 'live')
       .filter(a => !(AUSFUEHRBAR as readonly string[]).includes(a.id) && !a.href);
-    expect(ohneWeg.map(a => a.id), 'live, aber weder für Jarvis erreichbar noch mit eigener Seite').toEqual([]);
+    expect(ohneWeg.map(a => a.id), 'live, aber weder für ZOE erreichbar noch mit eigener Seite').toEqual([]);
   });
 
-  it('führt jeden Agenten, den Jarvis starten kann, auch im Verzeichnis', () => {
+  it('führt jeden Agenten, den ZOE starten kann, auch im Verzeichnis', () => {
     const unbekannt = (AUSFUEHRBAR as readonly string[])
       .filter(id => !SYSTEM.includes(id))
       .filter(id => !alle.some(a => a.id === id));
-    expect(unbekannt, 'Jarvis kann sie starten, im Verzeichnis stehen sie nicht').toEqual([]);
+    expect(unbekannt, 'ZOE kann sie starten, im Verzeichnis stehen sie nicht').toEqual([]);
   });
 
   it('erklärt jedem ausführbaren Lauf seinen Zweck — das geht in jeden Prompt', () => {

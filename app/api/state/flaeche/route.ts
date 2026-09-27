@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { personAus, speicherFuer } from '@/lib/jarvis/raum';
+import { personAus, speicherFuer } from '@/lib/zoe/raum';
 import { sauberDatei, sauberLayout, seiteOk, type FlaecheDatei } from '@/lib/flaeche/modell';
 
 export const runtime = 'nodejs';

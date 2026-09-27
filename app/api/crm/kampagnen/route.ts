@@ -16,7 +16,7 @@ import { NextResponse } from 'next/server';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { leereKriterien } from '@/lib/crm/leads';
 import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { anzeigename, wendeAktivitaetAn, type Kontakt, type AktivitaetArt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';

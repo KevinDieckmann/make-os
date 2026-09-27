@@ -105,7 +105,7 @@ export async function listePatchen<E extends { id: string }, T extends Record<st
     const nachId = new Map(liste.map(x => [x.id, x]));
     const abdruck = (e: E) => fingerabdruck(e as unknown as Record<string, unknown>);
     const passt = (o: ListenOp<E>, alt: E | undefined, id: string): boolean => {
-      if (o.stand === undefined) return true; // ohne Stand: wie bisher (Jarvis, Importe, alte Fenster)
+      if (o.stand === undefined) return true; // ohne Stand: wie bisher (ZOE, Importe, alte Fenster)
       if (!alt) { konflikte.push({ id, grund: 'inzwischen gelöscht' }); return false; }
       if (abdruck(alt) !== o.stand) { konflikte.push({ id, grund: 'inzwischen geändert', aktuell: alt }); return false; }
       return true;

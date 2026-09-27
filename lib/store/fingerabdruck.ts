@@ -3,7 +3,7 @@
 // konnten am selben Kontakt gegenseitig Felder überschreiben. Statt einer
 // Versionsnummer, die JEDER der 18 Schreiber pflegen müsste, ist der Stand hier
 // der Fingerabdruck des gespeicherten Datensatzes: ändert irgendwer irgendetwas,
-// ändert er sich — ganz gleich, ob der Browser, Jarvis oder ein Signal schrieb.
+// ändert er sich — ganz gleich, ob der Browser, ZOE oder ein Signal schrieb.
 // Der Browser schickt den Stand zurück, den er bekam; passt er nicht mehr, gibt
 // es 409 mit dem aktuellen Datensatz statt eines stillen Überschreibens.
 // Nur Server (node:crypto) — der Client bekommt den Wert als Feld `stand`.

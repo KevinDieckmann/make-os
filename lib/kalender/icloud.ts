@@ -7,7 +7,7 @@
 //   Lesen     Kalenderliste mit ctag (eine Anfrage); nur geänderte Kalender
 //             werden neu geholt (-90 … +400 Tage). Roh-Objekte liegen in
 //             „kalender-icloud“, aufgefaltet für alle bisherigen Leser in
-//             „calendar-cache“ (Heute, Planer, Jarvis, Morgenlauf …).
+//             „calendar-cache“ (Heute, Planer, ZOE, Morgenlauf …).
 //   Schreiben Anlegen, verschieben, umbenennen, löschen — immer mit ETag
 //             (If-Match / If-None-Match): Wer gleichzeitig am iPhone ändert,
 //             wird nicht überschrieben (409 statt still weg).

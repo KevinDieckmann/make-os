@@ -10,7 +10,7 @@ import { lesen, kennzahlen as finanzKennzahlen, type MalinExport } from '@/lib/m
 import { LIVE_AGENTS } from '@/lib/make-one/agents-data';
 import { fortschritt } from '@/lib/onboarding-status';
 import { computeIndex, indexLabel } from '@/lib/performance';
-import { personAus, darfGesundheitSehen } from '@/lib/jarvis/raum';
+import { personAus, darfGesundheitSehen } from '@/lib/zoe/raum';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

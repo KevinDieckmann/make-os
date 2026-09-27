@@ -1,7 +1,7 @@
 # MAKE OS — Onboarding für Malin
 
 Willkommen im Maschinenraum. MAKE OS ist unser Life & Business OS — Dashboard,
-Tag, Inbox, Gesundheit, Finanzen, Planung mit Zeitstrahl, Jarvis. Du hast
+Tag, Inbox, Gesundheit, Finanzen, Planung mit Zeitstrahl, ZOE. Du hast
 vollen Zugriff: mitbenutzen und mitbauen.
 
 ## 1 · Mitbenutzen (ohne Code)

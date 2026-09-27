@@ -8,7 +8,7 @@
 // fehlen höchstens zwei Minuten — für eine Zeitstatistik verschmerzbar.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { speicherFuer, type Person } from '@/lib/jarvis/raum';
+import { speicherFuer, type Person } from '@/lib/zoe/raum';
 import { localDay } from '@/lib/zeit';
 import { LEER_ZEIT, verbuchen, fokusVerbuchen, aufraeumen, bild, type ZeitDatei, type ZeitBild } from './modell';
 

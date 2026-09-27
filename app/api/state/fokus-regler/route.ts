@@ -1,7 +1,7 @@
 // ─── MAKE OS — Fokus-Regler (lokal) ─────────────────────────────────────────
 // Der MENSCH entscheidet, wohin die Energie fließt — je Säule ein Regler 0–100.
 // Der Score LIEFERT die Datenlage, die Regler sind Kevins Antwort darauf.
-// Wirkung: Aufgaben-Vorsortierung (Wochenplaner-Leiste) und Jarvis' Wochen-
+// Wirkung: Aufgaben-Vorsortierung (Wochenplaner-Leiste) und ZOE' Wochen-
 // vorschlag gewichten danach.
 
 import { NextResponse } from 'next/server';

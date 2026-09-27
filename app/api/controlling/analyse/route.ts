@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let payload: { state?: FinanceState };
   try { payload = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  // Ohne Body: Server liest selbst — damit Jarvis den Agenten direkt ausführen kann.
+  // Ohne Body: Server liest selbst — damit ZOE den Agenten direkt ausführen kann.
   const roh = payload.state ?? (await loadJson<FinanceState>('finance'));
   if (!roh || !Array.isArray(roh.months)) return NextResponse.json({ error: 'Kein Finanzstand hinterlegt — Zahlen unter /os/controlling pflegen.' }, { status: 200 });
 

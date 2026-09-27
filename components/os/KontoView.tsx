@@ -160,9 +160,9 @@ export function KontoView() {
       <Liste>
         {!tg ? <Leer>lade …</Leer>
           : !tg.konfiguriert ? <Leer>Noch kein Bot. In Telegram @BotFather anschreiben, /newbot, den Token als <code style={{ fontFamily: SCHRIFT.mono, fontSize: 12 }}>TELEGRAM_BOT_TOKEN</code> in <code style={{ fontFamily: SCHRIFT.mono, fontSize: 12 }}>.env.local</code>, neu starten.</Leer>
-          : tg.chats > 0 ? <Zeile titel="Gekoppelt" unter="Jarvis schreibt dir morgens, mittags und abends; du antwortest mit einem Satz." rechts={<Knopf leise onClick={tgWeg}>Entkoppeln</Knopf>} />
+          : tg.chats > 0 ? <Zeile titel="Gekoppelt" unter="ZOE schreibt dir morgens, mittags und abends; du antwortest mit einem Satz." rechts={<Knopf leise onClick={tgWeg}>Entkoppeln</Knopf>} />
           : tg.code ? <Zeile titel={<>Dem Bot {tg.bot ? <b>@{tg.bot}</b> : ''} senden: <span style={{ ...mono, fontSize: 17 }}>/start {tg.code}</span></>} unter={`${tg.minuten} Minuten gültig`} />
-          : <Zeile titel="Noch nicht gekoppelt" unter="Jarvis schreibt dir morgens, mittags und abends aufs Handy." rechts={<Knopf onClick={tgCode}>Code holen</Knopf>} />}
+          : <Zeile titel="Noch nicht gekoppelt" unter="ZOE schreibt dir morgens, mittags und abends aufs Handy." rechts={<Knopf onClick={tgCode}>Code holen</Knopf>} />}
         {tg?.fehler && <Leer><span style={{ color: LEUCHT.kritisch }}>{tg.fehler}</span></Leer>}
       </Liste>
       </Karte>

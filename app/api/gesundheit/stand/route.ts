@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
-import { ansichtPerson, personAus, darfGesundheitSehen, speicherFuer } from '@/lib/jarvis/raum';
+import { ansichtPerson, personAus, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
 import { resolveVitals } from '@/lib/vitals';
 import { localDay } from '@/lib/zeit';
 import { hautTrend, streakStand, routineQuote, tageZurueck, type HautLog, type StreakLog, type RoutinenLog } from '@/lib/gesundheit/eintraege';

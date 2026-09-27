@@ -5,7 +5,7 @@
 // und nicht von der Zeit.
 
 import { describe, it, expect } from 'vitest';
-import { schluesselFuer } from '../lib/jarvis/auftraege';
+import { schluesselFuer } from '../lib/zoe/auftraege';
 
 describe('Auftrags-Schlüssel', () => {
   it('ist gleich, egal in welcher Reihenfolge die Felder kommen', () => {

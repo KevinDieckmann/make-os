@@ -2,11 +2,11 @@
 // 453 Personen, zwei echte Aktivitäten: Gespräche finden statt, landen aber
 // nicht in MAKE OS. Geprüft wird die reine Logik dahinter — Anrufen per Tipp
 // nur, wo die Ampel es erlaubt, „Wie lief's?“ nach Terminen, das Ja im
-// Gespräch als Einwilligung mit Wortlaut und die Jarvis-Schnellnotiz.
+// Gespräch als Einwilligung mit Wortlaut und die ZOE-Schnellnotiz.
 
 import { describe, it, expect } from 'vitest';
 import type { Kontakt, Aktivitaet } from '../lib/make-one/crm';
-import { telLink, mailLink, linkedinLink, kanalLink, nachbereitung, einwilligungUebernehmen, einwilligungVorlage, jarvisNotiz, erfassungAnwenden } from '../lib/crm/erfassen';
+import { telLink, mailLink, linkedinLink, kanalLink, nachbereitung, einwilligungUebernehmen, einwilligungVorlage, zoeNotiz, erfassungAnwenden } from '../lib/crm/erfassen';
 import { bezugTermin } from '../lib/crm/signale';
 import { kanalStatus } from '../lib/crm/recht';
 import { fuerDich } from '../lib/crm/team';
@@ -83,7 +83,7 @@ describe('„Wie lief\'s?“ — Termine nachbereiten', () => {
     const t = termin('2026-09-24T10:00:00');
     const mit = (a: Aktivitaet) => nachbereitung([k('a', { aktivitaeten: [t, a] })], HEUTE);
     expect(mit({ am: '2026-09-24T15:00:00.000Z', art: 'gespraech', von: 'kevin' })).toHaveLength(0);
-    expect(mit({ am: '2026-09-25T08:00:00.000Z', art: 'notiz', von: 'jarvis', text: 'Termin fand nicht statt' })).toHaveLength(0);
+    expect(mit({ am: '2026-09-25T08:00:00.000Z', art: 'notiz', von: 'zoe', text: 'Termin fand nicht statt' })).toHaveLength(0);
     expect(mit({ am: '2026-09-24T15:00:00.000Z', art: 'antwort', von: 'system', bezug: 'mail-x' })).toHaveLength(1);
     expect(mit({ am: '2026-09-24T15:00:00.000Z', art: 'uebergabe', von: 'kevin', text: 'an Malin' })).toHaveLength(1);
     expect(mit({ am: '2026-09-20T15:00:00.000Z', art: 'anruf', von: 'kevin', ergebnis: 'termin' })).toHaveLength(1);
@@ -145,16 +145,16 @@ describe('Einwilligung im Gespräch — nur ein ausdrückliches Ja mit Wortlaut'
   });
 });
 
-describe('Jarvis-Schnellnotiz — Verlauf, Notiz und nächster Schritt in einem Aufruf', () => {
+describe('ZOE-Schnellnotiz — Verlauf, Notiz und nächster Schritt in einem Aufruf', () => {
   it('„Hab mit Marc telefoniert, will Angebot bis Freitag“', () => {
-    const e = jarvisNotiz({ kontakt: 'Marc', art: 'anruf', ergebnis: 'gespraech', bedarf: 'Angebot für den Retainer', naechster_schritt: 'Angebot schicken', faellig: '2026-09-26' }, HEUTE);
+    const e = zoeNotiz({ kontakt: 'Marc', art: 'anruf', ergebnis: 'gespraech', bedarf: 'Angebot für den Retainer', naechster_schritt: 'Angebot schicken', faellig: '2026-09-26' }, HEUTE);
     expect(e).toEqual({ art: 'anruf', ergebnis: 'gespraech', notiz: { bedarf: 'Angebot für den Retainer' }, naechster: { text: 'Angebot schicken', datum: '2026-09-26' }, datumAngenommen: false });
   });
   it('ohne Datum in fünf Tagen (und gesagt); unbekannte Art ist ein Fehler, unbekanntes Ergebnis fällt weg', () => {
-    const e = jarvisNotiz({ art: 'gespraech', naechster_schritt: 'Nachfassen', ergebnis: 'super' }, HEUTE);
+    const e = zoeNotiz({ art: 'gespraech', naechster_schritt: 'Nachfassen', ergebnis: 'super' }, HEUTE);
     expect(e).toMatchObject({ art: 'gespraech', naechster: { text: 'Nachfassen', datum: '2026-09-30' }, datumAngenommen: true });
     expect((e as { ergebnis?: string }).ergebnis).toBeUndefined();
-    expect(jarvisNotiz({ art: 'fax' }, HEUTE)).toMatch(/^Fehlgeschlagen/);
+    expect(zoeNotiz({ art: 'fax' }, HEUTE)).toMatch(/^Fehlgeschlagen/);
   });
   it('wendet es an wie die Power Hour: Verlauf mit Notiz, nächster Schritt, Stufe vorwärts, Wiedervorlage = Schritt', () => {
     const alt = k('marc', { stufe: 'angesprochen' });

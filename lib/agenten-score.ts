@@ -1,7 +1,7 @@
 // ─── MAKE OS — Der Agenten-Score ────────────────────────────────────────────
 // Kevin, 24.09.: „Ich möchte oben bei den Scores auch noch einen Agenten-Score
 // mit reinnehmen." — Die sechste Säule des Wachstums-Scores: Wie viel nehmen
-// Jarvis und die Agenten wirklich ab? Fünf Faktoren, alle aus vorhandenen
+// ZOE und die Agenten wirklich ab? Fünf Faktoren, alle aus vorhandenen
 // Daten, nichts erfunden:
 //   Agenten live        · wie viele der gebauten Agenten laufen
 //   Läufe diese Woche   · Einträge im Agenten-Log der letzten 7 Tage

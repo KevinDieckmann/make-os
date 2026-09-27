@@ -1,12 +1,12 @@
 // MAKE OS — Software-Rahmen. Seit 23.09. verschlankt: die Leiste (eine Ebene),
-// der Inhalt, das Jarvis-Panel, der Taktgeber, der Fehlermelder. Weg sind
+// der Inhalt, das ZOE-Panel, der Taktgeber, der Fehlermelder. Weg sind
 // Bereichs-Cockpit, Bauzeit-Hinweis, Onboarding-Erinnerung und Zurufe. Was
 // mitläuft, muss etwas tun, nicht nur da sein.
 import { Taktgeber } from '@/components/os/Taktgeber';
 import { AnfrageBuendel } from '@/components/os/AnfrageBuendel';
 import { Kopf } from '@/components/os/Kopf';
 import { Leiste } from '@/components/os/Leiste';
-import { JarvisPanel } from '@/components/os/JarvisPanel';
+import { ZoePanel } from '@/components/os/ZoePanel';
 import { FehlerMelder } from '@/components/os/FehlerMelder';
 import { NutzungsMelder } from '@/components/os/NutzungsMelder';
 import { Protokollant } from '@/components/os/Protokollant';
@@ -34,7 +34,7 @@ export default async function OsLayout({ children }: { children: React.ReactNode
       <Protokollant />
       {/* Schreibt leise mit, welche Seiten benutzt werden — Grundlage der Verbesserungs-Vorschläge. */}
       <NutzungsMelder />
-      {/* Die Leiste (26.09.): Home · Wachstum · Privat · Business · Agenten, unten Jarvis · Brain · System. */}
+      {/* Die Leiste (26.09.): Home · Wachstum · Privat · Business · Agenten, unten ZOE · Brain · System. */}
       <Leiste />
       <main style={{ flex: 1, minWidth: 0, height: '100vh', overflowY: 'auto', overflowX: 'hidden' }}>
         {/* Der Kopf (26.09.): Suche im Space · Idee · Heute · Inbox · Kalender · Index des Space. */}
@@ -42,8 +42,8 @@ export default async function OsLayout({ children }: { children: React.ReactNode
         <Taktgeber />
         {children}
       </main>
-      {/* Jarvis läuft rechts auf JEDER /os-Seite mit — in Stufen aufziehbar. */}
-      <JarvisPanel />
+      {/* ZOE läuft rechts auf JEDER /os-Seite mit — in Stufen aufziehbar. */}
+      <ZoePanel />
       {/* ⌘K von überall: Kontakte, Firmen, Chancen, Mandate, Bereiche (24.09.). */}
       <Schnellsuche />
       {/* „Idee“ von jeder Seite → Bauplan (25.09.). */}

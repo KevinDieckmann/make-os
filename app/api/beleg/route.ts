@@ -1,5 +1,5 @@
 // ─── MAKE OS — Beleg lesen ──────────────────────────────────────────────────
-// Kevins Ansage: „Dateien an Jarvis geben — Rechnung fotografieren, Zahlen
+// Kevins Ansage: „Dateien an ZOE geben — Rechnung fotografieren, Zahlen
 // landen im System."
 //
 // Diese Route LIEST nur. Sie schreibt bewusst nichts: aus einem Foto gezogene
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   if (zuGross(req, 12000000)) return ZU_GROSS(12000000);
   if (!hasAnthropicKey()) {
-    return NextResponse.json({ ok: false, error: 'Kein ANTHROPIC_API_KEY — ohne den kann Jarvis den Beleg nicht lesen.' }, { status: 200 });
+    return NextResponse.json({ ok: false, error: 'Kein ANTHROPIC_API_KEY — ohne den kann ZOE den Beleg nicht lesen.' }, { status: 200 });
   }
 
   let body: { datei?: string; medientyp?: string; name?: string };

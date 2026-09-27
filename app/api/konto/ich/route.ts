@@ -1,7 +1,7 @@
 // GET → wer bin ich, wer ist sonst noch da (Namen, keine Geheimnisse).
 // PUT → Name oder Passwort ändern.
 import { NextResponse } from 'next/server';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { ladeKonten, aendereKonten, oeffentlich, passwortTauglich, passwortHashen, passwortStimmt } from '@/lib/zugang/konten';
 import { mitSitzung } from '@/lib/zugang/antwort';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';

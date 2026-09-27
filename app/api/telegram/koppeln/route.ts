@@ -4,7 +4,7 @@
 // DELETE → alle Chats dieser Person entkoppeln
 
 import { NextResponse } from 'next/server';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { ladeStand, aendereStand, codeAnlegen, chatsFuerPerson, telegramKonfiguriert, CODE_MINUTEN } from '@/lib/telegram';
 
 export const runtime = 'nodejs';

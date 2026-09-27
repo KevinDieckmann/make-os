@@ -7,7 +7,7 @@
 // Links fragen, suchen oder stöbern, rechts lesen. „Fragen“ ist der Chat mit
 // dem Brain (Kevin, 24.09.: „dass ich direkt mit dem Hirn chatten kann“) — er
 // antwortet nur aus den Notizen, und jede Quelle öffnet sich rechts.
-// Es ist dieselbe Suche, die Jarvis
+// Es ist dieselbe Suche, die ZOE
 // benutzt, mit derselben Sicht: gezeigt wird nur, was die angemeldete Person
 // sehen darf (Vertraulichkeitsregeln im Vault). Geschrieben wird hier nichts —
 // gepflegt wird in Obsidian, deshalb führt jede Notiz mit einem Griff dorthin.
@@ -198,7 +198,7 @@ export function WissenView() {
     setChat(c => merke([...c, { rolle: 'ich', text: f }]));
     setEingabe('');
     setDenkt(true);
-    const d = await fetch('/api/jarvis/wissen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ frage: f, verlauf: bisher }) })
+    const d = await fetch('/api/zoe/wissen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ frage: f, verlauf: bisher }) })
       .then(r => r.json()).catch(() => ({ ok: false, fehler: 'Nicht erreichbar — läuft MAKE OS?' }));
     setDenkt(false);
     setChat(c => merke([...c, d.ok ? { rolle: 'brain', text: String(d.antwort ?? ''), quellen: Array.isArray(d.quellen) ? d.quellen : [] } : { rolle: 'brain', text: String(d.fehler ?? 'Keine Antwort.'), fehler: true, quellen: Array.isArray(d.quellen) ? d.quellen : [] }]));
@@ -207,7 +207,7 @@ export function WissenView() {
   const lesefenster = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    fetch('/api/jarvis/wissen').then(r => r.json()).then(d => { if (d.ok) setStand(d); }).catch(() => {});
+    fetch('/api/zoe/wissen').then(r => r.json()).then(d => { if (d.ok) setStand(d); }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -217,7 +217,7 @@ export function WissenView() {
     const b = bereich === 'alle' ? '' : `&bereich=${encodeURIComponent(bereich)}`;
     const q = frage.trim();
     const t = setTimeout(() => {
-      const url = q.length >= 3 ? `/api/jarvis/wissen?frage=${encodeURIComponent(q)}&anzahl=20${b}` : `/api/jarvis/wissen?neueste=1&anzahl=30${b}`;
+      const url = q.length >= 3 ? `/api/zoe/wissen?frage=${encodeURIComponent(q)}&anzahl=20${b}` : `/api/zoe/wissen?neueste=1&anzahl=30${b}`;
       fetch(url).then(r => r.json()).then(d => {
         if (nr !== lauf.current) return;
         setListe(q.length >= 3 ? (d.treffer ?? []) : (d.notizen ?? []));
@@ -229,13 +229,13 @@ export function WissenView() {
 
   const laden = useCallback(async (id: string) => {
     setLaedtNotiz(true);
-    const d: Voll = await fetch(`/api/jarvis/wissen?notiz=${encodeURIComponent(id)}`).then(r => r.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' }));
+    const d: Voll = await fetch(`/api/zoe/wissen?notiz=${encodeURIComponent(id)}`).then(r => r.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' }));
     setLaedtNotiz(false);
     setOffen(d);
     lesefenster.current?.scrollTo?.({ top: 0 });
     if (!breit) nachOben();
   }, [breit]);
-  // Direkt verlinkt (/os/wissen?n=…, etwa aus einer Quelle, die Jarvis nennt), Sprung, Zurück oder Vor — die Notiz folgt dem Link.
+  // Direkt verlinkt (/os/wissen?n=…, etwa aus einer Quelle, die ZOE nennt), Sprung, Zurück oder Vor — die Notiz folgt dem Link.
   useEffect(() => { if (n) void laden(n); else setOffen(null); }, [n, laden]);
   const oeffne = useCallback((id: string) => { if (id !== n) router.push(`/os/wissen?n=${encodeURIComponent(id)}`, { scroll: false }); }, [router, n]);
   const zurueck = () => zurueckWie('/os/wissen');
@@ -260,7 +260,7 @@ export function WissenView() {
           <div>
             <div style={{ fontFamily: SCHRIFT.display, fontSize: 19, fontWeight: 700, letterSpacing: '-.01em', marginBottom: 6 }}>Frag dein Brain.</div>
             <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, marginBottom: 14, maxWidth: '60ch' }}>
-              {'Es sucht selbst in deinen Obsidian-Notizen, liest sie bei Bedarf ganz und antwortet nur daraus — mit Quelle. Was nicht drinsteht, sagt es dir. Ändern kann es nichts; dafür ist Jarvis da.'}
+              {'Es sucht selbst in deinen Obsidian-Notizen, liest sie bei Bedarf ganz und antwortet nur daraus — mit Quelle. Was nicht drinsteht, sagt es dir. Ändern kann es nichts; dafür ist ZOE da.'}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {VORSCHLAEGE.map(v => (
@@ -344,7 +344,7 @@ export function WissenView() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Punkt farbe={bereichFarbe(e.bereich)} groesse={8} />
                   <span style={{ flex: 1, minWidth: 0, fontSize: TYP.body, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.titel}</span>
-                  {e.scope === 'privat' && <span title="privat — Jarvis nutzt das nie in Texten nach außen" style={{ fontSize: 12 }}>🔒</span>}
+                  {e.scope === 'privat' && <span title="privat — ZOE nutzt das nie in Texten nach außen" style={{ fontSize: 12 }}>🔒</span>}
                   <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{e.stand ? `Stand ${standText(e.stand)}` : wann(e.geaendert)}</span>
                 </div>
                 <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 4, paddingLeft: 18, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.45 }}>
@@ -377,7 +377,7 @@ export function WissenView() {
           <div style={{ fontSize: 12.5, color: C.inkLeise, marginBottom: 16, wordBreak: 'break-word' }}>{`${offen.id?.replace(/^make\//, '').replace(/\.md$/, '')} · geändert ${wann(offen.geaendert)}`}</div>
           {offen.scope === 'privat' && (
             <div style={{ fontSize: 12.5, color: C.inkDim, background: `${LEUCHT.beziehung}14`, borderRadius: 10, padding: '8px 12px', marginBottom: 14 }}>
-              {'Privat nach deinen Vertraulichkeitsregeln: Jarvis nutzt das nur im Gespräch mit dir — nie in Mails, Entwürfen oder Briefings, und kein Agent bekommt es.'}
+              {'Privat nach deinen Vertraulichkeitsregeln: ZOE nutzt das nur im Gespräch mit dir — nie in Mails, Entwürfen oder Briefings, und kein Agent bekommt es.'}
             </div>
           )}
           <div style={{ fontSize: 14.5, lineHeight: 1.65, color: C.ink, maxWidth: '72ch' }}>
@@ -415,7 +415,7 @@ export function WissenView() {
         ))}
       </div>
       <Leer>
-        {laedtNotiz ? 'Öffne …' : 'Links fragen oder stöbern, hier lesen. Jarvis sucht zuerst hier, bevor er etwas behauptet, und nennt dir die Quelle. Gepflegt wird in Obsidian — jede Notiz hat den Griff dorthin.'}
+        {laedtNotiz ? 'Öffne …' : 'Links fragen oder stöbern, hier lesen. ZOE sucht zuerst hier, bevor er etwas behauptet, und nennt dir die Quelle. Gepflegt wird in Obsidian — jede Notiz hat den Griff dorthin.'}
       </Leer>
     </Karte>
   );
@@ -423,7 +423,7 @@ export function WissenView() {
   return (
     <Seite
       titel="Brain"
-      unter={stand ? `Dein Obsidian-Brain · ${stand.notizen} ${stand.notizen === 1 ? 'Notiz' : 'Notizen'} · Nummer eins für Jarvis` : 'Dein Obsidian-Brain · Nummer eins für Jarvis'}
+      unter={stand ? `Dein Obsidian-Brain · ${stand.notizen} ${stand.notizen === 1 ? 'Notiz' : 'Notizen'} · Nummer eins für ZOE` : 'Dein Obsidian-Brain · Nummer eins für ZOE'}
       rechts={obsidianVault ? <Knopf leise onClick={() => { window.location.href = obsidianVault; }}>Obsidian öffnen</Knopf> : undefined}
     >
       {breit ? (

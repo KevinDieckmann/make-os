@@ -88,7 +88,7 @@ export function naechstesGespraech(e: Einstellungen, heute: string, gespraeche: 
   return { datum, laufend };
 }
 
-/** Für Jarvis: die Agenda des nächsten Gesprächs, vorbereitet aus den Daten (sortiert, nicht bewertet). */
+/** Für ZOE: die Agenda des nächsten Gesprächs, vorbereitet aus den Daten (sortiert, nicht bewertet). */
 export function agendaVorbereiten(f: Familie, heute: string, person: string) {
   const offeneThemen = f.themen.filter(t => (t.status === 'offen' || t.status === 'geparkt') && t.hut === 'privat' && (t.sichtbarkeit !== 'nur-ich' || t.von === person));
   const offeneVereinbarungen = f.vereinbarungen.filter(v => v.status === 'offen');

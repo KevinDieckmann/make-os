@@ -168,8 +168,8 @@ export const BEREICHE: Bereich[] = [
     farbe: T.inkDim,
     items: [
       { href: '/os/agenten', label: 'Agentensystem', icon: Bot },
-      // Der Stapel: was Jarvis vorbereitet hat und auf deine Freigabe wartet.
-      { href: '/os/stapel', label: 'Aufträge & Freigaben', icon: ShieldCheck, hinweis: 'Jarvis' },
+      // Der Stapel: was ZOE vorbereitet hat und auf deine Freigabe wartet.
+      { href: '/os/stapel', label: 'Aufträge & Freigaben', icon: ShieldCheck, hinweis: 'ZOE' },
       // Kevins Ansage: Loops gehören nicht in den Tag, sondern zur Automatisierung.
       { href: '/os/loop', label: 'Loops', icon: RefreshCw, hinweis: 'Regelkreise' },
       { href: '/os/datenbasis', label: 'Datenbasis', icon: Database },

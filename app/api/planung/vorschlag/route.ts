@@ -1,6 +1,6 @@
-// ─── MAKE OS — Jarvis belegt die Woche ──────────────────────────────────────
+// ─── MAKE OS — ZOE belegt die Woche ──────────────────────────────────────
 // POST { woche: 'YYYY-MM-DD' (Montag), hinweis? }
-// Jarvis plant eine komplette Wochenbelegung: Reha täglich (Bandscheibe!),
+// ZOE plant eine komplette Wochenbelegung: Reha täglich (Bandscheibe!),
 // Fokus vormittags, Routinen morgens/abends, Aufgaben nach Priorität — um die
 // festen Termine HERUM. Das Ergebnis ist ein VORSCHLAG: Kevin übernimmt ihn im
 // Planer per Klick und schiebt dann zurecht. Nichts wird hier gespeichert.
@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveVitals, vitalsHint } from '@/lib/vitals';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { localDay } from '@/lib/zeit';
 import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
 import { SAEULE_VON_PROJEKT, SAEULE_LABEL } from '@/lib/make-one/fokus-data';
@@ -89,7 +89,7 @@ export async function POST(req: Request) {
   const quartalsZiele = (ziele?.quartal ?? []).filter(z => !z.erledigt);
 
   const system = [
-    'Du bist JARVIS und belegst Kevins Woche im Wochenplaner — ein VORSCHLAG, den er danach frei zurechtschiebt.',
+    'Du bist ZOE und belegst Kevins Woche im Wochenplaner — ein VORSCHLAG, den er danach frei zurechtschiebt.',
     'HARTE REGELN:',
     '- Plane NIE über feste Termine (Liste unten). Zeitfenster 06:00–22:00, Raster 15 Minuten.',
     '- REHA TÄGLICH mindestens 30 Min (Bandscheibenvorfall — nicht verhandelbar). Nach der Reha nichts Schweres.',

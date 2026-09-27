@@ -12,7 +12,7 @@ import { speicherStand } from '@/lib/store/local-db';
 import { haushaltVon, KEIN_ZUGANG } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt, patchen, type Op, speicherName } from '@/lib/finanzen/haushalt/speicher';
 import { belegAufgabenAbgleichen } from '@/lib/finanzen/haushalt/aufgaben';
-import { faelligeZeilen } from '@/lib/finanzen/haushalt/jarvis';
+import { faelligeZeilen } from '@/lib/finanzen/haushalt/zoe';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

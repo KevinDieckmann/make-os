@@ -6,7 +6,7 @@
 // „Bereit“ von oben ab und gibt mit „So testet ihr“ nach „Zum Testen“; erst
 // eure Abnahme macht eine Karte fertig. Planung: Etappen mit Zieldatum.
 // Neue Karten kommen von hier, vom Knopf „Idee“ oben auf jeder Seite und
-// von Jarvis („notier im Bauplan …“).
+// von ZOE („notier im Bauplan …“).
 
 import { useEffect, useMemo, useState, type DragEvent } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';

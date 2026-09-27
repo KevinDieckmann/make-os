@@ -67,7 +67,7 @@ export async function GET() {
  * Postfach ist ein Spiegel, kein Archiv; gelöschte Mails sollen verschwinden.
  */
 export async function PUT(req: Request) {
-  // Der Spiegel fließt in Kontaktverläufe und Jarvis — nur der Zulieferer (Dienst) oder der Inhaber schreibt ihn (26.09.).
+  // Der Spiegel fließt in Kontaktverläufe und ZOE — nur der Zulieferer (Dienst) oder der Inhaber schreibt ihn (26.09.).
   if (!istDienst(req) && !(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
   let body: { mails?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein JSON.' }, { status: 400 }); }

@@ -42,7 +42,7 @@ Schnell hoch (0,35), langsam runter (0,08). Ohne sie folgt der Ausschlag jedem
 Stimmbandschlag und flackert. Mit ihr fühlt es sich an wie ein Pegelmesser.
 
 ## 3 — Beim Zuhören schrumpft der Orb, beim Sprechen wächst er
-`components/os/JarvisHirn.tsx`, Feld `richtung` in `TON`
+`components/os/ZoeHirn.tsx`, Feld `richtung` in `TON`
 
 Der wichtigste Einzelgriff. Beide Zustände hängen an einem Pegel — wenn beide
 wachsen würden, wüsste man nie, wer gerade dran ist.
@@ -60,7 +60,7 @@ Rund 350 ms. Ein harter Wechsel liest sich wie ein ausgetauschtes Bild, ein
 Übergang wie dasselbe Wesen in einer anderen Verfassung.
 
 ## 6 — Der Kern ist eine verformte Fläche, kein Kreis
-`blob()` in `JarvisHirn.tsx`
+`blob()` in `ZoeHirn.tsx`
 
 Drei überlagerte Sinuswellen mit teilerfremden Frequenzen (0,9 / 0,61 / 1,37).
 Das Muster wiederholt sich erst nach Minuten — das Auge findet keinen Rhythmus
@@ -89,7 +89,7 @@ Die billigste Einzelmaßnahme im ganzen Katalog: macht den Orb ohne jede
 Änderung am Orb zum optischen Zentrum.
 
 ## 12 — Der Raum nimmt die Zustandsfarbe an
-Zwei gestapelte Lichtschichten hinter dem Hirn. Wenn Jarvis denkt, wird der
+Zwei gestapelte Lichtschichten hinter dem Hirn. Wenn ZOE denkt, wird der
 ganze Bildschirm bernsteinfarben — das sieht man aus zwei Metern.
 
 ## 13 — Filmkorn, 2,8 %
@@ -102,7 +102,7 @@ Außen und innen wandern gegenläufig — Tiefe ohne eine einzige Schattenfläch
 Nur auf Geräten mit echtem Zeiger.
 
 ## 15 — Text kommt Wort für Wort an
-`Ankunft` in `JarvisStart.tsx`, 180 ms, Deckkraft + Weichzeichner.
+`Ankunft` in `ZoeStart.tsx`, 180 ms, Deckkraft + Weichzeichner.
 Der Weichzeichner kaschiert die stoßweise Ankunft, reine Deckkraft tut das
 nicht. Zwischenräume bleiben roher Text — ein Zeilenumbruch in einem
 `inline-block` bricht nur innerhalb des Kastens, und die Aufzählungen standen
@@ -149,7 +149,7 @@ Es bleibt sichtbar (der Zustand muss ablesbar bleiben), gibt aber den Platz an
 das ab, was gerade gesagt wird.
 
 ## 25 — Barrierefreiheit: das Bild ist dekorativ
-Das SVG ist `aria-hidden`. Was Jarvis tut, steht im Klartext darunter, mit
+Das SVG ist `aria-hidden`. Was ZOE tut, steht im Klartext darunter, mit
 `aria-live="polite"` — Farbe und Bewegung allein zwingen zum Raten.
 Mikrofonfehler stehen als `role="alert"` da, statt still zu scheitern.
 

@@ -1,6 +1,6 @@
 // POST → Einladungscode (nur Inhaber). 48 Stunden gültig, einmal einlösbar.
 import { NextResponse } from 'next/server';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { ladeKonten, aendereKonten, neuerEinladungscode, speicherName, EINLADUNG_STUNDEN } from '@/lib/zugang/konten';
 import { aussenAdresse } from '@/lib/innen';
 

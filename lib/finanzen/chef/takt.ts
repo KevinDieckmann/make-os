@@ -9,7 +9,7 @@ import { loadJson } from '@/lib/store/local-db';
 import { hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent } from '@/lib/agent-config';
 import { ladeKonten } from '@/lib/zugang/konten';
-import type { Faellig } from '@/lib/jarvis/takt';
+import type { Faellig } from '@/lib/zoe/takt';
 import { HAUSHALT_OK } from '../haushalt/zugriff';
 import { istEchterHaushalt } from '../haushalt/aufgaben';
 import { heuteBerlin, tagPlus } from '../haushalt/monat';

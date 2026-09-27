@@ -163,7 +163,7 @@ Rhythmus: monatlicher Check-in, Quartals-Review mit Ergebnissen gegen die Ziele.
 | Zeit | Schritt |
 |---|---|
 | Vorabend oder 07:00 | Code baut die Liste. Der Head of Sales (Modus `power_hour`) ergänzt je Karte einen Aufhänger-Satz und einen Entwurf. Kevin streicht oder bestätigt in etwa 2 Minuten. |
-| 0:00–0:03 | Start: Tagesziel festlegen (z. B. 4 Gespräche, 1 Termin). Fokusmodus blendet Navigation, Jarvis und Benachrichtigungen aus. |
+| 0:00–0:03 | Start: Tagesziel festlegen (z. B. 4 Gespräche, 1 Termin). Fokusmodus blendet Navigation, ZOE und Benachrichtigungen aus. |
 | 0:03–0:40 | **Telefon-Block** (siehe unten). |
 | 0:40–0:55 | **Schreib-Block:** Entwürfe prüfen. Kevin sendet selbst aus dem eigenen Postfach oder LinkedIn. Die App vermerkt „gesendet“ nur, wenn er es anklickt. |
 | 0:55–1:00 | **Protokoll:** Notizen per Diktat in die Vorlage, nächster Schritt ist Pflicht, ein Satz „Was habe ich gelernt“. |

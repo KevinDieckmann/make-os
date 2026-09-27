@@ -1,7 +1,7 @@
 // ─── MAKE OS — Routinen (lokal) ─────────────────────────────────────────────
 // DIE Quelle für positive Routinen — Gesundheit, Leben, Business. Der
 // Routine-Planer pflegt sie, und alles andere greift darauf zu: der
-// Wochenplaner (Leiste + Jarvis-Vorschlag), die Tagesplanung, das
+// Wochenplaner (Leiste + ZOE-Vorschlag), die Tagesplanung, das
 // Gesundheits-Cockpit (Häkchen) und der MAKE Score (Routinen-Quote).
 // Erststart wird aus den bisherigen ROUTINE_ITEMS geseedet — gleiche ids,
 // damit Streak und Verlauf nahtlos weiterlaufen.

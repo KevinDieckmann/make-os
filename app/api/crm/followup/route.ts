@@ -21,7 +21,7 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { localDay, tagePlus } from '@/lib/zeit';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { wendeAktivitaetAn, ERGEBNISSE, type Kontakt, type Ergebnis, type AktivitaetArt } from '@/lib/make-one/crm';
 import { folgeAus } from '@/lib/crm/heute';
@@ -101,7 +101,7 @@ export async function POST(req: Request) {
     const f = neuesFollowUp({
       id: neueId('fu'), bezug, kontaktId: kontaktId ?? (bezug.art === 'kontakt' ? bezug.id : undefined), art: ARTEN.includes(b.art as FollowUpArt) ? (b.art as FollowUpArt) : undefined, text, faellig,
       uhrzeit: typeof b.uhrzeit === 'string' && /^\d{2}:\d{2}$/.test(b.uhrzeit) ? b.uhrzeit : undefined, zustaendig: wer(b.zustaendig), notiz: typeof b.notiz === 'string' ? b.notiz : undefined,
-      quelle: ['hand', 'jarvis', 'head', 'deal', 'event', 'kampagne', 'kadenz'].includes(String(b.quelle)) ? (b.quelle as FollowUp['quelle']) : 'hand',
+      quelle: ['hand', 'zoe', 'head', 'deal', 'event', 'kampagne', 'kadenz'].includes(String(b.quelle)) ? (b.quelle as FollowUp['quelle']) : 'hand',
     }, kontakt(kontaktId ?? bezug.id), person, jetzt);
     await aendereCrm(c => ({ ...c, followups: [...(c.followups ?? []), { ...f, geaendertVon: person }] }));
     return NextResponse.json({ ok: true, followup: f, text: `Follow-up „${f.text}“ am ${f.faellig} steht.` });

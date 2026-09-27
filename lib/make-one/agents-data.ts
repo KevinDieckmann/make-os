@@ -22,7 +22,7 @@ export interface DeptAgent {
 export interface Department { id: string; name: string; mission: string; color: string; lead: string; agents: DeptAgent[]; }
 
 export const ORCHESTRATOR = {
-  name: 'JARVIS · Chief of Staff',
+  name: 'ZOE · Chief of Staff',
   note: 'Nimmt deinen Auftrag entgegen, routet an die Abteilungen, hält den geteilten Kontext, führt Ergebnisse zusammen und verwaltet ALLE Freigaben zentral. Großes Modell, volle Autonomie im Delegieren — null Autonomie nach außen.',
 };
 
@@ -44,10 +44,10 @@ export const DEPARTMENTS: Department[] = [
         bauplan: 'LIVE: Transkript einfügen → Anthropic (streng JSON: Titel/Summary/Entscheidungen/ActionItems) → Übernahme in echten Task-Store (/api/tasks/create), Human-in-the-Loop. Auto-Mitschrift (Granola/Fireflies) als Zusatz. → /os/meeting' },
       { id: 'planung', name: 'Wochenplan-Agent', role: 'Die Woche aus Kalender, Aufgaben und Routinen bauen', status: 'live', autonomy: 'vorschlag', model: 'stark', href: '/os/planung/woche',
         funktionen: ['Freie Zeit gegen Termine prüfen', 'Fokus, Reha und Routinen einplanen', 'Kollisionen verwerfen statt überplanen', 'Vorschlag — Kevin bestätigt im Planer'],
-        bauplan: 'LIVE: /api/planung/vorschlag baut aus beiden Kalendern, Aufgaben, Routinen und den Fokus-Reglern einen Wochenvorschlag; Blöcke mit Kollision werden verworfen, nicht überschrieben. Jarvis startet ihn selbst (run_agent planung).' },
+        bauplan: 'LIVE: /api/planung/vorschlag baut aus beiden Kalendern, Aufgaben, Routinen und den Fokus-Reglern einen Wochenvorschlag; Blöcke mit Kollision werden verworfen, nicht überschrieben. ZOE startet ihn selbst (run_agent planung).' },
       { id: 'wissen', name: 'Dokument-/Wissens-Agent', role: 'Kevins Notizen durchsuchen und ergänzen', status: 'live', autonomy: 'autonom', model: 'schnell', href: '/os/stapel',
         funktionen: ['355 Notizen aus drei Vaults durchsuchen', 'Notiz vollständig lesen', 'Neue Notiz anlegen', 'An bestehende Notiz anhängen', 'Quelle bei jeder Antwort nennen'],
-        bauplan: 'LIVE seit 07.09.: lib/jarvis/vault.ts. BEWUSST ohne Vektor-Datenbank — bei 355 Notizen schlägt gute Volltextsuche die RAG-Maschinerie, ist immer aktuell und hat keine Teile, die veralten. Kopien werden beim Lesen erkannt (346 von 701 Dateien), private Ordner gar nicht erst geöffnet. Überschreiben und Löschen gibt es bewusst nicht. Jarvis nutzt es über suche_wissen / lies_notiz / notiz_anlegen / notiz_ergaenzen.' },
+        bauplan: 'LIVE seit 07.09.: lib/zoe/vault.ts. BEWUSST ohne Vektor-Datenbank — bei 355 Notizen schlägt gute Volltextsuche die RAG-Maschinerie, ist immer aktuell und hat keine Teile, die veralten. Kopien werden beim Lesen erkannt (346 von 701 Dateien), private Ordner gar nicht erst geöffnet. Überschreiben und Löschen gibt es bewusst nicht. ZOE nutzt es über suche_wissen / lies_notiz / notiz_anlegen / notiz_ergaenzen.' },
     ],
   },
   {
@@ -58,7 +58,7 @@ export const DEPARTMENTS: Department[] = [
         bauplan: 'LIVE: Anthropic bewertet jede Firma gegen dein ICP (Score 0–100, Fit, Aufhänger), lokal gespeichert. Datenzufuhr aktuell über die Session (Explorium/Vibe), Direktanbindung folgt. → /os/prospecting' },
       { id: 'crm', name: 'CRM-/Pipeline-Agent', role: 'Wer ist heute dran — Tagesliste, Pipeline, Wiedervorlagen', status: 'live', autonomy: 'entwurf', model: 'ausgewogen', gate: 'Versand ✋', href: '/os/markttraktion?s=deals',
         funktionen: ['Wer ist heute dran: Versprechen → Signale → Chancen → Kunden → Pflege → Neu, mit Kanal-Ampel (§ 7 UWG)', 'Pipeline mit fünf Stufen und Austrittskriterien, Board und Prognose', 'Kartei mit Firmen, Verlauf, Notizvorlage, Einwilligungen', 'Import der Masterdatei, Firmen-Abgleich, Dubletten'],
-        bauplan: 'LIVE seit 18.09.: /os/markttraktion (bis 25.09. „CRM“, /os/crm leitet um). Quelle ist die CRM_MASTER_Hauptdatei vom Schreibtisch; die Pipeline lebt nur hier und wird beim Abgleich nicht angefasst. Jarvis: suche_kontakt, notiere_kontakt, entwurf_ansprache. Kein Werkzeug zum Versenden — Kevin schickt selbst. Seit 24.09. mit Power Hour, Kanal-Ampel, Firmen und Stammdaten (lib/crm/); das Adressbuch der Kontakte-App bleibt bewusst draußen.' },
+        bauplan: 'LIVE seit 18.09.: /os/markttraktion (bis 25.09. „CRM“, /os/crm leitet um). Quelle ist die CRM_MASTER_Hauptdatei vom Schreibtisch; die Pipeline lebt nur hier und wird beim Abgleich nicht angefasst. ZOE: suche_kontakt, notiere_kontakt, entwurf_ansprache. Kein Werkzeug zum Versenden — Kevin schickt selbst. Seit 24.09. mit Power Hour, Kanal-Ampel, Firmen und Stammdaten (lib/crm/); das Adressbuch der Kontakte-App bleibt bewusst draußen.' },
       { id: 'head-sales', name: 'Head of Sales', role: 'Vertrieb und Kundenbetreuung — Power Hour vorbereiten, Deal- und Kundenreview, Vorschläge zur Freigabe', status: 'live', autonomy: 'vorschlag', model: 'stark', href: '/os/markttraktion?s=deals',
         gate: 'Versendet nichts. Entwürfe nur über Kanäle, die die Ampel erlaubt; angenommen wird ein Vorschlag zum nächsten Schritt an der Person.',
         funktionen: ['Power Hour vorbereiten (werktags 7 Uhr)', 'Deal-Review: was hängt, welche Qualifizierungsfrage fehlt', 'Kundenreview: Laufzeit, Health, Widersprüche (Monatsanfang)', 'Wochenreview (freitags)'],
@@ -113,10 +113,10 @@ export const DEPARTMENTS: Department[] = [
         bauplan: 'LIVE: Anthropic Messages + server-seitiges web_search-Tool, read-only → keine Freigabe. Fällt ohne Suchtool sauber auf reine Antwort zurück. → /os/research' },
       { id: 'brain', name: 'Kontext-/Gedächtnis-Agent', role: 'Was dauerhaft gilt, behalten und einbringen', status: 'live', autonomy: 'autonom', model: 'schnell', href: '/os/stapel',
         funktionen: ['Fakten aus Gesprächen sofort merken', 'In jeden Zug einbringen', 'Nach Raum trennen (Kevin/Malin/gemeinsam)', 'Auf Klick vergessen'],
-        bauplan: 'LIVE seit 07.09.: lib/jarvis/gedaechtnis.ts. Strukturierte Fakten statt Vektorsuche — „wann habe ich Frank zuletzt gesprochen" ist eine Frage nach einem Feld, keine nach Ähnlichkeit. Geht auf 1.800 Zeichen gedeckelt in jeden Prompt. Sichtbar und einzeln löschbar unter /os/stapel. OFFEN: das Spiegeln des Miro-Boards — das braucht die Miro-Anbindung.' },
+        bauplan: 'LIVE seit 07.09.: lib/zoe/gedaechtnis.ts. Strukturierte Fakten statt Vektorsuche — „wann habe ich Frank zuletzt gesprochen" ist eine Frage nach einem Feld, keine nach Ähnlichkeit. Geht auf 1.800 Zeichen gedeckelt in jeden Prompt. Sichtbar und einzeln löschbar unter /os/stapel. OFFEN: das Spiegeln des Miro-Boards — das braucht die Miro-Anbindung.' },
       { id: 'performance', name: 'Score-Agent', role: 'Den Wachstums-Score rechnen und einordnen', status: 'live', autonomy: 'autonom', model: 'stark', href: '/os/wachstum',
         funktionen: ['Fünf Säulen aus echten Daten rechnen', 'Messlücken ausweisen statt raten', 'Verlauf mitschreiben', 'Größten Hebel benennen'],
-        bauplan: 'LIVE: /api/performance. Rechnet je Person getrennt (seit 07.09.), weil Gesundheit und Journal persönlich sind. Was nicht gemessen ist, wird als Messlücke ausgewiesen und zählt nicht als schlechter Wert. Jarvis startet ihn selbst.' },
+        bauplan: 'LIVE: /api/performance. Rechnet je Person getrennt (seit 07.09.), weil Gesundheit und Journal persönlich sind. Was nicht gemessen ist, wird als Messlücke ausgewiesen und zählt nicht als schlechter Wert. ZOE startet ihn selbst.' },
       { id: 'okr', name: 'OKR-/Ziel-Agent', role: 'Weg zum 1-Mio-Ziel, MSI-Anbindung', status: 'live', autonomy: 'vorschlag', model: 'stark', href: '/os/okr',
         funktionen: ['Nordstern → Objectives + Key Results', 'Echte Aufgaben den Zielen zuordnen', 'Lücken flaggen (wo nichts einzahlt)', 'Live gegen Controlling-Zahlen'],
         bauplan: 'LIVE: liest Controlling-Zahlen + echte Aufgaben, Anthropic baut OKR-Baum, ordnet vorhandene Tasks zu & benennt Lücken. Vorschlag — du entscheidest. → /os/okr' },
@@ -150,7 +150,7 @@ export const DEPARTMENTS: Department[] = [
         bauplan: 'LIVE seit 23.09. — Kevins Entscheidung: „Gesundheit ist die Basis, deswegen bauen wir ihn zuerst." Takt in lib/gesundheit/takt.ts, Bote bote.mjs, Werkzeuge hake_routine / haut_eintrag / journal_eintrag / streak_eintrag. Braucht TELEGRAM_BOT_TOKEN und je Person einmal /start CODE. Whoop: wartet auf Kevins Developer-Zugang.' },
       { id: 'ernaehrung', name: 'Ernährungs-Agent', role: 'Essensplan und Einkaufsliste für die Woche', status: 'live', autonomy: 'vorschlag', model: 'ausgewogen', href: '/os/gesundheit?s=ernaehrung',
         funktionen: ['Wochenplan aus den Ernährungs-Regeln', 'Einkaufsliste daraus ableiten', 'Anti-entzündlich wegen Psoriasis', 'Hinweis von Kevin einarbeiten'],
-        bauplan: 'LIVE: /api/ernaehrung/vorschlag. Jarvis startet ihn selbst (run_agent ernaehrung) und nimmt einen Hinweis für die Woche entgegen.' },
+        bauplan: 'LIVE: /api/ernaehrung/vorschlag. ZOE startet ihn selbst (run_agent ernaehrung) und nimmt einen Hinweis für die Woche entgegen.' },
       { id: 'team', name: 'Team-/HR-Agent', role: 'Team-Struktur, Onboarding (Miro)', status: 'geplant', autonomy: 'vorschlag', model: 'schnell',
         funktionen: ['Team-Verantwortung aus Miro', 'Onboarding-Skripte', 'Delegations-Vorschläge'],
         bauplan: 'NICHT GEBAUT, blockiert von außen: braucht die Miro-Anbindung (steht im Bauplan als miro-api und wartet auf Kevins Zugang). Ohne Miro gibt es keine Team-Struktur zum Spiegeln.' },

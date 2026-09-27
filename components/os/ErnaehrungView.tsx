@@ -8,11 +8,11 @@
 //
 //   Essens-Woche  → Klick auf ein Feld öffnet das Rezept (oder lässt es schreiben)
 //   Einkaufsliste → nach Kategorie, Menge, für wen; Warenkorb kopieren; Eingekauft → Vorrat
-//   Vorrat        → was da ist (Jarvis verbraucht es, die Liste lässt es weg)
+//   Vorrat        → was da ist (ZOE verbraucht es, die Liste lässt es weg)
 //   Stammliste    → bevorzugte Lebensmittel mit Hinweis, ein Tipp → Liste
 //   Profile       → je Person; Gäste für den Haushalt
 //   Unsere Gerichte → die Bibliothek: suchen, Lieblinge, einplanen, Zutaten → Liste, von Hand /
-//                   von Jarvis / aus eingefügtem Text anlegen, bearbeiten, Notiz (Kevin 26.09.)
+//                   von ZOE / aus eingefügtem Text anlegen, bearbeiten, Notiz (Kevin 26.09.)
 // Jede Änderung ist ein kleiner Schritt (PATCH) — zu zweit am Handy überschreibt niemand den anderen.
 
 import Link from 'next/link';
@@ -92,12 +92,12 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
     planTimer.current[key] = setTimeout(() => { void patch([{ feld: 'plan', tag, mahlzeit: k, wert, gerichtId: wert.trim() ? gerichtZuName(daten?.gerichte ?? [], wert)?.id ?? daten?.planGerichte[tag]?.[k] ?? null : null }]); }, 600);
   };
 
-  // Ein Vorschlag aus dem Hintergrund (Jarvis, Takt) liegt bereit, bis ihn jemand übernimmt oder neu planen lässt (27.09.).
+  // Ein Vorschlag aus dem Hintergrund (ZOE, Takt) liegt bereit, bis ihn jemand übernimmt oder neu planen lässt (27.09.).
   const [vorschlagVon, setVorschlagVon] = useState<string | null>(null);
   useEffect(() => {
     fetch('/api/ernaehrung/vorschlag', { cache: 'no-store' }).then(r => r.json()).then(d => { if (d?.vorschlag?.plan) { setVorschlag(d.vorschlag); setVorschlagVon(d.zeit ?? null); } }).catch(() => {});
   }, []);
-  async function jarvisPlant() {
+  async function zoePlant() {
     setDenkt(true); setVorschlag(null); setVorschlagVon(null);
     try {
       const r = await fetch('/api/ernaehrung/vorschlag', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hinweis, gaeste }) });
@@ -128,11 +128,11 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
     const name = daten.plan[tag][k].trim(); if (!name) return;
     await rezeptAnfordern({ name, tag, mahlzeit: k });
   }
-  /** Bibliothek: Jarvis schreibt zu Name + Wunsch, oder bringt einen eingefügten Rezept-Text in Form. */
-  async function gerichtVonJarvis(name: string, beschreibung: string, text: string) {
+  /** Bibliothek: ZOE schreibt zu Name + Wunsch, oder bringt einen eingefügten Rezept-Text in Form. */
+  async function gerichtVonZoe(name: string, beschreibung: string, text: string) {
     const g = await rezeptAnfordern({ name, beschreibung: beschreibung || undefined, text: text || undefined });
     if (g) { setFormular(null); setNeuGericht(''); oeffneGericht(g.id); melde('Rezept gespeichert.'); return; }
-    // Jarvis konnte nicht (kein Guthaben, kein Netz): der Name bleibt stehen, von Hand geht es weiter.
+    // ZOE konnte nicht (kein Guthaben, kein Netz): der Name bleibt stehen, von Hand geht es weiter.
     if (!text) setFormular('neu');
   }
   async function fotoSetzen(g: Gericht, datei: File) {
@@ -196,7 +196,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
         <Karte i={0} akzent={LEUCHT.gut}>
           <Ueberschrift farbe={geplantN >= 15 ? LEUCHT.gut : LEUCHT.achtung} rechts={<Chip farbe={geplantN >= 15 ? LEUCHT.gut : C.inkLeise}>{geplantN}/21 geplant</Chip>}>Essens-Woche</Ueberschrift>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
-            <Knopf onClick={jarvisPlant} aus={denkt} farbe={LEUCHT.agenten}>{denkt ? 'Jarvis plant …' : '✨ Jarvis plant die Woche'}</Knopf>
+            <Knopf onClick={zoePlant} aus={denkt} farbe={LEUCHT.agenten}>{denkt ? 'ZOE plant …' : '✨ ZOE plant die Woche'}</Knopf>
             <input value={hinweis} onChange={e => setHinweis(e.target.value)} placeholder="Hinweis (z. B. Mi auswärts, viel Meal-Prep)" style={{ ...klein, flex: '1 1 220px' }} />
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12, fontSize: TYP.bedien, color: C.inkDim }}>
@@ -209,7 +209,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
           </div>
           {vorschlag && (
             <div style={{ background: `${LEUCHT.agenten}14`, borderRadius: 12, padding: '12px 14px', marginBottom: 12 }}>
-              <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, margin: '0 0 10px' }}><b style={{ color: LEUCHT.agenten }}>Jarvis:</b> {vorschlag.begruendung}{vorschlagVon ? ` · Vorschlag von Jarvis, ${new Date(vorschlagVon).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}` : ''} <span style={{ color: C.inkLeise }}>({vorschlag.gerichte.length} Rezepte · {vorschlag.einkauf.length} Posten, Vorrat abgezogen)</span></p>
+              <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, margin: '0 0 10px' }}><b style={{ color: LEUCHT.agenten }}>ZOE:</b> {vorschlag.begruendung}{vorschlagVon ? ` · Vorschlag von ZOE, ${new Date(vorschlagVon).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}` : ''} <span style={{ color: C.inkLeise }}>({vorschlag.gerichte.length} Rezepte · {vorschlag.einkauf.length} Posten, Vorrat abgezogen)</span></p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf onClick={uebernehmen} farbe={LEUCHT.gut}>Übernehmen — Plan, Rezepte, Liste ergänzen</Knopf><Knopf leise onClick={() => setVorschlag(null)}>Verwerfen</Knopf></div>
             </div>
           )}
@@ -256,7 +256,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
               <div style={{ display: 'grid', gap: 10 }}>
                 <Leer>Noch kein Rezept zu diesem Gericht.</Leer>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <Knopf farbe={LEUCHT.agenten} onClick={() => void rezeptSchreiben(offen.tag, offen.k)} aus={rezeptLaeuft}>{rezeptLaeuft ? 'Jarvis schreibt …' : '✨ Rezept schreiben lassen'}</Knopf>
+                  <Knopf farbe={LEUCHT.agenten} onClick={() => void rezeptSchreiben(offen.tag, offen.k)} aus={rezeptLaeuft}>{rezeptLaeuft ? 'ZOE schreibt …' : '✨ Rezept schreiben lassen'}</Knopf>
                   {gerichteSortiert.length > 0 && (
                     <select value="" onChange={e => { const g = daten.gerichte.find(x => x.id === e.target.value); if (g) void patch([{ feld: 'plan', tag: offen.tag, mahlzeit: offen.k, wert: g.name, gerichtId: g.id }]); }} aria-label="Aus euren Gerichten wählen" style={{ ...klein, width: 'auto', colorScheme: 'dark' }}>
                       <option value="">… oder aus euren Gerichten wählen</option>
@@ -284,11 +284,11 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
         <Kachel id="gerichte" titel="Unsere Gerichte" breite={4}>
         <Karte i={2} akzent={LEUCHT.gut} id="gerichte">
           <Ueberschrift farbe={LEUCHT.gut} rechts={<Chip farbe={daten.gerichte.length ? LEUCHT.gut : C.inkLeise}>{daten.gerichte.length === 1 ? '1 Gericht' : `${daten.gerichte.length} Gerichte`}</Chip>}>Unsere Gerichte</Ueberschrift>
-          {/* Anlegen ist ein Schritt (Kevin 26.09.): Name tippen, Enter — Jarvis schreibt das Rezept. Von Hand oder aus Text nur als Zusatz. */}
+          {/* Anlegen ist ein Schritt (Kevin 26.09.): Name tippen, Enter — ZOE schreibt das Rezept. Von Hand oder aus Text nur als Zusatz. */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
             <input value={neuGericht} onChange={e => setNeuGericht(e.target.value)} disabled={rezeptLaeuft}
-              onKeyDown={e => { if (e.key === 'Enter' && neuGericht.trim() && !rezeptLaeuft) { setFormular(null); void gerichtVonJarvis(neuGericht.trim(), '', ''); } }}
-              placeholder={rezeptLaeuft ? `Jarvis schreibt „${neuGericht.trim()}“ …` : 'Neues Gericht … Enter — Jarvis schreibt das Rezept'}
+              onKeyDown={e => { if (e.key === 'Enter' && neuGericht.trim() && !rezeptLaeuft) { setFormular(null); void gerichtVonZoe(neuGericht.trim(), '', ''); } }}
+              placeholder={rezeptLaeuft ? `ZOE schreibt „${neuGericht.trim()}“ …` : 'Neues Gericht … Enter — ZOE schreibt das Rezept'}
               style={{ ...klein, flex: '1 1 220px', borderColor: rezeptLaeuft ? LEUCHT.agenten : undefined }} />
             <span style={{ fontSize: 12, color: C.inkLeise, display: 'inline-flex', gap: 8 }}>
               <button type="button" onClick={() => { setFormular(f => (f === 'neu' ? null : 'neu')); setOffen(null); setGewaehlt(null); }} style={{ ...nackt, padding: 0, textDecoration: 'underline', color: formular === 'neu' ? LEUCHT.gut : C.inkLeise }}>von Hand</button>
@@ -297,7 +297,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
           </div>
           {(formular === 'neu' || formular === 'neu-text') && (
             <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
-              <GerichtForm art={formular === 'neu-text' ? 'text' : 'hand'} nameStart={neuGericht} personen={[...daten.personen, ...gastProfile.map(g => ({ id: g.person, name: g.name }))]} onSpeichern={e => { gerichtSpeichern(e); setNeuGericht(''); }} onAbbruch={() => setFormular(null)} jarvis={gerichtVonJarvis} laeuft={rezeptLaeuft} />
+              <GerichtForm art={formular === 'neu-text' ? 'text' : 'hand'} nameStart={neuGericht} personen={[...daten.personen, ...gastProfile.map(g => ({ id: g.person, name: g.name }))]} onSpeichern={e => { gerichtSpeichern(e); setNeuGericht(''); }} onAbbruch={() => setFormular(null)} zoe={gerichtVonZoe} laeuft={rezeptLaeuft} />
             </div>
           )}
           {daten.gerichte.length > 3 && <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Suchen — Name, Zutat, Tag" style={{ ...klein, marginBottom: 10 }} />}
@@ -325,10 +325,10 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
                 );
               })}
             </Liste>
-            {!daten.gerichte.length && <Leer>Noch keine Gerichte. Oben den Namen tippen, Enter — Jarvis schreibt das Rezept. Die Wochenrezepte von Jarvis landen hier von selbst.</Leer>}
+            {!daten.gerichte.length && <Leer>Noch keine Gerichte. Oben den Namen tippen, Enter — ZOE schreibt das Rezept. Die Wochenrezepte von ZOE landen hier von selbst.</Leer>}
             {daten.gerichte.length > 0 && !bibliothek.length && <Leer>Nichts passt zu Suche oder Filter.</Leer>}
           </div>
-          <p style={{ fontSize: 12, color: C.inkLeise, margin: '10px 0 0', lineHeight: 1.5 }}>Ein Klick öffnet Rezept, Foto, Notiz und „in den Plan“. Lieblinge plant Jarvis gern wieder ein; steht ein Plan-Feld genauso wie ein Gericht hier, hängt das Rezept automatisch dran.</p>
+          <p style={{ fontSize: 12, color: C.inkLeise, margin: '10px 0 0', lineHeight: 1.5 }}>Ein Klick öffnet Rezept, Foto, Notiz und „in den Plan“. Lieblinge plant ZOE gern wieder ein; steht ein Plan-Feld genauso wie ein Gericht hier, hängt das Rezept automatisch dran.</p>
         </Karte>
         </Kachel>
 
@@ -343,7 +343,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
             <input value={neuGast} onChange={e => setNeuGast(e.target.value)} placeholder="Gast oder Kind hinzufügen (Name)" style={{ ...klein, width: 240 }}
               onKeyDown={e => { if (e.key === 'Enter' && neuGast.trim()) { void patch([{ liste: 'profile', op: 'upsert', eintrag: { person: `gast-${neuGast.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30) || neueId('g')}`, name: neuGast.trim(), konto: false } }]); setNeuGast(''); } }} />
-            <span style={{ fontSize: 12, color: C.inkLeise }}>Gäste plant Jarvis mit, wenn ihr sie oben anklickt.</span>
+            <span style={{ fontSize: 12, color: C.inkLeise }}>Gäste plant ZOE mit, wenn ihr sie oben anklickt.</span>
           </div>
         </Karte>
         </Kachel>
@@ -378,7 +378,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
                 </Liste>
               </div>
             ))}
-            {!daten.einkauf.length && <Leer>Leer — Jarvis füllt sie mit dem Wochenplan, ein Rezept setzt fehlende Zutaten, oder unten selbst ergänzen.</Leer>}
+            {!daten.einkauf.length && <Leer>Leer — ZOE füllt sie mit dem Wochenplan, ein Rezept setzt fehlende Zutaten, oder unten selbst ergänzen.</Leer>}
           </div>
           <div style={{ marginTop: 10 }}>
             <input value={neu} onChange={e => setNeu(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && neu.trim()) { postenHinzu(neu); setNeu(''); } }}
@@ -407,7 +407,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
                   </span>} />
               ))}
             </Liste>
-            {!daten.vorrat.length && <Leer>Noch nichts eingetragen. Was zuhause ist, plant Jarvis ein und lässt es auf der Liste weg.</Leer>}
+            {!daten.vorrat.length && <Leer>Noch nichts eingetragen. Was zuhause ist, plant ZOE ein und lässt es auf der Liste weg.</Leer>}
           </div>
           <div style={{ marginTop: 10 }}>
             <input value={neuVorrat} onChange={e => setNeuVorrat(e.target.value)} placeholder="Zuhause: „1 kg Reis“, „Olivenöl“ — Enter" style={klein}
@@ -433,7 +433,7 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
                   </span>} />
               ))}
             </Liste>
-            {!daten.lebensmittel.length && <Leer>Eure Lebensmittel mit Hinweis, wie ihr sie nehmt („Haferflocken · Bio, grob“). Jarvis nimmt sie zuerst.</Leer>}
+            {!daten.lebensmittel.length && <Leer>Eure Lebensmittel mit Hinweis, wie ihr sie nehmt („Haferflocken · Bio, grob“). ZOE nimmt sie zuerst.</Leer>}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 0.7fr auto', gap: 6, marginTop: 10, alignItems: 'center' }}>
             <input value={neuStamm.name} onChange={e => setNeuStamm(s => ({ ...s, name: e.target.value }))} placeholder="Lebensmittel" style={klein} />
@@ -531,7 +531,7 @@ function RezeptKarte({ g, daten, nameVon, patch, aufListe, neuSchreiben, laeuft,
           </ol>
           {!g.zubereitung.length && <Leer>Keine Schritte eingetragen.</Leer>}
           <div style={{ marginTop: 10, fontSize: 12, color: C.inkLeise }}>
-            {g.quelle === 'jarvis' ? 'von Jarvis' : 'von Hand'}
+            {g.quelle === 'zoe' ? 'von ZOE' : 'von Hand'}
             {neuSchreiben && <> · <button type="button" onClick={neuSchreiben} disabled={laeuft} style={{ ...nackt, padding: 0, textDecoration: 'underline' }}>{laeuft ? 'schreibt …' : 'neu schreiben lassen'}</button></>}
           </div>
         </div>
@@ -556,10 +556,10 @@ function RezeptKarte({ g, daten, nameVon, patch, aufListe, neuSchreiben, laeuft,
   );
 }
 
-/** Gericht anlegen oder bearbeiten — von Hand, von Jarvis (Name + Wunsch) oder aus eingefügtem Text. */
-function GerichtForm({ g, art, nameStart = '', personen, onSpeichern, onAbbruch, jarvis, laeuft }: {
+/** Gericht anlegen oder bearbeiten — von Hand, von ZOE (Name + Wunsch) oder aus eingefügtem Text. */
+function GerichtForm({ g, art, nameStart = '', personen, onSpeichern, onAbbruch, zoe, laeuft }: {
   g?: Gericht; art: 'hand' | 'text'; nameStart?: string; personen: { id: string; name: string }[]; onSpeichern: (eintrag: Record<string, unknown>) => void; onAbbruch: () => void;
-  jarvis?: (name: string, beschreibung: string, text: string) => Promise<void>; laeuft?: boolean;
+  zoe?: (name: string, beschreibung: string, text: string) => Promise<void>; laeuft?: boolean;
 }) {
   const [f, setF] = useState({
     name: g?.name ?? nameStart, zutaten: (g?.zutaten ?? []).map(z => (z.menge ? `${z.menge} ${z.name}` : z.name)).join('\n'), zubereitung: (g?.zubereitung ?? []).join('\n'),
@@ -603,8 +603,8 @@ function GerichtForm({ g, art, nameStart = '', personen, onSpeichern, onAbbruch,
         </>
       ) : (
         <>
-          <textarea value={f.text} onChange={e => set('text', e.target.value)} rows={8} placeholder="Rezept-Text hier einfügen (z. B. von einer Webseite kopiert) — Jarvis bringt Zutaten und Schritte in Form, ohne etwas dazuzuerfinden." style={{ ...klein, resize: 'vertical', lineHeight: 1.5 }} />
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf farbe={LEUCHT.agenten} onClick={() => void jarvis?.(name, '', f.text.trim())} aus={!name || f.text.trim().length < 20 || !!laeuft}>{laeuft ? 'Jarvis liest …' : 'Übernehmen'}</Knopf><Knopf leise onClick={onAbbruch}>Abbrechen</Knopf></div>
+          <textarea value={f.text} onChange={e => set('text', e.target.value)} rows={8} placeholder="Rezept-Text hier einfügen (z. B. von einer Webseite kopiert) — ZOE bringt Zutaten und Schritte in Form, ohne etwas dazuzuerfinden." style={{ ...klein, resize: 'vertical', lineHeight: 1.5 }} />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf farbe={LEUCHT.agenten} onClick={() => void zoe?.(name, '', f.text.trim())} aus={!name || f.text.trim().length < 20 || !!laeuft}>{laeuft ? 'ZOE liest …' : 'Übernehmen'}</Knopf><Knopf leise onClick={onAbbruch}>Abbrechen</Knopf></div>
         </>
       )}
     </div>

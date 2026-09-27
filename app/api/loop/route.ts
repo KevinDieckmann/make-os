@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server';
 import { sperren } from '@/lib/lauf-sperre';
 import { logRun, recentRuns } from '@/lib/agent-log';
 import { askJson } from '@/lib/anthropic';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { gatherBrain } from '@/lib/brain';
 import { vitalsHint } from '@/lib/vitals';
 import { computeMetrics, eur } from '@/lib/make-one/finance-data';
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
   if (loop === 'morgen') {
     const vit = g.vitals;
     const system = [
-      'Du bist JARVIS, Kevins zentrale Intelligenz und Chief of Staff. Erzeuge den MORGEN-LOOP: eine ruhige, konkrete Tagesausrichtung.',
+      'Du bist ZOE, Kevins zentrale Intelligenz und Chief of Staff. Erzeuge den MORGEN-LOOP: eine ruhige, konkrete Tagesausrichtung.',
       'Kevin: Bandscheibenvorfall in Reha (Rücken schonen), Nordstern 1 Mio € Umsatz KD Ventures → 300k Gewinn. Ziel „mehr Ruhe".',
       'Regeln: max 3 echte Prioritäten für heute (nicht mehr — Überladung ist das Problem). Berücksichtige Recovery UND die echten Termine (freie Zeit realistisch einschätzen). Wenn Recovery niedrig oder der Tag voll ist: weniger vornehmen, das offen sagen.',
       'Gesundheitsdaten sind privat — nur für Kevin, nie als Business-Aussage.',
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
     const letzteSache = (letzte?.payload as { eineSache?: string } | undefined)?.eineSache;
 
     const system = [
-      'Du bist JARVIS, Kevins zentrale Intelligenz und Chief of Staff. Erzeuge den WOCHEN-LOOP: Rückblick + Ausrichtung für die kommende Woche.',
+      'Du bist ZOE, Kevins zentrale Intelligenz und Chief of Staff. Erzeuge den WOCHEN-LOOP: Rückblick + Ausrichtung für die kommende Woche.',
       'Nordstern: 1 Mio € Umsatz KD Ventures → min. 300k € Gewinn (Kevin & Malin).',
       'Du bekommst FERTIGE Kennzahlen — rechne nicht neu, erfinde nichts. Sei ehrlich, auch wenn der Kurs nicht reicht.',
       'Verknüpfe die Bereiche: Was bedeutet die Pipeline für den Umsatz? Was blockiert die Ausführung? Wo ist der eine Hebel?',
@@ -167,7 +167,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ loop, hinweis: 'Noch zu wenig Historie — lass Morgen-/Wochen-Loop erst ein paar Mal laufen, dann kann ich Muster erkennen.', anzahl: g.loopLog.length });
     }
     const system = [
-      'Du bist JARVIS im Selbst-Rückblick. Du siehst die Historie deiner eigenen Loop-Ergebnisse für Kevin.',
+      'Du bist ZOE im Selbst-Rückblick. Du siehst die Historie deiner eigenen Loop-Ergebnisse für Kevin.',
       'Frage dich ehrlich: Welche Empfehlungen wiederholen sich (= wurden nie umgesetzt)? Wo hat das System danebengelegen? Was fehlt dir an Daten, um besser zu werden?',
       'Kritisiere DICH und das System, nicht Kevin. Konkret, keine Floskeln.',
       'Antworte NUR als JSON: {"muster":["<wiederkehrendes Muster in den Empfehlungen>"],"blindeFlecken":["<was dem System an Daten/Fähigkeit fehlt>"],"verbesserungen":[{"was":"<konkrete Verbesserung am System>","warum":"<1 Satz>"}]}',
@@ -196,7 +196,7 @@ export async function POST(req: Request) {
     const msBiz = (msF?.meilensteine ?? []).filter(x => x.bereich === 'business' && !x.erledigt);
     const msGes = (msF?.meilensteine ?? []).filter(x => x.bereich === 'gesundheit' && !x.erledigt);
     const formatJson = 'Antworte NUR als JSON: {"lage":"<2-3 Sätze ehrliche Lage>","punkte":[{"titel":"<konkret>","warum":"<1 Satz>"}],"eineSache":"<DIE eine Handlung — klein genug, dass sie wirklich passiert>","warnung":"<optional, sonst leer>"} — maximal 4 punkte.';
-    const kopf = 'Du bist JARVIS, Kevins Chief of Staff. Du bekommst FERTIGE Zahlen aus echten Stores — rechne nicht neu, erfinde nichts, sei ehrlich auch wenn es unbequem ist. Deutsch, knapp, kein Startup-Sprech.';
+    const kopf = 'Du bist ZOE, Kevins Chief of Staff. Du bekommst FERTIGE Zahlen aus echten Stores — rechne nicht neu, erfinde nichts, sei ehrlich auch wenn es unbequem ist. Deutsch, knapp, kein Startup-Sprech.';
 
     let system = '', user = '', label = '';
     if (loop === 'finanzen') {

@@ -7,7 +7,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { loadJson, datenOrdner, datenSchluessel } from '@/lib/store/local-db';
-import { lies, stand } from '@/lib/jarvis/auftraege';
+import { lies, stand } from '@/lib/zoe/auftraege';
 import { alle } from '@/lib/zugang/anmeldungen';
 import { befundeAus, gesamt, kurzbericht, nachRang, type InnenLage, type HostLage, type AussenLage, type Befund } from './lage';
 import { fehlerquote24h, fehlanmeldungen24h, neueNetze7d, cspBild, type CspMeldung } from './rechnen';

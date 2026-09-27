@@ -232,7 +232,7 @@ export const GESUNDHEIT_MESSEN: Record<string, (b: GesundheitBestand) => Messung
   },
   plan(b) {
     const e = b.ernaehrung;
-    if (!e?.plan) return { luecke: 'Noch kein Essensplan', details: [{ titel: 'Jarvis plant die Woche', href: WEG.ernaehrung() }] };
+    if (!e?.plan) return { luecke: 'Noch kein Essensplan', details: [{ titel: 'ZOE plant die Woche', href: WEG.ernaehrung() }] };
     const felder = TAGE.flatMap(t => [e.plan[t]?.fruehstueck, e.plan[t]?.mittag, e.plan[t]?.abend]);
     const voll = felder.filter(x => (x ?? '').trim()).length;
     const w = (voll / 21) * 100;

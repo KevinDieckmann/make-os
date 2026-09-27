@@ -86,7 +86,7 @@ describe('Team-Zeile der Power Hour', () => {
   ];
   const kontakte = [
     k('a', { aktivitaeten: [akt('kevin', HEUTE, { ergebnis: 'gespraech' }), akt('kevin', HEUTE, { ergebnis: 'mailbox' }), akt('kevin', '2026-09-23', { ergebnis: 'termin', art: 'termin' })] }),
-    k('b', { aktivitaeten: [akt('malin', HEUTE, { art: 'gespraech' }), akt('malin', '2026-09-10', { ergebnis: 'gespraech' }), akt('system', HEUTE, { art: 'termin' }), akt('jarvis', HEUTE, { art: 'gespraech' })] }),
+    k('b', { aktivitaeten: [akt('malin', HEUTE, { art: 'gespraech' }), akt('malin', '2026-09-10', { ergebnis: 'gespraech' }), akt('system', HEUTE, { art: 'termin' }), akt('zoe', HEUTE, { art: 'gespraech' })] }),
   ];
   it('Power Hours und echte Gespräche je Person — heute und 7 Tage (einschließlich heute)', () => {
     const [kevin, malin] = teamZahlen(kontakte, sitzungen, HEUTE);

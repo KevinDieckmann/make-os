@@ -1,5 +1,5 @@
 // ─── Business-Index — Zahlen und Schwellen als Text (rein) ──────────────────
-// Oberfläche, Jarvis und Head of Finance sagen es gleich.
+// Oberfläche, ZOE und Head of Finance sagen es gleich.
 
 import type { KennzahlStand } from './index';
 

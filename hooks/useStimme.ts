@@ -8,7 +8,7 @@
 // zur Erkennung durch den Browser selbst — nichts wird bei uns gespeichert.
 //
 // Regeln, die hier drinstecken:
-//   · Beim Vorlesen wird das Mikrofon abgeschaltet — sonst hört Jarvis sich
+//   · Beim Vorlesen wird das Mikrofon abgeschaltet — sonst hört ZOE sich
 //     selbst zu und antwortet auf die eigene Stimme.
 //   · Diktat endet von selbst, wenn Kevin aufhört zu reden (continuous=false).
 //     Der fertige Satz geht dann als Nachricht raus.
@@ -86,7 +86,7 @@ export interface Stimme {
   schweig(): void;
 }
 
-const MERKER_STIMME = 'make-os-jarvis-stimmname';
+const MERKER_STIMME = 'make-os-zoe-stimmname';
 
 export function useStimme(onSatz: (text: string) => void): Stimme {
   const [kannHoeren, setKannHoeren] = useState(false);
@@ -187,7 +187,7 @@ export function useStimme(onSatz: (text: string) => void): Stimme {
 
   const hoerZu = useCallback(() => {
     if (!erk.current) return;
-    // Nie gleichzeitig reden und hören — sonst diktiert Jarvis sich selbst.
+    // Nie gleichzeitig reden und hören — sonst diktiert ZOE sich selbst.
     schweig();
     fertig.current = '';
     setTeil('');

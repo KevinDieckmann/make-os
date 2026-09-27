@@ -18,7 +18,7 @@ export interface ChefVorschlag extends VorschlagRoh {
 }
 export interface Bericht {
   id: string; zeit: string; modus: Modus; umfang: 'business' | 'business+haushalt';
-  ausgeloest: 'takt' | 'person' | 'jarvis'; person?: string; frage?: string; monat?: string;
+  ausgeloest: 'takt' | 'person' | 'zoe'; person?: string; frage?: string; monat?: string;
   antwort: Antwort; pruefung: Pruefung & { korrigiert: boolean }; modell: string; dauer_ms: number;
   /** Ohne Modellaufruf entschieden (Tagescheck ohne Neues). */
   ohneKi?: boolean;

@@ -11,7 +11,7 @@ lokal, Route `/os`, Port 3001.
 - Diktat-Falle: „Berlin" oder „Marlene" im Diktat meint meist **Malin**.
 
 ## Leitbild & Terminologie (Kevin & Malin, 01.08.2026)
-- **Jarvis-Mentalität, immer:** Wir arbeiten dauerhaft an unserer eigenen
+- **ZOE-Mentalität, immer:** Wir arbeiten dauerhaft an unserer eigenen
   Software weiter. Ziel ist EINE zentrale Intelligenz mit allen Daten über
   alle Beteiligungen, die auch Familie & Alltag mitsteuert — Fernziel ein
   Sprach-Assistent zu Hause. Immer nach ethisch/moralisch sauberen Maßstäben.
@@ -40,13 +40,13 @@ lokal, Route `/os`, Port 3001.
    vom Test stammt und nicht von Kevin/Malin echt eingetragen wurde.
 5. **Zugang je Person, nie Rückfall auf „kevin“:** Jede Route liest die Person aus der Sitzung
    (`personStreng`/`personAus`); Werkzeuge ohne Person lehnen ab (`KEINE_PERSON`). Dienstaufrufe nur über
-   `istDienst(req)` (`lib/zugang/dienst.ts`, konstante Zeit); Inhaber-Dinge über `nurInhaber`. Jarvis-Aufträge,
+   `istDienst(req)` (`lib/zugang/dienst.ts`, konstante Zeit); Inhaber-Dinge über `nurInhaber`. ZOE-Aufträge,
    Protokoll und Stapel gehören der Person, die sie ausgelöst hat. Die Sitzung ist
    `<speicher>.<ablauf>.<stand>.<signatur>` — `stand` = Fingerabdruck des Passwort-Salzes; die Middleware
    prüft ihn über `/api/konto/stand` (Dienstweg, `lib/zugang/stand-pruefung.ts`, Cache 60 s). Passwort
    ändern → `mitSitzung(frisch)` zurückgeben, damit das eigene Gerät drin bleibt.
 6. **Fremder Text ist Daten:** Alles, was Text Dritter tragen kann (Mails, Web, Kontaktnotizen, Bank-
-   Verwendungszwecke, Notizen, Gedächtnis, Agentenläufe — Liste in `lib/jarvis/fremd.ts`), läuft durch
+   Verwendungszwecke, Notizen, Gedächtnis, Agentenläufe — Liste in `lib/zoe/fremd.ts`), läuft durch
    `fremd()`; danach werden schreibende Werkzeuge nur vorgeschlagen. Brain-Blöcke stehen in `<daten>`.
    Keine echten Namen Dritter im Code oder in `public/` (Klickdummys liegen in `prototype/`).
 7. **Interne Hops tragen die Person:** Jeder `fetch` auf eine eigene Route mit `x-make-key` gibt
@@ -94,7 +94,7 @@ lokal, Route `/os`, Port 3001.
 - `/os/bauplan` ist ein Board: **Ideen → Bereit → In Arbeit → Zum Testen → Fertig**,
   dazu „Planung“ (Etappen mit Zieldatum). Karten kommen vom Knopf „Idee“ oben auf
   jeder Seite (nimmt die Seite mit), aus dem Board („+ Karte“, mit Bildschirmfoto)
-  und von Jarvis (`bauplan_notieren`). Logik: `lib/bauplan/board.ts` (getestet),
+  und von ZOE (`bauplan_notieren`). Logik: `lib/bauplan/board.ts` (getestet),
   API `app/api/bauplan` (+ `/bild`), Oberfläche `components/os/bauplan/`.
 - **Bau-Sessions:** Den Stand vom Server holen (`GET /api/bauplan` → `warteschlange`
   = „Bereit“ von oben, ohne Karten, die auf Kevin warten) und von oben abarbeiten.
@@ -114,7 +114,7 @@ lokal, Route `/os`, Port 3001.
 - Server spricht CalDAV mit iCloud: `lib/kalender/` (zeit, dav, ics mit ical.js, icloud,
   eintraege, zugang, einstellungen), API `app/api/kalender` (+ `/termin`). Die alten Wege
   (`/api/apple-calendar`, `/termin`, `/create`) laufen auf dem Server über iCloud; der
-  Abgleich schreibt `calendar-cache` für alle bisherigen Leser (Heute, Tag, Jarvis, Morgenlauf).
+  Abgleich schreibt `calendar-cache` für alle bisherigen Leser (Heute, Tag, ZOE, Morgenlauf).
 - Zugang: `ICLOUD_APPLE_ID`/`ICLOUD_APP_PASSWORT` (app-spezifisch) NUR in der Server-.env —
   einrichten/trennen mit `deploy/icloud-verbinden.sh <apple-id>` (Kevin, per `ssh -t`; fragt nur das App-Passwort). Zugangsdaten
   gehen nur an *.icloud.com. Nach abgelehnter Anmeldung erst nach 30 Min. neu (Apple sperrt sonst).
@@ -137,7 +137,7 @@ lokal, Route `/os`, Port 3001.
   V1-Export (`grundlage.schulden`) sind PRIVAT — nie in Business-Kennzahlen.
 - Zugang: Haushalt des Inhabers (`lib/zugang/haushalt-inhaber.ts`, auch für den Kalender).
 - Verankert: Fachseiten zeigen ihre Kennzahlen (`IndexStreifen`: Zahlen, Markttraktion,
-  Mandate); Jarvis `business_index` (frei) und `monatsabschluss_erfassen` (Freigabe); der
+  Mandate); ZOE `business_index` (frei) und `monatsabschluss_erfassen` (Freigabe); der
   Head of Finance bekommt `business_index` im Datenpaket und Hinweise bei Rot/fehlendem
   Monatsabschluss (`lib/business/fuer-chef.ts`); Feinjustierung: eigene Schwellen je
   Kennzahl (alle Sichten oder eine Firma), Jahresziele je Firma, Verlauf 90 Tage.
@@ -171,7 +171,7 @@ lokal, Route `/os`, Port 3001.
   Punkte-Logik, nie eigene Kachel.
 - **Gesundheits-Index** `lib/gesundheit/index.ts` + `speicher.ts`, API `/api/gesundheit/index` (nur wer sehen
   darf: `darfGesundheitSehen`), Speicher `gesundheit-index--<person>`; Gesundheits-Säule des Wachstums-Scores =
-  dieser Index (`lib/performance.ts`); Jarvis `gesundheits_index` (frei, nur eigene Person oder geteilt).
+  dieser Index (`lib/performance.ts`); ZOE `gesundheits_index` (frei, nur eigene Person oder geteilt).
   Tagebücher (Haut, Streak) zählen nur, wenn geführt (`kennzahlenFuer`).
 - **Traktions-Index** `lib/crm/traktion-index.ts` (Kennzahlen der Welten → Kern, Sales 50 · Marketing 40 ·
   Event 10 geometrisch, Grundlage Gewicht 0), Speicher `traktion-index`, API `/api/crm/traktion`
@@ -190,7 +190,7 @@ lokal, Route `/os`, Port 3001.
 - Route `/api/state/ernaehrung`: GET (+ `ich`, `personen`, `budget`), **PATCH `{ ops }`** für alle Änderungen (kein
   Voll-Stand zurückschreiben — zu zweit am Handy), PUT nur Altweg. `/api/ernaehrung/vorschlag` (Woche für alle Profile,
   mit Rezepten, Vorrat abgezogen), `/api/ernaehrung/rezept` (ein Rezept, hängt am Plan-Feld). Nur Haushalt des Inhabers.
-- Ansicht `components/os/ErnaehrungView.tsx` (in Gesundheit → Ernährung eingebettet); Jarvis `einkauf_setzen` (frei).
+- Ansicht `components/os/ErnaehrungView.tsx` (in Gesundheit → Ernährung eingebettet); ZOE `einkauf_setzen` (frei).
 - Gerichte-Bibliothek „Unsere Gerichte“ (26.09.): `Gericht` hat `favorit` + `notiz`; Helfer `gerichteFiltern`, `tagsHaeufig`,
   `imPlan`, `gerichtZuName`, `zutatenAusText`, `schritteAusText`. `/api/ernaehrung/rezept` nimmt auch `beschreibung`
   (Wunsch) oder `text` (eingefügtes Rezept, als `fremd()`); `/vorschlag` listet gespeicherte Gerichte (★ zuerst) und
@@ -217,7 +217,7 @@ lokal, Route `/os`, Port 3001.
   Tempo-Fixes, keine Deploy-Skripte. Frühere Freigaben gelten nicht pauschal.
 
 ## Spaces Privat/Business (26.09., online seit 22:47)
-- Grundregel (Kevin): jeder Eintrag trägt seinen Space, der Space filtert, Home/Heute/Jarvis sehen beides. Regeln in
+- Grundregel (Kevin): jeder Eintrag trägt seinen Space, der Space filtert, Home/Heute/ZOE sehen beides. Regeln in
   `lib/make-one/space-regeln.ts` (`spaceVonAufgabe`: Ort gibt vor, `task.space` weicht ab; `fokusSchluessel`/`fokusFuerSpace`:
   Fokus gemeinsam oder `privat:jahr`/`business:jahr`). Menü/Kopf: `lib/make-one/spaces.ts` (SPACES · EIGEN · UNTEN,
   `passtZu` Pfad+Parameter), `hooks/useSpace.ts` (Adresse `?space=` gewinnt, sonst Merker). Tests `tests/spaces.test.ts`.
@@ -256,9 +256,9 @@ lokal, Route `/os`, Port 3001.
 
 ## Brain (lib/brain, seit 27.09.)
 - Wahrheit ist der Vault (Markdown, Obsidian). Der Index (`lib/brain/index.ts`, SQLite FTS5 + Vektoren) ist abgeleitet — bei Zweifel Datei löschen, der Takt baut neu.
-- Suche immer über `suche()` in `lib/jarvis/vault.ts` (nimmt den Index, sonst Dateisuche). Sicht (`darfSehen`) gilt VOR dem Ranking — nie nachträglich filtern.
-- Jarvis schreibt ins Brain nur über `lib/brain/inbox.ts vorschlagAblegen` (plus Jarvis_Log). Menschen: Regeln (`lib/brain/regeln.ts`) und Freigaben. Nie Notizen überschreiben.
-- Regeln (`00. Fundament/Regeln`) und Konstitution sind ANWEISUNGEN an Jarvis — nur `status: aktiv` mit `freigegeben_von` wird geladen (`regelnFuerPrompt`). Alles andere aus dem Vault bleibt Daten (`fremd()`).
+- Suche immer über `suche()` in `lib/zoe/vault.ts` (nimmt den Index, sonst Dateisuche). Sicht (`darfSehen`) gilt VOR dem Ranking — nie nachträglich filtern.
+- ZOE schreibt ins Brain nur über `lib/brain/inbox.ts vorschlagAblegen` (plus Zoe_Log). Menschen: Regeln (`lib/brain/regeln.ts`) und Freigaben. Nie Notizen überschreiben.
+- Regeln (`00. Fundament/Regeln`) und Konstitution sind ANWEISUNGEN an ZOE — nur `status: aktiv` mit `freigegeben_von` wird geladen (`regelnFuerPrompt`). Alles andere aus dem Vault bleibt Daten (`fremd()`).
 - Lokal NIE in Kevins echten Vault schreiben; Tests setzen `MAKE_VAULT_DIR` auf einen Temp-Ordner und `MAKE_OS_DOKU_WURZEL=aus`. Embeddings sind im Test aus.
 
 ## Datenschicht (lib/store/local-db.ts, Stufe 1 seit 27.09.)
@@ -269,9 +269,9 @@ lokal, Route `/os`, Port 3001.
 
 ## Agenten — Querliegendes
 - Jeder Modellaufruf geht durch `lib/anthropic.ts askText`: dort sitzt der Guthaben-Schalter (`guthabenLeer()`, 30 min Pause nach „credit balance too low“). Nie eigene Aufrufe an die API daneben bauen.
-- `runAgent` (lib/jarvis/agenten.ts): `post`/`get` werfen bei Fehlerstatus, `ok:false` oder `error` — ein Lauf ist nur `ok`, wenn die Route es ist. Neue Fälle: Ergebnis prüfen, nicht Text.
-- Ohne KI liefern Läufe Regelwerk (`lib/jarvis/regelwerk.ts` für Morgen/Abend, `ohneKi` bei Heads/Finance) — kein Fehlschlag, der den Takt in die Pause zwingt.
-- Der Agenten-Schalter unter /os/agenten gilt für Jarvis, Takt UND direkten Aufruf (`resolveAgent` + `disabledResponse`, 409).
+- `runAgent` (lib/zoe/agenten.ts): `post`/`get` werfen bei Fehlerstatus, `ok:false` oder `error` — ein Lauf ist nur `ok`, wenn die Route es ist. Neue Fälle: Ergebnis prüfen, nicht Text.
+- Ohne KI liefern Läufe Regelwerk (`lib/zoe/regelwerk.ts` für Morgen/Abend, `ohneKi` bei Heads/Finance) — kein Fehlschlag, der den Takt in die Pause zwingt.
+- Der Agenten-Schalter unter /os/agenten gilt für ZOE, Takt UND direkten Aufruf (`resolveAgent` + `disabledResponse`, 409).
 
 ## Head of IT (HOI)
 - Der HOI ist kein KI-Agent, sondern ein Lagebild aus Zahlen: `lib/hoi/lage.ts` (rein: Befunde + Ampeln), `lib/hoi/innen.ts` (einsammeln), `lib/hoi/rechnen.ts` (Zähler), Seite `/os/hoi`, Routen `/api/hoi/{lage,aussen,csp}`.
@@ -285,7 +285,7 @@ lokal, Route `/os`, Port 3001.
   `space:bereich`, zwei Arten — `auto` (Anwesenheits-Ping alle 30 s, Differenz ≤ 90 s zählt)
   und `bewusst` (Fokus-Zähler). `bild(datei, heute)` liefert heute/7 Tage je Space und Bereich,
   Fokus-Tage (≥ 25 min bewusst), Blöcke. Bereich aus der Adresse: `lib/zeitmessung/bereich.ts`
-  (Menüpunkte der Spaces + feste Namen home/heute/wachstum/system/jarvis/inbox/kalender).
+  (Menüpunkte der Spaces + feste Namen home/heute/wachstum/system/zoe/inbox/kalender).
 - **Speicher:** `lib/zeitmessung/speicher.ts`, Bestand `zeit`/`zeit--<person>`; Pings werden
   120 s gepuffert (keine Schreibung alle 30 s). Route `/api/state/zeit` (GET Bild, POST Fokus-Block).
   Der Ping in `components/os/Mitarbeit.tsx` schickt `pfad`, `suche`, `space`; verbucht wird in
@@ -326,7 +326,7 @@ lokal, Route `/os`, Port 3001.
   gzip ab 16 KB und ETag aus `speicherStand()` → der 20-s-Abgleich bekommt 304,
   wenn sich nichts geändert hat (Client: `holeMitStand` in `components/os/crm/daten.ts`).
 - Takt: nach Fehlschlägen pausiert ein Auftrag 5 · 3^(n−1) min, höchstens 3 h
-  (`wartenNachFehler`, lib/jarvis/takt.ts) — nie wieder Minuten-Schleifen.
+  (`wartenNachFehler`, lib/zoe/takt.ts) — nie wieder Minuten-Schleifen.
   Nur ein Arbeiter je MAKE OS (`.data/worker.pid`).
 - Stores: JSON-Dateien unter `.data/` via `lib/store/local-db.ts`
   (loadJson/updateJson). API-Gate: `x-make-key`-Header (MAKE_OS_KEY).
@@ -357,7 +357,7 @@ lokal, Route `/os`, Port 3001.
   design.ts — Karten mit Tiefe, Glow, hochzählende Zahlen, gestaffeltes
   Erscheinen; eine Ebene, nie eine Null, Farbe bedeutet Zustand. Alle Einträge der
   Leiste (Heute · Wachstum · Gesundheit · Inbox · Aufgaben · Zahlen · Kontakte ·
-  Jarvis · System) sind umgebaut; Anmeldung führt zu Heute, Jarvis ist kein
+  ZOE · System) sind umgebaut; Anmeldung führt zu Heute, ZOE ist kein
   Vorspann mehr. Der **Wachstums-Score** steht als Kopf über jeder Seite
   (`WachstumsKopf`) — der Score, auf den wir hinarbeiten; sechs Säulen
   (Gesundheit 35 · Business 20 · Finanzen 15 · Planung 10 · Beziehung 10 ·
@@ -378,7 +378,7 @@ lokal, Route `/os`, Port 3001.
   `new Date(...).toISOString()` für Monate). Zugriff nur über
   `haushaltVon(req)` (Konto.haushalt, setzt nur der Inhaber; kein Rückfall
   auf „kevin“). Privat zählt in keiner Business-Rechnung
-  (`istPrivatPosten`/`nurBusiness` in `liquiditaet.ts`). Jarvis: Haushalt NUR
+  (`istPrivatPosten`/`nurBusiness` in `liquiditaet.ts`). ZOE: Haushalt NUR
   über `blockHaushalt` in Gespräch/Morgen/Empfang, nie in `gatherBrain`.
   Test-Haushalt „test“ für Fotos, echte Prüfdaten nur in `.data/pruefdaten/`.
   Umzug: `app/api/haushalt/umzug`, Einfrieren: `docs/make-orga/`.
@@ -391,7 +391,7 @@ lokal, Route `/os`, Port 3001.
   (privat ohne Beträge, Tag „haushalt“). Takt über `plan.ts`/`takt.ts`, ein Lauf
   je Haushalt gleichzeitig; Haushalts-Ergebnisse in Warteschlange/Agenten-Log
   nur als Zähler. Speicher: `finanzchef` (Business) · `haushalt-chef--<h>`.
-- **Navigation (24.09.2026, Kevins Vorgabe):** links nur Jarvis · Brain (Wissen) ·
+- **Navigation (24.09.2026, Kevins Vorgabe):** links nur ZOE · Brain (Wissen) ·
   Markttraktion · Fokus · Aufgaben (`lib/make-one/navigation.ts`, Test `navigation.test.ts`);
   alles andere oben im `WachstumsKopf` (Heute, Inbox, Säulen-Ringe). `/os/fokus`
   ist eine eigene Seite (Fokus je Horizont, Tagesform, Regler).
@@ -411,7 +411,7 @@ lokal, Route `/os`, Port 3001.
   Welten → „vorläufig“; Grundlage (Datenreife, Art. 14, Ansprechbar) zählt NICHT.
   Er ist der Faktor „Markttraktion“ im Business-Score. Im Code heißt die
   Datenschicht weiter `crm` (lib/crm, /api/crm, Speicher `crm`) — das ist die
-  Kartei darunter, nicht der Name; sichtbar und für Jarvis heißt es Markttraktion. Personen im Speicher
+  Kartei darunter, nicht der Name; sichtbar und für ZOE heißt es Markttraktion. Personen im Speicher
   `kontakte` (Modell `lib/make-one/crm.ts`), alles daran im Speicher `crm`
   (`lib/crm/`: pipeline, recht, heute, kunden, events, dubletten, umzug).
   Grundkonzept aus der Markttraktion (KEMARIS Operations) — **Daten nur eigene**
@@ -420,7 +420,7 @@ lokal, Route `/os`, Port 3001.
   (`lib/crm/recht.ts`) gilt für jede Karte, jeden Entwurf, jedes Agentenpaket**:
   LinkedIn-Nachricht = elektronische Post, Kaltanruf nur mit Anlass, Werbesperre
   sperrt alles — keine Rechtsberatung, einmal anwaltlich gegenlesen. Kunden
-  = Mandate (`kundenAusMandaten` für Score/Jarvis); Mandat → Liquiplan nur als
+  = Mandate (`kundenAusMandaten` für Score/ZOE); Mandat → Liquiplan nur als
   Vorschlag (`/api/crm/liquiplan`), nie automatisch. **Firmen** sind eigene
   Stammdaten (`crm.firmen`, Kontakt.firmaId, Abgleich `lib/crm/abgleich.ts` nach
   jedem Import — füllt nur leere Felder). **Stammdaten-Bereich**: Selbstprüfung,
@@ -480,14 +480,14 @@ lokal, Route `/os`, Port 3001.
   Qualifizierungs-Runde (ersetzt Chancen-Runde), „+ Gespräch“ legt Deals nur über
   SQL an, Kampagnen-„Interesse“ → Lead in Qualifizierung, Head of Sales Modus
   `lead_review` (montags), KPI „Neue SQL · 30 Tage“, „Für dich“ (SQL-bereit,
-  in Qualifizierung), Jarvis `chance_anlegen` setzt den Lead auf SQL. Head-Block
+  in Qualifizierung), ZOE `chance_anlegen` setzt den Lead auf SQL. Head-Block
   in allen Ansichten standardmäßig zugeklappt.
 - **Markttraktion in der Praxis (25.09.2026 abends):** Erfassen ohne Reibung —
   Kanal-Chips sind Links (tel:/mailto:/LinkedIn, nur wenn die Ampel nicht rot
   ist), „Anrufen“ je Power-Hour-Karte, „Wie lief's?“ nach Kalenderterminen
   (`lib/crm/erfassen.ts nachbereitung`), Einwilligung im Gespräch mit Wortlaut
   (überschreibt keine vorhandene Rechtsgrundlage), „+ Gespräch festhalten“ von
-  überall (`SchnellErfassen.tsx`), Jarvis `notiere_kontakt` mit Ergebnis/Bedarf/
+  überall (`SchnellErfassen.tsx`), ZOE `notiere_kontakt` mit Ergebnis/Bedarf/
   nächstem Schritt. **Geführte Runden** (`lib/crm/runden.ts`, `Runden.tsx`,
   `?s=kontakte&a=runde-kreis|runde-chancen`): Kreis A–D + Beziehung/Anrede;
   Chancen für alle im Gespräch — **Wert startet leer**, Katalogpreis nur als
@@ -542,7 +542,7 @@ lokal, Route `/os`, Port 3001.
   - **Einstiege:** Kontakte und Firmen sind eigene Einstiege. Die Schnellsuche (⌘K) findet Personen, Firmen, Chancen und Mandate.
   - **Signale:** `lib/crm/signale.ts` übernimmt Mail und Kalender, aber nur aus den GESCHÄFTLICHEN Quellen. Das private Postfach und private Kalender bleiben draußen. Übernommen werden nur Betreff und Titel, und Funktionspostfächer zählen nicht.
   - **Zahlung:** Der Health-Faktor Zahlung kommt aus den Rechnungen im Finanzplan.
-  - **Anbindung:** Jarvis-Werkzeuge `crm_lage` und `chance_anlegen`. Der Head of Finance sieht MRR und die gewichtete Pipeline (nie im Basisplan).
+  - **Anbindung:** ZOE-Werkzeuge `crm_lage` und `chance_anlegen`. Der Head of Finance sieht MRR und die gewichtete Pipeline (nie im Basisplan).
   - **Kampagnen** (`lib/crm/kampagnen.ts`):
     - acht Playbooks mit Begründung und Rechtshinweis
     - Kundenprofil und „Kunden wie unsere besten“ (nur mit gemeinsamer Branche)
@@ -556,7 +556,7 @@ lokal, Route `/os`, Port 3001.
   erfundene IDs, Sperren und unzulässige Kanäle, Vollzug/unbelegte Zahlen →
   Korrekturrunde; Freigabe-Liste `head-<id>`; angenommen = nächster Schritt an
   der Person oder Aufgabe). Nie `privatNotiz`, nie gesperrte Personen ins Paket.
-  Takt in `lib/heads/takt.ts`, eingehängt in `lib/jarvis/takt.ts`.
+  Takt in `lib/heads/takt.ts`, eingehängt in `lib/zoe/takt.ts`.
 - **Eine Kasse (24.09.2026).** Business-Kasse = Summe der Firmenkonten
   (`geschaeftsKasse`/`mitKasse` in `finance-data.ts`); `finance.cash` nur
   Rückfall. Rest-Monate ab heute (Berlin). Keine zweite Runway-Formel bauen.
@@ -564,14 +564,14 @@ lokal, Route `/os`, Port 3001.
   andere Routen mit `x-make-key` aufrufen, nehmen `innenAdresse(req)` aus
   `lib/innen.ts` — nie `new URL(req.url).origin` (Vorbau Tailscale/Caddy,
   Schlüssel an fremden Host). Einladungslinks: `MAKE_OS_ADRESSE`.
-- **Obsidian ist Wissensbank Nummer eins (24.09.2026).** `lib/jarvis/vault.ts`
+- **Obsidian ist Wissensbank Nummer eins (24.09.2026).** `lib/zoe/vault.ts`
   liest `~/Desktop/MAKE/Make.Claude` zuerst, dann die iCloud-Doku. Es gelten
   Kevins Regeln aus dem Vault (`AGENTS.md`, `Vertraulichkeitsregeln.md`):
   `scope: privat` nie an Agenten/Hintergrundläufe und nie in Texte nach außen;
   Schreiben nur als Protokoll oder Anhang an `Offene_Fragen_Brain`,
-  `Taskmanagement_Brain`, `Jarvis_Log` — Fundament und Quellen nie, im Ordner
+  `Taskmanagement_Brain`, `Zoe_Log` — Fundament und Quellen nie, im Ordner
   MAKE wird nichts gelöscht. Seite `/os/wissen` mit Chat „Fragen“
-  (`lib/jarvis/brain-chat.ts`, nur lesend, antwortet nur aus Notizen mit Quelle),
+  (`lib/zoe/brain-chat.ts`, nur lesend, antwortet nur aus Notizen mit Quelle),
   Tests `vault-sicht`/`markdown`/`brain-chat`.
 - **`PLAN.md` ist der führende Plan (seit 18.09.2026).** Bestand bleibt und
   wird auf Hetzner hochgefahren; Reihenfolge Hochfahren → Aufgaben → CRM →
@@ -583,7 +583,7 @@ lokal, Route `/os`, Port 3001.
   Weg seit 19.06., allen Entscheidungen samt Begründung, den Fehlern und ihren
   Lehren, der Codelandkarte, dem tragenden Code im Original und Kevins
   Wunschliste. **Vor größeren Umbauten dort nachlesen** — die Begründungen
-  stehen nirgends sonst. Jarvis findet die Notizen über `suche_wissen`.
+  stehen nirgends sonst. ZOE findet die Notizen über `suche_wissen`.
   Achtung: der Vault liegt in iCloud — dort niemals Schlüssel ablegen.
 - `BEWEGUNG.md` — die Bewegungssprache: 30 Punkte aus der Recherche vom 07.09.,
   jeweils mit Begründung.
@@ -593,7 +593,7 @@ lokal, Route `/os`, Port 3001.
 
 ## Finanzplanung jetzt (27.09., nur lokal)
 - **Speicher:** EIN Dokument je Haushalt `finanzen-plan--<haushalt>` (Kevin + Malin = ein Haushalt), Zugang nur über `haushaltVon`; Startbestand kommt per Upload (`POST /api/finanzplan/import`, ersetzen nur ausdrücklich) — echte Zahlen nie im Repo, nie in Tests.
-- **Routen:** `GET /api/finanzplan` (ETag, `dokument: null` ohne Startbestand) · `?nur=kennzahlen` (verdichtet, für Jarvis/Startfläche) · `PATCH { basisStand, ops }` — Operationen mit Pfaden (`/plan/<zeile>:<monat>`, Listen `id=…`, `/-` anhängen, fehlendes `neu` entfernt), Prüfung und Schreiben in EINER Sperre, 409 mit aktuellem Dokument bei fremdem Stand (`lib/finanzen/plan/{operationen,speicher}.ts`).
+- **Routen:** `GET /api/finanzplan` (ETag, `dokument: null` ohne Startbestand) · `?nur=kennzahlen` (verdichtet, für ZOE/Startfläche) · `PATCH { basisStand, ops }` — Operationen mit Pfaden (`/plan/<zeile>:<monat>`, Listen `id=…`, `/-` anhängen, fehlendes `neu` entfernt), Prüfung und Schreiben in EINER Sperre, 409 mit aktuellem Dokument bei fremdem Stand (`lib/finanzen/plan/{operationen,speicher}.ts`).
 - **Rechenkern:** `lib/finanzen/rechenkern.ts` ist Kevins v3 und DIE eine Wahrheit der Rechnung — nie daneben rechnen; Steuern/Netto sind Näherungen (im UI „Hinweis, keine Steuerberatung“). Monat 1 = Okt 26, Historie Jan–Sep 26.
 - **Oberfläche:** `/os/finanzplan` (`components/os/finanzplan/`, Eintrag in `EIGEN` unter Agenten): Blatt mit Excel-Bedienung, Wer-Strich aus den CRM-Teamfarben, Rückgängig lokal als Gegenoperation, Verbergen, Meldung nach jedem Speichern. Regel „merken“ (`/regeln/<empfänger>`) wirkt rückwirkend und ist nicht rückgängig-fähig.
 - **Regeln:** Änderungen nur als Operationen (nie das Dokument zurückschreiben), Protokoll und Zellen-Meta schreibt der Server, `wer` = Speichername des Kontos. Plan/Stand/Abweichungen: `FINANZPLANUNG_JETZT.md`.
@@ -604,3 +604,6 @@ lokal, Route `/os`, Port 3001.
 - Der **Anfrage-Bündler** (`lib/http/anfrage-buendel.ts`) liegt vor dem Browser-fetch: gleiche GETs an /api teilen sich eine Antwort (laufend immer, fertig 8 s; `cache: 'no-store'` = nur laufend). Schreibende Aufrufe leeren ihn. Wer wirklich frisch lesen muss, nimmt `no-store`.
 - **Memo-Rauschen** (`lib/store/memo.ts` RAUSCHEN): Bestände, die oft geschrieben werden, aber in keinen Index eingehen. Neuer Bestand mit hoher Schreibfrequenz? Dort eintragen, sonst ist der Zwischenspeicher der Indizes wieder nie warm.
 - Embeddings laufen nur ab 3 CPUs (`embeddingsErlaubt`), Brain-Index-Abgleich alle 30 Min., Arbeiter höchstens 2 Läufe auf kleinen Maschinen.
+
+## ZOE (27.09.)
+- Der Assistent heißt **ZOE** (immer groß in Texten). Code: `lib/zoe`, `app/zoe`, `/api/zoe/*`, Bestände `zoe-*`. Alte `jarvis-*`-Dateien werden beim ersten Lesen übernommen (local-db); `/jarvis` und `/api/jarvis/*` leiten um — beides nicht entfernen, solange alte Arbeiter, Boten oder Lesezeichen leben.

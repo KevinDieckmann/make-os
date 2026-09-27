@@ -5,13 +5,13 @@
 
 import { NextResponse } from 'next/server';
 import { merken } from '@/lib/store/memo';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
 import { computeIndex } from '@/lib/performance';
 import { modellSchranke } from '@/lib/zugang/umfang';
-import { speicherFuer } from '@/lib/jarvis/raum';
+import { speicherFuer } from '@/lib/zoe/raum';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
   }).join('\n');
 
   const system = [
-    'Du bist JARVIS, Kevins zentrale Intelligenz und Chief of Staff. Du ordnest seinen Performance-Index ein.',
+    'Du bist ZOE, Kevins zentrale Intelligenz und Chief of Staff. Du ordnest seinen Performance-Index ein.',
     'Nordstern: 1 Mio € Umsatz KD Ventures → min. 300k € Gewinn. Persönliches Ziel: mehr Ruhe, Rücken in Reha.',
     'Du bekommst FERTIG GERECHNETE Werte — rechne nichts nach, erfinde nichts.',
     'WICHTIG: Faktoren ohne Daten sind KEINE schlechten Werte, sondern eine Messlücke. Behandle sie als „wissen wir nicht" und sag, was Kevin eintragen müsste, damit die Zahl echt wird.',

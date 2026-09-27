@@ -8,7 +8,7 @@
 // Grund, warum sie nicht versehentlich gelockert wird.
 
 import { describe, it, expect } from 'vitest';
-import { istPrivat } from '../lib/jarvis/vault';
+import { istPrivat } from '../lib/zoe/vault';
 
 describe('Vault-Grenze', () => {
   it('lässt Malins eigene Ordner draußen', () => {

@@ -1,33 +1,33 @@
 // ─── MAKE OS — Umsetzungs-Einschätzung ──────────────────────────────────────
 // Unser eigener Beitrag zum Taskmanagement: Andere Werkzeuge verwalten
 // Aufgaben — wir schätzen ein, WIE sie erledigt werden. Zu jeder Aufgabe:
-// Kann Jarvis das übernehmen, braucht es einen Menschen, wie lange dauert es,
+// Kann ZOE das übernehmen, braucht es einen Menschen, wie lange dauert es,
 // und was ist der erste Schritt.
 //
 // Bewusst deterministisch (Regeln, keine KI): läuft ohne Netz, ist erklärbar
-// und immer gleich. Jarvis verfeinert auf Knopfdruck.
+// und immer gleich. ZOE verfeinert auf Knopfdruck.
 //
 // Client-safe: keine Server-Importe.
 
-export type Wer = 'jarvis' | 'gemeinsam' | 'mensch';
+export type Wer = 'zoe' | 'gemeinsam' | 'mensch';
 
 export interface Einschaetzung {
   wer: Wer;
   /** Geschätzte Dauer in Minuten (Median-Fall). */
   dauer: number;
-  /** Was Jarvis konkret beitragen kann — leer, wenn nichts. */
+  /** Was ZOE konkret beitragen kann — leer, wenn nichts. */
   beitrag?: string;
   /** Warum die Einschätzung so ausfällt. */
   warum: string;
 }
 
 export const WER_LABEL: Record<Wer, string> = {
-  jarvis: 'Jarvis kann das',
-  gemeinsam: 'Jarvis bereitet vor',
+  zoe: 'ZOE kann das',
+  gemeinsam: 'ZOE bereitet vor',
   mensch: 'nur persönlich',
 };
 export const WER_FARBE: Record<Wer, string> = {
-  jarvis: '#58D9CD',
+  zoe: '#58D9CD',
   gemeinsam: '#4A6CF7',
   mensch: '#DE9E63',
 };
@@ -44,8 +44,8 @@ const NUR_MENSCH: { muster: RegExp; warum: string; beitrag?: string }[] = [
   { muster: /arzt|behandlung|physio|reha/i, warum: 'Gesundheit persönlich', beitrag: 'Termine und Fragen vorbereiten' },
 ];
 
-/** Arbeit, die Jarvis allein zu Ende bringen kann. */
-const JARVIS_KANN: { muster: RegExp; warum: string; beitrag: string }[] = [
+/** Arbeit, die ZOE allein zu Ende bringen kann. */
+const ZOE_KANN: { muster: RegExp; warum: string; beitrag: string }[] = [
   { muster: /recherch|analys|\bpr[üu]fen\b|vergleich|markt.?analyse|einsch[äa]tzung|kl[äa]ren\b|herausfinden/i, warum: 'Recherche und Analyse', beitrag: 'Recherche fahren und Ergebnis vorlegen' },
   { muster: /entwurf|texten|schreiben|formulier|vorlage|skript|agenda|konzept/i, warum: 'Text und Entwurf', beitrag: 'Entwurf schreiben — du gibst frei' },
   { muster: /liste|zusammenstell|sammeln|sortier|aufr[äa]umen im system|erfassen|[üu]bersicht/i, warum: 'Zusammenstellen', beitrag: 'Liste bauen und im System ablegen' },
@@ -68,20 +68,20 @@ export function einschaetzen(t: { title: string; description?: string; priority?
   const text = `${t.title} ${t.description ?? ''}`;
 
   const mensch = NUR_MENSCH.find(r => r.muster.test(text));
-  const jarvis = JARVIS_KANN.find(r => r.muster.test(text));
+  const zoe = ZOE_KANN.find(r => r.muster.test(text));
 
   // Dauer: die längste zutreffende Regel gewinnt — lieber zu groß schätzen
   // als den Tag zu sprengen. Ohne Treffer: eine halbe Stunde.
   const dauer = DAUER.filter(d => d.muster.test(text)).reduce((mx, d) => Math.max(mx, d.min), 0) || 30;
 
-  if (mensch && jarvis) {
-    return { wer: 'gemeinsam', dauer, beitrag: jarvis.beitrag, warum: `${jarvis.warum} kann ich, ${mensch.warum} bleibt bei dir` };
+  if (mensch && zoe) {
+    return { wer: 'gemeinsam', dauer, beitrag: zoe.beitrag, warum: `${zoe.warum} kann ich, ${mensch.warum} bleibt bei dir` };
   }
   if (mensch) {
     return { wer: 'mensch', dauer, beitrag: mensch.beitrag, warum: mensch.warum };
   }
-  if (jarvis) {
-    return { wer: 'jarvis', dauer: Math.max(10, Math.round(dauer * 0.4)), beitrag: jarvis.beitrag, warum: jarvis.warum };
+  if (zoe) {
+    return { wer: 'zoe', dauer: Math.max(10, Math.round(dauer * 0.4)), beitrag: zoe.beitrag, warum: zoe.warum };
   }
   return { wer: 'gemeinsam', dauer, beitrag: 'Aufgabe zerlegen und den ersten Schritt vorbereiten', warum: 'unklar zugeschnitten — Zerlegen hilft' };
 }

@@ -22,7 +22,7 @@ const STANDARD: Record<'privat' | 'business', StandardPlatz[]> = {
     { id: 'familie', art: 'familie', breite: 2 },
     { id: 'essen', art: 'essen', breite: 2 },
     { id: 'routinen', art: 'routinen', breite: 2 },
-    { id: 'jarvis', art: 'jarvis', breite: 2, einstellungen: { inbox: true } },
+    { id: 'zoe', art: 'zoe', breite: 2, einstellungen: { inbox: true } },
   ],
   business: [
     { id: 'index', art: 'index', breite: 2, einstellungen: { saeule: 'business' } },
@@ -31,7 +31,7 @@ const STANDARD: Record<'privat' | 'business', StandardPlatz[]> = {
     { id: 'aufgaben', art: 'aufgaben', breite: 4, einstellungen: { space: 'business', nur: 'dran' } },
     { id: 'dran', art: 'dran', breite: 2 },
     { id: 'termine', art: 'termine', breite: 4, einstellungen: { tage: 3, space: 'business', business: true }, titel: 'Nächste 3 Tage · Business' },
-    { id: 'jarvis', art: 'jarvis', breite: 2, einstellungen: { inbox: true } },
+    { id: 'zoe', art: 'zoe', breite: 2, einstellungen: { inbox: true } },
     { id: 'score', art: 'score', breite: 2 },
   ],
 };

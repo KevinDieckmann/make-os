@@ -11,13 +11,13 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Segmente, feld, LEUCHT } from '../schlank';
 
 type Prio = 0 | 1 | 2 | 3;
-type Gilt = 'kevin' | 'malin' | 'beide' | 'jarvis';
+type Gilt = 'kevin' | 'malin' | 'beide' | 'zoe';
 type Status = 'entwurf' | 'aktiv' | 'abgeloest';
 interface Regel { id: string; titel: string; text: string; prioritaet: Prio; giltFuer: Gilt; status: Status; quelle?: string; scope: string; owner: string; erstelltVon: string; erstelltAm: string; geaendertVon: string; geaendertAm: string; freigegebenVon?: string; freigegebenAm?: string }
 interface Konstitution { text: string; stand?: string; geaendertVon?: string; geaendertAm?: string; zeilen: number }
 
 const PRIO: { id: Prio; label: string; farbe: string }[] = [{ id: 0, label: 'hart', farbe: LEUCHT.kritisch }, { id: 1, label: 'Sicherheit', farbe: LEUCHT.achtung }, { id: 2, label: 'Haus-Regel', farbe: LEUCHT.agenten }, { id: 3, label: 'Vorliebe', farbe: C.inkLeise }];
-const GILT: { id: Gilt; label: string }[] = [{ id: 'beide', label: 'beide' }, { id: 'kevin', label: 'Kevin' }, { id: 'malin', label: 'Malin' }, { id: 'jarvis', label: 'Jarvis' }];
+const GILT: { id: Gilt; label: string }[] = [{ id: 'beide', label: 'beide' }, { id: 'kevin', label: 'Kevin' }, { id: 'malin', label: 'Malin' }, { id: 'zoe', label: 'ZOE' }];
 const STATUS_FARBE: Record<Status, string> = { entwurf: LEUCHT.achtung, aktiv: LEUCHT.gut, abgeloest: C.inkLeise };
 const prioFarbe = (p: Prio) => PRIO.find(x => x.id === p)?.farbe ?? C.inkLeise;
 
@@ -56,9 +56,9 @@ export function Regeln({ ich }: { ich: string }) {
     <>
       <Karte i={1} akzent={LEUCHT.agenten}>
         <Ueberschrift rechts={konst ? <span style={{ fontSize: 12, color: C.inkLeise }}>Stand {konst.stand ?? '—'}{konst.geaendertVon ? ` · ${konst.geaendertVon}` : ''} · {konst.zeilen} Zeilen</span> : undefined}>Konstitution</Ueberschrift>
-        <div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 10 }}>Werte, Rangfolge, harte Grenzen — höchstens {maxZeilen} Zeilen, denn sie ist in JEDEM Jarvis-Gespräch geladen. Details gehören in Regeln.</div>
+        <div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 10 }}>Werte, Rangfolge, harte Grenzen — höchstens {maxZeilen} Zeilen, denn sie ist in JEDEM ZOE-Gespräch geladen. Details gehören in Regeln.</div>
         {fehler && <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien, marginBottom: 8 }}>{fehler}</div>}
-        {!konstOffen && (konst?.text ? <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: TYP.bedien, lineHeight: 1.55, color: C.ink }}>{konst.text}</pre> : <Leer>Noch keine Konstitution. Schreib in wenigen Sätzen, was für Jarvis immer gilt.</Leer>)}
+        {!konstOffen && (konst?.text ? <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: TYP.bedien, lineHeight: 1.55, color: C.ink }}>{konst.text}</pre> : <Leer>Noch keine Konstitution. Schreib in wenigen Sätzen, was für ZOE immer gilt.</Leer>)}
         {konstOffen && (
           <div style={{ display: 'grid', gap: 8 }}>
             <textarea value={konstText} onChange={e => setKonstText(e.target.value)} rows={12} aria-label="Konstitution" style={{ ...feld, resize: 'vertical', lineHeight: 1.5, fontSize: TYP.bedien }} />
@@ -73,12 +73,12 @@ export function Regeln({ ich }: { ich: string }) {
 
       <Karte i={2}>
         <Ueberschrift rechts={<Knopf leise onClick={() => setNeu(neu ? null : { titel: '', text: '', prioritaet: 2, giltFuer: 'beide', quelle: '', privat: false })}>{neu ? 'Abbrechen' : '+ Regel'}</Knopf>}>Regelregister</Ueberschrift>
-        <div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 10 }}>Priorität: hart › Sicherheit & Privatsphäre › Haus-Regel › Vorliebe. Nur <b style={{ color: C.ink }}>aktive</b> Regeln liest Jarvis — aktiv schalten heißt freigeben, mit deinem Namen dran.</div>
+        <div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 10 }}>Priorität: hart › Sicherheit & Privatsphäre › Haus-Regel › Vorliebe. Nur <b style={{ color: C.ink }}>aktive</b> Regeln liest ZOE — aktiv schalten heißt freigeben, mit deinem Namen dran.</div>
         {meldung && <div style={{ color: LEUCHT.achtung, fontSize: TYP.bedien, marginBottom: 8 }}>{meldung}</div>}
         {neu && (
           <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', marginBottom: 12 }}>
             <input value={neu.titel} onChange={e => setNeu({ ...neu, titel: e.target.value })} placeholder="Titel — kurz, wie eine Überschrift" aria-label="Titel der Regel" style={{ ...feld }} />
-            <textarea value={neu.text} onChange={e => setNeu({ ...neu, text: e.target.value })} rows={4} placeholder="Die Regel selbst — konkret genug, dass Jarvis danach handeln kann." aria-label="Text der Regel" style={{ ...feld, resize: 'vertical', lineHeight: 1.5 }} />
+            <textarea value={neu.text} onChange={e => setNeu({ ...neu, text: e.target.value })} rows={4} placeholder="Die Regel selbst — konkret genug, dass ZOE danach handeln kann." aria-label="Text der Regel" style={{ ...feld, resize: 'vertical', lineHeight: 1.5 }} />
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
               <span style={{ fontSize: 12, color: C.inkLeise }}>Priorität</span><Segmente liste={PRIO.map(p => ({ id: String(p.id), label: p.label }))} aktiv={String(neu.prioritaet)} onWahl={id => setNeu({ ...neu, prioritaet: Number(id) as Prio })} />
             </div>
@@ -97,7 +97,7 @@ export function Regeln({ ich }: { ich: string }) {
         )}
         <div style={{ marginBottom: 10 }}><Segmente liste={[{ id: 'alle', label: `Alle ${regeln?.length ?? 0}` }, { id: 'aktiv', label: `Aktiv ${(regeln ?? []).filter(r => r.status === 'aktiv').length}` }, { id: 'entwurf', label: `Entwürfe ${(regeln ?? []).filter(r => r.status === 'entwurf').length}` }]} aktiv={filter} onWahl={f => setFilter(f as typeof filter)} /></div>
         {regeln === null && <Leer>Lese Regeln …</Leer>}
-        {regeln && !sichtbar.length && <Leer>{regeln.length ? 'Nichts in dieser Auswahl.' : 'Noch keine Regel. Die erste: was Jarvis nie tun darf.'}</Leer>}
+        {regeln && !sichtbar.length && <Leer>{regeln.length ? 'Nichts in dieser Auswahl.' : 'Noch keine Regel. Die erste: was ZOE nie tun darf.'}</Leer>}
         <Liste>
           {sichtbar.map(r => (
             <div key={r.id}>

@@ -1,10 +1,10 @@
-// ─── /api/brain/inbox — Vorschläge von Jarvis mit Freigabe (27.09.) ─────────
+// ─── /api/brain/inbox — Vorschläge von ZOE mit Freigabe (27.09.) ─────────
 // GET ?welche=offen|erledigt|abgelehnt · POST { aktion: 'annehmen'|'ablehnen', id, grund?, zielNotiz?, zielOrdner? }
 // Nur der Haushalt des Inhabers; Vertraulichkeit je Vorschlag (privat-kevin sieht nur Kevin).
 
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { vorschlaegeLesen, vorschlagAnnehmen, vorschlagAblehnen } from '@/lib/brain/inbox';
 
 export const runtime = 'nodejs';

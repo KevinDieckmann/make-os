@@ -222,7 +222,7 @@ export async function askText(opts: AskOptions): Promise<AskResult> {
       const requestId = res.headers.get('request-id') ?? undefined;
       try {
         if (usage) {
-          const { notiere } = await import('./jarvis/verbrauch');
+          const { notiere } = await import('./zoe/verbrauch');
           void notiere(String(body.model), opts.zweck ?? 'unbenannt', usage.ein, usage.aus, usage.cacheLesen, usage.cacheSchreiben);
         }
       } catch { /* still */ }

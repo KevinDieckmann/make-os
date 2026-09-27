@@ -11,7 +11,7 @@
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { uebergeben, type UebergabeEingabe } from '@/lib/crm/uebergabe';
 
 export const runtime = 'nodejs';

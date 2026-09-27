@@ -2,7 +2,7 @@
 // Auf dem Server gibt es kein Apple. Kevins Mac liest Kalender, Mail,
 // Erinnerungen und Kontakte (zulieferer.mjs) und schiebt den Stand hierher.
 // Nur mit dem Dienstschlüssel — eine Anmeldung im Browser reicht nicht, denn
-// wer hier schreibt, bestimmt, was Jarvis für Kevins Kalender hält.
+// wer hier schreibt, bestimmt, was ZOE für Kevins Kalender hält.
 // GET zeigt, was wann zuletzt ankam (ohne Inhalte).
 
 import { NextResponse } from 'next/server';

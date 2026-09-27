@@ -1,5 +1,5 @@
 // ─── MAKE OS — Ein Rezept zu einem Gericht (26.09.) ─────────────────────────
-// POST { name, beschreibung?, text?, tag?, mahlzeit? } → Jarvis schreibt Zutaten,
+// POST { name, beschreibung?, text?, tag?, mahlzeit? } → ZOE schreibt Zutaten,
 // Zubereitung, Dauer, Portionen für die Profile des Haushalts — oder bringt ein
 // eingefügtes Rezept (`text`, z. B. aus einer Webseite kopiert) in diese Form.
 // Das Rezept wird gespeichert und, wenn Tag/Mahlzeit dabei sind, dem Plan-Feld zugeordnet.
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
   if (!r.ok || !r.data?.zutaten) return NextResponse.json({ error: r.error ?? 'Kein Rezept erhalten.' }, { status: 200 });
 
   const jetzt = new Date().toISOString();
-  const gericht = sauberDatei({ gerichte: [{ ...r.data, name: r.data.name || name, id: neueId('g'), quelle: 'jarvis', angelegt: jetzt } as Gericht] }, jetzt).gerichte[0];
+  const gericht = sauberDatei({ gerichte: [{ ...r.data, name: r.data.name || name, id: neueId('g'), quelle: 'zoe', angelegt: jetzt } as Gericht] }, jetzt).gerichte[0];
   if (!gericht) return NextResponse.json({ error: 'Rezept unbrauchbar.' }, { status: 200 });
 
   const ops: Op[] = [{ liste: 'gerichte', op: 'upsert', eintrag: gericht as unknown as Record<string, unknown> }];

@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 import { logRun } from '@/lib/agent-log';
 import { loadJson } from '@/lib/store/local-db';
 import { gatherBrain } from '@/lib/brain';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { localDay } from '@/lib/zeit';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';

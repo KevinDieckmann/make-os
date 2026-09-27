@@ -5,7 +5,7 @@
 // Software genau das tut — und dass eine Notiz ihren gültigen Stand oben trägt.
 
 import { describe, it, expect } from 'vitest';
-import { darfSehen, leseKopf, obersterBlock, bereichVon, gekuerzt, AGENT } from '../lib/jarvis/vault';
+import { darfSehen, leseKopf, obersterBlock, bereichVon, gekuerzt, AGENT } from '../lib/zoe/vault';
 
 describe('Sicht auf das Brain', () => {
   it('Agenten bekommen nie Privates', () => {
@@ -37,7 +37,7 @@ describe('Sicht auf das Brain', () => {
 describe('Kopf und gültiger Stand', () => {
   const text = [
     '---', 'type: steckbrief', 'scope: Privat', 'owner: kevin', 'stand: 2026-09-21', 'tags: [firma, "kemaris"]', '---',
-    '# Titel', '', '## 🔴 UPDATE 21.09.2026 · Jarvis für kevin — Neu', 'gilt jetzt', '', '## Alt', 'veraltet',
+    '# Titel', '', '## 🔴 UPDATE 21.09.2026 · ZOE für kevin — Neu', 'gilt jetzt', '', '## Alt', 'veraltet',
   ].join('\n');
 
   it('liest den YAML-Kopf ohne Zusatzpaket', () => {
@@ -50,7 +50,7 @@ describe('Kopf und gültiger Stand', () => {
 
   it('der oberste 🔴-Block ist der gültige Stand', () => {
     const { rumpf } = leseKopf(text);
-    expect(obersterBlock(rumpf)).toBe('## 🔴 UPDATE 21.09.2026 · Jarvis für kevin — Neu\ngilt jetzt');
+    expect(obersterBlock(rumpf)).toBe('## 🔴 UPDATE 21.09.2026 · ZOE für kevin — Neu\ngilt jetzt');
     expect(obersterBlock('# ohne Update')).toBe('');
   });
 

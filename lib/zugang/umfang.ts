@@ -4,7 +4,7 @@
 // fertigen 413/429, damit Routen sie in einer Zeile nutzen können.
 
 import { NextResponse } from 'next/server';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { istDienst } from '@/lib/zugang/dienst';
 import { modellErlaubt, MODELL_ZU_VIEL } from '@/lib/zugang/modell-drossel';
 

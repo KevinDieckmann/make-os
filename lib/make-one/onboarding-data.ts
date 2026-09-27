@@ -50,11 +50,11 @@ export const SCHRITTE: Schritt[] = [
   {
     id: 'schluessel', spur: 'fundament', wer: 'beide', minuten: 5,
     titel: 'Schlüssel setzen (.env.local)',
-    warum: 'Ohne MAKE_OS_KEY kommt niemand rein, ohne ANTHROPIC_API_KEY denkt Jarvis nicht mit. Jeder Rechner hat seine eigene Datei — nur der KI-Schlüssel ist derselbe.',
+    warum: 'Ohne MAKE_OS_KEY kommt niemand rein, ohne ANTHROPIC_API_KEY denkt ZOE nicht mit. Jeder Rechner hat seine eigene Datei — nur der KI-Schlüssel ist derselbe.',
     wie: [
       'Datei .env.local im Projektordner anlegen.',
       'MAKE_OS_KEY=… — nur für DIESEN Rechner. Beim Start über start.sh wird er automatisch erzeugt; er muss nicht Kevins Wert sein. Kevins Schlüssel brauchst du nur, wenn du über das Netzwerk auf SEINE laufende Instanz gehst.',
-      'ANTHROPIC_API_KEY=… — für Jarvis und alle Agenten.',
+      'ANTHROPIC_API_KEY=… — für ZOE und alle Agenten.',
       'Die Datei gehört nie in die Cloud und nie in ein Repository.',
     ],
     pruefung: 'schluessel',
@@ -129,7 +129,7 @@ export const SCHRITTE: Schritt[] = [
   {
     id: 'kevin-kalender', spur: 'kevin', minuten: 5,
     titel: 'Apple-Kalender verbinden',
-    warum: 'Ohne Termine kann der Tagesplan keine Blöcke legen und Jarvis plant über feste Termine hinweg.',
+    warum: 'Ohne Termine kann der Tagesplan keine Blöcke legen und ZOE plant über feste Termine hinweg.',
     wie: ['Unter Verbindungen den Kalender einmal ziehen.', 'Prüfen, dass die Termine dieser Woche auftauchen.'],
     wo: { href: '/os/verbindungen', label: 'Verbindungen' },
     pruefung: 'kalender',
@@ -169,7 +169,7 @@ export const SCHRITTE: Schritt[] = [
   {
     id: 'kevin-fokus', spur: 'kevin', minuten: 15,
     titel: 'Fokus je Horizont setzen',
-    warum: 'Jahr, Quartal, Monat und Woche brauchen je einen Satz. Ohne den kann weder Jarvis noch der Tagesplan entscheiden, was gerade wichtiger ist.',
+    warum: 'Jahr, Quartal, Monat und Woche brauchen je einen Satz. Ohne den kann weder ZOE noch der Tagesplan entscheiden, was gerade wichtiger ist.',
     wie: ['Jahresfokus setzen.', 'Quartal und Monat daraus ableiten.', 'Wochenfokus für diese Woche setzen.'],
     wo: { href: '/os/kompass', label: 'Fokus-Regler' },
     pruefung: 'fokus',
@@ -199,11 +199,11 @@ export const SCHRITTE: Schritt[] = [
     pruefung: 'agenten',
   },
   {
-    id: 'kevin-jarvis', spur: 'kevin', minuten: 10,
-    titel: 'Jarvis einrichten',
-    warum: 'Jarvis kennt jetzt euren Gesprächsverlauf und kann sprechen. Beides einmal ausprobieren, damit es im Alltag sitzt.',
+    id: 'kevin-zoe', spur: 'kevin', minuten: 10,
+    titel: 'ZOE einrichten',
+    warum: 'ZOE kennt jetzt euren Gesprächsverlauf und kann sprechen. Beides einmal ausprobieren, damit es im Alltag sitzt.',
     wie: ['Ein Gespräch führen — der Verlauf bleibt gespeichert.', 'Stimme einschalten und Freihand testen.', 'Einmal etwas per Zuruf erfassen lassen („trag Adobe-Abo mit 59 € monatlich ein").'],
-    pruefung: 'jarvis',
+    pruefung: 'zoe',
   },
   // ── MALIN ─────────────────────────────────────────────────────────────────
   {
@@ -278,21 +278,21 @@ export const SCHRITTE: Schritt[] = [
     id: 'malin-aufgaben', spur: 'malin', minuten: 15,
     titel: 'Deine Aufgaben sichten',
     warum: 'Was auf dich zugewiesen ist, soll nicht in Kevins Liste untergehen.',
-    wie: ['Im Taskmanagement auf „Malin" filtern.', 'Fälligkeiten setzen oder zurückgeben.', 'Neue Aufgaben mit @malin zuweisen — das versteht auch Jarvis.'],
+    wie: ['Im Taskmanagement auf „Malin" filtern.', 'Fälligkeiten setzen oder zurückgeben.', 'Neue Aufgaben mit @malin zuweisen — das versteht auch ZOE.'],
     wo: { href: '/os/aufgaben', label: 'Taskmanagement' },
     pruefung: 'malin-aufgaben',
   },
   {
-    id: 'malin-jarvis', spur: 'malin', minuten: 10,
-    titel: 'Jarvis kennenlernen',
-    warum: 'Fragen statt suchen. Jarvis kennt alle Zahlen und kann auch für dich schreiben.',
+    id: 'malin-zoe', spur: 'malin', minuten: 10,
+    titel: 'ZOE kennenlernen',
+    warum: 'Fragen statt suchen. ZOE kennt alle Zahlen und kann auch für dich schreiben.',
     wie: [
       'Unten rechts der Kreis öffnet ihn — auf jeder Seite.',
       'Ausprobieren: „Was muss diese Woche bezahlt werden?"',
       'Er kann auch eintragen: „Rechnung Frank Mathick ist bezahlt."',
       'Der Verlauf bleibt gespeichert — ihr könnt ihn beide nachlesen.',
     ],
-    pruefung: 'jarvis',
+    pruefung: 'zoe',
   },
   {
     id: 'malin-grenzen', spur: 'malin', minuten: 5,
@@ -314,7 +314,7 @@ export const ZONEN = [
   {
     farbe: 'gruen', titel: 'Grün — immer sicher',
     satz: 'Daten in der Oberfläche eintragen. Das übersteht jedes Update, weil es in .data liegt und nicht im Code.',
-    beispiele: ['Aufgaben anlegen und abhaken', 'Rechnungen und Zahlungen pflegen', 'Kontostände, Journal, Ernährung', 'Mit Jarvis reden', 'Kompass-Regler stellen'],
+    beispiele: ['Aufgaben anlegen und abhaken', 'Rechnungen und Zahlungen pflegen', 'Kontostände, Journal, Ernährung', 'Mit ZOE reden', 'Kompass-Regler stellen'],
   },
   {
     farbe: 'gelb', titel: 'Gelb — nur wenn keine Bauzeit läuft',

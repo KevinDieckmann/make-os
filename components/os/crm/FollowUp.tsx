@@ -31,7 +31,7 @@ const GRUPPEN: { id: Gruppe; label: string; farbe: string }[] = [
   { id: 'woche', label: 'Diese Woche', farbe: LEUCHT.business }, { id: 'spaeter', label: 'Später', farbe: C.inkLeise },
 ];
 const QUELLE_LABEL: Record<string, string> = {
-  hand: 'von Hand', regel: 'Regel', kadenz: 'Kadenz', kampagne: 'Kampagne', event: 'Event', head: 'Head', jarvis: 'Jarvis', deal: 'Deal',
+  hand: 'von Hand', regel: 'Regel', kadenz: 'Kadenz', kampagne: 'Kampagne', event: 'Event', head: 'Head', zoe: 'ZOE', deal: 'Deal',
   schritt: 'Zusage', wiedervorlage: 'Wiedervorlage', dealschritt: 'Deal-Schritt', nachfassen: 'Nachfassen', review: 'Review',
 };
 const ART_LABEL = Object.fromEntries(FOLLOWUP_ARTEN.map(a => [a.id, a.label])) as Record<FollowUpArt, string>;

@@ -392,7 +392,7 @@ export function massenStufe(alt: Kontakt[], neu: Kontakt[]): number {
   return neu.filter(k => vorher.has(k.id) && vorher.get(k.id) !== k.stufe).length;
 }
 
-/** Zusammenfassung für Jarvis und die Kopfzeile. */
+/** Zusammenfassung für ZOE und die Kopfzeile. */
 export function pipelineStand(kontakte: Kontakt[]): Record<Stufe, number> & { gesamt: number; ansprechbar: number } {
   const r = Object.fromEntries(STUFEN.map(st => [st, 0])) as Record<Stufe, number>;
   for (const k of kontakte) r[k.stufe] = (r[k.stufe] ?? 0) + 1;
@@ -495,7 +495,7 @@ export interface AktivitaetEingabe {
 /**
  * Eine Aktivität auf einen Kontakt anwenden — die eine Stelle, an der die
  * Regeln zusammenkommen: protokollieren, letzter Kontakt, Stufe vorwärts,
- * Wiedervorlage. Route und Jarvis-Werkzeug rufen beide genau das hier.
+ * Wiedervorlage. Route und ZOE-Werkzeug rufen beide genau das hier.
  */
 export function wendeAktivitaetAn(
   k: Kontakt, e: AktivitaetEingabe, heute: string, jetztIso: string,
@@ -560,7 +560,7 @@ export function fuerPerson(k: Kontakt, person: string): Kontakt {
   return rest;
 }
 
-/** Kontakt nach Name, Firma, Mail oder Branche finden — für Jarvis und die Suche. */
+/** Kontakt nach Name, Firma, Mail oder Branche finden — für ZOE und die Suche. */
 export function findeKontakte(kontakte: Kontakt[], frage: string, n = 5): Kontakt[] {
   const w = frage.toLowerCase().split(/\s+/).filter(Boolean);
   if (!w.length) return [];

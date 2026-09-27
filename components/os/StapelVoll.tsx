@@ -2,14 +2,14 @@
 
 // ─── MAKE OS — Der Freigabe-Stapel (voll) ───────────────────────────────────
 // Baustein 2 (07.09.). Kevins Vorgabe vom 06.09.: gebündelt, morgens und
-// abends — nicht als Unterbrechung. Deshalb sammelt Jarvis, und hier wird
+// abends — nicht als Unterbrechung. Deshalb sammelt ZOE, und hier wird
 // entschieden.
 //
 // Vier Antworten, nicht zwei: freigeben · ändern und freigeben · ablehnen mit
-// Grund (Jarvis liest den Grund) · selbst machen. Dazu „Alles durcharbeiten"
+// Grund (ZOE liest den Grund) · selbst machen. Dazu „Alles durcharbeiten"
 // je Gruppe — Kevins eigener Wunsch: einmal freigeben, dann läuft es durch.
 //
-// Darunter das Protokoll: was Jarvis von allein getan hat, und der Knopf, um
+// Darunter das Protokoll: was ZOE von allein getan hat, und der Knopf, um
 // es zurückzunehmen.
 //
 // 24.09.: auf das lebendige Muster umgezogen — Karten mit Tiefe, leuchtende
@@ -37,7 +37,7 @@ interface Auftrag {
 }
 interface Eintrag {
   id: string; zeit: string; werkzeug: string; gruppe: string; risiko: string;
-  ergebnis: string; ok: boolean; quelle: 'jarvis' | 'stapel';
+  ergebnis: string; ok: boolean; quelle: 'zoe' | 'stapel';
   ruecknahme?: { text: string } | null; zurueckgenommenAm?: string;
 }
 
@@ -92,10 +92,10 @@ export function StapelView() {
   const laden = useCallback(async () => {
     try {
       const [s, p, a, g] = await Promise.all([
-        fetch('/api/jarvis/stapel?alle=1').then(r => r.json()),
-        fetch('/api/jarvis/protokoll?anzahl=40').then(r => r.json()),
-        fetch('/api/jarvis/auftraege').then(r => r.json()),
-        fetch('/api/jarvis/gedaechtnis').then(r => r.json()),
+        fetch('/api/zoe/stapel?alle=1').then(r => r.json()),
+        fetch('/api/zoe/protokoll?anzahl=40').then(r => r.json()),
+        fetch('/api/zoe/auftraege').then(r => r.json()),
+        fetch('/api/zoe/gedaechtnis').then(r => r.json()),
       ]) as [Record<string, unknown>, Record<string, unknown>, Record<string, unknown>, Record<string, unknown>];
       setVorschlaege(Array.isArray(s.vorschlaege) ? (s.vorschlaege as Vorschlag[]) : []);
       setProtokoll(Array.isArray(p.eintraege) ? (p.eintraege as Eintrag[]) : []);
@@ -109,8 +109,8 @@ export function StapelView() {
 
   // Der Stand des Gehirns — einmal beim Öffnen, er ändert sich selten.
   useEffect(() => {
-    fetch('/api/jarvis/wissen').then(r => r.json()).then(d => { if (d.ok) setGehirn(d); }).catch(() => {});
-    fetch('/api/jarvis/verbrauch').then(r => r.json()).then(d => { if (d.ok) setKosten(d); }).catch(() => {});
+    fetch('/api/zoe/wissen').then(r => r.json()).then(d => { if (d.ok) setGehirn(d); }).catch(() => {});
+    fetch('/api/zoe/verbrauch').then(r => r.json()).then(d => { if (d.ok) setKosten(d); }).catch(() => {});
   }, []);
 
   // Solange Aufträge laufen, kurz getaktet nachsehen — das ist der Moment,
@@ -142,7 +142,7 @@ export function StapelView() {
         }))
       : undefined;
     try {
-      const r = await fetch('/api/jarvis/stapel', {
+      const r = await fetch('/api/zoe/stapel', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: v.id, entscheidung, ...(eingabe ? { eingabe } : {}), ...(ablehnen[v.id] ? { grund: ablehnen[v.id] } : {}) }),
       });
@@ -156,7 +156,7 @@ export function StapelView() {
   async function durcharbeiten(gruppe?: string) {
     setBusy(gruppe ?? 'alle');
     try {
-      const r = await fetch('/api/jarvis/stapel', {
+      const r = await fetch('/api/zoe/stapel', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ alle: true, ...(gruppe ? { gruppe } : {}) }),
       });
@@ -170,7 +170,7 @@ export function StapelView() {
   async function vergiss(id: string) {
     setBusy(id);
     try {
-      const r = await fetch(`/api/jarvis/gedaechtnis?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const r = await fetch(`/api/zoe/gedaechtnis?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
       const d = await r.json();
       setMeldung(d.ok ? 'Vergessen.' : d.error ?? 'Ging nicht.');
     } catch { setMeldung('Nicht erreichbar.'); }
@@ -181,7 +181,7 @@ export function StapelView() {
   async function zurueck(id: string) {
     setBusy(id);
     try {
-      const r = await fetch('/api/jarvis/protokoll', {
+      const r = await fetch('/api/zoe/protokoll', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }),
       });
       const d = await r.json();
@@ -197,7 +197,7 @@ export function StapelView() {
   let n = 0;
 
   return (
-    <Seite titel="Aufträge & Freigaben · voll" unter="Alles, was Jarvis vorbereitet hat — mit Protokoll, Rückgängig und Feldern zum Ändern."
+    <Seite titel="Aufträge & Freigaben · voll" unter="Alles, was ZOE vorbereitet hat — mit Protokoll, Rückgängig und Feldern zum Ändern."
       rechts={<Link href="/os/stapel" style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Schlanker Stapel ›</Link>}>
 
       {/* ── Der Kopf: die eine Zahl, der Satz dazu, der große Knopf ── */}
@@ -209,7 +209,7 @@ export function StapelView() {
           <div style={{ flex: '1 1 260px', minWidth: 0 }}>
             <p style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 600, letterSpacing: '-.01em', color: C.ink, margin: 0, lineHeight: 1.35 }}>
               {laedt ? 'lädt …' : offen.length === 0
-                ? <>Nichts wartet auf dich. Jarvis hat alles erledigt, was er allein darf.</>
+                ? <>Nichts wartet auf dich. ZOE hat alles erledigt, was er allein darf.</>
                 : <>Alles hier ist <b style={{ color: LEUCHT.achtung }}>vorbereitet, aber nicht ausgeführt</b> — Geld, Ziele und Kompass gehen nie ohne dich.</>}
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
@@ -287,9 +287,9 @@ export function StapelView() {
                   {v.anlass && (
                     <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 10, lineHeight: 1.5 }}>
                       {/* Kam der Vorschlag aus einem Lauf, ist der Anlass
-                          Jarvis' Herleitung — nicht Kevins Satz. „Weil du
+                          ZOE' Herleitung — nicht Kevins Satz. „Weil du
                           gesagt hast" wäre dann schlicht falsch. */}
-                      {v.quelle === 'lauf' ? `Jarvis: ${v.anlass}` : `weil du gesagt hast: „${v.anlass}"`}
+                      {v.quelle === 'lauf' ? `ZOE: ${v.anlass}` : `weil du gesagt hast: „${v.anlass}"`}
                     </div>
                   )}
 
@@ -306,7 +306,7 @@ export function StapelView() {
                   )}
 
                   {ablehnen[v.id] !== undefined && (
-                    <input value={ablehnen[v.id]} autoFocus placeholder="Warum nicht? Jarvis liest das."
+                    <input value={ablehnen[v.id]} autoFocus placeholder="Warum nicht? ZOE liest das."
                       onChange={e => setAblehnen(a => ({ ...a, [v.id]: e.target.value }))}
                       style={{ ...feld, marginBottom: 10 }} />
                   )}
@@ -373,11 +373,11 @@ export function StapelView() {
         </div>
       )}
 
-      {/* ── Was Jarvis sich gemerkt hat ──────────────────────────────────
+      {/* ── Was ZOE sich gemerkt hat ──────────────────────────────────
           Kevins Bedingung: sofort merken, dafür sichtbar und löschbar. */}
       {fakten.length > 0 && (
         <Karte i={n++}>
-          <Ueberschrift farbe={LEUCHT.agenten} rechts={`${fakten.length}`}>Was Jarvis sich gemerkt hat</Ueberschrift>
+          <Ueberschrift farbe={LEUCHT.agenten} rechts={`${fakten.length}`}>Was ZOE sich gemerkt hat</Ueberschrift>
           <Liste>
             {fakten.slice(0, 40).map(f => (
               <div key={f.id} title={f.satz}>
@@ -392,9 +392,9 @@ export function StapelView() {
         </Karte>
       )}
 
-      {/* ── Was Jarvis von allein getan hat ── */}
+      {/* ── Was ZOE von allein getan hat ── */}
       <Karte i={n++}>
-        <Ueberschrift farbe={protokoll.length ? LEUCHT.schlaf : C.inkLeise} rechts={protokoll.length ? `${protokoll.length}` : undefined}>Was Jarvis getan hat</Ueberschrift>
+        <Ueberschrift farbe={protokoll.length ? LEUCHT.schlaf : C.inkLeise} rechts={protokoll.length ? `${protokoll.length}` : undefined}>Was ZOE getan hat</Ueberschrift>
         {!protokoll.length ? (
           <Leer>Noch nichts protokolliert.</Leer>
         ) : (

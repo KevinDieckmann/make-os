@@ -74,7 +74,7 @@ if [ -z "$SCHLUESSEL" ]; then
   if [ ! -f .env.local ]; then
     echo "  Ich lege deine Zugangsdaten an."
     echo ""
-    echo "  Damit Jarvis (die KI) mitdenkt, braucht es einen Anthropic-Schlüssel."
+    echo "  Damit ZOE (die KI) mitdenkt, braucht es einen Anthropic-Schlüssel."
     echo "  Den gibt dir Kevin. Ohne ihn läuft alles andere trotzdem."
     echo ""
     read -r -p "  Anthropic-Schlüssel (oder einfach [Enter] zum Überspringen): " AKEY || AKEY=""
@@ -163,7 +163,7 @@ if [ "$MODUS" = "produktion" ]; then
 fi
 
 # ── 5 · Los ─────────────────────────────────────────────────────────────────
-# Der Empfang zuerst: Jarvis begrüßt, danach geht es zur Startfläche.
+# Der Empfang zuerst: ZOE begrüßt, danach geht es zur Startfläche.
 ADRESSE="http://localhost:3001/anmelden"
 echo "  Alles bereit. Ich öffne gleich den Browser."
 echo ""
@@ -181,7 +181,7 @@ echo ""
 # lokale Fassung ist dann nur zum Entwickeln, echte Arbeit läuft auf dem Server.
 [ -f .data/umgezogen.json ] || (
   for _ in $(seq 1 120); do
-    if curl -s -o /dev/null -m 2 "http://localhost:3001/jarvis"; then
+    if curl -s -o /dev/null -m 2 "http://localhost:3001/zoe"; then
       open "$ADRESSE" 2>/dev/null
       break
     fi
@@ -192,7 +192,7 @@ echo ""
 # Next direkt über node starten, wenn npm fehlt — „npm run dev" ist nur ein
 # Umweg zu genau diesem Aufruf, und der Umweg ist der Teil, der kaputtgeht.
 # ── Der Arbeiter ────────────────────────────────────────────────────────────
-# Erledigt Jarvis' Aufträge im Hintergrund — auch wenn kein Fenster offen ist.
+# Erledigt ZOE' Aufträge im Hintergrund — auch wenn kein Fenster offen ist.
 # Er wartet, bis die App steht, und beendet sich von selbst, wenn sie weg ist.
 mkdir -p .data
 # caffeinate hält den Rechner wach, solange der Arbeiter läuft — ohne -d, der
@@ -205,7 +205,7 @@ else
 fi
 
 # ── Der Bote ────────────────────────────────────────────────────────────────
-# Holt Telegram-Nachrichten ab und bringt Jarvis' Antworten aufs Handy. Läuft
+# Holt Telegram-Nachrichten ab und bringt ZOE' Antworten aufs Handy. Läuft
 # nur, wenn ein Bot-Token in .env.local steht — sonst bleibt er einfach aus.
 if grep -q '^TELEGRAM_BOT_TOKEN=..*' .env.local 2>/dev/null; then
   ( sleep 12; node bote.mjs ) >> .data/bote.log 2>&1 &

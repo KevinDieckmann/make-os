@@ -14,7 +14,7 @@
 
 ## 0 · Kontext in 60 Sekunden
 
-- **Was:** Kevins persönliches Life+Business-OS (JARVIS-Idee). Next.js 14 App Router,
+- **Was:** Kevins persönliches Life+Business-OS (ZOE-Idee). Next.js 14 App Router,
   lokal auf seinem Mac, Port 3001, single-user. Route der App: `/os`.
 - **Server:** läuft über `~/.make-os/launch.sh` (fester Node in `~/.make-os/node`).
   Für Werkzeuge: portables Node unter `/tmp/node-v22.16.0-darwin-arm64/bin/node`.
@@ -117,8 +117,8 @@ kimmi-Antwort nennt echte Aufgaben + echten Index (curl-Test „Statuscheck");
 > kimmi läuft über askText (`raw` trägt die Tool-Use-Blöcke; `stop_reason: tool_use` gilt als Erfolg),
 > inbox/draft über askText + fremd()/FREMD_REGEL + resolveAgent('inbox'), News-Schritt nutzt extractJson,
 > Morgen-Loop-Kachel aus /os/loop entfernt (Verweis auf Tageslauf). grep api.anthropic.com → nur lib/anthropic.ts.
-> DAZU (Kevin-Wunsch): Die Intelligenz heißt jetzt **JARVIS** — Persona-Prompts (kimmi/loop/tageslauf/performance),
-> UI (JARVIS · ONLINE, „Sprich mit Jarvis …", „JARVIS denkt nach"), ORCHESTRATOR in agents-data.
+> DAZU (Kevin-Wunsch): Die Intelligenz heißt jetzt **ZOE** — Persona-Prompts (kimmi/loop/tageslauf/performance),
+> UI (ZOE · ONLINE, „Sprich mit ZOE …", „ZOE denkt nach"), ORCHESTRATOR in agents-data.
 > Prompt fixiert: **Sir + DUZEN** („du hast 3 Termine, Sir") — nicht siezen. Das OS heißt weiterhin MAKE OS.
 1. `app/api/kimmi/route.ts` auf `lib/anthropic` umstellen — ACHTUNG Tool-Use:
    askJson kann kein Tool-Use → entweder `askRaw`-Erweiterung in lib/anthropic
@@ -228,9 +228,9 @@ Bauplan-Punkte über `POST /api/state/backlog` (gleiche id = Update) auf `erledi
 
 ## 2b · Außerplanmäßig erledigt (31.07. Nacht)
 
-- ✅ **Jarvis führt Agenten selbst aus (run_agent):** Tool-Use-Schleife in kimmi (max 3 Runden, Budget 4, PARALLELE Ausführung), runAgent() für research/board/okr/controlling/fokus/kalender (intern via x-make-key, respektiert resolveAgent + Autonomie-Gates), ran-Chips im Chat, controlling body-optional. Freigaben unangetastet. Verifiziert: board 37s, fokus+okr parallel 54s.
+- ✅ **ZOE führt Agenten selbst aus (run_agent):** Tool-Use-Schleife in kimmi (max 3 Runden, Budget 4, PARALLELE Ausführung), runAgent() für research/board/okr/controlling/fokus/kalender (intern via x-make-key, respektiert resolveAgent + Autonomie-Gates), ran-Chips im Chat, controlling body-optional. Freigaben unangetastet. Verifiziert: board 37s, fokus+okr parallel 54s.
 
-- ✅ **Startseite auf das neue Konstrukt:** Fest-Zahlen raus (KSI/EBA/Recovery/alter Lagebericht), Fokus-Banner aus echten Aufgaben, Jarvis-Lagebericht aus letzter Tageslauf-Ausrichtung, Konstrukt-Strip „So arbeitet MAKE OS" (Eingang → Brain → Jarvis & Agenten → Handlung → Messung, alles klickbar), Modul-Kacheln ehrlich + Roadmap-Kachel.
+- ✅ **Startseite auf das neue Konstrukt:** Fest-Zahlen raus (KSI/EBA/Recovery/alter Lagebericht), Fokus-Banner aus echten Aufgaben, ZOE-Lagebericht aus letzter Tageslauf-Ausrichtung, Konstrukt-Strip „So arbeitet MAKE OS" (Eingang → Brain → ZOE & Agenten → Handlung → Messung, alles klickbar), Modul-Kacheln ehrlich + Roadmap-Kachel.
 
 ## 3 · Danach (nicht heute — Reihenfolge = Roadmap `/os/roadmap`)
 

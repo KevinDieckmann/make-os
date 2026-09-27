@@ -1,7 +1,7 @@
 'use client';
 
 // ─── MAKE OS — Das pulsierende Hirn ─────────────────────────────────────────
-// Kevins Bild: die Agenten als lebendiges Hirn sehen. JARVIS sitzt in der
+// Kevins Bild: die Agenten als lebendiges Hirn sehen. ZOE sitzt in der
 // Mitte, die Live-Agenten kreisen darum — wer in der letzten Stunde gelaufen
 // ist, leuchtet und pulsiert kräftig; wer heute lief, glimmt; der Rest ruht.
 // Datenbasis: echtes Agenten-Gedächtnis (agent-log), kein Show-Effekt ohne
@@ -79,10 +79,10 @@ export function AgentenHirn() {
                 strokeWidth={akt === 'heiss' ? 1.4 : 1} />
             );
           })}
-          {/* Zentrum: JARVIS */}
+          {/* Zentrum: ZOE */}
           <circle cx={cx} cy={cy} r="34" fill={`${A}1A`} stroke={A} strokeWidth="1.4" />
-          <circle className="jarvis-orb-kern" cx={cx} cy={cy} r="12" fill={A} style={{ transformOrigin: `${cx}px ${cy}px`, filter: `drop-shadow(0 0 8px ${A}33)` }} />
-          <text x={cx} y={cy + 52} textAnchor="middle" fill={A} fontFamily={SCHRIFT.text} fontSize="11" fontWeight="700" letterSpacing="2">JARVIS</text>
+          <circle className="zoe-orb-kern" cx={cx} cy={cy} r="12" fill={A} style={{ transformOrigin: `${cx}px ${cy}px`, filter: `drop-shadow(0 0 8px ${A}33)` }} />
+          <text x={cx} y={cy + 52} textAnchor="middle" fill={A} fontFamily={SCHRIFT.text} fontSize="11" fontWeight="700" letterSpacing="2">ZOE</text>
         </svg>
 
         {/* Agenten-Knoten als klickbare Overlays (HTML über dem SVG) */}
@@ -93,7 +93,7 @@ export function AgentenHirn() {
           return (
             <Link key={a.id} href={a.href} title={`${a.name} — ${a.role}`}
               style={{ position: 'absolute', left: `${(p.x / 520) * 100}%`, top: `${(p.y / 380) * 100}%`, transform: 'translate(-50%, -50%)', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <span className={akt === 'heiss' ? 'jarvis-orb-kern' : undefined}
+              <span className={akt === 'heiss' ? 'zoe-orb-kern' : undefined}
                 style={{ width: akt === 'heiss' ? 16 : 12, height: akt === 'heiss' ? 16 : 12, borderRadius: '50%', background: farbe, boxShadow: akt !== 'ruht' ? `0 0 ${akt === 'heiss' ? 14 : 8}px ${farbe}` : 'none', display: 'inline-block' }} />
               <span style={{ fontFamily: SCHRIFT.text, fontSize: 12, fontWeight: 600, color: akt === 'ruht' ? C.inkLeise : C.inkDim, whiteSpace: 'nowrap', background: 'rgba(11,14,16,.75)', borderRadius: 999, padding: '2px 8px' }}>{a.name.replace('-Agent', '')}</span>
             </Link>

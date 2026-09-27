@@ -90,7 +90,7 @@ export function FokusView() {
             unter={zone ? <Chip farbe={zoneFarbe(rec)}>{frisch ? `Zone ${zone}` : `${zone} · nicht von heute`}</Chip> : undefined} />
           <div style={{ minWidth: 0 }}>
             <p style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.5, margin: 0 }}>{zoneText}</p>
-            <div style={{ marginTop: 14 }}><Knopf onClick={ausrichten} aus={busy}>{busy ? 'richtet aus …' : plan ? '↻ Neu ausrichten' : 'Tag mit Jarvis ausrichten'}</Knopf></div>
+            <div style={{ marginTop: 14 }}><Knopf onClick={ausrichten} aus={busy}>{busy ? 'richtet aus …' : plan ? '↻ Neu ausrichten' : 'Tag mit ZOE ausrichten'}</Knopf></div>
           </div>
         </div>
         {plan && <div style={{ marginTop: 16 }}><Rich text={plan} /></div>}

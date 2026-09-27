@@ -1,6 +1,6 @@
 // ─── Deal anlegen — EIN Weg (Server, 27.09.) ────────────────────────────────
 // Bis 26.09. entstanden Deals auf sechs Wegen (Leads › SQL, „+ Gespräch“, Pipeline
-// „+ Deal“, „Im Gespräch“, Karteikarte, Jarvis) — vier davon an der Lead-Ebene
+// „+ Deal“, „Im Gespräch“, Karteikarte, ZOE) — vier davon an der Lead-Ebene
 // vorbei. Jetzt läuft alles hier durch: Firma per Kennung, Personen, Kernfragen
 // aus dem Lead, Pflicht zum nächsten Schritt, kein zweiter offener Deal an
 // derselben Firma ohne Absicht, und der Lead wird SQL mit Verweis auf den Deal.
@@ -29,7 +29,7 @@ export interface DealEingabe {
   besitzer?: string;
   /** Zweiten offenen Deal an derselben Firma bewusst anlegen. */
   trotzdem?: boolean;
-  /** Direkt in einer späteren Stufe anlegen (nur offene Stufen; Jarvis). */
+  /** Direkt in einer späteren Stufe anlegen (nur offene Stufen; ZOE). */
   stufe?: Chance['stufe'];
 }
 
@@ -83,7 +83,7 @@ export function dealBauen(e: DealEingabe, ctx: { kontakte: Kontakt[]; firmen: { 
 /** Deal anlegen und schreiben: Chance in den CRM-Bestand, Lead wird SQL mit Verweis. */
 export async function dealAnlegen(e: DealEingabe, person: string, jetzt = new Date().toISOString()): Promise<DealErgebnis> {
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
-  // Prüfen (Dublette!) und Schreiben in EINER Schreibsperre — zwei gleichzeitige Anlagen (Jarvis + Browser) ergeben sonst zwei offene Deals (Prüfbericht 27.09., Punkt 18).
+  // Prüfen (Dublette!) und Schreiben in EINER Schreibsperre — zwei gleichzeitige Anlagen (ZOE + Browser) ergeben sonst zwei offene Deals (Prüfbericht 27.09., Punkt 18).
   let r: DealErgebnis | null = null;
   await aendereCrm(x => {
     r = dealBauen(e, { kontakte, firmen: x.firmen, chancen: x.chancen, leadZeilen: leads(kontakte, x), person, jetzt });

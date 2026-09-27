@@ -336,7 +336,7 @@ export interface Verarbeitung { id: string; name: string; zweck: string; persone
 export type FollowUpBezugArt = 'kontakt' | 'firma' | 'chance' | 'mandat' | 'event';
 export type FollowUpArt = 'anruf' | 'mail' | 'linkedin' | 'termin' | 'nachricht' | 'sonstig';
 export type FollowUpStatus = 'offen' | 'erledigt' | 'verpasst' | 'abgesagt';
-export type FollowUpQuelle = 'hand' | 'regel' | 'kadenz' | 'kampagne' | 'event' | 'head' | 'jarvis' | 'deal';
+export type FollowUpQuelle = 'hand' | 'regel' | 'kadenz' | 'kampagne' | 'event' | 'head' | 'zoe' | 'deal';
 export interface FollowUp {
   id: string;
   /** Woran es hängt — immer mit der Person, die man anspricht (kontaktId), wenn es eine gibt. */

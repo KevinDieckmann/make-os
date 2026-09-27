@@ -16,7 +16,7 @@ import { berechne } from '@/lib/business/index';
 import { fixkostenDer } from '@/lib/business/messen';
 import { geschaeftsmodell } from '@/lib/business/modell';
 import { SCOPES, type Scope } from '@/lib/business/register';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { zeitBildFuer } from '@/lib/zeitmessung/speicher';
 
 export const runtime = 'nodejs';

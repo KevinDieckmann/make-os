@@ -73,7 +73,7 @@ describe('Stufe 1 — Zwischenspeicher je Bestand', () => {
     let n = 0;
     const rechne = async () => ++n;
     expect(await memo.merken('idx', 60_000, rechne)).toBe(1);
-    memo.standErhoehen('anwesenheit'); memo.standErhoehen('nutzung'); memo.standErhoehen('jarvis-auftraege'); memo.standErhoehen('hoi-csp');
+    memo.standErhoehen('anwesenheit'); memo.standErhoehen('nutzung'); memo.standErhoehen('zoe-auftraege'); memo.standErhoehen('hoi-csp');
     expect(await memo.merken('idx', 60_000, rechne)).toBe(1);
     memo.standErhoehen('kontakte');
     expect(await memo.merken('idx', 60_000, rechne)).toBe(2);

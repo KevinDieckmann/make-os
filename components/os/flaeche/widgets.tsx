@@ -6,7 +6,7 @@
 // für diese Person nichts zu zeigen gibt (kein Haushalt, keine Daten) — die
 // Fläche blendet es dann aus. Einstellungen kommen aus dem Layout (`e`).
 // Katalog „aus dem Bestand“: Aufgaben, Termine, Fokus/Wochenfokus, Körper,
-// Routinen & Streak, Essen heute, Index je Säule, Finanzen privat, Jarvis &
+// Routinen & Streak, Essen heute, Index je Säule, Finanzen privat, ZOE &
 // Inbox, Wer heute dran ist, Familie, nächste Tage.
 
 import Link from 'next/link';
@@ -84,7 +84,7 @@ function AufgabenWidget({ e, titel, i }: WidgetProps) {
       <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href={sp === 'alle' ? '/os/aufgaben' : `/os/aufgaben?space=${sp}`} style={link}>{offen.length} offen ›</Link>}>{titel ?? `${nur === 'alle' ? 'Aufgaben' : 'Aufgaben heute'}${sp === 'alle' ? '' : ` · ${SPACE_LABEL[sp as 'privat' | 'business']}`}`}</Ueberschrift>
       <input value={neu} onChange={x => setNeu(x.target.value)} onKeyDown={x => { if (x.key === 'Enter') anlegen(); }} placeholder="Neue Aufgabe für heute … (!! kritisch · fr · #projekt · @malin)" style={{ ...feld, marginBottom: 6 }} />
       <Liste>
-        {liste.length === 0 && <Leer>{offen.length ? 'Nichts fällig, nichts kritisch.' : 'Keine Aufgaben. Eine Zeile oben, Enter — oder Jarvis sagen.'}</Leer>}
+        {liste.length === 0 && <Leer>{offen.length ? 'Nichts fällig, nichts kritisch.' : 'Keine Aufgaben. Eine Zeile oben, Enter — oder ZOE sagen.'}</Leer>}
         {liste.map(t => (
           <Zeile key={t.id} onClick={() => router.push(WEG.aufgabe(t.id))}
             links={<Haken an={false} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />}
@@ -309,19 +309,19 @@ function FinanzenPrivatWidget({ titel, i }: WidgetProps) {
   );
 }
 
-// ── Jarvis (Stapel) & Inbox ─────────────────────────────────────────────────
-function JarvisWidget({ e, titel, i }: WidgetProps) {
-  const stapel = useDaten<number>('/api/jarvis/stapel', x => { const d = x as { offen?: number | unknown[]; vorschlaege?: unknown[] }; return typeof d.offen === 'number' ? d.offen : Array.isArray(d.offen) ? d.offen.length : (d.vorschlaege ?? []).length; });
+// ── ZOE (Stapel) & Inbox ─────────────────────────────────────────────────
+function ZoeWidget({ e, titel, i }: WidgetProps) {
+  const stapel = useDaten<number>('/api/zoe/stapel', x => { const d = x as { offen?: number | unknown[]; vorschlaege?: unknown[] }; return typeof d.offen === 'number' ? d.offen : Array.isArray(d.offen) ? d.offen.length : (d.vorschlaege ?? []).length; });
   const mitInbox = e.inbox === true;
   const inbox = useDaten<number>(mitInbox ? '/api/state/inbox' : '/api/state/inbox?leer=1', x => Object.values(((x as { status?: Record<string, { status: string }> }).status ?? {})).filter(s => s.status === 'offen' || s.status === 'warten').length);
   const n = stapel ?? null;
   return (
     <Karte i={i} akzent={n ? LEUCHT.achtung : undefined}>
-      <Ueberschrift farbe={n ? LEUCHT.achtung : C.inkLeise} rechts={<Link href="/os/stapel" style={link}>Stapel ›</Link>}>{titel ?? (mitInbox ? 'Jarvis & Inbox' : 'Jarvis')}</Ueberschrift>
+      <Ueberschrift farbe={n ? LEUCHT.achtung : C.inkLeise} rechts={<Link href="/os/stapel" style={link}>Stapel ›</Link>}>{titel ?? (mitInbox ? 'ZOE & Inbox' : 'ZOE')}</Ueberschrift>
       <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
         <Link href="/os/stapel" style={{ textDecoration: 'none', fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 'clamp(34px,4vw,44px)', letterSpacing: '-.04em', lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: n ? LEUCHT.achtung : C.inkLeise, textShadow: n ? `0 0 24px ${LEUCHT.achtung}33` : undefined }}>{n == null ? '—' : n}</Link>
         <div style={{ fontSize: TYP.body, fontWeight: 600, lineHeight: 1.35 }}>
-          {n == null ? 'Jarvis' : n === 0 ? 'Nichts vorbereitet — alles erledigt.' : `Vorschl${n === 1 ? 'ag wartet' : 'äge warten'} auf dich`}
+          {n == null ? 'ZOE' : n === 0 ? 'Nichts vorbereitet — alles erledigt.' : `Vorschl${n === 1 ? 'ag wartet' : 'äge warten'} auf dich`}
           {mitInbox && <div style={{ fontSize: 12.5, color: C.inkDim, fontWeight: 500, marginTop: 4 }}><Link href="/os/inbox" style={{ color: C.inkDim }}>{inbox ? `${inbox} in der Inbox offen ›` : 'Inbox ›'}</Link></div>}
         </div>
       </div>
@@ -441,7 +441,7 @@ export const WIDGETS: Record<string, WidgetDef> = {
   index: { art: 'index', label: 'Index je Säule', bereich: 'Zahlen', beschreibung: 'Business-, Privat-, Gesundheits-Index oder Traktions-Score mit Säulen', breite: 2, Komponente: IndexWidget,
     einstellungen: [{ k: 'saeule', label: 'Säule', art: 'wahl', optionen: [{ w: 'business', label: 'Business' }, { w: 'privat', label: 'Privat' }, { w: 'gesundheit', label: 'Gesundheit' }, { w: 'traktion', label: 'Traktion' }], standard: 'business' }] },
   'finanzen-privat': { art: 'finanzen-privat', label: 'Finanzen · privat', bereich: 'Zahlen', beschreibung: 'Fällige Raten, Rechnungen, fehlende Kontoauszüge', breite: 2, Komponente: FinanzenPrivatWidget },
-  jarvis: { art: 'jarvis', label: 'Jarvis & Inbox', bereich: 'Jarvis', beschreibung: 'Vorschläge im Stapel, offene Inbox', breite: 2, Komponente: JarvisWidget,
+  zoe: { art: 'zoe', label: 'ZOE & Inbox', bereich: 'ZOE', beschreibung: 'Vorschläge im Stapel, offene Inbox', breite: 2, Komponente: ZoeWidget,
     einstellungen: [{ k: 'inbox', label: 'Inbox dazu', art: 'schalter', standard: false }] },
   dran: { art: 'dran', label: 'Wer heute dran ist', bereich: 'Business', beschreibung: 'Die wichtigsten Kontakte der Power Hour', breite: 4, Komponente: DranWidget },
   familie: { art: 'familie', label: 'Familie & Partnerschaft', bereich: 'Familie', beschreibung: 'Paar-Gespräch, wichtige Tage, wer einen Anruf verdient, Frage der Woche', breite: 2, Komponente: FamilieWidget },
@@ -465,7 +465,7 @@ export const KATALOG: KatalogEintrag[] = [
   { art: 'index', label: 'Gesundheits-Index', beschreibung: 'Der Gesundheits-Index mit seinen Säulen', bereich: 'Gesundheit', breite: 2, voreinstellung: { saeule: 'gesundheit' } },
   { art: 'index', label: 'Traktions-Score', beschreibung: 'Der Traktions-Score der Markttraktion', bereich: 'Business', breite: 2, voreinstellung: { saeule: 'traktion' } },
   { art: 'finanzen-privat', label: 'Finanzen · privat', beschreibung: WIDGETS['finanzen-privat'].beschreibung, bereich: 'Zahlen', breite: 2 },
-  { art: 'jarvis', label: 'Jarvis & Inbox', beschreibung: WIDGETS.jarvis.beschreibung, bereich: 'Jarvis', breite: 2, voreinstellung: { inbox: true } },
+  { art: 'zoe', label: 'ZOE & Inbox', beschreibung: WIDGETS.zoe.beschreibung, bereich: 'ZOE', breite: 2, voreinstellung: { inbox: true } },
   { art: 'dran', label: 'Wer heute dran ist', beschreibung: WIDGETS.dran.beschreibung, bereich: 'Business', breite: 4 },
   { art: 'familie', label: 'Familie & Partnerschaft', beschreibung: WIDGETS.familie.beschreibung, bereich: 'Familie', breite: 2 },
 ];

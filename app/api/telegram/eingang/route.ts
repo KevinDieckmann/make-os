@@ -1,8 +1,8 @@
 // ─── MAKE OS — Telegram: eine Nachricht kommt an ────────────────────────────
 // Der Bote (bote.mjs) reicht jedes Update hierher. Diese Route entscheidet:
 //   · /start CODE     → Chat mit einer Person koppeln
-//   · unbekannter Chat → ein Satz, sonst nichts. Keine Daten, kein Jarvis.
-//   · gekoppelt        → die Nachricht geht an Jarvis (/api/kimmi) — mit der
+//   · unbekannter Chat → ein Satz, sonst nichts. Keine Daten, kein ZOE.
+//   · gekoppelt        → die Nachricht geht an ZOE (/api/kimmi) — mit der
 //                        Person im Kopf, damit Werkzeuge in den richtigen
 //                        Raum schreiben — und die Antwort zurück in den Chat.
 //
@@ -14,7 +14,7 @@
 
 import { NextResponse } from 'next/server';
 import { ladeStand, aendereStand, loeseCode, personFuerChat, sendeAnChat } from '@/lib/telegram';
-import { nameVon } from '@/lib/jarvis/raum';
+import { nameVon } from '@/lib/zoe/raum';
 import { nachrichtFuer } from '@/lib/gesundheit/lauf';
 import { faelligeSlots, type TaktStand } from '@/lib/gesundheit/takt';
 import { loadJson } from '@/lib/store/local-db';
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, person, was: 'kein text' });
   }
 
-  // ── An Jarvis ──
+  // ── An ZOE ──
   // Derselbe Weg wie im Browser: /api/kimmi mit der Person im Kopf. Kein
   // zweiter Gesprächspfad, kein zweites Werkzeug-Register.
   const origin = innenAdresse(req);

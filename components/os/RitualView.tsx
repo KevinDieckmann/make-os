@@ -235,7 +235,7 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
               : <Knopf onClick={() => arbeitToggle('an')} farbe={LEUCHT.gut}>● AN — Arbeitszeit läuft</Knopf>}
           </Schritt>
 
-          <Schritt nr={2} titel="Die Lage — Jarvis zieht alle Daten zusammen" done={mSchritte.lage}>
+          <Schritt nr={2} titel="Die Lage — ZOE zieht alle Daten zusammen" done={mSchritte.lage}>
             {lauf?.ausrichtung ? (
               <div style={hinweis}>
                 {lauf.ausrichtung.gruss && <div style={{ marginBottom: 4 }}>{lauf.ausrichtung.gruss} <span style={{ fontSize: TYP.mikro, color: C.inkLeise }}>Stand {lauf.gestartet.slice(11, 16)} Uhr</span></div>}

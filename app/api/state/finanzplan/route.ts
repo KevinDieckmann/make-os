@@ -246,7 +246,7 @@ export async function PUT(req: Request) {
  * Einzelne Einträge ändern statt der ganzen Datei.
  *
  * Zwei-Fenster-Fundament: Malin pflegt Rechnungen, Kevin lässt nebenher einen
- * Beleg von Jarvis buchen — vorher schrieb jeder Weg den KOMPLETTEN Finanzplan
+ * Beleg von ZOE buchen — vorher schrieb jeder Weg den KOMPLETTEN Finanzplan
  * zurück und überschrieb still die Arbeit des anderen. Jetzt geht nur der eine
  * geänderte Eintrag raus, und zwar in der benannten Liste.
  *

@@ -142,13 +142,13 @@ Vorschlag für die Speicher-Schlüssel, passend zum vorhandenen Muster `loadJson
 Das bestehende Log `rituale` bleibt kompatibel.
 
 ```ts
-type Basis = { id: string; erstelltVon: PersonId | 'jarvis'; erstelltAm: string; geaendertAm?: string;
+type Basis = { id: string; erstelltVon: PersonId | 'zoe'; erstelltAm: string; geaendertAm?: string;
   sichtbarkeit: 'paar' | 'familie' | 'nur-ich' };   // 'nur-ich' NUR für Entwurf, Überraschung, eigene Reflexion
 
 Haushalt { id; name; personen: Person[]; kinderModul: boolean;
   einstellungen: { paarGespraech: { wochentag; uhrzeit; dauerMin };
     businessFrei: { wochentage: number[]; von: string; bis: string }[];
-    jarvis: Record<Funktion, { kevin: boolean; malin: boolean }>;   // Freigabe durch BEIDE
+    zoe: Record<Funktion, { kevin: boolean; malin: boolean }>;   // Freigabe durch BEIDE
     ausnahmeBis?: string } }                                          // Urlaub/Krankheit/Geburt → Score pausiert
 Person { id; name; rolle: 'partner'|'kind'|'angehoeriger'; geburtstag?; bezug?: string;
   kontaktWunsch?: { rhythmusTage: number; kanal: 'anruf'|'besuch'|'nachricht' } }
@@ -194,7 +194,7 @@ WichtigerTag & Basis { art: 'geburtstag'|'jahrestag'|'gedenktag'|'feiertag'|'son
 FamilienMeeting & Basis { datum; teilnehmer: PersonId[]; gut: string[]; nichtGut: string[]; vorhaben: string[] }
 Leitbild { version; saetze: string[]; beschlossenAm; beteiligte: PersonId[] }
 Chronik & Basis { datum; titel; geschichte; personen: PersonId[] }
-Audit { zeit; akteur: PersonId | 'jarvis'; aktion; entitaet; id }       // für beide einsehbar
+Audit { zeit; akteur: PersonId | 'zoe'; aktion; entitaet; id }       // für beide einsehbar
 ```
 
 ---
@@ -229,9 +229,9 @@ Ich empfehle, den Wert **„Pflege-Score“** zu nennen, nicht „Beziehungs-Sco
 
 ---
 
-## 5. Jarvis: Einsatz und Grenzen
+## 5. ZOE: Einsatz und Grenzen
 
-**Hier hilft Jarvis:**
+**Hier hilft ZOE:**
 - **Agenda vorbereiten** am Sonntag: Themen-Parkplatz, Woche im Kalender, fällige Karten, anstehende wichtige Tage, offene Vereinbarungen der Vorwoche. Er sortiert, bewertet aber nichts.
 - **Protokoll:** Vereinbarungen werden zu Aufgaben, mit Verantwortlichem und Termin.
 - **Date-Vorschläge** aus Ideen-Pool, Kalenderlücken, Wetter, Budget und dem Anteil neuer Dates. Reservierungen oder Nachrichten an Dritte nur nach ausdrücklicher Freigabe.
@@ -241,13 +241,13 @@ Ich empfehle, den Wert **„Pflege-Score“** zu nennen, nicht „Beziehungs-Sco
 - **Mental-Load-Überblick:** zeigt neutral, wie die Karten verteilt sind, und schlägt eine Neuverteilung vor.
 
 **Grenzen:**
-- **Keine Therapie und keine Diagnose.** Bei Warnsignalen (Gewalt, Krisen, Suizidgedanken) verweist Jarvis auf Paarberatung, das Hilfetelefon 116 016 und die Telefonseelsorge 0800 111 0 111.
+- **Keine Therapie und keine Diagnose.** Bei Warnsignalen (Gewalt, Krisen, Suizidgedanken) verweist ZOE auf Paarberatung, das Hilfetelefon 116 016 und die Telefonseelsorge 0800 111 0 111.
 - **Keine Bewertung des Partners** und kein Schiedsrichter-Urteil darüber, wer recht hat.
-- **Symmetrie:** Alles, was Jarvis über das Paar speichert oder ableitet, sehen beide gleich. Private Reflexionen fließen nie in Vorschläge an den anderen und nie in den Score ein.
+- **Symmetrie:** Alles, was ZOE über das Paar speichert oder ableitet, sehen beide gleich. Private Reflexionen fließen nie in Vorschläge an den anderen und nie in den Score ein.
 - **Keine Auswertung** von Chats, E-Mails, Standort, Stimmungsanalysen oder Gesundheitsdaten (z. B. Whoop) im Zusammenhang mit der Beziehung.
-- **Kein automatischer Versand** von Nachrichten an den Partner. Jarvis ist kein Ghostwriter für Zuneigung.
+- **Kein automatischer Versand** von Nachrichten an den Partner. ZOE ist kein Ghostwriter für Zuneigung.
 - **Datenschutz:** Angaben zum Sexualleben gehören zu den besonderen Datenkategorien nach Art. 9 DSGVO. Sie werden möglichst nicht erhoben und nicht an externe KI geschickt; ansonsten Datensparsamkeit, lokale Speicherung, Export und Löschung.
-- **Opt-in pro Funktion durch beide.** Jede Aktion von Jarvis steht im Audit-Log.
+- **Opt-in pro Funktion durch beide.** Jede Aktion von ZOE steht im Audit-Log.
 - **Keine Pushs während Dates oder offener Reparaturen**, keine Hinweise, die Schuld zuweisen.
 
 ---

@@ -26,7 +26,7 @@ import { befunde } from '@/lib/crm/befunde';
 import { HEADS, HEAD_NAME } from '@/lib/heads/prompt';
 import { leererStand, standName, type HeadStand } from '@/lib/heads/stand';
 import { localDay } from '@/lib/zeit';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { fuerDich, teamFeed, verantwortlich, TEAM } from '@/lib/crm/team';
 import { wochenScoreboard, verlaufEintrag, verlaufFortschreiben, verlaufSeit, gleicherStand, jePersonSieben, VERLAUF_SPEICHER, type TraktionVerlauf, type VerlaufTag } from '@/lib/crm/scoreboard';
 import { ladeStand as ladeTelegram, chatsFuerPerson, telegramKonfiguriert } from '@/lib/telegram';

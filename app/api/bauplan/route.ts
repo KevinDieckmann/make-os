@@ -13,7 +13,7 @@
 
 import { NextResponse } from 'next/server';
 import { merken } from '@/lib/store/memo';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { ladeBauplan, aendereBauplan, karteAnlegen } from '@/lib/bauplan/speicher';
 import { verschieben, felderSaeubern, statusAus, warteschlange, SPALTEN, type Spalte, type Etappe } from '@/lib/bauplan/board';
 

@@ -196,7 +196,7 @@ export function FinanzchefView() {
                 {s.berichte.map(b => (
                   <Zeile key={b.id} aktiv={b.id === bericht?.id} onClick={() => setGewaehlt(b.id)} links={<Punkt farbe={STATUS[b.antwort.status]?.farbe ?? C.inkLeise} />}
                     titel={b.modus === 'frage' ? `Frage: ${b.frage ?? ''}` : `${MODI.find(x => x.id === b.modus)?.label}${b.monat ? ` ${b.monat}` : ''}`}
-                    unter={`${zeit(b.zeit)} · ${b.antwort.befunde.length} Befunde · ${b.ausgeloest === 'takt' ? 'vom Takt' : b.ausgeloest === 'jarvis' ? 'über Jarvis' : 'von Hand'}${b.pruefung.unbelegt.length ? ` · ${b.pruefung.unbelegt.length} nicht belegt` : ''}`} />
+                    unter={`${zeit(b.zeit)} · ${b.antwort.befunde.length} Befunde · ${b.ausgeloest === 'takt' ? 'vom Takt' : b.ausgeloest === 'zoe' ? 'über ZOE' : 'von Hand'}${b.pruefung.unbelegt.length ? ` · ${b.pruefung.unbelegt.length} nicht belegt` : ''}`} />
                 ))}
               </Liste>
             ) : <Leer>Noch keine.</Leer>}

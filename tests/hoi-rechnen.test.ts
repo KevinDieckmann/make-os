@@ -1,7 +1,7 @@
 // Head of IT — Rechenhilfen (lib/hoi/rechnen.ts): Zähler aus Aufträgen, Anmeldungen, CSP-Berichten; Außenmeldung säubern.
 import { describe, it, expect } from 'vitest';
 import { fehlerquote24h, fehlanmeldungen24h, neueNetze7d, cspMeldungenAus, cspZusammenfuehren, cspBild, aussenSaeubern } from '@/lib/hoi/rechnen';
-import type { Auftrag } from '@/lib/jarvis/auftraege';
+import type { Auftrag } from '@/lib/zoe/auftraege';
 import type { Anmeldung } from '@/lib/zugang/anmeldungen';
 
 const JETZT = '2026-09-27T12:00:00.000Z';

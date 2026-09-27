@@ -186,7 +186,7 @@ const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`)
 /**
  * Team-Zeile in der Power Hour: abgeschlossene Power Hours (Sitzungen je
  * Person) und echte Gespräche (Verlauf, „von“) — heute und in den letzten
- * sieben Tagen einschließlich heute. System, Jarvis und Signale zählen nicht.
+ * sieben Tagen einschließlich heute. System, ZOE und Signale zählen nicht.
  */
 export function teamZahlen(kontakte: Pick<Kontakt, 'aktivitaeten'>[], sitzungen: Pick<PowerHourSitzung, 'person' | 'datum'>[], heute: string): TeamTag[] {
   const ab = tagPlus(heute, -6);

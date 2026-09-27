@@ -6,10 +6,10 @@
 // Symbolen, der Stand wird gemerkt. Dann Home (das eigene Dashboard),
 // Wachstum (die Gesamtansicht, das zentrale Stück), Privat und Business als
 // Kästen in ihrer Farbe — ein Tipp klappt die Punkte SOFORT auf, der andere
-// Kasten klappt zu — dann Agenten als eigener Knopf. Unten gesondert Jarvis
+// Kasten klappt zu — dann Agenten als eigener Knopf. Unten gesondert ZOE
 // und Brain, darunter System und das Konto. Inbox und Kalender stehen im Kopf
 // oben und folgen dem Space.
-// Handy: Leiste unten mit Home · Privat · Business · Jarvis · System —
+// Handy: Leiste unten mit Home · Privat · Business · ZOE · System —
 // Privat/Business öffnen ihre Punkte als Blatt.
 
 import Link from 'next/link';
@@ -161,7 +161,7 @@ export function Leiste() {
       }}>
         {([{ art: 'link' as const, href: '/os', label: 'Home', icon: LayoutDashboard, farbe: C.aktiv, an: pfad === '/os' },
           ...SPACES.map(s => ({ art: 'space' as const, href: s.start, label: s.label, icon: s.icon, farbe: s.farbe, an: space === s.id && pfad !== '/os', id: s.id })),
-          { art: 'link' as const, href: '/jarvis', label: 'Jarvis', icon: UNTEN[0].icon, farbe: C.aktiv, an: pfad.startsWith('/jarvis') },
+          { art: 'link' as const, href: '/zoe', label: 'ZOE', icon: UNTEN[0].icon, farbe: C.aktiv, an: pfad.startsWith('/zoe') },
           { art: 'link' as const, href: '/os/system', label: 'System', icon: Settings, farbe: C.aktiv, an: passt(SYSTEM) }]).map(e => {
           const Icon = e.icon;
           const innen = <><Icon size={20} strokeWidth={1.75} /><span>{e.label}</span></>;

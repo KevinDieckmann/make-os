@@ -71,7 +71,7 @@ export function KompassView() {
   const [reihenfolge, setReihenfolge] = useState<string[]>(STANDARD_ORDNUNG);
   const [tiefer, setTiefer] = useState(false);
   // Der Fokus je Horizont liegt in denselben Zielen, aus denen Tag, Woche und
-  // Jarvis lesen — hier wird er gesetzt, dort wirkt er.
+  // ZOE lesen — hier wird er gesetzt, dort wirkt er.
   const [fokus, setFokus] = useState<Record<string, string>>({});
   // Wessen Fokus (26.09., Malin: „selektieren als Kevin, Malin einzeln“): wir · ich · die andere Person (nur lesen)
   const [wessen, setWessen] = useState<'wir' | 'ich' | string>('wir');
@@ -377,7 +377,7 @@ export function KompassView() {
       {/* ── PRIORITÄTEN: was zuerst zählt, wenn alles wichtig ist ──
           Kevins Ansage: „Das ist nicht unsere Ordnung, das sind unsere
           Prioritäten." Diese Reihenfolge sortiert das Taskmanagement, den
-          Tagesplan und Jarvis' Vorschläge — deshalb steht sie hier oben. */}
+          Tagesplan und ZOE' Vorschläge — deshalb steht sie hier oben. */}
       <Karte i={k++}>
         <Ueberschrift farbe={LEUCHT.schlaf} rechts="Die Lage setzt sie — hier feinjustieren.">Unsere Prioritäten</Ueberschrift>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Was zuerst zählt, wenn alles wichtig ist.</div>
@@ -401,7 +401,7 @@ export function KompassView() {
       {/* ── FOKUS: worauf es je Horizont ankommt ──
           Kevin: „eine eigene Seite, wo es nur darum geht, welche Prios wir
           geben und welchen Fokus." Der Satz je Horizont steht in denselben
-          Daten, aus denen Jarvis, der Tagesplan und die Wochensicht lesen. */}
+          Daten, aus denen ZOE, der Tagesplan und die Wochensicht lesen. */}
       <Karte i={k++}>
         <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Chip farbe={gesetzt === HORIZONTE.length ? LEUCHT.gut : gesetzt ? LEUCHT.achtung : C.inkLeise}>{gesetzt} von {HORIZONTE.length} gesetzt</Chip>}>{wessen === 'wir' ? 'Unser Fokus' : wessen === 'ich' ? 'Mein Fokus' : `Fokus von ${personen.andere.find(a => a.speicher === wessen)?.name ?? wessen}`}</Ueberschrift>
         {/* Wessen Fokus (26.09.): gemeinsam, meiner, der der anderen Person (nur lesen) */}
@@ -414,9 +414,9 @@ export function KompassView() {
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
           {chip(fokusSpace === null, C.aktiv, 'Gemeinsam', () => setFokusSpace(null), 'sp-gemeinsam')}
           {(['privat', 'business'] as const).map(sp => chip(fokusSpace === sp, SPACE_FARBE[sp], SPACE_LABEL[sp], () => setFokusSpace(sp), `sp-${sp}`))}
-          <span style={{ fontSize: 12, color: C.inkLeise }}>{fokusSpace ? `nur ${SPACE_LABEL[fokusSpace]} — Planer und Jarvis nehmen ihn im ${SPACE_LABEL[fokusSpace]}-Space` : 'gilt überall, wo kein Space-Fokus steht'}</span>
+          <span style={{ fontSize: 12, color: C.inkLeise }}>{fokusSpace ? `nur ${SPACE_LABEL[fokusSpace]} — Planer und ZOE nehmen ihn im ${SPACE_LABEL[fokusSpace]}-Space` : 'gilt überall, wo kein Space-Fokus steht'}</span>
         </div>
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 10 }}>Ein Satz je Horizont. Was hier steht, taucht im Tag, in der Woche und bei Jarvis wieder auf.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 10 }}>Ein Satz je Horizont. Was hier steht, taucht im Tag, in der Woche und bei ZOE wieder auf.</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {HORIZONTE.map(h => (
             <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -561,7 +561,7 @@ export function KompassView() {
                         {reihe('Thema', THEMEN.map(b => chip((f.themen ?? []).includes(b.id), b.farbe, b.label, () => patch(f.id, { themen: kippen(f.themen, b.id) }), b.id)))}
                         {reihe('Ort', ORGS.map(o => chip((f.orgs ?? []).includes(o.id), o.farbe, o.kurz, () => patch(f.id, { orgs: kippen(f.orgs, o.id) }), o.id)))}
                         {reihe('Stufe', PRIOS.map(([key, label]) => chip((f.prios ?? []).includes(key), C.aktiv, label, () => patch(f.id, { prios: kippen(f.prios, key) }), key)))}
-                        {reihe('Weg', (['jarvis', 'gemeinsam', 'mensch'] as const).map(w => chip((f.wege ?? []).includes(w), C.aktiv, WER_LABEL[w], () => patch(f.id, { wege: kippen(f.wege, w) }), w)))}
+                        {reihe('Weg', (['zoe', 'gemeinsam', 'mensch'] as const).map(w => chip((f.wege ?? []).includes(w), C.aktiv, WER_LABEL[w], () => patch(f.id, { wege: kippen(f.wege, w) }), w)))}
                         {reihe('Wer', (['kevin', 'malin', 'both'] as const).map(p => chip(f.besitzer === p, C.aktiv, p === 'both' ? 'Beide' : p === 'kevin' ? 'Kevin' : 'Malin', () => patch(f.id, { besitzer: f.besitzer === p ? undefined : p }), p)))}
                       </>
                     ) : (

@@ -5,7 +5,7 @@
 // „wir müssen Planung in den Bau bekommen“. Entschieden: alles —
 //   Board        Ideen → Bereit → In Arbeit → Zum Testen → Fertig, ziehen und sortieren
 //   Eingang      Knopf auf jeder Seite (nimmt die Seite mit), Vorlage (Problem ·
-//                Wunsch · Warum · Fertig wenn), Jarvis, Bildschirmfoto
+//                Wunsch · Warum · Fertig wenn), ZOE, Bildschirmfoto
 //   Zusammen     Claude baut „Bereit“ von oben ab und gibt mit „So testet ihr“
 //                nach „Zum Testen“; Daumen und Kommentare; erst eure Abnahme
 //                macht eine Karte fertig („Passt noch nicht“ → zurück nach Bereit)
@@ -98,7 +98,7 @@ export const bildNameOk = (v: unknown): v is string => typeof v === 'string' && 
 export function bereichAusSeite(pfad?: string): string {
   const p = (pfad ?? '').split('?')[0];
   const regeln: [RegExp, string][] = [
-    [/^\/jarvis/, 'Jarvis'], [/^\/os\/wissen/, 'Brain'], [/^\/os\/(markttraktion|crm|prospecting)/, 'Markttraktion'], [/^\/os\/mandate/, 'Mandate'],
+    [/^\/zoe/, 'ZOE'], [/^\/os\/wissen/, 'Brain'], [/^\/os\/(markttraktion|crm|prospecting)/, 'Markttraktion'], [/^\/os\/mandate/, 'Mandate'],
     [/^\/os\/(fokus|kompass)/, 'Fokus'], [/^\/os\/(aufgaben|board|meeting)/, 'Aufgaben'], [/^\/os\/planung/, 'Planung'], [/^\/os\/(finanzen|zahlen|controlling|liquiditaet)/, 'Zahlen'],
     [/^\/os\/(gesundheit|energie|ernaehrung)/, 'Gesundheit'], [/^\/os\/familie/, 'Familie'], [/^\/os\/inbox/, 'Inbox'], [/^\/os\/(agenten|stapel)/, 'Agenten'],
     [/^\/os\/(system|bauplan|roadmap|konto|verbindungen|datenbasis|stammdaten)/, 'System'], [/^\/os\/menschen/, 'Familie'], [/^\/os\/(heute|uebersicht|wachstum)/, 'Heute'], [/^\/os\/?$/, 'Heute'],
@@ -107,7 +107,7 @@ export function bereichAusSeite(pfad?: string): string {
 }
 
 /**
- * Eine neue Karte aus dem Formular, dem Knopf auf jeder Seite oder von Jarvis
+ * Eine neue Karte aus dem Formular, dem Knopf auf jeder Seite oder von ZOE
  * säubern: Titel Pflicht, Auswahlfelder nur aus den Listen, Texte begrenzt,
  * höchstens vier Bilder mit gültigem Namen. Neu landet sie in „Ideen“ oben.
  */
@@ -119,7 +119,7 @@ export function neueKarte(roh: Record<string, unknown>, von: string, jetzt: stri
   const problem = [geteilt.rest, opt(roh.problem, GRENZE.text)].filter(Boolean).join('\n\n').slice(0, GRENZE.text) || undefined;
   const art = ARTEN.some(a => a.id === roh.art) ? (roh.art as Art) : 'verbesserung';
   // Nur Seiten dieser App (kein „//fremd.de“) — die Karte verlinkt dorthin zurück.
-  const seite = typeof roh.seite === 'string' && /^\/(os|jarvis)(\/|\?|$)/.test(roh.seite) ? t(roh.seite, 200) : undefined;
+  const seite = typeof roh.seite === 'string' && /^\/(os|zoe)(\/|\?|$)/.test(roh.seite) ? t(roh.seite, 200) : undefined;
   const bereich = (BEREICHE as readonly string[]).includes(String(roh.bereich)) ? String(roh.bereich) : bereichAusSeite(seite);
   const prio = [1, 2, 3].includes(Number(roh.prio)) ? (Number(roh.prio) as 1 | 2 | 3) : 2;
   return {

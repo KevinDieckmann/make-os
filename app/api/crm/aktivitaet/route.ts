@@ -7,7 +7,7 @@
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { updateJson } from '@/lib/store/local-db';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { fuerPerson, wendeAktivitaetAn, STUFEN, AKTIVITAET_ARTEN, ERGEBNISSE, NOTIZ_FELDER, type Kontakt, type AktivitaetArt, type Stufe, type Ergebnis, type NotizVorlage } from '@/lib/make-one/crm';
 import { folgeAus } from '@/lib/crm/heute';
 import { localDay, tagePlus } from '@/lib/zeit';
@@ -23,7 +23,7 @@ const ARTEN: readonly AktivitaetArt[] = AKTIVITAET_ARTEN.filter(a => a !== 'syst
 
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
-  let b: { id?: string; art?: string; text?: string; stufe?: string; wiedervorlage?: string; von?: 'jarvis'; ergebnis?: string; notiz?: Record<string, unknown>; naechster?: { text?: string; datum?: string }; bezug?: string };
+  let b: { id?: string; art?: string; text?: string; stufe?: string; wiedervorlage?: string; von?: 'zoe'; ergebnis?: string; notiz?: Record<string, unknown>; naechster?: { text?: string; datum?: string }; bezug?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const id = String(b.id ?? '').trim();
   const art = String(b.art ?? '') as AktivitaetArt;
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   const bezug = /^[a-z0-9][a-z0-9-]{1,63}$/.test(String(b.bezug ?? '')) ? String(b.bezug) : undefined;
   const wunschStufe = b.stufe && STUFEN.includes(b.stufe as Stufe) ? (b.stufe as Stufe) : undefined;
   const wunschWv = b.wiedervorlage && /^\d{4}-\d{2}-\d{2}$/.test(b.wiedervorlage) ? b.wiedervorlage : undefined;
-  const von = b.von === 'jarvis' ? 'jarvis' : personAus(req);
+  const von = b.von === 'zoe' ? 'zoe' : personAus(req);
   const heute = localDay();
 
   let ergebnis: Kontakt | null = null;
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
   if (bezug?.startsWith('kp-') && erg) {
     const kErg = erg === 'gespraech' || erg === 'termin' ? 'gespraech' : erg === 'kein_bedarf' || erg === 'sperre' ? 'kein_interesse' : 'angesprochen';
     const { aendereCrm } = await import('@/lib/crm/speicher');
-    await aendereCrm(c => ({ ...c, kampagnen: c.kampagnen.map(k => (k.id === bezug && k.kontaktIds.includes(id) ? { ...k, ergebnisse: [...k.ergebnisse, { kontaktId: id, ergebnis: kErg, am: heute, ...(von !== 'jarvis' ? { von } : {}) }], geaendert: new Date().toISOString(), geaendertVon: von } : k)) }));
+    await aendereCrm(c => ({ ...c, kampagnen: c.kampagnen.map(k => (k.id === bezug && k.kontaktIds.includes(id) ? { ...k, ergebnisse: [...k.ergebnisse, { kontaktId: id, ergebnis: kErg, am: heute, ...(von !== 'zoe' ? { von } : {}) }], geaendert: new Date().toISOString(), geaendertVon: von } : k)) }));
   }
   // Private Notizen sieht nur, wer sie schrieb — auch in dieser Antwort.
   return NextResponse.json({ ok: true, kontakt: ergebnis ? fuerPerson(ergebnis, personAus(req)) : ergebnis, hinweis: erg ? folgeAus(erg, heute, 'neu').hinweis : undefined });

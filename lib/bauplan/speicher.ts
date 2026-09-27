@@ -1,7 +1,7 @@
 // ─── Bauplan — Speicher (Server) ────────────────────────────────────────────
 // Eine Datei „backlog“ ({ items, etappen }), geschrieben nur über updateJson —
 // jede Handlung ist eine Einzeländerung, so überschreiben sich Kevin, Malin,
-// Jarvis und der Loop nie gegenseitig. Bilder liegen daneben als Dateien unter
+// ZOE und der Loop nie gegenseitig. Bilder liegen daneben als Dateien unter
 // .data/bauplan-bilder (nie im Repo, mit der nächtlichen Sicherung gesichert).
 
 import { promises as fs } from 'node:fs';
@@ -25,7 +25,7 @@ export async function aendereBauplan(mut: (d: BauplanDatei) => BauplanDatei): Pr
   });
 }
 
-/** Neue Karte oben in „Ideen“ — aus dem Formular, dem Knopf auf jeder Seite oder von Jarvis. */
+/** Neue Karte oben in „Ideen“ — aus dem Formular, dem Knopf auf jeder Seite oder von ZOE. */
 export async function karteAnlegen(roh: Record<string, unknown>, von: string): Promise<BacklogItem | null> {
   const jetzt = new Date().toISOString();
   const karte = neueKarte(roh, von, jetzt, `bp-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`);

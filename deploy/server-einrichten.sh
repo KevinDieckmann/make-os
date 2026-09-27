@@ -69,7 +69,7 @@ cat <<TEXT
     (Repo → Settings → Deploy keys → Add, NUR lesen):
 $(cat /home/make/.ssh/github.pub)
     Genauso beim privaten Vault-Repo — dort MIT Schreibrecht
-    (Jarvis schreibt ins Log).
+    (ZOE schreibt ins Log).
 
  2) Als make:  git clone $REPO /srv/make-os/app
               install -m 600 /srv/make-os/app/deploy/env.server.beispiel /srv/make-os/app/.env

@@ -15,7 +15,7 @@ import { Seite } from './schlank';
 import { Flaeche } from './flaeche/Flaeche';
 import type { StandardPlatz } from '@/lib/flaeche/modell';
 
-/** Der Startstand: oben Score · Fokus · Jarvis, dann Aufgaben (⅔) + Körper, Termine (⅔) + Finanzen privat, Wer dran ist. */
+/** Der Startstand: oben Score · Fokus · ZOE, dann Aufgaben (⅔) + Körper, Termine (⅔) + Finanzen privat, Wer dran ist. */
 export const HOME_STANDARD: StandardPlatz[] = [
   // Home (Kevin 26.09.): „erstmal der Überblick über Business und Privat jeweils zusammengeholt“ —
   // links Privat, rechts Business; jede Person baut sich das über „Anpassen“ um.
@@ -26,7 +26,7 @@ export const HOME_STANDARD: StandardPlatz[] = [
   { id: 'finanzen-privat', art: 'finanzen-privat', breite: 3 },
   { id: 'dran', art: 'dran', breite: 3 },
   { id: 'koerper', art: 'koerper', breite: 3 },
-  { id: 'jarvis', art: 'jarvis', breite: 3, einstellungen: { inbox: true } },
+  { id: 'zoe', art: 'zoe', breite: 3, einstellungen: { inbox: true } },
   { id: 'termine', art: 'termine', breite: 3, einstellungen: { tage: 3, business: true }, titel: 'Nächste 3 Tage' },
   { id: 'fokus', art: 'fokus', breite: 3 },
   { id: 'score', art: 'score', breite: 3 },

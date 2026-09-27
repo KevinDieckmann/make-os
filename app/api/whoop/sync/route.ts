@@ -50,7 +50,7 @@ export async function POST(req: Request) {
 
     const heute = localDay();
     // In den Bestand der anfragenden Person — nicht immer in Kevins (26.09.).
-    const { personAus, speicherFuer } = await import('@/lib/jarvis/raum');
+    const { personAus, speicherFuer } = await import('@/lib/zoe/raum');
     await updateJson<Record<string, Record<string, unknown>>>(speicherFuer('vitals', personAus(req)), current => {
       const log = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
       return { ...log, [heute]: { ...(log[heute] ?? {}), ...vitals, note: String((log[heute] as { note?: string } | undefined)?.note ?? '') || undefined } };

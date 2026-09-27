@@ -1,5 +1,5 @@
 // ─── MAKE OS — Delegations-Loop ─────────────────────────────────────────────
-// Kevins Kernwunsch: „so gut wie nichts mehr selbst machen müssen." Jarvis
+// Kevins Kernwunsch: „so gut wie nichts mehr selbst machen müssen." ZOE
 // geht alle offenen Aufgaben durch und schlägt je Aufgabe vor: bleibt bei
 // Kevin (nur was WIRKLICH nur er kann) oder geht an die richtige Person aus
 // dem Team (Miro-Verantwortungen). Kevin übernimmt per Klick — Human-in-the-
@@ -43,7 +43,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  // Hintergrundlauf (Jarvis, Takt) legt die Runde ab — die Aufgaben-Seite zeigt sie dann als „von Jarvis“ (27.09.).
+  // Hintergrundlauf (ZOE, Takt) legt die Runde ab — die Aufgaben-Seite zeigt sie dann als „von ZOE“ (27.09.).
   let ablegen = false;
   try { ablegen = (await req.json())?.ablegen === true; } catch { /* ohne Rumpf: nicht ablegen */ }
   const schranke = modellSchranke(req); if (schranke) return schranke;
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
 
   const kurznamen = TEAM.filter(t => t.kurz !== 'Kevin').map(t => t.kurz);
   const system = [
-    'Du bist JARVIS und entlastest Kevin radikal: Er behält NUR, was wirklich nur er kann (finale Entscheidungen, Sales-Definition, C-Level-Beziehungen, seine eigene Gesundheit). Alles andere wird delegiert.',
+    'Du bist ZOE und entlastest Kevin radikal: Er behält NUR, was wirklich nur er kann (finale Entscheidungen, Sales-Definition, C-Level-Beziehungen, seine eigene Gesundheit). Alles andere wird delegiert.',
     'TEAM & VERANTWORTUNG (delegiere entlang dieser Zuständigkeiten):',
     ...teamZeilen().map(z => `- ${z}`),
     'REGELN:',

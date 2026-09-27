@@ -5,10 +5,10 @@ import { SPACE_LABEL, SPACE_FARBE } from '@/lib/make-one/space-regeln';
 import type { Owner } from '@/types/common';
 
 // ─── MAKE OS — Inbox ────────────────────────────────────────────────────────
-// Eine Liste, eine Entscheidung je Mail. Jarvis stuft ein (wichtig · normal ·
+// Eine Liste, eine Entscheidung je Mail. ZOE stuft ein (wichtig · normal ·
 // rauschen), fällige Wiedervorlagen stehen oben, Rauschen ist eingeklappt und
 // geht in einem Zug weg. Je Mail: Erledigt · Aufgabe · Morgen · Montag ·
-// Antwort (Jarvis schreibt, Apple Mail öffnet — gesendet wird von Hand).
+// Antwort (ZOE schreibt, Apple Mail öffnet — gesendet wird von Hand).
 // Tasten wie gehabt: j/k wandern, e erledigt, a Aufgabe, s morgen.
 // Fächer, Screener und der Zero-Durchlauf des alten Baus: /os/inbox/voll.
 
@@ -107,7 +107,7 @@ export function InboxSchlank() {
     }).catch(() => { setQuelle(q => ({ ...q, apple: 'nicht erreichbar' })); setLaedt(false); });
   }, []);
 
-  // Jarvis stuft alles Uneingeteilte ein — einmal je Mail, Ergebnis liegt im Cache.
+  // ZOE stuft alles Uneingeteilte ein — einmal je Mail, Ergebnis liegt im Cache.
   useEffect(() => {
     if (laedt || !msgs.length) return;
     const neu = msgs.filter(m => !triage[fpOf(m)] && !angefragt.current.has(fpOf(m)));
@@ -210,7 +210,7 @@ export function InboxSchlank() {
           <Knopf leise onClick={() => setzen([{ id: m.id, status: 'snoozed', bis: naechsterMontag() }])}>Montag</Knopf>
           {andere.map(p => <span key={p.speicher} title={`Aufgabe für ${p.name} anlegen`}><Knopf leise onClick={() => delegieren(m, p)}>An {p.name.split(' ')[0]}</Knopf></span>)}
           <span title="Außerhalb von MAKE OS abgegeben — nur als delegiert markieren"><Knopf leise onClick={() => setzen([{ id: m.id, status: 'delegiert' }])}>Delegiert (extern)</Knopf></span>
-          {!entwurf && <Knopf leise onClick={() => antworten(m)} aus={schreibt}>{schreibt ? 'Jarvis schreibt …' : 'Antwort'}</Knopf>}
+          {!entwurf && <Knopf leise onClick={() => antworten(m)} aus={schreibt}>{schreibt ? 'ZOE schreibt …' : 'Antwort'}</Knopf>}
           <button onClick={() => blocken(m)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>Absender blocken</button>
         </>) : <Knopf leise onClick={() => setzen([{ id: m.id, status: 'offen' }])}>Wieder öffnen</Knopf>}
       </div>

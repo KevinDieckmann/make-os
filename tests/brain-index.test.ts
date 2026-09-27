@@ -11,7 +11,7 @@ process.env.MAKE_VAULT_DIR = vault;
 process.env.MAKE_OS_DATEN_DIR = daten;
 process.env.MAKE_OS_DOKU_WURZEL = 'aus';
 const ix = await import('../lib/brain/index');
-const vaultLib = await import('../lib/jarvis/vault');
+const vaultLib = await import('../lib/zoe/vault');
 
 const schreibe = async (rel: string, text: string) => { const p = path.join(vault, rel); await fs.mkdir(path.dirname(p), { recursive: true }); await fs.writeFile(p, text, 'utf8'); };
 beforeAll(async () => {

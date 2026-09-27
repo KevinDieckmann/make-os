@@ -106,7 +106,7 @@ export function WochenplanView() {
   const [neuWer, setNeuWer] = useState<Wer>('kevin');
   const [abgleich, setAbgleich] = useState(false);
   const [aktivBlock, setAktivBlock] = useState<string | null>(null);
-  // Ziele beim Planen sichtbar — und Jarvis' Wochenvorschlag (Human-in-the-Loop).
+  // Ziele beim Planen sichtbar — und ZOE' Wochenvorschlag (Human-in-the-Loop).
   const [ziele, setZiele] = useState<{ monat: { titel: string; fortschritt: number; erledigt?: boolean }[]; quartal: { titel: string; fortschritt: number; erledigt?: boolean }[]; fokus?: { woche?: string; monat?: string; quartal?: string } }>({ monat: [], quartal: [] });
   const [vorschlag, setVorschlag] = useState<{ begruendung: string; bloecke: PlanBlock[]; verworfen: number } | null>(null);
   const [denkt, setDenkt] = useState(false);
@@ -330,7 +330,7 @@ export function WochenplanView() {
       .map(t => ({ ...t, imFokus: boost(t) >= FOKUS_SCHWELLE }));
   }, [tasksState, bloecke, regler]);
 
-  async function jarvisBelegen() {
+  async function zoeBelegen() {
     setDenkt(true); setVorschlag(null);
     try {
       const r = await fetch('/api/planung/vorschlag', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ woche: wochenKey }) });
@@ -556,16 +556,16 @@ export function WochenplanView() {
         </Karte>
       )}
 
-      {/* Jarvis belegt die Woche — Vorschlag, den du zurechtschiebst */}
+      {/* ZOE belegt die Woche — Vorschlag, den du zurechtschiebst */}
       <Karte i={2} akzent={LEUCHT.agenten}>
-        <Ueberschrift farbe={LEUCHT.agenten}>Jarvis belegt die Woche</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.agenten}>ZOE belegt die Woche</Ueberschrift>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Knopf onClick={jarvisBelegen} aus={denkt} farbe={LEUCHT.agenten}>{denkt ? 'Jarvis plant …' : '✨ Jarvis belegt die Woche'}</Knopf>
+          <Knopf onClick={zoeBelegen} aus={denkt} farbe={LEUCHT.agenten}>{denkt ? 'ZOE plant …' : '✨ ZOE belegt die Woche'}</Knopf>
           <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Reha täglich · Fokus vormittags · Routinen · Aufgaben nach Priorität — um deine festen Termine herum.</span>
         </div>
         {vorschlag && (
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.06)' }}>
-            <Ueberschrift farbe={LEUCHT.agenten} rechts={`${vorschlag.bloecke.length} Blöcke${vorschlag.verworfen ? ` · ${vorschlag.verworfen} verworfen (kollidierten mit Terminen)` : ''}`}>Jarvis&apos; Vorschlag</Ueberschrift>
+            <Ueberschrift farbe={LEUCHT.agenten} rechts={`${vorschlag.bloecke.length} Blöcke${vorschlag.verworfen ? ` · ${vorschlag.verworfen} verworfen (kollidierten mit Terminen)` : ''}`}>ZOE&apos; Vorschlag</Ueberschrift>
             <div style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.5 }}>{vorschlag.begruendung}</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
               <Knopf farbe={LEUCHT.agenten} onClick={() => { speichern(vorschlag.bloecke); setVorschlag(null); }}>Übernehmen — ersetzt die aktuellen Blöcke</Knopf>

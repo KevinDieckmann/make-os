@@ -210,7 +210,7 @@ export function ProspectingView() {
                       {p.score != null && (
                         <div>
                           <Knopf leise onClick={() => ansprache(p)} aus={entwurfBusy === p.id}>
-                            {entwurfBusy === p.id ? 'Jarvis schreibt …' : entwurf?.fuer === p.id ? '↻ Neu entwerfen' : '✍ Ansprache entwerfen'}
+                            {entwurfBusy === p.id ? 'ZOE schreibt …' : entwurf?.fuer === p.id ? '↻ Neu entwerfen' : '✍ Ansprache entwerfen'}
                           </Knopf>
                         </div>
                       )}

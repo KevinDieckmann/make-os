@@ -190,7 +190,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
 
       {/* Fokus dieses Horizonts — die eine Richtung, gegen die geplant wird */}
       <Karte i={k++} akzent={farbe}>
-        <Ueberschrift farbe={farbe} rechts="Sichtbar im Wochenplaner und in der Tagesplanung — Jarvis plant dagegen.">{fokusTitel}</Ueberschrift>
+        <Ueberschrift farbe={farbe} rechts="Sichtbar im Wochenplaner und in der Tagesplanung — ZOE plant dagegen.">{fokusTitel}</Ueberschrift>
         <input value={fokus} onChange={e => fokusSetzen(e.target.value)} aria-label={fokusTitel}
           placeholder={horizont === 'monat' ? 'z. B. Gesundheit stabilisieren + F&F-Kunden onboarden' : 'Woran richtet sich alles aus?'}
           style={{ ...feld, fontWeight: 600 }} />

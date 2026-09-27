@@ -121,11 +121,11 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
     loadJson<Record<string, string[]>>(p('rituale')),
   ]);
 
-  // Agenten (24.09.): was Jarvis und die Agenten abnehmen — sechste Säule.
+  // Agenten (24.09.): was ZOE und die Agenten abnehmen — sechste Säule.
   const [agentLogF, auftraegeF, stapelF, tgStand] = await Promise.all([
     loadJson<{ entries: { ts: string }[] }>('agent-log'),
-    loadJson<{ auftraege: { zeit: string; status: string }[] }>('jarvis-auftraege'),
-    loadJson<{ vorschlaege: { zeit?: string; status: string; entschiedenAm?: string }[] }>('jarvis-stapel'),
+    loadJson<{ auftraege: { zeit: string; status: string }[] }>('zoe-auftraege'),
+    loadJson<{ vorschlaege: { zeit?: string; status: string; entschiedenAm?: string }[] }>('zoe-stapel'),
     ladeTelegram().catch(() => null),
   ]);
 

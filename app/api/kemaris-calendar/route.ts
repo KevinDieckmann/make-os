@@ -51,9 +51,9 @@ export async function GET() {
   const alterTage = Math.floor((Date.now() - Date.parse(LAST_UPDATED)) / 86_400_000);
   const veraltet = !Number.isFinite(alterTage) || alterTage > MAX_TAGE;
 
-  // Write-through in den Store — damit das Brain (Loops, Tageslauf, Jarvis)
+  // Write-through in den Store — damit das Brain (Loops, Tageslauf, ZOE)
   // die KEMARIS-Termine sieht. ABER: Ein zu alter Stand darf nicht mehr in
-  // den Store, sonst prüft Jarvis Terminkollisionen gegen Vergangenes und
+  // den Store, sonst prüft ZOE Terminkollisionen gegen Vergangenes und
   // meldet fälschlich „frei".
   if (!veraltet) {
     try { await saveJson('kemaris-calendar', { events: EVENTS, at: LAST_UPDATED }); } catch { /* Anzeige geht vor */ }

@@ -153,15 +153,15 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
   let neu = 0;
   await updateJson<HeadStand>(name, s => {
     const st = { ...leererStand(), ...(s ?? {}) };
-    const m = a.ausgeloest === 'jarvis' ? { liste: st.vorschlaege, neu: 0 } : mischen(st.vorschlaege, antwort.vorschlaege, bericht.id, jetzt, a.modus);
+    const m = a.ausgeloest === 'zoe' ? { liste: st.vorschlaege, neu: 0 } : mischen(st.vorschlaege, antwort.vorschlaege, bericht.id, jetzt, a.modus);
     neu = m.neu;
     return { ...st, berichte: [...st.berichte, bericht].slice(-30), vorschlaege: m.liste, letzte: { ...st.letzte, [r]: jetzt } };
   });
   // Fall für Evals ablegen (nur .data, nie im Repo): Datenpaket + erste, ungeprüfte Antwort.
   if (art.roh && a.modus !== 'frage') await updateJson<ReplayStand>(`heads-replay-${a.head}`, s => ({ faelle: [...(s?.faelle ?? []), { zeit: jetzt, modus: a.modus, person: a.person, heute, quelle: art.quelle, modell: bericht.modell, daten, roh: art.roh! }].slice(-25) }));
 
-  // Interne Kleinigkeiten selbst (Kevin 25.09.) — nie bei Jarvis-Fragen, nie wenn ausgeschaltet.
-  const auto = a.ausgeloest === 'jarvis' || OHNE_AUTO_MODI.has(a.modus) ? 0 : await autoUebernehmen(a.head, bericht.id, a.person, jetzt);
+  // Interne Kleinigkeiten selbst (Kevin 25.09.) — nie bei ZOE-Fragen, nie wenn ausgeschaltet.
+  const auto = a.ausgeloest === 'zoe' || OHNE_AUTO_MODI.has(a.modus) ? 0 : await autoUebernehmen(a.head, bericht.id, a.person, jetzt);
   await logRun(AGENT_ID[a.head], `${MODI[a.head].find(m => m.id === a.modus)?.label} · ${antwort.status}${art.quelle === 'regelwerk' ? ' · Regelwerk' : ''}`, { vorschlaege: antwort.vorschlaege.map(v => v.titel), gestrichen: pruefung!.gestrichen.length, unbelegt: pruefung!.unbelegt.length, quelle: art.quelle });
   return { ok: true, bericht, neu, ...(auto ? { auto } : {}) };
 }

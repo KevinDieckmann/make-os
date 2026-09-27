@@ -123,7 +123,7 @@ describe('Die Kennzahlen', () => {
     const termine = [{ start: '2026-09-22T09:00:00', ende: '2026-09-22T11:00:00', owner: 'kevin' }, { start: '2026-09-23T09:00:00', ende: '2026-09-23T15:00:00', owner: 'both' }, { start: '2026-09-23T09:00:00', ende: '2026-09-23T19:00:00', owner: 'malin' }];
     expect(wert('meetinglast', leer({ termine }))).toBe(2);
     expect(mess('meetinglast', leer({ termine, termineVollstaendig: false }))).toHaveProperty('luecke');
-    const auftraege = [...Array(8)].map((_, i) => ({ status: 'fertig', beendet: `2026-09-${10 + i}T10:00:00Z`, anlass: 'Jarvis' })).concat([{ status: 'fertig', beendet: '2026-09-20T10:00:00Z', anlass: 'Takt: Morgenlauf' }]);
+    const auftraege = [...Array(8)].map((_, i) => ({ status: 'fertig', beendet: `2026-09-${10 + i}T10:00:00Z`, anlass: 'ZOE' })).concat([{ status: 'fertig', beendet: '2026-09-20T10:00:00Z', anlass: 'Takt: Morgenlauf' }]);
     expect(wert('delegation', leer({ auftraege }))).toBe(2);
     expect(wert('meilensteine', leer({ meilensteine: [{ bereich: 'business', fortschritt: 80, erledigt: false }, { bereich: 'business', faellig: '2026-09-01', fortschritt: 90, erledigt: false }, { bereich: 'gesundheit', fortschritt: 0, erledigt: false }] }))).toBe(40);
   });
@@ -168,7 +168,7 @@ describe('Säulen und Gesamt', () => {
 
 describe('Feinjustierung', () => {
   it('eigene Schwellen ändern Ampel und Punkte, der Standard bleibt sichtbar; verdrehte Schwellen werden abgewiesen', () => {
-    const auftraege = [...Array(8)].map((_, i) => ({ status: 'fertig', beendet: `2026-09-${10 + i}T10:00:00Z`, anlass: 'Jarvis' }));
+    const auftraege = [...Array(8)].map((_, i) => ({ status: 'fertig', beendet: `2026-09-${10 + i}T10:00:00Z`, anlass: 'ZOE' }));
     const std = berechne(leer({ auftraege })).saeulen.flatMap(s => s.kennzahlen).find(k => k.id === 'delegation')!;
     expect(std).toMatchObject({ ampel: 'rot', angepasst: false, standard: { gruen: 10, rot: 3 } });
     const eigen = berechne(leer({ auftraege, schwellen: { delegation: { gruen: 2, rot: 1 } } })).saeulen.flatMap(s => s.kennzahlen).find(k => k.id === 'delegation')!;

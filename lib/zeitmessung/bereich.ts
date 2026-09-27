@@ -14,7 +14,7 @@ const FEST: [RegExp, BereichTreffer][] = [
   [/^\/os\/heute/, { id: 'heute', label: 'Heute' }],
   [/^\/os\/wachstum|^\/os\/saeule/, { id: 'wachstum', label: 'Wachstum' }],
   [/^\/os\/(system|konto|datenbasis|verbindungen|bauplan|onboarding)/, { id: 'system', label: 'System' }],
-  [/^\/jarvis|^\/os\/(stapel|loop)/, { id: 'jarvis', label: 'Jarvis' }],
+  [/^\/zoe|^\/os\/(stapel|loop)/, { id: 'zoe', label: 'ZOE' }],
   [/^\/os\/inbox/, { id: 'inbox', label: 'Inbox' }],
   [/^\/os\/(kalender|planung\/woche)/, { id: 'kalender', label: 'Kalender' }],
 ];
@@ -32,7 +32,7 @@ export function bereichVon(pfad: string, suche = ''): BereichTreffer {
 
 /**
  * Der Schlüssel, unter dem Zeit verbucht wird: der Space aus der Adresse gewinnt;
- * eine gemeinsame Seite (Home, Heute, Jarvis …) zählt für den Modus, in dem man
+ * eine gemeinsame Seite (Home, Heute, ZOE …) zählt für den Modus, in dem man
  * gerade ist (Kevin: „wenn man im privaten Modus ist, wird auch dort Zeit gemessen“).
  */
 export function zeitSchluessel(pfad: string, suche: string, modus: SpaceId | null | undefined): { schluessel: string; space: ZeitSpace; bereich: BereichTreffer } {

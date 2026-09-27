@@ -127,7 +127,7 @@ const BESTAND_NAME: Record<string, string> = {
   tasks: 'Aufgaben', finanzplan: 'Finanzplan', buchungen: 'Buchungen', grundlage: 'Finanz-Grundlage',
   rechnungen: 'Rechnungen', kompass: 'Kompass', inbox: 'Inbox', loops: 'Loops', bauplan: 'Bauplan',
   meetings: 'Meetings', startflaeche: 'Startfläche', labels: 'Bezeichnungen', gesundheit: 'Gesundheit',
-  bauzeit: 'Bauzeit', 'kalender-einstellungen': 'Kalender-Einstellungen', 'jarvis-verlauf': 'Jarvis-Verlauf',
+  bauzeit: 'Bauzeit', 'kalender-einstellungen': 'Kalender-Einstellungen', 'zoe-verlauf': 'ZOE-Verlauf',
 };
 
 interface Aenderung { at: string; person: string; bestand: string; seite?: string; art: string }

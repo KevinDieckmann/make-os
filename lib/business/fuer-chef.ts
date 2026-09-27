@@ -1,7 +1,7 @@
-// ─── Business-Index für den Head of Finance und Jarvis (25.09.) ─────────────
-// Kevin: „tiefer verankern — Jarvis & Head of Finance“. Der Head of Finance
+// ─── Business-Index für den Head of Finance und ZOE (25.09.) ─────────────
+// Kevin: „tiefer verankern — ZOE & Head of Finance“. Der Head of Finance
 // arbeitet mit denselben Kennzahlen wie das Cockpit und warnt, wenn eine rot
-// ist oder der Monatsabschluss fehlt. Jarvis beantwortet Fragen dazu.
+// ist oder der Monatsabschluss fehlt. ZOE beantwortet Fragen dazu.
 
 import { localDay } from '@/lib/zeit';
 import { SCOPES, KENNZAHL, type Scope } from './register';
@@ -60,7 +60,7 @@ export async function businessFuerChef(heute = localDay()): Promise<{ block: Rec
   return { block, hinweise };
 }
 
-/** Text für Jarvis: der Index — oder eine Kennzahl im Detail. */
+/** Text für ZOE: der Index — oder eine Kennzahl im Detail. */
 export async function businessText(sicht: Scope, kennzahl?: string, heute = localDay()): Promise<string> {
   const { alle } = await sichtenFuerChef(heute);
   const bi = alle[sicht];

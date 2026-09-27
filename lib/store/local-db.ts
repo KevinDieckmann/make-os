@@ -145,14 +145,14 @@ interface Gelesen { text: string; /** lag auf der Platte als AES-Hülle */ huell
 
 /** Der entschlüsselte Text eines Bestands — null, wenn er noch nie geschrieben wurde. Wirft bei Lesefehlern. */
 /**
- * Umbenennung Jarvis → Zoe (27.09.): Bestände hießen `jarvis-…`. Wird ein `zoe-…`-Bestand zum ersten Mal gelesen
+ * Umbenennung Jarvis → ZOE (27.09.): Bestände hießen `jarvis-…`. Wird ein `zoe-…`-Bestand zum ersten Mal gelesen
  * und liegt noch die alte Datei, wird sie EINMAL umbenannt — Daten auf dem Server bleiben so ohne Migration erhalten.
  */
 async function altenNamenUebernehmen(name: string, file: string): Promise<boolean> {
   if (!/^zoe(-|$)/.test(name)) return false;
   const alt = path.join(DATA_DIR, `${name.replace(/^zoe/, 'jarvis')}.json`);
   try { await fs.access(alt); } catch { return false; }
-  try { await fs.rename(alt, file); console.log(`[local-db] ${path.basename(alt)} → ${path.basename(file)} (Zoe)`); return true; } catch { return false; }
+  try { await fs.rename(alt, file); console.log(`[local-db] ${path.basename(alt)} → ${path.basename(file)} (ZOE)`); return true; } catch { return false; }
 }
 
 async function leseText(name: string): Promise<Gelesen | null> {

@@ -80,7 +80,7 @@ export async function importieren(haushalt: string, dokument: FinanzDaten, erset
   return ergebnis;
 }
 
-/** Verdichtete Zahlen des aktiven Szenarios — für Jarvis und die Startfläche, ohne Zeilen und Buchungen. */
+/** Verdichtete Zahlen des aktiven Szenarios — für ZOE und die Startfläche, ohne Zeilen und Buchungen. */
 export function kennzahlenVon(d: FinanzDaten) {
   const sz = d.szenarien.find(s => s.id === d.aktiv) ?? d.szenarien[0];
   const ug = rechneUG(d, sz);

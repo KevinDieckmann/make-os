@@ -19,7 +19,7 @@ import { lesen, type MalinExport } from '@/lib/make-one/grundlage';
 import type { FinanceState } from '@/lib/make-one/finance-data';
 import type { Planposten } from '@/lib/make-one/liquiditaet';
 import { ladeHaushalt } from '../haushalt/speicher';
-import { buchungenSuchen } from '../haushalt/jarvis';
+import { buchungenSuchen } from '../haushalt/zoe';
 import { heuteBerlin, tagPlus, tageZwischen } from '../haushalt/monat';
 import { baueFinanzbild, type Finanzbild, type FinanzplanStand } from './finanzbild';
 import { SYSTEM, aufgabe, SCHEMA, DEFINITIONEN, MODUS_NAME, type Modus } from './prompt';
@@ -227,9 +227,9 @@ export async function chefLauf(a: LaufAuftrag): Promise<LaufErgebnis> {
   let neu = 0, aktualisiert = 0;
   await updateJson<ChefStand>(name, s => {
     const st = { ...leererStand(), ...(s ?? {}) };
-    // Fragen über Jarvis (nur Business, ohne Person) füllen die Freigabe-Liste nicht —
-    // die sieht dort niemand; Jarvis gibt die Vorschläge im Gespräch weiter.
-    const m = a.ausgeloest === 'jarvis' ? { liste: st.vorschlaege, neu: 0, aktualisiert: 0 } : vorschlaegeMischen(st.vorschlaege, antwort.vorschlaege, bericht.id, jetzt);
+    // Fragen über ZOE (nur Business, ohne Person) füllen die Freigabe-Liste nicht —
+    // die sieht dort niemand; ZOE gibt die Vorschläge im Gespräch weiter.
+    const m = a.ausgeloest === 'zoe' ? { liste: st.vorschlaege, neu: 0, aktualisiert: 0 } : vorschlaegeMischen(st.vorschlaege, antwort.vorschlaege, bericht.id, jetzt);
     neu = m.neu; aktualisiert = m.aktualisiert;
     const t = a.modus === 'tagescheck' ? tagesSchluessel(bild, st).schluessel : st.tagesSchluessel;
     return { ...st, berichte: [...st.berichte, bericht].slice(-30), vorschlaege: m.liste, letzte: { ...st.letzte, [a.modus]: jetzt }, tagesSchluessel: t };

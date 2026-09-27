@@ -1,17 +1,17 @@
 // ─── Brain: nächtliche Konsolidierung (Server, 27.09.) ──────────────────────
 // Kevins Entscheidung 27.09.: nächtlich, Vorschläge morgens in der Brain-Inbox.
 // Der Lauf liest, was der Tag hinterlassen hat — neue Fakten im Gedächtnis,
-// das Jarvis-Log, heute geänderte Protokolle — und verdichtet es zu höchstens
+// das ZOE-Log, heute geänderte Protokolle — und verdichtet es zu höchstens
 // fünf Vorschlägen (neue Notiz, Ergänzung einer bestehenden, Regel), jeder mit
 // Begründung und Quelle. Er schreibt NUR in die Inbox (lib/brain/inbox.ts);
 // annehmen tun Menschen. Ohne KI-Guthaben läuft er als Regelwerk: ein Vorschlag
 // „Fakten vom <Tag>“ mit allem Neuen. Riegel: Bestand brain-konsolidierung
-// (letzter Tag), der Takt fragt ihn (lib/jarvis/takt.ts).
+// (letzter Tag), der Takt fragt ihn (lib/zoe/takt.ts).
 
 import { askText, hasAnthropicKey, guthabenLeer, fremd, FREMD_REGEL, extractJson } from '@/lib/anthropic';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { lies as fakten, type Fakt } from '@/lib/jarvis/gedaechtnis';
-import { bestand, notiz, obersterBlock, AGENT } from '@/lib/jarvis/vault';
+import { lies as fakten, type Fakt } from '@/lib/zoe/gedaechtnis';
+import { bestand, notiz, obersterBlock, AGENT } from '@/lib/zoe/vault';
 import { vorschlaegeLesen, vorschlagAblegen, type NeuerVorschlag } from './inbox';
 import { localDay } from '@/lib/zeit';
 
@@ -32,8 +32,8 @@ export function regelVorschlag(neu: Fakt[], heute: string): NeuerVorschlag | nul
   const gemeinsam = neu.filter(f => f.raum === 'gemeinsam' || f.raum === 'kevin');
   if (!gemeinsam.length) return null;
   const zeilen = gemeinsam.slice(0, 40).map(f => `- **${f.thema}** (${f.art}): ${f.satz}${f.woher ? ` — _${f.woher}_` : ''}`);
-  return { titel: `Fakten vom ${heute}`, text: `Jarvis hat sich gestern Folgendes gemerkt. Was davon ins Brain gehört, bitte annehmen (als Protokoll) — oder ablehnen.\n\n${zeilen.join('\n')}`,
-    ziel: 'neu', zielOrdner: '03. Protokolle/Protokolle', begruendung: 'Regelwerk ohne KI: neue Gedächtnis-Einträge des Tages, unverdichtet.', quelle: 'Jarvis-Gedächtnis', vertraulichkeit: 'gemeinsam', erstelltVon: 'jarvis' };
+  return { titel: `Fakten vom ${heute}`, text: `ZOE hat sich gestern Folgendes gemerkt. Was davon ins Brain gehört, bitte annehmen (als Protokoll) — oder ablehnen.\n\n${zeilen.join('\n')}`,
+    ziel: 'neu', zielOrdner: '03. Protokolle/Protokolle', begruendung: 'Regelwerk ohne KI: neue Gedächtnis-Einträge des Tages, unverdichtet.', quelle: 'ZOE-Gedächtnis', vertraulichkeit: 'gemeinsam', erstelltVon: 'zoe' };
 }
 
 interface ModellVorschlag { titel?: string; text?: string; ziel?: string; ziel_notiz?: string; begruendung?: string; quelle?: string; vertraulichkeit?: string; prioritaet?: number; gilt_fuer?: string }
@@ -56,7 +56,7 @@ export async function konsolidieren(jetzt = new Date().toISOString(), erzwingen 
   }
 
   // Mit KI: Log-Ende, heute geänderte Protokolle, neue Fakten → höchstens fünf Vorschläge.
-  const log = await notiz('Jarvis_Log', 5000, AGENT).catch(() => null);
+  const log = await notiz('Zoe_Log', 5000, AGENT).catch(() => null);
   const b = await bestand().catch(() => null);
   const ab = Date.parse(jetzt) - 26 * STUNDE;
   const protokolle = (b?.notizen ?? []).filter(n => n.wurzel === 'make' && n.typ === 'protokoll' && Date.parse(n.geaendert) >= ab && n.scope !== 'privat').slice(0, 5);
@@ -64,7 +64,7 @@ export async function konsolidieren(jetzt = new Date().toISOString(), erzwingen 
   for (const p of protokolle) { const d = await notiz(p.id, 3000, AGENT).catch(() => null); if (d?.ok && d.text) protokollTexte.push(`PROTOKOLL ${d.titel}\n${(d.oben || obersterBlock(d.text) || d.text).slice(0, 2500)}`); }
   const material = [
     neu.length ? `NEUE FAKTEN (${neu.length}):\n` + neu.slice(0, 60).map(f => `- [${f.art}] ${f.thema}: ${f.satz}${f.woher ? ` (${f.woher})` : ''}`).join('\n') : 'NEUE FAKTEN: keine',
-    log?.ok && log.text ? `JARVIS-LOG (Ende):\n${log.text.slice(-3500)}` : '',
+    log?.ok && log.text ? `ZOE-LOG (Ende):\n${log.text.slice(-3500)}` : '',
     protokollTexte.join('\n\n'),
     offen.length ? `SCHON OFFEN IN DER INBOX (nicht noch einmal vorschlagen):\n` + offen.map(v => `- ${v.titel}`).join('\n') : '',
   ].filter(Boolean).join('\n\n');
@@ -72,7 +72,7 @@ export async function konsolidieren(jetzt = new Date().toISOString(), erzwingen 
 
   const system = [
     'Du bist der nächtliche Konsolidierungs-Lauf des Brains von Kevin und Malin (MAKE OS). Du liest, was der Tag hinterlassen hat, und machst daraus höchstens FÜNF Vorschläge für das Wissens-Brain.',
-    'Ein Vorschlag ist entweder eine NEUE Notiz (ziel "neu"), eine ERGÄNZUNG einer bestehenden Notiz (ziel "ergaenzung", ziel_notiz = Titel) oder eine REGEL (ziel "regel", prioritaet 0–3, gilt_fuer kevin|malin|beide|jarvis) — nur, wenn etwas mehrfach oder ausdrücklich als Regel gesagt wurde.',
+    'Ein Vorschlag ist entweder eine NEUE Notiz (ziel "neu"), eine ERGÄNZUNG einer bestehenden Notiz (ziel "ergaenzung", ziel_notiz = Titel) oder eine REGEL (ziel "regel", prioritaet 0–3, gilt_fuer kevin|malin|beide|zoe) — nur, wenn etwas mehrfach oder ausdrücklich als Regel gesagt wurde.',
     'Jeder Vorschlag trägt eine Begründung (warum das ins Brain gehört) und die Quelle (welcher Fakt, welches Protokoll). Vertraulichkeit: "gemeinsam", wenn es beide betrifft; "privat-kevin"/"privat-malin", wenn es nur eine Person angeht.',
     'Nichts erfinden, nichts verallgemeinern. Widersprüche zu dem, was im Material steht, nennst du als eigenen Vorschlag mit ziel "ergaenzung". Findest du nichts Belastbares, gib eine leere Liste zurück.',
     'Antworte NUR als JSON: {"vorschlaege":[{"titel":"…","text":"… (Markdown, knapp)","ziel":"neu|ergaenzung|regel","ziel_notiz":"…","begruendung":"…","quelle":"…","vertraulichkeit":"gemeinsam|privat-kevin|privat-malin","prioritaet":2,"gilt_fuer":"beide"}]}',
@@ -91,7 +91,7 @@ export async function konsolidieren(jetzt = new Date().toISOString(), erzwingen 
     if (!v?.titel || !v.text) continue;
     const a = await vorschlagAblegen({ titel: String(v.titel), text: String(v.text), ziel: v.ziel === 'ergaenzung' || v.ziel === 'regel' ? v.ziel : 'neu', zielNotiz: v.ziel_notiz ? String(v.ziel_notiz) : undefined,
       begruendung: String(v.begruendung ?? ''), quelle: String(v.quelle ?? 'Konsolidierung'), vertraulichkeit: v.vertraulichkeit === 'privat-kevin' || v.vertraulichkeit === 'privat-malin' ? v.vertraulichkeit : 'gemeinsam',
-      prioritaet: [0, 1, 2, 3].includes(Number(v.prioritaet)) ? (Number(v.prioritaet) as 0 | 1 | 2 | 3) : undefined, giltFuer: (['kevin', 'malin', 'beide', 'jarvis'] as const).find(x => x === v.gilt_fuer), erstelltVon: 'jarvis' });
+      prioritaet: [0, 1, 2, 3].includes(Number(v.prioritaet)) ? (Number(v.prioritaet) as 0 | 1 | 2 | 3) : undefined, giltFuer: (['kevin', 'malin', 'beide', 'zoe'] as const).find(x => x === v.gilt_fuer), erstelltVon: 'zoe' });
     if (a.ok && a.schonDa) schonDa++; else if (a.ok) abgelegt++;
   }
   return merke({ abgelegt, schonDa, ohneKi: false, text: `${abgelegt} Vorschläge in der Brain-Inbox${schonDa ? ` (${schonDa} lagen schon)` : ''}${liste.length ? '' : ' — das Modell fand nichts Belastbares'}.` });

@@ -253,7 +253,7 @@ function messung(b: TraktionBestand, def: KennzahlDefBasis, k: Kpi | undefined):
 }
 const TRAKTION_KENNZAHLEN_SKALA: Record<string, number> = { marketing_anteil: 100, abmeldequote: 100, nachfassen_48h: 100, erscheinen: 100, ansprechbar: 100 };
 
-/** Der Traktions-Index — dieselbe Zahl im Überblick, im Business-Index und bei Jarvis. */
+/** Der Traktions-Index — dieselbe Zahl im Überblick, im Business-Index und bei ZOE. */
 export function traktionsIndex(b: TraktionBestand): TraktionsIndex {
   const kpis: Record<string, Kpi> = {};
   for (const k of b.kpis ?? [...kennzahlen(b.kontakte, b.crm, b.heute), ...marketingKennzahlen(b.kontakte, b.crm, b.heute), ...eventKennzahlen(b.kontakte, b.crm, b.heute)]) kpis[k.id] = k;

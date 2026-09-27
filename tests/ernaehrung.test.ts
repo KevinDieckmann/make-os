@@ -80,7 +80,7 @@ describe('Ernährung · Modell', () => {
     f = r.datei;
     expect(r.abgelehnt).toEqual(['profile:fremd']);
     expect(f.einkauf[0]).toMatchObject({ text: 'Tomaten', menge: '6', von: 'kevin' });
-    expect(f.gerichte[0]).toMatchObject({ id: 'g1', portionen: 2, dauerMin: 25, quelle: 'jarvis' });
+    expect(f.gerichte[0]).toMatchObject({ id: 'g1', portionen: 2, dauerMin: 25, quelle: 'zoe' });
     expect(f.plan.mo.abend).toBe('Lachs mit Ofengemüse');
     expect(f.planGerichte.mo?.abend).toBe('g1');
     expect(f.profile.map(p => [p.person, p.konto])).toEqual([['kevin', true], ['gast-oma', false]]);
@@ -109,7 +109,7 @@ describe('Ernährung · Modell', () => {
       { feld: 'plan', tag: 'di', mahlzeit: 'abend', wert: 'Lachs mit Ofengemüse', gerichtId: 'g1' },
       { feld: 'plan', tag: 'fr', mahlzeit: 'abend', wert: 'Lachs mit Ofengemüse', gerichtId: 'g1' },
     ], 'kevin', J).datei;
-    expect(f.gerichte.map(g => [g.id, g.favorit, g.notiz, g.quelle])).toEqual([['g1', false, '', 'hand'], ['g2', false, '', 'jarvis']]);
+    expect(f.gerichte.map(g => [g.id, g.favorit, g.notiz, g.quelle])).toEqual([['g1', false, '', 'hand'], ['g2', false, '', 'zoe']]);
     // Stern und Notiz ändern nur das Feld — Zutaten bleiben
     f = wendeAn(f, [{ liste: 'gerichte', op: 'upsert', eintrag: { id: 'g2', favorit: true } }, { liste: 'gerichte', op: 'upsert', eintrag: { id: 'g1', notiz: 'Malin ohne Feta' } }], 'malin', J).datei;
     expect(f.gerichte.find(g => g.id === 'g2')).toMatchObject({ favorit: true, zutaten: [{ name: 'Haferflocken', menge: '80 g' }] });

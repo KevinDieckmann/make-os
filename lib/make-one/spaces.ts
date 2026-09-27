@@ -1,6 +1,6 @@
 // ─── MAKE OS — Zwei Spaces: Privat und Business (26.09., Malins Vorschlag) ──
 // „Links zwei Spaces, jeweils in eigener Farbe. Tippt man einen an, klappt
-// darunter sein Untermenü auf. Unten links gesondert Jarvis und Brain, darunter
+// darunter sein Untermenü auf. Unten links gesondert ZOE und Brain, darunter
 // System. Oben ein Suchfeld, das im aktiven Space sucht, daneben der Index des
 // Space.“ Kevin: Markttraktion und Mandate unter Business; privat ein eigenes
 // Kontaktbuch (Menschen); Gesundheit ist persönlich → Privat; Aufgaben in
@@ -9,7 +9,7 @@
 // Inbox und Kalender liegen im Kopf oben und folgen dem aktiven Space.
 //
 // Ein Space ist eine Sicht: Aufgaben, Ziele, Termine, Postfächer tragen ihren
-// Space (lib/make-one/space-regeln.ts); Heute und Jarvis sehen beides.
+// Space (lib/make-one/space-regeln.ts); Heute und ZOE sehen beides.
 
 import type { LucideIcon } from 'lucide-react';
 import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Bot, Brain, Sparkles, LayoutGrid, Calculator } from 'lucide-react';
@@ -62,9 +62,9 @@ export const EIGEN: SpaceEintrag[] = [
   { href: '/os/finanzplan', label: 'Finanzplanung jetzt', icon: Calculator, passt: ['/os/finanzplan'] },
 ];
 
-/** Unten links, gesondert: Jarvis und Brain (Malin), dann System. */
+/** Unten links, gesondert: ZOE und Brain (Malin), dann System. */
 export const UNTEN: SpaceEintrag[] = [
-  { href: '/jarvis', label: 'Jarvis', icon: Sparkles, passt: ['/jarvis'] },
+  { href: '/zoe', label: 'ZOE', icon: Sparkles, passt: ['/zoe'] },
   { href: '/os/wissen', label: 'Brain', icon: Brain, passt: ['/os/wissen'] },
 ];
 

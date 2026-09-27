@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { pipelineStand, type Kontakt } from '@/lib/make-one/crm';
 import { localDay } from '@/lib/zeit';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { werIstDran } from '@/lib/crm/heute';
 import { ampel } from '@/lib/crm/recht';
@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
 // 24.09.: dieselbe Auswahl wie die Power Hour (lib/crm/heute.ts) — mit
 // Kanal-Ampel statt der alten Kanalreihenfolge (die LinkedIn-Nachrichten bei
 // Kaltkontakten vorschlug; die zählen als elektronische Post). Antwortform
-// bleibt für Jarvis und den Crm-Agenten gleich.
+// bleibt für ZOE und den Crm-Agenten gleich.
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const n = Math.max(1, Math.min(30, Number(new URL(req.url).searchParams.get('n')) || 10));

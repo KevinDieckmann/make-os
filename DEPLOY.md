@@ -125,7 +125,7 @@ erreicht Kevins Mac über ein privates, verschlüsseltes Netz, von überall.
 6. System → Konto → „Jemanden einladen" → Link an Malin.
 
 HTTPS ist Pflicht, nicht Kür: ohne sichere Verbindung gibt Safari kein
-Mikrofon frei (Jarvis per Sprache) und legt keine App auf den Home-Bildschirm.
+Mikrofon frei (ZOE per Sprache) und legt keine App auf den Home-Bildschirm.
 
 **Grenze:** Malin ist nur drin, solange der Mac läuft, MAKE OS gestartet ist
 und der Mac online ist. Deckel zu heißt: Mac schläft, Malin draußen.

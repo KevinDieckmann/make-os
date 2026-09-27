@@ -5,7 +5,7 @@
 // sqlite: Klartext wie der Vault selbst (Git-Repo), außerhalb der verschlüsselten
 // JSON-Bestände und außerhalb des Vault-Repos (sonst würde vault-abgleich.sh ihn
 // einchecken). Inkrementell: je Notiz ein Hash — nur Geändertes wird neu zerlegt.
-// Sicht (scope/owner) wird VOR dem Ranking angewandt (lib/jarvis/vault.ts darfSehen).
+// Sicht (scope/owner) wird VOR dem Ranking angewandt (lib/zoe/vault.ts darfSehen).
 
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
@@ -13,7 +13,7 @@ import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { datenOrdner } from '@/lib/store/local-db';
-import { bestand, leseKopf, darfSehen, type Sicht, type Treffer } from '@/lib/jarvis/vault';
+import { bestand, leseKopf, darfSehen, type Sicht, type Treffer } from '@/lib/zoe/vault';
 import { abschnitte, verweise, ftsAnfrage } from './chunks';
 
 export interface IndexStand { notizen: number; chunks: number; vektoren: number; letzterLauf: string | null; dauerMs: number | null; datei: string }
@@ -186,7 +186,7 @@ export function indexSuche(frage: string, anzahl = 6, sicht: Sicht, bereich?: st
 /**
  * Hybrid (27.09.): Volltext (BM25) und Embeddings (Kosinus) liefern je eine Rangliste von
  * Abschnitten; Reciprocal Rank Fusion (k = 60) verbindet sie. Ohne Modell/Vektoren bleibt es
- * bei der Volltextsuche — dieselbe Form, derselbe Aufrufer (lib/jarvis/vault.ts suche).
+ * bei der Volltextsuche — dieselbe Form, derselbe Aufrufer (lib/zoe/vault.ts suche).
  */
 export async function hybridSuche(frage: string, anzahl = 6, sicht: Sicht, bereich?: string): Promise<{ treffer: IndexTreffer[]; durchsucht: number; hybrid: boolean }> {
   const volltext = indexSuche(frage, Math.max(anzahl * 3, 20), sicht, bereich);

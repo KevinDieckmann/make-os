@@ -28,7 +28,7 @@ export function planOps<B extends BlockMin>(alt: B[], neu: B[]): Op<B>[] {
 /**
  * Neuen Stand schreiben. Kennt man den zuletzt gespeicherten Stand, gehen nur
  * die Unterschiede raus (PATCH); sonst — oder bei einer Massenänderung wie
- * „Jarvis belegt die Woche" — die ganze Woche (PUT, wie bisher).
+ * „ZOE belegt die Woche" — die ganze Woche (PUT, wie bisher).
  */
 export async function wochenplanSchreiben<B extends BlockMin>(
   woche: string,

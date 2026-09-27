@@ -1,6 +1,6 @@
-// Regelwerk-Rückfall für Morgen-/Abendlauf (lib/jarvis/regelwerk.ts)
+// Regelwerk-Rückfall für Morgen-/Abendlauf (lib/zoe/regelwerk.ts)
 import { describe, it, expect } from 'vitest';
-import { regelBericht } from '@/lib/jarvis/regelwerk';
+import { regelBericht } from '@/lib/zoe/regelwerk';
 
 const leer = { heute: '2026-09-27', tasks: { alle: [], offen: [], overdue: [], dueToday: [], kritisch: [], projektName: () => '' }, kalender: { heute: [], woche: [], at: null, alterH: null, stale: false, quellen: { apple: { alterH: null, stale: true }, kemaris: { alterH: null, stale: true } } }, geld: { forderungen: 0, vorbereitung: 0, ueberfaelligeForderungen: 0 }, shields: [] } as unknown as Parameters<typeof regelBericht>[0];
 

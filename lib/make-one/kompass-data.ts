@@ -95,7 +95,7 @@ export const REGLER: Regler[] = [
   // ── Postfach ──
   { id: 'tuersteher', label: 'Türsteher-Strenge', bereich: 'postfach', erklaert: 'Wie viel unbekannte Absender überhaupt ins Postfach dürfen, bevor du entschieden hast.', min: 0, max: 100, schritt: 25,
     wirktIn: [{ label: 'Postfach', href: '/os/inbox' }], skala: ['jeder darf rein', 'nur Bekannte'] },
-  { id: 'triage-tiefe', label: 'Rauschen ausblenden', bereich: 'postfach', erklaert: 'Ab wann Jarvis Nachrichten als Rauschen wegsortiert statt sie zu zeigen.', min: 0, max: 100, schritt: 25,
+  { id: 'triage-tiefe', label: 'Rauschen ausblenden', bereich: 'postfach', erklaert: 'Ab wann ZOE Nachrichten als Rauschen wegsortiert statt sie zu zeigen.', min: 0, max: 100, schritt: 25,
     wirktIn: [{ label: 'Postfach', href: '/os/inbox' }], skala: ['alles zeigen', 'hart aussortieren'] },
 
   // ── Agenten ──

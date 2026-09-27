@@ -11,7 +11,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { recentRuns } from '@/lib/agent-log';
 import { resolveVitals, localDay } from '@/lib/vitals';
 import { innenAdresse } from '@/lib/innen';
-import { personAus } from '@/lib/jarvis/raum';
+import { personAus } from '@/lib/zoe/raum';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ─── MAKE OS · Obsidian-Hirn abgleichen (Mac UND Server, alle 10 Minuten) ───
 # Kevins Entscheidung 24.09.: Vault als privates Git-Repo. Beide Seiten
-# schreiben (Kevin in Obsidian, Jarvis ins Log) — deshalb: eigene Änderungen
+# schreiben (Kevin in Obsidian, ZOE ins Log) — deshalb: eigene Änderungen
 # festhalten, fremde mit rebase holen, dann schieben. Bei einem echten
 # Konflikt bricht es ab und meldet ihn, statt etwas zu überschreiben.
 # Aufruf:  bash vault-abgleich.sh <pfad-zum-vault>

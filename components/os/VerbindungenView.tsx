@@ -76,7 +76,7 @@ export function VerbindungenView() {
         <Ueberschrift farbe={LEUCHT.puls}>Der Bote · Telegram</Ueberschrift>
         <Liste>
           <Link href="/os/konto" style={{ textDecoration: 'none', color: 'inherit' }}>
-            <Zeile onClick={() => {}} titel="Telegram koppeln" unter="Jarvis schreibt dir morgens, mittags und abends aufs Handy — einrichten unter Konto." rechts={<span style={{ color: C.inkLeise }}>›</span>} />
+            <Zeile onClick={() => {}} titel="Telegram koppeln" unter="ZOE schreibt dir morgens, mittags und abends aufs Handy — einrichten unter Konto." rechts={<span style={{ color: C.inkLeise }}>›</span>} />
           </Link>
         </Liste>
       </Karte>

@@ -6,21 +6,21 @@
 // Versionen kommen aus dem Git-Repo des Vaults):
 //   <Brain>/00. Fundament/KONSTITUTION.md
 //   <Brain>/00. Fundament/Regeln/<kennung>.md
-// Schreiben tun hier MENSCHEN (Kevin, Malin über die Wissen-Seite). Jarvis legt
+// Schreiben tun hier MENSCHEN (Kevin, Malin über die Wissen-Seite). ZOE legt
 // Regeln nur als Vorschlag in die Inbox (lib/brain/inbox.ts). Regeln sind — anders
-// als gewöhnliche Notizen — Anweisungen an Jarvis: darum trägt jede den Namen
+// als gewöhnliche Notizen — Anweisungen an ZOE: darum trägt jede den Namen
 // der Person, die sie freigegeben hat, und nur „aktiv“ wird geladen.
 
 import { readFile, writeFile, mkdir, readdir, rename } from 'node:fs/promises';
 import { join, basename } from 'node:path';
-import { BRAIN, leseKopf, darfSehen, bestandVergessen, type Sicht } from '@/lib/jarvis/vault';
+import { BRAIN, leseKopf, darfSehen, bestandVergessen, type Sicht } from '@/lib/zoe/vault';
 import { localDay } from '@/lib/zeit';
 
 export type Prioritaet = 0 | 1 | 2 | 3;
-export type GiltFuer = 'kevin' | 'malin' | 'beide' | 'jarvis';
+export type GiltFuer = 'kevin' | 'malin' | 'beide' | 'zoe';
 export type RegelStatus = 'entwurf' | 'aktiv' | 'abgeloest';
 export const PRIORITAET_LABEL: Record<Prioritaet, string> = { 0: 'hart', 1: 'Sicherheit & Privatsphäre', 2: 'Haus-Regel', 3: 'Vorliebe' };
-export const GILT_LABEL: Record<GiltFuer, string> = { kevin: 'Kevin', malin: 'Malin', beide: 'beide', jarvis: 'Jarvis' };
+export const GILT_LABEL: Record<GiltFuer, string> = { kevin: 'Kevin', malin: 'Malin', beide: 'beide', zoe: 'ZOE' };
 
 export interface Regel {
   id: string; titel: string; text: string; prioritaet: Prioritaet; giltFuer: GiltFuer; status: RegelStatus;
@@ -35,7 +35,7 @@ export const KONSTITUTION_MAX_ZEILEN = 250;
 
 const wer = (p?: string) => (p && /^[a-z0-9-]{1,40}$/.test(p) ? p : 'kevin');
 const prio = (v: unknown): Prioritaet => ([0, 1, 2, 3].includes(Number(v)) ? (Number(v) as Prioritaet) : 2);
-const gilt = (v: unknown): GiltFuer => ((['kevin', 'malin', 'beide', 'jarvis'] as const).includes(String(v) as GiltFuer) ? (String(v) as GiltFuer) : 'beide');
+const gilt = (v: unknown): GiltFuer => ((['kevin', 'malin', 'beide', 'zoe'] as const).includes(String(v) as GiltFuer) ? (String(v) as GiltFuer) : 'beide');
 const status = (v: unknown): RegelStatus => ((['entwurf', 'aktiv', 'abgeloest'] as const).includes(String(v) as RegelStatus) ? (String(v) as RegelStatus) : 'entwurf');
 const s = (f: Record<string, string | string[]>, k: string) => (typeof f[k] === 'string' ? (f[k] as string) : undefined);
 const kennung = (titel: string) => titel.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'regel';
@@ -144,11 +144,11 @@ export async function regelArchivieren(id: string, person: string, sicht: Sicht)
 }
 
 /**
- * Was in JEDEN Jarvis-Prompt geht: die Konstitution (ganz) und die aktiven Regeln, die
- * für diese Person gelten (oder für Jarvis selbst) — hart zuerst, gedeckelt. Rein.
+ * Was in JEDEN ZOE-Prompt geht: die Konstitution (ganz) und die aktiven Regeln, die
+ * für diese Person gelten (oder für ZOE selbst) — hart zuerst, gedeckelt. Rein.
  */
 export function regelnBlock(konstitution: Konstitution | null, regeln: Regel[], person: string, maxZeichen = 6000): string {
-  const passende = regeln.filter(r => r.status === 'aktiv' && (r.giltFuer === 'beide' || r.giltFuer === 'jarvis' || r.giltFuer === person)).sort((a, b) => a.prioritaet - b.prioritaet);
+  const passende = regeln.filter(r => r.status === 'aktiv' && (r.giltFuer === 'beide' || r.giltFuer === 'zoe' || r.giltFuer === person)).sort((a, b) => a.prioritaet - b.prioritaet);
   const teile: string[] = [];
   if (konstitution?.text) teile.push(`── KONSTITUTION (gilt immer; Rangfolge: hart > Sicherheit/Privatsphäre > Haus-Regel > Vorliebe) ──\n${konstitution.text}`);
   if (passende.length) teile.push(`── REGELN (aktiv, freigegeben) ──\n` + passende.map(r => `- [P${r.prioritaet} · ${GILT_LABEL[r.giltFuer]}${r.freigegebenVon ? ` · freigegeben von ${r.freigegebenVon}` : ''}] ${r.titel}: ${r.text.replace(/\s+/g, ' ').slice(0, 400)}`).join('\n'));

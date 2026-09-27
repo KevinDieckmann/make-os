@@ -5,7 +5,7 @@
 // Reihenfolge ist keine Reihenfolge.
 
 import { describe, it, expect } from 'vitest';
-import { neuester, wartenNachFehler } from '../lib/jarvis/takt';
+import { neuester, wartenNachFehler } from '../lib/zoe/takt';
 
 const l = (t: string) => ({ gestartet: t });
 

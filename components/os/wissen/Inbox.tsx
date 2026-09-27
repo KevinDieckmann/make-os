@@ -1,7 +1,7 @@
 'use client';
 
-// ─── Wissen › Inbox: Vorschläge von Jarvis mit Freigabe (27.09.) ────────────
-// Kevins Entscheidung: Jarvis schreibt frei nur sein Log; alles andere wartet
+// ─── Wissen › Inbox: Vorschläge von ZOE mit Freigabe (27.09.) ────────────
+// Kevins Entscheidung: ZOE schreibt frei nur sein Log; alles andere wartet
 // hier. Annehmen macht daraus Wissen (Notiz, Update-Block oder Regel) mit
 // Provenienz; Ablehnen bewahrt den Grund. Darunter der Stand des Brain-Index
 // (Volltext + Embeddings) und der Knopf für die Konsolidierung auf Zuruf.
@@ -47,8 +47,8 @@ export function Inbox({ ich, oeffne }: { ich: string; oeffne: (id: string) => vo
   return (
     <>
       <Karte i={1} akzent={welche === 'offen' && liste?.length ? LEUCHT.achtung : undefined}>
-        <Ueberschrift rechts={<Segmente liste={[{ id: 'offen', label: 'Offen' }, { id: 'erledigt', label: 'Angenommen' }, { id: 'abgelehnt', label: 'Abgelehnt' }]} aktiv={welche} onWahl={w => setWelche(w as typeof welche)} />}>Vorschläge von Jarvis</Ueberschrift>
-        <div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 10 }}>Jarvis schreibt nichts von selbst ins Brain — er legt es hier ab, mit Begründung und Quelle. Annehmen macht daraus Wissen mit deinem Namen dran.</div>
+        <Ueberschrift rechts={<Segmente liste={[{ id: 'offen', label: 'Offen' }, { id: 'erledigt', label: 'Angenommen' }, { id: 'abgelehnt', label: 'Abgelehnt' }]} aktiv={welche} onWahl={w => setWelche(w as typeof welche)} />}>Vorschläge von ZOE</Ueberschrift>
+        <div style={{ fontSize: 12.5, color: C.inkDim, marginBottom: 10 }}>ZOE schreibt nichts von selbst ins Brain — er legt es hier ab, mit Begründung und Quelle. Annehmen macht daraus Wissen mit deinem Namen dran.</div>
         {meldung && <div style={{ color: C.inkDim, fontSize: TYP.bedien, marginBottom: 8 }}>{meldung}</div>}
         {liste === null && <Leer>Lese die Inbox …</Leer>}
         {liste && !liste.length && <Leer>{welche === 'offen' ? 'Nichts offen. Die nächtliche Konsolidierung legt hier ab, was der Tag hinterlässt.' : 'Noch nichts.'}</Leer>}
@@ -95,7 +95,7 @@ export function Inbox({ ich, oeffne }: { ich: string; oeffne: (id: string) => vo
 
       <Karte i={3}>
         <Ueberschrift rechts={<Knopf leise aus={busy === 'kons'} onClick={async () => { setBusy('kons'); const d = await fetch('/api/brain/konsolidierung', { method: 'POST' }).then(r => r.json()).catch(() => ({ ok: false, text: 'Nicht erreichbar.' })); setBusy(null); setMeldung(d.text ?? d.fehler ?? ''); void laden(); void ladeIndex(); }}>{busy === 'kons' ? 'läuft …' : 'Jetzt verdichten'}</Knopf>}>Nächtliche Konsolidierung</Ueberschrift>
-        <div style={{ fontSize: 12.5, color: C.inkDim }}>Ab 21 Uhr verdichtet Jarvis den Tag — neue Fakten, sein Log, geänderte Protokolle — zu höchstens fünf Vorschlägen. Ohne KI-Guthaben als Regelwerk (die Fakten des Tages als ein Vorschlag).</div>
+        <div style={{ fontSize: 12.5, color: C.inkDim }}>Ab 21 Uhr verdichtet ZOE den Tag — neue Fakten, sein Log, geänderte Protokolle — zu höchstens fünf Vorschlägen. Ohne KI-Guthaben als Regelwerk (die Fakten des Tages als ein Vorschlag).</div>
         <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 8 }}>Zuletzt: {konsolidierung?.letzterTag ?? 'noch nie'}{konsolidierung?.letztesErgebnis ? ` · ${konsolidierung.letztesErgebnis}` : ''}</div>
       </Karte>
     </>

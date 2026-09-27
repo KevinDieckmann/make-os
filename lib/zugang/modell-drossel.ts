@@ -1,5 +1,5 @@
 // ─── MAKE OS — Kostenschutz für Modellaufrufe (26.09.) ──────────────────────
-// Jede Route, die ein Sprachmodell erreicht (Jarvis, Köpfe, Beleg, Aufträge),
+// Jede Route, die ein Sprachmodell erreicht (ZOE, Köpfe, Beleg, Aufträge),
 // fragt vorher hier nach: je Person höchstens `max` Aufrufe je Fenster. Ein
 // benutztes Konto oder ein Skript im Browser kann so keine Rechnung auftürmen.
 // Im Speicher des Prozesses — nach einem Neustart beginnt das Fenster neu,
