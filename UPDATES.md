@@ -75,6 +75,22 @@ Ansage stehen, bis das nächste Update sie ablöst.
 
 ## Nächstes Update — vorbereitet, noch nicht online
 
+### Zeit & Fokus: Fokus-Blöcke einer Aufgabe zuordnen · Zeit je Einheit (27.09. spät, nur lokal — Kevin)
+
+- **Zuordnen beim Fokus:** Läuft der Fokus-Zähler oben im Business, öffnet der kleine Knopf daneben „Fokus zuordnen“: **Aufgabe** (offene Business-Aufgaben, Suche ab acht) übernimmt deren Einheit, sonst **„nur Einheit“** (Selbstständigkeit · KD Ventures · MAKE OS UG · eigene). Beim Beenden wird der Block mit Zuordnung verbucht.
+- **Aus der Aufgabe heraus:** im Aufgaben-Detail (Liste und Board) **„▶ Fokus“** — startet den Zähler für diese Aufgabe (oder ordnet den laufenden Block ihr zu).
+- **Nachträglich:** Seite **Fokus** → Karte **„Fokus-Blöcke · Business“** (letzte 7 Tage) mit denselben Chips.
+- **Auswertung:** Seite Fokus → Karte **„Zeit je Einheit“**: Woche/Monat (blättern), Gesamt oder je Person des Haushalts, Stunden je Einheit mit Anteil und Top-Aufgaben; Widget **„Zeit & Fokus“** mit Einstellung **„nach Einheit“** bzw. Katalog-Eintrag **„Zeit je Einheit“**. Gezählt wird nur bewusste Business-Zeit; die Einheit kommt live aus der Aufgabe.
+- Altbestand bleibt gültig (Blöcke ohne Zuordnung = „ohne Einheit“). Technik: `lib/zeitmessung/einheiten.ts`, `/api/state/zeit/einheiten`, Tests `tests/zeit-einheiten.test.ts`.
+
+### Markttraktion: Typ, Kategorie und Einheit als Chip mit „+ neu“ · Rollen-Vorschläge auf einen Klick (27.09. spät, nur lokal — Kevin)
+
+- **Typ und Kategorie** in der Kontaktakte (Stammdaten › Einordnung) jetzt als **Wahl-Chip**: sichtbar nur der gesetzte Wert, ein Klick öffnet das Menü mit allen Werten der Werteliste, Suche, „– entfernen“, unten **„+ neu …“** (bei einer Suche ohne gleichnamigen Wert: **„„<Suchtext>“ anlegen“**, Enter legt an und wählt) und im Fuß **„Pflegen ›“** zu Stammdaten › Wertelisten. Angelegt wird über denselben Weg wie bisher (`POST /api/crm/stammdaten`, 2–60 Zeichen, feste Werte bleiben); Fehler stehen im Menü.
+- **Branchen** bleiben die scrollbare Mehrfachwahl mit „+ neu“ (gleicher Schreibweg, jetzt gemeinsam in `useWertelisteAnlegen`).
+- **Einheit an Aufgaben und Routinen** nutzt jetzt dasselbe Bauteil (`Wahl` mit `onNeu`): Chip in der Farbe der Einheit, Farbpunkte im Menü, „ohne Einheit“, „+ neu …“ (über `/api/planung/einheiten`, 2–40 Zeichen), Vorgabe für neue Aufgaben wie bisher. Damit gibt es nur noch **ein** Auswahl-Bauteil.
+- **Deal-Akte „Personen & Rollen“:** oben rechts **„✓ Vorschläge übernehmen (n)“** — erscheint nur, wenn Personen ohne Rolle einen Vorschlag haben; ein Klick setzt alle in **einem** Schreibvorgang, danach „n Rollen gesetzt · Rückgängig“ (nimmt genau die übernommenen Rollen wieder heraus; wer inzwischen von Hand geändert hat, behält das). „Bremst“ wird nie vorgeschlagen, bestehende Rollen nie überschrieben.
+- Tests: `tests/crm-wahl.test.ts` (Anlegen-Zeile, Längenprüfung), `tests/crm-vorschlaege.test.ts` (Sammel-Übernahme, Rückgängig).
+
 ### Markttraktion: Auswahl smarter — Chip + Menü + Vorschlag (27.09. abends, nur lokal — Kevin, Paket D)
 
 Kevin: „Das Rollen-Thema und das ständige Anklicken muss smarter werden — dass man immer alle sieht, ist nicht gut.“

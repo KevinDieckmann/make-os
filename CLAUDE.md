@@ -210,7 +210,7 @@ lokal, Route `/os`, Port 3001.
 - **Aufgaben tragen `einheit`** (nur Business, `types/tasks.ts`): Säuberung im Schreibweg (`aufgabeEinheit` in `lib/aufgaben/einheit.ts`,
   genutzt von `/api/state/tasks` und `/api/tasks/create`; Privat/Ort-privat verwirft). System-Aufgaben mit Deal/Mandat/Produkt dahinter:
   `einheitAusBezug(crm, …)` (Heads), Steuer-Aufgaben `steuerEinheit`; ohne Bezug keine Einheit. Oberfläche: `components/os/aufgaben/Einheit.tsx`
-  (`EinheitWahl` Chip+Menü mit „+ neu“, `EinheitFilterPillen`, `EinheitMarke`, `useEinheiten`), Filter/Vorgabe rein (`passtEinheitFilter`,
+  (`EinheitWahl` = `Wahl` mit `onNeu`, `EinheitFilterPillen`, `EinheitMarke`, `useEinheiten`), Filter/Vorgabe rein (`passtEinheitFilter`,
   `einheitFilterOptionen`, `vorgabeEinheit`, Merker `make-aufgaben-einheit`). ZOE `create_task` nimmt `einheit`. Routinen im Business
   ebenso optional `einheit` (`sauberRoutine`). Tests `tests/aufgaben-einheit.test.ts`.
 - **Routinen** (Speicher `routinen`): `space` (fehlt = privat), `owner` (Person oder `beide`, fehlt = beide), `rhythmus`
@@ -293,6 +293,7 @@ lokal, Route `/os`, Port 3001.
 - **Auswertung:** `lib/crm/deal-auswertung.ts` (Verweildauer, Umwandlung, Win/Loss, Zyklus, Prognose nach Monat, hängt nach Wert; `MINDESTMENGE` 5).
 - Wertelisten (`CrmBestand.wertelisten`: Verlustgründe, Kadenz je Kreis, Ergebnisse, Ziele) pflegt Stammdaten; Verbraucher lesen sie mit Rückfall auf die Konstanten.
 - **Auswahl in Formularen = `Wahl`-Chip** (`components/os/crm/Wahl.tsx`: `Wahl`/`WahlMehrfach`, Menü am Chip, Vorschlag aus `lib/crm/vorschlaege.ts`, reine Hilfen `lib/crm/wahl.ts`); Pillenreihen nur für Filter, Reiter, Navigation und echte Zweier-Umschalter. Vorschläge nie still speichern. Gesellschaften über `GESELLSCHAFT_WAHL` (Namen aus `lib/einheiten.ts`).
+- **`Wahl` kann neu anlegen (27.09. spät):** `onNeu(text) → Promise<Wert | null>` (+ `neuMin`/`neuMax`, `leerenLabel`, `fuss`) — Menü immer mit Suchfeld, unten „+ neu …“ bzw. „„<Suchtext>“ anlegen“, Enter legt an und wählt, Fehler im Menü (reine Hilfen `anlegenZeile`/`neuPruefen` in `lib/crm/wahl.ts`). Typ/Kategorie der Akte = `WertelistenEinzelWahl`, Branchen = `WertelistenWahl` (mehrfach), beide über `useWertelisteAnlegen`. `EinheitWahl` (Aufgaben/Routinen) baut auf `Wahl` — kein zweites Auswahl-Bauteil bauen. Deal-Akte: „Vorschläge übernehmen (n)“ über `offeneRollenVorschlaege`/`vorschlaegeAnwenden`/`vorschlaegeZuruecknehmen` (ein `teil`-Patch mit ganzem `personenRollen`).
 - **Masterlisten-Import „Online gewinnt“ (27.09.):** `lib/make-one/crm.ts` — `Kontakt.vonHand` (Stammdaten-Felder, die von Hand gesetzt wurden;
   `vonHandMarkieren` läuft in `PATCH /api/state/kontakte` über die Haken `vereinen`/`neu` von `listePatchen`), `zusammenfuehren` füllt Lücken, liefert
   `konflikte` statt zu überschreiben (`istVonHand`; Bestand ohne Liste: nach dem Import geändert ⇒ Konflikt), `schluessel` tolerant (`normName`/`normFirma`),
@@ -351,7 +352,14 @@ lokal, Route `/os`, Port 3001.
   persönlich: `privatStand(haushalt, heute, zeit, person)` trägt die Person im Memo-Schlüssel,
   `bestandFuer(roh, scope, zeit)` im Business; Routen `/api/privat`, `/api/business` und
   `lib/performance.ts` laden `zeitBildFuer(person)`.
-- Widget `zeit` in `components/os/flaeche/widgets.tsx` (Einstellung `space`).
+- Widget `zeit` in `components/os/flaeche/widgets.tsx` (Einstellung `space`; seit 27.09. spät `nach: einheit` + `zeitraum`/`wer`).
+- **Zeit je Einheit (27.09. spät):** `FokusBlock` trägt optional `aufgabeId`/`einheit` (nur Business). Säuberung NUR über
+  `zuordnungSaeubern` (`lib/zeitmessung/einheiten.ts`: Einheit der Aufgabe gewinnt, `sauberEinheit`, Privat/Gemeinsam verwirft);
+  Auswertung dort rein (`zeitJeEinheit`, Tage nach Berliner Wandzeit, Einheit live aus der Aufgabe, Block-Wert = Rückfall).
+  Wege: POST `/api/state/zeit` `fokus` (+ Zuordnung) / `zuordnen`; GET `/api/state/zeit/einheiten?zeitraum=woche|monat&stichtag=`
+  (Haushalt je Person + gesamt, `merken` mit `zeitBloeckeStand()` im Schlüssel — `zeit` ist Memo-Rauschen). Laufender Fokus im
+  Browser nur über `lib/zeitmessung/fokus-laufend.ts` (`fokusMerken`, `fokusFuerAufgabe`, Ereignis `make-fokus-geaendert`).
+  Oberfläche `components/os/zeit/` (`ZuordnungWahl`, `ZeitJeEinheitKarte`, `FokusBloeckeKarte`); Tests `tests/zeit-einheiten.test.ts`.
 
 ## Tempo (26.09.)
 - Teure Berechnungen (Indizes, Familie, Bauplan) laufen durch `merken(schluessel, ttl, rechne)` aus `lib/store/memo.ts`;
