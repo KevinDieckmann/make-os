@@ -94,9 +94,11 @@ export function setze(doc: Beliebig, teile: string[], neu: unknown): void {
     const t = teile[i];
     if (Array.isArray(o)) { const k = listenIndex(o, t); if (k < 0) throw new OperationUngueltig(`Eintrag „${t}“ gibt es nicht mehr.`); o = o[k]; }
     else if (istObjekt(o)) {
-      if (!(t in o)) {
+      if (!(t in o) || o[t] == null) {
         if (neu === undefined) return; // löschen, was es nicht gibt: nichts zu tun
-        o[t] = {};
+        // Fehlende Zwischenstufe anlegen — eine Liste, wenn der nächste Schritt ein Listenschritt ist (z. B. ereignisse/-).
+        const n = teile[i + 1];
+        o[t] = n === '-' || n.startsWith('id=') || /^\d+$/.test(n) ? [] : {};
       }
       o = o[t];
     } else throw new OperationUngueltig(`Pfad führt ins Leere: ${teile.slice(0, i + 1).join('/')}`);
@@ -109,7 +111,7 @@ export function setze(doc: Beliebig, teile: string[], neu: unknown): void {
     if (neu === undefined) o.splice(k, 1); else o[k] = neu;
     return;
   }
-  if (!istObjekt(o)) throw new OperationUngueltig('Pfad führt ins Leere.');
+  if (!istObjekt(o) || letzter === '-' || letzter.startsWith('id=')) throw new OperationUngueltig('Pfad führt ins Leere.');
   if (neu === undefined) delete o[letzter]; else o[letzter] = neu;
 }
 
