@@ -99,6 +99,14 @@ Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen un
   - Tests: `crm-deal-regeln` (Server-Regeln), `crm-fundament` angepasst (Upsert neuer Deals ist jetzt ein Fehler). Stand: 100 Dateien · 877 Tests grün, tsc und Lint sauber.
   - **Offen (Kevin entscheidet):** Farbe des Reiters „Firmen“ (heute neutral wie Kontakte, obwohl die Leads darin liegen); ob „Meins/Malin“-Filter auch im Board sichtbar sein soll.
 
+### Markttraktion umgebaut (27.09. abends, nur lokal)
+
+Kevin: „Überblick, Kontakte, Firmen, Deals und Follow-up in einer Leiste; Sales, Marketing, Events und Stammdaten rechts. Idee oben raus, Suche breiter. Branchen mehrfach wählbar, Lead-Label und Kategorie vorsortiert, Aufhänger frei. Phasen kleiner, aufklappbar.“
+- **Leiste in zwei Gruppen:** links die Arbeit (Überblick · Kontakte · Firmen · Deals · Follow-up), rechts die Welten mit Punkt (Sales · Marketing · Events) und Stammdaten. **Sales-Reiter** = Head of Sales + Wochen-Scoreboard + Trichter · Power Hour · Kampagnen · Auswertung. Alte Adressen (`s=sales&a=heute`, `heute`, `kampagnen`) führen dorthin (`lib/crm/adresse.ts`).
+- **Kopf:** „Idee“-Knopf entfernt (Bauplan bleibt über die Seite erreichbar), Suchfeld breiter.
+- **Akte:** Branchen als Mehrfach-Pillen am Firmeneintrag (`Firma.branchen`, `branche` bleibt der Anzeigetext), Lead-Typ und Kategorie als Pillen aus vorbelegten Listen (`lib/crm/wertelisten.ts`: BRANCHEN_/TYPEN_/KATEGORIEN_STANDARD, eigene unter Stammdaten › Wertelisten), Aufhänger frei. **Phase abgeleitet** (`lib/crm/phase.ts`): Kunde = aktives Mandat, Opportunity = offener Deal, Ex-Kunde = beendet, Interessent = aktiver Lead; von Hand nur Partner/Multiplikator. Beziehung kompakt: Rollen, Ansprache, Anrede als kleine Chips, „ändern“ klappt auf.
+- Tests: `crm-phase`; Adress-Erwartungen angepasst.
+
 ### ZOE statt Jarvis (27.09., nur lokal)
 
 Kevin: „ZOE, immer groß geschrieben — komplett umbenennen.“ 266 Dateien, 1.100 Stellen, 35 Pfade: `lib/zoe`, `app/zoe`, `app/api/zoe/*`, `components/os/Zoe*`, Bestände `zoe-*`.
