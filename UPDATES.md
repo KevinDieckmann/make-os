@@ -99,6 +99,18 @@ Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen un
   - Tests: `crm-deal-regeln` (Server-Regeln), `crm-fundament` angepasst (Upsert neuer Deals ist jetzt ein Fehler). Stand: 100 Dateien · 877 Tests grün, tsc und Lint sauber.
   - **Offen (Kevin entscheidet):** Farbe des Reiters „Firmen“ (heute neutral wie Kontakte, obwohl die Leads darin liegen); ob „Meins/Malin“-Filter auch im Board sichtbar sein soll.
 
+### Datenschicht Stufe 1 (27.09., nur lokal)
+
+Kevin (26.09.): „die ganze Datenarchitektur verbessern, sodass es sehr gut läuft“ — als dringend für den 27.09. eingeplant. Plan und Befund in `DATENARCHITEKTUR.md`.
+
+- **Lesefehler sind Fehler:** `loadJson` liefert bei Rechte-/E/A-Fehlern kein „leer“ mehr, sondern wirft — der nächste Schreiber hätte sonst den Bestand mit `cur ?? {…}` überschrieben (Befund 1, Datenverlust-Lücke).
+- **Beschädigtes bleibt geschützt:** liegt eine `.corrupt-`Kopie neben dem Bestand, lehnt der Store jede Schreibung ab, bis die Kopie geprüft ist.
+- **Unverändertes wird nicht geschrieben:** GETs, die „nur nachtragen“ (Traktion, Stammdaten, Kalender-Caches), lassen die Datei in Ruhe, wenn sich nichts ändert — kein ETag-Sprung, kein Neuladen aller Fenster.
+- **Lesecache je Bestand** im Prozess (entschlüsselter Text, gültig bei gleichem Inode/Zeit/Größe/Schlüssel) — spart Platte und Entschlüsselung bei jedem Seitenwechsel.
+- **Zwischenspeicher bleibt warm:** Rauschen (Anwesenheit alle 30 s, Nutzung, Änderungsprotokoll, Läufe, Warteschlange …) leert die Index-Berechnungen nicht mehr.
+- Tests: `local-db-stufe1` (6 Fälle). Stand: 104 Dateien · 893 Tests grün, tsc und Lint sauber.
+- **Offen (Kevin):** Speicherfrage für Stufe 2/3 — JSON bleibt (Empfehlung bei 6 MB Gesamtbestand), eine Datei je Kontakt, oder SQLite.
+
 ### Agenten live-fähig, Runde 1 (27.09. nachts, nur lokal)
 
 Kevin: „Arbeite alle Agenten, die wir machen wollten, weiter aus, dass sie live gehen können.“ Zuerst das Querliegende, an dem jeder Agent hängt:

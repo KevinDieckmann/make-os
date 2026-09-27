@@ -120,41 +120,103 @@ export async function speicherStand(namen: string[]): Promise<string> {
   return teile.join('-');
 }
 
-/** Liest eine Sammlung; null wenn noch nichts persistiert wurde.
- *
- *  Wichtig: „Datei fehlt" und „Datei kaputt" werden UNTERSCHIEDEN. Früher fing
- *  ein pauschales catch beides ab → eine beschädigte tasks.json wurde als
- *  leerer Zustand gelesen und beim nächsten Speichern überschrieben (echter
- *  Datenverlust). Jetzt wird die kaputte Datei beiseitegelegt (.corrupt-<ts>),
- *  damit sie rettbar bleibt. */
-export async function loadJson<T>(name: string): Promise<T | null> {
-  pruefeName(name);
+// ── Lesen (Datenschicht Stufe 1, 27.09.) ─────────────────────────────────────
+// Drei Regeln, die vorher fehlten (DATENARCHITEKTUR.md, Punkte 1–3):
+//  · Ein Lesefehler (Rechte, E/A, Verzeichnis statt Datei) ist ein FEHLER, kein
+//    „leer“ — sonst schreibt der nächste updateJson-Aufrufer `cur ?? {…}` zurück
+//    und der Bestand ist weg. Nur „Datei fehlt“ (ENOENT) ist der saubere Erststart.
+//  · Ein Bestand, der beschädigt beiseitegelegt wurde, wird nicht überschrieben,
+//    solange die .corrupt-Kopie daneben liegt (BestandBeschaedigt) — erst prüfen.
+//  · Lesecache je Bestand im Prozess: der entschlüsselte Text bleibt im Speicher,
+//    gültig, solange Inode, Änderungszeit und Größe der Datei gleich sind. Eigene
+//    Schreibungen füllen ihn direkt; fremde (Skripte) fallen über stat auf.
+export class BestandNichtLesbar extends Error {}
+export class BestandBeschaedigt extends Error {}
+
+const CACHE_MAX_BYTES = 4 * 1024 * 1024;
+const CACHE_MAX_EINTRAEGE = 300;
+// Der Eintrag merkt sich, mit welchem Schlüssel entschlüsselt wurde: wechselt oder fehlt der Schlüssel,
+// darf kein alter Klartext aus dem Cache kommen (der Lesevorgang muss dann laut scheitern).
+const leseCache = new Map<string, { ino: number; mtimeMs: number; size: number; text: string; huelle: boolean; schluessel: string }>();
+const schluesselKennung = () => datenSchluessel()?.toString('base64').slice(0, 12) ?? 'klar';
+export function leseCacheLeeren(): void { leseCache.clear(); }
+
+interface Gelesen { text: string; /** lag auf der Platte als AES-Hülle */ huelle: boolean }
+
+/** Der entschlüsselte Text eines Bestands — null, wenn er noch nie geschrieben wurde. Wirft bei Lesefehlern. */
+async function leseText(name: string): Promise<Gelesen | null> {
   const file = path.join(DATA_DIR, `${name}.json`);
-  let buf: string;
-  try {
-    buf = await fs.readFile(file, 'utf8');
-  } catch (err) {
+  let st: Awaited<ReturnType<typeof fs.stat>>;
+  try { st = await fs.stat(file); }
+  catch (err) {
     const code = (err as NodeJS.ErrnoException)?.code;
-    if (code === 'ENOENT') return null; // noch nie gespeichert → sauberer Erststart
-    console.error(`[local-db] ${name}: nicht lesbar (${code})`);
-    return null;
+    if (code === 'ENOENT') return null;
+    throw new BestandNichtLesbar(`[local-db] ${name}: nicht lesbar (${code ?? 'unbekannt'})`);
   }
-  let klar: string;
-  try {
-    klar = entschluesseln(buf, datenSchluessel());
-  } catch (err) {
+  const c = leseCache.get(name);
+  if (c && c.ino === st.ino && c.mtimeMs === st.mtimeMs && c.size === st.size && c.schluessel === schluesselKennung()) return { text: c.text, huelle: c.huelle };
+  let buf: string;
+  try { buf = await fs.readFile(file, 'utf8'); }
+  catch (err) {
+    const code = (err as NodeJS.ErrnoException)?.code;
+    if (code === 'ENOENT') return null;
+    throw new BestandNichtLesbar(`[local-db] ${name}: nicht lesbar (${code ?? 'unbekannt'})`);
+  }
+  let klar: string; let huelle = false;
+  try { klar = entschluesseln(buf, datenSchluessel()); huelle = klar !== buf; }
+  catch (err) {
     // Verschlüsselt ohne (passenden) Schlüssel: laut scheitern, nichts beiseitelegen.
     if (!(err instanceof SyntaxError)) throw err instanceof SchluesselFehlt ? err : new Error(`[local-db] ${name}: Entschlüsselung fehlgeschlagen — stimmt MAKE_OS_DATEN_SCHLUESSEL?`);
     klar = buf;
   }
-  try {
-    return JSON.parse(klar) as T;
-  } catch {
+  merkeGelesen(name, st, klar, huelle);
+  return { text: klar, huelle };
+}
+
+function merkeGelesen(name: string, st: { ino: number; mtimeMs: number; size: number }, text: string, huelle: boolean): void {
+  if (text.length > CACHE_MAX_BYTES) { leseCache.delete(name); return; }
+  if (leseCache.size >= CACHE_MAX_EINTRAEGE && !leseCache.has(name)) leseCache.clear();
+  leseCache.set(name, { ino: st.ino, mtimeMs: st.mtimeMs, size: st.size, text, huelle, schluessel: schluesselKennung() });
+}
+
+/** Text → Daten. Kaputtes JSON wird beiseitegelegt (.corrupt-<ts>) und als null gelesen; Schreiber prüfen das (BestandBeschaedigt). */
+async function parseOderBeiseite<T>(name: string, text: string): Promise<T | null> {
+  try { return JSON.parse(text) as T; }
+  catch {
+    const file = path.join(DATA_DIR, `${name}.json`);
     const backup = `${file}.corrupt-${Date.now()}`;
     try { await fs.rename(file, backup); } catch { /* Rettung ist best effort */ }
+    leseCache.delete(name);
     console.error(`[local-db] ${name}.json war beschädigt → gesichert unter ${path.basename(backup)}`);
     return null;
   }
+}
+
+/** Liest eine Sammlung; null, wenn noch nichts persistiert wurde (oder der Bestand beschädigt beiseitegelegt ist).
+ *  Lesefehler (Rechte, E/A) werfen BestandNichtLesbar — nie „leer“. */
+export async function loadJson<T>(name: string): Promise<T | null> {
+  pruefeName(name);
+  const r = await leseText(name);
+  if (!r) return null;
+  return parseOderBeiseite<T>(name, r.text);
+}
+
+/** Datei schreiben (tmp + rename) und den Lesecache mit dem geschriebenen Text füllen. */
+async function schreibeDatei(name: string, dest: string, text: string): Promise<void> {
+  await ensureDir();
+  await taeglicheSicherung(name, dest);
+  // Eindeutiger Temp-Name: zwei Prozesse/Läufe dürfen sich nicht dieselbe .tmp-Datei wegziehen.
+  const tmp = `${dest}.${process.pid}.${Math.random().toString(36).slice(2, 10)}.tmp`;
+  // Nur der Besitzer liest die Bestände (26.09.) — auf dem Server ist das der Container-Nutzer = make.
+  await fs.writeFile(tmp, zumSchreiben(text), { encoding: 'utf8', mode: 0o600 });
+  await fs.rename(tmp, dest);
+  try { merkeGelesen(name, await fs.stat(dest), text, datenSchluessel() !== null); } catch { leseCache.delete(name); }
+  standErhoehen(name);
+}
+
+/** Unverändert? Dann nicht schreiben — außer der Bestand liegt noch als Klartext da und ein Schlüssel ist gesetzt (dann verschlüsseln). */
+function unveraendert(vorher: Gelesen | null, text: string): boolean {
+  return !!vorher && vorher.text === text && (vorher.huelle || datenSchluessel() === null);
 }
 
 // Schreibvorgänge je Sammlung serialisieren. Ohne das überschreiben sich
@@ -168,16 +230,13 @@ export async function saveJson<T>(name: string, data: T): Promise<void> {
   pruefeName(name);
   const previous = writeChain.get(name) ?? Promise.resolve();
   const run = previous.catch(() => {}).then(async () => {
-    await ensureDir();
     const dest = path.join(DATA_DIR, `${name}.json`);
-    await taeglicheSicherung(name, dest);
-    // Eindeutiger Temp-Name: zwei Prozesse/Läufe dürfen sich nicht dieselbe
-    // .tmp-Datei wegziehen.
-    const tmp = `${dest}.${process.pid}.${Math.random().toString(36).slice(2, 10)}.tmp`;
-    // Nur der Besitzer liest die Bestände (26.09.) — auf dem Server ist das der Container-Nutzer = make.
-    await fs.writeFile(tmp, zumSchreiben(JSON.stringify(data, null, 2)), { encoding: 'utf8', mode: 0o600 });
-    await fs.rename(tmp, dest);
-    standErhoehen();
+    const vorher = await leseText(name);
+    // Ein beiseitegelegter Bestand wird nicht still ersetzt — erst die .corrupt-Kopie prüfen (Stufe 1).
+    if (!vorher && await beschaedigt(name)) throw new BestandBeschaedigt(`[local-db] ${name}: liegt beschädigt beiseite (.corrupt-…) — erst prüfen oder wiederherstellen, dann schreiben.`);
+    const text = JSON.stringify(data, null, 2);
+    if (unveraendert(vorher, text)) return; // nichts Neues → keine Schreibung, kein ETag-Sprung, kein Cache-Verlust
+    await schreibeDatei(name, dest, text);
   });
   writeChain.set(name, run);
   try {
@@ -193,15 +252,14 @@ export async function updateJson<T>(name: string, mutate: (current: T | null) =>
   pruefeName(name);
   const previous = writeChain.get(name) ?? Promise.resolve();
   const run = previous.catch(() => {}).then(async () => {
-    const current = await loadJson<T>(name);
+    const vorher = await leseText(name);
+    const current = vorher ? await parseOderBeiseite<T>(name, vorher.text) : null;
+    // Beschädigt beiseitegelegt (jetzt oder früher): nicht mit einem frischen Stand überschreiben (Stufe 1).
+    if (current === null && await beschaedigt(name)) throw new BestandBeschaedigt(`[local-db] ${name}: liegt beschädigt beiseite (.corrupt-…) — erst prüfen oder wiederherstellen, dann schreiben.`);
     const next = mutate(current);
-    await ensureDir();
-    const dest = path.join(DATA_DIR, `${name}.json`);
-    await taeglicheSicherung(name, dest);
-    const tmp = `${dest}.${process.pid}.${Math.random().toString(36).slice(2, 10)}.tmp`;
-    await fs.writeFile(tmp, zumSchreiben(JSON.stringify(next, null, 2)), { encoding: 'utf8', mode: 0o600 });
-    await fs.rename(tmp, dest);
-    standErhoehen();
+    const text = JSON.stringify(next, null, 2);
+    if (unveraendert(vorher, text)) return next; // unverändert → nichts geschrieben
+    await schreibeDatei(name, path.join(DATA_DIR, `${name}.json`), text);
     return next;
   });
   writeChain.set(name, run);

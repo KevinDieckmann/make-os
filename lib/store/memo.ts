@@ -8,8 +8,21 @@
 const stand = { v: 0 };
 const ablage = new Map<string, { v: number; t: number; wert: unknown; laeuft?: Promise<unknown> }>();
 
-/** local-db ruft das nach jedem Schreiben — dann rechnet der nächste Aufruf neu. */
-export function standErhoehen(): void { stand.v++; if (ablage.size > 200) ablage.clear(); }
+/**
+ * Bestände, die ständig geschrieben werden, aber in keinen Index eingehen (27.09., Stufe 1):
+ * Anwesenheit (alle 30 s je Fenster), Nutzung, Änderungsprotokoll, Läufe, Warteschlange,
+ * Verbrauch, Anmeldungen, Fehler, HOI-Zähler. Vorher machte jede dieser Schreibungen ALLES
+ * Gemerkte ungültig — der Zwischenspeicher war praktisch nie warm.
+ */
+const RAUSCHEN = /^(anwesenheit|nutzung|aenderungen|agent-log|jarvis-auftraege|jarvis-verlauf(--.*)?|verbrauch|anmeldungen|client-fehler|hoi-.*|ki-stand|delegation-runde|content-entwuerfe|ernaehrung-vorschlag|sitzungs-stand.*)$/;
+export const istRauschen = (name?: string): boolean => !!name && RAUSCHEN.test(name);
+
+/** local-db ruft das nach jedem Schreiben — dann rechnet der nächste Aufruf neu. Rauschen (siehe oben) lässt den Stand stehen. */
+export function standErhoehen(name?: string): void {
+  if (istRauschen(name)) return;
+  stand.v++;
+  if (ablage.size > 200) ablage.clear();
+}
 
 /** In Tests aus (die Prüfungen schreiben über Attrappen, die den Stand nicht erhöhen) — außer ein Test schaltet ihn an. */
 export const memoAktiv = (): boolean => process.env.MAKE_OS_MEMO === 'an' || (process.env.NODE_ENV !== 'test' && process.env.MAKE_OS_MEMO !== 'aus');

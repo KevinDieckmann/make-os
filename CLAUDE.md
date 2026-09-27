@@ -248,6 +248,11 @@ lokal, Route `/os`, Port 3001.
 - **Auswertung:** `lib/crm/deal-auswertung.ts` (Verweildauer, Umwandlung, Win/Loss, Zyklus, Prognose nach Monat, hängt nach Wert; `MINDESTMENGE` 5).
 - Wertelisten (`CrmBestand.wertelisten`: Verlustgründe, Kadenz je Kreis, Ergebnisse, Ziele) pflegt Stammdaten; Verbraucher lesen sie mit Rückfall auf die Konstanten.
 
+## Datenschicht (lib/store/local-db.ts, Stufe 1 seit 27.09.)
+- `loadJson` gibt nur bei „Datei fehlt“ null; Lesefehler werfen `BestandNichtLesbar`, ein beschädigter Bestand blockiert Schreibungen (`BestandBeschaedigt`). Nie `catch → null` um loadJson legen, wenn danach geschrieben wird.
+- `updateJson`/`saveJson` schreiben nicht, wenn der Stand unverändert ist — Zeitstempel als „Beweis für einen Lauf“ gehören in den Inhalt, nicht in die Dateizeit.
+- Neue Bestände, die ständig geschrieben werden, aber in keinen Index eingehen, in `RAUSCHEN` (lib/store/memo.ts) eintragen — sonst leeren sie den Zwischenspeicher.
+
 ## Agenten — Querliegendes
 - Jeder Modellaufruf geht durch `lib/anthropic.ts askText`: dort sitzt der Guthaben-Schalter (`guthabenLeer()`, 30 min Pause nach „credit balance too low“). Nie eigene Aufrufe an die API daneben bauen.
 - `runAgent` (lib/jarvis/agenten.ts): `post`/`get` werfen bei Fehlerstatus, `ok:false` oder `error` — ein Lauf ist nur `ok`, wenn die Route es ist. Neue Fälle: Ergebnis prüfen, nicht Text.

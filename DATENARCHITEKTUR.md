@@ -71,6 +71,17 @@ Das läuft heute, wird aber mit mehr Kontakten und zu zweit zum Engpass — und 
 Alternative zu Stufe 3, falls JSON bleiben soll: **eine Datei je Kontakt** (kleine Schreibungen, passt zur heutigen
 Verschlüsselung, skaliert begrenzt). Beides braucht Stufe 1 und 2 vorher.
 
+## 4a. Stand der Stufen
+
+- **Stufe 1 — gebaut 27.09. (lokal, `lib/store/local-db.ts`, `lib/store/memo.ts`, Test `tests/local-db-stufe1.test.ts`):**
+  Lesefehler (Rechte, E/A, Verzeichnis statt Datei) werfen `BestandNichtLesbar` statt „leer“ zu liefern — `updateJson`-Schreiber brechen damit ab,
+  nichts wird mit `cur ?? {…}` überschrieben. Ein beiseitegelegter Bestand (`.corrupt-…`) wird nicht überschrieben (`BestandBeschaedigt`), bis die Kopie geprüft
+  und entfernt ist. Unveränderte Stände werden nicht geschrieben (kein ETag-Sprung, kein Cache-Verlust; Ausnahme: Klartext wird bei gesetztem Schlüssel
+  verschlüsselt). Lesecache je Bestand im Prozess (entschlüsselter Text, gültig bei gleichem Inode/Zeit/Größe/Schlüssel; eigene Schreibungen füllen ihn).
+  Zwischenspeicher: Rauschen-Bestände (Anwesenheit, Nutzung, Änderungen, Läufe, Warteschlange, Verbrauch, Anmeldungen, Fehler, HOI-Zähler) erhöhen den
+  Stand nicht mehr — die Indizes bleiben warm. Nicht gemacht: Messung vor/nach auf dem Prüfbau (kommt mit dem nächsten Prüflauf).
+- Stufe 2 folgt nach Kevins Speicher-Entscheidung (Abschnitt 5); Stufe 3 nur bei SQLite.
+
 ## 5. Offene Entscheidungen für den 27.09.
 
 - Speicher: JSON optimiert · JSON je Kontakt · SQLite (mit Verschlüsselungskonzept).
