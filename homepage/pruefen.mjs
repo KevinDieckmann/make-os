@@ -23,6 +23,10 @@ for (const seite of SEITEN) {
   for (const w of HOSTING) { const m = text.match(w); if (m) treffer.push(`${seite}: altes Hosting-Versprechen „${m[0]}“`); }
   if (/jarvis/i.test(html)) treffer.push(`${seite}: alter Name Jarvis (heißt ZOE)`);
   for (const m of text.matchAll(/\b[Zz]oe\b/g)) treffer.push(`${seite}: ZOE klein geschrieben „${m[0]}“`);
+  // Achter Durchgang: genau eine H1 je Seite, Impressum/Datenschutz als echte Anker, Formular vorhanden.
+  const h1 = (html.match(/<h1[\s>]/g) || []).length; if (h1 !== 1) treffer.push(`${seite}: ${h1} H1 (erwartet 1)`);
+  for (const a of ['impressum', 'datenschutz', 'testen', 'anfrage']) if (!ids[seite].has(a)) treffer.push(`${seite}: Anker/Element #${a} fehlt`);
+  if (/\{\{[^}]*\}\}/.test(html)) treffer.push(`${seite}: Platzhalter nicht ersetzt „${html.match(/\{\{[^}]*\}\}/)[0]}“`);
   for (const s of ['js/site.js', 'js/brain.js', 'js/formationen.js', 'css/site.css']) if (!html.includes(s)) treffer.push(`${seite}: nicht eingebunden ${s}`);
   // Links: jede Adresse muss existieren, jeder Anker auch.
   for (const m of html.matchAll(/\b(?:href|src)="([^"]+)"/g)) {
@@ -30,7 +34,7 @@ for (const seite of SEITEN) {
     const [pfadRoh, anker] = ziel.split('#'); const pfad = pfadRoh.split('?')[0];
     const datei = pfad || seite;
     if (pfad && !existsSync(new URL(pfad, hier))) { treffer.push(`${seite}: Link ins Leere „${ziel}“`); continue; }
-    if (anker && anker !== 'top' && ids[datei] && !ids[datei].has(anker) && !['impressum', 'datenschutz'].includes(anker)) treffer.push(`${seite}: Anker fehlt „${ziel}“`);
+    if (anker && anker !== 'top' && ids[datei] && !ids[datei].has(anker)) treffer.push(`${seite}: Anker fehlt „${ziel}“`);
   }
   for (const m of html.matchAll(/url\(([^)]+)\)/g)) { const p = m[1].replace(/['"]/g, ''); if (!p.startsWith('data:') && !existsSync(new URL(p, hier))) treffer.push(`${seite}: Bild fehlt „${p}“`); }
 }

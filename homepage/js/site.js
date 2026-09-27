@@ -14,7 +14,7 @@
   if (rail) rail.innerHTML = Object.keys(kapitelName).map(nr => `<a href="#${kapitelZiel[nr]}" data-nr="${nr}"><span>${kapitelName[nr]}</span><i></i></a>`).join('');
   const railLinks = $$('.rail a'), kapLabel = $('.kap-label');
   // Aktiver Menüpunkt je Seite
-  const seite = document.body.dataset.seite; $$('a[data-seite]').forEach(a => a.classList.toggle('aktiv', a.dataset.seite === seite));
+  const seite = document.body.dataset.seite; $$('a[data-seite]').forEach(a => { const an = a.dataset.seite === seite; a.classList.toggle('aktiv', an); if (an) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   // Fortschritt, Nach-oben, Rail
   const fortschritt = $('.fortschritt'), nachoben = $('.nachoben');
   let letzteNr = null;

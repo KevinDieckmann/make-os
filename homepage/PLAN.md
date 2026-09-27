@@ -172,6 +172,32 @@ Jede Seite endet mit dem gemeinsamen Formular „Einmal testen“ (`#testen`).
 
 **Offen für Kevin:** Reihenfolge und Anzahl der Bereichs-Blöcke je Welt (privat 5, business 4 — je mehr, desto länger die Seite); ob „Finanzplanung jetzt“ öffentlich benannt werden soll (steht heute nur lokal, laut CLAUDE.md); ob die Heads namentlich („Head of Sales“) oder als „Vertriebs-Agent“ auftreten sollen; Porträts, Gründergeschichte, Mail-Adresse und Domain (weiter offen).
 
+## Achter Durchgang (27.09.): Qualitätsrunde
+Kevin: „überarbeite die homepage nochmal.“ Ziel: spürbar besser, ohne die Richtung zu drehen. Dazu zwischendurch: „Die Neuronen-Stränge müssen viel besser und detaillierter ausgearbeitet werden“ — und nach dem Live-Blick: „Das ist so wild … das muss nur sauber sein.“
+
+**Bühne: zurück auf Durchgang 7.** Der Versuch mit verästelten Strängen (Bögen, drei Verzweigungsebenen, Endästchen, glühende Naben, Impuls-Partikel, drei Tiefen-Ebenen mit Parallaxe, Farbverlauf Granat/Smaragd) wirkte live wie ein Auge/eine Iris und wurde komplett zurückgenommen: `js/brain.js`, `js/formationen.js`, `standbild.mjs` und die fünf Standbild-SVGs stehen wieder exakt auf dem Commit-Stand von Durchgang 7 (ruhige, dünne Linien, wenige Knoten, kein Glühen). Lehre für später: Änderungen an der Bühne nur in kleinen, einzeln freigegebenen Schritten — und „detaillierter“ heißt für Kevin nicht „mehr“, sondern „sauberer“.
+
+**Behobener Fehler an der Bühne:** Die Standbilder (SVG unter dem Canvas — ohne JS, ohne Canvas, bei reduced-motion) wurden nie geladen: `url()` in der Custom Property `--standbild` (inline gesetzt) löste der Browser relativ zur CSS-Datei auf → `css/assets/standbild-*.svg` → 404. Jetzt setzt jede Seite das Bild direkt als `background-image` auf `.standbild`; `site.css` behält den Brain als Fallback.
+
+**Texte (kürzer, konkreter, ohne Wiederholung)**
+- Hero-Satz gestrafft; ZOE wird jetzt schon im Hero namentlich genannt („verschickt wird nichts ohne dein Ja“).
+- Die Gründergeschichte („Wir haben es selbst als Business-Paar gemerkt …“) stand dreimal (Start Kapitel 01, Über Kapitel 01, Founder-Block). Jetzt: Start Kapitel 01 spricht den Besucher an („Du führst ein Unternehmen und ein Leben …“), Über Kapitel 01 ist der kurze Einstieg, der Founder-Block trägt die Geschichte; das Zitat unter den Personen ist neu („Die KI hat bei uns nie das letzte Wort …“), der frühere Zitatsatz steht jetzt im Founder-Text.
+- Lange Aufzählungen gestrafft: Finanzplanung (Reiter statt Klammern), Head of IT, Brain, Kalender & Journal, Gesundheit; „Einmal testen“ ohne den Hero-Schlusssatz; Weiter-Blöcke nennen die Welt („Die Business-Welt — …“ / „Die private Welt — …“).
+- Nächster Schritt auf den Bereichsseiten: Kapitel 01 von Privat, Business und ZOE hat zwei Knöpfe (`.kapitel-links`: „Die Bereiche ansehen“ → erster Block · „Einmal testen“).
+
+**Bildschirm-Karten (`.schirm`, HTML/CSS, feste Höhe 168 px, Beispieldaten):** die vier Einstiege auf der Startseite zeigen jetzt je einen stilisierten Ausschnitt — Privat › Übersicht (Tagesplan mit Takt, Fokusblock, „Rechnung Strom · 84 € · fällig in 3 Tagen“, geschützter Abend), Markttraktion › Kontakte (Akte mit Lead-Score 82, Kreis/Kadenz, Einwilligung, nächster Schritt), ZOE › Gespräch (zwei Blasen je Sicht, Stapel-Zeile „wartet auf dein Ja“), System › Räume (privat-malin, privat-kevin, gemeinsam, Dein Bereich). Auf Privat › Finanzen zusätzlich die Zeile „Rechnung Strom · fällig in 3 Tagen“.
+
+**Konsistenz:** aktive Seite zusätzlich per `aria-current="page"`; Impressum/Datenschutz sind echte Anker im Fuß (`.rechtliches`, ehrliche Platzhalter: „folgt vor der Veröffentlichung“ + was heute schon gilt); `pruefen.mjs` verlangt genau eine H1 je Seite und die Anker `#impressum`, `#datenschutz`, `#testen` auf jeder Seite (die alte Ausnahme für Impressum/Datenschutz ist raus); App-Rahmen in Bereichs-Blöcken mit Mindesthöhe (kein Springen beim Sicht-Wechsel); Finanzplan-Blatt einzeilig auf schmalen Bildschirmen.
+
+**Mobil (375 px):** kein horizontales Scrollen (geprüft: `scrollWidth === innerWidth`), Fuß mit Extra-Abstand unten, damit die Sicht-Pille links unten nichts verdeckt; Rechtliches einspaltig.
+
+**Tempo / Laden:** beide Schriften per `<link rel="preload">` (kein Nachladen-Sprung); Bühne wie in Durchgang 7 (pausiert außerhalb des Viewports, reduced-motion = ein Bild je Scroll-Stand + Standbild).
+
+**Offen für Kevin**
+- Bühne: soll sie so bleiben (Durchgang 7) oder in einem eigenen, kleinen Schritt nur „aufgeräumt“ werden (weniger Knoten, dünnere Linien) — mit Freigabe je Zwischenstand?
+- Die vier Bildschirm-Karten auf der Startseite: reicht das, oder sollen die Bereichsseiten dieselben kleinen Karten in den „Weiter“-Blöcken bekommen?
+- Impressum/Datenschutz: Anbieter (Firma oder „Malin & Kevin“), Anschrift, Domain — sobald das steht, werden die Platzhalter ersetzt.
+
 ## Offen für Kevin (zweiter Durchgang, weiter gültig)
 - „Life & Business **Operating** System“ (englisch korrekt) oder „Operation System“ wie im Auftrag und in `Terminologie_Brain`?
 - Echte Porträts von Malin und Kevin (die CI verlangt sie — Initialen-Karten sitzen in „Warum MAKE“).

@@ -10,6 +10,8 @@
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#0B0E10">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preload" href="assets/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/ci.css">
 <link rel="stylesheet" href="css/site.css">
 </head>
@@ -59,9 +61,9 @@
 <main id="top">
 
 <section class="odyssee" data-formationen="herz,familie,score" aria-label="Die private Welt">
-  <div class="buehne" aria-hidden="true" style="--standbild:url(assets/standbild-herz.svg)">
+  <div class="buehne" aria-hidden="true">
     <div class="raster"></div>
-    <div class="standbild"></div>
+    <div class="standbild" style="background-image:url(assets/standbild-herz.svg)"></div>
     <canvas id="brain"></canvas>
     <div class="ring-zahl"><span class="mikro">Privat-Index</span><b>0</b><span class="ring-name">vier Säulen, eine Zahl</span></div>
   </div>
@@ -73,6 +75,7 @@
         <h1 class="wie-h2">Erst du. Dann alles andere.</h1>
         <p>Du bist das wichtigste Kapital in beiden Welten. MAKE OS beginnt deshalb beim Körper: Erholung, Schlaf, Puls aus dem Wearable — und der Frage, ob die Woche trägt, bevor der Körper es dir sagt.</p>
         <p class="dim">Eine Zahl, ein Hebel, ein Takt aufs Handy. Kein Punkte-Feuerwerk.</p>
+        <p class="kapitel-links"><a class="knopf" href="#gesundheit">Die Bereiche ansehen</a><a class="knopf leise" href="#testen">Einmal testen</a></p>
       </div>
     </div>
   </div>
@@ -106,7 +109,7 @@
     <div class="text" data-reveal>
       <span class="mikro">Privat › Gesundheit</span>
       <h2>Erholung, Schlaf, Routinen — und ein Takt, der nur sagt, was heute zählt.</h2>
-      <p>Der Gesundheits-Index rechnet aus Erholung, Schlaf und Puls des Wearables, aus Journal und Routinen. Morgens, mittags, abends kommt ein Takt aufs Handy: der eine Hebel für heute. Der Ernährungs-Agent plant die Woche für den Haushalt — Einkaufsliste inklusive, Vorrat abgezogen.</p>
+      <p>Der Gesundheits-Index rechnet aus Erholung, Schlaf und Puls des Wearables, aus Journal und Routinen. Dreimal am Tag kommt ein Takt aufs Handy: der eine Hebel für heute. Der Ernährungs-Agent plant die Woche — Einkaufsliste inklusive, Vorrat abgezogen.</p>
       <ul class="zoe-tut"><li>ZOE blockt das Training, wenn der Kalender es frisst — als Vorschlag.</li><li>ZOE schlägt Gerichte aus eurer Bibliothek vor („Unsere Gerichte“, Favoriten zuerst).</li><li>Körperdaten sieht nur die Person selbst — auch ZOE fragt vorher.</li></ul>
       <p class="zahlt"><b>Zahlt ein:</b> Gesundheits-Index → Säule „Gesundheit“ des Privat-Index.</p>
     </div>
@@ -156,7 +159,7 @@
       <div class="app-rumpf"><div class="app-leiste" aria-hidden="true"><i class="an">H</i><i>Z</i><i>S</i></div><div class="app-inhalt">
       <div class="karten"><div class="karte"><div class="k">Rücklage</div><div class="z">4,2 Mon</div><div class="u">Ziel 6</div></div><div class="karte"><div class="k">Fixkosten</div><div class="z">2.140 €</div><div class="u">41 % vom Netto</div></div><div class="karte"><div class="k">Budget · Sept.</div><div class="z" style="color:#3DE28B">im Tempo</div><div class="u">−180 € zum Plan</div></div></div>
       <div class="saeulen"><div class="saeule" style="--f:#58D9CD"><span>Wohnen</span><div class="balken"><i style="width:78%"></i></div><b>78</b></div><div class="saeule" style="--f:#58D9CD"><span>Lebensmittel</span><div class="balken"><i style="width:62%"></i></div><b>62</b></div><div class="saeule" style="--f:#FFC93C"><span>Mobilität</span><div class="balken"><i style="width:91%"></i></div><b>91</b></div><div class="saeule" style="--f:#58D9CD"><span>Kinder</span><div class="balken"><i style="width:54%"></i></div><b>54</b></div></div>
-      <div class="liste"><div class="z" style="--f:#FFC93C"><i></i><span>Rücklage unter 4,5 Monaten — Planposten „Auto“ prüfen</span><small>Befund</small></div></div>
+      <div class="liste"><div class="z" style="--f:#FFC93C"><i></i><span>Rücklage unter 4,5 Monaten — Planposten „Auto“ prüfen</span><small>Befund</small></div><div class="z" style="--f:#58D9CD"><i></i><span>Rechnung Strom · 84 € · fällig in 3 Tagen</span><small>Kalender</small></div></div>
     </div></div></div>
   </div>
 </section>
@@ -185,7 +188,7 @@
     <div class="text" data-reveal>
       <span class="mikro">Kopf › Kalender · Privat › Gesundheit › Journal</span>
       <h2>Ein Kalender für beide Welten. Ein Journal für dich.</h2>
-      <p>Tag, Woche, Monat, Agenda — direkt auf iCloud, mit euren Kalendern und Farben. „Mo 10 Uhr Kaffee mit Jonas 45min“ reicht als Eingabe. Ziehen verschiebt, Serie und Erinnerung kommen mit, Fristen aus dem ganzen System liegen daneben. Nie Einladungen, nie Versand. Das Journal gehört nur dir — abends drei Zeilen, morgens ein Satz.</p>
+      <p>Tag, Woche, Monat, Agenda — direkt auf iCloud, mit euren Kalendern und Farben. „Mo 10 Uhr Kaffee mit Jonas 45min“ reicht als Eingabe; Ziehen verschiebt, Fristen aus dem ganzen System liegen daneben. Nie Einladungen, nie Versand. Das Journal gehört nur dir — abends drei Zeilen, morgens ein Satz.</p>
       <ul class="zoe-tut"><li>ZOE liest das Journal nur, wenn du sie fragst — und nie für die andere Person.</li><li>Der Kalender-Agent ordnet zu, welcher Kalender wem gehört, und meldet Konflikte.</li><li>Die Ganztags-Zeile zeigt Aufgaben mit Datum, Überfälliges, Fristen, Zahlungen.</li></ul>
       <p class="zahlt"><b>Zahlt ein:</b> gehaltene Schutz-Blöcke → „Beziehung“ und „Fokus &amp; Zeit“; Journal-Streak → „Gesundheit“ (nur, wenn geführt).</p>
     </div>
@@ -206,7 +209,7 @@
 <!-- ── Weiter ──────────────────────────────────────────────────────────────── -->
 <section id="weiter" class="uebergang" data-kapitel="09" data-titel="Weiter">
   <div class="wrap">
-    <div class="kopf" data-reveal><span class="mikro">Weiter</span><h2>Die andere Welt — und wer im Hintergrund hilft.</h2></div>
+    <div class="kopf" data-reveal><span class="mikro">Weiter</span><h2>Die Business-Welt — und wer im Hintergrund hilft.</h2></div>
     <div class="einstiege zwei">
       <a class="einstieg" href="business.html" data-reveal style="--f:#FF9F43"><span class="mikro">Business</span><h3>Markttraktion, Finanzplanung, Mandate.</h3><p>Der Business-Index, die Pipeline mit Server-Regeln, Follow-ups, die keiner fallen lässt, Finanzplanung mit Szenarien.</p><b>Die Business-Welt →</b></a>
       <a class="einstieg" href="zoe.html" data-reveal style="--f:#C77DFF;--d:80ms"><span class="mikro">ZOE &amp; Brain</span><h3>Die KI im Hintergrund.</h3><p>Werkzeuge, Stapel, das Team der Heads, das Brain aus deinem Vault — und die Regel: nichts geht ohne dein Ja raus.</p><b>ZOE kennenlernen →</b></a>
@@ -217,7 +220,19 @@
 <!-- ── Einmal testen (auf jeder Seite) ────────────────────────────────────────── -->
 <section id="testen" class="testen" data-kapitel="99" data-titel="Einmal testen">
   <div class="wrap">
-    {{teil:testen}}
+    <div class="box" data-reveal>
+      <span class="mikro">Einmal testen</span>
+      <h2>Wir laden persönlich ein.</h2>
+      <p class="dim">MAKE OS läuft heute für uns zwei. Wenn du Leben und Unternehmen gleichzeitig führst, schreib uns drei Sätze: was du gerade führst und was ein System dir abnehmen soll. Wir melden uns persönlich — ohne Newsletter, ohne Tracking.</p>
+      <form id="anfrage" novalidate>
+        <input type="text" name="name" placeholder="Dein Name" autocomplete="name" required aria-label="Name">
+        <input type="email" name="mail" placeholder="Deine E-Mail" autocomplete="email" required aria-label="E-Mail">
+        <textarea name="warum" placeholder="Was führst du gerade gleichzeitig — und was soll ein System dir abnehmen?" aria-label="Warum"></textarea>
+        <button class="knopf gross" type="submit" style="justify-content:center">Anfrage vorbereiten</button>
+        <div class="fuss">Die Anfrage öffnet eine E-Mail an uns — es wird nichts gespeichert, bevor du sie abschickst.</div>
+      </form>
+    </div>
+
   </div>
 </section>
 
@@ -229,6 +244,10 @@
     <div><b>Seiten</b><a href="index.html">Start · Die Geschichte</a><a href="privat.html">Privat</a><a href="business.html">Business</a><a href="zoe.html">ZOE &amp; Brain</a><a href="preise.html">Preise</a><a href="ueber.html">MA + KE</a></div>
     <div><b>Rechtliches</b><a href="#impressum">Impressum</a><a href="#datenschutz">Datenschutz</a><span>Kein Tracking, keine Cookies, keine Schriften von Dritten. Die Sicht (Privat/Business) merkt sich nur dein Browser für diesen Besuch.</span></div>
     <div class="unten"><span>© 2026 MAKE OS · Malin &amp; Kevin</span><span>Alle Namen, Firmen, Termine und Zahlen auf dieser Seite sind Beispiele.</span></div>
+    <div class="rechtliches">
+      <div id="impressum"><b>Impressum</b><span>Folgt vor der Veröffentlichung: Anbieter, Anschrift, Kontakt, Vertretung, Register — sobald Firma und Domain feststehen.</span></div>
+      <div id="datenschutz"><b>Datenschutz</b><span>Folgt vor der Veröffentlichung. Schon heute gilt: Diese Seite setzt keine Cookies, lädt nichts von Dritten und speichert keine Eingaben — das Formular öffnet nur eine E-Mail in deinem Programm.</span></div>
+    </div>
   </div>
 </footer>
 

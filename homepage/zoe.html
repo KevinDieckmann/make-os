@@ -10,6 +10,8 @@
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#0B0E10">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preload" href="assets/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/public-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/ci.css">
 <link rel="stylesheet" href="css/site.css">
 </head>
@@ -59,9 +61,9 @@
 <main id="top">
 
 <section class="odyssee" data-formationen="brain,stapel,heads" aria-label="ZOE und das Brain">
-  <div class="buehne" aria-hidden="true" style="--standbild:url(assets/standbild-brain.svg)">
+  <div class="buehne" aria-hidden="true">
     <div class="raster"></div>
-    <div class="standbild"></div>
+    <div class="standbild" style="background-image:url(assets/standbild-brain.svg)"></div>
     <canvas id="brain"></canvas>
     <div class="stapel-chip"><span class="mikro">Der Stapel</span><b>Wartet auf dein Ja</b><span><span class="sp">Nachricht · „Donnerstag 19 Uhr — Abend zu zweit?“</span><span class="sb">Mail-Entwurf an Jonas B. · „Zusammenfassung Woche 40“</span></span></div>
   </div>
@@ -73,6 +75,7 @@
         <h1 class="wie-h2">ZOE denkt mit deinem Wissen. Nicht mit dem Internet.</h1>
         <p>Dein Vault ist die Wahrheit: Notizen, Protokolle, Regeln als Markdown. Darüber liegt ein Index — Volltext und Embeddings, in deinem Bereich gerechnet. ZOE antwortet nur daraus, mit Quelle und Abschnitt. Steht es nicht drin, sagt sie das — statt zu raten.</p>
         <p class="dim">Die Sicht gilt vor dem Ranking: privat-malin, privat-kevin, gemeinsam. Nie nachträglich gefiltert.</p>
+        <p class="kapitel-links"><a class="knopf" href="#gespraech">Ein Gespräch ansehen</a><a class="knopf leise" href="#testen">Einmal testen</a></p>
       </div>
     </div>
   </div>
@@ -171,7 +174,7 @@
     <div class="text" data-reveal>
       <span class="mikro">Brain › Wissen · Regeln · Inbox</span>
       <h2>Vault, Index, Regeln, Konstitution, Inbox — und jede Nacht eine Konsolidierung.</h2>
-      <p>Der Vault (Obsidian, Markdown, Git) ist die Wahrheit; der Index ist abgeleitet und baut sich bei Zweifel neu. Regeln und Konstitution sind Anweisungen an ZOE — nur mit Status aktiv und einer Freigabe von euch. Alles andere aus dem Vault bleibt Daten. ZOE schreibt nie Notizen um: Sie legt Vorschläge in die Brain-Inbox, ihr nehmt an — mit Herkunft an jeder Notiz.</p>
+      <p>Der Vault (Obsidian, Markdown, Git) ist die Wahrheit; der Index ist abgeleitet und baut sich bei Zweifel neu. Regeln und Konstitution gelten nur mit Status aktiv und eurer Freigabe — alles andere bleibt Daten. ZOE schreibt nie Notizen um: Sie legt Vorschläge in die Brain-Inbox, ihr nehmt an, mit Herkunft an jeder Notiz.</p>
       <ul class="zoe-tut"><li>Nächtliche Konsolidierung: der Tag wird zu Vorschlägen verdichtet, nicht zu Fakten.</li><li>Fremdtext ist Daten: was aus Mails, Notizen oder dem Web kommt, hat keine Anweisungsgewalt. Nach Fremdem wird jedes schreibende Werkzeug zum Vorschlag.</li><li>Nach außen geht genau eines: die Frage an das Sprachmodell — mit den Arbeitsfeldern, die dafür nötig sind, nie mit dem ganzen Bestand.</li></ul>
       <p class="zahlt"><b>Zahlt ein:</b> in keinen Score — das Brain ist das Gedächtnis, aus dem alle Vorschläge kommen.</p>
     </div>
@@ -220,7 +223,19 @@
 <!-- ── Einmal testen (auf jeder Seite) ────────────────────────────────────────── -->
 <section id="testen" class="testen" data-kapitel="99" data-titel="Einmal testen">
   <div class="wrap">
-    {{teil:testen}}
+    <div class="box" data-reveal>
+      <span class="mikro">Einmal testen</span>
+      <h2>Wir laden persönlich ein.</h2>
+      <p class="dim">MAKE OS läuft heute für uns zwei. Wenn du Leben und Unternehmen gleichzeitig führst, schreib uns drei Sätze: was du gerade führst und was ein System dir abnehmen soll. Wir melden uns persönlich — ohne Newsletter, ohne Tracking.</p>
+      <form id="anfrage" novalidate>
+        <input type="text" name="name" placeholder="Dein Name" autocomplete="name" required aria-label="Name">
+        <input type="email" name="mail" placeholder="Deine E-Mail" autocomplete="email" required aria-label="E-Mail">
+        <textarea name="warum" placeholder="Was führst du gerade gleichzeitig — und was soll ein System dir abnehmen?" aria-label="Warum"></textarea>
+        <button class="knopf gross" type="submit" style="justify-content:center">Anfrage vorbereiten</button>
+        <div class="fuss">Die Anfrage öffnet eine E-Mail an uns — es wird nichts gespeichert, bevor du sie abschickst.</div>
+      </form>
+    </div>
+
   </div>
 </section>
 
@@ -232,6 +247,10 @@
     <div><b>Seiten</b><a href="index.html">Start · Die Geschichte</a><a href="privat.html">Privat</a><a href="business.html">Business</a><a href="zoe.html">ZOE &amp; Brain</a><a href="preise.html">Preise</a><a href="ueber.html">MA + KE</a></div>
     <div><b>Rechtliches</b><a href="#impressum">Impressum</a><a href="#datenschutz">Datenschutz</a><span>Kein Tracking, keine Cookies, keine Schriften von Dritten. Die Sicht (Privat/Business) merkt sich nur dein Browser für diesen Besuch.</span></div>
     <div class="unten"><span>© 2026 MAKE OS · Malin &amp; Kevin</span><span>Alle Namen, Firmen, Termine und Zahlen auf dieser Seite sind Beispiele.</span></div>
+    <div class="rechtliches">
+      <div id="impressum"><b>Impressum</b><span>Folgt vor der Veröffentlichung: Anbieter, Anschrift, Kontakt, Vertretung, Register — sobald Firma und Domain feststehen.</span></div>
+      <div id="datenschutz"><b>Datenschutz</b><span>Folgt vor der Veröffentlichung. Schon heute gilt: Diese Seite setzt keine Cookies, lädt nichts von Dritten und speichert keine Eingaben — das Formular öffnet nur eine E-Mail in deinem Programm.</span></div>
+    </div>
   </div>
 </footer>
 

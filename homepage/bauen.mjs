@@ -16,7 +16,7 @@ for (const name of SEITEN) {
   const daten = { SEITE: name, TITEL: meta(quelle, 'titel', 'MAKE OS'), BESCHREIBUNG: meta(quelle, 'beschreibung'), KRUMEN: meta(quelle, 'krumen'), SICHT: meta(quelle, 'sicht', ''), TITEL_ATTR: '' };
   daten.TITEL_ATTR = daten.TITEL.replace(/"/g, '&quot;');
   const ersetze = s => s.replace(/\{\{(\w+)\}\}/g, (_, k) => daten[k] ?? '');
-  const html = ersetze(kopf) + teile(quelle).replace(/<!--\s*(titel|beschreibung|krumen|sicht):[\s\S]*?-->\n?/g, '') + ersetze(fuss);
+  const html = ersetze(teile(kopf)) + teile(quelle).replace(/<!--\s*(titel|beschreibung|krumen|sicht):[\s\S]*?-->\n?/g, '') + ersetze(teile(fuss)); // Achter Durchgang: {{teil:…}} auch in Kopf und Fuß (das Formular „Einmal testen“ blieb sonst ein Platzhalter)
   writeFileSync(new URL(`${name}.html`, hier), html);
 }
 writeFileSync(new URL('sitemap.txt', hier), SEITEN.map(s => `${s}.html`).join('\n') + '\n');

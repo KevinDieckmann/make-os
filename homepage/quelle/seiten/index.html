@@ -14,7 +14,7 @@
         <span class="zeile"><span class="wort" style="--i:2">Ein</span> <span class="wort" style="--i:3">System.</span></span>
         <span class="zeile"><span class="wort akz" style="--i:4">Eine</span> <span class="wort akz" style="--i:5">Zahl.</span></span>
       </h1>
-      <p><span class="sp">MAKE OS bringt dein Privatleben und dein Unternehmen in ein System, macht beides messbar — und eine KI hilft im Hintergrund, damit du nicht jeden Tag an alles denken musst. Die Zeit, die übrig bleibt, gehört dir, eurer Beziehung, der Familie.</span><span class="sb">MAKE OS bringt dein Unternehmen und dein Privatleben in ein System, macht beides messbar — und eine KI bereitet im Hintergrund vor, erinnert und hält dir den Rücken frei. Die Zeit, die übrig bleibt, gehört dem nächsten Schritt.</span></p>
+      <p><span class="sp">MAKE OS bringt dein Privatleben und dein Unternehmen in ein System und macht beides messbar. ZOE, die KI im Hintergrund, bereitet vor und erinnert — verschickt wird nichts ohne dein Ja. Die Zeit, die übrig bleibt, gehört dir, eurer Beziehung, der Familie.</span><span class="sb">MAKE OS bringt dein Unternehmen und dein Privatleben in ein System und macht beides messbar. ZOE, die KI im Hintergrund, bereitet vor und erinnert — verschickt wird nichts ohne dein Ja. Die Zeit, die übrig bleibt, gehört dem nächsten Schritt.</span></p>
       <div class="hero-cta">
         <a class="knopf gross magnet" href="#testen">Einmal testen</a>
         <a class="knopf gross leise" href="#zwei-welten">Die Geschichte</a>
@@ -36,9 +36,9 @@
 
 <!-- ── Die Geschichte: vier Kapitel über einer Bühne, die sich verwandelt ──── -->
 <section class="odyssee" data-formationen="welten,chaos,ring,brain" aria-label="Die Geschichte">
-  <div class="buehne" aria-hidden="true" style="--standbild:url(assets/standbild-brain.svg)">
+  <div class="buehne" aria-hidden="true">
     <div class="raster"></div>
-    <div class="standbild"></div>
+    <div class="standbild" style="background-image:url(assets/standbild-brain.svg)"></div>
     <canvas id="brain"></canvas>
     {{teil:start-chips}}
     {{teil:start-zahl-stapel}}
@@ -49,8 +49,8 @@
       <div class="kinhalt">
         <span class="mikro">Kapitel 01 · Zwei Welten</span>
         <h2>Zwei Welten. Ein Kalender. Ein Kopf.</h2>
-        <p>Wir haben es selbst als Business-Paar gemerkt: Die beiden Welten lassen sich kaum trennen. Zeiten einhalten, den Fokus für die Beziehung behalten, das Unternehmen trotzdem nach vorn bringen — jeden Tag aufs Neue, im selben Kopf.</p>
-        <p class="dim"><span class="sp">Dienstag, 19 Uhr: der Abend zu zweit steht im Kalender. Dienstag, 19 Uhr: das Angebot muss trotzdem heute raus. Beides ist wichtig — und nichts hält die beiden auseinander.</span><span class="sb">Dienstag, 19 Uhr: das Angebot muss heute raus. Dienstag, 19 Uhr: der Abend zu zweit steht seit zwei Wochen im Kalender. Beides ist wichtig — und nichts hält die beiden auseinander.</span></p>
+        <p>Du führst ein Unternehmen und ein Leben — im selben Kopf, im selben Kalender. Zeiten einhalten, den Fokus für die Beziehung behalten, das Unternehmen trotzdem nach vorn bringen: jeden Tag aufs Neue, und nichts hält die beiden auseinander.</p>
+        <p class="dim"><span class="sp">Dienstag, 19 Uhr: der Abend zu zweit steht im Kalender. Dienstag, 19 Uhr: das Angebot muss trotzdem heute raus. Beides ist wichtig — keine App sieht beides.</span><span class="sb">Dienstag, 19 Uhr: das Angebot muss heute raus. Dienstag, 19 Uhr: der Abend zu zweit steht seit zwei Wochen im Kalender. Beides ist wichtig — keine App sieht beides.</span></p>
       </div>
     </div>
   </div>
@@ -95,27 +95,62 @@
     <div class="kopf" data-reveal>
       <span class="mikro">Kapitel 05 · Die Bereiche</span>
       <h2>Eine Software. Vier Seiten, die es erzählen.</h2>
-      <p>Die Story oben ist das Warum. Was MAKE OS wirklich kann, steht in den Bereichen — je Seite mit Bildern aus der Software, was ZOE dort tut und welche Zahl in den Score einzahlt.</p>
+      <p>Oben das Warum, hier das Was: vier Seiten mit Bildern aus der Software — was ZOE dort tut und welche Zahl in den Score einzahlt. Alle Namen und Zahlen sind Beispiele.</p>
     </div>
     <div class="einstiege">
       <a class="einstieg" href="privat.html" data-reveal style="--f:#58D9CD">
         <span class="mikro">Privat</span><h3>Gesundheit, Familie, Finanzen, Zeit.</h3>
         <p>Erholung und Schlaf, Zeit zu zweit, Haushalt und Budget, Fokus-Zeit, Kalender, Journal — und der Privat-Index, der daraus eine Zahl macht.</p>
+        <div class="schirm" aria-hidden="true">
+          <div class="schirm-kopf"><i></i><i></i><i></i><span>Privat › Übersicht · heute</span><em>Privat-Index 78</em></div>
+          <div class="schirm-inhalt">
+            <div class="zeile" style="--fz:#FFC93C"><i></i><span>07:10 · Takt: Erholung 62 % — leichter Tag</span><small>ZOE</small></div>
+            <div class="zeile" style="--fz:#8F86FF"><i></i><span>10:30–12:00 · Fokus: Angebot</span><small>geblockt</small></div>
+            <div class="zeile" style="--fz:#58D9CD"><i></i><span>Rechnung Strom · 84 € · fällig in 3 Tagen</span><small>Haushalt</small></div>
+            <div class="zeile" style="--fz:#FF7EB6"><i></i><span>19:00 · Abend zu zweit</span><small>geschützt</small></div>
+          </div>
+        </div>
         <span class="pfad">Übersicht · Finanzen · Aufgaben · Ziele &amp; Planung · Gesundheit · Familie · Kontakte</span><b>Die private Welt →</b>
       </a>
       <a class="einstieg" href="business.html" data-reveal style="--f:#FF9F43;--d:80ms">
         <span class="mikro">Business</span><h3>Markttraktion, Finanzplanung, Mandate.</h3>
         <p>Kontakte, Firmen, Deals, Follow-up, Sales, Marketing, Events — dazu die Finanzplanung mit Szenarien, Mandate, Zahlen und der Head of IT.</p>
+        <div class="schirm" aria-hidden="true">
+          <div class="schirm-kopf"><i></i><i></i><i></i><span>Markttraktion › Kontakte · Akte</span><em>Kreis A · alle 14 Tage</em></div>
+          <div class="schirm-inhalt">
+            <div class="kopfzeile"><b>Jonas Berg · Nordlicht GmbH</b><small>Einwilligung ✓ · Herkunft: Event</small></div>
+            <div class="score"><span>Lead-Score</span><div class="balken"><i style="--w:82%"></i></div><b>82</b></div>
+            <div class="zeile" style="--fz:#FF9F43"><i></i><span>Deal · Angebot 75 % · nächster Schritt: Anruf Mi 11:00</span><small>heute</small></div>
+            <div class="zeile" style="--fz:#4FC3F7"><i></i><span>Letztes Gespräch · 12.09. · Pilot ab Oktober</span><small>Brain</small></div>
+          </div>
+        </div>
         <span class="pfad">Übersicht · Finanzen · Aufgaben · Ziele &amp; Planung · Markttraktion · Mandate</span><b>Die Business-Welt →</b>
       </a>
       <a class="einstieg" href="zoe.html" data-reveal style="--f:#C77DFF;--d:160ms">
         <span class="mikro">ZOE &amp; Brain</span><h3>Die KI im Hintergrund — und ihr Team.</h3>
         <p>Werkzeuge, der Stapel, die Heads für Sales, Marketing, Event, Finance und IT, das Brain aus deinem Vault. Nichts geht ohne dein Ja raus.</p>
+        <div class="schirm" aria-hidden="true">
+          <div class="schirm-kopf"><i></i><i></i><i></i><span>ZOE · Gespräch</span><em>Sicht: <span class="sp">privat</span><span class="sb">business</span></em></div>
+          <div class="schirm-inhalt chat" style="gap:6px">
+            <div class="blase ich">Was kippt heute?</div>
+            <div class="blase zoe"><span class="sp">Der Dienstagabend kollidiert mit dem Angebot. Vorschlag: Fokusblock morgen 9–11 Uhr, der Abend bleibt frei.</span><span class="sb">Nordlicht liegt seit zwei Tagen ohne Schritt. Vorschlag: Anruf 11 Uhr, Schritt eintragen.</span></div>
+            <div class="zeile warte" style="--fz:#FFC93C"><i></i><span>Mail an Jonas · Entwurf</span><small>wartet auf dein Ja</small></div>
+          </div>
+        </div>
         <span class="pfad">ZOE · Agenten · Brain · Stapel</span><b>ZOE kennenlernen →</b>
       </a>
       <a class="einstieg" href="ueber.html" data-reveal style="--f:#D13A55;--d:240ms">
         <span class="mikro">MA + KE</span><h3>Zwei Namen, ein Wort.</h3>
         <p>Malin und Kevin — warum es MAKE OS gibt, wie zwei Menschen ein System teilen, ohne alles zu teilen, und wo es läuft: bei uns, in Deutschland.</p>
+        <div class="schirm" aria-hidden="true">
+          <div class="schirm-kopf"><i></i><i></i><i></i><span>System › Räume</span><em style="--f:#58D9CD">3 Räume · 2 Konten</em></div>
+          <div class="schirm-inhalt">
+            <div class="zeile" style="--fz:#D13A55"><i></i><span>privat-malin · Körperdaten, Notizen, Fokus</span><small>nur Malin</small></div>
+            <div class="zeile" style="--fz:#22B577"><i></i><span>privat-kevin · Körperdaten, Notizen, Fokus</span><small>nur Kevin</small></div>
+            <div class="zeile" style="--fz:#58D9CD"><i></i><span>gemeinsam · Kalender, Haushalt, Markttraktion, Brain-Regeln</span><small>beide</small></div>
+            <div class="zeile" style="--fz:#3DE28B"><i></i><span>Dein Bereich · verschlüsselt · Sicherung vor 4 h</span><small>Head of IT</small></div>
+          </div>
+        </div>
         <span class="pfad">Founder · Zu zweit · Dein Bereich · Die Entwicklung</span><b>Über uns →</b>
       </a>
     </div>
@@ -128,7 +163,7 @@
     <div class="kopf" data-reveal>
       <span class="mikro">Kapitel 06 · Was drinsteckt</span>
       <h2>Keine Kundenlogos. Systemzahlen.</h2>
-      <p>MAKE OS ist vor dem Start — wir zeigen, was gebaut ist, nicht, wer es angeblich benutzt.</p>
+      <p>MAKE OS ist vor dem Start. Wir zeigen, was gebaut ist — nicht, wer es angeblich benutzt.</p>
     </div>
     {{teil:zahlen}}
   </div>

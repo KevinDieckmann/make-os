@@ -150,7 +150,8 @@ body[data-spur=business] .spur button[aria-pressed=true],body[data-spur=business
 .buehne{position:sticky;top:0;height:100vh;margin-bottom:-100vh;overflow:hidden;z-index:0;pointer-events:none}
 .buehne canvas{position:absolute;inset:0;width:100%;height:100%}
 .buehne .raster{mask-image:radial-gradient(60% 60% at 70% 50%,#000 10%,transparent 100%);-webkit-mask-image:radial-gradient(60% 60% at 70% 50%,#000 10%,transparent 100%)}
-.standbild{position:absolute;inset:0;background:var(--standbild,url(../assets/standbild-brain.svg)) no-repeat 70% 50%/auto 66%;opacity:.7;transition:opacity .6s ease}
+/* Das Bild selbst setzt jede Seite inline (background-image) — url() in einer Custom Property wurde relativ zur CSS-Datei aufgelöst (404). */
+.standbild{position:absolute;inset:0;background:url(../assets/standbild-brain.svg) no-repeat 70% 50%/auto 66%;opacity:.7;transition:opacity .6s ease}
 .buehne.an .standbild{opacity:0}
 /* Chips: Welten (Kapitel 01), Apps (Kapitel 02) — Position setzt brain.js */
 .welt-chips,.chips{position:absolute;inset:0}
@@ -528,3 +529,53 @@ footer .unten{grid-column:1/-1;border-top:1px solid rgba(255,255,255,.06);paddin
 .mehr{margin-top:18px;font-size:14px}
 .mehr a{color:var(--aktiv)}
 @media (max-width:820px){.krumen{display:none}}
+
+/* ── Achter Durchgang: Qualitätsrunde ─────────────────────────────────────── */
+/* Bildschirm-Karten: kleine, stilisierte Ausschnitte aus der Software (HTML/CSS, Beispieldaten) —
+   feste Höhe, damit beim Laden und beim Sicht-Wechsel nichts springt. */
+.schirm{display:grid;grid-template-rows:auto 1fr;height:168px;border-radius:12px;background:var(--grund);border:1px solid rgba(255,255,255,.08);overflow:hidden;font-size:11.5px;color:var(--inkDim);margin-top:4px}
+.schirm-kopf{display:flex;align-items:center;gap:5px;padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.025)}
+.schirm-kopf i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.12)}
+.schirm-kopf span{margin-left:5px;font-size:10px;letter-spacing:.06em;color:var(--inkLeise);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.schirm-kopf em{margin-left:auto;font-style:normal;font-size:10px;font-weight:700;color:var(--f,var(--aktiv));white-space:nowrap}
+.schirm-inhalt{padding:9px 10px;display:grid;gap:5px;align-content:start;min-width:0}
+.schirm>*,.schirm-inhalt>*{min-width:0;max-width:100%}
+.schirm .kopfzeile b{min-width:0}
+.schirm .zeile{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:5px 8px;border-radius:7px;background:rgba(255,255,255,.03);white-space:nowrap}
+.schirm .zeile>span{overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.schirm .zeile>i{width:6px;height:6px;border-radius:50%;background:var(--fz,var(--aktiv));flex:0 0 auto}
+.schirm .zeile>small{font-size:10px;color:var(--inkLeise);font-variant-numeric:tabular-nums}
+.schirm .zeile.warte{border:1px dashed rgba(255,201,60,.45);background:rgba(255,201,60,.05)}
+.schirm .zeile.warte>small{color:var(--achtung)}
+.schirm .kopfzeile{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:0 2px 2px}
+.schirm .kopfzeile b{font-family:var(--schrift-display);font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.schirm .kopfzeile small{font-size:10px;color:var(--inkLeise);white-space:nowrap}
+.schirm .score{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:0 2px}
+.schirm .score span{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--inkLeise);font-weight:600}
+.schirm .score .balken{height:5px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden}
+.schirm .score .balken i{display:block;height:100%;width:var(--w,50%);border-radius:999px;background:var(--f,var(--aktiv))}
+.schirm .score b{font-family:var(--schrift-display);font-size:14px;color:var(--ink);font-variant-numeric:tabular-nums}
+.schirm .blase{max-width:92%;padding:6px 9px;border-radius:10px;font-size:11px;line-height:1.4;opacity:1;transform:none;transition:none}
+.schirm .blase.ich{border-bottom-right-radius:4px}
+.schirm .blase.zoe{border-bottom-left-radius:4px}
+.einstieg .schirm{pointer-events:none}
+/* Kapitel-Links: der nächste Schritt direkt unter dem ersten Kapitel jeder Bereichsseite */
+.kapitel-links{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+/* Rechtliches: Platzhalter mit echten Ankern, bis Impressum und Datenschutz stehen */
+.rechtliches{border-top:1px solid rgba(255,255,255,.06);padding:22px 0 0;margin-top:26px;display:grid;grid-template-columns:1fr 1fr;gap:18px;font-size:12.5px;color:var(--inkLeise)}
+.rechtliches div{display:grid;gap:4px}
+.rechtliches b{display:block;color:var(--inkDim);font-size:12px;letter-spacing:.1em;text-transform:uppercase;margin:0}
+.rechtliches .marke-hinweis{color:var(--inkLeise);font-size:11.5px}
+footer .wrap{row-gap:24px}
+footer .unten span:last-child{text-align:right}
+@media (max-width:700px){.rechtliches{grid-template-columns:1fr}footer{padding-bottom:calc(40px + 72px)}footer .unten span:last-child{text-align:left}}
+/* Finanzplan-Blatt auf schmalen Bildschirmen: Zellen bleiben einzeilig */
+.blatt .zeile span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+@media (max-width:420px){.blatt{font-size:11px}.blatt .zeile span{padding:5px 6px}}
+/* Bereichs-Blöcke: gleiche Höhe der App-Rahmen im Zweispalter, kein Springen beim Sicht-Wechsel */
+.bereich-block .app{align-self:center}
+.bereich-block .app-inhalt{min-height:220px}
+/* Sicht-Pille: nie über dem Formular-Knopf oder dem Fuß */
+@media (max-width:820px){.testen form{padding-bottom:8px}}
+/* Aktive Seite auch ohne JS erkennbar (aria-current setzt site.js) */
+.nav nav a[aria-current=page]{color:var(--ink)}
