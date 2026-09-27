@@ -13,13 +13,19 @@
 // schließt bei Klick daneben, Esc oder Auswahl; Tastatur ↑ ↓ Pos1 Ende Enter
 // Esc, danach steht der Fokus wieder auf dem Chip. Ab SUCHE_AB_WAHL Werten
 // gibt es ein Suchfeld. Es ist immer nur EIN Menü offen.
+// Neu anlegen (27.09. spät): Mit `onNeu` hat das Menü immer ein Suchfeld
+// („suchen oder neu …“) und unten „+ neu …“ — bzw. bei einer Suche ohne
+// gleichnamigen Wert „„<Suchtext>“ anlegen“. Enter legt an und wählt; die
+// Länge prüft `neuPruefen` (neuMin/neuMax), Fehler stehen im Menü. `fuss`
+// (z. B. „Pflegen ›“) steht darunter. Genutzt von Typ/Kategorie der Akte
+// (WertelistenEinzelWahl) und der Einheit an Aufgaben/Routinen (EinheitWahl).
 // Regel (CLAUDE.md): Auswahl in Formularen = Wahl; Pillenreihen nur für
 // Filter, Reiter, Navigation und echte Zweier-Umschalter.
 
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as TastenEreignis } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type KeyboardEvent as TastenEreignis } from 'react';
 import { createPortal } from 'react-dom';
-import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { wahlFiltern, naechsterIndex, istWahlTaste, startIndex, wahlLabel, menuLage, normiere, SUCHE_AB_WAHL, ALS_BLATT_BIS, type WahlEintrag, type WahlVorschlag } from '@/lib/crm/wahl';
+import { FARBE as C, LEUCHT, TYP, SCHRIFT } from '@/lib/make-one/design';
+import { wahlFiltern, naechsterIndex, istWahlTaste, startIndex, wahlLabel, menuLage, normiere, anlegenZeile, neuPruefen, SUCHE_AB_WAHL, ALS_BLATT_BIS, NEU_MIN, NEU_MAX, type WahlEintrag, type WahlVorschlag } from '@/lib/crm/wahl';
 
 export type { WahlEintrag, WahlVorschlag };
 
@@ -60,6 +66,19 @@ export interface WahlProps<T extends string> extends Gemeinsam<T> {
   onLeeren?: () => void;
   /** Vorschlag aus den Daten — erscheint nur, solange das Feld leer ist. */
   vorschlag?: WahlVorschlag<T> | null;
+  /** Text der Leeren-Zeile im Menü (Standard „entfernen“, z. B. „ohne Einheit“). */
+  leerenLabel?: string;
+  /**
+   * Neu anlegen aus dem Menü: bekommt den gesäuberten, längengeprüften Text und
+   * gibt den angelegten (ggf. vereinheitlichten) Wert zurück — danach wird er
+   * gewählt. `null` = nicht angelegt; ein geworfener Fehler zeigt seinen Text im Menü.
+   */
+  onNeu?: (text: string) => Promise<T | null>;
+  /** Länge eines neuen Werts (Standard NEU_MIN–NEU_MAX aus lib/crm/wahl.ts). */
+  neuMin?: number;
+  neuMax?: number;
+  /** Fuß des Menüs, z. B. ein Link „Pflegen ›“ — ein Klick darauf schließt das Menü. */
+  fuss?: ReactNode;
 }
 
 export interface WahlMehrfachProps<T extends string> extends Gemeinsam<T> {
@@ -81,7 +100,7 @@ const pfeil = <span aria-hidden style={{ fontSize: '.8em', opacity: .7, marginLe
 const aussStil: CSSProperties = { cursor: 'default', opacity: .55 };
 
 // ── Einzelwahl ───────────────────────────────────────────────────────────────
-export function Wahl<T extends string>({ liste, wert, onWahl, onLeeren, label, leer, vorschlag, farbe = C.aktiv, klein, aus, id }: WahlProps<T>) {
+export function Wahl<T extends string>({ liste, wert, onWahl, onLeeren, label, leer, vorschlag, farbe = C.aktiv, klein, aus, id, leerenLabel, onNeu, neuMin = NEU_MIN, neuMax = NEU_MAX, fuss }: WahlProps<T>) {
   // Offen = das Element, an dem das Menü hängt (beim Öffnen gemerkt — nie ein Ref im Rendern lesen).
   const [anker, setAnker] = useState<HTMLElement | null>(null);
   const offen = !!anker;
@@ -120,7 +139,8 @@ export function Wahl<T extends string>({ liste, wert, onWahl, onLeeren, label, l
       {anker && (
         <WahlMenue anker={anker} menuId={menuId} liste={liste} label={label} farbe={farbe}
           gewaehlt={gesetzt ? [wert as T] : []} vorschlaege={v ? [v] : []}
-          entfernen={gesetzt && !!onLeeren}
+          entfernen={gesetzt && !!onLeeren} leerenLabel={leerenLabel} fuss={fuss}
+          neu={onNeu ? { min: neuMin, max: neuMax, anlegen: onNeu } : undefined}
           onWert={id2 => { schliessen(true); if (id2 !== wert) onWahl(id2); }}
           onEntfernen={() => { schliessen(true); onLeeren?.(); }}
           onSchliessen={schliessen} />
@@ -177,24 +197,54 @@ export function WahlMehrfach<T extends string>({ liste, wert, onWahl, label, lee
 }
 
 // ── Das Menü ─────────────────────────────────────────────────────────────────
-type Eintrag<T extends string> = { art: 'wert'; e: WahlEintrag<T> } | { art: 'entfernen' };
+type Eintrag<T extends string> = { art: 'wert'; e: WahlEintrag<T> } | { art: 'entfernen' } | { art: 'neu' } | { art: 'anlegen'; text: string };
 
-function WahlMenue<T extends string>({ anker, menuId, liste, label, farbe, gewaehlt, vorschlaege, entfernen, mehrfach, onWert, onEntfernen, onSchliessen }: {
+function WahlMenue<T extends string>({ anker, menuId, liste, label, farbe, gewaehlt, vorschlaege, entfernen, leerenLabel = 'entfernen', mehrfach, neu, fuss, onWert, onEntfernen, onSchliessen }: {
   anker: HTMLElement; menuId: string; liste: readonly WahlEintrag<T>[]; label: string; farbe: string;
-  gewaehlt: readonly T[]; vorschlaege: readonly WahlVorschlag<T>[]; entfernen: boolean; mehrfach?: boolean;
+  gewaehlt: readonly T[]; vorschlaege: readonly WahlVorschlag<T>[]; entfernen: boolean; leerenLabel?: string; mehrfach?: boolean;
+  /** Neu anlegen (nur Einzelwahl mit `onNeu`). */
+  neu?: { min: number; max: number; anlegen: (text: string) => Promise<T | null> };
+  fuss?: ReactNode;
   onWert: (id: T) => void; onEntfernen: () => void; onSchliessen: (fokus: boolean) => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const listeRef = useRef<HTMLDivElement>(null);
   const suchfeld = useRef<HTMLInputElement>(null);
-  const mitSuche = liste.length >= SUCHE_AB_WAHL;
+  // Mit „neu“ immer ein Suchfeld — es ist zugleich das Namensfeld für den neuen Wert.
+  const mitSuche = liste.length >= SUCHE_AB_WAHL || !!neu;
   const [suche, setSuche] = useState('');
   const [blatt, setBlatt] = useState(false);
   const [lage, setLage] = useState<{ top: number; left: number; maxHoehe: number } | null>(null);
+  const [laeuft, setLaeuft] = useState(false);
+  const [fehler, setFehler] = useState<string | null>(null);
   const gefiltert = useMemo(() => wahlFiltern(liste, suche), [liste, suche]);
-  const eintraege: Eintrag<T>[] = useMemo(() => [...gefiltert.map(e => ({ art: 'wert' as const, e })), ...(entfernen && !suche ? [{ art: 'entfernen' as const }] : [])], [gefiltert, entfernen, suche]);
+  const eintraege: Eintrag<T>[] = useMemo(() => {
+    const zeile = neu ? anlegenZeile(liste, suche) : null;
+    return [
+      ...gefiltert.map(e => ({ art: 'wert' as const, e })),
+      ...(entfernen && !suche.trim() ? [{ art: 'entfernen' as const }] : []),
+      ...(zeile ? [zeile] : []),
+    ];
+  }, [gefiltert, entfernen, suche, neu, liste]);
   const [aktiv, setAktiv] = useState(() => startIndex(liste, gewaehlt, vorschlaege[0]?.id));
-  useEffect(() => { setAktiv(i => (suche ? (gefiltert.length ? 0 : -1) : i)); }, [suche, gefiltert.length]);
+  useEffect(() => { setAktiv(i => (suche ? (eintraege.length ? 0 : -1) : i)); setFehler(null); }, [suche, eintraege.length]);
+
+  /** Neuen Wert anlegen und wählen — Länge vorher prüfen, Fehler im Menü zeigen. */
+  const anlegen = async (text: string) => {
+    if (!neu || laeuft) return;
+    const p = neuPruefen(text, label, neu.min, neu.max);
+    if (!p.ok) { setFehler(p.fehler); return; }
+    setLaeuft(true); setFehler(null);
+    let fertig: T | null = null;
+    try {
+      fertig = await neu.anlegen(p.wert);
+      if (fertig == null) setFehler(`${label} „${p.wert}“ nicht angelegt — bitte noch einmal versuchen.`);
+    } catch (e) {
+      setFehler(e instanceof Error && e.message ? e.message : `${label} „${p.wert}“ nicht angelegt.`);
+    }
+    setLaeuft(false);
+    if (fertig != null) onWert(fertig);
+  };
 
   // Lage: am Chip, im Fenster; am Handy als Blatt. Beim Scrollen und bei Größenänderung neu.
   useLayoutEffect(() => {
@@ -233,7 +283,10 @@ function WahlMenue<T extends string>({ anker, menuId, liste, label, farbe, gewae
   const waehle = (i: number) => {
     const x = eintraege[i];
     if (!x) return;
-    if (x.art === 'entfernen') onEntfernen(); else onWert(x.e.id);
+    if (x.art === 'entfernen') onEntfernen();
+    else if (x.art === 'neu') { setFehler(null); suchfeld.current?.focus(); }
+    else if (x.art === 'anlegen') void anlegen(x.text);
+    else onWert(x.e.id);
   };
   const taste = (e: TastenEreignis) => {
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (suche) setSuche(''); else onSchliessen(true); return; }
@@ -275,7 +328,7 @@ function WahlMenue<T extends string>({ anker, menuId, liste, label, farbe, gewae
           </div>
         )}
         {mitSuche && (
-          <input ref={suchfeld} value={suche} onChange={e => setSuche(e.target.value)} placeholder={`${label} suchen …`} aria-label={`${label} suchen`}
+          <input ref={suchfeld} value={suche} onChange={e => setSuche(e.target.value)} placeholder={neu ? (label.length <= 14 ? `${label} suchen oder neu …` : 'Suchen oder neu …') : `${label} suchen …`} aria-label={neu ? `${label} suchen oder neu anlegen` : `${label} suchen`} aria-busy={laeuft || undefined}
             aria-controls={`${menuId}`} aria-activedescendant={aktiv >= 0 ? `${menuId}-o-${aktiv}` : undefined} autoComplete="off"
             style={{ width: '100%', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 9, padding: '8px 10px', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, outline: 'none' }} />
         )}
@@ -289,7 +342,20 @@ function WahlMenue<T extends string>({ anker, menuId, liste, label, farbe, gewae
                 <div key="__entfernen" id={`${menuId}-o-${i}`} role="option" aria-selected={false} className="wahl-option" data-aktiv={an}
                   onMouseDown={e => e.preventDefault()} onMouseEnter={() => setAktiv(i)} onClick={() => waehle(i)}
                   style={{ ...zeileStil(blatt), color: C.inkLeise, borderTop: '1px solid rgba(255,255,255,.06)', marginTop: 3, paddingTop: blatt ? 12 : 8 }}>
-                  <span style={{ width: 16, textAlign: 'center' }} aria-hidden>–</span>entfernen
+                  <span style={{ width: 16, textAlign: 'center' }} aria-hidden>–</span>{leerenLabel}
+                </div>
+              );
+            }
+            if (x.art === 'neu' || x.art === 'anlegen') {
+              return (
+                <div key="__neu" id={`${menuId}-o-${i}`} role="option" aria-selected={false} aria-disabled={laeuft || undefined} className="wahl-option" data-aktiv={an} data-wahl-neu
+                  onMouseDown={e => e.preventDefault()} onMouseEnter={() => setAktiv(i)} onClick={() => waehle(i)}
+                  style={{ ...zeileStil(blatt), color: C.aktiv, fontWeight: 600, borderTop: '1px solid rgba(255,255,255,.06)', marginTop: 3, paddingTop: blatt ? 12 : 8, cursor: laeuft ? 'wait' : 'pointer' }}>
+                  <span style={{ width: 16, textAlign: 'center' }} aria-hidden>+</span>
+                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {x.art === 'neu' ? 'neu …' : laeuft ? `legt „${x.text}“ an …` : <>„{x.text}“ anlegen</>}
+                  </span>
+                  {x.art === 'anlegen' && !laeuft && <span style={{ fontSize: 11, color: C.inkLeise, fontWeight: 500 }}>Enter</span>}
                 </div>
               );
             }
@@ -299,6 +365,7 @@ function WahlMenue<T extends string>({ anker, menuId, liste, label, farbe, gewae
                 onMouseDown={e => e.preventDefault()} onMouseEnter={() => setAktiv(i)} onClick={() => waehle(i)}
                 style={{ ...zeileStil(blatt), color: gew ? farbe : C.ink, fontWeight: gew ? 600 : 500 }}>
                 <span aria-hidden style={{ width: 16, textAlign: 'center', color: farbe }}>{gew ? '✓' : ''}</span>
+                {x.e.punkt && <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: x.e.punkt, flex: '0 0 auto' }} />}
                 <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.e.label}</span>
                 {vorschlagIds.has(x.e.id) && <span style={{ fontSize: 11, color: farbe, border: `1px dashed ${farbe}88`, borderRadius: 999, padding: '0 6px' }}>Vorschlag</span>}
                 {x.e.hinweis && <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{x.e.hinweis}</span>}
@@ -307,6 +374,10 @@ function WahlMenue<T extends string>({ anker, menuId, liste, label, farbe, gewae
           })}
           {!eintraege.length && <div style={{ padding: '8px 10px', fontSize: 12.5, color: C.inkLeise }}>Nichts passt zu „{suche}“.</div>}
         </div>
+        {fehler && <div role="alert" style={{ padding: '4px 10px 2px', fontSize: 12, color: LEUCHT.kritisch, lineHeight: 1.4 }}>{fehler}</div>}
+        {fuss && (
+          <div onClick={() => onSchliessen(false)} style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '4px 8px 2px', borderTop: '1px solid rgba(255,255,255,.06)', fontSize: 12 }}>{fuss}</div>
+        )}
         {mehrfach && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 4px 0', borderTop: '1px solid rgba(255,255,255,.06)' }}>
             <button type="button" onClick={() => onSchliessen(true)} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: SCHRIFT.text, padding: '6px 8px', minHeight: 32 }}>fertig</button>

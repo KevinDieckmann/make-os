@@ -3,6 +3,8 @@
 // einen Vorschlag aus den Daten, den man mit EINEM Klick übernimmt — nie still
 // gespeichert, nie erfunden. Jede Regel nennt ihren Grund im Klartext.
 //   dealRolleVorschlag      Position/Jobtitel/Seniorität (+ warm?) → Rolle am Deal
+//   offeneRollenVorschlaege / vorschlaegeAnwenden / vorschlaegeZuruecknehmen
+//                           Sammel-Übernahme am Deal (ein Schreibvorgang, Rückgängig)
 //   kontaktRollenVorschlag  Typ/Kategorie/Firmen-Rolle → Rollen der Person
 //   anredeVorschlag         Kategorie, Rolle „Freund“, eigene Nachrichten → Du/Sie
 // Deutsche und englische Titel, Groß-/Kleinschreibung egal. „Bremst“ (blocker)
@@ -116,6 +118,49 @@ export function besterEntscheider<K extends Pick<Kontakt, 'id' | 'position' | 'j
     if (v?.id === 'entscheider') return { kontakt: k, vorschlag: v };
   }
   return null;
+}
+
+/**
+ * Offene Rollen-Vorschläge am Deal: je Person ohne gesetzte Rolle der
+ * Vorschlag aus dealRolleVorschlag (Reihenfolge der Personen). Personen mit
+ * Rolle und ohne verwertbaren Titel fehlen. Grundlage für „Vorschläge
+ * übernehmen (n)“ in der Deal-Akte.
+ */
+export function offeneRollenVorschlaege(personen: readonly Pick<Kontakt, 'id' | 'position' | 'jobtitel' | 'senioritaet' | 'aktivitaeten' | 'kreis'>[], chance: Pick<Chance, 'personenRollen'>, heute: string): Record<string, WahlVorschlag<DealRolle>> {
+  const aus: Record<string, WahlVorschlag<DealRolle>> = {};
+  for (const k of personen) {
+    if (chance.personenRollen?.[k.id] || aus[k.id]) continue;
+    const v = dealRolleVorschlag(k, heute);
+    if (v && v.id !== 'blocker') aus[k.id] = v;
+  }
+  return aus;
+}
+
+/**
+ * Sammel-Übernahme: alle Vorschläge in EIN neues personenRollen-Objekt (ein
+ * Schreibvorgang am Deal). Bestehende Rollen werden nie überschrieben,
+ * „Bremst“ nie gesetzt. `gesetzt` = was neu dazukam (für Meldung und Rückgängig).
+ */
+export function vorschlaegeAnwenden(personenRollen: Readonly<Record<string, DealRolle>> | undefined, vorschlaege: Readonly<Record<string, WahlVorschlag<DealRolle> | null | undefined>>): { rollen: Record<string, DealRolle>; gesetzt: Record<string, DealRolle> } {
+  const rollen: Record<string, DealRolle> = { ...(personenRollen ?? {}) };
+  const gesetzt: Record<string, DealRolle> = {};
+  for (const [pid, v] of Object.entries(vorschlaege)) {
+    if (!v || v.id === 'blocker' || rollen[pid]) continue;
+    rollen[pid] = v.id;
+    gesetzt[pid] = v.id;
+  }
+  return { rollen, gesetzt };
+}
+
+/**
+ * Rückgängig nach der Sammel-Übernahme: nimmt genau die übernommenen Rollen
+ * wieder heraus — aber nur, wo seitdem niemand die Rolle von Hand geändert hat
+ * (dann bleibt die Hand-Änderung). Alles andere bleibt, wie es jetzt ist.
+ */
+export function vorschlaegeZuruecknehmen(aktuell: Readonly<Record<string, DealRolle>> | undefined, gesetzt: Readonly<Record<string, DealRolle>>): Record<string, DealRolle> {
+  const rollen: Record<string, DealRolle> = { ...(aktuell ?? {}) };
+  for (const [pid, r] of Object.entries(gesetzt)) if (rollen[pid] === r) delete rollen[pid];
+  return rollen;
 }
 
 // Typ, Kategorie und Firmen-Rolle → Rolle der Person. Deutsch und Englisch, normiert.

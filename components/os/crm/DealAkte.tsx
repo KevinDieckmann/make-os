@@ -8,14 +8,14 @@
 // Die Auswertung: Prognose nach Monat, Verweildauer, Umwandlung, Win/Loss, Zyklus.
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { anzeigename } from '@/lib/make-one/crm';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Fortschritt, LEUCHT } from '../schlank';
 import { type CrmApi, datum, euro, kurzEuro } from './daten';
 import { Verlauf as AktivitaetenVerlauf } from './teile';
 import { Wahl } from './Wahl';
-import { dealRolleVorschlag, besterEntscheider } from '@/lib/crm/vorschlaege';
+import { dealRolleVorschlag, besterEntscheider, offeneRollenVorschlaege, vorschlaegeAnwenden, vorschlaegeZuruecknehmen } from '@/lib/crm/vorschlaege';
 import { Person } from './team';
 import { ChancenDetail } from './Pipeline';
 import { useFollowups } from './FollowUp';
@@ -35,6 +35,13 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
   const { d: fu } = useFollowups();
   const c = crm?.stand.chancen.find(x => x.id === id);
   const personen = useMemo(() => (c ? c.kontaktIds.map(pid => (api.kontakte ?? []).find(k => k.id === pid)).filter((k): k is NonNullable<typeof k> => !!k) : []), [c, api.kontakte]);
+  // Meldung nach der Sammel-Übernahme („n Rollen gesetzt · Rückgängig“) — verschwindet nach 10 s oder beim Wechsel des Deals.
+  const [meldung, setMeldung] = useState<{ deal: string; text: string; gesetzt: Record<string, DealRolle> } | null>(null);
+  useEffect(() => {
+    if (!meldung) return;
+    const t = setTimeout(() => setMeldung(null), 10_000);
+    return () => clearTimeout(t);
+  }, [meldung]);
   if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
   if (!c) return <Karte i={0}><Leer>Diesen Deal gibt es nicht (mehr). <button onClick={zurueck} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer' }}>Zurück zu den Deals</button></Leer></Karte>;
   const a = crm.ampel[c.id];
@@ -60,6 +67,21 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
     const alt = { ...(c.personenRollen ?? {}) };
     if (rolle) alt[pid] = rolle; else delete alt[pid];
     void api.teil('chancen', c.id, { personenRollen: alt });
+  };
+  // Alle Vorschläge für Personen ohne Rolle auf einmal — EIN Schreibvorgang mit dem ganzen personenRollen-Objekt.
+  const offen = offeneRollenVorschlaege(personen, c, crm.heute);
+  const anzahlOffen = Object.keys(offen).length;
+  const alleUebernehmen = () => {
+    const { rollen, gesetzt } = vorschlaegeAnwenden(c.personenRollen, offen);
+    const n = Object.keys(gesetzt).length;
+    if (!n) return;
+    void api.teil('chancen', c.id, { personenRollen: rollen });
+    setMeldung({ deal: c.id, text: n === 1 ? '1 Rolle gesetzt' : `${n} Rollen gesetzt`, gesetzt });
+  };
+  const zuruecknehmen = () => {
+    if (!meldung || meldung.deal !== c.id) return;
+    void api.teil('chancen', c.id, { personenRollen: vorschlaegeZuruecknehmen(c.personenRollen, meldung.gesetzt) });
+    setMeldung(null);
   };
   return (
     <>
@@ -110,7 +132,19 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
         </div>
         <div style={{ display: 'grid', gap: 14 }}>
           <Karte i={2}>
-            <Ueberschrift>Personen & Rollen</Ueberschrift>
+            <Ueberschrift rechts={anzahlOffen > 0 ? (
+              <button type="button" onClick={alleUebernehmen} className="fassbar" data-vorschlaege-uebernehmen
+                title={personen.filter(k => offen[k.id]).map(k => `${anzeigename(k)}: ${ROLLEN.find(r => r.id === offen[k.id].id)?.label} — ${offen[k.id].grund}`).join('\n')}
+                style={{ background: `${LEUCHT.business}14`, border: `1px dashed ${LEUCHT.business}99`, color: LEUCHT.business, borderRadius: 999, cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: '4px 11px', minHeight: 28, whiteSpace: 'nowrap' }}>
+                ✓ Vorschläge übernehmen ({anzahlOffen})
+              </button>
+            ) : undefined}>Personen & Rollen</Ueberschrift>
+            {meldung && meldung.deal === c.id && (
+              <div role="status" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim, background: 'rgba(255,255,255,.04)', borderRadius: 10, padding: '7px 10px', marginBottom: 10 }}>
+                <span>{meldung.text}</span>
+                <button type="button" onClick={zuruecknehmen} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: C.aktiv, cursor: 'pointer', fontSize: 12.5, fontWeight: 600 }}>Rückgängig</button>
+              </div>
+            )}
             {personen.length ? (
               <div style={{ display: 'grid', gap: 10 }}>
                 {personen.map(k => (

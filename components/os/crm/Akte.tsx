@@ -313,7 +313,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, setRei
   );
   const stammdaten = (
     <Zwei spalten={spalten}
-      links={<>{matrixKlappe('einordnung', 1, 'Typ und Kategorie zuerst — alle Werte der Wertelisten, „+ neu“ legt an.')}{matrixKlappe('person', 2, 'Antippen zum Bearbeiten, Enter speichert, Esc verwirft.')}</>}
+      links={<>{matrixKlappe('einordnung', 1, 'Typ und Kategorie zuerst — Chip antippen: alle Werte, Suche, „+ neu …“ legt an.')}{matrixKlappe('person', 2, 'Antippen zum Bearbeiten, Enter speichert, Esc verwirft.')}</>}
       rechts={<>{matrixKlappe('firma', 3, firma ? 'Aus dem Firmeneintrag — gilt für alle Personen der Firma.' : 'Aus dem Import — eine Firma zuordnen bündelt die Felder.')}{matrixKlappe('herkunft', 4)}</>}
     />
   );

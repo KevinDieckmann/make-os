@@ -1,24 +1,77 @@
 'use client';
 
 // ─── Markttraktion · Wertelisten-Wahl (Malins Rückmeldung 27.09.) ──────────
-// Ein Bauteil für Branchen (mehrfach), Typ und Kategorie (einzeln): ALLE Werte
-// der Werteliste als Pillen in einer scrollbaren Box (etwa vier Zeilen hoch),
-// ab SUCHE_AB Werten ein Suchfeld darüber, und „+ neu“ direkt in der Akte —
-// Enter legt den Wert über den Schreibweg der Stammdaten-Route an
-// (POST /api/crm/stammdaten · aktion wertelisten; Prüfung und Säuberung in
-// lib/crm/wertelisten.ts) und wählt ihn sofort. Feste Standardwerte sind
-// nicht löschbar; Umbenennen und Löschen bleibt unter Stammdaten › Wertelisten.
+// Zwei Bauteile auf demselben Schreibweg:
+//  · WertelistenWahl — Branchen (mehrfach): ALLE Werte der Werteliste als
+//    Pillen in einer scrollbaren Box (etwa vier Zeilen hoch), ab SUCHE_AB
+//    Werten ein Suchfeld darüber, und „+ neu“ direkt in der Akte.
+//  · WertelistenEinzelWahl — Typ und Kategorie (einzeln, Kevin 27.09. spät):
+//    der Wahl-Chip (./Wahl.tsx) — sichtbar nur der gesetzte Wert, Klick öffnet
+//    das Menü mit Suche, „+ neu …“ und „Pflegen ›“ im Fuß.
+// Neu anlegen läuft in beiden über useWertelisteAnlegen: POST /api/crm/stammdaten
+// · aktion wertelisten (Prüfung und Säuberung in lib/crm/wertelisten.ts), der
+// Wert wird sofort gewählt. Feste Standardwerte sind nicht löschbar;
+// Umbenennen und Löschen bleibt unter Stammdaten › Wertelisten.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { feld, LEUCHT } from '../schlank';
 import { wertelisteZurWahl, SUCHE_AB, WERT_MIN, WERT_MAX } from '@/lib/crm/wertelisten';
 import { markttraktion } from '@/lib/crm/adresse';
 import Link from 'next/link';
 import type { CrmApi } from './daten';
+import { Wahl, type WahlEintrag } from './Wahl';
 
 export type WertelisteName = 'branchen' | 'typen' | 'kategorien';
 const LISTE_LABEL: Record<WertelisteName, string> = { branchen: 'Branche', typen: 'Typ', kategorien: 'Kategorie' };
+
+/**
+ * „+ neu“ für eine Werteliste: eigene Werte der Liste + dieser, über den
+ * Schreibweg der Stammdaten. Gibt den Wert zurück (bei gleichnamigem Bestand
+ * dessen Schreibweise) und lädt danach den Bestand neu; wirft mit dem
+ * Fehlertext des Servers. Feste Werte fängt der Server (bleiben, wie sie sind).
+ */
+export function useWertelisteAnlegen(liste: WertelisteName, werte: { wert: string; fest: boolean }[], api: Pick<CrmApi, 'laden'>): (text: string) => Promise<string> {
+  return useCallback(async (roh: string) => {
+    const t = roh.replace(/\s+/g, ' ').trim();
+    if (t.length < WERT_MIN || t.length > WERT_MAX) throw new Error(`${LISTE_LABEL[liste]}: ${WERT_MIN}–${WERT_MAX} Zeichen.`);
+    const vorhanden = werte.find(x => x.wert.toLowerCase() === t.toLowerCase());
+    if (vorhanden) return vorhanden.wert;
+    const eigene = werte.filter(x => !x.fest).map(x => x.wert);
+    const r = await fetch('/api/crm/stammdaten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'wertelisten', wertelisten: { [liste]: [...eigene, t] } }) })
+      .then(x => x.json() as Promise<{ ok: boolean; fehler?: string }>).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    if (!r.ok) throw new Error(r.fehler ?? 'Nicht gespeichert.');
+    void api.laden();
+    return t;
+  }, [liste, werte, api]);
+}
+
+/**
+ * Typ oder Kategorie als Wahl-Chip: alle Werte der Liste (dazu ein gesetzter
+ * Bestandswert, der in keiner Liste steht — Hinweis „Bestand“), Suche und
+ * „+ neu …“ im Menü, „– entfernen“, Fuß „Pflegen ›“ zu Stammdaten › Wertelisten.
+ */
+export function WertelistenEinzelWahl({ liste, werte, wert, onWahl, api, farbe = C.aktiv, klein }: {
+  liste: Exclude<WertelisteName, 'branchen'>;
+  werte: { wert: string; fest: boolean }[];
+  wert: string | undefined;
+  onWahl: (wert: string | undefined) => void;
+  api: Pick<CrmApi, 'laden'>;
+  farbe?: string;
+  klein?: boolean;
+}) {
+  const anlegen = useWertelisteAnlegen(liste, werte, api);
+  const eintraege: WahlEintrag<string>[] = useMemo(
+    () => wertelisteZurWahl(werte, wert ? [wert] : []).map(o => ({ id: o.wert, label: o.wert, ...(o.fremd ? { hinweis: 'Bestand' } : {}) })),
+    [werte, wert],
+  );
+  return (
+    <Wahl label={LISTE_LABEL[liste]} liste={eintraege} wert={wert || null} farbe={farbe} klein={klein}
+      onWahl={onWahl} onLeeren={() => onWahl(undefined)}
+      onNeu={anlegen} neuMin={WERT_MIN} neuMax={WERT_MAX}
+      fuss={<Link href={markttraktion('stammdaten', 'wertelisten')} style={{ color: C.inkLeise, textDecoration: 'none', padding: '4px 2px' }}>Pflegen ›</Link>} />
+  );
+}
 
 export function WertelistenWahl({ liste, werte, aktiv, mehrfach, onWahl, api, farbe = C.aktiv }: {
   /** Welche Werteliste — entscheidet, wohin „+ neu“ schreibt. */
@@ -47,21 +100,15 @@ export function WertelistenWahl({ liste, werte, aktiv, mehrfach, onWahl, api, fa
     else onWahl(gewaehlt(w) ? [] : [w]);
   };
 
-  /** Neuen Wert anlegen: eigene Werte der Liste + dieser, dann sofort wählen. Feste Werte fängt der Server (bleiben, wie sie sind). */
+  /** Neuen Wert anlegen (useWertelisteAnlegen), dann sofort wählen. */
+  const anlegenWert = useWertelisteAnlegen(liste, werte, api);
   const anlegen = async () => {
     const t = (neu ?? '').replace(/\s+/g, ' ').trim();
     if (!t) { setNeu(null); return; }
-    if (t.length < WERT_MIN || t.length > WERT_MAX) { setFehler(`${LISTE_LABEL[liste]}: ${WERT_MIN}–${WERT_MAX} Zeichen.`); return; }
-    const vorhanden = werte.find(x => x.wert.toLowerCase() === t.toLowerCase());
-    if (vorhanden) { waehleNeu(vorhanden.wert); return; }
     setLaeuft(true); setFehler(null);
-    const eigene = werte.filter(x => !x.fest).map(x => x.wert);
-    const r = await fetch('/api/crm/stammdaten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'wertelisten', wertelisten: { [liste]: [...eigene, t] } }) })
-      .then(x => x.json() as Promise<{ ok: boolean; fehler?: string }>).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
-    setLaeuft(false);
-    if (!r.ok) { setFehler(r.fehler ?? 'Nicht gespeichert.'); return; }
-    waehleNeu(t);
-    void api.laden();
+    try { waehleNeu(await anlegenWert(t)); }
+    catch (e) { setFehler(e instanceof Error ? e.message : 'Nicht gespeichert.'); }
+    finally { setLaeuft(false); }
   };
   const waehleNeu = (w: string) => { if (!gewaehlt(w)) onWahl(mehrfach ? [...aktiv, w] : [w]); setNeu(null); setSuche(''); setFehler(null); };
 

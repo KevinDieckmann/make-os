@@ -7,8 +7,8 @@
 import { KERN_EINHEITEN } from '@/lib/einheiten';
 import type { Gesellschaft } from './typen';
 
-/** Ein Wert in einer Wahl. `hinweis` steht leise hinter dem Namen (z. B. „30 T“ beim Kreis). */
-export interface WahlEintrag<T extends string> { id: T; label: string; hinweis?: string }
+/** Ein Wert in einer Wahl. `hinweis` steht leise hinter dem Namen (z. B. „30 T“ beim Kreis); `punkt` = farbiger Punkt davor (z. B. Einheit). */
+export interface WahlEintrag<T extends string> { id: T; label: string; hinweis?: string; punkt?: string }
 /** Ein Vorschlag aus den Daten — wird nie still gespeichert, immer ein Klick. `grund` im Klartext. */
 export interface WahlVorschlag<T extends string> { id: T; grund: string }
 
@@ -88,6 +88,36 @@ export function menuLage(anker: Rechteck, menu: { breite: number; hoehe: number 
   const breite = Math.min(menu.breite, fenster.breite - 2 * rand);
   const left = Math.min(Math.max(rand, anker.left), Math.max(rand, fenster.breite - rand - breite));
   return { top: Math.round(top), left: Math.round(left), nachOben, maxHoehe: Math.round(maxHoehe) };
+}
+
+// ── Neu anlegen aus dem Menü (27.09. spät, Kevin: Typ/Kategorie/Einheit „+ neu“ im Chip) ──
+/** Standard-Längen für einen neu angelegten Wert — wie die Wertelisten (lib/crm/wertelisten.ts WERT_MIN/WERT_MAX). */
+export const NEU_MIN = 2;
+export const NEU_MAX = 60;
+
+/** Leerraum eindampfen und trimmen — so wird ein neuer Wert gespeichert. */
+export const neuSaeubern = (s: string): string => s.replace(/\s+/g, ' ').trim();
+
+/**
+ * Die Anlegen-Zeile unten im Menü (nur wenn die Wahl `onNeu` hat):
+ *  - leere Suche → `{ art: 'neu' }` („+ neu …“ — setzt den Fokus ins Suchfeld),
+ *  - Suche ohne gleichnamigen Wert → `{ art: 'anlegen', text }` („„<Suchtext>“ anlegen“),
+ *    auch wenn Teiltreffer darüber stehen (die bleiben zuerst aktiv),
+ *  - Suche trifft einen Wert genau (Groß/Klein, Umlaute egal) → null — dann wählt man den.
+ */
+export function anlegenZeile<T extends string>(liste: readonly WahlEintrag<T>[], suche: string): { art: 'neu' } | { art: 'anlegen'; text: string } | null {
+  const text = neuSaeubern(suche);
+  if (!text) return { art: 'neu' };
+  const n = normiere(text);
+  return liste.some(e => normiere(e.label) === n) ? null : { art: 'anlegen', text };
+}
+
+/** Längenprüfung vor dem Anlegen — gesäuberter Wert oder ein Fehlertext im Klartext. */
+export function neuPruefen(roh: string, label: string, min = NEU_MIN, max = NEU_MAX): { ok: true; wert: string } | { ok: false; fehler: string } {
+  const wert = neuSaeubern(roh);
+  if (!wert) return { ok: false, fehler: `${label}: bitte einen Namen eingeben.` };
+  if (wert.length < min || wert.length > max) return { ok: false, fehler: `${label}: ${min}–${max} Zeichen (jetzt ${wert.length}).` };
+  return { ok: true, wert };
 }
 
 /** Gesellschaften für Deals und Mandate — Namen aus der einen Quelle (lib/einheiten.ts), dazu „offen“. Gespeichert bleibt die Kennung. */

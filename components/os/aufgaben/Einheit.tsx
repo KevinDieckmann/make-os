@@ -5,14 +5,13 @@
 // MAKE OS UG unterscheiden. Sichtbar ist nur der gesetzte Wert als Chip (farbig
 // dezent je Kerneinheit, eigene grau); ein Klick öffnet das Menü mit der
 // Werteliste des Haushalts, „ohne Einheit“ und „+ neu“ (legt die Einheit über
-// /api/planung/einheiten an). Eigenes kleines Bauteil — das allgemeine
-// Chip+Menü-Bauteil (components/os/crm/Wahl.tsx, Paket D) kam erst während des
-// Baus in den Stand und kennt kein „+ neu“; zusammenlegen, sobald es das kann.
+// /api/planung/einheiten an). Seit 27.09. spät baut EinheitWahl auf dem einen
+// Auswahl-Bauteil auf (components/os/crm/Wahl.tsx mit `onNeu`).
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
-import { EINHEITEN_STANDARD } from '@/lib/planung/einheiten';
+import { EINHEITEN_STANDARD, EINHEIT_MIN, EINHEIT_MAX } from '@/lib/planung/einheiten';
+import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { einheitName } from '@/lib/einheiten';
 import { einheitFarbe, EINHEIT_GRAU, EINHEIT_MERKER, type EinheitOption, type EinheitFilter } from '@/lib/aufgaben/einheit';
 
@@ -67,13 +66,15 @@ export function EinheitMarke({ name, stil }: { name?: string | null; stil?: CSSP
   return <span title={`Einheit: ${n}`} style={{ fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, color: einheitFarbe(n), whiteSpace: 'nowrap', ...stil }}>{n}</span>;
 }
 
-const chip = (farbe: string, leer: boolean): CSSProperties => ({
-  fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 700, letterSpacing: '.02em', whiteSpace: 'nowrap', cursor: 'pointer',
-  border: leer ? `1px dashed ${C.inkLeise}66` : 'none', borderRadius: 999, padding: leer ? '2px 9px' : '3px 10px',
-  background: leer ? 'transparent' : `${farbe}22`, color: leer ? C.inkLeise : farbe,
-});
-
 // ── Auswahl: Chip + Menü ────────────────────────────────────────────────────
+/**
+ * Einheit als Wahl-Chip (components/os/crm/Wahl.tsx, seit 27.09. spät das eine
+ * Auswahl-Bauteil): Werte der Haushalts-Werteliste mit Farbpunkt, der Chip in
+ * der Farbe der Einheit, Menü am Chip (Portal ins <body>), „ohne Einheit“ als
+ * Leeren-Zeile und „+ neu …“ (legt über /api/planung/einheiten an, Länge
+ * EINHEIT_MIN–EINHEIT_MAX). `merken` hält die Wahl als Vorgabe für die nächste
+ * neue Aufgabe fest.
+ */
 export function EinheitWahl({ wert, setzen, einheiten, anlegen, leer = '+ Einheit', titel = 'Einheit', merken = false }: {
   wert?: string | null;
   setzen: (einheit: string | undefined) => void;
@@ -84,79 +85,19 @@ export function EinheitWahl({ wert, setzen, einheiten, anlegen, leer = '+ Einhei
   /** Wahl als Vorgabe für die nächste neue Aufgabe merken (nur an der Anlage-Zeile). */
   merken?: boolean;
 }) {
-  const [auf, setAuf] = useState(false);
-  const [lage, setLage] = useState<{ top: number; left: number; maxH: number }>({ top: 0, left: 0, maxH: 320 });
-  const [neu, setNeu] = useState<string | null>(null);
-  const knopf = useRef<HTMLButtonElement>(null);
-  const menue = useRef<HTMLDivElement>(null);
   const n = einheitName(wert);
-
-  const oeffnen = () => {
-    const r = knopf.current?.getBoundingClientRect();
-    if (r) {
-      const unten = window.innerHeight - r.bottom - 14, oben = r.top - 14, breite = 240;
-      const nachOben = unten < 220 && oben > unten;
-      const maxH = Math.max(160, Math.min(340, nachOben ? oben : unten));
-      setLage({ top: nachOben ? Math.max(8, r.top - 6 - maxH) : r.bottom + 6, left: Math.min(Math.max(8, r.left), window.innerWidth - breite - 8), maxH });
-    }
-    setAuf(true);
-  };
-  const schliessen = useCallback(() => { setAuf(false); setNeu(null); }, []);
-  useEffect(() => {
-    if (!auf) return;
-    const weg = (e: MouseEvent) => { if (!menue.current?.contains(e.target as Node) && !knopf.current?.contains(e.target as Node)) schliessen(); };
-    const taste = (e: KeyboardEvent) => { if (e.key === 'Escape') schliessen(); };
-    const rollen = (e: Event) => { if (!menue.current?.contains(e.target as Node)) schliessen(); };
-    document.addEventListener('mousedown', weg);
-    document.addEventListener('keydown', taste);
-    window.addEventListener('scroll', rollen, true);
-    window.addEventListener('resize', schliessen);
-    return () => { document.removeEventListener('mousedown', weg); document.removeEventListener('keydown', taste); window.removeEventListener('scroll', rollen, true); window.removeEventListener('resize', schliessen); };
-  }, [auf, schliessen]);
-
-  const waehle = (e: string | undefined) => { setzen(e); if (merken) einheitMerken(e); schliessen(); };
-  const zeile = (label: string, farbe: string, aktiv: boolean, onClick: () => void, key: string) => (
-    <button key={key} role="menuitemradio" aria-checked={aktiv} onClick={onClick} className="fassbar" style={{
-      display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', border: 'none', borderRadius: 8, cursor: 'pointer',
-      padding: '7px 10px', background: aktiv ? `${farbe}1f` : 'transparent', color: aktiv ? farbe : C.ink, fontFamily: SCHRIFT.text, fontSize: 13,
-    }}>
-      <span style={{ width: 8, height: 8, borderRadius: '50%', background: farbe, opacity: aktiv ? 1 : 0.7, flex: '0 0 auto' }} />
-      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
-      {aktiv && <span aria-hidden>✓</span>}
-    </button>
-  );
-
+  const gleich = (a: string, b: string) => a.toLocaleLowerCase('de-DE') === b.toLocaleLowerCase('de-DE');
+  // Gesetzter Wert in der Schreibweise der Liste; steht er in keiner Liste (Altbestand), bleibt er als eigene Zeile sichtbar.
+  const gesetzt = n ? einheiten.find(e => gleich(e, n)) ?? n : null;
+  const liste: WahlEintrag<string>[] = useMemo(() => [
+    ...einheiten.map(e => ({ id: e, label: e, punkt: einheitFarbe(e) })),
+    ...(gesetzt && !einheiten.includes(gesetzt) ? [{ id: gesetzt, label: gesetzt, punkt: einheitFarbe(gesetzt) }] : []),
+  ], [einheiten, gesetzt]);
+  const waehle = (e: string | undefined) => { setzen(e); if (merken) einheitMerken(e); };
   return (
-    <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
-      <button ref={knopf} type="button" onClick={() => (auf ? schliessen() : oeffnen())} aria-haspopup="menu" aria-expanded={auf}
-        title={n ? `${titel}: ${n} — klicken zum Ändern` : `${titel} wählen`} className="fassbar" style={chip(einheitFarbe(n), !n)}>
-        {n ?? leer}
-      </button>
-      {/* Ins <body> gehängt: Karten mit Erscheinen-Animation (transform) würden `position: fixed` sonst an sich binden. */}
-      {auf && createPortal(
-        <div ref={menue} onClick={e => e.stopPropagation()} role="menu" aria-label={titel} style={{
-          position: 'fixed', top: lage.top, left: lage.left, width: 240, maxHeight: lage.maxH, overflowY: 'auto', zIndex: 90,
-          background: C.flaeche, borderRadius: 12, padding: 6, boxShadow: '0 18px 50px -12px rgba(0,0,0,.75)', border: '1px solid rgba(255,255,255,.08)',
-        }}>
-          <div style={{ fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, padding: '4px 10px 6px' }}>{titel}</div>
-          {einheiten.map(e => zeile(e, einheitFarbe(e), !!n && e.toLocaleLowerCase('de-DE') === n.toLocaleLowerCase('de-DE'), () => waehle(e), e))}
-          {n && !einheiten.some(e => e.toLocaleLowerCase('de-DE') === n.toLocaleLowerCase('de-DE')) && zeile(n, einheitFarbe(n), true, () => waehle(n), '__jetzt')}
-          {zeile('ohne Einheit', EINHEIT_GRAU, !n, () => waehle(undefined), '__ohne')}
-          <div style={{ borderTop: '1px solid rgba(255,255,255,.06)', marginTop: 4, paddingTop: 4 }}>
-            {neu === null
-              ? <button onClick={() => setNeu('')} className="fassbar" style={{ width: '100%', textAlign: 'left', border: 'none', background: 'transparent', color: C.aktiv, cursor: 'pointer', padding: '7px 10px', fontFamily: SCHRIFT.text, fontSize: 13, borderRadius: 8 }}>+ neu</button>
-              : <input autoFocus value={neu} placeholder="Neue Einheit (Enter)" aria-label="Neue Einheit" maxLength={40}
-                  onChange={e => setNeu(e.target.value)}
-                  onKeyDown={async e => {
-                    if (e.key === 'Escape') { e.stopPropagation(); setNeu(null); }
-                    if (e.key === 'Enter') { const s = await anlegen(neu); if (s) waehle(s); }
-                  }}
-                  style={{ width: '100%', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 8, padding: '7px 10px', color: C.ink, fontFamily: SCHRIFT.text, fontSize: 13, outline: 'none' }} />}
-          </div>
-        </div>,
-        document.body,
-      )}
-    </span>
+    <Wahl label={titel} liste={liste} wert={gesetzt} leer={leer} klein farbe={gesetzt ? einheitFarbe(gesetzt) : EINHEIT_GRAU}
+      onWahl={waehle} onLeeren={() => waehle(undefined)} leerenLabel="ohne Einheit"
+      onNeu={anlegen} neuMin={EINHEIT_MIN} neuMax={EINHEIT_MAX} />
   );
 }
 

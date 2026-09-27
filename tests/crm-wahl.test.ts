@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { wahlFiltern, naechsterIndex, startIndex, wahlLabel, menuLage, normiere, GESELLSCHAFT_WAHL, SUCHE_AB_WAHL } from '@/lib/crm/wahl';
+import { wahlFiltern, naechsterIndex, startIndex, wahlLabel, menuLage, normiere, GESELLSCHAFT_WAHL, SUCHE_AB_WAHL, anlegenZeile, neuPruefen, neuSaeubern, NEU_MIN, NEU_MAX } from '@/lib/crm/wahl';
 
 const L = [{ id: 'entscheider', label: 'Entscheider' }, { id: 'fuersprecher', label: 'Fürsprecher' }, { id: 'nutzer', label: 'Nutzer', hinweis: 'arbeitet damit' }, { id: 'blocker', label: 'Bremst' }] as const;
 
@@ -72,5 +72,34 @@ describe('Gesellschaften aus der einen Quelle', () => {
     expect(GESELLSCHAFT_WAHL.map(g => g.id)).toEqual(['kdc', 'kdv', 'ug', 'offen']);
     expect(GESELLSCHAFT_WAHL.find(g => g.id === 'ug')?.label).toBe('MAKE OS UG');
     expect(GESELLSCHAFT_WAHL.some(g => g.label === 'Neue UG')).toBe(false);
+  });
+});
+
+describe('Wahl · neu anlegen (27.09. spät)', () => {
+  const T = [{ id: 'Kunde', label: 'Kunde' }, { id: 'Zielkunde', label: 'Zielkunde' }, { id: 'Tech-Gründer', label: 'Tech-Gründer' }];
+  it('leere Suche (auch nur Leerzeichen): Zeile „+ neu …“', () => {
+    expect(anlegenZeile(T, '')).toEqual({ art: 'neu' });
+    expect(anlegenZeile(T, '   ')).toEqual({ art: 'neu' });
+    expect(anlegenZeile([], '')).toEqual({ art: 'neu' });
+  });
+  it('Suche ohne Treffer: „„<Suchtext>“ anlegen“ mit gesäubertem Text', () => {
+    expect(anlegenZeile(T, '  Business   Angel ')).toEqual({ art: 'anlegen', text: 'Business Angel' });
+  });
+  it('Teiltreffer: Anlegen-Zeile bleibt (unter den Treffern), genauer Treffer: keine', () => {
+    expect(wahlFiltern(T, 'kunde').map(e => e.id)).toEqual(['Kunde', 'Zielkunde']);
+    expect(anlegenZeile(T, 'kund')).toEqual({ art: 'anlegen', text: 'kund' });
+    expect(anlegenZeile(T, 'KUNDE')).toBeNull();
+    expect(anlegenZeile(T, 'tech-gruender')).toBeNull();
+  });
+  it('Längenprüfung: Standard 2–60, eigene Grenzen, Leerraum zählt nicht mit', () => {
+    expect([NEU_MIN, NEU_MAX]).toEqual([2, 60]);
+    expect(neuPruefen('  Presse ', 'Typ')).toEqual({ ok: true, wert: 'Presse' });
+    expect(neuPruefen('x', 'Typ')).toEqual({ ok: false, fehler: 'Typ: 2–60 Zeichen (jetzt 1).' });
+    expect(neuPruefen('   ', 'Typ').ok).toBe(false);
+    expect(neuPruefen('a'.repeat(60), 'Typ').ok).toBe(true);
+    expect(neuPruefen('a'.repeat(61), 'Typ').ok).toBe(false);
+    expect(neuPruefen('a'.repeat(41), 'Einheit', 2, 40)).toEqual({ ok: false, fehler: 'Einheit: 2–40 Zeichen (jetzt 41).' });
+    expect(neuPruefen('KD   Ventures', 'Einheit', 2, 40)).toEqual({ ok: true, wert: 'KD Ventures' });
+    expect(neuSaeubern(' a \n b ')).toBe('a b');
   });
 });

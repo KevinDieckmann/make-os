@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dealRolleVorschlag, kontaktRollenVorschlag, anredeVorschlag, besterEntscheider, warmGrund } from '@/lib/crm/vorschlaege';
+import { dealRolleVorschlag, kontaktRollenVorschlag, anredeVorschlag, besterEntscheider, warmGrund, offeneRollenVorschlaege, vorschlaegeAnwenden, vorschlaegeZuruecknehmen } from '@/lib/crm/vorschlaege';
 import type { Kontakt, Aktivitaet } from '@/lib/make-one/crm';
 
 const HEUTE = '2026-09-27';
@@ -128,5 +128,41 @@ describe('dealRolleVorschlag — deutsche Zusammensetzungen', () => {
     expect(rolle({ position: 'Vorstandsreferentin' })?.id).toBe('nutzer');
     expect(rolle({ position: 'Director of Engineering' })?.id).toBe('nutzer');
     expect(rolle({ position: 'Director of Engineering', aktivitaeten: [gespraech('2026-09-26')] })?.grund).toContain('Gespräch gestern');
+  });
+});
+
+describe('Sammel-Übernahme am Deal (27.09. spät)', () => {
+  const ceo = k({ id: 'c-ceo', position: 'CEO' });
+  const dev = k({ id: 'c-dev', position: 'Softwareentwickler' });
+  const ohne = k({ id: 'c-ohne', position: 'Musiker' });
+  const cto = k({ id: 'c-cto', position: 'CTO' });
+  it('offene Vorschläge: nur Personen ohne Rolle und mit verwertbarem Titel', () => {
+    const offen = offeneRollenVorschlaege([ceo, dev, ohne, cto], { personenRollen: { 'c-cto': 'blocker' } }, HEUTE);
+    expect(Object.keys(offen)).toEqual(['c-ceo', 'c-dev']);
+    expect(offen['c-ceo'].id).toBe('entscheider');
+    expect(offen['c-dev'].id).toBe('nutzer');
+  });
+  it('setzt alle Vorschläge in EINEM Objekt, bestehende Rollen bleiben', () => {
+    const r = vorschlaegeAnwenden({ 'c-cto': 'blocker', 'c-ceo': 'fuersprecher' }, {
+      'c-ceo': { id: 'entscheider', grund: 'CEO laut Position' },
+      'c-dev': { id: 'nutzer', grund: 'Softwareentwickler laut Position' },
+      'c-cto': { id: 'entscheider', grund: 'CTO laut Position' },
+      'c-leer': null,
+    });
+    expect(r.rollen).toEqual({ 'c-cto': 'blocker', 'c-ceo': 'fuersprecher', 'c-dev': 'nutzer' });
+    expect(r.gesetzt).toEqual({ 'c-dev': 'nutzer' });
+  });
+  it('„Bremst“ wird nie gesetzt; ohne Bestand geht es auch; Eingabe bleibt unverändert', () => {
+    const alt = { 'c-a': 'nutzer' as const };
+    const r = vorschlaegeAnwenden(alt, { 'c-b': { id: 'blocker', grund: 'x' }, 'c-c': { id: 'entscheider', grund: 'y' } });
+    expect(r.rollen).toEqual({ 'c-a': 'nutzer', 'c-c': 'entscheider' });
+    expect(alt).toEqual({ 'c-a': 'nutzer' });
+    expect(vorschlaegeAnwenden(undefined, {}).rollen).toEqual({});
+  });
+  it('Rückgängig: nimmt genau die übernommenen Rollen heraus, Hand-Änderungen seitdem bleiben', () => {
+    const { rollen, gesetzt } = vorschlaegeAnwenden({ 'c-a': 'nutzer' }, { 'c-b': { id: 'entscheider', grund: 'x' }, 'c-c': { id: 'nutzer', grund: 'y' } });
+    expect(vorschlaegeZuruecknehmen(rollen, gesetzt)).toEqual({ 'c-a': 'nutzer' });
+    // Inzwischen c-c von Hand auf Fürsprecher gestellt — bleibt.
+    expect(vorschlaegeZuruecknehmen({ ...rollen, 'c-c': 'fuersprecher' }, gesetzt)).toEqual({ 'c-a': 'nutzer', 'c-c': 'fuersprecher' });
   });
 });

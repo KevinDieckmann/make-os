@@ -30,7 +30,7 @@ import { KREIS_WORT } from '@/lib/crm/wertelisten';
 import { ZustaendigWahl, Uebergeben, Person } from './team';
 import { neueFirma, ROLLEN } from './Firmen';
 import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
-import { WertelistenWahl } from './WertelistenWahl';
+import { WertelistenWahl, WertelistenEinzelWahl } from './WertelistenWahl';
 import { phaseVon, PHASE_LABEL, type Phase } from '@/lib/crm/phase';
 
 export const PHASEN: { id: Lebensphase; label: string }[] = [
@@ -354,8 +354,10 @@ type MatrixArgs = { k: Kontakt; api: CrmApi; setze: Setze; zuFirma: (id: string)
  * Person, Firma (Branchen aus der Werteliste), Herkunft der Daten, private
  * Notiz. Gehört die Person zu einer Firma, bearbeitet die Firmengruppe den
  * Firmeneintrag (für alle ihre Personen); sonst die Firmenfelder aus dem
- * Import. Typ, Kategorie und Branchen kommen aus den Wertelisten
- * (WertelistenWahl: alle Werte, Suche, „+ neu“ legt in der Werteliste an).
+ * Import. Typ, Kategorie und Branchen kommen aus den Wertelisten: Typ und
+ * Kategorie als Wahl-Chip mit Menü, Suche und „+ neu …“ (WertelistenEinzelWahl,
+ * Kevin 27.09. spät), Branchen als scrollbare Mehrfachwahl (WertelistenWahl);
+ * „+ neu“ legt in beiden in der Werteliste an.
  */
 function matrixTeile({ k, api, setze, zuFirma }: MatrixArgs): { inhalt: Record<MatrixTeil, ReactNode>; zahl: Partial<Record<MatrixTeil, [number, number]>>; rechts: Partial<Record<MatrixTeil, ReactNode>> } {
   const crm = api.crm;
@@ -364,7 +366,7 @@ function matrixTeile({ k, api, setze, zuFirma }: MatrixArgs): { inhalt: Record<M
   const v = vollstaendigkeit(k, firma);
   const listen = wertelistenVollstaendig(crm?.stand.wertelisten);
   const einzel = (label: string, liste: 'typen' | 'kategorien', wert: string | undefined, setzen: (w: string | undefined) => void) => (
-    <MatrixRahmen key={label} label={label}><WertelistenWahl liste={liste} werte={listen[liste]} aktiv={wert ? [wert] : []} onWahl={a => setzen(a[0])} api={api} /></MatrixRahmen>
+    <MatrixRahmen key={label} label={label} mittig><WertelistenEinzelWahl liste={liste} werte={listen[liste]} wert={wert} onWahl={setzen} api={api} /></MatrixRahmen>
   );
   const branchenWahl = (aktiv: string[], setzen: (b: string[]) => void) => (
     <MatrixRahmen label="Branchen"><WertelistenWahl liste="branchen" mehrfach werte={listen.branchen} aktiv={aktiv} onWahl={setzen} api={api} /></MatrixRahmen>
