@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITEL}}</title>
+<meta name="description" content="{{BESCHREIBUNG}}">
+<meta property="og:title" content="{{TITEL_ATTR}}">
+<meta property="og:description" content="{{BESCHREIBUNG}}">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0B0E10">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/ci.css">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body data-spur="privat" data-seite="{{SEITE}}" data-sicht-standard="{{SICHT}}">
+
+<header class="nav">
+  <div class="fortschritt" aria-hidden="true"></div>
+  <div class="wrap">
+    <a class="marke" href="index.html" aria-label="MAKE OS — Startseite">
+      <svg viewBox="0 0 240 240" aria-hidden="true"><path d="M50 176 L50 72 L119 141" fill="none" stroke="var(--granat)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/><path d="M121 141 L190 72 L190 176" fill="none" stroke="var(--smaragd)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="wort"><span class="ma">MA</span><span class="ke">KE</span><span class="os">OS</span></span>
+    </a>
+    <span class="kap-label" aria-live="polite"></span>
+    <nav aria-label="Seiten">
+      <a href="index.html" data-seite="index">Start</a>
+      <a href="privat.html" data-seite="privat">Privat</a>
+      <a href="business.html" data-seite="business">Business</a>
+      <a href="zoe.html" data-seite="zoe">ZOE</a>
+      <a href="preise.html" data-seite="preise">Preise</a>
+      <a href="ueber.html" data-seite="ueber">MA + KE</a>
+    </nav>
+    <a class="knopf" href="#testen">Einmal testen</a>
+    <button class="burger" type="button" aria-label="Menü" aria-expanded="false" aria-controls="mobilmenue"><span></span></button>
+  </div>
+</header>
+<div class="mobilmenue" id="mobilmenue">
+  <a href="index.html" data-seite="index">Start · Die Geschichte</a>
+  <a href="privat.html" data-seite="privat">Privat · Gesundheit, Familie, Finanzen, Zeit</a>
+  <a href="business.html" data-seite="business">Business · Markttraktion, Finanzplanung, Mandate</a>
+  <a href="zoe.html" data-seite="zoe">ZOE · Assistentin, Heads, Brain</a>
+  <a href="preise.html" data-seite="preise">Preise · Drei Wege</a>
+  <a href="ueber.html" data-seite="ueber">MA + KE · Über uns</a>
+  <a href="#testen">Einmal testen</a>
+</div>
+<nav class="krumen" aria-label="Du bist hier"><div class="wrap"><a href="index.html">MAKE OS</a>{{KRUMEN}}</div></nav>
+
+<!-- Kapitel-Anzeige (Desktop): baut site.js aus den Abschnitten mit data-kapitel -->
+<nav class="rail" aria-label="Kapitel"></nav>
+
+<!-- Die Sicht: Privat oder Business — jederzeit wechselbar, die ganze Seite folgt -->
+<div class="spur" role="group" aria-label="Sicht wechseln">
+  <span class="mikro">Sicht</span>
+  <button type="button" data-spur="privat" aria-pressed="true">Privat</button>
+  <button type="button" data-spur="business" aria-pressed="false">Business</button>
+</div>
+
+<main id="top">

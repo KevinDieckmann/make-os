@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAKE OS · MA + KE — Malin und Kevin, warum es MAKE OS gibt</title>
+<meta name="description" content="Malin und Kevin bauen und betreiben MAKE OS: warum es das System gibt, wie zwei Menschen ein Brain teilen, ohne alles zu teilen, wo es läuft (bei uns in Deutschland, eigener Bereich je Kunde) und was zuletzt gebaut wurde.">
+<meta property="og:title" content="MAKE OS · MA + KE — Malin und Kevin, warum es MAKE OS gibt">
+<meta property="og:description" content="Malin und Kevin bauen und betreiben MAKE OS: warum es das System gibt, wie zwei Menschen ein Brain teilen, ohne alles zu teilen, wo es läuft (bei uns in Deutschland, eigener Bereich je Kunde) und was zuletzt gebaut wurde.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0B0E10">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/ci.css">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body data-spur="privat" data-seite="ueber" data-sicht-standard="">
+
+<header class="nav">
+  <div class="fortschritt" aria-hidden="true"></div>
+  <div class="wrap">
+    <a class="marke" href="index.html" aria-label="MAKE OS — Startseite">
+      <svg viewBox="0 0 240 240" aria-hidden="true"><path d="M50 176 L50 72 L119 141" fill="none" stroke="var(--granat)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/><path d="M121 141 L190 72 L190 176" fill="none" stroke="var(--smaragd)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="wort"><span class="ma">MA</span><span class="ke">KE</span><span class="os">OS</span></span>
+    </a>
+    <span class="kap-label" aria-live="polite"></span>
+    <nav aria-label="Seiten">
+      <a href="index.html" data-seite="index">Start</a>
+      <a href="privat.html" data-seite="privat">Privat</a>
+      <a href="business.html" data-seite="business">Business</a>
+      <a href="zoe.html" data-seite="zoe">ZOE</a>
+      <a href="preise.html" data-seite="preise">Preise</a>
+      <a href="ueber.html" data-seite="ueber">MA + KE</a>
+    </nav>
+    <a class="knopf" href="#testen">Einmal testen</a>
+    <button class="burger" type="button" aria-label="Menü" aria-expanded="false" aria-controls="mobilmenue"><span></span></button>
+  </div>
+</header>
+<div class="mobilmenue" id="mobilmenue">
+  <a href="index.html" data-seite="index">Start · Die Geschichte</a>
+  <a href="privat.html" data-seite="privat">Privat · Gesundheit, Familie, Finanzen, Zeit</a>
+  <a href="business.html" data-seite="business">Business · Markttraktion, Finanzplanung, Mandate</a>
+  <a href="zoe.html" data-seite="zoe">ZOE · Assistentin, Heads, Brain</a>
+  <a href="preise.html" data-seite="preise">Preise · Drei Wege</a>
+  <a href="ueber.html" data-seite="ueber">MA + KE · Über uns</a>
+  <a href="#testen">Einmal testen</a>
+</div>
+<nav class="krumen" aria-label="Du bist hier"><div class="wrap"><a href="index.html">MAKE OS</a><a href="index.html">Die Geschichte</a><span>MA + KE</span></div></nav>
+
+<!-- Kapitel-Anzeige (Desktop): baut site.js aus den Abschnitten mit data-kapitel -->
+<nav class="rail" aria-label="Kapitel"></nav>
+
+<!-- Die Sicht: Privat oder Business — jederzeit wechselbar, die ganze Seite folgt -->
+<div class="spur" role="group" aria-label="Sicht wechseln">
+  <span class="mikro">Sicht</span>
+  <button type="button" data-spur="privat" aria-pressed="true">Privat</button>
+  <button type="button" data-spur="business" aria-pressed="false">Business</button>
+</div>
+
+<main id="top">
+
+<section class="odyssee kurz" data-formationen="m" aria-label="MA + KE">
+  <div class="buehne" aria-hidden="true" style="--standbild:url(assets/standbild-m.svg)">
+    <div class="raster"></div>
+    <div class="standbild"></div>
+    <canvas id="brain"></canvas>
+  </div>
+  <div class="kapitel" data-kapitel="01" data-titel="Zwei Namen" id="zwei-namen">
+    <div class="wrap">
+      <div class="kinhalt">
+        <span class="mikro">MA + KE · Kapitel 01 · Zwei Namen</span>
+        <h1 class="wie-h2">Zwei Namen. Ein Wort.</h1>
+        <p><strong>MA</strong>lin und <strong>KE</strong>vin — MAKE. Wir haben es selbst als Business-Paar gemerkt: wie schwer es ist, die beiden Welten zu trennen, Zeiten einzuhalten, den Fokus für die Beziehung zu behalten. Also haben wir ein System gebaut, das beides kennt. Erst für uns. Jetzt für dich.</p>
+        <p class="dim">Die Farben auf diesen Seiten haben Namen: <span class="granat-wort">Granat ist Malin</span>, <span class="smaragd-wort">Smaragd ist Kevin</span>. In der Mitte treffen sie sich — da, wo aus zwei Namen ein Wort wird.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="make" class="uebergang" data-kapitel="02" data-titel="Warum MAKE">
+  <div class="wrap">
+    <div class="founder">
+      <div class="m-buehne" data-reveal aria-hidden="true"><canvas id="make-m"></canvas></div>
+      <div data-reveal style="--d:120ms">
+        <span class="mikro">Kapitel 07 · MA + KE</span>
+        <div class="name" id="name" aria-label="Malin und Kevin — MAKE">
+          <span class="z" data-wer="malin"><span class="b">M</span><span class="b">A</span><span class="b">L</span><span class="b">I</span><span class="b">N</span></span>
+          <span class="z" data-wer="kevin"><span class="b">K</span><span class="b">E</span><span class="b">V</span><span class="b">I</span><span class="b">N</span></span>
+          <span class="make"><b>M</b><b>A</b><b>K</b><b>E</b></span>
+        </div>
+        <p class="dim" style="margin-top:18px;max-width:52ch">Zwei Namen, ein Wort. <strong>MA</strong>lin und <strong>KE</strong>vin — MAKE. Wir haben es selbst als Business-Paar gemerkt: wie schwer es ist, die beiden Welten zu trennen, Zeiten einzuhalten, den Fokus für die Beziehung zu behalten. Also haben wir ein System gebaut, das beides kennt — Struktur für die Partnerschaft und fürs Unternehmen, leichter und planbarer, mit einer Hilfe, die im Hintergrund läuft. Erst für uns. Jetzt für dich.</p>
+        <p class="dim" style="margin-top:12px;max-width:52ch">Die Farben auf dieser Seite haben Namen: <span class="granat-wort">Granat ist Malin</span>, <span class="smaragd-wort">Smaragd ist Kevin</span>. In der Mitte treffen sie sich — da, wo aus zwei Namen ein Wort wird.</p>
+      </div>
+    </div>
+    <div class="personen" data-reveal>
+      <div class="person" style="--f:var(--granat)"><div class="bild" aria-label="Malin">M</div><b>Malin</b><span>Mitgründerin · Zahlen, Ordnung, Haushalt und das Auge für das, was fehlt. Hat mit dem ersten Finanz-Cockpit den Grundstein für die privaten Finanzen gelegt.</span></div>
+      <div class="person" style="--f:var(--smaragd)"><div class="bild" aria-label="Kevin">K</div><b>Kevin</b><span>Mitgründer · Unternehmer und Berater. Baut MAKE OS mit KI als täglichem Werkzeug — und mit der Regel, dass die KI nie das letzte Wort hat.</span></div>
+      <p class="zitat">„Wir wollten keine Auswertung, die uns hinterherrechnet. Wir wollten ein System, das uns beide führt — und das uns gehört.“</p>
+    </div>
+    <div class="kopf zweit-kopf" data-reveal>
+      <span class="mikro">Zu zweit</span>
+      <h2>Ein System für zwei — ohne dass einer alles sieht.</h2>
+      <p>Wer zusammen lebt und zusammen baut, braucht ein gemeinsames Brain und trotzdem eigene Räume. MAKE OS trennt vor der Suche, nicht danach: Privates bleibt privat, Gemeinsames ist gemeinsam, Übergaben und Freigaben haben einen Namen dran.</p>
+    </div>
+    <div class="raeume">
+      <div class="raum" data-reveal style="--f:var(--granat)"><div class="kopfz"><i></i>privat-malin</div><p>Körperdaten, private Notizen, eigener Fokus. Kevin sieht davon nichts — ZOE auch nur, wenn Malin fragt.</p></div>
+      <div class="raum" data-reveal style="--f:var(--smaragd);--d:80ms"><div class="kopfz"><i></i>privat-kevin</div><p>Genauso — nur andersherum. Jede Person hat ihr eigenes Konto, ihren eigenen Raum, ihre eigene Sicht.</p></div>
+      <div class="raum" data-reveal style="--f:#58D9CD;--d:160ms"><div class="kopfz"><i></i>gemeinsam</div><p>Kalender, Haushalt, Markttraktion, Regeln fürs Brain. Änderungen tragen einen Stand — niemand überschreibt still den anderen.</p></div>
+    </div>
+
+  </div>
+</section>
+
+<section id="server" data-kapitel="03" data-titel="Dein Bereich">
+  <div class="wrap">
+    <div class="kopf" data-reveal>
+      <span class="mikro">Kapitel 03 · Dein Bereich</span>
+      <h2>Dein Bereich. Dein Brain. Deine Entscheidung.</h2>
+      <p>MAKE OS läuft bei uns in Deutschland, betrieben von Malin und Kevin — mit einem eigenen, getrennten Bereich je Kunde: eigene Bestände, eigener Schlüssel, verschlüsselt im Ruhezustand. Das Wissen liegt als Markdown in deinem Vault, die Suche rechnet bei uns, nie in einer fremden Cloud. Nach außen geht genau eines: die Frage an das Sprachmodell. Und selbst die geht nur, wenn ihr es wollt.</p>
+    </div>
+    <div class="arch">
+      <div class="fluss" data-reveal>
+        <div class="knoten"><div class="icon" aria-hidden="true">▤</div><div><b>Vault (Obsidian)</b><span>Deine Notizen, Protokolle, Regeln — Markdown, Git-Versionen, jederzeit exportierbar.</span></div></div>
+        <div class="pfeil" aria-hidden="true">↓</div>
+        <div class="knoten"><div class="icon" aria-hidden="true">≡</div><div><b>Dein Bereich bei MAKE OS</b><span>Eigene Bestände, eigener Schlüssel, Volltext und Embeddings — bei uns gerechnet, nie in einer fremden Cloud.</span></div></div>
+        <div class="pfeil" aria-hidden="true">↓</div>
+        <div class="knoten"><div class="icon" aria-hidden="true">◎</div><div><b>ZOE</b><span>Liest mit Sicht (privat-kevin, privat-malin, gemeinsam), handelt mit Werkzeugen.</span></div></div>
+        <div class="pfeil" aria-hidden="true">↓</div>
+        <div class="knoten" style="border-color:rgba(255,201,60,.4)"><div class="icon" aria-hidden="true" style="color:#FFC93C">✋</div><div><b>Der Stapel</b><span>Alles Ausgehende wartet auf ein Ja. Kein Versand, keine Einladung, keine Zahlung ohne Mensch.</span></div></div>
+      </div>
+      <div class="garantien" data-reveal>
+        <div class="garantie"><b>Verschlüsselt im Ruhezustand</b><span>AES-256-GCM, eigener Schlüssel je Kunde. Eine kopierte Platte ist wertlos.</span></div>
+        <div class="garantie"><b>Zwei Faktoren, ein Bereich</b><span>Konten mit 2FA, Räume je Person, Zugriff nur im eigenen Bereich — kein Kunde sieht den anderen.</span></div>
+        <div class="garantie"><b>DSGVO im Code</b><span>Art. 14, 15, 17, 21 als Funktionen — nicht als PDF im Ordner.</span></div>
+        <div class="garantie"><b>Sicherung jede Nacht</b><span>Verschlüsselt, in Deutschland, mit Dead-Man-Meldung, wenn sie ausbleibt. Der Head of IT wacht.</span></div>
+        <div class="garantie"><b>Läuft ohne Guthaben weiter</b><span>Regelwerke tragen den Takt, wenn das Modell schweigt.</span></div>
+        <div class="garantie"><b>Offen für euch</b><span>Export als JSON und CSV jederzeit, Vault als Git — der Rückweg bleibt offen.</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section id="entwicklung" data-kapitel="04" data-titel="Die Entwicklung">
+  <div class="wrap">
+    <div class="kopf" data-reveal>
+      <span class="mikro">Kapitel 04 · Die Entwicklung</span>
+      <h2>Zuletzt gebaut. Nicht versprochen.</h2>
+      <p>MAKE OS läuft täglich bei uns — und wächst täglich. Das hier sind echte Einträge aus dem Bautagebuch, keine Ankündigungen.</p>
+    </div>
+    <div class="log">
+      <div class="eintrag" data-reveal><time>27.09.</time><div><b>Kalender neu</b><span>Tag, Woche, Monat, Agenda · Schnelleingabe · Serie und Erinnerung · Ziehen im Zeitraster</span></div></div>
+      <div class="eintrag" data-reveal style="--d:60ms"><time>27.09.</time><div><b>Brain-Index und Regelwerk</b><span>Volltext und lokale Embeddings über den Vault · Konstitution und Regeln mit Freigabe · Brain-Inbox · nächtliche Konsolidierung</span></div></div>
+      <div class="eintrag" data-reveal style="--d:120ms"><time>27.09.</time><div><b>Head of IT</b><span>Lagebild innen, Host und von außen · CSP-Meldeweg · Anmelde-Alarm · Code-Wache bei jedem Stand</span></div></div>
+      <div class="eintrag" data-reveal style="--d:180ms"><time>27.09.</time><div><b>Markttraktion komplett</b><span>Deals mit Server-Regeln · Follow-up-Ebene · Marketing-Strecke und Anfragen · Events mit Brücke zu Lead und Deal</span></div></div>
+      <div class="eintrag" data-reveal style="--d:240ms"><time>26.09.</time><div><b>Verschlüsselung im Ruhezustand und 2FA</b><span>AES-256-GCM je Bestand · Zwei-Faktor-Anmeldung · Anmelde-Protokoll · Haushalts-Räume</span></div></div>
+      <div class="eintrag" data-reveal style="--d:300ms"><time>25.09.</time><div><b>Aktiv bei uns in Deutschland</b><span>Eigener Betrieb · nächtliche verschlüsselte Sicherung · iCloud-Kalender direkt · Zeit &amp; Fokus als Säule</span></div></div>
+    </div>
+
+  </div>
+</section>
+
+<section id="weiter" class="uebergang" data-kapitel="05" data-titel="Weiter">
+  <div class="wrap">
+    <div class="kopf" data-reveal><span class="mikro">Weiter</span><h2>Die Welten — und was es kostet.</h2></div>
+    <div class="einstiege">
+      <a class="einstieg" href="privat.html" data-reveal style="--f:#58D9CD"><span class="mikro">Privat</span><h3>Gesundheit, Familie, Finanzen, Zeit.</h3><b>Die private Welt →</b></a>
+      <a class="einstieg" href="business.html" data-reveal style="--f:#FF9F43;--d:60ms"><span class="mikro">Business</span><h3>Markttraktion, Finanzplanung, Mandate.</h3><b>Die Business-Welt →</b></a>
+      <a class="einstieg" href="zoe.html" data-reveal style="--f:#C77DFF;--d:120ms"><span class="mikro">ZOE &amp; Brain</span><h3>Die KI im Hintergrund.</h3><b>ZOE kennenlernen →</b></a>
+      <a class="einstieg" href="preise.html" data-reveal style="--f:#FFC93C;--d:180ms"><span class="mikro">Preise</span><h3>Drei Wege. Ein System.</h3><b>Was es kostet →</b></a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Einmal testen (auf jeder Seite) ────────────────────────────────────────── -->
+<section id="testen" class="testen" data-kapitel="99" data-titel="Einmal testen">
+  <div class="wrap">
+    {{teil:testen}}
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div><a class="marke" href="index.html" style="margin-bottom:10px"><svg viewBox="0 0 240 240" aria-hidden="true"><path d="M50 176 L50 72 L119 141" fill="none" stroke="var(--granat)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/><path d="M121 141 L190 72 L190 176" fill="none" stroke="var(--smaragd)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="wort"><span class="ma">MA</span><span class="ke">KE</span><span class="os">OS</span></span></a><span>Life &amp; Business Operating System.<br>Gebaut und betrieben von Malin und Kevin. Läuft in Deutschland — mit einem eigenen Bereich je Kunde.</span></div>
+    <div><b>Seiten</b><a href="index.html">Start · Die Geschichte</a><a href="privat.html">Privat</a><a href="business.html">Business</a><a href="zoe.html">ZOE &amp; Brain</a><a href="preise.html">Preise</a><a href="ueber.html">MA + KE</a></div>
+    <div><b>Rechtliches</b><a href="#impressum">Impressum</a><a href="#datenschutz">Datenschutz</a><span>Kein Tracking, keine Cookies, keine Schriften von Dritten. Die Sicht (Privat/Business) merkt sich nur dein Browser für diesen Besuch.</span></div>
+    <div class="unten"><span>© 2026 MAKE OS · Malin &amp; Kevin</span><span>Alle Namen, Firmen, Termine und Zahlen auf dieser Seite sind Beispiele.</span></div>
+  </div>
+</footer>
+
+<button class="nachoben" type="button" aria-label="Nach oben">↑</button>
+<script src="js/formationen.js" defer></script>
+<script src="js/site.js" defer></script>
+<script src="js/brain.js" defer></script>
+</body>
+</html>

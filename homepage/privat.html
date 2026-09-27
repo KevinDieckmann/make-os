@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAKE OS · Privat — Gesundheit, Familie, Finanzen, Zeit</title>
+<meta name="description" content="Die private Welt von MAKE OS: Privat-Index, Gesundheit mit Erholung und Schlaf, Beziehung und Familie, Haushaltsfinanzen, Zeit und Fokus, Kalender, Journal — und was ZOE dort im Hintergrund tut.">
+<meta property="og:title" content="MAKE OS · Privat — Gesundheit, Familie, Finanzen, Zeit">
+<meta property="og:description" content="Die private Welt von MAKE OS: Privat-Index, Gesundheit mit Erholung und Schlaf, Beziehung und Familie, Haushaltsfinanzen, Zeit und Fokus, Kalender, Journal — und was ZOE dort im Hintergrund tut.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0B0E10">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/ci.css">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body data-spur="privat" data-seite="privat" data-sicht-standard="privat">
+
+<header class="nav">
+  <div class="fortschritt" aria-hidden="true"></div>
+  <div class="wrap">
+    <a class="marke" href="index.html" aria-label="MAKE OS — Startseite">
+      <svg viewBox="0 0 240 240" aria-hidden="true"><path d="M50 176 L50 72 L119 141" fill="none" stroke="var(--granat)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/><path d="M121 141 L190 72 L190 176" fill="none" stroke="var(--smaragd)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="wort"><span class="ma">MA</span><span class="ke">KE</span><span class="os">OS</span></span>
+    </a>
+    <span class="kap-label" aria-live="polite"></span>
+    <nav aria-label="Seiten">
+      <a href="index.html" data-seite="index">Start</a>
+      <a href="privat.html" data-seite="privat">Privat</a>
+      <a href="business.html" data-seite="business">Business</a>
+      <a href="zoe.html" data-seite="zoe">ZOE</a>
+      <a href="preise.html" data-seite="preise">Preise</a>
+      <a href="ueber.html" data-seite="ueber">MA + KE</a>
+    </nav>
+    <a class="knopf" href="#testen">Einmal testen</a>
+    <button class="burger" type="button" aria-label="Menü" aria-expanded="false" aria-controls="mobilmenue"><span></span></button>
+  </div>
+</header>
+<div class="mobilmenue" id="mobilmenue">
+  <a href="index.html" data-seite="index">Start · Die Geschichte</a>
+  <a href="privat.html" data-seite="privat">Privat · Gesundheit, Familie, Finanzen, Zeit</a>
+  <a href="business.html" data-seite="business">Business · Markttraktion, Finanzplanung, Mandate</a>
+  <a href="zoe.html" data-seite="zoe">ZOE · Assistentin, Heads, Brain</a>
+  <a href="preise.html" data-seite="preise">Preise · Drei Wege</a>
+  <a href="ueber.html" data-seite="ueber">MA + KE · Über uns</a>
+  <a href="#testen">Einmal testen</a>
+</div>
+<nav class="krumen" aria-label="Du bist hier"><div class="wrap"><a href="index.html">MAKE OS</a><a href="index.html">Die Geschichte</a><span>Privat</span></div></nav>
+
+<!-- Kapitel-Anzeige (Desktop): baut site.js aus den Abschnitten mit data-kapitel -->
+<nav class="rail" aria-label="Kapitel"></nav>
+
+<!-- Die Sicht: Privat oder Business — jederzeit wechselbar, die ganze Seite folgt -->
+<div class="spur" role="group" aria-label="Sicht wechseln">
+  <span class="mikro">Sicht</span>
+  <button type="button" data-spur="privat" aria-pressed="true">Privat</button>
+  <button type="button" data-spur="business" aria-pressed="false">Business</button>
+</div>
+
+<main id="top">
+
+<section class="odyssee" data-formationen="herz,familie,score" aria-label="Die private Welt">
+  <div class="buehne" aria-hidden="true" style="--standbild:url(assets/standbild-herz.svg)">
+    <div class="raster"></div>
+    <div class="standbild"></div>
+    <canvas id="brain"></canvas>
+    <div class="ring-zahl"><span class="mikro">Privat-Index</span><b>0</b><span class="ring-name">vier Säulen, eine Zahl</span></div>
+  </div>
+
+  <div class="kapitel" data-kapitel="01" data-titel="Der Körper" id="koerper">
+    <div class="wrap">
+      <div class="kinhalt">
+        <span class="mikro">Privat · Kapitel 01 · Der Körper</span>
+        <h1 class="wie-h2">Erst du. Dann alles andere.</h1>
+        <p>Du bist das wichtigste Kapital in beiden Welten. MAKE OS beginnt deshalb beim Körper: Erholung, Schlaf, Puls aus dem Wearable — und der Frage, ob die Woche trägt, bevor der Körper es dir sagt.</p>
+        <p class="dim">Eine Zahl, ein Hebel, ein Takt aufs Handy. Kein Punkte-Feuerwerk.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="kapitel" data-kapitel="02" data-titel="Die Familie" id="familie-kapitel">
+    <div class="wrap">
+      <div class="kinhalt">
+        <span class="mikro">Privat · Kapitel 02 · Die Familie</span>
+        <h2>Wir zwei zuerst. Dann die Familie.</h2>
+        <p>Zwei Menschen, drei Räume: <span class="granat-wort">privat-malin</span>, <span class="smaragd-wort">privat-kevin</span> und gemeinsam. Zeit zu zweit wird geplant wie ein Kundentermin — und geschützt wie einer.</p>
+        <p class="dim">Rituale, Verabredungen, der Haushalt, die Kinder, Einkauf zu zweit — alles an einem Ort, jede Änderung mit Namen dran.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="kapitel" data-kapitel="03" data-titel="Der Privat-Index" id="privat-index">
+    <div class="wrap">
+      <div class="kinhalt">
+        <span class="mikro">Privat · Kapitel 03 · Der Privat-Index</span>
+        <h2>Vier Säulen. Eine Zahl.</h2>
+        <p>Gesundheit, Beziehung, Finanzen, Fokus &amp; Zeit — jede Säule misst, was wirklich passiert, und der Privat-Index macht daraus eine Zahl mit Farbe: grün, gelb, rot. Er ist die private Hälfte des Wachstums-Scores.</p>
+        <p class="dim">Unten stehen die Bereiche der privaten Welt — genau so, wie sie links in der Software stehen: Übersicht · Finanzen · Aufgaben · Ziele &amp; Planung · Gesundheit · Familie · Kontakte.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Gesundheit ──────────────────────────────────────────────────────────── -->
+<section id="gesundheit" class="uebergang bereich-block" data-kapitel="04" data-titel="Gesundheit">
+  <div class="wrap block">
+    <div class="text" data-reveal>
+      <span class="mikro">Privat › Gesundheit</span>
+      <h2>Erholung, Schlaf, Routinen — und ein Takt, der nur sagt, was heute zählt.</h2>
+      <p>Der Gesundheits-Index rechnet aus Erholung, Schlaf und Puls des Wearables, aus Journal und Routinen. Morgens, mittags, abends kommt ein Takt aufs Handy: der eine Hebel für heute. Der Ernährungs-Agent plant die Woche für den Haushalt — Einkaufsliste inklusive, Vorrat abgezogen.</p>
+      <ul class="zoe-tut"><li>ZOE blockt das Training, wenn der Kalender es frisst — als Vorschlag.</li><li>ZOE schlägt Gerichte aus eurer Bibliothek vor („Unsere Gerichte“, Favoriten zuerst).</li><li>Körperdaten sieht nur die Person selbst — auch ZOE fragt vorher.</li></ul>
+      <p class="zahlt"><b>Zahlt ein:</b> Gesundheits-Index → Säule „Gesundheit“ des Privat-Index.</p>
+    </div>
+    <div class="app" data-reveal style="--d:80ms"><div class="app-kopf"><span class="punkte"><i></i><i></i><i></i></span><span class="titel">Privat › Gesundheit · heute</span><span class="rechts"><span>Wearable · 06:40</span></span></div>
+      <div class="app-rumpf"><div class="app-leiste" aria-hidden="true"><i class="an">H</i><i>Z</i><i>S</i></div><div class="app-inhalt">
+      <div class="karten"><div class="karte"><div class="k">Erholung</div><div class="z" style="color:#FFC93C">62 %</div><div class="u">gelb · leichter Tag</div></div><div class="karte"><div class="k">Schlaf</div><div class="z">6:48</div><div class="u">Ziel 7:30</div></div><div class="karte"><div class="k">HRV</div><div class="z">54</div><div class="u">Ø 7 Tage 51</div></div></div>
+      <div class="liste"><div class="z" style="--f:#3DE28B"><i></i><span>Training · 17:30 geblockt</span><small>Routine</small></div><div class="z" style="--f:#8F86FF"><i></i><span>Heute vor Mitternacht ins Bett — größter Hebel</span><small>Takt · abends</small></div><div class="z" style="--f:#58D9CD"><i></i><span>Ernährung · Woche geplant · Einkauf 14 Posten</span><small>Agent</small></div></div>
+    </div></div></div>
+  </div>
+</section>
+
+<!-- ── Familie ─────────────────────────────────────────────────────────────── -->
+<section id="familie" class="bereich-block" data-kapitel="05" data-titel="Familie">
+  <div class="wrap block umgekehrt">
+    <div class="text" data-reveal>
+      <span class="mikro">Privat › Familie</span>
+      <h2>Zeit zu zweit, Rituale, Haushalt — mit Räumen, die halten.</h2>
+      <p>Der Abend zu zweit steht als Schutz-Block im Kalender; Business sieht ihn nur als „belegt“. Rituale haben einen Rhythmus, der Haushalt seine Aufgaben, der Einkauf seine Liste. Jeder Raum gehört einer Person oder beiden — die Trennung passiert vor der Suche, nicht danach.</p>
+      <ul class="zoe-tut"><li>ZOE erkennt die Kollision (Dienstag 19 Uhr) und schlägt den Fokusblock am Vormittag vor.</li><li>ZOE erinnert an das Ritual, nicht an die Pflicht — im Takt, nicht als Alarm.</li><li>Änderungen im gemeinsamen Raum tragen einen Stand: niemand überschreibt still den anderen.</li></ul>
+      <p class="zahlt"><b>Zahlt ein:</b> Zeit zu zweit und gehaltene Rituale → Säule „Beziehung“.</p>
+    </div>
+    <div class="app" data-reveal style="--d:80ms"><div class="app-kopf"><span class="punkte"><i></i><i></i><i></i></span><span class="titel">Privat › Familie · Woche 40</span><span class="rechts"><span>Raum: gemeinsam</span></span></div>
+      <div class="app-rumpf"><div class="app-leiste" aria-hidden="true"><i class="an">H</i><i>Z</i><i>S</i></div><div class="app-inhalt">
+      <div class="woche">
+        <div class="tag"><b>MO 28.</b><div class="termin" style="--f:#58D9CD">Haushalt · Woche<small>Einkauf, Wäsche</small></div></div>
+        <div class="tag"><b>DI 29.</b><div class="termin" style="--f:#FF7EB6">Abend zu zweit<small>19:00 · geschützt</small></div></div>
+        <div class="tag"><b>MI 30.</b><div class="termin" style="--f:#3DE28B">Training<small>17:30</small></div></div>
+        <div class="tag"><b>DO 1.</b><div class="termin" style="--f:#FF7EB6">Ritual · Wochenblick<small>21:00</small></div></div>
+        <div class="tag"><b>FR 2.</b><div class="termin" style="--f:#58D9CD">Familie · Ausflug<small>ganztags</small></div></div>
+      </div>
+      <div class="liste"><div class="z" style="--f:#D13A55"><i></i><span>privat-malin · 3 eigene Einträge</span><small>nur Malin</small></div><div class="z" style="--f:#22B577"><i></i><span>privat-kevin · 2 eigene Einträge</span><small>nur Kevin</small></div><div class="z" style="--f:#58D9CD"><i></i><span>gemeinsam · Abend zu zweit, Haushalt, Einkauf</span><small>beide</small></div></div>
+    </div></div></div>
+  </div>
+</section>
+
+<!-- ── Finanzen privat ─────────────────────────────────────────────────────── -->
+<section id="finanzen" class="bereich-block" data-kapitel="06" data-titel="Finanzen">
+  <div class="wrap block">
+    <div class="text" data-reveal>
+      <span class="mikro">Privat › Finanzen</span>
+      <h2>Haushalt, Budget, Fixkosten — getrennt gerechnet, gemeinsam gesehen.</h2>
+      <p>Privat und Business rechnen getrennt; der Mindestumsatz verbindet beide. Kontostände, Rücklage, Fixkosten, Steuertermine als Hinweis (keine Steuerberatung) — und jede Zahl zeigt ihre Herkunft. Der Privat-Index nimmt daraus die Säule „Finanzen“.</p>
+      <ul class="zoe-tut"><li>ZOE meldet, wenn die Rücklage unter die Schwelle fällt — mit dem Planposten, der es verursacht.</li><li>ZOE bereitet den Monatsabschluss vor; du gibst ihn frei.</li><li>Steuerfristen stehen als Aufgabe im Kalender — ohne Betrag im Titel.</li></ul>
+      <p class="zahlt"><b>Zahlt ein:</b> Rücklage, Fixkostenquote, Budget-Tempo → Säule „Finanzen“.</p>
+    </div>
+    <div class="app" data-reveal style="--d:80ms"><div class="app-kopf"><span class="punkte"><i></i><i></i><i></i></span><span class="titel">Privat › Finanzen · Haushalt</span><span class="rechts"><span>Stand heute</span></span></div>
+      <div class="app-rumpf"><div class="app-leiste" aria-hidden="true"><i class="an">H</i><i>Z</i><i>S</i></div><div class="app-inhalt">
+      <div class="karten"><div class="karte"><div class="k">Rücklage</div><div class="z">4,2 Mon</div><div class="u">Ziel 6</div></div><div class="karte"><div class="k">Fixkosten</div><div class="z">2.140 €</div><div class="u">41 % vom Netto</div></div><div class="karte"><div class="k">Budget · Sept.</div><div class="z" style="color:#3DE28B">im Tempo</div><div class="u">−180 € zum Plan</div></div></div>
+      <div class="saeulen"><div class="saeule" style="--f:#58D9CD"><span>Wohnen</span><div class="balken"><i style="width:78%"></i></div><b>78</b></div><div class="saeule" style="--f:#58D9CD"><span>Lebensmittel</span><div class="balken"><i style="width:62%"></i></div><b>62</b></div><div class="saeule" style="--f:#FFC93C"><span>Mobilität</span><div class="balken"><i style="width:91%"></i></div><b>91</b></div><div class="saeule" style="--f:#58D9CD"><span>Kinder</span><div class="balken"><i style="width:54%"></i></div><b>54</b></div></div>
+      <div class="liste"><div class="z" style="--f:#FFC93C"><i></i><span>Rücklage unter 4,5 Monaten — Planposten „Auto“ prüfen</span><small>Befund</small></div></div>
+    </div></div></div>
+  </div>
+</section>
+
+<!-- ── Zeit & Fokus ────────────────────────────────────────────────────────── -->
+<section id="zeit" class="bereich-block" data-kapitel="07" data-titel="Zeit & Fokus">
+  <div class="wrap block umgekehrt">
+    <div class="text" data-reveal>
+      <span class="mikro">Privat › Ziele &amp; Planung › Fokus</span>
+      <h2>Gemessene Zeit statt gefühlter.</h2>
+      <p>MAKE OS misst, wo du bist — automatisch je Bereich, bewusst als Fokus-Zähler. Heute und sieben Tage, je Welt. Fokus-Tage ab 25 Minuten am Stück. Unter einer Stunde in sieben Tagen gibt es keine Note, sondern eine Lücke — ehrlich statt geschönt.</p>
+      <ul class="zoe-tut"><li>ZOE legt Fokusblöcke dorthin, wo der Kalender es hergibt — und schützt sie.</li><li>Der Kalender-Agent prüft die Woche auf Konflikte und fehlende Schutz-Blöcke.</li><li>Ziele &amp; Planung: Jahr → Quartal → Woche, je Welt oder gemeinsam.</li></ul>
+      <p class="zahlt"><b>Zahlt ein:</b> Fokus-Tage und Zeit je Welt → Säule „Fokus &amp; Zeit“ (in beiden Indizes).</p>
+    </div>
+    <div class="app" data-reveal style="--d:80ms"><div class="app-kopf"><span class="punkte"><i></i><i></i><i></i></span><span class="titel">Fokus · 7 Tage</span><span class="rechts"><span>Zähler: 00:41:12</span></span></div>
+      <div class="app-rumpf"><div class="app-leiste" aria-hidden="true"><i class="an">H</i><i>Z</i><i>S</i></div><div class="app-inhalt">
+      <div class="karten"><div class="karte"><div class="k">Fokus-Tage</div><div class="z">5<small style="font-size:.5em;color:#6E7A7D">/7</small></div><div class="u">≥ 25 min bewusst</div></div><div class="karte"><div class="k">Privat</div><div class="z" style="color:#58D9CD">9,2 h</div><div class="u">Familie, Gesundheit, Zahlen</div></div><div class="karte"><div class="k">Business</div><div class="z" style="color:#FF9F43">31,4 h</div><div class="u">Markttraktion, Mandate</div></div></div>
+      <div class="saeulen"><div class="saeule" style="--f:#58D9CD"><span>Mo</span><div class="balken"><i style="width:40%"></i></div><b>1:40</b></div><div class="saeule" style="--f:#58D9CD"><span>Di</span><div class="balken"><i style="width:72%"></i></div><b>2:55</b></div><div class="saeule" style="--f:#58D9CD"><span>Mi</span><div class="balken"><i style="width:55%"></i></div><b>2:10</b></div><div class="saeule" style="--f:#FFC93C"><span>Do</span><div class="balken"><i style="width:18%"></i></div><b>0:45</b></div></div>
+    </div></div></div>
+  </div>
+</section>
+
+<!-- ── Kalender & Journal ──────────────────────────────────────────────────── -->
+<section id="kalender" class="bereich-block" data-kapitel="08" data-titel="Kalender & Journal">
+  <div class="wrap block">
+    <div class="text" data-reveal>
+      <span class="mikro">Kopf › Kalender · Privat › Gesundheit › Journal</span>
+      <h2>Ein Kalender für beide Welten. Ein Journal für dich.</h2>
+      <p>Tag, Woche, Monat, Agenda — direkt auf iCloud, mit euren Kalendern und Farben. „Mo 10 Uhr Kaffee mit Jonas 45min“ reicht als Eingabe. Ziehen verschiebt, Serie und Erinnerung kommen mit, Fristen aus dem ganzen System liegen daneben. Nie Einladungen, nie Versand. Das Journal gehört nur dir — abends drei Zeilen, morgens ein Satz.</p>
+      <ul class="zoe-tut"><li>ZOE liest das Journal nur, wenn du sie fragst — und nie für die andere Person.</li><li>Der Kalender-Agent ordnet zu, welcher Kalender wem gehört, und meldet Konflikte.</li><li>Die Ganztags-Zeile zeigt Aufgaben mit Datum, Überfälliges, Fristen, Zahlungen.</li></ul>
+      <p class="zahlt"><b>Zahlt ein:</b> gehaltene Schutz-Blöcke → „Beziehung“ und „Fokus &amp; Zeit“; Journal-Streak → „Gesundheit“ (nur, wenn geführt).</p>
+    </div>
+    <div class="app" data-reveal style="--d:80ms"><div class="app-kopf"><span class="punkte"><i></i><i></i><i></i></span><span class="titel">Kalender · Woche 40</span><span class="rechts"><span>iCloud · aktiv</span></span></div>
+      <div class="app-rumpf"><div class="app-leiste" aria-hidden="true"><i class="an">H</i><i>Z</i><i>S</i></div><div class="app-inhalt">
+      <div class="woche">
+        <div class="tag"><b>MO 28.</b><div class="termin" style="--f:#4FC3F7">Power Hour<small>09:00–10:00</small></div><div class="termin" style="--f:#8F86FF">Fokus: Angebot<small>10:30–12:00</small></div></div>
+        <div class="tag"><b>DI 29.</b><div class="termin" style="--f:#4FC3F7">Jonas · Pilotprojekt<small>10:00–11:00</small></div><div class="termin" style="--f:#FF7EB6">Abend zu zweit<small>19:00</small></div></div>
+        <div class="tag"><b>MI 30.</b><div class="termin" style="--f:#FF9F43">Nordlicht · Angebot<small>11:00–11:30</small></div><div class="termin" style="--f:#3DE28B">Training<small>17:30</small></div></div>
+        <div class="tag"><b>DO 1.</b><div class="termin" style="--f:#FFC93C">USt-Voranmeldung<small>Frist</small></div></div>
+        <div class="tag"><b>FR 2.</b><div class="termin" style="--f:#4FC3F7">Wochenreview<small>14:00–15:00</small></div><div class="termin" style="--f:#58D9CD">Scoreboard<small>15:00</small></div></div>
+      </div>
+      <div class="suche"><div class="treffer"><b>Journal · gestern</b><small>nur du · 22:14</small><span>„Guter Tag. Angebot fast fertig, Abend zu zweit gehalten. Morgen früher ins Bett.“</span></div></div>
+    </div></div></div>
+  </div>
+</section>
+
+<!-- ── Weiter ──────────────────────────────────────────────────────────────── -->
+<section id="weiter" class="uebergang" data-kapitel="09" data-titel="Weiter">
+  <div class="wrap">
+    <div class="kopf" data-reveal><span class="mikro">Weiter</span><h2>Die andere Welt — und wer im Hintergrund hilft.</h2></div>
+    <div class="einstiege zwei">
+      <a class="einstieg" href="business.html" data-reveal style="--f:#FF9F43"><span class="mikro">Business</span><h3>Markttraktion, Finanzplanung, Mandate.</h3><p>Der Business-Index, die Pipeline mit Server-Regeln, Follow-ups, die keiner fallen lässt, Finanzplanung mit Szenarien.</p><b>Die Business-Welt →</b></a>
+      <a class="einstieg" href="zoe.html" data-reveal style="--f:#C77DFF;--d:80ms"><span class="mikro">ZOE &amp; Brain</span><h3>Die KI im Hintergrund.</h3><p>Werkzeuge, Stapel, das Team der Heads, das Brain aus deinem Vault — und die Regel: nichts geht ohne dein Ja raus.</p><b>ZOE kennenlernen →</b></a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Einmal testen (auf jeder Seite) ────────────────────────────────────────── -->
+<section id="testen" class="testen" data-kapitel="99" data-titel="Einmal testen">
+  <div class="wrap">
+    {{teil:testen}}
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div><a class="marke" href="index.html" style="margin-bottom:10px"><svg viewBox="0 0 240 240" aria-hidden="true"><path d="M50 176 L50 72 L119 141" fill="none" stroke="var(--granat)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/><path d="M121 141 L190 72 L190 176" fill="none" stroke="var(--smaragd)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="wort"><span class="ma">MA</span><span class="ke">KE</span><span class="os">OS</span></span></a><span>Life &amp; Business Operating System.<br>Gebaut und betrieben von Malin und Kevin. Läuft in Deutschland — mit einem eigenen Bereich je Kunde.</span></div>
+    <div><b>Seiten</b><a href="index.html">Start · Die Geschichte</a><a href="privat.html">Privat</a><a href="business.html">Business</a><a href="zoe.html">ZOE &amp; Brain</a><a href="preise.html">Preise</a><a href="ueber.html">MA + KE</a></div>
+    <div><b>Rechtliches</b><a href="#impressum">Impressum</a><a href="#datenschutz">Datenschutz</a><span>Kein Tracking, keine Cookies, keine Schriften von Dritten. Die Sicht (Privat/Business) merkt sich nur dein Browser für diesen Besuch.</span></div>
+    <div class="unten"><span>© 2026 MAKE OS · Malin &amp; Kevin</span><span>Alle Namen, Firmen, Termine und Zahlen auf dieser Seite sind Beispiele.</span></div>
+  </div>
+</footer>
+
+<button class="nachoben" type="button" aria-label="Nach oben">↑</button>
+<script src="js/formationen.js" defer></script>
+<script src="js/site.js" defer></script>
+<script src="js/brain.js" defer></script>
+</body>
+</html>

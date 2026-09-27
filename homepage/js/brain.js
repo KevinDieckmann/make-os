@@ -1,499 +1,258 @@
-// ─── MAKE OS Homepage — Die Bühne (27.09., fünfter Durchgang) ──────────────────
+// ─── MAKE OS Homepage — Die Neuronen-Bühne (27.09., siebter Durchgang) ────────────
 // Ein Netz aus Knoten und Verbindungen auf einem 2D-Canvas. Kein WebGL, keine
-// Bibliothek, kein Kopieren: alles hier ist eigene Geometrie.
+// Bibliothek. Die Geometrie kommt aus js/formationen.js — dieselbe Datei erzeugt
+// in Node die Standbilder (standbild.mjs).
 //
-// Kevins Richtung im vierten Durchgang: kein Spektakel im Hero — oben steht die
-// Score-Scheibe aus der Software. Die Bühne erzählt darunter in vier Kapiteln,
-// ruhig und in der CI (dunkel, Türkis als Akzent, Orange für die Business-Sicht
-// wie in der Software; Granat und Smaragd bleiben den Personen vorbehalten):
-//   01 Zwei Welten   zwei Ringe — Privat (Türkis) und Business (Orange) — die
-//                    sich überlappen; in der Schnittmenge der Konflikt um 19 Uhr
-//   02 Sieben Apps   alles zerfällt in neun graue Haufen mit Chips („alles gut“)
-//   03 Messbar       die Haufen finden sich zu EINEM Ring: der Index füllt sich
-//                    in der Farbe der gewählten Sicht, die Zahl zählt hoch
-//   04 ZOE hilft     der Ring wird zum Brain (die Helferin): ein Impuls läuft vom
-//                    Kern nach außen, bleibt im Stapel stehen, wartet auf dein Ja
-// Dazu die kleine Bühne im Founder-Abschnitt (Granat + Smaragd → M) und ein sehr
-// leises Netz hinter der Score-Scheibe im Hero (≈10 % Deckkraft, aus bei reduced-motion).
-// Jeder Lauf pausiert, sobald seine Bühne den Viewport verlässt (IntersectionObserver).
+// Baustein: <section class="odyssee" data-formationen="a,b,c"> mit einer .buehne
+// (sticky, 100 vh) und je Kapitel einem .kapitel. Die Bühne mischt die Formationen
+// entlang des Scrollens (kontinuierlicher Kapitelindex mit ruhigen Fenstern um jede
+// Kapitelmitte — Bewegung folgt dem Scrollen, nie umgekehrt). Je Seite eine andere
+// Reihe von Formationen, so setzt sich die visuelle Story von Seite zu Seite fort.
 //
-// Regeln: Bewegung folgt dem Scrollen, nie umgekehrt (kein Scrolljacking).
-// prefers-reduced-motion → keine Dauerbewegung, nur der Zustand je Kapitel.
-// Ohne Canvas bleibt das Standbild (SVG). Handy: weniger Knoten, Finger statt Maus.
+// Besonderheiten je Formation (nur, wenn das Kapitel sie mitbringt):
+//   welten  → .welt-chips (Konflikt um 19 Uhr)      chaos → .chips („alles gut“)
+//   ring/score/index → .ring-zahl, Füllung = Score der Sicht
+//   brain   → Impuls vom Kern nach außen (Breitensuche), .stapel-chip wartet auf das Ja
+// Dazu: kleine Bühne #make-m (Granat + Smaragd → M) und das leise Netz im Hero (#hero-netz).
+// prefers-reduced-motion: kein Dauerlauf, ein Bild je Scroll-Stand. Ohne Canvas bleibt
+// das Standbild (SVG) stehen. Jeder Lauf pausiert, wenn seine Bühne den Viewport verlässt.
 (() => {
   'use strict';
+  const MF = globalThis.MakeFormationen; if (!MF) return;
+  const F = MF.FARBEN;
   const ruhig = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const handy = matchMedia('(max-width: 820px)').matches;
   const TAU = Math.PI * 2;
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   const glatt = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
   const spanne = (v, a, b) => glatt((v - a) / (b - a));
-  const hut = (f, m) => glatt(1 - Math.abs(f - m));            // Dach über einem Kapitel; Nachbarn ergänzen sich zu 1
-  const lerp = (a, b, t) => a + (b - a) * t;
-
-  // Fester Zufall: gleiche Geometrie bei jedem Laden — das Standbild passt zum Netz.
-  let saat = 27092026;
-  const zufall = () => { saat = (saat * 1664525 + 1013904223) >>> 0; return saat / 4294967296; };
-  const gauss = () => (zufall() + zufall() + zufall() - 1.5) * 1.15;
-
-  // Farben als "r,g,b" — alle aus der Software (ci.css) bzw. der MAKE-CI.
-  const F = { tuerkis: '88,217,205', orange: '255,159,67', grau: '110,122,125', teal: '124,142,146', gelb: '255,201,60', gruen: '61,226,139', granat: '209,58,85', smaragd: '34,181,119' };
+  const hut = (f, m) => glatt(1 - Math.abs(f - m));
   const sicht = () => document.body.dataset.spur === 'business' ? 'business' : 'privat';
+  const SCORE = { privat: 78, business: 64 };
+  const farbe = (schluessel, s) => schluessel === 'sicht' ? (s === 'business' ? F.orange : F.tuerkis) : F[schluessel] || F.teal;
 
-  // ── Eimer: gleiche Farbe + ähnliche Deckkraft = ein Pfad, ein Strich. ──────────
-  // Hunderte Kanten werden so zu ~30 stroke()-Aufrufen — das trägt die 60 fps.
+  // ── Eimer: gleiche Farbe + ähnliche Deckkraft = ein Pfad, ein Strich (trägt die 60 fps). ──
   class Eimer {
     constructor(ctx) { this.ctx = ctx; this.k = new Map(); }
-    linie(farbe, a, x1, y1, x2, y2, breite = 1) {
-      if (a < .015) return; a = Math.min(1, Math.round(a * 14) / 14);
-      const key = 'l' + farbe + '|' + a + '|' + breite; let e = this.k.get(key);
-      if (!e) { e = { art: 'l', farbe, a, breite, p: new Path2D() }; this.k.set(key, e); }
-      e.p.moveTo(x1, y1); e.p.lineTo(x2, y2);
-    }
-    punkt(farbe, a, x, y, r) {
-      if (a < .02 || r < .3) return; a = Math.min(1, Math.round(a * 10) / 10);
-      const key = 'p' + farbe + '|' + a; let e = this.k.get(key);
-      if (!e) { e = { art: 'p', farbe, a, p: new Path2D() }; this.k.set(key, e); }
-      e.p.moveTo(x + r, y); e.p.arc(x, y, r, 0, TAU);
-    }
-    zeichnen() {
-      const c = this.ctx; c.lineCap = 'round';
-      for (const e of this.k.values()) {
-        if (e.art === 'l') { c.strokeStyle = `rgba(${e.farbe},${e.a})`; c.lineWidth = e.breite; c.stroke(e.p); }
-        else { c.fillStyle = `rgba(${e.farbe},${e.a})`; c.fill(e.p); }
-      }
-      this.k.clear();
-    }
+    linie(farbe, a, x1, y1, x2, y2, breite = 1) { if (a < .015) return; a = Math.min(1, Math.round(a * 14) / 14); const key = 'l' + farbe + '|' + a + '|' + breite; let e = this.k.get(key); if (!e) { e = { art: 'l', farbe, a, breite, p: new Path2D() }; this.k.set(key, e); } e.p.moveTo(x1, y1); e.p.lineTo(x2, y2); }
+    punkt(farbe, a, x, y, r) { if (a < .02 || r < .3) return; a = Math.min(1, Math.round(a * 10) / 10); const key = 'p' + farbe + '|' + a; let e = this.k.get(key); if (!e) { e = { art: 'p', farbe, a, p: new Path2D() }; this.k.set(key, e); } e.p.moveTo(x + r, y); e.p.arc(x, y, r, 0, TAU); }
+    zeichnen() { const c = this.ctx; c.lineCap = 'round'; for (const e of this.k.values()) { if (e.art === 'l') { c.strokeStyle = `rgba(${e.farbe},${e.a})`; c.lineWidth = e.breite; c.stroke(e.p); } else { c.fillStyle = `rgba(${e.farbe},${e.a})`; c.fill(e.p); } } this.k.clear(); }
   }
 
-  // ── Zeiger: Maus oder Finger, in Client-Koordinaten. ──────────────────────────
+  // ── Zeiger (Maus oder Finger) ──
   const zeiger = { x: -1e5, y: -1e5, an: false };
   if (!ruhig) {
     addEventListener('pointermove', e => { zeiger.x = e.clientX; zeiger.y = e.clientY; zeiger.an = true; }, { passive: true });
-    addEventListener('pointerleave', () => { zeiger.an = false; });
-    addEventListener('pointercancel', () => { zeiger.an = false; });
+    addEventListener('pointerleave', () => { zeiger.an = false; }); addEventListener('pointercancel', () => { zeiger.an = false; });
     addEventListener('touchend', () => { setTimeout(() => { zeiger.an = false; }, 400); }, { passive: true });
   }
 
-  // ── k nächste Nachbarn (einmalig, beim Bau) ────────────────────────────────────
-  function nachbarn(pos, dim, k, erlaubt) {
-    const n = pos.length / dim, kanten = [], seen = new Set();
-    for (let i = 0; i < n; i++) {
-      const best = [];
-      for (let j = 0; j < n; j++) {
-        if (i === j || (erlaubt && !erlaubt(i, j))) continue;
-        let d = 0; for (let q = 0; q < dim; q++) { const t = pos[i * dim + q] - pos[j * dim + q]; d += t * t; }
-        if (best.length < k) { best.push([d, j]); best.sort((a, b) => a[0] - b[0]); }
-        else if (d < best[k - 1][0]) { best[k - 1] = [d, j]; best.sort((a, b) => a[0] - b[0]); }
-      }
-      for (const [, j] of best) { const key = i < j ? i * n + j : j * n + i; if (!seen.has(key)) { seen.add(key); kanten.push(i, j); } }
-    }
-    return kanten;
-  }
+  function leinwand(canvas, el) { const W = el.clientWidth, H = el.clientHeight, dpr = Math.min(devicePixelRatio || 1, handy ? 2 : 1.5); const bw = Math.round(W * dpr), bh = Math.round(H * dpr); if (canvas.width !== bw || canvas.height !== bh) { canvas.width = bw; canvas.height = bh; } return { W, H, dpr }; }
 
-  // ── Leinwand: Größe mit dpr-Deckel ─────────────────────────────────────────────
-  function leinwand(canvas, el) {
-    const W = el.clientWidth, H = el.clientHeight, dpr = Math.min(devicePixelRatio || 1, handy ? 2 : 1.5);
-    const bw = Math.round(W * dpr), bh = Math.round(H * dpr);
-    if (canvas.width !== bw || canvas.height !== bh) { canvas.width = bw; canvas.height = bh; }
-    return { W, H, dpr };
-  }
-
-  // Ein Bild je Scroll-Stand (ruhig) oder Dauerlauf — der pausiert, wenn die Bühne nicht im Bild ist.
+  // Ein Bild je Scroll-Stand (ruhig) oder Dauerlauf, der pausiert, wenn die Bühne nicht im Bild ist.
   function starten(zeichne, beobachtet) {
-    if (ruhig) {
-      let angefordert = false;
-      const einmal = () => { if (angefordert) return; angefordert = true; requestAnimationFrame(t => { angefordert = false; zeichne(t); }); };
-      addEventListener('scroll', einmal, { passive: true }); addEventListener('resize', einmal);
-      document.addEventListener('spur', einmal); einmal();
-      return;
-    }
+    if (ruhig) { let an = false; const einmal = () => { if (an) return; an = true; requestAnimationFrame(t => { an = false; zeichne(t); }); }; addEventListener('scroll', einmal, { passive: true }); addEventListener('resize', einmal); document.addEventListener('spur', einmal); einmal(); return; }
     let laeuft = false, raf = 0;
     const lauf = t => { if (!laeuft) return; if (!document.hidden) zeichne(t); raf = requestAnimationFrame(lauf); };
-    const an = () => { if (laeuft) return; laeuft = true; raf = requestAnimationFrame(lauf); };
-    const aus = () => { laeuft = false; cancelAnimationFrame(raf); };
-    if (beobachtet && 'IntersectionObserver' in window) new IntersectionObserver(es => { es.some(e => e.isIntersecting) ? an() : aus(); }, { rootMargin: '160px 0px' }).observe(beobachtet);
-    else an();
+    const an = () => { if (laeuft) return; laeuft = true; raf = requestAnimationFrame(lauf); }, aus = () => { laeuft = false; cancelAnimationFrame(raf); };
+    if (beobachtet && 'IntersectionObserver' in window) new IntersectionObserver(es => { es.some(e => e.isIntersecting) ? an() : aus(); }, { rootMargin: '160px 0px' }).observe(beobachtet); else an();
   }
 
-  // Die Hirnform: Fibonacci-Kugel mit Streuung, zur Hirnform verzogen (breiter als hoch, Furche, Windungen) + Kernpunkte.
-  function hirnPunkte(nOber, nKern) {
-    const N = nOber + nKern, P = new Float32Array(N * 3), seite = new Uint8Array(N), kern = new Uint8Array(N), GOLD = Math.PI * (3 - Math.sqrt(5));
-    for (let i = 0; i < nOber; i++) {
-      const y0 = 1 - 2 * (i + .5) / nOber, r0 = Math.sqrt(1 - y0 * y0), phi = i * GOLD + (zufall() - .5) * .18;
-      let x = r0 * Math.cos(phi), y = y0 + (zufall() - .5) * .04, z = r0 * Math.sin(phi);
-      const theta = Math.acos(clamp(y, -1, 1));
-      let rad = 1 + .04 * Math.sin(7 * phi) * Math.sin(6 * theta) + .022 * Math.sin(11 * phi + 1.3) * Math.cos(4 * theta);
-      if (Math.abs(x) < .11 && y > -.35) rad *= .9;
-      x *= rad * 1.02; y *= rad * .84; z *= rad * .92;
-      if (y < -.55) y = -.55 - (y + .55) * .35;
-      P[i * 3] = x; P[i * 3 + 1] = y; P[i * 3 + 2] = z; seite[i] = x < 0 ? 0 : 1;
-    }
-    for (let i = nOber; i < N; i++) {
-      const u = zufall() * 2 - 1, phi = zufall() * TAU, r0 = Math.sqrt(1 - u * u), rr = .18 + .3 * Math.cbrt(zufall());
-      P[i * 3] = r0 * Math.cos(phi) * rr; P[i * 3 + 1] = u * rr * .8; P[i * 3 + 2] = r0 * Math.sin(phi) * rr;
-      seite[i] = P[i * 3] < 0 ? 0 : 1; kern[i] = 1;
-    }
-    return { N, P, seite, kern };
+  // Hops vom Kern nach außen (für den Impuls im Brain).
+  function hops(form, N) {
+    const hop = new Int16Array(N).fill(-1), adj = Array.from({ length: N }, () => []), K = form.kanten;
+    for (let e = 0; e < K.length; e += 2) { adj[K[e]].push(K[e + 1]); adj[K[e + 1]].push(K[e]); }
+    let start = 0, best = 1e9; for (let i = 0; i < N; i++) if (form.gruppe[i] === 2) { const d = Math.hypot(form.pos[i * 3], form.pos[i * 3 + 1], form.pos[i * 3 + 2]); if (d < best) { best = d; start = i; } }
+    const q = [start]; hop[start] = 0; while (q.length) { const a = q.shift(); for (const b of adj[a]) if (hop[b] < 0) { hop[b] = hop[a] + 1; q.push(b); } }
+    let max = 0; for (let i = 0; i < N; i++) { if (hop[i] < 0) hop[i] = 12; if (hop[i] > max) max = hop[i]; }
+    let stapel = 0, sb = -1e9; for (let i = 0; i < N; i++) if (form.gruppe[i] === 1) { const s = hop[i] * .6 + form.pos[i * 3] * 3 - form.pos[i * 3 + 1] * 2; if (s > sb) { sb = s; stapel = i; } }
+    return { hop, max, stapel };
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════
-  // 1. Die große Bühne: Zwei Welten → Sieben Apps → Messbar → ZOE hilft
+  // Die große Bühne — generisch über data-formationen
   // ═══════════════════════════════════════════════════════════════════════════════
-  function grosseBuehne() {
-    const odyssee = document.querySelector('.odyssee'), buehne = odyssee?.querySelector('.buehne'), canvas = document.getElementById('brain');
-    if (!odyssee || !buehne || !canvas || !canvas.getContext) return;
+  function grosseBuehne(odyssee) {
+    const buehne = odyssee.querySelector('.buehne'), canvas = buehne?.querySelector('canvas');
+    if (!buehne || !canvas || !canvas.getContext) return;
     const ctx = canvas.getContext('2d'); if (!ctx) return;
+    const namen = (odyssee.dataset.formationen || 'brain').split(',').map(s => s.trim()).filter(Boolean);
     const kapitel = Array.from(odyssee.querySelectorAll(':scope > .kapitel'));
     const inhalte = kapitel.map(k => k.querySelector('.wrap'));
-    const weltChips = Array.from(buehne.querySelectorAll('.welt-chip'));
-    const chips = Array.from(buehne.querySelectorAll('.chip'));
+    const N = handy ? 220 : 464;
+    const formen = namen.map((n, i) => MF.bauen(n, N, 27092026 + i * 7));
+    const eimer = new Eimer(ctx);
+    // Überlagerungen aus dem DOM (nur vorhanden, wenn die Seite sie braucht)
+    const weltChips = Array.from(buehne.querySelectorAll('.welt-chip')), chips = Array.from(buehne.querySelectorAll('.chip'));
     const ringZahl = buehne.querySelector('.ring-zahl'), ringZahlB = ringZahl?.querySelector('b');
     const stapelChip = buehne.querySelector('.stapel-chip'), stapelText = stapelChip?.querySelector('b');
-    const eimer = new Eimer(ctx);
-    const SCORE = { privat: 78, business: 64 };
+    const brainIdx = formen.findIndex(f => f.name === 'brain'), brainForm = brainIdx >= 0 ? formen[brainIdx] : null;
+    const impuls = brainForm && stapelChip && brainIdx === kapitel.length - 1 ? hops(brainForm, N) : null;
+    const stapelIdxForm = formen.findIndex(fm => fm.name === 'stapel');
+    let stapelKnoten = -1; if (stapelIdxForm >= 0) { const fm = formen[stapelIdxForm]; let best = -1e9; for (let i = 0; i < N; i++) if (fm.gruppe[i] === 1 && fm.pos[i * 2] > best) { best = fm.pos[i * 2]; stapelKnoten = i; } }
 
-    // ── Geometrie ──
-    const N_OBER = handy ? 190 : 400, N_KERN = handy ? 30 : 64;
-    const { N, P, seite, kern } = hirnPunkte(N_OBER, N_KERN);   // P: Einheitskoordinaten (3D); seite: Synapsen über die Furche
-    const K_BRAIN = nachbarn(P, 3, 2), KB = K_BRAIN.length / 2;
-
-    // Zwei Welten: jeder Knoten gehört zu einer Welt (0 privat, 1 business) und sitzt auf oder im Ring.
-    const welt = new Uint8Array(N), wAng = new Float32Array(N), wRad = new Float32Array(N);
-    for (let i = 0; i < N; i++) { welt[i] = i & 1; wAng[i] = zufall() * TAU; wRad[i] = zufall() < .78 ? 1 + gauss() * .045 : .25 + zufall() * .6; }
-    const WPOS = new Float32Array(N * 2); for (let i = 0; i < N; i++) { WPOS[i * 2] = Math.cos(wAng[i]) * wRad[i]; WPOS[i * 2 + 1] = Math.sin(wAng[i]) * wRad[i]; }
-    const K_WELT = nachbarn(WPOS, 2, 2, (i, j) => welt[i] === welt[j]), KW = K_WELT.length / 2;
-
-    // Sieben Apps: neun Haufen.
-    const HAUFEN = [[-.92, -.78], [.02, -.98], [.94, -.7], [-1, .04], [.04, .08], [1, .02], [-.86, .86], [.04, .98], [.9, .8]].map(([x, y]) => [x + (zufall() - .5) * .14, y + (zufall() - .5) * .14]);
-    const haufen = new Uint8Array(N), off = new Float32Array(N * 2);
-    for (let i = 0; i < N; i++) { haufen[i] = (i * 7 + seite[i] * 3) % 9; off[i * 2] = gauss() * .55; off[i * 2 + 1] = gauss() * .5; }
-    const K_CHAOS = nachbarn(off, 2, 2, (i, j) => haufen[i] === haufen[j]), KC = K_CHAOS.length / 2;
-
-    // Messbar: ein Ring. Winkel ab 12 Uhr im Uhrzeigersinn; Kernknoten liegen locker innen.
-    const rAng = new Float32Array(N), rRad = new Float32Array(N);
-    { const reihe = Array.from({ length: N }, (_, i) => i).sort((a, b) => wAng[a] - wAng[b]); reihe.forEach((i, k) => { rAng[i] = k / N * TAU; rRad[i] = kern[i] ? .2 + zufall() * .45 : 1 + gauss() * .03; }); }
-    const K_RING = []; { const reihe = Array.from({ length: N }, (_, i) => i).filter(i => !kern[i]).sort((a, b) => rAng[a] - rAng[b]); for (let k = 0; k < reihe.length; k++) K_RING.push(reihe[k], reihe[(k + 1) % reihe.length]); }
-    const KR = K_RING.length / 2;
-
-    // Hops vom Kern nach außen (für den Impuls in Kapitel 04).
-    const hop = new Int16Array(N).fill(-1); {
-      const adj = Array.from({ length: N }, () => []);
-      for (let e = 0; e < KB; e++) { const a = K_BRAIN[e * 2], b = K_BRAIN[e * 2 + 1]; adj[a].push(b); adj[b].push(a); }
-      let start = N_OBER; for (let i = N_OBER; i < N; i++) if (Math.hypot(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]) < Math.hypot(P[start * 3], P[start * 3 + 1], P[start * 3 + 2])) start = i;
-      const q = [start]; hop[start] = 0;
-      while (q.length) { const a = q.shift(); for (const b of adj[a]) if (hop[b] < 0) { hop[b] = hop[a] + 1; q.push(b); } }
-      for (let i = 0; i < N; i++) if (hop[i] < 0) hop[i] = 12;
-    }
-    let maxHop = 0; for (let i = 0; i < N; i++) if (hop[i] > maxHop) maxHop = hop[i];
-    let stapelIdx = 0; { let best = -1e9; for (let i = 0; i < N_OBER; i++) { const s = hop[i] * .6 + P[i * 3] * 3 - P[i * 3 + 1] * 2; if (seite[i] === 1 && s > best) { best = s; stapelIdx = i; } } }
-
-    // ── Zustand ──
-    const x = new Float32Array(N), y = new Float32Array(N), ta = new Float32Array(N), sc = new Float32Array(N), nah = new Float32Array(N);
+    const x = new Float32Array(N), y = new Float32Array(N), sc = new Float32Array(N), nah = new Float32Array(N);
     let W = 0, H = 0, dpr = 1, mitte = [], oben = [], hoehen = [], max = 1, winkel = -.35, neigung = 0, letzteZeit = 0, an = false;
-    let stapelZustand = -1, stapelAlpha = 0, chipsAn = false, weltAn = false, ringAn = false, letzteZahl = -1;
+    let sichtbar = { welt: false, chips: false, ring: false }, stapelZustand = -1, stapelAlpha = 0, letzteZahl = -1; const impuls_ersatz = { stapel: 0 };
 
-    function vermessen() {
-      ({ W, H, dpr } = leinwand(canvas, buehne));
-      oben = kapitel.map(k => k.offsetTop); hoehen = kapitel.map(k => k.offsetHeight);
-      mitte = kapitel.map((k, i) => oben[i] + hoehen[i] / 2 - innerHeight / 2);
-      max = Math.max(1, odyssee.offsetHeight - innerHeight);
-    }
-    vermessen();
-    addEventListener('resize', vermessen, { passive: true });
+    function vermessen() { ({ W, H, dpr } = leinwand(canvas, buehne)); oben = kapitel.map(k => k.offsetTop); hoehen = kapitel.map(k => k.offsetHeight); mitte = kapitel.map((k, i) => oben[i] + hoehen[i] / 2 - innerHeight / 2); max = Math.max(1, odyssee.offsetHeight - innerHeight); }
+    vermessen(); addEventListener('resize', vermessen, { passive: true });
     const grund = () => handy ? { cx: W * .5, cy: H * .30, R: Math.min(W * .30, H * .17) } : { cx: W * .70, cy: H * .5, R: Math.min(H * .33, W * .18) };
 
     function zeichne(t) {
       const dt = letzteZeit ? Math.min(48, t - letzteZeit) : 16; letzteZeit = t;
-      const r = odyssee.getBoundingClientRect();
-      if (r.bottom < -80 || r.top > innerHeight + 80) return;
+      const r = odyssee.getBoundingClientRect(); if (r.bottom < -80 || r.top > innerHeight + 80) return;
       const S = clamp(-r.top, 0, max), vh = innerHeight, br = buehne.getBoundingClientRect();
-      const s = sicht(), fSicht = s === 'business' ? F.orange : F.tuerkis, score = SCORE[s];
-
-      // Kontinuierlicher Kapitelindex f ∈ [0, 3] mit ruhigen Fenstern um jede Kapitelmitte.
-      let f = 0;
-      for (let i = 0; i < kapitel.length - 1; i++) {
-        if (S >= mitte[i + 1]) { f = i + 1; continue; }
-        if (S > mitte[i]) f = i + spanne((S - mitte[i]) / (mitte[i + 1] - mitte[i]), .22, .78);
-        break;
-      }
-      const wWelt = hut(f, 0), wChaos = hut(f, 1), wRing = hut(f, 2), wBrain = hut(f, 3);
-      const wZOE = spanne(f, 2.3, 2.95);
-      const letzte = kapitel.length - 1, u4 = clamp((S - oben[letzte]) / Math.max(1, hoehen[letzte] - vh), 0, 1);
+      const s = sicht(), fS = farbe('sicht', s), score = SCORE[s];
+      // Kapitelindex f ∈ [0, n−1]
+      let f = 0; for (let i = 0; i < kapitel.length - 1; i++) { if (S >= mitte[i + 1]) { f = i + 1; continue; } if (S > mitte[i]) f = i + spanne((S - mitte[i]) / (mitte[i + 1] - mitte[i]), .22, .78); break; }
+      const w = formen.map((_, i) => hut(f, i)); let dom = 0; for (let i = 1; i < w.length; i++) if (w[i] > w[dom]) dom = i;
+      const letzte = kapitel.length - 1, uLetzt = clamp((S - oben[letzte]) / Math.max(1, hoehen[letzte] - vh), 0, 1);
       const ausblenden = 1 - spanne(S, max - vh * .22, max);
       const herz = ruhig ? .5 : .5 + .5 * Math.sin(t * .0022);
-
       let { cx, cy, R } = grund();
-      if (!handy) cx -= R * .3 * wChaos;
-      const hx = handy ? W * .32 : R * 1.22, hy = handy ? H * .16 : R * 1.12, rC = handy ? R * .3 : R * .27;
-      if (handy) cy -= H * .02 * wChaos;
-      const wAbst = R * .5, wR = R * .72;                     // Zwei Welten: Ringmitten ±wAbst, Radius wR
-
+      const wChaos = formen[1]?.name === 'chaos' ? w[1] : 0; if (!handy) cx -= R * .3 * wChaos;
       if (!ruhig) winkel += dt * .00007;
       const zx = zeiger.x - br.left, zy = zeiger.y - br.top;
-      const zielNeigung = zeiger.an && !ruhig ? clamp((zy - cy) / H, -.5, .5) * .4 : 0;
-      neigung += (zielNeigung - neigung) * .04;
-      const cosA = Math.cos(winkel), sinA = Math.sin(winkel), cosB = Math.cos(neigung), sinB = Math.sin(neigung);
-      const dreh = ruhig ? 0 : t * .00012;                  // die Welten drehen sich gegenläufig
-      const k = ruhig ? 1 : .1, RM = handy ? 80 : 130, RM2 = RM * RM, drift = ruhig ? 0 : 1;
-      const fuellung = wRing * score / 100;                 // Ringfüllung wächst mit dem Kapitel
+      neigung += ((zeiger.an && !ruhig ? clamp((zy - cy) / H, -.5, .5) * .4 : 0) - neigung) * .04;
+      const cA = Math.cos(winkel), sA = Math.sin(winkel), cB = Math.cos(neigung), sB = Math.sin(neigung);
+      const dreh = ruhig ? 0 : t * .00012, k = ruhig ? 1 : .1, RM = handy ? 80 : 130, RM2 = RM * RM, drift = ruhig ? 0 : 1;
+      const ringForm = formen.find(fm => fm.fuellen), wRing = ringForm ? w[formen.indexOf(ringForm)] : 0, fuellung = wRing * score / 100;
 
       for (let i = 0; i < N; i++) {
-        let tx = 0, ty = 0;
-        if (wWelt > 0) {
-          const a = wAng[i] + (welt[i] ? -dreh : dreh), mx = cx + (welt[i] ? wAbst : -wAbst);
-          tx += wWelt * (mx + Math.cos(a) * wR * wRad[i]); ty += wWelt * (cy + Math.sin(a) * wR * wRad[i] * .92);
+        let tx = 0, ty = 0; sc[i] = .8;
+        for (let q = 0; q < formen.length; q++) {
+          if (w[q] <= 0) continue; const fm = formen[q];
+          if (fm.dreiD) {
+            const px = fm.pos[i * 3], py = fm.pos[i * 3 + 1], pz = fm.pos[i * 3 + 2];
+            const x1 = px * cA + pz * sA, z1 = -px * sA + pz * cA, y1 = py * cB - z1 * sB, z2 = py * sB + z1 * cB, persp = 1 / (1 + z2 * .28);
+            sc[i] = clamp(.35 + .65 * (1 - (z2 + 1) / 2), .2, 1); tx += w[q] * (cx + x1 * R * persp); ty += w[q] * (cy + y1 * R * persp);
+          } else if (fm.name === 'welten') {
+            const a = fm.extra.ang[i] + (fm.gruppe[i] ? -dreh : dreh), mx = cx + (fm.gruppe[i] ? .5 : -.5) * R; tx += w[q] * (mx + Math.cos(a) * .72 * R * fm.extra.rad[i]); ty += w[q] * (cy + Math.sin(a) * .66 * R * fm.extra.rad[i]);
+          } else { tx += w[q] * (cx + fm.pos[i * 2] * R); ty += w[q] * (cy + fm.pos[i * 2 + 1] * R); }
         }
-        if (wChaos > 0) { const h = HAUFEN[haufen[i]]; tx += wChaos * (cx + h[0] * hx + off[i * 2] * rC); ty += wChaos * (cy + h[1] * hy + off[i * 2 + 1] * rC); }
-        if (wRing > 0) { const a = rAng[i] - Math.PI / 2, rr = R * .8 * rRad[i]; tx += wRing * (cx + Math.cos(a) * rr); ty += wRing * (cy + Math.sin(a) * rr); }
-        const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2];
-        const x1 = px * cosA + pz * sinA, z1 = -px * sinA + pz * cosA, y1 = py * cosB - z1 * sinB, z2 = py * sinB + z1 * cosB;
-        const persp = 1 / (1 + z2 * .28);
-        sc[i] = clamp(.35 + .65 * (1 - (z2 + 1) / 2), .2, 1); ta[i] = .32 + .68 * sc[i];
-        if (wBrain > 0) { tx += wBrain * (cx + x1 * R * persp); ty += wBrain * (cy + y1 * R * persp); }
         if (drift) { tx += Math.sin(t * .0011 + i * 1.7) * .7; ty += Math.cos(t * .0009 + i * 2.3) * .7; }
         x[i] += (tx - x[i]) * k; y[i] += (ty - y[i]) * k;
-        let n = 0;
-        if (zeiger.an) { const dx = x[i] - zx, dy = y[i] - zy, d2 = dx * dx + dy * dy; if (d2 < RM2 && d2 > .01) { const d = Math.sqrt(d2); n = 1 - d / RM; x[i] += dx / d * n * n * 12; y[i] += dy / d * n * n * 12; } }
+        let n = 0; if (zeiger.an) { const dx = x[i] - zx, dy = y[i] - zy, d2 = dx * dx + dy * dy; if (d2 < RM2 && d2 > .01) { const d = Math.sqrt(d2); n = 1 - d / RM; x[i] += dx / d * n * n * 12; y[i] += dy / d * n * n * 12; } }
         nah[i] = n;
       }
 
-      // ── Zeichnen ──
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
-      ctx.globalAlpha = ausblenden;
-      // Kernschein: im Ring in der Farbe der Sicht, im Brain türkis — nie im Chaos.
-      const schein = (wRing * .5 + wBrain) * (.16 + .08 * herz);
-      if (schein > .01) {
-        const fk = wBrain > wRing ? F.tuerkis : fSicht;
-        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * .9);
-        g.addColorStop(0, `rgba(${fk},${(schein * .8).toFixed(3)})`); g.addColorStop(.5, `rgba(${fk},${(schein * .2).toFixed(3)})`); g.addColorStop(1, `rgba(${fk},0)`);
-        ctx.fillStyle = g; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
-      }
-      // Impuls: die Front läuft mit dem Scrollen vom Kern nach außen (erreicht den Stapel bei ~40 % des Kapitels);
-      // danach atmet das Netz mit einem leisen Dauer-Impuls weiter. Freigabe bei 55 %, Ausblenden erst ab ~75 %.
-      const front = u4 * (maxHop + 3) * 2.4, stapelErreicht = wZOE > .5 && front >= hop[stapelIdx] - .3;
-      const front2 = ruhig ? -99 : (t * .0035) % (maxHop + 8);
-      const boost = i => { if (!wZOE) return 0; const d1 = hop[i] - front, d2 = hop[i] - front2; return Math.max(Math.exp(-d1 * d1 / 1.6), .45 * Math.exp(-d2 * d2 / 1.2) * spanne(u4, .35, .5)) * wZOE; };
-      // Kanten je Form — auf dem Weg werden sie kurz und blass, sonst gibt es Spaghetti.
-      const lensX = R * .22;
-      if (wWelt > .01) for (let e = 0; e < KW; e++) {
-        const a = K_WELT[e * 2], b = K_WELT[e * 2 + 1], dx = x[a] - x[b], dy = y[a] - y[b], d = Math.sqrt(dx * dx + dy * dy), dm = wR * .42;
-        if (d > dm) continue;
-        eimer.linie(welt[a] ? F.orange : F.tuerkis, .34 * wWelt * (1 - d / dm), x[a], y[a], x[b], y[b], 1);
-      }
-      if (wChaos > .01) for (let e = 0; e < KC; e++) {
-        const a = K_CHAOS[e * 2], b = K_CHAOS[e * 2 + 1], dx = x[a] - x[b], dy = y[a] - y[b], d = Math.sqrt(dx * dx + dy * dy), dm = rC * 2.2;
-        if (d > dm) continue;
-        eimer.linie(F.grau, .45 * wChaos * (1 - d / dm), x[a], y[a], x[b], y[b], 1);
-      }
-      if (wRing > .01) for (let e = 0; e < KR; e++) {
-        const a = K_RING[e * 2], b = K_RING[e * 2 + 1], dx = x[a] - x[b], dy = y[a] - y[b], d = Math.sqrt(dx * dx + dy * dy), dm = R * .35;
-        if (d > dm) continue;
-        const voll = rAng[a] / TAU < fuellung && rAng[b] / TAU < fuellung;
-        eimer.linie(voll ? fSicht : F.grau, (voll ? .75 : .3) * wRing * (1 - d / dm), x[a], y[a], x[b], y[b], voll ? 2 : 1);
-      }
-      if (wBrain > .01) {
-        const langMax = R * (1.05 - .4 * (1 - wBrain)), lang0 = R * .5, kantenA = .34 * wBrain * wBrain;
-        for (let e = 0; e < KB; e++) {
-          const a = K_BRAIN[e * 2], b = K_BRAIN[e * 2 + 1], dx = x[a] - x[b], dy = y[a] - y[b], d = Math.sqrt(dx * dx + dy * dy);
-          if (d > langMax) continue;
-          const quer = seite[a] !== seite[b] || kern[a] || kern[b], bo = Math.max(boost(a), boost(b)), nm = Math.max(nah[a], nah[b]);
-          eimer.linie(quer ? F.tuerkis : F.teal, kantenA * Math.min(ta[a], ta[b]) * (1 - clamp((d - lang0) / (langMax - lang0), 0, 1)) * (quer ? 1.1 : .8), x[a], y[a], x[b], y[b], 1);
-          if (nm > .05) eimer.linie(F.tuerkis, nm * .7, x[a], y[a], x[b], y[b], 1.2);
-          if (bo > .06) eimer.linie(F.tuerkis, bo * .9, x[a], y[a], x[b], y[b], 1.6);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H); ctx.globalAlpha = ausblenden;
+      // Kernschein: Brain türkis, gefüllter Ring in der Sichtfarbe, sonst leise in der Formfarbe
+      const fd = formen[dom], scheinF = fd.dreiD ? F.tuerkis : fd.fuellen ? fS : (fd.name === 'chaos' || fd.name === 'trichter' ? null : farbe(fd.farben[fd.farben.length - 1], s));
+      if (scheinF) { const a = (fd.dreiD ? 1 : .5) * (.16 + .08 * herz) * w[dom]; const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * .9); g.addColorStop(0, `rgba(${scheinF},${(a * .8).toFixed(3)})`); g.addColorStop(.5, `rgba(${scheinF},${(a * .2).toFixed(3)})`); g.addColorStop(1, `rgba(${scheinF},0)`); ctx.fillStyle = g; ctx.fillRect(cx - R, cy - R, R * 2, R * 2); }
+      // Impuls (Brain + Stapel)
+      let front = -99, wImp = 0, stapelErreicht = false, frei = false;
+      if (impuls && brainIdx >= 0) { wImp = spanne(f, brainIdx - .7, brainIdx - .05); front = (brainIdx === letzte ? uLetzt : 1) * (impuls.max + 3) * 2.4; stapelErreicht = wImp > .5 && front >= impuls.hop[impuls.stapel] - .3; frei = brainIdx === letzte ? uLetzt > .55 : true; }
+      const front2 = ruhig ? -99 : (t * .0035) % ((impuls?.max || 8) + 8);
+      const boost = i => { if (!wImp) return 0; const d1 = impuls.hop[i] - front, d2 = impuls.hop[i] - front2; return Math.max(Math.exp(-d1 * d1 / 1.6), .45 * Math.exp(-d2 * d2 / 1.2) * spanne(uLetzt, .35, .5)) * wImp; };
+      // Kanten je Formation
+      for (let q = 0; q < formen.length; q++) {
+        if (w[q] < .01) continue; const fm = formen[q], K = fm.kanten, dm = R * fm.reichweite * (fm.dreiD ? (1 - .4 * (1 - w[q])) : 1), lang0 = dm * .5;
+        const A = (fm.dreiD ? .34 : fm.fuellen ? .3 : .38) * w[q] * w[q];
+        for (let e = 0; e < K.length; e += 2) {
+          const a = K[e], b = K[e + 1], dx = x[a] - x[b], dy = y[a] - y[b], d = Math.sqrt(dx * dx + dy * dy); if (d > dm) continue;
+          const g = fm.gruppe[a]; let col = farbe(fm.farben[g], s), al = A * (1 - clamp((d - lang0) / (dm - lang0), 0, 1)), br2 = 1;
+          if (fm.dreiD) { const quer = fm.gruppe[a] !== fm.gruppe[b] || fm.gruppe[a] === 2; col = quer ? F.tuerkis : F.teal; al *= Math.min(sc[a], sc[b]) * (quer ? 1.1 : .8); }
+          else if (fm.fuellen) { const voll = fm.extra.ang[a] / TAU < fuellung && fm.extra.ang[b] / TAU < fuellung; col = voll ? fS : F.grau; al = (voll ? .75 : .3) * w[q] * (1 - d / dm); br2 = voll ? 2 : 1; }
+          else if (fm.bruecken && fm.gruppe[a] !== fm.gruppe[b]) { col = F.tuerkis; al = .22 * w[q]; }
+          else if (fm.name === 'chaos') al = .45 * w[q] * (1 - d / dm);
+          eimer.linie(col, al, x[a], y[a], x[b], y[b], br2);
+          const nm = Math.max(nah[a], nah[b]); if (nm > .05) eimer.linie(F.tuerkis, nm * .7 * w[q], x[a], y[a], x[b], y[b], 1.2);
+          if (fm.dreiD) { const bo = Math.max(boost(a), boost(b)); if (bo > .06) eimer.linie(F.tuerkis, bo * .9, x[a], y[a], x[b], y[b], 1.6); }
         }
       }
-      // Knoten
-      const rBasis = handy ? .95 : 1.05;
+      // Knoten (Farbe der dominanten Formation)
+      const rB = handy ? .95 : 1.05;
       for (let i = 0; i < N; i++) {
-        let farbe, al, rr = 1.3 * rBasis;
-        if (wBrain >= .5) { farbe = kern[i] ? F.tuerkis : F.teal; al = ta[i] * (kern[i] ? .9 : .7); rr = (kern[i] ? 1.6 : 1.05 + 1.15 * sc[i]) * rBasis; }
-        else if (wRing >= .5) { const voll = rAng[i] / TAU < fuellung; farbe = kern[i] ? fSicht : voll ? fSicht : F.grau; al = kern[i] ? .45 + .2 * herz : voll ? .95 : .35; rr = (voll ? 1.7 : 1.2) * rBasis; }
-        else if (wChaos >= .5) { farbe = F.grau; al = .6; rr = 1.25 * rBasis; }
-        else {
-          // Zwei Welten: in der Schnittmenge blinken die Knoten gelb — der Konflikt um 19 Uhr.
-          const imLens = Math.abs(x[i] - cx) < lensX && Math.abs(y[i] - cy) < wR * .55;
-          farbe = welt[i] ? F.orange : F.tuerkis; al = .55 + .3 * (wRad[i] > .9 ? 1 : .4); rr = 1.35 * rBasis;
-          if (imLens) { const bl = ruhig ? .6 : .5 + .5 * Math.sin(t * .005 + i); farbe = F.gelb; al = .35 + .6 * bl; rr = (1.3 + .8 * bl) * rBasis; }
-        }
-        eimer.punkt(farbe, al, x[i], y[i], rr);
-        const bo = boost(i), n = nah[i];
-        if (bo > .12) eimer.punkt(F.tuerkis, bo, x[i], y[i], rr + 2.2 * bo);
-        else if (n > .1) eimer.punkt(F.tuerkis, n * .8, x[i], y[i], rr + 1.4 * n);
+        let col, al, rr;
+        if (fd.dreiD) { const kern = fd.gruppe[i] === 2; col = kern ? F.tuerkis : F.teal; al = (.32 + .68 * sc[i]) * (kern ? .9 : .7); rr = (kern ? 1.6 : 1.05 + 1.15 * sc[i]) * rB; }
+        else if (fd.fuellen) { const kern = fd.gruppe[i] === 1, voll = fd.extra.ang[i] / TAU < fuellung; col = kern || voll ? fS : F.grau; al = kern ? .45 + .2 * herz : voll ? .95 : .35; rr = (voll ? 1.7 : 1.2) * rB; }
+        else if (fd.name === 'welten') { const imLens = Math.abs(x[i] - cx) < R * .22 && Math.abs(y[i] - cy) < R * .4; col = farbe(fd.farben[fd.gruppe[i]], s); al = .55 + .3 * (fd.extra.rad[i] > .9 ? 1 : .4); rr = 1.35 * rB; if (imLens) { const bl = ruhig ? .6 : .5 + .5 * Math.sin(t * .005 + i); col = F.gelb; al = .35 + .6 * bl; rr = (1.3 + .8 * bl) * rB; } }
+        else if (fd.name === 'stapel') { const wartet = fd.gruppe[i] === 1, bl = ruhig ? .6 : .5 + .5 * Math.sin(t * .004 + i * .3); col = farbe(fd.farben[fd.gruppe[i]], s); al = wartet ? .5 + .45 * bl : .6; rr = (wartet ? 1.5 + .5 * bl : 1.25) * rB; }
+        else { col = farbe(fd.farben[fd.gruppe[i]], s); al = fd.name === 'chaos' ? .6 : .75; rr = (fd.name === 'chaos' ? 1.25 : 1.4) * rB; if (fd.name === 'heads' && fd.gruppe[i] === 5) { al = .5 + .3 * herz; } }
+        eimer.punkt(col, al, x[i], y[i], rr);
+        const bo = fd.dreiD ? boost(i) : 0, n = nah[i];
+        if (bo > .12) eimer.punkt(F.tuerkis, bo, x[i], y[i], rr + 2.2 * bo); else if (n > .1) eimer.punkt(F.tuerkis, n * .8, x[i], y[i], rr + 1.4 * n);
       }
       eimer.zeichnen();
-      // Der Stapel-Knoten: gelb, solange er wartet — grün, wenn du freigegeben hast.
-      const frei = u4 > .55;
-      if (stapelErreicht) {
-        const sx = x[stapelIdx], sy = y[stapelIdx], puls = ruhig ? .5 : .5 + .5 * Math.sin(t * .006), fs = frei ? F.gruen : F.gelb;
-        const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, 26 + 8 * puls);
-        g.addColorStop(0, `rgba(${fs},.5)`); g.addColorStop(1, `rgba(${fs},0)`);
-        ctx.fillStyle = g; ctx.fillRect(sx - 40, sy - 40, 80, 80);
-        ctx.beginPath(); ctx.arc(sx, sy, 4.5, 0, TAU); ctx.fillStyle = `rgba(${fs},1)`; ctx.fill();
-        ctx.beginPath(); ctx.arc(sx, sy, 9 + 5 * puls, 0, TAU); ctx.strokeStyle = `rgba(${fs},${(.6 - .4 * puls).toFixed(2)})`; ctx.lineWidth = 1.2; ctx.stroke();
-      }
+      if (stapelErreicht) { const i = impuls.stapel, sx = x[i], sy = y[i], puls = ruhig ? .5 : .5 + .5 * Math.sin(t * .006), fs = frei ? F.gruen : F.gelb; const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, 26 + 8 * puls); g.addColorStop(0, `rgba(${fs},.5)`); g.addColorStop(1, `rgba(${fs},0)`); ctx.fillStyle = g; ctx.fillRect(sx - 40, sy - 40, 80, 80); ctx.beginPath(); ctx.arc(sx, sy, 4.5, 0, TAU); ctx.fillStyle = `rgba(${fs},1)`; ctx.fill(); ctx.beginPath(); ctx.arc(sx, sy, 9 + 5 * puls, 0, TAU); ctx.strokeStyle = `rgba(${fs},${(.6 - .4 * puls).toFixed(2)})`; ctx.lineWidth = 1.2; ctx.stroke(); }
       ctx.globalAlpha = 1;
 
-      // ── DOM-Überlagerungen ──
-      const setzeSichtbar = (els, soll, warAn) => { if (soll !== warAn) els.forEach(c => { c.style.visibility = soll ? 'visible' : 'hidden'; }); return soll; };
-      // Chips und Zahl erscheinen erst, wenn ihr Kapitel überwiegt — so überlappen sich im Übergang nie zwei Sätze.
-      const sichtbarAb = w => spanne(w, .5, .85);
-      weltAn = setzeSichtbar(weltChips, wWelt > .5, weltAn);
-      if (weltAn) weltChips.forEach(c => {
-        const w = c.dataset.w; let px, py;
-        if (handy) { if (w === 'a') { px = cx; py = cy - wR - 46; } else if (w === 'b') { px = cx; py = cy - wR - 16; } else { px = cx; py = cy - 13; } }
-        else if (w === 'a') { px = cx - wAbst; py = cy + wR * .92 + 18; } else if (w === 'b') { px = cx + wAbst; py = cy + wR * .92 + 18; } else { px = cx; py = cy - wR * .62 - 30; }
-        c.style.transform = `translate(${px.toFixed(1)}px,${py.toFixed(1)}px) translate(-50%,0)`; c.style.opacity = String(sichtbarAb(wWelt) * ausblenden);
-      });
-      chipsAn = setzeSichtbar(chips, wChaos > .5, chipsAn);
-      if (chipsAn) chips.forEach((c, j) => { const h = HAUFEN[j % 9]; c.style.transform = `translate(${(cx + h[0] * hx).toFixed(1)}px,${(cy + h[1] * hy + rC * 1.25).toFixed(1)}px) translate(-50%,0)`; c.style.opacity = String(sichtbarAb(wChaos) * ausblenden); });
-      ringAn = setzeSichtbar(ringZahl ? [ringZahl] : [], wRing > .5, ringAn);
-      if (ringAn && ringZahl) {
-        ringZahl.style.transform = `translate(${cx.toFixed(1)}px,${cy.toFixed(1)}px) translate(-50%,-50%)`; ringZahl.style.opacity = String(sichtbarAb(wRing) * ausblenden);
-        ringZahl.style.setProperty('--f', `rgb(${fSicht})`);
-        const z = Math.round(fuellung * 100); if (z !== letzteZahl && ringZahlB) { letzteZahl = z; ringZahlB.textContent = String(z); }
-      }
-      const zst = stapelErreicht ? (frei ? 2 : 1) : 0;
+      // ── Überlagerungen (erst, wenn ihr Kapitel überwiegt) ──
+      const zeige = (els, soll, key) => { if (soll !== sichtbar[key]) { sichtbar[key] = soll; els.forEach(c => { c.style.visibility = soll ? 'visible' : 'hidden'; }); } return soll; };
+      const ab = wv => spanne(wv, .5, .85);
+      const iW = formen.findIndex(fm => fm.name === 'welten'), iC = formen.findIndex(fm => fm.name === 'chaos'), iR = ringForm ? formen.indexOf(ringForm) : -1;
+      if (weltChips.length && zeige(weltChips, iW >= 0 && w[iW] > .5, 'welt')) { const wR = R * .72, wA = R * .5; weltChips.forEach(c => { const v = c.dataset.w; let px, py; if (handy) { if (v === 'a') { px = cx; py = cy - wR - 46; } else if (v === 'b') { px = cx; py = cy - wR - 16; } else { px = cx; py = cy - 13; } } else if (v === 'a') { px = cx - wA; py = cy + wR * .92 + 18; } else if (v === 'b') { px = cx + wA; py = cy + wR * .92 + 18; } else { px = cx; py = cy - wR * .62 - 30; } c.style.transform = `translate(${px.toFixed(1)}px,${py.toFixed(1)}px) translate(-50%,0)`; c.style.opacity = String(ab(w[iW]) * ausblenden); }); }
+      if (chips.length && zeige(chips, iC >= 0 && w[iC] > .5, 'chips')) { const hf = formen[iC].extra.haufen; chips.forEach((c, j) => { const h = hf[j % 9]; c.style.transform = `translate(${(cx + h[0] * 1.22 * R).toFixed(1)}px,${(cy + h[1] * 1.12 * R + R * .34).toFixed(1)}px) translate(-50%,0)`; c.style.opacity = String(ab(w[iC]) * ausblenden); }); }
+      if (ringZahl && zeige([ringZahl], iR >= 0 && w[iR] > .5, 'ring')) { ringZahl.style.transform = `translate(${cx.toFixed(1)}px,${cy.toFixed(1)}px) translate(-50%,-50%)`; ringZahl.style.opacity = String(ab(w[iR]) * ausblenden); ringZahl.style.setProperty('--f', `rgb(${fS})`); const z = Math.round(fuellung * 100); if (z !== letzteZahl && ringZahlB) { letzteZahl = z; ringZahlB.textContent = String(z); } }
+      if (stapelChip && !impuls && stapelKnoten >= 0) { const wS = w[stapelIdxForm]; stapelErreicht = wS > .5; frei = false; impuls_ersatz.stapel = stapelKnoten; }
       if (stapelChip) {
+        const zst = stapelErreicht ? (frei ? 2 : 1) : 0;
         if (zst !== stapelZustand) { stapelZustand = zst; stapelChip.classList.toggle('da', zst > 0); stapelChip.classList.toggle('frei', zst === 2); if (stapelText) stapelText.textContent = zst === 2 ? 'Freigegeben — von dir.' : 'Wartet auf dein Ja'; }
-        if (zst > 0) {
-          const sx = x[stapelIdx], sy = y[stapelIdx], cw = stapelChip.offsetWidth || 240, chh = stapelChip.offsetHeight || 80;
-          const px = clamp(handy ? sx - cw / 2 : (sx > W * .6 ? sx - 18 - cw : sx + 18), 12, W - cw - 12), py = clamp(sy - 14 - chh, 72, H - chh - 12);
-          stapelAlpha += (1 - stapelAlpha) * (ruhig ? 1 : .12);   // Einblenden ohne CSS-Übergang — der Lauf trägt es
-          stapelChip.style.transform = `translate(${px.toFixed(1)}px,${py.toFixed(1)}px)`; stapelChip.style.opacity = (stapelAlpha * ausblenden).toFixed(3);
-        } else stapelAlpha = 0;
+        if (zst > 0) { const i = (impuls || impuls_ersatz).stapel, sx = x[i], sy = y[i], cw = stapelChip.offsetWidth || 240, chh = stapelChip.offsetHeight || 80; const px = clamp(handy ? sx - cw / 2 : (sx > W * .6 ? sx - 18 - cw : sx + 18), 12, W - cw - 12), py = clamp(sy - 14 - chh, 72, H - chh - 12); stapelAlpha += (1 - stapelAlpha) * (ruhig ? 1 : .12); stapelChip.style.transform = `translate(${px.toFixed(1)}px,${py.toFixed(1)}px)`; stapelChip.style.opacity = (stapelAlpha * ausblenden).toFixed(3); } else stapelAlpha = 0;
       }
-      if (!ruhig) inhalte.forEach(el => {
-        if (!el) return;
-        const er = el.getBoundingClientRect(), d = er.top + er.height / 2 - vh / 2;
-        el.style.opacity = (1 - spanne(Math.abs(d), vh * .26, vh * .52)).toFixed(3);
-      });
+      if (!ruhig) inhalte.forEach(el => { if (!el) return; const er = el.getBoundingClientRect(), d = er.top + er.height / 2 - vh / 2; el.style.opacity = (1 - spanne(Math.abs(d), vh * .26, vh * .52)).toFixed(3); });
       if (!an) { an = true; buehne.classList.add('an'); }
     }
-
-    // Startlage: sofort in der ersten Form (zwei Welten) — kein Sprung aus (0,0).
-    { const { cx, cy, R } = grund(); for (let i = 0; i < N; i++) { const mx = cx + (welt[i] ? R * .5 : -R * .5); x[i] = mx + Math.cos(wAng[i]) * R * .72 * wRad[i]; y[i] = cy + Math.sin(wAng[i]) * R * .72 * wRad[i] * .92; } }
+    // Startlage: sofort in der ersten Form.
+    { const { cx, cy, R } = grund(), fm = formen[0]; for (let i = 0; i < N; i++) { if (fm.dreiD) { x[i] = cx + fm.pos[i * 3] * R; y[i] = cy + fm.pos[i * 3 + 1] * R; } else { x[i] = cx + fm.pos[i * 2] * R; y[i] = cy + fm.pos[i * 2 + 1] * R; } } }
     starten(zeichne, odyssee);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════
-  // 2. Die kleine Bühne: Granat + Smaragd → M
+  // Kleine Bühne: Granat + Smaragd → M (formt sich beim Einscrollen)
   // ═══════════════════════════════════════════════════════════════════════════════
   function kleineBuehne() {
-    const canvas = document.getElementById('make-m'), buehne = canvas?.parentElement;
-    if (!canvas || !buehne || !canvas.getContext) return;
+    const canvas = document.getElementById('make-m'), buehne = canvas?.parentElement; if (!canvas || !buehne || !canvas.getContext) return;
     const ctx = canvas.getContext('2d'); if (!ctx) return;
-    const eimer = new Eimer(ctx);
-    const N = handy ? 170 : 340;
-    // Das M aus Logo F: zwei Striche, die sich in der Fuge treffen (Raster 240).
-    const STRICHE = [[[50, 176], [50, 72], [119, 141]], [[121, 141], [190, 72], [190, 176]]];
-    const laenge = s => { let l = 0; for (let i = 1; i < s.length; i++) l += Math.hypot(s[i][0] - s[i - 1][0], s[i][1] - s[i - 1][1]); return l; };
-    const punktAuf = (s, u) => { let rest = u * laenge(s); for (let i = 1; i < s.length; i++) { const l = Math.hypot(s[i][0] - s[i - 1][0], s[i][1] - s[i - 1][1]); if (rest <= l) { const t = rest / l; return [lerp(s[i - 1][0], s[i][0], t), lerp(s[i - 1][1], s[i][1], t), (s[i][0] - s[i - 1][0]) / l, (s[i][1] - s[i - 1][1]) / l]; } rest -= l; } return [...s[s.length - 1], 0, 1]; };
-    const M = new Float32Array(N * 2), WOLKE = new Float32Array(N * 2), seite = new Uint8Array(N);
-    for (let i = 0; i < N; i++) {
-      const s = i % 2; seite[i] = s;
-      const [px, py, tx, ty] = punktAuf(STRICHE[s], (Math.floor(i / 2) + .5) / (N / 2) + (zufall() - .5) * .02);
-      const quer = gauss() * 7.5;
-      M[i * 2] = px - ty * quer; M[i * 2 + 1] = py + tx * quer;
-      WOLKE[i * 2] = (s ? 178 : 62) + gauss() * 42; WOLKE[i * 2 + 1] = 118 + gauss() * 46;
-    }
-    const K = nachbarn(M, 2, 2, (i, j) => seite[i] === seite[j] || (Math.hypot(M[i * 2] - 120, M[i * 2 + 1] - 141) < 16 && Math.hypot(M[j * 2] - 120, M[j * 2 + 1] - 141) < 16));
-    const KN = K.length / 2;
-    const x = new Float32Array(N), y = new Float32Array(N), nah = new Float32Array(N);
-    let W = 0, H = 0, dpr = 1, an = false, mix = 0;
-    const abbilden = (vx, vy) => { const s = Math.min(W, H) / 240; return [(W - 240 * s) / 2 + vx * s, (H - 240 * s) / 2 + vy * s]; };
-
+    const eimer = new Eimer(ctx), N = handy ? 170 : 340, fm = MF.bauen('m', N, 27092026), z = MF.zufallsquelle(4711);
+    const wolke = new Float32Array(N * 2); for (let i = 0; i < N; i++) { wolke[i * 2] = (fm.gruppe[i] === 1 ? .48 : -.48) + z.gauss() * .35; wolke[i * 2 + 1] = z.gauss() * .38; }
+    const x = new Float32Array(N), y = new Float32Array(N), nah = new Float32Array(N); let W = 0, H = 0, dpr = 1, an = false, mix = 0;
+    const ab = (vx, vy) => { const s = Math.min(W, H) / 2; return [W / 2 + vx * s, H / 2 + vy * s]; };
     function zeichne(t) {
-      const r = buehne.getBoundingClientRect();
-      if (r.bottom < -40 || r.top > innerHeight + 40) return;
-      const frisch = !W; ({ W, H, dpr } = leinwand(canvas, buehne));
-      if (frisch) for (let i = 0; i < N; i++) { const [px, py] = abbilden(WOLKE[i * 2], WOLKE[i * 2 + 1]); x[i] = px; y[i] = py; }
-      const ziel = spanne(innerHeight * .92 - r.top, 0, innerHeight * .5);
-      mix += (ziel - mix) * (ruhig ? 1 : .05);
-      const s = Math.min(W, H) / 240, k = ruhig ? 1 : .09, RM = handy ? 60 : 90, RM2 = RM * RM;
-      const zx = zeiger.x - r.left, zy = zeiger.y - r.top;
-      for (let i = 0; i < N; i++) {
-        const [wx, wy] = abbilden(WOLKE[i * 2], WOLKE[i * 2 + 1]), [mx, my] = abbilden(M[i * 2], M[i * 2 + 1]);
-        let tx = lerp(wx, mx, mix), ty = lerp(wy, my, mix);
-        if (!ruhig) { const treiben = (1 - mix) * 6 + 1.2; tx += Math.sin(t * .0009 + i * 1.9) * treiben; ty += Math.cos(t * .0011 + i * 2.7) * treiben; }
-        x[i] += (tx - x[i]) * k; y[i] += (ty - y[i]) * k;
-        let n = 0; if (zeiger.an && !ruhig) { const dx = x[i] - zx, dy = y[i] - zy, d2 = dx * dx + dy * dy; if (d2 < RM2 && d2 > .01) { const d = Math.sqrt(d2); n = 1 - d / RM; x[i] += dx / d * n * n * 10; y[i] += dy / d * n * n * 10; } }
-        nah[i] = n;
-      }
+      const r = buehne.getBoundingClientRect(); if (r.bottom < -40 || r.top > innerHeight + 40) return;
+      const frisch = !W; ({ W, H, dpr } = leinwand(canvas, buehne)); if (frisch) for (let i = 0; i < N; i++) { const [px, py] = ab(wolke[i * 2], wolke[i * 2 + 1]); x[i] = px; y[i] = py; }
+      mix += (spanne(innerHeight * .92 - r.top, 0, innerHeight * .5) - mix) * (ruhig ? 1 : .05);
+      const s = Math.min(W, H) / 2, k = ruhig ? 1 : .09, RM = handy ? 60 : 90, RM2 = RM * RM, zx = zeiger.x - r.left, zy = zeiger.y - r.top;
+      for (let i = 0; i < N; i++) { const [wx, wy] = ab(wolke[i * 2], wolke[i * 2 + 1]), [mx, my] = ab(fm.pos[i * 2], fm.pos[i * 2 + 1]); let tx = wx + (mx - wx) * mix, ty = wy + (my - wy) * mix; if (!ruhig) { const tr = (1 - mix) * 6 + 1.2; tx += Math.sin(t * .0009 + i * 1.9) * tr; ty += Math.cos(t * .0011 + i * 2.7) * tr; } x[i] += (tx - x[i]) * k; y[i] += (ty - y[i]) * k; let n = 0; if (zeiger.an && !ruhig) { const dx = x[i] - zx, dy = y[i] - zy, d2 = dx * dx + dy * dy; if (d2 < RM2 && d2 > .01) { const d = Math.sqrt(d2); n = 1 - d / RM; x[i] += dx / d * n * n * 10; y[i] += dy / d * n * n * 10; } } nah[i] = n; }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
-      const [fx, fy] = abbilden(120, 141), funke = spanne(mix, .82, 1) * (ruhig ? .8 : .7 + .3 * Math.sin(t * .0035));
-      if (funke > .01) { const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, 34 * s); g.addColorStop(0, `rgba(${F.tuerkis},${(funke * .7).toFixed(3)})`); g.addColorStop(1, 'rgba(88,217,205,0)'); ctx.fillStyle = g; ctx.fillRect(fx - 40 * s, fy - 40 * s, 80 * s, 80 * s); }
-      const langMax = 26 * s * (1 + (1 - mix) * 1.4);
-      for (let e = 0; e < KN; e++) {
-        const a = K[e * 2], b = K[e * 2 + 1], dx = x[a] - x[b], dy = y[a] - y[b], d = Math.sqrt(dx * dx + dy * dy);
-        if (d > langMax) continue;
-        const quer = seite[a] !== seite[b], al = (.28 + .3 * mix) * (1 - d / langMax);
-        eimer.linie(quer ? F.tuerkis : seite[a] ? F.smaragd : F.granat, al * (quer ? 1.3 : 1), x[a], y[a], x[b], y[b], 1);
-        const nm = Math.max(nah[a], nah[b]); if (nm > .05) eimer.linie(F.tuerkis, nm * .8, x[a], y[a], x[b], y[b], 1.2);
-      }
-      for (let i = 0; i < N; i++) {
-        const rr = (1.1 + .9 * mix) * (handy ? .95 : 1) + (Math.hypot(x[i] - fx, y[i] - fy) < 18 * s ? .6 * mix : 0);
-        eimer.punkt(seite[i] ? F.smaragd : F.granat, .7 + .3 * mix, x[i], y[i], rr);
-        if (nah[i] > .1) eimer.punkt(F.tuerkis, nah[i] * .9, x[i], y[i], rr + 1.4 * nah[i]);
-      }
+      const [fx, fy] = ab(0, (141 - 124) / 120 * .92), funke = spanne(mix, .82, 1) * (ruhig ? .8 : .7 + .3 * Math.sin(t * .0035));
+      if (funke > .01) { const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, .28 * s); g.addColorStop(0, `rgba(${F.tuerkis},${(funke * .7).toFixed(3)})`); g.addColorStop(1, 'rgba(88,217,205,0)'); ctx.fillStyle = g; ctx.fillRect(fx - .33 * s, fy - .33 * s, .66 * s, .66 * s); }
+      const dm = fm.reichweite * s * (1 + (1 - mix) * 1.4), K = fm.kanten;
+      for (let e = 0; e < K.length; e += 2) { const a = K[e], b = K[e + 1], d = Math.hypot(x[a] - x[b], y[a] - y[b]); if (d > dm) continue; const quer = fm.gruppe[a] !== fm.gruppe[b] || fm.gruppe[a] === 2, al = (.28 + .3 * mix) * (1 - d / dm); eimer.linie(quer ? F.tuerkis : farbe(fm.farben[fm.gruppe[a]]), al * (quer ? 1.3 : 1), x[a], y[a], x[b], y[b], 1); const nm = Math.max(nah[a], nah[b]); if (nm > .05) eimer.linie(F.tuerkis, nm * .8, x[a], y[a], x[b], y[b], 1.2); }
+      for (let i = 0; i < N; i++) { const rr = (1.1 + .9 * mix) * (handy ? .95 : 1) + (fm.gruppe[i] === 2 ? .6 * mix : 0); eimer.punkt(fm.gruppe[i] === 2 ? F.tuerkis : farbe(fm.farben[fm.gruppe[i]]), .7 + .3 * mix, x[i], y[i], rr); if (nah[i] > .1) eimer.punkt(F.tuerkis, nah[i] * .9, x[i], y[i], rr + 1.4 * nah[i]); }
       eimer.zeichnen();
-      if (funke > .05) { ctx.beginPath(); ctx.arc(fx, fy, 1.6 * s + 2, 0, TAU); ctx.fillStyle = `rgba(${F.tuerkis},${funke.toFixed(2)})`; ctx.fill(); }
       if (!an) { an = true; buehne.classList.add('an'); }
     }
     starten(zeichne, buehne);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════
-  // 3. Das leise Netz im Hero: lebt hinter der Score-Scheibe, ≈10 % Deckkraft,
-  //    dreht langsam, weicht der Maus schwach aus. Bei reduced-motion gar nicht erst da.
+  // Das leise Netz hinter der Score-Scheibe im Hero (≈11 % Deckkraft; ohne reduced-motion)
   // ═══════════════════════════════════════════════════════════════════════════════
   function heroNetz() {
     if (ruhig) return;
-    const hero = document.querySelector('.hero'), canvas = document.getElementById('hero-netz'), scheibe = document.getElementById('score-app');
-    if (!hero || !canvas || !scheibe || !canvas.getContext) return;
+    const hero = document.querySelector('.hero'), canvas = document.getElementById('hero-netz'), scheibe = document.getElementById('score-app'); if (!hero || !canvas || !scheibe || !canvas.getContext) return;
     const ctx = canvas.getContext('2d'); if (!ctx) return;
-    const eimer = new Eimer(ctx);
-    const { N, P, seite, kern } = hirnPunkte(handy ? 120 : 220, handy ? 16 : 30);
-    const K = nachbarn(P, 3, 2), KN = K.length / 2;
-    const x = new Float32Array(N), y = new Float32Array(N), ta = new Float32Array(N), sc = new Float32Array(N);
-    let W = 0, H = 0, dpr = 1, winkel = .4, letzteZeit = 0, bild = 0, rect = null, an = false;
+    const eimer = new Eimer(ctx), N = handy ? 136 : 250, fm = MF.bauen('brain', N, 1234567);
+    const x = new Float32Array(N), y = new Float32Array(N), ta = new Float32Array(N), sc = new Float32Array(N); let W = 0, H = 0, dpr = 1, winkel = .4, letzteZeit = 0, bild = 0, rect = null, an = false;
     function zeichne(t) {
       const dt = letzteZeit ? Math.min(48, t - letzteZeit) : 16; letzteZeit = t; bild++;
-      ({ W, H, dpr } = leinwand(canvas, hero));
-      const hr = hero.getBoundingClientRect();
-      if (!rect || (bild & 7) === 0) rect = scheibe.getBoundingClientRect();
+      ({ W, H, dpr } = leinwand(canvas, hero)); const hr = hero.getBoundingClientRect(); if (!rect || (bild & 7) === 0) rect = scheibe.getBoundingClientRect();
       const cx = rect.left - hr.left + rect.width / 2, cy = rect.top - hr.top + rect.height / 2, R = Math.max(rect.width, rect.height) * (handy ? .72 : .7);
-      winkel += dt * .00005;
-      const cosA = Math.cos(winkel), sinA = Math.sin(winkel);
-      const zx = zeiger.x - hr.left, zy = zeiger.y - hr.top, RM = 160, RM2 = RM * RM;
-      for (let i = 0; i < N; i++) {
-        const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2];
-        const x1 = px * cosA + pz * sinA, z1 = -px * sinA + pz * cosA, persp = 1 / (1 + z1 * .28);
-        sc[i] = clamp(.35 + .65 * (1 - (z1 + 1) / 2), .2, 1); ta[i] = .32 + .68 * sc[i];
-        let tx = cx + x1 * R * persp, ty = cy + py * R * persp;
-        tx += Math.sin(t * .0007 + i * 1.7) * .8; ty += Math.cos(t * .0006 + i * 2.3) * .8;
-        x[i] += (tx - x[i]) * .08; y[i] += (ty - y[i]) * .08;
-        if (zeiger.an) { const dx = x[i] - zx, dy = y[i] - zy, d2 = dx * dx + dy * dy; if (d2 < RM2 && d2 > .01) { const d = Math.sqrt(d2), n = 1 - d / RM; x[i] += dx / d * n * n * 5; y[i] += dy / d * n * n * 5; } }
-      }
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
-      ctx.globalAlpha = .11;
-      const langMax = R * 1.05, lang0 = R * .5;
-      for (let e = 0; e < KN; e++) {
-        const a = K[e * 2], b = K[e * 2 + 1], dx = x[a] - x[b], dy = y[a] - y[b], d = Math.sqrt(dx * dx + dy * dy);
-        if (d > langMax) continue;
-        const quer = seite[a] !== seite[b] || kern[a] || kern[b];
-        eimer.linie(quer ? F.tuerkis : F.teal, .9 * Math.min(ta[a], ta[b]) * (1 - clamp((d - lang0) / (langMax - lang0), 0, 1)), x[a], y[a], x[b], y[b], 1);
-      }
-      for (let i = 0; i < N; i++) eimer.punkt(kern[i] ? F.tuerkis : F.teal, ta[i], x[i], y[i], kern[i] ? 1.8 : 1.1 + 1.2 * sc[i]);
-      eimer.zeichnen();
-      ctx.globalAlpha = 1;
-      if (!an) { an = true; hero.classList.add('netz-an'); }
+      winkel += dt * .00005; const cA = Math.cos(winkel), sA = Math.sin(winkel), zx = zeiger.x - hr.left, zy = zeiger.y - hr.top, RM = 160, RM2 = RM * RM;
+      for (let i = 0; i < N; i++) { const px = fm.pos[i * 3], py = fm.pos[i * 3 + 1], pz = fm.pos[i * 3 + 2], x1 = px * cA + pz * sA, z1 = -px * sA + pz * cA, persp = 1 / (1 + z1 * .28); sc[i] = clamp(.35 + .65 * (1 - (z1 + 1) / 2), .2, 1); ta[i] = .32 + .68 * sc[i]; let tx = cx + x1 * R * persp + Math.sin(t * .0007 + i * 1.7) * .8, ty = cy + py * R * persp + Math.cos(t * .0006 + i * 2.3) * .8; x[i] += (tx - x[i]) * .08; y[i] += (ty - y[i]) * .08; if (zeiger.an) { const dx = x[i] - zx, dy = y[i] - zy, d2 = dx * dx + dy * dy; if (d2 < RM2 && d2 > .01) { const d = Math.sqrt(d2), n = 1 - d / RM; x[i] += dx / d * n * n * 5; y[i] += dy / d * n * n * 5; } } }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H); ctx.globalAlpha = .11;
+      const dm = R * 1.05, l0 = R * .5, K = fm.kanten;
+      for (let e = 0; e < K.length; e += 2) { const a = K[e], b = K[e + 1], d = Math.hypot(x[a] - x[b], y[a] - y[b]); if (d > dm) continue; const quer = fm.gruppe[a] !== fm.gruppe[b] || fm.gruppe[a] === 2; eimer.linie(quer ? F.tuerkis : F.teal, .9 * Math.min(ta[a], ta[b]) * (1 - clamp((d - l0) / (dm - l0), 0, 1)), x[a], y[a], x[b], y[b], 1); }
+      for (let i = 0; i < N; i++) eimer.punkt(fm.gruppe[i] === 2 ? F.tuerkis : F.teal, ta[i], x[i], y[i], fm.gruppe[i] === 2 ? 1.8 : 1.1 + 1.2 * sc[i]);
+      eimer.zeichnen(); ctx.globalAlpha = 1; if (!an) { an = true; hero.classList.add('netz-an'); }
     }
-    // Startlage: schon in Form.
-    { const hr = hero.getBoundingClientRect(), r0 = scheibe.getBoundingClientRect(); const cx = r0.left - hr.left + r0.width / 2, cy = r0.top - hr.top + r0.height / 2, R = Math.max(r0.width, r0.height) * .7; for (let i = 0; i < N; i++) { x[i] = cx + P[i * 3] * R; y[i] = cy + P[i * 3 + 1] * R; } }
+    { const hr = hero.getBoundingClientRect(), r0 = scheibe.getBoundingClientRect(), cx = r0.left - hr.left + r0.width / 2, cy = r0.top - hr.top + r0.height / 2, R = Math.max(r0.width, r0.height) * .7; for (let i = 0; i < N; i++) { x[i] = cx + fm.pos[i * 3] * R; y[i] = cy + fm.pos[i * 3 + 1] * R; } }
     starten(zeichne, hero);
   }
 
-  const start = () => { try { grosseBuehne(); } catch (e) { console.error('Bühne:', e); } try { kleineBuehne(); } catch (e) { console.error('M:', e); } try { heroNetz(); } catch (e) { console.error('Hero-Netz:', e); } };
+  const start = () => { document.querySelectorAll('.odyssee').forEach(o => { try { grosseBuehne(o); } catch (e) { console.error('Bühne:', e); } }); try { kleineBuehne(); } catch (e) { console.error('M:', e); } try { heroNetz(); } catch (e) { console.error('Hero-Netz:', e); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

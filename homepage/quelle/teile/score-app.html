@@ -1,0 +1,33 @@
+<div class="app tilt" id="score-app">
+        <div class="app-kopf"><span class="punkte"><i></i><i></i><i></i></span><span class="titel">MAKE OS · Start</span><span class="rechts"><span>Heute</span><span class="score-chip" id="score-chip">78</span></span></div>
+        <div class="app-rumpf">
+          <div class="app-leiste" aria-hidden="true"><i class="an">H</i><i>Z</i><i>S</i></div>
+          <div class="app-inhalt">
+            <div class="ring-kopf">
+              <span class="mikro">Wachstums-Score</span>
+              <div class="schalter" role="group" aria-label="Sicht">
+                <button type="button" data-spur="privat" aria-pressed="true">Privat</button>
+                <button type="button" data-spur="business" aria-pressed="false">Business</button>
+              </div>
+            </div>
+            <div class="ring">
+              <svg viewBox="0 0 200 200" aria-hidden="true">
+                <circle cx="100" cy="100" r="84" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="14"/>
+                <circle id="ring-bogen" cx="100" cy="100" r="84" fill="none" stroke="#58D9CD" stroke-width="14" stroke-linecap="round" stroke-dasharray="527.8" stroke-dashoffset="116" transform="rotate(-90 100 100)" style="transition:stroke-dashoffset 1.6s cubic-bezier(.2,.7,.2,1),stroke .6s ease"/>
+                <text x="100" y="108" text-anchor="middle" class="zahl" id="ring-zahl">78</text>
+                <text x="100" y="134" text-anchor="middle" class="label" id="ring-label">SOLIDE</text>
+              </svg>
+              <div class="saeulen" id="saeulen">
+                <div class="saeule" style="--f:#3DE28B"><span>Gesundheit</span><div class="balken"><i style="width:74%"></i></div><b>74</b></div>
+                <div class="saeule" style="--f:#FF7EB6"><span>Beziehung</span><div class="balken"><i style="width:82%"></i></div><b>82</b></div>
+                <div class="saeule" style="--f:#58D9CD"><span>Finanzen</span><div class="balken"><i style="width:71%"></i></div><b>71</b></div>
+                <div class="saeule" style="--f:#8F86FF"><span>Fokus &amp; Zeit</span><div class="balken"><i style="width:88%"></i></div><b>88</b></div>
+              </div>
+            </div>
+            <div class="widgets">
+              <div class="widget"><div class="k"><span>Größter Hebel</span></div><div class="z" id="ring-hinweis">Schlaf vor Mitternacht</div></div>
+              <div class="widget"><div class="k"><span>Der Stapel</span><span style="color:#FFC93C">2 warten</span></div><div class="z" style="--f:#FFC93C"><i></i><span><b>Mail-Entwurf</b> an Jonas B.</span></div><div class="z" style="--f:#C77DFF"><i></i><span><b>Fokusblock</b> Di 10–12 Uhr</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>

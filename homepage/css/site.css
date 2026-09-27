@@ -63,6 +63,7 @@ body[data-spur=business] .kap-label::before{background:var(--leucht-business);bo
 .nav nav a:hover{color:var(--ink);background:rgba(255,255,255,.04)}
 .nav nav a.aktiv{color:var(--ink)}
 .nav nav a.aktiv::after{content:'';position:absolute;left:10px;right:10px;bottom:3px;height:2px;border-radius:2px;background:var(--aktiv)}
+.mobilmenue a.aktiv{color:var(--aktiv)}
 .burger{display:none;width:44px;height:44px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:transparent;color:var(--ink);cursor:pointer;place-items:center;flex:0 0 auto}
 .burger span{display:block;width:18px;height:2px;background:currentColor;border-radius:2px;box-shadow:0 -6px 0 currentColor,0 6px 0 currentColor}
 .mobilmenue{display:none;position:fixed;inset:64px 0 0;background:rgba(11,14,16,.96);z-index:49;padding:20px;flex-direction:column;gap:2px;overflow:auto}
@@ -149,7 +150,7 @@ body[data-spur=business] .spur button[aria-pressed=true],body[data-spur=business
 .buehne{position:sticky;top:0;height:100vh;margin-bottom:-100vh;overflow:hidden;z-index:0;pointer-events:none}
 .buehne canvas{position:absolute;inset:0;width:100%;height:100%}
 .buehne .raster{mask-image:radial-gradient(60% 60% at 70% 50%,#000 10%,transparent 100%);-webkit-mask-image:radial-gradient(60% 60% at 70% 50%,#000 10%,transparent 100%)}
-.standbild{position:absolute;inset:0;background:url(../assets/brain-standbild.svg) no-repeat 70% 50%/auto 66%;opacity:.7;transition:opacity .6s ease}
+.standbild{position:absolute;inset:0;background:var(--standbild,url(../assets/standbild-brain.svg)) no-repeat 70% 50%/auto 66%;opacity:.7;transition:opacity .6s ease}
 .buehne.an .standbild{opacity:0}
 /* Chips: Welten (Kapitel 01), Apps (Kapitel 02) — Position setzt brain.js */
 .welt-chips,.chips{position:absolute;inset:0}
@@ -464,3 +465,66 @@ footer .unten{grid-column:1/-1;border-top:1px solid rgba(255,255,255,.06);paddin
 }
 .tilt{transition:transform .3s ease}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}[data-reveal],.blase,.name .make{opacity:1;transform:none}.hero h1 .wort{transform:none;opacity:1}.spur{transition:none}.saeule .balken i{transition:none}.aurora{display:none}.scrollhinweis i::after{display:none}.kapitel .wrap{opacity:1!important}}
+
+/* ── Siebter Durchgang: mehrseitig ─────────────────────────────────────────── */
+/* Brotkrumen unter dem Kopf */
+.krumen{font-size:12px;color:var(--inkLeise);padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.krumen .wrap{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.krumen a{color:var(--inkDim)}
+.krumen a+*::before,.krumen span+*::before,.krumen a+a::before{content:'›';color:var(--inkLeise);margin-right:8px}
+.krumen span{color:var(--ink)}
+.odyssee+section,.hero+.odyssee{margin-top:0}
+/* Kurze Bühne (Preise, Über): ein Kapitel, weniger Höhe */
+.odyssee.kurz .kapitel{min-height:82vh;min-height:82svh}
+.kinhalt h1.wie-h2{font-size:clamp(34px,4.6vw,60px);font-weight:700;letter-spacing:-.018em;line-height:1.06}
+/* Einstiege in die Welten */
+.einstiege{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.einstiege.zwei{grid-template-columns:repeat(2,1fr)}
+.einstieg{display:grid;gap:10px;align-content:start;padding:24px;border-radius:20px;background:var(--flaeche);border:1px solid rgba(255,255,255,.07);color:var(--ink);transition:border-color .25s,background .25s;position:relative;overflow:hidden}
+.einstieg::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--f);opacity:.8}
+.einstieg:hover{border-color:color-mix(in srgb,var(--f) 55%,transparent);background:var(--flaecheHoch)}
+.einstieg .mikro{color:var(--f)}
+.einstieg h3{font-size:clamp(19px,1.7vw,23px)}
+.einstieg p{font-size:14.5px;color:var(--inkDim)}
+.einstieg .pfad{font-size:12px;color:var(--inkLeise);letter-spacing:.02em}
+.einstieg b{color:var(--aktiv);font-family:var(--schrift-display);font-size:14px;margin-top:4px}
+@media (max-width:800px){.einstiege,.einstiege.zwei{grid-template-columns:1fr}}
+/* Bereichs-Blöcke: Text links, App-Rahmen rechts (oder umgekehrt) */
+.bereich-block .block{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:clamp(28px,5vw,72px);align-items:center}
+.bereich-block .block.umgekehrt .text{order:2}
+.bereich-block .text{display:grid;gap:14px}
+.bereich-block .text h2{font-size:clamp(24px,2.6vw,34px)}
+.bereich-block .text h3{font-size:clamp(20px,2vw,26px)}
+.bereich-block .text>p{color:var(--inkDim);font-size:15.5px}
+.zoe-tut{margin:4px 0 0;padding:0;list-style:none;display:grid;gap:8px;font-size:14px;color:var(--inkDim)}
+.zoe-tut li{display:flex;gap:10px;align-items:baseline}
+.zoe-tut li::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--leucht-agenten);flex:0 0 auto;transform:translateY(-2px)}
+.zahlt{font-size:13px;color:var(--inkLeise);padding-top:10px;border-top:1px solid rgba(255,255,255,.06)}
+.zahlt b{color:var(--aktiv);font-weight:600}
+.bereich-block+.bereich-block{padding-top:0}
+@media (max-width:900px){.bereich-block .block{grid-template-columns:1fr}.bereich-block .block.umgekehrt .text{order:0}}
+/* Reiterleiste der Markttraktion (wie in der Software: links fünf, rechts vier) */
+.reiterleiste{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px;border-radius:14px;background:var(--flaeche);border:1px solid rgba(255,255,255,.07)}
+.reiterleiste span{font-size:13px;font-weight:600;color:var(--inkDim);padding:7px 12px;border-radius:999px;display:inline-flex;align-items:center;gap:8px}
+.reiterleiste span[style]::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--f)}
+.reiterleiste span.an{background:rgba(255,255,255,.08);color:var(--ink)}
+.reiterleiste i{flex:1 1 12px;min-width:12px;height:1px;background:rgba(255,255,255,.08)}
+@media (max-width:700px){.reiterleiste i{display:none}}
+/* Finanzplan-Blatt (Excel-Gefühl) */
+.blatt{display:grid;gap:2px;font-size:12px;font-variant-numeric:tabular-nums}
+.blatt .zeile{display:grid;grid-template-columns:1.6fr repeat(4,1fr);gap:2px}
+.blatt .zeile span{padding:6px 8px;border-radius:6px;background:rgba(255,255,255,.03);color:var(--inkDim)}
+.blatt .zeile span:first-child{color:var(--ink)}
+.blatt .kopfz span{background:transparent;color:var(--inkLeise);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+.blatt .summe span{background:rgba(88,217,205,.08);color:var(--ink);font-weight:600}
+.blatt .wer{box-shadow:inset 3px 0 0 var(--smaragd)}
+.blatt .wer.m{box-shadow:inset 3px 0 0 var(--granat)}
+/* Handy-Rahmen für den Takt */
+.app.handy-rahmen{max-width:360px;justify-self:center;width:100%}
+.app-rumpf.einspaltig{grid-template-columns:1fr}
+/* Preis-Teaser als Links */
+.wege.kurz .weg-karte{color:var(--ink);gap:8px}
+.wege.kurz .weg-karte .fuer{margin-top:4px}
+.mehr{margin-top:18px;font-size:14px}
+.mehr a{color:var(--aktiv)}
+@media (max-width:820px){.krumen{display:none}}

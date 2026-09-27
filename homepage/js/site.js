@@ -8,10 +8,15 @@
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 
-  // Fortschritt, Nach-oben, Kapitel-Anzeige (Rail rechts, Label im Handy-Kopf, Nav-Links)
-  const fortschritt = $('.fortschritt'), nachoben = $('.nachoben'), links = $$('.nav nav a[href^="#"]'), railLinks = $$('.rail a'), kapLabel = $('.kap-label');
-  const kapitelEls = $$('[data-kapitel]');
-  const kapitelName = Object.fromEntries(railLinks.map(a => [a.dataset.nr, a.querySelector('span')?.textContent || '']));
+  // Kapitel-Anzeige: die Rail rechts baut sich aus den Abschnitten mit data-kapitel (je Seite andere Kapitel)
+  const rail = $('.rail'), kapitelEls = $$('[data-kapitel]'), kapitelName = {}, kapitelZiel = {};
+  for (const el of kapitelEls) { const nr = el.dataset.kapitel; if (!(nr in kapitelName)) { kapitelName[nr] = el.dataset.titel || ''; kapitelZiel[nr] = el.id || 'top'; } }
+  if (rail) rail.innerHTML = Object.keys(kapitelName).map(nr => `<a href="#${kapitelZiel[nr]}" data-nr="${nr}"><span>${kapitelName[nr]}</span><i></i></a>`).join('');
+  const railLinks = $$('.rail a'), kapLabel = $('.kap-label');
+  // Aktiver Menüpunkt je Seite
+  const seite = document.body.dataset.seite; $$('a[data-seite]').forEach(a => a.classList.toggle('aktiv', a.dataset.seite === seite));
+  // Fortschritt, Nach-oben, Rail
+  const fortschritt = $('.fortschritt'), nachoben = $('.nachoben');
   let letzteNr = null;
   const beimScrollen = () => {
     const h = document.documentElement; const max = h.scrollHeight - h.clientHeight;
@@ -19,10 +24,9 @@
     if (nachoben) nachoben.classList.toggle('da', h.scrollTop > 700);
     const grenze = innerHeight * .45; let aktiv = null;
     for (const el of kapitelEls) if (el.getBoundingClientRect().top <= grenze) aktiv = el;
-    const nr = aktiv ? aktiv.dataset.kapitel : '00';
+    const nr = aktiv ? aktiv.dataset.kapitel : Object.keys(kapitelName)[0] || '00';
     if (nr === letzteNr) return; letzteNr = nr;
     railLinks.forEach(a => a.classList.toggle('aktiv', a.dataset.nr === nr));
-    links.forEach(a => { const ziel = $(a.getAttribute('href')); a.classList.toggle('aktiv', !!ziel && (ziel.dataset.kapitel === nr || ziel.closest('[data-kapitel]')?.dataset.kapitel === nr)); });
     if (kapLabel) kapLabel.textContent = (nr === '00' ? '' : `${kapitelName[nr] || ''} · `) + (document.body.dataset.spur === 'business' ? 'Business' : 'Privat');
   };
   addEventListener('scroll', beimScrollen, { passive: true }); beimScrollen();
@@ -101,6 +105,14 @@
     const reiter = tabs.find(t => t.dataset.tab === (spur === 'business' ? 'markt' : 'gesundheit')); if (reiter && !still) waehle(reiter);
     document.dispatchEvent(new CustomEvent('spur', { detail: spur }));
   };
+  const sichtStart = (() => {
+    const q = new URLSearchParams(location.search).get('sicht');
+    if (q === 'privat' || q === 'business') return q;
+    const std = document.body.dataset.sichtStandard; if (std === 'privat' || std === 'business') return std;
+    try { const m = sessionStorage.getItem('make-sicht'); if (m === 'privat' || m === 'business') return m; } catch {}
+    return 'privat';
+  })();
+  document.addEventListener('spur', e => { try { sessionStorage.setItem('make-sicht', e.detail); } catch {} });
   $$('button[data-spur]').forEach(b => {
     b.addEventListener('click', () => setzeSpur(b.dataset.spur));
     b.addEventListener('keydown', e => {
@@ -109,8 +121,8 @@
       const nachbar = b.parentElement.querySelector(`button[data-spur="${ziel}"]`); nachbar?.focus();
     });
   });
-  setzeSpur('privat');
   document.addEventListener('spur', () => { letzteNr = null; beimScrollen(); });
+  setzeSpur(sichtStart, true);
   if (spurPille) { const zeigePille = () => spurPille.classList.toggle('da', scrollY > innerHeight * .7); addEventListener('scroll', zeigePille, { passive: true }); zeigePille(); }
 
   // Kippen (nur Hero-Fenster), Magnet (nur Hero-CTA), Cursor-Licht

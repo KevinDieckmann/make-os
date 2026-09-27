@@ -1,62 +1,7 @@
-<!doctype html>
-<html lang="de">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MAKE OS — Life & Business Operating System</title>
-<meta name="description" content="MAKE OS bringt dein Privatleben und dein Unternehmen in ein System, macht beides messbar — und ZOE, die KI im Hintergrund, hilft. Betrieben von Malin und Kevin in Deutschland, mit einem eigenen Bereich je Kunde.">
-<meta property="og:title" content="MAKE OS — Life & Business Operating System">
-<meta property="og:description" content="MAKE OS bringt dein Privatleben und dein Unternehmen in ein System, macht beides messbar — und ZOE, die KI im Hintergrund, hilft. Betrieben von Malin und Kevin in Deutschland, mit einem eigenen Bereich je Kunde.">
-<meta property="og:type" content="website">
-<meta name="theme-color" content="#0B0E10">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="css/ci.css">
-<link rel="stylesheet" href="css/site.css">
-</head>
-<body data-spur="privat" data-seite="index" data-sicht-standard="">
-
-<header class="nav">
-  <div class="fortschritt" aria-hidden="true"></div>
-  <div class="wrap">
-    <a class="marke" href="index.html" aria-label="MAKE OS — Startseite">
-      <svg viewBox="0 0 240 240" aria-hidden="true"><path d="M50 176 L50 72 L119 141" fill="none" stroke="var(--granat)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/><path d="M121 141 L190 72 L190 176" fill="none" stroke="var(--smaragd)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span class="wort"><span class="ma">MA</span><span class="ke">KE</span><span class="os">OS</span></span>
-    </a>
-    <span class="kap-label" aria-live="polite"></span>
-    <nav aria-label="Seiten">
-      <a href="index.html" data-seite="index">Start</a>
-      <a href="privat.html" data-seite="privat">Privat</a>
-      <a href="business.html" data-seite="business">Business</a>
-      <a href="zoe.html" data-seite="zoe">ZOE</a>
-      <a href="preise.html" data-seite="preise">Preise</a>
-      <a href="ueber.html" data-seite="ueber">MA + KE</a>
-    </nav>
-    <a class="knopf" href="#testen">Einmal testen</a>
-    <button class="burger" type="button" aria-label="Menü" aria-expanded="false" aria-controls="mobilmenue"><span></span></button>
-  </div>
-</header>
-<div class="mobilmenue" id="mobilmenue">
-  <a href="index.html" data-seite="index">Start · Die Geschichte</a>
-  <a href="privat.html" data-seite="privat">Privat · Gesundheit, Familie, Finanzen, Zeit</a>
-  <a href="business.html" data-seite="business">Business · Markttraktion, Finanzplanung, Mandate</a>
-  <a href="zoe.html" data-seite="zoe">ZOE · Assistentin, Heads, Brain</a>
-  <a href="preise.html" data-seite="preise">Preise · Drei Wege</a>
-  <a href="ueber.html" data-seite="ueber">MA + KE · Über uns</a>
-  <a href="#testen">Einmal testen</a>
-</div>
-<nav class="krumen" aria-label="Du bist hier"><div class="wrap"><a href="index.html">MAKE OS</a><span>Die Geschichte</span></div></nav>
-
-<!-- Kapitel-Anzeige (Desktop): baut site.js aus den Abschnitten mit data-kapitel -->
-<nav class="rail" aria-label="Kapitel"></nav>
-
-<!-- Die Sicht: Privat oder Business — jederzeit wechselbar, die ganze Seite folgt -->
-<div class="spur" role="group" aria-label="Sicht wechseln">
-  <span class="mikro">Sicht</span>
-  <button type="button" data-spur="privat" aria-pressed="true">Privat</button>
-  <button type="button" data-spur="business" aria-pressed="false">Business</button>
-</div>
-
-<main id="top">
+<!-- titel: MAKE OS — Life & Business Operating System -->
+<!-- beschreibung: MAKE OS bringt dein Privatleben und dein Unternehmen in ein System, macht beides messbar — und ZOE, die KI im Hintergrund, hilft. Betrieben von Malin und Kevin in Deutschland, mit einem eigenen Bereich je Kunde. -->
+<!-- krumen: <span>Die Geschichte</span> -->
+<!-- sicht:  -->
 
 <!-- ── 00 · Hero: das Schaubild aus der Software ───────────────────────────── -->
 <section class="hero" id="hero" data-kapitel="00" data-titel="Start">
@@ -82,40 +27,7 @@
       </div>
     </div>
     <div class="hero-bild">
-      <div class="app tilt" id="score-app">
-        <div class="app-kopf"><span class="punkte"><i></i><i></i><i></i></span><span class="titel">MAKE OS · Start</span><span class="rechts"><span>Heute</span><span class="score-chip" id="score-chip">78</span></span></div>
-        <div class="app-rumpf">
-          <div class="app-leiste" aria-hidden="true"><i class="an">H</i><i>Z</i><i>S</i></div>
-          <div class="app-inhalt">
-            <div class="ring-kopf">
-              <span class="mikro">Wachstums-Score</span>
-              <div class="schalter" role="group" aria-label="Sicht">
-                <button type="button" data-spur="privat" aria-pressed="true">Privat</button>
-                <button type="button" data-spur="business" aria-pressed="false">Business</button>
-              </div>
-            </div>
-            <div class="ring">
-              <svg viewBox="0 0 200 200" aria-hidden="true">
-                <circle cx="100" cy="100" r="84" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="14"/>
-                <circle id="ring-bogen" cx="100" cy="100" r="84" fill="none" stroke="#58D9CD" stroke-width="14" stroke-linecap="round" stroke-dasharray="527.8" stroke-dashoffset="116" transform="rotate(-90 100 100)" style="transition:stroke-dashoffset 1.6s cubic-bezier(.2,.7,.2,1),stroke .6s ease"/>
-                <text x="100" y="108" text-anchor="middle" class="zahl" id="ring-zahl">78</text>
-                <text x="100" y="134" text-anchor="middle" class="label" id="ring-label">SOLIDE</text>
-              </svg>
-              <div class="saeulen" id="saeulen">
-                <div class="saeule" style="--f:#3DE28B"><span>Gesundheit</span><div class="balken"><i style="width:74%"></i></div><b>74</b></div>
-                <div class="saeule" style="--f:#FF7EB6"><span>Beziehung</span><div class="balken"><i style="width:82%"></i></div><b>82</b></div>
-                <div class="saeule" style="--f:#58D9CD"><span>Finanzen</span><div class="balken"><i style="width:71%"></i></div><b>71</b></div>
-                <div class="saeule" style="--f:#8F86FF"><span>Fokus &amp; Zeit</span><div class="balken"><i style="width:88%"></i></div><b>88</b></div>
-              </div>
-            </div>
-            <div class="widgets">
-              <div class="widget"><div class="k"><span>Größter Hebel</span></div><div class="z" id="ring-hinweis">Schlaf vor Mitternacht</div></div>
-              <div class="widget"><div class="k"><span>Der Stapel</span><span style="color:#FFC93C">2 warten</span></div><div class="z" style="--f:#FFC93C"><i></i><span><b>Mail-Entwurf</b> an Jonas B.</span></div><div class="z" style="--f:#C77DFF"><i></i><span><b>Fokusblock</b> Di 10–12 Uhr</span></div></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+      {{teil:score-app}}
       <p class="bild-hinweis">Beispieldaten · <b>Wechsle die Sicht</b> — Score, Säulen und die ganze Seite folgen.</p>
     </div>
   </div>
@@ -128,26 +40,8 @@
     <div class="raster"></div>
     <div class="standbild"></div>
     <canvas id="brain"></canvas>
-    <div class="welt-chips">
-      <span class="welt-chip" data-w="a"><i style="--f:#58D9CD"></i>Privat · Di 19:00 · Abend zu zweit</span>
-      <span class="welt-chip" data-w="b"><i style="--f:#FF9F43"></i>Business · Di 19:00 · Angebot fertig machen</span>
-      <span class="welt-chip konflikt" data-w="k"><i style="--f:#FFC93C"></i>Beides um 19 Uhr — keiner sieht es</span>
-    </div>
-    <div class="chips">
-      <span class="chip"><i></i>Wearable<small>alles gut</small></span>
-      <span class="chip"><i></i>Kalender<small>alles gut</small></span>
-      <span class="chip"><i></i>CRM<small>alles gut</small></span>
-      <span class="chip"><i></i>Notizen<small>alles gut</small></span>
-      <span class="chip"><i></i>Banking<small>alles gut</small></span>
-      <span class="chip"><i></i>Aufgaben<small>alles gut</small></span>
-      <span class="chip"><i></i>Mail<small>alles gut</small></span>
-      <span class="chip"><i></i>Chat-KI<small>alles gut</small></span>
-      <span class="chip"><i></i>Tabellen<small>alles gut</small></span>
-    </div>
-
-    <div class="ring-zahl"><span class="mikro">Wachstums-Score</span><b>0</b><span class="ring-name"><span class="sp">Privat-Index</span><span class="sb">Business-Index</span></span></div>
-    <div class="stapel-chip"><span class="mikro">Der Stapel</span><b>Wartet auf dein Ja</b><span><span class="sp">Nachricht · „Donnerstag 19 Uhr — Abend zu zweit?“</span><span class="sb">Mail-Entwurf an Jonas B. · „Zusammenfassung Woche 40“</span></span></div>
-
+    {{teil:start-chips}}
+    {{teil:start-zahl-stapel}}
   </div>
 
   <div class="kapitel" data-kapitel="01" data-titel="Zwei Welten" id="zwei-welten">
@@ -236,13 +130,7 @@
       <h2>Keine Kundenlogos. Systemzahlen.</h2>
       <p>MAKE OS ist vor dem Start — wir zeigen, was gebaut ist, nicht, wer es angeblich benutzt.</p>
     </div>
-    <div class="zahlen">
-      <div class="zahl-karte" data-reveal><div class="z"><span data-count="30">30</span></div><span>Agenten und Systemläufe — vom Head of Sales bis zur nächtlichen Brain-Konsolidierung</span></div>
-      <div class="zahl-karte" data-reveal style="--d:80ms"><div class="z"><span data-count="40">40</span><small>+</small></div><span>Werkzeuge, mit denen ZOE einträgt, plant, merkt und vorschlägt</span></div>
-      <div class="zahl-karte" data-reveal style="--d:160ms"><div class="z"><span data-count="900">900</span><small>+</small></div><span>automatische Tests, die bei jedem Stand laufen — dazu Audit, Geheimnis- und Abhängigkeitsprüfung</span></div>
-      <div class="zahl-karte" data-reveal style="--d:240ms"><div class="z"><span data-count="0">0</span></div><span>Nachrichten, die je ohne ein menschliches Ja verschickt wurden. Und das bleibt so.</span></div>
-    </div>
-
+    {{teil:zahlen}}
   </div>
 </section>
 
@@ -262,28 +150,3 @@
     <p class="mehr" data-reveal><a href="preise.html">Alle Leistungen im Vergleich, Fragen und für wen welcher Weg passt →</a></p>
   </div>
 </section>
-
-<!-- ── Einmal testen (auf jeder Seite) ────────────────────────────────────────── -->
-<section id="testen" class="testen" data-kapitel="99" data-titel="Einmal testen">
-  <div class="wrap">
-    {{teil:testen}}
-  </div>
-</section>
-
-</main>
-
-<footer>
-  <div class="wrap">
-    <div><a class="marke" href="index.html" style="margin-bottom:10px"><svg viewBox="0 0 240 240" aria-hidden="true"><path d="M50 176 L50 72 L119 141" fill="none" stroke="var(--granat)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/><path d="M121 141 L190 72 L190 176" fill="none" stroke="var(--smaragd)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="wort"><span class="ma">MA</span><span class="ke">KE</span><span class="os">OS</span></span></a><span>Life &amp; Business Operating System.<br>Gebaut und betrieben von Malin und Kevin. Läuft in Deutschland — mit einem eigenen Bereich je Kunde.</span></div>
-    <div><b>Seiten</b><a href="index.html">Start · Die Geschichte</a><a href="privat.html">Privat</a><a href="business.html">Business</a><a href="zoe.html">ZOE &amp; Brain</a><a href="preise.html">Preise</a><a href="ueber.html">MA + KE</a></div>
-    <div><b>Rechtliches</b><a href="#impressum">Impressum</a><a href="#datenschutz">Datenschutz</a><span>Kein Tracking, keine Cookies, keine Schriften von Dritten. Die Sicht (Privat/Business) merkt sich nur dein Browser für diesen Besuch.</span></div>
-    <div class="unten"><span>© 2026 MAKE OS · Malin &amp; Kevin</span><span>Alle Namen, Firmen, Termine und Zahlen auf dieser Seite sind Beispiele.</span></div>
-  </div>
-</footer>
-
-<button class="nachoben" type="button" aria-label="Nach oben">↑</button>
-<script src="js/formationen.js" defer></script>
-<script src="js/site.js" defer></script>
-<script src="js/brain.js" defer></script>
-</body>
-</html>
