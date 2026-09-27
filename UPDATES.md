@@ -75,6 +75,31 @@ Ansage stehen, bis das nächste Update sie ablöst.
 
 ## Nächstes Update — vorbereitet, noch nicht online
 
+### Markttraktion: Auswahl smarter — Chip + Menü + Vorschlag (27.09. abends, nur lokal — Kevin, Paket D)
+
+Kevin: „Das Rollen-Thema und das ständige Anklicken muss smarter werden — dass man immer alle sieht, ist nicht gut.“
+
+- **Bauteil `Wahl` / `WahlMehrfach`** (`components/os/crm/Wahl.tsx`): sichtbar nur der gesetzte Wert als Chip `[Entscheider ▾]`; Klick öffnet ein Menü am Chip (bleibt im Fenster, am Handy ein Blatt von unten), aktueller Wert markiert, „– entfernen“, wo das Feld leer sein darf; Suche ab 8 Werten; Tastatur ↑ ↓ Pos1 Ende Enter Esc (Fokus zurück auf den Chip), `role="listbox"`, nur ein Menü gleichzeitig, ruhig bei „weniger Bewegung“. Leeres Feld: `[+ Rolle]` oder `Vorschlag: Nutzer [✓ übernehmen] [andere ▾]` mit Grund.
+- **Vorschläge** (`lib/crm/vorschlaege.ts`, nie still gespeichert): Deal-Rolle aus Position/Jobtitel/Seniorität (Geschäftsführung/C-Level/Inhaber/Gründer/Vorstand → Entscheider; Leitung/Head of → Fürsprecher nur bei warmem Draht, sonst Nutzer; „Bremst“ nie), Rollen der Person aus Typ/Kategorie/Firmen-Rolle, Anrede nur wenn eindeutig (Freunde & Familie, eigene Nachrichten).
+- **Umgestellt:** Deal-Akte „Personen & Rollen“ (mit Sprung „Vorschlag: <Name>“ beim Hinweis „Noch kein Entscheider“), Kontaktakte Beziehung (Kreis · Anrede · Ansprache in einer Zeile, Rollen, Phase von Hand — kein „ändern ▾“ mehr), Datenschutz, Matrix Prio/Eignung, Deal-Detail (Firma, Art, Wert-Basis, Produkt, Quelle, Bezug, Gesellschaft, Verlustgrund), Mandat (Status, Vertrag, Produkt, Phase, Honorar, USt, Verlängerung, Gesellschaft), Gäste (Weg, Rolle, Fotos), Anlege-Formulare (Kontakt, Deal, Gespräch festhalten) und weitere Formulare (Firma, Follow-up, Kampagne, Events, Marketing, Betroffenenrechte).
+- **Gesellschaft heißt überall „MAKE OS UG“** statt „Neue UG“ (Namen aus `lib/einheiten.ts`, gespeichert bleibt `ug`).
+- Bleiben Pillen: Filter, Reiter, Deal-Stufenleiste, Lead-Status, Gast-Status, Kernfragen ja/unklar/nein, Gesprächs-Ergebnisse, Zweier-Umschalter.
+- Tests: `tests/crm-vorschlaege.test.ts`, `tests/crm-wahl.test.ts`.
+
+### Aufgaben im Business nach Einheit: Selbstständigkeit · KD Ventures · MAKE OS UG (27.09. abends, nur lokal)
+
+Kevin: „Nimm als Label bei den Aufgaben mit, dass wir die Aufgaben im Business immer zwischen Selbstständigkeit, KD Ventures und MAKE OS UG unterscheiden können — überall, wo es möglich und nötig ist.“
+
+- **Feld `Task.einheit`** (optional, nur Business). Der Schreibweg (`/api/state/tasks` PUT/PATCH, `/api/tasks/create`) säubert: Namen über `einheitName` vereinheitlicht („Neue UG“ → „MAKE OS UG“, „kdv“ → „KD Ventures“), 2–40 Zeichen, **Privat verwirft die Einheit** (auch wenn der Ort von Hand auf Privat steht). Wer eine Aufgabe nach Privat schiebt, verliert die Einheit schon im Browser. Logik rein in `lib/aufgaben/einheit.ts`.
+- **Aufgaben (Liste und Board):** im Business **Filter-Pillen** Alle · Selbstständigkeit · KD Ventures · MAKE OS UG · (eigene, sobald eine Aufgabe sie trägt) · ohne Einheit, mit Anzahl. Einheit als **Chip mit Menü** an jeder Business-Aufgabe (farbig dezent je Kerneinheit, eigene grau; im Board zusätzlich „+ Einheit“ an offenen Aufgaben ohne Einheit), im Detail als eigene Zeile, auf der Kanban-Karte als Anzeige. **„+ neu“** im Menü legt eine eigene Einheit in der Werteliste des Haushalts an (`/api/planung/einheiten`, dieselbe wie bei Zielen). **Neue Business-Aufgaben** bekommen die zuletzt gefilterte/gewählte Einheit als Vorgabe (sichtbar als Chip neben der Eingabe, Merker im Browser).
+- **System-Aufgaben:** Heads (automatisch übernommen und von Hand angenommen) tragen die Einheit, wenn ein Deal/Mandat mit Gesellschaft dahintersteht (Mandat vor Deal vor Produkt; „offen“ → keine). Steuer-Aufgaben: Consulting → Selbstständigkeit, KD Ventures → KD Ventures (ältere werden beim nächsten Abgleich nachgetragen), private ohne.
+- **ZOE:** `create_task` hat den optionalen Parameter `einheit` (Kerneinheiten + eigene, in der Beschreibung erklärt); ZOE sieht die Einheit in ihrer Aufgabenliste.
+- **Überall sichtbar:** Home-Widget „Aufgaben“ (Einheit in der Zeile; neue Einstellung **„Einheit“**: alle · nur Selbstständigkeit/KD Ventures/MAKE OS UG · Business ohne Einheit), Tages- und Wochenplaner (Kürzel in der Aufgaben-Pille), Horizont-Seiten (fällige Aufgaben), **Schnellsuche findet jetzt auch offene Aufgaben** des aktiven Space (Untertitel: Einheit · fällig).
+- **Routinen im Business** tragen optional eine Einheit (Wahl in „Neue Routine“ und an jeder Business-Routine; Widget „Routinen heute“ zeigt sie).
+- Tests: `tests/aufgaben-einheit.test.ts` (Säuberung/Vereinheitlichung am Schreibweg mit eigenem Datenordner, Ableitung aus der Gesellschaft, Filter, Vorgabe).
+- Bewusst nicht: CRM (Deals/Mandate/Produkte haben `gesellschaft`), Finanzplanung (eigene Einheiten), Zeit & Fokus (die Zeitmessung kennt nur `space:bereich`, keine Aufgabe — Vorschlag unten).
+- Offen (Kevins Wort): Soll die Zeitmessung Fokus-Blöcke einer Aufgabe zuordnen, damit „Zeit je Einheit“ auswertbar wird? Sollen Beleg-Aufgaben aus den Haushaltsfinanzen (`beleg-…`, Einheit kdc/kdv am Beleg) die Einheit ebenfalls tragen (liegt in `lib/finanzen/**`)? Sollen Aufgaben ohne Einheit einen Vorschlag aus dem Ort bekommen (Ort „Selbständigkeit“ → Selbstständigkeit)?
+
 ### Ziele & Planung: Ziele links, Meilensteine rechts, Kaskade, Routinen (27.09. abends, nur lokal — Malins Rückmeldung, Paket C)
 
 Malin: „Ziele links, Meilensteine rechts, + neu oben, Erledigtes unten, Priorität per Pfeil, Business nach Einheit, Jahresziel kaskadiert, Routinen Privat/Business je Person mit Rhythmus, Home zeigt, was heute dran ist.“

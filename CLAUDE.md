@@ -205,6 +205,14 @@ lokal, Route `/os`, Port 3001.
   `ms~<ziel>`. `angepasst` = nicht mehr nachziehen; Löschen nur nach „lösen“. Neue Ableitungsregeln dort ergänzen, nie in der Ansicht.
 - **Einheiten** (nur Business): `lib/planung/einheiten.ts` (Standard Selbstständigkeit · KD Ventures · Kunden), Speicher
   `planung-einheiten--<haushalt>` über `/api/planung/einheiten`. Privat trägt nie eine Einheit.
+- **Einheiten-Regel (27.09.):** Business-Einheiten nur aus `lib/einheiten.ts` (Kern: Selbstständigkeit · KD Ventures · MAKE OS UG =
+  kdc · kdv · ug) + `lib/planung/einheiten.ts` (Werteliste je Haushalt) — nie eigene Listen oder Schreibweisen.
+- **Aufgaben tragen `einheit`** (nur Business, `types/tasks.ts`): Säuberung im Schreibweg (`aufgabeEinheit` in `lib/aufgaben/einheit.ts`,
+  genutzt von `/api/state/tasks` und `/api/tasks/create`; Privat/Ort-privat verwirft). System-Aufgaben mit Deal/Mandat/Produkt dahinter:
+  `einheitAusBezug(crm, …)` (Heads), Steuer-Aufgaben `steuerEinheit`; ohne Bezug keine Einheit. Oberfläche: `components/os/aufgaben/Einheit.tsx`
+  (`EinheitWahl` Chip+Menü mit „+ neu“, `EinheitFilterPillen`, `EinheitMarke`, `useEinheiten`), Filter/Vorgabe rein (`passtEinheitFilter`,
+  `einheitFilterOptionen`, `vorgabeEinheit`, Merker `make-aufgaben-einheit`). ZOE `create_task` nimmt `einheit`. Routinen im Business
+  ebenso optional `einheit` (`sauberRoutine`). Tests `tests/aufgaben-einheit.test.ts`.
 - **Routinen** (Speicher `routinen`): `space` (fehlt = privat), `owner` (Person oder `beide`, fehlt = beide), `rhythmus`
   (fehlt = täglich) + `naechstesMal`, `rang`; Fälligkeit in `lib/planung/rhythmus.ts` (rein, YYYY-MM-DD, Monatsende geklemmt),
   „heute dran“ je Person in `lib/planung/routinen.ts` (`heuteFaellig`, `sichtbarFuer`). Blöcke (Wochenvorlage je Person) liegen
@@ -284,6 +292,7 @@ lokal, Route `/os`, Port 3001.
   Ansicht `components/os/crm/FollowUp.tsx`. Neue Nachfass-Logik kommt hierher, nicht in ein neuntes Feld.
 - **Auswertung:** `lib/crm/deal-auswertung.ts` (Verweildauer, Umwandlung, Win/Loss, Zyklus, Prognose nach Monat, hängt nach Wert; `MINDESTMENGE` 5).
 - Wertelisten (`CrmBestand.wertelisten`: Verlustgründe, Kadenz je Kreis, Ergebnisse, Ziele) pflegt Stammdaten; Verbraucher lesen sie mit Rückfall auf die Konstanten.
+- **Auswahl in Formularen = `Wahl`-Chip** (`components/os/crm/Wahl.tsx`: `Wahl`/`WahlMehrfach`, Menü am Chip, Vorschlag aus `lib/crm/vorschlaege.ts`, reine Hilfen `lib/crm/wahl.ts`); Pillenreihen nur für Filter, Reiter, Navigation und echte Zweier-Umschalter. Vorschläge nie still speichern. Gesellschaften über `GESELLSCHAFT_WAHL` (Namen aus `lib/einheiten.ts`).
 - **Masterlisten-Import „Online gewinnt“ (27.09.):** `lib/make-one/crm.ts` — `Kontakt.vonHand` (Stammdaten-Felder, die von Hand gesetzt wurden;
   `vonHandMarkieren` läuft in `PATCH /api/state/kontakte` über die Haken `vereinen`/`neu` von `listePatchen`), `zusammenfuehren` füllt Lücken, liefert
   `konflikte` statt zu überschreiben (`istVonHand`; Bestand ohne Liste: nach dem Import geändert ⇒ Konflikt), `schluessel` tolerant (`normName`/`normFirma`),
