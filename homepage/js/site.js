@@ -1,6 +1,7 @@
 // ─── MAKE OS Homepage — Bewegung mit Maß, v3 (27.09.) ───────────────────────
 // Zierde über einer Seite, die ohne JS vollständig lesbar ist. reduced-motion
-// schaltet Zähler, Ring und Reveals auf „sofort da“. Das Brain lebt in brain.js.
+// schaltet Zähler, Ring und Reveals auf „sofort da“. Die Bühne lebt in brain.js.
+// Neu im vierten Durchgang: die Sicht (Privat/Business) — ein Schalter, die ganze Seite folgt.
 (() => {
   const ruhig = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const maus = matchMedia('(hover:hover) and (pointer:fine)').matches;
@@ -59,17 +60,14 @@
   };
   const setzeModus = m => {
     const d = MODI[m];
-    $$('.schalter button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.modus === m)));
-    if (bogen) { bogen.style.stroke = d.farbe; bogen.style.strokeDashoffset = String(UMFANG * (1 - d.wert / 100)); }
+        if (bogen) { bogen.style.stroke = d.farbe; bogen.style.strokeDashoffset = String(UMFANG * (1 - d.wert / 100)); }
     if (label) label.textContent = d.label; if (hinweis) hinweis.textContent = d.hinweis; if (chip) chip.textContent = String(d.wert);
     if (zahl) zaehle(zahl, d.wert, 1200);
     $$('.saeule').forEach((s, i) => { s.querySelector('span').textContent = d.namen[i]; s.querySelector('i').style.width = `${d.werte[i]}%`; s.querySelector('b').textContent = String(d.werte[i]); });
   };
-  $$('.schalter button').forEach(b => b.addEventListener('click', () => setzeModus(b.dataset.modus)));
-  const scoreApp = $('#score-app');
-  if (scoreApp) { const io = new IntersectionObserver(es => { if (es[0].isIntersecting) { setzeModus('privat'); io.disconnect(); } }, { threshold: .3 }); io.observe(scoreApp); }
+  
 
-  // Chat Zug um Zug, danach der Weg eines Vorschlags
+  // Chat Zug um Zug (Zoe), danach der Weg eines Vorschlags
   const chat = $('#chat');
   if (chat) {
     const blasen = $$('.blase', chat);
@@ -87,6 +85,19 @@
   const tabs = $$('.tabs [role=tab]');
   const waehle = t => { tabs.forEach(x => { x.setAttribute('aria-selected', String(x === t)); x.tabIndex = x === t ? 0 : -1; }); $$('.bereich').forEach(p => p.classList.toggle('aktiv', p.dataset.panel === t.dataset.tab)); };
   tabs.forEach((t, i) => { t.addEventListener('click', () => waehle(t)); t.addEventListener('keydown', e => { if (e.key === 'ArrowRight') { waehle(tabs[(i + 1) % tabs.length]); tabs[(i + 1) % tabs.length].focus(); } if (e.key === 'ArrowLeft') { waehle(tabs[(i - 1 + tabs.length) % tabs.length]); tabs[(i - 1 + tabs.length) % tabs.length].focus(); } }); });
+
+  // Die Sicht: Privat oder Business. Ein Schalter (Scheibe im Hero, Pille unten) — Score, Texte (.sp/.sb), Reiter und Bühne folgen.
+  const spurPille = $('.spur');
+  const setzeSpur = (spur, still) => {
+    document.body.dataset.spur = spur;
+    $$('[data-spur]').forEach(b => { if (b.tagName === 'BUTTON') b.setAttribute('aria-pressed', String(b.dataset.spur === spur)); });
+    setzeModus(spur);
+    const reiter = tabs.find(t => t.dataset.tab === (spur === 'business' ? 'markt' : 'gesundheit')); if (reiter && !still) waehle(reiter);
+    document.dispatchEvent(new CustomEvent('spur', { detail: spur }));
+  };
+  $$('button[data-spur]').forEach(b => b.addEventListener('click', () => setzeSpur(b.dataset.spur)));
+  setzeSpur('privat');
+  if (spurPille) { const zeigePille = () => spurPille.classList.toggle('da', scrollY > innerHeight * .7); addEventListener('scroll', zeigePille, { passive: true }); zeigePille(); }
 
   // Kippen (nur Hero-Fenster), Magnet (nur Hero-CTA), Cursor-Licht
   if (!ruhig && maus) {

@@ -23,6 +23,8 @@ p{margin:0;max-width:62ch}
 .mikro{font-size:var(--mikro);letter-spacing:.14em;text-transform:uppercase;color:var(--inkLeise);font-weight:600}
 .dim{color:var(--inkDim)}.leise{color:var(--inkLeise)}
 .granat-wort{color:var(--granat);font-weight:600}.smaragd-wort{color:var(--smaragd);font-weight:600}
+/* Zwei Laufstrecken: .sp = Privat, .sb = Business — body[data-spur] entscheidet, kein JS nötig */
+.sb{display:none}body[data-spur=business] .sb{display:inline}body[data-spur=business] .sp{display:none}
 .wrap{width:min(1180px,calc(100% - 40px));margin-inline:auto}
 .wrap>*{min-width:0}
 section{padding:clamp(72px,10vw,140px) 0;position:relative}
@@ -75,27 +77,77 @@ section{padding:clamp(72px,10vw,140px) 0;position:relative}
 .rail a.aktiv i{background:var(--aktiv);box-shadow:0 0 12px var(--aktiv);transform:scale(1.5)}
 @media (max-width:1240px){.rail{display:none}}
 
-/* ── Die Odyssee: Bühne + Kapitel ───────────────────────────────────────────── */
+/* ── Hero: das Schaubild aus der Software ─────────────────────────────────── */
+.hero{min-height:min(calc(100svh - 64px),920px);display:grid;align-items:center;padding:clamp(48px,7vw,88px) 0 72px;overflow:hidden;isolation:isolate}
+.hero .wrap{display:grid;grid-template-columns:1.02fr .98fr;gap:clamp(32px,5vw,72px);align-items:center;position:relative;z-index:2}
+.hero-hintergrund{position:absolute;inset:0;z-index:0;pointer-events:none}
+.aurora{position:absolute;inset:-20% -10%;pointer-events:none;filter:blur(70px);opacity:.38}
+.aurora i{position:absolute;border-radius:50%;background:radial-gradient(circle,var(--f),transparent 65%);animation:treiben 26s ease-in-out infinite alternate}
+.aurora i:nth-child(1){--f:rgba(88,217,205,.26);width:46vw;height:46vw;left:42%;top:-6%}
+.aurora i:nth-child(2){--f:rgba(255,159,67,.10);width:38vw;height:38vw;left:62%;top:46%;animation-duration:31s;animation-delay:-11s}
+body[data-spur=business] .aurora i:nth-child(1){--f:rgba(255,159,67,.2)}
+body[data-spur=business] .aurora i:nth-child(2){--f:rgba(88,217,205,.14)}
+@keyframes treiben{from{transform:translate(0,0) scale(1)}to{transform:translate(5%,4%) scale(1.07)}}
+.raster{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:64px 64px;mask-image:radial-gradient(70% 70% at 65% 45%,#000 20%,transparent 100%);-webkit-mask-image:radial-gradient(70% 70% at 65% 45%,#000 20%,transparent 100%)}
+.hero-text{display:grid;gap:20px}
+.chipzeile{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.status{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--gut);background:rgba(61,226,139,.08);border:1px solid rgba(61,226,139,.25);border-radius:999px;padding:5px 11px;max-width:100%;line-height:1.35}
+.status i{width:7px;height:7px;border-radius:50%;background:var(--gut);box-shadow:0 0 10px var(--gut);animation:puls 2.4s ease-in-out infinite}
+@keyframes puls{0%,100%{opacity:1}50%{opacity:.45}}
+.hero h1{font-size:clamp(38px,5.6vw,74px);overflow-wrap:anywhere;hyphens:auto}
+.hero h1 .zeile{display:block}
+.hero h1 .wort{display:inline-block;animation:hoch .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i)*70ms)}
+.hero h1 .akz{color:var(--aktiv);transition:color .5s}
+body[data-spur=business] .hero h1 .akz{color:var(--leucht-business)}
+@keyframes hoch{from{transform:translateY(28%);opacity:.35}to{transform:none;opacity:1}}
+.hero-text>p{font-size:clamp(16px,1.3vw,18px);color:var(--inkDim);max-width:54ch}
+.hero-cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.hero-cta .leise-note{font-size:var(--bedien);color:var(--inkLeise);flex-basis:100%}
+.hero-fakten{display:flex;gap:22px;flex-wrap:wrap;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)}
+.hero-fakten div{display:grid;gap:2px}
+.hero-fakten b{font-family:var(--schrift-display);font-size:18px;font-weight:700}
+.hero-fakten span{font-size:12px;color:var(--inkLeise)}
+.hero-bild{display:grid;gap:12px}
+.bild-hinweis{font-size:12.5px;color:var(--inkLeise);text-align:center;max-width:none}
+.bild-hinweis b{color:var(--inkDim)}
+.scrollhinweis{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:grid;justify-items:center;gap:8px;color:var(--inkLeise);font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;z-index:2}
+.scrollhinweis i{width:1px;height:38px;background:linear-gradient(180deg,transparent,var(--aktiv));position:relative;overflow:hidden}
+.scrollhinweis i::after{content:'';position:absolute;left:0;top:-38px;width:1px;height:38px;background:var(--ink);animation:fallen 2.2s ease-in-out infinite}
+@keyframes fallen{to{top:38px}}
+@media (max-width:920px){.hero .wrap{grid-template-columns:1fr}.scrollhinweis{display:none}}
+@media (max-width:520px){h1{font-size:clamp(30px,9vw,40px)}.hero-fakten{display:none}}
+
+/* Sicht-Pille: Privat | Business — erscheint nach dem Hero, die ganze Seite folgt */
+.spur{position:fixed;left:50%;bottom:18px;transform:translate(-50%,14px);z-index:45;display:inline-flex;align-items:center;gap:4px;padding:4px 4px 4px 14px;border-radius:999px;background:rgba(22,27,31,.94);border:1px solid rgba(255,255,255,.1);box-shadow:0 12px 32px rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .3s,transform .3s}
+.spur.da{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.spur .mikro{margin-right:6px}
+.spur button,.schalter button{border:none;background:transparent;color:var(--inkDim);font:inherit;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;cursor:pointer;transition:background .2s,color .2s}
+.spur button[aria-pressed=true],.schalter button[aria-pressed=true]{background:rgba(88,217,205,.18);color:var(--aktiv)}
+body[data-spur=business] .spur button[aria-pressed=true],body[data-spur=business] .schalter button[aria-pressed=true]{background:rgba(255,159,67,.18);color:var(--leucht-business)}
+@media (max-width:820px){.spur{bottom:14px;padding-left:12px}.spur .mikro{display:none}}
+
+/* ── Die Geschichte: Bühne + Kapitel ──────────────────────────────────────── */
 .odyssee{position:relative;z-index:0;isolation:isolate}
 .buehne{position:sticky;top:0;height:100vh;margin-bottom:-100vh;overflow:hidden;z-index:0;pointer-events:none}
 .buehne canvas{position:absolute;inset:0;width:100%;height:100%}
-.standbild{position:absolute;inset:0;background:url(../assets/brain-standbild.svg) no-repeat 70% 50%/auto 74%;opacity:.95;transition:opacity .6s ease}
+.buehne .raster{mask-image:radial-gradient(60% 60% at 70% 50%,#000 10%,transparent 100%);-webkit-mask-image:radial-gradient(60% 60% at 70% 50%,#000 10%,transparent 100%)}
+.standbild{position:absolute;inset:0;background:url(../assets/brain-standbild.svg) no-repeat 70% 50%/auto 66%;opacity:.7;transition:opacity .6s ease}
 .buehne.an .standbild{opacity:0}
-.aurora{position:absolute;inset:-20% -10%;z-index:0;pointer-events:none;filter:blur(70px);opacity:.42}
-.aurora i{position:absolute;border-radius:50%;background:radial-gradient(circle,var(--f),transparent 65%);animation:treiben 24s ease-in-out infinite alternate}
-.aurora i:nth-child(1){--f:rgba(209,58,85,.22);width:44vw;height:44vw;left:36%;top:-8%}
-.aurora i:nth-child(2){--f:rgba(34,181,119,.20);width:46vw;height:46vw;left:58%;top:38%;animation-duration:30s;animation-delay:-9s}
-.aurora i:nth-child(3){--f:rgba(88,217,205,.16);width:34vw;height:34vw;left:-6%;top:50%;animation-duration:27s;animation-delay:-15s}
-@keyframes treiben{from{transform:translate(0,0) scale(1)}to{transform:translate(5%,4%) scale(1.07)}}
-.raster{position:absolute;inset:0;z-index:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:64px 64px;mask-image:radial-gradient(70% 70% at 65% 45%,#000 20%,transparent 100%);-webkit-mask-image:radial-gradient(70% 70% at 65% 45%,#000 20%,transparent 100%)}
-/* App-Chips im Chaos (Kapitel 02) — Position setzt brain.js */
-.chips{position:absolute;inset:0}
-.chip{position:absolute;left:0;top:0;visibility:hidden;opacity:0;display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 8px;border-radius:999px;background:rgba(22,27,31,.82);border:1px solid rgba(255,255,255,.1);font-size:12px;font-weight:700;color:var(--inkDim);white-space:nowrap;will-change:transform}
+/* Chips: Welten (Kapitel 01), Apps (Kapitel 02) — Position setzt brain.js */
+.welt-chips,.chips{position:absolute;inset:0}
+.chip,.welt-chip{position:absolute;left:0;top:0;visibility:hidden;opacity:0;display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 8px;border-radius:999px;background:rgba(22,27,31,.86);border:1px solid rgba(255,255,255,.1);font-size:12px;font-weight:700;color:var(--inkDim);white-space:nowrap;will-change:transform}
 .chip i{width:6px;height:6px;border-radius:50%;background:var(--gut);box-shadow:0 0 8px var(--gut);animation:puls 2.4s ease-in-out infinite}
 .chip small{font-size:10px;font-weight:600;color:var(--inkLeise);letter-spacing:.06em;text-transform:uppercase}
+.welt-chip i{width:7px;height:7px;border-radius:50%;background:var(--f);box-shadow:0 0 8px var(--f)}
+.welt-chip.konflikt{border-color:rgba(255,201,60,.5);color:var(--ink)}
+.welt-chip.konflikt i{animation:puls 1.4s ease-in-out infinite}
+/* Die Zahl im Ring (Kapitel 03) */
+.ring-zahl{position:absolute;left:0;top:0;visibility:hidden;opacity:0;display:grid;justify-items:center;gap:2px;text-align:center;will-change:transform}
+.ring-zahl b{font-family:var(--schrift-display);font-size:clamp(56px,7vw,84px);font-weight:700;line-height:1;letter-spacing:-.02em;color:var(--ink);font-variant-numeric:tabular-nums}
+.ring-zahl .ring-name{font-size:12px;font-weight:700;color:var(--f,var(--aktiv))}
 /* Der Stapel-Chip (Kapitel 04) */
-.stapel-chip{position:absolute;left:0;top:0;opacity:0;visibility:hidden;display:grid;gap:3px;padding:10px 14px;border-radius:14px;background:rgba(22,27,31,.9);border:1px dashed rgba(255,201,60,.55);max-width:250px;font-size:12.5px;color:var(--inkDim);transition:opacity .3s,visibility .3s,border-color .4s;will-change:transform}
-.stapel-chip.da{opacity:1;visibility:visible}
+.stapel-chip{position:absolute;left:0;top:0;opacity:0;visibility:hidden;display:grid;gap:3px;padding:10px 14px;border-radius:14px;background:rgba(22,27,31,.92);border:1px dashed rgba(255,201,60,.55);max-width:260px;font-size:12.5px;color:var(--inkDim);transition:border-color .4s}
+.stapel-chip.da{visibility:visible}
 .stapel-chip .mikro{color:#FFC93C}
 .stapel-chip b{font-family:var(--schrift-display);font-size:14px;color:var(--ink)}
 .stapel-chip.frei{border-style:solid;border-color:rgba(61,226,139,.55)}
@@ -104,60 +156,27 @@ section{padding:clamp(72px,10vw,140px) 0;position:relative}
 
 .kapitel{position:relative;z-index:1;min-height:100vh;min-height:100svh;display:grid;align-items:center;padding:96px 0 64px}
 .kapitel .wrap{display:grid;grid-template-columns:minmax(0,540px) 1fr;gap:clamp(32px,5vw,72px);align-items:center;will-change:opacity}
-.kapitel.hero .wrap{grid-template-columns:minmax(0,640px) 1fr}
 .kinhalt{display:grid;gap:16px}
-.kinhalt h2{font-size:clamp(32px,4.4vw,58px)}
+.kinhalt h2{font-size:clamp(32px,4.2vw,54px)}
 .kinhalt p{font-size:clamp(16px,1.4vw,19px);color:var(--ink)}
 .kinhalt p.dim{color:var(--inkDim);font-size:clamp(15px,1.2vw,17px)}
 .kinhalt .mikro{display:flex;align-items:center;gap:10px}
 .kinhalt .mikro::before{content:'';width:22px;height:2px;background:var(--aktiv);border-radius:2px}
 .kapitel.lang{min-height:190vh;min-height:190svh;align-items:start;padding-top:calc(50vh - 170px)}
 .kapitel.lang .wrap{position:sticky;top:calc(50vh - 170px)}
-.kapitel.zahl .wrap{grid-template-columns:minmax(0,430px) minmax(0,1fr)}
-.scrollhinweis{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);display:grid;justify-items:center;gap:8px;color:var(--inkLeise);font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600}
-.scrollhinweis i{width:1px;height:38px;background:linear-gradient(180deg,transparent,var(--aktiv));position:relative;overflow:hidden}
-.scrollhinweis i::after{content:'';position:absolute;left:0;top:-38px;width:1px;height:38px;background:var(--ink);animation:fallen 2.2s ease-in-out infinite}
-@keyframes fallen{to{top:38px}}
-
-/* Hero (Kapitel 00) */
-.kapitel.hero{align-items:start;padding-top:clamp(96px,13vh,150px)}
-.hero .kinhalt{max-width:640px;gap:18px}
-.hero h1{font-size:clamp(34px,4.6vw,60px)}
-.chipzeile{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-.status{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--gut);background:rgba(61,226,139,.08);border:1px solid rgba(61,226,139,.25);border-radius:999px;padding:5px 11px;max-width:100%;line-height:1.35}
-.status i{width:7px;height:7px;border-radius:50%;background:var(--gut);box-shadow:0 0 10px var(--gut);animation:puls 2.4s ease-in-out infinite}
-@keyframes puls{0%,100%{opacity:1}50%{opacity:.45}}
-.hero h1{overflow-wrap:anywhere;hyphens:auto}
-.hero h1 .zeile{display:block}
-.hero h1 .wort{display:inline-block;animation:hoch .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i)*70ms)}
-.hero h1 .akz{color:var(--aktiv)}
-@keyframes hoch{from{transform:translateY(28%);opacity:.35}to{transform:none;opacity:1}}
-.hero .kinhalt>p{font-size:clamp(16px,1.3vw,18px);color:var(--inkDim);max-width:52ch}
-.hero-cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-.hero-cta .leise-note{font-size:var(--bedien);color:var(--inkLeise);flex-basis:100%}
-.hero-fakten{display:flex;gap:22px;flex-wrap:wrap;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)}
-.hero-fakten div{display:grid;gap:2px}
-.hero-fakten b{font-family:var(--schrift-display);font-size:18px;font-weight:700}
-.hero-fakten span{font-size:12px;color:var(--inkLeise)}
 
 @media (max-width:820px){
-  .standbild{background-position:50% 30%;background-size:68% auto}
-  .kapitel{align-items:end;padding:120px 0 64px}
+  .standbild{background-position:50% 30%;background-size:62% auto}
+  .kapitel{align-items:end;padding:120px 0 104px}
   .kapitel::before{content:'';position:absolute;left:0;right:0;bottom:0;height:72%;background:linear-gradient(180deg,transparent,rgba(11,14,16,.88) 42%,var(--grund) 100%);pointer-events:none;z-index:-1}
-  .kapitel .wrap,.kapitel.zahl .wrap{grid-template-columns:1fr;gap:28px}
-  .kapitel.zahl{align-items:start;padding-top:96px}
-  .kapitel.zahl::before{display:none}
+  .kapitel .wrap{grid-template-columns:1fr;gap:28px}
   .kapitel.lang{min-height:190vh;min-height:190svh;align-items:start;padding-top:calc(100svh - 300px);padding-bottom:64px}
   .kapitel.lang .wrap{position:sticky;top:calc(100svh - 300px)}
-  .kapitel .scrollhinweis{display:none}
-  .hero,.kapitel.hero{align-items:end;padding-top:110px}
+  .kinhalt h2{font-size:clamp(28px,8vw,36px)}
 }
-@media (max-width:520px){h1{font-size:clamp(30px,9vw,40px)}.hero-fakten{display:none}.kinhalt h2{font-size:clamp(28px,8vw,36px)}}
 
 /* App-Rahmen — jedes Produktbild sitzt in derselben Hülle wie die Software */
 .app{background:linear-gradient(180deg,var(--flaecheHoch),var(--flaeche));border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:0 40px 100px rgba(0,0,0,.5),0 0 0 1px rgba(0,0,0,.4) inset;overflow:hidden;display:grid;grid-template-rows:auto 1fr;transform-style:preserve-3d;font-family:var(--schrift-text)}
-/* Glas: die Score-Scheibe lässt das Brain hinter sich durchschimmern */
-.app.glas{background:linear-gradient(180deg,rgba(27,33,38,.74),rgba(22,27,31,.8));backdrop-filter:blur(10px) saturate(1.2);-webkit-backdrop-filter:blur(10px) saturate(1.2);border-color:rgba(255,255,255,.12)}
 .app-kopf{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.18)}
 .app-kopf .punkte{display:flex;gap:6px}
 .app-kopf .punkte i{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.12)}
@@ -171,11 +190,9 @@ section{padding:clamp(72px,10vw,140px) 0;position:relative}
 .app-inhalt{padding:16px;display:grid;gap:12px;align-content:start;min-width:0}
 @media (max-width:560px){.app-rumpf{grid-template-columns:1fr}.app-leiste{display:none}}
 
-/* Score (Kapitel 03) */
+/* Score (Hero) */
 .ring-kopf{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .schalter{display:inline-flex;background:rgba(255,255,255,.05);border-radius:999px;padding:3px;gap:2px}
-.schalter button{border:none;background:transparent;color:var(--inkDim);font:inherit;font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;cursor:pointer;transition:background .2s,color .2s}
-.schalter button[aria-pressed=true]{background:rgba(88,217,205,.18);color:var(--aktiv)}
 .ring{display:grid;grid-template-columns:176px 1fr;gap:20px;align-items:center}
 .ring svg{width:176px;height:176px;filter:drop-shadow(0 0 18px rgba(88,217,205,.18))}
 .ring .zahl{font-family:var(--schrift-display);font-size:54px;font-weight:700;fill:var(--ink)}
@@ -211,13 +228,13 @@ section{padding:clamp(72px,10vw,140px) 0;position:relative}
 @media (max-width:1000px){.raeume.vier{grid-template-columns:1fr 1fr}}
 @media (max-width:800px){.raeume,.raeume.vier{grid-template-columns:1fr}}
 
-/* Jarvis */
-.jarvis-raster{display:grid;grid-template-columns:1fr 1.1fr;gap:clamp(28px,5vw,72px);align-items:center}
+/* Zoe */
+.zoe-raster{display:grid;grid-template-columns:1fr 1.1fr;gap:clamp(28px,5vw,72px);align-items:center}
 .chat{display:grid;gap:12px}
 .blase{max-width:88%;padding:11px 14px;border-radius:14px;font-size:14px;line-height:1.5;opacity:.35;transform:translateY(8px);transition:opacity .5s,transform .5s}
 .blase.da{opacity:1;transform:none}
 .blase.ich{justify-self:end;background:rgba(255,255,255,.07);border-bottom-right-radius:5px}
-.blase.jarvis{background:rgba(199,125,255,.10);border:1px solid rgba(199,125,255,.22);border-bottom-left-radius:5px}
+.blase.zoe{background:rgba(199,125,255,.10);border:1px solid rgba(199,125,255,.22);border-bottom-left-radius:5px}
 .werkzeug{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;color:var(--inkLeise)}
 .werkzeug i{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--aktiv);display:inline-grid;place-items:center;font-style:normal;font-size:9px;color:var(--aktiv)}
 .stapel{border:1px dashed rgba(255,201,60,.45);background:rgba(255,201,60,.06);border-radius:14px;padding:12px 14px;display:grid;gap:8px;font-size:13px}
@@ -237,7 +254,7 @@ section{padding:clamp(72px,10vw,140px) 0;position:relative}
 .prinzip .nr{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-family:var(--schrift-display);font-weight:700;color:var(--aktiv);background:rgba(88,217,205,.12);border:1px solid rgba(88,217,205,.3)}
 .prinzip h3{margin-bottom:4px}
 .prinzip p{color:var(--inkDim);font-size:14.5px}
-@media (max-width:900px){.jarvis-raster{grid-template-columns:1fr}.weg{grid-template-columns:1fr 1fr;gap:18px}.weg::before,.weg .fuellung{display:none}}
+@media (max-width:900px){.zoe-raster{grid-template-columns:1fr}.weg{grid-template-columns:1fr 1fr;gap:18px}.weg::before,.weg .fuellung{display:none}}
 
 /* Bereiche */
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:22px}
@@ -356,6 +373,7 @@ section{padding:clamp(72px,10vw,140px) 0;position:relative}
 
 /* Testen */
 .testen{background:linear-gradient(180deg,transparent,rgba(88,217,205,.05) 40%,transparent)}
+.testen{padding-bottom:clamp(120px,14vw,180px)}
 .testen .box{max-width:720px;margin-inline:auto;text-align:center;display:grid;gap:18px;justify-items:center}
 .testen form{display:grid;gap:10px;width:100%;max-width:520px;text-align:left}
 .testen input,.testen textarea{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--ink);border-radius:12px;padding:13px 14px;font:inherit;font-size:15px}
@@ -378,4 +396,4 @@ footer .unten{grid-column:1/-1;border-top:1px solid rgba(255,255,255,.06);paddin
 .raum:hover::before,.garantie:hover::before,.schritt:hover::before,.zahl-karte:hover::before,.person:hover::before,.eintrag:hover::before{opacity:1}
 }
 .tilt{transition:transform .3s ease}
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}[data-reveal],.blase,.name .make{opacity:1;transform:none}.hero h1 .wort{transform:none;opacity:1}.saeule .balken i{transition:none}.aurora{display:none}.scrollhinweis i::after{display:none}.kapitel .wrap{opacity:1!important}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}[data-reveal],.blase,.name .make{opacity:1;transform:none}.hero h1 .wort{transform:none;opacity:1}.spur{transition:none}.saeule .balken i{transition:none}.aurora{display:none}.scrollhinweis i::after{display:none}.kapitel .wrap{opacity:1!important}}

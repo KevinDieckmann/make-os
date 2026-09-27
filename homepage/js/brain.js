@@ -1,21 +1,23 @@
-// ─── MAKE OS Homepage — Das Brain (27.09., dritter Durchgang) ──────────────────
+// ─── MAKE OS Homepage — Die Bühne (27.09., vierter Durchgang) ──────────────────
 // Ein Netz aus Knoten und Verbindungen auf einem 2D-Canvas. Kein WebGL, keine
 // Bibliothek, kein Kopieren: alles hier ist eigene Geometrie.
 //
-// Zwei Bühnen:
-//   1. Die große Bühne (.odyssee) — klebt hinter den ersten fünf Kapiteln und
-//      verwandelt sich mit dem Scrollen: Hero (ein Brain aus zwei Hälften) →
-//      Zwei Leben (die Hälften treiben auseinander) → Das Chaos (alles zerfällt
-//      in neun graue App-Haufen) → Ein Brain (alles findet sich wieder, hinter
-//      der Score-Scheibe) → Jarvis (ein Impuls läuft durchs Netz, bleibt im
-//      Stapel stehen und wartet auf dein Ja).
-//   2. Die kleine Bühne (#make-m) im Founder-Abschnitt — Granat- und Smaragd-
-//      Partikel finden sich zum M, in der Fuge ein türkiser Funke.
+// Kevins Richtung im vierten Durchgang: kein Spektakel im Hero — oben steht die
+// Score-Scheibe aus der Software. Die Bühne erzählt darunter in vier Kapiteln,
+// ruhig und in der CI (dunkel, Türkis als Akzent, Orange für die Business-Sicht
+// wie in der Software; Granat und Smaragd bleiben den Personen vorbehalten):
+//   01 Zwei Welten   zwei Ringe — Privat (Türkis) und Business (Orange) — die
+//                    sich überlappen; in der Schnittmenge der Konflikt um 19 Uhr
+//   02 Sieben Apps   alles zerfällt in neun graue Haufen mit Chips („alles gut“)
+//   03 Messbar       die Haufen finden sich zu EINEM Ring: der Index füllt sich
+//                    in der Farbe der gewählten Sicht, die Zahl zählt hoch
+//   04 Zoe hilft     der Ring wird zum Brain (die Helferin): ein Impuls läuft vom
+//                    Kern nach außen, bleibt im Stapel stehen, wartet auf dein Ja
+// Dazu die kleine Bühne im Founder-Abschnitt: Granat + Smaragd → M.
 //
 // Regeln: Bewegung folgt dem Scrollen, nie umgekehrt (kein Scrolljacking).
 // prefers-reduced-motion → keine Dauerbewegung, nur der Zustand je Kapitel.
-// Ohne Canvas bleibt das Standbild (SVG) stehen. Handy: weniger Knoten, Finger
-// statt Maus, Backing-Store bis 2× dpr.
+// Ohne Canvas bleibt das Standbild (SVG). Handy: weniger Knoten, Finger statt Maus.
 (() => {
   'use strict';
   const ruhig = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -24,7 +26,7 @@
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   const glatt = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
   const spanne = (v, a, b) => glatt((v - a) / (b - a));
-  const hut = (f, m, breite = 1) => glatt(1 - Math.abs(f - m) / breite);   // Dach über einem Kapitel
+  const hut = (f, m) => glatt(1 - Math.abs(f - m));            // Dach über einem Kapitel; Nachbarn ergänzen sich zu 1
   const lerp = (a, b, t) => a + (b - a) * t;
 
   // Fester Zufall: gleiche Geometrie bei jedem Laden — das Standbild passt zum Netz.
@@ -32,12 +34,12 @@
   const zufall = () => { saat = (saat * 1664525 + 1013904223) >>> 0; return saat / 4294967296; };
   const gauss = () => (zufall() + zufall() + zufall() - 1.5) * 1.15;
 
-  // Farben als "r,g,b" — Granat (Malin), Smaragd (Kevin), Türkis (das Produkt).
-  const F = { granat: '209,58,85', smaragd: '34,181,119', tuerkis: '88,217,205', grau: '110,122,125', gelb: '255,201,60', gruen: '61,226,139' };
-  const mischen = (a, b, t) => { const p = a.split(',').map(Number), q = b.split(',').map(Number); return p.map((v, i) => Math.round(v + (q[i] - v) * t)).join(','); };
+  // Farben als "r,g,b" — alle aus der Software (ci.css) bzw. der MAKE-CI.
+  const F = { tuerkis: '88,217,205', orange: '255,159,67', grau: '110,122,125', teal: '124,142,146', gelb: '255,201,60', gruen: '61,226,139', granat: '209,58,85', smaragd: '34,181,119' };
+  const sicht = () => document.body.dataset.spur === 'business' ? 'business' : 'privat';
 
   // ── Eimer: gleiche Farbe + ähnliche Deckkraft = ein Pfad, ein Strich. ──────────
-  // 900 Kanten werden so zu ~30 stroke()-Aufrufen — das trägt die 60 fps.
+  // Hunderte Kanten werden so zu ~30 stroke()-Aufrufen — das trägt die 60 fps.
   class Eimer {
     constructor(ctx) { this.ctx = ctx; this.k = new Map(); }
     linie(farbe, a, x1, y1, x2, y2, breite = 1) {
@@ -95,8 +97,21 @@
     return { W, H, dpr };
   }
 
+  // Ein Bild je Scroll-Stand (ruhig) oder Dauerlauf.
+  function starten(zeichne) {
+    if (ruhig) {
+      let angefordert = false;
+      const einmal = () => { if (angefordert) return; angefordert = true; requestAnimationFrame(t => { angefordert = false; zeichne(t); }); };
+      addEventListener('scroll', einmal, { passive: true }); addEventListener('resize', einmal);
+      document.addEventListener('spur', einmal); einmal();
+    } else {
+      const lauf = t => { if (!document.hidden) zeichne(t); requestAnimationFrame(lauf); };
+      requestAnimationFrame(lauf);
+    }
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════════
-  // 1. Die große Bühne
+  // 1. Die große Bühne: Zwei Welten → Sieben Apps → Messbar → Zoe hilft
   // ═══════════════════════════════════════════════════════════════════════════════
   function grosseBuehne() {
     const odyssee = document.querySelector('.odyssee'), buehne = odyssee?.querySelector('.buehne'), canvas = document.getElementById('brain');
@@ -104,28 +119,28 @@
     const ctx = canvas.getContext('2d'); if (!ctx) return;
     const kapitel = Array.from(odyssee.querySelectorAll(':scope > .kapitel'));
     const inhalte = kapitel.map(k => k.querySelector('.wrap'));
-    const scheibe = document.getElementById('score-app');
+    const weltChips = Array.from(buehne.querySelectorAll('.welt-chip'));
     const chips = Array.from(buehne.querySelectorAll('.chip'));
-    const stapelChip = buehne.querySelector('.stapel-chip');
-    const stapelText = stapelChip?.querySelector('b');
+    const ringZahl = buehne.querySelector('.ring-zahl'), ringZahlB = ringZahl?.querySelector('b');
+    const stapelChip = buehne.querySelector('.stapel-chip'), stapelText = stapelChip?.querySelector('b');
     const eimer = new Eimer(ctx);
+    const SCORE = { privat: 78, business: 64 };
 
-    // ── Geometrie: ein Brain aus zwei Hälften ──
-    const N_OBER = handy ? 210 : 470, N_KERN = handy ? 34 : 78, N = N_OBER + N_KERN;
-    const P = new Float32Array(N * 3);            // Einheitskoordinaten (3D)
-    const seite = new Uint8Array(N);              // 0 = links (Granat), 1 = rechts (Smaragd)
-    const kern = new Uint8Array(N);               // 1 = Kernknoten (Türkis)
+    // ── Geometrie ──
+    const N_OBER = handy ? 190 : 400, N_KERN = handy ? 30 : 64, N = N_OBER + N_KERN;
+    const P = new Float32Array(N * 3);            // Brain: Einheitskoordinaten (3D)
+    const seite = new Uint8Array(N);              // 0 links, 1 rechts (nur fürs Brain: Synapsen über die Furche)
+    const kern = new Uint8Array(N);
     const GOLD = Math.PI * (3 - Math.sqrt(5));
     for (let i = 0; i < N_OBER; i++) {
-      // Fibonacci-Kugel mit Streuung, dann zur Hirnform verzogen: breiter als hoch,
-      // eine Furche in der Mitte, Windungen als flache Wellen im Radius.
+      // Fibonacci-Kugel mit Streuung, zur Hirnform verzogen: breiter als hoch, Furche, Windungen.
       const y0 = 1 - 2 * (i + .5) / N_OBER, r0 = Math.sqrt(1 - y0 * y0), phi = i * GOLD + (zufall() - .5) * .18;
       let x = r0 * Math.cos(phi), y = y0 + (zufall() - .5) * .04, z = r0 * Math.sin(phi);
       const theta = Math.acos(clamp(y, -1, 1));
       let rad = 1 + .04 * Math.sin(7 * phi) * Math.sin(6 * theta) + .022 * Math.sin(11 * phi + 1.3) * Math.cos(4 * theta);
-      if (Math.abs(x) < .11 && y > -.35) rad *= .9;                        // Furche
+      if (Math.abs(x) < .11 && y > -.35) rad *= .9;
       x *= rad * 1.02; y *= rad * .84; z *= rad * .92;
-      if (y < -.55) { y = -.55 - (y + .55) * .35; }                         // unten flacher (Hirnstamm bleibt weg)
+      if (y < -.55) y = -.55 - (y + .55) * .35;
       P[i * 3] = x; P[i * 3 + 1] = y; P[i * 3 + 2] = z; seite[i] = x < 0 ? 0 : 1;
     }
     for (let i = N_OBER; i < N; i++) {
@@ -133,33 +148,42 @@
       P[i * 3] = r0 * Math.cos(phi) * rr; P[i * 3 + 1] = u * rr * .8; P[i * 3 + 2] = r0 * Math.sin(phi) * rr;
       seite[i] = P[i * 3] < 0 ? 0 : 1; kern[i] = 1;
     }
-    // Kanten im Brain: die zwei nächsten Nachbarn im Raum (der dritte mit etwas Glück).
-    const K_BRAIN = nachbarn(P, 3, 2);
-    const KB = K_BRAIN.length / 2;
-    // Verbindungen über die Furche hinweg sind Synapsen → Türkis.
-    // ── Chaos: neun Haufen (die Apps) ──
+    const K_BRAIN = nachbarn(P, 3, 2), KB = K_BRAIN.length / 2;
+
+    // Zwei Welten: jeder Knoten gehört zu einer Welt (0 privat, 1 business) und sitzt auf oder im Ring.
+    const welt = new Uint8Array(N), wAng = new Float32Array(N), wRad = new Float32Array(N);
+    for (let i = 0; i < N; i++) { welt[i] = i & 1; wAng[i] = zufall() * TAU; wRad[i] = zufall() < .78 ? 1 + gauss() * .045 : .25 + zufall() * .6; }
+    const WPOS = new Float32Array(N * 2); for (let i = 0; i < N; i++) { WPOS[i * 2] = Math.cos(wAng[i]) * wRad[i]; WPOS[i * 2 + 1] = Math.sin(wAng[i]) * wRad[i]; }
+    const K_WELT = nachbarn(WPOS, 2, 2, (i, j) => welt[i] === welt[j]), KW = K_WELT.length / 2;
+
+    // Sieben Apps: neun Haufen.
     const HAUFEN = [[-.92, -.78], [.02, -.98], [.94, -.7], [-1, .04], [.04, .08], [1, .02], [-.86, .86], [.04, .98], [.9, .8]].map(([x, y]) => [x + (zufall() - .5) * .14, y + (zufall() - .5) * .14]);
     const haufen = new Uint8Array(N), off = new Float32Array(N * 2);
     for (let i = 0; i < N; i++) { haufen[i] = (i * 7 + seite[i] * 3) % 9; off[i * 2] = gauss() * .55; off[i * 2 + 1] = gauss() * .5; }
-    const K_CHAOS = nachbarn(off, 2, 2, (i, j) => haufen[i] === haufen[j]);
-    const KC = K_CHAOS.length / 2;
-    // ── Hops vom Kern nach außen (für den Jarvis-Impuls) ──
+    const K_CHAOS = nachbarn(off, 2, 2, (i, j) => haufen[i] === haufen[j]), KC = K_CHAOS.length / 2;
+
+    // Messbar: ein Ring. Winkel ab 12 Uhr im Uhrzeigersinn; Kernknoten liegen locker innen.
+    const rAng = new Float32Array(N), rRad = new Float32Array(N);
+    { const reihe = Array.from({ length: N }, (_, i) => i).sort((a, b) => wAng[a] - wAng[b]); reihe.forEach((i, k) => { rAng[i] = k / N * TAU; rRad[i] = kern[i] ? .2 + zufall() * .45 : 1 + gauss() * .03; }); }
+    const K_RING = []; { const reihe = Array.from({ length: N }, (_, i) => i).filter(i => !kern[i]).sort((a, b) => rAng[a] - rAng[b]); for (let k = 0; k < reihe.length; k++) K_RING.push(reihe[k], reihe[(k + 1) % reihe.length]); }
+    const KR = K_RING.length / 2;
+
+    // Hops vom Kern nach außen (für den Impuls in Kapitel 04).
     const hop = new Int16Array(N).fill(-1); {
       const adj = Array.from({ length: N }, () => []);
       for (let e = 0; e < KB; e++) { const a = K_BRAIN[e * 2], b = K_BRAIN[e * 2 + 1]; adj[a].push(b); adj[b].push(a); }
       let start = N_OBER; for (let i = N_OBER; i < N; i++) if (Math.hypot(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]) < Math.hypot(P[start * 3], P[start * 3 + 1], P[start * 3 + 2])) start = i;
       const q = [start]; hop[start] = 0;
       while (q.length) { const a = q.shift(); for (const b of adj[a]) if (hop[b] < 0) { hop[b] = hop[a] + 1; q.push(b); } }
-      for (let i = 0; i < N; i++) if (hop[i] < 0) hop[i] = 12;              // abgehängte Inseln kommen spät
+      for (let i = 0; i < N; i++) if (hop[i] < 0) hop[i] = 12;
     }
     let maxHop = 0; for (let i = 0; i < N; i++) if (hop[i] > maxHop) maxHop = hop[i];
-    // Der Stapel-Knoten: weit außen, rechts oben — dort wartet der Vorschlag.
     let stapelIdx = 0; { let best = -1e9; for (let i = 0; i < N_OBER; i++) { const s = hop[i] * .6 + P[i * 3] * 3 - P[i * 3 + 1] * 2; if (seite[i] === 1 && s > best) { best = s; stapelIdx = i; } } }
 
     // ── Zustand ──
     const x = new Float32Array(N), y = new Float32Array(N), ta = new Float32Array(N), sc = new Float32Array(N), nah = new Float32Array(N);
-    let W = 0, H = 0, dpr = 1, mitte = [], oben = [], hoehen = [], max = 1, winkel = -.35, neigung = 0, letzteZeit = 0, bild = 0, an = false;
-    let scheibeRect = null, stapelZustand = -1, chipsAn = false;
+    let W = 0, H = 0, dpr = 1, mitte = [], oben = [], hoehen = [], max = 1, winkel = -.35, neigung = 0, letzteZeit = 0, an = false;
+    let stapelZustand = -1, stapelAlpha = 0, chipsAn = false, weltAn = false, ringAn = false, letzteZahl = -1;
 
     function vermessen() {
       ({ W, H, dpr } = leinwand(canvas, buehne));
@@ -168,169 +192,180 @@
       max = Math.max(1, odyssee.offsetHeight - innerHeight);
     }
     vermessen();
-    addEventListener('resize', () => { vermessen(); scheibeRect = null; }, { passive: true });
-
-    // Zielposition je Kapitel: rechts der Text-Spalte (Desktop) bzw. im oberen Drittel (Handy).
-    const grund = () => handy ? { cx: W * .5, cy: H * .30, R: Math.min(W * .34, H * .19) } : { cx: W * .70, cy: H * .5, R: Math.min(H * .36, W * .19) };
+    addEventListener('resize', vermessen, { passive: true });
+    const grund = () => handy ? { cx: W * .5, cy: H * .30, R: Math.min(W * .30, H * .17) } : { cx: W * .70, cy: H * .5, R: Math.min(H * .33, W * .18) };
 
     function zeichne(t) {
-      const dt = letzteZeit ? Math.min(48, t - letzteZeit) : 16; letzteZeit = t; bild++;
+      const dt = letzteZeit ? Math.min(48, t - letzteZeit) : 16; letzteZeit = t;
       const r = odyssee.getBoundingClientRect();
-      if (r.bottom < -80 || r.top > innerHeight + 80) return;         // weit weg: nichts tun
-      const S = clamp(-r.top, 0, max), vh = innerHeight;
-      const br = buehne.getBoundingClientRect();
+      if (r.bottom < -80 || r.top > innerHeight + 80) return;
+      const S = clamp(-r.top, 0, max), vh = innerHeight, br = buehne.getBoundingClientRect();
+      const s = sicht(), fSicht = s === 'business' ? F.orange : F.tuerkis, score = SCORE[s];
 
-      // Kontinuierlicher Kapitelindex f ∈ [0, 4] mit ruhigen Fenstern um jede Kapitelmitte.
+      // Kontinuierlicher Kapitelindex f ∈ [0, 3] mit ruhigen Fenstern um jede Kapitelmitte.
       let f = 0;
       for (let i = 0; i < kapitel.length - 1; i++) {
         if (S >= mitte[i + 1]) { f = i + 1; continue; }
-        if (S > mitte[i]) { f = i + spanne((S - mitte[i]) / (mitte[i + 1] - mitte[i]), .22, .78); }
+        if (S > mitte[i]) f = i + spanne((S - mitte[i]) / (mitte[i + 1] - mitte[i]), .22, .78);
         break;
       }
-      const wZwei = hut(f, 1), wChaos = hut(f, 2), wZahl = hut(f, 3), wJarvis = spanne(f, 3.25, 3.95);
+      const wWelt = hut(f, 0), wChaos = hut(f, 1), wRing = hut(f, 2), wBrain = hut(f, 3);
+      const wZoe = spanne(f, 2.3, 2.95);
       const letzte = kapitel.length - 1, u4 = clamp((S - oben[letzte]) / Math.max(1, hoehen[letzte] - vh), 0, 1);
-      const ausblenden = 1 - spanne(S, max - vh * .22, max);   // erst ganz am Ende der Bühne, damit das grüne „Freigegeben“ voll steht
+      const ausblenden = 1 - spanne(S, max - vh * .22, max);
       const herz = ruhig ? .5 : .5 + .5 * Math.sin(t * .0022);
 
-      // Mittelpunkt und Radius — in Kapitel 3 sitzt das Netz hinter der Score-Scheibe.
       let { cx, cy, R } = grund();
-      if (wZahl > 0 && scheibe) {
-        if (!scheibeRect || (bild & 3) === 0) scheibeRect = scheibe.getBoundingClientRect();
-        const zx = scheibeRect.left - br.left + scheibeRect.width / 2, zy = scheibeRect.top - br.top + scheibeRect.height / 2, zR = Math.min(scheibeRect.height * .5, scheibeRect.width * .36);
-        cx = lerp(cx, zx, wZahl); cy = lerp(cy, zy, wZahl); R = lerp(R, zR, wZahl);
-      }
-      // Zwei Leben: die Hälften weichen auseinander — das Ganze rückt dafür etwas nach links, damit rechts nichts abreißt.
-      const spalt = R * .5 * wZwei;
-      if (!handy) cx -= R * .22 * wZwei + R * .3 * wChaos;
-      else cy -= H * .02 * wChaos;
+      if (!handy) cx -= R * .3 * wChaos;
       const hx = handy ? W * .32 : R * 1.22, hy = handy ? H * .16 : R * 1.12, rC = handy ? R * .3 : R * .27;
+      if (handy) cy -= H * .02 * wChaos;
+      const wAbst = R * .5, wR = R * .72;                     // Zwei Welten: Ringmitten ±wAbst, Radius wR
 
-      // Drehung: langsam von selbst, dazu eine Neigung zum Zeiger hin.
-      if (!ruhig) winkel += dt * .00011;
+      if (!ruhig) winkel += dt * .00007;
       const zx = zeiger.x - br.left, zy = zeiger.y - br.top;
-      const zielNeigung = zeiger.an && !ruhig ? clamp((zy - cy) / H, -.5, .5) * .5 : 0;
+      const zielNeigung = zeiger.an && !ruhig ? clamp((zy - cy) / H, -.5, .5) * .4 : 0;
       neigung += (zielNeigung - neigung) * .04;
       const cosA = Math.cos(winkel), sinA = Math.sin(winkel), cosB = Math.cos(neigung), sinB = Math.sin(neigung);
-      const k = ruhig ? 1 : .1, RM = handy ? 90 : 150, RM2 = RM * RM;
-      const drift = ruhig ? 0 : 1;
+      const dreh = ruhig ? 0 : t * .00012;                  // die Welten drehen sich gegenläufig
+      const k = ruhig ? 1 : .1, RM = handy ? 80 : 130, RM2 = RM * RM, drift = ruhig ? 0 : 1;
+      const fuellung = wRing * score / 100;                 // Ringfüllung wächst mit dem Kapitel
 
       for (let i = 0; i < N; i++) {
-        const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2];
-        const x1 = px * cosA + pz * sinA, z1 = -px * sinA + pz * cosA;
-        const y1 = py * cosB - z1 * sinB, z2 = py * sinB + z1 * cosB;
-        const persp = 1 / (1 + z2 * .28);
-        sc[i] = clamp(.35 + .65 * (1 - (z2 + 1) / 2), .2, 1);            // vorn groß, hinten klein
-        ta[i] = .32 + .68 * sc[i];
-        let bx = cx + (x1 * R + (seite[i] ? spalt : -spalt)) * persp, by = cy + y1 * R * persp;
-        if (wChaos > 0) {
-          const h = HAUFEN[haufen[i]];
-          const qx = cx + h[0] * hx + off[i * 2] * rC, qy = cy + h[1] * hy + off[i * 2 + 1] * rC;
-          bx = lerp(bx, qx, wChaos); by = lerp(by, qy, wChaos);
+        let tx = 0, ty = 0;
+        if (wWelt > 0) {
+          const a = wAng[i] + (welt[i] ? -dreh : dreh), mx = cx + (welt[i] ? wAbst : -wAbst);
+          tx += wWelt * (mx + Math.cos(a) * wR * wRad[i]); ty += wWelt * (cy + Math.sin(a) * wR * wRad[i] * .92);
         }
-        if (drift) { bx += Math.sin(t * .0011 + i * 1.7) * .9; by += Math.cos(t * .0009 + i * 2.3) * .9; }
-        x[i] += (bx - x[i]) * k; y[i] += (by - y[i]) * k;
-        // Zeiger: Knoten weichen aus, Verbindungen leuchten auf.
-        let s = 0;
-        if (zeiger.an) { const dx = x[i] - zx, dy = y[i] - zy, d2 = dx * dx + dy * dy; if (d2 < RM2 && d2 > .01) { const d = Math.sqrt(d2); s = 1 - d / RM; x[i] += dx / d * s * s * 14; y[i] += dy / d * s * s * 14; } }
-        nah[i] = s;
+        if (wChaos > 0) { const h = HAUFEN[haufen[i]]; tx += wChaos * (cx + h[0] * hx + off[i * 2] * rC); ty += wChaos * (cy + h[1] * hy + off[i * 2 + 1] * rC); }
+        if (wRing > 0) { const a = rAng[i] - Math.PI / 2, rr = R * .8 * rRad[i]; tx += wRing * (cx + Math.cos(a) * rr); ty += wRing * (cy + Math.sin(a) * rr); }
+        const px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2];
+        const x1 = px * cosA + pz * sinA, z1 = -px * sinA + pz * cosA, y1 = py * cosB - z1 * sinB, z2 = py * sinB + z1 * cosB;
+        const persp = 1 / (1 + z2 * .28);
+        sc[i] = clamp(.35 + .65 * (1 - (z2 + 1) / 2), .2, 1); ta[i] = .32 + .68 * sc[i];
+        if (wBrain > 0) { tx += wBrain * (cx + x1 * R * persp); ty += wBrain * (cy + y1 * R * persp); }
+        if (drift) { tx += Math.sin(t * .0011 + i * 1.7) * .7; ty += Math.cos(t * .0009 + i * 2.3) * .7; }
+        x[i] += (tx - x[i]) * k; y[i] += (ty - y[i]) * k;
+        let n = 0;
+        if (zeiger.an) { const dx = x[i] - zx, dy = y[i] - zy, d2 = dx * dx + dy * dy; if (d2 < RM2 && d2 > .01) { const d = Math.sqrt(d2); n = 1 - d / RM; x[i] += dx / d * n * n * 12; y[i] += dy / d * n * n * 12; } }
+        nah[i] = n;
       }
 
       // ── Zeichnen ──
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
       ctx.globalAlpha = ausblenden;
-      // Kernschein: das Produkt in der Mitte — fehlt im Chaos.
-      const schein = (1 - wChaos) * (.22 + .12 * herz) * (1 - wZwei * .6);
+      // Kernschein: im Ring in der Farbe der Sicht, im Brain türkis — nie im Chaos.
+      const schein = (wRing * .5 + wBrain) * (.16 + .08 * herz);
       if (schein > .01) {
-        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * .95);
-        g.addColorStop(0, `rgba(${F.tuerkis},${(schein * .9).toFixed(3)})`); g.addColorStop(.45, `rgba(${F.tuerkis},${(schein * .25).toFixed(3)})`); g.addColorStop(1, 'rgba(88,217,205,0)');
+        const fk = wBrain > wRing ? F.tuerkis : fSicht;
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * .9);
+        g.addColorStop(0, `rgba(${fk},${(schein * .8).toFixed(3)})`); g.addColorStop(.5, `rgba(${fk},${(schein * .2).toFixed(3)})`); g.addColorStop(1, `rgba(${fk},0)`);
         ctx.fillStyle = g; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
       }
-      // Impulsfront (Jarvis): läuft vom Kern nach außen, getrieben vom Scrollen.
-      const front = u4 * (maxHop + 3), stapelErreicht = wJarvis > .5 && front >= hop[stapelIdx] - .3;
-      const wImpuls = wJarvis;
-      const boost = i => wImpuls ? Math.exp(-((hop[i] - front) * (hop[i] - front)) / 1.6) * wImpuls : 0;
-      // Kanten
-      // Auf dem Weg ins Chaos werden die Brain-Kanten schnell kurz und blass — sonst gibt es Spaghetti.
-      const langMax = R * (1.05 - .45 * wChaos), lang0 = R * (.55 - .3 * wChaos);
-      const fGranat = mischen(F.granat, F.grau, wChaos), fSmaragd = mischen(F.smaragd, F.grau, wChaos), fTuerkis = mischen(F.tuerkis, F.grau, wChaos * .9);
-      const kantenA = .46 * (1 - wChaos) * (1 - wChaos) * (1 - wZwei * .15);
-      if (kantenA > .01) for (let e = 0; e < KB; e++) {
-        const a = K_BRAIN[e * 2], b = K_BRAIN[e * 2 + 1];
-        const dx = x[a] - x[b], dy = y[a] - y[b], d = Math.sqrt(dx * dx + dy * dy);
-        if (d > langMax) continue;
-        const nahMax = Math.max(nah[a], nah[b]), bo = Math.max(boost(a), boost(b));
-        const grundA = kantenA * Math.min(ta[a], ta[b]) * (1 - clamp((d - lang0) / (langMax - lang0), 0, 1));
-        const quer = seite[a] !== seite[b] || kern[a] || kern[b];
-        eimer.linie(quer ? fTuerkis : seite[a] ? fSmaragd : fGranat, grundA * (quer ? 1.15 : .85), x[a], y[a], x[b], y[b], 1);
-        if (nahMax > .05) eimer.linie(F.tuerkis, nahMax * .8, x[a], y[a], x[b], y[b], 1.2);
-        if (bo > .06) eimer.linie(F.tuerkis, bo * .95, x[a], y[a], x[b], y[b], 1.6);
+      // Impuls: die Front läuft mit dem Scrollen vom Kern nach außen (erreicht den Stapel bei ~40 % des Kapitels);
+      // danach atmet das Netz mit einem leisen Dauer-Impuls weiter. Freigabe bei 55 %, Ausblenden erst ab ~75 %.
+      const front = u4 * (maxHop + 3) * 2.4, stapelErreicht = wZoe > .5 && front >= hop[stapelIdx] - .3;
+      const front2 = ruhig ? -99 : (t * .0035) % (maxHop + 8);
+      const boost = i => { if (!wZoe) return 0; const d1 = hop[i] - front, d2 = hop[i] - front2; return Math.max(Math.exp(-d1 * d1 / 1.6), .45 * Math.exp(-d2 * d2 / 1.2) * spanne(u4, .35, .5)) * wZoe; };
+      // Kanten je Form — auf dem Weg werden sie kurz und blass, sonst gibt es Spaghetti.
+      const lensX = R * .22;
+      if (wWelt > .01) for (let e = 0; e < KW; e++) {
+        const a = K_WELT[e * 2], b = K_WELT[e * 2 + 1], dx = x[a] - x[b], dy = y[a] - y[b], d = Math.sqrt(dx * dx + dy * dy), dm = wR * .42;
+        if (d > dm) continue;
+        eimer.linie(welt[a] ? F.orange : F.tuerkis, .34 * wWelt * (1 - d / dm), x[a], y[a], x[b], y[b], 1);
       }
       if (wChaos > .01) for (let e = 0; e < KC; e++) {
-        const a = K_CHAOS[e * 2], b = K_CHAOS[e * 2 + 1];
-        const dx = x[a] - x[b], dy = y[a] - y[b], d = Math.sqrt(dx * dx + dy * dy);
-        if (d > rC * 2.2) continue;
-        eimer.linie(F.grau, .5 * wChaos * (1 - d / (rC * 2.2)), x[a], y[a], x[b], y[b], 1);
+        const a = K_CHAOS[e * 2], b = K_CHAOS[e * 2 + 1], dx = x[a] - x[b], dy = y[a] - y[b], d = Math.sqrt(dx * dx + dy * dy), dm = rC * 2.2;
+        if (d > dm) continue;
+        eimer.linie(F.grau, .45 * wChaos * (1 - d / dm), x[a], y[a], x[b], y[b], 1);
+      }
+      if (wRing > .01) for (let e = 0; e < KR; e++) {
+        const a = K_RING[e * 2], b = K_RING[e * 2 + 1], dx = x[a] - x[b], dy = y[a] - y[b], d = Math.sqrt(dx * dx + dy * dy), dm = R * .35;
+        if (d > dm) continue;
+        const voll = rAng[a] / TAU < fuellung && rAng[b] / TAU < fuellung;
+        eimer.linie(voll ? fSicht : F.grau, (voll ? .75 : .3) * wRing * (1 - d / dm), x[a], y[a], x[b], y[b], voll ? 2 : 1);
+      }
+      if (wBrain > .01) {
+        const langMax = R * (1.05 - .4 * (1 - wBrain)), lang0 = R * .5, kantenA = .34 * wBrain * wBrain;
+        for (let e = 0; e < KB; e++) {
+          const a = K_BRAIN[e * 2], b = K_BRAIN[e * 2 + 1], dx = x[a] - x[b], dy = y[a] - y[b], d = Math.sqrt(dx * dx + dy * dy);
+          if (d > langMax) continue;
+          const quer = seite[a] !== seite[b] || kern[a] || kern[b], bo = Math.max(boost(a), boost(b)), nm = Math.max(nah[a], nah[b]);
+          eimer.linie(quer ? F.tuerkis : F.teal, kantenA * Math.min(ta[a], ta[b]) * (1 - clamp((d - lang0) / (langMax - lang0), 0, 1)) * (quer ? 1.1 : .8), x[a], y[a], x[b], y[b], 1);
+          if (nm > .05) eimer.linie(F.tuerkis, nm * .7, x[a], y[a], x[b], y[b], 1.2);
+          if (bo > .06) eimer.linie(F.tuerkis, bo * .9, x[a], y[a], x[b], y[b], 1.6);
+        }
       }
       // Knoten
-      const rBasis = handy ? .95 : 1.1;
+      const rBasis = handy ? .95 : 1.05;
       for (let i = 0; i < N; i++) {
-        const rr = (kern[i] ? 1.7 : 1.15 + 1.25 * sc[i]) * rBasis;
-        const farbe = kern[i] ? fTuerkis : seite[i] ? fSmaragd : fGranat;
-        eimer.punkt(farbe, ta[i] * (kern[i] ? .95 : .85) * (1 - wChaos * .35), x[i], y[i], rr);
-        const bo = boost(i), s = nah[i];
-        if (bo > .12) eimer.punkt(F.tuerkis, bo, x[i], y[i], rr + 2.4 * bo);
-        else if (s > .1) eimer.punkt(F.tuerkis, s * .9, x[i], y[i], rr + 1.6 * s);
+        let farbe, al, rr = 1.3 * rBasis;
+        if (wBrain >= .5) { farbe = kern[i] ? F.tuerkis : F.teal; al = ta[i] * (kern[i] ? .9 : .7); rr = (kern[i] ? 1.6 : 1.05 + 1.15 * sc[i]) * rBasis; }
+        else if (wRing >= .5) { const voll = rAng[i] / TAU < fuellung; farbe = kern[i] ? fSicht : voll ? fSicht : F.grau; al = kern[i] ? .45 + .2 * herz : voll ? .95 : .35; rr = (voll ? 1.7 : 1.2) * rBasis; }
+        else if (wChaos >= .5) { farbe = F.grau; al = .6; rr = 1.25 * rBasis; }
+        else {
+          // Zwei Welten: in der Schnittmenge blinken die Knoten gelb — der Konflikt um 19 Uhr.
+          const imLens = Math.abs(x[i] - cx) < lensX && Math.abs(y[i] - cy) < wR * .55;
+          farbe = welt[i] ? F.orange : F.tuerkis; al = .55 + .3 * (wRad[i] > .9 ? 1 : .4); rr = 1.35 * rBasis;
+          if (imLens) { const bl = ruhig ? .6 : .5 + .5 * Math.sin(t * .005 + i); farbe = F.gelb; al = .35 + .6 * bl; rr = (1.3 + .8 * bl) * rBasis; }
+        }
+        eimer.punkt(farbe, al, x[i], y[i], rr);
+        const bo = boost(i), n = nah[i];
+        if (bo > .12) eimer.punkt(F.tuerkis, bo, x[i], y[i], rr + 2.2 * bo);
+        else if (n > .1) eimer.punkt(F.tuerkis, n * .8, x[i], y[i], rr + 1.4 * n);
       }
       eimer.zeichnen();
       // Der Stapel-Knoten: gelb, solange er wartet — grün, wenn du freigegeben hast.
-      const frei = u4 > .62;
+      const frei = u4 > .55;
       if (stapelErreicht) {
-        const sx = x[stapelIdx], sy = y[stapelIdx], puls = ruhig ? .5 : .5 + .5 * Math.sin(t * .006);
-        const fs = frei ? F.gruen : F.gelb;
+        const sx = x[stapelIdx], sy = y[stapelIdx], puls = ruhig ? .5 : .5 + .5 * Math.sin(t * .006), fs = frei ? F.gruen : F.gelb;
         const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, 26 + 8 * puls);
-        g.addColorStop(0, `rgba(${fs},.55)`); g.addColorStop(1, `rgba(${fs},0)`);
+        g.addColorStop(0, `rgba(${fs},.5)`); g.addColorStop(1, `rgba(${fs},0)`);
         ctx.fillStyle = g; ctx.fillRect(sx - 40, sy - 40, 80, 80);
         ctx.beginPath(); ctx.arc(sx, sy, 4.5, 0, TAU); ctx.fillStyle = `rgba(${fs},1)`; ctx.fill();
         ctx.beginPath(); ctx.arc(sx, sy, 9 + 5 * puls, 0, TAU); ctx.strokeStyle = `rgba(${fs},${(.6 - .4 * puls).toFixed(2)})`; ctx.lineWidth = 1.2; ctx.stroke();
       }
       ctx.globalAlpha = 1;
 
-      // ── DOM-Überlagerungen: Chips im Chaos, Stapel-Chip, Kapiteltexte ──
-      const chipsSollen = wChaos > .04;
-      if (chipsSollen !== chipsAn) { chipsAn = chipsSollen; chips.forEach(c => { c.style.visibility = chipsAn ? 'visible' : 'hidden'; }); }
-      if (chipsAn) chips.forEach((c, j) => {
-        const h = HAUFEN[j % 9]; const px = cx + h[0] * hx, py = cy + h[1] * hy + rC * 1.25;
-        c.style.transform = `translate(${px.toFixed(1)}px,${py.toFixed(1)}px) translate(-50%,0)`; c.style.opacity = String(wChaos * ausblenden);
+      // ── DOM-Überlagerungen ──
+      const setzeSichtbar = (els, soll, warAn) => { if (soll !== warAn) els.forEach(c => { c.style.visibility = soll ? 'visible' : 'hidden'; }); return soll; };
+      // Chips und Zahl erscheinen erst, wenn ihr Kapitel überwiegt — so überlappen sich im Übergang nie zwei Sätze.
+      const sichtbarAb = w => spanne(w, .5, .85);
+      weltAn = setzeSichtbar(weltChips, wWelt > .5, weltAn);
+      if (weltAn) weltChips.forEach(c => {
+        const w = c.dataset.w; let px, py;
+        if (handy) { if (w === 'a') { px = cx; py = cy - wR - 46; } else if (w === 'b') { px = cx; py = cy - wR - 16; } else { px = cx; py = cy - 13; } }
+        else if (w === 'a') { px = cx - wAbst; py = cy + wR * .92 + 18; } else if (w === 'b') { px = cx + wAbst; py = cy + wR * .92 + 18; } else { px = cx; py = cy - wR * .62 - 30; }
+        c.style.transform = `translate(${px.toFixed(1)}px,${py.toFixed(1)}px) translate(-50%,0)`; c.style.opacity = String(sichtbarAb(wWelt) * ausblenden);
       });
-      const z = stapelErreicht ? (frei ? 2 : 1) : 0;
-      if (stapelChip) {
-        if (z !== stapelZustand) {
-          stapelZustand = z; stapelChip.classList.toggle('da', z > 0); stapelChip.classList.toggle('frei', z === 2);
-          if (stapelText) stapelText.textContent = z === 2 ? 'Freigegeben — von dir.' : 'Wartet auf dein Ja';
-        }
-        if (z > 0) { const sx = x[stapelIdx], sy = y[stapelIdx]; const links = sx > W * .6; stapelChip.style.transform = `translate(${(sx + (links ? -18 : 18)).toFixed(1)}px,${(sy - 12).toFixed(1)}px) translate(${links ? '-100%' : '0'},-100%)`; stapelChip.style.opacity = String(ausblenden); }
+      chipsAn = setzeSichtbar(chips, wChaos > .5, chipsAn);
+      if (chipsAn) chips.forEach((c, j) => { const h = HAUFEN[j % 9]; c.style.transform = `translate(${(cx + h[0] * hx).toFixed(1)}px,${(cy + h[1] * hy + rC * 1.25).toFixed(1)}px) translate(-50%,0)`; c.style.opacity = String(sichtbarAb(wChaos) * ausblenden); });
+      ringAn = setzeSichtbar(ringZahl ? [ringZahl] : [], wRing > .5, ringAn);
+      if (ringAn && ringZahl) {
+        ringZahl.style.transform = `translate(${cx.toFixed(1)}px,${cy.toFixed(1)}px) translate(-50%,-50%)`; ringZahl.style.opacity = String(sichtbarAb(wRing) * ausblenden);
+        ringZahl.style.setProperty('--f', `rgb(${fSicht})`);
+        const z = Math.round(fuellung * 100); if (z !== letzteZahl && ringZahlB) { letzteZahl = z; ringZahlB.textContent = String(z); }
       }
-      if (!ruhig) inhalte.forEach((el, i) => {
+      const zst = stapelErreicht ? (frei ? 2 : 1) : 0;
+      if (stapelChip) {
+        if (zst !== stapelZustand) { stapelZustand = zst; stapelChip.classList.toggle('da', zst > 0); stapelChip.classList.toggle('frei', zst === 2); if (stapelText) stapelText.textContent = zst === 2 ? 'Freigegeben — von dir.' : 'Wartet auf dein Ja'; }
+        if (zst > 0) {
+          const sx = x[stapelIdx], sy = y[stapelIdx], cw = stapelChip.offsetWidth || 240, chh = stapelChip.offsetHeight || 80;
+          const px = clamp(handy ? sx - cw / 2 : (sx > W * .6 ? sx - 18 - cw : sx + 18), 12, W - cw - 12), py = clamp(sy - 14 - chh, 72, H - chh - 12);
+          stapelAlpha += (1 - stapelAlpha) * (ruhig ? 1 : .12);   // Einblenden ohne CSS-Übergang — der Lauf trägt es
+          stapelChip.style.transform = `translate(${px.toFixed(1)}px,${py.toFixed(1)}px)`; stapelChip.style.opacity = (stapelAlpha * ausblenden).toFixed(3);
+        } else stapelAlpha = 0;
+      }
+      if (!ruhig) inhalte.forEach(el => {
         if (!el) return;
-        const er = el.getBoundingClientRect(), d = er.top + er.height / 2 - vh / 2;   // Textmitte zur Bildmitte
-        const op = i === 0 ? 1 - spanne(-d, vh * .12, vh * .45) : 1 - spanne(Math.abs(d), vh * .26, vh * .52);
-        el.style.opacity = op.toFixed(3);
+        const er = el.getBoundingClientRect(), d = er.top + er.height / 2 - vh / 2;
+        el.style.opacity = (1 - spanne(Math.abs(d), vh * .26, vh * .52)).toFixed(3);
       });
       if (!an) { an = true; buehne.classList.add('an'); }
     }
 
-    // Startlage: sofort in Form — kein Sprung aus (0,0).
-    { const { cx, cy, R } = grund(); const cosA = Math.cos(winkel), sinA = Math.sin(winkel); for (let i = 0; i < N; i++) { const px = P[i * 3], pz = P[i * 3 + 2]; const x1 = px * cosA + pz * sinA, z1 = -px * sinA + pz * cosA; const persp = 1 / (1 + z1 * .28); x[i] = cx + x1 * R * persp; y[i] = cy + P[i * 3 + 1] * R * persp; } }
-
-    if (ruhig) {
-      // Ruhig: kein Dauerlauf. Ein Bild je Scroll-Stand, Übergänge springen.
-      let angefordert = false;
-      const einmal = () => { if (angefordert) return; angefordert = true; requestAnimationFrame(t => { angefordert = false; zeichne(t); }); };
-      addEventListener('scroll', einmal, { passive: true }); addEventListener('resize', einmal); einmal();
-    } else {
-      const lauf = t => { if (!document.hidden) zeichne(t); requestAnimationFrame(lauf); };
-      requestAnimationFrame(lauf);
-    }
+    // Startlage: sofort in der ersten Form (zwei Welten) — kein Sprung aus (0,0).
+    { const { cx, cy, R } = grund(); for (let i = 0; i < N; i++) { const mx = cx + (welt[i] ? R * .5 : -R * .5); x[i] = mx + Math.cos(wAng[i]) * R * .72 * wRad[i]; y[i] = cy + Math.sin(wAng[i]) * R * .72 * wRad[i] * .92; } }
+    starten(zeichne);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════
@@ -350,24 +385,22 @@
     for (let i = 0; i < N; i++) {
       const s = i % 2; seite[i] = s;
       const [px, py, tx, ty] = punktAuf(STRICHE[s], (Math.floor(i / 2) + .5) / (N / 2) + (zufall() - .5) * .02);
-      const quer = gauss() * 7.5;                                           // Strichdicke
+      const quer = gauss() * 7.5;
       M[i * 2] = px - ty * quer; M[i * 2 + 1] = py + tx * quer;
       WOLKE[i * 2] = (s ? 178 : 62) + gauss() * 42; WOLKE[i * 2 + 1] = 118 + gauss() * 46;
     }
     const K = nachbarn(M, 2, 2, (i, j) => seite[i] === seite[j] || (Math.hypot(M[i * 2] - 120, M[i * 2 + 1] - 141) < 16 && Math.hypot(M[j * 2] - 120, M[j * 2 + 1] - 141) < 16));
     const KN = K.length / 2;
     const x = new Float32Array(N), y = new Float32Array(N), nah = new Float32Array(N);
-    let W = 0, H = 0, dpr = 1, an = false, mix = 0, letzteZeit = 0;
+    let W = 0, H = 0, dpr = 1, an = false, mix = 0;
     const abbilden = (vx, vy) => { const s = Math.min(W, H) / 240; return [(W - 240 * s) / 2 + vx * s, (H - 240 * s) / 2 + vy * s]; };
-    for (let i = 0; i < N; i++) { const [px, py] = abbilden(WOLKE[i * 2], WOLKE[i * 2 + 1]); x[i] = px; y[i] = py; }
 
     function zeichne(t) {
-      const dt = letzteZeit ? Math.min(48, t - letzteZeit) : 16; letzteZeit = t;
       const r = buehne.getBoundingClientRect();
       if (r.bottom < -40 || r.top > innerHeight + 40) return;
-      if (!W) { ({ W, H, dpr } = leinwand(canvas, buehne)); for (let i = 0; i < N; i++) { const [px, py] = abbilden(WOLKE[i * 2], WOLKE[i * 2 + 1]); x[i] = px; y[i] = py; } }
-      else ({ W, H, dpr } = leinwand(canvas, buehne));
-      const ziel = spanne(innerHeight * .92 - r.top, 0, innerHeight * .5);  // formt sich, sobald es ins Bild kommt
+      const frisch = !W; ({ W, H, dpr } = leinwand(canvas, buehne));
+      if (frisch) for (let i = 0; i < N; i++) { const [px, py] = abbilden(WOLKE[i * 2], WOLKE[i * 2 + 1]); x[i] = px; y[i] = py; }
+      const ziel = spanne(innerHeight * .92 - r.top, 0, innerHeight * .5);
       mix += (ziel - mix) * (ruhig ? 1 : .05);
       const s = Math.min(W, H) / 240, k = ruhig ? 1 : .09, RM = handy ? 60 : 90, RM2 = RM * RM;
       const zx = zeiger.x - r.left, zy = zeiger.y - r.top;
@@ -396,19 +429,12 @@
         if (nah[i] > .1) eimer.punkt(F.tuerkis, nah[i] * .9, x[i], y[i], rr + 1.4 * nah[i]);
       }
       eimer.zeichnen();
-      if (funke > .05) { ctx.beginPath(); ctx.arc(fx, fy, 3.2 * s * .5 + 2, 0, TAU); ctx.fillStyle = `rgba(${F.tuerkis},${funke.toFixed(2)})`; ctx.fill(); }
+      if (funke > .05) { ctx.beginPath(); ctx.arc(fx, fy, 1.6 * s + 2, 0, TAU); ctx.fillStyle = `rgba(${F.tuerkis},${funke.toFixed(2)})`; ctx.fill(); }
       if (!an) { an = true; buehne.classList.add('an'); }
     }
-    if (ruhig) {
-      let angefordert = false;
-      const einmal = () => { if (angefordert) return; angefordert = true; requestAnimationFrame(t => { angefordert = false; zeichne(t); }); };
-      addEventListener('scroll', einmal, { passive: true }); addEventListener('resize', einmal); einmal();
-    } else {
-      const lauf = t => { if (!document.hidden) zeichne(t); requestAnimationFrame(lauf); };
-      requestAnimationFrame(lauf);
-    }
+    starten(zeichne);
   }
 
-  const start = () => { try { grosseBuehne(); } catch (e) { console.error('Brain:', e); } try { kleineBuehne(); } catch (e) { console.error('M:', e); } };
+  const start = () => { try { grosseBuehne(); } catch (e) { console.error('Bühne:', e); } try { kleineBuehne(); } catch (e) { console.error('M:', e); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

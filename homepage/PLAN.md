@@ -77,6 +77,45 @@ Kevin: „Der Schieber reicht da nicht. Überarbeite das Ganze. Malin ist eher R
 - Kapitel 06 „Dein Server“ könnte ein drittes Netz bekommen (Brain in einem Server-Rahmen, eine Linie geht raus und kommt zurück) — bewusst noch nicht gebaut, damit der Effekt nicht inflationär wird.
 - Ton auf dem Handy: die Bühne liegt hinter dem Text (Scrim); Alternative wäre Bühne oben, Text darunter ohne Überlappung (ruhiger, aber weniger Kino).
 
+## Vierter Durchgang (27.09.): Produkt sauber definieren
+Kevin: „USP nach vorn — zwei Welten, beides messbar, KI hilft im Hintergrund. Das Brain nicht als Effekt oben, sondern das Schaubild aus der Software mit Umschalter. Der Effekt muss ins CI passen. Die Assistentin heißt Zoe.“
+
+**Positionierung in drei Sätzen**
+1. MAKE OS bringt zwei Welten zusammen, die im selben Kopf laufen und sich sonst nirgends treffen: dein Privatleben und dein Unternehmen.
+2. Es macht beides messbar — ein Privat-Index, ein Business-Index, zusammen der Wachstums-Score — und zeigt jeden Tag den einen Hebel, der zählt.
+3. Zoe, die KI im Hintergrund, verarbeitet, bereitet vor und erinnert, ohne je ohne dein Ja zu handeln — damit die Zeit, die übrig bleibt, dir gehört: der Familie oder dem nächsten Schritt im Business.
+
+**Die zwei Laufstrecken** (Schalter in der Score-Scheibe im Hero und als Pille unten; `body[data-spur]` schaltet Texte per `.sp`/`.sb`, Score, Reiter und Bühne)
+| Station | Privat | Business |
+|---|---|---|
+| Hero-Satz | Privatleben + Unternehmen in einem System, messbar, KI hilft — die Zeit gehört dir, der Beziehung, der Familie | Unternehmen + Privatleben in einem System, messbar, KI bereitet vor — die Zeit gehört dem nächsten Schritt |
+| Score-Scheibe | 78 · Solide · Gesundheit, Beziehung, Finanzen, Fokus & Zeit · Hebel „Schlaf vor Mitternacht“ | 64 · Im Aufbau · Financial Health, Management DNA, Markttraktion, Fokus & Zeit · Hebel „Zwei Follow-ups überfällig“ |
+| 01 Zwei Welten | Der Abend zu zweit steht im Kalender — das Angebot muss trotzdem heute raus | Das Angebot muss heute raus — der Abend zu zweit steht seit zwei Wochen im Kalender |
+| 02 Sieben Apps | Keine sieht, dass die Woche zu Hause kippt | Keine sieht, dass der Deal seit zwei Tagen ohne Schritt liegt |
+| 03 Messbar | Privat-Index: Schlaf, Zeit zu zweit, Kontostände, Fokus-Zeit (Ring füllt sich türkis bis 78) | Business-Index: Runway, Führungs-Rhythmus, Gespräche und Deals, Fokus-Zeit (Ring füllt sich orange bis 64) |
+| 04 Zoe hilft | Schützt den Abend, schiebt den Fokusblock, legt die Nachricht in den Stapel | Trägt den nächsten Schritt ein, blockt den Anruf, legt die Zusammenfassung in den Stapel |
+| Zoe-Gespräch | Woche + Kollision Dienstagabend → Fokusblock Mi 9–11, Abend bleibt frei | Woche + Deal ohne Schritt → Anruf 11 Uhr, Schritt eingetragen |
+| Bereiche | öffnet mit „Gesundheit“ | öffnet mit „Markttraktion“ |
+Farben der Sichten wie in der Software: Privat Türkis `#58D9CD`, Business Orange `#FF9F43` (LEUCHT.business). Granat und Smaragd bleiben den Personen vorbehalten (Logo, Wortmarke, MA + KE, Räume).
+
+**Was das Brain tut (Zoe, die Helferin)**
+- Verarbeitet, was reinkommt (Kalender, Zahlen, Wearable, Notizen, Mails als Daten), bereitet den Tag vor, erinnert, hält den Rücken frei — im Hintergrund, ohne dass man jeden Tag an alles denken muss.
+- Handelt mit Werkzeugen (eintragen, blocken, planen), aber alles Ausgehende wartet im Stapel auf ein Ja. Auf der Bühne: der Impuls läuft vom Kern nach außen, bleibt am Stapel-Knoten stehen (gelb), wird erst grün, wenn der Besucher weiterscrollt — „Freigegeben — von dir“.
+- Erscheint deshalb erst in Kapitel 04 als Bild: ruhig (Teal-Knoten, türkise Synapsen und Kern, langsame Drehung, kein Farbrausch), nicht als Effekt im Hero. Der Hero zeigt das Schaubild aus der Software.
+
+**Umgesetzt**
+- Hero = App-Rahmen mit Wachstums-Score und Schalter Privat/Business (`#score-app`); H1 „Zwei Welten. Ein System. Eine Zahl.“; die Sicht-Pille unten erscheint nach dem Hero.
+- Bühne (Kapitel 01–04) in `js/brain.js`: Formen `welten` (zwei sich überlappende Ringe, Konflikt-Knoten gelb, drei Chips) → `chaos` (neun graue Haufen) → `ring` (Index füllt sich in der Farbe der Sicht, Zahl zählt hoch, `.ring-zahl`) → `brain` (Zoe, Impuls, Stapel-Chip). Übergänge als Partition der Gewichte (Dach-Funktionen), ruhige Fenster ±22 % um jede Kapitelmitte.
+- Zoe überall statt Jarvis (Texte, Chat, Weg, Fluss, FAQ, Leiste „Z“); `pruefen.mjs` bricht ab, wenn der alte Name in Seite oder Code steht.
+- Founder-Text mit Kevins Worten (Business-Paar, Welten trennen, Fokus für die Beziehung, Struktur, Hilfe im Hintergrund).
+
+**Noch offen**
+- Wording „Privat-Index / Business-Index“ gegen die Software abgleichen (dort: Wachstums-Score mit Säulen; Business-Modus mit Financial Health, Management DNA, Markttraktion).
+- Business-Zahl 64 „Im Aufbau“ ist Beispieldatum — Kevin entscheidet, ob eine Zahl unter 70 im Hero verkaufsfördernd ist oder abschreckt.
+- Ob die Sicht beim Wiederkommen gemerkt werden soll (heute: immer Privat beim Laden, kein Speicher, kein Tracking).
+- Drittes Bild für Kapitel 06 „Dein Server“ bewusst nicht gebaut — erst, wenn die Geschichte in 01–04 sitzt.
+- Echte Porträts, Gründergeschichte, Mail-Adresse und Domain (siehe zweiter Durchgang) bleiben offen.
+
 ## Offen für Kevin (zweiter Durchgang, weiter gültig)
 - „Life & Business **Operating** System“ (englisch korrekt) oder „Operation System“ wie im Auftrag und in `Terminologie_Brain`?
 - Echte Porträts von Malin und Kevin (die CI verlangt sie — Initialen-Karten sitzen in „Warum MAKE“).

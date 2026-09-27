@@ -17,6 +17,9 @@ const treffer = [];
 const muster = s => new RegExp(`\\b${s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
 for (const s of SPERRE) { if (muster(s).test(text)) treffer.push(`Name/Kunde in index.html: ${s}`); if (muster(s).test(code)) treffer.push(`Name/Kunde im Code: ${s}`); }
 for (const w of WOERTER) { const m = text.match(w); if (m) treffer.push(`Wort: ${m[0]}`); }
+// Vierter Durchgang: die Assistentin heißt Zoe — der alte Name darf weder im Text noch in Klassen, IDs oder Code stehen.
+if (/jarvis/i.test(html)) treffer.push('Alter Name in index.html: Jarvis (heißt Zoe)');
+if (/jarvis/i.test(code)) treffer.push('Alter Name im Code: Jarvis (heißt Zoe)');
 // Terminmuster mit Uhrzeit UND Personenname in derselben Zeile sind erlaubt, solange der Name erfunden ist — geprüft wird nur die Sperrliste.
 // Handwerk: jede Skriptdatei muss eingebunden sein, das Standbild muss existieren.
 for (const s of ['js/site.js', 'js/brain.js', 'css/site.css']) if (!html.includes(s)) treffer.push(`Nicht eingebunden: ${s}`);
