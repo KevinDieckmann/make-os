@@ -15,7 +15,7 @@ import type { CrmBestand, CrmListe } from './typen';
 export const UEBERGABE_ARTEN = ['kontakt', 'kontakte', 'chance', 'mandat', 'event', 'kampagne', 'beitrag', 'newsletter'] as const;
 type Art = typeof UEBERGABE_ARTEN[number];
 const LISTE: Partial<Record<Art, CrmListe>> = { chance: 'chancen', mandat: 'mandate', event: 'events', kampagne: 'kampagnen', beitrag: 'beitraege', newsletter: 'newsletter' };
-const ZIEL: Partial<Record<Art, [string, string?]>> = { chance: ['deals', 'akte'], mandat: ['deals', 'kunden'], event: ['event'], kampagne: ['sales', 'kampagnen'], beitrag: ['marketing', 'redaktion'], newsletter: ['marketing', 'newsletter'] };
+const ZIEL: Partial<Record<Art, [string, string?]>> = { chance: ['deals', 'akte'], mandat: ['deals', 'kunden'], event: ['event'], kampagne: ['marketing', 'kampagnen'], beitrag: ['marketing', 'redaktion'], newsletter: ['marketing', 'newsletter'] };
 const tagOk = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
 
 export interface UebergabeEingabe { art?: string; id?: string; ids?: string[]; an?: string; notiz?: string; frist?: string }
@@ -68,7 +68,8 @@ export async function uebergeben(b: UebergabeEingabe, person: string): Promise<U
     if (!anzahl) return { ok: false, fehler: 'Eintrag nicht gefunden.', status: 404 };
     const [s, a] = ZIEL[art]!;
     // Mandate leben seit 25.09. unter Produkte & Mandate — der Link öffnet genau dieses Mandat.
-    link = art === 'mandat' ? mandateLink('mandate', id) : markttraktion(s, a);
+    // Der Link öffnet das Objekt selbst (Akte, Event, Kampagne …), nicht nur die Liste (Prüfbericht 27.09., Punkt 9).
+    link = art === 'mandat' ? mandateLink('mandate', id) : markttraktion(s, a, id);
   }
 
   // Die andere Person bekommt eine Aufgabe — nicht, wer sich selbst etwas gibt, und nicht bei „beide“.

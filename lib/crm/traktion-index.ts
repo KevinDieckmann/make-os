@@ -14,7 +14,7 @@ import type { CrmBestand, Chance, Mandat } from './typen';
 import { kennzahlen, type Kpi } from './kennzahlen';
 import { marketingKennzahlen, ausMarketing, abmeldequote, marketingTrichter } from './marketing';
 import { eventKennzahlen, WELTEN, IM_SCORE, GRUNDLAGE, type Welt, type Traktion } from './traktion';
-import { OFFENE_STUFEN, gesundheit, gesamtwert } from './pipeline';
+import { OFFENE_STUFEN, gesundheit, gesamtwert, echtesGespraech, WIN_RATE } from './pipeline';
 import { verweildauer } from './deal-auswertung';
 import { faellige } from './followup';
 import { eventZahlen, followUpBis } from './events';
@@ -42,7 +42,7 @@ export const TRAKTION_KENNZAHLEN: KennzahlDefBasis[] = [
   D({ id: 'ohne_schritt', label: 'Deals ohne nächsten Schritt', saeule: 'sales', gruppe: 'Conversions', einheit: 'anzahl', richtung: 'niedrig', gruen: 0, rot: 2, formel: 'Offene Deals ohne festgehaltenen nächsten Schritt', quelle: 'Deals', luecke: 'Kein offener Deal', pflegen: { text: 'Deals öffnen', href: WEG.deals() } }),
   D({ id: 'mrr', label: 'Größter Kunde am MRR', saeule: 'sales', gruppe: 'Conversions', einheit: 'prozent', richtung: 'niedrig', gruen: 50, rot: 70, formel: 'Anteil des größten Kunden am wiederkehrenden Monatsumsatz', quelle: 'Aktive Mandate mit Monatshonorar', luecke: 'Keine aktiven Monatsmandate', pflegen: { text: 'Mandate pflegen', href: WEG.mandat() } }),
   // ── Deal- und Follow-up-Ebene (27.09.)
-  D({ id: 'win_rate', label: 'Win Rate · 180 Tage', saeule: 'sales', gruppe: 'Deals', gewicht: 1.25, einheit: 'prozent', richtung: 'hoch', gruen: 40, rot: 20, formel: 'gewonnen ÷ (gewonnen + verloren), Entscheidungen der letzten 180 Tage, erst ab 5', quelle: 'Deals mit Stufe gewonnen/verloren', luecke: 'Noch keine 5 Entscheidungen', pflegen: { text: 'Deals öffnen', href: markttraktion('deals', 'auswertung') } }),
+  D({ id: 'win_rate', label: 'Win Rate · 180 Tage', saeule: 'sales', gruppe: 'Deals', gewicht: 1.25, einheit: 'prozent', richtung: 'hoch', gruen: WIN_RATE.gruen, rot: WIN_RATE.rot, formel: 'gewonnen ÷ (gewonnen + verloren), Entscheidungen der letzten 180 Tage, erst ab 10', quelle: 'Deals mit Stufe gewonnen/verloren', luecke: 'Noch keine 5 Entscheidungen', pflegen: { text: 'Deals öffnen', href: markttraktion('deals', 'auswertung') } }),
   D({ id: 'zyklus', label: 'Sales-Zyklus · Median', saeule: 'sales', gruppe: 'Deals', einheit: 'tage', richtung: 'niedrig', gruen: 60, rot: 120, formel: 'Median der Tage von Anlage bis gewonnen, erst ab 5 gewonnenen', quelle: 'Historie der gewonnenen Deals', luecke: 'Noch keine 5 gewonnenen Deals', pflegen: { text: 'Auswertung öffnen', href: markttraktion('deals', 'auswertung') } }),
   D({ id: 'haengt_wert', label: 'Hängt · nach Wert', saeule: 'sales', gruppe: 'Deals', einheit: 'prozent', richtung: 'niedrig', gruen: 15, rot: 40, formel: 'Wert der roten Deals ÷ Wert aller offenen Deals', quelle: 'Ampel je Deal (überfällig oder > 30 Tage still)', luecke: 'Keine offenen Deals mit Wert', pflegen: { text: 'Board öffnen', href: markttraktion('deals') } }),
   D({ id: 'followup_puenktlich', label: 'Follow-ups pünktlich · 30 Tage', saeule: 'sales', gruppe: 'Follow-up', einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 60, formel: 'erledigt am oder vor dem Termin ÷ (erledigt + verpasst), erst ab 5', quelle: 'Follow-up-Ebene', luecke: 'Noch keine 5 erledigten Follow-ups', pflegen: { text: 'Follow-up öffnen', href: markttraktion('followup') } }),
@@ -68,12 +68,15 @@ export const TRAKTION_KENNZAHLEN: KennzahlDefBasis[] = [
   D({ id: 'art14', label: 'Art. 14 überfällig', saeule: 'grundlage', gruppe: 'Grundlage', einheit: 'anzahl', richtung: 'niedrig', gruen: 0, rot: 1, formel: 'Personen, deren Informationsfrist nach Art. 14 DSGVO abgelaufen ist', quelle: 'Kartei', luecke: 'Noch keine Person in der Kartei', pflegen: { text: 'Art. 14 erledigen', href: markttraktion('kontakte', 'art14') } }),
 ];
 
-export interface TraktionBestand { kontakte: Kontakt[]; crm: CrmBestand; heute: string; schwellen?: Record<string, Schwelle> }
+export interface TraktionBestand { kontakte: Kontakt[]; crm: CrmBestand; heute: string; schwellen?: Record<string, Schwelle>; /** Schon gerechnete Kennzahlen der Welten — spart die zweite Runde (Prüfbericht 27.09., Punkt 18). */ kpis?: Kpi[] }
+
+/** Der Marketing-Trichter je Bestand nur einmal — die Details fragten ihn bis zu viermal je Aufruf. */
+const TRICHTER = new WeakMap<TraktionBestand, ReturnType<typeof marketingTrichter>>();
+function trichter(b: TraktionBestand) { let t = TRICHTER.get(b); if (!t) { t = marketingTrichter(b.kontakte, b.crm, b.heute); TRICHTER.set(b, t); } return t; }
 
 // ── Hilfen ──────────────────────────────────────────────────────────────────
 const tagMinus = (heute: string, n: number) => { const d = new Date(`${heute}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); };
 const tagKurz = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.`;
-const echtesGespraech = (a: { art: string; ergebnis?: string }) => a.ergebnis === 'gespraech' || a.ergebnis === 'termin' || a.art === 'gespraech' || a.art === 'termin';
 const euro = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(n));
 const grenzen = (b: TraktionBestand, id: string) => b.schwellen?.[id] ?? (() => { const k = TRAKTION_KENNZAHLEN.find(x => x.id === id)!; return { gruen: k.gruen, rot: k.rot }; })();
 function ampelVon(w: number, g: Schwelle): Ampel {
@@ -150,11 +153,11 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
       .map(c => dealDetail(c, euro(gesamtwert(c)), c.firma ?? undefined, 'gruen'));
   },
   anfragen_90(b) {
-    const t = marketingTrichter(b.kontakte, b.crm, b.heute);
+    const t = trichter(b);
     return t.anfragen.personen.slice(0, 4).map(id => personDetail(b, id, 'Anfrage', undefined)).filter((d): d is Detail => !!d);
   },
   kosten_je_anfrage(b) {
-    const t = marketingTrichter(b.kontakte, b.crm, b.heute);
+    const t = trichter(b);
     return [
       { titel: 'Kosten Beiträge', wert: euro(t.kosten.beitraege), href: WEG.marketing('redaktion') },
       { titel: 'Kosten Kampagnen', wert: euro(t.kosten.kampagnen), href: WEG.kampagne(undefined, 'marketing') },
@@ -253,7 +256,7 @@ const TRAKTION_KENNZAHLEN_SKALA: Record<string, number> = { marketing_anteil: 10
 /** Der Traktions-Index — dieselbe Zahl im Überblick, im Business-Index und bei Jarvis. */
 export function traktionsIndex(b: TraktionBestand): TraktionsIndex {
   const kpis: Record<string, Kpi> = {};
-  for (const k of [...kennzahlen(b.kontakte, b.crm, b.heute), ...marketingKennzahlen(b.kontakte, b.crm, b.heute), ...eventKennzahlen(b.kontakte, b.crm, b.heute)]) kpis[k.id] = k;
+  for (const k of b.kpis ?? [...kennzahlen(b.kontakte, b.crm, b.heute), ...marketingKennzahlen(b.kontakte, b.crm, b.heute), ...eventKennzahlen(b.kontakte, b.crm, b.heute)]) kpis[k.id] = k;
   // „Größter Kunde“: die Kpi mrr trägt die Konzentration nur in der Quelle — hier als Prozentwert.
   if (kpis.mrr) {
     const je = new Map<string, number>();

@@ -134,7 +134,7 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <Knopf farbe={LEUCHT.gut} onClick={() => setErledigen(!erledigen)}>✓ Erledigt</Knopf>
             {VERSCHIEBEN_TAGE.map(t => <Knopf key={t} leise onClick={() => void aktion({ aktion: 'verschieben', id: f.id, tage: t })}>+{t} {t === 1 ? 'Tag' : 'Tage'}</Knopf>)}
-            <Knopf leise onClick={() => { if (window.confirm('Follow-up absagen? Die Person bleibt, nur diese Zusage fällt weg.')) void aktion({ aktion: 'absagen', id: f.id }); }}>Absagen</Knopf>
+            {f.quelle !== 'dealschritt' && <Knopf leise onClick={() => { if (window.confirm(f.quelle === 'nachfassen' ? 'Nachfassen bewusst auslassen? Der Gast verschwindet aus der Liste, zählt aber nicht als nachgefasst.' : 'Follow-up absagen? Die Person bleibt, nur diese Zusage fällt weg.')) void aktion({ aktion: 'absagen', id: f.id }); }}>{f.quelle === 'nachfassen' ? 'Auslassen' : 'Absagen'}</Knopf>}
             <span style={{ flex: 1 }} />
             {f.kontaktId && <Knopf leise onClick={() => zuKontakt(f.kontaktId!)}>Person</Knopf>}
             {(f.bezug.art === 'chance' || f.kontaktId) && <Knopf leise onClick={ziel}>{f.bezug.art === 'chance' ? 'Deal öffnen' : 'Akte'}</Knopf>}
@@ -171,7 +171,7 @@ function Erledigen({ f, heute, onFertig, onAbbruch, eigene = [] }: { f: Faellig;
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <Pillen liste={FOLLOWUP_ARTEN} aktiv={naechster.art} onWahl={art => setNaechster({ ...naechster, art })} />
-            <label style={{ fontSize: 12.5, color: C.inkLeise, display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}><input type="checkbox" checked={kein} onChange={e => setKein(e.target.checked)} /> kein nächster Schritt (bewusst)</label>
+            {f.bezug.art !== 'chance' ? <label style={{ fontSize: 12.5, color: C.inkLeise, display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}><input type="checkbox" checked={kein} onChange={e => setKein(e.target.checked)} /> kein nächster Schritt (bewusst)</label> : <span style={{ fontSize: 12, color: C.inkLeise }}>Beim Deal ist der nächste Schritt Pflicht (Deal-Regel).</span>}
           </div>
         </div>
       </Feldzeile>

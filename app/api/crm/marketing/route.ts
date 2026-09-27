@@ -15,7 +15,8 @@
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
-import { loadJson } from '@/lib/store/local-db';
+import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
+import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { personAus } from '@/lib/jarvis/raum';
 import { localDay } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
@@ -34,10 +35,15 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const url = new URL(req.url);
   const heute = localDay();
-  const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
-  const crm = await ladeCrm();
   const format = url.searchParams.get('format');
   const segmentId = url.searchParams.get('segment');
+  const tage = url.searchParams.get('tage') === '30' ? 30 : 90;
+  // ETag für die JSON-Antwort (27.09.): der Marketing-Reiter fragt bei jedem Abgleich — unverändert heißt 304.
+  const nurJson = format === null && segmentId === null && url.searchParams.get('newsletter') === null;
+  const etag = nurJson ? etagAus('mk', await speicherStand(['crm', 'kontakte']), heute, String(tage), personAus(req)) : null;
+  if (etag) { const gleich = unveraendert(req, etag); if (gleich) return gleich; }
+  const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
+  const crm = await ladeCrm();
 
   if (segmentId !== null) {
     if (format !== 'csv') return NextResponse.json({ ok: false, fehler: 'Nur format=csv.' }, { status: 400 });
@@ -50,15 +56,15 @@ export async function GET(req: Request) {
     return csvAntwort(newsletterCsv(kontakte), `MAKE-OS-Newsletter-Empfaenger-${heute}.csv`);
   }
 
-  return NextResponse.json({
+  return jsonAntwort(req, {
     ok: true, heute, ich: personAus(req),
     einstellung: einstellungAus(crm),
     kennzahlen: marketingKennzahlen(kontakte, crm, heute),
     stimmen: stimmenAus(kontakte, 30),
     freigaben: freigabeLage(crm),
     jePerson: beitraegeJePerson(crm.beitraege ?? [], heute),
-    trichter: marketingTrichter(kontakte, crm, heute, url.searchParams.get('tage') === '30' ? 30 : 90),
-  });
+    trichter: marketingTrichter(kontakte, crm, heute, tage),
+  }, etag ?? undefined);
 }
 
 export async function POST(req: Request) {

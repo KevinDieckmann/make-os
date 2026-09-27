@@ -116,11 +116,13 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
     if (kid) belegt.add(`${kid}|${c.naechsterSchritt.datum}`);
   }
   // 4 · Nachfassen nach einem Event (binnen 48 h)
-  for (const t of crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm)) {
+  for (const t of crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm && !t.nachfassenVerzichtet)) {
     const ev = crm.events.find(e => e.id === t.eventId);
     if (!ev || ev.datum > heute) continue;
     const f = followUpBis(ev);
     if (!frei(t.kontaktId, f)) continue;
+    // Ein echtes Event-Follow-up zu diesem Gast (etwa nach „+3 Tage“) ersetzt den virtuellen Eintrag.
+    if ((crm.followups ?? []).some(x => x.status === 'offen' && x.bezug.art === 'event' && x.bezug.id === ev.id && x.kontaktId === t.kontaktId)) continue;
     raus.push(mach({ id: `v:nachfassen:${t.id}`, virtuell: true, quelle: 'nachfassen', art: 'nachricht', text: `Nachfassen nach „${ev.titel}“`, faellig: f, kontaktId: t.kontaktId, name: nameVon(t.kontaktId), ...(firmaVon(t.kontaktId) ? { firma: firmaVon(t.kontaktId) } : {}), bezug: { art: 'event', id: ev.id, titel: ev.titel }, zustaendig: t.einladenDurch ?? zustaendig(ev.zustaendig, 'event') }));
   }
   // 5 · Review am Mandat

@@ -29,6 +29,7 @@ import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { faellige, zaehlen, puenktlichkeit, neuesFollowUp, virtuell, tagPlus, taktVon, type Faellig } from '@/lib/crm/followup';
 import { leadHebenNachGespraech, type LeadMeldung } from '@/lib/crm/lead-heben';
 import { wer } from '@/lib/crm/team';
+import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import type { CrmBestand, FollowUp, FollowUpArt, FollowUpBezugArt } from '@/lib/crm/typen';
 
 export const runtime = 'nodejs';
@@ -111,8 +112,18 @@ export async function POST(req: Request) {
   const crm = await ladeCrm();
   if (!v && !(crm.followups ?? []).some(f => f.id === id)) return NextResponse.json({ ok: false, fehler: 'Follow-up nicht gefunden.' }, { status: 404 });
 
-  /** Der virtuelle Eintrag (aus dem aktuellen Stand) — als Vorlage für ein echtes Follow-up. */
-  const virtuellerEintrag = (c: CrmBestand): Faellig | undefined => (v ? faellige(kontakte, c, heute, { horizont: 400, wertelisten: c.wertelisten }).find(x => x.id === id) : undefined);
+  /** Der virtuelle Eintrag (aus dem aktuellen Stand) — als Vorlage für ein echtes Follow-up. Nur der Ausschnitt, der ihn trägt,
+   *  wird gerechnet — nicht die ganze Kartei in der Schreibsperre (Prüfbericht 27.09., Punkt 19). */
+  const virtuellerEintrag = (c: CrmBestand): Faellig | undefined => {
+    if (!v) return undefined;
+    const ziel = v.ziel;
+    const teil: CrmBestand = v.quelle === 'dealschritt' ? { ...c, chancen: c.chancen.filter(x => x.id === ziel), teilnahmen: [], mandate: [] }
+      : v.quelle === 'nachfassen' ? { ...c, chancen: [], mandate: [], teilnahmen: c.teilnahmen.filter(t => t.id === ziel) }
+      : v.quelle === 'review' ? { ...c, chancen: [], teilnahmen: [], mandate: c.mandate.filter(m => m.id === ziel) }
+      : { ...c, chancen: [], teilnahmen: [], mandate: [] };
+    const ids = new Set([ziel, ...teil.chancen.flatMap(x => x.kontaktIds), ...teil.teilnahmen.map(t => t.kontaktId), ...teil.mandate.flatMap(m => m.kontaktIds)]);
+    return faellige(kontakte.filter(k => ids.has(k.id)), { ...teil, followups: [] }, heute, { horizont: 400, wertelisten: c.wertelisten }).find(x => x.id === id);
+  };
   const echtAus = (f: Faellig, quelle: FollowUp['quelle']): FollowUp =>
     neuesFollowUp({ id: neueId('fu'), bezug: { art: f.bezug.art, id: f.bezug.id }, kontaktId: f.kontaktId, art: f.art, text: f.text, faellig: f.faellig, zustaendig: f.zustaendig, quelle }, kontakt(f.kontaktId), person, jetzt);
   const quelleVon = (h: Herkunft): FollowUp['quelle'] => (h === 'kadenz' ? 'kadenz' : h === 'nachfassen' ? 'event' : h === 'dealschritt' ? 'deal' : 'regel');
@@ -120,7 +131,6 @@ export async function POST(req: Request) {
   const altesFeldImCrm = (c: CrmBestand, neuesDatum?: string): CrmBestand => {
     if (!v) return c;
     if (v.quelle === 'dealschritt') return { ...c, chancen: c.chancen.map(x => (x.id === v.ziel ? { ...x, naechsterSchritt: neuesDatum && x.naechsterSchritt ? { ...x.naechsterSchritt, datum: neuesDatum } : undefined, geaendert: jetzt, geaendertVon: person } : x)) };
-    if (v.quelle === 'nachfassen') return { ...c, teilnahmen: c.teilnahmen.map(t => (t.id === v.ziel ? { ...t, ...(neuesDatum ? {} : { followUpAm: heute }), geaendert: jetzt, geaendertVon: person } : t)) };
     if (v.quelle === 'review') return { ...c, mandate: c.mandate.map(m => (m.id === v.ziel ? { ...m, naechstesReview: neuesDatum ?? tagPlus(heute, 90), geaendert: jetzt, geaendertVon: person } : m)) };
     return c;
   };
@@ -135,13 +145,16 @@ export async function POST(req: Request) {
     const naechsterRoh = n && String(n.text ?? '').trim() && tagOk(n.faellig) ? { text: String(n.text).trim().slice(0, 300), faellig: tagOk(n.faellig)!, art: ARTEN.includes(n.art as FollowUpArt) ? (n.art as FollowUpArt) : undefined } : undefined;
     if (naechsterRoh && naechsterRoh.faellig < heute) return NextResponse.json({ ok: false, fehler: 'Der nächste Schritt liegt in der Vergangenheit.' }, { status: 400 });
     const notiz = typeof b.notiz === 'string' ? b.notiz.trim().slice(0, 1000) : '';
-    let erledigt: FollowUp | null = null, folge: FollowUp | null = null, herkunft: Herkunft = 'echt', hinweis = '';
+    let erledigt: FollowUp | null = null, folge: FollowUp | null = null, herkunft: Herkunft = 'echt', hinweis = '', regelFehler = '';
     await aendereCrm(c => {
       const echt = (c.followups ?? []).find(f => f.id === id);
       const vorlage = echt ? null : virtuellerEintrag(c);
       if (!echt && !vorlage) return c;
       herkunft = echt ? 'echt' : (v!.quelle as Herkunft);
       const f: FollowUp = echt ?? echtAus(vorlage!, quelleVon(herkunft));
+      // Deal-Regel (Prüfbericht 27.09., Punkt 6): ein offener Deal braucht einen nächsten Schritt — auch über die Follow-up-Ebene.
+      const deal = f.bezug.art === 'chance' ? c.chancen.find(x => x.id === f.bezug.id) : undefined;
+      if (deal && OFFENE_STUFEN.includes(deal.stufe) && !naechsterRoh && (herkunft === 'dealschritt' || !deal.naechsterSchritt)) { regelFehler = 'Am Deal muss ein nächster Schritt stehen — bitte „Als Nächstes“ ausfüllen (die Deal-Regel gilt auch hier).'; return c; }
       erledigt = { ...f, status: 'erledigt', erledigtAm: jetzt, ...(ergebnis ? { ergebnis } : {}), ...(notiz ? { notiz: `${f.notiz ? `${f.notiz}\n` : ''}${notiz}` } : {}), geaendert: jetzt, geaendertVon: person };
       folge = naechsterRoh ? { ...neuesFollowUp({ id: neueId('fu'), bezug: f.bezug, kontaktId: f.kontaktId, art: naechsterRoh.art ?? f.art, text: naechsterRoh.text, faellig: naechsterRoh.faellig, zustaendig: f.zustaendig, quelle: 'hand' }, kontakt(f.kontaktId), person, jetzt), geaendertVon: person } : null;
       let neu: CrmBestand = { ...c, followups: [...(c.followups ?? []).filter(x => x.id !== f.id), erledigt, ...(folge ? [folge] : [])] };
@@ -152,6 +165,7 @@ export async function POST(req: Request) {
       if (herkunft === 'review') { neu = altesFeldImCrm(neu); hinweis = 'Nächstes Review in 90 Tagen eingetragen.'; }
       return neu;
     });
+    if (regelFehler) return NextResponse.json({ ok: false, fehler: regelFehler }, { status: 400 });
     if (!erledigt) return NextResponse.json({ ok: false, fehler: 'Follow-up nicht gefunden.' }, { status: 404 });
     const e = erledigt as FollowUp;
     let lead: LeadMeldung | null = null;
@@ -171,11 +185,12 @@ export async function POST(req: Request) {
     await aendereCrm(c => {
       const echt = (c.followups ?? []).find(f => f.id === id);
       if (echt) { neu = { ...echt, faellig: zielTag, verschoben: (echt.verschoben ?? 0) + 1, geaendert: jetzt, geaendertVon: person }; return { ...c, followups: (c.followups ?? []).map(x => (x.id === echt.id ? neu! : x)) }; }
-      if (v?.quelle === 'kadenz') {
-        // Kadenz: aus der Erinnerung wird ein echtes Follow-up mit neuem Datum — der virtuelle Eintrag tritt zurück.
+      if (v?.quelle === 'kadenz' || v?.quelle === 'nachfassen') {
+        // Kadenz und Event-Nachfassen: aus der Erinnerung wird ein echtes Follow-up mit neuem Datum — der virtuelle Eintrag tritt zurück
+        // (Nachfassen vorher: „+3 Tage“ meldete „verschoben“, änderte aber nichts — Prüfbericht 27.09., Punkt 4).
         const vorlage = virtuellerEintrag(c);
         if (!vorlage) return c;
-        neu = { ...echtAus({ ...vorlage, faellig: zielTag }, 'kadenz'), verschoben: 1, geaendertVon: person };
+        neu = { ...echtAus({ ...vorlage, faellig: zielTag }, v.quelle === 'kadenz' ? 'kadenz' : 'event'), verschoben: 1, geaendertVon: person };
         return { ...c, followups: [...(c.followups ?? []), neu] };
       }
       return altesFeldImCrm(c, zielTag);
@@ -186,6 +201,8 @@ export async function POST(req: Request) {
   }
 
   if (b.aktion === 'absagen') {
+    // Der nächste Schritt am Deal ist keine Zusage, die man absagt — er ist die Deal-Regel (Punkt 6).
+    if (v?.quelle === 'dealschritt') return NextResponse.json({ ok: false, fehler: 'Der nächste Schritt am Deal lässt sich nicht absagen — verschieben oder in der Deal-Akte einen neuen setzen.' }, { status: 400 });
     let neu: FollowUp | null = null;
     await aendereCrm(c => {
       const echt = (c.followups ?? []).find(f => f.id === id);
@@ -199,13 +216,15 @@ export async function POST(req: Request) {
         neu = { ...echtAus({ ...vorlage, faellig: tagPlus(heute, taktVon(k, c.wertelisten) ?? 30), text: `Kadenz: nächster Anlauf` }, 'kadenz'), geaendertVon: person };
         return { ...c, followups: [...(c.followups ?? []), neu] };
       }
+      // Event-Nachfassen bewusst auslassen (Punkt 5): verschwindet aus der Liste, zählt aber NICHT als nachgefasst.
+      if (v?.quelle === 'nachfassen') return { ...c, teilnahmen: c.teilnahmen.map(t => (t.id === v.ziel ? { ...t, nachfassenVerzichtet: heute, geaendert: jetzt, geaendertVon: person } : t)) };
       return altesFeldImCrm(c);
     });
     if (v && (v.quelle === 'schritt' || v.quelle === 'wiedervorlage')) {
       await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id !== v.ziel ? k : v.quelle === 'schritt' ? { ...k, naechsterSchritt: undefined, geaendertAm: jetzt } : { ...k, wiedervorlage: undefined, geaendertAm: jetzt })) }));
     }
     const n = neu as FollowUp | null;
-    return NextResponse.json({ ok: true, ...(n ? { followup: n } : {}), text: v?.quelle === 'kadenz' && n ? `Kadenz: nächster Anlauf am ${n.faellig}.` : n?.status === 'verpasst' ? 'Als verpasst gezählt.' : 'Abgesagt.' });
+    return NextResponse.json({ ok: true, ...(n ? { followup: n } : {}), text: v?.quelle === 'kadenz' && n ? `Kadenz: nächster Anlauf am ${n.faellig}.` : v?.quelle === 'nachfassen' ? 'Nachfassen ausgelassen — zählt nicht als nachgefasst.' : n?.status === 'verpasst' ? 'Als verpasst gezählt.' : 'Abgesagt.' });
   }
 
   return NextResponse.json({ ok: false, fehler: 'aktion: anlegen, erledigen, verschieben oder absagen.' }, { status: 400 });

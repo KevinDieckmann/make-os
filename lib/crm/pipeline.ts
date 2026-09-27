@@ -1,3 +1,4 @@
+import { tagVon } from '@/lib/zeit';
 // ─── CRM — Pipeline (rein, getestet) ────────────────────────────────────────
 // Übernommen aus KEMARIS Operations (lib/services/pipeline.ts + dealScore.ts):
 // fünf Stufen, jede endet mit einem Ereignis auf Kundenseite; bewusst
@@ -122,12 +123,18 @@ export function prognose(chancen: Chance[], heute: string, eigene?: CrmBestand['
   };
 }
 
-/** Gewinnquote ab Stufe Angebot — erst ab 10 Entscheidungen eine Quote, vorher „G · V“ (wie in Operations). */
-export function gewinnquote(chancen: Chance[]): { gewonnen: number; verloren: number; quote: number | null } {
-  const warAngebot = (c: Chance) => c.historie.some(h => h.stufe === 'angebot' || h.stufe === 'abschluss');
-  const g = chancen.filter(c => c.stufe === 'gewonnen' && warAngebot(c)).length;
-  const v = chancen.filter(c => c.stufe === 'verloren' && warAngebot(c)).length;
-  return { gewonnen: g, verloren: v, quote: g + v >= 10 ? Math.round((g / (g + v)) * 100) : null };
+/**
+ * Win Rate nach DevSpec (BUSINESS_KSI_PLAN.md): gewonnen ÷ (gewonnen + verloren), Entscheidungen der letzten 180 Tage, Quote ab 10
+ * Entscheidungen — grün ≥ 25 %, rot < 15 %. EINE Definition für Bestand, Business-Index, Traktions-Index und Heads (vorher drei:
+ * ab Angebot/gesamt/ab 10 · 180 Tage/alle Stufen/ab 5 · Schwellen 40/20 — Prüfbericht 27.09., Punkt 12).
+ */
+export const WIN_RATE = { tage: 180, mindestens: 10, gruen: 25, rot: 15 } as const;
+export function winRate(chancen: Chance[], heute: string): { gewonnen: number; verloren: number; quote: number | null; fenster: number } {
+  const ab = tagPlus(heute, -WIN_RATE.tage);
+  const entschiedenAm = (c: Chance) => tagVon(c.historie.filter(h => h.stufe === 'gewonnen' || h.stufe === 'verloren').pop()?.am ?? c.geaendert);
+  const inFenster = chancen.filter(c => (c.stufe === 'gewonnen' || c.stufe === 'verloren') && entschiedenAm(c) >= ab);
+  const g = inFenster.filter(c => c.stufe === 'gewonnen').length, v = inFenster.length - g;
+  return { gewonnen: g, verloren: v, quote: g + v >= WIN_RATE.mindestens ? Math.round((g / (g + v)) * 100) : null, fenster: WIN_RATE.tage };
 }
 
 // ── Sales zu zweit (25.09.) ─────────────────────────────────────────────────
@@ -166,8 +173,13 @@ export function prognoseJePerson(chancen: Chance[], heute: string, eigene?: CrmB
   }).filter(x => x.person !== BEIDE || x.anzahl > 0);
 }
 
-/** Ein echtes Gespräch: Ergebnis Gespräch oder Termin — oder ein Gespräch ohne Ergebnis-Knopf (z. B. aus einer Kampagne). */
-export const echtesGespraech = (a: Pick<Aktivitaet, 'art' | 'ergebnis'>) => a.ergebnis === 'gespraech' || a.ergebnis === 'termin' || (!a.ergebnis && a.art === 'gespraech');
+/**
+ * Ein echtes Gespräch — EINE Zählregel für Team-Zeile, Kennzahlen, Traktions-Index und Scoreboard (Prüfbericht 27.09., Punkt 25):
+ * Ergebnis Gespräch oder Termin, oder ein von Hand festgehaltenes Gespräch bzw. ein Termin ohne Ergebnis-Knopf (der Mensch hält fest,
+ * dass er stattfand). Nie System-Einträge — das Termin-Signal aus dem Kalender-Abgleich und Zusammenführungen würden die Zahl aufblasen.
+ */
+export const echtesGespraech = (a: Pick<Aktivitaet, 'art' | 'ergebnis'> & { von?: string }) =>
+  a.von !== 'system' && (a.art as string) !== 'system' && (a.ergebnis === 'gespraech' || a.ergebnis === 'termin' || (!a.ergebnis && (a.art === 'gespraech' || a.art === 'termin')));
 
 export interface TeamTag { person: string; powerHours: { heute: number; woche: number }; gespraeche: { heute: number; woche: number } }
 const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };

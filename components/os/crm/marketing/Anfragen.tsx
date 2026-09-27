@@ -38,8 +38,9 @@ const quelleAus = (z: AnfrageZeile): { quelle: Quelle; bezug?: string } => (z.be
 export function Anfragen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string) => void }) {
   const router = useRouter();
   const [d, setD] = useState<Daten | null>(null);
+  const [fehler, setFehler] = useState<string | null>(null);
   const staende = useRef(new Map<string, string>());
-  const laden = useCallback(() => holeMitStand<Daten & { ok?: boolean }>('/api/crm/anfrage', staende.current).then(x => { if (x?.ok) setD(x); }).catch(() => {}), []);
+  const laden = useCallback(() => holeMitStand<Daten & { ok?: boolean; fehler?: string }>('/api/crm/anfrage', staende.current).then(x => { if (x?.ok) { setD(x); setFehler(null); } else if (x && !x.ok) setFehler(x.fehler ?? 'Anfragen nicht geladen.'); }).catch(() => setFehler('Anfragen nicht erreichbar.')), []);
   useEffect(() => { void laden(); }, [laden, api.crm, api.kontakte]);
   const crm = api.crm;
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
@@ -157,7 +158,7 @@ export function Anfragen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
             </Raster>
           </div>
         )}
-        {!d ? <Leer>Lädt …</Leer> : liste.length ? (
+        {!d ? (fehler ? <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{fehler} <Knopf leise onClick={() => void laden()}>Noch einmal</Knopf></div> : <Leer>Lädt …</Leer>) : liste.length ? (
           <Liste>
             {liste.map(z => {
               const q = quelleAus(z);

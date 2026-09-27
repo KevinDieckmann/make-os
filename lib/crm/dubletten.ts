@@ -8,6 +8,7 @@
 
 import { anzeigename, STUFEN, type Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand } from './typen';
+import { personUmbiegen } from './person-verweise';
 
 const n = (t?: string) => (t ?? '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss').replace(/[^a-z0-9]/g, '');
 const domain = (k: Kontakt) => n((k.email ?? '').split('@')[1] ?? k.firmaDomain ?? '');
@@ -48,17 +49,7 @@ export function zusammenfuehren(a: Kontakt, b: Kontakt, von: string, jetzt: stri
   return out;
 }
 
-/** Verweise im CRM von b auf a umbiegen (Chancen, Mandate, Gäste). */
+/** Verweise im CRM von b auf a umbiegen — ALLE Listen, eine Stelle (lib/crm/person-verweise.ts, 27.09.). */
 export function verweiseUmbiegen(crm: CrmBestand, altId: string, neuId: string): CrmBestand {
-  const um = (ids: string[]) => Array.from(new Set(ids.map(x => (x === altId ? neuId : x))));
-  return {
-    ...crm,
-    chancen: crm.chancen.map(c => (c.kontaktIds.includes(altId) ? { ...c, kontaktIds: um(c.kontaktIds) } : c)),
-    mandate: crm.mandate.map(m => (m.kontaktIds.includes(altId) ? { ...m, kontaktIds: um(m.kontaktIds) } : m)),
-    teilnahmen: crm.teilnahmen.map(t => (t.kontaktId === altId ? { ...t, kontaktId: neuId } : t)),
-    kampagnen: crm.kampagnen.map(k => (k.kontaktIds.includes(altId) || k.ergebnisse.some(e => e.kontaktId === altId)
-      ? { ...k, kontaktIds: um(k.kontaktIds), ergebnisse: k.ergebnisse.map(e => (e.kontaktId === altId ? { ...e, kontaktId: neuId } : e)) } : k)),
-    beitraege: crm.beitraege.map(b => (b.quellen.includes(altId) || b.wirkung.some(w => w.kontaktId === altId)
-      ? { ...b, quellen: um(b.quellen), wirkung: b.wirkung.map(w => (w.kontaktId === altId ? { ...w, kontaktId: neuId } : w)) } : b)),
-  };
+  return personUmbiegen(crm, altId, neuId);
 }

@@ -1,8 +1,8 @@
 // ─── CRM — Betroffenenrechte ────────────────────────────────────────────────
 // GET  ?id=…  → Auskunft nach Art. 15: alles, was wir über die Person haben
 //              (Kartei, Chancen, Mandate, Event-Teilnahmen) als JSON-Datei.
-// POST { id, grund } → Löschen nach Art. 17: Person raus aus Kartei, Chancen,
-//              Mandaten, Gästelisten. Ins Löschprotokoll kommt nur Kennung,
+// POST { id, grund } → Löschen nach Art. 17: Person raus aus Kartei und aus ALLEN
+//              CRM-Listen (lib/crm/person-verweise.ts). Ins Löschprotokoll kommt nur Kennung,
 //              Datum und Grund — keine Personendaten. Eine Werbesperre ist
 //              meist die bessere Wahl (Art. 21): dann bleibt „nicht anschreiben“
 //              erhalten. Deshalb fragt die Oberfläche das vorher ab.
@@ -15,6 +15,7 @@ import { localDay } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { fuerPerson } from '@/lib/make-one/crm';
+import { personEntfernen, personVerweise } from '@/lib/crm/person-verweise';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,8 +30,8 @@ export async function GET(req: Request) {
     erstellt: new Date().toISOString(), verantwortlich: 'Kevin Dieckmann (KD Ventures / Kevin Dieckmann Consulting)',
     // Private Notizen sieht nur, wer sie schrieb — auch in der Auskunft (26.09.).
     person: fuerPerson(k, personAus(req)), firma: k.firmaId ? crm.firmen.find(f => f.id === k.firmaId) ?? null : null,
-    chancen: crm.chancen.filter(c => c.kontaktIds.includes(id)), mandate: crm.mandate.filter(m => m.kontaktIds.includes(id)),
-    events: crm.teilnahmen.filter(t => t.kontaktId === id).map(t => ({ ...t, event: crm.events.find(e => e.id === t.eventId)?.titel })),
+    // Alle Listen aus einer Stelle (27.09.): Deals mit Rolle, Mandate, Events, Follow-ups, Kampagnen, Beiträge, Power-Hour-Karten, Anträge.
+    ...personVerweise(crm, id),
   };
   return new Response(JSON.stringify(auskunft, null, 2), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Content-Disposition': `attachment; filename="Auskunft-Art15-${id}-${localDay()}.json"` } });
 }
@@ -47,15 +48,8 @@ export async function POST(req: Request) {
     return { ...f, kontakte: f.kontakte.filter(k => k.id !== id) };
   });
   if (!gefunden) return NextResponse.json({ ok: false, fehler: 'Nicht gefunden.' }, { status: 404 });
-  await aendereCrm(c => ({
-    ...c,
-    chancen: c.chancen.map(x => (x.kontaktIds.includes(id) ? { ...x, kontaktIds: x.kontaktIds.filter(y => y !== id) } : x)),
-    mandate: c.mandate.map(x => (x.kontaktIds.includes(id) ? { ...x, kontaktIds: x.kontaktIds.filter(y => y !== id) } : x)),
-    teilnahmen: c.teilnahmen.filter(t => t.kontaktId !== id),
-    // Auch Kampagnen und Beiträge — sonst bliebe die Kennung nach der Löschung stehen.
-    kampagnen: c.kampagnen.map(k => ({ ...k, kontaktIds: k.kontaktIds.filter(y => y !== id), ergebnisse: k.ergebnisse.filter(e => e.kontaktId !== id) })),
-    beitraege: c.beitraege.map(b => ({ ...b, quellen: b.quellen.filter(y => y !== id), wirkung: b.wirkung.filter(w => w.kontaktId !== id) })),
-  }));
+  // Aus ALLEN Listen — eine Stelle kennt sie (lib/crm/person-verweise.ts, 27.09.): auch Follow-ups, Deal-Rollen, Power-Hour-Karten, Anträge.
+  await aendereCrm(c => personEntfernen(c, id));
   await updateJson<{ eintraege: { id: string; datum: string; grund: string; von: string }[] }>('crm-loeschprotokoll', cur => ({ eintraege: [...(cur?.eintraege ?? []), { id, datum: localDay(), grund: String(b.grund ?? 'Art. 17 DSGVO').slice(0, 200), von: personAus(req) }] }));
   return NextResponse.json({ ok: true });
 }

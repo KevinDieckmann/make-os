@@ -7,14 +7,15 @@
 //        (für die/den Zuständige/n der Kampagne; bei „beide“ für wen fragt)
 // POST { aktion: 'ergebnis', id, kontaktId, ergebnis, von? } → Ergebnis + Verlauf der Person
 //        (von = wer angesprochen hat, Team-Kürzel, sonst die angemeldete Person;
-//        bei „chance“ entsteht eine Chance in der Pipeline mit Quelle Kampagne,
-//        Besitzer ist, wer angesprochen hat)
+//        „chance“ = Interesse: der Lead der Firma (ohne Firma: der Person) geht in die
+//        Qualifizierung — ein Deal entsteht erst über Leads › SQL, nie hier)
 // Versendet wird nichts.
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
+import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { leereKriterien } from '@/lib/crm/leads';
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
 import { personAus } from '@/lib/jarvis/raum';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { anzeigename, wendeAktivitaetAn, type Kontakt, type AktivitaetArt } from '@/lib/make-one/crm';
@@ -32,18 +33,22 @@ const kontakteLaden = async () => (await loadJson<{ kontakte: Kontakt[] }>('kont
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const heute = localDay();
+  // ETag aus dem Stand beider Bestände (27.09.): der Abgleich alle 20 s bekommt 304 statt der ganzen Antwort.
+  const etag = etagAus('kp', await speicherStand(['crm', 'kontakte']), heute);
+  const gleich = unveraendert(req, etag);
+  if (gleich) return gleich;
   const kontakte = await kontakteLaden();
   const crm = await ladeCrm();
   const profil = kundenprofil(crm, heute);
   const personenJeFirma = new Map<string, Kontakt[]>();
   for (const k of kontakte) if (k.firmaId && !k.werbesperre) personenJeFirma.set(k.firmaId, [...(personenJeFirma.get(k.firmaId) ?? []), k]);
-  return NextResponse.json({
+  return jsonAntwort(req, {
     ok: true, heute,
     playbooks: PLAYBOOKS.map(p => ({ ...p, anzahl: zielgruppe(kontakte, crm, p, heute).length })),
     profil: { kunden: profil.firmen.map(f => ({ id: f.id, name: f.name, branche: f.branche, stadt: f.stadt })), branchen: profil.branchen, staedte: profil.staedte, groesse: profil.groesse, mrrJeKunde: profil.mrrJeKunde },
     aehnliche: aehnlicheFirmen(crm, heute, 15).map(a => ({ id: a.firma.id, name: a.firma.name, branche: a.firma.branche, stadt: a.firma.stadt, punkte: a.punkte, gruende: a.gruende, personen: (personenJeFirma.get(a.firma.id) ?? []).map(k => ({ id: k.id, name: anzeigename(k) })) })),
     zahlen: Object.fromEntries(crm.kampagnen.map(k => [k.id, kampagnenZahlen(k, heute)])),
-  });
+  }, etag);
 }
 
 export async function POST(req: Request) {

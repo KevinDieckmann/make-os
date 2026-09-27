@@ -24,6 +24,7 @@
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, Event } from './typen';
 import type { KpiAmpel } from './kennzahlen';
+import { echtesGespraech } from './pipeline';
 import type { Traktion, Welt } from './traktion';
 import { followUpBis } from './events';
 import { werIstDran } from './heute';
@@ -83,9 +84,8 @@ export function verlaufSeit(stand: TraktionVerlauf | null | undefined, heute: st
 
 // ── Gemeinsame Zählregeln ──────────────────────────────────────────────────
 
-/** Echtes Gespräch: Art Gespräch/Termin oder Ergebnis Gespräch/Termin — wie die Kennzahl „Echte Gespräche“ (kennzahlen.ts), ohne System-Einträge. */
-const istGespraech = (a: { art: string; ergebnis?: string; von?: string }) =>
-  a.von !== 'system' && a.art !== 'system' && (a.ergebnis === 'gespraech' || a.ergebnis === 'termin' || a.art === 'gespraech' || a.art === 'termin');
+/** Echtes Gespräch — dieselbe Zählregel wie Kennzahlen und Traktions-Index (lib/crm/pipeline.ts echtesGespraech). */
+const istGespraech = (a: { art: string; ergebnis?: string; von?: string }) => echtesGespraech(a as Parameters<typeof echtesGespraech>[0]);
 const stattgefunden = (e: Event, heute: string) => e.status !== 'abgesagt' && (e.status === 'durchgefuehrt' || e.datum < heute);
 
 /** Power Hours und echte Gespräche je Team-Mitglied in den letzten sieben Tagen (für den Tages-Schnappschuss). */

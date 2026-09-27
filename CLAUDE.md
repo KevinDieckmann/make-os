@@ -404,10 +404,7 @@ lokal, Route `/os`, Port 3001.
   Konzept: `docs/konzepte/familie-und-partnerschaft.md`.
 - **Markttraktion (25.09.2026, vorher „CRM“): alles zur Kundengewinnung unter
   `/os/markttraktion`** (`/os/crm` leitet mit allen Parametern um; Adressen und
-  alte Bereiche in `lib/crm/adresse.ts`). Aufbau: **Überblick** (Traction-Score,
-  drei Heads, Übergaben, Befunde — `/api/crm/traktion`) · **Sales** (Heute/Power
-  Hour · Pipeline · Kunden · Kampagnen) · **Marketing** · **Event** · dazu die
-  Grundlage Kontakte · Firmen · Stammdaten. **Traction-Score** (`lib/crm/traktion.ts`):
+  alte Bereiche in `lib/crm/adresse.ts`). Aufbau (seit 27.09., acht Reiter): **Überblick** (Traktions-Index, Heads, Übergaben, Befunde — `/api/crm/traktion`) · **Kontakte** · **Firmen** (Kartei + Leads) · **Deals** (Board · Liste · Kunden · Auswertung) · **Follow-up** (Fällig · Woche · Power Hour · Kadenz — `lib/crm/followup.ts` ist DIE Fälligkeitsliste, auch für Power Hour, „Für dich“ und Befunde) · **Marketing** · **Events** · **Stammdaten**. Eine Person im CRM-Bestand entfernen/umbiegen/aufzählen geht nur über `lib/crm/person-verweise.ts`; Win Rate nur über `winRate`/`WIN_RATE`, Gespräche nur über `echtesGespraech` (beide `lib/crm/pipeline.ts`). **Traction-Score** (`lib/crm/traktion.ts`):
   Gewichte aus dem KEMARIS-Konzept (Sichtbarkeit 15, Marketing 25, Vertrieb 30,
   Events 10, Conversions 20) → Sales 50 · Marketing 40 · Event 10; Punkte aus der
   Ampel, grau zählt nicht, gesamt = gewichtetes geometrisches Mittel, fehlende
@@ -593,3 +590,10 @@ lokal, Route `/os`, Port 3001.
 - `ONBOARDING_MALIN.md` — Einstieg für Malin (mitbenutzen + mitbauen).
 - `UMSETZUNGSPLAN.md` — Konzept; der lebende Bauplan liegt in der App
   unter `/os/bauplan`.
+
+## Tempo (27.09.)
+- Tempo misst man im **Prüfbau** (`make-os-pruefbau`, Port 3011, `MAKE_OS_DIST=.next-pruefbau npx next build`) oder auf dem Server — nie auf 3001 (Entwicklungsmodus übersetzt jede Seite beim ersten Aufruf).
+- Der Live-Server hat **1 vCPU / 1,9 GB**: alles, was pro Anfrage rechnet, reiht sich hintereinander. Deshalb: keine externen Aufrufe (iCloud, Modell) im Seitenpfad, keine neuen Poller unter 30 s, jede große GET-Antwort mit `etagAus`/`unveraendert`/`jsonAntwort` (`lib/http/json-antwort.ts`).
+- Der **Anfrage-Bündler** (`lib/http/anfrage-buendel.ts`) liegt vor dem Browser-fetch: gleiche GETs an /api teilen sich eine Antwort (laufend immer, fertig 8 s; `cache: 'no-store'` = nur laufend). Schreibende Aufrufe leeren ihn. Wer wirklich frisch lesen muss, nimmt `no-store`.
+- **Memo-Rauschen** (`lib/store/memo.ts` RAUSCHEN): Bestände, die oft geschrieben werden, aber in keinen Index eingehen. Neuer Bestand mit hoher Schreibfrequenz? Dort eintragen, sonst ist der Zwischenspeicher der Indizes wieder nie warm.
+- Embeddings laufen nur ab 3 CPUs (`embeddingsErlaubt`), Brain-Index-Abgleich alle 30 Min., Arbeiter höchstens 2 Läufe auf kleinen Maschinen.

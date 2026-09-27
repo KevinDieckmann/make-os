@@ -20,6 +20,7 @@ import type { CrmBestand, CrmListe } from './typen';
 import type { Welt } from './traktion';
 import { leads, sqlBereit } from './leads';
 import { nachbereitung } from './erfassen';
+import { faellige, fuerPerson as faelligeFuer } from './followup';
 
 export interface Mitglied { id: string; name: string; farbe: string; verantwortet: Welt[] }
 export const TEAM: Mitglied[] = [
@@ -82,7 +83,7 @@ export function teamFeed(kontakte: Kontakt[], crm: CrmBestand, seit: string, max
     }
   }
   for (const c of crm.chancen) {
-    for (const h of c.historie.slice(1)) if (h.am >= seit && mensch(h.von)) r.push({ person: h.von, zeit: h.am, text: `Deal „${c.titel}“ → ${h.stufe}`, welt: 'sales', ziel: { s: 'deals' } });
+    for (const h of c.historie.slice(1)) if (h.am >= seit && mensch(h.von)) r.push({ person: h.von, zeit: h.am, text: `Deal „${c.titel}“ → ${h.stufe}`, welt: 'sales', ziel: { s: 'deals', a: 'akte', k: c.id } });
   }
   const geaendert = <T extends { geaendert: string; geaendertVon?: string }>(liste: T[], text: (x: T) => string, welt: Welt, ziel: TeamEreignis['ziel']) => {
     for (const x of liste) if (x.geaendert >= seit && mensch(x.geaendertVon)) r.push({ person: x.geaendertVon!, zeit: x.geaendert, text: text(x), welt, ziel });
@@ -104,9 +105,9 @@ const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`)
 export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, heute: string): FuerDich[] {
   const l: FuerDich[] = [];
   const bald = tagPlus(heute, 7);
-  const meineKontakte = kontakte.filter(k => !k.werbesperre && (haeltBeziehung(k) === person || haeltBeziehung(k) === BEIDE));
-  const faellig = meineKontakte.filter(k => k.naechsterSchritt && k.naechsterSchritt.datum <= heute).length;
-  if (faellig) l.push({ id: 'zusagen', welt: 'sales', titel: 'Zugesagte nächste Schritte fällig', anzahl: faellig, text: 'stehen oben in deiner Power Hour', ziel: { s: 'followup', a: 'powerhour' } });
+  // Follow-up-Ebene führt (27.09.): alles Fällige aus EINER Liste — echte Follow-ups und die virtuellen aus den alten Feldern (Prüfbericht, Punkt 1).
+  const meineFaelligen = faelligeFuer(faellige(kontakte, crm, heute, { wertelisten: crm.wertelisten }), person).filter(f => f.faellig <= heute);
+  if (meineFaelligen.length) l.push({ id: 'zusagen', welt: 'sales', titel: 'Follow-ups fällig', anzahl: meineFaelligen.length, text: `${meineFaelligen.filter(f => f.gruppe === 'ueberfaellig').length} überfällig — oben in deiner Power Hour`, ziel: { s: 'followup', a: 'faellig' } });
   // „Wie lief's?“ (25.09.): Termine aus dem Geschäftskalender, nach denen noch nichts festgehalten ist (lib/crm/erfassen.ts).
   const nachbereiten = nachbereitung(kontakte, heute, person).length;
   if (nachbereiten) l.push({ id: 'nachbereiten', welt: 'sales', titel: 'Termine nachbereiten', anzahl: nachbereiten, text: 'wie lief es? ein Tipp in der Power Hour', ziel: { s: 'followup', a: 'powerhour' } });

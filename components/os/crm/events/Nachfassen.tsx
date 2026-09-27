@@ -53,7 +53,7 @@ export function Nachfassen({ e, api, zuKontakt }: ReiterProps) {
     .map(t => ({ t, k: nachId.get(t.kontaktId) }))
     .filter((x): x is { t: Teilnahme; k: Kontakt } => !!x.k);
   const da = liste.filter(x => x.t.status === 'da');
-  const offen = da.filter(x => !x.t.followUpAm);
+  const offen = da.filter(x => !x.t.followUpAm && !x.t.nachfassenVerzichtet);
   const erledigt = da.filter(x => x.t.followUpAm).sort((a, b) => (b.t.followUpAm ?? '').localeCompare(a.t.followUpAm ?? ''));
   const nichtGekommen = liste.filter(x => x.t.status === 'no_show');
   const bis = followUpBis(e);
@@ -162,7 +162,7 @@ export function Nachfassen({ e, api, zuKontakt }: ReiterProps) {
                   {d ? <Knopf leise onClick={() => router.push(dealAkte(d.id))}>Deal „{d.titel}“</Knopf> : dealKnopf(t, k)}
                   <Chip farbe={(t.followUpAm ?? '') <= bis ? LEUCHT.gut : LEUCHT.achtung}>{datum(t.followUpAm, heute)}</Chip>
                 </div>
-                {deal?.teilnahmeId === t.id && <DealAnlegen api={api} kontaktId={k.id} onFertig={id => void dealFertig(id)} onAbbruch={() => setDeal(null)} zuDeal={id => router.push(dealAkte(id))} />}
+                {deal?.teilnahmeId === t.id && <DealAnlegen quelle="event" quelleBezug={e.id} api={api} kontaktId={k.id} onFertig={id => void dealFertig(id)} onAbbruch={() => setDeal(null)} zuDeal={id => router.push(dealAkte(id))} />}
                 <Feedback api={api} t={t} heute={heute} kompakt />
               </div>
             );

@@ -7,7 +7,7 @@ import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand } from '@/lib/crm/typen';
 import { werIstDran } from '@/lib/crm/heute';
 import { ampel, art14, kanalStatus } from '@/lib/crm/recht';
-import { prognose, gesundheit, gesamtwert, OFFENE_STUFEN, STUFEN, gewinnquote } from '@/lib/crm/pipeline';
+import { prognose, gesundheit, gesamtwert, OFFENE_STUFEN, STUFEN, winRate } from '@/lib/crm/pipeline';
 import { mandatLage, mrr, konzentration } from '@/lib/crm/kunden';
 import { eventZahlen, followUpBis, nachfassenRest } from '@/lib/crm/events';
 import { mix, checklisteStand, zielHinweis, budgetSumme, gaesteVorschlag } from '@/lib/crm/eventplanung';
@@ -104,7 +104,7 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
         personen: c.kontaktIds.map(id => nachId.get(id)).filter((k): k is Kontakt => !!k).map(p),
       })),
       mandate: crm.mandate.filter(m => m.status !== 'beendet').map(m => ({ id: m.id, kunde: m.kunde, titel: kurz(m.titel, 120), status: m.status, honorar: m.honorar, lage: mandatLage(m, heute), offene_punkte: m.offen.slice(0, 5).map(o => kurz(o, 200)), vertrag: m.vertragUnterschrieben, ansprechpartner: m.kontaktIds.map(id => nachId.get(id)).filter((k): k is Kontakt => !!k).slice(0, 2).map(p) })),
-      mrr: mrr(crm.mandate), konzentration: konzentration(crm.mandate), gewinnquote: gewinnquote(crm.chancen),
+      mrr: mrr(crm.mandate), konzentration: konzentration(crm.mandate), gewinnquote: winRate(crm.chancen, heute),
       verlustgruende: Object.entries(verloren.reduce((x, c) => ({ ...x, [c.grund!]: (x[c.grund!] ?? 0) + 1 }), {} as Record<string, number>)),
       // Ebene 1: Leads in Arbeit mit ihren Kernfragen — die Personen für Vorschläge stehen unter „hauptkontakt“.
       leads_in_arbeit: leadZeilen(aktiv, crm).filter(z => ['kontaktiert', 'im_gespraech', 'qualifizierung'].includes(z.status) || (sqlBereit(z.kriterien) && !z.deal?.offen && z.status !== 'kunde')).slice(0, 25).map(z => {

@@ -93,12 +93,14 @@ describe('Team-Zeile der Power Hour', () => {
     expect(kevin).toEqual({ person: 'kevin', powerHours: { heute: 1, woche: 2 }, gespraeche: { heute: 1, woche: 2 } });
     expect(malin).toEqual({ person: 'malin', powerHours: { heute: 0, woche: 1 }, gespraeche: { heute: 1, woche: 1 } });
   });
-  it('echtes Gespräch: Ergebnis Gespräch/Termin oder ein Gespräch ohne Ergebnis — Mailbox, Notiz, Termin-Signal nicht', () => {
+  it('echtes Gespräch: Ergebnis Gespräch/Termin, Gespräch oder Termin von Hand — Mailbox, Notiz, System-Termin-Signal nicht (eine Regel für alle, 27.09.)', () => {
     expect(echtesGespraech({ art: 'anruf', ergebnis: 'gespraech' })).toBe(true);
     expect(echtesGespraech({ art: 'termin', ergebnis: 'termin' })).toBe(true);
     expect(echtesGespraech({ art: 'gespraech' })).toBe(true);
     expect(echtesGespraech({ art: 'anruf', ergebnis: 'mailbox' })).toBe(false);
-    expect(echtesGespraech({ art: 'termin' })).toBe(false);
+    expect(echtesGespraech({ art: 'termin', von: 'kevin' })).toBe(true);
+    expect(echtesGespraech({ art: 'termin', von: 'system' })).toBe(false);
+    expect(echtesGespraech({ art: 'gespraech', von: 'system' })).toBe(false);
     expect(echtesGespraech({ art: 'notiz' })).toBe(false);
   });
 });

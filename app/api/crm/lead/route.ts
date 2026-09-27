@@ -18,6 +18,7 @@ import { localDay } from '@/lib/zeit';
 import { personAus } from '@/lib/jarvis/raum';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
+import { dealZuFirma } from '@/lib/crm/firmen-bezug';
 import { leads, trichter, sqlBereit, fehltBisSql, leereKriterien } from '@/lib/crm/leads';
 import { dealAnlegen } from '@/lib/crm/deal-anlegen';
 import { leadSaeubern } from '@/lib/crm/lead-form';
@@ -47,7 +48,7 @@ async function leadSchreiben(id: string, mut: (alt: Lead | undefined) => Lead | 
   if (id.startsWith('f-')) {
     await aendereCrm(c => ({ ...c, firmen: c.firmen.map(f => (f.id === id ? (() => { neu = leadSaeubern(mut(f.lead)); return { ...f, ...(neu ? { lead: neu } : {}) }; })() : f)) }));
   } else {
-    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === id ? (() => { neu = leadSaeubern(mut(k.lead)); return { ...k, ...(neu ? { lead: neu } : {}), geaendertAm: new Date().toISOString().slice(0, 10) }; })() : k)) }));
+    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === id ? (() => { neu = leadSaeubern(mut(k.lead)); return { ...k, ...(neu ? { lead: neu } : {}), geaendertAm: localDay() }; })() : k)) }));
   }
   return neu;
 }
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
     if (crm.mandate.some(m => m.chanceId === c.id)) return NextResponse.json({ ok: false, fehler: 'Zu diesem Deal gibt es schon ein Mandat.' }, { status: 409 });
     // (die Prüfung läuft unten noch einmal INNERHALB der Sperre — ein Doppelklick legt kein zweites Mandat an, Stufe 2)
     const m: Mandat = {
-      id: neueId('m'), kunde: c.firma ?? c.titel, kontaktIds: c.kontaktIds, titel: c.titel, art: c.art, chanceId: c.id, gesellschaft: c.gesellschaft, status: 'aktiv',
+      id: neueId('m'), kunde: c.firma ?? c.titel, ...(c.firmaId ? { firmaId: c.firmaId } : {}), kontaktIds: c.kontaktIds, titel: c.titel, art: c.art, chanceId: c.id, gesellschaft: c.gesellschaft, status: 'aktiv',
       // Das Produkt reist mit (26.09.) — sonst sieht die Produkt-Auswertung das Mandat nie.
       ...(c.leistungId ? { leistungId: c.leistungId } : {}),
       vertragUnterschrieben: false, start: jetzt.slice(0, 10), verlaengerung: 'offen',
@@ -80,7 +81,7 @@ export async function POST(req: Request) {
     let schonDa = false;
     await aendereCrm(x => {
       if (x.mandate.some(mm => mm.chanceId === c.id)) { schonDa = true; return x; }
-      return { ...x, mandate: [...x.mandate, m], firmen: x.firmen.map(f => (f.name === c.firma && !f.rolleVonHand ? { ...f, rolle: 'kunde' } : f)) };
+      return { ...x, mandate: [...x.mandate, m], firmen: x.firmen.map(f => (dealZuFirma(c, f) && !f.rolleVonHand ? { ...f, rolle: 'kunde' } : f)) };
     });
     if (schonDa) return NextResponse.json({ ok: false, fehler: 'Zu diesem Deal gibt es schon ein Mandat.' }, { status: 409 });
     await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (ids.has(k.id) ? { ...k, lebensphase: 'kunde', stufe: 'gewonnen', geaendertAm: jetzt.slice(0, 10) } : k)) }));

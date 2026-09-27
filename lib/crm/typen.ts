@@ -214,6 +214,8 @@ export interface Teilnahme {
   status: TeilnahmeStatus;
   notiz?: string;
   followUpAm?: string;
+  /** Nachfassen bewusst ausgelassen (27.09.): der Eintrag verschwindet aus Follow-up und Power Hour, zählt aber NICHT als nachgefasst — die Kennzahl bleibt ehrlich. */
+  nachfassenVerzichtet?: string;
   rolle?: 'gast' | 'co_host' | 'speaker';
   /** Fotos nur mit ausdrücklicher Freigabe. */
   fotofreigabe?: boolean;
@@ -235,7 +237,6 @@ export interface Teilnahme {
 export interface SegmentKriterien {
   lebensphase?: string[]; kreis?: string[]; prio?: string[]; firmaRolle?: string[]; herkunft?: string[];
   /** Rollen der Person (mehrfach, 26.09.) — trifft, wenn eine der gewählten dabei ist. */
-  rollen?: string[];
   branche?: string; stadt?: string; stichwort?: string;
   /** Nur, wer über diesen Kanal zulässig erreichbar ist (Ampel grün, bei 'persoenlich' alle). */
   kanal?: 'mail' | 'telefon' | 'linkedin' | 'newsletter' | 'einladung';

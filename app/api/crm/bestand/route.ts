@@ -13,7 +13,7 @@ import { localDay } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { ListenOp } from '@/lib/sync';
 import { ladeCrm, aendereCrm, wendeCrmAn } from '@/lib/crm/speicher';
-import { prognose, gesundheit, gewinnquote, STUFEN, wahrscheinlichkeit } from '@/lib/crm/pipeline';
+import { prognose, gesundheit, winRate, STUFEN, wahrscheinlichkeit } from '@/lib/crm/pipeline';
 import { mandatLage, mrr, konzentration, zahlungAusRechnungen, type RechnungKurz } from '@/lib/crm/kunden';
 import { eventZahlen } from '@/lib/crm/events';
 import type { CrmBestand } from '@/lib/crm/typen';
@@ -29,7 +29,7 @@ async function antwort(b: CrmBestand, ich: string) {
     ok: true, ich, heute, stand: b,
     stufen: STUFEN.map(s => ({ ...s, p: wahrscheinlichkeit(s.id, b.wahrscheinlichkeiten) })),
     prognose: prognose(b.chancen, heute, b.wahrscheinlichkeiten),
-    gewinnquote: gewinnquote(b.chancen),
+    gewinnquote: winRate(b.chancen, localDay()),
     ampel: Object.fromEntries(b.chancen.map(c => [c.id, gesundheit(c, heute)])),
     mandate: Object.fromEntries(b.mandate.map(m => [m.id, mandatLage(m, heute, rechnungen)])),
     zahlung: Object.fromEntries(b.mandate.map(m => [m.id, zahlungAusRechnungen(m, rechnungen, heute)])),

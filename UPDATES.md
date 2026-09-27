@@ -99,6 +99,48 @@ Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen un
   - Tests: `crm-deal-regeln` (Server-Regeln), `crm-fundament` angepasst (Upsert neuer Deals ist jetzt ein Fehler). Stand: 100 Dateien · 877 Tests grün, tsc und Lint sauber.
   - **Offen (Kevin entscheidet):** Farbe des Reiters „Firmen“ (heute neutral wie Kontakte, obwohl die Leads darin liegen); ob „Meins/Malin“-Filter auch im Board sichtbar sein soll.
 
+### Tempo (27.09., nur lokal)
+
+Kevin: „Die Software läuft noch extrem langsam.“ Gemessen im Produktionsbau mit den echten Beständen (Mac; Server ×3–5): die einzelnen Antworten sind schnell
+(Kontakte 0,2–0,5 s bei 754 KB, fast alles andere unter 50 ms) — langsam macht es die Menge und das Muster. Start 28 Abfragen, Heute 23, Kalender 17, viele doppelt;
+Apple-Kalender glich bei jedem Seitenaufruf live mit iCloud ab (1–2 s, zweimal je Seite); der Jarvis-Kopf fragte alle 5 s; und der Zwischenspeicher der Indizes war nie
+warm, weil Zeit & Fokus im Lesepfad schrieb. Der Live-Server hat **eine CPU und 1,9 GB** (nicht CX22 wie in DEPLOY.md) — dort reiht sich alles hintereinander.
+Hinweis für die Einordnung: Port 3001 ist der Entwicklungsmodus (jede Seite wird beim ersten Aufruf übersetzt, Heute >60 s) — Tempo misst man auf dem Prüfbau (3011) oder dem Server.
+- **Anfrage-Bündler** (`lib/http/anfrage-buendel.ts`, `components/os/AnfrageBuendel.tsx`, im /os-Rahmen): gleiche GET-Abfragen an /api werden geteilt (laufend immer, fertig 8 s;
+  `cache: 'no-store'` nur laufend), jeder schreibende Aufruf leert den Zwischenspeicher. Getestet.
+- **Zwischenspeicher der Indizes** (`lib/store/memo.ts`): Zeit & Fokus, Tageslauf, CRM-Signale, Kalender-Stände, Verläufe, Flächen sind Rauschen; ein Ergebnis wird nicht mehr
+  verworfen, wenn währenddessen ein anderer Bestand schrieb. `zeitBildFuer` schreibt nicht mehr (Puffer nur im Speicher aufgelegt).
+- **iCloud raus aus dem Seitenpfad:** `/api/apple-calendar` und `/api/kalender` liefern den Stand sofort, ein fälliger Abgleich läuft im Hintergrund (nur ganz ohne Stand wird gewartet);
+  der Takt hält alle 5 Min. frisch; geparste Termine je Stand und Zeitraum gemerkt.
+- **Polling:** Jarvis-Kopf 5 s → 30 s (nur sichtbar) · Stapel 3 → 5 s · Anwesenheit ein Aufruf statt zwei, jede Minute · Taktgeber im Browser 15/5 Min. (nur sichtbar) ·
+  Aufgaben 45 s · Haushalt jede Minute mit ETag (vorher 1 MB alle 20 s).
+- **Middleware:** die Stand-Rückfrage je Konto wird zwischen gleichzeitigen Anfragen geteilt (ein Seitenstart = eine Rückfrage statt ~28).
+- **Embeddings** bleiben auf Rechnern mit ≤ 2 CPUs von selbst aus (`MAKE_OS_EMBEDDINGS=an` erzwingt), sonst mit begrenzten Fäden; Brain-Index-Abgleich alle 30 statt 10 Min.
+- **Arbeiter:** höchstens 2 Läufe nebeneinander auf 1–2 Kernen, Ruhepause bis 30 s.
+- **Offen (Kevin):** Server auf 2 vCPU / 4 GB heben (dann Embeddings an); Objekt-Cache im Lesepfad und dynamisches Laden der CRM-Teilansichten als nächste Stufe.
+
+### Markttraktion, Feinschliff 3 (27.09., nur lokal)
+
+Kevin: „Das Thema Markttraktion kann ja noch nicht fertig sein — schau da nochmal rein.“ Prüfagent: 33 Befunde, fünf schwer. Umgesetzt:
+- **Die Follow-up-Ebene führt wirklich:** Power Hour, „Für dich“ und Befunde lesen dieselbe Fälligkeitsliste (`faellige`) — echte Follow-ups liegen oben in der Power Hour,
+  „Für dich“ zählt alles Fällige der Person, ein Befund „Follow-ups überfällig“ führt zu Follow-up › Fällig. Pflege-Takt aus den Stammdaten auch in der Power Hour.
+- **Virtuelle Einträge wirken:** „+1/+3/+7 Tage“ auf ein Event-Nachfassen legt ein echtes Event-Follow-up an (vorher: Meldung ohne Wirkung); „Auslassen“ setzt
+  `nachfassenVerzichtet` — raus aus der Liste, aber NICHT als nachgefasst gezählt (vorher verfälschte es Nachfassen-48-h). Nachfassen im Events-Reiter erledigt offene Event-Follow-ups mit.
+- **Deal-Regel auch über Follow-ups:** der nächste Schritt am Deal lässt sich nicht absagen und nicht ohne Nachfolger erledigen (400 mit Satz; im Fenster ist „kein nächster Schritt“ beim Deal weg).
+- **Eine Stelle für alle Personen-Verweise** (`lib/crm/person-verweise.ts`): Art.-17-Löschung, Dubletten-Zusammenführung und Art.-15-Auskunft kennen jetzt alle Listen —
+  auch Follow-ups, Deal-Rollen, Power-Hour-Karten, Anträge. Test: nach dem Entfernen steht die Kennung nirgends mehr.
+- **Eine Win Rate** (DevSpec: 180 Tage, ab 10, grün ≥ 25 / rot < 15) für Bestand, Business-Index, Traktions-Index, Heads und Auswertung; **eine Gesprächs-Zählregel**
+  (Termin zählt erst mit Ergebnis, nie System-Einträge) für Team-Zeile, Kennzahlen, Traktions-Index, Scoreboard.
+- **Fundament dicht:** Lead → Mandat trägt die Firmen-Kennung und findet die Firma per Kennung; Anfrage prüft und schreibt in EINER Sperre; Head-Wirkungen stehen als
+  Aktivität im Verlauf der Person und überschreiben nie einen stehenden Schritt; Übergabe-Aufgaben verlinken das Objekt (Akte, Event, Kampagne unter Marketing); Deal aus
+  „Nachgefasst“ trägt die Event-Quelle; Kalender-Marke am Event meldet Fehler statt zu schweigen; lokale Tage statt UTC in Lead/Übergabe/Deal.
+- **Tempo im Modul:** Traktions-Route rechnet die Kennzahlen einmal, Marketing-Trichter je Aufruf einmal; ETag für Kampagnen- und Marketing-GET; virtuelle Einträge werden
+  in der Schreibsperre nur für den Ausschnitt gerechnet; Kartei-Zählungen gemerkt.
+- **Kleinigkeiten:** Ladezustände mit Fehlerpfad und „Noch einmal“ (Kampagnen, Leads, Power Hour, Anfragen); Segment-Kriterium „Rollen“ (Sackgasse) entfernt;
+  Kampagnen-Kopf sagt die Wahrheit („Interesse“ = Lead, kein Deal); Team-Feed öffnet die Deal-Akte; Art.-14-Befund führt in die Ansicht.
+- Tests: `crm-person-verweise`, `crm-followup-route` (Routen mit eigenem Datenordner), `crm-followup-ebene-fuehrt`; Erwartungen an Win Rate und Gesprächsregel angepasst.
+- **Offen:** 18× `window.confirm` durch die Nachfrage im Fenster ersetzen; Routen-Tests für Datenschutz und Anfrage; Art.-15-Auskunft um LinkedIn-Stand (Netzwerk-Bestand) ergänzen; Farbe des Reiters „Firmen“ (Kevin).
+
 ### MAKE OS Homepage — zweiter Durchgang (27.09., nur lokal, `homepage/`)
 
 Kevin: „Grundgedanken sehr gut, CI gefällt mir. Logo noch nicht so. Nie echte Namen, Termine oder Kundendaten — du bist hier Marken- und Marketingprofi. UX kann mehr geben.“

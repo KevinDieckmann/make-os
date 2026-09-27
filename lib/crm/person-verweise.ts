@@ -1,0 +1,61 @@
+// ─── Eine Person im CRM-Bestand: entfernen, umbiegen, aufzählen (27.09.) ────
+// Prüfbericht 27.09. (Feinschliff 3): Art.-17-Löschung, Dubletten-Zusammenführung
+// und Art.-15-Auskunft kannten je eine andere Teilmenge der Listen, in denen eine
+// Person vorkommt — Follow-ups, Deal-Rollen, Power-Hour-Karten und Anträge
+// blieben stehen. Ab jetzt kennt GENAU EINE Stelle alle Verweise; der Test
+// prüft, dass nach dem Entfernen die Kennung nirgends mehr im Bestand steht.
+
+import type { CrmBestand, FollowUp } from './typen';
+
+const ohne = (ids: string[], id: string) => ids.filter(x => x !== id);
+const um = (ids: string[], alt: string, neu: string) => Array.from(new Set(ids.map(x => (x === alt ? neu : x))));
+
+/** Person aus allen Listen entfernen (Art. 17). Follow-ups AN die Person fallen weg; Anträge behalten den Vorgang, verlieren aber den Verweis. */
+export function personEntfernen(crm: CrmBestand, id: string): CrmBestand {
+  const rollenOhne = (r?: Record<string, unknown>) => { if (!r || !(id in r)) return r; const { [id]: _weg, ...rest } = r; return Object.keys(rest).length ? rest : undefined; };
+  return {
+    ...crm,
+    chancen: crm.chancen.map(c => (c.kontaktIds.includes(id) || c.personenRollen?.[id] ? { ...c, kontaktIds: ohne(c.kontaktIds, id), ...(rollenOhne(c.personenRollen) ? { personenRollen: rollenOhne(c.personenRollen) as typeof c.personenRollen } : { personenRollen: undefined }) } : c)),
+    mandate: crm.mandate.map(m => (m.kontaktIds.includes(id) ? { ...m, kontaktIds: ohne(m.kontaktIds, id) } : m)),
+    teilnahmen: crm.teilnahmen.filter(t => t.kontaktId !== id),
+    kampagnen: (crm.kampagnen ?? []).map(k => (k.kontaktIds.includes(id) || k.ergebnisse.some(e => e.kontaktId === id) ? { ...k, kontaktIds: ohne(k.kontaktIds, id), ergebnisse: k.ergebnisse.filter(e => e.kontaktId !== id) } : k)),
+    beitraege: (crm.beitraege ?? []).map(b => (b.quellen.includes(id) || b.wirkung.some(w => w.kontaktId === id) ? { ...b, quellen: ohne(b.quellen, id), wirkung: b.wirkung.filter(w => w.kontaktId !== id) } : b)),
+    followups: (crm.followups ?? []).filter(f => f.kontaktId !== id && !(f.bezug.art === 'kontakt' && f.bezug.id === id)),
+    sitzungen: (crm.sitzungen ?? []).map(s => (s.karten.some(k => k.kontaktId === id) ? { ...s, karten: s.karten.filter(k => k.kontaktId !== id) } : s)),
+    antraege: (crm.antraege ?? []).map(a => (a.kontaktId === id ? { ...a, kontaktId: undefined } : a)),
+  };
+}
+
+/** Verweise von `alt` auf `neu` umbiegen (Dubletten zusammenführen) — nichts geht verloren, nichts doppelt. */
+export function personUmbiegen(crm: CrmBestand, alt: string, neu: string): CrmBestand {
+  if (alt === neu) return crm;
+  const rollenUm = (r?: Record<string, unknown>) => { if (!r || !(alt in r)) return r; const { [alt]: rolle, ...rest } = r; return { ...rest, ...(neu in rest ? {} : { [neu]: rolle }) }; };
+  const fu = (f: FollowUp): FollowUp => ({ ...f, ...(f.kontaktId === alt ? { kontaktId: neu } : {}), ...(f.bezug.art === 'kontakt' && f.bezug.id === alt ? { bezug: { ...f.bezug, id: neu } } : {}) });
+  return {
+    ...crm,
+    chancen: crm.chancen.map(c => (c.kontaktIds.includes(alt) || c.personenRollen?.[alt] ? { ...c, kontaktIds: um(c.kontaktIds, alt, neu), ...(c.personenRollen ? { personenRollen: rollenUm(c.personenRollen) as typeof c.personenRollen } : {}) } : c)),
+    mandate: crm.mandate.map(m => (m.kontaktIds.includes(alt) ? { ...m, kontaktIds: um(m.kontaktIds, alt, neu) } : m)),
+    teilnahmen: crm.teilnahmen.map(t => (t.kontaktId === alt ? { ...t, kontaktId: neu } : t)),
+    kampagnen: (crm.kampagnen ?? []).map(k => (k.kontaktIds.includes(alt) || k.ergebnisse.some(e => e.kontaktId === alt)
+      ? { ...k, kontaktIds: um(k.kontaktIds, alt, neu), ergebnisse: k.ergebnisse.map(e => (e.kontaktId === alt ? { ...e, kontaktId: neu } : e)) } : k)),
+    beitraege: (crm.beitraege ?? []).map(b => (b.quellen.includes(alt) || b.wirkung.some(w => w.kontaktId === alt)
+      ? { ...b, quellen: um(b.quellen, alt, neu), wirkung: b.wirkung.map(w => (w.kontaktId === alt ? { ...w, kontaktId: neu } : w)) } : b)),
+    followups: (crm.followups ?? []).map(fu),
+    sitzungen: (crm.sitzungen ?? []).map(s => (s.karten.some(k => k.kontaktId === alt) ? { ...s, karten: s.karten.map(k => (k.kontaktId === alt ? { ...k, kontaktId: neu } : k)) } : s)),
+    antraege: (crm.antraege ?? []).map(a => (a.kontaktId === alt ? { ...a, kontaktId: neu } : a)),
+  };
+}
+
+/** Alles, was der Bestand über eine Person hält — für die Auskunft nach Art. 15 (die Kartei kommt aus dem Kontakte-Bestand dazu). */
+export function personVerweise(crm: CrmBestand, id: string) {
+  return {
+    chancen: crm.chancen.filter(c => c.kontaktIds.includes(id) || !!c.personenRollen?.[id]).map(c => ({ ...c, ...(c.personenRollen?.[id] ? { rolle: c.personenRollen[id] } : {}) })),
+    mandate: crm.mandate.filter(m => m.kontaktIds.includes(id)),
+    events: crm.teilnahmen.filter(t => t.kontaktId === id).map(t => ({ ...t, event: crm.events.find(e => e.id === t.eventId)?.titel })),
+    followups: (crm.followups ?? []).filter(f => f.kontaktId === id || (f.bezug.art === 'kontakt' && f.bezug.id === id)),
+    kampagnen: (crm.kampagnen ?? []).filter(k => k.kontaktIds.includes(id) || k.ergebnisse.some(e => e.kontaktId === id)).map(k => ({ id: k.id, name: k.name, status: k.status, ergebnisse: k.ergebnisse.filter(e => e.kontaktId === id) })),
+    beitraege: (crm.beitraege ?? []).filter(b => b.quellen.includes(id) || b.wirkung.some(w => w.kontaktId === id)).map(b => ({ id: b.id, titel: b.titel, quelle: b.quellen.includes(id), wirkung: b.wirkung.filter(w => w.kontaktId === id) })),
+    powerHours: (crm.sitzungen ?? []).filter(s => s.karten.some(k => k.kontaktId === id)).map(s => ({ datum: s.datum, karten: s.karten.filter(k => k.kontaktId === id) })),
+    antraege: (crm.antraege ?? []).filter(a => a.kontaktId === id),
+  };
+}

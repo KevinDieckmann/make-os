@@ -16,7 +16,7 @@ import { computeMetrics } from '@/lib/make-one/finance-data';
 import type { Firma, Rechnung, Zahlung, Merkposten, Planposten } from '@/lib/make-one/liquiditaet';
 import { vorschau, nurBusiness, businessFirmen } from '@/lib/make-one/liquiditaet';
 import type { Mandat, Chance } from '@/lib/crm/typen';
-import { gewinnquote, prognose, gesamtwert, wahrscheinlichkeit, OFFENE_STUFEN } from '@/lib/crm/pipeline';
+import { winRate, prognose, gesamtwert, wahrscheinlichkeit, OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { markttraktion } from '@/lib/crm/adresse';
 import { WEG } from '@/lib/wege';
 
@@ -552,13 +552,13 @@ export const MESSEN: Record<string, (b: Bestand) => Messung> = {
   },
   win_rate(b) {
     const cs = chancenInSicht(b);
-    const q = gewinnquote(cs);
+    const q = winRate(cs, b.heute);
     const entschieden = cs.filter(c => c.stufe === 'gewonnen' || c.stufe === 'verloren')
       .map(c => ({ c, am: c.historie.filter(h => h.stufe === c.stufe).at(-1)?.am ?? c.geaendert ?? '' }))
       .sort((x, y) => y.am.localeCompare(x.am)).slice(0, 3);
     const details = entschieden.map(({ c, am }) => dealDetail(c, c.stufe === 'gewonnen' ? 'gewonnen' : 'verloren', `${am ? tagKurz(am.slice(0, 10)) : ''}${c.grund ? ` · ${c.grund}` : ''}`, c.stufe === 'gewonnen' ? 'gruen' : 'rot'));
     if (q.quote == null) return { luecke: `${q.gewonnen} gewonnen · ${q.verloren} verloren — ab 10 Entscheidungen eine Quote`, details };
-    return { wert: q.quote, anzeige: pz(q.quote), quelle: `${q.gewonnen} gewonnen, ${q.verloren} verloren (ab Angebot)`, details };
+    return { wert: q.quote, anzeige: pz(q.quote), quelle: `${q.gewonnen} gewonnen, ${q.verloren} verloren (180 Tage)`, details };
   },
   pipeline(b) {
     const k = jahresKurs(b);

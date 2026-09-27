@@ -61,7 +61,8 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
   const [segmentPlan, setSegmentPlan] = useState<string | null>(null);
   const [wahl, setWahl] = useWerFilter('kampagnen');
   const ich = api.ich;
-  const laden = useCallback(() => fetch('/api/crm/kampagnen', { cache: 'no-store' }).then(r => r.json()).then(x => x.ok && setD(x)).catch(() => {}), []);
+  const [fehler, setFehler] = useState<string | null>(null);
+  const laden = useCallback(() => fetch('/api/crm/kampagnen', { cache: 'no-store' }).then(r => r.json()).then(x => { if (x.ok) { setD(x); setFehler(null); } else setFehler(x.fehler ?? 'Kampagnen nicht geladen.'); }).catch(() => setFehler('Kampagnen nicht erreichbar.')), []);
   useEffect(() => { void laden(); }, [laden]);
   useEffect(() => { try { const s = sessionStorage.getItem('crm-kampagne-segment'); if (s) { setSegmentPlan(s); sessionStorage.removeItem('crm-kampagne-segment'); } } catch { /* ohne Speicher */ } }, []);
   const post = async (body: Record<string, unknown>) => {
@@ -82,7 +83,7 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
   const kampagnen = alleKampagnen.filter(k => passtWer(wahl, k.zustaendig, 'sales', ich));
   const zahlen = werZahlen(alleKampagnen, k => k.zustaendig, 'sales', ich);
   const segment = segmentPlan ? api.crm?.stand.segmente.find(s => s.id === segmentPlan) : undefined;
-  if (!d) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
+  if (!d) return <Karte i={0}>{fehler ? <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{fehler} <Knopf leise onClick={() => void laden()}>Noch einmal</Knopf></div> : <Leer>Lädt …</Leer>}</Karte>;
 
   return (
     <>

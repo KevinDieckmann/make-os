@@ -110,7 +110,11 @@ export async function POST(req: Request) {
     if (t.status !== 'da') return NextResponse.json({ ok: false, fehler: 'Nachgefasst wird nur, wer da war.' }, { status: 400 });
     // 1 · Nachgefasst am Gast — bleibt beim ersten Datum, wenn schon eins steht.
     const followUpAm = t.followUpAm ?? heute;
-    await aendereCrm(c => ({ ...c, teilnahmen: c.teilnahmen.map(x => (x.id === t.id ? { ...x, followUpAm, geaendert: jetzt, geaendertVon: person } : x)) }));
+    // Auch ein echtes Event-Follow-up zu diesem Gast gilt damit als erledigt (27.09.) — sonst stand er doppelt in der Follow-up-Liste.
+    await aendereCrm(c => ({ ...c,
+      teilnahmen: c.teilnahmen.map(x => (x.id === t.id ? { ...x, followUpAm, nachfassenVerzichtet: undefined, geaendert: jetzt, geaendertVon: person } : x)),
+      followups: (c.followups ?? []).map(f => (f.status === 'offen' && f.bezug.art === 'event' && f.bezug.id === eventId && f.kontaktId === t.kontaktId ? { ...f, status: 'erledigt' as const, erledigtAm: jetzt, ergebnis: ergebnis === 'erledigt' ? undefined : ergebnis, geaendert: jetzt, geaendertVon: person } : f)),
+    }));
     // 2 · Lead heben (Firma, ohne Firma die Person) — nur bei Gespräch oder Termin; derselbe Weg wie beim Erledigen eines Follow-ups (lib/crm/lead-heben.ts).
     const lead = hebtLead(ergebnis) ? await leadHebenNachGespraech(t.kontaktId, jetzt, person, heute) : null;
     return NextResponse.json({ ok: true, followUpAm, lead });

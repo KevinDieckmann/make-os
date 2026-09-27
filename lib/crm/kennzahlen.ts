@@ -7,8 +7,8 @@
 import { tagVon } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand } from './typen';
-import { OFFENE_STUFEN, prognose, gesundheit, gesamtwert } from './pipeline';
-import { winLoss, zyklus as dealZyklus, haengtNachWert } from './deal-auswertung';
+import { OFFENE_STUFEN, prognose, gesundheit, gesamtwert, winRate, WIN_RATE, echtesGespraech } from './pipeline';
+import { zyklus as dealZyklus, haengtNachWert } from './deal-auswertung';
 import { faellige, puenktlichkeit } from './followup';
 import { mrr, konzentration } from './kunden';
 import { ampel as kanalAmpel } from './recht';
@@ -17,7 +17,6 @@ export type KpiAmpel = 'gruen' | 'gelb' | 'rot' | 'grau';
 export interface Kpi { id: string; label: string; wert: number | null; anzeige: string; ampel: KpiAmpel; ziel: string; quelle: string }
 
 const tagMinus = (heute: string, n: number) => { const d = new Date(`${heute}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); };
-const echtesGespraech = (a: { art: string; ergebnis?: string }) => a.ergebnis === 'gespraech' || a.ergebnis === 'termin' || a.art === 'gespraech' || a.art === 'termin';
 const stufe = (v: number, gruen: number, gelb: number, hoeherBesser = true): KpiAmpel => (hoeherBesser ? (v >= gruen ? 'gruen' : v >= gelb ? 'gelb' : 'rot') : (v <= gruen ? 'gruen' : v <= gelb ? 'gelb' : 'rot'));
 
 export function kennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: string): Kpi[] {
@@ -42,7 +41,7 @@ export function kennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: string):
   const gGruen = zielG && zielG > 0 ? zielG : 8, gGelb = zielG && zielG > 0 ? Math.ceil(zielG / 2) : 4;
   const sGruen = zielS && zielS > 0 ? zielS : 2, sGelb = zielS && zielS > 0 ? Math.ceil(zielS / 2) : 1;
   // ── Deal- und Follow-up-Ebene (27.09.): Win Rate, Zyklus, hängender Wert, Pünktlichkeit, Überfälliges, Neuumsatz gegen Ziel ──
-  const wl = winLoss(crm.chancen, heute);
+  const wr = winRate(crm.chancen, heute);
   const zy = dealZyklus(crm.chancen);
   const hw = haengtNachWert(crm.chancen, Object.fromEntries(offen.map(c => [c.id, gesundheit(c, heute)])));
   const fus = crm.followups ?? [];
@@ -65,7 +64,7 @@ export function kennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: string):
     { id: 'ohne_schritt', label: 'Deals ohne nächsten Schritt', wert: offen.length ? ohneSchritt : null, anzeige: offen.length ? String(ohneSchritt) : '—', ampel: offen.length ? stufe(ohneSchritt, 0, 2, false) : 'grau', ziel: '0', quelle: `${offen.length} offene Deals` },
     { id: 'pipeline', label: 'Pipeline gewichtet', wert: offen.length ? p.gewichtet : null, anzeige: offen.length ? `${Math.round(p.gewichtet / 1000)} T€` : '—', ampel: 'grau', ziel: '≥ 3 × Umsatzlücke 90 Tage', quelle: `offen ${Math.round(p.offen / 1000)} T€, Commit ${Math.round(p.commit / 1000)} T€` },
     { id: 'mrr', label: 'Wiederkehrend je Monat', wert: m || null, anzeige: m ? `${(m / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 })} T€` : '—', ampel: kz ? (kz.anteil > 50 ? 'rot' : 'gruen') : 'grau', ziel: 'größter Kunde ≤ 50 %', quelle: kz ? `größter Kunde ${kz.kunde}: ${kz.anteil} %` : 'keine aktiven Monatsmandate' },
-    { id: 'win_rate', label: 'Win Rate · 180 Tage', wert: wl.quote, anzeige: wl.quote !== null ? `${wl.quote} %` : `${wl.gewonnen} · ${wl.verloren}`, ampel: wl.quote !== null ? stufe(wl.quote, 40, 20) : 'grau', ziel: '≥ 40 %', quelle: wl.quote !== null ? `${wl.gewonnen} gewonnen, ${wl.verloren} verloren` : `erst ab 5 Entscheidungen (${wl.gewonnen} gewonnen · ${wl.verloren} verloren)` },
+    { id: 'win_rate', label: 'Win Rate · 180 Tage', wert: wr.quote, anzeige: wr.quote !== null ? `${wr.quote} %` : `${wr.gewonnen} · ${wr.verloren}`, ampel: wr.quote !== null ? stufe(wr.quote, WIN_RATE.gruen, WIN_RATE.rot) : 'grau', ziel: '≥ 40 %', quelle: wr.quote !== null ? `${wr.gewonnen} gewonnen, ${wr.verloren} verloren` : `erst ab 5 Entscheidungen (${wr.gewonnen} gewonnen · ${wr.verloren} verloren)` },
     { id: 'zyklus', label: 'Sales-Zyklus · Median', wert: zy.median, anzeige: zy.median !== null ? `${zy.median} Tage` : '—', ampel: zy.median !== null ? stufe(zy.median, 60, 120, false) : 'grau', ziel: '≤ 60 Tage', quelle: zy.median !== null ? `${zy.n} gewonnene Deals, Anlage bis gewonnen` : `erst ab 5 gewonnenen Deals (${zy.n})` },
     { id: 'haengt_wert', label: 'Hängt · nach Wert', wert: hw.anteil, anzeige: hw.anteil !== null ? `${hw.anteil} %` : '—', ampel: hw.anteil !== null ? stufe(hw.anteil, 15, 40, false) : 'grau', ziel: '≤ 15 %', quelle: hw.anteil !== null ? `${tEuro(hw.wert)} von ${tEuro(hw.gesamt)} ohne Bewegung oder überfällig` : 'keine offenen Deals mit Wert' },
     { id: 'followup_puenktlich', label: 'Follow-ups pünktlich · 30 Tage', wert: pk.quote, anzeige: pk.quote !== null ? `${pk.quote} %` : `${pk.puenktlich} · ${pk.erledigt}`, ampel: pk.quote !== null ? stufe(pk.quote, 80, 60) : 'grau', ziel: '≥ 80 %', quelle: pk.quote !== null ? `${pk.puenktlich} von ${pk.erledigt + pk.verpasst} am Tag oder davor` : `erst ab 5 erledigten Follow-ups (${pk.erledigt})` },

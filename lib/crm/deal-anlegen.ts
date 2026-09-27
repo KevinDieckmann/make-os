@@ -100,7 +100,7 @@ export async function dealAnlegen(e: DealEingabe, person: string, jetzt = new Da
   // Person ohne Firma: der Lead hängt an ihr (anderer Bestand).
   if (!c.firmaId && c.kontaktIds[0]) {
     const sql = (alt?: Lead): Lead => ({ status: 'sql', kriterien: alt?.kriterien ?? c.qualifizierung, ...(alt?.fit ? { fit: alt.fit } : {}), ...(alt?.notiz ? { notiz: alt.notiz } : {}), sqlAm: jetzt, chanceId: c.id, geaendert: jetzt, geaendertVon: person });
-    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === c.kontaktIds[0] && !k.firmaId ? { ...k, lead: sql(k.lead), geaendertAm: jetzt } : k)) }));
+    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === c.kontaktIds[0] && !k.firmaId ? { ...k, lead: sql(k.lead), geaendertAm: localDay(new Date(jetzt)) } : k)) }));
   }
   return ergebnis;
 }

@@ -154,11 +154,20 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
       await aendereCrm(c => ({ ...c, kampagnen: [...c.kampagnen, { ...plan, name: t.kampagne!.name || plan.name, ziel: t.kampagne!.ziel || plan.ziel, kontaktIds: ids.length ? ids : plan.kontaktIds, notiz: t.begruendung.slice(0, 1000), zustaendig: wer(person) ?? verantwortlich(h), geaendertVon: person }] }));
       wohin = `Kampagnen-Entwurf (${h === 'sales' ? 'Sales' : 'Marketing'} › Kampagnen)`;
     } else if (status === 'angenommen' && t.kontakt_id && t.frist) {
+      // Nie still überschreiben (Prüfbericht 27.09., Punkt 17): steht schon ein nächster Schritt, bleibt er — und jede Head-Wirkung
+      // steht als Aktivität im Verlauf der Person, damit in der Akte erkennbar ist, dass ein Agent gehandelt hat.
+      const lage = { stand: 'nicht-gefunden' as 'gesetzt' | 'schon-da' | 'nicht-gefunden' };
       await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
         const f = cur ?? { kontakte: [] };
-        return { ...f, kontakte: f.kontakte.map(k => (k.id === t.kontakt_id && !k.werbesperre ? { ...k, naechsterSchritt: { text: t.titel.slice(0, 300), datum: t.frist! }, geaendertAm: jetzt.slice(0, 10) } : k)) };
+        return { ...f, kontakte: f.kontakte.map(k => {
+          if (k.id !== t.kontakt_id || k.werbesperre) return k;
+          if (k.naechsterSchritt && k.naechsterSchritt.datum >= jetzt.slice(0, 10)) { lage.stand = 'schon-da'; return k; }
+          lage.stand = 'gesetzt';
+          const eintrag = { am: jetzt, art: 'system' as const, von: person, text: `${HEAD_NAME[h]}: nächster Schritt „${t.titel.slice(0, 120)}“ bis ${t.frist} (angenommen)` };
+          return { ...k, naechsterSchritt: { text: t.titel.slice(0, 300), datum: t.frist! }, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag], geaendertAm: jetzt.slice(0, 10) };
+        }) };
       });
-      wohin = 'nächster Schritt an der Person';
+      wohin = lage.stand === 'gesetzt' ? 'nächster Schritt an der Person' : lage.stand === 'schon-da' ? 'nicht gesetzt — an der Person steht schon ein nächster Schritt (erst erledigen oder in der Akte ändern)' : 'Person nicht gefunden';
     } else if (status === 'angenommen' || status === 'erledigt') {
       // Die Aufgabe bekommt, wer die Beziehung hält — sonst die/der Verantwortliche der Welt (Sales: Kevin, Marketing/Event: Malin).
       const k = t.kontakt_id ? ((await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? []).find(x => x.id === t.kontakt_id) : undefined;

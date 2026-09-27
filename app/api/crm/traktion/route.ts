@@ -68,8 +68,8 @@ export async function GET(req: Request) {
   const event = eventKennzahlen(kontakte, crm, heute);
   // Traktions-Index (26.09.): derselbe Kern wie Business und Privat — mit eigenen Schwellen und Verlauf.
   const datei = await ladeIndexDatei('traktion-index');
-  const index = traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen });
-  void event;
+  // Die Kennzahlen der drei Welten gehen mit — der Index rechnet sie nicht noch einmal (Prüfbericht 27.09., Punkt 18).
+  const index = traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen, kpis: [...sales, ...marketing, ...event] });
   const heads = HEADS.map((h, i) => {
     const s = { ...leererStand(), ...(staende[i] ?? {}) };
     const b = s.berichte[s.berichte.length - 1];

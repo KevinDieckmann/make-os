@@ -43,29 +43,35 @@ export async function POST(req: Request) {
   const person = personAus(req);
   const heute = localDay();
   const jetzt = new Date().toISOString();
-  const [kontakte, crm] = await Promise.all([kontakteLaden(), ladeCrm()]);
-  const r = anfrageBauen({ kontaktId: b.kontaktId, neu: b.neu, kanal: b.kanal as AnfrageEingabe['kanal'], bezug: b.bezug, text: String(b.text ?? ''), datum: b.datum }, { kontakte, crm, person, heute, jetzt, ids: { kontakt: neueId('c'), followUp: neueId('fu') } });
-  if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler }, { status: 400 });
-  const { bau } = r;
-
-  // 1 · Kartei: die Person (neu oder mit Aktivität, Einwilligung, Stufe, Lead).
+  const crm = await ladeCrm();
+  const eingabe = { kontaktId: b.kontaktId, neu: b.neu, kanal: b.kanal as AnfrageEingabe['kanal'], bezug: b.bezug, text: String(b.text ?? ''), datum: b.datum };
+  const ids = { kontakt: neueId('c'), followUp: neueId('fu') };
+  type Bau = Extract<ReturnType<typeof anfrageBauen>, { ok: true }>['bau'];
+  // Prüfen und Schreiben in EINER Sperre auf dem frischen Stand (Prüfbericht 27.09., Punkt 10) — vorher wurde ein vorab
+  // geladener Kontakt zurückgeschrieben, und was die andere Person inzwischen geändert hatte, ging verloren.
+  let bau: Bau | null = null; let fehler = '';
   await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
     const f = cur ?? { kontakte: [] };
-    const i = f.kontakte.findIndex(x => x.id === bau.kontakt.id);
-    if (i < 0) return { ...f, kontakte: [...f.kontakte, bau.kontakt] };
+    const r = anfrageBauen(eingabe, { kontakte: f.kontakte, crm, person, heute, jetzt, ids });
+    if (!r.ok) { fehler = r.fehler; return f; }
+    bau = r.bau;
+    const i = f.kontakte.findIndex(x => x.id === r.bau.kontakt.id);
+    if (i < 0) return { ...f, kontakte: [...f.kontakte, r.bau.kontakt] };
     // Der Verlauf ist ein Anhänge-Log: was inzwischen dazukam, bleibt.
     const alt = f.kontakte[i];
-    const neu = { ...bau.kontakt, aktivitaeten: [...alt.aktivitaeten.filter(a => !bau.kontakt.aktivitaeten.some(x => x.am === a.am && x.art === a.art && x.text === a.text)), ...bau.kontakt.aktivitaeten].sort((a, x) => a.am.localeCompare(x.am)) };
+    const neu = { ...r.bau.kontakt, aktivitaeten: [...alt.aktivitaeten.filter(a => !r.bau.kontakt.aktivitaeten.some(x => x.am === a.am && x.art === a.art && x.text === a.text)), ...r.bau.kontakt.aktivitaeten].sort((a, x) => a.am.localeCompare(x.am)) };
     return { ...f, kontakte: f.kontakte.map((x, j) => (j === i ? neu : x)) };
   });
+  if (fehler || !bau) return NextResponse.json({ ok: false, fehler: fehler || 'Anfrage nicht angelegt.' }, { status: 400 });
+  const fertig = bau as Bau;
   // 2 · CRM-Bestand: Follow-up, Wirkung am Beitrag, Ergebnis an der Kampagne, Lead der Firma.
   await aendereCrm(c => ({
     ...c,
-    followups: [...(c.followups ?? []), { ...bau.followUp, geaendertVon: person }],
-    ...(bau.wirkung ? { beitraege: c.beitraege.map(x => (x.id === bau.wirkung!.beitragId && !x.wirkung.some(w => w.kontaktId === bau.kontakt.id && w.art === 'anfrage') ? { ...x, wirkung: [...x.wirkung, bau.wirkung!.eintrag], geaendert: jetzt, geaendertVon: person } : x)) } : {}),
-    ...(bau.kampagne ? { kampagnen: c.kampagnen.map(x => (x.id === bau.kampagne!.id ? { ...x, kontaktIds: bau.kampagne!.kontaktIds, ergebnisse: [...x.ergebnisse, bau.kampagne!.ergebnis], status: x.status === 'entwurf' ? 'aktiv' as const : x.status, geaendert: jetzt, geaendertVon: person } : x)) } : {}),
-    ...(bau.firmaLead ? { firmen: c.firmen.map(x => (x.id === bau.firmaLead!.firmaId ? { ...x, lead: bau.firmaLead!.lead, geaendert: jetzt, geaendertVon: person } : x)) } : {}),
+    followups: [...(c.followups ?? []), { ...fertig.followUp, geaendertVon: person }],
+    ...(fertig.wirkung ? { beitraege: c.beitraege.map(x => (x.id === fertig.wirkung!.beitragId && !x.wirkung.some(w => w.kontaktId === fertig.kontakt.id && w.art === 'anfrage') ? { ...x, wirkung: [...x.wirkung, fertig.wirkung!.eintrag], geaendert: jetzt, geaendertVon: person } : x)) } : {}),
+    ...(fertig.kampagne ? { kampagnen: c.kampagnen.map(x => (x.id === fertig.kampagne!.id ? { ...x, kontaktIds: fertig.kampagne!.kontaktIds, ergebnisse: [...x.ergebnisse, fertig.kampagne!.ergebnis], status: x.status === 'entwurf' ? 'aktiv' as const : x.status, geaendert: jetzt, geaendertVon: person } : x)) } : {}),
+    ...(fertig.firmaLead ? { firmen: c.firmen.map(x => (x.id === fertig.firmaLead!.firmaId ? { ...x, lead: fertig.firmaLead!.lead, geaendert: jetzt, geaendertVon: person } : x)) } : {}),
   }));
-  const text = `${bau.neuePerson ? 'Neu in der Kartei: ' : ''}Anfrage bei ${bau.kontakt.vorname || bau.kontakt.nachname ? `${bau.kontakt.vorname} ${bau.kontakt.nachname}`.trim() : bau.kontakt.firma ?? bau.kontakt.email} festgehalten — Follow-up „${bau.followUp.text}“ steht heute bei ${bau.followUp.zustaendig}.`;
-  return NextResponse.json({ ok: true, kontakt: fuerPerson(bau.kontakt, person), kontaktId: bau.kontakt.id, neuePerson: bau.neuePerson, followUpId: bau.followUp.id, ...(bau.hinweis ? { hinweis: bau.hinweis } : {}), text });
+  const text = `${fertig.neuePerson ? 'Neu in der Kartei: ' : ''}Anfrage bei ${fertig.kontakt.vorname || fertig.kontakt.nachname ? `${fertig.kontakt.vorname} ${fertig.kontakt.nachname}`.trim() : fertig.kontakt.firma ?? fertig.kontakt.email} festgehalten — Follow-up „${fertig.followUp.text}“ steht heute bei ${fertig.followUp.zustaendig}.`;
+  return NextResponse.json({ ok: true, kontakt: fuerPerson(fertig.kontakt, person), kontaktId: fertig.kontakt.id, neuePerson: fertig.neuePerson, followUpId: fertig.followUp.id, ...(fertig.hinweis ? { hinweis: fertig.hinweis } : {}), text });
 }

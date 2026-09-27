@@ -9,8 +9,9 @@ import { mandatLage } from './kunden';
 import { art14 } from './recht';
 import { dubletten } from './dubletten';
 import { checklisteFaellig } from './eventplanung';
+import { faellige } from './followup';
 
-export interface Befund { prio: 1 | 2 | 3 | 4 | 5; titel: string; grund: string; bereich: 'heute' | 'kontakte' | 'firmen' | 'pipeline' | 'kunden' | 'marketing' | 'events' | 'stammdaten'; ansicht?: string }
+export interface Befund { prio: 1 | 2 | 3 | 4 | 5; titel: string; grund: string; bereich: 'heute' | 'followup' | 'kontakte' | 'firmen' | 'pipeline' | 'kunden' | 'marketing' | 'events' | 'stammdaten'; ansicht?: string }
 
 export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string): Befund[] {
   const b: Befund[] = [];
@@ -20,10 +21,13 @@ export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string): Be
   const offen = crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe));
   const haengt = offen.filter(c => gesundheit(c, heute).ampel === 'rot');
   if (haengt.length) b.push({ prio: 1, titel: `${haengt.length} Deal${haengt.length > 1 ? 's hängen' : ' hängt'}`, grund: 'Schritt überfällig oder über 30 Tage ohne Bewegung', bereich: 'pipeline' });
+  // Follow-up-Ebene (27.09.): Überfälliges aus EINER Liste — Zusagen, Wiedervorlagen, Nachfassen, Reviews, Kadenz (Deal-Schritte zählen oben bei den Deals).
+  const ueber = faellige(kontakte, crm, heute, { wertelisten: crm.wertelisten }).filter(f => f.gruppe === 'ueberfaellig' && f.quelle !== 'dealschritt');
+  if (ueber.length) b.push({ prio: 1, titel: `${ueber.length} Follow-up${ueber.length > 1 ? 's' : ''} überfällig`, grund: `${ueber.filter(f => f.tageUeber >= 7).length} davon über eine Woche — Follow-up › Fällig`, bereich: 'followup', ansicht: 'faellig' });
   const ablauf = crm.mandate.filter(m => m.status === 'aktiv' && (mandatLage(m, heute).endeIn ?? 999) <= 60);
   if (ablauf.length) b.push({ prio: 1, titel: `${ablauf.length} Mandat${ablauf.length > 1 ? 'e' : ''}: Laufzeit endet oder ist vorbei`, grund: ablauf.map(m => m.kunde).join(', '), bereich: 'kunden' });
   const art = kontakte.filter(k => art14(k, heute)?.faellig);
-  if (art.length) b.push({ prio: 2, titel: `${art.length} Personen nach Art. 14 informieren`, grund: 'Daten aus Recherche, Frist ein Monat', bereich: 'kontakte' });
+  if (art.length) b.push({ prio: 2, titel: `${art.length} Personen nach Art. 14 informieren`, grund: 'Daten aus Recherche, Frist ein Monat', bereich: 'kontakte', ansicht: 'art14' });
   // Nur offene Chancen zählen — Ebene 1 (Leads) endet erst mit einem Deal.
   const mitChance = new Set(crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe)).flatMap(c => c.kontaktIds));
   const ohneChance = kontakte.filter(k => ['gespraech', 'termin', 'angebot'].includes(k.stufe) && !mitChance.has(k.id) && !k.werbesperre);

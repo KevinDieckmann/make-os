@@ -2,7 +2,7 @@
 import type { CrmBestand } from '@/lib/crm/typen';
 import { describe, it, expect } from 'vitest';
 import type { Kontakt } from '../lib/make-one/crm';
-import { gesamtwert, gesundheit, prognose, wechsleStufe, gewinnquote } from '../lib/crm/pipeline';
+import { gesamtwert, gesundheit, prognose, wechsleStufe, winRate } from '../lib/crm/pipeline';
 import { kanalStatus, besterKanal, art14 } from '../lib/crm/recht';
 import { werIstDran, folgeAus, werktagePlus } from '../lib/crm/heute';
 import { mandatLage, planpostenAus, mrr, konzentration } from '../lib/crm/kunden';
@@ -51,7 +51,7 @@ describe('Pipeline (aus KEMARIS Operations)', () => {
     expect(p.bestCase).toBe(28000);
   });
   it('Gewinnquote erst ab 10 Entscheidungen', () => {
-    expect(gewinnquote([ch({ stufe: 'gewonnen' })]).quote).toBeNull();
+    expect(winRate([ch({ stufe: 'gewonnen' })], '2026-09-27').quote).toBeNull();
   });
 });
 

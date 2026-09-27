@@ -196,7 +196,9 @@ async function autoUebernehmen(head: HeadId, berichtId: string, person: string, 
         // Nie überschreiben: steht inzwischen ein nächster Schritt da, bleibt der Vorschlag zur Freigabe.
         if (!p || k.naechsterSchritt || k.werbesperre || !p.v.frist) return k;
         erledigt.set(p.v.id, { am: jetzt, wirkung: `nächster Schritt an ${k.vorname} ${k.nachname}`.trim(), rueckgaengig: { art: 'schritt', kontaktId: k.id, vorher: null } });
-        return { ...k, naechsterSchritt: { text: p.v.titel.slice(0, 300), datum: p.v.frist }, geaendertAm: jetzt.slice(0, 10) };
+        // Sichtbar im Verlauf der Person (Prüfbericht 27.09., Punkt 17): ein Agent hat gehandelt — rücknehmbar.
+        const eintrag = { am: jetzt, art: 'system' as const, von: 'system', text: `Head: nächster Schritt „${p.v.titel.slice(0, 120)}“ bis ${p.v.frist} (automatisch, rücknehmbar)` };
+        return { ...k, naechsterSchritt: { text: p.v.titel.slice(0, 300), datum: p.v.frist }, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag], geaendertAm: jetzt.slice(0, 10) };
       }) };
     });
   }

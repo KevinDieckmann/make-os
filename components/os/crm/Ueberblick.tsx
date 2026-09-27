@@ -33,7 +33,7 @@ const WELT_LABEL: Record<Welt, string> = { sales: 'Sales', marketing: 'Marketing
 const INDEX_FARBE: Record<string, string> = { ...WELT_FARBE, grundlage: C.inkLeise };
 const STATUS = { ruhig: LEUCHT.gut, beobachten: LEUCHT.achtung, handeln: LEUCHT.kritisch } as const;
 /** Wohin ein Befund gehört — für die Farbe am Rand. */
-const BEFUND_WELT: Record<Befund['bereich'], Welt | null> = { heute: 'sales', pipeline: 'sales', kunden: 'sales', marketing: 'marketing', events: 'event', kontakte: null, firmen: null, stammdaten: null };
+const BEFUND_WELT: Record<Befund['bereich'], Welt | null> = { heute: 'sales', followup: 'sales', pipeline: 'sales', kunden: 'sales', marketing: 'marketing', events: 'event', kontakte: null, firmen: null, stammdaten: null };
 const PRIO = { 1: LEUCHT.kritisch, 2: LEUCHT.achtung, 3: LEUCHT.puls, 4: C.inkDim, 5: C.inkLeise } as const;
 
 interface HeadKurz { id: Welt; name: string; verantwortlich: string; offen: number; status: 'ruhig' | 'beobachten' | 'handeln' | null; zeit: string | null; zusammenfassung: string | null }

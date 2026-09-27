@@ -39,11 +39,12 @@ const SCHRITTE = ['Bedarfsgespräch mit dem Entscheider', 'Diagnose-Termin verei
 /** Leads laden — geteilt von der Trichter-Leiste und der Leads-Ansicht; lädt neu, wenn sich der Bestand ändert. */
 export function useLeads(api: CrmApi) {
   const [d, setD] = useState<Daten | null>(null);
+  const [fehler, setFehler] = useState<string | null>(null);
   const staende = useRef(new Map<string, string>());
-  // Unverändert (304) bleibt der bisherige Stand stehen.
-  const laden = useCallback(() => holeMitStand<Daten & { ok?: boolean }>('/api/crm/lead', staende.current).then(x => { if (x?.ok) setD(x); }).catch(() => {}), []);
+  // Unverändert (304) bleibt der bisherige Stand stehen. Ein Fehler wird gezeigt statt ewig „Lädt …“ (Prüfbericht 27.09., Punkt 14).
+  const laden = useCallback(() => holeMitStand<Daten & { ok?: boolean; fehler?: string }>('/api/crm/lead', staende.current).then(x => { if (x?.ok) { setD(x); setFehler(null); } else if (x && !x.ok) setFehler(x.fehler ?? 'Leads nicht geladen.'); }).catch(() => setFehler('Leads nicht erreichbar.')), []);
   useEffect(() => { void laden(); }, [laden, api.crm, api.kontakte]);
-  return { d, laden };
+  return { d, laden, fehler };
 }
 
 export function SalesTrichter({ api, zuBereich }: { api: CrmApi; zuBereich: (s: string, a?: string) => void }) {
@@ -79,7 +80,7 @@ export function SalesTrichter({ api, zuBereich }: { api: CrmApi; zuBereich: (s: 
 type Filter = 'aktiv' | LeadStatus;
 export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id: string) => void; zuDeal: (id?: string) => void }) {
   const breit = useBreit();
-  const { d, laden } = useLeads(api);
+  const { d, laden, fehler } = useLeads(api);
   const [filter, setFilter] = useState<Filter>('aktiv');
   const [suche, setSuche] = useState('');
   // Offener Lead im Link (k) — aus Kartei und Firmen „Qualifizieren“, und Zurück schließt ihn wieder.
@@ -92,7 +93,7 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
       .filter(z => passtWer(wer, z.besitzer, 'sales', ich))
       .filter(z => !q || [z.name, ...z.personen.map(p => p.name), z.branche ?? '', z.stadt ?? ''].join(' ').toLowerCase().includes(q));
   }, [d, filter, suche, wer, ich]);
-  if (!d) return <Karte i={0}><Leer>Lädt die Leads …</Leer></Karte>;
+  if (!d) return <Karte i={0}>{fehler ? <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{fehler} <Knopf leise onClick={() => void laden()}>Noch einmal</Knopf></div> : <Leer>Lädt die Leads …</Leer>}</Karte>;
   const zahl = (f: Filter) => (d.leads ?? []).filter(z => (f === 'aktiv' ? LEAD_STATUS.find(s => s.id === z.status)?.aktiv : f === 'ruht' ? z.status === 'ruht' || z.status === 'kein_fit' : z.status === f)).length;
   const FILTER: { id: Filter; label: string }[] = [
     { id: 'aktiv', label: `In Arbeit ${zahl('aktiv')}` }, { id: 'im_gespraech', label: `Im Gespräch ${zahl('im_gespraech')}` }, { id: 'qualifizierung', label: `Qualifizierung ${zahl('qualifizierung')}` },

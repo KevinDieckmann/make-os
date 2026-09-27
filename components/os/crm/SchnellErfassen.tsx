@@ -135,7 +135,7 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
         if (!schritt) { setFehler('Für den Deal braucht es einen nächsten Schritt mit Datum.'); return; }
         const r = await fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'sql', id: k.firmaId ?? k.id, trotzdem: true,
           deal: { titel: chance.titel.trim(), art: chance.basis === 'monat' ? 'retainer' : 'projekt', betrag, basis: chance.basis, schritt, besitzer: besitzer(k), kontaktIds: [k.id] } }) }).then(y => y.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' }));
-        if (!r.ok) { setFehler(r.fehler ?? 'Deal nicht angelegt.'); return; }
+        if (!r.ok) { setFehler(r.offen ? `${r.fehler} Bewusst einen zweiten anlegen geht in der Deal-Akte.` : (r.fehler ?? 'Deal nicht angelegt.')); return; }
         chanceId = r.chanceId;
         void api.laden();
       }

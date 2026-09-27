@@ -61,14 +61,16 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   useEffect(() => { const w = new URLSearchParams(window.location.search).get('wer'); if (w) setWer(w === api.ich ? 'ich' : w); }, [api.ich]); // eslint-disable-line react-hooks/exhaustive-deps
   const ich = api.ich;
 
-  const filter: Record<Ansicht, (k: Kontakt) => boolean> = {
+  // Gemerkt (Prüfbericht 27.09., Punkt 20): zehn Filter über alle Kontakte liefen bei jedem Tastendruck in der Suche neu.
+  const filter = useMemo<Record<Ansicht, (k: Kontakt) => boolean>>(() => ({
     alle: () => true, kunden: k => k.lebensphase === 'kunde', kreis: k => k.kreis === 'A' || k.kreis === 'B', prio: k => k.prio === 'A',
     chancen: k => mitChance.has(k.id), mail: k => !!k.email, anreichern: k => !k.email && !k.telefon && !k.sms || !k.firma,
     art14: k => !!art14(k, heute)?.faellig, gesperrt: k => !!k.werbesperre, dubletten: k => paare.some(([a, b]) => a.id === k.id || b.id === k.id),
-  };
+  }), [mitChance, paare, heute]);
+  const zaehlung = useMemo(() => { const z = {} as Record<Ansicht, number>; for (const id of Object.keys(filter) as Ansicht[]) z[id] = kontakte.filter(filter[id]).length; return z; }, [kontakte, filter]);
   const ANSICHTEN: { id: Ansicht; label: string }[] = ([
     ['alle', 'Alle'], ['kunden', 'Kunden'], ['kreis', 'Kreis A/B'], ['prio', 'Prio A'], ['chancen', 'Mit Deal'], ['mail', 'Mit E-Mail'], ['anreichern', 'Anreichern'], ['art14', 'Art. 14'], ['gesperrt', 'Gesperrt'], ['dubletten', 'Dubletten'],
-  ] as [Ansicht, string][]).map(([id, l]) => ({ id, label: `${l} ${kontakte.filter(filter[id]).length}` }));
+  ] as [Ansicht, string][]).map(([id, l]) => ({ id, label: `${l} ${zaehlung[id]}` }));
 
   const treffer = useMemo(() => {
     const q = suche.trim().toLowerCase();
@@ -76,10 +78,12 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
     if (q) l = l.filter(k => [anzeigename(k), k.firma ?? '', k.email ?? '', k.firmaBranche ?? '', k.position ?? '', k.firmaStadt ?? '', k.telefon ?? ''].join(' ').toLowerCase().includes(q));
     const rang = (k: Kontakt) => (k.lebensphase === 'kunde' ? 0 : k.kreis === 'A' ? 1 : k.kreis === 'B' ? 2 : k.prio === 'A' ? 3 : k.prio === 'B' ? 4 : 5);
     return [...l].sort((a, b) => (ansicht === 'dubletten' ? anzeigename(a).localeCompare(anzeigename(b)) : rang(a) - rang(b) || anzeigename(a).localeCompare(anzeigename(b))));
-  }, [kontakte, suche, ansicht, mitChance, heute, paare, wer, ich]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [kontakte, suche, ansicht, filter, wer, ich]);
   const sichtbar = treffer.slice(0, mehr);
-  const erreichbar = kontakte.filter(k => k.email || k.telefon || k.sms).length;
-  const freigegeben = kontakte.filter(k => kanalAmpel(k, { hatMandat: mitMandat.has(k.id) }).some(s => s.kanal === 'mail' && s.farbe === 'gruen')).length;
+  const [erreichbar, freigegeben] = useMemo(() => [
+    kontakte.filter(k => k.email || k.telefon || k.sms).length,
+    kontakte.filter(k => kanalAmpel(k, { hatMandat: mitMandat.has(k.id) }).some(s => s.kanal === 'mail' && s.farbe === 'gruen')).length,
+  ], [kontakte, mitMandat]);
   const werZahlen = ich ? { alle: kontakte.length, ich: kontakte.filter(k => passtWer('ich', k.besitzer, 'sales', ich)).length, [anderer(ich)]: kontakte.filter(k => passtWer(anderer(ich), k.besitzer, 'sales', ich)).length } : undefined;
   // Gesammelt übergeben geht nur mit einer Eingrenzung — nie aus Versehen die ganze Kartei.
   const eingegrenzt = !!suche.trim() || ansicht !== 'alle' || wer !== 'alle';

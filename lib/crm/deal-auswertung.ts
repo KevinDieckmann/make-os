@@ -6,7 +6,7 @@
 
 import { tagVon } from '@/lib/zeit';
 import type { Chance, ChancenStufe } from './typen';
-import { STUFEN, OFFENE_STUFEN, gesamtwert, wahrscheinlichkeit } from './pipeline';
+import { STUFEN, OFFENE_STUFEN, gesamtwert, wahrscheinlichkeit, WIN_RATE } from './pipeline';
 
 const tage = (a: string, b: string) => Math.max(0, Math.round((Date.parse(`${b.slice(0, 10)}T12:00:00Z`) - Date.parse(`${a.slice(0, 10)}T12:00:00Z`)) / 864e5));
 export const MINDESTMENGE = 5;
@@ -49,7 +49,7 @@ export function winLoss(chancen: Chance[], heute: string, tageZurueck = 180): { 
   for (const c of v) { const k = c.grund?.trim() || 'ohne Grund'; const alt = je.get(k) ?? { anzahl: 0, wert: 0 }; je.set(k, { anzahl: alt.anzahl + 1, wert: alt.wert + gesamtwert(c) }); }
   return {
     gewonnen: g.length, verloren: v.length, wertGewonnen: g.reduce((a, c) => a + gesamtwert(c), 0), wertVerloren: v.reduce((a, c) => a + gesamtwert(c), 0),
-    quote: g.length + v.length >= MINDESTMENGE ? Math.round((g.length / (g.length + v.length)) * 100) : null,
+    quote: g.length + v.length >= WIN_RATE.mindestens ? Math.round((g.length / (g.length + v.length)) * 100) : null,
     gruende: Array.from(je.entries()).map(([grund, x]) => ({ grund, ...x })).sort((a, b) => b.anzahl - a.anzahl),
   };
 }

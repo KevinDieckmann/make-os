@@ -22,6 +22,7 @@ import { gesundheit, gesamtwert, OFFENE_STUFEN } from './pipeline';
 import { besterKanal, kanalStatus, type KanalStatus } from './recht';
 import { mandatLage } from './kunden';
 import { followUpBis } from './events';
+import { taktVon } from './followup';
 import { haeltBeziehung, zustaendig, BEIDE } from './team';
 
 export type Kategorie = 'versprechen' | 'signale' | 'chancen' | 'kunden' | 'pflege' | 'neu';
@@ -101,11 +102,16 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
     // Zusagen gelten auch bei Kunden (gewonnen) — nur bei „ruht“ und „verloren“ nicht mehr.
     if (k.naechsterSchritt && k.naechsterSchritt.datum <= heute && k.stufe !== 'ruht' && k.stufe !== 'verloren') nimm(k, 'versprechen', 40 + Math.min(20, tage(k.naechsterSchritt.datum, heute)), `Zugesagt: ${k.naechsterSchritt.text}`);
   }
-  for (const t of crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm)) {
+  for (const t of crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm && !t.nachfassenVerzichtet)) {
     const ev = crm.events.find(e => e.id === t.eventId);
     if (!ev || ev.datum > heute) continue;
     const bis = followUpBis(ev);
     nimm(nachId.get(t.kontaktId), 'versprechen', bis >= heute ? 55 : 35, bis >= heute ? `Nachfassen nach „${ev.titel}“ bis ${bis}` : `Nachfassen nach „${ev.titel}“ überfällig`, { bezug: ev.id });
+  }
+  // 1b Echte Follow-ups (27.09.): die Follow-up-Ebene führt — was dort fällig ist, liegt auch hier oben (Prüfbericht, Punkt 1).
+  for (const f of (crm.followups ?? []).filter(f => f.status === 'offen' && f.faellig <= heute && f.kontaktId)) {
+    const d = tage(f.faellig, heute);
+    nimm(nachId.get(f.kontaktId!), 'versprechen', 45 + Math.min(20, d), d > 0 ? `Follow-up „${f.text}“ seit ${d} Tagen überfällig` : `Follow-up heute: ${f.text}`, f.bezug.art === 'chance' ? { chance: crm.chancen.find(c => c.id === f.bezug.id) } : { bezug: f.bezug.id });
   }
   // 2 Signale
   for (const k of kontakte) if (unbeantwortet(k, heute)) nimm(k, 'signale', 50, (k.aktivitaeten ?? []).slice(-1)[0]?.text?.startsWith('Mail:') ? `hat geschrieben (${(k.aktivitaeten ?? []).slice(-1)[0].text!.slice(6, 70)}) — wartet auf dich` : 'hat geantwortet — wartet auf dich');
@@ -130,7 +136,8 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   // 5 Pflege
   for (const k of kontakte) {
     if (k.kreis !== 'A' && k.kreis !== 'B' && k.lebensphase !== 'multiplikator') continue;
-    const takt = k.taktTage ?? KREIS_TAKT[k.kreis ?? 'B'];
+    // Takt aus den Stammdaten (Wertelisten), wie in der Follow-up-Ebene (Prüfbericht 27.09., Punkt 8).
+    const takt = taktVon(k, crm.wertelisten) ?? KREIS_TAKT[k.kreis ?? 'B'];
     const seit = k.letzterKontakt ? tage(k.letzterKontakt, heute) : null;
     if (seit === null || seit >= takt) nimm(k, 'pflege', Math.round((seit === null ? 2 : seit / takt) * 10 * (KREIS_GEWICHT[k.kreis ?? 'B'])), seit === null ? `Kreis ${k.kreis ?? '–'}: noch kein Kontakt vermerkt` : `Kreis ${k.kreis ?? '–'}: ${seit} Tage still (Takt ${takt})`);
   }

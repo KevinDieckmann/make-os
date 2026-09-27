@@ -81,6 +81,7 @@ function TeamZeile({ team }: { team: TeamTag[] }) {
 
 export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string) => string; zuKontakt: (id: string) => void }) {
   const [d, setD] = useState<HeuteAntwort | null>(null);
+  const [fehler, setFehler] = useState<string | null>(null);
   const [fokus, setFokus] = useState<{ id: string; start: string; bis: number; ziel: { gespraeche: number; termine: number }; index: number; ergebnisse: Record<string, string>; kartenStart: number } | null>(null);
   const [ende, setEnde] = useState(false);
   const [gelernt, setGelernt] = useState('');
@@ -97,8 +98,9 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
     try {
       const x = await fetch(`/api/crm/heute?n=12${fuer ? `&fuer=${encodeURIComponent(fuer)}` : ''}`, { cache: 'no-store' }).then(r => r.json());
       // Nur die jüngste Antwort zählt — sonst stünde nach dem Umschalten kurz die falsche Liste da.
-      if (nr === zug.current && x.ok) setD(x);
-    } catch { /* bleibt beim letzten Stand */ }
+      if (nr === zug.current && x.ok) { setD(x); setFehler(null); }
+      else if (nr === zug.current && !x.ok) setFehler(x.fehler ?? 'Power Hour nicht geladen.');
+    } catch { setFehler(f => f ?? 'Power Hour nicht erreichbar.'); /* mit Stand: bleibt beim letzten */ }
   }, [fuer]);
   // Neu laden, wenn sich der Bestand ändert (Übergabe, Abgleich alle 20 s, die andere Person arbeitet) — nie mitten in der Power Hour.
   const ruhig = !fokus;
@@ -115,7 +117,7 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
     return n;
   }, [d]);
 
-  if (!d) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
+  if (!d) return <Karte i={0}>{fehler ? <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{fehler} <Knopf leise onClick={() => void laden()}>Noch einmal</Knopf></div> : <Leer>Lädt …</Leer>}</Karte>;
   const karten = fokus ? d.karten.filter((_, i) => i >= fokus.index).slice(0, 1) : d.karten;
   const gezaehlt = fokus ? Object.values(fokus.ergebnisse) : [];
   const zaehl = (x: string) => gezaehlt.filter(e => e === x).length;
