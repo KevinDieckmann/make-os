@@ -115,3 +115,14 @@ describe('Segment nach Temperatur', () => {
     expect(imSegment(person({ eignung: 'ja', email: 'a@example.invalid' }), { temperatur: ['kalt'] }, ctx)).toBe(false);
   });
 });
+
+describe('Produkt-Säuberung reicht die Planungsfelder durch (27.09.)', () => {
+  it('basis, laufzeitMonate und aufwand überleben das Speichern', async () => {
+    const { saeubern } = await import('@/lib/crm/speicher');
+    const roh = { id: 'l-test', name: 'Test-Leistung', typ: 'retainer', stufe: 'kern', preis: { betrag: 100, einheit: 'Monat netto', basis: 'monat' }, laufzeitMonate: 12, aufwand: { anteil: 0.4, stunden: 8 }, lieferumfang: [], gesellschaft: 'ug', status: 'aktiv' };
+    const l = saeubern('leistungen', roh, '2026-09-27T12:00:00Z', 'kevin') as { preis: { basis?: string }; laufzeitMonate?: number; aufwand?: { anteil?: number; stunden?: number } };
+    expect(l.preis.basis).toBe('monat');
+    expect(l.laufzeitMonate).toBe(12);
+    expect(l.aufwand).toEqual({ anteil: 0.4, stunden: 8 });
+  });
+});

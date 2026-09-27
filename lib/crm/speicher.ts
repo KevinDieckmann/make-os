@@ -101,7 +101,10 @@ function leistung(o: Record<string, unknown>, jetzt: string): Leistung | null {
   return {
     id: String(o.id), name: txt(o.name, 160), typ: aus(o.typ, ['diagnose', 'workshop', 'retainer', 'sprint', 'vermittlung', 'software'] as const, 'retainer'),
     stufe: aus(o.stufe, ['einstieg', 'kern', 'premium'] as const, 'kern'),
-    preis: { betrag: zahl(p.betrag), ...(zahl(p.bis) ? { bis: zahl(p.bis) } : {}), einheit: txt(p.einheit, 80) || 'Monat netto' },
+    // Planung (27.09.): Basis, Laufzeit und Aufwand sind die Felder, die der Szenario-Baukasten aus dem Produkt zieht.
+    preis: { betrag: zahl(p.betrag), ...(zahl(p.bis) ? { bis: zahl(p.bis) } : {}), einheit: txt(p.einheit, 80) || 'Monat netto', ...(['monat', 'jahr', 'einmalig'].includes(p.basis as string) ? { basis: p.basis as 'monat' | 'jahr' | 'einmalig' } : {}) },
+    ...(zahl(o.laufzeitMonate, 0, 600) ? { laufzeitMonate: zahl(o.laufzeitMonate, 0, 600) } : {}),
+    ...(o.aufwand && typeof o.aufwand === 'object' ? (() => { const a = o.aufwand as Record<string, unknown>; const anteil = zahl(a.anteil, 0, 1); const stunden = zahl(a.stunden, 0, 100000); return anteil || stunden ? { aufwand: { ...(anteil ? { anteil } : {}), ...(stunden ? { stunden } : {}) } } : {}; })() : {}),
     ...(opt(o.beschreibung, 1500) ? { beschreibung: opt(o.beschreibung, 1500) } : {}), lieferumfang: texte(o.lieferumfang, 20, 300),
     ...(opt(o.grenzen, 600) ? { grenzen: opt(o.grenzen, 600) } : {}), ...(opt(o.ergebnis, 600) ? { ergebnis: opt(o.ergebnis, 600) } : {}),
     gesellschaft: aus(o.gesellschaft, GES, 'offen'), status: aus(o.status, ['aktiv', 'entwurf', 'eingestellt'] as const, 'entwurf'),
