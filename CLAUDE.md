@@ -360,6 +360,10 @@ lokal, Route `/os`, Port 3001.
   (Haushalt je Person + gesamt, `merken` mit `zeitBloeckeStand()` im Schlüssel — `zeit` ist Memo-Rauschen). Laufender Fokus im
   Browser nur über `lib/zeitmessung/fokus-laufend.ts` (`fokusMerken`, `fokusFuerAufgabe`, Ereignis `make-fokus-geaendert`).
   Oberfläche `components/os/zeit/` (`ZuordnungWahl`, `ZeitJeEinheitKarte`, `FokusBloeckeKarte`); Tests `tests/zeit-einheiten.test.ts`.
+- **Umbuchen Privat ↔ Business (27.09. spät):** POST `/api/state/zeit` `{ aktion: 'umbuchen', von, space }` — nur eigene Blöcke
+  (`personStreng`, alle POST ohne Person 401; fremder Block 404, es wird nichts angelegt). `blockUmbuchen` (modell.ts) verschiebt die
+  bewussten Sekunden im selben Tag auf den neuen Schlüssel; nach Privat fallen `aufgabeId`/`einheit` weg. Zeit je Einheit zählt nur
+  Business-Blöcke — Privat-Zeit der anderen Person erscheint dort nie (Test `tests/zeit-route.test.ts`).
 
 ## Tempo (26.09.)
 - Teure Berechnungen (Indizes, Familie, Bauplan) laufen durch `merken(schluessel, ttl, rechne)` aus `lib/store/memo.ts`;

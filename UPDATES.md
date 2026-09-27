@@ -81,7 +81,8 @@ Ansage stehen, bis das nächste Update sie ablöst.
 - **Aus der Aufgabe heraus:** im Aufgaben-Detail (Liste und Board) **„▶ Fokus“** — startet den Zähler für diese Aufgabe (oder ordnet den laufenden Block ihr zu).
 - **Nachträglich:** Seite **Fokus** → Karte **„Fokus-Blöcke · Business“** (letzte 7 Tage) mit denselben Chips.
 - **Auswertung:** Seite Fokus → Karte **„Zeit je Einheit“**: Woche/Monat (blättern), Gesamt oder je Person des Haushalts, Stunden je Einheit mit Anteil und Top-Aufgaben; Widget **„Zeit & Fokus“** mit Einstellung **„nach Einheit“** bzw. Katalog-Eintrag **„Zeit je Einheit“**. Gezählt wird nur bewusste Business-Zeit; die Einheit kommt live aus der Aufgabe.
-- Altbestand bleibt gültig (Blöcke ohne Zuordnung = „ohne Einheit“). Technik: `lib/zeitmessung/einheiten.ts`, `/api/state/zeit/einheiten`, Tests `tests/zeit-einheiten.test.ts`.
+- **Privat-Blöcke ins Business umbuchen:** Karte „Fokus-Blöcke“ zeigt darunter abgesetzt die eigenen Privat-Blöcke der letzten 7 Tage mit **„ins Business“** (danach Aufgabe/Einheit zuordenbar); Rückweg **„nach Privat“** an jedem Business-Block verwirft Aufgabe und Einheit. Nur eigene Blöcke; Privat-Zeit der anderen Person taucht nirgends auf, Zeit je Einheit zählt nur Business.
+- Altbestand bleibt gültig (Blöcke ohne Zuordnung = „ohne Einheit“). Technik: `lib/zeitmessung/einheiten.ts`, `/api/state/zeit/einheiten`, Tests `tests/zeit-einheiten.test.ts`, `tests/zeit-route.test.ts`.
 
 ### Markttraktion: Typ, Kategorie und Einheit als Chip mit „+ neu“ · Rollen-Vorschläge auf einen Klick (27.09. spät, nur lokal — Kevin)
 
