@@ -99,6 +99,29 @@ Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen un
   - Tests: `crm-deal-regeln` (Server-Regeln), `crm-fundament` angepasst (Upsert neuer Deals ist jetzt ein Fehler). Stand: 100 Dateien · 877 Tests grün, tsc und Lint sauber.
   - **Offen (Kevin entscheidet):** Farbe des Reiters „Firmen“ (heute neutral wie Kontakte, obwohl die Leads darin liegen); ob „Meins/Malin“-Filter auch im Board sichtbar sein soll.
 
+### Finanzplanung jetzt (27.09., nur lokal)
+
+Kevin: „Unsere privaten Finanzen und die Firmenfinanzen in einem Szenario planen. Die Zahlen sind echt. Als ‚Finanzplanung jetzt‘ links unter die Agenten,
+die ganze Systematik, in unserem Design, sofort funktional. Malin sieht alles.“ Grundlage ist Kevins Einbaupaket „Modul Finanzen v3“ (Konzept, Rechenkern,
+Mock-up als Funktionsvorlage, Startbestand mit echten Zahlen — der kommt per Upload, nie ins Repo). Plan und Stand: `FINANZPLANUNG_JETZT.md`.
+
+- **Neuer Bereich** `/os/finanzplan`, Eintrag „Finanzplanung jetzt“ unter den Agenten. Fünf Bereiche mit Unterseiten: Überblick (Lage · Wochen-Check) ·
+  Monat (Budget · Buchungen) · Planen (Privat · MAKE OS UG · Töpfe UG · KD Ventures · Selbstständigkeit · Szenarien · Ziele) · Verpflichtungen (Schulden ·
+  Zu erledigen · Kalender & Verträge) · Auswerten (Entwicklung · Geldfluss · Protokoll).
+- **Eine Rechnung:** Kevins Rechenkern v3 (`lib/finanzen/rechenkern.ts`) unverändert — lokal gegen die echte Datei geprüft, stimmt in allen fünf Szenarien
+  mit dem Mock-up überein. Steuern und Netto sind Näherungen (Hinweis, keine Steuerberatung).
+- **Zu zweit ohne „der Letzte gewinnt“:** jede Änderung ist eine kleine Operation mit Stand-Prüfung (`PATCH /api/finanzplan`); bei Konflikt 409 und der Plan
+  lädt neu. Protokoll (wer/wann/was/vorher/nachher) und Wer-Strich an jeder überschriebenen Planzelle (Kevin türkis, Malin lila). Rückgängig per Knopf und
+  Cmd+Z, Meldung nach jedem Speichern, Fehler bleiben rot stehen, Verbergen verwischt alle Beträge.
+- **Excel-Gefühl im Blatt:** Zelle anklicken oder Ziffer tippen, Enter/Tab, Pfeile, Entf setzt zurück, Rechtsklick/Langdruck: fortschreiben (ab hier ·
+  12 Monate), zurücksetzen, Notiz. Plan · IST · Abweichung, Jahr-Filter, IST-Historie Jan–Sep in Lila (Klick öffnet die Buchungen dahinter).
+- **Monat:** Balken je Topf mit Strich für heute, Prognose Monatsende, Rest je Tag, Monat abschließen mit Übertrag. Buchungen zuordnen, „merken“ = Regel
+  für den Empfänger (rückwirkend), „+ Buchung“ für Bargeld.
+- **Speicher** `finanzen-plan--<haushalt>` (nur über `haushaltVon`), `GET` mit ETag, `?nur=kennzahlen` für Jarvis/Startfläche, Import über die
+  Einrichtungskarte (Datei oder leer beginnen; ersetzen nur ausdrücklich).
+- Tests: Rechenkern (erfundene Zahlen), Operationen, Routen — 53 grün; tsc und Lint sauber. Sichtprüfung im Dev-Server steht aus.
+- **Nach dem Update einmalig:** Startbestand über die Einrichtungskarte hochladen (Kevin), Kontostände eintragen, Stichtag prüfen („auf heute setzen“).
+
 ### Tempo (27.09., nur lokal)
 
 Kevin: „Die Software läuft noch extrem langsam.“ Gemessen im Produktionsbau mit den echten Beständen (Mac; Server ×3–5): die einzelnen Antworten sind schnell

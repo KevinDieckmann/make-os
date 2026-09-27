@@ -591,6 +591,13 @@ lokal, Route `/os`, Port 3001.
 - `UMSETZUNGSPLAN.md` — Konzept; der lebende Bauplan liegt in der App
   unter `/os/bauplan`.
 
+## Finanzplanung jetzt (27.09., nur lokal)
+- **Speicher:** EIN Dokument je Haushalt `finanzen-plan--<haushalt>` (Kevin + Malin = ein Haushalt), Zugang nur über `haushaltVon`; Startbestand kommt per Upload (`POST /api/finanzplan/import`, ersetzen nur ausdrücklich) — echte Zahlen nie im Repo, nie in Tests.
+- **Routen:** `GET /api/finanzplan` (ETag, `dokument: null` ohne Startbestand) · `?nur=kennzahlen` (verdichtet, für Jarvis/Startfläche) · `PATCH { basisStand, ops }` — Operationen mit Pfaden (`/plan/<zeile>:<monat>`, Listen `id=…`, `/-` anhängen, fehlendes `neu` entfernt), Prüfung und Schreiben in EINER Sperre, 409 mit aktuellem Dokument bei fremdem Stand (`lib/finanzen/plan/{operationen,speicher}.ts`).
+- **Rechenkern:** `lib/finanzen/rechenkern.ts` ist Kevins v3 und DIE eine Wahrheit der Rechnung — nie daneben rechnen; Steuern/Netto sind Näherungen (im UI „Hinweis, keine Steuerberatung“). Monat 1 = Okt 26, Historie Jan–Sep 26.
+- **Oberfläche:** `/os/finanzplan` (`components/os/finanzplan/`, Eintrag in `EIGEN` unter Agenten): Blatt mit Excel-Bedienung, Wer-Strich aus den CRM-Teamfarben, Rückgängig lokal als Gegenoperation, Verbergen, Meldung nach jedem Speichern. Regel „merken“ (`/regeln/<empfänger>`) wirkt rückwirkend und ist nicht rückgängig-fähig.
+- **Regeln:** Änderungen nur als Operationen (nie das Dokument zurückschreiben), Protokoll und Zellen-Meta schreibt der Server, `wer` = Speichername des Kontos. Plan/Stand/Abweichungen: `FINANZPLANUNG_JETZT.md`.
+
 ## Tempo (27.09.)
 - Tempo misst man im **Prüfbau** (`make-os-pruefbau`, Port 3011, `MAKE_OS_DIST=.next-pruefbau npx next build`) oder auf dem Server — nie auf 3001 (Entwicklungsmodus übersetzt jede Seite beim ersten Aufruf).
 - Der Live-Server hat **1 vCPU / 1,9 GB**: alles, was pro Anfrage rechnet, reiht sich hintereinander. Deshalb: keine externen Aufrufe (iCloud, Modell) im Seitenpfad, keine neuen Poller unter 30 s, jede große GET-Antwort mit `etagAus`/`unveraendert`/`jsonAntwort` (`lib/http/json-antwort.ts`).
