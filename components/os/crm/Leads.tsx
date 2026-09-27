@@ -23,7 +23,8 @@ import { WEG } from '@/lib/wege';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT } from '../schlank';
 import type { LeadStatus, Kriterien, Qual, ChancenArt } from '@/lib/crm/typen';
-import { leads, LEAD_STATUS, KRITERIEN, sqlBereit, fehltBisSql, geklaert, statusLabel, type LeadZeile, type Trichter } from '@/lib/crm/leads';
+import { leads, LEAD_STATUS, KRITERIEN, sqlBereit, fehltBisSql, geklaert, statusLabel, nichtKalt, type LeadZeile, type Trichter } from '@/lib/crm/leads';
+import { temperaturFarbe, temperaturLabel } from '@/lib/crm/score';
 import { STUFEN } from '@/lib/crm/pipeline';
 import { type CrmApi, datum, euro, plusTage, holeMitStand } from './daten';
 import { Pillen, Feldzeile } from './teile';
@@ -77,7 +78,7 @@ export function SalesTrichter({ api, zuBereich }: { api: CrmApi; zuBereich: (s: 
   );
 }
 
-type Filter = 'aktiv' | LeadStatus;
+type Filter = 'aktiv' | 'kalt' | LeadStatus;
 export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id: string) => void; zuDeal: (id?: string) => void }) {
   const breit = useBreit();
   const { d, laden, fehler } = useLeads(api);
@@ -89,15 +90,16 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
   const ich = api.ich;
   const zeilen = useMemo(() => {
     const q = suche.trim().toLowerCase();
-    return (d?.leads ?? []).filter(z => (filter === 'aktiv' ? LEAD_STATUS.find(s => s.id === z.status)?.aktiv : filter === 'ruht' ? z.status === 'ruht' || z.status === 'kein_fit' : z.status === filter))
+    // Kalte Leads (Score < 25) leben im Marketing-Segment „Vernetzen“ — hier nur über den Filter „Kalt“ (Kevin 27.09.).
+    return (d?.leads ?? []).filter(z => (filter === 'kalt' ? !nichtKalt(z) : nichtKalt(z) && (filter === 'aktiv' ? LEAD_STATUS.find(s => s.id === z.status)?.aktiv : filter === 'ruht' ? z.status === 'ruht' || z.status === 'kein_fit' : z.status === filter)))
       .filter(z => passtWer(wer, z.besitzer, 'sales', ich))
       .filter(z => !q || [z.name, ...z.personen.map(p => p.name), z.branche ?? '', z.stadt ?? ''].join(' ').toLowerCase().includes(q));
   }, [d, filter, suche, wer, ich]);
   if (!d) return <Karte i={0}>{fehler ? <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{fehler} <Knopf leise onClick={() => void laden()}>Noch einmal</Knopf></div> : <Leer>Lädt die Leads …</Leer>}</Karte>;
-  const zahl = (f: Filter) => (d.leads ?? []).filter(z => (f === 'aktiv' ? LEAD_STATUS.find(s => s.id === z.status)?.aktiv : f === 'ruht' ? z.status === 'ruht' || z.status === 'kein_fit' : z.status === f)).length;
+  const zahl = (f: Filter) => (d.leads ?? []).filter(z => (f === 'kalt' ? !nichtKalt(z) : nichtKalt(z) && (f === 'aktiv' ? LEAD_STATUS.find(s => s.id === z.status)?.aktiv : f === 'ruht' ? z.status === 'ruht' || z.status === 'kein_fit' : z.status === f))).length;
   const FILTER: { id: Filter; label: string }[] = [
     { id: 'aktiv', label: `In Arbeit ${zahl('aktiv')}` }, { id: 'im_gespraech', label: `Im Gespräch ${zahl('im_gespraech')}` }, { id: 'qualifizierung', label: `Qualifizierung ${zahl('qualifizierung')}` },
-    { id: 'kontaktiert', label: `Kontaktiert ${zahl('kontaktiert')}` }, { id: 'sql', label: `SQL ${zahl('sql')}` }, { id: 'neu', label: `Neu ${zahl('neu')}` }, { id: 'kunde', label: `Kunde ${zahl('kunde')}` }, { id: 'ruht', label: `Ruht · kein Fit ${zahl('ruht')}` },
+    { id: 'kontaktiert', label: `Kontaktiert ${zahl('kontaktiert')}` }, { id: 'sql', label: `SQL ${zahl('sql')}` }, { id: 'neu', label: `Neu ${zahl('neu')}` }, { id: 'kunde', label: `Kunde ${zahl('kunde')}` }, { id: 'kalt', label: `Kalt ${zahl('kalt')}` }, { id: 'ruht', label: `Ruht · kein Fit ${zahl('ruht')}` },
   ];
   const aktiv = wahl ? d.leads.find(z => z.id === wahl) ?? null : breit ? zeilen[0] ?? null : null;
   // Gewählt über die Adresse, aber im aktuellen Filter nicht sichtbar? Dann oben zeigen.
@@ -109,7 +111,7 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
       <div style={{ fontSize: 12.5, color: C.inkLeise, marginBottom: 10, lineHeight: 1.5 }}>Qualifizieren, bis es ein SQL ist: Schmerz und Entscheider geklärt, dazu Budget oder Zeitpunkt. Dann wird es ein Deal in der Pipeline.</div>
       <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Firma, Person, Branche, Ort …" aria-label="Leads suchen" style={{ ...feld, fontSize: TYP.bedien, padding: '9px 13px', marginBottom: 10 }} />
       <div style={{ overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 8 }}><Pillen einzeilig liste={FILTER} aktiv={filter} onWahl={f => { setFilter(f); setWahl(null); }} farbe={LEUCHT.business} /></div>
-      {!zeilen.length && <Leer>{filter === 'aktiv' ? 'Gerade nichts in Arbeit. Neue Leads kommen aus der Power Hour, Events und Kampagnen.' : 'Keine Leads in diesem Status.'}</Leer>}
+      {!zeilen.length && <Leer>{filter === 'aktiv' ? 'Gerade nichts in Arbeit. Neue Leads kommen aus der Power Hour, Events und Kampagnen.' : filter === 'kalt' ? 'Keine kalten Leads — alle haben mindestens 25 Punkte.' : 'Keine Leads in diesem Status.'}</Leer>}
       <div>
         {zeigen.slice(0, 120).map(z => (
           <div key={z.id}>
@@ -123,6 +125,7 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
                 </div>
               </div>
               <KriterienPunkte k={z.kriterien} />
+              <span title={z.score.teile.map(t => `${t.label} ${t.punkte}/${t.max} — ${t.grund}`).join('\n')}><Chip farbe={temperaturFarbe(z.score.temperatur)}>{z.score.punkte} · {temperaturLabel(z.score.temperatur)}</Chip></span>
               <Chip farbe={STATUS_FARBE[z.status]}>{statusLabel(z.status)}</Chip>
             </div>
             {!breit && aktiv?.id === z.id && <div style={{ padding: '10px 0 18px' }}><Qualifizierung z={z} api={api} laden={laden} zuKontakt={zuKontakt} zuDeal={zuDeal} /></div>}

@@ -39,6 +39,7 @@ import { Leads, SalesTrichter } from './Leads';
 import { HeadPanel } from './HeadPanel';
 import { Scoreboard } from './Scoreboard';
 import { Kampagnen } from './Kampagnen';
+import { Qualifizierung, KanalLeistungLaden } from './Qualifizierung';
 import { useZurueck, nachOben } from '../Verlauf';
 import { KontaktAkte } from './Akte';
 import { IndexStreifen, STREIFEN } from '../business/IndexStreifen';
@@ -51,6 +52,7 @@ const LINKS: { id: Bereich; label: string; farbe?: string }[] = [
   { id: 'deals', label: 'Deals' }, { id: 'followup', label: 'Follow-up' },
 ];
 const RECHTS: { id: Bereich; label: string; farbe?: string }[] = [
+  { id: 'qualifizierung', label: 'Qualifizierung' },
   { id: 'sales', label: 'Sales', farbe: WELT_FARBE.sales }, { id: 'marketing', label: 'Marketing', farbe: WELT_FARBE.marketing }, { id: 'event', label: 'Events', farbe: WELT_FARBE.event },
   { id: 'stammdaten', label: 'Stammdaten' },
 ];
@@ -64,6 +66,7 @@ const UNTER: Record<Bereich, string> = {
   firmen: 'Ein Unternehmen, alle Beziehungen — hier wird qualifiziert, bis es ein SQL ist.',
   deals: 'Ab SQL im Closing: jede Stufe endet mit einem Ereignis auf Kundenseite.',
   followup: 'Was heute dran ist — Zusagen, Wiedervorlagen, Kadenz. Nichts fällt runter.',
+  qualifizierung: 'Lead für Lead: Kernfragen, Schmerz im Klartext, Lead-Score live — bis es ein SQL ist.',
   sales: 'Vertrieb als System: der Head of Sales, die Power Hour, Kampagnen und die Auswertung.',
   marketing: 'Ansprechbar sein, nicht laut.',
   event: 'Erfolgreich ist ein Event, wenn danach die richtigen Gespräche stattfinden.',
@@ -167,12 +170,14 @@ export function MarkttraktionSeite() {
           {followupAnsicht !== 'powerhour' && <FollowUp api={api} ansicht={followupAnsicht} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} zuAkte={zuAkte} />}
         </>
       )}
+      {bereich === 'qualifizierung' && <Qualifizierung api={api} zuKontakt={zuKontakt} zuFirma={zuFirma} zuLeads={id => gehe('firmen', 'leads', id)} />}
       {bereich === 'sales' && (
         <>
           <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={SALES} aktiv={salesAnsicht} onWahl={a => gehe('sales', a === 'head' ? undefined : a)} /></div>
           {salesAnsicht === 'head' && (<><HeadPanel head="sales" standardModus="deal_review" zuKontakt={zuKontakt} i={0} nachEntscheid={() => void api.laden()} /><Scoreboard api={api} /><SalesTrichter api={api} zuBereich={zuBereich} /></>)}
           {salesAnsicht === 'powerhour' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
           {salesAnsicht === 'kampagnen' && <Kampagnen api={api} zuKontakt={zuKontakt} head="sales" />}
+          {salesAnsicht === 'auswertung' && <KanalLeistungLaden i={0} />}
           {salesAnsicht === 'auswertung' && <Pipeline api={api} ansicht="auswertung" zuKontakt={zuKontakt} zuLeads={() => gehe('firmen', 'leads')} zuAkte={zuAkte} zurueck={() => gehe('sales')} />}
         </>
       )}

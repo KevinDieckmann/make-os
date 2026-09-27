@@ -5,6 +5,16 @@ const STATUS: LeadStatus[] = ['neu', 'kontaktiert', 'im_gespraech', 'qualifizier
 const Q: Qual[] = ['ja', 'nein', 'unklar'];
 const txt = (v: unknown, n: number) => { const t = String(v ?? '').replace(/\u0000/g, '').trim().slice(0, n); return t || undefined; };
 
+const FRAGEN: (keyof Lead['kriterien'])[] = ['schmerz', 'entscheider', 'budget', 'zeitpunkt', 'wirkung', 'alternative'];
+/** Freitext je Kernfrage — nur bekannte Fragen, je höchstens 1000 Zeichen, leere fallen weg. */
+function antworten(v: unknown): Lead['antworten'] | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const o = v as Record<string, unknown>;
+  const out: NonNullable<Lead['antworten']> = {};
+  for (const f of FRAGEN) { const t = txt(o[f], 1000); if (t) out[f] = t; }
+  return Object.keys(out).length ? out : undefined;
+}
+
 /** Nur, was das Modell kennt — sonst undefined (dann gilt der abgeleitete Status). */
 export function leadSaeubern(v: unknown): Lead | undefined {
   if (!v || typeof v !== 'object') return undefined;
@@ -18,6 +28,7 @@ export function leadSaeubern(v: unknown): Lead | undefined {
     kriterien: { schmerz: q(k.schmerz), entscheider: q(k.entscheider), budget: q(k.budget), zeitpunkt: q(k.zeitpunkt), wirkung: q(k.wirkung), alternative: q(k.alternative) },
     ...(Q.includes(o.fit as Qual) ? { fit: o.fit as Qual } : {}),
     ...(txt(o.notiz, 2000) ? { notiz: txt(o.notiz, 2000) } : {}), ...(txt(o.grund, 300) ? { grund: txt(o.grund, 300) } : {}),
+    ...(antworten(o.antworten) ? { antworten: antworten(o.antworten) } : {}), ...(tag(o.qualifiziertAm) ? { qualifiziertAm: tag(o.qualifiziertAm) } : {}),
     ...(tag(o.sqlAm) ? { sqlAm: tag(o.sqlAm) } : {}), ...(/^[a-z0-9][a-z0-9-]{1,63}$/.test(String(o.chanceId ?? '')) ? { chanceId: String(o.chanceId) } : {}),
     ...(tag(o.geaendert) ? { geaendert: tag(o.geaendert) } : {}), ...(/^[a-z0-9-]{1,40}$/.test(String(o.geaendertVon ?? '')) ? { geaendertVon: String(o.geaendertVon) } : {}),
   };

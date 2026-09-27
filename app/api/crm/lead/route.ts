@@ -38,7 +38,7 @@ export async function GET(req: Request) {
   if (gleich) return gleich;
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const crm = await ladeCrm();
-  const z = leads(kontakte, crm);
+  const z = leads(kontakte, crm, localDay());
   return jsonAntwort(req, { ok: true, leads: z, trichter: trichter(z, crm) }, etag);
 }
 
@@ -55,7 +55,7 @@ async function leadSchreiben(id: string, mut: (alt: Lead | undefined) => Lead | 
 
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
-  let b: { aktion?: string; id?: string; felder?: Record<string, unknown>; deal?: Record<string, unknown>; trotzdem?: boolean; zweiter?: boolean; chanceId?: string };
+  let b: { aktion?: string; id?: string; felder?: Record<string, unknown>; deal?: Record<string, unknown>; trotzdem?: boolean; zweiter?: boolean; chanceId?: string; an?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const person = personAus(req);
   const jetzt = new Date().toISOString();
@@ -97,8 +97,12 @@ export async function POST(req: Request) {
     const f = b.felder ?? {};
     const lead = await leadSchreiben(id, alt => {
       const l = basis(alt);
+      // Kernfrage, Antwort oder Fit angefasst = qualifiziert — die Runde legt den Lead damit für 60 Tage weg.
+      const qualifiziert = f.kriterien !== undefined || f.antworten !== undefined || f.fit !== undefined || f.geprueft === true;
       return { ...l, ...(f.status ? { status: f.status as Lead['status'] } : {}), kriterien: { ...leereKriterien(), ...l.kriterien, ...((f.kriterien as object) ?? {}) },
+        ...(f.antworten && typeof f.antworten === 'object' ? { antworten: { ...(l.antworten ?? {}), ...(f.antworten as object) } } : {}),
         ...(f.fit !== undefined ? { fit: f.fit as Lead['fit'] } : {}), ...(f.notiz !== undefined ? { notiz: String(f.notiz) } : {}), ...(f.grund !== undefined ? { grund: String(f.grund) } : {}),
+        ...(qualifiziert ? { qualifiziertAm: jetzt.slice(0, 10) } : {}),
         geaendert: jetzt, geaendertVon: person };
     });
     return NextResponse.json({ ok: true, lead });
@@ -123,5 +127,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, chanceId: r.chance.id, text: `SQL: Deal „${r.chance.titel}“ steht unter Deals (Stufe SQL).` });
   }
 
-  return NextResponse.json({ ok: false, fehler: 'aktion: setze, sql oder mandat.' }, { status: 400 });
+  // Qualifizierungsrunde (27.09.): Leads ohne Besitzer übernimmt, wer sie qualifiziert — alle Personen des Leads, die noch niemandem gehören.
+  if (b.aktion === 'uebernehmen') {
+    const an = wer(b.an ?? person);
+    if (!an || an === BEIDE) return NextResponse.json({ ok: false, fehler: 'Übernehmen braucht eine Person (kevin oder malin).' }, { status: 400 });
+    const ids = new Set(zeile.personen.map(p => p.id));
+    let n = 0;
+    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => {
+      if (!ids.has(k.id) || (k.besitzer && k.besitzer !== BEIDE)) return k;
+      n++;
+      return { ...k, besitzer: an, geaendertAm: jetzt.slice(0, 10), aktivitaeten: [...(k.aktivitaeten ?? []), { am: jetzt, art: 'uebergabe' as const, von: person, text: `Übernommen in der Qualifizierungsrunde von ${an}` }] };
+    }) }));
+    return NextResponse.json({ ok: true, uebernommen: n, an });
+  }
+
+  return NextResponse.json({ ok: false, fehler: 'aktion: setze, sql, mandat oder uebernehmen.' }, { status: 400 });
 }

@@ -22,6 +22,7 @@ import type { CrmBestand, Chance, Firma, Kriterien, Lead, LeadStatus, Qual } fro
 import { OFFENE_STUFEN, gesamtwert } from './pipeline';
 import { haeltBeziehung } from './team';
 import { dealZuFirma } from './firmen-bezug';
+import { leadScore, kanalVon, warmPlus, type LeadScore, type KanalId } from './score';
 
 export const LEAD_STATUS: { id: LeadStatus; label: string; weiterWenn: string; aktiv: boolean }[] = [
   { id: 'neu', label: 'Neu', weiterWenn: 'Erste Ansprache über einen zulässigen Kanal.', aktiv: false },
@@ -77,6 +78,12 @@ export interface LeadZeile {
   deal?: { id: string; titel: string; stufe: string; wert: number; offen: boolean };
   letzterKontakt?: string; naechsterSchritt?: { text: string; datum: string; bei: string };
   besitzer: string; branche?: string; stadt?: string; sqlAm?: string;
+  /** Lead-Score (27.09.): Punkte, Temperatur, vier Teile — und der Herkunftskanal. */
+  score: LeadScore; kanal: KanalId;
+  /** Freitext je Kernfrage und wann zuletzt qualifiziert wurde (Qualifizierungsrunde). */
+  antworten?: Lead['antworten']; qualifiziertAm?: string;
+  /** Besitzer wurde nie gesetzt — in der Runde per Klick übernehmen. */
+  ohneBesitzer: boolean;
 }
 
 /**
@@ -84,7 +91,7 @@ export interface LeadZeile {
  * Firma einzeln. Firmen ohne Person und reine Dienstleister/Investoren fehlen
  * — sie sind kein Vertrieb.
  */
-export function leads(kontakte: Kontakt[], crm: CrmBestand): LeadZeile[] {
+export function leads(kontakte: Kontakt[], crm: CrmBestand, heute = new Date().toISOString().slice(0, 10)): LeadZeile[] {
   const offeneDeals = crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe));
   const dealVon = (ids: string[], firma?: Firma): Chance | undefined =>
     (firma?.lead?.chanceId ? crm.chancen.find(c => c.id === firma.lead!.chanceId) : undefined)
@@ -100,12 +107,16 @@ export function leads(kontakte: Kontakt[], crm: CrmBestand): LeadZeile[] {
     const letzter = personen.map(k => k.letzterKontakt).filter(Boolean).sort().pop();
     const schritt = personen.filter(k => k.naechsterSchritt).sort((a, b) => a.naechsterSchritt!.datum.localeCompare(b.naechsterSchritt!.datum))[0];
     const haupt = [...personen].sort((a, b) => (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? ''))[0];
+    const kriterien: Kriterien = { ...leereKriterien(), ...(lead?.kriterien ?? {}), ...(!lead?.kriterien && d ? d.qualifizierung : {}) };
     return {
       id, art, name, ...(firma ? { firmaId: firma.id, branche: firma.branche, stadt: firma.stadt } : {}),
       personen: personen.map(k => ({ id: k.id, name: anzeigename(k), position: k.position ?? k.jobtitel, stufe: k.stufe })),
       // Aus dem SQL wurde ein Deal: gewonnen → Kunde, verloren/geparkt → ruht (mit Verlustgrund) — ohne zweite Buchung.
       status: lead?.status === 'sql' && d && !offen ? (d.stufe === 'gewonnen' ? 'kunde' : 'ruht') : lead?.status ?? abgeleitet(personen, offen), gesetzt: !!lead?.status,
-      kriterien: { ...leereKriterien(), ...(lead?.kriterien ?? {}), ...(!lead?.kriterien && d ? d.qualifizierung : {}) },
+      kriterien,
+      score: leadScore(personen, lead, heute, kriterien), kanal: kanalVon(haupt ?? personen[0] ?? {}),
+      ...(lead?.antworten ? { antworten: lead.antworten } : {}), ...(lead?.qualifiziertAm ? { qualifiziertAm: lead.qualifiziertAm } : {}),
+      ohneBesitzer: personen.every(k => !k.besitzer),
       ...(lead?.fit ? { fit: lead.fit } : {}), ...(lead?.notiz ? { notiz: lead.notiz } : {}), ...(lead?.grund ? { grund: lead.grund } : lead?.status === 'sql' && d && !offen && d.grund ? { grund: d.grund } : {}), ...(lead?.sqlAm ? { sqlAm: lead.sqlAm } : {}),
       ...(d ? { deal: { id: d.id, titel: d.titel, stufe: d.stufe, wert: Math.round(gesamtwert(d)), offen } } : {}),
       ...(letzter ? { letzterKontakt: letzter } : {}),
@@ -163,3 +174,35 @@ export function dealAusLead(z: LeadZeile, e: { id: string; titel: string; art: C
     gesellschaft: 'offen', besitzer: e.besitzer, angelegt: e.jetzt, geaendert: e.jetzt, letzteAktivitaet: e.jetzt.slice(0, 10),
   };
 }
+
+// ── Qualifizierungsrunde (27.09.) ─────────────────────────────────────────────
+export const QUALI_WIEDERVORLAGE_TAGE = 60;
+export interface RundenFilter {
+  /** Team-Kürzel der Person, deren Leads dran sind; „ohne“ = Leads ohne Besitzer; „alle“ = jede. */
+  wer: string | 'ohne' | 'alle';
+  /** Auch kalte Leads zeigen (Standard: nur lau und wärmer). */
+  auchKalt?: boolean;
+  kanal?: KanalId;
+  heute: string;
+}
+const tageZw = (a: string, b: string) => Math.round((Date.parse(`${b.slice(0, 10)}T12:00:00Z`) - Date.parse(`${a.slice(0, 10)}T12:00:00Z`)) / 864e5);
+/** Braucht dieser Lead noch Qualifizierung? Offener Status, Kernfragen unvollständig oder länger nicht angefasst. */
+export function brauchtQualifizierung(z: Pick<LeadZeile, 'status' | 'kriterien' | 'qualifiziertAm' | 'deal'>, heute: string): boolean {
+  if (!['neu', 'kontaktiert', 'im_gespraech', 'qualifizierung'].includes(z.status)) return false;
+  if (z.deal?.offen) return false;
+  const offen = (Object.values(z.kriterien) as Qual[]).some(w => w === 'unklar');
+  if (offen) return true;
+  return !z.qualifiziertAm || tageZw(z.qualifiziertAm, heute) > QUALI_WIEDERVORLAGE_TAGE;
+}
+/** Die Leads für die Qualifizierungsrunde — eigene zuerst, warm vor kalt, dann die zuletzt angefassten. */
+export function zuQualifizieren(zeilen: LeadZeile[], f: RundenFilter): LeadZeile[] {
+  return zeilen
+    .filter(z => brauchtQualifizierung(z, f.heute))
+    .filter(z => (f.wer === 'alle' ? true : f.wer === 'ohne' ? z.ohneBesitzer : !z.ohneBesitzer && (z.besitzer === f.wer || z.besitzer === 'beide')))
+    .filter(z => f.auchKalt || z.score.temperatur !== 'kalt')
+    .filter(z => !f.kanal || z.kanal === f.kanal)
+    .sort((a, b) => b.score.punkte - a.score.punkte || (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? '') || a.name.localeCompare(b.name));
+}
+/** Leads-Liste ohne die kalten (Kevin 27.09.: kalte leben nur im Marketing-Segment „Vernetzen“, bis sie warm werden). */
+export const nichtKalt = (z: Pick<LeadZeile, 'score' | 'status' | 'deal'>) => z.score.temperatur !== 'kalt' || z.status === 'sql' || z.status === 'kunde' || !!z.deal;
+export { warmPlus };

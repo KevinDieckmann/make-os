@@ -613,3 +613,8 @@ lokal, Route `/os`, Port 3001.
 
 ## ZOE (27.09.)
 - Der Assistent heißt **ZOE** (immer groß in Texten). Code: `lib/zoe`, `app/zoe`, `/api/zoe/*`, Bestände `zoe-*`. Alte `jarvis-*`-Dateien werden beim ersten Lesen übernommen (local-db); `/jarvis` und `/api/jarvis/*` leiten um — beides nicht entfernen, solange alte Arbeiter, Boten oder Lesezeichen leben.
+
+### Lead-Score & Qualifizierungsrunde (27.09.)
+- `lib/crm/score.ts`: `leadScore(personen, lead, heute)` → Punkte 0–100, Temperatur kalt/lau/warm/heiß, vier Teile mit Grund; `kanalVon(k)`, `kanalLeistung(zeilen)`. Nie speichern, immer ableiten — wie die Phase.
+- `LeadZeile` (`lib/crm/leads.ts`) trägt `score`, `kanal`, `antworten`, `qualifiziertAm`, `ohneBesitzer`; `zuQualifizieren(zeilen, filter)` ist die Runden-Logik, `nichtKalt` filtert die Leads-Liste.
+- Reiter `qualifizierung` (`components/os/crm/Qualifizierung.tsx`), Schreibwege über `/api/crm/lead` (`setze` mit `antworten`/`geprueft`, neu `uebernehmen`). Kalte Leads gehören ins Segment `seg-vernetzen` (Kriterium `temperatur`).

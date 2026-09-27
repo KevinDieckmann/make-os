@@ -7,6 +7,7 @@
 // enthält Mail-Adressen nur, wo die Mail-Ampel grün ist. Drei Vorlagen
 // werden erst auf Klick angelegt.
 
+import { TEMPERATUR } from '@/lib/crm/score';
 import { localDay } from '@/lib/zeit';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -137,6 +138,7 @@ function SegmentFormular({ e, setE, a, speichern, gespeichert, csv, zuKontakt, l
         <Feldzeile label="Prio"><Mehrfach liste={PRIOS} aktiv={kr.prio ?? []} onWahl={l => setK({ prio: l })} /></Feldzeile>
         <Feldzeile label="Firmen-Rolle"><Mehrfach liste={FIRMA_ROLLEN} aktiv={kr.firmaRolle ?? []} onWahl={l => setK({ firmaRolle: l })} /></Feldzeile>
         <Feldzeile label="Herkunft"><Mehrfach liste={HERKUENFTE} aktiv={kr.herkunft ?? []} onWahl={l => setK({ herkunft: l })} /></Feldzeile>
+        <Feldzeile label="Temperatur"><Mehrfach liste={TEMPERATUR.map(t => ({ id: t.id, label: t.label }))} aktiv={kr.temperatur ?? []} onWahl={l => setK({ temperatur: l.length ? l : undefined })} /></Feldzeile>
         <Feldzeile label="Branche">{text('branche', 'enthält … (Firma oder Person)')}</Feldzeile>
         <Feldzeile label="Stadt">{text('stadt', 'enthält …')}</Feldzeile>
         <Feldzeile label="Stichwort">{text('stichwort', 'in Name, Firma, Position, Aufhänger, Notiz')}</Feldzeile>

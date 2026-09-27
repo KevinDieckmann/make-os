@@ -1,7 +1,7 @@
 // ─── Markttraktion — Adressen (rein, getestet) ──────────────────────────────
 // /os/markttraktion?s=<Bereich>&a=<Ansicht>&k=<Person, Firma, Deal, Event>
 //   s (Reiter, Kevins Reihenfolge 27.09.): ueberblick (Start) · kontakte · firmen ·
-//      deals · followup · marketing · event · stammdaten
+//      deals · followup · qualifizierung (Runde, 27.09.) · sales · marketing · event · stammdaten
 //   a: kontakte   → die gespeicherte Ansicht, eine Runde (runde-…) oder akte (Kontaktakte zu k)
 //      firmen     → (leer) Kartei · leads (Ebene 1: qualifizieren → SQL)
 //      deals      → board (Start) · liste · akte (Deal-Akte zu k) · kunden · auswertung
@@ -13,7 +13,7 @@
 // (s=sales&a=heute|leads|pipeline|kunden|kampagnen) auf die neuen Reiter — so
 // funktionieren alle Links aus Suche, Befunden, ZOE und Telegram weiter.
 
-export type Bereich = 'ueberblick' | 'kontakte' | 'firmen' | 'deals' | 'followup' | 'sales' | 'marketing' | 'event' | 'stammdaten';
+export type Bereich = 'ueberblick' | 'kontakte' | 'firmen' | 'deals' | 'followup' | 'qualifizierung' | 'sales' | 'marketing' | 'event' | 'stammdaten';
 /** Der Reiter „Sales“ rechts (Kevin 27.09.): Head of Sales · Power Hour · Kampagnen · Auswertung. */
 export type SalesReiterAnsicht = 'head' | 'powerhour' | 'kampagnen' | 'auswertung';
 export const SALES_REITER_ANSICHTEN: SalesReiterAnsicht[] = ['head', 'powerhour', 'kampagnen', 'auswertung'];
@@ -21,7 +21,7 @@ export type DealsAnsicht = 'board' | 'liste' | 'akte' | 'kunden' | 'auswertung';
 export type FollowupAnsicht = 'faellig' | 'woche' | 'powerhour' | 'kadenz';
 /** Der alte Sales-Reiter (bis 26.09.) — nur noch zum Übersetzen alter Adressen. */
 export type SalesAnsicht = 'heute' | 'leads' | 'pipeline' | 'kunden' | 'kampagnen';
-export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'sales', 'marketing', 'event', 'stammdaten'];
+export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'qualifizierung', 'sales', 'marketing', 'event', 'stammdaten'];
 export const DEALS_ANSICHTEN: DealsAnsicht[] = ['board', 'liste', 'akte', 'kunden', 'auswertung'];
 export const FOLLOWUP_ANSICHTEN: FollowupAnsicht[] = ['faellig', 'woche', 'powerhour', 'kadenz'];
 export const SALES_ANSICHTEN: SalesAnsicht[] = ['heute', 'leads', 'pipeline', 'kunden', 'kampagnen'];

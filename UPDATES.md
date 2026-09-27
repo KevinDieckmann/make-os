@@ -4,6 +4,15 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Lead-Score und Qualifizierungsrunde (27.09.2026)
+
+- **Lead-Score (0–100)** an jedem Lead, in vier sichtbaren Teilen: Fit 30 · Wärme 30 · Qualifizierung 30 · Erreichbarkeit 10. Daraus die Temperatur kalt (< 25) · lau · warm (≥ 50) · heiß (≥ 75). Nie gespeichert, immer abgeleitet — jede Teilzahl hat einen Grund im Klartext (`lib/crm/score.ts`).
+- **Reiter „Qualifizierung“** rechts vor Sales: Lead für Lead die sechs Kernfragen (ja/unklar/nein) **plus Freitext je Frage** (was genau der Schmerz ist, wer entscheidet …), Fit, Notiz, Score live. „Geprüft → nächster“ legt den Lead 60 Tage weg, „Später“ überspringt, „Kein Fit“/„Ruht“ mit Grund, „Akte öffnen“, bei SQL-Reife „SQL → Deal anlegen“. Malin sieht ihre Leads zuerst, kann Kevins, „Ohne Besitzer“ und „Alle“ umschalten; **Leads ohne Besitzer übernimmt, wer sie qualifiziert** (Knopf „Übernehmen“). Pfeiltasten ←/→ blättern.
+- **Kalte Leads** (Score < 25) stehen nicht mehr in Firmen › Leads (dort nur über den Filter „Kalt“), sondern im Marketing-Segment „Vernetzen · kalte Leads“ (neues Segment-Kriterium „Temperatur“) und in der Vernetzen-Runde — erst vernetzen, dann qualifizieren.
+- **Herkunftskanal** je Lead (Empfehlung, Event, Content, Outreach, Inbound, Kampagne, Netzwerk, Bestand) aus der gepflegten Herkunft oder der Quelle der Liste; **Kanal-Leistung** (Leads, warm+, SQL je Kanal) in der Runde, unter Sales › Auswertung und in den Datenblöcken von Head of Sales und Head of Marketing.
+- Score-Chip in Firmen › Leads (mit Erklärung beim Überfahren) und im Kopf der Kontaktakte.
+- Plan und offene Punkte: `QUALIFIZIERUNG_PLAN.md`.
+
 ## Zwei Stände
 
 | Stand | Git | Wo | Wer ändert |

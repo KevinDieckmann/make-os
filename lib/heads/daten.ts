@@ -14,6 +14,7 @@ import { mix, checklisteStand, zielHinweis, budgetSumme, gaesteVorschlag } from 
 import type { HeadId } from './prompt';
 import { PLAYBOOKS, kundenprofil, aehnlicheFirmen, zielgruppe, kampagnenZahlen } from '@/lib/crm/kampagnen';
 import { leads as leadZeilen, fehltBisSql, sqlBereit, geklaert } from '@/lib/crm/leads';
+import { kanalLeistung } from '@/lib/crm/score';
 import { einstellungAus, marketingKennzahlen, wirkungZahlen, newsletterEmpfaenger, abmeldequote, marketingTrichter } from '@/lib/crm/marketing';
 import { anfragenListe } from '@/lib/crm/anfragen';
 import { kontextAus, segmentAuswerten } from '@/lib/crm/segmente';
@@ -105,11 +106,13 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
       })),
       mandate: crm.mandate.filter(m => m.status !== 'beendet').map(m => ({ id: m.id, kunde: m.kunde, titel: kurz(m.titel, 120), status: m.status, honorar: m.honorar, lage: mandatLage(m, heute), offene_punkte: m.offen.slice(0, 5).map(o => kurz(o, 200)), vertrag: m.vertragUnterschrieben, ansprechpartner: m.kontaktIds.map(id => nachId.get(id)).filter((k): k is Kontakt => !!k).slice(0, 2).map(p) })),
       mrr: mrr(crm.mandate), konzentration: konzentration(crm.mandate), gewinnquote: winRate(crm.chancen, heute),
+      // Lead-Score (27.09.): welcher Kanal warme Leads und SQLs bringt.
+      kanal_leistung: kanalLeistung(leadZeilen(aktiv, crm, heute)),
       verlustgruende: Object.entries(verloren.reduce((x, c) => ({ ...x, [c.grund!]: (x[c.grund!] ?? 0) + 1 }), {} as Record<string, number>)),
       // Ebene 1: Leads in Arbeit mit ihren Kernfragen — die Personen für Vorschläge stehen unter „hauptkontakt“.
       leads_in_arbeit: leadZeilen(aktiv, crm).filter(z => ['kontaktiert', 'im_gespraech', 'qualifizierung'].includes(z.status) || (sqlBereit(z.kriterien) && !z.deal?.offen && z.status !== 'kunde')).slice(0, 25).map(z => {
         const haupt = z.personen.map(x => nachId.get(x.id)).filter((k): k is Kontakt => !!k).sort((a, b) => (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? ''))[0];
-        return { lead_id: z.id, name: z.name, status: z.status, kriterien: z.kriterien, geklaert: geklaert(z.kriterien), sql_bereit: sqlBereit(z.kriterien), fehlt: fehltBisSql(z.kriterien), deal: z.deal ?? null, letzter_kontakt: z.letzterKontakt ?? null, hauptkontakt: haupt ? p(haupt) : null };
+        return { lead_id: z.id, name: z.name, status: z.status, score: z.score.punkte, temperatur: z.score.temperatur, kanal: z.kanal, antworten: z.antworten ?? null, kriterien: z.kriterien, geklaert: geklaert(z.kriterien), sql_bereit: sqlBereit(z.kriterien), fehlt: fehltBisSql(z.kriterien), deal: z.deal ?? null, letzter_kontakt: z.letzterKontakt ?? null, hauptkontakt: haupt ? p(haupt) : null };
       }),
       power_hours_4_wochen: crm.sitzungen.filter(s => s.datum >= new Date(Date.parse(heute) - 28 * 864e5).toISOString().slice(0, 10)).map(s => ({ datum: s.datum, person: s.person, versuche: s.karten.filter(k => k.ergebnis).length, gespraeche: s.karten.filter(k => k.ergebnis === 'gespraech' || k.ergebnis === 'termin').length, termine: s.karten.filter(k => k.ergebnis === 'termin').length })),
     };
@@ -119,12 +122,14 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
     const stimmen = aktiv.flatMap(k => (k.aktivitaeten ?? []).filter(x => x.notiz?.bedarf).map(x => ({ kontakt_id: k.id, am: x.am.slice(0, 10), bedarf: kurz(x.notiz!.bedarf, 240), phase: k.lebensphase }))).sort((a, b) => b.am.localeCompare(a.am)).slice(0, 20);
     const quellen: Record<string, number> = {};
     for (const c of crm.chancen) quellen[c.quelle ?? 'nicht erfasst'] = (quellen[c.quelle ?? 'nicht erfasst'] ?? 0) + 1;
+    const kanalLeistungMarketing = kanalLeistung(leadZeilen(aktiv, crm, heute));
     const vor60 = new Date(Date.parse(heute) - 60 * 864e5).toISOString().slice(0, 10);
     const einst = einstellungAus(crm);
     const saeule = (id?: string) => einst.saeulen.find(x => x.id === id)?.name ?? id;
     const ctx = kontextAus(crm, heute);
     return {
       meta,
+      kanal_leistung: kanalLeistungMarketing,
       positionierung: { text: kurz(einst.positionierung, 1500), zielgruppe: kurz(einst.icp, 1500), ton: einst.ton, saeulen: einst.saeulen.map(x => ({ name: x.name, beschreibung: kurz(x.beschreibung, 200) })) },
       kennzahlen: marketingKennzahlen(aktiv, crm, heute).map(x => ({ label: x.label, wert: x.anzeige, ampel: x.ampel, ziel: x.ziel })),
       // 27.09.: die Marketing-Strecke und die offenen Anfragen — der Head sieht, was hängt.

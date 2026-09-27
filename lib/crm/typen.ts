@@ -16,6 +16,10 @@ export interface Kriterien { schmerz: Qual; entscheider: Qual; budget: Qual; zei
 export interface Lead {
   status: LeadStatus;
   kriterien: Kriterien;
+  /** Freitext je Kernfrage (Qualifizierungsrunde 27.09.): was genau der Schmerz ist, wer entscheidet, … */
+  antworten?: Partial<Record<keyof Kriterien, string>>;
+  /** Wann zuletzt qualifiziert wurde (Runde, Kernfrage, Antwort) — steuert die Wiedervorlage in der Qualifizierungsrunde. */
+  qualifiziertAm?: string;
   /** Passt die Firma zu unserem Kundenprofil? */
   fit?: Qual;
   notiz?: string;
@@ -33,6 +37,8 @@ export type Quelle = 'empfehlung' | 'event' | 'content' | 'outreach' | 'bestand'
 /** Rolle einer Person im Deal (27.09., Deal-Ebene): wer entscheidet, wer wirbt für uns, wer nutzt, wer bremst. */
 export type DealRolle = 'entscheider' | 'fuersprecher' | 'nutzer' | 'blocker';
 export type Qual = 'ja' | 'nein' | 'unklar';
+/** Lead-Temperatur aus dem Score (lib/crm/score.ts): kalt < 25 · lau < 50 · warm < 75 · heiß. */
+export type Temperatur = 'kalt' | 'lau' | 'warm' | 'heiss';
 export type Gesellschaft = 'kdv' | 'kdc' | 'ug' | 'offen';
 
 export interface Chance {
@@ -127,7 +133,15 @@ export interface Leistung {
   typ: LeistungTyp;
   /** Accelerant Curve: Einstieg → Kern → Premium. */
   stufe: 'einstieg' | 'kern' | 'premium';
-  preis: { betrag: number; bis?: number; einheit: string };
+  /**
+   * Preis: `einheit` bleibt Freitext („Monat netto“); `basis` ist die strukturierte Form für die
+   * Finanzplanung (27.09.) — fehlt sie, leitet lib/finanzen/produkte.ts sie aus der Einheit ab.
+   */
+  preis: { betrag: number; bis?: number; einheit: string; basis?: 'monat' | 'jahr' | 'einmalig' };
+  /** Typische Laufzeit in Monaten (Planung: Umsatzbaustein läuft so lange) — 27.09. */
+  laufzeitMonate?: number;
+  /** Kosten-/Aufwandsanteil am Preis (0–1) für die Marge; optional Stunden je Einheit — 27.09. */
+  aufwand?: { anteil?: number; stunden?: number };
   beschreibung?: string;
   lieferumfang: string[];
   grenzen?: string;
@@ -243,6 +257,8 @@ export interface SegmentKriterien {
   /** Nur, wer über diesen Kanal zulässig erreichbar ist (Ampel grün, bei 'persoenlich' alle). */
   kanal?: 'mail' | 'telefon' | 'linkedin' | 'newsletter' | 'einladung';
   mitChance?: boolean; ohneKontaktSeitTagen?: number;
+  /** Lead-Temperatur (27.09.): z. B. nur kalte Leads zum Vernetzen. */
+  temperatur?: Temperatur[];
 }
 export interface Segment { id: string; name: string; beschreibung?: string; kriterien: SegmentKriterien; geaendert: string; geaendertVon?: string }
 export type BeitragKanal = 'linkedin' | 'newsletter' | 'blog' | 'podcast' | 'vortrag' | 'sonstig';

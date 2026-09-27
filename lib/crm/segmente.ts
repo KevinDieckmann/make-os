@@ -4,6 +4,7 @@
 // Kanal-Kriterium zählen nur die, die über diesen Kanal zulässig erreichbar
 // sind (Ampel grün); ohne Kanal zeigt die Auswertung die Aufteilung.
 
+import { leadScore } from './score';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, Firma, SegmentKriterien } from './typen';
 import { kanalStatus } from './recht';
@@ -36,6 +37,7 @@ export function imSegment(k: Kontakt, kr: SegmentKriterien, ctx: SegmentKontext)
   if (kr.stichwort && ![k.vorname, k.nachname, k.firma, k.position, k.aufhaenger, k.notiz, k.kategorie].some(x => enthaelt(x, kr.stichwort))) return false;
   if (kr.mitChance !== undefined && ctx.mitChance.has(k.id) !== kr.mitChance) return false;
   if (kr.ohneKontaktSeitTagen && k.letzterKontakt && tage(k.letzterKontakt, ctx.heute) < kr.ohneKontaktSeitTagen) return false;
+  if (kr.temperatur?.length && !kr.temperatur.includes(leadScore([k], f?.lead ?? k.lead, ctx.heute).temperatur)) return false;
   if (kr.kanal) {
     const st = kanalStatus(k, kr.kanal, { hatMandat: ctx.mitMandat.has(k.id), hatChance: ctx.mitChance.has(k.id) });
     if (st.farbe !== 'gruen') return false;
