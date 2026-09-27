@@ -16,10 +16,13 @@
 //   /fokus/schritte/id=st1     Element entfernen (neu fehlt)
 //   /regeln/rewe               Regel merken → wirkt rückwirkend auf alle Buchungen
 //                              dieses Empfängers (lerneRegel im Rechenkern)
+//   /planszenarien/id=ps1/bausteine/id=b1/preis   Szenario-Baukasten (27.09.)
+//   /arbeitsplan               Kennung des Planszenarios, das als Arbeitsplan gilt (oder null)
 // Nicht änderbar: version, stand, monate, historie, meta, protokoll.
 
 import type { Aenderung, FinanzDaten, Szenario } from '@/lib/finanzen/rechenkern';
 import { lerneRegel } from '@/lib/finanzen/rechenkern';
+import { pruefePlanszenarien } from '@/lib/finanzen/szenarien';
 import { KAL, istUnterseite } from './hilfen';
 
 export interface Operation {
@@ -37,7 +40,7 @@ const MAX_TEXT = 4000;
 const MAX_WERT_JSON = 40_000;
 const PROTOKOLL_MAX = 500;
 const GESPERRT = new Set(['version', 'stand', 'monate', 'historie', 'meta', 'protokoll']);
-const ERLAUBT = new Set(['aktiv', 'schulden', 'abschluesse', 'einstellungen', 'buchungen', 'regeln', 'ziele', 'check', 'notizen', 'annahmen', 'sachkosten', 'privatEinnahmen', 'privatBudget', 'privatSchulden', 'szenarien', 'selbst', 'posten', 'fokus', 'plan', 'ist']);
+const ERLAUBT = new Set(['aktiv', 'schulden', 'abschluesse', 'einstellungen', 'buchungen', 'regeln', 'ziele', 'check', 'notizen', 'annahmen', 'sachkosten', 'privatEinnahmen', 'privatBudget', 'privatSchulden', 'szenarien', 'selbst', 'posten', 'fokus', 'plan', 'ist', 'planszenarien', 'arbeitsplan']);
 const GEFAEHRLICH = new Set(['__proto__', 'constructor', 'prototype']);
 
 export class OperationUngueltig extends Error {}
@@ -165,6 +168,14 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
       if (teile.length !== 1 || typeof op.neu !== 'string' || !d.szenarien.some(s => s.id === op.neu)) throw new OperationUngueltig('Dieses Szenario gibt es nicht.');
     }
     if (teile[0] === 'szenarien' && teile.length === 2 && op.neu === undefined && d.szenarien.length <= 1) throw new OperationUngueltig('Das letzte Szenario bleibt.');
+    if (teile[0] === 'arbeitsplan') {
+      if (teile.length !== 1) throw new OperationUngueltig('Arbeitsplan ist eine Kennung.');
+      if (op.neu !== undefined && op.neu !== null && (typeof op.neu !== 'string' || !(d.planszenarien ?? []).some(s => s.id === op.neu))) throw new OperationUngueltig('Dieses Planszenario gibt es nicht.');
+    }
+    if (teile[0] === 'planszenarien' && teile.length === 2 && teile[1] === '-') {
+      const n = op.neu;
+      if (!istObjekt(n) || typeof n.id !== 'string' || (d.planszenarien ?? []).some(s => s.id === n.id)) throw new OperationUngueltig('Ein neues Planszenario braucht eine freie Kennung.');
+    }
     const alt = lies(d, teile);
     if (alt === undefined && op.neu === undefined) continue; // nichts zu tun, nichts zu protokollieren
     setze(d as unknown as Beliebig, teile, op.neu);
@@ -178,6 +189,9 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
   // Ein gelöschtes Szenario darf nicht aktiv bleiben.
   if (!d.szenarien.length) throw new OperationUngueltig('Ohne Szenario keine Planung.');
   if (!d.szenarien.some(s => s.id === d.aktiv)) d.aktiv = d.szenarien[0].id;
+  // Ein gelöschtes Planszenario darf nicht Arbeitsplan bleiben; ein gelöschter Treiber zieht seine Planszenarien auf den aktiven.
+  if (d.arbeitsplan && !(d.planszenarien ?? []).some(s => s.id === d.arbeitsplan)) d.arbeitsplan = null;
+  for (const ps of d.planszenarien ?? []) if (!d.szenarien.some(s => s.id === ps.basis)) ps.basis = d.aktiv;
   d.protokoll = [...protokoll.slice().reverse(), ...(Array.isArray(d.protokoll) ? d.protokoll : [])].slice(0, PROTOKOLL_MAX);
   return { dokument: d, protokoll, meta, nachladen };
 }
@@ -234,13 +248,16 @@ export function pruefeDokument(roh: unknown): Pruefung {
   const heute = typeof e.heute === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.heute) ? e.heute : new Date().toISOString().slice(0, 10);
   const szenarien = roh.szenarien as Szenario[];
   const aktiv = typeof roh.aktiv === 'string' && szenarien.some(s => s.id === roh.aktiv) ? roh.aktiv : szenarien[0].id;
+  // Szenario-Baukasten (27.09.): ältere Dokumente haben keinen — dann leer, Arbeitsplan null.
+  const planszenarien = pruefePlanszenarien(roh.planszenarien, szenarien.map(s => s.id));
+  const arbeitsplan = typeof roh.arbeitsplan === 'string' && planszenarien.some(s => s.id === roh.arbeitsplan) ? roh.arbeitsplan : null;
   const s = objekt(roh.selbst);
   const c = objekt(roh.check);
   const f = objekt(roh.fokus);
   const dokument: FinanzDaten = {
     version: 3,
     stand: typeof roh.stand === 'string' && roh.stand ? roh.stand : heute,
-    monate, aktiv,
+    monate, aktiv, planszenarien, arbeitsplan,
     schulden: liste(roh.schulden),
     meta: objekt(roh.meta) as FinanzDaten['meta'],
     abschluesse: liste(roh.abschluesse),
@@ -281,7 +298,7 @@ export function monatsLabels(vonJahr: number, vonMonat: number, anzahl: number):
  */
 export function leeresDokument(heute: string): FinanzDaten {
   return {
-    version: 3, stand: heute, monate: monatsLabels(2026, 10, 27), aktiv: 'basis',
+    version: 3, stand: heute, monate: monatsLabels(2026, 10, 27), aktiv: 'basis', planszenarien: [], arbeitsplan: null,
     schulden: [], meta: {}, abschluesse: [], historie: monatsLabels(2026, 1, 9),
     einstellungen: { heute, reserveMonate: 1, notgroschenMonate: 3 },
     buchungen: [], regeln: {}, ziele: [], check: { punkte: CHECK_PUNKTE, eintraege: [] }, notizen: {},

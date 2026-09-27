@@ -17,7 +17,8 @@ const req = (url: string, body?: unknown, method = 'GET', person = 'kevin', extr
 
 type Mod = { GET: (r: Request) => Promise<Response>; PATCH: (r: Request) => Promise<Response> };
 type ImportMod = { POST: (r: Request) => Promise<Response> };
-let plan: Mod, imp: ImportMod, leeres: typeof import('@/lib/finanzen/plan/operationen')['leeresDokument'];
+type GetMod = { GET: (r: Request) => Promise<Response> };
+let plan: Mod, imp: ImportMod, vorschlaege: GetMod, leeres: typeof import('@/lib/finanzen/plan/operationen')['leeresDokument'];
 
 beforeAll(async () => {
   const db = await import('@/lib/store/local-db');
@@ -28,6 +29,7 @@ beforeAll(async () => {
   ], einladungen: [] });
   plan = (await import('@/app/api/finanzplan/route')) as unknown as Mod;
   imp = (await import('@/app/api/finanzplan/import/route')) as unknown as ImportMod;
+  vorschlaege = (await import('@/app/api/finanzplan/vorschlaege/route')) as unknown as GetMod;
   leeres = (await import('@/lib/finanzen/plan/operationen')).leeresDokument;
 });
 afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
@@ -122,6 +124,26 @@ describe('Finanzplan-Routen', () => {
     expect(d.dokument?.buchungen.every(b => b.z === 'p.b.a')).toBe(true);
     expect(d.dokument?.stand).toBe(e.stand);
     expect((await plan.PATCH(req('/api/finanzplan', { basisStand: e.stand, ops: [] }, 'PATCH'))).status).toBe(400);
+  });
+  it('Szenario-Baukasten über PATCH: Planszenario anlegen, Arbeitsplan setzen, Kennzahlen folgen dem Arbeitsplan; Vorschläge ohne CRM leer, ohne Haushalt 403', async () => {
+    const stand = (await lade()).d.dokument!.stand;
+    const ps = { id: 'ps-test', name: 'Zwei Retainer', basis: 'basis', bausteine: [{ id: 'b1', art: 'umsatz', einheit: 'ug', name: 'Retainer', preis: 1000, menge: 2, rhythmus: 'monatlich', start: 1, an: true }], annahmen: {}, angelegt: '2026-09-27T10:00:00.000Z' };
+    const r = await plan.PATCH(req('/api/finanzplan', { basisStand: stand, ops: [{ pfad: '/planszenarien/-', neu: ps, feld: 'Szenario angelegt' }, { pfad: '/arbeitsplan', alt: null, neu: 'ps-test', feld: 'Arbeitsplan' }] }, 'PATCH'));
+    expect(r.status).toBe(200);
+    const kz = await (await plan.GET(req('/api/finanzplan?nur=kennzahlen'))).json() as Record<string, unknown>;
+    expect(kz.arbeitsplan).toBe('Zwei Retainer'); expect(kz.arbeitsplanId).toBe('ps-test');
+    expect(typeof kz.freiJetzt).toBe('number'); expect(typeof kz.zieleImPlan).toBe('number');
+    const falsch = await plan.PATCH(req('/api/finanzplan', { basisStand: (await lade()).d.dokument!.stand, ops: [{ pfad: '/arbeitsplan', neu: 'gibtsnicht' }] }, 'PATCH'));
+    expect(falsch.status).toBe(400);
+    const v = await vorschlaege.GET(req('/api/finanzplan/vorschlaege'));
+    expect(v.status).toBe(200);
+    const vj = await v.json() as { ok: boolean; produkte: unknown[]; istBasis: unknown[]; inSzenarien: Record<string, unknown>; arbeitsplan: string | null };
+    expect(vj.ok).toBe(true); expect(vj.produkte).toEqual([]); expect(vj.istBasis).toEqual([]); expect(vj.inSzenarien).toEqual({}); expect(vj.arbeitsplan).toBe('ps-test');
+    expect((await vorschlaege.GET(req('/api/finanzplan/vorschlaege', undefined, 'GET', 'gast'))).status).toBe(403);
+    // aufräumen: Arbeitsplan zurück, damit die Kennzahlen-Prüfung darunter den Treiber sieht
+    const s2 = (await lade()).d.dokument!.stand;
+    expect((await plan.PATCH(req('/api/finanzplan', { basisStand: s2, ops: [{ pfad: '/planszenarien/id=ps-test', alt: 'Zwei Retainer' }] }, 'PATCH'))).status).toBe(200);
+    expect((await lade()).d.dokument).toMatchObject({ arbeitsplan: null, planszenarien: [] });
   });
   it('Kennzahlen: nur verdichtete Zahlen, endlich, ohne Zeilen', async () => {
     const kz = await (await plan.GET(req('/api/finanzplan?nur=kennzahlen', undefined, 'GET', 'malin'))).json() as Record<string, unknown>;

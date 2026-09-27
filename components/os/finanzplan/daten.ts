@@ -10,8 +10,9 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAbgleich } from '@/hooks/useAbgleich';
-import type { FinanzDaten, MonatPrivat, MonatUG, Szenario, IstHistorie } from '@/lib/finanzen/rechenkern';
-import { rechneUG, rechnePrivat, kennzahlen, istHistorie } from '@/lib/finanzen/rechenkern';
+import type { FinanzDaten, MonatPrivat, MonatUG, Szenario, IstHistorie, Zusatz } from '@/lib/finanzen/rechenkern';
+import { kennzahlen, istHistorie } from '@/lib/finanzen/rechenkern';
+import { rechneMit, arbeitsplanVon, auswertung, type Planszenario, type Auswertung } from '@/lib/finanzen/szenarien';
 import { wendeOperationenAn, lies, pfadTeile, OperationUngueltig, type Operation } from '@/lib/finanzen/plan/operationen';
 import type { Unterseite } from '@/lib/finanzen/plan/hilfen';
 
@@ -137,13 +138,27 @@ export function useFinanzplanDaten() {
 
 // ── Gerechnete Sicht für alle Ansichten ──────────────────────────────────────
 
-export interface Gerechnet { sz: Szenario; ug: MonatUG[]; pr: MonatPrivat[]; kz: ReturnType<typeof kennzahlen>; h: IstHistorie }
+export interface Gerechnet {
+  /** Treiber-Szenario des Rechenkerns. */
+  sz: Szenario;
+  /** Planszenario (Arbeitsplan oder ausdrücklich gewählt) — null: reiner Treiber. */
+  ps: Planszenario | null;
+  /** Dokument, wie es gerechnet wurde (Szenario-Annahmen überlagert). */
+  dd: FinanzDaten;
+  x?: Zusatz;
+  ug: MonatUG[]; pr: MonatPrivat[]; kz: ReturnType<typeof kennzahlen>; h: IstHistorie;
+  /** Lage in Zahlen: frei verfügbar, Runway, Ziele, Mindestumsatz, Steuer, Übergänge. */
+  aw: Auswertung;
+}
 
-export function rechne(d: FinanzDaten, szenario?: Szenario): Gerechnet {
-  const sz = szenario ?? d.szenarien.find(s => s.id === d.aktiv) ?? d.szenarien[0];
-  const ug = rechneUG(d, sz);
-  const pr = rechnePrivat(d, ug, sz);
-  return { sz, ug, pr, kz: kennzahlen(ug, pr), h: istHistorie(d) };
+/**
+ * Rechnen wie überall: Arbeitsplan (Bausteine + Annahmen) über dem Treiber.
+ * `treiber` erzwingt ein anderes Treiber-Szenario (Vergleich), `ps` ein anderes
+ * Planszenario (Baukasten); `ps: null` heißt ausdrücklich „reiner Treiber“.
+ */
+export function rechne(d: FinanzDaten, treiber?: Szenario, ps: Planszenario | null = arbeitsplanVon(d)): Gerechnet {
+  const g = rechneMit(d, ps, treiber);
+  return { sz: g.sz, ps: g.ps, dd: g.d, x: g.x, ug: g.ug, pr: g.pr, kz: g.kz, h: istHistorie(d), aw: auswertung(g.d, g.ug, g.pr) };
 }
 
 export interface PlanKontext extends Gerechnet {

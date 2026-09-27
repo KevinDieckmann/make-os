@@ -1,10 +1,12 @@
 'use client';
 
 // ─── Finanzplanung jetzt — der Rahmen ────────────────────────────────────────
-// Kopf: Stand, aktives Szenario (umschaltbar), wer plant (aus dem Konto —
-// kein Umschalter), Verbergen, Rückgängig. Darunter die fünf Bereiche als
-// Leiste (mit Zählern) und die Unterseiten als Pillen; Adresse trägt die
-// Unterseite (?u=…), Sprünge in die Buchungen tragen Monat und Zeile.
+// Kopf: Stand, Arbeitsplan (Szenario-Baukasten) bzw. Treiber, wer plant (aus
+// dem Konto — kein Umschalter), Verbergen, Rückgängig. Darunter die acht
+// Bereiche (Kevin 27.09.: Lage · Planen · Privat · Business · Gesamt ·
+// Buchungen & Check · Ziele & Töpfe · Protokoll) als Leiste und die
+// Unterseiten als Pillen; Adresse trägt die Unterseite (?u=…), alte Werte
+// lösen weiter auf. Sprünge tragen Monat/Zeile (Buchungen) oder sz/feld (Planen).
 // Cmd+Z macht die letzte Änderung rückgängig, solange kein Feld den Fokus hat.
 
 import { Suspense, useCallback, useEffect, useMemo } from 'react';
@@ -23,12 +25,15 @@ import { Privat, UG, Toepfe, KDV, Selbst, Szenarien, Ziele } from './Planen';
 import { Budget, Buchungen } from './Monat';
 import { Schulden, ZuErledigen, Kalender } from './Verpflichtungen';
 import { Entwicklung, Geldfluss, Protokoll } from './Auswerten';
+import { Baukasten } from './Baukasten';
+import { Gesamt } from './Gesamt';
 
 const ANSICHT: Record<Unterseite, () => JSX.Element> = {
   lage: Lage, check: Check, budget: Budget, buchungen: Buchungen,
   privat: Privat, ug: UG, toepfe: Toepfe, kdv: KDV, selbst: Selbst, szenarien: Szenarien, ziele: Ziele,
   schulden: Schulden, posten: ZuErledigen, kalender: Kalender,
   entwicklung: Entwicklung, geldfluss: Geldfluss, protokoll: Protokoll,
+  planen: Baukasten, gesamt: Gesamt,
 };
 
 export function Finanzplan() {
@@ -75,7 +80,7 @@ function FinanzplanInnen() {
   return (
     <FinanzplanKontext.Provider value={kontext}>
       <Seite titel="Finanzplanung jetzt"
-        unter={<span>Stand {datumLang(d.stand.slice(0, 10))} · Szenario <b style={{ color: C.ink }}>{g.sz.name}</b>{nettoTabellePlatzhalter(d) && <span style={{ color: LEUCHT.achtung }}> · Netto-Tabelle fehlt (Netto = Brutto)</span>}</span>}
+        unter={<span>Stand {datumLang(d.stand.slice(0, 10))} · {g.ps ? <>Arbeitsplan <b style={{ color: C.ink }}>{g.ps.name}</b> auf Treiber <b style={{ color: C.ink }}>{g.sz.name}</b></> : <>Treiber <b style={{ color: C.ink }}>{g.sz.name}</b> · noch kein Arbeitsplan</>}{nettoTabellePlatzhalter(d) && <span style={{ color: LEUCHT.achtung }}> · Netto-Tabelle fehlt (Netto = Brutto)</span>}</span>}
         rechts={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <span title={`Du planst als ${personName(person)}`}><PersonMarke wer={person} mitName /></span>
@@ -84,15 +89,13 @@ function FinanzplanInnen() {
           </div>
         }>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
-          <BereichLeiste liste={BEREICHE.map(b => ({ id: b.id, label: b.label, zahl: b.id === 'monat' ? offen : b.id === 'verpflichtungen' ? faellig : 0 }))} aktiv={bereich} onWahl={b => geh(BEREICHE.find(x => x.id === b)!.unter[0].id)} />
-          <span style={{ flex: 1 }} />
-          <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: C.inkLeise }}>Szenario
-            <Pillen liste={d.szenarien.map(s => ({ id: s.id, label: s.name }))} aktiv={d.aktiv} onWahl={id => { if (id !== d.aktiv) void aendere([{ pfad: '/aktiv', alt: d.aktiv, neu: id }], `Szenario ${d.szenarien.find(s => s.id === id)?.name ?? id} aktiv`); }} einzeilig />
-          </span>
+          <BereichLeiste liste={BEREICHE.map(b => ({ id: b.id, label: b.label, zahl: b.id === 'buchungen' ? offen + faellig : 0 }))} aktiv={bereich} onWahl={b => geh(BEREICHE.find(x => x.id === b)!.unter[0].id)} />
         </div>
-        <div style={{ marginBottom: 14 }}>
-          <Pillen liste={bereichInfo.unter} aktiv={u} onWahl={geh} />
-        </div>
+        {bereichInfo.unter.length > 1 && (
+          <div style={{ marginBottom: 14 }}>
+            <Pillen liste={bereichInfo.unter} aktiv={u} onWahl={geh} />
+          </div>
+        )}
         <Ansicht />
       </Seite>
       <Meldungen liste={meldungen} weg={weg} />

@@ -24,19 +24,25 @@ export const RECHENZEILEN: Record<string, string> = {
   'ug.unterstuetzung': 'Unterstützung', 'p.kevinNetto': 'Kevin netto', 'p.malinNetto': 'Malin netto', 'p.malinSelbst': 'Malin brutto (Selbstständigkeit)',
 };
 
-// ── Aufbau (Konzept § 3) ─────────────────────────────────────────────────────
-export type Bereich = 'ueberblick' | 'monat' | 'planen' | 'verpflichtungen' | 'auswerten';
+// ── Aufbau (Kevin 27.09. abends: acht Bereiche, die alten Unterseiten leben darunter weiter) ──
+// Lage → Planen (Szenarien bauen · Treiber & Annahmen) → Privat → Business (UG · KD Ventures · Selbstständigkeit)
+// → Gesamt (Gesamt · Entwicklung · Geldfluss) → Buchungen & Check (Buchungen · Budget · Wochen-Check · Zu erledigen ·
+// Kalender & Verträge · Schulden) → Ziele & Töpfe (Ziele · Töpfe UG) → Protokoll. Alte `?u=`-Werte lösen weiter auf.
+export type Bereich = 'lage' | 'planen' | 'privat' | 'business' | 'gesamt' | 'buchungen' | 'ziele' | 'protokoll';
 export type Unterseite =
   | 'lage' | 'check' | 'budget' | 'buchungen' | 'privat' | 'ug' | 'toepfe' | 'kdv' | 'selbst' | 'szenarien' | 'ziele'
-  | 'schulden' | 'posten' | 'kalender' | 'entwicklung' | 'geldfluss' | 'protokoll';
+  | 'schulden' | 'posten' | 'kalender' | 'entwicklung' | 'geldfluss' | 'protokoll' | 'planen' | 'gesamt';
 export const BEREICHE: { id: Bereich; label: string; unter: { id: Unterseite; label: string }[] }[] = [
-  { id: 'ueberblick', label: 'Überblick', unter: [{ id: 'lage', label: 'Lage' }, { id: 'check', label: 'Wochen-Check' }] },
-  { id: 'monat', label: 'Monat', unter: [{ id: 'budget', label: 'Budget' }, { id: 'buchungen', label: 'Buchungen' }] },
-  { id: 'planen', label: 'Planen', unter: [{ id: 'privat', label: 'Privat' }, { id: 'ug', label: 'MAKE OS UG' }, { id: 'toepfe', label: 'Töpfe UG' }, { id: 'kdv', label: 'KD Ventures' }, { id: 'selbst', label: 'Selbstständigkeit' }, { id: 'szenarien', label: 'Szenarien' }, { id: 'ziele', label: 'Ziele' }] },
-  { id: 'verpflichtungen', label: 'Verpflichtungen', unter: [{ id: 'schulden', label: 'Schulden' }, { id: 'posten', label: 'Zu erledigen' }, { id: 'kalender', label: 'Kalender & Verträge' }] },
-  { id: 'auswerten', label: 'Auswerten', unter: [{ id: 'entwicklung', label: 'Entwicklung' }, { id: 'geldfluss', label: 'Geldfluss' }, { id: 'protokoll', label: 'Protokoll' }] },
+  { id: 'lage', label: 'Lage', unter: [{ id: 'lage', label: 'Lage' }] },
+  { id: 'planen', label: 'Planen', unter: [{ id: 'planen', label: 'Szenarien bauen' }, { id: 'szenarien', label: 'Treiber & Annahmen' }] },
+  { id: 'privat', label: 'Privat', unter: [{ id: 'privat', label: 'Privat' }] },
+  { id: 'business', label: 'Business', unter: [{ id: 'ug', label: 'MAKE OS UG' }, { id: 'kdv', label: 'KD Ventures' }, { id: 'selbst', label: 'Selbstständigkeit' }] },
+  { id: 'gesamt', label: 'Gesamt', unter: [{ id: 'gesamt', label: 'Gesamt' }, { id: 'entwicklung', label: 'Entwicklung' }, { id: 'geldfluss', label: 'Geldfluss' }] },
+  { id: 'buchungen', label: 'Buchungen & Check', unter: [{ id: 'buchungen', label: 'Buchungen' }, { id: 'budget', label: 'Budget' }, { id: 'check', label: 'Wochen-Check' }, { id: 'posten', label: 'Zu erledigen' }, { id: 'kalender', label: 'Kalender & Verträge' }, { id: 'schulden', label: 'Schulden' }] },
+  { id: 'ziele', label: 'Ziele & Töpfe', unter: [{ id: 'ziele', label: 'Ziele' }, { id: 'toepfe', label: 'Töpfe UG' }] },
+  { id: 'protokoll', label: 'Protokoll', unter: [{ id: 'protokoll', label: 'Protokoll' }] },
 ];
-export const bereichVon = (u: Unterseite): Bereich => BEREICHE.find(b => b.unter.some(x => x.id === u))?.id ?? 'ueberblick';
+export const bereichVon = (u: Unterseite): Bereich => BEREICHE.find(b => b.unter.some(x => x.id === u))?.id ?? 'lage';
 export const istUnterseite = (v: unknown): v is Unterseite => BEREICHE.some(b => b.unter.some(x => x.id === v));
 
 // ── Zahlen ──────────────────────────────────────────────────────────────────

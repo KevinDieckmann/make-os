@@ -9,9 +9,15 @@
 // die Unterlagen (Angebot, Vertrag, Deck … als https-Link oder Brain-Notiz)
 // und welche Mandate und Deals darauf laufen. Gerechnet wird in
 // lib/crm/produkte.ts. Änderungen gehen als Einzelfelder raus (api.teil).
+// 27.09. (Kevin: „clean von vorne bis hinten“): Produkte sind die eine Quelle
+// der Umsatzbausteine in der Finanzplanung — je Produkt Basis (Monat · Jahr ·
+// einmalig), Laufzeit, Aufwandsanteil; was der Planung fehlt, steht dran; und
+// in welchen Szenarien das Produkt steckt (lesend über /api/finanzplan/vorschlaege).
 
 import { WEG } from '@/lib/wege';
-import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { preisBasisVon, planungFehlt, margeVon, type PreisBasis } from '@/lib/finanzen/produkte';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, feld, LEUCHT } from '../schlank';
@@ -29,6 +35,19 @@ const ART: { id: UnterlageArt; label: string }[] = [{ id: 'angebot', label: 'Ang
 const statusFarbe = (s: Leistung['status']) => (s === 'aktiv' ? LEUCHT.gut : s === 'entwurf' ? LEUCHT.achtung : C.inkLeise);
 const preisText = (l: Leistung) => (l.preis.betrag ? `${euro(l.preis.betrag)}${l.preis.bis ? `–${euro(l.preis.bis)}` : ''} ${l.preis.einheit}` : 'Preis offen');
 const klein = { fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5 } as const;
+const BASIS: { id: PreisBasis; label: string }[] = [{ id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr' }, { id: 'einmalig', label: 'einmalig' }];
+
+type InSzenarien = Record<string, { id: string; name: string; arbeitsplan: boolean; menge: number }[]>;
+/** In welchen Planszenarien der Finanzplanung die Produkte stecken — null ohne Zugang (Haushalt) oder ohne Plan. */
+function useInSzenarien(): InSzenarien | null {
+  const [v, setV] = useState<InSzenarien | null>(null);
+  useEffect(() => {
+    let weg = false;
+    fetch('/api/finanzplan/vorschlaege', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then((a: { ok?: boolean; inSzenarien?: InSzenarien } | null) => { if (!weg && a?.ok) setV(a.inSzenarien ?? {}); }).catch(() => { /* ohne Finanzplanung */ });
+    return () => { weg = true; };
+  }, []);
+  return v;
+}
 
 export function Produkte({ api }: { api: CrmApi }) {
   const [auswahl, setAuswahl] = useLinkAuswahl();
@@ -37,6 +56,7 @@ export function Produkte({ api }: { api: CrmApi }) {
   if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
   const p = portfolio(crm.stand);
   const ohnePreis = crm.stand.leistungen.filter(l => l.status !== 'eingestellt' && !l.preis.betrag).length;
+  const unvollstaendig = crm.stand.leistungen.filter(l => l.status !== 'eingestellt' && planungFehlt(l).length).length;
   const neu = () => { const id = neueId('l'); void api.setze('leistungen', { id, name: 'Neues Produkt', typ: 'retainer', stufe: 'kern', preis: { betrag: 0, einheit: 'Monat netto' }, lieferumfang: [], gesellschaft: 'offen', status: 'entwurf' }); setAuswahl(id); };
 
   return (
@@ -48,6 +68,7 @@ export function Produkte({ api }: { api: CrmApi }) {
           <Zahl wert={String(gruppen.length)} label={gruppen.length === 1 ? 'Produktlinie' : 'Produktlinien'} />
           <Zahl wert={String(ohnePreis)} label="noch ohne Preis" farbe={ohnePreis ? LEUCHT.achtung : undefined} />
           <Zahl wert={String(p.ohneProdukt)} label="laufende Mandate ohne Produkt" farbe={p.ohneProdukt ? LEUCHT.achtung : undefined} />
+          <Zahl wert={String(unvollstaendig)} label="für die Planung unvollständig" farbe={unvollstaendig ? LEUCHT.achtung : undefined} />
         </Raster>
         <div style={{ ...klein, marginTop: 10 }}>Einstieg → Kern → Premium: jedes Produkt mit klarem Umfang, Preis und Ablauf. Entwürfe ohne Preis sind noch nicht verkaufbar. {p.ohneProdukt ? `${p.ohneProdukt} laufende Mandate hängen an keinem Produkt — im Mandat unter „Produkt“ zuordnen, dann zählen sie hier mit.` : ''}</div>
       </Karte>
@@ -61,7 +82,7 @@ export function Produkte({ api }: { api: CrmApi }) {
               return (
                 <div key={l.id}>
                   <Zeile onClick={() => setAuswahl(auswahl === l.id ? null : l.id)} aktiv={auswahl === l.id} links={<Punkt farbe={statusFarbe(l.status)} />}
-                    titel={l.name} unter={[`${STUFE[l.stufe]} · ${preisText(l)}`, zahlen].filter(Boolean).join(' · ')}
+                    titel={l.name} unter={[`${STUFE[l.stufe]} · ${preisText(l)}`, zahlen, planungFehlt(l).length ? `Planung: ${planungFehlt(l).join(', ')} fehlt` : ''].filter(Boolean).join(' · ')}
                     rechts={<span style={{ display: 'flex', gap: 6 }}>{l.phasen?.length ? <Chip farbe={C.inkDim}>{l.phasen.length} Phasen</Chip> : null}<Chip farbe={statusFarbe(l.status)}>{l.status}</Chip></span>} />
                   {auswahl === l.id && <ProduktDetail l={l} api={api} />}
                 </div>
@@ -78,6 +99,10 @@ export function Produkte({ api }: { api: CrmApi }) {
 function ProduktDetail({ l, api }: { l: Leistung; api: CrmApi }) {
   const router = useRouter();
   const crm = api.crm!;
+  const inSzenarien = useInSzenarien();
+  const fehlt = planungFehlt(l);
+  const basis = preisBasisVon(l);
+  const marge = margeVon(l);
   const setze = (teil: Partial<Leistung>) => void api.teil('leistungen', l.id, teil as Record<string, unknown>);
   const z = produktZahlen(l, crm.stand);
   const mandate = crm.stand.mandate.filter(m => m.leistungId === l.id).sort((a, b) => (a.status === 'aktiv' ? 0 : 1) - (b.status === 'aktiv' ? 0 : 1) || a.kunde.localeCompare(b.kunde));
@@ -133,6 +158,32 @@ function ProduktDetail({ l, api }: { l: Leistung; api: CrmApi }) {
           <Feld typ="number" wert={l.preis.betrag ? String(l.preis.betrag) : ''} breite={110} platzhalter="€ ab" onFertig={b => setze({ preis: { ...l.preis, betrag: Number(b) || 0 } })} />
           <Feld typ="number" wert={l.preis.bis ? String(l.preis.bis) : ''} breite={110} platzhalter="€ bis" onFertig={b => setze({ preis: { ...l.preis, bis: Number(b) || undefined } })} />
           <div style={{ flex: 1, minWidth: 160 }}><Feld wert={l.preis.einheit} platzhalter="Einheit (z. B. Monat netto)" onFertig={einheit => setze({ preis: { ...l.preis, einheit } })} /></div>
+        </div>
+      </Feldzeile>
+      <Feldzeile label="Basis">
+        <div style={{ display: 'grid', gap: 4 }}>
+          <Pillen liste={BASIS} aktiv={basis} onWahl={b => setze({ preis: { ...l.preis, basis: b } })} />
+          {!l.preis.basis && basis && <div style={klein}>aus der Einheit „{l.preis.einheit}“ abgeleitet — anklicken macht es fest.</div>}
+        </div>
+      </Feldzeile>
+      <Feldzeile label="Laufzeit">
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Feld typ="number" wert={l.laufzeitMonate ? String(l.laufzeitMonate) : ''} breite={110} platzhalter="Monate" onFertig={v => setze({ laufzeitMonate: Math.max(0, Math.round(Number(v))) || undefined })} />
+          <span style={klein}>{basis === 'einmalig' ? 'bei einmalig ohne Bedeutung' : 'typische Laufzeit — so lange läuft ein Umsatzbaustein in der Planung'}</span>
+        </div>
+      </Feldzeile>
+      <Feldzeile label="Aufwand">
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Feld typ="number" wert={l.aufwand?.anteil != null ? String(Math.round(l.aufwand.anteil * 100)) : ''} breite={90} platzhalter="% vom Preis" onFertig={v => { const n = Number(v); setze({ aufwand: { ...(l.aufwand ?? {}), anteil: Number.isFinite(n) && v !== '' ? Math.max(0, Math.min(100, n)) / 100 : undefined } }); }} />
+          <Feld typ="number" wert={l.aufwand?.stunden ? String(l.aufwand.stunden) : ''} breite={90} platzhalter="Stunden" onFertig={v => setze({ aufwand: { ...(l.aufwand ?? {}), stunden: Math.max(0, Number(v)) || undefined } })} />
+          <span style={klein}>{marge ? `Marge je Einheit ${euro(marge.marge)} (${Math.round((1 - marge.anteil) * 100)} %)` : 'Kostenanteil für die Marge — optional'}</span>
+        </div>
+      </Feldzeile>
+      <Feldzeile label="Planung">
+        <div style={{ display: 'grid', gap: 4, fontSize: TYP.bedien }}>
+          {fehlt.length ? <span style={{ color: LEUCHT.achtung }}>Für die Planung fehlt: {fehlt.join(', ')}</span> : <span style={{ color: LEUCHT.gut }}>planbar — Preis, Basis, Laufzeit und Gesellschaft sind da</span>}
+          {inSzenarien && (inSzenarien[l.id]?.length ? <span style={{ color: C.inkDim }}>In Szenarien: {inSzenarien[l.id].map(s => `${s.arbeitsplan ? '★ ' : ''}${s.name} (${s.menge}×)`).join(' · ')}</span> : <span style={klein}>In keinem Szenario der Finanzplanung.</span>)}
+          <Link href="/os/finanzplan?u=planen" style={{ color: C.aktiv, fontSize: 12.5 }}>In der Finanzplanung verwenden ›</Link>
         </div>
       </Feldzeile>
       <Feldzeile label="Status"><Pillen liste={[{ id: 'aktiv', label: 'aktiv' }, { id: 'entwurf', label: 'Entwurf' }, { id: 'eingestellt', label: 'eingestellt' }]} aktiv={l.status} onWahl={status => setze({ status })} /></Feldzeile>

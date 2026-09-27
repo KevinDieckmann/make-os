@@ -13,6 +13,7 @@ import { zielStaende, zahlungskalender, istSchnitt, sollBudget } from '@/lib/fin
 import type { ZielStand } from '@/lib/finanzen/rechenkern';
 import { eur, prozent, tagKurz, datumLang, plusTage, offeneBuchungen, heuteIndex, letzterVoller, tageIm, achse, monatLabel, neueKennung, postenOffen } from '@/lib/finanzen/plan/hilfen';
 import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
+import { entscheidungen } from '@/lib/finanzen/szenarien';
 import { usePlan } from './daten';
 import { Geld, Kachel, Kacheln, Etikett, StatusPille, PersonMarke, AnteilBalken, KnopfKlein, Auswahl, ampel, personName, KUPFER, LILA, Nichts, Hinweis, Legende } from './teile';
 import { Linie } from './diagramme';
@@ -29,6 +30,36 @@ export function ZielKurz({ s, bjoernStart }: { s: ZielStand; bjoernStart: number
       <AnteilBalken anteil={Math.max(0, Math.min(1, p))} farbe={farbe} hoehe={6} />
       <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 4 }}>Ziel <Geld v={s.ziel.ziel} farbe={C.inkDim} /> € bis {s.ziel.bis.slice(5)}/{s.ziel.bis.slice(2, 4)} · {s.erreichtMonat ? `erreicht ${monatLabel(d, s.erreichtMonat)}` : 'im Planzeitraum nicht erreicht'}</div>
     </div>
+  );
+}
+
+/** Einstieg (Kevin 27.09.): drei Zahlen — frei verfügbar diesen Monat, Runway, Ziele im Plan — und „Was jetzt zu entscheiden ist“ mit Sprung. */
+function LageKopf() {
+  const { d, ug, pr, aw, ps, sz, geh } = usePlan();
+  const punkte = entscheidungen(d, { ug, pr, ps }, aw);
+  const rw = (r: number | null, h: number) => (r == null ? `> ${h} M` : r === 0 ? 'jetzt' : `${r} M`);
+  const rwFarbe = (r: number | null) => (r == null || r >= 12 ? LEUCHT.gut : r >= 6 ? LEUCHT.achtung : LEUCHT.kritisch);
+  const stufeFarbe = { kritisch: LEUCHT.kritisch, achtung: LEUCHT.achtung, info: LEUCHT.puls } as const;
+  return (
+    <>
+      <Kacheln min={230}>
+        <Kachel label="Frei verfügbar diesen Monat" punkt={aw.frei.gesamt >= 5000 ? LEUCHT.gut : aw.frei.gesamt >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={aw.frei.gesamt} /> €</>}
+          unter={<>UG frei <Geld v={aw.frei.ug} farbe={C.inkDim} /> · KDV <Geld v={aw.frei.kdv} farbe={C.inkDim} /> · Privat <Geld v={aw.frei.privat} farbe={C.inkDim} />{aw.frei.kontenFehlen ? <span style={{ color: LEUCHT.achtung }}> · {aw.frei.kontenFehlen} Konten fehlen</span> : null}</>} />
+        <Kachel label="Runway" punkt={rwFarbe(Math.min(aw.runway.ug ?? 99, aw.runway.privat ?? 99))} wert={<>UG {rw(aw.runway.ug, aw.runway.horizont)} · Privat {rw(aw.runway.privat, aw.runway.horizont)}</>} unter="Monate ab jetzt, bis frei verfügbar unter null fällt" />
+        <Kachel label="Ziele im Plan" punkt={aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut} wert={`${aw.ziele.imPlan} / ${aw.ziele.gesamt}`} unter={aw.ziele.gesamt ? `${aw.ziele.gekippt} gekippt · ${aw.ziele.knapp} knapp` : 'noch keine Ziele'} />
+      </Kacheln>
+      <Karte i={0} akzent={C.aktiv}>
+        <Ueberschrift rechts={<Knopf onClick={() => geh('planen')}>Planungsrunde öffnen ›</Knopf>}>Was jetzt zu entscheiden ist</Ueberschrift>
+        {punkte.length ? punkte.map(p => (
+          <div key={p.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)', fontSize: TYP.bedien, lineHeight: 1.45 }}>
+            <span className={p.stufe === 'kritisch' ? 'zeit-puls' : undefined} style={{ width: 9, height: 9, borderRadius: '50%', background: stufeFarbe[p.stufe], flex: '0 0 auto', marginTop: 5, boxShadow: `0 0 8px ${stufeFarbe[p.stufe]}55` }} />
+            <span style={{ flex: 1 }}>{p.text}{p.hinweis && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 2 }}>{p.hinweis}</div>}</span>
+            <KnopfKlein onClick={() => geh(p.ziel.u, p.ziel.params)}>Öffnen ›</KnopfKlein>
+          </div>
+        )) : <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: TYP.bedien }}><span style={{ width: 9, height: 9, borderRadius: '50%', background: LEUCHT.gut }} />Nichts drängt — die Zahlen tragen den Plan.</div>}
+        <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Rechnet mit {ps ? <>dem Arbeitsplan <b style={{ color: C.inkDim }}>{ps.name}</b> auf Treiber {sz.name}</> : <>dem Treiber <b style={{ color: C.inkDim }}>{sz.name}</b> ohne Bausteine</>} · Stichtag {datumLang(d.einstellungen.heute)}.</div>
+      </Karte>
+    </>
   );
 }
 
@@ -71,7 +102,8 @@ export function Lage() {
           <KnopfKlein onClick={() => void aendere([{ pfad: '/einstellungen/heute', alt: d.einstellungen.heute, neu: heuteEcht }], 'Stichtag auf heute gesetzt')}>auf heute setzen ({datumLang(heuteEcht)})</KnopfKlein>
         </div>
       )}
-      <Karte i={0}>
+      <LageKopf />
+      <Karte i={1}>
         <Raster min={260}>
           <div>
             <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Wo stehen wir heute?</div>
@@ -92,6 +124,7 @@ export function Lage() {
             <EntscheidungFeld />
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
               <KnopfKlein onClick={() => geh('check')}>Wochen-Check öffnen</KnopfKlein>
+              <KnopfKlein farbe={C.inkDim} onClick={() => geh('planen')}>Planungsrunde</KnopfKlein>
               <span style={{ fontSize: 12, color: C.inkLeise }}>{letzterCheck ? `letzter Check ${datumLang(letzterCheck.datum)}` : 'noch kein Check'}</span>
             </div>
           </div>

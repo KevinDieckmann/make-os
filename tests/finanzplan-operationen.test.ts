@@ -154,6 +154,6 @@ describe('Helfer', () => {
     d.posten.push({ id: 'p1', art: 'rechnung', einheit: 'privat', name: 'Strom', betrag: 10, status: 'offen', faellig: '2026-09-30' }, { id: 'p2', art: 'rechnung', einheit: 'privat', name: 'Später', betrag: 10, status: 'offen', faellig: '2026-12-01' }, { id: 'p3', art: 'konto', einheit: 'privat', name: 'Konto', betrag: null, status: 'eintragen', faellig: '2026-09-01' });
     expect(faelligeZahl(d)).toBe(1);
     expect(zeileName(d, 'p.b.a')).toBe('Lebensmittel'); expect(zeileName(d, 'x.offen')).toBe('Noch nicht zugeordnet'); expect(zeileName(d, 'ug.ob')).toBe('One Banking');
-    expect(bereichVon('toepfe')).toBe('planen');
+    expect(bereichVon('toepfe')).toBe('ziele'); expect(bereichVon('ug')).toBe('business'); expect(bereichVon('check')).toBe('buchungen');
   });
 });

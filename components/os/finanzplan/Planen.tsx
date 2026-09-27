@@ -223,7 +223,7 @@ const ANNAHMEN: [string, string, number][] = [['kevinBrutto', 'Kevin brutto', 0]
 const FARBEN_SZ = [KUPFER, LEUCHT.achtung, LEUCHT.kritisch, LEUCHT.puls, LILA, C.inkDim, C.ink];
 
 export function Szenarien() {
-  const { d, sz, aendere, ug: ugAktiv } = usePlan();
+  const { d, sz, ps, aendere, ug: ugAktiv } = usePlan();
   const alle = useMemo(() => d.szenarien.map(s => ({ s, ...rechne(d, s) })), [d]);
   const a = d.annahmen;
   const [name, setName] = useState<string | null>(null);
@@ -237,13 +237,13 @@ export function Szenarien() {
   return (
     <>
       <Karte i={0}>
-        <Ueberschrift>Vergleich — Klick wählt das aktive Szenario</Ueberschrift>
+        <Ueberschrift rechts={ps ? <span style={{ color: C.inkLeise, fontSize: 12 }}>gerechnet mit den Bausteinen von „{ps.name}“</span> : undefined}>Treiber im Vergleich — Klick wählt den Treiber{ps ? ' für den Arbeitsplan' : ''}</Ueberschrift>
         <Tabelle klein>
           <thead><tr><th style={TH}>Szenario</th><th style={THr}>Tiefpunkt frei</th><th style={THr}>Monate im Minus</th><th style={THr}>frei Dez 26</th><th style={THr}>frei Dez 27</th><th style={THr}>frei Dez 28</th><th style={THr}>Umsatz 2027</th><th style={THr}>OB-Anteil Jun 27</th><th style={THr}>Privat angespart Dez 27</th><th style={THr}>Gruppe Dez 28</th></tr></thead>
           <tbody>
             {alle.map(({ s: x, kz }) => (
-              <tr key={x.id} onClick={() => { if (x.id !== d.aktiv) void aendere([{ pfad: '/aktiv', alt: d.aktiv, neu: x.id }], `Szenario ${x.name} aktiv`); }} style={zeileStil(x.id === d.aktiv)}>
-                <td style={{ ...TD, fontWeight: x.id === d.aktiv ? 700 : 500, color: x.id === d.aktiv ? C.aktiv : C.ink }}>{x.name}</td>
+              <tr key={x.id} onClick={() => { if (x.id === sz.id) return; void aendere([{ pfad: '/aktiv', alt: d.aktiv, neu: x.id }, ...(ps ? [{ pfad: `/planszenarien/id=${ps.id}/basis`, alt: ps.basis, neu: x.id }] : [])], `Treiber ${x.name} aktiv`); }} style={zeileStil(x.id === sz.id)}>
+                <td style={{ ...TD, fontWeight: x.id === sz.id ? 700 : 500, color: x.id === sz.id ? C.aktiv : C.ink }}>{x.name}</td>
                 <td style={TDr}><Geld v={kz.minFrei} /> <span style={{ color: C.inkLeise, fontSize: 11.5 }}>{monatLabel(d, kz.minMonat)}</span></td>
                 <td style={{ ...TDr, color: kz.monateMinus ? LEUCHT.kritisch : C.ink }}>{kz.monateMinus}</td>
                 <td style={TDr}><Geld v={kz.freiDez26} /></td><td style={TDr}><Geld v={kz.freiDez27} /></td><td style={TDr}><Geld v={kz.freiDez28} /></td>
@@ -255,7 +255,7 @@ export function Szenarien() {
         </Tabelle>
         <div style={{ marginTop: 12 }}>
           <Legende eintraege={alle.map(({ s: x }, i) => ({ farbe: FARBEN_SZ[i % FARBEN_SZ.length], text: `${x.name} — UG frei` }))} />
-          <Linie labels={d.monate} tick={3} serien={alle.map(({ s: x, ug }, i) => ({ name: x.name, farbe: FARBEN_SZ[i % FARBEN_SZ.length], werte: ug.map(u => u.frei), breite: x.id === d.aktiv ? 2.6 : 1.3 }))} />
+          <Linie labels={d.monate} tick={3} serien={alle.map(({ s: x, ug }, i) => ({ name: x.name, farbe: FARBEN_SZ[i % FARBEN_SZ.length], werte: ug.map(u => u.frei), breite: x.id === sz.id ? 2.6 : 1.3 }))} />
         </div>
       </Karte>
       <Spalten verhaeltnis="1:1">

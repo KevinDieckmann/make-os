@@ -137,6 +137,37 @@ Kevin: „ZOE, immer groß geschrieben — komplett umbenennen.“ 266 Dateien, 
 - **Alte Adressen laufen weiter:** `/jarvis` → `/zoe`, `/api/jarvis/*` → `/api/zoe/*` (308, Methode und Körper bleiben) — ein noch laufender alter Arbeiter oder Bote landet richtig.
 - Offen: Texte, in denen ZOE noch als „er“ steht (Jarvis war männlich), nach und nach glätten.
 
+### Finanzplanung jetzt — nächstes Level: Szenario-Baukasten (27.09. abends, nur lokal)
+
+Kevin: „Finanzplanung jetzt muss komplett aufs nächste Level, so können wir damit noch nichts machen und auch nichts planen.“ Und: „… nochmal über die
+Produktseite gehen, damit wir das Ganze einmal sauber haben — clean von vorne bis hinten.“
+
+- **Szenarien selbst bauen** (Planen › Szenarien bauen): ein Szenario = Basis (Zeilen, Fixkosten, Treiber) + **Umsatzbausteine** (Produkt × Kunde/Segment ×
+  Preis × Menge × monatlich/jährlich/einmalig × Start × Laufzeit × Zahlungsziel, Einheit UG · Privat · KD Ventures) + **Kostenbausteine** (Stelle mit
+  Arbeitgeberanteil · Software · Miete · Rate) + **eigene Annahmen** (Kevin/Malin brutto, Steuerquote UG, Zahlungsziel, Ausschüttung UG → Privat ab Monat).
+  Jede Änderung rechnet sofort (Kern), speichert als Operation, ist rückgängig. Szenarien anlegen, umbenennen, duplizieren, löschen, Treiber wechseln.
+- **Was wäre wenn:** Regler für Umsatz UG, Kevin/Malin brutto, Fixkosten privat ±, neue Rate privat, Steuerquote — Wirkung beim Ziehen, gespeichert beim
+  Loslassen (Regler sind gewöhnliche Bausteine/Annahmen des Szenarios).
+- **Wirkung und Vergleich:** rechts je Szenario Frei verfügbar jetzt, Tiefpunkt UG frei, Runway UG/Privat, Privat-Luft, Ziele im Plan/gekippt, Gruppe Dez 28,
+  Steuerrücklage — jeweils gegen die Basis; darunter bis zu drei Szenarien nebeneinander (Basis + zwei) mit **★ Arbeitsplan**. Der Arbeitsplan gilt auf
+  allen Seiten (Privat, Business, Gesamt, Lage, ZOE-Kennzahlen); ohne Arbeitsplan rechnet der reine Treiber.
+- **Einstieg = Lage:** drei Zahlen (frei verfügbar diesen Monat · Runway UG/Privat · Ziele im Plan) und „Was jetzt zu entscheiden ist“ — Punkte aus den
+  Zahlen mit Sprung ins Szenario/Feld — plus „Planungsrunde öffnen“.
+- **Gesamt** (neu): Privat · Übergänge (Gehalt brutto/netto, Ausschüttung) · UG (Umsatz, Mindestumsatz = laufende Kosten, Gewinn, Steuerrücklage, frei) ·
+  KD Ventures · Gesamt je Monat, dazu Mindestumsatz-Deckung und Steuer (Hinweis, keine Steuerberatung).
+- **Navigation zusammengestrichen:** Lage · Planen (Szenarien bauen · Treiber & Annahmen) · Privat · Business (UG · KD Ventures · Selbstständigkeit) · Gesamt
+  (Gesamt · Entwicklung · Geldfluss) · Buchungen & Check (Buchungen · Budget · Wochen-Check · Zu erledigen · Kalender & Verträge · Schulden) · Ziele & Töpfe
+  (Ziele · Töpfe UG) · Protokoll. Alte `?u=`-Adressen lösen weiter auf.
+- **Produkte sind die eine Quelle:** je Produkt Basis (Monat · Jahr · einmalig; aus der Einheit abgeleitet, festklickbar), Laufzeit, Aufwandsanteil (Marge),
+  „für die Planung fehlt: …“, „in Szenarien: …“ und der Sprung in die Finanzplanung. Im Baukasten kommen Umsatzbausteine per Klick aus dem Katalog,
+  aktive Mandate und gewonnene Deals als Ist-Basis; freie Bausteine heißen „ohne Produkt“. Kein Schreibzugriff ins CRM.
+- **Technik:** Rechenkern additiv erweitert (optionale Monatsreihen `Zusatz`; ohne rechnet er wie bisher — Test „Kern = Kern“), Schicht
+  `lib/finanzen/szenarien.ts` + `lib/finanzen/produkte.ts` (rein, 32 neue Tests), Speicher unter `planszenarien`/`arbeitsplan` im bestehenden Dokument
+  (PATCH-Operationen, Rückgängig, 409, Import älterer Dokumente ohne diese Schlüssel), Route `GET /api/finanzplan/vorschlaege` (nur lesen).
+  Details und Rechenweg: `FINANZPLANUNG_JETZT.md`.
+- **Offen (Kevin):** `lib/crm/speicher.ts::leistung()` muss `preis.basis`, `laufzeitMonate`, `aufwand` durchreichen (Datei war für dieses Paket tabu) —
+  bis dahin gehen diese drei Felder beim Speichern auf der Produktseite verloren.
+
 ### Finanzplanung jetzt (27.09., nur lokal)
 
 Kevin: „Unsere privaten Finanzen und die Firmenfinanzen in einem Szenario planen. Die Zahlen sind echt. Als ‚Finanzplanung jetzt‘ links unter die Agenten,

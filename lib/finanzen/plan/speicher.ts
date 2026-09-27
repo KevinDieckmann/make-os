@@ -8,7 +8,8 @@
 import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import type { Aenderung, FinanzDaten } from '@/lib/finanzen/rechenkern';
-import { rechneUG, rechnePrivat, kennzahlen, zielStaende } from '@/lib/finanzen/rechenkern';
+import { zielStaende } from '@/lib/finanzen/rechenkern';
+import { rechneMit, arbeitsplanVon, auswertung } from '@/lib/finanzen/szenarien';
 import { wendeOperationenAn, neuerStand, pruefeDokument, OperationUngueltig, type Operation } from './operationen';
 import { offeneBuchungen, faelligeZahl } from './hilfen';
 
@@ -80,16 +81,17 @@ export async function importieren(haushalt: string, dokument: FinanzDaten, erset
   return ergebnis;
 }
 
-/** Verdichtete Zahlen des aktiven Szenarios — für ZOE und die Startfläche, ohne Zeilen und Buchungen. */
+/** Verdichtete Zahlen des Arbeitsplans (sonst des aktiven Treibers) — für ZOE und die Startfläche, ohne Zeilen und Buchungen. */
 export function kennzahlenVon(d: FinanzDaten) {
-  const sz = d.szenarien.find(s => s.id === d.aktiv) ?? d.szenarien[0];
-  const ug = rechneUG(d, sz);
-  const pr = rechnePrivat(d, ug, sz);
-  const kz = kennzahlen(ug, pr);
-  const ziele = zielStaende(d, ug, pr).map(z => ({ id: z.ziel.id, name: z.ziel.name, status: z.status, erreichtMonat: z.erreichtMonat }));
+  const ps = arbeitsplanVon(d);
+  const { d: dd, sz, ug, pr, kz } = rechneMit(d, ps);
+  const aw = auswertung(dd, ug, pr);
+  const ziele = zielStaende(dd, ug, pr).map(z => ({ id: z.ziel.id, name: z.ziel.name, status: z.status, erreichtMonat: z.erreichtMonat }));
   return {
-    szenario: sz.name, szenarioId: sz.id, stand: d.stand, heute: d.einstellungen.heute,
+    szenario: sz.name, szenarioId: sz.id, arbeitsplan: ps?.name ?? null, arbeitsplanId: ps?.id ?? null, stand: d.stand, heute: d.einstellungen.heute,
     ...kz,
+    freiJetzt: aw.frei.gesamt, runwayUG: aw.runway.ug, runwayPrivat: aw.runway.privat, runwayHorizont: aw.runway.horizont,
+    zieleImPlan: aw.ziele.imPlan, zieleGesamt: aw.ziele.gesamt, mindestumsatz: aw.mindestumsatz.schnitt12, steuerRuecklage: aw.steuer.ruecklage,
     privatLuftOkt: pr[0]?.luft ?? 0, ugFreiDez26: ug[2]?.frei ?? 0,
     offeneBuchungen: offeneBuchungen(d), faelligePosten: faelligeZahl(d),
     kontostaendeFehlen: d.posten.filter(p => p.art === 'konto' && p.betrag == null).length,

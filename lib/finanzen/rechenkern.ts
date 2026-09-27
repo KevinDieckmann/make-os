@@ -9,12 +9,39 @@
 // nur, wenn die Rechnung selbst falsch ist; die Oberfläche rechnet nie daneben.
 // Steuern sind Näherungen (Hinweis, keine Steuerberatung).
 //
+// Erweiterung 27.09. (Szenario-Baukasten, lib/finanzen/szenarien.ts): Die
+// Bausteine eines Planszenarios werden dort zu Monatsreihen (`Zusatz`) aufgelöst
+// und hier nur ADDIERT — ohne Zusatz rechnet der Kern Zeile für Zeile wie bisher.
+//
 // Excel-Prinzip: Jede Planzeile hat einen Sollwert ab/bis Monat. Einzelne
 // Zellen lassen sich überschreiben (plan["<zeile>:<monat>"]). IST liegt
 // getrennt daneben (ist["<zeile>:<monat>"]) und wird später aus dem
 // Finanz-Cockpit (Spalte einheit) befüllt.
 
+import type { Planszenario } from './szenarien';
+
 export type Einheit = 'privat' | 'selbststaendigkeit' | 'ug' | 'kdv';
+
+/**
+ * Monatsreihen aus Bausteinen (Index = Plan-Monat − 1), alle optional. Der Kern
+ * addiert sie nur; fehlt eine Reihe, ist sie 0. Aufgelöst wird in
+ * lib/finanzen/szenarien.ts — hier wird nichts interpretiert.
+ */
+export interface Zusatz {
+  /** UG: weitere Umsätze netto (Leistung, zählt in den Gewinn). */
+  ugUmsatz?: number[];
+  /** UG: Zahlungseingang dieser Umsätze netto (Kasse, mit Zahlungsziel verschoben; USt kommt obendrauf). */
+  ugEingang?: number[];
+  /** UG: Brutto weiterer Stellen — Arbeitgeberanteil rechnet der Kern dazu. */
+  ugPersonal?: number[];
+  /** UG: weitere Sachkosten. */
+  ugSach?: number[];
+  /** UG → Privat: Ausschüttung/Entnahme (Kasse UG raus, Privat rein; nicht im Gewinn). */
+  ausschuettung?: number[];
+  privatEin?: number[]; privatAus?: number[];
+  kdvEin?: number[]; kdvAus?: number[];
+}
+const zx = (r: number[] | undefined, i: number): number => r?.[i] ?? 0;
 
 export interface Zeile {
   id: string; name: string; einheit: Einheit; gruppe: string;
@@ -62,6 +89,10 @@ export interface Aenderung { wer: string; wann: string; feld: string; alt: strin
 
 export interface FinanzDaten {
   version: 3; stand: string; monate: string[]; aktiv: string;
+  /** Szenario-Baukasten (27.09.): eigene Szenarien aus Bausteinen über dem Treiber-Szenario. Fehlt in älteren Dokumenten → leer. */
+  planszenarien?: Planszenario[];
+  /** Kennung des Planszenarios, das als Arbeitsplan gilt — null/fehlt: der reine Treiber (`aktiv`). */
+  arbeitsplan?: string | null;
   schulden: Schuld[];
   /** Wer hat eine Planzelle zuletzt geändert: key → {wer, wann}. */
   meta: Record<string, { wer: string; wann: string }>;
@@ -136,12 +167,15 @@ export interface MonatUG {
   ustZahlung: number; steuer: number; bjoern: number; darlehen: number; auszahlungen: number;
   saldo: number; konto: number; gewinn: number; gewinnYTD: number; steuerRuecklage: number; ustOffen: number; frei: number;
   retainerAnzahl: number;
+  /** Aus Bausteinen (Szenario-Baukasten) — 0 ohne Zusatz. */
+  bausteineUmsatz: number; bausteineEingang: number; stellen: number; bausteineSach: number; ausschuettung: number;
   // KD Ventures
   kdvUmlage: number; kdvBjoernEin: number; kdvExit: number; kdvExitSteuer: number;
   kdvHolding: number; kdvBjoern: number; kdvAbloesung: number; kdvKonto: number; bjoernRest: number;
+  kdvBausteineEin: number; kdvBausteineAus: number;
 }
 
-export function rechneUG(d: FinanzDaten, sz: Szenario): MonatUG[] {
+export function rechneUG(d: FinanzDaten, sz: Szenario, x?: Zusatz): MonatUG[] {
   const a = d.annahmen, p = d.plan, N = d.monate.length;
   const out: MonatUG[] = [];
   let konto = 0, kdv = a.kdvStart, rest = a.bjoernBetrag, vorUst = 0;
@@ -155,18 +189,20 @@ export function rechneUG(d: FinanzDaten, sz: Szenario): MonatUG[] {
     const retEin = a.retainerVerzug === 0 ? ret : (i - a.retainerVerzug >= 0 ? retUmsatz[i - a.retainerVerzug] : 0);
     const ast = ov('ug.astarna', m, abAktiv(sz.astarna, m) * a.astarnaProvision, p);
     const ev = ov('ug.events', m, abAktiv(sz.events, m), p);
-    const umsatz = ob + ret + ast + ev;
-    const ustEin = (retEin + ast + ev) * a.ust;
+    const bU = zx(x?.ugUmsatz, i), bE = zx(x?.ugEingang, i), bP = zx(x?.ugPersonal, i), bS = zx(x?.ugSach, i), bA = zx(x?.ausschuettung, i);
+    const umsatz = ob + ret + ast + ev + bU;
+    const ustEin = (retEin + ast + ev + bE) * a.ust;
     const kapital = m === 1 ? a.stammkapital + a.darlehenKevin : 0;
-    const einzahlungen = kapital + ob + retEin + ast + ev + ustEin;
+    const einzahlungen = kapital + ob + retEin + ast + ev + bE + ustEin;
 
     const rz = abAktiv(sz.erhoehung, m);
     const kevinBrutto = ov('ug.kevin', m, m >= a.kevinAb ? a.kevinBrutto + rz : 0, p);
     const malinBrutto = ov('ug.malin', m, m >= a.malinAb ? a.malinBrutto + rz : 0, p);
     const kevin = kevinBrutto * (1 + a.agAnteil), malin = malinBrutto * (1 + a.agAnteil);
     const unterstuetzung = ov('ug.unterstuetzung', m, abAktiv(sz.unterstuetzung, m), p);
+    const stellen = bP * (1 + a.agAnteil);
     const einmalig = (sz.ereignisse ?? []).filter(e => e.einheit === 'ug' && e.monat === m).reduce((s, e) => s + e.betrag, 0);
-    const sach = d.sachkosten.reduce((s, z) => s + wert(z, m, p), 0) + einmalig;
+    const sach = d.sachkosten.reduce((s, z) => s + wert(z, m, p), 0) + einmalig + bS;
     const gruendung = m === 1 ? a.gruendungskosten : 0;
     const holding = m >= a.holdingAb ? a.holdingKosten : 0;
     const vorjahr = gew.reduce((s, g, j) => s + (jahrVon(j + 1) === jahrVon(m) - 1 ? g : 0), 0);
@@ -177,11 +213,11 @@ export function rechneUG(d: FinanzDaten, sz: Szenario): MonatUG[] {
     const abloesung = sz.bjoernAbloesen && m === sz.exit1.monat && rest > 0
       ? rest + Math.min(a.bjoernZinsDeckel, a.bjoernZinsMonat * (m + 2)) : 0;
     const darlehen = m === a.darlehenRueckMonat ? a.darlehenKevin : 0;
-    const auszahlungen = kevin + malin + unterstuetzung + sach + gruendung + vorUst + steuer + bjoern + holding + darlehen;
+    const auszahlungen = kevin + malin + unterstuetzung + stellen + sach + gruendung + vorUst + steuer + bjoern + holding + darlehen + bA;
 
     const saldo = einzahlungen - auszahlungen;
     konto += saldo;
-    const gewinn = umsatz - kevin - malin - unterstuetzung - sach - gruendung - holding;
+    const gewinn = umsatz - kevin - malin - unterstuetzung - stellen - sach - gruendung - holding;
     gew[i] = gewinn;
     const ytd = gew.reduce((s, g, j) => s + (jahrVon(j + 1) === jahrVon(m) ? g : 0), 0);
     const steuerRuecklage = a.steuerUG * Math.max(0, ytd) + (kalMonat(m) < a.steuerMonat ? a.steuerUG * Math.max(0, vorjahr) : 0);
@@ -189,7 +225,8 @@ export function rechneUG(d: FinanzDaten, sz: Szenario): MonatUG[] {
 
     const ex = (m === sz.exit1.monat ? sz.exit1.betrag : 0) + (m === sz.exit2.monat ? sz.exit2.betrag : 0);
     const exSteuer = ex * a.exitSteuer;
-    kdv += holding + bjoern + ex - holding - bjoern - abloesung - exSteuer;
+    const kdvEin = zx(x?.kdvEin, i), kdvAus = zx(x?.kdvAus, i);
+    kdv += holding + bjoern + ex - holding - bjoern - abloesung - exSteuer + kdvEin - kdvAus;
     rest = abloesung > 0 ? 0 : Math.max(0, rest - (m === a.bjoernSchlussMonat ? a.bjoernSchluss - a.bjoernZinsDeckel : bjoern));
 
     out.push({
@@ -197,8 +234,10 @@ export function rechneUG(d: FinanzDaten, sz: Szenario): MonatUG[] {
       kevin, malin, kevinBrutto, malinBrutto, unterstuetzung, sach, gruendung, holding, ustZahlung: vorUst, steuer, bjoern, darlehen,
       auszahlungen, saldo, konto, gewinn, gewinnYTD: ytd, steuerRuecklage, ustOffen: ustEin, frei,
       retainerAnzahl: sz.retainer.filter(r => aktiv(r, m)).length,
+      bausteineUmsatz: bU, bausteineEingang: bE, stellen, bausteineSach: bS, ausschuettung: bA,
       kdvUmlage: holding, kdvBjoernEin: bjoern, kdvExit: ex, kdvExitSteuer: exSteuer, kdvHolding: holding,
       kdvBjoern: bjoern, kdvAbloesung: abloesung, kdvKonto: kdv, bjoernRest: rest,
+      kdvBausteineEin: kdvEin, kdvBausteineAus: kdvAus,
     });
     vorUst = ustEin;
   }
@@ -212,13 +251,15 @@ export interface MonatPrivat {
   fix: number; jahr: number; flex: number; sparenSoll: number; sparKum: number; angespart: number;
   /** Stand der Jahreskosten-Töpfe je Zeile. */
   toepfe: Record<string, number>;
+  /** Aus Bausteinen (Szenario-Baukasten) — 0 ohne Zusatz. Ausschüttung zählt zu verfuegbar, bausteineAus mindert die Luft. */
+  ausschuettung: number; bausteineEin: number; bausteineAus: number;
 }
 /** Sollwert einer Budgetzeile: bei Jahreskosten der Monatsanteil. */
 export function sollBudget(z: Zeile, m: number, plan: Record<string, number>): number {
   if (z.typ === 'jahr' && z.jahresbetrag != null && !(key(z.id, m) in plan)) return m >= (z.ab ?? 1) && m <= (z.bis ?? 999) ? z.jahresbetrag / 12 : 0;
   return wert(z, m, plan);
 }
-export function rechnePrivat(d: FinanzDaten, ug: MonatUG[], sz?: Szenario): MonatPrivat[] {
+export function rechnePrivat(d: FinanzDaten, ug: MonatUG[], sz?: Szenario, x?: Zusatz): MonatPrivat[] {
   const a = d.annahmen, p = d.plan; let kum = 0, spar = 0;
   const topf: Record<string, number> = {};
   return ug.map(u => {
@@ -229,13 +270,14 @@ export function rechnePrivat(d: FinanzDaten, ug: MonatUG[], sz?: Szenario): Mona
     const malinBrutto = m >= a.malinAb ? u.malinBrutto : ov('p.malinSelbst', m, a.malinBrutto, p);
     const kevinNetto = ov('p.kevinNetto', m, netto(kevinBrutto, a.nettoTabelle), p);
     const malinNetto = ov('p.malinNetto', m, netto(malinBrutto, a.nettoTabelle), p);
-    const verfuegbar = weitere + kevinNetto + malinNetto;
+    const bEin = zx(x?.privatEin, u.m - 1), bAus = zx(x?.privatAus, u.m - 1), ausschuettung = u.ausschuettung;
+    const verfuegbar = weitere + kevinNetto + malinNetto + bEin + ausschuettung;
     const teil = (t: string) => d.privatBudget.filter(z => (z.typ ?? 'flex') === t).reduce((s, z) => s + sollBudget(z, m, p), 0);
     const fix = teil('fix'), jahr = teil('jahr'), flex = teil('flex'), sparenSoll = teil('sparen');
     const bedarf = fix + jahr + flex + sparenSoll;
     const schulden = d.privatSchulden.reduce((s, z) => s + wert(z, m, p), 0);
     const ereignisse = (sz?.ereignisse ?? []).filter(e => e.einheit === 'privat' && e.monat === m).reduce((s, e) => s + e.betrag, 0);
-    const luft = verfuegbar - bedarf - schulden - ereignisse;
+    const luft = verfuegbar - bedarf - schulden - ereignisse - bAus;
     kum += luft; spar += sparenSoll;
     for (const z of d.privatBudget.filter(z => z.typ === 'jahr')) {
       const f = z.faellig ?? [];
@@ -243,7 +285,8 @@ export function rechnePrivat(d: FinanzDaten, ug: MonatUG[], sz?: Szenario): Mona
       topf[z.id] = (topf[z.id] ?? 0) + sollBudget(z, m, p) - zahlung;
     }
     return { m, einnahmenWeitere: weitere, kevinBrutto, kevinNetto, malinBrutto, malinNetto, verfuegbar, bedarf, schulden, ereignisse,
-      luft, luftKum: kum, sparen: sparenSoll + luft, fix, jahr, flex, sparenSoll, sparKum: spar, angespart: kum + spar, toepfe: { ...topf } };
+      luft, luftKum: kum, sparen: sparenSoll + luft, fix, jahr, flex, sparenSoll, sparKum: spar, angespart: kum + spar, toepfe: { ...topf },
+      ausschuettung, bausteineEin: bEin, bausteineAus: bAus };
   });
 }
 
@@ -325,7 +368,7 @@ export function lerneRegel(d: FinanzDaten, empfaenger: string, zeile: string): n
 export interface ToepfeUG { m: number; ust: number; steuer: number; reserve: number; frei: number; reserveZiel: number; konto: number }
 export function toepfeUG(ug: MonatUG[], reserveMonate: number): ToepfeUG[] {
   return ug.map(u => {
-    const laufend = u.kevin + u.malin + u.unterstuetzung + u.sach + u.holding + u.bjoern;
+    const laufend = u.kevin + u.malin + u.unterstuetzung + u.stellen + u.sach + u.holding + u.bjoern;
     const reserveZiel = reserveMonate * laufend;
     const rest = u.konto - u.ustOffen - u.steuerRuecklage;
     const reserve = Math.max(0, Math.min(rest, reserveZiel));
@@ -370,6 +413,11 @@ export function zahlungskalender(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[
     add(m, 31, 'Ertragsteuer UG', -u.steuer, 'ug');
     add(m, 5, 'Eingang One Banking', u.ob, 'ug');
     add(m, 15, 'Eingang Retainer', u.retainerEingang * 1.19, 'ug');
+    add(m, 15, 'Eingang aus Bausteinen', u.bausteineEingang * (1 + d.annahmen.ust), 'ug');
+    add(m, d.annahmen.gehaltTag ?? 28, 'Weitere Stellen inkl. Arbeitgeber', -u.stellen, 'ug');
+    add(m, 1, 'Ausschüttung an Privat', -u.ausschuettung, 'ug');
+    add(m, 1, 'Ausschüttung aus der UG', u.ausschuettung, 'privat');
+    add(m, 1, 'Bausteine privat', p.bausteineEin - p.bausteineAus, 'privat');
   }
   return out.sort((a, b) => a.datum.localeCompare(b.datum));
 }
