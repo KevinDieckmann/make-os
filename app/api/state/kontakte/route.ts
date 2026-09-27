@@ -2,14 +2,24 @@
 // GET: alle Kontakte plus Stand der Pipeline. 443 Einträge sind klein genug,
 // dass die Oberfläche selbst filtert — eine Suche über die Schnittstelle
 // wäre eine zweite Wahrheit darüber, was „passt".
-// PATCH: einzelne Änderungen (upsert/delete) nach dem Zwei-Fenster-Muster —
+// PATCH: einzelne Änderungen (upsert/teil/delete) nach dem Zwei-Fenster-Muster —
 // mit der Massen-Wache für Stufen: mehr als zwölf Kontakte auf einmal in
 // eine andere Stufe ist nie ein Klick, sondern ein Fehler.
+//
+// Datenschicht Stufe 2 (27.09.):
+//  · jede Zeile trägt `stand` (Fingerabdruck, lib/store/fingerabdruck.ts); der Browser
+//    schickt ihn mit — passt er nicht mehr, 409 mit dem aktuellen Datensatz
+//  · `teil`: nur Felder ändern (Kevin und Malin überschreiben sich nicht mehr)
+//  · Delta: kennt der Server den Stand, den der Browser hat (ETag), gehen nur die
+//    geänderten Zeilen und die gelöschten Kennungen über die Leitung
+//  · Massen-Wache und Massenlösch-Schutz laufen in der Schreibsperre
 
 import { NextResponse } from 'next/server';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { listePatchen, opsLesen } from '@/lib/store/patch-liste';
+import { mitStand } from '@/lib/store/fingerabdruck';
+import { deltaAus, staende, StandGedaechtnis } from '@/lib/kontakte/delta';
 import { saeubereKontakt, kontaktVereinen, privatNotizVereinen, fuerPerson, massenStufe, pipelineStand, MASSEN_GRENZE, type Kontakt } from '@/lib/make-one/crm';
 import { personAus } from '@/lib/jarvis/raum';
 
@@ -18,16 +28,27 @@ export const dynamic = 'force-dynamic';
 
 type Bestand = { kontakte: Kontakt[] };
 
+/** Fingerabdrücke je ausgeliefertem Stand — für das Delta (letzte 20 Stände, je Person eigener ETag). */
+const gedaechtnis = new StandGedaechtnis(20);
+
 export async function GET(req: Request) {
   const person = personAus(req);
   // Der Abgleich fragt alle 20 Sekunden — unverändert gibt es 304 statt 750 KB (lib/http/json-antwort.ts).
-  const etag = etagAus('k', await speicherStand(['kontakte']), person);
+  const etag = etagAus('k2', await speicherStand(['kontakte']), person);
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
   const f = await loadJson<Bestand>('kontakte');
-  // Private Notizen sieht nur, wer sie schrieb.
-  const kontakte = (f?.kontakte ?? []).map(k => fuerPerson(k, person));
-  return jsonAntwort(req, { kontakte, stand: pipelineStand(kontakte) }, etag);
+  // Stand VOR dem Ausblenden fremder privater Notizen rechnen — er beschreibt den gespeicherten Datensatz.
+  const alle = mitStand(f?.kontakte ?? []).map(k => fuerPerson(k, person) as Kontakt & { stand: string });
+  const stand = pipelineStand(alle);
+  const alt = gedaechtnis.hole(req.headers.get('if-none-match'));
+  gedaechtnis.merke(etag, staende(alle));
+  if (alt && !new URL(req.url).searchParams.has('voll')) {
+    const d = deltaAus(alt, alle);
+    // Lohnt sich nur, wenn wirklich wenig anders ist — sonst ist die volle Liste einfacher.
+    if (d.geaendert.length + d.geloescht.length <= Math.max(20, alle.length / 4)) return jsonAntwort(req, { delta: true, kontakte: d.geaendert, geloescht: d.geloescht, stand }, etag);
+  }
+  return jsonAntwort(req, { kontakte: alle, stand }, etag);
 }
 
 export async function PATCH(req: Request) {
@@ -39,15 +60,18 @@ export async function PATCH(req: Request) {
   // Neue Kontakte: eine private Notiz gehört der Person, die sie anlegt.
   const ops = roh.map(o => (o.op === 'upsert' && o.eintrag ? { ...o, eintrag: privatNotizVereinen(o.eintrag, undefined, person) } : o));
 
-  // Massen-Wache: wie viele Stufen würden sich ändern?
-  const vorher = (await loadJson<Bestand>('kontakte'))?.kontakte ?? [];
-  const nachher = ops.filter(o => o.op === 'upsert').map(o => o.eintrag!);
-  const wechsel = massenStufe(vorher, nachher);
-  if (wechsel > MASSEN_GRENZE && !body.erzwingen) {
-    return NextResponse.json({ error: `${wechsel} Kontakte würden die Stufe wechseln — das braucht eine ausdrückliche Bestätigung.`, wechsel }, { status: 409 });
-  }
-
-  const r = await listePatchen<Kontakt, Bestand>('kontakte', 'kontakte', ops, 20, (neu, alt) => kontaktVereinen(neu, alt, person));
-  if (!r.ok) return NextResponse.json({ error: r.fehler }, { status: 409 });
-  return NextResponse.json({ ok: true, angewandt: r.angewandt, stand: pipelineStand(r.next?.kontakte ?? []) });
+  const r = await listePatchen<Kontakt, Bestand>('kontakte', 'kontakte', ops, 20, undefined, {
+    vereinen: (neu, alt) => kontaktVereinen(neu, alt, person),
+    // `teil`: Felder auf den gespeicherten Kontakt legen, dann dieselbe Prüfung wie für einen ganzen Eintrag.
+    teil: (alt, felder) => { const { stand: _s, ...rest } = felder; return saeubereKontakt({ ...alt, ...rest, id: alt.id }); },
+    // Massen-Wache INNERHALB der Sperre: wie viele Stufen würden sich ändern?
+    pruefen: (liste, ops) => {
+      if (body.erzwingen) return null;
+      const nachher = ops.flatMap(o => (o.op === 'upsert' && o.eintrag ? [o.eintrag] : o.op === 'teil' && typeof o.felder?.stufe === 'string' ? [{ ...(liste.find(k => k.id === o.id) ?? { id: o.id }), stufe: o.felder.stufe } as Kontakt] : []));
+      const wechsel = massenStufe(liste, nachher);
+      return wechsel > MASSEN_GRENZE ? `${wechsel} Kontakte würden die Stufe wechseln — das braucht eine ausdrückliche Bestätigung.` : null;
+    },
+  });
+  if (!r.ok) return NextResponse.json({ error: r.fehler, ...(r.konflikte ? { konflikte: r.konflikte.map(k => ({ ...k, aktuell: k.aktuell ? fuerPerson(k.aktuell as Kontakt, person) : undefined })) } : {}) }, { status: 409 });
+  return NextResponse.json({ ok: true, angewandt: r.angewandt, zeilen: r.zeilen ?? [], stand: pipelineStand(r.next?.kontakte ?? []) });
 }

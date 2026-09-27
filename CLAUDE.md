@@ -252,6 +252,7 @@ lokal, Route `/os`, Port 3001.
 - `loadJson` gibt nur bei „Datei fehlt“ null; Lesefehler werfen `BestandNichtLesbar`, ein beschädigter Bestand blockiert Schreibungen (`BestandBeschaedigt`). Nie `catch → null` um loadJson legen, wenn danach geschrieben wird.
 - `updateJson`/`saveJson` schreiben nicht, wenn der Stand unverändert ist — Zeitstempel als „Beweis für einen Lauf“ gehören in den Inhalt, nicht in die Dateizeit.
 - Neue Bestände, die ständig geschrieben werden, aber in keinen Index eingehen, in `RAUSCHEN` (lib/store/memo.ts) eintragen — sonst leeren sie den Zwischenspeicher.
+- Kontakte im Browser: `api.kontaktTeil(id, felder)` statt ganzer Kontakt; jede Zeile trägt `stand` (Fingerabdruck), der Server antwortet 409 bei Konflikt — nie `stand` selbst setzen oder speichern. `listePatchen` prüft in der Sperre (`pruefen`), Konflikte kommen als `konflikte[]`.
 
 ## Agenten — Querliegendes
 - Jeder Modellaufruf geht durch `lib/anthropic.ts askText`: dort sitzt der Guthaben-Schalter (`guthabenLeer()`, 30 min Pause nach „credit balance too low“). Nie eigene Aufrufe an die API daneben bauen.

@@ -131,7 +131,7 @@ function KreisRunde({ api, name, zuKontakt, zurueck }: RundenProps) {
     if (!k) return;
     setSchritte(l => [...l, { pos, id: k.id, kreis, besitzer, anrede, vorher: { kreis: k.kreis, besitzer: k.besitzer, anrede: k.anrede } }]);
     setPos(pos + 1);
-    if (kreis) void api.kontaktSetzen({ ...k, kreis, besitzer, anrede });
+    if (kreis) void api.kontaktTeil(k.id, { kreis, besitzer, anrede });
   };
   const rueckgaengig = () => {
     const s = schritte[schritte.length - 1];

@@ -99,6 +99,19 @@ Kevin: „Marketing noch gar nicht angepasst, Events nicht drin, neben Firmen un
   - Tests: `crm-deal-regeln` (Server-Regeln), `crm-fundament` angepasst (Upsert neuer Deals ist jetzt ein Fehler). Stand: 100 Dateien · 877 Tests grün, tsc und Lint sauber.
   - **Offen (Kevin entscheidet):** Farbe des Reiters „Firmen“ (heute neutral wie Kontakte, obwohl die Leads darin liegen); ob „Meins/Malin“-Filter auch im Board sichtbar sein soll.
 
+### Datenschicht Stufe 2 — zu zweit sicher (27.09., nur lokal)
+
+Kevin (27.09., klickbar): JSON bleibt, Stufe 2 jetzt; danach Brain, dann Kalender.
+
+- **Stand je Kontakt:** jede Zeile trägt einen Fingerabdruck des gespeicherten Datensatzes. Der Browser schickt ihn mit jeder Änderung zurück — hat inzwischen jemand
+  anderes geschrieben (Malin, Jarvis, ein Signal), kommt 409 mit dem aktuellen Stand, die Kartei lädt neu und sagt es. Nichts wird mehr still überschrieben.
+- **Nur Felder ändern:** Akte, Kartei, Firmen-Zuordnung und Kreis-Runde senden nur noch die geänderten Felder (`teil`), nicht den ganzen Kontakt.
+- **Alles in der Sperre:** Massen-Wache (Stufenwechsel), Massenlösch-Schutz, Stand-Prüfung, CSV-Import (Einarbeiten + Schrumpf-Schutz) und Lead→Mandat prüfen und
+  schreiben denselben Bestand — ein Doppelklick legt kein zweites Mandat mehr an.
+- **Abgleich überträgt nur Änderungen:** kennt der Server den Stand, den das Fenster hat, gehen nur geänderte Zeilen und gelöschte Kennungen über die Leitung
+  (statt 750 KB für 453 Kontakte bei jeder Änderung).
+- Tests: `patch-liste-stufe2` (7 Fälle). Stand: 105 Dateien · 899 Tests grün, tsc und Lint sauber.
+
 ### Datenschicht Stufe 1 (27.09., nur lokal)
 
 Kevin (26.09.): „die ganze Datenarchitektur verbessern, sodass es sehr gut läuft“ — als dringend für den 27.09. eingeplant. Plan und Befund in `DATENARCHITEKTUR.md`.

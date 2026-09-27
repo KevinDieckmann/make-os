@@ -13,6 +13,8 @@ import type { CrmBestand, CrmListe, ChancenStufe } from '@/lib/crm/typen';
 import type { Prognose, Ampel } from '@/lib/crm/pipeline';
 import type { MandatLage } from '@/lib/crm/kunden';
 import type { EventZahlen } from '@/lib/crm/events';
+import { deltaAnwenden } from '@/lib/kontakte/delta';
+import { localDay } from '@/lib/zeit';
 
 export interface CrmAntwort {
   ok: boolean; heute: string; stand: CrmBestand;
@@ -60,9 +62,11 @@ export function useCrm() {
   const laden = useCallback(async () => {
     if (unterwegs.current) return;
     try {
-      const [a, b] = await Promise.all([holeMitStand<CrmAntwort>('/api/crm/bestand', staende.current), holeMitStand<{ kontakte?: Kontakt[] }>('/api/state/kontakte', staende.current)]);
+      const [a, b] = await Promise.all([holeMitStand<CrmAntwort>('/api/crm/bestand', staende.current), holeMitStand<{ kontakte?: Kontakt[]; delta?: boolean; geloescht?: string[] }>('/api/state/kontakte', staende.current)]);
       if (a?.ok) setCrm(a);
-      if (b) setKontakte(b.kontakte ?? []);
+      // Delta (Stufe 2): der Server kannte unseren Stand und schickt nur, was anders ist.
+      if (b?.delta) setKontakte(alt => (alt ? deltaAnwenden(alt, { geaendert: b.kontakte ?? [], geloescht: b.geloescht ?? [] }) : alt));
+      else if (b) setKontakte(b.kontakte ?? []);
       setFehler(null);
     } catch { staende.current.clear(); setFehler('Nicht erreichbar.'); }
   }, []);
@@ -121,16 +125,35 @@ export function useCrm() {
     finally { unterwegs.current--; }
   }, []);
 
-  /** Kartei: einen Kontakt ändern (ganzer Eintrag, Einzeländerung). */
+  /** Antwort einer Kontakt-Änderung auswerten: neue Stände nachtragen; 409 = jemand war schneller → frisch laden. */
+  const kontaktAntwort = useCallback((r: { ok?: boolean; error?: string; konflikte?: unknown[]; zeilen?: { id: string; stand: string }[] }) => {
+    if (r.ok) { const z = new Map((r.zeilen ?? []).map(x => [x.id, x.stand])); if (z.size) setKontakte(alt => (alt ? alt.map(k => (z.has(k.id) ? { ...k, stand: z.get(k.id) } : k)) : alt)); return; }
+    fehlschlag(r.konflikte?.length ? 'Jemand hat diesen Kontakt inzwischen geändert — Stand neu geladen, bitte noch einmal.' : r.error ?? 'Nicht gespeichert.');
+    if (r.konflikte?.length) void laden();
+  }, [laden]);
+
+  /** Kartei: einen Kontakt ändern (ganzer Eintrag) — mit dem Stand, den wir bekamen (409, wenn inzwischen jemand anders schrieb). */
   const kontaktSetzen = useCallback(async (k: Kontakt) => {
     unterwegs.current++;
     setKontakte(alt => (alt ? (alt.some(x => x.id === k.id) ? alt.map(x => (x.id === k.id ? k : x)) : [...alt, k]) : alt));
     try {
-      const r = await fetch('/api/state/kontakte', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ op: 'upsert', eintrag: { ...k, geaendertAm: new Date().toISOString().slice(0, 10) } }] }) }).then(x => x.json());
-      if (!r.ok) fehlschlag(r.error ?? 'Nicht gespeichert.');
+      const r = await fetch('/api/state/kontakte', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ op: 'upsert', eintrag: { ...k, geaendertAm: localDay() }, ...(k.stand ? { stand: k.stand } : {}) }] }) }).then(x => x.json());
+      kontaktAntwort(r);
     } catch { fehlschlag('Nicht gespeichert — keine Verbindung.'); }
     finally { unterwegs.current--; }
-  }, []);
+  }, [kontaktAntwort]);
+
+  /** Kartei: nur diese Felder ändern (Stufe 2) — der Server legt sie auf den aktuellen Stand; so überschreiben Kevin und Malin einander nicht. */
+  const kontaktTeil = useCallback(async (id: string, felder: Partial<Kontakt>) => {
+    unterwegs.current++;
+    let stand: string | undefined;
+    setKontakte(alt => { stand = alt?.find(x => x.id === id)?.stand; return alt ? alt.map(x => (x.id === id ? { ...x, ...felder } : x)) : alt; });
+    try {
+      const r = await fetch('/api/state/kontakte', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ op: 'teil', id, felder: { ...felder, geaendertAm: localDay() }, ...(stand ? { stand } : {}) }] }) }).then(x => x.json());
+      kontaktAntwort(r);
+    } catch { fehlschlag('Nicht gespeichert — keine Verbindung.'); }
+    finally { unterwegs.current--; }
+  }, [kontaktAntwort]);
 
   /** Aktivität am Kontakt (Ergebnis, Notiz, nächster Schritt) — Regeln laufen auf dem Server. */
   const aktivitaet = useCallback(async (body: Record<string, unknown>) => {
@@ -154,7 +177,7 @@ export function useCrm() {
     } finally { unterwegs.current--; }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { crm, kontakte, fehler, setFehler, laden, setze, teil, uebergeben, weg, kontaktSetzen, aktivitaet, netzwerk, ich: crm?.ich ?? null };
+  return { crm, kontakte, fehler, setFehler, laden, setze, teil, uebergeben, weg, kontaktSetzen, kontaktTeil, aktivitaet, netzwerk, ich: crm?.ich ?? null };
 }
 export type CrmApi = ReturnType<typeof useCrm>;
 

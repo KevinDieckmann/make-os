@@ -130,7 +130,8 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte }: { api: 
   const aktivesMandat = v.mandate.some(m => m.status === 'aktiv');
   const ampel = kanalAmpel(k, { hatMandat: aktivesMandat, hatChance: offeneDeals.length > 0 });
   const mailOk = ampel.some(s => s.kanal === 'mail' && s.farbe !== 'rot');
-  const setze = (teil: Partial<Kontakt>) => api.kontaktSetzen({ ...k, ...teil });
+  // Stufe 2: nur die geänderten Felder — der Server legt sie auf den aktuellen Stand (409 bei Konflikt).
+  const setze = (teil: Partial<Kontakt>) => api.kontaktTeil(k.id, teil);
   const voll = vollstaendigkeit(k, firma);
   const t = takt(k, heute);
   const vz = verlaufZahlen(k);

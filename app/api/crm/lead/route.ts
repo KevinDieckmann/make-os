@@ -65,6 +65,7 @@ export async function POST(req: Request) {
     const c = crm.chancen.find(x => x.id === b.chanceId);
     if (!c || c.stufe !== 'gewonnen') return NextResponse.json({ ok: false, fehler: 'Nur ein gewonnener Deal wird Mandat.' }, { status: 400 });
     if (crm.mandate.some(m => m.chanceId === c.id)) return NextResponse.json({ ok: false, fehler: 'Zu diesem Deal gibt es schon ein Mandat.' }, { status: 409 });
+    // (die Prüfung läuft unten noch einmal INNERHALB der Sperre — ein Doppelklick legt kein zweites Mandat an, Stufe 2)
     const m: Mandat = {
       id: neueId('m'), kunde: c.firma ?? c.titel, kontaktIds: c.kontaktIds, titel: c.titel, art: c.art, chanceId: c.id, gesellschaft: c.gesellschaft, status: 'aktiv',
       // Das Produkt reist mit (26.09.) — sonst sieht die Produkt-Auswertung das Mandat nie.
@@ -76,7 +77,12 @@ export async function POST(req: Request) {
       quelle: `aus Deal „${c.titel}“`, zustaendig: c.besitzer, geaendert: jetzt, geaendertVon: person,
     };
     const ids = new Set(c.kontaktIds);
-    await aendereCrm(x => ({ ...x, mandate: [...x.mandate, m], firmen: x.firmen.map(f => (f.name === c.firma && !f.rolleVonHand ? { ...f, rolle: 'kunde' } : f)) }));
+    let schonDa = false;
+    await aendereCrm(x => {
+      if (x.mandate.some(mm => mm.chanceId === c.id)) { schonDa = true; return x; }
+      return { ...x, mandate: [...x.mandate, m], firmen: x.firmen.map(f => (f.name === c.firma && !f.rolleVonHand ? { ...f, rolle: 'kunde' } : f)) };
+    });
+    if (schonDa) return NextResponse.json({ ok: false, fehler: 'Zu diesem Deal gibt es schon ein Mandat.' }, { status: 409 });
     await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (ids.has(k.id) ? { ...k, lebensphase: 'kunde', stufe: 'gewonnen', geaendertAm: jetzt.slice(0, 10) } : k)) }));
     return NextResponse.json({ ok: true, mandatId: m.id, text: `Mandat „${m.kunde}“ angelegt — unter Produkte & Mandate: Vertrag und Kickoff klären.` });
   }

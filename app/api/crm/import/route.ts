@@ -15,7 +15,7 @@ import { NextResponse } from 'next/server';
 import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
-import { loadJson, updateGeschuetzt } from '@/lib/store/local-db';
+import { schrumpftZuStark, updateJson } from '@/lib/store/local-db';
 import { csvLesen, trennerVon } from '@/lib/make-one/csv';
 import { importieren, pipelineStand, type Kontakt } from '@/lib/make-one/crm';
 import { firmenAbgleichen } from '@/lib/crm/abgleich';
@@ -54,10 +54,18 @@ export async function POST(req: Request) {
   const zeilen = csvLesen(text, trennerVon(text));
   if (!zeilen.length) return NextResponse.json({ error: 'Keine Zeilen in der Datei.' }, { status: 400 });
 
-  const vorher = (await loadJson<Bestand>('kontakte'))?.kontakte ?? [];
-  const r = importieren(vorher, zeilen, localDay());
-  const w = await updateGeschuetzt<Bestand>('kontakte', { kontakte: r.kontakte }, f => f.kontakte.length, 20);
-  if (!w.ok) return NextResponse.json({ error: 'Abgelehnt: der Import hätte den Bestand halbiert.' }, { status: 409 });
+  // Stufe 2: Lesen, Einarbeiten und Schrumpf-Schutz in EINER Schreibsperre — vorher las der Import außerhalb,
+  // und eine Änderung dazwischen (Klick in der Kartei) wurde vom Import-Stand überschrieben.
+  let r: ReturnType<typeof importieren> | null = null;
+  let abgelehnt = false;
+  await updateJson<Bestand>('kontakte', cur => {
+    const vorher = cur?.kontakte ?? [];
+    r = importieren(vorher, zeilen, localDay());
+    if (schrumpftZuStark(vorher.length, r.kontakte.length, 20)) { abgelehnt = true; return cur ?? { kontakte: [] }; }
+    return { ...(cur ?? {}), kontakte: r.kontakte };
+  });
+  if (abgelehnt || !r) return NextResponse.json({ error: 'Abgelehnt: der Import hätte den Bestand halbiert.' }, { status: 409 });
+  r = r as ReturnType<typeof importieren>;
 
   // Firmen als eigene Stammdaten: neue anlegen, Personen verknüpfen, leere Felder füllen.
   const firmen = await firmenAbgleichen();

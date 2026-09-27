@@ -80,7 +80,16 @@ Verschlüsselung, skaliert begrenzt). Beides braucht Stufe 1 und 2 vorher.
   verschlüsselt). Lesecache je Bestand im Prozess (entschlüsselter Text, gültig bei gleichem Inode/Zeit/Größe/Schlüssel; eigene Schreibungen füllen ihn).
   Zwischenspeicher: Rauschen-Bestände (Anwesenheit, Nutzung, Änderungen, Läufe, Warteschlange, Verbrauch, Anmeldungen, Fehler, HOI-Zähler) erhöhen den
   Stand nicht mehr — die Indizes bleiben warm. Nicht gemacht: Messung vor/nach auf dem Prüfbau (kommt mit dem nächsten Prüflauf).
-- Stufe 2 folgt nach Kevins Speicher-Entscheidung (Abschnitt 5); Stufe 3 nur bei SQLite.
+- **Kevins Entscheidung 27.09.: JSON bleibt.** Kein SQLite, keine Datei je Kontakt — neu bewerten ab etwa 5.000 Kontakten.
+- **Stufe 2 — gebaut 27.09. (lokal):** Stand je Zeile als **Fingerabdruck des gespeicherten Datensatzes** (`lib/store/fingerabdruck.ts`, schlüsselreihenfolge-unabhängig)
+  statt einer Versionsnummer, die alle 18 Kontakte-Schreiber pflegen müssten: der Browser bekommt `stand` je Kontakt und schickt ihn mit; passt er nicht mehr → 409
+  mit dem aktuellen Datensatz, nichts überschrieben (`lib/store/patch-liste.ts`). `teil`-Änderungen für Kontakte (`api.kontaktTeil`; Akte, Kartei, Firmen, Runden
+  nutzen sie — kein ganzer Kontakt mehr über die Leitung). Massen-Wache, Massenlösch-Schutz und Stand-Prüfung laufen in der Schreibsperre; CSV-Import und
+  Lead→Mandat prüfen und schreiben in einer Sperre (Doppelklick = ein Mandat). Delta-Abgleich: der Server merkt sich je ETag die Fingerabdrücke (letzte 20 Stände)
+  und schickt nur geänderte Zeilen und gelöschte Kennungen (`lib/kontakte/delta.ts`). Tests: `patch-liste-stufe2`. Funktionsprobe auf dem Dev-Server: voll → 304 →
+  teil ok → alter Stand 409 → Delta mit genau einer Zeile.
+- Offen aus Stufe 2: `teile.tsx`, `Kartei.tsx:268` (Anlegen), `events/Abend.tsx` senden noch ganze Kontakte (mit Stand, also sicher — nur mehr Bytes);
+  Kampagnen/Heads schreiben schon in der Sperre. Stufe 3 entfällt (JSON bleibt); Stufe 4 und 5 wie geplant.
 
 ## 5. Offene Entscheidungen für den 27.09.
 

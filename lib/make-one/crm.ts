@@ -176,6 +176,8 @@ export interface Kontakt {
   aktivitaeten: Aktivitaet[];
   importiertAm: string;
   geaendertAm: string;
+  /** Fingerabdruck des gespeicherten Datensatzes (Stufe 2, 27.09.) — kommt vom Server, geht mit jeder Änderung zurück; nie gespeichert. */
+  stand?: string;
 }
 
 /** Felder, die der Import NIE anfasst — das ist die Arbeit im CRM. */

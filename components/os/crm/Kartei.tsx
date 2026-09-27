@@ -310,7 +310,7 @@ function Karteikarte({ k, api, name, zuFirma, zuAkte }: { k: Kontakt; api: CrmAp
   const mandate = (crm?.stand.mandate ?? []).filter(m => m.kontaktIds.includes(k.id));
   const ctx = { hatMandat: mandate.some(m => m.status === 'aktiv'), hatChance: chancen.some(c => OFFENE_STUFEN.includes(c.stufe)) };
   const ampel = kanalAmpel(k, ctx);
-  const setze = (teil: Partial<Kontakt>) => api.kontaktSetzen({ ...k, ...teil });
+  const setze = (teil: Partial<Kontakt>) => api.kontaktTeil(k.id, teil);
   const mailOk = ampel.some(s => s.kanal === 'mail' && s.farbe !== 'rot');
 
   return (
