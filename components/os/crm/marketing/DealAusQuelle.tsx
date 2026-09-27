@@ -14,8 +14,11 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { anzeigename } from '@/lib/make-one/crm';
 import { Knopf, LEUCHT, feld } from '../../schlank';
 import { type CrmApi, plusTage } from '../daten';
-import { Pillen, Feldzeile } from '../teile';
+import { Feldzeile } from '../teile';
+import { Wahl } from '../Wahl';
 import type { ChancenArt, Quelle, WertBasis } from '@/lib/crm/typen';
+
+const BASEN = [{ id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr' }, { id: 'einmalig', label: 'einmalig' }] as const;
 
 const ARTEN: { id: ChancenArt; label: string }[] = [{ id: 'retainer', label: 'Retainer' }, { id: 'projekt', label: 'Projekt' }, { id: 'workshop', label: 'Workshop' }, { id: 'vermittlung', label: 'Vermittlung' }, { id: 'software', label: 'Software' }];
 const QUELLE_LABEL: Record<Quelle, string> = { empfehlung: 'Empfehlung', event: 'Event', content: 'Content', outreach: 'Ansprache', bestand: 'Bestand', inbound: 'Anfrage', kampagne: 'Kampagne' };
@@ -57,11 +60,11 @@ export function DealAusQuelle({ api, kontaktId, quelle, quelleBezug, bezugTitel,
       <div style={{ fontSize: TYP.body, fontWeight: 700 }}>Deal aus {QUELLE_LABEL[quelle]}{bezugTitel ? ` „${bezugTitel}“` : ''}</div>
       <div style={{ fontSize: 12.5, color: C.inkDim }}>{k ? anzeigename(k) : 'Person nicht gefunden'}{firma ? ` · ${firma.name}` : k?.firma ? ` · ${k.firma}` : ''} — Quelle „{QUELLE_LABEL[quelle]}“ steht am Deal, der Lead wird SQL.</div>
       <Feldzeile label="Titel"><input value={titel} onChange={e => setTitel(e.target.value)} placeholder={firma ? `${firma.name} · ${ARTEN.find(a => a.id === art)?.label}` : 'z. B. Acme · Retainer'} style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} /></Feldzeile>
-      <Feldzeile label="Art"><Pillen liste={ARTEN} aktiv={art} onWahl={setArt} /></Feldzeile>
+      <Feldzeile label="Art"><Wahl label="Art" liste={ARTEN} wert={art} onWahl={setArt} /></Feldzeile>
       <Feldzeile label="Wert">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <input type="number" value={betrag} onChange={e => setBetrag(e.target.value)} placeholder="Betrag €" aria-label="Betrag" style={{ ...feld, width: 120, fontSize: TYP.bedien, padding: '8px 11px' }} />
-          <Pillen liste={[{ id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr' }, { id: 'einmalig', label: 'einmalig' }]} aktiv={basis} onWahl={setBasis} />
+          <Wahl label="Wert-Basis" liste={BASEN} wert={basis} onWahl={setBasis} />
         </div>
       </Feldzeile>
       <Feldzeile label="Nächster Schritt *">

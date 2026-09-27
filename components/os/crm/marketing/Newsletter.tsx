@@ -26,6 +26,7 @@ import {
 } from '@/lib/crm/marketing';
 import { type CrmApi, neueId, datum } from '../daten';
 import { Pillen, Feld, Feldzeile } from '../teile';
+import { Wahl } from '../Wahl';
 import { ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer, type WerWahl } from '../team';
 import { KPI_FARBE, Textfeld, kopieren, FreigabeChip, FreigabeBlock, AlsNaechstes, AutorStimme } from './gemeinsam';
 
@@ -151,7 +152,7 @@ function AusgabeFormular({ a, api, heute, empfaenger, beitraege, schliessen, mel
       </Feldzeile>
       <Feldzeile label="Erscheint als">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Pillen liste={STIMMEN_WAHL} aktiv={a.stimme ?? null} onWahl={s => void teil({ stimme: s })} />
+          <Wahl label="Erscheint als" leer="+ Absender" liste={STIMMEN_WAHL} wert={a.stimme ?? null} onWahl={s => void teil({ stimme: s })} />
           {!a.stimme && <span style={{ fontSize: 12, color: C.inkLeise }}>Absender im Versandwerkzeug — Kevin, Malin oder die Marke?</span>}
         </div>
       </Feldzeile>
@@ -162,7 +163,7 @@ function AusgabeFormular({ a, api, heute, empfaenger, beitraege, schliessen, mel
           onFreigeben={() => { if (a.freigabe) void teil({ freigabe: freigabeOk(a.freigabe, a.freigabe.an, jetzt()) }); }}
           onAenderung={n => { const f = a.freigabe ? aenderungsWunsch(a.freigabe, a.freigabe.an, n, jetzt()) : null; if (f) void teil({ freigabe: f }); }} />
       </Feldzeile>
-      <Feldzeile label="Status"><Pillen liste={AUSGABE_STATUS} aktiv={a.status} farbe={STATUS_FARBE[a.status]} onWahl={statusWahl} /></Feldzeile>
+      <Feldzeile label="Status"><Wahl label="Status" liste={AUSGABE_STATUS} wert={a.status} farbe={STATUS_FARBE[a.status]} onWahl={statusWahl} /></Feldzeile>
       {(statusHinweis || (a.status === 'bereit' && sperre)) && <div style={{ fontSize: 12.5, color: LEUCHT.achtung, margin: '2px 0 6px', lineHeight: 1.5 }}>{statusHinweis || `Bereit, aber: ${sperre}`}</div>}
       <Feldzeile label="Datum"><Feld typ="date" breite={170} wert={a.datum ?? ''} platzhalter="Datum" onFertig={d => void teil({ datum: d || null })} /></Feldzeile>
       <div style={{ marginTop: 4 }}><Textfeld wert={a.inhalt} zeilen={10} max={20000} platzhalter="Inhalt der Ausgabe — eine Einsicht, konkret, in deiner Stimme" onFertig={t => void textAendern({ inhalt: t })} /></div>

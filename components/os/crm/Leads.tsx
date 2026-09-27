@@ -28,6 +28,7 @@ import { temperaturFarbe, temperaturLabel } from '@/lib/crm/score';
 import { STUFEN } from '@/lib/crm/pipeline';
 import { type CrmApi, datum, euro, plusTage, holeMitStand } from './daten';
 import { Pillen, Feldzeile } from './teile';
+import { Wahl } from './Wahl';
 import { Person, ZustaendigWahl, WerFilter, useWerFilter, passtWer } from './team';
 import { HeadPanel } from './HeadPanel';
 
@@ -255,7 +256,7 @@ function Qualifizierung({ z, api, laden, zuKontakt, zuDeal }: { z: LeadZeile; ap
           {(bereit || trotzdem) ? (
             <>
               <Feldzeile label="Deal"><input value={deal.titel} onChange={e => setDeal({ ...deal, titel: e.target.value })} aria-label="Titel des Deals" style={eingabe} /></Feldzeile>
-              <Feldzeile label="Art"><Pillen liste={ARTEN} aktiv={deal.art} onWahl={art => setDeal({ ...deal, art })} /></Feldzeile>
+              <Feldzeile label="Art"><Wahl label="Art" liste={ARTEN} wert={deal.art} onWahl={art => setDeal({ ...deal, art })} /></Feldzeile>
               <Feldzeile label="Wert">
                 <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <input type="number" inputMode="decimal" min={0} value={deal.betrag} onChange={e => setDeal({ ...deal, betrag: e.target.value })} placeholder="€ (optional)" aria-label="Wert in Euro" style={{ ...eingabe, width: 130 }} />

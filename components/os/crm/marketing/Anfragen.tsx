@@ -23,6 +23,7 @@ import { statusLabel } from '@/lib/crm/leads';
 import { dealAkte } from '@/lib/crm/adresse';
 import { type CrmApi, datum, holeMitStand } from '../daten';
 import { Pillen, Feldzeile } from '../teile';
+import { Wahl } from '../Wahl';
 import { Person } from '../team';
 import { PersonWahl, AlsNaechstes } from './gemeinsam';
 import { DealAusQuelle } from './DealAusQuelle';
@@ -122,13 +123,15 @@ export function Anfragen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
                 )}
             </div>
           </Feldzeile>
-          <Feldzeile label="Kanal"><Pillen liste={KANAELE} aktiv={kanal} onWahl={setKanal} /></Feldzeile>
+          <Feldzeile label="Kanal"><Wahl label="Kanal" liste={KANAELE} wert={kanal} onWahl={setKanal} /></Feldzeile>
           <Feldzeile label="Bezug">
             <div style={{ display: 'grid', gap: 6 }}>
-              <Pillen liste={BEZUEGE} aktiv={bezugArt} onWahl={a => { setBezugArt(a); setBezugId(''); }} />
+              <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Wahl label="Bezug" liste={BEZUEGE} wert={bezugArt} onWahl={a => { if (a !== bezugArt) { setBezugArt(a); setBezugId(''); } }} />
               {bezugArt !== 'keiner' && (bezugListe.length
-                ? <select value={bezugId} onChange={e => setBezugId(e.target.value)} aria-label="Bezug wählen" style={{ ...feld, width: 'auto', maxWidth: '100%', fontSize: TYP.bedien, padding: '8px 11px' }}><option value="">— wählen —</option>{bezugListe.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}</select>
+                ? <Wahl label={bezugArt === 'beitrag' ? 'Beitrag' : bezugArt === 'kampagne' ? 'Kampagne' : 'Event'} leer="+ wählen" liste={bezugListe.map(b => ({ id: b.id, label: b.label }))} wert={bezugId || null} onWahl={setBezugId} onLeeren={() => setBezugId('')} />
                 : <span style={{ fontSize: 12.5, color: C.inkLeise }}>{bezugArt === 'beitrag' ? 'Noch kein Beitrag über das Ideen-Stadium hinaus.' : bezugArt === 'kampagne' ? 'Keine laufende Kampagne.' : 'Kein Event.'}</span>)}
+              </span>
             </div>
           </Feldzeile>
           <Feldzeile label="Datum"><input type="date" value={tag} max={heute} onChange={e => setTag(e.target.value)} aria-label="Datum der Anfrage" style={{ ...feld, width: 170, fontSize: TYP.bedien, padding: '8px 11px' }} /></Feldzeile>

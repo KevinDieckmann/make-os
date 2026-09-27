@@ -23,7 +23,10 @@ import { netzStufe, profilAdresse, suchLink } from '@/lib/crm/netzwerk';
 import { markttraktion, mandateLink } from '@/lib/crm/adresse';
 import Link from 'next/link';
 import { type CrmApi, datum, euro } from './daten';
-import { NotizFormular, Verlauf, Feldzeile, Pillen, Feld, festhalten, hatMailEinwilligung, MehrfachPillen } from './teile';
+import { NotizFormular, Verlauf, Feldzeile, Pillen, Feld, festhalten, hatMailEinwilligung } from './teile';
+import { Wahl, WahlMehrfach } from './Wahl';
+import { anredeVorschlag, kontaktRollenVorschlag } from '@/lib/crm/vorschlaege';
+import { KREIS_WORT } from '@/lib/crm/wertelisten';
 import { ZustaendigWahl, Uebergeben, Person } from './team';
 import { neueFirma, ROLLEN } from './Firmen';
 import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
@@ -33,9 +36,17 @@ import { phaseVon, PHASE_LABEL, type Phase } from '@/lib/crm/phase';
 export const PHASEN: { id: Lebensphase; label: string }[] = [
   { id: 'kontakt', label: 'Kontakt' }, { id: 'interessent', label: 'Interessent' }, { id: 'kunde', label: 'Kunde' }, { id: 'ex_kunde', label: 'Ex-Kunde' }, { id: 'partner', label: 'Partner' }, { id: 'multiplikator', label: 'Multiplikator' },
 ];
-const KREISE: { id: Kreis; label: string }[] = (['A', 'B', 'C', 'D'] as Kreis[]).map(k => ({ id: k, label: `${k} · ${KREIS_TAKT[k]} T` }));
+const KREISE: { id: Kreis; label: string; hinweis: string }[] = (['A', 'B', 'C', 'D'] as Kreis[]).map(k => ({ id: k, label: `${k} · ${KREIS_WORT[k]}`, hinweis: `alle ${KREIS_TAKT[k]} Tage` }));
+const ANREDEN: { id: 'Sie' | 'Du'; label: string }[] = [{ id: 'Sie', label: 'Sie' }, { id: 'Du', label: 'Du' }];
+const ANSPRACHE = STUFEN.map(s => ({ id: s, label: STUFE_LABEL[s] }));
+const KONTAKT_ROLLEN_WAHL = KONTAKT_ROLLEN.map(r => ({ id: r, label: ROLLE_LABEL[r] }));
+const VON_HAND: { id: 'partner' | 'multiplikator'; label: string }[] = [{ id: 'partner', label: 'Partner' }, { id: 'multiplikator', label: 'Multiplikator' }];
+const PRIOS: { id: Exclude<Kontakt['prio'], ''>; label: string }[] = [{ id: 'A', label: 'A' }, { id: 'B', label: 'B' }, { id: 'C', label: 'C' }];
+const EIGNUNGEN: { id: Exclude<Kontakt['eignung'], ''>; label: string }[] = [{ id: 'ja', label: 'ja' }, { id: 'vielleicht', label: 'vielleicht' }, { id: 'nein', label: 'nein' }];
 const EW_KANAL: { id: EinwilligungKanal; label: string }[] = [{ id: 'mail', label: 'Mail' }, { id: 'telefon', label: 'Telefon' }, { id: 'social', label: 'LinkedIn/Social' }, { id: 'newsletter', label: 'Newsletter' }, { id: 'einladung', label: 'Einladungen' }];
 const GRUNDLAGEN: { id: Grundlage; label: string }[] = [{ id: 'einwilligung', label: 'Einwilligung' }, { id: 'anfrage', label: 'Anfrage' }, { id: 'intro_akzeptiert', label: 'Intro akzeptiert' }, { id: 'vertrag', label: 'Vertrag' }];
+const RECHTSGRUNDLAGEN_WAHL = RECHTSGRUNDLAGEN.map(r => ({ id: r.id, label: r.label, hinweis: r.norm }));
+const HERKUNFT_WAHL = HERKUNFT.map(h => ({ id: h.id, label: h.label, ...(h.fremd ? { hinweis: 'Art. 14' } : {}) }));
 export const phaseFarbe = (p?: string) => (p === 'kunde' ? LEUCHT.gut : p === 'partner' || p === 'multiplikator' ? LEUCHT.agenten : p === 'interessent' || p === 'opportunity' ? LEUCHT.business : p === 'ex_kunde' ? C.inkLeise : LEUCHT.puls);
 export const phaseLabel = (p?: string) => (p && p in PHASE_LABEL ? PHASE_LABEL[p as Phase] : undefined) ?? PHASEN.find(x => x.id === p)?.label ?? 'Kontakt';
 
@@ -69,27 +80,32 @@ export function NaechsterSchrittTeil({ k, heute, setze }: { k: Kontakt; heute: s
 }
 
 export function BeziehungTeil({ k, api, setze, ohneTitel }: { k: Kontakt; api: CrmApi; setze: Setze; /** In der Akte trägt der Abschnitt den Titel. */ ohneTitel?: boolean }) {
-  // Phase abgeleitet (27.09.): aus Mandat, Deal, Lead — nicht getippt. Rollen, Ansprache und Anrede klein, aufklappbar.
+  // Phase abgeleitet (27.09.): aus Mandat, Deal, Lead — nicht getippt.
+  // Chip + Menü + Vorschlag (27.09. abends): Kreis, Anrede, Ansprache, Rollen und „von Hand“ als Chips in
+  // kompakten Zeilen — sichtbar ist nur, was gesetzt ist; Rollen und Anrede schlagen aus den Daten vor.
   const ph = phaseVon(k, api.crm?.stand);
-  const [mehr, setMehr] = useState(false);
+  const firma = k.firmaId ? api.crm?.stand.firmen.find(f => f.id === k.firmaId) : undefined;
   const chip = (text: string, farbe: string) => <span style={{ fontSize: 11.5, fontWeight: 600, color: farbe, border: `1px solid ${farbe}55`, borderRadius: 999, padding: '2px 8px' }}>{text}</span>;
+  const paar = (label: string, inhalt: ReactNode) => <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>{label}</span>{inhalt}</span>;
+  const vonHand = k.lebensphase === 'partner' || k.lebensphase === 'multiplikator' ? k.lebensphase : null;
+  // Rolle entfernen, die nur über die alte Lebensphase kam → Lebensphase mit leeren, sonst käme sie über rollenVon zurück.
+  const rollenSetzen = (rollen: Rolle[]) => void setze({ rollen, ...(vonHand && !rollen.includes(vonHand) ? { lebensphase: undefined } : {}) });
   return (
     <div>
       {!ohneTitel && <Ueberschrift>Beziehung</Ueberschrift>}
-      <Feldzeile label="Kreis"><Pillen liste={KREISE} aktiv={k.kreis} onWahl={kreis => void setze({ kreis: kreis === k.kreis ? undefined : kreis })} farbe={LEUCHT.beziehung} /></Feldzeile>
-      <Feldzeile label="Phase"><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>{chip(PHASE_LABEL[ph.phase], phaseFarbe(ph.phase))}<span style={{ fontSize: 12, color: C.inkLeise }}>{ph.grund}</span></span></Feldzeile>
-      <Feldzeile label={mehr ? 'Rollen' : 'Details'}>
-        {mehr ? <MehrfachPillen liste={KONTAKT_ROLLEN.map(r => ({ id: r, label: ROLLE_LABEL[r] }))} aktiv={rollenVon(k)} onWahl={(rollen: Rolle[]) => void setze({ rollen })} farbe={LEUCHT.business} />
-          : <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-            {rollenVon(k).map(r => <span key={r}>{chip(ROLLE_LABEL[r], LEUCHT.business)}</span>)}{chip(STUFE_LABEL[k.stufe], C.inkDim)}{k.anrede && chip(k.anrede, C.inkDim)}
-            <button onClick={() => setMehr(true)} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12, padding: 0 }}>ändern ▾</button>
-          </span>}
+      <div style={{ display: 'flex', gap: '8px 18px', flexWrap: 'wrap', alignItems: 'center', padding: '6px 0' }}>
+        {paar('Kreis', <Wahl label="Kreis" liste={KREISE} wert={k.kreis} farbe={LEUCHT.beziehung} onWahl={kreis => void setze({ kreis })} onLeeren={() => void setze({ kreis: undefined })} />)}
+        {paar('Anrede', <Wahl label="Anrede" liste={ANREDEN} wert={k.anrede} vorschlag={anredeVorschlag(k)} onWahl={anrede => void setze({ anrede })} onLeeren={() => void setze({ anrede: undefined })} />)}
+        {paar('Ansprache', <Wahl label="Ansprache" liste={ANSPRACHE} wert={k.stufe} onWahl={(stufe: Stufe) => void setze({ stufe })} />)}
+      </div>
+      <Feldzeile label="Rollen"><WahlMehrfach label="Rolle" liste={KONTAKT_ROLLEN_WAHL} wert={rollenVon(k)} vorschlag={kontaktRollenVorschlag(k, firma)} farbe={LEUCHT.business} onWahl={rollenSetzen} /></Feldzeile>
+      <Feldzeile label="Phase">
+        <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {chip(PHASE_LABEL[ph.phase], phaseFarbe(ph.phase))}<span style={{ fontSize: 12, color: C.inkLeise }}>{ph.grund}</span>
+          <Wahl label="Phase von Hand" leer="von Hand ▾" klein liste={VON_HAND} wert={vonHand} farbe={LEUCHT.agenten}
+            onWahl={p => void setze({ lebensphase: p as Lebensphase })} onLeeren={() => void setze({ lebensphase: undefined })} />
+        </span>
       </Feldzeile>
-      {mehr && <>
-        <Feldzeile label="Ansprache"><Pillen liste={STUFEN.map(s => ({ id: s, label: STUFE_LABEL[s] }))} aktiv={k.stufe} onWahl={(stufe: Stufe) => void setze({ stufe })} /></Feldzeile>
-        <Feldzeile label="Anrede"><Pillen liste={[{ id: 'Sie', label: 'Sie' }, { id: 'Du', label: 'Du' }]} aktiv={k.anrede} onWahl={anrede => void setze({ anrede: anrede as 'Sie' | 'Du' })} /></Feldzeile>
-        <Feldzeile label="Von Hand"><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><Pillen liste={[{ id: 'partner', label: 'Partner' }, { id: 'multiplikator', label: 'Multiplikator' }, { id: '', label: '—' }]} aktiv={k.lebensphase === 'partner' || k.lebensphase === 'multiplikator' ? k.lebensphase : ''} onWahl={p => void setze({ lebensphase: (p || undefined) as Lebensphase | undefined })} /><button onClick={() => setMehr(false)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>zuklappen ▴</button></span></Feldzeile>
-      </>}
       <Feldzeile label="Hält die Beziehung"><ZustaendigWahl wert={k.besitzer} welt="sales" onWahl={besitzer => void setze({ besitzer })} /></Feldzeile>
       <div style={{ marginTop: 8 }}><Uebergeben api={api} art="kontakt" id={k.id} jetzt={haeltBeziehung(k)} /></div>
     </div>
@@ -217,8 +233,8 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
   return (
     <div style={{ display: 'grid', gap: 14 }}>
       <div><Ueberschrift>Grundlage</Ueberschrift>
-        <Feldzeile label="Rechtsgrundlage (Art. 6)"><Pillen liste={RECHTSGRUNDLAGEN.map(r => ({ id: r.id, label: r.label }))} aktiv={k.rechtsgrundlage} onWahl={(r: Rechtsgrundlage) => void setze({ rechtsgrundlage: r })} /></Feldzeile>
-        <Feldzeile label="Herkunft (Art. 14)"><Pillen liste={HERKUNFT.map(h => ({ id: h.id, label: h.label }))} aktiv={k.herkunft} onWahl={(h: Herkunft) => void setze({ herkunft: h, ...(HERKUNFT.find(x => x.id === h)?.fremd ? { fremddaten: true } : { fremddaten: undefined }) })} /></Feldzeile>
+        <Feldzeile label="Rechtsgrundlage (Art. 6)"><Wahl label="Rechtsgrundlage" liste={RECHTSGRUNDLAGEN_WAHL} wert={k.rechtsgrundlage} onWahl={(r: Rechtsgrundlage) => void setze({ rechtsgrundlage: r })} /></Feldzeile>
+        <Feldzeile label="Herkunft (Art. 14)"><Wahl label="Herkunft" liste={HERKUNFT_WAHL} wert={k.herkunft} onWahl={(h: Herkunft) => void setze({ herkunft: h, ...(HERKUNFT.find(x => x.id === h)?.fremd ? { fremddaten: true } : { fremddaten: undefined }) })} /></Feldzeile>
         {k.fremddaten && <Feldzeile label="Informiert"><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkDim }}>{k.art14InformiertAm ? `am ${datum(k.art14InformiertAm)}` : 'noch nicht'}</span>{!k.art14InformiertAm && <Knopf leise onClick={() => void setze({ art14InformiertAm: heute })}>Heute informiert</Knopf>}</div></Feldzeile>}
       </div>
       <div>
@@ -232,8 +248,10 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
         {!(k.einwilligungen ?? []).length && !ew && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Keine. Einwilligung im Gespräch einholen und den Wortlaut festhalten.</div>}
         {ew && (
           <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
-            <Pillen liste={EW_KANAL} aktiv={ew.kanal} onWahl={kanal => setEw({ ...ew, kanal })} />
-            <Pillen liste={GRUNDLAGEN} aktiv={ew.grundlage} onWahl={grundlage => setEw({ ...ew, grundlage })} />
+            <div style={{ display: 'flex', gap: '8px 18px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Kanal</span><Wahl label="Kanal" liste={EW_KANAL} wert={ew.kanal} onWahl={kanal => setEw({ ...ew, kanal })} /></span>
+              <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Grundlage</span><Wahl label="Grundlage" liste={GRUNDLAGEN} wert={ew.grundlage} onWahl={grundlage => setEw({ ...ew, grundlage })} /></span>
+            </div>
             <input value={ew.nachweis} onChange={e => setEw({ ...ew, nachweis: e.target.value })} placeholder="Nachweis: Wortlaut oder Beleg („im Gespräch am …: Darf ich Ihnen … schicken? — ja“)" aria-label="Nachweis" style={{ ...feld, fontSize: TYP.bedien }} />
             <div style={{ display: 'flex', gap: 8 }}>
               <Knopf aus={!ew.nachweis.trim()} onClick={() => { const neu: Einwilligung = { kanal: ew.kanal, grundlage: ew.grundlage, erteiltAm: heute, nachweis: ew.nachweis.trim() }; void setze({ einwilligungen: [...(k.einwilligungen ?? []), neu], ...(ew.grundlage === 'einwilligung' && !k.rechtsgrundlage ? { rechtsgrundlage: 'einwilligung' as Rechtsgrundlage } : {}) }); setEw(null); }}>Festhalten</Knopf>
@@ -364,8 +382,8 @@ function matrixTeile({ k, api, setze, zuFirma }: MatrixArgs): { inhalt: Record<M
     einordnung: <>
       {einzel('Typ', 'typen', k.typ, typ => void setze({ typ }))}
       {einzel('Kategorie', 'kategorien', k.kategorie, kategorie => void setze({ kategorie }))}
-      <MatrixRahmen label="Prio" mittig><Pillen liste={[{ id: 'A', label: 'A' }, { id: 'B', label: 'B' }, { id: 'C', label: 'C' }, { id: '', label: '—' }]} aktiv={k.prio} onWahl={p => void setze({ prio: p as Kontakt['prio'] })} /></MatrixRahmen>
-      <MatrixRahmen label="Eignung" mittig><Pillen liste={[{ id: 'ja', label: 'ja' }, { id: 'vielleicht', label: 'vielleicht' }, { id: 'nein', label: 'nein' }, { id: '', label: '—' }]} aktiv={k.eignung} onWahl={x => void setze({ eignung: x as Kontakt['eignung'] })} /></MatrixRahmen>
+      <MatrixRahmen label="Prio" mittig><Wahl label="Prio" klein liste={PRIOS} wert={k.prio || null} onWahl={prio => void setze({ prio })} onLeeren={() => void setze({ prio: '' })} /></MatrixRahmen>
+      <MatrixRahmen label="Eignung" mittig><Wahl label="Eignung" klein liste={EIGNUNGEN} wert={k.eignung || null} onWahl={eignung => void setze({ eignung })} onLeeren={() => void setze({ eignung: '' })} /></MatrixRahmen>
       {EINORDNUNG_FELDER.filter(m => m.feld !== 'typ' && m.feld !== 'kategorie').map(kf)}
     </>,
     person: <>{PERSON_FELDER.map(kf)}</>,

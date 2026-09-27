@@ -16,6 +16,7 @@ import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Rast
 import { useAbgleich } from '@/hooks/useAbgleich';
 import { type CrmApi, holeMitStand, datum, plusTage } from './daten';
 import { Pillen, Feldzeile, ERGEBNIS_KNOEPFE } from './teile';
+import { Wahl } from './Wahl';
 import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
 import { Person, ZustaendigWahl, WerFilter, useWerFilter, passtWer } from './team';
 import { TEAM, BEIDE } from '@/lib/crm/team';
@@ -170,7 +171,7 @@ function Erledigen({ f, heute, onFertig, onAbbruch, eigene = [] }: { f: Faellig;
             <input type="date" value={naechster.faellig} onChange={e => setNaechster({ ...naechster, faellig: e.target.value })} disabled={kein} style={{ ...feld, width: 150 }} aria-label="Datum" />
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Pillen liste={FOLLOWUP_ARTEN} aktiv={naechster.art} onWahl={art => setNaechster({ ...naechster, art })} />
+            <Wahl label="Art" liste={FOLLOWUP_ARTEN} wert={naechster.art} onWahl={art => setNaechster({ ...naechster, art })} aus={kein} />
             {f.bezug.art !== 'chance' ? <label style={{ fontSize: 12.5, color: C.inkLeise, display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}><input type="checkbox" checked={kein} onChange={e => setKein(e.target.checked)} /> kein nächster Schritt (bewusst)</label> : <span style={{ fontSize: 12, color: C.inkLeise }}>Beim Deal ist der nächste Schritt Pflicht (Deal-Regel).</span>}
           </div>
         </div>
@@ -204,7 +205,7 @@ function NeuesFollowUp({ api, onFertig, onAbbruch }: { api: CrmApi; onFertig: (b
             {treffer.map(t => <button key={t.id} onClick={() => setKontaktId(t.id)} style={{ textAlign: 'left', background: 'rgba(255,255,255,.04)', border: 'none', borderRadius: 8, padding: '6px 10px', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien }}>{anzeigename(t)}{t.firma ? <span style={{ color: C.inkLeise }}> · {t.firma}</span> : null}</button>)}
           </div>}
       </Feldzeile>
-      <Feldzeile label="Art"><Pillen liste={FOLLOWUP_ARTEN} aktiv={art} onWahl={setArt} /></Feldzeile>
+      <Feldzeile label="Art"><Wahl label="Art" liste={FOLLOWUP_ARTEN} wert={art} onWahl={setArt} /></Feldzeile>
       <Feldzeile label="Was"><input value={text} onChange={e => setText(e.target.value)} placeholder="z. B. Angebot nachfassen" style={{ ...feld }} /></Feldzeile>
       <Feldzeile label="Wann">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

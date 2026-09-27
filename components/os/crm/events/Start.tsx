@@ -17,7 +17,8 @@ import { VORLAGEN, vorlageAnwenden, zielHinweis, MIX_STANDARD, type VorlageId } 
 import { verantwortlich, nameVon } from '@/lib/crm/team';
 import type { Event } from '@/lib/crm/typen';
 import { type CrmApi, neueId, plusTage } from '../daten';
-import { Pillen, Feldzeile } from '../teile';
+import { Feldzeile } from '../teile';
+import { Wahl as WahlChip } from '../Wahl';
 import { ZustaendigWahl } from '../team';
 import { FORMATE, MarkeWahl } from './gemeinsam';
 import { MARKE_EVENTS } from '@/lib/crm/marke';
@@ -89,11 +90,11 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
 
       <Feldzeile label="Vorlage">
         <div style={{ display: 'grid', gap: 6 }}>
-          <Pillen liste={[...VORLAGEN.map(v => ({ id: v.id as Wahl, label: v.label })), OHNE]} aktiv={wahl} onWahl={waehle} farbe={LEUCHT.beziehung} />
+          <WahlChip label="Vorlage" liste={[...VORLAGEN.map(v => ({ id: v.id as Wahl, label: v.label })), OHNE]} wert={wahl} onWahl={waehle} farbe={LEUCHT.beziehung} />
           <span style={{ fontSize: 12.5, color: C.inkLeise }}>{vorlage ? `${vorlage.beschreibung} Ablauf, Checkliste (${vorlage.checkliste.length} Punkte) und Budgetposten kommen mit.` : 'Leeres Event — Format, Ablauf und Checkliste baust du selbst auf.'}</span>
         </div>
       </Feldzeile>
-      {!vorlage && <Feldzeile label="Format"><Pillen liste={[...FORMATE]} aktiv={format} onWahl={setFormat} /></Feldzeile>}
+      {!vorlage && <Feldzeile label="Format"><WahlChip label="Format" liste={FORMATE} wert={format} onWahl={setFormat} /></Feldzeile>}
 
       <Feldzeile label="Titel">
         <input value={titel} onChange={x => setTitel(x.target.value)} placeholder={vorlage ? `z. B. ${vorlage.label} Maschinenbau Rhein-Main` : 'Titel des Events'} aria-label="Titel" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} />

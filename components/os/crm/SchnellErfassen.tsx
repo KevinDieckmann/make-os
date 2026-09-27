@@ -26,6 +26,7 @@ import type { ChancenStufe, WertBasis } from '@/lib/crm/typen';
 import { localDay } from '@/lib/zeit';
 import { type CrmApi, plusTage } from './daten';
 import { NotizFormular, Pillen, festhalten, hatMailEinwilligung, ERGEBNIS_KNOEPFE, type NotizErgebnis } from './teile';
+import { Wahl } from './Wahl';
 import { Person } from './team';
 
 type Art = Extract<AktivitaetArt, 'anruf' | 'termin' | 'gespraech' | 'linkedin' | 'mail' | 'notiz'>;
@@ -86,6 +87,8 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
     // Modal auch für die Tastatur: Esc schließt (vor allen anderen Hörern), und Tasten außerhalb
     // des Dialogs — etwa j/k/Enter/Esc der Kartei dahinter — erreichen die Seite nicht.
     const taste = (e: KeyboardEvent) => {
+      // Ein offenes Wahl-Menü (hängt am Seitenende, außerhalb des Dialogs) bekommt seine Tasten selbst — Esc schließt dann nur das Menü.
+      if ((e.target as Element | null)?.closest?.('[data-wahl-menue]')) return;
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); zu.current(); return; }
       if (!dialogRef.current?.contains(e.target as Node)) e.stopPropagation();
     };
@@ -208,7 +211,7 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
                 {/* Art und Ergebnis */}
                 <div>
                   <h3 style={titelKlein}>Was war?</h3>
-                  <Pillen liste={ARTEN} aktiv={art} onWahl={artWahl} farbe={LEUCHT.business} />
+                  <Wahl label="Art" liste={ARTEN} wert={art} onWahl={artWahl} farbe={LEUCHT.business} />
                   {knoepfe.length > 0 && (
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
                       {knoepfe.map(e => (

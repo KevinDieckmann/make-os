@@ -34,6 +34,7 @@ import {
 } from '@/lib/crm/marketing';
 import { type CrmApi, neueId, datum } from '../daten';
 import { Pillen, Feld, Feldzeile } from '../teile';
+import { Wahl } from '../Wahl';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer, type WerWahl } from '../team';
 import { PersonWahl, Textfeld, kopieren, AutorStimme, StimmePlakette, FreigabeChip, FreigabeBlock, AlsNaechstes, STAND_FARBE } from './gemeinsam';
 
@@ -279,7 +280,7 @@ function BeitragKarte({ b, api, einstellung, heute, zuKontakt, schliessen, melde
       </Feldzeile>
       <Feldzeile label="Erscheint als">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Pillen liste={STIMMEN_WAHL} aktiv={b.stimme ?? null} onWahl={s => void teil(rollenWechsel(b, { stimme: s }))} />
+          <Wahl label="Erscheint als" leer="+ Absender" liste={STIMMEN_WAHL} wert={b.stimme ?? null} onWahl={s => void teil(rollenWechsel(b, { stimme: s }))} />
           {!b.stimme && <span style={{ fontSize: 12, color: C.inkLeise }}>In wessen Namen erscheint es — Profil, Absender?</span>}
         </div>
       </Feldzeile>
@@ -289,12 +290,12 @@ function BeitragKarte({ b, api, einstellung, heute, zuKontakt, schliessen, melde
           onFreigeben={() => { if (stimme) void teil({ freigabe: freigabeOk(b.freigabe, stimme, jetzt()) }); }}
           onAenderung={n => { const f = stimme ? aenderungsWunsch(b.freigabe, stimme, n, jetzt()) : null; if (f) void teil({ freigabe: f }); }} />
       </Feldzeile>
-      <Feldzeile label="Status"><Pillen liste={BEITRAG_STATUS} aktiv={b.status} farbe={STATUS_FARBE[b.status]} onWahl={statusWahl} /></Feldzeile>
+      <Feldzeile label="Status"><Wahl label="Status" liste={BEITRAG_STATUS} wert={b.status} farbe={STATUS_FARBE[b.status]} onWahl={statusWahl} /></Feldzeile>
       {(statusHinweis || (b.status === 'geplant' && sperre)) && (
         <div style={{ fontSize: 12.5, color: LEUCHT.achtung, margin: '2px 0 6px', lineHeight: 1.5 }}>{statusHinweis || `Geplant, aber: ${sperre}`}</div>
       )}
-      <Feldzeile label="Kanal"><Pillen liste={BEITRAG_KANAELE} aktiv={b.kanal} onWahl={kanal => void teil({ kanal })} /></Feldzeile>
-      <Feldzeile label="Säule">{einstellung.saeulen.length ? <Pillen liste={SAEULEN} aktiv={b.saeule ?? ''} onWahl={s => void teil({ saeule: s || null })} /> : <span style={{ fontSize: 12.5, color: C.inkLeise }}>Themensäulen legst du unter „Positionierung“ an.</span>}</Feldzeile>
+      <Feldzeile label="Kanal"><Wahl label="Kanal" liste={BEITRAG_KANAELE} wert={b.kanal} onWahl={kanal => void teil({ kanal })} /></Feldzeile>
+      <Feldzeile label="Säule">{einstellung.saeulen.length ? <Wahl label="Säule" liste={SAEULEN.filter(x => x.id)} wert={b.saeule || null} onWahl={s => void teil({ saeule: s })} onLeeren={() => void teil({ saeule: null })} /> : <span style={{ fontSize: 12.5, color: C.inkLeise }}>Themensäulen legst du unter „Positionierung“ an.</span>}</Feldzeile>
       <Feldzeile label="Datum"><Feld typ="date" breite={170} wert={b.datum ?? ''} platzhalter="Datum" onFertig={d => void teil({ datum: d || null })} /></Feldzeile>
       <Feldzeile label="Link"><Feld wert={b.link ?? ''} platzhalter="https://… (nach dem Veröffentlichen)" onFertig={l => void teil({ link: l.trim() || null })} /></Feldzeile>
       <Feldzeile label="Kosten (€)">
@@ -334,7 +335,7 @@ function BeitragKarte({ b, api, einstellung, heute, zuKontakt, schliessen, melde
           </div>
         )}
         <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
-          <Pillen liste={WIRKUNG_ARTEN} aktiv={art} onWahl={setArt} />
+          <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Wirkung</span><Wahl label="Wirkung" liste={WIRKUNG_ARTEN} wert={art} onWahl={setArt} /></span>
           <input value={notiz} maxLength={300} onChange={e => setNotiz(e.target.value)} placeholder="Notiz (optional): was hat die Person gesagt?" aria-label="Notiz zur Wirkung" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} />
           <PersonWahl kontakte={kontakte} onWahl={k => void eintragen(k.id)} platzhalter="Wer? Person suchen und anklicken" />
           <div style={{ fontSize: 12, color: C.inkLeise }}>{art === 'reaktion' ? 'Reaktionen zählen am Beitrag.' : 'Gespräch und Anfrage stehen zusätzlich im Verlauf der Person — sie zählen als durch Content ausgelöst.'}</div>

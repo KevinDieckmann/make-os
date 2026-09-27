@@ -12,11 +12,13 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { anzeigename } from '@/lib/make-one/crm';
 import { Knopf, LEUCHT, feld } from '../schlank';
 import { type CrmApi, plusTage } from './daten';
-import { Pillen, Feldzeile } from './teile';
+import { Feldzeile } from './teile';
+import { Wahl } from './Wahl';
 import { ZustaendigWahl } from './team';
 import type { ChancenArt, Quelle, WertBasis } from '@/lib/crm/typen';
 
 const ARTEN: { id: ChancenArt; label: string }[] = [{ id: 'retainer', label: 'Retainer' }, { id: 'projekt', label: 'Projekt' }, { id: 'workshop', label: 'Workshop' }, { id: 'vermittlung', label: 'Vermittlung' }, { id: 'software', label: 'Software' }];
+const BASEN: { id: WertBasis; label: string }[] = [{ id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr' }, { id: 'einmalig', label: 'einmalig' }];
 const QUELLEN: { id: Quelle; label: string }[] = [{ id: 'empfehlung', label: 'Empfehlung' }, { id: 'event', label: 'Event' }, { id: 'content', label: 'Content' }, { id: 'kampagne', label: 'Kampagne' }, { id: 'outreach', label: 'Ansprache' }, { id: 'bestand', label: 'Bestand' }, { id: 'inbound', label: 'Inbound' }];
 
 export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, quelleBezug, onFertig, onAbbruch, zuDeal }: { api: CrmApi; kontaktId?: string; firmaId?: string; quelle?: Quelle; quelleBezug?: string; onFertig: (chanceId: string) => void; onAbbruch: () => void; zuDeal?: (id: string) => void }) {
@@ -77,11 +79,11 @@ export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, qu
         </div>
       </Feldzeile>
       <Feldzeile label="Titel"><input value={titel} onChange={e => setTitel(e.target.value)} placeholder={f ? `${f.name} · ${ARTEN.find(a => a.id === art)?.label}` : 'z. B. Acme · Retainer'} style={{ ...feld }} /></Feldzeile>
-      <Feldzeile label="Art"><Pillen liste={ARTEN} aktiv={art} onWahl={setArt} /></Feldzeile>
+      <Feldzeile label="Art"><Wahl label="Art" liste={ARTEN} wert={art} onWahl={setArt} /></Feldzeile>
       <Feldzeile label="Wert">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <input type="number" value={betrag} onChange={e => setBetrag(e.target.value)} placeholder="Betrag €" style={{ ...feld, width: 120 }} />
-          <Pillen liste={[{ id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr' }, { id: 'einmalig', label: 'einmalig' }]} aktiv={basis} onWahl={setBasis} />
+          <Wahl label="Wert-Basis" liste={BASEN} wert={basis} onWahl={setBasis} />
           {basis !== 'einmalig' && <input type="number" value={laufzeit} onChange={e => setLaufzeit(e.target.value)} placeholder="Monate" style={{ ...feld, width: 100 }} />}
         </div>
       </Feldzeile>
@@ -92,7 +94,7 @@ export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, qu
         </div>
       </Feldzeile>
       <Feldzeile label="Entscheidung bis"><input type="date" value={erwartetAm} onChange={e => setErwartetAm(e.target.value)} style={{ ...feld, width: 150 }} aria-label="Entscheidung bis" /></Feldzeile>
-      <Feldzeile label="Quelle"><Pillen liste={QUELLEN} aktiv={quelle} onWahl={setQuelle} /></Feldzeile>
+      <Feldzeile label="Quelle"><Wahl label="Quelle" liste={QUELLEN} wert={quelle} onWahl={setQuelle} onLeeren={() => setQuelle(undefined)} /></Feldzeile>
       <Feldzeile label="Führt"><ZustaendigWahl wert={besitzer} welt="sales" onWahl={setBesitzer} beide={false} /></Feldzeile>
       {fehler && (
         <div style={{ fontSize: 12.5, color: LEUCHT.achtung, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>

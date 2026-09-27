@@ -32,6 +32,7 @@ import { werZahlen, bearbeiterFuer, kampagneJePerson, OFFENE_STUFEN } from '@/li
 import { zustaendig, nameVon, BEIDE } from '@/lib/crm/team';
 import { type CrmApi, datum, euro, plusTage } from './daten';
 import { Pillen, Feld, Feldzeile, AMPEL_FARBE } from './teile';
+import { Wahl } from './Wahl';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
 import { HeadPanel } from './HeadPanel';
 import { VernetzenEinstellungen } from './Vernetzen';
@@ -214,11 +215,11 @@ function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagn
           <Uebergeben api={api} art="kampagne" id={k.id} jetzt={fuehrt} klein />
         </div>
       </Feldzeile>
-      <Feldzeile label="Status"><Pillen liste={STATUS} aktiv={k.status} onWahl={status => setze({ status })} /></Feldzeile>
+      <Feldzeile label="Status"><Wahl label="Status" liste={STATUS} wert={k.status} onWahl={status => setze({ status })} /></Feldzeile>
       <Feldzeile label="Name"><Feld wert={k.name} onFertig={name => name.trim() && setze({ name: name.trim() })} /></Feldzeile>
       <Feldzeile label="Ziel"><Feld wert={k.ziel} onFertig={ziel => setze({ ziel })} /></Feldzeile>
       <Feldzeile label="Start"><Feld typ="date" breite={160} wert={k.start} platzhalter="Start" onFertig={start => setze({ start: start || undefined })} /></Feldzeile>
-      <Feldzeile label="Kanal"><Pillen liste={Object.entries(KANAL_LABEL).map(([id, label]) => ({ id: id as Kampagne['kanal'], label }))} aktiv={k.kanal} onWahl={kanal => setze({ kanal })} /></Feldzeile>
+      <Feldzeile label="Kanal"><Wahl label="Kanal" liste={Object.entries(KANAL_LABEL).map(([id, label]) => ({ id: id as Kampagne['kanal'], label }))} wert={k.kanal} onWahl={kanal => setze({ kanal })} /></Feldzeile>
       <Feldzeile label="Kosten (€)">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <Feld typ="number" breite={140} wert={k.kostenEuro ? String(k.kostenEuro) : ''} platzhalter="0" onFertig={t => { const n = Math.round(Number(t)); setze({ kostenEuro: Number.isFinite(n) && n > 0 ? n : undefined }); }} />

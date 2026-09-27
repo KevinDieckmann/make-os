@@ -22,22 +22,28 @@ import { mandateLink } from '@/lib/crm/adresse';
 import { WEG } from '@/lib/wege';
 import { rechnungPasst } from '@/lib/crm/kunden';
 import { mandatPhase, portfolio } from '@/lib/crm/produkte';
-import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, feld, useBreit, LEUCHT } from '../schlank';
+import { FARBE as C } from '@/lib/make-one/design';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, useBreit, LEUCHT } from '../schlank';
 import { anzeigename } from '@/lib/make-one/crm';
 import { HEALTH_GEWICHTE, HEALTH_LABEL, kundenJePerson } from '@/lib/crm/kunden';
 import { werZahlen } from '@/lib/crm/pipeline';
 import { zustaendig, mitglied, nameVon } from '@/lib/crm/team';
 import type { Mandat } from '@/lib/crm/typen';
 import { type CrmApi, neueId, datum, euro, kurzEuro } from './daten';
-import { Feldzeile, Pillen, Feld } from './teile';
+import { Feldzeile, Feld } from './teile';
+import { Wahl } from './Wahl';
+import { GESELLSCHAFT_WAHL } from '@/lib/crm/wahl';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
 import { HeadPanel } from './HeadPanel';
 import { useZiel, useZuZiel } from '../ziel';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 const STATUS: { id: Mandat['status']; label: string }[] = [{ id: 'angebot', label: 'Angebot' }, { id: 'verhandlung', label: 'Verhandlung' }, { id: 'aktiv', label: 'Aktiv' }, { id: 'pausiert', label: 'Pausiert' }, { id: 'beendet', label: 'Beendet' }];
-const GES = [{ id: 'kdc', label: 'Selbstständigkeit' }, { id: 'kdv', label: 'KD Ventures' }, { id: 'ug', label: 'Neue UG' }, { id: 'offen', label: 'offen' }] as const;
+const VERTRAG = [{ id: 'ja', label: 'unterschrieben' }, { id: 'nein', label: 'nicht unterschrieben' }] as const;
+const HONORAR_BASIS = [{ id: 'monat', label: 'je Monat' }, { id: 'einmalig', label: 'einmalig' }, { id: 'tag', label: 'je Tag' }] as const;
+const NETTO = [{ id: 'netto', label: 'netto' }, { id: 'brutto', label: 'brutto' }] as const;
+const UST = [{ id: '19', label: '19 % USt' }, { id: '0', label: 'Reverse Charge' }] as const;
+const VERLAENGERUNG = [{ id: 'auto', label: 'verlängert sich' }, { id: 'manuell', label: 'endet' }, { id: 'offen', label: 'offen' }] as const;
 const statusFarbe = (s: string) => (s === 'aktiv' ? LEUCHT.gut : s === 'verhandlung' || s === 'angebot' ? LEUCHT.business : C.inkLeise);
 /** Einzeländerung: nur diese Felder; „undefined“ heißt leeren (als '' gesendet — der Server lässt das Feld dann weg). */
 const nurFelder = (t: Record<string, unknown>) => Object.fromEntries(Object.entries(t).map(([k, v]) => [k, v === undefined ? '' : v]));
@@ -175,28 +181,26 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
         </div>
       </Feldzeile>
       {m.chanceId && <Feldzeile label="Deal"><Link href={WEG.deal(m.chanceId)} style={{ fontSize: 12.5, color: C.inkDim, textDecoration: 'none' }}>Deal öffnen ›</Link></Feldzeile>}
-      <Feldzeile label="Status"><Pillen liste={STATUS} aktiv={m.status} onWahl={status => setze({ status })} /></Feldzeile>
-      <Feldzeile label="Vertrag"><Pillen liste={[{ id: 'ja', label: 'unterschrieben' }, { id: 'nein', label: 'nicht unterschrieben' }]} aktiv={m.vertragUnterschrieben ? 'ja' : 'nein'} onWahl={x => setze({ vertragUnterschrieben: x === 'ja' })} /></Feldzeile>
+      <Feldzeile label="Status"><Wahl label="Status" liste={STATUS} wert={m.status} onWahl={status => setze({ status })} /></Feldzeile>
+      <Feldzeile label="Vertrag"><Wahl label="Vertrag" liste={VERTRAG} wert={m.vertragUnterschrieben ? 'ja' : 'nein'} farbe={m.vertragUnterschrieben ? LEUCHT.gut : C.aktiv} onWahl={x => setze({ vertragUnterschrieben: x === 'ja' })} /></Feldzeile>
       <Feldzeile label="Kunde"><Feld wert={m.kunde} onFertig={kunde => kunde.trim() && setze({ kunde: kunde.trim() })} /></Feldzeile>
       <Feldzeile label="Titel"><Feld wert={m.titel} onFertig={titel => titel.trim() && setze({ titel: titel.trim() })} /></Feldzeile>
       <Feldzeile label="Produkt">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select value={m.leistungId ?? ''} aria-label="Produkt" onChange={e => setze({ leistungId: e.target.value || undefined, phase: undefined })} style={{ ...feld, width: 'auto', maxWidth: '100%', fontSize: TYP.bedien, padding: '8px 11px' }}>
-            <option value="">— ohne Produkt —</option>
-            {crm.stand.leistungen.filter(x => x.status !== 'eingestellt' || x.id === m.leistungId).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
-          </select>
+          <Wahl label="Produkt" liste={crm.stand.leistungen.filter(x => x.status !== 'eingestellt' || x.id === m.leistungId).map(x => ({ id: x.id, label: x.name }))} wert={m.leistungId}
+            onWahl={leistungId => leistungId !== m.leistungId && setze({ leistungId, phase: undefined })} onLeeren={() => setze({ leistungId: undefined, phase: undefined })} />
           {produkt && <Link href={mandateLink('produkte', produkt.id)} style={{ fontSize: 12.5, color: C.inkDim, textDecoration: 'none' }}>Produkt öffnen ›</Link>}
         </div>
       </Feldzeile>
       {produkt && (produkt.phasen?.length
-        ? <Feldzeile label="Phase"><Pillen liste={produkt.phasen.map(p => ({ id: p.id, label: p.name }))} aktiv={m.phase ?? produkt.phasen[0].id} onWahl={phase => setze({ phase })} farbe={LEUCHT.business} /></Feldzeile>
+        ? <Feldzeile label="Phase"><Wahl label="Phase" liste={produkt.phasen.map(p => ({ id: p.id, label: p.name }))} wert={m.phase ?? produkt.phasen[0].id} onWahl={phase => setze({ phase })} farbe={LEUCHT.business} /></Feldzeile>
         : <Feldzeile label="Phase"><span style={{ fontSize: 12.5, color: C.inkLeise }}>Das Produkt hat noch keinen Ablauf — unter Produkte anlegen.</span></Feldzeile>)}
       <Feldzeile label="Honorar">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Feld typ="number" wert={m.honorar.betrag ? String(m.honorar.betrag) : ''} breite={120} platzhalter="€" onFertig={b => setze({ honorar: { ...m.honorar, betrag: Number(b) || 0 } })} />
-          <Pillen liste={[{ id: 'monat', label: 'je Monat' }, { id: 'einmalig', label: 'einmalig' }, { id: 'tag', label: 'je Tag' }]} aktiv={m.honorar.basis} onWahl={basis => setze({ honorar: { ...m.honorar, basis } })} />
-          <Pillen liste={[{ id: 'netto', label: 'netto' }, { id: 'brutto', label: 'brutto' }]} aktiv={m.honorar.netto ? 'netto' : 'brutto'} onWahl={x => setze({ honorar: { ...m.honorar, netto: x === 'netto' } })} />
-          <Pillen liste={[{ id: '19', label: '19 % USt' }, { id: '0', label: 'Reverse Charge' }]} aktiv={String(m.ustSatz)} onWahl={x => setze({ ustSatz: Number(x) })} />
+          <Wahl label="Honorar-Basis" liste={HONORAR_BASIS} wert={m.honorar.basis} onWahl={basis => setze({ honorar: { ...m.honorar, basis } })} />
+          <Wahl label="netto oder brutto" liste={NETTO} wert={m.honorar.netto ? 'netto' : 'brutto'} onWahl={x => setze({ honorar: { ...m.honorar, netto: x === 'netto' } })} />
+          <Wahl label="Umsatzsteuer" liste={UST} wert={String(m.ustSatz) === '0' ? '0' : String(m.ustSatz) === '19' ? '19' : null} onWahl={x => setze({ ustSatz: Number(x) })} />
         </div>
       </Feldzeile>
       <Feldzeile label="Laufzeit">
@@ -205,11 +209,11 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
           <span style={{ color: C.inkLeise }}>bis</span>
           <Feld typ="date" wert={m.ende} breite={150} platzhalter="Ende" onFertig={ende => setze({ ende: ende || undefined })} />
           <Feld typ="number" wert={m.kuendigungsfristTage ? String(m.kuendigungsfristTage) : ''} breite={120} platzhalter="Frist Tage" onFertig={f => setze({ kuendigungsfristTage: Number(f) || undefined })} />
-          <Pillen liste={[{ id: 'auto', label: 'verlängert sich' }, { id: 'manuell', label: 'endet' }, { id: 'offen', label: 'offen' }]} aktiv={m.verlaengerung} onWahl={verlaengerung => setze({ verlaengerung })} />
+          <Wahl label="Verlängerung" liste={VERLAENGERUNG} wert={m.verlaengerung} onWahl={verlaengerung => setze({ verlaengerung })} />
         </div>
         {l?.endeAm && <div style={{ fontSize: 12, color: l.endeIn !== null && l.endeIn <= 90 ? LEUCHT.achtung : C.inkLeise, marginTop: 4 }}>Ende {datum(l.endeAm)} ({l.endeIn} Tage){l.fristBis && l.fristBis !== l.endeAm ? ` · kündbar bis ${datum(l.fristBis)}` : ''}</div>}
       </Feldzeile>
-      <Feldzeile label="Gesellschaft"><Pillen liste={[...GES]} aktiv={m.gesellschaft} onWahl={gesellschaft => setze({ gesellschaft })} /></Feldzeile>
+      <Feldzeile label="Gesellschaft"><Wahl label="Gesellschaft" liste={GESELLSCHAFT_WAHL} wert={m.gesellschaft} onWahl={gesellschaft => setze({ gesellschaft })} /></Feldzeile>
       <Feldzeile label="Nächstes Review"><Feld typ="date" wert={m.naechstesReview} breite={160} platzhalter="Datum" onFertig={r => setze({ naechstesReview: r || undefined })} /></Feldzeile>
       <div>
         <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 6 }}>Health {l?.health != null ? `· ${l.health}` : '— noch nicht bewertet'} (unter 60 rot, bis 75 gelb){m.health.zahlung === null && crm.zahlung?.[m.id] ? ` · Zahlung aus dem Finanzplan: ${crm.zahlung[m.id]!.wert} (${crm.zahlung[m.id]!.text})` : ''}</div>

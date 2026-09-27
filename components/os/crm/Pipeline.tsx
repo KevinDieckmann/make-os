@@ -15,13 +15,15 @@ import { WEG } from '@/lib/wege';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, useBreit, LEUCHT, feld } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, useBreit, LEUCHT } from '../schlank';
 import { anzeigename } from '@/lib/make-one/crm';
 import { gesamtwert, prognose, prognoseJePerson, werZahlen, verlustgruende } from '@/lib/crm/pipeline';
 import { zustaendig, mitglied, nameVon, verantwortlich } from '@/lib/crm/team';
 import type { Chance, ChancenStufe, Qual } from '@/lib/crm/typen';
 import { type CrmApi, datum, euro, kurzEuro, plusTage } from './daten';
 import { Feldzeile, Pillen, Feld } from './teile';
+import { Wahl } from './Wahl';
+import { GESELLSCHAFT_WAHL } from '@/lib/crm/wahl';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
 import { HeadPanel } from './HeadPanel';
 import { DealAnlegen } from './DealAnlegen';
@@ -36,7 +38,7 @@ const QUELLEN = [{ id: 'empfehlung', label: 'Empfehlung' }, { id: 'event', label
 const QUAL: { id: keyof Chance['qualifizierung']; label: string }[] = [
   { id: 'schmerz', label: 'Schmerz' }, { id: 'entscheider', label: 'Entscheider' }, { id: 'budget', label: 'Budget' }, { id: 'zeitpunkt', label: 'Zeitpunkt' }, { id: 'wirkung', label: 'Wirkung' }, { id: 'alternative', label: 'Alternative' },
 ];
-const GES = [{ id: 'kdc', label: 'Selbstständigkeit' }, { id: 'kdv', label: 'KD Ventures' }, { id: 'ug', label: 'Neue UG' }, { id: 'offen', label: 'offen' }] as const;
+const BASEN = [{ id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr' }, { id: 'einmalig', label: 'einmalig' }] as const;
 /** Einzeländerung: nur diese Felder; „undefined“ heißt leeren (als '' gesendet — der Server lässt das Feld dann weg). */
 const nurFelder = (t: Record<string, unknown>) => Object.fromEntries(Object.entries(t).map(([k, v]) => [k, v === undefined ? '' : v]));
 const wertText = (c: Chance) => (c.wert.betrag ? `${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/M' : c.wert.basis === 'jahr' ? '/J' : ''}` : 'ohne Wert');
@@ -267,7 +269,7 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
         {wechsel && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
             {wechsel.ziel === 'verloren'
-              ? <Pillen liste={verlustgruende(crm.stand.wertelisten).map(g => ({ id: g, label: g }))} aktiv={wechsel.grund} onWahl={grund => wechsle('verloren', { grund })} farbe={LEUCHT.kritisch} />
+              ? <Wahl label="Verlustgrund" leer="+ Verlustgrund wählen" liste={verlustgruende(crm.stand.wertelisten).map(g => ({ id: g, label: g }))} wert={wechsel.grund || null} onWahl={grund => wechsle('verloren', { grund })} farbe={LEUCHT.kritisch} />
               : <><input type="date" value={wechsel.wiedervorlage} onChange={e => setWechsel({ ...wechsel, wiedervorlage: e.target.value })} aria-label="Wiedervorlage" style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, padding: '7px 10px', color: C.ink }} /><Knopf onClick={() => wechsle('geparkt', { wiedervorlage: wechsel.wiedervorlage })}>Parken bis dahin</Knopf></>}
             <Knopf leise onClick={() => setWechsel(null)}>Abbrechen</Knopf>
           </div>
@@ -277,18 +279,16 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
       <Feldzeile label="Titel"><Feld wert={c.titel} onFertig={titel => titel.trim() && setze({ titel: titel.trim() })} /></Feldzeile>
       <Feldzeile label="Firma">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select value={c.firmaId ?? ''} aria-label="Firma" onChange={e => { const f = crm.stand.firmen.find(x => x.id === e.target.value); void setze(f ? { firmaId: f.id, firma: f.name } : { firmaId: undefined, firma: undefined }); }} style={{ ...feld, width: 'auto', maxWidth: '100%', fontSize: TYP.bedien, padding: '8px 11px' }}>
-            <option value="">— keine Firma —</option>
-            {[...crm.stand.firmen].sort((a, b) => a.name.localeCompare(b.name)).map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
+          <Wahl label="Firma" liste={[...crm.stand.firmen].sort((a, b) => a.name.localeCompare(b.name)).map(f => ({ id: f.id, label: f.name, ...(f.stadt ? { hinweis: f.stadt } : {}) }))} wert={c.firmaId}
+            onWahl={id => { const f = crm.stand.firmen.find(x => x.id === id); if (f) void setze({ firmaId: f.id, firma: f.name }); }} onLeeren={() => void setze({ firmaId: undefined, firma: undefined })} />
           {!c.firmaId && c.firma && <span style={{ fontSize: 12, color: LEUCHT.achtung }}>„{c.firma}“ ist keiner Firma zugeordnet — oben wählen.</span>}
         </div>
       </Feldzeile>
-      <Feldzeile label="Art"><Pillen liste={[...ARTEN]} aktiv={c.art} onWahl={art => setze({ art })} /></Feldzeile>
+      <Feldzeile label="Art"><Wahl label="Art" liste={ARTEN} wert={c.art} onWahl={art => setze({ art })} /></Feldzeile>
       <Feldzeile label="Wert">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Feld typ="number" wert={c.wert.betrag ? String(c.wert.betrag) : ''} breite={120} platzhalter="Betrag €" onFertig={b => setze({ wert: { ...c.wert, betrag: Number(b) || 0 } })} />
-          <Pillen liste={[{ id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr' }, { id: 'einmalig', label: 'einmalig' }]} aktiv={c.wert.basis} onWahl={basis => setze({ wert: { ...c.wert, basis } })} />
+          <Wahl label="Wert-Basis" liste={BASEN} wert={c.wert.basis} onWahl={basis => setze({ wert: { ...c.wert, basis } })} />
           {c.wert.basis !== 'einmalig' && <Feld typ="number" wert={c.wert.laufzeitMonate ? String(c.wert.laufzeitMonate) : ''} breite={110} platzhalter="Monate" onFertig={m => setze({ wert: { ...c.wert, laufzeitMonate: Number(m) || undefined } })} />}
           <span style={{ fontSize: 12.5, color: C.inkLeise }}>= {euro(gesamtwert(c))}</span>
         </div>
@@ -313,25 +313,22 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
         </div>
       </div>
       <Feldzeile label="Produkt">
-        <select value={c.leistungId ?? ''} aria-label="Produkt" onChange={e => setze({ leistungId: e.target.value || undefined })} style={{ ...feld, width: 'auto', maxWidth: '100%', fontSize: TYP.bedien, padding: '8px 11px' }}>
-          <option value="">— ohne Produkt —</option>
-          {crm.stand.leistungen.filter(x => x.status !== 'eingestellt' || x.id === c.leistungId).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
-        </select>
+        <Wahl label="Produkt" liste={crm.stand.leistungen.filter(x => x.status !== 'eingestellt' || x.id === c.leistungId).map(x => ({ id: x.id, label: x.name }))} wert={c.leistungId}
+          onWahl={leistungId => setze({ leistungId })} onLeeren={() => setze({ leistungId: undefined })} />
       </Feldzeile>
-      <Feldzeile label="Quelle"><Pillen liste={[...QUELLEN]} aktiv={c.quelle} onWahl={quelle => setze({ quelle, quelleBezug: undefined })} /></Feldzeile>
+      <Feldzeile label="Quelle"><Wahl label="Quelle" liste={QUELLEN} wert={c.quelle} onWahl={quelle => quelle !== c.quelle && setze({ quelle, quelleBezug: undefined })} onLeeren={() => setze({ quelle: undefined, quelleBezug: undefined })} /></Feldzeile>
       {(c.quelle === 'event' || c.quelle === 'content' || c.quelle === 'kampagne') && (
         <Feldzeile label={c.quelle === 'event' ? 'Welches Event' : c.quelle === 'kampagne' ? 'Welche Kampagne' : 'Welcher Beitrag'}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <select value={c.quelleBezug ?? ''} aria-label="Bezug" onChange={e => setze({ quelleBezug: e.target.value || undefined })} style={{ ...feld, width: 'auto', maxWidth: '100%', fontSize: TYP.bedien, padding: '8px 11px' }}>
-              <option value="">— wählen —</option>
-              {c.quelle === 'event' ? crm.stand.events.map(x => <option key={x.id} value={x.id}>{x.titel} · {x.datum}</option>) : c.quelle === 'kampagne' ? (crm.stand.kampagnen ?? []).map(x => <option key={x.id} value={x.id}>{x.name}</option>) : (crm.stand.beitraege ?? []).map(x => <option key={x.id} value={x.id}>{x.titel}</option>)}
-            </select>
+            <Wahl label={c.quelle === 'event' ? 'Event' : c.quelle === 'kampagne' ? 'Kampagne' : 'Beitrag'} leer="+ wählen"
+              liste={c.quelle === 'event' ? crm.stand.events.map(x => ({ id: x.id, label: x.titel, hinweis: datum(x.datum) })) : c.quelle === 'kampagne' ? (crm.stand.kampagnen ?? []).map(x => ({ id: x.id, label: x.name })) : (crm.stand.beitraege ?? []).map(x => ({ id: x.id, label: x.titel }))}
+              wert={c.quelleBezug} onWahl={quelleBezug => setze({ quelleBezug })} onLeeren={() => setze({ quelleBezug: undefined })} />
             {c.quelleBezug && <Link href={c.quelle === 'event' ? WEG.event(c.quelleBezug) : c.quelle === 'kampagne' ? WEG.kampagne(c.quelleBezug, 'marketing') : WEG.marketing('redaktion', c.quelleBezug)} style={{ fontSize: 12.5, color: C.inkDim, textDecoration: 'none' }}>öffnen ›</Link>}
           </div>
         </Feldzeile>
       )}
       <Feldzeile label="Selbstauskunft"><Feld wert={c.selbstauskunft} platzhalter="„Wie sind Sie auf uns aufmerksam geworden?“" onFertig={s => setze({ selbstauskunft: s || undefined })} /></Feldzeile>
-      <Feldzeile label="Gesellschaft"><Pillen liste={[...GES]} aktiv={c.gesellschaft} onWahl={gesellschaft => setze({ gesellschaft })} /></Feldzeile>
+      <Feldzeile label="Gesellschaft"><Wahl label="Gesellschaft" liste={GESELLSCHAFT_WAHL} wert={c.gesellschaft} onWahl={gesellschaft => setze({ gesellschaft })} /></Feldzeile>
       <Feldzeile label="Personen">
         <div style={{ display: 'grid', gap: 6 }}>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

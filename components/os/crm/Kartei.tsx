@@ -26,6 +26,7 @@ import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { dubletten } from '@/lib/crm/dubletten';
 import { type CrmApi, datum } from './daten';
 import { KanalAmpel, Grund, Feldzeile, Pillen, Feld, AMPEL_FARBE } from './teile';
+import { Wahl } from './Wahl';
 import { Firmen, neueFirma } from './Firmen';
 import { Person, WerFilter, useWerFilter, passtWer, Uebergeben, AuchHier } from './team';
 import { VisitenkarteKnopf } from './Visitenkarte';
@@ -293,8 +294,8 @@ function Anlegen({ api, heute, onFertig }: { api: CrmApi; heute: string; onFerti
           <datalist id="crm-firmen">{firmen.slice(0, 400).map(f => <option key={f.id} value={f.name} />)}</datalist>
         </div>
       </div>
-      <Feldzeile label="Lebensphase"><Pillen liste={PHASEN} aktiv={e.lebensphase} onWahl={lebensphase => setE({ ...e, lebensphase })} /></Feldzeile>
-      <Feldzeile label="Herkunft"><Pillen liste={HERKUNFT.map(h => ({ id: h.id, label: h.label }))} aktiv={e.herkunft} onWahl={herkunft => setE({ ...e, herkunft })} /></Feldzeile>
+      <Feldzeile label="Lebensphase"><Wahl label="Lebensphase" liste={PHASEN} wert={e.lebensphase} onWahl={lebensphase => setE({ ...e, lebensphase })} /></Feldzeile>
+      <Feldzeile label="Herkunft"><Wahl label="Herkunft" liste={HERKUNFT.map(h => ({ id: h.id, label: h.label, ...(h.fremd ? { hinweis: 'Art. 14' } : {}) }))} wert={e.herkunft} onWahl={herkunft => setE({ ...e, herkunft })} onLeeren={() => setE({ ...e, herkunft: undefined })} /></Feldzeile>
       <Feldzeile label="Anrede"><Pillen liste={[{ id: 'Sie', label: 'Sie' }, { id: 'Du', label: 'Du' }]} aktiv={e.anrede} onWahl={a => setE({ ...e, anrede: a as 'Sie' | 'Du' })} /></Feldzeile>
       {dublette && <div style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>Diese Mail gehört schon zu {anzeigename(dublette)} — nicht doppelt anlegen.</div>}
       {!dublette && namensgleich && <div style={{ fontSize: 12.5, color: LEUCHT.achtung }}>Achtung: {anzeigename(namensgleich)}{namensgleich.firma ? ` (${namensgleich.firma})` : ''} gibt es schon — gleiche Person?</div>}

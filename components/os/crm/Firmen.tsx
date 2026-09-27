@@ -17,6 +17,7 @@ import { firmenId, firmenDubletten } from '@/lib/crm/firmen';
 import type { Firma, FirmaRolle } from '@/lib/crm/typen';
 import { type CrmApi, datum, euro } from './daten';
 import { Feldzeile, Pillen, Feld, Verlauf } from './teile';
+import { Wahl } from './Wahl';
 import { Person } from './team';
 import { LeadBlock } from './Leads';
 import { haeltBeziehung, nameVon } from '@/lib/crm/team';
@@ -141,7 +142,7 @@ function FirmenKarte({ f, api, zuPerson }: { f: Firma; api: CrmApi; zuPerson: (i
         <div style={{ fontFamily: SCHRIFT.display, fontSize: 21, fontWeight: 700, letterSpacing: '-.015em' }}>{f.name}</div>
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>{[f.branche, f.stadt, f.webseite ?? f.domain].filter(Boolean).join(' · ') || '—'}</div>
       </div>
-      <Feldzeile label="Rolle"><Pillen liste={ROLLEN.map(r => ({ id: r.id, label: r.label }))} aktiv={f.rolle} onWahl={r => setze({ rolle: r, rolleVonHand: true })} /></Feldzeile>
+      <Feldzeile label="Rolle"><Wahl label="Rolle" liste={ROLLEN.map(r => ({ id: r.id, label: r.label }))} wert={f.rolle} farbe={ROLLEN.find(r => r.id === f.rolle)?.farbe} onWahl={r => setze({ rolle: r, rolleVonHand: true })} /></Feldzeile>
       <LeadBlock api={api} leadId={f.id} />
       <div>
         <Ueberschrift rechts={`${personen.length}`}>Personen</Ueberschrift>
@@ -161,9 +162,7 @@ function FirmenKarte({ f, api, zuPerson }: { f: Firma; api: CrmApi; zuPerson: (i
         <Ueberschrift>Stammdaten</Ueberschrift>
         <Feldzeile label="Name"><Feld wert={f.name} onFertig={name => name.trim() && setze({ name: name.trim() })} /></Feldzeile>
         <Feldzeile label="Rechtsform">
-          <select value={f.rechtsform ?? ''} aria-label="Rechtsform" onChange={e => setze({ rechtsform: e.target.value || undefined })} style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }}>
-            <option value="">—</option>{RECHTSFORMEN.map(r => <option key={r} value={r} style={{ background: C.flaeche }}>{r}</option>)}
-          </select>
+          <Wahl label="Rechtsform" liste={RECHTSFORMEN.map(r => ({ id: r, label: r }))} wert={f.rechtsform} onWahl={rechtsform => setze({ rechtsform })} onLeeren={() => setze({ rechtsform: undefined })} />
         </Feldzeile>
         {F.map(([k, l]) => <Feldzeile key={k} label={l}><Feld wert={String(f[k] ?? '')} onFertig={v => setze({ [k]: v.trim() || undefined } as Partial<Firma>)} /></Feldzeile>)}
         <Feldzeile label="Marktinfo"><Feld wert={f.marktinfo} onFertig={v => setze({ marktinfo: v || undefined })} /></Feldzeile>

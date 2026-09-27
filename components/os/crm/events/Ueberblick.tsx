@@ -12,7 +12,8 @@ import { mix, zielHinweis, checklisteStand, vorlageAnwenden, VORLAGEN, budgetSum
 import { TEAM, zustaendig } from '@/lib/crm/team';
 import type { Event } from '@/lib/crm/typen';
 import { datum, euro } from '../daten';
-import { Feldzeile, Pillen, Feld } from '../teile';
+import { Feldzeile, Feld } from '../teile';
+import { Wahl } from '../Wahl';
 import { Person, ZustaendigWahl, Uebergeben } from '../team';
 import { FORMATE, STATUS, MixAnzeige, MarkeWahl, Leise, eventSetzen, type ReiterProps, type Reiter } from './gemeinsam';
 
@@ -119,8 +120,8 @@ export function Ueberblick({ e, api, zuReiter }: ReiterProps & { zuReiter: (r: R
       </div>
 
       <div>
-        <Feldzeile label="Format"><Pillen liste={[...FORMATE]} aktiv={e.format} onWahl={format => setze({ format })} /></Feldzeile>
-        <Feldzeile label="Status"><Pillen liste={[...STATUS]} aktiv={e.status} onWahl={status => setze({ status })} /></Feldzeile>
+        <Feldzeile label="Format"><Wahl label="Format" liste={FORMATE} wert={e.format} onWahl={format => setze({ format })} /></Feldzeile>
+        <Feldzeile label="Status"><Wahl label="Status" liste={STATUS} wert={e.status} onWahl={status => setze({ status })} /></Feldzeile>
         <Feldzeile label="Wann & wo">
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Feld typ="date" wert={e.datum} breite={150} platzhalter="Datum" onFertig={d => d && setze({ datum: d })} />
@@ -137,7 +138,7 @@ export function Ueberblick({ e, api, zuReiter }: ReiterProps & { zuReiter: (r: R
         <Feldzeile label="Marke"><MarkeWahl wert={e.marke} onWahl={marke => setze({ marke })} /></Feldzeile>
         <Feldzeile label="Vorlage">
           <div style={{ display: 'grid', gap: 4 }}>
-            <Pillen liste={VORLAGEN.map(v => ({ id: v.id, label: v.label }))} aktiv={(e.vorlage as VorlageId | undefined) ?? null} onWahl={id => setze(vorlageAnwenden(e, id))} />
+            <Wahl label="Vorlage" leer="+ Vorlage anwenden" liste={VORLAGEN.map(v => ({ id: v.id, label: v.label }))} wert={(e.vorlage as VorlageId | undefined) ?? null} onWahl={id => setze(vorlageAnwenden(e, id))} />
             <span style={{ fontSize: 12, color: C.inkLeise }}>Ergänzt Ablauf, Checkliste und Budget — nur, was fehlt. Nichts wird überschrieben.</span>
           </div>
         </Feldzeile>

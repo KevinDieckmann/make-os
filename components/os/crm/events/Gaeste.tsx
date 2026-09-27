@@ -22,6 +22,7 @@ import { haeltBeziehung, anderer, nameVon } from '@/lib/crm/team';
 import type { Teilnahme, TeilnahmeStatus } from '@/lib/crm/typen';
 import { neueId, datum } from '../daten';
 import { Pillen, Feld } from '../teile';
+import { Wahl } from '../Wahl';
 import { Person, WerFilter, useWerFilter, passtWer } from '../team';
 import { GAST, ROLLEN, WEGE, MIX, AMPEL, MixAnzeige, KarteiSuche, Leise, WerTausch, JePerson, gastSetzen, eventSetzen, followUpAnlegen, nachfassen, type ReiterProps, type Weg } from './gemeinsam';
 
@@ -127,9 +128,9 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <WerTausch label="lädt ein" wert={laedt.person} ich={ich} standard={QUELLE[laedt.quelle]} onWahl={person => setzeEinlader(t, person)} />
-          <Pillen liste={WEGE} aktiv={t.einladungsweg ?? null} onWahl={einladungsweg => gastSetzen(api, t, { einladungsweg })} />
-          <Pillen liste={ROLLEN} aktiv={t.rolle ?? 'gast'} onWahl={rolle => gastSetzen(api, t, { rolle })} farbe={LEUCHT.agenten} />
-          <Pillen liste={[...FOTO]} aktiv={t.fotofreigabe === true ? 'ja' : t.fotofreigabe === false ? 'nein' : null} onWahl={x => gastSetzen(api, t, { fotofreigabe: x === 'ja' })} farbe={LEUCHT.puls} />
+          <Wahl klein label="Einladungsweg" leer="+ Weg" liste={WEGE} wert={t.einladungsweg} onWahl={einladungsweg => gastSetzen(api, t, { einladungsweg })} onLeeren={() => gastSetzen(api, t, { einladungsweg: undefined })} />
+          <Wahl klein label="Rolle" liste={ROLLEN} wert={t.rolle ?? 'gast'} onWahl={rolle => gastSetzen(api, t, { rolle })} farbe={LEUCHT.agenten} />
+          <Wahl klein label="Fotofreigabe" leer="+ Fotos" liste={FOTO} wert={t.fotofreigabe === true ? 'ja' : t.fotofreigabe === false ? 'nein' : null} onWahl={x => gastSetzen(api, t, { fotofreigabe: x === 'ja' })} onLeeren={() => gastSetzen(api, t, { fotofreigabe: undefined })} farbe={LEUCHT.puls} />
         </div>
         {ws && ws.farbe !== 'gruen'
           ? <div style={{ fontSize: 12, color: AMPEL[ws.farbe] }}>● {WEG_LABEL[t.einladungsweg!]}: {ws.grund} — besser persönlich einladen.</div>

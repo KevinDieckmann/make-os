@@ -13,7 +13,9 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { anzeigename } from '@/lib/make-one/crm';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Fortschritt, LEUCHT } from '../schlank';
 import { type CrmApi, datum, euro, kurzEuro } from './daten';
-import { Pillen, Verlauf as AktivitaetenVerlauf } from './teile';
+import { Verlauf as AktivitaetenVerlauf } from './teile';
+import { Wahl } from './Wahl';
+import { dealRolleVorschlag, besterEntscheider } from '@/lib/crm/vorschlaege';
 import { Person } from './team';
 import { ChancenDetail } from './Pipeline';
 import { useFollowups } from './FollowUp';
@@ -25,6 +27,7 @@ import { WEG } from '@/lib/wege';
 import type { DealRolle } from '@/lib/crm/typen';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
+/** Rollen am Deal — „Bremst“ steht im Menü, wird aber nie vorgeschlagen (lib/crm/vorschlaege.ts). */
 const ROLLEN: { id: DealRolle; label: string }[] = [{ id: 'entscheider', label: 'Entscheider' }, { id: 'fuersprecher', label: 'Fürsprecher' }, { id: 'nutzer', label: 'Nutzer' }, { id: 'blocker', label: 'Bremst' }];
 
 export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: string; zuKontakt: (id: string) => void; zurueck: () => void }) {
@@ -46,6 +49,13 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
   // Follow-ups zum Deal selbst — und Zusagen an die beteiligten Personen, aber keine Kadenz-Erinnerungen zu anderen Themen.
   const folgen = (fu?.liste ?? []).filter(f => (f.bezug.art === 'chance' && f.bezug.id === c.id) || (f.kontaktId && c.kontaktIds.includes(f.kontaktId) && f.quelle !== 'kadenz' && f.bezug.art !== 'event' && f.bezug.art !== 'mandat'));
   const aktivitaeten = personen.flatMap(k => (k.aktivitaeten ?? []).map(x => ({ ...x, wer: anzeigename(k) }))).sort((x, y) => y.am.localeCompare(x.am)).slice(0, 40);
+  // Bester Kandidat für „Entscheider“ — der Hinweis springt dorthin und legt den Fokus auf „übernehmen“.
+  const bester = besterEntscheider(personen, c, crm.heute);
+  const zumVorschlag = (pid: string) => {
+    const el = document.getElementById(`deal-rolle-${pid}`);
+    el?.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    (el?.querySelector('[data-wahl-uebernehmen]') as HTMLElement | null)?.focus({ preventScroll: true });
+  };
   const setzeRolle = (pid: string, rolle: DealRolle | null) => {
     const alt = { ...(c.personenRollen ?? {}) };
     if (rolle) alt[pid] = rolle; else delete alt[pid];
@@ -106,10 +116,17 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
                 {personen.map(k => (
                   <div key={k.id} style={{ display: 'grid', gap: 5 }}>
                     <button onClick={() => zuKontakt(k.id)} style={{ textAlign: 'left', background: 'none', border: 'none', padding: 0, color: C.ink, cursor: 'pointer', fontSize: TYP.bedien, fontWeight: 600 }}>{anzeigename(k)}{k.position || k.jobtitel ? <span style={{ color: C.inkLeise, fontWeight: 400 }}> · {k.position ?? k.jobtitel}</span> : null}</button>
-                    <Pillen liste={ROLLEN} aktiv={c.personenRollen?.[k.id]} onWahl={r => setzeRolle(k.id, c.personenRollen?.[k.id] === r ? null : r)} farbe={LEUCHT.business} />
+                    <Wahl id={`deal-rolle-${k.id}`} label="Rolle" liste={ROLLEN} wert={c.personenRollen?.[k.id]} farbe={LEUCHT.business}
+                      vorschlag={dealRolleVorschlag(k, crm.heute)} onWahl={r => setzeRolle(k.id, r)} onLeeren={() => setzeRolle(k.id, null)} />
                   </div>
                 ))}
-                {!Object.values(c.personenRollen ?? {}).includes('entscheider') && <div style={{ fontSize: 12, color: LEUCHT.achtung }}>Noch kein Entscheider markiert — ohne den wird aus dem Deal nichts.</div>}
+                {!Object.values(c.personenRollen ?? {}).includes('entscheider') && (
+                  <div style={{ fontSize: 12, color: LEUCHT.achtung, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'baseline' }}>
+                    <span>Noch kein Entscheider markiert — ohne den wird aus dem Deal nichts.</span>
+                    {bester && <button type="button" onClick={() => zumVorschlag(bester.kontakt.id)} title={bester.vorschlag.grund}
+                      style={{ background: 'none', border: 'none', padding: 0, color: C.aktiv, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Vorschlag: {anzeigename(bester.kontakt)} ›</button>}
+                  </div>
+                )}
               </div>
             ) : <Leer>Noch keine Person am Deal — unten bei „Personen“ hinzufügen.</Leer>}
           </Karte>

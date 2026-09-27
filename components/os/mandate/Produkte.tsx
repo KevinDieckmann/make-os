@@ -26,11 +26,12 @@ import { LINIEN, linienGruppen, linieVon, produktZahlen, portfolio, neuePhasenId
 import { mandateLink } from '@/lib/crm/adresse';
 import { type CrmApi, neueId, euro, kurzEuro } from '../crm/daten';
 import { Feldzeile, Pillen, Feld } from '../crm/teile';
+import { Wahl } from '../crm/Wahl';
+import { GESELLSCHAFT_WAHL } from '@/lib/crm/wahl';
 import { useLinkAuswahl } from '../Verlauf';
 
 const STUFE: Record<Leistung['stufe'], string> = { einstieg: 'Einstieg', kern: 'Kern', premium: 'Premium' };
 const TYP_LABEL: Record<Leistung['typ'], string> = { diagnose: 'Diagnose', workshop: 'Workshop', retainer: 'Retainer', sprint: 'Sprint', vermittlung: 'Vermittlung', software: 'Software' };
-const GES = [{ id: 'kdc', label: 'Selbstständigkeit' }, { id: 'kdv', label: 'KD Ventures' }, { id: 'ug', label: 'Neue UG' }, { id: 'offen', label: 'offen' }] as const;
 const ART: { id: UnterlageArt; label: string }[] = [{ id: 'angebot', label: 'Angebot' }, { id: 'vertrag', label: 'Vertrag' }, { id: 'deck', label: 'Deck' }, { id: 'onepager', label: 'Onepager' }, { id: 'sonstiges', label: 'Sonstiges' }];
 const statusFarbe = (s: Leistung['status']) => (s === 'aktiv' ? LEUCHT.gut : s === 'entwurf' ? LEUCHT.achtung : C.inkLeise);
 const preisText = (l: Leistung) => (l.preis.betrag ? `${euro(l.preis.betrag)}${l.preis.bis ? `–${euro(l.preis.bis)}` : ''} ${l.preis.einheit}` : 'Preis offen');
@@ -187,7 +188,7 @@ function ProduktDetail({ l, api }: { l: Leistung; api: CrmApi }) {
         </div>
       </Feldzeile>
       <Feldzeile label="Status"><Pillen liste={[{ id: 'aktiv', label: 'aktiv' }, { id: 'entwurf', label: 'Entwurf' }, { id: 'eingestellt', label: 'eingestellt' }]} aktiv={l.status} onWahl={status => setze({ status })} /></Feldzeile>
-      <Feldzeile label="Gesellschaft"><Pillen liste={[...GES]} aktiv={l.gesellschaft} onWahl={gesellschaft => setze({ gesellschaft })} /></Feldzeile>
+      <Feldzeile label="Gesellschaft"><Wahl label="Gesellschaft" liste={GESELLSCHAFT_WAHL} wert={l.gesellschaft} onWahl={gesellschaft => setze({ gesellschaft })} /></Feldzeile>
       {textfeld('Beschreibung', l.beschreibung, 'beschreibung')}
       {textfeld('Ergebnis', l.ergebnis, 'ergebnis', 2)}
       {textfeld('Grenzen', l.grenzen, 'grenzen', 2)}

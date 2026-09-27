@@ -18,7 +18,8 @@ import { kontextAus, segmentAuswerten } from '@/lib/crm/segmente';
 import { EINSTELLUNG_GRENZEN as G, BEITRAG_KANAELE, STIMMEN_WAHL, SEGMENT_VORLAGEN, vorlageAlsSegment, kriterienText, einstellungAus, leereEinstellung, genitiv } from '@/lib/crm/marketing';
 import { nameVon, verantwortlich } from '@/lib/crm/team';
 import { type CrmApi, neueId, plusTage } from '../daten';
-import { Pillen, Feldzeile } from '../teile';
+import { Feldzeile } from '../teile';
+import { Wahl } from '../Wahl';
 
 type Schritt = 1 | 2 | 3;
 const SCHRITTE: { id: Schritt; label: string }[] = [{ id: 1, label: 'Positionierung' }, { id: 2, label: 'Erster Beitrag' }, { id: 3, label: 'Erste Zielgruppe' }];
@@ -124,10 +125,10 @@ export function Start({ api, onFertig, onUeberspringen }: { api: CrmApi; onFerti
       {schritt === 2 && (
         <div style={{ display: 'grid', gap: 6 }}>
           <Feldzeile label="Titel *"><input value={titel} maxLength={200} onChange={x => setTitel(x.target.value)} placeholder="Worum geht es — eine Einsicht, konkret" aria-label="Titel des Beitrags" autoFocus style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px' }} /></Feldzeile>
-          <Feldzeile label="Kanal"><Pillen liste={BEITRAG_KANAELE} aktiv={kanal} onWahl={setKanal} /></Feldzeile>
+          <Feldzeile label="Kanal"><Wahl label="Kanal" liste={BEITRAG_KANAELE} wert={kanal} onWahl={setKanal} /></Feldzeile>
           <Feldzeile label="Datum"><input type="date" value={tag} onChange={x => setTag(x.target.value)} aria-label="Datum" style={{ ...feld, width: 170, fontSize: TYP.bedien, padding: '8px 11px' }} /></Feldzeile>
-          <Feldzeile label="Säule">{saeulenWahl.length > 1 ? <Pillen liste={saeulenWahl} aktiv={saeule} onWahl={setSaeule} /> : <span style={{ fontSize: 12.5, color: C.inkLeise }}>Ohne Säulen (Schritt 1) — später unter „Positionierung“.</span>}</Feldzeile>
-          <Feldzeile label="Erscheint als"><Pillen liste={STIMMEN_WAHL} aktiv={stimme} onWahl={setStimme} /></Feldzeile>
+          <Feldzeile label="Säule">{saeulenWahl.length > 1 ? <Wahl label="Säule" liste={saeulenWahl.filter(x => x.id)} wert={saeule || null} onWahl={setSaeule} onLeeren={() => setSaeule('')} /> : <span style={{ fontSize: 12.5, color: C.inkLeise }}>Ohne Säulen (Schritt 1) — später unter „Positionierung“.</span>}</Feldzeile>
+          <Feldzeile label="Erscheint als"><Wahl label="Erscheint als" leer="+ Absender" liste={STIMMEN_WAHL} wert={stimme} onWahl={setStimme} /></Feldzeile>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 6 }}>
             <Knopf aus={laeuft || !titel.trim()} onClick={() => void beitragAnlegen()}>{laeuft ? '…' : `Als ${tag ? 'Entwurf' : 'Idee'} anlegen und weiter`}</Knopf>
             <button onClick={() => setSchritt(3)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12.5 }}>Später</button>
