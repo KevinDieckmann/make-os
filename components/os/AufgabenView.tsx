@@ -23,7 +23,8 @@ import { STANDARD_ORDNUNG, themaVon, sortierteThemen, themenMit } from '@/lib/ma
 import { STICHWORTE, STICHWORT, stichworteVon, mitEigenen } from '@/lib/make-one/stichworte-data';
 import { ORGS, ORG, orgVon } from '@/lib/make-one/organisation-data';
 import { einschaetzen, dauerText, WER_LABEL, WER_FARBE, type Wer } from '@/lib/make-one/umsetzung-data';
-import { DELEGIERBAR } from '@/lib/make-one/team-data';
+import { useTeam } from '@/hooks/useTeam';
+import { delegierbar, delegiertAn as delegiertAnTeam, personZuKurz } from '@/lib/make-one/team-typen';
 import { wertVon, STANDARD_MODUS, type ReglerId } from '@/lib/make-one/kompass-data';
 import { Zeitstrahl, type StrahlMarker } from './Zeitstrahl';
 import { parseSchnell, tagInT } from '@/lib/make-one/schnell-anlegen';
@@ -81,6 +82,8 @@ interface DelegVorschlag { taskId: string; titel: string; empfehlung: 'abgeben' 
 
 export function AufgabenView() {
   const { state, dispatch, ready } = useTasks();
+  // Team aus den Daten (28.09., U4): Speicher team--<haushalt> über /api/team — Rückfall Rollen-Platzhalter.
+  const { team } = useTeam();
   const [seg, setSeg] = useState<'offen' | 'erledigt' | 'alle'>('offen');
   const [ansicht, setAnsicht] = useState<Ansicht>('jetzt');
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -172,7 +175,7 @@ export function AufgabenView() {
     dispatch({ type: 'UPDATE_TASK', payload: {
       id: v.taskId,
       description: `${t.description ? `${t.description}\n` : ''}— Delegiert an ${v.an} (${datum})${v.uebergabe ? `: ${v.uebergabe}` : ''}`,
-      assignee: v.an === 'Malin' ? 'malin' as const : t.assignee,
+      assignee: personZuKurz(team, v.an)?.speicher === 'malin' ? 'malin' as const : t.assignee,
     } });
     setDelegStatus(s => ({ ...s, [v.taskId]: `✓ an ${v.an}` }));
   }
@@ -197,8 +200,9 @@ export function AufgabenView() {
   }, [reminders]);
 
   const projName = (id: string) => state.projects.find(p => p.id === id)?.title ?? '—';
-  // Delegiert-Marker aus der Beschreibung („— Delegiert an Finanzen (31.07): …").
-  const delegiertAn = (desc?: string) => desc?.match(/— Delegiert an (\w+)/)?.[1];
+  // Delegiert-Marker aus der Beschreibung („— Delegiert an Finanzen (31.07): …") — Kurzwort aus den Team-Daten.
+  const delegiertAn = (desc?: string) => delegiertAnTeam(desc, team)?.kurz;
+  const anMalinDelegiert = (desc?: string) => delegiertAnTeam(desc, team)?.person?.speicher === 'malin';
   const [bes, setBes] = useState<'alle' | string | 'both'>('alle');
   const [prioFilter, setPrioFilter] = useState<Priority | 'alle'>('alle');
   const [themaFilter, setThemaFilter] = useState<string | 'alle'>('alle');
@@ -308,7 +312,7 @@ export function AufgabenView() {
       if (seg === 'offen' && t.status === 'done') return false;
       if (seg === 'erledigt' && t.status !== 'done') return false;
       // Malins Sicht: ihr zugewiesen ODER an sie delegiert. Kevin: seins ohne Wegdelegiertes.
-      if (bes === 'malin' && !(t.assignee === 'malin' || t.assignee === 'both' || delegiertAn(t.description) === 'Malin')) return false;
+      if (bes === 'malin' && !(t.assignee === 'malin' || t.assignee === 'both' || anMalinDelegiert(t.description))) return false;
       if (bes === 'kevin' && !((t.assignee === 'kevin' || t.assignee === 'both') && !delegiertAn(t.description))) return false;
       if (bes === 'both' && t.assignee !== 'both') return false;
       if (prioFilter !== 'alle' && t.priority !== prioFilter) return false;
@@ -356,7 +360,7 @@ export function AufgabenView() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.tasks, seg, bes, prioFilter, themaFilter, stichFilter, orgFilter, spaceFilter, einheitFilter, datumFilter, werFilter, aktiverFilter, eigeneFilter, stichListe, handStich, orgZuord, regler, zuordnung, themaRang, heute]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state.tasks, seg, bes, prioFilter, themaFilter, stichFilter, orgFilter, spaceFilter, einheitFilter, datumFilter, werFilter, aktiverFilter, eigeneFilter, stichListe, handStich, orgZuord, regler, zuordnung, themaRang, heute, team]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Zähler für die Termin-Chips — über ALLE offenen Aufgaben, nicht über die
   // gerade gefilterte Liste: sonst zeigt „ohne Datum 0", während 20 offen sind.
@@ -652,14 +656,14 @@ export function AufgabenView() {
                     const datum = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
                     patchTask(t.id, {
                       description: `${t.description ? `${t.description}\n` : ''}— Delegiert an ${an} (${datum})`,
-                      ...(an === 'Malin' ? { assignee: 'malin' } : {}),
+                      ...(personZuKurz(team, an)?.speicher === 'malin' ? { assignee: 'malin' } : {}),
                     });
                   }}
                   aria-label="Aufgabe abgeben an"
                   style={{ ...wahl, color: C.inkLeise, maxWidth: 280 }}>
                   <option value="">Person wählen …</option>
-                  {DELEGIERBAR.map(p => (
-                    <option key={p.kurz} value={p.kurz}>{p.name} — {p.bereiche[0]}</option>
+                  {delegierbar(team).map(p => (
+                    <option key={p.id} value={p.kurz}>{p.name}{p.rolle ? ` — ${p.rolle}` : ''}</option>
                   ))}
                 </select>
               </div>

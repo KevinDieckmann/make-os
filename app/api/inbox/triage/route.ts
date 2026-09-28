@@ -12,7 +12,8 @@ import { askJson, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
 import { modellSchranke } from '@/lib/zugang/umfang';
-import { DELEGIERBAR } from '@/lib/make-one/team-data';
+import { teamFuerAnfrage } from '@/lib/make-one/team-speicher';
+import { delegierbar } from '@/lib/make-one/team-typen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,10 +47,12 @@ export async function POST(req: Request) {
   const agent = await resolveAgent('inbox');
   if (!agent.enabled) return NextResponse.json({ ...disabledResponse(agent), triage: cache });
 
+  // Team zur Laufzeit aus den Daten (28.09., U4) — Namen nie im Code; leerer Speicher → Rollen-Platzhalter.
+  const team = delegierbar(await teamFuerAnfrage(req)).map(t => (t.name !== t.kurz && t.quelle !== 'platzhalter' ? `${t.name} (${t.kurz})` : t.kurz)).join(', ');
   const system = [
     'Du bist ZOE und sortierst Kevins Post vor. Kevin ist Gründer (KEMARIS/POINCAP, KD Ventures, Kevin Dieckmann Consulting).',
     'Stufe jede Nachricht ein:',
-    `- "wichtig": Kunden und Mandanten, Team (${DELEGIERBAR.map(t => t.kurz).join(', ')}), Geld/Verträge/Rechnungen, Steuerberater, Notariat, Rechtsanwalt, Inkasso, Banken, Behörden, Fristen.`,
+    `- "wichtig": Kunden und Mandanten, Team (${team}), Geld/Verträge/Rechnungen, Steuerberater, Notariat, Rechtsanwalt, Inkasso, Banken, Behörden, Fristen.`,
     '- "rauschen": Newsletter, Marketing, Produkt-Updates, Social-Media-Benachrichtigungen, Werbung.',
     '- "normal": alles andere.',
     'Je Nachricht EINE Zeile (max. 12 Wörter, deutsch): was steckt drin bzw. was ist zu tun. Dazu ein Grund in 2–4 Wörtern.',

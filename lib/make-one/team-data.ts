@@ -1,10 +1,11 @@
-// ─── MAKE OS — Team & Verantwortung (Miro-Strategieboard) ───────────────────
-// Struktur aus dem Strategieboard. Bis zur Miro-Anbindung ist das der
-// gepflegte Stand — Quelle für Delegations-Vorschläge und die Säule
-// „Beziehung & Team". Rohbau-Regel (28.09., U3): Personen außer Kevin und
-// Malin stehen hier nur als Platzhalter mit ihren Zuständigkeiten — echte
-// Namen Dritter gehören in die Daten, nicht in den Code. `kurz` bleibt ein
-// Wort ohne Leerzeichen: der Delegiert-Marker („— Delegiert an X“) liest nur \w+.
+// ─── MAKE OS — Team: nur noch Rückfall (Rollen-Platzhalter) ─────────────────
+// Seit 28.09. (U4) steht das Team in den Daten: Speicher `team--<haushalt>`,
+// gepflegt in der Karte „Team“ (Säule Beziehung & Team), gelesen über
+// lib/make-one/team-speicher.ts (`teamVon`) bzw. GET /api/team. Diese Liste gilt
+// nur, solange der Speicher leer ist, und in Tests. Rohbau-Regel: Personen außer
+// Kevin und Malin stehen hier nur als Platzhalter mit ihren Zuständigkeiten —
+// echte Namen Dritter gehören in die Daten, nie in den Code. `kurz` bleibt ein
+// Wort ohne Leerzeichen (Delegiert-Marker „— Delegiert an X“).
 
 export interface TeamMitglied {
   name: string;
@@ -42,12 +43,6 @@ export const TEAM: TeamMitglied[] = [
   { name: 'Kanzlei (Rechtsanwalt)', kurz: 'Kanzlei', kreis: 'partner', org: 'privat',
     bereiche: ['Recht', 'Schriftsätze'] },
 ];
-
-/** Wer darf Aufgaben bekommen — Kevin selbst steht nicht zur Auswahl. */
-export const DELEGIERBAR = TEAM.filter(t => t.kurz !== 'Kevin');
-
-/** Für Prompts: eine Zeile je Person. */
-export const teamZeilen = () => TEAM.map(t => `${t.name}: ${t.bereiche.join(', ')}`);
 
 // Rituale, die die Beziehung tragen — aus MAKE.One. Bewusst wenige.
 export interface Ritual { id: string; name: string; rhythmus: string; warum: string; }

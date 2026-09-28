@@ -24,7 +24,8 @@ import { MODUS, STANDARD_MODUS } from '@/lib/make-one/kompass-data';
 import { THEMA, STANDARD_ORDNUNG, themaVon } from '@/lib/make-one/ordnung-data';
 import { ORG, orgVon } from '@/lib/make-one/organisation-data';
 import { einschaetzen, dauerText } from '@/lib/make-one/umsetzung-data';
-import { teamZeilen } from '@/lib/make-one/team-data';
+import { teamFuerPerson } from '@/lib/make-one/team-speicher';
+import { teamZeilenAus, platzhalterTeam } from '@/lib/make-one/team-typen';
 import type { Prospect } from '@/lib/make-one/prospecting-data';
 
 // ── Feste Wahrheiten (client-sicher ausgelagert) ──
@@ -68,6 +69,8 @@ export interface Brain {
   laeufe: AgentLogEntry[];
   /** Business-Meilensteine aus dem Store (gesundheit bleibt hier bewusst draußen). */
   meilensteine: string[];
+  /** Team-Zeilen aus `team--<haushalt>` (28.09., U4) — Namen nur aus den Daten; fehlt es, gelten die Rollen-Platzhalter. */
+  team?: string[];
   /** Geldfluss aus der Finanzplanung + Mandate aus dem CRM. */
   geld: { forderungen: number; vorbereitung: number; ueberfaelligeForderungen: number };
   mandate: { aktiv: number; gespraech: number; cashflow: number };
@@ -91,7 +94,7 @@ export interface Brain {
  * Alles andere (Zahlen, Aufgaben, Kalender) ist gemeinsam und bleibt gleich.
  */
 export async function gatherBrain(heute = localDay(), person: string = 'kevin'): Promise<Brain> {
-  const [tasksR, finR, prospectsR, calR, kemR, msR, vitalsR, indexR, laeufeR, meilR, fplanR, kundenR, shieldsR, kompassR, ordnungR, schwellenR] = await Promise.allSettled([
+  const [tasksR, finR, prospectsR, calR, kemR, msR, vitalsR, indexR, laeufeR, meilR, fplanR, kundenR, shieldsR, kompassR, ordnungR, schwellenR, teamR] = await Promise.allSettled([
     loadJson<{ tasks: StoredTask[]; projects: StoredProject[] }>('tasks'),
     loadJson<FinanceState>('finance'),
     loadJson<{ prospects: Prospect[] }>('prospects'),
@@ -108,6 +111,7 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
     loadJson<{ modus?: string }>('kompass'),
     loadJson<{ reihenfolge?: string[] }>('ordnung'),
     schwellen(),
+    teamFuerPerson(person),
   ]);
   const val = <T,>(r: PromiseSettledResult<T>): T | null => (r.status === 'fulfilled' ? r.value : null);
 
@@ -194,6 +198,7 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
       if (!ms.length) return [...MILESTONES];
       return ms.map(m => `${m.titel}${m.erledigt ? ' ✓' : ` (${m.faellig ? m.faellig.slice(8) + '.' + m.faellig.slice(5, 7) + '.' : m.zeitfenster ?? 'offen'}${m.fortschritt ? `, ${m.fortschritt}%` : ''})`}`);
     })(),
+    team: teamZeilenAus(val(teamR) ?? platzhalterTeam()),
     geld: (() => {
       const re = (val(fplanR)?.rechnungen ?? []).filter(r => r.firmaId !== 'privat');
       const sum = (l: typeof re) => l.reduce((s, r) => s + (r.betrag || 0), 0);
@@ -349,7 +354,7 @@ function blockGedaechtnisRoh(b: Brain, max = 6): string {
 
 export function blockZiele(b?: Brain): string {
   const ms = b?.meilensteine?.length ? b.meilensteine : [...MILESTONES];
-  return `NORDSTERN-ZIEL: ${NORDSTERN}\n\nMEILENSTEINE (pflegbar unter /os/planung/jahr):\n${ms.map(m => `- ${m}`).join('\n')}\n\nTEAM & VERANTWORTUNG (für Delegations-Vorschläge die richtige Person nennen):\n${teamZeilen().map(t => `- ${t}`).join('\n')}`;
+  return `NORDSTERN-ZIEL: ${NORDSTERN}\n\nMEILENSTEINE (pflegbar unter /os/planung/jahr):\n${ms.map(m => `- ${m}`).join('\n')}\n\nTEAM & VERANTWORTUNG (für Delegations-Vorschläge die richtige Person nennen):\n${(b?.team ?? teamZeilenAus(platzhalterTeam())).map(t => `- ${t}`).join('\n')}`;
 }
 
 /** Der Standard-Kontext für Agenten — wähl ab, was der Agent braucht. */

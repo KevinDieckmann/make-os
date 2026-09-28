@@ -23,7 +23,8 @@ const WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
 import { localDay as localKey } from '@/lib/zeit';
 import { modellSchranke } from '@/lib/zugang/umfang';
-import { DELEGIERBAR } from '@/lib/make-one/team-data';
+import { teamFuerAnfrage } from '@/lib/make-one/team-speicher';
+import { delegierbar } from '@/lib/make-one/team-typen';
 
 // ── Gemeinsame Datensammlung: kommt jetzt aus dem Brain ──
 // Gleiche Rückgabeform wie früher, damit die Loop-Zweige unverändert bleiben.
@@ -246,7 +247,7 @@ export async function POST(req: Request) {
       const blocked = g.open.filter(t => (t as { status?: string }).status === 'blocked');
       const delegiert = g.open.filter(t => /— Delegiert an /.test((t as { description?: string }).description ?? ''));
       const wochenMin = Object.values(wplanF ?? {}).flat().reduce((s, b2) => s + (b2?.dauerMin || 0), 0);
-      system = [kopf, `OPERATIONS-LOOP: Ausführung entstopfen und Kevin entlasten. punkte = Entlastungs-Moves (was, und WER es übernimmt — Team: ${DELEGIERBAR.map(t => t.kurz).join(', ')}).`, formatJson].join('\n');
+      system = [kopf, `OPERATIONS-LOOP: Ausführung entstopfen und Kevin entlasten. punkte = Entlastungs-Moves (was, und WER es übernimmt — Team: ${delegierbar(await teamFuerAnfrage(req)).map(t => t.kurz).join(', ')}).`, formatJson].join('\n');
       user = [
         `Stichtag ${wd}, ${today}.`,
         `AUSFÜHRUNG: ${g.open.length} offen · ${g.overdue.length} überfällig · ${g.critical.length} kritisch · ${blocked.length} blockiert · ${delegiert.length} bereits delegiert.`,

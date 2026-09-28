@@ -12,7 +12,8 @@ import Link from 'next/link';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import type { PerfIndex, Saeule } from '@/lib/performance';
-import { TEAM, RITUALE } from '@/lib/make-one/team-data';
+import { RITUALE } from '@/lib/make-one/team-data';
+import { TeamKarte } from './TeamKarte';
 import { eur, computeMetrics, type FinanceState, type Kasse } from '@/lib/make-one/finance-data';
 import { localDay } from '@/lib/zeit';
 import { aufgabeStatusSetzen } from '@/lib/aufgaben/status';
@@ -337,8 +338,6 @@ function WerkzeugSozial() {
   }
   const t14 = tage(14);
   const hatStimmung = t14.some(d => typeof journal[d]?.mood === 'number');
-  const kern = TEAM.filter(t => t.kreis === 'kern');
-  const partner = TEAM.filter(t => t.kreis !== 'kern');
   return (
     <>
       <Karte i={1}>
@@ -365,18 +364,8 @@ function WerkzeugSozial() {
         </Liste>
         <p style={{ fontSize: 12, color: C.inkLeise, margin: '10px 0 0' }}>Zählt in die Säule ein.</p>
       </Karte>
-      <Karte i={3}>
-        <Ueberschrift farbe={LEUCHT.beziehung} rechts="aus dem Miro-Strategieboard">Wer was trägt</Ueberschrift>
-        <Liste>
-          {[...kern, ...partner].map(t => (
-            <Zeile key={t.name}
-              titel={<span style={{ color: t.kreis === 'privat' ? LEUCHT.beziehung : C.ink }}>{t.kurz}</span>}
-              unter={<span title={t.bereiche.join(' · ')}>{t.bereiche.join(' · ')}</span>}
-              rechts={<Chip farbe={t.kreis === 'kern' ? LEUCHT.beziehung : C.inkLeise}>{t.kreis}</Chip>} />
-          ))}
-        </Liste>
-        <p style={{ fontSize: 12, color: C.inkLeise, margin: '10px 0 0' }}>Die Grundlage für jede Delegation.</p>
-      </Karte>
+      {/* Team aus den Daten (28.09., U4): Speicher team--<haushalt>, gepflegt genau hier. */}
+      <TeamKarte i={3} />
     </>
   );
 }
