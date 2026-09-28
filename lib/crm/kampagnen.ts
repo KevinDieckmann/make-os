@@ -169,9 +169,14 @@ export function zielgruppe(kontakte: Kontakt[], crm: CrmBestand, pb: Pick<Playbo
   return l;
 }
 
-/** Eine Kampagne aus einem Playbook — mit der aktuellen Zielgruppe als Auswahl. */
-export function planen(pb: Playbook, kontakte: Kontakt[], crm: CrmBestand, heute: string, id: string, von: Kampagne['von'] = 'hand', max = 40): Kampagne {
-  const l = zielgruppe(kontakte, crm, pb, heute).slice(0, max);
+/**
+ * Eine Kampagne aus einem Playbook — mit der GANZEN aktuellen Zielgruppe als Auswahl. Bis 28.09. übernahm sie still
+ * nur die ersten 40 (Integritätsprüfung: „nie abschneiden“); jetzt alle — wer weniger will, wählt in der Kampagne
+ * bewusst aus. `max` nur für einen ausdrücklich gewollten Ausschnitt (die Route prüft die Grenze, 413).
+ */
+export function planen(pb: Playbook, kontakte: Kontakt[], crm: CrmBestand, heute: string, id: string, von: Kampagne['von'] = 'hand', max?: number): Kampagne {
+  const alle = zielgruppe(kontakte, crm, pb, heute);
+  const l = max != null && max >= 0 ? alle.slice(0, max) : alle;
   return {
     id, name: pb.name, playbook: pb.id, ziel: pb.kennzahl, zielgruppe: pb.zielgruppe, kanal: pb.kanal, status: 'entwurf', start: heute,
     schritte: pb.schritte.map((s, i) => ({ id: `s${i}`, text: s.text, tag: s.tag, erledigt: false })),

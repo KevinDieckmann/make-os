@@ -8,11 +8,12 @@
 //         `konflikte` (aktueller Eintrag); ohne Stand nur `teil`/`delete`. Löschen einer Firma/eines Mandats mit
 //         Verweisen → 409 mit `sperren` (nur Anzahlen). Über der Grenze der Deal-Historie → 413. Nichts geschrieben.
 
-import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { imHaushaltDesInhabers, haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
-import { personAus } from '@/lib/zoe/raum';
+import { ablageName } from '@/lib/dateien/ablage';
+import type { DateiEintrag } from '@/lib/dateien/regeln';
 import { localDay } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { ListenOp } from '@/lib/sync';
@@ -60,8 +61,10 @@ async function antwort(b: CrmBestand, ich: string) {
 }
 
 export async function GET(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
-  const person = personAus(req);
+  // Person aus dem Zugang (28.09. abends, Regel 5): Sitzung oder Dienstweg MIT Person im Haushalt — kein Rückfall auf „kevin“.
+  const zugang = await imHaushaltDesInhabers(req);
+  if (!zugang) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+  const person = zugang.person;
   // Alles, woraus die Antwort entsteht: die vier Speicher, der Tag (Ampeln, Prognose) und wer fragt.
   // Angebote (28.09.): gestellte nach „gültig bis“ → abgelaufen, bevor der Stand gerechnet wird (schreibt nur bei Bedarf).
   await ablaufNachziehen();
@@ -72,7 +75,8 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+  const zugang = await imHaushaltDesInhabers(req);
+  if (!zugang) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let body: { ops?: ListenOp[] };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   // Mehr als 200 auf einmal: ablehnen, nie still kürzen (28.09., K1) — vorher fielen alle ab der 201. weg.
@@ -80,11 +84,17 @@ export async function PATCH(req: Request) {
   if (ueber && Array.isArray(body.ops)) return NextResponse.json({ ok: false, fehler: ueber }, { status: 413 });
   const ops = Array.isArray(body.ops) ? body.ops : [];
   if (!ops.length) return NextResponse.json({ ok: false, fehler: 'Keine Änderungen.' }, { status: 400 });
-  const person = personAus(req);
-  // Löschsperre (28.09., K4): Personen und Rechnungen liegen außerhalb des CRM-Bestands — nur laden, wenn gelöscht wird.
+  const person = zugang.person;
+  // Löschsperre (28.09., K4): Personen, Rechnungen und (seit 28.09. abends, W6) die Einträge der Dateiablage liegen
+  // außerhalb des CRM-Bestands — nur laden, wenn Firmen oder Mandate gelöscht werden.
   const loescht = ops.some(o => o?.op === 'delete' && (o.liste === 'firmen' || o.liste === 'mandate'));
+  const haushalt = loescht ? await haushaltDesInhabers() : null;
   const kontext: VerweisKontext = loescht
-    ? { kontakte: (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [], rechnungen: (await loadJson<{ rechnungen?: VerweisKontext['rechnungen'] }>('finanzplan'))?.rechnungen ?? [] }
+    ? {
+      kontakte: (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [],
+      rechnungen: (await loadJson<{ rechnungen?: VerweisKontext['rechnungen'] }>('finanzplan'))?.rechnungen ?? [],
+      dateien: haushalt ? ((await loadJson<{ eintraege?: DateiEintrag[] }>(ablageName(haushalt)))?.eintraege ?? []) : [],
+    }
     : {};
   const halter: { r?: CrmAnwendung } = {};
   const b = await aendereCrm(cur => { halter.r = wendeCrmAn(cur, ops, new Date().toISOString(), person, kontext); return halter.r.bestand; }, werAus(req));

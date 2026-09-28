@@ -15,7 +15,7 @@ import { datum, euro } from '../daten';
 import { Feldzeile, Feld } from '../teile';
 import { Wahl } from '../Wahl';
 import { Person, ZustaendigWahl, Uebergeben } from '../team';
-import { FORMATE, STATUS, MixAnzeige, MarkeWahl, Leise, eventSetzen, type ReiterProps, type Reiter } from './gemeinsam';
+import { FORMATE, STATUS, MixAnzeige, MarkeWahl, Leise, eventSetzen, eventLoeschen, type ReiterProps, type Reiter } from './gemeinsam';
 
 const tageBis = (von: string, bis: string) => Math.round((Date.parse(`${bis}T12:00:00Z`) - Date.parse(`${von}T12:00:00Z`)) / 864e5);
 
@@ -145,7 +145,8 @@ export function Ueberblick({ e, api, zuReiter }: ReiterProps & { zuReiter: (r: R
         <Feldzeile label="Notiz"><Feld wert={e.notiz} onFertig={notiz => setze({ notiz: notiz || undefined })} /></Feldzeile>
       </div>
 
-      <div><Leise onClick={() => { if (window.confirm(`„${e.titel}“ löschen?`)) { for (const t of (api.crm?.stand.teilnahmen ?? []).filter(x => x.eventId === e.id)) void api.weg('teilnahmen', t.id); void api.weg('events', e.id); } }}>Event löschen</Leise></div>
+      {/* Löschen über den Serverweg (28.09., W6): Teilnahmen und offene Follow-ups gehen in DERSELBEN Änderung mit. */}
+      <div><Leise onClick={() => { if (window.confirm(`„${e.titel}“ löschen? Teilnahmen werden entfernt, offene Follow-ups des Events abgesagt.`)) void eventLoeschen(api, e); }}>Event löschen</Leise></div>
     </div>
   );
 }

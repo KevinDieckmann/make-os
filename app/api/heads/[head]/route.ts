@@ -16,7 +16,7 @@ import { WEG } from '@/lib/wege';
 import { markttraktion, mandateLink } from '@/lib/crm/adresse';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { personAus } from '@/lib/zoe/raum';
+import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { HEADS, HEAD_NAME, MODI, AGENT_ID, type HeadId } from '@/lib/heads/prompt';
 import { headLauf } from '@/lib/heads/lauf';
@@ -38,7 +38,10 @@ export const maxDuration = 400;
 
 const headAus = (p: { head: string }) => (HEADS.includes(p.head as HeadId) ? (p.head as HeadId) : null);
 
-export async function GET(_: Request, props: { params: Promise<{ head: string }> }) {
+// Zugang (28.09., Integritätsprüfung K1): Die Heads lesen Kartei und CRM-Bestand — nur für eine Person im Haushalt
+// des Inhabers (Sitzung oder Dienstweg MIT Person, `imHaushaltDesInhabers`); vorher reichte „angemeldet“.
+export async function GET(req: Request, props: { params: Promise<{ head: string }> }) {
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   const params = await props.params;
   const h = headAus(params);
   if (!h) return NextResponse.json({ ok: false, fehler: 'Unbekannter Head.' }, { status: 404 });
@@ -73,6 +76,8 @@ function ort(t: { art?: string; kontakt_id?: string | null; chance_id?: string |
 }
 
 export async function POST(req: Request, props: { params: Promise<{ head: string }> }) {
+  const zugang = await imHaushaltDesInhabers(req);
+  if (!zugang) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   const params = await props.params;
   const h = headAus(params);
   if (!h) return NextResponse.json({ ok: false, fehler: 'Unbekannter Head.' }, { status: 404 });
@@ -80,7 +85,7 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
   const agentCfg = await resolveAgent(AGENT_ID[h]); if (!agentCfg.enabled) return NextResponse.json({ ok: false, fehler: disabledResponse(agentCfg).error, disabled: true }, { status: 409 });
   let b: { aktion?: string; modus?: string; frage?: string; ausgeloest?: string; id?: string; status?: string; grund?: string; entwurf?: string; text?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
-  const person = personAus(req);
+  const person = zugang.person;
 
   if (b.aktion === 'lauf') {
     const r = await headLauf({ head: h, modus: String(b.modus ?? 'frage'), person, frage: b.frage ? String(b.frage) : undefined, ausgeloest: b.ausgeloest === 'takt' ? 'takt' : b.ausgeloest === 'zoe' ? 'zoe' : 'hand' });

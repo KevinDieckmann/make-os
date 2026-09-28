@@ -1,6 +1,6 @@
 // ─── CRM — Firmen-Abgleich über beide Speicher (Server) ────────────────────
 // Rechnet mit lib/crm/firmen.ts und schreibt dann zweimal gezielt:
-// die Kartei bekommt NUR die fehlenden firmaId-Verweise (je Kennung, gegen den
+// die Kartei bekommt NUR fehlende oder tote firmaId-Verweise (je Kennung, gegen den
 // aktuellen Stand — gleichzeitige Änderungen anderer bleiben erhalten), das
 // CRM die Firmenliste. Läuft nach jedem Import und auf Knopfdruck.
 
@@ -16,13 +16,21 @@ export async function firmenAbgleichen(wer?: Wer): Promise<{ neu: number; verknu
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const crm = await ladeCrm();
   const r = firmenAbgleich(kontakte, crm.firmen, jetzt);
-  const verweis = new Map(r.kontakte.filter(k => k.firmaId).map(k => [k.id, k.firmaId!]));
+  // Was der Abgleich an einer Person ändert: `firmaId` (leer ODER tot, W1 28.09.) bzw. die Hauptstation mit toter Firma.
+  // Geschrieben wird nur, wenn die Person seit dem Lesen unverändert ist (gleiche firmaId, gleiche Stationen) —
+  // gleichzeitige Änderungen anderer bleiben erhalten.
+  const sig = (k: Pick<Kontakt, 'firmaId' | 'stationen'>) => JSON.stringify([k.firmaId ?? null, k.stationen ?? null]);
+  const verweis = new Map<string, { alt: string; neu: Pick<Kontakt, 'firmaId' | 'stationen'> }>();
+  r.kontakte.forEach((k, i) => { const a = kontakte[i]; if (a && a.id === k.id && sig(a) !== sig(k)) verweis.set(k.id, { alt: sig(a), neu: { firmaId: k.firmaId, stationen: k.stationen } }); });
   let vorher: Kontakt[] = [], nachher: Kontakt[] = [];
   await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
     const f = cur ?? { kontakte: [] };
     vorher = f.kontakte;
-    // Nur Altbestand ohne Stationen (28.09.): bei gespeicherten Stationen verknüpft der Abgleich nie still.
-    nachher = f.kontakte.map(k => (!k.firmaId && !Array.isArray(k.stationen) && verweis.has(k.id) ? { ...k, firmaId: verweis.get(k.id)! } : k));
+    nachher = f.kontakte.map(k => {
+      const v = verweis.get(k.id);
+      if (!v || sig(k) !== v.alt) return k;
+      return { ...k, ...(v.neu.firmaId ? { firmaId: v.neu.firmaId } : {}), ...(Array.isArray(v.neu.stationen) ? { stationen: v.neu.stationen } : {}) };
+    });
     return { ...f, kontakte: nachher };
   });
   await protokolliere('kontakte', listenDiff(vorher, nachher), wer);

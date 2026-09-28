@@ -11,7 +11,7 @@ vi.mock('@/lib/zugang/konten', () => ({
 }));
 
 import { fristen, erinnerungen } from '../lib/kalender/eintraege';
-import { kalenderZugang } from '../lib/kalender/zugang';
+import { kalenderZugang, kalenderLesen } from '../lib/kalender/zugang';
 import { wemGehoert, EINSTELLUNGEN_LEER, einstellungenSauber } from '../lib/kalender/einstellungen';
 import { wandzeit } from '../lib/kalender/zeit';
 
@@ -65,7 +65,11 @@ describe('Zugang und Zuordnung', () => {
     expect(await kalenderZugang(req({ 'x-make-user': 'gibtsnicht' }))).toBeNull();
     expect(await kalenderZugang(req({}))).toBeNull();
     expect(await kalenderZugang(req({ 'x-make-key': 'falsch', 'x-make-person': 'kevin' }))).toBeNull();
-    expect(await kalenderZugang(req({ 'x-make-key': 'geheim' }))).toEqual({ person: 'kevin', dienst: true });
+    // Regel 5 (28.09. abends): Dienstweg ohne Person → kein Rückfall auf „kevin“; nur das Lesen trägt den Systemlauf (person null).
+    expect(await kalenderZugang(req({ 'x-make-key': 'geheim' }))).toBeNull();
+    expect(await kalenderLesen(req({ 'x-make-key': 'geheim' }))).toEqual({ person: null, dienst: true });
+    expect(await kalenderZugang(req({ 'x-make-key': 'geheim', 'x-make-person': 'malin' }))).toEqual({ person: 'malin', dienst: true });
+    expect(await kalenderZugang(req({ 'x-make-key': 'geheim', 'x-make-person': 'test' }))).toBeNull();
   });
   it('Kalender gehören Kevin, Malin oder beiden — Groß/klein und Leerzeichen egal', () => {
     const e = einstellungenSauber(null);

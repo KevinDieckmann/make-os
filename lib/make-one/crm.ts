@@ -535,7 +535,13 @@ function kurzHash(t: string): string {
 // Import gesetzt → die Liste darf auffrischen wie bisher.
 
 /** Ein Feld, bei dem Liste und Kartei auseinanderliegen — wird nicht angewandt, sondern vorgelegt. */
-export interface Konflikt { kontaktId: string; feld: string; online: unknown; liste: unknown }
+export interface Konflikt {
+  kontaktId: string; feld: string; online: unknown; liste: unknown;
+  /** Worum es vermutlich geht (28.09.): „Firmenwechsel?“ — die Liste nennt eine ANDERE Firma als die Kartei. */
+  hinweis?: string;
+}
+/** Hinweis an Import-Konflikten, wenn die Liste eine andere Firma nennt (Integritätsprüfung W4, 28.09.). */
+export const FIRMENWECHSEL_HINWEIS = 'Firmenwechsel?';
 
 /**
  * Gilt dieses Feld als von Hand gesetzt? Mit `vonHand` ist die Antwort exakt.
@@ -572,8 +578,21 @@ export function zusammenfuehren(alt: Kontakt, neu: Kontakt, heute: string): { ko
     if (!alleAdressen(out).length && alt.vonHand?.includes('email')) konflikte.push({ kontaktId: alt.id, feld: 'email', online: out.email, liste: neu.email });
     else { const mit = adresseAnhaengen(out, neu.email); if (mit.email !== out.email) setze('email', mit.email); if (mit.emails !== out.emails) setze('emails', mit.emails); }
   }
+  // Firmenwechsel (28.09., Integritätsprüfung W4): nennt die Liste eine ANDERE Firma als die Kartei, wird der
+  // Firmentext nicht überschrieben — sonst stünde der neue Name über der alten Hauptstation (firmaId/Stationen
+  // blieben alt). Stattdessen ein Konflikt „Firmenwechsel?“ (Feld firma, Listenwert); die Position und die
+  // Firmendaten der Zeile gehören dann zur neuen Firma und bleiben ebenfalls liegen (Position als Konflikt).
+  const firmaAlt = String(alt.firma ?? '').trim(), firmaNeu = String(neu.firma ?? '').trim();
+  const firmenwechsel = !!firmaAlt && !!firmaNeu && normFirma(firmaAlt) !== normFirma(firmaNeu);
+  if (firmenwechsel) {
+    konflikte.push({ kontaktId: alt.id, feld: 'firma', online: alt.firma, liste: neu.firma, hinweis: FIRMENWECHSEL_HINWEIS });
+    if (!leer(neu.position) && !leer(alt.position) && !gleich(alt.position, neu.position)) konflikte.push({ kontaktId: alt.id, feld: 'position', online: alt.position, liste: neu.position, hinweis: FIRMENWECHSEL_HINWEIS });
+  }
   for (const f of Object.keys(neu) as (keyof Kontakt)[]) {
     if (!istStammdatenFeld(f) || f === 'email') continue;
+    if (firmenwechsel && (f === 'firma' || f === 'position' || String(f).startsWith('firma'))) continue;
+    // Gleiche Firma, andere Schreibweise („Muster GmbH“ ↔ „Muster“): der Kartei-Text bleibt.
+    if (f === 'firma' && firmaAlt && normFirma(firmaAlt) === normFirma(firmaNeu)) continue;
     const v = neu[f];
     if (leer(v)) continue;
     const a = out[f];
@@ -631,9 +650,10 @@ export interface MoeglicheDublette { kontaktId: string; mitId?: string; grund: s
  * Mögliche Dubletten, die der Schlüssel nicht fängt: gleicher Name bei anderer
  * Firma (Jobwechsel? zweiter Eintrag?) oder gleiche Telefonnummer. Nur Paare,
  * an denen mindestens einer aus `nur` (die gerade importierten) beteiligt ist —
- * den ganzen Bestand prüft Kontakte › Dubletten.
+ * den ganzen Bestand prüft Kontakte › Dubletten. Nie gekürzt (28.09.; vorher still höchstens 300) —
+ * `max` nur für einen ausdrücklich gewollten Ausschnitt.
  */
-export function moeglicheDubletten(kontakte: Kontakt[], nur?: Set<string>, max = 300): MoeglicheDublette[] {
+export function moeglicheDubletten(kontakte: Kontakt[], nur?: Set<string>, max = Number.POSITIVE_INFINITY): MoeglicheDublette[] {
   const r: MoeglicheDublette[] = [];
   const gesehen = new Set<string>();
   const melde = (a: Kontakt, b: Kontakt, grund: string) => {

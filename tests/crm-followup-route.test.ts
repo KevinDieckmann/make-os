@@ -20,6 +20,11 @@ let fu: Mod, ev: Mod, db: typeof import('@/lib/store/local-db'), speicher: typeo
 
 beforeAll(async () => {
   db = await import('@/lib/store/local-db');
+  // Regel 5 (28.09. abends): der Dienstweg braucht eine Person im Haushalt des Inhabers — erfundene Konten.
+  await db.saveJson('konten', { konten: [
+    { id: 'k1', speicher: 'kevin', email: 'k@test.invalid', name: 'Kevin Test', rolle: 'inhaber', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'test-haus' },
+    { id: 'k2', speicher: 'malin', email: 'm@test.invalid', name: 'Malin Test', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'test-haus' },
+  ], einladungen: [] });
   speicher = await import('@/lib/crm/speicher');
   fu = (await import('@/app/api/crm/followup/route')) as unknown as Mod;
   ev = (await import('@/app/api/crm/events/route')) as unknown as Mod;
@@ -81,5 +86,13 @@ describe('Follow-up-Route — virtuelle Einträge wirken', () => {
     expect(crm.teilnahmen.find(t => t.id === 't3')?.followUpAm).toBe(H);
     expect(crm.followups?.find(f => f.id === 'fu-c')?.status).toBe('erledigt');
     expect((await liste()).some(f => f.kontaktId === 'c-c')).toBe(false);
+  });
+});
+
+describe('Regel 5 (28.09. abends): Dienstweg ohne Person oder mit fremder Person → 403', () => {
+  it('ohne Person und mit einer Person außerhalb des Haushalts des Inhabers wird nichts gelesen', async () => {
+    const ohne = { 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY! };
+    expect((await fu.GET(new Request('http://test/api/crm/followup', { headers: ohne }))).status).toBe(403);
+    expect((await fu.GET(new Request('http://test/api/crm/followup', { headers: { ...ohne, 'x-make-person': 'fremd' } }))).status).toBe(403);
   });
 });

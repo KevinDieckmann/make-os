@@ -21,13 +21,13 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { localDay, tagePlus } from '@/lib/zeit';
-import { personAus } from '@/lib/zoe/raum';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { wendeAktivitaetAn, ERGEBNISSE, type Kontakt, type Ergebnis, type AktivitaetArt } from '@/lib/make-one/crm';
 import { folgeAus } from '@/lib/crm/heute';
 import { sperren } from '@/lib/crm/sperrliste';
+import { EINGESCHRAENKT_FEHLER } from '@/lib/crm/einschraenkung';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
-import { faellige, zaehlen, puenktlichkeit, neuesFollowUp, virtuell, tagPlus, taktVon, type Faellig } from '@/lib/crm/followup';
+import { faellige, zaehlen, puenktlichkeit, neuesFollowUp, virtuell, tagPlus, taktVon, werbesperreHinweis, type Faellig } from '@/lib/crm/followup';
 import { leadHebenNachGespraech, type LeadMeldung } from '@/lib/crm/lead-heben';
 import { wer } from '@/lib/crm/team';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
@@ -42,19 +42,22 @@ const idOk = (v: unknown) => /^[a-z0-9][a-z0-9-]{1,63}$/.test(String(v ?? ''));
 const ARTEN: FollowUpArt[] = ['anruf', 'mail', 'linkedin', 'termin', 'nachricht', 'sonstig'];
 const BEZUEGE: FollowUpBezugArt[] = ['kontakt', 'firma', 'chance', 'mandat', 'event'];
 const AKT_ART: Record<FollowUpArt, AktivitaetArt> = { anruf: 'anruf', mail: 'mail', linkedin: 'linkedin', termin: 'termin', nachricht: 'mail', sonstig: 'notiz' };
-const KEIN_ZUGANG = NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+// Je Anfrage eine neue Antwort (28.09.): eine geteilte Response ließe sich nur einmal lesen.
+const KEIN_ZUGANG = () => NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+const EINGESCHRAENKT = () => NextResponse.json({ ok: false, fehler: EINGESCHRAENKT_FEHLER }, { status: 409 });
 
 async function kontakteLaden(): Promise<Kontakt[]> { return (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? []; }
 
 export async function GET(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return KEIN_ZUGANG;
+  if (!(await imHaushaltDesInhabers(req))) return KEIN_ZUGANG();
   const etag = etagAus('fu', await speicherStand(['crm', 'kontakte']), localDay());
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
   const [kontakte, crm] = await Promise.all([kontakteLaden(), ladeCrm()]);
   const heute = localDay();
-  const liste = faellige(kontakte, crm, heute, { wertelisten: crm.wertelisten });
-  return jsonAntwort(req, { ok: true, heute, liste, zahlen: zaehlen(liste), puenktlich: puenktlichkeit(crm.followups ?? [], heute) }, etag);
+  let gesperrt = 0;
+  const liste = faellige(kontakte, crm, heute, { wertelisten: crm.wertelisten, beiSperre: () => { gesperrt++; } });
+  return jsonAntwort(req, { ok: true, heute, liste, zahlen: zaehlen(liste), puenktlich: puenktlichkeit(crm.followups ?? [], heute), ...(gesperrt ? { hinweis: werbesperreHinweis(gesperrt) } : {}) }, etag);
 }
 
 type Herkunft = 'schritt' | 'wiedervorlage' | 'dealschritt' | 'nachfassen' | 'review' | 'kadenz' | 'echt';
@@ -90,10 +93,12 @@ async function aktivitaet(kontaktId: string, art: AktivitaetArt, text: string, v
 }
 
 export async function POST(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return KEIN_ZUGANG;
+  // Person aus dem Zugang (28.09., Regel 5): Sitzung oder Dienstweg MIT Person im Haushalt — kein Rückfall auf „kevin“.
+  const zugang = await imHaushaltDesInhabers(req);
+  if (!zugang) return KEIN_ZUGANG();
   let b: Record<string, unknown>;
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
-  const person = personAus(req);
+  const person = zugang.person;
   const jetzt = new Date().toISOString();
   const heute = localDay();
   const kontakte = await kontakteLaden();
@@ -107,6 +112,8 @@ export async function POST(req: Request) {
     const faellig = tagOk(b.faellig);
     if (!bezug || !text || !faellig) return NextResponse.json({ ok: false, fehler: 'Bezug, Text und Datum sind Pflicht.' }, { status: 400 });
     if (faellig < heute) return NextResponse.json({ ok: false, fehler: 'Das Datum liegt in der Vergangenheit.' }, { status: 400 });
+    // Art. 18 (28.09., W8): an einer eingeschränkten Person wird nichts Neues festgehalten.
+    if (kontakt(kontaktId ?? (bezug.art === 'kontakt' ? bezug.id : undefined))?.eingeschraenkt) return EINGESCHRAENKT();
     const f = neuesFollowUp({
       id: neueId('fu'), bezug, kontaktId: kontaktId ?? (bezug.art === 'kontakt' ? bezug.id : undefined), art: ARTEN.includes(b.art as FollowUpArt) ? (b.art as FollowUpArt) : undefined, text, faellig,
       uhrzeit: typeof b.uhrzeit === 'string' && /^\d{2}:\d{2}$/.test(b.uhrzeit) ? b.uhrzeit : undefined, zustaendig: wer(b.zustaendig), notiz: typeof b.notiz === 'string' ? b.notiz : undefined,
@@ -143,10 +150,14 @@ export async function POST(req: Request) {
     if (v.quelle === 'review') return { ...c, mandate: c.mandate.map(m => (m.id === v.ziel ? { ...m, naechstesReview: neuesDatum ?? tagPlus(heute, 90), geaendert: jetzt, geaendertVon: person } : m)) };
     return c;
   };
+  // `geaendertAm` der Kartei ist ein Berliner TAG (28.09., W8) — vorher stand hier der ISO-Zeitstempel.
+  // Art. 18: eine eingeschränkte Person bleibt unberührt (auch IN der Sperre geprüft).
   const kontaktFeldVerschieben = async (neuesDatum: string) => {
     if (!v || (v.quelle !== 'schritt' && v.quelle !== 'wiedervorlage')) return;
-    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id !== v.ziel ? k : v.quelle === 'schritt' ? { ...k, ...(k.naechsterSchritt ? { naechsterSchritt: { ...k.naechsterSchritt, datum: neuesDatum } } : {}), geaendertAm: jetzt } : { ...k, wiedervorlage: neuesDatum, geaendertAm: jetzt })) }));
+    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id !== v.ziel || k.eingeschraenkt ? k : v.quelle === 'schritt' ? { ...k, ...(k.naechsterSchritt ? { naechsterSchritt: { ...k.naechsterSchritt, datum: neuesDatum } } : {}), geaendertAm: heute } : { ...k, wiedervorlage: neuesDatum, geaendertAm: heute })) }));
   };
+  // Art. 18 (28.09., W8): Schritt/Wiedervorlage einer eingeschränkten Person nicht verschieben oder absagen.
+  if (v && (v.quelle === 'schritt' || v.quelle === 'wiedervorlage') && kontakt(v.ziel)?.eingeschraenkt && (b.aktion === 'verschieben' || b.aktion === 'absagen')) return EINGESCHRAENKT();
 
   if (b.aktion === 'erledigen') {
     const ergebnis = ERGEBNISSE.includes(b.ergebnis as Ergebnis) ? (b.ergebnis as Ergebnis) : undefined;
@@ -230,7 +241,7 @@ export async function POST(req: Request) {
       return altesFeldImCrm(c);
     });
     if (v && (v.quelle === 'schritt' || v.quelle === 'wiedervorlage')) {
-      await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id !== v.ziel ? k : v.quelle === 'schritt' ? { ...k, naechsterSchritt: undefined, geaendertAm: jetzt } : { ...k, wiedervorlage: undefined, geaendertAm: jetzt })) }));
+      await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id !== v.ziel || k.eingeschraenkt ? k : v.quelle === 'schritt' ? { ...k, naechsterSchritt: undefined, geaendertAm: heute } : { ...k, wiedervorlage: undefined, geaendertAm: heute })) }));
     }
     const n = neu as FollowUp | null;
     return NextResponse.json({ ok: true, ...(n ? { followup: n } : {}), text: v?.quelle === 'kadenz' && n ? `Kadenz: nächster Anlauf am ${n.faellig}.` : v?.quelle === 'nachfassen' ? 'Nachfassen ausgelassen — zählt nicht als nachgefasst.' : n?.status === 'verpasst' ? 'Als verpasst gezählt.' : 'Abgesagt.' });

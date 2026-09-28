@@ -21,6 +21,11 @@ let route: Mod, db: typeof import('@/lib/store/local-db'), speicher: typeof impo
 
 beforeAll(async () => {
   db = await import('@/lib/store/local-db');
+  // Regel 5 (28.09. abends): der Dienstweg braucht eine Person im Haushalt des Inhabers — erfundene Konten.
+  await db.saveJson('konten', { konten: [
+    { id: 'k1', speicher: 'kevin', email: 'k@test.invalid', name: 'Kevin Test', rolle: 'inhaber', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'test-haus' },
+    { id: 'k2', speicher: 'malin', email: 'm@test.invalid', name: 'Malin Test', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'test-haus' },
+  ], einladungen: [] });
   speicher = await import('@/lib/crm/speicher');
   route = (await import('@/app/api/crm/stammdaten/route')) as unknown as Mod;
   await db.saveJson('kontakte', { kontakte: [] });
@@ -76,5 +81,13 @@ describe('Stammdaten-Route — Wertelisten aus der Akte anlegen', () => {
     expect(r.status).toBe(200);
     expect((await speicher.ladeCrm()).wertelisten).not.toHaveProperty('farben');
     expect((await route.POST(req({ aktion: 'wertelisten', wertelisten: 'Rot' }))).status).toBe(400);
+  });
+});
+
+describe('Regel 5 (28.09. abends): Dienstweg ohne Person oder mit fremder Person → 403', () => {
+  it('ohne Person und mit einer Person außerhalb des Haushalts des Inhabers wird nichts gelesen', async () => {
+    const ohne = { 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY! };
+    expect((await route.GET(new Request('http://test/api/crm/stammdaten', { headers: ohne }))).status).toBe(403);
+    expect((await route.GET(new Request('http://test/api/crm/stammdaten', { headers: { ...ohne, 'x-make-person': 'fremd' } }))).status).toBe(403);
   });
 });

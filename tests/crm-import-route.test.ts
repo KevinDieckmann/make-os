@@ -29,6 +29,11 @@ const kontakte = async () => ((await db.loadJson<{ kontakte: Kontakt[] }>('konta
 
 beforeAll(async () => {
   db = await import('@/lib/store/local-db');
+  // Regel 5 (28.09. abends): der Dienstweg braucht eine Person im Haushalt des Inhabers — erfundene Konten.
+  await db.saveJson('konten', { konten: [
+    // Inhaber ohne Haushalt: das Änderungsprotokoll landet wie bisher unter „ohne-haushalt“.
+    { id: 'k1', speicher: 'kevin', email: 'k@test.invalid', name: 'Kevin Test', rolle: 'inhaber', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] } },
+  ], einladungen: [] });
   speicher = await import('@/lib/crm/speicher');
   route = (await import('@/app/api/crm/import/route')) as unknown as Mod;
   const { ausZeile, vonHandMarkieren } = await import('@/lib/make-one/crm');
@@ -136,5 +141,13 @@ describe('Import-Route — Vorschau, Konflikte, Auflösung', () => {
     // Zweimal: nichts Neues.
     const d2 = await (await route.POST(req({ csv: liste3, name: 'liste3.csv' }))).json();
     expect(d2).toMatchObject({ neu: 0, weitereAdressen: 0 });
+  });
+});
+
+describe('Regel 5 (28.09. abends): Dienstweg ohne Person oder mit fremder Person → 403', () => {
+  it('ohne Person und mit einer Person außerhalb des Haushalts des Inhabers wird nichts gelesen', async () => {
+    const ohne = { 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY! };
+    expect((await route.GET(new Request('http://test/api/crm/import', { headers: ohne }))).status).toBe(403);
+    expect((await route.GET(new Request('http://test/api/crm/import', { headers: { ...ohne, 'x-make-person': 'fremd' } }))).status).toBe(403);
   });
 });

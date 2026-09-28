@@ -68,7 +68,9 @@ export async function GET(req: Request) {
     const alle = await ablageListe(z.haushalt);
     const filter = { kontaktId: q.get('kontakt') ?? undefined, firmaId: q.get('firma') ?? undefined, mandatIds: idListe(q.get('mandat')), dealIds: idListe(q.get('deal')), rechnungIds: idListe(q.get('rechnung')) };
     const gefiltert = filter.kontaktId || filter.firmaId || filter.mandatIds.length || filter.dealIds.length || filter.rechnungIds.length;
-    return NextResponse.json({ ok: true, eintraege: gefiltert ? eintraegeFuer(alle, filter) : alle.slice(-500).reverse() }, { headers: { 'Cache-Control': 'no-store' } });
+    // Nie abschneiden (28.09.): vorher nur die letzten 500 von bis zu 2.000 — jetzt alle (neueste zuerst), mit Anzahl.
+    const eintraege = gefiltert ? eintraegeFuer(alle, filter) : [...alle].reverse();
+    return NextResponse.json({ ok: true, eintraege, anzahl: eintraege.length }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) { return ausFehler(e); }
 }
 
@@ -140,6 +142,7 @@ export async function DELETE(req: Request) {
   const id = new URL(req.url).searchParams.get('id') ?? '';
   if (!DATEI_ID.test(id)) return fehler('Unzulässige Kennung.', 400);
   try {
+    // Beleg einer Einwilligung (28.09., W10): `entfernen` lehnt mit 409 und Grund ab (lib/dateien/ablage.ts).
     return (await entfernen(z.haushalt, id)) ? NextResponse.json({ ok: true }) : fehler('Nicht gefunden.', 404);
   } catch (e) { return ausFehler(e); }
 }

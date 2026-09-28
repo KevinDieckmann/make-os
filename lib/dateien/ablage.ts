@@ -25,6 +25,8 @@ import path from 'path';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { datenOrdner, datenSchluessel, loadJson, updateJson } from '@/lib/store/local-db';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
+import type { Kontakt } from '@/lib/make-one/crm';
+import { einwilligungenMitBeleg, belegGesperrtText } from './einwilligung-beleg';
 import { DATEI_ID, MAX_EINTRAEGE, hatBezug, istBeleg, metaSaeubern, type DateiEintrag, type DateiInfo, type DateiTyp, type FesteBezuege } from './regeln';
 
 const MAGIE = Buffer.from('MKOSDAT1', 'ascii');
@@ -156,9 +158,15 @@ export async function lesen(haushalt: string, id: string): Promise<{ eintrag: Da
   return { eintrag, bytes };
 }
 
-/** Eintrag und Datei entfernen. true, wenn es ihn gab. Belege (Rechnung/Mandat) → AblageFehler 409, nichts gelöscht. */
+/**
+ * Eintrag und Datei entfernen. true, wenn es ihn gab. Belege (Rechnung/Mandat/Angebot) → AblageFehler 409, nichts gelöscht.
+ * Seit 28.09. abends (W10) ebenso: die Datei ist der Beleg einer Einwilligung (`belegRef` = d-…, auch widerrufen) —
+ * der Nachweis nach Art. 7 Abs. 1 DSGVO muss bleiben.
+ */
 export async function entfernen(haushalt: string, id: string): Promise<boolean> {
   if (!DATEI_ID.test(id)) throw new AblageFehler('Unzulässige Kennung.', 400);
+  const einwilligungen = einwilligungenMitBeleg((await loadJson<{ kontakte?: Kontakt[] }>('kontakte'))?.kontakte ?? [], id);
+  if (einwilligungen.anzahl) throw new AblageFehler(belegGesperrtText(einwilligungen.anzahl), 409);
   let gab = false;
   let beleg = false;
   await updateJson<AblageDatei>(ablageName(haushalt), cur => {

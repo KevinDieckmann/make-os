@@ -30,6 +30,11 @@ async function lade(): Promise<{ firmen: (Firma & { stand: string })[]; mandate:
 
 beforeAll(async () => {
   db = await import('@/lib/store/local-db');
+  // Regel 5 (28.09. abends): der Dienstweg braucht eine Person im Haushalt des Inhabers — erfundene Konten.
+  await db.saveJson('konten', { konten: [
+    { id: 'k1', speicher: 'kevin', email: 'k@test.invalid', name: 'Kevin Test', rolle: 'inhaber', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'test-haus' },
+    { id: 'k2', speicher: 'malin', email: 'm@test.invalid', name: 'Malin Test', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'test-haus' },
+  ], einladungen: [] });
   speicher = await import('@/lib/crm/speicher');
   bestand = (await import('@/app/api/crm/bestand/route')) as unknown as Route;
   await db.saveJson('crm', { ...speicher.leererBestand(), firmen: [FIRMA, LEER], mandate: [MANDAT] });
@@ -91,5 +96,13 @@ describe('Löschsperre (#49)', () => {
     expect((await patch([{ liste: 'mandate', op: 'delete', id: 'm-werke' }])).status).toBe(409);
     expect((await patch([{ liste: 'firmen', op: 'delete', id: 'f-leer' }])).status).toBe(200);
     expect((await speicher.ladeCrm()).firmen.map(f => f.id)).toEqual(['f-werke']);
+  });
+});
+
+describe('Regel 5 (28.09. abends): Dienstweg ohne Person oder mit fremder Person → 403', () => {
+  it('ohne Person und mit einer Person außerhalb des Haushalts des Inhabers wird nichts gelesen', async () => {
+    const ohne = { 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY! };
+    expect((await bestand.GET(new Request('http://test/api/crm/bestand', { headers: ohne }))).status).toBe(403);
+    expect((await bestand.GET(new Request('http://test/api/crm/bestand', { headers: { ...ohne, 'x-make-person': 'fremd' } }))).status).toBe(403);
   });
 });

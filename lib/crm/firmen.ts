@@ -8,7 +8,7 @@
 
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { Firma, FirmaRolle } from './typen';
-import { personenJeFirma } from './stationen';
+import { personenJeFirma, hauptStation } from './stationen';
 import { hatTyp } from './mehrfach';
 
 export const FREEMAIL = new Set(['gmail.com', 'googlemail.com', 'gmx.de', 'gmx.net', 'gmx.at', 'gmx.ch', 'web.de', 't-online.de', 'yahoo.com', 'yahoo.de', 'outlook.com', 'outlook.de', 'hotmail.com', 'hotmail.de', 'icloud.com', 'me.com', 'mac.com', 'live.de', 'live.com', 'aol.com', 'freenet.de', 'posteo.de', 'mail.de', 'protonmail.com', 'proton.me']);
@@ -61,19 +61,35 @@ export function firmenAbgleich(kontakte: Kontakt[], firmen: Firma[], jetzt: stri
   const nachDomain = new Map(liste.filter(f => f.domain).map(f => [f.domain!, f]));
   const nachId = new Map(liste.map(f => [f.id, f]));
   let neu = 0, verknuepft = 0, ergaenzt = 0;
-  const raus = kontakte.map(k => {
-    if (k.firmaId && nachId.has(k.firmaId)) return k;
-    // Mit gespeicherten Stationen (28.09.) sind die Stationen die Wahrheit — ausgeschieden heißt ausgeschieden,
-    // der Firmenname im Text verknüpft nicht still neu.
-    if (Array.isArray(k.stationen)) return k;
-    const name = (k.firma ?? '').trim();
-    if (!name) return k;
-    const d = domainVon(k);
+  /** Die Firma zu einem Namen (Schlüssel, sonst Domain) — gibt es keine, wird sie angelegt. */
+  const firmaFuer = (name: string, d: string | undefined): Firma => {
     let f = nachSchluessel.get(firmenSchluessel(name)) ?? (d ? nachDomain.get(d) : undefined);
     if (!f) {
       f = { id: firmenId(name), name, ...(d ? { domain: d } : {}), rolle: 'offen', geaendert: jetzt };
       liste.push(f); nachSchluessel.set(firmenSchluessel(name), f); if (d) nachDomain.set(d, f); nachId.set(f.id, f); neu++;
     }
+    return f;
+  };
+  const raus = kontakte.map(k => {
+    // Mit gespeicherten Stationen (28.09.) sind die Stationen die Wahrheit — ausgeschieden heißt ausgeschieden,
+    // der Firmenname im Text verknüpft nicht still neu. Einzige Ausnahme (Integritätsprüfung W1): die HAUPTstation
+    // zeigt auf eine Firma, die es nicht mehr gibt — dann gilt sie als leer und wird über den Firmennamen (der
+    // Anzeigename der Hauptstation, `k.firma`) neu verknüpft. Andere tote Stationen tragen keinen Namen; sie
+    // bleiben und meldet die Verbindungsprüfung (`kontakt-station-firma-tot`).
+    if (Array.isArray(k.stationen)) {
+      const haupt = hauptStation(k.stationen);
+      const name = (k.firma ?? '').trim();
+      if (!haupt || nachId.has(haupt.firmaId) || !name) return k;
+      const f = firmaFuer(name, domainVon(k));
+      verknuepft++;
+      const alt = haupt.firmaId;
+      return { ...k, stationen: k.stationen.map(s => (s === haupt ? { ...s, firmaId: f.id } : s)), ...(k.firmaId === alt || !k.firmaId || !nachId.has(k.firmaId) ? { firmaId: f.id } : {}) };
+    }
+    // Eine tote `firmaId` (Firma gelöscht) gilt als leer (W1) — sonst versprach die Verbindungsprüfung „Firmen abgleichen verknüpft neu“ vergeblich.
+    if (k.firmaId && nachId.has(k.firmaId)) return k;
+    const name = (k.firma ?? '').trim();
+    if (!name) return k;
+    const f = firmaFuer(name, domainVon(k));
     verknuepft++;
     return { ...k, firmaId: f.id };
   });

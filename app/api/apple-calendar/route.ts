@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { AUF_DEM_MAC } from '@/lib/mac';
-import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
+import { kalenderLesen, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { verbunden, ladeStand, abgleichen, naechsterVersuchFaellig } from '@/lib/kalender/icloud';
 import { spawn } from 'child_process';
 import { loadJson, saveJson } from '@/lib/store/local-db';
@@ -103,7 +103,8 @@ function runOsascript(script: string): Promise<string> {
 // ─── Route handler ────────────────────────────────────────────────────────────
 
 export async function GET(req: Request) {
-  if (!(await kalenderZugang(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
+  // Lesen: auch der Systemlauf ohne Person (Zulieferer vom Mac) — Regel 5 gilt über `kalenderLesen` (28.09.).
+  if (!(await kalenderLesen(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
   const force = new URL(req.url).searchParams.get('refresh') === '1';
 
   // Seit 25.09.: iCloud direkt (Server) — der Abgleich schreibt den calendar-cache.

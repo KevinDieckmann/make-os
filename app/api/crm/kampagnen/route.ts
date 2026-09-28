@@ -16,16 +16,16 @@ import { NextResponse } from 'next/server';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { leereKriterien } from '@/lib/crm/leads';
 import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
-import { personAus } from '@/lib/zoe/raum';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { anzeigename, wendeAktivitaetAn, type Kontakt, type AktivitaetArt } from '@/lib/make-one/crm';
-import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
+import { ladeCrm, aendereCrm, LISTEN_GRENZEN } from '@/lib/crm/speicher';
 import { PLAYBOOKS, planen, zielgruppe, kundenprofil, aehnlicheFirmen, kampagnenZahlen } from '@/lib/crm/kampagnen';
 import { bearbeiterFuer } from '@/lib/crm/pipeline';
 import { wer, mitglied, nameVon, BEIDE } from '@/lib/crm/team';
 import type { Kampagne, KampagnenErgebnis } from '@/lib/crm/typen';
 import { personenJeFirma as personenJeFirmaVon } from '@/lib/crm/stationen';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
+import { notizAnhaengen } from '@/lib/crm/notiz-anhaengen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -54,11 +54,13 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+  // Person aus dem Zugang (28.09., Regel 5): Sitzung oder Dienstweg MIT Person im Haushalt — kein Rückfall auf „kevin“.
+  const zugang = await imHaushaltDesInhabers(req);
+  if (!zugang) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: { aktion?: string; playbook?: string; segmentId?: string; id?: string; kontaktId?: string; ergebnis?: string; von?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const heute = localDay();
-  const person = personAus(req);
+  const person = zugang.person;
 
   if (b.aktion === 'planen') {
     const kontakte = await kontakteLaden();
@@ -70,8 +72,11 @@ export async function POST(req: Request) {
     // Wer plant, ist zuständig (Kevin oder Malin) — umstellen oder übergeben geht in der Kampagne.
     const zst = mitglied(person) ? { zustaendig: person } : {};
     const k: Kampagne = { ...(seg ? { ...plan, segmentId: seg.id, name: pb ? `${pb.name} · ${seg.name}` : plan.name } : plan), ...zst, geaendertVon: person };
+    // Nie abschneiden (28.09.): die ganze Zielgruppe wird übernommen; über der Grenze → 413 mit Anzahl.
+    const max = LISTEN_GRENZEN.kampagnen?.kontaktIds ?? 20000;
+    if (k.kontaktIds.length > max) return NextResponse.json({ ok: false, fehler: `Die Zielgruppe hat ${k.kontaktIds.length} Personen — eine Kampagne fasst höchstens ${max}. Bitte das Segment enger fassen.` }, { status: 413 });
     await aendereCrm(c => ({ ...c, kampagnen: [...c.kampagnen, k] }));
-    return NextResponse.json({ ok: true, kampagne: k });
+    return NextResponse.json({ ok: true, kampagne: k, text: `Kampagne mit allen ${k.kontaktIds.length} Personen der Zielgruppe angelegt — wer nicht dabei sein soll, in der Kampagne herausnehmen.` });
   }
 
   if (b.aktion === 'aufgaben') {
@@ -125,17 +130,30 @@ export async function POST(req: Request) {
     if (eingeschraenkt) return NextResponse.json({ ok: false, fehler: 'Verarbeitung der Person ist eingeschränkt (Art. 18) — kein Ergebnis festgehalten.' }, { status: 409 });
     if (!kt) return NextResponse.json({ ok: false, fehler: 'Person nicht gefunden.' }, { status: 404 });
     const jetzt = new Date().toISOString();
+    const vermerk = `Interesse aus Kampagne „${k.name}“ (${heute})`;
+    // Lead-Notiz nie still kürzen (28.09.): passt der Vermerk nicht mehr hinein, bleibt die Notiz, wie sie ist — mit Hinweis.
+    let hinweis: string | undefined;
     await aendereCrm(c => {
       const neu = { ...c, kampagnen: c.kampagnen.map(x => (x.id === k.id ? { ...x, ergebnisse: [...x.ergebnisse, { kontaktId: kt.id, ergebnis: erg, am: heute, von }], status: x.status === 'entwurf' ? 'aktiv' as const : x.status, geaendert: jetzt, geaendertVon: person } : x)) };
       // Ebene 1 (25.09.): „Interesse“ aus einer Kampagne ist noch kein Deal — der Lead der Firma geht in die Qualifizierung.
-      if (erg === 'chance' && kt.firmaId) neu.firmen = c.firmen.map(f => (f.id === kt.firmaId && !['sql', 'kunde'].includes(f.lead?.status ?? '') ? { ...f, lead: { ...(f.lead ?? { kriterien: leereKriterien() }), status: 'qualifizierung' as const, notiz: `${f.lead?.notiz ? `${f.lead.notiz}\n` : ''}Interesse aus Kampagne „${k.name}“ (${heute})`, geaendert: jetzt, geaendertVon: person } } : f));
+      if (erg === 'chance' && kt.firmaId) neu.firmen = c.firmen.map(f => {
+        if (f.id !== kt.firmaId || ['sql', 'kunde'].includes(f.lead?.status ?? '')) return f;
+        const n = notizAnhaengen(f.lead?.notiz, vermerk);
+        if (!n.ok) hinweis = n.hinweis;
+        return { ...f, lead: { ...(f.lead ?? { kriterien: leereKriterien() }), status: 'qualifizierung' as const, ...(n.notiz ? { notiz: n.notiz } : {}), geaendert: jetzt, geaendertVon: person } };
+      });
       return neu;
     });
-    // Ohne Firma liegt der Lead an der Person.
+    // Ohne Firma liegt der Lead an der Person — die vorhandene Notiz bleibt (vorher wurde sie ersetzt).
     if (erg === 'chance' && !kt.firmaId && !['sql', 'kunde'].includes(kt.lead?.status ?? '')) {
-      await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(x => (x.id === kt.id ? { ...x, lead: { ...(x.lead ?? { kriterien: leereKriterien() }), status: 'qualifizierung' as const, notiz: `Interesse aus Kampagne „${k.name}“ (${heute})`, geaendert: jetzt, geaendertVon: person } } : x)) }));
+      await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(x => {
+        if (x.id !== kt.id || x.eingeschraenkt) return x;
+        const n = notizAnhaengen(x.lead?.notiz, vermerk);
+        if (!n.ok) hinweis = n.hinweis;
+        return { ...x, lead: { ...(x.lead ?? { kriterien: leereKriterien() }), status: 'qualifizierung' as const, ...(n.notiz ? { notiz: n.notiz } : {}), geaendert: jetzt, geaendertVon: person } };
+      }) }));
     }
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, ...(hinweis ? { hinweis } : {}) });
   }
   return NextResponse.json({ ok: false, fehler: 'aktion unbekannt.' }, { status: 400 });
 }

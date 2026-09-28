@@ -92,7 +92,7 @@ describe('GET · Vorschau · Reparatur', () => {
     expect(crm!.followups).toHaveLength(1);
     expect(crm!.followups[0].status).toBe('abgesagt');
     const kontakte = await db.loadJson<{ kontakte: { lead?: { chanceId?: string; status: string }; geaendertAm: string }[] }>('kontakte');
-    expect(kontakte!.kontakte[0].lead).toEqual({ status: 'sql', kriterien: Q });
+    expect(kontakte!.kontakte[0].lead).toEqual({ status: 'qualifizierung', kriterien: Q }); // SQL ohne Deal ist keiner mehr (28.09. abends)
     expect(kontakte!.kontakte[0].geaendertAm).toBe('2026-08-01');
     expect((await db.loadJson<{ konflikte: unknown[] }>('crm-import-konflikte'))!.konflikte).toEqual([]);
     const ablage = await db.loadJson<{ eintraege: { id: string; dateiFehlt?: string }[] }>('crm-dateien--test-haus');

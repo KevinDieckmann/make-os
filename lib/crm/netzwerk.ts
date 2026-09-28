@@ -25,7 +25,8 @@
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import type { Kampagne } from './typen';
 import { firmenSchluessel } from './firmen';
-import { ausgenommen } from '@/lib/crm/einschraenkung';
+import { ausgenommen, EINGESCHRAENKT_FEHLER } from '@/lib/crm/einschraenkung';
+import { datenschutzStempeln } from './datenschutz-stempel';
 
 import type { NetzStand, VernetzenEinstellung, VorlageId } from './netzwerk-form';
 import { hatTyp } from './mehrfach';
@@ -297,4 +298,39 @@ export function exportAnwenden(k: Kontakt, t: ExportTreffer, profil: string, heu
   const alt = k.netzwerk?.[profil];
   const stand: NetzStand = alt?.status === 'vernetzt' ? alt : { ...(alt ?? {}), status: 'vernetzt', vernetztAm: t.zeile.vernetztAm ?? heute, quelle: 'export' };
   return { ...k, ...(t.neuesProfil ? { linkedin: t.zeile.url, linkedinNichtGefunden: undefined } : {}), netzwerk: { ...(k.netzwerk ?? {}), [profil]: stand } };
+}
+
+// ── Datenschutz je Schritt (28.09., Integritätsprüfung W8) ──────────────────
+
+/** Schritte, die die Person werblich erreichen (Anfrage, Nachricht) oder eine Einwilligung schaffen (Antwort „ja“). */
+const WERBLICH = new Set(['angefragt', 'geschrieben']);
+
+/**
+ * Darf dieser Schritt an der Person geschrieben werden? Art. 18 (eingeschränkt): nichts festhalten — auch kein
+ * Profil (`EINGESCHRAENKT_FEHLER`, 409). Werbesperre (Art. 21): keine Anfrage, keine Nachricht, und ein „Ja“ auf
+ * LinkedIn hebt die Sperre nicht auf (Aufheben nur in der Kontaktseite mit Einwilligung + Nachweis).
+ * Liefert den Ablehnungstext oder null.
+ */
+export function netzSchrittGesperrt(k: Pick<Kontakt, 'eingeschraenkt' | 'werbesperre'>, aktion: string | undefined, art?: string): string | null {
+  if (k.eingeschraenkt) return EINGESCHRAENKT_FEHLER;
+  if (k.werbesperre && (WERBLICH.has(String(aktion)) || (aktion === 'antwort' && art === 'ja'))) {
+    return `Werbesperre seit ${k.werbesperre.seit} (Art. 21) — keine Vernetzungsanfrage, keine Nachricht, und ein „Ja“ hebt die Sperre nicht auf. Aufheben nur unter Kontakt › Stammdaten › Datenschutz mit neuer Einwilligung und Nachweis.`;
+  }
+  return null;
+}
+
+/**
+ * Das „Ja“ nach der Vernetzung als Einwilligung (Kanal social) mit VOLLEM Nachweis (U2 #55): Wortlaut, Beleg
+ * (die LinkedIn-Nachricht des Profils, an dem Tag), Zeitpunkt und wer — gestempelt über `datenschutzStempeln`
+ * (derselbe Weg wie die Kartei). Gibt es schon eine gültige Social-Einwilligung, bleibt alles, wie es ist.
+ */
+export function linkedinEinwilligung(alt: Kontakt, n: Kontakt, wortlaut: string, profilName: string, person: string, heute: string, jetztIso: string): Kontakt {
+  if ((n.einwilligungen ?? []).some(e => e.kanal === 'social' && e.grundlage === 'einwilligung' && !e.widerrufenAm)) return n;
+  const w = wortlaut.trim().slice(0, 1500);
+  const ew = {
+    kanal: 'social' as const, grundlage: 'einwilligung' as const, erteiltAm: heute,
+    nachweis: `LinkedIn (${profilName}): ${w}`.slice(0, 400), wortlaut: w,
+    belegRef: `LinkedIn-Nachricht vom ${heute} (Profil ${profilName})`.slice(0, 200), zeitpunkt: jetztIso,
+  };
+  return datenschutzStempeln({ ...n, einwilligungen: [...(n.einwilligungen ?? []), ew] }, alt, person, jetztIso, heute);
 }

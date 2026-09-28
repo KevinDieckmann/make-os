@@ -102,9 +102,8 @@ describe('Zugang und Schranken', () => {
   });
   it('Sitzung im Haushalt des Inhabers darf; der Dienstweg mit Person sieht nur deren Haushalt', async () => {
     expect((await route.GET(new Request('http://test/api/crm/dateien', { headers: { 'x-make-user': 'malin' } }))).status).toBe(200);
-    const fremd = await liste('kontakt=c-probe-1', 'gast');
-    expect(fremd.ok).toBe(true);
-    expect(fremd.eintraege).toEqual([]);
+    // Seit 28.09. abends (Regel 5): der Dienstweg mit einer Person AUSSERHALB des Haushalts des Inhabers kommt gar nicht erst durch.
+    expect((await route.GET(new Request('http://test/api/crm/dateien?kontakt=c-probe-1', { headers: kopf('gast') }))).status).toBe(403);
   });
   it('413 zu groß — per Content-Length und beim Lesen', async () => {
     const gross = new Uint8Array(15 * 1024 * 1024 + 10);
@@ -130,7 +129,7 @@ describe('Zugang und Schranken', () => {
     const r = await (await hochladen(pdf('zweiter'), 'b.pdf', { art: 'sonstig', kontaktId: 'c-x-1' })).json();
     expect(r.ok).toBe(true);
     expect(readdirSync(path.join(ordner, 'dateien'))).toEqual(['test-haus']);
-    expect((await liste('kontakt=c-x-1', 'gast')).eintraege).toEqual([]);
+    expect((await route.GET(new Request('http://test/api/crm/dateien?kontakt=c-x-1', { headers: kopf('gast') }))).status).toBe(403);
   });
 });
 

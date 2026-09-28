@@ -97,12 +97,13 @@ describe('Regel 5: ausdrückliche Person bei Dubletten-Merge und Löschprotokoll
   it('POST /api/crm/dubletten: Dienstweg ohne Person → 401, es wird nichts zusammengeführt', async () => {
     const vorher = JSON.stringify(await db.loadJson('kontakte'));
     const r = await routen.dubletten.POST!(anfrage('/api/crm/dubletten', dienst(), 'POST', { behalten: 'c-anna', weg: 'c-bert' }));
-    expect(r.status).toBe(401);
+    // Seit 28.09. abends lehnt schon `imHaushaltDesInhabers` den Dienstweg ohne Person ab (403) — vorher die Route (401).
+    expect([401, 403]).toContain(r.status);
     expect(JSON.stringify(await db.loadJson('kontakte'))).toBe(vorher);
   });
   it('POST /api/crm/datenschutz: Dienstweg ohne Person → 401, nichts gelöscht, kein Protokolleintrag „kevin“', async () => {
     const r = await routen.datenschutz.POST!(anfrage('/api/crm/datenschutz', dienst(), 'POST', { id: 'c-bert' }));
-    expect(r.status).toBe(401);
+    expect([401, 403]).toContain(r.status);
     expect(((await db.loadJson<{ kontakte: { id: string }[] }>('kontakte'))?.kontakte ?? []).some(k => k.id === 'c-bert')).toBe(true);
     expect(await db.loadJson('crm-loeschprotokoll')).toBeNull();
   });

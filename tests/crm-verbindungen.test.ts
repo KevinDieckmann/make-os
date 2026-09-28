@@ -58,7 +58,7 @@ describe('Verbindungsprüfung — sauberer Bestand', () => {
   });
   it('jede Prüfung hat Satz, Schwere und Bereich; reparierbar ist eine feste Teilmenge', () => {
     for (const id of PRUEFUNG_IDS) expect(PRUEFUNGEN[id].text(2)).toMatch(/^\S/);
-    expect(REPARIERBAR).toEqual(['firma-mutter-tot', 'werte-ausserhalb-wertelisten', 'firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'einschraenkung-kampagne', 'datei-fehlt', 'konflikt-veraltet']);
+    expect(REPARIERBAR).toEqual(['firma-mutter-tot', 'werte-ausserhalb-wertelisten', 'firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'einschraenkung-kampagne', 'datei-fehlt', 'konflikt-veraltet', 'kontakt-firma-text-abweichend', 'kontakt-typ-abweichend', 'teilnahme-doppelt']);
   });
 });
 
@@ -130,6 +130,18 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   ['angebot-produkt-tot', b => { b.crm.angebote.push(angebot('ang-a1', { positionen: [{ id: 'p1', leistungId: 'l-weg', titel: 'x', text: '', menge: 1, einheit: 'pauschal', einzelpreisCent: 100, ustSatz: 19, basis: 'einmalig' }] })); }, 1, 'ang-a1'],
   ['angebot-ohne-pdf', b => { b.crm.angebote.push(angebot('ang-a1', { status: 'gestellt', nummer: 'KDV-A-2026-0001' }), angebot('ang-a2', { status: 'gestellt', nummer: 'KDV-A-2026-0002', pdfDateiId: 'd-abcd1' }), angebot('ang-a3', { status: 'gestellt', nummer: 'KDV-A-2026-0003', pdfDateiId: 'd-weg99' })); }, 2, 'ang-a3'],
   ['produkt-ohne-angebotstext', b => { b.crm.leistungen.push(produkt('l-ohne'), produkt('l-mit', { angebot: { leistungstext: 'Text' } }), produkt('l-entwurf', { status: 'entwurf' })); }, 1, 'l-ohne'],
+  // Integritätsprüfung 28.09. abends
+  ['kontakt-firma-text-abweichend', b => { b.kontakte[1].firma = 'Neue Arbeit GmbH'; b.kontakte[0].firma = 'Firma F-Alpha GmbH'; }, 1, 'c-bert1'],
+  ['kontakt-typ-abweichend', b => { b.kontakte[0].typ = 'Partner'; b.kontakte[0].typen = ['Kunde', 'Partner']; b.kontakte[1].typ = 'kunde'; b.kontakte[1].typen = ['Kunde']; }, 1, 'c-anna1'],
+  ['aktivitaet-firma-tot', b => { b.kontakte[0].aktivitaeten = [{ am: J, art: 'notiz', von: 'kevin', firmaId: 'f-weg' }, { am: J, art: 'notiz', von: 'kevin', firmaId: 'f-alpha' }]; }, 1, 'c-anna1'],
+  ['aktivitaet-bezug-tot', b => { b.kontakte[1].aktivitaeten = [{ am: J, art: 'notiz', von: 'kevin', bezug: 'd-weg' }, { am: J, art: 'notiz', von: 'kevin', bezug: 'kp-1' }]; }, 1, 'c-bert1'],
+  ['deal-quelle-bezug-tot', b => { b.crm.chancen.push(deal('d-2', { quelle: 'event', quelleBezug: 'ev-weg' }), deal('d-3', { quelle: 'kampagne', quelleBezug: 'kp-1' })); }, 1, 'd-2'],
+  ['mandat-planposten-tot', b => { b.liquiplan = { posten: ['pp-1'] }; b.crm.mandate[0].planpostenId = 'pp-weg'; b.crm.mandate.push(mandat('m-2', { planpostenId: 'pp-1' })); }, 1, 'm-1'],
+  ['mandat-phase-ungueltig', b => { b.crm.leistungen.push(produkt('l-1', { phasen: [{ id: 'ph-a', name: 'Analyse' }] })); b.crm.mandate[0].leistungId = 'l-1'; b.crm.mandate[0].phase = 'ph-weg'; b.crm.mandate.push(mandat('m-2', { leistungId: 'l-1', phase: 'ph-a' })); }, 1, 'm-1'],
+  ['teilnahme-doppelt', b => { b.crm.teilnahmen.push({ id: 'tn-2', eventId: 'ev-1', kontaktId: 'c-bert1', status: 'da', geaendert: J }); }, 1, 'ev-1'],
+  ['kampagne-ergebnis-ausserhalb', b => { b.crm.kampagnen[0].ergebnisse.push({ kontaktId: 'c-anna1', ergebnis: 'reagiert', am: HEUTE }); }, 1, 'kp-1'],
+  ['head-vorschlag-kontakt-tot', b => { b.heads = [{ head: 'sales', vorschlaege: [{ id: 'hs-1', kontakt_id: 'c-weg1', status: 'offen' }, { id: 'hs-2', kontakt_id: 'c-weg1', status: 'abgelehnt' }, { id: 'hs-3', kontakt_id: 'c-anna1', status: 'offen' }] }]; }, 1, 'sales:hs-1'],
+  ['einwilligung-beleg-tot', b => { b.kontakte[0].einwilligungen = [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: HEUTE, nachweis: 'Formular', wortlaut: 'Ja, gern', belegRef: 'd-weg99' }]; b.kontakte[1].einwilligungen = [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: HEUTE, nachweis: 'Formular', wortlaut: 'Ja, gern', belegRef: 'Formular d-abcd1' }]; }, 1, 'c-anna1'],
 ];
 
 describe('Verbindungsprüfung — je Prüfung ein Fall', () => {
@@ -193,6 +205,10 @@ describe('Verbindungen reparieren', () => {
     b.crm.antraege[0].kontaktId = 'c-weg3';
     b.konflikte!.konflikte.push({ kontaktId: 'c-weg1', feld: 'email', online: 1, liste: 2 });
     b.dateien!.aufPlatte = [];
+    // 28.09. abends: Firmentext ≠ Hauptstation, Typ nicht vorn, doppelte Teilnahme (mit Feldern zum Übernehmen).
+    b.kontakte[1].firma = 'Neue Arbeit GmbH';
+    b.kontakte[0].typ = 'Partner'; b.kontakte[0].typen = ['Kunde', 'Partner'];
+    b.crm.teilnahmen.push({ id: 'tn-2', eventId: 'ev-1', kontaktId: 'c-bert1', status: 'da', notiz: 'kam spät', followUpAm: HEUTE, geaendert: J });
     // Nicht reparierbar — muss stehen bleiben:
     b.crm.chancen[0].firmaId = 'f-weg';
     b.crm.teilnahmen.push({ id: 'tn-9', eventId: 'ev-1', kontaktId: 'c-weg1', status: 'da', geaendert: J });
@@ -212,15 +228,21 @@ describe('Verbindungen reparieren', () => {
     const b = kaputt();
     const r = verbindungenReparieren(b, REPARIERBAR, JETZT, 'kevin');
     const n = r.bestaende;
-    for (const l of ['firmen', 'chancen', 'mandate', 'followups', 'kampagnen', 'beitraege', 'antraege', 'teilnahmen'] as const) expect(n.crm[l].length, l).toBe(b.crm[l].length);
+    for (const l of ['firmen', 'chancen', 'mandate', 'followups', 'kampagnen', 'beitraege', 'antraege'] as const) expect(n.crm[l].length, l).toBe(b.crm[l].length);
+    // Einzige Ausnahme: die DOPPELTE Teilnahme geht in der stärkeren auf (Status „da“ bleibt, Felder übernommen).
+    expect(n.crm.teilnahmen.length).toBe(b.crm.teilnahmen.length - 1);
+    expect(n.crm.teilnahmen.find(t => t.eventId === 'ev-1' && t.kontaktId === 'c-bert1')).toMatchObject({ id: 'tn-2', status: 'da', notiz: 'kam spät', followUpAm: HEUTE, geaendert: J });
+    expect(n.kontakte[1].firma).toBe('Firma f-alpha');
+    expect(n.kontakte[0].typen).toEqual(['Partner', 'Kunde']);
     expect(n.kontakte.length).toBe(b.kontakte.length);
     expect(n.dateien!.eintraege.length).toBe(1);
     expect(n.crm.chancen[0]).toEqual({ ...b.crm.chancen[0], kontaktIds: ['c-anna1'], personenRollen: { 'c-anna1': 'entscheider' } });
     expect(n.crm.chancen[0].geaendert).toBe(J);
     expect(n.crm.mandate[0]).toEqual({ ...b.crm.mandate[0], kontaktIds: ['c-anna1'] });
-    expect(n.kontakte[0]).toEqual({ ...b.kontakte[0], lead: { status: 'sql', kriterien: { ...Q } } });
+    // Lead mit totem Deal (28.09. abends): Verweis weg UND „SQL“ zurück auf „Qualifizierung“, sqlAm weg.
+    expect(n.kontakte[0]).toEqual({ ...b.kontakte[0], typen: ['Partner', 'Kunde'], lead: { status: 'qualifizierung', kriterien: { ...Q } } });
     expect(n.kontakte[0].geaendertAm).toBe('2026-08-01');
-    expect(n.crm.firmen[0].lead).toEqual({ status: 'sql', kriterien: { ...Q } });
+    expect(n.crm.firmen[0].lead).toEqual({ status: 'qualifizierung', kriterien: { ...Q } });
     expect(n.crm.antraege[0].kontaktId).toBeUndefined();
     expect(n.crm.antraege[0].name).toBe('Bert Test');
     expect(n.crm.beitraege[0].quellen).toEqual(['c-anna1', 'Kundengespräch Sommer']);

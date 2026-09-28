@@ -18,7 +18,7 @@ import { HEADS, SYSTEM, SCHEMA, AGENT_ID, REVIEW_MODI, aufgabe, datenBlock, type
 import { normalisiere } from '@/lib/heads/pruefer';
 import { bewerte, passK, type Bewertung } from '@/lib/heads/eval';
 import type { ReplayStand } from '@/lib/heads/lauf';
-import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { nurInhaber, imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { modellSchranke } from '@/lib/zugang/umfang';
 
@@ -29,6 +29,8 @@ export const maxDuration = 800;
 const headAus = (h: unknown) => (HEADS.includes(h as HeadId) ? (h as HeadId) : null);
 
 export async function GET(req: Request) {
+  // Liest Kartei und CRM-Bestand (28.09., K1) — nur im Haushalt des Inhabers.
+  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   const h = headAus(new URL(req.url).searchParams.get('head'));
   if (!h) return NextResponse.json({ ok: false, fehler: 'head=sales|marketing|event' }, { status: 400 });
   const faelle = (await loadJson<ReplayStand>(`heads-replay-${h}`))?.faelle ?? [];

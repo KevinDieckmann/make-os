@@ -69,11 +69,21 @@ export function taktVon(k: Pick<Kontakt, 'kreis' | 'taktTage'>, wertelisten?: We
 const RUHT = new Set(['ruht', 'verloren']);
 
 /**
+ * Werbliche Follow-up-Arten (28.09., Integritätsprüfung W8): Mail, LinkedIn, Anruf, Nachricht in der Akquise —
+ * also nicht im laufenden Deal oder Mandat (Vertrag/eigene Anfrage) und nicht „Termin“/„Sonstiges“.
+ * An Personen mit Werbesperre (Art. 21) stehen sie in keiner Fälligkeitsliste.
+ */
+export const WERBLICHE_ARTEN: readonly FollowUpArt[] = ['mail', 'linkedin', 'anruf', 'nachricht'];
+export const istWerblich = (f: Pick<FollowUp, 'art' | 'bezug'>) => WERBLICHE_ARTEN.includes(f.art) && f.bezug?.art !== 'chance' && f.bezug?.art !== 'mandat';
+/** Hinweis für die Oberfläche, wenn Follow-ups wegen Werbesperre ausgeblendet sind (wie `folgeAus` „sperre“ in heute.ts). */
+export const werbesperreHinweis = (n: number) => `${n} ${n === 1 ? 'Follow-up an eine Person' : 'Follow-ups an Personen'} mit Werbesperre ausgeblendet — keine Werbung mehr; nur mit Vertrag oder ihrer Anfrage weiterverfolgen (Stammdaten › Datenqualität).`;
+
+/**
  * Alle fälligen und bald fälligen Follow-ups einer Kartei: echte zuerst, dann
  * die virtuellen aus den alten Feldern — ohne Doppelung (hat eine Person am
  * selben Tag schon ein echtes Follow-up, fällt der virtuelle Eintrag weg).
  */
-export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, opts: { horizont?: number; wertelisten?: Wertelisten } = {}): Faellig[] {
+export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, opts: { horizont?: number; wertelisten?: Wertelisten; /** Wird je wegen Werbesperre ausgeblendetem Follow-up gerufen (für den Hinweis). */ beiSperre?: (f: FollowUp) => void } = {}): Faellig[] {
   const horizont = opts.horizont ?? HORIZONT_TAGE;
   const bis = tagPlus(heute, horizont);
   const nachId = new Map(kontakte.map(k => [k.id, k]));
@@ -91,6 +101,8 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
     const k = f.kontaktId ? nachId.get(f.kontaktId) : undefined;
     // Art. 18 (U2): eingeschränkte Personen stehen in keiner Fälligkeitsliste (Power Hour, „Für dich“).
     if (k?.eingeschraenkt) continue;
+    // Werbesperre (Art. 21, W8 28.09.): werbliche Arten fallen heraus — mit Hinweis über `beiSperre`.
+    if (k?.werbesperre && istWerblich(f)) { opts.beiSperre?.(f); continue; }
     const titel = f.bezug.art === 'chance' ? crm.chancen.find(c => c.id === f.bezug.id)?.titel : f.bezug.art === 'mandat' ? crm.mandate.find(m => m.id === f.bezug.id)?.kunde : f.bezug.art === 'event' ? crm.events.find(e => e.id === f.bezug.id)?.titel : f.bezug.art === 'firma' ? firmen.get(f.bezug.id)?.name : undefined;
     raus.push(mach({ id: f.id, virtuell: false, quelle: f.quelle, art: f.art, text: f.text, faellig: f.faellig, ...(f.uhrzeit ? { uhrzeit: f.uhrzeit } : {}), ...(f.kontaktId ? { kontaktId: f.kontaktId } : {}),
       name: k ? anzeigename(k) : titel ?? f.text, ...(firmaVon(f.kontaktId) ? { firma: firmaVon(f.kontaktId) } : {}), bezug: { ...f.bezug, ...(titel ? { titel } : {}) }, zustaendig: f.zustaendig, ...(f.verschoben ? { verschoben: f.verschoben } : {}) }));

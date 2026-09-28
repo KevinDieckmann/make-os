@@ -14,9 +14,12 @@
 // Beispiele tragen NUR Kennungen (c-…, f-…, Deal-/Mandats-Kennungen) — nie Namen,
 // nie Inhalte. Was nicht geladen wurde (z. B. `rechnungen: null`), wird nicht geprüft.
 // Die Route ist app/api/crm/verbindungen, die Oberfläche Stammdaten › Datenqualität.
+// 28.09. abends (Integritätsprüfung): dazu Firmentext ↔ Hauptstation, Typ ↔ Typen, Aktivität → Firma/Bezug,
+// Deal-Quelle, Mandat → Planposten/Phase, doppelte Teilnahmen, Kampagnen-Ergebnisse außerhalb, Head-Vorschläge,
+// Einwilligungs-Belege; Leads mit totem Deal fallen beim Reparieren von „SQL“ auf „Qualifizierung“ zurück.
 
 import { HERKUNFT, LEBENSPHASEN, type Kontakt } from '@/lib/make-one/crm';
-import type { CrmBestand, CrmListe, Firma, FirmaRolle, FollowUp, SegmentKriterien } from './typen';
+import type { CrmBestand, CrmListe, Firma, FirmaRolle, FollowUp, SegmentKriterien, Teilnahme, TeilnahmeStatus } from './typen';
 import { CRM_LISTEN } from './typen';
 import { OFFENE_STUFEN } from './pipeline';
 import { mandatZuFirma } from './firmen-bezug';
@@ -28,7 +31,9 @@ import type { FokusBlock } from '@/lib/zeitmessung/modell';
 import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
 import { einheitenListe } from '@/lib/planung/einheiten';
 import { einheitName } from '@/lib/einheiten';
-import { personenJeFirma, stationenBefund, firmenDerPerson } from './stationen';
+import { personenJeFirma, stationenBefund, firmenDerPerson, hauptStation, stationenVon } from './stationen';
+import { firmenSchluessel } from './firmen';
+import { einwilligungBelegTot } from '@/lib/dateien/einwilligung-beleg';
 import { alleAdressen, emailsBefund } from './emails';
 import { kreisFirmen } from './konzern';
 import { typenVon, kategorienVon, labelsVon } from './mehrfach';
@@ -56,6 +61,10 @@ export interface VerbindungsBestaende {
   dateien?: { eintraege: DateiEintrag[]; aufPlatte: string[] } | null;
   /** Offene Import-Konflikte (Speicher `crm-import-konflikte`). null = nicht geprüft. */
   konflikte?: KonfliktStand | null;
+  /** Kennungen der Planposten im Liquiditätsplan (Speicher „liquiplan“, 28.09. abends). null = nicht geprüft. */
+  liquiplan?: { posten: string[] } | null;
+  /** Vorschläge der Heads — nur Kennung, Person, Status (28.09. abends). null = nicht geprüft. */
+  heads?: { head: string; vorschlaege: { id: string; kontakt_id?: string | null; status?: string }[] }[] | null;
 }
 
 // ── Befunde ─────────────────────────────────────────────────────────────────
@@ -149,6 +158,18 @@ export const PRUEFUNGEN = {
   'angebot-ohne-pdf': { schwere: 'fehler', bereich: 'angebote', reparierbar: false, art: 'angebot', text: n => `${n} ${e(n, 'gestelltes Angebot hat', 'gestellte Angebote haben')} kein PDF (oder es fehlt in der Dateiablage).` },
   'produkt-ohne-angebotstext': { schwere: 'hinweis', bereich: 'angebote', reparierbar: false, art: 'produkt', text: n => `${n} ${e(n, 'aktives Produkt hat', 'aktive Produkte haben')} noch keinen Leistungstext — im Angebots-Tool als „Text fehlt“ markiert (Produkte & Mandate › Produkte).` },
   'konflikt-veraltet': { schwere: 'warnung', bereich: 'import', reparierbar: true, art: 'kennung', text: n => `Import-Konflikte gelten ${n} ${e(n, 'Person', 'Personen')}, die es nicht mehr gibt — Reparieren räumt sie ab.` },
+  // Integritätsprüfung 28.09. abends: Verknüpfungen, die bis dahin niemand prüfte.
+  'kontakt-firma-text-abweichend': { schwere: 'warnung', bereich: 'kontakte', reparierbar: true, art: 'kontakt', knopf: 'Firmennamen übernehmen', text: n => `${n} ${e(n, 'Person zeigt', 'Personen zeigen')} einen anderen Firmennamen als die Firma ihrer Hauptstation (Jobwechsel?) — „Firmennamen übernehmen“ setzt den Namen der Hauptstation; bei einem Jobwechsel stattdessen die Station wechseln.` },
+  'kontakt-typ-abweichend': { schwere: 'hinweis', bereich: 'kontakte', reparierbar: true, art: 'kontakt', text: n => `${n} ${e(n, 'Person trägt', 'Personen tragen')} einen Typ, der nicht an erster Stelle der Typen steht (alter Schreiber) — Reparieren stellt ihn nach vorn, wie er angezeigt wird.` },
+  'aktivitaet-firma-tot': { schwere: 'hinweis', bereich: 'kontakte', reparierbar: false, art: 'kontakt', text: n => `${n} ${e(n, 'Person hat Aktivitäten', 'Personen haben Aktivitäten')} bei einer Firma, die es nicht mehr gibt — bleibt als Verlauf stehen.` },
+  'aktivitaet-bezug-tot': { schwere: 'hinweis', bereich: 'kontakte', reparierbar: false, art: 'kontakt', text: n => `${n} ${e(n, 'Person hat Aktivitäten', 'Personen haben Aktivitäten')} zu einem Deal, Mandat, Event oder einer Kampagne, die es nicht mehr gibt — bleibt als Verlauf stehen.` },
+  'deal-quelle-bezug-tot': { schwere: 'warnung', bereich: 'deals', reparierbar: false, art: 'deal', text: n => `${n} ${e(n, 'Deal nennt', 'Deals nennen')} als Quelle ein Event, eine Kampagne oder einen Beitrag, die es nicht mehr gibt — in der Deal-Akte die Quelle neu wählen.` },
+  'mandat-planposten-tot': { schwere: 'warnung', bereich: 'mandate', reparierbar: false, art: 'mandat', text: n => `${n} ${e(n, 'Mandat zeigt', 'Mandate zeigen')} auf einen Posten im Liquiditätsplan, den es nicht mehr gibt — im Mandat neu verknüpfen.` },
+  'mandat-phase-ungueltig': { schwere: 'warnung', bereich: 'mandate', reparierbar: false, art: 'mandat', text: n => `${n} ${e(n, 'Mandat steht', 'Mandate stehen')} in einer Phase, die das Produkt nicht (mehr) hat — im Mandat die Phase neu wählen.` },
+  'teilnahme-doppelt': { schwere: 'warnung', bereich: 'events', reparierbar: true, art: 'event', text: n => `${n} ${e(n, 'Event führt', 'Events führen')} dieselbe Person mehrfach als Gast — Reparieren führt die Teilnahmen zusammen (nichts geht verloren).` },
+  'kampagne-ergebnis-ausserhalb': { schwere: 'hinweis', bereich: 'marketing', reparierbar: false, art: 'kampagne', text: n => `${n} ${e(n, 'Kampagne zählt', 'Kampagnen zählen')} Ergebnisse von Personen, die nicht (mehr) in der Kampagne sind.` },
+  'head-vorschlag-kontakt-tot': { schwere: 'hinweis', bereich: 'kontakte', reparierbar: false, art: 'kennung', text: n => `${n} ${e(n, 'offener Vorschlag eines Heads nennt', 'offene Vorschläge der Heads nennen')} eine Person, die es nicht mehr gibt — in der Freigabe-Liste ablehnen.` },
+  'einwilligung-beleg-tot': { schwere: 'fehler', bereich: 'datenschutz', reparierbar: false, art: 'kontakt', text: n => `${n} ${e(n, 'Person hat eine Einwilligung', 'Personen haben Einwilligungen')}, deren Beleg (Dateiablage) es nicht mehr gibt — Nachweis nach Art. 7 Abs. 1 DSGVO fehlt; Beleg neu ablegen.` },
 } as const satisfies Record<string, Pruefung>;
 
 export type PruefungId = keyof typeof PRUEFUNGEN;
@@ -198,6 +219,25 @@ function followupTot(f: FollowUp, m: Mengen): { kontakt: boolean; bezug: boolean
   const bezug = bz.art === 'firma' ? !m.firmen.has(bz.id) : bz.art === 'chance' ? !m.chancen.has(bz.id) : bz.art === 'mandat' ? !m.mandate.has(bz.id) : bz.art === 'event' ? !m.events.has(bz.id) : false;
   return { kontakt, bezug };
 }
+
+/** Die Firma der Hauptstation (gespeichert oder aus dem Altbestand abgeleitet) — nur, wenn es sie gibt. */
+function hauptFirma(k: Kontakt, firmen: Map<string, Firma>): Firma | undefined {
+  const h = hauptStation(stationenVon(k));
+  return h ? firmen.get(h.firmaId) : undefined;
+}
+/** Weicht der Firmentext von der Firma der Hauptstation ab (Rechtsform, Schreibweise egal; W4 28.09.)? */
+const firmaTextAbweichend = (k: Kontakt, firmen: Map<string, Firma>) => { const f = hauptFirma(k, firmen); return !!f && !!(k.firma ?? '').trim() && firmenSchluessel(k.firma ?? '') !== firmenSchluessel(f.name); };
+const klein = (t: string | undefined) => (t ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+/** `typ` ≠ `typen[0]` — ein alter Schreiber hat nur den Einzelwert gesetzt (gelesen wird er vorn, `typenVon`). */
+const typAbweichend = (k: Kontakt) => Array.isArray(k.typen) && k.typen.length > 0 && !!klein(k.typ) && klein(k.typ) !== klein(k.typen[0]);
+/** Doppelte Teilnahmen je Event+Person: Gruppen mit mehr als einer Teilnahme. */
+function doppelteTeilnahmen(teilnahmen: Teilnahme[]): Teilnahme[][] {
+  const je = new Map<string, Teilnahme[]>();
+  for (const t of teilnahmen) { const s = `${t.eventId}|${t.kontaktId}`; je.set(s, [...(je.get(s) ?? []), t]); }
+  return Array.from(je.values()).filter(g => g.length > 1);
+}
+/** Teilnahme-Status nach Aussagekraft — bei doppelten bleibt die „stärkste“. */
+const TEILNAHME_RANG: Record<TeilnahmeStatus, number> = { da: 0, zugesagt: 1, no_show: 2, eingeladen: 3, vorgemerkt: 4, abgesagt: 5 };
 /** Quellen eines Beitrags, die wie Personen-Kennungen aussehen, aber keine Person mehr haben (freie Quellen-Texte zählen nicht). */
 const beitragQuellenTot = (q: string[] | undefined, m: Mengen) => liste(q).filter(x => /^c-[a-z0-9-]{4,60}$/.test(x) && !m.kontakte.has(x));
 
@@ -407,6 +447,40 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
   }
   for (const l of liste(crm.leistungen)) if (l.status === 'aktiv' && !l.angebot?.leistungstext?.trim()) melde('produkt-ohne-angebotstext', l.id);
 
+  // Ergänzung (Integritätsprüfung 28.09. abends): Firmentext, Typ, Aktivitäten, Deal-Quelle, Planposten, Phase,
+  // doppelte Teilnahmen, Kampagnen-Ergebnisse außerhalb, Head-Vorschläge, Einwilligungs-Belege.
+  {
+    const firmenMap = new Map<string, Firma>(liste(crm.firmen).map(f => [f.id, f]));
+    const kampagnen = new Set(liste(crm.kampagnen).map(x => x.id));
+    const irgendein = (id: string) => m.chancen.has(id) || m.mandate.has(id) || m.events.has(id) || kampagnen.has(id) || m.beitraege.has(id) || m.angebote.has(id) || m.firmen.has(id) || m.kontakte.has(id);
+    for (const k of kontakte) {
+      if (firmaTextAbweichend(k, firmenMap)) melde('kontakt-firma-text-abweichend', k.id);
+      if (typAbweichend(k)) melde('kontakt-typ-abweichend', k.id);
+      const akt = liste(k.aktivitaeten);
+      if (akt.some(a => a.firmaId && !m.firmen.has(a.firmaId))) melde('aktivitaet-firma-tot', k.id);
+      if (akt.some(a => a.bezug && !irgendein(a.bezug))) melde('aktivitaet-bezug-tot', k.id);
+    }
+    for (const c of liste(crm.chancen)) {
+      if (!c.quelleBezug) continue;
+      const tot = c.quelle === 'event' ? !m.events.has(c.quelleBezug) : c.quelle === 'kampagne' ? !kampagnen.has(c.quelleBezug) : c.quelle === 'content' ? !m.beitraege.has(c.quelleBezug) : !irgendein(c.quelleBezug);
+      if (tot) melde('deal-quelle-bezug-tot', c.id);
+    }
+    const leistungen = new Map(liste(crm.leistungen).map(l => [l.id, l]));
+    const posten = b.liquiplan ? new Set(liste(b.liquiplan.posten)) : null;
+    for (const x of mandate) {
+      if (posten && x.planpostenId && !posten.has(x.planpostenId)) melde('mandat-planposten-tot', x.id);
+      const l = x.leistungId ? leistungen.get(x.leistungId) : undefined;
+      if (x.phase && l && !liste(l.phasen).some(p => p.id === x.phase)) melde('mandat-phase-ungueltig', x.id);
+    }
+    for (const g of doppelteTeilnahmen(liste(crm.teilnahmen))) melde('teilnahme-doppelt', g[0].eventId);
+    for (const kp of liste(crm.kampagnen)) {
+      const drin = new Set(liste(kp.kontaktIds));
+      if (liste(kp.ergebnisse).some(r => m.kontakte.has(r.kontaktId) && !drin.has(r.kontaktId))) melde('kampagne-ergebnis-ausserhalb', kp.id);
+    }
+    for (const h of liste(b.heads ?? undefined)) for (const v of liste(h.vorschlaege)) if ((v.status ?? 'offen') === 'offen' && v.kontakt_id && !m.kontakte.has(v.kontakt_id)) melde('head-vorschlag-kontakt-tot', `${h.head}:${v.id}`);
+    if (b.dateien) for (const id of einwilligungBelegTot(kontakte, new Set(liste(b.dateien.eintraege).map(d => d.id)))) melde('einwilligung-beleg-tot', id);
+  }
+
   // Import-Konflikte
   if (b.konflikte) {
     for (const k of liste(b.konflikte.konflikte)) if (!m.kontakte.has(k.kontaktId)) melde('konflikt-veraltet', k.kontaktId);
@@ -452,6 +526,17 @@ export function werteAusserhalb(kontakte: readonly Kontakt[], wertelisten: CrmBe
 }
 
 // ── Reparieren ──────────────────────────────────────────────────────────────
+
+/**
+ * Lead ohne (gelöschten) Deal (28.09. abends): der Verweis geht, und ein „SQL“ ohne Deal ist keiner mehr —
+ * Status zurück auf „Qualifizierung“, `sqlAm` weg. Andere Status (Kunde, ruht …) bleiben.
+ */
+function leadOhneDeal<L extends { status: string; chanceId?: string; sqlAm?: string }>(lead: L): L {
+  const { chanceId: _c, ...rest } = lead;
+  if (lead.status !== 'sql') return rest as L;
+  const { sqlAm: _s, ...ohne } = rest as L;
+  return { ...ohne, status: 'qualifizierung' } as L;
+}
 
 export type ReparaturSpeicher = 'crm' | 'kontakte' | 'import-konflikte' | 'dateien';
 export interface Aenderung { befundId: PruefungId; speicher: ReparaturSpeicher; anzahl: number; text: string }
@@ -512,10 +597,9 @@ export function verbindungenReparieren(b: VerbindungsBestaende, ids: readonly st
     setze('firmen', liste(crm.firmen).map(f => {
       if (!f.lead?.chanceId || m.chancen.has(f.lead.chanceId)) return f;
       n++;
-      const { chanceId: _weg, ...lead } = f.lead;
-      return { ...f, lead };
+      return { ...f, lead: leadOhneDeal(f.lead) };
     }));
-    zaehle('firma-lead-deal-tot', 'crm', n, `${n} ${e(n, 'Firmen-Lead', 'Firmen-Leads')}: Verweis auf gelöschten Deal entfernt`);
+    zaehle('firma-lead-deal-tot', 'crm', n, `${n} ${e(n, 'Firmen-Lead', 'Firmen-Leads')}: Verweis auf gelöschten Deal entfernt (SQL → Qualifizierung)`);
   }
   if (will.has('followup-kontakt-tot') || will.has('followup-bezug-tot')) {
     let nk = 0, nb = 0;
@@ -598,10 +682,47 @@ export function verbindungenReparieren(b: VerbindungsBestaende, ids: readonly st
     kontakte = liste(b.kontakte).map(k => {
       if (!k.lead?.chanceId || m.chancen.has(k.lead.chanceId)) return k;
       n++;
-      const { chanceId: _weg, ...lead } = k.lead;
-      return { ...k, lead };
+      return { ...k, lead: leadOhneDeal(k.lead) };
     });
-    zaehle('kontakt-lead-deal-tot', 'kontakte', n, `${n} ${e(n, 'Personen-Lead', 'Personen-Leads')}: Verweis auf gelöschten Deal entfernt`);
+    zaehle('kontakt-lead-deal-tot', 'kontakte', n, `${n} ${e(n, 'Personen-Lead', 'Personen-Leads')}: Verweis auf gelöschten Deal entfernt (SQL → Qualifizierung)`);
+  }
+
+  // Firmentext aus der Hauptstation, Typ nach vorn (28.09. abends) — Zeitstempel bleiben (keine Handarbeit).
+  if (will.has('kontakt-firma-text-abweichend') || will.has('kontakt-typ-abweichend')) {
+    const firmenMap = new Map<string, Firma>(liste(crm.firmen).map(f => [f.id, f]));
+    let nf = 0, nt = 0;
+    kontakte = liste(kontakte).map(k => {
+      let x = k;
+      if (will.has('kontakt-firma-text-abweichend') && firmaTextAbweichend(x, firmenMap)) { nf++; x = { ...x, firma: hauptFirma(x, firmenMap)!.name }; }
+      if (will.has('kontakt-typ-abweichend') && typAbweichend(x)) { nt++; x = { ...x, typen: typenVon(x) }; }
+      return x;
+    });
+    zaehle('kontakt-firma-text-abweichend', 'kontakte', nf, `${nf} ${e(nf, 'Person', 'Personen')}: Firmenname aus der Hauptstation übernommen`);
+    zaehle('kontakt-typ-abweichend', 'kontakte', nt, `${nt} ${e(nt, 'Person', 'Personen')}: Typ an die erste Stelle gestellt`);
+  }
+  // Doppelte Teilnahmen: je Event+Person EINE — die stärkste bleibt, leere Felder aus den anderen, Notizen aneinander.
+  if (will.has('teilnahme-doppelt')) {
+    const gruppen = doppelteTeilnahmen(liste(crm.teilnahmen));
+    if (gruppen.length) {
+      const weg = new Set<string>();
+      const ersatz = new Map<string, Teilnahme>();
+      for (const g of gruppen) {
+        const sortiert = [...g].sort((x, y) => (TEILNAHME_RANG[x.status] ?? 9) - (TEILNAHME_RANG[y.status] ?? 9));
+        let behalten = sortiert[0];
+        for (const t of sortiert.slice(1)) {
+          const fuell: Partial<Teilnahme> = {};
+          for (const f of ['notiz', 'followUpAm', 'nachfassenVerzichtet', 'rolle', 'fotofreigabe', 'feedback', 'eingeladenAm', 'einladungsweg', 'einladenDurch', 'eingechecktVon'] as const) {
+            if (behalten[f] === undefined && t[f] !== undefined) (fuell as Record<string, unknown>)[f] = t[f];
+          }
+          if (t.notiz && behalten.notiz && !behalten.notiz.includes(t.notiz)) fuell.notiz = `${behalten.notiz}\n${t.notiz}`;
+          behalten = { ...behalten, ...fuell };
+          weg.add(t.id);
+        }
+        ersatz.set(behalten.id, behalten);
+      }
+      setze('teilnahmen', liste(crm.teilnahmen).filter(t => !weg.has(t.id)).map(t => ersatz.get(t.id) ?? t));
+      zaehle('teilnahme-doppelt', 'crm', gruppen.length, `${gruppen.length} ${e(gruppen.length, 'doppelte Teilnahme', 'doppelte Teilnahmen')} zusammengeführt (${weg.size} ${e(weg.size, 'Eintrag', 'Einträge')} in die behaltene übernommen)`);
+    }
   }
 
   let konflikte = b.konflikte;

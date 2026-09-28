@@ -18,6 +18,8 @@ import { ladeKonten } from '@/lib/zugang/konten';
 import { speicherFuer } from '@/lib/zoe/raum';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import type { AufgabeKurz, RechnungKurz, VerbindungsBestaende } from './verbindungen';
+import { HEADS } from '@/lib/heads/prompt';
+import { standName } from '@/lib/heads/stand';
 
 interface Quellen { haushalt: string | null; personen: string[] }
 
@@ -32,7 +34,7 @@ async function quellen(): Promise<Quellen> {
 
 /** Die Speicher, deren Stand das ETag der Prüfung bestimmt. */
 function speicherNamen(q: Quellen): string[] {
-  return ['kontakte', CRM_SPEICHER, 'finanzplan', 'tasks', 'ordnung', KONFLIKT_SPEICHER,
+  return ['kontakte', CRM_SPEICHER, 'finanzplan', 'tasks', 'ordnung', KONFLIKT_SPEICHER, 'liquiplan', ...HEADS.map(h => standName(h)),
     ...(q.haushalt ? [`planung-einheiten--${q.haushalt}`, `crm-dateien--${q.haushalt}`] : []),
     ...q.personen.map(p => speicherFuer('zeit', p))];
 }
@@ -59,6 +61,11 @@ async function aufPlatte(h: string): Promise<string[]> {
 /** Alles, was die Verbindungsprüfung braucht — nur lesen. */
 export async function ladeVerbindungsBestaende(heute: string): Promise<VerbindungsBestaende & { haushalt: string | null }> {
   const q = await quellen();
+  // Seit 28.09. abends: Planposten-Kennungen (Mandat → Liquiditätsplan) und Head-Vorschläge (nur Kennung, Person, Status).
+  const [liquiplan, heads] = await Promise.all([
+    loadJson<{ posten?: { id: string }[] }>('liquiplan'),
+    Promise.all(HEADS.map(async h => ({ head: h, stand: await loadJson<{ vorschlaege?: { id: string; kontakt_id?: string | null; status?: string }[] }>(standName(h)) }))),
+  ]);
   const [kontakte, crm, finanz, tasks, ordnung, einheiten, konflikte, ablage, dateien, zeiten] = await Promise.all([
     loadJson<{ kontakte?: Kontakt[] }>('kontakte'),
     ladeCrm(),
@@ -82,5 +89,7 @@ export async function ladeVerbindungsBestaende(heute: string): Promise<Verbindun
     fokus: zeiten.map(z => ({ person: z.person, bloecke: Object.values(z.datei?.tage ?? {}).flatMap(t => (Array.isArray(t?.bloecke) ? t.bloecke : [])) })),
     dateien: q.haushalt ? { eintraege: Array.isArray(ablage?.eintraege) ? ablage!.eintraege : [], aufPlatte: dateien } : null,
     konflikte: konflikte ?? null,
+    liquiplan: liquiplan ? { posten: (Array.isArray(liquiplan.posten) ? liquiplan.posten : []).map(p => p.id) } : null,
+    heads: heads.map(h => ({ head: h.head, vorschlaege: (Array.isArray(h.stand?.vorschlaege) ? h.stand!.vorschlaege : []).map(v => ({ id: v.id, ...(v.kontakt_id ? { kontakt_id: v.kontakt_id } : {}), ...(v.status ? { status: v.status } : {}) })) })),
   };
 }

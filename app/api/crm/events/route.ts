@@ -25,6 +25,8 @@
 //      in den Liquiditätsplan (Speicher „liquiplan“), Kennung ev-<eventId>:
 //      einmal angelegt, danach nur Betrag und Datum nachgezogen — nie doppelt.
 // GET  ?liquiplan=<eventId> → wo das Event im Plan steht (fehlt · ok · abweichend).
+// POST { aktion: 'loeschen', eventId } → Event löschen MIT Kaskade (28.09., W6): Teilnahmen weg, offene
+//      Follow-ups des Events abgesagt — in einer Sperre (lib/crm/crm-stand.ts loeschKaskade).
 // Alles nur auf Klick von Kevin oder Malin — hier wird nichts versendet.
 
 import { NextResponse } from 'next/server';
@@ -33,7 +35,9 @@ import { personAus } from '@/lib/zoe/raum';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { localDay } from '@/lib/zeit';
 import type { Planposten } from '@/lib/make-one/liquiditaet';
-import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
+import { ladeCrm, aendereCrm, wendeCrmAn, type CrmAnwendung } from '@/lib/crm/speicher';
+import { loeschKaskade } from '@/lib/crm/crm-stand';
+import type { ListenOp } from '@/lib/sync';
 import { icsText, icsDateiname, checklisteAlsAufgaben, punktAendern, aufgabeAbgleichen, type PunktAenderung, type ChecklistenPunkt } from '@/lib/crm/eventplanung';
 import { hebtLead, planpostenAusEvent, planpostenId, liquiplanStand, type NachfassErgebnis } from '@/lib/crm/event-bruecke';
 import { leadHebenNachGespraech } from '@/lib/crm/lead-heben';
@@ -101,6 +105,26 @@ export async function POST(req: Request) {
   const person = personAus(req);
   const jetzt = new Date().toISOString();
   const heute = localDay();
+
+  if (b.aktion === 'loeschen') {
+    // Serverweg (28.09., W6): Event + Kaskade (Teilnahmen weg, offene Follow-ups des Events abgesagt) in EINER Sperre —
+    // vorher löschte der Browser Teilnahme für Teilnahme und dann das Event (halbe Stände bei Abbruch, Follow-ups blieben).
+    const halter: { r?: CrmAnwendung; ops?: ListenOp[] } = {};
+    await aendereCrm(cur => {
+      const ops: ListenOp[] = [{ liste: 'events', op: 'delete', id: eventId }];
+      halter.ops = [...ops, ...loeschKaskade(cur, ops, jetzt)];
+      halter.r = wendeCrmAn(cur, halter.ops, jetzt, person);
+      return halter.r.bestand;
+    });
+    const r = halter.r!;
+    if (r.sperren.length) return NextResponse.json({ ok: false, fehler: r.sperren.map(x => x.text).join(' · '), sperren: r.sperren }, { status: 409 });
+    if (r.konflikte.length) return NextResponse.json({ ok: false, fehler: 'Wurde inzwischen geändert — bitte noch einmal.' }, { status: 409 });
+    if (r.grenze.length) return NextResponse.json({ ok: false, fehler: r.grenze.join(' · ') }, { status: 413 });
+    if (r.abgelehnt?.length) return NextResponse.json({ ok: false, fehler: r.abgelehnt.join(' · ') }, { status: 409 });
+    const ops = halter.ops ?? [];
+    const teilnahmen = ops.filter(o => o.liste === 'teilnahmen').length, abgesagt = ops.filter(o => o.liste === 'followups').length;
+    return NextResponse.json({ ok: true, teilnahmen, abgesagt, text: `Event gelöscht${teilnahmen ? ` · ${teilnahmen} Teilnahme${teilnahmen === 1 ? '' : 'n'} entfernt` : ''}${abgesagt ? ` · ${abgesagt} offene${abgesagt === 1 ? 's' : ''} Follow-up${abgesagt === 1 ? '' : 's'} abgesagt` : ''}.` });
+  }
 
   if (b.aktion === 'nachfassen') {
     const teilnahmeId = String(b.teilnahmeId ?? '');

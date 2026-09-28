@@ -21,11 +21,10 @@
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { personAus } from '@/lib/zoe/raum';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { fuerPerson, wendeAktivitaetAn, vonHandMarkieren, type Kontakt, type Aktivitaet } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
-import { netzRunde, profilAdresse, exportLesen, exportAbgleich, exportAnwenden, type NetzStand } from '@/lib/crm/netzwerk';
+import { netzRunde, profilAdresse, exportLesen, exportAbgleich, exportAnwenden, netzSchrittGesperrt, linkedinEinwilligung, type NetzStand } from '@/lib/crm/netzwerk';
 import { nameVon } from '@/lib/crm/team';
 import type { KampagnenErgebnis } from '@/lib/crm/typen';
 
@@ -35,9 +34,14 @@ export const dynamic = 'force-dynamic';
 type Bestand = { kontakte: Kontakt[] };
 const kpOk = (v: unknown) => (/^kp-[a-z0-9-]{1,60}$/.test(String(v ?? '')) ? String(v) : undefined);
 
+/** Größter LinkedIn-Export, der gelesen wird (Zeichen) — darüber 413, nie abschneiden (28.09.). */
+const CSV_MAX = 5_000_000;
+
 export async function GET(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
-  const person = personAus(req);
+  // Person aus dem Zugang (28.09., Regel 5): Sitzung oder Dienstweg MIT Person — kein Rückfall auf „kevin“.
+  const zugang = await imHaushaltDesInhabers(req);
+  if (!zugang) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+  const person = zugang.person;
   const kampagneId = kpOk(new URL(req.url).searchParams.get('kampagne'));
   const [kontakte, crm] = await Promise.all([loadJson<Bestand>('kontakte').then(f => f?.kontakte ?? []), ladeCrm()]);
   const kampagne = kampagneId ? crm.kampagnen.find(k => k.id === kampagneId) : undefined;
@@ -45,18 +49,24 @@ export async function GET(req: Request) {
   return NextResponse.json({ ok: true, profil: person, kampagne: kampagne ? { id: kampagne.id, name: kampagne.name, vernetzen: kampagne.vernetzen ?? null } : null, zahlen: r.zahlen, karten: r.karten.map(k => ({ id: k.kontakt.id, stufe: k.stufe, grund: k.grund })) });
 }
 
-/** Einen Kontakt ändern — nur, was der Schritt braucht; der Rest bleibt, wie er auf dem Server steht. */
-async function aendere(id: string, mut: (k: Kontakt) => Kontakt | null): Promise<Kontakt | null> {
+/**
+ * Einen Kontakt ändern — nur, was der Schritt braucht; der Rest bleibt, wie er auf dem Server steht.
+ * Datenschutz (28.09., W8) IN der Sperre: Art. 18 → nichts; Werbesperre → keine werblichen Schritte (`netzSchrittGesperrt`).
+ */
+async function aendere(id: string, pruefe: (k: Kontakt) => string | null, mut: (k: Kontakt) => Kontakt | null): Promise<{ kontakt: Kontakt | null; gesperrt: string | null }> {
   let neu: Kontakt | null = null;
+  let gesperrt: string | null = null;
   await updateJson<Bestand>('kontakte', cur => {
     const f = cur ?? { kontakte: [] };
     const i = f.kontakte.findIndex(k => k.id === id);
     if (i < 0) return f;
+    gesperrt = pruefe(f.kontakte[i]);
+    if (gesperrt) return f;
     const n = mut(f.kontakte[i]);
     if (n) { f.kontakte[i] = n; neu = n; }
     return f;
   });
-  return neu;
+  return { kontakt: neu, gesperrt };
 }
 
 const stand = (k: Kontakt, p: string): NetzStand | undefined => k.netzwerk?.[p];
@@ -70,16 +80,20 @@ async function kampagnenErgebnis(kampagneId: string | undefined, kontaktId: stri
 }
 
 export async function POST(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+  const zugang = await imHaushaltDesInhabers(req);
+  if (!zugang) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: { aktion?: string; id?: string; url?: string; kampagneId?: string; text?: string; art?: string; wortlaut?: string; csv?: string; uebernehmen?: boolean };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
-  const person = personAus(req);
+  const person = zugang.person;
   const profilName = nameVon(person);
   const heute = localDay();
   const kampagneId = kpOk(b.kampagneId);
 
   if (b.aktion === 'import') {
-    const zeilen = exportLesen(String(b.csv ?? '').slice(0, 5_000_000));
+    const csv = String(b.csv ?? '');
+    // Nie abschneiden (28.09.): ein zu großer Export wird abgelehnt, statt still nur den Anfang zu lesen.
+    if (csv.length > CSV_MAX) return NextResponse.json({ ok: false, fehler: `Der Export ist zu groß (${Math.round(csv.length / 1e6)} MB, höchstens ${CSV_MAX / 1e6} MB) — bitte in Teilen hochladen.` }, { status: 413 });
+    const zeilen = exportLesen(csv);
     if (!zeilen.length) return NextResponse.json({ ok: false, fehler: 'Das ist kein LinkedIn-Export — erwartet wird „Connections.csv“ mit den Spalten First Name, Last Name, URL.' }, { status: 400 });
     const kontakte = (await loadJson<Bestand>('kontakte'))?.kontakte ?? [];
     const plan = exportAbgleich(kontakte, zeilen, person);
@@ -90,7 +104,8 @@ export async function POST(req: Request) {
     await updateJson<Bestand>('kontakte', cur => {
       const f = cur ?? { kontakte: [] };
       // „Online gewinnt“ (Prüfbericht F1): ein übernommenes Profil ist Handarbeit — der Masterlisten-Import überschreibt es nicht.
-      return { ...f, kontakte: f.kontakte.map(k => { const t = nach.get(k.id); return t ? vonHandMarkieren(k, { ...exportAnwenden(k, t, person, heute), geaendertAm: heute }) : k; }) };
+      // Art. 18 (28.09.): eingeschränkte Personen überspringt der Import — an ihnen wird nichts festgehalten.
+      return { ...f, kontakte: f.kontakte.map(k => { const t = nach.get(k.id); return t && !k.eingeschraenkt ? vonHandMarkieren(k, { ...exportAnwenden(k, t, person, heute), geaendertAm: heute }) : k; }) };
     });
     return NextResponse.json({ ok: true, vorschau, text: `${vorschau.treffer} Kontakte abgeglichen: ${vorschau.neueProfile} Profile ergänzt, ${vorschau.neuVernetzt} jetzt als vernetzt mit ${profilName} markiert.` });
   }
@@ -102,7 +117,8 @@ export async function POST(req: Request) {
   // Die Folgetage der Kampagne bestimmen, wann nach der Nachricht nachgefasst wird.
   const kampagnen = b.aktion === 'geschrieben' ? (await ladeCrm()).kampagnen : [];
 
-  const k = await aendere(id, alt => {
+  const jetztIso = new Date().toISOString();
+  const { kontakt: k, gesperrt } = await aendere(id, alt => netzSchrittGesperrt(alt, b.aktion, b.art), alt => {
     const s = stand(alt, person);
     switch (b.aktion) {
       case 'profil': {
@@ -139,7 +155,8 @@ export async function POST(req: Request) {
         let n = wendeAktivitaetAn(alt, { art: 'antwort', text, von: person, ...(s?.kampagneId ? { bezug: s.kampagneId } : {}) }, heute, new Date().toISOString(), tagePlus);
         if (art === 'ja') {
           const wortlaut = String(b.wortlaut ?? '').trim().slice(0, 300) || 'Frage nach der Vernetzung: „Darf ich Ihnen kurz schreiben, woran wir arbeiten?“ — Ja';
-          if (!(n.einwilligungen ?? []).some(e => e.kanal === 'social' && !e.widerrufenAm)) n = { ...n, einwilligungen: [...(n.einwilligungen ?? []), { kanal: 'social', grundlage: 'einwilligung', erteiltAm: heute, nachweis: `LinkedIn (${profilName}): ${wortlaut}`.slice(0, 400) }] };
+          // Voller Nachweis (28.09., W8): Wortlaut, Beleg, Zeitpunkt, wer — gestempelt wie in der Kartei.
+          n = linkedinEinwilligung(alt, n, wortlaut, profilName, person, heute, jetztIso);
         }
         if (art === 'kein_interesse') n = { ...n, naechsterSchritt: undefined };
         kErgebnis = art === 'ja' ? 'reagiert' : art === 'gespraech' ? 'gespraech' : 'kein_interesse';
@@ -150,6 +167,7 @@ export async function POST(req: Request) {
         return null;
     }
   });
+  if (gesperrt) return NextResponse.json({ ok: false, fehler: gesperrt }, { status: 409 });
   if (fehler) return NextResponse.json({ ok: false, fehler }, { status: 400 });
   if (!k) return NextResponse.json({ ok: false, fehler: 'Person nicht gefunden.' }, { status: 404 });
   const kontakt = k as Kontakt;

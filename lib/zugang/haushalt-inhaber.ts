@@ -8,14 +8,33 @@
 import { ladeKonten } from '@/lib/zugang/konten';
 import { istDienst } from '@/lib/zugang/dienst';
 
+/**
+ * Haushalt des Inhabers (Sitzung oder Dienstweg). Seit 28.09. (Integritätsprüfung, K1/Regel 5) beim Dienstweg
+ * genauso streng wie `karteiZugang`: Nennt der Dienstweg eine Person, muss sie im Haushalt des Inhabers sein;
+ * ohne Person gibt es keinen Rückfall auf „kevin“ mehr — `null` (→ 403). Vorher handelte ein Dienstaufruf ohne
+ * Person als „kevin“, und einer mit fremder Person (ZOE-Gespräch aus dem Test-Haushalt) kam durch.
+ * Systemläufe ohne Person (Zulieferer, Takt) gehen nur dort, wo die Route das ausdrücklich trägt:
+ * `imHaushaltOderSystemlauf` (Kalender, Erinnerungen) bzw. `karteiZugang`.
+ */
 export async function imHaushaltDesInhabers(req: Request): Promise<{ person: string; dienst: boolean } | null> {
   if (istDienst(req)) {
     const p = req.headers.get('x-make-person');
-    return { person: p && /^[a-z0-9-]{1,40}$/.test(p) ? p : 'kevin', dienst: true };
+    if (!p || !/^[a-z0-9-]{1,40}$/.test(p)) return null;
+    return (await personImHaushaltDesInhabers(p)) ? { person: p, dienst: true } : null;
   }
   const person = req.headers.get('x-make-user');
   if (!person || !/^[a-z0-9-]{1,40}$/.test(person)) return null;
   return (await personImHaushaltDesInhabers(person)) ? { person, dienst: false } : null;
+}
+
+/**
+ * Wie `imHaushaltDesInhabers`, lässt aber den Systemlauf (Dienstweg OHNE Person) durch — `person` ist dann null.
+ * Nur für Routen, die Systemläufe tragen müssen (Kalender-Abgleich, Zulieferer vom Mac); wer eine Person braucht,
+ * lehnt bei `person === null` selbst ab (Regel 5, kein Rückfall).
+ */
+export async function imHaushaltOderSystemlauf(req: Request): Promise<{ person: string | null; dienst: boolean } | null> {
+  if (istDienst(req) && !req.headers.get('x-make-person')) return { person: null, dienst: true };
+  return imHaushaltDesInhabers(req);
 }
 
 /**
@@ -28,13 +47,7 @@ export async function imHaushaltDesInhabers(req: Request): Promise<{ person: str
  * (kein Rückfall auf „kevin“, Regel 5).
  */
 export async function karteiZugang(req: Request): Promise<{ person: string | null; dienst: boolean } | null> {
-  if (istDienst(req)) {
-    const p = req.headers.get('x-make-person');
-    if (!p) return { person: null, dienst: true };
-    return (await personImHaushaltDesInhabers(p)) ? { person: p, dienst: true } : null;
-  }
-  const w = await imHaushaltDesInhabers(req);
-  return w ? { person: w.person, dienst: false } : null;
+  return imHaushaltOderSystemlauf(req);
 }
 
 /** Die 403-Antwort der Kartei-Routen (ein Satz, überall gleich). */
@@ -64,9 +77,9 @@ export async function istInhaber(person: string | null | undefined): Promise<boo
  * handelt er für eine Person (ZOE), gilt deren Recht.
  */
 export async function nurInhaber(req: Request): Promise<boolean> {
-  const w = await imHaushaltDesInhabers(req);
+  const w = await imHaushaltOderSystemlauf(req);
   if (!w) return false;
-  if (w.dienst && !req.headers.get('x-make-person')) return true;
+  if (w.person === null) return true; // Systemlauf (Dienstweg ohne Person)
   return istInhaber(w.person);
 }
 

@@ -6,7 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { AUF_DEM_MAC, merke, vomMac } from '@/lib/mac';
-import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { imHaushaltOderSystemlauf } from '@/lib/zugang/haushalt-inhaber';
 import { spawn } from 'child_process';
 
 export const runtime = 'nodejs';
@@ -65,7 +65,8 @@ function parseDate(s: string): string | undefined {
 }
 
 export async function GET(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ error: 'Erinnerungen gehören zum Haushalt des Inhabers.' }, { status: 403 });
+  // Auch der Systemlauf ohne Person (Zulieferer vom Mac, 28.09.) — Personen nur aus dem Haushalt des Inhabers.
+  if (!(await imHaushaltOderSystemlauf(req))) return NextResponse.json({ error: 'Erinnerungen gehören zum Haushalt des Inhabers.' }, { status: 403 });
   if (!AUF_DEM_MAC) return vomMac('erinnerungen', []);
   try {
     const stdout = await runOsascript(SCRIPT);

@@ -286,30 +286,58 @@ async function streakEintrag(input: Record<string, unknown>, _o: string, person?
 }
 
 // 24.09.: Kunden leben als Mandate im CRM (lib/crm) — eine Wahrheit statt zwei.
-async function setzeKunde(input: Record<string, unknown>): Promise<string> {
+// 28.09. (Integritätsprüfung): kein Teilstring-Treffer mehr („Beispiel“ traf „Beispiel AG“ UND „Beispielbau“ und
+// schrieb in das erste) — nur ein exakter Name (ohne Rechtsform, `mandatTreffer`) oder die Kennung; sonst Rückfrage.
+// Geschrieben wird über den normalen Mandat-Weg (`wendeCrmAn`: Säuberung, Grenzen, Stand-Regeln).
+async function setzeKunde(input: Record<string, unknown>, _o?: string, person?: string): Promise<string> {
+  if (!person) return KEINE_PERSON;
   const name = String(input.name ?? '').trim().slice(0, 120);
-  if (!name) return 'Fehlgeschlagen: name fehlt.';
+  const mandatId = String(input.mandat_id ?? '').trim().slice(0, 80);
+  if (!name && !mandatId) return 'Fehlgeschlagen: name fehlt.';
   const status = ({ aktiv: 'aktiv', gespraech: 'verhandlung', ruht: 'pausiert' } as const)[String(input.status) as 'aktiv' | 'gespraech' | 'ruht'];
   const cashflow = isFinite(Number(input.cashflow)) && Number(input.cashflow) > 0 ? Math.round(Number(input.cashflow)) : undefined;
   const schritt = input.naechsterSchritt ? String(input.naechsterSchritt).slice(0, 300) : undefined;
-  const { aendereCrm } = await import('@/lib/crm/speicher');
+  const { aendereCrm, wendeCrmAn } = await import('@/lib/crm/speicher');
+  const { mandatTreffer } = await import('@/lib/crm/mandat-treffer');
   let aktion = '';
+  let fehler = '';
   const jetzt = new Date().toISOString();
   await aendereCrm(b => {
-    const treffer = b.mandate.filter(m => m.kunde.toLowerCase().includes(name.toLowerCase()) && m.status !== 'beendet');
-    if (treffer.length) {
-      const m = treffer.find(x => x.honorar.basis === 'monat') ?? treffer[0];
-      const neu = { ...m, ...(status ? { status } : {}), ...(cashflow != null ? { honorar: { ...m.honorar, betrag: cashflow, basis: 'monat' as const } } : {}), ...(schritt ? { offen: [...m.offen, `Nächster Schritt: ${schritt}`] } : {}), geaendert: jetzt };
-      aktion = `${m.kunde} aktualisiert${status ? ` (${status})` : ''}${cashflow != null ? `, ${eurW(cashflow)}/Monat` : ''}${schritt ? `, nächster Schritt: ${schritt}` : ''}`;
-      return { ...b, mandate: b.mandate.map(x => (x.id === m.id ? neu : x)) };
+    const t = mandatTreffer(b.mandate, { name, id: mandatId || undefined });
+    if (t.art === 'mehrdeutig') {
+      fehler = `Nicht eindeutig — meinst du ${t.kandidaten.map(m => `„${m.kunde}“ (${m.titel}) [${m.id}]`).join(' oder ')}? Bitte mit mandat_id oder dem genauen Namen erneut. Nichts geändert.`;
+      return b;
     }
-    aktion = `${name} als Mandat angelegt (${status ?? 'verhandlung'})`;
-    return { ...b, mandate: [...b.mandate, {
+    if (t.art === 'aehnlich') {
+      fehler = `Kein Mandat heißt genau „${name}“. Ähnlich: ${t.kandidaten.map(m => `„${m.kunde}“ [${m.id}]`).join(', ')}. Bitte den genauen Namen oder die mandat_id nennen — oder ausdrücklich neu anlegen (neu: true). Nichts geändert.`;
+      if (input.neu !== true) return b;
+    }
+    if (t.art === 'treffer') {
+      const m = t.mandat;
+      const felder: Record<string, unknown> = {
+        ...(status ? { status } : {}),
+        ...(cashflow != null ? { honorar: { ...m.honorar, betrag: cashflow, basis: 'monat' as const } } : {}),
+        ...(schritt ? { offen: [...m.offen, `Nächster Schritt: ${schritt}`] } : {}),
+      };
+      if (!Object.keys(felder).length) { aktion = `${m.kunde}: nichts zu ändern`; return b; }
+      const r = wendeCrmAn(b, [{ liste: 'mandate', op: 'teil', id: m.id, felder }], jetzt, person);
+      if (r.grenze.length || r.sperren.length || r.konflikte.length || r.abgelehnt?.length || !r.angewandt) { fehler = [...r.grenze, ...r.fehler, ...(r.abgelehnt ?? [])].join(' · ') || 'Mandat nicht geändert.'; return b; }
+      aktion = `${m.kunde} aktualisiert${status ? ` (${status})` : ''}${cashflow != null ? `, ${eurW(cashflow)}/Monat` : ''}${schritt ? `, nächster Schritt: ${schritt}` : ''}`;
+      return r.bestand;
+    }
+    if (!name) { fehler = `Kein Mandat mit der Kennung ${mandatId}.`; return b; }
+    fehler = '';
+    const eintrag = {
       id: `m-${Date.now().toString(36)}`, kunde: name, kontaktIds: [], titel: 'Mandat', art: 'retainer', gesellschaft: 'offen', status: status ?? 'verhandlung', vertragUnterschrieben: false,
       verlaengerung: 'offen', honorar: { betrag: cashflow ?? 0, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [],
       health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: schritt ? [`Nächster Schritt: ${schritt}`] : [], geaendert: jetzt,
-    }] };
+    };
+    const r = wendeCrmAn(b, [{ liste: 'mandate', op: 'upsert', eintrag }], jetzt, person);
+    if (r.grenze.length || r.sperren.length || r.konflikte.length || r.abgelehnt?.length || !r.angewandt) { fehler = [...r.grenze, ...r.fehler, ...(r.abgelehnt ?? [])].join(' · ') || 'Mandat nicht angelegt.'; return b; }
+    aktion = `${name} als Mandat angelegt (${status ?? 'verhandlung'})`;
+    return r.bestand;
   });
+  if (fehler) return `Nicht ausgeführt: ${fehler}`;
   return `Erfasst: ${aktion}. Sichtbar unter Produkte & Mandate (links in der Leiste).`;
 }
 
@@ -524,6 +552,8 @@ async function starteAuftraege(input: Record<string, unknown>, origin: string, p
     .filter(a => a.name)
     .slice(0, 20);
   if (!auftraege.length) return 'Fehlgeschlagen: keine Agenten angegeben.';
+  // Agenten, die die Kartei lesen, nur für Personen im Haushalt des Inhabers (28.09., K1).
+  if (auftraege.some(a => (CRM_AGENTEN as readonly string[]).includes(a.name)) && !(await crmWerkzeugErlaubt(person))) return KEIN_CRM;
 
   try {
     const r = await fetch(`${origin}/api/zoe/auftraege`, {
@@ -915,7 +945,28 @@ async function haushaltRechnungErfassen(input: Record<string, unknown>, _o: stri
   return e.ok ? `Offene Rechnung erfasst: ${String(input.an ?? '')}${Number.isFinite(betrag) ? ` über ${eurW(betrag)}` : ''}.` : `Fehlgeschlagen: ${e.fehler}`;
 }
 
-export const WERKZEUGE: Record<string, { gruppe: string; lauf: (input: Record<string, unknown>, origin: string, person?: string) => Promise<string> }> = {
+// ─── Markttraktion nur im Haushalt des Inhabers (28.09., Integritätsprüfung K1) ─────
+// Kartei, Deals, Mandate gehören dem Haushalt des Inhabers — wie `karteiZugang` für die Routen. Vorher bot ZOE die
+// CRM-Werkzeuge jedem angemeldeten Konto an, und die Werkzeuge lasen/schrieben die Kartei ohne Prüfung. Jetzt:
+// kimmi bietet sie nur an, wenn `crmWerkzeugErlaubt(person)`, UND jedes Werkzeug prüft selbst (`nurImHaushalt`) —
+// auch bei Freigabe aus dem Stapel, Rücknahme und Aufträgen. Ohne Person: KEINE_PERSON (Regel 5).
+export const CRM_WERKZEUGE = ['crm_lage', 'suche_kontakt', 'notiere_kontakt', 'entwurf_ansprache', 'chance_anlegen', 'uebergeben', 'setze_kunde'] as const;
+/** Agenten, deren Lauf die Kartei liest (run_agent) — nur im Haushalt des Inhabers anbieten. */
+export const CRM_AGENTEN = ['crm', 'outreach', 'prospect', 'head-sales', 'head-marketing', 'head-event'] as const;
+export const KEIN_CRM = 'Nicht ausgeführt: Die Markttraktion gehört zum Haushalt des Inhabers — für dieses Konto nicht verfügbar.';
+export async function crmWerkzeugErlaubt(person: string | null | undefined): Promise<boolean> {
+  if (!person) return false;
+  const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
+  return personImHaushaltDesInhabers(person);
+}
+type Lauf = (input: Record<string, unknown>, origin: string, person?: string) => Promise<string>;
+const nurImHaushalt = (lauf: Lauf): Lauf => async (input, origin, person) => {
+  if (!person) return KEINE_PERSON;
+  if (!(await crmWerkzeugErlaubt(person))) return KEIN_CRM;
+  return lauf(input, origin, person);
+};
+
+export const WERKZEUGE: Record<string, { gruppe: string; lauf: Lauf }> = {
   create_task: { gruppe: 'aufgaben', lauf: erstelleAufgabe },
   starte_auftraege: { gruppe: 'auftraege', lauf: starteAuftraege },
   fakt_merken: { gruppe: 'gedaechtnis', lauf: faktMerken },
@@ -943,17 +994,17 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: (input: Record<st
   erfasse_zahlung: { gruppe: 'finanzen', lauf: erfasseZahlung },
   setze_meilenstein: { gruppe: 'meilensteine', lauf: setzeMeilenstein },
   setze_fokus: { gruppe: 'fokus', lauf: setzeFokus },
-  setze_kunde: { gruppe: 'kunden', lauf: setzeKunde },
+  setze_kunde: { gruppe: 'kunden', lauf: nurImHaushalt(setzeKunde) },
   hake_routine: { gruppe: 'gesundheit', lauf: hakeRoutine },
   gesundheits_index: { gruppe: 'gesundheit', lauf: gesundheitsIndex },
   haut_eintrag: { gruppe: 'gesundheit', lauf: hautEintrag },
   journal_eintrag: { gruppe: 'gesundheit', lauf: journalEintrag },
   einkauf_setzen: { gruppe: 'gesundheit', lauf: einkaufSetzen },
   streak_eintrag: { gruppe: 'gesundheit', lauf: streakEintrag },
-  suche_kontakt: { gruppe: 'kontakte', lauf: sucheKontakt },
-  notiere_kontakt: { gruppe: 'kontakte', lauf: notiereKontakt },
-  entwurf_ansprache: { gruppe: 'kontakte', lauf: entwurfAnsprache },
-  chance_anlegen: { gruppe: 'kontakte', lauf: chanceAnlegen },
-  uebergeben: { gruppe: 'kontakte', lauf: kontaktUebergeben },
-  crm_lage: { gruppe: 'kontakte', lauf: crmLage },
+  suche_kontakt: { gruppe: 'kontakte', lauf: nurImHaushalt(sucheKontakt) },
+  notiere_kontakt: { gruppe: 'kontakte', lauf: nurImHaushalt(notiereKontakt) },
+  entwurf_ansprache: { gruppe: 'kontakte', lauf: nurImHaushalt(entwurfAnsprache) },
+  chance_anlegen: { gruppe: 'kontakte', lauf: nurImHaushalt(chanceAnlegen) },
+  uebergeben: { gruppe: 'kontakte', lauf: nurImHaushalt(kontaktUebergeben) },
+  crm_lage: { gruppe: 'kontakte', lauf: nurImHaushalt(crmLage) },
 };

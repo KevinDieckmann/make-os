@@ -8,14 +8,14 @@ import { agentRoster, LIVE_AGENTS } from '@/lib/make-one/agents-data';
 import { gatherBrain, promptBrain } from '@/lib/brain';
 import { askText, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import { fuerPrompt, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
-import { WERKZEUGE } from '@/lib/zoe/werkzeuge';
+import { WERKZEUGE, CRM_WERKZEUGE, CRM_AGENTEN, crmWerkzeugErlaubt } from '@/lib/zoe/werkzeuge';
 import { AUSFUEHRBAR, AGENT_ZWECK, runAgent, type Ausfuehrbar } from '@/lib/zoe/agenten';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { offeneAnzahl } from '@/lib/zoe/stapel';
 import { kontextIstFremd, nurVorschlag } from '@/lib/zoe/gespraech-schutz';
 import { personAus } from '@/lib/zoe/raum';
 import { brainAnweisung } from '@/lib/zoe/vault';
-import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
+import { haushaltVon, personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
 import { blockHaushalt } from '@/lib/finanzen/haushalt/zoe';
 import { lies as liesFakten, fuerPrompt as faktenFuerPrompt } from '@/lib/zoe/gedaechtnis';
@@ -143,6 +143,11 @@ export async function POST(req: Request) {
   // Das Langzeit-Gedächtnis geht in jeden Zug mit — knapp gehalten, damit es
   // den Kontext nicht auffrisst (siehe gedaechtnis.ts).
   const gedaechtnis = await liesFakten({ anzahl: 120, raum: person }).then(faktenFuerPrompt).catch(() => '');
+  // Markttraktion (28.09., Integritätsprüfung K1): CRM-Werkzeuge und -Agenten nur für eine ausdrücklich benannte
+  // Person im Haushalt des Inhabers (Sitzung oder Dienstweg mit Person) — ein anderes Konto bekommt sie gar nicht
+  // angeboten; die Werkzeuge prüfen es zusätzlich selbst (lib/zoe/werkzeuge.ts `nurImHaushalt`).
+  const crmErlaubt = await crmWerkzeugErlaubt(personStreng(req));
+  const agentenAngebot = (AUSFUEHRBAR as readonly string[]).filter(a => crmErlaubt || !(CRM_AGENTEN as readonly string[]).includes(a));
   // Werkzeuge nur, wenn nicht ausdrücklich abgeschaltet (z.B. Tagesplan = reiner Text).
   const tools: unknown[] = [];
   if (!payload.noTools) {
@@ -169,7 +174,7 @@ export async function POST(req: Request) {
       input_schema: {
         type: 'object',
         properties: {
-          agent: { type: 'string', enum: [...AUSFUEHRBAR], description: Object.entries(AGENT_ZWECK).map(([k, v]) => `${k} = ${v}`).join('; ') },
+          agent: { type: 'string', enum: agentenAngebot, description: Object.entries(AGENT_ZWECK).filter(([k]) => agentenAngebot.includes(k)).map(([k, v]) => `${k} = ${v}`).join('; ') },
           auftrag: { type: 'string', description: 'Der konkrete Auftrag — bei research die Recherchefrage, bei content das Thema, bei meeting das Transkript, sonst optional' },
         },
         required: ['agent'],
@@ -351,7 +356,7 @@ export async function POST(req: Request) {
             items: {
               type: 'object',
               properties: {
-                agent: { type: 'string', enum: [...AUSFUEHRBAR], description: 'Welcher Agent' },
+                agent: { type: 'string', enum: agentenAngebot, description: 'Welcher Agent' },
                 auftrag: { type: 'string', description: 'Konkreter Auftrag für diesen Agenten (optional)' },
               },
               required: ['agent'],
@@ -515,6 +520,9 @@ export async function POST(req: Request) {
           datum: { type: 'string' },
         }, required: ['sauber'] },
       },
+    );
+    // Markttraktion nur im Haushalt des Inhabers (28.09., K1) — siehe `crmErlaubt` oben.
+    if (crmErlaubt) tools.push(
       {
         name: 'crm_lage',
         description: 'Liest die Markttraktion (früher „CRM“): Traction-Score über Sales, Marketing und Event mit den Kennzahlen je Welt, die Übergaben zwischen den Welten, wer heute dran ist (Power Hour, mit Grund und zulässigem Kanal) und was zu tun ist. Nutze das bei Fragen wie „wen soll ich heute anrufen?“ oder „wie steht der Vertrieb?“.',
@@ -569,12 +577,14 @@ export async function POST(req: Request) {
       },
       {
         name: 'setze_kunde',
-        description: 'Aktualisiert oder erfasst einen Kunden als Mandat in der Markttraktion (Deals › Kunden; Status, Honorar €/Monat, nächster Schritt als offener Punkt).',
+        description: 'Aktualisiert oder erfasst einen Kunden als Mandat in der Markttraktion (Deals › Kunden; Status, Honorar €/Monat, nächster Schritt als offener Punkt). Trifft nur den GENAUEN Namen (Rechtsform egal) oder die mandat_id — bei Rückfrage nachfragen, nicht raten.',
         input_schema: { type: 'object', properties: {
           name: { type: 'string' },
           status: { type: 'string', enum: ['aktiv', 'gespraech', 'ruht'] },
           cashflow: { type: 'number', description: '€/Monat' },
           naechsterSchritt: { type: 'string' },
+          mandat_id: { type: 'string', description: 'Kennung des Mandats, wenn der Name nicht eindeutig ist (aus der Rückfrage)' },
+          neu: { type: 'boolean', description: 'true = ausdrücklich ein NEUES Mandat anlegen, obwohl ähnliche Namen existieren' },
         }, required: ['name'] },
       },
     );
@@ -633,7 +643,8 @@ export async function POST(req: Request) {
       const zulaessig = laeufe.map(l => {
         const name = l.name ?? '';
         if (WERKZEUGE[name]) {
-          const gueltig = werkBudget-- > 0;
+          // CRM-Werkzeuge nur mit Zugang (28.09., K1) — auch wenn das Modell ein nicht angebotenes Werkzeug nennt.
+          const gueltig = (crmErlaubt || !(CRM_WERKZEUGE as readonly string[]).includes(name)) && werkBudget-- > 0;
           // Über fuehreAus — dort sitzen Risiko-Stufe, Trockenlauf, Stapel und
           // Protokoll. Es gibt bewusst keinen zweiten Weg zur Wirkung.
           // Werbesperre, fakt_merken und notiz_anlegen immer über den Stapel; nach Fremdtext alles Schreibende.
@@ -644,7 +655,7 @@ export async function POST(req: Request) {
           };
         }
         const agentId = String(l.input?.agent ?? '');
-        const gueltig = (AUSFUEHRBAR as readonly string[]).includes(agentId) && laufBudget-- > 0;
+        const gueltig = agentenAngebot.includes(agentId) && laufBudget-- > 0;
         return { l, agentId, gueltig, lauf: async () => (await runAgent(agentId as Ausfuehrbar, String(l.input?.auftrag ?? ''), origin, person)).text };
       });
       const outs = await Promise.all(zulaessig.map(z =>

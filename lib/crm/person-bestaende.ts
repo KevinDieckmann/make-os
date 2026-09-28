@@ -8,7 +8,9 @@
 //
 //   Speicher                       entfernen (Art. 17)                        umbiegen (Dubletten)
 //   kontakte                       Eintrag raus                               (macht die Dubletten-Route)
-//   crm                            lib/crm/person-verweise.ts                 dito
+//   crm                            lib/crm/person-verweise.ts + voller Name   dito
+//                                  in Deal-Titeln/Kundennamen → „[gelöscht]“
+//                                  (`crmNamenTilgen`, 28.09.)
 //   crm-dateien--<haushalt>        nur Personen-Bezug: Eintrag + Datei weg;   kontaktId → neu
 //     + dateien/<haushalt>/*.bin   mit Firma/Mandat/Deal/Rechnung: nur der
 //                                  Personen-Bezug fällt (Geschäftsunterlage,
@@ -43,6 +45,7 @@
 import { promises as fs } from 'fs';
 import { datenOrdner, loadJson, updateJson } from '@/lib/store/local-db';
 import type { Kontakt } from '@/lib/make-one/crm';
+import type { CrmBestand } from './typen';
 import { aendereCrm, ladeCrm } from './speicher';
 import { personEntfernen as crmOhne, personUmbiegen as crmUm, personVerweise } from './person-verweise';
 import { KONFLIKT_SPEICHER, leererKonfliktStand, type KonfliktStand } from './import-konflikte';
@@ -83,6 +86,38 @@ export function vollerName(k: Pick<Kontakt, 'vorname' | 'nachname'> | undefined)
 }
 const nameMuster = (name: string, flags = 'i') => new RegExp(`(?<![\\p{L}\\p{N}])${esc(name).replace(/\s+/g, '\\s+')}(?![\\p{L}\\p{N}])`, `u${flags}`);
 const nenntNamen = (wert: unknown, name: string | null) => !!name && nameMuster(name).test(JSON.stringify(wert ?? null));
+
+// ── CRM-Freitexte (28.09., Integritätsprüfung K2) ──
+// `person-verweise.ts` nimmt die KENNUNG aus dem CRM-Bestand. Der Name stand aber weiter in Deal-Titeln
+// („Beratung Anna Beispiel“) und im Kundennamen eines Mandats (Privatkunde) — Art. 17 verlangt, dass er geht.
+// Ersetzt wird nur der volle Name (`vollerName`) als ganzes Wort, durch „[gelöscht]“. Trägt eine ANDERE Person
+// der Kartei denselben vollen Namen, nur dort, wo die gelöschte Person verknüpft war (`crmVerknuepft`).
+
+export interface CrmNamenBezug { chancen: Set<string>; mandate: Set<string> }
+/** Welche Deals und Mandate die Person nennen (vor dem Entfernen der Kennung zu bestimmen). */
+export const crmVerknuepft = (crm: Pick<CrmBestand, 'chancen' | 'mandate'>, id: string): CrmNamenBezug => ({
+  chancen: new Set((crm.chancen ?? []).filter(c => (c.kontaktIds ?? []).includes(id)).map(c => c.id)),
+  mandate: new Set((crm.mandate ?? []).filter(m => (m.kontaktIds ?? []).includes(id)).map(m => m.id)),
+});
+
+/** Nennt ein Deal-Titel oder Kundenname den vollen Namen? */
+export function crmNenntNamen(crm: Pick<CrmBestand, 'chancen' | 'mandate'>, name: string | null, nur?: CrmNamenBezug): boolean {
+  if (!name) return false;
+  const m = nameMuster(name);
+  return (crm.chancen ?? []).some(c => (!nur || nur.chancen.has(c.id)) && m.test(c.titel ?? ''))
+    || (crm.mandate ?? []).some(x => (!nur || nur.mandate.has(x.id)) && m.test(x.kunde ?? ''));
+}
+
+/** Voller Name → „[gelöscht]“ in `chancen[].titel` und `mandate[].kunde`. Idempotent; unverändert → derselbe Bestand. */
+export function crmNamenTilgen<T extends Pick<CrmBestand, 'chancen' | 'mandate'>>(crm: T, name: string | null, nur?: CrmNamenBezug): T {
+  if (!crmNenntNamen(crm, name, nur)) return crm;
+  const weg = (t: string) => t.replace(nameMuster(name!, 'gi'), '[gelöscht]');
+  return {
+    ...crm,
+    chancen: (crm.chancen ?? []).map(c => ((!nur || nur.chancen.has(c.id)) && nameMuster(name!).test(c.titel ?? '') ? { ...c, titel: weg(c.titel) } : c)),
+    mandate: (crm.mandate ?? []).map(x => ((!nur || nur.mandate.has(x.id)) && nameMuster(name!).test(x.kunde ?? '') ? { ...x, kunde: weg(x.kunde) } : x)),
+  };
+}
 
 // ── Dateiablage ──
 
@@ -281,9 +316,11 @@ export async function personEntfernen(id: string, bekannt?: Pick<Kontakt, 'vorna
   const b: PersonBericht = { speicher: {}, aufgabenPruefen: [] };
   if (!id) return b;
   let kontakt: Kontakt | undefined;
+  let andereNamen: string[] = [];
   await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
     const f = cur ?? { kontakte: [] };
     kontakt = f.kontakte.find(k => k.id === id);
+    andereNamen = f.kontakte.filter(k => k.id !== id).map(k => (vollerName(k) ?? '').toLowerCase()).filter(Boolean);
     if (!kontakt) return f;
     zaehle(b, 'kontakte', 1);
     return { ...f, kontakte: f.kontakte.filter(k => k.id !== id) };
@@ -306,8 +343,14 @@ export async function personEntfernen(id: string, bekannt?: Pick<Kontakt, 'vorna
     });
   }
 
+  // CRM: Kennung raus (person-verweise.ts) UND der volle Name aus Deal-Titeln und Kundennamen (K2, 28.09.) — in EINER Sperre.
+  // Gibt es eine andere Person mit demselben vollen Namen, nur dort, wo die gelöschte verknüpft war.
+  const namensgleich = !!name && andereNamen.includes(name.toLowerCase());
   const vorher = await ladeCrm();
-  if (enthaeltKennung(vorher, id)) { await aendereCrm(c => crmOhne(c, id)); zaehle(b, 'crm', 1); }
+  if (enthaeltKennung(vorher, id) || crmNenntNamen(vorher, name, namensgleich ? crmVerknuepft(vorher, id) : undefined)) {
+    await aendereCrm(c => { const nur = namensgleich ? crmVerknuepft(c, id) : undefined; return crmNamenTilgen(crmOhne(c, id), name, nur); });
+    zaehle(b, 'crm', 1);
+  }
 
   for (const h of await ablageHaushalte()) {
     let weg: DateiEintrag[] = [];
