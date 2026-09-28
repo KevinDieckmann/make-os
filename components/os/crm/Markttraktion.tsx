@@ -11,6 +11,9 @@
 //   Marketing   Übersicht · Segmente · Kampagnen · Redaktionsplan · Newsletter · Positionierung — Head of Marketing
 //   Events      Events mit Gästen, Checkliste, Abend, Nachfassen, Feedback, Budget — Head of Event
 //   Stammdaten  Qualität, Wertelisten, Datenschutz, Import & Export
+// In der Mitte (28.09. abends) die zwei Schnellknöpfe des Bereichs, jeder für sich und leise pulsierend:
+//   Qualifizierung (orange)  Lead für Lead bis zum SQL
+//   Angebot (grün)           Produkte anklicken, anpassen, senden — components/os/crm/angebot (AngebotStart)
 // Der frühere Reiter „Sales“ ist darin aufgegangen; alte Adressen übersetzt lib/crm/adresse.ts.
 // Das Grundkonzept (Stufen mit Austrittskriterium, Warum-jetzt-Punkte, Sperre statt
 // Löschen, Score aus den Welten) stammt aus der Markttraktion in KEMARIS Operations;
@@ -21,7 +24,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
 import { Seite, LEUCHT } from '../schlank';
-import { aufloesen, markttraktion, kontaktAkte, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type SalesReiterAnsicht, type AkteReiter } from '@/lib/crm/adresse';
+import { aufloesen, markttraktion, kontaktAkte, angebotAusAdresse, LEISTE, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type SalesReiterAnsicht, type AkteReiter } from '@/lib/crm/adresse';
 import { useCrm } from './daten';
 import { Pillen } from './teile';
 import { Ueberblick, WELT_FARBE } from './Ueberblick';
@@ -42,19 +45,28 @@ import { Qualifizierung, KanalLeistungLaden } from './Qualifizierung';
 import { useZurueck, nachOben } from '../Verlauf';
 import { KontaktAkte } from './Akte';
 import { IndexStreifen, STREIFEN } from '../business/IndexStreifen';
+import { AngebotStart } from './angebot/AngebotStart';
 
-// Zwei Gruppen (Kevin 27.09. abends): links die Arbeit — Überblick · Kontakte · Firmen · Deals · Follow-up —,
-// rechts die Welten mit ihrem Punkt — Sales · Marketing · Events — und die Stammdaten.
-const LINKS: { id: Bereich; label: string; farbe?: string }[] = [
-  { id: 'ueberblick', label: 'Überblick' },
-  { id: 'kontakte', label: 'Kontakte' }, { id: 'firmen', label: 'Firmen' },
-  { id: 'deals', label: 'Deals' }, { id: 'followup', label: 'Follow-up' },
-];
-const RECHTS: { id: Bereich; label: string; farbe?: string }[] = [
-  { id: 'qualifizierung', label: 'Qualifizierung' },
-  { id: 'sales', label: 'Sales', farbe: WELT_FARBE.sales }, { id: 'marketing', label: 'Marketing', farbe: WELT_FARBE.marketing }, { id: 'event', label: 'Make.One', farbe: WELT_FARBE.event },
-  { id: 'stammdaten', label: 'Stammdaten' },
-];
+// Drei Gruppen (Kevin 27.09. abends, Mitte 28.09. abends): links die Arbeit — Überblick · Kontakte · Firmen · Deals · Follow-up —,
+// in der Mitte die Schnellknöpfe Qualifizierung (orange) und Angebot (grün), rechts die Welten mit ihrem Punkt —
+// Sales · Marketing · Make.One — und die Stammdaten. Die Reihenfolge steht in `LEISTE` (lib/crm/adresse.ts).
+type ReiterEintrag = { id: Bereich; label: string; farbe?: string };
+const REITER: Record<Bereich, ReiterEintrag> = {
+  ueberblick: { id: 'ueberblick', label: 'Überblick' },
+  kontakte: { id: 'kontakte', label: 'Kontakte' },
+  firmen: { id: 'firmen', label: 'Firmen' },
+  deals: { id: 'deals', label: 'Deals' },
+  followup: { id: 'followup', label: 'Follow-up' },
+  qualifizierung: { id: 'qualifizierung', label: 'Qualifizierung', farbe: LEUCHT.business },
+  angebot: { id: 'angebot', label: 'Angebot', farbe: LEUCHT.gut },
+  sales: { id: 'sales', label: 'Sales', farbe: WELT_FARBE.sales },
+  marketing: { id: 'marketing', label: 'Marketing', farbe: WELT_FARBE.marketing },
+  event: { id: 'event', label: 'Make.One', farbe: WELT_FARBE.event },
+  stammdaten: { id: 'stammdaten', label: 'Stammdaten' },
+};
+const LINKS = LEISTE.links.map(b => REITER[b]);
+const MITTE = LEISTE.mitte.map(b => REITER[b]);
+const RECHTS = LEISTE.rechts.map(b => REITER[b]);
 const SALES: { id: SalesReiterAnsicht; label: string }[] = [{ id: 'head', label: 'Head of Sales' }, { id: 'powerhour', label: 'Power Hour' }, { id: 'kampagnen', label: 'Kampagnen' }, { id: 'auswertung', label: 'Auswertung' }];
 const DEALS: { id: DealsAnsicht; label: string }[] = [{ id: 'board', label: 'Board' }, { id: 'liste', label: 'Liste' }, { id: 'kunden', label: 'Kunden' }, { id: 'auswertung', label: 'Auswertung' }];
 const FOLLOWUP: { id: FollowupAnsicht; label: string }[] = [{ id: 'faellig', label: 'Fällig' }, { id: 'woche', label: 'Woche' }, { id: 'powerhour', label: 'Power Hour' }, { id: 'kadenz', label: 'Kadenz' }];
@@ -66,6 +78,7 @@ const UNTER: Record<Bereich, string> = {
   deals: 'Ab SQL im Closing: jede Stufe endet mit einem Ereignis auf Kundenseite.',
   followup: 'Was heute dran ist — Zusagen, Wiedervorlagen, Kadenz. Nichts fällt runter.',
   qualifizierung: 'Lead für Lead: Kernfragen, Schmerz im Klartext, Lead-Score live — bis es ein SQL ist.',
+  angebot: 'Angebot in einer Minute: Produkte anklicken, anpassen, senden.',
   sales: 'Vertrieb als System: der Head of Sales, die Power Hour, Kampagnen und die Auswertung.',
   marketing: 'Ansprechbar sein, nicht laut.',
   event: 'Erfolgreich ist ein Event, wenn danach die richtigen Gespräche stattfinden.',
@@ -84,6 +97,33 @@ function Reiter({ liste, aktiv, onWahl, leise }: { liste: { id: Bereich; label: 
             background: an ? C.ink : 'transparent', color: an ? C.grund : C.inkDim,
           }}>
             {b.farbe && <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: b.farbe, boxShadow: an ? 'none' : `0 0 8px ${b.farbe}33` }} />}
+            {b.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Die zwei Schnellknöpfe in der Mitte (28.09. abends): jeder für sich, getönt in seiner Farbe, dahinter ein leiser Puls
+ * (`.mt-schnell` in globals.css, aus bei „Bewegung reduzieren“). Aktiv = kräftige Fläche, volle Kontur, heller Text.
+ */
+function Schnellknoepfe({ aktiv, onWahl, className }: { aktiv: Bereich; onWahl: (b: Bereich) => void; className: string }) {
+  return (
+    <div role="tablist" aria-label="Schnellknöpfe" className={className}>
+      {MITTE.map(b => {
+        const an = aktiv === b.id;
+        const f = b.farbe ?? C.aktiv;
+        return (
+          <button key={b.id} role="tab" aria-selected={an} onClick={() => onWahl(b.id)} className="mt-schnell"
+            style={{
+              ['--puls' as string]: f,
+              padding: '7px 16px', borderRadius: 999, cursor: 'pointer', whiteSpace: 'nowrap',
+              fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700,
+              ...TIEF.knopf(f),
+              ...(an ? { background: `${f}3D`, border: `1px solid ${f}`, color: C.ink, boxShadow: `inset 0 0 0 1px ${f}66` } : {}),
+            }}>
             {b.label}
           </button>
         );
@@ -128,7 +168,7 @@ export function MarkttraktionSeite() {
   const dealsAnsicht = (bereich === 'deals' ? (ansicht ?? 'board') : 'board') as DealsAnsicht;
   const followupAnsicht = (bereich === 'followup' ? (ansicht ?? 'faellig') : 'faellig') as FollowupAnsicht;
   const salesAnsicht = (bereich === 'sales' ? (ansicht ?? 'head') : 'head') as SalesReiterAnsicht;
-  // Gespräch festhalten — von überall in der Markttraktion, ein Knopf oben rechts.
+  // Aktivität hinzufügen — von überall in der Markttraktion, ein Knopf oben rechts (bis 28.09. „Gespräch festhalten“).
   const [erfassen, setErfassen] = useState(false);
   const runde = bereich === 'kontakte' && ansicht?.startsWith('runde-') ? (ansicht.slice(6) as RundenArt) : null;
   // „Kontakt öffnen“ (Kevin 25.09., Name 28.09.): eigener Eintrag im Verlauf des Browsers — „Zurück“ dort führt ebenfalls in die Kartei.
@@ -144,13 +184,21 @@ export function MarkttraktionSeite() {
   };
 
   return (
-    // „+ Gespräch“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (in der Reiterleiste rutschte er aus dem Bild).
-    <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<button onClick={() => setErfassen(true)} className="fassbar" style={{ flex: '0 0 auto', padding: '10px 16px', borderRadius: 12, cursor: 'pointer', ...TIEF.knopf(C.aktiv), fontWeight: 700, fontSize: TYP.bedien, fontFamily: SCHRIFT.text, whiteSpace: 'nowrap' }}>+ Gespräch festhalten</button>}>
-      <nav aria-label="Markttraktion" style={{ display: 'flex', gap: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none', margin: '-4px 0 2px', paddingBottom: 2 }}>
-        <Reiter liste={LINKS} aktiv={bereich} onWahl={b => gehe(b)} />
-        <span aria-hidden style={{ flex: '1 0 8px' }} />
-        <Reiter liste={RECHTS} aktiv={bereich} onWahl={b => gehe(b)} leise />
-      </nav>
+    // „+ Aktivität hinzufügen“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (in der Reiterleiste rutschte er aus dem Bild).
+    <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<button onClick={() => setErfassen(true)} className="fassbar" style={{ flex: '0 0 auto', padding: '10px 16px', borderRadius: 12, cursor: 'pointer', ...TIEF.knopf(C.aktiv), fontWeight: 700, fontSize: TYP.bedien, fontFamily: SCHRIFT.text, whiteSpace: 'nowrap' }}>+ Aktivität hinzufügen</button>}>
+      {/* Breit: eine Zeile, die Schnellknöpfe mittig zwischen links und rechts. Wird es zu eng (Rahmen < 1100 px, z. B. am
+          Laptop mit Leiste oder am Handy): die Schnellknöpfe als eigene Zeile oben, darunter die Reiter zum Wischen — nie
+          zwei Paare sichtbar zugleich (das andere ist display:none, also auch für Screenreader weg). */}
+      <div className="mt-leistenrahmen">
+        <Schnellknoepfe aktiv={bereich} onWahl={b => gehe(b)} className="mt-schnellzeile mt-nur-schmal" />
+        <nav aria-label="Markttraktion" style={{ display: 'flex', gap: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none', padding: '8px 2px' }}>
+          <Reiter liste={LINKS} aktiv={bereich} onWahl={b => gehe(b)} />
+          <span aria-hidden style={{ flex: '1 0 8px' }} />
+          <Schnellknoepfe aktiv={bereich} onWahl={b => gehe(b)} className="mt-schnellmitte mt-nur-breit" />
+          <span aria-hidden className="mt-nur-breit" style={{ flex: '1 0 8px' }} />
+          <Reiter liste={RECHTS} aktiv={bereich} onWahl={b => gehe(b)} leise />
+        </nav>
+      </div>
       <SchnellErfassen api={api} offen={erfassen} onZu={() => setErfassen(false)} kontaktId={bereich === 'kontakte' && auswahl && !auswahl.startsWith('f-') ? auswahl : undefined} />
       {api.fehler && <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{api.fehler}</div>}
 
@@ -178,6 +226,7 @@ export function MarkttraktionSeite() {
           {followupAnsicht !== 'powerhour' && <FollowUp api={api} ansicht={followupAnsicht} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} zuAkte={zuAkte} />}
         </>
       )}
+      {bereich === 'angebot' && <AngebotStart api={api} {...angebotAusAdresse(params)} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} />}
       {bereich === 'qualifizierung' && <Qualifizierung api={api} zuKontakt={zuKontakt} zuFirma={zuFirma} zuLeads={id => gehe('firmen', 'leads', id)} />}
       {bereich === 'sales' && (
         <>

@@ -468,3 +468,34 @@ nav a:hover { transform: translateX(2px); }
 .kachel-griff:active { cursor: grabbing; }
 .flaeche-kopf { min-width: 0; }
 .flaeche-kopf button { font-family: inherit; }
+
+/* ─── Markttraktion · Schnellknöpfe (28.09. abends) ───────────────────────────
+   Qualifizierung (orange) und Angebot (grün) stehen in der Mitte der Reiterleiste
+   und pulsieren leise VON HINTEN: ein weicher Schein in der Knopffarbe (--puls)
+   hinter dem Knopf, nie ein Leuchtkranz davor. Die Gruppe ist ein eigener
+   Stapelkontext, damit der Schein hinter dem Knopf und vor der Seite liegt.
+   Bei „Bewegung reduzieren“ steht der Schein still (Regel oben + hier).
+   Breit: Paar in der Leiste (.mt-nur-breit); passt die Zeile nicht (Rahmen < 1.100 px,
+   Laptop mit Leiste, Handy): eigene Zeile über den Reitern (.mt-nur-schmal) — die
+   Reiter bleiben wischbar, nichts läuft über. */
+.mt-schnellmitte, .mt-schnellzeile { display: flex; gap: 10px; align-items: center; flex: 0 0 auto; position: relative; isolation: isolate; }
+.mt-schnellzeile { justify-content: center; padding: 8px 2px 0; }
+.mt-schnellzeile .mt-schnell { flex: 1 1 0; max-width: 220px; }
+.mt-schnell { position: relative; }
+.mt-schnell::before {
+  content: ''; position: absolute; inset: -2px; border-radius: inherit; z-index: -1; pointer-events: none;
+  background: var(--puls, #58D9CD); filter: blur(7px); opacity: .16;
+  animation: mtPuls 3.4s ease-in-out infinite;
+}
+.mt-schnell[aria-selected="true"]::before { opacity: .32; animation-name: mtPulsAn; }
+.mt-schnell + .mt-schnell::before { animation-delay: -1.7s; }
+@keyframes mtPuls { 0%, 100% { opacity: .08; transform: scale(.94); } 50% { opacity: .38; transform: scale(1.06); } }
+@keyframes mtPulsAn { 0%, 100% { opacity: .22; transform: scale(.97); } 50% { opacity: .5; transform: scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { .mt-schnell::before { animation: none !important; } }
+/* Der Rahmen misst sich selbst (Container-Abfrage): eine Zeile braucht ~1.090 px. */
+.mt-leistenrahmen { container-type: inline-size; display: grid; gap: 4px; margin: -12px 0 -6px; min-width: 0; }
+.mt-nur-schmal { display: none !important; }
+@container (max-width: 1100px) {
+  .mt-nur-breit { display: none !important; }
+  .mt-nur-schmal { display: flex !important; }
+}

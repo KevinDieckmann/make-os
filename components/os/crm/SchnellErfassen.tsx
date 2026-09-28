@@ -1,6 +1,6 @@
 'use client';
 
-// ─── Markttraktion · „+ Gespräch“ — festhalten von überall (25.09.) ─────────
+// ─── Markttraktion · „+ Aktivität hinzufügen“ — von überall (25.09., Name 28.09.) ─
 // Stand 25.09.: 453 Personen in der Kartei, zwei echte Aktivitäten. Die
 // Gespräche finden statt — am Telefon, im Termin, auf LinkedIn —, aber
 // niemand öffnet dafür erst die Kartei, sucht die Person und klickt sich zum
@@ -157,7 +157,7 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
           background: C.flaeche, borderRadius: schmal ? 0 : 18, border: schmal ? 'none' : '1px solid rgba(255,255,255,.07)', boxShadow: '0 30px 80px -20px rgba(0,0,0,.8)',
           padding: schmal ? '14px 16px max(20px, env(safe-area-inset-bottom))' : '18px 22px 22px', color: C.ink, fontFamily: SCHRIFT.text, display: 'grid', gap: 16, alignContent: 'start' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <h2 id="schnell-erfassen-titel" style={{ margin: 0, fontFamily: SCHRIFT.display, fontSize: 19, fontWeight: 700, letterSpacing: '-.01em' }}>Gespräch festhalten</h2>
+          <h2 id="schnell-erfassen-titel" style={{ margin: 0, fontFamily: SCHRIFT.display, fontSize: 19, fontWeight: 700, letterSpacing: '-.01em' }}>Aktivität hinzufügen</h2>
           <button onClick={() => zu.current()} aria-label="Schließen" className="fassbar" style={{ width: 44, height: 44, borderRadius: 12, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.inkDim, fontSize: 22, lineHeight: 1, cursor: 'pointer' }}>×</button>
         </div>
 

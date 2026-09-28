@@ -15,7 +15,7 @@
 //   Gesundheit  /os/gesundheit?fuer=<person>#morgen|routinen|haut|streak|index
 //   Markttraktion über lib/crm/adresse.ts (s · a · k)
 
-import { mandateLink, markttraktion, dealAkte } from '@/lib/crm/adresse';
+import { mandateLink, markttraktion, dealAkte, angebotLink, type AngebotAdresse } from '@/lib/crm/adresse';
 
 const q = (basis: string, p: Record<string, string | undefined | null>, hash?: string) => {
   const s = new URLSearchParams();
@@ -63,6 +63,9 @@ export const WEG = {
   deals: () => markttraktion('deals'),
   followup: (a?: 'woche' | 'powerhour' | 'kadenz') => markttraktion('followup', a),
   markttraktion: () => markttraktion(),
+  // Schnellknöpfe der Markttraktion (28.09. abends): Qualifizierung und Angebot (vorbelegt mit Kontakt/Firma/Deal).
+  qualifizierung: () => markttraktion('qualifizierung'),
+  angebot: (x?: AngebotAdresse) => angebotLink(x),
 
   woche: (tag?: string) => q('/os/planung/woche', { tag }),
   tag: (tag?: string) => q('/os/planung', { tag }),

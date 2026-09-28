@@ -1,7 +1,9 @@
 // ─── Markttraktion — Adressen (rein, getestet) ──────────────────────────────
 // /os/markttraktion?s=<Bereich>&a=<Ansicht>&k=<Person, Firma, Deal, Event>
 //   s (Reiter, Kevins Reihenfolge 27.09.): ueberblick (Start) · kontakte · firmen ·
-//      deals · followup · qualifizierung (Runde, 27.09.) · sales · marketing · event · stammdaten
+//      deals · followup · qualifizierung (Runde, 27.09.) · angebot (28.09.) · sales · marketing · event · stammdaten
+//      Die Leiste (28.09. abends): links die Arbeit, in der Mitte die Schnellknöpfe Qualifizierung + Angebot,
+//      rechts die Welten und die Stammdaten — `LEISTE` unten ist die eine Stelle für die Reihenfolge.
 //   a: kontakte   → die gespeicherte Ansicht, eine Runde (runde-…) oder akte („Kontakt öffnen“ zu k)
 //      t (nur bei „Kontakt öffnen“, 28.09.): Reiter ueber (Start, ohne t) · aktivitaeten · umsatz · daten —
 //      alte Links ohne t bleiben gültig und öffnen „Über“; die Reiter vom 27.09. werden übersetzt
@@ -12,12 +14,14 @@
 //      followup   → faellig (Start) · woche · powerhour · kadenz
 //      marketing  → uebersicht (Start) · anfragen · segmente · kampagnen · redaktion · newsletter · positionierung
 //      stammdaten → der Reiter
+//   angebot (28.09.): k = ein bestehendes Angebot, dazu die Vorbelegung kontakt=<id> · firma=<id> · deal=<id>
+//      (`angebotLink` baut, `angebotAusAdresse` liest — unbekannte oder kaputte Kennungen fallen weg)
 // Alte Adressen bleiben gültig: /os/crm leitet um; `aufloesen` übersetzt die alten
 // Bereiche (heute/pipeline/kunden/events/kartei) UND den Reiter „Sales“ vom 25./26.09.
 // (s=sales&a=heute|leads|pipeline|kunden|kampagnen) auf die neuen Reiter — so
 // funktionieren alle Links aus Suche, Befunden, ZOE und Telegram weiter.
 
-export type Bereich = 'ueberblick' | 'kontakte' | 'firmen' | 'deals' | 'followup' | 'qualifizierung' | 'sales' | 'marketing' | 'event' | 'stammdaten';
+export type Bereich = 'ueberblick' | 'kontakte' | 'firmen' | 'deals' | 'followup' | 'qualifizierung' | 'angebot' | 'sales' | 'marketing' | 'event' | 'stammdaten';
 /** Der Reiter „Sales“ rechts (Kevin 27.09.): Head of Sales · Power Hour · Kampagnen · Auswertung. */
 export type SalesReiterAnsicht = 'head' | 'powerhour' | 'kampagnen' | 'auswertung';
 export const SALES_REITER_ANSICHTEN: SalesReiterAnsicht[] = ['head', 'powerhour', 'kampagnen', 'auswertung'];
@@ -25,7 +29,17 @@ export type DealsAnsicht = 'board' | 'liste' | 'akte' | 'kunden' | 'auswertung';
 export type FollowupAnsicht = 'faellig' | 'woche' | 'powerhour' | 'kadenz';
 /** Der alte Sales-Reiter (bis 26.09.) — nur noch zum Übersetzen alter Adressen. */
 export type SalesAnsicht = 'heute' | 'leads' | 'pipeline' | 'kunden' | 'kampagnen';
-export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'qualifizierung', 'sales', 'marketing', 'event', 'stammdaten'];
+export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'qualifizierung', 'angebot', 'sales', 'marketing', 'event', 'stammdaten'];
+/**
+ * Die Reiterleiste (Kevin 28.09. abends): links die Arbeit, in der Mitte die zwei Schnellknöpfe
+ * (Qualifizierung orange, Angebot grün — pulsieren leise), rechts die Welten und die Stammdaten.
+ * Jeder Bereich steht genau einmal in der Leiste.
+ */
+export const LEISTE: { links: Bereich[]; mitte: Bereich[]; rechts: Bereich[] } = {
+  links: ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup'],
+  mitte: ['qualifizierung', 'angebot'],
+  rechts: ['sales', 'marketing', 'event', 'stammdaten'],
+};
 export const DEALS_ANSICHTEN: DealsAnsicht[] = ['board', 'liste', 'akte', 'kunden', 'auswertung'];
 export const FOLLOWUP_ANSICHTEN: FollowupAnsicht[] = ['faellig', 'woche', 'powerhour', 'kadenz'];
 export const SALES_ANSICHTEN: SalesAnsicht[] = ['heute', 'leads', 'pipeline', 'kunden', 'kampagnen'];
@@ -91,6 +105,27 @@ export function markttraktion(s?: string, a?: string, k?: string, t?: string | n
   }
   const text = q.toString();
   return text ? `${PFAD}?${text}` : PFAD;
+}
+
+/** Vorbelegung eines Angebots (28.09.): welches Angebot (`k`) und für wen — Kontakt, Firma, Deal. */
+export interface AngebotAdresse { angebotId?: string | null; kontaktId?: string | null; firmaId?: string | null; dealId?: string | null }
+/** Kennungen in der Adresse: kurz und ohne Sonderzeichen (c-…, f-…, ch-…, ang-…) — alles andere fällt weg. */
+const KENNUNG = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/;
+const kennung = (x?: string | null): string | null => (x && KENNUNG.test(x) ? x : null);
+
+/** Link zum Angebot (Schnellknopf „Angebot“, Kontakt öffnen, Deal-Akte): `?s=angebot&k=<angebot>&kontakt=<id>&firma=<id>&deal=<id>`. */
+export function angebotLink({ kontaktId, firmaId, dealId, angebotId }: AngebotAdresse = {}): string {
+  const q = new URLSearchParams({ s: 'angebot' });
+  const k = kennung(angebotId); if (k) q.set('k', k);
+  const kontakt = kennung(kontaktId); if (kontakt) q.set('kontakt', kontakt);
+  const firma = kennung(firmaId); if (firma) q.set('firma', firma);
+  const deal = kennung(dealId); if (deal) q.set('deal', deal);
+  return `${PFAD}?${q}`;
+}
+
+/** Liest die Vorbelegung des Angebots aus der Adresse (Gegenstück zu `angebotLink`). */
+export function angebotAusAdresse(p: { get(name: string): string | null }): { angebotId: string | null; kontaktId: string | null; firmaId: string | null; dealId: string | null } {
+  return { angebotId: kennung(p.get('k')), kontaktId: kennung(p.get('kontakt')), firmaId: kennung(p.get('firma')), dealId: kennung(p.get('deal')) };
 }
 
 /** „Kontakt öffnen“ (25.09., Reiter 28.09.): eine ganze Seite je Person, optional direkt auf einem Reiter (und Unter-Reiter der Aktivitäten). */

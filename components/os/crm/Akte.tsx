@@ -153,7 +153,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
     try { localStorage.setItem(reiterMerker(id), r); } catch { /* egal */ }
     setReiter(r, unterReiter, anker);
   };
-  // Esc = zurück, außer beim Tippen oder wenn ein Fenster (z. B. „+ Gespräch“) offen ist.
+  // Esc = zurück, außer beim Tippen oder wenn ein Fenster (z. B. „+ Aktivität hinzufügen“) offen ist.
   useEffect(() => {
     const taste = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;

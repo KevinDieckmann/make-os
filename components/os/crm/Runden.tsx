@@ -53,7 +53,7 @@ export function Runden({ api, art, name, zuKontakt, zurueck, kampagneId, zuKampa
 
 /**
  * Tastenkürzel — nie mit Cmd/Strg/Alt (Schnellsuche, Browser), nie in einem
- * offenen Dialog (z. B. „+ Gespräch“); ob ein Kürzel beim Tippen in einem Feld
+ * offenen Dialog (z. B. „+ Aktivität hinzufügen“); ob ein Kürzel beim Tippen in einem Feld
  * gilt, entscheidet der Aufrufer (`imFeld`).
  */
 function useTasten(handler: (e: KeyboardEvent, imFeld: boolean) => void) {

@@ -50,7 +50,7 @@ export function Grund({ ampel }: { ampel: KanalStatus[] }) {
   return g ? <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>{KANAL_LABEL[g.kanal]}: {g.grund}</div> : null;
 }
 
-/** Ergebnis-Knöpfe der Power Hour — auch im „+ Gespräch“. Mit `notiz` öffnet sich die Notizvorlage (nächster Schritt Pflicht). */
+/** Ergebnis-Knöpfe der Power Hour — auch in „+ Aktivität hinzufügen“. Mit `notiz` öffnet sich die Notizvorlage (nächster Schritt Pflicht). */
 export const ERGEBNIS_KNOEPFE: { id: Ergebnis; label: string; notiz: boolean }[] = [
   { id: 'gespraech', label: 'Gespräch', notiz: true }, { id: 'termin', label: 'Termin', notiz: true }, { id: 'rueckruf', label: 'Rückruf', notiz: true },
   { id: 'mailbox', label: 'Mailbox', notiz: false }, { id: 'nicht_erreicht', label: 'Nicht erreicht', notiz: false }, { id: 'kein_bedarf', label: 'Kein Bedarf', notiz: false }, { id: 'sperre', label: 'Sperre', notiz: false },
