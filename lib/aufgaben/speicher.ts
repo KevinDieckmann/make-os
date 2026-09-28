@@ -24,6 +24,7 @@ import { abhaengigAngleichen, kreisBei } from './abhaengig';
 import { verlaufFuer, verlaufAnhaengen, type VerlaufWer } from './verlauf';
 import { serienBeimErledigen, folgeinstanzenBeimOeffnen, serieUeberspringen } from './serie';
 import { berlinerTag } from './wiederholung';
+import { followupsNachAufgaben } from '@/lib/crm/followup-aufgabe';
 
 export const AUFGABEN_SPEICHER = 'tasks';
 
@@ -424,6 +425,8 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
   for (const art of LISTEN_ARTEN) aenderungen.push(...listenDiff((vorher[art] ?? []) as { id: string }[], (nachher[art] ?? []) as { id: string }[], art));
   await protokolliere(AUFGABEN_SPEICHER, aenderungen, opt.wer);
   await meldungenNachSchreiben(aufgabenSicht(vorher), aufgabenSicht(nachher), neueKommentare, echtePerson ? opt.person : SYSTEM, personenListe);
+  // Follow-up = Aufgabe (29.09., #99): erledigte Aufgaben erledigen ihre verknüpften CRM-Follow-ups (idempotent, wirft nie).
+  await followupsNachAufgaben(vorher, nachher, echtePerson ? opt.person : SYSTEM);
   if (erg.entfernt && opt.haushalt) await papierkorbDateienEntfernen(opt.haushalt, opt.person, erg.entfernt);
   return erg;
 }

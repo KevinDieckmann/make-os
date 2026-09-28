@@ -7,12 +7,14 @@
 // heute, diese Woche, später. Jede Zeile lässt sich mit einem Klick erledigen
 // (Ergebnis + nächstes Follow-up), verschieben (1/3/7 Tage) oder absagen. Die
 // Logik liegt in lib/crm/followup.ts, die Regeln in /api/crm/followup.
+// 29.09. (#99, Follow-up = Aufgabe): offene Aufgaben mit CRM-Bezug und Deadline stehen mit in der Liste (Zeile „Aufgabe“,
+// Haken erledigt sie, der Titel öffnet sie) — eine Wahrheit; Aufgaben, an denen schon ein Follow-up hängt, nicht doppelt.
 
 import { localDay } from '@/lib/zeit';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { anzeigename } from '@/lib/make-one/crm';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, LEUCHT, feld } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, LEUCHT, feld, Haken } from '../schlank';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import { type CrmApi, holeMitStand, datum, plusTage } from './daten';
 import { Pillen, Feldzeile, ERGEBNIS_KNOEPFE } from './teile';
@@ -25,6 +27,10 @@ import type { FollowUpArt } from '@/lib/crm/typen';
 import type { FollowupAnsicht } from '@/lib/crm/adresse';
 import { KREIS_TAKT, type Kreis } from '@/lib/make-one/crm';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
+import Link from 'next/link';
+import { useTasks } from '@/context/TasksContext';
+import { aufgabenAlsFaellig, type AufgabeFaellig } from '@/lib/crm/followup-aufgabe';
+import { WEG } from '@/lib/wege';
 
 interface Antwort { ok: boolean; heute: string; liste: Faellig[]; zahlen: Record<Gruppe, number> & { gesamt: number }; puenktlich: { erledigt: number; puenktlich: number; verpasst: number; quote: number | null } }
 
@@ -67,6 +73,13 @@ export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: Crm
   // Eigene Gesprächsergebnisse aus Stammdaten › Wertelisten (die festen lösen die Regeln aus, eigene sind Freitext).
   const eigene = useMemo(() => wertelistenVollstaendig(api.crm?.stand.wertelisten).ergebnisse.filter(e => !e.fest).map(e => ({ wert: e.wert, label: e.label })), [api.crm?.stand.wertelisten]);
   const liste = useMemo(() => (d?.liste ?? []).filter(f => passtWer(wahl, f.zustaendig, 'sales', ich)), [d, wahl, ich]);
+  // Aufgaben mit CRM-Bezug (#99) — ohne die, an denen ein offenes Follow-up hängt (die stehen schon als Follow-up da).
+  const { state: aufgabenStand, dispatch } = useTasks();
+  const aufgaben = useMemo(() => {
+    const verknuepft = new Set((api.crm?.stand.followups ?? []).filter(f => f.status === 'offen' && f.aufgabeId).map(f => f.aufgabeId!));
+    return aufgabenAlsFaellig(aufgabenStand.tasks, d?.heute ?? localDay()).filter(a => !verknuepft.has(a.aufgabeId) && passtWer(wahl, a.zustaendig, 'sales', ich));
+  }, [aufgabenStand.tasks, api.crm?.stand.followups, d?.heute, wahl, ich]);
+  const aufgabeGruppe = (a: AufgabeFaellig, heute: string): Gruppe => (a.faellig < heute ? 'ueberfaellig' : a.faellig === heute ? 'heute' : a.faellig <= plusTage(heute, 7) ? 'woche' : 'spaeter');
   const zahlen = useMemo(() => {
     const alle = d?.liste ?? [];
     const z: Record<string, number> = { alle: alle.length };
@@ -86,7 +99,7 @@ export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: Crm
       <Karte i={0}>
         <Ueberschrift rechts={<Knopf onClick={() => setNeu(!neu)}>{neu ? 'Schließen' : '+ Follow-up'}</Knopf>}>Was dran ist</Ueberschrift>
         <Raster min={130}>
-          {GRUPPEN.map(g => <Zahl key={g.id} wert={String(liste.filter(f => f.gruppe === g.id).length)} label={g.label} farbe={liste.some(f => f.gruppe === g.id) ? g.farbe : undefined} />)}
+          {GRUPPEN.map(g => { const n = liste.filter(f => f.gruppe === g.id).length + aufgaben.filter(a => aufgabeGruppe(a, d.heute) === g.id).length; return <Zahl key={g.id} wert={String(n)} label={g.label} farbe={n ? g.farbe : undefined} />; })}
           <Zahl wert={d.puenktlich.quote !== null ? `${d.puenktlich.quote} %` : `${d.puenktlich.puenktlich} · ${d.puenktlich.erledigt}`} label={d.puenktlich.quote !== null ? 'pünktlich · 30 Tage' : 'pünktlich · erledigt (Quote ab 5)'} farbe={d.puenktlich.quote !== null ? (d.puenktlich.quote >= 80 ? LEUCHT.gut : d.puenktlich.quote >= 60 ? LEUCHT.achtung : LEUCHT.kritisch) : undefined} />
         </Raster>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
@@ -100,11 +113,23 @@ export function FollowUp({ api, ansicht, zuKontakt, zuDeal, zuAkte }: { api: Crm
 
       {ansicht === 'faellig' && GRUPPEN.map((g, i) => {
         const l = liste.filter(f => f.gruppe === g.id);
-        if (!l.length && g.id === 'spaeter') return null;
+        const la = aufgaben.filter(a => aufgabeGruppe(a, d.heute) === g.id);
+        if (!l.length && !la.length && g.id === 'spaeter') return null;
         return (
-          <Karte key={g.id} i={i + 1} akzent={l.length && g.id !== 'spaeter' ? g.farbe : undefined}>
-            <Ueberschrift farbe={g.farbe} rechts={`${l.length}`}>{g.label}</Ueberschrift>
-            {l.length ? <Liste>{l.map(f => <FollowUpZeile key={f.id} f={f} heute={d.heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={nachAktion} eigene={eigene} />)}</Liste>
+          <Karte key={g.id} i={i + 1} akzent={(l.length || la.length) && g.id !== 'spaeter' ? g.farbe : undefined}>
+            <Ueberschrift farbe={g.farbe} rechts={`${l.length + la.length}`}>{g.label}</Ueberschrift>
+            {l.length || la.length ? <Liste>
+              {l.map(f => <FollowUpZeile key={f.id} f={f} heute={d.heute} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} aktion={nachAktion} eigene={eigene} />)}
+              {la.map(a => (
+                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)', minHeight: 44 }}>
+                  <Haken an={false} label={a.titel} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: a.aufgabeId } })} />
+                  <Chip farbe={LEUCHT.achtung}>Aufgabe</Chip>
+                  <Link href={WEG.aufgabe(a.aufgabeId)} style={{ flex: 1, minWidth: 0, color: C.ink, textDecoration: 'none', fontSize: TYP.bedien, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.titel}</Link>
+                  {a.kontaktId && <button onClick={() => zuKontakt(a.kontaktId!)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>Kontakt ›</button>}
+                  <span style={{ fontSize: 12, color: a.tageUeber ? LEUCHT.kritisch : C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{a.tageUeber ? `! ${datum(a.faellig, d.heute)}` : datum(a.faellig, d.heute)}</span>
+                </div>
+              ))}
+            </Liste>
               : <Leer>{g.id === 'ueberfaellig' ? 'Nichts überfällig — so soll es sein.' : g.id === 'heute' ? 'Heute nichts fällig.' : 'Diese Woche nichts weiter.'}</Leer>}
           </Karte>
         );

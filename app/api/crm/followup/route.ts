@@ -35,6 +35,7 @@ import { wer } from '@/lib/crm/team';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import type { CrmBestand, FollowUp, FollowUpArt, FollowUpBezugArt } from '@/lib/crm/typen';
 import { neueKennung } from '@/lib/kennung';
+import { aufgabeErledigenNachFollowUp } from '@/lib/crm/followup-aufgabe';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -198,6 +199,8 @@ export async function POST(req: Request) {
     if (regelFehler) return NextResponse.json({ ok: false, fehler: regelFehler }, { status: 400 });
     if (!erledigt) return NextResponse.json({ ok: false, fehler: 'Follow-up nicht gefunden.' }, { status: 404 });
     const e = erledigt as FollowUp;
+    // Follow-up = Aufgabe (29.09., #99): die verknüpfte Aufgabe wird mit erledigt (idempotent, über den Aufgaben-Schreibweg).
+    if (e.aufgabeId) await aufgabeErledigenNachFollowUp(e, person);
     let lead: LeadMeldung | null = null;
     if (e.kontaktId) {
       await aktivitaet(e.kontaktId, AKT_ART[e.art], `${e.text}${notiz ? ` — ${notiz}` : ''}`, person, ergebnis, e.bezug.art === 'chance' || e.bezug.art === 'event' || e.bezug.art === 'mandat' ? e.bezug.id : undefined, herkunft, werAus(req));

@@ -44,6 +44,10 @@ import { EntwurfTeil, KREISE, lifecycleFarbe, firmaVerknuepfen, type Setze } fro
 import { Klappe, leiseKnopf, type Klappen } from './kontakt-klappe';
 import { BeanWahl } from './bean-teile';
 import { AufgabenAkte, useAkteAufgaben } from '../aufgaben/AufgabenAkte';
+import { useTasks } from '@/context/TasksContext';
+import { aufgabeAnlegen } from '../aufgaben/hilfe';
+import { mandantSpaceId } from '@/lib/aufgaben/struktur';
+import type { Owner } from '@/types/common';
 import { ZoeVorschlaege } from './ZoeFragen';
 
 const zeile = { display: 'flex', alignItems: 'center', gap: 8, minHeight: 30, fontSize: TYP.bedien, minWidth: 0 } as const;
@@ -319,21 +323,29 @@ function AnrufAktion({ k, api, heute, telHref, anlassNoetig, onFertig, onAbbruch
   );
 }
 
+/**
+ * „Aufgabe anlegen“ am Kontakt (29.09., #99 — Follow-up = Aufgabe): legt eine echte AUFGABE mit Bezug auf die Person
+ * (und ihre Firma) an — bei aktivem Mandat im Mandanten-Space, sonst in KD Ventures. Sie steht in Aufgaben, in der Glocke,
+ * rechts in „Aufgaben“ und in Follow-up › Fällig. Vorher wurde es ein Follow-up, das in den Aufgaben fehlte.
+ */
 function AufgabeAktion({ k, api, heute, onFertig, onAbbruch }: { k: Kontakt; api: CrmApi; heute: string; onFertig: (t: string) => void; onAbbruch: () => void }) {
+  const { state, dispatch } = useTasks();
   const [text, setText] = useState('');
   const [faellig, setFaellig] = useState(plusTage(heute, 2));
   const [art, setArt] = useState<FollowUpArt>('anruf');
   const [fehler, setFehler] = useState<string | null>(null);
-  const [laeuft, setLaeuft] = useState(false);
+  const mandat = (api.crm?.stand.mandate ?? []).find(m => m.status === 'aktiv' && m.kontaktIds.includes(k.id) && m.firmaId);
   const anlegen = async () => {
-    if (!text.trim() || !faellig || laeuft) return;
-    setLaeuft(true); setFehler(null);
-    const r = await fetch('/api/crm/followup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'anlegen', kontaktId: k.id, text: text.trim(), faellig, art, ...(api.ich ? { zustaendig: api.ich } : {}) }) })
-      .then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' })) as { ok?: boolean; fehler?: string; text?: string };
-    setLaeuft(false);
-    if (!r.ok) { setFehler(r.fehler ?? 'Nicht angelegt.'); return; }
-    void api.laden();
-    onFertig(r.text ?? 'Aufgabe steht.');
+    if (!text.trim() || !faellig) return;
+    if (faellig < heute) { setFehler('Das Datum liegt in der Vergangenheit.'); return; }
+    setFehler(null);
+    const artLabel = FOLLOWUP_ARTEN.find(a => a.id === art)?.label;
+    const firmaId = k.firmaId ?? mandat?.firmaId;
+    aufgabeAnlegen(dispatch, state, { spaceId: mandat?.firmaId ? mandantSpaceId(mandat.firmaId) : 'kdv' }, {
+      title: text.trim().slice(0, 300), dueDate: faellig, ...(api.ich ? { assignee: api.ich as Owner } : {}),
+      bezug: { kontaktId: k.id, ...(firmaId ? { firmaId } : {}) }, ...(artLabel && art !== 'sonstig' ? { description: `Art: ${artLabel}` } : {}),
+    });
+    onFertig(`Aufgabe „${text.trim().slice(0, 60)}“ am ${faellig} steht — in Aufgaben und hier rechts.`);
   };
   return (
     <>
@@ -343,8 +355,8 @@ function AufgabeAktion({ k, api, heute, onFertig, onAbbruch }: { k: Kontakt; api
         <Wahl label="Art" klein liste={FOLLOWUP_ARTEN} wert={art} onWahl={setArt} />
       </div>
       {fehler && <div role="alert" style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{fehler}</div>}
-      <Fuss><Knopf aus={!text.trim() || laeuft} onClick={() => void anlegen()}>Aufgabe anlegen</Knopf><Knopf leise onClick={onAbbruch}>Abbrechen</Knopf></Fuss>
-      <Hinweis>Landet als Follow-up in Follow-up › Fällig und hier rechts.</Hinweis>
+      <Fuss><Knopf aus={!text.trim()} onClick={anlegen}>Aufgabe anlegen</Knopf><Knopf leise onClick={onAbbruch}>Abbrechen</Knopf></Fuss>
+      <Hinweis>Wird eine Aufgabe mit Bezug auf die Person — in Aufgaben, in Follow-up › Fällig und hier rechts.</Hinweis>
     </>
   );
 }
