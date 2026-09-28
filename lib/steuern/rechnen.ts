@@ -13,9 +13,19 @@ import type { Rechnung } from '@/lib/make-one/liquiditaet';
 import { UST_REGEL, aufCent, ustAusBrutto } from '@/lib/finanzen/ust';
 import type { Beleg } from '@/lib/finanzen/haushalt/typen';
 import { WEG } from '@/lib/wege';
+import { FINANZ_ORT_IDS, finanzOrtName, type FinanzOrt, type Gesellschaftskennung } from '@/lib/einheiten';
 
-export type Einheit = 'kdc' | 'kdv' | 'privat';
-export const EINHEIT_LABEL: Record<Einheit, string> = { kdc: 'Consulting', kdv: 'KD Ventures', privat: 'Privat' };
+// Die eine Einheitenliste (28.09., lib/einheiten.ts): Privat · Selbstständigkeit · KD Ventures · MAKE OS UG.
+// Die MAKE OS UG ist eine Körperschaft — sie wird NICHT wie die Selbstständigkeit gerechnet. Solange ihre
+// Steuerlogik (Rechtsform, USt-Rhythmus, Vorauszahlungen) nicht hinterlegt ist, steht sie überall mit dabei,
+// aber ohne Fristen und mit „noch nicht hinterlegt“ statt einer geschätzten Zahl.
+export type Einheit = FinanzOrt;
+export const EINHEIT_LABEL: Record<Einheit, string> = { kdc: finanzOrtName('kdc'), kdv: finanzOrtName('kdv'), ug: finanzOrtName('ug'), privat: finanzOrtName('privat') };
+/** Für die MAKE OS UG ist noch keine Steuerlogik hinterlegt (28.09.) — anzeigen, nicht rechnen. */
+/** Firmen MIT hinterlegter Steuerlogik — die MAKE OS UG fehlt hier bewusst (UG_NICHT_HINTERLEGT). */
+export type SteuerFirma = Exclude<Gesellschaftskennung, 'ug'>;
+export const STEUER_FIRMEN: readonly SteuerFirma[] = ['kdc', 'kdv'];
+export const UG_NICHT_HINTERLEGT = 'Steuerlogik der MAKE OS UG (Körperschaft) noch nicht hinterlegt — keine Fristen, keine Schätzung.';
 
 export interface FirmaSteuer {
   rechtsform: 'freiberuf' | 'einzel' | 'ug' | 'gmbh';
@@ -100,7 +110,7 @@ export function fristen(e: SteuerEinstellungen, heute: string, erledigt: Record<
     const id = `${einheit}-${f.art}-${f.datum}`;
     raus.push({ ...f, id, einheit, tage: tageBis(heute, f.datum), aufgabeAb: tagPlus(f.datum, -e.vorlaufTage), erledigt: !!erledigt[`f:${id}`] });
   };
-  for (const firma of ['kdc', 'kdv'] as const) {
+  for (const firma of STEUER_FIRMEN) {
     const f = e[firma];
     const kap = istKapital(f);
     for (const t of steuertermine(von, bis, { ust: f.ust, dauerfrist: f.dauerfrist, estVorauszahlung: false, gewstVorauszahlung: f.gewerbe, kstVorauszahlung: kap })) {
@@ -129,7 +139,7 @@ export function fristen(e: SteuerEinstellungen, heute: string, erledigt: Record<
 
 export interface UstRechnung { id: string; kunde: string; nummer?: string; datum?: string; brutto: number; ust: number; satz: number; angenommen: boolean }
 export interface UstZeitraum {
-  firma: 'kdc' | 'kdv'; label: string; von: string; bis: string; faellig: string | null;
+  firma: SteuerFirma; label: string; von: string; bis: string; faellig: string | null;
   ust: number; vorsteuer: number | null; zahllast: number | null;
   rechnungen: UstRechnung[]; vorsteuerQuelle: string;
 }
@@ -144,7 +154,7 @@ export function zeitraumVon(tag: string, r: UstRhythmus): { label: string; von: 
   return { label: `Q${q}/${j}`, von: `${j}-${String(q * 3 - 2).padStart(2, '0')}-01`, bis: letzterTag(j, q * 3) };
 }
 
-export function ustZeitraum(firma: 'kdc' | 'kdv', f: FirmaSteuer, zr: { label: string; von: string; bis: string }, rechnungen: (Rechnung & { firmaId?: string })[], grund: Grundlagenteil | null, faellig: string | null): UstZeitraum {
+export function ustZeitraum(firma: SteuerFirma, f: FirmaSteuer, zr: { label: string; von: string; bis: string }, rechnungen: (Rechnung & { firmaId?: string })[], grund: Grundlagenteil | null, faellig: string | null): UstZeitraum {
   const eigene = rechnungen.filter(r => (r.firmaId ?? 'kdc') === firma && (r.status === 'gestellt' || r.status === 'bezahlt'));
   const liste: UstRechnung[] = [];
   for (const r of eigene) {
@@ -189,14 +199,14 @@ export function jahresgewinn(ist: { monat: string; umsatz: number; kosten: numbe
 /** Vorauszahlungen dieses Jahres, die bis heute fällig waren. */
 const vzBisHeute = (heute: string, monate: number[]) => monate.filter(m => `${heute.slice(0, 4)}-${String(m).padStart(2, '0')}-10` <= heute).length;
 
-export function prognose(e: SteuerEinstellungen, heute: string, gewinn: { kdc: Jahresgewinn | null; kdv: Jahresgewinn | null }, ustOffen: Partial<Record<'kdc' | 'kdv', number>>): Prognose {
+export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Record<SteuerFirma, Jahresgewinn | null>, ustOffen: Partial<Record<SteuerFirma, number>>, ug: { rechnungen: number } = { rechnungen: 0 }): Prognose {
   const jahr = Number(heute.slice(0, 4));
   const z: PrognoseZeile[] = [];
   const e4 = (n?: number) => (n ?? 0) * 4;
   const gezahlt = (n: number | undefined, monate: number[]) => (n ?? 0) * vzBisHeute(heute, monate);
   const R = WEG.steuern('ruecklage');
   // Umsatzsteuer: laufender Zeitraum, noch nicht angemeldet.
-  for (const f of ['kdc', 'kdv'] as const) if (ustOffen[f] != null) z.push({ id: `ust-${f}`, einheit: f, titel: 'Umsatzsteuer laufender Zeitraum', betrag: Math.max(0, ustOffen[f]!), formel: 'USt aus Rechnungen − bekannte Vorsteuer', href: WEG.steuern('ust') });
+  for (const f of STEUER_FIRMEN) if (ustOffen[f] != null) z.push({ id: `ust-${f}`, einheit: f, titel: 'Umsatzsteuer laufender Zeitraum', betrag: Math.max(0, ustOffen[f]!), formel: 'USt aus Rechnungen − bekannte Vorsteuer', href: WEG.steuern('ust') });
   // Einkommensteuer auf den Consulting-Gewinn (privat).
   const gk = gewinn.kdc;
   if (!gk) z.push({ id: 'est', einheit: 'privat', titel: `Einkommensteuer ${jahr} (Anteil Consulting)`, betrag: null, formel: 'Gewinn × Steuerquote − Vorauszahlungen', luecke: 'Ist-Monate Consulting fehlen', href: WEG.abschluss('kdc') });
@@ -219,7 +229,9 @@ export function prognose(e: SteuerEinstellungen, heute: string, gewinn: { kdc: J
     const vz = gezahlt(e.vorauszahlung.kst, [3, 6, 9, 12]) + gezahlt(e.vorauszahlung.gewstKdv, [2, 5, 8, 11]);
     z.push({ id: 'kst', einheit: 'kdv', titel: `Körperschaft- und Gewerbesteuer ${jahr}`, betrag: Math.max(0, kst + gew - vz), formel: `${Math.round(gv.hochgerechnet).toLocaleString('de-DE')} € Gewinn × (15,825 % KSt+Soli${e.kdv.gewerbe ? ` + ${(3.5 * e.hebesatz / 100).toLocaleString('de-DE', { maximumFractionDigits: 2 })} % GewSt` : ''}) − ${Math.round(vz).toLocaleString('de-DE')} € Vorauszahlungen`, href: R });
   }
-  const je = Object.fromEntries((['kdc', 'kdv', 'privat'] as Einheit[]).map(x => {
+  // MAKE OS UG: sichtbar, aber nicht gerechnet (Körperschaft ≠ Selbstständigkeit) — Betrag bleibt leer.
+  z.push({ id: 'ug', einheit: 'ug', titel: `Steuern MAKE OS UG ${jahr}`, betrag: null, formel: 'Körperschaft-, Gewerbe- und Umsatzsteuer der UG', luecke: `${UG_NICHT_HINTERLEGT}${ug.rechnungen ? ` ${ug.rechnungen} UG-Rechnung${ug.rechnungen === 1 ? '' : 'en'} zählen noch in keiner Umsatzsteuer.` : ''}`, href: R });
+  const je = Object.fromEntries(FINANZ_ORT_IDS.map(x => {
     const soll = z.filter(y => y.einheit === x).reduce((s, y) => s + (y.betrag ?? 0), 0);
     const ist = e.ruecklageIst[x] ?? null;
     return [x, { soll, ist, deckung: ist != null && soll > 0 ? ist / soll : ist != null ? 1 : null }];
@@ -242,7 +254,7 @@ export function belegPunkte(rechnungen: (Rechnung & { firmaId?: string })[], bel
   for (const b of belege.filter(x => x.einheit !== 'privat' && !x.erledigt)) {
     raus.push({
       id: `b-${b.id}`, titel: b.art === 'beleg' ? `Beleg fehlt: ${b.bezeichnung}` : `${b.empfaenger || b.bezeichnung}`,
-      unter: `${b.einheit === 'ug' ? 'KD Ventures' : 'Consulting'}${b.faellig_am ? ` · ${b.faellig_am < heute ? 'überfällig seit' : 'fällig'} ${deutsch(b.faellig_am)}` : ''}${b.verursacher ? ` · ${b.verursacher}` : ''}`,
+      unter: `${EINHEIT_LABEL[b.einheit] ?? b.einheit}${b.faellig_am ? ` · ${b.faellig_am < heute ? 'überfällig seit' : 'fällig'} ${deutsch(b.faellig_am)}` : ''}${b.verursacher ? ` · ${b.verursacher}` : ''}`,
       ...(b.betrag ? { wert: `${(b.betrag / 100).toLocaleString('de-DE', { maximumFractionDigits: 0 })} €` } : {}),
       href: WEG.steuern('ust'), art: b.art === 'beleg' ? 'beleg' : 'eingangsrechnung', ...(b.faellig_am ? { faellig: b.faellig_am } : {}), belegId: b.id, stand: b.stand,
     });
@@ -273,7 +285,7 @@ export function uebergabeMonat(monat: string, x: {
     p('konto', 'Kontoauszüge der Geschäftskonten vollständig', x.buchungsMonate.includes(monat) ? 'Buchungen für den Monat sind da' : 'keine Geschäftsbuchungen in MAKE OS — im Bankzugang des Steuerberaters prüfen und abhaken', x.buchungsMonate.includes(monat) ? 'ok' : 'hand', '/os/finanzen/buchungen'),
     p('rechnungen', 'Ausgangsrechnungen vollständig', imMonat.length ? (unvollstaendig.length ? `${unvollstaendig.length} von ${imMonat.length} ohne Nummer oder USt-Satz` : `${imMonat.length} Rechnungen mit Nummer und USt-Satz`) : 'keine Rechnung mit Datum in diesem Monat', unvollstaendig.length ? 'offen' : 'ok', unvollstaendig[0] ? WEG.rechnung(unvollstaendig[0].id) : WEG.rechnungen()),
     p('belege', 'Eingangsbelege vollständig', belegeOffen.length ? `${belegeOffen.length} Beleg${belegeOffen.length === 1 ? '' : 'e'} fehlen noch` : 'kein fehlender Beleg bis Monatsende', belegeOffen.length ? 'offen' : 'ok', WEG.steuern('ust')),
-    p('abschluss', 'Monatsabschluss eingetragen', abschluss.length === 2 ? 'Consulting und KD Ventures' : abschluss.length ? `nur ${abschluss[0] === 'kdc' ? 'Consulting' : 'KD Ventures'}` : 'noch keiner', abschluss.length === 2 ? 'ok' : 'offen', WEG.abschluss()),
+    p('abschluss', 'Monatsabschluss eingetragen', abschluss.length === 2 ? `${EINHEIT_LABEL.kdc} und ${EINHEIT_LABEL.kdv}` : abschluss.length ? `nur ${EINHEIT_LABEL[abschluss[0] as Einheit]}` : 'noch keiner', abschluss.length === 2 ? 'ok' : 'offen', WEG.abschluss()),
     p('abgleich', 'Offene Posten abgeglichen', 'Forderungen und Verbindlichkeiten mit dem Konto verglichen', 'hand', WEG.rechnungen()),
     p('uebergeben', 'An den Steuerberater übergeben', 'Belege hochgeladen bzw. Freigabe erteilt', 'hand'),
   ];

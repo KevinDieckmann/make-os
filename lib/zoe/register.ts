@@ -15,6 +15,7 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { WERKZEUGE } from './werkzeuge';
+import { firmaAusAngabe, finanzOrtName, istGesellschaft } from '@/lib/einheiten';
 
 export type Risiko = 'frei' | 'freigabe' | 'nie';
 
@@ -51,7 +52,8 @@ const eur = (n: unknown) => {
     ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(z))
     : '—';
 };
-const firma = (rein: unknown) => (/ventures|kdv/i.test(String(rein ?? '')) ? 'kdv' : 'kdc');
+// Dieselbe Zuordnung wie die Ausführung (lib/einheiten.ts, 28.09.: auch die MAKE OS UG).
+const firma = (rein: unknown) => firmaAusAngabe(rein);
 const text = (v: unknown, n = 120) => String(v ?? '').trim().slice(0, n);
 
 // ── Trockenläufe ───────────────────────────────────────────────────────────
@@ -161,7 +163,7 @@ const schlicht = (titel: string, nachher: (i: Record<string, unknown>) => string
 const ABSCHLUSS_LABEL: Record<string, string> = { umsatz: 'Umsatz', kosten: 'Kosten', personal: 'Personal', marketingVertrieb: 'Marketing & Vertrieb', afa: 'AfA', eigenkapital: 'Eigenkapital', bilanzsumme: 'Bilanzsumme', kurzfrVerbindlichkeiten: 'kurzfr. Verbindlichkeiten', bankschulden: 'Bankschulden' };
 
 async function vsMonatsabschluss(i: Record<string, unknown>): Promise<Vorschau> {
-  const firma = i.firma === 'kdv' ? 'KD Ventures' : 'Consulting';
+  const firma = istGesellschaft(i.firma) ? finanzOrtName(i.firma) : finanzOrtName('kdc');
   const monat = text(i.monat, 7);
   const alt = ((await loadJson<{ eintraege?: Record<string, unknown>[] }>('business-abschluesse'))?.eintraege ?? []).find(e => e.firma === i.firma && e.monat === monat);
   const zeile = (q: Record<string, unknown>) => Object.keys(ABSCHLUSS_LABEL).filter(k => typeof q[k] === 'number').map(k => `${ABSCHLUSS_LABEL[k]} ${eur(q[k])}`).join(' · ');

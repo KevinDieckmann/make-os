@@ -19,7 +19,7 @@ const buchungen: Buchung[] = MONATE.flatMap(m => [
   b(`${m}-03`, -150000, 'miete', { ist_fixkosten: true, empfaenger: 'Vermieter' }),
   b(`${m}-12`, m === '2026-08' ? -60000 : -50000, 'lebensmittel'),
   b(`${m}-15`, -30000, 'tilgung'),
-]).concat([b('2026-08-28', -10000, 'freizeit'), b('2026-08-20', 5000, null, { einheit: 'selbststaendigkeit' })]);
+]).concat([b('2026-08-28', -10000, 'freizeit'), b('2026-08-20', 5000, null, { einheit: 'kdc' })]);
 const haushalt: PrivatBestand['haushalt'] = {
   stamm: {
     konten: [{ id: 'k1', stand: 1, name: 'Gemeinschaftskonto', inhaber: 'gemeinsam', einheit: 'privat', iban_suffix: null, bank: null, waehrung: 'EUR', aktiv: true } as Konto],

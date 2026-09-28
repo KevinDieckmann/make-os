@@ -9,11 +9,20 @@
 //     Zeile speichert, bekommt einen Konflikt statt still zu überschreiben —
 //     Malins bekannte Schwäche „wer zuletzt speichert, gewinnt“.
 
-export type Einheit = 'privat' | 'selbststaendigkeit' | 'ug';
-export const EINHEITEN: Einheit[] = ['privat', 'selbststaendigkeit', 'ug'];
+import { FINANZ_ORT_IDS, finanzOrtAus, finanzOrtName, type FinanzOrt } from '@/lib/einheiten';
+
+// Einheit (28.09., eine Einheitenliste): die Kennungen aus lib/einheiten.ts — privat · kdc · kdv · ug.
+// VORHER hieß es hier privat · selbststaendigkeit · ug, und `ug` war die „KD Management UG“ =
+// Gründungsname der KD Ventures UG (CLAUDE.md), NICHT die MAKE OS UG. Gespeicherte Bestände
+// ohne Fassungs-Marke werden deshalb beim Lesen übersetzt: selbststaendigkeit → kdc, ug → kdv
+// (`haushaltEinheitAusAlt`, `einheitenLesen` in speicher.ts); geschrieben wird die neue Fassung.
+export type Einheit = FinanzOrt;
+export const EINHEITEN: Einheit[] = [...FINANZ_ORT_IDS];
 export const EINHEIT_NAME: Record<Einheit, string> = {
-  privat: 'Privat', selbststaendigkeit: 'Selbstständigkeit', ug: 'KD Management UG',
+  privat: finanzOrtName('privat'), kdc: finanzOrtName('kdc'), kdv: finanzOrtName('kdv'), ug: finanzOrtName('ug'),
 };
+/** Fassung der Einheiten in einer Haushalts-Datei: fehlt sie, gilt das alte Vokabular (ug = KD Ventures). */
+export const EINHEITEN_FASSUNG = 2;
 
 /** Rhythmus einer wiederkehrenden Zahlung. Seit 27.09. auch halbjährlich und „unregelmäßig“ (Malins Rückmeldung: „Rhythmus unklar“ muss klärbar sein). */
 export type Turnus = 'monatlich' | 'quartal' | 'halbjahr' | 'jahr' | 'unregelmaessig';
@@ -145,11 +154,26 @@ export function zuCent(wert: unknown): number | null {
   return Number.isNaN(n) ? null : Math.round(n * 100);
 }
 
-/** Einheit aus altem oder neuem Namen — Unbekanntes wird abgewiesen, nicht geraten. */
+/**
+ * Einheit aus einer EINGABE (Oberfläche, API) — neues Vokabular der einen Liste (`ug` = MAKE OS UG),
+ * Namen und Altnamen („Selbstständigkeit“, „KD Management UG“) werden erkannt. Leer = privat.
+ * Unbekanntes wird abgewiesen, nicht geraten.
+ */
 export function einheitAus(roh: unknown): Einheit | null {
+  const s = String(roh ?? '').trim();
+  if (!s) return 'privat';
+  return finanzOrtAus(s) ?? null;
+}
+
+/**
+ * Einheit aus einem ALTEN Bestand (Datei ohne Fassungs-Marke, Malins MAKE.ORGA/Supabase, V1):
+ * dort war `ug` die KD Management UG = KD Ventures (kdv), `selbststaendigkeit` die Selbstständigkeit (kdc).
+ * Unbekanntes → null (nie raten, nie still verwerfen — der Aufrufer entscheidet).
+ */
+export function haushaltEinheitAusAlt(roh: unknown): Einheit | null {
   const s = String(roh ?? '').trim().toLowerCase();
   if (!s || s === 'privat') return 'privat';
-  if (s === 'selbst' || s === 'selbststaendigkeit' || s === 'selbstständigkeit') return 'selbststaendigkeit';
-  if (s === 'ug' || s === 'kd management ug') return 'ug';
-  return null;
+  if (s === 'ug' || s === 'kd management ug') return 'kdv';
+  if (s === 'selbst' || s === 'selbststaendigkeit' || s === 'selbstständigkeit') return 'kdc';
+  return einheitAus(roh);
 }

@@ -26,7 +26,7 @@ import { WEG } from '@/lib/wege';
 import { umsatzBezug, umsatzKennzahlen, angeboteListe, ablageFilter, kundenName, type UmsatzRechnung, type ZugeordneteRechnung, type AngebotZeile } from '@/lib/crm/umsatz';
 import { ZAHLUNGSWEGE, ZAHLUNGSWEG_LABEL, ibanGueltig, ibanMaskiert, zahlungsQuelle, zahlungLuecken } from '@/lib/crm/zahlung';
 import { ANNEHMEN, MAX_DATEI_BYTES, VERTRAGSARTEN, ANGEBOT_STATUS, groesseText, istBeleg, type DateiEintrag, type DateiArt, type Vertragsart, type AngebotStatus } from '@/lib/dateien/regeln';
-import { einheitAusGesellschaft } from '@/lib/einheiten';
+import { einheitAusGesellschaft, firmaFuerGesellschaft, gesellschaftAusEinheit } from '@/lib/einheiten';
 import { inGruppe } from '@/lib/crm/konzern';
 import Link from 'next/link';
 import { angebotLink } from '@/lib/crm/adresse';
@@ -283,7 +283,7 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
               const e = a.eintrag!;
               const mandat = e.mandatId ? bezug.mandate.find(m => m.id === e.mandatId) : bezug.mandate[0];
               const id = `r-${Date.now().toString(36)}`;
-              const ok = await rechnungSchreiben({ id, firmaId: mandat && (mandat.gesellschaft === 'kdv' || mandat.gesellschaft === 'kdc') ? mandat.gesellschaft : 'kdc', kunde: kundenName(k, bezug.firma), titel: e.titel || `Angebot ${e.angebot?.nummer ?? ''}`.trim(), betrag: e.angebot?.betrag ?? 0, status: 'geplant', ...(e.angebot?.nummer ? { angebot: e.angebot.nummer } : {}), ...(e.angebot?.datum ? { angebotAm: e.angebot.datum } : {}), ...(mandat ? { mandatId: mandat.id } : {}) });
+              const ok = await rechnungSchreiben({ id, firmaId: mandat ? firmaFuerGesellschaft(mandat.gesellschaft) : 'kdc', kunde: kundenName(k, bezug.firma), titel: e.titel || `Angebot ${e.angebot?.nummer ?? ''}`.trim(), betrag: e.angebot?.betrag ?? 0, status: 'geplant', ...(e.angebot?.nummer ? { angebot: e.angebot.nummer } : {}), ...(e.angebot?.datum ? { angebotAm: e.angebot.datum } : {}), ...(mandat ? { mandatId: mandat.id } : {}) });
               if (ok) await eintragAendern(e.id, { rechnungId: id });
             }} />
         ))}
@@ -515,7 +515,7 @@ function RechnungNeu({ k, bezug, zielTage, heute, firmen, schreiben }: { k: Kont
   const aktiv = bezug.mandate.find(m => m.status === 'aktiv') ?? bezug.mandate[0];
   const eigene = firmen.filter(f => f.id !== 'privat').map(f => ({ id: f.id, label: einheitAusGesellschaft(f.id) ?? f.name, hinweis: f.name }));
   type Form = { nummer: string; titel: string; betrag: string; datum: string; faellig: string; mandatId: string | null; firmaId: string; status: 'gestellt' | 'geplant' };
-  const start = (): Form => ({ nummer: '', titel: aktiv?.titel ?? '', betrag: aktiv?.honorar.betrag ? String(aktiv.honorar.betrag) : '', datum: heute, faellig: plusTage(heute, zielTage), mandatId: aktiv?.id ?? null, firmaId: aktiv && (aktiv.gesellschaft === 'kdv' || aktiv.gesellschaft === 'kdc') ? aktiv.gesellschaft : eigene[0]?.id ?? 'kdc', status: 'gestellt' });
+  const start = (): Form => ({ nummer: '', titel: aktiv?.titel ?? '', betrag: aktiv?.honorar.betrag ? String(aktiv.honorar.betrag) : '', datum: heute, faellig: plusTage(heute, zielTage), mandatId: aktiv?.id ?? null, firmaId: (aktiv ? gesellschaftAusEinheit(aktiv.gesellschaft) : undefined) ?? eigene[0]?.id ?? 'kdc', status: 'gestellt' });
   const [f, setF] = useState(start);
   const [laeuft, setLaeuft] = useState(false);
   if (!offen) return <div style={{ marginBottom: 6 }}><button onClick={() => { setF(start()); setOffen(true); }} style={leiseLink}>+ Rechnung</button></div>;
@@ -534,7 +534,7 @@ function RechnungNeu({ k, bezug, zielTage, heute, firmen, schreiben }: { k: Kont
       <Feldzeile label="Titel"><input value={f.titel} onChange={e => setF({ ...f, titel: e.target.value })} placeholder="Leistung" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} /></Feldzeile>
       <Feldzeile label="Betrag €"><input inputMode="decimal" value={f.betrag} onChange={e => setF({ ...f, betrag: e.target.value })} placeholder="brutto" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', width: 'min(140px, 100%)' }} /></Feldzeile>
       <Feldzeile label="Datum · fällig"><span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}><input type="date" value={f.datum} onChange={e => setF({ ...f, datum: e.target.value, faellig: e.target.value ? plusTage(e.target.value, zielTage) : f.faellig })} aria-label="Rechnungsdatum" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', width: 'min(160px, 100%)' }} /><input type="date" value={f.faellig} onChange={e => setF({ ...f, faellig: e.target.value })} aria-label="fällig am" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', width: 'min(160px, 100%)' }} /></span></Feldzeile>
-      {mandatListe.length > 0 && <Feldzeile label="Mandat"><Wahl<string> liste={mandatListe} wert={f.mandatId} label="Mandat" onWahl={v => { const m = bezug.mandate.find(x => x.id === v); setF({ ...f, mandatId: v, ...(m && (m.gesellschaft === 'kdv' || m.gesellschaft === 'kdc') ? { firmaId: m.gesellschaft } : {}) }); }} onLeeren={() => setF({ ...f, mandatId: null })} /></Feldzeile>}
+      {mandatListe.length > 0 && <Feldzeile label="Mandat"><Wahl<string> liste={mandatListe} wert={f.mandatId} label="Mandat" onWahl={v => { const m = bezug.mandate.find(x => x.id === v); const g = m ? gesellschaftAusEinheit(m.gesellschaft) : undefined; setF({ ...f, mandatId: v, ...(g ? { firmaId: g } : {}) }); }} onLeeren={() => setF({ ...f, mandatId: null })} /></Feldzeile>}
       {eigene.length > 0 && <Feldzeile label="Einheit"><Wahl<string> liste={eigene} wert={f.firmaId} label="Einheit" onWahl={v => setF({ ...f, firmaId: v })} /></Feldzeile>}
       <div style={{ fontSize: 12, color: C.inkLeise, margin: '4px 0' }}>Geht in den Finanzplan (Kunde „{kundenName(k, bezug.firma)}“){f.mandatId ? ', mit Bezug zum Mandat' : ' — ohne Mandat wird sie per Name zugeordnet'}.</div>
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}><Knopf onClick={() => void los()} aus={laeuft || !f.betrag}>{laeuft ? 'speichert …' : 'Anlegen'}</Knopf><Knopf leise onClick={() => setOffen(false)}>Abbrechen</Knopf></div>

@@ -25,9 +25,13 @@ export function preisBasisVon(l: Pick<Leistung, 'preis'>): PreisBasis | null {
 }
 export const RHYTHMUS_AUS_BASIS: Record<PreisBasis, Rhythmus> = { monat: 'monatlich', jahr: 'jaehrlich', einmalig: 'einmalig' };
 
-/** Einheit der Planung aus der Gesellschaft des Produkts — Selbstständigkeit (kdc) hat keine Planachse und landet in der UG. */
-export function einheitAusGesellschaft(g: Leistung['gesellschaft']): BausteinEinheit {
-  return g === 'kdv' ? 'kdv' : 'ug';
+/**
+ * Einheit der Planung aus der Gesellschaft des Produkts (28.09., eine Einheitenliste):
+ * kdc · kdv · ug wie im CRM — die Selbstständigkeit ist eine eigene Achse im Baukasten
+ * (gerechnet über die UG-Kanäle des Kerns, `kernKanal`). „offen“ bleibt bei der UG wie bisher.
+ */
+export function einheitAusGesellschaft(g: Leistung['gesellschaft'] | 'offen'): BausteinEinheit {
+  return g === 'kdv' || g === 'kdc' ? g : 'ug';
 }
 
 /** Was dem Produkt für die Planung fehlt — leer heißt: planbar. */

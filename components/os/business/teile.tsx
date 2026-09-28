@@ -20,6 +20,7 @@ export const scoreFarbe = (n: number | null) => (n == null ? C.inkLeise : n >= 8
 
 export { schwelle, schwellenText } from '@/lib/business/text';
 import { schwelle, schwellenText } from '@/lib/business/text';
+import { SCOPES } from '@/lib/business/register';
 
 /** Die Punkte hinter einer Kennzahl — jeder ein Link dorthin, wo man handelt. */
 export function DetailListe({ details, dicht, onKlick }: { details: Detail[]; dicht?: boolean; onKlick?: () => void }) {
@@ -85,7 +86,7 @@ export function KennzahlKachel({ k, onOeffnen }: { k: KennzahlStand; onOeffnen: 
   );
 }
 
-const SICHT_LABEL: Record<string, string> = { gesamt: 'Gesamt', kdc: 'Consulting', kdv: 'KD Ventures' };
+const SICHT_LABEL: Record<string, string> = Object.fromEntries(SCOPES.map(s => [s.id, s.label]));
 const zahlText = (n: number) => String(n).replace('.', ',');
 
 /** Feinjustierung: eigene Schwellen für alle Sichten oder nur diese — mit Rückweg zum Standard. */

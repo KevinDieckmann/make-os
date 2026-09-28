@@ -77,7 +77,7 @@ export function testHaushalt(heute: string = heuteBerlin()): Haushalt {
   const belege: Beleg[] = [
     { id: 'test-bl-1', stand: 1, art: 'rechnung', bezeichnung: 'Nebenkostenabrechnung Beispiel', empfaenger: 'Hausverwaltung Beispiel', betrag: 18400, faellig_am: tagPlus(heute, 5), verursacher: 'Malin', einheit: 'privat', erledigt: false, bezahlt_am: null, notiz: null, buchung_id: null },
     { id: 'test-bl-2', stand: 1, art: 'rechnung', bezeichnung: 'Handwerker Beispiel', empfaenger: 'Handwerk Beispiel', betrag: 26000, faellig_am: tagPlus(heute, -3), verursacher: 'Kevin', einheit: 'privat', erledigt: false, bezahlt_am: null, notiz: null, buchung_id: null },
-    { id: 'test-bl-3', stand: 1, art: 'beleg', bezeichnung: 'Quittung Hotel Beispielstadt', empfaenger: null, betrag: null, faellig_am: tagPlus(heute, 10), verursacher: 'Kevin', einheit: 'selbststaendigkeit', erledigt: false, bezahlt_am: null, notiz: null, buchung_id: null },
+    { id: 'test-bl-3', stand: 1, art: 'beleg', bezeichnung: 'Quittung Hotel Beispielstadt', empfaenger: null, betrag: null, faellig_am: tagPlus(heute, 10), verursacher: 'Kevin', einheit: 'kdc', erledigt: false, bezahlt_am: null, notiz: null, buchung_id: null },
   ];
   const m = monatVon(heute);
   const planwerte: Planwert[] = [

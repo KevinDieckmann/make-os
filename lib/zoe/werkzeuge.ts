@@ -12,7 +12,8 @@ import { speicherFuer } from '@/lib/zoe/raum';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import type { Op as EinkaufOp } from '@/lib/ernaehrung/modell';
 import { localDay } from '@/lib/zeit';
-import { GRENZEN, rechnungSchutz, sauberFile, type Rechnung as FpRechnung } from '@/lib/finanzen/finanzplan-bestand';
+import { GRENZEN, UG_FIRMA, rechnungSchutz, sauberFile, type Rechnung as FpRechnung } from '@/lib/finanzen/finanzplan-bestand';
+import { firmaAusAngabe, finanzOrtName, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 import type { FaktArt } from './gedaechtnis';
 
 // ── ZOE plant SELBST: Block in den Wochenplan legen (Kevins Ansage:
@@ -68,7 +69,10 @@ async function planBlock(input: Record<string, unknown>, _o?: unknown, person = 
 // knapp bestätigt und erscheint sofort in Finanzplanung/Meilensteinen/Markttraktion.
 
 const eurW = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(n || 0));
-const firmaId = (rein: unknown): 'kdv' | 'kdc' => (/ventures|kdv/i.test(String(rein ?? '')) ? 'kdv' : 'kdc');
+// Die eine Einheitenliste (28.09.): kdc · kdv · ug aus lib/einheiten.ts — „MAKE OS“/„UG“ → ug, bei Unklarheit kdc.
+const firmaId = (rein: unknown): Gesellschaftskennung => firmaAusAngabe(rein);
+/** Schreibt ZOE etwas auf die UG, bekommt ein Plan ohne UG-Konto es dazu (wie ugFirmaNachziehen im Schreibweg der Route). */
+const mitUgKonto = <F extends { firmen?: { id: string }[] }>(f: F, fid: string): F => (fid === UG_FIRMA.id && Array.isArray(f.firmen) && f.firmen.length && !f.firmen.some(x => x.id === UG_FIRMA.id) ? { ...f, firmen: [...f.firmen, { ...UG_FIRMA }] } : f);
 /** Privates gehört seit 24.09. in die Haushaltsfinanzen, nicht in den Finanzplan der Firmen. */
 const istPrivatAngabe = (rein: unknown) => /privat|haushalt|malin|n26/i.test(String(rein ?? ''));
 const PRIVAT_HINWEIS = 'Nicht erfasst: Das ist privat. Private Zahlungen und Rechnungen gehören in die Haushaltsfinanzen (Zahlen → Privat) — dafür gibt es eigene Werkzeuge.';
@@ -79,7 +83,7 @@ async function setzeKontostand(input: Record<string, unknown>): Promise<string> 
   const fid = firmaId(input.firma);
   let name: string = fid;
   await updateJson<{ firmen: { id: string; name: string; kontostand: number | null; stand: string | null }[] }>('finanzplan', current => {
-    const f = current ?? { firmen: [] };
+    const f = mitUgKonto(current ?? { firmen: [] }, fid);
     f.firmen = (f.firmen ?? []).map(x => {
       if (x.id !== fid) return x;
       name = x.name;
@@ -101,8 +105,9 @@ async function erfasseRechnung(input: Record<string, unknown>): Promise<string> 
   const titel = input.titel ? String(input.titel).slice(0, 200) : undefined;
   let aktion = '';
   let abgelehnt = '';
-  await updateJson<{ rechnungen: { id: string; firmaId: string; kunde: string; titel: string; betrag: number; status: string; faellig?: string }[] }>('finanzplan', current => {
-    const f = current ?? { rechnungen: [] };
+  const fidR = firmaId(input.firma);
+  await updateJson<{ firmen?: { id: string }[]; rechnungen: { id: string; firmaId: string; kunde: string; titel: string; betrag: number; status: string; faellig?: string }[] }>('finanzplan', current => {
+    const f = mitUgKonto(current ?? { rechnungen: [] }, fidR);
     f.rechnungen = f.rechnungen ?? [];
     const idx = f.rechnungen.findIndex(r => r.kunde.toLowerCase() === kunde.toLowerCase() && (!titel || r.titel.toLowerCase().includes(titel.toLowerCase())));
     if (idx >= 0) {
@@ -118,7 +123,7 @@ async function erfasseRechnung(input: Record<string, unknown>): Promise<string> 
       // Grenze erreicht: ablehnen, nie kürzen (28.09.) — der Bestand bleibt, wie er ist.
       aktion = '';
     } else {
-      f.rechnungen.push({ id: `r-${Date.now().toString(36)}`, firmaId: firmaId(input.firma), kunde, titel: titel ?? 'Leistung', betrag: betrag ?? 0, status: status ?? 'geplant', ...(faellig ? { faellig } : {}) });
+      f.rechnungen.push({ id: `r-${Date.now().toString(36)}`, firmaId: fidR, kunde, titel: titel ?? 'Leistung', betrag: betrag ?? 0, status: status ?? 'geplant', ...(faellig ? { faellig } : {}) });
       aktion = `Neue Rechnung angelegt: ${kunde} ${betrag != null ? eurW(betrag) : 'ohne Betrag'} [${status ?? 'geplant'}]`;
     }
     return f;
@@ -135,11 +140,12 @@ async function erfasseZahlung(input: Record<string, unknown>): Promise<string> {
   if (!an || !isFinite(betrag)) return 'Fehlgeschlagen: an + betrag nötig.';
   const faellig = /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined;
   let voll = false;
-  await updateJson<{ zahlungen: { id: string; firmaId: string; an: string; titel: string; betrag: number; status: string; faellig?: string }[] }>('finanzplan', current => {
-    const f = current ?? { zahlungen: [] };
+  const fidZ = firmaId(input.firma);
+  await updateJson<{ firmen?: { id: string }[]; zahlungen: { id: string; firmaId: string; an: string; titel: string; betrag: number; status: string; faellig?: string }[] }>('finanzplan', current => {
+    const f = mitUgKonto(current ?? { zahlungen: [] }, fidZ);
     // Grenze wie im Schreibweg der Finanzplanung: ablehnen, nie kürzen (28.09.).
     if ((f.zahlungen ?? []).length >= GRENZEN.zahlungen) { voll = true; return f; }
-    f.zahlungen = [...(f.zahlungen ?? []), { id: `z-${Date.now().toString(36)}`, firmaId: firmaId(input.firma), an, titel: String(input.titel ?? '').slice(0, 200), betrag: Math.max(0, Math.round(betrag)), status: 'offen', ...(faellig ? { faellig } : {}) }];
+    f.zahlungen = [...(f.zahlungen ?? []), { id: `z-${Date.now().toString(36)}`, firmaId: fidZ, an, titel: String(input.titel ?? '').slice(0, 200), betrag: Math.max(0, Math.round(betrag)), status: 'offen', ...(faellig ? { faellig } : {}) }];
     return f;
   });
   if (voll) return `Fehlgeschlagen: höchstens ${GRENZEN.zahlungen} Zahlungen im Finanzplan — erst Erledigtes aufräumen.`;
@@ -468,7 +474,7 @@ async function erfassePlanposten(input: Record<string, unknown>): Promise<string
   const rhythmus = RHY.includes(String(input.rhythmus)) ? String(input.rhythmus) : 'monatlich';
   const ab = /^\d{4}-\d{2}-\d{2}$/.test(String(input.ab ?? '')) ? String(input.ab) : localDay();
   const kategorie = input.kategorie ? String(input.kategorie).slice(0, 40) : undefined;
-  const firmaId = ['kdv', 'kdc', 'kemaris'].includes(String(input.firma)) ? String(input.firma) : undefined;
+  const firmaId = istGesellschaft(input.firma) || input.firma === 'kemaris' ? String(input.firma) : undefined;
   const sicher = input.sicher !== false;
 
   let aktion = '';
@@ -602,7 +608,8 @@ async function businessIndex(input: Record<string, unknown>, _origin: string, pe
   const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
   if (!person || !(await personImHaushaltDesInhabers(person))) return 'Kein Zugang: Der Business-Index gehört zum Haushalt des Inhabers.';
   const { businessText } = await import('@/lib/business/fuer-chef');
-  const sicht = input.sicht === 'kdc' || input.sicht === 'kdv' ? input.sicht : 'gesamt';
+  const { scopeAus } = await import('@/lib/business/register');
+  const sicht = scopeAus(input.sicht);
   return businessText(sicht, typeof input.kennzahl === 'string' && input.kennzahl ? input.kennzahl : undefined);
 }
 
@@ -615,7 +622,7 @@ async function monatsabschlussErfassen(input: Record<string, unknown>, _origin: 
   const roh = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined && v !== null && v !== ''));
   const r = await speichereAbschluss(roh, person);
   if (!r.ok) return `Nicht eingetragen: ${r.fehler}`;
-  return `Monatsabschluss ${r.eintrag.firma === 'kdv' ? 'KD Ventures' : 'Consulting'} ${r.eintrag.monat} gespeichert — der Business-Index rechnet damit (/os/finanzen?s=business).`;
+  return `Monatsabschluss ${finanzOrtName(r.eintrag.firma)} ${r.eintrag.monat} gespeichert — der Business-Index rechnet damit (/os/finanzen?s=business).`;
 }
 
 /** Gesundheits-Index lesen (26.09.): die eigene Person — oder eine, die ihre Gesundheit teilt. */

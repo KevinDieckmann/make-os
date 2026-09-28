@@ -1,11 +1,11 @@
 // ─── Business-Index (25.09.) ────────────────────────────────────────────────
-// GET  ?scope=gesamt|kdc|kdv → Index, Säulen, Kennzahlen (Wert, Ampel, Formel,
+// GET  ?scope=gesamt|kdc|kdv|ug → Index, Säulen, Kennzahlen (Wert, Ampel, Formel,
 //      Quelle oder Messlücke, die Punkte dahinter mit Links), Trend, Ampel-Wechsel,
 //      Monatsabschlüsse, Einstellungen, Geschäftsmodell (Umsatz je Linie/Produkt/Mandat)
 // POST { aktion: 'abschluss', firma, monat, umsatz?, kosten?, personal?, … }
 //      { aktion: 'abschluss_weg', firma, monat }
-//      { aktion: 'einstellungen', fte?: { kdc?, kdv? }, ziele?: { kdc?, kdv? }, kapazitaet?: { kdc?, kdv? },
-//        schwelle?: { id, sicht: 'alle'|'gesamt'|'kdc'|'kdv', gruen, rot } | { id, sicht, zuruecksetzen: true } }
+//      { aktion: 'einstellungen', fte?: { kdc?, kdv?, ug? }, ziele?: { kdc?, kdv?, ug? }, kapazitaet?: { kdc?, kdv?, ug? },
+//        schwelle?: { id, sicht: 'alle'|'gesamt'|'kdc'|'kdv'|'ug', gruen, rot } | { id, sicht, zuruecksetzen: true } }
 // GET  ?kompakt=1 → nur diese Sicht, ohne Verlauf/Abschlüsse (für die Fachseiten)
 // Nur der Haushalt des Inhabers (Kevin & Malin) und der Dienstweg.
 
@@ -16,6 +16,7 @@ import { berechne } from '@/lib/business/index';
 import { fixkostenDer } from '@/lib/business/messen';
 import { geschaeftsmodell } from '@/lib/business/modell';
 import { SCOPES, type Scope } from '@/lib/business/register';
+import { istGesellschaft } from '@/lib/einheiten';
 import { personAus } from '@/lib/zoe/raum';
 import { zeitBildFuer } from '@/lib/zeitmessung/speicher';
 
@@ -62,7 +63,7 @@ export async function POST(req: Request) {
     return NextResponse.json(r, { status: r.ok ? 200 : 400 });
   }
   if (b.aktion === 'abschluss_weg') {
-    if (!['kdc', 'kdv'].includes(String(b.firma)) || !/^\d{4}-\d{2}$/.test(String(b.monat))) return NextResponse.json({ ok: false, fehler: 'Firma und Monat nötig.' }, { status: 400 });
+    if (!istGesellschaft(b.firma) || !/^\d{4}-\d{2}$/.test(String(b.monat))) return NextResponse.json({ ok: false, fehler: 'Firma und Monat nötig.' }, { status: 400 });
     await loescheAbschluss(String(b.firma), String(b.monat));
     return NextResponse.json({ ok: true });
   }

@@ -11,12 +11,15 @@
 // (gruen/rot) und — wenn Daten fehlen — wie man die Lücke schließt.
 
 export type SaeuleId = 'fh' | 'ud' | 'mt' | 'fz';
-export type Scope = 'gesamt' | 'kdc' | 'kdv';
+// Sichten (28.09., eine Einheitenliste): Gesamt + die drei Gesellschaften aus lib/einheiten.ts —
+// die MAKE OS UG ist eine eigene Sicht; Namen kommen von dort (kdc heißt „Selbstständigkeit“).
+export type Scope = 'gesamt' | Gesellschaftskennung;
 export const SCOPES: { id: Scope; label: string }[] = [
   { id: 'gesamt', label: 'Gesamt' },
-  { id: 'kdc', label: 'Consulting' },
-  { id: 'kdv', label: 'KD Ventures' },
+  ...KERN_EINHEITEN.map(e => ({ id: e.id, label: e.label })),
 ];
+/** Sicht aus einem Wert (URL, ZOE) — Unbekanntes ist die Gesamtsicht. */
+export const scopeAus = (v: unknown): Scope => SCOPES.find(s => s.id === v)?.id ?? 'gesamt';
 
 // 26.09. spät: vierte Säule „Fokus & Zeit“ (10 %, Kevin). Die drei KSI-Säulen behalten ihr
 // Verhältnis 50/30/20 — sie sind um denselben Faktor 0,9 skaliert. Fehlt die Zeitmessung noch,
@@ -29,6 +32,7 @@ export const SAEULEN: { id: SaeuleId; label: string; gewicht: number; satz: stri
 ];
 
 import type { KennzahlDefBasis, Schwelle as KernSchwelle } from '@/lib/kennzahlen/kern';
+import { KERN_EINHEITEN, type Gesellschaftskennung } from '@/lib/einheiten';
 import { WEG } from '@/lib/wege';
 import { FZ_SAEULE, FZ_GEWICHT, fzKennzahlen } from '@/lib/zeitmessung/kennzahlen';
 export type { Einheit, Richtung } from '@/lib/kennzahlen/kern';
@@ -102,10 +106,10 @@ export const KENNZAHLEN: KennzahlDef[] = [
   { id: 'personalquote', label: 'Personalaufwandsquote', saeule: 'ud', gruppe: 'Produktivität', einheit: 'prozent', richtung: 'niedrig', gruen: 60, rot: 75,
     formel: 'Personalkosten ÷ Umsatz der letzten 12 Monate', quelle: 'Monatsabschluss (Personal) bzw. Planposten „Personal“',
     luecke: 'Personalkosten fehlen', pflegen: ABSCHLUSS },
-  { id: 'auslastung', label: 'Auslastung', saeule: 'ud', gruppe: 'Produktivität', einheit: 'prozent', richtung: 'hoch', gruen: 70, rot: 50, nichtFuer: ['kdv'],
+  { id: 'auslastung', label: 'Auslastung', saeule: 'ud', gruppe: 'Produktivität', einheit: 'prozent', richtung: 'hoch', gruen: 70, rot: 50, nichtFuer: ['kdv', 'ug'],
     formel: 'fakturierte Tage ÷ verfügbare Beratertage (Kapazität), letzte Monate', quelle: 'Monatsabschluss (fakturierte Tage) + Kapazität je Firma',
     luecke: 'Fakturierte Tage im Monatsabschluss oder Kapazität fehlen', pflegen: ABSCHLUSS },
-  { id: 'tagessatz', label: 'Effektiver Tagessatz', saeule: 'ud', gruppe: 'Produktivität', einheit: 'eur', richtung: 'hoch', gruen: 1200, rot: 800, nichtFuer: ['kdv'],
+  { id: 'tagessatz', label: 'Effektiver Tagessatz', saeule: 'ud', gruppe: 'Produktivität', einheit: 'eur', richtung: 'hoch', gruen: 1200, rot: 800, nichtFuer: ['kdv', 'ug'],
     formel: 'Umsatz ÷ fakturierte Tage (letzte Monate)', quelle: 'Monatsabschluss (Umsatz, fakturierte Tage)',
     luecke: 'Fakturierte Tage im Monatsabschluss fehlen', pflegen: ABSCHLUSS },
   { id: 'fokuszeit', label: 'Fokuszeit', saeule: 'ud', gruppe: 'Arbeitsweise', einheit: 'stunden', richtung: 'hoch', gruen: 10, rot: 4, nurGesamt: true,

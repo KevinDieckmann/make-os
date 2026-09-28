@@ -41,7 +41,7 @@ describe('Stand-Prüfung', () => {
   });
   it('unbekannte Einheit wird abgewiesen, alte Namen werden vereinheitlicht', () => {
     expect(() => sauberBeleg({ bezeichnung: 'x', einheit: 'kemaris' })).toThrow(Ungueltig);
-    expect(sauberBeleg({ bezeichnung: 'x', einheit: 'selbst' }).einheit).toBe('selbststaendigkeit');
+    expect(sauberBeleg({ bezeichnung: 'x', einheit: 'selbst' }).einheit).toBe('kdc');
   });
 });
 

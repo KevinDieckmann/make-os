@@ -14,7 +14,7 @@ import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Haken, Knopf, Segmente, Fortschritt, feld, Spalten, Spalte, LEUCHT } from '../schlank';
 import { useZuZiel } from '../ziel';
-import { EINHEIT_LABEL, type Einheit, type Frist, type SteuerEinstellungen, type UstZeitraum, type Prognose, type BelegPunkt, type UebergabePunkt, type Jahresgewinn } from '@/lib/steuern/rechnen';
+import { EINHEIT_LABEL, UG_NICHT_HINTERLEGT, type Einheit, type Frist, type SteuerEinstellungen, type UstZeitraum, type Prognose, type BelegPunkt, type UebergabePunkt, type Jahresgewinn } from '@/lib/steuern/rechnen';
 
 interface Antwort {
   ok: boolean; fehler?: string; hinweis: string; heute: string;
@@ -25,7 +25,9 @@ interface Antwort {
   aufgaben: { neu: number; erledigt: number };
 }
 
-const EINHEIT_FARBE: Record<Einheit, string> = { kdc: LEUCHT.business, kdv: LEUCHT.schlaf, privat: LEUCHT.geld };
+const EINHEIT_FARBE: Record<Einheit, string> = { kdc: LEUCHT.business, kdv: LEUCHT.schlaf, ug: LEUCHT.puls, privat: LEUCHT.geld };
+/** Die eine Einheitenliste (28.09.): Selbstständigkeit · KD Ventures · MAKE OS UG · Privat. */
+const EINHEITEN: Einheit[] = ['kdc', 'kdv', 'ug', 'privat'];
 const euro = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(n));
 const deutsch = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(0, 4)}`;
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
@@ -72,8 +74,8 @@ export function SteuernView() {
   const kommend = fristen.filter(f => f.tage >= 0);
   const naechste = kommend.find(f => !f.erledigt);
   const sichtbar = [...offenVorbei, ...(alleFristen ? kommend : kommend.filter(f => f.tage <= 90))];
-  const summeSoll = (['kdc', 'kdv', 'privat'] as Einheit[]).reduce((s, x) => s + d.prognose.je[x].soll, 0);
-  const summeIst = (['kdc', 'kdv', 'privat'] as Einheit[]).reduce((s, x) => s + (d.prognose.je[x].ist ?? 0), 0);
+  const summeSoll = EINHEITEN.reduce((s, x) => s + d.prognose.je[x].soll, 0);
+  const summeIst = EINHEITEN.reduce((s, x) => s + (d.prognose.je[x].ist ?? 0), 0);
 
   return (
     <>
@@ -108,7 +110,7 @@ export function SteuernView() {
       <Abschnitt id="fristen" i={1} akzent={LEUCHT.achtung} titel="Steuerkalender & Fristen" rechts={<span>{kommend.filter(f => !f.erledigt && f.tage <= 30).length} in den nächsten 30 Tagen</span>}>
         {/* Filter in eigener Zeile, am Handy seitlich scrollbar — sonst ragt er über die Karte. */}
         <div style={{ overflowX: 'auto', maxWidth: '100%', marginBottom: 6 }}>
-          <Segmente liste={[{ id: 'alle' as const, label: 'Alle' }, { id: 'kdc' as const, label: 'Consulting' }, { id: 'kdv' as const, label: 'KD Ventures' }, { id: 'privat' as const, label: 'Privat' }]} aktiv={filter} onWahl={setFilter} />
+          <Segmente liste={[{ id: 'alle' as const, label: 'Alle' }, ...EINHEITEN.map(x => ({ id: x, label: EINHEIT_LABEL[x] }))]} aktiv={filter} onWahl={setFilter} />
         </div>
         <Liste>
           {sichtbar.map(f => (
@@ -122,7 +124,7 @@ export function SteuernView() {
                 <Link href={f.href} style={{ color: C.inkLeise, textDecoration: 'none', fontSize: 15 }} aria-label="dazu">›</Link>
               </span>} />
           ))}
-          {!sichtbar.length && <Leer>Keine Frist in den nächsten 90 Tagen.</Leer>}
+          {!sichtbar.length && <Leer>{filter === 'ug' ? UG_NICHT_HINTERLEGT : 'Keine Frist in den nächsten 90 Tagen.'}</Leer>}
         </Liste>
         <div style={{ display: 'flex', gap: 12, marginTop: 10, flexWrap: 'wrap', alignItems: 'center', fontSize: 12.5, color: C.inkLeise }}>
           <button onClick={() => setAlleFristen(!alleFristen)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', padding: 0, fontSize: 12.5 }}>{alleFristen ? 'nur 90 Tage' : `alle ${kommend.length} der nächsten 12 Monate`}</button>
@@ -134,7 +136,7 @@ export function SteuernView() {
         <Spalte>
           <Abschnitt id="ruecklage" i={2} akzent={LEUCHT.geld} titel="Rücklage & Prognose" rechts={<span>Schätzung {d.prognose.jahr}</span>}>
             <div style={{ display: 'grid', gap: 14 }}>
-              {(['kdc', 'kdv', 'privat'] as Einheit[]).map(x => {
+              {EINHEITEN.map(x => {
                 const j = d.prognose.je[x];
                 const zeilen = d.prognose.zeilen.filter(z => z.einheit === x);
                 return (
@@ -241,13 +243,14 @@ function Checkliste({ titel, punkte, tun }: { titel: string; punkte: UebergabePu
 }
 
 function RuecklageEingabe({ e, onSpeichern }: { e: SteuerEinstellungen; onSpeichern: (x: Record<string, string>) => Promise<void> }) {
-  const [w, setW] = useState<Record<Einheit, string>>({ kdc: '', kdv: '', privat: '' });
-  useEffect(() => { setW({ kdc: e.ruecklageIst.kdc != null ? String(e.ruecklageIst.kdc) : '', kdv: e.ruecklageIst.kdv != null ? String(e.ruecklageIst.kdv) : '', privat: e.ruecklageIst.privat != null ? String(e.ruecklageIst.privat) : '' }); }, [e.ruecklageIst.kdc, e.ruecklageIst.kdv, e.ruecklageIst.privat]);
+  const [w, setW] = useState<Record<Einheit, string>>({ kdc: '', kdv: '', ug: '', privat: '' });
+  const text = (x: Einheit) => (e.ruecklageIst[x] != null ? String(e.ruecklageIst[x]) : '');
+  useEffect(() => { setW({ kdc: text('kdc'), kdv: text('kdv'), ug: text('ug'), privat: text('privat') }); }, [e.ruecklageIst.kdc, e.ruecklageIst.kdv, e.ruecklageIst.ug, e.ruecklageIst.privat]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div style={{ display: 'grid', gap: 8, marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)' }}>
       <span style={{ fontSize: 12, color: C.inkDim }}>Was auf den Steuerrücklage-Konten liegt (Euro):</span>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        {(['kdc', 'kdv', 'privat'] as Einheit[]).map(x => (
+        {EINHEITEN.map(x => (
           <label key={x} style={{ display: 'grid', gap: 3 }}><span style={{ fontSize: 11.5, color: EINHEIT_FARBE[x], fontWeight: 600 }}>{EINHEIT_LABEL[x]}</span>
             <input inputMode="decimal" value={w[x]} onChange={ev => setW({ ...w, [x]: ev.target.value })} placeholder="€" style={{ ...feld, width: 120, fontSize: TYP.bedien, padding: '7px 10px', fontVariantNumeric: 'tabular-nums' }} /></label>
         ))}
@@ -307,7 +310,7 @@ function EinstellungenKarte({ e, gewinn, tun }: { e: SteuerEinstellungen; gewinn
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            {([['est', 'ESt je Quartal'], ['kst', 'KSt je Quartal'], ['gewstKdc', 'GewSt Consulting'], ['gewstKdv', 'GewSt KD Ventures']] as const).map(([k, l]) => (
+            {([['est', 'ESt je Quartal'], ['kst', 'KSt je Quartal'], ['gewstKdc', 'GewSt Selbstständigkeit'], ['gewstKdv', 'GewSt KD Ventures']] as const).map(([k, l]) => (
               <label key={k} style={{ display: 'grid', gap: 3 }}><span style={{ fontSize: 12, color: C.inkDim }}>{l} (€)</span><input inputMode="decimal" value={vz[k]} onChange={ev => setVz({ ...vz, [k]: ev.target.value })} placeholder="laut Bescheid" style={eingabe} /></label>
             ))}
             <label style={{ display: 'grid', gap: 3 }}><span style={{ fontSize: 12, color: C.inkDim }}>Steuerquote (%)</span><input inputMode="decimal" value={quote} onChange={ev => setQuote(ev.target.value)} placeholder="z. B. 30" style={eingabe} /></label>

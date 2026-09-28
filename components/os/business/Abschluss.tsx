@@ -11,9 +11,13 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, feld, LEUCHT } from '../schlank';
 import { Pillen } from '../crm/teile';
 import type { Monatsabschluss } from '@/lib/business/messen';
+import { KERN_EINHEITEN, type Gesellschaftskennung } from '@/lib/einheiten';
 
-type Firma = 'kdc' | 'kdv';
-const FIRMA_LISTE: { id: Firma; label: string }[] = [{ id: 'kdc', label: 'Consulting' }, { id: 'kdv', label: 'KD Ventures' }];
+// Die eine Einheitenliste (28.09.): Selbstständigkeit · KD Ventures · MAKE OS UG.
+type Firma = Gesellschaftskennung;
+const FIRMA_LISTE: { id: Firma; label: string }[] = KERN_EINHEITEN.map(e => ({ id: e.id, label: e.label }));
+const leer = (): Record<Firma, string> => ({ kdc: '', kdv: '', ug: '' });
+const jeFirma = (f: (id: Firma) => string): Record<Firma, string> => ({ kdc: f('kdc'), kdv: f('kdv'), ug: f('ug') });
 const FELDER: { id: keyof Monatsabschluss; label: string; hilfe: string; tage?: boolean }[] = [
   { id: 'umsatz', label: 'Umsatz (netto)', hilfe: 'BWA: Umsatzerlöse' },
   { id: 'kosten', label: 'Kosten gesamt (netto)', hilfe: 'BWA: Gesamtkosten' },
@@ -112,18 +116,19 @@ export function MonatsabschlussKarte({ eintraege, onGespeichert }: { eintraege: 
 
 export function EinstellungenKarte({ einstellungen, onGespeichert }: { einstellungen: { fte: Partial<Record<Firma, number>>; ziele?: Partial<Record<Firma, number>>; kapazitaet?: Partial<Record<Firma, number>> }; onGespeichert: () => void }) {
   const text = (n?: number) => (n != null ? String(n).replace('.', ',') : '');
-  const [fte, setFte] = useState<Record<Firma, string>>({ kdc: '', kdv: '' });
-  const [ziele, setZiele] = useState<Record<Firma, string>>({ kdc: '', kdv: '' });
-  const [kap, setKap] = useState<Record<Firma, string>>({ kdc: '', kdv: '' });
+  const [fte, setFte] = useState<Record<Firma, string>>(leer);
+  const [ziele, setZiele] = useState<Record<Firma, string>>(leer);
+  const [kap, setKap] = useState<Record<Firma, string>>(leer);
   const [meldung, setMeldung] = useState<string | null>(null);
   useEffect(() => {
-    setFte({ kdc: text(einstellungen.fte.kdc), kdv: text(einstellungen.fte.kdv) });
-    setZiele({ kdc: text(einstellungen.ziele?.kdc), kdv: text(einstellungen.ziele?.kdv) });
-    setKap({ kdc: text(einstellungen.kapazitaet?.kdc), kdv: text(einstellungen.kapazitaet?.kdv) });
-  }, [einstellungen.fte.kdc, einstellungen.fte.kdv, einstellungen.ziele?.kdc, einstellungen.ziele?.kdv, einstellungen.kapazitaet?.kdc, einstellungen.kapazitaet?.kdv]);
+    setFte(jeFirma(f => text(einstellungen.fte[f])));
+    setZiele(jeFirma(f => text(einstellungen.ziele?.[f])));
+    setKap(jeFirma(f => text(einstellungen.kapazitaet?.[f])));
+  }, [einstellungen.fte.kdc, einstellungen.fte.kdv, einstellungen.fte.ug, einstellungen.ziele?.kdc, einstellungen.ziele?.kdv, einstellungen.ziele?.ug, einstellungen.kapazitaet?.kdc, einstellungen.kapazitaet?.kdv, einstellungen.kapazitaet?.ug]);
   const zahl = (t: string, tausender: boolean) => (t.trim() ? Number((tausender ? t.replace(/\./g, '') : t).replace(',', '.')) : null);
   const speichern = async () => {
-    const r = await senden({ aktion: 'einstellungen', fte: { kdc: zahl(fte.kdc, false), kdv: zahl(fte.kdv, false) }, ziele: { kdc: zahl(ziele.kdc, true), kdv: zahl(ziele.kdv, true) }, kapazitaet: { kdc: zahl(kap.kdc, false), kdv: zahl(kap.kdv, false) } });
+    const je = (w: Record<Firma, string>, tausender: boolean) => Object.fromEntries(FIRMA_LISTE.map(f => [f.id, zahl(w[f.id], tausender)]));
+    const r = await senden({ aktion: 'einstellungen', fte: je(fte, false), ziele: je(ziele, true), kapazitaet: je(kap, false) });
     setMeldung(r.ok ? 'Gespeichert.' : r.fehler ?? 'Nicht gespeichert.');
     if (r.ok) onGespeichert();
   };

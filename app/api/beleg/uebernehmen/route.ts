@@ -33,7 +33,8 @@ export async function POST(req: Request) {
   // Belege aus dem Chat sind Firmen-Belege. Private gehören in den Haushalt
   // (Zahlen › Privat), nicht in die Business-Buchungen.
   if (String(b.firma ?? '').toLowerCase() === 'privat') return NextResponse.json({ ok: false, error: 'Private Belege bitte unter Zahlen › Privat erfassen — hier landen nur Firmen-Belege.' }, { status: 400 });
-  const firma = b.firma === 'kdc' ? 'kdc' : 'kdv';
+  // Die eine Einheitenliste (28.09.): kdc · kdv · ug; ohne Angabe wie bisher KD Ventures.
+  const firma = b.firma === 'kdc' || b.firma === 'ug' ? b.firma : 'kdv';
   const datum = /^\d{4}-\d{2}-\d{2}$/.test(String(b.datum ?? '')) ? String(b.datum) : localDay();
   const zweck = String(b.zweck ?? '').slice(0, 200) || partner;
 

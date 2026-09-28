@@ -46,7 +46,7 @@ describe('ZOE', () => {
     expect(gesamt).toMatch(/^Business-Index Gesamt: \d+/);
     expect(gesamt).toMatch(/Rot: .*Überfällige Forderungen/);
     const eine = await WERKZEUGE.business_index.lauf({ sicht: 'kdc', kennzahl: 'ueberfaellig' }, '', 'kevin');
-    expect(eine).toMatch(/Überfällige Forderungen \(Consulting\): 100 % — rot/);
+    expect(eine).toMatch(/Überfällige Forderungen \(Selbstständigkeit\): 100 % — rot/);
     expect(await WERKZEUGE.business_index.lauf({ kennzahl: 'ek_quote' }, '', 'kevin')).toMatch(/noch nicht messbar/);
     expect(await WERKZEUGE.business_index.lauf({}, '', 'gast')).toMatch(/Kein Zugang/);
   });
@@ -56,7 +56,7 @@ describe('ZOE', () => {
     const e = (speicher.get('business-abschluesse') as { eintraege: { monat: string; umsatz?: number; personal?: number }[] }).eintraege.find(x => x.monat === '2026-07')!;
     expect(e).toMatchObject({ umsatz: 8000, personal: 2000 });
     // Direkt danach liest ZOE schon den neuen Stand (kein veralteter Zwischenspeicher).
-    expect(await WERKZEUGE.business_index.lauf({ sicht: 'kdc', kennzahl: 'personalquote' }, '', 'kevin')).toMatch(/Personalaufwandsquote \(Consulting\): \d/);
+    expect(await WERKZEUGE.business_index.lauf({ sicht: 'kdc', kennzahl: 'personalquote' }, '', 'kevin')).toMatch(/Personalaufwandsquote \(Selbstständigkeit\): \d/);
     expect(await WERKZEUGE.monatsabschluss_erfassen.lauf({ firma: 'kdc', monat: '2030-01', umsatz: 1 }, '', 'kevin')).toMatch(/Nicht eingetragen/);
     expect(await WERKZEUGE.monatsabschluss_erfassen.lauf({ firma: 'kdc', monat: '2026-08', umsatz: 1 }, '', 'gast')).toMatch(/Kein Zugang/);
   });
@@ -67,9 +67,9 @@ describe('Head of Finance', () => {
     const { block, hinweise } = await businessFuerChef(HEUTE);
     expect(hinweise.some(h => h.schwere === 'hoch' && /Überfällige Forderungen ist rot/.test(h.text))).toBe(true);
     expect(hinweise.filter(h => h.bereich === 'daten').map(h => h.text)).toEqual([
-      expect.stringContaining('2026-08 für Consulting fehlt'), expect.stringContaining('2026-08 für KD Ventures fehlt'),
+      expect.stringContaining('2026-08 für Selbstständigkeit fehlt'), expect.stringContaining('2026-08 für KD Ventures fehlt'),
     ]);
-    expect(block).toMatchObject({ gesamt: { index: expect.any(Number) }, monatsabschluss_fehlt: ['Consulting 2026-08', 'KD Ventures 2026-08'] });
+    expect(block).toMatchObject({ gesamt: { index: expect.any(Number) }, monatsabschluss_fehlt: ['Selbstständigkeit 2026-08', 'KD Ventures 2026-08'] });
     expect((block.rot as { kennzahl: string }[]).map(r => r.kennzahl)).toContain('Überfällige Forderungen');
     expect(await businessText('kdv', undefined, HEUTE)).toMatch(/Business-Index KD Ventures/);
   });

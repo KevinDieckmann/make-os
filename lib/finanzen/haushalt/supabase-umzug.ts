@@ -10,7 +10,7 @@
 // gespeichert, nicht protokolliert.
 
 import type { Beleg, Buchung, Haushalt, Kategorie, Konto, Planwert, Regel, Schuld } from './typen';
-import { einheitAus, zuCent, POSTEN } from './typen';
+import { haushaltEinheitAusAlt, zuCent, POSTEN } from './typen';
 import { turnusAus } from './regeln';
 
 export const TABELLEN = ['konten', 'kategorien', 'zuordnungsregeln', 'schulden', 'planwerte', 'belege', 'buchungen'] as const;
@@ -87,7 +87,8 @@ export interface Umzugsbericht {
 export function umwandeln(roh: Record<Tabelle, { zeilen: Roh[]; gesamt: number }>, jetzt = new Date().toISOString()): { haushalt: Haushalt; bericht: Umzugsbericht } {
   const abgewiesen: Umzugsbericht['abgewiesen'] = [];
   const weg = (tabelle: Tabelle, r: Roh, grund: string) => { abgewiesen.push({ tabelle, id: s(r.id), grund }); return null; };
-  const einheit = (tabelle: Tabelle, r: Roh) => { const e = einheitAus(r.einheit); return e ?? weg(tabelle, r, `unbekannte Einheit „${s(r.einheit)}“`); };
+  // Malins Bestand spricht das alte Vokabular (ug = KD Management UG = KD Ventures) — Übersetzung in die eine Liste (28.09.).
+  const einheit = (tabelle: Tabelle, r: Roh) => { const e = haushaltEinheitAusAlt(r.einheit); return e ?? weg(tabelle, r, `unbekannte Einheit „${s(r.einheit)}“`); };
 
   const konten: Konto[] = [];
   for (const r of roh.konten.zeilen) {

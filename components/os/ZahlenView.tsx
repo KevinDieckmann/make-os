@@ -16,6 +16,7 @@ import { eur } from '@/lib/make-one/finance-data';
 import { vorschau, businessFirmen, nurBusiness, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten } from '@/lib/make-one/liquiditaet';
 import { MONAT_KURZ, type Kennzahlen } from '@/lib/make-one/grundlage';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Zahl, Fortschritt, LEUCHT } from './schlank';
+import { istGesellschaft } from '@/lib/einheiten';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { IndexStreifen, STREIFEN } from './business/IndexStreifen';
 
@@ -44,7 +45,7 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
     fetch('/api/state/finanzplan').then(r => r.json()).then(setPlan).catch(() => {});
     fetch('/api/state/liquiplan').then(r => r.json()).then(d => setPosten(d.posten ?? [])).catch(() => {});
     // Nur Firmen-Buchungen: ohne „ort“ gilt eine Buchung als privat (Regel der Buchungs-Route).
-    fetch('/api/state/buchungen').then(r => r.json()).then(d => setBuchungen((d.buchungen ?? []).filter((b: Buchung) => b.ort === 'kdv' || b.ort === 'kdc'))).catch(() => {});
+    fetch('/api/state/buchungen').then(r => r.json()).then(d => setBuchungen((d.buchungen ?? []).filter((b: Buchung) => istGesellschaft(b.ort)))).catch(() => {});
     fetch('/api/state/grundlage').then(r => r.json()).then(setGrund).catch(() => {});
   }, []);
 

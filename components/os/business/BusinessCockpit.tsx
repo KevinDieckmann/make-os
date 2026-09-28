@@ -24,7 +24,8 @@ import { useZuZiel } from '../ziel';
 import type { Geschaeftsmodell } from '@/lib/business/modell';
 import type { BusinessIndex } from '@/lib/business/index';
 import type { Monatsabschluss } from '@/lib/business/messen';
-import type { Scope } from '@/lib/business/register';
+import { SCOPES, scopeAus, type Scope } from '@/lib/business/register';
+import type { Gesellschaftskennung } from '@/lib/einheiten';
 
 interface Antwort {
   ok: boolean; scope: Scope; bi: BusinessIndex;
@@ -33,19 +34,19 @@ interface Antwort {
   wechsel: { id: string; von: string; nach: string; seit: string }[];
   verlauf: { tag: string; index: number | null; saeulen: Record<string, number | null>; werte: Record<string, number | null> }[];
   abschluesse: Monatsabschluss[];
-  einstellungen: { fte: Partial<Record<'kdc' | 'kdv', number>>; ziele?: Partial<Record<'kdc' | 'kdv', number>>; kapazitaet?: Partial<Record<'kdc' | 'kdv', number>> };
+  einstellungen: { fte: Partial<Record<Gesellschaftskennung, number>>; ziele?: Partial<Record<Gesellschaftskennung, number>>; kapazitaet?: Partial<Record<Gesellschaftskennung, number>> };
   modell?: Geschaeftsmodell;
   fehler?: string;
 }
 
-const SCOPE_LABEL: Record<Scope, string> = { gesamt: 'Gesamt', kdc: 'Consulting', kdv: 'KD Ventures' };
+const SCOPE_LABEL = Object.fromEntries(SCOPES.map(s => [s.id, s.label])) as Record<Scope, string>;
 
 /** eingebettet = als Reiter „Business“ unter Zahlen (ohne eigenen Seitenrahmen). */
 export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet?: boolean; darunter?: ReactNode } = {}) {
   const router = useRouter();
   const pfad = usePathname() ?? '/os/finanzen';
   const params = useSearchParams();
-  const scope: Scope = (['kdc', 'kdv'] as const).find(s => s === params.get('f')) ?? 'gesamt';
+  const scope: Scope = scopeAus(params.get('f'));
   const [d, setD] = useState<Antwort | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [offen, setOffen] = useLinkAuswahl('k');
@@ -73,7 +74,7 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
   const offeneK = bi && offen ? bi.saeulen.flatMap(s => s.kennzahlen.map(k => ({ k, s }))).find(x => x.k.id === offen) : undefined;
   const alleK = bi?.saeulen.flatMap(s => s.kennzahlen) ?? [];
 
-  const sichtWahl = <Segmente liste={(['gesamt', 'kdc', 'kdv'] as Scope[]).map(s => ({ id: s, label: d?.sichten?.[s]?.index != null ? `${SCOPE_LABEL[s]} · ${d.sichten[s].index}` : SCOPE_LABEL[s] }))} aktiv={scope} onWahl={wechsle} />;
+  const sichtWahl = <Segmente liste={SCOPES.map(x => x.id).map(s => ({ id: s, label: d?.sichten?.[s]?.index != null ? `${SCOPE_LABEL[s]} · ${d.sichten[s].index}` : SCOPE_LABEL[s] }))} aktiv={scope} onWahl={wechsle} />;
   const inhalt = (
     <>
       {eingebettet && (

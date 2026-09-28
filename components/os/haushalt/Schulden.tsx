@@ -13,7 +13,7 @@
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import type { Beleg, Schuld } from '@/lib/finanzen/haushalt/typen';
-import { eur, zuCent } from '@/lib/finanzen/haushalt/typen';
+import { eur, zuCent, EINHEITEN, EINHEIT_NAME } from '@/lib/finanzen/haushalt/typen';
 import { laufzeit, schuldenfreiAm, sondertilgung } from '@/lib/finanzen/haushalt/schulden';
 import { datumDe, tagPlus, heuteBerlin } from '@/lib/finanzen/haushalt/monat';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, Spalten, Spalte, LEUCHT } from '../schlank';
@@ -276,7 +276,7 @@ function BelegForm({ b, patch, melde, onZu }: { b: Partial<Beleg>; patch: Props[
         {rechnung && <Feld label="Betrag"><input inputMode="decimal" value={e.betrag} onChange={x => setE({ ...e, betrag: x.target.value })} style={feld} /></Feld>}
         <Feld label="Fällig am"><input type="date" value={e.faellig} onChange={x => setE({ ...e, faellig: x.target.value })} style={feld} /></Feld>
       </div>
-      <Feld label="Welche Einheit?"><select value={e.einheit} onChange={x => setE({ ...e, einheit: x.target.value as Beleg['einheit'] })} style={auswahl}><option value="privat">Privat</option><option value="selbststaendigkeit">Kevins Selbstständigkeit</option><option value="ug">KD Management UG</option></select></Feld>
+      <Feld label="Welche Einheit?"><select value={e.einheit} onChange={x => setE({ ...e, einheit: x.target.value as Beleg['einheit'] })} style={auswahl}>{EINHEITEN.map(id => <option key={id} value={id}>{EINHEIT_NAME[id]}</option>)}</select></Feld>
       <Feld label="Wer kümmert sich?"><input value={e.verursacher} onChange={x => setE({ ...e, verursacher: x.target.value })} placeholder="Kevin / Malin" style={feld} /></Feld>
       {rechnung && <Feld label="Notiz"><input value={e.notiz} onChange={x => setE({ ...e, notiz: x.target.value })} style={feld} /></Feld>}
     </Dialog>

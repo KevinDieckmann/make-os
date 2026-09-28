@@ -13,7 +13,7 @@
 import { randomUUID } from 'crypto';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import type { Beleg, Buchung, Haushalt, Kategorie, Konto, Planwert, Regel, Schuld, Stamm, Zeile } from './typen';
-import { EINHEITEN, POSTEN, einheitAus } from './typen';
+import { EINHEITEN, EINHEITEN_FASSUNG, POSTEN, einheitAus, haushaltEinheitAusAlt } from './typen';
 import { turnusAus } from './regeln';
 import { HAUSHALT_OK } from './zugriff';
 
@@ -35,14 +35,45 @@ interface PlanDatei { planwerte: Planwert[]; meta: Meta }
 export const leererStamm = (): Stamm => ({ konten: [], kategorien: [], regeln: [], aliase: {} });
 export const leereMeta = (): Meta => ({ steuerquote: null, importe: [], umzug: null });
 
+// ── Einheiten: eine Liste (28.09.) ──────────────────────────────────────────
+// Die Dateien tragen seit 28.09. die Marke `einheiten: 2` (EINHEITEN_FASSUNG). Ohne Marke
+// spricht die Datei das alte Vokabular (selbststaendigkeit · ug = KD Management UG =
+// KD Ventures) und wird beim LESEN übersetzt (kdc · kdv); beim nächsten SCHREIBEN der
+// Datei landen übersetzte Zeilen + Marke. Unbekannte Werte bleiben unverändert stehen
+// (nie verwerfen). Rückweg: das alte Programm liest die Dateien weiter — es rechnet nur
+// mit `privat`, und privat heißt in beiden Fassungen gleich.
+const EINHEIT_LISTEN: Record<Teil, string[]> = { buchungen: ['buchungen'], stamm: ['konten'], schulden: ['schulden'], belege: ['belege'], plan: ['planwerte'] };
+
+/** Eine Haushalts-Datei in die eine Einheitenliste — rein; mit Marke unverändert (nur die Marke wird gesetzt). */
+export function einheitenLesen<T extends object>(teil: Teil, f: T | null | undefined): T & { einheiten: number } {
+  const x: Record<string, unknown> = { ...(f ?? {}) };
+  if (x.einheiten !== EINHEITEN_FASSUNG) {
+    for (const feld of EINHEIT_LISTEN[teil]) {
+      if (!Array.isArray(x[feld])) continue;
+      x[feld] = (x[feld] as { einheit?: unknown }[]).map(z => {
+        const e = z && typeof z === 'object' ? haushaltEinheitAusAlt(z.einheit) : null;
+        return e && e !== z.einheit ? { ...z, einheit: e } : z;
+      });
+    }
+  }
+  x.einheiten = EINHEITEN_FASSUNG;
+  return x as T & { einheiten: number };
+}
+/** Für die Antwort an Ansichten: übersetzt, ohne die Marke. */
+function gelesen<T extends object>(teil: Teil, f: T | null | undefined): Partial<T> {
+  const { einheiten: _marke, ...rest } = einheitenLesen(teil, f);
+  return rest as Partial<T>;
+}
+
 export async function ladeHaushalt(haushalt: string): Promise<Haushalt & { meta: Meta }> {
-  const [b, s, sch, bel, p] = await Promise.all([
+  const [bRoh, sRoh, schRoh, belRoh, pRoh] = await Promise.all([
     loadJson<{ buchungen: Buchung[] }>(speicherName('buchungen', haushalt)),
     loadJson<Stamm>(speicherName('stamm', haushalt)),
     loadJson<{ schulden: Schuld[] }>(speicherName('schulden', haushalt)),
     loadJson<{ belege: Beleg[] }>(speicherName('belege', haushalt)),
     loadJson<PlanDatei>(speicherName('plan', haushalt)),
   ]);
+  const b = gelesen('buchungen', bRoh), s = sRoh ? gelesen('stamm', sRoh) : null, sch = gelesen('schulden', schRoh), bel = gelesen('belege', belRoh), p = gelesen('plan', pRoh);
   return {
     stamm: { ...leererStamm(), ...(s ?? {}) },
     buchungen: Array.isArray(b?.buchungen) ? b!.buchungen : [],
@@ -214,16 +245,16 @@ export async function patchen(haushalt: string, teil: Exclude<Teil, 'stamm'> | '
   }
   const lauf = <E extends Zeile>(datei: Teil, feld: string, saeubern: (r: Record<string, unknown>) => Omit<E, 'id' | 'stand'>, mitZeit = false) =>
     updateJson<Record<string, unknown>>(speicherName(datei, haushalt), aktuell => {
-      const f = aktuell ?? {};
+      const f = einheitenLesen(datei, aktuell);
       const liste = (Array.isArray(f[feld]) ? f[feld] : []) as E[];
       try {
         const e = opsAnwenden<E>(liste, ops, saeubern, jetzt, mitZeit);
-        if (!e.ok) { ergebnis = e; return f; }
+        if (!e.ok) { ergebnis = e; return aktuell ?? {}; }
         ergebnis = { ok: true, angewandt: e.angewandt, zeilen: e.zeilen };
         return { ...(datei === 'stamm' ? { ...leererStamm(), ...f } : f), [feld]: e.liste };
       } catch (err) {
         ergebnis = { ok: false, status: 400, fehler: err instanceof Ungueltig ? err.message : 'Eingabe nicht verwertbar.' };
-        return f;
+        return aktuell ?? {};
       }
     });
   // Ein Schreibfehler (Bestand beschädigt beiseitegelegt, Schlüssel falsch, Platte voll) war bis 27.09. eine
@@ -248,28 +279,32 @@ export async function patchen(haushalt: string, teil: Exclude<Teil, 'stamm'> | '
 
 /** Ganze Bestände setzen (Umzug, Testdaten). Nur serverseitig, nie aus dem Browser. */
 export async function setzeHaushalt(haushalt: string, h: Haushalt, meta?: Partial<Meta>): Promise<void> {
-  await updateJson(speicherName('stamm', haushalt), () => h.stamm);
-  await updateJson(speicherName('buchungen', haushalt), () => ({ buchungen: h.buchungen }));
-  await updateJson(speicherName('schulden', haushalt), () => ({ schulden: h.schulden }));
-  await updateJson(speicherName('belege', haushalt), () => ({ belege: h.belege }));
-  await updateJson<PlanDatei>(speicherName('plan', haushalt), cur => ({ planwerte: h.planwerte, meta: { ...leereMeta(), ...(cur?.meta ?? {}), ...(meta ?? {}) } }));
+  // Der Aufrufer liefert die eine Einheitenliste (Umzug übersetzt über haushaltEinheitAusAlt) — Marke dazu.
+  const m = { einheiten: EINHEITEN_FASSUNG };
+  await updateJson(speicherName('stamm', haushalt), () => ({ ...h.stamm, ...m }));
+  await updateJson(speicherName('buchungen', haushalt), () => ({ buchungen: h.buchungen, ...m }));
+  await updateJson(speicherName('schulden', haushalt), () => ({ schulden: h.schulden, ...m }));
+  await updateJson(speicherName('belege', haushalt), () => ({ belege: h.belege, ...m }));
+  await updateJson<PlanDatei>(speicherName('plan', haushalt), cur => ({ planwerte: h.planwerte, meta: { ...leereMeta(), ...(cur?.meta ?? {}), ...(meta ?? {}) }, ...m }));
 }
 
 export async function aendereMeta(haushalt: string, mut: (m: Meta) => Meta): Promise<Meta> {
-  const next = await updateJson<PlanDatei>(speicherName('plan', haushalt), cur => ({ planwerte: cur?.planwerte ?? [], meta: mut({ ...leereMeta(), ...(cur?.meta ?? {}) }) }));
+  const next = await updateJson<PlanDatei>(speicherName('plan', haushalt), roh => { const cur = einheitenLesen('plan', roh); return { ...cur, planwerte: cur.planwerte ?? [], meta: mut({ ...leereMeta(), ...(cur.meta ?? {}) }) }; });
   return next.meta;
 }
 
 export async function aendereBuchungen(haushalt: string, mut: (l: Buchung[]) => Buchung[]): Promise<Buchung[]> {
-  const n = await updateJson<{ buchungen: Buchung[] }>(speicherName('buchungen', haushalt), cur => ({ buchungen: mut(Array.isArray(cur?.buchungen) ? cur!.buchungen : []) }));
+  const n = await updateJson<{ buchungen: Buchung[] }>(speicherName('buchungen', haushalt), roh => { const cur = einheitenLesen('buchungen', roh); return { ...cur, buchungen: mut(Array.isArray(cur.buchungen) ? cur.buchungen : []) }; });
   return n.buchungen;
 }
 
 export async function aendereStamm(haushalt: string, mut: (s: Stamm) => Stamm): Promise<Stamm> {
-  return updateJson<Stamm>(speicherName('stamm', haushalt), cur => mut({ ...leererStamm(), ...(cur ?? {}) }));
+  const n = await updateJson<Stamm>(speicherName('stamm', haushalt), roh => { const cur = einheitenLesen('stamm', roh); return { ...mut({ ...leererStamm(), ...cur }), einheiten: cur.einheiten }; });
+  const { einheiten: _marke, ...stamm } = n as Stamm & { einheiten?: number };
+  return stamm;
 }
 
 export async function aendereSchulden(haushalt: string, mut: (l: Schuld[]) => Schuld[]): Promise<Schuld[]> {
-  const n = await updateJson<{ schulden: Schuld[] }>(speicherName('schulden', haushalt), cur => ({ schulden: mut(Array.isArray(cur?.schulden) ? cur!.schulden : []) }));
+  const n = await updateJson<{ schulden: Schuld[] }>(speicherName('schulden', haushalt), roh => { const cur = einheitenLesen('schulden', roh); return { ...cur, schulden: mut(Array.isArray(cur.schulden) ? cur.schulden : []) }; });
   return n.schulden;
 }

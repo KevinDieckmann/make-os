@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { loadJson, updateGeschuetzt, updateJson } from '@/lib/store/local-db';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { FINANZ_ORT_IDS, finanzOrtAus, type FinanzOrt } from '@/lib/einheiten';
 
 import { localDay } from '@/lib/zeit';
 export const runtime = 'nodejs';
@@ -29,14 +30,13 @@ export interface Buchung {
   /**
    * Wo die Buchung hingehört. Kevins Ansage: „Privat bleibt immer privat, die
    * beiden Firmen kann man auch mal zusammenfassen." Genau dafür.
+   * Seit 28.09. die eine Einheitenliste (lib/einheiten.ts): privat · kdc · kdv · ug.
    */
-  ort?: 'privat' | 'kdv' | 'kdc';
+  ort?: FinanzOrt;
   /** Die Rechnung, deren Zahlungseingang diese Buchung ist (26.09.). */
   rechnungId?: string;
 }
 
-// Nicht exportieren: eine Route darf nur ihre Handler nach außen geben.
-const ORTE = ['privat', 'kdv', 'kdc'] as const;
 interface Datei { buchungen: Buchung[] }
 
 const DATUM = /^\d{4}-\d{2}-\d{2}$/;
@@ -54,8 +54,9 @@ function sauber(b: Partial<Buchung>, i: number): Buchung | null {
     kategorie: String(b.kategorie ?? 'Sonstiges').trim().slice(0, 60) || 'Sonstiges',
     zweck: b.zweck ? String(b.zweck).slice(0, 200) : undefined,
     konto: b.konto ? String(b.konto).slice(0, 60) : undefined,
-    // Ohne Angabe: privat — die Altbestände kommen alle vom Privatkonto.
-    ort: (ORTE as readonly string[]).includes(String(b.ort)) ? b.ort as Buchung['ort'] : 'privat',
+    // Ohne Angabe: privat — die Altbestände kommen alle vom Privatkonto. Bekannte Kennungen und
+    // Altwerte (z. B. „Selbstständigkeit“) über die eine Liste; vorher fiel „ug“ still auf privat.
+    ort: FINANZ_ORT_IDS.includes(b.ort as FinanzOrt) ? b.ort : finanzOrtAus(b.ort) ?? 'privat',
     ...(b.rechnungId ? { rechnungId: String(b.rechnungId).slice(0, 40) } : {}),
   };
 }

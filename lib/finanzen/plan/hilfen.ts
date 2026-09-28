@@ -5,10 +5,12 @@
 
 import type { Einheit, FinanzDaten, Zeile } from '@/lib/finanzen/rechenkern';
 import { histIndex } from '@/lib/finanzen/rechenkern';
+import { finanzOrtAusKern, finanzOrtName } from '@/lib/einheiten';
 
 export const KAL = ['Jan', 'Feb', 'Mrz', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'] as const;
 
-export const EINHEIT_LABEL: Record<Einheit, string> = { privat: 'Privat', selbststaendigkeit: 'Selbstständigkeit', ug: 'MAKE OS UG', kdv: 'KD Ventures' };
+/** Namen aus der einen Einheitenliste (lib/einheiten.ts); die Kern-Kennung `selbststaendigkeit` ist kdc. */
+export const EINHEIT_LABEL: Record<Einheit, string> = { privat: finanzOrtName('privat'), selbststaendigkeit: finanzOrtName(finanzOrtAusKern('selbststaendigkeit')), ug: finanzOrtName('ug'), kdv: finanzOrtName('kdv') };
 export const TYP_LABEL: Record<NonNullable<Zeile['typ']>, string> = { fix: 'Fixkosten', jahr: 'Jahreskosten-Topf', flex: 'Flexibel', sparen: 'Sparen' };
 /** Gruppe je Budget-Art — das Privat-Blatt sortiert danach. */
 export const TYP_GRUPPE: Record<NonNullable<Zeile['typ']>, string> = { fix: 'Fixkosten', jahr: 'Jahreskosten & Puffer', flex: 'Flexibel', sparen: 'Sparen' };

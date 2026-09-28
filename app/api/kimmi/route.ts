@@ -268,7 +268,7 @@ export async function POST(req: Request) {
       input_schema: {
         type: 'object',
         properties: {
-          sicht: { type: 'string', enum: ['gesamt', 'kdc', 'kdv'], description: 'gesamt (Standard), kdc = Kevin Dieckmann Consulting, kdv = KD Ventures' },
+          sicht: { type: 'string', enum: ['gesamt', 'kdc', 'kdv', 'ug'], description: 'gesamt (Standard), kdc = Selbstständigkeit (Kevin Dieckmann Consulting), kdv = KD Ventures, ug = MAKE OS UG' },
           kennzahl: { type: 'string', enum: BUSINESS_KENNZAHLEN.map(k => k.id), description: BUSINESS_KENNZAHLEN.map(k => `${k.id} = ${k.label}`).join('; ') },
         },
       },
@@ -290,7 +290,7 @@ export async function POST(req: Request) {
       input_schema: {
         type: 'object',
         properties: {
-          firma: { type: 'string', enum: ['kdc', 'kdv'], description: 'kdc = Consulting, kdv = KD Ventures' },
+          firma: { type: 'string', enum: ['kdc', 'kdv', 'ug'], description: 'kdc = Selbstständigkeit (Consulting), kdv = KD Ventures, ug = MAKE OS UG' },
           monat: { type: 'string', description: 'YYYY-MM (ein abgeschlossener Monat)' },
           umsatz: { type: 'number' }, kosten: { type: 'number', description: 'Kosten gesamt' }, personal: { type: 'number', description: 'davon Personal' },
           marketingVertrieb: { type: 'number', description: 'davon Marketing & Vertrieb' }, afa: { type: 'number', description: 'Abschreibungen' },
@@ -402,7 +402,7 @@ export async function POST(req: Request) {
           rhythmus: { type: 'string', enum: ['einmalig', 'monatlich', 'quartal', 'jaehrlich'], description: 'Wie oft — Standard monatlich' },
           ab: { type: 'string', description: 'Ab wann, YYYY-MM-DD (Standard heute)' },
           kategorie: { type: 'string', enum: ['mandat', 'produkt', 'sonstige-ein', 'personal', 'raum', 'steuern', 'kredite', 'betrieb'], description: 'Wofür es zählt (nur Firmen — Privates gehört in die Haushaltsfinanzen)' },
-          firma: { type: 'string', enum: ['kdv', 'kdc', 'kemaris'], description: 'Welche Firma' },
+          firma: { type: 'string', enum: ['kdv', 'kdc', 'ug', 'kemaris'], description: 'Welche Firma (kdc = Selbstständigkeit, kdv = KD Ventures, ug = MAKE OS UG)' },
           sicher: { type: 'boolean', description: 'false, wenn der Posten noch unsicher ist (nur bei Einnahmen relevant)' },
         }, required: ['titel', 'betrag'] },
       },
@@ -410,7 +410,7 @@ export async function POST(req: Request) {
         name: 'setze_kontostand',
         description: 'Setzt den Kontostand einer Firma in der Finanzplanung. Nutze das sofort, wenn Kevin einen Kontostand nennt („Kontostand KDC 18.500").',
         input_schema: { type: 'object', properties: {
-          firma: { type: 'string', description: 'kdv (KD Ventures) oder kdc (Kevin Dieckmann Consulting) — bei Unklarheit kdc' },
+          firma: { type: 'string', description: 'kdv (KD Ventures), ug (MAKE OS UG) oder kdc (Selbstständigkeit, Kevin Dieckmann Consulting) — bei Unklarheit kdc' },
           betrag: { type: 'number', description: 'Kontostand in Euro' },
         }, required: ['betrag'] },
       },
@@ -423,7 +423,7 @@ export async function POST(req: Request) {
           betrag: { type: 'number' },
           status: { type: 'string', enum: ['geplant', 'gestellt', 'bezahlt'] },
           faellig: { type: 'string', description: 'YYYY-MM-DD (optional)' },
-          firma: { type: 'string', description: 'kdv|kdc (optional, Standard kdc)' },
+          firma: { type: 'string', description: 'kdv|kdc|ug (optional, Standard kdc)' },
         }, required: ['kunde'] },
       },
       {

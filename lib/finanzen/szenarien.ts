@@ -8,9 +8,17 @@
 //
 // Bausteine:
 //   Umsatz  = Kunde/Segment × Produkt/Leistung × Preis × Menge × Start × Laufzeit
-//             (monatlich · jährlich · einmalig), Einheit UG · Privat · KD Ventures,
-//             Zahlungsziel in Monaten (nur UG: Leistung zählt sofort in den Gewinn,
-//             das Geld kommt später — USt obendrauf wie beim Retainer).
+//             (monatlich · jährlich · einmalig), Einheit aus der einen Liste
+//             (lib/einheiten.ts: MAKE OS UG · Selbstständigkeit · KD Ventures · Privat),
+//             Zahlungsziel in Monaten (UG/Selbstständigkeit: Leistung zählt sofort in den
+//             Gewinn, das Geld kommt später — USt obendrauf wie beim Retainer).
+//
+// Selbstständigkeit (28.09.): eigene Achse im Baukasten (Einheit `kdc`, eigene Summe,
+// eigener Name). Der Rechenkern v3 kennt aber nur die Kanäle UG · KD Ventures · Privat
+// (`Zusatz`: ug*/kdv*/privat* — Namen und Formeln bleiben, Kevins Wort fehlt). Bis der Kern
+// eine eigene Selbstständigkeits-Achse bekommt, fließen kdc-Bausteine in der RECHNUNG
+// weiter über die UG-Kanäle — genau wie vorher, als kdc der UG zugeschlagen wurde. Summen
+// ändern sich dadurch nicht.
 //   Kosten  = Stelle (Brutto, Arbeitgeberanteil rechnet der Kern) · Tool · Miete ·
 //             Rate · Sonstiges, gleiche Zeitlogik.
 // Annahmen je Szenario: Gehälter Kevin/Malin (brutto), Steuerquote UG,
@@ -22,11 +30,13 @@ import type { Annahmen, FinanzDaten, MonatPrivat, MonatUG, Szenario, ZielStand, 
 import { rechneUG, rechnePrivat, kennzahlen, zielStaende, planMonat, kalMonat } from './rechenkern';
 import type { Unterseite } from './plan/hilfen';
 import { eur } from './plan/hilfen';
+import { finanzOrtName, type FinanzOrt, type KernEinheit } from '@/lib/einheiten';
 
 export type Rhythmus = 'monatlich' | 'jaehrlich' | 'einmalig';
 export type BausteinArt = 'umsatz' | 'kosten';
 export type KostenArt = 'stelle' | 'tool' | 'miete' | 'rate' | 'sonstiges';
-export type BausteinEinheit = 'ug' | 'privat' | 'kdv';
+/** Wo ein Baustein hingehört — die eine Einheitenliste (lib/einheiten.ts), alle vier Orte. */
+export type BausteinEinheit = FinanzOrt;
 export type Regler = 'umsatz' | 'miete' | 'rate';
 
 export interface Baustein {
@@ -51,7 +61,7 @@ export interface Baustein {
   start: number;
   /** Laufzeit in Monaten ab Start — fehlt: bis zum Ende der Zeitachse (bei einmalig ohne Bedeutung). */
   laufzeit?: number;
-  /** Zahlungsziel in Monaten (nur Umsatz UG); fehlt: Vorgabe aus den Szenario-Annahmen. */
+  /** Zahlungsziel in Monaten (nur Umsatz UG/Selbstständigkeit); fehlt: Vorgabe aus den Szenario-Annahmen. */
   zahlungsziel?: number;
   /** Aus- und einschaltbar, ohne zu löschen. */
   an: boolean;
@@ -86,7 +96,13 @@ export interface Planszenario {
 
 export const RHYTHMUS_LABEL: Record<Rhythmus, string> = { monatlich: 'monatlich', jaehrlich: 'jährlich', einmalig: 'einmalig' };
 export const KOSTENART_LABEL: Record<KostenArt, string> = { stelle: 'Stelle', tool: 'Software', miete: 'Miete', rate: 'Rate', sonstiges: 'Sonstiges' };
-export const BAUSTEIN_EINHEIT_LABEL: Record<BausteinEinheit, string> = { ug: 'MAKE OS UG', privat: 'Privat', kdv: 'KD Ventures' };
+/** Reihenfolge der Auswahl „Wo“: UG zuerst (Standard neuer Bausteine), dann Selbstständigkeit, KD Ventures, Privat. */
+export const BAUSTEIN_EINHEIT_LABEL: Record<BausteinEinheit, string> = { ug: finanzOrtName('ug'), kdc: finanzOrtName('kdc'), kdv: finanzOrtName('kdv'), privat: finanzOrtName('privat') };
+/**
+ * Der Kanal des Rechenkerns für einen Baustein: kdc hat im Kern v3 keine eigene Achse und
+ * rechnet über die UG-Kanäle (siehe Kopf). Einzige Stelle dieser Zuordnung.
+ */
+export const kernKanal = (e: BausteinEinheit): 'ug' | 'kdv' | 'privat' => (e === 'kdc' ? 'ug' : e);
 
 // ── Dokument-Helfer ──────────────────────────────────────────────────────────
 export const planszenarienVon = (d: Pick<FinanzDaten, 'planszenarien'>): Planszenario[] => (Array.isArray(d.planszenarien) ? d.planszenarien : []);
@@ -120,12 +136,13 @@ export function reihen(ps: Planszenario, N: number): Zusatz {
     for (let m = 1; m <= N; m++) {
       const v = betragImMonat(b, m); if (!v) continue;
       const i = m - 1;
+      const kanal = kernKanal(b.einheit);
       if (b.art === 'umsatz') {
-        if (b.einheit === 'ug') { x.ugUmsatz[i] += v; if (i + ziel < N) x.ugEingang[i + ziel] += v; }
-        else if (b.einheit === 'privat') x.privatEin[i] += v;
+        if (kanal === 'ug') { x.ugUmsatz[i] += v; if (i + ziel < N) x.ugEingang[i + ziel] += v; }
+        else if (kanal === 'privat') x.privatEin[i] += v;
         else x.kdvEin[i] += v;
-      } else if (b.einheit === 'ug') { if (b.kostenArt === 'stelle') x.ugPersonal[i] += v; else x.ugSach[i] += v; }
-      else if (b.einheit === 'privat') x.privatAus[i] += v;
+      } else if (kanal === 'ug') { if (b.kostenArt === 'stelle') x.ugPersonal[i] += v; else x.ugSach[i] += v; }
+      else if (kanal === 'privat') x.privatAus[i] += v;
       else x.kdvAus[i] += v;
     }
   }
@@ -166,9 +183,10 @@ export function rechneMit(d: FinanzDaten, ps: Planszenario | null, treiber?: Sze
 export function jetztMonat(d: Pick<FinanzDaten, 'einstellungen' | 'monate'>): number {
   return Math.min(d.monate.length, Math.max(1, planMonat(`${d.einstellungen.heute.slice(0, 7)}-01`)));
 }
-/** Summe der bekannten Kontostände einer Einheit (Verpflichtungen › Kontostände). */
-export function kontostand(d: Pick<FinanzDaten, 'posten'>, einheit: 'privat' | 'ug' | 'kdv' | 'selbststaendigkeit'): { summe: number; bekannt: number; fehlen: number } {
-  const k = d.posten.filter(p => p.art === 'konto' && p.einheit === einheit);
+/** Summe der bekannten Kontostände einer Einheit (Verpflichtungen › Kontostände) — Kern-Name oder Kennung der einen Liste (kdc = selbststaendigkeit). */
+export function kontostand(d: Pick<FinanzDaten, 'posten'>, einheit: KernEinheit | FinanzOrt): { summe: number; bekannt: number; fehlen: number } {
+  const e: KernEinheit = einheit === 'kdc' ? 'selbststaendigkeit' : einheit;
+  const k = d.posten.filter(p => p.art === 'konto' && p.einheit === e);
   const b = k.filter(p => p.betrag != null);
   return { summe: b.reduce((s, p) => s + (p.betrag ?? 0), 0), bekannt: b.length, fehlen: k.length - b.length };
 }
@@ -289,7 +307,8 @@ export function bausteinText(b: Baustein, monate: string[]): string {
 const istObjekt = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const RHYTHMEN: Rhythmus[] = ['monatlich', 'jaehrlich', 'einmalig'];
 const KOSTENARTEN: KostenArt[] = ['stelle', 'tool', 'miete', 'rate', 'sonstiges'];
-const EINHEITEN: BausteinEinheit[] = ['ug', 'privat', 'kdv'];
+// Unbekanntes → ug wie bisher (ältere Fassungen lesen kdc ebenso als ug — gleiche Rechnung, Rückweg ohne Verlust).
+const EINHEITEN: BausteinEinheit[] = ['ug', 'kdc', 'privat', 'kdv'];
 const REGLER: Regler[] = ['umsatz', 'miete', 'rate'];
 const text = (v: unknown, n = 120): string | undefined => (typeof v === 'string' && v.trim() ? v.trim().slice(0, n) : undefined);
 

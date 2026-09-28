@@ -177,7 +177,7 @@ export function GrundlageView() {
 
       {!!g.ugRechnungen.length && (
         <Karte i={8}>
-          <Ueberschrift rechts={`${g.ugRechnungen.length} Belege`}>KD Management UG — Eingangsrechnungen</Ueberschrift>
+          <Ueberschrift rechts={`${g.ugRechnungen.length} Belege`}>KD Ventures (Gründungsname KD Management UG) — Eingangsrechnungen</Ueberschrift>
           <Liste>
             {g.ugRechnungen.map(r => (
               <Zeile key={r.id} links={<span style={tag}>{datum(r.datum)}</span>} titel={r.lieferant} unter={r.zweck}

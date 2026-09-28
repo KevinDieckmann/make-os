@@ -20,10 +20,10 @@ import { eur, prozent, monatLabel, neueKennung } from '@/lib/finanzen/plan/hilfe
 import type { Operation } from '@/lib/finanzen/plan/operationen';
 import {
   planszenarienVon, neuesPlanszenario, neuerBaustein, betragImMonat, vergleich, STEUER_HINWEIS, AUSSCHUETTUNG_STEUER_VORGABE,
-  RHYTHMUS_LABEL, KOSTENART_LABEL, BAUSTEIN_EINHEIT_LABEL,
+  RHYTHMUS_LABEL, KOSTENART_LABEL, BAUSTEIN_EINHEIT_LABEL, kernKanal,
   type Planszenario, type Baustein, type Rhythmus, type KostenArt, type BausteinEinheit, type Regler,
 } from '@/lib/finanzen/szenarien';
-import { bausteinAusProdukt, RHYTHMUS_AUS_BASIS, type ProduktVorschlag, type IstBasisVorschlag } from '@/lib/finanzen/produkte';
+import { bausteinAusProdukt, einheitAusGesellschaft, RHYTHMUS_AUS_BASIS, type ProduktVorschlag, type IstBasisVorschlag } from '@/lib/finanzen/produkte';
 import { usePlan, rechne, type Gerechnet } from './daten';
 import { Geld, Kachel, Kacheln, Tabelle, TH, THr, TD, TDr, TDleise, ZahlFeld, TextFeld, Auswahl, MonatWahl, KnopfKlein, Hinweis, Dialog, Feld, Formular, Schalter, StatusPille, Legende, Pillen, Nichts, Etikett, KUPFER, LILA } from './teile';
 import { Linie } from './diagramme';
@@ -313,7 +313,7 @@ export function Baukasten() {
 
 /** Umsatzbaustein aus einem Mandat oder gewonnenen Deal. */
 function istBaustein(v: IstBasisVorschlag): Baustein {
-  return neuerBaustein(neueKennung('b'), { art: 'umsatz', einheit: v.gesellschaft === 'kdv' ? 'kdv' : 'ug', name: v.produkt ?? v.titel, kunde: v.kunde, produkt: v.produkt, produktId: v.produktId, preis: v.betrag, menge: 1, rhythmus: v.rhythmus, start: v.start, ...(v.laufzeit && v.rhythmus !== 'einmalig' ? { laufzeit: v.laufzeit } : {}), notiz: `${v.quelle === 'mandat' ? 'Mandat' : 'Deal'} ${v.quelleId}` });
+  return neuerBaustein(neueKennung('b'), { art: 'umsatz', einheit: einheitAusGesellschaft(v.gesellschaft), name: v.produkt ?? v.titel, kunde: v.kunde, produkt: v.produkt, produktId: v.produktId, preis: v.betrag, menge: 1, rhythmus: v.rhythmus, start: v.start, ...(v.laufzeit && v.rhythmus !== 'einmalig' ? { laufzeit: v.laufzeit } : {}), notiz: `${v.quelle === 'mandat' ? 'Mandat' : 'Deal'} ${v.quelleId}` });
 }
 
 function NeuDialog({ neu, setNeu, treiber, onOk }: { neu: { name: string; basis: string }; setNeu: (v: { name: string; basis: string } | null) => void; treiber: { id: string; name: string }[]; onOk: () => void }) {
@@ -359,7 +359,7 @@ function UmsatzZeile({ b, ps, produkte, setze, summe, monate, entfernen }: { b: 
       <td style={TD}><Auswahl wert={b.rhythmus} onWahl={v => void setze(p('rhythmus'), b.rhythmus, v, `${n} · Rhythmus`)} optionen={RHYTHMEN} titel="Rhythmus" /></td>
       <td style={TD}><MonatWahl wert={b.start} onWahl={m => void setze(p('start'), b.start, m, `${n} · ab`)} monate={monate} /></td>
       <td style={TDr}>{b.rhythmus === 'einmalig' ? <span style={{ color: C.inkLeise }}>—</span> : <ZahlFeld wert={b.laufzeit ?? null} leer platzhalter="offen" dezimal={0} breite={64} onFertig={v => void setze(p('laufzeit'), b.laufzeit, v && v > 0 ? Math.round(v) : undefined, `${n} · Laufzeit`)} titel="Laufzeit in Monaten" />}</td>
-      <td style={TD}>{b.einheit === 'ug' ? <Auswahl wert={String(ziel)} onWahl={v => void setze(p('zahlungsziel'), b.zahlungsziel, Number(v), `${n} · Zahlungsziel`)} optionen={ZIELE} titel="Zahlungsziel" /> : <span style={{ color: C.inkLeise }}>—</span>}</td>
+      <td style={TD}>{kernKanal(b.einheit) === 'ug' ? <Auswahl wert={String(ziel)} onWahl={v => void setze(p('zahlungsziel'), b.zahlungsziel, Number(v), `${n} · Zahlungsziel`)} optionen={ZIELE} titel="Zahlungsziel" /> : <span style={{ color: C.inkLeise }}>—</span>}</td>
       <td style={TDr}><Geld v={summe} farbe={C.inkDim} /></td>
       <td style={TD}><KnopfKlein farbe={C.inkDim} onClick={entfernen} titel="Baustein entfernen">−</KnopfKlein></td>
     </tr>

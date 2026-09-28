@@ -515,6 +515,9 @@ describe('Privat-Finanzen — nur Privates zählt, Firmen-Zeilen ändern nichts'
 });
 
 describe('Buchungen — Zahlungseingang einer bezahlten Rechnung', () => {
+  // BEWUSSTE Verschiebung je Einheit (28.09.): vorher buchte eine bezahlte UG-Rechnung bei kdc
+  // (kdc 9.631,50 · kdv 5.950), jetzt bei ug (kdc 7.046 · kdv 5.950 · ug 2.585,50 = r4 + r5 + r9).
+  // Die Summe „Geschäftlich“ bleibt 15.581,50. Gebuchte Altbestände werden nicht umgeschrieben.
   it('Summe Geschäftlich bleibt; je Ort siehe Kommentar', () => {
     const l = (rechnungen as unknown as FpRechnung[]).filter(r => r.firmaId !== 'privat').map(r => buchungFuer({ ...r, firmaId: r.firmaId ?? '' }, '2026-09-25'));
     const jeOrt: Record<string, number> = {};
@@ -523,10 +526,153 @@ describe('Buchungen — Zahlungseingang einer bezahlten Rechnung', () => {
       {
         "geschaeftlich": 15581.5,
         "jeOrt": {
-          "kdc": 9631.5,
+          "kdc": 7046,
           "kdv": 5950,
+          "ug": 2585.5,
         },
       }
     `);
+  });
+});
+
+// ── Nach dem Umbau: die eine Liste selbst (neu, 28.09.) ─────────────────────
+import { FINANZ_ORTE, finanzOrtAus, firmaAusAngabe, finanzOrtAusKern, kernEinheitAus, GESELLSCHAFTEN } from '../lib/einheiten';
+import { SCOPES, kennzahlenFuer } from '../lib/business/register';
+import { einheitAusGesellschaft as planEinheit } from '../lib/finanzen/produkte';
+import { kernKanal, BAUSTEIN_EINHEIT_LABEL } from '../lib/finanzen/szenarien';
+import { einheitenLesen } from '../lib/finanzen/haushalt/speicher';
+import { einheitAus, haushaltEinheitAusAlt, EINHEIT_NAME } from '../lib/finanzen/haushalt/typen';
+import { EINHEIT_LABEL as STEUER_LABEL } from '../lib/steuern/rechnen';
+
+describe('Die eine Einheitenliste (lib/einheiten.ts)', () => {
+  it('Privat + drei Gesellschaften in fester Reihenfolge — überall dieselben Namen', () => {
+    expect(FINANZ_ORTE.map(o => [o.id, o.label])).toEqual([['privat', 'Privat'], ['kdc', 'Selbstständigkeit'], ['kdv', 'KD Ventures'], ['ug', 'MAKE OS UG']]);
+    expect(SCOPES.map(s => s.id)).toEqual(['gesamt', ...GESELLSCHAFTEN]);
+    expect(STEUER_LABEL).toEqual({ kdc: 'Selbstständigkeit', kdv: 'KD Ventures', ug: 'MAKE OS UG', privat: 'Privat' });
+    expect(EINHEIT_NAME).toEqual({ privat: 'Privat', kdc: 'Selbstständigkeit', kdv: 'KD Ventures', ug: 'MAKE OS UG' });
+    expect(Object.keys(BAUSTEIN_EINHEIT_LABEL).sort()).toEqual(['kdc', 'kdv', 'privat', 'ug']);
+  });
+  it('Altwerte werden übersetzt, Unbekanntes nicht geraten', () => {
+    expect(['selbststaendigkeit', 'Selbstständigkeit', 'selbst', 'Consulting', 'Kevin Dieckmann Consulting'].map(finanzOrtAus)).toEqual(['kdc', 'kdc', 'kdc', 'kdc', 'kdc']);
+    expect(['KD Management UG', 'KD Ventures UG', 'KDV'].map(finanzOrtAus)).toEqual(['kdv', 'kdv', 'kdv']);
+    expect(['Neue UG', 'ug', 'MAKE OS UG'].map(finanzOrtAus)).toEqual(['ug', 'ug', 'ug']);
+    expect(finanzOrtAus('Kemaris')).toBeUndefined();
+    expect(finanzOrtAus('')).toBeUndefined();
+  });
+  it('ZOE-Zuruf: Ventures vor UG, MAKE OS/UG → ug, sonst Selbstständigkeit', () => {
+    expect(['KD Ventures UG', 'kdv', 'Ventures', 'MAKE OS UG', 'die UG', 'ug', 'KDC', 'Consulting', '', 'irgendwas'].map(firmaAusAngabe))
+      .toEqual(['kdv', 'kdv', 'kdv', 'ug', 'ug', 'ug', 'kdc', 'kdc', 'kdc', 'kdc']);
+  });
+  it('Rechenkern-Namen bleiben: selbststaendigkeit ↔ kdc, sonst gleich', () => {
+    expect((['privat', 'selbststaendigkeit', 'ug', 'kdv'] as const).map(finanzOrtAusKern)).toEqual(['privat', 'kdc', 'ug', 'kdv']);
+    expect((['privat', 'kdc', 'ug', 'kdv'] as const).map(kernEinheitAus)).toEqual(['privat', 'selbststaendigkeit', 'ug', 'kdv']);
+  });
+});
+
+describe('Cockpit: die MAKE OS UG als eigene Sicht', () => {
+  it('UG-Sicht zählt UG-Rechnungen, -Mandate und -Planposten; Beratertage-Kennzahlen gelten dort nicht', () => {
+    const w = werteVon(berechne(bestand('ug')));
+    expect(w).toMatchInlineSnapshot(`
+      {
+        "bereich_zeit": null,
+        "bewusst_woche": null,
+        "break_even": null,
+        "cac": null,
+        "churn": null,
+        "deckung13": 25,
+        "dso": null,
+        "ek_quote": null,
+        "fixkostenquote": null,
+        "fokus_tage": null,
+        "kapitaldienst": null,
+        "konzentration": 100,
+        "kostenquote": null,
+        "liquiditaet": 25,
+        "ltv": null,
+        "ltv_cac": null,
+        "nrr": null,
+        "personalquote": null,
+        "pipeline": null,
+        "plan_ist": null,
+        "quick_ratio": null,
+        "recurring": null,
+        "run_rate": null,
+        "runway": null,
+        "sales_cycle": null,
+        "ueberfaellig": 0,
+        "umsatz_kopf": null,
+        "win_rate": null,
+        "zeit_woche": null,
+      }
+    `);
+    expect(kennzahlenFuer('ug').some(k => k.id === 'auslastung' || k.id === 'tagessatz')).toBe(false);
+    expect(geschaeftsmodell(mandate, [], 'ug', 1000)).toMatchObject({ mrr: 800, einmalig: 5000 });
+  });
+  it('Gesamt nimmt die UG erst in die Ist-Monate, sobald sie einen Abschluss hat', () => {
+    const b = bestand('gesamt');
+    const mitUg = { ...b, abschluesse: [...b.abschluesse, { firma: 'ug' as const, monat: '2026-08', umsatz: 700, kosten: 400 }] };
+    const aug = (x: Bestand) => istMonate(x).find(m => m.monat === '2026-08')!;
+    expect(aug(b)).toMatchObject({ umsatz: 14500, kosten: 7900 });
+    expect(aug(mitUg)).toMatchObject({ umsatz: 15200, kosten: 8300 });
+    // Juli: die UG hat keinen Abschluss → Gesamt fällt aufs Controlling zurück wie jede andere Lücke.
+    expect(istMonate(mitUg).find(m => m.monat === '2026-07')!.quelle).not.toBe('Monatsabschluss + Grundlage');
+  });
+});
+
+describe('Finanzplanung: Selbstständigkeit eigene Achse, der Kern rechnet wie vorher', () => {
+  it('Produkt der Selbstständigkeit → Baustein kdc; „offen“ bleibt UG', () => {
+    expect((['kdc', 'kdv', 'ug', 'offen'] as const).map(planEinheit)).toEqual(['kdc', 'kdv', 'ug', 'ug']);
+    expect((['kdc', 'kdv', 'ug', 'privat'] as const).map(kernKanal)).toEqual(['ug', 'kdv', 'ug', 'privat']);
+  });
+  it('ein kdc-Baustein ergibt im Kern exakt dieselben Zahlen wie derselbe Baustein bei der UG (Kern ohne kdc-Achse)', () => {
+    const d = mini();
+    const mit = (einheit: 'ug' | 'kdc') => rechneMit(d, { ...planszenario(), bausteine: bausteine().map(b => (b.einheit === 'ug' ? { ...b, einheit } : b)) });
+    const a = mit('ug'), b = mit('kdc');
+    expect(b.ug).toEqual(a.ug);
+    expect(b.pr).toEqual(a.pr);
+    expect(b.kz).toEqual(a.kz);
+  });
+  it('Kontostand über die Kennung der einen Liste (kdc = selbststaendigkeit)', () => {
+    expect(kontostand(mini(), 'kdc')).toEqual(kontostand(mini(), 'selbststaendigkeit'));
+  });
+});
+
+describe('Steuern: UG sichtbar, aber nicht wie die Selbstständigkeit gerechnet', () => {
+  it('keine UG-Fristen, Prognose-Zeile ohne Betrag mit „noch nicht hinterlegt“, Soll 0', () => {
+    expect(fristen(STANDARD_STEUERN, HEUTE).some(f => f.einheit === 'ug')).toBe(false);
+    const p = prognose(STANDARD_STEUERN, HEUTE, { kdc: null, kdv: null }, {}, { rechnungen: 2 });
+    const z = p.zeilen.find(x => x.einheit === 'ug')!;
+    expect(z.betrag).toBeNull();
+    expect(z.luecke).toMatch(/noch nicht hinterlegt.*2 UG-Rechnungen/);
+    expect(p.je.ug).toEqual({ soll: 0, ist: null, deckung: null });
+  });
+  it('Beleg-Punkte nennen die Einheit aus der einen Liste', () => {
+    const bp = belegPunkte([], [{ id: 'b1', stand: 1, art: 'beleg', bezeichnung: 'Q', empfaenger: null, betrag: null, faellig_am: null, verursacher: null, einheit: 'ug', erledigt: false, bezahlt_am: null, notiz: null, buchung_id: null }], HEUTE);
+    expect(bp[0].unter).toBe('MAKE OS UG');
+  });
+});
+
+describe('Privat-Finanzen: Altbestand beim Lesen übersetzt, nie verworfen', () => {
+  it('ohne Marke: selbststaendigkeit → kdc, ug (KD Management UG) → kdv, Unbekanntes bleibt stehen', () => {
+    const alt = { buchungen: [{ id: 'a', einheit: 'privat' }, { id: 'b', einheit: 'selbststaendigkeit' }, { id: 'c', einheit: 'ug' }, { id: 'd', einheit: 'kemaris' }] };
+    const neu = einheitenLesen('buchungen', alt);
+    expect(neu.buchungen.map(z => z.einheit)).toEqual(['privat', 'kdc', 'kdv', 'kemaris']);
+    expect(neu.einheiten).toBe(2);
+    expect(alt.buchungen[2].einheit).toBe('ug'); // rein: der Bestand selbst bleibt unangetastet
+  });
+  it('mit Marke: ug ist die MAKE OS UG und bleibt ug; Konten im Stamm werden übersetzt', () => {
+    expect(einheitenLesen('belege', { belege: [{ id: 'x', einheit: 'ug' }], einheiten: 2 }).belege[0].einheit).toBe('ug');
+    expect(einheitenLesen('stamm', { konten: [{ id: 'k', einheit: 'ug' }], kategorien: [] }).konten[0].einheit).toBe('kdv');
+  });
+  it('Eingabe spricht die neue Liste, Altbestand die alte', () => {
+    expect(['ug', 'kdv', 'kdc', 'selbst', 'KD Management UG', '', 'kemaris'].map(einheitAus)).toEqual(['ug', 'kdv', 'kdc', 'kdc', 'kdv', 'privat', null]);
+    expect(['ug', 'selbststaendigkeit', 'privat', 'kemaris'].map(haushaltEinheitAusAlt)).toEqual(['kdv', 'kdc', 'privat', null]);
+  });
+});
+
+describe('Buchungen: Ort = Firma der Rechnung', () => {
+  it('UG-Rechnung → ug, KD Ventures → kdv, Unbekanntes → kdc wie bisher', () => {
+    const r = (firmaId: string) => buchungFuer({ id: 'r', firmaId, kunde: 'K', titel: 't', betrag: 10, status: 'bezahlt' }, HEUTE).ort;
+    expect(['ug', 'kdv', 'kdc', '', 'kemaris'].map(r)).toEqual(['ug', 'kdv', 'kdc', 'kdc', 'kdc']);
   });
 });

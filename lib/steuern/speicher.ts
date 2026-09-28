@@ -14,10 +14,10 @@ import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeRoh, bestandFuer } from '@/lib/business/speicher';
 import { istMonate } from '@/lib/business/messen';
 import { localDay } from '@/lib/zeit';
-import { einheitAusGesellschaft } from '@/lib/einheiten';
+import { einheitAusGesellschaft, finanzOrtName, istGesellschaft } from '@/lib/einheiten';
 import {
-  STANDARD_STEUERN, fristen, zeitraumVon, ustZeitraum, prognose, jahresgewinn, belegPunkte, uebergabeMonat, uebergabeJahr, HINWEIS,
-  type SteuerEinstellungen, type FirmaSteuer, type Frist, type Grundlagenteil,
+  STANDARD_STEUERN, STEUER_FIRMEN, fristen, zeitraumVon, ustZeitraum, prognose, jahresgewinn, belegPunkte, uebergabeMonat, uebergabeJahr, HINWEIS,
+  type SteuerEinstellungen, type SteuerFirma, type FirmaSteuer, type Frist, type Grundlagenteil,
 } from './rechnen';
 
 export const STEUERN = 'steuern';
@@ -57,7 +57,7 @@ export async function speichereSteuern(roh: Record<string, unknown>, von: string
   const e = (roh.einstellungen ?? null) as Record<string, unknown> | null;
   if (e) {
     if (typeof e.mitBerater === 'boolean') neu.mitBerater = e.mitBerater;
-    for (const f of ['kdc', 'kdv'] as const) {
+    for (const f of STEUER_FIRMEN) {
       const x = e[f] as Partial<FirmaSteuer> | undefined;
       if (!x) continue;
       if (x.rechtsform && ['freiberuf', 'einzel', 'ug', 'gmbh'].includes(x.rechtsform)) neu[f].rechtsform = x.rechtsform;
@@ -78,7 +78,7 @@ export async function speichereSteuern(roh: Record<string, unknown>, von: string
       }
     };
     if (e.vorauszahlung) betrag(e.vorauszahlung, neu.vorauszahlung as Record<string, number | undefined>, ['est', 'kst', 'gewstKdc', 'gewstKdv']);
-    if (e.ruecklageIst) betrag(e.ruecklageIst, neu.ruecklageIst as Record<string, number | undefined>, ['kdc', 'kdv', 'privat']);
+    if (e.ruecklageIst) betrag(e.ruecklageIst, neu.ruecklageIst as Record<string, number | undefined>, ['kdc', 'kdv', 'ug', 'privat']);
     if ('steuerquote' in e) {
       if (e.steuerquote === null || e.steuerquote === '') neu.steuerquote = null;
       else { const n = zahl(e.steuerquote); if (!Number.isFinite(n) || n < 0 || n > 60) fehler = 'Steuerquote bitte zwischen 0 und 60 %.'; else neu.steuerquote = Math.round(n * 10) / 10; }
@@ -135,7 +135,7 @@ export async function steuernStand(heute = localDay()) {
 
   const f = fristen(e, heute, abgehakt);
   // Umsatzsteuer: der laufende Zeitraum und der letzte, solange er noch nicht angemeldet ist.
-  const ust = (['kdc', 'kdv'] as const).flatMap(firma => {
+  const ust = STEUER_FIRMEN.flatMap(firma => {
     const fs = e[firma];
     const jetzt = zeitraumVon(heute, fs.ust);
     if (!jetzt) return [];
@@ -148,11 +148,11 @@ export async function steuernStand(heute = localDay()) {
   });
   const jahr = Number(heute.slice(0, 4));
   const gewinn = { kdc: jahresgewinn(istMonate(bestandFuer(roh, 'kdc')), jahr), kdv: jahresgewinn(istMonate(bestandFuer(roh, 'kdv')), jahr) };
-  const ustOffen: Partial<Record<'kdc' | 'kdv', number>> = {};
+  const ustOffen: Partial<Record<SteuerFirma, number>> = {};
   for (const u of ust) ustOffen[u.firma] = (ustOffen[u.firma] ?? 0) + (u.zahllast ?? 0);
-  const p = prognose(e, heute, gewinn, ustOffen);
+  const p = prognose(e, heute, gewinn, ustOffen, { rechnungen: rechnungen.filter(r => r.firmaId === 'ug' && (r.status === 'gestellt' || r.status === 'bezahlt')).length });
   const letzterMonat = (() => { const x = new Date(`${heute.slice(0, 7)}-01T12:00:00Z`); x.setUTCMonth(x.getUTCMonth() - 1); return x.toISOString().slice(0, 7); })();
-  const buchungsMonate = Array.from(new Set((buch?.buchungen ?? []).filter(b => b.ort === 'kdc' || b.ort === 'kdv').map(b => b.datum.slice(0, 7))));
+  const buchungsMonate = Array.from(new Set((buch?.buchungen ?? []).filter(b => istGesellschaft(b.ort)).map(b => b.datum.slice(0, 7))));
   return {
     hinweis: HINWEIS, heute, einstellungen: e, fristen: f, ust, prognose: p, gewinn,
     belege: belegPunkte(rechnungen, belege, heute),
@@ -195,7 +195,7 @@ export async function steuerAufgabenAbgleichen(f: Frist[], heute = localDay()): 
     for (const [id, x] of Array.from(dran.entries())) {
       neu++;
       tasks.push({
-        id, title: `${x.einheit === 'privat' ? 'Privat' : x.einheit === 'kdc' ? 'Consulting' : 'KD Ventures'}: ${x.titel}`.slice(0, 200),
+        id, title: `${finanzOrtName(x.einheit)}: ${x.titel}`.slice(0, 200),
         description: `Steuerfrist ${x.datum.slice(8, 10)}.${x.datum.slice(5, 7)}.${x.datum.slice(0, 4)} — ${x.hinweis}. Abhaken unter Zahlen → Steuern. ${HINWEIS}`,
         status: 'todo', priority: x.tage <= 3 ? 'high' : 'medium', assignee: 'kevin',
         tags: ['steuern', ...(x.einheit === 'privat' ? ['haushalt'] : [])], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, dueDate: x.datum,

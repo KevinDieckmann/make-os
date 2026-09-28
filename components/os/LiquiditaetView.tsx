@@ -20,6 +20,7 @@ import {
 } from '@/lib/make-one/liquiditaet';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, Segmente, feld, LEUCHT } from './schlank';
+import { finanzOrtName, istGesellschaft } from '@/lib/einheiten';
 
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
 
@@ -242,7 +243,7 @@ export function LiquiditaetView() {
           <Karte i={0} akzent={v.engpass ? LEUCHT.kritisch : LEUCHT.geld}>
             <Ueberschrift farbe={v.engpass ? LEUCHT.kritisch : LEUCHT.geld}
               rechts={plan && plan.firmen.length > 1 ? (
-                <Segmente liste={['alle', ...plan.firmen.map(f => f.id)].map(fid => ({ id: fid, label: fid === 'alle' ? 'Alle Konten' : plan.firmen.find(f => f.id === fid)?.name.split(' ')[0] ?? fid }))}
+                <Segmente liste={['alle', ...plan.firmen.map(f => f.id)].map(fid => ({ id: fid, label: fid === 'alle' ? 'Alle Konten' : istGesellschaft(fid) ? finanzOrtName(fid) : plan.firmen.find(f => f.id === fid)?.name.split(' ')[0] ?? fid }))}
                   aktiv={nurFirma} onWahl={setNurFirma} />
               ) : undefined}>
               Verlauf · {wochen} Wochen

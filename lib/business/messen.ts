@@ -1,6 +1,6 @@
 // ─── Business-Index — messen (rein, getestet) ───────────────────────────────
-// Jede Kennzahl aus dem Bestand, getrennt nach Sicht (gesamt · Consulting ·
-// KD Ventures). Privates zählt nie. Fehlt etwas, gibt es keinen Schätzwert,
+// Jede Kennzahl aus dem Bestand, getrennt nach Sicht (gesamt · Selbstständigkeit ·
+// KD Ventures · MAKE OS UG — lib/einheiten.ts, seit 28.09.). Privates zählt nie. Fehlt etwas, gibt es keinen Schätzwert,
 // sondern eine Messlücke.
 //
 // Ist-Zahlen je Monat (Umsatz, Kosten, Personal …) in dieser Reihenfolge:
@@ -19,9 +19,10 @@ import type { Mandat, Chance } from '@/lib/crm/typen';
 import { winRate, prognose, gesamtwert, wahrscheinlichkeit, OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { markttraktion } from '@/lib/crm/adresse';
 import { WEG } from '@/lib/wege';
+import { finanzOrtName, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 
 export interface Monatsabschluss {
-  firma: 'kdc' | 'kdv';
+  firma: Gesellschaftskennung;
   /** YYYY-MM */
   monat: string;
   umsatz?: number; kosten?: number; personal?: number; marketingVertrieb?: number; afa?: number;
@@ -44,7 +45,7 @@ export interface Bestand {
   grundlageMonate: { monat: string; umsatzNetto: number; kostenNetto: number }[];
   /** Wiederkehrende Fixkosten je Monat aus dem V1-Export (Selbständigkeit → Consulting, UG → KD Ventures).
    *  Die Kredite im V1-Export sind PRIVAT und fließen hier nie ein. */
-  grundlageFixkosten: Partial<Record<'kdc' | 'kdv', number>>;
+  grundlageFixkosten: Partial<Record<Gesellschaftskennung, number>>;
   abschluesse: Monatsabschluss[];
   mandate: Mandat[];
   chancen: Chance[];
@@ -57,13 +58,13 @@ export interface Bestand {
   bloecke: { date: string; dauerMin: number; art: string }[];
   auftraege: { status: string; beendet?: string; zeit?: string; anlass?: string; name?: string; auftrag?: string }[];
   meilensteine: { id?: string; titel?: string; bereich: string; faellig?: string; fortschritt: number; erledigt: boolean }[];
-  fte: Partial<Record<'kdc' | 'kdv', number>>;
+  fte: Partial<Record<Gesellschaftskennung, number>>;
   /** MRR-Schnappschüsse: Monat → Kunde → MRR (nur diese Sicht) */
   mrrVerlauf: Record<string, Record<string, number>>;
   /** Jahresumsatzziel je Firma (Feinjustierung); gesamt kommt aus dem Controlling. */
-  ziele?: Partial<Record<'kdc' | 'kdv', number>>;
+  ziele?: Partial<Record<Gesellschaftskennung, number>>;
   /** Verfügbare Beratertage je Monat und Firma (Kapazität) — für die Auslastung. */
-  kapazitaet?: Partial<Record<'kdc' | 'kdv', number>>;
+  kapazitaet?: Partial<Record<Gesellschaftskennung, number>>;
   /** Eigene Schwellen dieser Sicht (Feinjustierung) — überschreiben den Standard. */
   schwellen?: Record<string, Schwelle>;
   /** Zeit & Fokus der anfragenden Person (26.09. spät) — die Säule „Fokus & Zeit“ ist persönlich. */
@@ -85,7 +86,18 @@ const tageZwischen = (a: string, b: string) => Math.round((Date.parse(`${b.slice
 export const euro = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(n));
 const zahl = (n: number, s = 1) => n.toLocaleString('de-DE', { maximumFractionDigits: s, minimumFractionDigits: 0 });
 const pz = (n: number) => `${zahl(n, 1)} %`;
-const FIRMEN_LABEL: Record<string, string> = { kdc: 'Consulting', kdv: 'KD Ventures' };
+const firmenLabel = (id: string) => (istGesellschaft(id) ? finanzOrtName(id) : undefined);
+
+/**
+ * Die Firmen einer Sicht. Gesamt = Selbstständigkeit + KD Ventures und die MAKE OS UG,
+ * sobald sie einen Monatsabschluss hat (28.09.): „Gesamt vollständig“ heißt „alle Firmen
+ * mit Abschluss im Monat“ — eine UG ohne jeden Abschluss darf die Gesamtsicht nicht
+ * auf „nur 2 von 3 Firmen“ kippen (die Summen blieben sonst nicht gleich).
+ */
+function firmenDer(b: Bestand): Gesellschaftskennung[] {
+  if (b.scope !== 'gesamt') return [b.scope];
+  return b.abschluesse.some(a => a.firma === 'ug') ? ['kdc', 'kdv', 'ug'] : ['kdc', 'kdv'];
+}
 
 /** Gehört ein Posten zu dieser Sicht? (Privates ist vorher schon raus.) Ohne Firma → gesamt und Consulting (ältere Einträge). */
 function inSicht(firmaId: string | undefined, scope: Scope): boolean {
@@ -103,7 +115,7 @@ export interface IstMonat { monat: string; umsatz: number; kosten: number; perso
 export function istMonate(b: Bestand): IstMonat[] {
   const aktuell = monat(b.heute);
   const fenster = Array.from({ length: 12 }, (_, i) => monatPlus(aktuell, -12 + i));
-  const firmen: ('kdc' | 'kdv')[] = b.scope === 'gesamt' ? ['kdc', 'kdv'] : [b.scope];
+  const firmen = firmenDer(b);
   const raus: IstMonat[] = [];
   for (const m of fenster) {
     const je = firmen.map(f => {
@@ -156,7 +168,7 @@ function wiederkehrendePosten(b: Bestand, kategorie?: string): Planposten[] {
 function wiederkehrendeKosten(b: Bestand): number | null {
   const l = wiederkehrendePosten(b);
   if (l.length) return l.reduce((s, p) => s + postenMonat(p), 0);
-  const g = b.scope === 'gesamt' ? (b.grundlageFixkosten.kdc ?? 0) + (b.grundlageFixkosten.kdv ?? 0) : b.grundlageFixkosten[b.scope] ?? 0;
+  const g = b.scope === 'gesamt' ? Object.values(b.grundlageFixkosten).reduce<number>((s, x) => s + (x ?? 0), 0) : b.grundlageFixkosten[b.scope] ?? 0;
   return g > 0 ? g : null;
 }
 
@@ -182,7 +194,7 @@ const aktiveMandate = (b: Bestand) => b.mandate.filter(m => gesellschaftInSicht(
 const chancenInSicht = (b: Bestand) => b.chancen.filter(c => gesellschaftInSicht(c.gesellschaft, b.scope));
 
 function letzterAbschluss(b: Bestand, feld: keyof Monatsabschluss): { wert: number; monat: string } | null {
-  const firmen: ('kdc' | 'kdv')[] = b.scope === 'gesamt' ? ['kdc', 'kdv'] : [b.scope];
+  const firmen = firmenDer(b);
   const je = firmen.map(f => b.abschluesse.filter(a => a.firma === f && typeof a[feld] === 'number').sort((x, y) => y.monat.localeCompare(x.monat))[0]);
   if (je.some(x => !x)) return null;
   return { wert: je.reduce((s, a) => s + (a![feld] as number), 0), monat: je.map(a => a!.monat).sort()[0] };
@@ -207,7 +219,7 @@ function kontenDetails(b: Bestand): Detail[] {
     const da = typeof f.kontostand === 'number';
     const alt = da && f.stand ? tageZwischen(f.stand, b.heute) : null;
     return {
-      titel: `Konto ${FIRMEN_LABEL[f.id] ?? f.name}`, wert: da ? euro(f.kontostand as number) : 'fehlt',
+      titel: `Konto ${firmenLabel(f.id) ?? f.name}`, wert: da ? euro(f.kontostand as number) : 'fehlt',
       unter: !da ? 'Kontostand eintragen' : f.stand ? `Stand ${tagKurz(f.stand)}${alt != null && alt > 14 ? ` — ${alt} Tage alt` : ''}` : 'ohne Datum',
       href: WEG.kontostaende(), ...(!da ? { ampel: 'grau' as Ampel } : alt != null && alt > 14 ? { ampel: 'gelb' as Ampel } : {}),
     };
@@ -262,7 +274,7 @@ export const MESSEN_MODELL: Record<string, (b: Bestand) => Messung> = {
       ] };
   },
   auslastung(b) {
-    const firmen: ('kdc' | 'kdv')[] = b.scope === 'gesamt' ? ['kdc'] : [b.scope as 'kdc' | 'kdv'];
+    const firmen: Gesellschaftskennung[] = b.scope === 'gesamt' ? ['kdc'] : [b.scope];
     const kap = firmen.reduce((s, f) => s + (b.kapazitaet?.[f] ?? 0), 0);
     if (!kap) return { luecke: 'Kapazität (verfügbare Beratertage je Monat) ist nicht eingetragen', details: [{ titel: 'Kapazität eintragen', href: WEG.einstellungen() }] };
     const ist = istMonate({ ...b, scope: firmen.length === 1 ? firmen[0] : b.scope }).filter(m => m.fakturierteTage != null).slice(-3);
@@ -453,7 +465,7 @@ export const MESSEN: Record<string, (b: Bestand) => Messung> = {
   },
 
   umsatz_kopf(b) {
-    const fte = b.scope === 'gesamt' ? (b.fte.kdc ?? 0) + (b.fte.kdv ?? 0) : b.fte[b.scope] ?? 0;
+    const fte = b.scope === 'gesamt' ? Object.values(b.fte).reduce<number>((s, x) => s + (x ?? 0), 0) : b.fte[b.scope] ?? 0;
     if (!fte) return { luecke: 'Köpfe (FTE) sind nicht eingetragen', details: [{ titel: 'Köpfe eintragen', href: WEG.einstellungen() }] };
     const ist = istMonate(b);
     if (!ist.length) return { luecke: 'Umsatz der letzten Monate fehlt', details: [{ titel: 'Monatsabschluss eintragen', href: WEG.abschluss(b.scope) }] };
@@ -699,4 +711,5 @@ export function mrrJeKunde(mandate: Mandat[], scope: Scope): Record<string, numb
   return je;
 }
 
-export { FIRMEN_LABEL };
+/** Anzeigename je Firma — aus der einen Einheitenliste (lib/einheiten.ts). */
+export const FIRMEN_LABEL: Record<Gesellschaftskennung, string> = { kdc: finanzOrtName('kdc'), kdv: finanzOrtName('kdv'), ug: finanzOrtName('ug') };

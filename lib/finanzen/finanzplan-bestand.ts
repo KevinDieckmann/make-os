@@ -10,6 +10,7 @@
 // Liste über die Grenze wachsen lassen will, bekommt eine Ablehnung mit Text.
 
 import { fingerabdruck } from '@/lib/store/fingerabdruck';
+import { firmaFuerGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 
 export interface Firma {
   id: string;
@@ -271,14 +272,15 @@ export const istGrenzFehler = (t: string | null | undefined): boolean => !!t && 
 
 /** Die Buchung (Zahlungseingang) zu einer bezahlten Rechnung — Form wie /api/state/buchungen. */
 export interface RechnungsBuchung {
-  id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string; ort: 'kdv' | 'kdc'; rechnungId: string;
+  id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string; ort: Gesellschaftskennung; rechnungId: string;
 }
 export const buchungsId = (rechnungId: string) => `bu-re-${rechnungId}`.slice(0, 40);
 
 export function buchungFuer(r: Rechnung, am: string): RechnungsBuchung {
   return {
     id: buchungsId(r.id), datum: am, wer: (r.kunde || r.titel || 'Rechnung').slice(0, 120), betrag: r.betrag, kategorie: 'Umsatz',
-    ...(r.titel ? { zweck: r.titel.slice(0, 200) } : {}), ort: r.firmaId === 'kdv' ? 'kdv' : 'kdc', rechnungId: r.id,
+    // Ort = die Firma der Rechnung (kdc · kdv · ug, 28.09.) — vorher landete eine UG-Rechnung bei kdc. Unbekanntes → kdc wie bisher.
+    ...(r.titel ? { zweck: r.titel.slice(0, 200) } : {}), ort: firmaFuerGesellschaft(r.firmaId), rechnungId: r.id,
   };
 }
 

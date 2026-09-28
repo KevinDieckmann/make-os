@@ -60,7 +60,7 @@ describe('Umwandeln', () => {
     expect(bericht.zaehlung.buchungen).toEqual({ supabase: 4, gelesen: 4, uebernommen: 2, abgewiesen: 2 });
   });
   it('alte Einheit „selbst“ wird vereinheitlicht, fehlende Kategorie wird „offen“ und gemeldet', () => {
-    expect(h.belege[0].einheit).toBe('selbststaendigkeit');
+    expect(h.belege[0].einheit).toBe('kdc');
     expect(h.buchungen.find(b => b.id === 'b2')!.kategorie_id).toBeNull();
     expect(bericht.hinweise.join(' ')).toMatch(/nicht vorhandene Kategorien/);
   });
