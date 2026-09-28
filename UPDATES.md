@@ -12,7 +12,8 @@ Stand hier und einen Stand, der online ist.“
 - **Löschfristen je Datenart (#52):** Tabelle unter Stammdaten › Datenschutz (Vorschläge, anpassbar, Standard nie gespeichert). Täglicher Takt-Lauf: Kontakte über der Frist **nie automatisch gelöscht** — eine Aufgabe „n Kontakte über der Löschfrist — prüfen“, Liste mit „Frist verlängern mit Grund“; technische Bestände (Import-Konflikte 90 T, Import-Läufe 30 T, Heads-Replay 90 T, Signal-Texte 12 M, Änderungsprotokoll 36 M) werden bereinigt, Protokoll „System“.
 - **„Zuletzt geprüft“ (#34):** Knopf „Stammdaten geprüft“; Datenqualität + Befund „n Kontakte seit über 12 Monaten nicht geprüft“ (aktive Beziehungen/Leads).
 - **Telefon mit Anlass (#58):** bei gelber Telefon-Ampel verlangt „Anruf festhalten“ einen Anlass (gespeichert an der Aktivität). **Ereigniszeit (#46):** nachgetragener Anruf/Mail mit Tag; „letzter Kontakt“ und Verlauf nach Ereigniszeit.
-- Tests: `tests/crm-u2-datenschutz.test.ts` (21 Fälle), Verbindungsprüfung (zwei neue Prüfungen), angepasste Ampel-Fälle.
+- **Nachtrag (Kevins Antworten):** Newsletter mit Double-Opt-in ohne vollständigen Nachweis ist jetzt ebenfalls **gelb** (Segmente „Kanal grün“, Newsletter-Empfänger und Export folgen). Neue Karte unter Stammdaten › Datenqualität „Einwilligung ohne vollständigen Nachweis“: Anzahl je Kanal, Liste mit Link in die Kontaktseite (Stammdaten › Datenschutz) — zum Nachtragen von Hand, nichts automatisch.
+- Tests: `tests/crm-u2-datenschutz.test.ts` (25 Fälle), Verbindungsprüfung (zwei neue Prüfungen), angepasste Ampel-Fälle.
 
 ### Prüfliste U2 (vor dem Hochladen durchklicken)
 - [ ] Kontakt mit alter Einwilligung: Mail-Ampel gelb mit „Nachweis unvollständig (fehlt: …)“; unter Stammdaten › Datenschutz „+ Einwilligung“ nur mit Wortlaut + Beleg → danach grün, Eintrag zeigt „erfasst … von …“.
@@ -22,6 +23,7 @@ Stand hier und einen Stand, der online ist.“
 - [ ] Stammdaten › Datenschutz: Löschfristen-Tabelle, einen Wert ändern und „Standard“ zurück; Liste „über der Frist“ mit „Frist verlängern mit Grund“.
 - [ ] Anruf festhalten bei einer bekannten Person ohne Einwilligung (gelb): Knopf erst mit Anlass aktiv; „Wann“ auf gestern → Verlauf zeigt gestern, „nachgetragen am …“.
 - [ ] Aufgaben: nach dem Takt-Lauf (ab 7 Uhr) höchstens EINE Aufgabe „… über der Löschfrist“, ohne Namen.
+- [ ] Stammdaten › Datenqualität: Karte „Einwilligung ohne vollständigen Nachweis“ mit Zahlen je Kanal; Link öffnet die Kontaktseite (Stammdaten); nach dem Ergänzen verschwindet die Person aus der Liste. Newsletter-Ampel alter DOI gelb.
 
 ## CRM grundsätzlich fertig: Stationen, mehrere Adressen, Konzern, Mehrfachwerte (28.09.2026, U1, nur lokal)
 
