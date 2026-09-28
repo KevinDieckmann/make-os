@@ -3,8 +3,9 @@
 // oben rechts leuchtet es rot.“ Gemeldet werden: Zuweisung an mich, Kommentar/Erwähnung,
 // fällig/überfällig. Telegram ist mitgedacht (Kanal-Feld), kommt aber erst später.
 //
-// Diese Datei legt NUR die Schnittstelle fest, damit Aufgaben-Umbau und Glocke parallel
-// gebaut werden können. Die Umsetzung (Speicher je Person, API, Kopf-Glocke) folgt im Paket „Glocke“.
+// Diese Datei legt die Schnittstelle fest (Aufgaben-Umbau und Glocke wurden parallel gebaut).
+// Umsetzung seit Paket „Glocke“ (B2): Speicher je Person `lib/meldungen/speicher.ts`, reine Regeln
+// `lib/meldungen/regeln.ts`, Route `/api/meldungen`, Glocke `components/os/Glocke.tsx` im Kopf.
 
 export type MeldungArt = 'zuweisung' | 'kommentar' | 'erwaehnung' | 'faellig' | 'ueberfaellig';
 
@@ -23,9 +24,16 @@ export interface MeldungEingabe {
 }
 
 /**
- * Meldung ablegen (serverseitig). Bis das Paket „Glocke“ fertig ist, tut sie nichts —
- * Aufrufer dürfen sie schon jetzt benutzen. Wirft nie; ein Fehler beim Melden bricht keinen Schreibweg ab.
+ * Meldung ablegen (serverseitig). Wirft nie; ein Fehler beim Melden bricht keinen Schreibweg ab.
+ * Nie an sich selbst (`von === an` → nichts), nur an Personen im Haushalt des Inhabers.
+ * Der Speicher wird dynamisch geladen — Aufrufer ziehen so keine Platten-Module in fremde Bündel.
  */
-export async function melde(_m: MeldungEingabe): Promise<void> {
-  // Umsetzung folgt im Paket „Glocke“ (lib/meldungen/speicher.ts).
+export async function melde(m: MeldungEingabe): Promise<void> {
+  try {
+    const { meldungAblegen } = await import('./speicher');
+    const r = await meldungAblegen(m);
+    if (!r.ok && r.grund !== 'nie an sich selbst') console.warn(`[meldungen] nicht abgelegt: ${r.grund ?? 'unbekannt'}`);
+  } catch (e) {
+    console.warn(`[meldungen] nicht abgelegt: ${e instanceof Error ? e.message.slice(0, 160) : 'Fehler'}`);
+  }
 }

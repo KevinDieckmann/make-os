@@ -5,7 +5,7 @@
 // Ganz links der Wachstums-Score als Zahl (Kevin 26.09. spät: „links rausnehmen,
 // oben als Zahl“ — der Knopf in der Leiste ist weg), dann das Suchfeld, das im
 // aktiven Space sucht (⌘K), dann Idee · Heute · Inbox · Kalender · Fokus-Zähler,
-// rechts der Schalter mit dem Index des Modus (Klick wechselt Privat ↔ Business)
+// die Glocke (Meldungen, 28.09. abends), rechts der Schalter mit dem Index des Modus (Klick wechselt Privat ↔ Business)
 // und der Zeit von heute.
 // Der Wachstums-Score stand seit 24.09. hier oben; seit heute steht er auf
 // Heute als Widget und groß im Bereich Wachstum (Kevin: ruhiger, schneller —
@@ -25,6 +25,7 @@ import { useTasks } from '@/context/TasksContext';
 import { ZuordnungWahl } from './zeit/Zuordnung';
 import { WEG } from '@/lib/wege';
 import { zeitSchluessel } from '@/lib/zeitmessung/bereich';
+import { Glocke } from './Glocke';
 
 // Inbox und Kalender folgen dem aktiven Space (zweite Fassung 26.09.: dafür stehen sie nicht mehr im Untermenü).
 const SCHNELL = (space: SpaceId) => [
@@ -266,6 +267,8 @@ export function Kopf() {
               </Link>
             );
           })}
+          {/* Glocke (28.09. abends): Zuweisungen, Kommentare/Erwähnungen, fällig/überfällig — rot bei Ungelesenem */}
+          <Glocke />
           <FokusZaehler pfad={pfad} space={space} />
           <span aria-hidden style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,.06)', margin: '0 2px' }} />
           <SpaceSchalter space={space} ausAdresse={ausAdresse} setzen={setzen} />
