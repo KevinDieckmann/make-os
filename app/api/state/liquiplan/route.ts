@@ -11,6 +11,7 @@ import { wendeAn, type ListenOp } from '@/lib/sync';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 
 import { localDay } from '@/lib/zeit';
+import { neueKennung } from '@/lib/kennung';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -47,13 +48,13 @@ const RHYTHMEN: Rhythmus[] = ['einmalig', 'monatlich', 'quartal', 'jaehrlich'];
 const DATUM = /^\d{4}-\d{2}-\d{2}$/;
 const FIRMEN = ['kdv', 'kdc', 'kemaris', 'privat'];
 
-function sauber(p: Partial<Planposten>, i: number): Planposten | null {
+function sauber(p: Partial<Planposten>, _i: number): Planposten | null {
   const titel = String(p.titel ?? '').trim().slice(0, 160);
   if (!titel) return null;
   const betrag = Math.round(Number(p.betrag));
   if (!Number.isFinite(betrag) || betrag === 0) return null;
   return {
-    id: String(p.id ?? '').slice(0, 40) || `lp-${Date.now().toString(36)}-${i}`,
+    id: String(p.id ?? '').slice(0, 40) || neueKennung('lp'),
     titel,
     betrag,
     rhythmus: RHYTHMEN.includes(p.rhythmus as Rhythmus) ? p.rhythmus as Rhythmus : 'monatlich',

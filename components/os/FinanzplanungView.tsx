@@ -20,6 +20,7 @@ import { nettoAusBrutto } from '@/lib/finanzen/ust';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Zahl, feld, LEUCHT } from './schlank';
 import { MandantLink } from './crm/MandantLink';
+import { neueKennung } from '@/lib/kennung';
 
 interface Firma { id: string; name: string; bank: string; kontostand: number | null; stand: string | null }
 type RStatus = 'geplant' | 'gestellt' | 'bezahlt' | 'storniert';
@@ -322,7 +323,7 @@ export function FinanzplanungView() {
           </select>
           <Knopf onClick={() => {
             if (!neu.kunde.trim()) return;
-            speichern({ ...plan, rechnungen: [...plan.rechnungen, { id: `r-${Date.now().toString(36)}`, firmaId: neu.firmaId, kunde: neu.kunde.trim(), titel: neu.titel.trim(), betrag: Number(neu.betrag) || 0, status: 'geplant' }] });
+            speichern({ ...plan, rechnungen: [...plan.rechnungen, { id: neueKennung('r'), firmaId: neu.firmaId, kunde: neu.kunde.trim(), titel: neu.titel.trim(), betrag: Number(neu.betrag) || 0, status: 'geplant' }] });
             setNeu({ kunde: '', titel: '', betrag: '', firmaId: neu.firmaId });
           }}>+ Rechnung</Knopf>
         </div>
@@ -369,7 +370,7 @@ export function FinanzplanungView() {
           </select>
           <Knopf farbe={LEUCHT.achtung} onClick={() => {
             if (!neuZ.an.trim()) return;
-            speichern({ ...plan, zahlungen: [...plan.zahlungen, { id: `z-${Date.now().toString(36)}`, firmaId: neuZ.firmaId, an: neuZ.an.trim(), titel: neuZ.titel.trim(), betrag: Number(neuZ.betrag) || 0, status: 'offen', faellig: neuZ.faellig || undefined }] });
+            speichern({ ...plan, zahlungen: [...plan.zahlungen, { id: neueKennung('z'), firmaId: neuZ.firmaId, an: neuZ.an.trim(), titel: neuZ.titel.trim(), betrag: Number(neuZ.betrag) || 0, status: 'offen', faellig: neuZ.faellig || undefined }] });
             setNeuZ({ an: '', titel: '', betrag: '', faellig: '', firmaId: neuZ.firmaId });
           }}>+ Zahlung</Knopf>
         </div>

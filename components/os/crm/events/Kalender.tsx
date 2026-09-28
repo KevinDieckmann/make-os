@@ -13,6 +13,7 @@ import { FARBE as C } from '@/lib/make-one/design';
 import { Knopf, Chip, LEUCHT } from '../../schlank';
 import { kalenderTermin, terminBekannt } from '@/lib/crm/event-bruecke';
 import type { Event } from '@/lib/crm/typen';
+import { neueKennung } from '@/lib/kennung';
 
 type Lage = 'prueft' | 'bekannt' | 'frei' | 'kein-zugang' | 'nicht-erreichbar';
 
@@ -46,7 +47,7 @@ export function Kalender({ e }: { e: Event }) {
     if (r.ok && r.created) {
       setLage('bekannt'); setMeldung('Termin steht im Kalender „Gemeinsam“ — drei Stunden, ohne Gäste.');
       // /create liefert keine Termin-Kennung — die Marke am Event verhindert trotzdem einen zweiten Termin.
-      void fetch('/api/crm/bestand', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste: 'events', op: 'teil', id: e.id, felder: { kalenderUid: `mac-${Date.now().toString(36)}` } }] }) })
+      void fetch('/api/crm/bestand', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste: 'events', op: 'teil', id: e.id, felder: { kalenderUid: neueKennung('mac') } }] }) })
         .then(r => { if (!r.ok) setMeldung('Termin steht im Kalender, aber die Marke am Event wurde nicht gesetzt — Seite neu laden, bevor du noch einmal anlegst.'); })
         .catch(() => setMeldung('Termin steht im Kalender — die Marke am Event konnte nicht gesetzt werden (keine Verbindung). Seite neu laden, bevor du noch einmal anlegst.'));
     }

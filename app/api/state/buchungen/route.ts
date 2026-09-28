@@ -9,6 +9,7 @@ import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { FINANZ_ORT_IDS, finanzOrtAus, type FinanzOrt } from '@/lib/einheiten';
 
 import { localDay } from '@/lib/zeit';
+import { neueKennung } from '@/lib/kennung';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -41,13 +42,13 @@ interface Datei { buchungen: Buchung[] }
 
 const DATUM = /^\d{4}-\d{2}-\d{2}$/;
 
-function sauber(b: Partial<Buchung>, i: number): Buchung | null {
+function sauber(b: Partial<Buchung>, _i: number): Buchung | null {
   const wer = String(b.wer ?? '').trim().slice(0, 120);
   // Auf den Cent (28.09., K3) — vorher auf ganze Euro: aus 1.190,50 € wurden 1.191 €.
   const betrag = Math.round(Number(b.betrag) * 100) / 100;
   if (!wer || !Number.isFinite(betrag)) return null;
   return {
-    id: String(b.id ?? '').slice(0, 40) || `bu-${Date.now().toString(36)}-${i}`,
+    id: String(b.id ?? '').slice(0, 40) || neueKennung('bu'),
     datum: typeof b.datum === 'string' && DATUM.test(b.datum) ? b.datum : localDay(),
     wer,
     betrag,

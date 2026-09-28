@@ -103,7 +103,7 @@ export function faelligeZahl(d: Pick<FinanzDaten, 'posten' | 'einstellungen'>): 
   return d.posten.filter(p => p.art !== 'konto' && postenOffen(p) && p.faellig && p.faellig <= in7).length;
 }
 /** Kennung für neue Einträge — kurz, lesbar, praktisch eindeutig. */
-export const neueKennung = (praefix: string) => `${praefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+export { neueKennung } from '@/lib/kennung';
 
 /** Person aus alten Einträgen („Kevin“, „Malin“, „beide“) auf Speichernamen bringen. */
 export const personKennung = (wer: string | null | undefined): string => String(wer ?? '').trim().toLowerCase();

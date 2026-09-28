@@ -10,6 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { SEED, type BacklogItem } from '@/lib/make-one/backlog-data';
 import { neueKarte, bildNameOk, type BauplanDatei } from './board';
+import { neueKennung } from '@/lib/kennung';
 
 export async function ladeBauplan(): Promise<BauplanDatei> {
   const f = await loadJson<BauplanDatei>('backlog');
@@ -28,7 +29,7 @@ export async function aendereBauplan(mut: (d: BauplanDatei) => BauplanDatei): Pr
 /** Neue Karte oben in „Ideen“ — aus dem Formular, dem Knopf auf jeder Seite oder von ZOE. */
 export async function karteAnlegen(roh: Record<string, unknown>, von: string): Promise<BacklogItem | null> {
   const jetzt = new Date().toISOString();
-  const karte = neueKarte(roh, von, jetzt, `bp-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`);
+  const karte = neueKarte(roh, von, jetzt, neueKennung('bp'));
   if (!karte) return null;
   await aendereBauplan(d => ({ ...d, items: [karte, ...d.items] }));
   return karte;

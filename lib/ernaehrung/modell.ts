@@ -1,3 +1,4 @@
+import { neueKennung } from '@/lib/kennung';
 // ─── MAKE OS — Ernährung & Einkauf zu zweit: das Modell (rein, getestet) ─────
 // Kevin (26.09.): „Lebensmittel bevorzugt nehmen, meine Bedürfnisse und
 // Malins, was wir zuhause haben soll benutzt werden, und an jedem Gericht die
@@ -84,7 +85,7 @@ export type Liste = typeof LISTEN[number];
 const s = (v: unknown, n: number) => String(v ?? '').replace(/\u0000/g, '').trim().slice(0, n);
 const liste = (v: unknown, n = 40, laenge = 60): string[] => (Array.isArray(v) ? v.map(x => s(x, laenge)).filter(Boolean).slice(0, n) : []);
 const kat = (v: unknown): Kategorie => (KATEGORIEN.some(k => k.id === v) ? (v as Kategorie) : 'sonst');
-export const neueId = (p: string) => `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+export const neueId = (p: string) => neueKennung(p);
 
 export function sauberDatei(f: Partial<ErnaehrungFile> | null, jetzt = new Date().toISOString()): ErnaehrungFile {
   const plan = {} as Record<Tag, Mahlzeiten>;

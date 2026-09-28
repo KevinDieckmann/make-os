@@ -17,6 +17,7 @@ import type { EventZahlen } from '@/lib/crm/events';
 import { deltaAnwenden } from '@/lib/kontakte/delta';
 import { localDay } from '@/lib/zeit';
 import { KontaktStaende, kontaktSchreiben, nacheinanderKette, KONTAKT_KONFLIKT, type KontaktAntwort, type KontaktOp } from '@/lib/crm/kontakt-schreiben';
+import { neueKennung } from '@/lib/kennung';
 
 export interface CrmAntwort {
   ok: boolean; heute: string; stand: CrmBestand;
@@ -60,7 +61,7 @@ export const leerAlsNull = (t: Record<string, unknown>) => Object.fromEntries(Ob
  */
 export const nurFelder = (t: Record<string, unknown>) => Object.fromEntries(Object.entries(t).map(([k, v]) => [k, v === undefined ? '' : v]));
 
-export const neueId = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+export const neueId = (p: string) => neueKennung(p);
 
 /**
  * Hinweis bei 409 (28.09., K4; Klartext seit Ablaufprüfung K1): jemand anders hat denselben Eintrag inzwischen geändert.

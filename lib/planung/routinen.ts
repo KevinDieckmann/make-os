@@ -8,6 +8,7 @@ import { istSpace } from '@/lib/make-one/space-regeln';
 import { OWNER_BEIDE, istRhythmus, type Block, type Routine, type SpaceId, type Wochentag } from './typen';
 import { faelligkeit, type Faelligkeit } from './rhythmus';
 import { sauberEinheit } from './einheiten';
+import { neueKennung } from '@/lib/kennung';
 
 const ISO_TAG = /^\d{4}-\d{2}-\d{2}$/;
 const UHR = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -25,7 +26,7 @@ export function sauberRoutine(roh: unknown): Routine | null {
   if (!label) return null;
   const rang = Number(r.rang);
   const aus: Routine = {
-    id: String(r.id ?? '').slice(0, 60) || `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+    id: String(r.id ?? '').slice(0, 60) || neueKennung('r'),
     label,
     wann: (['morgen', 'tag', 'abend'] as const).includes(r.wann as Routine['wann']) ? r.wann as Routine['wann'] : 'morgen',
     kategorie: (['gesundheit', 'leben', 'business'] as const).includes(r.kategorie as Routine['kategorie']) ? r.kategorie as Routine['kategorie'] : 'leben',
@@ -57,7 +58,7 @@ export function sauberBlock(roh: unknown): Block | null {
   // Einheit (28.09.): wie bei Routinen nur im Business, Namen aus der einen Quelle — Privat verwirft sie.
   const einheit = art === 'business' ? sauberEinheit(b.einheit) : null;
   return {
-    id: String(b.id ?? '').slice(0, 60) || `bl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+    id: String(b.id ?? '').slice(0, 60) || neueKennung('bl'),
     owner, wochentag: wt as Wochentag, von, bis,
     art,
     ...(titel ? { titel } : {}),

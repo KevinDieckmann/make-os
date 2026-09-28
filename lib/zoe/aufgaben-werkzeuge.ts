@@ -28,11 +28,12 @@ import { hole, entscheide, beanspruche, loslassen, type Vorschlag } from './stap
 import { notiere } from './protokoll';
 import type { Risiko, Vorschau } from './register';
 import type { StapelArtFreigabe } from './stapel-arten';
+import { neueKennung } from '@/lib/kennung';
 
 export type ZoeErgebnis<T = Task> = { ok: true; wert: T } | { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string; konflikt?: boolean };
 const nein = (status: 400 | 403 | 404 | 409 | 413, fehler: string, konflikt = false): { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string; konflikt?: boolean } => ({ ok: false, status, fehler, ...(konflikt ? { konflikt } : {}) });
 const kurz = (t: string, n = 80) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
-const kennung = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+const kennung = (p: string) => neueKennung(p);
 
 type Aenderung = { task: Task; neue?: Task[]; kommentar?: AufgabeKommentar } | { fehler: string; status: 400 | 403 | 404 | 409 | 413 };
 

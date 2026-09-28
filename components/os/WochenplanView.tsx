@@ -30,6 +30,7 @@ import { Seite, Karte, Ueberschrift, Leer, Chip, Knopf, Punkt, Zahl, Segmente, f
 import { useKalender, GanztagsZelle, TerminFenster, WER_FARBE, WER_LABEL, EBENEN, type KTermin, type Ebene, type Wer } from './kalender/teile';
 import { tagPlus, wandAus } from '@/lib/kalender/zeit';
 import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
+import { neueKennung } from '@/lib/kennung';
 // Routinen kommen aus dem Routine-Planer — nicht mehr aus der Konstante.
 
 interface FixTermin { titel: string; date: string; startMin: number; dauerMin: number; quelle: string; termin?: KTermin; space: 'privat' | 'business'; /** aus dem anderen Space — nur „belegt“ (26.09.) */ fremd: boolean }
@@ -284,7 +285,7 @@ export function WochenplanView() {
   function eigenerBlock(date: string, startMin: number) {
     if (neuArt === 'termin') { void terminAnlegen(date, startMin); return; }
     const b: PlanBlock = {
-      id: `pb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+      id: neueKennung('pb'),
       date, startMin, dauerMin: neuDauer, titel: neuTitel.trim() || 'Blockzeit', art: neuArt,
     };
     const alle = [...bloecke, b];
@@ -308,9 +309,9 @@ export function WochenplanView() {
       } else if (p.move) {
         speichern(bloecke.map(b => b.id === p.move ? { ...b, date, startMin } : b));
       } else if (p.neu) {
-        speichern([...bloecke, { id: `pb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, date, startMin, dauerMin: p.neu.dauerMin, titel: p.neu.titel, art: p.neu.art }]);
+        speichern([...bloecke, { id: neueKennung('pb'), date, startMin, dauerMin: p.neu.dauerMin, titel: p.neu.titel, art: p.neu.art }]);
       } else if (p.aufgabe) {
-        speichern([...bloecke, { id: `pb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, date, startMin, dauerMin: 60, titel: p.aufgabe.titel, art: 'aufgabe', taskId: p.aufgabe.taskId }]);
+        speichern([...bloecke, { id: neueKennung('pb'), date, startMin, dauerMin: 60, titel: p.aufgabe.titel, art: 'aufgabe', taskId: p.aufgabe.taskId }]);
       }
     } catch { /* kein gültiges Paket */ }
   }

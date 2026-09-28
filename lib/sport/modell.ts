@@ -1,3 +1,4 @@
+import { neueKennung } from '@/lib/kennung';
 // ─── MAKE OS — Sport: Datenmodell (27.09.) ──────────────────────────────────
 // Kevins Auftrag: „Im Gesundheitsbereich einen Sport-Bereich einbauen — für
 // Malin ausgebaut mit Hyrox, Running, Gym und Erholung, damit sie ihre Ziele
@@ -356,4 +357,4 @@ export function wendeAn(stand: SportStand, op: Op): SportStand {
 }
 
 /** Kurze Kennung für neue Einträge — lesbar, eindeutig genug für eine Person. */
-export const neueId = (praefix: string) => `${praefix}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+export const neueId = (praefix: string) => neueKennung(praefix);

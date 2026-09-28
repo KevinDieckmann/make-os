@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 
 import { localDay } from '@/lib/zeit';
+import { neueKennung } from '@/lib/kennung';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -36,12 +37,12 @@ const GRENZE = 200;
 const text = (v: unknown, n = 200) => String(v ?? '').trim().slice(0, n);
 const tag = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : localDay());
 
-function sauber(m: Partial<Meeting>, i: number): Meeting | null {
+function sauber(m: Partial<Meeting>, _i: number): Meeting | null {
   const titel = text(m.titel, 160);
   const zus = text(m.zusammenfassung, 2000);
   if (!titel && !zus) return null;
   return {
-    id: text(m.id, 40) || `mt-${Date.now().toString(36)}-${i}`,
+    id: text(m.id, 40) || neueKennung('mt'),
     datum: tag(m.datum),
     titel: titel || 'Meeting',
     terminId: m.terminId ? text(m.terminId, 120) : undefined,

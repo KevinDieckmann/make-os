@@ -24,6 +24,7 @@ import { wochenplanSchreiben } from '@/lib/make-one/wochenplan-sync';
 import { SAEULE_VON_PROJEKT, KATEGORIE_ZU_SAEULE, SAEULE_LABEL, SAEULE_FARBE, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Haken, Fortschritt, Zahl, LEUCHT } from './schlank';
 import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
+import { neueKennung } from '@/lib/kennung';
 
 interface Routine { id: string; label: string; wann: 'morgen' | 'tag' | 'abend'; kategorie: string; dauerMin: number; aktiv: boolean }
 interface Fix { titel: string; startMin: number; dauerMin: number }
@@ -57,7 +58,7 @@ const BAUSTEINE: { art: PlanBlock['art']; titel: string; dauerMin: number }[] = 
   { art: 'routine', titel: 'Tagesende', dauerMin: 15 },
 ];
 
-const neuId = () => `pb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
+const neuId = () => neueKennung('pb');
 
 function montagVon(tag: string): string {
   const d = new Date(`${tag}T12:00:00`);

@@ -11,6 +11,7 @@ import { ladeKonten, aendereKonten, emailSauber, passwortTauglich, passwortHashe
 import { mitSitzung } from '@/lib/zugang/antwort';
 import { gleich } from '@/lib/zugang/sitzung';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
+import { neueKennung } from '@/lib/kennung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
   let konto: Konto | undefined;
   await aendereKonten(s => {
     if (s.konten.length) return s;
-    konto = { id: `k-${Date.now().toString(36)}`, speicher: speicherName(name, []), email, name, rolle: 'inhaber', hash, salz, angelegt: new Date().toISOString(), teilt: { gesundheit: [] } };
+    konto = { id: neueKennung('k'), speicher: speicherName(name, []), email, name, rolle: 'inhaber', hash, salz, angelegt: new Date().toISOString(), teilt: { gesundheit: [] } };
     return { ...s, konten: [konto] };
   });
   if (!konto) return NextResponse.json({ error: 'Gleichzeitig eingerichtet — bitte anmelden.' }, { status: 409 });

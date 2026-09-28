@@ -1,3 +1,4 @@
+import { zufallsUuid } from '@/lib/kennung';
 // ─── MAKE OS — Flächen: Seiten, die man sich selbst gestaltet ───────────────
 // Kevin (26.09.): „Alle Widgets immer zu bearbeiten, andere hinzufügen können;
 // seine eigene Seite vorne soll man sich selber gestalten — auch wenn wir am
@@ -75,7 +76,7 @@ export function sauberDatei(d: unknown): FlaecheDatei {
 export const alsPlatz = (st: StandardPlatz): Platz => ({ id: st.id, art: st.art ?? 'seite', breite: st.breite, einstellungen: { ...(st.einstellungen ?? {}) }, ...(st.titel ? { titel: st.titel } : {}) });
 
 export function neueId(art: string): string {
-  return `w-${art.replace(/[^a-z0-9-]/gi, '').slice(0, 20)}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+  return `w-${art.replace(/[^a-z0-9-]/gi, '').slice(0, 20)}-${zufallsUuid()}`;
 }
 
 /**

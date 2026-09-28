@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus, ansichtPerson, speicherFuer } from '@/lib/zoe/raum';
 import { PLAN_ARTEN, type PlanBlock } from '@/types/planer';
+import { neueKennung } from '@/lib/kennung';
 // Wiederausfuhr für Bestandsimporte — die Wahrheit liegt in types/planer.
 export type { PlanBlock };
 
@@ -31,7 +32,7 @@ export async function GET(req: Request) {
 /** Einen Block säubern — von PUT und PATCH gemeinsam benutzt. */
 function sauberBlock(b: PlanBlock, woche: string): PlanBlock {
   return {
-    id: b.id || `pb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    id: b.id || neueKennung('pb'),
     date: WOCHE_RE.test(b.date ?? '') ? b.date : woche,
     startMin: Math.max(0, Math.min(24 * 60 - 15, Math.round(Number(b.startMin) / 15) * 15)),
     dauerMin: Math.max(15, Math.min(8 * 60, Math.round(Number(b.dauerMin) / 15) * 15 || 60)),

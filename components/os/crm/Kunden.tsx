@@ -44,6 +44,7 @@ import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer }
 import { HeadPanel } from './HeadPanel';
 import { useZiel, useZuZiel } from '../ziel';
 import { MandatZeitMonat } from '../zeit/ZeitJeMandat';
+import { neueKennung } from '@/lib/kennung';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 const STATUS: { id: Mandat['status']; label: string }[] = [{ id: 'angebot', label: 'Angebot' }, { id: 'verhandlung', label: 'Verhandlung' }, { id: 'aktiv', label: 'Aktiv' }, { id: 'pausiert', label: 'Pausiert' }, { id: 'beendet', label: 'Beendet' }];
@@ -315,7 +316,7 @@ function MandatRechnungen({ m }: { m: Mandat }) {
   const offen = eigene.filter(r => r.status === 'gestellt');
   const ueber = offen.filter(r => r.faellig && r.faellig < heute);
   const anlegen = async () => {
-    const id = `r-${Date.now().toString(36)}`;
+    const id = neueKennung('r');
     // Eine USt-Funktion, auf den Cent (28.09., K3); fällig ab dem Berliner Tag, nicht dem UTC-Tag.
     const brutto = m.honorar.netto ? bruttoAusNetto(m.honorar.betrag, m.ustSatz) : m.honorar.betrag;
     const eintrag = { id, kunde: m.kunde, titel: m.titel, betrag: brutto, status: 'geplant', firmaId: firmaFuerGesellschaft(m.gesellschaft), mandatId: m.id, ustSatz: m.ustSatz, ...(m.honorar.netto ? { netto: m.honorar.betrag } : {}), faellig: tagePlus(heute, m.zahlungszielTage || 0) };

@@ -28,6 +28,7 @@ import type { Kampagne, KampagnenErgebnis } from '@/lib/crm/typen';
 import { personenJeFirma as personenJeFirmaVon } from '@/lib/crm/stationen';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { notizAnhaengen } from '@/lib/crm/notiz-anhaengen';
+import { neueKennung } from '@/lib/kennung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
     const seg = b.segmentId ? crm.segmente.find(s => s.id === b.segmentId) : undefined;
     const pb = PLAYBOOKS.find(p => p.id === b.playbook);
     const basis = pb ?? { id: 'eigen', name: seg ? `Kampagne: ${seg.name}` : 'Eigene Kampagne', kurz: '', warum: '', zielgruppe: seg?.kriterien ?? {}, kanal: 'persoenlich' as const, schritte: [{ text: 'Anlass und Botschaft festlegen', tag: 0 }, { text: 'Personen ansprechen', tag: 2 }, { text: 'Nachfassen', tag: 9 }], kennzahl: 'Gespräche', recht: '', fuer: [] };
-    const plan = planen(seg ? { ...basis, zielgruppe: seg.kriterien, zusatz: undefined } : basis, kontakte, crm, heute, `kp-${Date.now().toString(36)}`, 'hand');
+    const plan = planen(seg ? { ...basis, zielgruppe: seg.kriterien, zusatz: undefined } : basis, kontakte, crm, heute, neueKennung('kp'), 'hand');
     // Wer plant, ist zuständig (Kevin oder Malin) — umstellen oder übergeben geht in der Kampagne.
     const zst = mitglied(person) ? { zustaendig: person } : {};
     const k: Kampagne = { ...(seg ? { ...plan, segmentId: seg.id, name: pb ? `${pb.name} · ${seg.name}` : plan.name } : plan), ...zst, geaendertVon: person };

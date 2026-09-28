@@ -27,6 +27,7 @@ import { rhythmusKurz, naechstesMalNach } from '@/lib/planung/rhythmus';
 import { PlanerLeiste } from './PlanerLeiste';
 import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Knopf, Punkt, feld, LEUCHT } from './schlank';
 import { PfeilRang } from './planung/PfeilRang';
+import { neueKennung } from '@/lib/kennung';
 
 const WANN: { id: Routine['wann']; label: string; hint: string }[] = [
   { id: 'morgen', label: 'Morgens', hint: 'der Start — vor allem anderen' },
@@ -149,7 +150,7 @@ export function RoutinenPlanerView() {
     const l = neu.label.trim();
     if (!l) return;
     const r: Routine = {
-      id: `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, label: l, wann: neu.wann, kategorie: neu.kat, dauerMin: 15, aktiv: true,
+      id: neueKennung('r'), label: l, wann: neu.wann, kategorie: neu.kat, dauerMin: 15, aktiv: true,
       space: neu.space, owner: neu.owner, rang: naechsterRang(routinen), ...(neu.space === 'business' && neu.einheit ? { einheit: neu.einheit } : {}),
       ...(neu.rhythmus !== 'taeglich' ? { rhythmus: neu.rhythmus } : {}),
       ...(neu.rhythmus !== 'taeglich' && neu.rhythmus !== '3x-woche' && neu.naechstesMal ? { naechstesMal: neu.naechstesMal } : {}),
@@ -172,7 +173,7 @@ export function RoutinenPlanerView() {
   const blockEigen = !!ich && blockPerson === ich;
   const blockAnlegen = () => {
     if (!blockPerson || !blockEigen || blockNeu.bis <= blockNeu.von) return;
-    const b: Block = { id: `bl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, owner: blockPerson, wochentag: blockNeu.wochentag, von: blockNeu.von, bis: blockNeu.bis, art: blockNeu.art, rang: naechsterRang(meineBloecke.filter(x => x.wochentag === blockNeu.wochentag)), ...(blockNeu.titel.trim() ? { titel: blockNeu.titel.trim().slice(0, 60) } : {}), ...(blockNeu.art === 'business' && blockNeu.einheit ? { einheit: blockNeu.einheit } : {}) };
+    const b: Block = { id: neueKennung('bl'), owner: blockPerson, wochentag: blockNeu.wochentag, von: blockNeu.von, bis: blockNeu.bis, art: blockNeu.art, rang: naechsterRang(meineBloecke.filter(x => x.wochentag === blockNeu.wochentag)), ...(blockNeu.titel.trim() ? { titel: blockNeu.titel.trim().slice(0, 60) } : {}), ...(blockNeu.art === 'business' && blockNeu.einheit ? { einheit: blockNeu.einheit } : {}) };
     persistBloecke([...bloecke, b]);
     setBlockNeu({ ...blockNeu, titel: '' });
   };

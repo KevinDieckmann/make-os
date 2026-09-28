@@ -24,6 +24,7 @@ import { finanzOrtName, istGesellschaft } from '@/lib/einheiten';
 import { mandatAusPlanposten, PLANPOSTEN_MANDAT } from '@/lib/crm/mandant-link';
 import { MandantLink } from './crm/MandantLink';
 import { useMandate } from './zeit/useMandate';
+import { neueKennung } from '@/lib/kennung';
 
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
 
@@ -128,7 +129,7 @@ export function LiquiditaetView() {
 
   function anlegen(vorzeichen: 1 | -1) {
     const p: Planposten = {
-      id: `lp-${Date.now().toString(36)}`,
+      id: neueKennung('lp'),
       titel: vorzeichen > 0 ? 'Neue Einnahme' : 'Neue Ausgabe',
       betrag: vorzeichen * 100,
       rhythmus: 'monatlich',

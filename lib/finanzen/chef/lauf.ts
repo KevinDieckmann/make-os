@@ -27,6 +27,7 @@ import { normalisiere, pruefe, sauber, korrekturAuftrag, type Antwort, type Prue
 import { zahlenImText } from './pruefung';
 import { rechne } from './rechne';
 import { leererStand, standName, vorschlaegeMischen, vorschlaegeFuerDaten, EINSTELLUNG_NAME, STANDARD_CHEF_EINSTELLUNG, type Bericht, type ChefStand, type ChefEinstellung } from './stand';
+import { neueKennung } from '@/lib/kennung';
 
 export interface LaufAuftrag { modus: Modus; haushalt: string | null; person?: string; frage?: string; monat?: string; ausgeloest: Bericht['ausgeloest'] }
 export interface LaufErgebnis { ok: boolean; fehler?: string; bericht?: Bericht; ohneKi?: boolean; ruhigText?: string; neu?: number; aktualisiert?: number }
@@ -221,7 +222,7 @@ export async function chefLauf(a: LaufAuftrag): Promise<LaufErgebnis> {
   }
 
   const bericht: Bericht = {
-    id: `hb-${Date.now().toString(36)}`, zeit: jetzt, modus: a.modus, umfang: bild.umfang,
+    id: neueKennung('hb'), zeit: jetzt, modus: a.modus, umfang: bild.umfang,
     ausgeloest: a.ausgeloest, ...(a.person ? { person: a.person } : {}), ...(a.frage ? { frage: a.frage.slice(0, 500) } : {}), ...(a.monat ? { monat: a.monat } : {}),
     antwort, pruefung: { ...pruefung, korrigiert }, modell, dauer_ms: Date.now() - start, werkzeuge,
   };

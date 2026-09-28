@@ -20,6 +20,7 @@
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import type { Person } from './raum';
+import { neueKennung } from '@/lib/kennung';
 
 export type AuftragStatus = 'offen' | 'laeuft' | 'fertig' | 'fehler';
 export type AuftragArt = 'werkzeug' | 'agent';
@@ -87,7 +88,7 @@ export async function reihe(neue: NeuerAuftrag[]): Promise<{ angelegt: Auftrag[]
       if (laufend.has(schluessel)) { schonDa++; continue; }
       laufend.add(schluessel);
       angelegt.push({
-        id: `a-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+        id: neueKennung('a'),
         zeit: new Date().toISOString(), tag: localDay(),
         art: n.art, name: n.name, eingabe,
         ...(n.auftrag ? { auftrag: n.auftrag } : {}),

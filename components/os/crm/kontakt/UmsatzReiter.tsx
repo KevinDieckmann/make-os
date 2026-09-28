@@ -31,6 +31,7 @@ import { inGruppe } from '@/lib/crm/konzern';
 import Link from 'next/link';
 import { angebotLink } from '@/lib/crm/adresse';
 import { angeboteZu, ANGEBOT_STATUS_LABEL } from '@/lib/crm/angebote';
+import { neueKennung } from '@/lib/kennung';
 
 export interface UmsatzReiterProps {
   k: Kontakt;
@@ -282,7 +283,7 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
             alsRechnung={plan === null || typeof plan !== 'object' ? undefined : async () => {
               const e = a.eintrag!;
               const mandat = e.mandatId ? bezug.mandate.find(m => m.id === e.mandatId) : bezug.mandate[0];
-              const id = `r-${Date.now().toString(36)}`;
+              const id = neueKennung('r');
               const ok = await rechnungSchreiben({ id, firmaId: mandat ? firmaFuerGesellschaft(mandat.gesellschaft) : 'kdc', kunde: kundenName(k, bezug.firma), titel: e.titel || `Angebot ${e.angebot?.nummer ?? ''}`.trim(), betrag: e.angebot?.betrag ?? 0, status: 'geplant', ...(e.angebot?.nummer ? { angebot: e.angebot.nummer } : {}), ...(e.angebot?.datum ? { angebotAm: e.angebot.datum } : {}), ...(mandat ? { mandatId: mandat.id } : {}) });
               if (ok) await eintragAendern(e.id, { rechnungId: id });
             }} />
@@ -523,7 +524,7 @@ function RechnungNeu({ k, bezug, zielTage, heute, firmen, schreiben }: { k: Kont
   async function los() {
     setLaeuft(true);
     const betrag = Number(f.betrag.replace(',', '.'));
-    const ok = await schreiben({ id: `r-${Date.now().toString(36)}`, firmaId: f.firmaId, kunde: kundenName(k, bezug.firma), titel: f.titel.trim() || 'Rechnung', betrag: Number.isFinite(betrag) ? betrag : 0, status: f.status, ...(f.nummer ? { nummer: f.nummer.trim() } : {}), ...(f.datum ? { datum: f.datum } : {}), ...(f.faellig ? { faellig: f.faellig } : {}), ...(f.mandatId ? { mandatId: f.mandatId } : {}) });
+    const ok = await schreiben({ id: neueKennung('r'), firmaId: f.firmaId, kunde: kundenName(k, bezug.firma), titel: f.titel.trim() || 'Rechnung', betrag: Number.isFinite(betrag) ? betrag : 0, status: f.status, ...(f.nummer ? { nummer: f.nummer.trim() } : {}), ...(f.datum ? { datum: f.datum } : {}), ...(f.faellig ? { faellig: f.faellig } : {}), ...(f.mandatId ? { mandatId: f.mandatId } : {}) });
     setLaeuft(false);
     if (ok) setOffen(false);
   }

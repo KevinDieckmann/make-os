@@ -12,6 +12,7 @@
 import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { firmaFuerGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 import { zuordnungName } from './haushalt/entflechtung';
+import { neueKennung } from '@/lib/kennung';
 
 export interface Firma {
   id: string;
@@ -168,7 +169,7 @@ export function sauberFile(f: Partial<FinanzplanFile> | null): FinanzplanFile {
       stand: typeof x.stand === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.stand) ? x.stand : null,
     })).filter(x => x.name),
     rechnungen: (Array.isArray(f?.rechnungen) ? f!.rechnungen : []).map(x => ({
-      id: String(x.id ?? '').slice(0, 40) || `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      id: String(x.id ?? '').slice(0, 40) || neueKennung('r'),
       firmaId: String(x.firmaId ?? '').slice(0, 40),
       kunde: String(x.kunde ?? '').slice(0, 120),
       titel: String(x.titel ?? '').slice(0, 200),
@@ -190,7 +191,7 @@ export function sauberFile(f: Partial<FinanzplanFile> | null): FinanzplanFile {
       notiz: x.notiz ? String(x.notiz).slice(0, 300) : undefined,
     })).filter(x => x.kunde || x.titel),
     merkposten: (Array.isArray(f?.merkposten) ? f!.merkposten : []).map(x => ({
-      id: String(x.id ?? '').slice(0, 40) || `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      id: String(x.id ?? '').slice(0, 40) || neueKennung('m'),
       firmaId: String(x.firmaId ?? '').slice(0, 40),
       titel: String(x.titel ?? '').slice(0, 200),
       betrag: isFinite(Number(x.betrag)) ? Math.round(Number(x.betrag)) : 0,
@@ -199,7 +200,7 @@ export function sauberFile(f: Partial<FinanzplanFile> | null): FinanzplanFile {
       notiz: x.notiz ? String(x.notiz).slice(0, 300) : undefined,
     })).filter(x => x.titel),
     zahlungen: (Array.isArray(f?.zahlungen) ? f!.zahlungen : []).map(x => ({
-      id: String(x.id ?? '').slice(0, 40) || `z-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      id: String(x.id ?? '').slice(0, 40) || neueKennung('z'),
       firmaId: String(x.firmaId ?? '').slice(0, 40),
       an: String(x.an ?? '').slice(0, 120),
       titel: String(x.titel ?? '').slice(0, 200),
@@ -208,7 +209,7 @@ export function sauberFile(f: Partial<FinanzplanFile> | null): FinanzplanFile {
       faellig: typeof x.faellig === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.faellig) ? x.faellig : undefined,
     })).filter(x => x.an || x.titel),
     produkte: (Array.isArray(f?.produkte) ? f!.produkte : []).map(x => ({
-      id: String(x.id ?? '').slice(0, 40) || `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      id: String(x.id ?? '').slice(0, 40) || neueKennung('p'),
       name: String(x.name ?? '').slice(0, 120),
       beschreibung: String(x.beschreibung ?? '').slice(0, 300),
       preis: isFinite(Number(x.preis)) ? Math.max(0, Math.round(Number(x.preis))) : 0,

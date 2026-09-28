@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import type { Familie, Liste } from '@/lib/familie/typen';
 import type { Rhythmus } from '@/lib/familie/logik';
+import { neueKennung } from '@/lib/kennung';
 
 export interface TagFaellig { id: string; titel: string; art: string; am: string; faelligAb: string; inTagen: number; erledigt: boolean; wer: string; aktion: string; vorlaufTage: number; datum: string }
 export interface Antwort {
@@ -22,7 +23,7 @@ export interface Antwort {
   mitglieder: { person: string; name: string }[];
 }
 
-export const neueId = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+export const neueId = (p: string) => neueKennung(p);
 
 export function useFamilie() {
   const [d, setD] = useState<Antwort | null>(null);

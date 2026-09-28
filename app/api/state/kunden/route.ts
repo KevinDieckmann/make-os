@@ -7,6 +7,7 @@ import { loadJson, updateGeschuetzt } from '@/lib/store/local-db';
 import { karteiZugang, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { protokolliereBestand, werAus } from '@/lib/store/aenderungsprotokoll';
 import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
+import { neueKennung } from '@/lib/kennung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -39,7 +40,7 @@ function sauberKunde(roh: unknown): Kunde | null {
   const name = String(k.name ?? '').slice(0, 120);
   if (!name) return null;
   return {
-    id: k.id || `k-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+    id: k.id || neueKennung('k'),
     name,
     status: (['aktiv', 'gespraech', 'ruht'] as const).includes(k.status as Kunde['status']) ? k.status as Kunde['status'] : 'gespraech',
     mandat: k.mandat ? String(k.mandat).slice(0, 300) : undefined,

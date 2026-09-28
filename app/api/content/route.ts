@@ -8,6 +8,7 @@ import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { modellSchranke } from '@/lib/zugang/umfang';
+import { neueKennung } from '@/lib/kennung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -63,7 +64,7 @@ export async function POST(req: Request) {
   let abgelegt = false;
   if (payload.ablegen) {
     try {
-      await updateJson<{ entwuerfe: ContentEntwurf[] }>(ENTWUERFE, cur => ({ entwuerfe: [{ id: `ce-${Date.now().toString(36)}`, zeit: new Date().toISOString(), format: fmt.label, thema: thema.slice(0, 160), text: r.text.slice(0, 12000), quelle: 'zoe' as const }, ...(cur?.entwuerfe ?? [])].slice(0, 30) }));
+      await updateJson<{ entwuerfe: ContentEntwurf[] }>(ENTWUERFE, cur => ({ entwuerfe: [{ id: neueKennung('ce'), zeit: new Date().toISOString(), format: fmt.label, thema: thema.slice(0, 160), text: r.text.slice(0, 12000), quelle: 'zoe' as const }, ...(cur?.entwuerfe ?? [])].slice(0, 30) }));
       abgelegt = true;
     } catch { abgelegt = false; }
   }
@@ -78,7 +79,7 @@ export async function GET() {
 
 export async function DELETE(req: Request) {
   const id = new URL(req.url).searchParams.get('id') ?? '';
-  if (!/^ce-[a-z0-9]+$/.test(id)) return NextResponse.json({ ok: false, error: 'id fehlt.' }, { status: 400 });
+  if (!/^ce-[a-z0-9-]{1,60}$/.test(id)) return NextResponse.json({ ok: false, error: 'id fehlt.' }, { status: 400 });
   await updateJson<{ entwuerfe: ContentEntwurf[] }>(ENTWUERFE, cur => ({ entwuerfe: (cur?.entwuerfe ?? []).filter(e => e.id !== id) }));
   return NextResponse.json({ ok: true });
 }

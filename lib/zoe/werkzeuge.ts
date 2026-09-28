@@ -20,6 +20,7 @@ import { AUFGABEN_WERKZEUGE } from './aufgaben-werkzeuge';
 import { ARBEIT_WERKZEUGE } from './arbeit-werkzeug';
 import { CRM_LESE_LAEUFE, suche_kontakt as sucheKontaktSicht, crm_lage as crmLageSicht } from './crm-werkzeuge';
 import { CRM_VORSCHLAG_LAUF } from './crm-vorschlag';
+import { neueKennung } from '@/lib/kennung';
 
 // ── ZOE plant SELBST: Block in den Wochenplan legen (Kevins Ansage:
 // „dass da auch drin geplant werden kann"). Interne Planung, frei verschiebbar
@@ -58,7 +59,7 @@ async function planBlock(input: Record<string, unknown>, _o?: unknown, person = 
   mo.setDate(mo.getDate() - ((mo.getDay() + 6) % 7));
   const woche = localDay(mo);
   interface PB { id: string; date: string; startMin: number; dauerMin: number; titel: string; art: string }
-  const block: PB = { id: `pb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, date, startMin, dauerMin, titel, art };
+  const block: PB = { id: neueKennung('pb'), date, startMin, dauerMin, titel, art };
   // Seit 26.09. in den Plan der Person, die ZOE gerade bittet (Malin hat ihren eigenen).
   await updateJson<Record<string, PB[]>>(speicherFuer('wochenplan', person), current => {
     const f = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
@@ -128,7 +129,7 @@ async function erfasseRechnung(input: Record<string, unknown>): Promise<string> 
       // Grenze erreicht: ablehnen, nie kürzen (28.09.) — der Bestand bleibt, wie er ist.
       aktion = '';
     } else {
-      f.rechnungen.push({ id: `r-${Date.now().toString(36)}`, firmaId: fidR, kunde, titel: titel ?? 'Leistung', betrag: betrag ?? 0, status: status ?? 'geplant', ...(faellig ? { faellig } : {}) });
+      f.rechnungen.push({ id: neueKennung('r'), firmaId: fidR, kunde, titel: titel ?? 'Leistung', betrag: betrag ?? 0, status: status ?? 'geplant', ...(faellig ? { faellig } : {}) });
       aktion = `Neue Rechnung angelegt: ${kunde} ${betrag != null ? eurW(betrag) : 'ohne Betrag'} [${status ?? 'geplant'}]`;
     }
     return f;
@@ -150,7 +151,7 @@ async function erfasseZahlung(input: Record<string, unknown>): Promise<string> {
     const f = mitUgKonto(current ?? { zahlungen: [] }, fidZ);
     // Grenze wie im Schreibweg der Finanzplanung: ablehnen, nie kürzen (28.09.).
     if ((f.zahlungen ?? []).length >= GRENZEN.zahlungen) { voll = true; return f; }
-    f.zahlungen = [...(f.zahlungen ?? []), { id: `z-${Date.now().toString(36)}`, firmaId: fidZ, an, titel: String(input.titel ?? '').slice(0, 200), betrag: Math.max(0, Math.round(betrag)), status: 'offen', ...(faellig ? { faellig } : {}) }];
+    f.zahlungen = [...(f.zahlungen ?? []), { id: neueKennung('z'), firmaId: fidZ, an, titel: String(input.titel ?? '').slice(0, 200), betrag: Math.max(0, Math.round(betrag)), status: 'offen', ...(faellig ? { faellig } : {}) }];
     return f;
   });
   if (voll) return `Fehlgeschlagen: höchstens ${GRENZEN.zahlungen} Zahlungen im Finanzplan — erst Erledigtes aufräumen.`;
@@ -339,7 +340,7 @@ async function setzeKunde(input: Record<string, unknown>, _o?: string, person?: 
     if (!name) { fehler = `Kein Mandat mit der Kennung ${mandatId}.`; return b; }
     fehler = '';
     const eintrag = {
-      id: `m-${Date.now().toString(36)}`, kunde: name, kontaktIds: [], titel: 'Mandat', art: 'retainer', gesellschaft: 'offen', status: status ?? 'verhandlung', vertragUnterschrieben: false,
+      id: neueKennung('m'), kunde: name, kontaktIds: [], titel: 'Mandat', art: 'retainer', gesellschaft: 'offen', status: status ?? 'verhandlung', vertragUnterschrieben: false,
       verlaengerung: 'offen', honorar: { betrag: cashflow ?? 0, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [],
       health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: schritt ? [`Nächster Schritt: ${schritt}`] : [], geaendert: jetzt,
     };
@@ -491,7 +492,7 @@ async function erfassePlanposten(input: Record<string, unknown>): Promise<string
       f.posten[idx] = { ...f.posten[idx], betrag, rhythmus, ab, sicher, ...(kategorie ? { kategorie } : {}), ...(firmaId ? { firmaId } : {}) };
       aktion = `${titel} aktualisiert`;
     } else {
-      f.posten.push({ id: `lp-${Date.now().toString(36)}`, titel, betrag, rhythmus, ab, sicher, ...(kategorie ? { kategorie } : {}), ...(firmaId ? { firmaId } : {}) });
+      f.posten.push({ id: neueKennung('lp'), titel, betrag, rhythmus, ab, sicher, ...(kategorie ? { kategorie } : {}), ...(firmaId ? { firmaId } : {}) });
       aktion = `${titel} angelegt`;
     }
     return f;

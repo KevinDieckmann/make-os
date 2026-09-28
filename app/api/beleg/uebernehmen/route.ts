@@ -11,6 +11,7 @@ import { updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import { GRENZEN } from '@/lib/finanzen/finanzplan-bestand';
 import { belegBetrag, euroText } from '@/lib/finanzen/beleg-betrag';
+import { neueKennung } from '@/lib/kennung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
       // Grenze wie im Schreibweg der Finanzplanung: ablehnen, nie kürzen (28.09.).
       if (f.rechnungen.length >= GRENZEN.rechnungen) return f;
       const r: Rechnung = {
-        id: `r-${Date.now().toString(36)}`,
+        id: neueKennung('r'),
         firmaId: firma,
         kunde: partner,
         titel: b.rechnungsnummer ? `${zweck} (${b.rechnungsnummer})` : zweck,
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
     const f = current ?? { buchungen: [] };
     f.buchungen = Array.isArray(f.buchungen) ? f.buchungen : [];
     const neu: Buchung = {
-      id: `b-${Date.now().toString(36)}-${f.buchungen.length}`,
+      id: neueKennung('b'),
       datum,
       // „wer“ ist der Geschäftspartner, „ort“ die Firma — früher stand der
       // Partner in „ort“, die Buchung fiel aus Zahlen heraus und wurde privat.

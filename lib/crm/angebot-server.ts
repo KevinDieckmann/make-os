@@ -37,13 +37,14 @@ import { alleGesellschaften, gesellschaftenName, gesellschaftLuecken, mitVorgabe
 import { absenderAus, empfaengerAus, angebotDokument } from './angebot-dokument';
 import { angebotPdf, type PdfLogo } from './angebot-pdf';
 import { ablegen, lesen } from '@/lib/dateien/ablage';
+import { neueKennung } from '@/lib/kennung';
 
 export class AngebotFehler extends Error {
   constructor(msg: string, readonly status: number, readonly extra: Record<string, unknown> = {}) { super(msg); }
 }
 
 export const mitStand = (a: Angebot) => ({ ...a, stand: standVon(a) });
-const neueAngebotId = () => `ang-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+const neueAngebotId = () => neueKennung('ang');
 const jahrVon = (tag: string) => Number(tag.slice(0, 4));
 const zustaendigAus = (person: string) => (wer(person) && wer(person) !== BEIDE ? person : verantwortlich('sales'));
 

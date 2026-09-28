@@ -11,6 +11,7 @@ import { FARBE as C } from '@/lib/make-one/design';
 import { useTeam } from '@/hooks/useTeam';
 import { KURZ_OK, kurzAus, type TeamEintrag, type TeamPerson } from '@/lib/make-one/team-typen';
 import { Karte, Ueberschrift, Liste, Zeile, Chip, Knopf, Leer, feld, LEUCHT } from './schlank';
+import { neueKennung } from '@/lib/kennung';
 
 type Entwurf = { id?: string; name: string; kurz: string; rolle: string; bereich: string; email: string; kreis: 'kern' | 'partner'; aktiv: boolean; stand?: string; konto: boolean };
 const leer: Entwurf = { name: '', kurz: '', rolle: '', bereich: '', email: '', kreis: 'kern', aktiv: true, konto: false };
@@ -31,7 +32,7 @@ export function TeamKarte({ i = 3 }: { i?: number }) {
     if (!entwurf.name.trim()) { setMeldung('Name fehlt.'); return; }
     if (!KURZ_OK.test(kurz)) { setMeldung('Kurzwort: ein Wort ohne Leerzeichen (höchstens 24 Zeichen).'); return; }
     const eintrag: TeamEintrag = {
-      id: entwurf.id ?? `t-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+      id: entwurf.id ?? neueKennung('t'),
       name: entwurf.name.trim(), kurz, rolle: entwurf.rolle.trim(), aktiv: entwurf.konto ? true : entwurf.aktiv,
       ...(entwurf.bereich.trim() ? { bereich: entwurf.bereich.trim() } : {}),
       ...(!entwurf.konto && entwurf.email.trim() ? { email: entwurf.email.trim() } : {}),

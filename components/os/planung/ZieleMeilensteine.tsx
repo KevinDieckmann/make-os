@@ -30,6 +30,7 @@ import { PfeilRang } from './PfeilRang';
 import { usePlanung, type PlanungStand } from './usePlanung';
 import { MandatWahl, useMandate } from '../zeit/MandatWahl';
 import type { MandatKurz } from '@/lib/planung/mandat';
+import { neueKennung } from '@/lib/kennung';
 
 type SpaceFilter = SpaceId | 'alle';
 const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
@@ -112,7 +113,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
     if (!t) return;
     const zahl = Number(neu.zahl.replace(',', '.'));
     const z: Ziel = {
-      id: `z-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, titel: t, fortschritt: 0, rang: naechsterRang(zOffen),
+      id: neueKennung('z'), titel: t, fortschritt: 0, rang: naechsterRang(zOffen),
       ...(spaceFilter !== 'alle' ? { space: spaceFilter } : {}),
       ...(imBusiness && (neu.einheit || (einheitFilter !== 'alle' ? einheitFilter : '')) ? { einheit: neu.einheit || einheitFilter } : {}),
       ...(imBusiness && neu.mandatId ? { mandatId: neu.mandatId } : {}),
@@ -130,7 +131,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
     const space: SpaceId = spaceFilter !== 'alle' ? spaceFilter : msNeu.space;
     const einheit = space === 'business' && imBusiness ? (msNeu.einheit || (einheitFilter !== 'alle' ? einheitFilter : '')) : '';
     const mandatId = space === 'business' ? msNeu.mandatId : '';
-    p.persistMs([...p.ms, { id: `ms-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, titel: t, space, bereich: bereichAusSpace(space), faellig: faellig || undefined, fortschritt: 0, erledigt: false, rang: naechsterRang(mOffen), ...(einheit ? { einheit } : {}), ...(mandatId ? { mandatId } : {}) }]);
+    p.persistMs([...p.ms, { id: neueKennung('ms'), titel: t, space, bereich: bereichAusSpace(space), faellig: faellig || undefined, fortschritt: 0, erledigt: false, rang: naechsterRang(mOffen), ...(einheit ? { einheit } : {}), ...(mandatId ? { mandatId } : {}) }]);
     setMsNeu({ titel: '', faellig: '', space, einheit: msNeu.einheit, mandatId: msNeu.mandatId });
   };
 

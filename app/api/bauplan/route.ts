@@ -16,6 +16,7 @@ import { merken } from '@/lib/store/memo';
 import { personAus } from '@/lib/zoe/raum';
 import { ladeBauplan, aendereBauplan, karteAnlegen } from '@/lib/bauplan/speicher';
 import { verschieben, felderSaeubern, statusAus, warteschlange, SPALTEN, type Spalte, type Etappe } from '@/lib/bauplan/board';
+import { neueKennung } from '@/lib/kennung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
   if (b.aktion === 'etappe') {
     const name = txt(b.name, 80);
     if (!name) return NextResponse.json({ ok: false, fehler: 'Name fehlt.' }, { status: 400 });
-    const e: Etappe = { id: /^e-[a-z0-9-]{2,40}$/.test(id) ? id : `e-${Date.now().toString(36)}`, name, ...(/^\d{4}-\d{2}-\d{2}$/.test(String(b.ziel ?? '')) ? { ziel: String(b.ziel) } : {}), ...(txt(b.beschreibung, 400) ? { beschreibung: txt(b.beschreibung, 400) } : {}) };
+    const e: Etappe = { id: /^e-[a-z0-9-]{2,40}$/.test(id) ? id : neueKennung('e'), name, ...(/^\d{4}-\d{2}-\d{2}$/.test(String(b.ziel ?? '')) ? { ziel: String(b.ziel) } : {}), ...(txt(b.beschreibung, 400) ? { beschreibung: txt(b.beschreibung, 400) } : {}) };
     const d = await aendereBauplan(x => ({ ...x, etappen: [...(x.etappen ?? []).filter(y => y.id !== e.id), e] }));
     return NextResponse.json({ ok: true, etappen: d.etappen });
   }

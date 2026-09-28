@@ -13,6 +13,7 @@ import {
   teamZusammen, platzhalterTeam, KURZ_OK, FARBE_OK, TEAM_ID_OK, KONTO_PRAEFIX, kurzAus,
   type TeamEintrag, type TeamKonto, type TeamPerson,
 } from './team-typen';
+import { neueKennung } from '@/lib/kennung';
 
 export interface TeamDatei { team: TeamEintrag[] }
 
@@ -78,7 +79,7 @@ export function saeubereTeamEintrag(roh: unknown): TeamEintrag | null {
   const name = text(e.name, 80);
   if (!name) return null;
   const idRoh = text(e.id, 48);
-  const id = idRoh && TEAM_ID_OK.test(idRoh) ? idRoh : !idRoh ? `t-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}` : null;
+  const id = idRoh && TEAM_ID_OK.test(idRoh) ? idRoh : !idRoh ? neueKennung('t') : null;
   if (!id) return null;
   const kurzRoh = text(e.kurz, 24);
   const kurz = kurzRoh ? kurzRoh : kurzAus(name);

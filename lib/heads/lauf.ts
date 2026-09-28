@@ -34,6 +34,7 @@ import { belege } from './belege';
 import { BEIDE } from '@/lib/crm/team';
 import { MODEL_BY_TIER } from '@/lib/agent-config';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
+import { neueKennung } from '@/lib/kennung';
 
 /** Gespeicherte Fälle für Evals (lib/heads/eval.ts, /api/heads/eval). */
 export interface ReplayFall { zeit: string; modus: string; person: string; heute: string; quelle: 'ki' | 'regelwerk'; modell: string; daten: Record<string, unknown>; roh: Antwort }
@@ -152,7 +153,7 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
     return { ...v, entwurf, fuer: v.fuer ?? fuerWen(v, a.head, nachId, crm, a.person), belege: b.belege, ...(q.maengel.length || b.insLeere.length ? { maengel: [...q.maengel, ...(q.entwurfUnbrauchbar ? ['Entwurf entfernt'] : []), ...(b.insLeere.length ? [`Quelle ins Leere: ${b.insLeere.join(', ')}`] : [])] } : { maengel: undefined }) };
   }).sort((x, y) => RANG[x.prioritaet] - RANG[y.prioritaet] || (x.frist ?? '9999').localeCompare(y.frist ?? '9999')) };
 
-  const bericht: HeadBericht = { id: `hb-${Date.now().toString(36)}`, zeit: jetzt, modus: a.modus, ausgeloest: a.ausgeloest, person: a.person, ...(a.frage ? { frage: a.frage.slice(0, 500) } : {}), antwort, pruefung: { ...pruefung!, korrigiert }, modell: art.quelle === 'ki' ? art.modell ?? agent.model : 'regelwerk', dauer_ms: Date.now() - start, ...(verbrauch.aufrufe ? { verbrauch } : {}), quelle: art.quelle, ...(art.ohneKiGrund ? { ohneKiGrund: art.ohneKiGrund } : {}) };
+  const bericht: HeadBericht = { id: neueKennung('hb'), zeit: jetzt, modus: a.modus, ausgeloest: a.ausgeloest, person: a.person, ...(a.frage ? { frage: a.frage.slice(0, 500) } : {}), antwort, pruefung: { ...pruefung!, korrigiert }, modell: art.quelle === 'ki' ? art.modell ?? agent.model : 'regelwerk', dauer_ms: Date.now() - start, ...(verbrauch.aufrufe ? { verbrauch } : {}), quelle: art.quelle, ...(art.ohneKiGrund ? { ohneKiGrund: art.ohneKiGrund } : {}) };
   let neu = 0;
   await updateJson<HeadStand>(name, s => {
     const st = { ...leererStand(), ...(s ?? {}) };

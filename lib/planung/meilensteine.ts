@@ -15,6 +15,7 @@ import { istSpace, type SpaceId } from '@/lib/make-one/space-regeln';
 import { sauberEinheit } from './einheiten';
 import { bezugSaeubern } from './mandat';
 import type { Meilenstein, MeilensteinBereich } from './typen';
+import { neueKennung } from '@/lib/kennung';
 
 /** Der Space eines Meilensteins — `space`, sonst aus dem Altfeld; ohne beides Business (wie bisher). */
 export function meilensteinSpace(m: { space?: unknown; bereich?: unknown }): SpaceId {
@@ -37,7 +38,7 @@ export function sauberMeilenstein(roh: unknown): Meilenstein | null {
   // Einheit nur im Business — Privat kennt keine Einheiten.
   const einheit = space === 'business' ? sauberEinheit(m.einheit) : null;
   return {
-    id: String(m.id ?? '').slice(0, 80) || `ms-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+    id: String(m.id ?? '').slice(0, 80) || neueKennung('ms'),
     titel,
     space,
     bereich: bereichAusSpace(space),

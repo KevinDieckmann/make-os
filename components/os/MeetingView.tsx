@@ -11,6 +11,7 @@ import { localDay } from '@/lib/zeit';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, feld, prioFarbe, LEUCHT } from './schlank';
+import { neueKennung } from '@/lib/kennung';
 
 interface ActionItem { titel: string; owner: string; prio: string; projectId: string; due?: string; }
 interface Protokoll { titel: string; zusammenfassung: string; entscheidungen: string[]; actionItems: ActionItem[]; }
@@ -69,7 +70,7 @@ export function MeetingView() {
         // Kevins Ansage: der Skriptverlauf soll bleiben. Also sofort ablegen —
         // samt Termin, wenn einer an diesem Tag dazu passt.
         const termin = termine.find(t => t.id === gewaehlterTermin);
-        const id = `mt-${Date.now().toString(36)}`;
+        const id = neueKennung('mt');
         setMeetingId(id);
         fetch('/api/state/meetings', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },

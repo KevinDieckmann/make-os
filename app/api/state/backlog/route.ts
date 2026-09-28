@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, updateGeschuetzt } from '@/lib/store/local-db';
 import { SEED, type BacklogItem } from '@/lib/make-one/backlog-data';
+import { neueKennung } from '@/lib/kennung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
   if (!titel) return NextResponse.json({ ok: false, error: 'Kein Titel.' }, { status: 400 });
 
   const item: BacklogItem = {
-    id: body.id?.trim() || `bl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    id: body.id?.trim() || neueKennung('bl'),
     titel,
     warum: (body.warum ?? '').trim(),
     kategorie: (['anbindung', 'agent', 'qualitaet', 'idee'] as const).includes(body.kategorie as never) ? body.kategorie! : 'idee',

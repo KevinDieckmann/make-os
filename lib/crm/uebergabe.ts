@@ -24,6 +24,7 @@ import { bezugSauber } from '@/lib/aufgaben/saeubern';
 import type { AufgabeBezug, AufgabenSpaceId } from '@/types/tasks';
 
 import { tagVon } from '@/lib/zeit';
+import { neueKennung } from '@/lib/kennung';
 export const UEBERGABE_ARTEN = ['kontakt', 'kontakte', 'chance', 'mandat', 'event', 'kampagne', 'beitrag', 'newsletter'] as const;
 type Art = typeof UEBERGABE_ARTEN[number];
 const LISTE: Partial<Record<Art, CrmListe>> = { chance: 'chancen', mandat: 'mandate', event: 'events', kampagne: 'kampagnen', beitrag: 'beitraege', newsletter: 'newsletter' };
@@ -106,7 +107,7 @@ export async function uebergeben(b: UebergabeEingabe, person: string, protokollW
     const ort = spaceId ? { spaceId, space: 'business', ...(einheitFuer(spaceId, einheit) ? { einheit: einheitFuer(spaceId, einheit) } : {}) } : einheit ? { space: 'business', einheit } : {};
     await updateJson<{ tasks: Record<string, unknown>[] }>('tasks', cur => {
       const f = cur ?? { tasks: [] };
-      const t = { ...ort, ...(bezug ? { bezug } : {}), id: `ueb-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, title: `Von ${vonName}: ${titel}`.slice(0, 200),
+      const t = { ...ort, ...(bezug ? { bezug } : {}), id: neueKennung('ueb'), title: `Von ${vonName}: ${titel}`.slice(0, 200),
         description: `${vonName} hat dir ${art === 'kontakte' ? `${anzahl} Kontakte` : titel} in der Markttraktion übergeben.${notiz ? `\n\n„${notiz}“` : ''}\n\n${link}`,
         status: 'todo', priority: 'medium', assignee: an, tags: ['markttraktion', 'uebergabe'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, ...(frist ? { dueDate: frist } : {}) };
       return { ...f, tasks: [...(f.tasks ?? []), t] };

@@ -20,11 +20,12 @@ import { fuerPerson, type Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { anfrageBauen, anfragenListe, ANFRAGE_KANAELE, type AnfrageEingabe } from '@/lib/crm/anfragen';
 import { sperrlisteLaden, neuanlageSperre, sperren } from '@/lib/crm/sperrliste';
+import { neueKennung } from '@/lib/kennung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const neueId = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+const neueId = (p: string) => neueKennung(p);
 const kontakteLaden = async () => (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
 
 export async function GET(req: Request) {

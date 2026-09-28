@@ -12,6 +12,7 @@ import { AGENDA } from '@/lib/familie/katalog';
 import type { Gespraech as G } from '@/lib/familie/typen';
 import { type FamilieApi, datumLang } from './daten';
 import { Eingabe, Textfeld, Klein, Reihe, Symbol, Wahl } from './teile';
+import { neueKennung } from '@/lib/kennung';
 
 const ROSA = LEUCHT.beziehung;
 
@@ -128,7 +129,7 @@ export function Gespraech({ api, onZu }: { api: FamilieApi; onZu: () => void }) 
                 })}
               </Liste>
               {!themen.length && <Klein>Keine Themen im Parkplatz — dann bleibt mehr Zeit füreinander.</Klein>}
-              <Eingabe leeren platzhalter="Daraus folgt (Vereinbarung) …" onFertig={text => api.setze('vereinbarungen', { id: `v-${Date.now().toString(36)}`, text, wer: ich, faellig: null, status: 'offen' })} />
+              <Eingabe leeren platzhalter="Daraus folgt (Vereinbarung) …" onFertig={text => api.setze('vereinbarungen', { id: neueKennung('v'), text, wer: ich, faellig: null, status: 'offen' })} />
             </>
           )}
 

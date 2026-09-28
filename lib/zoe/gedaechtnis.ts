@@ -13,6 +13,7 @@
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
+import { neueKennung } from '@/lib/kennung';
 
 /** Wozu ein Fakt gehört. Grob genug, dass ZOE nicht rätselt. */
 export type FaktArt = 'person' | 'firma' | 'vorliebe' | 'entscheidung' | 'termin' | 'zahl' | 'sonstiges';
@@ -53,7 +54,7 @@ export async function merke(neu: Omit<Fakt, 'id' | 'zeit' | 'tag' | 'raum'> & { 
   const fakt: Fakt = {
     ...neu,
     raum: neu.raum ?? 'kevin',
-    id: `f-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    id: neueKennung('f'),
     zeit: new Date().toISOString(),
     tag: localDay(),
   };

@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateGeschuetztListen } from '@/lib/store/local-db';
+import { neueKennung } from '@/lib/kennung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,11 +43,11 @@ interface FilterFile {
 const sauberListe = (v: unknown, max = 20): string[] =>
   Array.isArray(v) ? v.filter(x => typeof x === 'string').map(x => x.slice(0, 40)).slice(0, max) : [];
 
-function sauberFilter(f: Partial<EigenerFilter>, i: number): EigenerFilter | null {
+function sauberFilter(f: Partial<EigenerFilter>, _i: number): EigenerFilter | null {
   const name = String(f.name ?? '').trim().slice(0, 60);
   if (!name) return null;
   return {
-    id: String(f.id ?? '').slice(0, 40) || `f-${Date.now().toString(36)}-${i}`,
+    id: String(f.id ?? '').slice(0, 40) || neueKennung('f'),
     name,
     wo: f.wo === 'inbox' ? 'inbox' : 'aufgaben',
     themen: sauberListe(f.themen),
@@ -60,12 +61,12 @@ function sauberFilter(f: Partial<EigenerFilter>, i: number): EigenerFilter | nul
   };
 }
 
-function sauberStichwort(s: Partial<EigenesStichwort>, i: number): EigenesStichwort | null {
+function sauberStichwort(s: Partial<EigenesStichwort>, _i: number): EigenesStichwort | null {
   const label = String(s.label ?? '').trim().slice(0, 40);
   if (!label) return null;
   const woerter = sauberListe(s.woerter, 12).map(w => w.trim()).filter(Boolean);
   return {
-    id: String(s.id ?? '').slice(0, 40) || `eig-${Date.now().toString(36)}-${i}`,
+    id: String(s.id ?? '').slice(0, 40) || neueKennung('eig'),
     label,
     thema: ['recht', 'umsatz', 'produkt', 'leben'].includes(String(s.thema)) ? String(s.thema) : 'umsatz',
     // Ohne eigene Wörter dient das Label selbst als Suchwort.

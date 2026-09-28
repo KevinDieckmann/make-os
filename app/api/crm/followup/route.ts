@@ -34,11 +34,12 @@ import { leadHebenNachGespraech, type LeadMeldung } from '@/lib/crm/lead-heben';
 import { wer } from '@/lib/crm/team';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import type { CrmBestand, FollowUp, FollowUpArt, FollowUpBezugArt } from '@/lib/crm/typen';
+import { neueKennung } from '@/lib/kennung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const neueId = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+const neueId = (p: string) => neueKennung(p);
 const tagOk = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
 const idOk = (v: unknown) => /^[a-z0-9][a-z0-9-]{1,63}$/.test(String(v ?? ''));
 const ARTEN: FollowUpArt[] = ['anruf', 'mail', 'linkedin', 'termin', 'nachricht', 'sonstig'];

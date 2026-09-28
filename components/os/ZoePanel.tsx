@@ -34,6 +34,7 @@ import { fuerStimme, titelAus, wannText, type Gespraech, type VerlaufNachricht }
 import { ZOE_FRAGEN_EREIGNIS, CRM_BEZUG_LABEL, crmBezugAus, type CrmBezug } from '@/lib/zoe/crm-bezug';
 
 import { localDay } from '@/lib/zeit';
+import { neueKennung } from '@/lib/kennung';
 /** Was ZOE aus einem Foto/PDF gelesen hat — Vorschlag, noch nicht gebucht. */
 interface Beleg {
   richtung: 'eingang' | 'ausgang' | 'unklar';
@@ -304,7 +305,7 @@ export function ZoePanel() {
   const send = async (q: string) => {
     beruehrt.current = true;
     setAsk(''); setThinking(true); setZeigeVerlauf(false);
-    const id = gespraechId || `g-${Date.now().toString(36)}`;
+    const id = gespraechId || neueKennung('g');
     if (!gespraechId) setGespraechId(id);
     const vorher = convo;
     const meins: Msg = { role: 'user', text: q, zeit: new Date().toISOString() };

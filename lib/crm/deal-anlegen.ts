@@ -26,6 +26,7 @@ import { dealZuFirma } from './firmen-bezug';
 import { EINGESCHRAENKT_FEHLER } from './einschraenkung';
 import { phaseHeben } from './lifecycle';
 import type { Chance, ChancenArt, Gesellschaft, Lead, Quelle, WertBasis } from './typen';
+import { neueKennung } from '@/lib/kennung';
 
 export interface DealEingabe {
   titel?: string;
@@ -62,7 +63,7 @@ const QUELLEN: Quelle[] = ['empfehlung', 'event', 'content', 'outreach', 'bestan
 const GES: Gesellschaft[] = ['kdv', 'kdc', 'ug', 'offen'];
 const tagOk = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
 const idOk = (v: unknown) => /^[a-z0-9][a-z0-9-]{1,63}$/.test(String(v ?? ''));
-export const neueDealId = () => `ch-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+export const neueDealId = () => neueKennung('ch');
 
 export type DealErgebnis = { ok: true; chance: Chance; leadId?: string; text: string } | { ok: false; fehler: string; status: number; offen?: { id: string; titel: string } };
 

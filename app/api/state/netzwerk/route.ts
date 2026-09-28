@@ -8,6 +8,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import type { Kontakt, Chance, Naehe, Stufe } from '@/lib/make-one/netzwerk-data';
 import { karteiZugang, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { protokolliereBestand, werAus } from '@/lib/store/aenderungsprotokoll';
+import { neueKennung } from '@/lib/kennung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,11 +20,11 @@ const STUFEN: Stufe[] = ['kontakt', 'gespraech', 'angebot', 'verhandlung', 'gewo
 const DATUM = /^\d{4}-\d{2}-\d{2}$/;
 const txt = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
-function sauberKontakt(k: Partial<Kontakt>, i: number): Kontakt | null {
+function sauberKontakt(k: Partial<Kontakt>, _i: number): Kontakt | null {
   const name = txt(k.name, 120);
   if (!name) return null;
   return {
-    id: txt(k.id, 40) || `k-${Date.now().toString(36)}-${i}`,
+    id: txt(k.id, 40) || neueKennung('k'),
     name,
     firma: txt(k.firma, 120) || undefined,
     rolle: txt(k.rolle, 120) || undefined,
@@ -38,13 +39,13 @@ function sauberKontakt(k: Partial<Kontakt>, i: number): Kontakt | null {
   };
 }
 
-function sauberChance(c: Partial<Chance>, i: number): Chance | null {
+function sauberChance(c: Partial<Chance>, _i: number): Chance | null {
   const titel = txt(c.titel, 200);
   const kontaktId = txt(c.kontaktId, 40);
   if (!titel || !kontaktId) return null;
   const wert = Number(c.wert);
   return {
-    id: txt(c.id, 40) || `c-${Date.now().toString(36)}-${i}`,
+    id: txt(c.id, 40) || neueKennung('c'),
     kontaktId,
     titel,
     stufe: STUFEN.includes(c.stufe as Stufe) ? c.stufe as Stufe : 'kontakt',

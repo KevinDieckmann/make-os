@@ -6,6 +6,7 @@ import { istSpace } from '@/lib/make-one/space-regeln';
 import { sauberEinheit } from './einheiten';
 import { bezugSaeubern } from './mandat';
 import type { Ziel } from './typen';
+import { neueKennung } from '@/lib/kennung';
 
 const ISO_TAG = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -14,7 +15,7 @@ export function sauberZiel(roh: unknown): Ziel | null {
   const titel = String(z.titel ?? '').trim().slice(0, 200);
   if (!titel) return null;
   const aus: Ziel = {
-    id: String(z.id ?? '').slice(0, 80) || `z-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    id: String(z.id ?? '').slice(0, 80) || neueKennung('z'),
     titel,
     fortschritt: Math.max(0, Math.min(100, Math.round(Number(z.fortschritt) || 0))),
     erledigt: z.erledigt === true,

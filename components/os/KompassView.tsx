@@ -28,6 +28,7 @@ import {
   type ReglerId,
 } from '@/lib/make-one/kompass-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Segmente, feld, LEUCHT } from './schlank';
+import { neueKennung } from '@/lib/kennung';
 
 const HAAR = 'rgba(255,255,255,.06)';
 /** Beschriftung einer Zeile im Filter-Editor — GROSSBUCHSTABEN, leise. */
@@ -284,7 +285,7 @@ export function KompassView() {
   function filterAnlegen() {
     const name = neuName.trim();
     if (!name) return;
-    const f: EigenerFilter = { id: `f-${Date.now().toString(36)}`, name, wo: 'aufgaben', themen: [], orgs: [], prios: [], stichworte: [], wege: [] };
+    const f: EigenerFilter = { id: neueKennung('f'), name, wo: 'aufgaben', themen: [], orgs: [], prios: [], stichworte: [], wege: [] };
     speichern({ filter: [...filter, f] });
     setNeuName('');
     setOffenId(f.id);
@@ -314,7 +315,7 @@ export function KompassView() {
     const label = swLabel.trim();
     if (!label) return;
     const woerter = swWoerter.split(',').map(w => w.trim()).filter(Boolean);
-    speichern({ stichworte: [...eigeneSw, { id: `eig-${Date.now().toString(36)}`, label, thema: swThema, woerter: woerter.length ? woerter : [label] }] });
+    speichern({ stichworte: [...eigeneSw, { id: neueKennung('eig'), label, thema: swThema, woerter: woerter.length ? woerter : [label] }] });
     setSwLabel(''); setSwWoerter('');
   }
 

@@ -6,6 +6,7 @@
 // Client-safe: keine Server-Importe.
 
 import type { Kontakt, Naehe } from './netzwerk-data';
+import { neueKennung } from '@/lib/kennung';
 
 export interface Rohling {
   name: string;
@@ -88,9 +89,9 @@ export function textLesen(text: string, vorhanden: Kontakt[] = []): Rohling[] {
 }
 
 /** Rohling zu Kontakt — Nähe und Besitzer kommen aus der Einfüge-Einstellung. */
-export function zuKontakt(r: Rohling, naehe: Naehe, besitzer: Kontakt['besitzer'], quelle: string, i: number): Kontakt {
+export function zuKontakt(r: Rohling, naehe: Naehe, besitzer: Kontakt['besitzer'], quelle: string, _i: number): Kontakt {
   return {
-    id: `k-${Date.now().toString(36)}-${i}`,
+    id: neueKennung('k'),
     name: r.name,
     firma: r.firma,
     rolle: r.rolle,

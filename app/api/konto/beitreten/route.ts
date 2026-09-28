@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { ladeKonten, aendereKonten, emailSauber, passwortTauglich, passwortHashen, speicherName, RESERVIERTE_SPEICHER, type Konto } from '@/lib/zugang/konten';
 import { mitSitzung } from '@/lib/zugang/antwort';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
+import { neueKennung } from '@/lib/kennung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
     // aber nie ein reservierter Name: „Malin“ als Vorname übernimmt nicht Malins Bestände (26.09.).
     const vergeben = s.konten.map(k => k.speicher);
     const gebunden = einladung.speicher && !vergeben.includes(einladung.speicher) ? einladung.speicher : undefined;
-    konto = { id: `k-${Date.now().toString(36)}`, speicher: gebunden ?? speicherName(name, [...vergeben, ...RESERVIERTE_SPEICHER]), email, name, rolle: 'mitglied', hash, salz, angelegt: new Date().toISOString(), teilt: { gesundheit: [] }, eingeladenVon: einladung.von };
+    konto = { id: neueKennung('k'), speicher: gebunden ?? speicherName(name, [...vergeben, ...RESERVIERTE_SPEICHER]), email, name, rolle: 'mitglied', hash, salz, angelegt: new Date().toISOString(), teilt: { gesundheit: [] }, eingeladenVon: einladung.von };
     return { konten: [...s.konten, konto], einladungen: s.einladungen.filter(e => e.code !== code) };
   });
   if (!konto) return NextResponse.json({ error: 'Der Code wurde gerade eingelöst.' }, { status: 409 });

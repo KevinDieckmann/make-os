@@ -15,6 +15,7 @@ import { localDay } from '@/lib/zeit';
 import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
 import { SAEULE_VON_PROJEKT, SAEULE_LABEL } from '@/lib/make-one/fokus-data';
 import { modellSchranke } from '@/lib/zugang/umfang';
+import { neueKennung } from '@/lib/kennung';
 interface RoutineDef { label: string; wann: 'morgen' | 'tag' | 'abend'; dauerMin: number; aktiv: boolean }
 
 export const runtime = 'nodejs';
@@ -137,7 +138,7 @@ export async function POST(req: Request) {
   let verworfen = 0;
   const bloecke = (Array.isArray(r.data.bloecke) ? r.data.bloecke : [])
     .map(b => ({
-      id: `pb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      id: neueKennung('pb'),
       date: String(b.date ?? ''),
       startMin: Math.max(6 * 60, Math.min(22 * 60 - 15, Math.round(Number(b.startMin) / 15) * 15)),
       dauerMin: Math.max(15, Math.min(240, Math.round(Number(b.dauerMin) / 15) * 15 || 60)),

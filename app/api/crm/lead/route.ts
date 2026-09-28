@@ -34,11 +34,12 @@ import { wer, BEIDE } from '@/lib/crm/team';
 import { EINGESCHRAENKT_FEHLER } from '@/lib/crm/einschraenkung';
 import type { Lead, Mandat } from '@/lib/crm/typen';
 import { angenommenZuDeal, mandatVorbelegung } from '@/lib/crm/angebote';
+import { neueKennung } from '@/lib/kennung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const neueId = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+const neueId = (p: string) => neueKennung(p);
 const tagOk = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
 
 export async function GET(req: Request) {
