@@ -10,6 +10,7 @@ import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, feld, LEUCHT } from './schlank';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { HaushaltZuordnung } from './HaushaltZuordnung';
+import { TeamKarte } from './TeamKarte';
 
 interface Ich { speicher: string; email: string; name: string; rolle: 'inhaber' | 'mitglied'; teilt: { gesundheit: string[] }; angelegt: string; zweiterFaktorAn?: boolean }
 interface Andere { speicher: string; name: string; rolle: string; teiltGesundheitMitMir: boolean }
@@ -141,6 +142,8 @@ export function KontoView() {
         </Kachel>
       )}
       {ich.rolle === 'inhaber' && <Kachel id="haushalt" titel="Haushalt" breite={3}><HaushaltZuordnung /></Kachel>}
+      {/* Team (28.09.): lebt in den Daten (team--<haushalt>); hier gepflegt, weil die alte Säulen-Seite auf /os/familie umleitet. */}
+      <Kachel id="team" titel="Team" breite={6}><TeamKarte i={3} /></Kachel>
       <Kachel id="teilen" titel="Gesundheit teilen" breite={3}>
       <Karte i={2}>
       <Ueberschrift farbe={LEUCHT.gut}>Gesundheit teilen</Ueberschrift>
