@@ -135,7 +135,7 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
   const store = val(tasksR);
   const alle = store?.tasks ?? [];
   const projects = store?.projects ?? [];
-  const offen = alle.filter(t => t.status !== 'done');
+  const offen = alle.filter(t => t.status !== 'done' && t.status !== 'cancelled'); // „Abgebrochen“ (29.09.) ist nicht offen
   const rank: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
   offen.sort((a, b) => (rank[a.priority] ?? 9) - (rank[b.priority] ?? 9));
 

@@ -49,7 +49,7 @@ function kopf(felder: { scope: 'intern' | 'privat'; art: string; appId?: string 
 // ── Aufgaben-Listen ────────────────────────────────────────────────────────
 
 function aufgabeZeile(t: Task, unter: Task[]): string {
-  const offen = t.status !== 'done';
+  const offen = t.status !== 'done' && t.status !== 'cancelled';
   const extra = [offen && t.dueDate ? `fällig ${t.dueDate.slice(0, 10)}` : '', !offen && t.completedAt ? `erledigt ${tagVon(t.completedAt)}` : '', t.assignee ? `zuständig ${md(t.assignee, 30)}` : '']
     .filter(Boolean).join(' · ');
   const kinder = unter.map(u => `    - [${u.status === 'done' ? 'x' : ' '}] ${link(u.title, WEG.aufgabe(u.id))}`).join('\n');
@@ -59,7 +59,7 @@ function aufgabeZeile(t: Task, unter: Task[]): string {
 function aufgabenBlock(aufgaben: Task[], alle: Task[], d: AppDaten): string {
   const haupt = aufgaben.filter(t => !t.parentId);
   const unter = (t: Task) => alle.filter(u => u.parentId === t.id && aufgabeSichtbar(u, d));
-  const offen = haupt.filter(t => t.status !== 'done').sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999') || a.title.localeCompare(b.title, 'de'));
+  const offen = haupt.filter(t => t.status !== 'done' && t.status !== 'cancelled').sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999') || a.title.localeCompare(b.title, 'de'));
   const erledigt = haupt.filter(t => t.status === 'done').sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
   return [
     `## Offene Aufgaben (${offen.length})`, '', offen.length ? offen.map(t => aufgabeZeile(t, unter(t))).join('\n') : '_keine_', '',
@@ -96,7 +96,7 @@ export function spiegelDateien(d: AppDaten): Map<string, string> {
     const privat = privatProjekt({ spaceId: g.spaceId }) || (!g.spaceId && g.aufgaben.some(privatAufgabe));
     if (privat && !voll) {
       if (g.projektId) privatProjekte++;
-      privatOffen += g.aufgaben.filter(t => !t.parentId && t.status !== 'done').length;
+      privatOffen += g.aufgaben.filter(t => !t.parentId && t.status !== 'done' && t.status !== 'cancelled').length;
       privatErledigt += g.aufgaben.filter(t => !t.parentId && t.status === 'done').length;
       continue;
     }
