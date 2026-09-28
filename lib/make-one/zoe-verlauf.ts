@@ -36,6 +36,9 @@ export interface Gespraech {
 }
 
 /** Was wir behalten. Reicht für Monate; die Datei bleibt trotzdem klein. */
+import { wandzeit } from '@/lib/kalender/zeit';
+import { tagePlus } from '@/lib/zeit';
+
 export const GRENZEN = {
   gespraeche: 80,
   nachrichtenProGespraech: 240,
@@ -73,16 +76,18 @@ export function fuerPrompt(nachrichten: VerlaufNachricht[], wieViele = GRENZEN.i
   return raus;
 }
 
-/** Datum als „Heute · 14:32" / „Gestern · 09:10" / „So 27.07." */
+/**
+ * Datum als „Heute · 14:32" / „Gestern · 09:10" / „So 27.07." — Tag und Uhrzeit in BERLINER Zeit (29.09., Paket D-A #40).
+ * Vorher verglich es den UTC-Tag des Zeitstempels mit dem Berliner `heute`: zwischen 0 und 2 Uhr stand „Gestern“.
+ */
 export function wannText(iso: string, heute: string): string {
-  const tag = iso.slice(0, 10);
-  const uhr = iso.slice(11, 16);
+  const d = new Date(iso);
+  const wand = Number.isNaN(d.getTime()) ? iso : wandzeit(d);
+  const tag = wand.slice(0, 10);
+  const uhr = wand.slice(11, 16);
   if (tag === heute) return `Heute · ${uhr}`;
-  const gestern = new Date(`${heute}T12:00:00`);
-  gestern.setDate(gestern.getDate() - 1);
-  if (tag === gestern.toISOString().slice(0, 10)) return `Gestern · ${uhr}`;
-  const d = new Date(`${tag}T12:00:00`);
-  return `${['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][d.getDay()]} ${tag.slice(8)}.${tag.slice(5, 7)}.`;
+  if (tag === tagePlus(heute, -1)) return `Gestern · ${uhr}`;
+  return `${['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][new Date(`${tag}T12:00:00Z`).getUTCDay()]} ${tag.slice(8)}.${tag.slice(5, 7)}.`;
 }
 
 /**

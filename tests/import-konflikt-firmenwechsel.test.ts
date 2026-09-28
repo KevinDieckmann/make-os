@@ -4,6 +4,7 @@
 // Hauptstation dieselbe Absicht wie im Kontakt (`firmaWechsel`: jobwechsel · zusaetzlich · korrektur), sonst 409 mit
 // `firmaWechselNoetig`. Eigener Datenordner, Dienstaufruf per Schlüssel, erfundene Daten.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { localDay } from '@/lib/zeit';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -15,7 +16,8 @@ process.env.MAKE_OS_DATEN_DIR = ordner;
 process.env.MAKE_OS_KEY = 'pruef-schluessel-firmenwechsel';
 delete process.env.MAKE_OS_DATEN_SCHLUESSEL;
 
-const H = new Date().toISOString().slice(0, 10);
+// Berliner Tag wie der Server (29.09., Paket D-A #40) — vorher UTC-Tag: zwischen 0 und 2 Uhr rot.
+const H = localDay();
 const J = new Date().toISOString();
 const kopf = { 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': 'kevin' };
 const post = (body: unknown) => new Request('http://test/api/crm/import', { method: 'POST', headers: kopf, body: JSON.stringify(body) });

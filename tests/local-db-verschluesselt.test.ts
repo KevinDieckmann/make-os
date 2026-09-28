@@ -18,7 +18,8 @@ beforeAll(() => { delete process.env.MAKE_OS_DATEN_SCHLUESSEL; });
 describe('local-db verschlüsselt', () => {
   it('ohne Schlüssel: Klartext wie bisher', async () => {
     await db.saveJson('klar', { a: 1 });
-    expect(JSON.parse(await lies('klar'))).toEqual({ a: 1 });
+    // Seit 29.09. (#76/#22): ohne Einrückung und mit Schemaversion `_v` — gelesen wird ohne `_v`.
+    expect(await lies('klar')).toBe('{"a":1,"_v":1}');
     expect(await db.loadJson('klar')).toEqual({ a: 1 });
   });
 
@@ -26,20 +27,25 @@ describe('local-db verschlüsselt', () => {
     process.env.MAKE_OS_DATEN_SCHLUESSEL = 'test-schluessel-nicht-echt';
     await db.saveJson('geheim', { journal: 'privat', n: [1, 2, 3] });
     const roh = JSON.parse(await lies('geheim'));
-    expect(roh[db.HUELLE]).toBe(1);
+    expect(roh[db.HUELLE]).toBe(2); // v2-Hülle (29.09.): Schlüssel-ID + AAD
+    expect(typeof roh.kid).toBe('string');
     expect(await lies('geheim')).not.toContain('privat');
     expect(await db.loadJson('geheim')).toEqual({ journal: 'privat', n: [1, 2, 3] });
     // updateJson liest die Hülle und schreibt wieder eine
     const neu = await db.updateJson<{ n: number[] }>('geheim', c => ({ ...c!, n: [...c!.n, 4] }));
     expect(neu.n).toEqual([1, 2, 3, 4]);
-    expect(JSON.parse(await lies('geheim'))[db.HUELLE]).toBe(1);
+    expect(JSON.parse(await lies('geheim'))[db.HUELLE]).toBe(2);
   });
 
-  it('Klartext von früher bleibt lesbar, wenn der Schlüssel neu dazukommt — und wird beim Schreiben verschlüsselt', async () => {
+  it('Klartext von früher bei gesetztem Schlüssel: nur mit MAKE_OS_KLARTEXT_MIGRATION=1 gelesen — und beim Schreiben verschlüsselt (#55)', async () => {
     await db.saveJson('alt', { x: 'vorher' });
     process.env.MAKE_OS_DATEN_SCHLUESSEL = 'test-schluessel-nicht-echt';
-    expect(await db.loadJson('alt')).toEqual({ x: 'vorher' });
-    await db.updateJson<{ x: string }>('alt', c => ({ x: `${c!.x}-nachher` }));
+    await expect(db.loadJson('alt')).rejects.toThrow(/Klartext/);
+    process.env.MAKE_OS_KLARTEXT_MIGRATION = '1';
+    try {
+      expect(await db.loadJson('alt')).toEqual({ x: 'vorher' });
+      await db.updateJson<{ x: string }>('alt', c => ({ x: `${c!.x}-nachher` }));
+    } finally { delete process.env.MAKE_OS_KLARTEXT_MIGRATION; }
     expect(await lies('alt')).not.toContain('nachher');
     expect(await db.loadJson('alt')).toEqual({ x: 'vorher-nachher' });
   });

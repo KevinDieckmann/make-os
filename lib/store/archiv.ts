@@ -1,19 +1,19 @@
 // ─── Archiv-Kopien (<daten>/archiv) — verschlüsselt wie die Bestände (28.09., F2) ─
 // Vor Umzügen und Aufräumarbeiten legen Routen eine Kopie des alten Stands ab
 // (CRM vor dem Brain-Umzug, MAKE.ORGA-Rohdaten, Business vor der Entflechtung,
-// Kategorien vor dem Aufräumen). Prüfbericht 28.09.: diese Kopien lagen im
-// KLARTEXT neben den verschlüsselten Beständen — ein kopierter Datenordner hätte
-// sie verraten. Ab jetzt schreibt nur diese Stelle ins Archiv: mit
-// MAKE_OS_DATEN_SCHLUESSEL als dieselbe AES-256-GCM-Hülle wie local-db
-// (`verschluesseln`), ohne Schlüssel (lokale Entwicklung) Klartext wie alles.
-// Gelesen wird mit `entschluesseln` — beide Fassungen. Dateien 0600, Ordner 0700,
-// Schreiben über tmp + rename. `scripts/daten-verschluesselung.mjs` stellt auch
-// das Archiv um (alte Klartext-Kopien einmal verschlüsseln).
+// Kategorien vor dem Aufräumen). Nur diese Stelle schreibt ins Archiv: mit Datenschlüssel
+// als v2-Hülle (Schlüssel-ID + AAD `archiv/<datei>`, lib/store/huelle.mjs), ohne Schlüssel
+// (lokale Entwicklung) Klartext wie alles. Seit 29.09. (Paket D-A #2/#55):
+//   · Schreiben atomar und dauerhaft (atomarSchreiben: fsync + rename + Ordner-fsync);
+//   · Lesen über denselben Weg wie die Bestände (rohOeffnen): v1 und v2, Schlüsselring,
+//     Klartext bei gesetztem Schlüssel nur mit MAKE_OS_KLARTEXT_MIGRATION=1.
+// Dateien 0600, Ordner 0700. `scripts/daten-verschluesselung.mjs` stellt auch das Archiv um.
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { randomBytes } from 'crypto';
-import { datenOrdner, datenSchluessel, entschluesseln, verschluesseln } from './local-db';
+import { datenOrdner, rohOeffnen } from './local-db';
+import { atomarSchreiben } from './atomar.mjs';
+import { schluesselRing, huelleSchreiben } from './huelle.mjs';
 
 export const archivOrdner = () => path.join(datenOrdner(), 'archiv');
 const NAME = /^[a-z0-9][a-z0-9._-]{0,150}\.json$/i;
@@ -23,21 +23,22 @@ function pfad(datei: string): string {
   return path.join(archivOrdner(), datei);
 }
 
+/** AAD einer Archivkopie — der Name im Archiv (eine umbenannte Kopie fällt beim Lesen auf). */
+export const archivAad = (datei: string) => `archiv/${datei}`;
+
 /** Kopie ablegen. Liefert den Dateinamen (ohne Pfad). `einruecken` wie JSON.stringify. */
 export async function archivSchreiben(datei: string, daten: unknown, einruecken?: number): Promise<string> {
   const ziel = pfad(datei);
   await fs.mkdir(archivOrdner(), { recursive: true, mode: 0o700 });
   const text = JSON.stringify(daten, null, einruecken);
-  const key = datenSchluessel();
-  const tmp = `${ziel}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
-  await fs.writeFile(tmp, key ? verschluesseln(text, key) : text, { encoding: 'utf8', mode: 0o600 });
-  await fs.rename(tmp, ziel);
+  const aktiv = schluesselRing().aktiv;
+  await atomarSchreiben(ziel, aktiv ? huelleSchreiben(text, aktiv, archivAad(path.basename(ziel))) : text);
   return path.basename(ziel);
 }
 
 /** Kopie lesen (Hülle oder Klartext). Wirft ohne passenden Schlüssel. */
 export async function archivLesen<T>(datei: string): Promise<T> {
-  return JSON.parse(entschluesseln(await fs.readFile(pfad(datei), 'utf8'), datenSchluessel())) as T;
+  return JSON.parse(rohOeffnen(await fs.readFile(pfad(datei), 'utf8'), archivAad(datei)).text) as T;
 }
 
 /** Zeitstempel für Dateinamen (ISO ohne Doppelpunkte/Punkte). */

@@ -5,6 +5,7 @@
 // Verklemmung, wenn `aendereCrm` mit Lead-Folge und `aendereKontakte` gleichzeitig laufen).
 // Eigener Datenordner, erfundene Konten und Daten — nie der echte Bestand.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { localDay } from '@/lib/zeit';
 import { mkdtempSync, rmSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -16,7 +17,8 @@ process.env.MAKE_OS_DATEN_DIR = ordner;
 process.env.MAKE_OS_KEY = 'pruef-schluessel-w7-kartei';
 delete process.env.MAKE_OS_DATEN_SCHLUESSEL;
 
-const H = new Date().toISOString().slice(0, 10);
+// Berliner Tag wie der Server (29.09., Paket D-A #40) — vorher UTC-Tag: zwischen 0 und 2 Uhr rot.
+const H = localDay();
 const J = new Date().toISOString();
 type Handler = (r: Request) => Promise<Response>;
 type Route = { GET?: Handler; POST?: Handler; PATCH?: Handler };

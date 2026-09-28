@@ -142,7 +142,9 @@ describe('Skript Ein-/Ausschalten (daten-verschluesselung.mjs) stellt auch die A
     const laden = async () => new Uint8Array(await (await route.GET(new Request(`http://test/api/crm/dateien?id=${r.eintrag.id}`, { headers: kopf('kevin') }))).arrayBuffer());
     lauf('--entschluesseln');
     expect(readFileSync(datei).includes(Buffer.from('skript'))).toBe(true);
-    expect(await laden()).toEqual(pdf('skript'));
+    // Klartext-Bestände bei gesetztem Schlüssel liest die App nur mit dem Migrationsschalter (29.09., Paket D-A #55).
+    process.env.MAKE_OS_KLARTEXT_MIGRATION = '1';
+    try { expect(await laden()).toEqual(pdf('skript')); } finally { delete process.env.MAKE_OS_KLARTEXT_MIGRATION; }
     lauf('--verschluesseln');
     expect(readFileSync(datei).subarray(0, 8).toString('ascii')).toBe('MKOSDAT1');
     expect(await laden()).toEqual(pdf('skript'));

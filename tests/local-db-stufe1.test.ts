@@ -54,15 +54,19 @@ describe('Stufe 1 — Schreiben', () => {
     expect((await fs.stat(datei('still'))).ino).not.toBe(vorher.ino);
     expect(await db.loadJson('still')).toEqual({ liste: [1, 2, 3, 4] });
   });
-  it('Klartext von früher wird trotz „unverändert“ verschlüsselt, sobald ein Schlüssel da ist', async () => {
+  it('Klartext von früher: bei gesetztem Schlüssel abgelehnt (#55) — mit Migrationsschalter trotz „unverändert“ verschlüsselt', async () => {
     await db.saveJson('alt', { x: 1 });
     process.env.MAKE_OS_DATEN_SCHLUESSEL = 'test-schluessel';
     try {
       db.leseCacheLeeren();
+      await expect(db.loadJson('alt')).rejects.toBeInstanceOf(db.KlartextBestand);
+      await expect(db.saveJson('alt', { x: 1 })).rejects.toBeInstanceOf(db.KlartextBestand);
+      process.env.MAKE_OS_KLARTEXT_MIGRATION = '1';
       await db.saveJson('alt', { x: 1 });
       expect(await fs.readFile(datei('alt'), 'utf8')).toContain(db.HUELLE);
+      delete process.env.MAKE_OS_KLARTEXT_MIGRATION;
       expect(await db.loadJson('alt')).toEqual({ x: 1 });
-    } finally { delete process.env.MAKE_OS_DATEN_SCHLUESSEL; db.leseCacheLeeren(); }
+    } finally { delete process.env.MAKE_OS_DATEN_SCHLUESSEL; delete process.env.MAKE_OS_KLARTEXT_MIGRATION; db.leseCacheLeeren(); }
   });
 });
 

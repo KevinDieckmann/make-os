@@ -8,6 +8,11 @@ import { fileURLToPath } from 'url';
 
 const wurzel = path.dirname(fileURLToPath(import.meta.url));
 
+// Berliner Zeit für alle Tests (29.09., Paket D-A #40): der Server läuft mit TZ=Europe/Berlin (Dockerfile, compose);
+// Tests ohne TZ rechneten nachts in der Zone des Rechners bzw. der CI (UTC). Wer eine andere Zone prüfen will,
+// setzt process.env.TZ im Test selbst (tests/zeit-berlin.test.ts).
+process.env.TZ = 'Europe/Berlin';
+
 export default defineConfig({
   resolve: {
     // Derselbe @-Pfad wie in tsconfig.json.
@@ -18,5 +23,6 @@ export default defineConfig({
   oxc: { jsx: { runtime: 'automatic' } },
   test: {
     include: ['tests/**/*.test.ts'],
+    env: { TZ: 'Europe/Berlin' },
   },
 });

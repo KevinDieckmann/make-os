@@ -25,10 +25,19 @@ services:
     restart: unless-stopped
     # 27.09.: Summe der Grenzen (1280 + 384 + 128 = 1792 MB) bleibt unter den 2 GB des Servers — vorher 2304 MB.
     mem_limit: 1280m
+    # Geordnetes Beenden (29.09., Paket D-A #16): Docker wartet bis zu 60 s statt 10 s, bevor es hart abbricht —
+    # laufende Mehr-Bestand-Vorgänge (Import, Art. 17, Angebot) werden fertig; ab +20 s lehnt die Datenschicht
+    # neue Schreibungen mit 503 ab (lib/store/betrieb.ts), danach verschwindet das Lockfile .schreiber.
+    stop_grace_period: 60s
     env_file: .env
     environment:
       PORT: "3000"
       TZ: Europe/Berlin
+      # Datenschlüssel als Datei statt in der Umgebung (29.09., #50): /srv/make-os/schluessel/daten (0400, Besitzer make) gilt,
+      # sobald MAKE_OS_DATEN_SCHLUESSEL NICHT mehr in der .env steht (Umstellung: NOTFALL.md). daten-alt = alter Schlüssel,
+      # nur während einer Rotation im laufenden Betrieb (nur lesen, scripts/datenschluessel-rotieren-live.mjs).
+      MAKE_OS_DATEN_SCHLUESSEL_DATEI: /run/make-os-schluessel/daten
+      MAKE_OS_DATEN_SCHLUESSEL_ALT_DATEI: /run/make-os-schluessel/daten-alt
       MAKE_OS_INTERN: http://localhost:3000
       MAKE_VAULT_DIR: /vault
       # Brain-Embeddings (27.09.): Modell-Cache außerhalb der Daten (nicht in jeder Sicherung); MAKE_OS_EMBEDDINGS=aus schaltet auf reinen Volltext.
@@ -37,6 +46,7 @@ services:
       - ${MAKE_OS_DATEN:-/srv/make-os/daten}:/app/.data
       - ${MAKE_OS_VAULT:-/srv/make-os/vault}:/vault
       - ${MAKE_OS_MODELLE:-/srv/make-os/modelle}:/modelle
+      - ${MAKE_OS_SCHLUESSEL:-/srv/make-os/schluessel}:/run/make-os-schluessel:ro
     expose: ["3000"]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/anmelden').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
