@@ -1,4 +1,6 @@
-# Rechnungsstellung in MAKE OS — Plan (Kevin 28.09.2026, Entwurf)
+# Angebote und Rechnungen in MAKE OS — Plan (Kevin 28.09.2026, Entwurf)
+
+> **Nachtrag Kevin 28.09.:** „Wenn du das mit der Rechnungsstellung machst, nimm bitte auch Angebotsstellung mit rein.“ → Angebote sind Teil dieses Bausteins (Abschnitt „Angebote“).
 
 **Kevins Entscheidung:** MAKE OS stellt selbst Rechnungen (statt extern im Buchhaltungsprogramm). Pflicht zur E-Rechnung im B2B spätestens 2028 (bei mehr als 800 T€ Vorjahresumsatz 2027); Empfang schon seit 2025. Rechtliche Punkte sind Recherche-Stand, keine Steuerberatung — vor dem ersten echten Einsatz einmal mit dem Steuerberater abstimmen.
 
@@ -15,12 +17,19 @@ Aus Angebot oder Mandat wird mit wenigen Klicks eine korrekte Rechnung je Gesell
 7. **Anbindung:** Umsatz-Reiter (Kontakt/Firma), Mandat (monatliche Rechnung aus Honorar), Finanzplan (Rechnung = Vorgang mit Fälligkeit), „als bezahlt“ mit Buchung in einem Schritt (besteht schon), Export für den Steuerberater (CSV/DATEV-Format prüfen).
 8. **Versand:** bis der Versand-Baustein kommt, als PDF herunterladen bzw. als Entwurf in Apple Mail.
 
+## Angebote (Nachtrag Kevin)
+1. **Angebot je Gesellschaft** mit eigenem Nummernkreis (z. B. `KDV-A-2026-0001`), aus dem Deal heraus („Angebot erstellen“) oder frei; Positionen aus dem Produktkatalog (Preis, Basis, Laufzeit) oder frei, Menge, Rabatt, USt je Position, Gültig bis, Zahlungsbedingungen, Leistungsbeschreibung/Lieferumfang aus dem Produkt, optional Phasen und Termine.
+2. **Zustände:** Entwurf → **gestellt** (festgeschrieben mit PDF und Prüfsumme) → angenommen / abgelehnt (mit Grund) / abgelaufen (automatisch nach „gültig bis“) / ersetzt durch **Version 2** (neue Fassung mit Bezug, alte bleibt lesbar).
+3. **Pipeline-Anbindung:** Ein gestelltes Angebot hebt den Deal auf Stufe „Angebot“ (mit Wert aus dem Angebot); „angenommen“ → Deal gewonnen → Mandat anlegen (bestehender Weg) mit Honorar und Laufzeit aus dem Angebot; „abgelehnt“ → Verlustgrund. Follow-up „Angebot nachfassen“ automatisch zum passenden Datum. BEAN: offenes Angebot = Angebotskunde.
+4. **Vom Angebot zur Rechnung:** „Rechnung aus Angebot“ übernimmt Positionen (Teil- oder Abschlagsrechnungen möglich), Bezug bleibt sichtbar; bei Mandaten Monatsrechnungen aus dem angenommenen Angebot.
+5. **Ausgabe:** PDF im Layout der Gesellschaft (gleiches Gerüst wie Rechnung), optional Annahme-Vermerk; Umsatz-Reiter zeigt Angebote aus diesem Baustein statt der bisherigen Ablage-Einträge (Altbestand bleibt lesbar).
+
 ## Stufen
-1. Rechnungssteller + Nummernkreis + Entwurf/Stellen/Storno + PDF (GoBD-Kern).
+1. Rechnungssteller + Nummernkreise + **Angebote** und Rechnungen: Entwurf/Stellen/Storno + PDF (GoBD-Kern), Angebot → Deal-Stufe → Mandat → Rechnung.
 2. ZUGFeRD/XRechnung + Schema-Prüfung.
 3. Monatsrechnungen aus Mandaten, Export für den Steuerberater, E-Rechnungs-Empfang im Beleg-Leser (XML).
 
 ## Was Kevin beisteuert
-- Je Gesellschaft: genaue Firmierung, Anschrift, Steuernummer/USt-IdNr., Bankverbindung, Kleinunternehmer-Status, gewünschtes Nummernformat, Logo (trägt ihr in MAKE OS ein — nicht in den Chat).
+- Je Gesellschaft: genaue Firmierung, Anschrift, Steuernummer/USt-IdNr., Bankverbindung, Kleinunternehmer-Status, gewünschtes Nummernformat für Angebote und Rechnungen, Standard-Gültigkeit von Angeboten, Logo (trägt ihr in MAKE OS ein — nicht in den Chat).
 - Welche Gesellschaft stellt ab wann welche Rechnungen (heute stellt laut Brain die Selbstständigkeit die laufenden Rechnungen).
 - Kurze Abstimmung mit dem Steuerberater zu Nummernkreis und Format.
