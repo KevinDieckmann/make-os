@@ -17,7 +17,9 @@
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
-import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
+import { loadJson, speicherStand } from '@/lib/store/local-db';
+import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
+import { werAus, type Wer } from '@/lib/store/aenderungsprotokoll';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { localDay, tagVon } from '@/lib/zeit';
 import { personAus } from '@/lib/zoe/raum';
@@ -51,12 +53,12 @@ export async function GET(req: Request) {
 }
 
 /** Lead an Firma oder Person schreiben — der Rest des Eintrags bleibt, wie er ist. */
-async function leadSchreiben(id: string, mut: (alt: Lead | undefined) => Lead | undefined): Promise<Lead | undefined> {
+async function leadSchreiben(id: string, mut: (alt: Lead | undefined) => Lead | undefined, wer?: Wer): Promise<Lead | undefined> {
   let neu: Lead | undefined;
   if (id.startsWith('f-')) {
-    await aendereCrm(c => ({ ...c, firmen: c.firmen.map(f => (f.id === id ? (() => { neu = leadSaeubern(mut(f.lead)); return { ...f, ...(neu ? { lead: neu } : {}) }; })() : f)) }));
+    await aendereCrm(c => ({ ...c, firmen: c.firmen.map(f => (f.id === id ? (() => { neu = leadSaeubern(mut(f.lead)); return { ...f, ...(neu ? { lead: neu } : {}) }; })() : f)) }), wer);
   } else {
-    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === id ? (() => { neu = leadSaeubern(mut(k.lead)); return { ...k, ...(neu ? { lead: neu } : {}), geaendertAm: localDay() }; })() : k)) }));
+    await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === id ? (() => { neu = leadSaeubern(mut(k.lead)); return { ...k, ...(neu ? { lead: neu } : {}), geaendertAm: localDay() }; })() : k)) }), wer);
   }
   return neu;
 }
@@ -105,11 +107,11 @@ export async function POST(req: Request) {
     });
     if (schonDa) return NextResponse.json({ ok: false, fehler: 'Zu diesem Deal gibt es schon ein Mandat.' }, { status: 409 });
     // Lifecycle (Prüfbericht F1): eine gesetzte Phase vor „Kunde“ wird Kunde — ohne gesetzte Phase bleibt es beim Vorschlag.
-    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => {
+    await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => {
       if (!ids.has(k.id) || k.eingeschraenkt) return k;
       const phase = phaseHeben(k.phase, 'kunde');
       return { ...k, lebensphase: 'kunde', stufe: 'gewonnen', ...(phase ? { phase } : {}), geaendertAm: tagVon(jetzt) };
-    }) }));
+    }) }), werAus(req));
     return NextResponse.json({ ok: true, mandatId: m.id, text: `Mandat „${m.kunde}“ angelegt — unter Produkte & Mandate: Vertrag und Kickoff klären.` });
   }
 
@@ -132,7 +134,7 @@ export async function POST(req: Request) {
         ...(f.fit !== undefined ? { fit: f.fit as Lead['fit'] } : {}), ...(f.notiz !== undefined ? { notiz: String(f.notiz) } : {}), ...(f.grund !== undefined ? { grund: String(f.grund) } : {}),
         ...(qualifiziert ? { qualifiziertAm: tagVon(jetzt) } : {}),
         geaendert: jetzt, geaendertVon: person };
-    });
+    }, werAus(req));
     return NextResponse.json({ ok: true, lead });
   }
 
@@ -149,9 +151,9 @@ export async function POST(req: Request) {
       titel: String(d.titel ?? ''), kontaktIds, ...(zeile.art === 'firma' ? { firmaId: zeile.id } : {}),
       art: d.art as never, wert: { betrag: Number(d.betrag) || 0, basis: d.basis === 'einmalig' ? 'einmalig' : d.basis === 'jahr' ? 'jahr' : 'monat' },
       schritt: { text: String(schritt.text), datum: String(schritt.datum) }, ...(tagOk(d.erwartetAm) ? { erwartetAm: tagOk(d.erwartetAm) } : {}), besitzer, trotzdem: b.zweiter === true,
-    }, person, jetzt);
+    }, person, jetzt, werAus(req));
     if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler, ...(r.offen ? { offen: r.offen } : {}) }, { status: r.status });
-    if (b.trotzdem && !sqlBereit(zeile.kriterien)) await leadSchreiben(id, alt => ({ ...basis(alt), status: 'sql', sqlAm: jetzt, chanceId: r.chance.id, notiz: `${basis(alt).notiz ? `${basis(alt).notiz}\n` : ''}SQL ohne alle Kriterien angelegt (${fehltBisSql(zeile.kriterien).join(', ')} offen).`, geaendert: jetzt, geaendertVon: person }));
+    if (b.trotzdem && !sqlBereit(zeile.kriterien)) await leadSchreiben(id, alt => ({ ...basis(alt), status: 'sql', sqlAm: jetzt, chanceId: r.chance.id, notiz: `${basis(alt).notiz ? `${basis(alt).notiz}\n` : ''}SQL ohne alle Kriterien angelegt (${fehltBisSql(zeile.kriterien).join(', ')} offen).`, geaendert: jetzt, geaendertVon: person }), werAus(req));
     return NextResponse.json({ ok: true, chanceId: r.chance.id, text: `SQL: Deal „${r.chance.titel}“ steht unter Deals (Stufe SQL).` });
   }
 
@@ -162,12 +164,12 @@ export async function POST(req: Request) {
     const ids = new Set(zeile.personen.map(p => p.id));
     // Art. 18: eingeschränkte Personen einer Firma bleiben unberührt (werden gezählt, nicht übernommen).
     let n = 0, ausgelassen = 0;
-    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => {
+    await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => {
       if (!ids.has(k.id) || (k.besitzer && k.besitzer !== BEIDE)) return k;
       if (k.eingeschraenkt) { ausgelassen++; return k; }
       n++;
       return { ...k, besitzer: an, geaendertAm: tagVon(jetzt), aktivitaeten: [...(k.aktivitaeten ?? []), { am: jetzt, art: 'uebergabe' as const, von: person, text: `Übernommen in der Qualifizierungsrunde von ${an}` }] };
-    }) }));
+    }) }), werAus(req));
     return NextResponse.json({ ok: true, uebernommen: n, an, ...(ausgelassen ? { ausgelassen, hinweis: `${ausgelassen} eingeschränkte Person(en) (Art. 18) nicht übernommen.` } : {}) });
   }
 

@@ -55,6 +55,8 @@ import { verknuepfungsBestaende, verknuepftIn } from '@/lib/crm/person-bestaende
 import { ladeCrm } from '@/lib/crm/speicher';
 import { loeschSperren, type VerweisKontext } from '@/lib/crm/crm-stand';
 import { EINGESCHRAENKT_FEHLER } from '@/lib/crm/einschraenkung';
+import { firmaWechselAnwenden, firmaWechselFehlt, istFirmaWechsel, hauptStation, stationenVon, FIRMA_WECHSEL_FEHLT } from '@/lib/crm/stationen';
+import { bestehendeFirma, firmenId } from '@/lib/crm/firmen';
 import { listePatchen } from '@/lib/store/patch-liste';
 import { protokolliere, listenDiff, type Wer } from '@/lib/store/aenderungsprotokoll';
 
@@ -74,7 +76,7 @@ export async function GET(req: Request) {
   return NextResponse.json({ ok: true, ...st, laeufe });
 }
 
-type Body = { pfad?: string; csv?: string; name?: string; vorschau?: boolean; aktion?: string; kontaktId?: string; feld?: string; wahl?: string; laufId?: string };
+type Body = { pfad?: string; csv?: string; name?: string; vorschau?: boolean; aktion?: string; kontaktId?: string; feld?: string; wahl?: string; laufId?: string; firmaWechsel?: string };
 
 export async function POST(req: Request) {
   const wer = await imHaushaltDesInhabers(req);
@@ -201,19 +203,51 @@ async function konfliktLoesen(body: Body, wer: Wer) {
   const k = st.konflikte.find(x => x.kontaktId === kontaktId && x.feld === feld);
   if (!k) return NextResponse.json({ ok: false, fehler: 'Konflikt nicht (mehr) offen.' }, { status: 404 });
   const heute = localDay();
-  const firmenNamen = new Map((await ladeCrm()).firmen.map(f => [f.id, f.name]));
   const felder: Record<string, unknown> = wahl === 'liste' ? { [feld]: k.liste ?? null } : {};
+  // „Firmenwechsel?“ (28.09.): die Liste nennt eine ANDERE Firma. Nur den Firmentext zu übernehmen, schriebe den neuen
+  // Namen über die alte Hauptstation (firmaId/Stationen blieben alt). Hat die Person eine Hauptstation, braucht
+  // „Liste übernehmen“ deshalb dieselbe Absicht wie im Kontakt (`firmaWechsel`: Jobwechsel · zusätzlich · Korrektur) —
+  // fehlt sie: 409 mit `firmaWechselNoetig`. Die Firma wird gefunden (gleicher Name/Schlüssel) oder angelegt — im
+  // CRM-Bestand ZUERST, als eigener Schritt (Sperr-Reihenfolge crm → kontakte), danach der Kontakt über den Kartei-Weg.
+  if (wahl === 'liste' && feld === 'firma') {
+    const person = ((await loadJson<Bestand>('kontakte'))?.kontakte ?? []).find(x => x.id === kontaktId);
+    const name = String(k.liste ?? '').trim();
+    if (person && name && hauptStation(stationenVon(person))) {
+      const absicht = body.firmaWechsel;
+      if (!istFirmaWechsel(absicht)) return NextResponse.json({ ok: false, fehler: FIRMA_WECHSEL_FEHLT, firmaWechselNoetig: true }, { status: 409 });
+      let firmaId = '';
+      await aendereCrm(c => {
+        const da = c.firmen.find(f => f.name.trim().toLowerCase() === name.toLowerCase()) ?? bestehendeFirma(c.firmen, name);
+        if (da) { firmaId = da.id; return c; }
+        firmaId = firmenId(name);
+        return { ...c, firmen: [...c.firmen, { id: firmaId, name, rolle: 'offen', geaendert: new Date().toISOString(), ...(wer.person ? { geaendertVon: wer.person } : {}) }] };
+      }, wer);
+      Object.assign(felder, { firmaId, firmaWechsel: absicht });
+    }
+  }
+  const firmenNamen = new Map((await ladeCrm()).firmen.map(f => [f.id, f.name]));
   const r = await listePatchen<Kontakt, Bestand & Record<string, unknown>>('kontakte', 'kontakte', [{ op: 'teil', id: kontaktId, felder }], 20, undefined, {
     wer,
     // Art. 18: an einer eingeschränkten Person wird nichts geändert — auch kein Import-Konflikt entschieden.
-    pruefen: liste => (liste.find(x => x.id === kontaktId)?.eingeschraenkt ? EINGESCHRAENKT_FEHLER : null),
-    teil: (alt, f) => saeubereKontakt(teilAnwenden(alt, f)),
+    // Firma ohne Absicht (in der Sperre noch einmal, falls inzwischen eine Station dazukam): ablehnen wie die Kartei-Route.
+    pruefen: liste => {
+      const alt = liste.find(x => x.id === kontaktId);
+      if (alt?.eingeschraenkt) return EINGESCHRAENKT_FEHLER;
+      return firmaWechselFehlt(alt, felder) ? FIRMA_WECHSEL_FEHLT : null;
+    },
+    // `firmaWechsel` wird wie in der Kartei-Route in Stationen übersetzt und nie gespeichert.
+    teil: (alt, f) => {
+      const { firmaWechsel: absicht, ...rest } = f;
+      if (istFirmaWechsel(absicht) && 'firmaId' in rest) rest.stationen = firmaWechselAnwenden(alt, typeof rest.firmaId === 'string' && rest.firmaId ? rest.firmaId : undefined, absicht, heute);
+      return saeubereKontakt(teilAnwenden(alt, rest));
+    },
     vereinen: (neu, alt) => {
       const v = serverStempel(bezuegeSynchron(neu, alt, heute, id => firmenNamen.get(id)), alt, heute);
       return { ...v, vonHand: Array.from(new Set([...(v.vonHand ?? []), feld])).slice(0, VON_HAND_MAX) };
     },
   });
   if (!r.ok && r.fehler === EINGESCHRAENKT_FEHLER) return NextResponse.json({ ok: false, fehler: EINGESCHRAENKT_FEHLER, eingeschraenkt: true }, { status: 409 });
+  if (!r.ok && r.fehler === FIRMA_WECHSEL_FEHLT) return NextResponse.json({ ok: false, fehler: FIRMA_WECHSEL_FEHLT, firmaWechselNoetig: true }, { status: 409 });
   // Die Person gibt es nicht mehr (gelöscht oder zusammengeführt, bevor der Konflikt umgebogen war): der Konflikt ist
   // gegenstandslos — entfernen statt 404, sonst hinge er für immer in Stammdaten › Austausch (28.09., F2).
   const gefunden = r.ok;

@@ -769,12 +769,12 @@ async function notiereKontakt(input: Record<string, unknown>, _origin: string, p
   }
   const { STUFEN, STUFE_LABEL, anzeigename } = await import('@/lib/make-one/crm');
   const { folgeAus } = await import('@/lib/crm/heute');
-  const { updateJson } = await import('@/lib/store/local-db');
+  const { aendereKontakte } = await import('@/lib/crm/kartei-schreiben');
   const stufe = STUFEN.includes(input.stufe as never) ? (input.stufe as import('@/lib/make-one/crm').Stufe) : undefined;
   let nachher: import('@/lib/make-one/crm').Kontakt | null = null;
   let folgeHinweis = '';
   let eingeschraenkt = false;
-  await updateJson<{ kontakte: import('@/lib/make-one/crm').Kontakt[] }>('kontakte', current => {
+  await aendereKontakte<{ kontakte: import('@/lib/make-one/crm').Kontakt[] }>(current => {
     const f = current ?? { kontakte: [] };
     const i = f.kontakte.findIndex(k => k.id === treffer.id);
     if (i < 0) return f;
@@ -788,7 +788,7 @@ async function notiereKontakt(input: Record<string, unknown>, _origin: string, p
     }, folge, heute, new Date().toISOString());
     f.kontakte[i] = nachher;
     return f;
-  });
+  }, { art: 'zoe', ...(person ? { person } : {}) });
   if (eingeschraenkt) return 'Nicht notiert: die Verarbeitung dieser Person ist eingeschränkt (Art. 18 DSGVO).';
   if (!nachher) return 'Fehlgeschlagen: Kontakt beim Schreiben nicht mehr gefunden.';
   const n = nachher as import('@/lib/make-one/crm').Kontakt;
@@ -828,7 +828,7 @@ async function kontaktUebergeben(input: Record<string, unknown>, _o: string, per
   const { anzeigename } = await import('@/lib/make-one/crm');
   if (mehrere) return `Mehrdeutig — ${mehrere.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}? Bitte mit der ID.`;
   const { uebergeben } = await import('@/lib/crm/uebergabe');
-  const r = await uebergeben({ art: 'kontakt', id: treffer.id, an: String(input.an ?? ''), notiz: input.notiz ? String(input.notiz) : undefined, frist: input.frist ? String(input.frist) : undefined }, person);
+  const r = await uebergeben({ art: 'kontakt', id: treffer.id, an: String(input.an ?? ''), notiz: input.notiz ? String(input.notiz) : undefined, frist: input.frist ? String(input.frist) : undefined }, person, { art: 'zoe', person });
   return r.ok ? `Übergeben: ${r.text}.` : `Fehlgeschlagen: ${r.fehler}`;
 }
 
@@ -849,7 +849,7 @@ async function chanceAnlegen(input: Record<string, unknown>, _o: string, person?
   const schritt = String(input.naechster_schritt ?? '').trim().slice(0, 300);
   const datum = /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined;
   if (!schritt || !datum) return 'Fehlgeschlagen: naechster_schritt und faellig (YYYY-MM-DD) sind Pflicht — ohne nächsten Schritt verliert sich der Deal.';
-  const r = await dealAnlegen({ titel: String(input.titel ?? '').trim().slice(0, 160) || undefined, kontaktIds: [treffer.id], art: 'retainer', wert: { betrag, basis }, schritt: { text: schritt, datum }, quelle: 'bestand', stufe, besitzer: person, trotzdem: input.trotzdem === true }, person ?? 'kevin');
+  const r = await dealAnlegen({ titel: String(input.titel ?? '').trim().slice(0, 160) || undefined, kontaktIds: [treffer.id], art: 'retainer', wert: { betrag, basis }, schritt: { text: schritt, datum }, quelle: 'bestand', stufe, besitzer: person, trotzdem: input.trotzdem === true }, person ?? 'kevin', undefined, { art: 'zoe', ...(person ? { person } : {}) });
   if (!r.ok) return `Fehlgeschlagen: ${r.fehler}${r.offen ? ` (offener Deal: ${r.offen.id})` : ''}`;
   return `Deal angelegt (Lead ist jetzt SQL): „${r.chance.titel}“ (${anzeigename(treffer)}) · Stufe ${r.chance.stufe}${betrag ? ` · ${betrag} € ${basis === 'monat' ? 'im Monat' : 'einmalig'}` : ' · noch ohne Wert'} · nächster Schritt ${datum}: ${schritt}`;
 }

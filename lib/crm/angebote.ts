@@ -15,7 +15,7 @@
 //     Geschäftsunterlagen — der Bezug wird gelöst, das Angebot bleibt (§ 257 HGB, § 147 AO).
 // Keine Rechts- oder Steuerberatung — Pflichtangaben einmal mit dem Steuerberater abstimmen.
 
-import type { Angebot, AngebotBasis, AngebotPosition, AngebotsStatus, Chance, CrmBestand, Leistung, Mandat } from './typen';
+import type { Angebot, AngebotBasis, AngebotPosition, AngebotsStatus, Chance, CrmBestand, FollowUp, Leistung, Mandat } from './typen';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { KERN_EINHEITEN } from '@/lib/einheiten';
 import { inCent, ausCent, ustAusNetto, kaufmaennisch } from '@/lib/finanzen/ust';
@@ -276,6 +276,39 @@ export function ablaufen(liste: readonly Angebot[], heute: string, jetzt: string
     return { ...a, status: 'abgelaufen' as const, abgelaufenAm: heute, geaendert: jetzt, geaendertVon: 'system' };
   });
   return { liste: ids.length ? neu : [...liste], ids };
+}
+
+/** Der Follow-up-Hinweis, wenn ein gestelltes Angebot abläuft (28.09.). */
+export const ABLAUF_FOLLOWUP_TEXT = 'Angebot abgelaufen — nachfassen oder Version 2';
+
+/**
+ * Follow-ups zu frisch abgelaufenen Angeboten (28.09.): steht das „Angebot nachfassen“ (`fu-<angebot>`) noch offen,
+ * bekommt es den Hinweis und wird heute fällig (nie später als vorher); sonst ein neues `fu-<angebot>-ablauf` —
+ * höchstens einmal je Angebot. Ohne Person und ohne Deal kein Follow-up; `ausgenommen` (Art. 18) auch nicht.
+ */
+export function ablaufFollowUps(followups: readonly FollowUp[], abgelaufen: readonly Angebot[], ctx: {
+  heute: string; jetzt: string; zustaendig: (a: Angebot) => string; ausgenommen?: (kontaktId: string) => boolean;
+}): FollowUp[] {
+  const liste = [...followups];
+  for (const a of abgelaufen) {
+    if (a.kontaktId && ctx.ausgenommen?.(a.kontaktId)) continue;
+    const bezug: FollowUp['bezug'] | null = a.dealId ? { art: 'chance', id: a.dealId } : a.kontaktId ? { art: 'kontakt', id: a.kontaktId } : null;
+    if (!bezug) continue;
+    const text = `${ABLAUF_FOLLOWUP_TEXT}${a.nummer ? ` (${a.nummer})` : ''}`;
+    const i = liste.findIndex(f => f.id === `fu-${a.id}` && f.status === 'offen');
+    if (i >= 0) {
+      const f = liste[i];
+      liste[i] = { ...f, text, faellig: f.faellig < ctx.heute ? f.faellig : ctx.heute, geaendert: ctx.jetzt, geaendertVon: 'system' };
+      continue;
+    }
+    const id = `fu-${a.id}-ablauf`;
+    if (liste.some(f => f.id === id)) continue;
+    liste.push({
+      id, bezug, ...(a.kontaktId ? { kontaktId: a.kontaktId } : {}), art: 'anruf', text, faellig: ctx.heute, zustaendig: ctx.zustaendig(a),
+      status: 'offen', quelle: 'deal', angelegt: ctx.jetzt, geaendert: ctx.jetzt, geaendertVon: 'system',
+    });
+  }
+  return liste;
 }
 
 // ── Produkte ─────────────────────────────────────────────────────────────────

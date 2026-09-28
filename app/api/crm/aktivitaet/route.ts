@@ -6,7 +6,8 @@
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
-import { updateJson } from '@/lib/store/local-db';
+import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
+import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { personAus } from '@/lib/zoe/raum';
 import { fuerPerson, wendeAktivitaetAn, wannSaeubern, wannInZukunft, ortSaeubern, STUFEN, AKTIVITAET_ARTEN, ERGEBNISSE, NOTIZ_FELDER, type Kontakt, type AktivitaetArt, type Stufe, type Ergebnis, type NotizVorlage } from '@/lib/make-one/crm';
 import { notizAnwenden, istAktAnker, type NotizAktion } from '@/lib/crm/aktivitaeten';
@@ -68,7 +69,7 @@ async function notizAktion(req: Request, b: { aktion: NotizAktion; id?: string; 
   if (!stand) return NextResponse.json({ ok: false, fehler: 'stand fehlt — ohne Stand wird nichts geändert.' }, { status: 400 });
   const heute = localDay();
   let raus: { status: number; body: Antwort } = { status: 404, body: { ok: false, fehler: `Kein Kontakt mit id ${id}.` } };
-  await updateJson<{ kontakte: Kontakt[] }>('kontakte', current => {
+  await aendereKontakte<{ kontakte: Kontakt[] }>(current => {
     const f = current ?? { kontakte: [] };
     const i = f.kontakte.findIndex(x => x.id === id);
     if (i < 0) return f;
@@ -85,7 +86,7 @@ async function notizAktion(req: Request, b: { aktion: NotizAktion; id?: string; 
     if (r.unveraendert) return f;
     f.kontakte[i] = r.kontakt;
     return f;
-  });
+  }, werAus(req));
   return NextResponse.json(raus.body, { status: raus.status });
 }
 
@@ -122,7 +123,7 @@ export async function POST(req: Request) {
   let abgelehnt: { status: number; body: Antwort } | null = null;
   /** Geplantes Meeting (in der Zukunft) — zählt noch nicht als Aktivität am Deal. */
   let nurGeplant = false;
-  await updateJson<{ kontakte: Kontakt[] }>('kontakte', current => {
+  await aendereKontakte<{ kontakte: Kontakt[] }>(current => {
     const f = current ?? { kontakte: [] };
     const i = f.kontakte.findIndex(x => x.id === id);
     if (i < 0) return f;
@@ -150,7 +151,7 @@ export async function POST(req: Request) {
     ergebnis = neu;
     f.kontakte[i] = neu;
     return f;
-  });
+  }, werAus(req));
   const nein = abgelehnt as { status: number; body: Antwort } | null;
   if (nein) return NextResponse.json(nein.body, { status: nein.status });
   if (!ergebnis) return NextResponse.json({ error: `Kein Kontakt mit id ${id}.` }, { status: 404 });

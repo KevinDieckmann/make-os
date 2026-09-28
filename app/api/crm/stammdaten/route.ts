@@ -13,7 +13,9 @@
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson } from '@/lib/store/local-db';
+import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
+import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { anzeigename } from '@/lib/make-one/crm';
 import { pflichtangaben, selbstpruefung, verarbeitungenStart, LOESCHREGELN } from '@/lib/crm/datenschutz';
@@ -114,7 +116,7 @@ export async function POST(req: Request) {
   if (b.aktion === 'pflichtangaben') {
     const crm = await ladeCrm();
     let gesetzt = 0;
-    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
+    await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
       const f = cur ?? { kontakte: [] };
       const v = new Map(pflichtangaben(f.kontakte, crm).map(x => [x.id, x]));
       return { ...f, kontakte: f.kontakte.map(k => {
@@ -123,7 +125,7 @@ export async function POST(req: Request) {
         gesetzt++;
         return { ...k, ...(x.herkunft && !k.herkunft ? { herkunft: x.herkunft } : {}), ...(x.rechtsgrundlage && !k.rechtsgrundlage ? { rechtsgrundlage: x.rechtsgrundlage } : {}), ...(x.fremddaten ? { fremddaten: true } : {}) };
       }) };
-    });
+    }, werAus(req));
     return NextResponse.json({ ok: true, gesetzt });
   }
   if (b.aktion === 'wahrscheinlichkeit') {

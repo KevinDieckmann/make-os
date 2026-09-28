@@ -10,7 +10,9 @@
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
-import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
+import { loadJson, speicherStand } from '@/lib/store/local-db';
+import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
+import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { localDay } from '@/lib/zeit';
 import { personAus } from '@/lib/zoe/raum';
@@ -54,7 +56,7 @@ export async function POST(req: Request) {
   // Prüfen und Schreiben in EINER Sperre auf dem frischen Stand (Prüfbericht 27.09., Punkt 10) — vorher wurde ein vorab
   // geladener Kontakt zurückgeschrieben, und was die andere Person inzwischen geändert hatte, ging verloren.
   let bau: Bau | null = null; let fehler = '';
-  await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
+  await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
     const f = cur ?? { kontakte: [] };
     const r = anfrageBauen(eingabe, { kontakte: f.kontakte, crm, person, heute, jetzt, ids, sperre });
     if (!r.ok) { fehler = r.fehler; return f; }
@@ -65,7 +67,7 @@ export async function POST(req: Request) {
     const alt = f.kontakte[i];
     const neu = { ...r.bau.kontakt, aktivitaeten: [...alt.aktivitaeten.filter(a => !r.bau.kontakt.aktivitaeten.some(x => x.am === a.am && x.art === a.art && x.text === a.text)), ...r.bau.kontakt.aktivitaeten].sort((a, x) => a.am.localeCompare(x.am)) };
     return { ...f, kontakte: f.kontakte.map((x, j) => (j === i ? neu : x)) };
-  });
+  }, werAus(req));
   if (fehler || !bau) return NextResponse.json({ ok: false, fehler: fehler || 'Anfrage nicht angelegt.' }, { status: 400 });
   const fertig = bau as Bau;
   // Neue Person mit Werbesperre aus der Sperrliste: auch die Liste trägt sie (idempotent).

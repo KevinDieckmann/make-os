@@ -7,7 +7,9 @@
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
-import { loadJson, saveJson, updateJson } from '@/lib/store/local-db';
+import { loadJson, saveJson } from '@/lib/store/local-db';
+import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
+import { werAus } from '@/lib/store/aenderungsprotokoll';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { mailAdresse, mailSignale, terminSignale, signaleAnwenden, type MailEin, type TerminEin } from '@/lib/crm/signale';
 
@@ -47,14 +49,14 @@ export async function POST(req: Request) {
   ];
   const jetzt = new Date().toISOString();
   let neu = 0, kommend: Stand['kommend'] = {};
-  await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
+  await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
     const f = cur ?? { kontakte: [] };
     const t = terminSignale(f.kontakte, termine, jetzt);
     kommend = t.kommend;
     const r = signaleAnwenden(f.kontakte, [...mailSignale(f.kontakte, mails), ...t.vergangen]);
     neu = r.neu;
     return r.neu ? { ...f, kontakte: r.kontakte } : f;
-  });
+  }, werAus(req));
   await saveJson<Stand>(NAME, { letzter: jetzt, kommend, neu });
   return NextResponse.json({ ok: true, neu, mails: mails.length, termine: termine.length, kommend: Object.keys(kommend ?? {}).length });
 }

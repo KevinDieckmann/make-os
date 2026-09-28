@@ -18,7 +18,9 @@
 // Nichts wird versendet.
 
 import { NextResponse } from 'next/server';
-import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
+import { loadJson, speicherStand } from '@/lib/store/local-db';
+import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
+import { werAus, type Wer } from '@/lib/store/aenderungsprotokoll';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -67,10 +69,10 @@ type Herkunft = 'schritt' | 'wiedervorlage' | 'dealschritt' | 'nachfassen' | 're
  * Werbesperre bei „Sperre“). Nächster Schritt und Wiedervorlage der Person bleiben, wie sie
  * sind; nur das Feld, aus dem das Follow-up stammt, wird geleert.
  */
-async function aktivitaet(kontaktId: string, art: AktivitaetArt, text: string, von: string, ergebnis: Ergebnis | undefined, bezug: string | undefined, herkunft: Herkunft): Promise<void> {
+async function aktivitaet(kontaktId: string, art: AktivitaetArt, text: string, von: string, ergebnis: Ergebnis | undefined, bezug: string | undefined, herkunft: Herkunft, wer?: Wer): Promise<void> {
   const heute = localDay();
   let gesperrt: Kontakt | null = null;
-  await updateJson<{ kontakte: Kontakt[] }>('kontakte', current => {
+  await aendereKontakte<{ kontakte: Kontakt[] }>(current => {
     const f = current ?? { kontakte: [] };
     const i = f.kontakte.findIndex(x => x.id === kontaktId);
     if (i < 0) return f;
@@ -86,7 +88,7 @@ async function aktivitaet(kontaktId: string, art: AktivitaetArt, text: string, v
     if (folge?.werbesperre) { neu = { ...neu, werbesperre: { seit: heute, grund: text || 'Widerspruch im Gespräch' }, wiedervorlage: undefined, naechsterSchritt: undefined }; gesperrt = neu; }
     f.kontakte[i] = neu;
     return f;
-  });
+  }, wer);
   // Werbesperre: auch auf die gehashte Sperrliste (K2 #60).
   const g = gesperrt as Kontakt | null;
   if (g) await sperren([g], 'werbesperre', heute);
@@ -154,7 +156,7 @@ export async function POST(req: Request) {
   // Art. 18: eine eingeschränkte Person bleibt unberührt (auch IN der Sperre geprüft).
   const kontaktFeldVerschieben = async (neuesDatum: string) => {
     if (!v || (v.quelle !== 'schritt' && v.quelle !== 'wiedervorlage')) return;
-    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id !== v.ziel || k.eingeschraenkt ? k : v.quelle === 'schritt' ? { ...k, ...(k.naechsterSchritt ? { naechsterSchritt: { ...k.naechsterSchritt, datum: neuesDatum } } : {}), geaendertAm: heute } : { ...k, wiedervorlage: neuesDatum, geaendertAm: heute })) }));
+    await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id !== v.ziel || k.eingeschraenkt ? k : v.quelle === 'schritt' ? { ...k, ...(k.naechsterSchritt ? { naechsterSchritt: { ...k.naechsterSchritt, datum: neuesDatum } } : {}), geaendertAm: heute } : { ...k, wiedervorlage: neuesDatum, geaendertAm: heute })) }), werAus(req));
   };
   // Art. 18 (28.09., W8): Schritt/Wiedervorlage einer eingeschränkten Person nicht verschieben oder absagen.
   if (v && (v.quelle === 'schritt' || v.quelle === 'wiedervorlage') && kontakt(v.ziel)?.eingeschraenkt && (b.aktion === 'verschieben' || b.aktion === 'absagen')) return EINGESCHRAENKT();
@@ -190,8 +192,8 @@ export async function POST(req: Request) {
     const e = erledigt as FollowUp;
     let lead: LeadMeldung | null = null;
     if (e.kontaktId) {
-      await aktivitaet(e.kontaktId, AKT_ART[e.art], `${e.text}${notiz ? ` — ${notiz}` : ''}`, person, ergebnis, e.bezug.art === 'chance' || e.bezug.art === 'event' || e.bezug.art === 'mandat' ? e.bezug.id : undefined, herkunft);
-      if (e.bezug.art === 'event' && (ergebnis === 'gespraech' || ergebnis === 'termin')) lead = await leadHebenNachGespraech(e.kontaktId, jetzt, person, heute);
+      await aktivitaet(e.kontaktId, AKT_ART[e.art], `${e.text}${notiz ? ` — ${notiz}` : ''}`, person, ergebnis, e.bezug.art === 'chance' || e.bezug.art === 'event' || e.bezug.art === 'mandat' ? e.bezug.id : undefined, herkunft, werAus(req));
+      if (e.bezug.art === 'event' && (ergebnis === 'gespraech' || ergebnis === 'termin')) lead = await leadHebenNachGespraech(e.kontaktId, jetzt, person, heute, werAus(req));
     }
     const f2 = folge as FollowUp | null;
     return NextResponse.json({ ok: true, followup: e, ...(f2 ? { naechstes: f2 } : {}), ...(lead ? { lead } : {}), text: [f2 ? `Erledigt — nächstes Follow-up am ${f2.faellig}.` : 'Erledigt.', lead?.geaendert ? `Lead „${lead.ziel.name}“ jetzt „${lead.nach}“.` : '', hinweis].filter(Boolean).join(' ') });
@@ -241,7 +243,7 @@ export async function POST(req: Request) {
       return altesFeldImCrm(c);
     });
     if (v && (v.quelle === 'schritt' || v.quelle === 'wiedervorlage')) {
-      await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id !== v.ziel || k.eingeschraenkt ? k : v.quelle === 'schritt' ? { ...k, naechsterSchritt: undefined, geaendertAm: heute } : { ...k, wiedervorlage: undefined, geaendertAm: heute })) }));
+      await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id !== v.ziel || k.eingeschraenkt ? k : v.quelle === 'schritt' ? { ...k, naechsterSchritt: undefined, geaendertAm: heute } : { ...k, wiedervorlage: undefined, geaendertAm: heute })) }), werAus(req));
     }
     const n = neu as FollowUp | null;
     return NextResponse.json({ ok: true, ...(n ? { followup: n } : {}), text: v?.quelle === 'kadenz' && n ? `Kadenz: nächster Anlauf am ${n.faellig}.` : v?.quelle === 'nachfassen' ? 'Nachfassen ausgelassen — zählt nicht als nachgefasst.' : n?.status === 'verpasst' ? 'Als verpasst gezählt.' : 'Abgesagt.' });

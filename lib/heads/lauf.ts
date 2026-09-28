@@ -16,6 +16,7 @@
 // 7. Bericht + Freigabe-Liste speichern. Nichts wird versendet.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { askText, extractJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
@@ -191,7 +192,7 @@ async function autoUebernehmen(head: HeadId, berichtId: string, person: string, 
   const erledigt = new Map<string, HeadVorschlag['auto']>();
   const schritte = plan.filter(p => p.w === 'schritt');
   if (schritte.length) {
-    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
+    await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
       const f = cur ?? { kontakte: [] };
       return { ...f, kontakte: f.kontakte.map(k => {
         const p = schritte.find(x => x.v.kontakt_id === k.id);
@@ -202,7 +203,7 @@ async function autoUebernehmen(head: HeadId, berichtId: string, person: string, 
         const eintrag = { am: jetzt, art: 'system' as const, von: 'system', text: `Head: nächster Schritt „${p.v.titel.slice(0, 120)}“ bis ${p.v.frist} (automatisch, rücknehmbar)` };
         return { ...k, naechsterSchritt: { text: p.v.titel.slice(0, 300), datum: p.v.frist }, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag], geaendertAm: tagVon(jetzt) };
       }) };
-    });
+    }, { art: 'zoe', person });
   }
   const aufgaben = plan.filter(p => p.w === 'aufgabe');
   if (aufgaben.length) {

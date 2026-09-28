@@ -13,6 +13,7 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { ladeCrm, kundenAusMandaten } from '@/lib/crm/speicher';
+import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { localDay, tagePlus, alterStunden } from '@/lib/zeit';
 import { resolveVitals, vitalsHint, type ResolvedVitals } from '@/lib/vitals';
 import { computeIndex, type PerfIndex } from '@/lib/performance';
@@ -106,7 +107,9 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
     recentRuns(undefined, 10),
     loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; zeitfenster?: string; fortschritt: number; erledigt: boolean }[] }>('meilensteine'),
     loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string; firmaId?: string }[] }>('finanzplan'),
-    ladeCrm().then(kundenAusMandaten),
+    // Kunden/Mandate gehören dem Haushalt des Inhabers (28.09.): eine Person aus einem anderen Haushalt bekommt
+    // davon nichts in ihren ZOE-Kontext — auch keine Zahlen.
+    personImHaushaltDesInhabers(person).then(ja => (ja ? ladeCrm().then(kundenAusMandaten) : { kunden: [] })),
     computeShields(heute),
     loadJson<{ modus?: string }>('kompass'),
     loadJson<{ reihenfolge?: string[] }>('ordnung'),

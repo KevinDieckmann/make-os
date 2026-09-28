@@ -13,7 +13,9 @@
 //  · (d) Titel ohne Firma trägt keinen vollen Personennamen mehr („Deal · Retainer · M.“) — Titel wandern in
 //    Mandate, Exporte und Auswertungen und überlebten sonst ein Löschen nach Art. 17.
 
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson } from '@/lib/store/local-db';
+import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
+import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { tagVon } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { aendereCrm } from './speicher';
@@ -125,8 +127,8 @@ export function kontaktPhaseNachDeal(phase: Kontakt['phase']): Kontakt['phase'] 
   return neu && neu !== phase ? neu : undefined;
 }
 
-/** Deal anlegen und schreiben: Chance in den CRM-Bestand, Lead wird SQL mit Verweis. */
-export async function dealAnlegen(e: DealEingabe, person: string, jetzt = new Date().toISOString()): Promise<DealErgebnis> {
+/** Deal anlegen und schreiben: Chance in den CRM-Bestand, Lead wird SQL mit Verweis. `wer` fürs Änderungsprotokoll (fehlt → laufende Anfrage). */
+export async function dealAnlegen(e: DealEingabe, person: string, jetzt = new Date().toISOString(), wer?: Wer): Promise<DealErgebnis> {
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   // Prüfen (Dublette!) und Schreiben in EINER Schreibsperre — zwei gleichzeitige Anlagen (ZOE + Browser) ergeben sonst zwei offene Deals (Prüfbericht 27.09., Punkt 18).
   let r: DealErgebnis | null = null;
@@ -136,7 +138,7 @@ export async function dealAnlegen(e: DealEingabe, person: string, jetzt = new Da
     const c = r.chance;
     // Ebene 1 → 2: der Lead der Firma ist jetzt SQL — mit Verweis auf den Deal, in derselben Mutation.
     return { ...x, chancen: [...x.chancen, c], firmen: c.firmaId ? x.firmen.map(f => (f.id === c.firmaId ? { ...f, lead: leadWirdSql(f.lead, c, jetzt, person), geaendert: jetzt, geaendertVon: person } : f)) : x.firmen };
-  });
+  }, wer);
   const ergebnis = r as DealErgebnis | null;
   if (!ergebnis) return { ok: false, fehler: 'Deal nicht angelegt.', status: 500 };
   if (!ergebnis.ok) return ergebnis;
@@ -144,13 +146,13 @@ export async function dealAnlegen(e: DealEingabe, person: string, jetzt = new Da
   // Kartei (anderer Bestand), eine Sperre: Person ohne Firma → ihr Lead wird SQL; gesetzte Phase unter Opportunity → Opportunity (W6).
   const ids = new Set(c.kontaktIds);
   if (ids.size) {
-    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => {
+    await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => {
       if (!ids.has(k.id)) return k;
       const lead = !c.firmaId && k.id === c.kontaktIds[0] && !k.firmaId;
       const phase = kontaktPhaseNachDeal(k.phase);
       if (!lead && !phase) return k;
       return { ...k, ...(lead ? { lead: leadWirdSql(k.lead, c, jetzt, person) } : {}), ...(phase ? { phase } : {}), geaendertAm: tagVon(jetzt) };
-    }) }));
+    }) }), wer);
   }
   return ergebnis;
 }

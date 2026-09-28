@@ -8,7 +8,9 @@
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { archivSchreiben, archivZeit } from '@/lib/store/archiv';
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson } from '@/lib/store/local-db';
+import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
+import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { personAus } from '@/lib/zoe/raum';
 import { localDay } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
@@ -31,11 +33,11 @@ export async function POST(req: Request) {
   const heute = localDay();
   // 1. Kartei: Ansprechpartner anlegen oder ergänzen.
   let kartei: ReturnType<typeof ausBrain> | null = null;
-  await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
+  await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
     const f = cur ?? { kontakte: [] };
     kartei = ausBrain({ kunden: b.daten!.kunden }, leererBestand(), f.kontakte, heute, jetzt, person);
     return { ...f, kontakte: kartei.kontakte };
-  });
+  }, werAus(req));
   // 2. CRM: Leistungen und Mandate — gegen die fertige Kartei, damit jedes Mandat seine Ansprechpartner kennt.
   let crm: ReturnType<typeof ausBrain> | null = null;
   const fertig = await aendereCrm(cur => {

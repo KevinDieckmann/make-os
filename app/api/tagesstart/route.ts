@@ -5,6 +5,8 @@
 //
 // GET  → Status: lief heute schon ein Tagesstart? Was fehlt noch?
 // POST → führt ihn aus (Kalender auffrischen + Morgen-Loop) und merkt sich das.
+// 28.09.: vorneweg die Angebote — gestellte nach „gültig bis“ → abgelaufen, mit Follow-up-Hinweis
+// (lib/crm/angebot-server.ts `ablaufNachziehen`); vorher geschah das nur beim Lesen der Markttraktion.
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -12,6 +14,7 @@ import { recentRuns } from '@/lib/agent-log';
 import { resolveVitals, localDay } from '@/lib/vitals';
 import { innenAdresse } from '@/lib/innen';
 import { personAus } from '@/lib/zoe/raum';
+import { ablaufNachziehen } from '@/lib/crm/angebot-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -60,6 +63,14 @@ export async function POST(req: Request) {
 
   const origin = innenAdresse(req);
   const schritte: { name: string; ok: boolean; info?: string }[] = [];
+
+  // 0) Angebote: Ablauf nach „gültig bis“ serverseitig nachziehen (ohne Netz, schreibt nur bei Bedarf, Protokoll „System“).
+  try {
+    const n = await ablaufNachziehen();
+    schritte.push({ name: 'Angebote', ok: true, info: n ? `${n} abgelaufen — Follow-up „nachfassen oder Version 2“` : 'keins abgelaufen' });
+  } catch (err) {
+    schritte.push({ name: 'Angebote', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
 
   // 1) Kalender auffrischen — nur wenn er wirklich alt ist. Der osascript-Read
   //    ist zäh (bis ~55s), das muss nicht jeden Morgen sein.

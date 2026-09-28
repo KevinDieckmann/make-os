@@ -20,7 +20,9 @@
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson } from '@/lib/store/local-db';
+import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
+import { werAus, type Wer } from '@/lib/store/aenderungsprotokoll';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { fuerPerson, wendeAktivitaetAn, vonHandMarkieren, type Kontakt, type Aktivitaet } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
@@ -53,10 +55,10 @@ export async function GET(req: Request) {
  * Einen Kontakt ändern — nur, was der Schritt braucht; der Rest bleibt, wie er auf dem Server steht.
  * Datenschutz (28.09., W8) IN der Sperre: Art. 18 → nichts; Werbesperre → keine werblichen Schritte (`netzSchrittGesperrt`).
  */
-async function aendere(id: string, pruefe: (k: Kontakt) => string | null, mut: (k: Kontakt) => Kontakt | null): Promise<{ kontakt: Kontakt | null; gesperrt: string | null }> {
+async function aendere(id: string, pruefe: (k: Kontakt) => string | null, mut: (k: Kontakt) => Kontakt | null, wer?: Wer): Promise<{ kontakt: Kontakt | null; gesperrt: string | null }> {
   let neu: Kontakt | null = null;
   let gesperrt: string | null = null;
-  await updateJson<Bestand>('kontakte', cur => {
+  await aendereKontakte<Bestand>(cur => {
     const f = cur ?? { kontakte: [] };
     const i = f.kontakte.findIndex(k => k.id === id);
     if (i < 0) return f;
@@ -65,7 +67,7 @@ async function aendere(id: string, pruefe: (k: Kontakt) => string | null, mut: (
     const n = mut(f.kontakte[i]);
     if (n) { f.kontakte[i] = n; neu = n; }
     return f;
-  });
+  }, wer);
   return { kontakt: neu, gesperrt };
 }
 
@@ -101,12 +103,12 @@ export async function POST(req: Request) {
       beispiele: plan.treffer.slice(0, 8).map(t => ({ name: `${t.zeile.vorname} ${t.zeile.nachname}`.trim(), wie: t.wie })) };
     if (!b.uebernehmen) return NextResponse.json({ ok: true, vorschau });
     const nach = new Map(plan.treffer.map(t => [t.kontaktId, t]));
-    await updateJson<Bestand>('kontakte', cur => {
+    await aendereKontakte<Bestand>(cur => {
       const f = cur ?? { kontakte: [] };
       // „Online gewinnt“ (Prüfbericht F1): ein übernommenes Profil ist Handarbeit — der Masterlisten-Import überschreibt es nicht.
       // Art. 18 (28.09.): eingeschränkte Personen überspringt der Import — an ihnen wird nichts festgehalten.
       return { ...f, kontakte: f.kontakte.map(k => { const t = nach.get(k.id); return t && !k.eingeschraenkt ? vonHandMarkieren(k, { ...exportAnwenden(k, t, person, heute), geaendertAm: heute }) : k; }) };
-    });
+    }, werAus(req));
     return NextResponse.json({ ok: true, vorschau, text: `${vorschau.treffer} Kontakte abgeglichen: ${vorschau.neueProfile} Profile ergänzt, ${vorschau.neuVernetzt} jetzt als vernetzt mit ${profilName} markiert.` });
   }
 
@@ -166,7 +168,7 @@ export async function POST(req: Request) {
         fehler = 'aktion: profil, nicht_gefunden, angefragt, vernetzt, geschrieben, antwort, zurueckgezogen, abgelehnt oder import.';
         return null;
     }
-  });
+  }, werAus(req));
   if (gesperrt) return NextResponse.json({ ok: false, fehler: gesperrt }, { status: 409 });
   if (fehler) return NextResponse.json({ ok: false, fehler }, { status: 400 });
   if (!k) return NextResponse.json({ ok: false, fehler: 'Person nicht gefunden.' }, { status: 404 });

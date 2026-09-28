@@ -18,6 +18,8 @@ import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { updateJson } from '@/lib/store/local-db';
+import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
+import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { etagAus, jsonAntwort, unveraendert } from '@/lib/http/json-antwort';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { localDay } from '@/lib/zeit';
@@ -75,10 +77,10 @@ export async function POST(req: Request) {
     stand = { ...stand, crm };
   }
   if (speicher.has('kontakte')) {
-    const f = await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
+    const f = await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
       const d = cur ?? { kontakte: [] };
       return { ...d, kontakte: verbindungenReparieren({ ...stand, kontakte: d.kontakte ?? [] }, ids, jetzt, person).bestaende.kontakte };
-    });
+    }, werAus(req));
     stand = { ...stand, kontakte: f.kontakte };
   }
   if (speicher.has('import-konflikte')) {

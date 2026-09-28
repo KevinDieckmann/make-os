@@ -41,6 +41,7 @@ import type { ListenOp } from '@/lib/sync';
 import { icsText, icsDateiname, checklisteAlsAufgaben, punktAendern, aufgabeAbgleichen, type PunktAenderung, type ChecklistenPunkt } from '@/lib/crm/eventplanung';
 import { hebtLead, planpostenAusEvent, planpostenId, liquiplanStand, type NachfassErgebnis } from '@/lib/crm/event-bruecke';
 import { leadHebenNachGespraech } from '@/lib/crm/lead-heben';
+import { werAus } from '@/lib/store/aenderungsprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -140,7 +141,7 @@ export async function POST(req: Request) {
       followups: (c.followups ?? []).map(f => (f.status === 'offen' && f.bezug.art === 'event' && f.bezug.id === eventId && f.kontaktId === t.kontaktId ? { ...f, status: 'erledigt' as const, erledigtAm: jetzt, ergebnis: ergebnis === 'erledigt' ? undefined : ergebnis, geaendert: jetzt, geaendertVon: person } : f)),
     }));
     // 2 · Lead heben (Firma, ohne Firma die Person) — nur bei Gespräch oder Termin; derselbe Weg wie beim Erledigen eines Follow-ups (lib/crm/lead-heben.ts).
-    const lead = hebtLead(ergebnis) ? await leadHebenNachGespraech(t.kontaktId, jetzt, person, heute) : null;
+    const lead = hebtLead(ergebnis) ? await leadHebenNachGespraech(t.kontaktId, jetzt, person, heute, werAus(req)) : null;
     return NextResponse.json({ ok: true, followUpAm, lead });
   }
 

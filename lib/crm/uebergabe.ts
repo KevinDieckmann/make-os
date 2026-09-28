@@ -6,6 +6,8 @@
 // und die andere Person bekommt eine Aufgabe mit Link. Nichts wird versendet.
 
 import { updateJson } from '@/lib/store/local-db';
+import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
+import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { aendereCrm } from './speicher';
 import { wer, nameVon, BEIDE } from './team';
@@ -24,7 +26,8 @@ const tagOk = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.te
 export interface UebergabeEingabe { art?: string; id?: string; ids?: string[]; an?: string; notiz?: string; frist?: string }
 export type UebergabeErgebnis = { ok: true; anzahl: number; an: string; aufgabe: boolean; text: string } | { ok: false; fehler: string; status: number };
 
-export async function uebergeben(b: UebergabeEingabe, person: string): Promise<UebergabeErgebnis> {
+/** `protokollWer` fürs Änderungsprotokoll (Route: `werAus(req)`, ZOE: `{ art: 'zoe', person }`); fehlt es, gilt die laufende Anfrage. */
+export async function uebergeben(b: UebergabeEingabe, person: string, protokollWer?: Wer): Promise<UebergabeErgebnis> {
   const art = UEBERGABE_ARTEN.includes(b.art as Art) ? (b.art as Art) : null;
   const an = wer(b.an);
   const notiz = String(b.notiz ?? '').trim().slice(0, 600);
@@ -42,7 +45,7 @@ export async function uebergeben(b: UebergabeEingabe, person: string): Promise<U
     const ids = new Set((art === 'kontakt' ? [b.id] : (b.ids ?? [])).map(String).filter(x => /^c-[a-z0-9-]{4,60}$/.test(x)).slice(0, 300));
     if (!ids.size) return { ok: false, fehler: 'Keine gültigen Kontakte.', status: 400 };
     const namen: string[] = [];
-    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
+    await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
       const f = cur ?? { kontakte: [] };
       return { ...f, kontakte: f.kontakte.map(k => {
         if (!ids.has(k.id) || ausgenommen(k)) return k;
@@ -51,7 +54,7 @@ export async function uebergeben(b: UebergabeEingabe, person: string): Promise<U
         return { ...k, besitzer: an, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag], geaendertAm: tagVon(jetzt),
           ...(art === 'kontakt' && notiz && frist ? { naechsterSchritt: { text: notiz.slice(0, 300), datum: frist } } : {}) };
       }) };
-    });
+    }, protokollWer);
     if (!anzahl) return { ok: false, fehler: 'Nichts übergeben — gesperrt oder nicht gefunden.', status: 404 };
     titel = anzahl === 1 ? namen[0] : `${anzahl} Kontakte`;
     link = art === 'kontakt' ? markttraktion('kontakte', undefined, Array.from(ids)[0]) : `${markttraktion('kontakte')}&wer=${an}`;
@@ -70,7 +73,7 @@ export async function uebergeben(b: UebergabeEingabe, person: string): Promise<U
       // Schreibt jetzt die Stimme selbst, braucht es keine Freigabe mehr.
       if (liste === 'beitraege' && x.freigabe && x.stimme === an) delete (neu[i] as Record<string, unknown>).freigabe;
       return { ...c, [liste]: neu } as CrmBestand;
-    });
+    }, protokollWer);
     if (!anzahl) return { ok: false, fehler: 'Eintrag nicht gefunden.', status: 404 };
     const [s, a] = ZIEL[art]!;
     // Mandate leben seit 25.09. unter Produkte & Mandate — der Link öffnet genau dieses Mandat.

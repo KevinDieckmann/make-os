@@ -13,6 +13,7 @@ import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { personAus } from '@/lib/zoe/raum';
 import { uebergeben, type UebergabeEingabe } from '@/lib/crm/uebergabe';
+import { werAus } from '@/lib/store/aenderungsprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,6 @@ export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: UebergabeEingabe;
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
-  const r = await uebergeben(b, personAus(req));
+  const r = await uebergeben(b, personAus(req), werAus(req));
   return r.ok ? NextResponse.json(r) : NextResponse.json({ ok: false, fehler: r.fehler }, { status: r.status });
 }

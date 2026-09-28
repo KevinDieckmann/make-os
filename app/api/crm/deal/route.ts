@@ -9,6 +9,7 @@
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { dealAnlegen, type DealEingabe } from '@/lib/crm/deal-anlegen';
+import { werAus } from '@/lib/store/aenderungsprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
   let b: DealEingabe & { aktion?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (b.aktion !== 'anlegen') return NextResponse.json({ ok: false, fehler: 'aktion: anlegen.' }, { status: 400 });
-  const r = await dealAnlegen(b, zugang.person);
+  const r = await dealAnlegen(b, zugang.person, undefined, werAus(req));
   if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler, ...(r.offen ? { offen: r.offen } : {}) }, { status: r.status });
   return NextResponse.json({ ok: true, chance: r.chance, text: r.text });
 }

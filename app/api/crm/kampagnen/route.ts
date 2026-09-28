@@ -16,6 +16,8 @@ import { NextResponse } from 'next/server';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { leereKriterien } from '@/lib/crm/leads';
 import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
+import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
+import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { anzeigename, wendeAktivitaetAn, type Kontakt, type AktivitaetArt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm, LISTEN_GRENZEN } from '@/lib/crm/speicher';
@@ -116,7 +118,7 @@ export async function POST(req: Request) {
     const text = `Kampagne „${k.name}“: ${({ angesprochen: 'angesprochen', reagiert: 'hat reagiert', gespraech: 'Gespräch', chance: 'Chance entstanden', kein_interesse: 'kein Interesse' } as const)[erg]}`;
     let kontakt: Kontakt | null = null;
     let eingeschraenkt = false;
-    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
+    await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
       const f = cur ?? { kontakte: [] };
       const i = f.kontakte.findIndex(x => x.id === b.kontaktId);
       if (i < 0) return f;
@@ -125,7 +127,7 @@ export async function POST(req: Request) {
       kontakt = wendeAktivitaetAn(f.kontakte[i], { art, text, von, bezug: k.id }, heute, new Date().toISOString(), tagePlus);
       f.kontakte[i] = kontakt;
       return f;
-    });
+    }, werAus(req));
     const kt = kontakt as Kontakt | null;
     if (eingeschraenkt) return NextResponse.json({ ok: false, fehler: 'Verarbeitung der Person ist eingeschränkt (Art. 18) — kein Ergebnis festgehalten.' }, { status: 409 });
     if (!kt) return NextResponse.json({ ok: false, fehler: 'Person nicht gefunden.' }, { status: 404 });
@@ -146,12 +148,12 @@ export async function POST(req: Request) {
     });
     // Ohne Firma liegt der Lead an der Person — die vorhandene Notiz bleibt (vorher wurde sie ersetzt).
     if (erg === 'chance' && !kt.firmaId && !['sql', 'kunde'].includes(kt.lead?.status ?? '')) {
-      await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(x => {
+      await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(x => {
         if (x.id !== kt.id || x.eingeschraenkt) return x;
         const n = notizAnhaengen(x.lead?.notiz, vermerk);
         if (!n.ok) hinweis = n.hinweis;
         return { ...x, lead: { ...(x.lead ?? { kriterien: leereKriterien() }), status: 'qualifizierung' as const, ...(n.notiz ? { notiz: n.notiz } : {}), geaendert: jetzt, geaendertVon: person } };
-      }) }));
+      }) }), werAus(req));
     }
     return NextResponse.json({ ok: true, ...(hinweis ? { hinweis } : {}) });
   }

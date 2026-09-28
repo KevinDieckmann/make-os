@@ -11,12 +11,13 @@
 //   ablehnen    Grund Pflicht, Deal verloren mit Grund, Follow-up abgesagt
 //   version     neue Fassung als Entwurf mit Bezug (alte bleibt lesbar)
 //   loeschen    nur Entwürfe
-//   ablauf      gestellt → abgelaufen nach „gültig bis“ (beim Lesen)
+//   ablauf      gestellt → abgelaufen nach „gültig bis“ (beim Lesen und täglich im Morgenlauf) + Follow-up-Hinweis
 // Kanal-Ampel vor dem Stellen: Werbesperre/Einschränkung (Art. 18/21) blockt mit Grund —
 // sonst ist ein angefragtes Angebot Vertragsanbahnung (Art. 6 Abs. 1 lit. b), gelb = Hinweis.
 
 import { createHash } from 'crypto';
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson } from '@/lib/store/local-db';
+import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { localDay, tagVon, tagePlus } from '@/lib/zeit';
 import { wendeAktivitaetAn, STUFEN as KONTAKT_STUFEN, type Kontakt } from '@/lib/make-one/crm';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
@@ -29,7 +30,7 @@ import { wer, BEIDE, verantwortlich } from './team';
 import { phaseHeben } from './lifecycle';
 import { kanalStatus } from './recht';
 import {
-  ablaufen, angebotGrenzen, angebotSummen, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat,
+  ablaufen, ablaufFollowUps, angebotGrenzen, angebotSummen, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat,
   stellenFehlt, tagOk, werktagePlus, NACHFASSEN_WERKTAGE, ANGEBOT_GRENZEN, plusTage,
 } from './angebote';
 import { alleGesellschaften, gesellschaftenName, gesellschaftLuecken, mitVorgaben, type Gesellschaft, type GesellschaftenDatei } from './gesellschaften';
@@ -134,13 +135,31 @@ export async function angebotVersion(p: { id: string; person: string; haushalt?:
 
 // ── Ablauf ───────────────────────────────────────────────────────────────────
 
-/** Gestellte Angebote nach „gültig bis“ → abgelaufen (Status-Übergang serverseitig). Schreibt nur, wenn es etwas gibt. */
+/**
+ * Gestellte Angebote nach „gültig bis“ → abgelaufen (Status-Übergang serverseitig). Schreibt nur, wenn es etwas gibt.
+ * Läuft beim Lesen (GET bestand/angebot) UND einmal am Tag im Morgenlauf (app/api/tagesstart, 28.09.) — wer zuerst
+ * kommt, zieht nach. In derselben Sperre der Follow-up-Hinweis „Angebot abgelaufen — nachfassen oder Version 2“
+ * (`ablaufFollowUps`, einmal je Angebot; nicht für eingeschränkte Personen, Art. 18).
+ */
 export async function ablaufNachziehen(jetzt = new Date()): Promise<number> {
   const heute = localDay(jetzt);
-  const vorher = ablaufen((await ladeCrm()).angebote ?? [], heute, jetzt.toISOString());
+  const jetztIso = jetzt.toISOString();
+  const vorher = ablaufen((await ladeCrm()).angebote ?? [], heute, jetztIso);
   if (!vorher.ids.length) return 0;
+  const gesperrt = new Set(((await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? []).filter(k => k.eingeschraenkt).map(k => k.id));
   let n = 0;
-  await aendereCrm(b => { const r = ablaufen(b.angebote ?? [], heute, jetzt.toISOString()); n = r.ids.length; return r.ids.length ? { ...b, angebote: r.liste } : b; }, { art: 'system' });
+  await aendereCrm(b => {
+    const r = ablaufen(b.angebote ?? [], heute, jetztIso);
+    n = r.ids.length;
+    if (!n) return b;
+    const neu = new Set(r.ids);
+    const deals = new Map(b.chancen.map(c => [c.id, c]));
+    const followups = ablaufFollowUps(b.followups ?? [], r.liste.filter(a => neu.has(a.id)), {
+      heute, jetzt: jetztIso, ausgenommen: id => gesperrt.has(id),
+      zustaendig: a => zustaendigAus((a.dealId ? deals.get(a.dealId)?.besitzer : undefined) ?? a.gestelltVon ?? ''),
+    });
+    return { ...b, angebote: r.liste, followups };
+  }, { art: 'system' });
   return n;
 }
 
@@ -207,7 +226,7 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
       titel: a0.titel, kontaktIds: [k.id], ...(firmaId ? { firmaId } : {}), wert: dealWertAusAngebot(a0), stufe: 'angebot', gesellschaft: a0.gesellschaft,
       ...(a0.positionen.find(x => x.leistungId)?.leistungId ? { leistungId: a0.positionen.find(x => x.leistungId)!.leistungId } : {}),
       schritt: { text: 'Angebot nachfassen', datum: nachfassen },
-    }, p.person, jetztIso);
+    }, p.person, jetztIso, p.wer);
     if (r.ok) dealId = r.chance.id; else if (r.offen) dealId = r.offen.id;
     else hinweise.push(`Kein Deal angelegt: ${r.fehler}`);
   }
@@ -268,7 +287,7 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
 
   // 4. Kontakt: Aktivität „Angebot gesendet (Nummer)“, Stufe vorwärts (nie zurück), Wiedervorlage = Nachfassen, Lifecycle gehoben.
   const rang = (s: Kontakt['stufe']) => KONTAKT_STUFEN.indexOf(s);
-  await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
+  await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
     const f = cur ?? { kontakte: [] };
     return {
       ...f, kontakte: f.kontakte.map(x => {
@@ -279,7 +298,7 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
         return phase && phase !== x.phase ? { ...neu, phase } : neu;
       }),
     };
-  });
+  }, p.wer);
   const mail = mailVorlage({ anrede: k.anrede, vorname: k.vorname, nachname: k.nachname, titel: e.a.titel, nummer: e.a.nummer, gueltigBis: e.a.gueltigBis, absender: v.name });
   return { angebot: mitStand(e.a), pdf: e.pdf, mail: { ...(k.email ? { an: k.email } : {}), ...mail }, ...(dealId ? { dealId } : {}), hinweise };
 }

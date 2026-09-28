@@ -11,6 +11,9 @@
 // Import ist ein Lauf mit „Rückgängig“ (30 Tage, nur unveränderte Kontakte — sonst Konflikt).
 // Dazu fünf Exporte als CSV (app/api/crm/export?was=…, Aufbau in
 // lib/crm/export.ts). Privatnotizen verlassen die Kartei nie.
+// 28.09.: Konflikte zeigen ihren Hinweis (z. B. „Firmenwechsel?“). „Liste übernehmen“ bei der Firma fragt wie im
+// Kontakt nach der Absicht (Jobwechsel · Zusätzliche Firma · Korrektur) und schickt sie als `firmaWechsel` mit —
+// der Server rechnet daraus die Stationen (app/api/crm/import, lib/crm/stationen.ts).
 
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -22,6 +25,8 @@ import { type CrmApi, datum } from '../daten';
 import type { StammdatenDaten } from './typen';
 import type { ImportWarnung, WarnArt } from '@/lib/crm/import-pruefung';
 import type { LaufKurz, LaufKonflikt } from '@/lib/crm/import-lauf';
+import type { FirmaWechsel } from '@/lib/crm/stationen';
+import { useFirmaWechselFrage } from '../kontakt/FirmaWechselFrage';
 
 interface Vorschau {
   zeilen: number; neu: number; aktualisiert: number; unveraendert: number; konflikte: number; moeglicheDubletten: number; ohneBesitzer: number; abgelehnt: boolean;
@@ -45,6 +50,7 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
   const [stand, setStand] = useState<KonfliktStand>(leererKonfliktStand());
   const [zeigeDubletten, setZeigeDubletten] = useState(false);
   const [laeufe, setLaeufe] = useState<LaufKurz[]>([]);
+  const { frage: firmaFrage, dialog: firmaDialog } = useFirmaWechselFrage();
   // Kontakt oder (seit 28.09., W7) eine vom Import angelegte Firma.
   const name = useCallback((id: string) => { const k = (api.kontakte ?? []).find(x => x.id === id); if (k) return anzeigename(k); return api.crm?.stand.firmen.find(f => f.id === id)?.name ?? id; }, [api.kontakte, api.crm]);
 
@@ -80,8 +86,13 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
     setQuelle(null); setVorschau(null);
     await standLaden(); laden(); void api.laden();
   };
-  const entscheiden = async (k: Konflikt, wahl: 'online' | 'liste') => {
-    const r = await post({ aktion: 'konflikt', kontaktId: k.kontaktId, feld: k.feld, wahl });
+  const entscheiden = async (k: Konflikt, wahl: 'online' | 'liste', absicht?: FirmaWechsel): Promise<void> => {
+    // Firmenwechsel (28.09.): erst fragen, wie sich die Firma ändert — Abbrechen ändert nichts.
+    const fragen = () => firmaFrage({ von: typeof k.online === 'string' ? k.online : undefined, nach: typeof k.liste === 'string' ? k.liste : undefined });
+    if (wahl === 'liste' && k.feld === 'firma' && k.hinweis && !absicht) { const a = await fragen(); if (!a) return; absicht = a; }
+    const r = await post({ aktion: 'konflikt', kontaktId: k.kontaktId, feld: k.feld, wahl, ...(absicht ? { firmaWechsel: absicht } : {}) });
+    // Der Server verlangt die Absicht auch ohne Hinweis, wenn die Person Stationen hat.
+    if (r.firmaWechselNoetig && !absicht) { const a = await fragen(); if (a) await entscheiden(k, wahl, a); return; }
     if (r.error || r.fehler) { setMeldung(r.error ?? r.fehler); return; }
     setStand(s => ({ ...s, konflikte: s.konflikte.filter(x => !(x.kontaktId === k.kontaktId && x.feld === k.feld)) }));
     void api.laden();
@@ -163,7 +174,7 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
           {offen.length > 0 && (
             <Liste>
               {offen.slice(0, 60).map(k => (
-                <Zeile key={`${k.kontaktId}|${k.feld}`} titel={<>{name(k.kontaktId)} <span style={{ color: C.inkLeise }}>· {FELD_LABEL[k.feld] ?? k.feld}</span></>}
+                <Zeile key={`${k.kontaktId}|${k.feld}`} titel={<>{name(k.kontaktId)} <span style={{ color: C.inkLeise }}>· {FELD_LABEL[k.feld] ?? k.feld}</span>{k.hinweis && <span title="Die Liste nennt eine andere Firma — beim Übernehmen wird nachgefragt: Jobwechsel, zusätzliche Firma oder Korrektur." style={{ marginLeft: 8, padding: '1px 8px', borderRadius: 999, fontSize: 12, fontWeight: 700, color: LEUCHT.achtung, border: `1px solid ${LEUCHT.achtung}66`, background: `${LEUCHT.achtung}14` }}>{k.hinweis}</span>}</>}
                   unter={<span style={{ whiteSpace: 'normal' }}><span style={{ color: C.aktiv }}>online:</span> {wert(k.online)} &nbsp;·&nbsp; <span style={{ color: LEUCHT.achtung }}>Liste:</span> {wert(k.liste)}</span>}
                   rechts={<div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                     <Knopf leise aus={laeuft} onClick={() => void entscheiden(k, 'online')}>Online behalten</Knopf>
@@ -218,6 +229,7 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
           ))}
         </Liste>
       </Karte>
+      {firmaDialog}
     </>
   );
 }

@@ -6,7 +6,9 @@
 // er nur in der Events-Route, und ein erledigtes Event-Follow-up ließ den Lead
 // stehen (Prüfbericht 27.09., Punkt 7).
 
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson } from '@/lib/store/local-db';
+import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
+import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from './speicher';
 import { leadSaeubern } from './lead-form';
@@ -20,7 +22,7 @@ import { personenDerFirma } from './stationen';
 export interface LeadMeldung { ziel: { art: 'firma' | 'person'; id: string; name: string }; von: string; nach: string; geaendert: boolean; grund?: string }
 
 /** Lead der Firma (sonst der Person) nach einem Gespräch heben und schreiben. null, wenn die Person unbekannt ist. */
-export async function leadHebenNachGespraech(kontaktId: string, jetzt: string, person: string, heute = tagVon(jetzt)): Promise<LeadMeldung | null> {
+export async function leadHebenNachGespraech(kontaktId: string, jetzt: string, person: string, heute = tagVon(jetzt), wer?: Wer): Promise<LeadMeldung | null> {
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const k = kontakte.find(x => x.id === kontaktId);
   if (!k) return null;
@@ -35,8 +37,8 @@ export async function leadHebenNachGespraech(kontaktId: string, jetzt: string, p
   if (r.geaendert && r.lead) {
     const neu = leadSaeubern(r.lead);
     if (neu) {
-      if (ziel.art === 'firma') await aendereCrm(c => ({ ...c, firmen: c.firmen.map(f => (f.id === ziel.id ? { ...f, lead: neu, geaendert: jetzt, geaendertVon: person } : f)) }));
-      else await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(x => (x.id === ziel.id ? { ...x, lead: neu, geaendertAm: heute } : x)) }));
+      if (ziel.art === 'firma') await aendereCrm(c => ({ ...c, firmen: c.firmen.map(f => (f.id === ziel.id ? { ...f, lead: neu, geaendert: jetzt, geaendertVon: person } : f)) }), wer);
+      else await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(x => (x.id === ziel.id ? { ...x, lead: neu, geaendertAm: heute } : x)) }), wer);
     }
   }
   return { ziel: { ...ziel, name: firma?.name ?? k.firma ?? `${k.vorname} ${k.nachname}`.trim() }, von: r.von, nach: r.nach, geaendert: r.geaendert, ...(r.grund ? { grund: r.grund } : {}) };
