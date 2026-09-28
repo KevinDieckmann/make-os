@@ -1,4 +1,6 @@
-# Versand aus MAKE OS — Plan (Kevin 28.09.2026, Entwurf zur Freigabe)
+# Versand aus MAKE OS — Plan (Kevin 28.09.2026)
+
+> **Status 28.09. abends: ZURÜCKGESTELLT.** Kevin: „Postausgang erst nach hinten schieben. Erst CRM grundsätzlich fertig machen.“ Entschieden sind bereits: **eine Freigabe je Aussendung** bei Newsletter/Kampagnen (nach Vorschau + geprüfter Empfängerliste), Versanddienst **Brevo**, Absender-Domain **später** (Kevin und Malin suchen noch eine gemeinsame Domain). Bis dahin laufen Mails weiter über **Apple Mail** (Entwurf aus MAKE OS, Versand in Apple Mail).
 
 **Kevins Entscheidung:** MAKE OS verschickt künftig selbst — einzelne Mails an Kontakte, Follow-up-Folgen, Einladungen zu Make.One-Events, Newsletter und Kampagnen an Segmente. **Überall zuerst ein Entwurf, jede Mail wird einzeln per Klick freigegeben, erst dann versendet MAKE OS.** Persönliche Mails über eure Microsoft-365-Postfächer, Masse über einen Versanddienst. Die alte Regel „MAKE OS verschickt nichts“ ist damit aufgehoben. Gebaut wird erst nach Kevins Freigabe dieses Plans, nur lokal; Upload auf sein Wort.
 
@@ -46,8 +48,8 @@ Jede Stufe mit negativen Tests: ohne Freigabe kein Versand, an Gesperrte kein Ve
 - DNS-Einträge für die Absender-Domain.
 - Festlegen der Absender-Adressen (z. B. kevin@…, malin@…, einladung@make.one).
 
-## Offene Fragen an Kevin
-1. Newsletter: eine Freigabe je Aussendung (nach Vorschau und Empfängerliste) oder wirklich je Empfänger?
-2. Versanddienst: Brevo, CleverReach oder Mailjet?
-3. Absender-Domain für Make.One und Marketing?
-4. Mit Stufe 1 (1:1 über M365) anfangen?
+## Entscheidungen Kevin (28.09.)
+1. Newsletter/Kampagnen: **eine Freigabe je Aussendung**.
+2. Versanddienst: **Brevo**.
+3. Absender-Domain: **später** — bis dahin Apple Mail.
+4. Start: **zurückgestellt**, zuerst das CRM grundsätzlich fertig machen.
