@@ -1,5 +1,6 @@
 // ─── Reiter „Umsatz“: Zuordnung, Kennzahlen, Angebote, Zahlungsdaten (28.09.) ──
-// Erfundene Firmen, Personen und Beträge. Die IBAN ist das bekannte Lehrbuch-Beispiel.
+// Erfundene Firmen, Personen und Beträge. Die IBAN wird zur Laufzeit aus einer erfundenen Kontonummer gerechnet
+// (tests/repo-sauber.test.ts: keine IBAN im Klartext in versionierten Dateien).
 import { describe, it, expect } from 'vitest';
 import { umsatzBezug, umsatzKennzahlen, angeboteListe, ablageFilter, kundenName, OHNE_EINHEIT, type UmsatzRechnung } from '@/lib/crm/umsatz';
 import { zahlungSaeubern, ibanGueltig, ibanMaskiert, zahlungFuerAnzeige, zahlungOhneIban, zahlungsQuelle, zahlungLuecken } from '@/lib/crm/zahlung';
@@ -9,7 +10,12 @@ import { dateinameSaeubern, typErkennen, metaSaeubern, eintraegeFuer, hatBezug, 
 import type { Chance, CrmBestand, Firma, Mandat } from '@/lib/crm/typen';
 
 const HEUTE = '2026-09-28';
-const IBAN = 'DE89370400440532013000';
+/** DE + Prüfziffer (ISO 13616) + erfundene 18-stellige BBAN. */
+const mod97 = (ziffern: string) => Array.from(ziffern).reduce((r, z) => (r * 10 + Number(z)) % 97, 0);
+const mitPruefziffer = (bban: string) => `DE${String(98 - mod97(`${bban}131400`)).padStart(2, '0')}${bban}`;
+const IBAN = mitPruefziffer('120300009876543210');
+const gruppiert = (i: string) => i.replace(/(.{4})/g, '$1 ').trim();
+const MASKE = `${IBAN.slice(0, 4)} •••• •••• ${IBAN.slice(-4)}`;
 
 const firma = (id: string, name: string): Firma => ({ id, name, rolle: 'kunde', geaendert: HEUTE });
 const mandat = (id: string, x: Partial<Mandat>): Mandat => ({
@@ -134,14 +140,14 @@ describe('Angebote aus drei Quellen', () => {
 describe('Zahlungsdaten', () => {
   it('IBAN: Prüfziffer, Maske zeigt nie die Mitte', () => {
     expect(ibanGueltig(IBAN)).toBe(true);
-    expect(ibanGueltig('DE89 3704 0044 0532 0130 00')).toBe(true);
-    expect(ibanGueltig('DE89370400440532013001')).toBe(false);
+    expect(ibanGueltig(gruppiert(IBAN))).toBe(true);
+    expect(ibanGueltig(`${IBAN.slice(0, -1)}${(Number(IBAN.slice(-1)) + 1) % 10}`)).toBe(false);
     const m = ibanMaskiert(IBAN)!;
-    expect(m).toBe('DE89 •••• •••• 3000');
-    expect(m).not.toContain('0532');
+    expect(m).toBe(MASKE);
+    expect(m).not.toContain(IBAN.slice(8, 16));
   });
   it('Säuberung: falsche IBAN fällt weg, SEPA-Daten nur bei SEPA, Link nur https, Ziel begrenzt', () => {
-    const z = zahlungSaeubern({ weg: 'sepa', zielTage: '999', iban: 'de89 3704 0044 0532 0130 00', sepa: { mandatsreferenz: 'M-1', datum: '2026-01-02' }, link: 'javascript:alert(1)', empfaenger: { email: 'Rechnung@Beispiel.invalid', name: '  Buchhaltung ' }, ustId: 'de 123456789', unbekannt: 1 })!;
+    const z = zahlungSaeubern({ weg: 'sepa', zielTage: '999', iban: gruppiert(IBAN).toLowerCase(), sepa: { mandatsreferenz: 'M-1', datum: '2026-01-02' }, link: 'javascript:alert(1)', empfaenger: { email: 'Rechnung@Beispiel.invalid', name: '  Buchhaltung ' }, ustId: 'de 123456789', unbekannt: 1 })!;
     expect(z).toEqual({ weg: 'sepa', zielTage: 180, iban: IBAN, sepa: { mandatsreferenz: 'M-1', datum: '2026-01-02' }, empfaenger: { name: 'Buchhaltung', email: 'rechnung@beispiel.invalid' }, ustId: 'DE123456789' });
     expect(zahlungSaeubern({ weg: 'ueberweisung', iban: 'DE00123', sepa: { mandatsreferenz: 'x' } })).toEqual({ weg: 'ueberweisung' });
     expect(zahlungSaeubern({})).toBeUndefined();
@@ -150,7 +156,7 @@ describe('Zahlungsdaten', () => {
   it('Anzeige maskiert, Weg nach draußen ohne IBAN', () => {
     const z = zahlungSaeubern({ weg: 'sepa', iban: IBAN })!;
     expect(JSON.stringify(zahlungFuerAnzeige(z))).not.toContain(IBAN);
-    expect(zahlungFuerAnzeige(z)!.ibanMaskiert).toBe('DE89 •••• •••• 3000');
+    expect(zahlungFuerAnzeige(z)!.ibanMaskiert).toBe(MASKE);
     expect(zahlungOhneIban(z)).toEqual({ weg: 'sepa' });
     expect(zahlungLuecken(z)).toContain('SEPA-Mandat (IBAN, Referenz, Datum)');
   });
