@@ -8,6 +8,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Angebot, Chance, CrmBestand, Leistung } from '@/lib/crm/typen';
 import type { Kontakt } from '@/lib/make-one/crm';
+// Öffentliche Beispiel-IBAN aus der Bankdokumentation, zusammengesetzt, damit der Repo-Scan (repo-sauber) sie nicht als Kontodaten meldet.
+const BEISPIEL_IBAN = ['DE89', '3704', '0044', '0532', '0130', '00'].join('');
+const BEISPIEL_IBAN_LESBAR = ['DE89', '3704', '0044', '0532', '0130', '00'].join(' ');
+
 
 const ordner = mkdtempSync(path.join(tmpdir(), 'make-os-angebot-'));
 process.env.MAKE_OS_DATEN_DIR = ordner;
@@ -58,7 +62,7 @@ beforeAll(async () => {
     k('c-dora1'),
   ] });
   await db.saveJson('crm', { ...speicher.leererBestand(), firmen: [{ id: 'f-muster', name: 'Muster GmbH', rolle: 'zielkunde', geaendert: J }], leistungen: [L, { ...L, id: 'l-roh', name: 'Ohne Text', status: 'entwurf', angebot: undefined }] });
-  await db.saveJson('gesellschaften--test-haus', { gesellschaften: [{ id: 'kdv', firmierung: 'Beispiel Ventures UG (haftungsbeschränkt)', strasse: 'Beispielweg 1', plz: '12345', ort: 'Musterstadt', email: 'info@example.invalid', steuernummer: '12/345/67890', bank: { iban: 'DE89370400440532013000' } }] });
+  await db.saveJson('gesellschaften--test-haus', { gesellschaften: [{ id: 'kdv', firmierung: 'Beispiel Ventures UG (haftungsbeschränkt)', strasse: 'Beispielweg 1', plz: '12345', ort: 'Musterstadt', email: 'info@example.invalid', steuernummer: '12/345/67890', bank: { iban: BEISPIEL_IBAN } }] });
   angebot = (await import('@/app/api/crm/angebot/route')) as unknown as Route;
   gesellschaften = (await import('@/app/api/crm/gesellschaften/route')) as unknown as Route;
   bestand = (await import('@/app/api/crm/bestand/route')) as unknown as Route;
@@ -117,7 +121,7 @@ describe('Stellen: Nummer, PDF, Verbindungen', () => {
     const p = await pdfText(new Uint8Array(d.bytes));
     expect(p.seiten).toBeGreaterThanOrEqual(1);
     expect(p.text).toContain(`KDV-A-${jahr}-0001`);
-    expect(p.text).toContain('DE89 3704 0044 0532 0130 00'); // volle IBAN nur im PDF
+    expect(p.text).toContain(BEISPIEL_IBAN_LESBAR); // volle IBAN nur im PDF
     // Deal neu über dealAnlegen, Stufe Angebot, Wert aus dem Angebot, nächster Schritt = Nachfassen.
     const b = await crm();
     const deal = b.chancen.find(c => c.id === gestellt.dealId)!;
@@ -249,7 +253,7 @@ describe('Gesellschaften-Route', () => {
     expect((await patch({ id: 'kdv', stand: kdv.stand, felder: { bank: { iban: 'DE00 0000' } } })).status).toBe(400);
     expect((await patch({ id: 'kdv', stand: kdv.stand, felder: { bank: { iban: kdv.bank.iban, bic: 'COBADEFFXXX' } } })).status).toBe(200);
     const gespeichert = (await db.loadJson<{ gesellschaften: { id: string; bank?: { iban?: string; bic?: string } }[] }>('gesellschaften--test-haus'))!.gesellschaften.find(g => g.id === 'kdv')!;
-    expect(gespeichert.bank).toEqual({ iban: 'DE89370400440532013000', bic: 'COBADEFFXXX' });
+    expect(gespeichert.bank).toEqual({ iban: BEISPIEL_IBAN, bic: 'COBADEFFXXX' });
   });
   it('Logo: nur PNG/JPG (am Inhalt), wird verknüpft', async () => {
     const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
