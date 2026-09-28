@@ -16,6 +16,7 @@
 
 import { leadSaeubern } from '@/lib/crm/lead-form';
 import { netzwerkSaeubern, netzwerkVereinen } from '@/lib/crm/netzwerk-form';
+import { zahlungSaeubern } from '@/lib/crm/zahlung';
 
 export const STUFEN = [
   'neu', 'ansprechen', 'angesprochen', 'gespraech', 'termin', 'angebot',
@@ -185,12 +186,14 @@ export interface Kontakt {
    * gilt die Faustregel in `istVonHand`.
    */
   vonHand?: string[];
+  /** Zahlungsmöglichkeiten (28.09., lib/crm/zahlung.ts) — nur bei Personen OHNE Firma; mit Firma gelten die Werte der Firma. IBAN nie in Export/Agenten. */
+  zahlung?: import('@/lib/crm/typen').Zahlungsdaten;
 }
 
 /** Felder, die der Import NIE anfasst — das ist die Arbeit im CRM. */
 export const PIPELINE_FELDER: (keyof Kontakt)[] = ['stufe', 'wiedervorlage', 'letzterKontakt', 'aktivitaeten', 'importiertAm',
   'firmaId', 'herkunft', 'rechtsgrundlage', 'kreis', 'taktTage', 'besitzer', 'lebensphase', 'anrede', 'vorgestelltDurch', 'einwilligungen', 'werbesperre', 'fremddaten', 'art14InformiertAm', 'naechsterSchritt', 'privatNotiz', 'netzwerk', 'linkedinNichtGefunden',
-  'lead', 'rollen', 'privatNotizVon', 'stand', 'vonHand'];
+  'lead', 'rollen', 'privatNotizVon', 'stand', 'vonHand', 'zahlung'];
 
 /** Höchstens so viele Feldnamen in `vonHand` — mehr Stammdaten-Felder gibt es nicht. */
 export const VON_HAND_MAX = 60;
@@ -656,6 +659,7 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     aktivitaeten: akt,
     importiertAm: String(o.importiertAm ?? '').slice(0, 10) || '', geaendertAm: String(o.geaendertAm ?? '').slice(0, 10) || '',
     ...(vonHand ? { vonHand } : {}),
+    ...(zahlungSaeubern(o.zahlung) ? { zahlung: zahlungSaeubern(o.zahlung) } : {}),
   };
   if (!k.vorname && !k.nachname && !k.firma) return null;
   return k;

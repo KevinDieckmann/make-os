@@ -37,5 +37,26 @@ for (const ordner of [DATEN, path.join(DATEN, 'backup')]) {
   const namen = await fs.readdir(ordner).catch(() => []);
   for (const n of namen) if (n.endsWith('.json')) await datei(path.join(ordner, n));
 }
+
+// Dateiablage (28.09., lib/dateien/ablage.ts): dateien/<haushalt>/<id>.bin — Hülle = „MKOSDAT1“ + IV (12) + Tag (16) + Chiffrat.
+const MAGIE = Buffer.from('MKOSDAT1', 'ascii');
+const binHuelle = b => b.length >= MAGIE.length + 28 && b.subarray(0, MAGIE.length).equals(MAGIE);
+async function ablageDatei(p) {
+  const roh = await fs.readFile(p);
+  let neu = null;
+  if (modus === '--verschluesseln' && !binHuelle(roh)) { const iv = randomBytes(12); const c = createCipheriv('aes-256-gcm', key, iv); const e = Buffer.concat([c.update(roh), c.final()]); neu = Buffer.concat([MAGIE, iv, c.getAuthTag(), e]); }
+  if (modus === '--entschluesseln' && binHuelle(roh)) {
+    try { const d = createDecipheriv('aes-256-gcm', key, roh.subarray(8, 20)); d.setAuthTag(roh.subarray(20, 36)); neu = Buffer.concat([d.update(roh.subarray(36)), d.final()]); }
+    catch { fehler++; console.error('Schlüssel passt nicht:', p); return; }
+  }
+  if (neu === null) { gelassen++; return; }
+  const tmp = `${p}.${process.pid}.tmp`;
+  await fs.writeFile(tmp, neu, { mode: 0o600 });
+  await fs.rename(tmp, p); getan++;
+}
+for (const h of await fs.readdir(path.join(DATEN, 'dateien')).catch(() => [])) {
+  const ordner = path.join(DATEN, 'dateien', h);
+  for (const n of await fs.readdir(ordner).catch(() => [])) if (/^d-[a-z0-9-]+\.bin$/.test(n)) await ablageDatei(path.join(ordner, n));
+}
 console.log(`${modus.slice(2)}: ${getan} Dateien umgestellt, ${gelassen} schon passend, ${fehler} Fehler.`);
 process.exit(fehler ? 1 : 0);

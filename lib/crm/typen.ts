@@ -157,6 +157,32 @@ export interface Leistung {
   geaendert: string;
 }
 
+/** Zahlungsweg eines Kunden (28.09., Reiter „Umsatz“). */
+export type Zahlungsweg = 'ueberweisung' | 'sepa' | 'karte' | 'bar';
+/**
+ * Zahlungsmöglichkeiten eines Kunden (28.09.) — an der Firma, bei einer Person ohne Firma an der Person.
+ * Säuberung und Anzeige: lib/crm/zahlung.ts. Die IBAN wird NUR maskiert gezeigt und geht nie in einen Export oder an einen Agenten.
+ */
+export interface Zahlungsdaten {
+  weg?: Zahlungsweg;
+  /** Zahlungsziel in Tagen. */
+  zielTage?: number;
+  /** Rechnungsempfänger, wenn abweichend (Buchhaltung, Einkauf). */
+  empfaenger?: { name?: string; email?: string; anschrift?: string };
+  ustId?: string;
+  /** Bestellnummer / Referenz des Kunden — gehört auf jede Rechnung. */
+  referenz?: string;
+  /** Grundform ohne Leerzeichen; nur mit gültiger Prüfziffer gespeichert. */
+  iban?: string;
+  /** Nur bei SEPA-Lastschrift. */
+  sepa?: { mandatsreferenz?: string; datum?: string };
+  /** Zahlungslink (https), z. B. Kreditkarte/PayPal. */
+  link?: string;
+  notiz?: string;
+  geaendert?: string;
+  geaendertVon?: string;
+}
+
 export type FirmaRolle = 'zielkunde' | 'kunde' | 'ex_kunde' | 'partner' | 'dienstleister' | 'investor' | 'netzwerk' | 'wettbewerb' | 'offen';
 /** Ein Unternehmen — Stammdaten an EINER Stelle, Personen zeigen per firmaId darauf. */
 export interface Firma {
@@ -182,6 +208,8 @@ export interface Firma {
   rolleVonHand?: boolean;
   marktinfo?: string;
   notiz?: string;
+  /** Zahlungsmöglichkeiten (28.09., lib/crm/zahlung.ts) — gelten für alle Personen der Firma. */
+  zahlung?: Zahlungsdaten;
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;

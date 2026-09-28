@@ -13,6 +13,7 @@ import { wer, BEIDE, verantwortlich } from './team';
 import { leadSaeubern } from './lead-form';
 import { vernetzenSaeubern } from './netzwerk-form';
 import { MARKE_MAX } from './marke';
+import { zahlungSaeubern } from './zahlung';
 
 export const CRM_SPEICHER = 'crm';
 export const leererBestand = (): CrmBestand => ({ firmen: [], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [], segmente: [], beitraege: [], newsletter: [], kampagnen: [], followups: [] });
@@ -131,7 +132,7 @@ function firma(o: Record<string, unknown>, jetzt: string): Firma | null {
     id: String(o.id), name: txt(o.name, 160), ...f('domain', 120), ...f('webseite'), ...f('branche', 160), ...f('mitarbeiter', 40), ...f('umsatz', 60), ...f('stadt', 80),
     ...(Array.isArray(o.branchen) && (o.branchen as unknown[]).some(x => txt(x, 60)) ? { branchen: Array.from(new Set((o.branchen as unknown[]).map(x => txt(x, 60)).filter(Boolean))).slice(0, 12) } : {}),
     ...f('gegruendet', 20), ...f('linkedin'), ...f('telefon', 60), ...f('email', 160), ...f('rechtsform', 80),
-    rolle: aus(o.rolle, ROLLEN, 'offen'), ...(o.rolleVonHand === true ? { rolleVonHand: true } : {}), ...(leadSaeubern(o.lead) ? { lead: leadSaeubern(o.lead) } : {}), ...f('marktinfo', 800), ...f('notiz', 3000), geaendert: jetzt,
+    rolle: aus(o.rolle, ROLLEN, 'offen'), ...(o.rolleVonHand === true ? { rolleVonHand: true } : {}), ...(leadSaeubern(o.lead) ? { lead: leadSaeubern(o.lead) } : {}), ...f('marktinfo', 800), ...f('notiz', 3000), ...(zahlungSaeubern(o.zahlung) ? { zahlung: zahlungSaeubern(o.zahlung) } : {}), geaendert: jetzt,
   } as Firma;
 }
 
