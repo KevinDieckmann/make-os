@@ -181,6 +181,21 @@ fertig — oder zum Umzug einmal `--entschluesseln`.
 **Rotieren** (Schlüssel ist irgendwo aufgetaucht): `bash /srv/make-os/app/deploy/datenschluessel-rotieren.sh` als `make` —
 eine Minute Unterbrechung, danach den neuen Schlüssel in der eigenen Terminal-App auslesen (nie über Claude oder
 in einen Chat: alles, was dort steht, gilt als kompromittiert). Am 26.09. einmal so gemacht.
+**Den alten Schlüssel aufbewahren** (seit 28.09. sagt das Skript es am Ende deutlich): Tagesarchive (14 Tage) und
+Hetzner-Abbilder (7 Tage) von vor der Rotation sind mit dem ALTEN Schlüssel verschlüsselt. Im Passwort-Manager den
+alten Eintrag umbenennen („… ALT — rotiert am …, aufbewahren bis …“), nicht überschreiben; erst nach 15 Tagen löschen.
+Achtung: Die Archive von vor dem 26.09. brauchen den Schlüssel von vor der Rotation am 26.09.
+
+### Probe-Restore — quartalsweise (seit 28.09.)
+Eine Sicherung zählt erst, wenn sie einmal zurückgeholt wurde. Einmal im Quartal (und nach jeder Schlüsselrotation)
+am Mac: ein Tagesarchiv vom Server holen und `deploy/sicherung-probe.sh <archiv> <age-schlüssel>` laufen lassen —
+den Datenschlüssel vorher nur in die Umgebung (`read -rs MAKE_OS_DATEN_SCHLUESSEL && export MAKE_OS_DATEN_SCHLUESSEL`),
+nie in eine Datei. Das Skript entschlüsselt in einen Temp-Ordner, zählt Bestände und Datensätze je Bestand (nur
+Zahlen, keine Inhalte), prüft die Dateiablage und löscht den Temp-Ordner. „Probe bestanden“ + Datum hier eintragen:
+
+| Datum | Archiv | Bestände | Ergebnis |
+|---|---|---|---|
+| — | — | — | noch nie gemacht |
 
 Nicht verschlüsselt: Bilder unter `daten/bauplan-bilder`, das Archiv `daten/archiv` (Umzugs-Stände) und das
 Obsidian-Hirn (eigenes Git-Repo). Das sind bewusste Ausnahmen; die JSON-Bestände sind das, worum es geht.

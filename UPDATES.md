@@ -4,6 +4,94 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Zugriff & Betrieb (28.09.2026, K1, nur lokal)
+
+- **Kartei nur für den Haushalt des Inhabers (#66/#67):** `/api/state/{kontakte,kunden,prospects,netzwerk,stammdaten,aenderungen}` prüfen jetzt `karteiZugang` (`lib/zugang/haushalt-inhaber.ts`) — ein Konto ohne Haushalt oder aus einem anderen Haushalt bekommt 403. Dienstweg ohne Person (Takt) darf; mit Person nur, wenn die Person zum Inhaber-Haushalt gehört (ZOE/Heads/Arbeiter schicken sie schon mit).
+- **Keine echten Daten mehr in Startbeständen:** Finanzplan-SEED nur noch Struktur (kdv/kdc ohne Bank, Produkt-Entwürfe, Agenda) — keine Kunden, kein Kredit, keine Beträge. Kunden und Meilensteine ohne Startbestand. Bestehende Pläne/Listen werden nie angefasst. Wächter in `tests/repo-sauber.test.ts` prüft jeden `SEED`-Block.
+- **Änderungsprotokoll serverseitig (#44):** Schreibwege (`listePatchen`, `aendereCrm`, PUT-Wege der Kartei-Routen) hängen selbst an: wer (Person · ZOE für Person · Import · System), Bestand, Kennung (Kontakte nur als Fingerabdruck `c#…`), Feldnamen — nie Werte. Monatsdateien `aenderungsprotokoll--<haushalt>--<JJJJ-MM>`, nie gekürzt. Der Browser-POST ist aus (405), `components/os/Protokollant.tsx` entfernt. Alte Einträge werden weiter angezeigt.
+- **Ablehnen statt kürzen:** zu viele Änderungen auf einmal (Kartei 200, CRM-Bestand 200, Kunden 50, Stammdaten 200 je Liste, Netzwerk 2000/500, Ziele/Meilensteine/Routinen je Grenze) → 413 mit Text, nichts gespeichert.
+- **ZOE (#98):** Kontext aus dem Browser zählt als Fremdtext — danach nur Vorschläge; `fakt_merken` und `notiz_anlegen` im Gespräch immer über den Stapel.
+- **fsync (#37):** Bestände werden vor dem Umbenennen auf die Platte synchronisiert, danach das Verzeichnis.
+- **HOI (#39):** roter Befund „Bestand beschädigt beiseitegelegt“, sobald `.corrupt-…` im Datenordner liegt (nur Dateinamen).
+- **Sicherung (#109/#110):** Rotationsskript erinnert deutlich, den alten Schlüssel 14/7 Tage aufzubewahren; neues `deploy/sicherung-probe.sh` (Mac) + DEPLOY.md „Probe-Restore quartalsweise“.
+- **Regel 5:** Dubletten zusammenführen und DSGVO-Löschen nur mit ausdrücklicher Person (sonst 401); Art.-15-Auskunft ohne Person ohne private Notizen.
+- **Prüfbau (#40):** `scripts/daten-verschluesselung.mjs` warnt, wenn auf 3000/3001/3011 eine App läuft.
+- Tests: `tests/k1-haushalt.test.ts`, `tests/k1-protokoll.test.ts`, `tests/k1-seed.test.ts`, `tests/k1-betrieb.test.ts`, `tests/repo-sauber.test.ts`.
+
+### Prüfliste K1 (vor dem Hochladen durchklicken)
+- [ ] Als Kevin und als Malin: Markttraktion › Kartei lädt, ein Feld ändern speichert (kein 403).
+- [ ] Mit dem Testkonto aus dem Test-Haushalt „test“ anmelden: Markttraktion/Kartei zeigt nichts, `/api/state/kontakte` antwortet 403.
+- [ ] ZOE: „Wie heißt der Ansprechpartner bei …?“ (outreach/prospect-Lauf) läuft weiter durch.
+- [ ] System › Zusammenarbeit „Wer hat was geändert“: nach einer Änderung an einem Kontakt erscheint „Kartei · Kevin“ (bzw. Malin), nach einer ZOE-Änderung „ZOE für Kevin“.
+- [ ] ZOE mit geöffneter Kontaktkarte bitten, sich etwas zu merken → landet im Stapel, nicht direkt im Gedächtnis.
+- [ ] HOI-Seite: kein roter Befund „Bestand beschädigt“ (auf dem Server vorher `ls /srv/make-os/daten/*.corrupt-*` prüfen).
+- [ ] Nach dem Ausrollen einmal `deploy/sicherung-probe.sh` mit dem neuesten Tagesarchiv laufen lassen und in DEPLOY.md eintragen.
+- [ ] Beim Ausrollen: offene Tabs neu laden (der alte Protokollant schickt sonst POSTs, die mit 405 abgelehnt werden — harmlos).
+
+## Finanzen & Zeit (28.09.2026, K3, nur lokal)
+
+- **Rechnungen ab „gestellt“ bleiben (#50/#81):** gestellte/bezahlte Rechnungen lassen sich nicht mehr löschen, und Betrag, Nummer, Datum, Netto, USt-Satz nicht mehr ändern (Nachtragen leer → Wert geht) — 409 mit Text; auch kein Zurück (bezahlt → geplant). Stattdessen **stornieren** (Status `storniert` mit Datum und Grund, `PATCH /api/state/finanzplan { aktion: 'storno', rechnungId, grund }`): der Eintrag bleibt, zählt aber weder in der Liquiditätsvorschau noch im Umsatz. War die Rechnung schon bezahlt, kommt zum Zahlungseingang `bu-re-<id>` die Gegenbuchung `bu-st-<id>` (negativ) — nichts verwaist, nichts gelöscht. Finanzplanung: ✕ nur bei „geplant“ mit Rückfrage, sonst „stornieren“ mit Grund; Kontakt › Umsatz: „stornieren“ an der Rechnung. ZOE hält sich an dieselbe Regel.
+- **Belege in der Dateiablage (#50/#81):** Einträge mit Rechnungs- oder Mandatsbezug werden nicht gelöscht (409) — „vom Bezug lösen“ statt „Löschen“; der letzte Bezug lässt sich nicht lösen.
+- **Beträge auf den Cent + eine USt-Funktion (#79/#80):** Rechnungen, Zahlungen und Buchungen werden nicht mehr auf ganze Euro gerundet (1.190,50 € bleibt 1.190,50 €). `lib/finanzen/ust.ts` (`bruttoAusNetto`, `nettoAusBrutto`, `ustAusBrutto`, kaufmännisch je Rechnung) rechnet Mandat → Rechnung, Liquiplan-Posten aus dem Mandat, USt-Voranmeldung und die Netto-Anzeige der Finanzplanung. Kevins Rechenkern v3 unverändert.
+- **Zu zweit am Finanzplan (#107):** Firmen, Rechnungen, Zahlungen, Merkposten und Produkte kommen mit `fassung` je Eintrag; wer mit veraltetem Stand schreibt, bekommt 409 mit dem aktuellen Eintrag, die Seite lädt neu und zeigt den Hinweis. Eigene schnelle Eingaben stoßen nicht aneinander (Stand aus dem letzten Serverstand, Speichern nacheinander). „bezahlt“ bleibt ein Schritt.
+- **„Heute“ ist überall der Berliner Tag (#75/#77):** keine UTC-Tage mehr aus `toISOString()` für heute (Buchungen, Journal, Liquiplan, Meetings, Grundlage, Posteingang, Heads, Leads/Deals/Übergaben, Export, Rechnung aus Mandat …); `leads()` verlangt den Tag. Art.-15-Frist „+1 Monat“ kappt am Monatsende (31.01. → 28.02.). Wächter in `tests/repo-sauber.test.ts`.
+- Tests: `tests/finanzplan-storno.test.ts`, `tests/ust.test.ts`, `tests/heute-berlin.test.ts`, `tests/crm-dateien-route.test.ts` (Belege), `tests/repo-sauber.test.ts` (Wächter).
+
+### Prüfliste K3 (vor dem Hochladen durchklicken)
+- [ ] Finanzplanung: Test-Rechnung anlegen (geplant) → ✕ fragt nach, Löschen geht. Zweite Test-Rechnung auf „gestellt“ klicken → kein ✕ mehr, Betrag gesperrt; Nummer/Datum lassen sich einmal nachtragen, danach nicht mehr ändern.
+- [ ] „stornieren“ → ohne Grund gesperrt, mit Grund: Zeile blass, „storniert … · Grund“, Forderungen/„offen“ ohne sie.
+- [ ] Test-Rechnung stellen, „bezahlt“ klicken, dann stornieren → unter Buchungen stehen Eingang und Gegenbuchung (Summe 0), Hinweis „Gegenbuchung angelegt“.
+- [ ] Kontakt öffnen › Umsatz: an einer gestellten Rechnung „stornieren“ mit Grund; ein Rechnungs-PDF zeigt „vom Bezug lösen“ statt „Löschen“.
+- [ ] Betrag mit Cent (z. B. 1190,50) eintragen → bleibt nach Neuladen 1.190,50 €; Mandat „+ Rechnung aus dem Honorar“ mit 1.000,42 netto → 1.190,50 brutto.
+- [ ] Zwei Fenster (Kevin + Malin) auf der Finanzplanung: in Fenster 1 den Titel einer geplanten Rechnung ändern, in Fenster 2 danach denselben Eintrag → Hinweis „inzwischen geändert … aktuelle Stand geladen“, Fenster 1 gewinnt.
+- [ ] Liquidität und Zahlen › Business: stornierte Test-Rechnung zählt nicht als Eingang.
+- [ ] Nach dem Test: Test-Rechnungen stehen als storniert im Bestand (gewollt, nie löschen) — die Test-Buchungen `bu-re-`/`bu-st-` unter Buchungen von Hand entfernen (Regel 4).
+- [ ] Beim Ausrollen: offene Finanz-Tabs neu laden (alte Seiten kennen `fassung` nicht).
+
+## Identität & Import (28.09.2026, K2, nur lokal)
+
+- **Wiedererkennen sauber (#11–#14, #115):** alle Normalisierer beginnen mit NFC (macOS/Excel liefern Umlaute zerlegt — „Müller“ aus einer Mac-Datei fand die Kartei-„Müller“ nicht). E-Mail-Schlüssel nur noch getrimmt + klein: „max-muster@“ und „maxmuster@“ sind zwei Postfächer (vorher verschmolzen). Sammeladressen (info@, kontakt@, office@, team@, büro@ …) sind kein Personenschlüssel mehr — dann Name+Firma bzw. HubSpot-ID. „G.m.b.H.“, „GmbH & Co. KG“, „e. V.“ werden erkannt. EINE Telefon-Normalisierung (`normTelefon`, „+49…“) für Import und Dubletten (vorher wurde „0049 30 …“ in den Dubletten zu „049…“).
+- **Bestand geschützt:** der Import sucht zuerst unter dem neuen Schlüssel, dann unter der früheren Form (`schluesselAlt`) — nur eindeutig, nicht doppelt vergeben und nur, wenn die Namen sich nicht widersprechen. Kein Bestands-Kontakt geht beim Import mehr verloren, auch wenn zwei denselben Schlüssel tragen.
+- **Eine Suche (#105/#106):** `suchNorm` (lib/text/such-norm.ts) für Schnellsuche, Kartei-Filter und Dubletten — „mueller“ findet „Müller“, „strasse“ findet „Straße“. Der Suchzwischenstand gilt nur, solange Kartei und CRM unverändert sind.
+- **Import-Vorschau prüft (#21–#23, #10):** meldet verrutschte Zeilen (Spaltenzahl), Excel-Kurzform „1,23E+11“, Postleitzahlen ohne führende Null und unlesbare Daten; „TT.MM.JJJJ“ wird ISO, Unlesbares verworfen.
+- **Import rückgängig (#25):** jeder Import ist ein Lauf (Stammdaten › Import & Export › „Import-Läufe · 30 Tage“). Rückgängig nimmt neue Kontakte weg und setzt geänderte zurück — nur, wer seitdem nicht von Hand geändert wurde bzw. (neu) an keinem Deal/Mandat/keiner Kampagne hängt; der Rest wird gemeldet. Firmen, die der Abgleich angelegt hat, bleiben.
+- **Herkunft/Art. 14 (#27/#62):** importierte Personen bekommen Herkunft „Recherche / Liste“ (bzw. aus QUELLE: Empfehlung, HubSpot, Veranstaltung) und das Fremddaten-Kennzeichen — die Art.-14-Uhr läuft ab dem Import. Gesetzte Herkunft wird nie überschrieben, von Hand angelegte Personen werden nicht zur „Recherche“.
+- **Sperrliste (#60/#64):** wer eine Werbesperre bekommt oder nach Art. 17 gelöscht wird, landet gehasht (SHA-256, keine Klartexte) auf der Sperrliste des Haushalts; ein erneuter Import legt ihn nicht wieder an („n gesperrt übersprungen“). Werbesperre aufheben nur noch mit neuer Einwilligung samt Nachweis im selben Schritt — steht als System-Eintrag im Verlauf, erst dann fällt der Eintrag von der Liste.
+- **CSV-Export (#28):** Zellen mit „+“/„-“ am Anfang werden immer entschärft, außer reine Telefonnummern/Zahlen.
+- **Server stempelt (#68)** `geaendertAm`, `importiertAm`, `vonHand` — Browser-Werte zählen nicht. **Nie abschneiden:** Aktivitäten (bis 10.000) und Einwilligungen (bis 500) je Kontakt werden nicht mehr gekürzt (vorher 600/30), darüber 413. Aktivität ohne Urheber gilt als „system“, nie „kevin“.
+- Tests: `tests/crm-k2-identitaet.test.ts`, `tests/crm-k2-routen.test.ts`.
+
+### Prüfliste K2 (vor dem Hochladen durchklicken)
+- [ ] Schnellsuche (⌘K) und Kartei-Suche: „mueller“ findet eine Person „Müller“; „strasse“ findet eine Firma mit „Straße“.
+- [ ] Stammdaten › Import & Export: eine Test-CSV mit „1,23E+11“ in HUBSPOT_ID, „1067“ in PLZ und „31.02.2026“ in LETZTER_KONTAKT wählen → Vorschau zeigt „Datei prüfen: …“ mit Zeilen; nichts geschrieben.
+- [ ] Beim Ausrollen EINMAL die echte Masterliste nur als **Vorschau** laufen lassen: „neu“ muss ≈ 0 sein (sonst nicht übernehmen — Schlüsseländerung prüfen); „über die frühere Schlüsselform wiedererkannt“ ist erwartbar.
+- [ ] Übernehmen → Karte „Import-Läufe“ zeigt den Lauf; einen Test-Lauf mit einer erfundenen Zeile zurücknehmen → Person weg, Meldung „1 Kontakte zurückgesetzt“.
+- [ ] Testkontakt: Werbesperre eintragen → „Sperre aufheben“ verlangt Kanal + Nachweis; ohne Nachweis gesperrt; mit Nachweis aufgehoben, Verlauf zeigt „Werbesperre aufgehoben — neue Einwilligung …“.
+- [ ] Testkontakt nach Art. 17 löschen, danach eine CSV mit genau dieser Person importieren → Vorschau „1 gesperrt übersprungen“.
+- [ ] Export (z. B. Segment) öffnen: Werte mit „-“ oder „+“ am Anfang stehen mit ' davor, Telefonnummern nicht.
+- [ ] Nach dem Test: Testkontakte, Test-Läufe und den Test-Eintrag der Sperrliste (`crm-sperrliste--<haushalt>`) entfernen (Regel 4).
+
+## Pipeline & CRM-Bestand ehrlicher (28.09.2026, K4, nur lokal)
+
+- **Deal-Historie wird nie mehr gekürzt (#83):** die Säuberung schnitt still auf die letzten 60 Stufenwechsel (Verweildauer, Umwandlung, Zyklus rechnen daraus). Grenze jetzt 5.000 — darüber 413 mit Text, nichts geschrieben (`HISTORIE_MAX`, lib/crm/speicher.ts).
+- **Zu zweit am selben CRM-Eintrag (#35/#42/#107):** jeder Eintrag aller CRM-Listen (Firmen, Deals, Mandate, Follow-ups, Events, Gäste, Kampagnen, Beiträge, Segmente …) kommt mit `stand` (Fingerabdruck) aus `GET /api/crm/bestand`. Der Browser schickt ihn bei jeder Änderung mit; hat inzwischen jemand anders geschrieben → **409** mit dem aktuellen Eintrag, Hinweis „Wurde inzwischen geändert — neu geladen. Bitte noch einmal.“ und frisches Laden. Ohne Stand (ZOE, Heads, altes Fenster) bleibt nur die feldweise Änderung erlaubt; ein ganzer Eintrag über einen bestehenden braucht den Stand (Ausnahme Firmen-Upsert: füllt nur Lücken). Schreibvorgänge der Seite laufen nacheinander — zwei schnelle Änderungen am selben Eintrag stoßen nicht aneinander. Logik `lib/crm/crm-stand.ts`.
+- **Firmen und Mandate mit Verweisen werden nicht gelöscht (#49):** Firma mit Personen/Deals/Mandaten/Rechnungen bzw. Mandat mit Rechnungen → 409 mit Anzahlen („daran hängen noch 2 Personen · 1 Mandat · 3 Rechnungen“), die Seite zeigt den Text.
+- **Pipeline ehrlicher (#84–#86):** „Entscheidung bis“ nach hinten verschoben zählt der Server mit (`erwartetVerschoben`, erstes Datum in `erwartetUrsprung`); ab zwei Verschiebungen wird die Ampel gelb, die Deal-Akte zeigt „Entscheidung 2× verschoben · ursprünglich …“. Prognose zusätzlich **„gewichtet ohne hängende“** (Board-Kopf, Head of Finance bekommt die Zahl). Stammdaten › Wertelisten › Deal-Stufen zeigt ab 5 entschiedenen Deals „gemessen x % (n)“ mit „übernehmen“. „Letzte Aktivität“ beim Stufenwechsel ist der Berliner Tag.
+- **Lead-Score (#93/#95):** „hat geantwortet“ und „angesprochen“ kühlen nach 180 Tagen ab (5 bzw. 3 statt 12 bzw. 8 Punkte, Grund mit Tagen). Sales › Auswertung zeigt „SQL- und Gewinnquote je Temperatur“ (Quoten ab 5 Leads).
+- **Doppelklick (#19):** Knöpfe mit einer async Handlung sind bis zu deren Ende gesperrt (`aria-busy`, gedimmt) — nichts wird doppelt angelegt.
+- Tests: `tests/crm-k4-pipeline.test.ts`, `tests/crm-k4-bestand-route.test.ts`.
+
+### Prüfliste K4 (vor dem Hochladen durchklicken)
+- [ ] Zwei Fenster (Kevin + Malin) auf dieselbe Firma: im ersten „Ort“ ändern, im zweiten danach „Ort“ ändern → Hinweis „Wurde inzwischen geändert — neu geladen“, der Ort aus Fenster 1 steht da.
+- [ ] Zwei Fenster, verschiedene Felder derselben Firma → beide Änderungen bleiben.
+- [ ] Firma mit Person/Mandat löschen versuchen (über den Server, die Karte bietet es nur leer an) → Text mit Anzahlen, Firma bleibt.
+- [ ] Deal: „Entscheidung bis“ zweimal nach hinten → Akte zeigt „2× verschoben · ursprünglich …“, Ampel gelb.
+- [ ] Deals › Board: neben „gewichtet“ steht „gewichtet ohne hängende“, sobald ein Deal rot ist.
+- [ ] Stammdaten › Wertelisten › Deal-Stufen: „gemessen x % (n)“ erst ab 5 entschiedenen Deals; „übernehmen“ setzt den Wert (Chip „von Hand“).
+- [ ] Sales › Auswertung: Karte „SQL- und Gewinnquote je Temperatur“.
+- [ ] Knopf mit Speichern (z. B. Newsletter löschen) schnell doppelt klicken → nur eine Handlung.
+- [ ] Beim Ausrollen: offene Browser-Tabs neu laden (alte Seiten schicken keinen Stand → ganze Einträge werden mit 409 abgelehnt, bis neu geladen ist).
+
 ## Verbindungsprüfung als festes Bauteil (28.09.2026, V1, nur lokal)
 
 - **Kevin:** „Einmal nochmal alle Verbindungen im Hintergrund prüfen … Markttraktion muss bald rangehen.“ Jetzt gibt es EINE Stelle, die weiß, welche Kennung auf welche zeigen darf: `lib/crm/verbindungen.ts` (rein, 52 Prüfungen) — Personen ↔ Firmen, Deals (Personen, Firma, Rollen, Produkt, gewonnen ohne Mandat, zwei offene je Firma), Mandate (Deal, Firma, Personen, Produkt, ohne Rechnung in 60/120 Tagen), Rechnungen (Mandat, Gesellschaft, bezahlt ohne Datum, Betrag ≤ 0), Follow-ups, Events/Teilnahmen, Segmente/Kampagnen/Beiträge/Newsletter/Power Hour/Anträge, Werbesperre in laufender Kampagne oder Einladung, Aufgaben-Einheiten, Fokus-Blöcke, Dateiablage (Verweise, Datei fehlt, Datei ohne Eintrag), Import-Konflikte, doppelte Kennungen, gleiche E-Mail, **Kunde ohne Mandat** (Person/Firma, Hinweis — zählt in BEAN solange als Bestandskunde).
