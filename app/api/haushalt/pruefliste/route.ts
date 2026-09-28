@@ -13,7 +13,7 @@ import { randomUUID } from 'crypto';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { haushaltVon, KEIN_ZUGANG } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt, aendereBuchungen, aendereSchulden, speicherName } from '@/lib/finanzen/haushalt/speicher';
-import { pruefliste, type Aktion, type Businessbestand, type Quelle } from '@/lib/finanzen/haushalt/entflechtung';
+import { istZuordnung, pruefliste, type Aktion, type Businessbestand, type Quelle } from '@/lib/finanzen/haushalt/entflechtung';
 import type { Beleg, Buchung, Schuld } from '@/lib/finanzen/haushalt/typen';
 import { fingerabdruck } from '@/lib/finanzen/haushalt/import';
 import { istEchterHaushalt } from '@/lib/finanzen/haushalt/aufgaben';
@@ -57,8 +57,10 @@ export async function POST(req: Request) {
   // Archiv verschlüsselt wie die Bestände (28.09., F2 — lib/store/archiv.ts).
   await archivSchreiben(`business-vor-entflechtung-${archivZeit(zeit)}.json`, { _zeit: zeit, _von: z.person, entscheidungen: ent, ...vorher }, 1);
 
-  const weg = (q: Quelle) => new Set(ent.filter(e => e.quelle === q && e.aktion !== 'kdv' && e.aktion !== 'kdc' && e.aktion !== 'kemaris').map(e => e.id));
-  const neuFirma = new Map(ent.filter(e => ['kdv', 'kdc', 'kemaris'].includes(e.aktion)).map(e => [e.id, e.aktion]));
+  // Zuordnen (kdc · kdv · ug · kemaris) verschiebt, alles andere nimmt aus dem Business-Speicher.
+  // Vorher stand die Liste hier fest (ohne ug) — eine UG-Zuordnung wäre als „weg“ gezählt worden.
+  const weg = (q: Quelle) => new Set(ent.filter(e => e.quelle === q && !istZuordnung(e.aktion)).map(e => e.id));
+  const neuFirma = new Map(ent.filter(e => istZuordnung(e.aktion)).map(e => [e.id, e.aktion]));
   const uebernehmen = (q: Quelle) => new Set(ent.filter(e => e.quelle === q && e.aktion === 'uebernehmen').map(e => e.id));
 
   // In den Haushalt: offene Zahlungen → Rechnungen, Kredite → Schulden, Buchungen → Buchungen.
@@ -75,7 +77,7 @@ export async function POST(req: Request) {
   // Aus den Business-Speichern: entfernen bzw. Firma zuordnen.
   await updateJson<Record<string, unknown>>('finanzplan', cur => {
     const f = (cur ?? {}) as NonNullable<Businessbestand['finanzplan']> & Record<string, unknown>;
-    const zuordnen = new Map(ent.filter(e => e.quelle === 'rechnung' && ['kdv', 'kdc', 'kemaris'].includes(e.aktion)).map(e => [e.id, e.aktion as string]));
+    const zuordnen = new Map(ent.filter(e => e.quelle === 'rechnung' && istZuordnung(e.aktion)).map(e => [e.id, e.aktion as string]));
     return { ...f, firmen: (f.firmen ?? []).filter(x => !weg('firma').has(x.id)), zahlungen: (f.zahlungen ?? []).filter(x => !weg('zahlung').has(x.id)), merkposten: (f.merkposten ?? []).filter(x => !weg('merkposten').has(x.id)), rechnungen: rechnungenEntflechten((f.rechnungen ?? []) as Rechnung[], weg('rechnung'), zuordnen, localDay()) };
   });
   await updateJson<Record<string, unknown>>('buchungen', cur => ({ ...(cur ?? {}), buchungen: ((cur?.buchungen ?? []) as { id: string }[]).filter(x => !weg('buchung').has(x.id)) }));

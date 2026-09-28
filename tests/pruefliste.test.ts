@@ -53,7 +53,7 @@ describe('Prüfliste: gestellte Rechnungen werden nicht gelöscht', () => {
       expect(nach(r.id).aktionen.includes('entfernen'), r.status).toBe(rechnungSchutz(r, null) === null);
     }
     expect(nach('r-geplant').vorschlag).toBe('entfernen');
-    expect(nach('r-gestellt')).toMatchObject({ vorschlag: 'behalten', aktionen: ['kdv', 'kdc', 'kemaris', 'behalten'] });
+    expect(nach('r-gestellt')).toMatchObject({ vorschlag: 'behalten', aktionen: ['kdc', 'kdv', 'ug', 'kemaris', 'behalten'] });
     expect(nach('r-bezahlt').grund).toContain('nicht gelöscht');
   });
 
@@ -76,7 +76,38 @@ describe('Prüfliste: gestellte Rechnungen werden nicht gelöscht', () => {
     expect(aus[0]).toEqual(rechnungen[1]);
     expect(aus[2]).toEqual(rechnungen[3]);
     expect(aus[1]).toMatchObject({ firmaId: 'kdc', status: 'bezahlt', betrag: 119 });
-    expect(aus[1].notiz).toBe('alt · Aus „privat“ nach Kevin Dieckmann Consulting verschoben am 2026-09-28 (Entflechtung).');
+    expect(aus[1].notiz).toBe('alt · Aus „privat“ nach Selbstständigkeit verschoben am 2026-09-28 (Entflechtung).');
     expect(rechnungSchutz(rechnungen[2], aus[1])).toBeNull();
+  });
+});
+
+// ─── Zuordnen: die eine Einheitenliste + KEMARIS (28.09.) ───────────────────
+// Vorher bot die Prüfliste nur kdv · kdc · kemaris — die MAKE OS UG fehlte, und die
+// Route hätte eine UG-Zuordnung als „weg“ gezählt. Namen kommen aus lib/einheiten.ts.
+import { AKTION_TEXT, ZUORDNUNGEN, istZuordnung, zuordnungName } from '../lib/finanzen/haushalt/entflechtung';
+import { GESELLSCHAFTEN, finanzOrtName } from '../lib/einheiten';
+
+describe('Prüfliste: Zuordnen zu allen Gesellschaften', () => {
+  it('alle drei Gesellschaften aus lib/einheiten.ts plus KEMARIS', () => {
+    expect(ZUORDNUNGEN).toEqual([...GESELLSCHAFTEN, 'kemaris']);
+    expect(ZUORDNUNGEN).toContain('ug');
+    for (const g of GESELLSCHAFTEN) expect(AKTION_TEXT[g]).toBe(`gehört zu: ${finanzOrtName(g)}`);
+    expect(AKTION_TEXT.ug).toBe('gehört zu: MAKE OS UG');
+    expect(AKTION_TEXT.kemaris).toBe('gehört zu: KEMARIS');
+    expect(istZuordnung('ug')).toBe(true);
+    expect(istZuordnung('entfernen')).toBe(false);
+    expect(istZuordnung('privat')).toBe(false);
+  });
+  it('firmenloser Planposten lässt sich der UG zuordnen', () => {
+    const l = pruefliste({ finanzplan: null, buchungen: null, liquiplan: { posten: [{ id: 'p9', titel: 'Hosting', betrag: -20, rhythmus: 'monatlich' }] } }, h);
+    expect(l[0].aktionen).toEqual(['kdc', 'kdv', 'ug', 'kemaris', 'entfernen', 'behalten']);
+  });
+  it('gestellte Rechnung → UG: verschoben mit Vermerk, nichts gelöscht', () => {
+    const r: Rechnung = { id: 'r-ug', firmaId: 'privat', kunde: 'Kunde B', titel: 'Lizenz', betrag: 59.5, status: 'gestellt', nummer: 'RE-2' };
+    const aus = rechnungenEntflechten([r], new Set(), new Map([['r-ug', 'ug']]), '2026-09-28');
+    expect(aus).toHaveLength(1);
+    expect(aus[0]).toMatchObject({ firmaId: 'ug', betrag: 59.5, status: 'gestellt' });
+    expect(aus[0].notiz).toBe(`Aus „privat“ nach ${zuordnungName('ug')} verschoben am 2026-09-28 (Entflechtung).`);
+    expect(aus[0].notiz).toContain('MAKE OS UG');
   });
 });

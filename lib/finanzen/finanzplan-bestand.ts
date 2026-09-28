@@ -11,6 +11,7 @@
 
 import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { firmaFuerGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
+import { zuordnungName } from './haushalt/entflechtung';
 
 export interface Firma {
   id: string;
@@ -446,7 +447,6 @@ export function rechnungenSchutzVoll(vorher: FinanzplanFile | null, neu: Finanzp
 
 /** Prüflisten-Aktionen, die eine Rechnung aus dem Finanzplan nehmen würden. */
 const ENTFLECHTUNG_LOESCHT = new Set(['entfernen', 'dublette', 'uebernehmen']);
-const FIRMA_NAME: Record<string, string> = { kdv: 'KD Ventures', kdc: 'Kevin Dieckmann Consulting', kemaris: 'KEMARIS' };
 
 /** null = alle Rechnungs-Entscheidungen erlaubt; sonst der Ablehnungstext (HTTP 409). */
 export function entflechtungSperre(rechnungen: Rechnung[], entscheidungen: { quelle: string; id: string; aktion: string }[]): string | null {
@@ -470,7 +470,7 @@ export function rechnungenEntflechten(liste: Rechnung[], weg: Set<string>, zuord
     if (weg.has(r.id) && rechnungSchutz(r, null) === null) continue;
     const firma = zuordnen.get(r.id);
     if (firma && firma !== r.firmaId) {
-      const vermerk = `Aus „privat“ nach ${FIRMA_NAME[firma] ?? firma} verschoben am ${tag} (Entflechtung).`;
+      const vermerk = `Aus „privat“ nach ${zuordnungName(firma)} verschoben am ${tag} (Entflechtung).`;
       const verschoben: Rechnung = { ...r, firmaId: firma, notiz: [r.notiz, vermerk].filter(Boolean).join(' · ').slice(-300) };
       raus.push(rechnungSchutz(r, verschoben) === null ? verschoben : r);
       continue;

@@ -8,15 +8,29 @@
 
 import type { Haushalt } from './typen';
 import { normal } from './regeln';
+import { GESELLSCHAFTEN, finanzOrtName, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 
 export type Quelle = 'firma' | 'zahlung' | 'merkposten' | 'rechnung' | 'buchung' | 'planposten';
-export type Aktion = 'dublette' | 'uebernehmen' | 'entfernen' | 'behalten' | 'kdv' | 'kdc' | 'kemaris';
+
+// Zuordnen: die drei Gesellschaften aus der EINEN Einheitenliste (lib/einheiten.ts,
+// kdc · kdv · ug — vorher fehlte die MAKE OS UG) plus KEMARIS. KEMARIS ist keine
+// Finanz-Einheit (nicht in FINANZ_ORTE), aber eine eigene Organisation (die
+// Beteiligung, lib/make-one/organisation-data.ts), und ZOE ordnet Planposten
+// ausdrücklich `kemaris` zu (lib/zoe/werkzeuge.ts) — darum bleibt sie hier wählbar.
+export type Zuordnung = Gesellschaftskennung | 'kemaris';
+export type Aktion = 'dublette' | 'uebernehmen' | 'entfernen' | 'behalten' | Zuordnung;
+/** Alle Zuordnungs-Aktionen in fester Reihenfolge (Selbstständigkeit · KD Ventures · MAKE OS UG · KEMARIS). */
+export const ZUORDNUNGEN: readonly Zuordnung[] = [...GESELLSCHAFTEN, 'kemaris'];
+export const istZuordnung = (a: unknown): a is Zuordnung => ZUORDNUNGEN.includes(a as Zuordnung);
+/** Anzeigename des Ziels einer Zuordnung — Gesellschaften über finanzOrtName, sonst KEMARIS. */
+export const zuordnungName = (z: string): string => (istGesellschaft(z) ? finanzOrtName(z) : z === 'kemaris' ? 'KEMARIS' : z);
+
 export const AKTION_TEXT: Record<Aktion, string> = {
   dublette: 'ist schon im Haushalt — aus Business entfernen',
   uebernehmen: 'in den Haushalt übernehmen',
   entfernen: 'entfernen (wird archiviert)',
   behalten: 'so lassen',
-  kdv: 'gehört zu KD Ventures', kdc: 'gehört zur Selbstständigkeit', kemaris: 'gehört zu Kemaris',
+  ...(Object.fromEntries(ZUORDNUNGEN.map(z => [z, `gehört zu: ${zuordnungName(z)}`])) as Record<Zuordnung, string>),
 };
 
 export interface Pruefposten {
@@ -61,7 +75,7 @@ export function pruefliste(b: Businessbestand, h: Haushalt): Pruefposten[] {
     // nur eine geplante Rechnung darf weg; ab „gestellt“ nur mit Vermerk einer Firma zuordnen.
     const geplant = r.status === 'geplant';
     raus.push({ quelle: 'rechnung', id: r.id, titel: r.kunde, unter: `${r.titel} · ${r.status}`, betrag: cent(r.betrag), datum: r.faellig ?? null,
-      vorschlag: geplant ? 'entfernen' : 'behalten', aktionen: geplant ? ['entfernen', 'behalten'] : ['kdv', 'kdc', 'kemaris', 'behalten'], treffer: null,
+      vorschlag: geplant ? 'entfernen' : 'behalten', aktionen: geplant ? ['entfernen', 'behalten'] : [...ZUORDNUNGEN, 'behalten'], treffer: null,
       grund: geplant ? 'Private Forderung im Firmen-Finanzplan.' : `Die Rechnung ist ${r.status} — sie wird nicht gelöscht. Einer Firma zuordnen (mit Vermerk) oder im Finanzplan stornieren.` });
   }
   for (const x of b.buchungen?.buchungen ?? []) {
@@ -77,7 +91,7 @@ export function pruefliste(b: Businessbestand, h: Haushalt): Pruefposten[] {
     const privat = p.firmaId === 'privat' || p.kategorie === 'privat';
     if (!privat && p.firmaId) continue;
     raus.push({ quelle: 'planposten', id: p.id, titel: p.titel, unter: `${p.rhythmus}${privat ? ' · privat' : ' · ohne Firma'}`, betrag: cent(p.betrag), datum: null,
-      vorschlag: privat ? 'entfernen' : 'behalten', aktionen: privat ? ['entfernen', 'behalten'] : ['kdv', 'kdc', 'kemaris', 'entfernen', 'behalten'], treffer: null,
+      vorschlag: privat ? 'entfernen' : 'behalten', aktionen: privat ? ['entfernen', 'behalten'] : [...ZUORDNUNGEN, 'entfernen', 'behalten'], treffer: null,
       grund: privat ? 'Privater Planposten — der Haushalt plant über „Ist gegen Soll“ und Budgets.' : 'Ohne Firma zählt er als Business. Bitte zuordnen.' });
   }
   return raus;

@@ -40,6 +40,7 @@ interface Beleg {
   datum?: string;
   betragBrutto?: number;
   betragNetto?: number;
+  ustSatz?: number;
   waehrung?: string;
   rechnungsnummer?: string;
   zweck?: string;
@@ -208,7 +209,8 @@ export function ZoePanel() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ziel, partner: beleg.partner, datum: beleg.datum,
-          betrag: beleg.betragBrutto ?? beleg.betragNetto,
+          // brutto/netto/Satz getrennt — die Route rechnet über lib/finanzen/ust.ts (netto ist nie brutto).
+          betragBrutto: beleg.betragBrutto, betragNetto: beleg.betragNetto, ustSatz: beleg.ustSatz,
           kategorie: beleg.kategorie, zweck: beleg.zweck,
           faellig: beleg.faellig, rechnungsnummer: beleg.rechnungsnummer,
         }),

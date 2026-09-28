@@ -10,25 +10,27 @@ import { NextResponse } from 'next/server';
 import { updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import { GRENZEN } from '@/lib/finanzen/finanzplan-bestand';
+import { belegBetrag, euroText } from '@/lib/finanzen/beleg-betrag';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck: string; konto: string; ort?: string }
-interface Rechnung { id: string; firmaId: string; kunde: string; titel: string; betrag: number; status: string; faellig?: string }
+interface Rechnung { id: string; firmaId: string; kunde: string; titel: string; betrag: number; status: string; faellig?: string; netto?: number; ustSatz?: number }
 
 export async function POST(req: Request) {
   let b: {
     ziel?: 'buchung' | 'rechnung';
-    partner?: string; datum?: string; betrag?: number; kategorie?: string;
+    partner?: string; datum?: string; betrag?: number; betragBrutto?: number; betragNetto?: number; ustSatz?: number; kategorie?: string;
     zweck?: string; konto?: string; wer?: string; firma?: string; faellig?: string; rechnungsnummer?: string;
   };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein JSON.' }, { status: 400 }); }
 
   const partner = String(b.partner ?? '').trim().slice(0, 140);
-  const betrag = Number(b.betrag);
+  // Auf den Cent, brutto/netto nur über lib/finanzen/ust.ts (28.09., K3) — vorher auf ganze Euro gerundet.
+  const betrag = belegBetrag(b);
   if (!partner) return NextResponse.json({ ok: false, error: 'Ohne Partner wird nichts gebucht.' }, { status: 400 });
-  if (!isFinite(betrag) || betrag <= 0) return NextResponse.json({ ok: false, error: 'Betrag fehlt oder ist nicht plausibel.' }, { status: 400 });
+  if (!betrag) return NextResponse.json({ ok: false, error: 'Betrag fehlt oder ist nicht plausibel.' }, { status: 400 });
 
   // Belege aus dem Chat sind Firmen-Belege. Private gehören in den Haushalt
   // (Zahlen › Privat), nicht in die Business-Buchungen.
@@ -50,12 +52,13 @@ export async function POST(req: Request) {
         firmaId: firma,
         kunde: partner,
         titel: b.rechnungsnummer ? `${zweck} (${b.rechnungsnummer})` : zweck,
-        betrag: Math.round(betrag),
+        betrag: betrag.brutto,
+        ...(betrag.netto !== undefined ? { netto: betrag.netto, ustSatz: betrag.ustSatz } : {}),
         status: 'gestellt',
         ...(/^\d{4}-\d{2}-\d{2}$/.test(String(b.faellig ?? '')) ? { faellig: String(b.faellig) } : {}),
       };
       f.rechnungen.push(r);
-      angelegt = `${r.kunde} · ${r.betrag} € · ${r.status}`;
+      angelegt = `${r.kunde} · ${euroText(r.betrag)} · ${r.status}`;
       return f;
     });
     if (!angelegt) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${GRENZEN.rechnungen} Rechnungen im Finanzplan — erst Erledigtes aufräumen.` }, { status: 413 });
@@ -74,14 +77,14 @@ export async function POST(req: Request) {
       // Partner in „ort“, die Buchung fiel aus Zahlen heraus und wurde privat.
       wer: partner.slice(0, 80),
       // Ausgaben stehen im Bestand negativ — sonst zählt der Beleg als Einnahme.
-      betrag: -Math.abs(Math.round(betrag * 100) / 100),
+      betrag: -betrag.brutto,
       kategorie: String(b.kategorie ?? 'Sonstiges').slice(0, 40),
       zweck,
       konto: String(b.konto ?? 'Geschäftskonto').slice(0, 40),
       ort: firma,
     };
     f.buchungen.push(neu);
-    angelegt = `${neu.zweck} · ${neu.betrag} € · ${neu.kategorie}`;
+    angelegt = `${neu.zweck} · ${euroText(neu.betrag)} · ${neu.kategorie}`;
     return f;
   });
   return NextResponse.json({ ok: true, ziel: 'buchung', angelegt, wo: '/os/finanzen/buchungen' });
