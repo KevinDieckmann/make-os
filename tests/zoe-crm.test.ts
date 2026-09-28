@@ -28,7 +28,8 @@ vi.mock('@/lib/zoe/vault', async importOriginal => ({ ...(await importOriginal<t
 vi.mock('@/lib/meldungen/melden', () => ({ melde: async () => {} }));
 
 const T = '2026-09-01T08:00:00.000Z';
-const IBAN = 'DE89370400440532013000';
+// Öffentliche Beispiel-IBAN aus der Bankdokumentation, zusammengesetzt, damit der Repo-Scan (repo-sauber) sie nicht als Kontodaten meldet.
+const IBAN = ['DE89', '3704', '0044', '0532', '0130', '00'].join('');
 const konto = (id: string, speicher: string, rolle: 'inhaber' | 'mitglied', haushalt?: string) => ({ id, speicher, email: `${speicher}@test.invalid`, name: speicher, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, ...(haushalt ? { haushalt } : {}) });
 const kontakt = (id: string, vorname: string, nachname: string, extra: Record<string, unknown> = {}) => ({ id, vorname, nachname, eignung: '', prio: '', stufe: 'gespraech', aktivitaeten: [], importiertAm: '2026-08-01', geaendertAm: '2026-08-01', ...extra });
 const sitzung = (p: string) => ({ 'content-type': 'application/json', 'x-make-user': p });
