@@ -24,7 +24,7 @@
 // Logik rein und getestet: lib/crm/aktivitaeten.ts (tests/crm-aktivitaeten.test.ts).
 // Karte und Formulare: ./aktivitaeten-teile.tsx.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
@@ -87,6 +87,8 @@ export function AktivitaetenReiter({ k, api, unter, onUnter }: AktivitaetenReite
   const systemZahl = useMemo(() => alle.filter(e => e.kategorie === 'system').length, [alle]);
 
   // ── Sprung auf einen Anker (#akt-…) ──
+  /** Für welchen Anker der Unter-Reiter schon angefordert wurde. */
+  const korrigiert = useRef<string | null>(null);
   useEffect(() => {
     const lesen = () => { const h = decodeURIComponent(window.location.hash.slice(1)); if (istAktAnker(h)) setZiel(h); };
     lesen();
@@ -99,16 +101,22 @@ export function AktivitaetenReiter({ k, api, unter, onUnter }: AktivitaetenReite
     if (!e) return; // Daten evtl. noch nicht da — beim nächsten Stand erneut
     const passt = filtern([e], aktiv, filter, heute).length > 0;
     if (!passt) {
-      // Karte sichtbar machen: Filter zurück (System nur, wenn nötig), Unter-Reiter der Art oder „Alle“.
-      setFilter({ ...FILTER_START, system: e.kategorie === 'system' });
-      if (aktiv !== 'alle' && e.kategorie !== aktiv) waehle(e.kategorie === 'system' ? 'alle' : e.kategorie);
+      // Karte sichtbar machen: Filter zurück (System nur, wenn nötig), Unter-Reiter der Art bzw. „Alle“.
+      // Nur ändern, was abweicht — so gibt es keine Schleife; den Unter-Reiter höchstens einmal je Anker anfordern
+      // und dann warten, bis die Adresse ihn bringt.
+      const soll: AktFilter = { ...FILTER_START, system: e.kategorie === 'system' };
+      const sollUnter: Unter = aktiv === 'alle' || e.kategorie === aktiv ? aktiv : e.kategorie === 'system' ? 'alle' : e.kategorie;
+      const filterAnders = JSON.stringify(filter) !== JSON.stringify(soll);
+      if (filterAnders) setFilter(soll);
+      if (sollUnter !== aktiv && korrigiert.current !== ziel) { korrigiert.current = ziel; waehle(sollUnter); }
+      else if (!filterAnders && sollUnter === aktiv) setZiel(null); // nichts mehr zu tun und doch unsichtbar — aufgeben
       return;
     }
     setKompakt(false);
     setZu(z => { const g = e.kommend ? 'kommend' : e.tag.slice(0, 7); if (!z.has(g)) return z; const n = new Set(z); n.delete(g); return n; });
     const t = setTimeout(() => {
       document.getElementById(ziel)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setMarkiert(ziel); setZiel(null);
+      setMarkiert(ziel); setZiel(null); korrigiert.current = null;
     }, 60);
     return () => clearTimeout(t);
   }, [ziel, alle, aktiv, filter, heute, waehle]);
