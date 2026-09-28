@@ -4,6 +4,142 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## ZOE sieht und unterstützt die ganze Markttraktion (28.09.2026 spät, C7, nur lokal)
+
+- **Kevins Entscheidung:** ZOE liest jetzt CRM und CRM-Dateiablage (hebt „Ablage nie an ZOE“ auf) — nur im Gespräch mit Kevin oder Malin, mit festen Leitplanken: Art.-18-eingeschränkte Kontakte gar nicht (nur „n ausgeblendet“), private Notizen nur die eigenen, IBAN maskiert, fremder Text gekapselt, lange Antworten in Teilen.
+- **Lesen (15 Werkzeuge):** Suche über alles mit Filtern, Kontakt- und Firmenakte, Pipeline/Deal-Akte, Mandate, Angebote, Kampagnen, Events (Make.One), Marketing, Kennzahlen (Traktions-Index), Sales (Power Hour), Qualifizierung (Runden), Stammdaten, Datenqualität, CRM-Dateien lesen. `suche_kontakt`/`crm_lage` laufen weiter, jetzt über dieselbe Sicht.
+- **Unterstützen:** ZOE legt nur Vorschläge in den Stapel (Art „crm“) — Aktivität, Follow-up, Deal, Kontaktfelder, Qualifizierung, Dubletten, Reparatur, Import-Konflikt, Angebots-Entwurf (nie stellen), Nachricht/Leitfaden/Einladung/Danke zum Kopieren, Power-Hour-Reihenfolge, Beitrag, Newsletter, Segment, Gästeliste, Leistungstext, Head-Vorschlag annehmen/ablehnen (Heads lesen: `heads_lage`). Erst der Klick übernimmt, über die normalen Wege (409 bei zwischenzeitlicher Änderung, Art.-18- und Werbesperre greifen). Versendet wird nichts.
+- **Oberfläche:** „ZOE fragen“ oben rechts in der Markttraktion (nimmt mit, was offen ist: Kontakt, Firma, Deal, Angebot — sonst den Reiter) und in der Firmenakte; ZOE zeigt oben „Bezug …“. Karte „ZOE-Vorschläge“ in Kontakt öffnen (rechts) und in der Firmenakte: Freigeben / Ablehnen mit Grund, bei Nachrichten „Kopieren“ und „Im Mail-Programm öffnen“.
+- **Organisatorisch:** AVV mit dem KI-Anbieter ablegen (CRM_FEHLER_ABGLEICH #101).
+- Tests: `tests/zoe-crm.test.ts` (Modell gemockt).
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Kontakt öffnen → „ZOE fragen“ → ZOE zeigt „Bezug · Kontakt c-…“; Frage „Was steht bei dieser Person an?“ → Antwort aus der Akte (private Notiz der anderen Person taucht nie auf).
+- [ ] Kontakt mit Einschränkung (Art. 18): ZOE findet ihn nicht, sagt höchstens „1 eingeschränkter Kontakt ausgeblendet“.
+- [ ] „Schlag vor, ein Follow-up für nächsten Dienstag anzulegen“ → Karte „ZOE-Vorschläge“ an der Person → Freigeben → Follow-up steht, im Änderungsprotokoll als ZOE im Auftrag.
+- [ ] Vorschlag stehen lassen, den Kontakt selbst ändern, dann freigeben → Hinweis „inzwischen geändert“, Vorschlag bleibt offen.
+- [ ] Angebots-Entwurf vorschlagen lassen → Freigeben → Angebot steht als Entwurf (ohne Nummer) im Angebots-Tool; stellen nur dort.
+- [ ] Nachricht an jemanden mit Werbesperre bzw. ohne Grundlage → ZOE lehnt ab (Kanal-Ampel), kein Vorschlag.
+- [ ] Firmenakte: „ZOE fragen“, IBAN nur maskiert in der Antwort; Vorschläge an Personen der Firma erscheinen auch dort.
+- [ ] Reiter Sales/Marketing/Make.One/Qualifizierung/Stammdaten → „ZOE fragen“ nimmt den Reiter als Bezug.
+- [ ] „Was schlägt der Head of Sales vor?“ → ZOE listet offene Vorschläge; „nimm den ersten an“ → liegt im Stapel, Freigeben → im Head-Fenster „angenommen“.
+- [ ] Aufträge & Freigaben: CRM-Vorschlag zeigt Text, „Kopieren“, „In der Markttraktion öffnen ›“.
+
+## Aufgaben: ZOE bereitet vor, ihr gebt frei (28.09.2026 spät, C4, nur lokal)
+
+- **An ZOE geben:** in jeder Aufgabe/Unteraufgabe unten „ZOE“ → „An ZOE geben“ (optional „+ Hinweis“). Zuständig bleibt, wie es war; wer gibt, ist die Auftraggeberin und gibt später frei.
+- **ZOE arbeitet:** Knopf „ZOE jetzt arbeiten lassen“ (an der Aufgabe oder in Aufgaben › Ansicht „ZOE“, höchstens 5 je Lauf) — und einmal morgens nach dem Morgenlauf von selbst, wenn etwas bei ihr liegt. Sie liest Aufgabe, Notiz, Unteraufgaben, Projekt-Notiz, Dateien der Aufgabe und eine CRM-Kurzinfo (ohne private Notizen, gesperrte Kontakte gar nicht) und legt **nur einen Vorschlag** ab: Entwurf/Recherche-Notiz, Unteraufgaben, ggf. Status/Deadline. Die Aufgabe selbst bleibt unverändert; Glocke „ZOE hat „…“ vorbereitet“.
+- **Freigeben / Ablehnen:** direkt an der Aufgabe (Vorschlag lesen → Freigeben · Ablehnen mit Grund · „Nochmal mit Hinweis …“) oder im Stapel unter Aufträge & Freigaben (auch „Alle freigeben“). Freigeben hängt den Entwurf an die Notiz, legt Unteraufgaben an, setzt Status/Deadline — im Verlauf „ZOE: wartet auf Freigabe → freigegeben“ mit deinem Namen.
+- ZOE schickt nichts nach außen und löscht nichts. Im Gespräch: „Was liegt bei dir?“ (`meine_aufgaben`), „Gib … an dich“ (`aufgabe_an_zoe`).
+- Tests: `tests/zoe-aufgaben.test.ts` (Modell gemockt).
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Aufgabe öffnen → „An ZOE geben“ mit Hinweis → Chip „bei ZOE“, Kommentar „Hinweis an ZOE: …“, Verlauf-Eintrag.
+- [ ] „ZOE jetzt arbeiten lassen“ → nach kurzer Zeit „wartet auf Freigabe“; Glocke zeigt „ZOE hat … vorbereitet“; Titel/Notiz/Status der Aufgabe unverändert.
+- [ ] Vorschlag an der Aufgabe lesen → Freigeben → Notiz trägt den Entwurf, Unteraufgaben stehen da, Status/Deadline gesetzt.
+- [ ] Andere Person (Malin) öffnet dieselbe Aufgabe → sieht nur „wartet auf die Freigabe von Kevin“, keine Knöpfe.
+- [ ] Ablehnen mit Grund → Chip „abgelehnt“; „Nochmal an ZOE geben“ → neuer Vorschlag berücksichtigt Grund/Hinweis.
+- [ ] Aufträge & Freigaben: Aufgaben-Vorschlag mit Entwurf und „Aufgabe öffnen ›“; Freigeben/Ablehnen dort wirkt an der Aufgabe.
+- [ ] Ohne Modell-Schlüssel: Knopf gesperrt/Hinweis, nichts verändert.
+
+## Aufgaben: wiederkehrend und Vorlagen (28.09.2026 spät, C3, nur lokal)
+
+- **Wiederkehrende Aufgabe:** im Detail „Wiederholt: nie · täglich · Werktage · wöchentlich (Tage) · monatlich (Tag) · jährlich“, „alle n …“, „bis …“, Vorschau „nächste: Mo 05.10.“. Beim Abhaken entsteht sofort die nächste Aufgabe mit neuer Deadline (Unteraufgaben wieder offen, Notiz/Felder/Zuständig/CRM-Bezug übernommen, Kommentare und Verlauf nicht). Nie mehr als eine offene je Serie; wer lange weg war, bekommt keinen Stapel überfälliger Kopien — die nächste Deadline springt auf heute oder später. Monatstag 31 = immer Monatsende (30./28./29.). ↻ an der Zeile.
+- **Wiederkehrende Liste:** ↻ am Listenkopf → z. B. monatlich am 1., Titel-Muster „Monatsabschluss {Monat} {Jahr}“, Aufgaben aus dieser Liste oder aus einer Vorlage. Der Morgenlauf (Tagesstart) legt zum Termin die neue Liste mit ihren Aufgaben an (Deadlines ab Listenstart). Verpasste Monate holt er einzeln nach (einer je Tag), bei täglich/wöchentlich nur den aktuellen — mit Hinweis im Tagesstart.
+- **Vorlagen:** „Vorlagen“ oben im Space → „Aus Vorlage anlegen …“ (Space/Projekt, Startdatum, Name) bzw. mit gewähltem Projekt „Projekt als Vorlage speichern …“; Listen über ↻ → „Nur als Vorlage speichern …“. Gespeichert wird nur die Struktur (Gruppen, Listen, Aufgaben, Unteraufgaben, eigene Felder, Notiz) — ohne CRM-Verknüpfungen, Kommentare, Dateien. Drei Startvorlagen: Monatsabschluss Buchhaltung · Mandats-Onboarding · Launch-Projekt (Marketing · Sales · Operations).
+- Tests: `tests/aufgaben-serie.test.ts` (Monatsende, Schaltjahr, Zeitumstellung, Instanz idempotent, Lawinen-Grenze, Vorlagen).
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Aufgabe mit Deadline heute → „Wiederholt: täglich“ → abhaken → neue Aufgabe für morgen steht da (nach kurzem Nachladen), ↻ an beiden.
+- [ ] Neue Aufgabe wieder öffnen und erneut abhaken → keine dritte.
+- [ ] Monatlich am 31. mit Deadline 30.09. → Vorschau „nächste: Sa 31.10.“; im November → 30.11.
+- [ ] Unteraufgaben erledigt → nach dem Abhaken der Hauptaufgabe sind sie in der neuen Aufgabe wieder offen, Deadlines mitverschoben.
+- [ ] Liste „Monatsabschluss September 2026“ → ↻ → monatlich am 1., Muster „Monatsabschluss {Monat} {Jahr}“ → „nächste Liste am Do 01.10.“; am 01.10. Tagesstart → neue Liste „Monatsabschluss Oktober 2026“ mit den Aufgaben; zweiter Tagesstart (neu starten) → keine zweite Liste.
+- [ ] „Vorlagen“ → „Aus Vorlage anlegen …“ → Launch-Projekt im Space UG, Start heute → Gruppen Marketing/Sales/Operations mit Listen und Deadlines.
+- [ ] Mandats-Onboarding in einem Mandanten-Space → Aufgaben tragen die Firma (Link in die Akte).
+- [ ] Projekt als Vorlage speichern → in „Aus Vorlage anlegen“ unter Projekt-Vorlagen; Löschen der Vorlage lässt angelegte Projekte stehen.
+
+## Aufgaben: Tabelle und Kalender (28.09.2026 spät, C5, nur lokal)
+
+- **Tabelle:** alle Aufgaben des Space bzw. Projekts (mit den Filtern oben) als Zeilen, Unteraufgaben per Pfeil aufklappbar. Spalten: Aufgabe, Status, Zuständig, Deadline, Priorität, Liste/Gruppe, CRM-Bezug (Link in die Akte), „Wartet auf“ und die eigenen Felder des Projekts (Betrag in Euro, Zahl, Datum, Auswahl, Person, Link, Text).
+- **Direkt ändern:** Status, Zuständig, Deadline, Priorität und Felder in der Zelle — gespeichert wird wie überall als Einzeländerung; hat jemand anders die Aufgabe inzwischen geändert, kommt der bekannte Hinweis.
+- **Sortieren und Spalten:** Klick auf den Spaltenkopf sortiert (aufsteigend → absteigend → wie die Liste), leere Werte stehen immer unten. „Spalten“ blendet ein/aus; Spalten und Sortierung merkt sich jedes Gerät je Person.
+- **Summen:** unten die Summe je Zahl-/Betrag-Feld (auch aus Unteraufgaben, z. B. einzelne Belege).
+- **Kalender:** Monat (Standard) und Woche; Aufgaben an ihrer Deadline, mit Start als Balken von Start bis Deadline. Farbe nach Status oder Gruppe, überfällig mit rotem „!“, wiederkehrende mit ↻. Klick öffnet das Detail.
+- **Verschieben:** Aufgabe auf einen anderen Tag ziehen — oder Aufgabe öffnen und „verschieben auf …“ (Datum, Heute, Morgen, ± 1 Tag, + 1 Woche). Mit Start wandert der Start mit. „Ohne Datum“ steht als Liste daneben und lässt sich auf einen Tag ziehen.
+- **Handy:** Tabelle wischt im eigenen Kasten quer, die Aufgaben-Spalte bleibt stehen; die Seite läuft nicht quer.
+- Umschalter Liste · Board · Tabelle · Kalender kommt mit dem Umbau der Aufgaben-Seite (C1). Tests: `tests/aufgaben-ansichten.test.ts`.
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Space mit Projekt mit eigenen Feldern → Tabelle: Felder als Spalten, Betrag „1.234,56 €“, Summe unten stimmt.
+- [ ] Kopfklick Deadline: auf/ab, Aufgaben ohne Deadline bleiben unten; dritter Klick = Liste.
+- [ ] Status/Zuständig/Priorität/Deadline in der Zelle ändern → Liste und Detail zeigen es, nach Neuladen noch da.
+- [ ] Spalte „CRM-Bezug“ ausblenden → nach Neuladen weiter aus (nur bei mir, Malin sieht ihre Einstellung).
+- [ ] Handy: Tabelle wischt quer, Seite nicht; Aufgaben-Spalte bleibt links stehen.
+- [ ] Kalender: Aufgabe mit Start 21.09. und Deadline 25.09. → Balken über fünf Tage; über den Wochenwechsel läuft er in der nächsten Zeile weiter.
+- [ ] Aufgabe auf einen anderen Tag ziehen → Deadline (und Start) verschoben; am Handy „verschieben auf …“.
+- [ ] „Ohne Datum“ → auf einen Tag ziehen setzt die Deadline.
+- [ ] Mehr als drei Aufgaben an einem Tag → „+n“ öffnet die Woche mit allen.
+## Aufgaben tiefer: Gruppen, Projektseite, Notizen, Felder, „wartet auf“, Verlauf, Navigation wie im CRM (28.09.2026 spät, C1, nur lokal)
+- **Datenmodell** (cb67a98): Gruppen je Projekt (Liste in Gruppe oder direkt im Projekt), Projekt mit Notiz/Beschreibung/Status/Zeitraum/
+  Mitgliedern/eigenen Feldern, Aufgabe mit Notiz/Feldwerten/„wartet auf“/Wiederholung/ZOE-Stand/Verlauf, Vorlagen im Bestand. Altbestand wird
+  beim Lesen übernommen (idempotent, nichts geht verloren; alte `dependencies` werden zu „wartet auf“).
+- **Navigation:** /os/aufgaben startet mit dem Überblick (Kacheln meine · heute · überfällig · wartet auf Freigabe, Karten je Privat/Firma/Mandant),
+  Leiste Überblick · Privat · Firmen ▾ · Mandanten ▾ · Archiv, im Space Brotkrumen Space ▾ › Projekt ▾ › Gruppe ▾ › Liste ▾. Alles in der Adresse,
+  alte Links (Glocke, Suche, Kalender) funktionieren weiter.
+- **Projektseite:** Kopf (Status, Zeitraum, Mitglieder, Beschreibung, Fortschritt, Verantwortliche), Reiter Aufgaben · Notizen · Dateien · Felder · Verlauf.
+- **Aufgabe:** Unteraufgaben mit eigenem Status/Zuständig/Deadline, umwandeln/herauslösen, eigene Felder, „wartet auf …“ (Kreise werden abgelehnt,
+  blockierte Aufgaben sind markiert), Notiz mit Checklisten, Fokus-Zeit, Dateien, Verlauf.
+- Mandanten-Space: Kopf mit Firma → Firmenakte, Mandat → Mandat, Zuständig; die Aufgaben-Kachel in Firmenakte/Kontakt führt in den Mandanten-Space.
+
+### Prüfliste (vor dem Hochladen durchklicken)
+1. /os/aufgaben → Überblick mit vier Kacheln; „Überfällig“ antippen → Liste; Karte „KD Ventures“ → Space öffnet sich.
+2. „+ Projekt“ → „Launch“ → Projektseite; unten „+ Gruppe“ Marketing, Sales; in Marketing „+ Liste“ Woche 1; Aufgabe anlegen, aufklappen,
+   Unteraufgaben mit Enter nacheinander anlegen.
+3. Brotkrumen: Projekt ▾ auf ein anderes Projekt, Liste ▾ auf eine andere Liste — Zurück-Knopf führt zurück.
+4. Reiter Felder: „Budget“ (Betrag) anlegen; in einer Aufgabe 1.500,40 eintragen → bleibt 1.500,40 €.
+5. Aufgabe B „wartet auf“ A → B zeigt „wartet“; A „wartet auf“ B versuchen → steht nicht zur Wahl.
+6. Notiz mit `- [ ] Punkt` → in der Vorschau abhaken.
+7. Verlauf der Aufgabe zeigt Status-/Deadline-Wechsel mit Person und Zeit.
+8. Alter Link /os/aufgaben?offen=<id> (aus der Glocke) öffnet die Aufgabe in ihrem Space.
+
+## Dateien an Projekten und Aufgaben (28.09.2026 spät, C2, nur lokal)
+
+- **Hochladen an Projekt und Aufgabe:** Ziehen & Ablegen oder „Auswählen“ (mehrere auf einmal) — PDF, Bilder (PNG, JPG, WEBP, HEIC), Word, Excel, PowerPoint, CSV, TXT, Markdown bis 25 MB. Liste mit Typ, Größe, wer/wann; Vorschau für Bilder und PDF (PDF im neuen Tab), Herunterladen, Umbenennen + Beschreibung, Löschen mit Rückfrage.
+- **Sicher:** verschlüsselt wie die CRM-Ablage, Typ am Inhalt geprüft (umbenannte Programme/HTML werden abgewiesen), nur der Haushalt des Inhabers. Privat und Business getrennt (der Bereich kommt aus dem Space); private Dateien erscheinen nie im CRM.
+- **Verlauf:** an einer Aufgabe steht „Datei hinzugefügt/entfernt“; das Änderungsprotokoll nennt nur Kennungen.
+- **ZOE liest mit (Kevins Wahl):** „Was liegt im Projekt Buchhaltung?“ → `projekt_unterlagen`; „Lies mir das Protokoll vor“ → `datei_lesen` (Text aus PDF/Word/Excel/PowerPoint/CSV/TXT/MD, bei Bildern nur die Angaben). Immer als fremder Text gekapselt, höchstens 30.000 Zeichen je Aufruf (längere Dateien in Teilen), nie im Hintergrund. Angebote, Rechnungen, Einwilligungsbelege und Mandatsunterlagen der CRM-Ablage liest ZOE weiterhin nicht.
+- **Datenqualität:** meldet Dateien, deren Projekt/Aufgabe gelöscht wurde, und fehlende Inhalte.
+- Nebenbei behoben: Löschen in der CRM-Ablage entfernte eine Datei auf der Platte auch dann, wenn sie gar nicht zur CRM-Ablage gehörte.
+- Tests: `tests/aufgaben-dateien.test.ts`, erweitert `tests/crm-verbindungen.test.ts`.
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Projektseite/Aufgabe (sobald C1 `ProjektDateien` einhängt): PDF, Foto und Excel hineinziehen → stehen in der Liste; Foto-Vorschau, PDF öffnet im neuen Tab.
+- [ ] Umbenennen: Endung bleibt; Beschreibung erscheint unter dem Namen.
+- [ ] Datei an einer Aufgabe löschen → Rückfrage, danach weg; Verlauf der Aufgabe zeigt beides; direkt danach Status ändern klappt ohne „inzwischen geändert“.
+- [ ] Eine `.exe`, in `.pdf` umbenannt → abgelehnt; 30-MB-Datei → „zu groß“.
+- [ ] ZOE: „Welche Unterlagen hat das Projekt …?“ und „Lies die Datei …“ → Inhalt kommt, bei langen Dateien Hinweis auf Teil 2.
+- [ ] CRM › Kontakt › Umsatz: keine Projekt-Dateien in der Liste.
+- [ ] Stammdaten › Datenqualität: keine „Datei ohne Eintrag“ für Projekt-Dateien.
+
+## Mandanten überall klickbar (28.09.2026 spät, C6, nur lokal)
+
+- **Ein Klick auf den Mandanten führt in die CRM-Akte** — das Mandat, wenn es eins gibt, sonst die Firmenakte. Gleiche Optik wie im CRM (Name in Textfarbe, davor Punkt bzw. 🏢).
+- **Wo:** Fokus › Zeit je Mandat · Mandat-Chip an Zielen, Meilensteinen und Fokus-Blöcken (kleines „›“ daneben) · Finanzplanung › Rechnungen (Kunde; ohne Mandat nur, wenn der Name eindeutig zu einem Mandanten passt) · Liquidität › Posten aus einem Mandat (aufgeklappt „Mandat“) · Kalender-Fristen (Ende, Kündigungsfrist, Review) öffnen direkt das Mandat statt der Liste · Schnellsuche (Mandat mit dem aktuellen Firmennamen, Firmen mit aktivem Mandat als „Mandant“ markiert) · im Mandat selbst „Firma“ zurück in die Firmenakte.
+- **Gelöscht:** ist das Mandat weg, führt der Link zur Firma; ist beides weg, steht „(gelöscht)“ als Text. **Privat** zeigt nie einen Mandanten; wer keinen CRM-Zugang hat, sieht nur den Namen.
+- Business-Cockpit, Modell, Mandatsliste, Firmenakte und Deal-Akte waren schon klickbar — unverändert.
+- Tests: `tests/mandant-link.test.ts`.
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Fokus › Zeit je Mandat: Name anklicken → Mandat öffnet sich (Produkte & Mandate, aufgeklappt).
+- [ ] Ziel mit Mandat: „›“ neben dem Chip → Mandat; beim Anlegen kein „›“.
+- [ ] Finanzplanung: Rechnung mit Mandat → Kunde ist Link; Rechnung mit unbekanntem Kunden bleibt Text.
+- [ ] Liquidität: Posten „Mandate & Honorare“ aufklappen → „Mandat“ mit Link.
+- [ ] Kalender: Mandatsfrist anklicken → genau dieses Mandat.
+- [ ] ⌘K: Mandant suchen → Firma „Mandant“, Mandat mit Firmennamen.
+- [ ] Mandat aufklappen → „Firma“ führt in die Firmenakte.
+- [ ] Konto außerhalb des Haushalts (ohne CRM-Zugang): Namen stehen, keine toten Links.
+
 ## Aufgaben wie Monday/ClickUp (28.09.2026 abends, B1, nur lokal)
 
 - **Neue Aufgaben-Seite** `/os/aufgaben`: oben Schnell anlegen (Titel tippen, per Klick Space › Projekt › Liste › übergeordnete Aufgabe, vorbelegt mit dem, was offen ist; Kürzel !! · @malin · #projekt · Datum wie bisher). Darunter Privat | Business, im Business die Firmen (Selbstständigkeit · KD Ventures · MAKE OS UG) und die Mandanten (jede Firma mit aktivem Mandat; beendet → „Archiv“). Im Space Projekte → Listen → Aufgaben → Unteraufgaben (aufklappbar), ohne Projekt/Liste „Sonstige“. Ansicht Liste oder Board nach Status; Filter Alle/Meine, Status, fällig.
