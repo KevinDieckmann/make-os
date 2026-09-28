@@ -11,6 +11,8 @@
 //              meist die bessere Wahl (Art. 21): dann bleibt „nicht anschreiben“
 //              erhalten. Deshalb fragt die Oberfläche das vorher ab. Eine eingeschränkte
 //              Person (Art. 18) wird aufbewahrt — erst aufheben, dann löschen (409).
+//              Antwort: `speicher` (was wo), `aufgabenPruefen` (Aufgaben, die nur den Namen nennen) und
+//              `dealsOhnePerson` ({ id, titel }: Deals, an denen nur diese Person hing — W3, 28.09.).
 // POST { aktion: 'einschraenken', id, grund, antragId? }        → Art. 18 setzen (U2 #51)
 // POST { aktion: 'einschraenkung-aufheben', id, grund }          → nur mit Grund
 // POST { aktion: 'frist-verlaengern', id, bis, grund }           → Löschfrist der Person verlängern (U2 #52)
@@ -152,8 +154,12 @@ export async function POST(req: Request) {
   if (vorher?.eingeschraenkt) return NextResponse.json({ ok: false, fehler: 'Die Verarbeitung ist eingeschränkt (Art. 18) — die Person wird aufbewahrt. Erst die Einschränkung mit Grund aufheben.' }, { status: 409 });
   // Aus ALLEN Speichern — eine Stelle kennt sie (lib/crm/person-bestaende.ts, 28.09.). Idempotent: ein zweiter Lauf
   // (etwa nach einem Abbruch) räumt Reste auf, auch wenn die Kartei die Person schon nicht mehr kennt.
+  // Ablaufprüfung W3 (28.09.): Deals, an denen NUR diese Person hing, stehen danach ohne Person da — vorher merken,
+  // danach mit dem Titel melden (gelesen NACH dem Löschen: ein Titel mit dem Namen ist dann schon bereinigt).
+  const nurSie = new Set((await ladeCrm()).chancen.filter(c => c.kontaktIds.length === 1 && c.kontaktIds[0] === id).map(c => c.id));
   const bericht = await personEntfernen(id);
   if (!Object.keys(bericht.speicher).length) return NextResponse.json({ ok: false, fehler: 'Nicht gefunden.' }, { status: 404 });
   await updateJson<{ eintraege: { id: string; datum: string; grund: string; von: string }[] }>('crm-loeschprotokoll', cur => ({ eintraege: [...(cur?.eintraege ?? []), { id, datum: heute, grund: (grund || 'Art. 17 DSGVO').slice(0, 200), von }] }));
-  return NextResponse.json({ ok: true, speicher: bericht.speicher, aufgabenPruefen: bericht.aufgabenPruefen });
+  const dealsOhnePerson = nurSie.size ? (await ladeCrm()).chancen.filter(c => nurSie.has(c.id) && !c.kontaktIds.length).map(c => ({ id: c.id, titel: c.titel })) : [];
+  return NextResponse.json({ ok: true, speicher: bericht.speicher, aufgabenPruefen: bericht.aufgabenPruefen, dealsOhnePerson });
 }

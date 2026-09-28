@@ -161,13 +161,16 @@ export const hatMailEinwilligung = (k?: Pick<Kontakt, 'einwilligungen'> | null) 
  * alten Stand der Oberfläche würden Stufe, Wiedervorlage und nächster Schritt
  * der gerade festgehaltenen Aktivität wieder überschrieben.
  */
+// Ablaufprüfung W2 (28.09.): nur die neuen Felder als `teil` (nie der ganze Eintrag) und `einwilligungGespeichert` —
+// die Oberfläche meldet „Einwilligung für Mail“ nur, wenn der Server sie wirklich gespeichert hat.
 export async function festhalten(api: CrmApi, body: { id: string; art: string } & Record<string, unknown>, einwilligung: NotizErgebnis['einwilligung'], heute: string) {
   const r = await api.aktivitaet(body);
+  let einwilligungGespeichert: boolean | undefined;
   if (einwilligung && r.kontakt) {
     const neu = einwilligungUebernehmen(r.kontakt, einwilligung.nachweis, heute, api.ich ?? undefined);
-    if (neu) await api.kontaktSetzen(neu);
+    if (neu) einwilligungGespeichert = await api.kontaktTeil(neu.id, { einwilligungen: neu.einwilligungen, ...(neu.rechtsgrundlage !== r.kontakt.rechtsgrundlage ? { rechtsgrundlage: neu.rechtsgrundlage } : {}) });
   }
-  return r;
+  return { ...r, einwilligungGespeichert };
 }
 
 export function Feldzeile({ label, children }: { label: string; children: ReactNode }) {

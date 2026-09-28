@@ -30,6 +30,7 @@ import { anredeVorschlag, kontaktRollenVorschlag } from '@/lib/crm/vorschlaege';
 import { KREIS_WORT } from '@/lib/crm/wertelisten';
 import { ZustaendigWahl, Uebergeben, Person } from './team';
 import { neueFirma, ROLLEN } from './Firmen';
+import { FirmaSuchFeld } from './FirmenDatalist';
 import { bestehendeFirma } from '@/lib/crm/firmen';
 import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
 import { WertelistenWahl, WertelistenMehrfachWahl } from './WertelistenWahl';
@@ -59,7 +60,7 @@ export const lifecycleFarbe = (p?: LifecyclePhase | null): string => (p === 'kun
 export const phaseLabel = (p?: string) => (p && p in PHASE_LABEL ? PHASE_LABEL[p as Phase] : undefined) ?? PHASEN.find(x => x.id === p)?.label ?? 'Kontakt';
 
 /** Einen Kontakt ändern — die geänderten Felder (`kontaktTeil`), bei Firmenänderung mit Absicht (`firmaWechsel`). */
-export type Setze = (teil: KontaktFelder) => Promise<void> | void;
+export type Setze = (teil: KontaktFelder) => Promise<unknown> | void;
 
 /**
  * Firma an der Person verknüpfen — eine bestehende (Name, Groß-/Kleinschreibung egal) oder eine neue
@@ -303,8 +304,9 @@ function EwFormular({ e, setE, heute, knopf, onFertig, onAbbruch, nurEinwilligun
 /** POST an /api/crm/datenschutz (Einschränkung, Frist) — danach neu laden. */
 async function datenschutzAktion(api: CrmApi, body: Record<string, unknown>): Promise<boolean> {
   const r = await fetch('/api/crm/datenschutz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'keine Verbindung' }));
+  // Erst neu laden, dann die Meldung setzen (Ablaufprüfung K1) — sie bleibt als Hinweis stehen, das Laden löscht sie nicht.
+  await api.laden(true);
   if (!r.ok) api.setFehler(r.fehler ?? 'Nicht gespeichert.');
-  void api.laden(true);
   return !!r.ok;
 }
 
@@ -403,7 +405,11 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
             const grund = await frage('Grund für das Löschprotokoll', { vorgabe: 'Löschverlangen Art. 17', hinweis: 'Ohne Personendaten — der Eintrag bleibt als Nachweis.' });
             if (grund === null) return;
             const r = await fetch('/api/crm/datenschutz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: k.id, grund }) }).then(x => x.json()).catch(() => null);
-            if (r?.ok) void api.laden(); else api.setFehler(r?.fehler ?? 'Nicht gelöscht.');
+            if (!r?.ok) { api.setFehler(r?.fehler ?? 'Nicht gelöscht.'); return; }
+            // W3 (28.09.): was jetzt zu tun ist — Deals ohne Person, Aufgaben, die den Namen noch nennen.
+            const text = loeschErgebnis(r);
+            await api.laden(true);
+            if (text) api.setHinweis(text);
           }}>Löschen (Art. 17)</Knopf>
           {nachfrage}
         </div>
@@ -411,6 +417,20 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
       </div>
     </div>
   );
+}
+
+/**
+ * Ergebnis des Löschens (Art. 17) als Hinweis zum Abarbeiten (W3, 28.09.): Deals, an denen nur diese Person hing,
+ * und Aufgaben, die sie nur beim Namen nennen (nicht geändert). Nichts offen → null.
+ */
+function loeschErgebnis(r: { dealsOhnePerson?: { id: string; titel: string }[]; aufgabenPruefen?: string[] }): string | null {
+  const deals = r.dealsOhnePerson ?? [];
+  const aufgaben = r.aufgabenPruefen ?? [];
+  const teile = [
+    deals.length ? `${deals.length === 1 ? '1 Deal hat' : `${deals.length} Deals haben`} jetzt keine Person mehr: ${deals.slice(0, 5).map(d => `„${d.titel}“`).join(', ')}${deals.length > 5 ? ' …' : ''} — unter Deals eine Person zuordnen oder den Deal schließen.` : '',
+    aufgaben.length ? `${aufgaben.length === 1 ? '1 Aufgabe nennt' : `${aufgaben.length} Aufgaben nennen`} den Namen noch (nicht geändert) — bitte unter Aufgaben prüfen.` : '',
+  ].filter(Boolean);
+  return teile.length ? `Gelöscht.\n${teile.join('\n')}` : null;
 }
 
 /** Tag plus/minus n Monate (Monatsende gekappt) — für „über 12 Monate her“. */
@@ -525,10 +545,8 @@ function matrixTeile({ k, api, setze, zuFirma, frage }: MatrixInnen): { inhalt: 
     firma: <>
       <MatrixRahmen label="Firma" mittig>
         <div>
-          <input list="crm-firmen-matrix" defaultValue={firma?.name ?? k.firma ?? ''} key={`${k.id}-${firma?.id ?? ''}`} aria-label="Firma" placeholder="Firma zuordnen …"
-            onBlur={e => void firmaZuordnen(e.target.value.trim())} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-            style={{ ...feld, fontSize: TYP.bedien, padding: '7px 10px' }} />
-          <datalist id="crm-firmen-matrix">{firmen.slice(0, 400).map(f => <option key={f.id} value={f.name} />)}</datalist>
+          <FirmaSuchFeld id="crm-firmen-matrix" key={`${k.id}-${firma?.id ?? ''}`} firmen={firmen} anfang={firma?.name ?? k.firma ?? ''} platzhalter="Firma zuordnen …"
+            onFertig={name => void firmaZuordnen(name)} stil={{ ...feld, fontSize: TYP.bedien, padding: '7px 10px' }} />
         </div>
       </MatrixRahmen>
       {firma && <MatrixRahmen label="Rolle"><span style={{ fontSize: TYP.bedien, color: ROLLEN.find(r => r.id === firma.rolle)?.farbe ?? C.inkDim }}>{ROLLEN.find(r => r.id === firma.rolle)?.label ?? firma.rolle}</span></MatrixRahmen>}

@@ -138,9 +138,9 @@ function KreisRunde({ api, name, zuKontakt, zurueck }: RundenProps) {
     if (!s) return;
     setSchritte(l => l.slice(0, -1));
     setPos(s.pos);
-    const jetzt = nachId.get(s.id);
-    // Fehlende Felder fallen beim Speichern weg — so wird „ohne Kreis“ wieder „ohne Kreis“.
-    if (s.kreis && jetzt) void api.kontaktSetzen({ ...jetzt, kreis: s.vorher.kreis, besitzer: s.vorher.besitzer, anrede: s.vorher.anrede });
+    // Nur die drei Felder zurück (Ablaufprüfung 28.09.: vorher der ganze Eintrag aus der Anzeige) — `undefined` leert
+    // das Feld (`kontaktTeil` schickt es als null), so wird „ohne Kreis“ wieder „ohne Kreis“.
+    if (s.kreis && nachId.has(s.id)) void api.kontaktTeil(s.id, { kreis: s.vorher.kreis, besitzer: s.vorher.besitzer, anrede: s.vorher.anrede });
   };
   useTasten((e, imFeld) => { if (!imFeld && e.key.toLowerCase() === 'z' && schritte.length) { e.preventDefault(); rueckgaengig(); } });
 

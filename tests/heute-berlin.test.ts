@@ -4,7 +4,7 @@
 // auf jedem Rechner dasselbe prüft.
 process.env.TZ = 'Europe/Berlin';
 import { describe, it, expect } from 'vitest';
-import { dealAusLead, type LeadZeile } from '../lib/crm/leads';
+import { dealBauen } from '../lib/crm/deal-anlegen';
 import { verarbeitungenStart } from '../lib/crm/datenschutz';
 import { saeubern } from '../lib/crm/speicher';
 import { tagVon, localDay } from '../lib/zeit';
@@ -19,9 +19,8 @@ describe('Tag aus einem Zeitstempel', () => {
     expect(NACHT.slice(0, 10)).toBe('2026-09-27'); // so war es vorher
   });
   it('Deal aus Lead: letzteAktivitaet ist der Berliner Tag', () => {
-    const z = { id: 'f-probe', art: 'firma', name: 'Probe GmbH', personen: [{ id: 'c-probe-1', name: 'P', stufe: 'neu' }], kriterien: {} } as unknown as LeadZeile;
-    const c = dealAusLead(z, { id: 'ch-1', titel: 'Probe', art: 'retainer', betrag: 1000, basis: 'monat', schritt: { text: 'Termin', datum: '2026-10-01' }, besitzer: 'kevin', jetzt: NACHT });
-    expect(c.letzteAktivitaet).toBe('2026-09-28');
+    const r = dealBauen({ titel: 'Probe', firmaId: 'f-probe', schritt: { text: 'Termin', datum: '2026-10-01' } }, { kontakte: [], firmen: [{ id: 'f-probe', name: 'Probe GmbH' }], chancen: [], leadZeilen: [], person: 'kevin', jetzt: NACHT });
+    expect(r.ok && r.chance.letzteAktivitaet).toBe('2026-09-28');
   });
   it('Verarbeitungsverzeichnis: Stand ist der Berliner Tag', () => {
     expect(verarbeitungenStart(NACHT).every(v => v.stand === '2026-09-28')).toBe(true);

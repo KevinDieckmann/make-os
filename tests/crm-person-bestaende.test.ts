@@ -224,7 +224,10 @@ describe('Dubletten zusammenführen', () => {
     expect(Object.keys(m.netzwerk ?? {}).sort()).toEqual(['kevin', 'malin']);
     expect(m.phase).toBe('mql');
 
-    expect(await alles()).not.toMatch(/c-b(?![A-Za-z0-9_-])/);
+    // Seit 28.09. (Ablaufprüfung W4) hält der Zusammenführungs-Lauf b für „Rückgängig“ (30 Tage, Art. 17 räumt ihn),
+    // und das Änderungsprotokoll nennt die Kennung (nie Inhalte) — sonst steht b nirgends mehr.
+    expect((await alles()).split('\n').filter(z => !/^(crm-import-laeufe--|aenderungsprotokoll--)/.test(z)).join('\n')).not.toMatch(/c-b(?![A-Za-z0-9_-])/);
+    expect((await r.clone().json()).laufId).toMatch(/^imp-/);
     const crm = (await db.loadJson<CrmBestand>('crm'))!;
     expect(crm.teilnahmen).toHaveLength(1);
     expect(crm.teilnahmen[0]).toMatchObject({ id: 't2', kontaktId: 'c-a', status: 'da', notiz: 'kam spät' }); // jüngere Auskunft gewinnt, Lücken gefüllt

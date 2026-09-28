@@ -27,6 +27,7 @@ import { firmaNachName } from './firmen-bezug';
 import { ANFRAGE_PRAEFIX, ANFRAGE_FOLLOWUP, istAnfrage, istAnfrageFollowUp } from './marketing';
 import { OFFENE_STUFEN } from './pipeline';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
+import { alleAdressen } from './emails';
 
 export type AnfrageKanal = 'website' | 'mail' | 'linkedin' | 'telefon' | 'empfehlung' | 'event';
 export type AnfrageBezugArt = 'beitrag' | 'kampagne' | 'event';
@@ -65,6 +66,11 @@ export interface AnfrageKontext {
   person: string;
   heute: string; jetzt: string;
   ids: { kontakt: string; followUp: string };
+  /**
+   * Sperrliste (28.09., Ablaufprüfung i): bei einer NEUEN Person — Werbesperre setzen und den Hinweis liefern
+   * (lib/crm/sperrliste.ts `neuanlageSperre`, nur Server). Nicht blockieren: die Anfrage wird festgehalten.
+   */
+  sperre?: (k: Kontakt) => { kontakt: Kontakt; hinweis?: string };
 }
 export interface AnfrageBau {
   /** Die Person nach der Anfrage — neu oder mit Aktivität, Einwilligung, Stufe (und Lead, wenn sie keine Firma hat). */
@@ -93,10 +99,25 @@ export function stufeNachAnfrage(stufe: Kontakt['stufe']): Kontakt['stufe'] {
 }
 /** Text der Aktivität — die Marke, an der eine Anfrage erkannt wird. */
 export const anfrageText = (kanal: AnfrageKanal, text: string) => `${ANFRAGE_PRAEFIX}${kanalInfo(kanal)?.label ?? kanal}: ${text}`.slice(0, GRENZEN.text);
-/** Lead auf „kontaktiert“, wenn er noch neu oder leer ist — sonst unverändert (undefined). */
-export function leadNachAnfrage(alt: Lead | undefined, notiz: string, jetzt: string, person: string): Lead | undefined {
+/** Höchstlänge der Lead-Notiz (wie `leadSaeubern`). */
+export const LEAD_NOTIZ_MAX = 2000;
+const GEKUERZT = '[ältere Notiz gekürzt] …';
+/**
+ * Eine Zeile an eine Notiz hängen, ohne das Neueste zu verlieren (28.09., Ablaufprüfung i): wird es zu lang, fällt
+ * der ÄLTESTE Teil vorne weg (markiert „[ältere Notiz gekürzt]“) — vorher schnitt `slice(0, 2000)` die neue Zeile ab.
+ */
+export function notizAnhaengen(alt: string | undefined, neu: string, max = LEAD_NOTIZ_MAX): { text: string; gekuerzt: boolean } {
+  const ganz = `${alt ? `${alt}\n` : ''}${neu}`;
+  if (ganz.length <= max) return { text: ganz, gekuerzt: false };
+  if (neu.length + GEKUERZT.length + 1 >= max) return { text: neu.slice(0, max), gekuerzt: true };
+  return { text: `${GEKUERZT}${ganz.slice(ganz.length - (max - GEKUERZT.length))}`, gekuerzt: true };
+}
+/** Lead auf „kontaktiert“, wenn er noch neu oder leer ist — sonst unverändert (undefined). `gekuerzt`: ältere Notiz gekürzt. */
+export function leadNachAnfrage(alt: Lead | undefined, notiz: string, jetzt: string, person: string): (Lead & { gekuerzt?: boolean }) | undefined {
   if (alt && alt.status !== 'neu') return undefined;
-  return leadSaeubern({ ...(alt ?? { kriterien: leereKriterien() }), status: 'kontaktiert', notiz: `${alt?.notiz ? `${alt.notiz}\n` : ''}${notiz}`.slice(0, 2000), geaendert: jetzt, geaendertVon: person });
+  const n = notizAnhaengen(alt?.notiz, notiz);
+  const l = leadSaeubern({ ...(alt ?? { kriterien: leereKriterien() }), status: 'kontaktiert', notiz: n.text, geaendert: jetzt, geaendertVon: person });
+  return l && n.gekuerzt ? Object.assign(l, { gekuerzt: true }) : l;
 }
 
 /** Aus einer Eingabe alles bauen, was zu einer Anfrage gehört — ohne zu schreiben. */
@@ -116,7 +137,8 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
     const n = e.neu ?? {};
     const vorname = txt(n.vorname, GRENZEN.name), nachname = txt(n.nachname, GRENZEN.name), firma = txt(n.firma, GRENZEN.firma), email = mailNorm(n.email);
     if (!vorname && !nachname && !firma && !email) return { ok: false, fehler: 'Wer hat angefragt? Name, Firma oder E-Mail.' };
-    const doppelt = email ? ctx.kontakte.find(k => (k.email ?? '').toLowerCase() === email) : undefined;
+    // Dublette über ALLE Adressen der Person (28.09., Ablaufprüfung i) — nicht nur die Haupt-Adresse.
+    const doppelt = email ? ctx.kontakte.find(k => alleAdressen(k).includes(email)) : undefined;
     if (doppelt) { basis = doppelt; hinweis = `${anzeigename(doppelt)} steht schon in der Kartei (gleiche Mail) — die Anfrage hängt jetzt dort.`; }
     else {
       const f = firmaNachName(ctx.crm.firmen, firma);
@@ -130,10 +152,13 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
         herkunft: 'selbst', rechtsgrundlage: 'vertrag',
         quelle: `Anfrage über ${info.label}`, aktivitaeten: [], importiertAm: datum, geaendertAm: ctx.heute,
       };
+      // Sperrliste: nicht blockieren — Werbesperre setzen, Hinweis zeigen (die Anfrage selbst wird beantwortet).
+      const s = ctx.sperre?.(basis);
+      if (s) { basis = s.kontakt; if (s.hinweis) hinweis = s.hinweis; }
     }
   }
   if (basis.eingeschraenkt) return { ok: false, fehler: `${anzeigename(basis)}: Verarbeitung eingeschränkt (Art. 18) — nichts festhalten, erst unter Kontakt › Datenschutz klären.` };
-  if (basis.werbesperre) return { ok: false, fehler: `${anzeigename(basis)} hat eine Werbesperre. Antworten ja — aber in der Karteikarte, nicht über den Eingang.` };
+  if (basis.werbesperre && !neuePerson) return { ok: false, fehler: `${anzeigename(basis)} hat eine Werbesperre. Antworten ja — aber in der Karteikarte, nicht über den Eingang.` };
 
   // Bezug prüfen — nur, was es gibt.
   const bz = e.bezug && idOk(e.bezug.id) ? e.bezug : undefined;
@@ -163,10 +188,10 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
   if (kontakt.firmaId) {
     const f = ctx.crm.firmen.find(x => x.id === kontakt.firmaId);
     const l = f ? leadNachAnfrage(f.lead, leadNotiz, ctx.jetzt, ctx.person) : undefined;
-    if (f && l) firmaLead = { firmaId: f.id, lead: l };
+    if (f && l) { const { gekuerzt, ...lead } = l; firmaLead = { firmaId: f.id, lead }; if (gekuerzt) hinweis = [hinweis, 'Die Lead-Notiz war zu lang — der älteste Teil wurde gekürzt, die neue Zeile steht.'].filter(Boolean).join(' '); }
   } else {
     const l = leadNachAnfrage(kontakt.lead, leadNotiz, ctx.jetzt, ctx.person);
-    if (l) kontakt = { ...kontakt, lead: l };
+    if (l) { const { gekuerzt, ...lead } = l; kontakt = { ...kontakt, lead }; if (gekuerzt) hinweis = [hinweis, 'Die Lead-Notiz war zu lang — der älteste Teil wurde gekürzt, die neue Zeile steht.'].filter(Boolean).join(' '); }
   }
 
   // Wirkung am Beitrag — je Person und Art einmal.

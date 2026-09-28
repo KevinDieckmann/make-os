@@ -3,7 +3,8 @@ import { describe, it, expect } from 'vitest';
 import type { Kontakt } from '../lib/make-one/crm';
 import type { Chance, Firma, Kriterien } from '../lib/crm/typen';
 import { leererBestand } from '../lib/crm/speicher';
-import { sqlBereit, fehltBisSql, abgeleitet, leads, trichter, dealAusLead, leereKriterien, geklaert } from '../lib/crm/leads';
+import { sqlBereit, fehltBisSql, abgeleitet, leads, trichter, leereKriterien, geklaert } from '../lib/crm/leads';
+import { dealBauen } from '../lib/crm/deal-anlegen';
 import { leadSaeubern } from '../lib/crm/lead-form';
 import { grundlauf } from '../lib/heads/grundlauf';
 
@@ -52,8 +53,12 @@ describe('Ebene 1 — Leads', () => {
 describe('Ebene 1 → 2: aus dem SQL wird ein Deal', () => {
   it('Kernfragen, Personen und Firma wandern mit, Stufe „SQL“, nächster Schritt gesetzt', () => {
     const z = leads([k('a', { firmaId: 'f-x', stufe: 'gespraech' }), k('b', { firmaId: 'f-x' })], { ...leererBestand(), firmen: [f('x', { lead: { status: 'qualifizierung', kriterien: krit({ schmerz: 'ja', entscheider: 'ja', zeitpunkt: 'ja' }) } })] }, HEUTE)[0];
-    const d = dealAusLead(z, { id: 'ch-neu', titel: '', art: 'retainer', betrag: 0, basis: 'monat', schritt: { text: 'Bedarfsgespräch', datum: '2026-09-29' }, besitzer: 'malin', jetzt: J });
-    expect(d).toMatchObject({ titel: 'Firma x', firma: 'Firma x', stufe: 'qualifiziert', kontaktIds: ['c-a', 'c-b'], besitzer: 'malin', naechsterSchritt: { text: 'Bedarfsgespräch', datum: '2026-09-29' }, qualifizierung: { schmerz: 'ja', entscheider: 'ja', zeitpunkt: 'ja' }, wert: { betrag: 0 } });
+    // Seit 27.09. der EINE Anlageweg (lib/crm/deal-anlegen.ts); `dealAusLead` war toter Code (Ablaufprüfung 28.09.).
+    const r = dealBauen({ kontaktIds: z.personen.map(p => p.id), firmaId: z.id, schritt: { text: 'Bedarfsgespräch', datum: '2026-09-29' }, besitzer: 'malin' },
+      { kontakte: [k('a', { firmaId: 'f-x' }), k('b', { firmaId: 'f-x' })], firmen: [f('x')], chancen: [], leadZeilen: [z], person: 'kevin', jetzt: J, id: 'ch-neu' });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.chance).toMatchObject({ titel: 'Firma x · Retainer', firma: 'Firma x', stufe: 'qualifiziert', kontaktIds: ['c-a', 'c-b'], besitzer: 'malin', naechsterSchritt: { text: 'Bedarfsgespräch', datum: '2026-09-29' }, qualifizierung: { schmerz: 'ja', entscheider: 'ja', zeitpunkt: 'ja' }, wert: { betrag: 0 } });
   });
 });
 

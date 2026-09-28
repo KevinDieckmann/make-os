@@ -22,6 +22,7 @@ import { datum } from '../daten';
 import { Wahl } from '../Wahl';
 import { Feld } from '../teile';
 import { neueFirma } from '../Firmen';
+import { FirmenDatalist } from '../FirmenDatalist';
 import type { Setze } from '../kontakt-teile';
 
 const klein = { fontSize: 12, color: C.inkLeise } as const;
@@ -108,7 +109,7 @@ export function StationenTeil({ k, api, heute, setze, zuFirma }: { k: Kontakt; a
           <div style={{ fontSize: 12.5, fontWeight: 700 }}>{form.art === 'wechsel' ? 'Firma wechseln — die bisherige Hauptstation endet' : 'Weitere Firma — die Hauptstation bleibt'}</div>
           <input autoFocus list="stationen-firmen" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Firma suchen oder neu …" aria-label="Firma" style={eingabe}
             onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setForm(null); } }} />
-          <datalist id="stationen-firmen">{firmen.slice(0, 400).map(f => <option key={f.id} value={f.name} />)}</datalist>
+          <FirmenDatalist id="stationen-firmen" firmen={firmen} suche={form.name} />
           <input value={form.rolle} onChange={e => setForm({ ...form, rolle: e.target.value })} placeholder="Rolle / Position (optional)" aria-label="Rolle" style={eingabe} />
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <Wahl label="Art" klein liste={STATION_ART_WAHL} wert={form.stationArt} onWahl={a => setForm({ ...form, stationArt: a })} onLeeren={() => setForm({ ...form, stationArt: null })} />

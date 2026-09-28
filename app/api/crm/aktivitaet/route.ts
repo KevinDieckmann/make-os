@@ -17,8 +17,9 @@ import { localDay, tagePlus } from '@/lib/zeit';
 import { sperren } from '@/lib/crm/sperrliste';
 import { anlassPflicht } from '@/lib/crm/recht';
 import { EINGESCHRAENKT_FEHLER } from '@/lib/crm/einschraenkung';
-import { ladeCrm } from '@/lib/crm/speicher';
+import { aendereCrm, ladeCrm } from '@/lib/crm/speicher';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
+import { aktivitaetImCrm } from '@/lib/crm/aktivitaet-folgen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -45,6 +46,13 @@ const ARTEN: readonly AktivitaetArt[] = AKTIVITAET_ARTEN.filter(a => a !== 'syst
 //  · Anruf bei gelber Telefon-Ampel (#58, mutmaßliche Einwilligung): nur mit `anlass` (Text, an der
 //    Aktivität gespeichert; auch aus notiz.anlass) — sonst 409 mit `anlassPflicht: true`.
 //  · Eingeschränkte Person (Art. 18, #51): nichts festhalten — 409 mit `eingeschraenkt: true`.
+//
+// 28.09. (Ablaufprüfung W1/f) — Folgen im CRM-Bestand, in EINER Sperre (`aendereCrm`, lib/crm/aktivitaet-folgen.ts):
+//  · Deal-Ampel: Bezug auf einen offenen Deal (`ch-…`) oder Person mit genau EINEM offenen Deal →
+//    `Chance.letzteAktivitaet` = heute (Berlin) — nicht bei einem erst geplanten Meeting, nie rückwärts.
+//  · Ergebnis „Sperre“ (Werbewiderspruch): offene werbliche Follow-ups der Person (Mail, LinkedIn, Anruf)
+//    werden mit Grund abgesagt, die Person verlässt aktive und Entwurfs-Kampagnen (Reparatur
+//    `werbesperre-kampagne` aus lib/crm/verbindungen.ts).
 
 type Antwort = Record<string, unknown>;
 const mitStandFuer = (k: Kontakt, person: string) => ({ ...fuerPerson(k, person), stand: fingerabdruck(k as unknown as Record<string, unknown>) });
@@ -112,6 +120,8 @@ export async function POST(req: Request) {
 
   let ergebnis: Kontakt | null = null;
   let abgelehnt: { status: number; body: Antwort } | null = null;
+  /** Geplantes Meeting (in der Zukunft) — zählt noch nicht als Aktivität am Deal. */
+  let nurGeplant = false;
   await updateJson<{ kontakte: Kontakt[] }>('kontakte', current => {
     const f = current ?? { kontakte: [] };
     const i = f.kontakte.findIndex(x => x.id === id);
@@ -128,6 +138,7 @@ export async function POST(req: Request) {
     const jetzt = new Date().toISOString();
     // Geplantes Meeting (wann in der Zukunft, 28.09., F1): noch kein Kontakt — keine Folge-Regeln, nur Ausdrückliches.
     const geplant = art === 'termin' && wannInZukunft(wann, jetzt);
+    nurGeplant = geplant;
     let neu = wendeAktivitaetAn(alt, {
       art, text: text || undefined, von, ergebnis: erg, notiz: notiz && Object.keys(notiz).length ? notiz : undefined, bezug,
       ...(wann ? { wann } : {}), ...(art === 'termin' ? { ort: ortSaeubern(b.ort) } : {}), ...(art === 'anruf' && anlass ? { anlass } : {}),
@@ -146,12 +157,11 @@ export async function POST(req: Request) {
   // Werbesperre (Ergebnis „Sperre“): auch auf die gehashte Sperrliste (K2 #60) — ein Import legt die Person nie neu an.
   const gespeichert = ergebnis as Kontakt | null;
   if (gespeichert?.werbesperre) await sperren([gespeichert], 'werbesperre', heute);
-  // Karte aus einer Kampagne: das Ergebnis zählt auch dort (Power Hour ↔ Kampagne).
-  if (bezug?.startsWith('kp-') && erg) {
-    const kErg = erg === 'gespraech' || erg === 'termin' ? 'gespraech' : erg === 'kein_bedarf' || erg === 'sperre' ? 'kein_interesse' : 'angesprochen';
-    const { aendereCrm } = await import('@/lib/crm/speicher');
-    await aendereCrm(c => ({ ...c, kampagnen: c.kampagnen.map(k => (k.id === bezug && k.kontaktIds.includes(id) ? { ...k, ergebnisse: [...k.ergebnisse, { kontaktId: id, ergebnis: kErg, am: heute, ...(von !== 'zoe' ? { von } : {}) }], geaendert: new Date().toISOString(), geaendertVon: von } : k)) }));
-  }
+  // Folgen im CRM-Bestand in EINER Sperre (lib/crm/aktivitaet-folgen.ts): Kampagnen-Ergebnis (Karte aus einer Kampagne —
+  // Power Hour ↔ Kampagne), letzte Aktivität am Deal, bei „Sperre“ werbliche Follow-ups absagen und raus aus Kampagnen.
+  const folgen = { kontakt: gespeichert!, bezug, ergebnis: erg, von, heute, jetzt: new Date().toISOString(), geplant: nurGeplant };
+  const vorab = await ladeCrm();
+  if (aktivitaetImCrm(vorab, folgen).geaendert) await aendereCrm(c => aktivitaetImCrm(c, folgen).crm);
   // Private Notizen sieht nur, wer sie schrieb — auch in dieser Antwort; ohne ausdrückliche Person keine (Regel 5).
   return NextResponse.json({ ok: true, kontakt: ergebnis ? mitStandFuer(ergebnis, personStreng(req) ?? '') : ergebnis, hinweis: erg ? folgeAus(erg, heute, 'neu').hinweis : undefined });
 }

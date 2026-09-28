@@ -17,6 +17,7 @@ import { personAus } from '@/lib/zoe/raum';
 import { fuerPerson, type Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { anfrageBauen, anfragenListe, ANFRAGE_KANAELE, type AnfrageEingabe } from '@/lib/crm/anfragen';
+import { sperrlisteLaden, neuanlageSperre, sperren } from '@/lib/crm/sperrliste';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,13 +47,16 @@ export async function POST(req: Request) {
   const crm = await ladeCrm();
   const eingabe = { kontaktId: b.kontaktId, neu: b.neu, kanal: b.kanal as AnfrageEingabe['kanal'], bezug: b.bezug, text: String(b.text ?? ''), datum: b.datum };
   const ids = { kontakt: neueId('c'), followUp: neueId('fu') };
+  // Sperrliste (28.09., Ablaufprüfung): eine NEUE Person darauf bekommt die Werbesperre — nicht blockiert.
+  const sperrEintraege = await sperrlisteLaden();
+  const sperre = (k: Kontakt) => neuanlageSperre(k, sperrEintraege, heute);
   type Bau = Extract<ReturnType<typeof anfrageBauen>, { ok: true }>['bau'];
   // Prüfen und Schreiben in EINER Sperre auf dem frischen Stand (Prüfbericht 27.09., Punkt 10) — vorher wurde ein vorab
   // geladener Kontakt zurückgeschrieben, und was die andere Person inzwischen geändert hatte, ging verloren.
   let bau: Bau | null = null; let fehler = '';
   await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
     const f = cur ?? { kontakte: [] };
-    const r = anfrageBauen(eingabe, { kontakte: f.kontakte, crm, person, heute, jetzt, ids });
+    const r = anfrageBauen(eingabe, { kontakte: f.kontakte, crm, person, heute, jetzt, ids, sperre });
     if (!r.ok) { fehler = r.fehler; return f; }
     bau = r.bau;
     const i = f.kontakte.findIndex(x => x.id === r.bau.kontakt.id);
@@ -64,6 +68,8 @@ export async function POST(req: Request) {
   });
   if (fehler || !bau) return NextResponse.json({ ok: false, fehler: fehler || 'Anfrage nicht angelegt.' }, { status: 400 });
   const fertig = bau as Bau;
+  // Neue Person mit Werbesperre aus der Sperrliste: auch die Liste trägt sie (idempotent).
+  if (fertig.neuePerson && fertig.kontakt.werbesperre) await sperren([fertig.kontakt], 'werbesperre', heute);
   // 2 · CRM-Bestand: Follow-up, Wirkung am Beitrag, Ergebnis an der Kampagne, Lead der Firma.
   await aendereCrm(c => ({
     ...c,

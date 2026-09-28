@@ -21,7 +21,7 @@
 // die Datenschicht weiter „crm“ (lib/crm, /api/crm) — das ist die Kartei darunter, nicht der Name.
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
 import { Seite, LEUCHT } from '../schlank';
 import { aufloesen, markttraktion, kontaktAkte, angebotAusAdresse, LEISTE, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type SalesReiterAnsicht, type AkteReiter } from '@/lib/crm/adresse';
@@ -37,6 +37,7 @@ import { Marketing } from './Marketing';
 import { Events } from './Events';
 import { Stammdaten } from './Stammdaten';
 import { SchnellErfassen } from './SchnellErfassen';
+import { FehlerHinweis } from './FehlerHinweis';
 import { Runden, type RundenArt } from './Runden';
 import { Leads, SalesTrichter } from './Leads';
 import { SalesStart } from './SalesStart';
@@ -136,6 +137,9 @@ export function MarkttraktionSeite() {
   const router = useRouter(); const params = useSearchParams();
   const { s: bereich, a: ansicht } = aufloesen(params.get('s'), params.get('a'));
   const api = useCrm();
+  const { setFehler, setHinweis } = api;
+  const fehlerZu = useCallback(() => setFehler(null), [setFehler]);
+  const hinweisZu = useCallback(() => setHinweis(null), [setHinweis]);
   const zurueckWie = useZurueck();
   // Die Auswahl steht im Link (k) — so zeigen Zurück, Vor, Schnellsuche und Befunde immer dieselbe Person.
   const kParam = params.get('k');
@@ -200,7 +204,9 @@ export function MarkttraktionSeite() {
         </nav>
       </div>
       <SchnellErfassen api={api} offen={erfassen} onZu={() => setErfassen(false)} kontaktId={bereich === 'kontakte' && auswahl && !auswahl.startsWith('f-') ? auswahl : undefined} />
-      {api.fehler && <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{api.fehler}</div>}
+      {/* Meldungen (K1): fixiert unten, bleiben stehen bis weggeklickt / ~8 s / nächstes Schreiben — nicht mehr oben als Zeile, die das Laden löschte. */}
+      <FehlerHinweis text={api.fehler} onZu={fehlerZu} />
+      <FehlerHinweis text={api.hinweis} onZu={hinweisZu} ton="info" bleibt />
 
       {bereich === 'firmen' && !akteId && <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig farbe={WELT_FARBE.sales} liste={[{ id: 'kartei', label: 'Alle Firmen' }, { id: 'leads', label: 'Leads · qualifizieren' }]} aktiv={ansicht === 'leads' ? 'leads' : 'kartei'} onWahl={a => gehe('firmen', a === 'leads' ? 'leads' : undefined)} /></div>}
       {bereich === 'ueberblick' && <IndexStreifen ids={STREIFEN.markttraktion} titel="Business-Index · Markttraktion" />}

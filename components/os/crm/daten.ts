@@ -16,6 +16,7 @@ import type { MandatLage } from '@/lib/crm/kunden';
 import type { EventZahlen } from '@/lib/crm/events';
 import { deltaAnwenden } from '@/lib/kontakte/delta';
 import { localDay } from '@/lib/zeit';
+import { KontaktStaende, kontaktSchreiben, nacheinanderKette, KONTAKT_KONFLIKT, type KontaktAntwort, type KontaktOp } from '@/lib/crm/kontakt-schreiben';
 
 export interface CrmAntwort {
   ok: boolean; heute: string; stand: CrmBestand;
@@ -61,8 +62,14 @@ export const nurFelder = (t: Record<string, unknown>) => Object.fromEntries(Obje
 
 export const neueId = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
-/** Hinweis bei 409 (28.09., K4): jemand anders hat denselben Eintrag inzwischen geändert. */
-export const KONFLIKT_HINWEIS = 'Wurde inzwischen geändert — neu geladen. Bitte noch einmal.';
+/**
+ * Hinweis bei 409 (28.09., K4; Klartext seit Ablaufprüfung K1): jemand anders hat denselben Eintrag inzwischen geändert.
+ * Die Meldung bleibt stehen (Toast, `FehlerHinweis`), bis sie weggeklickt wird, ~8 s vergehen oder neu geschrieben wird —
+ * das Neuladen danach löscht sie nicht mehr.
+ */
+export const KONFLIKT_HINWEIS = 'Nicht gespeichert — dieser Eintrag wurde inzwischen geändert. Die Anzeige zeigt jetzt den aktuellen Stand. Bitte erneut eingeben.';
+/** Meldung, wenn der Server nicht antwortet — die einzige, die ein erfolgreiches Laden wieder wegnimmt. */
+const NICHT_ERREICHBAR = 'Nicht erreichbar.';
 
 /**
  * Stand je CRM-Eintrag (28.09., K4): `<liste>:<id>` → Fingerabdruck, wie ihn der Server zuletzt schickte.
@@ -79,21 +86,28 @@ const ohneStand = <T extends Record<string, unknown>>(e: T): T => { const { stan
 export function useCrm() {
   const [crm, setCrm] = useState<CrmAntwort | null>(null);
   const [kontakte, setKontakte] = useState<Kontakt[] | null>(null);
-  const [fehler, setFehler] = useState<string | null>(null);
+  const [fehler, setFehlerRoh] = useState<string | null>(null);
+  // Ablaufprüfung K1 (28.09.): eine Meldung verschwindet nicht mehr beim nächsten Laden (der 409-Hinweis wurde vom
+  // sofortigen `laden(true)` gelöscht, bevor ihn jemand sah) — nur beim nächsten Schreiben, Wegklicken oder nach ~8 s.
+  const fehlerJetzt = useRef<string | null>(null);
+  const setFehler = useCallback((t: string | null) => { fehlerJetzt.current = t; setFehlerRoh(t); }, []);
+  // Ergebnis-Hinweis, der stehen bleibt, bis er weggeklickt wird (z. B. nach dem Löschen: was jetzt zu prüfen ist).
+  const [hinweis, setHinweis] = useState<string | null>(null);
   const unterwegs = useRef(0);
   // Letzter Stand je Abfrage — der Abgleich holt nur, was sich geändert hat (25.09.).
   const staende = useRef(new Map<string, string>());
   /** Schreiben ging schief: beim nächsten Abgleich alles frisch holen, damit nichts Ungespeichertes stehen bleibt. */
   const fehlschlag = (text: string) => { staende.current.clear(); setFehler(text); };
+  /** Ein neuer Schreibvorgang beginnt: die alte Meldung hat ihren Zweck erfüllt. */
+  const neuerVersuch = () => { if (fehlerJetzt.current) setFehler(null); };
   // Stand je Eintrag (28.09., K4) und eine Kette für die Schreibvorgänge: nacheinander gesendet, liest jeder den Stand,
   // den die Antwort des vorigen brachte — zwei schnelle Änderungen am selben Eintrag stoßen so nicht aneinander (409).
   const zeilen = useRef(new Map<string, string>());
-  const kette = useRef<Promise<unknown>>(Promise.resolve());
-  const nacheinander = useCallback(<T,>(f: () => Promise<T>): Promise<T> => {
-    const p = kette.current.then(f, f);
-    kette.current = p.catch(() => undefined);
-    return p;
-  }, []);
+  // Dasselbe für Kontakte (Ablaufprüfung K2): Stand je Kontakt aus Server-Antworten — gelesen erst beim Absenden.
+  const kontaktStaende = useRef(new KontaktStaende());
+  // Eine Kette für CRM-Bestand UND Kontakte (lib/crm/kontakt-schreiben.ts `nacheinanderKette`, getestet).
+  const kette = useRef(nacheinanderKette());
+  const nacheinander = useCallback(<T,>(f: () => Promise<T>): Promise<T> => kette.current(f), []);
   const uebernehmen = useCallback((a: CrmAntwort) => { zeilen.current = crmStaende(a.stand); setCrm(a); }, []);
 
   /** `erzwingen` (nach einem 409): auch laden, wenn gerade noch andere Schreibvorgänge unterwegs sind. */
@@ -103,11 +117,12 @@ export function useCrm() {
       const [a, b] = await Promise.all([holeMitStand<CrmAntwort>('/api/crm/bestand', staende.current), holeMitStand<{ kontakte?: Kontakt[]; delta?: boolean; geloescht?: string[] }>('/api/state/kontakte', staende.current)]);
       if (a?.ok) uebernehmen(a);
       // Delta (Stufe 2): der Server kannte unseren Stand und schickt nur, was anders ist.
-      if (b?.delta) setKontakte(alt => (alt ? deltaAnwenden(alt, { geaendert: b.kontakte ?? [], geloescht: b.geloescht ?? [] }) : alt));
-      else if (b) setKontakte(b.kontakte ?? []);
-      setFehler(null);
-    } catch { staende.current.clear(); setFehler('Nicht erreichbar.'); }
-  }, [uebernehmen]);
+      if (b?.delta) { kontaktStaende.current.uebernehmen(b.kontakte ?? [], b.geloescht ?? []); setKontakte(alt => (alt ? deltaAnwenden(alt, { geaendert: b.kontakte ?? [], geloescht: b.geloescht ?? [] }) : alt)); }
+      else if (b) { kontaktStaende.current.alle(b.kontakte ?? []); setKontakte(b.kontakte ?? []); }
+      // Nur „nicht erreichbar“ erledigt sich durch ein gelungenes Laden — jede andere Meldung bleibt stehen (K1).
+      if (fehlerJetzt.current === NICHT_ERREICHBAR) setFehler(null);
+    } catch { staende.current.clear(); setFehler(NICHT_ERREICHBAR); }
+  }, [uebernehmen, setFehler]);
   useEffect(() => { void laden(); }, [laden]);
   // Signale aus Mail und Kalender (höchstens alle 5 Minuten, der Server entscheidet) — danach neu laden, wenn etwas dazukam.
   useEffect(() => { fetch('/api/crm/signale', { method: 'POST' }).then(r => r.json()).then(d => { if (d?.neu) void laden(); }).catch(() => {}); }, [laden]);
@@ -128,6 +143,7 @@ export function useCrm() {
   /** Ein Op an /api/crm/bestand — in der Kette, mit dem zuletzt bekannten Stand des Eintrags. */
   const schreibe = useCallback((op: { liste: CrmListe; op: 'upsert' | 'teil' | 'delete'; id: string; eintrag?: Record<string, unknown>; felder?: Record<string, unknown> }, sonst: string) => {
     unterwegs.current++;
+    neuerVersuch();
     let neuLaden = false;
     return nacheinander(async () => {
       try {
@@ -166,6 +182,7 @@ export function useCrm() {
   /** An Kevin oder Malin übergeben (/api/crm/uebergabe) — danach neu laden. */
   const uebergeben = useCallback(async (body: { art: string; id?: string; ids?: string[]; an: string; notiz?: string; frist?: string }) => {
     unterwegs.current++;
+    neuerVersuch();
     try {
       const r = await fetch('/api/crm/uebergabe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'keine Verbindung' }));
       if (!r.ok) setFehler(r.fehler ?? 'Nicht übergeben.');
@@ -178,65 +195,103 @@ export function useCrm() {
     await schreibe({ liste, op: 'delete', id }, 'Nicht gelöscht.');
   }, [schreibe]);
 
-  /** Antwort einer Kontakt-Änderung auswerten: neue Stände nachtragen; 409 = jemand war schneller → frisch laden. */
-  const kontaktAntwort = useCallback((r: { ok?: boolean; error?: string; konflikte?: unknown[]; zeilen?: { id: string; stand: string }[] }) => {
-    if (r.ok) { const z = new Map((r.zeilen ?? []).map(x => [x.id, x.stand])); if (z.size) setKontakte(alt => (alt ? alt.map(k => (z.has(k.id) ? { ...k, stand: z.get(k.id) } : k)) : alt)); return; }
-    fehlschlag(r.konflikte?.length ? 'Jemand hat diesen Kontakt inzwischen geändert — Stand neu geladen, bitte noch einmal.' : r.error ?? 'Nicht gespeichert.');
-    if (r.konflikte?.length) void laden();
-  }, [laden]);
+  /**
+   * Antwort einer Kontakt-Änderung auswerten: neue Stände in die Anzeige; 409 = jemand war schneller → den aktuellen
+   * Eintrag aus `konflikte[].aktuell` zeigen, Klartext-Hinweis, danach frisch laden. Gibt zurück, ob neu geladen werden muss.
+   */
+  const kontaktAntwort = useCallback((r: KontaktAntwort): boolean => {
+    if (r.ok) {
+      const z = new Map((r.zeilen ?? []).map(x => [x.id, x.stand])); if (z.size) setKontakte(alt => (alt ? alt.map(k => (z.has(k.id) ? { ...k, stand: z.get(k.id) } : k)) : alt));
+      // Neuanlage auf der Sperrliste (28.09.): angelegt mit Werbesperre — der Hinweis bleibt stehen, bis er weggeklickt wird.
+      if (r.hinweis) setHinweis(r.hinweis);
+      return false;
+    }
+    const aktuell = new Map((r.konflikte ?? []).flatMap(k => (k.aktuell?.id ? [[k.aktuell.id, k.aktuell as unknown as Kontakt] as const] : [])));
+    if (aktuell.size) setKontakte(alt => (alt ? alt.map(k => aktuell.get(k.id) ?? k) : alt));
+    fehlschlag(r.konflikte?.length ? KONTAKT_KONFLIKT : r.error ?? 'Nicht gespeichert.');
+    return !!r.konflikte?.length;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /** Kartei: einen Kontakt ändern (ganzer Eintrag) — mit dem Stand, den wir bekamen (409, wenn inzwischen jemand anders schrieb). */
-  const kontaktSetzen = useCallback(async (k: Kontakt) => {
+  /**
+   * Ein Kontakt-Op (Ablaufprüfung K2): in der Kette nacheinander, Stand erst beim Absenden aus dem zuletzt bekannten
+   * Serverstand (`kontaktStaende`, auch aus der Antwort des vorigen Schreibens). Bei 409 danach `laden(true)` — ein
+   * einfaches `laden()` kehrte zurück, solange noch etwas unterwegs war, und die Anzeige blieb veraltet.
+   */
+  const kontaktSchreibe = useCallback((o: KontaktOp): Promise<boolean> => {
     unterwegs.current++;
+    neuerVersuch();
+    let neuLaden = false, ok = false;
+    return nacheinander(async () => {
+      try {
+        const r = await kontaktSchreiben(op => fetch('/api/state/kontakte', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [op] }) }).then(x => x.json() as Promise<KontaktAntwort>), o, kontaktStaende.current);
+        neuLaden = kontaktAntwort(r);
+        ok = !!r.ok;
+      } catch { fehlschlag('Nicht gespeichert — keine Verbindung.'); }
+      finally { unterwegs.current--; }
+      if (neuLaden) await laden(true);
+      return ok;
+    });
+  }, [nacheinander, kontaktAntwort, laden]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * Kartei: einen Kontakt ändern (ganzer Eintrag) — mit dem zuletzt bekannten Serverstand (409, wenn inzwischen jemand anders schrieb).
+   * Für bestehende Kontakte lieber `kontaktTeil`. Liefert, ob der Server es gespeichert hat.
+   */
+  const kontaktSetzen = useCallback(async (k: Kontakt): Promise<boolean> => {
     setKontakte(alt => (alt ? (alt.some(x => x.id === k.id) ? alt.map(x => (x.id === k.id ? k : x)) : [...alt, k]) : alt));
-    try {
-      const r = await fetch('/api/state/kontakte', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ op: 'upsert', eintrag: { ...k, geaendertAm: localDay() }, ...(k.stand ? { stand: k.stand } : {}) }] }) }).then(x => x.json());
-      kontaktAntwort(r);
-    } catch { fehlschlag('Nicht gespeichert — keine Verbindung.'); }
-    finally { unterwegs.current--; }
-  }, [kontaktAntwort]);
+    return kontaktSchreibe({ op: 'upsert', eintrag: { ...k, geaendertAm: localDay() } });
+  }, [kontaktSchreibe]);
 
   /**
    * Kartei: nur diese Felder ändern (Stufe 2) — der Server legt sie auf den aktuellen Stand; so überschreiben Kevin und Malin einander nicht.
    * Ein Feld mit `undefined` heißt „leeren“ und geht als `null` hinaus (`leerAlsNull`) — JSON würde den Schlüssel sonst verwerfen.
    */
   // `firmaWechsel` (28.09.): die Absicht einer Firmenänderung — geht an den Server, nie in den lokalen Stand.
-  const kontaktTeil = useCallback(async (id: string, felder: KontaktFelder) => {
-    unterwegs.current++;
-    let stand: string | undefined;
+  // Liefert, ob der Server es gespeichert hat.
+  const kontaktTeil = useCallback(async (id: string, felder: KontaktFelder): Promise<boolean> => {
     const { firmaWechsel: _absicht, ...lokal } = felder;
-    setKontakte(alt => { stand = alt?.find(x => x.id === id)?.stand; return alt ? alt.map(x => (x.id === id ? { ...x, ...lokal } : x)) : alt; });
-    try {
-      const r = await fetch('/api/state/kontakte', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ op: 'teil', id, felder: { ...leerAlsNull(felder), geaendertAm: localDay() }, ...(stand ? { stand } : {}) }] }) }).then(x => x.json());
-      kontaktAntwort(r);
-    } catch { fehlschlag('Nicht gespeichert — keine Verbindung.'); }
-    finally { unterwegs.current--; }
-  }, [kontaktAntwort]);
+    setKontakte(alt => (alt ? alt.map(x => (x.id === id ? { ...x, ...lokal } : x)) : alt));
+    return kontaktSchreibe({ op: 'teil', id, felder: { ...leerAlsNull(felder), geaendertAm: localDay() } });
+  }, [kontaktSchreibe]);
 
-  /** Aktivität am Kontakt (Ergebnis, Notiz, nächster Schritt) — Regeln laufen auf dem Server. */
+  /**
+   * Aktivität am Kontakt (Ergebnis, Notiz, nächster Schritt) — Regeln laufen auf dem Server. In derselben Kette wie die
+   * Kontakt-Änderungen: eine Aktivität ändert den Stand, eine danach wartende Änderung trägt schon den neuen.
+   */
   const aktivitaet = useCallback(async (body: Record<string, unknown>) => {
     unterwegs.current++;
-    try {
-      const r = await fetch('/api/crm/aktivitaet', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json());
-      // Die Antwort trägt den Kontakt mit Stand (28.09.) — auch bei 409 (Notiz ändern/löschen): dann der aktuelle.
-      if (r.kontakt) setKontakte(alt => (alt ? alt.map(x => (x.id === r.kontakt.id ? r.kontakt : x)) : alt));
-      else fehlschlag(r.error ?? r.fehler ?? 'Nicht gespeichert.');
-      return r as { ok?: boolean; kontakt?: Kontakt; hinweis?: string; error?: string; fehler?: string; konflikt?: boolean; text?: string };
-    } finally { unterwegs.current--; }
-  }, []);
+    neuerVersuch();
+    return nacheinander(async () => {
+      try {
+        // Notiz ändern/löschen braucht den Stand — den zuletzt vom Server gemeldeten, nicht den der Anzeige.
+        const id = typeof body.id === 'string' ? body.id : '';
+        const stand = (body.aktion === 'aendern' || body.aktion === 'loeschen') && id ? kontaktStaende.current.get(id) : undefined;
+        const r = await fetch('/api/crm/aktivitaet', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(stand ? { ...body, stand } : body) }).then(x => x.json());
+        // Die Antwort trägt den Kontakt mit Stand (28.09.) — auch bei 409 (Notiz ändern/löschen): dann der aktuelle.
+        if (r.kontakt) { kontaktStaende.current.setzen(r.kontakt.id, r.kontakt.stand); setKontakte(alt => (alt ? alt.map(x => (x.id === r.kontakt.id ? r.kontakt : x)) : alt)); }
+        // 409 beim Notiz-Ändern zeigt der Aufrufer neben der Eingabe (aktivitaeten-teile.tsx) — hier nur ohne Kontakt eine Meldung.
+        if (!r.kontakt) fehlschlag(r.error ?? r.fehler ?? 'Nicht gespeichert.');
+        return r as { ok?: boolean; kontakt?: Kontakt; hinweis?: string; error?: string; fehler?: string; konflikt?: boolean; text?: string };
+      } catch { fehlschlag('Nicht gespeichert — keine Verbindung.'); return { ok: false, fehler: 'keine Verbindung' } as { ok?: boolean; kontakt?: Kontakt; hinweis?: string; error?: string; fehler?: string; konflikt?: boolean; text?: string }; }
+      finally { unterwegs.current--; }
+    });
+  }, [nacheinander]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** LinkedIn-Netzwerk (/api/crm/netzwerk): ein Schritt an einer Person — die Antwort ersetzt die Person im Stand. */
   const netzwerk = useCallback(async (body: Record<string, unknown>) => {
     unterwegs.current++;
-    try {
-      const r = await fetch('/api/crm/netzwerk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'keine Verbindung' }));
-      if (r.kontakt) setKontakte(alt => (alt ? alt.map(x => (x.id === r.kontakt.id ? r.kontakt : x)) : alt));
-      else if (!r.ok) fehlschlag(r.fehler ?? 'Nicht gespeichert.');
-      return r as { ok: boolean; fehler?: string; kontakt?: Kontakt; vorschau?: Record<string, unknown>; text?: string };
-    } finally { unterwegs.current--; }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    neuerVersuch();
+    return nacheinander(async () => {
+      try {
+        const r = await fetch('/api/crm/netzwerk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'keine Verbindung' }));
+        if (r.kontakt) { kontaktStaende.current.setzen(r.kontakt.id, r.kontakt.stand); setKontakte(alt => (alt ? alt.map(x => (x.id === r.kontakt.id ? r.kontakt : x)) : alt)); }
+        else if (!r.ok) fehlschlag(r.fehler ?? 'Nicht gespeichert.');
+        return r as { ok: boolean; fehler?: string; kontakt?: Kontakt; vorschau?: Record<string, unknown>; text?: string };
+      } finally { unterwegs.current--; }
+    });
+  }, [nacheinander]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { crm, kontakte, fehler, setFehler, laden, setze, teil, uebergeben, weg, kontaktSetzen, kontaktTeil, aktivitaet, netzwerk, ich: crm?.ich ?? null };
+  return { crm, kontakte, fehler, setFehler, hinweis, setHinweis, laden, setze, teil, uebergeben, weg, kontaktSetzen, kontaktTeil, aktivitaet, netzwerk, ich: crm?.ich ?? null };
 }
 export type CrmApi = ReturnType<typeof useCrm>;
 

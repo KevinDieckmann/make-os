@@ -5,6 +5,10 @@
 // Zusammenführen ist eine bewusste Handlung: der behaltene Eintrag bekommt
 // alles, was ihm fehlt, den ganzen Verlauf beider, alle Einwilligungen; eine
 // Werbesperre des anderen gilt weiter (Sperre gewinnt immer).
+//
+// Ablaufprüfung 28.09.: vor dem Zusammenführen zeigt `wasWandert` (rein), was vom weggefallenen Eintrag zum
+// behaltenen wandert; `zusammenfuehrenPruefen` lehnt ab statt still zu kürzen (private Notizen zweier Personen,
+// zusammen zu lange Notiz). „Rückgängig“: lib/crm/zusammenfuehren-lauf.ts (Server).
 
 import { anzeigename, istSammelAdresse, normTelefon, privatNotizVerfasser, STUFEN, VON_HAND_MAX, type Aktivitaet, type Kontakt } from '@/lib/make-one/crm';
 import { suchNorm } from '@/lib/text/such-norm';
@@ -15,6 +19,10 @@ import { personUmbiegen } from './person-verweise';
 import { alleAdressen, emailsVereinen, hauptAdresse } from './emails';
 import { stationenVereinen, hauptStation } from './stationen';
 import { mehrfachVereinen } from './mehrfach';
+import { tagVon } from '@/lib/zeit';
+
+/** Höchstlänge der privaten Notiz (wie `saeubereKontakt`) — zusammen länger → Ablehnung statt Kürzung. */
+export const PRIVAT_NOTIZ_MAX = 2000;
 
 // K2 (28.09.): NFC zuerst und dieselbe Umlaut-Regel wie die Suche („Müller“ NFC/NFD = „Mueller“), EINE Telefon-Normalisierung
 // (`normTelefon`, E.164-nah) wie der Import — vorher wurde „0049 30 …“ hier zu „049…“ und fand „030 …“ nicht.
@@ -95,6 +103,35 @@ export function privatNotizKonflikt(a: Pick<Kontakt, 'privatNotiz' | 'privatNoti
   return !!a.privatNotiz && !!b.privatNotiz && privatNotizVerfasser(a as Kontakt) !== privatNotizVerfasser(b as Kontakt);
 }
 
+/**
+ * Darf zusammengeführt werden? Liefert den Grund der Ablehnung oder null (28.09., Ablaufprüfung h):
+ * private Notizen zweier Personen passen nicht in ein Feld; schrieb dieselbe Person beide, dürfen sie zusammen
+ * nicht über `PRIVAT_NOTIZ_MAX` kommen — nie still kürzen.
+ */
+export function zusammenfuehrenPruefen(a: Kontakt, b: Kontakt): string | null {
+  if (privatNotizKonflikt(a, b)) return 'Beide Einträge haben eine private Notiz von verschiedenen Personen. Bitte zuerst eine davon übertragen oder leeren — sonst ginge sie beim Zusammenführen verloren.';
+  if (a.privatNotiz && b.privatNotiz && a.privatNotiz !== b.privatNotiz && `${a.privatNotiz} · ${b.privatNotiz}`.length > PRIVAT_NOTIZ_MAX) return `Die privaten Notizen beider Einträge wären zusammen länger als ${PRIVAT_NOTIZ_MAX.toLocaleString('de-DE')} Zeichen — bitte eine kürzen, dann zusammenführen. Nichts wurde gekürzt.`;
+  return null;
+}
+
+/** Was vom weggefallenen Eintrag `b` zum behaltenen wandert — für die Bestätigung vor dem Zusammenführen (Anzahlen). */
+export interface Wanderung { deals: number; aktivitaeten: number; followups: number; dateien: number; einwilligungen: number; kampagnen: number }
+export function wasWandert(crm: Pick<CrmBestand, 'chancen' | 'followups' | 'kampagnen'>, b: Kontakt, dateien = 0): Wanderung {
+  return {
+    deals: crm.chancen.filter(c => c.kontaktIds.includes(b.id)).length,
+    aktivitaeten: (b.aktivitaeten ?? []).filter(x => x.art !== 'system').length,
+    followups: (crm.followups ?? []).filter(f => f.kontaktId === b.id || (f.bezug.art === 'kontakt' && f.bezug.id === b.id)).length,
+    dateien,
+    einwilligungen: (b.einwilligungen ?? []).length,
+    kampagnen: (crm.kampagnen ?? []).filter(k => k.kontaktIds.includes(b.id)).length,
+  };
+}
+/** „2 Deals · 14 Aktivitäten · keine Dateien …“ — für die Rückfrage. */
+export function wanderungText(w: Wanderung): string {
+  const t = (n: number, eins: string, viele: string) => `${n || 'keine'} ${n === 1 ? eins : viele}`;
+  return [t(w.deals, 'Deal', 'Deals'), t(w.aktivitaeten, 'Aktivität', 'Aktivitäten'), t(w.followups, 'Follow-up', 'Follow-ups'), t(w.dateien, 'Datei', 'Dateien'), t(w.einwilligungen, 'Einwilligung', 'Einwilligungen'), t(w.kampagnen, 'Kampagne', 'Kampagnen')].join(' · ');
+}
+
 export function zusammenfuehren(a: Kontakt, b: Kontakt, von: string, jetzt: string): Kontakt {
   const out: Kontakt = { ...a };
   for (const f of Object.keys(b) as (keyof Kontakt)[]) {
@@ -125,7 +162,8 @@ export function zusammenfuehren(a: Kontakt, b: Kontakt, von: string, jetzt: stri
   delete out.privatNotiz; delete out.privatNotizVon;
   const pa = privatNotizVerfasser(a), pb = privatNotizVerfasser(b);
   if (a.privatNotiz) {
-    out.privatNotiz = pa === pb && b.privatNotiz && b.privatNotiz !== a.privatNotiz ? `${a.privatNotiz} · ${b.privatNotiz}`.slice(0, 2000) : a.privatNotiz;
+    // Nie gekürzt (28.09., h): zu lang lehnt `zusammenfuehrenPruefen` vorher ab.
+    out.privatNotiz = pa === pb && b.privatNotiz && b.privatNotiz !== a.privatNotiz ? `${a.privatNotiz} · ${b.privatNotiz}` : a.privatNotiz;
     if (a.privatNotizVon) out.privatNotizVon = a.privatNotizVon;
   } else if (b.privatNotiz) {
     out.privatNotiz = b.privatNotiz;
@@ -169,7 +207,8 @@ export function zusammenfuehren(a: Kontakt, b: Kontakt, von: string, jetzt: stri
   if (STUFEN.indexOf(b.stufe) > STUFEN.indexOf(a.stufe) && !['verloren', 'ruht'].includes(b.stufe)) out.stufe = b.stufe;
   if ((b.letzterKontakt ?? '') > (a.letzterKontakt ?? '')) out.letzterKontakt = b.letzterKontakt;
   delete out.stand;
-  out.geaendertAm = jetzt.slice(0, 10);
+  // Berliner Tag (28.09., h) — `jetzt.slice(0, 10)` war nachts der UTC-Vortag.
+  out.geaendertAm = tagVon(jetzt);
   return out;
 }
 

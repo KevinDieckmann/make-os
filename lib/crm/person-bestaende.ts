@@ -52,6 +52,10 @@ import { HEADS, type HeadId } from '@/lib/heads/prompt';
 import { leererStand, standName, type HeadStand, type HeadBericht } from '@/lib/heads/stand';
 import type { ReplayStand } from '@/lib/heads/lauf';
 import { laufHaushalte, laufName, laufOhne, type LaufBestand } from './import-lauf';
+import type { Schnappschuss } from './import-lauf';
+import { crmSchnappschuesse, schnappschuesse, schnappschussKonflikte, schnappschuesseAnwenden, nachSpeicher } from './zusammenfuehren-lauf';
+import { CRM_LISTEN } from './typen';
+import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { sperren } from './sperrliste';
 
 // ── Reine Helfer ─────────────────────────────────────────────────────────────
@@ -388,4 +392,113 @@ export async function personAufzaehlen(id: string) {
   let importLaeufe = 0;
   for (const h of await laufHaushalte()) importLaeufe += ((await loadJson<LaufBestand>(laufName(h)))?.laeufe ?? []).filter(l => laufOhne(l, id).n > 0).length;
   return { ...personVerweise(crm, id), dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe };
+}
+
+/**
+ * Wo eine Kennung „verknüpft“ sein kann — außer in der Kartei selbst und den Import-Konflikten (Ablaufprüfung 28.09., c):
+ * CRM-Bestand, Dateiablage (alle Haushalte), Head-Vorschläge, Termin-Signale, Aufgaben. „Import rückgängig“ fragt damit,
+ * ob ein neu angelegter Kontakt (bzw. eine neue Firma) inzwischen irgendwo hängt: `enthaeltKennung(teil, id)` je Teil.
+ * Einmal laden, dann für viele Kennungen prüfen.
+ */
+export interface VerknuepfungsBestaende { crm: import('./typen').CrmBestand; ablage: DateiEintrag[]; heads: HeadStand['vorschlaege']; signale: SignalStand; tasks: Aufgabe[] }
+export async function verknuepfungsBestaende(): Promise<VerknuepfungsBestaende> {
+  const ablage: DateiEintrag[] = [];
+  for (const h of await ablageHaushalte()) ablage.push(...((await loadJson<{ eintraege: DateiEintrag[] }>(ablageName(h)))?.eintraege ?? []));
+  const heads: HeadStand['vorschlaege'] = [];
+  for (const h of HEADS) heads.push(...((await loadJson<HeadStand>(standName(h)))?.vorschlaege ?? []));
+  return { crm: await ladeCrm(), ablage, heads, signale: (await loadJson<SignalStand>('crm-signale')) ?? {}, tasks: (await loadJson<Tasks>('tasks'))?.tasks ?? [] };
+}
+/** Hängt die Kennung irgendwo (ohne den Eintrag `ohne` im CRM, z. B. die Firma selbst)? Liefert den ersten Bestand oder null. */
+export function verknuepftIn(b: VerknuepfungsBestaende, id: string, ohne?: { liste: 'firmen'; id: string }): string | null {
+  const crm = ohne ? { ...b.crm, firmen: b.crm.firmen.filter(f => f.id !== ohne.id) } : b.crm;
+  if (enthaeltKennung(crm, id)) return 'crm';
+  if (b.ablage.some(e => enthaeltKennung(e, id))) return 'dateien';
+  if (b.heads.some(v => enthaeltKennung(v, id))) return 'heads';
+  if (enthaeltKennung(b.signale, id)) return 'signale';
+  if (b.tasks.some(t => enthaeltKennung(t, id))) return 'aufgaben';
+  return null;
+}
+
+// ── Zusammenführen mit „Rückgängig“ (28.09., Ablaufprüfung W4) ──────────────
+// Diese Datei kennt die Speicher — also rechnet sie auch, was `personUmbiegen` in CRM, Dateiablage und Aufgaben
+// ändern WIRD (Schnappschüsse für den Zusammenführungs-Lauf), und schreibt die Vorher-Stände beim Rückgängig zurück.
+
+type MitId = { id: string } & Record<string, unknown>;
+
+/** Was `personUmbiegen(alt, neu)` in CRM, Dateiablage und Aufgaben ändern wird — rein auf dem aktuellen Stand gerechnet. */
+export async function umbiegenSchnappschuesse(alt: string, neu: string): Promise<Schnappschuss[]> {
+  if (!alt || !neu || alt === neu) return [];
+  const raus: Schnappschuss[] = [];
+  const crm = await ladeCrm();
+  if (enthaeltKennung(crm, alt)) raus.push(...crmSchnappschuesse(crm, crmUm(crm, alt, neu)));
+  for (const h of await ablageHaushalte()) {
+    const e = (await loadJson<{ eintraege: DateiEintrag[] }>(ablageName(h)))?.eintraege ?? [];
+    const r = ablageUm(e, alt, neu);
+    if (r.n) raus.push(...schnappschuesse(`dateien:${h}`, e as unknown as MitId[], r.eintraege as unknown as MitId[]));
+  }
+  const tasks = (await loadJson<Tasks>('tasks'))?.tasks ?? [];
+  const t = aufgabenUm(tasks, alt, neu);
+  if (t.n) raus.push(...schnappschuesse('tasks', tasks as MitId[], t.tasks as MitId[]));
+  return raus;
+}
+
+const DATEIEN_SPEICHER = /^dateien:([a-z0-9][a-z0-9-]{0,39})$/;
+/** Aktueller Stand eines Schnappschuss-Speichers (`crm:<liste>`, `dateien:<haushalt>`, `tasks`) — null, wenn unbekannt. */
+export async function schnappschussListe(speicher: string, crm?: CrmBestandT): Promise<MitId[] | null> {
+  if (speicher.startsWith('crm:')) {
+    const l = speicher.slice(4) as (typeof CRM_LISTEN)[number];
+    if (!(CRM_LISTEN as readonly string[]).includes(l)) return null;
+    return ((crm ?? await ladeCrm())[l] ?? []) as unknown as MitId[];
+  }
+  const d = DATEIEN_SPEICHER.exec(speicher);
+  if (d) return ((await loadJson<{ eintraege: DateiEintrag[] }>(ablageName(d[1])))?.eintraege ?? []) as unknown as MitId[];
+  if (speicher === 'tasks') return ((await loadJson<Tasks>('tasks'))?.tasks ?? []) as MitId[];
+  return null;
+}
+type CrmBestandT = Awaited<ReturnType<typeof ladeCrm>>;
+
+/**
+ * Vorher-Stände zurückschreiben — je Speicher EINE Sperre mit erneuter Prüfung (hat inzwischen jemand geschrieben,
+ * bleibt dieser Speicher unangetastet und steht in `konflikte`). Das CRM zuerst und als Ganzes (alle Listen in einer Sperre).
+ */
+export async function schnappschuesseZurueck(s: readonly Schnappschuss[], wer?: Wer): Promise<{ zurueck: number; konflikte: string[] }> {
+  let zurueck = 0;
+  const konflikte: string[] = [];
+  const gruppen = nachSpeicher(s);
+  const crmTeile = Array.from(gruppen).filter(([k]) => k.startsWith('crm:'));
+  if (crmTeile.length) {
+    let passt = true;
+    await aendereCrm(c => {
+      for (const [k, x] of crmTeile) if (schnappschussKonflikte(x, (c[k.slice(4) as (typeof CRM_LISTEN)[number]] ?? []) as unknown as MitId[]).length) passt = false;
+      if (!passt) return c;
+      const neu = { ...c } as Record<string, unknown>;
+      for (const [k, x] of crmTeile) { neu[k.slice(4)] = schnappschuesseAnwenden((c[k.slice(4) as (typeof CRM_LISTEN)[number]] ?? []) as unknown as MitId[], x); zurueck += x.length; }
+      return neu as unknown as CrmBestandT;
+    }, wer);
+    if (!passt) konflikte.push('crm');
+  }
+  for (const [k, x] of Array.from(gruppen)) {
+    if (k.startsWith('crm:')) continue;
+    const d = DATEIEN_SPEICHER.exec(k);
+    const name = d ? ablageName(d[1]) : k === 'tasks' ? 'tasks' : null;
+    if (!name) { konflikte.push(k); continue; }
+    const feld = d ? 'eintraege' : 'tasks';
+    let passt = true;
+    await updateJson<Record<string, unknown>>(name, cur => {
+      const f = cur ?? {};
+      const liste = (Array.isArray(f[feld]) ? f[feld] : []) as MitId[];
+      if (schnappschussKonflikte(x, liste).length) { passt = false; return f; }
+      zurueck += x.length;
+      return { ...f, [feld]: schnappschuesseAnwenden(liste, x) };
+    });
+    if (!passt) konflikte.push(k);
+  }
+  return { zurueck, konflikte };
+}
+
+/** Kurz gerechnet, damit die Oberfläche vor dem Zusammenführen zeigen kann, was wandert: Dateien der Person (alle Haushalte). */
+export async function dateienDerPerson(id: string): Promise<number> {
+  let n = 0;
+  for (const h of await ablageHaushalte()) n += ((await loadJson<{ eintraege: DateiEintrag[] }>(ablageName(h)))?.eintraege ?? []).filter(e => e.kontaktId === id).length;
+  return n;
 }

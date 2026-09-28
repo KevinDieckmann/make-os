@@ -32,7 +32,7 @@ import { useRouter } from 'next/navigation';
 import { WEG } from '@/lib/wege';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Chip, Punkt, LEUCHT, SPALTEN_AB } from '../schlank';
+import { Karte, Ueberschrift, Leer, Chip, Punkt, Knopf, LEUCHT, SPALTEN_AB } from '../schlank';
 import { anzeigename, STUFE_LABEL, type Kontakt, rollenVon, ROLLE_LABEL } from '@/lib/make-one/crm';
 import { ampel as kanalAmpel } from '@/lib/crm/recht';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
@@ -178,6 +178,8 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
   );
 
   if (!api.kontakte) return <Karte i={0}>{zurueckKnopf}<Leer>Der Kontakt lädt …</Leer></Karte>;
+  // Ablaufprüfung 28.09.: kam der CRM-Bestand nicht (/api/crm/bestand gescheitert), ist das ein Ladefehler — nicht „gibt es nicht mehr“.
+  if (k && !crm) return <Karte i={0}>{zurueckKnopf}<Leer>Die Akte konnte nicht vollständig geladen werden (Deals, Mandate, Firmen fehlen). <Knopf leise onClick={async () => { await api.laden(true); }}>Neu laden</Knopf></Leer></Karte>;
   if (!k || !v) return <Karte i={0}>{zurueckKnopf}<Leer>Diese Person gibt es nicht mehr — gelöscht oder mit einer Dublette zusammengeführt.</Leer></Karte>;
 
   const firma = k.firmaId ? crm?.stand.firmen.find(f => f.id === k.firmaId) : undefined;

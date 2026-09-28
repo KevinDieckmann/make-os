@@ -26,6 +26,8 @@ import { taktVon } from './followup';
 import { haeltBeziehung, zustaendig, BEIDE } from './team';
 import { hatTyp } from './mehrfach';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
+import { dealZuFirma, mandatZuFirma } from './firmen-bezug';
+import { personenDerFirma } from './stationen';
 
 export type Kategorie = 'versprechen' | 'signale' | 'chancen' | 'kunden' | 'pflege' | 'neu';
 export const KATEGORIEN: { id: Kategorie; label: string; warum: string }[] = [
@@ -64,7 +66,11 @@ export function unbeantwortet(k: Kontakt, heute?: string): boolean {
   return !heute || tage(l[l.length - 1].am, heute) <= 14;
 }
 
-export interface Auswahl { karten: Karte[]; ausgefiltert: { sperre: number; ohneKanal: number; kuerzlich: number; beiAnderen: number } }
+/**
+ * `ohnePerson` (28.09., Ablaufprüfung): Deals/Mandate ohne Person, deren Firma auch niemanden hat, der angerufen
+ * werden kann — sie fehlen hier und werden gezählt (Deals › Liste zeigt sie).
+ */
+export interface Auswahl { karten: Karte[]; ausgefiltert: { sperre: number; ohneKanal: number; kuerzlich: number; beiAnderen: number; ohnePerson?: number } }
 
 /** Wem eine Karte gehört: Chance → Mandat → Kampagne → Einladung zum Event → wer die Beziehung hält. */
 export function karteGehoert(c: Pick<Karte, 'kontakt' | 'chance' | 'bezug'>, crm: CrmBestand): string {
@@ -83,7 +89,19 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   for (const c of crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe))) for (const id of c.kontaktIds) chancenJe.set(id, [...(chancenJe.get(id) ?? []), c]);
   const mandatJe = new Set(crm.mandate.filter(m => m.status === 'aktiv' || m.status === 'verhandlung').flatMap(m => m.kontaktIds));
   const kandidaten = new Map<string, Karte>();
-  const aus = { sperre: 0, ohneKanal: 0, kuerzlich: 0, beiAnderen: 0 };
+  const aus = { sperre: 0, ohneKanal: 0, kuerzlich: 0, beiAnderen: 0, ohnePerson: 0 };
+  /**
+   * Die Person, über die ein Deal/Mandat angesprochen wird (28.09., Ablaufprüfung): die erste eigene — hat er keine
+   * (mehr), eine laufende Person der Firma (nicht gesperrt/eingeschränkt). `ueberFirma` = der Firmenname für den Grund.
+   */
+  const ansprech = (ids: string[], passt: (f: CrmBestand['firmen'][number]) => boolean): { k?: Kontakt; ueberFirma?: string } => {
+    const eigene = ids.map(id => nachId.get(id)).find((k): k is Kontakt => !!k);
+    if (eigene) return { k: eigene };
+    const f = crm.firmen.find(passt);
+    if (!f) return {};
+    const k = personenDerFirma(kontakte, f.id, { nurAktiv: true }).find(x => !ausgenommen(x));
+    return k ? { k, ueberFirma: f.name } : {};
+  };
 
   const nimm = (k: Kontakt | undefined, kategorie: Kategorie, punkte: number, grund: string, extra: Partial<Karte> = {}) => {
     if (!k) return;
@@ -121,15 +139,22 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   for (const c of crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe))) {
     const g = gesundheit(c, heute);
     const wertPunkte = Math.round(Math.log10(gesamtwert(c) + 1) * 4);
-    const k = nachId.get(c.kontaktIds[0]);
-    if (c.naechsterSchritt && c.naechsterSchritt.datum <= heute) nimm(k, 'chancen', 40 + wertPunkte, `„${c.titel}“: ${c.naechsterSchritt.text} (fällig ${c.naechsterSchritt.datum})`, { chance: c });
-    else if (g.ampel === 'rot') nimm(k, 'chancen', 30 + wertPunkte, `„${c.titel}“ hängt: ${g.gruende[0]}`, { chance: c });
-    else if (c.erwartetAm && tage(heute, c.erwartetAm) >= 0 && tage(heute, c.erwartetAm) <= 14) nimm(k, 'chancen', 20 - Math.round(tage(heute, c.erwartetAm) / 14 * 20) + wertPunkte, `„${c.titel}“: Entscheidung bis ${c.erwartetAm}`, { chance: c });
+    // Deal ohne Person (28.09.): über die Firma — sonst fiel er hier still heraus.
+    const { k, ueberFirma } = ansprech(c.kontaktIds, f => dealZuFirma(c, f));
+    const ueber = ueberFirma ? ` — Deal ohne Person, über ${ueberFirma}` : '';
+    const faellig = !!c.naechsterSchritt && c.naechsterSchritt.datum <= heute;
+    const bald = !!c.erwartetAm && tage(heute, c.erwartetAm) >= 0 && tage(heute, c.erwartetAm) <= 14;
+    if (!k && (faellig || g.ampel === 'rot' || bald)) { aus.ohnePerson++; continue; }
+    if (faellig) nimm(k, 'chancen', 40 + wertPunkte, `„${c.titel}“: ${c.naechsterSchritt!.text} (fällig ${c.naechsterSchritt!.datum})${ueber}`, { chance: c });
+    else if (g.ampel === 'rot') nimm(k, 'chancen', 30 + wertPunkte, `„${c.titel}“ hängt: ${g.gruende[0]}${ueber}`, { chance: c });
+    else if (bald) nimm(k, 'chancen', 20 - Math.round(tage(heute, c.erwartetAm!) / 14 * 20) + wertPunkte, `„${c.titel}“: Entscheidung bis ${c.erwartetAm}${ueber}`, { chance: c });
   }
   // 4 Kunden
   for (const m of crm.mandate.filter(m => m.status === 'aktiv')) {
     const l = mandatLage(m, heute);
-    const k = nachId.get(m.kontaktIds[0]);
+    const { k } = ansprech(m.kontaktIds, f => mandatZuFirma(m, f));
+    const faellig = (l.kuendigungIn !== null && l.kuendigungIn <= 90) || (!!m.naechstesReview && m.naechstesReview <= heute) || l.ampel === 'rot' || l.ampel === 'gelb';
+    if (!k && faellig) { aus.ohnePerson++; continue; }
     if (l.kuendigungIn !== null && l.kuendigungIn < 0) nimm(k, 'kunden', 40, `${m.kunde}: Laufzeit seit ${-l.kuendigungIn} Tagen vorbei — verlängern oder abschließen`, { bezug: m.id });
     else if (l.kuendigungIn !== null && l.kuendigungIn <= 90) nimm(k, 'kunden', 45, `${m.kunde}: Laufzeit endet in ${l.kuendigungIn} Tagen — Verlängerung ansprechen`, { bezug: m.id });
     else if (m.naechstesReview && m.naechstesReview <= heute) nimm(k, 'kunden', 35, `${m.kunde}: Review fällig`, { bezug: m.id });

@@ -31,7 +31,7 @@ import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
 import { mitStand } from '@/lib/store/fingerabdruck';
 import { deltaAus, staende, StandGedaechtnis } from '@/lib/kontakte/delta';
 import { saeubereKontakt, kontaktVereinen, privatNotizVereinen, fuerPerson, teilAnwenden, massenStufe, pipelineStand, MASSEN_GRENZE, serverStempel, bezuegeSynchron, sperreAufhebenPruefen, sperreAufhebenVermerk, sperreBehalten, kontaktZuGross, type Kontakt } from '@/lib/make-one/crm';
-import { sperren, entsperren } from '@/lib/crm/sperrliste';
+import { sperren, entsperren, sperrlisteLaden, neuanlageSperre, SPERR_HINWEIS } from '@/lib/crm/sperrliste';
 import { localDay } from '@/lib/zeit';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { karteiZugang, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
@@ -117,6 +117,10 @@ export async function PATCH(req: Request) {
   // U2 (28.09.): Datenschutz-Felder stempelt der Server — Person aus der Sitzung, sonst „system“ (nie „kevin“, Regel 5).
   const jetztIso = new Date().toISOString();
   const ds = (neu: Kontakt, alt: Kontakt | undefined) => datenschutzStempeln(neu, alt, ich ?? 'system', jetztIso, heute);
+  // Sperrliste bei Neuanlage (28.09., Ablaufprüfung): Kartei, Visitenkarte, Einlass legen hier an — steht die neue Person
+  // auf der Sperrliste, bekommt sie die Werbesperre (nicht blockiert, wie der Import es prüft) und die Antwort einen Hinweis.
+  const sperrEintraege = ops.some(o => o.op === 'upsert') ? await sperrlisteLaden() : [];
+  const neuGesperrt: string[] = [];
   const r = await listePatchen<Kontakt, Bestand>('kontakte', 'kontakte', ops, 20, undefined, {
     // Änderungsprotokoll (28.09., K1 #44): wer — aus der Sitzung bzw. dem Dienstweg, nie aus dem Body.
     wer: werAus(req),
@@ -131,7 +135,11 @@ export async function PATCH(req: Request) {
       // K2: ein ganzer Eintrag hebt eine Sperre nie auf (Sperre gewinnt) — nur ein geprüfter `teil` mit Nachweis.
       return serverStempel(bezuegeSynchron(ds(ausTeil.has(neu) ? mitZahlung : sperreBehalten(mitZahlung, alt), alt), alt, heute, firmaName), alt, heute);
     },
-    neu: eintrag => serverStempel(bezuegeSynchron(ds(eintrag, undefined), undefined, heute, firmaName), undefined, heute),
+    neu: roh => {
+      const s = neuanlageSperre(roh, sperrEintraege, heute);
+      if (s.hinweis) neuGesperrt.push(roh.id);
+      return serverStempel(bezuegeSynchron(ds(s.kontakt, undefined), undefined, heute, firmaName), undefined, heute);
+    },
     // `teil`: Felder auf den gespeicherten Kontakt legen, dann dieselbe Prüfung wie für einen ganzen Eintrag.
     // `null` = Feld entfernen (28.09., F1 — `teilAnwenden`), danach säubern; `vonHandMarkieren` (im `vereinen`) zählt das Leeren als von Hand.
     // Löschmarken setzt nur der Server (es gelten die gespeicherten); die IBAN kommt maskiert zurück und bleibt, wenn keine neue gültige kommt (28.09., H4).
@@ -188,5 +196,5 @@ export async function PATCH(req: Request) {
   if (gesperrt.length) await sperren(gesperrt, 'werbesperre', heute);
   for (const k of aufgehoben) await entsperren(k);
   for (const id of loeschIds) if (geloeschtVorher.has(id) && !(r.next?.kontakte ?? []).some(k => k.id === id)) await personEntfernen(id, geloeschtVorher.get(id));
-  return NextResponse.json({ ok: true, angewandt: r.angewandt, zeilen: r.zeilen ?? [], stand: pipelineStand(r.next?.kontakte ?? []) });
+  return NextResponse.json({ ok: true, angewandt: r.angewandt, zeilen: r.zeilen ?? [], stand: pipelineStand(r.next?.kontakte ?? []), ...(neuGesperrt.length ? { hinweis: SPERR_HINWEIS, gesperrtNeu: neuGesperrt } : {}) });
 }

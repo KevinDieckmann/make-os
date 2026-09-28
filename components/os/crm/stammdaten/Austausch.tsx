@@ -28,7 +28,7 @@ interface Vorschau {
   gesperrt?: number; uebergang?: number; warnungen?: ImportWarnung[]; pruefung?: Record<WarnArt, number>;
 }
 const WARN_LABEL: Record<WarnArt, string> = { spalten: 'verrutschte Zeilen', excel_zahl: 'Excel-Kurzform (E+)', plz_null: 'PLZ ohne führende Null', datum: 'unlesbares Datum' };
-const LAUF_GRUND: Record<LaufKonflikt['grund'], string> = { 'seitdem geändert': 'seitdem geändert', 'nicht mehr da': 'nicht mehr da', 'inzwischen verknüpft': 'inzwischen an Deal/Mandat/Kampagne' };
+const LAUF_GRUND: Record<LaufKonflikt['grund'], string> = { 'seitdem geändert': 'seitdem geändert', 'nicht mehr da': 'nicht mehr da', 'inzwischen verknüpft': 'inzwischen verknüpft (Deal, Mandat, Datei, Aufgabe …)' };
 /** Die gewählte Quelle: hochgeladene Datei oder der Mac-Schreibtisch (leer). */
 type Quelle = { csv: string; name: string } | Record<string, never>;
 
@@ -45,7 +45,8 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
   const [stand, setStand] = useState<KonfliktStand>(leererKonfliktStand());
   const [zeigeDubletten, setZeigeDubletten] = useState(false);
   const [laeufe, setLaeufe] = useState<LaufKurz[]>([]);
-  const name = useCallback((id: string) => { const k = (api.kontakte ?? []).find(x => x.id === id); return k ? anzeigename(k) : id; }, [api.kontakte]);
+  // Kontakt oder (seit 28.09., W7) eine vom Import angelegte Firma.
+  const name = useCallback((id: string) => { const k = (api.kontakte ?? []).find(x => x.id === id); if (k) return anzeigename(k); return api.crm?.stand.firmen.find(f => f.id === id)?.name ?? id; }, [api.kontakte, api.crm]);
 
   const standLaden = useCallback(async () => {
     const r = await fetch('/api/crm/import').then(x => x.json()).catch(() => null) as (KonfliktStand & { ok: boolean }) | null;
@@ -88,11 +89,11 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
 
   /** Import-Lauf zurücknehmen (K2 #25): nur unveränderte Kontakte, der Rest wird als Konflikt gemeldet. */
   const zuruecknehmen = async (l: LaufKurz) => {
-    if (!window.confirm(`Import vom ${datum(l.am)} zurücknehmen? ${l.neu} neue Kontakte fallen weg, ${l.geaendert} geänderte bekommen ihren Stand von vorher — nur, wer seitdem nicht von Hand geändert wurde.`)) return;
+    if (!window.confirm(`Import vom ${datum(l.am)} zurücknehmen? ${l.neu} neue Kontakte fallen weg, ${l.geaendert} geänderte bekommen ihren Stand von vorher — nur, wer seitdem nicht von Hand geändert wurde. Firmen, die der Import neu anlegte, fallen mit weg, wenn niemand mehr an ihnen hängt.`)) return;
     const r = await post({ aktion: 'rueckgaengig', laufId: l.id });
     if (r.error || r.fehler) { setMeldung(r.error ?? r.fehler); return; }
     const k = (r.konflikte as LaufKonflikt[] | undefined) ?? [];
-    setMeldung(`Import zurückgenommen: ${r.zurueck} Kontakte zurückgesetzt${k.length ? ` · ${k.length} nicht angefasst (${k.slice(0, 5).map(x => `${name(x.id)}: ${LAUF_GRUND[x.grund]}`).join(', ')}${k.length > 5 ? ' …' : ''})` : ''}.`);
+    setMeldung(`Import zurückgenommen: ${r.zurueck} Kontakte zurückgesetzt${r.firmen ? ` · ${r.firmen} neu angelegte Firmen entfernt` : ''}${k.length ? ` · ${k.length} nicht angefasst (${k.slice(0, 5).map(x => `${name(x.id)}: ${LAUF_GRUND[x.grund]}`).join(', ')}${k.length > 5 ? ' …' : ''})` : ''}.`);
     await standLaden(); laden(); void api.laden();
   };
 

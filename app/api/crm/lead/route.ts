@@ -9,6 +9,11 @@
 // POST { aktion: 'mandat', chanceId }   → gewonnener Deal wird Mandat (Deals ›
 //      Kunden); Firma wird Kunde, Personen Lebensphase „Kunde“.
 // Nichts wird versendet.
+//
+// Ablaufprüfung 28.09.: Art. 18 — eine eingeschränkte Person wird nicht verarbeitet: `setze` an ihrem Lead und
+// `mandat` mit ihr → 409 `EINGESCHRAENKT_FEHLER`; `uebernehmen` lässt sie aus (ist es ihr eigener Lead: 409).
+// `sql` prüft es im Anlageweg (lib/crm/deal-anlegen.ts). Mandat-Kunde nur aus der Firma, sonst „Privatkunde“ —
+// nie der Deal-Titel (der konnte einen Personennamen tragen).
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
@@ -24,14 +29,15 @@ import { dealAnlegen } from '@/lib/crm/deal-anlegen';
 import { leadSaeubern } from '@/lib/crm/lead-form';
 import { phaseHeben } from '@/lib/crm/lifecycle';
 import { wer, BEIDE } from '@/lib/crm/team';
+import { EINGESCHRAENKT_FEHLER } from '@/lib/crm/einschraenkung';
 import type { Lead, Mandat } from '@/lib/crm/typen';
+import { angenommenZuDeal, mandatVorbelegung } from '@/lib/crm/angebote';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const neueId = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 const tagOk = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
-import { angenommenZuDeal, mandatVorbelegung } from '@/lib/crm/angebote';
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
@@ -68,9 +74,13 @@ export async function POST(req: Request) {
     const c = crm.chancen.find(x => x.id === b.chanceId);
     if (!c || c.stufe !== 'gewonnen') return NextResponse.json({ ok: false, fehler: 'Nur ein gewonnener Deal wird Mandat.' }, { status: 400 });
     if (crm.mandate.some(m => m.chanceId === c.id)) return NextResponse.json({ ok: false, fehler: 'Zu diesem Deal gibt es schon ein Mandat.' }, { status: 409 });
+    // Art. 18: mit einer eingeschränkten Person entsteht kein Mandat (Verarbeitung gesperrt).
+    if (c.kontaktIds.some(id => kontakte.find(k => k.id === id)?.eingeschraenkt)) return NextResponse.json({ ok: false, fehler: EINGESCHRAENKT_FEHLER, eingeschraenkt: true }, { status: 409 });
+    // Kunde = die Firma (Stammdaten vor dem Text am Deal), sonst „Privatkunde“ — nie der Deal-Titel (Personenname, Art. 17).
+    const kunde = (c.firmaId ? crm.firmen.find(f => f.id === c.firmaId)?.name : undefined) ?? c.firma ?? 'Privatkunde';
     // (die Prüfung läuft unten noch einmal INNERHALB der Sperre — ein Doppelklick legt kein zweites Mandat an, Stufe 2)
     const m: Mandat = {
-      id: neueId('m'), kunde: c.firma ?? c.titel, ...(c.firmaId ? { firmaId: c.firmaId } : {}), kontaktIds: c.kontaktIds, titel: c.titel, art: c.art, chanceId: c.id, gesellschaft: c.gesellschaft, status: 'aktiv',
+      id: neueId('m'), kunde, ...(c.firmaId ? { firmaId: c.firmaId } : {}), kontaktIds: c.kontaktIds, titel: c.titel, art: c.art, chanceId: c.id, gesellschaft: c.gesellschaft, status: 'aktiv',
       // Das Produkt reist mit (26.09.) — sonst sieht die Produkt-Auswertung das Mandat nie.
       ...(c.leistungId ? { leistungId: c.leistungId } : {}),
       vertragUnterschrieben: false, start: tagVon(jetzt), verlaengerung: 'offen',
@@ -96,7 +106,7 @@ export async function POST(req: Request) {
     if (schonDa) return NextResponse.json({ ok: false, fehler: 'Zu diesem Deal gibt es schon ein Mandat.' }, { status: 409 });
     // Lifecycle (Prüfbericht F1): eine gesetzte Phase vor „Kunde“ wird Kunde — ohne gesetzte Phase bleibt es beim Vorschlag.
     await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => {
-      if (!ids.has(k.id)) return k;
+      if (!ids.has(k.id) || k.eingeschraenkt) return k;
       const phase = phaseHeben(k.phase, 'kunde');
       return { ...k, lebensphase: 'kunde', stufe: 'gewonnen', ...(phase ? { phase } : {}), geaendertAm: tagVon(jetzt) };
     }) }));
@@ -104,6 +114,9 @@ export async function POST(req: Request) {
   }
 
   const id = String(b.id ?? '');
+  // Art. 18: der eigene Lead einer eingeschränkten Person wird weder gesetzt, noch SQL, noch übernommen (die Lead-Liste
+  // kennt sie ohnehin nicht — hier die klare Antwort statt „nicht gefunden“).
+  if (!id.startsWith('f-') && kontakte.find(k => k.id === id)?.eingeschraenkt) return NextResponse.json({ ok: false, fehler: EINGESCHRAENKT_FEHLER, eingeschraenkt: true }, { status: 409 });
   const zeile = leads(kontakte, crm, localDay()).find(z => z.id === id);
   if (!zeile) return NextResponse.json({ ok: false, fehler: 'Lead nicht gefunden.' }, { status: 404 });
   const basis = (alt: Lead | undefined): Lead => alt ?? { status: zeile.status, kriterien: zeile.kriterien };
@@ -147,13 +160,15 @@ export async function POST(req: Request) {
     const an = wer(b.an ?? person);
     if (!an || an === BEIDE) return NextResponse.json({ ok: false, fehler: 'Übernehmen braucht eine Person (kevin oder malin).' }, { status: 400 });
     const ids = new Set(zeile.personen.map(p => p.id));
-    let n = 0;
+    // Art. 18: eingeschränkte Personen einer Firma bleiben unberührt (werden gezählt, nicht übernommen).
+    let n = 0, ausgelassen = 0;
     await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => {
       if (!ids.has(k.id) || (k.besitzer && k.besitzer !== BEIDE)) return k;
+      if (k.eingeschraenkt) { ausgelassen++; return k; }
       n++;
       return { ...k, besitzer: an, geaendertAm: tagVon(jetzt), aktivitaeten: [...(k.aktivitaeten ?? []), { am: jetzt, art: 'uebergabe' as const, von: person, text: `Übernommen in der Qualifizierungsrunde von ${an}` }] };
     }) }));
-    return NextResponse.json({ ok: true, uebernommen: n, an });
+    return NextResponse.json({ ok: true, uebernommen: n, an, ...(ausgelassen ? { ausgelassen, hinweis: `${ausgelassen} eingeschränkte Person(en) (Art. 18) nicht übernommen.` } : {}) });
   }
 
   return NextResponse.json({ ok: false, fehler: 'aktion: setze, sql, mandat oder uebernehmen.' }, { status: 400 });

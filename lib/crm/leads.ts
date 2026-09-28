@@ -24,7 +24,6 @@ import { haeltBeziehung } from './team';
 import { dealZuFirma } from './firmen-bezug';
 import { leadScore, kanalVon, warmPlus, type LeadScore, type KanalId } from './score';
 import { beanVon, beanFirma, type BeanId } from './bean';
-import { tagVon } from '@/lib/zeit';
 import { personenJeFirma, firmenDerPerson } from './stationen';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 
@@ -173,18 +172,6 @@ export function trichter(zeilen: LeadZeile[], crm: CrmBestand): Trichter {
     ],
     gespraechZuSql: warenImGespraech >= 3 ? Math.round((sqlJe / warenImGespraech) * 100) : null,
     sqlZuGewonnen: gewonnen.length + verloren.length >= 3 ? Math.round((gewonnen.length / (gewonnen.length + verloren.length)) * 100) : null,
-  };
-}
-
-/** Der Deal, der aus einem SQL entsteht — Kernfragen, Personen und Firma wandern mit. */
-export function dealAusLead(z: LeadZeile, e: { id: string; titel: string; art: Chance['art']; betrag: number; basis: 'monat' | 'einmalig'; schritt: { text: string; datum: string }; erwartetAm?: string; besitzer: string; jetzt: string; kontaktIds?: string[] }): Chance {
-  const firmaName = z.art === 'firma' ? z.name : undefined;
-  return {
-    id: e.id, titel: e.titel.trim() || z.name, kontaktIds: (e.kontaktIds?.length ? e.kontaktIds : z.personen.map(p => p.id)).slice(0, 20),
-    ...(firmaName ? { firma: firmaName } : {}), art: e.art, wert: { betrag: Math.max(0, e.betrag), basis: e.basis },
-    stufe: 'qualifiziert', historie: [{ stufe: 'qualifiziert', am: e.jetzt, von: '' }],
-    naechsterSchritt: e.schritt, qualifizierung: z.kriterien, ...(e.erwartetAm ? { erwartetAm: e.erwartetAm } : {}),
-    gesellschaft: 'offen', besitzer: e.besitzer, angelegt: e.jetzt, geaendert: e.jetzt, letzteAktivitaet: tagVon(e.jetzt),
   };
 }
 

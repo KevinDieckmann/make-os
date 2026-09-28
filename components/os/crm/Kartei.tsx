@@ -28,11 +28,12 @@ import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, feld, Spalten, Spalte, u
 import { anzeigename, STUFE_LABEL, HERKUNFT, type Kontakt, type Lebensphase, type Herkunft, rollenVon, ROLLE_LABEL } from '@/lib/make-one/crm';
 import { ampel as kanalAmpel, art14, besterKanal } from '@/lib/crm/recht';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
-import { dubletten } from '@/lib/crm/dubletten';
+import { dubletten, wanderungText, type Wanderung } from '@/lib/crm/dubletten';
 import { type CrmApi, datum } from './daten';
 import { KanalAmpel, Grund, Feldzeile, Pillen, Feld, AMPEL_FARBE } from './teile';
 import { Wahl } from './Wahl';
 import { Firmen, neueFirma } from './Firmen';
+import { FirmenDatalist } from './FirmenDatalist';
 import { bestehendeFirma } from '@/lib/crm/firmen';
 import { Person, WerFilter, useWerFilter, passtWer, Uebergeben, AuchHier } from './team';
 import { VisitenkarteKnopf } from './Visitenkarte';
@@ -160,9 +161,29 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
     setTimeout(() => document.querySelector(`[data-kid="${auswahl}"]`)?.scrollIntoView({ block: 'center' }), 150);
   }, [modus, auswahl, treffer, mehr, kontakte.length]);
 
-  const zusammen = async (behalten: string, weg: string) => {
-    const r = await fetch('/api/crm/dubletten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ behalten, weg }) }).then(x => x.json()).catch(() => null);
-    if (r?.ok) { await api.laden(); setAuswahl(behalten); } else api.setFehler(r?.fehler ?? 'Nicht zusammengeführt.');
+  // Zusammenführungen der letzten 30 Tage, die noch zurück können (W4, 28.09.) — nur in der Ansicht „Dubletten“ geladen.
+  const [zusammengefuehrt, setZusammengefuehrt] = useState<{ id: string; am: string; person: string; name: string; weg: string }[]>([]);
+  const zusammenLaden = async () => {
+    const r = await fetch('/api/crm/dubletten', { cache: 'no-store' }).then(x => x.json()).catch(() => null);
+    if (r?.ok) setZusammengefuehrt(r.zusammenfuehrungen ?? []);
+  };
+  useEffect(() => { if (ansicht === 'dubletten') void zusammenLaden(); }, [ansicht]); // eslint-disable-line react-hooks/exhaustive-deps
+  /** Zusammenführen (W4): erst zeigen, was wandert, dann bestätigen — rückgängig bleibt 30 Tage möglich. */
+  const zusammen = async (behalten: Kontakt, weg: Kontakt) => {
+    const v = await fetch(`/api/crm/dubletten?behalten=${encodeURIComponent(behalten.id)}&weg=${encodeURIComponent(weg.id)}`, { cache: 'no-store' }).then(x => x.json()).catch(() => null) as { ok?: boolean; wandert?: Wanderung; grund?: string; fehler?: string } | null;
+    if (!v?.ok || !v.wandert) { api.setFehler(v?.fehler ?? 'Vorschau nicht geladen — nichts zusammengeführt.'); return; }
+    if (v.grund) { api.setFehler(v.grund); return; }
+    if (!window.confirm(`„${anzeigename(behalten)}“ behalten und „${anzeigename(weg)}“ hineinführen?\n\nEs wandert: ${wanderungText(v.wandert)}.\n\nRückgängig geht 30 Tage lang (Dubletten › Zusammengeführt), solange niemand die Einträge seitdem ändert.`)) return;
+    const r = await fetch('/api/crm/dubletten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ behalten: behalten.id, weg: weg.id }) }).then(x => x.json()).catch(() => null);
+    await api.laden(true);
+    if (r?.ok) { setAuswahl(behalten.id); void zusammenLaden(); } else api.setFehler(r?.fehler ?? 'Nicht zusammengeführt.');
+  };
+  const zurueck = async (laufId: string) => {
+    const r = await fetch('/api/crm/dubletten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'rueckgaengig', laufId }) }).then(x => x.json()).catch(() => null);
+    await api.laden(true);
+    void zusammenLaden();
+    if (!r?.ok) api.setFehler(r?.fehler ?? 'Nicht zurückgenommen.');
+    else if (r.hinweis) api.setHinweis(r.hinweis);
   };
 
   const k = auswahl && !auswahl.startsWith('f-') ? kontakte.find(x => x.id === auswahl) ?? null : null;
@@ -229,11 +250,22 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
                 {paare.map(([a, b]) => (
                   <div key={`${a.id}|${b.id}`} style={{ padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', display: 'grid', gap: 8 }}>
                     {[a, b].map(x => <div key={x.id} style={{ fontSize: TYP.bedien }}><b style={{ fontWeight: 600 }}>{anzeigename(x)}</b> <span style={{ color: C.inkLeise }}>· {x.email ?? 'ohne Mail'} · {x.firma ?? '—'} · {(x.aktivitaeten ?? []).length} Einträge</span></div>)}
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><Knopf leise onClick={() => zusammen(a.id, b.id)}>Erste behalten</Knopf><Knopf leise onClick={() => zusammen(b.id, a.id)}>Zweite behalten</Knopf></div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><Knopf leise onClick={() => zusammen(a, b)}>Erste behalten</Knopf><Knopf leise onClick={() => zusammen(b, a)}>Zweite behalten</Knopf></div>
                   </div>
                 ))}
                 {!paare.length && <Leer>Keine Dubletten.</Leer>}
-                <div style={{ fontSize: 12, color: C.inkLeise }}>Gleicher Name und ein zweites Merkmal (Firma, Domain, LinkedIn, Telefon). Verlauf, Einwilligungen und die zweite Mailadresse bleiben erhalten; eine Sperre gilt weiter.</div>
+                {zusammengefuehrt.length > 0 && (
+                  <div style={{ display: 'grid', gap: 6, marginTop: 6 }}>
+                    <Ueberschrift>Zusammengeführt · 30 Tage rückgängig</Ueberschrift>
+                    {zusammengefuehrt.map(z => (
+                      <div key={z.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien }}>
+                        <span style={{ flex: 1, minWidth: 200 }}>{z.name} ← {z.weg} <span style={{ color: C.inkLeise }}>· {datum(z.am.slice(0, 10), heute)} · {nameVon(z.person)}</span></span>
+                        <Knopf leise onClick={async () => { if (window.confirm(`Zusammenführung „${z.name} ← ${z.weg}“ zurücknehmen? Beide Einträge stehen danach wieder wie vorher da — nur, wenn seitdem niemand sie geändert hat.`)) await zurueck(z.id); }}>Rückgängig</Knopf>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{ fontSize: 12, color: C.inkLeise }}>Gleicher Name und ein zweites Merkmal (Firma, Domain, LinkedIn, Telefon). Verlauf, Einwilligungen und die zweite Mailadresse bleiben erhalten; eine Sperre gilt weiter. Vor dem Zusammenführen steht, was wandert; 30 Tage lang rückgängig.</div>
               </div>
             ) : (
               <>
@@ -351,7 +383,7 @@ function Anlegen({ api, heute, onFertig }: { api: CrmApi; heute: string; onFerti
         <Feld wert={e.position} platzhalter="Position" onFertig={position => setE({ ...e, position })} />
         <div>
           <input list="crm-firmen" value={e.firma} onChange={x => setE({ ...e, firma: x.target.value })} placeholder="Firma (bestehend oder neu)" aria-label="Firma" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} />
-          <datalist id="crm-firmen">{firmen.slice(0, 400).map(f => <option key={f.id} value={f.name} />)}</datalist>
+          <FirmenDatalist id="crm-firmen" firmen={firmen} suche={e.firma} />
         </div>
       </div>
       <Feldzeile label="Lebensphase"><Wahl label="Lebensphase" liste={PHASEN} wert={e.lebensphase} onWahl={lebensphase => setE({ ...e, lebensphase })} /></Feldzeile>

@@ -64,6 +64,11 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
   const [ergebnis, setErgebnis] = useState<Ergebnis | null>('gespraech');
   const [chance, setChance] = useState<{ titel: string; betrag: string; basis: WertBasis; stufe: ChancenStufe; schritt: string; datum: string } | null>(null);
   const [laeuft, setLaeuft] = useState(false);
+  /**
+   * Der schon angelegte Deal (W2, 28.09.): scheitert danach das Festhalten der Aktivität, legt „Speichern“ beim
+   * zweiten Versuch keinen zweiten Deal an, sondern hängt die Aktivität an diesen.
+   */
+  const [angelegt, setAngelegt] = useState<{ personId: string; chanceId: string } | null>(null);
   const [fertig, setFertig] = useState('');
   const [fehler, setFehler] = useState('');
   /** Anlass eines Anrufs (U2 #58) — Pflicht, wenn die Telefon-Ampel gelb ist (mutmaßliche Einwilligung); der Server prüft. */
@@ -80,7 +85,7 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
     if (!offen) return;
     vorher.current = document.activeElement as HTMLElement | null;
     setSuche(''); setMarkiert(0); setPersonId(kontaktId ?? null); setGesucht(false); setArt('gespraech'); setErgebnis('gespraech'); setAnlass('');
-    setChance(null); setLaeuft(false); setFertig(''); setFehler('');
+    setChance(null); setAngelegt(null); setLaeuft(false); setFertig(''); setFehler('');
     const handy = window.matchMedia('(max-width: 720px)').matches;
     const t = setTimeout(() => { if (!kontaktId || !handy) sucheRef.current?.focus(); }, 30);
     // Die Seite dahinter scrollt nicht mit.
@@ -133,8 +138,8 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
     if (!k || laeuft) return;
     setLaeuft(true); setFehler('');
     try {
-      let chanceId: string | undefined;
-      if (chance && chance.titel.trim()) {
+      let chanceId: string | undefined = angelegt?.personId === k.id ? angelegt.chanceId : undefined;
+      if (!chanceId && chance && chance.titel.trim()) {
         const betrag = Math.max(0, Math.round(Number(chance.betrag.replace(/\./g, '').replace(',', '.')) || 0));
         const schritt = chance.schritt.trim() ? { text: chance.schritt.trim(), datum: chance.datum } : x.naechster;
         if (!schritt) { setFehler('Für den Deal braucht es einen nächsten Schritt mit Datum.'); return; }
@@ -142,11 +147,14 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
           deal: { titel: chance.titel.trim(), art: chance.basis === 'monat' ? 'retainer' : 'projekt', betrag, basis: chance.basis, schritt, besitzer: besitzer(k), kontaktIds: [k.id] } }) }).then(y => y.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' }));
         if (!r.ok) { setFehler(r.offen ? `${r.fehler} Bewusst einen zweiten anlegen geht in der Deal-Akte.` : (r.fehler ?? 'Deal nicht angelegt.')); return; }
         chanceId = r.chanceId;
+        if (chanceId) setAngelegt({ personId: k.id, chanceId });
         void api.laden();
       }
       const r = await festhalten(api, { id: k.id, art, ...(ergebnis ? { ergebnis } : {}), notiz: x.notiz, naechster: x.naechster, ...(chanceId ? { bezug: chanceId } : {}), ...(art === 'anruf' && anlass.trim() ? { anlass: anlass.trim() } : {}) }, x.einwilligung, heute);
-      if (r.error || r.fehler || !r.kontakt) { setFehler(r.error ?? r.fehler ?? 'Nicht gespeichert.'); return; }
-      erledigt([`${anzeigename(k)} · festgehalten`, chanceId && 'SQL → Deal angelegt', x.einwilligung && 'Einwilligung für Mail', x.naechster && `nächster Schritt ${x.naechster.datum.slice(8, 10)}.${x.naechster.datum.slice(5, 7)}.`].filter(Boolean).join(' · '));
+      if (r.error || r.fehler || !r.kontakt) { setFehler(`${r.error ?? r.fehler ?? 'Nicht gespeichert.'}${chanceId ? ' Der Deal steht schon — „Speichern“ hängt die Aktivität an ihn, ohne einen zweiten anzulegen.' : ''}`); return; }
+      // Die Aktivität steht (ein zweites „Speichern“ hielte sie doppelt fest) — der Dialog schließt, der Hinweis bleibt als Meldung stehen.
+      if (r.einwilligungGespeichert === false) api.setFehler(`${anzeigename(k)}: Aktivität festgehalten — die Einwilligung für Mail wurde NICHT gespeichert. Bitte in der Akte unter Stammdaten › Datenschutz erneut erfassen.`);
+      erledigt([`${anzeigename(k)} · festgehalten`, chanceId && (angelegt?.chanceId === chanceId ? 'am angelegten Deal' : 'SQL → Deal angelegt'), r.einwilligungGespeichert && 'Einwilligung für Mail', x.naechster && `nächster Schritt ${x.naechster.datum.slice(8, 10)}.${x.naechster.datum.slice(5, 7)}.`].filter(Boolean).join(' · '));
     } finally { setLaeuft(false); }
   }
 

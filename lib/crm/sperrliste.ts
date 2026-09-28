@@ -70,6 +70,28 @@ export function sperrPruefer(eintraege: SperrEintrag[]): (k: Person) => boolean 
   return k => alle.size > 0 && sperrHashes(k).some(x => alle.has(x));
 }
 
+/** Der passende Eintrag der Sperrliste (erster Treffer) oder null — für Neuanlagen (28.09., Ablaufprüfung). */
+export function sperrTreffer(eintraege: SperrEintrag[], k: Person): SperrEintrag | null {
+  if (!eintraege.length) return null;
+  const h = new Set(sperrHashes(k));
+  return eintraege.find(e => e.h.some(x => h.has(x))) ?? null;
+}
+
+/** Hinweistext, wenn eine Neuanlage auf der Sperrliste steht — ohne Namen (die Liste kennt keine). */
+export const SPERR_HINWEIS = 'Diese Person steht auf der Sperrliste (früherer Werbewiderspruch oder Löschung) — angelegt, aber mit Werbesperre: nicht werblich ansprechen.';
+
+/**
+ * Neuanlage per Hand (Kartei, Visitenkarte, Einlass, Anfrage — 28.09., Ablaufprüfung): wie der Import prüfen, aber
+ * nicht blockieren. Treffer → Werbesperre gesetzt (Grund aus der Liste) + Hinweis; sonst unverändert.
+ */
+export function neuanlageSperre<K extends Kontakt>(k: K, eintraege: SperrEintrag[], heute: string): { kontakt: K; hinweis?: string } {
+  if (k.werbesperre) return { kontakt: k };
+  const t = sperrTreffer(eintraege, k);
+  if (!t) return { kontakt: k };
+  const grund = t.grund === 'loeschung' ? 'Sperrliste: früher gelöscht (Art. 17)' : 'Sperrliste: früherer Werbewiderspruch (Art. 21)';
+  return { kontakt: { ...k, werbesperre: { seit: heute, grund } }, hinweis: SPERR_HINWEIS };
+}
+
 /** Säubern beim Lesen: nur Hex-Hashes, bekannte Gründe, Tag. */
 function saeubern(roh: unknown): SperrEintrag[] {
   const l = (roh as Sperrliste | null)?.eintraege;
