@@ -53,12 +53,16 @@ export function sauberBlock(roh: unknown): Block | null {
   if (!UHR.test(von) || !UHR.test(bis) || bis <= von) return null;
   const rang = Number(b.rang);
   const titel = String(b.titel ?? '').trim().slice(0, 60);
+  const art: SpaceId = b.art === 'business' ? 'business' : 'privat';
+  // Einheit (28.09.): wie bei Routinen nur im Business, Namen aus der einen Quelle — Privat verwirft sie.
+  const einheit = art === 'business' ? sauberEinheit(b.einheit) : null;
   return {
     id: String(b.id ?? '').slice(0, 60) || `bl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
     owner, wochentag: wt as Wochentag, von, bis,
-    art: b.art === 'business' ? 'business' : 'privat',
+    art,
     ...(titel ? { titel } : {}),
     ...(Number.isInteger(rang) && rang > 0 ? { rang } : {}),
+    ...(einheit ? { einheit } : {}),
   };
 }
 

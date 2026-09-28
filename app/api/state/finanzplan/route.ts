@@ -1,6 +1,6 @@
 // ─── MAKE OS — Finanzplan (lokal) ───────────────────────────────────────────
-// Der lebende Finanz-Organismus: beide Firmen (KD Ventures + Kevin Dieckmann
-// Consulting) mit Konten (Geschäftskonten, Stand von Hand — Anbindung steht im Bauplan),
+// Der lebende Finanz-Organismus: die eigenen Firmen (KD Ventures, Kevin Dieckmann
+// Consulting, seit 28.09. auch die MAKE OS UG) mit Konten (Geschäftskonten, Stand von Hand — Anbindung steht im Bauplan),
 // die Rechnungs-Pipeline (geplant → gestellt → bezahlt) und Merkposten wie ein
 // Partnerdarlehen. Das Controlling (/os/controlling) bleibt die Ist-Buchhaltung
 // je Monat — hier lebt die Planung/Verwaltung davor.
@@ -10,7 +10,7 @@ import { loadJson, updateJson, updateJsonAsync, updateGeschuetztListen } from '@
 import { localDay } from '@/lib/zeit';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import {
-  SEED, sauberFile, ueberGrenze, istGrenzFehler, bezahltAnwenden, mitFassung, fassung, fpOpsLesen, fpOpsAnwenden,
+  SEED, ugFirmaNachziehen, sauberFile, ueberGrenze, istGrenzFehler, bezahltAnwenden, mitFassung, fassung, fpOpsLesen, fpOpsAnwenden,
   rechnungenSchutzVoll, stornoAnwenden, stornoBuchungFuer, buchungsId, stornoBuchungsId,
   type FinanzplanFile, type BezahltErgebnis, type RechnungsBuchung, type FpErgebnis, type StornoErgebnis,
 } from '@/lib/finanzen/finanzplan-bestand';
@@ -45,7 +45,8 @@ export async function PUT(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   let body: Partial<FinanzplanFile>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  const sauber = sauberFile(body);
+  // Erste Posten bei der UG in einem Plan ohne UG-Konto → leeres UG-Konto dazu (28.09., additiv).
+  const sauber = ugFirmaNachziehen(sauberFile(body));
   if (!sauber.firmen.length) return NextResponse.json({ ok: false, error: 'firmen darf nicht leer sein.' }, { status: 400 });
   // Rechnungen ab „gestellt“ bleiben (28.09., K3) — auch das Vollschreiben löscht oder ändert sie nicht.
   const schutz = rechnungenSchutzVoll(sauberFile(await loadJson<FinanzplanFile>('finanzplan')), sauber);
@@ -115,7 +116,8 @@ export async function PATCH(req: Request) {
     // Stand-Prüfung, Rechnungs-Schutz und Änderung in DERSELBEN Sperre (lib/finanzen/finanzplan-bestand.ts).
     const e = fpOpsAnwenden(sauberFile(current), ops);
     if (!e.ok) { abgelehnt = e; return current ?? sauberFile(current); }
-    const f = e.datei;
+    // Erste Rechnung aus einem UG-Mandat in einem Plan ohne UG-Konto → leeres UG-Konto dazu (28.09., additiv).
+    const f = ugFirmaNachziehen(e.datei);
     angewandt = e.angewandt;
     if (uhrwerk) { f.uhrwerk = sauberFile({ uhrwerk } as unknown as Partial<FinanzplanFile>).uhrwerk; angewandt++; }
     // Kontostand-Änderung stempelt das Stand-Datum, wie beim Vollschreiben.

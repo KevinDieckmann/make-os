@@ -34,6 +34,15 @@ export function gesellschaftAusEinheit(name: string | null | undefined): Gesells
   return undefined;
 }
 
+/**
+ * Die Firma (das Konto, `firmaId`) im Finanzplan für die Gesellschaft eines Mandats oder Deals (28.09.):
+ * kdc · kdv · ug wie im CRM; „offen“ und Unbekanntes landen bei kdc (Selbstständigkeit).
+ * Vorher wurde nur kdv abgefragt — Rechnungen aus UG-Mandaten standen bei kdc.
+ */
+export function firmaFuerGesellschaft(g: string | null | undefined): Gesellschaftskennung {
+  return gesellschaftAusEinheit(g) ?? 'kdc';
+}
+
 /** Einheitlicher Anzeigename: Kerneinheiten in der festen Schreibweise, alles andere unverändert. */
 export function einheitName(name: string | null | undefined): string | undefined {
   const g = gesellschaftAusEinheit(name);

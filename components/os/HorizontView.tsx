@@ -23,6 +23,7 @@ import { SPACE_LABEL, spaceVonAufgabe, fokusSchluessel, type SpaceId } from '@/l
 import { EinheitMarke } from './aufgaben/Einheit';
 import { zeitraum } from '@/lib/planung/zeitraum';
 import type { Meilenstein, Ziel } from '@/lib/planung/typen';
+import { meilensteinSpace } from '@/lib/planung/meilensteine';
 import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
 import type { PlanungStand } from './planung/usePlanung';
 
@@ -91,8 +92,8 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
     return [1, 8, 15, 22, 29].filter(t => t <= letzter).map(t => ({ date: `${zr.von.slice(0, 8)}${p2(t)}`, label: `${t}.` }));
   })();
   const strahlMarker: StrahlMarker[] = ms
-    .filter(m => !m.erledigt && m.faellig && (spaceFilter === 'alle' || (spaceFilter === 'privat' ? m.bereich === 'gesundheit' : m.bereich === 'business')))
-    .map(m => ({ date: m.faellig!, label: m.titel, farbe: m.bereich === 'gesundheit' ? LEUCHT.gut : LEUCHT.achtung, symbol: '◇', href: horizont === 'jahr' ? undefined : `/os/planung/jahr?m=${encodeURIComponent(m.id)}` }));
+    .filter(m => !m.erledigt && m.faellig && (spaceFilter === 'alle' || meilensteinSpace(m) === spaceFilter))
+    .map(m => ({ date: m.faellig!, label: m.titel, farbe: meilensteinSpace(m) === 'privat' ? LEUCHT.gut : LEUCHT.achtung, symbol: '◇', href: horizont === 'jahr' ? undefined : `/os/planung/jahr?m=${encodeURIComponent(m.id)}` }));
   if (horizont === 'monat') {
     const proTag: Record<string, string[]> = {};
     faellig.forEach(t => { proTag[t.dueDate!] = [...(proTag[t.dueDate!] ?? []), t.title]; });

@@ -16,6 +16,7 @@ import { localDay } from '@/lib/zeit';
 import { useSpace } from '@/hooks/useSpace';
 import { SPACE_LABEL, SPACE_FARBE, type SpaceId } from '@/lib/make-one/space-regeln';
 import { passtEinheit } from '@/lib/planung/einheiten';
+import { meilensteinSpace, bereichAusSpace } from '@/lib/planung/meilensteine';
 import { offenErledigt, verschiebe, naechsterRang } from '@/lib/planung/rang';
 import { imZeitraum } from '@/lib/planung/zeitraum';
 import type { Meilenstein, Ziel, ZielHorizont } from '@/lib/planung/typen';
@@ -73,7 +74,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
 
   // ── Meilensteine im Zeitraum und Filter ──
   const msSicht = useMemo(() => p.ms.filter(m => {
-    const spaceOk = spaceFilter === 'alle' || (spaceFilter === 'privat' ? m.bereich === 'gesundheit' : m.bereich === 'business');
+    const spaceOk = spaceFilter === 'alle' || meilensteinSpace(m) === spaceFilter;
     const zeitOk = horizont === 'jahr' ? (!m.faellig || m.faellig >= p.zr.von || m.erledigt) : imZeitraum(m.faellig, p.zr);
     return spaceOk && zeitOk && (!imBusiness || passtEinheit(m.einheit, einheitFilter));
   }), [p.ms, spaceFilter, horizont, p.zr, imBusiness, einheitFilter]);
@@ -81,8 +82,8 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
 
   // ── Neu anlegen ──
   const [neu, setNeu] = useState({ titel: '', zahl: '', termin: '', einheit: '' });
-  const [msNeu, setMsNeu] = useState({ titel: '', faellig: '', bereich: 'business' as Meilenstein['bereich'], einheit: '' });
-  useEffect(() => { if (spaceFilter !== 'alle') setMsNeu(m => ({ ...m, bereich: spaceFilter === 'privat' ? 'gesundheit' : 'business' })); }, [spaceFilter]);
+  const [msNeu, setMsNeu] = useState({ titel: '', faellig: '', space: 'business' as SpaceId, einheit: '' });
+  useEffect(() => { if (spaceFilter !== 'alle') setMsNeu(m => ({ ...m, space: spaceFilter })); }, [spaceFilter]);
 
   const einheitWahl = (wert: string, setzen: (v: string) => void, label: string) => (
     <select value={wert} aria-label={label} style={wahl} onChange={async e => {
@@ -113,10 +114,11 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
     const t = msNeu.titel.trim();
     if (!t) return;
     const faellig = msNeu.faellig || (horizont === 'jahr' ? '' : p.zr.bis);
-    const bereich = spaceFilter === 'privat' ? 'gesundheit' : spaceFilter === 'business' ? 'business' : msNeu.bereich;
-    const einheit = bereich === 'business' && imBusiness ? (msNeu.einheit || (einheitFilter !== 'alle' ? einheitFilter : '')) : '';
-    p.persistMs([...p.ms, { id: `ms-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, titel: t, bereich, faellig: faellig || undefined, fortschritt: 0, erledigt: false, rang: naechsterRang(mOffen), ...(einheit ? { einheit } : {}) }]);
-    setMsNeu({ titel: '', faellig: '', bereich, einheit: msNeu.einheit });
+    // Seit 28.09. das echte Feld `space`; `bereich` nur gespiegelt für ältere Leser.
+    const space: SpaceId = spaceFilter !== 'alle' ? spaceFilter : msNeu.space;
+    const einheit = space === 'business' && imBusiness ? (msNeu.einheit || (einheitFilter !== 'alle' ? einheitFilter : '')) : '';
+    p.persistMs([...p.ms, { id: `ms-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, titel: t, space, bereich: bereichAusSpace(space), faellig: faellig || undefined, fortschritt: 0, erledigt: false, rang: naechsterRang(mOffen), ...(einheit ? { einheit } : {}) }]);
+    setMsNeu({ titel: '', faellig: '', space, einheit: msNeu.einheit });
   };
 
   // ── Ändern ──
@@ -141,7 +143,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
 
   const herkunft = (e: { abgeleitetVon?: string; angepasst?: boolean }, was: string): ReactNode =>
     e.abgeleitetVon ? <span style={{ color: e.angepasst ? LEUCHT.achtung : LEUCHT.agenten }}>{e.angepasst ? 'angepasst' : `abgeleitet aus ${was}`}</span> : null;
-  const einheitChip = (e: { einheit?: string; space?: SpaceId; bereich?: string }) => (e.einheit && (e.space === 'business' || e.bereich === 'business') && !(imBusiness && einheitFilter !== 'alle') ? <Chip farbe={SPACE_FARBE.business}>{e.einheit}</Chip> : null);
+  const einheitChip = (e: { einheit?: string; space?: SpaceId }) => (e.einheit && e.space === 'business' && !(imBusiness && einheitFilter !== 'alle') ? <Chip farbe={SPACE_FARBE.business}>{e.einheit}</Chip> : null);
   const unterZeile = (teile: ReactNode[]) => { const t = teile.filter(Boolean); return t.length ? <>{t.map((x, k) => <span key={k}>{k > 0 ? ' · ' : ''}{x}</span>)}</> : undefined; };
 
   // ── Zeilen ──
@@ -183,7 +185,8 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
   };
 
   const msZeile = (m: Meilenstein, pos: number, n: number) => {
-    const bf = m.bereich === 'gesundheit' ? LEUCHT.gut : LEUCHT.business;
+    const sp = meilensteinSpace(m);
+    const bf = sp === 'privat' ? LEUCHT.gut : LEUCHT.business;
     const spaet = !!m.faellig && m.faellig < heute && !m.erledigt;
     const wann = m.faellig ? dtKurz(m.faellig) : (m.zeitfenster ?? '');
     return (
@@ -193,14 +196,18 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
           titel={bearbeite?.id === m.id ? titelFeld(m.id, t => mPatch(m.id, { titel: t }, true)) : <span style={{ color: m.erledigt ? C.inkLeise : C.ink, textDecoration: m.erledigt ? 'line-through' : 'none' }}>{m.titel}</span>}
           unter={unterZeile([
             wann ? <span style={{ color: spaet ? LEUCHT.kritisch : undefined }}>{spaet ? 'überfällig ' : ''}{wann}</span> : null,
-            einheitChip(m),
-            spaceFilter === 'alle' ? <span style={{ color: bf }}>{m.bereich === 'gesundheit' ? 'Gesundheit' : 'Business'}</span> : null,
+            einheitChip({ einheit: m.einheit, space: sp }),
+            spaceFilter === 'alle' && (kompakt || m.erledigt) ? <span style={{ color: bf }}>{SPACE_LABEL[sp]}</span> : null,
             m.messlatte ? `Messlatte: ${m.messlatte}` : null,
             herkunft(m, 'Jahresziel'),
             m.erledigt && m.erledigtAm ? `erledigt ${dtKurz(m.erledigtAm)}` : null,
           ])}
           rechts={
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '0 0 auto', opacity: m.erledigt ? 0.7 : 1 }}>
+              {!m.erledigt && !kompakt && spaceFilter === 'alle' && (
+                <button onClick={() => { const neu: SpaceId = sp === 'privat' ? 'business' : 'privat'; mPatch(m.id, { space: neu, bereich: bereichAusSpace(neu), ...(neu === 'privat' ? { einheit: undefined } : {}) }, true); }} title={`${SPACE_LABEL[sp]} — Klick wechselt`}
+                  style={{ ...pille(true, bf), padding: '2px 8px', fontSize: 11 }}>{SPACE_LABEL[sp]}</button>
+              )}
               {!m.erledigt && (
                 <>
                   <input type="range" min={0} max={100} step={5} value={m.fortschritt} aria-label="Fortschritt" onChange={e => mPatch(m.id, { fortschritt: Number(e.target.value) })} style={{ width: kompakt ? 'clamp(50px, 8vw, 80px)' : 'clamp(70px, 12vw, 110px)', accentColor: col(m.fortschritt) }} />
@@ -283,9 +290,9 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
               placeholder="+ neuer Meilenstein …" style={{ ...feld, width: 'auto', flex: '1 1 160px', minWidth: 0 }} />
             <input type="date" value={msNeu.faellig} onChange={e => setMsNeu({ ...msNeu, faellig: e.target.value })} aria-label="Fällig am" title={horizont === 'jahr' ? 'Fällig am' : `Fällig am — leer heißt ${dtKurz(p.zr.bis)}`} style={{ ...feld, width: 'auto', flex: '0 1 150px', colorScheme: 'dark' }} />
             {spaceFilter === 'alle' && (
-              <select value={msNeu.bereich} onChange={e => setMsNeu({ ...msNeu, bereich: e.target.value as Meilenstein['bereich'] })} aria-label="Bereich" style={wahl}>
-                <option value="business">Business</option>
-                <option value="gesundheit">Gesundheit</option>
+              <select value={msNeu.space} onChange={e => setMsNeu({ ...msNeu, space: e.target.value === 'privat' ? 'privat' : 'business' })} aria-label="Space" style={wahl}>
+                <option value="business">{SPACE_LABEL.business}</option>
+                <option value="privat">{SPACE_LABEL.privat}</option>
               </select>
             )}
             {imBusiness && einheitWahl(msNeu.einheit, v => setMsNeu({ ...msNeu, einheit: v }), 'Einheit des Meilensteins')}

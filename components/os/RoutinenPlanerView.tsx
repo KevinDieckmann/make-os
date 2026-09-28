@@ -20,6 +20,9 @@ import { RHYTHMEN, WOCHENTAGE, OWNER_BEIDE, type Block, type Routine, type Woche
 import { sortiertNachRang, verschiebe, naechsterRang } from '@/lib/planung/rang';
 import { bloeckeFuer, standardBloecke, spaceVonRoutine, ownerVonRoutine } from '@/lib/planung/routinen';
 import { EinheitWahl, useEinheiten } from './aufgaben/Einheit';
+import { Wahl, type WahlEintrag } from './crm/Wahl';
+import { einheitFarbe, einheitKurz, EINHEIT_GRAU } from '@/lib/aufgaben/einheit';
+import { EINHEIT_MIN, EINHEIT_MAX } from '@/lib/planung/einheiten';
 import { rhythmusKurz, naechstesMalNach } from '@/lib/planung/rhythmus';
 import { PlanerLeiste } from './PlanerLeiste';
 import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Knopf, Punkt, feld, LEUCHT } from './schlank';
@@ -46,6 +49,23 @@ const dtKurz = (iso: string) => `${iso.slice(8)}.${iso.slice(5, 7)}.`;
 
 interface Person { speicher: string; name: string }
 
+/**
+ * Einheit am Block (28.09.): dieselbe Auswahl wie bei Routinen (Werteliste des Haushalts,
+ * „ohne Einheit“, „+ neu“), nur schmal — der Chip zeigt das Kürzel (Selbst. · KDV · UG),
+ * das Menü den vollen Namen daneben. Passt so in die schmalen Wochentag-Spalten.
+ */
+function BlockEinheit({ wert, setzen, einheiten, anlegen }: { wert?: string; setzen: (e: string | undefined) => void; einheiten: readonly string[]; anlegen: (name: string) => Promise<string | null> }) {
+  const gesetzt = wert ? einheiten.find(e => e.toLocaleLowerCase('de-DE') === wert.toLocaleLowerCase('de-DE')) ?? wert : null;
+  const liste: WahlEintrag<string>[] = useMemo(() => [...einheiten, ...(gesetzt && !einheiten.includes(gesetzt) ? [gesetzt] : [])].map(e => {
+    const kurz = einheitKurz(e) ?? e;
+    return { id: e, label: kurz, ...(kurz !== e ? { hinweis: e } : {}), punkt: einheitFarbe(e) };
+  }), [einheiten, gesetzt]);
+  return (
+    <Wahl label="Einheit des Blocks" liste={liste} wert={gesetzt} leer="+ Einheit" klein farbe={gesetzt ? einheitFarbe(gesetzt) : EINHEIT_GRAU}
+      onWahl={e => setzen(e)} onLeeren={() => setzen(undefined)} leerenLabel="ohne Einheit" onNeu={anlegen} neuMin={EINHEIT_MIN} neuMax={EINHEIT_MAX} />
+  );
+}
+
 export function RoutinenPlanerView() {
   const heute = localDay();
   const [routinen, setRoutinen] = useState<Routine[]>([]);
@@ -61,7 +81,7 @@ export function RoutinenPlanerView() {
   // Business-Einheit (27.09.) wie bei Zielen und Aufgaben — nur im Business.
   const { einheiten, anlegen: einheitAnlegen } = useEinheiten();
   const [blockPerson, setBlockPerson] = useState<string>('');
-  const [blockNeu, setBlockNeu] = useState({ wochentag: 1 as Wochentag, von: '09:00', bis: '18:00', art: 'business' as SpaceId, titel: '' });
+  const [blockNeu, setBlockNeu] = useState({ wochentag: 1 as Wochentag, von: '09:00', bis: '18:00', art: 'business' as SpaceId, titel: '', einheit: undefined as string | undefined });
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const blockTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   // Geteilter Bestand (28.09.): nur Einzeländerungen mit Stand — Routinen über `{ ops }`, Blöcke über `{ bloecke: ops }`
@@ -152,7 +172,7 @@ export function RoutinenPlanerView() {
   const blockEigen = !!ich && blockPerson === ich;
   const blockAnlegen = () => {
     if (!blockPerson || !blockEigen || blockNeu.bis <= blockNeu.von) return;
-    const b: Block = { id: `bl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, owner: blockPerson, wochentag: blockNeu.wochentag, von: blockNeu.von, bis: blockNeu.bis, art: blockNeu.art, rang: naechsterRang(meineBloecke.filter(x => x.wochentag === blockNeu.wochentag)), ...(blockNeu.titel.trim() ? { titel: blockNeu.titel.trim().slice(0, 60) } : {}) };
+    const b: Block = { id: `bl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, owner: blockPerson, wochentag: blockNeu.wochentag, von: blockNeu.von, bis: blockNeu.bis, art: blockNeu.art, rang: naechsterRang(meineBloecke.filter(x => x.wochentag === blockNeu.wochentag)), ...(blockNeu.titel.trim() ? { titel: blockNeu.titel.trim().slice(0, 60) } : {}), ...(blockNeu.art === 'business' && blockNeu.einheit ? { einheit: blockNeu.einheit } : {}) };
     persistBloecke([...bloecke, b]);
     setBlockNeu({ ...blockNeu, titel: '' });
   };
@@ -305,14 +325,20 @@ export function RoutinenPlanerView() {
                 <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.inkLeise, marginBottom: 6 }}>{wt.label}</div>
                 {!tag.length && <div style={{ fontSize: 12, color: 'rgba(255,255,255,.2)' }}>privat</div>}
                 {tag.map((b, pos) => (
-                  <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: pos < tag.length - 1 ? '1px solid rgba(255,255,255,.05)' : 'none' }}>
+                  <div key={b.id} style={{ padding: '4px 0', borderBottom: pos < tag.length - 1 ? '1px solid rgba(255,255,255,.05)' : 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Punkt farbe={SPACE_FARBE[b.art]} groesse={7} />
                     <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: C.ink, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${b.von}–${b.bis} ${SPACE_LABEL[b.art]}${b.titel ? ` · ${b.titel}` : ''}`}>{b.von}–{b.bis}{b.titel ? <span style={{ color: C.inkDim }}> {b.titel}</span> : ''}</span>
                     {blockEigen ? <>
-                      <button onClick={() => persistBloecke(bloecke.map(x => (x.id === b.id ? { ...x, art: x.art === 'business' ? 'privat' : 'business' } : x)))} title={`${SPACE_LABEL[b.art]} — Klick wechselt`} style={{ ...pille(true, SPACE_FARBE[b.art]), padding: '1px 6px', fontSize: 11 }}>{b.art === 'business' ? 'B' : 'P'}</button>
+                      <button onClick={() => persistBloecke(bloecke.map(x => (x.id === b.id ? (x.art === 'business' ? { ...x, art: 'privat', einheit: undefined } : { ...x, art: 'business' }) : x)))} title={`${SPACE_LABEL[b.art]} — Klick wechselt`} style={{ ...pille(true, SPACE_FARBE[b.art]), padding: '1px 6px', fontSize: 11 }}>{b.art === 'business' ? 'B' : 'P'}</button>
                       <PfeilRang label={`${wt.kurz} ${b.von}`} obenAus={pos === 0} untenAus={pos === tag.length - 1} onAuf={() => blockBewegen(b, 'auf')} onAb={() => blockBewegen(b, 'ab')} />
                       <button onClick={() => persistBloecke(bloecke.filter(x => x.id !== b.id))} aria-label="Block löschen" style={{ ...loeschen, padding: 0 }}>✕</button>
                     </> : <span style={{ ...pille(true, SPACE_FARBE[b.art]), padding: '1px 6px', fontSize: 11 }}>{b.art === 'business' ? 'B' : 'P'}</span>}
+                  </div>
+                  {/* Einheit (28.09., nur Business): kleines Kürzel — bei eigenen Blöcken per Klick wählbar. */}
+                  {b.art === 'business' && (blockEigen
+                    ? <div style={{ marginTop: 3, paddingLeft: 13 }}><BlockEinheit wert={b.einheit} setzen={e => persistBloecke(bloecke.map(x => (x.id === b.id ? { ...x, einheit: e } : x)))} einheiten={einheiten} anlegen={einheitAnlegen} /></div>
+                    : b.einheit ? <div style={{ marginTop: 2, paddingLeft: 13 }}><span title={`Einheit: ${b.einheit}`} style={{ fontSize: 11, fontWeight: 600, color: einheitFarbe(b.einheit) }}>{einheitKurz(b.einheit)}</span></div> : null)}
                   </div>
                 ))}
               </div>
@@ -332,6 +358,7 @@ export function RoutinenPlanerView() {
             <select value={blockNeu.art} onChange={e => setBlockNeu({ ...blockNeu, art: e.target.value as SpaceId })} aria-label="Art" style={{ ...wahl, color: SPACE_FARBE[blockNeu.art] }}>
               <option value="business">Business</option><option value="privat">Privat</option>
             </select>
+            {blockNeu.art === 'business' && <EinheitWahl wert={blockNeu.einheit} setzen={e => setBlockNeu({ ...blockNeu, einheit: e })} einheiten={einheiten} anlegen={einheitAnlegen} titel="Einheit des Blocks" />}
             <input value={blockNeu.titel} onChange={e => setBlockNeu({ ...blockNeu, titel: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') blockAnlegen(); }} placeholder="Titel (optional)" aria-label="Titel" style={{ ...feld, width: 'auto', flex: '1 1 140px', minWidth: 0, padding: '7px 10px' }} />
             <Knopf onClick={blockAnlegen}>+ Block</Knopf>
           </div>

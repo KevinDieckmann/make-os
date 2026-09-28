@@ -12,6 +12,9 @@
 // Zu zweit (25.09.): Je Mandat ist jemand zuständig (ohne Eintrag Kevin als
 // Sales-Verantwortung) — Filter „Alle · Meins · Malin“, Plakette, Zeile je
 // Person, Übergeben. Änderungen gehen als Einzelfelder raus (api.teil).
+// 28.09.: Filter nach Gesellschaft (Alle · Selbstständigkeit · KD Ventures · MAKE OS UG)
+// neben dem Personen-Filter; „+ Mandat“ übernimmt die gefilterte Gesellschaft. Rechnungen
+// aus dem Honorar landen bei der Gesellschaft des Mandats (firmaFuerGesellschaft).
 
 import { localDay, tagePlus } from '@/lib/zeit';
 import { bruttoAusNetto } from '@/lib/finanzen/ust';
@@ -24,9 +27,9 @@ import { WEG } from '@/lib/wege';
 import { rechnungPasst } from '@/lib/crm/kunden';
 import { mandatPhase, portfolio } from '@/lib/crm/produkte';
 import { FARBE as C } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, useBreit, LEUCHT } from '../schlank';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Segmente, useBreit, LEUCHT } from '../schlank';
 import { anzeigename } from '@/lib/make-one/crm';
-import { HEALTH_GEWICHTE, HEALTH_LABEL, kundenJePerson } from '@/lib/crm/kunden';
+import { HEALTH_GEWICHTE, HEALTH_LABEL, kundenJePerson, GESELLSCHAFT_FILTER, passtGesellschaft, type GesellschaftFilter } from '@/lib/crm/kunden';
 import { werZahlen } from '@/lib/crm/pipeline';
 import { zustaendig, mitglied, nameVon } from '@/lib/crm/team';
 import type { Mandat } from '@/lib/crm/typen';
@@ -34,6 +37,7 @@ import { type CrmApi, neueId, datum, euro, kurzEuro, nurFelder } from './daten';
 import { Feldzeile, Feld } from './teile';
 import { Wahl } from './Wahl';
 import { GESELLSCHAFT_WAHL } from '@/lib/crm/wahl';
+import { firmaFuerGesellschaft } from '@/lib/einheiten';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
 import { HeadPanel } from './HeadPanel';
 import { useZiel, useZuZiel } from '../ziel';
@@ -57,6 +61,8 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   const [liqui, setLiqui] = useState<{ mandate: LiquiLage[]; freiePosten: { id: string; titel: string; betrag: number }[] } | null>(null);
   const [alle, setAlle] = useState(false);
   const [wahl, setWahl] = useWerFilter('kunden');
+  // Filter nach Gesellschaft (28.09.): Alle · Selbstständigkeit · KD Ventures · MAKE OS UG — zusätzlich zur Person.
+  const [ges, setGes] = useState<GesellschaftFilter>('alle');
   // Kommt man über einen Link auf ein Mandat, springt die Liste einmal dorthin.
   useZuZiel(useZiel('k'), !!api.crm);
   const ladeLiqui = () => fetch('/api/crm/liquiplan').then(r => r.json()).then(d => d.ok && setLiqui(d)).catch(() => {});
@@ -67,7 +73,7 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   const REIHE = ['aktiv', 'verhandlung', 'angebot', 'pausiert', 'beendet'];
   const mandate = [...crm.stand.mandate].sort((a, b) => REIHE.indexOf(a.status) - REIHE.indexOf(b.status) || a.kunde.localeCompare(b.kunde));
   const laufend = mandate.filter(m => m.status !== 'beendet');
-  const gefiltert = mandate.filter(m => passtWer(wahl, m.zustaendig, 'sales', ich));
+  const gefiltert = mandate.filter(m => passtWer(wahl, m.zustaendig, 'sales', ich) && passtGesellschaft(ges, m.gesellschaft));
   // Ein Mandat aus einem Link (z. B. hinter der Kündigungsrate) ist immer sichtbar — auch beendet oder bei jemand anderem.
   const gewaehlt = auswahl ? mandate.find(m => m.id === auswahl) : undefined;
   const basis = alle ? gefiltert : gefiltert.filter(m => m.status !== 'beendet');
@@ -85,7 +91,7 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   return (
     <>
       <Karte i={0}>
-        <Ueberschrift rechts={<Knopf onClick={() => { const id = neueId('m'); void api.setze('mandate', { id, kunde: 'Neuer Kunde', titel: 'Mandat', kontaktIds: [], art: 'retainer', gesellschaft: 'offen', status: 'verhandlung', vertragUnterschrieben: false, verlaengerung: 'offen', honorar: { betrag: 0, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [], health: {}, leistungen: [], offen: [], ...(neuFuer ? { zustaendig: neuFuer } : {}) }); setAuswahl(id); }}>+ Mandat</Knopf>}>Überblick</Ueberschrift>
+        <Ueberschrift rechts={<Knopf onClick={() => { const id = neueId('m'); void api.setze('mandate', { id, kunde: 'Neuer Kunde', titel: 'Mandat', kontaktIds: [], art: 'retainer', gesellschaft: ges !== 'alle' ? ges : 'offen', status: 'verhandlung', vertragUnterschrieben: false, verlaengerung: 'offen', honorar: { betrag: 0, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [], health: {}, leistungen: [], offen: [], ...(neuFuer ? { zustaendig: neuFuer } : {}) }); setAuswahl(id); }}>+ Mandat</Knopf>}>Überblick</Ueberschrift>
         <Raster min={150}>
           <Zahl wert={kurzEuro(crm.mrr)} label="wiederkehrend je Monat (netto)" farbe={LEUCHT.geld} />
           <Zahl wert={String(mandate.filter(m => m.status === 'aktiv').length)} label="aktive Mandate" />
@@ -116,7 +122,10 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
       <Karte i={1}>
         <Ueberschrift rechts={`${sichtbar.length} ${sichtbar.length === 1 ? 'Mandat' : 'Mandate'}`}>Mandate</Ueberschrift>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
-          <WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} />
+            <span role="group" aria-label="Nach Gesellschaft filtern"><Segmente liste={GESELLSCHAFT_FILTER.map(g => ({ id: g.id, label: breit ? g.label : g.kurz }))} aktiv={ges} onWahl={setGes} /></span>
+          </div>
           <button onClick={() => setAlle(!alle)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>{alle ? 'Beendete ausblenden' : `Beendete zeigen (${beendetVerborgen})`}</button>
         </div>
         <Liste>
@@ -300,7 +309,7 @@ function MandatRechnungen({ m }: { m: Mandat }) {
     const id = `r-${Date.now().toString(36)}`;
     // Eine USt-Funktion, auf den Cent (28.09., K3); fällig ab dem Berliner Tag, nicht dem UTC-Tag.
     const brutto = m.honorar.netto ? bruttoAusNetto(m.honorar.betrag, m.ustSatz) : m.honorar.betrag;
-    const eintrag = { id, kunde: m.kunde, titel: m.titel, betrag: brutto, status: 'geplant', firmaId: m.gesellschaft === 'kdv' ? 'kdv' : 'kdc', mandatId: m.id, ustSatz: m.ustSatz, ...(m.honorar.netto ? { netto: m.honorar.betrag } : {}), faellig: tagePlus(heute, m.zahlungszielTage || 0) };
+    const eintrag = { id, kunde: m.kunde, titel: m.titel, betrag: brutto, status: 'geplant', firmaId: firmaFuerGesellschaft(m.gesellschaft), mandatId: m.id, ustSatz: m.ustSatz, ...(m.honorar.netto ? { netto: m.honorar.betrag } : {}), faellig: tagePlus(heute, m.zahlungszielTage || 0) };
     const r = await fetch('/api/state/finanzplan', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste: 'rechnungen', op: 'upsert', eintrag }] }) }).then(x => x.json()).catch(() => null);
     if (r?.ok !== false) router.push(WEG.rechnung(id));
   };

@@ -8,6 +8,9 @@ import type { SpaceId } from '@/lib/make-one/space-regeln';
 
 export type { SpaceId };
 
+/** Altfeld der Meilensteine (siehe `Meilenstein.bereich`). */
+export type MeilensteinBereich = 'business' | 'gesundheit';
+
 /** Die fünf Ebenen der Ziele — die Kaskade läuft von oben nach unten. */
 export type ZielHorizont = 'tag' | 'woche' | 'monat' | 'quartal' | 'jahr';
 export const ZIEL_HORIZONTE: readonly ZielHorizont[] = ['tag', 'woche', 'monat', 'quartal', 'jahr'];
@@ -40,7 +43,18 @@ export interface Ziel {
 export interface Meilenstein {
   id: string;
   titel: string;
-  bereich: 'business' | 'gesundheit';
+  /**
+   * Privat oder Business (28.09.) — das echte Feld, wie bei Zielen und Routinen. Fehlt nur im
+   * Altbestand, der noch nicht wieder gespeichert wurde: lesen deshalb immer über
+   * `meilensteinSpace()` (lib/planung/meilensteine.ts), nie direkt.
+   */
+  space?: SpaceId;
+  /**
+   * Altfeld (vor 28.09. die Ersatzlösung für den Space): gesundheit = privat, business = business.
+   * Wird beim Speichern aus `space` gespiegelt, damit ältere Leser (Brain, Loop, Gesundheits- und
+   * Business-Säule) unverändert weiterlaufen. Nicht mehr selbst setzen — `space` ist führend.
+   */
+  bereich?: MeilensteinBereich;
   /** Fester Tag YYYY-MM-DD … */
   faellig?: string;
   /** … oder freies Zeitfenster („Q3", „2028"). */
@@ -109,6 +123,8 @@ export interface Block {
   art: SpaceId;
   titel?: string;
   rang?: number;
+  /** Business-Einheit (28.09., wie bei Zielen und Routinen) — nur bei `art: 'business'`, optional. */
+  einheit?: string;
 }
 
 export interface RoutinenDatei { routinen: Routine[]; bloecke?: Block[] }

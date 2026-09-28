@@ -99,8 +99,29 @@ export const STATI: RechnungStatus[] = ['geplant', 'gestellt', 'bezahlt', 'storn
 /** Geldbetrag auf den Cent (28.09., K3): 1.190,50 € bleibt 1.190,50 € — vorher wurde auf ganze Euro gerundet. */
 const cent = (v: unknown): number => (isFinite(Number(v)) ? Math.round(Number(v) * 100) / 100 : 0);
 
-// Startbestand für einen NEUEN, leeren Plan (28.09., K1): nur Struktur — die beiden eigenen Firmen
-// (Kennungen kdv/kdc, überall im System verankert) ohne Bank und Stand, Produkt-Entwürfe und die Agenda
+// ── Das UG-Konto (28.09., Querschnitt-Prüfung) ──────────────────────────────
+// Die Firmen-Kennungen im Finanzplan sind die drei Gesellschaften aus lib/einheiten.ts
+// (kdc Selbstständigkeit · kdv KD Ventures · ug MAKE OS UG); Rechnungen aus UG-Mandaten
+// landen seitdem bei ug (firmaFuerGesellschaft) statt bei kdc.
+
+/** Das Konto der MAKE OS UG — leer (ohne Bank und Stand, zählt 0 €), bis jemand es pflegt. */
+export const UG_FIRMA: Firma = { id: 'ug', name: 'MAKE OS UG', bank: '', kontostand: null, stand: null };
+
+/**
+ * Ein bestehender Plan ohne UG-Konto bekommt es beim Schreiben dazu — aber nur, sobald ein
+ * Eintrag (Rechnung, Zahlung, Merkposten) bei `ug` steht, z. B. die erste Rechnung aus einem
+ * UG-Mandat. So ordnen Liquidität und Filter je Konto sie zu. Rein additiv: vorhandene Firmen
+ * bleiben unverändert und in ihrer Reihenfolge; ein Plan ohne UG-Posten bleibt Byte für Byte,
+ * wie er ist (das Lesen schreibt nie — tests/k1-seed.test.ts).
+ */
+export function ugFirmaNachziehen(f: FinanzplanFile): FinanzplanFile {
+  if (!f.firmen.length || f.firmen.some(x => x.id === UG_FIRMA.id)) return f;
+  const genutzt = [...f.rechnungen, ...f.zahlungen, ...f.merkposten].some(x => x.firmaId === UG_FIRMA.id);
+  return genutzt ? { ...f, firmen: [...f.firmen, { ...UG_FIRMA }] } : f;
+}
+
+// Startbestand für einen NEUEN, leeren Plan (28.09., K1): nur Struktur — die drei eigenen Firmen
+// (Kennungen kdv/kdc/ug, überall im System verankert) ohne Bank und Stand, Produkt-Entwürfe und die Agenda
 // fürs Finanzmeeting. Keine Kunden, keine Beträge, keine Namen Dritter (Regel 1 „keine echten Daten im
 // Repo“; vorher standen hier echte Kunden und ein Privatkredit). Greift nur bei leerem Speicher
 // (app/api/state/finanzplan: `firmen` leer) — ein bestehender Plan wird nie überschrieben.
@@ -108,6 +129,7 @@ export const SEED: FinanzplanFile = {
   firmen: [
     { id: 'kdv', name: 'KD Ventures', bank: '', kontostand: null, stand: null },
     { id: 'kdc', name: 'Kevin Dieckmann Consulting', bank: '', kontostand: null, stand: null },
+    { ...UG_FIRMA },
   ],
   rechnungen: [],
   merkposten: [],

@@ -34,7 +34,8 @@ describe('Finanzplan-SEED: nur Struktur', () => {
     expect(s.rechnungen).toEqual([]);
     expect(s.merkposten).toEqual([]);
     expect(s.zahlungen).toEqual([]);
-    expect(s.firmen.map(f => f.id)).toEqual(['kdv', 'kdc']);
+    // Seit 28.09. auch das (leere) Konto der MAKE OS UG — Rechnungen aus UG-Mandaten landen dort.
+    expect(s.firmen.map(f => f.id)).toEqual(['kdv', 'kdc', 'ug']);
     expect(s.firmen.every(f => f.bank === '' && f.kontostand === null)).toBe(true);
     expect(s.produkte.every(p => p.preis === 0)).toBe(true);
   });
@@ -45,7 +46,7 @@ describe('Finanzplan-SEED: nur Struktur', () => {
     const plan = await r.json() as { rechnungen: unknown[]; merkposten: unknown[]; firmen: { id: string }[] };
     expect(plan.rechnungen).toEqual([]);
     expect(plan.merkposten).toEqual([]);
-    expect(plan.firmen.map(f => f.id)).toEqual(['kdv', 'kdc']);
+    expect(plan.firmen.map(f => f.id)).toEqual(['kdv', 'kdc', 'ug']);
   });
 
   it('bestehender Plan wird nicht angefasst (Datei bleibt Byte für Byte gleich)', async () => {

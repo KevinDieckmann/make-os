@@ -10,6 +10,7 @@
 
 import type { Meilenstein, Ziel, ZieleDatei, ZielHorizont } from './typen';
 import { sortiertNachRang } from './rang';
+import { bereichAusSpace } from './meilensteine';
 
 export type Unterhorizont = Exclude<ZielHorizont, 'jahr'>;
 export const UNTERHORIZONTE: readonly Unterhorizont[] = ['quartal', 'monat', 'woche', 'tag'];
@@ -132,7 +133,9 @@ export function meilensteineAbleiten(jahrZiele: readonly Ziel[], meilensteine: r
     aus.push({
       id: bisher?.id ?? meilensteinId(z.id),
       titel: z.titel,
-      bereich: z.space === 'privat' ? 'gesundheit' : 'business',
+      // Seit 28.09. das echte Feld `space`; `bereich` gespiegelt für ältere Leser (lib/planung/meilensteine.ts).
+      space: z.space === 'privat' ? 'privat' : 'business',
+      bereich: bereichAusSpace(z.space === 'privat' ? 'privat' : 'business'),
       faellig: z.termin,
       fortschritt: erledigt ? 100 : (bisher?.fortschritt ?? z.fortschritt ?? 0),
       erledigt,

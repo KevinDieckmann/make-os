@@ -1,15 +1,17 @@
 // ─── MAKE OS — Meilensteine (lokal, pflegbar) ───────────────────────────────
 // Vorher eine feste Konstante — jetzt DIE Datenbasis: jeder Meilenstein hat
 // Fälligkeit, Messlatte („woran erkennen wir fertig?") und Fortschritt.
-// bereich='business' fließt in Brain + Business-Säule, 'gesundheit' in die
+// space='business' fließt in Brain + Business-Säule, 'privat' in die
 // Gesundheits-Säule — und bleibt aus Business-Kontexten draußen (Privatsphäre).
+// Seit 28.09. ist `space` das echte Feld; das Altfeld `bereich` (business | gesundheit)
+// wird beim Speichern gespiegelt, damit die älteren Leser weiterlaufen.
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateGeschuetztListen } from '@/lib/store/local-db';
 import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
 import { mitStand } from '@/lib/store/fingerabdruck';
 import type { Meilenstein } from '@/lib/planung/typen';
-import { sauberEinheit } from '@/lib/planung/einheiten';
+import { sauberMeilensteine } from '@/lib/planung/meilensteine';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,27 +27,8 @@ const GRENZE = 500;
 // Kein Startbestand (28.09., K1): hier standen echte Business- und Gesundheits-Etappen im Code (Regel 1
 // „keine echten Daten im Repo“). Ein neuer Haushalt beginnt leer; ein bestehender Bestand wird nie angefasst.
 
-function sauberListe(rein: unknown): Meilenstein[] {
-  return (Array.isArray(rein) ? rein : []).map((m: Partial<Meilenstein>) => {
-    const rang = Number(m.rang);
-    const bereich = (m.bereich === 'gesundheit' ? 'gesundheit' : 'business') as Meilenstein['bereich'];
-    const einheit = bereich === 'business' ? sauberEinheit(m.einheit) : null;
-    return {
-      id: String(m.id ?? '').slice(0, 80) || `ms-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
-      titel: String(m.titel ?? '').slice(0, 200),
-      bereich,
-      faellig: typeof m.faellig === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(m.faellig) ? m.faellig : undefined,
-      zeitfenster: m.zeitfenster ? String(m.zeitfenster).slice(0, 40) : undefined,
-      messlatte: m.messlatte ? String(m.messlatte).slice(0, 300) : undefined,
-      fortschritt: isFinite(Number(m.fortschritt)) ? Math.max(0, Math.min(100, Math.round(Number(m.fortschritt)))) : 0,
-      erledigt: m.erledigt === true,
-      erledigtAm: typeof m.erledigtAm === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(m.erledigtAm) ? m.erledigtAm : undefined,
-      ...(Number.isInteger(rang) && rang > 0 ? { rang } : {}),
-      ...(einheit ? { einheit } : {}),
-      ...(typeof m.abgeleitetVon === 'string' && m.abgeleitetVon ? { abgeleitetVon: m.abgeleitetVon.slice(0, 80), ...(m.angepasst === true ? { angepasst: true } : {}) } : {}),
-    };
-  }).filter(m => m.titel);
-}
+// Säuberung (seit 28.09. mit echtem `space`, `bereich` gespiegelt): lib/planung/meilensteine.ts.
+const sauberListe = sauberMeilensteine;
 
 export async function GET() {
   const f = await loadJson<MeilensteinFile>('meilensteine');

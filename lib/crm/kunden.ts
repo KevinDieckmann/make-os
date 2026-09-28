@@ -9,6 +9,7 @@ import type { Mandat } from './typen';
 import type { Planposten } from '@/lib/make-one/liquiditaet';
 import { TEAM, BEIDE, zustaendig } from './team';
 import { bruttoAusNetto } from '@/lib/finanzen/ust';
+import { KERN_EINHEITEN, type Gesellschaftskennung } from '@/lib/einheiten';
 
 const tage = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 864e5);
 function plusMonate(datum: string, n: number): string {
@@ -138,3 +139,17 @@ export function kundenJePerson(mandate: Mandat[], heute: string, lage?: Record<s
     };
   });
 }
+
+// ── Filter nach Gesellschaft (28.09.) ────────────────────────────────────────
+// Mandate unterscheiden kdc · kdv · ug (lib/einheiten.ts). Die Mandatsliste filtert
+// zusätzlich zur Person nach Gesellschaft; „offen“ erscheint nur unter „Alle“.
+
+export type GesellschaftFilter = 'alle' | Gesellschaftskennung;
+/** Die Filter-Werte in fester Reihenfolge — `kurz` für schmale Bildschirme. */
+export const GESELLSCHAFT_FILTER: readonly { id: GesellschaftFilter; label: string; kurz: string }[] = [
+  { id: 'alle', label: 'Alle', kurz: 'Alle' },
+  ...KERN_EINHEITEN.map(e => ({ id: e.id, label: e.label, kurz: e.kurz })),
+];
+/** Passt ein Mandat (bzw. seine Gesellschaft) zum Filter? `alle` lässt alles durch. */
+export const passtGesellschaft = (filter: GesellschaftFilter, gesellschaft: string | null | undefined): boolean =>
+  filter === 'alle' || gesellschaft === filter;
