@@ -23,3 +23,10 @@
 1. **B1 Aufgaben:** Modell + Server + Übernahme des Bestands + neue Aufgaben-Seite (Bereich/Space/Projekt/Liste/Aufgabe/Unteraufgabe, Detail, Schnell-Anlegen, Status-Verwaltung, CRM-Verknüpfung) + Dashboards.
 2. **B2 Glocke:** Meldungen-Speicher, API, Glocke im Kopf, fällig/überfällig, Telegram-Kanal vorbereitet.
 3. **B3 Querschnitt-Prüfung:** welche Reiter Privat/Business + Firma/Mandant brauchen (nur lesen, Vorschlag).
+
+## Querschnitt (Prüfung 28.09. abends) — Kevins Auswahl
+- **Sofort (klein, läuft):** UG-Mandate landeten als Rechnung bei kdc (Fehler), Mandate-Filter nach Gesellschaft, Meilensteine mit echtem Privat/Business, Einheit am Wochenplan-Block.
+- **Als Nächstes (Kevin: ja):**
+  1. **Finanzen: eine Einheitenliste.** Heute sechs Listen (Cockpit kdc/kdv, Steuern kdc/kdv/privat, Finanzplanung ug/privat/kdv mit kdc→UG, Privat-Finanzen privat/selbststaendigkeit/ug, Liquidität-Start kdv/kdc). Ziel: überall `lib/einheiten.ts`, UG überall, Selbstständigkeit eigene Achse; bestehende Summen dürfen sich dabei nicht ändern (Regressionstest), Rechenkern-Namen bleiben.
+  2. **Mandat an Zielen und Zeit:** Ziele, Meilensteine, Zeitmessung bekommen optional `mandatId`/`firmaId`; Einheit wird wie bei Heads aus der Gesellschaft abgeleitet; Zeit je Mandat sichtbar (Abrechnung/Auslastung).
+- **Später (Kevin: nicht jetzt):** Rechnungen per Kennung an CRM-Firma, Termine/Mails per Klick verknüpfen.
