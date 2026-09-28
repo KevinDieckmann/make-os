@@ -4,6 +4,50 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Verbindungsprüfung als festes Bauteil (28.09.2026, V1, nur lokal)
+
+- **Kevin:** „Einmal nochmal alle Verbindungen im Hintergrund prüfen … Markttraktion muss bald rangehen.“ Jetzt gibt es EINE Stelle, die weiß, welche Kennung auf welche zeigen darf: `lib/crm/verbindungen.ts` (rein, 52 Prüfungen) — Personen ↔ Firmen, Deals (Personen, Firma, Rollen, Produkt, gewonnen ohne Mandat, zwei offene je Firma), Mandate (Deal, Firma, Personen, Produkt, ohne Rechnung in 60/120 Tagen), Rechnungen (Mandat, Gesellschaft, bezahlt ohne Datum, Betrag ≤ 0), Follow-ups, Events/Teilnahmen, Segmente/Kampagnen/Beiträge/Newsletter/Power Hour/Anträge, Werbesperre in laufender Kampagne oder Einladung, Aufgaben-Einheiten, Fokus-Blöcke, Dateiablage (Verweise, Datei fehlt, Datei ohne Eintrag), Import-Konflikte, doppelte Kennungen, gleiche E-Mail, **Kunde ohne Mandat** (Person/Firma, Hinweis — zählt in BEAN solange als Bestandskunde).
+- **Oberfläche:** Stammdaten › Datenqualität, Karte „Verbindungen“ oben: Ampel, Befunde nach Fehler/Warnungen/Hinweisen, Anzahl, bis zu fünf Kennungen als Links (Kontakt, Firma, Deal, Mandat, Rechnung, Event, Kampagne, Segment, Aufgabe). Fehler erscheinen zusätzlich im Überblick unter „Was jetzt zu tun ist“ („n Verbindungsfehler im Bestand“).
+- **Reparieren nur mit Vorschau und nur sichere Fälle:** tote Personen-Verweise in Deals/Mandaten/Kampagnen/Beitrags-Quellen/Anträgen entfernen, Rollen toter Personen, Lead → gelöschter Deal, offene Follow-ups ohne Person/Bezug → „abgesagt“ mit Grund, veraltete Import-Konflikte abräumen, fehlende Dateien markieren (`dateiFehlt`). Nie wird ein Datensatz gelöscht; Zeitstempel von Deals/Mandaten/Personen bleiben. Route `app/api/crm/verbindungen` (GET mit ETag, POST `{ ids, vorschau }`), je Speicher eine Sperre.
+- **Zusammenfassung „Kontakt öffnen“:** „Letztes echtes Gespräch“ nimmt bei Meetings den Zeitpunkt (`wann`), nicht den Tag des Festhaltens, und nur vergangene; kommende als eigener Satz „Nächstes Meeting am …“.
+- **Zahlen lesen:** `node scripts/verbindungen-pruefen.mjs [--alle]` (nur Kennung, Schwere, Anzahl — nie Namen).
+- **Beim Ausrollen:** einmal gegen den Server `node scripts/verbindungen-pruefen.mjs --url <App-Adresse> --alle` laufen lassen (Dienstschlüssel aus der Umgebung) und die Zahlen ansehen, bevor jemand „Reparieren“ drückt.
+- Tests: `tests/crm-verbindungen.test.ts`, `tests/crm-verbindungen-route.test.ts`, `tests/kontakt-oeffnen.test.ts` (Meeting-Zeitpunkt).
+
+## Finanzplan, Planung, Zwischenspeicher: keine stillen Verluste mehr (28.09.2026, F3, nur lokal)
+
+- **Finanzplan kürzt nie mehr still:** Die Säuberung schnitt Firmen bei 10, Rechnungen bei 200, Zahlungen bei 100, Produkte bei 30 ab — jeder PATCH ging davon aus, ab der 201. Rechnung verschwand der Rest beim nächsten Speichern. Jetzt: Lesen wirft nie etwas weg, Grenzen deutlich höher (Rechnungen/Zahlungen 5.000, Firmen 50, Produkte 200, Merkposten 500, Meeting-Punkte 100) und bei Überschreitung **413 mit Text statt Abschneiden** — auch ZOE (`erfasse_rechnung`/`erfasse_zahlung`) und die Beleg-Übernahme. Mehr als 1.000 Änderungen je Aufruf → 413 (vorher still nur die ersten 100). Logik in `lib/finanzen/finanzplan-bestand.ts`.
+- **„Bezahlt“ + Buchung in einem Schritt:** `PATCH /api/state/finanzplan { aktion: 'bezahlt', rechnungId, am }` setzt Status + Datum UND legt die Buchung `bu-re-<id>` in derselben Sperre an (idempotent; ein Wiederholen heilt eine fehlende Buchung; geht die Buchung nicht, bleibt die Rechnung unverändert). Kontakt-Reiter Umsatz und Finanzplanung nutzen ihn — kein zweiter Aufruf mit `.catch(() => {})` mehr.
+- **Ziele & Meilensteine zu zweit:** Kein PUT des ganzen Horizonts mehr — je Ziel eine Änderung mit Stand (`PATCH /api/state/ziele { horizont, ops }`), veraltet → 409 mit aktuellem Stand und Hinweis, die Kaskade läuft in derselben Sperre. Meilensteine ebenso (mit Stand, nie mehr Vollschreiben). Der alte PUT mit `ziele` antwortet 409; Fokus per PUT bleibt.
+- **Routinen & Wochenblöcke:** Blöcke gehen einzeln (`PATCH { bloecke: ops }`), nur die eigenen der angemeldeten Person (fremde → 403, im Planer nur lesbar); PUT `{ bloecke }` ist zu. PUT `{ routinen }` liest in der Sperre (vorher davor — gleichzeitige Block-Änderungen gingen verloren). Routinen gehen ebenfalls als Einzeländerungen mit Stand.
+- **Säulen-Seite:** Status einer Aufgabe = genau eine Einzeländerung (`lib/aufgaben/status.ts`), nie mehr der ganze Aufgaben-Stand per PUT.
+- **Anfrage-Bündler:** Schreib-Generation — ein GET, der vor dem letzten Schreiben begann, wird nicht mehr geteilt oder frisch gehalten (vorher sah, wer direkt nach dem Speichern las, noch den alten Stand).
+- **Memo:** Ergebnisse gelten unter dem Stand vom Start der Rechnung — schreibt während der Rechnung jemand, rechnet der nächste Aufruf neu.
+- Tests: `tests/finanzplan-grenzen.test.ts`, `tests/planung-zwei-schreiber.test.ts`, `tests/routinen-bloecke.test.ts`, `tests/aufgabe-status.test.ts`, `tests/anfrage-buendel.test.ts`, `tests/memo.test.ts`.
+
+## Schreibwege repariert (Prüfbericht 28.09.) (28.09.2026, F1, nur lokal)
+
+- **Felder leeren an Kontakten wirkt wieder:** `kontaktTeil` schickte `{feld: undefined}` — JSON verwarf den Schlüssel, das alte Feld blieb stehen. Jetzt geht „leer“ als `null` hinaus (`leerAlsNull`, components/os/crm/daten.ts), der Server entfernt das Feld vor der Säuberung (`teilAnwenden`, lib/make-one/crm.ts); ein geleertes Stammdaten-Feld zählt als von Hand. Betroffen waren u. a. „✓ erledigt“ am nächsten Schritt, Firma lösen, BEAN „zurück auf automatisch“, Kreis/Anrede/Lebensphase/Besitzer leeren, private Notiz leeren, Art.-14-Kennzeichen beim Herkunftswechsel, „Sperre aufheben“.
+- **Neue Firma überschreibt keine bestehende mehr:** „Muster GmbH“ nach „Muster“ hat dieselbe Kennung. Anlegen (Kartei „+ Firma“, „+ Person“, Visitenkarte am Einlass, Firma verknüpfen) prüft vorher (`bestehendeFirma`) und verknüpft; der Server führt einen Upsert mit bestehender Kennung zusammen (nur leere Felder füllen — Lead, Zahlung, BEAN, Notiz, Domain, Branchen, Rolle bleiben).
+- **Firmen-Karte** schreibt nur die geänderten Felder (`teil`) — eine gleichzeitige Lead-Qualifizierung geht nicht mehr verloren; Deals und Mandate der Firma per Kennung (`dealZuFirma`/`mandatZuFirma`).
+- **„Kein Nachfassen“** am Gast (`nachfassenVerzichtet`) überlebt jedes Speichern.
+- **Lead → SQL** behält Antworten je Kernfrage und `qualifiziertAm`.
+- **LinkedIn-Profil** (von Hand oder aus dem LinkedIn-Export) gilt als von Hand — der Masterlisten-Import überschreibt es nicht mehr.
+- **Geplantes Meeting** (Zeitpunkt in der Zukunft) setzt weder „letzter Kontakt“ noch Stufe/Wiedervorlage; die Kadenz zählt es ab seinem Tag (`letzterKontaktVon`).
+- **Mandat aus gewonnenem Deal** hebt eine gesetzte Lifecycle-Phase auf „Kunde“ (Follow Up bleibt; ohne Phase wird nichts gespeichert).
+- **Übergabe-Aufgaben** tragen die Einheit aus Deal/Mandat (wie die Heads).
+- **Kein Rückfall auf „kevin“:** Planung · Einheiten, Zeit je Einheit und die Kontakt-Frage an ZOE brauchen eine ausdrückliche Person (sonst 401); die Kartei liefert Dienstaufrufen ohne Person keine privaten Notizen und lässt sie beim Zurückschreiben unangetastet.
+- Test: `tests/schreibwege-f1.test.ts`.
+
+## Datenschutz vollständig: Art. 15/17 über alle Speicher, Dubletten, Archiv verschlüsselt (28.09.2026, F2, nur lokal)
+
+- **Eine Stelle für den Personenbezug:** `lib/crm/person-bestaende.ts` (`personAufzaehlen`, `personEntfernen`, `personUmbiegen`) kennt alle Speicher mit einer Kontakt-Kennung: Kartei, CRM (über `person-verweise.ts`), Dateiablage je Haushalt (+ Dateien auf der Platte), Import-Konflikte, Freigabe-Listen und Replay-Fälle der drei Heads, kommende Termine (`crm-signale`), Aufgaben. Je Speicher eine Sperre, idempotent.
+- **Löschen (Art. 17)** über `/api/crm/datenschutz` und jetzt auch beim Löschen in der Kartei (`op:'delete'` in `/api/state/kontakte`): Dateien nur mit Personenbezug fallen samt Datei weg; hängt ein Dokument zugleich an Firma/Mandat/Deal/Rechnung, fällt nur der Personenbezug (Aufbewahrung). Head-Berichte, die die Person noch im Freitext nennen, fallen ganz weg. Aufgaben: nur eindeutig zugeordnete (Head-Aufgabe zu ihrem Vorschlag oder Link auf sie) werden entpersonalisiert („[gelöscht]“, Link raus) — reine Namenstreffer werden gemeldet (`aufgabenPruefen`), nie geändert. Antwort nennt je Speicher die Zahl der Änderungen.
+- **Auskunft (Art. 15)** listet zusätzlich Dateiablage (nur Metadaten), Import-Konflikte, Head-Vorschläge, kommenden Termin und eindeutig zugeordnete Aufgaben.
+- **Dubletten:** Verweise in allen Speichern umgebogen; zwei Teilnahmen am selben Event werden eine (jüngste Auskunft gewinnt); private Notiz nur als Paar (Notiz + Verfasser), `netzwerk` vereint, `vonHand` vereinigt, Lead/Zahlung füllen Lücken, Verlauf ohne Doppelte mit den Löschmarken beider. Ein Import-Konflikt einer nicht mehr existierenden Person wird beim Entscheiden entfernt statt 404.
+- **Archiv verschlüsselt:** Kopien vor Umzug/Entflechtung/Kategorien-Aufräumen gehen über `lib/store/archiv.ts` — mit Datenschlüssel als Hülle wie die Bestände. `scripts/daten-verschluesselung.mjs` stellt jetzt auch `archiv/` um → **auf dem Server einmal `--verschluesseln` laufen lassen**, damit alte Klartext-Kopien verschlüsselt werden.
+- Test: `tests/crm-person-bestaende.test.ts`.
+
 ## Flächen für Sales, Marketing, Events · Marke Make.One (Reiter heißt „Make.One“) (27.09.2026, nur lokal)
 
 - **Drei neue Flächen** in der Markttraktion — die Start-Ansicht je Reiter ist jetzt gestaltbar wie Heute und der Überblick (✎ Anpassen oder eine Karte länger drücken; je Person; Standard wird nie gespeichert):
