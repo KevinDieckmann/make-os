@@ -33,7 +33,8 @@ import { bestehendeFirma } from '@/lib/crm/firmen';
 import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
 import { WertelistenWahl, WertelistenMehrfachWahl } from './WertelistenWahl';
 import { typenVon, kategorienVon, labelsVon, typenFelder, kategorienFelder } from '@/lib/crm/mehrfach';
-import { stationenVon, hauptStation, stationWechseln, stationBeenden, stationenFelder } from '@/lib/crm/stationen';
+import { stationenVon, hauptStation, type KontaktFelder } from '@/lib/crm/stationen';
+import { useFirmaWechselFrage, type FirmaWechselFrageFn } from './kontakt/FirmaWechselFrage';
 import { phaseVon, PHASE_LABEL, type Phase } from '@/lib/crm/phase';
 import type { LifecyclePhase } from '@/lib/crm/lifecycle';
 
@@ -56,34 +57,41 @@ export const phaseFarbe = (p?: string) => (p === 'kunde' ? LEUCHT.gut : p === 'p
 export const lifecycleFarbe = (p?: LifecyclePhase | null): string => (p === 'kunde' ? LEUCHT.gut : p === 'follow_up' ? LEUCHT.agenten : p === 'angebot' ? LEUCHT.geld : p === 'opportunity' || p === 'sql' ? LEUCHT.business : p === 'mql' ? LEUCHT.puls : C.inkDim);
 export const phaseLabel = (p?: string) => (p && p in PHASE_LABEL ? PHASE_LABEL[p as Phase] : undefined) ?? PHASEN.find(x => x.id === p)?.label ?? 'Kontakt';
 
-/** Einen Kontakt ändern — immer der ganze Eintrag mit den geänderten Feldern. */
-export type Setze = (teil: Partial<Kontakt>) => Promise<void> | void;
+/** Einen Kontakt ändern — die geänderten Felder (`kontaktTeil`), bei Firmenänderung mit Absicht (`firmaWechsel`). */
+export type Setze = (teil: KontaktFelder) => Promise<void> | void;
 
 /**
  * Firma an der Person verknüpfen — eine bestehende (Name, Groß-/Kleinschreibung egal) oder eine neue
  * anlegen (crm.firmen) und verknüpfen; leer = Verknüpfung lösen. Derselbe Weg in der Matrix und in
  * der Karte „Firma“ von „Kontakt öffnen“.
- * Stationen (28.09.): Hatte die Person schon eine Firma, ist das ein Jobwechsel — die bisherige
- * Hauptstation endet heute (Historie bleibt), die neue übernimmt die bisherige Position als Rolle;
- * „leer“ beendet die Hauptstation. Ohne bisherige Firma wie vorher eine einfache Verknüpfung.
+ * Stationen (Kevin 28.09.): Hatte die Person schon eine Firma, wird kurz nachgefragt (`frage`):
+ * Jobwechsel · Zusätzliche Firma · Korrektur — die Absicht geht als `firmaWechsel` an den Server
+ * (lib/crm/stationen.ts `firmaWechselAnwenden`). Abbrechen ändert nichts. Ohne bisherige Firma wie
+ * vorher eine einfache Verknüpfung.
  */
-export async function firmaVerknuepfen(api: CrmApi, k: Kontakt, name: string, setze: Setze): Promise<void> {
+export async function firmaVerknuepfen(api: CrmApi, k: Kontakt, name: string, setze: Setze, frage?: FirmaWechselFrageFn): Promise<void> {
   const n = name.trim();
   const firmen = api.crm?.stand.firmen ?? [];
   const jetzt = k.firmaId ? firmen.find(f => f.id === k.firmaId) : undefined;
   if (n === (jetzt?.name ?? k.firma ?? '')) return;
-  const heute = localDay();
-  const firmaName = (id: string) => firmen.find(f => f.id === id)?.name;
   const haupt = hauptStation(stationenVon(k));
+  const vorher = jetzt?.name ?? k.firma;
   if (!n) {
     if (!haupt) return void setze({ firma: undefined, firmaId: undefined });
-    return void setze(stationenFelder(k, stationBeenden(k, stationenVon(k).indexOf(haupt), heute), heute, firmaName));
+    const absicht = frage ? await frage({ von: vorher }) : 'korrektur';
+    if (!absicht) return;
+    return void setze({ firma: undefined, firmaId: undefined, firmaWechsel: absicht });
   }
   // Bestehende Firma (auch „Muster GmbH“ zu „Muster“, gleiche Kennung) verknüpfen statt neu anlegen (F1).
   const f = firmen.find(x => x.name.toLowerCase() === n.toLowerCase()) ?? bestehendeFirma(firmen, n) ?? neueFirma(n);
+  if (!haupt) {
+    if (!firmen.some(x => x.id === f.id)) await api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>);
+    return void setze({ firma: f.name, firmaId: f.id });
+  }
+  const absicht = frage ? await frage({ von: vorher, nach: f.name }) : 'korrektur';
+  if (!absicht) return;
   if (!firmen.some(x => x.id === f.id)) await api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>);
-  if (!haupt) return void setze({ firma: f.name, firmaId: f.id });
-  void setze(stationenFelder(k, stationWechseln(k, { firmaId: f.id, ...(k.position ? { rolle: k.position } : {}) }, heute), heute, id => (id === f.id ? f.name : firmaName(id))));
+  void setze({ firma: f.name, firmaId: f.id, firmaWechsel: absicht });
 }
 
 /** Werbesperre und Art.-14-Frist — stehen über allem anderen. */
@@ -394,6 +402,7 @@ export const MATRIX_TEILE: MatrixTeil[] = ['einordnung', 'person', 'firma', 'her
 export const MATRIX_TEIL_LABEL: Record<MatrixTeil, string> = { einordnung: 'Einordnung', person: 'Person', firma: 'Firma', herkunft: 'Herkunft der Daten', privat: 'Privat' };
 
 type MatrixArgs = { k: Kontakt; api: CrmApi; setze: Setze; zuFirma: (id: string) => void };
+type MatrixInnen = MatrixArgs & { frage: FirmaWechselFrageFn };
 
 /**
  * Inhalt und Kopfzeile je Gruppe der Matrix — jedes Feld der Masterdatei
@@ -406,7 +415,7 @@ type MatrixArgs = { k: Kontakt; api: CrmApi; setze: Setze; zuFirma: (id: string)
  * (WertelistenMehrfachWahl, 28.09.), Branchen als scrollbare Mehrfachwahl (WertelistenWahl);
  * „+ neu“ legt in beiden in der Werteliste an.
  */
-function matrixTeile({ k, api, setze, zuFirma }: MatrixArgs): { inhalt: Record<MatrixTeil, ReactNode>; zahl: Partial<Record<MatrixTeil, [number, number]>>; rechts: Partial<Record<MatrixTeil, ReactNode>> } {
+function matrixTeile({ k, api, setze, zuFirma, frage }: MatrixInnen): { inhalt: Record<MatrixTeil, ReactNode>; zahl: Partial<Record<MatrixTeil, [number, number]>>; rechts: Partial<Record<MatrixTeil, ReactNode>> } {
   const crm = api.crm;
   const firmen = crm?.stand.firmen ?? [];
   const firma: Firma | undefined = k.firmaId ? firmen.find(f => f.id === k.firmaId) : undefined;
@@ -421,7 +430,7 @@ function matrixTeile({ k, api, setze, zuFirma }: MatrixArgs): { inhalt: Record<M
   );
   const kf = (m: MatrixFeld<keyof Kontakt>) => <MatrixZeile key={m.feld} label={m.label} lang={m.lang} link={m.link} wert={String(k[m.feld] ?? '')} onFertig={t => void setze({ [m.feld]: (m.feld === 'email' ? t.toLowerCase() : t) || undefined } as Partial<Kontakt>)} />;
   const ff = (f: Firma, m: MatrixFeld<keyof Firma>) => <MatrixZeile key={m.feld} label={m.label} lang={m.lang} link={m.link} wert={String(f[m.feld] ?? '')} onFertig={t => void api.teil('firmen', f.id, { [m.feld]: t })} />;
-  const firmaZuordnen = (n: string) => firmaVerknuepfen(api, k, n, setze);
+  const firmaZuordnen = (n: string) => firmaVerknuepfen(api, k, n, setze, frage);
   const inhalt: Record<MatrixTeil, ReactNode> = {
     einordnung: <>
       {mehrfach('Typ', 'typen', typenVon(k), l => void setze(typenFelder(l)))}
@@ -465,7 +474,8 @@ function matrixTeile({ k, api, setze, zuFirma }: MatrixArgs): { inhalt: Record<M
 
 /** Eine Gruppe der Matrix ohne eigene Überschrift — für die Klapp-Abschnitte von „Kontakt öffnen“, die den Titel selbst tragen. */
 export function MatrixTeilInhalt({ teil, ...args }: MatrixArgs & { teil: MatrixTeil }) {
-  return <>{matrixTeile(args).inhalt[teil]}</>;
+  const { frage, dialog } = useFirmaWechselFrage();
+  return <>{matrixTeile({ ...args, frage }).inhalt[teil]}{dialog}</>;
 }
 
 /** Zähler „gefüllt/gesamt“ einer Gruppe — für die Kopfzeile eines Klapp-Abschnitts. */
@@ -479,9 +489,11 @@ export function MatrixZahl({ teil, k, api }: { teil: MatrixTeil; k: Kontakt; api
 
 /** Die ganze Matrix mit Gruppen-Überschriften (Karteikarte) — `teile` wählt Gruppen aus. */
 export function Matrix({ teile = MATRIX_TEILE, ...args }: MatrixArgs & { teile?: MatrixTeil[] }) {
-  const m = matrixTeile(args);
+  const { frage, dialog } = useFirmaWechselFrage();
+  const m = matrixTeile({ ...args, frage });
   return (
     <div style={{ display: 'grid', gap: 18 }}>
+      {dialog}
       {teile.map(t => <Gruppe key={t} titel={MATRIX_TEIL_LABEL[t]} zahl={m.zahl[t]} rechts={m.rechts[t]}>{m.inhalt[t]}</Gruppe>)}
     </div>
   );

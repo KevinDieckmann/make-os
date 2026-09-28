@@ -14,8 +14,8 @@
 //     Firma, Position oder Stationen etwas ändert — und nur, wenn die Liste mehr trägt als
 //     die alten Felder (eine einzige aktive Hauptstation = „trivial“, bleibt ungeschrieben).
 //   · Schreibwege halten beides synchron: `stationenSynchron` (Kartei-Route, Import).
-//     Ein alter Schreiber, der nur `firmaId` setzt (Firma zuordnen, Pipeline), wird als
-//     Jobwechsel verstanden: die bisherige Hauptstation endet (`bis`, `aktiv: false`).
+//     Wer nur `firmaId` ändert, sagt die Absicht dazu (`firmaWechsel`: jobwechsel · zusaetzlich ·
+//     korrektur, Kevin 28.09.); ohne Absicht gilt „Korrektur“ nur ohne gespeicherte Stationen, sonst 409.
 //
 // „Personen einer Firma“ bestimmt NUR `personenDerFirma` (bzw. `personenJeFirma`,
 // `firmenDerPerson`) — nie `k.firmaId === f.id` (Regel in CLAUDE.md).
@@ -172,9 +172,6 @@ export function stationIn(k: MitStationen, firmaId: string): Station | undefined
 /** Eine einzige aktive Hauptstation ohne Zusatz = genau das, was die alten Felder schon sagen. */
 const trivial = (l: readonly Station[]) => l.length === 1 && l[0].aktiv && !!l[0].haupt && !l[0].art && !l[0].von && !l[0].bis;
 
-/** Die Station beenden (Jobwechsel): nie löschen — `bis` und `aktiv: false`. */
-const beenden = (s: Station, heute: string): Station => { const { haupt: _h, ...rest } = s; return { ...rest, aktiv: false, bis: s.bis ?? heute }; };
-
 /**
  * `firmaId`/`firma`/`position` und `stationen` synchron halten — DIE Funktion für jeden Schreibweg
  * (Kartei-Route, Import). `neu` ist der Eintrag, wie er gespeichert werden soll, `alt` der gespeicherte
@@ -183,9 +180,9 @@ const beenden = (s: Station, heute: string): Station => { const { haupt: _h, ...
  * Vorrang:
  *   1. `neu.stationen` weicht von den gespeicherten ab → die Stationen sind die Wahrheit; `firmaId`,
  *      `position` (= Rolle der Hauptstation) und `firma` folgen ihnen.
- *   2. sonst hat ein alter Schreiber `firmaId` geändert → Jobwechsel: die alte Hauptstation endet heute,
- *      die neue beginnt (war die Firma schon aktive Station, wird sie nur Hauptstation); ohne `firmaId`
- *      endet die Hauptstation. `position`/`firma` bleiben, wie der Schreiber sie schickt (altes Verhalten).
+ *   2. sonst hat ein alter Schreiber nur `firmaId` geändert (ohne Absicht): ohne gespeicherte Stationen
+ *      „Korrektur“ (Hauptstation ersetzt); mit gespeicherten lehnt die Kartei-Route vorher ab (409) — hier
+ *      endet nie still eine Station. Mit Absicht rechnet die Route vorher `firmaWechselAnwenden` (→ 1.).
  *   3. sonst `position` geändert (Hand, Import) → Rolle der Hauptstation.
  * Ein Eintrag ohne `stationen` (älteres Fenster, Dienstweg) verliert die gespeicherten nie. Eine triviale
  * Liste (eine aktive Hauptstation ohne Zusatz) wird nur geschrieben, wenn schon Stationen gespeichert waren.
@@ -205,14 +202,13 @@ export function stationenSynchron<K extends Kontakt>(neu: K, alt: Kontakt | unde
   let liste: Station[];
   if (explizit) liste = [...(neu.stationen ?? [])];
   else if (!firmaGeaendert) liste = [...basis];
-  else {
-    const i = neu.firmaId ? basis.findIndex(s => s.aktiv && s.firmaId === neu.firmaId) : -1;
-    if (i >= 0) liste = basis.map((s, j) => (j === i ? { ...s, haupt: true } : beendetOhneHaupt(s)));
-    else {
-      liste = basis.map(s => (s === altHaupt ? beenden(s, heute) : s));
-      if (neu.firmaId) liste.push({ firmaId: neu.firmaId, ...(altHaupt ? { von: heute } : {}), aktiv: true, haupt: true });
-    }
-  }
+  // Alter Schreiber ohne Absicht (Kevin 28.09.): ohne gespeicherte Stationen gilt „Korrektur“ (die Hauptstation
+  // wird ersetzt — beim Altbestand steht ohnehin nur sie da). MIT gespeicherten Stationen lehnt die Kartei-Route
+  // vorher mit 409 ab; kommt es doch hier an (anderer Schreibweg), geht nichts verloren: die neue Firma kommt als
+  // laufende Hauptstation dazu, keine Station endet still.
+  else if (!altGespeichert) liste = korrigieren(basis, neu.firmaId);
+  else if (neu.firmaId) liste = firmaWechselAnwenden({ stationen: basis }, neu.firmaId, 'zusaetzlich', heute).map(s => (s.aktiv && s.firmaId === neu.firmaId ? { ...s, haupt: true } : beendetOhneHaupt(s)));
+  else liste = [...basis];
   // Genau eine Hauptstation unter den aktiven.
   liste = hauptEindeutig(liste.map(s => (s.aktiv ? s : beendetOhneHaupt(s))));
   const kandidat = hauptStation(liste);
@@ -250,6 +246,58 @@ export function stationenSynchron<K extends Kontakt>(neu: K, alt: Kontakt | unde
 }
 const beendetOhneRolle = (s: Station): Station => { const { rolle: _r, ...rest } = s; return rest; };
 const beendetOhneHaupt = (s: Station): Station => { if (!s.haupt) return s; const { haupt: _h, ...rest } = s; return rest; };
+
+/** Die Absicht, wenn jemand nur die Firma einer Person ändert (Kevin 28.09.): wird im `teil` als `firmaWechsel` mitgeschickt. */
+export const FIRMA_WECHSEL = ['jobwechsel', 'zusaetzlich', 'korrektur'] as const;
+export type FirmaWechsel = typeof FIRMA_WECHSEL[number];
+/** Felder eines `teil` an einer Person — optional mit der Absicht einer Firmenänderung (nie gespeichert). */
+export type KontaktFelder = Partial<Kontakt> & { firmaWechsel?: FirmaWechsel };
+/** Hinweis (409), wenn jemand ohne Absicht die Firma einer Person mit gespeicherten Stationen ändert. */
+export const FIRMA_WECHSEL_FEHLT = 'Firma geändert, aber nicht gesagt, wie: Jobwechsel, zusätzliche Firma oder Korrektur (firmaWechsel) — nichts gespeichert, damit keine Station still endet.';
+
+/**
+ * Braucht diese Änderung eine Absicht? Ja, wenn die Person gespeicherte Stationen hat, `firmaId` sich ändert,
+ * die Stationen selbst nicht mitkommen und keine gültige Absicht dabei ist. `felder` = `teil`-Felder bzw. ganzer Eintrag.
+ */
+export function firmaWechselFehlt(alt: Pick<Kontakt, 'firmaId' | 'stationen'> | undefined, felder: Record<string, unknown>, ganz = false): boolean {
+  if (!alt || !Array.isArray(alt.stationen) || !alt.stationen.length) return false;
+  if (!ganz && !('firmaId' in felder)) return false;
+  if ('stationen' in felder && felder.stationen !== undefined && JSON.stringify(felder.stationen) !== JSON.stringify(alt.stationen)) return false;
+  const neu = typeof felder.firmaId === 'string' && felder.firmaId ? felder.firmaId : undefined;
+  if (neu === (alt.firmaId ?? undefined)) return false;
+  return !istFirmaWechsel(felder.firmaWechsel);
+}
+export const istFirmaWechsel = (v: unknown): v is FirmaWechsel => typeof v === 'string' && (FIRMA_WECHSEL as readonly string[]).includes(v);
+export const FIRMA_WECHSEL_WAHL: { id: FirmaWechsel; label: string; hinweis: string }[] = [
+  { id: 'jobwechsel', label: 'Jobwechsel', hinweis: 'die bisherige Station endet heute, der Verlauf bleibt' },
+  { id: 'zusaetzlich', label: 'Zusätzliche Firma', hinweis: 'neue Station, die bisherige bleibt aktiv' },
+  { id: 'korrektur', label: 'Korrektur', hinweis: 'die falsche Firma wird ersetzt — ohne Historie' },
+];
+
+/** Korrektur: die Hauptstation bekommt die richtige Firma (Rolle, Zeitraum bleiben); ohne Firma fällt sie weg. */
+function korrigieren(l: readonly Station[], firmaId: string | undefined): Station[] {
+  const h = hauptStation(l);
+  if (!firmaId) return h ? l.filter(s => s !== h) : [...l];
+  const schon = l.find(s => s.aktiv && s.firmaId === firmaId);
+  if (schon) return l.filter(s => s !== h || s === schon).map(s => (s === schon ? { ...s, haupt: true } : beendetOhneHaupt(s)));
+  if (!h) return [...l, { firmaId, aktiv: true, haupt: true }];
+  return l.map(s => (s === h ? { ...s, firmaId } : s));
+}
+
+/**
+ * Nur die Firma ändern — mit ausdrücklicher Absicht (Kartei-Route, `teil` mit `firmaWechsel`):
+ *   jobwechsel  → bisherige Hauptstation endet heute (Verlauf bleibt), die neue wird Hauptstation;
+ *                 ohne neue Firma: die Hauptstation endet (ausgeschieden)
+ *   zusaetzlich → neue laufende Station, die Hauptstation bleibt; ohne neue Firma: nichts
+ *   korrektur   → die Hauptstation wird ersetzt (falsche Firma), ohne Historie; ohne neue Firma: sie fällt weg
+ */
+export function firmaWechselAnwenden(k: Pick<Kontakt, 'stationen'> & Partial<MitStationen>, firmaId: string | undefined, absicht: FirmaWechsel, heute: string, rolle?: string): Station[] {
+  const basis = stationenVon({ firmaId: k.firmaId, position: k.position, stationen: k.stationen });
+  if (absicht === 'korrektur') return korrigieren(basis, firmaId);
+  if (absicht === 'zusaetzlich') return firmaId ? stationHinzufuegen({ stationen: basis }, { firmaId, ...(rolle ? { rolle } : {}) }) : basis;
+  if (!firmaId) { const h = hauptStation(basis); return h ? stationBeenden({ stationen: basis }, basis.indexOf(h), heute) : basis; }
+  return stationWechseln({ stationen: basis }, { firmaId, ...(rolle ? { rolle } : {}) }, heute);
+}
 
 /** Eine neue Station aus der Oberfläche. */
 export interface StationNeu { firmaId: string; rolle?: string; art?: StationArt; von?: string }

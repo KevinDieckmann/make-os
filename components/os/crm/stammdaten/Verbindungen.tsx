@@ -49,6 +49,7 @@ const WEITER: Partial<Record<string, { label: string; href: string }>> = {
   'konflikt-veraltet': { label: 'Import-Konflikte', href: WEG.stammdaten('austausch') },
   'mandat-ohne-rechnung': { label: 'Rechnungen', href: WEG.rechnungen() },
   'rechnung-bezahlt-ohne-datum': { label: 'Rechnungen', href: WEG.rechnungen() },
+  'werte-ausserhalb-wertelisten': { label: 'Wertelisten', href: markttraktion('stammdaten', 'wertelisten') },
 };
 
 const kennung: CSSProperties = { fontSize: 12, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', color: C.inkDim, padding: '2px 8px', borderRadius: 8, background: 'rgba(255,255,255,.04)', textDecoration: 'none', whiteSpace: 'nowrap' };
@@ -129,7 +130,7 @@ export function Verbindungen({ i = 0, onGeaendert }: { i?: number; onGeaendert?:
                     {b.anzahl > b.beispiele.length && <span style={{ fontSize: 12, color: C.inkLeise }}>+ {b.anzahl - b.beispiele.length} weitere</span>}
                     <span style={{ flex: 1 }} />
                     {weiter && <Link href={weiter.href} style={{ fontSize: 12.5, color: C.inkDim }}>{weiter.label} ›</Link>}
-                    {b.reparierbar && <Knopf leise aus={laeuft} onClick={() => void zeigeVorschau([b.id])}>Reparieren</Knopf>}
+                    {b.reparierbar && <Knopf leise aus={laeuft} onClick={() => void zeigeVorschau([b.id])}>{b.knopf ?? 'Reparieren'}</Knopf>}
                   </div>
                 </div>
               );

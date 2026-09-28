@@ -31,6 +31,8 @@ import { einheitName } from '@/lib/einheiten';
 import { personenJeFirma, stationenBefund, firmenDerPerson } from './stationen';
 import { alleAdressen, emailsBefund } from './emails';
 import { kreisFirmen } from './konzern';
+import { typenVon, kategorienVon, labelsVon } from './mehrfach';
+import { wertelistenVollstaendig, wertelistenPruefen, WERT_MIN, WERT_MAX } from './wertelisten';
 
 import { tagVon } from '@/lib/zeit';
 // ── Eingang ─────────────────────────────────────────────────────────────────
@@ -69,13 +71,15 @@ export interface VerbindungsBefund {
   bereich: VerbindungsBereich;
   text: string;
   anzahl: number;
-  /** Höchstens fünf Kennungen — nie Namen, nie Inhalte. */
+  /** Höchstens fünf Kennungen — nie Namen, nie Inhalte (bei Werten außerhalb der Wertelisten: „typ:Wert“). */
   beispiele: string[];
   reparierbar: boolean;
+  /** Beschriftung des Reparieren-Knopfs (Standard „Reparieren“). */
+  knopf?: string;
   art?: BeispielArt;
 }
 
-interface Pruefung { schwere: Schwere; bereich: VerbindungsBereich; reparierbar: boolean; art?: BeispielArt; text: (n: number) => string }
+interface Pruefung { schwere: Schwere; bereich: VerbindungsBereich; reparierbar: boolean; art?: BeispielArt; text: (n: number) => string; /** Beschriftung des Reparieren-Knopfs, wenn nicht „Reparieren“. */ knopf?: string }
 const e = (n: number, ein: string, mehr: string) => (n === 1 ? ein : mehr);
 
 /** Alle Prüfungen mit Schwere, Bereich und Satz — die eine Liste, gegen die auch das Skript zählt. */
@@ -87,6 +91,7 @@ export const PRUEFUNGEN = {
   'kontakt-station-haupt': { schwere: 'fehler', bereich: 'kontakte', reparierbar: false, art: 'kontakt', text: n => `${n} ${e(n, 'Person hat', 'Personen haben')} nicht genau eine Hauptstation, oder die angezeigte Firma weicht von der Hauptstation ab — in der Kontaktseite unter „Stationen“ die Hauptstation wählen.` },
   'kontakt-email-haupt': { schwere: 'warnung', bereich: 'kontakte', reparierbar: false, art: 'kontakt', text: n => `${n} ${e(n, 'Person hat', 'Personen haben')} mehrere E-Mail-Adressen, aber nicht genau eine Haupt-Adresse (oder sie weicht von der angezeigten ab) — in der Kontaktseite die Haupt-Adresse wählen.` },
   'firma-mutter-tot': { schwere: 'fehler', bereich: 'firmen', reparierbar: true, art: 'firma', text: n => `${n} ${e(n, 'Firma zeigt', 'Firmen zeigen')} auf eine Mutterfirma, die es nicht mehr gibt — Reparieren entfernt den Verweis.` },
+  'werte-ausserhalb-wertelisten': { schwere: 'hinweis', bereich: 'kontakte', reparierbar: true, art: 'kennung', knopf: 'In Werteliste aufnehmen', text: n => `${n} ${e(n, 'Wert', 'Werte')} außerhalb der Wertelisten (Typ, Kategorie, Label) — „In Werteliste aufnehmen“ legt sie dort an.` },
   'firma-mutter-zyklus': { schwere: 'fehler', bereich: 'firmen', reparierbar: false, art: 'firma', text: n => `${n} ${e(n, 'Firma liegt', 'Firmen liegen')} auf einem Kreis von Mutterfirmen (eine Firma wäre ihre eigene Mutter) — in der Firmenkarte eine Mutter lösen.` },
   'firma-ohne-personen': { schwere: 'hinweis', bereich: 'firmen', reparierbar: false, art: 'firma', text: n => `${n} ${e(n, 'Firma hat', 'Firmen haben')} keine Person in der Kartei.` },
   'kunde-ohne-mandat-person': { schwere: 'hinweis', bereich: 'kontakte', reparierbar: false, art: 'kontakt', text: n => `${n} ${e(n, 'Person ist', 'Personen sind')} als Kunde geführt, aber es gibt kein Mandat dazu — Mandat nachtragen (zählt bis dahin als Bestandskunde).` },
@@ -247,6 +252,9 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
   }
   for (const id of kreisFirmen(liste(crm.firmen))) melde('firma-mutter-zyklus', id);
 
+  // Typ, Kategorie, Label außerhalb der Wertelisten (Kevin 28.09.) — EIN Sammel-Hinweis, gezählt je Wert.
+  for (const w of werteAusserhalb(kontakte, crm.wertelisten)) melde('werte-ausserhalb-wertelisten', `${w.feld}:${w.wert}`);
+
   // Kunde ohne Mandat (Kevin 28.09.: zählt in BEAN als Bestandskunde, bis das Mandat nachgetragen ist).
   const mandate = liste(crm.mandate);
   for (const k of kontakte) {
@@ -388,13 +396,37 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
     const alle = funde.get(id)!;
     // Anzahl = betroffene Einträge (einmalig), Beispiele = die ersten fünf Kennungen.
     const eindeutig = Array.from(new Set(alle));
-    return { id, schwere: p.schwere, bereich: p.bereich, text: p.text(eindeutig.length), anzahl: eindeutig.length, beispiele: eindeutig.slice(0, BEISPIELE), reparierbar: p.reparierbar, ...(p.art ? { art: p.art } : {}) };
+    return { id, schwere: p.schwere, bereich: p.bereich, text: p.text(eindeutig.length), anzahl: eindeutig.length, beispiele: eindeutig.slice(0, BEISPIELE), reparierbar: p.reparierbar, ...(p.art ? { art: p.art } : {}), ...(p.knopf ? { knopf: p.knopf } : {}) };
   }).sort((x, y) => SCHWERE_RANG[x.schwere] - SCHWERE_RANG[y.schwere] || y.anzahl - x.anzahl);
 }
 
 /** Gesamtzustand für die Ampel: rot bei Fehlern, gelb bei Warnungen, sonst grün. */
 export function verbindungsAmpel(befunde: readonly Pick<VerbindungsBefund, 'schwere'>[]): 'rot' | 'gelb' | 'gruen' {
   return befunde.some(x => x.schwere === 'fehler') ? 'rot' : befunde.some(x => x.schwere === 'warnung') ? 'gelb' : 'gruen';
+}
+
+/** Welche Liste zu welchem Feld gehört. */
+const LISTE_ZU_FELD = { typ: 'typen', kategorie: 'kategorien', label: 'labels' } as const;
+type WertFeld = keyof typeof LISTE_ZU_FELD;
+
+/**
+ * Werte an Personen, die in keiner Werteliste stehen (Groß-/Kleinschreibung egal) — je Feld und Wert einmal,
+ * in der Schreibweise, in der sie zuerst vorkommen. Werte, die die Werteliste nie aufnähme (Länge), fehlen hier.
+ */
+export function werteAusserhalb(kontakte: readonly Kontakt[], wertelisten: CrmBestand['wertelisten']): { feld: WertFeld; wert: string }[] {
+  const voll = wertelistenVollstaendig(wertelisten);
+  const raus: { feld: WertFeld; wert: string }[] = [];
+  const s = (t: string) => t.replace(/\s+/g, ' ').trim().toLowerCase();
+  for (const [feld, von] of [['typ', typenVon], ['kategorie', kategorienVon], ['label', labelsVon]] as const) {
+    const bekannt = new Set(voll[LISTE_ZU_FELD[feld]].map(x => s(x.wert)));
+    for (const k of kontakte) for (const w of von(k)) {
+      const t = w.replace(/\s+/g, ' ').trim();
+      if (t.length < WERT_MIN || t.length > WERT_MAX || bekannt.has(s(t))) continue;
+      bekannt.add(s(t));
+      raus.push({ feld, wert: t });
+    }
+  }
+  return raus;
 }
 
 // ── Reparieren ──────────────────────────────────────────────────────────────
@@ -504,6 +536,25 @@ export function verbindungenReparieren(b: VerbindungsBestaende, ids: readonly st
     let n = 0;
     setze('antraege', liste(crm.antraege).map(a => { if (!a.kontaktId || m.kontakte.has(a.kontaktId)) return a; n++; const { kontaktId: _weg, ...rest } = a; return rest; }));
     zaehle('antrag-kontakt-tot', 'crm', n, `${n} ${e(n, 'Antrag', 'Anträge')}: Verweis auf gelöschte Person entfernt (Vorgang bleibt)`);
+  }
+
+  // „In Werteliste aufnehmen“ (Kevin 28.09.): fehlende Werte über denselben Schreibweg wie Stammdaten › Wertelisten
+  // (`wertelistenPruefen`) als eigene Werte anlegen. An den Personen ändert sich nichts.
+  if (will.has('werte-ausserhalb-wertelisten')) {
+    const fehlend = werteAusserhalb(liste(b.kontakte), crm.wertelisten);
+    if (fehlend.length) {
+      const voll = wertelistenVollstaendig(crm.wertelisten);
+      const teil: Record<string, string[]> = {};
+      for (const feld of ['typ', 'kategorie', 'label'] as const) {
+        const neu = fehlend.filter(w => w.feld === feld).map(w => w.wert);
+        if (neu.length) teil[LISTE_ZU_FELD[feld]] = [...voll[LISTE_ZU_FELD[feld]].filter(x => !x.fest).map(x => x.wert), ...neu];
+      }
+      const p = wertelistenPruefen(teil, crm.wertelisten);
+      if (p.ok) {
+        crm = { ...crm, wertelisten: p.wertelisten };
+        zaehle('werte-ausserhalb-wertelisten', 'crm', fehlend.length, `${fehlend.length} ${e(fehlend.length, 'Wert', 'Werte')} in die Wertelisten aufgenommen`);
+      }
+    }
   }
 
   let kontakte = b.kontakte;

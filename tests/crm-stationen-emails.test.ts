@@ -4,7 +4,7 @@
 // Bestand im alten Format. Alle Daten erfunden (@example.invalid).
 import { describe, it, expect } from 'vitest';
 import { saeubereKontakt, serverStempel, bezuegeSynchron, teilAnwenden, kontaktVereinen, importieren, identitaetsMerkmale, wendeAktivitaetAn, findeKontakte, type Kontakt } from '../lib/make-one/crm';
-import { stationenVon, hauptStation, personenDerFirma, personenJeFirma, personenAufteilen, firmenDerPerson, stationWechseln, stationHinzufuegen, stationBeenden, stationenFelder, stationenSynchron, aktivitaetZurFirma, stationenBefund, stationenSaeubern, STATIONEN_MAX } from '../lib/crm/stationen';
+import { firmaWechselAnwenden, firmaWechselFehlt, stationenVon, hauptStation, personenDerFirma, personenJeFirma, personenAufteilen, firmenDerPerson, stationWechseln, stationHinzufuegen, stationBeenden, stationenFelder, stationenSynchron, aktivitaetZurFirma, stationenBefund, stationenSaeubern, STATIONEN_MAX } from '../lib/crm/stationen';
 import { emailsVon, emailsSynchron, emailsFelder, alleAdressen, emailsBefund, emailsSaeubern } from '../lib/crm/emails';
 import { typenVon, kategorienVon, hatTyp, mehrfachSynchron, typenFelder } from '../lib/crm/mehrfach';
 import { firmenGruppe, mutterPruefen, kreisFirmen, toechter } from '../lib/crm/konzern';
@@ -65,16 +65,34 @@ describe('Migration: Bestand im alten Format (nur firmaId/email/position) — ni
     expect(stationenVon(n)[0].rolle).toBe('Geschäftsführung');
   });
 
-  it('Jobwechsel über den alten Weg (nur firmaId) beendet die alte Station statt sie zu überschreiben', () => {
+  it('alter Weg (nur firmaId, ohne Absicht) beim Altbestand = Korrektur wie früher — nichts Neues geschrieben', () => {
     const n = speichereTeil(alt, { firmaId: 'f-beta', firma: 'Firma f-beta' }, namen);
     expect(n.firmaId).toBe('f-beta');
     expect(n.firma).toBe('Firma f-beta');
-    expect(n.stationen).toEqual([
-      { firmaId: 'f-alpha', rolle: 'Leitung Einkauf', aktiv: false, bis: HEUTE },
-      { firmaId: 'f-beta', von: HEUTE, aktiv: true, haupt: true },
-    ]);
-    // Die Position bleibt, wie der alte Schreiber sie schickte (altes Verhalten).
     expect(n.position).toBe('Leitung Einkauf');
+    expect(n.stationen).toBeUndefined();
+  });
+
+  it('mit gespeicherten Stationen und ohne Absicht endet in der reinen Rechnung nie eine Station (die Route lehnt vorher ab)', () => {
+    const mit = { ...alt, stationen: [{ firmaId: 'f-alpha', rolle: 'Leitung Einkauf', aktiv: true, haupt: true }, { firmaId: 'f-gamma', aktiv: false, bis: '2019-01-01' }] };
+    expect(firmaWechselFehlt(mit, { firmaId: 'f-beta' })).toBe(true);
+    expect(firmaWechselFehlt(mit, { firmaId: 'f-beta', firmaWechsel: 'korrektur' })).toBe(false);
+    expect(firmaWechselFehlt(mit, { notiz: 'x' })).toBe(false);
+    expect(firmaWechselFehlt(alt, { firmaId: 'f-beta' })).toBe(false);
+    const n = stationenSynchron<Kontakt>({ ...mit, firmaId: 'f-beta' }, mit, HEUTE, namen);
+    expect(n.stationen!.filter(s => s.aktiv).map(s => s.firmaId).sort()).toEqual(['f-alpha', 'f-beta']);
+    expect(n.stationen!.some(s => s.firmaId === 'f-alpha' && s.bis)).toBe(false);
+  });
+
+  it('die drei Absichten (rein): Jobwechsel · Zusätzlich · Korrektur, auch ohne neue Firma', () => {
+    const mit = { ...alt, stationen: [{ firmaId: 'f-alpha', rolle: 'Leitung Einkauf', aktiv: true, haupt: true }] };
+    expect(firmaWechselAnwenden(mit, 'f-beta', 'jobwechsel', HEUTE)).toEqual([{ firmaId: 'f-alpha', rolle: 'Leitung Einkauf', aktiv: false, bis: HEUTE }, { firmaId: 'f-beta', von: HEUTE, aktiv: true, haupt: true }]);
+    expect(firmaWechselAnwenden(mit, 'f-beta', 'zusaetzlich', HEUTE)).toEqual([{ firmaId: 'f-alpha', rolle: 'Leitung Einkauf', aktiv: true, haupt: true }, { firmaId: 'f-beta', aktiv: true }]);
+    expect(firmaWechselAnwenden(mit, 'f-beta', 'korrektur', HEUTE)).toEqual([{ firmaId: 'f-beta', rolle: 'Leitung Einkauf', aktiv: true, haupt: true }]);
+    expect(firmaWechselAnwenden(mit, undefined, 'jobwechsel', HEUTE)).toEqual([{ firmaId: 'f-alpha', rolle: 'Leitung Einkauf', aktiv: false, bis: HEUTE }]);
+    expect(firmaWechselAnwenden(mit, undefined, 'korrektur', HEUTE)).toEqual([]);
+    // Altbestand (nur firmaId/position) wird dabei aus den alten Feldern abgeleitet.
+    expect(firmaWechselAnwenden(alt, 'f-beta', 'jobwechsel', HEUTE)[0]).toMatchObject({ firmaId: 'f-alpha', aktiv: false, bis: HEUTE });
   });
 
   it('ein älteres Fenster ohne `stationen`/`emails` (ganzer Eintrag) löscht die gespeicherten nie', () => {

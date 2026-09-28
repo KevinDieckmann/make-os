@@ -24,10 +24,10 @@ import { beanFirma } from '@/lib/crm/bean';
 import { Person } from './team';
 import { LeadBlock } from './Leads';
 import { haeltBeziehung, nameVon } from '@/lib/crm/team';
-import { personenJeFirma, personenAufteilen, stationIn, stationenVon, stationWechseln, stationHinzufuegen, stationenFelder, aktivitaetZurFirma, STATION_ART_LABEL } from '@/lib/crm/stationen';
+import { personenJeFirma, personenAufteilen, stationIn, stationenVon, aktivitaetZurFirma, STATION_ART_LABEL } from '@/lib/crm/stationen';
+import { useFirmaWechselFrage } from './kontakt/FirmaWechselFrage';
 import { firmenGruppe, muetter, toechter as toechterVon } from '@/lib/crm/konzern';
 import { beanGruppe, BEAN_LABEL } from '@/lib/crm/bean';
-import { localDay } from '@/lib/zeit';
 
 export const ROLLEN: { id: FirmaRolle; label: string; farbe: string }[] = [
   { id: 'kunde', label: 'Kunde', farbe: LEUCHT.gut }, { id: 'zielkunde', label: 'Zielkunde', farbe: LEUCHT.business }, { id: 'partner', label: 'Partner', farbe: LEUCHT.agenten },
@@ -153,12 +153,17 @@ function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmApi; zuP
   // Zeitlinie (28.09.): Aktivitäten, die bei dieser Firma entstanden — auch von Personen, die inzwischen weitergezogen sind.
   const verlauf: Aktivitaet[] = [...personen, ...ehemalig].flatMap(k => (k.aktivitaeten ?? []).filter(a => a.art !== 'system' && aktivitaetZurFirma(k, a, f.id)).map(a => ({ ...a, text: `${anzeigename(k)}: ${a.text ?? ''}`.replace(/: $/, '') }))).sort((a, b) => a.am.localeCompare(b.am));
   const [zuordnen, setZuordnen] = useState('');
-  const heute = crm.heute ?? localDay();
   const firmaName = (id: string) => (id === f.id ? f.name : firmen.find(x => x.id === id)?.name);
-  /** Person dieser Firma zuordnen (28.09.): ohne bisherige Firma verknüpfen; sonst Jobwechsel (alte Station endet) oder zusätzlich. */
-  const zuordnenMit = (k: (typeof personen)[number], art: 'wechsel' | 'dazu') => {
-    if (!stationenVon(k).length) void api.kontaktTeil(k.id, { firmaId: f.id, firma: f.name });
-    else void api.kontaktTeil(k.id, stationenFelder(k, art === 'wechsel' ? stationWechseln(k, { firmaId: f.id }, heute) : stationHinzufuegen(k, { firmaId: f.id }), heute, firmaName));
+  /**
+   * Person dieser Firma zuordnen (Kevin 28.09.): ohne bisherige Firma einfach verknüpfen; sonst kurz nachfragen —
+   * Jobwechsel · Zusätzliche Firma · Korrektur (`firmaWechsel`, der Server rechnet die Stationen).
+   */
+  const { frage, dialog: wechselFrage } = useFirmaWechselFrage();
+  const zuordnenMit = async (k: (typeof personen)[number]) => {
+    if (!stationenVon(k).length) { void api.kontaktTeil(k.id, { firmaId: f.id, firma: f.name }); setZuordnen(''); return; }
+    const absicht = await frage({ von: k.firmaId ? firmaName(k.firmaId) ?? k.firma : k.firma, nach: f.name });
+    if (!absicht) return;
+    void api.kontaktTeil(k.id, { firmaId: f.id, firma: f.name, firmaWechsel: absicht });
     setZuordnen('');
   };
   const angebote = useOffeneAngebote();
@@ -199,6 +204,7 @@ function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmApi; zuP
       ); })()}
       <LeadBlock api={api} leadId={f.id} />
       <div>
+        {wechselFrage}
         <Ueberschrift rechts={`${personen.length}`}>Personen · aktuell</Ueberschrift>
         {personen.map(k => { const st = stationIn(k, f.id); return <button key={k.id} onClick={() => zuPerson(k.id)} style={{ display: 'flex', width: '100%', justifyContent: 'space-between', gap: 8, background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien, padding: '7px 0', textAlign: 'left' }}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', minWidth: 0 }}><span title={`Zuständig: ${nameVon(haeltBeziehung(k))}`} style={{ opacity: k.besitzer ? 1 : 0.45, display: 'inline-flex' }}><Person id={haeltBeziehung(k)} groesse={18} /></span>{anzeigename(k)} <span style={{ color: C.inkLeise }}>{[st?.rolle ?? (k.firmaId === f.id ? k.position ?? k.jobtitel : undefined), st?.art ? STATION_ART_LABEL[st.art] : undefined, st && !st.haupt ? 'weitere Station' : undefined].filter(Boolean).join(' · ')}</span></span><span style={{ color: C.inkLeise }}>{k.letzterKontakt ? datum(k.letzterKontakt) : ''} ›</span></button>; })}
         {!personen.length && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Niemand ist aktuell zugeordnet.</div>}
@@ -206,10 +212,7 @@ function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmApi; zuP
         {kandidaten.map(k => (
           <div key={k.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim, padding: '3px 0' }}>
             <span>{anzeigename(k)}{k.firma ? ` · bisher ${k.firma}` : ''}</span>
-            {k.firmaId
-              ? <><button onClick={() => zuordnenMit(k, 'wechsel')} title="Die bisherige Hauptstation endet heute (Historie bleibt)" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>wechselt hierher</button>
-                <button onClick={() => zuordnenMit(k, 'dazu')} title="Zusätzliche Station — die Hauptstation bleibt" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>+ zusätzlich</button></>
-              : <button onClick={() => zuordnenMit(k, 'wechsel')} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>+ zuordnen</button>}
+            <button onClick={() => void zuordnenMit(k)} title={k.firmaId ? 'Jobwechsel, zusätzliche Firma oder Korrektur — wird gefragt' : undefined} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>+ zuordnen</button>
           </div>
         ))}
       </div>

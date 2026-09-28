@@ -36,6 +36,7 @@ import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { zahlungZusammenfuehren, ibanBehalten } from '@/lib/crm/zahlung';
 import { personEntfernen } from '@/lib/crm/person-bestaende';
 import { ladeCrm } from '@/lib/crm/speicher';
+import { firmaWechselAnwenden, firmaWechselFehlt, istFirmaWechsel, FIRMA_WECHSEL_FEHLT } from '@/lib/crm/stationen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -127,7 +128,14 @@ export async function PATCH(req: Request) {
     // `teil`: Felder auf den gespeicherten Kontakt legen, dann dieselbe Prüfung wie für einen ganzen Eintrag.
     // `null` = Feld entfernen (28.09., F1 — `teilAnwenden`), danach säubern; `vonHandMarkieren` (im `vereinen`) zählt das Leeren als von Hand.
     // Löschmarken setzt nur der Server (es gelten die gespeicherten); die IBAN kommt maskiert zurück und bleibt, wenn keine neue gültige kommt (28.09., H4).
-    teil: (alt, felder) => {
+    teil: (alt, roh) => {
+      // Firma ändern mit Absicht (Kevin 28.09.): `firmaWechsel` wird hier in Stationen übersetzt und nie gespeichert.
+      // „Korrektur“ ohne gespeicherte Stationen bleibt der einfache Altweg (nichts Neues zu schreiben).
+      const { firmaWechsel: absicht, ...felder } = roh;
+      if (istFirmaWechsel(absicht) && 'firmaId' in felder && !('stationen' in felder) && !(absicht === 'korrektur' && !Array.isArray(alt.stationen))) {
+        const nach = typeof felder.firmaId === 'string' && felder.firmaId ? felder.firmaId : undefined;
+        felder.stationen = firmaWechselAnwenden(alt, nach, absicht, heute, typeof felder.position === 'string' ? felder.position : undefined);
+      }
       const eigene = ich ? felder : ohnePrivat(felder as Pick<Kontakt, 'privatNotiz' | 'privatNotizVon'>) as Record<string, unknown>;
       const zahlung = eigene.zahlung !== undefined && eigene.zahlung !== null ? { zahlung: zahlungZusammenfuehren(eigene.zahlung, alt.zahlung) } : {};
       const gesaeubert = saeubereKontakt({ ...teilAnwenden(alt, eigene), ...zahlung });
@@ -145,6 +153,12 @@ export async function PATCH(req: Request) {
         const alt = liste.find(k => k.id === o.id);
         const grund = alt ? sperreAufhebenPruefen(alt, o.felder ?? {}) : null;
         if (grund) return grund;
+      }
+      // Firma geändert ohne Absicht, obwohl Stationen gespeichert sind (Kevin 28.09.): ablehnen statt still beenden.
+      for (const o of ops) {
+        const alt = liste.find(k => k.id === (o.op === 'teil' ? o.id : o.eintrag?.id));
+        if (o.op === 'teil' && firmaWechselFehlt(alt, o.felder ?? {})) return FIRMA_WECHSEL_FEHLT;
+        if (o.op === 'upsert' && o.eintrag && firmaWechselFehlt(alt, o.eintrag as unknown as Record<string, unknown>, true)) return FIRMA_WECHSEL_FEHLT;
       }
       if (body.erzwingen) return null;
       const nachher = ops.flatMap(o => (o.op === 'upsert' && o.eintrag ? [o.eintrag] : o.op === 'teil' && typeof o.felder?.stufe === 'string' ? [{ ...(liste.find(k => k.id === o.id) ?? { id: o.id }), stufe: o.felder.stufe } as Kontakt] : []));

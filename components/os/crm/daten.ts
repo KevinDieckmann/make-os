@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import type { Kontakt } from '@/lib/make-one/crm';
+import type { KontaktFelder } from '@/lib/crm/stationen';
 import { CRM_LISTEN, type CrmBestand, type CrmListe, type ChancenStufe } from '@/lib/crm/typen';
 import type { Prognose, Ampel } from '@/lib/crm/pipeline';
 import type { MandatLage } from '@/lib/crm/kunden';
@@ -199,10 +200,12 @@ export function useCrm() {
    * Kartei: nur diese Felder ändern (Stufe 2) — der Server legt sie auf den aktuellen Stand; so überschreiben Kevin und Malin einander nicht.
    * Ein Feld mit `undefined` heißt „leeren“ und geht als `null` hinaus (`leerAlsNull`) — JSON würde den Schlüssel sonst verwerfen.
    */
-  const kontaktTeil = useCallback(async (id: string, felder: Partial<Kontakt>) => {
+  // `firmaWechsel` (28.09.): die Absicht einer Firmenänderung — geht an den Server, nie in den lokalen Stand.
+  const kontaktTeil = useCallback(async (id: string, felder: KontaktFelder) => {
     unterwegs.current++;
     let stand: string | undefined;
-    setKontakte(alt => { stand = alt?.find(x => x.id === id)?.stand; return alt ? alt.map(x => (x.id === id ? { ...x, ...felder } : x)) : alt; });
+    const { firmaWechsel: _absicht, ...lokal } = felder;
+    setKontakte(alt => { stand = alt?.find(x => x.id === id)?.stand; return alt ? alt.map(x => (x.id === id ? { ...x, ...lokal } : x)) : alt; });
     try {
       const r = await fetch('/api/state/kontakte', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ op: 'teil', id, felder: { ...leerAlsNull(felder), geaendertAm: localDay() }, ...(stand ? { stand } : {}) }] }) }).then(x => x.json());
       kontaktAntwort(r);
