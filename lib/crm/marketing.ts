@@ -17,6 +17,8 @@ import type { Kpi, KpiAmpel } from './kennzahlen';
 import { art14, kanalStatus, type Kanal, type Kontext } from './recht';
 import { segmentAuswerten, type SegmentKontext } from './segmente';
 import { TEAM, BEIDE, zustaendig, istMeins, mitglied, nameVon } from './team';
+import { TEMPERATUR, temperaturLabel } from './score';
+import { LIFECYCLE_PHASEN, LIFECYCLE_KURZ } from './lifecycle';
 
 // ── Kleine Helfer ───────────────────────────────────────────────────────────
 const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
@@ -249,6 +251,11 @@ export function kriterienSauber(kr: SegmentKriterien): SegmentKriterien {
     if (l.length) r[f] = l;
   }
   for (const f of ['branche', 'stadt', 'stichwort'] as const) { const t = (kr[f] ?? '').trim().slice(0, 80); if (t) r[f] = t; }
+  // Temperatur (27.09.) und Lifecycle (28.09.): nur bekannte Werte, in fester Reihenfolge — sonst fiele das Kriterium beim Speichern weg.
+  const temperatur = TEMPERATUR.map(t => t.id).filter(t => (kr.temperatur ?? []).includes(t));
+  if (temperatur.length) r.temperatur = temperatur;
+  const lifecycle = LIFECYCLE_PHASEN.filter(p => (kr.lifecycle ?? []).includes(p));
+  if (lifecycle.length) r.lifecycle = lifecycle;
   if (kr.kanal) r.kanal = kr.kanal;
   if (typeof kr.mitChance === 'boolean') r.mitChance = kr.mitChance;
   const n = Math.round(Number(kr.ohneKontaktSeitTagen ?? 0));
@@ -265,6 +272,8 @@ const KANAL_TEXT: Record<string, string> = { mail: 'Mail', telefon: 'Telefon', l
 export function kriterienText(kr: SegmentKriterien): string {
   const t: string[] = [];
   if (kr.lebensphase?.length) t.push(kr.lebensphase.map(p => PHASE_TEXT[p] ?? p).join(', '));
+  if (kr.lifecycle?.length) t.push(`Lifecycle ${kr.lifecycle.map(p => LIFECYCLE_KURZ[p]).join(', ')}`);
+  if (kr.temperatur?.length) t.push(kr.temperatur.map(temperaturLabel).join(', '));
   if (kr.kreis?.length) t.push(`Kreis ${kr.kreis.join(', ')}`);
   if (kr.prio?.length) t.push(`Prio ${kr.prio.join(', ')}`);
   if (kr.firmaRolle?.length) t.push(`Firma: ${kr.firmaRolle.join(', ')}`);

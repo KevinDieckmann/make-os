@@ -20,14 +20,18 @@ import { anfragenListe } from '@/lib/crm/anfragen';
 import { kontextAus, segmentAuswerten } from '@/lib/crm/segmente';
 import { netzRunde } from '@/lib/crm/netzwerk';
 import { TEAM } from '@/lib/crm/team';
+import { lifecycleVon, lifecycleVerteilung } from '@/lib/crm/vorschlaege';
+import type { LifecyclePhase } from '@/lib/crm/lifecycle';
 
 const kurz = (t: string | undefined, n: number) => (t ?? '').replace(/\s+/g, ' ').trim().slice(0, n) || undefined;
 
 /** Eine Person, wie ein Agent sie sehen darf. */
-export function person(k: Kontakt, ctx: { hatMandat?: boolean; hatChance?: boolean } = {}) {
+export function person(k: Kontakt, ctx: { hatMandat?: boolean; hatChance?: boolean; lifecycle?: LifecyclePhase } = {}) {
   const erlaubt = ampel(k, ctx).filter(s => s.farbe !== 'rot').map(s => s.kanal);
   return {
-    id: k.id, name: anzeigename(k), firma: k.firma, position: kurz(k.position ?? k.jobtitel, 80), kreis: k.kreis, phase: k.lebensphase, anrede: k.anrede ?? 'Sie',
+    id: k.id, name: anzeigename(k), firma: k.firma, position: kurz(k.position ?? k.jobtitel, 80), kreis: k.kreis, phase: k.lebensphase,
+    // Lifecycle (28.09.): gesetzt oder vorgeschlagen — Lead · MQL · SQL · Opportunity · Angebot · Kunde · Follow Up.
+    lifecycle: ctx.lifecycle ?? k.phase ?? null, anrede: k.anrede ?? 'Sie',
     stufe: k.stufe, letzter_kontakt: k.letzterKontakt, naechster_schritt: k.naechsterSchritt, aufhaenger: kurz(k.aufhaenger, 240),
     kanal_erlaubt: erlaubt,
     verlauf: (k.aktivitaeten ?? []).filter(a => a.art !== 'system').slice(-3).map(a => ({ am: a.am.slice(0, 10), art: a.art, ergebnis: a.ergebnis, text: kurz(a.text, 160), bedarf: kurz(a.notiz?.bedarf, 160), zusage: kurz(a.notiz?.zusage, 120) })),
@@ -67,7 +71,10 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
   const nachId = new Map(aktiv.map(k => [k.id, k]));
   const mandatJe = new Set(crm.mandate.filter(m => m.status === 'aktiv').flatMap(m => m.kontaktIds));
   const chanceJe = new Set(crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe)).flatMap(c => c.kontaktIds));
-  const p = (k: Kontakt) => person(k, { hatMandat: mandatJe.has(k.id), hatChance: chanceJe.has(k.id) });
+  const lifecycleJe = new Map(aktiv.map(k => [k.id, lifecycleVon(k, crm, heute).phase]));
+  const p = (k: Kontakt) => person(k, { hatMandat: mandatJe.has(k.id), hatChance: chanceJe.has(k.id), lifecycle: lifecycleJe.get(k.id) });
+  /** Lifecycle-Verteilung über die ansprechbare Kartei (gesetzt oder vorgeschlagen) — für Sales und Marketing. */
+  const lifecycle = () => { const v = lifecycleVerteilung(aktiv, crm, heute); return { je_phase: v.je, von_hand_gesetzt: v.gesetzt }; };
   const meta = { heute, head, modus, fuer: personName, fruehere_vorschlaege: frueher.slice(-15) };
 
   // Kampagnen planen (Sales und Marketing): Kundenprofil, ähnliche Firmen, Playbooks mit heutiger Zielgruppe.
@@ -108,11 +115,12 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
       mrr: mrr(crm.mandate), konzentration: konzentration(crm.mandate), gewinnquote: winRate(crm.chancen, heute),
       // Lead-Score (27.09.): welcher Kanal warme Leads und SQLs bringt.
       kanal_leistung: kanalLeistung(leadZeilen(aktiv, crm, heute)),
+      lifecycle_verteilung: lifecycle(),
       verlustgruende: Object.entries(verloren.reduce((x, c) => ({ ...x, [c.grund!]: (x[c.grund!] ?? 0) + 1 }), {} as Record<string, number>)),
       // Ebene 1: Leads in Arbeit mit ihren Kernfragen — die Personen für Vorschläge stehen unter „hauptkontakt“.
       leads_in_arbeit: leadZeilen(aktiv, crm).filter(z => ['kontaktiert', 'im_gespraech', 'qualifizierung'].includes(z.status) || (sqlBereit(z.kriterien) && !z.deal?.offen && z.status !== 'kunde')).slice(0, 25).map(z => {
         const haupt = z.personen.map(x => nachId.get(x.id)).filter((k): k is Kontakt => !!k).sort((a, b) => (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? ''))[0];
-        return { lead_id: z.id, name: z.name, status: z.status, score: z.score.punkte, temperatur: z.score.temperatur, kanal: z.kanal, antworten: z.antworten ?? null, kriterien: z.kriterien, geklaert: geklaert(z.kriterien), sql_bereit: sqlBereit(z.kriterien), fehlt: fehltBisSql(z.kriterien), deal: z.deal ?? null, letzter_kontakt: z.letzterKontakt ?? null, hauptkontakt: haupt ? p(haupt) : null };
+        return { lead_id: z.id, name: z.name, status: z.status, lifecycle: haupt ? lifecycleJe.get(haupt.id) ?? null : null, score: z.score.punkte, temperatur: z.score.temperatur, kanal: z.kanal, antworten: z.antworten ?? null, kriterien: z.kriterien, geklaert: geklaert(z.kriterien), sql_bereit: sqlBereit(z.kriterien), fehlt: fehltBisSql(z.kriterien), deal: z.deal ?? null, letzter_kontakt: z.letzterKontakt ?? null, hauptkontakt: haupt ? p(haupt) : null };
       }),
       power_hours_4_wochen: crm.sitzungen.filter(s => s.datum >= new Date(Date.parse(heute) - 28 * 864e5).toISOString().slice(0, 10)).map(s => ({ datum: s.datum, person: s.person, versuche: s.karten.filter(k => k.ergebnis).length, gespraeche: s.karten.filter(k => k.ergebnis === 'gespraech' || k.ergebnis === 'termin').length, termine: s.karten.filter(k => k.ergebnis === 'termin').length })),
     };
@@ -130,6 +138,7 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
     return {
       meta,
       kanal_leistung: kanalLeistungMarketing,
+      lifecycle_verteilung: lifecycle(),
       positionierung: { text: kurz(einst.positionierung, 1500), zielgruppe: kurz(einst.icp, 1500), ton: einst.ton, saeulen: einst.saeulen.map(x => ({ name: x.name, beschreibung: kurz(x.beschreibung, 200) })) },
       kennzahlen: marketingKennzahlen(aktiv, crm, heute).map(x => ({ label: x.label, wert: x.anzeige, ampel: x.ampel, ziel: x.ziel })),
       // 27.09.: die Marketing-Strecke und die offenen Anfragen — der Head sieht, was hängt.

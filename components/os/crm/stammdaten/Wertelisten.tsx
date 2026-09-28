@@ -133,7 +133,7 @@ export function Wertelisten({ w, post, laeuft, zuBereich }: { w: WertelistenAntw
         <div style={{ ...hinweis, marginTop: 8 }}>Die festen Ergebnisse setzen per Regel den nächsten Schritt (nicht erreicht → 2 Werktage, Mailbox → 3, Sperre → Werbesperre). Eigene Ergebnisse werden hier geführt und stehen für das Erledigen von Follow-ups bereit.</div>
       </Karte>
 
-      {([['branchen', 'Branchen', 'Mehrfach je Firma wählbar — in der Akte unter Firma.'], ['typen', 'Lead-Typen', 'Einordnung › Typ an der Person: Zielkunde, Kunde, Netzwerk, Partner …'], ['kategorien', 'Kategorien', 'Einordnung › Kategorie: wie ihr die Person einsortiert.']] as const).map(([l, titel, text], i) => (
+      {([['branchen', 'Branchen', 'Mehrfach je Firma wählbar — unter „Kontakt öffnen“ › Daten › Firma.'], ['typen', 'Lead-Typen', 'Einordnung › Typ an der Person: Zielkunde, Kunde, Netzwerk, Partner …'], ['kategorien', 'Kategorien', 'Einordnung › Kategorie: wie ihr die Person einsortiert.']] as const).map(([l, titel, text], i) => (
         <Karte key={l} i={4 + i}>
           <Ueberschrift rechts={`${eigeneVon(l).length} eigene`}>{titel}</Ueberschrift>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

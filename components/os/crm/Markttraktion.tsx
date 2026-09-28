@@ -4,7 +4,7 @@
 // Kevin: „alles, was unter dem CRM läuft — Sales, Marketing, Event — heißt
 // Markttraktion.“ Reiter in Kevins Reihenfolge (27.09.):
 //   Überblick   Traktions-Index über die drei Welten, die Heads, Übergaben, was jetzt zu tun ist
-//   Kontakte    jede Person mit ihrer Geschichte (Kartei, Runden, Akte)
+//   Kontakte    jede Person mit ihrer Geschichte (Kartei, Runden, „Kontakt öffnen“)
 //   Firmen      ein Unternehmen, alle Beziehungen — und die Leads (Ebene 1: qualifizieren → SQL)
 //   Deals       ab SQL im Closing (Ebene 2): Board mit Ziehen, Liste, Deal-Akte, Auswertung, Kunden (Ebene 3 → Mandate)
 //   Follow-up   was dran ist: Zusagen, Wiedervorlagen, Deal-Schritte, Nachfassen, Kadenz — dazu die Power Hour
@@ -21,7 +21,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
 import { Seite, LEUCHT } from '../schlank';
-import { aufloesen, markttraktion, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type SalesReiterAnsicht, type AkteReiter } from '@/lib/crm/adresse';
+import { aufloesen, markttraktion, kontaktAkte, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type SalesReiterAnsicht, type AkteReiter } from '@/lib/crm/adresse';
 import { useCrm } from './daten';
 import { Pillen } from './teile';
 import { Ueberblick, WELT_FARBE } from './Ueberblick';
@@ -131,11 +131,17 @@ export function MarkttraktionSeite() {
   // Gespräch festhalten — von überall in der Markttraktion, ein Knopf oben rechts.
   const [erfassen, setErfassen] = useState(false);
   const runde = bereich === 'kontakte' && ansicht?.startsWith('runde-') ? (ansicht.slice(6) as RundenArt) : null;
-  // Die Akte einer Person (Kevin 25.09.): eigener Eintrag im Verlauf des Browsers — „Zurück“ dort führt ebenfalls in die Kartei.
+  // „Kontakt öffnen“ (Kevin 25.09., Name 28.09.): eigener Eintrag im Verlauf des Browsers — „Zurück“ dort führt ebenfalls in die Kartei.
   const akteId = bereich === 'kontakte' && ansicht === 'akte' ? kParam : null;
   const zuAkte = (id: string) => gehe('kontakte', 'akte', id);
-  // Reiter der Akte (27.09.): `t` in der Adresse, Wechsel ersetzt den Eintrag; Überblick steht nicht in der Adresse.
-  const akteReiterSetzen = (t: AkteReiter) => { if (akteId) gehe('kontakte', 'akte', akteId, 'replace', t === 'ueberblick' ? undefined : t); };
+  // Reiter (28.09.: Über · Aktivitäten · Umsatz · Daten): `t` und `u` in der Adresse, Wechsel ersetzt den Eintrag;
+  // „Über“ steht nicht in der Adresse. Ein Anker (#akt-…) springt im Reiter Aktivitäten zur Quelle.
+  const akteReiterSetzen = (t: AkteReiter, u?: string | null, anker?: string) => {
+    if (!akteId) return;
+    router.replace(`${kontaktAkte(akteId, t, u)}${anker ? `#${anker}` : ''}`, { scroll: false });
+    // Der Reiter liest den Anker aus der Adresse; ein Hash-Ereignis weckt ihn auch, wenn er schon offen ist.
+    if (anker) setTimeout(() => window.dispatchEvent(new HashChangeEvent('hashchange')), 60);
+  };
 
   return (
     // „+ Gespräch“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (in der Reiterleiste rutschte er aus dem Bild).
@@ -188,7 +194,7 @@ export function MarkttraktionSeite() {
 
       {runde && <Runden api={api} art={runde} name={name} zuKontakt={zuKontakt} zurueck={() => zurueckWie(markttraktion('kontakte'))}
         kampagneId={kParam?.startsWith('kp-') ? kParam : undefined} zuKampagne={id => gehe('kontakte', 'runde-vernetzen', id ?? undefined, 'replace')} />}
-      {akteId && <KontaktAkte api={api} id={akteId} name={name} zurueck={() => zurueckWie(markttraktion('kontakte', undefined, akteId))} zuFirma={zuFirma} zuAkte={zuAkte} t={params.get('t')} setReiter={akteReiterSetzen} />}
+      {akteId && <KontaktAkte api={api} id={akteId} name={name} zurueck={() => zurueckWie(markttraktion('kontakte', undefined, akteId))} zuFirma={zuFirma} zuAkte={zuAkte} t={params.get('t')} u={params.get('u')} setReiter={akteReiterSetzen} />}
       {!runde && !akteId && (bereich === 'kontakte' || (bereich === 'firmen' && ansicht !== 'leads')) && <Kartei api={api} name={name} modus={bereich === 'firmen' ? 'firmen' : 'personen'} auswahl={auswahl} setAuswahl={setAuswahl} zuKontakt={zuKontakt} zuFirma={zuFirma} start={ansicht === 'akte' ? undefined : ansicht} zuRunde={a => gehe('kontakte', `runde-${a}`)} zuAkte={zuAkte} />}
       {bereich === 'stammdaten' && <Stammdaten api={api} zuBereich={zuBereich} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('stammdaten', a || undefined)} />}
     </Seite>

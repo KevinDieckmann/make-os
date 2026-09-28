@@ -1,7 +1,7 @@
 'use client';
 
 // ─── Markttraktion · Bausteine einer Person ─────────────────────────────────
-// Die Karteikarte (rechts in Kontakte) und die Kontaktakte (Vollansicht, 25.09.)
+// Die Karteikarte (rechts in Kontakte) und „Kontakt öffnen“ (Vollansicht, 25.09.)
 // zeigen dieselbe Person — mit denselben Bausteinen, damit beide gleich
 // rechnen und gleich speichern: Hinweise (Werbesperre, Art. 14), nächster
 // Schritt, Beziehung, Deals & Mandate, Entwurf, Verlauf, Recht und die Matrix
@@ -32,11 +32,12 @@ import { neueFirma, ROLLEN } from './Firmen';
 import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
 import { WertelistenWahl, WertelistenEinzelWahl } from './WertelistenWahl';
 import { phaseVon, PHASE_LABEL, type Phase } from '@/lib/crm/phase';
+import type { LifecyclePhase } from '@/lib/crm/lifecycle';
 
 export const PHASEN: { id: Lebensphase; label: string }[] = [
   { id: 'kontakt', label: 'Kontakt' }, { id: 'interessent', label: 'Interessent' }, { id: 'kunde', label: 'Kunde' }, { id: 'ex_kunde', label: 'Ex-Kunde' }, { id: 'partner', label: 'Partner' }, { id: 'multiplikator', label: 'Multiplikator' },
 ];
-const KREISE: { id: Kreis; label: string; hinweis: string }[] = (['A', 'B', 'C', 'D'] as Kreis[]).map(k => ({ id: k, label: `${k} · ${KREIS_WORT[k]}`, hinweis: `alle ${KREIS_TAKT[k]} Tage` }));
+export const KREISE: { id: Kreis; label: string; hinweis: string }[] = (['A', 'B', 'C', 'D'] as Kreis[]).map(k => ({ id: k, label: `${k} · ${KREIS_WORT[k]}`, hinweis: `alle ${KREIS_TAKT[k]} Tage` }));
 const ANREDEN: { id: 'Sie' | 'Du'; label: string }[] = [{ id: 'Sie', label: 'Sie' }, { id: 'Du', label: 'Du' }];
 const ANSPRACHE = STUFEN.map(s => ({ id: s, label: STUFE_LABEL[s] }));
 const KONTAKT_ROLLEN_WAHL = KONTAKT_ROLLEN.map(r => ({ id: r, label: ROLLE_LABEL[r] }));
@@ -48,10 +49,28 @@ const GRUNDLAGEN: { id: Grundlage; label: string }[] = [{ id: 'einwilligung', la
 const RECHTSGRUNDLAGEN_WAHL = RECHTSGRUNDLAGEN.map(r => ({ id: r.id, label: r.label, hinweis: r.norm }));
 const HERKUNFT_WAHL = HERKUNFT.map(h => ({ id: h.id, label: h.label, ...(h.fremd ? { hinweis: 'Art. 14' } : {}) }));
 export const phaseFarbe = (p?: string) => (p === 'kunde' ? LEUCHT.gut : p === 'partner' || p === 'multiplikator' ? LEUCHT.agenten : p === 'interessent' || p === 'opportunity' ? LEUCHT.business : p === 'ex_kunde' ? C.inkLeise : LEUCHT.puls);
+/** Farbe je Lifecycle (28.09.): kalt → warm → Geld → Kunde → Nachbetreuung. */
+export const lifecycleFarbe = (p?: LifecyclePhase | null): string => (p === 'kunde' ? LEUCHT.gut : p === 'follow_up' ? LEUCHT.agenten : p === 'angebot' ? LEUCHT.geld : p === 'opportunity' || p === 'sql' ? LEUCHT.business : p === 'mql' ? LEUCHT.puls : C.inkDim);
 export const phaseLabel = (p?: string) => (p && p in PHASE_LABEL ? PHASE_LABEL[p as Phase] : undefined) ?? PHASEN.find(x => x.id === p)?.label ?? 'Kontakt';
 
 /** Einen Kontakt ändern — immer der ganze Eintrag mit den geänderten Feldern. */
 export type Setze = (teil: Partial<Kontakt>) => Promise<void> | void;
+
+/**
+ * Firma an der Person verknüpfen — eine bestehende (Name, Groß-/Kleinschreibung egal) oder eine neue
+ * anlegen (crm.firmen) und verknüpfen; leer = Verknüpfung lösen. Derselbe Weg in der Matrix und in
+ * der Karte „Firma“ von „Kontakt öffnen“.
+ */
+export async function firmaVerknuepfen(api: CrmApi, k: Kontakt, name: string, setze: Setze): Promise<void> {
+  const n = name.trim();
+  const firmen = api.crm?.stand.firmen ?? [];
+  const jetzt = k.firmaId ? firmen.find(f => f.id === k.firmaId) : undefined;
+  if (n === (jetzt?.name ?? k.firma ?? '')) return;
+  if (!n) return void setze({ firma: undefined, firmaId: undefined });
+  const f = firmen.find(x => x.name.toLowerCase() === n.toLowerCase()) ?? neueFirma(n);
+  if (!firmen.some(x => x.id === f.id)) await api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>);
+  void setze({ firma: f.name, firmaId: f.id });
+}
 
 /** Werbesperre und Art.-14-Frist — stehen über allem anderen. */
 export function Hinweise({ k, heute, setze }: { k: Kontakt; heute: string; setze: Setze }) {
@@ -79,7 +98,7 @@ export function NaechsterSchrittTeil({ k, heute, setze }: { k: Kontakt; heute: s
   );
 }
 
-export function BeziehungTeil({ k, api, setze, ohneTitel }: { k: Kontakt; api: CrmApi; setze: Setze; /** In der Akte trägt der Abschnitt den Titel. */ ohneTitel?: boolean }) {
+export function BeziehungTeil({ k, api, setze, ohneTitel }: { k: Kontakt; api: CrmApi; setze: Setze; /** In „Kontakt öffnen“ trägt der Abschnitt den Titel. */ ohneTitel?: boolean }) {
   // Phase abgeleitet (27.09.): aus Mandat, Deal, Lead — nicht getippt.
   // Chip + Menü + Vorschlag (27.09. abends): Kreis, Anrede, Ansprache, Rollen und „von Hand“ als Chips in
   // kompakten Zeilen — sichtbar ist nur, was gesetzt ist; Rollen und Anrede schlagen aus den Daten vor.
@@ -99,7 +118,7 @@ export function BeziehungTeil({ k, api, setze, ohneTitel }: { k: Kontakt; api: C
         {paar('Ansprache', <Wahl label="Ansprache" liste={ANSPRACHE} wert={k.stufe} onWahl={(stufe: Stufe) => void setze({ stufe })} />)}
       </div>
       <Feldzeile label="Rollen"><WahlMehrfach label="Rolle" liste={KONTAKT_ROLLEN_WAHL} wert={rollenVon(k)} vorschlag={kontaktRollenVorschlag(k, firma)} farbe={LEUCHT.business} onWahl={rollenSetzen} /></Feldzeile>
-      <Feldzeile label="Phase">
+      <Feldzeile label="Lebensphase">
         <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {chip(PHASE_LABEL[ph.phase], phaseFarbe(ph.phase))}<span style={{ fontSize: 12, color: C.inkLeise }}>{ph.grund}</span>
           <Wahl label="Phase von Hand" leer="von Hand ▾" klein liste={VON_HAND} wert={vonHand} farbe={LEUCHT.agenten}
@@ -341,7 +360,7 @@ function Gruppe({ titel, zahl, rechts, children }: { titel: string; zahl?: [numb
   );
 }
 
-/** Die Gruppen der Matrix — die Akte verteilt sie auf Klapp-Abschnitte und zwei Spalten, die Karteikarte zeigt alle. */
+/** Die Gruppen der Matrix — „Kontakt öffnen“ verteilt sie auf Klapp-Abschnitte (Reiter Daten), die Karteikarte zeigt alle. */
 export type MatrixTeil = 'einordnung' | 'person' | 'firma' | 'herkunft' | 'privat';
 export const MATRIX_TEILE: MatrixTeil[] = ['einordnung', 'person', 'firma', 'herkunft', 'privat'];
 export const MATRIX_TEIL_LABEL: Record<MatrixTeil, string> = { einordnung: 'Einordnung', person: 'Person', firma: 'Firma', herkunft: 'Herkunft der Daten', privat: 'Privat' };
@@ -373,13 +392,7 @@ function matrixTeile({ k, api, setze, zuFirma }: MatrixArgs): { inhalt: Record<M
   );
   const kf = (m: MatrixFeld<keyof Kontakt>) => <MatrixZeile key={m.feld} label={m.label} lang={m.lang} link={m.link} wert={String(k[m.feld] ?? '')} onFertig={t => void setze({ [m.feld]: (m.feld === 'email' ? t.toLowerCase() : t) || undefined } as Partial<Kontakt>)} />;
   const ff = (f: Firma, m: MatrixFeld<keyof Firma>) => <MatrixZeile key={m.feld} label={m.label} lang={m.lang} link={m.link} wert={String(f[m.feld] ?? '')} onFertig={t => void api.teil('firmen', f.id, { [m.feld]: t })} />;
-  const firmaZuordnen = async (n: string) => {
-    if (n === (firma?.name ?? k.firma ?? '')) return;
-    if (!n) return void setze({ firma: undefined, firmaId: undefined });
-    const f = firmen.find(x => x.name.toLowerCase() === n.toLowerCase()) ?? neueFirma(n);
-    if (!firmen.some(x => x.id === f.id)) await api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>);
-    void setze({ firma: f.name, firmaId: f.id });
-  };
+  const firmaZuordnen = (n: string) => firmaVerknuepfen(api, k, n, setze);
   const inhalt: Record<MatrixTeil, ReactNode> = {
     einordnung: <>
       {einzel('Typ', 'typen', k.typ, typ => void setze({ typ }))}
@@ -420,7 +433,7 @@ function matrixTeile({ k, api, setze, zuFirma }: MatrixArgs): { inhalt: Record<M
   };
 }
 
-/** Eine Gruppe der Matrix ohne eigene Überschrift — für die Klapp-Abschnitte der Akte, die den Titel selbst tragen. */
+/** Eine Gruppe der Matrix ohne eigene Überschrift — für die Klapp-Abschnitte von „Kontakt öffnen“, die den Titel selbst tragen. */
 export function MatrixTeilInhalt({ teil, ...args }: MatrixArgs & { teil: MatrixTeil }) {
   return <>{matrixTeile(args).inhalt[teil]}</>;
 }

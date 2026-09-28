@@ -138,7 +138,7 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [
             {f.quelle !== 'dealschritt' && <Knopf leise onClick={() => { if (window.confirm(f.quelle === 'nachfassen' ? 'Nachfassen bewusst auslassen? Der Gast verschwindet aus der Liste, zählt aber nicht als nachgefasst.' : 'Follow-up absagen? Die Person bleibt, nur diese Zusage fällt weg.')) void aktion({ aktion: 'absagen', id: f.id }); }}>{f.quelle === 'nachfassen' ? 'Auslassen' : 'Absagen'}</Knopf>}
             <span style={{ flex: 1 }} />
             {f.kontaktId && <Knopf leise onClick={() => zuKontakt(f.kontaktId!)}>Person</Knopf>}
-            {(f.bezug.art === 'chance' || f.kontaktId) && <Knopf leise onClick={ziel}>{f.bezug.art === 'chance' ? 'Deal öffnen' : 'Akte'}</Knopf>}
+            {(f.bezug.art === 'chance' || f.kontaktId) && <Knopf leise onClick={ziel}>{f.bezug.art === 'chance' ? 'Deal öffnen' : 'Kontakt öffnen'}</Knopf>}
           </div>
           {f.verschoben ? <div style={{ fontSize: 12, color: f.verschoben >= 3 ? LEUCHT.kritisch : C.inkLeise }}>{f.verschoben}× verschoben{f.verschoben >= 3 ? ' — ehrlicherweise keine Zusage mehr.' : ''}</div> : null}
           {erledigen && <Erledigen f={f} heute={heute} eigene={eigene} onFertig={async b => { await aktion({ aktion: 'erledigen', id: f.id, ...b }); setErledigen(false); setOffen(false); }} onAbbruch={() => setErledigen(false)} />}
@@ -273,7 +273,7 @@ function Kadenz({ api, liste, heute, zuKontakt, aktion }: { api: CrmApi; liste: 
         <Raster min={150}>
           {kreise.map(x => <Zahl key={x.k} wert={String(x.faellig)} label={`Kreis ${x.k} · ${x.n} Personen · alle ${x.takt} Tage`} farbe={x.faellig ? LEUCHT.achtung : undefined} />)}
         </Raster>
-        <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 10 }}>{ohne} Personen haben noch keinen Kreis — sie haben keine Kadenz. Kreis setzen: in der Kontaktakte unter Beziehung.</div>
+        <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 10 }}>{ohne} Personen haben noch keinen Kreis — sie haben keine Kadenz. Kreis setzen: „Kontakt öffnen“ › links unter Wichtigste Infos.</div>
       </Karte>
       <Karte i={2}>
         <Ueberschrift rechts={`${kadenz.length}`}>Zu lange nichts gehört</Ueberschrift>

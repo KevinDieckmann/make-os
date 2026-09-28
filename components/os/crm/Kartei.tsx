@@ -6,9 +6,11 @@
 // Dublettenprüfung. Die Karteikarte hat vier Reiter: Überblick (Kanäle,
 // Beziehung, nächster Schritt, Deals, Entwurf) · Verlauf (Notizvorlage,
 // Filter) · Stammdaten (die Matrix aller Felder der Masterdatei) · Recht
-// (Art. 6/14/15/17/21, Einwilligungen, Werbesperre). Oben rechts „Akte
+// (Art. 6/14/15/17/21, Einwilligungen, Werbesperre). Oben rechts „Kontakt
 // öffnen“: dieselbe Person auf einer ganzen Seite (Akte.tsx), mit Zurück in die
-// Kartei. Die Bausteine teilen sich Karte und Akte (kontakt-teile.tsx).
+// Kartei. Die Bausteine teilen sich Karte und „Kontakt öffnen“ (kontakt-teile.tsx).
+// Lifecycle (28.09.): Filter als Wahl-Chip und eigene Spalte — gesetzt oder
+// (leiser) der Vorschlag aus den Daten (lib/crm/vorschlaege.ts `lifecycleVon`).
 // Quelle ist die Masterdatei — das Adressbuch der Kontakte-App bleibt bewusst draußen.
 // Zu zweit (25.09.): Filter „Alle · Meins · Malin“ nach „Hält die Beziehung“
 // (ohne Eintrag: Sales-Verantwortung, Kevin), gefilterte Kontakte gesammelt
@@ -31,9 +33,11 @@ import { Firmen, neueFirma } from './Firmen';
 import { Person, WerFilter, useWerFilter, passtWer, Uebergeben, AuchHier } from './team';
 import { VisitenkarteKnopf } from './Visitenkarte';
 import { LeadBlock } from './Leads';
-import { PHASEN, phaseFarbe, phaseLabel, Hinweise, NaechsterSchrittTeil, BeziehungTeil, DealsTeil, EntwurfTeil, VerlaufTeil, RechtTeil, Matrix, LinkedInTeil } from './kontakt-teile';
+import { PHASEN, phaseFarbe, phaseLabel, lifecycleFarbe, Hinweise, NaechsterSchrittTeil, BeziehungTeil, DealsTeil, EntwurfTeil, VerlaufTeil, RechtTeil, Matrix, LinkedInTeil } from './kontakt-teile';
 import { gleicherName } from '@/lib/crm/visitenkarte';
 import { haeltBeziehung, anderer, nameVon } from '@/lib/crm/team';
+import { lifecycleVon } from '@/lib/crm/vorschlaege';
+import { LIFECYCLE_PHASEN, LIFECYCLE_KURZ, LIFECYCLE_LABEL, type LifecyclePhase } from '@/lib/crm/lifecycle';
 
 type Modus = 'personen' | 'firmen';
 type Ansicht = 'alle' | 'kunden' | 'kreis' | 'prio' | 'chancen' | 'mail' | 'anreichern' | 'art14' | 'gesperrt' | 'dubletten';
@@ -58,6 +62,10 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   const paare = useMemo(() => dubletten(kontakte), [kontakte]);
   useEffect(() => { if (istAnsicht(start)) setAnsicht(start); }, [start]);
   const [wer, setWer] = useWerFilter('kontakte');
+  // Lifecycle (28.09.): gesetzt oder Vorschlag — je Person einmal gerechnet, Filter als Wahl-Chip.
+  const [lc, setLc] = useState<LifecyclePhase | null>(null);
+  const lifecycle = useMemo(() => new Map(kontakte.map(k => [k.id, lifecycleVon(k, crm?.stand, heute)])), [kontakte, crm, heute]);
+  const lcZahl = useMemo(() => { const z = new Map<LifecyclePhase, number>(); for (const l of lifecycle.values()) z.set(l.phase, (z.get(l.phase) ?? 0) + 1); return z; }, [lifecycle]);
   // Aus einer Übergabe-Aufgabe (…&wer=malin) direkt in die übergebenen Kontakte.
   useEffect(() => { const w = new URLSearchParams(window.location.search).get('wer'); if (w) setWer(w === api.ich ? 'ich' : w); }, [api.ich]); // eslint-disable-line react-hooks/exhaustive-deps
   const ich = api.ich;
@@ -75,11 +83,11 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
 
   const treffer = useMemo(() => {
     const q = suche.trim().toLowerCase();
-    let l = kontakte.filter(filter[ansicht]).filter(k => passtWer(wer, k.besitzer, 'sales', ich));
+    let l = kontakte.filter(filter[ansicht]).filter(k => passtWer(wer, k.besitzer, 'sales', ich)).filter(k => !lc || lifecycle.get(k.id)?.phase === lc);
     if (q) l = l.filter(k => [anzeigename(k), k.firma ?? '', k.email ?? '', k.firmaBranche ?? '', k.position ?? '', k.firmaStadt ?? '', k.telefon ?? ''].join(' ').toLowerCase().includes(q));
     const rang = (k: Kontakt) => (k.lebensphase === 'kunde' ? 0 : k.kreis === 'A' ? 1 : k.kreis === 'B' ? 2 : k.prio === 'A' ? 3 : k.prio === 'B' ? 4 : 5);
     return [...l].sort((a, b) => (ansicht === 'dubletten' ? anzeigename(a).localeCompare(anzeigename(b)) : rang(a) - rang(b) || anzeigename(a).localeCompare(anzeigename(b))));
-  }, [kontakte, suche, ansicht, filter, wer, ich]);
+  }, [kontakte, suche, ansicht, filter, wer, ich, lc, lifecycle]);
   const sichtbar = treffer.slice(0, mehr);
   const [erreichbar, freigegeben] = useMemo(() => [
     kontakte.filter(k => k.email || k.telefon || k.sms).length,
@@ -87,7 +95,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   ], [kontakte, mitMandat]);
   const werZahlen = ich ? { alle: kontakte.length, ich: kontakte.filter(k => passtWer('ich', k.besitzer, 'sales', ich)).length, [anderer(ich)]: kontakte.filter(k => passtWer(anderer(ich), k.besitzer, 'sales', ich)).length } : undefined;
   // Gesammelt übergeben geht nur mit einer Eingrenzung — nie aus Versehen die ganze Kartei.
-  const eingegrenzt = !!suche.trim() || ansicht !== 'alle' || wer !== 'alle';
+  const eingegrenzt = !!suche.trim() || ansicht !== 'alle' || wer !== 'alle' || !!lc;
   const sammel = eingegrenzt && treffer.length > 0 && treffer.length <= 300 ? treffer.filter(k => !k.werbesperre) : [];
 
   // Tastatur wie in einer guten Liste: / sucht, j/k blättert, Enter öffnet, Esc schließt.
@@ -107,7 +115,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
     return () => window.removeEventListener('keydown', taste);
   }, [modus, sichtbar, markiert, setAuswahl]);
   useEffect(() => { setMarkiert(0); }, [suche, ansicht]);
-  // Zurück aus der Akte (oder ein Link mit ?k=): die gewählte Person steht einmal sichtbar in der Liste — späteres Anklicken springt nicht.
+  // Zurück aus „Kontakt öffnen“ (oder ein Link mit ?k=): die gewählte Person steht einmal sichtbar in der Liste — späteres Anklicken springt nicht.
   const erstesMal = useRef(true);
   useEffect(() => {
     if (!erstesMal.current || modus !== 'personen' || !kontakte.length) return;
@@ -164,6 +172,10 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
               <WerFilter wahl={wer} onWahl={w => { setWer(w); setMehr(80); }} ich={ich} zahlen={werZahlen} />
               <span style={{ fontSize: 12, color: C.inkLeise }}>nach „Hält die Beziehung“ · ohne Eintrag bei {nameVon('kevin')} (Sales-Verantwortung)</span>
+              <span style={{ marginLeft: 'auto' }} title="Lifecycle: gesetzt oder der Vorschlag aus den Daten">
+                <Wahl label="Lifecycle" klein liste={LIFECYCLE_PHASEN.map(p => ({ id: p, label: `${LIFECYCLE_KURZ[p]} · ${lcZahl.get(p) ?? 0}`, ...(LIFECYCLE_KURZ[p] !== LIFECYCLE_LABEL[p] ? { hinweis: LIFECYCLE_LABEL[p] } : {}) }))}
+                  wert={lc} leer="Lifecycle: alle ▾" farbe={lc ? lifecycleFarbe(lc) : undefined} onWahl={p => { setLc(p); setMehr(80); }} onLeeren={() => setLc(null)} leerenLabel="alle Lifecycle" />
+              </span>
             </div>
             <div style={{ marginBottom: 10, overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={ANSICHTEN} aktiv={ansicht} onWahl={a => { setAnsicht(a); setMehr(80); }} /></div>
             {sammel.length > 0 && ansicht !== 'dubletten' && (
@@ -186,13 +198,13 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
               <>
                 {breit && (
                   <div style={{ display: 'grid', gridTemplateColumns: KARTEI_SPALTEN, gap: 12, padding: '0 8px 6px', fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
-                    <span /><span /><span>Name</span><span>Firma</span><span>Phase</span><span>Kanal</span><span style={{ textAlign: 'right' }}>Zuletzt</span>
+                    <span /><span /><span>Name</span><span>Firma</span><span>Lifecycle</span><span>Phase</span><span>Kanal</span><span style={{ textAlign: 'right' }}>Zuletzt</span>
                   </div>
                 )}
                 <div>
                   {sichtbar.map((x, i) => (
                     <div key={x.id} data-kid={x.id}>
-                      <KarteiZeile k={x} firma={x.firmaId ? firmen.get(x.firmaId)?.name : undefined} breit={breit} aktiv={auswahl === x.id} markiert={i === markiert && breit}
+                      <KarteiZeile k={x} firma={x.firmaId ? firmen.get(x.firmaId)?.name : undefined} lifecycle={lifecycle.get(x.id)} breit={breit} aktiv={auswahl === x.id} markiert={i === markiert && breit}
                         chance={mitChance.has(x.id)} mandat={mitMandat.has(x.id)} heute={heute} onClick={() => { setMarkiert(i); setAuswahl(auswahl === x.id ? null : x.id); }} />
                       {auswahl === x.id && !breit && <div style={{ padding: '8px 0 18px' }}><Karteikarte k={x} api={api} name={name} zuFirma={zuFirma} zuAkte={zuAkte} /></div>}
                     </div>
@@ -207,7 +219,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
         {breit && (
           <Spalte klebt>
             <Karte i={2} akzent={k ? phaseFarbe(k.lebensphase) : undefined}>
-              {k ? <Karteikarte k={k} api={api} name={name} zuFirma={zuFirma} zuAkte={zuAkte} /> : <Leer>Eine Person anklicken oder mit j/k wählen und Enter — Verlauf, Notiz, Kanäle, Stammdaten und Recht erscheinen hier. „Akte öffnen“ zeigt alles auf einer Seite.</Leer>}
+              {k ? <Karteikarte k={k} api={api} name={name} zuFirma={zuFirma} zuAkte={zuAkte} /> : <Leer>Eine Person anklicken oder mit j/k wählen und Enter — Verlauf, Notiz, Kanäle, Stammdaten und Recht erscheinen hier. „Kontakt öffnen“ zeigt alles auf einer Seite.</Leer>}
             </Karte>
           </Spalte>
         )}
@@ -216,9 +228,9 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   );
 }
 
-const KARTEI_SPALTEN = '10px 22px minmax(0,1.6fr) minmax(0,1.2fr) 96px 64px 64px';
+const KARTEI_SPALTEN = '10px 22px minmax(0,1.6fr) minmax(0,1.2fr) 84px 96px 64px 64px';
 
-function KarteiZeile({ k, firma, breit, aktiv, markiert, chance, mandat, heute, onClick }: { k: Kontakt; firma?: string; breit: boolean; aktiv: boolean; markiert: boolean; chance: boolean; mandat: boolean; heute: string; onClick: () => void }) {
+function KarteiZeile({ k, firma, lifecycle, breit, aktiv, markiert, chance, mandat, heute, onClick }: { k: Kontakt; firma?: string; lifecycle?: { phase: LifecyclePhase; vonHand: boolean; grund: string }; breit: boolean; aktiv: boolean; markiert: boolean; chance: boolean; mandat: boolean; heute: string; onClick: () => void }) {
   const kanal = besterKanal(k, { hatMandat: mandat, hatChance: chance });
   const a14 = art14(k, heute);
   const f = firma ?? k.firma;
@@ -228,7 +240,7 @@ function KarteiZeile({ k, firma, breit, aktiv, markiert, chance, mandat, heute, 
         <Punkt farbe={k.werbesperre ? LEUCHT.kritisch : phaseFarbe(k.lebensphase)} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: TYP.body, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anzeigename(k)}{f && <span style={{ color: C.inkLeise }}> · {f}</span>}</div>
-          <div style={{ fontSize: 12.5, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[k.position ?? k.jobtitel, k.naechsterSchritt ? `→ ${k.naechsterSchritt.text}` : ''].filter(Boolean).join(' · ')}</div>
+          <div style={{ fontSize: 12.5, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[lifecycle ? LIFECYCLE_KURZ[lifecycle.phase] : '', k.position ?? k.jobtitel, k.naechsterSchritt ? `→ ${k.naechsterSchritt.text}` : ''].filter(Boolean).join(' · ')}</div>
         </div>
         {chance && <Chip farbe={LEUCHT.business}>Deal</Chip>}
         <span style={{ opacity: k.besitzer ? 1 : 0.45, display: 'inline-flex' }}><Person id={haeltBeziehung(k)} groesse={18} /></span>
@@ -246,6 +258,10 @@ function KarteiZeile({ k, firma, breit, aktiv, markiert, chance, mandat, heute, 
         <div style={{ fontSize: 12, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.naechsterSchritt ? `→ ${k.naechsterSchritt.text}` : (k.position ?? k.jobtitel ?? '')}</div>
       </div>
       <div style={{ color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f ?? '—'}</div>
+      <div title={lifecycle ? `${LIFECYCLE_LABEL[lifecycle.phase]} — ${lifecycle.grund}` : undefined}
+        style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: lifecycle ? lifecycleFarbe(lifecycle.phase) : C.inkLeise, opacity: lifecycle?.vonHand ? 1 : 0.6, fontStyle: lifecycle?.vonHand ? 'normal' : 'italic' }}>
+        {lifecycle ? LIFECYCLE_KURZ[lifecycle.phase] : '—'}
+      </div>
       <div style={{ color: k.lebensphase && k.lebensphase !== 'kontakt' ? phaseFarbe(k.lebensphase) : C.inkLeise, fontSize: 12, whiteSpace: 'nowrap' }}>{phaseLabel(k.lebensphase)}{k.kreis ? ` · ${k.kreis}` : ''}{chance ? ' ·◆' : ''}</div>
       <div title={kanal ? `${kanal.kanal}: ${kanal.grund}` : 'kein zulässiger Kanal'} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.inkDim }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: kanal ? AMPEL_FARBE[kanal.farbe] : C.inkLeise }} />{kanal ? ({ telefon: 'Tel', mail: 'Mail', linkedin: 'LI', vernetzen: 'Netz', newsletter: 'NL', einladung: 'Einl' } as Record<string, string>)[kanal.kanal] : '—'}
@@ -328,10 +344,10 @@ function Karteikarte({ k, api, name, zuFirma, zuAkte }: { k: Kontakt; api: CrmAp
             {firma ? <button onClick={() => zuFirma(firma.id)} style={{ background: 'none', border: 'none', padding: 0, color: C.ink, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,.2)', fontSize: TYP.bedien }}>{firma.name}</button> : k.firma}
           </div>
         </div>
-        {/* Kevin 25.09.: „rechts in dem Feld oben“ — die ganze Akte auf einer Seite, mit Zurück in die Kartei. */}
+        {/* Kevin 25.09.: „rechts in dem Feld oben“ — die ganze Person auf einer Seite, mit Zurück in die Kartei (28.09.: „Kontakt öffnen“). */}
         {zuAkte && <button onClick={() => zuAkte(k.id)} className="fassbar" title="Alle Stammdaten, der ganze Verlauf und jede Verbindung auf einer Seite"
           style={{ flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 13px', borderRadius: 11, cursor: 'pointer', border: `1px solid ${LEUCHT.business}55`, background: `${LEUCHT.business}14`, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, whiteSpace: 'nowrap' }}>
-          Akte öffnen <span aria-hidden style={{ color: LEUCHT.business }}>⤢</span>
+          Kontakt öffnen <span aria-hidden style={{ color: LEUCHT.business }}>⤢</span>
         </button>}
       </div>
       <div style={{ display: 'flex', gap: 6, marginTop: -6, flexWrap: 'wrap' }}>

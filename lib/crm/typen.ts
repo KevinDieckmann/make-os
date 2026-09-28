@@ -289,6 +289,8 @@ export interface SegmentKriterien {
   mitChance?: boolean; ohneKontaktSeitTagen?: number;
   /** Lead-Temperatur (27.09.): z. B. nur kalte Leads zum Vernetzen. */
   temperatur?: Temperatur[];
+  /** Lifecycle (28.09.): gesetzt, sonst der Vorschlag aus den Daten (lib/crm/vorschlaege.ts `lifecycleVon`). */
+  lifecycle?: import('./lifecycle').LifecyclePhase[];
 }
 export interface Segment { id: string; name: string; beschreibung?: string; kriterien: SegmentKriterien; geaendert: string; geaendertVon?: string }
 export type BeitragKanal = 'linkedin' | 'newsletter' | 'blog' | 'podcast' | 'vortrag' | 'sonstig';

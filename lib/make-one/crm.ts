@@ -17,6 +17,7 @@
 import { leadSaeubern } from '@/lib/crm/lead-form';
 import { netzwerkSaeubern, netzwerkVereinen } from '@/lib/crm/netzwerk-form';
 import { zahlungSaeubern } from '@/lib/crm/zahlung';
+import { istLifecycle, lifecycleAusListe, type LifecyclePhase } from '@/lib/crm/lifecycle';
 
 export const STUFEN = [
   'neu', 'ansprechen', 'angesprochen', 'gespraech', 'termin', 'angebot',
@@ -152,6 +153,11 @@ export interface Kontakt {
   /** Beim Anreichern kein LinkedIn-Profil gefunden (Tag) — fällt aus der Vernetzen-Runde, bis ein Profil eingetragen wird. */
   linkedinNichtGefunden?: string;
   lebensphase?: Lebensphase;
+  /**
+   * Lifecycle (28.09., HubSpot-Vorbild, lib/crm/lifecycle.ts): Lead · MQL · SQL · Opportunity · Angebot · Kunde · Follow Up.
+   * Von Hand gesetzt (Wahl-Chip mit Vorschlag); der Import belegt es nur vor, solange es leer ist — überschreibt es nie.
+   */
+  phase?: LifecyclePhase;
   /** Mehrfach: Partner, Multiplikator, Dienstleister, Investor, Netzwerk, Freund (26.09.). */
   rollen?: Rolle[];
   anrede?: 'Sie' | 'Du';
@@ -193,7 +199,7 @@ export interface Kontakt {
 /** Felder, die der Import NIE anfasst — das ist die Arbeit im CRM. */
 export const PIPELINE_FELDER: (keyof Kontakt)[] = ['stufe', 'wiedervorlage', 'letzterKontakt', 'aktivitaeten', 'importiertAm',
   'firmaId', 'herkunft', 'rechtsgrundlage', 'kreis', 'taktTage', 'besitzer', 'lebensphase', 'anrede', 'vorgestelltDurch', 'einwilligungen', 'werbesperre', 'fremddaten', 'art14InformiertAm', 'naechsterSchritt', 'privatNotiz', 'netzwerk', 'linkedinNichtGefunden',
-  'lead', 'rollen', 'privatNotizVon', 'stand', 'vonHand', 'zahlung'];
+  'lead', 'rollen', 'privatNotizVon', 'stand', 'vonHand', 'phase', 'zahlung'];
 
 /** Höchstens so viele Feldnamen in `vonHand` — mehr Stammdaten-Felder gibt es nicht. */
 export const VON_HAND_MAX = 60;
@@ -321,6 +327,9 @@ export function ausZeile(z: Record<string, string>, heute: string): Kontakt {
   };
   const besitzer = besitzerAusOwner(k.owner);
   if (besitzer) k.besitzer = besitzer;
+  // Lifecycle (28.09.): die HubSpot-Spalte LIFECYCLE belegt die Phase nur vor — gesetzt wird sie von Hand.
+  const phase = lifecycleAusListe(k.lifecycle);
+  if (phase) k.phase = phase;
   k.id = 'c-' + schluessel(k).replace(/[^a-z0-9]/g, '').slice(0, 40) + '-' + kurzHash(schluessel(k));
   return k;
 }
@@ -381,6 +390,8 @@ export function zusammenfuehren(alt: Kontakt, neu: Kontakt, heute: string): { ko
     setze(f, v);
   }
   if (!alt.besitzer && neu.besitzer) setze('besitzer', neu.besitzer);
+  // Lifecycle (28.09.): wie der Besitzer — nur vorbelegen, wenn online noch keine Phase steht; nie überschreiben.
+  if (!alt.phase && neu.phase) setze('phase', neu.phase);
   if (geaendert) {
     out.geaendertAm = heute;
     // Ohne Herkunftsliste und ohne Handänderung (Faustregel sagt „nur Import“): ab jetzt exakt führen —
@@ -645,7 +656,7 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     notiz: txt(o.notiz, 2000), hubspotId: txt(o.hubspotId, 40), steckbrief: txt(o.steckbrief, 400),
     ...(/^f-[a-z0-9-]{2,60}$/.test(String(o.firmaId ?? '')) ? { firmaId: String(o.firmaId) } : {}),
     ...(kreis ? { kreis } : {}), ...(takt >= 7 && takt <= 730 ? { taktTage: Math.round(takt) } : {}),
-    ...(txt(o.besitzer, 40) ? { besitzer: txt(o.besitzer, 40) } : {}), ...(lebensphase ? { lebensphase } : {}), ...(rollen?.length ? { rollen } : {}), ...(leadSaeubern(o.lead) ? { lead: leadSaeubern(o.lead) } : {}),
+    ...(txt(o.besitzer, 40) ? { besitzer: txt(o.besitzer, 40) } : {}), ...(lebensphase ? { lebensphase } : {}), ...(istLifecycle(o.phase) ? { phase: o.phase } : {}), ...(rollen?.length ? { rollen } : {}), ...(leadSaeubern(o.lead) ? { lead: leadSaeubern(o.lead) } : {}),
     ...(netzwerkSaeubern(o.netzwerk) ? { netzwerk: netzwerkSaeubern(o.netzwerk) } : {}), ...(tag(o.linkedinNichtGefunden) ? { linkedinNichtGefunden: tag(o.linkedinNichtGefunden) } : {}),
     ...(o.anrede === 'Sie' || o.anrede === 'Du' ? { anrede: o.anrede } : {}), ...(txt(o.vorgestelltDurch, 60) ? { vorgestelltDurch: txt(o.vorgestelltDurch, 60) } : {}),
     ...(einwilligungen?.length ? { einwilligungen } : {}),

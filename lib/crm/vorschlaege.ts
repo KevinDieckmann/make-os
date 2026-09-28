@@ -7,13 +7,17 @@
 //                           Sammel-Übernahme am Deal (ein Schreibvorgang, Rückgängig)
 //   kontaktRollenVorschlag  Typ/Kategorie/Firmen-Rolle → Rollen der Person
 //   anredeVorschlag         Kategorie, Rolle „Freund“, eigene Nachrichten → Du/Sie
+//   lifecycleVorschlag      Mandat, Deal, Lead-Status, Marketing-Signal → Lifecycle (28.09.)
+//   lifecycleVon            gesetzt oder vorgeschlagen — für Kartei, Segmente, Export, Heads
 // Deutsche und englische Titel, Groß-/Kleinschreibung egal. „Bremst“ (blocker)
 // wird nie vorgeschlagen — das weiß nur, wer mit der Person gesprochen hat.
 
 import { rollenVon, ROLLE_LABEL, type Kontakt, type Rolle } from '@/lib/make-one/crm';
-import { echtesGespraech } from './pipeline';
+import { echtesGespraech, OFFENE_STUFEN, STUFEN } from './pipeline';
 import { normiere, type WahlVorschlag } from './wahl';
-import type { DealRolle, Firma, Chance } from './typen';
+import type { DealRolle, Firma, Chance, CrmBestand } from './typen';
+import { leadScore, warmPlus, temperaturLabel } from './score';
+import { leereVerteilung, LIFECYCLE_LABEL, type LifecyclePhase } from './lifecycle';
 
 /** Wie lange ein echtes Gespräch die Person „warm“ hält. */
 export const WARM_TAGE = 90;
@@ -219,4 +223,64 @@ export function anredeVorschlag(k: Pick<Kontakt, 'anrede' | 'kategorie' | 'rolle
   if (du && !sie) return { id: 'Du', grund: du === 1 ? 'Eure letzte Nachricht duzt' : `${du} Nachrichten duzen` };
   if (sie && !du) return { id: 'Sie', grund: sie === 1 ? 'Die letzte Nachricht siezt' : `${sie} Nachrichten siezen` };
   return null;
+}
+
+// ── Lifecycle (28.09., Kevin: HubSpot-Vorbild) ──────────────────────────────
+/** Was der Lifecycle-Vorschlag vom Bestand braucht — Teilnahmen und Firmen dürfen fehlen. */
+export type LifecycleBestand = Pick<CrmBestand, 'mandate' | 'chancen'> & Partial<Pick<CrmBestand, 'firmen' | 'teilnahmen'>>;
+
+/** Anfragen landen als Aktivität „antwort“ mit diesem Anfang (wie ANFRAGE_PRAEFIX in marketing.ts — hier ohne Import, sonst ein Kreis über segmente.ts). */
+const ANFRAGE_ANFANG = 'Anfrage über ';
+const tagDE = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`;
+
+/**
+ * Lifecycle aus dem, was im System passiert ist — in dieser Reihenfolge:
+ *   aktives Mandat → Kunde · beendetes Mandat oder gewonnener Deal (ohne aktives Mandat) → Follow Up ·
+ *   offener Deal in Angebot/Abschluss → Angebot · sonst offener Deal → Opportunity ·
+ *   Lead-Status SQL (Firma vor Person) → SQL · Marketing-Signal (Antwort/Anfrage, beim Event dabei,
+ *   Score warm/heiß) → MQL · sonst Lead.
+ * Deals und Mandate zählen, wenn die Person daran hängt; der Score ist der der Person selbst
+ * (mit dem Lead der Firma) — so rechnen Kartei, Segmente, Export und Heads dasselbe.
+ * Nie still gespeichert — der Wahl-Chip zeigt ihn, ein Klick übernimmt.
+ */
+export function lifecycleVorschlag(k: Kontakt, crm: LifecycleBestand | null | undefined, heute: string): WahlVorschlag<LifecyclePhase> {
+  const mandate = crm?.mandate ?? [], chancen = crm?.chancen ?? [];
+  const meine = <T extends { kontaktIds: string[] }>(l: readonly T[]) => l.filter(x => x.kontaktIds.includes(k.id));
+  const m = meine(mandate), c = meine(chancen);
+  const aktiv = m.find(x => x.status === 'aktiv');
+  if (aktiv) return { id: 'kunde', grund: `aktives Mandat „${aktiv.kunde}“` };
+  const beendet = m.find(x => x.status === 'beendet');
+  if (beendet) return { id: 'follow_up', grund: `Mandat „${beendet.kunde}“ beendet — Nachbetreuung, Folgegeschäft, Empfehlung` };
+  const gewonnen = c.find(x => x.stufe === 'gewonnen');
+  if (gewonnen) return { id: 'follow_up', grund: `Deal „${gewonnen.titel}“ gewonnen, kein aktives Mandat` };
+  const offen = c.filter(x => OFFENE_STUFEN.includes(x.stufe));
+  const angebot = offen.find(x => x.stufe === 'angebot' || x.stufe === 'abschluss');
+  if (angebot) return { id: 'angebot', grund: `Deal „${angebot.titel}“ in Stufe ${STUFEN.find(s => s.id === angebot.stufe)?.label ?? angebot.stufe}` };
+  if (offen[0]) return { id: 'opportunity', grund: `offener Deal „${offen[0].titel}“` };
+  const firmaLead = k.firmaId ? (crm?.firmen ?? []).find(f => f.id === k.firmaId)?.lead : undefined;
+  const lead = firmaLead ?? k.lead;
+  if (lead?.status === 'sql') return { id: 'sql', grund: `Lead ${firmaLead ? 'der Firma ' : ''}ist SQL` };
+  // Marketing-Signale: die jüngste Antwort/Anfrage, beim Event dabei, Score warm oder heiß.
+  const antwort = (k.aktivitaeten ?? []).filter(a => a.art === 'antwort' && a.von !== 'system' && a.am).sort((a, b) => b.am.localeCompare(a.am))[0];
+  if (antwort) return { id: 'mql', grund: `${antwort.text?.startsWith(ANFRAGE_ANFANG) ? 'Anfrage' : 'Antwort'} am ${tagDE(antwort.am.slice(0, 10))}` };
+  const dabei = (crm?.teilnahmen ?? []).some(t => t.kontaktId === k.id && t.status === 'da');
+  if (dabei) return { id: 'mql', grund: 'war bei einem Event dabei' };
+  const score = leadScore([k], lead, heute);
+  if (warmPlus(score.temperatur)) return { id: 'mql', grund: `Score der Person ${score.punkte} · ${temperaturLabel(score.temperatur)}` };
+  return { id: 'lead', grund: 'noch kein Marketing-Signal, kein Deal' };
+}
+
+/** Der Lifecycle, wie er gilt: von Hand gesetzt, sonst der Vorschlag (für Kartei, Segmente, Export, Heads). */
+export function lifecycleVon(k: Kontakt, crm: LifecycleBestand | null | undefined, heute: string): { phase: LifecyclePhase; vonHand: boolean; grund: string } {
+  if (k.phase) return { phase: k.phase, vonHand: true, grund: `von Hand gesetzt: ${LIFECYCLE_LABEL[k.phase]}` };
+  const v = lifecycleVorschlag(k, crm, heute);
+  return { phase: v.id, vonHand: false, grund: v.grund };
+}
+
+/** Verteilung über viele Personen — gesetzt oder vorgeschlagen; `gesetzt` zählt, wie viele von Hand stehen. */
+export function lifecycleVerteilung(kontakte: readonly Kontakt[], crm: LifecycleBestand | null | undefined, heute: string): { je: Record<LifecyclePhase, number>; gesetzt: number } {
+  const je = leereVerteilung();
+  let gesetzt = 0;
+  for (const k of kontakte) { const l = lifecycleVon(k, crm, heute); je[l.phase]++; if (l.vonHand) gesetzt++; }
+  return { je, gesetzt };
 }

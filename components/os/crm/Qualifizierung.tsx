@@ -221,7 +221,7 @@ function QualiKarte({ z, api, ich, heute, laden, weiter, zuKontakt, zuFirma, zuL
           <Knopf onClick={() => void abschliessen()} aus={laeuft}>Geprüft → nächster</Knopf>
           {bereit && !z.deal?.offen && <Knopf farbe={LEUCHT.gut} onClick={() => zuLeads(z.id)}>SQL → Deal anlegen</Knopf>}
           {z.ohneBesitzer && <Knopf leise onClick={() => void uebernehmen()}>Übernehmen ({nameVon(ich)})</Knopf>}
-          <Knopf leise onClick={() => (z.firmaId ? zuFirma(z.firmaId) : z.personen[0] ? zuKontakt(z.personen[0].id) : undefined)}>Akte öffnen</Knopf>
+          <Knopf leise onClick={() => (z.firmaId ? zuFirma(z.firmaId) : z.personen[0] ? zuKontakt(z.personen[0].id) : undefined)}>{z.firmaId ? 'Firma öffnen' : 'Kontakt öffnen'}</Knopf>
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8 }}>
             <Knopf leise onClick={() => void abschliessen('ruht')}>Ruht</Knopf>
             <Knopf leise onClick={() => void abschliessen('kein_fit')}>Kein Fit</Knopf>

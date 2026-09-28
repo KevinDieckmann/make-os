@@ -81,21 +81,25 @@ describe('Adresse der Akte', () => {
     expect(aufloesen('kontakte', 'akte')).toEqual({ s: 'kontakte', a: 'akte' });
     expect(markttraktion('kontakte', undefined, 'c-a')).toBe('/os/markttraktion?s=kontakte&k=c-a');
   });
-  it('Reiter (27.09.): t nur in der Akte und nie für den Überblick — alte Adressen ohne t bleiben gültig', () => {
+  it('Reiter (28.09.): t nur bei „Kontakt öffnen“ und nie für „Über“ — alte Adressen ohne t bleiben gültig, alte Reiter werden übersetzt', () => {
     expect(kontaktAkte('c-a')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a');
+    expect(kontaktAkte('c-a', 'ueber')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a');
+    expect(kontaktAkte('c-a', 'daten')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a&t=daten');
+    // Die Reiter vom 27.09. landen am neuen Ort.
     expect(kontaktAkte('c-a', 'ueberblick')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a');
-    expect(kontaktAkte('c-a', 'stammdaten')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a&t=stammdaten');
-    expect(markttraktion('kontakte', 'akte', 'c-a', 'datenschutz')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a&t=datenschutz');
-    // Unbekannter Reiter → Überblick; außerhalb der Akte zählt t nicht.
+    expect(kontaktAkte('c-a', 'stammdaten')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a&t=daten');
+    expect(markttraktion('kontakte', 'akte', 'c-a', 'datenschutz')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a&t=daten');
+    expect(kontaktAkte('c-a', 'verlauf')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a&t=aktivitaeten');
+    // Unbekannter Reiter → Über; außerhalb von „Kontakt öffnen“ zählt t nicht.
     expect(kontaktAkte('c-a', 'geheim')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a');
-    expect(markttraktion('kontakte', undefined, 'c-a', 'verlauf')).toBe('/os/markttraktion?s=kontakte&k=c-a');
-    expect(markttraktion('deals', 'akte', 'ch-1', 'verlauf')).toBe('/os/markttraktion?s=deals&a=akte&k=ch-1');
+    expect(markttraktion('kontakte', undefined, 'c-a', 'aktivitaeten')).toBe('/os/markttraktion?s=kontakte&k=c-a');
+    expect(markttraktion('deals', 'akte', 'ch-1', 'aktivitaeten')).toBe('/os/markttraktion?s=deals&a=akte&k=ch-1');
   });
-  it('akteReiter: leer, null und Unbekanntes heißen Überblick; jeder Reiter der Leiste löst sich auf', () => {
-    expect(akteReiter(null)).toBe('ueberblick');
-    expect(akteReiter('')).toBe('ueberblick');
-    expect(akteReiter('stamm')).toBe('ueberblick');
+  it('akteReiter: leer, null und Unbekanntes heißen Über; jeder Reiter der Leiste löst sich auf', () => {
+    expect(akteReiter(null)).toBe('ueber');
+    expect(akteReiter('')).toBe('ueber');
+    expect(akteReiter('stamm')).toBe('ueber');
     for (const r of AKTE_REITER) expect(akteReiter(r.id)).toBe(r.id);
-    expect(AKTE_REITER.map(r => r.id)).toEqual(['ueberblick', 'stammdaten', 'beziehung', 'verlauf', 'datenschutz']);
+    expect(AKTE_REITER.map(r => r.id)).toEqual(['ueber', 'aktivitaeten', 'umsatz', 'daten']);
   });
 });

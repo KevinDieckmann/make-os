@@ -20,6 +20,8 @@ import { type CrmApi, neueId } from '../daten';
 import { Pillen, Feldzeile } from '../teile';
 import { ROLLEN } from '../Firmen';
 import { Mehrfach } from './gemeinsam';
+import { WahlMehrfach } from '../Wahl';
+import { LIFECYCLE_WAHL } from '@/lib/crm/lifecycle';
 
 const PHASEN = [{ id: 'kontakt', label: 'Kontakt' }, { id: 'interessent', label: 'Interessent' }, { id: 'kunde', label: 'Kunde' }, { id: 'ex_kunde', label: 'Ex-Kunde' }, { id: 'partner', label: 'Partner' }, { id: 'multiplikator', label: 'Multiplikator' }];
 const KREISE = ['A', 'B', 'C', 'D'].map(k => ({ id: k, label: `Kreis ${k}` }));
@@ -133,6 +135,7 @@ function SegmentFormular({ e, setE, a, speichern, gespeichert, csv, zuKontakt, l
         <input value={e.beschreibung} maxLength={400} placeholder="Wofür? (optional)" aria-label="Beschreibung" onChange={x => setE({ ...e, beschreibung: x.target.value })} style={{ ...feld, flex: 2, minWidth: 200, fontSize: TYP.bedien, padding: '8px 11px' }} />
       </div>
       <div>
+        <Feldzeile label="Lifecycle"><WahlMehrfach label="Lifecycle" liste={LIFECYCLE_WAHL} wert={kr.lifecycle ?? []} onWahl={l => setK({ lifecycle: l.length ? l : undefined })} /></Feldzeile>
         <Feldzeile label="Lebensphase"><Mehrfach liste={PHASEN} aktiv={kr.lebensphase ?? []} onWahl={l => setK({ lebensphase: l })} /></Feldzeile>
         <Feldzeile label="Kreis"><Mehrfach liste={KREISE} aktiv={kr.kreis ?? []} onWahl={l => setK({ kreis: l })} /></Feldzeile>
         <Feldzeile label="Prio"><Mehrfach liste={PRIOS} aktiv={kr.prio ?? []} onWahl={l => setK({ prio: l })} /></Feldzeile>
@@ -151,7 +154,7 @@ function SegmentFormular({ e, setE, a, speichern, gespeichert, csv, zuKontakt, l
           </span>
         </Feldzeile>
       </div>
-      <div style={{ fontSize: 12, color: C.inkLeise }}>Gesperrte Personen sind nie Mitglied. Mit „Kanal zulässig“ zählt nur, wer darüber erreichbar sein darf (Ampel grün).</div>
+      <div style={{ fontSize: 12, color: C.inkLeise }}>Gesperrte Personen sind nie Mitglied. Mit „Kanal zulässig“ zählt nur, wer darüber erreichbar sein darf (Ampel grün). Lifecycle: gesetzt, sonst der Vorschlag aus den Daten.</div>
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
         <b style={{ fontSize: TYP.body, fontWeight: 600 }}>{a.anzahl} Personen</b>

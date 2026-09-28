@@ -2,9 +2,11 @@
 // /os/markttraktion?s=<Bereich>&a=<Ansicht>&k=<Person, Firma, Deal, Event>
 //   s (Reiter, Kevins Reihenfolge 27.09.): ueberblick (Start) · kontakte · firmen ·
 //      deals · followup · qualifizierung (Runde, 27.09.) · sales · marketing · event · stammdaten
-//   a: kontakte   → die gespeicherte Ansicht, eine Runde (runde-…) oder akte (Kontaktakte zu k)
-//      t (nur in der Kontaktakte, 27.09.): Reiter ueberblick (Start, ohne t) · stammdaten · beziehung · verlauf · datenschutz —
-//      alte Links ohne t bleiben gültig und öffnen den Überblick
+//   a: kontakte   → die gespeicherte Ansicht, eine Runde (runde-…) oder akte („Kontakt öffnen“ zu k)
+//      t (nur bei „Kontakt öffnen“, 28.09.): Reiter ueber (Start, ohne t) · aktivitaeten · umsatz · daten —
+//      alte Links ohne t bleiben gültig und öffnen „Über“; die Reiter vom 27.09. werden übersetzt
+//      (ueberblick → ueber, verlauf → aktivitaeten, stammdaten | beziehung | datenschutz → daten)
+//      u (nur im Reiter Aktivitäten): der Unter-Reiter (z. B. alle, notizen) — ein Anker (#…) springt zur Quelle
 //      firmen     → (leer) Kartei · leads (Ebene 1: qualifizieren → SQL)
 //      deals      → board (Start) · liste · akte (Deal-Akte zu k) · kunden · auswertung
 //      followup   → faellig (Start) · woche · powerhour · kadenz
@@ -29,14 +31,22 @@ export const FOLLOWUP_ANSICHTEN: FollowupAnsicht[] = ['faellig', 'woche', 'power
 export const SALES_ANSICHTEN: SalesAnsicht[] = ['heute', 'leads', 'pipeline', 'kunden', 'kampagnen'];
 export const PFAD = '/os/markttraktion';
 
-/** Die Reiter der Kontaktakte (Malins Rückmeldung 27.09.): Überblick ist der Start und steht nicht in der Adresse. */
-export type AkteReiter = 'ueberblick' | 'stammdaten' | 'beziehung' | 'verlauf' | 'datenschutz';
+/** Die Reiter von „Kontakt öffnen“ (Kevin 28.09., HubSpot-Vorbild): „Über“ ist der Start und steht nicht in der Adresse. */
+export type AkteReiter = 'ueber' | 'aktivitaeten' | 'umsatz' | 'daten';
 export const AKTE_REITER: { id: AkteReiter; label: string }[] = [
-  { id: 'ueberblick', label: 'Überblick' }, { id: 'stammdaten', label: 'Stammdaten' }, { id: 'beziehung', label: 'Beziehung' }, { id: 'verlauf', label: 'Verlauf' }, { id: 'datenschutz', label: 'Datenschutz' },
+  { id: 'ueber', label: 'Über' }, { id: 'aktivitaeten', label: 'Aktivitäten' }, { id: 'umsatz', label: 'Umsatz' }, { id: 'daten', label: 'Daten' },
 ];
-/** Reiter aus `t` — leer oder unbekannt heißt Überblick (rückwärtskompatibel für Suche, Befunde, ZOE). */
+/** Die Reiter vom 27.09. — alte Links, Lesezeichen und gemerkte Reiter landen am neuen Ort. */
+const ALTE_REITER: Record<string, AkteReiter> = { ueberblick: 'ueber', verlauf: 'aktivitaeten', stammdaten: 'daten', beziehung: 'daten', datenschutz: 'daten' };
+/** Reiter aus `t` — leer oder unbekannt heißt „Über“, alte Werte werden übersetzt (rückwärtskompatibel für Suche, Befunde, ZOE). */
 export function akteReiter(t?: string | null): AkteReiter {
-  return t && AKTE_REITER.some(r => r.id === t) ? (t as AkteReiter) : 'ueberblick';
+  if (!t) return 'ueber';
+  if (AKTE_REITER.some(r => r.id === t)) return t as AkteReiter;
+  return ALTE_REITER[t] ?? 'ueber';
+}
+/** Unter-Reiter der Aktivitäten (`u`) — nur ein kurzes Kennwort; welche es gibt, bestimmt der Reiter selbst. */
+export function akteUnter(u?: string | null): string | null {
+  return u && /^[a-z][a-z_-]{0,23}$/.test(u) ? u : null;
 }
 
 /** Wohin der alte Sales-Reiter zeigt. */
@@ -66,21 +76,25 @@ export function aufloesen(s?: string | null, a?: string | null): { s: Bereich; a
   return { s: 'ueberblick' };
 }
 
-/** Link in die Markttraktion — für Suche, Startseite, Befunde, ZOE. `t` zählt nur in der Kontaktakte (Reiter außer Überblick). */
-export function markttraktion(s?: string, a?: string, k?: string, t?: string | null): string {
+/** Link in die Markttraktion — für Suche, Startseite, Befunde, ZOE. `t` zählt nur bei „Kontakt öffnen“ (Reiter außer „Über“), `u` nur im Reiter Aktivitäten. */
+export function markttraktion(s?: string, a?: string, k?: string, t?: string | null, u?: string | null): string {
   const z = aufloesen(s, a);
   const q = new URLSearchParams();
   if (z.s !== 'ueberblick') q.set('s', z.s);
   if (z.a) q.set('a', z.a);
   if (k) q.set('k', k);
   const reiter = akteReiter(t);
-  if (z.s === 'kontakte' && z.a === 'akte' && k && reiter !== 'ueberblick') q.set('t', reiter);
+  if (z.s === 'kontakte' && z.a === 'akte' && k && reiter !== 'ueber') {
+    q.set('t', reiter);
+    const unter = akteUnter(u);
+    if (reiter === 'aktivitaeten' && unter) q.set('u', unter);
+  }
   const text = q.toString();
   return text ? `${PFAD}?${text}` : PFAD;
 }
 
-/** Die Kontaktakte (25.09., Reiter 27.09.): eine ganze Seite je Person, optional direkt auf einem Reiter. */
-export const kontaktAkte = (id: string, t?: AkteReiter | string | null): string => markttraktion('kontakte', 'akte', id, t);
+/** „Kontakt öffnen“ (25.09., Reiter 28.09.): eine ganze Seite je Person, optional direkt auf einem Reiter (und Unter-Reiter der Aktivitäten). */
+export const kontaktAkte = (id: string, t?: AkteReiter | string | null, u?: string | null): string => markttraktion('kontakte', 'akte', id, t, u);
 
 /** Die Deal-Akte (27.09.): eine ganze Seite je Deal. */
 export const dealAkte = (id: string): string => markttraktion('deals', 'akte', id);

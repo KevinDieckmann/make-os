@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   if (!istExportArt(was)) return NextResponse.json({ ok: false, fehler: `was: ${EXPORTE.join(' | ')}` }, { status: 400 });
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const crm = await ladeCrm();
-  return new Response(exportCsv(was, { kontakte, crm }), {
+  return new Response(exportCsv(was, { kontakte, crm, heute: localDay() }), {
     headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${exportDateiname(was, localDay())}"`, 'Cache-Control': 'no-store' },
   });
 }
