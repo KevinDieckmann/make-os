@@ -16,6 +16,7 @@
 //   Markttraktion über lib/crm/adresse.ts (s · a · k)
 
 import { mandateLink, markttraktion, dealAkte, angebotLink, type AngebotAdresse } from '@/lib/crm/adresse';
+import { aufgabenLink, type AufgabenAdresse } from '@/lib/aufgaben/adresse';
 
 const q = (basis: string, p: Record<string, string | undefined | null>, hash?: string) => {
   const s = new URLSearchParams();
@@ -97,6 +98,13 @@ export const WEG = {
   jahr: () => '/os/planung/jahr',
   agenten: () => '/os/agenten',
   aufgabe: (id: string) => q('/os/aufgaben', { offen: id }),
-  /** Aufgaben-Seite (28.09. abends): Bereich, Space (privat · kdc · kdv · ug · m-<firmaId>), Projekt. */
-  aufgaben: (o: { space?: 'privat' | 'business'; r?: string; p?: string } = {}) => q('/os/aufgaben', { space: o.space, r: o.r, p: o.p }),
+  /**
+   * Aufgaben-Seite (Navigation wie im CRM, 28.09. spät — lib/aufgaben/adresse.ts): ohne Angabe der Überblick;
+   * `s` Space (privat · kdc · kdv · ug · m-<firmaId>), `p` Projekt (Projektseite, `t` Reiter), `g` Gruppe, `l` Liste,
+   * `a` Aufgabe, `b: 'archiv'`. Alt (weiter gültig): `r` = Space, `space` = Seitenleiste.
+   */
+  aufgaben: (o: Partial<Omit<AufgabenAdresse, 'ansicht'>> & { r?: string; space?: 'privat' | 'business'; b?: 'ueberblick' | 'archiv' } = {}) => {
+    const s = o.s ?? o.r;
+    return aufgabenLink({ ...o, s, bereich: o.bereich ?? o.space, ansicht: o.b === 'archiv' ? 'archiv' : s && o.b !== 'ueberblick' ? 'space' : 'ueberblick' });
+  },
 } as const;

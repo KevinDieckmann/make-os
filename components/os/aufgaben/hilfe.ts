@@ -99,12 +99,29 @@ export function projektAnlegen(dispatch: Dispatch<AufgabenAktion>, spaceId: stri
   return id;
 }
 
-export function listeAnlegen(dispatch: Dispatch<AufgabenAktion>, state: TasksState, projektId: string, titel: string): string {
+export function listeAnlegen(dispatch: Dispatch<AufgabenAktion>, state: TasksState, projektId: string, titel: string, gruppeId?: string): string {
   const id = neueKennung('l');
   const n = (state.listen ?? []).filter(l => l.projektId === projektId).reduce((m, l) => Math.max(m, l.sortOrder), -1) + 1;
-  dispatch({ type: 'ADD_LISTE', payload: { id, projektId, titel, sortOrder: n } });
+  dispatch({ type: 'ADD_LISTE', payload: { id, projektId, titel, sortOrder: n, ...(gruppeId ? { gruppeId } : {}) } });
   return id;
 }
+
+/** Farben für Gruppen (Marketing, Sales, Operations …) — der Reihe nach vergeben. */
+export const GRUPPEN_FARBEN = ['#FF7EB6', '#FF9F43', '#4FC3F7', '#3DE28B', '#C77DFF', '#FFC93C', '#58D9CD', '#8F86FF'] as const;
+
+/** Eine Gruppe im Projekt anlegen (Farbe der Reihe nach). */
+export function gruppeAnlegen(dispatch: Dispatch<AufgabenAktion>, state: TasksState, projektId: string, titel: string, farbe?: string): string {
+  const id = neueKennung('g');
+  const im = (state.gruppen ?? []).filter(g => g.projektId === projektId);
+  const n = im.reduce((m, g) => Math.max(m, g.sortOrder), -1) + 1;
+  dispatch({ type: 'ADD_GRUPPE', payload: { id, projektId, titel: titel.slice(0, 60), farbe: farbe ?? GRUPPEN_FARBEN[im.length % GRUPPEN_FARBEN.length], sortOrder: n } });
+  return id;
+}
+
+/** Datum kurz: 2026-10-03 → 03.10. */
+export const tagKurz = (d?: string): string => (d ? `${d.slice(8, 10)}.${d.slice(5, 7)}.` : '');
+/** Zeitpunkt kurz: 03.10., 14:05 */
+export const zeitKurz = (iso: string): string => { try { return new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
 
 /**
  * Eine Aufgabe umziehen (Space/Projekt/Liste): anderer Space → Projekt „Sonstige“ dort (wenn das Projekt nicht dazugehört),

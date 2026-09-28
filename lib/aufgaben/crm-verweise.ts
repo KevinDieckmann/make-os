@@ -11,7 +11,7 @@ import { WEG } from '@/lib/wege';
 export interface CrmVerweise {
   kontakte: { id: string; name: string; firmaId?: string; firma?: string }[];
   firmen: { id: string; name: string }[];
-  mandate: { id: string; titel: string; kunde: string; status: string; firmaId?: string }[];
+  mandate: { id: string; titel: string; kunde: string; status: string; firmaId?: string; /** Wer das Mandat betreut (Team-Kürzel oder „beide“). */ zustaendig?: string }[];
   deals: { id: string; titel: string; stufe: string; firmaId?: string; firma?: string }[];
 }
 export type BezugArt = keyof AufgabeBezug;

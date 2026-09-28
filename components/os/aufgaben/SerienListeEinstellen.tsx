@@ -30,7 +30,7 @@ export function SerienListeEinstellen({ liste, onSchliessen }: { liste: Aufgaben
   const vorhanden = vorlageFinden(state.vorlagen, liste.vorlageId);
   const [w, setW] = useState<Wiederholung | undefined>(liste.wiederholung ?? { regel: 'monatlich', monatstag: 1 });
   const [quelle, setQuelle] = useState<string>(vorhanden?.art === 'liste' ? vorhanden.id : DIESE);
-  const [muster, setMuster] = useState<string | null>(vorhanden && hatPlatzhalter(vorhanden.titel) ? vorhanden.titel : null);
+  const [muster, setMuster] = useState<string | null>(liste.titelMuster ?? (vorhanden && hatPlatzhalter(vorhanden.titel) ? vorhanden.titel : null));
   const [fehler, setFehler] = useState<string | null>(null);
   const [alsVorlage, setAlsVorlage] = useState(false);
   const gewaehlt = quelle === DIESE ? undefined : vorlageFinden(state.vorlagen, quelle);
@@ -61,7 +61,7 @@ export function SerienListeEinstellen({ liste, onSchliessen }: { liste: Aufgaben
       dispatch({ type: 'ADD_VORLAGE', payload: kopie });
       vorlageId = kopie.id;
     } else vorlageId = quelle;
-    dispatch({ type: 'UPDATE_LISTE', payload: { id: liste.id, wiederholung: start, vorlageId } });
+    dispatch({ type: 'UPDATE_LISTE', payload: { id: liste.id, wiederholung: start, vorlageId, titelMuster: m.slice(0, 80) } });
     onSchliessen();
   };
 

@@ -107,7 +107,7 @@ describe('Wiederkehrende Aufgabe: Instanz beim Erledigen', () => {
     const [inst, u, ...rest] = naechsteInstanz(erledigt(), [erledigt(), unter], '2026-09-30', JETZT);
     expect(rest).toEqual([]);
     expect(inst.id).toBe(instanzId('serie:a1', '2026-10-31'));
-    expect(inst).toMatchObject({ status: 'todo', dueDate: '2026-10-31', startDate: '2026-10-26', vorlageId: 'serie:a1', notiz: '- [ ] prüfen', felder: { budget: 100 }, bezug: { firmaId: 'f-muster' }, listeId: 'l1', assignee: 'kevin', wiederholung: { regel: 'monatlich', monatstag: 31 } });
+    expect(inst).toMatchObject({ status: 'todo', dueDate: '2026-10-31', startDate: '2026-10-26', serieId: 'a1', notiz: '- [ ] prüfen', felder: { budget: 100 }, bezug: { firmaId: 'f-muster' }, listeId: 'l1', assignee: 'kevin', wiederholung: { regel: 'monatlich', monatstag: 31 } });
     for (const k of ['kommentare', 'verlauf', 'zoe', 'completedAt', 'statusId', 'abhaengigVon'] as const) expect(inst[k]).toBeUndefined();
     expect(u).toMatchObject({ id: `${inst.id}-u1`, parentId: inst.id, status: 'todo', title: 'Beleg', dueDate: '2026-10-29' });
     expect(taskSauber(inst)).toEqual(inst);
@@ -272,6 +272,16 @@ describe('Vorlagen speichern und anlegen', () => {
   });
 });
 
+describe('Serien-Liste mit titelMuster, Vorlage mit Notiz/Feldern (28.09. spät)', () => {
+  it('listenMuster nimmt das Muster der Liste; aufgabenAusVorlage übernimmt Notiz und Felder', async () => {
+    const { listenMuster } = await import('@/lib/aufgaben/serie');
+    const { aufgabenAusVorlage } = await import('@/lib/aufgaben/vorlagen');
+    expect(listenMuster({ titel: 'Abschluss September', titelMuster: 'Abschluss {Monat} {Jahr}' }, { regel: 'monatlich' }, { titel: 'Anders {Monat}' })).toBe('Abschluss {Monat} {Jahr}');
+    const t = aufgabenAusVorlage([{ titel: 'Belege', notiz: '- [ ] Bank', felder: { budget: 100 } }], { spaceId: 'kdv', projectId: 'p1', praefix: 'x', owner: 'kevin', jetzt: JETZT });
+    expect(t[0]).toMatchObject({ notiz: '- [ ] Bank', felder: { budget: 100 } });
+  });
+});
+
 describe('Säuberung der Serienfelder', () => {
   it('Serien-Kennung an der Aufgabe, Zeiger an der Liste bleiben', () => {
     expect(taskSauber(aufgabe('a', { vorlageId: 'serie:a1', wiederholung: { regel: 'taeglich', naechste: '2026-10-01' } }))!.vorlageId).toBe('serie:a1');
@@ -309,7 +319,8 @@ describe('Schreibweg: Erledigen erzeugt die nächste Instanz', () => {
     expect(d.ok).toBe(true);
     expect(d.serien).toHaveLength(1);
     const inst = (await gespeichert()).tasks.find(t => t.id === d.serien![0])!;
-    expect(inst).toMatchObject({ status: 'todo', dueDate: naechsterTermin({ regel: 'taeglich' }, heute), vorlageId: 'serie:r1' });
+    expect(inst).toMatchObject({ status: 'todo', dueDate: naechsterTermin({ regel: 'taeglich' }, heute), serieId: 'r1' });
+    expect(inst.vorlageId).toBeUndefined();
     expect(inst.verlauf).toEqual([expect.objectContaining({ was: 'angelegt', von: 'kevin', durch: 'system' })]);
     const r2 = await zeile();
     await route.PATCH(anfrage(sitzung('kevin'), 'PATCH', { ops: [{ op: 'upsert', task: { ...r2, status: 'todo', completedAt: undefined }, stand: r2.stand }] }));

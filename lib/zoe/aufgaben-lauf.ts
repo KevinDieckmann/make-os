@@ -189,7 +189,7 @@ async function crmFuer(t: Task): Promise<string> {
 
 /** Zurück auf „offen“ (Modell nicht erreichbar, leere Antwort) — die Aufgabe geht beim nächsten Lauf wieder mit. */
 async function zurueckAufOffen(t: Task, person: string): Promise<void> {
-  await aufgabeZoeAendern(t.id, x => (x.zoe?.status === 'in_arbeit' ? { task: { ...x, zoe: { status: 'offen', ...(x.zoe.stapelId ? { stapelId: x.zoe.stapelId } : {}) } } } : { status: 409, fehler: 'nicht mehr in Arbeit' }), { person, zoe: true }).catch(() => null);
+  await aufgabeZoeAendern(t.id, x => (x.zoe?.status === 'in_arbeit' ? { task: { ...x, zoe: { ...x.zoe, status: 'offen' } } } : { status: 409, fehler: 'nicht mehr in Arbeit' }), { person, zoe: true }).catch(() => null);
 }
 
 /**
@@ -212,7 +212,7 @@ export async function zoeAufgabenLauf(opt: { person: string | null; max?: number
       const a = auftraggeberinVon(t);
       if (!a || !(await personImHaushaltDesInhabers(a))) { erg.uebersprungen.push({ id: t.id, grund: 'keine Auftraggeberin im Haushalt' }); continue; }
       // 1) In Arbeit nehmen — mit Stand: hat jemand gerade geändert oder ein zweiter Lauf sie genommen, nicht doppelt.
-      const genommen = await aufgabeZoeAendern(t.id, x => (x.zoe && (x.zoe.status === 'offen' || x.zoe.status === 'in_arbeit') ? { task: { ...x, zoe: { status: 'in_arbeit', ...(x.zoe.stapelId ? { stapelId: x.zoe.stapelId } : {}) } } } : { status: 409, fehler: 'nicht mehr offen' }), { person: a, zoe: true });
+      const genommen = await aufgabeZoeAendern(t.id, x => (x.zoe && (x.zoe.status === 'offen' || x.zoe.status === 'in_arbeit') ? { task: { ...x, zoe: { ...x.zoe, status: 'in_arbeit' } } } : { status: 409, fehler: 'nicht mehr offen' }), { person: a, zoe: true });
       if (!genommen.ok) { erg.uebersprungen.push({ id: t.id, grund: genommen.fehler }); continue; }
       const aktuell = genommen.wert;
       // 2) Auftrag bauen und EIN Modellaufruf — ohne Werkzeuge: ZOE kann hier nichts tun außer antworten.
@@ -238,7 +238,7 @@ export async function zoeAufgabenLauf(opt: { person: string | null; max?: number
         bezug: { art: 'aufgabe', id: aktuell.id },
       });
       await notiere({ werkzeug: ZOE_AUFGABE_WERKZEUG, gruppe: 'aufgaben', risiko: 'freigabe', eingabe: { aufgabeId: aktuell.id }, ergebnis: `in den Stapel gelegt (${v.id})`, ok: true, quelle: 'zoe', person: a, ruecknahme: null });
-      const gesetzt = await aufgabeZoeAendern(aktuell.id, x => (x.zoe?.status === 'in_arbeit' ? { task: { ...x, zoe: { status: 'wartet_freigabe', stapelId: v.id } } } : { status: 409, fehler: 'nicht mehr in Arbeit' }), { person: a, zoe: true });
+      const gesetzt = await aufgabeZoeAendern(aktuell.id, x => (x.zoe?.status === 'in_arbeit' ? { task: { ...x, zoe: { ...x.zoe, status: 'wartet_freigabe', stapelId: v.id } } } : { status: 409, fehler: 'nicht mehr in Arbeit' }), { person: a, zoe: true });
       if (!gesetzt.ok) { erg.uebersprungen.push({ id: t.id, grund: `Vorschlag liegt im Stapel, Aufgabe nicht umgestellt: ${gesetzt.fehler}` }); continue; }
       erg.bearbeitet.push({ id: aktuell.id, titel: aktuell.title, stapelId: v.id });
       await melde({ an: a, art: 'zoe', titel: `ZOE hat „${aktuell.title.length > 80 ? `${aktuell.title.slice(0, 79)}…` : aktuell.title}“ vorbereitet`, link: WEG.aufgabe(aktuell.id), von: 'zoe', bezug: { art: 'aufgabe', id: aktuell.id } });

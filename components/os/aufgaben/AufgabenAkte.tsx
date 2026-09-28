@@ -2,7 +2,8 @@
 // ─── Aufgaben in der CRM-Akte (28.09. abends) ───────────────────────────────
 // Kontakt öffnen und Firmenakte zeigen die offenen Aufgaben, die mit der Person bzw. Firma (auch über ein Mandat oder
 // einen Deal der Firma) verknüpft sind — mit „+ Aufgabe“, vorbelegt mit dem Bezug und bei einem Mandanten mit
-// seinem Space. Die Aufgabe selbst öffnet sich auf der Aufgaben-Seite (WEG.aufgabe).
+// seinem Space. Die Aufgabe öffnet sich direkt in ihrem Space; bei einem Mandanten führt der Kopf-Link in den
+// Mandanten-Space (Navigation wie im CRM, 28.09. spät).
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
@@ -41,7 +42,7 @@ export function AufgabenAkte(b: AkteBezug) {
       {offen.slice(0, 8).map(t => (
         <div key={t.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,.045)' }}>
           <Haken an={false} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />
-          <Link href={WEG.aufgabe(t.id)} className="fassbar" style={{ flex: 1, minWidth: 0, color: C.ink, textDecoration: 'none', fontSize: TYP.bedien, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</Link>
+          <Link href={t.spaceId ? WEG.aufgaben({ s: t.spaceId, a: t.id }) : WEG.aufgabe(t.id)} className="fassbar" style={{ flex: 1, minWidth: 0, color: C.ink, textDecoration: 'none', fontSize: TYP.bedien, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</Link>
           {t.dueDate && <span style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute ? LEUCHT.kritisch : C.inkLeise }}>{t.dueDate.slice(8)}.{t.dueDate.slice(5, 7)}.</span>}
         </div>
       ))}
@@ -49,7 +50,9 @@ export function AufgabenAkte(b: AkteBezug) {
       {!offen.length && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Keine offene Aufgabe.</div>}
       <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') anlegen(); }} aria-label="Neue Aufgabe zu dieser Akte"
         placeholder="+ Aufgabe (Enter)" style={{ ...feld, fontSize: TYP.bedien, padding: '7px 10px', marginTop: 6, fontFamily: SCHRIFT.text }} />
-      {b.mandantFirmaId && <Link href={WEG.aufgaben({ space: 'business', r: mandantSpaceId(b.mandantFirmaId) })} style={{ fontSize: 12, color: C.aktiv, textDecoration: 'none', marginTop: 4 }}>Alle Aufgaben des Mandanten ›</Link>}
+      {b.mandantFirmaId
+        ? <Link href={WEG.aufgaben({ s: mandantSpaceId(b.mandantFirmaId) })} style={{ fontSize: 12.5, fontWeight: 600, color: C.aktiv, textDecoration: 'none', marginTop: 6 }}>Mandanten-Space öffnen — Projekte, Gruppen, Listen ›</Link>
+        : <Link href={WEG.aufgaben({ b: 'ueberblick' })} style={{ fontSize: 12, color: C.aktiv, textDecoration: 'none', marginTop: 4 }}>Alle Aufgaben ›</Link>}
     </div>
   );
 }

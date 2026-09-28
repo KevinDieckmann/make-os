@@ -3,8 +3,12 @@
 // Status (fest + eigene des Space), Zuständig, Priorität, Start, Deadline, Ort (Space › Projekt › Liste),
 // Beschreibung, Verknüpfung mit dem CRM (Kontakt, Firma, Mandat, Deal — Link in die Akte), Unteraufgaben,
 // Kommentare mit @-Erwähnung. Jede Änderung ist eine Einzeländerung über den Aufgaben-Kontext (Stand/409).
+// Vertiefung (28.09. spät): Notiz, eigene Felder des Projekts, „wartet auf …“ (blockiert sichtbar), Unteraufgaben mit
+// eigenem Status/Zuständig/Deadline, in Unteraufgabe umwandeln bzw. herauslösen, Zeit je Aufgabe (Fokus), Dateien
+// (Paket C2), Verlauf.
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch } from 'react';
+import { Lock } from 'lucide-react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Haken, Knopf, feld, prioFarbe } from '../schlank';
@@ -13,12 +17,20 @@ import { TextMitLinks } from '../TextMitLinks';
 import { statusListe, statusVon, statusTeil, erwaehnungen, sonstigeProjektId, fortschritt, type AufgabenSpace } from '@/lib/aufgaben/struktur';
 import { crmSuchen, bezugName, bezugLink, bezugSetzen, bezugOhne, BEZUG_ARTEN, BEZUG_LABEL } from '@/lib/aufgaben/crm-verweise';
 import { fokusFuerAufgabe } from '@/lib/zeitmessung/fokus-laufend';
+import { wartetAuf, wuerdeKreisen } from '@/lib/aufgaben/abhaengig';
+import { AUFGABEN_GRENZEN } from '@/lib/aufgaben/saeubern';
+import { dauerText, type ZeitJeAufgabe } from '@/lib/aufgaben/zeit';
+import { suchPasst } from '@/lib/text/such-norm';
 import type { Task, TasksState, AufgabeKommentar } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
 import type { AufgabenAktion } from '@/context/TasksContext';
-import { ZoeAufgabe } from './ZoeAufgabe';
-import { aufgabeAnlegen, projektAnlegen, listeAnlegen, projekteImSpace, spacesOderFest, umzugTeil, useCrmVerweise, neueKennung, ownerLabel, type Person } from './hilfe';
+import { aufgabeAnlegen, projektAnlegen, listeAnlegen, projekteImSpace, spacesOderFest, umzugTeil, useCrmVerweise, neueKennung, tagKurz, type Person } from './hilfe';
+import { NotizEditor } from './Notiz';
+import { FeldWerte } from './EigeneFelder';
+import { VerlaufListe } from './VerlaufListe';
+import { ProjektDateien } from './ProjektDateien';
 import { WiederholungWahl } from './WiederholungWahl';
+import { ZoeAufgabe } from './ZoeAufgabe';
 import { wiederholungSetzen } from '@/lib/aufgaben/serie';
 
 const PRIO: WahlEintrag<Priority>[] = [
@@ -66,6 +78,10 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
   const spaceWahl: WahlEintrag<string>[] = alleSpaces.filter(s => !s.archiv || s.id === t.spaceId).map(s => ({ id: s.id, label: s.label, punkt: s.farbe }));
   const fremdesProjekt = !projekte.some(p => p.id === t.projectId) && state.projects.some(p => p.id === t.projectId);
 
+  const projekt = state.projects.find(p => p.id === t.projectId);
+  const gruppe = (() => { const l = listen.find(x => x.id === t.listeId); return l?.gruppeId ? (state.gruppen ?? []).find(g => g.id === l.gruppeId) : undefined; })();
+  const wartet = t.status !== 'done' ? wartetAuf(t, state.tasks) : [];
+  const elternWahl: WahlEintrag<string>[] = !eltern ? state.tasks.filter(x => x.projectId === t.projectId && x.spaceId === t.spaceId && !x.parentId && x.id !== t.id && x.status !== 'done').sort((a, b) => a.title.localeCompare(b.title, 'de')).map(x => ({ id: x.id, label: x.title })) : [];
   const [titel, setTitel] = useState(t.title);
   useEffect(() => { setTitel(t.title); }, [t.id, t.title]);
   const [neuUnter, setNeuUnter] = useState('');
@@ -76,6 +92,7 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 12.5, color: C.inkLeise, marginBottom: 8 }}>
         <span style={{ color: space?.farbe ?? C.inkDim, fontWeight: 600 }}>{space?.label ?? 'Space'}</span>
         <span aria-hidden>›</span><span>{state.projects.find(p => p.id === t.projectId)?.title ?? 'Sonstige'}</span>
+        {gruppe && <><span aria-hidden>›</span><span style={{ color: gruppe.farbe }}>{gruppe.titel}</span></>}
         <span aria-hidden>›</span><span>{listen.find(l => l.id === t.listeId)?.titel ?? 'Sonstige'}</span>
         {eltern && <><span aria-hidden>›</span><button onClick={() => onOeffnen(eltern.id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>{eltern.title}</button></>}
         <button onClick={onSchliessen} aria-label="Schließen" className="fassbar" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 6px' }}>×</button>
@@ -88,6 +105,11 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
           style={{ ...feld, fontFamily: SCHRIFT.display, fontSize: 19, fontWeight: 700, letterSpacing: '-.01em', background: 'transparent', border: '1px solid transparent', padding: '6px 8px', resize: 'none', lineHeight: 1.3, textDecoration: t.status === 'done' ? 'line-through' : 'none', color: t.status === 'done' ? C.inkDim : C.ink, fieldSizing: 'content' } as CSSProperties} />
       </div>
 
+      {wartet.length > 0 && (
+        <div role="status" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', margin: '-4px 0 12px', padding: '8px 12px', borderRadius: 10, border: `1px solid ${LEUCHT.achtung}55`, background: `${LEUCHT.achtung}12`, color: LEUCHT.achtung, fontSize: 12.5 }}>
+          <Lock size={13} /> Blockiert — wartet auf {wartet.map((w, n) => <button key={w.id} onClick={() => onOeffnen(w.id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: LEUCHT.achtung, textDecoration: 'underline', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>{w.title}{n < wartet.length - 1 ? ',' : ''}</button>)}
+        </div>
+      )}
       <div style={{ display: 'grid', gap: 4, marginBottom: 14 }}>
         <Feld label="Status">
           <Wahl klein label="Status" liste={statusWahl} wert={status.id} farbe={status.farbe} onWahl={id => aendern(statusTeil(t, id, eigene))} />
@@ -116,6 +138,17 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
               onNeu={async titel => listeAnlegen(dispatch, state, t.projectId, titel)} neuMax={80} />
           </Feld>
         )}
+        {!eltern && elternWahl.length > 0 && !unter.length && (
+          <Feld label="Ebene">
+            <Wahl klein label="Unteraufgabe von" leer="in Unteraufgabe umwandeln" liste={elternWahl} wert={null} onWahl={id => aendern({ parentId: id })} />
+          </Feld>
+        )}
+        {eltern && (
+          <Feld label="Ebene">
+            <span style={{ fontSize: 12.5, color: C.inkDim }}>Unteraufgabe von „{eltern.title}“</span>
+            <button onClick={() => aendern({ parentId: undefined })} className="fassbar" style={{ background: 'none', border: '1px dashed rgba(255,255,255,.2)', borderRadius: 999, padding: '3px 10px', color: C.inkDim, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>herauslösen</button>
+          </Feld>
+        )}
       </div>
 
       <div style={{ ...mikro, marginBottom: 6 }}>Beschreibung</div>
@@ -126,28 +159,53 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
 
       <CrmVerknuepfung task={t} aendern={aendern} />
 
+      <FeldWerte task={t} defs={projekt?.felder ?? []} personen={personen} aendern={aendern} />
+
+      <Abhaengigkeiten task={t} state={state} aendern={aendern} onOeffnen={onOeffnen} />
+
+      <div style={{ ...mikro, margin: '16px 0 6px' }}>Notiz</div>
+      <NotizEditor wert={t.notiz} max={AUFGABEN_GRENZEN.notiz} onSpeichern={n => aendern({ notiz: n })} platzhalter="Gedanken, Checkliste, Links zur Aufgabe …" />
+
       {!eltern && (
         <>
           <div style={{ ...mikro, margin: '16px 0 6px', display: 'flex', justifyContent: 'space-between' }}>
             <span>Unteraufgaben</span>{unter.length > 0 && <span>{fortschritt(unter).fertig}/{unter.length}</span>}
           </div>
-          {unter.map(u => (
-            <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
-              <Haken an={u.status === 'done'} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: u.id } })} farbe={prioFarbe(u.priority)} />
-              <button onClick={() => onOeffnen(u.id)} className="fassbar" style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', color: u.status === 'done' ? C.inkLeise : C.ink, textDecoration: u.status === 'done' ? 'line-through' : 'none', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.title}</button>
-              {u.assignee !== t.assignee && <span style={{ fontSize: 12, color: C.inkLeise }}>{ownerLabel(u.assignee, personen)}</span>}
-              {u.dueDate && <span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{u.dueDate.slice(8)}.{u.dueDate.slice(5, 7)}.</span>}
-            </div>
-          ))}
+          {unter.length > 0 && <div aria-hidden style={{ height: 4, borderRadius: 3, background: 'rgba(255,255,255,.07)', overflow: 'hidden', marginBottom: 4 }}><div style={{ height: '100%', width: `${Math.round((fortschritt(unter).fertig / unter.length) * 100)}%`, background: LEUCHT.gut }} /></div>}
+          {unter.map(u => {
+            const us = statusVon(u, eigene);
+            const aendernU = (teil: Partial<Task>) => dispatch({ type: 'UPDATE_TASK', payload: { id: u.id, ...teil } });
+            return (
+              <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)', flexWrap: 'wrap' }}>
+                <Haken an={u.status === 'done'} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: u.id } })} farbe={prioFarbe(u.priority)} />
+                <button onClick={() => onOeffnen(u.id)} className="fassbar" style={{ flex: '1 1 140px', minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', color: u.status === 'done' ? C.inkLeise : C.ink, textDecoration: u.status === 'done' ? 'line-through' : 'none', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.title}</button>
+                <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Wahl klein label="Status" liste={statusWahl} wert={us.id} farbe={us.farbe} onWahl={id => aendernU(statusTeil(u, id, eigene))} />
+                  <Wahl klein label="Zuständig" liste={personenWahl} wert={u.assignee} farbe={C.inkDim} onWahl={a => aendernU({ assignee: a })} />
+                  <input type="date" value={u.dueDate ?? ''} onChange={e => aendernU({ dueDate: e.target.value || undefined })} style={{ ...datumFeld, padding: '2px 8px', minHeight: 26, fontSize: 12 }} aria-label={`Deadline ${u.title}`} />
+                </span>
+              </div>
+            );
+          })}
           <input value={neuUnter} onChange={e => setNeuUnter(e.target.value)} aria-label="Neue Unteraufgabe"
             onKeyDown={e => { if (e.key === 'Enter' && neuUnter.trim()) { aufgabeAnlegen(dispatch, state, { spaceId: t.spaceId ?? 'privat', parentId: t.id }, { title: neuUnter.trim(), assignee: t.assignee, bezug: t.bezug }); setNeuUnter(''); } }}
-            placeholder="+ Unteraufgabe (Enter)" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 12px', marginTop: 6 }} />
+            placeholder="+ Unteraufgabe (Enter = nächste)" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 12px', marginTop: 6 }} />
         </>
       )}
+
+      {t.spaceId !== 'privat' && <ZeitJeAufgabeZeile ids={[t.id, ...unter.map(u => u.id)]} personen={personen} />}
+
+      <div style={{ marginTop: 16 }} />
+      <ProjektDateien projektId={t.projectId} aufgabeId={t.id} space={t.spaceId === 'privat' ? 'privat' : 'business'} />
 
       <ZoeAufgabe task={t} ich={ich} personen={personen} />
 
       <Kommentare task={t} ich={ich} personen={personen} aendern={aendern} />
+
+      <details style={{ marginTop: 16 }}>
+        <summary style={{ ...mikro, cursor: 'pointer', listStyle: 'revert' }}>Verlauf{t.verlauf?.length ? ` · ${t.verlauf.length}` : ''}</summary>
+        <div style={{ marginTop: 6 }}><VerlaufListe eintraege={t.verlauf ?? []} personen={personen} felder={projekt?.felder} /></div>
+      </details>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 16, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)' }}>
         {t.spaceId !== 'privat' && t.status !== 'done' && (
@@ -254,6 +312,89 @@ function Kommentare({ task: t, ich, personen, aendern }: { task: Task; ich: stri
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Abhängigkeiten: „wartet auf …“ ──────────────────────────────────────────
+function Abhaengigkeiten({ task: t, state, aendern, onOeffnen }: { task: Task; state: TasksState; aendern: (teil: Partial<Task>) => void; onOeffnen: (id: string) => void }) {
+  const [suche, setSuche] = useState('');
+  const [offen, setOffen] = useState(false);
+  const nachId = useMemo(() => new Map(state.tasks.map(x => [x.id, x])), [state.tasks]);
+  const ids = t.abhaengigVon ?? [];
+  const davon = state.tasks.filter(x => x.abhaengigVon?.includes(t.id));
+  const kandidaten = useMemo(() => {
+    if (!offen) return [];
+    return state.tasks
+      .filter(x => x.id !== t.id && x.status !== 'done' && !ids.includes(x.id) && (!suche.trim() || suchPasst([x.title], suche)))
+      .sort((a, b) => (a.spaceId === t.spaceId ? 0 : 1) - (b.spaceId === t.spaceId ? 0 : 1) || (a.projectId === t.projectId ? 0 : 1) - (b.projectId === t.projectId ? 0 : 1) || a.title.localeCompare(b.title, 'de'))
+      .filter(x => !wuerdeKreisen(t.id, x.id, state.tasks))
+      .slice(0, 8);
+  }, [offen, suche, state.tasks, t.id, t.spaceId, t.projectId, ids]);
+  const setze = (neu: string[]) => aendern({ abhaengigVon: neu.length ? neu : undefined });
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div style={{ ...mikro, marginBottom: 6 }}>Wartet auf</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+        {ids.map(id => {
+          const b = nachId.get(id);
+          if (!b) return null;
+          const fertig = b.status === 'done';
+          const f = fertig ? LEUCHT.gut : LEUCHT.achtung;
+          return (
+            <span key={id} title={fertig ? 'Erledigt — blockiert nicht mehr' : 'Noch offen — diese Aufgabe wartet darauf'} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: `1px solid ${f}55`, background: `${f}14`, borderRadius: 999, padding: '3px 4px 3px 10px', fontSize: 12.5, maxWidth: 280 }}>
+              <button onClick={() => onOeffnen(id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: f, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: fertig ? 'line-through' : 'none' }}>{b.title}</button>
+              <button onClick={() => setze(ids.filter(x => x !== id))} aria-label={`Abhängigkeit von „${b.title}“ lösen`} className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 14, padding: '0 6px' }}>×</button>
+            </span>
+          );
+        })}
+        {!offen && <button onClick={() => setOffen(true)} className="fassbar" style={{ border: '1px dashed rgba(255,255,255,.2)', background: 'transparent', color: C.inkDim, borderRadius: 999, padding: '4px 11px', fontSize: 12.5, cursor: 'pointer', fontFamily: SCHRIFT.text }}>+ wartet auf …</button>}
+      </div>
+      {offen && (
+        <div style={{ marginTop: 8 }}>
+          <input autoFocus value={suche} onChange={e => setSuche(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') { setOffen(false); setSuche(''); } if (e.key === 'Enter' && kandidaten[0]) { setze([...ids, kandidaten[0].id]); setSuche(''); setOffen(false); } }}
+            placeholder="Aufgabe suchen …" aria-label="Aufgabe suchen, auf die diese wartet" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 12px' }} />
+          <div style={{ marginTop: 4, display: 'grid' }}>
+            {kandidaten.map(x => (
+              <button key={x.id} onClick={() => { setze([...ids, x.id]); setSuche(''); setOffen(false); }} className="fassbar"
+                style={{ display: 'flex', gap: 10, alignItems: 'baseline', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', padding: '8px 4px', cursor: 'pointer', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{x.title}</span>
+                {x.dueDate && <span style={{ color: C.inkLeise, fontSize: 12 }}>{tagKurz(x.dueDate)}</span>}
+              </button>
+            ))}
+            {!kandidaten.length && <span style={{ fontSize: 12.5, color: C.inkLeise, padding: '6px 4px' }}>Nichts gefunden (Aufgaben, die einen Kreis schließen würden, stehen nicht zur Wahl).</span>}
+            <button onClick={() => { setOffen(false); setSuche(''); }} style={{ justifySelf: 'start', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12, padding: '6px 4px' }}>fertig</button>
+          </div>
+        </div>
+      )}
+      {davon.length > 0 && (
+        <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 8 }}>
+          Darauf warten: {davon.map((x, n) => <button key={x.id} onClick={() => onOeffnen(x.id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, color: C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>{x.title}{n < davon.length - 1 ? ', ' : ''}</button>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Zeit je Aufgabe (Fokus-Blöcke, die auf die Aufgabe oder eine Unteraufgabe gebucht sind) ─────────────
+function ZeitJeAufgabeZeile({ ids, personen }: { ids: string[]; personen: readonly Person[] }) {
+  const [z, setZ] = useState<ZeitJeAufgabe | null>(null);
+  const schluessel = ids.join(',');
+  useEffect(() => {
+    let lebt = true;
+    setZ(null);
+    fetch(`/api/aufgaben/zeit?ids=${encodeURIComponent(schluessel)}`, { cache: 'no-store' })
+      .then(r => (r.ok ? (r.json() as Promise<ZeitJeAufgabe>) : null)).then(d => { if (lebt) setZ(d); }).catch(() => {});
+    return () => { lebt = false; };
+  }, [schluessel]);
+  return (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginTop: 16, fontSize: 12.5, color: C.inkDim }}>
+      <span style={mikro}>Fokus-Zeit</span>
+      {!z ? <span style={{ color: C.inkLeise }}>…</span> : z.sek ? <>
+        <b style={{ color: C.ink, fontFamily: SCHRIFT.display, fontSize: 15 }}>{dauerText(z.sek)}</b>
+        <span>{z.je.map(j => `${personen.find(p => p.speicher === j.person)?.name ?? j.name} ${dauerText(j.sek)}`).join(' · ')}</span>
+        <span style={{ color: C.inkLeise }}>{z.bloecke} Block{z.bloecke === 1 ? '' : 'e'}</span>
+      </> : <span style={{ color: C.inkLeise }}>noch keine — „▶ Fokus“ bucht die Zeit auf diese Aufgabe.</span>}
     </div>
   );
 }

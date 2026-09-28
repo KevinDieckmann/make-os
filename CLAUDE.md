@@ -307,8 +307,8 @@ lokal, Route `/os`, Port 3001.
   Liste/Eltern/Bezug, ohne Projekt → Sonstige. `/api/aufgaben/crm`: schlanke Verweise (Kennung + Name) für die Verknüpfung.
 - **Meldungen** (`melde()`, lib/meldungen): Zuweisung an jemand anderen, Erwähnung (@), Kommentar an Zuständige — nie an die schreibende Person.
 - **Browser:** `TasksContext` schickt nur Unterschiede je Liste mit Stand aus der letzten Serverantwort (nie `stand` im Zustand), 409 →
-  Server-Stand + Ereignis `make-aufgaben-konflikt`. Seite `/os/aufgaben` = `components/os/aufgaben/AufgabenRaum.tsx` (Adresse `space`, `r`, `p`,
-  `ansicht=board`, `offen` = `WEG.aufgabe`, Seite = `WEG.aufgaben`), Schnell-Anlegen ganz oben (`SchnellAnlegen`, Kürzel aus `schnell-anlegen.ts`),
+  Server-Stand + Ereignis `make-aufgaben-konflikt`. Seite `/os/aufgaben` = `components/os/aufgaben/AufgabenRaum.tsx` (Adresse seit 28.09. spät über
+  `WEG.aufgaben` — siehe „Navigation wie im CRM“ unten; alte `space`/`r`/`offen` gelten weiter), Schnell-Anlegen ganz oben (`SchnellAnlegen`, Kürzel aus `schnell-anlegen.ts`),
   Detail (`AufgabeDetail`), Board nach Status (`StatusBoard`), eigene Status (`StatusVerwalten`). `/os/aufgaben/board` = alter Zeitstrahl/Delegation.
 - **CRM:** Kachel „Aufgaben“ in Kontakt öffnen (`KontaktRechts`) und Firmenakte (`AufgabenAkte`, bei aktivem Mandat im Mandanten-Space).
   Art. 17 löst `bezug.kontaktId` und tilgt Namen auch in Kommentaren, Dubletten biegen `bezug.kontaktId` um, Verbindungsprüfung
@@ -324,9 +324,10 @@ lokal, Route `/os`, Port 3001.
   Tagen · monatlich mit Monatstag, 31 → Monatsende gekappt · jährlich mit festem Tag für 29.02.; Intervall, `bis`; Kalendertage über UTC-Mittag,
   heute = `berlinerTag`; Platzhalter {Monat} {Jahr} {KW} {Datum}). Serien rein in `lib/aufgaben/serie.ts`: **Aufgabe** erledigt → im Schreibweg
   (`aufgabenAendern`) die nächste Instanz (`naechsteInstanz`: Unteraufgaben zurückgesetzt + Deadlines mitverschoben, Notiz/Felder/Zuständig/Bezug/Ort
-  übernommen, nie Kommentare/Verlauf/ZOE/Abhängigkeiten/eigener Status), Serie = `vorlageId` „serie:<erste Kennung>“, Kennung `w-<fnv>-<JJJJMMTT>`,
+  übernommen, nie Kommentare/Verlauf/ZOE/Abhängigkeiten/eigener Status), Serie = `serieId` (erste Kennung; alt `vorlageId` „serie:…“ übersetzt die
+  Übernahme, `vorlageId` bleibt die Herkunftsvorlage), Kennung `w-<fnv>-<JJJJMMTT>`,
   höchstens eine offene je Serie, nie in der Vergangenheit (springt auf ≥ heute); Verlauf „angelegt“ durch System, Antwort `serien[]` → Browser lädt nach.
-  **Liste:** die NEUESTE der Serie trägt `wiederholung.naechste` + `vorlageId` (Muster = Vorlagen-Name); Morgenlauf `/api/tagesstart` Schritt
+  **Liste:** die NEUESTE der Serie trägt `wiederholung.naechste` + `vorlageId` + `titelMuster` (sonst Muster = Vorlagen-Name); Morgenlauf `/api/tagesstart` Schritt
   „Aufgaben-Serien“ (`lib/aufgaben/serie-server.ts`, Haushalt oder Systemlauf, schreibt nur wenn fällig, Protokoll „System“) legt je Serie und Lauf
   höchstens EINE Liste an (`ls-<fnv>-<JJJJMMTT>`, idempotent; monatlich/jährlich älteste verpasste zuerst, täglich/Werktage/wöchentlich nur die
   jüngste) und holt Serien-Aufgaben nach, die ein anderer Schreiber erledigt hat (nächster Termin ≤ morgen, keine offene). **Vorlagen** rein in
@@ -334,6 +335,23 @@ lokal, Route `/os`, Port 3001.
   Deadline = Start + `versatzTage`, Mandanten-Space → Firma vorbelegt), drei Startvorlagen im Code (`vorlagen-start.ts`, `start-…`, nie im Bestand).
   Oberfläche: `WiederholungWahl` (+ `SerienZeichen` ↻), `SerienListeEinstellen` (+ `ListeSerieKnopf`), `VorlagenDialog` (+ `VorlagenKnopf`);
   eingehängt in `AufgabeDetail` (Feld „Wiederholt“ über `wiederholungSetzen`) und `AufgabenRaum`. Test `tests/aufgaben-serie.test.ts`.
+- **Vertiefung (28.09. spät, C1 — AUFGABEN_PLAN.md „Vertiefung“):** Projekt → **Gruppe** (`gruppen[]` {projektId, titel, farbe, sortOrder,
+  eingeklappt}; `Liste.gruppeId`, ohne = direkt im Projekt) → Liste → Aufgabe → Unteraufgabe. `Project`: notiz, beschreibung, status
+  (aktiv|pausiert|abgeschlossen), start/ende, mitglieder, felder (`EigenesFeld` text|zahl|betrag|datum|auswahl|link|person). `Task`: notiz,
+  felder (Werte typgerecht gegen die Projektfelder im Schreibweg — `feldWerteTypisieren`, Betrag in ganzen Cent; Werte gelöschter Felder bleiben
+  stehen), **`abhaengigVon` führt** (`dependencies` wird abgeleitet, `lib/aufgaben/abhaengig.ts`; wer sich geändert hat, gewinnt; Kreise → 409
+  `kreis`), wiederholung/vorlageId/zoe (Datenfelder für C3/C4), `verlauf` (**nur der Server**: `lib/aufgaben/verlauf.ts`, Kurzwerte Status/Datum/
+  Person/Priorität, nie Texte; > 200 → „+N ältere Änderungen“; PATCH-Antwort `zeilen[].verlauf`, der Kontext trägt ihn nach — `VERLAUF_NACHTRAGEN`).
+  Bestand `vorlagen[]` (C3; `VorlageAufgabe.notiz`/`felder` werden beim Anlegen übernommen). Neue Texte über der Grenze → 413 (Notiz 50.000 Zeichen), nie kürzen. PUT behält Verlauf, Gruppen, Vorlagen.
+- **Navigation wie im CRM (28.09. spät):** Adressen NUR über `WEG.aufgaben({ s, p, g, l, a, t, b })` / `aufgabenLink` (lib/aufgaben/adresse.ts):
+  ohne Angabe Überblick (`Ueberblick.tsx`: Kacheln meine/heute/überfällig/wartet auf Freigabe + Karten je Privat/Firma/Mandant), `b=archiv`,
+  `s` Space, `p` Projektseite (`ProjektSeite.tsx`, Reiter `t` aufgaben|notizen|dateien|felder|verlauf), `g`/`l` Fokus, `a` Aufgabe,
+  `ansicht=board|tabelle|kalender`; `space=` für die Seitenleiste wird mitgeführt. Alt bleibt gültig: `?offen=` (WEG.aufgabe — springt in den Space der Aufgabe),
+  `r=`, `space=privat` (Privat-Space), `space=business` (Überblick Business). Leiste/Brotkrumen/Mandanten-Kopf in `Navigation.tsx` (alles `Wahl`).
+- **Bausteine:** Baum `BaumAnsicht.tsx` (Gruppen farbig/einklappbar, Liste „Gruppe ▾“, Unteraufgaben inline, blockiert = „wartet“), Notiz
+  `Notiz.tsx` (Regeln `lib/aufgaben/notiz.ts`: Überschriften, fett/kursiv, Listen, `- [ ]` abhakbar, Links nur http(s) und /os/ — React-Elemente,
+  nie `dangerouslySetInnerHTML`), `EigeneFelder.tsx`, `VerlaufListe.tsx`, Dateien `ProjektDateien.tsx` (C2). Zeit je Aufgabe:
+  `GET /api/aufgaben/zeit?ids=` (Fokus-Blöcke mit `aufgabeId`, Haushalt, `lib/aufgaben/zeit.ts`). Überblick-Zahlen `lib/aufgaben/uebersicht.ts`.
 
 ## Markttraktion — Deal- und Follow-up-Ebene (27.09., nur lokal)
 - **Marke Make.One (27.09.):** unter den Events läuft unsere Veranstaltungsmarke. `lib/crm/marke.ts` ist die eine Stelle (`MARKE_EVENTS`,
@@ -797,7 +815,7 @@ lokal, Route `/os`, Port 3001.
 - Der Assistent heißt **ZOE** (immer groß in Texten). Code: `lib/zoe`, `app/zoe`, `/api/zoe/*`, Bestände `zoe-*`. Alte `jarvis-*`-Dateien werden beim ersten Lesen übernommen (local-db); `/jarvis` und `/api/jarvis/*` leiten um — beides nicht entfernen, solange alte Arbeiter, Boten oder Lesezeichen leben.
 
 ### ZOE-Aufgaben & Stapel-Arten (28.09. spät, Paket C4)
-- **Ablauf:** `Task.zoe.status` offen → in_arbeit → wartet_freigabe → freigegeben | abgelehnt. Geben/Zurückholen/Freigeben/Ablehnen/Lauf nur über `/api/aufgaben/zoe` (`aktion: geben|zurueck|arbeiten|freigeben|ablehnen`, Haushalt des Inhabers, sonst 403) bzw. ZOE `aufgabe_an_zoe`/`meine_aufgaben` (lib/zoe/aufgaben-werkzeuge.ts, per Spread in werkzeuge.ts/register.ts). **Auftraggeberin** = letzter Verlauf-Eintrag „zoe → offen“ (`auftraggeberinVon`), nie `assignee` — nur sie sieht und entscheidet den Vorschlag (Regel 5). Hinweise an ZOE sind Kommentare „Hinweis an ZOE: …“ (`zoeHinweis`). Regeln rein in `lib/aufgaben/zoe.ts`; `zoeAufgaben(state)` liefert die Sicht „ZOE“ (Aufgaben › Ansicht ZOE) und die Überblick-Kachel (`wartet`).
+- **Ablauf:** `Task.zoe.status` offen → in_arbeit → wartet_freigabe → freigegeben | abgelehnt. Geben/Zurückholen/Freigeben/Ablehnen/Lauf nur über `/api/aufgaben/zoe` (`aktion: geben|zurueck|arbeiten|freigeben|ablehnen`, Haushalt des Inhabers, sonst 403) bzw. ZOE `aufgabe_an_zoe`/`meine_aufgaben` (lib/zoe/aufgaben-werkzeuge.ts, per Spread in werkzeuge.ts/register.ts). **Auftraggeberin** = `zoe.von` (setzt der Server auf die schreibende Person; Altbestand: letzter Verlauf-Eintrag „zoe → offen“, `auftraggeberinVon`), nie `assignee` — nur sie sieht und entscheidet den Vorschlag (Regel 5). Hinweis an ZOE = `zoe.hinweis` (≤ 1.000 Zeichen, sonst 413; Altbestand: Kommentar „Hinweis an ZOE: …“, `zoeHinweis`). Statuswechsel behalten `von`/`hinweis` (`{ ...zoe, status }`). Regeln rein in `lib/aufgaben/zoe.ts`; `zoeAufgaben(state)` liefert die Sicht „ZOE“ (Aufgaben › Ansicht ZOE) und die Überblick-Kachel (`wartet`).
 - **Lauf** (`lib/zoe/aufgaben-lauf.ts` `zoeAufgabenLauf({ person | null, max })`): Knopf = nur eigene Aufträge, Takt-Systemlauf `zoe-aufgaben` (einmal am Tag nach dem Morgenlauf, nur wenn etwas offen liegt) = alle, je Auftrag im Namen der Auftraggeberin. Höchstens `LAUF_MAX` (5) je Lauf, ohne Schlüssel/Guthaben keine Änderung, ein Lauf je Prozess, `modellSchranke` in der Route. EIN Modellaufruf je Aufgabe **ohne Werkzeuge** (nur JSON → `vorschlagSauber`: Entwurf, Unteraufgaben ≤ 8, Status, Deadline). Alles aus Bestand/Kartei/Ablage steht in `fremd()` — CRM nur `crmKurzinfo` (nie Notizen/Kontaktdaten/IBAN, Sperre → keine Angaben), Dateien nur aus der Aufgaben-Ablage (nie CRM-Ablage), Inhalt ≤ `ZOE_ZEICHEN`. Ergebnis NUR als Stapel-Eintrag; die Aufgabe ändert sich inhaltlich nicht (nur `zoe`, Verlauf `durch: 'zoe'`), Meldung Art `zoe` an die Auftraggeberin.
 - **Stapel-Arten** (`lib/zoe/stapel-arten.ts`): Vorschläge mit `bezug { art, id }` laufen nie über `fuehreAus` — je Art `freigeben` (übernimmt über den eigenen Schreibweg und entscheidet den Eintrag selbst; schlägt es fehl, bleibt er offen) und optional `nachAblehnen`. `bezug` setzt nur der Server-Lauf der Art (`lege`), nie ein Werkzeug; unbekannte Art → 409. Neue Art (z. B. „crm“, C7): `StapelArt` in stapel.ts + Eintrag in `ARTEN` (dynamischer Import).
 - **Übernehmen** nur über `vorschlagFreigeben` → `aufgabeZoeAendern` (frisch lesen, Stand der Zeile, ohne Browser-Stand bis 3 Versuche, mit Stand 409): Entwurf an die Notiz (bei einer Unteraufgabe Unteraufgaben als Checkliste), Unteraufgaben anlegen, Status/Deadline setzen, `zoe.status = freigegeben`. Kein Löschen, kein Versand — auch „Ändern & freigeben“ im Stapel wird neu gesäubert und bleibt bei derselben Aufgabe. Tests: `tests/zoe-aufgaben.test.ts`.

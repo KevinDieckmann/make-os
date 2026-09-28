@@ -61,6 +61,8 @@ export interface Task extends Timestamps {
   wiederholung?: Wiederholung;
   /** Aus welcher Vorlage die Aufgabe entstand (Paket C3). */
   vorlageId?: ID;
+  /** Serie einer wiederkehrenden Aufgabe (Paket C3): Kennung der ersten Aufgabe (Anker). Früher als `vorlageId` „serie:…“ — die Übernahme übersetzt. */
+  serieId?: ID;
   /** ZOE bereitet vor (Paket C4): Stand der Vorbereitung; `assignee` bleibt kevin/malin/both. */
   zoe?: ZoeAuftrag;
   /** Verlauf je Aufgabe — schreibt NUR der Server (lib/aufgaben/verlauf.ts); Werte nur für Kurzwerte (Status, Datum, Person). */
@@ -97,7 +99,14 @@ export interface Wiederholung {
 
 export type ZoeStatus = 'offen' | 'in_arbeit' | 'wartet_freigabe' | 'freigegeben' | 'abgelehnt';
 /** ZOE an einer Aufgabe (Paket C4): sie bereitet vor, legt ins Stapel, erst ein Klick übernimmt. */
-export interface ZoeAuftrag { status: ZoeStatus; stapelId?: string }
+export interface ZoeAuftrag {
+  status: ZoeStatus;
+  stapelId?: string;
+  /** Auftraggeberin (Speichername) — wer die Aufgabe an ZOE gab; setzt der Server. Altbestand: aus dem Verlauf abgeleitet. */
+  von?: string;
+  /** Hinweis an ZOE (≤ 1.000 Zeichen, darüber 413). Altbestand: Kommentar „Hinweis an ZOE: …“. */
+  hinweis?: string;
+}
 
 export type VerlaufArt =
   | 'angelegt' | 'status' | 'zustaendig' | 'prioritaet' | 'deadline' | 'start' | 'titel' | 'beschreibung' | 'notiz'
@@ -150,6 +159,8 @@ export interface AufgabenListe {
   wiederholung?: Wiederholung;
   /** Vorlage, aus der die Liste (neu) entsteht (Paket C3). */
   vorlageId?: ID;
+  /** Titel-Muster der Serien-Liste, z. B. „Monatsabschluss {Monat} {Jahr}“ (Paket C3; Platzhalter lib/aufgaben/wiederholung.ts). */
+  titelMuster?: string;
 }
 
 /** Gruppe im Projekt (28.09. spät): Projekt → Gruppe → Liste → Aufgabe → Unteraufgabe. */
@@ -170,6 +181,10 @@ export interface VorlageAufgabe {
   prioritaet?: Priority;
   zustaendig?: Owner;
   versatzTage?: number;
+  /** Notiz der Aufgabe (sichere Markdown-Teilmenge). */
+  notiz?: string;
+  /** Vorbelegte Werte eigener Felder (je Feld-Kennung, Betrag in Cent). */
+  felder?: Record<string, FeldWert>;
   /** Unteraufgaben (eine Ebene). */
   unter?: VorlageAufgabe[];
 }

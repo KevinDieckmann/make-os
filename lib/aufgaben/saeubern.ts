@@ -36,6 +36,8 @@ export const AUFGABEN_GRENZEN = {
   /** Zeichen je Feldwert (Text, Link). */
   feldText: 2000,
   abhaengigVon: 200,
+  /** Zeichen des Hinweises an ZOE (= ZOE_VORSCHLAG_GRENZEN.hinweis in lib/aufgaben/zoe.ts). */
+  zoeHinweis: 1000,
   /** Zeichen des Vorlagen-Inhalts (JSON). */
   vorlageZeichen: 200_000,
   vorlageAufgaben: 1000,
@@ -124,6 +126,7 @@ export function taskSauber(o: unknown): Task | null {
     abhaengigVon: abhaengigSauber(t.abhaengigVon, id),
     wiederholung: wiederholungSauber(t.wiederholung),
     vorlageId: kennung(t.vorlageId),
+    serieId: kennung(t.serieId),
     zoe: zoeSauber(t.zoe),
   };
   if (raus.parentId === id) delete raus.parentId;
@@ -169,9 +172,10 @@ export function listeSauber(o: unknown): AufgabenListe | null {
   const id = kennung(l.id), projektId = kennung(l.projektId), titel = S(l.titel, 80)?.trim();
   if (!id || !projektId || !titel) return null;
   const gruppeId = kennung(l.gruppeId), wiederholung = wiederholungSauber(l.wiederholung), vorlageId = kennung(l.vorlageId);
+  const titelMuster = S(l.titelMuster, 80)?.trim();
   return {
     id, projektId, titel, sortOrder: Number(l.sortOrder) || 0, ...(l.archiviert === true ? { archiviert: true } : {}),
-    ...(gruppeId ? { gruppeId } : {}), ...(wiederholung ? { wiederholung } : {}), ...(vorlageId ? { vorlageId } : {}),
+    ...(gruppeId ? { gruppeId } : {}), ...(wiederholung ? { wiederholung } : {}), ...(vorlageId ? { vorlageId } : {}), ...(titelMuster ? { titelMuster } : {}),
   };
 }
 
@@ -242,7 +246,7 @@ export function feldWerteSauber(v: unknown): Record<string, FeldWert> | undefine
 
 const LINK = /^(https?:\/\/[^\s<>"']+|\/os\/[^\s<>"']*)$/i;
 /**
- * Feldwerte typgerecht gegen die Definitionen des Projekts: Zahl endlich, Betrag ganze Cent, Datum YYYY-MM-DD,
+ * Feldwerte typgerecht gegen die Definitionen des Projekts: Zahl endlich, Betrag ganze Cent (Zahl = Cent, Text = Euro), Datum YYYY-MM-DD,
  * Auswahl nur aus den Optionen, Link http(s) oder /os/…, Person Speichername. Werte zu Feldern, die das Projekt
  * (noch) nicht kennt, bleiben stehen — zieht die Aufgabe zurück oder kommt das Feld wieder, sind sie da.
  */
@@ -256,7 +260,12 @@ export function feldWerteTypisieren(werte: Record<string, FeldWert> | undefined,
     const zahl = typeof w === 'number' ? w : Number(text.replace(/\s/g, '').replace(',', '.'));
     switch (d.typ) {
       case 'zahl': if (Number.isFinite(zahl) && text !== '') raus[k] = zahl; break;
-      case 'betrag': if (Number.isFinite(zahl) && text !== '' && Math.abs(zahl) <= 1e13) raus[k] = Math.round(zahl); break;
+      // Zahl = schon Cent (so schickt die Oberfläche); Text = Euro in deutscher Schreibweise („1.500,40“) → Cent.
+      case 'betrag': {
+        const cent = typeof w === 'number' ? w : /,/.test(text) ? Number(text.replace(/[€\s.]/g, '').replace(',', '.')) * 100 : Number(text.replace(/[€\s]/g, '')) * 100;
+        if (Number.isFinite(cent) && text !== '' && Math.abs(cent) <= 1e13) raus[k] = Math.round(cent);
+        break;
+      }
       case 'datum': if (TAG.test(text)) raus[k] = text; break;
       case 'auswahl': if (d.optionen?.includes(text)) raus[k] = text; break;
       case 'link': if (LINK.test(text)) raus[k] = text; break;
@@ -294,13 +303,15 @@ export function wiederholungSauber(v: unknown): Wiederholung | undefined {
   return raus;
 }
 
-/** ZOE an einer Aufgabe: Status Pflicht, Stapel-Kennung optional. */
+/** ZOE an einer Aufgabe: Status Pflicht, Stapel-Kennung, Auftraggeberin (Speichername), Hinweis (≤ 1.000, sonst 413). */
 export function zoeSauber(v: unknown): ZoeAuftrag | undefined {
   if (!v || typeof v !== 'object') return undefined;
   const z = v as Record<string, unknown>;
   if (!ZOE_STATUS.includes(z.status as ZoeStatus)) return undefined;
   const stapelId = kennung(z.stapelId);
-  return { status: z.status as ZoeStatus, ...(stapelId ? { stapelId } : {}) };
+  const von = typeof z.von === 'string' && PERSON.test(z.von) ? z.von : undefined;
+  const hinweis = textOderAblehnen(z.hinweis, AUFGABEN_GRENZEN.zoeHinweis, 'Der Hinweis an ZOE')?.trim();
+  return { status: z.status as ZoeStatus, ...(stapelId ? { stapelId } : {}), ...(von ? { von } : {}), ...(hinweis ? { hinweis } : {}) };
 }
 
 /** Eine Gruppe im Projekt (Marketing, Sales …). */
@@ -323,6 +334,8 @@ function vorlageAufgabeSauber(o: unknown, tiefe: number, zaehler: { n: number })
   if (PRIO.includes(a.prioritaet as Priority)) r.prioritaet = a.prioritaet as Priority;
   if ((OWNER as readonly string[]).includes(a.zustaendig as string)) r.zustaendig = a.zustaendig as Owner;
   const v = Number(a.versatzTage); if (Number.isInteger(v) && Math.abs(v) <= 3650) r.versatzTage = v;
+  const n = notizSauber(a.notiz, 'Notiz in der Vorlage'); if (n) r.notiz = n;
+  const f = feldWerteSauber(a.felder); if (f) r.felder = f;
   if (tiefe === 0 && Array.isArray(a.unter)) {
     const u = a.unter.map(x => vorlageAufgabeSauber(x, 1, zaehler)).filter((x): x is VorlageAufgabe => !!x);
     if (u.length) r.unter = u;

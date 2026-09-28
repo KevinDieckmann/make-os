@@ -101,6 +101,10 @@ describe('Regeln (rein)', () => {
     expect(zoe.vorschlagAnwenden(t, { ...v, aufgabeId: 'anders' }, { stapelId: 'v', jetzt: T0, tag: '2026-09-28', neueId: String }).ok).toBe(false);
   });
   it('Auftraggeberin aus dem Verlauf, Filter je Person, hängende „in Arbeit“ gehen wieder mit', () => {
+    // Neues Modell: `zoe.von`/`zoe.hinweis` gewinnen; Altbestand (ohne `von`) leitet aus Verlauf/Kommentar ab.
+    expect(zoe.auftraggeberinVon(aufgabe('n', { zoe: { status: 'offen', von: 'kevin' }, verlauf: [{ am: T0, von: 'malin', was: 'zoe', nachher: 'offen' }] }))).toBe('kevin');
+    expect(zoe.zoeHinweis(aufgabe('n', { zoe: { status: 'offen', von: 'kevin', hinweis: 'kurz' } }))).toBe('kurz');
+    expect(zoe.zoeHinweis(aufgabe('n', { zoe: { status: 'offen' }, verlauf: [{ am: T0, von: 'malin', was: 'zoe', nachher: 'offen' }], kommentare: [{ id: 'k', von: 'malin', text: 'Hinweis an ZOE: alt', am: T0 }] }))).toBe('alt');
     const t = aufgabe('t', { zoe: { status: 'offen' }, verlauf: [{ am: T0, von: 'malin', was: 'zoe', nachher: 'offen' }] });
     expect(zoe.auftraggeberinVon(t)).toBe('malin');
     expect(zoe.zoeZuBearbeiten([t], { person: 'kevin', jetzt: T0 })).toEqual([]);
@@ -141,15 +145,15 @@ describe('Route /api/aufgaben/zoe', () => {
     expect((await task('a1')).zoe).toBeUndefined();
   });
 
-  it('An ZOE geben: offen, Verlauf von der Person, Hinweis als Kommentar; doppelt → 409; zuständig bleibt', async () => {
+  it('An ZOE geben: offen, Auftraggeberin + Hinweis am Auftrag (zoe.von/hinweis), Verlauf von der Person; doppelt → 409; zuständig bleibt', async () => {
     const r = await post('malin', { aktion: 'geben', id: 'a1', hinweis: 'Bitte förmlich' });
     expect(r.status).toBe(200);
     const t = await task('a1');
-    expect(t.zoe).toEqual({ status: 'offen' });
+    expect(t.zoe).toEqual({ status: 'offen', von: 'malin', hinweis: 'Bitte förmlich' });
     expect(t.assignee).toBe('kevin');
     expect(t.verlauf!.at(-1)).toMatchObject({ von: 'malin', was: 'zoe', nachher: 'offen' });
     expect(t.verlauf!.at(-1)!.durch).toBeUndefined();
-    expect(t.kommentare!.at(-1)).toMatchObject({ von: 'malin', text: 'Hinweis an ZOE: Bitte förmlich' });
+    expect(t.kommentare ?? []).toEqual([]); // der Hinweis ist kein Kommentar mehr
     expect(zoe.auftraggeberinVon(t)).toBe('malin');
     expect(zoe.zoeHinweis(t)).toBe('Bitte förmlich');
     expect((await post('kevin', { aktion: 'geben', id: 'a1' })).status).toBe(409);
@@ -245,7 +249,7 @@ describe('Route /api/aufgaben/zoe', () => {
     const r = await post('kevin', { aktion: 'ablehnen', id: 'a2', grund: 'Zu lang' });
     expect(r.status).toBe(200);
     expect(await stapel.hole(s1)).toMatchObject({ status: 'abgelehnt', grund: 'Zu lang' });
-    expect((await task('a2')).zoe).toEqual({ status: 'abgelehnt', stapelId: s1 });
+    expect((await task('a2')).zoe).toEqual({ status: 'abgelehnt', stapelId: s1, von: 'kevin' });
     expect((await task('a2')).notiz).toBeUndefined();
     await post('kevin', { aktion: 'geben', id: 'a2', hinweis: 'Kürzer, drei Punkte' });
     modell.aufrufe.length = 0;
@@ -257,7 +261,7 @@ describe('Route /api/aufgaben/zoe', () => {
     // „nochmal“ in einem Zug
     const n = await post('kevin', { aktion: 'ablehnen', id: 'a2', nochmal: true, hinweis: 'Mit Zahlen' });
     expect(n.status).toBe(200);
-    expect((await task('a2')).zoe).toEqual({ status: 'offen', stapelId: s2 });
+    expect((await task('a2')).zoe).toEqual({ status: 'offen', stapelId: s2, von: 'kevin', hinweis: 'Mit Zahlen' });
   });
 });
 
@@ -276,7 +280,7 @@ describe('Freigabe-Stapel: Art „aufgabe“', () => {
     expect((await task('a4')).notiz).toBeUndefined();
     const a = await stapelPost('kevin', { id: s4, entscheidung: 'ablehnen', grund: 'passt nicht' });
     expect(a.status).toBe(200);
-    expect((await task('a4')).zoe).toEqual({ status: 'abgelehnt', stapelId: s4 });
+    expect((await task('a4')).zoe).toEqual({ status: 'abgelehnt', stapelId: s4, von: 'kevin' });
   });
   it('Sammelfreigabe nimmt Aufgaben-Vorschläge mit; ein Vorschlag mit Bezug läuft nie über ein Werkzeug', async () => {
     await post('kevin', { aktion: 'geben', id: 'a1' });

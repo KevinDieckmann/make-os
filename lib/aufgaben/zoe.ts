@@ -4,7 +4,8 @@
 //
 // Ablauf (Task.zoe.status): — → offen („An ZOE geben“) → in_arbeit (Lauf) → wartet_freigabe (Vorschlag im Stapel)
 //   → freigegeben (Klick übernimmt) | abgelehnt (optional Grund; „nochmal“ → wieder offen, mit Hinweis).
-// Auftraggeberin = wer die Aufgabe an ZOE gab (Verlauf-Eintrag „zoe → offen“ ohne `durch`); sie gibt frei.
+// Auftraggeberin = `zoe.von` (seit 28.09. spät; Altbestand: Verlauf-Eintrag „zoe → offen“ ohne `durch`); sie gibt frei.
+// Hinweis an ZOE = `zoe.hinweis` (Altbestand: Kommentar „Hinweis an ZOE: …“).
 // `assignee` bleibt, wie es war. Diese Datei hat weder Platte noch Netz — Browser und Server nutzen sie
 // (Filter für die Sicht „ZOE“ und die Überblick-Kachel, Säuberung der Modell-Antwort, Übernahme bei Freigabe).
 
@@ -60,6 +61,7 @@ export const ZOE_STATUS_LABEL_VERLAUF: Record<ZoeStatus, string> = { offen: 'off
 /** Wer gab die Aufgabe an ZOE? Der letzte Verlauf-Eintrag „ZOE → offen“ (ZOE schreibt immer im Namen der Auftraggeberin, nie ein Systemlauf). */
 export function auftraggeberinVon(t: Pick<Task, 'verlauf' | 'zoe'>): string | null {
   if (!t.zoe) return null;
+  if (t.zoe.von) return t.zoe.von;
   const v = t.verlauf ?? [];
   for (let i = v.length - 1; i >= 0; i--) {
     const e = v[i];
@@ -109,6 +111,8 @@ export function zoeZuBearbeiten(tasks: readonly Task[], opt: { person?: string |
 
 /** Der Hinweis, den die Auftraggeberin mit der letzten Übergabe an ZOE mitgab (Kommentar „Hinweis an ZOE: …“). */
 export function zoeHinweis(t: Pick<Task, 'kommentare' | 'verlauf' | 'zoe'>): string | null {
+  if (t.zoe?.hinweis) return t.zoe.hinweis.slice(0, ZOE_VORSCHLAG_GRENZEN.hinweis);
+  if (t.zoe?.von) return null; // neues Modell: kein Hinweis gesetzt
   const a = auftraggeberinVon(t);
   if (!a) return null;
   const v = t.verlauf ?? [];
@@ -176,7 +180,7 @@ export function vorschlagAnwenden(t: Task, v: ZoeVorschlagInhalt, opt: {
     notiz = `${notiz.trimEnd()}${notiz.trim() ? '\n\n---\n\n' : ''}${kopf}\n\n${block.join('\n\n')}`;
     if (notiz.length > (opt.notizMax ?? 50_000)) return { ok: false, fehler: `Abgelehnt: die Notiz würde länger als ${(opt.notizMax ?? 50_000).toLocaleString('de-DE')} Zeichen. Nichts übernommen — bitte die Notiz kürzen oder den Vorschlag ablehnen.` };
   }
-  let task: Task = { ...t, updatedAt: opt.jetzt, zoe: { status: 'freigegeben', stapelId: opt.stapelId } };
+  let task: Task = { ...t, updatedAt: opt.jetzt, zoe: { ...(t.zoe?.von ? { von: t.zoe.von } : {}), status: 'freigegeben', stapelId: opt.stapelId } };
   if (block.length) task.notiz = notiz;
   if (v.status) task = { ...task, ...statusTeil(t, v.status, opt.eigene ?? [], opt.jetzt) };
   for (const k of ['statusId', 'completedAt'] as const) if (task[k] === undefined) delete task[k];

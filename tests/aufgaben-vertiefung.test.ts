@@ -48,6 +48,7 @@ describe('Säuberung der neuen Felder', () => {
       { id: 'z', name: 'Zahl', typ: 'zahl' as const }, { id: 'b', name: 'Betrag', typ: 'betrag' as const }, { id: 'd', name: 'Datum', typ: 'datum' as const },
       { id: 'a', name: 'Auswahl', typ: 'auswahl' as const, optionen: ['Ja'] }, { id: 'l', name: 'Link', typ: 'link' as const }, { id: 'p', name: 'Person', typ: 'person' as const },
     ];
+    expect(feldWerteTypisieren({ b: '1.500,40' }, defs)).toEqual({ b: 150040 });
     expect(feldWerteTypisieren({ z: '3,5', b: 1999.6, d: '2026-10-01', a: 'Ja', l: 'https://beispiel.invalid/x', p: 'malin', frei: 'bleibt' }, defs)).toEqual({ z: 3.5, b: 2000, d: '2026-10-01', a: 'Ja', l: 'https://beispiel.invalid/x', p: 'malin', frei: 'bleibt' });
     expect(feldWerteTypisieren({ z: 'abc', d: '1.10.', a: 'Nein', l: 'javascript:alert(1)', p: 'Mal In' }, defs)).toBeUndefined();
   });
@@ -57,6 +58,9 @@ describe('Säuberung der neuen Felder', () => {
     expect(wiederholungSauber({ regel: 'woechentlich', wochentage: [5, 1, 1, 9], bis: '2026-12-31' })).toEqual({ regel: 'woechentlich', wochentage: [1, 5], bis: '2026-12-31' });
     expect(wiederholungSauber({ regel: 'stuendlich' })).toBeUndefined();
     expect(zoeSauber({ status: 'fertig' })).toBeUndefined();
+    expect(zoeSauber({ status: 'offen', von: 'malin', hinweis: '  kurz  ' })).toEqual({ status: 'offen', von: 'malin', hinweis: 'kurz' });
+    expect(zoeSauber({ status: 'offen', von: 'Mal In' })).toEqual({ status: 'offen' });
+    expect(() => zoeSauber({ status: 'offen', hinweis: 'x'.repeat(AUFGABEN_GRENZEN.zoeHinweis + 1) })).toThrow(ZuGross);
     const v = vorlageSauber({ id: 'v', art: 'projekt', titel: 'Launch', inhalt: { gruppen: [{ titel: 'Marketing' }], listen: [{ titel: 'Woche 1', gruppe: 'Marketing', aufgaben: [{ titel: 'Pressetext', versatzTage: 3, unter: [{ titel: 'Entwurf', unter: [{ titel: 'zu tief' }] }] }] }] } })!;
     expect(v.inhalt.listen![0].aufgaben[0]).toEqual({ titel: 'Pressetext', versatzTage: 3, unter: [{ titel: 'Entwurf' }] });
     expect(() => vorlageSauber({ id: 'v', art: 'liste', titel: 'Groß', inhalt: { notiz: 'x'.repeat(AUFGABEN_GRENZEN.vorlageZeichen + 1) } })).toThrow(ZuGross);
@@ -85,6 +89,23 @@ describe('Übernahme (idempotent, nie Verlust)', () => {
   it('Gruppe des eigenen Projekts bleibt an der Liste', () => {
     const s = { ...alt(), gruppen: [{ id: 'g-weg', projektId: 'p-launch', titel: 'Marketing', farbe: '#FF0000', sortOrder: 0 }], vorlagen: [] };
     expect(uebernehmen(s).state.listen![0].gruppeId).toBe('g-weg');
+  });
+});
+
+describe('Serien-Felder (C3): serieId, titelMuster, Notiz/Felder in Vorlagen', () => {
+  it('Altbestand vorlageId „serie:…“ → serieId (idempotent), Herkunftsvorlage frei', () => {
+    const s = { projects: [], tasks: [aufgabe('w1', { vorlageId: 'serie:a1', wiederholung: { regel: 'taeglich' } })] } as unknown as TasksState;
+    const r = uebernehmen(s);
+    expect(r.state.tasks[0].serieId).toBe('a1');
+    expect(r.state.tasks[0].vorlageId).toBeUndefined();
+    expect(uebernehmen(r.state).geaendert).toBe(false);
+    expect(taskSauber({ ...aufgabe('x'), serieId: 'a1' })!.serieId).toBe('a1');
+  });
+  it('titelMuster an der Liste, Notiz/Felder in Vorlage-Aufgaben', () => {
+    expect(listeSauber({ id: 'l', projektId: 'p', titel: 'X', sortOrder: 0, titelMuster: 'Monatsabschluss {Monat} {Jahr}' })!.titelMuster).toBe('Monatsabschluss {Monat} {Jahr}');
+    const v = vorlageSauber({ id: 'v', art: 'liste', titel: 'L', inhalt: { aufgaben: [{ titel: 'A', notiz: '- [ ] x', felder: { budget: 100, kanal: 'Web' } }] } })!;
+    expect(v.inhalt.aufgaben![0]).toEqual({ titel: 'A', notiz: '- [ ] x', felder: { budget: 100, kanal: 'Web' } });
+    expect(() => vorlageSauber({ id: 'v', art: 'liste', titel: 'L', inhalt: { aufgaben: [{ titel: 'A', notiz: 'x'.repeat(AUFGABEN_GRENZEN.notiz + 1) }] } })).toThrow(ZuGross);
   });
 });
 
@@ -170,7 +191,7 @@ describe('Route: Gruppen, Felder, Verlauf, Kreise', () => {
         gruppen: [{ op: 'upsert', eintrag: { id: 'g-mkt', projektId: 'p-launch', titel: 'Marketing', farbe: '#E36A6A', sortOrder: 0 } }],
         listen: [{ op: 'upsert', eintrag: { id: 'l-w1', projektId: 'p-launch', titel: 'Woche 1', sortOrder: 0, gruppeId: 'g-mkt' } }],
       },
-      ops: [{ op: 'upsert', task: { ...a1, listeId: 'l-w1', status: 'in-progress', felder: { 'f-budget': '1500,4' } }, stand: a1.stand }],
+      ops: [{ op: 'upsert', task: { ...a1, listeId: 'l-w1', status: 'in-progress', felder: { 'f-budget': 150040 } }, stand: a1.stand }],
     }));
     expect(r.status).toBe(200);
     const antwort = await r.json() as { zeilen: { liste: string; id: string; verlauf?: { was: string }[] }[] };
@@ -179,7 +200,7 @@ describe('Route: Gruppen, Felder, Verlauf, Kreise', () => {
     expect(g.gruppen).toHaveLength(1);
     expect(g.listen![0].gruppeId).toBe('g-mkt');
     const t = g.tasks.find(x => x.id === 'a1')!;
-    expect(t.felder).toEqual({ 'f-budget': 1500 });
+    expect(t.felder).toEqual({ 'f-budget': 150040 });
     expect(t.verlauf![0]).toMatchObject({ von: 'kevin', was: 'status', vorher: 'Offen', nachher: 'In Arbeit' });
     // Der Browser kann den Verlauf nicht fälschen.
     const d2 = await lesen();
@@ -225,6 +246,12 @@ describe('Route: Gruppen, Felder, Verlauf, Kreise', () => {
     expect(n.tasks.find(t => t.id === 'a1')!.verlauf!.length).toBeGreaterThan(0);
     expect(n.gruppen!.map(x => x.id)).toEqual(['g-ops']);
     expect(n.vorlagen!.map(x => x.id)).toEqual(['v-1']);
+  });
+  it('zoe.von setzt der Server (die schreibende Person), nie eine behauptete', async () => {
+    const d = await lesen();
+    const a1 = d.state.tasks.find(x => x.id === 'a1')!;
+    await route.PATCH(anfrage(sitzung('malin'), 'PATCH', { ops: [{ op: 'upsert', task: { ...a1, zoe: { status: 'offen', von: 'kevin' } }, stand: a1.stand }] }));
+    expect((await gespeichert()).tasks.find(x => x.id === 'a1')!.zoe).toEqual({ status: 'offen', von: 'malin' });
   });
   it('/api/tasks/create: Verlauf „angelegt“ (ZOE im Auftrag)', async () => {
     const r = await (await anlegen.POST(anfrage(dienst('malin'), 'POST', { title: 'Von ZOE vorbereitet' }, '/api/tasks/create'))).json() as { id: string };

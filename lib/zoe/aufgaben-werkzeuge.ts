@@ -22,7 +22,7 @@ import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { localDay } from '@/lib/zeit';
 import {
   auftraggeberinVon, darfAnZoe, vorschlagAnwenden, vorschlagSauber, vorschlagZeile, zoeAufgaben,
-  ZOE_AUFGABE_WERKZEUG, ZOE_HINWEIS, ZOE_STATUS_LABEL, ZOE_VORSCHLAG_GRENZEN, type ZoeVorschlagInhalt,
+  ZOE_AUFGABE_WERKZEUG, ZOE_STATUS_LABEL, ZOE_VORSCHLAG_GRENZEN, type ZoeVorschlagInhalt,
 } from '@/lib/aufgaben/zoe';
 import { hole, entscheide, type Vorschlag } from './stapel';
 import { notiere } from './protokoll';
@@ -71,7 +71,7 @@ const ohneZoe = (t: Task): Task => { const { zoe: _z, ...rest } = t; return rest
 
 // ── An ZOE geben / zurückholen ─────────────────────────────────────────────
 
-/** „An ZOE geben“: `zoe.status = offen`; die gebende Person ist die Auftraggeberin (Verlauf). Hinweis → Kommentar. */
+/** „An ZOE geben“: `zoe.status = offen`; die gebende Person ist die Auftraggeberin (`zoe.von`), der Hinweis steht in `zoe.hinweis`. */
 export async function anZoeGeben(id: string, person: string, opt: { hinweis?: string; stand?: string; durchZoe?: boolean } = {}): Promise<ZoeErgebnis> {
   if (!(await personImHaushaltDesInhabers(person))) return nein(403, 'Nur im Haushalt des Inhabers.');
   const hinweis = (opt.hinweis ?? '').replace(/\u0000/g, '').trim();
@@ -80,11 +80,8 @@ export async function anZoeGeben(id: string, person: string, opt: { hinweis?: st
   return aufgabeZoeAendern(id, t => {
     if (!darfAnZoe(t)) return { status: 409, fehler: t.status === 'done' ? 'Die Aufgabe ist erledigt.' : `ZOE hat die Aufgabe schon (${ZOE_STATUS_LABEL[t.zoe!.status]}).` };
     // Nach einer Ablehnung bleibt der alte Vorschlag verknüpft — ZOE liest daraus den Grund.
-    const zoe: ZoeAuftrag = { status: 'offen', ...(t.zoe?.status === 'abgelehnt' && t.zoe.stapelId ? { stapelId: t.zoe.stapelId } : {}) };
-    return {
-      task: { ...t, zoe, updatedAt: jetzt },
-      ...(hinweis ? { kommentar: { id: kennung('k-zoe'), von: person, text: `${ZOE_HINWEIS} ${hinweis}`, am: jetzt } } : {}),
-    };
+    const zoe: ZoeAuftrag = { status: 'offen', von: person, ...(hinweis ? { hinweis } : {}), ...(t.zoe?.status === 'abgelehnt' && t.zoe.stapelId ? { stapelId: t.zoe.stapelId } : {}) };
+    return { task: { ...t, zoe, updatedAt: jetzt } };
   }, { person, stand: opt.stand, jetzt, zoe: opt.durchZoe });
 }
 
@@ -180,7 +177,7 @@ export async function nachAblehnen(v: Pick<Vorschlag, 'id' | 'bezug' | 'werkzeug
   if (v.werkzeug !== ZOE_AUFGABE_WERKZEUG || v.bezug?.art !== 'aufgabe') return nein(400, 'Kein Aufgaben-Vorschlag.');
   return aufgabeZoeAendern(v.bezug.id, t => {
     if (t.zoe?.status !== 'wartet_freigabe' || t.zoe.stapelId !== v.id) return { status: 409, fehler: 'Die Aufgabe wartet nicht (mehr) auf diesen Vorschlag.' };
-    return { task: { ...t, zoe: { status: 'abgelehnt', stapelId: v.id }, updatedAt: new Date().toISOString() } };
+    return { task: { ...t, zoe: { ...t.zoe, status: 'abgelehnt', stapelId: v.id }, updatedAt: new Date().toISOString() } };
   }, { person });
 }
 

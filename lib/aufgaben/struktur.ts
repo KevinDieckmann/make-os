@@ -285,6 +285,8 @@ export function uebernehmen(roh: TasksState, orgs: Record<string, string> = {}):
     }
     const bereich = bereichVonSpace(spaceId);
     setze({ space: bereich, einheit: einheitFuer(spaceId, t.einheit) });
+    // Serie (Paket C3): früher `vorlageId` „serie:<Anker>“ — jetzt `serieId`; die Herkunftsvorlage bleibt frei.
+    if (t.vorlageId?.startsWith('serie:')) setze({ serieId: t.serieId ?? t.vorlageId.slice('serie:'.length), vorlageId: undefined });
     if (t.abhaengigVon?.length || t.dependencies?.length || !Array.isArray(t.dependencies)) {
       const a = abhaengigAngleichen(t, null, vorhanden);
       setze({ dependencies: a.dependencies, abhaengigVon: a.abhaengigVon });
@@ -306,8 +308,14 @@ export function aufgabeAbleiten(t: Task, state: TasksState, orgs: Record<string,
 // ── Baum ───────────────────────────────────────────────────────────────────
 
 export interface BaumAufgabe { task: Task; unter: Task[] }
-export interface BaumListe { id: string; titel: string; virtuell: boolean; aufgaben: BaumAufgabe[]; offen: number }
-export interface BaumProjekt { id: string; titel: string; farbe: string; virtuell: boolean; /** Projekt gehört zu einem anderen Space, trägt aber Aufgaben dieses Space. */ fremd: boolean; listen: BaumListe[]; offen: number }
+export interface BaumListe { id: string; titel: string; virtuell: boolean; aufgaben: BaumAufgabe[]; offen: number; /** Gruppe im Projekt (28.09. spät) — fehlt = direkt im Projekt. */ gruppeId?: string }
+/** Gruppe im Baum (28.09. spät): ihre Listen stehen in `BaumProjekt.listen` mit `gruppeId`. */
+export interface BaumGruppe { id: string; titel: string; farbe: string; eingeklappt: boolean; offen: number }
+export interface BaumProjekt {
+  id: string; titel: string; farbe: string; virtuell: boolean; /** Projekt gehört zu einem anderen Space, trägt aber Aufgaben dieses Space. */ fremd: boolean;
+  /** Alle Listen (auch die in Gruppen — `gruppeId`), dann „Sonstige“. */ listen: BaumListe[]; offen: number;
+  /** Gruppen des Projekts in Reihenfolge (auch leere). */ gruppen: BaumGruppe[];
+}
 
 const nachReihe = (a: { sortOrder?: number; createdAt?: string }, b: { sortOrder?: number; createdAt?: string }) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || String(a.createdAt ?? '').localeCompare(String(b.createdAt ?? ''));
 
@@ -335,25 +343,28 @@ export function baum(state: TasksState, spaceId: string, zeigen: (t: Task) => bo
     const eigene = listenAlle.filter(l => l.projektId === projektId).sort(nachReihe);
     const listenIds = new Set(eigene.map(l => l.id));
     const zu = (l: Task[]) => l.sort(nachReihe).map(task => ({ task, unter: (kinder.get(task.id) ?? []).sort(nachReihe) }));
-    const raus: BaumListe[] = eigene.map(l => { const a = zu(aufgaben.filter(t => t.listeId === l.id)); return { id: l.id, titel: l.titel, virtuell: false, aufgaben: a, offen: offen(a) }; });
+    const gruppenIds = new Set((state.gruppen ?? []).filter(g => g.projektId === projektId).map(g => g.id));
+    const raus: BaumListe[] = eigene.map(l => { const a = zu(aufgaben.filter(t => t.listeId === l.id)); return { id: l.id, titel: l.titel, virtuell: false, aufgaben: a, offen: offen(a), ...(l.gruppeId && gruppenIds.has(l.gruppeId) ? { gruppeId: l.gruppeId } : {}) }; });
     const rest = zu(aufgaben.filter(t => !t.listeId || !listenIds.has(t.listeId)));
     if (rest.length || !raus.length) raus.push({ id: SONSTIGE_LISTE, titel: 'Sonstige', virtuell: true, aufgaben: rest, offen: offen(rest) });
     return raus;
   };
+  const gruppenVon = (projektId: string, listen: BaumListe[]): BaumGruppe[] => (state.gruppen ?? []).filter(g => g.projektId === projektId).sort(nachReihe)
+    .map(g => ({ id: g.id, titel: g.titel, farbe: g.farbe, eingeklappt: !!g.eingeklappt, offen: listen.filter(l => l.gruppeId === g.id).reduce((s, l) => s + l.offen, 0) }));
   const raus: BaumProjekt[] = [];
   for (const p of [...projekte.sort((a, b) => a.title.localeCompare(b.title, 'de')), ...fremde]) {
     const listen = baueListen(p.id, sichtbar.filter(t => t.projectId === p.id));
     const n = listen.reduce((s, l) => s + l.offen, 0);
     const leer = listen.every(l => !l.aufgaben.length);
     if (leer && (fremdeIds.has(p.id) || !leereZeigen)) continue;
-    raus.push({ id: p.id, titel: p.title, farbe: p.color, virtuell: false, fremd: fremdeIds.has(p.id), listen, offen: n });
+    raus.push({ id: p.id, titel: p.title, farbe: p.color, virtuell: false, fremd: fremdeIds.has(p.id), listen, offen: n, gruppen: fremdeIds.has(p.id) ? [] : gruppenVon(p.id, listen) });
   }
   const sonst = sichtbar.filter(t => !projektIds.has(t.projectId));
   const sid = sonstigeProjektId(spaceId);
   const sonstListen = (state.listen ?? []).some(l => l.projektId === sid && !l.archiviert);
   if (sonst.length || sonstListen || !raus.length) {
     const listen = baueListen(sid, sonst);
-    raus.push({ id: sid, titel: 'Sonstige', farbe: '#6E7A7D', virtuell: true, fremd: false, listen, offen: listen.reduce((s, l) => s + l.offen, 0) });
+    raus.push({ id: sid, titel: 'Sonstige', farbe: '#6E7A7D', virtuell: true, fremd: false, listen, offen: listen.reduce((s, l) => s + l.offen, 0), gruppen: gruppenVon(sid, listen) });
   }
   return raus;
 }

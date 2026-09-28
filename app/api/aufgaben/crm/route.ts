@@ -20,7 +20,7 @@ export async function GET(req: Request) {
   const antwort: CrmVerweise = {
     kontakte: (Array.isArray(kartei?.kontakte) ? kartei!.kontakte : []).filter(k => !k.eingeschraenkt).map(k => ({ id: k.id, name: anzeigename(k), ...(k.firmaId ? { firmaId: k.firmaId } : {}), ...(k.firma ? { firma: k.firma } : {}) })),
     firmen: crm.firmen.map(f => ({ id: f.id, name: f.name })),
-    mandate: crm.mandate.map(m => ({ id: m.id, titel: m.titel, kunde: (m.firmaId && firmenName.get(m.firmaId)) || m.kunde, status: m.status, ...(m.firmaId ? { firmaId: m.firmaId } : {}) })),
+    mandate: crm.mandate.map(m => ({ id: m.id, titel: m.titel, kunde: (m.firmaId && firmenName.get(m.firmaId)) || m.kunde, status: m.status, ...(m.firmaId ? { firmaId: m.firmaId } : {}), ...(m.zustaendig ? { zustaendig: m.zustaendig } : {}) })),
     deals: crm.chancen.map(c => ({ id: c.id, titel: c.titel, stufe: c.stufe, ...(c.firmaId ? { firmaId: c.firmaId } : {}), ...((c.firmaId && firmenName.get(c.firmaId)) || c.firma ? { firma: (c.firmaId && firmenName.get(c.firmaId)) || c.firma } : {}) })),
   };
   return NextResponse.json(antwort);

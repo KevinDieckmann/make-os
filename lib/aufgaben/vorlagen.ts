@@ -1,7 +1,8 @@
 // ─── MAKE OS — Vorlagen für Projekte und Listen (rein, Paket C3, 28.09. spät) ─
 // „Als Vorlage speichern“: aus einem Projekt (Gruppen, Listen, Aufgaben, Unteraufgaben, eigene Felder, Notiz) bzw.
 // einer Liste NUR die Struktur — keine Verknüpfungen ins CRM (`bezug`), keine Kommentare, Dateien, Verlauf, ZOE,
-// Feldwerte, Status. Deadlines werden zum Versatz in Tagen ab einem Bezugstag.
+// Feldwerte, Status. Deadlines werden zum Versatz in Tagen ab einem Bezugstag. Eine Vorlage DARF je Aufgabe Notiz und
+// vorbelegte Feldwerte tragen (`VorlageAufgabe.notiz`/`felder`, z. B. Startvorlagen) — beim Anlegen werden sie übernommen.
 // „Aus Vorlage anlegen“: Space/Projekt + Startdatum → Projekt/Gruppen/Listen/Aufgaben mit Deadline = Start + Versatz.
 // Die Ergebnisse gehen im Browser über den Aufgaben-Kontext (Einzeländerungen mit Stand), serverseitig über den
 // Morgenlauf der Serien (lib/aufgaben/serie.ts). Tests: tests/aufgaben-serie.test.ts.
@@ -149,6 +150,8 @@ export function aufgabenAusVorlage(liste: readonly VorlageAufgabe[], z: Aufgaben
     ...(einheit ? { einheit } : {}),
     ...(z.listeId ? { listeId: z.listeId } : {}),
     ...(a.beschreibung ? { description: a.beschreibung } : {}),
+    ...(a.notiz ? { notiz: a.notiz } : {}),
+    ...(a.felder && Object.keys(a.felder).length ? { felder: { ...a.felder } } : {}),
     ...(z.start && typeof a.versatzTage === 'number' ? { dueDate: tagPlus(z.start, a.versatzTage) } : {}),
     ...(firmaId ? { bezug: { firmaId } } : {}),
     ...(z.vorlageId ? { vorlageId: z.vorlageId } : {}),

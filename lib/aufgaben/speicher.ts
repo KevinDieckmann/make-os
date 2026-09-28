@@ -174,6 +174,8 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
           if (alt?.verlauf) n.verlauf = alt.verlauf; else delete n.verlauf;
           // „Wartet auf“: wer sich geändert hat (abhaengigVon oder das alte dependencies), gewinnt.
           n = abhaengigAngleichen(n, alt ?? null);
+          // ZOE-Auftraggeberin (C4): wer sie ändert, IST sie — der Server setzt die schreibende Person, nie eine behauptete.
+          if (n.zoe?.von && n.zoe.von !== alt?.zoe?.von) n = { ...n, zoe: { ...n.zoe, von: opt.person } };
           // Eigene Felder typgerecht gegen die Definitionen des Projekts.
           const defs = listen.projects.get(n.projectId)?.felder;
           const felder = feldWerteTypisieren(n.felder, defs);

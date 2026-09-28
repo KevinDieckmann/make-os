@@ -5,7 +5,9 @@
 //   · Beim Erledigen entsteht im Schreibweg (lib/aufgaben/speicher.ts) die nächste Instanz: neue Deadline nach der
 //     Regel, Unteraufgaben zurückgesetzt (Deadlines mitverschoben), Notiz/Beschreibung/Felder/Zuständig/Bezug/Ort
 //     übernommen — Kommentare, Verlauf, ZOE, Abhängigkeiten, eigener Status NICHT.
-//   · Serie = `vorlageId` „serie:<Kennung der ersten Aufgabe>“ (die erste trägt keine — ihre Kennung ist der Anker).
+//   · Serie = `serieId` (Kennung der ersten Aufgabe; die erste trägt keine — ihre Kennung ist der Anker). Intern heißt
+//     die Serie „serie:<Anker>“ (stabil für die Instanz-Kennungen); Altbestand mit `vorlageId` „serie:…“ übersetzt die
+//     Übernahme (lib/aufgaben/struktur.ts). `vorlageId` bleibt die Herkunftsvorlage.
 //     Instanz-Kennung `w-<fnv(serie)>-<JJJJMMTT>` → idempotent; höchstens EINE offene Instanz je Serie.
 //   · Lange weg gewesen: die nächste Deadline springt auf den ersten Termin am oder nach heute (keine Lawine).
 //   · Morgenlauf (/api/tagesstart, Schritt „Aufgaben-Serien“) holt nur nach, was ein anderer Schreiber beim Erledigen
@@ -39,8 +41,9 @@ export function kurzHash(s: string): string {
   return (h >>> 0).toString(16).padStart(8, '0');
 }
 
-/** Die Serie einer Aufgabe: ihre `vorlageId`, wenn sie „serie:…“ ist, sonst sie selbst als Anker. */
-export function serieVon(t: Pick<Task, 'id' | 'vorlageId'>): string {
+/** Die Serie einer Aufgabe: `serieId` (bzw. alt `vorlageId` „serie:…“), sonst sie selbst als Anker. */
+export function serieVon(t: Pick<Task, 'id' | 'vorlageId' | 'serieId'>): string {
+  if (t.serieId) return `${SERIE_PRAEFIX}${t.serieId}`;
   if (t.vorlageId?.startsWith(SERIE_PRAEFIX)) return t.vorlageId;
   return `${SERIE_PRAEFIX}${t.id.length <= 74 ? t.id : kurzHash(t.id)}`;
 }
@@ -100,7 +103,8 @@ export function naechsteInstanz(t: Task, alle: readonly Task[], heute: string, j
     for (const k of Object.keys(n) as (keyof Task)[]) if (n[k] === undefined) delete n[k];
     return n;
   };
-  const inst = kopie(t, id, { dueDate: tag, startDate: verschoben(t.startDate, delta), vorlageId: serie, wiederholung: ohneNaechste(t.wiederholung) });
+  const herkunft = t.vorlageId && !t.vorlageId.startsWith(SERIE_PRAEFIX) ? t.vorlageId : undefined;
+  const inst = kopie(t, id, { dueDate: tag, startDate: verschoben(t.startDate, delta), serieId: serie.slice(SERIE_PRAEFIX.length), vorlageId: herkunft, wiederholung: ohneNaechste(t.wiederholung) });
   const unter = alle.filter(x => x.parentId === t.id).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     .map((u, i) => kopie(u, `${id}-u${i + 1}`, { parentId: id, dueDate: verschoben(u.dueDate, delta), startDate: verschoben(u.startDate, delta) }));
   return [inst, ...unter];
@@ -153,8 +157,9 @@ export function serienAufgabenNachholen(tasks: readonly Task[], heute: string, j
 /** Regeln mit kurzen Perioden: verpasste ältere werden übersprungen (nur die jüngste entsteht). */
 const KURZ = new Set<Wiederholung['regel']>(['taeglich', 'werktage', 'woechentlich']);
 
-/** Titel-Muster einer Serien-Liste: Vorlagen-Titel mit Platzhalter, sonst Grundtitel + Standard je Regel. */
-export function listenMuster(liste: Pick<AufgabenListe, 'titel'>, w: Wiederholung, vorlage?: Pick<AufgabenVorlage, 'titel'>): string {
+/** Titel-Muster einer Serien-Liste: `titelMuster` der Liste, sonst Vorlagen-Titel mit Platzhalter, sonst Grundtitel + Standard je Regel. */
+export function listenMuster(liste: Pick<AufgabenListe, 'titel' | 'titelMuster'>, w: Wiederholung, vorlage?: Pick<AufgabenVorlage, 'titel'>): string {
+  if (liste.titelMuster?.trim()) return liste.titelMuster.trim();
   if (vorlage && hatPlatzhalter(vorlage.titel)) return vorlage.titel;
   return standardMuster(vorlage?.titel ?? grundTitel(liste.titel), w.regel);
 }
@@ -224,7 +229,7 @@ export function serienLauf(state: TasksState, heute: string, jetzt: string): Ser
     const sortOrder = listen.filter(x => x.projektId === l.projektId).reduce((m, x) => Math.max(m, x.sortOrder), -1) + 1;
     const neu: AufgabenListe = {
       id, projektId: l.projektId, titel: titelMitPlatzhaltern(listenMuster(l, w, vorlage), tag).slice(0, 80), sortOrder,
-      ...(l.gruppeId ? { gruppeId: l.gruppeId } : {}), ...(l.vorlageId ? { vorlageId: l.vorlageId } : {}),
+      ...(l.gruppeId ? { gruppeId: l.gruppeId } : {}), ...(l.vorlageId ? { vorlageId: l.vorlageId } : {}), ...(l.titelMuster ? { titelMuster: l.titelMuster } : {}),
       ...(weiter ? { wiederholung: { ...ohneNaechste(w), naechste: weiter } } : {}),
     };
     setzeListe(ohneSerie(l));
