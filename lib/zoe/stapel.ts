@@ -16,6 +16,13 @@ import type { Person } from './raum';
 
 export type VorschlagStatus = 'offen' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen';
 
+/**
+ * Arten von Vorschlägen mit eigenem Bezug (28.09., C4). Neue Art: hier ergänzen und in lib/zoe/stapel-arten.ts
+ * ihre Freigabe eintragen — der Stapel (Route, Ansicht) behandelt dann alle Arten gleich.
+ */
+export type StapelArt = 'aufgabe';
+export interface StapelBezug { art: StapelArt; id: string }
+
 export interface Vorschlag {
   id: string;
   zeit: string;
@@ -38,6 +45,11 @@ export interface Vorschlag {
    * kleinen Lügen.
    */
   quelle?: 'gespraech' | 'lauf';
+  /**
+   * Worauf sich der Vorschlag bezieht (28.09., C4). Mit Bezug gilt die Freigabe-Funktion seiner Art
+   * (lib/zoe/stapel-arten.ts) statt `fuehreAus` — z. B. „aufgabe“: ZOE hat eine Aufgabe vorbereitet.
+   */
+  bezug?: StapelBezug;
   status: VorschlagStatus;
   entschiedenAm?: string;
   grund?: string;

@@ -4,11 +4,14 @@
 //
 // Die Ausführung läuft über fuehreAus mit erzwingen:true — das ist der einzige
 // Ort, an dem ein freigabepflichtiges Werkzeug wirklich wirkt, und auch er
-// schreibt ins Protokoll.
+// schreibt ins Protokoll. Ausnahme (28.09., C4): Vorschläge mit `bezug` gehören
+// einer Art (lib/zoe/stapel-arten.ts) — deren Freigabe-Funktion übernimmt und
+// entscheidet selbst; nach dem Ablehnen macht die Art ihren Folgeschritt.
 
 import { NextResponse } from 'next/server';
 import { lies, hole, entscheide } from '@/lib/zoe/stapel';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
+import { stapelArtVon, UNBEKANNTE_ART } from '@/lib/zoe/stapel-arten';
 import { personAus } from '@/lib/zoe/raum';
 import { innenAdresse } from '@/lib/innen';
 import { haushaltVon, personStreng } from '@/lib/finanzen/haushalt/zugriff';
@@ -71,6 +74,13 @@ export async function POST(req: Request) {
     // den anderen überschreiben.
     const ergebnisse: { id: string; ok: boolean; text: string }[] = [];
     for (const v of offen) {
+      // Vorschlag einer Art (z. B. „aufgabe“): deren Freigabe — nie fuehreAus, auch wenn die Art unbekannt ist.
+      if (v.bezug) {
+        const art = await stapelArtVon(v);
+        const r = art ? await art.freigeben(v, personStreng(req) ?? '', {}) : UNBEKANNTE_ART;
+        ergebnisse.push({ id: v.id, ok: r.ok, text: r.ok ? r.text : r.fehler });
+        continue;
+      }
       const lauf = await fuehreAus(v.werkzeug, v.eingabe, origin, { erzwingen: true, person: v.gruppe === HAUSHALT ? z!.person : person });
       await entscheide(v.id, lauf.ok ? 'freigegeben' : 'fehlgeschlagen', { ergebnis: lauf.text });
       ergebnisse.push({ id: v.id, ok: lauf.ok, text: lauf.text });
@@ -86,9 +96,19 @@ export async function POST(req: Request) {
 
   if (body.entscheidung === 'ablehnen') {
     const raus = await entscheide(id, 'abgelehnt', { grund: String(body.grund ?? '').slice(0, 400) });
+    // Folgeschritt der Art (z. B. Aufgabe → „abgelehnt“); ein Fehler dort macht das Ablehnen nicht rückgängig.
+    const wer = personStreng(req);
+    if (v.bezug && wer) { try { await (await stapelArtVon(v))?.nachAblehnen?.(v, wer); } catch { /* Ablehnen bleibt stehen */ } }
     return NextResponse.json({ ok: true, vorschlag: raus });
   }
 
+  if (v.bezug) {
+    // Nichts übernommen (z. B. inzwischen geändert) → der Vorschlag bleibt offen.
+    const art = await stapelArtVon(v);
+    const r = art ? await art.freigeben(v, personStreng(req) ?? '', { eingabe: eingabeSauber(body.eingabe) }) : UNBEKANNTE_ART;
+    if (!r.ok) return NextResponse.json({ ok: false, error: r.fehler }, { status: r.status });
+    return NextResponse.json({ ok: true, ergebnis: r.text, vorschlag: await hole(v.id) });
+  }
   const eingabe = eingabeSauber(body.eingabe) ?? v.eingabe;
   const lauf = await fuehreAus(v.werkzeug, eingabe, origin, { erzwingen: true, person: v.gruppe === HAUSHALT ? z!.person : person });
   const raus = await entscheide(id, lauf.ok ? 'freigegeben' : 'fehlgeschlagen', { ergebnis: lauf.text, eingabe });
