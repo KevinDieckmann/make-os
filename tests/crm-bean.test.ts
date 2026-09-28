@@ -146,3 +146,16 @@ describe('BEAN — Filter in Runde und Leads, Segment, Export', () => {
     expect(fz[0][fk.indexOf('BEAN')]).toBe('B');
   });
 });
+
+describe('Kunde ohne Mandat (Kevin 28.09.)', () => {
+  it('Lebensphase Kunde ohne Mandat → B, mit beendetem Mandat bleibt es E', async () => {
+    const { beanVon } = await import('@/lib/crm/bean');
+    const leer = { firmen: [], mandate: [], chancen: [] } as never;
+    expect(beanVon({ id: 'c-k1', lebensphase: 'kunde' } as never, leer).bean).toBe('B');
+    expect(beanVon({ id: 'c-k1', lebensphase: 'kunde' } as never, leer).grund).toMatch(/Mandat fehlt/);
+    const beendet = { firmen: [], chancen: [], mandate: [{ id: 'm-1', kontaktIds: ['c-k1'], status: 'beendet', titel: 'Alt', kunde: 'X' }] } as never;
+    expect(beanVon({ id: 'c-k1', lebensphase: 'kunde' } as never, beendet).bean).toBe('E');
+    expect(beanVon({ id: 'c-k2' } as never, leer).bean).toBe('N');
+  });
+});
+

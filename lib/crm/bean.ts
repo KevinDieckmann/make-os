@@ -75,9 +75,11 @@ export interface BeanErgebnis {
 const stufeLabel = (s: Chance['stufe']) => (s === 'abschluss' ? 'Abschluss' : s === 'angebot' ? 'Angebot' : s);
 
 /** Kern der Ableitung über die Mandate, Deals und Angebote, die zu einer Person bzw. Firma gehören. */
-function ableiten(t: { mandate: Mandat[]; chancen: Chance[]; angebote: AngebotHinweis[]; exKunde?: string }): { bean: BeanId; grund: string } {
+function ableiten(t: { mandate: Mandat[]; chancen: Chance[]; angebote: AngebotHinweis[]; exKunde?: string; kunde?: string }): { bean: BeanId; grund: string } {
   const aktiv = t.mandate.find(m => m.status === 'aktiv');
   if (aktiv) return { bean: 'B', grund: `aktives Mandat „${aktiv.titel || aktiv.kunde}“` };
+  // Kevin 28.09.: als Kunde geführt, aber (noch) kein Mandat im System → Bestandskunde; die Verbindungsprüfung meldet das fehlende Mandat.
+  if (t.kunde && !t.mandate.length) return { bean: 'B', grund: `${t.kunde} — Mandat fehlt im System` };
   const angebotDeal = t.chancen.find(c => c.stufe === 'angebot' || c.stufe === 'abschluss');
   if (angebotDeal) return { bean: 'A', grund: `Deal „${angebotDeal.titel}“ in Stufe ${stufeLabel(angebotDeal.stufe)}` };
   const angebotMandat = t.mandate.find(m => m.status === 'angebot' || m.status === 'verhandlung');
@@ -105,7 +107,8 @@ export function beanVon(k: Pick<Kontakt, 'id' | 'firmaId' | 'bean' | 'lebensphas
   const chancen = (crm?.chancen ?? []).filter(c => (c.kontaktIds ?? []).includes(k.id) || (!!firma && dealZuFirma(c, firma)));
   const angebote = angebotePasst(opts.angebote, { kontaktIds: new Set([k.id]), firmaId: firma?.id ?? k.firmaId, dealIds: new Set(chancen.map(c => c.id)), mandatIds: new Set(mandate.map(m => m.id)) });
   const exKunde = k.lebensphase === 'ex_kunde' ? 'Lebensphase Ex-Kunde' : firma?.rolle === 'ex_kunde' ? 'Firma als Ex-Kunde geführt' : undefined;
-  const abgeleitet = ableiten({ mandate, chancen, angebote, exKunde });
+  const kunde = k.lebensphase === 'kunde' ? 'als Kunde geführt' : firma?.rolle === 'kunde' ? 'Firma als Kunde geführt' : undefined;
+  const abgeleitet = ableiten({ mandate, chancen, angebote, exKunde, kunde });
   if (k.bean) return { bean: k.bean, vonHand: true, grund: `von Hand: ${BEAN_LABEL[k.bean]}`, abgeleitet };
   if (firma?.bean) return { bean: firma.bean, vonHand: true, grund: `von Hand an der Firma: ${BEAN_LABEL[firma.bean]}`, abgeleitet };
   return { bean: abgeleitet.bean, vonHand: false, grund: abgeleitet.grund, abgeleitet };
@@ -118,7 +121,8 @@ export function beanFirma(f: Pick<Firma, 'id' | 'name' | 'rolle' | 'bean'>, crm:
   const chancen = (crm?.chancen ?? []).filter(c => dealZuFirma(c, f) || (c.kontaktIds ?? []).some(id => ids.has(id)));
   const angebote = angebotePasst(opts.angebote, { kontaktIds: ids, firmaId: f.id, dealIds: new Set(chancen.map(c => c.id)), mandatIds: new Set(mandate.map(m => m.id)) });
   const exKunde = f.rolle === 'ex_kunde' ? 'Firma als Ex-Kunde geführt' : personen.some(p => p.firmaId === f.id && p.lebensphase === 'ex_kunde') ? 'eine Person ist als Ex-Kunde geführt' : undefined;
-  const abgeleitet = ableiten({ mandate, chancen, angebote, exKunde });
+  const kunde = f.rolle === 'kunde' ? 'Firma als Kunde geführt' : personen.some(p => p.firmaId === f.id && p.lebensphase === 'kunde') ? 'eine Person ist als Kunde geführt' : undefined;
+  const abgeleitet = ableiten({ mandate, chancen, angebote, exKunde, kunde });
   if (f.bean) return { bean: f.bean, vonHand: true, grund: `von Hand: ${BEAN_LABEL[f.bean]}`, abgeleitet };
   return { bean: abgeleitet.bean, vonHand: false, grund: abgeleitet.grund, abgeleitet };
 }
