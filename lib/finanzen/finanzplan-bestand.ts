@@ -99,33 +99,31 @@ export const STATI: RechnungStatus[] = ['geplant', 'gestellt', 'bezahlt', 'storn
 /** Geldbetrag auf den Cent (28.09., K3): 1.190,50 € bleibt 1.190,50 € — vorher wurde auf ganze Euro gerundet. */
 const cent = (v: unknown): number => (isFinite(Number(v)) ? Math.round(Number(v) * 100) / 100 : 0);
 
-// Echter Startbestand (Kevins Ansage 31.07.2026) — alles editierbar.
+// Startbestand für einen NEUEN, leeren Plan (28.09., K1): nur Struktur — die beiden eigenen Firmen
+// (Kennungen kdv/kdc, überall im System verankert) ohne Bank und Stand, Produkt-Entwürfe und die Agenda
+// fürs Finanzmeeting. Keine Kunden, keine Beträge, keine Namen Dritter (Regel 1 „keine echten Daten im
+// Repo“; vorher standen hier echte Kunden und ein Privatkredit). Greift nur bei leerem Speicher
+// (app/api/state/finanzplan: `firmen` leer) — ein bestehender Plan wird nie überschrieben.
 export const SEED: FinanzplanFile = {
   firmen: [
-    { id: 'kdv', name: 'KD Ventures', bank: 'Vivid', kontostand: null, stand: null },
-    { id: 'kdc', name: 'Kevin Dieckmann Consulting', bank: 'Vivid', kontostand: null, stand: null },
+    { id: 'kdv', name: 'KD Ventures', bank: '', kontostand: null, stand: null },
+    { id: 'kdc', name: 'Kevin Dieckmann Consulting', bank: '', kontostand: null, stand: null },
   ],
-  rechnungen: [
-    { id: 'r-onebanking', firmaId: 'kdc', kunde: 'OneBanking', titel: 'Beratung/Umsetzung — Leistung abrechnen', betrag: 0, status: 'geplant', faellig: '2026-08-02', notiz: 'Betrag eintragen, dann stellen.' },
-    { id: 'r-acme', firmaId: 'kdc', kunde: 'ACME', titel: 'Neues Mandat — Einstieg', betrag: 0, status: 'geplant', notiz: 'Kunde im Aufbau — Umfang klären.' },
-  ],
-  merkposten: [
-    { id: 'm-bjoern', firmaId: 'kdc', titel: 'Björn-Kredit erhalten', betrag: 17_000, art: 'kredit', datum: '2026-07-30', notiz: 'Eingang 30.07 — Rückzahlung offen halten.' },
-  ],
+  rechnungen: [],
+  merkposten: [],
   zahlungen: [],
   // Entwürfe fürs Finanzmeeting — zum Festzurren, alles editierbar.
   produkte: [
     { id: 'p-sprint', name: 'Klarheits-Sprint', beschreibung: 'Kompakter Einstieg: Analyse + Maßnahmenplan mit klarem Ergebnis.', preis: 0, einheit: 'einmalig', status: 'entwurf' },
     { id: 'p-mandat', name: 'Begleitungs-Mandat', beschreibung: 'Laufende Beratung & Steuerung im monatlichen Mandat.', preis: 0, einheit: 'monatlich', status: 'entwurf' },
-    { id: 'p-umsetzung', name: 'Umsetzungs-Mandat', beschreibung: 'Projekt mit definiertem Ergebnis — wie OneBanking.', preis: 0, einheit: 'projekt', status: 'entwurf' },
+    { id: 'p-umsetzung', name: 'Umsetzungs-Mandat', beschreibung: 'Projekt mit definiertem Ergebnis.', preis: 0, einheit: 'projekt', status: 'entwurf' },
   ],
   uhrwerk: {
     letztesMeeting: null,
     agenda: [
-      { id: 'a-konten', label: 'Kontostände beider Vivid-Konten eintragen', done: false },
+      { id: 'a-konten', label: 'Kontostände der Geschäftskonten eintragen', done: false },
       { id: 'a-rechnungen', label: 'Alle offenen Rechnungen zusammenziehen (rein & raus)', done: false },
       { id: 'a-prio', label: 'Zahlungs-Prioritätenliste festlegen — was zuerst?', done: false },
-      { id: 'a-kredit', label: 'Kreditvertrag Firma → privat aufsetzen (mit Steuerberater absichern)', done: false },
       { id: 'a-plan', label: 'Finanzplan füllen: Monats-Umsatz & Kosten im Controlling', done: false },
       { id: 'a-produkte', label: 'Produktpakete festzurren (Entwürfe unten)', done: false },
       { id: 'a-vertrieb', label: 'Vertriebsziele festlegen → in Jahr & Ziele eintragen', done: false },
