@@ -1,7 +1,8 @@
 // ─── MAKE OS — Aufgaben-Bestand (Speicher „tasks“) ──────────────────────────
-// GET   → { state: { projects, tasks, listen, statusEigen } (jede Zeile mit `stand`), spaces }
+// GET   → { state: { projects, tasks, listen, statusEigen, gruppen, vorlagen } (jede Zeile mit `stand`), spaces }
 // PATCH → Einzeländerungen: { ops: [{ op: 'upsert', task|eintrag, stand? } | { op: 'delete', id, stand? }],
-//          struktur?: { projekte?, listen?, status? } (dieselbe Form), massenAenderung?, massenLoeschung? }
+//          struktur?: { projekte?, listen?, status?, gruppen?, vorlagen? } (dieselbe Form), massenAenderung?, massenLoeschung? }
+//          Kreis in „wartet auf“ → 409 mit `kreis`; der Verlauf je Aufgabe entsteht hier (lib/aufgaben/verlauf.ts).
 // PUT   → ganzer Stand — nur noch für den allerersten Stand (leerer Bestand) und alte Fenster.
 //
 // Seit 28.09. abends (Aufgaben wie Monday/ClickUp, AUFGABEN_PLAN.md):
@@ -19,9 +20,9 @@ import { brauchtBestaetigung, MASSEN_GRENZE } from '@/lib/store/massen-wache';
 import { imHaushaltDesInhabers, imHaushaltOderSystemlauf, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { zuGross } from '@/lib/zugang/umfang';
 import { uebernehmen } from '@/lib/aufgaben/struktur';
-import { taskSauber, projektSauber, listeSauber, statusSauber, AUFGABEN_GRENZEN, ZuGross } from '@/lib/aufgaben/saeubern';
+import { taskSauber, projektSauber, listeSauber, statusSauber, gruppeSauber, vorlageSauber, AUFGABEN_GRENZEN, ZuGross } from '@/lib/aufgaben/saeubern';
 import { ladeAufgaben, spacesFuer, fuerBrowser, opsLesen, aufgabenAendern, orgZuordnung, AUFGABEN_SPEICHER } from '@/lib/aufgaben/speicher';
-import type { Task, TasksState, Project, AufgabenListe, AufgabenStatus } from '@/types/tasks';
+import type { Task, TasksState, Project, AufgabenListe, AufgabenStatus, AufgabenGruppe, AufgabenVorlage } from '@/types/tasks';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -60,6 +61,7 @@ export async function PATCH(req: Request) {
     ok: false, error: r.fehler, ...(r.konflikte ? { konflikte: r.konflikte } : {}),
     ...(r.massenAenderung ? { massenAenderung: true, anzahl: r.anzahl, grenze: r.grenze } : {}),
     ...(r.massenLoeschung ? { massenLoeschung: true } : {}),
+    ...(r.kreis ? { kreis: r.kreis } : {}),
     ...(aktuell ? { state: fuerBrowser(aktuell) } : {}),
   }, { status: r.status });
 }
@@ -77,11 +79,14 @@ export async function PUT(req: Request) {
   if (b.tasks.length > AUFGABEN_GRENZEN.aufgaben) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${AUFGABEN_GRENZEN.aufgaben} Aufgaben.` }, { status: 413 });
   if (b.projects.length > AUFGABEN_GRENZEN.projekte) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${AUFGABEN_GRENZEN.projekte} Projekte.` }, { status: 413 });
   let tasks: Task[], projects: Project[], listen: AufgabenListe[] | undefined, statusEigen: AufgabenStatus[] | undefined;
+  let gruppen: AufgabenGruppe[] | undefined, vorlagen: AufgabenVorlage[] | undefined;
   try {
     tasks = b.tasks.map(taskSauber).filter((t): t is Task => !!t);
     projects = b.projects.map(projektSauber).filter((p): p is Project => !!p);
     listen = Array.isArray(b.listen) ? b.listen.map(listeSauber).filter((l): l is AufgabenListe => !!l) : undefined;
     statusEigen = Array.isArray(b.statusEigen) ? b.statusEigen.map(statusSauber).filter((s): s is AufgabenStatus => !!s) : undefined;
+    gruppen = Array.isArray(b.gruppen) ? b.gruppen.map(gruppeSauber).filter((g): g is AufgabenGruppe => !!g) : undefined;
+    vorlagen = Array.isArray(b.vorlagen) ? b.vorlagen.map(vorlageSauber).filter((v): v is AufgabenVorlage => !!v) : undefined;
   } catch (e) {
     if (e instanceof ZuGross) return NextResponse.json({ ok: false, error: e.message }, { status: 413 });
     throw e;
@@ -97,7 +102,13 @@ export async function PUT(req: Request) {
     if (alt >= 10 && tasks.length < alt / 2 && b.massenLoeschung !== true) { abgelehnt = true; return current as TasksState; }
     const pruef = brauchtBestaetigung(current?.tasks ?? [], tasks, b.massenAenderung === true);
     if (pruef.noetig) { massen = pruef.anzahl; return current as TasksState; }
-    return uebernehmen({ projects, tasks, listen: listen ?? current?.listen ?? [], statusEigen: statusEigen ?? current?.statusEigen ?? [] }, orgs).state;
+    // Der Verlauf gehört dem Server (die Säuberung verwirft ihn) — der gespeicherte bleibt je Aufgabe stehen.
+    const verlauf = new Map((current?.tasks ?? []).filter(t => t.verlauf?.length).map(t => [t.id, t.verlauf]));
+    const mitVerlauf = tasks.map(t => (verlauf.has(t.id) ? { ...t, verlauf: verlauf.get(t.id) } : t));
+    return uebernehmen({
+      projects, tasks: mitVerlauf, listen: listen ?? current?.listen ?? [], statusEigen: statusEigen ?? current?.statusEigen ?? [],
+      gruppen: gruppen ?? current?.gruppen ?? [], vorlagen: vorlagen ?? current?.vorlagen ?? [],
+    }, orgs).state;
   });
   if (abgelehnt) return NextResponse.json({ ok: false, massenLoeschung: true, error: 'Abgelehnt: das hätte über die Hälfte der Aufgaben gelöscht. Wenn das so gewollt ist, noch einmal mit ausdrücklicher Bestätigung schicken.' }, { status: 409 });
   if (massen) return NextResponse.json({ ok: false, massenAenderung: true, anzahl: massen, grenze: MASSEN_GRENZE, error: `Abgelehnt: das hätte ${massen} Aufgaben auf einmal erledigt. Wenn das so gewollt ist, noch einmal mit ausdrücklicher Bestätigung schicken.` }, { status: 409 });

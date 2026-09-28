@@ -14,9 +14,11 @@ import { ladeKonten } from '@/lib/zugang/konten';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { melde, type MeldungEingabe } from '@/lib/meldungen/melden';
 import { WEG } from '@/lib/wege';
-import type { Task, TasksState, Project, AufgabenListe, AufgabenStatus, AufgabeKommentar } from '@/types/tasks';
+import type { Task, TasksState, Project, AufgabenListe, AufgabenStatus, AufgabeKommentar, AufgabenGruppe, AufgabenVorlage } from '@/types/tasks';
 import { uebernehmen, alleSpaces, zustaendigeVon, type AufgabenSpace } from './struktur';
-import { taskSauber, projektSauber, listeSauber, statusSauber, kommentareVereinen, AUFGABEN_GRENZEN, ZuGross } from './saeubern';
+import { taskSauber, projektSauber, listeSauber, statusSauber, gruppeSauber, vorlageSauber, feldWerteTypisieren, kommentareVereinen, AUFGABEN_GRENZEN, ZuGross } from './saeubern';
+import { abhaengigAngleichen, kreisBei } from './abhaengig';
+import { verlaufFuer, verlaufAnhaengen, type VerlaufWer } from './verlauf';
 
 export const AUFGABEN_SPEICHER = 'tasks';
 
@@ -28,7 +30,7 @@ export async function orgZuordnung(): Promise<Record<string, string>> {
 
 /** Abbruch in der Sperre — nichts wird geschrieben, `erg` trägt den Grund. */
 const ABBRUCH = Symbol('aufgaben-abbruch');
-const leer = (): TasksState => ({ projects: [], tasks: [], listen: [], statusEigen: [] });
+const leer = (): TasksState => ({ projects: [], tasks: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] });
 const alsStand = (roh: TasksState | null | undefined): TasksState => (roh && Array.isArray(roh.tasks) ? roh : { ...leer(), ...(roh ?? {}), tasks: [] });
 
 /** Den Bestand lesen — übernommen (Space, Unteraufgaben …), noch nicht gespeichert. */
@@ -44,29 +46,35 @@ export async function spacesFuer(state: TasksState): Promise<AufgabenSpace[]> {
 
 /** So geht der Bestand an den Browser: jede Zeile mit `stand`. */
 export function fuerBrowser(state: TasksState) {
-  return { projects: mitStand(state.projects), tasks: mitStand(state.tasks), listen: mitStand(state.listen ?? []), statusEigen: mitStand(state.statusEigen ?? []) };
+  return {
+    projects: mitStand(state.projects), tasks: mitStand(state.tasks), listen: mitStand(state.listen ?? []), statusEigen: mitStand(state.statusEigen ?? []),
+    gruppen: mitStand(state.gruppen ?? []), vorlagen: mitStand(state.vorlagen ?? []),
+  };
 }
 
 // ── Änderungen ─────────────────────────────────────────────────────────────
 
-export type ListenArt = 'tasks' | 'projects' | 'listen' | 'statusEigen';
+export type ListenArt = 'tasks' | 'projects' | 'listen' | 'statusEigen' | 'gruppen' | 'vorlagen';
+/** Alle Listen des Bestands — Reihenfolge beim Anwenden: Struktur zuerst, Aufgaben zuletzt. */
+export const LISTEN_ARTEN: readonly ListenArt[] = ['projects', 'gruppen', 'listen', 'statusEigen', 'vorlagen', 'tasks'];
 export interface Op<E> { op: 'upsert' | 'delete'; eintrag?: E; id?: string; stand?: string; /** Nur Aufgaben: kamen Kommentare mit? Fehlen sie, bleiben die gespeicherten. */ mitKommentaren?: boolean }
-export interface AufgabenOps { tasks: Op<Task>[]; projects: Op<Project>[]; listen: Op<AufgabenListe>[]; statusEigen: Op<AufgabenStatus>[] }
+export interface AufgabenOps { tasks: Op<Task>[]; projects: Op<Project>[]; listen: Op<AufgabenListe>[]; statusEigen: Op<AufgabenStatus>[]; gruppen: Op<AufgabenGruppe>[]; vorlagen: Op<AufgabenVorlage>[] }
+const leereOps = (): AufgabenOps => ({ tasks: [], projects: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] });
 export interface Konflikt { liste: ListenArt; id: string; grund: 'inzwischen geändert' | 'inzwischen gelöscht'; aktuell?: unknown }
 
 export type LeseErgebnis = { ok: true; ops: AufgabenOps } | { ok: false; status: 400 | 413; fehler: string };
 
-const SAEUBERER = { tasks: taskSauber, projects: projektSauber, listen: listeSauber, statusEigen: statusSauber } as const;
-const GRENZE: Record<ListenArt, number> = { tasks: AUFGABEN_GRENZEN.ops, projects: AUFGABEN_GRENZEN.ops, listen: AUFGABEN_GRENZEN.ops, statusEigen: AUFGABEN_GRENZEN.ops };
+const SAEUBERER = { tasks: taskSauber, projects: projektSauber, listen: listeSauber, statusEigen: statusSauber, gruppen: gruppeSauber, vorlagen: vorlageSauber } as const;
+const GRENZE: Record<ListenArt, number> = { tasks: AUFGABEN_GRENZEN.ops, projects: AUFGABEN_GRENZEN.ops, listen: AUFGABEN_GRENZEN.ops, statusEigen: AUFGABEN_GRENZEN.ops, gruppen: AUFGABEN_GRENZEN.ops, vorlagen: AUFGABEN_GRENZEN.ops };
 
 /**
- * Rohe Änderungen lesen: `ops` (Aufgaben, alt: `{ op, task }`), `struktur.{projekte,listen,status}` und das alte
+ * Rohe Änderungen lesen: `ops` (Aufgaben, alt: `{ op, task }`), `struktur.{projekte,listen,status,gruppen,vorlagen}` und das alte
  * Feld `projekte` (ganze Liste — nur noch als Upserts, nie als Löschung). Mehr als die Grenze → 413, nie gekürzt.
  */
 export function opsLesen(body: Record<string, unknown>): LeseErgebnis {
-  const ops: AufgabenOps = { tasks: [], projects: [], listen: [], statusEigen: [] };
+  const ops: AufgabenOps = leereOps();
   const struktur = (body.struktur && typeof body.struktur === 'object' ? body.struktur : {}) as Record<string, unknown>;
-  const quellen: [ListenArt, unknown][] = [['tasks', body.ops], ['projects', struktur.projekte], ['listen', struktur.listen], ['statusEigen', struktur.status]];
+  const quellen: [ListenArt, unknown][] = [['tasks', body.ops], ['projects', struktur.projekte], ['listen', struktur.listen], ['statusEigen', struktur.status], ['gruppen', struktur.gruppen], ['vorlagen', struktur.vorlagen]];
   try {
     for (const [art, roh] of quellen) {
       if (roh === undefined) continue;
@@ -92,7 +100,7 @@ export function opsLesen(body: Record<string, unknown>): LeseErgebnis {
     if (e instanceof ZuGross) return { ok: false, status: 413, fehler: e.message };
     throw e;
   }
-  const n = ops.tasks.length + ops.projects.length + ops.listen.length + ops.statusEigen.length;
+  const n = Object.values(ops).reduce((s, l) => s + (l as unknown[]).length, 0);
   if (!n) return { ok: false, status: 400, fehler: 'Keine gültigen Änderungen.' };
   return { ok: true, ops };
 }
@@ -103,9 +111,11 @@ export interface SchreibErgebnis {
   fehler?: string;
   konflikte?: Konflikt[];
   massenAenderung?: boolean; massenLoeschung?: boolean; anzahl?: number; grenze?: number;
+  /** Abgelehnter Kreis in den Abhängigkeiten (Kennungen der Kette). */
+  kreis?: string[];
   angewandt: number;
   /** Neuer Stand je geschriebener Zeile — der Browser trägt ihn nach. */
-  zeilen: { liste: ListenArt; id: string; stand: string }[];
+  zeilen: { liste: ListenArt; id: string; stand: string; /** Nur Aufgaben: der Verlauf, wie er jetzt gespeichert ist (der Browser trägt ihn nach). */ verlauf?: Task['verlauf'] }[];
   state?: TasksState;
 }
 
@@ -132,6 +142,8 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
       projects: new Map(vorher.projects.map(x => [x.id, x])),
       listen: new Map((vorher.listen ?? []).map(x => [x.id, x])),
       statusEigen: new Map((vorher.statusEigen ?? []).map(x => [x.id, x])),
+      gruppen: new Map((vorher.gruppen ?? []).map(x => [x.id, x])),
+      vorlagen: new Map((vorher.vorlagen ?? []).map(x => [x.id, x])),
     };
     const pruefe = (art: ListenArt, id: string, stand: string | undefined): boolean => {
       if (stand === undefined) return true; // ohne Stand: wie bisher (ZOE, alte Fenster)
@@ -141,7 +153,7 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
       return true;
     };
     // Struktur zuerst, damit neue Aufgaben ihr neues Projekt/ihre neue Liste schon finden.
-    for (const art of ['projects', 'listen', 'statusEigen', 'tasks'] as const) {
+    for (const art of LISTEN_ARTEN) {
       const m = listen[art] as Map<string, unknown>;
       for (const o of ops[art] as Op<{ id: string }>[]) {
         const id = o.op === 'delete' ? o.id! : o.eintrag!.id;
@@ -152,8 +164,16 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
           const alt = listen.tasks.get(id);
           const t = e as Task;
           const k = o.mitKommentaren ? kommentareVereinen(alt?.kommentare, t.kommentare, opt.person, jetzt) : { kommentare: alt?.kommentare, neue: [] };
-          const n: Task = { ...t, ...(k.kommentare ? { kommentare: k.kommentare } : {}) };
+          let n: Task = { ...t, ...(k.kommentare ? { kommentare: k.kommentare } : {}) };
           if (!k.kommentare) delete n.kommentare;
+          // Verlauf gehört dem Server: der gespeicherte bleibt, neue Einträge kommen nach der Übernahme dazu.
+          if (alt?.verlauf) n.verlauf = alt.verlauf; else delete n.verlauf;
+          // „Wartet auf“: wer sich geändert hat (abhaengigVon oder das alte dependencies), gewinnt.
+          n = abhaengigAngleichen(n, alt ?? null);
+          // Eigene Felder typgerecht gegen die Definitionen des Projekts.
+          const defs = listen.projects.get(n.projectId)?.felder;
+          const felder = feldWerteTypisieren(n.felder, defs);
+          if (felder) n.felder = felder; else delete n.felder;
           if (!alt) { n.createdAt = n.createdAt || jetzt; }
           // Eigener Status neu gesetzt → `status` bekommt seinen Grundstatus (alle Leser verstehen „erledigt“).
           if (n.statusId && n.statusId !== alt?.statusId) {
@@ -175,8 +195,11 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
     }
     if (konflikte.length) { erg = { ok: false, status: 409, fehler: 'Jemand hat inzwischen geändert — Stand neu geladen, bitte noch einmal.', konflikte, angewandt: 0, zeilen: [], state: vorher }; throw ABBRUCH; }
 
-    const roh2: TasksState = { ...vorher, tasks: Array.from(listen.tasks.values()), projects: Array.from(listen.projects.values()), listen: Array.from(listen.listen.values()), statusEigen: Array.from(listen.statusEigen.values()) };
-    for (const [art, max, was] of [['tasks', AUFGABEN_GRENZEN.aufgaben, 'Aufgaben'], ['projects', AUFGABEN_GRENZEN.projekte, 'Projekte'], ['listen', AUFGABEN_GRENZEN.listen, 'Listen'], ['statusEigen', AUFGABEN_GRENZEN.status, 'eigene Status']] as const) {
+    const roh2: TasksState = {
+      ...vorher, tasks: Array.from(listen.tasks.values()), projects: Array.from(listen.projects.values()), listen: Array.from(listen.listen.values()),
+      statusEigen: Array.from(listen.statusEigen.values()), gruppen: Array.from(listen.gruppen.values()), vorlagen: Array.from(listen.vorlagen.values()),
+    };
+    for (const [art, max, was] of [['tasks', AUFGABEN_GRENZEN.aufgaben, 'Aufgaben'], ['projects', AUFGABEN_GRENZEN.projekte, 'Projekte'], ['listen', AUFGABEN_GRENZEN.listen, 'Listen'], ['statusEigen', AUFGABEN_GRENZEN.status, 'eigene Status'], ['gruppen', AUFGABEN_GRENZEN.gruppen, 'Gruppen'], ['vorlagen', AUFGABEN_GRENZEN.vorlagen, 'Vorlagen']] as const) {
       const n = (roh2[art] ?? []).length;
       if (n > max && n > (vorher[art] ?? []).length) { erg = { ok: false, status: 413, fehler: `Abgelehnt: höchstens ${max} ${was}.`, angewandt: 0, zeilen: [] }; throw ABBRUCH; }
     }
@@ -186,17 +209,36 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
       throw ABBRUCH;
     }
     nachher = uebernehmen(roh2, orgs).state;
+    // Kreise („A wartet auf B wartet auf A“) — keine der Aufgaben könnte je fertig werden: ablehnen.
+    const upserts = ops.tasks.filter(o => o.op === 'upsert').map(o => o.eintrag!.id);
+    const kreis = kreisBei(nachher.tasks, upserts);
+    if (kreis) {
+      const titel = (id: string) => nachher.tasks.find(t => t.id === id)?.title ?? id;
+      erg = { ok: false, status: 409, kreis, fehler: `Abgelehnt: „${titel(kreis[0])}“ würde über ${kreis.length - 1 === 1 ? 'eine Abhängigkeit' : `${kreis.length - 1} Abhängigkeiten`} auf sich selbst warten. Nichts gespeichert.`, angewandt: 0, zeilen: [] };
+      throw ABBRUCH;
+    }
+    // Verlauf je Aufgabe: nach der Übernahme, damit abgeleitete Felder (Status, Ort) stimmen.
+    const altNach = new Map(vorher.tasks.map(t => [t.id, t]));
+    const wer: VerlaufWer = { person: opt.person, ...(opt.wer?.art === 'zoe' ? { durch: 'zoe' as const } : opt.wer && opt.wer.art !== 'person' ? { durch: 'system' as const } : {}) };
+    const hier = new Set(upserts);
+    nachher = { ...nachher, tasks: nachher.tasks.map(t => {
+      if (!hier.has(t.id)) return t;
+      const eintraege = verlaufFuer(altNach.get(t.id), t, wer, jetzt, nachher.statusEigen ?? []);
+      if (!eintraege.length) return t;
+      const verlauf = verlaufAnhaengen(t.verlauf, eintraege);
+      return verlauf ? { ...t, verlauf } : t;
+    }) };
     const pruef = brauchtBestaetigung(vorher.tasks, nachher.tasks, opt.massenAenderung === true);
     if (pruef.noetig) {
       erg = { ok: false, status: 409, massenAenderung: true, anzahl: pruef.anzahl, grenze: MASSEN_GRENZE, fehler: `Abgelehnt: das hätte ${pruef.anzahl} Aufgaben auf einmal erledigt. Wenn das so gewollt ist, noch einmal mit ausdrücklicher Bestätigung schicken.`, angewandt: 0, zeilen: [] };
       throw ABBRUCH;
     }
     const zeilen: SchreibErgebnis['zeilen'] = [];
-    for (const art of ['tasks', 'projects', 'listen', 'statusEigen'] as const) {
+    for (const art of LISTEN_ARTEN) {
       const alt = new Map(((vorher[art] ?? []) as { id: string }[]).map(x => [x.id, fingerabdruck(x as Record<string, unknown>)]));
       for (const x of (nachher[art] ?? []) as { id: string }[]) {
         const s = fingerabdruck(x as Record<string, unknown>);
-        if (alt.get(x.id) !== s) zeilen.push({ liste: art, id: x.id, stand: s });
+        if (alt.get(x.id) !== s) zeilen.push({ liste: art, id: x.id, stand: s, ...(art === 'tasks' && (x as Task).verlauf ? { verlauf: (x as Task).verlauf } : {}) });
       }
     }
     erg = { ok: true, status: 200, angewandt, zeilen, state: nachher };
@@ -210,7 +252,7 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
   if (!erg.ok) return erg;
   // Protokoll: nur Kennungen und Feldnamen, nie Werte (lib/store/aenderungsprotokoll.ts).
   const aenderungen: Aenderung[] = [];
-  for (const art of ['tasks', 'projects', 'listen', 'statusEigen'] as const) aenderungen.push(...listenDiff((vorher[art] ?? []) as { id: string }[], (nachher[art] ?? []) as { id: string }[], art));
+  for (const art of LISTEN_ARTEN) aenderungen.push(...listenDiff((vorher[art] ?? []) as { id: string }[], (nachher[art] ?? []) as { id: string }[], art));
   await protokolliere(AUFGABEN_SPEICHER, aenderungen, opt.wer);
   await meldungenNachSchreiben(vorher, nachher, neueKommentare, opt.person);
   return erg;

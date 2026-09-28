@@ -17,6 +17,7 @@ import { einheitAusGesellschaft, FINANZ_ORTE, istFinanzOrt, istGesellschaft, fin
 import { EINHEIT_FARBE } from './einheit';
 import { orgVon } from '@/lib/make-one/organisation-data';
 import { spaceVonAufgabe, type SpaceId } from '@/lib/make-one/space-regeln';
+import { abhaengigAngleichen } from './abhaengig';
 
 // ── Spaces ─────────────────────────────────────────────────────────────────
 
@@ -199,6 +200,9 @@ export interface UebernahmeErgebnis { state: TasksState; geaendert: boolean }
  *  5. Liste passt nicht zum Projekt → keine Liste („Sonstige“); eigener Status fehlt, liegt in einem anderen Space
  *     oder passt nicht zum Grundstatus (jemand hat `status` direkt gesetzt) → entfernt.
  *  6. `space`/`einheit` aus dem Space.
+ *  7. (28.09. spät) Gruppen/Vorlagen sind Listen im Bestand; eine Liste mit Gruppe eines anderen Projekts (oder einer
+ *     gelöschten) steht wieder direkt im Projekt; `abhaengigVon` führt, `dependencies` wird daraus abgeleitet,
+ *     Verweise auf nicht mehr vorhandene Aufgaben fallen weg.
  */
 export function uebernehmen(roh: TasksState, orgs: Record<string, string> = {}): UebernahmeErgebnis {
   let geaendert = false;
@@ -208,7 +212,16 @@ export function uebernehmen(roh: TasksState, orgs: Record<string, string> = {}):
     return { ...p, spaceId: spaceFuerAltProjekt(p) };
   });
   const projektNach = new Map(projects.map(p => [p.id, p]));
-  const listen = Array.isArray(roh.listen) ? roh.listen : [];
+  const gruppen = Array.isArray(roh.gruppen) ? roh.gruppen : [];
+  const gruppeNach = new Map(gruppen.map(g => [g.id, g]));
+  const listen = (Array.isArray(roh.listen) ? roh.listen : []).map(l => {
+    if (!l.gruppeId) return l;
+    const g = gruppeNach.get(l.gruppeId);
+    if (g && g.projektId === l.projektId) return l;
+    geaendert = true;
+    const { gruppeId: _g, ...rest } = l;
+    return rest;
+  });
   const listeNach = new Map(listen.map(l => [l.id, l]));
   const statusEigen = Array.isArray(roh.statusEigen) ? roh.statusEigen : [];
 
@@ -238,8 +251,9 @@ export function uebernehmen(roh: TasksState, orgs: Record<string, string> = {}):
     alle.push(t);
   }
 
-  // 4–6: Unteraufgaben ordnen, Felder ableiten.
+  // 4–7: Unteraufgaben ordnen, Felder ableiten.
   const nachId = new Map(alle.map(t => [t.id, t]));
+  const vorhanden = new Set(nachId.keys());
   const oberster = (t: Task): Task | undefined => {
     let p = t.parentId ? nachId.get(t.parentId) : undefined;
     const gesehen = new Set<string>([t.id]);
@@ -271,10 +285,15 @@ export function uebernehmen(roh: TasksState, orgs: Record<string, string> = {}):
     }
     const bereich = bereichVonSpace(spaceId);
     setze({ space: bereich, einheit: einheitFuer(spaceId, t.einheit) });
+    if (t.abhaengigVon?.length || t.dependencies?.length || !Array.isArray(t.dependencies)) {
+      const a = abhaengigAngleichen(t, null, vorhanden);
+      setze({ dependencies: a.dependencies, abhaengigVon: a.abhaengigVon });
+    }
     return t;
   });
-  const state: TasksState = { ...roh, projects, tasks, listen, statusEigen };
-  if (!Array.isArray(roh.listen) || !Array.isArray(roh.statusEigen)) geaendert = true;
+  const vorlagen = Array.isArray(roh.vorlagen) ? roh.vorlagen : [];
+  const state: TasksState = { ...roh, projects, tasks, listen, statusEigen, gruppen, vorlagen };
+  if (!Array.isArray(roh.listen) || !Array.isArray(roh.statusEigen) || !Array.isArray(roh.gruppen) || !Array.isArray(roh.vorlagen)) geaendert = true;
   return { state, geaendert };
 }
 

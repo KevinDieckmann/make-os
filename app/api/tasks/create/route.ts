@@ -14,6 +14,7 @@ import { imHaushaltOderSystemlauf, KARTEI_GESPERRT } from '@/lib/zugang/haushalt
 import { uebernehmen, istSpaceId, spaceFuerAltAufgabe, sonstigeProjektId } from '@/lib/aufgaben/struktur';
 import { bezugSauber } from '@/lib/aufgaben/saeubern';
 import { orgZuordnung, meldeNeueAufgabe, AUFGABEN_SPEICHER } from '@/lib/aufgaben/speicher';
+import { verlaufFuer } from '@/lib/aufgaben/verlauf';
 import type { TasksState, Task, TaskStatus } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
 
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
   const priority: Priority = (['low', 'medium', 'high', 'critical'] as Priority[]).includes(body.priority as Priority) ? body.priority as Priority : 'medium';
   const assignee: Owner = (['kevin', 'malin', 'both'] as Owner[]).includes(body.owner as Owner) ? body.owner as Owner : (zugang.person === 'malin' ? 'malin' : 'kevin');
 
+  const wer = werAus(req);
   let ergebnis: { id: string; duplikat?: boolean } = { id: '' };
   const angelegt: { t: Task | null } = { t: null };
   await updateJson<TasksState>(AUFGABEN_SPEICHER, cur => {
@@ -65,6 +67,9 @@ export async function POST(req: Request) {
       ...(eltern ? { parentId: eltern.id } : {}),
       ...(bezugSauber(body.bezug) ? { bezug: bezugSauber(body.bezug) } : {}),
       ...(body.startDate && TAG.test(body.startDate) ? { startDate: body.startDate } : {}),
+      // Verlauf (28.09. spät): „angelegt“ — von der Person, im Auftrag (ZOE) oder als Systemlauf.
+      verlauf: verlaufFuer(undefined, { id: '', title, projectId: '', status: 'todo', priority, assignee, tags: [], subTasks: [], dependencies: [], sortOrder: 0, createdAt: now, updatedAt: now },
+        { person: zugang.person ?? 'system', ...(wer.art === 'zoe' ? { durch: 'zoe' as const } : wer.art !== 'person' ? { durch: 'system' as const } : {}) }, now),
     };
     if (!dueDate) delete basis.dueDate;
     // Space: ausdrücklich, sonst wie bei Altaufgaben (Privat/Business, Einheit, Ort, Projekt).
@@ -76,7 +81,7 @@ export async function POST(req: Request) {
     return next;
   });
   if (ergebnis.duplikat) return NextResponse.json({ ok: true, id: ergebnis.id, duplikat: true, hinweis: 'Gibt es schon als offene Aufgabe — nicht doppelt angelegt.' });
-  await protokolliere(AUFGABEN_SPEICHER, [{ liste: 'tasks', op: 'neu', id: ergebnis.id }], werAus(req));
+  await protokolliere(AUFGABEN_SPEICHER, [{ liste: 'tasks', op: 'neu', id: ergebnis.id }], wer);
   if (angelegt.t) await meldeNeueAufgabe(angelegt.t, zugang.person);
   return NextResponse.json({ ok: true, id: ergebnis.id });
 }

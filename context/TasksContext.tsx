@@ -2,9 +2,10 @@
 
 import { createContext, useContext, useEffect, useReducer, useRef, useState, type Dispatch, type ReactNode } from 'react';
 import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
-import type { TasksState, TasksAction, Project, Task, SubTask, AufgabenListe, AufgabenStatus } from '@/types/tasks';
+import type { TasksState, TasksAction, Project, Task, SubTask, AufgabenListe, AufgabenStatus, AufgabenGruppe, AufgabenVorlage, VerlaufEintrag } from '@/types/tasks';
 import type { AufgabenSpace } from '@/lib/aufgaben/struktur';
 import { sonstigeProjektId } from '@/lib/aufgaben/struktur';
+import { abhaengigAngleichen } from '@/lib/aufgaben/abhaengig';
 import { MOCK_PROJECTS } from '@/lib/mock-data/projects';
 import { MOCK_TASKS } from '@/lib/mock-data/tasks';
 
@@ -22,13 +23,23 @@ export type AufgabenAktion =
   | { type: 'DELETE_LISTE'; payload: { id: string } }
   | { type: 'ADD_STATUS'; payload: AufgabenStatus }
   | { type: 'UPDATE_STATUS'; payload: Partial<AufgabenStatus> & { id: string } }
-  | { type: 'DELETE_STATUS'; payload: { id: string } };
+  | { type: 'DELETE_STATUS'; payload: { id: string } }
+  // Vertiefung (28.09. spät): Gruppen, Vorlagen, Verlauf aus der Server-Antwort
+  | { type: 'ADD_GRUPPE'; payload: AufgabenGruppe }
+  | { type: 'UPDATE_GRUPPE'; payload: Partial<AufgabenGruppe> & { id: string } }
+  | { type: 'DELETE_GRUPPE'; payload: { id: string } }
+  | { type: 'ADD_VORLAGE'; payload: AufgabenVorlage }
+  | { type: 'UPDATE_VORLAGE'; payload: Partial<AufgabenVorlage> & { id: string } }
+  | { type: 'DELETE_VORLAGE'; payload: { id: string } }
+  | { type: 'VERLAUF_NACHTRAGEN'; payload: { id: string; verlauf: VerlaufEintrag[] }[] };
 
 const initialState: TasksState = {
   projects: MOCK_PROJECTS,
   tasks: MOCK_TASKS,
   listen: [],
   statusEigen: [],
+  gruppen: [],
+  vorlagen: [],
 };
 
 /** Ein Teil auf einen Eintrag legen — `undefined` im Teil entfernt das Feld (JSON kennt kein undefined). */
@@ -38,13 +49,21 @@ function mitTeil<T extends object>(alt: T, teil: Partial<T>): T {
   return n;
 }
 
+/** Verlauf aus der Server-Antwort an die Aufgaben legen (ohne updatedAt — es ist keine eigene Änderung). */
+function verlaufNachtragen(tasks: Task[], neu: readonly { id: string; verlauf: VerlaufEintrag[] }[]): Task[] {
+  const m = new Map(neu.map(x => [x.id, x.verlauf]));
+  return tasks.map(t => (m.has(t.id) ? mitTeil(t, { verlauf: m.get(t.id) }) : t));
+}
+
 function tasksReducer(state: TasksState, action: AufgabenAktion): TasksState {
   const now = new Date().toISOString();
   const listen = state.listen ?? [];
   const statusEigen = state.statusEigen ?? [];
+  const gruppen = state.gruppen ?? [];
+  const vorlagen = state.vorlagen ?? [];
   switch (action.type) {
     case 'HYDRATE':
-      return { ...action.payload, listen: action.payload.listen ?? [], statusEigen: action.payload.statusEigen ?? [] };
+      return { ...action.payload, listen: action.payload.listen ?? [], statusEigen: action.payload.statusEigen ?? [], gruppen: action.payload.gruppen ?? [], vorlagen: action.payload.vorlagen ?? [] };
     case 'ADD_PROJECT': {
       const project: Project = { ...action.payload, id: generateId(), createdAt: now, updatedAt: now };
       return { ...state, projects: [...state.projects, project] };
@@ -63,6 +82,7 @@ function tasksReducer(state: TasksState, action: AufgabenAktion): TasksState {
         ...state,
         projects: state.projects.filter(p => p.id !== action.payload.id),
         listen: listen.filter(l => !weg.has(l.id)),
+        gruppen: gruppen.filter(g => g.projektId !== action.payload.id),
         tasks: state.tasks.map(t => (t.projectId === action.payload.id
           ? mitTeil(t, { projectId: sonstigeProjektId(t.spaceId ?? 'privat'), listeId: undefined, updatedAt: now })
           : t)),
@@ -79,7 +99,11 @@ function tasksReducer(state: TasksState, action: AufgabenAktion): TasksState {
         ...state,
         // Wer eine Aufgabe nach Privat schiebt, nimmt ihr die Business-Einheit (27.09.) — der Schreibweg verwirft sie ohnehin.
         tasks: state.tasks.map(t => {
-          if (t.id === action.payload.id) return mitTeil(t, { ...action.payload, ...(action.payload.space === 'privat' ? { einheit: undefined } : {}), updatedAt: now });
+          if (t.id === action.payload.id) {
+            const n = mitTeil(t, { ...action.payload, ...(action.payload.space === 'privat' ? { einheit: undefined } : {}), updatedAt: now });
+            // „Wartet auf“: abhaengigVon und das alte dependencies gleich halten (wer sich geändert hat, gewinnt).
+            return 'abhaengigVon' in action.payload || 'dependencies' in action.payload ? abhaengigAngleichen(n, t) : n;
+          }
           // Unteraufgaben ziehen mit, wenn das Elternteil umzieht (Space/Projekt/Liste) — der Server erzwingt es ohnehin.
           if (t.parentId === action.payload.id && ('spaceId' in action.payload || 'projectId' in action.payload || 'listeId' in action.payload)) {
             const p = action.payload;
@@ -94,8 +118,8 @@ function tasksReducer(state: TasksState, action: AufgabenAktion): TasksState {
         // Unteraufgaben gehen mit; Verweise AUF die gelöschte Aufgabe fallen weg — sonst bleiben andere für immer an einem Geist blockiert.
         tasks: state.tasks
           .filter(t => t.id !== action.payload.id && t.parentId !== action.payload.id)
-          .map(t => t.dependencies?.some(d => d.blockedByTaskId === action.payload.id)
-            ? { ...t, dependencies: t.dependencies.filter(d => d.blockedByTaskId !== action.payload.id), updatedAt: now }
+          .map(t => t.dependencies?.some(d => d.blockedByTaskId === action.payload.id) || t.abhaengigVon?.includes(action.payload.id)
+            ? mitTeil(t, { dependencies: (t.dependencies ?? []).filter(d => d.blockedByTaskId !== action.payload.id), abhaengigVon: t.abhaengigVon?.filter(x => x !== action.payload.id).length ? t.abhaengigVon.filter(x => x !== action.payload.id) : undefined, updatedAt: now })
             : t),
       };
     case 'TOGGLE_TASK': {
@@ -168,6 +192,21 @@ function tasksReducer(state: TasksState, action: AufgabenAktion): TasksState {
     }
     case 'DELETE_STATUS':
       return { ...state, statusEigen: statusEigen.filter(s => s.id !== action.payload.id), tasks: state.tasks.map(t => (t.statusId === action.payload.id ? mitTeil(t, { statusId: undefined, updatedAt: now }) : t)) };
+    case 'ADD_GRUPPE':
+      return { ...state, gruppen: [...gruppen.filter(g => g.id !== action.payload.id), action.payload] };
+    case 'UPDATE_GRUPPE':
+      return { ...state, gruppen: gruppen.map(g => (g.id === action.payload.id ? mitTeil(g, action.payload) : g)) };
+    case 'DELETE_GRUPPE':
+      // Listen bleiben — sie stehen danach direkt im Projekt.
+      return { ...state, gruppen: gruppen.filter(g => g.id !== action.payload.id), listen: listen.map(l => (l.gruppeId === action.payload.id ? mitTeil(l, { gruppeId: undefined }) : l)) };
+    case 'ADD_VORLAGE':
+      return { ...state, vorlagen: [...vorlagen.filter(v => v.id !== action.payload.id), action.payload] };
+    case 'UPDATE_VORLAGE':
+      return { ...state, vorlagen: vorlagen.map(v => (v.id === action.payload.id ? mitTeil(v, action.payload) : v)) };
+    case 'DELETE_VORLAGE':
+      return { ...state, vorlagen: vorlagen.filter(v => v.id !== action.payload.id) };
+    case 'VERLAUF_NACHTRAGEN':
+      return { ...state, tasks: verlaufNachtragen(state.tasks, action.payload) };
     default:
       return state;
   }
@@ -190,14 +229,15 @@ const TasksContext = createContext<TasksContextValue | null>(null);
 export const AUFGABEN_KONFLIKT = 'make-aufgaben-konflikt';
 
 type Zeile = { id: string; stand?: string };
-type ListenArt = 'tasks' | 'projects' | 'listen' | 'statusEigen';
-const LISTEN: ListenArt[] = ['tasks', 'projects', 'listen', 'statusEigen'];
+type ListenArt = 'tasks' | 'projects' | 'listen' | 'statusEigen' | 'gruppen' | 'vorlagen';
+const LISTEN: ListenArt[] = ['tasks', 'projects', 'listen', 'statusEigen', 'gruppen', 'vorlagen'];
+const STRUKTUR: Exclude<ListenArt, 'tasks'>[] = ['projects', 'listen', 'statusEigen', 'gruppen', 'vorlagen'];
 type Staende = Map<string, string>;
 const schluessel = (art: ListenArt, id: string) => `${art}:${id}`;
 
 /** Server-Antwort in Sicht + Stände teilen: `stand` gehört nie in den Zustand (sonst schickte man einen alten zurück). */
 function ohneStand(roh: TasksState, staende: Staende): TasksState {
-  const raus = { projects: [], tasks: [], listen: [], statusEigen: [] } as unknown as Record<ListenArt, Zeile[]>;
+  const raus = { projects: [], tasks: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] } as unknown as Record<ListenArt, Zeile[]>;
   for (const art of LISTEN) {
     for (const z of ((roh[art] ?? []) as unknown as Zeile[])) {
       const { stand, ...rest } = z;
@@ -212,7 +252,7 @@ type Op = { op: 'upsert'; eintrag: unknown; stand?: string } | { op: 'delete'; i
 
 /** Unterschied zweier Stände je Liste: geänderte/neue Einträge + gelöschte Kennungen, jeweils mit dem letzten Serverstand. */
 function unterschied(alt: TasksState, neu: TasksState, staende: Staende): Record<ListenArt, Op[]> {
-  const raus: Record<ListenArt, Op[]> = { tasks: [], projects: [], listen: [], statusEigen: [] };
+  const raus: Record<ListenArt, Op[]> = { tasks: [], projects: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] };
   for (const art of LISTEN) {
     const a = new Map(((alt[art] ?? []) as unknown as Zeile[]).map(x => [x.id, JSON.stringify(x)]));
     const n = (neu[art] ?? []) as unknown as Zeile[];
@@ -223,7 +263,7 @@ function unterschied(alt: TasksState, neu: TasksState, staende: Staende): Record
   return raus;
 }
 
-interface SchreibAntwort { ok?: boolean; error?: string; massenAenderung?: boolean; massenLoeschung?: boolean; anzahl?: number; konflikte?: unknown[]; zeilen?: { liste: ListenArt; id: string; stand: string }[]; state?: TasksState }
+interface SchreibAntwort { ok?: boolean; error?: string; massenAenderung?: boolean; massenLoeschung?: boolean; anzahl?: number; konflikte?: unknown[]; kreis?: string[]; zeilen?: { liste: ListenArt; id: string; stand: string; verlauf?: VerlaufEintrag[] }[]; state?: TasksState }
 
 /**
  * Schreiben mit Rückfrage bei Massen-Erledigung/-Löschung (lib/store/massen-wache.ts): ein blockierender Dialog statt
@@ -295,7 +335,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         })
         .then(d => {
           if (!alive) return;
-          if ('gesperrt' in d) { dispatch({ type: 'HYDRATE', payload: { projects: [], tasks: [], listen: [], statusEigen: [] } }); setLadeFehler(true); setReady(true); return; }
+          if ('gesperrt' in d) { dispatch({ type: 'HYDRATE', payload: { projects: [], tasks: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] } }); setLadeFehler(true); setReady(true); return; }
           if (!uebernehmenVomServer(d)) { if (Array.isArray(d.spaces)) setSpaces(d.spaces); }
           // Erststart ohne Datei: leerer Stand ist gültig, Speichern erlaubt.
           hydrated.current = true;
@@ -356,9 +396,18 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         const pakete = Math.max(1, Math.ceil(ops.tasks.length / 150));
         for (let i = 0; i < pakete; i++) {
           const koerper: Record<string, unknown> = { ops: ops.tasks.slice(i * 150, i * 150 + 150) };
-          if (i === 0 && (ops.projects.length || ops.listen.length || ops.statusEigen.length)) koerper.struktur = { projekte: ops.projects, listen: ops.listen, status: ops.statusEigen };
+          if (i === 0 && STRUKTUR.some(a => ops[a].length)) koerper.struktur = { projekte: ops.projects, listen: ops.listen, status: ops.statusEigen, gruppen: ops.gruppen, vorlagen: ops.vorlagen };
           const d = await schreibeMitWache('PATCH', koerper);
-          if (d?.ok && Array.isArray(d.zeilen)) for (const z of d.zeilen) staende.current.set(schluessel(z.liste, z.id), z.stand);
+          if (d?.ok && Array.isArray(d.zeilen)) {
+            for (const z of d.zeilen) staende.current.set(schluessel(z.liste, z.id), z.stand);
+            // Verlauf schreibt der Server — in Sicht UND in den zuletzt gesendeten Stand, damit er nicht als Änderung zurückgeht.
+            const verlauf = d.zeilen.filter(z => z.liste === 'tasks' && Array.isArray(z.verlauf)).map(z => ({ id: z.id, verlauf: z.verlauf! }));
+            if (verlauf.length) {
+              if (zuletzt.current) { const z = JSON.parse(zuletzt.current) as TasksState; zuletzt.current = JSON.stringify({ ...z, tasks: verlaufNachtragen(z.tasks, verlauf) }); }
+              dispatch({ type: 'VERLAUF_NACHTRAGEN', payload: verlauf });
+            }
+          }
+          if (d && !d.ok && d.kreis?.length) { await rehydrate(); return; }
           if (d && !d.ok && d.konflikte?.length) {
             // Jemand anders war schneller: aktuellen Stand zeigen, Hinweis auslösen — nichts überschrieben.
             if (d.state) uebernehmenVomServer({ state: d.state }); else await rehydrate();
