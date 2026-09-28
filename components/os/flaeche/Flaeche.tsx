@@ -168,7 +168,7 @@ export function Flaeche({ seite, widgets = [], standard: standardProp, children,
           const titel = p.titel ?? kind?.titel ?? def?.label ?? p.id;
           return (
             <Platzhalter key={p.id} platz={p} titel={titel} einstellungen={def?.einstellungen} festeKarte={!!kind}>
-              {kind ? kind.children : def ? <def.Komponente e={p.einstellungen} titel={p.titel} i={Math.min(i, 6)} /> : null}
+              {kind ? kind.children : def ? <def.Komponente e={p.einstellungen} titel={p.titel} i={Math.min(i, 6)} seite={seite} /> : null}
             </Platzhalter>
           );
         })}

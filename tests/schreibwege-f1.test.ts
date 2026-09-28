@@ -238,6 +238,39 @@ describe('10 · Übergabe-Aufgaben tragen die Einheit', () => {
     const t = tasks.find(x => String(x.title).includes('Übergabe-Deal'))!;
     expect(einheitAusGesellschaft('kdc')).toBeTruthy();
     expect(t).toMatchObject({ space: 'business', einheit: einheitAusGesellschaft('kdc'), assignee: 'malin' });
+    // 28.09. spät: CRM-Bezug + Space der Gesellschaft; der Link bleibt in der Beschreibung.
+    expect(t).toMatchObject({ spaceId: 'kdc', bezug: { dealId: 'ch-uebergabe' } });
+    expect(String(t.description)).toContain('ch-uebergabe');
+  });
+
+  it('Übergabe-Aufgaben tragen den CRM-Bezug und den Space (Kontakt · Deal mit Firma · Mandat aktiv/beendet)', async () => {
+    const { uebergeben } = await import('@/lib/crm/uebergabe');
+    const MANDAT = (x: Partial<Mandat>): Mandat => ({ id: 'md-x', kunde: 'Firma Uebergabe', kontaktIds: [], titel: 'Mandat', art: 'retainer', gesellschaft: 'kdv', status: 'aktiv', vertragUnterschrieben: true, verlaengerung: 'offen', honorar: { betrag: 2500, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [], health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: [], geaendert: JETZT, ...x });
+    const crm = (await db.loadJson<CrmBestand>('crm'))!;
+    await db.saveJson('crm', {
+      ...crm,
+      firmen: [...crm.firmen, { id: 'f-uebergabe', name: 'Firma Uebergabe', rolle: 'kunde', geaendert: JETZT } as Firma],
+      chancen: [...crm.chancen, CHANCE({ id: 'ch-mit-firma', titel: 'Deal mit Firma', stufe: 'bedarf', firmaId: 'f-uebergabe', gesellschaft: 'kdv' })],
+      mandate: [...crm.mandate, MANDAT({ id: 'md-aktiv', titel: 'Mandat aktiv', firmaId: 'f-uebergabe' }), MANDAT({ id: 'md-beendet', titel: 'Mandat beendet', firmaId: 'f-uebergabe', status: 'beendet' })],
+    });
+    const aufgabe = async (titel: string) => ((await db.loadJson<{ tasks: Record<string, unknown>[] }>('tasks'))?.tasks ?? []).find(x => String(x.title).endsWith(titel))!;
+
+    expect((await uebergeben({ art: 'kontakt', id: 'c-privat', an: 'malin' }, 'kevin')).ok).toBe(true);
+    const tk = await aufgabe('Gerd Beispiel');
+    expect(tk.bezug).toEqual({ kontaktId: 'c-privat' });
+    expect(tk).not.toHaveProperty('spaceId'); // ohne Einheit leitet die Übernahme den Space ab
+    expect(String(tk.description)).toContain('k=c-privat');
+
+    expect((await uebergeben({ art: 'chance', id: 'ch-mit-firma', an: 'malin' }, 'kevin')).ok).toBe(true);
+    expect(await aufgabe('Deal mit Firma')).toMatchObject({ bezug: { dealId: 'ch-mit-firma', firmaId: 'f-uebergabe' }, spaceId: 'kdv', space: 'business' });
+
+    expect((await uebergeben({ art: 'mandat', id: 'md-aktiv', an: 'malin' }, 'kevin')).ok).toBe(true);
+    const ta = await aufgabe('Mandat aktiv');
+    expect(ta).toMatchObject({ bezug: { mandatId: 'md-aktiv', firmaId: 'f-uebergabe' }, spaceId: 'm-f-uebergabe', space: 'business', einheit: 'Kunden' });
+    expect(String(ta.description)).toContain('md-aktiv');
+
+    expect((await uebergeben({ art: 'mandat', id: 'md-beendet', an: 'malin' }, 'kevin')).ok).toBe(true);
+    expect(await aufgabe('Mandat beendet')).toMatchObject({ bezug: { mandatId: 'md-beendet', firmaId: 'f-uebergabe' }, spaceId: 'kdv' });
   });
 });
 

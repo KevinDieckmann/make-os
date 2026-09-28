@@ -4,10 +4,14 @@
 // liegen), nie Inhalte. Fokus-Blöcke kommen je Person des Haushalts des Inhabers;
 // geprüft werden ihre Verweise `aufgabeId` und (28.09.) `mandatId`/`firmaId`.
 // Ziele (gemeinsam + je Person) und Meilensteine: nur Kennung und Mandats-/Firmen-Bezug.
+// geprüft wird nur ihr Verweis `aufgabeId`.
+// Zurückschreiben (28.09. spät): `aufgabenBezugZurueckschreiben` — die Reparatur „aufgabe-bezug-tot“ fasst im
+// Speicher `tasks` nur das Feld `bezug` der betroffenen Aufgaben an (aktueller Stand, in der Sperre).
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { datenOrdner, loadJson, speicherStand } from '@/lib/store/local-db';
+import { datenOrdner, loadJson, speicherStand, updateJson } from '@/lib/store/local-db';
+import { protokolliere, type Wer } from '@/lib/store/aenderungsprotokoll';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { TasksState } from '@/types/tasks';
 import type { ZeitDatei } from '@/lib/zeitmessung/modell';
@@ -19,6 +23,7 @@ import { ladeKonten } from '@/lib/zugang/konten';
 import { speicherFuer } from '@/lib/zoe/raum';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import type { AufgabeKurz, RechnungKurz, VerbindungsBestaende } from './verbindungen';
+import { aufgabenBezugReparieren } from './verbindungen';
 import type { PlanungBezug } from './verbindungen-planung';
 import { ZIEL_HORIZONTE } from '@/lib/planung/typen';
 import { HEADS } from '@/lib/heads/prompt';
@@ -108,7 +113,7 @@ export async function ladeVerbindungsBestaende(heute: string): Promise<Verbindun
     q.haushalt ? aufPlatte(q.haushalt) : Promise.resolve([] as string[]),
     Promise.all(q.personen.map(async p => ({ person: p, datei: await loadJson<ZeitDatei>(speicherFuer('zeit', p)) }))),
   ]);
-  const aufgaben: AufgabeKurz[] = (Array.isArray(tasks?.tasks) ? tasks!.tasks : []).map(t => ({ id: t.id, title: t.title, ...(t.description ? { description: t.description } : {}), projectId: t.projectId, status: t.status, ...(t.space ? { space: t.space } : {}), ...(t.einheit ? { einheit: t.einheit } : {}) }));
+  const aufgaben: AufgabeKurz[] = (Array.isArray(tasks?.tasks) ? tasks!.tasks : []).map(t => ({ id: t.id, title: t.title, ...(t.description ? { description: t.description } : {}), projectId: t.projectId, status: t.status, ...(t.space ? { space: t.space } : {}), ...(t.einheit ? { einheit: t.einheit } : {}), ...(t.spaceId ? { spaceId: t.spaceId } : {}), ...(t.bezug ? { bezug: t.bezug } : {}) }));
   return {
     heute,
     haushalt: q.haushalt,
@@ -123,4 +128,23 @@ export async function ladeVerbindungsBestaende(heute: string): Promise<Verbindun
     planung,
     heads: heads.map(h => ({ head: h.head, vorschlaege: (Array.isArray(h.stand?.vorschlaege) ? h.stand!.vorschlaege : []).map(v => ({ id: v.id, ...(v.kontakt_id ? { kontakt_id: v.kontakt_id } : {}), ...(v.status ? { status: v.status } : {}) })) })),
   };
+}
+
+/**
+ * Reparatur „aufgabe-bezug-tot“ zurückschreiben: in EINER Sperre auf dem AKTUELLEN Aufgaben-Stand gerechnet,
+ * gegen die Kennungen aus `stand` (Kartei + CRM, nach deren Reparatur). Angefasst wird nur das Feld `bezug`
+ * der Aufgaben mit toten Verweisen — nie die ganze Liste aus einem alten Stand, keine Zeitstempel.
+ * Protokoll ohne Werte (Kennung + Feldname). Liefert die Zahl der geänderten Aufgaben.
+ */
+export async function aufgabenBezugZurueckschreiben(stand: Pick<VerbindungsBestaende, 'kontakte' | 'crm'>, wer?: Wer): Promise<number> {
+  let geaendert: string[] = [];
+  await updateJson<TasksState>('tasks', cur => {
+    if (!cur || !Array.isArray(cur.tasks)) return cur as TasksState;
+    const r = aufgabenBezugReparieren(cur.tasks, stand);
+    if (!r.n) return cur;
+    geaendert = r.tasks.filter((t, i) => t !== cur.tasks[i]).map(t => t.id);
+    return { ...cur, tasks: r.tasks };
+  });
+  if (geaendert.length) await protokolliere('tasks', geaendert.map(id => ({ liste: 'tasks', op: 'geaendert' as const, id, felder: ['bezug'] })), wer);
+  return geaendert.length;
 }

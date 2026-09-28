@@ -112,11 +112,13 @@ describe('Einheit — Schreibweg /api/state/tasks und /api/tasks/create', () => 
     anlegen = (await import('@/app/api/tasks/create/route')) as unknown as { POST: (r: Request) => Promise<Response> };
     await db.saveJson('tasks', { projects: [{ id: 'proj-kdm', title: 'KD' }], tasks: [] });
     await db.saveJson('ordnung', { orgs: { 'b-hand-privat': 'privat' } });
+    // Seit 28.09. abends: Aufgaben nur im Haushalt des Inhabers — der Dienstweg nennt „kevin“, also braucht es sein Konto.
+    await db.saveJson('konten', { konten: [{ id: 'k1', speicher: 'kevin', email: 'kevin@test.invalid', name: 'Kevin', rolle: 'inhaber', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'haus' }], einladungen: [] });
   });
   afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
   const lies = async () => ((await db.loadJson<{ tasks: Record<string, unknown>[] }>('tasks'))?.tasks ?? []);
 
-  it('PATCH: Business vereinheitlicht, Privat und Ort-privat verworfen, ohne Angabe kein Feld', async () => {
+  it('PATCH: Business vereinheitlicht, Privat und Ort-privat verworfen, ohne Angabe die Einheit des Space', async () => {
     const r = await tasks.PATCH(req('/api/state/tasks', { ops: [
       { op: 'upsert', task: aufgabe('b-ug', { space: 'business', einheit: '  neue   UG ' }) },
       { op: 'upsert', task: aufgabe('b-kdc', { einheit: 'Selbstständig' }) },
@@ -133,7 +135,10 @@ describe('Einheit — Schreibweg /api/state/tasks und /api/tasks/create', () => 
     expect(e('b-eigen')?.einheit).toBe('Pilot GmbH');
     expect('einheit' in (e('p-1') ?? {})).toBe(false);
     expect('einheit' in (e('b-hand-privat') ?? {})).toBe(false);
-    expect('einheit' in (e('b-leer') ?? {})).toBe(false);
+    // Seit 28.09. abends (Aufgaben-Spaces): Business ohne Angabe liegt im Space des Projekts (KD Ventures) und trägt dessen Einheit.
+    expect(e('b-leer')).toMatchObject({ spaceId: 'kdv', einheit: 'KD Ventures' });
+    expect(e('b-ug')?.spaceId).toBe('ug');
+    expect(e('p-1')?.spaceId).toBe('privat');
   });
 
   it('PUT (Voll-Stand) säubert genauso', async () => {

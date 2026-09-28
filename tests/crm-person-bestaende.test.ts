@@ -108,6 +108,46 @@ describe('Reine Teile', () => {
     expect(r.pruefen).toEqual(['t-name']);
     expect(pb.aufgabenUm(tasks, 'c-weg', 'c-neu').tasks[1].description).toContain('k=c-neu');
   });
+  it('Aufgaben mit CRM-Bezug: eindeutig; Löschen löst nur den Kontakt und tilgt den Namen in Kommentaren', () => {
+    const km = (id: string, text: string) => ({ id, von: 'kevin', text, am: '2026-09-28T10:00:00.000Z' });
+    const tasks = [
+      { id: 't-bezug', title: 'Angebot nachfassen', bezug: { kontaktId: 'c-weg', firmaId: 'f-probe' }, kommentare: [km('km-1', 'Testa Beispielmann ruft zurück /os/markttraktion?k=c-weg'), km('km-2', 'Erledigt?')] },
+      { id: 't-nur', title: 'Rückruf', bezug: { kontaktId: 'c-weg' }, kommentare: [km('km-3', '/os/markttraktion?k=c-weg')] },
+      { id: 't-komm', title: 'Steuer', kommentare: [km('km-4', 'Frag Testa Beispielmann')] },
+      { id: 't-fremd', title: 'Andere', bezug: { kontaktId: 'c-weg-2' } },
+    ];
+    const z = pb.aufgabenZuordnen(tasks, 'c-weg', [], 'Testa Beispielmann');
+    expect(z.eindeutig.map(t => t.id)).toEqual(['t-bezug', 't-nur']);
+    expect(z.nurName.map(t => t.id)).toEqual(['t-komm']); // Name nur im Kommentar: gemeldet, nicht geändert
+    const r = pb.aufgabenAnonymisieren(tasks, 'c-weg', [], 'Testa Beispielmann');
+    expect(r.n).toBe(2);
+    expect(r.tasks[0].bezug).toEqual({ firmaId: 'f-probe' });
+    expect(r.tasks[0].kommentare!.map(k => k.text)).toEqual(['[gelöscht] ruft zurück', 'Erledigt?']);
+    expect(r.tasks[0].title).toBe('Angebot nachfassen'); // die Aufgabe bleibt
+    expect(r.tasks[1]).not.toHaveProperty('bezug'); // leerer Bezug → Feld weg
+    expect(r.tasks[1].kommentare![0].text).toBe('[gelöscht]');
+    expect(r.tasks[2]).toBe(tasks[2]);
+    expect(r.tasks[3]).toBe(tasks[3]);
+    expect(r.pruefen).toEqual(['t-komm']);
+    expect(JSON.stringify(r.tasks.slice(0, 2))).not.toMatch(/c-weg(?![A-Za-z0-9_-])|Beispielmann/);
+    // idempotent
+    expect(pb.aufgabenAnonymisieren(r.tasks, 'c-weg', [], 'Testa Beispielmann').n).toBe(0);
+  });
+  it('Aufgaben umbiegen: bezug.kontaktId und Links in Kommentaren wandern mit, Rest bleibt', () => {
+    const tasks = [
+      { id: 't-1', title: 'A', bezug: { kontaktId: 'c-alt', dealId: 'ch-1' } },
+      { id: 't-2', title: 'B', description: '/os/markttraktion?k=c-alt', bezug: { kontaktId: 'c-alt' }, kommentare: [{ id: 'km-1', von: 'malin', text: 'siehe ?k=c-alt', am: 'x' }] },
+      { id: 't-3', title: 'C', bezug: { kontaktId: 'c-alt-2' } },
+    ];
+    const r = pb.aufgabenUm(tasks, 'c-alt', 'c-neu');
+    expect(r.n).toBe(2); // je Aufgabe einmal
+    expect(r.tasks[0].bezug).toEqual({ kontaktId: 'c-neu', dealId: 'ch-1' });
+    expect(r.tasks[1].bezug).toEqual({ kontaktId: 'c-neu' });
+    expect(r.tasks[1].description).toContain('k=c-neu');
+    expect(r.tasks[1].kommentare![0].text).toBe('siehe ?k=c-neu');
+    expect(r.tasks[2]).toBe(tasks[2]);
+    expect(pb.aufgabenUm(r.tasks, 'c-alt', 'c-neu').n).toBe(0);
+  });
 });
 
 describe('Art. 15 und Art. 17 über alle Speicher', () => {
@@ -129,6 +169,7 @@ describe('Art. 15 und Art. 17 über alle Speicher', () => {
       { id: 'hd-hs-1', title: 'Testa Beispielmann anrufen', description: 'Vorschlag des Head of Sales', status: 'todo' },
       { id: 't-name', title: 'Testa Beispielmann: Geburtstag', status: 'todo' },
       { id: 't-frei', title: 'Steuer', status: 'todo' },
+      { id: 't-bezug', title: 'Angebot nachfassen', status: 'todo', bezug: { kontaktId: 'c-weg', firmaId: 'f-probe' }, kommentare: [{ id: 'km-1', von: 'kevin', text: 'Testa Beispielmann ruft zurück /os/markttraktion?k=c-weg', am: '2026-09-28T10:00:00.000Z' }] },
     ] });
   });
 
@@ -143,7 +184,7 @@ describe('Art. 15 und Art. 17 über alle Speicher', () => {
     expect(a.importKonflikte).toEqual({ konflikte: [{ feld: 'notiz', online: 'a', liste: 'b' }], moeglicheDubletten: 1 });
     expect(a.headVorschlaege).toHaveLength(1);
     expect(a.kommenderTermin).toMatchObject({ titel: 'Termin' });
-    expect(a.aufgaben.map((t: { id: string }) => t.id)).toEqual(['hd-hs-1']);
+    expect(a.aufgaben.map((t: { id: string }) => t.id)).toEqual(['hd-hs-1', 't-bezug']); // t-bezug über bezug.kontaktId
     expect(a.chancen).toHaveLength(1);
   });
 
@@ -169,6 +210,9 @@ describe('Art. 15 und Art. 17 über alle Speicher', () => {
     const tasks = (await db.loadJson<{ tasks: { id: string; title: string }[] }>('tasks'))!.tasks;
     expect(tasks.find(t => t.id === 'hd-hs-1')?.title).toBe('[gelöscht] anrufen');
     expect(tasks.find(t => t.id === 't-name')?.title).toBe('Testa Beispielmann: Geburtstag'); // nur Name: gemeldet, nicht geändert
+    const mitBezug = tasks.find(t => t.id === 't-bezug') as unknown as { bezug?: Record<string, string>; kommentare: { text: string }[] };
+    expect(mitBezug.bezug).toEqual({ firmaId: 'f-probe' }); // Aufgabe bleibt, nur der Personenbezug fällt
+    expect(mitBezug.kommentare[0].text).toBe('[gelöscht] ruft zurück');
     // Die andere Person bleibt überall.
     expect((await db.loadJson<KonfliktStand>('crm-import-konflikte'))!.konflikte).toHaveLength(1);
     expect((await db.loadJson<{ kommend: Record<string, unknown> }>('crm-signale'))!.kommend).toHaveProperty('c-bleibt');

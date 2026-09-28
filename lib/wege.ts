@@ -97,4 +97,6 @@ export const WEG = {
   jahr: () => '/os/planung/jahr',
   agenten: () => '/os/agenten',
   aufgabe: (id: string) => q('/os/aufgaben', { offen: id }),
+  /** Aufgaben-Seite (28.09. abends): Bereich, Space (privat · kdc · kdv · ug · m-<firmaId>), Projekt. */
+  aufgaben: (o: { space?: 'privat' | 'business'; r?: string; p?: string } = {}) => q('/os/aufgaben', { space: o.space, r: o.r, p: o.p }),
 } as const;

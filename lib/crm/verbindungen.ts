@@ -17,6 +17,8 @@
 // 28.09. abends (Integritätsprüfung): dazu Firmentext ↔ Hauptstation, Typ ↔ Typen, Aktivität → Firma/Bezug,
 // Deal-Quelle, Mandat → Planposten/Phase, doppelte Teilnahmen, Kampagnen-Ergebnisse außerhalb, Head-Vorschläge,
 // Einwilligungs-Belege; Leads mit totem Deal fallen beim Reparieren von „SQL“ auf „Qualifizierung“ zurück.
+// 28.09. spät (Aufgaben wie Monday/ClickUp): CRM-Bezug der Aufgaben (`bezug` → Kontakt, Firma, Mandat, Deal) —
+// Reparieren entfernt nur die toten Einzelverweise; Aufgaben mit Space (`spaceId`) haben ihre Einheit aus dem Space.
 // 28.09. („Mandat an Zielen und Zeit“): Ziele, Meilensteine und Fokus-Blöcke mit totem Mandat/Firma —
 // die drei Prüfungen und ihre Reparatur liegen in lib/crm/verbindungen-planung.ts.
 
@@ -31,6 +33,8 @@ import type { KonfliktStand } from './import-konflikte';
 import type { DateiEintrag } from '@/lib/dateien/regeln';
 import type { FokusBlock } from '@/lib/zeitmessung/modell';
 import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
+import { istSpaceId } from '@/lib/aufgaben/struktur';
+import type { AufgabeBezug } from '@/types/tasks';
 import { einheitenListe } from '@/lib/planung/einheiten';
 import { einheitName } from '@/lib/einheiten';
 import { personenJeFirma, stationenBefund, firmenDerPerson, hauptStation, stationenVon } from './stationen';
@@ -48,7 +52,13 @@ import { PRUEFUNGEN_PLANUNG, planungPruefen, planungReparieren, type PlanungBest
 /** Eine Rechnung aus dem Finanzplan (Speicher „finanzplan“) — nur, was die Prüfung braucht. */
 export interface RechnungKurz { id: string; firmaId?: string; mandatId?: string; status?: string; betrag?: number; bezahltAm?: string; datum?: string; faellig?: string }
 /** Eine Aufgabe (Speicher „tasks“) — nur, was die Prüfung braucht. */
-export interface AufgabeKurz { id: string; title: string; description?: string; projectId: string; status?: string; space?: 'privat' | 'business'; einheit?: string }
+export interface AufgabeKurz {
+  id: string; title: string; description?: string; projectId: string; status?: string; space?: 'privat' | 'business'; einheit?: string;
+  /** Aufgaben-Space (28.09. abends) — ein gültiger gibt die Einheit vor (lib/aufgaben/struktur.ts `einheitFuer`). */
+  spaceId?: string;
+  /** CRM-Bezug (Kontakt, Firma, Mandat, Deal) — nur Kennungen. */
+  bezug?: AufgabeBezug;
+}
 
 export interface VerbindungsBestaende {
   heute: string;
@@ -151,6 +161,7 @@ export const PRUEFUNGEN = {
   'werbesperre-followup': { schwere: 'warnung', bereich: 'datenschutz', reparierbar: false, art: 'followup', text: n => `${n} ${e(n, 'offenes Follow-up geht', 'offene Follow-ups gehen')} an Personen mit Werbesperre — nur mit Vertrag oder ihrer Anfrage weiterverfolgen.` },
   'aufgabe-einheit-ungueltig': { schwere: 'warnung', bereich: 'aufgaben', reparierbar: false, art: 'aufgabe', text: n => `${n} ${e(n, 'Aufgabe trägt', 'Aufgaben tragen')} eine Einheit, die es in der Liste nicht gibt (oder liegen privat).` },
   'aufgabe-ohne-einheit': { schwere: 'hinweis', bereich: 'aufgaben', reparierbar: false, art: 'aufgabe', text: n => `${n} offene Business-${e(n, 'Aufgabe hat', 'Aufgaben haben')} keine Einheit.` },
+  'aufgabe-bezug-tot': { schwere: 'fehler', bereich: 'aufgaben', reparierbar: true, art: 'aufgabe', text: n => `${n} ${e(n, 'Aufgabe zeigt', 'Aufgaben zeigen')} auf Kontakt, Firma, Mandat oder Deal, den es nicht mehr gibt — Reparieren entfernt den Verweis.` },
   'aufgabe-verweis-tot': { schwere: 'hinweis', bereich: 'aufgaben', reparierbar: false, art: 'kennung', text: n => `${n} gelöschte ${e(n, 'Aufgabe wird', 'Aufgaben werden')} noch aus Follow-ups, Kampagnen oder Event-Checklisten genannt.` },
   'fokus-aufgabe-tot': { schwere: 'hinweis', bereich: 'zeit', reparierbar: false, art: 'kennung', text: n => `${n} gelöschte ${e(n, 'Aufgabe hängt', 'Aufgaben hängen')} noch an Fokus-Blöcken — die Zeit zählt mit der gespeicherten Einheit weiter.` },
   'datei-verweis-tot': { schwere: 'fehler', bereich: 'dateien', reparierbar: false, art: 'datei', text: n => `${n} ${e(n, 'Eintrag der Dateiablage zeigt', 'Einträge der Dateiablage zeigen')} auf Kontakt, Firma, Mandat, Deal oder Rechnung, die es nicht mehr gibt.` },
@@ -217,6 +228,16 @@ function mengen(b: VerbindungsBestaende) {
 type Mengen = ReturnType<typeof mengen>;
 
 const kontaktTot = (id: string | undefined, m: Mengen) => !!id && !m.kontakte.has(id);
+/** Die Felder des Aufgaben-Bezugs, deren Kennung es nicht (mehr) gibt. */
+function bezugTot(bz: AufgabeBezug | undefined, m: Mengen): (keyof AufgabeBezug)[] {
+  if (!bz) return [];
+  const tot: (keyof AufgabeBezug)[] = [];
+  if (bz.kontaktId && !m.kontakte.has(bz.kontaktId)) tot.push('kontaktId');
+  if (bz.firmaId && !m.firmen.has(bz.firmaId)) tot.push('firmaId');
+  if (bz.mandatId && !m.mandate.has(bz.mandatId)) tot.push('mandatId');
+  if (bz.dealId && !m.chancen.has(bz.dealId)) tot.push('dealId');
+  return tot;
+}
 /** Die Rollen-Schlüssel eines Deals, deren Person es nicht gibt. */
 const deadRollen = (r: Record<string, unknown> | undefined, m: Mengen) => Object.keys(r ?? {}).filter(id => !m.kontakte.has(id));
 /** Hängt ein Follow-up an etwas, das es nicht gibt? Getrennt: Person vs. Bezug. */
@@ -421,7 +442,8 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
       if (t.einheit) {
         const name = (einheitName(t.einheit) ?? '').toLocaleLowerCase('de-DE');
         if (!business || !erlaubt.has(name)) melde('aufgabe-einheit-ungueltig', t.id);
-      } else if (business && t.status !== 'done') melde('aufgabe-ohne-einheit', t.id);
+      } else if (business && t.status !== 'done' && !istSpaceId(t.spaceId)) melde('aufgabe-ohne-einheit', t.id); // mit Space: Einheit aus dem Space
+      if (bezugTot(t.bezug, m).length) melde('aufgabe-bezug-tot', t.id);
     }
     const verweis = (aid: string | undefined) => { if (aid && !ids.has(aid)) melde('aufgabe-verweis-tot', aid); };
     for (const f of liste(crm.followups)) verweis(f.aufgabeId);
@@ -548,8 +570,28 @@ function leadOhneDeal<L extends { status: string; chanceId?: string; sqlAm?: str
   return { ...ohne, status: 'qualifizierung' } as L;
 }
 
-export type ReparaturSpeicher = 'crm' | 'kontakte' | 'import-konflikte' | 'dateien' | 'ziele' | 'meilensteine' | 'zeit';
+export type ReparaturSpeicher = 'crm' | 'kontakte' | 'import-konflikte' | 'dateien' | 'tasks' | 'ziele' | 'meilensteine' | 'zeit';
 export interface Aenderung { befundId: PruefungId; speicher: ReparaturSpeicher; anzahl: number; text: string }
+
+/**
+ * Tote Einzelverweise aus dem CRM-Bezug der Aufgaben entfernen — rein. Angefasst wird NUR das Feld `bezug`
+ * (lebende Verweise bleiben; leerer Bezug → Feld weg), die Aufgabe selbst und ihre Zeitstempel bleiben.
+ * Unveränderte Aufgaben behalten ihre Referenz. Der Schreibweg (`aufgabenBezugZurueckschreiben` in
+ * verbindungen-laden.ts) rechnet damit in der Sperre auf dem aktuellen Aufgaben-Stand.
+ */
+export function aufgabenBezugReparieren<T extends { bezug?: AufgabeBezug }>(tasks: readonly T[], b: Pick<VerbindungsBestaende, 'kontakte' | 'crm'>): { tasks: T[]; n: number } {
+  const m = mengen(b as VerbindungsBestaende);
+  let n = 0;
+  const neu = tasks.map(t => {
+    const tot = bezugTot(t.bezug, m);
+    if (!tot.length) return t;
+    n++;
+    const rest = Object.fromEntries(Object.entries(t.bezug ?? {}).filter(([k]) => !(tot as string[]).includes(k))) as AufgabeBezug;
+    const { bezug: _weg, ...ohne } = t;
+    return (Object.keys(rest).length ? { ...ohne, bezug: rest } : ohne) as T;
+  });
+  return { tasks: n ? neu : [...tasks], n };
+}
 
 /**
  * Sichere Reparaturen für die gewählten Befunde — rein. Entfernt nur tote Verweise
@@ -754,9 +796,17 @@ export function verbindungenReparieren(b: VerbindungsBestaende, ids: readonly st
     zaehle('datei-fehlt', 'dateien', n, `${n} ${e(n, 'Eintrag', 'Einträge')} der Ablage als „Datei fehlt“ markiert`);
   }
 
+  // CRM-Bezug der Aufgaben (28.09. spät): nur die toten Einzelverweise gehen, die Aufgabe bleibt.
+  let aufgaben = b.aufgaben;
+  if (will.has('aufgabe-bezug-tot') && b.aufgaben) {
+    const r = aufgabenBezugReparieren(liste(b.aufgaben.liste), b);
+    if (r.n) aufgaben = { ...b.aufgaben, liste: r.tasks };
+    zaehle('aufgabe-bezug-tot', 'tasks', r.n, `${r.n} ${e(r.n, 'Aufgabe', 'Aufgaben')}: tote Verweise auf Kontakt, Firma, Mandat oder Deal entfernt (Aufgabe bleibt)`);
+  }
+
   // Mandat an Zielen und Zeit (28.09.): tote Mandats-/Firmen-Bezüge an Zielen, Meilensteinen, Fokus-Blöcken entfernen.
   const planung = planungReparieren(b, will, { mandate: m.mandate, firmen: m.firmen });
   aenderungen.push(...planung.aenderungen);
 
-  return { aenderungen, bestaende: { ...b, crm, kontakte, konflikte, dateien, planung: planung.planung, fokus: planung.fokus } };
+  return { aenderungen, bestaende: { ...b, crm, kontakte, konflikte, dateien, aufgaben, planung: planung.planung, fokus: planung.fokus } };
 }

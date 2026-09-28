@@ -17,7 +17,8 @@ export async function aufgabeStatusSetzen(id: string, status: string, fetchImpl:
   const w = await fetchImpl('/api/state/tasks', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ops: [{ op: 'upsert', task: { ...aktuell, status, updatedAt: new Date().toISOString() } }] }),
+    // Ein eigener Status (28.09. abends) passt nach dem Wechsel nicht mehr — er fällt weg (JSON verwirft undefined).
+    body: JSON.stringify({ ops: [{ op: 'upsert', task: { ...aktuell, status, statusId: undefined, updatedAt: new Date().toISOString() } }] }),
   });
   if (!w.ok) throw new Error('nicht gespeichert');
 }

@@ -24,9 +24,13 @@ import { bezugSaeubern, mitMandatBezug, type MandatKurz } from '@/lib/planung/ma
 import { teile, type BlockZuordnung, type FokusBlock, type ZeitDatei } from './modell';
 
 /** Das, was die Auswertung und die Säuberung von einer Aufgabe brauchen. */
-export interface AufgabeKurz { id: string; titel: string; einheit?: string; business: boolean; offen: boolean }
+export interface AufgabeKurz {
+  id: string; titel: string; einheit?: string; business: boolean; offen: boolean;
+  /** Mandat der Aufgabe (`Task.bezug.mandatId`, 28.09. abends) — ein Fokus-Block auf die Aufgabe übernimmt es. */
+  mandatId?: string;
+}
 
-type AufgabeRoh = { id: string; title: string; description?: string; projectId: string; space?: SpaceId; einheit?: unknown; status?: string };
+type AufgabeRoh = { id: string; title: string; description?: string; projectId: string; space?: SpaceId; spaceId?: string; einheit?: unknown; status?: string; bezug?: { mandatId?: string } };
 
 /** Aus einer gespeicherten Aufgabe (types/tasks.ts) die Kurzform — Space und Einheit über dieselben Regeln wie der Aufgaben-Schreibweg. */
 export function aufgabeKurz(t: AufgabeRoh, orgZuordnung: Record<string, string> = {}): AufgabeKurz {
@@ -36,6 +40,7 @@ export function aufgabeKurz(t: AufgabeRoh, orgZuordnung: Record<string, string> 
     einheit: aufgabeEinheit(t, orgZuordnung),
     business: spaceVonAufgabe(t, orgZuordnung) === 'business',
     offen: t.status !== 'done',
+    ...(typeof t.bezug?.mandatId === 'string' && t.bezug.mandatId ? { mandatId: t.bezug.mandatId } : {}),
   };
 }
 
@@ -46,7 +51,8 @@ export const AUFGABE_ID_MAX = 80;
  * - Privat (und Gemeinsam) verwirft alles — Einheiten und Mandate gibt es nur im Business.
  * - `aufgabeId` bleibt nur, wenn die Aufgabe gefunden wurde und im Business liegt.
  * - Einheit: die der Aufgabe, sonst die direkt gewählte (auch bei einer Aufgabe ohne Einheit), vereinheitlicht.
- * - Mandat (28.09., „Mandat an Zielen und Zeit“): `mandatId`/`firmaId` nur in der Form geprüft; ist das Mandat
+ * - Mandat (28.09., „Mandat an Zielen und Zeit“): trägt die Aufgabe ein Mandat (`bezug.mandatId`), übernimmt der Block
+ *   es (28.09. abends). `mandatId`/`firmaId` nur in der Form geprüft; ist das Mandat
  *   bekannt (`mandate`), kommen Firma und Einheit aus dem Mandat — das Mandat ist das Konkreteste und gewinnt
  *   vor der Einheit der Aufgabe (wie `einheitAusBezug`: Mandat → Deal → Produkt).
  */
@@ -60,7 +66,9 @@ export function zuordnungSaeubern(
   const id = typeof roh.aufgabeId === 'string' ? roh.aufgabeId.trim() : '';
   const mitAufgabe = !!id && id.length <= AUFGABE_ID_MAX && !!aufgabe && aufgabe.id === id && aufgabe.business;
   const einheit = (mitAufgabe ? sauberEinheit(aufgabe!.einheit) : null) ?? sauberEinheit(roh.einheit) ?? undefined;
-  const z: BlockZuordnung = { ...(mitAufgabe ? { aufgabeId: id } : {}), ...(einheit ? { einheit } : {}), ...bezugSaeubern(roh, true) };
+  // Mandat der Aufgabe (28.09. abends): ein Block auf eine Aufgabe mit Mandat übernimmt es (wie die Einheit der Aufgabe gewinnt).
+  const bezugRoh = mitAufgabe && aufgabe!.mandatId ? { ...roh, mandatId: aufgabe!.mandatId } : roh;
+  const z: BlockZuordnung = { ...(mitAufgabe ? { aufgabeId: id } : {}), ...(einheit ? { einheit } : {}), ...bezugSaeubern(bezugRoh, true) };
   return mitMandatBezug(z, mandate, true);
 }
 

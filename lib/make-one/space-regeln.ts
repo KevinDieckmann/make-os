@@ -15,8 +15,12 @@ export const istSpace = (v: unknown): v is SpaceId => v === 'privat' || v === 'b
 /** Organisation → Space: nur „privat“ ist Privat. */
 export const spaceVonOrg = (org: string): SpaceId => (org === 'privat' ? 'privat' : 'business');
 
-/** Der Space einer Aufgabe: die eigene Abweichung, sonst der Ort (Text schlägt Projekt, wie bei orgVon). */
-export function spaceVonAufgabe(t: { id: string; title: string; description?: string; projectId: string; space?: SpaceId }, orgZuordnung: Record<string, string> = {}): SpaceId {
+/**
+ * Der Space einer Aufgabe: seit 28.09. abends zuerst der Aufgaben-Space (`spaceId`: privat → Privat, Firmen und
+ * Mandanten → Business, lib/aufgaben/struktur.ts), sonst die eigene Abweichung, sonst der Ort (Text schlägt Projekt).
+ */
+export function spaceVonAufgabe(t: { id: string; title: string; description?: string; projectId: string; space?: SpaceId; spaceId?: string }, orgZuordnung: Record<string, string> = {}): SpaceId {
+  if (typeof t.spaceId === 'string' && t.spaceId) return t.spaceId === 'privat' ? 'privat' : 'business';
   return t.space ?? spaceVonOrg(orgVon(t, orgZuordnung));
 }
 

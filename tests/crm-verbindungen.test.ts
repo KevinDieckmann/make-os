@@ -60,7 +60,7 @@ describe('Verbindungsprüfung — sauberer Bestand', () => {
   });
   it('jede Prüfung hat Satz, Schwere und Bereich; reparierbar ist eine feste Teilmenge', () => {
     for (const id of PRUEFUNG_IDS) expect(PRUEFUNGEN[id].text(2)).toMatch(/^\S/);
-    expect(REPARIERBAR).toEqual(['firma-mutter-tot', 'werte-ausserhalb-wertelisten', 'firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'einschraenkung-kampagne', 'datei-fehlt', 'konflikt-veraltet', 'kontakt-firma-text-abweichend', 'kontakt-typ-abweichend', 'teilnahme-doppelt', 'ziel-mandat-tot', 'meilenstein-mandat-tot', 'zeit-mandat-tot']);
+    expect(REPARIERBAR).toEqual(['firma-mutter-tot', 'werte-ausserhalb-wertelisten', 'firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'einschraenkung-kampagne', 'aufgabe-bezug-tot', 'datei-fehlt', 'konflikt-veraltet', 'kontakt-firma-text-abweichend', 'kontakt-typ-abweichend', 'teilnahme-doppelt', 'ziel-mandat-tot', 'meilenstein-mandat-tot', 'zeit-mandat-tot']);
   });
 });
 
@@ -120,6 +120,8 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   ['werbesperre-followup', b => { b.kontakte[0].werbesperre = { seit: HEUTE, grund: 'Widerspruch' }; }, 1, 'fu-1'],
   ['aufgabe-einheit-ungueltig', b => { b.aufgaben!.liste[1].einheit = 'KD Ventures'; b.aufgaben!.liste.push({ id: 't-3', title: 'x', projectId: 'p', space: 'business', einheit: 'Erfundene Einheit', status: 'todo' }); }, 2, 't-2'],
   ['aufgabe-ohne-einheit', b => { b.aufgaben!.liste.push({ id: 't-4', title: 'x', projectId: 'p', status: 'todo' }, { id: 't-5', title: 'y', projectId: 'p', status: 'done' }); }, 1, 't-4'],
+  // CRM-Bezug der Aufgaben (28.09. spät): je totem Feld eine Aufgabe, die lebende zählt nicht.
+  ['aufgabe-bezug-tot', b => { const t = (id: string, bezug: object) => ({ id, title: 'x', projectId: 'p-1', space: 'business' as const, einheit: 'KD Ventures', status: 'todo', bezug }); b.aufgaben!.liste.push(t('t-bk', { kontaktId: 'c-weg1' }), t('t-bf', { firmaId: 'f-weg' }), t('t-bm', { mandatId: 'm-weg' }), t('t-bd', { dealId: 'd-weg' }), t('t-ok', { kontaktId: 'c-anna1', firmaId: 'f-alpha', mandatId: 'm-1', dealId: 'd-1' })); }, 4, 't-bk'],
   ['aufgabe-verweis-tot', b => { b.crm.followups[0].aufgabeId = 't-weg'; b.crm.events[0].checkliste = [{ id: 'c1', text: 'x', tageVorher: 3, erledigt: false, aufgabeId: 't-weg2' }]; }, 2, 't-weg'],
   ['fokus-aufgabe-tot', b => { b.fokus![0].bloecke[0].aufgabeId = 't-weg'; }, 1, 't-weg'],
   ['datei-verweis-tot', b => { b.dateien!.eintraege[0].dealId = 'd-weg'; }, 1, 'd-abcd1'],
@@ -161,6 +163,23 @@ describe('Verbindungsprüfung — je Prüfung ein Fall', () => {
     expect(b!.beispiele).toContain(beispiel);
     expect(b!.schwere).toBe(PRUEFUNGEN[id].schwere);
     expect(b!.reparierbar).toBe(PRUEFUNGEN[id].reparierbar);
+  });
+  it('Aufgaben-Bezug: jeder tote Einzelverweis (Kontakt, Firma, Mandat, Deal) wird gefunden, lebende nicht', () => {
+    const mitBezug = (bezug: object) => mit(x => { x.aufgaben!.liste[0].bezug = bezug; });
+    for (const bezug of [{ kontaktId: 'c-weg1' }, { firmaId: 'f-weg' }, { mandatId: 'm-weg' }, { dealId: 'd-weg' }, { kontaktId: 'c-anna1', dealId: 'd-weg' }]) {
+      expect(finde(mitBezug(bezug), 'aufgabe-bezug-tot'), JSON.stringify(bezug)).toMatchObject({ anzahl: 1, beispiele: ['t-1'], art: 'aufgabe', bereich: 'aufgaben', schwere: 'fehler' });
+    }
+    expect(finde(mitBezug({ kontaktId: 'c-anna1', firmaId: 'f-alpha', mandatId: 'm-1', dealId: 'd-1' }), 'aufgabe-bezug-tot')).toBeUndefined();
+    // Ohne geladene Aufgaben keine Prüfung.
+    expect(verbindungenPruefen({ ...mitBezug({ kontaktId: 'c-weg1' }), aufgaben: null }).map(x => x.id)).not.toContain('aufgabe-bezug-tot');
+  });
+  it('Aufgabe mit gültigem Space ist nie „ohne Einheit“ (Einheit kommt aus dem Space) — ohne Space schon', () => {
+    const b = mit(x => { x.aufgaben!.liste.push(
+      { id: 't-kdc', title: 'x', projectId: 'p', status: 'todo', spaceId: 'kdc' },
+      { id: 't-mand', title: 'y', projectId: 'p', status: 'todo', spaceId: 'm-f-alpha' },
+      { id: 't-kaputt', title: 'z', projectId: 'p', status: 'todo', spaceId: 'gibt es nicht', space: 'business' },
+    ); });
+    expect(finde(b, 'aufgabe-ohne-einheit')).toMatchObject({ anzahl: 1, beispiele: ['t-kaputt'] });
   });
   it('eine stornierte Rechnung zählt nicht als gestellt (28.09., K3)', () => {
     expect(finde(mit(() => {}), 'mandat-ohne-rechnung')).toBeUndefined();
@@ -215,6 +234,8 @@ describe('Verbindungen reparieren', () => {
     b.kontakte[1].firma = 'Neue Arbeit GmbH';
     b.kontakte[0].typ = 'Partner'; b.kontakte[0].typen = ['Kunde', 'Partner'];
     b.crm.teilnahmen.push({ id: 'tn-2', eventId: 'ev-1', kontaktId: 'c-bert1', status: 'da', notiz: 'kam spät', followUpAm: HEUTE, geaendert: J });
+    // 28.09. spät: Aufgabe mit toten und lebenden CRM-Verweisen.
+    b.aufgaben!.liste.push({ id: 't-bz', title: 'Nachfassen', projectId: 'p-1', space: 'business', einheit: 'KD Ventures', status: 'todo', bezug: { kontaktId: 'c-weg1', firmaId: 'f-alpha', dealId: 'd-weg' } });
     // Mandat an Zielen und Zeit (28.09.): tote Bezüge an Ziel, Meilenstein, Fokus-Block.
     b.planung!.ziele[0].ziele.push({ id: 'z-9', mandatId: 'm-weg', firmaId: 'f-alpha' });
     b.planung!.meilensteine.push({ id: 'ms-9', firmaId: 'f-weg' });
@@ -266,13 +287,16 @@ describe('Verbindungen reparieren', () => {
     // Konflikte: nur der veraltete fällt weg; Datei nur markiert.
     expect(n.konflikte!.konflikte.map(x => x.kontaktId)).toEqual(['c-anna1']);
     expect(n.dateien!.eintraege[0].dateiFehlt).toBe(HEUTE);
+    // Aufgaben: nur die toten Einzelverweise gehen, die Aufgabe und der lebende Verweis bleiben.
+    expect(n.aufgaben!.liste.length).toBe(b.aufgaben!.liste.length);
+    expect(n.aufgaben!.liste.find(t => t.id === 't-bz')).toEqual({ ...b.aufgaben!.liste.find(t => t.id === 't-bz'), bezug: { firmaId: 'f-alpha' } });
     // Mandat an Zielen und Zeit: nur die tote Kennung geht, der Rest (lebende Firma, Einheit, Sekunden) bleibt.
     expect(n.planung!.ziele[0].ziele.find(z => z.id === 'z-9')).toEqual({ id: 'z-9', firmaId: 'f-alpha' });
     expect(n.planung!.meilensteine.find(m => m.id === 'ms-9')).toEqual({ id: 'ms-9' });
     expect(n.planung!.ziele[0].ziele.find(z => z.id === 'z-1')).toEqual({ id: 'z-1', mandatId: 'm-1', firmaId: 'f-alpha' });
     expect(n.fokus![0].bloecke.at(-1)).toMatchObject({ sek: 60, einheit: 'KD Ventures' });
     expect(n.fokus![0].bloecke.at(-1)).not.toHaveProperty('mandatId');
-    expect(r.aenderungen.map(a => a.speicher)).toEqual(expect.arrayContaining(['crm', 'kontakte', 'import-konflikte', 'dateien', 'ziele', 'meilensteine', 'zeit']));
+    expect(r.aenderungen.map(a => a.speicher)).toEqual(expect.arrayContaining(['crm', 'kontakte', 'import-konflikte', 'dateien', 'tasks', 'ziele', 'meilensteine', 'zeit']));
   });
 
   it('nur die gewählten Befunde — und nicht reparierbare Kennungen werden ignoriert', () => {
@@ -294,6 +318,26 @@ describe('Verbindungen reparieren', () => {
     const r = verbindungenReparieren(sauber(), REPARIERBAR, JETZT, 'kevin');
     expect(r.aenderungen).toEqual([]);
     expect(r.bestaende).toEqual(sauber());
+  });
+});
+
+describe('Aufgaben-Bezug reparieren (28.09. spät)', () => {
+  it('entfernt nur die toten Felder; lebende bleiben, leerer Bezug fällt weg, sonst nichts an der Aufgabe', () => {
+    const b = mit(x => {
+      x.aufgaben!.liste[0].bezug = { kontaktId: 'c-anna1', firmaId: 'f-weg', mandatId: 'm-1', dealId: 'd-weg' };
+      x.aufgaben!.liste[1].bezug = { kontaktId: 'c-weg1' };
+      x.aufgaben!.liste.push({ id: 't-3', title: 'Lebt', projectId: 'p-1', space: 'business', einheit: 'KD Ventures', status: 'todo', bezug: { mandatId: 'm-1' } });
+    });
+    const r = verbindungenReparieren(b, ['aufgabe-bezug-tot'], JETZT, 'kevin');
+    expect(r.aenderungen).toEqual([{ befundId: 'aufgabe-bezug-tot', speicher: 'tasks', anzahl: 2, text: expect.stringMatching(/^2 Aufgaben: tote Verweise/) }]);
+    const l = r.bestaende.aufgaben!.liste;
+    expect(l[0]).toEqual({ ...b.aufgaben!.liste[0], bezug: { kontaktId: 'c-anna1', mandatId: 'm-1' } });
+    expect(l[1]).not.toHaveProperty('bezug');
+    expect(l[1]).toEqual((({ bezug: _b, ...rest }) => rest)(b.aufgaben!.liste[1]));
+    expect(l[2]).toBe(b.aufgaben!.liste[2]);
+    expect(r.bestaende.crm).toBe(b.crm);
+    expect(verbindungenPruefen(r.bestaende).map(x => x.id)).not.toContain('aufgabe-bezug-tot');
+    expect(verbindungenReparieren(r.bestaende, ['aufgabe-bezug-tot'], JETZT, 'kevin').aenderungen).toEqual([]);
   });
 });
 

@@ -57,7 +57,8 @@ export async function POST(req: Request) {
     if (!von) return NextResponse.json({ ok: false, error: 'von nötig.' }, { status: 400 });
     const aufgabe = await aufgabeZu(b.aufgabeId);
     if (aufgabe === null) return NextResponse.json({ ok: false, error: 'Aufgabe nicht gefunden.' }, { status: 404 });
-    const mandate = await mandateFuerBezug(b);
+    // Das Mandat der Aufgabe (28.09. abends) zählt mit — dann wird das CRM gelesen, auch wenn der Block keins nennt.
+    const mandate = await mandateFuerBezug({ ...b, mandatId: aufgabe?.mandatId ?? b.mandatId });
     const d = await fokusZuordnen(person, von, schluessel => zuordnungSaeubern(schluessel, b, aufgabe, mandate));
     if (!d) return NextResponse.json({ ok: false, error: 'Block nicht gefunden.' }, { status: 404 });
     return NextResponse.json({ ok: true, bild: bild(d, localDay()) }, { headers: { 'Cache-Control': 'no-store' } });
@@ -69,7 +70,7 @@ export async function POST(req: Request) {
   if (Date.parse(bis) <= Date.parse(von)) return NextResponse.json({ ok: false, error: 'Ende liegt vor dem Anfang.' }, { status: 400 });
   // Eine verschwundene Aufgabe kostet nicht den Block: dann eben ohne Aufgabe (die Einheit bleibt, wenn gewählt).
   const aufgabe = await aufgabeZu(b.aufgabeId);
-  const zuordnung = zuordnungSaeubern(schluessel, b, aufgabe ?? undefined, await mandateFuerBezug(b));
+  const zuordnung = zuordnungSaeubern(schluessel, b, aufgabe ?? undefined, await mandateFuerBezug({ ...b, mandatId: aufgabe?.mandatId ?? b.mandatId }));
   const d = await fokusAbschliessen(person, { von, bis, schluessel, label: typeof b.label === 'string' ? b.label : '', ...zuordnung });
   return NextResponse.json({ ok: true, bild: bild(d, localDay()) }, { headers: { 'Cache-Control': 'no-store' } });
 }

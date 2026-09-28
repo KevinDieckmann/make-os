@@ -4,6 +4,9 @@
 // sonst zustaendig), am Kontakt steht die Übergabe im Verlauf, mit Notiz und
 // Frist wird sie dort zum nächsten Schritt (→ Power Hour der anderen Person),
 // und die andere Person bekommt eine Aufgabe mit Link. Nichts wird versendet.
+// 28.09. spät (Aufgaben wie Monday/ClickUp): die Aufgabe trägt den CRM-Bezug (`bezug`: Kontakt bzw. Deal/Mandat
+// + Firma) und, wo er feststeht, ihren Space (aktives Mandat → Mandant `m-<firmaId>`, sonst die Gesellschaft).
+// Der Link bleibt zusätzlich in der Beschreibung (andere Leser, z. B. Art. 15/17, nutzen ihn).
 
 import { updateJson } from '@/lib/store/local-db';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
@@ -15,6 +18,10 @@ import { markttraktion, mandateLink } from './adresse';
 import { einheitAusBezug } from '@/lib/aufgaben/einheit';
 import type { CrmBestand, CrmListe } from './typen';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
+import { gesellschaftAusEinheit } from '@/lib/einheiten';
+import { einheitFuer, istSpaceId, mandantSpaceId } from '@/lib/aufgaben/struktur';
+import { bezugSauber } from '@/lib/aufgaben/saeubern';
+import type { AufgabeBezug, AufgabenSpaceId } from '@/types/tasks';
 
 import { tagVon } from '@/lib/zeit';
 export const UEBERGABE_ARTEN = ['kontakt', 'kontakte', 'chance', 'mandat', 'event', 'kampagne', 'beitrag', 'newsletter'] as const;
@@ -40,6 +47,9 @@ export async function uebergeben(b: UebergabeEingabe, person: string, protokollW
   let anzahl = 0;
   /** Business-Einheit der Aufgabe (Prüfbericht F1) — aus der Gesellschaft von Deal/Mandat, wie bei den Heads. */
   let einheit: string | undefined;
+  /** CRM-Bezug der Aufgabe (nur Kennungen) und — bei aktivem Mandat — der Mandanten-Space. */
+  let bezug: AufgabeBezug | undefined;
+  let mandantSpace: AufgabenSpaceId | undefined;
 
   if (art === 'kontakt' || art === 'kontakte') {
     const ids = new Set((art === 'kontakt' ? [b.id] : (b.ids ?? [])).map(String).filter(x => /^c-[a-z0-9-]{4,60}$/.test(x)).slice(0, 300));
@@ -58,6 +68,7 @@ export async function uebergeben(b: UebergabeEingabe, person: string, protokollW
     if (!anzahl) return { ok: false, fehler: 'Nichts übergeben — gesperrt oder nicht gefunden.', status: 404 };
     titel = anzahl === 1 ? namen[0] : `${anzahl} Kontakte`;
     link = art === 'kontakt' ? markttraktion('kontakte', undefined, Array.from(ids)[0]) : `${markttraktion('kontakte')}&wer=${an}`;
+    if (art === 'kontakt') bezug = bezugSauber({ kontaktId: Array.from(ids)[0] });
   } else {
     const liste = LISTE[art]!;
     const id = String(b.id ?? '');
@@ -69,6 +80,12 @@ export async function uebergeben(b: UebergabeEingabe, person: string, protokollW
       const x = l[i];
       anzahl = 1; titel = String(x.titel ?? x.name ?? x.kunde ?? id);
       einheit = art === 'chance' ? einheitAusBezug(c, { chanceId: id }) : art === 'mandat' ? einheitAusBezug(c, { mandatId: id }) : undefined;
+      const firmaId = typeof x.firmaId === 'string' && x.firmaId ? x.firmaId : undefined;
+      if (art === 'chance') bezug = bezugSauber({ dealId: id, firmaId });
+      if (art === 'mandat') {
+        bezug = bezugSauber({ mandatId: id, firmaId });
+        if (x.status === 'aktiv' && firmaId && istSpaceId(mandantSpaceId(firmaId))) mandantSpace = mandantSpaceId(firmaId);
+      }
       const neu = [...l]; neu[i] = { ...x, [feld]: an, geaendert: jetzt, geaendertVon: person };
       // Schreibt jetzt die Stimme selbst, braucht es keine Freigabe mehr.
       if (liste === 'beitraege' && x.freigabe && x.stimme === an) delete (neu[i] as Record<string, unknown>).freigabe;
@@ -84,9 +101,12 @@ export async function uebergeben(b: UebergabeEingabe, person: string, protokollW
   // Die andere Person bekommt eine Aufgabe — nicht, wer sich selbst etwas gibt, und nicht bei „beide“.
   let aufgabe = false;
   if (an !== person && an !== BEIDE) {
+    // Space: aktives Mandat → Mandant, sonst die Gesellschaft der Einheit; sonst keiner (die Übernahme leitet ihn ab).
+    const spaceId: AufgabenSpaceId | undefined = mandantSpace ?? gesellschaftAusEinheit(einheit);
+    const ort = spaceId ? { spaceId, space: 'business', ...(einheitFuer(spaceId, einheit) ? { einheit: einheitFuer(spaceId, einheit) } : {}) } : einheit ? { space: 'business', einheit } : {};
     await updateJson<{ tasks: Record<string, unknown>[] }>('tasks', cur => {
       const f = cur ?? { tasks: [] };
-      const t = { ...(einheit ? { space: 'business', einheit } : {}), id: `ueb-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, title: `Von ${vonName}: ${titel}`.slice(0, 200),
+      const t = { ...ort, ...(bezug ? { bezug } : {}), id: `ueb-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, title: `Von ${vonName}: ${titel}`.slice(0, 200),
         description: `${vonName} hat dir ${art === 'kontakte' ? `${anzahl} Kontakte` : titel} in der Markttraktion übergeben.${notiz ? `\n\n„${notiz}“` : ''}\n\n${link}`,
         status: 'todo', priority: 'medium', assignee: an, tags: ['markttraktion', 'uebergabe'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, ...(frist ? { dueDate: frist } : {}) };
       return { ...f, tasks: [...(f.tasks ?? []), t] };

@@ -41,9 +41,13 @@ import { WhoopImport } from '../WhoopImport';
 import { EinheitMarke } from '../aufgaben/Einheit';
 import type { Task } from '@/types/tasks';
 import { EINHEIT_OHNE, passtEinheitFilter } from '@/lib/aufgaben/einheit';
-import { KERN_EINHEITEN_NAMEN } from '@/lib/einheiten';
+import { KERN_EINHEITEN_NAMEN, gesellschaftAusEinheit } from '@/lib/einheiten';
+import { sonstigeProjektId, einheitVonSpace } from '@/lib/aufgaben/struktur';
+import { spaceAusFlaeche } from '@/lib/flaeche/space';
 
-export interface WidgetProps { e: Einstellungen; titel?: string; i: number }
+/** `seite` = die Fläche, auf der das Widget steht (28.09. abends) — z. B. für den Standard-Space der Aufgaben. */
+export interface WidgetProps { e: Einstellungen; titel?: string; i: number; seite?: string }
+
 export interface EinstellungDef { k: string; label: string; art: 'wahl' | 'text' | 'schalter'; optionen?: { w: Wert; label: string }[]; standard: Wert }
 export interface WidgetDef { art: string; label: string; bereich: string; beschreibung: string; breite: Breite; einstellungen?: EinstellungDef[]; Komponente: ComponentType<WidgetProps> }
 /** Ein Eintrag im „+ Widget“-Katalog — darf ein Widget mit Voreinstellung sein (Wochenfokus = Fokus mit horizont=woche). */
@@ -79,23 +83,28 @@ const tagKurz = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('de-
 const plusTage = (d: string, n: number) => { const x = new Date(`${d}T12:00:00`); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
 
 // ── Aufgaben ────────────────────────────────────────────────────────────────
-function AufgabenWidget({ e, titel, i }: WidgetProps) {
+function AufgabenWidget({ e, titel, i, seite }: WidgetProps) {
   const router = useRouter();
   const heute = localDay();
   const { state, dispatch } = useTasks();
   const [neu, setNeu] = useState('');
-  const n = num(e.anzahl, 8), nur = str(e.nur, 'dran'), sp = str(e.space, 'alle'), eh = str(e.einheit, 'alle');
+  // Ohne Einstellung gilt der Space der Fläche (28.09. abends) — auf Privat-Flächen nie Business-Aufgaben und umgekehrt.
+  const n = num(e.anzahl, 8), nur = str(e.nur, 'dran'), sp = str(e.space, spaceAusFlaeche(seite)), eh = str(e.einheit, 'alle');
   // Heute sieht beides (Kevin 26.09.); ein Widget kann auf einen Space begrenzt sein —
   // und im Business auf eine Einheit (27.09.): dann zählen nur Business-Aufgaben dieser Einheit.
   const passtEh = (t: Task) => eh === 'alle' || (spaceVonAufgabe(t) === 'business' && passtEinheitFilter(t.einheit, eh === 'ohne' ? EINHEIT_OHNE : eh));
-  const offen = state.tasks.filter(t => t.status !== 'done' && (sp === 'alle' || spaceVonAufgabe(t) === sp) && passtEh(t));
+  // Unteraufgaben (28.09. abends) nur, wenn sie dran sind (fällig/kritisch) — in „alle offenen“ zählt die Aufgabe selbst.
+  const offen = state.tasks.filter(t => t.status !== 'done' && (sp === 'alle' || spaceVonAufgabe(t) === sp) && passtEh(t) && (!t.parentId || nur !== 'alle'));
   const liste = (nur === 'alle' ? offen : offen.filter(t => (t.dueDate && t.dueDate <= heute) || t.priority === 'critical'))
     .sort((a, b) => ((a.dueDate ?? '9') < (b.dueDate ?? '9') ? -1 : 1)).slice(0, n);
   const projekt = (id: string) => state.projects.find(p => p.id === id)?.title ?? '';
   const anlegen = () => {
     const p = parseSchnell(neu.trim(), state.projects); if (!p.title) return;
     const space = sp === 'privat' || sp === 'business' ? sp : eh !== 'alle' ? 'business' : undefined;
-    dispatch({ type: 'ADD_TASK', payload: { projectId: p.projectId ?? state.projects[0]?.id ?? '', ...(space ? { space } : {}), ...(space === 'business' && eh !== 'alle' && eh !== 'ohne' ? { einheit: eh } : {}), title: p.title, description: '', status: 'todo', priority: p.priority, assignee: p.assignee, tags: [], subTasks: [], dependencies: [], sortOrder: 0, dueDate: p.dueDate ?? heute } });
+    // Aufgaben-Space (28.09. abends): Privat → privat; Business → die Firma der Einheit, sonst KD Ventures; ohne Projekt → „Sonstige“.
+    const spaceId = space === 'privat' ? 'privat' : space === 'business' ? (gesellschaftAusEinheit(eh) ?? 'kdv') : undefined;
+    const einheit = spaceId ? einheitVonSpace(spaceId) : undefined;
+    dispatch({ type: 'ADD_TASK', payload: { projectId: p.projectId ?? (spaceId ? sonstigeProjektId(spaceId) : state.projects[0]?.id ?? ''), ...(space ? { space } : {}), ...(spaceId ? { spaceId } : {}), ...(einheit ? { einheit } : {}), title: p.title, description: '', status: 'todo', priority: p.priority, assignee: p.assignee, tags: [], subTasks: [], dependencies: [], sortOrder: 0, dueDate: p.dueDate ?? heute } });
     setNeu('');
   };
   return (

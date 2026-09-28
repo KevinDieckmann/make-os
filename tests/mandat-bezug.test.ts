@@ -5,7 +5,7 @@ import { bezugSaeubern, sauberKennung, mandatKurzListe, mitMandatBezug, mandatWa
 import { sauberZiel } from '../lib/planung/ziele';
 import { sauberMeilenstein } from '../lib/planung/meilensteine';
 import { abgeleitetesZiel, meilensteineAbleiten } from '../lib/planung/kaskade';
-import { zuordnungSaeubern, einheitVonBlock, type AufgabeKurz } from '../lib/zeitmessung/einheiten';
+import { zuordnungSaeubern, einheitVonBlock, aufgabeKurz, type AufgabeKurz } from '../lib/zeitmessung/einheiten';
 import { blockZuordnen, blockUmbuchen, fokusVerbuchen, LEER_ZEIT, type FokusBlock, type ZeitDatei } from '../lib/zeitmessung/modell';
 import { zeitJeMandat, mandateAuswerten, honorarImZeitraum, MANDAT_OHNE, SATZ_AB_SEK } from '../lib/zeitmessung/mandate';
 import { planungPruefen, planungReparieren, bezugBereinigen, zieleDateiBereinigen, meilensteinDateiBereinigen, zeitDateiBereinigen, type PlanungBestand } from '../lib/crm/verbindungen-planung';
@@ -111,6 +111,15 @@ describe('Zeit — Zuordnung mit Mandat', () => {
       .toEqual({ aufgabeId: 'a1', einheit: 'MAKE OS UG', mandatId: 'm-ug', firmaId: 'f-nord' });
     expect(zuordnungSaeubern('business:aufgaben', { mandatId: 'm-deal', einheit: 'Selbstständigkeit' }, undefined, KARTE))
       .toEqual({ einheit: 'KD Ventures', mandatId: 'm-deal', firmaId: 'f-sued' });
+  });
+
+  it('Aufgabe mit Mandat (bezug.mandatId, 28.09. abends): der Block übernimmt es — samt Firma und Einheit aus dem Mandat', () => {
+    expect(zuordnungSaeubern('business:aufgaben', { aufgabeId: 'a1' }, A('a1', { einheit: 'Kunden', mandatId: 'm-ug' }), KARTE))
+      .toEqual({ aufgabeId: 'a1', einheit: 'MAKE OS UG', mandatId: 'm-ug', firmaId: 'f-nord' });
+    // Ohne Aufgabe (nicht gefunden) nichts vom Mandat der Aufgabe.
+    expect(zuordnungSaeubern('business:aufgaben', { aufgabeId: 'a1' }, undefined, KARTE)).toEqual({});
+    // aufgabeKurz liest das Mandat aus dem Bezug der gespeicherten Aufgabe.
+    expect(aufgabeKurz({ id: 'a2', title: 'Belege', projectId: 'p', spaceId: 'm-f-nord', einheit: 'Kunden', bezug: { mandatId: 'm-ug' } })).toMatchObject({ mandatId: 'm-ug', business: true });
   });
 
   it('ohne geladene Mandate bleibt die Kennung (Form geprüft); Privat verwirft alles; Unförmiges fällt weg', () => {

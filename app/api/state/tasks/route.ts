@@ -1,177 +1,106 @@
-// ─── MAKE OS — Aufgaben-Zustand persistieren (lokal) ────────────────────────
-// GET  → gespeicherter TasksState (oder null beim Erststart)
-// PUT  → speichert den kompletten TasksState
+// ─── MAKE OS — Aufgaben-Bestand (Speicher „tasks“) ──────────────────────────
+// GET   → { state: { projects, tasks, listen, statusEigen } (jede Zeile mit `stand`), spaces }
+// PATCH → Einzeländerungen: { ops: [{ op: 'upsert', task|eintrag, stand? } | { op: 'delete', id, stand? }],
+//          struktur?: { projekte?, listen?, status? } (dieselbe Form), massenAenderung?, massenLoeschung? }
+// PUT   → ganzer Stand — nur noch für den allerersten Stand (leerer Bestand) und alte Fenster.
 //
-// Mit Schrumpf-Wächter: Ein Client, der seinen Stand nicht laden konnte,
-// darf nicht die echten Aufgaben mit einem leeren oder Beispiel-Stand
-// überschreiben. Die Prüfung läuft INNERHALB von updateJson, damit sie auch
-// bei zwei gleichzeitigen Schreibversuchen greift.
+// Seit 28.09. abends (Aufgaben wie Monday/ClickUp, AUFGABEN_PLAN.md):
+//   · Zugang nur Haushalt des Inhabers — lesen auch der Systemlauf (Dienstweg ohne Person), schreiben nur
+//     eine Person dieses Haushalts (vorher fehlte die Prüfung ganz).
+//   · Stand je Zeile: veraltet → 409 mit `konflikte[]` und dem aktuellen Bestand, nichts überschrieben.
+//   · Grenzen → 413 statt still kürzen; Änderungsprotokoll ohne Werte; Meldungen bei Zuweisung/Kommentar.
+//   · Übernahme des Altbestands (Space, Unteraufgaben, Sonstige) beim Lesen und in jeder Schreibsperre.
+// Die Logik liegt in lib/aufgaben/speicher.ts (Server) und lib/aufgaben/struktur.ts (rein).
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { protokolliereBestand, werAus } from '@/lib/store/aenderungsprotokoll';
 import { brauchtBestaetigung, MASSEN_GRENZE } from '@/lib/store/massen-wache';
-import { aufgabeEinheit } from '@/lib/aufgaben/einheit';
-import type { Task, TasksState } from '@/types/tasks';
+import { imHaushaltDesInhabers, imHaushaltOderSystemlauf, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
+import { zuGross } from '@/lib/zugang/umfang';
+import { uebernehmen } from '@/lib/aufgaben/struktur';
+import { taskSauber, projektSauber, listeSauber, statusSauber, AUFGABEN_GRENZEN, ZuGross } from '@/lib/aufgaben/saeubern';
+import { ladeAufgaben, spacesFuer, fuerBrowser, opsLesen, aufgabenAendern, orgZuordnung, AUFGABEN_SPEICHER } from '@/lib/aufgaben/speicher';
+import type { Task, TasksState, Project, AufgabenListe, AufgabenStatus } from '@/types/tasks';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  const state = await loadJson<TasksState>('tasks');
-  return NextResponse.json({ state });
+const GESPERRT = () => NextResponse.json({ ...KARTEI_GESPERRT, error: KARTEI_GESPERRT.fehler }, { status: 403 });
+/** Größter Body, den die Route liest (ganzer Stand beim PUT). */
+const MAX_BYTES = 20 * 1024 * 1024;
+
+export async function GET(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return GESPERRT();
+  const roh = await loadJson<TasksState>(AUFGABEN_SPEICHER);
+  if (!roh) return NextResponse.json({ state: null, spaces: await spacesFuer({ projects: [], tasks: [] }) });
+  const state = await ladeAufgaben();
+  return NextResponse.json({ state: fuerBrowser(state), spaces: await spacesFuer(state) });
 }
 
-export async function PUT(req: Request) {
-  let body: unknown;
+async function body(req: Request): Promise<Record<string, unknown> | NextResponse> {
+  if (zuGross(req, MAX_BYTES)) return NextResponse.json({ ok: false, error: 'Abgelehnt: zu groß.' }, { status: 413 });
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 });
-  }
-  const s = body as Partial<TasksState> & { massenAenderung?: boolean; massenLoeschung?: boolean };
-  if (!s || !Array.isArray(s.tasks) || !Array.isArray(s.projects)) {
-    return NextResponse.json({ ok: false, error: 'Ungültiger Zustand: tasks/projects fehlen.' }, { status: 400 });
-  }
-  // Auch der Voll-Stand geht durch dieselbe Säuberung wie PATCH (26.09.).
-  const orgs = await orgZuordnung();
-  s.tasks = s.tasks.slice(0, 5000).map(t => taskSauber(t, orgs)).filter((t): t is Task => !!t);
-
-  let abgelehnt = false;
-  // Zweiter Weg, auf dem Arbeit verschwindet: nicht löschen, sondern zuklappen.
-  // Der Schrumpf-Schutz sieht das nicht — die Liste bleibt ja gleich lang.
-  let massen = 0;
-  await updateJson<TasksState>('tasks', current => {
-    const alt = current?.tasks?.length ?? 0;
-    // Ab 10 Aufgaben: die Hälfte auf einmal zu verlieren ist fast immer ein
-    // Fehler — aber eben nur fast. Bis zum 07.09. gab es GAR KEINEN Weg, das
-    // Board absichtlich zu leeren; wer es wollte, musste am Wächter vorbei in
-    // die Datei schreiben. Ein Schutz, den man nur umgehen kann, wird umgangen.
-    // Deshalb jetzt derselbe Weg wie bei der Massen-Erledigung: ablehnen, bis
-    // der Aufrufer ausdrücklich bestätigt.
-    if (alt >= 10 && s.tasks!.length < alt / 2 && s.massenLoeschung !== true) {
-      abgelehnt = true;
-      return current ?? { projects: s.projects!, tasks: s.tasks! };
-    }
-    const pruef = brauchtBestaetigung(current?.tasks ?? [], s.tasks!, s.massenAenderung === true);
-    if (pruef.noetig) {
-      massen = pruef.anzahl;
-      return current ?? { projects: s.projects!, tasks: s.tasks! };
-    }
-    return { projects: s.projects!, tasks: s.tasks! };
-  });
-
-  if (abgelehnt) {
-    return NextResponse.json(
-      {
-        ok: false, massenLoeschung: true,
-        error: 'Abgelehnt: das hätte über die Hälfte der Aufgaben gelöscht. Wenn das so gewollt ist, noch einmal mit ausdrücklicher Bestätigung schicken.',
-      },
-      { status: 409 },
-    );
-  }
-  if (massen) {
-    return NextResponse.json(
-      {
-        ok: false, massenAenderung: true, anzahl: massen, grenze: MASSEN_GRENZE,
-        error: `Abgelehnt: das hätte ${massen} Aufgaben auf einmal erledigt. Wenn das so gewollt ist, noch einmal mit ausdrücklicher Bestätigung schicken.`,
-      },
-      { status: 409 },
-    );
-  }
-  return NextResponse.json({ ok: true });
-}
-
-/**
- * Einzelne Änderungen einspielen statt der ganzen Liste.
- *
- * Das Fundament für zwei Leute in zwei Fenstern: Vorher schrieb jedes Fenster
- * bei jeder Änderung ALLE Aufgaben — wer zuletzt klickte, überschrieb still
- * die Änderung des anderen. Jetzt schickt ein Fenster nur noch die Aufgaben,
- * die ES geändert hat; alles andere bleibt unberührt. updateJson führt die
- * Schreibvorgänge serialisiert aus, zwei gleichzeitige Klicks gehen also
- * beide durch.
- */
-const STATUS = ['backlog', 'todo', 'in-progress', 'blocked', 'done'];
-const PRIO = ['low', 'medium', 'high', 'critical'];
-const S = (v: unknown, n: number) => (typeof v === 'string' ? v.slice(0, n) : undefined);
-/** Orte von Hand (Board › Ort) — entscheiden mit, ob eine Aufgabe im Business liegt und eine Einheit tragen darf. */
-async function orgZuordnung(): Promise<Record<string, string>> {
-  const f = await loadJson<{ orgs?: Record<string, string> }>('ordnung').catch(() => null);
-  return f?.orgs && typeof f.orgs === 'object' ? f.orgs : {};
-}
-/** Eine Aufgabe von außen: nur bekannte Felder, begrenzt — die Liste lesen viele Seiten und Prompts (26.09.). */
-function taskSauber(o: unknown, orgs: Record<string, string> = {}): Task | null {
-  if (!o || typeof o !== 'object') return null;
-  const t = o as Record<string, unknown>;
-  const id = S(t.id, 80), title = S(t.title, 300);
-  if (!id || !title) return null;
-  const jetzt = new Date().toISOString();
-  const raus = {
-    id, title, projectId: S(t.projectId, 80) ?? '', description: S(t.description, 4000),
-    status: STATUS.includes(String(t.status)) ? t.status : 'todo',
-    priority: PRIO.includes(String(t.priority)) ? t.priority : 'medium',
-    assignee: S(t.assignee, 40) ?? 'kevin',
-    tags: Array.isArray(t.tags) ? t.tags.slice(0, 20).map(x => String(x).slice(0, 40)) : [],
-    dueDate: S(t.dueDate, 40), completedAt: S(t.completedAt, 40),
-    // Space (26.09.): Abweichung vom Ort — nur privat|business, sonst weg.
-    space: t.space === 'privat' || t.space === 'business' ? (t.space as 'privat' | 'business') : undefined,
-    subTasks: Array.isArray(t.subTasks) ? (t.subTasks as Record<string, unknown>[]).slice(0, 50).filter(x => x && typeof x === 'object').map(x => ({ id: String(x.id ?? '').slice(0, 80), taskId: id, title: String(x.title ?? '').slice(0, 300), completed: x.completed === true, sortOrder: Number(x.sortOrder) || 0, createdAt: S(x.createdAt, 40) ?? jetzt, updatedAt: S(x.updatedAt, 40) ?? jetzt })) : [],
-    dependencies: Array.isArray(t.dependencies) ? (t.dependencies as Record<string, unknown>[]).slice(0, 50).filter(x => x && typeof x === 'object' && typeof x.blockedByTaskId === 'string').map(x => ({ blockedByTaskId: String(x.blockedByTaskId).slice(0, 80), ...(typeof x.resolvedAt === 'string' ? { resolvedAt: x.resolvedAt.slice(0, 40) } : {}) })) : [],
-    sortOrder: Number(t.sortOrder) || 0,
-    createdAt: S(t.createdAt, 40) ?? jetzt, updatedAt: S(t.updatedAt, 40) ?? jetzt,
-    einheit: undefined as string | undefined,
-  };
-  // Einheit (27.09.): nur im Business, Namen aus der einen Quelle (lib/einheiten.ts), 2–40 Zeichen — Privat verwirft sie.
-  raus.einheit = aufgabeEinheit({ id, title, description: raus.description, projectId: raus.projectId, space: raus.space, einheit: t.einheit }, orgs);
-  for (const k of ['description', 'dueDate', 'completedAt', 'space', 'einheit'] as const) if (raus[k] === undefined) delete raus[k];
-  return raus as unknown as Task;
+    const b = await req.json();
+    return b && typeof b === 'object' ? (b as Record<string, unknown>) : NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 });
+  } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
 }
 
 export async function PATCH(req: Request) {
-  let body: { ops?: unknown; massenAenderung?: boolean; projekte?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  // Zu zweit (24.09.): Projekte reisen mit, statt die ganze Aufgabenliste per PUT
-  // zu schreiben — so bleibt, was der andere an Aufgaben geändert hat.
-  const projekte = Array.isArray(body.projekte) ? (body.projekte as TasksState['projects']).slice(0, 200) : null;
-  const roh = Array.isArray(body.ops) ? body.ops.slice(0, 100) : (projekte ? [] : null);
-  if (!roh) return NextResponse.json({ ok: false, error: 'Feld "ops" (Liste) fehlt.' }, { status: 400 });
+  const zugang = await imHaushaltDesInhabers(req);
+  if (!zugang) return GESPERRT();
+  const b = await body(req);
+  if (b instanceof NextResponse) return b;
+  const gelesen = opsLesen(b);
+  if (!gelesen.ok) return NextResponse.json({ ok: false, error: gelesen.fehler }, { status: gelesen.status });
+  const r = await aufgabenAendern(gelesen.ops, { person: zugang.person, wer: werAus(req), massenAenderung: b.massenAenderung === true, massenLoeschung: b.massenLoeschung === true });
+  if (r.ok) return NextResponse.json({ ok: true, angewandt: r.angewandt, zeilen: r.zeilen });
+  const aktuell = r.konflikte?.length ? (r.state ?? await ladeAufgaben()) : null;
+  return NextResponse.json({
+    ok: false, error: r.fehler, ...(r.konflikte ? { konflikte: r.konflikte } : {}),
+    ...(r.massenAenderung ? { massenAenderung: true, anzahl: r.anzahl, grenze: r.grenze } : {}),
+    ...(r.massenLoeschung ? { massenLoeschung: true } : {}),
+    ...(aktuell ? { state: fuerBrowser(aktuell) } : {}),
+  }, { status: r.status });
+}
 
-  interface Op { op: 'upsert' | 'delete'; task?: Task; id?: string }
-  const ops: Op[] = [];
-  const orgs = roh.length ? await orgZuordnung() : {};
-  for (const o of roh as Record<string, unknown>[]) {
-    if (o?.op === 'delete' && typeof o.id === 'string') ops.push({ op: 'delete', id: o.id.slice(0, 80) });
-    else if (o?.op === 'upsert') { const t = taskSauber(o.task, orgs); if (t) ops.push({ op: 'upsert', task: t }); }
+/**
+ * Ganzer Stand (Erststand, alte Fenster). Mit Schrumpf-Wächter und Massen-Wache in der Sperre; zu viel → 413.
+ * Die Übernahme läuft auch hier — der gespeicherte Stand hat danach Spaces, Unteraufgaben, Sonstige.
+ */
+export async function PUT(req: Request) {
+  const zugang = await imHaushaltDesInhabers(req);
+  if (!zugang) return GESPERRT();
+  const b = await body(req);
+  if (b instanceof NextResponse) return b;
+  if (!Array.isArray(b.tasks) || !Array.isArray(b.projects)) return NextResponse.json({ ok: false, error: 'Ungültiger Zustand: tasks/projects fehlen.' }, { status: 400 });
+  if (b.tasks.length > AUFGABEN_GRENZEN.aufgaben) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${AUFGABEN_GRENZEN.aufgaben} Aufgaben.` }, { status: 413 });
+  if (b.projects.length > AUFGABEN_GRENZEN.projekte) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${AUFGABEN_GRENZEN.projekte} Projekte.` }, { status: 413 });
+  let tasks: Task[], projects: Project[], listen: AufgabenListe[] | undefined, statusEigen: AufgabenStatus[] | undefined;
+  try {
+    tasks = b.tasks.map(taskSauber).filter((t): t is Task => !!t);
+    projects = b.projects.map(projektSauber).filter((p): p is Project => !!p);
+    listen = Array.isArray(b.listen) ? b.listen.map(listeSauber).filter((l): l is AufgabenListe => !!l) : undefined;
+    statusEigen = Array.isArray(b.statusEigen) ? b.statusEigen.map(statusSauber).filter((s): s is AufgabenStatus => !!s) : undefined;
+  } catch (e) {
+    if (e instanceof ZuGross) return NextResponse.json({ ok: false, error: e.message }, { status: 413 });
+    throw e;
   }
-  if (!ops.length && !projekte) return NextResponse.json({ ok: false, error: 'Keine gültigen Änderungen.' }, { status: 400 });
-
-  let angewandt = 0;
+  const orgs = await orgZuordnung();
+  let abgelehnt = false;
   let massen = 0;
-  await updateJson<TasksState>('tasks', current => {
-    const f: TasksState = current && Array.isArray(current.tasks)
-      ? current
-      : { projects: [], tasks: [] };
-    const nachId = new Map(f.tasks.map(t => [t.id, t]));
-    for (const o of ops) {
-      if (o.op === 'delete') { if (nachId.delete(o.id!)) angewandt++; }
-      else { nachId.set(o.task!.id, o.task!); angewandt++; }
-    }
-    const naechste = Array.from(nachId.values());
-    // Auch der Einzeländerungs-Weg braucht den Schutz: 57 Aufgaben kann man
-    // genauso gut in 57 kleinen Schritten in EINEM Aufruf erledigen.
-    const pruef = brauchtBestaetigung(f.tasks, naechste, body.massenAenderung === true);
-    if (pruef.noetig) { massen = pruef.anzahl; angewandt = 0; return f; }
-    return { ...f, tasks: naechste, ...(projekte ? { projects: projekte } : {}) };
+  let vorher: TasksState | null = null;
+  const next = await updateJson<TasksState>(AUFGABEN_SPEICHER, current => {
+    vorher = current;
+    const alt = current?.tasks?.length ?? 0;
+    // Ab 10 Aufgaben: die Hälfte auf einmal zu verlieren ist fast immer ein Fehler — ablehnen, bis bestätigt.
+    if (alt >= 10 && tasks.length < alt / 2 && b.massenLoeschung !== true) { abgelehnt = true; return current as TasksState; }
+    const pruef = brauchtBestaetigung(current?.tasks ?? [], tasks, b.massenAenderung === true);
+    if (pruef.noetig) { massen = pruef.anzahl; return current as TasksState; }
+    return uebernehmen({ projects, tasks, listen: listen ?? current?.listen ?? [], statusEigen: statusEigen ?? current?.statusEigen ?? [] }, orgs).state;
   });
-
-  if (massen) {
-    return NextResponse.json(
-      {
-        ok: false, massenAenderung: true, anzahl: massen, grenze: MASSEN_GRENZE,
-        error: `Abgelehnt: das hätte ${massen} Aufgaben auf einmal erledigt. Wenn das so gewollt ist, noch einmal mit ausdrücklicher Bestätigung schicken.`,
-      },
-      { status: 409 },
-    );
-  }
-  return NextResponse.json({ ok: true, angewandt });
+  if (abgelehnt) return NextResponse.json({ ok: false, massenLoeschung: true, error: 'Abgelehnt: das hätte über die Hälfte der Aufgaben gelöscht. Wenn das so gewollt ist, noch einmal mit ausdrücklicher Bestätigung schicken.' }, { status: 409 });
+  if (massen) return NextResponse.json({ ok: false, massenAenderung: true, anzahl: massen, grenze: MASSEN_GRENZE, error: `Abgelehnt: das hätte ${massen} Aufgaben auf einmal erledigt. Wenn das so gewollt ist, noch einmal mit ausdrücklicher Bestätigung schicken.` }, { status: 409 });
+  await protokolliereBestand(AUFGABEN_SPEICHER, vorher, next, werAus(req));
+  return NextResponse.json({ ok: true });
 }

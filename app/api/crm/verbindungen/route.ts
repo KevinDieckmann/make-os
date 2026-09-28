@@ -4,7 +4,7 @@
 //                                Stand aller beteiligten Speicher + Tag → 304, wenn nichts neu ist.
 // POST { ids, vorschau: true } → { aenderungen } — was „Reparieren“ täte; schreibt NICHTS.
 // POST { ids }                 → schreibt je Speicher in EINER Sperre (crm über aendereCrm,
-//                                kontakte / import-konflikte / Dateiablage über updateJson) und
+//                                kontakte / import-konflikte / Dateiablage / tasks über updateJson) und
 //                                rechnet dabei auf dem frischen Stand neu. Nur sichere Fälle
 //                                (tote Verweise entfernen, Follow-ups ohne Ziel absagen, veraltete
 //                                Konflikte abräumen, fehlende Dateien markieren) — nie werden
@@ -31,7 +31,7 @@ import { KONFLIKT_SPEICHER, type KonfliktStand } from '@/lib/crm/import-konflikt
 import { ablageName } from '@/lib/dateien/ablage';
 import type { DateiEintrag } from '@/lib/dateien/regeln';
 import { verbindungenPruefen, verbindungenReparieren, verbindungsAmpel, istReparierbar, PRUEFUNG_IDS, REPARIERBAR, type VerbindungsBestaende } from '@/lib/crm/verbindungen';
-import { ladeVerbindungsBestaende, verbindungsStand } from '@/lib/crm/verbindungen-laden';
+import { ladeVerbindungsBestaende, verbindungsStand, aufgabenBezugZurueckschreiben } from '@/lib/crm/verbindungen-laden';
 import { zieleDateiBereinigen, meilensteinDateiBereinigen, zeitDateiBereinigen } from '@/lib/crm/verbindungen-planung';
 import { zeitAendern } from '@/lib/zeitmessung/speicher';
 
@@ -113,6 +113,8 @@ export async function POST(req: Request) {
       for (const p of alt.fokus ?? []) await zeitAendern(p.person, d => zeitDateiBereinigen(d, lebend).datei);
     }
   }
+  // Aufgaben (28.09. spät): nur `bezug` der betroffenen Aufgaben, auf dem aktuellen Stand in der Sperre.
+  if (speicher.has('tasks')) await aufgabenBezugZurueckschreiben(stand, werAus(req));
   const befunde = verbindungenPruefen(await ladeVerbindungsBestaende(heute));
   return NextResponse.json({ ok: true, aenderungen: vorschau.aenderungen, ampel: verbindungsAmpel(befunde), befunde });
 }

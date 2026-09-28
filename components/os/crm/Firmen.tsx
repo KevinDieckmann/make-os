@@ -28,6 +28,7 @@ import { personenJeFirma, personenAufteilen, stationIn, stationenVon, aktivitaet
 import { useFirmaWechselFrage } from './kontakt/FirmaWechselFrage';
 import { firmenGruppe, muetter, toechter as toechterVon } from '@/lib/crm/konzern';
 import { beanGruppe, BEAN_LABEL } from '@/lib/crm/bean';
+import { AufgabenAkte } from '../aufgaben/AufgabenAkte';
 
 export const ROLLEN: { id: FirmaRolle; label: string; farbe: string }[] = [
   { id: 'kunde', label: 'Kunde', farbe: LEUCHT.gut }, { id: 'zielkunde', label: 'Zielkunde', farbe: LEUCHT.business }, { id: 'partner', label: 'Partner', farbe: LEUCHT.agenten },
@@ -229,6 +230,11 @@ function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmApi; zuP
           {mandate.map(m => <Link key={m.id} href={WEG.mandat(m.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{m.titel.slice(0, 80)} <span style={{ color: C.inkLeise }}>· Mandat {m.status}{m.honorar.betrag ? ` · ${euro(m.honorar.betrag)}` : ''} ›</span></Link>)}
         </div>
       )}
+      {/* Aufgaben (28.09. abends): verknüpft mit der Firma oder einem ihrer Mandate/Deals; bei aktivem Mandat im Mandanten-Space. */}
+      <div>
+        <Ueberschrift>Aufgaben</Ueberschrift>
+        <AufgabenAkte firmaId={f.id} mandatIds={mandate.map(m => m.id)} dealIds={chancen.map(c => c.id)} mandantFirmaId={mandate.some(m => m.status === 'aktiv' && m.firmaId === f.id) ? f.id : undefined} />
+      </div>
       <div>
         <Ueberschrift>Stammdaten</Ueberschrift>
         <Feldzeile label="Name"><Feld wert={f.name} onFertig={name => name.trim() && setze({ name: name.trim() })} /></Feldzeile>

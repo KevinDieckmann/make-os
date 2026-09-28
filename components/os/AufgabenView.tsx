@@ -3,7 +3,7 @@
 // ─── MAKE OS — Aufgaben · Board ─────────────────────────────────────────────
 // Der volle Bau: Kanban, Kevin & Malin, Themen, Zeitstrahl, Liste — mit
 // Filtern, Stichworten, Delegations-Runde und dem aufklappbaren Detail.
-// Die schlanke Liste liegt unter /os/aufgaben (AufgabenSchlank.tsx).
+// Die Aufgaben-Seite mit Spaces, Projekten und Listen liegt unter /os/aufgaben (components/os/aufgaben/AufgabenRaum.tsx).
 // 24.09.: auf das lebendige Muster umgezogen — Seite/Karte/Zeile/Chip/Knopf
 // aus schlank.tsx, Farben aus design.ts, keine Rahmen. Jede Funktion des
 // alten Baus ist geblieben; nur die Darstellung wechselt.
@@ -309,6 +309,8 @@ export function AufgabenView() {
 
   const list = useMemo(() => {
     const arr = state.tasks.filter(t => {
+      // Unteraufgaben (28.09. abends) stehen auf der Aufgaben-Seite unter ihrer Aufgabe — hier nicht als eigene Karte.
+      if (t.parentId) return false;
       if (seg === 'offen' && t.status === 'done') return false;
       if (seg === 'erledigt' && t.status !== 'done') return false;
       // Malins Sicht: ihr zugewiesen ODER an sie delegiert. Kevin: seins ohne Wegdelegiertes.

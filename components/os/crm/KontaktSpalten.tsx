@@ -43,6 +43,7 @@ import { DealAnlegen } from './DealAnlegen';
 import { EntwurfTeil, KREISE, lifecycleFarbe, firmaVerknuepfen, type Setze } from './kontakt-teile';
 import { Klappe, leiseKnopf, type Klappen } from './kontakt-klappe';
 import { BeanWahl } from './bean-teile';
+import { AufgabenAkte, useAkteAufgaben } from '../aufgaben/AufgabenAkte';
 
 const zeile = { display: 'flex', alignItems: 'center', gap: 8, minHeight: 30, fontSize: TYP.bedien, minWidth: 0 } as const;
 const klein = { fontSize: 12, color: C.inkLeise } as const;
@@ -397,6 +398,7 @@ export function KontaktRechts({ k, api, heute, setze, klappen, zuFirma, zuAufgab
   const aktiveMandate = mandate.filter(m => m.status === 'aktiv');
   const followups = useMemo(() => (crm ? faellige([k], crm.stand, heute, { horizont: 365, wertelisten: crm.stand.wertelisten }).filter(f => f.kontaktId === k.id) : []), [crm, k, heute]);
   const offeneDeals = deals.filter(c => OFFENE_STUFEN.includes(c.stufe)).length;
+  const akteAufgaben = useAkteAufgaben({ kontaktId: k.id });
   const plus = (label: string, an: () => void) => <button type="button" onClick={an} style={leiseKnopf}>+ {label}</button>;
 
   return (
@@ -479,6 +481,11 @@ export function KontaktRechts({ k, api, heute, setze, klappen, zuFirma, zuAufgab
         })}
         {followups.length > 8 && <div style={{ ...klein, marginTop: 6 }}>… und {followups.length - 8} weitere unter Aktivitäten › Aufgaben.</div>}
         {!followups.length && !aufgabeNeu && <div style={klein}>Nichts offen.</div>}
+      </Klappe>
+
+      {/* Aufgaben (28.09. abends): mit der Person verknüpfte Aufgaben der Aufgaben-Seite; bei aktivem Mandat im Mandanten-Space. */}
+      <Klappe id="r-aufgaben" i={5} klein titel={`Aufgaben${akteAufgaben.length ? ` · ${akteAufgaben.length}` : ''}`} zu={klappen.istZu('r-aufgaben')} umschalten={klappen.umschalten}>
+        <AufgabenAkte kontaktId={k.id} mandantFirmaId={aktiveMandate.find(m => m.firmaId)?.firmaId} />
       </Klappe>
     </>
   );

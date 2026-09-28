@@ -38,6 +38,11 @@ beforeAll(async () => {
   });
   await db.saveJson('crm-import-konflikte', { konflikte: [{ kontaktId: 'c-weg1', feld: 'email', online: 1, liste: 2 }], moeglicheDubletten: [], ohneBesitzer: 0, stand: J, quelle: 'test' });
   await db.saveJson('crm-dateien--test-haus', { eintraege: [{ id: 'd-abcd1', art: 'vertrag', kontaktId: 'c-anna1', datei: { name: 'v.pdf', typ: 'application/pdf', groesse: 10, verschluesselt: false }, hochgeladenAm: J, hochgeladenVon: 'kevin' }] });
+  // Aufgaben mit CRM-Bezug (28.09. spät): t-1 trägt einen toten und einen lebenden Verweis, t-2 nur lebende.
+  await db.saveJson('tasks', { projects: [], tasks: [
+    { id: 't-1', projectId: 'p-1', title: 'Nachfassen', status: 'todo', priority: 'mittel', assignee: 'kevin', tags: [], subTasks: [], dependencies: [], sortOrder: 0, createdAt: J, updatedAt: J, spaceId: 'kdc', bezug: { kontaktId: 'c-weg1', firmaId: 'f-alpha' }, kommentare: [{ id: 'km-1', von: 'kevin', text: 'bleibt', am: J }] },
+    { id: 't-2', projectId: 'p-1', title: 'Angebot', status: 'todo', priority: 'mittel', assignee: 'kevin', tags: [], subTasks: [], dependencies: [], sortOrder: 1, createdAt: J, updatedAt: J, spaceId: 'kdc', bezug: { kontaktId: 'c-anna1' } },
+  ] });
   route = (await import('@/app/api/crm/verbindungen/route')) as unknown as Mod;
 });
 afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
@@ -103,5 +108,19 @@ describe('GET · Vorschau · Reparatur', () => {
     const zwei = await (await post({ ids: ['deal-kontakt-tot', 'followup-kontakt-tot', 'datei-fehlt'] })).json() as { aenderungen: unknown[] };
     expect(zwei.aenderungen).toEqual([]);
     expect(platte()).toEqual(vorher);
+  });
+
+  it('Aufgaben-Bezug: nur das Feld `bezug` der betroffenen Aufgabe ändert sich, alles andere bleibt', async () => {
+    const vorher = (await db.loadJson<{ tasks: Record<string, unknown>[] }>('tasks'))!.tasks;
+    const r = await (await post({ ids: ['aufgabe-bezug-tot'] })).json() as { ok: boolean; aenderungen: { speicher: string; anzahl: number }[]; befunde: { id: string }[] };
+    expect(r.ok).toBe(true);
+    expect(r.aenderungen).toEqual([expect.objectContaining({ speicher: 'tasks', anzahl: 1 })]);
+    expect(r.befunde.map(b => b.id)).not.toContain('aufgabe-bezug-tot');
+    const nachher = (await db.loadJson<{ tasks: Record<string, unknown>[] }>('tasks'))!.tasks;
+    expect(nachher[0]).toEqual({ ...vorher[0], bezug: { firmaId: 'f-alpha' } });
+    expect(nachher[1]).toEqual(vorher[1]);
+    const zweimal = platte();
+    expect((await (await post({ ids: ['aufgabe-bezug-tot'] })).json() as { aenderungen: unknown[] }).aenderungen).toEqual([]);
+    expect(platte()).toEqual(zweimal);
   });
 });

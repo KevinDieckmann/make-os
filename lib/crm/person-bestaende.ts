@@ -21,10 +21,12 @@
 //                                  noch nennen (Kennung oder voller Name), raus
 //   heads-replay-<head>            Fälle, die die Person enthalten, raus      Kennung im Fall → neu
 //   crm-signale                    kommender Termin der Person raus           Schlüssel → neu (früherer Termin gewinnt)
-//   tasks                          nur EINDEUTIG zugeordnete Aufgaben         Link k=<alt> → k=<neu>
-//                                  (Head-Aufgabe hd-<Vorschlag der Person>
-//                                  oder Link k=<id>): voller Name → „[gelöscht]“,
-//                                  Link raus; Aufgabe bleibt (eure Arbeit).
+//   tasks                          nur EINDEUTIG zugeordnete Aufgaben         Link k=<alt> → k=<neu> (Beschreibung +
+//                                  (Head-Aufgabe hd-<Vorschlag der Person>,   Kommentare), bezug.kontaktId → neu
+//                                  Link k=<id> oder bezug.kontaktId, 28.09.
+//                                  abends): voller Name → „[gelöscht]“ (auch
+//                                  in Kommentaren), Link raus, bezug.kontaktId
+//                                  raus; Aufgabe bleibt (eure Arbeit).
 //                                  Nur-Namens-Treffer werden gemeldet, nie geändert.
 //   crm-import-laeufe--<haushalt>  Vorher-Stand/Kennung/Fingerabdruck der      bewusst NICHT (Vorher-Stände sind Geschichte;
 //     (K2, „Import rückgängig“)    Person aus jedem Lauf raus                  „rückgängig“ meldet den Zusammengeführten als Konflikt)
@@ -60,6 +62,7 @@ import { crmSchnappschuesse, schnappschuesse, schnappschussKonflikte, schnappsch
 import { CRM_LISTEN } from './typen';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { sperren } from './sperrliste';
+import type { AufgabeBezug, AufgabeKommentar } from '@/types/tasks';
 
 // ── Reine Helfer ─────────────────────────────────────────────────────────────
 
@@ -245,26 +248,31 @@ export function signaleUm(st: SignalStand, alt: string, neu: string): { stand: S
 
 // ── Aufgaben ──
 
-interface Aufgabe { id: string; title?: string; description?: string; status?: string; dueDate?: string; [k: string]: unknown }
+interface Aufgabe { id: string; title?: string; description?: string; status?: string; dueDate?: string; bezug?: AufgabeBezug; kommentare?: AufgabeKommentar[]; [k: string]: unknown }
 const linkMuster = (id: string) => new RegExp(`[?&]k=${esc(id)}(?![A-Za-z0-9_-])`);
 const linkWeg = (id: string) => new RegExp(`\\S*[?&]k=${esc(id)}(?![A-Za-z0-9_-])\\S*`, 'g');
+/** Der CRM-Bezug einer Aufgabe ohne den Kontakt — leer → undefined (das Feld fällt dann weg). */
+const bezugOhneKontakt = (b: AufgabeBezug): AufgabeBezug | undefined => { const { kontaktId: _k, ...rest } = b; return Object.keys(rest).length ? rest : undefined; };
 
 /**
- * Welche Aufgaben gehören zur Person? Aufgaben haben kein Kontaktfeld. EINDEUTIG ist eine Aufgabe nur,
- * wenn sie aus einem Head-Vorschlag an genau diese Person stammt (`hd-<Vorschlag>`) oder einen Link auf
- * sie trägt (`k=<id>`). Ein Name im Titel allein ist KEIN Beweis (Namensgleichheit, „Müller“ kann die
- * Firma sein) — solche Aufgaben werden nur gemeldet.
+ * Welche Aufgaben gehören zur Person? EINDEUTIG ist eine Aufgabe, wenn sie mit ihr im CRM verknüpft ist
+ * (`bezug.kontaktId`, 28.09. abends), aus einem Head-Vorschlag an genau diese Person stammt (`hd-<Vorschlag>`)
+ * oder einen Link auf sie trägt (`k=<id>`). Ein Name im Titel, in der Beschreibung oder in einem Kommentar
+ * allein ist KEIN Beweis (Namensgleichheit, „Müller“ kann die Firma sein) — solche Aufgaben werden nur gemeldet.
  */
 export function aufgabenZuordnen(tasks: Aufgabe[], id: string, headAufgaben: string[], name: string | null): { eindeutig: Aufgabe[]; nurName: Aufgabe[] } {
   const hd = new Set(headAufgaben);
   const eindeutig: Aufgabe[] = [], nurName: Aufgabe[] = [];
   for (const t of tasks) {
-    if (hd.has(t.id) || linkMuster(id).test(t.description ?? '')) eindeutig.push(t);
-    else if (name && nameMuster(name).test(`${t.title ?? ''}\n${t.description ?? ''}`)) nurName.push(t);
+    if (t.bezug?.kontaktId === id || hd.has(t.id) || linkMuster(id).test(t.description ?? '')) eindeutig.push(t);
+    else if (name && nameMuster(name).test([t.title ?? '', t.description ?? '', ...(t.kommentare ?? []).map(k => k.text ?? '')].join('\n'))) nurName.push(t);
   }
   return { eindeutig, nurName };
 }
-/** Eindeutige Aufgaben entpersonalisieren: voller Name → „[gelöscht]“, Link auf die Person raus. Die Aufgabe bleibt. */
+/**
+ * Eindeutige Aufgaben entpersonalisieren: voller Name → „[gelöscht]“ (Titel, Beschreibung, Kommentare), Link auf
+ * die Person raus, `bezug.kontaktId` raus (Firma/Mandat/Deal bleiben; leerer Bezug → Feld weg). Die Aufgabe bleibt.
+ */
 export function aufgabenAnonymisieren(tasks: Aufgabe[], id: string, headAufgaben: string[], name: string | null): { tasks: Aufgabe[]; n: number; pruefen: string[] } {
   const z = aufgabenZuordnen(tasks, id, headAufgaben, name);
   const ids = new Set(z.eindeutig.map(t => t.id));
@@ -274,16 +282,43 @@ export function aufgabenAnonymisieren(tasks: Aufgabe[], id: string, headAufgaben
     const weg = (s?: string) => { let x = (s ?? '').replace(linkWeg(id), '').replace(/[ \t]+\n/g, '\n').trimEnd(); if (name) x = x.replace(nameMuster(name, 'gi'), '[gelöscht]'); return x; };
     const title = weg(t.title) || 'Aufgabe (Person gelöscht)';
     const description = t.description !== undefined ? weg(t.description) : undefined;
-    if (title === t.title && description === t.description) return t;
+    let kommentareGeaendert = false;
+    const kommentare = t.kommentare?.map(k => {
+      const text = weg(k.text) || '[gelöscht]';
+      if (text === k.text) return k;
+      kommentareGeaendert = true;
+      return { ...k, text };
+    });
+    const bezugWeg = t.bezug?.kontaktId === id;
+    if (title === t.title && description === t.description && !kommentareGeaendert && !bezugWeg) return t;
     n++;
-    return { ...t, title, ...(description !== undefined ? { description } : {}), updatedAt: new Date().toISOString() };
+    const { bezug: _b, ...ohneBezug } = t;
+    const bezug = t.bezug ? (bezugWeg ? bezugOhneKontakt(t.bezug) : t.bezug) : undefined;
+    return {
+      ...ohneBezug, title, ...(description !== undefined ? { description } : {}), ...(bezug ? { bezug } : {}),
+      ...(kommentareGeaendert ? { kommentare } : {}), updatedAt: new Date().toISOString(),
+    };
   });
   return { tasks: n ? neu : tasks, n, pruefen: z.nurName.map(t => t.id) };
 }
+/** Dubletten: Link `k=<alt>` (Beschreibung, Kommentare) und `bezug.kontaktId` → `neu`. Je geänderter Aufgabe zählt 1. */
 export function aufgabenUm(tasks: Aufgabe[], alt: string, neu: string): { tasks: Aufgabe[]; n: number } {
   let n = 0;
-  const r = new RegExp(`([?&]k=)${esc(alt)}(?![A-Za-z0-9_-])`, 'g');
-  const l = tasks.map(t => (t.description && r.test(t.description) ? (n++, { ...t, description: t.description.replace(r, `$1${neu}`) }) : t));
+  const r = () => new RegExp(`([?&]k=)${esc(alt)}(?![A-Za-z0-9_-])`, 'g');
+  const um = (s: string) => s.replace(r(), `$1${neu}`);
+  const l = tasks.map(t => {
+    const link = !!t.description && r().test(t.description);
+    const bezug = t.bezug?.kontaktId === alt;
+    const komm = (t.kommentare ?? []).some(k => r().test(k.text ?? ''));
+    if (!link && !bezug && !komm) return t;
+    n++;
+    return {
+      ...t,
+      ...(link ? { description: um(t.description!) } : {}),
+      ...(bezug ? { bezug: { ...t.bezug, kontaktId: neu } } : {}),
+      ...(komm ? { kommentare: t.kommentare!.map(k => (r().test(k.text ?? '') ? { ...k, text: um(k.text) } : k)) } : {}),
+    };
+  });
   return { tasks: n ? l : tasks, n };
 }
 
@@ -409,7 +444,8 @@ export async function personUmbiegen(alt: string, neu: string): Promise<PersonBe
 
 /**
  * Art. 15: was die Speicher AUSSER Kartei und Firma über die Person halten. Dateiablage nur als Metadaten
- * (nie Inhalte), Head-Vorschläge nur mit Titel/Status, Aufgaben nur eindeutig zugeordnete (s. `aufgabenZuordnen`).
+ * (nie Inhalte), Head-Vorschläge nur mit Titel/Status, Aufgaben nur eindeutig zugeordnete (s. `aufgabenZuordnen`,
+ * auch über `bezug.kontaktId`).
  */
 export async function personAufzaehlen(id: string) {
   const crm = await ladeCrm();
@@ -430,7 +466,7 @@ export async function personAufzaehlen(id: string) {
   for (const h of HEADS) headReplayFaelle += ((await loadJson<ReplayStand>(replayName(h)))?.faelle ?? []).filter(f => enthaeltKennung(f, id)).length;
   const kommenderTermin = (await loadJson<SignalStand>('crm-signale'))?.kommend?.[id] ?? null;
   const tasks = (await loadJson<Tasks>('tasks'))?.tasks ?? [];
-  const aufgaben = aufgabenZuordnen(tasks, id, headAufgaben, null).eindeutig.map(t => ({ id: t.id, titel: t.title, status: t.status, ...(t.dueDate ? { faellig: t.dueDate } : {}) }));
+  const aufgaben = aufgabenZuordnen(tasks, id, headAufgaben, null).eindeutig.map(t => ({ id: t.id, titel: t.title, status: t.status, ...(t.dueDate ? { faellig: t.dueDate } : {}), ...(t.bezug?.kontaktId === id ? { verknuepft: true } : {}) }));
   // Import-Läufe (K2): in wie vielen Läufen ein Vorher-Stand der Person liegt (Inhalt = frühere Fassung derselben Stammdaten).
   let importLaeufe = 0;
   for (const h of await laufHaushalte()) importLaeufe += ((await loadJson<LaufBestand>(laufName(h)))?.laeufe ?? []).filter(l => laufOhne(l, id).n > 0).length;

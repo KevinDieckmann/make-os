@@ -284,6 +284,36 @@ lokal, Route `/os`, Port 3001.
   neue Seite in `lib/make-one/spaces.ts` (passt) und `components/os/Schnellsuche.tsx` (SEITEN) anschließen. Keine Weiterleitung
   in `next.config.mjs` darf eine echte Seite verdecken (`/os/uebersicht` war so ein Fall).
 
+## Aufgaben wie Monday/ClickUp (28.09. abends, nur lokal — Plan: AUFGABEN_PLAN.md)
+- **Ebenen:** Bereich (Privat | Business) → Space → Projekt → Liste → Aufgabe → Unteraufgabe. Spaces fest `privat` · `kdc` · `kdv` · `ug`
+  (= `FINANZ_ORTE` aus `lib/einheiten.ts`, keine eigene Liste) + Mandanten `m-<firmaId>` (CRM-Firma mit aktivem Mandat; beendet/pausiert
+  oder Firma weg → „Archiv“, Aufgaben bleiben lesbar). Ohne Projekt → virtuelles Projekt `sonstige-<space>`, ohne Liste → „Sonstige“ (nie gespeichert).
+- **Modell** (`types/tasks.ts`, verträglich): `Task.spaceId`, `listeId`, `parentId` (eine Ebene; erbt Space/Projekt/Liste), `statusId`, `bezug`
+  {kontaktId, firmaId, mandatId, dealId}, `kommentare[]` {id, von, text, am, erwaehnt}, `startDate`; `Project.spaceId`; Bestand `listen[]`,
+  `statusEigen[]` {id, spaceId, label, farbe, basis, sortOrder}. `space`/`einheit` werden aus `spaceId` abgeleitet (Mandant = „Kunden“; eine eigene
+  Einheit bleibt im Business stehen); `spaceVonAufgabe` liest zuerst `spaceId` — alle alten Leser verstehen Privat/Business weiter.
+- **Status:** Offen (todo/backlog) · In Arbeit · Wartend (blocked) · Erledigt + eigene je Space. Eigenen Status setzen = `statusTeil` (status = basis);
+  schreibt jemand `status` direkt (Heads, Abhaken) und er passt nicht zur basis, fällt `statusId` weg — nie umgekehrt.
+- **Rein** in `lib/aufgaben/struktur.ts` (Spaces, `uebernehmen`, `baum`, Status, Filter, `erwaehnungen`), `lib/aufgaben/saeubern.ts` (Säuberung,
+  Grenzen → `ZuGross` = 413, `kommentareVereinen`: fremde Kommentare unveränderlich, neue tragen Person + Serverzeit), `lib/aufgaben/crm-verweise.ts`
+  (Schnellsuche mit `suchPasst`, Links in die Akte, `aufgabenFuer`). Server: `lib/aufgaben/speicher.ts` (`aufgabenAendern` in EINER Sperre).
+- **Übernahme des Altbestands** (`uebernehmen`, idempotent, beim Lesen und in jeder Schreibsperre): Projekte/Aufgaben bekommen ihren Space
+  (Kategorie/Ort/Einheit), alte `subTasks[]` werden Unteraufgaben (`<taskId>--<subId>`), nie Verlust. Andere Server-Schreiber (Heads, Übergabe,
+  Steuern …) dürfen weiter ohne `spaceId` anhängen.
+- **Routen:** `/api/state/tasks` — GET Haushalt des Inhabers oder Systemlauf (jede Zeile mit `stand`, dazu `spaces`), PATCH/PUT nur eine Person
+  dieses Haushalts; PATCH `{ ops, struktur: { projekte, listen, status } }` mit Stand je Zeile (409 + `konflikte` + aktueller Bestand), > 200 → 413,
+  Massen-Wache wie bisher, Änderungsprotokoll ohne Werte. `/api/tasks/create` (ZOE, Meeting, Tageslauf): Haushalt oder Systemlauf, `spaceId`/
+  Liste/Eltern/Bezug, ohne Projekt → Sonstige. `/api/aufgaben/crm`: schlanke Verweise (Kennung + Name) für die Verknüpfung.
+- **Meldungen** (`melde()`, lib/meldungen): Zuweisung an jemand anderen, Erwähnung (@), Kommentar an Zuständige — nie an die schreibende Person.
+- **Browser:** `TasksContext` schickt nur Unterschiede je Liste mit Stand aus der letzten Serverantwort (nie `stand` im Zustand), 409 →
+  Server-Stand + Ereignis `make-aufgaben-konflikt`. Seite `/os/aufgaben` = `components/os/aufgaben/AufgabenRaum.tsx` (Adresse `space`, `r`, `p`,
+  `ansicht=board`, `offen` = `WEG.aufgabe`, Seite = `WEG.aufgaben`), Schnell-Anlegen ganz oben (`SchnellAnlegen`, Kürzel aus `schnell-anlegen.ts`),
+  Detail (`AufgabeDetail`), Board nach Status (`StatusBoard`), eigene Status (`StatusVerwalten`). `/os/aufgaben/board` = alter Zeitstrahl/Delegation.
+- **CRM:** Kachel „Aufgaben“ in Kontakt öffnen (`KontaktRechts`) und Firmenakte (`AufgabenAkte`, bei aktivem Mandat im Mandanten-Space).
+  Art. 17 löst `bezug.kontaktId` und tilgt Namen auch in Kommentaren, Dubletten biegen `bezug.kontaktId` um, Verbindungsprüfung
+  `aufgabe-bezug-tot` (Reparatur entfernt nur tote Einzelverweise), Übergabe setzt `bezug`. Fokus-Block auf eine Aufgabe mit Mandat übernimmt es.
+- **Flächen:** Aufgaben-Widget ohne Einstellung nimmt den Space der Fläche (`lib/flaeche/space.ts`); Unteraufgaben nur unter „fällig & kritisch“.
+
 ## Markttraktion — Deal- und Follow-up-Ebene (27.09., nur lokal)
 - **Marke Make.One (27.09.):** unter den Events läuft unsere Veranstaltungsmarke. `lib/crm/marke.ts` ist die eine Stelle (`MARKE_EVENTS`,
   `markeVon` = gesetzt oder Make.One, `eventName` = „Make.One · Titel“); `Event.marke` optional, Vorgabe beim Anlegen, alte Events gelten
