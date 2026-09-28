@@ -27,6 +27,7 @@ import { modellSchranke, zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { FREMD_WERKZEUGE, FREMD_AGENTEN, SELBST_GEKAPSELT } from '@/lib/zoe/fremd';
 import { AUFGABEN_DATEI_WERKZEUGE } from '@/lib/zoe/aufgaben-unterlagen';
 import { AUFGABEN_WERKZEUG_DEFS } from '@/lib/zoe/aufgaben-werkzeuge';
+import { CRM_WERKZEUG_DEFS, crmBezugAus, crmBezugHinweis } from '@/lib/zoe/crm-werkzeug-defs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -113,7 +114,7 @@ export async function POST(req: Request) {
   // Kostenschutz (26.09.): je Person höchstens 40 Züge in 10 Minuten.
   const schranke = modellSchranke(req); if (schranke) return schranke;
   if (zuGross(req, 2_000_000)) return ZU_GROSS(2_000_000);
-  let payload: { message?: string; context?: string; noTools?: boolean; verlauf?: VerlaufNachricht[]; space?: string };
+  let payload: { message?: string; context?: string; noTools?: boolean; verlauf?: VerlaufNachricht[]; space?: string; bezug?: unknown };
   try { payload = await req.json(); } catch { return NextResponse.json({ reply: 'Ich habe die Anfrage nicht verstanden.' }); }
   const message = String(payload.message ?? '').trim().slice(0, 8000);
   // Verlauf und Zusatz begrenzt — der Prompt darf nicht beliebig wachsen (26.09.).
@@ -150,6 +151,8 @@ export async function POST(req: Request) {
   // angeboten; die Werkzeuge prüfen es zusätzlich selbst (lib/zoe/werkzeuge.ts `nurImHaushalt`).
   const crmErlaubt = await crmWerkzeugErlaubt(personStreng(req));
   const agentenAngebot = (AUSFUEHRBAR as readonly string[]).filter(a => crmErlaubt || !(CRM_AGENTEN as readonly string[]).includes(a));
+  // „ZOE fragen“ aus der Markttraktion (28.09., C7): nur Art + Kennung (geprüft, kein Text Dritter) — und nur im Haushalt.
+  const crmBezug = crmErlaubt ? crmBezugAus(payload.bezug) : null;
   // Werkzeuge nur, wenn nicht ausdrücklich abgeschaltet (z.B. Tagesplan = reiner Text).
   const tools: unknown[] = [];
   if (!payload.noTools) {
@@ -546,6 +549,8 @@ export async function POST(req: Request) {
     );
     // ZOE-Aufgaben (28.09., C4): was bei ZOE liegt, und „gib das an dich“ — nur im Haushalt des Inhabers.
     if (crmErlaubt) tools.push(...AUFGABEN_WERKZEUG_DEFS);
+    // Die ganze Markttraktion (28.09., C7): lesen gekapselt mit Leitplanken, unterstützen nur als Stapel-Vorschlag.
+    if (crmErlaubt) tools.push(...CRM_WERKZEUG_DEFS);
     // Markttraktion nur im Haushalt des Inhabers (28.09., K1) — siehe `crmErlaubt` oben.
     if (crmErlaubt) tools.push(
       {
@@ -646,7 +651,7 @@ export async function POST(req: Request) {
     // Grundlage aus dem Obsidian-Brain (00_ZOE_AGENT + Vertraulichkeitsregeln), eine Minute zwischengespeichert.
     const brain = await brainAnweisung(person).catch(() => '');
     for (let runde = 0; runde < 3; runde++) {
-      const r = await askText({ system: systemPrompt(payload.context, live, !!vorgeschichte.length, gedaechtnis, person, brain, payload.space === 'privat' || payload.space === 'business' ? payload.space : null), user: message, messages: msgs, maxTokens: 4000, tools, timeoutMs: 180_000, zweck: 'zoe-gespraech' });
+      const r = await askText({ system: [systemPrompt(payload.context, live, !!vorgeschichte.length, gedaechtnis, person, brain, payload.space === 'privat' || payload.space === 'business' ? payload.space : null), crmBezug ? crmBezugHinweis(crmBezug) : ''].filter(Boolean).join('\n\n'), user: message, messages: msgs, maxTokens: 4000, tools, timeoutMs: 180_000, zweck: 'zoe-gespraech' });
       if (!r.ok) {
         return NextResponse.json(
           { reply: `Anthropic hat abgelehnt (${r.status || 'offline'}). Prüf den Key/das Modell.`, error: r.error?.slice(0, 300) },

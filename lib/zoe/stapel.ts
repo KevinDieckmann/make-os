@@ -20,7 +20,7 @@ export type VorschlagStatus = 'offen' | 'freigegeben' | 'abgelehnt' | 'fehlgesch
  * Arten von Vorschlägen mit eigenem Bezug (28.09., C4). Neue Art: hier ergänzen und in lib/zoe/stapel-arten.ts
  * ihre Freigabe eintragen — der Stapel (Route, Ansicht) behandelt dann alle Arten gleich.
  */
-export type StapelArt = 'aufgabe';
+export type StapelArt = 'aufgabe' | 'crm';
 export interface StapelBezug { art: StapelArt; id: string }
 
 export interface Vorschlag {

@@ -17,6 +17,7 @@ import { loadJson } from '@/lib/store/local-db';
 import { WERKZEUGE } from './werkzeuge';
 import { firmaAusAngabe, finanzOrtName, istGesellschaft } from '@/lib/einheiten';
 import { AUFGABEN_REGISTER } from './aufgaben-werkzeuge';
+import { CRM_VORSCHLAG_REGISTER } from './crm-vorschlag';
 
 export type Risiko = 'frei' | 'freigabe' | 'nie';
 
@@ -301,6 +302,25 @@ export const REGISTER: Record<string, Eintrag> = {
     gruppe: 'kontakte', risiko: 'frei',
     vorschau: schlicht('Markttraktion lesen', () => 'Traction-Score, Übergaben, wer dran ist, Befunde'),
   },
+  // Markttraktion ganz (28.09., C7): alles Lesen frei (gekapselt, Art. 18 ausgeblendet, fremde private Notizen weg,
+  // IBAN maskiert); crm_vorschlag ist frei, weil es NUR in den Stapel legt — übernommen wird erst per Klick.
+  crm_suche: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Markttraktion durchsuchen', i => text(i.frage) || 'mit Filtern') },
+  kontakt_akte: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Kontakt lesen', i => text(i.kontakt)) },
+  firma_akte: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Firmenakte lesen', i => text(i.firma)) },
+  pipeline: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Pipeline lesen', i => text(i.deal) || 'alle offenen Deals') },
+  mandate_lage: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Mandate lesen', i => text(i.mandat) || 'alle') },
+  angebote_lage: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Angebote lesen', i => text(i.angebot) || 'alle') },
+  kampagnen_lage: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Kampagnen lesen', i => text(i.kampagne) || 'alle') },
+  events_lage: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Events lesen', i => text(i.event) || 'alle') },
+  marketing_lage: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Marketing lesen', () => 'Beiträge, Newsletter, Segmente, Kennzahlen') },
+  kennzahlen: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Kennzahlen lesen', () => 'Traktions-Index, Kennzahlen, Befunde') },
+  sales_lage: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Sales lesen', () => 'Power Hour, Team, Auswertung') },
+  qualifizierung_lage: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Qualifizierung lesen', () => 'Runden, Score, Lifecycle') },
+  stammdaten_lage: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Stammdaten lesen', () => 'Gesellschaften, Produkte, Import-Konflikte') },
+  datenqualitaet: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Datenqualität lesen', () => 'Verbindungsprüfung, Dubletten') },
+  crm_datei_lesen: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('CRM-Datei lesen', i => `${text(i.datei, 40)}${i.teil ? ` · Teil ${text(i.teil, 4)}` : ''}`) },
+  heads_lage: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Heads lesen', i => text(i.head) || 'Sales, Marketing, Event') },
+  ...CRM_VORSCHLAG_REGISTER,
   entwurf_ansprache: {
     gruppe: 'kontakte', risiko: 'frei',
     vorschau: schlicht('Ansprache entwerfen — kein Versand', i => text(i.kontakt)),

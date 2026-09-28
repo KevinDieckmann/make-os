@@ -44,6 +44,7 @@ import { EntwurfTeil, KREISE, lifecycleFarbe, firmaVerknuepfen, type Setze } fro
 import { Klappe, leiseKnopf, type Klappen } from './kontakt-klappe';
 import { BeanWahl } from './bean-teile';
 import { AufgabenAkte, useAkteAufgaben } from '../aufgaben/AufgabenAkte';
+import { ZoeVorschlaege } from './ZoeFragen';
 
 const zeile = { display: 'flex', alignItems: 'center', gap: 8, minHeight: 30, fontSize: TYP.bedien, minWidth: 0 } as const;
 const klein = { fontSize: 12, color: C.inkLeise } as const;
@@ -487,6 +488,9 @@ export function KontaktRechts({ k, api, heute, setze, klappen, zuFirma, zuAufgab
       <Klappe id="r-aufgaben" i={5} klein titel={`Aufgaben${akteAufgaben.length ? ` · ${akteAufgaben.length}` : ''}`} zu={klappen.istZu('r-aufgaben')} umschalten={klappen.umschalten}>
         <AufgabenAkte kontaktId={k.id} mandantFirmaId={aktiveMandate.find(m => m.firmaId)?.firmaId} />
       </Klappe>
+
+      {/* ZOE-Vorschläge (28.09., C7): was ZOE zu dieser Person vorbereitet hat — freigeben/ablehnen hier; ohne Vorschläge keine Karte. */}
+      <ZoeVorschlaege art="kontakt" id={k.id} onUebernommen={() => void api.laden(true)} />
     </>
   );
 }

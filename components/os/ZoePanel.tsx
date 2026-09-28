@@ -31,6 +31,7 @@ import { Chip, Knopf, feld, LEUCHT } from './schlank';
 import { useSpace } from '@/hooks/useSpace';
 import { useStimme } from '@/hooks/useStimme';
 import { fuerStimme, titelAus, wannText, type Gespraech, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
+import { ZOE_FRAGEN_EREIGNIS, CRM_BEZUG_LABEL, crmBezugAus, type CrmBezug } from '@/lib/zoe/crm-bezug';
 
 import { localDay } from '@/lib/zeit';
 /** Was ZOE aus einem Foto/PDF gelesen hat — Vorschlag, noch nicht gebucht. */
@@ -120,6 +121,8 @@ export function ZoePanel() {
   const [thinking, setThinking] = useState(false);
   // Wie viel vorbereitet ist und auf Kevin wartet (kommt aus jeder Antwort).
   const [stapelOffen, setStapelOffen] = useState(0);
+  // „ZOE fragen“ aus der Markttraktion (28.09., C7): Art + Kennung geht mit jeder Nachricht mit, bis man ihn löst.
+  const [bezug, setBezug] = useState<CrmBezug | null>(null);
   // Beleg an ZOE geben: lesen → zeigen → erst nach Bestätigung buchen.
   const dateiWahl = useRef<HTMLInputElement>(null);
   const [belegLaeuft, setBelegLaeuft] = useState<string | null>(null);
@@ -159,6 +162,16 @@ export function ZoePanel() {
     setHeute(localDay());
   }, []);
   useEffect(() => { try { localStorage.setItem(MERKER_FENSTER, JSON.stringify(fenster)); } catch { /* egal */ } }, [fenster]);
+  useEffect(() => {
+    const fragen = (e: Event) => {
+      const b = crmBezugAus((e as CustomEvent).detail);
+      if (!b) return;
+      setBezug(b); setZeigeVerlauf(false);
+      setFenster(f => ({ ...f, offen: true }));
+    };
+    window.addEventListener(ZOE_FRAGEN_EREIGNIS, fragen);
+    return () => window.removeEventListener(ZOE_FRAGEN_EREIGNIS, fragen);
+  }, []);
   useEffect(() => { try { localStorage.setItem(MERKER_STIMME, JSON.stringify({ vorlesen, freihand })); } catch { /* egal */ } }, [vorlesen, freihand]);
 
   // ── Gedächtnis laden: das letzte Gespräch kommt zurück, alle anderen in die Liste ──
@@ -300,7 +313,7 @@ export function ZoePanel() {
       const r = await fetch('/api/kimmi', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         // Der bisherige Zug geht mit — das ist ZOE' Gedächtnis.
-        body: JSON.stringify({ message: q, verlauf: zuNachrichten(vorher), space: aktiverSpace }),
+        body: JSON.stringify({ message: q, verlauf: zuNachrichten(vorher), space: aktiverSpace, ...(bezug ? { bezug } : {}) }),
       });
       const d = await r.json();
       if (typeof d.stapelOffen === 'number') setStapelOffen(d.stapelOffen);
@@ -439,6 +452,15 @@ export function ZoePanel() {
             style={{ ...rund, width: 26, height: 26, borderRadius: 8, fontSize: 12, lineHeight: 1 }}>—</button>
         </div>
       </div>
+
+      {/* Bezug aus der Markttraktion (28.09., C7): ZOE liest dort selbst nach und schlägt nur vor. */}
+      {bezug && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', borderBottom: `1px solid ${HAAR}`, fontSize: 12, color: C.inkDim }}>
+          <span style={{ color: J, fontWeight: 700 }}>Bezug</span>
+          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{CRM_BEZUG_LABEL[bezug.art]}{bezug.id ? ` · ${bezug.id}` : ''}</span>
+          <button onClick={() => setBezug(null)} title="Bezug lösen" aria-label="Bezug lösen" style={{ background: 'transparent', border: 0, color: C.inkLeise, cursor: 'pointer', fontSize: 13 }}>✕</button>
+        </div>
+      )}
 
       {/* Verlauf — alle Gespräche, jederzeit wieder aufmachbar */}
       {zeigeVerlauf && (

@@ -47,6 +47,8 @@ import { useZurueck, nachOben } from '../Verlauf';
 import { KontaktAkte } from './Akte';
 import { IndexStreifen, STREIFEN } from '../business/IndexStreifen';
 import { AngebotStart } from './angebot/AngebotStart';
+import { ZoeFragenKnopf } from './ZoeFragen';
+import { zoeBezugFuer } from '@/lib/zoe/crm-bezug';
 
 // Drei Gruppen (Kevin 27.09. abends, Mitte 28.09. abends): links die Arbeit — Überblick · Kontakte · Firmen · Deals · Follow-up —,
 // in der Mitte die Schnellknöpfe Qualifizierung (orange) und Angebot (grün), rechts die Welten mit ihrem Punkt —
@@ -189,7 +191,11 @@ export function MarkttraktionSeite() {
 
   return (
     // „+ Aktivität hinzufügen“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (in der Reiterleiste rutschte er aus dem Bild).
-    <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<button onClick={() => setErfassen(true)} className="fassbar" style={{ flex: '0 0 auto', padding: '10px 16px', borderRadius: 12, cursor: 'pointer', ...TIEF.knopf(C.aktiv), fontWeight: 700, fontSize: TYP.bedien, fontFamily: SCHRIFT.text, whiteSpace: 'nowrap' }}>+ Aktivität hinzufügen</button>}>
+    <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+      {/* „ZOE fragen“ (28.09., C7): mit dem, was gerade offen ist (Kontakt, Firma, Deal, Angebot) oder dem Reiter — ZOE liest selbst nach, schlägt nur vor. */}
+      <ZoeFragenKnopf bezug={zoeBezugFuer(bereich, ansicht, kParam)} />
+      <button onClick={() => setErfassen(true)} className="fassbar" style={{ flex: '0 0 auto', padding: '10px 16px', borderRadius: 12, cursor: 'pointer', ...TIEF.knopf(C.aktiv), fontWeight: 700, fontSize: TYP.bedien, fontFamily: SCHRIFT.text, whiteSpace: 'nowrap' }}>+ Aktivität hinzufügen</button>
+    </span>}>
       {/* Breit: eine Zeile, die Schnellknöpfe mittig zwischen links und rechts. Wird es zu eng (Rahmen < 1100 px, z. B. am
           Laptop mit Leiste oder am Handy): die Schnellknöpfe als eigene Zeile oben, darunter die Reiter zum Wischen — nie
           zwei Paare sichtbar zugleich (das andere ist display:none, also auch für Screenreader weg). */}

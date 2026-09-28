@@ -13,6 +13,7 @@ import { eur } from '@/lib/make-one/finance-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, feld, LEUCHT, Spalten, Spalte } from './schlank';
 import { WEG } from '@/lib/wege';
 import { markttraktion } from '@/lib/crm/adresse';
+import { CrmStapelDetail } from './crm/ZoeFragen';
 
 interface Vorschlag { id: string; zeit: string; werkzeug: string; gruppe: string; titel: string; vorher?: string; nachher: string; eingabe: Record<string, unknown>; anlass?: string; status: 'offen' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen'; ergebnis?: string; grund?: string; /** Art mit Bezug (lib/zoe/stapel-arten.ts), z. B. „aufgabe“. */ bezug?: { art: string; id: string } }
 interface Auftrag { id: string; zeit: string; art: string; name: string; auftrag?: string; status: 'offen' | 'laeuft' | 'fertig' | 'fehler'; ergebnis?: string; fehler?: string }
@@ -124,6 +125,8 @@ export function StapelView() {
                         <span style={{ color: C.inkLeise }}>seit</span><span>{her(v.zeit)}</span>
                       </div>
                       {v.bezug?.art === 'aufgabe' && <AufgabeVorschlag v={v} />}
+                      {/* Art „crm“ (28.09., C7): Text zum Kopieren, Mail-Programm, Sprung in die Markttraktion. */}
+                      {v.bezug?.art === 'crm' && <CrmStapelDetail v={v} />}
                       <input value={grund[v.id] ?? ''} onChange={e => setGrund(x => ({ ...x, [v.id]: e.target.value }))} placeholder="Grund fürs Ablehnen (optional) — ZOE lernt daraus" style={{ ...feld, marginTop: 12 }} />
                     </div>
                   )}

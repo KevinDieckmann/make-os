@@ -17,6 +17,8 @@ import { firmaAusAngabe, finanzOrtName, istGesellschaft, type Gesellschaftskennu
 import type { FaktArt } from './gedaechtnis';
 import { projektUnterlagen, dateiLesen } from './aufgaben-unterlagen';
 import { AUFGABEN_WERKZEUGE } from './aufgaben-werkzeuge';
+import { CRM_LESE_LAEUFE, suche_kontakt as sucheKontaktSicht, crm_lage as crmLageSicht } from './crm-werkzeuge';
+import { CRM_VORSCHLAG_LAUF } from './crm-vorschlag';
 
 // ── ZOE plant SELBST: Block in den Wochenplan legen (Kevins Ansage:
 // „dass da auch drin geplant werden kann"). Interne Planung, frei verschiebbar
@@ -727,33 +729,15 @@ async function ladeKontakte() {
 
 async function kontaktFinden(hinweis: string) {
   const { findeKontakte } = await import('@/lib/make-one/crm');
-  const alle = await ladeKontakte();
+  // Art. 18 (28.09., C7): eingeschränkte Personen findet ZOE nicht — sie werden weder gezeigt noch verarbeitet.
+  const alle = (await ladeKontakte()).filter(k => !k.eingeschraenkt);
   const direkt = alle.find(k => k.id === hinweis);
   if (direkt) return { treffer: direkt, alle };
   const l = findeKontakte(alle, hinweis, 3);
   return { treffer: l[0], alle, mehrere: l.length > 1 ? l : undefined };
 }
 
-async function sucheKontakt(input: Record<string, unknown>): Promise<string> {
-  const frage = String(input.frage ?? '').trim().slice(0, 200);
-  if (!frage) return 'Fehlgeschlagen: frage fehlt.';
-  const { findeKontakte, anzeigename, STUFE_LABEL } = await import('@/lib/make-one/crm');
-  const { ampel } = await import('@/lib/crm/recht');
-  const alle = await ladeKontakte();
-  if (!alle.length) return 'Die Kartei ist leer — die Masterliste wurde noch nicht importiert (Markttraktion › Stammdaten › Import).';
-  const l = findeKontakte(alle, frage, Math.min(8, Math.max(1, Number(input.anzahl) || 5)));
-  if (!l.length) return `Kein Kontakt zu „${frage}" (${alle.length} durchsucht).`;
-  return `KONTAKTE — ${l.length} Treffer:\n\n` + l.map(k => (k.eingeschraenkt
-    // Art. 18 (U2): eingeschränkte Personen nur mit Kennung und Namen — keine Arbeitsfelder, nicht verarbeiten.
-    ? `ID ${k.id}\n${anzeigename(k)}\nVERARBEITUNG EINGESCHRÄNKT (Art. 18) seit ${k.eingeschraenkt.seit} — nicht ansprechen, nichts festhalten.` :
-    `ID ${k.id}\n${anzeigename(k)}${k.position ? ` · ${k.position}` : ''}${k.firma ? ` · ${k.firma}` : ''}` +
-    `\nStufe ${STUFE_LABEL[k.stufe]} · Prio ${k.prio || '–'} · Eignung ${k.eignung || '–'}` +
-    `${k.wiedervorlage ? ` · Wiedervorlage ${k.wiedervorlage}` : ''}${k.letzterKontakt ? ` · zuletzt ${k.letzterKontakt}` : ''}` +
-    `${k.lebensphase ? ` · ${k.lebensphase}` : ''}${k.kreis ? ` · Kreis ${k.kreis}` : ''}${k.naechsterSchritt ? `\nNächster Schritt: ${k.naechsterSchritt.text} (${k.naechsterSchritt.datum})` : ''}` +
-    (k.werbesperre ? `\nWERBESPERRE seit ${k.werbesperre.seit} — nicht ansprechen.` : `\nKanäle (Ampel § 7 UWG): ${ampel(k).map(c => `${c.kanal} ${c.farbe === 'gruen' ? 'frei' : c.farbe === 'gelb' ? 'nur persönlich/mit Anlass' : 'nicht zulässig'}`).join(', ') || 'keine'}`) +
-    `${k.aufhaenger ? `\nAufhänger: ${k.aufhaenger.slice(0, 220)}` : ''}`),
-  ).join('\n\n───\n\n');
-}
+// suche_kontakt läuft seit 28.09. (C7) über crm_suche in lib/zoe/crm-werkzeuge.ts — dieselben Leitplanken wie alle CRM-Leser.
 
 /**
  * notiere_kontakt — seit 25.09. die Schnellnotiz: „Hab mit Marc telefoniert,
@@ -864,35 +848,7 @@ async function chanceAnlegen(input: Record<string, unknown>, _o: string, person?
   return `Deal angelegt (Lead ist jetzt SQL): „${r.chance.titel}“ (${anzeigename(treffer)}) · Stufe ${r.chance.stufe}${betrag ? ` · ${betrag} € ${basis === 'monat' ? 'im Monat' : 'einmalig'}` : ' · noch ohne Wert'} · nächster Schritt ${datum}: ${schritt}`;
 }
 
-async function crmLage(_i: Record<string, unknown>, _o: string, person?: string): Promise<string> {
-  if (!person) return 'Fehlgeschlagen: CRM-Werkzeuge nur im Auftrag einer Person im Haushalt (Regel 5).';
-  const { loadJson } = await import('@/lib/store/local-db');
-  const { localDay } = await import('@/lib/zeit');
-  const { ladeCrm } = await import('@/lib/crm/speicher');
-  const { werIstDran } = await import('@/lib/crm/heute');
-  const { kennzahlen } = await import('@/lib/crm/kennzahlen');
-  const { befunde } = await import('@/lib/crm/befunde');
-  const { marketingKennzahlen } = await import('@/lib/crm/marketing');
-  const { eventKennzahlen, traktion, uebergaben } = await import('@/lib/crm/traktion');
-  const { fuerDich, teamFeed, nameVon } = await import('@/lib/crm/team');
-  const kontakte = (await loadJson<{ kontakte: import('@/lib/make-one/crm').Kontakt[] }>('kontakte'))?.kontakte ?? [];
-  const crm = await ladeCrm();
-  const heute = localDay();
-  const a = werIstDran(kontakte, crm, heute, person, 8);
-  const t = traktion({ sales: kennzahlen(kontakte, crm, heute), marketing: marketingKennzahlen(kontakte, crm, heute), event: eventKennzahlen(kontakte, crm, heute) });
-  const kz = (l: import('@/lib/crm/kennzahlen').Kpi[]) => l.map(k => `${k.label} ${k.anzeige}${k.ampel !== 'grau' ? ` (${k.ampel})` : ''}`).join(' · ');
-  const ue = uebergaben(kontakte, crm, heute);
-  return [
-    `MARKTTRAKTION ${heute} — Traction-Score ${t.score ?? '—'} (${t.hinweis})`,
-    ...t.welten.map(w => `${w.label} (${w.gewicht} %): ${w.score ?? '—'} · ${kz(w.kpis)}`),
-    `Übergaben: ${ue.map(u => `${u.titel} ${u.anzahl} (${u.von}→${u.an})`).join(' · ') || 'nichts offen'}`,
-    `Für ${nameVon(person)}: ${fuerDich(person, kontakte, crm, heute).map(f => `${f.titel} ${f.anzahl}`).join(' · ') || 'nichts Fälliges'}`,
-    `Zuletzt im Team: ${teamFeed(kontakte, crm, new Date(Date.now() - 7 * 864e5).toISOString(), 6).map(e => `${nameVon(e.person)}: ${e.text}`).join(' · ') || 'nichts'}`,
-    `Wer heute dran ist (${a.karten.length}):`,
-    ...a.karten.map(c => `- ${c.name}${c.kontakt.firma ? ` · ${c.kontakt.firma}` : ''} [${c.kontakt.id}] — ${c.kategorie}: ${c.gruende[0]}${c.kanal ? ` · Kanal ${c.kanal.kanal} (${c.kanal.farbe})` : ''}`),
-    `Was zu tun ist: ${befunde(kontakte, crm, heute).slice(0, 6).map(b => b.titel).join(' · ') || 'nichts Rotes'}`,
-  ].join('\n');
-}
+// crm_lage läuft seit 28.09. (C7) über lib/zoe/crm-werkzeuge.ts (gekapselt, ohne eingeschränkte Kontakte).
 
 // ─── Haushaltsfinanzen (24.09.) ─────────────────────────────────────────────
 // Nur für Personen mit Haushalt. Ohne benannte Person (Hintergrundlauf, Rück-
@@ -961,7 +917,10 @@ async function haushaltRechnungErfassen(input: Record<string, unknown>, _o: stri
 // CRM-Werkzeuge jedem angemeldeten Konto an, und die Werkzeuge lasen/schrieben die Kartei ohne Prüfung. Jetzt:
 // kimmi bietet sie nur an, wenn `crmWerkzeugErlaubt(person)`, UND jedes Werkzeug prüft selbst (`nurImHaushalt`) —
 // auch bei Freigabe aus dem Stapel, Rücknahme und Aufträgen. Ohne Person: KEINE_PERSON (Regel 5).
-export const CRM_WERKZEUGE = ['crm_lage', 'suche_kontakt', 'notiere_kontakt', 'entwurf_ansprache', 'chance_anlegen', 'uebergeben', 'setze_kunde'] as const;
+export const CRM_WERKZEUGE = ['crm_lage', 'suche_kontakt', 'notiere_kontakt', 'entwurf_ansprache', 'chance_anlegen', 'uebergeben', 'setze_kunde',
+  // ZOE sieht und unterstützt die ganze Markttraktion (28.09., C7): lesen (lib/zoe/crm-werkzeuge.ts) und vorschlagen (crm-vorschlag.ts).
+  'crm_suche', 'kontakt_akte', 'firma_akte', 'pipeline', 'mandate_lage', 'angebote_lage', 'kampagnen_lage', 'events_lage', 'marketing_lage',
+  'kennzahlen', 'sales_lage', 'qualifizierung_lage', 'stammdaten_lage', 'datenqualitaet', 'crm_datei_lesen', 'heads_lage', 'crm_vorschlag'] as const;
 /** Agenten, deren Lauf die Kartei liest (run_agent) — nur im Haushalt des Inhabers anbieten. */
 export const CRM_AGENTEN = ['crm', 'outreach', 'prospect', 'head-sales', 'head-marketing', 'head-event'] as const;
 export const KEIN_CRM = 'Nicht ausgeführt: Die Markttraktion gehört zum Haushalt des Inhabers — für dieses Konto nicht verfügbar.';
@@ -1012,12 +971,15 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: Lauf }> = {
   journal_eintrag: { gruppe: 'gesundheit', lauf: journalEintrag },
   einkauf_setzen: { gruppe: 'gesundheit', lauf: einkaufSetzen },
   streak_eintrag: { gruppe: 'gesundheit', lauf: streakEintrag },
-  suche_kontakt: { gruppe: 'kontakte', lauf: nurImHaushalt(sucheKontakt) },
+  suche_kontakt: { gruppe: 'kontakte', lauf: nurImHaushalt(sucheKontaktSicht) },
   notiere_kontakt: { gruppe: 'kontakte', lauf: nurImHaushalt(notiereKontakt) },
   entwurf_ansprache: { gruppe: 'kontakte', lauf: nurImHaushalt(entwurfAnsprache) },
   chance_anlegen: { gruppe: 'kontakte', lauf: nurImHaushalt(chanceAnlegen) },
   uebergeben: { gruppe: 'kontakte', lauf: nurImHaushalt(kontaktUebergeben) },
-  crm_lage: { gruppe: 'kontakte', lauf: nurImHaushalt(crmLage) },
+  crm_lage: { gruppe: 'kontakte', lauf: nurImHaushalt(crmLageSicht) },
+  // Markttraktion ganz (28.09., C7): lesen gekapselt mit Leitplanken; crm_vorschlag legt nur in den Stapel (Art „crm“).
+  ...Object.fromEntries(Object.entries(CRM_LESE_LAEUFE).map(([n, lauf]) => [n, { gruppe: 'markttraktion', lauf: nurImHaushalt(lauf) }])),
+  crm_vorschlag: { gruppe: 'crm', lauf: nurImHaushalt(CRM_VORSCHLAG_LAUF) },
   // Projekt- und Aufgaben-Dateien lesen (28.09., C2 — Kevins Wahl): nur im Haushalt, nur die Aufgaben-Ablage, gekapselt.
   projekt_unterlagen: { gruppe: 'aufgaben-dateien', lauf: nurImHaushalt(projektUnterlagen) },
   datei_lesen: { gruppe: 'aufgaben-dateien', lauf: nurImHaushalt(dateiLesen) },

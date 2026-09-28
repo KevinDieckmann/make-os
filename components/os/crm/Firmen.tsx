@@ -29,6 +29,7 @@ import { useFirmaWechselFrage } from './kontakt/FirmaWechselFrage';
 import { firmenGruppe, muetter, toechter as toechterVon } from '@/lib/crm/konzern';
 import { beanGruppe, BEAN_LABEL } from '@/lib/crm/bean';
 import { AufgabenAkte } from '../aufgaben/AufgabenAkte';
+import { ZoeVorschlaege, ZoeFragenKnopf } from './ZoeFragen';
 
 export const ROLLEN: { id: FirmaRolle; label: string; farbe: string }[] = [
   { id: 'kunde', label: 'Kunde', farbe: LEUCHT.gut }, { id: 'zielkunde', label: 'Zielkunde', farbe: LEUCHT.business }, { id: 'partner', label: 'Partner', farbe: LEUCHT.agenten },
@@ -234,6 +235,11 @@ function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmApi; zuP
       <div>
         <Ueberschrift>Aufgaben</Ueberschrift>
         <AufgabenAkte firmaId={f.id} mandatIds={mandate.map(m => m.id)} dealIds={chancen.map(c => c.id)} mandantFirmaId={mandate.some(m => m.status === 'aktiv' && m.firmaId === f.id) ? f.id : undefined} />
+      </div>
+      {/* ZOE (28.09., C7): fragen mit dieser Firma als Bezug; offene Vorschläge zur Firma und ihren Personen/Deals. */}
+      <div style={{ display: 'grid', gap: 10 }}>
+        <div><ZoeFragenKnopf bezug={{ art: 'firma', id: f.id }} /></div>
+        <ZoeVorschlaege art="firma" id={f.id} onUebernommen={() => void api.laden(true)} />
       </div>
       <div>
         <Ueberschrift>Stammdaten</Ueberschrift>
