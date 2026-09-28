@@ -4,6 +4,104 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Kartei-Protokoll für alle Schreibwege, ZOE-Kontext, Firmenwechsel im Import, Angebots-Ablauf (28.09.2026 spät, W7, nur lokal)
+
+- **Änderungsprotokoll für jeden Kartei-Schreibweg:** neuer Helfer `aendereKontakte`/`aendereKontakteAsync` (`lib/crm/kartei-schreiben.ts`) — eine Sperre über `updateJson('kontakte')`, danach `listenDiff` ins Protokoll (wer, wann, Kennung als `c#…`, Feldnamen, nie Werte; der Stand vorher wird tief kopiert, weil manche Wege die Liste an Ort und Stelle ändern). Umgestellt: Aktivität (auch Notiz ändern/löschen), Follow-up (Aktivität, Verschieben, Absagen), Lead (Personen-Lead, Mandat → Phase), Kampagnen, Netzwerk, Anfrage, Stammdaten, Umzug, Verbindungen, Signale, Heads (Rücknahme, Übernahme), Deal anlegen, Übergabe, Lead heben, Heads-Lauf (Auto-Übernahme, als „zoe“), Angebot stellen, ZOE `notiere_kontakt` (als „zoe“ mit Person). `uebergeben`, `dealAnlegen`, `leadHebenNachGespraech` nehmen optional `wer` (Routen: `werAus(req)`, ZOE: `{ art: 'zoe', person }`). Schon vorher protokolliert und unverändert: Kartei-PATCH, Import (+ Konflikt, Rückgängig), Dubletten, Datenschutz, Firmen-Abgleich, Löschfristen-Lauf, `aendereCrm`.
+- **Sperr-Reihenfolge crm → kontakte:** `aendereKontakte` nimmt nie die CRM-Sperre; aus `aendereCrm` heraus darf es aufgerufen werden. Test mit gleichzeitigem `aendereCrm` (Lead-Folge) und `aendereKontakte`.
+- **Wache:** ein Test sucht in `app/` und `lib/` jeden direkten Schreibzugriff auf „kontakte“ — erlaubt nur der Helfer, `aendereCrm` und die selbst protokollierenden Stellen.
+- **ZOE-Kontext:** `gatherBrain` nimmt Kunden/Mandate (`kundenAusMandaten`) nur noch für Personen im Haushalt des Inhabers (`personImHaushaltDesInhabers`) — ein Konto aus einem anderen Haushalt bekommt davon nichts, auch keine Zahlen.
+- **Import-Konflikt „Firmenwechsel?“:** Stammdaten › Import zeigt den Hinweis sichtbar an der Zeile. „Liste übernehmen“ beim Feld Firma schrieb bisher nur den Firmentext (kein Fehler, aber der neue Name stand über der alten Hauptstation). Jetzt fragt die Oberfläche wie im Kontakt: Jobwechsel · Zusätzliche Firma · Korrektur; der Server findet oder legt die Firma an (CRM zuerst, dann Kartei) und rechnet die Stationen. Ohne Absicht bei einer Person mit Hauptstation: 409 `firmaWechselNoetig` (die Oberfläche fragt dann nach). Ohne Hauptstation wie bisher.
+- **Angebote laufen auch ohne Öffnen ab:** der tägliche Morgenlauf (`POST /api/tagesstart`, neuer Schritt „Angebote“ vorneweg) ruft `ablaufNachziehen` — gestellte Angebote nach „gültig bis“ → abgelaufen. In derselben Sperre der Follow-up-Hinweis „Angebot abgelaufen — nachfassen oder Version 2“: ein offenes „Angebot nachfassen“ bekommt den Hinweis und wird heute fällig, sonst ein neues Follow-up (einmal je Angebot, nicht für eingeschränkte Personen). Gilt auch, wenn das Lesen (GET bestand/angebot) zuerst nachzieht.
+- Tests: `tests/kartei-schreibwege-w7.test.ts`, `tests/brain-kunden-haushalt.test.ts`, `tests/import-konflikt-firmenwechsel.test.ts`, `tests/angebot-ablauf-tagesstart.test.ts`.
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Aktivität an einem Kontakt festhalten → das Änderungsprotokoll (`GET /api/state/aenderungen`) hat den Eintrag (wer, Felder), ohne Inhalt.
+- [ ] Import mit einer Person, deren Firma in der Liste anders heißt → Zeile trägt „Firmenwechsel?“; „Liste übernehmen“ fragt Jobwechsel/zusätzlich/Korrektur, danach stimmt die Firmenkarte.
+- [ ] Ein gestelltes Angebot mit „gültig bis“ gestern → nach dem Morgenlauf „abgelaufen“ und ein Follow-up „nachfassen oder Version 2“.
+- [ ] ZOE als Konto eines anderen Haushalts fragen → keine Mandatszahlen in der Antwort.
+
+## CRM-Speicher: Folgen in derselben Sperre, Personen-Schranke, Kriterien-Grenze (28.09.2026 spät, nur lokal)
+
+- **Deal-Fehlanlage löschen:** der Lead, der per `chanceId` auf den Deal zeigte, geht in derselben Sperre zurück auf „Qualifizierung“ (`chanceId`/`sqlAm` weg) — Firmen-Lead im CRM-Bestand, Personen-Lead (Person ohne Firma) in der Kartei. Vorher zählte die Firma weiter in „Neue SQL · 30 Tage“ und im Trichter. Gilt für jeden Schreibweg über `aendereCrm` (Regeln in `lib/crm/bestand-folgen.ts`).
+- **Server nimmt keine Gesperrten mehr an:** neue Personen-Verweise in Teilnahmen (Einladungen), Kampagnen-Kontakten (aktiv/Entwurf), Deals und Mandaten prüft `wendeCrmAn` (`lib/crm/personen-schranke.ts`): Art. 18 → 409 mit dem Einschränkungs-Text; Werbesperre → 409 mit Grund bei Kampagnen/Einladungen, bei Deals/Mandaten erlaubt (Vertragsbeziehung). Wer schon drinsteht, wird nicht rückwirkend abgelehnt. Die Kartei liest `aendereCrm` in der CRM-Sperre — keine Route muss sie durchreichen.
+- **Nie abschneiden:** Segment-Kriterien (Typ, Kategorie, Label, Kreis …, auch Kampagnen-Zielgruppe) höchstens `KRITERIEN_WERTE_MAX` (500) Werte, darüber 413 — vorher still nach 50 gekürzt.
+- **Firma umbenannt:** `Mandat.kunde` und `Chance.firma` ziehen in derselben Sperre mit, wenn sie den alten Namen trugen; ein bewusst anderer Anzeigename bleibt. Hinweis: alte Rechnungen ohne `mandatId` finden ihr Mandat weiter über gemeinsame Namensteile (`rechnungPasst`) — bei einem ganz neuen Namen ohne gemeinsames Wort nicht mehr.
+- Tests: `tests/crm-speicher-folgen.test.ts`.
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Deal als Fehlanlage anlegen und löschen → Firma steht unter Leads wieder auf „Qualifizierung“, „Neue SQL · 30 Tage“ zählt sie nicht mehr.
+- [ ] Person mit Werbesperre in eine Kampagne bzw. auf eine Gästeliste nehmen → Meldung „Werbesperre … nichts gespeichert“; an einen Deal hängen → geht.
+- [ ] Firma umbenennen → Mandat und Deal zeigen den neuen Namen.
+
+## Integritätsprüfung Markttraktion: Zugang, Art. 17, Löschsperren, Datenschutz-Kette (28.09.2026 abends, nur lokal)
+
+- **Zugang (K1, Regel 5):** `imHaushaltDesInhabers` prüft beim Dienstweg jetzt auch die genannte Person (Haushalt des Inhabers) und fällt ohne Person nicht mehr auf „kevin“ zurück (→ 403). Systemläufe ohne Person gehen nur, wo die Route sie trägt: Kalender lesen (`kalenderLesen`, Zulieferer vom Mac), Erinnerungen, Kartei (`karteiZugang`), Inhaber-Dinge (`nurInhaber`, unverändert). CRM-Routen `bestand`, `deal`, `followup`, `kampagnen`, `netzwerk` nehmen die Person aus dem Zugang; `lead`/`aktivitaet`/`import` sind über den Wächter mit abgedeckt. Heads-Routen (`/api/heads/*`, `/api/heads/eval`) waren offen — jetzt nur im Haushalt des Inhabers. **Ohne `konten.json` (frischer Server):** niemand ist im Haushalt → alle Haushalts-Routen 403 (anmelden geht dort ohnehin nicht); Systemläufe (Kalender lesen, Erinnerungen, Kartei, Postfach/Whoop über `nurInhaber`) laufen weiter.
+- **ZOE (K1):** Markttraktion-Werkzeuge (`crm_lage`, `suche_kontakt`, `notiere_kontakt`, `entwurf_ansprache`, `chance_anlegen`, `uebergeben`, `setze_kunde`) und Agenten, die die Kartei lesen (`crm`, `outreach`, `prospect`, Heads), bietet kimmi nur einer ausdrücklich benannten Person im Haushalt des Inhabers an; jedes Werkzeug prüft zusätzlich selbst (auch Stapel-Freigabe, Rücknahme, Aufträge). **`setze_kunde`** trifft nur den genauen Namen (Rechtsform egal) oder die `mandat_id`, sonst Rückfrage; geschrieben wird über den normalen Mandat-Weg (Säuberung, Grenzen).
+- **Art. 17 (K2):** Löschen nimmt den vollen Namen auch aus Deal-Titeln und Mandats-Kunden („[gelöscht]“); gibt es eine andere Person gleichen Namens, nur dort, wo die gelöschte verknüpft war.
+- **Firmen abgleichen (W1):** tote `firmaId` gilt als leer und wird per Firmennamen neu verknüpft (vorhanden oder neu); eine Hauptstation mit gelöschter Firma ebenso. Andere tote Stationen (ohne Namen) meldet weiter die Verbindungsprüfung.
+- **Import (W4):** nennt die Liste eine andere Firma, wird nichts überschrieben — Konflikt „Firmenwechsel?“ (Feld Firma, dazu Position) unter Stammdaten › Austausch; gleiche Firma in anderer Schreibweise bleibt, wie sie ist. Mögliche Dubletten werden nicht mehr bei 300 abgeschnitten.
+- **Löschen (W6):** Sperre (409 mit Anzahlen) auch für Produkte mit Deals/Mandaten („auf eingestellt setzen“), Segmente in Events/Kampagnen, Beiträge in Newslettern; Firmen/Mandate zählen zusätzlich Dateiablage-Einträge und offene Follow-ups. **Event löschen** läuft über den Server (`POST /api/crm/events { aktion: 'loeschen' }`): Teilnahmen weg, offene Follow-ups des Events abgesagt — in einer Änderung; allein über den Bestand → 409.
+- **Datenschutz-Kette (W8):** Fällig-Liste/Power Hour ohne werbliche Follow-ups (Mail, LinkedIn, Anruf, Nachricht außerhalb Deal/Mandat) an Personen mit Werbesperre — mit Hinweis. LinkedIn-Schritte: Art. 18 → 409; Werbesperre → keine Anfrage/Nachricht, ein „Ja“ hebt sie nicht auf; das „Ja“ wird Einwilligung mit vollem Nachweis (Wortlaut, Beleg, Zeitpunkt, wer). Follow-up-Route: Art. 18 → 409; `geaendertAm` am Kontakt ist der Berliner Tag.
+- **Beleg einer Einwilligung (W10):** eine Datei, auf die eine Einwilligung zeigt (`belegRef` d-…, auch widerrufen), lässt sich nicht löschen (409 mit Grund).
+- **Verbindungsprüfung, 11 neue Prüfungen:** Firmentext ≠ Hauptstation (reparierbar: „Firmennamen übernehmen“), Typ nicht vorn (reparierbar), doppelte Teilnahmen (reparierbar: zusammenführen, nichts geht verloren), Aktivität → gelöschte Firma/Bezug, Deal-Quelle tot, Mandat → Planposten tot, Mandats-Phase ungültig, Kampagnen-Ergebnis außerhalb, Head-Vorschlag → gelöschte Person, Einwilligungs-Beleg tot. Reparatur „Lead zeigt auf gelöschten Deal“ setzt „SQL“ zurück auf „Qualifizierung“.
+- **Nie abschneiden:** Dateiliste liefert alle Einträge (vorher 500); LinkedIn-Export > 5 MB → 413; Kampagne übernimmt die ganze Zielgruppe (vorher still 40, Meldung nennt die Anzahl); Lead-Notiz aus Kampagnen wird nicht mehr gekürzt oder ersetzt (voll → Hinweis).
+- Tests: `tests/integritaet-zugang.test.ts`, `tests/integritaet-crm.test.ts`, Fälle in `tests/crm-verbindungen.test.ts`; Route-Tests mit Konten im Haushalt + Negativfall (Dienstweg ohne/mit fremder Person → 403).
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Als Kevin und als Malin: Markttraktion lädt (Überblick, Kontakte, Deals, Follow-up, Heads-Panel), ZOE „Wen soll ich heute anrufen?“ antwortet mit Namen.
+- [ ] Kalender und Tagesstart laufen wie bisher (Zulieferer/Takt ohne Person).
+- [ ] Event mit Gästen löschen → Meldung nennt entfernte Teilnahmen/abgesagte Follow-ups.
+- [ ] Stammdaten › Datenqualität: neue Befunde ansehen, „Firmennamen übernehmen“ nur nach Blick auf die Beispiele.
+
+## Ablaufprüfung Markttraktion: Meldungen, Schreibkette, Rückgängig, Art. 18 (28.09.2026 abends, nur lokal)
+
+- **Meldungen bleiben stehen (K1):** „Nicht gespeichert — dieser Eintrag/Kontakt wurde inzwischen geändert. Die Anzeige zeigt jetzt den aktuellen Stand. Bitte erneut eingeben.“ steht unten fixiert (Toast), bis weggeklickt, ~8 s vergangen oder neu geschrieben wird — das Neuladen löscht sie nicht mehr (auch „Mandat anlegen“, Einschränken/Aufheben). Ergebnis-Hinweise (z. B. nach dem Löschen) bleiben, bis sie weggeklickt werden.
+- **Kontakt-Änderungen nacheinander (K2):** zwei schnelle Klicks (z. B. zwei Häkchen) scheitern nicht mehr an sich selbst — jede Kontakt-Änderung, Aktivität und Netzwerk-Schritt läuft in einer Kette, der Stand kommt beim Absenden aus der letzten Server-Antwort; bei 409 übernimmt die Anzeige den aktuellen Eintrag (`lib/crm/kontakt-schreiben.ts`).
+- **Deal-Ampel (W1):** eine Aktivität mit Bezug auf einen offenen Deal (oder bei genau einem offenen Deal der Person) setzt „letzte Aktivität“ am Deal auf heute. **Ergebnis „Sperre“:** offene Mail-/LinkedIn-/Anruf-Follow-ups werden mit Grund abgesagt, die Person verlässt laufende und geplante Kampagnen.
+- **„+ Aktivität hinzufügen“ (W2):** ein angelegter Deal wird beim erneuten Speichern nicht doppelt angelegt; „Einwilligung für Mail“ meldet sich nur, wenn sie wirklich gespeichert ist (sonst bleibt ein Hinweis stehen).
+- **Löschen (Art. 17, W3):** danach steht, welche Deals jetzt ohne Person sind und wie viele Aufgaben den Namen noch nennen.
+- **Dubletten (W4):** vor dem Zusammenführen steht, was wandert (Deals, Aktivitäten, Follow-ups, Dateien, Einwilligungen, Kampagnen); **Rückgängig 30 Tage** unter Kontakte › Dubletten › „Zusammengeführt“ — nur, solange niemand die Einträge seitdem geändert hat (sonst Grund). Zu lange private Notizen oder zu viele Einträge → Ablehnung statt Kürzung.
+- **Import:** Konflikt „Liste übernehmen“ geht über den Kartei-Weg (Typ → Typen, Position → Rolle der Hauptstation, Art. 18, Protokoll); offene Konflikte früherer Listen bleiben erhalten; „Import rückgängig“ nimmt vom Import neu angelegte Firmen mit (nur frei und unverändert) und erkennt Verknüpfungen auch in Dateien, Heads, Terminen und Aufgaben.
+- **Deals/Mandate:** eingeschränkte Personen (Art. 18) bekommen keinen Deal, kein Mandat, keinen Lead-Schritt (409); gesetzte Lifecycle-Phase unter „Opportunity“ wird mit dem Deal gehoben; Deal-Titel ohne Firma ohne vollen Namen („Deal · Retainer · M.“), Mandat-Kunde ohne Firma = „Privatkunde“; über 20 Personen → Ablehnung statt Kürzen.
+- **Kleineres:** Power Hour zeigt Deals/Mandate ohne Person über eine Person der Firma (sonst gezählt); Runden-Rückgängig ändert nur die drei Felder; Firmenvorschläge ungekürzt mit Suche; Neuanlage (Kartei, Visitenkarte, Einlass, Anfrage) prüft die Sperrliste → Werbesperre + Hinweis, nicht blockiert; Anfragen finden Dubletten über alle Adressen und verlieren in der Lead-Notiz nie das Neueste; Akte zeigt bei Ladefehler „Neu laden“ statt „gibt es nicht mehr“.
+- Tests: `tests/crm-kontakt-schreiben.test.ts`, `tests/crm-ablauf-reparatur.test.ts`, `tests/crm-ablauf-routen.test.ts`.
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Zwei Fenster, dieselbe Person: in beiden ein Feld ändern → im zweiten steht die Meldung unten und bleibt, der Wert zeigt den aktuellen Stand.
+- [ ] Kontakt › zwei Labels schnell hintereinander anklicken → beide gespeichert, keine Meldung.
+- [ ] Kontakte › Dubletten: „Erste behalten“ → Rückfrage mit „Es wandert …“ → zusammengeführt → unten „Zusammengeführt“ → Rückgängig → beide wieder da.
+- [ ] Stammdaten › Austausch: einen Konflikt „Liste“ übernehmen; einen Import zurücknehmen (Meldung nennt auch entfernte Firmen).
+
+## Angebots-Tool: Gesellschaften, Angebotstexte, Angebot → PDF + Mail (28.09.2026 abends, A1, nur lokal)
+
+- **Markttraktion › Angebot** (Knopf „Angebot“ bzw. „Angebot erstellen“ in Kontakt, Deal-Akte und Umsatz-Reiter, jeweils vorbelegt): eine Seite — 1 Für wen (Schnellsuche; Firma, offener Deal und Gesellschaft kommen von selbst) · 2 Was (aktive Produkte als Karten, ein Klick = Position; Menge/Preis/Rabatt/USt/Basis/Laufzeit direkt in der Zeile, Enter springt weiter, Text aufklappbar; „+ freie Position“) · 3 Rahmen (Einleitung/Schluss aus der Vorlage mit Sie/Du, gültig bis, Zahlungsziel). Unten die feste Summenleiste (einmalig · monatlich · jährlich · Gesamtwert). Der Entwurf speichert von selbst.
+- **„Mail versenden“** → Vorschau: links der Mail-Entwurf (An, Betreff „Angebot {Nummer} – Titel“, Text), rechts das Angebot im Layout des PDFs. **Senden** stellt das Angebot (Nummer je Gesellschaft und Jahr, lückenlos; danach festgeschrieben), erzeugt das PDF (verschlüsselt in der Dateiablage, mit Prüfsumme), lädt es herunter und öffnet das Mail-Programm — **PDF anhängen und abschicken**. MAKE OS versendet weiterhin nichts selbst.
+- **Verbunden:** Deal auf Stufe „Angebot“ (vorhanden oder neu) mit Wert aus dem Angebot · Follow-up „Angebot … nachfassen“ (+5 Werktage, änderbar) · Aktivität „Angebot … gesendet“ am Kontakt · BEAN „Angebotskunde“ · Lifecycle hebt sich. **Angenommen** → Deal gewonnen → „Mandat anlegen“ vorbelegt (Honorar, Laufzeit, Produkt, Gesellschaft). **Abgelehnt** → Verlustgrund Pflicht, Deal verloren. **Neue Version** → Entwurf mit Bezug, die alte wird beim Stellen „ersetzt“ (bleibt lesbar). Abgelaufen automatisch nach „gültig bis“. Liste „Angebote“ mit Filter Status, Gesellschaft, Suche.
+- **Kanal-Ampel vor dem Senden:** Werbesperre/Einschränkung (Art. 18/21) sperrt mit Grund; gelb = Hinweis (angefragtes Angebot = Vertragsanbahnung). Hinweis, keine Rechtsberatung.
+- **Stammdaten › Gesellschaften** (neu): Selbstständigkeit · KD Ventures · MAKE OS UG — Firmierung, Anschrift, Kontakt, Steuernummer/USt-IdNr., Geschäftsführung/Register, Bank (IBAN nur maskiert, im PDF voll), Kleinunternehmer, Zahlungsziel, Gültigkeit, Nummernformat (`{KURZ}-A-{JAHR}-{NR4}`), Logo (PNG/JPG), Fußtext. **Ohne Firmierung und Anschrift sperrt das Senden** — Kevin trägt die echten Werte selbst ein.
+- **Produkte brauchen Angebotstexte:** Produkt › Angebotstexte (Titel, Einleitung, **Leistungstext**, Ergebnis, Hinweise). „aktiv“ erst mit Leistungstext (Server 409); bestehende aktive ohne Text bleiben aktiv und stehen im Tool als „Text fehlt“ (+ Hinweis in der Verbindungsprüfung).
+- Umsatz-Reiter: Kachel „Angebote“ zeigt die Tool-Angebote (Altbestand bleibt lesbar), „+ Angebot“ öffnet das Tool. Neue Abhängigkeit `pdf-lib@1.17.1` (fest).
+- Tests: `tests/angebote.test.ts`, `tests/angebot-route.test.ts` (Nummern parallel, festgeschrieben, Version, Ablauf, PDF-Text, Verbindungen, Ampel, 403/409), `tests/angebot-oberflaeche.test.ts` (zeichnet ohne Fehler), Verbindungsprüfung (4 neue Prüfungen).
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Stammdaten › Gesellschaften: je Gesellschaft Firmierung, Anschrift, Steuernummer/USt-IdNr., E-Mail, Bank eintragen; Logo hochladen; Nummernformat prüfen.
+- [ ] Produkte & Mandate › Produkte: für jedes aktive Produkt den Leistungstext eintragen („Text fehlt“ verschwindet).
+- [ ] Kontakt öffnen › Deals „Angebot erstellen“ → Produkt anklicken → Menge/Preis ändern → „Mail versenden“ → Vorschau prüfen → Senden: PDF kommt, Mail-Programm öffnet sich, Angebot hat seine Nummer; Deal steht auf „Angebot“, Follow-up ist da.
+- [ ] Angebot öffnen → „Angenommen“ → „Mandat anlegen“ (Honorar/Laufzeit vorbelegt); ein zweites → „Abgelehnt …“ mit Grund.
+
+## Markttraktion: Schnellknöpfe Qualifizierung + Angebot, „+ Aktivität hinzufügen“ (28.09.2026 abends, nur lokal)
+
+- **Zwei Schnellknöpfe in der Mitte der Reiterleiste:** „Qualifizierung“ (orange) und „Angebot“ (grün), jeder für sich, ausbalanciert zwischen links (Überblick · Kontakte · Firmen · Deals · Follow-up) und rechts (Sales · Marketing · Make.One · Stammdaten). Sie pulsieren leise von hinten (bei „Bewegung reduzieren“ still), aktiv = kräftige Fläche mit voller Kontur. Qualifizierung ist dafür aus der rechten Gruppe in die Mitte gewandert.
+- **Schmal (Laptop mit Leiste unter ~1.100 px Inhaltsbreite, Handy):** die zwei Knöpfe stehen als eigene Zeile über den Reitern; die Reiter bleiben wischbar, nichts läuft über (geprüft 1440, 1280, 375 px).
+- **Neuer Bereich „Angebot“:** `/os/markttraktion?s=angebot` (optional `k=<Angebot>`, `kontakt=`, `firma=`, `deal=`), Untertitel „Angebot in einer Minute: Produkte anklicken, anpassen, senden.“ Inhalt kommt aus dem Angebots-Paket (A1). In der Schnellsuche: „Markttraktion · Qualifizierung“ und „Markttraktion · Angebot“.
+- **Umbenannt:** „+ Gespräch festhalten“ → „+ Aktivität hinzufügen“ (Knopf im Kopf, Titel des Dialogs, Pflege-Link der Kennzahl „Echte Gespräche“). Verhalten unverändert.
+- Tests: `tests/markttraktion-angebot.test.ts` (Adresse, Vorbelegung, alte Adressen, Reihenfolge der Leiste).
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Markttraktion am Rechner: Knöpfe mittig zwischen den Gruppen, beide pulsieren leise; Klick auf Angebot → grün aktiv, Untertitel passt; Klick auf Qualifizierung → Qualifizierungsrunde wie bisher.
+- [ ] Am Handy: Qualifizierung + Angebot als Zeile oben, Reiter darunter wischbar, keine Querlaufleiste der Seite.
+- [ ] „+ Aktivität hinzufügen“ öffnet den bekannten Dialog (Titel „Aktivität hinzufügen“), Speichern wie bisher.
+
 ## Datenschutz vollständig: Nachweis, Art. 18, Löschfristen, geprüft (28.09.2026, U2, nur lokal)
 
 - **Einwilligung mit vollem Nachweis (#55):** Wortlaut und Beleg sind beim Erfassen Pflicht; Zeitpunkt (mit Uhrzeit) und wer sie aufgenommen hat, stempelt der Server. Einmal erfasst, bleibt eine Einwilligung unveränderlich — nur der Widerruf kommt dazu (mit Person). Kontakt › Stammdaten › Datenschutz zeigt den ganzen Nachweis und „Nachweis unvollständig“.

@@ -833,6 +833,7 @@ async function kontaktUebergeben(input: Record<string, unknown>, _o: string, per
 }
 
 async function chanceAnlegen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+  if (!person) return 'Fehlgeschlagen: CRM-Werkzeuge nur im Auftrag einer Person im Haushalt (Regel 5).';
   // Seit 27.09. über den EINEN Anlageweg (lib/crm/deal-anlegen.ts): Firma per Kennung, Kernfragen vom Lead,
   // Pflicht zum nächsten Schritt, kein zweiter offener Deal ohne Absicht, Lead wird SQL.
   const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
@@ -849,12 +850,13 @@ async function chanceAnlegen(input: Record<string, unknown>, _o: string, person?
   const schritt = String(input.naechster_schritt ?? '').trim().slice(0, 300);
   const datum = /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined;
   if (!schritt || !datum) return 'Fehlgeschlagen: naechster_schritt und faellig (YYYY-MM-DD) sind Pflicht — ohne nächsten Schritt verliert sich der Deal.';
-  const r = await dealAnlegen({ titel: String(input.titel ?? '').trim().slice(0, 160) || undefined, kontaktIds: [treffer.id], art: 'retainer', wert: { betrag, basis }, schritt: { text: schritt, datum }, quelle: 'bestand', stufe, besitzer: person, trotzdem: input.trotzdem === true }, person ?? 'kevin', undefined, { art: 'zoe', ...(person ? { person } : {}) });
+  const r = await dealAnlegen({ titel: String(input.titel ?? '').trim().slice(0, 160) || undefined, kontaktIds: [treffer.id], art: 'retainer', wert: { betrag, basis }, schritt: { text: schritt, datum }, quelle: 'bestand', stufe, besitzer: person, trotzdem: input.trotzdem === true }, person, undefined, { art: 'zoe', person });
   if (!r.ok) return `Fehlgeschlagen: ${r.fehler}${r.offen ? ` (offener Deal: ${r.offen.id})` : ''}`;
   return `Deal angelegt (Lead ist jetzt SQL): „${r.chance.titel}“ (${anzeigename(treffer)}) · Stufe ${r.chance.stufe}${betrag ? ` · ${betrag} € ${basis === 'monat' ? 'im Monat' : 'einmalig'}` : ' · noch ohne Wert'} · nächster Schritt ${datum}: ${schritt}`;
 }
 
 async function crmLage(_i: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+  if (!person) return 'Fehlgeschlagen: CRM-Werkzeuge nur im Auftrag einer Person im Haushalt (Regel 5).';
   const { loadJson } = await import('@/lib/store/local-db');
   const { localDay } = await import('@/lib/zeit');
   const { ladeCrm } = await import('@/lib/crm/speicher');
@@ -867,7 +869,7 @@ async function crmLage(_i: Record<string, unknown>, _o: string, person?: string)
   const kontakte = (await loadJson<{ kontakte: import('@/lib/make-one/crm').Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const crm = await ladeCrm();
   const heute = localDay();
-  const a = werIstDran(kontakte, crm, heute, person ?? 'kevin', 8);
+  const a = werIstDran(kontakte, crm, heute, person, 8);
   const t = traktion({ sales: kennzahlen(kontakte, crm, heute), marketing: marketingKennzahlen(kontakte, crm, heute), event: eventKennzahlen(kontakte, crm, heute) });
   const kz = (l: import('@/lib/crm/kennzahlen').Kpi[]) => l.map(k => `${k.label} ${k.anzeige}${k.ampel !== 'grau' ? ` (${k.ampel})` : ''}`).join(' · ');
   const ue = uebergaben(kontakte, crm, heute);
@@ -875,7 +877,7 @@ async function crmLage(_i: Record<string, unknown>, _o: string, person?: string)
     `MARKTTRAKTION ${heute} — Traction-Score ${t.score ?? '—'} (${t.hinweis})`,
     ...t.welten.map(w => `${w.label} (${w.gewicht} %): ${w.score ?? '—'} · ${kz(w.kpis)}`),
     `Übergaben: ${ue.map(u => `${u.titel} ${u.anzahl} (${u.von}→${u.an})`).join(' · ') || 'nichts offen'}`,
-    `Für ${nameVon(person ?? 'kevin')}: ${fuerDich(person ?? 'kevin', kontakte, crm, heute).map(f => `${f.titel} ${f.anzahl}`).join(' · ') || 'nichts Fälliges'}`,
+    `Für ${nameVon(person)}: ${fuerDich(person, kontakte, crm, heute).map(f => `${f.titel} ${f.anzahl}`).join(' · ') || 'nichts Fälliges'}`,
     `Zuletzt im Team: ${teamFeed(kontakte, crm, new Date(Date.now() - 7 * 864e5).toISOString(), 6).map(e => `${nameVon(e.person)}: ${e.text}`).join(' · ') || 'nichts'}`,
     `Wer heute dran ist (${a.karten.length}):`,
     ...a.karten.map(c => `- ${c.name}${c.kontakt.firma ? ` · ${c.kontakt.firma}` : ''} [${c.kontakt.id}] — ${c.kategorie}: ${c.gruende[0]}${c.kanal ? ` · Kanal ${c.kanal.kanal} (${c.kanal.farbe})` : ''}`),
