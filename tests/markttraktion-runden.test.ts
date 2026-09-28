@@ -15,7 +15,7 @@ const HEUTE = '2026-09-25'; // Freitag
 const J = '2026-09-25T10:00:00.000Z';
 const k = (id: string, x: Partial<Kontakt> = {}): Kontakt => ({ id: `c-${id}`, vorname: id, nachname: 'Test', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-08-01', geaendertAm: '2026-08-01', ...x });
 const md = (x: Partial<Mandat> = {}): Mandat => ({
-  id: 'm-1', kunde: 'ACME Venetian Products GmbH', kontaktIds: [], titel: 'Beratung', art: 'retainer', gesellschaft: 'kdc', status: 'aktiv', vertragUnterschrieben: true,
+  id: 'm-1', kunde: 'Beispielwerk Nord Products GmbH', kontaktIds: [], titel: 'Beratung', art: 'retainer', gesellschaft: 'kdc', status: 'aktiv', vertragUnterschrieben: true,
   verlaengerung: 'auto', honorar: { betrag: 3000, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14,
   ziele: [], health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: [], geaendert: HEUTE, ...x,
 });
@@ -54,8 +54,8 @@ describe('Kreis-Runde: wer, in welcher Reihenfolge, warum', () => {
   });
   it('je Karte ein kurzer Grund', () => {
     const grund = (id: string) => l.find(x => x.kontakt.id === `c-${id}`)!.grund;
-    expect(grund('kunde')).toBe('Kunde · Mandat ACME Venetian Products');
-    expect(grund('mandat')).toBe('Mandat ACME Venetian Products');
+    expect(grund('kunde')).toBe('Kunde · Mandat Beispielwerk Nord Products');
+    expect(grund('mandat')).toBe('Mandat Beispielwerk Nord Products');
     expect(grund('chance')).toBe('Chance „Workshop Q4“');
     expect(grund('gespraech')).toBe('im Gespräch · zuletzt 24.8.');
     expect(grund('prio-a-neu')).toBe('Prio A · Eignung ja · zuletzt 10.9.');

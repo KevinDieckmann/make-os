@@ -24,6 +24,10 @@ import { beanFirma } from '@/lib/crm/bean';
 import { Person } from './team';
 import { LeadBlock } from './Leads';
 import { haeltBeziehung, nameVon } from '@/lib/crm/team';
+import { personenJeFirma, personenAufteilen, stationIn, stationenVon, stationWechseln, stationHinzufuegen, stationenFelder, aktivitaetZurFirma, STATION_ART_LABEL } from '@/lib/crm/stationen';
+import { firmenGruppe, muetter, toechter as toechterVon } from '@/lib/crm/konzern';
+import { beanGruppe, BEAN_LABEL } from '@/lib/crm/bean';
+import { localDay } from '@/lib/zeit';
 
 export const ROLLEN: { id: FirmaRolle; label: string; farbe: string }[] = [
   { id: 'kunde', label: 'Kunde', farbe: LEUCHT.gut }, { id: 'zielkunde', label: 'Zielkunde', farbe: LEUCHT.business }, { id: 'partner', label: 'Partner', farbe: LEUCHT.agenten },
@@ -42,7 +46,8 @@ export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: Crm
   const [mehr, setMehr] = useState(80);
   const firmen = useMemo(() => api.crm?.stand.firmen ?? [], [api.crm]);
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
-  const personenJe = useMemo(() => { const m = new Map<string, number>(); for (const k of kontakte) if (k.firmaId) m.set(k.firmaId, (m.get(k.firmaId) ?? 0) + 1); return m; }, [kontakte]);
+  // Personen einer Firma nur über die Stationen (28.09.) — laufende Stationen.
+  const personenJe = useMemo(() => new Map(Array.from(personenJeFirma(kontakte, { nurAktiv: true }).entries()).map(([id, l]) => [id, l.length])), [kontakte]);
   const dubl = useMemo(() => (ansicht === 'dubletten' ? firmenDubletten(firmen) : []), [ansicht, firmen]);
   const ANSICHTEN: { id: Ansicht; label: string }[] = [
     { id: 'alle', label: `Alle ${firmen.length}` }, ...ROLLEN.filter(r => firmen.some(f => f.rolle === r.id)).map(r => ({ id: r.id as Ansicht, label: `${r.label} ${firmen.filter(f => f.rolle === r.id).length}` })),
@@ -79,7 +84,7 @@ export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: Crm
         titel={<>{x.name}{x.domain && <span style={{ color: C.inkLeise }}> · {x.domain}</span>}</>}
         unter={[x.branche, x.stadt, x.mitarbeiter ? `${x.mitarbeiter} MA` : ''].filter(Boolean).join(' · ') || 'keine Details'}
         rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{personenJe.get(x.id) ?? 0} P.</span><Chip farbe={rolle(x.rolle).farbe}>{rolle(x.rolle).label}</Chip></span>} />
-      {auswahl === x.id && <div style={{ padding: '8px 0 18px' }}><FirmenKarte f={x} api={api} zuPerson={zuPerson} /></div>}
+      {auswahl === x.id && <div style={{ padding: '8px 0 18px' }}><FirmenKarte f={x} api={api} zuPerson={zuPerson} zuFirma={setAuswahl} /></div>}
     </div>
   );
 
@@ -115,7 +120,7 @@ export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: Crm
       {breit && (
         <Spalte klebt>
           <Karte i={1} akzent={f ? rolle(f.rolle).farbe : undefined}>
-            {f ? <FirmenKarte f={f} api={api} zuPerson={zuPerson} /> : <Leer>Eine Firma anklicken — Stammdaten, Personen, Chancen und Verlauf erscheinen hier.</Leer>}
+            {f ? <FirmenKarte f={f} api={api} zuPerson={zuPerson} zuFirma={setAuswahl} /> : <Leer>Eine Firma anklicken — Stammdaten, Personen, Chancen und Verlauf erscheinen hier.</Leer>}
           </Karte>
         </Spalte>
       )}
@@ -127,20 +132,39 @@ export function neueFirma(name: string): Firma {
   return { id: firmenId(name), name: name.trim(), rolle: 'offen', geaendert: new Date().toISOString() };
 }
 
-function FirmenKarte({ f, api, zuPerson }: { f: Firma; api: CrmApi; zuPerson: (id: string) => void }) {
+function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmApi; zuPerson: (id: string) => void; zuFirma: (id: string) => void }) {
   const crm = api.crm!;
-  const personen = (api.kontakte ?? []).filter(k => k.firmaId === f.id);
+  const firmen = crm.stand.firmen;
+  // Personen nur über die Stationen (28.09.): aktuell (laufende Station) und ehemalig (beendete) getrennt.
+  const { aktuell: personen, ehemalig } = personenAufteilen(api.kontakte ?? [], f.id);
   const ids = new Set(personen.map(k => k.id));
+  // Mutter- und Tochterfirmen (28.09., #7): „ganze Gruppe“ fasst Deals und Mandate aller Firmen der Gruppe zusammen.
+  const gruppe = firmenGruppe(firmen, f.id);
+  const [gruppeAn, setGruppeAn] = useState(false);
+  const gruppenFirmen = gruppeAn && gruppe.length > 1 ? firmen.filter(x => gruppe.includes(x.id)) : [f];
+  const mutter = f.mutterId ? firmen.find(x => x.id === f.mutterId) : undefined;
+  const toechter = toechterVon(firmen, f.id);
+  // Als Mutter wählbar: jede andere Firma, die nicht selbst (Enkel-)Tochter dieser ist — sonst entstünde ein Kreis.
+  const mutterListe = useMemo(() => firmen.filter(x => x.id !== f.id && !muetter(firmen, x.id).includes(f.id)).map(x => ({ id: x.id, label: x.name })), [firmen, f.id]);
   // Per Kennung (dealZuFirma/mandatZuFirma, F1) — der Name nur als Rückfall für Einträge ohne Firmen-Kennung; über
   // die Personen nur, wenn der Eintrag keiner anderen Firma gehört.
-  const chancen = crm.stand.chancen.filter(c => dealZuFirma(c, f) || (!c.firmaId && c.kontaktIds.some(id => ids.has(id))));
-  const mandate = crm.stand.mandate.filter(m => mandatZuFirma(m, f) || (!m.firmaId && m.kontaktIds.some(id => ids.has(id))));
-  const verlauf: Aktivitaet[] = personen.flatMap(k => (k.aktivitaeten ?? []).filter(a => a.art !== 'system').map(a => ({ ...a, text: `${anzeigename(k)}: ${a.text ?? ''}`.replace(/: $/, '') }))).sort((a, b) => a.am.localeCompare(b.am));
+  const chancen = crm.stand.chancen.filter(c => gruppenFirmen.some(g => dealZuFirma(c, g)) || (!c.firmaId && c.kontaktIds.some(id => ids.has(id))));
+  const mandate = crm.stand.mandate.filter(m => gruppenFirmen.some(g => mandatZuFirma(m, g)) || (!m.firmaId && m.kontaktIds.some(id => ids.has(id))));
+  // Zeitlinie (28.09.): Aktivitäten, die bei dieser Firma entstanden — auch von Personen, die inzwischen weitergezogen sind.
+  const verlauf: Aktivitaet[] = [...personen, ...ehemalig].flatMap(k => (k.aktivitaeten ?? []).filter(a => a.art !== 'system' && aktivitaetZurFirma(k, a, f.id)).map(a => ({ ...a, text: `${anzeigename(k)}: ${a.text ?? ''}`.replace(/: $/, '') }))).sort((a, b) => a.am.localeCompare(b.am));
   const [zuordnen, setZuordnen] = useState('');
+  const heute = crm.heute ?? localDay();
+  const firmaName = (id: string) => (id === f.id ? f.name : firmen.find(x => x.id === id)?.name);
+  /** Person dieser Firma zuordnen (28.09.): ohne bisherige Firma verknüpfen; sonst Jobwechsel (alte Station endet) oder zusätzlich. */
+  const zuordnenMit = (k: (typeof personen)[number], art: 'wechsel' | 'dazu') => {
+    if (!stationenVon(k).length) void api.kontaktTeil(k.id, { firmaId: f.id, firma: f.name });
+    else void api.kontaktTeil(k.id, stationenFelder(k, art === 'wechsel' ? stationWechseln(k, { firmaId: f.id }, heute) : stationHinzufuegen(k, { firmaId: f.id }), heute, firmaName));
+    setZuordnen('');
+  };
   const angebote = useOffeneAngebote();
   // Nur die geänderten Felder (F1) — ein ganzer Eintrag aus dem Browser-Stand überschrieb gleichzeitige Änderungen (Lead-Qualifizierung).
   const setze = (teil: Partial<Firma>) => api.teil('firmen', f.id, nurFelder(teil));
-  const kandidaten = zuordnen.trim().length >= 2 ? (api.kontakte ?? []).filter(k => k.firmaId !== f.id && `${anzeigename(k)} ${k.firma ?? ''}`.toLowerCase().includes(zuordnen.toLowerCase())).slice(0, 6) : [];
+  const kandidaten = zuordnen.trim().length >= 2 ? (api.kontakte ?? []).filter(k => !ids.has(k.id) && `${anzeigename(k)} ${k.firma ?? ''}`.toLowerCase().includes(zuordnen.toLowerCase())).slice(0, 6) : [];
   const F: [keyof Firma, string, string?][] = [['domain', 'Domain'], ['webseite', 'Webseite'], ['branche', 'Branche'], ['mitarbeiter', 'Mitarbeitende'], ['umsatz', 'Umsatz'], ['stadt', 'Ort'], ['gegruendet', 'Gegründet'], ['telefon', 'Telefon'], ['email', 'E-Mail'], ['linkedin', 'LinkedIn']];
 
   return (
@@ -152,17 +176,52 @@ function FirmenKarte({ f, api, zuPerson }: { f: Firma; api: CrmApi; zuPerson: (i
       <Feldzeile label="Rolle"><Wahl label="Rolle" liste={ROLLEN.map(r => ({ id: r.id, label: r.label }))} wert={f.rolle} farbe={ROLLEN.find(r => r.id === f.rolle)?.farbe} onWahl={r => setze({ rolle: r, rolleVonHand: true })} /></Feldzeile>
       {/* BEAN (28.09., H4): abgeleitet aus Mandaten, Deals und Angeboten der Firma und ihrer Personen — von Hand überschreibbar, gilt dann für Personen ohne eigene Wahl. */}
       <Feldzeile label="BEAN"><BeanWahl wert={f.bean} ergebnis={beanFirma(f, crm.stand, api.kontakte ?? [], { angebote })} onSetze={bean => setze({ bean })} /></Feldzeile>
+      {/* Mutter- und Tochterfirmen (28.09., #7) — Kreise lehnt der Server ab. */}
+      <Feldzeile label="Mutterfirma">
+        <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Wahl label="Mutterfirma" klein liste={mutterListe} wert={f.mutterId} leer="keine ▾" onWahl={mutterId => setze({ mutterId })} onLeeren={f.mutterId ? () => setze({ mutterId: undefined }) : undefined} leerenLabel="keine Mutterfirma" />
+          {mutter && <button type="button" onClick={() => zuFirma(mutter.id)} className="fassbar" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12, padding: 0 }}>öffnen ›</button>}
+        </span>
+      </Feldzeile>
+      {toechter.length > 0 && (
+        <Feldzeile label="Töchter">
+          <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+            {toechter.map(t => <button key={t.id} type="button" onClick={() => zuFirma(t.id)} className="fassbar" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}><Chip farbe={LEUCHT.agenten}>{t.name} ›</Chip></button>)}
+          </span>
+        </Feldzeile>
+      )}
+      {gruppe.length > 1 && (() => { const g = beanGruppe(gruppe, crm.stand, api.kontakte ?? [], { angebote }); return (
+        <Feldzeile label="Gruppe">
+          <span title={g.grund} style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
+            {gruppe.length} Firmen · BEAN der Gruppe <Chip farbe={LEUCHT.geld}>{g.bean} · {BEAN_LABEL[g.bean]}</Chip>
+          </span>
+        </Feldzeile>
+      ); })()}
       <LeadBlock api={api} leadId={f.id} />
       <div>
-        <Ueberschrift rechts={`${personen.length}`}>Personen</Ueberschrift>
-        {personen.map(k => <button key={k.id} onClick={() => zuPerson(k.id)} style={{ display: 'flex', width: '100%', justifyContent: 'space-between', gap: 8, background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien, padding: '7px 0', textAlign: 'left' }}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', minWidth: 0 }}><span title={`Hält die Beziehung: ${nameVon(haeltBeziehung(k))}`} style={{ opacity: k.besitzer ? 1 : 0.45, display: 'inline-flex' }}><Person id={haeltBeziehung(k)} groesse={18} /></span>{anzeigename(k)} <span style={{ color: C.inkLeise }}>{k.position ?? k.jobtitel ?? ''}</span></span><span style={{ color: C.inkLeise }}>{k.letzterKontakt ? datum(k.letzterKontakt) : ''} ›</span></button>)}
-        {!personen.length && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Noch niemand zugeordnet.</div>}
+        <Ueberschrift rechts={`${personen.length}`}>Personen · aktuell</Ueberschrift>
+        {personen.map(k => { const st = stationIn(k, f.id); return <button key={k.id} onClick={() => zuPerson(k.id)} style={{ display: 'flex', width: '100%', justifyContent: 'space-between', gap: 8, background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien, padding: '7px 0', textAlign: 'left' }}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', minWidth: 0 }}><span title={`Zuständig: ${nameVon(haeltBeziehung(k))}`} style={{ opacity: k.besitzer ? 1 : 0.45, display: 'inline-flex' }}><Person id={haeltBeziehung(k)} groesse={18} /></span>{anzeigename(k)} <span style={{ color: C.inkLeise }}>{[st?.rolle ?? (k.firmaId === f.id ? k.position ?? k.jobtitel : undefined), st?.art ? STATION_ART_LABEL[st.art] : undefined, st && !st.haupt ? 'weitere Station' : undefined].filter(Boolean).join(' · ')}</span></span><span style={{ color: C.inkLeise }}>{k.letzterKontakt ? datum(k.letzterKontakt) : ''} ›</span></button>; })}
+        {!personen.length && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Niemand ist aktuell zugeordnet.</div>}
         <input value={zuordnen} onChange={e => setZuordnen(e.target.value)} placeholder="Person zuordnen …" aria-label="Person zuordnen" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', marginTop: 8 }} />
-        {kandidaten.map(k => <button key={k.id} onClick={() => { void api.kontaktTeil(k.id, { firmaId: f.id, firma: f.name }); setZuordnen(''); }} style={{ display: 'block', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: '3px 0' }}>+ {anzeigename(k)}{k.firma ? ` · bisher ${k.firma}` : ''}</button>)}
+        {kandidaten.map(k => (
+          <div key={k.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim, padding: '3px 0' }}>
+            <span>{anzeigename(k)}{k.firma ? ` · bisher ${k.firma}` : ''}</span>
+            {k.firmaId
+              ? <><button onClick={() => zuordnenMit(k, 'wechsel')} title="Die bisherige Hauptstation endet heute (Historie bleibt)" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>wechselt hierher</button>
+                <button onClick={() => zuordnenMit(k, 'dazu')} title="Zusätzliche Station — die Hauptstation bleibt" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>+ zusätzlich</button></>
+              : <button onClick={() => zuordnenMit(k, 'wechsel')} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>+ zuordnen</button>}
+          </div>
+        ))}
       </div>
-      {(chancen.length > 0 || mandate.length > 0) && (
+      {ehemalig.length > 0 && (
         <div>
-          <Ueberschrift>Deals & Mandate</Ueberschrift>
+          <Ueberschrift rechts={`${ehemalig.length}`}>Ehemalig</Ueberschrift>
+          {ehemalig.map(k => { const st = stationIn(k, f.id); return <button key={k.id} onClick={() => zuPerson(k.id)} style={{ display: 'flex', width: '100%', justifyContent: 'space-between', gap: 8, background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: '7px 0', textAlign: 'left' }}><span style={{ minWidth: 0 }}>{anzeigename(k)} <span style={{ color: C.inkLeise }}>{[st?.rolle, st?.bis ? `bis ${datum(st.bis)}` : 'beendet'].filter(Boolean).join(' · ')}</span></span><span style={{ color: C.inkLeise }}>›</span></button>; })}
+        </div>
+      )}
+      {(chancen.length > 0 || mandate.length > 0 || gruppe.length > 1) && (
+        <div>
+          <Ueberschrift rechts={gruppe.length > 1 ? <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 12, cursor: 'pointer' }}><input type="checkbox" checked={gruppeAn} onChange={e => setGruppeAn(e.target.checked)} />ganze Gruppe</label> : undefined}>Deals & Mandate</Ueberschrift>
           {chancen.map(c => <Link key={c.id} href={WEG.deal(c.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{c.titel} <span style={{ color: C.inkLeise }}>· {crm.stufen.find(s => s.id === c.stufe)?.label}{c.wert.betrag ? ` · ${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/M' : ''}` : ''} ›</span></Link>)}
           {mandate.map(m => <Link key={m.id} href={WEG.mandat(m.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{m.titel.slice(0, 80)} <span style={{ color: C.inkLeise }}>· Mandat {m.status}{m.honorar.betrag ? ` · ${euro(m.honorar.betrag)}` : ''} ›</span></Link>)}
         </div>
@@ -181,7 +240,7 @@ function FirmenKarte({ f, api, zuPerson }: { f: Firma; api: CrmApi; zuPerson: (i
         <Ueberschrift>Verlauf aller Personen</Ueberschrift>
         <Verlauf liste={verlauf} name={p => p.charAt(0).toUpperCase() + p.slice(1)} max={15} heute={crm.heute} />
       </div>
-      {!personen.length && !chancen.length && !mandate.length && <div><button onClick={() => { if (window.confirm(`Firma „${f.name}“ löschen?`)) void api.weg('firmen', f.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>Leere Firma löschen</button></div>}
+      {!personen.length && !ehemalig.length && !toechter.length && !chancen.length && !mandate.length && <div><button onClick={() => { if (window.confirm(`Firma „${f.name}“ löschen?`)) void api.weg('firmen', f.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, padding: 0 }}>Leere Firma löschen</button></div>}
     </div>
   );
 }

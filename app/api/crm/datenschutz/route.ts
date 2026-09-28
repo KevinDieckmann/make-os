@@ -14,6 +14,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { localDay } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
+import { stationenVon } from '@/lib/crm/stationen';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { fuerPerson } from '@/lib/make-one/crm';
 import { zahlungMaskiert } from '@/lib/crm/zahlung';
@@ -35,6 +36,8 @@ export async function GET(req: Request) {
     // gehört (Kontakt.zahlung — nur bei Personen ohne Firma). Die IBAN einer Firma ist kein Datum der Person:
     // sie steht hier nur maskiert, wie überall sonst im Browser.
     person: fuerPerson(k, personStreng(req) ?? '', { ibanVoll: true }), firma: (() => { const f = k.firmaId ? crm.firmen.find(x => x.id === k.firmaId) : undefined; return f ? { ...f, ...(f.zahlung ? { zahlung: zahlungMaskiert(f.zahlung) } : {}) } : null; })(),
+    // Stationen (28.09.): alle Firmen, in denen die Person stand oder steht — nur Kennung, Name und die Station selbst.
+    stationen: stationenVon(k).map(st => ({ ...st, firma: crm.firmen.find(x => x.id === st.firmaId)?.name ?? null })),
     // Alle Speicher aus einer Stelle (28.09., lib/crm/person-bestaende.ts): CRM-Listen, Dateiablage (nur Metadaten),
     // Import-Konflikte, Head-Vorschläge, kommender Termin, eindeutig zugeordnete Aufgaben.
     ...(await personAufzaehlen(id)),

@@ -16,7 +16,7 @@ export interface BrainDaten {
 
 function hash(t: string): string { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36).slice(0, 6); }
 const slug = (t: string, n = 24) => t.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, n).replace(/-$/, '');
-/** „Grzegorz Augustyn ('Gregor', im CRM 'Gregosch')“ → „Grzegorz Augustyn“ */
+/** „Anna Beispiel ('Anni', im CRM 'Annchen')“ → „Anna Beispiel“ */
 export const sauberName = (n: string) => n.replace(/\(.*?\)/g, '').replace(/\s+/g, ' ').trim();
 const norm = (t: string) => sauberName(t).toLowerCase();
 /** Rolle aus Brain-Notizen: nur der Titel, ohne Quellenvermerke („laut …“, „(… 17.09.)“, „ — …“). */

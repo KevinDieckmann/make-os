@@ -56,7 +56,7 @@ describe('Verbindungsprüfung — sauberer Bestand', () => {
   });
   it('jede Prüfung hat Satz, Schwere und Bereich; reparierbar ist eine feste Teilmenge', () => {
     for (const id of PRUEFUNG_IDS) expect(PRUEFUNGEN[id].text(2)).toMatch(/^\S/);
-    expect(REPARIERBAR).toEqual(['firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'datei-fehlt', 'konflikt-veraltet']);
+    expect(REPARIERBAR).toEqual(['firma-mutter-tot', 'firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'datei-fehlt', 'konflikt-veraltet']);
   });
 });
 
@@ -66,6 +66,12 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   ['kontakt-email-doppelt', b => { b.kontakte[1].email = 'C-ANNA1@example.invalid '; }, 2, 'c-anna1'],
   ['kontakt-firma-tot', b => { b.kontakte[1].firmaId = 'f-weg'; }, 1, 'c-bert1'],
   ['firma-ohne-personen', b => { b.crm.firmen.push(firma('f-leer')); }, 1, 'f-leer'],
+  // Stationen, Haupt-Adresse, Mutterfirmen (28.09.)
+  ['kontakt-station-firma-tot', b => { b.kontakte[1].stationen = [{ firmaId: 'f-alpha', aktiv: true, haupt: true }, { firmaId: 'f-weg', aktiv: false, bis: '2026-01-01' }]; }, 1, 'c-bert1'],
+  ['kontakt-station-haupt', b => { b.crm.firmen.push(firma('f-beta')); b.kontakte[1].stationen = [{ firmaId: 'f-alpha', aktiv: true, haupt: true }, { firmaId: 'f-beta', aktiv: true, haupt: true }]; }, 1, 'c-bert1'],
+  ['kontakt-email-haupt', b => { b.kontakte[1].emails = [{ adresse: 'c-bert1@example.invalid' }, { adresse: 'bert.privat@example.invalid', art: 'privat' }]; }, 1, 'c-bert1'],
+  ['firma-mutter-tot', b => { b.crm.firmen[0].mutterId = 'f-weg'; }, 1, 'f-alpha'],
+  ['firma-mutter-zyklus', b => { b.crm.firmen.push(firma('f-beta', { mutterId: 'f-alpha' })); b.crm.firmen[0].mutterId = 'f-beta'; b.kontakte.push(k('c-cora1', { firmaId: 'f-beta' })); }, 2, 'f-alpha'],
   ['kunde-ohne-mandat-person', b => { b.kontakte.push(k('c-kunde1', { lebensphase: 'kunde' })); }, 1, 'c-kunde1'],
   ['kunde-ohne-mandat-firma', b => { b.crm.firmen.push(firma('f-kunde', { rolle: 'kunde' })); b.kontakte.push(k('c-kunde2', { firmaId: 'f-kunde' })); }, 1, 'f-kunde'],
   ['firma-lead-deal-tot', b => { b.crm.firmen[0].lead = { status: 'sql', kriterien: { ...Q }, chanceId: 'd-weg' }; }, 1, 'f-alpha'],
@@ -162,6 +168,7 @@ describe('Verbindungen reparieren', () => {
     b.crm.chancen[0].kontaktIds.push('c-weg1'); b.crm.chancen[0].personenRollen!['c-weg1'] = 'blocker';
     b.crm.mandate[0].kontaktIds.push('c-weg2');
     b.crm.firmen[0].lead = { status: 'sql', kriterien: { ...Q }, chanceId: 'd-weg' };
+    b.crm.firmen[0].mutterId = 'f-weg';
     b.kontakte[0].lead!.chanceId = 'd-weg';
     b.crm.followups.push(fu('fu-2', { kontaktId: 'c-weg1', bezug: { art: 'kontakt', id: 'c-weg1' } }), fu('fu-3', { kontaktId: undefined, bezug: { art: 'event', id: 'ev-weg' } }));
     b.crm.kampagnen[0].kontaktIds.push('c-weg1');

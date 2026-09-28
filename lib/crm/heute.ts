@@ -24,6 +24,7 @@ import { mandatLage } from './kunden';
 import { followUpBis } from './events';
 import { taktVon } from './followup';
 import { haeltBeziehung, zustaendig, BEIDE } from './team';
+import { hatTyp } from './mehrfach';
 
 export type Kategorie = 'versprechen' | 'signale' | 'chancen' | 'kunden' | 'pflege' | 'neu';
 export const KATEGORIEN: { id: Kategorie; label: string; warum: string }[] = [
@@ -150,7 +151,7 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   const PRIO: Record<string, number> = { A: 20, B: 10 };
   for (const k of kontakte) {
     if ((k.stufe !== 'neu' && k.stufe !== 'ansprechen') || !(k.prio === 'A' || k.prio === 'B') || !(k.aufhaenger ?? '').trim()) continue;
-    if (k.typ === 'Dienstleister' || k.typ === 'Investor') continue;
+    if (hatTyp(k, 'Dienstleister') || hatTyp(k, 'Investor')) continue;
     const intro = k.vorgestelltDurch ? ' · Warm-Intro möglich' : '';
     nimm(k, 'neu', PRIO[k.prio] + (k.eignung === 'ja' ? 5 : 0) + (k.vorgestelltDurch ? 10 : 0), `Prio ${k.prio}${k.eignung ? ` · Eignung ${k.eignung}` : ''}${intro}`);
   }

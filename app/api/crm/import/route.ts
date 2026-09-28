@@ -43,6 +43,7 @@ import { karteiHaushalt, sperrlisteLaden, sperrlisteNachtragen, sperrPruefer } f
 import { kontaktAbdruck, laeufeLaden, laufAblegen, laufKurz, laufName, laufNachherSetzen, neueLaufId, rueckgaengigRechnen, LAUF_ID_OK, type ImportLauf, type LaufBestand } from '@/lib/crm/import-lauf';
 import { enthaeltKennung } from '@/lib/crm/person-bestaende';
 import { ladeCrm } from '@/lib/crm/speicher';
+import { protokolliere, listenDiff, type Wer } from '@/lib/store/aenderungsprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -102,7 +103,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true, vorschau: true, zeilen: zeilen.length, neu: r.neu, aktualisiert: r.aktualisiert, unveraendert: r.unveraendert,
       konflikte: r.konflikte.length, moeglicheDubletten: r.moeglicheDubletten.length, ohneBesitzer: r.ohneBesitzer,
-      gesperrt: r.gesperrt, uebergang: r.uebergang, warnungen: pruefung.warnungen, pruefung: pruefung.zaehler,
+      gesperrt: r.gesperrt, uebergang: r.uebergang, weitereAdressen: r.weitereAdressen, warnungen: pruefung.warnungen, pruefung: pruefung.zaehler,
       abgelehnt: schrumpftZuStark(vorher.length, r.kontakte.length, 20),
       beispiele: { konflikte: r.konflikte.slice(0, 10).map(k => ({ kontaktId: k.kontaktId, feld: k.feld })), moeglicheDubletten: r.moeglicheDubletten.slice(0, 10) },
     });
@@ -116,6 +117,9 @@ export async function POST(req: Request) {
   const haushalt = await karteiHaushalt();
   const lauf: ImportLauf = { id: neueLaufId(), am: new Date().toISOString(), person: wer.person, quelle, neu: [], vorher: [], nachher: {} };
   let mitLauf = false;
+  // Änderungsprotokoll (28.09.): der Import schreibt als `import` (mit der auslösenden Person) — Kennung + Feldnamen, nie Werte.
+  const alsImport: Wer = { art: 'import', person: wer.person };
+  let protokollVorher: Kontakt[] = [], protokollNachher: Kontakt[] = [];
   await updateJsonAsync<Bestand>('kontakte', async cur => {
     const vorher = cur?.kontakte ?? [];
     const ergebnis = importieren(vorher, zeilen, heute, { gesperrt });
@@ -125,8 +129,10 @@ export async function POST(req: Request) {
     lauf.neu = ergebnis.neuIds;
     lauf.vorher = ergebnis.kontakte.flatMap(k => { const a = alt.get(k.id); return a && kontaktAbdruck(a) !== kontaktAbdruck(k) ? [a] : []; });
     if (lauf.neu.length || lauf.vorher.length) { await laufAblegen(haushalt, lauf); mitLauf = true; }
+    protokollVorher = vorher; protokollNachher = ergebnis.kontakte;
     return { ...(cur ?? {}), kontakte: ergebnis.kontakte };
   });
+  if (!abgelehnt) await protokolliere('kontakte', listenDiff(protokollVorher, protokollNachher), alsImport);
   if (abgelehnt || !r) return NextResponse.json({ error: 'Abgelehnt: der Import hätte den Bestand halbiert.' }, { status: 409 });
   r = r as ReturnType<typeof importieren>;
 
@@ -136,17 +142,17 @@ export async function POST(req: Request) {
   await updateJson<KonfliktStand>(KONFLIKT_SPEICHER, () => konfliktStand);
 
   // Beim ersten Import das Marketing-Segment „Vernetzen“ anlegen — kalte Leads gehen dorthin, nicht in den Vertrieb.
-  await aendereCrm(c => (c.segmente.some(s => s.id === SEGMENT_VERNETZEN_ID) ? c : { ...c, segmente: [...c.segmente, segmentVernetzen(jetzt)] }));
+  await aendereCrm(c => (c.segmente.some(s => s.id === SEGMENT_VERNETZEN_ID) ? c : { ...c, segmente: [...c.segmente, segmentVernetzen(jetzt)] }), alsImport);
 
   // Firmen als eigene Stammdaten: neue anlegen, Personen verknüpfen, leere Felder füllen.
-  const firmen = await firmenAbgleichen();
+  const firmen = await firmenAbgleichen(alsImport);
   // Fingerabdrücke NACH dem Firmen-Abgleich — so, wie der Import die Kontakte hinterließ.
   const nachher = (await loadJson<Bestand>('kontakte'))?.kontakte ?? [];
   if (mitLauf) await laufNachherSetzen(haushalt, lauf.id, nachher);
   await logRun('crm', `Import: ${r.neu} neu, ${r.aktualisiert} aktualisiert, ${r.unveraendert} unverändert, ${r.konflikte.length} Konflikte, ${r.gesperrt} gesperrt übersprungen`, { quelle, zeilen: zeilen.length, moeglicheDubletten: r.moeglicheDubletten.length, ohneBesitzer: r.ohneBesitzer, ...(mitLauf ? { lauf: lauf.id } : {}) });
   return NextResponse.json({
     ok: true, zeilen: zeilen.length, neu: r.neu, aktualisiert: r.aktualisiert, unveraendert: r.unveraendert,
-    konflikte: r.konflikte, moeglicheDubletten: r.moeglicheDubletten, ohneBesitzer: r.ohneBesitzer, gesperrt: r.gesperrt,
+    konflikte: r.konflikte, moeglicheDubletten: r.moeglicheDubletten, ohneBesitzer: r.ohneBesitzer, gesperrt: r.gesperrt, weitereAdressen: r.weitereAdressen,
     warnungen: pruefung.warnungen, pruefung: pruefung.zaehler, ...(mitLauf ? { laufId: lauf.id } : {}),
     firmen, stand: pipelineStand(nachher),
   });

@@ -14,6 +14,7 @@ import { mandatLage } from './kunden';
 import { kontextAus, segmentAuswerten } from './segmente';
 import { firmenSchluessel } from './firmen';
 import { vernetzenStandard } from './netzwerk';
+import { firmenDerPerson } from './stationen';
 
 export interface Playbook {
   id: string; name: string; kurz: string;
@@ -163,7 +164,7 @@ export function zielgruppe(kontakte: Kontakt[], crm: CrmBestand, pb: Pick<Playbo
   }
   if (pb.zusatz === 'lookalike') {
     const ids = new Set(aehnlicheFirmen(crm, heute, 40).map(a => a.firma.id));
-    l = l.filter(k => k.firmaId && ids.has(k.firmaId));
+    l = l.filter(k => firmenDerPerson(k).some(id => ids.has(id)));
   }
   return l;
 }

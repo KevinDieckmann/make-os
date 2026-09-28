@@ -16,16 +16,16 @@ describe('Signale aus Mail und Kalender', () => {
     expect(mailSignale(r.kontakte, [{ id: 'm1', email: 'max@firma.de', betreff: 'Re: Angebot', am: '2026-09-23T10:00:00Z' }]).length).toBe(0);
   });
   it('Termine: Vor- und Nachname im Titel, eindeutig; vergangen → Verlauf, kommend → nächster Termin', () => {
-    const w = k('wilfried', { vorname: 'Wilfried', nachname: 'Streiner' });
-    expect(personImTitel(w, 'Call mit Wilfried Streiner (OneBanking)')).toBe(true);
-    expect(personImTitel(w, 'Streinerweg Wilfriedstraße')).toBe(false);
-    const t = terminSignale([w, k('simon', { vorname: 'Simon', nachname: 'Streiner' })], [
-      { id: 't1', titel: 'Wilfried Streiner Review', start: '2026-09-20T10:00:00Z' },
-      { id: 't2', titel: 'Wilfried Streiner Planung', start: '2026-09-30T10:00:00Z' },
-      { id: 't3', titel: 'Streiner Familie', start: '2026-09-21T10:00:00Z' },
+    const w = k('walter', { vorname: 'Walter', nachname: 'Probemann' });
+    expect(personImTitel(w, 'Call mit Walter Probemann (Kunde A)')).toBe(true);
+    expect(personImTitel(w, 'Probemannweg Walterstraße')).toBe(false);
+    const t = terminSignale([w, k('simon', { vorname: 'Simon', nachname: 'Probemann' })], [
+      { id: 't1', titel: 'Walter Probemann Review', start: '2026-09-20T10:00:00Z' },
+      { id: 't2', titel: 'Walter Probemann Planung', start: '2026-09-30T10:00:00Z' },
+      { id: 't3', titel: 'Probemann Familie', start: '2026-09-21T10:00:00Z' },
     ], '2026-09-24T12:00:00Z');
-    expect(t.vergangen.map(x => x.kontaktId)).toEqual(['c-wilfried']);
-    expect(t.kommend['c-wilfried']).toMatchObject({ titel: 'Wilfried Streiner Planung' });
+    expect(t.vergangen.map(x => x.kontaktId)).toEqual(['c-walter']);
+    expect(t.kommend['c-walter']).toMatchObject({ titel: 'Walter Probemann Planung' });
   });
 });
 

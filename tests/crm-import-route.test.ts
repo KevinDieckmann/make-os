@@ -116,4 +116,25 @@ describe('Import-Route — Vorschau, Konflikte, Auflösung', () => {
     expect(nachher.notiz).toBe('Notiz Liste');
     expect(nachher.vonHand).toContain('notiz');
   });
+
+  it('schreibt ins Änderungsprotokoll als „import“ — nur Kennungen und Feldnamen (28.09.)', async () => {
+    const { protokollMonat, monatBerlin } = await import('@/lib/store/aenderungsprotokoll');
+    const e = (await protokollMonat('ohne-haushalt', monatBerlin())).filter(x => x.bestand === 'kontakte');
+    expect(e.length).toBeGreaterThan(0);
+    expect(e.every(x => x.wer === 'import' && x.person === 'kevin')).toBe(true);
+    expect(JSON.stringify(e)).not.toContain('@example.invalid');
+  });
+
+  it('eine zweite Adresse zu einer bekannten Person wird angehängt, nicht überschrieben (28.09., #11)', async () => {
+    const vorher = (await kontakte()).find(x => x.email === 'testa@example.invalid')!;
+    const liste3 = csv(['Testa;Beispielmann;testa.privat@example.invalid;Testfirma GmbH;Malin Würriehausen;Aufhänger Liste;Notiz Liste;']);
+    const d = await (await route.POST(req({ csv: liste3, name: 'liste3.csv' }))).json();
+    expect(d).toMatchObject({ neu: 0, weitereAdressen: 1 });
+    const k = (await kontakte()).find(x => x.id === vorher.id)!;
+    expect(k.email).toBe('testa@example.invalid');
+    expect(k.emails?.map(x => x.adresse)).toEqual(['testa@example.invalid', 'testa.privat@example.invalid']);
+    // Zweimal: nichts Neues.
+    const d2 = await (await route.POST(req({ csv: liste3, name: 'liste3.csv' }))).json();
+    expect(d2).toMatchObject({ neu: 0, weitereAdressen: 0 });
+  });
 });

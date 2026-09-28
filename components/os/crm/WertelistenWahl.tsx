@@ -5,9 +5,9 @@
 //  · WertelistenWahl — Branchen (mehrfach): ALLE Werte der Werteliste als
 //    Pillen in einer scrollbaren Box (etwa vier Zeilen hoch), ab SUCHE_AB
 //    Werten ein Suchfeld darüber, und „+ neu“ direkt in der Akte.
-//  · WertelistenEinzelWahl — Typ und Kategorie (einzeln, Kevin 27.09. spät):
-//    der Wahl-Chip (./Wahl.tsx) — sichtbar nur der gesetzte Wert, Klick öffnet
-//    das Menü mit Suche, „+ neu …“ und „Pflegen ›“ im Fuß.
+//  · WertelistenMehrfachWahl — Typ, Kategorie und Labels (mehrfach seit 28.09.,
+//    vorher Einzelwahl): Wahl-Chips (./Wahl.tsx WahlMehrfach) — gesetzte Werte mit ×,
+//    „+“ öffnet das Menü mit Suche, „+ neu …“ und „Pflegen ›“ im Fuß.
 // Neu anlegen läuft in beiden über useWertelisteAnlegen: POST /api/crm/stammdaten
 // · aktion wertelisten (Prüfung und Säuberung in lib/crm/wertelisten.ts), der
 // Wert wird sofort gewählt. Feste Standardwerte sind nicht löschbar;
@@ -20,10 +20,10 @@ import { wertelisteZurWahl, SUCHE_AB, WERT_MIN, WERT_MAX } from '@/lib/crm/werte
 import { markttraktion } from '@/lib/crm/adresse';
 import Link from 'next/link';
 import type { CrmApi } from './daten';
-import { Wahl, type WahlEintrag } from './Wahl';
+import { WahlMehrfach, type WahlEintrag } from './Wahl';
 
-export type WertelisteName = 'branchen' | 'typen' | 'kategorien';
-const LISTE_LABEL: Record<WertelisteName, string> = { branchen: 'Branche', typen: 'Typ', kategorien: 'Kategorie' };
+export type WertelisteName = 'branchen' | 'typen' | 'kategorien' | 'labels';
+const LISTE_LABEL: Record<WertelisteName, string> = { branchen: 'Branche', typen: 'Typ', kategorien: 'Kategorie', labels: 'Label' };
 
 /**
  * „+ neu“ für eine Werteliste: eigene Werte der Liste + dieser, über den
@@ -47,27 +47,26 @@ export function useWertelisteAnlegen(liste: WertelisteName, werte: { wert: strin
 }
 
 /**
- * Typ oder Kategorie als Wahl-Chip: alle Werte der Liste (dazu ein gesetzter
- * Bestandswert, der in keiner Liste steht — Hinweis „Bestand“), Suche und
- * „+ neu …“ im Menü, „– entfernen“, Fuß „Pflegen ›“ zu Stammdaten › Wertelisten.
+ * Typ, Kategorie oder Labels als Mehrfach-Chips (28.09., Kevins Entscheidung): gesetzte Werte als Chips mit ×,
+ * „+“ öffnet das Menü mit Suche, „+ neu …“ legt einen eigenen Wert in der Werteliste an und wählt ihn,
+ * Fuß „Pflegen ›“. Bestandswerte, die in keiner Liste stehen, bleiben sichtbar (Hinweis „Bestand“).
  */
-export function WertelistenEinzelWahl({ liste, werte, wert, onWahl, api, farbe = C.aktiv, klein }: {
+export function WertelistenMehrfachWahl({ liste, werte, wert, onWahl, api, farbe = C.aktiv, klein }: {
   liste: Exclude<WertelisteName, 'branchen'>;
   werte: { wert: string; fest: boolean }[];
-  wert: string | undefined;
-  onWahl: (wert: string | undefined) => void;
+  wert: readonly string[];
+  onWahl: (werte: string[]) => void;
   api: Pick<CrmApi, 'laden'>;
   farbe?: string;
   klein?: boolean;
 }) {
   const anlegen = useWertelisteAnlegen(liste, werte, api);
   const eintraege: WahlEintrag<string>[] = useMemo(
-    () => wertelisteZurWahl(werte, wert ? [wert] : []).map(o => ({ id: o.wert, label: o.wert, ...(o.fremd ? { hinweis: 'Bestand' } : {}) })),
+    () => wertelisteZurWahl(werte, wert).map(o => ({ id: o.wert, label: o.wert, ...(o.fremd ? { hinweis: 'Bestand' } : {}) })),
     [werte, wert],
   );
   return (
-    <Wahl label={LISTE_LABEL[liste]} liste={eintraege} wert={wert || null} farbe={farbe} klein={klein}
-      onWahl={onWahl} onLeeren={() => onWahl(undefined)}
+    <WahlMehrfach label={LISTE_LABEL[liste]} liste={eintraege} wert={wert} farbe={farbe} klein={klein} onWahl={onWahl}
       onNeu={anlegen} neuMin={WERT_MIN} neuMax={WERT_MAX}
       fuss={<Link href={markttraktion('stammdaten', 'wertelisten')} style={{ color: C.inkLeise, textDecoration: 'none', padding: '4px 2px' }}>Pflegen ›</Link>} />
   );

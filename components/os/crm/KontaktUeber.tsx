@@ -161,7 +161,7 @@ export function KontaktUeber({ k, api, heute, name, setze, klappen, breit, zuRei
         {chip(phaseLabel(ph.phase), phaseFarbe(ph.phase))}
         {rollenVon(k).map(r => <span key={r}>{chip(ROLLE_LABEL[r], LEUCHT.business)}</span>)}
         {chip(STUFE_LABEL[k.stufe], C.inkDim)}{k.anrede && chip(k.anrede, C.inkDim)}
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.inkLeise }}><Person id={haeltBeziehung(k)} groesse={16} />hält {nameVon(haeltBeziehung(k))}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.inkLeise }}><Person id={haeltBeziehung(k)} groesse={16} />zuständig: {nameVon(haeltBeziehung(k))}</span>
       </div>
       {tk && <div style={{ fontSize: 12.5, color: tk.ueberfaellig ? LEUCHT.achtung : C.inkLeise, marginTop: 8 }}>{tk.ueberfaellig ? 'Takt überschritten — jetzt melden.' : `Nach dem Takt fällig ${datum(tk.faelligAm, heute)}.`}{tk.seit !== null ? ` Seit ${tk.seit} Tagen still.` : ''}</div>}
     </Klappe>

@@ -220,6 +220,11 @@ export interface Firma {
   zahlung?: Zahlungsdaten;
   /** BEAN-Kundengruppe von Hand (28.09., H4, lib/crm/bean.ts) — fehlt es, gilt die Ableitung (`beanFirma`); gilt dann auch für Personen ohne eigene Wahl. */
   bean?: import('./bean').BeanId;
+  /**
+   * Mutterfirma (28.09., #7, lib/crm/konzern.ts) — zeigt auf eine bestehende Firma, nie auf sich selbst,
+   * keine Kreise (Säuberung + `mutterPruefen` + Verbindungsprüfung). Töchter ergeben sich aus den Verweisen.
+   */
+  mutterId?: string;
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;
@@ -303,6 +308,8 @@ export interface SegmentKriterien {
   lifecycle?: import('./lifecycle').LifecyclePhase[];
   /** BEAN-Kundengruppe (28.09., H4): von Hand, sonst abgeleitet (lib/crm/bean.ts `beanVon`). */
   bean?: import('./bean').BeanId[];
+  /** Typ, Kategorie, Label (mehrfach, 28.09.): trifft, wenn die Person EINEN der Werte trägt (Groß-/Kleinschreibung egal). */
+  typ?: string[]; kategorie?: string[]; label?: string[];
 }
 export interface Segment { id: string; name: string; beschreibung?: string; kriterien: SegmentKriterien; geaendert: string; geaendertVon?: string }
 export type BeitragKanal = 'linkedin' | 'newsletter' | 'blog' | 'podcast' | 'vortrag' | 'sonstig';
@@ -435,6 +442,8 @@ export interface Wertelisten {
   ziele?: { umsatzNeuMonat?: number; sqlMonat?: number; gespraecheWoche?: number };
   /** Eigene Einträge zu den Standardlisten (27.09.): Branchen (mehrfach je Firma), Lead-Typen, Kategorien. */
   branchen?: string[]; typen?: string[]; kategorien?: string[];
+  /** Labels (28.09.): frei vergebbar, keine Standardwerte — nur eigene. */
+  labels?: string[];
 }
 
 export interface CrmBestand {

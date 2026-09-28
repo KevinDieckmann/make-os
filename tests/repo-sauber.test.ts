@@ -166,15 +166,6 @@ const NAMEN_DRITTER = new RegExp([
 /** Datei → Grund. Nur, was in einem anderen Paket liegt oder bewusst bleibt. */
 const NAMEN_AUSNAHMEN: Record<string, string> = {
   'homepage/pruefen.mjs': 'Sperrliste der Homepage-Prüfung (Paket Homepage) — dort auf Teilstücke umstellen',
-  'app/api/crm/liquiplan/route.ts': 'Paket U1 (CRM) — Kommentar dort neutralisieren',
-  'lib/crm/kunden.ts': 'Paket U1 (CRM) — Kommentar dort neutralisieren',
-  'lib/crm/runden.ts': 'Paket U1 (CRM) — Kommentar-Beispiele dort neutralisieren',
-  'lib/crm/umzug.ts': 'Paket U1 (CRM) — Kommentar-Beispiel dort neutralisieren',
-  'tests/crm-fundament.test.ts': 'Paket U1 (CRM) — Testdaten dort neutralisieren',
-  'tests/crm-signale.test.ts': 'Paket U1 (CRM) — Testdaten dort neutralisieren',
-  'tests/crm-stammdaten.test.ts': 'Paket U1 (CRM) — Testdaten dort neutralisieren',
-  'tests/markttraktion-netzwerk.test.ts': 'Paket U1 (CRM) — Testdaten dort neutralisieren',
-  'tests/markttraktion-runden.test.ts': 'Paket U1 (CRM) — Testdaten dort neutralisieren',
 };
 /** Kevins geprüfter Rechenkern: zwei Beschriftungen im Zahlungskalender bleiben (nur mit Kevins Wort ändern). */
 const ERLAUBTE_STELLEN: Record<string, string[]> = {

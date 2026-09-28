@@ -1,6 +1,6 @@
 // ─── CRM → Liquiditätsplan ──────────────────────────────────────────────────
 // Ein unterschriebenes Mandat ist Geld, das kommt — aber es wird nicht
-// automatisch geschrieben: Einige Eingänge (OneBanking) stehen schon von Hand
+// automatisch geschrieben: Einige Eingänge (einzelne Kunden) stehen schon von Hand
 // im Plan, und doppelt gezählt ist schlimmer als gar nicht. Deshalb:
 // GET  → je Mandat der Posten, den es erzeugen würde, und ob er schon da ist
 // POST { mandatId, aktion: 'anlegen' | 'verknuepfen', postenId? }

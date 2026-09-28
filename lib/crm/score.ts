@@ -9,6 +9,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import type { Kriterien, Lead, Qual, Temperatur } from './typen';
 import { echtesGespraech } from './pipeline';
 import { MINDESTMENGE } from './deal-auswertung';
+import { hatTyp, kategorieBeginnt } from './mehrfach';
 
 export type ScoreTeilId = 'fit' | 'waerme' | 'qualifizierung' | 'erreichbarkeit';
 export interface ScoreTeil { id: ScoreTeilId; label: string; punkte: number; max: number; grund: string }
@@ -72,7 +73,7 @@ function waerme(personen: Kontakt[], heute: string): ScoreTeil {
     // Nur die Stufe aus der Liste, ohne datierte Ansprache — nicht zu altern, zählt wie bisher.
     return { id: 'waerme', label: 'Wärme', punkte: 8, max: 30, grund: 'Angesprochen, noch keine Antwort' };
   }
-  const warmerTyp = personen.some(k => k.typ === 'Netzwerk' || k.typ === 'Kunde' || (k.kategorie ?? '').startsWith('Apple') || /apple/i.test(k.quelle ?? ''));
+  const warmerTyp = personen.some(k => hatTyp(k, 'Netzwerk') || hatTyp(k, 'Kunde') || kategorieBeginnt(k, 'Apple') || /apple/i.test(k.quelle ?? ''));
   if (warmerTyp) verblasst.push({ id: 'waerme', label: 'Wärme', punkte: 10, max: 30, grund: 'Bekannt aus Netzwerk oder früherer Zusammenarbeit' });
   if (verblasst.length) return verblasst.reduce((a, b) => (b.punkte > a.punkte ? b : a));
   return { id: 'waerme', label: 'Wärme', punkte: 0, max: 30, grund: 'Noch kein Kontakt' };
@@ -132,7 +133,7 @@ export function kanalVon(k: Pick<Kontakt, 'herkunft' | 'quelle' | 'kategorie' | 
   if (/linkedin|content|newsletter|beitrag/.test(q)) return 'content';
   if (/kampagne/.test(q)) return 'kampagne';
   if (/inbound|anfrage|website/.test(q)) return 'inbound';
-  if (/apple/.test(q) || (k.kategorie ?? '').startsWith('Apple') || k.typ === 'Netzwerk') return 'netzwerk';
+  if (/apple/.test(q) || kategorieBeginnt(k, 'Apple') || hatTyp(k, 'Netzwerk')) return 'netzwerk';
   if (/hubspot|import|export|bestand/.test(q)) return 'bestand';
   if (/leadliste|recherche|kaltakquise/.test(q)) return 'outreach';
   return 'unbekannt';

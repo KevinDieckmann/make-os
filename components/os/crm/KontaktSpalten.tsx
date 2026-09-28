@@ -4,7 +4,7 @@
 // Links (schmal): Kontaktdaten (E-Mail mit Kopieren + Mail-Programm, Telefon,
 // LinkedIn), Schnellaktionen als runde Knöpfe — Notiz · E-Mail · Anruf ·
 // Aufgabe · Meeting — und die wichtigsten Infos als Wahl-Chips (Lifecycle,
-// BEAN, Typ, Kategorie, Besitzer, Kreis).
+// BEAN, Typ, Kategorie, Labels, Zuständig, Kreis — Feld `besitzer`).
 // Rechts (schmal): Firma · Deals · Mandate · Follow-ups, jede Karte
 // einklappbar (je Person gemerkt), „+ Hinzufügen“ über die bestehenden Wege
 // (Firma verknüpfen/anlegen, DealAnlegen, /api/crm/followup).
@@ -33,7 +33,11 @@ import { WEG } from '@/lib/wege';
 import { mandateLink } from '@/lib/crm/adresse';
 import { type CrmApi, datum, euro, plusTage } from './daten';
 import { Wahl } from './Wahl';
-import { WertelistenEinzelWahl } from './WertelistenWahl';
+import { WertelistenMehrfachWahl } from './WertelistenWahl';
+import { emailsVon, emailsFelder, adresseNorm, EMAIL_ART_WAHL, type EmailAdresse, type EmailArt } from '@/lib/crm/emails';
+import { typenVon, kategorienVon, labelsVon, typenFelder, kategorienFelder } from '@/lib/crm/mehrfach';
+import { StationenTeil } from './kontakt/StationenTeil';
+import { stationenVon } from '@/lib/crm/stationen';
 import { DealAnlegen } from './DealAnlegen';
 import { EntwurfTeil, KREISE, lifecycleFarbe, firmaVerknuepfen, type Setze } from './kontakt-teile';
 import { Klappe, leiseKnopf, type Klappen } from './kontakt-klappe';
@@ -119,11 +123,7 @@ export function KontaktLinks({ k, api, heute, ampel, setze, klappen, lifecycle, 
     <>
       <Klappe id="l-kontakt" i={1} klein titel="Kontakt" zu={klappen.istZu('l-kontakt')} umschalten={klappen.umschalten}>
         <div style={{ display: 'grid', gap: 2 }}>
-          {k.email
-            ? <DatenZeile zeichen="✉" titel="E-Mail" rechts={<><Kopieren text={k.email} was="E-Mail" />{mailHref && <a href={mailHref} title={`Im Mail-Programm öffnen · ${mail?.grund ?? ''}`} style={{ ...leiseKnopf, textDecoration: 'none' }}>Mail ↗</a>}</>}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{ampelPunkt(mail)}<span title={k.email} style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{k.email}</span></span>
-              </DatenZeile>
-            : <DatenZeile zeichen="✉" titel="E-Mail"><span style={klein}>keine E-Mail</span></DatenZeile>}
+          <EmailListe k={k} setze={setze} mail={mail} ampelPunkt={ampelPunkt(mail)} />
           {telefon
             ? <DatenZeile zeichen="☏" titel="Telefon" rechts={<><Kopieren text={telefon} was="Telefon" />{telHref && <a href={telHref} title={`Anrufen · ${tel?.grund ?? ''}`} style={{ ...leiseKnopf, textDecoration: 'none' }}>Anrufen ↗</a>}</>}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{ampelPunkt(tel)}{telefon}</span>
@@ -164,13 +164,75 @@ export function KontaktLinks({ k, api, heute, ampel, setze, klappen, lifecycle, 
         <div style={{ display: 'grid', gap: 2 }}>
           {infoZeile('Lifecycle', <LifecycleWahl k={k} vorschlag={lifecycle} setze={setze} klein />)}
           {infoZeile('BEAN', <BeanWahl wert={k.bean} ergebnis={bean} klein onSetze={b => void setze({ bean: b })} />)}
-          {infoZeile('Typ', <WertelistenEinzelWahl liste="typen" werte={listen.typen} wert={k.typ} onWahl={typ => void setze({ typ })} api={api} klein />)}
-          {infoZeile('Kategorie', <WertelistenEinzelWahl liste="kategorien" werte={listen.kategorien} wert={k.kategorie} onWahl={kategorie => void setze({ kategorie })} api={api} klein />)}
-          {infoZeile('Besitzer', <Wahl label="Besitzer" klein liste={besitzerListe} wert={k.besitzer} leer={`${nameVon(haeltBeziehung(k))} (Standard) ▾`} farbe={LEUCHT.beziehung}
+          {/* Typ, Kategorie, Labels mehrfach (28.09., Kevin) — der erste Typ/die erste Kategorie bleibt `typ`/`kategorie`. */}
+          {infoZeile('Typ', <WertelistenMehrfachWahl liste="typen" werte={listen.typen} wert={typenVon(k)} onWahl={l => void setze(typenFelder(l))} api={api} klein />)}
+          {infoZeile('Kategorie', <WertelistenMehrfachWahl liste="kategorien" werte={listen.kategorien} wert={kategorienVon(k)} onWahl={l => void setze(kategorienFelder(l))} api={api} klein />)}
+          {infoZeile('Labels', <WertelistenMehrfachWahl liste="labels" werte={listen.labels} wert={labelsVon(k)} onWahl={labels => void setze({ labels })} api={api} farbe={LEUCHT.agenten} klein />)}
+          {infoZeile('Zuständig', <Wahl label="Zuständig" klein liste={besitzerListe} wert={k.besitzer} leer={`${nameVon(haeltBeziehung(k))} (Standard) ▾`} farbe={LEUCHT.beziehung}
             onWahl={besitzer => void setze({ besitzer })} onLeeren={k.besitzer ? () => void setze({ besitzer: undefined }) : undefined} leerenLabel="Standard (Sales-Verantwortung)" />)}
           {infoZeile('Kreis', <Wahl label="Kreis" klein liste={KREISE} wert={k.kreis} farbe={LEUCHT.beziehung} onWahl={kreis => void setze({ kreis })} onLeeren={() => void setze({ kreis: undefined })} />)}
         </div>
       </Klappe>
+    </>
+  );
+}
+
+/**
+ * Alle E-Mail-Adressen (28.09., #11): Haupt-Adresse oben (sie ist `email` — Kanal-Ampel, Entwurf, Export),
+ * jede mit Art, Kopieren und Mail-Link; „Haupt“ wählt eine andere, × entfernt eine, „+ Adresse“ hängt an.
+ * Geschrieben wird die Liste (`emails`), der Server leitet `email` ab.
+ */
+function EmailListe({ k, setze, mail, ampelPunkt }: { k: Kontakt; setze: Setze; mail?: KanalStatus; ampelPunkt: ReactNode }) {
+  const liste = emailsVon(k);
+  const [neu, setNeu] = useState<string | null>(null);
+  const [art, setArt] = useState<EmailArt | null>(null);
+  const [fehler, setFehler] = useState<string | null>(null);
+  useEffect(() => { setNeu(null); setArt(null); setFehler(null); }, [k.id]);
+  const schreiben = (l: EmailAdresse[]) => void setze(emailsFelder(k, l));
+  const hinzufuegen = () => {
+    const a = adresseNorm(neu ?? '');
+    if (!a || /\s/.test(a) || !/^[^@]+@[^@]+\.[^@]+$/.test(a)) { setFehler('Keine gültige Adresse.'); return; }
+    if (liste.some(x => adresseNorm(x.adresse) === a)) { setFehler('Diese Adresse steht schon da.'); return; }
+    schreiben([...liste, { adresse: a, ...(art ? { art } : {}), ...(liste.length ? {} : { haupt: true }) }]);
+    setNeu(null); setArt(null); setFehler(null);
+  };
+  return (
+    <>
+      {liste.map((a, i) => {
+        const haupt = !!a.haupt || (liste.length === 1);
+        const href = mail ? kanalLink(mail, { email: a.adresse }) : null;
+        return (
+          <DatenZeile key={a.adresse} zeichen="✉" titel={haupt ? 'Haupt-Adresse' : 'Weitere Adresse'}
+            rechts={<>
+              <Kopieren text={a.adresse} was="E-Mail" />
+              {href && <a href={href} title={`Im Mail-Programm öffnen · ${mail?.grund ?? ''}`} style={{ ...leiseKnopf, textDecoration: 'none' }}>Mail ↗</a>}
+              {!haupt && <button type="button" onClick={() => schreiben(liste.map((x, j) => ({ ...x, haupt: j === i })))} title="Zur Haupt-Adresse machen" className="fassbar" style={leiseKnopf}>Haupt</button>}
+              <button type="button" onClick={() => schreiben(liste.filter((_, j) => j !== i))} aria-label={`${a.adresse} entfernen`} title="Adresse entfernen" className="fassbar" style={leiseKnopf}>×</button>
+            </>}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+              {haupt ? ampelPunkt : <span style={{ width: 7 }} />}
+              <span title={a.adresse} style={{ overflow: 'hidden', textOverflow: 'ellipsis', color: haupt ? C.ink : C.inkDim }}>{a.adresse}</span>
+              <Wahl label="Art der Adresse" klein liste={EMAIL_ART_WAHL} wert={a.art} leer={haupt && liste.length > 1 ? 'Haupt ▾' : 'Art ▾'}
+                onWahl={x => schreiben(liste.map((y, j) => (j === i ? { ...y, art: x } : y)))} onLeeren={a.art ? () => schreiben(liste.map((y, j) => (j === i ? (({ art: _a, ...r }) => r)(y) : y))) : undefined} />
+            </span>
+          </DatenZeile>
+        );
+      })}
+      {!liste.length && neu === null && <DatenZeile zeichen="✉" titel="E-Mail"><span style={klein}>keine E-Mail</span></DatenZeile>}
+      {neu === null
+        ? <button type="button" onClick={() => setNeu('')} className="fassbar" style={{ ...leiseKnopf, justifySelf: 'start', paddingLeft: 26 }}>+ Adresse</button>
+        : (
+          <div style={{ display: 'grid', gap: 6, paddingLeft: 26 }}>
+            <input autoFocus type="email" value={neu} onChange={e => setNeu(e.target.value)} placeholder="E-Mail-Adresse" aria-label="Neue E-Mail-Adresse"
+              onKeyDown={e => { if (e.key === 'Enter') hinzufuegen(); if (e.key === 'Escape') { e.stopPropagation(); setNeu(null); } }} style={eingabe} />
+            <Fuss>
+              <Wahl label="Art" klein liste={EMAIL_ART_WAHL} wert={art} onWahl={setArt} onLeeren={() => setArt(null)} />
+              <Knopf aus={!neu.trim()} onClick={hinzufuegen}>Hinzufügen</Knopf>
+              <Knopf leise onClick={() => { setNeu(null); setFehler(null); }}>Abbrechen</Knopf>
+            </Fuss>
+            {fehler && <div role="alert" style={{ fontSize: 12, color: LEUCHT.kritisch }}>{fehler}</div>}
+          </div>
+        )}
     </>
   );
 }
@@ -348,6 +410,13 @@ export function KontaktRechts({ k, api, heute, setze, klappen, zuFirma, zuAufgab
             </Fuss>
           </div>
         ) : <div style={klein}>{k.firma ? `„${k.firma}“ aus dem Import — noch keine Firma verknüpft.` : 'Keine Firma verknüpft.'}</div>}
+        {/* Stationen (28.09.): alle Firmen der Person mit Rolle und Historie — Jobwechsel beendet die alte Station. */}
+        {stationenVon(k).length > 0 && firmaNeu === null && (
+          <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+            <div style={{ ...klein, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', marginBottom: 2 }}>Stationen</div>
+            <StationenTeil k={k} api={api} heute={heute} setze={setze} zuFirma={zuFirma} />
+          </div>
+        )}
       </Klappe>
 
       <Klappe id="r-deals" i={2} klein titel={`Deals${deals.length ? ` · ${offeneDeals ? `${offeneDeals} offen` : deals.length}` : ''}`} zu={klappen.istZu('r-deals')} umschalten={klappen.umschalten}

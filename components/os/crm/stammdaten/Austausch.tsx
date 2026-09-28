@@ -3,7 +3,7 @@
 // ─── Stammdaten › Import & Export ───────────────────────────────────────────
 // Masterdatei abgleichen in drei Schritten (27.09., „Online gewinnt“):
 // Datei wählen → Vorschau (neu / aktualisiert / Konflikte / mögliche Dubletten /
-// ohne Besitzer, nichts geschrieben) → Übernehmen. Danach die Konfliktliste zum
+// ohne Zuständige/n, nichts geschrieben) → Übernehmen. Danach die Konfliktliste zum
 // Durchklicken: je Feld „Online behalten“ oder „Liste übernehmen“ — der Import
 // selbst überschreibt nie, was online von Hand gepflegt wurde.
 // K2 (28.09.): die Vorschau meldet verrutschte Zeilen, Excel-„E+“, verlorene PLZ-Nullen und unlesbare Daten
@@ -75,7 +75,7 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
     const r = await post(quelle);
     if (r.error || r.fehler) { setMeldung(r.error ?? r.fehler); return; }
     const kn = (r.konflikte as Konflikt[] | undefined)?.length ?? 0;
-    setMeldung(`${'name' in quelle ? `${quelle.name}: ` : ''}${r.zeilen} Zeilen — ${r.neu} neu, ${r.aktualisiert} aktualisiert, ${r.unveraendert} unverändert · ${kn} Konflikte zum Entscheiden · ${r.ohneBesitzer} ohne Besitzer${r.gesperrt ? ` · ${r.gesperrt} gesperrt übersprungen` : ''} · Firmen: ${r.firmen?.neu ?? 0} neu.${r.laufId ? ' Rückgängig: unten unter „Import-Läufe“.' : ''}`);
+    setMeldung(`${'name' in quelle ? `${quelle.name}: ` : ''}${r.zeilen} Zeilen — ${r.neu} neu, ${r.aktualisiert} aktualisiert, ${r.unveraendert} unverändert · ${kn} Konflikte zum Entscheiden · ${r.ohneBesitzer} ohne Zuständige/n${r.gesperrt ? ` · ${r.gesperrt} gesperrt übersprungen` : ''} · Firmen: ${r.firmen?.neu ?? 0} neu.${r.laufId ? ' Rückgängig: unten unter „Import-Läufe“.' : ''}`);
     setQuelle(null); setVorschau(null);
     await standLaden(); laden(); void api.laden();
   };
@@ -104,7 +104,7 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>
           Die Masterliste als CSV (Semikolon oder Komma, UTF-8 oder Excel-Export) wählen — zuerst kommt eine Vorschau, geschrieben wird erst mit „Übernehmen“.
           <b style={{ color: C.ink }}> Online gewinnt:</b> die Liste füllt nur leere Felder; weicht sie von etwas ab, das hier von Hand gepflegt wurde, landet das in der Konfliktliste unten.
-          Neue Zeilen kommen dazu, die Arbeit in der Markttraktion (Stufe, Verlauf, Besitzer, Kreis, Einwilligungen, Werbesperre) bleibt unberührt. Danach laufen der Firmen-Abgleich und die Dublettenprüfung.
+          Neue Zeilen kommen dazu, die Arbeit in der Markttraktion (Stufe, Verlauf, Zuständig, Kreis, Einwilligungen, Werbesperre) bleibt unberührt. Danach laufen der Firmen-Abgleich und die Dublettenprüfung.
         </div>
         {d.letzterImport && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 8 }}>Zuletzt: {datum(d.letzterImport.zeit)} — {d.letzterImport.text}</div>}
         <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -132,7 +132,7 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
               <Zahl wert={String(vorschau.unveraendert)} label="unverändert" />
               <Zahl wert={String(vorschau.konflikte)} label="Konflikte" farbe={vorschau.konflikte ? LEUCHT.achtung : undefined} />
               <Zahl wert={String(vorschau.moeglicheDubletten)} label="mögl. Dubletten" farbe={vorschau.moeglicheDubletten ? LEUCHT.achtung : undefined} />
-              <Zahl wert={String(vorschau.ohneBesitzer)} label="ohne Besitzer" />
+              <Zahl wert={String(vorschau.ohneBesitzer)} label="ohne Zuständige/n" />
             </div>
             {(vorschau.gesperrt ?? 0) > 0 && <div style={{ marginTop: 10, fontSize: TYP.bedien, color: C.ink }}><b>{vorschau.gesperrt} gesperrt übersprungen</b> — stehen auf der Sperrliste (Werbesperre oder gelöscht) und werden nicht angelegt.</div>}
             {(vorschau.uebergang ?? 0) > 0 && <div style={{ marginTop: 6, fontSize: 12.5, color: C.inkLeise }}>{vorschau.uebergang} bestehende Kontakte über die frühere Schlüsselform wiedererkannt (keine Dubletten).</div>}
@@ -158,7 +158,7 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
         <Karte i={1} akzent={offen.length ? LEUCHT.achtung : undefined}>
           <Ueberschrift rechts={stand.stand ? <span style={{ fontSize: 12.5, color: C.inkLeise }}>Import {datum(stand.stand)}</span> : undefined}>Konflikte entscheiden {offen.length ? `· ${offen.length} offen` : '· alle entschieden'}</Ueberschrift>
           <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>Hier steht die Kartei anders als die Liste, und das Feld wurde online von Hand gepflegt. Nichts davon wurde überschrieben — je Zeile entscheiden. Was entschieden ist, fragt der nächste Import bei einer neuen Abweichung wieder.</div>
-          {stand.ohneBesitzer > 0 && <div style={{ marginTop: 10, fontSize: TYP.bedien, color: C.ink }}><b>{stand.ohneBesitzer} ohne Besitzer</b> — in der Qualifizierungsrunde übernehmen.</div>}
+          {stand.ohneBesitzer > 0 && <div style={{ marginTop: 10, fontSize: TYP.bedien, color: C.ink }}><b>{stand.ohneBesitzer} ohne Zuständige/n</b> — in der Qualifizierungsrunde übernehmen.</div>}
           {offen.length > 0 && (
             <Liste>
               {offen.slice(0, 60).map(k => (

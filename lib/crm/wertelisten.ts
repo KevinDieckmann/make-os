@@ -54,6 +54,8 @@ export interface WertelistenVoll {
   branchen: { wert: string; fest: boolean }[];
   typen: { wert: string; fest: boolean }[];
   kategorien: { wert: string; fest: boolean }[];
+  /** Labels (28.09.) — nur eigene, keine festen. */
+  labels: { wert: string; fest: boolean }[];
 }
 
 const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
@@ -105,6 +107,7 @@ export function wertelistenVollstaendig(w?: Wertelisten | null): WertelistenVoll
     branchen: mitFest(BRANCHEN_STANDARD, eigene(w?.branchen, BRANCHEN_STANDARD)),
     typen: mitFest(TYPEN_STANDARD, eigene(w?.typen, TYPEN_STANDARD)),
     kategorien: mitFest(KATEGORIEN_STANDARD, eigene(w?.kategorien, KATEGORIEN_STANDARD)),
+    labels: mitFest([], eigene(w?.labels, [])),
   };
 }
 
@@ -160,7 +163,7 @@ export function wertelistenPruefen(roh: unknown, alt?: Wertelisten | null): Prue
   const neu: Wertelisten = { ...(alt ?? {}) };
   if (!istObjekt(roh)) return { ok: false, wertelisten: alt ?? {}, fehler: ['Wertelisten müssen ein Objekt sein.'] };
 
-  const liste = (feld: 'verlustgruende' | 'ergebnisse' | 'branchen' | 'typen' | 'kategorien', min: number, max: number, feste: Set<string>, name: string) => {
+  const liste = (feld: 'verlustgruende' | 'ergebnisse' | 'branchen' | 'typen' | 'kategorien' | 'labels', min: number, max: number, feste: Set<string>, name: string) => {
     if (!(feld in roh)) return;
     const v = roh[feld];
     if (v === null) { delete neu[feld]; return; }
@@ -182,6 +185,7 @@ export function wertelistenPruefen(roh: unknown, alt?: Wertelisten | null): Prue
   liste('branchen', WERT_MIN, WERT_MAX, new Set(BRANCHEN_STANDARD.map(schluessel)), 'Branche');
   liste('typen', WERT_MIN, WERT_MAX, new Set(TYPEN_STANDARD.map(schluessel)), 'Lead-Typ');
   liste('kategorien', WERT_MIN, WERT_MAX, new Set(KATEGORIEN_STANDARD.map(schluessel)), 'Kategorie');
+  liste('labels', WERT_MIN, WERT_MAX, new Set<string>(), 'Label');
 
   if ('kadenzTage' in roh) {
     const v = roh.kadenzTage;

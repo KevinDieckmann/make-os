@@ -27,6 +27,7 @@ import type { Kampagne } from './typen';
 import { firmenSchluessel } from './firmen';
 
 import type { NetzStand, VernetzenEinstellung, VorlageId } from './netzwerk-form';
+import { hatTyp } from './mehrfach';
 export { NETZ_STATUS, netzwerkSaeubern, netzwerkVereinen, vernetzenSaeubern, type NetzStand, type NetzStatus, type VernetzenEinstellung, type VorlageId } from './netzwerk-form';
 
 export type NetzStufe = 'anreichern' | 'anfragen' | 'warten' | 'zurueckziehen' | 'schreiben' | 'nachfassen' | 'fertig' | 'raus';
@@ -100,12 +101,12 @@ export interface NetzZahlen { anreichern: number; anfragen: number; warten: numb
 
 /** Wer gehört überhaupt ins Netzwerk? Keine Sperre, kein Wettbewerb, keine Dienstleister. */
 export function netzFaehig(k: Kontakt): boolean {
-  return !k.werbesperre && k.typ !== 'Dienstleister';
+  return !k.werbesperre && !hatTyp(k, 'Dienstleister');
 }
 
 /** Wichtige zuerst: Kunden, Kreis A/B, Prio A/B, Leads — dann alphabetisch. */
 function rang(k: Kontakt): number {
-  return (k.lebensphase === 'kunde' ? 0 : 10) + (k.kreis === 'A' ? 0 : k.kreis === 'B' ? 2 : 5) + (k.prio === 'A' ? 0 : k.prio === 'B' ? 2 : 6) + (k.typ === 'Lead' || k.lebensphase === 'interessent' ? 0 : 3);
+  return (k.lebensphase === 'kunde' ? 0 : 10) + (k.kreis === 'A' ? 0 : k.kreis === 'B' ? 2 : 5) + (k.prio === 'A' ? 0 : k.prio === 'B' ? 2 : 6) + (hatTyp(k, 'Lead') || k.lebensphase === 'interessent' ? 0 : 3);
 }
 
 /**

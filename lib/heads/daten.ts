@@ -23,6 +23,7 @@ import { TEAM } from '@/lib/crm/team';
 import { lifecycleVon, lifecycleVerteilung } from '@/lib/crm/vorschlaege';
 import type { LifecyclePhase } from '@/lib/crm/lifecycle';
 import { beanVon, beanFirma, beanVerteilung, BEAN_LABEL, type BeanId } from '@/lib/crm/bean';
+import { personenJeFirma as personenJeFirmaVon } from '@/lib/crm/stationen';
 
 const kurz = (t: string | undefined, n: number) => (t ?? '').replace(/\s+/g, ' ').trim().slice(0, n) || undefined;
 
@@ -90,8 +91,8 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
   // Kampagnen planen (Sales und Marketing): Kundenprofil, ähnliche Firmen, Playbooks mit heutiger Zielgruppe.
   if (modus === 'kampagne' && (head === 'sales' || head === 'marketing')) {
     const profil = kundenprofil(crm, heute);
-    const personenJeFirma = new Map<string, Kontakt[]>();
-    for (const k of aktiv) if (k.firmaId) personenJeFirma.set(k.firmaId, [...(personenJeFirma.get(k.firmaId) ?? []), k]);
+    // Personen einer Firma nur über die Stationen (28.09.).
+    const personenJeFirma = personenJeFirmaVon(aktiv, { nurAktiv: true });
     return {
       meta,
       kundenprofil: { kunden: profil.firmen.map(f => ({ name: f.name, branche: f.branche, stadt: f.stadt, mitarbeiter: f.mitarbeiter })), branchen: profil.branchen, staedte: profil.staedte, groesse: profil.groesse, mrr_je_kunde: profil.mrrJeKunde },

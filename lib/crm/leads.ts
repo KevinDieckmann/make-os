@@ -25,6 +25,7 @@ import { dealZuFirma } from './firmen-bezug';
 import { leadScore, kanalVon, warmPlus, type LeadScore, type KanalId } from './score';
 import { beanVon, beanFirma, type BeanId } from './bean';
 import { tagVon } from '@/lib/zeit';
+import { personenJeFirma, firmenDerPerson } from './stationen';
 
 export const LEAD_STATUS: { id: LeadStatus; label: string; weiterWenn: string; aktiv: boolean }[] = [
   { id: 'neu', label: 'Neu', weiterWenn: 'Erste Ansprache über einen zulässigen Kanal.', aktiv: false },
@@ -107,9 +108,9 @@ export function leads(kontakte: Kontakt[], crm: CrmBestand, heute: string): Lead
     (firma?.lead?.chanceId ? crm.chancen.find(c => c.id === firma.lead!.chanceId) : undefined)
     ?? offeneDeals.find(c => c.kontaktIds.some(id => ids.includes(id)) || (!!firma && dealZuFirma(c, firma)))
     ?? crm.chancen.find(c => c.kontaktIds.some(id => ids.includes(id)));
-  const jeFirma = new Map<string, Kontakt[]>();
-  const ohneFirma: Kontakt[] = [];
-  for (const k of kontakte) { if (k.firmaId) jeFirma.set(k.firmaId, [...(jeFirma.get(k.firmaId) ?? []), k]); else ohneFirma.push(k); }
+  // Personen einer Firma nur über die Stationen (28.09.): wer in zwei Firmen aktiv ist, zählt bei beiden.
+  const jeFirma = personenJeFirma(kontakte, { nurAktiv: true });
+  const ohneFirma = kontakte.filter(k => !firmenDerPerson(k).length);
   const zeile = (id: string, art: LeadZeile['art'], name: string, personen: Kontakt[], lead: Lead | undefined, firma?: Firma): LeadZeile => {
     const ids = personen.map(k => k.id);
     const d = dealVon(ids, firma);

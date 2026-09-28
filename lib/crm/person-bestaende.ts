@@ -266,7 +266,7 @@ const zaehle = (b: PersonBericht, name: string, n: number) => { if (n) b.speiche
  * Art. 17: die Person aus ALLEN Speichern entfernen (auch aus der Kartei). Idempotent. Liefert, was wo geändert wurde.
  * Der Löschprotokoll-Eintrag bleibt Sache der Route.
  */
-export async function personEntfernen(id: string, bekannt?: Pick<Kontakt, 'vorname' | 'nachname'> & Partial<Pick<Kontakt, 'email' | 'hubspotId' | 'firma'>>): Promise<PersonBericht> {
+export async function personEntfernen(id: string, bekannt?: Pick<Kontakt, 'vorname' | 'nachname'> & Partial<Pick<Kontakt, 'email' | 'emails' | 'hubspotId' | 'firma'>>): Promise<PersonBericht> {
   const b: PersonBericht = { speicher: {}, aufgabenPruefen: [] };
   if (!id) return b;
   let kontakt: Kontakt | undefined;

@@ -24,6 +24,7 @@ import { PLAYBOOKS, planen, zielgruppe, kundenprofil, aehnlicheFirmen, kampagnen
 import { bearbeiterFuer } from '@/lib/crm/pipeline';
 import { wer, mitglied, nameVon, BEIDE } from '@/lib/crm/team';
 import type { Kampagne, KampagnenErgebnis } from '@/lib/crm/typen';
+import { personenJeFirma as personenJeFirmaVon } from '@/lib/crm/stationen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,8 +41,8 @@ export async function GET(req: Request) {
   const kontakte = await kontakteLaden();
   const crm = await ladeCrm();
   const profil = kundenprofil(crm, heute);
-  const personenJeFirma = new Map<string, Kontakt[]>();
-  for (const k of kontakte) if (k.firmaId && !k.werbesperre) personenJeFirma.set(k.firmaId, [...(personenJeFirma.get(k.firmaId) ?? []), k]);
+  // Personen einer Firma nur über die Stationen (28.09.) — ohne Werbesperre.
+  const personenJeFirma = personenJeFirmaVon(kontakte.filter(k => !k.werbesperre), { nurAktiv: true });
   return jsonAntwort(req, {
     ok: true, heute,
     playbooks: PLAYBOOKS.map(p => ({ ...p, anzahl: zielgruppe(kontakte, crm, p, heute).length })),

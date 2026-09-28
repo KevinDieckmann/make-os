@@ -58,8 +58,8 @@ export function Wertelisten({ w, post, laeuft, zuBereich }: { w: WertelistenAntw
   const setzeGruende = (liste: string[]) => sende({ verlustgruende: liste }, x => ({ ...x, verlustgruende: [...x.verlustgruende.filter(g => g.fest), ...liste.map(grund => ({ grund, fest: false, anzahl: x.verlustgruende.find(g => g.grund === grund)?.anzahl ?? 0 }))] }));
   const setzeErgebnisse = (liste: string[]) => sende({ ergebnisse: liste }, x => ({ ...x, ergebnisse: [...x.ergebnisse.filter(e => e.fest), ...liste.map(wert => ({ wert, label: wert, fest: false }))] }));
   // Branchen · Lead-Typen · Kategorien (27.09.): vorbelegt, eigene dazu — wirken sofort als Pillen in der Akte.
-  const eigeneVon = (l: 'branchen' | 'typen' | 'kategorien') => (lokal[l] ?? []).filter(x => !x.fest).map(x => x.wert);
-  const setzeListe = (l: 'branchen' | 'typen' | 'kategorien', liste: string[]) => sende({ [l]: liste }, x => ({ ...x, [l]: [...(x[l] ?? []).filter(v => v.fest), ...liste.map(wert => ({ wert, fest: false }))] }));
+  const eigeneVon = (l: 'branchen' | 'typen' | 'kategorien' | 'labels') => (lokal[l] ?? []).filter(x => !x.fest).map(x => x.wert);
+  const setzeListe = (l: 'branchen' | 'typen' | 'kategorien' | 'labels', liste: string[]) => sende({ [l]: liste }, x => ({ ...x, [l]: [...(x[l] ?? []).filter(v => v.fest), ...liste.map(wert => ({ wert, fest: false }))] }));
   const setzeKadenz = (kreis: string, wert: string) => {
     const n = wert.trim() === '' ? null : Number(wert);
     return sende({ kadenzTage: { [kreis]: n } }, x => ({ ...x, kadenzTage: { ...x.kadenzTage, [kreis]: n === null || !Number.isFinite(n) ? x.kadenzStandard[kreis] : n } }));
@@ -138,7 +138,7 @@ export function Wertelisten({ w, post, laeuft, zuBereich }: { w: WertelistenAntw
         <div style={{ ...hinweis, marginTop: 8 }}>Die festen Ergebnisse setzen per Regel den nächsten Schritt (nicht erreicht → 2 Werktage, Mailbox → 3, Sperre → Werbesperre). Eigene Ergebnisse werden hier geführt und stehen für das Erledigen von Follow-ups bereit.</div>
       </Karte>
 
-      {([['branchen', 'Branchen', 'Mehrfach je Firma wählbar — unter „Kontakt öffnen“ › Daten › Firma.'], ['typen', 'Lead-Typen', 'Einordnung › Typ an der Person: Zielkunde, Kunde, Netzwerk, Partner …'], ['kategorien', 'Kategorien', 'Einordnung › Kategorie: wie ihr die Person einsortiert.']] as const).map(([l, titel, text], i) => (
+      {([['branchen', 'Branchen', 'Mehrfach je Firma wählbar — unter „Kontakt öffnen“ › Stammdaten › Firma.'], ['typen', 'Lead-Typen', 'Einordnung › Typ an der Person (mehrfach): Zielkunde, Kunde, Netzwerk, Partner …'], ['kategorien', 'Kategorien', 'Einordnung › Kategorie (mehrfach): wie ihr die Person einsortiert.'], ['labels', 'Labels', 'Freie Labels an der Person (mehrfach) — für alles, was in keine Liste passt.']] as const).map(([l, titel, text], i) => (
         <Karte key={l} i={4 + i}>
           <Ueberschrift rechts={`${eigeneVon(l).length} eigene`}>{titel}</Ueberschrift>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -149,7 +149,7 @@ export function Wertelisten({ w, post, laeuft, zuBereich }: { w: WertelistenAntw
         </Karte>
       ))}
 
-      <Karte i={7}>
+      <Karte i={8}>
         <Ueberschrift rechts={`${lokal.ist.dealsOffen} offene Deals`}>Ziele je Monat</Ueberschrift>
         <div style={{ ...hinweis, marginBottom: 6 }}>Die Messlatte für die Kennzahlen: Umsatz neu, neue SQL und echte Gespräche. Daneben steht, was zuletzt gemessen wurde — leer = kein Ziel gesetzt.</div>
         <Liste>

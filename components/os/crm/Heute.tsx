@@ -370,7 +370,7 @@ function Nachbereiten({ liste, api, heute, zuKontakt }: { liste: Nachbereitung[]
 /**
  * Übergeben an der Karte — so, dass die Karte auch wirklich wandert: Hängt sie
  * an einer Chance oder einem Mandat, wechselt deren Zuständigkeit; sonst die
- * Beziehung („Hält die Beziehung“). Mit Notiz und Frist wird die Übergabe
+ * Beziehung („Zuständig“, Feld `besitzer`). Mit Notiz und Frist wird die Übergabe
  * beim Kontakt zum nächsten Schritt in der Power Hour der anderen Person.
  */
 function KarteUebergeben({ k, api }: { k: HeuteKarte; api: CrmApi }) {
@@ -383,6 +383,6 @@ function KarteUebergeben({ k, api }: { k: HeuteKarte; api: CrmApi }) {
 function leerText(d: HeuteAntwort): string {
   const v = nameVon(d.verantwortlich);
   if (d.nurLesen) return `Bei ${nameVon(d.person)} liegt heute nichts. Kontakte verteilen: in Markttraktion › Kontakte eingrenzen (Suche oder Ansicht), dann „Diese … übergeben“ — oder einzeln an der Person „Übergeben“.`;
-  if (d.ich !== d.verantwortlich) return `Deine Liste ist heute leer. Sales verantwortet ${v}: ${v} verteilt Kontakte an dich (Markttraktion › Kontakte eingrenzen, dann „Diese … übergeben“) oder übergibt einzelne Personen, Deals und Mandate — die tauchen dann hier auf. Eigene Kontakte trägst du in der Kartei unter „Hält die Beziehung“ auf dich ein.`;
+  if (d.ich !== d.verantwortlich) return `Deine Liste ist heute leer. Sales verantwortet ${v}: ${v} verteilt Kontakte an dich (Markttraktion › Kontakte eingrenzen, dann „Diese … übergeben“) oder übergibt einzelne Personen, Deals und Mandate — die tauchen dann hier auf. Eigene Kontakte trägst du in der Kartei unter „Zuständig“ auf dich ein.`;
   return 'Heute ist niemand dran. Leads qualifizieren, Kreise vergeben oder Einwilligungen klären — dann füllt sich die Liste.';
 }

@@ -15,6 +15,7 @@ import { leadNachGespraech, leadZiel } from './event-bruecke';
 import { dealZuFirma } from './firmen-bezug';
 
 import { tagVon } from '@/lib/zeit';
+import { personenDerFirma } from './stationen';
 export interface LeadMeldung { ziel: { art: 'firma' | 'person'; id: string; name: string }; von: string; nach: string; geaendert: boolean; grund?: string }
 
 /** Lead der Firma (sonst der Person) nach einem Gespräch heben und schreiben. null, wenn die Person unbekannt ist. */
@@ -26,7 +27,7 @@ export async function leadHebenNachGespraech(kontaktId: string, jetzt: string, p
   const ziel = leadZiel(k);
   const firma = ziel.art === 'firma' ? crm.firmen.find(f => f.id === ziel.id) : undefined;
   // Wie in lib/crm/leads.ts: Gesperrte zählen für den abgeleiteten Stand nicht mit.
-  const personen = ziel.art === 'firma' ? kontakte.filter(x => x.firmaId === ziel.id && !x.werbesperre) : [k];
+  const personen = ziel.art === 'firma' ? personenDerFirma(kontakte, ziel.id).filter(x => !x.werbesperre) : [k];
   const ids = new Set(personen.map(p => p.id));
   const offen = crm.chancen.some(c => OFFENE_STUFEN.includes(c.stufe) && (c.kontaktIds.some(id => ids.has(id)) || (!!firma && dealZuFirma(c, firma))));
   const r = leadNachGespraech(firma ? firma.lead : k.lead, personen, offen, jetzt, person);

@@ -10,7 +10,7 @@ const k = (id: string, x: Partial<Kontakt> = {}): Kontakt => ({ id: `c-${id}`, v
 
 describe('Firmen', () => {
   it('Schlüssel ohne Rechtsform, Domain ohne Freemail', () => {
-    expect(firmenSchluessel('ACME Venetian Products GmbH')).toBe(firmenSchluessel('Acme Venetian Products'));
+    expect(firmenSchluessel('BEISPIELWERK Nord Products GmbH')).toBe(firmenSchluessel('Beispielwerk Nord Products'));
     expect(domainVon({ email: 'max@gmail.com', firmaWebseite: 'https://www.beispiel.de/kontakt' })).toBe('beispiel.de');
     expect(domainVon({ email: 'max@gmail.com' })).toBeUndefined();
   });

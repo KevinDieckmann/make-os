@@ -19,6 +19,7 @@ import { normiere, type WahlVorschlag } from './wahl';
 import type { DealRolle, Firma, Chance, CrmBestand } from './typen';
 import { leadScore, warmPlus, temperaturLabel } from './score';
 import { leereVerteilung, LIFECYCLE_LABEL, type LifecyclePhase } from './lifecycle';
+import { typenVon, kategorienVon } from './mehrfach';
 
 /** Wie lange ein echtes Gespräch die Person „warm“ hält. */
 export const WARM_TAGE = 90;
@@ -191,12 +192,13 @@ const FIRMA_ROLLE: Partial<Record<Firma['rolle'], Rolle>> = { partner: 'partner'
  * Investor, Netzwerk). Jede Rolle höchstens einmal, mit Grund.
  * „Privat“ als Typ gilt nicht als Freund — das wäre geraten.
  */
-export function kontaktRollenVorschlag(k: Pick<Kontakt, 'typ' | 'kategorie' | 'rollen' | 'lebensphase'>, firma?: Pick<Firma, 'rolle'> | null): WahlVorschlag<Rolle>[] {
+export function kontaktRollenVorschlag(k: Pick<Kontakt, 'typ' | 'typen' | 'kategorie' | 'kategorien' | 'rollen' | 'lebensphase'>, firma?: Pick<Firma, 'rolle'> | null): WahlVorschlag<Rolle>[] {
   const gesetzt = new Set(rollenVon(k));
   const aus: WahlVorschlag<Rolle>[] = [];
   const dazu = (r: Rolle | null | undefined, grund: string) => { if (r && !gesetzt.has(r) && !aus.some(x => x.id === r)) aus.push({ id: r, grund }); };
-  dazu(rolleAusWort(k.typ), `Typ „${k.typ?.trim()}“`);
-  dazu(rolleAusWort(k.kategorie), `Kategorie „${k.kategorie?.trim()}“`);
+  // Alle Typen und Kategorien (mehrfach, 28.09.).
+  for (const t of typenVon(k)) dazu(rolleAusWort(t), `Typ „${t.trim()}“`);
+  for (const t of kategorienVon(k)) dazu(rolleAusWort(t), `Kategorie „${t.trim()}“`);
   const ausFirma = firma ? FIRMA_ROLLE[firma.rolle] : undefined;
   if (ausFirma) dazu(ausFirma, `Firma ist als ${ROLLE_LABEL[ausFirma]} geführt`);
   return aus;
@@ -214,9 +216,10 @@ const SIE_MITTEN = /[a-zäöüß,]\s+Sie(?=[^A-Za-zÄÖÜäöüß]|$)/;
  * duzen sie durchweg → Du, siezen sie durchweg → Sie. Gemischt oder nichts
  * Verwertbares: kein Vorschlag. Ist die Anrede gesetzt, gibt es keinen.
  */
-export function anredeVorschlag(k: Pick<Kontakt, 'anrede' | 'kategorie' | 'rollen' | 'lebensphase' | 'aktivitaeten'>): WahlVorschlag<'Sie' | 'Du'> | null {
+export function anredeVorschlag(k: Pick<Kontakt, 'anrede' | 'kategorie' | 'kategorien' | 'rollen' | 'lebensphase' | 'aktivitaeten'>): WahlVorschlag<'Sie' | 'Du'> | null {
   if (k.anrede) return null;
-  if (rolleAusWort(k.kategorie) === 'freund') return { id: 'Du', grund: `Kategorie „${k.kategorie!.trim()}“` };
+  const freundKat = kategorienVon(k).find(t => rolleAusWort(t) === 'freund');
+  if (freundKat) return { id: 'Du', grund: `Kategorie „${freundKat.trim()}“` };
   if (rollenVon(k).includes('freund')) return { id: 'Du', grund: 'Rolle „Freund“' };
   const texte = (k.aktivitaeten ?? []).filter(a => (a.art === 'mail' || a.art === 'linkedin') && a.von !== 'system' && a.text?.trim()).map(a => a.text!);
   const du = texte.filter(t => DU_WOERTER.test(t)).length;

@@ -20,6 +20,9 @@ import { zahlungSaeubern, zahlungMaskiert } from '@/lib/crm/zahlung';
 import { istLifecycle, lifecycleAusListe, type LifecyclePhase } from '@/lib/crm/lifecycle';
 import { istBean, type BeanId } from '@/lib/crm/bean';
 import { markenSaeubern, ohneMarkierte } from '@/lib/crm/aktivitaet-marke';
+import { stationenSaeubern, stationenSynchron, STATIONEN_MAX, type Station } from '@/lib/crm/stationen';
+import { werteSaeubern, mehrfachSynchron, hatTyp, kategorieBeginnt, MEHRFACH_MAX } from '@/lib/crm/mehrfach';
+import { emailsSaeubern, emailsSynchron, alleAdressen, adresseAnhaengen, hatAdresse, EMAILS_MAX, type EmailAdresse } from '@/lib/crm/emails';
 
 export const STUFEN = [
   'neu', 'ansprechen', 'angesprochen', 'gespraech', 'termin', 'angebot',
@@ -68,6 +71,11 @@ export interface Aktivitaet {
   ort?: string;
   /** Wann der Text zuletzt geändert wurde (eigene Notiz bearbeiten, 28.09.) — ISO. */
   bearbeitet?: string;
+  /**
+   * Die Firma der Person zum Zeitpunkt der Aktivität (28.09., Stationen) — damit die Zeitlinie einer Firma
+   * ihre Aktivitäten behält, auch wenn die Person weitergezogen ist. Altbestand ohne: über die Station (von/bis).
+   */
+  firmaId?: string;
 }
 
 /** Beziehungskreis A–D: bestimmt den Takt, in dem man sich meldet (Dunbar-Schichten). */
@@ -139,7 +147,14 @@ export interface Kontakt {
   signale?: string;
   kiBezug?: string;
   // ── Klassifikation (aus der Anreicherung) ──
+  /** Erster Wert von `typen` (abgeleitet, 28.09.) — Fragen nach dem Typ über `hatTyp` (lib/crm/mehrfach.ts). */
   typ?: string;
+  /** Typen mehrfach (28.09.) — fehlt im Altbestand (dann gilt `typ` allein). Geschrieben über `mehrfachSynchron`. */
+  typen?: string[];
+  /** Kategorien mehrfach (28.09.) — `kategorie` ist der erste Wert. */
+  kategorien?: string[];
+  /** Frei vergebbare Labels (28.09., Werteliste „labels“) — kein Altfeld. */
+  labels?: string[];
   eignung: Eignung;
   prio: Prio;
   aufhaenger?: string;
@@ -151,8 +166,22 @@ export interface Kontakt {
   notiz?: string;
   hubspotId?: string;
   steckbrief?: string;
-  /** Verweis auf die Firma (CRM-Stammdaten, lib/crm/firmen.ts). */
+  /**
+   * Verweis auf die Firma (CRM-Stammdaten, lib/crm/firmen.ts) — seit 28.09. die ABGELEITETE Hauptstation
+   * aus `stationen` (lib/crm/stationen.ts). Lesen wie bisher; „Personen einer Firma“ nur über `personenDerFirma`.
+   */
   firmaId?: string;
+  /**
+   * Stationen (28.09., #2/#3): die Person in mehreren Firmen mit Rolle und Beschäftigungshistorie.
+   * Fehlt im Altbestand — dann gilt `firmaId`/`position` als eine aktive Hauptstation (`stationenVon`).
+   * Geschrieben nur über `stationenSynchron` (hält `firmaId`/`firma`/`position` mit).
+   */
+  stationen?: Station[];
+  /**
+   * Alle E-Mail-Adressen (28.09., #11) — `email` bleibt die Haupt-Adresse (abgeleitet). Fehlt im Altbestand
+   * (dann gilt `email` allein, `emailsVon`). Geschrieben nur über `emailsSynchron`.
+   */
+  emails?: EmailAdresse[];
   // ── Beziehung & Recht (24.09., alles optional — der Import kennt es nicht) ──
   kreis?: Kreis;
   /** Eigener Takt in Tagen, sonst aus dem Kreis. */
@@ -221,7 +250,7 @@ export interface Kontakt {
 /** Felder, die der Import NIE anfasst — das ist die Arbeit im CRM. */
 export const PIPELINE_FELDER: (keyof Kontakt)[] = ['stufe', 'wiedervorlage', 'letzterKontakt', 'aktivitaeten', 'importiertAm',
   'firmaId', 'herkunft', 'rechtsgrundlage', 'kreis', 'taktTage', 'besitzer', 'lebensphase', 'anrede', 'vorgestelltDurch', 'einwilligungen', 'werbesperre', 'fremddaten', 'art14InformiertAm', 'naechsterSchritt', 'privatNotiz', 'netzwerk', 'linkedinNichtGefunden',
-  'lead', 'rollen', 'privatNotizVon', 'stand', 'vonHand', 'phase', 'zahlung', 'bean', 'geloeschteAktivitaeten'];
+  'lead', 'rollen', 'privatNotizVon', 'stand', 'vonHand', 'phase', 'zahlung', 'bean', 'geloeschteAktivitaeten', 'stationen'];
 
 /** Höchstens so viele Feldnamen in `vonHand` — mehr Stammdaten-Felder gibt es nicht. */
 export const VON_HAND_MAX = 60;
@@ -334,10 +363,10 @@ export function schluesselAlt(k: { email?: string; hubspotId?: string; vorname?:
  * Alle Merkmale, an denen dieselbe Person wiedererkannt wird (Sperrliste, K2 #60): persönliche
  * E-Mail, HubSpot-ID, Name+Firma (nur mit Namen). Klartext — gehasht wird in lib/crm/sperrliste.ts.
  */
-export function identitaetsMerkmale(k: { email?: string; hubspotId?: string; vorname?: string; nachname?: string; firma?: string }): string[] {
+export function identitaetsMerkmale(k: { email?: string; emails?: EmailAdresse[]; hubspotId?: string; vorname?: string; nachname?: string; firma?: string }): string[] {
   const l: string[] = [];
-  const mail = mailSchluessel(k.email);
-  if (mail && !istSammelAdresse(mail)) l.push(`m:${mail}`);
+  // Alle Adressen der Person (28.09., #11) — eine gesperrte Person bleibt auch unter ihrer zweiten Adresse gesperrt.
+  for (const mail of alleAdressen(k)) if (!istSammelAdresse(mail)) l.push(`m:${mail}`);
   if ((k.hubspotId ?? '').trim()) l.push(`h:${norm(k.hubspotId!)}`);
   const name = normName(k.vorname, k.nachname);
   if (name) l.push(`n:${name}|${normFirma(k.firma)}`);
@@ -499,8 +528,15 @@ export function zusammenfuehren(alt: Kontakt, neu: Kontakt, heute: string): { ko
   const konflikte: Konflikt[] = [];
   let geaendert = false;
   const setze = (f: keyof Kontakt, v: unknown) => { (out as unknown as Record<string, unknown>)[f] = v; geaendert = true; };
+  // E-Mail (28.09., #11): eine neue Adresse zu einer bekannten Person wird als WEITERE Adresse angehängt —
+  // nie überschrieben, die Haupt-Adresse bleibt. Nur wenn die Person noch gar keine hat, füllt die Liste
+  // die Lücke (von Hand geleert → Konflikt, „Online gewinnt“).
+  if (neu.email && !hatAdresse(out, neu.email)) {
+    if (!alleAdressen(out).length && alt.vonHand?.includes('email')) konflikte.push({ kontaktId: alt.id, feld: 'email', online: out.email, liste: neu.email });
+    else { const mit = adresseAnhaengen(out, neu.email); if (mit.email !== out.email) setze('email', mit.email); if (mit.emails !== out.emails) setze('emails', mit.emails); }
+  }
   for (const f of Object.keys(neu) as (keyof Kontakt)[]) {
-    if (!istStammdatenFeld(f)) continue;
+    if (!istStammdatenFeld(f) || f === 'email') continue;
     const v = neu[f];
     if (leer(v)) continue;
     const a = out[f];
@@ -525,7 +561,9 @@ export function zusammenfuehren(alt: Kontakt, neu: Kontakt, heute: string): { ko
     // sonst würde das frische Änderungsdatum beim nächsten Import jede Abweichung zum Konflikt machen.
     if (!alt.vonHand && !nachImportGeaendert(alt)) out.vonHand = [];
   }
-  return { kontakt: out, geaendert, konflikte };
+  // Stationen (28.09.): eine neue Position aus der Liste wird die Rolle der Hauptstation (Firma bleibt, wie sie ist).
+  // Typ/Kategorie aus der Liste füllen den ersten Wert (mehrfach, 28.09.) — „Online gewinnt“ gilt über `vonHand` wie bisher.
+  return { kontakt: geaendert ? bezuegeSynchron(out, alt, heute) : out, geaendert, konflikte };
 }
 
 /**
@@ -542,6 +580,9 @@ export function vonHandMarkieren(alt: Kontakt | undefined, neu: Kontakt): Kontak
     if (leer(v) && leer(a)) continue;
     if (!gleich(v, a)) felder.add(f);
   }
+  // Mehrfach-Listen (28.09.): wer Typen/Kategorien von Hand ändert, hat auch den ersten Wert in der Hand — kein Import überschreibt ihn still.
+  if (alt && !gleich(neu.typen, alt.typen) && neu.typen !== undefined) felder.add('typ');
+  if (alt && !gleich(neu.kategorien, alt.kategorien) && neu.kategorien !== undefined) felder.add('kategorie');
   if (!felder.size && !alt?.vonHand && !neu.vonHand) return neu;
   return { ...neu, vonHand: Array.from(felder).slice(0, VON_HAND_MAX) };
 }
@@ -596,6 +637,8 @@ export interface ImportErgebnis {
   gesperrt: number;
   /** Bestehende Kontakte, die nur über die alte Schlüsselform wiedererkannt wurden (Übergangsregel K2). */
   uebergang: number;
+  /** Bekannte Personen, an die eine neue E-Mail-Adresse als weitere angehängt wurde (28.09., #11). */
+  weitereAdressen: number;
 }
 
 export interface ImportOptionen {
@@ -618,7 +661,19 @@ const namenVertraeglich = (a: Kontakt, b: Kontakt) => { const x = normName(a.vor
 export function importieren(bestand: Kontakt[], zeilen: Record<string, string>[], heute: string, opt: ImportOptionen = {}): ImportErgebnis {
   const nachId = new Map(bestand.map(k => [k.id, k]));
   const index = new Map<string, string>();
+  // Alle Adressen einer Person zählen (28.09., #11): wer eine Zeile unter seiner zweiten Adresse trifft, ist derselbe Mensch.
+  const indizieren = (k: Kontakt) => {
+    index.set(schluessel(k), k.id);
+    for (const a of alleAdressen(k)) if (!istSammelAdresse(a) && !index.has(`m:${a}`)) index.set(`m:${a}`, k.id);
+  };
   for (const k of bestand) index.set(schluessel(k), k.id);
+  for (const k of bestand) indizieren(k);
+  // Rückfall für eine NEUE Adresse (28.09., #11): dieselbe HubSpot-ID oder derselbe Name bei derselben Firma —
+  // nur eindeutig (mehrdeutig = null). So hängt die neue Adresse an, statt die Person doppelt anzulegen.
+  const eindeutig = (schl: (k: Kontakt) => string | null) => { const m = new Map<string, string | null>(); for (const k of bestand) { const x = schl(k); if (x) m.set(x, m.has(x) ? null : k.id); } return m; };
+  const hubKey = (k: Pick<Kontakt, 'hubspotId'>) => ((k.hubspotId ?? '').trim() ? `h:${norm(k.hubspotId!)}` : null);
+  const nameKey = (k: Pick<Kontakt, 'vorname' | 'nachname' | 'firma'>) => { const n = normName(k.vorname, k.nachname), f = normFirma(k.firma); return n.length >= 5 && f ? `n:${n}|${f}` : null; };
+  const nachHub = eindeutig(hubKey), nachName = eindeutig(nameKey);
   // Alte Form: nur eindeutige Treffer (mehrdeutig = null).
   const altIndex = new Map<string, string | null>();
   for (const k of bestand) { const a = schluesselAlt(k); altIndex.set(a, altIndex.has(a) ? null : k.id); }
@@ -627,7 +682,7 @@ export function importieren(bestand: Kontakt[], zeilen: Record<string, string>[]
   const direkt = new Set(kandidaten.flatMap(k => { const id = index.get(schluessel(k)); return id ? [id] : []; }));
   const perUebergang = new Set<string>();
 
-  let neu = 0, aktualisiert = 0, unveraendert = 0, ohneBesitzer = 0, gesperrt = 0;
+  let neu = 0, aktualisiert = 0, unveraendert = 0, ohneBesitzer = 0, gesperrt = 0, weitereAdressen = 0;
   const konflikte: Konflikt[] = [];
   const hinweise: MoeglicheDublette[] = [];
   const betroffen = new Set<string>();
@@ -642,6 +697,12 @@ export function importieren(bestand: Kontakt[], zeilen: Record<string, string>[]
       const kand = a ? nachId.get(a) : undefined;
       if (kand && !direkt.has(kand.id) && !perUebergang.has(kand.id) && namenVertraeglich(kand, k)) { altId = kand.id; perUebergang.add(kand.id); }
     }
+    if (!altId && mailSchluessel(k.email)) {
+      const h = hubKey(k), n = nameKey(k);
+      const id = (h ? nachHub.get(h) : undefined) ?? (n ? nachName.get(n) : undefined);
+      const kand = id ? nachId.get(id) : undefined;
+      if (kand && !direkt.has(kand.id) && namenVertraeglich(kand, k)) altId = kand.id;
+    }
     let fertig: Kontakt;
     if (!altId) {
       if (opt.gesperrt?.(k)) { gesperrt++; return; }
@@ -650,8 +711,10 @@ export function importieren(bestand: Kontakt[], zeilen: Record<string, string>[]
       fertig = id === k.id ? k : { ...k, id };
       nachId.set(fertig.id, fertig); index.set(key, fertig.id); neu++; neuIds.push(fertig.id);
     } else {
-      const r = zusammenfuehren(nachId.get(altId)!, k, heute);
-      nachId.set(altId, r.kontakt); index.set(key, altId); index.set(schluessel(r.kontakt), altId);
+      const vorher = nachId.get(altId)!;
+      const r = zusammenfuehren(vorher, k, heute);
+      if (alleAdressen(r.kontakt).length > alleAdressen(vorher).length && alleAdressen(vorher).length) weitereAdressen++;
+      nachId.set(altId, r.kontakt); index.set(key, altId); indizieren(r.kontakt);
       konflikte.push(...r.konflikte);
       if (r.geaendert) aktualisiert++; else unveraendert++;
       fertig = r.kontakt;
@@ -663,7 +726,7 @@ export function importieren(bestand: Kontakt[], zeilen: Record<string, string>[]
   });
   const kontakte = Array.from(nachId.values());
   return {
-    kontakte, neu, aktualisiert, unveraendert, konflikte, ohneBesitzer, betroffen: Array.from(betroffen), neuIds, gesperrt, uebergang: perUebergang.size,
+    kontakte, neu, aktualisiert, unveraendert, konflikte, ohneBesitzer, betroffen: Array.from(betroffen), neuIds, gesperrt, uebergang: perUebergang.size, weitereAdressen,
     moeglicheDubletten: [...moeglicheDubletten(kontakte, betroffen), ...hinweise],
   };
 }
@@ -676,7 +739,7 @@ export interface Kanal { art: 'mail' | 'linkedin' | 'anruf'; ziel: string }
  *  Kevin sie nutzen sollte. LinkedIn zuerst bei kaltem Kontakt (§7 UWG),
  *  Mail zuerst, wenn es schon einen Draht gibt. */
 export function kanaele(k: Kontakt): Kanal[] {
-  const warm = k.stufe !== 'neu' && k.stufe !== 'ansprechen' || (k.kategorie ?? '').startsWith('Apple') || k.typ === 'Netzwerk';
+  const warm = k.stufe !== 'neu' && k.stufe !== 'ansprechen' || kategorieBeginnt(k, 'Apple') || hatTyp(k, 'Netzwerk');
   const l: Kanal[] = [];
   if (k.linkedin) l.push({ art: 'linkedin', ziel: k.linkedin });
   if (k.email) l.push({ art: 'mail', ziel: k.email });
@@ -715,7 +778,7 @@ export function tagesliste(kontakte: Kontakt[], heute: string, n = 10): Tagespos
   const frisch = offen
     .filter(k => !schonDrin.has(k.id))
     .filter(k => (k.stufe === 'neu' || k.stufe === 'ansprechen') && ansprechbar(k))
-    .filter(k => k.typ !== 'Dienstleister' && k.typ !== 'Investor')
+    .filter(k => !hatTyp(k, 'Dienstleister') && !hatTyp(k, 'Investor'))
     .filter(k => k.prio === 'A' || k.prio === 'B')
     .sort((a, b) =>
       PRIO_RANG[a.prio] - PRIO_RANG[b.prio]
@@ -844,6 +907,9 @@ export function kontaktZuGross(e: unknown): string | null {
   const o = e as Record<string, unknown>;
   if (Array.isArray(o.aktivitaeten) && o.aktivitaeten.length > AKTIVITAETEN_MAX) return `Mehr als ${AKTIVITAETEN_MAX} Aktivitäten an einem Kontakt — abgelehnt, nichts gekürzt.`;
   if (Array.isArray(o.einwilligungen) && o.einwilligungen.length > EINWILLIGUNGEN_MAX) return `Mehr als ${EINWILLIGUNGEN_MAX} Einwilligungen an einem Kontakt — abgelehnt, nichts gekürzt.`;
+  if (Array.isArray(o.stationen) && o.stationen.length > STATIONEN_MAX) return `Mehr als ${STATIONEN_MAX} Stationen an einem Kontakt — abgelehnt, nichts gekürzt.`;
+  if (Array.isArray(o.emails) && o.emails.length > EMAILS_MAX) return `Mehr als ${EMAILS_MAX} E-Mail-Adressen an einem Kontakt — abgelehnt, nichts gekürzt.`;
+  for (const f of ['typen', 'kategorien', 'labels'] as const) if (Array.isArray(o[f]) && (o[f] as unknown[]).length > MEHRFACH_MAX) return `Mehr als ${MEHRFACH_MAX} Einträge in „${f}“ an einem Kontakt — abgelehnt, nichts gekürzt.`;
   return null;
 }
 
@@ -868,10 +934,11 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     const n = x.notiz && typeof x.notiz === 'object' ? x.notiz as Record<string, unknown> : null;
     const notiz = n ? Object.fromEntries(NOTIZ_FELDER.map(f => [f.id, txt(n[f.id], 1500)]).filter(([, v]) => v)) as NotizVorlage : undefined;
     const wann = wannSaeubern(x.wann), ort = ortSaeubern(x.ort), bearbeitet = zeitpunktSaeubern(x.bearbeitet);
+    const aktFirma = typeof x.firmaId === 'string' && /^f-[a-z0-9-]{2,63}$/.test(x.firmaId) ? x.firmaId : undefined;
     return {
       am: String(x.am ?? '').slice(0, 25), art, ...(txt(x.text, 3000) ? { text: txt(x.text, 3000) } : {}), von,
       ...(ergebnis ? { ergebnis } : {}), ...(notiz && Object.keys(notiz).length ? { notiz } : {}), ...(txt(x.bezug, 60) ? { bezug: txt(x.bezug, 60) } : {}),
-      ...(wann ? { wann } : {}), ...(ort ? { ort } : {}), ...(bearbeitet ? { bearbeitet } : {}),
+      ...(wann ? { wann } : {}), ...(ort ? { ort } : {}), ...(bearbeitet ? { bearbeitet } : {}), ...(aktFirma ? { firmaId: aktFirma } : {}),
     } as Aktivitaet;
   }).filter((a): a is Aktivitaet => !!a) : [];
   // Löschmarken (28.09., H4): markierte Fassungen fallen hier heraus — egal, welcher Weg sie zurückbringen wollte.
@@ -892,6 +959,10 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
   const takt = Number(o.taktTage);
   // Herkunft je Feld (27.09.): nur bekannte Stammdaten-Feldnamen, höchstens VON_HAND_MAX.
   const vonHand = Array.isArray(o.vonHand) ? Array.from(new Set((o.vonHand as unknown[]).filter((f): f is string => typeof f === 'string' && istStammdatenFeld(f)))).slice(0, VON_HAND_MAX) : undefined;
+  // Stationen und Adressen (28.09.): ein leeres Array bleibt (ausdrücklich „keine“) — fehlt es, bleibt das Feld weg.
+  const stationen = stationenSaeubern(o.stationen);
+  const emails = emailsSaeubern(o.emails);
+  const typen = werteSaeubern(o.typen, 40), kategorien = werteSaeubern(o.kategorien, 80), labels = werteSaeubern(o.labels, 60);
   const k: Kontakt = {
     id, vorname: String(o.vorname ?? '').trim().slice(0, 80), nachname: String(o.nachname ?? '').trim().slice(0, 80),
     email: txt(o.email, 160)?.toLowerCase(), telefon: txt(o.telefon, 60), sms: txt(o.sms, 60),
@@ -926,6 +997,8 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     ...(zahlungSaeubern(o.zahlung) ? { zahlung: zahlungSaeubern(o.zahlung) } : {}),
     ...(istBean(o.bean) ? { bean: o.bean } : {}),
     ...(geloeschteAktivitaeten ? { geloeschteAktivitaeten } : {}),
+    ...(stationen ? { stationen } : {}), ...(emails ? { emails } : {}),
+    ...(typen ? { typen } : {}), ...(kategorien ? { kategorien } : {}), ...(labels ? { labels } : {}),
   };
   if (!k.vorname && !k.nachname && !k.firma) return null;
   return k;
@@ -957,7 +1030,9 @@ export function wendeAktivitaetAn(
 ): Kontakt {
   const eintrag: Aktivitaet = { am: jetztIso, art: e.art, ...(e.text ? { text: e.text } : {}), von: e.von,
     ...(e.ergebnis ? { ergebnis: e.ergebnis } : {}), ...(e.notiz ? { notiz: e.notiz } : {}), ...(e.bezug ? { bezug: e.bezug } : {}),
-    ...(wannSaeubern(e.wann) ? { wann: wannSaeubern(e.wann) } : {}), ...(ortSaeubern(e.ort) ? { ort: ortSaeubern(e.ort) } : {}) };
+    ...(wannSaeubern(e.wann) ? { wann: wannSaeubern(e.wann) } : {}), ...(ortSaeubern(e.ort) ? { ort: ortSaeubern(e.ort) } : {}),
+    // Firma zum Zeitpunkt (28.09., Stationen): die Zeitlinie der Firma behält die Aktivität nach einem Jobwechsel.
+    ...(k.firmaId ? { firmaId: k.firmaId } : {}) };
   const out: Kontakt = { ...k, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag] };
   // Nur echter Kontakt zählt: ein nicht erreichter Anruf ist ein Versuch, kein Kontakt.
   const echt = e.art !== 'notiz' && e.art !== 'stufe' && e.art !== 'system' && e.ergebnis !== 'nicht_erreicht' && e.ergebnis !== 'mailbox';
@@ -1004,7 +1079,7 @@ export function kontaktVereinen(neu: Kontakt, alt: Kontakt, person?: string): Ko
  * Felder, die ein `teil` nie leert — Kennung, Pipeline-Kern und was nur der Server setzt.
  * Die Zahlung hat ihren eigenen Weg (`ibanEntfernen`, lib/crm/zahlung.ts).
  */
-const NIE_LEEREN = new Set(['id', 'stufe', 'aktivitaeten', 'importiertAm', 'geaendertAm', 'vonHand', 'geloeschteAktivitaeten', 'stand', 'zahlung']);
+const NIE_LEEREN = new Set(['id', 'stufe', 'aktivitaeten', 'importiertAm', 'geaendertAm', 'vonHand', 'geloeschteAktivitaeten', 'stand', 'zahlung', 'stationen', 'emails', 'typen', 'kategorien', 'labels']);
 
 /**
  * Einzelne Felder auf den gespeicherten Kontakt legen (PATCH /api/state/kontakte, op `teil`).
@@ -1037,6 +1112,14 @@ export function serverStempel(neu: Kontakt, alt: Kontakt | undefined, heute: str
   const { vonHand: _browser, ...rest } = neu;
   const basis: Kontakt = { ...rest, importiertAm: alt?.importiertAm || heute, geaendertAm: heute, ...(alt?.vonHand ? { vonHand: alt.vonHand } : {}) };
   return vonHandMarkieren(alt, basis);
+}
+
+/**
+ * Stationen und E-Mail-Adressen (28.09.) mit den abgeleiteten Feldern (`firmaId`/`firma`/`position`, `email`)
+ * synchron halten — jeder Schreibweg der Kartei ruft das VOR `serverStempel` (lib/crm/stationen.ts, lib/crm/emails.ts).
+ */
+export function bezuegeSynchron(neu: Kontakt, alt: Kontakt | undefined, heute: string, firmaName?: (id: string) => string | undefined): Kontakt {
+  return stationenSynchron(emailsSynchron(mehrfachSynchron(neu, alt), alt), alt, heute, firmaName);
 }
 
 /** Die neuen, gültigen Einwilligungen in `neu` gegenüber `alt` (gleiche Fassung zählt nicht). */
@@ -1107,12 +1190,14 @@ export function findeKontakte(kontakte: Kontakt[], frage: string, n = 5): Kontak
   if (!w.length) return [];
   const punkte = (k: Kontakt) => {
     const name = anzeigename(k).toLowerCase();
-    const felder = [name, k.firma ?? '', k.email ?? '', k.firmaBranche ?? '', k.position ?? '', k.firmaStadt ?? ''].map(x => x.toLowerCase());
+    // Alle Adressen (28.09., #11) — wer unter seiner zweiten Adresse gesucht wird, wird gefunden.
+    const mails = alleAdressen(k).join(' ');
+    const felder = [name, k.firma ?? '', mails, k.firmaBranche ?? '', k.position ?? '', k.firmaStadt ?? ''].map(x => x.toLowerCase());
     let p = 0;
     for (const t of w) {
       if (name.includes(t)) p += 6;
       if ((k.firma ?? '').toLowerCase().includes(t)) p += 5;
-      if ((k.email ?? '').includes(t)) p += 5;
+      if (mails.includes(t)) p += 5;
       if (felder.some(f => f.includes(t))) p += 1;
     }
     return p;

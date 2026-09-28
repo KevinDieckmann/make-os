@@ -14,7 +14,7 @@
 // BEAN (28.09., H4): Filter als Wahl-Chip (auch aus der Adresse `bean=B|E|A|N`,
 // Verteilungskarte im Überblick) und Spalte mit dem Buchstaben (lib/crm/bean.ts).
 // Quelle ist die Masterdatei — das Adressbuch der Kontakte-App bleibt bewusst draußen.
-// Zu zweit (25.09.): Filter „Alle · Meins · Malin“ nach „Hält die Beziehung“
+// Zu zweit (25.09.): Filter „Alle · Meins · Malin“ nach „Zuständig“ (Feld `besitzer`, früher „Hält die Beziehung“)
 // (ohne Eintrag: Sales-Verantwortung, Kevin), gefilterte Kontakte gesammelt
 // übergeben, je Person „Übergeben“ und „Malin ist gerade hier“. Die private
 // Notiz sieht nur, wer sie schrieb (serverseitig).
@@ -44,6 +44,8 @@ import { lifecycleVon } from '@/lib/crm/vorschlaege';
 import { LIFECYCLE_PHASEN, LIFECYCLE_KURZ, LIFECYCLE_LABEL, type LifecyclePhase } from '@/lib/crm/lifecycle';
 import { BEAN_IDS, BEAN_LABEL, BEAN_HINWEIS, beanVon, istBean, type BeanErgebnis, type BeanId } from '@/lib/crm/bean';
 import { BeanBadge, BEAN_FARBE, useOffeneAngebote } from './bean-teile';
+import { typenVon, kategorienVon, labelsVon, enthaeltEinenVon } from '@/lib/crm/mehrfach';
+import { alleAdressen, hatAdresse } from '@/lib/crm/emails';
 
 type Modus = 'personen' | 'firmen';
 type Ansicht = 'alle' | 'kunden' | 'kreis' | 'prio' | 'chancen' | 'mail' | 'anreichern' | 'art14' | 'gesperrt' | 'dubletten';
@@ -80,6 +82,19 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   useEffect(() => { if (istBean(startBean)) setBn(startBean); }, [startBean]);
   const beans = useMemo(() => new Map(kontakte.map(k => [k.id, beanVon(k, crm?.stand, { angebote })])), [kontakte, crm, angebote]);
   const bnZahl = useMemo(() => { const z = new Map<BeanId, number>(); for (const b of beans.values()) z.set(b.bean, (z.get(b.bean) ?? 0) + 1); return z; }, [beans]);
+  // Einordnung (28.09.): Typ, Kategorie, Label — mehrfach an der Person; der Filter trifft, wer den Wert trägt.
+  const [ein, setEin] = useState<string | null>(null);
+  const einordnung = useMemo(() => {
+    const z = new Map<string, { label: string; n: number }>();
+    const zaehle = (art: string, name: string, w: string) => { const id = `${art}:${w.toLocaleLowerCase('de-DE')}`; const e = z.get(id); z.set(id, { label: `${name}: ${e?.label.split(': ')[1] ?? w}`, n: (e?.n ?? 0) + 1 }); };
+    for (const k of kontakte) { for (const t of typenVon(k)) zaehle('t', 'Typ', t); for (const t of kategorienVon(k)) zaehle('k', 'Kategorie', t); for (const t of labelsVon(k)) zaehle('l', 'Label', t); }
+    return Array.from(z.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([id, x]) => ({ id, label: `${x.label} · ${x.n}` }));
+  }, [kontakte]);
+  const passtEin = useMemo(() => {
+    if (!ein) return () => true;
+    const [art, ...rest] = ein.split(':'); const w = rest.join(':');
+    return (k: Kontakt) => enthaeltEinenVon(art === 't' ? typenVon(k) : art === 'k' ? kategorienVon(k) : labelsVon(k), [w]);
+  }, [ein]);
   // Aus einer Übergabe-Aufgabe (…&wer=malin) direkt in die übergebenen Kontakte.
   useEffect(() => { const w = new URLSearchParams(window.location.search).get('wer'); if (w) setWer(w === api.ich ? 'ich' : w); }, [api.ich]); // eslint-disable-line react-hooks/exhaustive-deps
   const ich = api.ich;
@@ -97,12 +112,13 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
 
   const treffer = useMemo(() => {
     const q = suche.trim();
-    let l = kontakte.filter(filter[ansicht]).filter(k => passtWer(wer, k.besitzer, 'sales', ich)).filter(k => !lc || lifecycle.get(k.id)?.phase === lc).filter(k => !bn || beans.get(k.id)?.bean === bn);
+    let l = kontakte.filter(filter[ansicht]).filter(k => passtWer(wer, k.besitzer, 'sales', ich)).filter(k => !lc || lifecycle.get(k.id)?.phase === lc).filter(k => !bn || beans.get(k.id)?.bean === bn).filter(passtEin);
     // Eine Such-Normalisierung (K2 #105): „mueller“ findet „Müller“ (auch NFD), „strasse“ „Straße“; jedes Wort muss passen.
-    if (q) l = l.filter(k => suchPasst([anzeigename(k), k.firma, k.email, k.firmaBranche, k.position, k.firmaStadt, k.telefon], q));
+    // Alle E-Mail-Adressen, Typen, Kategorien und Labels zählen mit (28.09.).
+    if (q) l = l.filter(k => suchPasst([anzeigename(k), k.firma, ...alleAdressen(k), k.firmaBranche, k.position, k.firmaStadt, k.telefon, ...labelsVon(k), ...kategorienVon(k)], q));
     const rang = (k: Kontakt) => (k.lebensphase === 'kunde' ? 0 : k.kreis === 'A' ? 1 : k.kreis === 'B' ? 2 : k.prio === 'A' ? 3 : k.prio === 'B' ? 4 : 5);
     return [...l].sort((a, b) => (ansicht === 'dubletten' ? anzeigename(a).localeCompare(anzeigename(b)) : rang(a) - rang(b) || anzeigename(a).localeCompare(anzeigename(b))));
-  }, [kontakte, suche, ansicht, filter, wer, ich, lc, lifecycle, bn, beans]);
+  }, [kontakte, suche, ansicht, filter, wer, ich, lc, lifecycle, bn, beans, passtEin]);
   const sichtbar = treffer.slice(0, mehr);
   const [erreichbar, freigegeben] = useMemo(() => [
     kontakte.filter(k => k.email || k.telefon || k.sms).length,
@@ -110,7 +126,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   ], [kontakte, mitMandat]);
   const werZahlen = ich ? { alle: kontakte.length, ich: kontakte.filter(k => passtWer('ich', k.besitzer, 'sales', ich)).length, [anderer(ich)]: kontakte.filter(k => passtWer(anderer(ich), k.besitzer, 'sales', ich)).length } : undefined;
   // Gesammelt übergeben geht nur mit einer Eingrenzung — nie aus Versehen die ganze Kartei.
-  const eingegrenzt = !!suche.trim() || ansicht !== 'alle' || wer !== 'alle' || !!lc || !!bn;
+  const eingegrenzt = !!suche.trim() || ansicht !== 'alle' || wer !== 'alle' || !!lc || !!bn || !!ein;
   const sammel = eingegrenzt && treffer.length > 0 && treffer.length <= 300 ? treffer.filter(k => !k.werbesperre) : [];
 
   // Tastatur wie in einer guten Liste: / sucht, j/k blättert, Enter öffnet, Esc schließt.
@@ -186,11 +202,16 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
             </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
               <WerFilter wahl={wer} onWahl={w => { setWer(w); setMehr(80); }} ich={ich} zahlen={werZahlen} />
-              <span style={{ fontSize: 12, color: C.inkLeise }}>nach „Hält die Beziehung“ · ohne Eintrag bei {nameVon('kevin')} (Sales-Verantwortung)</span>
+              <span style={{ fontSize: 12, color: C.inkLeise }}>nach „Zuständig“ · ohne Eintrag bei {nameVon('kevin')} (Sales-Verantwortung)</span>
               <span style={{ marginLeft: 'auto' }} title="BEAN: Bestandskunde · Ehemalig · Angebotskunde · Neu — von Hand oder abgeleitet">
                 <Wahl label="BEAN" klein liste={BEAN_IDS.map(b => ({ id: b, label: `${b} · ${BEAN_LABEL[b]} · ${bnZahl.get(b) ?? 0}`, hinweis: BEAN_HINWEIS[b] }))}
                   wert={bn} leer="BEAN: alle ▾" farbe={bn ? BEAN_FARBE[bn] : undefined} onWahl={b => { setBn(b); setMehr(80); }} onLeeren={() => setBn(null)} leerenLabel="alle Gruppen" />
               </span>
+              {einordnung.length > 0 && (
+                <span title="Typ, Kategorie oder Label — trifft, wer den Wert trägt (mehrfach an der Person)">
+                  <Wahl label="Einordnung" klein liste={einordnung} wert={ein} leer="Typ/Kategorie/Label: alle ▾" onWahl={x => { setEin(x); setMehr(80); }} onLeeren={() => setEin(null)} leerenLabel="alle" />
+                </span>
+              )}
               <span title="Lifecycle: gesetzt, sonst Lead">
                 <Wahl label="Lifecycle" klein liste={LIFECYCLE_PHASEN.map(p => ({ id: p, label: `${LIFECYCLE_KURZ[p]} · ${lcZahl.get(p) ?? 0}`, ...(LIFECYCLE_KURZ[p] !== LIFECYCLE_LABEL[p] ? { hinweis: LIFECYCLE_LABEL[p] } : {}) }))}
                   wert={lc} leer="Lifecycle: alle ▾" farbe={lc ? lifecycleFarbe(lc) : undefined} onWahl={p => { setLc(p); setMehr(80); }} onLeeren={() => setLc(null)} leerenLabel="alle Lifecycle" />
@@ -272,7 +293,7 @@ function KarteiZeile({ k, firma, lifecycle, bean, breit, aktiv, markiert, chance
       style={{ display: 'grid', gridTemplateColumns: KARTEI_SPALTEN, gap: 12, alignItems: 'center', padding: '8px 8px', minHeight: 44, borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer', fontSize: TYP.bedien,
         background: aktiv ? 'rgba(255,255,255,.07)' : markiert ? 'rgba(88,217,205,.07)' : 'transparent', borderRadius: aktiv || markiert ? 8 : 0 }}>
       <Punkt farbe={k.werbesperre ? LEUCHT.kritisch : phaseFarbe(k.lebensphase)} groesse={8} />
-      <span title={`Hält die Beziehung: ${nameVon(haeltBeziehung(k))}${k.besitzer ? '' : ' (Sales-Verantwortung)'}`} style={{ opacity: k.besitzer ? 1 : 0.45, display: 'inline-flex' }}><Person id={haeltBeziehung(k)} groesse={18} /></span>
+      <span title={`Zuständig: ${nameVon(haeltBeziehung(k))}${k.besitzer ? '' : ' (Sales-Verantwortung)'}`} style={{ opacity: k.besitzer ? 1 : 0.45, display: 'inline-flex' }}><Person id={haeltBeziehung(k)} groesse={18} /></span>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontWeight: 500, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anzeigename(k)}{k.prio === 'A' && <span style={{ color: LEUCHT.gut, marginLeft: 6, fontSize: 11 }}>A</span>}{a14?.faellig && <span style={{ color: LEUCHT.kritisch, marginLeft: 6, fontSize: 11 }}>Art. 14</span>}</div>
         <div style={{ fontSize: 12, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.naechsterSchritt ? `→ ${k.naechsterSchritt.text}` : (k.position ?? k.jobtitel ?? '')}</div>
@@ -296,7 +317,7 @@ function Anlegen({ api, heute, onFertig }: { api: CrmApi; heute: string; onFerti
   // linkedin/webseite/mobil kommen nur von der Visitenkarte (keine eigenen Eingabefelder) und werden mit gespeichert.
   const [e, setE] = useState({ vorname: '', nachname: '', email: '', telefon: '', position: '', firma: '', lebensphase: 'kontakt' as Lebensphase, herkunft: undefined as Herkunft | undefined, anrede: 'Sie' as 'Sie' | 'Du', linkedin: '', webseite: '', mobil: '', vonKarte: false });
   const firmen = api.crm?.stand.firmen ?? [];
-  const dublette = e.email.includes('@') ? (api.kontakte ?? []).find(k => (k.email ?? '').toLowerCase() === e.email.trim().toLowerCase()) : undefined;
+  const dublette = e.email.includes('@') ? (api.kontakte ?? []).find(k => hatAdresse(k, e.email)) : undefined;
   // Ohne Titel verglichen: „Dr. Anna Weber“ von der Karte ist „Anna Weber“ in der Kartei.
   const namensgleich = e.nachname.trim() ? (api.kontakte ?? []).find(k => gleicherName(k, e)) : undefined;
   // Auch „Muster GmbH“ zu „Muster“ (gleiche Kennung) — verknüpfen statt die bestehende Firma zu überschreiben (F1).

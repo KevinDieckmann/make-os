@@ -3,7 +3,7 @@
 // nur eine Lebensphase). Hier: Mandat mit Laufzeit, Kündigungsfrist,
 // Honorar und Health (DEAR von Gainsight, für Beratung übersetzt), dazu die
 // Brücke in den Liquiditätsplan — als Vorschlag, den Kevin bestätigt, damit
-// nichts doppelt zählt (die OneBanking-Posten sind schon von Hand drin).
+// nichts doppelt zählt (manche Kunden-Posten sind schon von Hand drin).
 
 import type { Mandat } from './typen';
 import type { Planposten } from '@/lib/make-one/liquiditaet';

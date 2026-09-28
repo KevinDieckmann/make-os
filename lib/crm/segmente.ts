@@ -11,6 +11,8 @@ import { kanalStatus } from './recht';
 import { OFFENE_STUFEN } from './pipeline';
 import { lifecycleVon, type LifecycleBestand } from './vorschlaege';
 import { beanVon } from './bean';
+import { firmenDerPerson } from './stationen';
+import { typenVon, kategorienVon, labelsVon, enthaeltEinenVon } from './mehrfach';
 
 export interface SegmentKontext {
   firmen: Map<string, Firma>; mitChance: Set<string>; mitMandat: Set<string>; heute: string;
@@ -35,14 +37,20 @@ const tage = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) 
 export function imSegment(k: Kontakt, kr: SegmentKriterien, ctx: SegmentKontext): boolean {
   if (k.werbesperre) return false;
   const f = k.firmaId ? ctx.firmen.get(k.firmaId) : undefined;
+  // Firmen-Kriterien (Rolle, Branche, Stadt) treffen über JEDE laufende Station (28.09.), die Hauptstation zuerst.
+  const firmen = firmenDerPerson(k).map(id => ctx.firmen.get(id)).filter((x): x is NonNullable<typeof x> => !!x);
+  const eineFirma = (p: (x: typeof f) => boolean) => (firmen.length ? firmen.some(x => p(x)) : p(undefined));
   if (kr.lebensphase?.length && !kr.lebensphase.includes(k.lebensphase ?? 'kontakt')) return false;
   if (kr.kreis?.length && !kr.kreis.includes(k.kreis ?? '')) return false;
   if (kr.prio?.length && !kr.prio.includes(k.prio)) return false;
   if (kr.herkunft?.length && !kr.herkunft.includes(k.herkunft ?? '')) return false;
-  if (kr.firmaRolle?.length && !kr.firmaRolle.includes(f?.rolle ?? 'offen')) return false;
-  if (!enthaelt(f?.branche ?? k.firmaBranche, kr.branche)) return false;
-  if (!enthaelt(f?.stadt ?? k.firmaStadt, kr.stadt)) return false;
-  if (kr.stichwort && ![k.vorname, k.nachname, k.firma, k.position, k.aufhaenger, k.notiz, k.kategorie].some(x => enthaelt(x, kr.stichwort))) return false;
+  if (kr.firmaRolle?.length && !eineFirma(x => kr.firmaRolle!.includes(x?.rolle ?? 'offen'))) return false;
+  if (!eineFirma(x => enthaelt(x?.branche ?? k.firmaBranche, kr.branche))) return false;
+  if (!eineFirma(x => enthaelt(x?.stadt ?? k.firmaStadt, kr.stadt))) return false;
+  if (kr.stichwort && ![k.vorname, k.nachname, k.firma, k.position, k.aufhaenger, k.notiz, ...kategorienVon(k), ...labelsVon(k)].some(x => enthaelt(x, kr.stichwort))) return false;
+  if (kr.typ?.length && !enthaeltEinenVon(typenVon(k), kr.typ)) return false;
+  if (kr.kategorie?.length && !enthaeltEinenVon(kategorienVon(k), kr.kategorie)) return false;
+  if (kr.label?.length && !enthaeltEinenVon(labelsVon(k), kr.label)) return false;
   if (kr.mitChance !== undefined && ctx.mitChance.has(k.id) !== kr.mitChance) return false;
   if (kr.ohneKontaktSeitTagen && k.letzterKontakt && tage(k.letzterKontakt, ctx.heute) < kr.ohneKontaktSeitTagen) return false;
   if (kr.temperatur?.length && !kr.temperatur.includes(leadScore([k], f?.lead ?? k.lead, ctx.heute).temperatur)) return false;

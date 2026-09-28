@@ -34,7 +34,7 @@ export function kurzDatum(iso: string, heute?: string): string {
   const [j, m, t] = iso.slice(0, 10).split('-');
   return `${Number(t)}.${Number(m)}.${heute && heute.slice(0, 4) !== j ? j.slice(2) : ''}`;
 }
-/** Firmenname ohne Rechtsform — „ACME Venetian Products GmbH“ → „ACME Venetian Products“. */
+/** Firmenname ohne Rechtsform — „Beispielwerk Nord Products GmbH“ → „Beispielwerk Nord Products“. */
 const ohneRechtsform = (n: string) => n.replace(/\s+(GmbH|gGmbH|UG|AG|SE|KG|OHG|GbR|Limited|Ltd\.?|Inc\.?|LLC)\b.*$/i, '').trim() || n;
 
 /** Wer woran hängt — Mandate (alle) und offene Chancen je Kontakt. */
@@ -59,7 +59,7 @@ export interface KreisKandidat {
   gruppe: KreisGruppe;
   /** Gruppe 0–2: kommt in der ersten Etappe dran (dieselben Wichtigen wie im Befund „wichtige Kontakte ohne Kreis“). */
   wichtig: boolean;
-  /** Warum die Person hier steht — „Kunde · Mandat ACME“, „im Gespräch · zuletzt 24.8.“. */
+  /** Warum die Person hier steht — „Kunde · Mandat Beispielwerk“, „im Gespräch · zuletzt 24.8.“. */
   grund: string;
 }
 

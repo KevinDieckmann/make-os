@@ -8,6 +8,8 @@
 
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { Firma, FirmaRolle } from './typen';
+import { personenJeFirma } from './stationen';
+import { hatTyp } from './mehrfach';
 
 export const FREEMAIL = new Set(['gmail.com', 'googlemail.com', 'gmx.de', 'gmx.net', 'gmx.at', 'gmx.ch', 'web.de', 't-online.de', 'yahoo.com', 'yahoo.de', 'outlook.com', 'outlook.de', 'hotmail.com', 'hotmail.de', 'icloud.com', 'me.com', 'mac.com', 'live.de', 'live.com', 'aol.com', 'freenet.de', 'posteo.de', 'mail.de', 'protonmail.com', 'proton.me']);
 const RECHTSFORM = /\b(gmbh|mbh|ag|ug|kg|ohg|gbr|e\.?\s?k|e\.?\s?v|se|ltd|limited|inc|llc|co|haftungsbeschränkt|&)\b/g;
@@ -38,11 +40,11 @@ export function rolleAus(personen: Kontakt[]): FirmaRolle {
   const hat = (f: (k: Kontakt) => boolean) => personen.some(f);
   if (hat(k => k.lebensphase === 'kunde')) return 'kunde';
   if (hat(k => k.lebensphase === 'ex_kunde')) return 'ex_kunde';
-  if (hat(k => k.lebensphase === 'partner' || k.typ === 'Vertriebspartner')) return 'partner';
-  if (hat(k => k.typ === 'Investor')) return 'investor';
-  if (hat(k => k.typ === 'Dienstleister')) return 'dienstleister';
-  if (hat(k => k.typ === 'Lead' || k.lebensphase === 'interessent')) return 'zielkunde';
-  if (hat(k => k.typ === 'Netzwerk')) return 'netzwerk';
+  if (hat(k => k.lebensphase === 'partner' || hatTyp(k, 'Vertriebspartner'))) return 'partner';
+  if (hat(k => hatTyp(k, 'Investor'))) return 'investor';
+  if (hat(k => hatTyp(k, 'Dienstleister'))) return 'dienstleister';
+  if (hat(k => hatTyp(k, 'Lead') || k.lebensphase === 'interessent')) return 'zielkunde';
+  if (hat(k => hatTyp(k, 'Netzwerk'))) return 'netzwerk';
   return 'offen';
 }
 
@@ -61,6 +63,9 @@ export function firmenAbgleich(kontakte: Kontakt[], firmen: Firma[], jetzt: stri
   let neu = 0, verknuepft = 0, ergaenzt = 0;
   const raus = kontakte.map(k => {
     if (k.firmaId && nachId.has(k.firmaId)) return k;
+    // Mit gespeicherten Stationen (28.09.) sind die Stationen die Wahrheit — ausgeschieden heißt ausgeschieden,
+    // der Firmenname im Text verknüpft nicht still neu.
+    if (Array.isArray(k.stationen)) return k;
     const name = (k.firma ?? '').trim();
     if (!name) return k;
     const d = domainVon(k);
@@ -73,8 +78,8 @@ export function firmenAbgleich(kontakte: Kontakt[], firmen: Firma[], jetzt: stri
     return { ...k, firmaId: f.id };
   });
   // Leere Firmenfelder aus den Personen füllen, Rolle nachziehen (nur solange „offen“ oder abgeleitet).
-  const je = new Map<string, Kontakt[]>();
-  for (const k of raus) if (k.firmaId) je.set(k.firmaId, [...(je.get(k.firmaId) ?? []), k]);
+  // Personen einer Firma nur über die Stationen (28.09.) — laufende Stationen zählen.
+  const je = personenJeFirma(raus, { nurAktiv: true });
   for (const f of liste) {
     const personen = je.get(f.id) ?? [];
     let geaendert = false;

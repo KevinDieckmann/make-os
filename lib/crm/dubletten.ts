@@ -6,36 +6,52 @@
 // alles, was ihm fehlt, den ganzen Verlauf beider, alle Einwilligungen; eine
 // Werbesperre des anderen gilt weiter (Sperre gewinnt immer).
 
-import { anzeigename, normTelefon, privatNotizVerfasser, STUFEN, VON_HAND_MAX, type Aktivitaet, type Kontakt } from '@/lib/make-one/crm';
+import { anzeigename, istSammelAdresse, normTelefon, privatNotizVerfasser, STUFEN, VON_HAND_MAX, type Aktivitaet, type Kontakt } from '@/lib/make-one/crm';
 import { suchNorm } from '@/lib/text/such-norm';
 import { netzwerkVereinen } from './netzwerk-form';
 import { markenMit, ohneMarkierte } from './aktivitaet-marke';
 import type { CrmBestand } from './typen';
 import { personUmbiegen } from './person-verweise';
+import { alleAdressen, emailsVereinen, hauptAdresse } from './emails';
+import { stationenVereinen, hauptStation } from './stationen';
+import { mehrfachVereinen } from './mehrfach';
 
 // K2 (28.09.): NFC zuerst und dieselbe Umlaut-Regel wie die Suche („Müller“ NFC/NFD = „Mueller“), EINE Telefon-Normalisierung
 // (`normTelefon`, E.164-nah) wie der Import — vorher wurde „0049 30 …“ hier zu „049…“ und fand „030 …“ nicht.
 const n = (t?: string) => suchNorm(t).replace(/[^a-z0-9]/g, '');
 const domain = (k: Kontakt) => n((k.email ?? '').split('@')[1] ?? k.firmaDomain ?? '');
 const tel = normTelefon;
+/** Persönliche Adressen (alle, 28.09. #11) — Sammeladressen (info@ …) sind kein Beweis. */
+const persoenlich = (k: Kontakt) => alleAdressen(k).filter(a => !istSammelAdresse(a));
+const gemeinsameAdresse = (a: Kontakt, b: Kontakt) => { const x = new Set(persoenlich(a)); return persoenlich(b).some(m => x.has(m)); };
 
+/**
+ * Paare, die vermutlich derselbe Mensch sind: gleicher Name UND ein zweites Merkmal (Firma, Domain, LinkedIn,
+ * Telefon, eine gemeinsame Adresse) — oder, seit 28.09. (#11), eine gemeinsame persönliche Adresse (egal unter
+ * welcher: Haupt-, weitere oder alte Adresse), auch bei abweichend geschriebenem Namen.
+ */
 export function dubletten(kontakte: Kontakt[]): [Kontakt, Kontakt][] {
   const je = new Map<string, Kontakt[]>();
   for (const k of kontakte) { const key = n(`${k.vorname}${k.nachname}`); if (key.length >= 5) je.set(key, [...(je.get(key) ?? []), k]); }
   const paare: [Kontakt, Kontakt][] = [];
+  const gesehen = new Set<string>();
+  const paar = (a: Kontakt, b: Kontakt) => { const s = [a.id, b.id].sort().join('|'); if (a.id === b.id || gesehen.has(s)) return; gesehen.add(s); paare.push([a, b]); };
   for (const l of Array.from(je.values())) {
     for (let i = 0; i < l.length; i++) for (let j = i + 1; j < l.length; j++) {
       const a = l[i], b = l[j];
-      const zweites = (n(a.firma) && n(a.firma) === n(b.firma)) || (domain(a) && domain(a) === domain(b)) || (n(a.linkedin) && n(a.linkedin) === n(b.linkedin)) || (tel(a.telefon) && tel(a.telefon) === tel(b.telefon));
-      if (zweites) paare.push([a, b]);
+      const zweites = (n(a.firma) && n(a.firma) === n(b.firma)) || (domain(a) && domain(a) === domain(b)) || (n(a.linkedin) && n(a.linkedin) === n(b.linkedin)) || (tel(a.telefon) && tel(a.telefon) === tel(b.telefon)) || gemeinsameAdresse(a, b);
+      if (zweites) paar(a, b);
     }
   }
+  const jeAdresse = new Map<string, Kontakt[]>();
+  for (const k of kontakte) for (const m of persoenlich(k)) jeAdresse.set(m, [...(jeAdresse.get(m) ?? []), k]);
+  for (const l of Array.from(jeAdresse.values())) for (let i = 0; i < l.length; i++) for (let j = i + 1; j < l.length; j++) paar(l[i], l[j]);
   return paare;
 }
 
 /** Felder, die `zusammenfuehren` eigens behandelt — die allgemeine Lückenfüllung lässt sie aus. */
 const EIGENS: readonly string[] = ['id', 'aktivitaeten', 'geloeschteAktivitaeten', 'einwilligungen', 'werbesperre', 'stufe', 'importiertAm', 'geaendertAm', 'stand',
-  'privatNotiz', 'privatNotizVon', 'netzwerk', 'vonHand', 'lead', 'zahlung'];
+  'privatNotiz', 'privatNotizVon', 'netzwerk', 'vonHand', 'lead', 'zahlung', 'stationen', 'emails', 'email', 'firmaId', 'position', 'firma', 'typ', 'typen', 'kategorie', 'kategorien', 'labels'];
 
 const leer = (v: unknown) => v === undefined || v === null || v === '';
 
@@ -84,8 +100,24 @@ export function zusammenfuehren(a: Kontakt, b: Kontakt, von: string, jetzt: stri
     const v = b[f];
     if (!leer(v) && leer(out[f])) (out as unknown as Record<string, unknown>)[f] = v;
   }
-  // Zweite Mailadresse nicht verlieren.
-  if (b.email && a.email && b.email !== a.email) out.notiz = [a.notiz, `Weitere Mail: ${b.email}`].filter(Boolean).join(' · ').slice(0, 2000);
+  // Adressen (28.09., #11): alle Adressen beider, keine doppelt — die Haupt-Adresse von a bleibt (hat a keine, die von b).
+  // Vorher landete die zweite Adresse als Text „Weitere Mail: …“ in der Notiz.
+  const emails = emailsVereinen(a, b);
+  if (emails) { out.emails = emails; const h = hauptAdresse(emails); if (h) out.email = h.adresse; else delete out.email; }
+  else if (!a.email && b.email) out.email = b.email;
+  // Typ, Kategorie, Labels (28.09.): Vereinigung ohne Doppelte — der erste Wert von a bleibt der erste.
+  delete out.typ; delete out.typen; delete out.kategorie; delete out.kategorien; delete out.labels;
+  Object.assign(out, mehrfachVereinen(a, b));
+  // Stationen (28.09., #2/#3): beide Beschäftigungshistorien, dieselbe laufende Firma nur einmal; die Hauptstation von a
+  // bleibt (hat a keine Firma, die von b). `firmaId`/`position`/`firma` folgen der Hauptstation.
+  const stationen = stationenVereinen(a, b);
+  if (stationen) {
+    const h = hauptStation(stationen);
+    const trivial = stationen.length === 1 && !a.stationen && !b.stationen && !!h && !h.von && !h.bis && !h.art;
+    if (trivial) delete out.stationen; else out.stationen = stationen;
+    if (h) { out.firmaId = h.firmaId; if (h.rolle) out.position = h.rolle; else if (!out.position && b.position) out.position = b.position; if (h.firmaId === b.firmaId && h.firmaId !== a.firmaId && b.firma) out.firma = b.firma; else if (!out.firma && b.firma) out.firma = b.firma; }
+    else { if (!out.position && b.position) out.position = b.position; if (!out.firma && b.firma) out.firma = b.firma; }
+  } else { if (!out.position && b.position) out.position = b.position; if (!out.firma && b.firma) out.firma = b.firma; }
 
   // Private Notiz: nur als Paar.
   delete out.privatNotiz; delete out.privatNotizVon;

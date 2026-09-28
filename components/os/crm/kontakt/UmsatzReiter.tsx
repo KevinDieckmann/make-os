@@ -27,6 +27,7 @@ import { umsatzBezug, umsatzKennzahlen, angeboteListe, ablageFilter, kundenName,
 import { ZAHLUNGSWEGE, ZAHLUNGSWEG_LABEL, ibanGueltig, ibanMaskiert, zahlungsQuelle, zahlungLuecken } from '@/lib/crm/zahlung';
 import { ANNEHMEN, MAX_DATEI_BYTES, VERTRAGSARTEN, ANGEBOT_STATUS, groesseText, istBeleg, type DateiEintrag, type DateiArt, type Vertragsart, type AngebotStatus } from '@/lib/dateien/regeln';
 import { einheitAusGesellschaft } from '@/lib/einheiten';
+import { inGruppe } from '@/lib/crm/konzern';
 
 export interface UmsatzReiterProps {
   k: Kontakt;
@@ -143,6 +144,8 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
   const [plan, setPlan] = useState<Plan | null | 'kein' | 'fehler'>(null);
   const [ablage, setAblage] = useState<DateiEintrag[] | null>(null);
   const [meldung, setMeldung] = useState<string | null>(null);
+  // „Ganze Gruppe“ (28.09., #7): Umsatz, Deals und Rechnungen von Mutter- und Tochterfirmen zusammenfassen.
+  const [gruppe, setGruppe] = useState(false);
 
   const planLaden = useCallback(async (): Promise<Plan | null> => {
     try {
@@ -156,7 +159,8 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
   useEffect(() => { void planLaden(); }, [planLaden]);
 
   const stand = api.crm?.stand;
-  const bezug = useMemo(() => (stand ? umsatzBezug(k, stand, plan && typeof plan === 'object' ? plan.rechnungen : [], heute) : null), [k, stand, plan, heute]);
+  const hatGruppe = !!stand && !!k.firmaId && inGruppe(stand.firmen, k.firmaId);
+  const bezug = useMemo(() => (stand ? umsatzBezug(k, stand, plan && typeof plan === 'object' ? plan.rechnungen : [], heute, { gruppe: gruppe && hatGruppe }) : null), [k, stand, plan, heute, gruppe, hatGruppe]);
   const kennzahlen = useMemo(() => (bezug ? umsatzKennzahlen(bezug) : null), [bezug]);
   const filter = useMemo(() => (bezug ? ablageFilter(k, bezug) : null), [k, bezug]);
   const filterText = filter ? new URLSearchParams({ kontakt: filter.kontaktId, ...(filter.firmaId ? { firma: filter.firmaId } : {}), mandat: filter.mandatIds.join(','), deal: filter.dealIds.join(','), rechnung: filter.rechnungIds.join(',') }).toString() : '';
@@ -242,6 +246,12 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
     <div style={{ display: 'grid', gap: 14 }}>
       {meldung && <Karte i={0} akzent={LEUCHT.achtung}><div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: TYP.bedien, color: C.inkDim }}><span>{meldung}</span><button onClick={() => setMeldung(null)} style={leiseLink}>ok</button></div></Karte>}
 
+      {hatGruppe && (
+        <label style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim, cursor: 'pointer' }}>
+          <input type="checkbox" checked={gruppe} onChange={e => setGruppe(e.target.checked)} />
+          Ganze Gruppe zusammenfassen{bezug.gruppe ? ` (${bezug.gruppe.map(f => f.name).join(' · ')})` : ' (Mutter- und Tochterfirmen)'}
+        </label>
+      )}
       <UmsatzKachel i={0} zu={zu.has('umsatz')} umschalten={umschalten} kz={kennzahlen} hinweis={planHinweis} />
 
       <ZahlungKachel i={1} zu={zu.has('zahlung')} umschalten={umschalten} k={k} api={api} firma={bezug.firma} zahlung={zahlung} heute={heute} />

@@ -11,6 +11,8 @@ import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { suchNorm, suchWoerter } from '@/lib/text/such-norm';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm } from '@/lib/crm/speicher';
+import { alleAdressen } from '@/lib/crm/emails';
+import { labelsVon } from '@/lib/crm/mehrfach';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -38,7 +40,8 @@ export async function GET(req: Request) {
   const punkte = (name: string) => (norm(name).startsWith(q) ? 3 : norm(name).includes(q) ? 2 : 1);
   const { kontakte, crm } = await bestand();
   const firmen = new Map(crm.firmen.map(f => [f.id, f]));
-  const personen = kontakte.filter(k => passt([anzeigename(k), k.firma, k.email, k.position, k.firmaStadt, k.telefon]))
+  // Alle E-Mail-Adressen und Labels zählen (28.09.).
+  const personen = kontakte.filter(k => passt([anzeigename(k), k.firma, ...alleAdressen(k), k.position, k.firmaStadt, k.telefon, ...labelsVon(k)]))
     .map(k => ({ art: 'kontakt', id: k.id, titel: anzeigename(k), unter: [k.position ?? k.jobtitel, (k.firmaId && firmen.get(k.firmaId)?.name) ?? k.firma, k.werbesperre ? 'Werbesperre' : ''].filter(Boolean).join(' · '), href: `/os/markttraktion?s=kontakte&k=${k.id}`, p: punkte(anzeigename(k)) + (k.lebensphase === 'kunde' ? 1 : 0) }))
     .sort((a, b) => b.p - a.p).slice(0, 8);
   const fs = crm.firmen.filter(f => passt([f.name, f.domain, f.branche, f.stadt]))

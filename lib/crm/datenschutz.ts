@@ -13,6 +13,7 @@ import { art14 } from './recht';
 import { speicherbegrenzung } from './kennzahlen';
 
 import { tagVon } from '@/lib/zeit';
+import { hatTyp, kategorienVon } from './mehrfach';
 export interface PflichtVorschlag { id: string; herkunft?: Herkunft; rechtsgrundlage?: Rechtsgrundlage; fremddaten?: boolean; grund: string }
 
 export function pflichtangaben(kontakte: Kontakt[], crm: CrmBestand): PflichtVorschlag[] {
@@ -22,9 +23,9 @@ export function pflichtangaben(kontakte: Kontakt[], crm: CrmBestand): PflichtVor
     const v: PflichtVorschlag = { id: k.id, grund: '' };
     const gruende: string[] = [];
     if (!k.herkunft) {
-      const q = `${k.quelle ?? ''} ${k.kategorie ?? ''}`.toLowerCase();
+      const q = `${k.quelle ?? ''} ${kategorienVon(k).join(' ')}`.toLowerCase();
       if (mandat.has(k.id) || k.lebensphase === 'kunde' || k.lebensphase === 'ex_kunde') { v.herkunft = 'vertrag'; gruende.push('Kunde/Mandat'); }
-      else if (/apple|adressbuch/.test(q) || k.typ === 'Netzwerk') { v.herkunft = 'bekannt'; gruende.push('persönliches Adressbuch'); }
+      else if (/apple|adressbuch/.test(q) || hatTyp(k, 'Netzwerk')) { v.herkunft = 'bekannt'; gruende.push('persönliches Adressbuch'); }
       else if (k.vorgestelltDurch) { v.herkunft = 'empfehlung'; gruende.push('vorgestellt'); }
       else if (/leadliste|recherche|explorium|vibe|liste/.test(q)) { v.herkunft = 'recherche'; gruende.push('aus Recherche/Liste'); }
       else if (/hubspot/.test(q)) { v.herkunft = 'hubspot'; gruende.push('aus dem früheren CRM'); }

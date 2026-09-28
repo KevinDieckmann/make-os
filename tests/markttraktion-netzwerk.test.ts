@@ -14,7 +14,7 @@ const LI = 'https://www.linkedin.com/in/anna-test';
 
 describe('Profile', () => {
   it('erkennt Personenprofile in jeder Schreibweise — Firmenseiten und Fremdes nicht', () => {
-    expect(profilSchluessel('https://de.linkedin.com/in/Tim-Jeske/')).toBe('linkedin.com/in/tim-jeske');
+    expect(profilSchluessel('https://de.linkedin.com/in/Tim-Beispielmann/')).toBe('linkedin.com/in/tim-beispielmann');
     expect(profilAdresse('linkedin.com/in/tim-jeske?trk=x')).toBe('https://www.linkedin.com/in/tim-jeske');
     expect(profilAdresse('https://www.linkedin.com/company/acme')).toBeNull();
     expect(profilAdresse('https://evil.example/in/x')).toBeNull();

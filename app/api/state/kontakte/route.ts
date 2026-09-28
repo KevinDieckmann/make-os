@@ -27,7 +27,7 @@ import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
 import { mitStand } from '@/lib/store/fingerabdruck';
 import { deltaAus, staende, StandGedaechtnis } from '@/lib/kontakte/delta';
-import { saeubereKontakt, kontaktVereinen, privatNotizVereinen, fuerPerson, teilAnwenden, massenStufe, pipelineStand, MASSEN_GRENZE, serverStempel, sperreAufhebenPruefen, sperreAufhebenVermerk, sperreBehalten, kontaktZuGross, type Kontakt } from '@/lib/make-one/crm';
+import { saeubereKontakt, kontaktVereinen, privatNotizVereinen, fuerPerson, teilAnwenden, massenStufe, pipelineStand, MASSEN_GRENZE, serverStempel, bezuegeSynchron, sperreAufhebenPruefen, sperreAufhebenVermerk, sperreBehalten, kontaktZuGross, type Kontakt } from '@/lib/make-one/crm';
 import { sperren, entsperren } from '@/lib/crm/sperrliste';
 import { localDay } from '@/lib/zeit';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
@@ -35,6 +35,7 @@ import { karteiZugang, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { zahlungZusammenfuehren, ibanBehalten } from '@/lib/crm/zahlung';
 import { personEntfernen } from '@/lib/crm/person-bestaende';
+import { ladeCrm } from '@/lib/crm/speicher';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -103,6 +104,11 @@ export async function PATCH(req: Request) {
   const aufgehoben: Kontakt[] = [];
   // Server-Felder (K2 #68): geaendertAm/importiertAm/vonHand stempelt der Server — Browser-Werte zählen nicht.
   const heute = localDay();
+  // Stationen/E-Mails (28.09.): `firmaId`/`firma`/`position` und `email` folgen der Hauptstation bzw. Haupt-Adresse
+  // (`bezuegeSynchron`). Firmennamen nur laden, wenn eine Änderung Firma oder Stationen berührt.
+  const firmaBeruehrt = ops.some(o => o.op === 'upsert' || (o.op === 'teil' && !!o.felder && ('stationen' in o.felder || 'firmaId' in o.felder)));
+  const firmenNamen = firmaBeruehrt ? new Map((await ladeCrm()).firmen.map(f => [f.id, f.name])) : new Map<string, string>();
+  const firmaName = (id: string) => firmenNamen.get(id);
   const r = await listePatchen<Kontakt, Bestand>('kontakte', 'kontakte', ops, 20, undefined, {
     // Änderungsprotokoll (28.09., K1 #44): wer — aus der Sitzung bzw. dem Dienstweg, nie aus dem Body.
     wer: werAus(req),
@@ -115,9 +121,9 @@ export async function PATCH(req: Request) {
       const zahlung = ausTeil.has(neu) ? v.zahlung : ibanBehalten(v.zahlung, alt.zahlung);
       const mitZahlung = zahlung === v.zahlung ? v : { ...v, zahlung };
       // K2: ein ganzer Eintrag hebt eine Sperre nie auf (Sperre gewinnt) — nur ein geprüfter `teil` mit Nachweis.
-      return serverStempel(ausTeil.has(neu) ? mitZahlung : sperreBehalten(mitZahlung, alt), alt, heute);
+      return serverStempel(bezuegeSynchron(ausTeil.has(neu) ? mitZahlung : sperreBehalten(mitZahlung, alt), alt, heute, firmaName), alt, heute);
     },
-    neu: eintrag => serverStempel(eintrag, undefined, heute),
+    neu: eintrag => serverStempel(bezuegeSynchron(eintrag, undefined, heute, firmaName), undefined, heute),
     // `teil`: Felder auf den gespeicherten Kontakt legen, dann dieselbe Prüfung wie für einen ganzen Eintrag.
     // `null` = Feld entfernen (28.09., F1 — `teilAnwenden`), danach säubern; `vonHandMarkieren` (im `vereinen`) zählt das Leeren als von Hand.
     // Löschmarken setzt nur der Server (es gelten die gespeicherten); die IBAN kommt maskiert zurück und bleibt, wenn keine neue gültige kommt (28.09., H4).

@@ -20,6 +20,8 @@ export interface WertelistenAntwort {
   branchen: { wert: string; fest: boolean }[];
   typen: { wert: string; fest: boolean }[];
   kategorien: { wert: string; fest: boolean }[];
+  /** Labels (28.09.) — nur eigene. */
+  labels: { wert: string; fest: boolean }[];
   ziele: { umsatzNeuMonat?: number; sqlMonat?: number; gespraecheWoche?: number };
   /** Ist zu den Zielen — null, solange nichts gemessen ist. */
   ist: { umsatzNeu30: number | null; sql30: number | null; gespraecheWoche: number | null; dealsOffen: number };

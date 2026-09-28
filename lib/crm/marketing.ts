@@ -252,6 +252,11 @@ export function kriterienSauber(kr: SegmentKriterien): SegmentKriterien {
     if (l.length) r[f] = l;
   }
   for (const f of ['branche', 'stadt', 'stichwort'] as const) { const t = (kr[f] ?? '').trim().slice(0, 80); if (t) r[f] = t; }
+  // Typ/Kategorie/Label (28.09.): freie Werte, ohne Doppelte, sortiert.
+  for (const f of ['typ', 'kategorie', 'label'] as const) {
+    const l = Array.from(new Set((kr[f] ?? []).map(x => String(x).trim()).filter(Boolean))).sort();
+    if (l.length) r[f] = l;
+  }
   // Temperatur (27.09.) und Lifecycle (28.09.): nur bekannte Werte, in fester Reihenfolge — sonst fiele das Kriterium beim Speichern weg.
   const temperatur = TEMPERATUR.map(t => t.id).filter(t => (kr.temperatur ?? []).includes(t));
   if (temperatur.length) r.temperatur = temperatur;
@@ -283,6 +288,9 @@ export function kriterienText(kr: SegmentKriterien): string {
   if (kr.prio?.length) t.push(`Prio ${kr.prio.join(', ')}`);
   if (kr.firmaRolle?.length) t.push(`Firma: ${kr.firmaRolle.join(', ')}`);
   if (kr.herkunft?.length) t.push(`Herkunft: ${kr.herkunft.join(', ')}`);
+  if (kr.typ?.length) t.push(`Typ ${kr.typ.join(' / ')}`);
+  if (kr.kategorie?.length) t.push(`Kategorie ${kr.kategorie.join(' / ')}`);
+  if (kr.label?.length) t.push(`Label ${kr.label.join(' / ')}`);
   if (kr.branche) t.push(`Branche „${kr.branche}“`);
   if (kr.stadt) t.push(`Ort „${kr.stadt}“`);
   if (kr.stichwort) t.push(`Stichwort „${kr.stichwort}“`);

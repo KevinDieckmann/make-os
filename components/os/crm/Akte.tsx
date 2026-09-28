@@ -53,6 +53,8 @@ import { BeanWahl, useOffeneAngebote } from './bean-teile';
 import { KontaktUeber } from './KontaktUeber';
 import { AktivitaetenReiter } from './kontakt/AktivitaetenReiter';
 import { UmsatzReiter } from './kontakt/UmsatzReiter';
+import { typenVon, kategorienVon, labelsVon } from '@/lib/crm/mehrfach';
+import { personenDerFirma } from '@/lib/crm/stationen';
 
 /** Drei Spalten ab SPALTEN_AB, sonst untereinander. */
 function useDrei(): boolean {
@@ -166,7 +168,8 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
 
   const v = useMemo(() => (k && crm ? verbindungen(k, api.kontakte ?? [], crm.stand) : null), [k, crm, api.kontakte]);
   // Personen der Firma — für den Lead-Score im Kopf und die Lead-Qualifizierung (wie in den Leads).
-  const personen = useMemo(() => (k ? (k.firmaId ? (api.kontakte ?? [k]).filter(x => x.firmaId === k.firmaId) : [k]) : []), [k, api.kontakte]);
+  // Personen der Firma nur über die Stationen (28.09., `personenDerFirma`).
+  const personen = useMemo(() => (k ? (k.firmaId ? personenDerFirma(api.kontakte ?? [k], k.firmaId) : [k]) : []), [k, api.kontakte]);
 
   const zurueckKnopf = (
     <button onClick={zurueck} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px 7px 10px', borderRadius: 11, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700 }}>
@@ -201,9 +204,9 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
   const schrittUeberfaellig = !!k.naechsterSchritt && k.naechsterSchritt.datum < heute;
   const vollFarbe = voll.anteil >= 0.7 ? LEUCHT.gut : voll.anteil >= 0.4 ? LEUCHT.achtung : LEUCHT.kritisch;
 
-  /** Typ und Kategorie als Chips im Kopf (Malin 27.09.) — ein Tipp springt in die Daten. */
+  /** Typ und Kategorie als Chips im Kopf (Malin 27.09.; mehrfach seit 28.09. — mit „ · “ verbunden) — ein Tipp springt in die Stammdaten. */
   const einordnungChip = (label: string, wert?: string) => (
-    <button key={label} onClick={() => waehleReiter('daten')} title={wert ? `${label}: ${wert} — ändern unter Daten oder links` : `${label} fehlt — unter Daten oder links setzen`} className="fassbar"
+    <button key={label} onClick={() => waehleReiter('daten')} title={wert ? `${label}: ${wert} — ändern unter Stammdaten oder links` : `${label} fehlt — unter Stammdaten oder links setzen`} className="fassbar"
       style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: SCHRIFT.text }}>
       <Chip farbe={wert ? LEUCHT.agenten : C.inkLeise}>{wert ? `${label} · ${wert}` : `${label} —`}</Chip>
     </button>
@@ -224,15 +227,16 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
             {firma ? <button onClick={() => zuFirma(firma.id)} style={{ background: 'none', border: 'none', padding: 0, color: C.ink, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,.2)', fontSize: TYP.body, fontFamily: SCHRIFT.text }}>{firma.name}</button> : k.firma}
           </div>
           <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            {/* Lifecycle (28.09.) ersetzt hier die abgeleitete Phase — die Beziehungs-Lebensphase steht unter Daten › Beziehung. */}
+            {/* Lifecycle (28.09.) ersetzt hier die abgeleitete Phase — die Beziehungs-Lebensphase steht unter Stammdaten › Beziehung. */}
             <LifecycleWahl k={k} vorschlag={lcVorschlag} setze={setze} klein />
             <BeanWahl wert={k.bean} ergebnis={beanErgebnis} klein onSetze={b => void setze({ bean: b })} />
             <span title={scoreAkte.teile.map(x => `${x.label} ${x.punkte}/${x.max} — ${x.grund}`).join('\n')}><Chip farbe={temperaturFarbe(scoreAkte.temperatur)}>Score {scoreAkte.punkte} · {temperaturLabel(scoreAkte.temperatur)}</Chip></span>
-            {einordnungChip('Typ', k.typ)}{einordnungChip('Kategorie', k.kategorie)}
+            {einordnungChip('Typ', typenVon(k).join(' · ') || undefined)}{einordnungChip('Kategorie', kategorienVon(k).join(' · ') || undefined)}
+            {labelsVon(k).map(l => <Chip key={`l-${l}`} farbe={LEUCHT.agenten}>{l}</Chip>)}
             {rollenVon(k).map(r => <Chip key={r} farbe={LEUCHT.business}>{ROLLE_LABEL[r]}</Chip>)}{k.kreis && <Chip farbe={LEUCHT.beziehung}>Kreis {k.kreis}</Chip>}
             <Chip farbe={C.inkDim}>{STUFE_LABEL[k.stufe]}</Chip>{k.prio && <Chip farbe={C.inkDim}>Prio {k.prio}</Chip>}
             {k.werbesperre && <Chip farbe={LEUCHT.kritisch}>Werbesperre</Chip>}
-            <span title={`Hält die Beziehung: ${nameVon(haeltBeziehung(k))}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.inkLeise, marginLeft: 4 }}><Person id={haeltBeziehung(k)} groesse={18} />{nameVon(haeltBeziehung(k))}</span>
+            <span title={`Zuständig: ${nameVon(haeltBeziehung(k))}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.inkLeise, marginLeft: 4 }}><Person id={haeltBeziehung(k)} groesse={18} />{nameVon(haeltBeziehung(k))}</span>
             <AuchHier passt={p => p.includes(`k=${k.id}`)} was="bei dieser Person" />
           </div>
         </div>

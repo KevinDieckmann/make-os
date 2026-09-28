@@ -18,6 +18,7 @@ import { MARKE_MAX } from './marke';
 import { zahlungSaeubern, zahlungZusammenfuehren } from './zahlung';
 import { LIFECYCLE_PHASEN } from './lifecycle';
 import { BEAN_IDS, istBean } from './bean';
+import { mutterPruefen } from './konzern';
 import type { Temperatur } from './typen';
 
 const TEMPERATUREN: readonly Temperatur[] = ['kalt', 'lau', 'warm', 'heiss'];
@@ -37,8 +38,10 @@ const tag = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test
 const zahl = (v: unknown, min = 0, max = 1e9) => { const n = Number(v); return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : 0; };
 const aus = <T extends string>(v: unknown, liste: readonly T[], standard: T): T => (liste.includes(v as T) ? (v as T) : standard);
 const idOk = (v: unknown) => /^[a-z0-9][a-z0-9-]{1,63}$/.test(String(v ?? ''));
-const ids = (v: unknown) => (Array.isArray(v) ? v.map(String).filter(idOk).slice(0, 20) : []);
-const texte = (v: unknown, n = 30, l = 400) => (Array.isArray(v) ? v.map(x => txt(x, l)).filter(Boolean).slice(0, n) : []);
+// Nie abschneiden (28.09.): Listen werden nicht mehr still gekürzt — `crmGrenzen` lehnt vorher mit 413 ab,
+// die Säuberer nehmen die Grenze nur noch als Sicherung (derselbe Wert, greift also nie still).
+const ids = (v: unknown, max = GRENZE_IDS) => (Array.isArray(v) ? v.map(String).filter(idOk).slice(0, max) : []);
+const texte = (v: unknown, n: number, l = 400) => (Array.isArray(v) ? v.map(x => txt(x, l)).filter(Boolean).slice(0, n) : []);
 /** Zuständigkeit (lib/crm/team.ts) — nur Team-Kürzel oder „beide“. */
 const zst = (o: Record<string, unknown>) => (wer(o.zustaendig) ? { zustaendig: wer(o.zustaendig) } : {});
 function freigabe(v: unknown): Freigabe | undefined {
@@ -57,6 +60,40 @@ const STUFEN_IDS = STUFEN.map(s => s.id) as ChancenStufe[];
  * (Verweildauer, Umwandlung und Zyklus rechnen daraus). Wer über diese Grenze wachsen will, bekommt 413 mit Text.
  */
 export const HISTORIE_MAX = 5000;
+
+/**
+ * Obergrenzen der Listen in CRM-Einträgen (28.09., Regel „nie abschneiden, ablehnen“). Vorher kürzten die
+ * Säuberer still: Kampagnen-Ergebnisse auf 1.000, Kampagnen-Kontakte auf 500, Beitrags-Wirkung auf 200,
+ * Personen je Deal/Mandat auf 20, Checklisten auf 60 … Jetzt: hohe Grenze, darüber 413 mit Text (`crmGrenzen`).
+ */
+const GRENZE_IDS = 500;
+export const LISTEN_GRENZEN: Partial<Record<CrmListe, Record<string, number>>> = {
+  chancen: { kontaktIds: GRENZE_IDS, personenRollen: GRENZE_IDS },
+  mandate: { kontaktIds: GRENZE_IDS, ziele: 500, leistungen: 1000, offen: 1000 },
+  leistungen: { lieferumfang: 500, phasen: 500, unterlagen: 500 },
+  firmen: { branchen: 100 },
+  events: { ablauf: 1000, checkliste: 2000, budget: 1000 },
+  sitzungen: { karten: 2000 },
+  beitraege: { wirkung: 20000, quellen: 1000 },
+  newsletter: { beitragIds: GRENZE_IDS },
+  kampagnen: { schritte: 1000, kontaktIds: 20000, ergebnisse: 100000 },
+};
+const grenzeVon = (liste: CrmListe, feld: string) => LISTEN_GRENZEN[liste]?.[feld] ?? GRENZE_IDS;
+
+/** Überschreitet eine Änderung eine Listen-Grenze? Liefert die Texte (leer = alles gut). Ganze Änderung → 413. */
+export function crmGrenzen(ops: ListenOp[]): string[] {
+  const raus: string[] = [];
+  for (const o of ops) {
+    const e = (o.op === 'teil' ? o.felder : o.op === 'upsert' ? o.eintrag : undefined) as Record<string, unknown> | undefined;
+    if (!e) continue;
+    for (const [feld, max] of Object.entries(LISTEN_GRENZEN[o.liste as CrmListe] ?? {})) {
+      const v = e[feld];
+      const n = Array.isArray(v) ? v.length : v && typeof v === 'object' ? Object.keys(v).length : 0;
+      if (n > max) raus.push(`${o.liste} „${String(e.id ?? o.id ?? '')}“: ${n} Einträge in „${feld}“ — höchstens ${max}. Abgelehnt, nichts gekürzt.`);
+    }
+  }
+  return raus;
+}
 
 function chance(o: Record<string, unknown>, jetzt: string, person: string): Chance | null {
   if (!idOk(o.id) || !txt(o.titel)) return null;
@@ -105,9 +142,9 @@ function mandat(o: Record<string, unknown>, jetzt: string): Mandat | null {
     ...(opt(o.planpostenId, 80) ? { planpostenId: opt(o.planpostenId, 80) } : {}),
     rechnungsrhythmus: aus(o.rechnungsrhythmus, ['monatlich', 'quartal', 'einmalig'] as const, 'monatlich'), zahlungszielTage: zahl(o.zahlungszielTage ?? 14, 0, 120),
     ...(tag(o.naechstesReview) ? { naechstesReview: tag(o.naechstesReview) } : {}),
-    ziele: Array.isArray(o.ziele) ? (o.ziele as Record<string, unknown>[]).slice(0, 12).map((z, i) => ({ id: txt(z.id, 40) || `z${i}`, text: txt(z.text, 300), ...(opt(z.ziel, 80) ? { ziel: opt(z.ziel, 80) } : {}), ...(opt(z.ist, 80) ? { ist: opt(z.ist, 80) } : {}) })).filter(z => z.text) : [],
+    ziele: Array.isArray(o.ziele) ? (o.ziele as Record<string, unknown>[]).slice(0, grenzeVon('mandate', 'ziele')).map((z, i) => ({ id: txt(z.id, 40) || `z${i}`, text: txt(z.text, 300), ...(opt(z.ziel, 80) ? { ziel: opt(z.ziel, 80) } : {}), ...(opt(z.ist, 80) ? { ist: opt(z.ist, 80) } : {}) })).filter(z => z.text) : [],
     health: { beteiligung: hv(he.beteiligung), umsetzung: hv(he.umsetzung), wirkung: hv(he.wirkung), zahlung: hv(he.zahlung), stimmung: hv(he.stimmung) },
-    leistungen: texte(o.leistungen, 30, 400), offen: texte(o.offen, 30, 800), ...(opt(o.phase, 40) ? { phase: opt(o.phase, 40) } : {}),
+    leistungen: texte(o.leistungen, grenzeVon('mandate', 'leistungen'), 400), offen: texte(o.offen, grenzeVon('mandate', 'offen'), 800), ...(opt(o.phase, 40) ? { phase: opt(o.phase, 40) } : {}),
     ...(opt(o.quelle, 600) ? { quelle: opt(o.quelle, 600) } : {}), ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}), ...zst(o), geaendert: jetzt,
   };
 }
@@ -122,13 +159,13 @@ function leistung(o: Record<string, unknown>, jetzt: string): Leistung | null {
     preis: { betrag: zahl(p.betrag), ...(zahl(p.bis) ? { bis: zahl(p.bis) } : {}), einheit: txt(p.einheit, 80) || 'Monat netto', ...(['monat', 'jahr', 'einmalig'].includes(p.basis as string) ? { basis: p.basis as 'monat' | 'jahr' | 'einmalig' } : {}) },
     ...(zahl(o.laufzeitMonate, 0, 600) ? { laufzeitMonate: zahl(o.laufzeitMonate, 0, 600) } : {}),
     ...(o.aufwand && typeof o.aufwand === 'object' ? (() => { const a = o.aufwand as Record<string, unknown>; const anteil = zahl(a.anteil, 0, 1); const stunden = zahl(a.stunden, 0, 100000); return anteil || stunden ? { aufwand: { ...(anteil ? { anteil } : {}), ...(stunden ? { stunden } : {}) } } : {}; })() : {}),
-    ...(opt(o.beschreibung, 1500) ? { beschreibung: opt(o.beschreibung, 1500) } : {}), lieferumfang: texte(o.lieferumfang, 20, 300),
+    ...(opt(o.beschreibung, 1500) ? { beschreibung: opt(o.beschreibung, 1500) } : {}), lieferumfang: texte(o.lieferumfang, grenzeVon('leistungen', 'lieferumfang'), 300),
     ...(opt(o.grenzen, 600) ? { grenzen: opt(o.grenzen, 600) } : {}), ...(opt(o.ergebnis, 600) ? { ergebnis: opt(o.ergebnis, 600) } : {}),
     gesellschaft: aus(o.gesellschaft, GES, 'offen'), status: aus(o.status, ['aktiv', 'entwurf', 'eingestellt'] as const, 'entwurf'),
     ...(opt(o.quelle, 600) ? { quelle: opt(o.quelle, 600) } : {}),
     ...(opt(o.linie, 80) ? { linie: opt(o.linie, 80) } : {}),
-    ...(Array.isArray(o.phasen) && o.phasen.length ? { phasen: (o.phasen as Record<string, unknown>[]).slice(0, 12).map((x, i) => ({ id: txt(x.id, 40) || `p${i}`, name: txt(x.name, 80), ...(zahl(x.dauerTage, 0, 730) ? { dauerTage: zahl(x.dauerTage, 0, 730) } : {}), ...(opt(x.beschreibung, 400) ? { beschreibung: opt(x.beschreibung, 400) } : {}) })).filter(x => x.name) } : {}),
-    ...(Array.isArray(o.unterlagen) && o.unterlagen.length ? { unterlagen: (o.unterlagen as Record<string, unknown>[]).slice(0, 20).map((x, i) => ({ id: txt(x.id, 40) || `u${i}`, titel: txt(x.titel, 120), art: aus(x.art, ['angebot', 'vertrag', 'deck', 'onepager', 'sonstiges'] as const, 'sonstiges'), ...(unterlageLink(x.url) ? { url: unterlageLink(x.url)! } : {}) })).filter(x => x.titel) } : {}),
+    ...(Array.isArray(o.phasen) && o.phasen.length ? { phasen: (o.phasen as Record<string, unknown>[]).slice(0, grenzeVon('leistungen', 'phasen')).map((x, i) => ({ id: txt(x.id, 40) || `p${i}`, name: txt(x.name, 80), ...(zahl(x.dauerTage, 0, 730) ? { dauerTage: zahl(x.dauerTage, 0, 730) } : {}), ...(opt(x.beschreibung, 400) ? { beschreibung: opt(x.beschreibung, 400) } : {}) })).filter(x => x.name) } : {}),
+    ...(Array.isArray(o.unterlagen) && o.unterlagen.length ? { unterlagen: (o.unterlagen as Record<string, unknown>[]).slice(0, grenzeVon('leistungen', 'unterlagen')).map((x, i) => ({ id: txt(x.id, 40) || `u${i}`, titel: txt(x.titel, 120), art: aus(x.art, ['angebot', 'vertrag', 'deck', 'onepager', 'sonstiges'] as const, 'sonstiges'), ...(unterlageLink(x.url) ? { url: unterlageLink(x.url)! } : {}) })).filter(x => x.titel) } : {}),
     geaendert: jetzt,
   };
 }
@@ -145,10 +182,13 @@ function firma(o: Record<string, unknown>, jetzt: string): Firma | null {
   const f = (n: keyof Firma, l = 200) => (opt(o[n], l) ? { [n]: opt(o[n], l) } : {});
   return {
     id: String(o.id), name: txt(o.name, 160), ...f('domain', 120), ...f('webseite'), ...f('branche', 160), ...f('mitarbeiter', 40), ...f('umsatz', 60), ...f('stadt', 80),
-    ...(Array.isArray(o.branchen) && (o.branchen as unknown[]).some(x => txt(x, 60)) ? { branchen: Array.from(new Set((o.branchen as unknown[]).map(x => txt(x, 60)).filter(Boolean))).slice(0, 12) } : {}),
+    ...(Array.isArray(o.branchen) && (o.branchen as unknown[]).some(x => txt(x, 60)) ? { branchen: Array.from(new Set((o.branchen as unknown[]).map(x => txt(x, 60)).filter(Boolean))).slice(0, grenzeVon('firmen', 'branchen')) } : {}),
     ...f('gegruendet', 20), ...f('linkedin'), ...f('telefon', 60), ...f('email', 160), ...f('rechtsform', 80),
     rolle: aus(o.rolle, ROLLEN, 'offen'), ...(o.rolleVonHand === true ? { rolleVonHand: true } : {}), ...(leadSaeubern(o.lead) ? { lead: leadSaeubern(o.lead) } : {}), ...f('marktinfo', 800), ...f('notiz', 3000), ...(zahlungSaeubern(o.zahlung) ? { zahlung: zahlungSaeubern(o.zahlung) } : {}),
-    ...(istBean(o.bean) ? { bean: o.bean } : {}), geaendert: jetzt,
+    ...(istBean(o.bean) ? { bean: o.bean } : {}),
+    // Mutterfirma (28.09., #7): Kennungsform und nie sie selbst; Kreis und tote Mutter prüft `mutterPruefen` gegen die ganze Liste.
+    ...(/^f-[a-z0-9-]{2,63}$/.test(String(o.mutterId ?? '')) && o.mutterId !== o.id ? { mutterId: String(o.mutterId) } : {}),
+    geaendert: jetzt,
   } as Firma;
 }
 
@@ -162,9 +202,9 @@ function event(o: Record<string, unknown>, jetzt: string): Event | null {
     ...(opt(o.coHost, 160) ? { coHost: opt(o.coHost, 160) } : {}),
     status: aus(o.status, ['idee', 'geplant', 'einladung', 'durchgefuehrt', 'abgesagt'] as const, 'idee'),
     ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}),
-    ...(Array.isArray(o.ablauf) ? { ablauf: (o.ablauf as Record<string, unknown>[]).slice(0, 30).map(a => ({ zeit: txt(a.zeit, 5), punkt: txt(a.punkt, 200) })).filter(a => a.punkt) } : {}),
-    ...(Array.isArray(o.checkliste) ? { checkliste: (o.checkliste as Record<string, unknown>[]).slice(0, 60).map((c, i) => ({ id: txt(c.id, 40) || `cl${i}`, text: txt(c.text, 200), tageVorher: zahl(c.tageVorher, -30, 120), erledigt: c.erledigt === true, ...(opt(c.aufgabeId, 80) ? { aufgabeId: opt(c.aufgabeId, 80) } : {}), ...(wer(c.wer) ? { wer: wer(c.wer) } : {}) })).filter(c => c.text) } : {}),
-    ...(Array.isArray(o.budget) ? { budget: (o.budget as Record<string, unknown>[]).slice(0, 40).map((b, i) => ({ id: txt(b.id, 40) || `b${i}`, posten: txt(b.posten, 120), betrag: zahl(b.betrag, 0, 1e6) })).filter(b => b.posten) } : {}),
+    ...(Array.isArray(o.ablauf) ? { ablauf: (o.ablauf as Record<string, unknown>[]).slice(0, grenzeVon('events', 'ablauf')).map(a => ({ zeit: txt(a.zeit, 5), punkt: txt(a.punkt, 200) })).filter(a => a.punkt) } : {}),
+    ...(Array.isArray(o.checkliste) ? { checkliste: (o.checkliste as Record<string, unknown>[]).slice(0, grenzeVon('events', 'checkliste')).map((c, i) => ({ id: txt(c.id, 40) || `cl${i}`, text: txt(c.text, 200), tageVorher: zahl(c.tageVorher, -30, 120), erledigt: c.erledigt === true, ...(opt(c.aufgabeId, 80) ? { aufgabeId: opt(c.aufgabeId, 80) } : {}), ...(wer(c.wer) ? { wer: wer(c.wer) } : {}) })).filter(c => c.text) } : {}),
+    ...(Array.isArray(o.budget) ? { budget: (o.budget as Record<string, unknown>[]).slice(0, grenzeVon('events', 'budget')).map((b, i) => ({ id: txt(b.id, 40) || `b${i}`, posten: txt(b.posten, 120), betrag: zahl(b.betrag, 0, 1e6) })).filter(b => b.posten) } : {}),
     ...(o.mixZiel && typeof o.mixZiel === 'object' ? { mixZiel: { zielkunden: zahl((o.mixZiel as Record<string, unknown>).zielkunden, 0, 100), kunden: zahl((o.mixZiel as Record<string, unknown>).kunden, 0, 100) } } : {}),
     ...(idOk(o.segmentId) ? { segmentId: String(o.segmentId) } : {}), ...(opt(o.vorlage, 40) ? { vorlage: opt(o.vorlage, 40) } : {}),
     ...zst(o), geaendert: jetzt,
@@ -194,7 +234,7 @@ function sitzung(o: Record<string, unknown>, person: string): PowerHourSitzung |
   return {
     id: String(o.id), person: txt(o.person, 40) || person, datum: tag(o.datum)!, start: txt(o.start, 25), ...(opt(o.ende, 25) ? { ende: opt(o.ende, 25) } : {}),
     ziel: { gespraeche: zahl(z.gespraeche, 0, 50), termine: zahl(z.termine, 0, 20) },
-    karten: Array.isArray(o.karten) ? (o.karten as Record<string, unknown>[]).slice(0, 30).map(k => ({ kontaktId: txt(k.kontaktId, 80), kategorie: txt(k.kategorie, 20), ...(opt(k.ergebnis, 20) ? { ergebnis: opt(k.ergebnis, 20) } : {}), ...(opt(k.notiz, 600) ? { notiz: opt(k.notiz, 600) } : {}) })) : [],
+    karten: Array.isArray(o.karten) ? (o.karten as Record<string, unknown>[]).slice(0, grenzeVon('sitzungen', 'karten')).map(k => ({ kontaktId: txt(k.kontaktId, 80), kategorie: txt(k.kategorie, 20), ...(opt(k.ergebnis, 20) ? { ergebnis: opt(k.ergebnis, 20) } : {}), ...(opt(k.notiz, 600) ? { notiz: opt(k.notiz, 600) } : {}) })) : [],
     ...(opt(o.gelernt, 600) ? { gelernt: opt(o.gelernt, 600) } : {}),
   };
 }
@@ -220,12 +260,14 @@ function verarbeitung(o: Record<string, unknown>, jetzt: string): Verarbeitung |
   };
 }
 
-const strListe = (v: unknown, n = 12, l = 40) => (Array.isArray(v) ? v.map(x => txt(x, l)).filter(Boolean).slice(0, n) : undefined);
+const strListe = (v: unknown, n = 50, l = 40) => (Array.isArray(v) ? v.map(x => txt(x, l)).filter(Boolean).slice(0, n) : undefined);
 function segment(o: Record<string, unknown>, jetzt: string): Segment | null {
   if (!idOk(o.id) || !txt(o.name)) return null;
   const k = (o.kriterien ?? {}) as Record<string, unknown>;
   const kr: SegmentKriterien = {};
   for (const f of ['lebensphase', 'kreis', 'prio', 'firmaRolle', 'herkunft'] as const) { const l = strListe(k[f]); if (l?.length) kr[f] = l; }
+  // Typ/Kategorie/Label „enthält einen von“ (28.09.) — freie Werte aus den Wertelisten.
+  for (const f of ['typ', 'kategorie', 'label'] as const) { const l = strListe(k[f], 50, 80); if (l?.length) kr[f] = l; }
   for (const f of ['branche', 'stadt', 'stichwort'] as const) { const t = opt(k[f], 80); if (t) kr[f] = t; }
   if (['mail', 'telefon', 'linkedin', 'newsletter', 'einladung'].includes(String(k.kanal))) kr.kanal = k.kanal as SegmentKriterien['kanal'];
   if (typeof k.mitChance === 'boolean') kr.mitChance = k.mitChance;
@@ -245,8 +287,8 @@ function beitrag(o: Record<string, unknown>, jetzt: string): Beitrag | null {
     id: String(o.id), titel: txt(o.titel, 200), kanal: aus(o.kanal, ['linkedin', 'newsletter', 'blog', 'podcast', 'vortrag', 'sonstig'] as const, 'linkedin'),
     ...(opt(o.saeule, 60) ? { saeule: opt(o.saeule, 60) } : {}), status: aus(o.status, ['idee', 'entwurf', 'geplant', 'veroeffentlicht'] as const, 'idee'),
     ...(tag(o.datum) ? { datum: tag(o.datum) } : {}), ...(opt(o.text, 8000) ? { text: opt(o.text, 8000) } : {}), ...(unterlageLink(o.link) ? { link: unterlageLink(o.link)! } : {}),
-    wirkung: Array.isArray(o.wirkung) ? (o.wirkung as Record<string, unknown>[]).slice(0, 200).map(w => ({ kontaktId: txt(w.kontaktId, 80), art: aus(w.art, ['reaktion', 'gespraech', 'anfrage'] as const, 'reaktion'), am: tag(w.am) ?? jetzt.slice(0, 10), ...(opt(w.notiz, 300) ? { notiz: opt(w.notiz, 300) } : {}) })).filter(w => /^c-/.test(w.kontaktId)) : [],
-    quellen: strListe(o.quellen, 30, 80) ?? [], ...zst(o),
+    wirkung: Array.isArray(o.wirkung) ? (o.wirkung as Record<string, unknown>[]).slice(0, grenzeVon('beitraege', 'wirkung')).map(w => ({ kontaktId: txt(w.kontaktId, 80), art: aus(w.art, ['reaktion', 'gespraech', 'anfrage'] as const, 'reaktion'), am: tag(w.am) ?? jetzt.slice(0, 10), ...(opt(w.notiz, 300) ? { notiz: opt(w.notiz, 300) } : {}) })).filter(w => /^c-/.test(w.kontaktId)) : [],
+    quellen: strListe(o.quellen, grenzeVon('beitraege', 'quellen'), 80) ?? [], ...zst(o),
     ...(wer(o.stimme) || o.stimme === 'marke' ? { stimme: o.stimme === 'marke' ? 'marke' : wer(o.stimme) } : {}),
     ...(freigabe(o.freigabe) ? { freigabe: freigabe(o.freigabe) } : {}), geaendert: jetzt,
   };
@@ -256,7 +298,7 @@ function ausgabe(o: Record<string, unknown>, jetzt: string): NewsletterAusgabe |
   const n = (v: unknown) => (v === undefined || v === null || v === '' ? undefined : zahl(v, 0, 1e6));
   return {
     id: String(o.id), titel: txt(o.titel, 200), ...(tag(o.datum) ? { datum: tag(o.datum) } : {}), status: aus(o.status, ['entwurf', 'bereit', 'versendet'] as const, 'entwurf'),
-    inhalt: txt(o.inhalt, 20000), beitragIds: ids(o.beitragIds),
+    inhalt: txt(o.inhalt, 20000), beitragIds: ids(o.beitragIds, grenzeVon('newsletter', 'beitragIds')),
     ...(n(o.empfaenger) !== undefined ? { empfaenger: n(o.empfaenger) } : {}), ...(n(o.antworten) !== undefined ? { antworten: n(o.antworten) } : {}), ...(n(o.abmeldungen) !== undefined ? { abmeldungen: n(o.abmeldungen) } : {}),
     ...zst(o), ...(freigabe(o.freigabe) ? { freigabe: freigabe(o.freigabe) } : {}),
     geaendert: jetzt,
@@ -275,9 +317,9 @@ function kampagne(o: Record<string, unknown>, jetzt: string): Kampagne | null {
     kanal: aus(o.kanal, ['persoenlich', 'telefon', 'mail', 'linkedin', 'event', 'mix'] as const, 'persoenlich'),
     status: aus(o.status, ['entwurf', 'aktiv', 'abgeschlossen', 'abgebrochen'] as const, 'entwurf'),
     ...(tag(o.start) ? { start: tag(o.start) } : {}), ...(tag(o.ende) ? { ende: tag(o.ende) } : {}),
-    schritte: Array.isArray(o.schritte) ? (o.schritte as Record<string, unknown>[]).slice(0, 40).map((x, i) => ({ id: txt(x.id, 40) || `s${i}`, text: txt(x.text, 240), tag: zahl(x.tag, -60, 365), erledigt: x.erledigt === true, ...(opt(x.aufgabeId, 80) ? { aufgabeId: opt(x.aufgabeId, 80) } : {}) })).filter(x => x.text) : [],
-    kontaktIds: Array.isArray(o.kontaktIds) ? (o.kontaktIds as unknown[]).map(String).filter(x => /^c-[a-z0-9-]{4,60}$/.test(x)).slice(0, 500) : [],
-    ergebnisse: Array.isArray(o.ergebnisse) ? (o.ergebnisse as Record<string, unknown>[]).slice(0, 1000).map(e => ({ kontaktId: txt(e.kontaktId, 80), ergebnis: aus(e.ergebnis, ['angesprochen', 'reagiert', 'gespraech', 'chance', 'kein_interesse'] as const, 'angesprochen'), am: tag(e.am) ?? jetzt.slice(0, 10), ...(wer(e.von) && wer(e.von) !== BEIDE ? { von: wer(e.von) } : {}) })).filter(e => /^c-/.test(e.kontaktId)) : [],
+    schritte: Array.isArray(o.schritte) ? (o.schritte as Record<string, unknown>[]).slice(0, grenzeVon('kampagnen', 'schritte')).map((x, i) => ({ id: txt(x.id, 40) || `s${i}`, text: txt(x.text, 240), tag: zahl(x.tag, -60, 365), erledigt: x.erledigt === true, ...(opt(x.aufgabeId, 80) ? { aufgabeId: opt(x.aufgabeId, 80) } : {}) })).filter(x => x.text) : [],
+    kontaktIds: Array.isArray(o.kontaktIds) ? (o.kontaktIds as unknown[]).map(String).filter(x => /^c-[a-z0-9-]{4,60}$/.test(x)).slice(0, grenzeVon('kampagnen', 'kontaktIds')) : [],
+    ergebnisse: Array.isArray(o.ergebnisse) ? (o.ergebnisse as Record<string, unknown>[]).slice(0, grenzeVon('kampagnen', 'ergebnisse')).map(e => ({ kontaktId: txt(e.kontaktId, 80), ergebnis: aus(e.ergebnis, ['angesprochen', 'reagiert', 'gespraech', 'chance', 'kein_interesse'] as const, 'angesprochen'), am: tag(e.am) ?? jetzt.slice(0, 10), ...(wer(e.von) && wer(e.von) !== BEIDE ? { von: wer(e.von) } : {}) })).filter(e => /^c-/.test(e.kontaktId)) : [],
     von: aus(o.von, ['hand', 'head-sales', 'head-marketing'] as const, 'hand'), ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}), ...zst(o), geaendert: jetzt,
     ...(vernetzenSaeubern(o.vernetzen) ? { vernetzen: vernetzenSaeubern(o.vernetzen) } : {}),
   };
@@ -290,7 +332,7 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
   switch (liste) {
     case 'chancen': {
       const rollen = o.personenRollen && typeof o.personenRollen === 'object'
-        ? Object.fromEntries(Object.entries(o.personenRollen as Record<string, unknown>).filter(([k, v]) => idOk(k) && (DEAL_ROLLEN as readonly string[]).includes(String(v))).slice(0, 20))
+        ? Object.fromEntries(Object.entries(o.personenRollen as Record<string, unknown>).filter(([k, v]) => idOk(k) && (DEAL_ROLLEN as readonly string[]).includes(String(v))).slice(0, grenzeVon('chancen', 'personenRollen')))
         : undefined;
       return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(rollen && Object.keys(rollen).length ? { personenRollen: rollen } : {}) };
     }
@@ -429,6 +471,9 @@ export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person
   if (konflikte.length) return { bestand: b, angewandt: 0, fehler: [], konflikte, sperren: [], grenze: [] };
   const sperren = loeschSperren(b, roh, kontext);
   if (sperren.length) return { bestand: b, angewandt: 0, fehler: [], konflikte: [], sperren, grenze: [] };
+  // Nie abschneiden (28.09.): zu lange Listen → die ganze Änderung wird abgelehnt (413).
+  const zuLang = crmGrenzen(roh);
+  if (zuLang.length) return { bestand: b, angewandt: 0, fehler: [], konflikte: [], sperren: [], grenze: zuLang };
   const { ops: regelOps, fehler, grenze } = dealRegeln(b, roh, jetzt, person);
   if (grenze.length) return { bestand: b, angewandt: 0, fehler, konflikte: [], sperren: [], grenze };
   const ops = firmenZusammenfuehren(b, ibanSchuetzen(b, regelOps));
@@ -439,6 +484,11 @@ export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person
     const r = wendeAn(b[l] as unknown as Record<string, unknown>[], eigene, 'id', roh => saeubern(l, roh, jetzt, person));
     (neu as Record<string, unknown>)[l] = r.liste;
     angewandt += r.angewandt;
+  }
+  // Mutterfirmen (28.09., #7): tote Mutter oder Kreis → nur diese Änderung zurück, mit Fehlertext.
+  if (neu.firmen !== b.firmen) {
+    const m = mutterPruefen(b.firmen, neu.firmen);
+    if (m.fehler.length) { neu.firmen = m.firmen; fehler.push(...m.fehler); }
   }
   return { bestand: neu, angewandt, fehler, konflikte: [], sperren: [], grenze: [] };
 }

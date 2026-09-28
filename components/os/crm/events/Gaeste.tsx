@@ -28,7 +28,7 @@ import { GAST, ROLLEN, WEGE, MIX, AMPEL, MixAnzeige, KarteiSuche, Leise, WerTaus
 
 const FOTO = [{ id: 'ja', label: 'Fotos ja' }, { id: 'nein', label: 'Fotos nein' }] as const;
 const WEG_LABEL: Record<Weg, string> = { persoenlich: 'persönlich', telefon: 'Telefon', mail: 'Mail', linkedin: 'LinkedIn' };
-const QUELLE: Record<EinladerQuelle, string | undefined> = { eingetragen: undefined, beziehung: 'hält die Beziehung', event: 'wie Event' };
+const QUELLE: Record<EinladerQuelle, string | undefined> = { eingetragen: undefined, beziehung: 'zuständig', event: 'wie Event' };
 
 export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
   const crm = api.crm!;
@@ -194,7 +194,7 @@ export function Gaeste({ e, api, zuKontakt }: ReiterProps) {
               </div>
               <div style={{ fontSize: 12, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.gruende.join(' · ') || MIX[v.gruppe].label}</div>
             </div>
-            <span title={`Hält die Beziehung: ${nameVon(haeltBeziehung(v.kontakt))} — lädt ein: ${nameVon(einladerMit({}, v.kontakt, e).person)}`} style={{ display: 'inline-flex' }}><Person id={haeltBeziehung(v.kontakt)} groesse={20} /></span>
+            <span title={`Zuständig: ${nameVon(haeltBeziehung(v.kontakt))} — lädt ein: ${nameVon(einladerMit({}, v.kontakt, e).person)}`} style={{ display: 'inline-flex' }}><Person id={haeltBeziehung(v.kontakt)} groesse={20} /></span>
             <span title={v.ampel.grund}><Chip farbe={v.weg === 'mail' ? LEUCHT.gut : C.inkDim}>{v.weg === 'mail' ? 'Mail ok' : 'persönlich'}</Chip></span>
             <Knopf leise onClick={() => vormerken(v.kontakt)}>+ vormerken</Knopf>
           </div>

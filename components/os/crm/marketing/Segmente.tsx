@@ -23,6 +23,21 @@ import { Mehrfach } from './gemeinsam';
 import { WahlMehrfach } from '../Wahl';
 import { LIFECYCLE_WAHL } from '@/lib/crm/lifecycle';
 import { BEAN_WAHL } from '@/lib/crm/bean';
+import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
+import { typenVon, kategorienVon, labelsVon } from '@/lib/crm/mehrfach';
+import type { WahlEintrag } from '../Wahl';
+
+/** Werte für Typ/Kategorie/Label (28.09.): die Wertelisten plus alles, was Personen tragen — ohne Doppelte. */
+type EinordnungWerte = { typ: WahlEintrag<string>[]; kategorie: WahlEintrag<string>[]; label: WahlEintrag<string>[] };
+function einordnungWerte(api: CrmApi, kontakte: Kontakt[]): EinordnungWerte {
+  const listen = wertelistenVollstaendig(api.crm?.stand.wertelisten);
+  const mit = (basis: { wert: string }[], an: (k: Kontakt) => string[]) => {
+    const gesehen = new Set<string>(), raus: WahlEintrag<string>[] = [];
+    for (const w of [...basis.map(x => x.wert), ...kontakte.flatMap(an)]) { const s = w.toLocaleLowerCase('de-DE'); if (!gesehen.has(s)) { gesehen.add(s); raus.push({ id: w, label: w }); } }
+    return raus;
+  };
+  return { typ: mit(listen.typen, typenVon), kategorie: mit(listen.kategorien, kategorienVon), label: mit(listen.labels, labelsVon) };
+}
 
 const PHASEN = [{ id: 'kontakt', label: 'Kontakt' }, { id: 'interessent', label: 'Interessent' }, { id: 'kunde', label: 'Kunde' }, { id: 'ex_kunde', label: 'Ex-Kunde' }, { id: 'partner', label: 'Partner' }, { id: 'multiplikator', label: 'Multiplikator' }];
 const KREISE = ['A', 'B', 'C', 'D'].map(k => ({ id: k, label: `Kreis ${k}` }));
@@ -50,6 +65,7 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
   const [meldung, setMeldung] = useState('');
   const crm = api.crm;
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
+  const werte = useMemo(() => einordnungWerte(api, kontakte), [api, kontakte]);
   const heute = crm?.heute ?? localDay();
   const ctx = useMemo(() => (crm ? kontextAus(crm.stand, heute) : null), [crm, heute]);
   const segmente = useMemo(() => [...(crm?.stand.segmente ?? [])].sort((a, b) => a.name.localeCompare(b.name)), [crm]);
@@ -75,7 +91,7 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
       <Karte i={0}>
         <Ueberschrift rechts={<Knopf onClick={() => setEntwurf({ id: neueId('sg'), name: '', beschreibung: '', kriterien: {}, neu: true })}>+ Segment</Knopf>}>Segmente · {segmente.length}</Ueberschrift>
         {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 8 }}>{meldung}</div>}
-        {entwurf?.neu && vorschau && <SegmentFormular e={entwurf} setE={setEntwurf} a={vorschau} speichern={speichern} gespeichert={false} csv={csv} zuKontakt={zuKontakt} />}
+        {entwurf?.neu && vorschau && <SegmentFormular e={entwurf} setE={setEntwurf} a={vorschau} speichern={speichern} gespeichert={false} csv={csv} zuKontakt={zuKontakt} werte={werte} />}
         <Liste>
           {segmente.map(s => {
             const a = zahlen.get(s.id);
@@ -84,7 +100,7 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
                 <Zeile onClick={() => oeffne(s)} aktiv={entwurf?.id === s.id} titel={s.name} unter={s.beschreibung || kriterienText(s.kriterien)}
                   rechts={<Chip farbe={a?.anzahl ? LEUCHT.business : C.inkDim}>{a?.anzahl ?? 0} Personen</Chip>} />
                 {entwurf?.id === s.id && !entwurf.neu && vorschau && (
-                  <SegmentFormular e={entwurf} setE={setEntwurf} a={vorschau} speichern={speichern} gespeichert={gespeichert(entwurf)} csv={csv} zuKontakt={zuKontakt}
+                  <SegmentFormular e={entwurf} setE={setEntwurf} a={vorschau} speichern={speichern} gespeichert={gespeichert(entwurf)} csv={csv} zuKontakt={zuKontakt} werte={werte}
                     loeschen={async () => { if (!window.confirm(`Segment „${s.name}“ löschen? Die Personen bleiben unberührt.`)) return; await api.weg('segmente', s.id); setEntwurf(null); setMeldung(`„${s.name}“ gelöscht.`); }}
                     kampagne={() => zuKampagne(s.id)} />
                 )}
@@ -114,8 +130,8 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
   );
 }
 
-function SegmentFormular({ e, setE, a, speichern, gespeichert, csv, zuKontakt, loeschen, kampagne }: {
-  e: Entwurf; setE: (e: Entwurf | null) => void; a: SegmentAuswertung; speichern: (e: Entwurf) => Promise<void>; gespeichert: boolean;
+function SegmentFormular({ e, setE, a, speichern, gespeichert, csv, zuKontakt, loeschen, kampagne, werte }: {
+  e: Entwurf; setE: (e: Entwurf | null) => void; a: SegmentAuswertung; speichern: (e: Entwurf) => Promise<void>; gespeichert: boolean; werte: EinordnungWerte;
   csv: (id: string) => void; zuKontakt: (id: string) => void; loeschen?: () => void; kampagne?: () => void;
 }) {
   const kr = e.kriterien;
@@ -138,6 +154,10 @@ function SegmentFormular({ e, setE, a, speichern, gespeichert, csv, zuKontakt, l
       <div>
         <Feldzeile label="Lifecycle"><WahlMehrfach label="Lifecycle" liste={LIFECYCLE_WAHL} wert={kr.lifecycle ?? []} onWahl={l => setK({ lifecycle: l.length ? l : undefined })} /></Feldzeile>
         <Feldzeile label="BEAN"><WahlMehrfach label="BEAN" liste={BEAN_WAHL} wert={kr.bean ?? []} onWahl={l => setK({ bean: l.length ? l : undefined })} /></Feldzeile>
+        {/* Typ, Kategorie, Label (28.09.): trifft, wer EINEN der Werte trägt. */}
+        <Feldzeile label="Typ"><WahlMehrfach label="Typ" liste={werte.typ} wert={kr.typ ?? []} onWahl={l => setK({ typ: l.length ? l : undefined })} /></Feldzeile>
+        <Feldzeile label="Kategorie"><WahlMehrfach label="Kategorie" liste={werte.kategorie} wert={kr.kategorie ?? []} onWahl={l => setK({ kategorie: l.length ? l : undefined })} /></Feldzeile>
+        {werte.label.length > 0 && <Feldzeile label="Label"><WahlMehrfach label="Label" liste={werte.label} wert={kr.label ?? []} onWahl={l => setK({ label: l.length ? l : undefined })} /></Feldzeile>}
         <Feldzeile label="Lebensphase"><Mehrfach liste={PHASEN} aktiv={kr.lebensphase ?? []} onWahl={l => setK({ lebensphase: l })} /></Feldzeile>
         <Feldzeile label="Kreis"><Mehrfach liste={KREISE} aktiv={kr.kreis ?? []} onWahl={l => setK({ kreis: l })} /></Feldzeile>
         <Feldzeile label="Prio"><Mehrfach liste={PRIOS} aktiv={kr.prio ?? []} onWahl={l => setK({ prio: l })} /></Feldzeile>

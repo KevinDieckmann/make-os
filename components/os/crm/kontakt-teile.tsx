@@ -31,7 +31,9 @@ import { ZustaendigWahl, Uebergeben, Person } from './team';
 import { neueFirma, ROLLEN } from './Firmen';
 import { bestehendeFirma } from '@/lib/crm/firmen';
 import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
-import { WertelistenWahl, WertelistenEinzelWahl } from './WertelistenWahl';
+import { WertelistenWahl, WertelistenMehrfachWahl } from './WertelistenWahl';
+import { typenVon, kategorienVon, labelsVon, typenFelder, kategorienFelder } from '@/lib/crm/mehrfach';
+import { stationenVon, hauptStation, stationWechseln, stationBeenden, stationenFelder } from '@/lib/crm/stationen';
 import { phaseVon, PHASE_LABEL, type Phase } from '@/lib/crm/phase';
 import type { LifecyclePhase } from '@/lib/crm/lifecycle';
 
@@ -61,17 +63,27 @@ export type Setze = (teil: Partial<Kontakt>) => Promise<void> | void;
  * Firma an der Person verknüpfen — eine bestehende (Name, Groß-/Kleinschreibung egal) oder eine neue
  * anlegen (crm.firmen) und verknüpfen; leer = Verknüpfung lösen. Derselbe Weg in der Matrix und in
  * der Karte „Firma“ von „Kontakt öffnen“.
+ * Stationen (28.09.): Hatte die Person schon eine Firma, ist das ein Jobwechsel — die bisherige
+ * Hauptstation endet heute (Historie bleibt), die neue übernimmt die bisherige Position als Rolle;
+ * „leer“ beendet die Hauptstation. Ohne bisherige Firma wie vorher eine einfache Verknüpfung.
  */
 export async function firmaVerknuepfen(api: CrmApi, k: Kontakt, name: string, setze: Setze): Promise<void> {
   const n = name.trim();
   const firmen = api.crm?.stand.firmen ?? [];
   const jetzt = k.firmaId ? firmen.find(f => f.id === k.firmaId) : undefined;
   if (n === (jetzt?.name ?? k.firma ?? '')) return;
-  if (!n) return void setze({ firma: undefined, firmaId: undefined });
+  const heute = localDay();
+  const firmaName = (id: string) => firmen.find(f => f.id === id)?.name;
+  const haupt = hauptStation(stationenVon(k));
+  if (!n) {
+    if (!haupt) return void setze({ firma: undefined, firmaId: undefined });
+    return void setze(stationenFelder(k, stationBeenden(k, stationenVon(k).indexOf(haupt), heute), heute, firmaName));
+  }
   // Bestehende Firma (auch „Muster GmbH“ zu „Muster“, gleiche Kennung) verknüpfen statt neu anlegen (F1).
   const f = firmen.find(x => x.name.toLowerCase() === n.toLowerCase()) ?? bestehendeFirma(firmen, n) ?? neueFirma(n);
   if (!firmen.some(x => x.id === f.id)) await api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>);
-  void setze({ firma: f.name, firmaId: f.id });
+  if (!haupt) return void setze({ firma: f.name, firmaId: f.id });
+  void setze(stationenFelder(k, stationWechseln(k, { firmaId: f.id, ...(k.position ? { rolle: k.position } : {}) }, heute), heute, id => (id === f.id ? f.name : firmaName(id))));
 }
 
 /** Werbesperre und Art.-14-Frist — stehen über allem anderen. */
@@ -127,7 +139,7 @@ export function BeziehungTeil({ k, api, setze, ohneTitel }: { k: Kontakt; api: C
             onWahl={p => void setze({ lebensphase: p as Lebensphase })} onLeeren={() => void setze({ lebensphase: undefined })} />
         </span>
       </Feldzeile>
-      <Feldzeile label="Hält die Beziehung"><ZustaendigWahl wert={k.besitzer} welt="sales" onWahl={besitzer => void setze({ besitzer })} /></Feldzeile>
+      <Feldzeile label="Zuständig"><ZustaendigWahl wert={k.besitzer} welt="sales" onWahl={besitzer => void setze({ besitzer })} /></Feldzeile>
       <div style={{ marginTop: 8 }}><Uebergeben api={api} art="kontakt" id={k.id} jetzt={haeltBeziehung(k)} /></div>
     </div>
   );
@@ -376,7 +388,7 @@ function Gruppe({ titel, zahl, rechts, children }: { titel: string; zahl?: [numb
   );
 }
 
-/** Die Gruppen der Matrix — „Kontakt öffnen“ verteilt sie auf Klapp-Abschnitte (Reiter Daten), die Karteikarte zeigt alle. */
+/** Die Gruppen der Matrix — „Kontakt öffnen“ verteilt sie auf Klapp-Abschnitte (Reiter Stammdaten, `t=daten`), die Karteikarte zeigt alle. */
 export type MatrixTeil = 'einordnung' | 'person' | 'firma' | 'herkunft' | 'privat';
 export const MATRIX_TEILE: MatrixTeil[] = ['einordnung', 'person', 'firma', 'herkunft', 'privat'];
 export const MATRIX_TEIL_LABEL: Record<MatrixTeil, string> = { einordnung: 'Einordnung', person: 'Person', firma: 'Firma', herkunft: 'Herkunft der Daten', privat: 'Privat' };
@@ -389,9 +401,9 @@ type MatrixArgs = { k: Kontakt; api: CrmApi; setze: Setze; zuFirma: (id: string)
  * Person, Firma (Branchen aus der Werteliste), Herkunft der Daten, private
  * Notiz. Gehört die Person zu einer Firma, bearbeitet die Firmengruppe den
  * Firmeneintrag (für alle ihre Personen); sonst die Firmenfelder aus dem
- * Import. Typ, Kategorie und Branchen kommen aus den Wertelisten: Typ und
- * Kategorie als Wahl-Chip mit Menü, Suche und „+ neu …“ (WertelistenEinzelWahl,
- * Kevin 27.09. spät), Branchen als scrollbare Mehrfachwahl (WertelistenWahl);
+ * Import. Typ, Kategorie und Branchen kommen aus den Wertelisten: Typ,
+ * Kategorie und Labels als Mehrfach-Chips mit Menü, Suche und „+ neu …“
+ * (WertelistenMehrfachWahl, 28.09.), Branchen als scrollbare Mehrfachwahl (WertelistenWahl);
  * „+ neu“ legt in beiden in der Werteliste an.
  */
 function matrixTeile({ k, api, setze, zuFirma }: MatrixArgs): { inhalt: Record<MatrixTeil, ReactNode>; zahl: Partial<Record<MatrixTeil, [number, number]>>; rechts: Partial<Record<MatrixTeil, ReactNode>> } {
@@ -400,8 +412,9 @@ function matrixTeile({ k, api, setze, zuFirma }: MatrixArgs): { inhalt: Record<M
   const firma: Firma | undefined = k.firmaId ? firmen.find(f => f.id === k.firmaId) : undefined;
   const v = vollstaendigkeit(k, firma);
   const listen = wertelistenVollstaendig(crm?.stand.wertelisten);
-  const einzel = (label: string, liste: 'typen' | 'kategorien', wert: string | undefined, setzen: (w: string | undefined) => void) => (
-    <MatrixRahmen key={label} label={label} mittig><WertelistenEinzelWahl liste={liste} werte={listen[liste]} wert={wert} onWahl={setzen} api={api} /></MatrixRahmen>
+  // Typ, Kategorie, Labels mehrfach (28.09.) — der erste Typ/die erste Kategorie bleibt `typ`/`kategorie`.
+  const mehrfach = (label: string, liste: 'typen' | 'kategorien' | 'labels', wert: string[], setzen: (w: string[]) => void) => (
+    <MatrixRahmen key={label} label={label} mittig><WertelistenMehrfachWahl liste={liste} werte={listen[liste]} wert={wert} onWahl={setzen} api={api} /></MatrixRahmen>
   );
   const branchenWahl = (aktiv: string[], setzen: (b: string[]) => void) => (
     <MatrixRahmen label="Branchen"><WertelistenWahl liste="branchen" mehrfach werte={listen.branchen} aktiv={aktiv} onWahl={setzen} api={api} /></MatrixRahmen>
@@ -411,8 +424,9 @@ function matrixTeile({ k, api, setze, zuFirma }: MatrixArgs): { inhalt: Record<M
   const firmaZuordnen = (n: string) => firmaVerknuepfen(api, k, n, setze);
   const inhalt: Record<MatrixTeil, ReactNode> = {
     einordnung: <>
-      {einzel('Typ', 'typen', k.typ, typ => void setze({ typ }))}
-      {einzel('Kategorie', 'kategorien', k.kategorie, kategorie => void setze({ kategorie }))}
+      {mehrfach('Typ', 'typen', typenVon(k), l => void setze(typenFelder(l)))}
+      {mehrfach('Kategorie', 'kategorien', kategorienVon(k), l => void setze(kategorienFelder(l)))}
+      {mehrfach('Labels', 'labels', labelsVon(k), labels => void setze({ labels }))}
       <MatrixRahmen label="Prio" mittig><Wahl label="Prio" klein liste={PRIOS} wert={k.prio || null} onWahl={prio => void setze({ prio })} onLeeren={() => void setze({ prio: '' })} /></MatrixRahmen>
       <MatrixRahmen label="Eignung" mittig><Wahl label="Eignung" klein liste={EIGNUNGEN} wert={k.eignung || null} onWahl={eignung => void setze({ eignung })} onLeeren={() => void setze({ eignung: '' })} /></MatrixRahmen>
       {EINORDNUNG_FELDER.filter(m => m.feld !== 'typ' && m.feld !== 'kategorie').map(kf)}

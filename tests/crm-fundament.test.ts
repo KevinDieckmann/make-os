@@ -156,14 +156,17 @@ describe('Speicher', () => {
 
 describe('Dubletten', () => {
   it('gleicher Name + gleiche Firma = Dublette; nur gleicher Name nicht', () => {
-    const a = k('a', { vorname: 'Tim', nachname: 'Jeske', firma: 'ReachOut', email: 'tim@r.app' });
-    const b = k('b', { vorname: 'Tim', nachname: 'Jeske', firma: 'ReachOut', email: 'tim.jeske@r.app', aktivitaeten: [{ am: '2026-09-01T10:00', art: 'mail', von: 'kevin' }], werbesperre: { seit: '2026-09-02', grund: 'Widerspruch' } });
-    const c = k('c', { vorname: 'Tim', nachname: 'Jeske', firma: 'Andere GmbH' });
+    const a = k('a', { vorname: 'Tim', nachname: 'Beispielmann', firma: 'Beispielwerk', email: 'tim@beispielwerk.example' });
+    const b = k('b', { vorname: 'Tim', nachname: 'Beispielmann', firma: 'Beispielwerk', email: 'tim.beispielmann@beispielwerk.example', aktivitaeten: [{ am: '2026-09-01T10:00', art: 'mail', von: 'kevin' }], werbesperre: { seit: '2026-09-02', grund: 'Widerspruch' } });
+    const c = k('c', { vorname: 'Tim', nachname: 'Beispielmann', firma: 'Andere GmbH' });
     expect(dubletten([a, b, c]).map(([x, y]) => `${x.id}|${y.id}`)).toEqual(['c-a|c-b']);
     const m = zusammenfuehren(a, b, 'kevin', `${HEUTE}T10:00:00Z`);
     expect(m.werbesperre?.grund).toBe('Widerspruch');
     expect(m.aktivitaeten.length).toBe(2);
-    expect(m.notiz).toContain('tim.jeske@r.app');
+    // Seit 28.09. (#11): die zweite Adresse ist eine weitere Adresse, nicht mehr Text in der Notiz.
+    expect(m.email).toBe('tim@beispielwerk.example');
+    expect(m.emails?.map(x => x.adresse)).toEqual(['tim@beispielwerk.example', 'tim.beispielmann@beispielwerk.example']);
+    expect(m.notiz ?? '').not.toContain('tim.beispielmann@beispielwerk.example');
     const crm = verweiseUmbiegen({ ...leererBestand(), chancen: [ch({ kontaktIds: ['c-b', 'c-a'] })] }, 'c-b', 'c-a');
     expect(crm.chancen[0].kontaktIds).toEqual(['c-a']);
   });
@@ -171,8 +174,8 @@ describe('Dubletten', () => {
 
 describe('Übernahme aus dem Brain', () => {
   it('Rolle ohne Quellenvermerke, Kunden als Kartei-Einträge, wiederholbar', () => {
-    expect(sauberRolle("COO / Chief Growth Officer (OneBanking_Brain 17.09.) — Malins Punkte nennen ihn CEO")).toBe('COO / Chief Growth Officer');
-    expect(sauberRolle('Chief Partnership Officer laut OneBanking_Brain; extern')).toBe('Chief Partnership Officer');
+    expect(sauberRolle("COO / Chief Growth Officer (KundeA_Brain 17.09.) — Malins Punkte nennen ihn CEO")).toBe('COO / Chief Growth Officer');
+    expect(sauberRolle('Chief Partnership Officer laut KundeA_Brain; extern')).toBe('Chief Partnership Officer');
     const d = { kunden: [{ name: 'Beispiel GmbH', ansprechpartner: [{ name: "Max Muster ('Maxi')", rolle: 'Geschäftsführer' }], status: 'aktiv' }], mandate: [{ kunde: 'Beispiel GmbH', titel: 'Retainer', art: 'retainer', honorar: { betrag: 2000, einheit: 'Monat', netto: true }, status: 'aktiv', offen: ['Laufzeit unklar'] }], produkte: [{ name: 'Klarheits-Sprint', preis: { betrag: 0, einheit: 'einmalig' } }] };
     const r1 = ausBrain(d, leererBestand(), [], HEUTE, `${HEUTE}T10:00`, 'kevin');
     expect(r1.kontakte[0]).toMatchObject({ vorname: 'Max', nachname: 'Muster', lebensphase: 'kunde', kreis: 'A', position: 'Geschäftsführer' });
@@ -190,11 +193,11 @@ describe('Übernahme aus dem Brain', () => {
 import { zahlungAusRechnungen, rechnungPasst } from '../lib/crm/kunden';
 describe('Zahlung aus dem Finanzplan', () => {
   it('Rechnung passt über ein kennzeichnendes Wort; überfällig −30, verspätet −10; von Hand gewinnt', () => {
-    expect(rechnungPasst({ kunde: 'ACME Venetian Products GmbH' }, { kunde: 'Acme GmbH (Gregosch)', status: 'geplant' })).toBe(true);
-    expect(rechnungPasst({ kunde: 'One Finance Limited' }, { kunde: 'Acme GmbH', status: 'bezahlt' })).toBe(false);
-    const r = [{ kunde: 'OneBanking (One Finance Limited)', status: 'gestellt', faellig: '2026-09-01' }, { kunde: 'One Finance Limited', status: 'bezahlt', faellig: '2026-08-01', bezahltAm: '2026-08-10' }];
-    expect(zahlungAusRechnungen({ kunde: 'One Finance Limited' }, r, HEUTE)).toMatchObject({ wert: 60 });
-    expect(mandatLage(md({ kunde: 'One Finance Limited' }), HEUTE, r).health).toBe(60);
-    expect(mandatLage(md({ kunde: 'One Finance Limited', health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: 100, stimmung: null } }), HEUTE, r).health).toBe(100);
+    expect(rechnungPasst({ kunde: 'Beispielwerk Nord Products GmbH' }, { kunde: 'Beispielwerk GmbH (Kurzname)', status: 'geplant' })).toBe(true);
+    expect(rechnungPasst({ kunde: 'Muster Finanz Limited' }, { kunde: 'Beispielwerk GmbH', status: 'bezahlt' })).toBe(false);
+    const r = [{ kunde: 'Kunde A (Muster Finanz Limited)', status: 'gestellt', faellig: '2026-09-01' }, { kunde: 'Muster Finanz Limited', status: 'bezahlt', faellig: '2026-08-01', bezahltAm: '2026-08-10' }];
+    expect(zahlungAusRechnungen({ kunde: 'Muster Finanz Limited' }, r, HEUTE)).toMatchObject({ wert: 60 });
+    expect(mandatLage(md({ kunde: 'Muster Finanz Limited' }), HEUTE, r).health).toBe(60);
+    expect(mandatLage(md({ kunde: 'Muster Finanz Limited', health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: 100, stimmung: null } }), HEUTE, r).health).toBe(100);
   });
 });

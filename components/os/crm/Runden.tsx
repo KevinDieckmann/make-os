@@ -174,7 +174,7 @@ function KreisRunde({ api, name, zuKontakt, zurueck }: RundenProps) {
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
           {KREIS_WAHL.map(w => <Chip key={w.id} farbe={bilanz.jeKreis[w.id] ? LEUCHT.beziehung : C.inkLeise}>{w.id} {bilanz.jeKreis[w.id]}</Chip>)}
           {[...TEAM.map(t => t.id), BEIDE].filter(p => bilanz.jePerson[p]).map(p => (
-            <span key={p} title={`hält die Beziehung: ${nameVon(p)}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: C.inkDim, marginLeft: 4 }}><Person id={p} groesse={18} />{bilanz.jePerson[p]}</span>
+            <span key={p} title={`zuständig: ${nameVon(p)}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: C.inkDim, marginLeft: 4 }}><Person id={p} groesse={18} />{bilanz.jePerson[p]}</span>
           ))}
           {bilanz.uebersprungen > 0 && <span style={{ ...kleinText, marginLeft: 4 }}>{bilanz.uebersprungen} übersprungen</span>}
           <span style={{ flex: 1 }} />
@@ -257,7 +257,7 @@ function KreisKarte({ kandidat, k, heute, name, kannZurueck, onEntscheid, onZuru
       </div>
 
       <div style={{ display: 'grid', gap: 2, marginTop: 14, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.06)' }}>
-        <Feldzeile label="Hält die Beziehung">
+        <Feldzeile label="Zuständig">
           <ZustaendigWahl wert={besitzer} welt="sales" onWahl={setBesitzer} />
         </Feldzeile>
         <Feldzeile label="Anrede"><Pillen liste={ANREDEN} aktiv={anrede} onWahl={setAnrede} /></Feldzeile>

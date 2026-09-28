@@ -25,6 +25,7 @@
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, Firma, Mandat, Chance } from './typen';
 import { dealZuFirma, mandatZuFirma } from './firmen-bezug';
+import { personenDerFirma } from './stationen';
 
 export type BeanId = 'B' | 'E' | 'A' | 'N';
 /** Reihenfolge der Anzeige (Kevins Wort: B-E-A-N). */
@@ -115,16 +116,33 @@ export function beanVon(k: Pick<Kontakt, 'id' | 'firmaId' | 'bean' | 'lebensphas
 }
 
 /** Die BEAN-Gruppe einer Firma: von Hand, sonst aus den Mandaten/Deals der Firma und ihrer Personen. */
-export function beanFirma(f: Pick<Firma, 'id' | 'name' | 'rolle' | 'bean'>, crm: BeanBestand | null | undefined, personen: readonly Pick<Kontakt, 'id' | 'firmaId' | 'lebensphase'>[] = [], opts: BeanOpts = {}): BeanErgebnis {
-  const ids = new Set(personen.filter(p => p.firmaId === f.id).map(p => p.id));
+export function beanFirma(f: Pick<Firma, 'id' | 'name' | 'rolle' | 'bean'>, crm: BeanBestand | null | undefined, personen: readonly Pick<Kontakt, 'id' | 'firmaId' | 'lebensphase' | 'stationen' | 'position'>[] = [], opts: BeanOpts = {}): BeanErgebnis {
+  // Personen der Firma nur über die Stationen (28.09.) — laufende Stationen.
+  const dabei = personenDerFirma(personen, f.id);
+  const ids = new Set(dabei.map(p => p.id));
   const mandate = (crm?.mandate ?? []).filter(m => mandatZuFirma(m, f) || (m.kontaktIds ?? []).some(id => ids.has(id)));
   const chancen = (crm?.chancen ?? []).filter(c => dealZuFirma(c, f) || (c.kontaktIds ?? []).some(id => ids.has(id)));
   const angebote = angebotePasst(opts.angebote, { kontaktIds: ids, firmaId: f.id, dealIds: new Set(chancen.map(c => c.id)), mandatIds: new Set(mandate.map(m => m.id)) });
-  const exKunde = f.rolle === 'ex_kunde' ? 'Firma als Ex-Kunde geführt' : personen.some(p => p.firmaId === f.id && p.lebensphase === 'ex_kunde') ? 'eine Person ist als Ex-Kunde geführt' : undefined;
-  const kunde = f.rolle === 'kunde' ? 'Firma als Kunde geführt' : personen.some(p => p.firmaId === f.id && p.lebensphase === 'kunde') ? 'eine Person ist als Kunde geführt' : undefined;
+  const exKunde = f.rolle === 'ex_kunde' ? 'Firma als Ex-Kunde geführt' : dabei.some(p => p.lebensphase === 'ex_kunde') ? 'eine Person ist als Ex-Kunde geführt' : undefined;
+  const kunde = f.rolle === 'kunde' ? 'Firma als Kunde geführt' : dabei.some(p => p.lebensphase === 'kunde') ? 'eine Person ist als Kunde geführt' : undefined;
   const abgeleitet = ableiten({ mandate, chancen, angebote, exKunde, kunde });
   if (f.bean) return { bean: f.bean, vonHand: true, grund: `von Hand: ${BEAN_LABEL[f.bean]}`, abgeleitet };
   return { bean: abgeleitet.bean, vonHand: false, grund: abgeleitet.grund, abgeleitet };
+}
+
+/**
+ * BEAN einer ganzen Firmengruppe (Mutter + Töchter, 28.09., #7) — nur Anzeige in der Firmenkarte, nie gespeichert:
+ * die höchste Gruppe (B vor A vor E vor N) unter den Firmen der Gruppe, mit der Firma, die sie trägt.
+ */
+export function beanGruppe(firmenIds: readonly string[], crm: BeanBestand | null | undefined, personen: readonly Pick<Kontakt, 'id' | 'firmaId' | 'lebensphase' | 'stationen' | 'position'>[] = [], opts: BeanOpts = {}): { bean: BeanId; grund: string } {
+  let best: { bean: BeanId; grund: string } = { bean: 'N', grund: 'keine Firma der Gruppe hat Mandat, Angebot oder Kundenhistorie' };
+  for (const id of firmenIds) {
+    const f = (crm?.firmen ?? []).find(x => x.id === id);
+    if (!f) continue;
+    const r = beanFirma(f, crm, personen, opts);
+    if (BEAN_VORRANG.indexOf(r.bean) < BEAN_VORRANG.indexOf(best.bean)) best = { bean: r.bean, grund: `${f.name}: ${r.grund}` };
+  }
+  return best;
 }
 
 /** Die BEAN-Gruppe eines Leads (Firmen › Leads, Qualifizierungsrunde): bei einer Firma die der Firma, sonst die der Person. */

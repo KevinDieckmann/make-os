@@ -19,6 +19,7 @@ import { dealZuFirma, mandatZuFirma } from './firmen-bezug';
 import { rechnungPasst, mrr } from './kunden';
 import { einheitAusGesellschaft } from '@/lib/einheiten';
 import { istPrivatPosten } from '@/lib/make-one/liquiditaet';
+import { firmenGruppe } from './konzern';
 
 /** Rechnung, wie sie im Finanzplan steht (app/api/state/finanzplan) — nur, was hier zählt. */
 export interface UmsatzRechnung {
@@ -57,6 +58,8 @@ export interface ZugeordneteRechnung {
 
 export interface UmsatzBezug {
   firma?: Firma;
+  /** „Ganze Gruppe“ (28.09., #7): die Firmen der Gruppe (Mutter + Töchter), deren Umsatz mitzählt — nur mit Schalter. */
+  gruppe?: Firma[];
   mandate: Mandat[];
   deals: Chance[];
   rechnungen: ZugeordneteRechnung[];
@@ -73,13 +76,20 @@ export function kundenName(k: KontaktKurz, firma?: Pick<Firma, 'name'>): string 
   return (firma?.name || k.firma || `${k.vorname ?? ''} ${k.nachname ?? ''}`).trim();
 }
 
-export function umsatzBezug(k: KontaktKurz, crm: Pick<CrmBestand, 'firmen' | 'chancen' | 'mandate'>, rechnungen: UmsatzRechnung[], heute: string): UmsatzBezug {
+/**
+ * `opt.gruppe` (28.09., #7): Mandate, Deals und Rechnungen ALLER Firmen der Gruppe (oberste Mutter und alle
+ * Töchter) zusammenfassen — der Schalter „ganze Gruppe“ im Reiter Umsatz. Ohne Gruppe wie bisher.
+ */
+export function umsatzBezug(k: KontaktKurz, crm: Pick<CrmBestand, 'firmen' | 'chancen' | 'mandate'>, rechnungen: UmsatzRechnung[], heute: string, opt: { gruppe?: boolean } = {}): UmsatzBezug {
   const firma = k.firmaId ? crm.firmen.find(f => f.id === k.firmaId) : undefined;
-  const mandate = crm.mandate.filter(m => m.kontaktIds.includes(k.id) || (!!firma && mandatZuFirma(m, firma)));
-  const deals = crm.chancen.filter(c => c.kontaktIds.includes(k.id) || (!!firma && dealZuFirma(c, firma)));
+  const gruppe = firma && opt.gruppe ? firmenGruppe(crm.firmen, firma.id).map(id => crm.firmen.find(f => f.id === id)).filter((f): f is Firma => !!f) : undefined;
+  const firmen = gruppe && gruppe.length > 1 ? gruppe : firma ? [firma] : [];
+  const mandate = crm.mandate.filter(m => m.kontaktIds.includes(k.id) || firmen.some(f => mandatZuFirma(m, f)));
+  const deals = crm.chancen.filter(c => c.kontaktIds.includes(k.id) || firmen.some(f => dealZuFirma(c, f)));
   const nachId = new Map(mandate.map(m => [m.id, m]));
   const alleMandatIds = new Set(crm.mandate.map(m => m.id));
   const name = kundenName(k, firma);
+  const weitereNamen = firmen.filter(f => f.id !== firma?.id).map(f => f.name);
   const zugeordnet: ZugeordneteRechnung[] = [];
   for (const r of rechnungen) {
     if (istPrivatPosten(r)) continue;
@@ -88,7 +98,7 @@ export function umsatzBezug(k: KontaktKurz, crm: Pick<CrmBestand, 'firmen' | 'ch
     if (!m) {
       // Zeigt die Rechnung auf ein anderes (bekanntes) Mandat, gehört sie nicht hierher.
       if (r.mandatId && alleMandatIds.has(r.mandatId)) continue;
-      if (!name || !(gleicherName(name, r.kunde) || rechnungPasst({ kunde: name }, r))) continue;
+      if (![name, ...weitereNamen].some(n => !!n && (gleicherName(n, r.kunde) || rechnungPasst({ kunde: n }, r)))) continue;
       perName = true;
     }
     const einheit = einheitAusGesellschaft(m?.gesellschaft) ?? einheitAusGesellschaft(r.firmaId);
@@ -99,7 +109,7 @@ export function umsatzBezug(k: KontaktKurz, crm: Pick<CrmBestand, 'firmen' | 'ch
   // Neueste zuerst: nach Zahlung, Rechnungsdatum, Fälligkeit.
   const wann = (z: ZugeordneteRechnung) => z.r.bezahltAm ?? z.r.datum ?? z.r.faellig ?? z.r.angebotAm ?? '';
   zugeordnet.sort((a, b) => wann(b).localeCompare(wann(a)));
-  return { ...(firma ? { firma } : {}), mandate, deals, rechnungen: zugeordnet };
+  return { ...(firma ? { firma } : {}), ...(firmen.length > 1 ? { gruppe: firmen } : {}), mandate, deals, rechnungen: zugeordnet };
 }
 
 export interface UmsatzKennzahlen {

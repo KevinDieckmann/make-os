@@ -20,6 +20,9 @@ import type { ListenOp } from '@/lib/sync';
 import { CRM_LISTEN, type CrmBestand, type CrmListe } from './typen';
 import { dealZuFirma, mandatZuFirma } from './firmen-bezug';
 import { rechnungPasst, type RechnungKurz } from './kunden';
+import { personenDerFirma } from './stationen';
+import { toechter } from './konzern';
+import type { Kontakt } from '@/lib/make-one/crm';
 
 export type CrmKonfliktGrund = 'inzwischen geändert' | 'inzwischen gelöscht' | 'ohne Stand';
 export interface CrmKonflikt { liste: CrmListe; id: string; grund: CrmKonfliktGrund; aktuell?: Record<string, unknown> & { stand: string } }
@@ -66,8 +69,9 @@ export function crmKonflikte(b: CrmBestand, ops: ListenOp[]): CrmKonflikt[] {
 }
 
 /** Was beim Löschen gebraucht wird, aber nicht im CRM-Bestand liegt: Personen (Kartei) und Rechnungen (Finanzplan). */
-export interface VerweisKontext { kontakte?: { id: string; firmaId?: string }[]; rechnungen?: (RechnungKurz & { mandatId?: string })[] }
-export interface VerweisAnzahl { personen: number; deals: number; mandate: number; rechnungen: number }
+export interface VerweisKontext { kontakte?: Pick<Kontakt, 'id' | 'firmaId' | 'position' | 'stationen'>[]; rechnungen?: (RechnungKurz & { mandatId?: string })[] }
+/** `personen` zählt jede Station (auch beendete — sonst verlöre die Historie ihre Firma); `toechter` die Firmen mit dieser Mutter (28.09.). */
+export interface VerweisAnzahl { personen: number; deals: number; mandate: number; rechnungen: number; toechter?: number }
 export interface LoeschSperre { liste: 'firmen' | 'mandate'; id: string; anzahl: VerweisAnzahl; text: string }
 
 const wort = (n: number, eins: string, viele: string) => `${n} ${n === 1 ? eins : viele}`;
@@ -76,6 +80,7 @@ export function verweisText(name: string, a: VerweisAnzahl): string {
   const teile = [
     a.personen && wort(a.personen, 'Person', 'Personen'), a.deals && wort(a.deals, 'Deal', 'Deals'),
     a.mandate && wort(a.mandate, 'Mandat', 'Mandate'), a.rechnungen && wort(a.rechnungen, 'Rechnung', 'Rechnungen'),
+    a.toechter && wort(a.toechter, 'Tochterfirma', 'Tochterfirmen'),
   ].filter(Boolean);
   return `„${name}“ wird nicht gelöscht: daran hängen noch ${teile.join(' · ')} — erst umhängen oder beenden, dann löschen.`;
 }
@@ -97,12 +102,13 @@ export function loeschSperren(b: CrmBestand, ops: ListenOp[], kontext: VerweisKo
       const mandate = b.mandate.filter(m => mandatZuFirma(m, f));
       const mandatIds = new Set(mandate.map(m => m.id));
       const anzahl: VerweisAnzahl = {
-        personen: kontakte.filter(k => k.firmaId === f.id).length,
+        personen: personenDerFirma(kontakte, f.id, { nurAktiv: false }).length,
         deals: b.chancen.filter(c => dealZuFirma(c, f)).length,
         mandate: mandate.length,
         rechnungen: rechnungen.filter(r => (r.mandatId ? mandatIds.has(r.mandatId) : rechnungPasst({ kunde: f.name }, r))).length,
+        ...(toechter(b.firmen, f.id).length ? { toechter: toechter(b.firmen, f.id).length } : {}),
       };
-      if (anzahl.personen || anzahl.deals || anzahl.mandate || anzahl.rechnungen) sperren.push({ liste: 'firmen', id, anzahl, text: verweisText(f.name, anzahl) });
+      if (anzahl.personen || anzahl.deals || anzahl.mandate || anzahl.rechnungen || anzahl.toechter) sperren.push({ liste: 'firmen', id, anzahl, text: verweisText(f.name, anzahl) });
     } else if (o.liste === 'mandate') {
       const m = b.mandate.find(x => x.id === id);
       if (!m) continue;

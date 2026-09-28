@@ -15,6 +15,7 @@
 // die Ampel für jede Karte, jeden Entwurf und jedes Agentenpaket.
 
 import type { Kontakt, EinwilligungKanal } from '@/lib/make-one/crm';
+import { hatTyp } from './mehrfach';
 
 export type Kanal = 'mail' | 'linkedin' | 'telefon' | 'newsletter' | 'einladung' | 'vernetzen';
 export type Farbe = 'gruen' | 'gelb' | 'rot';
@@ -30,7 +31,7 @@ export interface Kontext {
 const gueltig = (k: Kontakt, kanal: EinwilligungKanal) => (k.einwilligungen ?? []).find(e => e.kanal === kanal && !e.widerrufenAm);
 /** Persönlich bekannt: Netzwerk, Kreis A/B, oder schon im Gespräch gewesen. */
 export function bekannt(k: Kontakt): boolean {
-  return k.kreis === 'A' || k.kreis === 'B' || k.typ === 'Netzwerk' || k.lebensphase === 'partner' || k.lebensphase === 'multiplikator'
+  return k.kreis === 'A' || k.kreis === 'B' || hatTyp(k, 'Netzwerk') || k.lebensphase === 'partner' || k.lebensphase === 'multiplikator'
     || ['gespraech', 'termin', 'angebot', 'gewonnen'].includes(k.stufe) || (k.aktivitaeten ?? []).some(a => a.art === 'antwort' || a.art === 'gespraech' || a.art === 'termin');
 }
 

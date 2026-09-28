@@ -5,20 +5,27 @@
 // CRM die Firmenliste. Läuft nach jedem Import und auf Knopfdruck.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { protokolliere, listenDiff, type Wer } from '@/lib/store/aenderungsprotokoll';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from './speicher';
 import { firmenAbgleich } from './firmen';
 
-export async function firmenAbgleichen(): Promise<{ neu: number; verknuepft: number; ergaenzt: number; firmen: number }> {
+/** `wer` (28.09.): wer den Abgleich auslöst — der Import übergibt `{ art: 'import' }` ans Änderungsprotokoll. */
+export async function firmenAbgleichen(wer?: Wer): Promise<{ neu: number; verknuepft: number; ergaenzt: number; firmen: number }> {
   const jetzt = new Date().toISOString();
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const crm = await ladeCrm();
   const r = firmenAbgleich(kontakte, crm.firmen, jetzt);
   const verweis = new Map(r.kontakte.filter(k => k.firmaId).map(k => [k.id, k.firmaId!]));
+  let vorher: Kontakt[] = [], nachher: Kontakt[] = [];
   await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
     const f = cur ?? { kontakte: [] };
-    return { ...f, kontakte: f.kontakte.map(k => (!k.firmaId && verweis.has(k.id) ? { ...k, firmaId: verweis.get(k.id)! } : k)) };
+    vorher = f.kontakte;
+    // Nur Altbestand ohne Stationen (28.09.): bei gespeicherten Stationen verknüpft der Abgleich nie still.
+    nachher = f.kontakte.map(k => (!k.firmaId && !Array.isArray(k.stationen) && verweis.has(k.id) ? { ...k, firmaId: verweis.get(k.id)! } : k));
+    return { ...f, kontakte: nachher };
   });
+  await protokolliere('kontakte', listenDiff(vorher, nachher), wer);
   const neueIds = new Map(r.firmen.map(x => [x.id, x]));
   const fertig = await aendereCrm(cur => {
     const da = new Map(cur.firmen.map(x => [x.id, x]));
@@ -26,6 +33,6 @@ export async function firmenAbgleichen(): Promise<{ neu: number; verknuepft: num
     const liste = cur.firmen.map(x => { const n = neueIds.get(x.id); if (!n) return x; const out = { ...n, ...Object.fromEntries(Object.entries(x).filter(([, v]) => v !== undefined && v !== '')) }; if (!x.rolleVonHand) out.rolle = n.rolle; return out; });
     for (const x of r.firmen) if (!da.has(x.id)) liste.push(x);
     return { ...cur, firmen: liste };
-  });
+  }, wer);
   return { neu: r.neu, verknuepft: r.verknuepft, ergaenzt: r.ergaenzt, firmen: fertig.firmen.length };
 }

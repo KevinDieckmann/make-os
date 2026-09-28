@@ -118,7 +118,7 @@ export function Nachfassen({ e, api, zuKontakt }: ReiterProps) {
           {followUpMoeglich(e, t, heute) && !mitFollowUp.has(k.id) && <Knopf leise aus={busy} onClick={() => void followUp(t)}>Follow-up anlegen</Knopf>}
           {mitFollowUp.has(k.id) && <Chip farbe={C.inkDim}>Follow-up steht</Chip>}
           <Knopf leise onClick={() => zuKontakt(k.id)}>Zur Person</Knopf>
-          <span style={{ marginLeft: 'auto' }}><WerTausch label="fasst nach" wert={wer.person} ich={ich} standard={wer.quelle === 'beziehung' ? 'hält die Beziehung' : wer.quelle === 'event' ? 'wie Event' : undefined} onWahl={person => geben(t, k, person)} /></span>
+          <span style={{ marginLeft: 'auto' }}><WerTausch label="fasst nach" wert={wer.person} ich={ich} standard={wer.quelle === 'beziehung' ? 'zuständig' : wer.quelle === 'event' ? 'wie Event' : undefined} onWahl={person => geben(t, k, person)} /></span>
         </div>
         {deal?.teilnahmeId === t.id && <DealAnlegen quelle="event" quelleBezug={e.id} api={api} kontaktId={k.id} onFertig={id => void dealFertig(id)} onAbbruch={() => setDeal(null)} zuDeal={id => router.push(dealAkte(id))} />}
         <Feedback api={api} t={t} heute={heute} />

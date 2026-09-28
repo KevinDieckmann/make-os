@@ -28,6 +28,9 @@ import type { FokusBlock } from '@/lib/zeitmessung/modell';
 import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
 import { einheitenListe } from '@/lib/planung/einheiten';
 import { einheitName } from '@/lib/einheiten';
+import { personenJeFirma, stationenBefund, firmenDerPerson } from './stationen';
+import { alleAdressen, emailsBefund } from './emails';
+import { kreisFirmen } from './konzern';
 
 import { tagVon } from '@/lib/zeit';
 // ── Eingang ─────────────────────────────────────────────────────────────────
@@ -80,6 +83,11 @@ export const PRUEFUNGEN = {
   'doppelt-kennung': { schwere: 'fehler', bereich: 'kennungen', reparierbar: false, art: 'kennung', text: n => `${n} ${e(n, 'Kennung kommt', 'Kennungen kommen')} in derselben Liste mehrfach vor — Verweise darauf sind nicht eindeutig.` },
   'kontakt-email-doppelt': { schwere: 'warnung', bereich: 'kontakte', reparierbar: false, art: 'kontakt', text: n => `${n} ${e(n, 'Person teilt', 'Personen teilen')} sich eine E-Mail-Adresse mit einer anderen — in der Kartei unter „Dubletten“ prüfen.` },
   'kontakt-firma-tot': { schwere: 'fehler', bereich: 'kontakte', reparierbar: false, art: 'kontakt', text: n => `${n} ${e(n, 'Person zeigt', 'Personen zeigen')} auf eine Firma, die es nicht mehr gibt — „Firmen abgleichen“ verknüpft neu.` },
+  'kontakt-station-firma-tot': { schwere: 'fehler', bereich: 'kontakte', reparierbar: false, art: 'kontakt', text: n => `${n} ${e(n, 'Person hat', 'Personen haben')} eine Station (Firma in der Beschäftigungshistorie), deren Firma es nicht mehr gibt.` },
+  'kontakt-station-haupt': { schwere: 'fehler', bereich: 'kontakte', reparierbar: false, art: 'kontakt', text: n => `${n} ${e(n, 'Person hat', 'Personen haben')} nicht genau eine Hauptstation, oder die angezeigte Firma weicht von der Hauptstation ab — in der Kontaktseite unter „Stationen“ die Hauptstation wählen.` },
+  'kontakt-email-haupt': { schwere: 'warnung', bereich: 'kontakte', reparierbar: false, art: 'kontakt', text: n => `${n} ${e(n, 'Person hat', 'Personen haben')} mehrere E-Mail-Adressen, aber nicht genau eine Haupt-Adresse (oder sie weicht von der angezeigten ab) — in der Kontaktseite die Haupt-Adresse wählen.` },
+  'firma-mutter-tot': { schwere: 'fehler', bereich: 'firmen', reparierbar: true, art: 'firma', text: n => `${n} ${e(n, 'Firma zeigt', 'Firmen zeigen')} auf eine Mutterfirma, die es nicht mehr gibt — Reparieren entfernt den Verweis.` },
+  'firma-mutter-zyklus': { schwere: 'fehler', bereich: 'firmen', reparierbar: false, art: 'firma', text: n => `${n} ${e(n, 'Firma liegt', 'Firmen liegen')} auf einem Kreis von Mutterfirmen (eine Firma wäre ihre eigene Mutter) — in der Firmenkarte eine Mutter lösen.` },
   'firma-ohne-personen': { schwere: 'hinweis', bereich: 'firmen', reparierbar: false, art: 'firma', text: n => `${n} ${e(n, 'Firma hat', 'Firmen haben')} keine Person in der Kartei.` },
   'kunde-ohne-mandat-person': { schwere: 'hinweis', bereich: 'kontakte', reparierbar: false, art: 'kontakt', text: n => `${n} ${e(n, 'Person ist', 'Personen sind')} als Kunde geführt, aber es gibt kein Mandat dazu — Mandat nachtragen (zählt bis dahin als Bestandskunde).` },
   'kunde-ohne-mandat-firma': { schwere: 'hinweis', bereich: 'firmen', reparierbar: false, art: 'firma', text: n => `${n} ${e(n, 'Firma ist', 'Firmen sind')} als Kunde geführt, aber es gibt kein Mandat dazu — Mandat nachtragen (zählt bis dahin als Bestandskunde).` },
@@ -216,34 +224,39 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
   if (b.aufgaben) doppelt('aufgaben', b.aufgaben.liste);
   if (b.dateien) doppelt('dateien', b.dateien.eintraege);
 
-  // Personen
+  // Personen — alle Adressen (28.09., #11), Stationen und Haupt-Adresse (28.09.)
   const jeMail = new Map<string, string[]>();
   for (const k of kontakte) {
-    const mail = (k.email ?? '').trim().toLowerCase();
-    if (mail.includes('@')) jeMail.set(mail, [...(jeMail.get(mail) ?? []), k.id]);
+    for (const mail of alleAdressen(k)) jeMail.set(mail, Array.from(new Set([...(jeMail.get(mail) ?? []), k.id])));
     if (k.firmaId && !m.firmen.has(k.firmaId)) melde('kontakt-firma-tot', k.id);
     if (k.lead?.chanceId && !m.chancen.has(k.lead.chanceId)) melde('kontakt-lead-deal-tot', k.id);
+    const st = stationenBefund(k, id => m.firmen.has(id));
+    if (st.firmaTot) melde('kontakt-station-firma-tot', k.id);
+    if (st.hauptFalsch) melde('kontakt-station-haupt', k.id);
+    if (emailsBefund(k)) melde('kontakt-email-haupt', k.id);
   }
   for (const ids of Array.from(jeMail.values())) if (ids.length > 1) for (const id of ids) melde('kontakt-email-doppelt', id);
 
-  // Firmen
-  const mitPerson = new Set(kontakte.map(k => k.firmaId).filter((x): x is string => !!x));
+  // Firmen — Personen einer Firma nur über die Stationen (28.09.)
+  const jeFirma = personenJeFirma(kontakte, { nurAktiv: true });
   const firmenNachId = new Map<string, Firma>(liste(crm.firmen).map(f => [f.id, f]));
   for (const f of liste(crm.firmen)) {
-    if (!mitPerson.has(f.id)) melde('firma-ohne-personen', f.id);
+    if (!jeFirma.has(f.id)) melde('firma-ohne-personen', f.id);
     if (f.lead?.chanceId && !m.chancen.has(f.lead.chanceId)) melde('firma-lead-deal-tot', f.id);
+    if (f.mutterId && !m.firmen.has(f.mutterId)) melde('firma-mutter-tot', f.id);
   }
+  for (const id of kreisFirmen(liste(crm.firmen))) melde('firma-mutter-zyklus', id);
 
   // Kunde ohne Mandat (Kevin 28.09.: zählt in BEAN als Bestandskunde, bis das Mandat nachgetragen ist).
   const mandate = liste(crm.mandate);
   for (const k of kontakte) {
     if (k.lebensphase !== 'kunde') continue;
-    const firma = k.firmaId ? firmenNachId.get(k.firmaId) : undefined;
-    if (!mandate.some(x => liste(x.kontaktIds).includes(k.id) || (!!firma && mandatZuFirma(x, firma)))) melde('kunde-ohne-mandat-person', k.id);
+    const firmen = firmenDerPerson(k).map(id => firmenNachId.get(id)).filter((x): x is Firma => !!x);
+    if (!mandate.some(x => liste(x.kontaktIds).includes(k.id) || firmen.some(f => mandatZuFirma(x, f)))) melde('kunde-ohne-mandat-person', k.id);
   }
   for (const f of liste(crm.firmen)) {
     if (f.rolle !== 'kunde') continue;
-    const personen = new Set(kontakte.filter(k => k.firmaId === f.id).map(k => k.id));
+    const personen = new Set((jeFirma.get(f.id) ?? []).map(k => k.id));
     if (!mandate.some(x => mandatZuFirma(x, f) || liste(x.kontaktIds).some(id => personen.has(id)))) melde('kunde-ohne-mandat-firma', f.id);
   }
 
@@ -429,6 +442,16 @@ export function verbindungenReparieren(b: VerbindungsBestaende, ids: readonly st
     let n = 0;
     setze('mandate', liste(crm.mandate).map(x => (liste(x.kontaktIds).some(id => !m.kontakte.has(id)) ? (n++, { ...x, kontaktIds: liste(x.kontaktIds).filter(id => m.kontakte.has(id)) }) : x)));
     zaehle('mandat-kontakt-tot', 'crm', n, `${n} ${e(n, 'Mandat', 'Mandate')}: tote Personen-Verweise entfernt`);
+  }
+  if (will.has('firma-mutter-tot')) {
+    let n = 0;
+    setze('firmen', liste(crm.firmen).map(f => {
+      if (!f.mutterId || m.firmen.has(f.mutterId)) return f;
+      n++;
+      const { mutterId: _weg, ...rest } = f;
+      return rest;
+    }));
+    zaehle('firma-mutter-tot', 'crm', n, `${n} ${e(n, 'Firma', 'Firmen')}: Verweis auf gelöschte Mutterfirma entfernt`);
   }
   if (will.has('firma-lead-deal-tot')) {
     let n = 0;

@@ -5,7 +5,7 @@
 // für die ich zuständig bin und die noch qualifiziert werden müssen — mit den
 // Kernfragen, einem Freitext je Schmerz/Bedarf, dem Lead-Score live, und von
 // dort in die Akte.“ Malin sieht ihre Leads zuerst, kann Kevins dazuschalten
-// und Leads ohne Besitzer per Klick übernehmen. Logik: lib/crm/leads.ts
+// und nicht zugeordnete Leads (ohne Zuständige/n, Feld `besitzer`) per Klick übernehmen. Logik: lib/crm/leads.ts
 // (zuQualifizieren) und lib/crm/score.ts; Schreibwege über /api/crm/lead.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -74,7 +74,7 @@ export function Qualifizierung({ api, zuKontakt, zuFirma, zuLeads }: { api: CrmA
   const andere = anderer(ich);
   const WER: { id: RundenFilter['wer']; label: string }[] = [
     { id: ich, label: `Meine ${zaehl(ich)}` }, { id: andere, label: `${nameVon(andere)} ${zaehl(andere)}` },
-    { id: 'ohne', label: `Ohne Besitzer ${zaehl('ohne')}` }, { id: 'alle', label: `Alle ${zaehl('alle')}` },
+    { id: 'ohne', label: `Nicht zugeordnet ${zaehl('ohne')}` }, { id: 'alle', label: `Alle ${zaehl('alle')}` },
   ];
   const kanaele = useMemo(() => kanalLeistung(d?.leads ?? []), [d]);
 
@@ -82,7 +82,7 @@ export function Qualifizierung({ api, zuKontakt, zuFirma, zuLeads }: { api: CrmA
     <>
       <Karte i={0} akzent={LEUCHT.business}>
         <Ueberschrift farbe={LEUCHT.business} rechts={karten.length ? <span style={{ fontSize: 12.5, color: C.inkLeise }}>{Math.min(pos + 1, karten.length)} von {karten.length}{erledigt ? ` · ${erledigt} geprüft` : ''}</span> : undefined}>Qualifizierungsrunde</Ueberschrift>
-        <div style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.55, marginBottom: 10 }}>Lead für Lead: die sechs Kernfragen, was genau dahintersteckt, und wie warm es ist. Wer qualifiziert, übernimmt Leads ohne Besitzer. Kalte Leads warten im Marketing-Segment „Vernetzen“, bis sie warm werden.</div>
+        <div style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.55, marginBottom: 10 }}>Lead für Lead: die sechs Kernfragen, was genau dahintersteckt, und wie warm es ist. Wer qualifiziert, übernimmt nicht zugeordnete Leads (ohne Zuständige/n). Kalte Leads warten im Marketing-Segment „Vernetzen“, bis sie warm werden.</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={WER} aktiv={wer} onWahl={setWer} farbe={LEUCHT.business} /></div>
           <button type="button" onClick={() => setNurNeu(!nurNeu)} aria-pressed={nurNeu} title="BEAN „Neu“: kein Mandat, kein offenes Angebot — Leads zum Qualifizieren" className="fassbar"
@@ -103,7 +103,7 @@ export function Qualifizierung({ api, zuKontakt, zuFirma, zuLeads }: { api: CrmA
       {!d && !fehler && <Karte i={1}><Leer>Lädt die Leads …</Leer></Karte>}
       {d && !karten.length && (
         <Karte i={1} akzent={LEUCHT.gut}>
-          <Leer>{wer === ich ? 'Alle deine Leads sind qualifiziert oder frisch geprüft. Nächste Runde in 60 Tagen — oder „Ohne Besitzer“ öffnen.' : 'Hier wartet gerade nichts.'}</Leer>
+          <Leer>{wer === ich ? 'Alle deine Leads sind qualifiziert oder frisch geprüft. Nächste Runde in 60 Tagen — oder „Nicht zugeordnet“ öffnen.' : 'Hier wartet gerade nichts.'}</Leer>
         </Karte>
       )}
       {d && karten.length > 0 && !z && (

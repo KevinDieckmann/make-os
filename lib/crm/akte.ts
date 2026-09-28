@@ -12,6 +12,7 @@
 import { KREIS_TAKT, type Kontakt } from '@/lib/make-one/crm';
 import { dealZuFirma } from './firmen-bezug';
 import type { CrmBestand, Firma, Chance, Mandat, Event, Teilnahme, TeilnahmeStatus, Kampagne, KampagnenErgebnis, Beitrag, Antrag } from './typen';
+import { personenDerFirma } from './stationen';
 
 export interface MatrixFeld<K extends string = string> {
   feld: K; label: string;
@@ -123,6 +124,7 @@ export function verbindungen(k: Kontakt, kontakte: Kontakt[], stand: CrmBestand)
     beitraege: stand.beitraege.flatMap(b => b.wirkung.filter(w => w.kontaktId === k.id).map(w => ({ beitrag: b, art: WIRKUNG_LABEL[w.art] ?? w.art, am: w.am }))).sort((a, b) => neu(a.am, b.am)),
     powerHour: stand.sitzungen.flatMap(s => s.karten.filter(c => c.kontaktId === k.id).map(c => ({ datum: s.datum, person: s.person, ...(c.ergebnis ? { ergebnis: c.ergebnis } : {}), ...(c.notiz ? { notiz: c.notiz } : {}) }))).sort((a, b) => neu(a.datum, b.datum)),
     antraege: stand.antraege.filter(a => a.kontaktId === k.id).sort((a, b) => neu(a.eingang, b.eingang)),
-    kollegen: k.firmaId ? kontakte.filter(x => x.firmaId === k.firmaId && x.id !== k.id).sort((a, b) => rang(a) - rang(b) || `${a.nachname}${a.vorname}`.localeCompare(`${b.nachname}${b.vorname}`)) : [],
+    // Kollegen = Personen mit laufender Station in derselben Firma (28.09., `personenDerFirma`).
+    kollegen: k.firmaId ? personenDerFirma(kontakte, k.firmaId).filter(x => x.id !== k.id).sort((a, b) => rang(a) - rang(b) || `${a.nachname}${a.vorname}`.localeCompare(`${b.nachname}${b.vorname}`)) : [],
   };
 }

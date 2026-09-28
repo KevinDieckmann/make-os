@@ -18,7 +18,7 @@
 // gleichnamigen Wert „„<Suchtext>“ anlegen“. Enter legt an und wählt; die
 // Länge prüft `neuPruefen` (neuMin/neuMax), Fehler stehen im Menü. `fuss`
 // (z. B. „Pflegen ›“) steht darunter. Genutzt von Typ/Kategorie der Akte
-// (WertelistenEinzelWahl) und der Einheit an Aufgaben/Routinen (EinheitWahl).
+// (WertelistenMehrfachWahl) und der Einheit an Aufgaben/Routinen (EinheitWahl).
 // Regel (CLAUDE.md): Auswahl in Formularen = Wahl; Pillenreihen nur für
 // Filter, Reiter, Navigation und echte Zweier-Umschalter.
 
@@ -86,6 +86,12 @@ export interface WahlMehrfachProps<T extends string> extends Gemeinsam<T> {
   onWahl: (ids: T[]) => void;
   /** Vorschläge aus den Daten — nur die, die noch nicht gesetzt sind, erscheinen. */
   vorschlag?: WahlVorschlag<T> | readonly WahlVorschlag<T>[] | null;
+  /** Neu anlegen aus dem Menü (28.09., wie bei `Wahl`): der angelegte Wert kommt dazu. */
+  onNeu?: (text: string) => Promise<T | null>;
+  neuMin?: number;
+  neuMax?: number;
+  /** Fuß des Menüs, z. B. „Pflegen ›“. */
+  fuss?: ReactNode;
 }
 
 // ── Aussehen ─────────────────────────────────────────────────────────────────
@@ -150,7 +156,7 @@ export function Wahl<T extends string>({ liste, wert, onWahl, onLeeren, label, l
 }
 
 // ── Mehrfachwahl ─────────────────────────────────────────────────────────────
-export function WahlMehrfach<T extends string>({ liste, wert, onWahl, label, leer, vorschlag, farbe = C.aktiv, klein, aus, id }: WahlMehrfachProps<T>) {
+export function WahlMehrfach<T extends string>({ liste, wert, onWahl, label, leer, vorschlag, farbe = C.aktiv, klein, aus, id, onNeu, neuMin = NEU_MIN, neuMax = NEU_MAX, fuss }: WahlMehrfachProps<T>) {
   // Offen = das Element, an dem das Menü hängt (beim Öffnen gemerkt — nie ein Ref im Rendern lesen).
   const [anker, setAnker] = useState<HTMLElement | null>(null);
   const offen = !!anker;
@@ -179,7 +185,7 @@ export function WahlMehrfach<T extends string>({ liste, wert, onWahl, label, lee
           <span style={{ fontWeight: 500, opacity: .8 }}>Vorschlag:</span> {wahlLabel(liste, v.id)} ✓
         </button>
       ))}
-      {!aus && (wert.length < liste.length || offen) && (
+      {!aus && (wert.length < liste.length || offen || !!onNeu) && (
         <button ref={knopf} type="button" onClick={() => (offen ? schliessen(false) : oeffnen())} onKeyDown={e => { if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !offen) { e.preventDefault(); oeffnen(); } }}
           className="fassbar" aria-label={wert.length ? `${label} hinzufügen` : `${label} wählen`} aria-haspopup="listbox" aria-expanded={offen} aria-controls={offen ? menuId : undefined}
           style={{ ...leerStil(klein), ...(wert.length ? { minWidth: klein ? 26 : 30, justifyContent: 'center', padding: klein ? '3px 8px' : '5px 10px' } : {}) }}>
@@ -189,7 +195,8 @@ export function WahlMehrfach<T extends string>({ liste, wert, onWahl, label, lee
       {aus && !wert.length && <span style={{ fontSize: 12.5, color: C.inkLeise }}>—</span>}
       {anker && (
         <WahlMenue anker={anker} menuId={menuId} liste={liste} label={label} farbe={farbe} mehrfach
-          gewaehlt={wert} vorschlaege={vorschlaege} entfernen={false}
+          gewaehlt={wert} vorschlaege={vorschlaege} entfernen={false} fuss={fuss}
+          neu={onNeu ? { min: neuMin, max: neuMax, anlegen: onNeu } : undefined}
           onWert={umschalten} onEntfernen={() => undefined} onSchliessen={schliessen} />
       )}
     </span>
@@ -202,7 +209,7 @@ type Eintrag<T extends string> = { art: 'wert'; e: WahlEintrag<T> } | { art: 'en
 function WahlMenue<T extends string>({ anker, menuId, liste, label, farbe, gewaehlt, vorschlaege, entfernen, leerenLabel = 'entfernen', mehrfach, neu, fuss, onWert, onEntfernen, onSchliessen }: {
   anker: HTMLElement; menuId: string; liste: readonly WahlEintrag<T>[]; label: string; farbe: string;
   gewaehlt: readonly T[]; vorschlaege: readonly WahlVorschlag<T>[]; entfernen: boolean; leerenLabel?: string; mehrfach?: boolean;
-  /** Neu anlegen (nur Einzelwahl mit `onNeu`). */
+  /** Neu anlegen (mit `onNeu` — Einzel- und seit 28.09. auch Mehrfachwahl). */
   neu?: { min: number; max: number; anlegen: (text: string) => Promise<T | null> };
   fuss?: ReactNode;
   onWert: (id: T) => void; onEntfernen: () => void; onSchliessen: (fokus: boolean) => void;
