@@ -25,7 +25,7 @@ describe('Fristen', () => {
         { id: 'b', kunde: 'Beendet GmbH', status: 'beendet', ende: '2026-10-05' },
       ],
       zahlungen: [{ id: 'z1', an: 'Finanzamt', titel: 'USt', betrag: 1200, status: 'offen', faellig: '2026-10-10' }, { id: 'z2', an: 'Alt', status: 'bezahlt', faellig: '2026-10-01' }],
-      rechnungen: [{ id: 'r1', kunde: 'One Finance', titel: 'Retainer Okt', betrag: 3000, status: 'gestellt', faellig: '2026-10-14' }, { id: 'r2', kunde: 'Plan', status: 'geplant', faellig: '2026-10-02' }],
+      rechnungen: [{ id: 'r1', kunde: 'Kunde A', titel: 'Retainer Okt', betrag: 3000, status: 'gestellt', faellig: '2026-10-14' }, { id: 'r2', kunde: 'Plan', status: 'geplant', faellig: '2026-10-02' }],
     }, '2026-09-28', '2026-10-15');
     expect(f.map(x => [x.tag, x.art, x.titel])).toEqual([
       ['2026-09-30', 'meilenstein', 'MAKE OS live'],
@@ -33,7 +33,7 @@ describe('Fristen', () => {
       ['2026-10-02', 'mandat', 'Kündigungsfrist: Acme'],
       ['2026-10-10', 'etappe', 'Malin arbeitet täglich damit'],
       ['2026-10-10', 'zahlung', 'Zahlung: Finanzamt'],
-      ['2026-10-14', 'eingang', 'Zahlungseingang: One Finance'],
+      ['2026-10-14', 'eingang', 'Zahlungseingang: Kunde A'],
     ]);
     expect(f.find(x => x.art === 'zahlung')!.unter).toMatch(/USt · 1\.200\s€/);
     expect(f.every(x => x.href.startsWith('/os/'))).toBe(true);

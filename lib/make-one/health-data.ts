@@ -71,7 +71,7 @@ export interface WeekBlock { t: string; name: string; kind: BlockKind; }
 export interface WeekDay { day: string; label: string; blocks: WeekBlock[]; }
 export const WOCHE: WeekDay[] = [
   { day: 'Mo', label: 'Montag', blocks: [
-    { t: '09:30', name: 'KEMARIS Check-In (Kevin × Frank)', kind: 'business' },
+    { t: '09:30', name: 'KEMARIS Check-In (Team)', kind: 'business' },
     { t: '09–17', name: 'Fokuszeit geschützt', kind: 'focus' },
     { t: 'abends', name: 'MAKE Abstimmung mit Malin', kind: 'ruhe' },
     { t: 'täglich', name: 'Reha & Mobilität', kind: 'health' },
@@ -87,7 +87,7 @@ export const WOCHE: WeekDay[] = [
     { t: 'täglich', name: 'Reha & Mobilität', kind: 'health' },
   ]},
   { day: 'Do', label: 'Donnerstag', blocks: [
-    { t: 'vorm.', name: 'Frank × Kevin · Bullshit-freie Zone', kind: 'business' },
+    { t: 'vorm.', name: 'Jour fixe Finanzen · Bullshit-freie Zone', kind: 'business' },
     { t: '09–17', name: 'Fokuszeit geschützt', kind: 'focus' },
     { t: 'täglich', name: 'Reha & Mobilität', kind: 'health' },
   ]},

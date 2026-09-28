@@ -1,7 +1,7 @@
 // ─── N26-Parser gegen den echten Januar-Auszug 2026 ─────────────────────────
 // Die Zeilen stammen aus pdf.js selbst (Malins Aufnahme). Echte Kontodaten:
 // Datei und Sollwerte liegen nur in .data/pruefdaten/ (von Git ausgeschlossen).
-// Fehlen sie — etwa auf Malins Rechner oder im Rohbau für Alex —, überspringt
+// Fehlen sie — etwa auf Malins Rechner oder im Rohbau für Dritte —, überspringt
 // sich dieser Test, statt zu scheitern.
 
 import { describe, it, expect } from 'vitest';

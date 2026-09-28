@@ -57,7 +57,12 @@ export function pruefliste(b: Businessbestand, h: Haushalt): Pruefposten[] {
   }
   for (const r of fp.rechnungen ?? []) {
     if (r.firmaId !== 'privat') continue;
-    raus.push({ quelle: 'rechnung', id: r.id, titel: r.kunde, unter: `${r.titel} · ${r.status}`, betrag: cent(r.betrag), datum: r.faellig ?? null, vorschlag: 'entfernen', aktionen: ['entfernen', 'behalten'], treffer: null, grund: 'Private Forderung im Firmen-Finanzplan.' });
+    // Rechnungsschutz (28.09., U3 — wie `rechnungSchutz` in lib/finanzen/finanzplan-bestand.ts):
+    // nur eine geplante Rechnung darf weg; ab „gestellt“ nur mit Vermerk einer Firma zuordnen.
+    const geplant = r.status === 'geplant';
+    raus.push({ quelle: 'rechnung', id: r.id, titel: r.kunde, unter: `${r.titel} · ${r.status}`, betrag: cent(r.betrag), datum: r.faellig ?? null,
+      vorschlag: geplant ? 'entfernen' : 'behalten', aktionen: geplant ? ['entfernen', 'behalten'] : ['kdv', 'kdc', 'kemaris', 'behalten'], treffer: null,
+      grund: geplant ? 'Private Forderung im Firmen-Finanzplan.' : `Die Rechnung ist ${r.status} — sie wird nicht gelöscht. Einer Firma zuordnen (mit Vermerk) oder im Finanzplan stornieren.` });
   }
   for (const x of b.buchungen?.buchungen ?? []) {
     const ort = x.ort ?? 'privat';

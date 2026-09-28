@@ -38,7 +38,7 @@ export function DatenbasisView() {
 
       // ── Geld (Malins Revier) ──
       const staende = (fplan?.firmen ?? []).filter((f: { kontostand: number | null }) => f.kontostand != null).length;
-      z.push({ bereich: 'Kontostände (Vivid × 2)', wer: 'Malin', href: '/os/finanzen',
+      z.push({ bereich: 'Kontostände (2 Geschäftskonten)', wer: 'Malin', href: '/os/finanzen',
         status: staende === 2 ? 'beide gepflegt' : staende === 1 ? '1 von 2 — zweiten eintragen' : 'fehlen — heute im Meeting eintragen',
         ton: staende === 2 ? 'ok' : staende === 1 ? 'acht' : 'fehlt' });
       const re = fplan?.rechnungen ?? [];
@@ -112,7 +112,7 @@ export function DatenbasisView() {
       ton: (v.verbunden ? 'ok' : v.konfiguriert ? 'acht' : 'fehlt') as Ton,
       href: '/os/verbindungen',
     })),
-    { name: 'Vivid (Konten)', status: 'keine offene API — Stände manuell oder zusammen über Chrome', ton: 'acht', href: '/os/finanzen' },
+    { name: 'Bank (Geschäftskonten)', status: 'keine offene API — Stände manuell oder zusammen über Chrome', ton: 'acht', href: '/os/finanzen' },
   ];
 
   const pfeil = <span style={{ color: C.inkLeise }}>›</span>;

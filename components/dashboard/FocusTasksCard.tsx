@@ -59,7 +59,7 @@ const INITIAL_TASKS: Task[] = [
     subtasks: [
       { id: 't2-s1', titel: 'Zahlen Q2 eintragen', erledigt: false },
       { id: 't2-s2', titel: 'Design anpassen', erledigt: false },
-      { id: 't2-s3', titel: 'An Björn versenden', erledigt: false },
+      { id: 't2-s3', titel: 'An die Beratung versenden', erledigt: false },
     ],
     abhaengigVon: 't3',
   },
@@ -101,7 +101,7 @@ const INITIAL_TASKS: Task[] = [
       { id: 't5-s1', titel: 'Login-Flow testen', erledigt: true },
       { id: 't5-s2', titel: 'Dashboard Feedback geben', erledigt: false },
       { id: 't5-s3', titel: 'Bug-Report erstellen', erledigt: false },
-      { id: 't5-s4', titel: 'Alex briefen', erledigt: false },
+      { id: 't5-s4', titel: 'Produktteam briefen', erledigt: false },
     ],
     abhaengigVon: null,
   },

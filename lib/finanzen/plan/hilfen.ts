@@ -20,7 +20,7 @@ export const SONDER_ZEILEN: Record<string, string> = {
 };
 /** Berechnete Zeilen, die man je Zelle überschreiben kann. */
 export const RECHENZEILEN: Record<string, string> = {
-  'ug.ob': 'One Banking', 'ug.retainer': 'Retainer', 'ug.astarna': 'ASTARNA', 'ug.events': 'Events', 'ug.kevin': 'Kevin brutto', 'ug.malin': 'Malin brutto',
+  'ug.ob': 'Ankermandat', 'ug.retainer': 'Retainer', 'ug.astarna': 'ASTARNA', 'ug.events': 'Events', 'ug.kevin': 'Kevin brutto', 'ug.malin': 'Malin brutto',
   'ug.unterstuetzung': 'Unterstützung', 'p.kevinNetto': 'Kevin netto', 'p.malinNetto': 'Malin netto', 'p.malinSelbst': 'Malin brutto (Selbstständigkeit)',
 };
 

@@ -9,8 +9,8 @@ import { opsLesen } from '@/lib/store/patch-liste';
 
 describe('listenOps (Kunden, Meilensteine, Routinen …)', () => {
   const alt = [
-    { id: 'a', name: 'OneBanking', status: 'aktiv' },
-    { id: 'b', name: 'Gregor', status: 'gespraech' },
+    { id: 'a', name: 'Kunde A', status: 'aktiv' },
+    { id: 'b', name: 'Kunde B', status: 'gespraech' },
   ];
 
   it('meldet nichts, wenn nichts geändert wurde', () => {
@@ -25,7 +25,7 @@ describe('listenOps (Kunden, Meilensteine, Routinen …)', () => {
   });
 
   it('erkennt Neuanlage und Löschung nebeneinander', () => {
-    const neu = [alt[0], { id: 'c', name: 'ACME', status: 'gespraech' }];
+    const neu = [alt[0], { id: 'c', name: 'Kunde C', status: 'gespraech' }];
     const ops = listenOps(alt, neu);
     expect(ops).toContainEqual({ op: 'upsert', eintrag: neu[1] });
     expect(ops).toContainEqual({ op: 'delete', id: 'b' });

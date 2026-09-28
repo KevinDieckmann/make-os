@@ -70,15 +70,10 @@ function initials(name: string): string {
   return name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
 }
 
+// Feste Farben nur für Dienste — Personen und Firmen Dritter stehen nicht im Code
+// (Rohbau-Regel, 28.09.); sie bekommen die neutrale Farbe.
 const SENDER_PALETTE: Record<string, string> = {
-  'Frank Mathick':          '#60a5fa',
-  'Danilo Schmidt':         '#a78bfa',
-  'Jan Kronenberger':       '#f472b6',
-  'Katharina Heinschke':    '#ec4899',
-  'Arndt Kempen':           '#f59e0b',
-  'Alexander Groß-Ophoff':  '#10b981',
   'Fireflies.ai':           '#6366f1',
-  'Galerie Mond Fine Arts': '#d97706',
 };
 
 function senderColor(name: string): string {

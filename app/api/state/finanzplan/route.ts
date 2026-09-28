@@ -1,8 +1,8 @@
 // ─── MAKE OS — Finanzplan (lokal) ───────────────────────────────────────────
 // Der lebende Finanz-Organismus: beide Firmen (KD Ventures + Kevin Dieckmann
-// Consulting) mit Konten (Vivid, Stand von Hand — Anbindung steht im Bauplan),
-// die Rechnungs-Pipeline (geplant → gestellt → bezahlt) und Merkposten wie der
-// Björn-Kredit. Das Controlling (/os/controlling) bleibt die Ist-Buchhaltung
+// Consulting) mit Konten (Geschäftskonten, Stand von Hand — Anbindung steht im Bauplan),
+// die Rechnungs-Pipeline (geplant → gestellt → bezahlt) und Merkposten wie ein
+// Partnerdarlehen. Das Controlling (/os/controlling) bleibt die Ist-Buchhaltung
 // je Monat — hier lebt die Planung/Verwaltung davor.
 
 import { NextResponse } from 'next/server';

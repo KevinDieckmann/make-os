@@ -4,7 +4,7 @@
 // Kevin: „Der Kalender ist wirklich noch grausig … guck bei Google Kalender,
 // wie die das aufgebaut haben.“ Also: Tag · Woche · Monat · Agenda, Heute-
 // Knopf und Pfeile, Mini-Monat und Kalender-Schalter links, Suche, Schnell-
-// eingabe („Mo 10 Uhr Kaffee mit Frank 45min“), Klick in die Lücke legt an,
+// eingabe („Mo 10 Uhr Kaffee mit Anna 45min“), Klick in die Lücke legt an,
 // Ziehen verschiebt, Serie und Erinnerung beim Anlegen, Tastatur (t, ←, →,
 // d/w/m/a, n). Daten wie bisher: iCloud direkt (lib/kalender), Fristen aus dem
 // System, Apple-Erinnerungen, Aufgaben mit Datum. Der Kalender-Agent

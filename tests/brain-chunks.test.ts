@@ -24,13 +24,13 @@ describe('abschnitte', () => {
     expect(gross[0].text).toContain(ersteZeileZweites.slice(0, 20));
   });
   it('lässt Codeblöcke zusammen und liest Wikilinks', () => {
-    const a = abschnitte('N', 'Text\n\n```\n# kein Titel\ncode\n```\n\nEnde [[Frank Mathick]] und [[KEMARIS|Firma]] und [[Frank Mathick#Rolle]]');
+    const a = abschnitte('N', 'Text\n\n```\n# kein Titel\ncode\n```\n\nEnde [[Anna Beispiel]] und [[KEMARIS|Firma]] und [[Anna Beispiel#Rolle]]');
     expect(a).toHaveLength(1);
     expect(a[0].text).toContain('# kein Titel');
-    expect(verweise(a[0].text)).toEqual(['Frank Mathick', 'KEMARIS']);
+    expect(verweise(a[0].text)).toEqual(['Anna Beispiel', 'KEMARIS']);
   });
   it('baut eine FTS5-Anfrage mit Präfixsuche', () => {
-    expect(ftsAnfrage('Wer ist Frank Mathick?')).toBe('"wer"* OR "ist"* OR "frank"* OR "mathick"*');
+    expect(ftsAnfrage('Wer ist Anna Beispiel?')).toBe('"wer"* OR "ist"* OR "anna"* OR "beispiel"*');
     expect(ftsAnfrage('"böse" (anfrage)')).toBe('"böse"* OR "anfrage"*');
   });
 });

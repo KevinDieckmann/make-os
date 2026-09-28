@@ -414,6 +414,48 @@ export function rechnungenSchutzVoll(vorher: FinanzplanFile | null, neu: Finanzp
   return null;
 }
 
+// ── Entflechtung Privat/Business: auch hier gilt der Rechnungsschutz (28.09., U3) ──
+// Die Prüfliste (/api/haushalt/pruefliste) räumt private Posten aus dem Firmen-
+// Finanzplan. Eine Rechnung ab „gestellt“ (auch bezahlt/storniert) wird dabei
+// nicht gelöscht — sie lässt sich nur mit Vermerk einer Firma zuordnen. Wer es
+// trotzdem versucht, bekommt 409 statt eines stillen Verlusts.
+
+/** Prüflisten-Aktionen, die eine Rechnung aus dem Finanzplan nehmen würden. */
+const ENTFLECHTUNG_LOESCHT = new Set(['entfernen', 'dublette', 'uebernehmen']);
+const FIRMA_NAME: Record<string, string> = { kdv: 'KD Ventures', kdc: 'Kevin Dieckmann Consulting', kemaris: 'KEMARIS' };
+
+/** null = alle Rechnungs-Entscheidungen erlaubt; sonst der Ablehnungstext (HTTP 409). */
+export function entflechtungSperre(rechnungen: Rechnung[], entscheidungen: { quelle: string; id: string; aktion: string }[]): string | null {
+  for (const e of entscheidungen) {
+    if (e.quelle !== 'rechnung' || !ENTFLECHTUNG_LOESCHT.has(e.aktion)) continue;
+    const r = rechnungen.find(x => x.id === e.id);
+    const grund = r ? rechnungSchutz(r, null) : null;
+    if (grund) return `${grund} In der Prüfliste lässt sie sich nur einer Firma zuordnen (mit Vermerk).`;
+  }
+  return null;
+}
+
+/**
+ * Rechnungen nach den Prüflisten-Entscheidungen: `weg` nimmt nur, was der Schutz
+ * erlaubt (geplant); `zuordnen` (id → Firma) verschiebt mit Vermerk in der Notiz.
+ * Was der Schutz ablehnt, bleibt unverändert stehen.
+ */
+export function rechnungenEntflechten(liste: Rechnung[], weg: Set<string>, zuordnen: Map<string, string>, tag: string): Rechnung[] {
+  const raus: Rechnung[] = [];
+  for (const r of liste) {
+    if (weg.has(r.id) && rechnungSchutz(r, null) === null) continue;
+    const firma = zuordnen.get(r.id);
+    if (firma && firma !== r.firmaId) {
+      const vermerk = `Aus „privat“ nach ${FIRMA_NAME[firma] ?? firma} verschoben am ${tag} (Entflechtung).`;
+      const verschoben: Rechnung = { ...r, firmaId: firma, notiz: [r.notiz, vermerk].filter(Boolean).join(' · ').slice(-300) };
+      raus.push(rechnungSchutz(r, verschoben) === null ? verschoben : r);
+      continue;
+    }
+    raus.push(r);
+  }
+  return raus;
+}
+
 // ── Stornieren (28.09., K3 · #50/#81) ─────────────────────────────────────────
 // Storno = Status `storniert` mit Datum und Grund; der Eintrag bleibt. Gab es zur
 // Rechnung schon einen Zahlungseingang (`bu-re-<id>`), bekommt er eine

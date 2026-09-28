@@ -58,7 +58,7 @@ export function BoardView() {
       fetch('/api/state/tasks').then(r => r.json()).catch(() => ({ state: null })),
     ]).then(([f, pr, t]) => {
       // Privat bleibt privat: Das Board ist die Geschäftssicht. Aufgaben aus
-      // privaten Projekten (Gesundheit, Recht/Wittner, MAKE.One) gehen NICHT in
+      // privaten Projekten (Gesundheit, Recht, MAKE.One) gehen NICHT in
       // den Business-Kontext. 'joint' ist MAKE.One (Malin & Kevin) und damit
       // ausdrücklich PRIVAT — nur 'business' zählt.
       // Bewusst fail-closed: kennen wir das Projekt einer Aufgabe nicht, bleibt

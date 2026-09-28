@@ -30,7 +30,7 @@ export const PHASEN: Phase[] = [
   },
   {
     id: 'delegation', nr: 4, name: 'Delegation & Autonomie',
-    ziel: 'Alles, was nicht zwingend du bist, läuft über Agenten, Frank oder Malin.',
+    ziel: 'Alles, was nicht zwingend du bist, läuft über Agenten, das Team oder Malin.',
     fertigWenn: 'Jede neue Aufgabe wird automatisch auf „wer macht das" geprüft. Die Agenten-Abteilungen arbeiten sichtbar zusammen.',
   },
   {

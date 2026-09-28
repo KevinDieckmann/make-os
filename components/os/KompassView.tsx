@@ -584,7 +584,7 @@ export function KompassView() {
       <Karte i={k++}>
         <Ueberschrift rechts={`${STICHWORTE.length} sind eingebaut — hier kommen eure eigenen dazu.`}>Eigene Stichworte</Ueberschrift>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
-          <input value={swLabel} onChange={e => setSwLabel(e.target.value)} placeholder="Name, z. B. Zoo Palais"
+          <input value={swLabel} onChange={e => setSwLabel(e.target.value)} placeholder="Name, z. B. Volllaunch"
             aria-label="Name des Stichworts" style={{ ...feld, width: 'auto', flex: '1 1 160px', minWidth: 0 }} />
           <input value={swWoerter} onChange={e => setSwWoerter(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') stichwortAnlegen(); }}
             placeholder="Wörter zum Erkennen, mit Komma getrennt" aria-label="Erkennungswörter" style={{ ...feld, width: 'auto', flex: '2 1 200px', minWidth: 0 }} />
@@ -593,7 +593,7 @@ export function KompassView() {
           </select>
           <Knopf onClick={stichwortAnlegen}>+ Anlegen</Knopf>
         </div>
-        {!eigeneSw.length && <Leer>Noch keine eigenen. Beispiel: Name Zoo Palais, Wörter: Zoo Palais, Pressekonferenz, Volllaunch.</Leer>}
+        {!eigeneSw.length && <Leer>Noch keine eigenen. Beispiel: Name Volllaunch, Wörter: Volllaunch, Pressekonferenz, Launch-Event.</Leer>}
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
           {eigeneSw.map(s => (
             <span key={s.id} title={s.woerter.join(', ')}>

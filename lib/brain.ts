@@ -63,7 +63,7 @@ export interface Brain {
     /** Frische je Quelle — der M365-Snapshot altert unabhängig vom Apple-Cache. */
     quellen: { apple: { alterH: number | null; stale: boolean }; kemaris: { alterH: number | null; stale: boolean } };
   };
-  /** M365-Postfach-Snapshot (KEMARIS) — Alex' Mails gehören ins Bild. */
+  /** M365-Postfach-Snapshot (KEMARIS) — Team-Mails gehören ins Bild. */
   msMails: { ungelesen: MsMail[]; at: string | null; alterH: number | null; stale: boolean };
   laeufe: AgentLogEntry[];
   /** Business-Meilensteine aus dem Store (gesundheit bleibt hier bewusst draußen). */

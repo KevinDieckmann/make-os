@@ -82,7 +82,7 @@ describe('rechneUG() — ein UG-Monat von Hand', () => {
     const d = mini(); const ug = rechneUG(d, d.szenarien[0]);
     const m1 = ug[0];
     expect(m1.umsatz).toBe(1000);
-    expect(m1.einzahlungen).toBe(1500);       // 500 Stammkapital + 1000 One Banking (ohne USt)
+    expect(m1.einzahlungen).toBe(1500);       // 500 Stammkapital + 1000 Ankermandat (ohne USt)
     expect(m1.auszahlungen).toBe(100);        // nur Gründungskosten, Gehälter erst ab Monat 2
     expect(m1.konto).toBe(1400);
     expect(m1.gewinn).toBe(900);
@@ -97,7 +97,7 @@ describe('rechneUG() — ein UG-Monat von Hand', () => {
     expect(ug[1].gewinnYTD).toBe(-500);       // 900 − 1400
     expect(ug[1].steuerRuecklage).toBe(0);
     expect(ug[2].konto).toBe(-1400);
-    expect(ug[3].umsatz).toBe(0);             // One Banking läuft drei Monate
+    expect(ug[3].umsatz).toBe(0);             // Ankermandat läuft drei Monate
   });
   it('Retainer mit einem Monat Zahlungsverzug: Umsatz sofort, Geld und USt einen Monat später, USt-Zahlung wieder einen Monat später', () => {
     const d = mini({ szenarien: [szenario({ ob: { betrag: 0, start: 0, laufzeit: 0 }, retainer: [{ betrag: 1000, start: 1, laufzeit: 2 }] })] }, { retainerVerzug: 1, kevinAb: 99, malinAb: 99, gruendungskosten: 0 });
@@ -119,7 +119,7 @@ describe('rechneUG() — ein UG-Monat von Hand', () => {
     expect(ug[3].steuerRuecklage).toBe(0);    // 2027 noch ohne Gewinn, Vorjahr bezahlt
     expect(ug[3].frei).toBe(2600);
   });
-  it('Björn-Rate läuft über die UG in die KD Ventures und tilgt den Rest', () => {
+  it('Partnerdarlehen-Rate läuft über die UG in die KD Ventures und tilgt den Rest', () => {
     const d = mini({}, { kevinAb: 99, malinAb: 99, gruendungskosten: 0, bjoernBetrag: 1000, bjoernRate: 100, bjoernRateVon: 2, bjoernRateBis: 11, bjoernSchluss: 0, bjoernSchlussMonat: 0 });
     const ug = rechneUG(d, d.szenarien[0]);
     expect(ug[0].bjoern).toBe(0); expect(ug[0].bjoernRest).toBe(1000);

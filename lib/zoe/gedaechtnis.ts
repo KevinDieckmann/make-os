@@ -6,7 +6,7 @@
 // Also kein Vorschlagsstapel für Fakten — er merkt sich etwas im Vorbeigehen,
 // und Kevin sieht später, was da steht, und wirft raus, was nicht stimmt.
 //
-// Bewusst strukturierte Fakten und NICHT Vektorsuche: „wann habe ich Frank
+// Bewusst strukturierte Fakten und NICHT Vektorsuche: „wann habe ich Anna
 // zuletzt gesprochen" ist eine Frage nach einem Feld, keine nach Ähnlichkeit.
 // Der wörtliche Satz bleibt trotzdem erhalten — die Formulierung ist oft die
 // eigentliche Information.
@@ -27,7 +27,7 @@ export interface Fakt {
   zeit: string;
   tag: string;
   art: FaktArt;
-  /** Worum es geht — „Frank Mathick", „KEMARIS", „Rücken". */
+  /** Worum es geht — „Anna Beispiel", „KEMARIS", „Rücken". */
   thema: string;
   /** Der Fakt selbst, so wie er gesagt wurde. */
   satz: string;

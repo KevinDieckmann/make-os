@@ -29,7 +29,7 @@ export function scoreColor(v: number): string {
 export interface FocusNow { level: 'crit' | 'high'; title: string; why: string; }
 export const FOCUS_NOW: FocusNow = {
   level: 'crit',
-  title: 'Alex: Rückfragen Market Traction beantworten',
+  title: 'Produktteam: Rückfragen Market Traction beantworten',
   why: 'Echte Mail (28.07) — Zahlen für CapOS/Investoren. F&F-Launch in 3 Tagen (01.08.).',
 };
 

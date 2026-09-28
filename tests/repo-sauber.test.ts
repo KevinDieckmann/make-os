@@ -1,5 +1,5 @@
 // ─── Keine Kontodaten im Repo ───────────────────────────────────────────────
-// Kevin: „An Alex geht nur der Rohbau — Code, Regeln, Struktur. Nie Daten.“
+// Kevin: „An Dritte geht nur der Rohbau — Code, Regeln, Struktur. Nie Daten.“
 // Seit dem Umzug der Haushaltsfinanzen (24.09.) liegen echte Buchungen in
 // .data/ (gitignored). Dieser Test prüft jede Datei, die Git kennt, auf die
 // Spuren echter Kontodaten: vollständige IBANs, N26-Auszugszeilen, Exporte.
@@ -144,5 +144,79 @@ describe('„Heute“ nie als UTC-Tag', () => {
       zeilen.forEach((z, i) => { if (HEUTE_UTC.test(z)) funde.push(`${rel}:${i + 1}: ${z.trim().slice(0, 120)}`); });
     }
     expect(funde, `„heute“ als UTC-Tag — localDay()/tagVon() aus lib/zeit.ts nehmen:\n${funde.join('\n')}`).toEqual([]);
+  });
+});
+
+// ─── Keine echten Namen Dritter im Code (28.09., U3) ────────────────────────
+// Außerhalb der Startbestände standen noch Namen aus Team, Kundschaft, Kanzleien,
+// Banken und privaten Vorgängen — in Prompts, Kommentaren, Beispielterminen,
+// Beschriftungen und Tests. Neutral sind „Beispiel GmbH“, „Kunde A“, „Anna Beispiel“,
+// Rollen („Finanzen“, „Kanzlei“). Kevin und Malin bleiben. Die Muster sind nur
+// Teilstücke, zur Laufzeit zusammengesetzt — diese Datei meldet sich nicht selbst.
+// Groß-/Kleinschreibung zählt: `bjoernRest` (Feld im Rechenkern) ist kein Treffer.
+const NAMEN_DRITTER = new RegExp([
+  '\\bFra' + 'nk\\b', 'Math' + 'ick', '\\bAle' + 'x(ander)?\\b', 'Oph' + 'off', '\\bCle' + 'mens\\b', '\\bBj(ö|oe)' + 'rn',
+  'Fren' + 'trup', 'Kronen' + 'berger', '\\bLi' + 'sa\\b', 'Goh' + 'lke', 'Kathar' + 'ina', 'Heins' + 'chke', 'H(ö|oe)pp' + 'ner',
+  'Aka' + 'sha', '\\bJ(ö|oe)' + 'rn\\b', 'Lie' + 'tz\\b', 'One ?Ban' + 'king', 'One[ -]Fin' + 'ance', '\\bGre' + 'gor\\b', 'Grego' + 'sch',
+  'Grze' + 'gorz', 'Augu' + 'styn', '\\bAC' + 'ME\\b', 'Vene' + 'tian', '\\bVi' + 'vid\\b', 'Witt' + 'ner', 'Volks' + 'bank', 'Cul' + 'pra',
+  'Qua' + 'pler', 'Stern' + 'berg', 'Strei' + 'ner', 'Jes' + 'ke\\b', 'Reach-?O' + 'ut', 'Dani' + 'lo\\b', 'Kem' + 'pen\\b',
+  'Zoo ' + 'Palais', 'Marc ' + 'Fis' + 'cher', 'BF ' + 'Beteiligungen',
+].join('|'));
+
+/** Datei → Grund. Nur, was in einem anderen Paket liegt oder bewusst bleibt. */
+const NAMEN_AUSNAHMEN: Record<string, string> = {
+  'homepage/pruefen.mjs': 'Sperrliste der Homepage-Prüfung (Paket Homepage) — dort auf Teilstücke umstellen',
+  'app/api/crm/liquiplan/route.ts': 'Paket U1 (CRM) — Kommentar dort neutralisieren',
+  'lib/crm/kunden.ts': 'Paket U1 (CRM) — Kommentar dort neutralisieren',
+  'lib/crm/runden.ts': 'Paket U1 (CRM) — Kommentar-Beispiele dort neutralisieren',
+  'lib/crm/umzug.ts': 'Paket U1 (CRM) — Kommentar-Beispiel dort neutralisieren',
+  'tests/crm-fundament.test.ts': 'Paket U1 (CRM) — Testdaten dort neutralisieren',
+  'tests/crm-signale.test.ts': 'Paket U1 (CRM) — Testdaten dort neutralisieren',
+  'tests/crm-stammdaten.test.ts': 'Paket U1 (CRM) — Testdaten dort neutralisieren',
+  'tests/markttraktion-netzwerk.test.ts': 'Paket U1 (CRM) — Testdaten dort neutralisieren',
+  'tests/markttraktion-runden.test.ts': 'Paket U1 (CRM) — Testdaten dort neutralisieren',
+};
+/** Kevins geprüfter Rechenkern: zwei Beschriftungen im Zahlungskalender bleiben (nur mit Kevins Wort ändern). */
+const ERLAUBTE_STELLEN: Record<string, string[]> = {
+  'lib/finanzen/rechenkern.ts': ["'" + 'Bj' + "örn-Rate'", "'Eingang One" + " Banking'"],
+  'tests/finanzplan-rechenkern.test.ts': ["'Eingang One" + " Banking'"],
+};
+
+/** E-Mail-Adressen im Code (außer Tests): nur reservierte Domains oder Kevins eigene Adresse. */
+const MAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
+const MAIL_ERLAUBT = (m: string) => /\.(invalid|example|test|localhost)$/i.test(m) || /@example\.(com|org|net|de)$/i.test(m) || m === ['k.dieckmann', 'kemaris.de'].join('@');
+
+describe('Keine echten Namen Dritter im Code', () => {
+  it('der Prüfer erkennt Namen und lässt Platzhalter, Monatskürzel und Rechenkern-Felder durch', () => {
+    expect(NAMEN_DRITTER.test(['Team:', 'Fra' + 'nk,', 'Li' + 'sa'].join(' '))).toBe(true);
+    expect(NAMEN_DRITTER.test('Mandat ' + 'One' + 'Banking')).toBe(true);
+    expect(NAMEN_DRITTER.test("{ name: 'Person A (Finanzen)', kurz: 'Finanzen' } · Kunde A · Beispiel GmbH · Anna Beispiel")).toBe(false);
+    expect(NAMEN_DRITTER.test("['Jan', 'Feb'] · Frankfurt · kdvBjoern: 0, bjoernRest: 0 · Acme GmbH")).toBe(false);
+    expect(MAIL_ERLAUBT('k@test.invalid')).toBe(true);
+    expect(MAIL_ERLAUBT('hallo@make-os.example')).toBe(true);
+    expect(MAIL_ERLAUBT('jemand@firma-beispiel.de')).toBe(false);
+  });
+
+  it('keine Namen Dritter in versionierten Code-Dateien (Ausnahmen mit Grund)', () => {
+    const funde: string[] = [];
+    for (const f of dateien()) {
+      if (!/\.(ts|tsx|js|mjs|cjs)$/.test(f) || f === 'tests/repo-sauber.test.ts' || NAMEN_AUSNAHMEN[f]) continue;
+      let text = '';
+      try { text = readFileSync(f, 'utf8'); } catch { continue; }
+      for (const s of ERLAUBTE_STELLEN[f] ?? []) text = text.split(s).join("''");
+      text.split('\n').forEach((z, i) => { const m = z.match(NAMEN_DRITTER); if (m) funde.push(`${f}:${i + 1}: „${m[0]}“`); });
+    }
+    expect(funde, `Namen Dritter — durch Platzhalter ersetzen („Beispiel GmbH“, „Kunde A“, Rolle):\n${funde.join('\n')}`).toEqual([]);
+  });
+
+  it('keine echten E-Mail-Adressen im Code außerhalb von Tests', () => {
+    const funde: string[] = [];
+    for (const f of dateien()) {
+      if (!/\.(ts|tsx|js|mjs|cjs)$/.test(f) || f.startsWith('tests/') || f.startsWith('lib/crm/') || NAMEN_AUSNAHMEN[f]) continue;
+      let text = '';
+      try { text = readFileSync(f, 'utf8'); } catch { continue; }
+      for (const m of Array.from(text.matchAll(MAIL))) if (!MAIL_ERLAUBT(m[0])) funde.push(`${f}: ${m[0]}`);
+    }
+    expect(funde, funde.join('\n')).toEqual([]);
   });
 });

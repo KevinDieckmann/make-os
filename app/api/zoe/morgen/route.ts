@@ -160,8 +160,8 @@ export async function POST(req: Request) {
   // Was schon im Stapel liegt, geht mit in den Prompt. Ohne das hat der
   // Abendlauf am 07.09. zwei Vorschläge des Morgenlaufs wortgleich wiederholt
   // — der Dublettenschlüssel greift dagegen nicht, weil zwei Modell-Läufe
-  // dieselbe Sache anders formulieren („2.661€ heute begleichen" gegen
-  // „2.661 € begleichen"). Gegen Wiederholung hilft nur Wissen, nicht Prüfen.
+  // dieselbe Sache anders formulieren („1.234€ heute begleichen" gegen
+  // „1.234 € begleichen"). Gegen Wiederholung hilft nur Wissen, nicht Prüfen.
   const offeneVorschlaege = await liesStapel('offen').catch(() => []);
   const liegt = offeneVorschlaege.length
     ? `LIEGT SCHON IN SEINEM STAPEL (nicht noch einmal vorschlagen, auch nicht anders formuliert):\n`

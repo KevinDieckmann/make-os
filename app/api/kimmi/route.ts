@@ -70,7 +70,7 @@ function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaec
     '',
     'HALTUNG & TON: souverän, präzise, klar — institutional grade, kein Startup-Sprech. Antworte auf Deutsch.',
     'Wie ein exzellenter Stabschef: nenne die EINE wichtigste Sache, dann konkrete nächste Schritte, und biete aktiv an,',
-    'zu delegieren (Malin = deine rechte Hand, Frank, Alex) oder eine Aufgabe anzulegen. Kein Geschwätz, keine Floskeln.',
+    'zu delegieren (Malin = deine rechte Hand, oder jemand aus dem Team) oder eine Aufgabe anzulegen. Kein Geschwätz, keine Floskeln.',
     '',
     'AUSGABE-FORMAT (wichtig — Kevin liest das in einem OS, nicht als E-Mail):',
     '- Strukturiere klar: kurze fette Zwischenüberschriften (**so**), knappe Aufzählungen (- oder 1.), ein klarer nächster Schritt am Ende.',
@@ -88,7 +88,7 @@ function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaec
     gedaechtnis ? `WAS DU DIR GEMERKT HAST (dein Langzeit-Gedächtnis — benutze es, statt zu fragen, was du schon weißt):\n${gedaechtnis}` : '',
     'DEIN GEHIRN: Kevins Obsidian-Brain (Vault „MAKE“, Ordner Make.Claude) ist deine Wissensbank Nummer eins; dazu die MAKE-OS-Doku in der iCloud. Mit suche_wissen und lies_notiz kommst du dran — nutze das, BEVOR du sagst, dass du etwas nicht weißt, und immer bei Fragen nach Personen, Firmen, Preisen, Vereinbarungen, Terminologie oder früheren Entscheidungen. Der oberste 🔴-UPDATE-Block einer Notiz ist ihr gültiger Stand. NENNE IMMER DIE QUELLE (die Kennung unter QUELLE). Mit 🔒 PRIVAT markierte Notizen nur im Gespräch mit der Person selbst verwenden, nie in Mails, Entwürfe, Briefings oder Texte nach außen. Schreiben nach den Regeln des Vaults: notiz_anlegen legt ein Protokoll an (03. Protokolle), notiz_ergaenzen hängt nur an Offene_Fragen_Brain, Taskmanagement_Brain oder Zoe_Log an. Was nicht im Brain steht, erfindest du nicht — trag es als offene Frage in Offene_Fragen_Brain ein. Überschrieben oder gelöscht wird nie.',
     'WAS GILT: Bei Widersprüchen zwischen Vault und Software gilt die SOFTWARE. Zahlen, Aufgaben und Termine kommen aus dem Live-Zustand; der Vault liefert Zusammenhang und Wissen, keine aktuellen Werte. Sag es Kevin, wenn dir ein Widerspruch auffällt.',
-    'MERKEN: Fällt im Gespräch ein dauerhafter Fakt („Frank ist jetzt bei der Volksbank", „Malin mag keine Termine vor 10", „wir haben uns gegen X entschieden"), dann schlag ihn SOFORT mit fakt_merken vor — ohne zu fragen. fakt_merken (wie notiz_anlegen) landet im Gespräch immer als Vorschlag im Stapel; sag knapp, dass er dort auf eine Freigabe wartet. Merke keine Tagesdaten, die ohnehin im Live-Zustand stehen (Kontostände, offene Aufgaben, Termine) — nur was länger gilt. Mit frag_gedaechtnis siehst du nach, bevor du rätst.',
+    'MERKEN: Fällt im Gespräch ein dauerhafter Fakt („die Steuerkanzlei ist jetzt bei einer anderen Bank", „Malin mag keine Termine vor 10", „wir haben uns gegen X entschieden"), dann schlag ihn SOFORT mit fakt_merken vor — ohne zu fragen. fakt_merken (wie notiz_anlegen) landet im Gespräch immer als Vorschlag im Stapel; sag knapp, dass er dort auf eine Freigabe wartet. Merke keine Tagesdaten, die ohnehin im Live-Zustand stehen (Kontostände, offene Aufgaben, Termine) — nur was länger gilt. Mit frag_gedaechtnis siehst du nach, bevor du rätst.',
     '',
     live ? `LIVE-ZUSTAND aus dem Brain (deine echten Daten gerade jetzt — beziehe dich konkret darauf, erfinde nichts dazu):\n${live}` : '',
     '',
@@ -392,7 +392,7 @@ export async function POST(req: Request) {
         name: 'erfasse_planposten',
         description: 'Legt eine wiederkehrende oder einmalige Einnahme/Ausgabe in der Liquiditäts-Planung an. Nutze das bei Abos, Mieten, Gehältern, Versicherungen, Steuervorauszahlungen und laufenden Mandaten („ich habe ein Abo für 49 im Monat abgeschlossen", „ab September zahlen wir 1.200 Miete"). Ausgaben als NEGATIVEN Betrag.',
         input_schema: { type: 'object', properties: {
-          titel: { type: 'string', description: 'Wofür — z. B. „Adobe-Abo" oder „Mandat OneBanking"' },
+          titel: { type: 'string', description: 'Wofür — z. B. „Adobe-Abo" oder „Mandat Beispiel GmbH"' },
           betrag: { type: 'number', description: 'Betrag in Euro; NEGATIV für Ausgaben, positiv für Einnahmen' },
           rhythmus: { type: 'string', enum: ['einmalig', 'monatlich', 'quartal', 'jaehrlich'], description: 'Wie oft — Standard monatlich' },
           ab: { type: 'string', description: 'Ab wann, YYYY-MM-DD (Standard heute)' },
@@ -546,7 +546,7 @@ export async function POST(req: Request) {
       },
       {
         name: 'chance_anlegen',
-        description: 'Legt einen Deal in der Pipeline an und macht den Lead (Firma bzw. Person) zum SQL — nur, wenn qualifiziert (Schmerz, Entscheider, Budget oder Zeitpunkt). Sonst lieber die fehlende Kernfrage klären. („für Acme eine Chance, 3.000 im Monat, nächster Schritt Angebot bis Freitag“). Ohne Wert und nächsten Schritt gilt sie als gelb.',
+        description: 'Legt einen Deal in der Pipeline an und macht den Lead (Firma bzw. Person) zum SQL — nur, wenn qualifiziert (Schmerz, Entscheider, Budget oder Zeitpunkt). Sonst lieber die fehlende Kernfrage klären. („für die Beispiel GmbH eine Chance, 3.000 im Monat, nächster Schritt Angebot bis Freitag“). Ohne Wert und nächsten Schritt gilt sie als gelb.',
         input_schema: { type: 'object', properties: {
           kontakt: { type: 'string', description: 'Person: Name, Firma oder ID' },
           titel: { type: 'string' },
@@ -559,7 +559,7 @@ export async function POST(req: Request) {
       },
       {
         name: 'uebergeben',
-        description: 'Übergibt einen Kontakt an Kevin oder Malin („gib Marc Fischer an Malin, sie soll bis Freitag wegen des Workshops anrufen“): Zuständigkeit wechselt, Übergabe steht im Verlauf, mit Notiz und Frist wird es der nächste Schritt in der Power Hour der anderen Person, und sie bekommt eine Aufgabe. Nichts wird versendet.',
+        description: 'Übergibt einen Kontakt an Kevin oder Malin („gib Anna Beispiel an Malin, sie soll bis Freitag wegen des Workshops anrufen“): Zuständigkeit wechselt, Übergabe steht im Verlauf, mit Notiz und Frist wird es der nächste Schritt in der Power Hour der anderen Person, und sie bekommt eine Aufgabe. Nichts wird versendet.',
         input_schema: { type: 'object', properties: {
           kontakt: { type: 'string', description: 'Person: Name, Firma oder ID' },
           an: { type: 'string', enum: ['kevin', 'malin', 'beide'] },

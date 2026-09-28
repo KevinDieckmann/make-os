@@ -38,7 +38,7 @@ export function zeileLesen(zeile: string): Rohling | null {
   // Telefon erst nach der E-Mail suchen, sonst frisst es Ziffern daraus.
   const telefon = rest.match(TEL)?.[0]?.trim();
   if (telefon) rest = rest.replace(telefon, ' ');
-  // Klammer-Zusatz gilt als Rolle: „Frank Mathick (Finanzen)".
+  // Klammer-Zusatz gilt als Rolle: „Anna Beispiel (Finanzen)".
   const klammer = rest.match(/\(([^)]{2,60})\)/)?.[1];
   if (klammer) rest = rest.replace(`(${klammer})`, ' ');
 

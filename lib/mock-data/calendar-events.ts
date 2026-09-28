@@ -123,7 +123,7 @@ export const MOCK_CALENDAR_EVENTS: CalendarEvent[] = [
   // PRIVATE KEVIN
   {
     id: 'cal-9',
-    title: 'Strategie-Call mit Frank & Björn',
+    title: 'Strategie-Call mit dem Team',
     description: 'CapOS Strategie, Gründungen, Finanzen — monatlicher Check-in.',
     category: 'private-kevin',
     owner: 'kevin',
@@ -135,7 +135,7 @@ export const MOCK_CALENDAR_EVENTS: CalendarEvent[] = [
   },
   {
     id: 'cal-10',
-    title: 'Mentoring Call mit Danilo',
+    title: 'Mentoring Call',
     category: 'private-kevin',
     owner: 'kevin',
     startDate: dateAt(3, 15, 0),
@@ -161,7 +161,7 @@ export const MOCK_CALENDAR_EVENTS: CalendarEvent[] = [
   {
     id: 'cal-12',
     title: 'Monday Check-In',
-    description: 'Wöchentliches Team-Meeting: Kevin, Frank, Jan, Katharina.',
+    description: 'Wöchentliches Team-Meeting.',
     category: 'holding',
     owner: 'kevin',
     startDate: dateAt(1, 9, 0),

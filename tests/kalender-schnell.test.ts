@@ -7,8 +7,8 @@ const HEUTE = '2026-09-27'; // Sonntag
 
 describe('schnellLesen', () => {
   it('versteht Wochentag, Uhrzeit, Dauer und Titel', () => {
-    const s = schnellLesen('Mo 10 Uhr Kaffee mit Frank 45min', HEUTE);
-    expect(s).toMatchObject({ titel: 'Kaffee mit Frank', tag: '2026-09-28', von: '10:00', bis: '10:45', dauerMin: 45, ganztags: false });
+    const s = schnellLesen('Mo 10 Uhr Kaffee mit Anna 45min', HEUTE);
+    expect(s).toMatchObject({ titel: 'Kaffee mit Anna', tag: '2026-09-28', von: '10:00', bis: '10:45', dauerMin: 45, ganztags: false });
   });
   it('morgen mit Zeitspanne, Person und Ort', () => {
     const s = schnellLesen('morgen 14:30-16 Steuerberater @kevin in Berlin', HEUTE);

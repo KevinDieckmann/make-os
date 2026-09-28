@@ -3,7 +3,9 @@
 // POST { entscheidungen: [{ quelle, id, aktion }] } → archiviert die Business-
 //      Speicher nach .data/archiv, dann verschieben/entfernen/zuordnen.
 // Eigene Route mit Absicht: der Schrumpf-Schutz der Firmen-Speicher würde das
-// Aufräumen (9 → 1 Zahlungen) sonst zu Recht ablehnen.
+// Aufräumen (9 → 1 Zahlungen) sonst zu Recht ablehnen. Der Rechnungsschutz gilt
+// trotzdem (28.09., U3): ab „gestellt“ wird eine Rechnung nicht gelöscht, nur mit
+// Vermerk einer Firma zugeordnet — Löschversuche bekommen 409.
 
 import { NextResponse } from 'next/server';
 import { archivSchreiben, archivZeit } from '@/lib/store/archiv';
@@ -15,6 +17,8 @@ import { pruefliste, type Aktion, type Businessbestand, type Quelle } from '@/li
 import type { Beleg, Buchung, Schuld } from '@/lib/finanzen/haushalt/typen';
 import { fingerabdruck } from '@/lib/finanzen/haushalt/import';
 import { istEchterHaushalt } from '@/lib/finanzen/haushalt/aufgaben';
+import { entflechtungSperre, rechnungenEntflechten, type Rechnung } from '@/lib/finanzen/finanzplan-bestand';
+import { localDay } from '@/lib/zeit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,6 +46,8 @@ export async function POST(req: Request) {
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   const h = await ladeHaushalt(z.haushalt);
   const vorher = await bestand();
+  const sperre = entflechtungSperre((vorher.finanzplan?.rechnungen ?? []) as Rechnung[], b.entscheidungen ?? []);
+  if (sperre) return NextResponse.json({ ok: false, fehler: sperre }, { status: 409 });
   const liste = pruefliste(vorher, h);
   const erlaubt = new Map(liste.map(p => [`${p.quelle}|${p.id}`, p]));
   const ent = (b.entscheidungen ?? []).filter(e => erlaubt.get(`${e.quelle}|${e.id}`)?.aktionen.includes(e.aktion) && e.aktion !== 'behalten');
@@ -69,7 +75,8 @@ export async function POST(req: Request) {
   // Aus den Business-Speichern: entfernen bzw. Firma zuordnen.
   await updateJson<Record<string, unknown>>('finanzplan', cur => {
     const f = (cur ?? {}) as NonNullable<Businessbestand['finanzplan']> & Record<string, unknown>;
-    return { ...f, firmen: (f.firmen ?? []).filter(x => !weg('firma').has(x.id)), zahlungen: (f.zahlungen ?? []).filter(x => !weg('zahlung').has(x.id)), merkposten: (f.merkposten ?? []).filter(x => !weg('merkposten').has(x.id)), rechnungen: (f.rechnungen ?? []).filter(x => !weg('rechnung').has(x.id)) };
+    const zuordnen = new Map(ent.filter(e => e.quelle === 'rechnung' && ['kdv', 'kdc', 'kemaris'].includes(e.aktion)).map(e => [e.id, e.aktion as string]));
+    return { ...f, firmen: (f.firmen ?? []).filter(x => !weg('firma').has(x.id)), zahlungen: (f.zahlungen ?? []).filter(x => !weg('zahlung').has(x.id)), merkposten: (f.merkposten ?? []).filter(x => !weg('merkposten').has(x.id)), rechnungen: rechnungenEntflechten((f.rechnungen ?? []) as Rechnung[], weg('rechnung'), zuordnen, localDay()) };
   });
   await updateJson<Record<string, unknown>>('buchungen', cur => ({ ...(cur ?? {}), buchungen: ((cur?.buchungen ?? []) as { id: string }[]).filter(x => !weg('buchung').has(x.id)) }));
   await updateJson<Record<string, unknown>>('liquiplan', cur => ({ ...(cur ?? {}), posten: ((cur?.posten ?? []) as { id: string; firmaId?: string }[]).filter(x => !weg('planposten').has(x.id)).map(x => (neuFirma.has(x.id) ? { ...x, firmaId: neuFirma.get(x.id) } : x)) }));

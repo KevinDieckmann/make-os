@@ -1,10 +1,10 @@
 'use client';
 
 // ─── MAKE OS — Finanzplanung ────────────────────────────────────────────────
-// Der lebende Finanz-Organismus: beide Firmen mit Vivid-Konten (Stand von
+// Der lebende Finanz-Organismus: beide Firmen mit Geschäftskonten (Stand von
 // Hand, bis die Anbindung steht — siehe Bauplan), die Rechnungs-Pipeline
 // (geplant → gestellt → bezahlt, Klick wechselt den Status) und Merkposten
-// (Björn-Kredit). Oben die Verknüpfung zum Umsatzziel aus dem Controlling.
+// (z. B. Partnerdarlehen). Oben die Verknüpfung zum Umsatzziel aus dem Controlling.
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Leuchtfarben, Listen).
 
 import Link from 'next/link';

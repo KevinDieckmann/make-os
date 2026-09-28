@@ -367,7 +367,7 @@ export function lerneRegel(d: FinanzDaten, empfaenger: string, zeile: string): n
   return n;
 }
 
-// ── Töpfe der UG (Profit First, an Vivid-Unterkonten angelehnt) ────────────
+// ── Töpfe der UG (Profit First, an die Unterkonten der Bank angelehnt) ──
 export interface ToepfeUG { m: number; ust: number; steuer: number; reserve: number; frei: number; reserveZiel: number; konto: number }
 export function toepfeUG(ug: MonatUG[], reserveMonate: number): ToepfeUG[] {
   return ug.map(u => {

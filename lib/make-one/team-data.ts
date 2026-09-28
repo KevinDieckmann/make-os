@@ -1,7 +1,10 @@
 // ─── MAKE OS — Team & Verantwortung (Miro-Strategieboard) ───────────────────
-// Aus dem Board „Kevin & Frank" abgelesen. Bis zur Miro-Anbindung ist das der
+// Struktur aus dem Strategieboard. Bis zur Miro-Anbindung ist das der
 // gepflegte Stand — Quelle für Delegations-Vorschläge und die Säule
-// „Beziehung & Team".
+// „Beziehung & Team". Rohbau-Regel (28.09., U3): Personen außer Kevin und
+// Malin stehen hier nur als Platzhalter mit ihren Zuständigkeiten — echte
+// Namen Dritter gehören in die Daten, nicht in den Code. `kurz` bleibt ein
+// Wort ohne Leerzeichen: der Delegiert-Marker („— Delegiert an X“) liest nur \w+.
 
 export interface TeamMitglied {
   name: string;
@@ -16,28 +19,28 @@ export interface TeamMitglied {
 export const TEAM: TeamMitglied[] = [
   { name: 'Kevin Dieckmann', kurz: 'Kevin', kreis: 'kern',
     bereiche: ['Sales definieren', 'Markttraktion', 'Consulting & Development', 'Wachstumsinfrastruktur AI'] },
-  { name: 'Frank Mathick', kurz: 'Frank', kreis: 'kern',
+  { name: 'Person A (Finanzen)', kurz: 'Finanzen', kreis: 'kern',
     bereiche: ['Finanzen & Controlling', 'Personal & OE', 'IT', 'Backoffice', 'Produkt'] },
-  { name: 'Alex Groß-Ophoff', kurz: 'Alex', kreis: 'kern',
-    bereiche: ['Produktentwicklung', 'Produktstrategie', 'Marktforschung (CapOS)'] },
-  { name: 'Clemens Walter', kurz: 'Clemens', kreis: 'kern',
-    bereiche: ['Investoren', 'Verträge & Recht', 'Gründungsprozess CapOS', 'Sales-Aufbau'] },
-  { name: 'Björn Frentrup', kurz: 'Björn', kreis: 'partner',
-    bereiche: ['Steuerberatung', 'Verträge & Recht', 'Gründung', 'Unternehmensstrukturen', 'Netzwerk OWL', 'Beteiligungen'] },
-  { name: 'Jan Kronenberger', kurz: 'Jan', kreis: 'kern',
+  { name: 'Person B (Produkt)', kurz: 'Produkt', kreis: 'kern',
+    bereiche: ['Produktentwicklung', 'Produktstrategie', 'Marktforschung'] },
+  { name: 'Person C (Investoren & Recht)', kurz: 'Investoren', kreis: 'kern',
+    bereiche: ['Investoren', 'Verträge & Recht', 'Gründungsprozess', 'Sales-Aufbau'] },
+  { name: 'Person D (Beratung, extern)', kurz: 'Beratung', kreis: 'partner',
+    bereiche: ['Steuerberatung', 'Verträge & Recht', 'Gründung', 'Unternehmensstrukturen', 'Netzwerk', 'Beteiligungen'] },
+  { name: 'Person E (Kommunikation)', kurz: 'Kommunikation', kreis: 'kern',
     bereiche: ['Kommunikation & PR', 'Netzwerk & Events', 'politische Vernetzung', 'Connect-Aufbau', 'perspektivisch Marketing'] },
-  { name: 'Lisa Gohlke', kurz: 'Lisa', kreis: 'kern',
+  { name: 'Person F (Buchhaltung)', kurz: 'Buchhaltung', kreis: 'kern',
     bereiche: ['Buchhaltung', 'vorbereitende Lohnbuchhaltung', 'interne Kommunikation'] },
-  { name: 'Katharina Heinschke', kurz: 'Katharina', kreis: 'kern',
+  { name: 'Person G (Netzwerk)', kurz: 'Netzwerk', kreis: 'kern',
     bereiche: ['Investoren', 'Netzwerkaufbau', 'Eventmanagement (Family Offices)'] },
-  { name: 'Michael Höppner (Akasha)', kurz: 'Michael', kreis: 'partner',
+  { name: 'Person H (Family Offices, extern)', kurz: 'FamilyOffices', kreis: 'partner',
     bereiche: ['Investoren', 'Family Offices'] },
   { name: 'Malin', kurz: 'Malin', kreis: 'privat', org: 'privat',
     bereiche: ['Kevins rechte Hand', 'Board & Netzwerk', 'KD-Kostenaufstellung', 'MAKE.One', 'Gesundheits-Beauftragte', 'kritische Themen zuerst'] },
-  { name: 'Jörn Peters', kurz: 'Jörn', kreis: 'partner', org: 'kdv',
+  { name: 'Steuerkanzlei (Beispiel)', kurz: 'Steuerkanzlei', kreis: 'partner', org: 'kdv',
     bereiche: ['Steuerberatung', 'Buchhaltung', 'Lohnbuchhaltung', 'Jahresabschluss', 'steuerliche Struktur'] },
-  { name: 'Lietz (Rechtsanwalt)', kurz: 'Lietz', kreis: 'partner', org: 'privat',
-    bereiche: ['Mietrecht', 'Rechtsstreit', 'Schriftsätze'] },
+  { name: 'Kanzlei (Rechtsanwalt)', kurz: 'Kanzlei', kreis: 'partner', org: 'privat',
+    bereiche: ['Recht', 'Schriftsätze'] },
 ];
 
 /** Wer darf Aufgaben bekommen — Kevin selbst steht nicht zur Auswahl. */
@@ -52,5 +55,5 @@ export const RITUALE: Ritual[] = [
   { id: 'sunday-dinner', name: 'Sunday Dinner', rhythmus: 'sonntags 19:00', warum: 'Der feste Punkt der Woche mit Malin — nichts anderes wird davorgelegt.' },
   { id: 'wochen-reflexion', name: 'Wochen-Reflexion zu zweit', rhythmus: 'sonntags', warum: 'Was war gut, was hat gefehlt — bevor die neue Woche startet.' },
   { id: 'kein-handy', name: 'Abends Handy weg', rhythmus: 'täglich ab 21:00', warum: 'Schützt Schlaf und Aufmerksamkeit — beides zahlt direkt auf Ruhe ein.' },
-  { id: 'team-checkin', name: 'KEMARIS Check-In', rhythmus: 'wöchentlich', warum: 'Der Takt mit Frank und dem Team — Delegation wird hier verbindlich.' },
+  { id: 'team-checkin', name: 'KEMARIS Check-In', rhythmus: 'wöchentlich', warum: 'Der Takt mit dem Team — Delegation wird hier verbindlich.' },
 ];

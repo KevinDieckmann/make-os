@@ -47,7 +47,7 @@ export function Gesamt() {
     { name: 'Frei verfügbar', stock: true, key: true, get: m => U(m).frei },
     { grp: 'KD Ventures' },
     { name: 'Kontostand KD Ventures', stock: true, key: true, get: m => U(m).kdvKonto },
-    { name: 'Björn-Darlehen offen', stock: true, get: m => -U(m).bjoernRest, ind: true },
+    { name: 'Partnerdarlehen offen', stock: true, get: m => -U(m).bjoernRest, ind: true },
     { grp: 'Gesamt' },
     { name: 'Frei UG + KD Ventures + Privat angespart', stock: true, sum: true, key: true, get: m => U(m).frei + U(m).kdvKonto + P(m).angespart },
   ];

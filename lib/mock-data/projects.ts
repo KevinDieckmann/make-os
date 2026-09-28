@@ -23,7 +23,7 @@ export const MOCK_PROJECTS: Project[] = [
   {
     id: 'proj-kdm',
     title: 'KD Management (Holding)',
-    description: 'Finanzen, Mandate, Liquidität — u.a. OneBanking, Björn-Kredit.',
+    description: 'Finanzen, Mandate, Liquidität — u.a. Kunde A, Partnerdarlehen.',
     category: 'business', owner: 'kevin', color: '#AC9D80',
     tags: [{ id: 'tg-kdm', label: 'KDM', color: '#AC9D80' }],
     archived: false, dueDate: '2026-12-31', createdAt: now, updatedAt: now,
@@ -31,7 +31,7 @@ export const MOCK_PROJECTS: Project[] = [
   {
     id: 'proj-health',
     title: 'Gesundheit & Aufbau',
-    description: 'Bandscheiben-Reha, Spritze, spine-safe Aufbau, Routinen.',
+    description: 'Reha, Aufbau, Routinen.',
     category: 'personal-kevin', owner: 'kevin', color: '#1A4A3A',
     tags: [{ id: 'tg-health', label: 'Gesundheit', color: '#1A4A3A' }],
     archived: false, dueDate: '2026-12-31', createdAt: now, updatedAt: now,
@@ -47,7 +47,7 @@ export const MOCK_PROJECTS: Project[] = [
   {
     id: 'proj-privat',
     title: 'Privat & Recht',
-    description: 'Persönliches, Finanzen privat, Rechtsstreit Wittner.',
+    description: 'Persönliches, Finanzen privat, Rechtliches.',
     category: 'personal-kevin', owner: 'kevin', color: '#2A2A2A',
     tags: [{ id: 'tg-privat', label: 'Privat', color: '#8892a0' }],
     archived: false, dueDate: '', createdAt: now, updatedAt: now,

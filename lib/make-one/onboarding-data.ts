@@ -266,10 +266,10 @@ export const SCHRITTE: Schritt[] = [
     titel: 'Offene Rechnungen und Zahlungen pflegen',
     warum: 'Das ist die Prioritätenliste: was zuerst raus muss, was noch reinkommt. Neun offene Posten stehen drin — die wollen geprüft sein.',
     wie: [
-      'Offene Ausgangsrechnungen prüfen — die One-Finance-Rechnung steht auf „gestellt", in deinem Kassenbuch ist sie am 02.07. eingegangen.',
+      'Offene Ausgangsrechnungen prüfen — eine Rechnung, die auf „gestellt" steht, aber im Kassenbuch schon als eingegangen auftaucht, auf „bezahlt" setzen.',
       'Offene Zahlungen durchgehen und Fälligkeiten setzen.',
-      'Culpra Inkasso: 243,09 €, Aktenzeichen 112341373, bis 06.08.',
-      'Klären: „Björn peters" mit 1.905 € — ist das Björn Frentrup oder Jörn Peters?',
+      'Inkasso-Forderungen mit Aktenzeichen und Frist eintragen.',
+      'Posten mit unklarem Empfänger klären, bevor sie in die Planung gehen.',
     ],
     wo: { href: '/os/finanzen/planung', label: 'Rechnungen & Zahlungen' },
     pruefung: 'posten',
@@ -289,7 +289,7 @@ export const SCHRITTE: Schritt[] = [
     wie: [
       'Unten rechts der Kreis öffnet ihn — auf jeder Seite.',
       'Ausprobieren: „Was muss diese Woche bezahlt werden?"',
-      'Er kann auch eintragen: „Rechnung Frank Mathick ist bezahlt."',
+      'Er kann auch eintragen: „Rechnung Beispiel GmbH ist bezahlt."',
       'Der Verlauf bleibt gespeichert — ihr könnt ihn beide nachlesen.',
     ],
     pruefung: 'zoe',

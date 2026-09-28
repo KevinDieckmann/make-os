@@ -41,7 +41,7 @@ export async function belegAufgabenAbgleichen(haushalt: string): Promise<{ neu: 
       neu++;
       const wer = (b.verursacher ?? '').toLowerCase();
       tasks.push({
-        id, title: `Beleg nachreichen: ${b.bezeichnung}`.slice(0, 200), description: 'Aus den Haushaltsfinanzen: dieser Beleg fehlt der Buchhaltung (sevdesk/Vivid).',
+        id, title: `Beleg nachreichen: ${b.bezeichnung}`.slice(0, 200), description: 'Aus den Haushaltsfinanzen: dieser Beleg fehlt der Buchhaltung (sevdesk/Bank).',
         status: 'todo', priority: b.faellig_am && b.faellig_am < heute ? 'high' : 'medium', assignee: wer === 'malin' ? 'malin' : 'kevin',
         tags: ['haushalt', 'beleg'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, space: spaceVon(b.einheit), ...(b.faellig_am ? { dueDate: b.faellig_am } : {}),
       });

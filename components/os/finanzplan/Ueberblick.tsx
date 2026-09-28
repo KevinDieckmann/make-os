@@ -82,7 +82,7 @@ export function Lage() {
   if (eng.length) warn.push([LEUCHT.kritisch, `Privat in ${eng.length} Monaten im Minus — erster: ${monatLabel(d, eng[0].m)}`]);
   else if (pr.some(p => p.luft < 100)) warn.push([LEUCHT.achtung, `Privat auf Kante: ${pr.filter(p => p.luft < 100).length} Monate unter 100 € Luft`]);
   if (flexUeber.length) warn.push([LEUCHT.achtung, `Flexibel über Plan (Ø 3 Monate): ${flexUeber.map(x => x.z.name).join(' · ')}`]);
-  if (kz.obAnteilJun27 >= 0.3) warn.push([LEUCHT.achtung, `One Banking Juni 27 bei ${prozent(kz.obAnteilJun27)} des Umsatzes — Ziel unter 30 %`]);
+  if (kz.obAnteilJun27 >= 0.3) warn.push([LEUCHT.achtung, `Ankermandat Juni 27 bei ${prozent(kz.obAnteilJun27)} des Umsatzes — Ziel unter 30 %`]);
   if (offen) warn.push([LEUCHT.achtung, `${offen} Buchungen ohne Zuordnung — IST ist dort unscharf`]);
   if (konten.length - kontenBekannt.length) warn.push([LEUCHT.achtung, `${konten.length - kontenBekannt.length} Kontostände fehlen`]);
   const termine = zahlungskalender(d, ug, pr, 14);
@@ -135,7 +135,7 @@ export function Lage() {
         <Kachel label="UG frei Dez 27" punkt={ampel(kz.freiDez27 >= 20000, kz.freiDez27 >= 0)} wert={<><Geld v={kz.freiDez27} /> €</>} unter="nach Steuern und USt" />
         <Kachel label="Privat Luft" punkt={ampel(kz.privatLuftMin >= 250, kz.privatLuftMin >= 0)} wert={<><Geld v={kz.privatLuftMin} /> €</>} unter="schlechtester Monat" />
         {ng && <Kachel label="Notgroschen" punkt={ng.status === 'verfehlt' ? LEUCHT.achtung : LEUCHT.gut} wert={<><Geld v={pr[14]?.angespart} /> €</>} unter={<>Dez 27 · Ziel <Geld v={ng.ziel.ziel} farbe={C.inkDim} /> €{ng.erreichtMonat ? ` · erreicht ${monatLabel(d, ng.erreichtMonat)}` : ''}</>} />}
-        <Kachel label="One Banking Jun 27" punkt={ampel(kz.obAnteilJun27 < 0.3, kz.obAnteilJun27 < 0.4)} wert={prozent(kz.obAnteilJun27)} unter="vom Umsatz · Ziel unter 30 %" />
+        <Kachel label="Ankermandat Jun 27" punkt={ampel(kz.obAnteilJun27 < 0.3, kz.obAnteilJun27 < 0.4)} wert={prozent(kz.obAnteilJun27)} unter="vom Umsatz · Ziel unter 30 %" />
         <Kachel label="Retainer" punkt={ampel(kz.retainerDez26 >= 4, kz.retainerDez26 >= 2)} wert={`${kz.retainerDez26} → ${kz.retainerJun27}`} unter="Dez 26 → Jun 27" />
       </Kacheln>
       <Spalten verhaeltnis="3:2">

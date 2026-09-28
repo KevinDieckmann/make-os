@@ -197,7 +197,7 @@ export function AufgabenView() {
   }, [reminders]);
 
   const projName = (id: string) => state.projects.find(p => p.id === id)?.title ?? '—';
-  // Delegiert-Marker aus der Beschreibung („— Delegiert an Frank (31.07): …").
+  // Delegiert-Marker aus der Beschreibung („— Delegiert an Finanzen (31.07): …").
   const delegiertAn = (desc?: string) => desc?.match(/— Delegiert an (\w+)/)?.[1];
   const [bes, setBes] = useState<'alle' | string | 'both'>('alle');
   const [prioFilter, setPrioFilter] = useState<Priority | 'alle'>('alle');

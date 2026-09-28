@@ -9,6 +9,6 @@ export const NORDSTERN =
 export const MILESTONES = [
   'KD Management UG gegründet (25.06 ✓)', 'CapOS v1.0 live (25.06 ✓)', 'Landingpage F&F live (03.07 ✓)',
   'KEMARIS Innovation GmbH / IG gegründet (28.07 ✓)', 'F&F-Launch · 30 Testkunden (01.08 — in 3 Tagen)',
-  'CapOS GmbH Gründung (30.09)', 'Volllaunch + Pressekonferenz Zoo Palais (01.10)',
+  'CapOS GmbH Gründung (30.09)', 'Volllaunch + Pressekonferenz (01.10)',
   'KEMARIS Podcast (Q3)', 'KEMARIS Magazin (Q4)', 'Break-even CapOS (2028)',
 ];

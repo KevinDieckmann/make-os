@@ -35,3 +35,48 @@ describe('Prüfliste Privat in Business', () => {
     expect(nach('planposten', 'p1')?.vorschlag).toBe('entfernen');
   });
 });
+
+// ─── Rechnungsschutz auch in der Entflechtung (28.09., U3) ──────────────────
+// Ab „gestellt“ wird eine Rechnung nirgends gelöscht — auch nicht beim Aufräumen
+// von Privatem. Sie lässt sich nur mit Vermerk einer Firma zuordnen; ein
+// Löschversuch bekommt 409 (entflechtungSperre). Erfundene Daten.
+import { entflechtungSperre, rechnungenEntflechten, rechnungSchutz, type Rechnung } from '../lib/finanzen/finanzplan-bestand';
+
+describe('Prüfliste: gestellte Rechnungen werden nicht gelöscht', () => {
+  const re = (id: string, status: Rechnung['status'], x: Partial<Rechnung> = {}): Rechnung => ({ id, firmaId: 'privat', kunde: 'Kunde A', titel: 'Beratung', betrag: 119, status, ...x });
+  const rechnungen = [re('r-geplant', 'geplant'), re('r-gestellt', 'gestellt', { nummer: 'RE-1' }), re('r-bezahlt', 'bezahlt', { notiz: 'alt' }), re('r-storniert', 'storniert', { storniertAm: '2026-09-01', stornoGrund: 'doppelt' })];
+  const liste = pruefliste({ finanzplan: { rechnungen }, buchungen: null, liquiplan: null }, h);
+  const nach = (id: string) => liste.find(p => p.quelle === 'rechnung' && p.id === id)!;
+
+  it('bietet „entfernen“ nur, wo der Rechnungsschutz Löschen erlaubt', () => {
+    for (const r of rechnungen) {
+      expect(nach(r.id).aktionen.includes('entfernen'), r.status).toBe(rechnungSchutz(r, null) === null);
+    }
+    expect(nach('r-geplant').vorschlag).toBe('entfernen');
+    expect(nach('r-gestellt')).toMatchObject({ vorschlag: 'behalten', aktionen: ['kdv', 'kdc', 'kemaris', 'behalten'] });
+    expect(nach('r-bezahlt').grund).toContain('nicht gelöscht');
+  });
+
+  it('Sperre (409): Löschen, Dublette oder Übernehmen einer gestellten/bezahlten Rechnung', () => {
+    for (const aktion of ['entfernen', 'dublette', 'uebernehmen']) {
+      expect(entflechtungSperre(rechnungen, [{ quelle: 'rechnung', id: 'r-gestellt', aktion }])).toMatch(/nicht gelöscht, sondern storniert/);
+    }
+    expect(entflechtungSperre(rechnungen, [{ quelle: 'rechnung', id: 'r-bezahlt', aktion: 'entfernen' }])).toMatch(/bezahlt/);
+    expect(entflechtungSperre(rechnungen, [{ quelle: 'rechnung', id: 'r-geplant', aktion: 'entfernen' }])).toBeNull();
+    expect(entflechtungSperre(rechnungen, [{ quelle: 'rechnung', id: 'r-gestellt', aktion: 'kdc' }, { quelle: 'rechnung', id: 'r-gestellt', aktion: 'behalten' }])).toBeNull();
+    // Gleiche Kennung in einer anderen Quelle betrifft die Rechnung nicht.
+    expect(entflechtungSperre(rechnungen, [{ quelle: 'planposten', id: 'r-gestellt', aktion: 'entfernen' }])).toBeNull();
+  });
+
+  it('verschiebt nur mit Vermerk — gelöscht wird nur die geplante', () => {
+    const weg = new Set(['r-geplant', 'r-gestellt', 'r-storniert']);
+    const zuordnen = new Map([['r-bezahlt', 'kdc']]);
+    const aus = rechnungenEntflechten(rechnungen, weg, zuordnen, '2026-09-28');
+    expect(aus.map(r => r.id)).toEqual(['r-gestellt', 'r-bezahlt', 'r-storniert']);
+    expect(aus[0]).toEqual(rechnungen[1]);
+    expect(aus[2]).toEqual(rechnungen[3]);
+    expect(aus[1]).toMatchObject({ firmaId: 'kdc', status: 'bezahlt', betrag: 119 });
+    expect(aus[1].notiz).toBe('alt · Aus „privat“ nach Kevin Dieckmann Consulting verschoben am 2026-09-28 (Entflechtung).');
+    expect(rechnungSchutz(rechnungen[2], aus[1])).toBeNull();
+  });
+});

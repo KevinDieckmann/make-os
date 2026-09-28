@@ -12,6 +12,7 @@ import { askJson, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
 import { modellSchranke } from '@/lib/zugang/umfang';
+import { DELEGIERBAR } from '@/lib/make-one/team-data';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
   const system = [
     'Du bist ZOE und sortierst Kevins Post vor. Kevin ist Gründer (KEMARIS/POINCAP, KD Ventures, Kevin Dieckmann Consulting).',
     'Stufe jede Nachricht ein:',
-    '- "wichtig": Kunden (OneBanking, Gregor, ACME), Team (Alex, Frank, Björn, Jan, Lisa, Clemens), Malin, Geld/Verträge/Rechnungen, Steuerberater, Notariat, Rechtsanwalt, Inkasso, Banken, Behörden, Fristen.',
+    `- "wichtig": Kunden und Mandanten, Team (${DELEGIERBAR.map(t => t.kurz).join(', ')}), Geld/Verträge/Rechnungen, Steuerberater, Notariat, Rechtsanwalt, Inkasso, Banken, Behörden, Fristen.`,
     '- "rauschen": Newsletter, Marketing, Produkt-Updates, Social-Media-Benachrichtigungen, Werbung.',
     '- "normal": alles andere.',
     'Je Nachricht EINE Zeile (max. 12 Wörter, deutsch): was steckt drin bzw. was ist zu tun. Dazu ein Grund in 2–4 Wörtern.',

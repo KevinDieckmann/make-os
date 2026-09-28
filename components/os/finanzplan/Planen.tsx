@@ -92,7 +92,7 @@ export function UG() {
   const gruppen = Array.from(new Set(d.sachkosten.map(z => z.gruppe)));
   const zeilen: BlattZeile[] = [
     { grp: 'Umsatz netto' },
-    { name: 'One Banking', edit: 'ug.ob', get: m => U(m).ob, ind: true }, { name: 'Retainer', edit: 'ug.retainer', get: m => U(m).retainer, ind: true },
+    { name: 'Ankermandat', edit: 'ug.ob', get: m => U(m).ob, ind: true }, { name: 'Retainer', edit: 'ug.retainer', get: m => U(m).retainer, ind: true },
     { name: 'ASTARNA', edit: 'ug.astarna', get: m => U(m).astarna, ind: true }, { name: 'Events', edit: 'ug.events', get: m => U(m).events, ind: true },
     { name: 'Umsatz', sum: true, get: m => U(m).umsatz },
     { grp: 'Personal' },
@@ -107,7 +107,7 @@ export function UG() {
     { name: 'Stammkapital & Darlehen Kevin', get: m => U(m).kapital, ind: true }, { name: 'Einzahlungen', sum: true, get: m => U(m).einzahlungen },
     { name: 'Gründung', get: m => -U(m).gruendung, ind: true }, { name: 'Holding-Umlage', get: m => -U(m).holding, ind: true },
     { name: 'USt an Finanzamt', get: m => -U(m).ustZahlung, ind: true }, { name: 'Ertragsteuer', get: m => -U(m).steuer, ind: true },
-    { name: 'Björn-Rate', get: m => -U(m).bjoern, ind: true }, { name: 'Darlehen an Kevin zurück', get: m => -U(m).darlehen, ind: true },
+    { name: 'Partnerdarlehen-Rate', get: m => -U(m).bjoern, ind: true }, { name: 'Darlehen an Kevin zurück', get: m => -U(m).darlehen, ind: true },
     { name: 'Auszahlungen', sum: true, get: m => -U(m).auszahlungen },
     { grp: 'Ergebnis' },
     { name: 'Gewinn', get: m => U(m).gewinn }, { name: 'Kontostand', stock: true, get: m => U(m).konto },
@@ -151,14 +151,14 @@ export function KDV() {
   const { ug, sz } = usePlan();
   const U = (m: number) => ug[m - 1];
   const zeilen: BlattZeile[] = [
-    { grp: 'Einnahmen' }, { name: 'Umlage aus MAKE OS UG', get: m => U(m).kdvUmlage, ind: true }, { name: 'Björn-Rate von der UG', get: m => U(m).kdvBjoernEin, ind: true }, { name: 'KEMARIS Ausstieg', get: m => U(m).kdvExit, ind: true },
-    { grp: 'Ausgaben' }, { name: 'Holdingkosten', get: m => -U(m).kdvHolding, ind: true }, { name: 'Björn-Tilgung', get: m => -U(m).kdvBjoern, ind: true }, { name: 'Björn-Ablösung', get: m => -U(m).kdvAbloesung, ind: true }, { name: 'Steuer auf Ausstieg', get: m => -U(m).kdvExitSteuer, ind: true },
-    { grp: 'Stand' }, { name: 'Kontostand KD Ventures', stock: true, sum: true, key: true, get: m => U(m).kdvKonto }, { name: 'Björn-Darlehen offen', stock: true, get: m => U(m).bjoernRest },
+    { grp: 'Einnahmen' }, { name: 'Umlage aus MAKE OS UG', get: m => U(m).kdvUmlage, ind: true }, { name: 'Partnerdarlehen-Rate von der UG', get: m => U(m).kdvBjoernEin, ind: true }, { name: 'KEMARIS Ausstieg', get: m => U(m).kdvExit, ind: true },
+    { grp: 'Ausgaben' }, { name: 'Holdingkosten', get: m => -U(m).kdvHolding, ind: true }, { name: 'Partnerdarlehen-Tilgung', get: m => -U(m).kdvBjoern, ind: true }, { name: 'Partnerdarlehen-Ablösung', get: m => -U(m).kdvAbloesung, ind: true }, { name: 'Steuer auf Ausstieg', get: m => -U(m).kdvExitSteuer, ind: true },
+    { grp: 'Stand' }, { name: 'Kontostand KD Ventures', stock: true, sum: true, key: true, get: m => U(m).kdvKonto }, { name: 'Partnerdarlehen offen', stock: true, get: m => U(m).bjoernRest },
   ];
   return (
     <Karte i={0}>
       <Blatt zeilen={zeilen} titel={`KD Ventures · ${sz.name}`} werkzeuge={<Etikett einheit="kdv" />} />
-      <Hinweis>KD Ventures rechnet aus der UG (Umlage, Björn-Rate) und dem Szenario (Ausstieg, Ablösung). Treiber unter Planen › Szenarien, Beträge unter „Annahmen für alle“.</Hinweis>
+      <Hinweis>KD Ventures rechnet aus der UG (Umlage, Partnerdarlehen-Rate) und dem Szenario (Ausstieg, Ablösung). Treiber unter Planen › Szenarien, Beträge unter „Annahmen für alle“.</Hinweis>
     </Karte>
   );
 }
@@ -219,7 +219,7 @@ export function Selbst() {
 }
 
 // ── Szenarien ────────────────────────────────────────────────────────────────
-const ANNAHMEN: [string, string, number][] = [['kevinBrutto', 'Kevin brutto', 0], ['kevinAb', 'Kevin ab Monat', 0], ['malinBrutto', 'Malin brutto', 0], ['malinAb', 'Malin ab Monat', 0], ['agAnteil', 'Arbeitgeberanteil', 4], ['stammkapital', 'Stammkapital', 0], ['gruendungskosten', 'Gründungskosten', 0], ['darlehenKevin', 'Darlehen Kevin an UG', 0], ['darlehenRueckMonat', 'Rückzahlung in Monat', 0], ['retainerVerzug', 'Retainer-Zahlungsverzug (Monate)', 0], ['astarnaProvision', 'ASTARNA Provision', 0], ['steuerUG', 'Ertragsteuer UG', 4], ['ust', 'Umsatzsteuer', 4], ['steuerMonat', 'Steuer gezahlt im Kalendermonat', 0], ['holdingKosten', 'Holdingkosten', 0], ['holdingAb', 'Holding ab Monat', 0], ['kdvStart', 'KD Ventures Start', 0], ['bjoernBetrag', 'Björn Darlehen', 0], ['bjoernRate', 'Björn Rate', 0], ['bjoernRateVon', 'Björn Rate ab Monat', 0], ['bjoernRateBis', 'Björn Rate bis Monat', 0], ['bjoernSchluss', 'Björn Schlussrate', 0], ['bjoernSchlussMonat', 'Schlussrate in Monat', 0], ['bjoernZinsMonat', 'Björn Zins je Monat', 0], ['bjoernZinsDeckel', 'Björn Zins-Deckel', 0], ['exitSteuer', 'Steuer auf Ausstieg', 4], ['gehaltTag', 'Gehaltstag', 0]];
+const ANNAHMEN: [string, string, number][] = [['kevinBrutto', 'Kevin brutto', 0], ['kevinAb', 'Kevin ab Monat', 0], ['malinBrutto', 'Malin brutto', 0], ['malinAb', 'Malin ab Monat', 0], ['agAnteil', 'Arbeitgeberanteil', 4], ['stammkapital', 'Stammkapital', 0], ['gruendungskosten', 'Gründungskosten', 0], ['darlehenKevin', 'Darlehen Kevin an UG', 0], ['darlehenRueckMonat', 'Rückzahlung in Monat', 0], ['retainerVerzug', 'Retainer-Zahlungsverzug (Monate)', 0], ['astarnaProvision', 'ASTARNA Provision', 0], ['steuerUG', 'Ertragsteuer UG', 4], ['ust', 'Umsatzsteuer', 4], ['steuerMonat', 'Steuer gezahlt im Kalendermonat', 0], ['holdingKosten', 'Holdingkosten', 0], ['holdingAb', 'Holding ab Monat', 0], ['kdvStart', 'KD Ventures Start', 0], ['bjoernBetrag', 'Partnerdarlehen', 0], ['bjoernRate', 'Partnerdarlehen Rate', 0], ['bjoernRateVon', 'Partnerdarlehen Rate ab Monat', 0], ['bjoernRateBis', 'Partnerdarlehen Rate bis Monat', 0], ['bjoernSchluss', 'Partnerdarlehen Schlussrate', 0], ['bjoernSchlussMonat', 'Schlussrate in Monat', 0], ['bjoernZinsMonat', 'Partnerdarlehen Zins je Monat', 0], ['bjoernZinsDeckel', 'Partnerdarlehen Zins-Deckel', 0], ['exitSteuer', 'Steuer auf Ausstieg', 4], ['gehaltTag', 'Gehaltstag', 0]];
 const FARBEN_SZ = [KUPFER, LEUCHT.achtung, LEUCHT.kritisch, LEUCHT.puls, LILA, C.inkDim, C.ink];
 
 export function Szenarien() {
@@ -269,7 +269,7 @@ export function Szenarien() {
             <Tabelle klein>
               <thead><tr><th style={TH}>Baustein</th><th style={TH}>Betrag</th><th style={TH}>ab</th><th style={TH}>Monate</th><th style={TH}></th></tr></thead>
               <tbody>
-                <tr><td style={TD}>One Banking</td><td style={TD}>{num('ob/betrag', sz.ob.betrag, 'One Banking Betrag')}</td><td style={TD}>{mon('ob/start', sz.ob.start, 'One Banking ab')}</td><td style={TD}>{num('ob/laufzeit', sz.ob.laufzeit, 'One Banking Monate', 64)}</td><td style={TD}></td></tr>
+                <tr><td style={TD}>Ankermandat</td><td style={TD}>{num('ob/betrag', sz.ob.betrag, 'Ankermandat Betrag')}</td><td style={TD}>{mon('ob/start', sz.ob.start, 'Ankermandat ab')}</td><td style={TD}>{num('ob/laufzeit', sz.ob.laufzeit, 'Ankermandat Monate', 64)}</td><td style={TD}></td></tr>
                 {sz.retainer.map((r, i) => (
                   <tr key={i}><td style={TD}>Retainer {i + 1}</td><td style={TD}>{num(`retainer/${i}/betrag`, r.betrag, `Retainer ${i + 1} Betrag`)}</td><td style={TD}>{mon(`retainer/${i}/start`, r.start, `Retainer ${i + 1} ab`)}</td><td style={TD}>{num(`retainer/${i}/laufzeit`, r.laufzeit, `Retainer ${i + 1} Monate`, 64)}</td><td style={TD}><KnopfKlein farbe={C.inkDim} onClick={() => void aendere([{ pfad: p(`retainer/${i}`), alt: r }], `Szenario ${sz.name} · Retainer ${i + 1} entfernt`)} titel="Retainer entfernen">−</KnopfKlein></td></tr>
                 ))}
@@ -278,7 +278,7 @@ export function Szenarien() {
                 <tr><td style={TD}>Events/Monat</td><td style={TD}>{num('events/betrag', sz.events.betrag, 'Events')}</td><td style={TD}>{mon('events/ab', sz.events.ab, 'Events ab')}</td><td colSpan={2} style={TD}></td></tr>
                 <tr><td style={TD}>Gehaltserhöhung je Person</td><td style={TD}>{num('erhoehung/betrag', sz.erhoehung.betrag, 'Gehaltserhöhung')}</td><td style={TD}>{mon('erhoehung/ab', sz.erhoehung.ab, 'Gehaltserhöhung ab')}</td><td colSpan={2} style={TD}></td></tr>
                 <tr><td style={TD}>Unterstützung brutto</td><td style={TD}>{num('unterstuetzung/betrag', sz.unterstuetzung.betrag, 'Unterstützung')}</td><td style={TD}>{mon('unterstuetzung/ab', sz.unterstuetzung.ab, 'Unterstützung ab')}</td><td colSpan={2} style={TD}></td></tr>
-                <tr><td style={TD}>KEMARIS Tranche 1</td><td style={TD}>{num('exit1/betrag', sz.exit1.betrag, 'Tranche 1')}</td><td style={TD}>{mon('exit1/monat', sz.exit1.monat, 'Tranche 1 Monat')}</td><td colSpan={2} style={TD}><Schalter an={sz.bjoernAbloesen} onChange={v => setze('bjoernAbloesen', sz.bjoernAbloesen, v, 'Björn ablösen')}>Björn ablösen</Schalter></td></tr>
+                <tr><td style={TD}>KEMARIS Tranche 1</td><td style={TD}>{num('exit1/betrag', sz.exit1.betrag, 'Tranche 1')}</td><td style={TD}>{mon('exit1/monat', sz.exit1.monat, 'Tranche 1 Monat')}</td><td colSpan={2} style={TD}><Schalter an={sz.bjoernAbloesen} onChange={v => setze('bjoernAbloesen', sz.bjoernAbloesen, v, 'Partnerdarlehen ablösen')}>Partnerdarlehen ablösen</Schalter></td></tr>
                 <tr><td style={TD}>KEMARIS Tranche 2</td><td style={TD}>{num('exit2/betrag', sz.exit2.betrag, 'Tranche 2')}</td><td style={TD}>{mon('exit2/monat', sz.exit2.monat, 'Tranche 2 Monat')}</td><td colSpan={2} style={TD}></td></tr>
               </tbody>
             </Tabelle>
@@ -329,7 +329,7 @@ export function Szenarien() {
 }
 
 // ── Ziele ────────────────────────────────────────────────────────────────────
-const QUELLEN = [{ id: 'privat.angespart', label: 'Privat angespart' }, { id: 'ug.frei', label: 'UG frei verfügbar' }, { id: 'kdv.bjoern', label: 'Björn-Darlehen offen' }, { id: 'gruppe', label: 'Freies Geld Gruppe' }] as const;
+const QUELLEN = [{ id: 'privat.angespart', label: 'Privat angespart' }, { id: 'ug.frei', label: 'UG frei verfügbar' }, { id: 'kdv.bjoern', label: 'Partnerdarlehen offen' }, { id: 'gruppe', label: 'Freies Geld Gruppe' }] as const;
 
 export function Ziele() {
   const { d, ug, pr, aendere } = usePlan();

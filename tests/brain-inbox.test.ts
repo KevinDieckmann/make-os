@@ -21,7 +21,7 @@ describe('Brain-Inbox', () => {
     const a = await I.vorschlagAblegen({ titel: 'KEMARIS: neuer Standort Erfurt', text: 'Ab Oktober zweiter Standort in Erfurt.', ziel: 'ergaenzung', zielNotiz: 'KEMARIS', begruendung: 'Kevin sagte es im Gespräch.', quelle: 'Gespräch 27.09.' });
     expect(a.ok).toBe(true); expect(a.schonDa).toBeUndefined();
     expect((await I.vorschlagAblegen({ titel: 'KEMARIS: neuer Standort Erfurt', text: 'x', ziel: 'ergaenzung', begruendung: 'y', quelle: 'z' })).schonDa).toBe(true);
-    await I.vorschlagAblegen({ titel: 'Kevins Geburtstagsidee', text: 'Uhr für Frank.', ziel: 'neu', begruendung: 'aus dem Gedächtnis', quelle: 'Fakt', vertraulichkeit: 'privat-kevin' });
+    await I.vorschlagAblegen({ titel: 'Kevins Geburtstagsidee', text: 'Uhr für Anna.', ziel: 'neu', begruendung: 'aus dem Gedächtnis', quelle: 'Fakt', vertraulichkeit: 'privat-kevin' });
     await I.vorschlagAblegen({ titel: 'Keine Termine vor 9', text: 'Vor 9 Uhr keine Termine legen.', ziel: 'regel', begruendung: 'dreimal gesagt', quelle: 'Gespräche', prioritaet: 2, giltFuer: 'kevin' });
     expect((await I.vorschlaegeLesen({ person: 'kevin' })).map(v => v.titel)).toHaveLength(3);
     expect((await I.vorschlaegeLesen({ person: 'malin' })).map(v => v.titel)).not.toContain('Kevins Geburtstagsidee');

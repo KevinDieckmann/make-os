@@ -31,19 +31,19 @@ export function Schulden() {
   const privat = plaene.filter(x => x.s.einheit === 'privat' && x.s.status !== 'getilgt');
   const freiPrivat = privat.some(x => x.t.frei === null) ? null : Math.max(0, ...privat.map(x => x.t.frei ?? 0));
   const unklar = d.schulden.filter(s => s.status === 'unklar');
-  const bjoernFrei = (() => { const i = ug.findIndex(u => u.bjoernRest <= 0.5); return i >= 0 ? monatLabel(d, i + 1) : '—'; })();
+  const darlehenFrei = (() => { const i = ug.findIndex(u => u.bjoernRest <= 0.5); return i >= 0 ? monatLabel(d, i + 1) : '—'; })();
   const setze = (s: Schuld, feld: keyof Schuld, alt: unknown, neu: unknown, label: string) => void aendere([{ pfad: `/schulden/id=${s.id}/${feld}`, alt, neu }], `Schuld ${s.name} · ${label}`);
   return (
     <>
       <Kacheln min={170}>
-        <Kachel label="Schulden heute" wert={<><Geld v={heute} /> €</>} unter={<>inkl. Björn <Geld v={d.annahmen.bjoernBetrag} farbe={C.inkDim} /> €</>} />
+        <Kachel label="Schulden heute" wert={<><Geld v={heute} /> €</>} unter={<>inkl. Partnerdarlehen <Geld v={d.annahmen.bjoernBetrag} farbe={C.inkDim} /> €</>} />
         <Kachel label="Privat schuldenfrei" wert={freiPrivat === null ? '—' : freiPrivat === 0 ? 'jetzt' : monatLabel(d, freiPrivat)} unter={freiPrivat === null ? 'ohne Rate kein Datum' : 'bei den eingetragenen Raten'} />
-        <Kachel label="Björn getilgt" wert={bjoernFrei} unter={`über die UG · Szenario ${sz.name}`} />
+        <Kachel label="Partnerdarlehen getilgt" wert={darlehenFrei} unter={`über die UG · Szenario ${sz.name}`} />
         <Kachel label="Ungeklärt" wert={String(unklar.length)} punkt={unklar.length ? LEUCHT.achtung : LEUCHT.gut} unter={<><Geld v={unklar.reduce((a, s) => a + s.rest, 0)} farbe={C.inkDim} /> € ohne Plan</>} />
       </Kacheln>
       <Karte i={0}>
         <Ueberschrift>Schuldenstand gesamt — {sz.name}</Ueberschrift>
-        <Linie labels={d.monate} hoehe={200} serien={[{ name: 'Schulden gesamt', farbe: LEUCHT.kritisch, werte: summe }, { name: 'Björn', farbe: KUPFER, werte: ug.map(u => u.bjoernRest), breite: 1.3 }]} />
+        <Linie labels={d.monate} hoehe={200} serien={[{ name: 'Schulden gesamt', farbe: LEUCHT.kritisch, werte: summe }, { name: 'Partnerdarlehen', farbe: KUPFER, werte: ug.map(u => u.bjoernRest), breite: 1.3 }]} />
       </Karte>
       <Karte i={1}>
         <Ueberschrift rechts={<KnopfKlein onClick={() => void aendere([{ pfad: '/schulden/-', neu: { id: neueKennung('s'), name: 'Neue Schuld', einheit: 'privat', rest: 0, rate: 0, zins: 0, start: 1, status: 'läuft' } }], 'Schuld angelegt')}>+ Schuld</KnopfKlein>}>Einzeln</Ueberschrift>
@@ -51,9 +51,9 @@ export function Schulden() {
           <thead><tr><th style={TH}>Name</th><th style={TH}>Einheit</th><th style={TH}>Status</th><th style={THr}>Rest</th><th style={THr}>Rate</th><th style={THr}>Zins %</th><th style={TH}>erste Rate</th><th style={TH}>Sondertilgung / Monat (Probe)</th><th style={TH}>schuldenfrei</th><th style={THr}>Zinsen</th><th style={TH}></th></tr></thead>
           <tbody>
             <tr>
-              <td style={TD}>Björn / BF Beteiligungen</td><td style={TD}><Etikett einheit="kdv" /></td><td style={TD}>läuft</td>
+              <td style={TD}>Partnerdarlehen</td><td style={TD}><Etikett einheit="kdv" /></td><td style={TD}>läuft</td>
               <td style={TDr}><Geld v={d.annahmen.bjoernBetrag} /></td><td style={TDr}><Geld v={d.annahmen.bjoernRate} /></td><td style={TDr}>—</td>
-              <td style={TD}>{d.annahmen.bjoernRateVon ? monatLabel(d, d.annahmen.bjoernRateVon) : '—'}</td><td style={TDleise}>Planen › Szenarien</td><td style={TD}>{bjoernFrei}</td><td style={TDr}><Geld v={d.annahmen.bjoernZinsDeckel} farbe={C.inkLeise} /></td><td style={TD}></td>
+              <td style={TD}>{d.annahmen.bjoernRateVon ? monatLabel(d, d.annahmen.bjoernRateVon) : '—'}</td><td style={TDleise}>Planen › Szenarien</td><td style={TD}>{darlehenFrei}</td><td style={TDr}><Geld v={d.annahmen.bjoernZinsDeckel} farbe={C.inkLeise} /></td><td style={TD}></td>
             </tr>
             {plaene.map(({ s, t, t0 }) => (
               <tr key={s.id}>

@@ -1,7 +1,7 @@
 'use client';
 
 // ─── Kalender: Termin anlegen (27.09.) ──────────────────────────────────────
-// Oben eine Zeile wie in Google Kalender („Mo 10 Uhr Kaffee mit Frank 45min“),
+// Oben eine Zeile wie in Google Kalender („Mo 10 Uhr Kaffee mit Anna 45min“),
 // darunter die Felder, die daraus entstehen — korrigierbar. Serie, Erinnerung,
 // Ort, Notiz, für wen (welcher Apple-Kalender). Versendet wird nie etwas.
 
@@ -56,7 +56,7 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, kalender, onZu, onA
   const beschr = { fontSize: 12.5, color: C.inkLeise };
   return (
     <Fenster breit={600} onZu={onZu} titel="Neuer Termin">
-      <input autoFocus value={schnell} onChange={e => setSchnell(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void speichern(); }} placeholder="Schnell: „Mo 10 Uhr Kaffee mit Frank 45min“ · „morgen 14-16 Steuerberater @kevin“ · „3.10. Geburtstag ganztags“" aria-label="Schnelleingabe" style={{ ...eingabe, fontSize: 15, padding: '12px 14px' }} />
+      <input autoFocus value={schnell} onChange={e => setSchnell(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void speichern(); }} placeholder="Schnell: „Mo 10 Uhr Kaffee mit Anna 45min“ · „morgen 14-16 Steuerberater @kevin“ · „3.10. Geburtstag ganztags“" aria-label="Schnelleingabe" style={{ ...eingabe, fontSize: 15, padding: '12px 14px' }} />
       {ausSchnell.length > 0 && <div style={{ fontSize: 12, color: LEUCHT.gut }}>verstanden: {ausSchnell.join(' · ')}</div>}
       <label style={{ display: 'grid', gap: 4 }}><span style={beschr}>Titel</span><input value={f.titel} onChange={e => setF({ ...f, titel: e.target.value })} style={eingabe} /></label>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'end' }}>

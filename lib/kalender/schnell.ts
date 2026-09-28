@@ -1,6 +1,6 @@
 // ─── Kalender: Schnelleingabe (rein, getestet, 27.09.) ───────────────────────
 // Wie in Google Kalender: ein Satz statt fünf Felder. „Mo 10 Uhr Kaffee mit
-// Frank 45min“, „morgen 14:30-16 Steuerberater“, „3.10. Geburtstag Oma ganztags“,
+// Anna 45min“, „morgen 14:30-16 Steuerberater“, „3.10. Geburtstag Oma ganztags“,
 // „Fr 9 Uhr Power Hour jede Woche“. Was erkannt wird: Tag (heute/morgen/
 // übermorgen, Wochentag, TT.MM.[JJJJ]), Uhrzeit (9, 9:30, 9.30 Uhr, 14-16),
 // Dauer (30min, 1h, 1,5h), ganztags, Wiederholung (täglich, jede Woche,
@@ -74,7 +74,7 @@ export function schnellLesen(eingabe: string, heute: string, standardDauer = 60)
     const z = Number(m[1].replace(',', '.')); const min = /^(min|minuten)$/i.test(m[2]) ? z : z * 60;
     out.dauerMin = Math.max(5, Math.min(24 * 60, Math.round(min / 5) * 5)); erkannt.push(`${out.dauerMin} Minuten`);
   });
-  // Ort: „… in Berlin“ / „… bei Frank“ am Ende (nur, wenn danach nichts mehr kommt)
+  // Ort: „… in Berlin“ / „… bei Anna“ am Ende (nur, wenn danach nichts mehr kommt)
   nimm(/\s(?:in|bei)\s([A-ZÄÖÜ][^\s]*(?:\s[A-ZÄÖÜ0-9][^\s]*){0,3})\s*$/, m => { out.ort = m[1].trim(); erkannt.push(`in ${out.ort}`); });
 
   out.titel = rest.replace(/\s+/g, ' ').replace(/^[\s,:\-–]+|[\s,:\-–]+$/g, '').trim();
