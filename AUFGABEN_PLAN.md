@@ -43,3 +43,5 @@ Kevins Entscheidungen:
 - **Eigene Felder** je Projekt (Text, Zahl, Betrag, Datum, Auswahl, Link, Person) und **Abhängigkeiten** („B wartet auf A“).
 - **Verlauf je Aufgabe** (wer, wann, was — ohne Inhalte von Kommentaren im Protokoll) und **Zeit je Aufgabe** (Fokus-Zeit).
 - Upload auf den Server: erst auf Kevins ausdrückliches Wort.
+- **Navigation wie im CRM (Kevin ~22:30):** `/os/aufgaben` startet mit einer **Überblick-Seite** (Kacheln + Karten je Privat/Firma/Mandant), oben Leiste Überblick · Privat · Firmen ▾ · Mandanten ▾ · Archiv (Dropdowns mit Suche wie im CRM), im Space Brotkrumen Space ▾ › Projekt ▾ › Gruppe ▾ › Liste ▾ zum schnellen Umschalten auch zwischen Listen; Zustand in der Adresse (`WEG.aufgaben`).
+- **Mandanten überall klickbar** (Baustein `MandantLink`): Zeit je Mandat, Ziele, Finanzen, Kalender-Fristen, Heads, Suche → CRM-Firmenakte/Mandat; Mandanten-Space-Kopf verlinkt Firma + Mandat, CRM-Akten verlinken zurück in den Space.
