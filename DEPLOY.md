@@ -143,10 +143,11 @@ Was im Repo steht und mit dem nächsten Ausrollen wirkt:
 - **Ausrollen:** `deploy/ausrollen.sh` ist der Forced Command des Ausroll-Schlüssels (nur `git merge --ff-only`
   + `docker compose up -d --build`). In `/home/make/.ssh/authorized_keys` muss die Zeile so aussehen:
   `command="/srv/make-os/app/deploy/ausrollen.sh",restrict ssh-ed25519 AAAA… make-os-ausrollen`
-- **Sicherung:** liegt `/srv/make-os/sicherung.pub` (öffentlicher age-Schlüssel), verschlüsselt der Server damit —
-  entschlüsseln kann nur Kevin. Erzeugen auf dem Mac: `age-keygen -o ~/make-os-sicherung.txt` (Datei in den
-  Passwort-Manager), die Zeile `age1…` nach `/srv/make-os/sicherung.pub`. Bis dahin gilt weiter das
-  openssl-Passwort. Zweiter Ablageort (Storage Box / anderer Anbieter) ist noch offen.
+- **Sicherung:** `/srv/make-os/sicherung.pub` (öffentlicher age-Schlüssel) ist seit 29.09. **Pflicht** — ohne sie bricht
+  `deploy/sicherung.sh` ab (kein openssl-Rückfall mehr); entschlüsseln kann nur, wer die age-Identität hat. Erzeugen
+  auf dem Mac: `age-keygen -o ~/make-os-sicherung.txt` (Datei in beide Passwort-Manager + Papier, NOTFALL.md), die
+  Zeile `age1…` nach `/srv/make-os/sicherung.pub`. Zweiter Ort: der Mac holt jede Nacht ab (Abschnitt „Sicherung,
+  Offsite, Wiederherstellung“).
 - **SSH:** `server-haerten.sh` setzt `PermitRootLogin no`, sobald `make` einen Schlüssel und sudo hat
   (`server-einrichten.sh` richtet beides ein); `AllowTcpForwarding no`; Sicherheitsupdates explizit täglich.
 
@@ -178,7 +179,28 @@ UND Sicherungen unlesbar — die nächtliche Sicherung packt die verschlüsselte
 Passwort bzw. age). Zurückholen braucht deshalb beides: Sicherung entpacken, `.env` mit dem Datenschlüssel,
 fertig — oder zum Umzug einmal `--entschluesseln`.
 
-**Rotieren** (Schlüssel ist irgendwo aufgetaucht): `bash /srv/make-os/app/deploy/datenschluessel-rotieren.sh` als `make` —
+**Hülle seit 29.09. (Paket D-A):** v2 mit Schlüssel-ID und AAD (Bestandsname trägt den Haushalt) — eine unter fremdem
+Namen zurückgespielte Datei scheitert laut. v1-Hüllen bleiben lesbar und werden beim nächsten Schreiben v2. Klartext
+bei gesetztem Schlüssel wird abgelehnt (HOI rot „Klartext-Bestand abgelehnt“); nur für eine bewusste Übernahme
+`MAKE_OS_KLARTEXT_MIGRATION=1` setzen, danach wieder entfernen.
+
+**Schlüssel als Datei statt in der Umgebung (empfohlen, #50):** in der `.env` sieht ihn `docker inspect` und jeder mit
+Docker-Zugriff. Umstellen (als make, eigene Terminal-App):
+```bash
+sudo install -d -m 700 -o make -g make /srv/make-os/schluessel
+grep '^MAKE_OS_DATEN_SCHLUESSEL=' /srv/make-os/app/.env | cut -d= -f2- > /srv/make-os/schluessel/daten
+chmod 400 /srv/make-os/schluessel/daten
+sed -i '/^MAKE_OS_DATEN_SCHLUESSEL=/d' /srv/make-os/app/.env      # erst NACH dem Schreiben der Datei
+cd /srv/make-os/app && docker compose up -d                          # compose bindet /srv/make-os/schluessel nur lesend ein
+```
+Danach zeigt der HOI „Datenschlüssel“ nicht mehr gelb. Die Umgebung ginge der Datei vor — deshalb die Zeile entfernen.
+
+**Rotieren im laufenden Betrieb (seit 29.09., braucht die Schlüssel-Datei):** `bash /srv/make-os/app/deploy/datenschluessel-rotieren-live.sh`
+als `make` — kein Anhalten, nie Klartext auf der Platte: der alte Schlüssel wandert nach `schluessel/daten-alt` (nur
+lesen), ein neuer nach `schluessel/daten`, die App stellt Bestand für Bestand in dessen Schreibsperre um (Bestände,
+Tagessicherungen, Archiv, Dateiablage); erst bei 0 Fehlern verschwindet `daten-alt`. Bricht es ab: `… --weiter`.
+
+**Rotieren mit Anhalten** (Notweg, ohne Schlüssel-Datei): `bash /srv/make-os/app/deploy/datenschluessel-rotieren.sh` als `make` —
 eine Minute Unterbrechung, danach den neuen Schlüssel in der eigenen Terminal-App auslesen (nie über Claude oder
 in einen Chat: alles, was dort steht, gilt als kompromittiert). Am 26.09. einmal so gemacht.
 **Den alten Schlüssel aufbewahren** (seit 28.09. sagt das Skript es am Ende deutlich): Tagesarchive (14 Tage) und
@@ -188,17 +210,59 @@ Achtung: Die Archive von vor dem 26.09. brauchen den Schlüssel von vor der Rota
 
 ### Probe-Restore — quartalsweise (seit 28.09.)
 Eine Sicherung zählt erst, wenn sie einmal zurückgeholt wurde. Einmal im Quartal (und nach jeder Schlüsselrotation)
-am Mac: ein Tagesarchiv vom Server holen und `deploy/sicherung-probe.sh <archiv> <age-schlüssel>` laufen lassen —
+am Mac: ein Tagesarchiv aus `~/MAKE-OS-Sicherungen` nehmen und `deploy/sicherung-probe.sh <archiv> <age-schlüssel> --app`
+laufen lassen (`brew install age` einmal vorher; `--app` startet MAKE OS im Probe-Ordner auf Port 3098 und misst die
+Wiederherstellungszeit — Ziel RTO 4 h, siehe NOTFALL.md) —
 den Datenschlüssel vorher nur in die Umgebung (`read -rs MAKE_OS_DATEN_SCHLUESSEL && export MAKE_OS_DATEN_SCHLUESSEL`),
 nie in eine Datei. Das Skript entschlüsselt in einen Temp-Ordner, zählt Bestände und Datensätze je Bestand (nur
 Zahlen, keine Inhalte), prüft die Dateiablage und löscht den Temp-Ordner. „Probe bestanden“ + Datum hier eintragen:
 
-| Datum | Archiv | Bestände | Ergebnis |
-|---|---|---|---|
-| — | — | — | noch nie gemacht |
+| Datum | Archiv | Bestände | Dauer bis „App antwortet“ | Ergebnis |
+|---|---|---|---|---|
+| — | — | — | — | noch nie gemacht |
 
-Nicht verschlüsselt: Bilder unter `daten/bauplan-bilder`, das Archiv `daten/archiv` (Umzugs-Stände) und das
-Obsidian-Hirn (eigenes Git-Repo). Das sind bewusste Ausnahmen; die JSON-Bestände sind das, worum es geht.
+Im Ruhezustand NICHT verschlüsselt (bewusst, Stand 29.09.): Bilder unter `daten/bauplan-bilder`, der Brain-Index
+`daten/brain-index.sqlite` (abgeleitet, wird neu gebaut — seit 29.09. nicht mehr in der Nachtsicherung) und das
+Obsidian-Hirn (eigenes Git-Repo). Das Archiv `daten/archiv` ist seit 28.09. verschlüsselt (lib/store/archiv.ts).
+Die Nachtarchive selbst sind als Ganzes mit age verschlüsselt.
+
+## Sicherung, Offsite, Wiederherstellung (29.09., Paket D-A)
+
+**Ziele:** RPO 24 h (Nachtarchiv 03:15 + Tageskopie je Bestand vor dem ersten Überschreiben des Tages), RTO 4 h
+(NOTFALL.md, gemessen mit `sicherung-probe.sh --app`). Löschkonzept: Sicherungen sind „beyond use“ und laufen nach
+den Generationen unten ab (längstens 12 Monate). Offen (#70): Grabsteine, die eine Wiederherstellung automatisch um
+spätere Art.-17-Löschungen bereinigen — bis dahin nach einem Restore das Löschprotokoll der Zwischenzeit von Hand nachziehen.
+
+**Ablauf der Nachtsicherung** (`deploy/sicherung.sh`, Cron 03:15 als make): Schreibpause ≤ 30 s über
+`POST /api/intern/schreibpause` (Dienstweg im Container) → Schnappschuss nach `daten/.sicherung-stage` (ohne
+`backup/`, Brain-Index, `.tmp`) → Pause aufheben → jeden Bestand entschlüsseln/parsen/zählen
+(`scripts/sicherung-pruefen.mjs` im Container) → tar.gz → age → Kopf und Dateizahl prüfen → Generationen.
+Immer (auch bei Fehlern): `daten/system/sicherung.json` (nur Zahlen) für den Head of IT und der Dead-Man-Ping.
+
+**Generationen** (Server `sicherungen/` und Mac `~/MAKE-OS-Sicherungen`, `deploy/generationen.sh`): 14 täglich,
+8 wöchentlich (neuestes je Kalenderwoche), 12 monatlich (neuestes je Monat).
+
+**Einmal einrichten (Server, als make):**
+```bash
+echo 'https://hc-ping.com/<eure-uuid>' > /srv/make-os/.healthchecks-sicherung   # Pflicht (HOI gelb, solange es fehlt)
+sudo install -m 644 /srv/make-os/app/deploy/logrotate-make-os /etc/logrotate.d/make-os
+```
+Healthchecks.io: Prüfung „MAKE OS Sicherung“, Zeitraum 1 Tag, Kulanz 2 h; Benachrichtigung an Kevin + Malin.
+
+**Mac-Abholung** (Kevin: „Auf euren Mac ziehen“) — nur lesend, Pull vom Mac:
+1. Am Mac: `deploy/sicherung-abholen.sh --einrichten` → erzeugt `~/.ssh/make-os-abholung` und zeigt eine Zeile.
+2. Auf dem Server diese Zeile in `/home/make/.ssh/authorized_keys` (Forced Command, `restrict`):
+   `command="/srv/make-os/app/deploy/sicherung-ausgeben.sh",restrict ssh-ed25519 AAAA… make-os-abholung` —
+   der Schlüssel kann dann NUR `liste`, `holen <archiv>` und `bestaetigen <archiv> <sha256>`.
+3. Am Mac: `cp deploy/de.makeos.sicherung.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/de.makeos.sicherung.plist`
+   (täglich 08:30; verpasste Läufe holt launchd beim Aufwachen nach). Einmal von Hand: `deploy/sicherung-abholen.sh`.
+Der Mac prüft Größe + SHA-256 und bestätigt; der Server schreibt `daten/system/abholung.json`, der Lage-Sammler meldet
+das Alter → HOI „Sicherung am Mac“ (> 48 h rot). Der Server kann den Mac nie erreichen und dort nichts löschen.
+
+**Einzelne Datensätze zurückholen** (statt Dateitausch per SSH): `docker compose exec -T app node scripts/einzel-wiederherstellen.mjs <bestand>`
+(Tageskopien) → `… <bestand> <tag>` (Vorschau: geändert/gelöscht/neu je Liste, nur Kennungen und Feldnamen) →
+`… <bestand> <tag> <liste> <id> …` (übernimmt genau diese, mit Stand-Prüfung und Protokoll). Gelöschte Personen holt
+das Werkzeug nie zurück (Art. 17 möglich). Route: `/api/intern/wiederherstellen` (nur Inhaber).
 
 ## Ausrollen seit 26.09. abends: Bild kommt fertig von GitHub
 Die Action baut das Docker-Image auf dem GitHub-Rechner (`docker build`) und schickt es per SSH-Stdin an den Server

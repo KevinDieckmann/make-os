@@ -59,10 +59,12 @@ lokal, Route `/os`, Port 3001.
    `zweiterFaktor` (Geheimnis, letzte Stufe, Wiederherstellungs-Hashes) — nie in Antworten (`oeffentlich()`
    liefert nur `zweiterFaktorAn`). Anmelden: Passwort → `{ zweiterFaktor: true }` → Passwort + `code`.
    Cookie heißt in Produktion `__Host-make-os-sitzung` (SITZUNG_COOKIE), Server-Admin: `ssh make@… sudo`.
-9. **Bestände verschlüsselt** (`lib/store/local-db.ts`): mit `MAKE_OS_DATEN_SCHLUESSEL` liegt auf der Platte
-   nur die Hülle `{ __verschluesselt: 1, iv, tag, daten }`; Lesen ohne/mit falschem Schlüssel wirft (nie null).
-   Wer `.data`-Dateien direkt liest, muss `entschluesseln()` nutzen. Umstellen/zurück:
-   `scripts/daten-verschluesselung.mjs`. Tests biegen den Ordner mit `MAKE_OS_DATEN_DIR` um.
+9. **Bestände verschlüsselt** (`lib/store/local-db.ts`, Hülle in `lib/store/huelle.mjs`): mit `MAKE_OS_DATEN_SCHLUESSEL`
+   (bzw. `…_DATEI`) liegt auf der Platte nur die Hülle v2 `{ __verschluesselt: 2, kid, iv, tag, daten }` mit AAD =
+   Bestandsname (v1 bleibt lesbar); Lesen ohne/mit falschem Schlüssel wirft (nie null), Klartext bei gesetztem Schlüssel
+   auch (`KlartextBestand`, nur `MAKE_OS_KLARTEXT_MIGRATION=1` lässt ihn einmal durch). Wer `.data`-Dateien direkt liest,
+   nimmt `rohOeffnen(roh, bestandsname)`. Umstellen/zurück: `scripts/daten-verschluesselung.mjs` (bricht bei laufender
+   App ab); Rotation im Betrieb: `deploy/datenschluessel-rotieren-live.sh`. Tests biegen den Ordner mit `MAKE_OS_DATEN_DIR` um.
 10. **Kartei-Zugang & Änderungsprotokoll (28.09., K1):** `/api/state/{kontakte,kunden,prospects,netzwerk,stammdaten,aenderungen}`
    nur über `karteiZugang` (Haushalt des Inhabers; Dienstweg mit Person nur für eine Person dieses Haushalts). Das
    Änderungsprotokoll schreibt nur der Server (`lib/store/aenderungsprotokoll.ts`, Monatsdateien, nur anhängend, nie
@@ -458,6 +460,24 @@ lokal, Route `/os`, Port 3001.
 - **Felder leeren = `null` (28.09., F1):** JSON verwirft `undefined`. Kontakte: `kontaktTeil` übersetzt `undefined` → `null` (`leerAlsNull`), der Server entfernt das Feld (`teilAnwenden`, nie `id`/`stufe`/`aktivitaeten`/`zahlung` …). CRM-Bestand: `api.teil(liste, id, nurFelder(teil))` (`undefined` → `''`, die Säuberer lassen es weg). Nie `{ ...eintrag, ...teil }` als ganzen Eintrag aus dem Browser-Stand schreiben.
 - **Firmen-Upsert führt zusammen (28.09., F1):** `firmenId` kommt aus dem Namen ohne Rechtsform — vor dem Anlegen `bestehendeFirma(firmen, name)` fragen und verknüpfen. Serverseitig (`wendeCrmAn` → `firmaZusammenfuehren`) füllt ein Upsert mit bestehender Kennung nur leere Felder; ändern nur über `teil`.
 
+- **Datenschicht-Kern (29.09., Paket D-A):**
+  - Dateien, die nicht über local-db gehen (Archiv, Skripte, Dateiablage), schreiben NUR über `atomarSchreiben(pfad, bytes)`
+    aus `lib/store/atomar.mjs` (tmp → fsync → rename → Ordner-fsync) — nie `writeFile`/`copyFile` direkt auf den Zielnamen.
+  - Sperren: nie denselben Bestand in seiner eigenen Änderung erneut sperren (`SperreFalsch`), Rangfolge `crm` → `kontakte`
+    wird geprüft, 30 s Zeitlimit (`SperreZeitlimit`, 503). Nur Dateien NEBEN einem Bestand unter dessen Sperre: `mitBestandSperre`.
+  - Neue Kennungen nur über `neueKennung(praefix)` (`lib/kennung.ts`, `<präfix>-<uuid>`) — nie `Date.now()` (Wächter
+    `tests/kennungen.test.ts`). Kennungen tragen keine Zeit; sortieren nach dem Zeitfeld.
+  - `_v` ist ein reservierter Schlüssel (Schemaversion, schreibt local-db, Leser sehen ihn nie). Formänderung eines Bestands =
+    Eintrag in `lib/store/schema.ts` (Version hoch, Migration rein und idempotent, mit Test).
+  - Skripte, die in `.data` schreiben, rufen `skriptSperreOderAbbruch(ordner)` (`lib/store/schreiber.mjs`) — die App hält
+    `.schreiber` mit Herzschlag. Neue Dienstwege der Datenschicht liegen unter `/api/intern/*` (nur Dienstweg bzw. Inhaber).
+  - Wiederholbare Wirkungen aus dem Browser (anlegen, buchen) nehmen eine `anfrageId` und laufen über `einmalig()`
+    (`lib/store/anfragen.ts`). Teure Arbeit (PDF, KI, Netz) nie in einer Schreibsperre: reservieren → außerhalb rechnen →
+    mit Stand-Prüfung festschreiben (Vorbild `angebotStellen`).
+  - Neues Feld in einem CRM-Typ → auch in den Säuberer (Wächter `tests/crm-saeuberer-waechter.test.ts`).
+  - Betrieb: Nachtsicherung, Mac-Abholung, Einzel-Restore, Durchsicht und Rotation stehen in DEPLOY.md und NOTFALL.md;
+    der HOI zeigt Sicherung/Abholung/Durchsicht/Sperr-Messwerte. „Heute“ ist der Berliner Tag (`localDay` über Intl).
+
 ## Agenten — Querliegendes
 - Jeder Modellaufruf geht durch `lib/anthropic.ts askText`: dort sitzt der Guthaben-Schalter (`guthabenLeer()`, 30 min Pause nach „credit balance too low“). Nie eigene Aufrufe an die API daneben bauen.
 - `runAgent` (lib/zoe/agenten.ts): `post`/`get` werfen bei Fehlerstatus, `ok:false` oder `error` — ein Lauf ist nur `ok`, wenn die Route es ist. Neue Fälle: Ergebnis prüfen, nicht Text.
@@ -848,7 +868,7 @@ lokal, Route `/os`, Port 3001.
 
 ## Tempo (27.09.)
 - Tempo misst man im **Prüfbau** (`make-os-pruefbau`, Port 3011, `MAKE_OS_DIST=.next-pruefbau npx next build`) oder auf dem Server — nie auf 3001 (Entwicklungsmodus übersetzt jede Seite beim ersten Aufruf).
-- **Prüfbau und Dev-Server teilen `.data` (28.09., K1 #40):** `make-os-pruefbau` (3011) und `make-os-entwicklung` (3001) lesen und schreiben denselben Datenordner — nie gleichzeitig schreibend benutzen (einen anhalten, bevor im anderen geklickt wird). `scripts/daten-verschluesselung.mjs` warnt, wenn auf 3000/3001/3011 eine App läuft.
+- **Prüfbau und Dev-Server teilen `.data` (28.09., K1 #40):** `make-os-pruefbau` (3011) und `make-os-entwicklung` (3001) lesen und schreiben denselben Datenordner — nie gleichzeitig schreibend benutzen (einen anhalten, bevor im anderen geklickt wird). `scripts/daten-verschluesselung.mjs` bricht ab, solange eine lebende App das Lockfile `.data/.schreiber` hält (29.09.), und warnt zusätzlich, wenn auf 3000/3001/3011 eine App läuft; der HOI meldet einen zweiten Schreiber.
 - Der Live-Server hat **1 vCPU / 1,9 GB**: alles, was pro Anfrage rechnet, reiht sich hintereinander. Deshalb: keine externen Aufrufe (iCloud, Modell) im Seitenpfad, keine neuen Poller unter 30 s, jede große GET-Antwort mit `etagAus`/`unveraendert`/`jsonAntwort` (`lib/http/json-antwort.ts`).
 - Der **Anfrage-Bündler** (`lib/http/anfrage-buendel.ts`) liegt vor dem Browser-fetch: gleiche GETs an /api teilen sich eine Antwort (laufend immer, fertig 8 s; `cache: 'no-store'` = nur laufend). Schreibende Aufrufe leeren ihn und zählen die Generation hoch (Start + Ende) — ein GET aus einer älteren Generation wird weder geteilt noch frisch gehalten. Wer wirklich frisch lesen muss, nimmt `no-store`.
 - **Memo** merkt unter dem Stand vom START der Rechnung — wer während der Rechnung schreibt, macht das Ergebnis ungültig; eine ältere Rechnung überschreibt nie eine jüngere.

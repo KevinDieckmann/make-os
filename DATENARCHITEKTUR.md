@@ -91,6 +91,35 @@ Verschlüsselung, skaliert begrenzt). Beides braucht Stufe 1 und 2 vorher.
 - Offen aus Stufe 2: `teile.tsx`, `Kartei.tsx:268` (Anlegen), `events/Abend.tsx` senden noch ganze Kontakte (mit Stand, also sicher — nur mehr Bytes);
   Kampagnen/Heads schreiben schon in der Sperre. Stufe 3 entfällt (JSON bleibt); Stufe 4 und 5 wie geplant.
 
+- **Paket D-A — Datenschicht-Kern und Betrieb (29.09., lokal, Prüfliste DATENARCHITEKTUR_FEHLER_PRUEFLISTE.md):**
+  atomar + dauerhaft überall (`lib/store/atomar.mjs`, auch Tagessicherung, Archiv, Skripte), Sperren auf `globalThis` mit
+  Wiedereintritts-/Rangfolge-Erkennung und 30-s-Zeitlimit, Lockfile `.schreiber` + Abschalt-Handler (compose 60 s),
+  Kennungen `<präfix>-<uuid>`, Berliner Tag über Intl, Hülle v2 (Schlüssel-ID + AAD) mit Schlüsselring und Rotation im
+  laufenden Betrieb, Klartext-Sperre, ETag mit Inode + Zähler, gzip-ETag, LRU-Lesecache 64 MB, JSON ohne Einrückung,
+  Schemaversion `_v` + Migrationsrahmen (`lib/store/schema.ts`), geprüfte Nachtsicherung mit Schreibpause, age-Pflicht,
+  Generationen 14/8/12, Mac-Abholung, Einzel-Restore, nächtliche Durchsicht, HOI-Messwerte, Idempotenz der
+  Beleg-Übernahme, Pacht-Token, Angebots-PDF außerhalb der Sperre, Säuberer-Wächter. Tests: `tests/datenschicht-*.test.ts`,
+  `sicherung-skripte`, `idempotenz-auftraege`, `kennungen`, `zeit-berlin`, `crm-saeuberer-waechter`.
+
+## 4b. Bedrohungsmodell (29.09., Prüfliste #50/#62)
+
+Was die Verschlüsselung im Ruhezustand schützt — und was nicht. Grundsatz: **Schlüssel und Daten liegen nie im
+selben Behälter, der das Haus verlässt.**
+
+| Angreifer / Ereignis | Was er bekommt | Schutz heute | Rest-Risiko |
+|---|---|---|---|
+| Kopie des Datenordners (Fehlkonfiguration, verlorene Platte, Log-Upload) | nur Hüllen (AES-256-GCM v2, AAD je Bestand) | Schlüssel liegt nicht im Datenordner | Klartext-Ausnahmen: Brain-Index, Bauplan-Bilder, `system/*.json` (nur Zähler) |
+| Nachtarchiv (Server `sicherungen/`, Mac, Healthchecks-Log) | age-Chiffrat | Identität nur bei Kevin/Malin (Passwort-Manager + Papier) | Verlust der Identität = Verlust aller Archive → NOTFALL.md |
+| **Hetzner-Abbild** (Konsole, Anbieter, übernommenes Hetzner-Konto) | ganze Platte: Daten **und** Schlüssel (`.env` bzw. `/srv/make-os/schluessel/daten`) | keiner — ein Voll-Abbild enthält alles | bewusst getragen: 2FA am Hetzner-Konto, Abbilder nur 7 Tage; die Datei-Lösung ändert daran nichts |
+| Shell als `make` / Docker-Zugriff | Schlüssel (Umgebung per `docker inspect`, `/proc/1/environ`; Datei per `cat`) und alle Daten | SSH nur Schlüssel, fail2ban, Forced Commands für Ausrollen und Abholung | mit Schlüssel als Datei (0400) nicht mehr in `docker inspect`/Umgebung sichtbar — gegen `make` selbst schützt nichts |
+| Arbeiter-/Bote-Container | kein Datenvolume, kein Datenschlüssel | compose: nur `MAKE_OS_KEY` | Dienstschlüssel öffnet die Routen |
+| Untergeschobene/zurückgespielte Datei (fremder Haushalt, alte Sicherung) | — | AAD (Bestandsname) + Klartext-Sperre (#54/#55) | alte v1-Hüllen haben noch kein AAD, bis sie neu geschrieben sind |
+| Rotation bricht ab | — | Rotation im Betrieb schreibt nie Klartext (Schlüsselring) | der Notweg `datenschluessel-rotieren.sh` hat weiter ein Klartext-Fenster |
+
+Empfehlung (umgesetzt, Umstellung macht Kevin): Schlüssel als Datei `/srv/make-os/schluessel/daten` (0400, Besitzer make,
+nur lesend in den App-Container gebunden, `MAKE_OS_DATEN_SCHLUESSEL_DATEI`) statt in der `.env`; die Umgebung gewinnt,
+solange sie gesetzt ist — deshalb die Zeile aus der `.env` nehmen (DEPLOY.md). Der HOI zeigt die Quelle.
+
 ## 5. Offene Entscheidungen für den 27.09.
 
 - Speicher: JSON optimiert · JSON je Kontakt · SQLite (mit Verschlüsselungskonzept).
