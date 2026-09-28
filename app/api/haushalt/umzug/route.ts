@@ -1,7 +1,7 @@
 // ─── Umzug aus Malins Cockpit: Probelauf und Übernahme ──────────────────────
 // POST { schritt: 'probe', email, passwort }
 //   liest ALLES aus Supabase (blätternd, exakt gezählt), legt die Rohdaten
-//   als Archiv ab (.data/archiv, nur für diesen Rechner lesbar) und schreibt
+//   als Archiv ab (.data/archiv, 0600, mit Datenschlüssel verschlüsselt) und schreibt
 //   in einen PROBE-Haushalt — der echte bleibt unberührt. Antwort: Bericht.
 // POST { schritt: 'uebernehmen' }
 //   übernimmt genau das Geprüfte in den echten Haushalt. In MAKE OS schon
@@ -11,8 +11,7 @@
 // Das Passwort geht nur an Supabase. Es wird weder gespeichert noch geloggt.
 
 import { NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { archivSchreiben, archivZeit } from '@/lib/store/archiv';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { haushaltVon, KEIN_ZUGANG } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeHaushalt, setzeHaushalt, aendereMeta } from '@/lib/finanzen/haushalt/speicher';
@@ -49,12 +48,10 @@ export async function POST(req: Request) {
     try {
       const { roh, haushalt, bericht } = await ausSupabaseLesen(v, email, passwort);
       const zeit = new Date().toISOString();
-      const ordner = path.join(process.cwd(), '.data', 'archiv');
-      await fs.mkdir(ordner, { recursive: true, mode: 0o700 });
-      const archiv = path.join(ordner, `make-orga-supabase-${zeit.replace(/[:.]/g, '-')}.json`);
-      await fs.writeFile(archiv, JSON.stringify({ _quelle: 'Supabase MAKE.ORGA', _gelesen: zeit, _von: z.person, ...roh }, null, 1), { mode: 0o600 });
+      // Archiv verschlüsselt wie die Bestände (28.09., F2 — lib/store/archiv.ts).
+      const archiv = await archivSchreiben(`make-orga-supabase-${archivZeit(zeit)}.json`, { _quelle: 'Supabase MAKE.ORGA', _gelesen: zeit, _von: z.person, ...roh }, 1);
       await setzeHaushalt(probe(z.haushalt), haushalt);
-      await saveJson<Stand>(standName(z.haushalt), { bericht, zeit, wer: z.person, archiv: path.basename(archiv) });
+      await saveJson<Stand>(standName(z.haushalt), { bericht, zeit, wer: z.person, archiv });
       return NextResponse.json({ ok: true, bericht });
     } catch (err) {
       return NextResponse.json({ ok: false, fehler: err instanceof Error ? err.message : 'Lesen aus Supabase fehlgeschlagen.' }, { status: 400 });
@@ -72,13 +69,11 @@ export async function POST(req: Request) {
       const { haushalt: roherHaushalt, bericht } = umwandeln(roh, zeit);
       const n = v1Nacharbeiten(roherHaushalt);
       bericht.hinweise.unshift(...datei.hinweise);
-      const ordner = path.join(process.cwd(), '.data', 'archiv');
-      await fs.mkdir(ordner, { recursive: true, mode: 0o700 });
-      const archiv = path.join(ordner, `make-orga-dateien-${zeit.replace(/[:.]/g, '-')}.json`);
-      await fs.writeFile(archiv, JSON.stringify({ _quelle: 'Dateien (Sicherung + V1)', _gelesen: zeit, _von: z.person, sicherung: b.sicherung, v1: b.v1 ?? null }, null, 1), { mode: 0o600 });
+      // Archiv verschlüsselt wie die Bestände (28.09., F2 — lib/store/archiv.ts).
+      const archiv = await archivSchreiben(`make-orga-dateien-${archivZeit(zeit)}.json`, { _quelle: 'Dateien (Sicherung + V1)', _gelesen: zeit, _von: z.person, sicherung: b.sicherung, v1: b.v1 ?? null }, 1);
       await setzeHaushalt(probe(z.haushalt), n.haushalt);
       const detail = { ...datei, regelTreffer: n.regelTreffer, sonstiges: n.sonstiges, offenEin: n.offenEin };
-      await saveJson<Stand>(standName(z.haushalt), { bericht, datei: detail, quelle: 'dateien', zeit, wer: z.person, archiv: path.basename(archiv) });
+      await saveJson<Stand>(standName(z.haushalt), { bericht, datei: detail, quelle: 'dateien', zeit, wer: z.person, archiv });
       return NextResponse.json({ ok: true, bericht, datei: detail });
     } catch (err) {
       return NextResponse.json({ ok: false, fehler: err instanceof Error ? err.message : 'Dateien nicht lesbar.' }, { status: 400 });

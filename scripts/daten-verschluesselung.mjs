@@ -33,7 +33,8 @@ async function datei(p) {
   await fs.writeFile(tmp, neu, { encoding: 'utf8', mode: 0o600 });
   await fs.rename(tmp, p); getan++;
 }
-for (const ordner of [DATEN, path.join(DATEN, 'backup')]) {
+// Archiv-Kopien (28.09., lib/store/archiv.ts) liegen wie die Bestände als Hülle — alte Klartext-Kopien hier einmal umstellen.
+for (const ordner of [DATEN, path.join(DATEN, 'backup'), path.join(DATEN, 'archiv')]) {
   const namen = await fs.readdir(ordner).catch(() => []);
   for (const n of namen) if (n.endsWith('.json')) await datei(path.join(ordner, n));
 }

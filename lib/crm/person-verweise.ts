@@ -5,7 +5,7 @@
 // blieben stehen. Ab jetzt kennt GENAU EINE Stelle alle Verweise; der Test
 // prüft, dass nach dem Entfernen die Kennung nirgends mehr im Bestand steht.
 
-import type { CrmBestand, FollowUp } from './typen';
+import type { CrmBestand, FollowUp, Teilnahme } from './typen';
 
 const ohne = (ids: string[], id: string) => ids.filter(x => x !== id);
 const um = (ids: string[], alt: string, neu: string) => Array.from(new Set(ids.map(x => (x === alt ? neu : x))));
@@ -26,6 +26,33 @@ export function personEntfernen(crm: CrmBestand, id: string): CrmBestand {
   };
 }
 
+/**
+ * Teilnahmen nach dem Umbiegen: hatten beide Personen eine Teilnahme am SELBEN Event (28.09., F2),
+ * bleibt eine — die der behaltenen Person (`neu`). Der Status kommt aus der zuletzt geänderten
+ * Teilnahme (jüngste Auskunft gewinnt, bei Gleichstand die behaltene), leere Felder füllt die andere.
+ */
+function teilnahmenUm(liste: Teilnahme[], alt: string, neu: string): Teilnahme[] {
+  const vonNeu = new Map(liste.filter(t => t.kontaktId === neu).map(t => [t.eventId, t]));
+  const weg = new Set<string>();
+  const gemischt = new Map<string, Teilnahme>();
+  for (const t of liste) {
+    if (t.kontaktId !== alt) continue;
+    const n = vonNeu.get(t.eventId);
+    if (!n) continue;
+    weg.add(t.id);
+    const basis = gemischt.get(n.id) ?? n;
+    const raus: Teilnahme = { ...basis };
+    for (const f of Object.keys(t) as (keyof Teilnahme)[]) {
+      if (f === 'id' || f === 'kontaktId' || f === 'eventId') continue;
+      const v = t[f];
+      if (v !== undefined && v !== '' && (raus[f] === undefined || raus[f] === '')) (raus as unknown as Record<string, unknown>)[f] = v;
+    }
+    if ((t.geaendert ?? '') > (basis.geaendert ?? '')) { raus.status = t.status; raus.geaendert = t.geaendert; }
+    gemischt.set(n.id, raus);
+  }
+  return liste.filter(t => !weg.has(t.id)).map(t => gemischt.get(t.id) ?? (t.kontaktId === alt ? { ...t, kontaktId: neu } : t));
+}
+
 /** Verweise von `alt` auf `neu` umbiegen (Dubletten zusammenführen) — nichts geht verloren, nichts doppelt. */
 export function personUmbiegen(crm: CrmBestand, alt: string, neu: string): CrmBestand {
   if (alt === neu) return crm;
@@ -35,13 +62,15 @@ export function personUmbiegen(crm: CrmBestand, alt: string, neu: string): CrmBe
     ...crm,
     chancen: crm.chancen.map(c => (c.kontaktIds.includes(alt) || c.personenRollen?.[alt] ? { ...c, kontaktIds: um(c.kontaktIds, alt, neu), ...(c.personenRollen ? { personenRollen: rollenUm(c.personenRollen) as typeof c.personenRollen } : {}) } : c)),
     mandate: crm.mandate.map(m => (m.kontaktIds.includes(alt) ? { ...m, kontaktIds: um(m.kontaktIds, alt, neu) } : m)),
-    teilnahmen: crm.teilnahmen.map(t => (t.kontaktId === alt ? { ...t, kontaktId: neu } : t)),
+    teilnahmen: teilnahmenUm(crm.teilnahmen, alt, neu),
     kampagnen: (crm.kampagnen ?? []).map(k => (k.kontaktIds.includes(alt) || k.ergebnisse.some(e => e.kontaktId === alt)
       ? { ...k, kontaktIds: um(k.kontaktIds, alt, neu), ergebnisse: k.ergebnisse.map(e => (e.kontaktId === alt ? { ...e, kontaktId: neu } : e)) } : k)),
     beitraege: (crm.beitraege ?? []).map(b => (b.quellen.includes(alt) || b.wirkung.some(w => w.kontaktId === alt)
       ? { ...b, quellen: um(b.quellen, alt, neu), wirkung: b.wirkung.map(w => (w.kontaktId === alt ? { ...w, kontaktId: neu } : w)) } : b)),
     followups: (crm.followups ?? []).map(fu),
-    sitzungen: (crm.sitzungen ?? []).map(s => (s.karten.some(k => k.kontaktId === alt) ? { ...s, karten: s.karten.map(k => (k.kontaktId === alt ? { ...k, kontaktId: neu } : k)) } : s)),
+    // Eine Power-Hour-Karte je Person: stand die behaltene schon in der Sitzung, fällt die Karte der alten weg.
+    sitzungen: (crm.sitzungen ?? []).map(s => (s.karten.some(k => k.kontaktId === alt)
+      ? { ...s, karten: s.karten.some(k => k.kontaktId === neu) ? s.karten.filter(k => k.kontaktId !== alt) : s.karten.map(k => (k.kontaktId === alt ? { ...k, kontaktId: neu } : k)) } : s)),
     antraege: (crm.antraege ?? []).map(a => (a.kontaktId === alt ? { ...a, kontaktId: neu } : a)),
   };
 }

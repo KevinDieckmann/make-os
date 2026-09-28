@@ -18,8 +18,7 @@ import { turnusAus } from '@/lib/finanzen/haushalt/regeln';
 import { testHaushalt } from '@/lib/finanzen/haushalt/testdaten';
 import { vorschlag as katVorschlag, ungenutzt as katUngenutzt, anwenden as katAnwenden } from '@/lib/finanzen/haushalt/kategorien';
 import { ladeHaushalt, aendereStamm, aendereBuchungen } from '@/lib/finanzen/haushalt/speicher';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { archivSchreiben } from '@/lib/store/archiv';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -65,9 +64,8 @@ export async function POST(req: Request) {
         const paare = Array.isArray(b.paare) ? (b.paare as { von: unknown; nach: unknown }[]).map(p => ({ von: String(p.von), nach: String(p.nach) })) : [];
         const loeschen = new Set(Array.isArray(b.loeschen) ? (b.loeschen as unknown[]).map(String) : []);
         // Vorher archivieren — Kategorien hängen an jeder Buchung.
-        const ordner = path.join(process.cwd(), '.data', 'archiv');
-        await fs.mkdir(ordner, { recursive: true, mode: 0o700 });
-        await fs.writeFile(path.join(ordner, `kategorien-vor-aufraeumen-${z.haushalt}-${Date.now()}.json`), JSON.stringify({ stamm: h.stamm, zuordnung: h.buchungen.map(x => [x.id, x.kategorie_id]) }), { mode: 0o600 });
+        // Archiv verschlüsselt wie die Bestände (28.09., F2 — lib/store/archiv.ts).
+        await archivSchreiben(`kategorien-vor-aufraeumen-${z.haushalt}-${Date.now()}.json`, { stamm: h.stamm, zuordnung: h.buchungen.map(x => [x.id, x.kategorie_id]) });
         const jetzt = new Date().toISOString();
         let geaendert = 0;
         await aendereBuchungen(z.haushalt, l => { const e = katAnwenden(h.stamm, l, paare, jetzt); geaendert = e.geaendert; return e.buchungen; });

@@ -6,8 +6,7 @@
 // Aufräumen (9 → 1 Zahlungen) sonst zu Recht ablehnen.
 
 import { NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { archivSchreiben, archivZeit } from '@/lib/store/archiv';
 import { randomUUID } from 'crypto';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { haushaltVon, KEIN_ZUGANG } from '@/lib/finanzen/haushalt/zugriff';
@@ -49,9 +48,8 @@ export async function POST(req: Request) {
   if (!ent.length) return NextResponse.json({ ok: true, angewandt: 0 });
 
   const zeit = new Date().toISOString();
-  const ordner = path.join(process.cwd(), '.data', 'archiv');
-  await fs.mkdir(ordner, { recursive: true, mode: 0o700 });
-  await fs.writeFile(path.join(ordner, `business-vor-entflechtung-${zeit.replace(/[:.]/g, '-')}.json`), JSON.stringify({ _zeit: zeit, _von: z.person, entscheidungen: ent, ...vorher }, null, 1), { mode: 0o600 });
+  // Archiv verschlüsselt wie die Bestände (28.09., F2 — lib/store/archiv.ts).
+  await archivSchreiben(`business-vor-entflechtung-${archivZeit(zeit)}.json`, { _zeit: zeit, _von: z.person, entscheidungen: ent, ...vorher }, 1);
 
   const weg = (q: Quelle) => new Set(ent.filter(e => e.quelle === q && e.aktion !== 'kdv' && e.aktion !== 'kdc' && e.aktion !== 'kemaris').map(e => e.id));
   const neuFirma = new Map(ent.filter(e => ['kdv', 'kdc', 'kemaris'].includes(e.aktion)).map(e => [e.id, e.aktion]));

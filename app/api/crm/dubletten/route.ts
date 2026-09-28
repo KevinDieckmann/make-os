@@ -1,15 +1,17 @@
 // ─── CRM — Dubletten ────────────────────────────────────────────────────────
 // GET  → Paare mit gleichem Namen und zweitem gemeinsamen Merkmal
-// POST { behalten, weg } → zusammenführen (Verlauf, Einwilligungen, Sperre,
-//      Verweise in Chancen/Mandaten/Events). Bewusste Handlung, einzeln.
+// POST { behalten, weg } → zusammenführen (Verlauf, Einwilligungen, Sperre, private
+//      Notiz nur paarweise — lib/crm/dubletten.ts) und ALLE Verweise umbiegen: CRM,
+//      Dateiablage, Import-Konflikte, Heads, Termine, Aufgaben (lib/crm/person-bestaende.ts,
+//      28.09.). Bewusste Handlung, einzeln.
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/zoe/raum';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
-import { aendereCrm } from '@/lib/crm/speicher';
-import { dubletten, zusammenfuehren, verweiseUmbiegen } from '@/lib/crm/dubletten';
+import { dubletten, zusammenfuehren } from '@/lib/crm/dubletten';
+import { personUmbiegen } from '@/lib/crm/person-bestaende';
 import { fuerPerson } from '@/lib/make-one/crm';
 
 export const runtime = 'nodejs';
@@ -36,6 +38,6 @@ export async function POST(req: Request) {
     return { ...f, kontakte: f.kontakte.filter(x => x.id !== b.id).map(x => (x.id === a.id ? ergebnis! : x)) };
   });
   if (!ergebnis) return NextResponse.json({ ok: false, fehler: 'Kontakt nicht gefunden.' }, { status: 404 });
-  await aendereCrm(c => verweiseUmbiegen(c, body.weg!, body.behalten!));
-  return NextResponse.json({ ok: true, kontakt: fuerPerson(ergebnis, person) });
+  const umgebogen = await personUmbiegen(body.weg, body.behalten);
+  return NextResponse.json({ ok: true, kontakt: fuerPerson(ergebnis, person), speicher: umgebogen.speicher });
 }

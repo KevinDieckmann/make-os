@@ -25,6 +25,7 @@ import { deltaAus, staende, StandGedaechtnis } from '@/lib/kontakte/delta';
 import { saeubereKontakt, kontaktVereinen, privatNotizVereinen, vonHandMarkieren, fuerPerson, massenStufe, pipelineStand, MASSEN_GRENZE, type Kontakt } from '@/lib/make-one/crm';
 import { personAus } from '@/lib/zoe/raum';
 import { zahlungZusammenfuehren, ibanBehalten } from '@/lib/crm/zahlung';
+import { personEntfernen } from '@/lib/crm/person-bestaende';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -63,6 +64,11 @@ export async function PATCH(req: Request) {
   // Neue Kontakte: eine private Notiz gehört der Person, die sie anlegt.
   const ops = roh.map(o => (o.op === 'upsert' && o.eintrag ? { ...o, eintrag: privatNotizVereinen(o.eintrag, undefined, person) } : o));
 
+  // Löschen (28.09., F2): eine gelöschte Person verschwindet aus ALLEN Speichern (lib/crm/person-bestaende.ts) —
+  // vorher blieben Deals, Follow-ups, Dateien, Head-Vorschläge … mit der toten Kennung stehen. Namen vorher merken (Freitext-Suche).
+  const loeschIds = ops.flatMap(o => (o.op === 'delete' && o.id ? [o.id] : []));
+  const geloeschtVorher = loeschIds.length ? new Map(((await loadJson<Bestand>('kontakte'))?.kontakte ?? []).filter(k => loeschIds.includes(k.id)).map(k => [k.id, k])) : new Map<string, Kontakt>();
+
   /** Ergebnisse eines `teil` — beim anschließenden Vereinen ist ihre IBAN schon entschieden. */
   const ausTeil = new WeakSet<Kontakt>();
   const r = await listePatchen<Kontakt, Bestand>('kontakte', 'kontakte', ops, 20, undefined, {
@@ -93,5 +99,6 @@ export async function PATCH(req: Request) {
     },
   });
   if (!r.ok) return NextResponse.json({ error: r.fehler, ...(r.konflikte ? { konflikte: r.konflikte.map(k => ({ ...k, aktuell: k.aktuell ? fuerPerson(k.aktuell as Kontakt, person) : undefined })) } : {}) }, { status: 409 });
+  for (const id of loeschIds) if (geloeschtVorher.has(id) && !(r.next?.kontakte ?? []).some(k => k.id === id)) await personEntfernen(id, geloeschtVorher.get(id));
   return NextResponse.json({ ok: true, angewandt: r.angewandt, zeilen: r.zeilen ?? [], stand: pipelineStand(r.next?.kontakte ?? []) });
 }

@@ -142,7 +142,8 @@ async function konfliktLoesen(body: Body) {
       return { ...x, ...wert, vonHand, geaendertAm: localDay() };
     }) };
   });
-  if (!gefunden) return NextResponse.json({ ok: false, fehler: 'Kontakt nicht gefunden.' }, { status: 404 });
+  // Die Person gibt es nicht mehr (gelöscht oder zusammengeführt, bevor der Konflikt umgebogen war): der Konflikt ist
+  // gegenstandslos — entfernen statt 404, sonst hinge er für immer in Stammdaten › Austausch (28.09., F2).
   const rest = await updateJson<KonfliktStand>(KONFLIKT_SPEICHER, cur => ({ ...(cur ?? leererKonfliktStand()), konflikte: (cur?.konflikte ?? []).filter(x => !(x.kontaktId === kontaktId && x.feld === feld)) }));
-  return NextResponse.json({ ok: true, offen: rest.konflikte.length });
+  return NextResponse.json({ ok: true, offen: rest.konflikte.length, ...(gefunden ? {} : { entfernt: true }) });
 }

@@ -7,8 +7,7 @@
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { archivSchreiben, archivZeit } from '@/lib/store/archiv';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/zoe/raum';
 import { localDay } from '@/lib/zeit';
@@ -26,10 +25,8 @@ export async function POST(req: Request) {
   if (!b.daten || typeof b.daten !== 'object') return NextResponse.json({ ok: false, fehler: 'daten fehlt.' }, { status: 400 });
   const person = personAus(req);
   const jetzt = new Date().toISOString();
-  const ordner = path.join(process.cwd(), '.data', 'archiv');
-  await fs.mkdir(ordner, { recursive: true, mode: 0o700 });
-  const archiv = path.join(ordner, `crm-vor-brain-umzug-${jetzt.replace(/[:.]/g, '-')}.json`);
-  await fs.writeFile(archiv, JSON.stringify({ crm: await ladeCrm(), kontakte: await loadJson('kontakte') }), { mode: 0o600 });
+  // Verschlüsselt wie die Bestände (28.09., F2 — lib/store/archiv.ts), nie mehr Klartext neben den Hüllen.
+  const archiv = await archivSchreiben(`crm-vor-brain-umzug-${archivZeit(jetzt)}.json`, { crm: await ladeCrm(), kontakte: await loadJson('kontakte') });
 
   const heute = localDay();
   // 1. Kartei: Ansprechpartner anlegen oder ergänzen.
@@ -48,7 +45,7 @@ export async function POST(req: Request) {
   const e = crm as ReturnType<typeof ausBrain> | null;
   const k = kartei as ReturnType<typeof ausBrain> | null;
   return NextResponse.json({
-    ok: true, archiv: path.basename(archiv),
+    ok: true, archiv,
     neu: { mandate: e?.neu.mandate ?? 0, leistungen: e?.neu.leistungen ?? 0, kontakte: k?.neu.kontakte ?? 0 },
     vorhanden: { mandate: e?.vorhanden.mandate ?? 0, leistungen: e?.vorhanden.leistungen ?? 0, kontakte: k?.vorhanden.kontakte ?? 0 },
     mandateMitKontakt: fertig.mandate.filter(m => m.kontaktIds.length).length, mandate: fertig.mandate.length,
