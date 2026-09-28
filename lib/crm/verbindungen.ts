@@ -21,6 +21,8 @@
 // Reparieren entfernt nur die toten Einzelverweise; Aufgaben mit Space (`spaceId`) haben ihre Einheit aus dem Space.
 // 28.09. („Mandat an Zielen und Zeit“): Ziele, Meilensteine und Fokus-Blöcke mit totem Mandat/Firma —
 // die drei Prüfungen und ihre Reparatur liegen in lib/crm/verbindungen-planung.ts.
+// 28.09. (C2): Dateien an Projekten/Aufgaben (eigener Bestand, selber Ordner) — tote Projekt-/Aufgaben-Verweise und
+// fehlende Inhalte (lib/dateien/aufgaben-pruefung.ts); ihre .bin zählen nicht als „Datei ohne Eintrag“.
 
 import { HERKUNFT, LEBENSPHASEN, type Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, CrmListe, Firma, FirmaRolle, FollowUp, SegmentKriterien, Teilnahme, TeilnahmeStatus } from './typen';
@@ -40,6 +42,7 @@ import { einheitName } from '@/lib/einheiten';
 import { personenJeFirma, stationenBefund, firmenDerPerson, hauptStation, stationenVon } from './stationen';
 import { firmenSchluessel } from './firmen';
 import { einwilligungBelegTot } from '@/lib/dateien/einwilligung-beleg';
+import { aufgabenDateienPruefen } from '@/lib/dateien/aufgaben-pruefung';
 import { alleAdressen, emailsBefund } from './emails';
 import { kreisFirmen } from './konzern';
 import { typenVon, kategorienVon, labelsVon } from './mehrfach';
@@ -72,6 +75,11 @@ export interface VerbindungsBestaende {
   fokus?: { person: string; bloecke: FokusBlock[] }[] | null;
   /** Dateiablage des Haushalts: Metadaten + Kennungen der Dateien, die auf der Platte liegen. null = nicht geprüft. */
   dateien?: { eintraege: DateiEintrag[]; aufPlatte: string[] } | null;
+  /**
+   * Dateien an Projekten und Aufgaben (28.09., C2): eigener Bestand `aufgaben-dateien--<haushalt>` im selben Ordner wie
+   * die CRM-Ablage (`dateien.aufPlatte`). `projekte` = Projekt-Kennungen im Aufgaben-Bestand. null = nicht geprüft.
+   */
+  aufgabenDateien?: { eintraege: DateiEintrag[]; projekte: string[] } | null;
   /** Offene Import-Konflikte (Speicher `crm-import-konflikte`). null = nicht geprüft. */
   konflikte?: KonfliktStand | null;
   /** Kennungen der Planposten im Liquiditätsplan (Speicher „liquiplan“, 28.09. abends). null = nicht geprüft. */
@@ -167,6 +175,8 @@ export const PRUEFUNGEN = {
   'datei-verweis-tot': { schwere: 'fehler', bereich: 'dateien', reparierbar: false, art: 'datei', text: n => `${n} ${e(n, 'Eintrag der Dateiablage zeigt', 'Einträge der Dateiablage zeigen')} auf Kontakt, Firma, Mandat, Deal oder Rechnung, die es nicht mehr gibt.` },
   'datei-fehlt': { schwere: 'fehler', bereich: 'dateien', reparierbar: true, art: 'datei', text: n => `${n} ${e(n, 'Eintrag der Dateiablage hat', 'Einträge der Dateiablage haben')} keine Datei mehr auf der Platte — Reparieren markiert sie.` },
   'datei-fehlt-markiert': { schwere: 'hinweis', bereich: 'dateien', reparierbar: false, art: 'datei', text: n => `${n} ${e(n, 'Eintrag ist', 'Einträge sind')} als „Datei fehlt“ markiert — neu hochladen oder den Eintrag entfernen.` },
+  'aufgaben-datei-verweis-tot': { schwere: 'warnung', bereich: 'dateien', reparierbar: false, art: 'datei', text: n => `${n} ${e(n, 'Projekt-/Aufgaben-Datei zeigt', 'Projekt-/Aufgaben-Dateien zeigen')} auf ein Projekt oder eine Aufgabe, die es nicht mehr gibt — auf keiner Projektseite mehr zu sehen.` },
+  'aufgaben-datei-fehlt': { schwere: 'fehler', bereich: 'dateien', reparierbar: false, art: 'datei', text: n => `${n} ${e(n, 'Projekt-/Aufgaben-Datei hat', 'Projekt-/Aufgaben-Dateien haben')} keinen Inhalt mehr auf der Platte — neu hochladen und den Eintrag entfernen.` },
   'datei-ohne-eintrag': { schwere: 'warnung', bereich: 'dateien', reparierbar: false, art: 'kennung', text: n => `${n} ${e(n, 'Datei liegt', 'Dateien liegen')} ohne Eintrag in der Ablage — niemand findet sie.` },
   // Angebote (28.09., Angebots-Tool)
   'angebot-verweis-tot': { schwere: 'fehler', bereich: 'angebote', reparierbar: false, art: 'angebot', text: n => `${n} ${e(n, 'Angebot zeigt', 'Angebote zeigen')} auf eine Person, Firma, einen Deal, ein Mandat oder eine Vorversion, die es nicht mehr gibt.` },
@@ -304,6 +314,7 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
   if (b.finanzplan) doppelt('rechnungen', b.finanzplan.rechnungen);
   if (b.aufgaben) doppelt('aufgaben', b.aufgaben.liste);
   if (b.dateien) doppelt('dateien', b.dateien.eintraege);
+  if (b.aufgabenDateien) doppelt('aufgaben-dateien', b.aufgabenDateien.eintraege);
 
   // Personen — alle Adressen (28.09., #11), Stationen und Haupt-Adresse (28.09.)
   const jeMail = new Map<string, string[]>();
@@ -463,8 +474,15 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
       if (tot) melde('datei-verweis-tot', d.id);
       if (d.datei && !platte.has(d.id)) melde(d.dateiFehlt ? 'datei-fehlt-markiert' : 'datei-fehlt', d.id);
     }
-    const mitEintrag = new Set(eintraege.map(d => d.id));
+    // Derselbe Ordner trägt auch die Projekt-/Aufgaben-Dateien (C2) — sie haben ihren Eintrag im eigenen Bestand.
+    const aufgabenDateien = liste(b.aufgabenDateien?.eintraege);
+    const mitEintrag = new Set([...eintraege, ...aufgabenDateien].map(d => d.id));
     for (const id of Array.from(platte)) if (!mitEintrag.has(id)) melde('datei-ohne-eintrag', id);
+    if (b.aufgabenDateien) {
+      const r = aufgabenDateienPruefen(aufgabenDateien, b.aufgaben ? { aufgaben: liste(b.aufgaben.liste).map(t => t.id), projekte: liste(b.aufgabenDateien.projekte) } : null, Array.from(platte));
+      for (const id of r.verweisTot) melde('aufgaben-datei-verweis-tot', id);
+      for (const id of r.fehlt) melde('aufgaben-datei-fehlt', id);
+    }
   }
 
   // Angebote (28.09.): tote Verweise, Positionen aus gelöschten Produkten, gestellte ohne PDF; Produkte ohne Leistungstext.

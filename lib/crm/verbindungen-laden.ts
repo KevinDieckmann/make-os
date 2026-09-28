@@ -17,6 +17,7 @@ import type { TasksState } from '@/types/tasks';
 import type { ZeitDatei } from '@/lib/zeitmessung/modell';
 import type { DateiEintrag } from '@/lib/dateien/regeln';
 import { DATEI_ID } from '@/lib/dateien/regeln';
+import { AUFGABEN_DATEI_PRAEFIX } from '@/lib/dateien/aufgaben-regeln';
 import { ladeCrm, CRM_SPEICHER } from './speicher';
 import { KONFLIKT_SPEICHER, type KonfliktStand } from './import-konflikte';
 import { ladeKonten } from '@/lib/zugang/konten';
@@ -43,7 +44,7 @@ async function quellen(): Promise<Quellen> {
 /** Die Speicher, deren Stand das ETag der Prüfung bestimmt. */
 function speicherNamen(q: Quellen): string[] {
   return ['kontakte', CRM_SPEICHER, 'finanzplan', 'tasks', 'ordnung', KONFLIKT_SPEICHER, 'liquiplan', ...HEADS.map(h => standName(h)),
-    ...(q.haushalt ? [`planung-einheiten--${q.haushalt}`, `crm-dateien--${q.haushalt}`] : []),
+    ...(q.haushalt ? [`planung-einheiten--${q.haushalt}`, `crm-dateien--${q.haushalt}`, `${AUFGABEN_DATEI_PRAEFIX}${q.haushalt}`] : []),
     ...q.personen.map(p => speicherFuer('zeit', p)), ...zieleSpeicher(q)];
 }
 
@@ -101,7 +102,7 @@ export async function ladeVerbindungsBestaende(heute: string): Promise<Verbindun
     Promise.all(HEADS.map(async h => ({ head: h, stand: await loadJson<{ vorschlaege?: { id: string; kontakt_id?: string | null; status?: string }[] }>(standName(h)) }))),
     ladePlanung(q),
   ]);
-  const [kontakte, crm, finanz, tasks, ordnung, einheiten, konflikte, ablage, dateien, zeiten] = await Promise.all([
+  const [kontakte, crm, finanz, tasks, ordnung, einheiten, konflikte, ablage, dateien, zeiten, aufgabenAblage] = await Promise.all([
     loadJson<{ kontakte?: Kontakt[] }>('kontakte'),
     ladeCrm(),
     loadJson<{ rechnungen?: RechnungKurz[]; firmen?: { id: string }[] }>('finanzplan'),
@@ -112,6 +113,7 @@ export async function ladeVerbindungsBestaende(heute: string): Promise<Verbindun
     q.haushalt ? loadJson<{ eintraege?: DateiEintrag[] }>(`crm-dateien--${q.haushalt}`) : Promise.resolve(null),
     q.haushalt ? aufPlatte(q.haushalt) : Promise.resolve([] as string[]),
     Promise.all(q.personen.map(async p => ({ person: p, datei: await loadJson<ZeitDatei>(speicherFuer('zeit', p)) }))),
+    q.haushalt ? loadJson<{ eintraege?: DateiEintrag[] }>(`${AUFGABEN_DATEI_PRAEFIX}${q.haushalt}`) : Promise.resolve(null),
   ]);
   const aufgaben: AufgabeKurz[] = (Array.isArray(tasks?.tasks) ? tasks!.tasks : []).map(t => ({ id: t.id, title: t.title, ...(t.description ? { description: t.description } : {}), projectId: t.projectId, status: t.status, ...(t.space ? { space: t.space } : {}), ...(t.einheit ? { einheit: t.einheit } : {}), ...(t.spaceId ? { spaceId: t.spaceId } : {}), ...(t.bezug ? { bezug: t.bezug } : {}) }));
   return {
@@ -123,6 +125,8 @@ export async function ladeVerbindungsBestaende(heute: string): Promise<Verbindun
     aufgaben: tasks ? { liste: aufgaben, orte: ordnung?.orgs && typeof ordnung.orgs === 'object' ? ordnung.orgs : {}, eigeneEinheiten: Array.isArray(einheiten?.eigene) ? einheiten!.eigene : [] } : null,
     fokus: zeiten.map(z => ({ person: z.person, bloecke: Object.values(z.datei?.tage ?? {}).flatMap(t => (Array.isArray(t?.bloecke) ? t.bloecke : [])) })),
     dateien: q.haushalt ? { eintraege: Array.isArray(ablage?.eintraege) ? ablage!.eintraege : [], aufPlatte: dateien } : null,
+    // Projekt-/Aufgaben-Dateien (C2): nur Kennungen und Bezüge werden geprüft, nie Inhalte.
+    aufgabenDateien: q.haushalt ? { eintraege: Array.isArray(aufgabenAblage?.eintraege) ? aufgabenAblage!.eintraege : [], projekte: (Array.isArray(tasks?.projects) ? tasks!.projects : []).map(p => p.id) } : null,
     konflikte: konflikte ?? null,
     liquiplan: liquiplan ? { posten: (Array.isArray(liquiplan.posten) ? liquiplan.posten : []).map(p => p.id) } : null,
     planung,

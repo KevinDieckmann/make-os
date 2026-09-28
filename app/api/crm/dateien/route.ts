@@ -10,13 +10,14 @@
 // Person muss ausdrücklich benannt sein und einen Haushalt am Konto tragen; die
 // Dateien liegen je Haushalt (lib/dateien/ablage.ts, verschlüsselt). Ein
 // Dienstaufruf ohne Person bekommt 403, mit Person sieht er nur deren Haushalt.
-// Kein ZOE-Werkzeug, kein Agent liest hier.
+// Kein ZOE-Werkzeug, kein Agent liest hier. Dateien an Projekten/Aufgaben: app/api/aufgaben/dateien (eigener Bestand).
 
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { ablageListe, ablegen, aendern, entfernen, lesen, AblageFehler } from '@/lib/dateien/ablage';
-import { DATEI_ID, MAX_DATEI_BYTES, dateinameAscii, dateinameSaeubern, eintraegeFuer, endung, typErkennen } from '@/lib/dateien/regeln';
+import { DATEI_ID, MAX_DATEI_BYTES, dateinameAscii, dateinameSaeubern, eintraegeFuer, endung, nurCrm, typErkennen } from '@/lib/dateien/regeln';
+import { begrenztLesen } from '@/lib/dateien/begrenzt-lesen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -65,31 +66,14 @@ export async function GET(req: Request) {
         },
       });
     }
-    const alle = await ablageListe(z.haushalt);
+    // Schutz in der Tiefe (28.09., C2): Aufgaben-Dateien liegen in einem eigenen Bestand — stünde je einer hier, bliebe er draußen.
+    const alle = nurCrm(await ablageListe(z.haushalt));
     const filter = { kontaktId: q.get('kontakt') ?? undefined, firmaId: q.get('firma') ?? undefined, mandatIds: idListe(q.get('mandat')), dealIds: idListe(q.get('deal')), rechnungIds: idListe(q.get('rechnung')) };
     const gefiltert = filter.kontaktId || filter.firmaId || filter.mandatIds.length || filter.dealIds.length || filter.rechnungIds.length;
     // Nie abschneiden (28.09.): vorher nur die letzten 500 von bis zu 2.000 — jetzt alle (neueste zuerst), mit Anzahl.
     const eintraege = gefiltert ? eintraegeFuer(alle, filter) : [...alle].reverse();
     return NextResponse.json({ ok: true, eintraege, anzahl: eintraege.length }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) { return ausFehler(e); }
-}
-
-/** Body lesen, aber nie mehr als `max` Bytes — auch ohne (oder mit falschem) Content-Length. */
-async function begrenztLesen(req: Request, max: number): Promise<Buffer | null> {
-  const angegeben = Number(req.headers.get('content-length') ?? '');
-  if (Number.isFinite(angegeben) && angegeben > max) return null;
-  if (!req.body) return Buffer.alloc(0);
-  const leser = req.body.getReader();
-  const teile: Uint8Array[] = [];
-  let summe = 0;
-  for (;;) {
-    const { done, value } = await leser.read();
-    if (done) break;
-    summe += value.byteLength;
-    if (summe > max) { await leser.cancel().catch(() => {}); return null; }
-    teile.push(value);
-  }
-  return Buffer.concat(teile);
 }
 
 export async function POST(req: Request) {

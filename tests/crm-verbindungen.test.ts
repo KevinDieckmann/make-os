@@ -6,6 +6,7 @@ import type { Angebot, Chance, CrmBestand, Firma, Mandat, FollowUp, Leistung } f
 import { leererBestand } from '../lib/crm/speicher';
 import { verbindungenPruefen, verbindungenReparieren, verbindungsAmpel, PRUEFUNGEN, PRUEFUNG_IDS, REPARIERBAR, type VerbindungsBestaende, type PruefungId } from '../lib/crm/verbindungen';
 import { befunde } from '../lib/crm/befunde';
+import type { DateiEintrag } from '../lib/dateien/regeln';
 
 const HEUTE = '2026-09-28';
 const J = '2026-09-01T10:00:00.000Z';
@@ -46,9 +47,14 @@ function sauber(): VerbindungsBestaende {
     fokus: [{ person: 'kevin', bloecke: [{ von: J, bis: J, schluessel: 'business:markttraktion', label: 'x', sek: 60, aufgabeId: 't-1' }, { von: JETZT, bis: JETZT, schluessel: 'business:markttraktion', label: 'x', sek: 60, mandatId: 'm-1', firmaId: 'f-alpha' }] }],
     // Mandat an Zielen und Zeit (28.09.): Ziele/Meilensteine mit lebendem Mandats-/Firmen-Bezug.
     planung: { ziele: [{ speicher: 'ziele', ziele: [{ id: 'z-1', mandatId: 'm-1', firmaId: 'f-alpha' }, { id: 'z-2' }] }], meilensteine: [{ id: 'ms-1', mandatId: 'm-1' }] },
-    dateien: { eintraege: [{ id: 'd-abcd1', art: 'vertrag', kontaktId: 'c-anna1', mandatId: 'm-1', rechnungId: 'r-1', datei: { name: 'v.pdf', typ: 'application/pdf', groesse: 10, verschluesselt: false }, hochgeladenAm: J, hochgeladenVon: 'kevin' }], aufPlatte: ['d-abcd1'] },
+    dateien: { eintraege: [{ id: 'd-abcd1', art: 'vertrag', kontaktId: 'c-anna1', mandatId: 'm-1', rechnungId: 'r-1', datei: { name: 'v.pdf', typ: 'application/pdf', groesse: 10, verschluesselt: false }, hochgeladenAm: J, hochgeladenVon: 'kevin' }], aufPlatte: ['d-abcd1', 'd-aufg1'] },
+    // Projekt-/Aufgaben-Dateien (28.09., C2): eigener Bestand, derselbe Ordner — ihre .bin ist keine „Datei ohne Eintrag“.
+    aufgabenDateien: { eintraege: [aufgabenDatei('d-aufg1', { aufgabeId: 't-1' })], projekte: ['p-1', 'p-2'] },
     konflikte: { konflikte: [{ kontaktId: 'c-anna1', feld: 'email', online: 'a', liste: 'b' }], moeglicheDubletten: [{ kontaktId: 'c-bert1', mitId: 'c-anna1', grund: 'Name' }], ohneBesitzer: 0, stand: J, quelle: 'test' },
   };
+}
+function aufgabenDatei(id: string, x: Partial<DateiEintrag> = {}): DateiEintrag {
+  return { id, art: 'sonstig', projektId: 'p-1', bereich: 'business', datei: { name: 'plan.pdf', typ: 'application/pdf', groesse: 10, verschluesselt: false }, hochgeladenAm: J, hochgeladenVon: 'kevin', ...x };
 }
 const mit = (f: (b: VerbindungsBestaende) => void): VerbindungsBestaende => { const b = structuredClone(sauber()); f(b); return b; };
 const finde = (b: VerbindungsBestaende, id: PruefungId) => verbindungenPruefen(b).find(x => x.id === id);
@@ -128,6 +134,9 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   ['datei-fehlt', b => { b.dateien!.aufPlatte = []; }, 1, 'd-abcd1'],
   ['datei-fehlt-markiert', b => { b.dateien!.aufPlatte = []; b.dateien!.eintraege[0].dateiFehlt = HEUTE; }, 1, 'd-abcd1'],
   ['datei-ohne-eintrag', b => { b.dateien!.aufPlatte.push('d-zzzz9'); }, 1, 'd-zzzz9'],
+  // Projekt-/Aufgaben-Dateien (C2): totes Projekt, tote Aufgabe; „Sonstige“ eines Space ist ein gültiges Projekt.
+  ['aufgaben-datei-verweis-tot', b => { b.aufgabenDateien!.eintraege.push(aufgabenDatei('d-aufg2', { projektId: 'p-weg' }), aufgabenDatei('d-aufg3', { aufgabeId: 't-weg' }), aufgabenDatei('d-aufg4', { projektId: 'sonstige-privat', bereich: 'privat' })); b.dateien!.aufPlatte.push('d-aufg2', 'd-aufg3', 'd-aufg4'); }, 2, 'd-aufg2'],
+  ['aufgaben-datei-fehlt', b => { b.dateien!.aufPlatte = ['d-abcd1']; }, 1, 'd-aufg1'],
   ['konflikt-veraltet', b => { b.konflikte!.konflikte.push({ kontaktId: 'c-weg1', feld: 'email', online: 1, liste: 2 }); }, 1, 'c-weg1'],
   // Angebote (28.09., Angebots-Tool)
   ['angebot-verweis-tot', b => { b.crm.angebote.push(angebot('ang-a1', { kontaktId: 'c-weg1' }), angebot('ang-a2', { dealId: 'd-weg' }), angebot('ang-a3', { vorgaengerId: 'ang-weg' })); }, 3, 'ang-a1'],

@@ -13,12 +13,16 @@
 // die Ablage nach `scripts/daten-verschluesselung.mjs` (Ein-/Ausschalten, Schlüssel
 // rotieren; das Skript stellt auch dateien/<haushalt>/*.bin um) beide Fassungen.
 // `datei.verschluesselt` hält nur fest, wie die Datei abgelegt wurde. Hochgeladene
-// Dateien können nicht mit MKOSDAT1 beginnen (Typprüfung am Inhalt: PDF/PNG/JPG/DOCX).
+// Dateien können nicht mit MKOSDAT1 beginnen (Typprüfung am Inhalt: PDF/PNG/JPG/DOCX; bei den
+// Aufgaben-Dateien lehnt `aufgabenTypErkennen` Text, der mit MKOSDAT1 beginnt, ausdrücklich ab).
+// Der Inhalt selbst (Schreiben/Lesen/Entfernen) liegt in `inhaltAblegen`/`inhaltLaden`/`inhaltEntfernen` —
+// dieselben Wege nutzt die Aufgaben-Ablage (lib/dateien/aufgaben-ablage.ts, 28.09. C2): gleicher Ordner,
+// gleiche Hülle, eigener Metadaten-Bestand `aufgaben-dateien--<haushalt>`.
 //
 // Sicherheit: Kennungen nur `d-[a-z0-9-]`, Haushalt nur HAUSHALT_OK — kein Pfad
 // kommt durch; zusätzlich wird geprüft, dass der Pfad im Haushaltsordner liegt.
 // Dateien 0600, Ordner 0700, Schreiben über tmp + rename. Zugang regelt die Route
-// (Default-Deny, Haushalt des Inhabers). Nie an KI/Agenten.
+// (Default-Deny, Haushalt des Inhabers). Die CRM-Ablage geht nie an KI/Agenten.
 
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -27,7 +31,7 @@ import { datenOrdner, datenSchluessel, loadJson, updateJson } from '@/lib/store/
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { einwilligungenMitBeleg, belegGesperrtText } from './einwilligung-beleg';
-import { DATEI_ID, MAX_EINTRAEGE, hatBezug, istBeleg, metaSaeubern, type DateiEintrag, type DateiInfo, type DateiTyp, type FesteBezuege } from './regeln';
+import { DATEI_ID, MAX_EINTRAEGE, hatBezug, istBeleg, metaSaeubern, type DateiEintrag, type DateiInfo, type FesteBezuege } from './regeln';
 
 const MAGIE = Buffer.from('MKOSDAT1', 'ascii');
 
@@ -38,7 +42,7 @@ export const ablageName = (haushalt: string) => {
   return `crm-dateien--${haushalt}`;
 };
 
-function haushaltOrdner(haushalt: string): string {
+export function haushaltOrdner(haushalt: string): string {
   if (!HAUSHALT_OK.test(haushalt)) throw new AblageFehler('Unzulässiger Haushalt.', 400);
   return path.join(datenOrdner(), 'dateien', haushalt);
 }
@@ -82,7 +86,33 @@ export async function ablageListe(haushalt: string): Promise<DateiEintrag[]> {
 
 export const neueDateiId = () => `d-${Date.now().toString(36)}-${randomBytes(4).toString('hex')}`;
 
-export interface NeueDatei { bytes: Buffer; name: string; typ: DateiTyp }
+export interface NeueDatei { bytes: Buffer; name: string; typ: DateiInfo['typ'] }
+
+/**
+ * Inhalt ablegen: verschlüsselt (wenn ein Datenschlüssel da ist), tmp + rename, 0600 im Ordner 0700.
+ * Liefert, ob verschlüsselt abgelegt wurde. Geteilt mit der Aufgaben-Ablage.
+ */
+export async function inhaltAblegen(haushalt: string, id: string, bytes: Buffer): Promise<boolean> {
+  const key = datenSchluessel();
+  const ordner = haushaltOrdner(haushalt);
+  await fs.mkdir(ordner, { recursive: true, mode: 0o700 });
+  const pfad = dateiPfad(haushalt, id);
+  const tmp = `${pfad}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
+  await fs.writeFile(tmp, key ? inhaltVerschluesseln(bytes, key) : bytes, { mode: 0o600 });
+  await fs.rename(tmp, pfad);
+  return !!key;
+}
+/** Inhalt lesen (Hülle → entschlüsselt, sonst wie abgelegt) — null, wenn die Datei fehlt. */
+export async function inhaltLaden(haushalt: string, id: string): Promise<Buffer | null> {
+  let roh: Buffer;
+  try { roh = await fs.readFile(dateiPfad(haushalt, id)); }
+  catch (e) { if ((e as NodeJS.ErrnoException)?.code === 'ENOENT') return null; throw e; }
+  return istHuelle(roh) ? inhaltEntschluesseln(roh, datenSchluessel()) : roh;
+}
+/** Inhalt entfernen (fehlt er schon, ist das kein Fehler). */
+export async function inhaltEntfernen(haushalt: string, id: string): Promise<void> {
+  await fs.unlink(dateiPfad(haushalt, id)).catch(() => {});
+}
 
 /**
  * Ablegen: erst die Datei (verschlüsselt, tmp + rename), dann der Eintrag. Scheitert
@@ -99,14 +129,9 @@ export async function ablegen(haushalt: string, person: string, metaRoh: unknown
   let info: DateiInfo | undefined;
   let pfad: string | null = null;
   if (datei) {
-    const key = datenSchluessel();
-    const ordner = haushaltOrdner(haushalt);
-    await fs.mkdir(ordner, { recursive: true, mode: 0o700 });
+    const verschluesselt = await inhaltAblegen(haushalt, id, datei.bytes);
     pfad = dateiPfad(haushalt, id);
-    const tmp = `${pfad}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
-    await fs.writeFile(tmp, key ? inhaltVerschluesseln(datei.bytes, key) : datei.bytes, { mode: 0o600 });
-    await fs.rename(tmp, pfad);
-    info = { name: datei.name, typ: datei.typ, groesse: datei.bytes.length, verschluesselt: !!key };
+    info = { name: datei.name, typ: datei.typ, groesse: datei.bytes.length, verschluesselt };
   }
   const eintrag: DateiEintrag = { id, ...meta, art: meta.art, ...(info ? { datei: info } : {}), hochgeladenAm: jetzt, hochgeladenVon: person };
   try {
@@ -151,11 +176,8 @@ export async function lesen(haushalt: string, id: string): Promise<{ eintrag: Da
   if (!DATEI_ID.test(id)) throw new AblageFehler('Unzulässige Kennung.', 400);
   const eintrag = (await ablageListe(haushalt)).find(e => e.id === id);
   if (!eintrag?.datei) return null;
-  let roh: Buffer;
-  try { roh = await fs.readFile(dateiPfad(haushalt, id)); }
-  catch (e) { if ((e as NodeJS.ErrnoException)?.code === 'ENOENT') return null; throw e; }
-  const bytes = istHuelle(roh) ? inhaltEntschluesseln(roh, datenSchluessel()) : roh;
-  return { eintrag, bytes };
+  const bytes = await inhaltLaden(haushalt, id);
+  return bytes ? { eintrag, bytes } : null;
 }
 
 /**
@@ -178,6 +200,7 @@ export async function entfernen(haushalt: string, id: string): Promise<boolean> 
     return { eintraege: l.filter(x => x.id !== id) };
   });
   if (beleg) throw new AblageFehler('Der Eintrag hängt an einer Rechnung, einem Mandat oder einem gestellten Angebot und wird nicht gelöscht — Rechnung/Mandat erst vom Bezug lösen; Angebots-PDFs sind Geschäftsunterlagen.', 409);
-  await fs.unlink(dateiPfad(haushalt, id)).catch(() => {});
+  // Nur, wenn es den Eintrag HIER gab: im selben Ordner liegen auch die Projekt-/Aufgaben-Dateien (C2, eigener Bestand).
+  if (gab) await inhaltEntfernen(haushalt, id);
   return gab;
 }

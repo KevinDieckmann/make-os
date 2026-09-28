@@ -15,6 +15,7 @@ import { localDay } from '@/lib/zeit';
 import { GRENZEN, UG_FIRMA, rechnungSchutz, sauberFile, type Rechnung as FpRechnung } from '@/lib/finanzen/finanzplan-bestand';
 import { firmaAusAngabe, finanzOrtName, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 import type { FaktArt } from './gedaechtnis';
+import { projektUnterlagen, dateiLesen } from './aufgaben-unterlagen';
 
 // ── ZOE plant SELBST: Block in den Wochenplan legen (Kevins Ansage:
 // „dass da auch drin geplant werden kann"). Interne Planung, frei verschiebbar
@@ -1016,4 +1017,7 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: Lauf }> = {
   chance_anlegen: { gruppe: 'kontakte', lauf: nurImHaushalt(chanceAnlegen) },
   uebergeben: { gruppe: 'kontakte', lauf: nurImHaushalt(kontaktUebergeben) },
   crm_lage: { gruppe: 'kontakte', lauf: nurImHaushalt(crmLage) },
+  // Projekt- und Aufgaben-Dateien lesen (28.09., C2 — Kevins Wahl): nur im Haushalt, nur die Aufgaben-Ablage, gekapselt.
+  projekt_unterlagen: { gruppe: 'aufgaben-dateien', lauf: nurImHaushalt(projektUnterlagen) },
+  datei_lesen: { gruppe: 'aufgaben-dateien', lauf: nurImHaushalt(dateiLesen) },
 };

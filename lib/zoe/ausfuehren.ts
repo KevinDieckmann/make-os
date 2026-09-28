@@ -9,6 +9,7 @@ import { REGISTER, risikoVon, gruppeVon, vorschauVon } from './register';
 import { notiere } from './protokoll';
 import { lege } from './stapel';
 import type { Person } from './raum';
+import { SELBST_GEKAPSELT } from './fremd';
 
 export interface Lauf {
   /** Was dem Modell (oder dem Aufrufer) zurückgemeldet wird. */
@@ -73,13 +74,15 @@ export async function fuehreAus(
   // Kevins Vertraulichkeitsregeln im Vault: „Agenten bekommen nie privat."
   // Was ohne Gespräch im Hintergrund läuft, liest das Brain deshalb in der
   // Agenten-Sicht (ohne Person). Geschrieben wird weiterhin für die Person.
-  const leseSicht = (opt.hintergrund || opt.quelle === 'lauf') && gruppe === 'wissen' && (name === 'suche_wissen' || name === 'lies_notiz');
+  // Projekt-/Aufgaben-Dateien (28.09., C2) liest ZOE im Hintergrund gar nicht: ohne Person lehnt das Werkzeug ab.
+  const leseSicht = (opt.hintergrund || opt.quelle === 'lauf') && ((gruppe === 'wissen' && (name === 'suche_wissen' || name === 'lies_notiz')) || gruppe === 'aufgaben-dateien');
   const text = await werk.lauf(input, origin, leseSicht ? undefined : opt.person);
   // Ebenfalls nur der Anfang: die Werkzeuge stellen ihre Fehlermeldung voran,
   // im weiteren Text dürfen dieselben Wörter harmlos vorkommen.
   const ok = !/fehlgeschlagen|nicht erreichbar|nicht lesbar|nicht angelegt|Kollision|Kein Meilenstein|Nicht ausgeführt/i.test(text.slice(0, 200));
   await notiere({
-    werkzeug: name, gruppe, risiko, eingabe: input, ergebnis: text.slice(0, 600), ok,
+    // Selbst gekapselte Leser (Dateien, Notizen): nur die Kopfzeile — nie Inhalte ins Protokoll.
+    werkzeug: name, gruppe, risiko, eingabe: input, ergebnis: (SELBST_GEKAPSELT.has(name) ? text.split('\n')[0] : text).slice(0, 600), ok,
     quelle: opt.erzwingen ? 'stapel' : 'zoe',
     person: opt.person,
     ruecknahme: ok && vs.zurueck

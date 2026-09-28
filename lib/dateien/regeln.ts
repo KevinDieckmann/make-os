@@ -3,7 +3,12 @@
 // alles, was ohne Platte und ohne Schlüssel geht: erlaubte Typen, Größe,
 // Dateiname, Erkennung am Inhalt, Säuberung der Metadaten, Filter je Kontakt.
 // Die Ablage selbst (verschlüsselt auf der Platte) ist lib/dateien/ablage.ts.
-// Grundsatz: Dateien gehen NIE an KI oder Agenten — es gibt kein Werkzeug dafür.
+// Grundsatz: Die CRM-Ablage (Angebote, Rechnungen, Einwilligungsbelege, Mandatsunterlagen) geht NIE an KI
+// oder Agenten — es gibt kein Werkzeug dafür. Dateien an Projekten und Aufgaben (28.09., Paket C2) liegen in
+// einem EIGENEN Bestand (lib/dateien/aufgaben-ablage.ts, `aufgaben-dateien--<haushalt>`); nur diese liest ZOE,
+// immer als Fremdtext gekapselt (lib/zoe/aufgaben-unterlagen.ts).
+
+import type { AufgabenDateiTyp } from './aufgaben-regeln';
 
 export type DateiArt = 'vertrag' | 'angebot' | 'rechnung' | 'sonstig';
 export type Vertragsart = 'rahmen' | 'auftrag' | 'nda' | 'av' | 'sonstig';
@@ -39,7 +44,7 @@ export const DATEI_ID = /^d-[a-z0-9-]{4,60}$/;
 /** Bezüge (Kontakt c-…, Firma f-…, Mandat, Deal, Rechnung r-…). */
 const BEZUG_ID = /^[a-z0-9][a-z0-9_-]{0,63}$/i;
 
-export interface DateiInfo { name: string; typ: DateiTyp; groesse: number; /** Inhalt liegt als AES-256-GCM-Hülle auf der Platte. */ verschluesselt: boolean }
+export interface DateiInfo { name: string; /** CRM: die vier Typen oben; Aufgaben-Dateien (C2): AUFGABEN_TYPEN. */ typ: DateiTyp | AufgabenDateiTyp; groesse: number; /** Inhalt liegt als AES-256-GCM-Hülle auf der Platte. */ verschluesselt: boolean }
 export interface VertragDaten { vertragsart: Vertragsart; von?: string; bis?: string; /** frei, z. B. „3 Monate zum Quartalsende“. */ kuendigungsfrist?: string }
 export interface AngebotDaten { nummer?: string; datum?: string; betrag?: number; status: AngebotStatus; gueltigBis?: string }
 
@@ -61,6 +66,14 @@ export interface DateiEintrag {
   angebotId?: string;
   /** Logo einer Gesellschaft (28.09., Stammdaten › Gesellschaften) — setzt NUR der Server. */
   gesellschaft?: 'kdc' | 'kdv' | 'ug';
+  /**
+   * Dateien an Projekten und Aufgaben (28.09., Paket C2) — nur im Bestand `aufgaben-dateien--<haushalt>`
+   * (lib/dateien/aufgaben-ablage.ts), nie in der CRM-Ablage. Kennungen wie in lib/aufgaben/saeubern.ts.
+   */
+  projektId?: string;
+  aufgabeId?: string;
+  /** Privat oder Business — aus dem Space des Projekts bzw. der Aufgabe abgeleitet (Server). Privat nie in CRM-Sichten. */
+  bereich?: 'privat' | 'business';
   vertrag?: VertragDaten;
   angebot?: AngebotDaten;
   notiz?: string;
@@ -158,8 +171,16 @@ export function metaSaeubern(roh: unknown): Partial<Pick<DateiEintrag, 'art' | '
  */
 export const istBeleg = (e: Pick<DateiEintrag, 'rechnungId' | 'mandatId'> & Partial<Pick<DateiEintrag, 'angebotId'>>) => !!(e.rechnungId || e.mandatId || e.angebotId);
 
-/** Hängt der Eintrag an irgendetwas? Ohne Bezug wird nichts abgelegt (er wäre nirgends zu finden). */
-export const hatBezug = (e: Pick<DateiEintrag, 'kontaktId' | 'firmaId' | 'mandatId' | 'dealId' | 'rechnungId'> & Partial<Pick<DateiEintrag, 'angebotId' | 'gesellschaft'>>) => !!(e.kontaktId || e.firmaId || e.mandatId || e.dealId || e.rechnungId || e.angebotId || e.gesellschaft);
+/**
+ * Hängt der Eintrag an irgendetwas? Ohne Bezug wird nichts abgelegt (er wäre nirgends zu finden).
+ * Seit 28.09. (C2) zählen auch Projekt und Aufgabe — gesetzt nur über die Aufgaben-Ablage (dort Pflicht: Projekt).
+ */
+export const hatBezug = (e: Pick<DateiEintrag, 'kontaktId' | 'firmaId' | 'mandatId' | 'dealId' | 'rechnungId'> & Partial<Pick<DateiEintrag, 'angebotId' | 'gesellschaft' | 'projektId' | 'aufgabeId'>>) => !!(e.kontaktId || e.firmaId || e.mandatId || e.dealId || e.rechnungId || e.angebotId || e.gesellschaft || e.projektId || e.aufgabeId);
+
+/** Gehört der Eintrag zu Projekten/Aufgaben (C2)? Solche Einträge erscheinen nie in einer CRM-Sicht. */
+export const istAufgabenDatei = (e: Pick<DateiEintrag, 'projektId' | 'aufgabeId' | 'bereich'>) => !!(e.projektId || e.aufgabeId || e.bereich);
+/** Nur Einträge der CRM-Ablage — Schutz in der Tiefe: Aufgaben-Dateien (v. a. privat) nie in CRM-Listen. */
+export const nurCrm = <T extends Pick<DateiEintrag, 'projektId' | 'aufgabeId' | 'bereich'>>(l: readonly T[]): T[] => l.filter(e => !istAufgabenDatei(e));
 
 /** Bezüge, die nur der Server setzt (Angebots-PDF, Logo) — `metaSaeubern` liest sie nie aus dem Netz. */
 export interface FesteBezuege { angebotId?: string; gesellschaft?: 'kdc' | 'kdv' | 'ug' }

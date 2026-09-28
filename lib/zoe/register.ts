@@ -304,6 +304,15 @@ export const REGISTER: Record<string, Eintrag> = {
     gruppe: 'kontakte', risiko: 'frei',
     vorschau: schlicht('Ansprache entwerfen — kein Versand', i => text(i.kontakt)),
   },
+  // Projekt-/Aufgaben-Dateien (28.09., C2): nur lesen, gekapselt, nie die CRM-Ablage.
+  projekt_unterlagen: {
+    gruppe: 'aufgaben-dateien', risiko: 'frei',
+    vorschau: schlicht('Projekt-Unterlagen lesen', i => text(i.aufgabe) || text(i.projekt) || '—'),
+  },
+  datei_lesen: {
+    gruppe: 'aufgaben-dateien', risiko: 'frei',
+    vorschau: schlicht('Projekt-Datei lesen', i => `${text(i.datei, 40)}${i.teil ? ` · Teil ${text(i.teil, 4)}` : ''}`),
+  },
 
   // Freigabe — Geld, Ziele, Kompass. Wird zum Vorschlag im Stapel.
   // Haushaltsfinanzen (24.09.): lesen läuft durch, Ändern braucht die Freigabe.

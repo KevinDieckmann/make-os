@@ -8,7 +8,7 @@
 // IMMER über den Stapel — ein eingeschleuster Satz darf sich nicht selbst ins Gedächtnis schreiben.
 
 /** Werkzeuge, die nur lesen — sie laufen auch nach Fremdtext frei. */
-export const LESEND = new Set(['lies_postfach', 'suche_wissen', 'lies_notiz', 'frag_gedaechtnis', 'business_index', 'crm_lage', 'haushalt_stand', 'haushalt_buchungen', 'gesundheits_index', 'finde_kontakt', 'lies_kontakt', 'suche_kontakt']);
+export const LESEND = new Set(['lies_postfach', 'suche_wissen', 'lies_notiz', 'frag_gedaechtnis', 'business_index', 'crm_lage', 'haushalt_stand', 'haushalt_buchungen', 'gesundheits_index', 'finde_kontakt', 'lies_kontakt', 'suche_kontakt', 'projekt_unterlagen', 'datei_lesen']);
 /** Im Gespräch immer nur Vorschlag. */
 export const IMMER_VORSCHLAG = new Set(['fakt_merken', 'notiz_anlegen']);
 
