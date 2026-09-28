@@ -8,7 +8,8 @@ import type { Befund } from '@/lib/crm/befunde';
 import type { Pruefpunkt } from '@/lib/crm/datenschutz';
 
 export interface WertelistenAntwort {
-  stufen: { id: string; label: string; standard: number; p: number; vonHand: boolean; weiterWenn: string; offen: boolean }[];
+  /** `gemessen` (28.09., K4): Gewinnquote der entschiedenen Deals, die die Stufe erreichten — `quote` erst ab MINDESTMENGE. */
+  stufen: { id: string; label: string; standard: number; p: number; vonHand: boolean; weiterWenn: string; offen: boolean; gemessen?: { n: number; gewonnen: number; quote: number | null } | null }[];
   /** Fest (aus dem Code) und eigene; `anzahl` = wie oft als Grund an verlorenen Deals. */
   verlustgruende: { grund: string; fest: boolean; anzahl: number }[];
   /** Wirksamer Takt je Kreis, der Standard dazu und wie viele Personen im Kreis sind. */

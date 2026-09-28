@@ -160,4 +160,5 @@ export const DEFINITIONEN: Record<string, string> = {
   auffaelligkeiten: 'Regelbasiert (Feld regel): Kategorie-Ausreißer, große Einzelausgaben, mögliche Doppelabbuchungen, neue Wiederkehrer, Budgets.',
   hinweise: 'Vom Code erkannte Befunde und Datenprobleme, nach Schwere sortiert — Ausgangspunkt deiner Bewertung.',
   vorschlaege_offen: 'Deine früheren Vorschläge mit Status (offen, angenommen, abgelehnt mit Grund).',
+  'crm.pipeline': 'Offene Deals, Szenario — nie Basisplan. gewichtet = Wert × Stufen-Wahrscheinlichkeit. gewichtet_ohne_haengende = dasselbe ohne Deals mit roter Ampel (überfälliger Schritt oder > 30 Tage still) — die vorsichtigere Zahl für die Planung. commit = Stufe Abschluss, best_case = ab Angebot.',
 };

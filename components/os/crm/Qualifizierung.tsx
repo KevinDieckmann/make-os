@@ -14,7 +14,8 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT } from '../schlank';
 import type { Kriterien, Qual } from '@/lib/crm/typen';
 import { KRITERIEN, sqlBereit, fehltBisSql, statusLabel, zuQualifizieren, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
-import { leadScore, kanalLeistung, kanalLabel, temperaturLabel, temperaturFarbe, KANAL, type KanalId, type LeadScore } from '@/lib/crm/score';
+import { leadScore, kanalLeistung, kanalLabel, temperaturLabel, temperaturFarbe, temperaturLeistung, KANAL, type KanalId, type LeadScore } from '@/lib/crm/score';
+import { MINDESTMENGE } from '@/lib/crm/deal-auswertung';
 import { TEAM, anderer, nameVon } from '@/lib/crm/team';
 import { type CrmApi, datum, holeMitStand } from './daten';
 import { Pillen } from './teile';
@@ -284,10 +285,38 @@ export function KanalLeistung({ zeilen, i = 0, titel = 'Kanal-Leistung', rechts 
 }
 const ContainerZeile = ({ children }: { children: ReactNode }) => <>{children}</>;
 
-/** Kanal-Leistung mit eigenem Laden — für Sales › Auswertung und Marketing. */
-export function KanalLeistungLaden({ i = 0 }: { i?: number }) {
-  const [zeilen, setZeilen] = useState<ReturnType<typeof kanalLeistung>>([]);
+/**
+ * SQL- und Gewinnquote je Temperatur (28.09., K4) — trägt die Temperatur, was sie verspricht? Quoten erst ab
+ * MINDESTMENGE Leads je Temperatur; darunter nur die Anzahlen.
+ */
+export function TemperaturLeistung({ zeilen, i = 0 }: { zeilen: ReturnType<typeof temperaturLeistung>; i?: number }) {
+  if (!zeilen.some(z => z.anzahl)) return null;
+  return (
+    <Karte i={i}>
+      <Ueberschrift>SQL- und Gewinnquote je Temperatur</Ueberschrift>
+      <div style={{ fontSize: 12, color: C.inkLeise, marginBottom: 8, lineHeight: 1.5 }}>Je Temperatur: wie viele Leads, wie viele wurden SQL oder Kunde, wie viele gewonnen. Quoten ab {MINDESTMENGE} Leads.</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(70px, 120px) auto auto auto', gap: '6px 12px', alignItems: 'center', fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{ color: C.inkLeise, fontSize: 11.5 }}>Temperatur</span>
+        <span style={{ color: C.inkLeise, fontSize: 11.5, textAlign: 'right' }}>Leads</span><span style={{ color: C.inkLeise, fontSize: 11.5, textAlign: 'right' }}>SQL</span><span style={{ color: C.inkLeise, fontSize: 11.5, textAlign: 'right' }}>gewonnen</span>
+        {zeilen.map(z => (
+          <ContainerZeile key={z.temperatur}>
+            <span style={{ color: temperaturFarbe(z.temperatur) }}>{z.label}</span>
+            <span style={{ textAlign: 'right' }}>{z.anzahl}</span>
+            <span style={{ textAlign: 'right', color: z.sql ? LEUCHT.gut : C.inkLeise }}>{z.sql}{z.sqlQuote !== null ? <span style={{ color: C.inkLeise }}> ({z.sqlQuote} %)</span> : null}</span>
+            <span style={{ textAlign: 'right', color: z.gewonnen ? LEUCHT.gut : C.inkLeise }}>{z.gewonnen}{z.gewinnQuote !== null ? <span style={{ color: C.inkLeise }}> ({z.gewinnQuote} %)</span> : null}</span>
+          </ContainerZeile>
+        ))}
+      </div>
+    </Karte>
+  );
+}
+
+/** Kanal-Leistung mit eigenem Laden — für Sales › Auswertung und Marketing; `mitTemperatur` zeigt dazu die Quoten je Temperatur. */
+export function KanalLeistungLaden({ i = 0, mitTemperatur = false }: { i?: number; mitTemperatur?: boolean }) {
+  const [leads, setLeads] = useState<LeadZeile[]>([]);
   const staende = useRef(new Map<string, string>());
-  useEffect(() => { void holeMitStand<Daten & { ok?: boolean }>('/api/crm/lead', staende.current).then(x => { if (x?.ok) setZeilen(kanalLeistung(x.leads)); }).catch(() => undefined); }, []);
-  return <KanalLeistung zeilen={zeilen} i={i} />;
+  useEffect(() => { void holeMitStand<Daten & { ok?: boolean }>('/api/crm/lead', staende.current).then(x => { if (x?.ok) setLeads(x.leads); }).catch(() => undefined); }, []);
+  const zeilen = useMemo(() => kanalLeistung(leads), [leads]);
+  const temperatur = useMemo(() => temperaturLeistung(leads), [leads]);
+  return <>{<KanalLeistung zeilen={zeilen} i={i} />}{mitTemperatur && <TemperaturLeistung zeilen={temperatur} i={i + 1} />}</>;
 }

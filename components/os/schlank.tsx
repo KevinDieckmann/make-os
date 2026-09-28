@@ -7,7 +7,8 @@
 // Kennzahlfarben, Ringe mit Glow, Zahlen, die hochzählen, Trendbalken, und
 // alles erscheint gestaffelt. Wer eine Seite baut, nimmt das hier.
 
-import { useEffect, useId, useState, type ReactNode, type CSSProperties } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode, type CSSProperties } from 'react';
+import { klickSperren, type KlickSperre } from '@/lib/make-one/klick-sperre';
 import { FARBE as C, LEUCHT, SCHRIFT, TYP, TIEF, leuchtFarbe } from '@/lib/make-one/design';
 
 export { LEUCHT };
@@ -148,11 +149,21 @@ export function Haken({ an, onChange, farbe }: { an: boolean; onChange: () => vo
   );
 }
 
-export function Knopf({ children, onClick, leise, aus, farbe }: { children: ReactNode; onClick?: () => void; leise?: boolean; aus?: boolean; farbe?: string }) {
+/**
+ * Knopf. Liefert `onClick` ein Promise (async), ist er bis zu dessen Ende gesperrt (28.09., K4, #19): kein zweiter
+ * Klick, `aria-busy`, leicht gedimmt — so legt ein Doppelklick nichts doppelt an (lib/make-one/klick-sperre.ts).
+ */
+export function Knopf({ children, onClick, leise, aus, farbe }: { children: ReactNode; onClick?: () => unknown; leise?: boolean; aus?: boolean; farbe?: string }) {
   const f = farbe ?? C.aktiv;
+  const sperre = useRef<KlickSperre>({ laeuft: false });
+  const [laeuft, setLaeuft] = useState(false);
+  const lebt = useRef(true);
+  useEffect(() => { lebt.current = true; return () => { lebt.current = false; }; }, []);
+  const klick = () => { void klickSperren(sperre.current, onClick, l => { if (lebt.current) setLaeuft(l); }); };
   return (
-    <button onClick={onClick} disabled={aus} className="fassbar" style={{
-      fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '9px 15px', borderRadius: 11, cursor: aus ? 'default' : 'pointer', transition: 'transform .15s ease, box-shadow .2s ease',
+    <button onClick={klick} disabled={aus} aria-busy={laeuft || undefined} className="fassbar" style={{
+      ...(laeuft ? { opacity: 0.6 } : {}),
+      fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '9px 15px', borderRadius: 11, cursor: aus ? 'default' : laeuft ? 'progress' : 'pointer', transition: 'transform .15s ease, box-shadow .2s ease',
       // Tiefe Akzente (25.09.): der Hauptknopf getönt mit farbiger Kontur — nicht mehr Vollfarbe mit Leuchtschatten.
       ...(leise ? { border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink }
         : aus ? { border: '1px solid transparent', background: 'rgba(255,255,255,.08)', color: C.inkLeise }

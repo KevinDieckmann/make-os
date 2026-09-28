@@ -185,7 +185,7 @@ export function MarkttraktionSeite() {
           {salesAnsicht === 'head' && <SalesStart api={api} zuKontakt={zuKontakt} zuBereich={zuBereich} />}
           {salesAnsicht === 'powerhour' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
           {salesAnsicht === 'kampagnen' && <Kampagnen api={api} zuKontakt={zuKontakt} head="sales" />}
-          {salesAnsicht === 'auswertung' && <KanalLeistungLaden i={0} />}
+          {salesAnsicht === 'auswertung' && <KanalLeistungLaden i={0} mitTemperatur />}
           {salesAnsicht === 'auswertung' && <Pipeline api={api} ansicht="auswertung" zuKontakt={zuKontakt} zuLeads={() => gehe('firmen', 'leads')} zuAkte={zuAkte} zurueck={() => gehe('sales')} />}
         </>
       )}

@@ -81,7 +81,25 @@ export function gesundheit(c: Chance, heute: string): { ampel: Ampel; gruende: s
     if (alter > 14) { ampel = 'gelb'; g.push(`${alter} Tage ohne Bewegung`); }
     if (!c.naechsterSchritt) { ampel = 'gelb'; g.push('kein nächster Schritt mit Datum'); }
   }
+  // Ehrlichere Pipeline (28.09., K4, #84): wer „Entscheidung bis“ zweimal nach hinten schiebt, hat keine Zusage mehr — mindestens gelb.
+  if ((c.erwartetVerschoben ?? 0) >= VERSCHOBEN_GELB) {
+    if (ampel === 'gruen') ampel = 'gelb';
+    g.push(`Entscheidung ${c.erwartetVerschoben}× verschoben${c.erwartetUrsprung ? ` (ursprünglich ${c.erwartetUrsprung})` : ''}`);
+  }
   return { ampel, gruende: g };
+}
+
+/** Ab so vielen Verschiebungen von „Entscheidung bis“ wird die Ampel gelb. */
+export const VERSCHOBEN_GELB = 2;
+/**
+ * „Entscheidung bis“ nach hinten verschoben (28.09., K4, #84)? Dann merkt sich der Deal das erste Datum (einmal) und zählt mit.
+ * Früher legen oder zum ersten Mal setzen zählt nicht. Nur der Server ruft das (lib/crm/speicher.ts dealRegeln).
+ */
+export function erwartetVerschiebung(alt: Pick<Chance, 'erwartetAm' | 'erwartetUrsprung' | 'erwartetVerschoben'>, felder: Record<string, unknown>): Pick<Chance, 'erwartetUrsprung' | 'erwartetVerschoben'> {
+  const bisher = { ...(alt.erwartetUrsprung ? { erwartetUrsprung: alt.erwartetUrsprung } : {}), ...(alt.erwartetVerschoben ? { erwartetVerschoben: alt.erwartetVerschoben } : {}) };
+  const neu = typeof felder.erwartetAm === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(felder.erwartetAm) ? felder.erwartetAm : undefined;
+  if (!neu || !alt.erwartetAm || neu <= alt.erwartetAm) return bisher;
+  return { erwartetUrsprung: alt.erwartetUrsprung ?? alt.erwartetAm, erwartetVerschoben: (alt.erwartetVerschoben ?? 0) + 1 };
 }
 
 /** Stufenwechsel mit Historie. Verloren braucht einen Grund, geparkt eine Wiedervorlage. */
@@ -94,16 +112,19 @@ export function wechsleStufe(c: Chance, ziel: ChancenStufe, von: string, jetzt: 
     chance: {
       ...c, stufe: ziel, historie: [...c.historie, { stufe: ziel, am: jetzt, von }],
       ...(extra.grund ? { grund: extra.grund.trim() } : {}), ...(extra.wiedervorlage ? { wiedervorlage: extra.wiedervorlage } : {}),
-      geaendert: jetzt, letzteAktivitaet: jetzt.slice(0, 10),
+      // Der Tag in Berliner Zeit, nicht der UTC-Tag des Zeitstempels (28.09., K4) — kurz nach Mitternacht war es sonst „gestern“.
+      geaendert: jetzt, letzteAktivitaet: tagVon(jetzt),
     },
   };
 }
 
 export interface Prognose {
   offen: number; gewichtet: number;
+  /** Gewichtet ohne die Deals, die hängen (Ampel rot) — die ehrlichere Zahl für Finanzen (28.09., K4, #85). */
+  gewichtetOhneHaengende: number;
   /** Commit: Stufe Abschluss. Best Case: ab Angebot. */
   commit: number; bestCase: number;
-  jeStufe: { stufe: ChancenStufe; label: string; anzahl: number; wert: number; gewichtet: number; haengt: number }[];
+  jeStufe: { stufe: ChancenStufe; label: string; anzahl: number; wert: number; gewichtet: number; haengt: number; gewichtetOhneHaengende: number }[];
   ohneSchritt: number;
 }
 export function prognose(chancen: Chance[], heute: string, eigene?: CrmBestand['wahrscheinlichkeiten']): Prognose {
@@ -111,11 +132,15 @@ export function prognose(chancen: Chance[], heute: string, eigene?: CrmBestand['
   const jeStufe = STUFEN.filter(s => s.offen).map(s => {
     const l = offen.filter(c => c.stufe === s.id);
     const wert = l.reduce((a, c) => a + gesamtwert(c), 0);
-    return { stufe: s.id, label: s.label, anzahl: l.length, wert, gewichtet: Math.round(wert * wahrscheinlichkeit(s.id, eigene) / 100), haengt: l.filter(c => gesundheit(c, heute).ampel === 'rot').length };
+    const haengend = l.filter(c => gesundheit(c, heute).ampel === 'rot');
+    const p = wahrscheinlichkeit(s.id, eigene);
+    const wertOhne = wert - haengend.reduce((a, c) => a + gesamtwert(c), 0);
+    return { stufe: s.id, label: s.label, anzahl: l.length, wert, gewichtet: Math.round(wert * p / 100), haengt: haengend.length, gewichtetOhneHaengende: Math.round(wertOhne * p / 100) };
   });
   return {
     offen: jeStufe.reduce((a, s) => a + s.wert, 0),
     gewichtet: jeStufe.reduce((a, s) => a + s.gewichtet, 0),
+    gewichtetOhneHaengende: jeStufe.reduce((a, s) => a + s.gewichtetOhneHaengende, 0),
     commit: offen.filter(c => c.stufe === 'abschluss').reduce((a, c) => a + gesamtwert(c), 0),
     bestCase: offen.filter(c => c.stufe === 'angebot' || c.stufe === 'abschluss').reduce((a, c) => a + gesamtwert(c), 0),
     jeStufe,

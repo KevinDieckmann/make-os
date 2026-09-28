@@ -15,7 +15,15 @@ export const FINANZPLAN_LISTEN = ['firmen', 'rechnungen', 'zahlungen', 'merkpost
  * vorhandenen Eintrag (25.09.: Kevin und Malin am selben Eintrag, ohne sich
  * gegenseitig andere Felder zu überschreiben).
  */
-export interface ListenOp { liste: string; op: 'upsert' | 'delete' | 'teil'; eintrag?: Record<string, unknown>; id?: string; felder?: Record<string, unknown> }
+export interface ListenOp {
+  liste: string; op: 'upsert' | 'delete' | 'teil'; eintrag?: Record<string, unknown>; id?: string; felder?: Record<string, unknown>;
+  /**
+   * Fingerabdruck des Eintrags, wie der Browser ihn bekam (lib/store/fingerabdruck.ts, 28.09., K4).
+   * Wer ihn mitschickt, bekommt 409 statt eines stillen Überschreibens, wenn inzwischen jemand anders schrieb.
+   * Nur der CRM-Bestand (lib/crm/crm-stand.ts) prüft ihn bisher; `wendeAn` selbst ignoriert ihn.
+   */
+  stand?: string;
+}
 export interface Aenderung { ops: ListenOp[]; felder: Record<string, unknown> }
 
 /** Listen und ihr Schlüsselfeld: ['rechnungen'] (Schlüssel „id“) oder { months: 'm' }. */

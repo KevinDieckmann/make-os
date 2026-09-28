@@ -101,7 +101,8 @@ async function crmFuerFinanzen(heute: string) {
       mrr_netto: mrr(crm.mandate), konzentration: konzentration(crm.mandate),
       mandate_auslaufend_90_tage: crm.mandate.filter(m => m.status === 'aktiv').map(m => ({ kunde: m.kunde, titel: m.titel.slice(0, 80), ende_in_tagen: mandatLage(m, heute).endeIn })).filter(x => x.ende_in_tagen !== null && x.ende_in_tagen <= 90),
       mandate_ohne_liquiplan: crm.mandate.map(m => ({ m, v: planpostenAus(m, heute) })).filter(x => x.v && !posten.some(pp => pp.id === x.v!.id)).map(x => ({ kunde: x.m.kunde, status: x.m.status, betrag_brutto: x.v!.betrag, rhythmus: x.v!.rhythmus })),
-      pipeline: { offen: Math.round(p.offen), gewichtet: Math.round(p.gewichtet), commit: Math.round(p.commit), best_case: Math.round(p.bestCase) },
+      // „gewichtet ohne hängende“ (28.09., K4, #85): ohne die Deals mit roter Ampel — die vorsichtigere Zahl für die Planung.
+      pipeline: { offen: Math.round(p.offen), gewichtet: Math.round(p.gewichtet), gewichtet_ohne_haengende: Math.round(p.gewichtetOhneHaengende), commit: Math.round(p.commit), best_case: Math.round(p.bestCase) },
     };
   } catch { return null; }
 }

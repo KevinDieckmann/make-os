@@ -5,9 +5,10 @@
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { wendeAn, type ListenOp } from '@/lib/sync';
-import { STUFEN, wechsleStufe } from './pipeline';
+import { STUFEN, wechsleStufe, erwartetVerschiebung } from './pipeline';
 import { firmaIdsErgaenzen } from './firmen-bezug';
 import { localDay } from '@/lib/zeit';
+import { crmKonflikte, loeschSperren, type CrmKonflikt, type LoeschSperre, type VerweisKontext } from './crm-stand';
 import { CRM_LISTEN, type CrmBestand, type CrmListe, type Firma, type FirmaRolle, type Antrag, type AntragArt, type Verarbeitung, type Segment, type SegmentKriterien, type Beitrag, type NewsletterAusgabe, type Kampagne, type Chance, type Mandat, type Leistung, type Event, type Teilnahme, type PowerHourSitzung, type ChancenStufe, type Qual, type Freigabe, type FollowUp } from './typen';
 import { wer, BEIDE, verantwortlich } from './team';
 import { leadSaeubern } from './lead-form';
@@ -50,13 +51,18 @@ const GES = ['kdv', 'kdc', 'ug', 'offen'] as const;
 const ARTEN = ['retainer', 'projekt', 'workshop', 'vermittlung', 'software'] as const;
 const Q = ['ja', 'nein', 'unklar'] as const;
 const STUFEN_IDS = STUFEN.map(s => s.id) as ChancenStufe[];
+/**
+ * Deal-Historie (28.09., K4, #83): nie kürzen — vorher schnitt `.slice(-60)` still die ältesten Stufenwechsel ab
+ * (Verweildauer, Umwandlung und Zyklus rechnen daraus). Wer über diese Grenze wachsen will, bekommt 413 mit Text.
+ */
+export const HISTORIE_MAX = 5000;
 
 function chance(o: Record<string, unknown>, jetzt: string, person: string): Chance | null {
   if (!idOk(o.id) || !txt(o.titel)) return null;
   const w = (o.wert ?? {}) as Record<string, unknown>;
   const ql = (o.qualifizierung ?? {}) as Record<string, unknown>;
   const ns = o.naechsterSchritt as Record<string, unknown> | undefined;
-  const hist = Array.isArray(o.historie) ? (o.historie as Record<string, unknown>[]).slice(-60).map(h => ({ stufe: aus(h.stufe, STUFEN_IDS, 'qualifiziert'), am: txt(h.am, 25), von: txt(h.von, 40) || person })).filter(h => h.am) : [];
+  const hist = Array.isArray(o.historie) ? (o.historie as Record<string, unknown>[]).map(h => ({ stufe: aus(h.stufe, STUFEN_IDS, 'qualifiziert'), am: txt(h.am, 25), von: txt(h.von, 40) || person })).filter(h => h.am) : [];
   const stufe = aus(o.stufe, STUFEN_IDS, 'qualifiziert');
   return {
     id: String(o.id), titel: txt(o.titel, 160), kontaktIds: ids(o.kontaktIds), ...(opt(o.firma, 160) ? { firma: opt(o.firma, 160) } : {}),
@@ -69,6 +75,9 @@ function chance(o: Record<string, unknown>, jetzt: string, person: string): Chan
     qualifizierung: { schmerz: aus(ql.schmerz, Q, 'unklar') as Qual, entscheider: aus(ql.entscheider, Q, 'unklar') as Qual, budget: aus(ql.budget, Q, 'unklar') as Qual, zeitpunkt: aus(ql.zeitpunkt, Q, 'unklar') as Qual, wirkung: aus(ql.wirkung, Q, 'unklar') as Qual, alternative: aus(ql.alternative, Q, 'unklar') as Qual },
     ...(opt(o.grund, 300) ? { grund: opt(o.grund, 300) } : {}), ...(tag(o.wiedervorlage) ? { wiedervorlage: tag(o.wiedervorlage) } : {}),
     ...(tag(o.erwartetAm) ? { erwartetAm: tag(o.erwartetAm) } : {}),
+    // Verschiebungen von „Entscheidung bis“ (28.09., K4) — gesetzt nur in dealRegeln, hier nur durchgereicht.
+    ...(tag(o.erwartetUrsprung) ? { erwartetUrsprung: tag(o.erwartetUrsprung) } : {}),
+    ...(zahl(o.erwartetVerschoben, 0, 999) ? { erwartetVerschoben: Math.round(zahl(o.erwartetVerschoben, 0, 999)) } : {}),
     gesellschaft: aus(o.gesellschaft, GES, 'offen'), besitzer: wer(o.besitzer) ?? (wer(person) && wer(person) !== BEIDE ? person : verantwortlich('sales')),
     ...(opt(o.selbstauskunft, 300) ? { selbstauskunft: opt(o.selbstauskunft, 300) } : {}),
     angelegt: txt(o.angelegt, 25) || jetzt, geaendert: jetzt, ...(tag(String(o.letzteAktivitaet ?? '').slice(0, 10)) ? { letzteAktivitaet: String(o.letzteAktivitaet).slice(0, 10) } : {}),
@@ -353,8 +362,9 @@ function saeubernRoh(liste: CrmListe, roh: Record<string, unknown>, jetzt: strin
  * nächsten Schritt mit Datum; die Historie hängt der SERVER an — was der Browser mitschickt,
  * zählt nicht. Ein abgelehnter Wechsel wird übersprungen und als Fehler zurückgegeben.
  */
-export function dealRegeln(b: CrmBestand, ops: ListenOp[], jetzt: string, person: string): { ops: ListenOp[]; fehler: string[] } {
+export function dealRegeln(b: CrmBestand, ops: ListenOp[], jetzt: string, person: string): { ops: ListenOp[]; fehler: string[]; grenze: string[] } {
   const fehler: string[] = [];
+  const grenze: string[] = [];
   const raus: ListenOp[] = [];
   for (const o of ops) {
     if (o.liste !== 'chancen') { raus.push(o); continue; }
@@ -364,20 +374,25 @@ export function dealRegeln(b: CrmBestand, ops: ListenOp[], jetzt: string, person
       if (alt && !(alt.historie.length <= 1 && !alt.wert.betrag && !(alt.notiz ?? '').trim())) { fehler.push(`„${alt.titel}“: Deals mit Geschichte werden nicht gelöscht — als verloren oder geparkt markieren.`); continue; }
       raus.push(o); continue;
     }
-    const felder = (o.op === 'teil' ? o.felder : o.eintrag) ?? {};
+    const roh = (o.op === 'teil' ? o.felder : o.eintrag) ?? {};
     const id = String(o.op === 'teil' ? o.id : o.eintrag?.id ?? '');
     const alt = b.chancen.find(c => c.id === id);
     // Neue Deals entstehen nur über /api/crm/deal (Prüfbericht 27.09., Punkt 4) — ein Upsert ohne Bestand wird abgelehnt.
-    if (!alt) { fehler.push(`Deal „${String(felder.titel ?? id)}“: neue Deals nur über den Anlage-Dialog (/api/crm/deal).`); continue; }
-    // „letzteAktivitaet“ setzt nur der Server (Aktivität, Stufenwechsel) — sonst ließe sich die Ampel „hängt“ von Hand grün stellen (Punkt 23).
-    if ('letzteAktivitaet' in felder) delete (felder as Record<string, unknown>).letzteAktivitaet;
+    if (!alt) { fehler.push(`Deal „${String(roh.titel ?? id)}“: neue Deals nur über den Anlage-Dialog (/api/crm/deal).`); continue; }
+    // Felder, die nur der Server setzt — was der Browser dazu schickt, zählt nicht:
+    // „letzteAktivitaet“ (Aktivität, Stufenwechsel) — sonst ließe sich die Ampel „hängt“ von Hand grün stellen (Punkt 23);
+    // Verschiebungen von „Entscheidung bis“ (28.09., K4, #84) — `erwartetVerschiebung` zählt sie aus dem alten und dem neuen Datum.
+    const { letzteAktivitaet: _la, erwartetUrsprung: _eu, erwartetVerschoben: _ev, ...rest } = roh as Record<string, unknown>;
+    const felder: Record<string, unknown> = { ...rest, ...erwartetVerschiebung(alt, rest), ...(o.op === 'upsert' && alt.letzteAktivitaet ? { letzteAktivitaet: alt.letzteAktivitaet } : {}) };
+    const mit = (f: Record<string, unknown>): ListenOp => (o.op === 'teil' ? { ...o, felder: f } : { ...o, eintrag: f });
     const ziel = typeof felder.stufe === 'string' ? (felder.stufe as ChancenStufe) : undefined;
     if (!ziel || ziel === alt.stufe) {
       // Kein Stufenwechsel: die Historie darf der Browser nicht umschreiben.
-      if ('historie' in felder) { const { historie: _h, ...rest } = felder; raus.push(o.op === 'teil' ? { ...o, felder: { ...rest, historie: alt.historie } } : { ...o, eintrag: { ...rest, historie: alt.historie } }); }
-      else raus.push(o);
+      if ('historie' in felder) { const { historie: _h, ...ohne } = felder; raus.push(mit({ ...ohne, historie: alt.historie })); }
+      else raus.push(mit(felder));
       continue;
     }
+    if (alt.historie.length >= HISTORIE_MAX) { grenze.push(`„${alt.titel}“: die Historie hat ${alt.historie.length} Stufenwechsel — mehr als ${HISTORIE_MAX} nimmt der Deal nicht auf. Bitte einen neuen Deal anlegen.`); continue; }
     const r = wechsleStufe(alt, ziel, person, jetzt, { grund: typeof felder.grund === 'string' ? felder.grund : undefined, wiedervorlage: typeof felder.wiedervorlage === 'string' ? felder.wiedervorlage : undefined });
     if (!r.ok) { fehler.push(`„${alt.titel}“: ${r.fehler}`); continue; }
     const offenZiel = STUFEN.find(s => s.id === ziel)?.offen;
@@ -388,14 +403,32 @@ export function dealRegeln(b: CrmBestand, ops: ListenOp[], jetzt: string, person
       continue;
     }
     const neuFelder = { ...felder, stufe: ziel, historie: r.chance.historie, letzteAktivitaet: r.chance.letzteAktivitaet, ...(r.chance.grund ? { grund: r.chance.grund } : {}), ...(r.chance.wiedervorlage ? { wiedervorlage: r.chance.wiedervorlage } : {}) };
-    raus.push(o.op === 'teil' ? { ...o, felder: neuFelder } : { ...o, eintrag: neuFelder });
+    raus.push(mit(neuFelder));
   }
-  return { ops: raus, fehler };
+  return { ops: raus, fehler, grenze };
 }
 
-export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person: string): { bestand: CrmBestand; angewandt: number; fehler: string[] } {
+export interface CrmAnwendung {
+  bestand: CrmBestand; angewandt: number;
+  /** Einzeln abgelehnte Deal-Änderungen (Stufenregeln) — der Rest gilt. */
+  fehler: string[];
+  /** 409 (28.09., K4): veralteter Stand — die GANZE Änderung ist abgelehnt, der Bestand unverändert. */
+  konflikte: CrmKonflikt[];
+  /** 409 (28.09., K4): Löschen trotz Verweisen — die GANZE Änderung ist abgelehnt. */
+  sperren: LoeschSperre[];
+  /** 413 (28.09., K4): über eine Grenze (Deal-Historie) — die GANZE Änderung ist abgelehnt. */
+  grenze: string[];
+}
+
+export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person: string, kontext?: VerweisKontext): CrmAnwendung {
   let angewandt = 0;
-  const { ops: regelOps, fehler } = dealRegeln(b, roh, jetzt, person);
+  // Erst Stand und Verweise (gegen den Bestand IN der Sperre), dann die Regeln — ein Konflikt lehnt alles ab.
+  const konflikte = crmKonflikte(b, roh);
+  if (konflikte.length) return { bestand: b, angewandt: 0, fehler: [], konflikte, sperren: [], grenze: [] };
+  const sperren = loeschSperren(b, roh, kontext);
+  if (sperren.length) return { bestand: b, angewandt: 0, fehler: [], konflikte: [], sperren, grenze: [] };
+  const { ops: regelOps, fehler, grenze } = dealRegeln(b, roh, jetzt, person);
+  if (grenze.length) return { bestand: b, angewandt: 0, fehler, konflikte: [], sperren: [], grenze };
   const ops = firmenZusammenfuehren(b, ibanSchuetzen(b, regelOps));
   const neu = { ...b };
   for (const l of CRM_LISTEN) {
@@ -405,7 +438,7 @@ export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person
     (neu as Record<string, unknown>)[l] = r.liste;
     angewandt += r.angewandt;
   }
-  return { bestand: neu, angewandt, fehler };
+  return { bestand: neu, angewandt, fehler, konflikte: [], sperren: [], grenze: [] };
 }
 
 /**

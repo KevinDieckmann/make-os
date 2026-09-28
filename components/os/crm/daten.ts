@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import type { Kontakt } from '@/lib/make-one/crm';
-import type { CrmBestand, CrmListe, ChancenStufe } from '@/lib/crm/typen';
+import { CRM_LISTEN, type CrmBestand, type CrmListe, type ChancenStufe } from '@/lib/crm/typen';
 import type { Prognose, Ampel } from '@/lib/crm/pipeline';
 import type { MandatLage } from '@/lib/crm/kunden';
 import type { EventZahlen } from '@/lib/crm/events';
@@ -60,6 +60,21 @@ export const nurFelder = (t: Record<string, unknown>) => Object.fromEntries(Obje
 
 export const neueId = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
+/** Hinweis bei 409 (28.09., K4): jemand anders hat denselben Eintrag inzwischen geändert. */
+export const KONFLIKT_HINWEIS = 'Wurde inzwischen geändert — neu geladen. Bitte noch einmal.';
+
+/**
+ * Stand je CRM-Eintrag (28.09., K4): `<liste>:<id>` → Fingerabdruck, wie ihn der Server zuletzt schickte.
+ * Nur aus Server-Antworten gefüllt, nie aus der optimistischen Anzeige — sonst schickten wir einen Stand, den es nie gab.
+ */
+export function crmStaende(stand: CrmBestand): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const l of CRM_LISTEN) for (const e of (stand[l] ?? []) as unknown as { id: string; stand?: string }[]) if (e.stand) m.set(`${l}:${e.id}`, e.stand);
+  return m;
+}
+/** Einen Eintrag ohne das Feld `stand` — der Stand geht am Op mit, nie im Eintrag. */
+const ohneStand = <T extends Record<string, unknown>>(e: T): T => { const { stand: _s, ...rest } = e; return rest as T; };
+
 export function useCrm() {
   const [crm, setCrm] = useState<CrmAntwort | null>(null);
   const [kontakte, setKontakte] = useState<Kontakt[] | null>(null);
@@ -69,53 +84,83 @@ export function useCrm() {
   const staende = useRef(new Map<string, string>());
   /** Schreiben ging schief: beim nächsten Abgleich alles frisch holen, damit nichts Ungespeichertes stehen bleibt. */
   const fehlschlag = (text: string) => { staende.current.clear(); setFehler(text); };
+  // Stand je Eintrag (28.09., K4) und eine Kette für die Schreibvorgänge: nacheinander gesendet, liest jeder den Stand,
+  // den die Antwort des vorigen brachte — zwei schnelle Änderungen am selben Eintrag stoßen so nicht aneinander (409).
+  const zeilen = useRef(new Map<string, string>());
+  const kette = useRef<Promise<unknown>>(Promise.resolve());
+  const nacheinander = useCallback(<T,>(f: () => Promise<T>): Promise<T> => {
+    const p = kette.current.then(f, f);
+    kette.current = p.catch(() => undefined);
+    return p;
+  }, []);
+  const uebernehmen = useCallback((a: CrmAntwort) => { zeilen.current = crmStaende(a.stand); setCrm(a); }, []);
 
-  const laden = useCallback(async () => {
-    if (unterwegs.current) return;
+  /** `erzwingen` (nach einem 409): auch laden, wenn gerade noch andere Schreibvorgänge unterwegs sind. */
+  const laden = useCallback(async (erzwingen?: boolean) => {
+    if (unterwegs.current && erzwingen !== true) return;
     try {
       const [a, b] = await Promise.all([holeMitStand<CrmAntwort>('/api/crm/bestand', staende.current), holeMitStand<{ kontakte?: Kontakt[]; delta?: boolean; geloescht?: string[] }>('/api/state/kontakte', staende.current)]);
-      if (a?.ok) setCrm(a);
+      if (a?.ok) uebernehmen(a);
       // Delta (Stufe 2): der Server kannte unseren Stand und schickt nur, was anders ist.
       if (b?.delta) setKontakte(alt => (alt ? deltaAnwenden(alt, { geaendert: b.kontakte ?? [], geloescht: b.geloescht ?? [] }) : alt));
       else if (b) setKontakte(b.kontakte ?? []);
       setFehler(null);
     } catch { staende.current.clear(); setFehler('Nicht erreichbar.'); }
-  }, []);
+  }, [uebernehmen]);
   useEffect(() => { void laden(); }, [laden]);
   // Signale aus Mail und Kalender (höchstens alle 5 Minuten, der Server entscheidet) — danach neu laden, wenn etwas dazukam.
   useEffect(() => { fetch('/api/crm/signale', { method: 'POST' }).then(r => r.json()).then(d => { if (d?.neu) void laden(); }).catch(() => {}); }, [laden]);
   useAbgleich(laden, { alle: 20_000, pausiert: () => unterwegs.current > 0 });
 
-  /** CRM-Eintrag anlegen/ändern (ganzer Eintrag). */
-  const setze = useCallback(async (liste: CrmListe, eintrag: { id: string } & Record<string, unknown>) => {
+  /**
+   * Antwort eines Schreibvorgangs auf /api/crm/bestand auswerten (28.09., K4): ok → Stand übernehmen (und abgelehnte
+   * Deal-Regeln als Fehler zeigen); 409 mit `konflikte` → Hinweis und neu laden; 409 mit `sperren` (Löschen trotz
+   * Verweisen) oder 413 → nur der Text. Gibt zurück, ob neu geladen werden muss.
+   */
+  const schreibAntwort = useCallback((r: { ok?: boolean; fehler?: string | string[]; konflikte?: unknown[] } & Partial<CrmAntwort>, sonst: string): boolean => {
+    if (r.ok) { uebernehmen(r as CrmAntwort); if (Array.isArray(r.fehler) && r.fehler.length) setFehler(r.fehler.join(' · ')); return false; }
+    if (r.konflikte?.length) { fehlschlag(KONFLIKT_HINWEIS); return true; }
+    fehlschlag(typeof r.fehler === 'string' ? r.fehler : sonst);
+    return false;
+  }, [uebernehmen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Ein Op an /api/crm/bestand — in der Kette, mit dem zuletzt bekannten Stand des Eintrags. */
+  const schreibe = useCallback((op: { liste: CrmListe; op: 'upsert' | 'teil' | 'delete'; id: string; eintrag?: Record<string, unknown>; felder?: Record<string, unknown> }, sonst: string) => {
     unterwegs.current++;
+    let neuLaden = false;
+    return nacheinander(async () => {
+      try {
+        const stand = zeilen.current.get(`${op.liste}:${op.id}`);
+        const senden = op.op === 'upsert' ? { liste: op.liste, op: 'upsert', eintrag: ohneStand(op.eintrag ?? {}) } : op.op === 'teil' ? { liste: op.liste, op: 'teil', id: op.id, felder: op.felder } : { liste: op.liste, op: 'delete', id: op.id };
+        const r = await fetch('/api/crm/bestand', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ ...senden, ...(stand ? { stand } : {}) }] }) }).then(x => x.json());
+        neuLaden = schreibAntwort(r, sonst);
+      } catch { fehlschlag(`${sonst.replace(/\.$/, '')} — keine Verbindung.`); }
+      finally { unterwegs.current--; }
+      if (neuLaden) await laden(true);
+    });
+  }, [nacheinander, schreibAntwort, laden]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** CRM-Eintrag anlegen/ändern (ganzer Eintrag) — ein bestehender nur mit Stand (sonst 409, dann neu geladen). */
+  const setze = useCallback(async (liste: CrmListe, eintrag: { id: string } & Record<string, unknown>) => {
     setCrm(alt => {
       if (!alt) return alt;
       const l = alt.stand[liste] as unknown as { id: string }[];
       const neu = l.some(x => x.id === eintrag.id) ? l.map(x => (x.id === eintrag.id ? eintrag : x)) : [...l, eintrag];
       return { ...alt, stand: { ...alt.stand, [liste]: neu } };
     });
-    try {
-      const r = await fetch('/api/crm/bestand', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste, op: 'upsert', eintrag }] }) }).then(x => x.json());
-      if (r.ok) { setCrm(r); if (Array.isArray(r.fehler) && r.fehler.length) setFehler(r.fehler.join(' · ')); } else fehlschlag(r.fehler ?? 'Nicht gespeichert.');
-    } catch { fehlschlag('Nicht gespeichert — keine Verbindung.'); }
-    finally { unterwegs.current--; }
-  }, []);
+    await schreibe({ liste, op: 'upsert', id: eintrag.id, eintrag }, 'Nicht gespeichert.');
+  }, [schreibe]);
 
   /**
    * Nur diese Felder ändern (Server vereint mit dem aktuellen Stand) — so
    * überschreiben Kevin und Malin am selben Eintrag nie die Felder der/des anderen.
+   * Mit Stand (28.09., K4): hat inzwischen jemand anders denselben Eintrag geändert, kommt 409 → Hinweis, neu geladen.
    */
   const teil = useCallback(async (liste: CrmListe, id: string, felder: Record<string, unknown>) => {
-    unterwegs.current++;
     setCrm(alt => (alt ? { ...alt, stand: { ...alt.stand, [liste]: (alt.stand[liste] as unknown as { id: string }[]).map(x => (x.id === id ? { ...x, ...felder } : x)) } } : alt));
-    try {
-      const r = await fetch('/api/crm/bestand', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste, op: 'teil', id, felder }] }) }).then(x => x.json());
-      // Der Server wendet die Regeln an (27.09.): ein abgelehnter Stufenwechsel kommt als Fehlertext, der Stand ist der aktuelle.
-      if (r.ok) { setCrm(r); if (Array.isArray(r.fehler) && r.fehler.length) setFehler(r.fehler.join(' · ')); } else fehlschlag(r.fehler ?? 'Nicht gespeichert.');
-    } catch { fehlschlag('Nicht gespeichert — keine Verbindung.'); }
-    finally { unterwegs.current--; }
-  }, []);
+    // Der Server wendet die Regeln an (27.09.): ein abgelehnter Stufenwechsel kommt als Fehlertext, der Stand ist der aktuelle.
+    await schreibe({ liste, op: 'teil', id, felder }, 'Nicht gespeichert.');
+  }, [schreibe]);
 
   /** An Kevin oder Malin übergeben (/api/crm/uebergabe) — danach neu laden. */
   const uebergeben = useCallback(async (body: { art: string; id?: string; ids?: string[]; an: string; notiz?: string; frist?: string }) => {
@@ -127,14 +172,10 @@ export function useCrm() {
     } finally { unterwegs.current--; void laden(); }
   }, [laden]);
 
+  /** Löschen — der Server lehnt Firmen/Mandate mit Verweisen ab (409, Text mit Anzahlen) und Deals mit Geschichte. */
   const weg = useCallback(async (liste: CrmListe, id: string) => {
-    unterwegs.current++;
-    try {
-      const r = await fetch('/api/crm/bestand', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste, op: 'delete', id }] }) }).then(x => x.json());
-      if (r.ok) { setCrm(r); if (Array.isArray(r.fehler) && r.fehler.length) setFehler(r.fehler.join(' · ')); } else setFehler(r.fehler ?? 'Nicht gelöscht.');
-    } catch { setFehler('Nicht gelöscht — keine Verbindung.'); }
-    finally { unterwegs.current--; }
-  }, []);
+    await schreibe({ liste, op: 'delete', id }, 'Nicht gelöscht.');
+  }, [schreibe]);
 
   /** Antwort einer Kontakt-Änderung auswerten: neue Stände nachtragen; 409 = jemand war schneller → frisch laden. */
   const kontaktAntwort = useCallback((r: { ok?: boolean; error?: string; konflikte?: unknown[]; zeilen?: { id: string; stand: string }[] }) => {

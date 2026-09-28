@@ -65,6 +65,10 @@ export interface Chance {
   grund?: string;
   wiedervorlage?: string;
   erwartetAm?: string;
+  /** Das erste „Entscheidung bis“, bevor es nach hinten verschoben wurde — setzt nur der Server (dealRegeln, 28.09., K4). */
+  erwartetUrsprung?: string;
+  /** Wie oft „Entscheidung bis“ nach hinten verschoben wurde — setzt nur der Server; ab 2 wird die Ampel gelb. */
+  erwartetVerschoben?: number;
   gesellschaft: Gesellschaft;
   besitzer: string;
   /** Selbstauskunft: „Wie sind Sie auf uns aufmerksam geworden?“ */

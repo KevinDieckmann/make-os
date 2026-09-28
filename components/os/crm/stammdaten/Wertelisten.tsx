@@ -89,6 +89,11 @@ export function Wertelisten({ w, post, laeuft, zuBereich }: { w: WertelistenAntw
                 <Feld typ="number" breite={80} wert={String(s.p)} platzhalter="%" onFertig={x => void post({ aktion: 'wahrscheinlichkeit', stufe: s.id, p: x === '' ? null : Number(x) })} />
                 <span style={{ fontSize: 12, color: C.inkLeise }}>%</span>
                 {s.vonHand && <button onClick={() => void post({ aktion: 'wahrscheinlichkeit', stufe: s.id, p: null })} title={`Zurück auf ${s.standard} %`} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>↺ {s.standard}</button>}
+                {/* Gemessen (28.09., K4): erst ab MINDESTMENGE Entscheidungen — „übernehmen“ setzt die Quote als eigenen Wert. */}
+                {s.gemessen?.quote != null && <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 12, color: C.inkDim, whiteSpace: 'nowrap' }} title={`${s.gemessen.gewonnen} von ${s.gemessen.n} entschiedenen Deals, die diese Stufe erreichten, wurden gewonnen`}>
+                  gemessen {s.gemessen.quote} % ({s.gemessen.n})
+                  {s.gemessen.quote !== s.p && <button onClick={() => void post({ aktion: 'wahrscheinlichkeit', stufe: s.id, p: s.gemessen!.quote })} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: 0 }}>übernehmen</button>}
+                </span>}
               </span> : <Chip farbe={C.inkDim}>{s.p} %</Chip>} />
           ))}
         </Liste>

@@ -109,6 +109,8 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
         <Raster min={150}>
           <Zahl wert={kurzEuro(p.offen)} label="offen" />
           <Zahl wert={kurzEuro(p.gewichtet)} label="gewichtet" farbe={LEUCHT.business} />
+          {/* 28.09., K4: dieselbe Zahl ohne die Deals mit roter Ampel — die ehrlichere für Finanzen (Head of Finance bekommt sie). */}
+          {p.gewichtetOhneHaengende !== p.gewichtet && <Zahl wert={kurzEuro(p.gewichtetOhneHaengende)} label="gewichtet ohne hängende" />}
           <Zahl wert={kurzEuro(p.commit)} label="Commit · Abschluss" farbe={LEUCHT.gut} />
           <Zahl wert={kurzEuro(p.bestCase)} label="Best Case · ab Angebot" />
           <Zahl wert={String(p.ohneSchritt)} label="ohne nächsten Schritt" farbe={p.ohneSchritt ? LEUCHT.achtung : undefined} />

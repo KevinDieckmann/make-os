@@ -8,6 +8,7 @@
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { Kriterien, Lead, Qual, Temperatur } from './typen';
 import { echtesGespraech } from './pipeline';
+import { MINDESTMENGE } from './deal-auswertung';
 
 export type ScoreTeilId = 'fit' | 'waerme' | 'qualifizierung' | 'erreichbarkeit';
 export interface ScoreTeil { id: ScoreTeilId; label: string; punkte: number; max: number; grund: string }
@@ -51,14 +52,34 @@ function waerme(personen: Kontakt[], heute: string): ScoreTeil {
     if (t <= 90) return { id: 'waerme', label: 'Wärme', punkte: 20, max: 30, grund: `Letztes Gespräch vor ${t} Tagen` };
     if (t <= 365) return { id: 'waerme', label: 'Wärme', punkte: 12, max: 30, grund: `Letztes Gespräch vor ${t} Tagen — wieder aufwärmen` };
   }
-  const antwort = akt.some(a => a.art === 'antwort' || a.ergebnis === 'rueckruf');
-  if (antwort) return { id: 'waerme', label: 'Wärme', punkte: 12, max: 30, grund: 'Hat geantwortet' };
-  const angesprochen = akt.some(a => a.von !== 'system' && (a.art === 'mail' || a.art === 'linkedin' || a.art === 'anruf')) || personen.some(k => k.stufe === 'angesprochen');
-  if (angesprochen) return { id: 'waerme', label: 'Wärme', punkte: 8, max: 30, grund: 'Angesprochen, noch keine Antwort' };
+  // Antwort und Ansprache verfallen (28.09., K4, #93): nach WAERME_VERFALL_TAGEN zählen sie nur noch wenig — eine Antwort
+  // von vor zwei Jahren ist keine Wärme mehr. Frische Signale gehen vor; verblasste treten gegen den warmen Typ an.
+  const zuletzt = (l: typeof akt) => l.map(a => a.am.slice(0, 10)).sort().pop();
+  const verblasst: ScoreTeil[] = [];
+  const antwortAm = zuletzt(akt.filter(a => a.art === 'antwort' || a.ergebnis === 'rueckruf'));
+  if (antwortAm) {
+    const t = tage(antwortAm, heute);
+    if (t <= WAERME_VERFALL_TAGEN) return { id: 'waerme', label: 'Wärme', punkte: 12, max: 30, grund: 'Hat geantwortet' };
+    verblasst.push({ id: 'waerme', label: 'Wärme', punkte: 5, max: 30, grund: `Antwort liegt ${t} Tage zurück — abgekühlt` });
+  }
+  const ansprachen = akt.filter(a => a.von !== 'system' && (a.art === 'mail' || a.art === 'linkedin' || a.art === 'anruf'));
+  const angesprochenAm = zuletzt(ansprachen);
+  if (angesprochenAm) {
+    const t = tage(angesprochenAm, heute);
+    if (t <= WAERME_VERFALL_TAGEN) return { id: 'waerme', label: 'Wärme', punkte: 8, max: 30, grund: 'Angesprochen, noch keine Antwort' };
+    verblasst.push({ id: 'waerme', label: 'Wärme', punkte: 3, max: 30, grund: `Zuletzt vor ${t} Tagen angesprochen — abgekühlt` });
+  } else if (!verblasst.length && personen.some(k => k.stufe === 'angesprochen')) {
+    // Nur die Stufe aus der Liste, ohne datierte Ansprache — nicht zu altern, zählt wie bisher.
+    return { id: 'waerme', label: 'Wärme', punkte: 8, max: 30, grund: 'Angesprochen, noch keine Antwort' };
+  }
   const warmerTyp = personen.some(k => k.typ === 'Netzwerk' || k.typ === 'Kunde' || (k.kategorie ?? '').startsWith('Apple') || /apple/i.test(k.quelle ?? ''));
-  if (warmerTyp) return { id: 'waerme', label: 'Wärme', punkte: 10, max: 30, grund: 'Bekannt aus Netzwerk oder früherer Zusammenarbeit' };
+  if (warmerTyp) verblasst.push({ id: 'waerme', label: 'Wärme', punkte: 10, max: 30, grund: 'Bekannt aus Netzwerk oder früherer Zusammenarbeit' });
+  if (verblasst.length) return verblasst.reduce((a, b) => (b.punkte > a.punkte ? b : a));
   return { id: 'waerme', label: 'Wärme', punkte: 0, max: 30, grund: 'Noch kein Kontakt' };
 }
+
+/** Nach so vielen Tagen zählen „hat geantwortet“ und „angesprochen“ nur noch abgekühlt (28.09., K4). */
+export const WAERME_VERFALL_TAGEN = 180;
 
 /** Qualifizierung: 5 Punkte je Kernfrage „ja“; Schmerz oder Entscheider „nein“ deckelt auf 10. */
 function qualifizierung(k: Kriterien): ScoreTeil {
@@ -130,6 +151,22 @@ export function kanalLeistung(zeilen: { kanal: KanalId; score: LeadScore; status
     je.set(z.kanal, e);
   }
   return [...je.values()].map(e => ({ ...e, warmQuote: e.anzahl ? Math.round((100 * e.warm) / e.anzahl) : 0, sqlQuote: e.anzahl ? Math.round((100 * e.sql) / e.anzahl) : 0 })).sort((a, b) => b.sql - a.sql || b.warm - a.warm || b.anzahl - a.anzahl);
+}
+
+/**
+ * SQL- und Gewinnquote je Temperatur (28.09., K4, #95) — für die Sales-Auswertung: trägt die Temperatur, was sie
+ * verspricht? Dieselben Zählregeln wie `kanalLeistung` (SQL = Status sql/kunde, gewonnen = Kunde oder Deal gewonnen);
+ * Quoten erst ab MINDESTMENGE Leads je Temperatur, sonst null.
+ */
+export interface TemperaturZeile { temperatur: Temperatur; label: string; anzahl: number; sql: number; gewonnen: number; sqlQuote: number | null; gewinnQuote: number | null }
+export function temperaturLeistung(zeilen: { score: LeadScore; status: string; deal?: { stufe: string } }[]): TemperaturZeile[] {
+  return TEMPERATUR.map(t => {
+    const l = zeilen.filter(z => z.score.temperatur === t.id);
+    const sql = l.filter(z => z.status === 'sql' || z.status === 'kunde').length;
+    const gewonnen = l.filter(z => z.status === 'kunde' || z.deal?.stufe === 'gewonnen').length;
+    const genug = l.length >= MINDESTMENGE;
+    return { temperatur: t.id, label: t.label, anzahl: l.length, sql, gewonnen, sqlQuote: genug ? Math.round((100 * sql) / l.length) : null, gewinnQuote: genug ? Math.round((100 * gewonnen) / l.length) : null };
+  });
 }
 
 /** Verteilung kalt/lau/warm/heiß — für den Überblick. */

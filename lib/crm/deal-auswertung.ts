@@ -97,3 +97,20 @@ export function haengtNachWert(chancen: Chance[], ampel: Record<string, { ampel:
   const wert = offen.filter(c => ampel[c.id]?.ampel === 'rot').reduce((a, c) => a + gesamtwert(c), 0);
   return { anteil: gesamt > 0 ? Math.round((wert / gesamt) * 100) : null, wert, gesamt };
 }
+
+/**
+ * Gemessene Wahrscheinlichkeit je offener Stufe (28.09., K4, #86) — neben der Standard-Wahrscheinlichkeit in
+ * Stammdaten › Stufen, mit „übernehmen“. Von den entschiedenen Deals (gewonnen/verloren), die die Stufe erreicht
+ * haben (Historie mit dieser oder einer späteren offenen Stufe — wie `umwandlung`), der Anteil gewonnen.
+ * Quote erst ab MINDESTMENGE Entscheidungen, sonst null.
+ */
+export function gemesseneQuoten(chancen: Chance[]): { stufe: ChancenStufe; n: number; gewonnen: number; quote: number | null }[] {
+  const offen = STUFEN.filter(s => s.offen).map(s => s.id);
+  const rang = (s: ChancenStufe) => offen.indexOf(s);
+  const entschieden = chancen.filter(c => c.stufe === 'gewonnen' || c.stufe === 'verloren');
+  return offen.map((stufe, i) => {
+    const l = entschieden.filter(c => c.historie.some(h => rang(h.stufe) >= i));
+    const gewonnen = l.filter(c => c.stufe === 'gewonnen').length;
+    return { stufe, n: l.length, gewonnen, quote: l.length >= MINDESTMENGE ? Math.round((gewonnen / l.length) * 100) : null };
+  });
+}

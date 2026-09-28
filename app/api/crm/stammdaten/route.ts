@@ -27,6 +27,7 @@ import { dubletten } from '@/lib/crm/dubletten';
 import { kennzahlen, vollstaendigkeit, speicherbegrenzung } from '@/lib/crm/kennzahlen';
 import { art14 } from '@/lib/crm/recht';
 import { STUFEN, OFFENE_STUFEN, gesamtwert, wahrscheinlichkeit } from '@/lib/crm/pipeline';
+import { gemesseneQuoten } from '@/lib/crm/deal-auswertung';
 import { wertelistenVollstaendig, wertelistenPruefen, type Pruefung } from '@/lib/crm/wertelisten';
 import type { ChancenStufe } from '@/lib/crm/typen';
 
@@ -49,6 +50,7 @@ export async function GET(req: Request) {
   for (const c of crm.chancen.filter(c => c.stufe === 'verloren' && c.grund)) verlust[c.grund!] = (verlust[c.grund!] ?? 0) + 1;
   const kpis = kennzahlen(kontakte, crm, heute);
   const voll = wertelistenVollstaendig(crm.wertelisten);
+  const gemessen = gemesseneQuoten(crm.chancen);
   // Ist zu den Zielen: Umsatz neu = Gesamtwert der in den letzten 30 Tagen gewonnenen Deals; SQL und Gespräche aus den Kennzahlen (null = noch nichts gemessen).
   const vor30 = new Date(`${heute}T12:00:00Z`); vor30.setUTCDate(vor30.getUTCDate() - 29);
   const ab = vor30.toISOString().slice(0, 10);
@@ -67,7 +69,8 @@ export async function GET(req: Request) {
       werbesperren: kontakte.filter(k => k.werbesperre).map(k => ({ id: k.id, seit: k.werbesperre!.seit })),
     },
     wertelisten: {
-      stufen: STUFEN.map(s => ({ id: s.id, label: s.label, standard: s.p, p: wahrscheinlichkeit(s.id, crm.wahrscheinlichkeiten), vonHand: typeof crm.wahrscheinlichkeiten?.[s.id] === 'number', weiterWenn: s.weiterWenn, offen: s.offen })),
+      // gemessen (28.09., K4, #86): Gewinnquote der entschiedenen Deals, die die Stufe erreichten — ab MINDESTMENGE, sonst null.
+      stufen: STUFEN.map(s => ({ id: s.id, label: s.label, standard: s.p, p: wahrscheinlichkeit(s.id, crm.wahrscheinlichkeiten), vonHand: typeof crm.wahrscheinlichkeiten?.[s.id] === 'number', weiterWenn: s.weiterWenn, offen: s.offen, gemessen: gemessen.find(g => g.stufe === s.id) ?? null })),
       verlustgruende: voll.verlustgruende.map(g => ({ grund: g.wert, fest: g.fest, anzahl: verlust[g.wert] ?? 0 })),
       kadenzTage: voll.kadenzTage, kadenzStandard: voll.kadenzStandard,
       branchen: voll.branchen, typen: voll.typen, kategorien: voll.kategorien,

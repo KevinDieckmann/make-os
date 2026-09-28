@@ -19,7 +19,7 @@ import { dealRolleVorschlag, besterEntscheider, offeneRollenVorschlaege, vorschl
 import { Person } from './team';
 import { ChancenDetail } from './Pipeline';
 import { useFollowups } from './FollowUp';
-import { gesamtwert } from '@/lib/crm/pipeline';
+import { gesamtwert, VERSCHOBEN_GELB } from '@/lib/crm/pipeline';
 import { verweildauer, verweildauerJeStufe, umwandlung, winLoss, zyklus, prognoseNachMonat, haengtNachWert, MINDESTMENGE } from '@/lib/crm/deal-auswertung';
 import { firmaVonDeal } from '@/lib/crm/firmen-bezug';
 import { mitglied } from '@/lib/crm/team';
@@ -96,6 +96,12 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
               <span>· führt <Person id={c.besitzer} name groesse={16} /></span>
               {a && <span style={{ color: AMPEL[a.ampel] }}>· {a.ampel === 'gruen' ? 'in Bewegung' : a.gruende[0]}</span>}
             </div>
+            {/* Verschiebungen von „Entscheidung bis“ (28.09., K4): zählt der Server; ab zwei wird die Ampel gelb. */}
+            {(c.erwartetVerschoben ?? 0) > 0 && (
+              <div style={{ marginTop: 4, fontSize: 12.5, color: (c.erwartetVerschoben ?? 0) >= VERSCHOBEN_GELB ? LEUCHT.achtung : C.inkDim }}>
+                Entscheidung {c.erwartetVerschoben}× verschoben{c.erwartetUrsprung ? ` · ursprünglich ${datum(c.erwartetUrsprung)}` : ''}{c.erwartetAm ? ` · jetzt ${datum(c.erwartetAm, crm.heute)}` : ''}
+              </div>
+            )}
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{c.wert.betrag ? euro(gesamtwert(c)) : '—'}</div>
