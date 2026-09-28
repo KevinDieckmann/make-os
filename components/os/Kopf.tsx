@@ -22,7 +22,7 @@ import { spaceVon, type SpaceId } from '@/lib/make-one/spaces';
 import { zeitText, teile } from '@/lib/zeitmessung/modell';
 import { gemerkterFokus, fokusMerken, FOKUS_MERKER, FOKUS_EREIGNIS, type LaufenderFokus } from '@/lib/zeitmessung/fokus-laufend';
 import { useTasks } from '@/context/TasksContext';
-import { ZuordnungWahl } from './zeit/Zuordnung';
+import { ZuordnungWahl, type Zuordnung } from './zeit/Zuordnung';
 import { WEG } from '@/lib/wege';
 import { zeitSchluessel } from '@/lib/zeitmessung/bereich';
 import { Glocke } from './Glocke';
@@ -133,6 +133,7 @@ function SpaceSchalter({ space, ausAdresse, setzen }: { space: SpaceId; ausAdres
 // hinweg (localStorage, lib/zeitmessung/fokus-laufend.ts) und wird beim Stopp als Block verbucht
 // (/api/state/zeit). Seit 27.09. spät: im Business lässt sich der laufende Block gleich einer
 // Aufgabe oder Einheit zuordnen (Chip neben dem Zähler); das Aufgaben-Detail kann ihn starten.
+// Seit 28.09. auch einem Mandat (Kevin: „Mandat an Zielen und Zeit“ — Zeit je Mandat).
 const uhr = (sek: number) => {
   const h = Math.floor(sek / 3600), m = Math.floor((sek % 3600) / 60), s = sek % 60;
   return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
@@ -142,7 +143,7 @@ const uhr = (sek: number) => {
  * zwei Chips direkt im Kopf hätten ihn überlaufen lassen. Punkt am Knopf = zugeordnet.
  */
 const MENUES = '[data-wahl-menue],.wahl-hinter,[role="listbox"],[role="menu"]';
-function FokusZuordnenKnopf({ wert, setzen }: { wert: { aufgabeId?: string; einheit?: string }; setzen: (z: { aufgabeId?: string; einheit?: string }) => void }) {
+function FokusZuordnenKnopf({ wert, setzen }: { wert: Zuordnung; setzen: (z: Zuordnung) => void }) {
   const [auf, setAuf] = useState(false);
   const feldRef = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -158,10 +159,10 @@ function FokusZuordnenKnopf({ wert, setzen }: { wert: { aufgabeId?: string; einh
     document.addEventListener('keydown', taste);
     return () => { document.removeEventListener('mousedown', weg); document.removeEventListener('keydown', taste); };
   }, [auf]);
-  const gesetzt = !!(wert.aufgabeId || wert.einheit);
+  const gesetzt = !!(wert.aufgabeId || wert.einheit || wert.mandatId);
   return (
     <span ref={feldRef} className="wachstum-kopf-label" style={{ position: 'relative', display: 'inline-flex' }}>
-      <button type="button" onClick={() => setAuf(a => !a)} aria-expanded={auf} aria-label="Fokus einer Aufgabe oder Einheit zuordnen" title={gesetzt ? 'Zuordnung ändern' : 'Einer Aufgabe oder Einheit zuordnen'} className="fassbar"
+      <button type="button" onClick={() => setAuf(a => !a)} aria-expanded={auf} aria-label="Fokus einer Aufgabe, einem Mandat oder einer Einheit zuordnen" title={gesetzt ? 'Zuordnung ändern' : 'Einer Aufgabe, einem Mandat oder einer Einheit zuordnen'} className="fassbar"
         style={{ ...rund(gesetzt), width: 30, height: 30, position: 'relative', cursor: 'pointer', background: 'none' }}>
         <Tag size={14} strokeWidth={1.9} />
       </button>
@@ -169,7 +170,7 @@ function FokusZuordnenKnopf({ wert, setzen }: { wert: { aufgabeId?: string; einh
         <span role="group" aria-label="Fokus zuordnen" style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, zIndex: 40, display: 'grid', gap: 8, padding: '12px 14px', minWidth: 280, maxWidth: 380, borderRadius: 14, background: C.flaeche, border: '1px solid rgba(255,255,255,.08)', boxShadow: '0 18px 50px -12px rgba(0,0,0,.75)' }}>
           <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>Fokus zuordnen</span>
           <ZuordnungWahl klein wert={wert} setzen={setzen} />
-          <span style={{ fontSize: 12, color: C.inkLeise }}>Zählt auf die Einheit der Aufgabe — oder auf die gewählte Einheit.</span>
+          <span style={{ fontSize: 12, color: C.inkLeise }}>Zählt auf das Mandat und seine Einheit — sonst auf die Einheit der Aufgabe oder die gewählte.</span>
         </span>
       )}
     </span>
@@ -197,17 +198,17 @@ function FokusZaehler({ pfad, space }: { pfad: string; space: SpaceId }) {
     const { schluessel, bereich } = zeitSchluessel(pfad, window.location.search, space);
     fokusMerken({ von: new Date().toISOString(), schluessel, label: bereich.label });
   };
-  const zuordnen = (z: { aufgabeId?: string; einheit?: string }) => {
+  const zuordnen = (z: Zuordnung) => {
     if (!laufend) return;
-    const { aufgabeId: _a, einheit: _e, ...rest } = laufend;
-    fokusMerken({ ...rest, ...(z.aufgabeId ? { aufgabeId: z.aufgabeId } : {}), ...(z.einheit ? { einheit: z.einheit } : {}) });
+    const { aufgabeId: _a, einheit: _e, mandatId: _m, ...rest } = laufend;
+    fokusMerken({ ...rest, ...(z.aufgabeId ? { aufgabeId: z.aufgabeId } : {}), ...(z.einheit ? { einheit: z.einheit } : {}), ...(z.mandatId ? { mandatId: z.mandatId } : {}) });
   };
   const stoppen = async () => {
     if (!laufend) return;
     const l = laufend;
     fokusMerken(null);
     try {
-      await fetch('/api/state/zeit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'fokus', von: l.von, bis: new Date().toISOString(), schluessel: l.schluessel, label: l.label, aufgabeId: l.aufgabeId, einheit: l.einheit }) });
+      await fetch('/api/state/zeit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'fokus', von: l.von, bis: new Date().toISOString(), schluessel: l.schluessel, label: l.label, aufgabeId: l.aufgabeId, einheit: l.einheit, mandatId: l.mandatId }) });
     } catch { /* der Block ist dann weg — besser als ein hängender Zähler */ }
     window.dispatchEvent(new Event(ZEIT_EREIGNIS));
   };
@@ -224,7 +225,7 @@ function FokusZaehler({ pfad, space }: { pfad: string; space: SpaceId }) {
           <Square size={10} fill="currentColor" strokeWidth={0} style={{ color: C.inkLeise }} />
         </button>
         {teile(laufend.schluessel).space === 'business' && (
-          <FokusZuordnenKnopf wert={{ aufgabeId: laufend.aufgabeId, einheit: laufend.einheit }} setzen={zuordnen} />
+          <FokusZuordnenKnopf wert={{ aufgabeId: laufend.aufgabeId, einheit: laufend.einheit, mandatId: laufend.mandatId }} setzen={zuordnen} />
         )}
       </span>
     );

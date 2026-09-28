@@ -6,6 +6,8 @@
 // Business-Einheit, Zahlenziel + Termin am Jahresziel — und nach jedem
 // Schreiben läuft die Kaskade (lib/planung/kaskade.ts): Quartal/Monat/Woche/Tag
 // werden aus den Jahreszielen nachgezogen, Termin-Ziele werden Meilensteine.
+// Seit 28.09. („Mandat an Zielen und Zeit“): Business-Ziele tragen optional `mandatId`/`firmaId`;
+// Firma und Einheit werden im Schreibweg aus dem Mandat abgeleitet (lib/planung/mandat.ts).
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -16,6 +18,8 @@ import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { ZIEL_HORIZONTE, istZielHorizont, type Ziel, type ZielHorizont, type ZieleDatei, type Meilenstein } from '@/lib/planung/typen';
 import { kaskadeAnwenden, meilensteineAbleiten } from '@/lib/planung/kaskade';
 import { sauberZiel } from '@/lib/planung/ziele';
+import { mitMandatBezug } from '@/lib/planung/mandat';
+import { mandateFuerBezug } from '@/lib/planung/mandat-server';
 import { localDay } from '@/lib/zeit';
 
 export const runtime = 'nodejs';
@@ -109,7 +113,9 @@ export async function PATCH(req: Request) {
   if (Array.isArray(body.ops) && body.ops.length > JE_HORIZONT * 2) {
     return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${JE_HORIZONT * 2} Änderungen je Aufruf.` }, { status: 413 });
   }
-  const ops = opsLesen<Ziel>(body.ops, sauberZiel, JE_HORIZONT * 2);
+  // Mandat an Zielen (28.09.): Firma und Einheit kommen aus dem Mandat — das CRM wird nur gelesen, wenn eins genannt ist.
+  const mandate = await mandateFuerBezug(body.ops);
+  const ops = opsLesen<Ziel>(body.ops, e => { const z = sauberZiel(e); return z && mitMandatBezug(z, mandate, z.space === 'business'); }, JE_HORIZONT * 2);
   if (!ops) return NextResponse.json({ ok: false, error: opsFehler(body.ops, JE_HORIZONT * 2) }, { status: Array.isArray(body.ops) ? 413 : 400 });
   const jahr = Number(localDay().slice(0, 4));
 

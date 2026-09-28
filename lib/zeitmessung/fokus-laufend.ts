@@ -11,7 +11,8 @@ import { bereichVon } from './bereich';
 export const FOKUS_MERKER = 'make-fokus';
 export const FOKUS_EREIGNIS = 'make-fokus-geaendert';
 
-export interface LaufenderFokus { von: string; schluessel: string; label: string; aufgabeId?: string; einheit?: string }
+/** Der laufende Block — seit 28.09. auch mit Mandat (`mandatId`, nur im Business; Firma/Einheit leitet der Server ab). */
+export interface LaufenderFokus { von: string; schluessel: string; label: string; aufgabeId?: string; einheit?: string; mandatId?: string }
 
 export function gemerkterFokus(): LaufenderFokus | null {
   try {
@@ -35,7 +36,8 @@ export function fokusFuerAufgabe(a: { id: string; einheit?: string }, pfad = win
   const zuordnung = { aufgabeId: a.id, ...(a.einheit ? { einheit: a.einheit } : {}) };
   const l = gemerkterFokus();
   if (l) {
-    const { aufgabeId: _a, einheit: _e, ...rest } = l;
+    // Die Aufgabe ersetzt die ganze bisherige Zuordnung (auch ein gewähltes Mandat — die Aufgabe kann zu einem anderen gehören).
+    const { aufgabeId: _a, einheit: _e, mandatId: _m, ...rest } = l;
     fokusMerken({ ...rest, schluessel: schluesselFuer('business', teile(l.schluessel).bereich), ...zuordnung });
     return 'zugeordnet';
   }

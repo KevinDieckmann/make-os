@@ -20,6 +20,7 @@ import { sauberEinheit } from '@/lib/planung/einheiten';
 import { aufgabeEinheit, EINHEIT_OHNE } from '@/lib/aufgaben/einheit';
 import { spaceVonAufgabe, type SpaceId } from '@/lib/make-one/space-regeln';
 import { wandzeit, tagPlus } from '@/lib/kalender/zeit';
+import { bezugSaeubern, mitMandatBezug, type MandatKurz } from '@/lib/planung/mandat';
 import { teile, type BlockZuordnung, type FokusBlock, type ZeitDatei } from './modell';
 
 /** Das, was die Auswertung und die Säuberung von einer Aufgabe brauchen. */
@@ -42,20 +43,33 @@ export const AUFGABE_ID_MAX = 80;
 
 /**
  * Die Zuordnung eines Blocks, wie sie gespeichert wird:
- * - Privat (und Gemeinsam) verwirft alles — Einheiten gibt es nur im Business.
+ * - Privat (und Gemeinsam) verwirft alles — Einheiten und Mandate gibt es nur im Business.
  * - `aufgabeId` bleibt nur, wenn die Aufgabe gefunden wurde und im Business liegt.
  * - Einheit: die der Aufgabe, sonst die direkt gewählte (auch bei einer Aufgabe ohne Einheit), vereinheitlicht.
+ * - Mandat (28.09., „Mandat an Zielen und Zeit“): `mandatId`/`firmaId` nur in der Form geprüft; ist das Mandat
+ *   bekannt (`mandate`), kommen Firma und Einheit aus dem Mandat — das Mandat ist das Konkreteste und gewinnt
+ *   vor der Einheit der Aufgabe (wie `einheitAusBezug`: Mandat → Deal → Produkt).
  */
-export function zuordnungSaeubern(schluessel: string, roh: { aufgabeId?: unknown; einheit?: unknown }, aufgabe?: AufgabeKurz | null): BlockZuordnung {
+export function zuordnungSaeubern(
+  schluessel: string,
+  roh: { aufgabeId?: unknown; einheit?: unknown; mandatId?: unknown; firmaId?: unknown },
+  aufgabe?: AufgabeKurz | null,
+  mandate?: ReadonlyMap<string, MandatKurz> | null,
+): BlockZuordnung {
   if (teile(schluessel).space !== 'business') return {};
   const id = typeof roh.aufgabeId === 'string' ? roh.aufgabeId.trim() : '';
   const mitAufgabe = !!id && id.length <= AUFGABE_ID_MAX && !!aufgabe && aufgabe.id === id && aufgabe.business;
   const einheit = (mitAufgabe ? sauberEinheit(aufgabe!.einheit) : null) ?? sauberEinheit(roh.einheit) ?? undefined;
-  return { ...(mitAufgabe ? { aufgabeId: id } : {}), ...(einheit ? { einheit } : {}) };
+  const z: BlockZuordnung = { ...(mitAufgabe ? { aufgabeId: id } : {}), ...(einheit ? { einheit } : {}), ...bezugSaeubern(roh, true) };
+  return mitMandatBezug(z, mandate, true);
 }
 
-/** Die Einheit eines Blocks: die der Aufgabe (live), sonst die am Block gespeicherte. */
-export function einheitVonBlock(b: Pick<FokusBlock, 'aufgabeId' | 'einheit'>, aufgaben: ReadonlyMap<string, AufgabeKurz>): string | undefined {
+/**
+ * Die Einheit eines Blocks: mit Mandat die am Block gespeicherte (sie kam aus dem Mandat), sonst die der Aufgabe (live),
+ * sonst die am Block gespeicherte.
+ */
+export function einheitVonBlock(b: Pick<FokusBlock, 'aufgabeId' | 'einheit' | 'mandatId'>, aufgaben: ReadonlyMap<string, AufgabeKurz>): string | undefined {
+  if (b.mandatId && einheitName(b.einheit)) return einheitName(b.einheit);
   const a = b.aufgabeId ? aufgaben.get(b.aufgabeId) : undefined;
   return einheitName(a?.einheit) ?? einheitName(b.einheit);
 }

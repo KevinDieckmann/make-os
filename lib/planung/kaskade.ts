@@ -62,6 +62,9 @@ export function abgeleitetesZiel(eltern: Ziel, h: Unterhorizont, jahr: number, b
     ...(bisher?.rang != null ? { rang: bisher.rang } : {}),
     ...(eltern.space ? { space: eltern.space } : {}),
     ...(eltern.einheit ? { einheit: eltern.einheit } : {}),
+    // Mandat an Zielen (28.09.): das abgeleitete Ziel zahlt auf dasselbe Mandat ein.
+    ...(eltern.mandatId ? { mandatId: eltern.mandatId } : {}),
+    ...(eltern.firmaId ? { firmaId: eltern.firmaId } : {}),
     zielwert: anteil(eltern.zielwert ?? 0, teile(h, jahr)).gerundet,
     abgeleitetVon: eltern.id,
   };
@@ -143,6 +146,8 @@ export function meilensteineAbleiten(jahrZiele: readonly Ziel[], meilensteine: r
       ...(bisher?.rang != null ? { rang: bisher.rang } : {}),
       ...(bisher?.messlatte ? { messlatte: bisher.messlatte } : {}),
       ...(z.einheit ? { einheit: z.einheit } : {}),
+      ...(z.space === 'business' && z.mandatId ? { mandatId: z.mandatId } : {}),
+      ...(z.space === 'business' && z.firmaId ? { firmaId: z.firmaId } : {}),
       abgeleitetVon: z.id,
     });
   }

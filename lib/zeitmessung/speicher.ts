@@ -102,6 +102,16 @@ export async function fokusUmbuchen(person: Person, von: string, ziel: 'privat' 
   return gefunden ? d : null;
 }
 
+/**
+ * Eine reine Änderung an der Zeit-Datei einer Person (28.09., Verbindungsprüfung: tote Mandats-Bezüge entfernen).
+ * Gibt es keinen Bestand, wird nichts geschrieben. Der Stand der Blöcke zählt hoch (Zeit je Einheit/Mandat neu rechnen).
+ */
+export async function zeitAendern(person: Person, f: (d: ZeitDatei) => ZeitDatei): Promise<void> {
+  if (!(await loadJson<ZeitDatei>(speicherFuer(NAME, person)))) return;
+  await updateJson<ZeitDatei>(speicherFuer(NAME, person), current => (current ? f(current) : (current as unknown as ZeitDatei)));
+  bloeckeStand++;
+}
+
 /** Die Aufgaben als Kurzform (Space und Einheit wie im Aufgaben-Schreibweg, Orte aus `ordnung`). */
 export async function aufgabenKurz(): Promise<AufgabeKurz[]> {
   const state = await loadJson<TasksState>('tasks');

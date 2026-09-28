@@ -9,6 +9,9 @@
 // die Seite reicht nur den Horizont; Laden und Schreiben macht usePlanung.
 // Abgeleitetes (Kaskade aus dem Jahresziel) ist markiert, lässt sich lösen
 // („angepasst“) und erst dann löschen — sonst käme es beim nächsten Rechnen wieder.
+// Seit 28.09. („Mandat an Zielen und Zeit“): im Business ein Mandat-Chip beim Anlegen
+// und am Eintrag (aktive Mandate, „Firma · Mandatstitel“) — Firma und Einheit kommen
+// dann aus dem Mandat (der Server leitet sie beim Speichern ab, lib/planung/mandat.ts).
 
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -24,6 +27,8 @@ import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, feld, LEUC
 import { zielRahmen } from '../ziel';
 import { PfeilRang } from './PfeilRang';
 import { usePlanung, type PlanungStand } from './usePlanung';
+import { MandatWahl, useMandate } from '../zeit/MandatWahl';
+import type { MandatKurz } from '@/lib/planung/mandat';
 
 type SpaceFilter = SpaceId | 'alle';
 const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
@@ -81,8 +86,13 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
   const { offen: mOffen, erledigt: mErledigt } = useMemo(() => offenErledigt(msSicht), [msSicht]);
 
   // ── Neu anlegen ──
-  const [neu, setNeu] = useState({ titel: '', zahl: '', termin: '', einheit: '' });
-  const [msNeu, setMsNeu] = useState({ titel: '', faellig: '', space: 'business' as SpaceId, einheit: '' });
+  const [neu, setNeu] = useState({ titel: '', zahl: '', termin: '', einheit: '', mandatId: '' });
+  const [msNeu, setMsNeu] = useState({ titel: '', faellig: '', space: 'business' as SpaceId, einheit: '', mandatId: '' });
+  // Mandat an Zielen (28.09.): Chip nur mit Zugang zum CRM (Haushalt des Inhabers) oder wenn schon eins gesetzt ist.
+  const { zugang: mandatZugang } = useMandate();
+  const msBusiness = spaceFilter === 'business' || (spaceFilter === 'alle' && msNeu.space === 'business');
+  /** Ein gewähltes Mandat bringt Firma und Einheit mit (der Server leitet sie beim Speichern noch einmal ab). */
+  const mandatFelder = (m: MandatKurz | null) => ({ mandatId: m?.id, firmaId: m?.firmaId, ...(m?.einheit ? { einheit: m.einheit } : {}) });
   useEffect(() => { if (spaceFilter !== 'alle') setMsNeu(m => ({ ...m, space: spaceFilter })); }, [spaceFilter]);
 
   const einheitWahl = (wert: string, setzen: (v: string) => void, label: string) => (
@@ -104,11 +114,12 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
       id: `z-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, titel: t, fortschritt: 0, rang: naechsterRang(zOffen),
       ...(spaceFilter !== 'alle' ? { space: spaceFilter } : {}),
       ...(imBusiness && (neu.einheit || (einheitFilter !== 'alle' ? einheitFilter : '')) ? { einheit: neu.einheit || einheitFilter } : {}),
+      ...(imBusiness && neu.mandatId ? { mandatId: neu.mandatId } : {}),
       ...(horizont === 'jahr' && isFinite(zahl) && zahl > 0 ? { zielwert: zahl } : {}),
       ...(horizont === 'jahr' && neu.termin ? { termin: neu.termin } : {}),
     };
     p.persistZiele([...p.ziele, z]);
-    setNeu({ titel: '', zahl: '', termin: '', einheit: neu.einheit });
+    setNeu({ titel: '', zahl: '', termin: '', einheit: neu.einheit, mandatId: neu.mandatId });
   };
   const msAnlegen = () => {
     const t = msNeu.titel.trim();
@@ -117,8 +128,9 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
     // Seit 28.09. das echte Feld `space`; `bereich` nur gespiegelt für ältere Leser.
     const space: SpaceId = spaceFilter !== 'alle' ? spaceFilter : msNeu.space;
     const einheit = space === 'business' && imBusiness ? (msNeu.einheit || (einheitFilter !== 'alle' ? einheitFilter : '')) : '';
-    p.persistMs([...p.ms, { id: `ms-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, titel: t, space, bereich: bereichAusSpace(space), faellig: faellig || undefined, fortschritt: 0, erledigt: false, rang: naechsterRang(mOffen), ...(einheit ? { einheit } : {}) }]);
-    setMsNeu({ titel: '', faellig: '', space, einheit: msNeu.einheit });
+    const mandatId = space === 'business' ? msNeu.mandatId : '';
+    p.persistMs([...p.ms, { id: `ms-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, titel: t, space, bereich: bereichAusSpace(space), faellig: faellig || undefined, fortschritt: 0, erledigt: false, rang: naechsterRang(mOffen), ...(einheit ? { einheit } : {}), ...(mandatId ? { mandatId } : {}) }]);
+    setMsNeu({ titel: '', faellig: '', space, einheit: msNeu.einheit, mandatId: msNeu.mandatId });
   };
 
   // ── Ändern ──
@@ -144,6 +156,11 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
   const herkunft = (e: { abgeleitetVon?: string; angepasst?: boolean }, was: string): ReactNode =>
     e.abgeleitetVon ? <span style={{ color: e.angepasst ? LEUCHT.achtung : LEUCHT.agenten }}>{e.angepasst ? 'angepasst' : `abgeleitet aus ${was}`}</span> : null;
   const einheitChip = (e: { einheit?: string; space?: SpaceId }) => (e.einheit && e.space === 'business' && !(imBusiness && einheitFilter !== 'alle') ? <Chip farbe={SPACE_FARBE.business}>{e.einheit}</Chip> : null);
+  /** Mandat am Eintrag (nur Business): gesetzt als Chip, sonst „+ Mandat“ (nicht im kompakten Modus, nicht bei Erledigtem). */
+  const mandatChip = (e: { mandatId?: string; erledigt?: boolean }, business: boolean, setzen: (m: MandatKurz | null) => void) => {
+    if (!business || (!e.mandatId && (!mandatZugang || kompakt || e.erledigt))) return null;
+    return <MandatWahl klein wert={e.mandatId} aus={!!e.erledigt} setzen={setzen} />;
+  };
   const unterZeile = (teile: ReactNode[]) => { const t = teile.filter(Boolean); return t.length ? <>{t.map((x, k) => <span key={k}>{k > 0 ? ' · ' : ''}{x}</span>)}</> : undefined; };
 
   // ── Zeilen ──
@@ -156,6 +173,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
         titel={bearbeite?.id === z.id ? titelFeld(z.id, t => zPatch(z.id, { titel: t }, true)) : <span style={{ fontWeight: 600, color: z.erledigt ? C.inkLeise : C.ink, textDecoration: z.erledigt ? 'line-through' : 'none' }}>{z.titel}</span>}
         unter={unterZeile([
           einheitChip(z),
+          mandatChip(z, z.space === 'business', m => zPatch(z.id, mandatFelder(m), true)),
           spaceFilter === 'alle' && z.space ? <span style={{ color: SPACE_FARBE[z.space] }}>{SPACE_LABEL[z.space]}</span> : null,
           z.termin ? `bis ${dtKurz(z.termin)}` : null,
           horizont === 'jahr' && z.zielwert ? `Ziel ${z.zielwert}` : null,
@@ -197,6 +215,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
           unter={unterZeile([
             wann ? <span style={{ color: spaet ? LEUCHT.kritisch : undefined }}>{spaet ? 'überfällig ' : ''}{wann}</span> : null,
             einheitChip({ einheit: m.einheit, space: sp }),
+            mandatChip(m, sp === 'business', x => mPatch(m.id, mandatFelder(x), true)),
             spaceFilter === 'alle' && (kompakt || m.erledigt) ? <span style={{ color: bf }}>{SPACE_LABEL[sp]}</span> : null,
             m.messlatte ? `Messlatte: ${m.messlatte}` : null,
             herkunft(m, 'Jahresziel'),
@@ -273,6 +292,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
               </>
             )}
             {imBusiness && einheitWahl(neu.einheit, v => setNeu({ ...neu, einheit: v }), 'Einheit des Ziels')}
+            {imBusiness && mandatZugang && <MandatWahl wert={neu.mandatId || undefined} setzen={m => setNeu({ ...neu, mandatId: m?.id ?? '', einheit: m?.einheit ?? neu.einheit })} />}
             <Knopf onClick={zielAnlegen}>+ Ziel</Knopf>
           </div>
           {!p.geladen ? <Leer>lade …</Leer>
@@ -296,6 +316,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
               </select>
             )}
             {imBusiness && einheitWahl(msNeu.einheit, v => setMsNeu({ ...msNeu, einheit: v }), 'Einheit des Meilensteins')}
+            {msBusiness && mandatZugang && <MandatWahl wert={msNeu.mandatId || undefined} setzen={m => setMsNeu({ ...msNeu, mandatId: m?.id ?? '', einheit: m?.einheit ?? msNeu.einheit })} />}
             <Knopf onClick={msAnlegen}>+ Meilenstein</Knopf>
           </div>
           {!mOffen.length && !mErledigt.length ? <Leer>Noch kein Meilenstein für {p.zr.label}{spaceHinweis}.{horizont === 'jahr' ? ' Ein Jahresziel mit Termin legt ihn von selbst an.' : ''}</Leer>

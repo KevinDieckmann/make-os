@@ -9,6 +9,8 @@
 //                                (tote Verweise entfernen, Follow-ups ohne Ziel absagen, veraltete
 //                                Konflikte abräumen, fehlende Dateien markieren) — nie werden
 //                                ganze Datensätze gelöscht.
+//                                Seit 28.09. (Mandat an Zielen und Zeit) auch Ziele (gemeinsam + je Person),
+//                                Meilensteine und Fokus-Blöcke: tote Mandats-/Firmen-Bezüge entfernen.
 //
 // Zugang: Haushalt des Inhabers UND eine benannte Person (Sitzung oder Dienstweg mit
 // x-make-person) — Default-Deny, kein Rückfall auf ein Erstkonto. Antworten tragen nur
@@ -30,6 +32,8 @@ import { ablageName } from '@/lib/dateien/ablage';
 import type { DateiEintrag } from '@/lib/dateien/regeln';
 import { verbindungenPruefen, verbindungenReparieren, verbindungsAmpel, istReparierbar, PRUEFUNG_IDS, REPARIERBAR, type VerbindungsBestaende } from '@/lib/crm/verbindungen';
 import { ladeVerbindungsBestaende, verbindungsStand } from '@/lib/crm/verbindungen-laden';
+import { zieleDateiBereinigen, meilensteinDateiBereinigen, zeitDateiBereinigen } from '@/lib/crm/verbindungen-planung';
+import { zeitAendern } from '@/lib/zeitmessung/speicher';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -93,6 +97,21 @@ export async function POST(req: Request) {
       const r = verbindungenReparieren({ ...stand, dateien: { eintraege: cur.eintraege ?? [], aufPlatte: platte } }, ids, jetzt, person).bestaende.dateien;
       return { ...cur, eintraege: r?.eintraege ?? cur.eintraege };
     });
+  }
+  // Mandat an Zielen und Zeit (28.09.): tote Bezüge gegen den frischen CRM-Stand — je Speicher eine Sperre.
+  if (speicher.has('ziele') || speicher.has('meilensteine') || speicher.has('zeit')) {
+    const lebend = { mandate: new Set(stand.crm.mandate.map(x => x.id)), firmen: new Set(stand.crm.firmen.map(x => x.id)) };
+    if (speicher.has('ziele')) {
+      for (const s of alt.planung?.ziele ?? []) {
+        await updateJson<Record<string, unknown>>(s.speicher, cur => (cur ? zieleDateiBereinigen(cur, lebend).datei : cur as unknown as Record<string, unknown>));
+      }
+    }
+    if (speicher.has('meilensteine')) {
+      await updateJson<{ meilensteine?: unknown }>('meilensteine', cur => (cur ? meilensteinDateiBereinigen(cur, lebend).datei : cur as unknown as { meilensteine?: unknown }));
+    }
+    if (speicher.has('zeit')) {
+      for (const p of alt.fokus ?? []) await zeitAendern(p.person, d => zeitDateiBereinigen(d, lebend).datei);
+    }
   }
   const befunde = verbindungenPruefen(await ladeVerbindungsBestaende(heute));
   return NextResponse.json({ ok: true, aenderungen: vorschau.aenderungen, ampel: verbindungsAmpel(befunde), befunde });

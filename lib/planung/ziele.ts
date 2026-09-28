@@ -4,6 +4,7 @@
 
 import { istSpace } from '@/lib/make-one/space-regeln';
 import { sauberEinheit } from './einheiten';
+import { bezugSaeubern } from './mandat';
 import type { Ziel } from './typen';
 
 const ISO_TAG = /^\d{4}-\d{2}-\d{2}$/;
@@ -31,5 +32,7 @@ export function sauberZiel(roh: unknown): Ziel | null {
   if (typeof z.termin === 'string' && ISO_TAG.test(z.termin)) aus.termin = z.termin;
   if (typeof z.abgeleitetVon === 'string' && z.abgeleitetVon) aus.abgeleitetVon = z.abgeleitetVon.slice(0, 80);
   if (aus.abgeleitetVon && z.angepasst === true) aus.angepasst = true;
+  // Mandat an Zielen (28.09.): nur im Business, nur die Form der Kennungen — Firma/Einheit leitet der Schreibweg ab.
+  Object.assign(aus, bezugSaeubern(z, aus.space === 'business'));
   return aus;
 }

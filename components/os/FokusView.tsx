@@ -9,6 +9,7 @@
 //   3. Worauf die Energie geht — die Fokus-Regler je Säule (gepflegt im Kompass)
 //   4. Zeit je Einheit + Fokus-Blöcke (27.09. spät) — bewusste Business-Zeit je Selbstständigkeit ·
 //      KD Ventures · MAKE OS UG, Blöcke nachträglich einer Aufgabe/Einheit zuordnen
+//   5. Zeit je Mandat (28.09., „Mandat an Zielen und Zeit“) — für Abrechnung und Auslastung
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -17,6 +18,7 @@ import { Rich } from './Rich';
 import { Seite, Karte, Ueberschrift, Ring, Chip, Knopf, Leer, feld, zoneFarbe, LEUCHT } from './schlank';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { ZeitJeEinheitKarte, FokusBloeckeKarte } from './zeit/ZeitJeEinheit';
+import { ZeitJeMandatKarte } from './zeit/ZeitJeMandat';
 
 type Horizont = 'tag' | 'woche' | 'monat';
 const HORIZONTE: { id: Horizont; label: string; frage: string }[] = [
@@ -127,6 +129,10 @@ export function FokusView() {
       </Kachel>
       <Kachel id="fokus-bloecke" titel="Fokus-Blöcke" breite={3}>
         <FokusBloeckeKarte i={4} />
+      </Kachel>
+      {/* Mandat an Zielen und Zeit (28.09.): Zeit je Mandat — Abrechnung und Auslastung */}
+      <Kachel id="zeit-mandat" titel="Zeit je Mandat" breite={3}>
+        <ZeitJeMandatKarte i={5} />
       </Kachel>
       </Flaeche>
     </Seite>

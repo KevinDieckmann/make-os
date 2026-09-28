@@ -43,7 +43,9 @@ function sauber(): VerbindungsBestaende {
     crm,
     finanzplan: { rechnungen: [{ id: 'r-1', firmaId: 'kdc', mandatId: 'm-1', status: 'gestellt', betrag: 2500, datum: '2026-09-15' }], firmen: ['kdc', 'kdv'] },
     aufgaben: { liste: [{ id: 't-1', title: 'Angebot', projectId: 'p-1', space: 'business', einheit: 'KD Ventures', status: 'todo' }, { id: 't-2', title: 'Einkauf', projectId: 'p-2', space: 'privat', status: 'todo' }], orte: {}, eigeneEinheiten: [] },
-    fokus: [{ person: 'kevin', bloecke: [{ von: J, bis: J, schluessel: 'business:markttraktion', label: 'x', sek: 60, aufgabeId: 't-1' }] }],
+    fokus: [{ person: 'kevin', bloecke: [{ von: J, bis: J, schluessel: 'business:markttraktion', label: 'x', sek: 60, aufgabeId: 't-1' }, { von: JETZT, bis: JETZT, schluessel: 'business:markttraktion', label: 'x', sek: 60, mandatId: 'm-1', firmaId: 'f-alpha' }] }],
+    // Mandat an Zielen und Zeit (28.09.): Ziele/Meilensteine mit lebendem Mandats-/Firmen-Bezug.
+    planung: { ziele: [{ speicher: 'ziele', ziele: [{ id: 'z-1', mandatId: 'm-1', firmaId: 'f-alpha' }, { id: 'z-2' }] }], meilensteine: [{ id: 'ms-1', mandatId: 'm-1' }] },
     dateien: { eintraege: [{ id: 'd-abcd1', art: 'vertrag', kontaktId: 'c-anna1', mandatId: 'm-1', rechnungId: 'r-1', datei: { name: 'v.pdf', typ: 'application/pdf', groesse: 10, verschluesselt: false }, hochgeladenAm: J, hochgeladenVon: 'kevin' }], aufPlatte: ['d-abcd1'] },
     konflikte: { konflikte: [{ kontaktId: 'c-anna1', feld: 'email', online: 'a', liste: 'b' }], moeglicheDubletten: [{ kontaktId: 'c-bert1', mitId: 'c-anna1', grund: 'Name' }], ohneBesitzer: 0, stand: J, quelle: 'test' },
   };
@@ -58,7 +60,7 @@ describe('Verbindungsprüfung — sauberer Bestand', () => {
   });
   it('jede Prüfung hat Satz, Schwere und Bereich; reparierbar ist eine feste Teilmenge', () => {
     for (const id of PRUEFUNG_IDS) expect(PRUEFUNGEN[id].text(2)).toMatch(/^\S/);
-    expect(REPARIERBAR).toEqual(['firma-mutter-tot', 'werte-ausserhalb-wertelisten', 'firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'einschraenkung-kampagne', 'datei-fehlt', 'konflikt-veraltet', 'kontakt-firma-text-abweichend', 'kontakt-typ-abweichend', 'teilnahme-doppelt']);
+    expect(REPARIERBAR).toEqual(['firma-mutter-tot', 'werte-ausserhalb-wertelisten', 'firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'einschraenkung-kampagne', 'datei-fehlt', 'konflikt-veraltet', 'kontakt-firma-text-abweichend', 'kontakt-typ-abweichend', 'teilnahme-doppelt', 'ziel-mandat-tot', 'meilenstein-mandat-tot', 'zeit-mandat-tot']);
   });
 });
 
@@ -141,6 +143,10 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   ['teilnahme-doppelt', b => { b.crm.teilnahmen.push({ id: 'tn-2', eventId: 'ev-1', kontaktId: 'c-bert1', status: 'da', geaendert: J }); }, 1, 'ev-1'],
   ['kampagne-ergebnis-ausserhalb', b => { b.crm.kampagnen[0].ergebnisse.push({ kontaktId: 'c-anna1', ergebnis: 'reagiert', am: HEUTE }); }, 1, 'kp-1'],
   ['head-vorschlag-kontakt-tot', b => { b.heads = [{ head: 'sales', vorschlaege: [{ id: 'hs-1', kontakt_id: 'c-weg1', status: 'offen' }, { id: 'hs-2', kontakt_id: 'c-weg1', status: 'abgelehnt' }, { id: 'hs-3', kontakt_id: 'c-anna1', status: 'offen' }] }]; }, 1, 'sales:hs-1'],
+  // Mandat an Zielen und Zeit (28.09.)
+  ['ziel-mandat-tot', b => { b.planung!.ziele[0].ziele.push({ id: 'z-3', mandatId: 'm-weg' }); b.planung!.ziele.push({ speicher: 'ziele-eigen--malin', ziele: [{ id: 'z-4', firmaId: 'f-weg' }, { id: 'z-5', mandatId: 'm-1' }] }); }, 2, 'z-3'],
+  ['meilenstein-mandat-tot', b => { b.planung!.meilensteine.push({ id: 'ms-2', mandatId: 'm-weg', firmaId: 'f-alpha' }); }, 1, 'ms-2'],
+  ['zeit-mandat-tot', b => { b.fokus![0].bloecke.push({ von: HEUTE, bis: HEUTE, schluessel: 'business:x', label: 'x', sek: 60, mandatId: 'm-weg' }); }, 1, 'm-weg'],
   ['einwilligung-beleg-tot', b => { b.kontakte[0].einwilligungen = [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: HEUTE, nachweis: 'Formular', wortlaut: 'Ja, gern', belegRef: 'd-weg99' }]; b.kontakte[1].einwilligungen = [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: HEUTE, nachweis: 'Formular', wortlaut: 'Ja, gern', belegRef: 'Formular d-abcd1' }]; }, 1, 'c-anna1'],
 ];
 
@@ -209,6 +215,10 @@ describe('Verbindungen reparieren', () => {
     b.kontakte[1].firma = 'Neue Arbeit GmbH';
     b.kontakte[0].typ = 'Partner'; b.kontakte[0].typen = ['Kunde', 'Partner'];
     b.crm.teilnahmen.push({ id: 'tn-2', eventId: 'ev-1', kontaktId: 'c-bert1', status: 'da', notiz: 'kam spät', followUpAm: HEUTE, geaendert: J });
+    // Mandat an Zielen und Zeit (28.09.): tote Bezüge an Ziel, Meilenstein, Fokus-Block.
+    b.planung!.ziele[0].ziele.push({ id: 'z-9', mandatId: 'm-weg', firmaId: 'f-alpha' });
+    b.planung!.meilensteine.push({ id: 'ms-9', firmaId: 'f-weg' });
+    b.fokus![0].bloecke.push({ von: HEUTE, bis: HEUTE, schluessel: 'business:x', label: 'x', sek: 60, mandatId: 'm-weg', einheit: 'KD Ventures' });
     // Nicht reparierbar — muss stehen bleiben:
     b.crm.chancen[0].firmaId = 'f-weg';
     b.crm.teilnahmen.push({ id: 'tn-9', eventId: 'ev-1', kontaktId: 'c-weg1', status: 'da', geaendert: J });
@@ -256,7 +266,13 @@ describe('Verbindungen reparieren', () => {
     // Konflikte: nur der veraltete fällt weg; Datei nur markiert.
     expect(n.konflikte!.konflikte.map(x => x.kontaktId)).toEqual(['c-anna1']);
     expect(n.dateien!.eintraege[0].dateiFehlt).toBe(HEUTE);
-    expect(r.aenderungen.map(a => a.speicher)).toEqual(expect.arrayContaining(['crm', 'kontakte', 'import-konflikte', 'dateien']));
+    // Mandat an Zielen und Zeit: nur die tote Kennung geht, der Rest (lebende Firma, Einheit, Sekunden) bleibt.
+    expect(n.planung!.ziele[0].ziele.find(z => z.id === 'z-9')).toEqual({ id: 'z-9', firmaId: 'f-alpha' });
+    expect(n.planung!.meilensteine.find(m => m.id === 'ms-9')).toEqual({ id: 'ms-9' });
+    expect(n.planung!.ziele[0].ziele.find(z => z.id === 'z-1')).toEqual({ id: 'z-1', mandatId: 'm-1', firmaId: 'f-alpha' });
+    expect(n.fokus![0].bloecke.at(-1)).toMatchObject({ sek: 60, einheit: 'KD Ventures' });
+    expect(n.fokus![0].bloecke.at(-1)).not.toHaveProperty('mandatId');
+    expect(r.aenderungen.map(a => a.speicher)).toEqual(expect.arrayContaining(['crm', 'kontakte', 'import-konflikte', 'dateien', 'ziele', 'meilensteine', 'zeit']));
   });
 
   it('nur die gewählten Befunde — und nicht reparierbare Kennungen werden ignoriert', () => {

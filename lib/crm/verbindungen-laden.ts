@@ -2,7 +2,8 @@
 // Holt alles, was lib/crm/verbindungen.ts prüft, aus den Speichern — nur lesen.
 // Die Dateiablage liefert nur Kennungen (Metadaten + welche .bin auf der Platte
 // liegen), nie Inhalte. Fokus-Blöcke kommen je Person des Haushalts des Inhabers;
-// geprüft wird nur ihr Verweis `aufgabeId`.
+// geprüft werden ihre Verweise `aufgabeId` und (28.09.) `mandatId`/`firmaId`.
+// Ziele (gemeinsam + je Person) und Meilensteine: nur Kennung und Mandats-/Firmen-Bezug.
 
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -18,6 +19,8 @@ import { ladeKonten } from '@/lib/zugang/konten';
 import { speicherFuer } from '@/lib/zoe/raum';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import type { AufgabeKurz, RechnungKurz, VerbindungsBestaende } from './verbindungen';
+import type { PlanungBezug } from './verbindungen-planung';
+import { ZIEL_HORIZONTE } from '@/lib/planung/typen';
 import { HEADS } from '@/lib/heads/prompt';
 import { standName } from '@/lib/heads/stand';
 
@@ -36,7 +39,33 @@ async function quellen(): Promise<Quellen> {
 function speicherNamen(q: Quellen): string[] {
   return ['kontakte', CRM_SPEICHER, 'finanzplan', 'tasks', 'ordnung', KONFLIKT_SPEICHER, 'liquiplan', ...HEADS.map(h => standName(h)),
     ...(q.haushalt ? [`planung-einheiten--${q.haushalt}`, `crm-dateien--${q.haushalt}`] : []),
-    ...q.personen.map(p => speicherFuer('zeit', p))];
+    ...q.personen.map(p => speicherFuer('zeit', p)), ...zieleSpeicher(q)];
+}
+
+/** Die Ziele-Speicher (28.09., Mandat an Zielen): der gemeinsame und je Person der eigene — plus die Meilensteine. */
+function zieleSpeicher(q: Quellen): string[] {
+  return ['ziele', 'meilensteine', ...q.personen.map(p => speicherFuer('ziele-eigen', p))];
+}
+
+/** Nur Kennung und Bezug — nie Titel oder Inhalte. */
+const bezugVon = (x: unknown): PlanungBezug | null => {
+  const o = (x && typeof x === 'object' ? x : null) as { id?: unknown; mandatId?: unknown; firmaId?: unknown } | null;
+  if (!o || typeof o.id !== 'string') return null;
+  return { id: o.id, ...(typeof o.mandatId === 'string' && o.mandatId ? { mandatId: o.mandatId } : {}), ...(typeof o.firmaId === 'string' && o.firmaId ? { firmaId: o.firmaId } : {}) };
+};
+const bezuege = (l: unknown): PlanungBezug[] => (Array.isArray(l) ? l.map(bezugVon).filter((x): x is PlanungBezug => !!x) : []);
+
+/** Ziele und Meilensteine für die Verbindungsprüfung laden (nur lesen). */
+async function ladePlanung(q: Quellen): Promise<NonNullable<VerbindungsBestaende['planung']>> {
+  const namen = ['ziele', ...q.personen.map(p => speicherFuer('ziele-eigen', p))];
+  const [ziele, ms] = await Promise.all([
+    Promise.all(Array.from(new Set(namen)).map(async n => ({ speicher: n, datei: await loadJson<Record<string, unknown>>(n) }))),
+    loadJson<{ meilensteine?: unknown }>('meilensteine'),
+  ]);
+  return {
+    ziele: ziele.filter(z => z.datei).map(z => ({ speicher: z.speicher, ziele: ZIEL_HORIZONTE.flatMap(h => bezuege(z.datei![h])) })),
+    meilensteine: bezuege(ms?.meilensteine),
+  };
 }
 
 const dateiOrdner = (h: string) => path.join(datenOrdner(), 'dateien', h);
@@ -62,9 +91,10 @@ async function aufPlatte(h: string): Promise<string[]> {
 export async function ladeVerbindungsBestaende(heute: string): Promise<VerbindungsBestaende & { haushalt: string | null }> {
   const q = await quellen();
   // Seit 28.09. abends: Planposten-Kennungen (Mandat → Liquiditätsplan) und Head-Vorschläge (nur Kennung, Person, Status).
-  const [liquiplan, heads] = await Promise.all([
+  const [liquiplan, heads, planung] = await Promise.all([
     loadJson<{ posten?: { id: string }[] }>('liquiplan'),
     Promise.all(HEADS.map(async h => ({ head: h, stand: await loadJson<{ vorschlaege?: { id: string; kontakt_id?: string | null; status?: string }[] }>(standName(h)) }))),
+    ladePlanung(q),
   ]);
   const [kontakte, crm, finanz, tasks, ordnung, einheiten, konflikte, ablage, dateien, zeiten] = await Promise.all([
     loadJson<{ kontakte?: Kontakt[] }>('kontakte'),
@@ -90,6 +120,7 @@ export async function ladeVerbindungsBestaende(heute: string): Promise<Verbindun
     dateien: q.haushalt ? { eintraege: Array.isArray(ablage?.eintraege) ? ablage!.eintraege : [], aufPlatte: dateien } : null,
     konflikte: konflikte ?? null,
     liquiplan: liquiplan ? { posten: (Array.isArray(liquiplan.posten) ? liquiplan.posten : []).map(p => p.id) } : null,
+    planung,
     heads: heads.map(h => ({ head: h.head, vorschlaege: (Array.isArray(h.stand?.vorschlaege) ? h.stand!.vorschlaege : []).map(v => ({ id: v.id, ...(v.kontakt_id ? { kontakt_id: v.kontakt_id } : {}), ...(v.status ? { status: v.status } : {}) })) })),
   };
 }

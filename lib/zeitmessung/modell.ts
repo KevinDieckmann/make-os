@@ -21,9 +21,20 @@ export type ZeitSpace = SpaceId | 'gemeinsam';
  * sehen“) optional mit `aufgabeId` und `einheit` — beides nur im Business, gesäubert im Schreibweg
  * (lib/zeitmessung/einheiten.ts `zuordnungSaeubern`). Altbestand ohne die Felder bleibt gültig („ohne Einheit“).
  */
-export interface FokusBlock { von: string; bis: string; schluessel: string; label: string; sek: number; aufgabeId?: string; einheit?: string }
-/** Zuordnung eines Blocks — nur die gesetzten Felder werden gespeichert. */
-export interface BlockZuordnung { aufgabeId?: string; einheit?: string }
+export interface FokusBlock { von: string; bis: string; schluessel: string; label: string; sek: number; aufgabeId?: string; einheit?: string; mandatId?: string; firmaId?: string }
+/**
+ * Zuordnung eines Blocks — nur die gesetzten Felder werden gespeichert. Seit 28.09. („Mandat an Zielen und Zeit“) auch
+ * `mandatId`/`firmaId` (nur im Business): Zeit je Mandat für Abrechnung und Auslastung (lib/zeitmessung/mandate.ts).
+ */
+export interface BlockZuordnung { aufgabeId?: string; einheit?: string; mandatId?: string; firmaId?: string }
+type ZuordnungsFeld = keyof BlockZuordnung;
+const ZUORDNUNG_FELDER: readonly ZuordnungsFeld[] = ['aufgabeId', 'einheit', 'mandatId', 'firmaId'];
+/** Ein Block ohne jede Zuordnung. */
+const ohneZuordnung = (b: FokusBlock): Omit<FokusBlock, ZuordnungsFeld> => {
+  const aus = { ...b };
+  for (const f of ZUORDNUNG_FELDER) delete aus[f];
+  return aus;
+};
 export interface ZeitTag { auto: Record<string, number>; bewusst: Record<string, number>; bloecke: FokusBlock[] }
 export interface ZeitDatei {
   tage: Record<string, ZeitTag>;
@@ -71,8 +82,11 @@ export function verbuchen(d: ZeitDatei, at: string, schluessel: string): ZeitDat
 }
 
 /** Nur gesetzte Zuordnungs-Felder übernehmen (kein `aufgabeId: undefined` im Bestand). */
-const mitZuordnung = (b: Omit<FokusBlock, 'aufgabeId' | 'einheit'>, z: BlockZuordnung): FokusBlock =>
-  ({ ...b, ...(z.aufgabeId ? { aufgabeId: z.aufgabeId } : {}), ...(z.einheit ? { einheit: z.einheit } : {}) });
+const mitZuordnung = (b: Omit<FokusBlock, ZuordnungsFeld>, z: BlockZuordnung): FokusBlock => {
+  const aus: FokusBlock = { ...b };
+  for (const f of ZUORDNUNG_FELDER) if (z[f]) aus[f] = z[f];
+  return aus;
+};
 
 /** Ein bewusster Fokus-Block ist zu Ende: Sekunden gutschreiben und den Block merken. Die Zuordnung muss schon gesäubert sein. */
 export function fokusVerbuchen(d: ZeitDatei, block: { von: string; bis: string; schluessel: string; label: string } & BlockZuordnung): ZeitDatei {
@@ -89,7 +103,7 @@ export function fokusVerbuchen(d: ZeitDatei, block: { von: string; bis: string; 
 
 /**
  * Nachträglich zuordnen (27.09. spät): den Block mit diesem Anfang finden (zuerst am eigenen Tag, sonst überall) und
- * `aufgabeId`/`einheit` ersetzen — leere Felder entfernen die Zuordnung. Sekunden und Summen bleiben unverändert.
+ * `aufgabeId`/`einheit`/`mandatId`/`firmaId` ersetzen — leere Felder entfernen die Zuordnung. Sekunden und Summen bleiben unverändert.
  * `gefunden: false` → Datei unverändert.
  */
 export function blockZuordnen(d: ZeitDatei, von: string, z: BlockZuordnung): { datei: ZeitDatei; gefunden: boolean } {
@@ -99,9 +113,8 @@ export function blockZuordnen(d: ZeitDatei, von: string, z: BlockZuordnung): { d
     const t = d.tage[tag];
     const i = t?.bloecke?.findIndex(b => b.von === von) ?? -1;
     if (!t || i < 0) continue;
-    const { aufgabeId: _a, einheit: _e, ...rest } = t.bloecke[i];
     const bloecke = [...t.bloecke];
-    bloecke[i] = mitZuordnung(rest, z);
+    bloecke[i] = mitZuordnung(ohneZuordnung(t.bloecke[i]), z);
     return { datei: { ...d, tage: { ...d.tage, [tag]: { ...t, bloecke } } }, gefunden: true };
   }
   return { datei: d, gefunden: false };
@@ -110,7 +123,7 @@ export function blockZuordnen(d: ZeitDatei, von: string, z: BlockZuordnung): { d
 /**
  * Umbuchen (27.09. spät, Kevin: „Privat-Blöcke nachträglich ins Business umbuchen können“): der Block bekommt den Space
  * `ziel` (Bereich bleibt), seine Sekunden wandern im selben Tag vom alten zum neuen Schlüssel der bewussten Zeit. Nach
- * Privat fallen Aufgabe und Einheit weg (Privat trägt keine). Gleicher Space → unverändert, `gefunden: true`.
+ * Privat fallen Aufgabe, Einheit und Mandat weg (Privat trägt keine). Gleicher Space → unverändert, `gefunden: true`.
  */
 export function blockUmbuchen(d: ZeitDatei, von: string, ziel: 'privat' | 'business'): { datei: ZeitDatei; gefunden: boolean } {
   const tagDirekt = tagVon(von);
@@ -127,9 +140,8 @@ export function blockUmbuchen(d: ZeitDatei, von: string, ziel: 'privat' | 'busin
     const rest = ganz((bewusst[alt.schluessel] ?? 0) - alt.sek);
     if (rest > 0) bewusst[alt.schluessel] = rest; else delete bewusst[alt.schluessel];
     bewusst[neuSchluessel] = ganz((bewusst[neuSchluessel] ?? 0) + alt.sek);
-    const { aufgabeId: _a, einheit: _e, ...ohne } = alt;
     const bloecke = [...t.bloecke];
-    bloecke[i] = ziel === 'privat' ? { ...ohne, schluessel: neuSchluessel } : { ...alt, schluessel: neuSchluessel };
+    bloecke[i] = ziel === 'privat' ? { ...ohneZuordnung(alt), schluessel: neuSchluessel } : { ...alt, schluessel: neuSchluessel };
     return { datei: { ...d, tage: { ...d.tage, [tag]: { ...t, bewusst, bloecke } } }, gefunden: true };
   }
   return { datei: d, gefunden: false };

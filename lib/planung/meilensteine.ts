@@ -13,6 +13,7 @@
 
 import { istSpace, type SpaceId } from '@/lib/make-one/space-regeln';
 import { sauberEinheit } from './einheiten';
+import { bezugSaeubern } from './mandat';
 import type { Meilenstein, MeilensteinBereich } from './typen';
 
 /** Der Space eines Meilensteins — `space`, sonst aus dem Altfeld; ohne beides Business (wie bisher). */
@@ -49,6 +50,8 @@ export function sauberMeilenstein(roh: unknown): Meilenstein | null {
     ...(Number.isInteger(rang) && rang > 0 ? { rang } : {}),
     ...(einheit ? { einheit } : {}),
     ...(typeof m.abgeleitetVon === 'string' && m.abgeleitetVon ? { abgeleitetVon: m.abgeleitetVon.slice(0, 80), ...(m.angepasst === true ? { angepasst: true } : {}) } : {}),
+    // Mandat an Meilensteinen (28.09.): nur im Business, nur die Form — Firma/Einheit leitet der Schreibweg ab.
+    ...bezugSaeubern(m, space === 'business'),
   };
 }
 

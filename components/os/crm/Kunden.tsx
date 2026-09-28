@@ -41,6 +41,7 @@ import { firmaFuerGesellschaft } from '@/lib/einheiten';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
 import { HeadPanel } from './HeadPanel';
 import { useZiel, useZuZiel } from '../ziel';
+import { MandatZeitMonat } from '../zeit/ZeitJeMandat';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 const STATUS: { id: Mandat['status']; label: string }[] = [{ id: 'angebot', label: 'Angebot' }, { id: 'verhandlung', label: 'Verhandlung' }, { id: 'aktiv', label: 'Aktiv' }, { id: 'pausiert', label: 'Pausiert' }, { id: 'beendet', label: 'Beendet' }];
@@ -211,6 +212,8 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
           <Wahl label="Umsatzsteuer" liste={UST} wert={String(m.ustSatz) === '0' ? '0' : String(m.ustSatz) === '19' ? '19' : null} onWahl={x => setze({ ustSatz: Number(x) })} />
         </div>
       </Feldzeile>
+      {/* Mandat an Zielen und Zeit (28.09.): erfasste Fokus-Zeit dieses Mandats im laufenden Monat */}
+      <Feldzeile label="Zeit"><MandatZeitMonat mandatId={m.id} /></Feldzeile>
       <Feldzeile label="Laufzeit">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Feld typ="date" wert={m.start} breite={150} platzhalter="Start" onFertig={start => setze({ start: start || undefined })} />

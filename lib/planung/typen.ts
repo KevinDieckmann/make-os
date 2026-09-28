@@ -38,6 +38,13 @@ export interface Ziel {
   abgeleitetVon?: string;
   /** Abgeleitet, aber von Hand geändert — die Kaskade rechnet es nicht mehr neu. */
   angepasst?: boolean;
+  /**
+   * Mandat an Zielen und Zeit (28.09.): das CRM-Mandat, auf das dieses Ziel einzahlt — nur im Business.
+   * Ist es gesetzt, kommen Firma und Einheit aus dem Mandat (lib/planung/mandat.ts `mitMandatBezug`).
+   */
+  mandatId?: string;
+  /** Die CRM-Firma (Mandant) — aus dem Mandat abgeleitet, nur im Business. */
+  firmaId?: string;
 }
 
 export interface Meilenstein {
@@ -68,6 +75,9 @@ export interface Meilenstein {
   einheit?: string;
   abgeleitetVon?: string;
   angepasst?: boolean;
+  /** Mandat an Zielen und Zeit (28.09., wie am Ziel) — nur im Business; Firma und Einheit kommen aus dem Mandat. */
+  mandatId?: string;
+  firmaId?: string;
 }
 
 export type Rhythmus = 'taeglich' | '3x-woche' | 'woechentlich' | 'monatlich' | 'quartal' | 'halbjahr' | 'jaehrlich';

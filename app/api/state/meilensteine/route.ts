@@ -11,7 +11,9 @@ import { loadJson, updateGeschuetztListen } from '@/lib/store/local-db';
 import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
 import { mitStand } from '@/lib/store/fingerabdruck';
 import type { Meilenstein } from '@/lib/planung/typen';
-import { sauberMeilensteine } from '@/lib/planung/meilensteine';
+import { sauberMeilensteine, meilensteinSpace } from '@/lib/planung/meilensteine';
+import { mitMandatBezug, type MandatKurz } from '@/lib/planung/mandat';
+import { mandateFuerBezug } from '@/lib/planung/mandat-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,7 +30,9 @@ const GRENZE = 500;
 // „keine echten Daten im Repo“). Ein neuer Haushalt beginnt leer; ein bestehender Bestand wird nie angefasst.
 
 // Säuberung (seit 28.09. mit echtem `space`, `bereich` gespiegelt): lib/planung/meilensteine.ts.
-const sauberListe = sauberMeilensteine;
+// Mandat an Meilensteinen (28.09.): Firma und Einheit aus dem Mandat (lib/planung/mandat.ts) — nur im Business.
+const sauberListe = (roh: unknown, mandate: ReadonlyMap<string, MandatKurz> | null = null): Meilenstein[] =>
+  sauberMeilensteine(roh).map(m => mitMandatBezug(m, mandate, meilensteinSpace(m) === 'business'));
 
 export async function GET() {
   const f = await loadJson<MeilensteinFile>('meilensteine');
@@ -40,7 +44,7 @@ export async function PUT(req: Request) {
   let body: { meilensteine?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (Array.isArray(body.meilensteine) && body.meilensteine.length > GRENZE) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${GRENZE} Meilensteine.` }, { status: 413 });
-  const sauber = sauberListe(body.meilensteine);
+  const sauber = sauberListe(body.meilensteine, await mandateFuerBezug(body.meilensteine));
   if (!sauber.length) return NextResponse.json({ ok: false, error: 'meilensteine darf nicht leer sein.' }, { status: 400 });
   // Vorher ersetzte jeder PUT die Liste bedingungslos — ein Client mit halbem
   // Stand hätte alle Meilensteine gelöscht.
@@ -64,7 +68,8 @@ export async function PATCH(req: Request) {
   let body: { ops?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (Array.isArray(body.ops) && body.ops.length > 160) return NextResponse.json({ ok: false, error: 'Abgelehnt: höchstens 160 Änderungen je Aufruf.' }, { status: 413 });
-  const ops = opsLesen<Meilenstein>(body.ops, e => sauberListe([e])[0] ?? null, 160);
+  const mandate = await mandateFuerBezug(body.ops);
+  const ops = opsLesen<Meilenstein>(body.ops, e => sauberListe([e], mandate)[0] ?? null, 160);
   if (!ops) return NextResponse.json({ ok: false, error: opsFehler(body.ops, 160) }, { status: Array.isArray(body.ops) ? 413 : 400 });
   const r = await listePatchen<Meilenstein, MeilensteinFile & Record<string, unknown>>('meilensteine', 'meilensteine', ops, 6, undefined, {
     pruefen: (liste, o) => {

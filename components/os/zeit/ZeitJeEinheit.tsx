@@ -136,7 +136,7 @@ export function FokusBloeckeKarte({ i = 0 }: { i?: number }) {
   };
   const zuordnen = (b: FokusBlock, z: Zuordnung) => {
     // Sofort zeigen, dann den gesäuberten Stand des Servers übernehmen.
-    setBild(alt => alt && { ...alt, bloecke: alt.bloecke.map(x => (x.von === b.von ? { ...x, aufgabeId: z.aufgabeId, einheit: z.einheit } : x)) });
+    setBild(alt => alt && { ...alt, bloecke: alt.bloecke.map(x => (x.von === b.von ? { ...x, aufgabeId: z.aufgabeId, einheit: z.einheit, mandatId: z.mandatId } : x)) });
     return senden({ aktion: 'zuordnen', von: b.von, ...z });
   };
   const umbuchen = async (b: FokusBlock, space: 'privat' | 'business') => {
@@ -147,7 +147,7 @@ export function FokusBloeckeKarte({ i = 0 }: { i?: number }) {
   const alle = bild?.bloecke ?? [];
   const business = alle.filter(b => teile(b.schluessel).space === 'business');
   const privat = alle.filter(b => teile(b.schluessel).space !== 'business');
-  const offen = business.filter(b => !b.aufgabeId && !b.einheit).length;
+  const offen = business.filter(b => !b.aufgabeId && !b.einheit && !b.mandatId).length;
   const kopf = (b: FokusBlock) => (
     <div style={{ flex: '1 1 160px', minWidth: 0 }}>
       <div style={{ fontSize: TYP.bedien, color: C.ink, fontVariantNumeric: 'tabular-nums' }}>{zeitText(b.sek)} <span style={{ color: C.inkLeise }}>· {b.label || bereichLabel(teile(b.schluessel).bereich)}</span></div>
@@ -168,7 +168,7 @@ export function FokusBloeckeKarte({ i = 0 }: { i?: number }) {
                 {business.map(b => (
                   <div key={b.von} style={zeile}>
                     {kopf(b)}
-                    <ZuordnungWahl klein wert={{ aufgabeId: b.aufgabeId, einheit: b.einheit }} setzen={z => void zuordnen(b, z)} />
+                    <ZuordnungWahl klein wert={{ aufgabeId: b.aufgabeId, einheit: b.einheit, mandatId: b.mandatId }} setzen={z => void zuordnen(b, z)} />
                     <button onClick={() => void umbuchen(b, 'privat')} disabled={laeuft === b.von} title="Zurück nach Privat — Aufgabe und Einheit fallen weg" className="fassbar" style={leise}>nach Privat</button>
                   </div>
                 ))}

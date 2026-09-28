@@ -17,6 +17,8 @@
 // 28.09. abends (Integritätsprüfung): dazu Firmentext ↔ Hauptstation, Typ ↔ Typen, Aktivität → Firma/Bezug,
 // Deal-Quelle, Mandat → Planposten/Phase, doppelte Teilnahmen, Kampagnen-Ergebnisse außerhalb, Head-Vorschläge,
 // Einwilligungs-Belege; Leads mit totem Deal fallen beim Reparieren von „SQL“ auf „Qualifizierung“ zurück.
+// 28.09. („Mandat an Zielen und Zeit“): Ziele, Meilensteine und Fokus-Blöcke mit totem Mandat/Firma —
+// die drei Prüfungen und ihre Reparatur liegen in lib/crm/verbindungen-planung.ts.
 
 import { HERKUNFT, LEBENSPHASEN, type Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, CrmListe, Firma, FirmaRolle, FollowUp, SegmentKriterien, Teilnahme, TeilnahmeStatus } from './typen';
@@ -40,6 +42,7 @@ import { typenVon, kategorienVon, labelsVon } from './mehrfach';
 import { wertelistenVollstaendig, wertelistenPruefen, WERT_MIN, WERT_MAX } from './wertelisten';
 
 import { tagVon } from '@/lib/zeit';
+import { PRUEFUNGEN_PLANUNG, planungPruefen, planungReparieren, type PlanungBestand } from './verbindungen-planung';
 // ── Eingang ─────────────────────────────────────────────────────────────────
 
 /** Eine Rechnung aus dem Finanzplan (Speicher „finanzplan“) — nur, was die Prüfung braucht. */
@@ -65,12 +68,14 @@ export interface VerbindungsBestaende {
   liquiplan?: { posten: string[] } | null;
   /** Vorschläge der Heads — nur Kennung, Person, Status (28.09. abends). null = nicht geprüft. */
   heads?: { head: string; vorschlaege: { id: string; kontakt_id?: string | null; status?: string }[] }[] | null;
+  /** Ziele und Meilensteine — nur Kennung und Mandats-/Firmen-Bezug (28.09.). null = nicht geprüft. */
+  planung?: PlanungBestand | null;
 }
 
 // ── Befunde ─────────────────────────────────────────────────────────────────
 
 export type Schwere = 'fehler' | 'warnung' | 'hinweis';
-export type VerbindungsBereich = 'kennungen' | 'kontakte' | 'firmen' | 'deals' | 'mandate' | 'rechnungen' | 'followup' | 'events' | 'marketing' | 'datenschutz' | 'aufgaben' | 'zeit' | 'dateien' | 'import' | 'angebote';
+export type VerbindungsBereich = 'kennungen' | 'kontakte' | 'firmen' | 'deals' | 'mandate' | 'rechnungen' | 'followup' | 'events' | 'marketing' | 'datenschutz' | 'aufgaben' | 'zeit' | 'planung' | 'dateien' | 'import' | 'angebote';
 /** Wofür die Beispiel-Kennungen stehen — die Oberfläche macht daraus Links. */
 export type BeispielArt = 'kontakt' | 'firma' | 'deal' | 'mandat' | 'rechnung' | 'followup' | 'event' | 'kampagne' | 'beitrag' | 'newsletter' | 'segment' | 'antrag' | 'aufgabe' | 'datei' | 'kennung' | 'angebot' | 'produkt';
 
@@ -170,6 +175,8 @@ export const PRUEFUNGEN = {
   'kampagne-ergebnis-ausserhalb': { schwere: 'hinweis', bereich: 'marketing', reparierbar: false, art: 'kampagne', text: n => `${n} ${e(n, 'Kampagne zählt', 'Kampagnen zählen')} Ergebnisse von Personen, die nicht (mehr) in der Kampagne sind.` },
   'head-vorschlag-kontakt-tot': { schwere: 'hinweis', bereich: 'kontakte', reparierbar: false, art: 'kennung', text: n => `${n} ${e(n, 'offener Vorschlag eines Heads nennt', 'offene Vorschläge der Heads nennen')} eine Person, die es nicht mehr gibt — in der Freigabe-Liste ablehnen.` },
   'einwilligung-beleg-tot': { schwere: 'fehler', bereich: 'datenschutz', reparierbar: false, art: 'kontakt', text: n => `${n} ${e(n, 'Person hat eine Einwilligung', 'Personen haben Einwilligungen')}, deren Beleg (Dateiablage) es nicht mehr gibt — Nachweis nach Art. 7 Abs. 1 DSGVO fehlt; Beleg neu ablegen.` },
+  // Mandat an Zielen und Zeit (28.09.): ziel-/meilenstein-/zeit-mandat-tot — lib/crm/verbindungen-planung.ts.
+  ...PRUEFUNGEN_PLANUNG,
 } as const satisfies Record<string, Pruefung>;
 
 export type PruefungId = keyof typeof PRUEFUNGEN;
@@ -481,6 +488,9 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
     if (b.dateien) for (const id of einwilligungBelegTot(kontakte, new Set(liste(b.dateien.eintraege).map(d => d.id)))) melde('einwilligung-beleg-tot', id);
   }
 
+  // Mandat an Zielen und Zeit (28.09.): Ziele, Meilensteine, Fokus-Blöcke mit totem Mandat/Firma.
+  planungPruefen(b, { mandate: m.mandate, firmen: m.firmen }, melde);
+
   // Import-Konflikte
   if (b.konflikte) {
     for (const k of liste(b.konflikte.konflikte)) if (!m.kontakte.has(k.kontaktId)) melde('konflikt-veraltet', k.kontaktId);
@@ -538,7 +548,7 @@ function leadOhneDeal<L extends { status: string; chanceId?: string; sqlAm?: str
   return { ...ohne, status: 'qualifizierung' } as L;
 }
 
-export type ReparaturSpeicher = 'crm' | 'kontakte' | 'import-konflikte' | 'dateien';
+export type ReparaturSpeicher = 'crm' | 'kontakte' | 'import-konflikte' | 'dateien' | 'ziele' | 'meilensteine' | 'zeit';
 export interface Aenderung { befundId: PruefungId; speicher: ReparaturSpeicher; anzahl: number; text: string }
 
 /**
@@ -744,5 +754,9 @@ export function verbindungenReparieren(b: VerbindungsBestaende, ids: readonly st
     zaehle('datei-fehlt', 'dateien', n, `${n} ${e(n, 'Eintrag', 'Einträge')} der Ablage als „Datei fehlt“ markiert`);
   }
 
-  return { aenderungen, bestaende: { ...b, crm, kontakte, konflikte, dateien } };
+  // Mandat an Zielen und Zeit (28.09.): tote Mandats-/Firmen-Bezüge an Zielen, Meilensteinen, Fokus-Blöcken entfernen.
+  const planung = planungReparieren(b, will, { mandate: m.mandate, firmen: m.firmen });
+  aenderungen.push(...planung.aenderungen);
+
+  return { aenderungen, bestaende: { ...b, crm, kontakte, konflikte, dateien, planung: planung.planung, fokus: planung.fokus } };
 }

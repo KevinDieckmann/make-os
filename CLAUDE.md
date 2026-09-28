@@ -387,6 +387,14 @@ lokal, Route `/os`, Port 3001.
   (`personStreng`, alle POST ohne Person 401; fremder Block 404, es wird nichts angelegt). `blockUmbuchen` (modell.ts) verschiebt die
   bewussten Sekunden im selben Tag auf den neuen Schlüssel; nach Privat fallen `aufgabeId`/`einheit` weg. Zeit je Einheit zählt nur
   Business-Blöcke — Privat-Zeit der anderen Person erscheint dort nie (Test `tests/zeit-route.test.ts`).
+- **Mandat an Zielen und Zeit (28.09.):** Ziel, Meilenstein und `FokusBlock` tragen optional `mandatId`/`firmaId` (nur Business).
+  Rein in `lib/planung/mandat.ts`: `bezugSaeubern` (nur Form, CRM-Kennung), `mandatKurzListe` (Einheit über `einheitAusBezug`,
+  Monatshonorar netto), `mitMandatBezug` (Firma + Einheit aus dem Mandat; Mandat gewinnt vor Aufgabe/Wahl). Schreibwege Ziele,
+  Meilensteine, `/api/state/zeit` leiten ab (`mandateFuerBezug` liest das CRM nur, wenn eine `mandatId` kommt). Chip
+  `components/os/zeit/MandatWahl.tsx` (GET `/api/crm/mandat-wahl`, Haushalt des Inhabers); Zeit je Mandat `lib/zeitmessung/mandate.ts`
+  + GET `/api/state/zeit/mandate` (Karte auf Fokus, „Zeit“ in der Mandatsakte, „≈ €/h“ nur grober Hinweis). Tote Bezüge: Verbindungsprüfung
+  `ziel-/meilenstein-/zeit-mandat-tot` (`lib/crm/verbindungen-planung.ts`, reparierbar = Bezug entfernen) — bewusst keine Löschsperre.
+  Tests `tests/mandat-bezug.test.ts`.
 
 ## Tempo (26.09.)
 - Teure Berechnungen (Indizes, Familie, Bauplan) laufen durch `merken(schluessel, ttl, rechne)` aus `lib/store/memo.ts`;
