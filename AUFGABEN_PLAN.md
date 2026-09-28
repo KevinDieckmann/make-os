@@ -30,3 +30,16 @@
   1. **Finanzen: eine Einheitenliste.** Heute sechs Listen (Cockpit kdc/kdv, Steuern kdc/kdv/privat, Finanzplanung ug/privat/kdv mit kdc→UG, Privat-Finanzen privat/selbststaendigkeit/ug, Liquidität-Start kdv/kdc). Ziel: überall `lib/einheiten.ts`, UG überall, Selbstständigkeit eigene Achse; bestehende Summen dürfen sich dabei nicht ändern (Regressionstest), Rechenkern-Namen bleiben.
   2. **Mandat an Zielen und Zeit:** Ziele, Meilensteine, Zeitmessung bekommen optional `mandatId`/`firmaId`; Einheit wird wie bei Heads aus der Gesellschaft abgeleitet; Zeit je Mandat sichtbar (Abrechnung/Auslastung).
 - **Später (Kevin: nicht jetzt):** Rechnungen per Kennung an CRM-Firma, Termine/Mails per Klick verknüpfen.
+
+## Vertiefung (Kevin 28.09. ~22:20) — „das Tool tiefer, da muss alles möglich sein“
+Kevins Entscheidungen:
+- **Gruppen über den Listen:** Projekt → Gruppe (z. B. Marketing, Sales, Operations; farbig, einklappbar) → Liste → Aufgabe → Unteraufgabe. Listen dürfen auch direkt im Projekt liegen.
+- **Projekt-Ebene voll ausbauen:** Projektseite mit Übersicht (Fortschritt, Fälliges, Verantwortliche), **Notizen** (formatierbar, Checklisten, Links), **Dateien/Uploads**, Beschreibung, Status/Zeitraum, Mitglieder.
+- **Unteraufgaben** direkt anlegen, mit eigenen Feldern (Status, Deadline, Zuständig).
+- **Dateien und Notizen:** an Projekt und Aufgabe, verschlüsselt, privat/business getrennt. **ZOE darf Projekt-/Aufgaben-Dateien und Notizen lesen** (Kevins Wahl) — immer als Fremdtext gekapselt (`fremd()`), mit Größengrenze. Die CRM-Dateiablage (Angebote, Rechnungen, Einwilligungsbelege) bleibt wie bisher außerhalb von ZOE.
+- **Wiederkehrend:** wiederkehrende Aufgaben und **wiederkehrende Listen** (z. B. jeden Monat „Monatsabschluss“ neu), dazu **Vorlagen** für Projekte und Listen.
+- **ZOE mit eigenen Aufgaben und Stapel:** Aufgaben an ZOE zuweisbar; sie bereitet vor (Entwurf, Recherche, Unteraufgaben-Vorschlag) und legt das Ergebnis in ihren Stapel, Status „Wartet auf Freigabe“; erst euer Klick übernimmt/erledigt. Nach außen schickt sie nichts.
+- **Ansichten:** Liste, Board, **Tabelle** (Spalten sortierbar), **Kalender/Zeitachse** nach Deadline.
+- **Eigene Felder** je Projekt (Text, Zahl, Betrag, Datum, Auswahl, Link, Person) und **Abhängigkeiten** („B wartet auf A“).
+- **Verlauf je Aufgabe** (wer, wann, was — ohne Inhalte von Kommentaren im Protokoll) und **Zeit je Aufgabe** (Fokus-Zeit).
+- Upload auf den Server: erst auf Kevins ausdrückliches Wort.
