@@ -1,6 +1,14 @@
 import type { ID, Owner, Priority, Tag, Timestamps } from './common';
 
-export type TaskStatus = 'backlog' | 'todo' | 'in-progress' | 'blocked' | 'done';
+/**
+ * Grundstatus. `cancelled` = „Abgebrochen“ (29.09., Kevin): zählt NICHT als erledigt (Quote/Fortschritt ausgenommen), gibt
+ * Wartende nicht frei, löst keine Folgeinstanz einer Serie aus. Offen ist nur, was weder erledigt noch abgebrochen ist
+ * (`istAbgeschlossen`, lib/aufgaben/struktur.ts).
+ */
+export type TaskStatus = 'backlog' | 'todo' | 'in-progress' | 'blocked' | 'done' | 'cancelled';
+
+/** Sichtbarkeit einer Aufgabe (29.09., Kevin): `haushalt` (Standard, fehlt = haushalt) oder `nur-ich` (nur `angelegtVon` sieht sie). */
+export type AufgabenSichtbarkeit = 'haushalt' | 'nur-ich';
 
 export type ProjectCategory = 'personal-malin' | 'personal-kevin' | 'joint' | 'business';
 
@@ -24,7 +32,18 @@ export interface Task extends Timestamps {
   description?: string;
   status: TaskStatus;
   priority: Priority;
+  /**
+   * Hauptverantwortliche — genau EINE Person (Speichername aus dem Haushalt, serverseitig geprüft → sonst 400). Seit 29.09.
+   * (Kevin) kein „both“ mehr: der Altbestand und Schreiber, die noch „both“ schicken, werden umgewandelt (Anlegerin =
+   * verantwortlich, die andere = `beteiligte`, lib/aufgaben/zustaendig.ts). Der Typ trägt `both` nur noch zum Lesen.
+   */
   assignee: Owner;
+  /** Beteiligte (Speichernamen, ohne die Verantwortliche) — „Meine“ = verantwortlich, Filter „beteiligt“ zusätzlich (29.09.). */
+  beteiligte?: string[];
+  /** Sichtbarkeit (29.09.): fehlt = `haushalt`. `nur-ich` → nur die Anlegerin sieht sie — auf ALLEN Lesepfaden (lib/aufgaben/sicht.ts). */
+  sichtbarkeit?: AufgabenSichtbarkeit;
+  /** Wer die Aufgabe angelegt hat (Speichername) — setzt NUR der Server. Altbestand: aus dem Verlauf „angelegt“. */
+  angelegtVon?: string;
   tags: Tag[];
   dueDate?: string;
   subTasks: SubTask[];
@@ -100,6 +119,17 @@ export interface Wiederholung {
   bis?: string;
   /** Nächster Termin (YYYY-MM-DD). */
   naechste?: string;
+  // ── Serien-Extras (29.09., Kevin) — nur an Aufgaben, Listen rechnen weiter ab dem Termin ──
+  /** Rhythmus ab dem Fälligkeitstag (Standard) oder ab dem Tag der Erledigung („Friseur alle 4 Wochen“). */
+  ab?: 'faellig' | 'erledigt';
+  /** Wechsel: die nächste Instanz bekommt die nächste Person dieser Liste (Speichernamen), z. B. [kevin, malin]. */
+  rotation?: string[];
+  /** Werktage und Fristen ohne gesetzliche Feiertage des Landes (heute nur NRW, lib/aufgaben/feiertage.ts). */
+  feiertage?: 'NRW';
+  /** Übersprungene Termine (YYYY-MM-DD) — „nur diese löschen“ trägt den Tag ein, der Morgenlauf legt ihn nie wieder an. */
+  ausnahmen?: string[];
+  /** Serie beendet (die jüngste Instanz entscheidet; ohne `wiederholung` gilt die Serie ebenfalls als beendet). */
+  serieBeendet?: boolean;
 }
 
 export type ZoeStatus = 'offen' | 'in_arbeit' | 'wartet_freigabe' | 'freigegeben' | 'abgelehnt';
@@ -115,7 +145,8 @@ export interface ZoeAuftrag {
 
 export type VerlaufArt =
   | 'angelegt' | 'status' | 'zustaendig' | 'prioritaet' | 'deadline' | 'start' | 'titel' | 'beschreibung' | 'notiz'
-  | 'verschoben' | 'kommentar' | 'datei' | 'feld' | 'abhaengigkeit' | 'verknuepfung' | 'wiederholung' | 'zoe' | 'zusammengefasst';
+  | 'verschoben' | 'kommentar' | 'datei' | 'feld' | 'abhaengigkeit' | 'verknuepfung' | 'wiederholung' | 'zoe' | 'zusammengefasst'
+  | 'beteiligte' | 'sichtbarkeit';
 /** Ein Eintrag im Verlauf einer Aufgabe: wer, wann, was — Werte nur als nicht-vertrauliche Kurzwerte. */
 export interface VerlaufEintrag {
   /** ISO-Zeitpunkt (Server). */
@@ -149,6 +180,8 @@ export interface AufgabeKommentar {
   am: string;
   /** Erwähnte Personen (Speichernamen). */
   erwaehnt?: string[];
+  /** Weich entfernt (29.09., #76): der Text bleibt gespeichert, die Anzeige zeigt „Kommentar entfernt“. Nur die Verfasserin. */
+  entfernt?: { am: string; von: string };
 }
 
 /** Eine Liste im Projekt (z. B. Januar, Februar, März). */

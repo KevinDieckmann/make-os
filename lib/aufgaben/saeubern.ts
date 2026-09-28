@@ -36,6 +36,12 @@ export const AUFGABEN_GRENZEN = {
   /** Zeichen je Feldwert (Text, Link). */
   feldText: 2000,
   abhaengigVon: 200,
+  /** Beteiligte je Aufgabe (29.09.). */
+  beteiligte: 20,
+  /** Personen im Wechsel einer Serie (29.09.). */
+  rotation: 20,
+  /** Übersprungene Termine einer Serie (29.09.). */
+  ausnahmen: 1000,
   /** Zeichen des Hinweises an ZOE (= ZOE_VORSCHLAG_GRENZEN.hinweis in lib/aufgaben/zoe.ts). */
   zoeHinweis: 1000,
   /** Zeichen des Vorlagen-Inhalts (JSON). */
@@ -101,7 +107,10 @@ export function kommentareSauber(v: unknown): AufgabeKommentar[] | undefined {
     if (!id || !von || !text) continue;
     zuViel(x.erwaehnt, AUFGABEN_GRENZEN.erwaehnt, 'Erwähnungen');
     const erwaehnt = Array.isArray(x.erwaehnt) ? Array.from(new Set(x.erwaehnt.filter((p): p is string => typeof p === 'string' && PERSON.test(p)))) : [];
-    raus.push({ id, von, text, am: S(x.am, 40) ?? new Date().toISOString(), ...(erwaehnt.length ? { erwaehnt } : {}) });
+    // Weich entfernt (29.09., #76): Zeitpunkt + Person — sonst nichts.
+    const ent = x.entfernt && typeof x.entfernt === 'object' ? x.entfernt as Record<string, unknown> : undefined;
+    const entfernt = ent && zeitpunkt(ent.am) && typeof ent.von === 'string' && PERSON.test(ent.von) ? { am: zeitpunkt(ent.am)!, von: ent.von } : undefined;
+    raus.push({ id, von, text, am: S(x.am, 40) ?? new Date().toISOString(), ...(erwaehnt.length ? { erwaehnt } : {}), ...(entfernt ? { entfernt } : {}) });
   }
   return raus.length ? raus : undefined;
 }
@@ -138,6 +147,10 @@ export function taskSauber(o: unknown): Task | null {
     parentId: kennung(t.parentId),
     statusId: kennung(t.statusId),
     bezug: bezugSauber(t.bezug),
+    // Seit 29.09. (Kevin): Beteiligte, Sichtbarkeit „nur ich“, Anlegerin (setzt der Server — lib/aufgaben/speicher.ts überschreibt).
+    beteiligte: beteiligteSauber(t.beteiligte),
+    sichtbarkeit: t.sichtbarkeit === 'nur-ich' || t.sichtbarkeit === 'haushalt' ? t.sichtbarkeit : undefined,
+    angelegtVon: typeof t.angelegtVon === 'string' && PERSON.test(t.angelegtVon) ? t.angelegtVon : undefined,
     kommentare: kommentareSauber(t.kommentare),
     startDate: typeof t.startDate === 'string' && TAG.test(t.startDate) ? t.startDate : undefined,
     // Vertiefung (28.09. spät). `verlauf` schreibt nur der Server — was der Browser mitschickt, fällt hier weg.
@@ -227,6 +240,14 @@ export const notizSauber = (v: unknown, was = 'Notiz'): string | undefined => te
 export function personenSauber(v: unknown): string[] | undefined {
   if (!Array.isArray(v)) return undefined;
   zuViel(v, AUFGABEN_GRENZEN.mitglieder, 'Mitglieder');
+  const raus = Array.from(new Set(v.filter((p): p is string => typeof p === 'string' && PERSON.test(p))));
+  return raus.length ? raus : undefined;
+}
+
+/** Beteiligte (29.09.): Speichernamen ohne Doppelte; mehr als die Grenze → ZuGross. Die Prüfung gegen den Haushalt macht der Server. */
+export function beteiligteSauber(v: unknown): string[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  zuViel(v, AUFGABEN_GRENZEN.beteiligte, 'Beteiligte');
   const raus = Array.from(new Set(v.filter((p): p is string => typeof p === 'string' && PERSON.test(p))));
   return raus.length ? raus : undefined;
 }
@@ -355,6 +376,20 @@ export function wiederholungSauber(v: unknown): Wiederholung | undefined {
   if (Number.isInteger(m) && m >= 1 && m <= 31) raus.monatstag = m;
   if (typeof w.bis === 'string' && TAG.test(w.bis)) raus.bis = w.bis;
   if (typeof w.naechste === 'string' && TAG.test(w.naechste)) raus.naechste = w.naechste;
+  // Serien-Extras (29.09., Kevin): ab Erledigung, Wechsel, Feiertage NRW, übersprungene Tage, beendet.
+  if (w.ab === 'erledigt' || w.ab === 'faellig') raus.ab = w.ab;
+  if (Array.isArray(w.rotation)) {
+    if (w.rotation.length > AUFGABEN_GRENZEN.rotation) throw new ZuGross(`Abgelehnt: ${w.rotation.length} Personen im Wechsel — höchstens ${AUFGABEN_GRENZEN.rotation}.`);
+    const r = w.rotation.filter((p): p is string => typeof p === 'string' && PERSON.test(p));
+    if (r.length) raus.rotation = r;
+  }
+  if (w.feiertage === 'NRW') raus.feiertage = 'NRW';
+  if (Array.isArray(w.ausnahmen)) {
+    if (w.ausnahmen.length > AUFGABEN_GRENZEN.ausnahmen) throw new ZuGross(`Abgelehnt: ${w.ausnahmen.length} übersprungene Termine — höchstens ${AUFGABEN_GRENZEN.ausnahmen}.`);
+    const a = Array.from(new Set(w.ausnahmen.filter((x): x is string => typeof x === 'string' && TAG.test(x)))).sort();
+    if (a.length) raus.ausnahmen = a;
+  }
+  if (w.serieBeendet === true) raus.serieBeendet = true;
   return raus;
 }
 

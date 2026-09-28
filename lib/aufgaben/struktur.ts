@@ -105,14 +105,22 @@ export function alleSpaces(crm: CrmTeil | null | undefined, tasks: readonly { sp
 // ── Status ─────────────────────────────────────────────────────────────────
 
 export interface StatusAnzeige { id: string; label: string; farbe: string; basis: TaskStatus; eigen: boolean }
-/** Die vier festen Status (Kevin 28.09.): Offen · In Arbeit · Wartend · Erledigt. `backlog` zählt als Offen. */
+/**
+ * Die festen Status (Kevin 28.09.): Offen · In Arbeit · Wartend · Erledigt — seit 29.09. dazu „Abgebrochen“ (`cancelled`):
+ * zählt nicht als erledigt, gibt Wartende nicht frei, keine Folgeinstanz. `backlog` zählt als Offen.
+ */
 export const GRUNDSTATUS: readonly StatusAnzeige[] = [
   { id: 'todo', label: 'Offen', farbe: '#6E7A7D', basis: 'todo', eigen: false },
   { id: 'in-progress', label: 'In Arbeit', farbe: '#4FC3F7', basis: 'in-progress', eigen: false },
   { id: 'blocked', label: 'Wartend', farbe: '#FFC93C', basis: 'blocked', eigen: false },
   { id: 'done', label: 'Erledigt', farbe: '#3DE28B', basis: 'done', eigen: false },
+  { id: 'cancelled', label: 'Abgebrochen', farbe: '#8A8F98', basis: 'cancelled', eigen: false },
 ];
-export const TASK_STATUS: readonly TaskStatus[] = ['backlog', 'todo', 'in-progress', 'blocked', 'done'];
+export const TASK_STATUS: readonly TaskStatus[] = ['backlog', 'todo', 'in-progress', 'blocked', 'done', 'cancelled'];
+/** Erledigt ODER abgebrochen — nicht mehr offen (Listen, Kacheln, überfällig, Glocke, Serien). */
+export const istAbgeschlossen = (t: Pick<Task, 'status'> | { status?: string }): boolean => t.status === 'done' || t.status === 'cancelled';
+/** Noch zu tun: weder erledigt noch abgebrochen. */
+export const istOffen = (t: Pick<Task, 'status'> | { status?: string }): boolean => !istAbgeschlossen(t);
 /** Grundstatus zur Anzeige: backlog → Offen. */
 export const grundVon = (s: TaskStatus | string | undefined): StatusAnzeige => GRUNDSTATUS.find(g => g.id === (s === 'backlog' ? 'todo' : s)) ?? GRUNDSTATUS[0];
 
@@ -372,22 +380,24 @@ export function baum(state: TasksState, spaceId: string, zeigen: (t: Task) => bo
 // ── Filter ─────────────────────────────────────────────────────────────────
 
 export type FaelligFilter = 'alle' | 'ueberfaellig' | 'heute' | 'woche' | 'ohne';
-export interface AufgabenFilter { wer: 'meine' | 'alle'; ich?: string | null; status: 'offen' | 'alle' | string; faellig: FaelligFilter }
+export interface AufgabenFilter { wer: 'meine' | 'beteiligt' | 'alle'; ich?: string | null; status: 'offen' | 'alle' | string; faellig: FaelligFilter }
 export const FILTER_STANDARD: AufgabenFilter = { wer: 'alle', status: 'offen', faellig: 'alle' };
 
 const plusTage = (tag: string, n: number) => { const d = new Date(`${tag}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
 /** Passt eine Aufgabe zum Filter? `status` = „offen“ (nicht erledigt), „alle“ oder eine Status-Kennung (fest/eigen). */
 export function passtFilter(t: Task, f: AufgabenFilter, heute: string): boolean {
+  // „Meine“ = verantwortlich (29.09.); „beteiligt“ = unter den Beteiligten. Altbestand „both“ zählt bis zur Übernahme als meine.
   if (f.wer === 'meine' && f.ich && !(t.assignee === f.ich || t.assignee === 'both')) return false;
-  if (f.status === 'offen' && t.status === 'done') return false;
+  if (f.wer === 'beteiligt' && f.ich && !(t.beteiligte ?? []).includes(f.ich)) return false;
+  if (f.status === 'offen' && istAbgeschlossen(t)) return false;
   if (f.status !== 'offen' && f.status !== 'alle') {
     if (GRUNDSTATUS.some(g => g.id === f.status)) { if (t.statusId || grundVon(t.status).id !== f.status) return false; }
     else if (t.statusId !== f.status) return false;
   }
   const d = t.dueDate;
   switch (f.faellig) {
-    case 'ueberfaellig': return !!d && d < heute && t.status !== 'done';
+    case 'ueberfaellig': return !!d && d < heute && !istAbgeschlossen(t);
     case 'heute': return !!d && d <= heute;
     case 'woche': return !!d && d <= plusTage(heute, 7);
     case 'ohne': return !d;
@@ -417,9 +427,10 @@ export function zustaendigeVon(assignee: string | undefined, beide: readonly str
   return assignee === 'both' ? [...beide] : [assignee];
 }
 
-/** Anzeige-Hilfe: Fortschritt der Unteraufgaben (erledigt/gesamt). */
+/** Anzeige-Hilfe: Fortschritt der Unteraufgaben (erledigt/gesamt) — abgebrochene zählen weder als fertig noch mit (29.09.). */
 export function fortschritt(unter: readonly Pick<Task, 'status'>[]): { fertig: number; gesamt: number } {
-  return { fertig: unter.filter(u => u.status === 'done').length, gesamt: unter.length };
+  const zaehlt = unter.filter(u => u.status !== 'cancelled');
+  return { fertig: zaehlt.filter(u => u.status === 'done').length, gesamt: zaehlt.length };
 }
 
 export type { AufgabenListe, AufgabenStatus };

@@ -174,8 +174,8 @@ describe('Status', () => {
     { id: 'st-abgelegt', spaceId: 'kdc', label: 'Abgelegt', farbe: '#3DE28B', basis: 'done' as const, sortOrder: 0 },
     { id: 'st-anders', spaceId: 'kdv', label: 'Anderswo', farbe: '#6E7A7D', basis: 'todo' as const, sortOrder: 0 },
   ];
-  it('fest: Offen · In Arbeit · Wartend · Erledigt; backlog zählt als Offen; eigene hinter ihrem Grundstatus', () => {
-    expect(statusListe('kdc', eigene).map(s => s.label)).toEqual(['Offen', 'In Arbeit', 'Wartend', 'Beim Steuerbüro', 'Erledigt', 'Abgelegt']);
+  it('fest: Offen · In Arbeit · Wartend · Erledigt · Abgebrochen (29.09.); backlog zählt als Offen; eigene hinter ihrem Grundstatus', () => {
+    expect(statusListe('kdc', eigene).map(s => s.label)).toEqual(['Offen', 'In Arbeit', 'Wartend', 'Beim Steuerbüro', 'Erledigt', 'Abgelegt', 'Abgebrochen']);
     expect(grundVon('backlog').label).toBe('Offen');
   });
   it('eigener Status setzt status = basis (alle Leser verstehen „erledigt“); Wechsel zurück entfernt statusId', () => {

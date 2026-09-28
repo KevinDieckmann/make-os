@@ -9,13 +9,43 @@
 // Schreiber, die in der Sperre anhängen.
 
 import { loadJson } from '@/lib/store/local-db';
-import type { TasksState } from '@/types/tasks';
+import type { Task, TasksState } from '@/types/tasks';
 import { uebernehmen } from './struktur';
 import { aufgabenSicht } from './papierkorb';
 
 export const AUFGABEN_BESTAND_NAME = 'tasks';
 const leer = (): TasksState => ({ projects: [], tasks: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] });
 export const alsStand = (roh: TasksState | null | undefined): TasksState => (roh && Array.isArray(roh.tasks) ? roh : { ...leer(), ...(roh ?? {}), tasks: [] });
+
+// ── Sichtbarkeit „nur ich“ (29.09., Kevin) — der EINE Filter für alle Lesepfade ──────────────
+// Eine Aufgabe mit `sichtbarkeit: 'nur-ich'` sieht nur ihre Anlegerin (`angelegtVon`); ihre Unteraufgaben erben das
+// (sichtbar nur, wenn die Eltern es sind). Ohne Person (Systemlauf) sieht man KEINE „nur ich“-Aufgabe. Wer eine fremde
+// „nur ich“-Aufgabe schreiben will, bekommt 404 (lib/aufgaben/speicher.ts) — als gäbe es sie nicht.
+
+/** Ist die Aufgabe selbst als „nur ich“ markiert? */
+export const istNurIch = (t: Pick<Task, 'sichtbarkeit'> | undefined | null): boolean => t?.sichtbarkeit === 'nur-ich';
+
+/** Darf `person` die Aufgabe sehen? `nachId` = alle Aufgaben (für die Eltern einer Unteraufgabe). */
+export function darfSehen(t: Pick<Task, 'sichtbarkeit' | 'angelegtVon' | 'parentId'>, person: string | null | undefined, nachId?: ReadonlyMap<string, Pick<Task, 'sichtbarkeit' | 'angelegtVon' | 'parentId'>>): boolean {
+  if (istNurIch(t) && (!person || t.angelegtVon !== person)) return false;
+  const eltern = t.parentId ? nachId?.get(t.parentId) : undefined;
+  if (eltern && istNurIch(eltern) && (!person || eltern.angelegtVon !== person)) return false;
+  return true;
+}
+
+/** Der Bestand, wie `person` ihn sehen darf (null = Systemlauf: ohne alle „nur ich“-Aufgaben). Rein. */
+export function sichtFuer<T extends TasksState>(state: T, person: string | null | undefined): T {
+  if (!state.tasks.some(istNurIch)) return state;
+  const nachId = new Map(state.tasks.map(t => [t.id, t]));
+  return { ...state, tasks: state.tasks.filter(t => darfSehen(t, person, nachId)) };
+}
+
+/** Nur die Aufgaben-Liste filtern (für Leser, die schon eine Liste haben). */
+export function aufgabenFuerPerson<T extends Pick<Task, 'id' | 'sichtbarkeit' | 'angelegtVon' | 'parentId'>>(tasks: readonly T[], person: string | null | undefined): T[] {
+  if (!tasks.some(istNurIch)) return [...tasks];
+  const nachId = new Map(tasks.map(t => [t.id, t]));
+  return tasks.filter(t => darfSehen(t, person, nachId));
+}
 
 /** Orte von Hand (Board › Ort) — entscheiden bei Altaufgaben mit, ob sie im Business liegen. */
 export async function orgZuordnung(): Promise<Record<string, string>> {
