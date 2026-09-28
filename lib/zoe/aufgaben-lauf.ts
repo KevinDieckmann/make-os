@@ -13,7 +13,7 @@
 import type { Task, TasksState } from '@/types/tasks';
 import { askText, extractJson, fremd, FREMD_REGEL, guthabenLeer, hasAnthropicKey } from '@/lib/anthropic';
 import { loadJson } from '@/lib/store/local-db';
-import { ladeAufgaben } from '@/lib/aufgaben/speicher';
+import { ladeAufgabenSicht } from '@/lib/aufgaben/speicher';
 import { statusVon } from '@/lib/aufgaben/struktur';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { melde } from '@/lib/meldungen/melden';
@@ -201,12 +201,12 @@ export async function zoeAufgabenLauf(opt: { person: string | null; max?: number
   const leer = (ohneKi: string, rest: number): LaufErgebnis => ({ ok: true, bearbeitet: [], uebersprungen: [], ohneKi, rest });
   const jetzt = (opt.jetzt ?? new Date()).toISOString();
   const kandidaten = (state: TasksState) => zoeZuBearbeiten(state.tasks, { person: opt.person, jetzt }).filter(t => !opt.nur || t.id === opt.nur);
-  if (laeuft) return leer('ZOE arbeitet schon — gleich noch einmal.', kandidaten(await ladeAufgaben()).length);
-  if (!hasAnthropicKey() || guthabenLeer()) return leer(!hasAnthropicKey() ? 'kein Modell-Schlüssel hinterlegt' : 'Guthaben leer', kandidaten(await ladeAufgaben()).length);
+  if (laeuft) return leer('ZOE arbeitet schon — gleich noch einmal.', kandidaten(await ladeAufgabenSicht()).length);
+  if (!hasAnthropicKey() || guthabenLeer()) return leer(!hasAnthropicKey() ? 'kein Modell-Schlüssel hinterlegt' : 'Guthaben leer', kandidaten(await ladeAufgabenSicht()).length);
   laeuft = true;
   const erg: LaufErgebnis = { ok: true, bearbeitet: [], uebersprungen: [], rest: 0 };
   try {
-    const state = await ladeAufgaben();
+    const state = await ladeAufgabenSicht();
     const liste = kandidaten(state);
     for (const t of liste.slice(0, max)) {
       const a = auftraggeberinVon(t);
@@ -218,7 +218,7 @@ export async function zoeAufgabenLauf(opt: { person: string | null; max?: number
       // 2) Auftrag bauen und EIN Modellaufruf — ohne Werkzeuge: ZOE kann hier nichts tun außer antworten.
       const alt = aktuell.zoe?.stapelId ? await hole(aktuell.zoe.stapelId) : null;
       const text = auftragText(aktuell, {
-        state: await ladeAufgaben(), heute: localDay(), crm: await crmFuer(aktuell), dateien: await unterlagenFuer(aktuell, a), hinweis: zoeHinweis(aktuell),
+        state: await ladeAufgabenSicht(), heute: localDay(), crm: await crmFuer(aktuell), dateien: await unterlagenFuer(aktuell, a), hinweis: zoeHinweis(aktuell),
         abgelehnt: alt?.status === 'abgelehnt' && alt.bezug?.id === aktuell.id ? (alt.grund ?? 'ohne Grund') : null,
       });
       const r = await askText({ system: ZOE_AUFGABEN_SYSTEM, user: text, schema: SCHEMA as unknown as Record<string, unknown>, maxTokens: 4000, zweck: 'zoe-aufgaben', timeoutMs: 90_000, retries: 1 });
@@ -243,7 +243,7 @@ export async function zoeAufgabenLauf(opt: { person: string | null; max?: number
       erg.bearbeitet.push({ id: aktuell.id, titel: aktuell.title, stapelId: v.id });
       await melde({ an: a, art: 'zoe', titel: `ZOE hat „${aktuell.title.length > 80 ? `${aktuell.title.slice(0, 79)}…` : aktuell.title}“ vorbereitet`, link: WEG.aufgabe(aktuell.id), von: 'zoe', bezug: { art: 'aufgabe', id: aktuell.id } });
     }
-    erg.rest = kandidaten(await ladeAufgaben()).length;
+    erg.rest = kandidaten(await ladeAufgabenSicht()).length;
     return erg;
   } catch (e) {
     return { ...erg, ok: false, uebersprungen: [...erg.uebersprungen, { id: '', grund: e instanceof Error ? e.message.slice(0, 160) : 'Fehler' }] };
@@ -254,6 +254,6 @@ export async function zoeAufgabenLauf(opt: { person: string | null; max?: number
 
 /** Für den Takt: steht heute ein Lauf an? Nur, wenn etwas offen liegt — sonst kein Eintrag in der Warteschlange. */
 export async function zoeAufgabenFaellig(jetzt: Date = new Date()): Promise<boolean> {
-  const state = await ladeAufgaben();
+  const state = await ladeAufgabenSicht();
   return zoeZuBearbeiten(state.tasks, { person: null, jetzt: jetzt.toISOString() }).length > 0;
 }

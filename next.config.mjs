@@ -1,5 +1,11 @@
+// Build-Kennung (29.09., A2 — lib/bau/kennung.ts): EINMAL je Bau erzeugt und über die Umgebung an die Bau-Arbeiter
+// vererbt (die laden diese Datei erneut — ohne `||=` bekäme jeder eine eigene). `env` setzt sie beim Bauen wörtlich in
+// Browser- und Server-Code ein; alte Tabs schicken damit eine fremde Kennung und bekommen „bitte neu laden“.
+process.env.MAKE_OS_BAU ||= `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: { NEXT_PUBLIC_MAKE_BAU: process.env.MAKE_OS_BAU },
   // 25.09.: start.sh baut den schnellen Produktionsmodus nach .next-prod —
   // getrennt vom Entwicklungsmodus (.next), damit beide sich nie stören.
   distDir: process.env.MAKE_OS_DIST || '.next',

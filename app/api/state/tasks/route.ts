@@ -4,7 +4,14 @@
 //          struktur?: { projekte?, listen?, status?, gruppen?, vorlagen? } (dieselbe Form), massenAenderung?, massenLoeschung? }
 //          Kreis in „wartet auf“ → 409 mit `kreis`; der Verlauf je Aufgabe entsteht hier (lib/aufgaben/verlauf.ts).
 //          Wiederkehrende Aufgabe erledigt → nächste Instanz im selben Schreibvorgang, Antwort `serien: [id]` (lib/aufgaben/serie.ts).
-// PUT   → ganzer Stand — nur noch für den allerersten Stand (leerer Bestand) und alte Fenster.
+// PUT   → ganzer Stand — NUR beim leeren Erststart (29.09., A2); liegt schon etwas im Bestand → 409 `{ neuLaden: true }`.
+//
+// Seit 29.09. (A2/A7, Kevin: „Alle Infos müssen immer sauber gespeichert werden“):
+//   · Build-Kennung: PATCH/PUT aus einem alten Tab (fremde/fehlende `x-make-bau`) → 409 `{ neuLaden: true }` (lib/bau).
+//   · Upsert ohne Stand über einen bestehenden Eintrag = Teil-Merge (fehlende Felder bleiben).
+//   · Papierkorb: GET liefert ihn nur mit `?papierkorb=1` (die Aufgaben-Seite); alle anderen Leser sehen ihn nie.
+//     `delete` auf einen Eintrag außerhalb des Papierkorbs legt hinein, auf einen Papierkorb-Eintrag ist es endgültig
+//     (samt Dateien, lib/aufgaben/papierkorb.ts).
 //
 // Seit 28.09. abends (Aufgaben wie Monday/ClickUp, AUFGABEN_PLAN.md):
 //   · Zugang nur Haushalt des Inhabers — lesen auch der Systemlauf (Dienstweg ohne Person), schreiben nur
@@ -15,10 +22,15 @@
 // Die Logik liegt in lib/aufgaben/speicher.ts (Server) und lib/aufgaben/struktur.ts (rein).
 
 import { NextResponse } from 'next/server';
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson } from '@/lib/store/local-db';
 import { protokolliereBestand, werAus } from '@/lib/store/aenderungsprotokoll';
 import { brauchtBestaetigung, MASSEN_GRENZE } from '@/lib/store/massen-wache';
 import { imHaushaltDesInhabers, imHaushaltOderSystemlauf, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
+import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
+import { bauPruefen } from '@/lib/bau/pruefen';
+import { NEU_LADEN_TEXT } from '@/lib/bau/kennung';
+import { aufgabenSicht } from '@/lib/aufgaben/papierkorb';
+import { aufgabenSchreiben } from '@/lib/aufgaben/umbau';
 import { zuGross } from '@/lib/zugang/umfang';
 import { uebernehmen } from '@/lib/aufgaben/struktur';
 import { taskSauber, projektSauber, listeSauber, statusSauber, gruppeSauber, vorlageSauber, AUFGABEN_GRENZEN, ZuGross } from '@/lib/aufgaben/saeubern';
@@ -36,7 +48,9 @@ export async function GET(req: Request) {
   if (!(await imHaushaltOderSystemlauf(req))) return GESPERRT();
   const roh = await loadJson<TasksState>(AUFGABEN_SPEICHER);
   if (!roh) return NextResponse.json({ state: null, spaces: await spacesFuer({ projects: [], tasks: [] }) });
-  const state = await ladeAufgaben();
+  const mitPapierkorb = new URL(req.url).searchParams.get('papierkorb') === '1';
+  const voll = await ladeAufgaben();
+  const state = mitPapierkorb ? voll : aufgabenSicht(voll);
   return NextResponse.json({ state: fuerBrowser(state), spaces: await spacesFuer(state) });
 }
 
@@ -51,11 +65,14 @@ async function body(req: Request): Promise<Record<string, unknown> | NextRespons
 export async function PATCH(req: Request) {
   const zugang = await imHaushaltDesInhabers(req);
   if (!zugang) return GESPERRT();
+  const alterBau = bauPruefen(req);
+  if (alterBau) return alterBau;
   const b = await body(req);
   if (b instanceof NextResponse) return b;
   const gelesen = opsLesen(b);
   if (!gelesen.ok) return NextResponse.json({ ok: false, error: gelesen.fehler }, { status: gelesen.status });
-  const r = await aufgabenAendern(gelesen.ops, { person: zugang.person, wer: werAus(req), massenAenderung: b.massenAenderung === true, massenLoeschung: b.massenLoeschung === true });
+  const haushalt = (await haushaltFuer(zugang.person))?.haushalt;
+  const r = await aufgabenAendern(gelesen.ops, { person: zugang.person, wer: werAus(req), massenAenderung: b.massenAenderung === true, massenLoeschung: b.massenLoeschung === true, ...(haushalt ? { haushalt } : {}) });
   if (r.ok) return NextResponse.json({ ok: true, angewandt: r.angewandt, zeilen: r.zeilen, ...(r.serien?.length ? { serien: r.serien } : {}) });
   const aktuell = r.konflikte?.length ? (r.state ?? await ladeAufgaben()) : null;
   return NextResponse.json({
@@ -68,12 +85,15 @@ export async function PATCH(req: Request) {
 }
 
 /**
- * Ganzer Stand (Erststand, alte Fenster). Mit Schrumpf-Wächter und Massen-Wache in der Sperre; zu viel → 413.
+ * Ganzer Stand — NUR beim leeren Erststart (29.09., A2). Liegt schon etwas im Bestand, ersetzte ein PUT aus einem alten
+ * Fenster die ganze Liste: 409 `{ neuLaden: true }`. Mit Schrumpf-Wächter und Massen-Wache in der Sperre; zu viel → 413.
  * Die Übernahme läuft auch hier — der gespeicherte Stand hat danach Spaces, Unteraufgaben, Sonstige.
  */
 export async function PUT(req: Request) {
   const zugang = await imHaushaltDesInhabers(req);
   if (!zugang) return GESPERRT();
+  const alterBau = bauPruefen(req);
+  if (alterBau) return alterBau;
   const b = await body(req);
   if (b instanceof NextResponse) return b;
   if (!Array.isArray(b.tasks) || !Array.isArray(b.projects)) return NextResponse.json({ ok: false, error: 'Ungültiger Zustand: tasks/projects fehlen.' }, { status: 400 });
@@ -95,9 +115,12 @@ export async function PUT(req: Request) {
   const orgs = await orgZuordnung();
   let abgelehnt = false;
   let massen = 0;
+  let nichtLeer = false;
   let vorher: TasksState | null = null;
-  const next = await updateJson<TasksState>(AUFGABEN_SPEICHER, current => {
+  const next = await aufgabenSchreiben(current => {
     vorher = current;
+    // Nur der Erststart darf den ganzen Stand schreiben — sonst wäre es ein altes Fenster, das alles ersetzt.
+    if (current && ((current.tasks?.length ?? 0) > 0 || (current.projects?.length ?? 0) > 0)) { nichtLeer = true; return current; }
     const alt = current?.tasks?.length ?? 0;
     // Ab 10 Aufgaben: die Hälfte auf einmal zu verlieren ist fast immer ein Fehler — ablehnen, bis bestätigt.
     if (alt >= 10 && tasks.length < alt / 2 && b.massenLoeschung !== true) { abgelehnt = true; return current as TasksState; }
@@ -111,6 +134,7 @@ export async function PUT(req: Request) {
       gruppen: gruppen ?? current?.gruppen ?? [], vorlagen: vorlagen ?? current?.vorlagen ?? [],
     }, orgs).state;
   });
+  if (nichtLeer) return NextResponse.json({ ok: false, neuLaden: true, error: `Ganzer Stand nur beim Erststart. ${NEU_LADEN_TEXT}` }, { status: 409 });
   if (abgelehnt) return NextResponse.json({ ok: false, massenLoeschung: true, error: 'Abgelehnt: das hätte über die Hälfte der Aufgaben gelöscht. Wenn das so gewollt ist, noch einmal mit ausdrücklicher Bestätigung schicken.' }, { status: 409 });
   if (massen) return NextResponse.json({ ok: false, massenAenderung: true, anzahl: massen, grenze: MASSEN_GRENZE, error: `Abgelehnt: das hätte ${massen} Aufgaben auf einmal erledigt. Wenn das so gewollt ist, noch einmal mit ausdrücklicher Bestätigung schicken.` }, { status: 409 });
   await protokolliereBestand(AUFGABEN_SPEICHER, vorher, next, werAus(req));

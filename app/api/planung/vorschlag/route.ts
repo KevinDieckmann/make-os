@@ -16,6 +16,7 @@ import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
 import { SAEULE_VON_PROJEKT, SAEULE_LABEL } from '@/lib/make-one/fokus-data';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { neueKennung } from '@/lib/kennung';
+import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 interface RoutineDef { label: string; wann: 'morgen' | 'tag' | 'abend'; dauerMin: number; aktiv: boolean }
 
 export const runtime = 'nodejs';
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
   const [cal, kem, tasksState, ziele, vitals, routinenF, reglerF] = await Promise.all([
     loadJson<{ events: CalEvent[] }>('calendar-cache'),
     loadJson<{ events: KemEvent[] }>('kemaris-calendar'),
-    loadJson<{ tasks: Task[] }>('tasks'),
+    ladeAufgabenSicht(),
     loadJson<Record<string, { titel: string; fortschritt: number; erledigt?: boolean }[]> & { fokus?: Record<string, string> }>('ziele'),
     resolveVitals(undefined, personAus(req)),
     loadJson<{ routinen: RoutineDef[] }>('routinen'),

@@ -14,9 +14,11 @@ export type AngebotMitStand = Angebot & { stand: string };
 export type GesellschaftAnzeige = Gesellschaft & { stand: string; luecken: string[] };
 export interface AngebotAntwort { ok: boolean; fehler?: string; angebot?: AngebotMitStand; aktuell?: AngebotMitStand; [k: string]: unknown }
 
-export async function angebotPost(body: Record<string, unknown>): Promise<AngebotAntwort & { status: number }> {
+export async function angebotPost(body: Record<string, unknown>, opt: { keepalive?: boolean } = {}): Promise<AngebotAntwort & { status: number }> {
   try {
-    const r = await fetch('/api/crm/angebot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const text = JSON.stringify(body);
+    // keepalive (29.09., A5): beim Verlassen der Seite überlebt die Anfrage das Schließen des Tabs (bis 60 KB).
+    const r = await fetch('/api/crm/angebot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: text, ...(opt.keepalive && text.length < 60_000 ? { keepalive: true } : {}) });
     const d = (await r.json().catch(() => ({ ok: false, fehler: `Antwort ${r.status}` }))) as AngebotAntwort;
     return { ...d, status: r.status };
   } catch { return { ok: false, fehler: 'Keine Verbindung — nichts geändert.', status: 0 }; }

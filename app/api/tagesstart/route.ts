@@ -18,7 +18,7 @@ import { innenAdresse } from '@/lib/innen';
 import { personAus } from '@/lib/zoe/raum';
 import { ablaufNachziehen } from '@/lib/crm/angebot-server';
 import { imHaushaltOderSystemlauf } from '@/lib/zugang/haushalt-inhaber';
-import { aufgabenSerienNachziehen } from '@/lib/aufgaben/serie-server';
+import { aufgabenSerienNachziehen, papierkorbAufraeumen } from '@/lib/aufgaben/serie-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -87,6 +87,18 @@ export async function POST(req: Request) {
     }
   } catch (err) {
     schritte.push({ name: 'Aufgaben-Serien', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
+  // 0c) Aufgaben-Papierkorb (29.09.): älter als 30 Tage → endgültig (samt Kette und Dateien), Protokoll „System“.
+  try {
+    if (!(await imHaushaltOderSystemlauf(req))) schritte.push({ name: 'Aufgaben-Papierkorb', ok: false, info: 'nur im Haushalt des Inhabers' });
+    else {
+      const p = await papierkorbAufraeumen();
+      const was = [p.projekte ? `${p.projekte} Projekt${p.projekte === 1 ? '' : 'e'}` : '', p.aufgaben ? `${p.aufgaben} Aufgabe${p.aufgaben === 1 ? '' : 'n'}` : '', p.dateien ? `${p.dateien} Datei${p.dateien === 1 ? '' : 'en'}` : ''].filter(Boolean).join(', ');
+      schritte.push({ name: 'Aufgaben-Papierkorb', ok: true, info: was ? `endgültig gelöscht: ${was}` : 'nichts älter als 30 Tage' });
+    }
+  } catch (err) {
+    schritte.push({ name: 'Aufgaben-Papierkorb', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
   // 1) Kalender auffrischen — nur wenn er wirklich alt ist. Der osascript-Read

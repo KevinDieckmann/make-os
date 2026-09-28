@@ -25,6 +25,7 @@
 // (Default-Deny, Haushalt des Inhabers). Die CRM-Ablage geht nie an KI/Agenten.
 
 import { promises as fs } from 'fs';
+import { atomarSchreiben } from '@/lib/store/atomar.mjs';
 import path from 'path';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { datenOrdner, datenSchluessel, loadJson, updateJson } from '@/lib/store/local-db';
@@ -89,17 +90,16 @@ export const neueDateiId = () => `d-${Date.now().toString(36)}-${randomBytes(4).
 export interface NeueDatei { bytes: Buffer; name: string; typ: DateiInfo['typ'] }
 
 /**
- * Inhalt ablegen: verschlüsselt (wenn ein Datenschlüssel da ist), tmp + rename, 0600 im Ordner 0700.
- * Liefert, ob verschlüsselt abgelegt wurde. Geteilt mit der Aufgaben-Ablage.
+ * Inhalt ablegen: verschlüsselt (wenn ein Datenschlüssel da ist), 0600 im Ordner 0700 — atomar UND dauerhaft über
+ * `atomarSchreiben` (29.09.: tmp → fsync → rename → Ordner-fsync, wie local-db; vorher ohne fsync, nach einem Stromausfall
+ * konnte eine leere/halbe .bin unter dem richtigen Namen stehen). Liefert, ob verschlüsselt abgelegt wurde.
+ * Geteilt mit der Aufgaben-Ablage.
  */
 export async function inhaltAblegen(haushalt: string, id: string, bytes: Buffer): Promise<boolean> {
   const key = datenSchluessel();
   const ordner = haushaltOrdner(haushalt);
   await fs.mkdir(ordner, { recursive: true, mode: 0o700 });
-  const pfad = dateiPfad(haushalt, id);
-  const tmp = `${pfad}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
-  await fs.writeFile(tmp, key ? inhaltVerschluesseln(bytes, key) : bytes, { mode: 0o600 });
-  await fs.rename(tmp, pfad);
+  await atomarSchreiben(dateiPfad(haushalt, id), key ? inhaltVerschluesseln(bytes, key) : bytes);
   return !!key;
 }
 /** Inhalt lesen (Hülle → entschlüsselt, sonst wie abgelegt) — null, wenn die Datei fehlt. */

@@ -18,13 +18,12 @@ import { logRun } from '@/lib/agent-log';
 import { teamFuerAnfrage } from '@/lib/make-one/team-speicher';
 import { delegierbar, personZuKurz, teamZeilenAus } from '@/lib/make-one/team-typen';
 import { modellSchranke } from '@/lib/zugang/umfang';
+import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 interface StoredTask { id: string; title: string; description?: string; status: string; priority: string; dueDate?: string; projectId?: string; assignee?: string }
-interface StoredProject { id: string; category?: string }
-interface TasksFile { tasks: StoredTask[]; projects: StoredProject[] }
 
 export interface Vorschlag {
   taskId: string;
@@ -55,7 +54,7 @@ export async function POST(req: Request) {
   const agent = await resolveAgent('task');
   if (!agent.enabled) return NextResponse.json(disabledResponse(agent));
 
-  const f = await loadJson<TasksFile>('tasks');
+  const f = await ladeAufgabenSicht();
   const projekte = new Map((f?.projects ?? []).map(p => [p.id, p.category ?? '']));
   const offen = (f?.tasks ?? []).filter(t => t.status !== 'done' && t.assignee !== 'malin');
   // Fail-closed: nur business in den Prompt; joint (MAKE.One) separat — nur Malin.

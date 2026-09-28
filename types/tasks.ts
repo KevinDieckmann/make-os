@@ -67,6 +67,11 @@ export interface Task extends Timestamps {
   zoe?: ZoeAuftrag;
   /** Verlauf je Aufgabe — schreibt NUR der Server (lib/aufgaben/verlauf.ts); Werte nur für Kurzwerte (Status, Datum, Person). */
   verlauf?: VerlaufEintrag[];
+  // ── Papierkorb (29.09., lib/aufgaben/papierkorb.ts) ──
+  /** Im Papierkorb seit (ISO). Leser blenden solche Aufgaben aus (`aufgabenSicht`); nach 30 Tagen endgültig weg. */
+  geloeschtAm?: string;
+  /** Mit wem sie in den Papierkorb ging (Projekt- bzw. Eltern-Kennung) — Wiederherstellen holt die ganze Kette zurück. */
+  geloeschtMit?: ID;
 }
 
 /** Wert eines eigenen Feldes: Text/Datum/Auswahl/Link/Person als Text, Zahl als Zahl, Betrag als ganze Cent. */
@@ -245,6 +250,8 @@ export interface Project extends Timestamps {
   felder?: EigenesFeld[];
   /** Aus welcher Vorlage das Projekt entstand (Paket C3). */
   vorlageId?: ID;
+  /** Im Papierkorb seit (ISO, 29.09.) — samt Aufgaben (`Task.geloeschtMit` = Projekt), Notiz, Feldern und Dateien. */
+  geloeschtAm?: string;
 }
 
 export type ProjektStatus = 'aktiv' | 'pausiert' | 'abgeschlossen';
@@ -260,6 +267,8 @@ export interface TasksState {
   gruppen?: AufgabenGruppe[];
   /** Vorlagen für Projekte und Listen (28.09. spät, Paket C3). */
   vorlagen?: AufgabenVorlage[];
+  /** Merker der Übernahme (29.09., A9): gesetzt, sobald der Bestand einmal im neuen Modell geschrieben wurde — davor liegt eine Archiv-Kopie `tasks-vor-umbau-<zeit>`. */
+  umbauVersion?: number;
 }
 
 export type TasksAction =

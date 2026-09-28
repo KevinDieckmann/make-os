@@ -10,6 +10,7 @@ import { localDay, tagePlus } from "@/lib/zeit";
 import { hasAnthropicKey } from "@/lib/anthropic";
 import { lesen, type MalinExport } from "@/lib/make-one/grundlage";
 import { SCHRITTE } from "@/lib/make-one/onboarding-data";
+import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 
 export interface Handisch { erledigt: Record<string, { at: string; von: string }> }
 export interface Befund { erfuellt: boolean; wert: string }
@@ -24,7 +25,7 @@ export async function pruefeAlles(): Promise<Record<string, Befund>> {
     loadJson<{ kontakte?: unknown[] }>('netzwerk'),
     loadJson<{ events?: unknown[] }>('calendar-cache'),
     loadJson<{ messages?: unknown[]; nachrichten?: unknown[] }>('microsoft-inbox'),
-    loadJson<{ tasks?: { status?: string; dueDate?: string; assignee?: string }[] }>('tasks'),
+    ladeAufgabenSicht(),
     loadJson<{ modus?: string; eigene?: Record<string, unknown> }>('kompass'),
     loadJson<{ fokus?: Record<string, string>; jahr?: unknown[] }>('ziele'),
     loadJson<{ zielUmsatz?: number; startMonat?: number }>('finance'),
@@ -48,7 +49,7 @@ export async function pruefeAlles(): Promise<Record<string, Befund>> {
 
   const offen = (tasks?.tasks ?? []).filter(t => t.status !== 'done');
   const ueberfaellig = offen.filter(t => t.dueDate && t.dueDate < heute).length;
-  const malinAufgaben = offen.filter(t => t.assignee === 'malin' || t.assignee === 'beide').length;
+  const malinAufgaben = offen.filter(t => t.assignee === 'malin' || (t.assignee as string) === 'beide').length;
 
   const g = grund?.roh ? lesen(grund.roh, grund.stand) : null;
   const kvPv = g?.konfiguration.kvPvKevinMonat ?? 0;

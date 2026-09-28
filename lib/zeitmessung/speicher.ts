@@ -7,12 +7,12 @@
 // 26.09.: Leerlauf-Schreibungen vermeiden). Geht der Prozess dazwischen aus,
 // fehlen höchstens zwei Minuten — für eine Zeitstatistik verschmerzbar.
 
+import { ladeAufgaben } from '@/lib/aufgaben/sicht';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { speicherFuer, type Person } from '@/lib/zoe/raum';
 import { localDay } from '@/lib/zeit';
 import { LEER_ZEIT, verbuchen, fokusVerbuchen, blockZuordnen, blockUmbuchen, aufraeumen, bild, type ZeitDatei, type ZeitBild, type BlockZuordnung } from './modell';
 import { aufgabeKurz, type AufgabeKurz } from './einheiten';
-import type { TasksState } from '@/types/tasks';
 
 const NAME = 'zeit';
 export const PUFFER_MS = 120_000;
@@ -114,7 +114,7 @@ export async function zeitAendern(person: Person, f: (d: ZeitDatei) => ZeitDatei
 
 /** Die Aufgaben als Kurzform (Space und Einheit wie im Aufgaben-Schreibweg, Orte aus `ordnung`). */
 export async function aufgabenKurz(): Promise<AufgabeKurz[]> {
-  const state = await loadJson<TasksState>('tasks');
+  const state = await ladeAufgaben(); // übernommen (29.09., A9) — Space/Einheit wie im Schreibweg
   const ordnung = await loadJson<{ orgs?: Record<string, string> }>('ordnung');
   const orgs = ordnung?.orgs && typeof ordnung.orgs === 'object' ? ordnung.orgs : {};
   return (state?.tasks ?? []).map(t => aufgabeKurz(t, orgs));

@@ -11,6 +11,7 @@
 // (Dateiablage und Gesellschaften liegen je Haushalt). Nichts wird versendet — das Mail-Programm öffnet der Browser.
 
 import { NextResponse } from 'next/server';
+import { bauPruefen } from '@/lib/bau/pruefen';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
@@ -44,6 +45,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const z = await imHaushaltDesInhabers(req);
   if (!z) return NextResponse.json(GESPERRT, { status: 403 });
+  const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2)
+  if (alterBau) return alterBau;
   let b: { aktion?: string; id?: unknown; felder?: unknown; stand?: unknown; grund?: unknown; nachfassenAm?: unknown };
   try { b = await req.json(); } catch { return fehler('Kein JSON.', 400); }
   // Person aus dem Zugang (Regel 5) — Sitzung oder Dienstweg mit Person.

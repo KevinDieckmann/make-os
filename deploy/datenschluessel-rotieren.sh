@@ -28,8 +28,16 @@ echo "▸ starten"
 docker compose up -d </dev/null
 for i in $(seq 1 24); do docker ps --format '{{.Names}} {{.Status}}' | grep -q 'app-app-1.*(healthy)' && break; sleep 5; done
 docker ps --format '{{.Names}} {{.Status}}'
-REST=$(grep -L __verschluesselt /srv/make-os/daten/*.json /srv/make-os/daten/backup/*.json 2>/dev/null | wc -l)
-echo "▸ fertig — Klartext-Reste: $REST. Neuen Schlüssel jetzt in den Passwort-Manager (siehe Kopf dieser Datei)."
+# Restkontrolle (29.09.): Bestände, Tagessicherungen, Archiv-Kopien (<daten>/archiv, z. B. tasks-vor-umbau-…) und die
+# Dateiablage (<daten>/dateien/<haushalt>/*.bin, Hülle beginnt mit MKOSDAT1) — alles muss verschlüsselt sein.
+REST=$(grep -L __verschluesselt /srv/make-os/daten/*.json /srv/make-os/daten/backup/*.json /srv/make-os/daten/archiv/*.json 2>/dev/null | wc -l | tr -d ' ')
+REST_BIN=0
+for f in /srv/make-os/daten/dateien/*/*.bin; do
+  [ -e "$f" ] || continue
+  [ "$(head -c 8 "$f")" = "MKOSDAT1" ] || REST_BIN=$((REST_BIN + 1))
+done
+echo "▸ fertig — Klartext-Reste: $REST Bestände/Archiv, $REST_BIN Dateien. Neuen Schlüssel jetzt in den Passwort-Manager (siehe Kopf dieser Datei)."
+[ "$REST" = "0" ] && [ "$REST_BIN" = "0" ] || echo "  ACHTUNG: Klartext-Reste gefunden — prüfen (scripts/daten-verschluesselung.mjs --verschluesseln erneut laufen lassen)."
 # Alter Schlüssel (28.09., K1 #109/#110): Tagesarchive (14 Tage) und Hetzner-Abbilder (7 Tage) von VOR der
 # Rotation enthalten Bestände, die mit dem ALTEN Schlüssel verschlüsselt sind — ohne ihn sind sie wertlos.
 # Das Skript gibt keinen Schlüssel aus, weder alt noch neu.

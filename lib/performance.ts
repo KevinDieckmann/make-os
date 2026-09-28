@@ -21,6 +21,7 @@ import { berechne } from '@/lib/business/index';
 import { ladeRoh as ladeBusinessRoh, bestandFuer } from '@/lib/business/speicher';
 import { zeitBildFuer } from '@/lib/zeitmessung/speicher';
 import { pflegeRhythmus, type Rhythmus } from '@/lib/familie/logik';
+import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 
 export interface Faktor {
   label: string;
@@ -115,7 +116,7 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   // Haut-Tagebuch und Streak (23.09.) — die zwei Hebel, die Kevin am 29.07.
   // genannt hat und die bis dahin nirgends gemessen wurden.
   const [tasksState, journal, cal, ritualLog] = await Promise.all([
-    loadJson<{ tasks: { status: string; priority: string; dueDate?: string; assignee?: string }[] }>('tasks'),
+    ladeAufgabenSicht(),
     loadJson<Record<string, JournalTag>>(p('journal')),
     loadJson<CalCache>('calendar-cache'),
     loadJson<Record<string, string[]>>(p('rituale')),

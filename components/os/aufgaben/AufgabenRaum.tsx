@@ -10,13 +10,13 @@
 // ZOE-Stapel (C4, Kachel „Wartet auf Freigabe“), weitere Ansichten (C5, `ansicht=`).
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
+import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Spalten, Spalte, Segmente, Leer, feld, useBreit } from '../schlank';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { nachOben } from '../Verlauf';
-import { useTasks, AUFGABEN_KONFLIKT } from '@/context/TasksContext';
+import { useTasks } from '@/context/TasksContext';
 import { useSpace } from '@/hooks/useSpace';
 import { localDay } from '@/lib/zeit';
 import { baum, passtFilter, statusListe, bereichVonSpace, FILTER_STANDARD, sonstigeProjektId, istSonstigeProjekt, type AufgabenFilter, type FaelligFilter } from '@/lib/aufgaben/struktur';
@@ -41,7 +41,7 @@ const FILTER_MERKER = 'make-aufgaben-filter';
 const lies = (k: string): string | null => { try { return localStorage.getItem(k); } catch { return null; } };
 const merke = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* egal */ } };
 const FAELLIG: { id: FaelligFilter; label: string }[] = [{ id: 'alle', label: 'Jederzeit' }, { id: 'ueberfaellig', label: 'Überfällig' }, { id: 'heute', label: 'Bis heute' }, { id: 'woche', label: '7 Tage' }, { id: 'ohne', label: 'Ohne Datum' }];
-const hinweisStil: CSSProperties = { background: `${LEUCHT.achtung}1F`, border: `1px solid ${LEUCHT.achtung}66`, color: LEUCHT.achtung, borderRadius: 12, padding: '10px 14px', fontSize: TYP.bedien, marginBottom: 12, cursor: 'pointer' };
+
 
 export function AufgabenRaum() {
   const { state, dispatch, spaces: rohSpaces, ready } = useTasks();
@@ -59,16 +59,13 @@ export function AufgabenRaum() {
   const [raumGemerkt, setRaumGemerkt] = useState<string | null>(null);
   const [statusZeigen, setStatusZeigen] = useState(false);
   const [neuProjekt, setNeuProjekt] = useState<string | null>(null);
-  const [hinweis, setHinweis] = useState<string | null>(null);
+
   useEffect(() => {
     try { const f = JSON.parse(lies(FILTER_MERKER) ?? 'null') as Partial<AufgabenFilter> | null; if (f) setFilterRoh({ ...FILTER_STANDARD, ...f }); } catch { /* egal */ }
     setRaumGemerkt(lies(RAUM_MERKER));
   }, []);
-  useEffect(() => {
-    const k = () => { setHinweis('Nicht gespeichert — jemand hat die Aufgabe inzwischen geändert. Die Anzeige zeigt jetzt den aktuellen Stand, bitte noch einmal.'); setTimeout(() => setHinweis(null), 8000); };
-    window.addEventListener(AUFGABEN_KONFLIKT, k);
-    return () => window.removeEventListener(AUFGABEN_KONFLIKT, k);
-  }, []);
+  // Konflikte, Ablehnungen und „wird erneut versucht“ zeigt seit 29.09. der globale Speicher-Hinweis (TasksProvider) —
+  // überall gleich, mit „Deine Fassung“ (übernehmen/kopieren) statt eines Hinweises, der die eigene Eingabe verwirft.
   const setFilter = (f: Partial<AufgabenFilter>) => setFilterRoh(alt => { const n = { ...alt, ...f }; merke(FILTER_MERKER, JSON.stringify({ wer: n.wer, status: n.status, faellig: n.faellig })); return n; });
 
   // ── Wohin: ein neuer Ort = neuer Eintrag im Verlauf (Zurück führt zurück), Gleichrangiges tauscht nur ──
@@ -177,7 +174,7 @@ export function AufgabenRaum() {
     }>
       <AufgabenLeiste adresse={adresse} spaces={spaces} offenJe={offenJe} gehe={gehe} />
       <SchnellAnlegen state={state} dispatch={dispatch} spaces={spaces} vorbelegt={vorbelegt} />
-      {hinweis && <div role="alert" onClick={() => setHinweis(null)} style={hinweisStil}>{hinweis}</div>}
+
       {!ready && <Karte i={1}><Leer>lade …</Leer></Karte>}
 
       {ready && adresse.ansicht === 'ueberblick' && (darstellung === 'zoe'

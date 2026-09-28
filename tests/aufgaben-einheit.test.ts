@@ -141,9 +141,16 @@ describe('Einheit — Schreibweg /api/state/tasks und /api/tasks/create', () => 
     expect(e('p-1')?.spaceId).toBe('privat');
   });
 
-  it('PUT (Voll-Stand) säubert genauso', async () => {
+  it('PUT: über einen vorhandenen Bestand 409 „neu laden“ (29.09., A2) — beim leeren Erststart säubert er genauso', async () => {
     const alt = await lies();
-    const r = await tasks.PUT(req('/api/state/tasks', { projects: [{ id: 'proj-kdm', title: 'KD' }], tasks: [...alt.filter(t => t.id !== 'b-ug'), aufgabe('b-ug', { space: 'business', einheit: 'kdv' }), aufgabe('p-2', { space: 'privat', einheit: 'MAKE OS UG' })] }, 'PUT'));
+    const koerper = { projects: [{ id: 'proj-kdm', title: 'KD' }], tasks: [...alt.filter(t => t.id !== 'b-ug'), aufgabe('b-ug', { space: 'business', einheit: 'kdv' }), aufgabe('p-2', { space: 'privat', einheit: 'MAKE OS UG' })] };
+    const abgelehnt = await tasks.PUT(req('/api/state/tasks', koerper, 'PUT'));
+    expect(abgelehnt.status).toBe(409);
+    expect(((await abgelehnt.json()) as { neuLaden?: boolean }).neuLaden).toBe(true);
+    expect(await lies()).toEqual(alt);
+    // Leerer Erststart: dann (und nur dann) darf der ganze Stand geschrieben werden.
+    await db.saveJson('tasks', { projects: [], tasks: [] });
+    const r = await tasks.PUT(req('/api/state/tasks', koerper, 'PUT'));
     expect(r.status).toBe(200);
     const l = await lies();
     expect(l.find(t => t.id === 'b-ug')?.einheit).toBe('KD Ventures');

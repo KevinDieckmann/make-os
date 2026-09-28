@@ -12,16 +12,23 @@
 //   - @kevin Etwas für Kevin         → Aufgabe für Kevin
 //   - ? Anmerkung oder Idee          → Notiz in den Bauplan
 // Erledigte Zeilen beginnen mit „- [x]" und werden übersprungen.
+//
+// Seit 29.09. (A8): nur für den Haushalt des Inhabers (oder den Systemlauf); neue Aufgaben gehen über den EINEN
+// Schreibweg `aufgabenAendern` (Übernahme, Verlauf, Protokoll, Meldungen) — vorher schrieb die Route `{ projects, tasks }`
+// zurück und warf Listen, eigene Status, Gruppen und Vorlagen weg. Abgehakt wird eine Zeile erst, wenn gespeichert ist.
 
 import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import { homedir } from 'os';
 import path from 'path';
-import { loadJson, updateJson } from '@/lib/store/local-db';
 import { randomUUID } from 'crypto';
-import type { TasksState, Task } from '@/types/tasks';
+import type { Task } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
 import { personAus } from '@/lib/zoe/raum';
+import { imHaushaltOderSystemlauf, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
+import { werAus } from '@/lib/store/aenderungsprotokoll';
+import { ladeAufgabenSicht, aufgabenAendern, type AufgabenOps } from '@/lib/aufgaben/speicher';
+import { taskSauber } from '@/lib/aufgaben/saeubern';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -86,7 +93,8 @@ async function datei(): Promise<string | null> {
   try { return await fs.readFile(DATEI, 'utf8'); } catch { return null; }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!(await imHaushaltOderSystemlauf(req))) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   const inhalt = await datei();
   if (inhalt === null) {
     return NextResponse.json({ da: false, zeilen: [], hinweis: 'Datei noch nicht angelegt — POST mit {anlegen:true} erstellt sie.' });
@@ -95,6 +103,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const zugang = await imHaushaltOderSystemlauf(req);
+  if (!zugang) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   let body: { anlegen?: boolean } = {};
   try { body = await req.json(); } catch { /* ohne Body ist ok */ }
 
@@ -115,7 +125,7 @@ export async function POST(req: Request) {
   const zeilen = lies(inhalt);
   if (!zeilen.length) return NextResponse.json({ ok: true, aufgaben: 0, notizen: 0, hinweis: 'Nichts Neues im Eingang.' });
 
-  const state = (await loadJson<TasksState>('tasks')) ?? { projects: [], tasks: [] };
+  const state = await ladeAufgabenSicht();
   const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
   const offen = new Set(state.tasks.filter(t => t.status !== 'done').map(t => norm(t.title)));
   const now = new Date().toISOString();
@@ -151,7 +161,13 @@ export async function POST(req: Request) {
     });
   }
 
-  if (neue.length) await updateJson<TasksState>('tasks', cur => ({ projects: cur?.projects ?? state.projects, tasks: [...(cur?.tasks ?? []), ...neue.filter(n => !(cur?.tasks ?? []).some(t => t.id === n.id))] }));
+  if (neue.length) {
+    const ops: AufgabenOps = { tasks: [], projects: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] };
+    for (const n of neue) { const t = taskSauber(n); if (t) ops.tasks.push({ op: 'upsert', eintrag: t }); }
+    const r = await aufgabenAendern(ops, { person: zugang.person ?? 'system', wer: werAus(req) });
+    // Nicht gespeichert → nichts abhaken (sonst ginge die Zeile verloren); beim nächsten Abgleich erneut.
+    if (!r.ok) return NextResponse.json({ ok: false, error: r.fehler ?? 'Nicht gespeichert — der Eingang bleibt offen.' }, { status: r.status });
+  }
 
   // Verarbeitete Zeilen abhaken, damit nichts doppelt ankommt.
   let neuerInhalt = inhalt;

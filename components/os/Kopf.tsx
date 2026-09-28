@@ -20,7 +20,7 @@ import { Sun, Inbox as InboxIcon, Search, CalendarDays, ArrowUpRight, Timer, Squ
 import { useSpace } from '@/hooks/useSpace';
 import { spaceVon, type SpaceId } from '@/lib/make-one/spaces';
 import { zeitText, teile } from '@/lib/zeitmessung/modell';
-import { gemerkterFokus, fokusMerken, FOKUS_MERKER, FOKUS_EREIGNIS, type LaufenderFokus } from '@/lib/zeitmessung/fokus-laufend';
+import { gemerkterFokus, fokusMerken, fokusAbgleichen, FOKUS_MERKER, FOKUS_EREIGNIS, type LaufenderFokus } from '@/lib/zeitmessung/fokus-laufend';
 import { useTasks } from '@/context/TasksContext';
 import { ZuordnungWahl, type Zuordnung } from './zeit/Zuordnung';
 import { WEG } from '@/lib/wege';
@@ -184,10 +184,14 @@ function FokusZaehler({ pfad, space }: { pfad: string; space: SpaceId }) {
   useEffect(() => {
     const lesen = () => { setLaufend(gemerkterFokus()); setJetzt(Date.now()); };
     lesen();
+    // Der Server hält den laufenden Fokus je Person (29.09.) — beim Öffnen und bei Fokus abgleichen (anderes Gerät, Tab-Verlust).
+    void fokusAbgleichen();
+    const fokus = () => { void fokusAbgleichen(); };
     const fremd = (e: StorageEvent) => { if (e.key === FOKUS_MERKER) lesen(); };
     window.addEventListener(FOKUS_EREIGNIS, lesen);
     window.addEventListener('storage', fremd);
-    return () => { window.removeEventListener(FOKUS_EREIGNIS, lesen); window.removeEventListener('storage', fremd); };
+    window.addEventListener('focus', fokus);
+    return () => { window.removeEventListener(FOKUS_EREIGNIS, lesen); window.removeEventListener('storage', fremd); window.removeEventListener('focus', fokus); };
   }, []);
   useEffect(() => {
     if (!laufend) return;
@@ -206,10 +210,21 @@ function FokusZaehler({ pfad, space }: { pfad: string; space: SpaceId }) {
   const stoppen = async () => {
     if (!laufend) return;
     const l = laufend;
-    fokusMerken(null);
+    // Erst der fertige Block, dann den laufenden löschen (29.09.) — scheitert das Speichern, läuft der Zähler weiter,
+    // statt dass die Fokus-Zeit still verloren geht.
+    let status = 0, grund = '';
     try {
-      await fetch('/api/state/zeit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'fokus', von: l.von, bis: new Date().toISOString(), schluessel: l.schluessel, label: l.label, aufgabeId: l.aufgabeId, einheit: l.einheit, mandatId: l.mandatId }) });
-    } catch { /* der Block ist dann weg — besser als ein hängender Zähler */ }
+      const r = await fetch('/api/state/zeit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'fokus', von: l.von, bis: new Date().toISOString(), schluessel: l.schluessel, label: l.label, aufgabeId: l.aufgabeId, einheit: l.einheit, mandatId: l.mandatId }) });
+      status = r.status;
+      if (!r.ok) grund = String(((await r.json().catch(() => ({}))) as { error?: string }).error ?? '');
+    } catch { status = 0; }
+    if (status < 200 || status >= 300) {
+      // Inhaltlich abgelehnt (400): fragen statt endlos weiterzählen; sonst (Netz, 5xx, Sitzung) weiterlaufen lassen.
+      if (status === 400 && window.confirm(`Fokus-Block abgelehnt${grund ? `: ${grund}` : ''}.\n\nZähler trotzdem beenden (diese Zeit wird nicht gezählt)?`)) fokusMerken(null);
+      else if (status !== 400) window.alert('Fokus-Zeit nicht gespeichert (keine Verbindung oder Server nicht erreichbar). Der Zähler läuft weiter — bitte gleich noch einmal beenden.');
+      return;
+    }
+    fokusMerken(null);
     window.dispatchEvent(new Event(ZEIT_EREIGNIS));
   };
   if (laufend) {

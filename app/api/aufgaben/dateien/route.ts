@@ -13,6 +13,7 @@
 // — getrennt von der CRM-Ablage, die ZOE nie liest. Diese hier liest ZOE (gekapselt, lib/zoe/aufgaben-unterlagen.ts).
 
 import { NextResponse } from 'next/server';
+import { bauPruefen } from '@/lib/bau/pruefen';
 import { createHash } from 'crypto';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
@@ -80,6 +81,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2)
+  if (alterBau) return alterBau;
   const art = req.headers.get('content-type') ?? '';
   if (!art.startsWith('multipart/form-data')) return FALSCHER_TYP();
   try {
@@ -105,6 +108,8 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2)
+  if (alterBau) return alterBau;
   let b: { id?: unknown; felder?: unknown };
   try { b = JSON.parse((await begrenztLesen(req, UMSCHLAG))?.toString('utf8') ?? 'null') ?? {}; } catch { return fehler('Kein gültiges JSON.', 400); }
   const id = String(b.id ?? '');
@@ -118,6 +123,8 @@ export async function PATCH(req: Request) {
 export async function DELETE(req: Request) {
   const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2)
+  if (alterBau) return alterBau;
   const id = new URL(req.url).searchParams.get('id') ?? '';
   if (!DATEI_ID.test(id)) return fehler('Unzulässige Kennung.', 400);
   try {

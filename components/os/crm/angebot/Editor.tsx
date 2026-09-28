@@ -10,6 +10,9 @@
 //               Zahlungsziel — alles vorbelegt, nur anpassen.
 // Unten die feste Summenleiste (einmalig · monatlich · jährlich · Gesamtwert) mit
 // „Mail versenden“. Der Entwurf speichert von selbst (Stand/409, nacheinander).
+// Seit 29.09. (A4/A5): beim Verlassen der Seite sofort (keepalive) und mit Warnung, solange etwas offen ist; scheitert
+// das Speichern vorübergehend (Netz, 5xx), versucht es ein Timer erneut; bei 409 wird die eigene Eingabe nicht
+// weggeworfen — sie bleibt als „Deine Fassung“ (übernehmen/kopieren), gezeigt wird der gespeicherte Stand.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Angebot, AngebotPosition, Chance, Firma } from '@/lib/crm/typen';
@@ -85,6 +88,9 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   const [vonHand, setVonHand] = useState<VonHand>(() => ({ titel: !!start?.titel, einleitung: !!start, schluss: !!start }));
   const [status, setStatus] = useState<'ruhig' | 'wartet' | 'speichert' | 'gespeichert' | 'fehler'>(start ? 'gespeichert' : 'ruhig');
   const [meldung, setMeldung] = useState<string | null>(null);
+  /** Die eigene Fassung nach einem 409 — nie weggeworfen, bis sie übernommen oder verworfen ist. */
+  const [meine, setMeine] = useState<Form | null>(null);
+  const versuch = useRef(0);
   const [ansicht, setAnsicht] = useState<'bearbeiten' | 'vorschau'>('bearbeiten');
   const [mail, setMail] = useState<MailEntwurf>({ an: '', betreff: '', text: '' });
   const [nachfassen, setNachfassen] = useState(() => werktagePlus(heute, NACHFASSEN_WERKTAGE));
@@ -99,24 +105,50 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   // Aufrufer-Werte über Refs — sonst entstünde `speichernJetzt` bei jedem Zeichnen neu (und das Aufräumen liefe mit).
   const datenRef = useRef(daten); datenRef.current = daten;
   const gespeichertMeldung = useRef(onGespeichert); gespeichertMeldung.current = onGespeichert;
-  const speichernJetzt = useCallback(() => {
+  const speichernJetzt = useCallback((opt: { keepalive?: boolean } = {}) => {
     if (uhr.current) { clearTimeout(uhr.current); uhr.current = null; }
     if (!offen.current) return kette.current;
     offen.current = false;
     kette.current = kette.current.then(async () => {
       setStatus('speichert');
-      const r = await angebotPost({ aktion: 'speichern', id, felder: formRef.current, ...(standRef.current ? { stand: standRef.current } : {}) });
+      const gesendet = formRef.current;
+      const r = await angebotPost({ aktion: 'speichern', id, felder: gesendet, ...(standRef.current ? { stand: standRef.current } : {}) }, opt);
       if (r.ok && r.angebot) {
+        versuch.current = 0;
         standRef.current = r.angebot.stand; datenRef.current.uebernehmen(r.angebot); setStatus(offen.current ? 'wartet' : 'gespeichert'); setMeldung(null);
         if (!gespeichert.current) { gespeichert.current = true; gespeichertMeldung.current(id); }
       } else if (r.status === 409 && r.aktuell) {
+        // Die eigene Eingabe bleibt als „Deine Fassung“ — angezeigt wird der gespeicherte Stand (A4).
+        const eigene = formRef.current;
         standRef.current = r.aktuell.stand; datenRef.current.uebernehmen(r.aktuell); setForm(nurForm(r.aktuell)); setStatus('fehler');
-        setMeldung(r.aktuell.status === 'entwurf' ? 'Jemand hat diesen Entwurf inzwischen geändert — sein Stand ist geladen, bitte die letzte Änderung noch einmal.' : 'Dieses Angebot ist inzwischen gestellt — Änderungen nur als neue Version.');
-      } else { setStatus('fehler'); setMeldung(r.fehler ?? 'Nicht gespeichert.'); offen.current = true; }
+        if (JSON.stringify(eigene) !== JSON.stringify(nurForm(r.aktuell))) setMeine(eigene);
+        setMeldung(r.aktuell.status === 'entwurf' ? 'Jemand hat diesen Entwurf inzwischen geändert — sein Stand ist geladen. Deine Fassung ist nicht verloren: übernehmen oder kopieren.' : 'Dieses Angebot ist inzwischen gestellt — Änderungen nur als neue Version. Deine Fassung kannst du kopieren.');
+      } else {
+        // Nicht gespeichert: offen bleiben. Vorübergehend (Netz, 5xx, abgelaufene Sitzung) → erneuter Versuch per Timer.
+        offen.current = true; setStatus('fehler');
+        const nochmal = r.status === 0 || r.status >= 500 || r.status === 429 || r.status === 401;
+        if (nochmal) {
+          const ms = Math.min(60_000, 2_000 * 2 ** Math.min(versuch.current++, 10));
+          setMeldung(`${r.fehler ?? 'Nicht gespeichert.'} Neuer Versuch in ${Math.round(ms / 1000)} s — die Eingabe bleibt.`);
+          if (uhr.current) clearTimeout(uhr.current);
+          uhr.current = setTimeout(() => { void speichernJetzt(); }, ms);
+        } else setMeldung(`${r.fehler ?? 'Nicht gespeichert.'} Die Eingabe bleibt — bitte anpassen, dann geht sie erneut raus.`);
+      }
     });
     return kette.current;
   }, [id]);
-  useEffect(() => () => { if (uhr.current) { clearTimeout(uhr.current); void speichernJetzt(); } }, [speichernJetzt]);
+  // Seite verlassen (Unmount): was offen ist, geht jetzt raus — auch nach einem Fehler (vorher nur bei laufendem Timer).
+  useEffect(() => () => { if (uhr.current) clearTimeout(uhr.current); if (offen.current) void speichernJetzt({ keepalive: true }); }, [speichernJetzt]);
+  // Tab weg/geschlossen: sofort mit keepalive; Warnung, solange etwas offen ist (A5).
+  useEffect(() => {
+    const raus = () => { if (offen.current) void speichernJetzt({ keepalive: true }); };
+    const verdeckt = () => { if (document.visibilityState === 'hidden') raus(); };
+    const warnen = (e: BeforeUnloadEvent) => { if (!offen.current) return; raus(); e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('pagehide', raus);
+    window.addEventListener('beforeunload', warnen);
+    document.addEventListener('visibilitychange', verdeckt);
+    return () => { window.removeEventListener('pagehide', raus); window.removeEventListener('beforeunload', warnen); document.removeEventListener('visibilitychange', verdeckt); };
+  }, [speichernJetzt]);
   const aendern = useCallback((teil: Partial<Form>) => {
     setForm(f => ({ ...f, ...teil }));
     offen.current = true; setStatus('wartet');
@@ -219,6 +251,16 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   return (
     <div style={{ display: 'grid', gap: 14, paddingBottom: 8 }}>
       {meldung && <Karte i={0} akzent={LEUCHT.achtung}><div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: TYP.bedien, color: C.inkDim }}><span>{meldung}</span><button onClick={() => setMeldung(null)} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer' }}>ok</button></div></Karte>}
+      {meine && (
+        <Karte i={0} akzent={LEUCHT.achtung}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
+            <span style={{ flex: 1, minWidth: 200 }}>Deine Fassung („{meine.titel || 'ohne Titel'}“, {meine.positionen.length} Position{meine.positionen.length === 1 ? '' : 'en'}) ist gemerkt.</span>
+            <button onClick={() => { void navigator.clipboard?.writeText([meine.titel, meine.einleitung, ...meine.positionen.map(p => `${p.titel}${p.text ? ` — ${p.text}` : ''}`), meine.schluss].filter(Boolean).join('\n\n')).catch(() => {}); }} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer' }}>kopieren</button>
+            <button onClick={() => { setMeine(null); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer' }}>verwerfen</button>
+            <Knopf onClick={() => { const f = meine; setMeine(null); setMeldung(null); aendern(f); }}>Deine Fassung übernehmen</Knopf>
+          </div>
+        </Karte>
+      )}
 
       <Karte i={0}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>

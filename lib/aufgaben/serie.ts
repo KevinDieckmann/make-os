@@ -68,7 +68,7 @@ export function wiederholungSetzen(t: Pick<Task, 'dueDate'>, w: Wiederholung | u
 
 /** Gibt es in der Serie eine offene Instanz (ohne `ausser`)? Unteraufgaben zählen nicht. */
 function offeneInstanz(alle: readonly Task[], serie: string, ausser?: string): boolean {
-  return alle.some(x => x.id !== ausser && !x.parentId && x.status !== 'done' && serieVon(x) === serie);
+  return alle.some(x => x.id !== ausser && !x.parentId && x.status !== 'done' && !x.geloeschtAm && serieVon(x) === serie);
 }
 
 /**
@@ -105,7 +105,7 @@ export function naechsteInstanz(t: Task, alle: readonly Task[], heute: string, j
   };
   const herkunft = t.vorlageId && !t.vorlageId.startsWith(SERIE_PRAEFIX) ? t.vorlageId : undefined;
   const inst = kopie(t, id, { dueDate: tag, startDate: verschoben(t.startDate, delta), serieId: serie.slice(SERIE_PRAEFIX.length), vorlageId: herkunft, wiederholung: ohneNaechste(t.wiederholung) });
-  const unter = alle.filter(x => x.parentId === t.id).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+  const unter = alle.filter(x => x.parentId === t.id && !x.geloeschtAm).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     .map((u, i) => kopie(u, `${id}-u${i + 1}`, { parentId: id, dueDate: verschoben(u.dueDate, delta), startDate: verschoben(u.startDate, delta) }));
   return [inst, ...unter];
 }
@@ -143,6 +143,8 @@ export function serienAufgabenNachholen(tasks: readonly Task[], heute: string, j
   const morgen = tagPlus(heute, 1);
   const neu: Task[] = [];
   for (const [serie, t] of Array.from(letzte.entries())) {
+    // Die jüngste Instanz liegt im Papierkorb (29.09.): die Serie ruht — gelöscht heißt „nicht mehr“, nicht „die nächste bitte“.
+    if (t.geloeschtAm) continue;
     if (t.status !== 'done' || offeneInstanz([...tasks, ...neu], serie)) continue;
     const basis = tagDer(t.dueDate) ?? (t.completedAt ? berlinerTag(new Date(t.completedAt)) : heute);
     const tag = naechsterAbHeute(t.wiederholung!, basis, heute);
@@ -199,7 +201,9 @@ export function serienLauf(state: TasksState, heute: string, jetzt: string): Ser
   const setzeListe = (l: AufgabenListe) => { listen = listen.map(x => (x.id === l.id ? l : x)); geaendert = true; };
   const ohneSerie = (l: AufgabenListe): AufgabenListe => { const { wiederholung: _w, ...rest } = l; return rest; };
 
-  for (const l of (state.listen ?? []).filter(x => x.wiederholung && !x.archiviert)) {
+  // Listen eines Projekts im Papierkorb (29.09.) wiederholen sich nicht — kommt das Projekt zurück, läuft die Serie weiter.
+  const imKorb = new Set(state.projects.filter(p => p.geloeschtAm).map(p => p.id));
+  for (const l of (state.listen ?? []).filter(x => x.wiederholung && !x.archiviert && !imKorb.has(x.projektId))) {
     const w = l.wiederholung!;
     // Neu eingestellt, aber ohne Zeiger → Zeiger setzen (die laufende Liste ist die aktuelle Periode), nichts anlegen.
     if (!istTag(w.naechste)) {

@@ -25,6 +25,7 @@
 //    eine eingeschränkte Person ist nicht bearbeitbar, eine neue Einwilligung braucht Wortlaut + Beleg (409)
 
 import { NextResponse } from 'next/server';
+import { bauPruefen } from '@/lib/bau/pruefen';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
@@ -84,6 +85,9 @@ export async function GET(req: Request) {
 
 export async function PATCH(req: Request) {
   if (!(await karteiZugang(req))) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
+  // Alter Tab nach dem Hochladen (29.09., A2): fremde Build-Kennung → 409 „bitte neu laden“ statt alter Regeln.
+  const alterBau = bauPruefen(req);
+  if (alterBau) return alterBau;
   let body: { ops?: unknown; erzwingen?: boolean };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Nie abschneiden (K2): zu viele Aktivitäten/Einwilligungen an einem Kontakt → 413 statt stillem Kürzen.

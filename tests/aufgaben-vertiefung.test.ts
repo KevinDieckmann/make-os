@@ -235,14 +235,17 @@ describe('Route: Gruppen, Felder, Verlauf, Kreise', () => {
     const viele = Array.from({ length: 201 }, (_, i) => ({ op: 'upsert', eintrag: { id: `g${i}`, projektId: 'p-launch', titel: 'G', farbe: '#000000', sortOrder: i } }));
     expect((await route.PATCH(anfrage(sitzung('kevin'), 'PATCH', { struktur: { gruppen: viele } }))).status).toBe(413);
   });
-  it('PUT behält Verlauf, Gruppen und Vorlagen', async () => {
+  it('PUT über einen vorhandenen Bestand: 409 „neu laden“, Verlauf, Gruppen und Vorlagen bleiben (29.09., A2)', async () => {
     const d = await lesen();
     const a1 = d.state.tasks.find(x => x.id === 'a1')!;
     await route.PATCH(anfrage(sitzung('kevin'), 'PATCH', { struktur: { gruppen: [{ op: 'upsert', eintrag: { id: 'g-ops', projektId: 'p-launch', titel: 'Operations', farbe: '#3DE28B', sortOrder: 0 } }], vorlagen: [{ op: 'upsert', eintrag: { id: 'v-1', art: 'liste', titel: 'Monatsabschluss', inhalt: { aufgaben: [{ titel: 'Belege' }] } } }] }, ops: [{ op: 'upsert', task: { ...a1, status: 'done' }, stand: a1.stand }] }));
     const g = await gespeichert();
-    const r = await route.PUT(anfrage(sitzung('kevin'), 'PUT', { projects: g.projects, tasks: g.tasks.map(t => ({ ...t, verlauf: undefined })) }));
-    expect(r.status).toBe(200);
+    // Ein altes Fenster schickt den ganzen Stand (ohne Verlauf, ohne Gruppen) — früher ersetzte das alles.
+    const r = await route.PUT(anfrage(sitzung('kevin'), 'PUT', { projects: g.projects, tasks: g.tasks.map(t => ({ ...t, verlauf: undefined, title: 'alt' })) }));
+    expect(r.status).toBe(409);
+    expect(((await r.json()) as { neuLaden?: boolean }).neuLaden).toBe(true);
     const n = await gespeichert();
+    expect(n).toEqual(g);
     expect(n.tasks.find(t => t.id === 'a1')!.verlauf!.length).toBeGreaterThan(0);
     expect(n.gruppen!.map(x => x.id)).toEqual(['g-ops']);
     expect(n.vorlagen!.map(x => x.id)).toEqual(['v-1']);

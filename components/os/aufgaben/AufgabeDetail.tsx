@@ -26,6 +26,8 @@ import type { Owner, Priority } from '@/types/common';
 import type { AufgabenAktion } from '@/context/TasksContext';
 import { aufgabeAnlegen, projektAnlegen, listeAnlegen, projekteImSpace, spacesOderFest, umzugTeil, useCrmVerweise, neueKennung, tagKurz, type Person } from './hilfe';
 import { NotizEditor } from './Notiz';
+import { dateienZaehlen } from './Papierkorb';
+import { aufgabeUmfang, umfangText } from '@/lib/aufgaben/papierkorb';
 import { FeldWerte } from './EigeneFelder';
 import { VerlaufListe } from './VerlaufListe';
 import { ProjektDateien } from './ProjektDateien';
@@ -164,7 +166,7 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
       <Abhaengigkeiten task={t} state={state} aendern={aendern} onOeffnen={onOeffnen} />
 
       <div style={{ ...mikro, margin: '16px 0 6px' }}>Notiz</div>
-      <NotizEditor wert={t.notiz} max={AUFGABEN_GRENZEN.notiz} onSpeichern={n => aendern({ notiz: n })} platzhalter="Gedanken, Checkliste, Links zur Aufgabe …" />
+      <NotizEditor key={t.id} wert={t.notiz} max={AUFGABEN_GRENZEN.notiz} zeile={{ liste: 'tasks', id: t.id }} onSpeichern={n => aendern({ notiz: n })} platzhalter="Gedanken, Checkliste, Links zur Aufgabe …" />
 
       {!eltern && (
         <>
@@ -212,8 +214,10 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
           <Knopf leise onClick={() => fokusFuerAufgabe({ id: t.id, einheit: t.einheit })}>▶ Fokus</Knopf>
         )}
         <span style={{ fontSize: 12, color: C.inkLeise }}>angelegt {zeit(t.createdAt)}</span>
-        <button onClick={() => {
-          if (unter.length && !window.confirm(`„${t.title}“ mit ${unter.length} Unteraufgabe${unter.length === 1 ? '' : 'n'} löschen?`)) return;
+        <button onClick={async () => {
+          // Papierkorb (29.09., A7): geht etwas mit (Unteraufgaben, Notiz, Dateien), nennt die Rückfrage es; 30 Tage wiederherstellbar.
+          const mit = umfangText(aufgabeUmfang(state, t.id, await dateienZaehlen({ aufgabeId: t.id })));
+          if (mit && !window.confirm(`„${t.title}“ in den Papierkorb legen?\n\nEs geht mit: ${mit}.\n\n30 Tage lang unter Aufgaben › Archiv › Papierkorb wiederherstellbar.`)) return;
           dispatch({ type: 'DELETE_TASK', payload: { id: t.id } }); onSchliessen();
         }} className="fassbar" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>Löschen</button>
       </div>

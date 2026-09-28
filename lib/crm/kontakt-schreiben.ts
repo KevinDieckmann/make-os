@@ -23,6 +23,8 @@ export interface KontaktAntwort {
   zeilen?: { id: string; stand: string }[];
   /** 200: Hinweis (z. B. Neuanlage stand auf der Sperrliste — mit Werbesperre angelegt). */
   hinweis?: string;
+  /** 409 (29.09., A2): dieser Tab läuft mit altem Code — nichts gespeichert, bitte neu laden (lib/bau/kennung.ts). */
+  neuLaden?: boolean;
 }
 
 /** Ein Op an PATCH /api/state/kontakte — `stand` setzt `kontaktSchreiben` beim Absenden. */

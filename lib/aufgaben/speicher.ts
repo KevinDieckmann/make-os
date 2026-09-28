@@ -6,7 +6,6 @@
 // Andere Server-Schreiber (Heads, Übergabe, Steuern …) hängen weiter direkt an; ihre Aufgaben bekommen
 // Space/Einheit beim nächsten Lesen/Schreiben (idempotent).
 
-import { loadJson, updateJson } from '@/lib/store/local-db';
 import { fingerabdruck, mitStand } from '@/lib/store/fingerabdruck';
 import { protokolliere, listenDiff, type Aenderung, type Wer } from '@/lib/store/aenderungsprotokoll';
 import { brauchtBestaetigung, MASSEN_GRENZE } from '@/lib/store/massen-wache';
@@ -16,7 +15,10 @@ import { melde, type MeldungEingabe } from '@/lib/meldungen/melden';
 import { WEG } from '@/lib/wege';
 import type { Task, TasksState, Project, AufgabenListe, AufgabenStatus, AufgabeKommentar, AufgabenGruppe, AufgabenVorlage } from '@/types/tasks';
 import { uebernehmen, alleSpaces, zustaendigeVon, type AufgabenSpace } from './struktur';
-import { taskSauber, projektSauber, listeSauber, statusSauber, gruppeSauber, vorlageSauber, feldWerteTypisieren, kommentareVereinen, AUFGABEN_GRENZEN, ZuGross } from './saeubern';
+import { taskSauber, projektSauber, listeSauber, statusSauber, gruppeSauber, vorlageSauber, feldWerteTypisieren, auswahlUmbenennungen, kommentareVereinen, AUFGABEN_GRENZEN, ZuGross } from './saeubern';
+import { alsStand, orgZuordnung } from './sicht';
+import { aufgabenSicht, projektInPapierkorb, aufgabeInPapierkorb, endgueltigEntfernen, imPapierkorb } from './papierkorb';
+import { aufgabenSchreiben } from './umbau';
 import { abhaengigAngleichen, kreisBei } from './abhaengig';
 import { verlaufFuer, verlaufAnhaengen, type VerlaufWer } from './verlauf';
 import { serienBeimErledigen } from './serie';
@@ -24,22 +26,11 @@ import { berlinerTag } from './wiederholung';
 
 export const AUFGABEN_SPEICHER = 'tasks';
 
-/** Orte von Hand (Board › Ort) — entscheiden bei Altaufgaben mit, ob sie im Business liegen. */
-export async function orgZuordnung(): Promise<Record<string, string>> {
-  const f = await loadJson<{ orgs?: Record<string, string> }>('ordnung');
-  return f?.orgs && typeof f.orgs === 'object' ? f.orgs : {};
-}
-
 /** Abbruch in der Sperre — nichts wird geschrieben, `erg` trägt den Grund. */
 const ABBRUCH = Symbol('aufgaben-abbruch');
 const leer = (): TasksState => ({ projects: [], tasks: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] });
-const alsStand = (roh: TasksState | null | undefined): TasksState => (roh && Array.isArray(roh.tasks) ? roh : { ...leer(), ...(roh ?? {}), tasks: [] });
-
-/** Den Bestand lesen — übernommen (Space, Unteraufgaben …), noch nicht gespeichert. */
-export async function ladeAufgaben(orgs?: Record<string, string>): Promise<TasksState> {
-  const roh = await loadJson<TasksState>(AUFGABEN_SPEICHER);
-  return uebernehmen(alsStand(roh), orgs ?? await orgZuordnung()).state;
-}
+// Lesen (übernommen, mit/ohne Papierkorb) liegt leichtgewichtig in ./sicht — hier weitergereicht für bestehende Aufrufer.
+export { orgZuordnung, ladeAufgaben, ladeAufgabenSicht } from './sicht';
 
 /** Spaces für die Oberfläche: fest + Mandanten aus dem CRM (aktiv, Archiv). */
 export async function spacesFuer(state: TasksState): Promise<AufgabenSpace[]> {
@@ -59,7 +50,17 @@ export function fuerBrowser(state: TasksState) {
 export type ListenArt = 'tasks' | 'projects' | 'listen' | 'statusEigen' | 'gruppen' | 'vorlagen';
 /** Alle Listen des Bestands — Reihenfolge beim Anwenden: Struktur zuerst, Aufgaben zuletzt. */
 export const LISTEN_ARTEN: readonly ListenArt[] = ['projects', 'gruppen', 'listen', 'statusEigen', 'vorlagen', 'tasks'];
-export interface Op<E> { op: 'upsert' | 'delete'; eintrag?: E; id?: string; stand?: string; /** Nur Aufgaben: kamen Kommentare mit? Fehlen sie, bleiben die gespeicherten. */ mitKommentaren?: boolean }
+export interface Op<E> {
+  op: 'upsert' | 'delete'; eintrag?: E; id?: string; stand?: string;
+  /** Nur Aufgaben: kamen Kommentare mit? Fehlen sie, bleiben die gespeicherten. */
+  mitKommentaren?: boolean;
+  /**
+   * Upsert OHNE Stand (29.09., A2): welche Felder wirklich mitkamen (`gesetzt`) bzw. ausdrücklich geleert wurden (`leer`:
+   * null oder ''). Ohne Stand ist ein Upsert über einen bestehenden Eintrag nur ein Teil-Merge — fehlende Felder bleiben
+   * (vorher ersetzte ein altes Fenster so die ganze Aufgabe).
+   */
+  felder?: { gesetzt: string[]; leer: string[] };
+}
 export interface AufgabenOps { tasks: Op<Task>[]; projects: Op<Project>[]; listen: Op<AufgabenListe>[]; statusEigen: Op<AufgabenStatus>[]; gruppen: Op<AufgabenGruppe>[]; vorlagen: Op<AufgabenVorlage>[] }
 const leereOps = (): AufgabenOps => ({ tasks: [], projects: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] });
 export interface Konflikt { liste: ListenArt; id: string; grund: 'inzwischen geändert' | 'inzwischen gelöscht'; aktuell?: unknown }
@@ -85,13 +86,22 @@ export function opsLesen(body: Record<string, unknown>): LeseErgebnis {
       for (const o of roh as Record<string, unknown>[]) {
         if (!o || typeof o !== 'object') continue;
         const stand = typeof o.stand === 'string' && o.stand ? o.stand : undefined;
-        if (o.op === 'delete' && typeof o.id === 'string') { (ops[art] as Op<unknown>[]).push({ op: 'delete', id: o.id.slice(0, 80), ...(stand ? { stand } : {}) }); continue; }
+        if (o.op === 'delete' && typeof o.id === 'string') {
+          // Nie still kürzen (29.09.): eine zu lange Kennung wäre gekürzt eine ANDERE — ablehnen mit Grund.
+          if (o.id.length > 80 || !o.id) return { ok: false, status: 400, fehler: `Abgelehnt: Löschen mit einer Kennung von ${o.id.length} Zeichen — gültig sind 1 bis 80. Nichts gespeichert.` };
+          (ops[art] as Op<unknown>[]).push({ op: 'delete', id: o.id, ...(stand ? { stand } : {}) });
+          continue;
+        }
         if (o.op !== 'upsert') continue;
         const rohE = (o.eintrag ?? o.task) as Record<string, unknown> | undefined;
         const e = (SAEUBERER[art] as (x: unknown) => unknown)(rohE);
         if (!e) continue;
         const s = stand ?? (typeof rohE?.stand === 'string' ? rohE.stand : undefined);
-        (ops[art] as Op<unknown>[]).push({ op: 'upsert', eintrag: e, ...(s ? { stand: s } : {}), ...(art === 'tasks' ? { mitKommentaren: !!rohE && 'kommentare' in rohE } : {}) });
+        const felder = !s && rohE ? {
+          gesetzt: Object.keys(rohE).filter(k => k !== 'stand' && rohE[k] !== null && rohE[k] !== ''),
+          leer: Object.keys(rohE).filter(k => rohE[k] === null || rohE[k] === ''),
+        } : undefined;
+        (ops[art] as Op<unknown>[]).push({ op: 'upsert', eintrag: e, ...(s ? { stand: s } : {}), ...(felder ? { felder } : {}), ...(art === 'tasks' ? { mitKommentaren: !!rohE && 'kommentare' in rohE } : {}) });
       }
     }
     if (Array.isArray(body.projekte)) {
@@ -120,10 +130,21 @@ export interface SchreibErgebnis {
   zeilen: { liste: ListenArt; id: string; stand: string; /** Nur Aufgaben: der Verlauf, wie er jetzt gespeichert ist (der Browser trägt ihn nach). */ verlauf?: Task['verlauf'] }[];
   /** Paket C3: neu entstandene Instanzen wiederkehrender Aufgaben (Kennungen) — der Browser lädt dann den Stand nach. */
   serien?: string[];
+  /** Endgültig gelöscht (29.09., Papierkorb): ihre Dateien entfernt der Aufrufer (`papierkorbDateienEntfernen`). */
+  entfernt?: { aufgaben: string[]; projekte: string[] };
   state?: TasksState;
 }
 
-interface Optionen { person: string; wer?: Wer; massenAenderung?: boolean; massenLoeschung?: boolean; orgs?: Record<string, string>; jetzt?: string }
+interface Optionen { person: string; wer?: Wer; massenAenderung?: boolean; massenLoeschung?: boolean; orgs?: Record<string, string>; jetzt?: string; /** Haushalt der Person — dann gehen beim endgültigen Löschen auch die Dateien. */ haushalt?: string }
+
+/** Teil-Merge (29.09., A2): nur die Felder, die mitkamen, ersetzen; ausdrücklich geleerte fallen weg; alles andere bleibt. */
+export function teilMerge<T extends object>(alt: T, neu: T, felder: { gesetzt: readonly string[]; leer: readonly string[] }): T {
+  const n = { ...alt } as Record<string, unknown>;
+  const q = neu as Record<string, unknown>;
+  for (const k of felder.gesetzt) if (k !== 'id' && k in q) n[k] = q[k];
+  for (const k of felder.leer) if (k !== 'id' && !(k in q)) delete n[k];
+  return n as T;
+}
 
 /** Änderungen in EINER Sperre anwenden (Stand-Prüfung, Übernahme, Grenzen, Massen-Wache), danach Protokoll + Meldungen. */
 export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<SchreibErgebnis> {
@@ -135,7 +156,7 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
   const neueKommentare: { task: Task; k: AufgabeKommentar }[] = [];
 
   try {
-  await updateJson<TasksState>(AUFGABEN_SPEICHER, roh => {
+  await aufgabenSchreiben(roh => {
     neueKommentare.length = 0;
     const basis = uebernehmen(alsStand(roh), orgs);
     vorher = basis.state;
@@ -150,20 +171,34 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
       vorlagen: new Map((vorher.vorlagen ?? []).map(x => [x.id, x])),
     };
     const pruefe = (art: ListenArt, id: string, stand: string | undefined): boolean => {
-      if (stand === undefined) return true; // ohne Stand: wie bisher (ZOE, alte Fenster)
+      if (stand === undefined) return true; // ohne Stand: Teil-Merge (ZOE, Server-Schreiber)
       const alt = (listen[art] as Map<string, unknown>).get(id);
       if (!alt) { konflikte.push({ liste: art, id, grund: 'inzwischen gelöscht' }); return false; }
       if (fingerabdruck(alt as Record<string, unknown>) !== stand) { konflikte.push({ liste: art, id, grund: 'inzwischen geändert', aktuell: alt }); return false; }
       return true;
     };
+    // Papierkorb (29.09.): Löschen einer Aufgabe/eines Projekts, die NICHT im Papierkorb liegen, legt hinein (samt Kette);
+    // Löschen eines Papierkorb-Eintrags ist endgültig (samt Kette, danach die Dateien).
+    const papierkorb: { art: 'projekt' | 'aufgabe'; id: string; endgueltig: boolean }[] = [];
     // Struktur zuerst, damit neue Aufgaben ihr neues Projekt/ihre neue Liste schon finden.
     for (const art of LISTEN_ARTEN) {
       const m = listen[art] as Map<string, unknown>;
       for (const o of ops[art] as Op<{ id: string }>[]) {
         const id = o.op === 'delete' ? o.id! : o.eintrag!.id;
         if (!pruefe(art, id, o.stand)) continue;
-        if (o.op === 'delete') { if (m.delete(id)) angewandt++; continue; }
+        if (o.op === 'delete') {
+          if (art === 'tasks' || art === 'projects') {
+            const alt = m.get(id) as { geloeschtAm?: string } | undefined;
+            if (alt) { papierkorb.push({ art: art === 'tasks' ? 'aufgabe' : 'projekt', id, endgueltig: imPapierkorb(alt) }); angewandt++; }
+            continue;
+          }
+          if (m.delete(id)) angewandt++;
+          continue;
+        }
         let e = o.eintrag as unknown;
+        const altRoh = m.get(id);
+        // Ohne Stand über einen bestehenden Eintrag: nur Teil-Merge — ein altes Fenster ersetzt nie die ganze Zeile.
+        if (altRoh && !o.stand && o.felder) e = teilMerge(altRoh as object, e as object, o.felder);
         if (art === 'tasks') {
           const alt = listen.tasks.get(id);
           const t = e as Task;
@@ -176,9 +211,9 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
           n = abhaengigAngleichen(n, alt ?? null);
           // ZOE-Auftraggeberin (C4): wer sie ändert, IST sie — der Server setzt die schreibende Person, nie eine behauptete.
           if (n.zoe?.von && n.zoe.von !== alt?.zoe?.von) n = { ...n, zoe: { ...n.zoe, von: opt.person } };
-          // Eigene Felder typgerecht gegen die Definitionen des Projekts.
+          // Eigene Felder typgerecht gegen die Definitionen des Projekts — geprüft wird nur, was neu gesetzt wird (A6).
           const defs = listen.projects.get(n.projectId)?.felder;
-          const felder = feldWerteTypisieren(n.felder, defs);
+          const felder = feldWerteTypisieren(n.felder, defs, alt?.felder);
           if (felder) n.felder = felder; else delete n.felder;
           if (!alt) { n.createdAt = n.createdAt || jetzt; }
           // Eigener Status neu gesetzt → `status` bekommt seinen Grundstatus (alle Leser verstehen „erledigt“).
@@ -188,6 +223,18 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
           }
           for (const c of k.neue) neueKommentare.push({ task: n, k: c });
           e = n;
+        }
+        if (art === 'projects' && altRoh) {
+          // Umbenannte Auswahl-Werte (A6): an allen Aufgaben des Projekts mitziehen — in derselben Sperre.
+          const um = auswahlUmbenennungen((altRoh as Project).felder, (e as Project).felder);
+          if (um.length) {
+            for (const [tid, t] of listen.tasks) {
+              if (t.projectId !== id || !t.felder) continue;
+              let f: Task['felder'] = t.felder;
+              for (const u of um) if (f?.[u.feldId] === u.von) f = { ...f, [u.feldId]: u.nach };
+              if (f !== t.felder) listen.tasks.set(tid, { ...t, felder: f, updatedAt: jetzt });
+            }
+          }
         }
         m.set(id, e); angewandt++;
       }
@@ -201,10 +248,17 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
     }
     if (konflikte.length) { erg = { ok: false, status: 409, fehler: 'Jemand hat inzwischen geändert — Stand neu geladen, bitte noch einmal.', konflikte, angewandt: 0, zeilen: [], state: vorher }; throw ABBRUCH; }
 
-    const roh2: TasksState = {
+    let roh2: TasksState = {
       ...vorher, tasks: Array.from(listen.tasks.values()), projects: Array.from(listen.projects.values()), listen: Array.from(listen.listen.values()),
       statusEigen: Array.from(listen.statusEigen.values()), gruppen: Array.from(listen.gruppen.values()), vorlagen: Array.from(listen.vorlagen.values()),
     };
+    // Papierkorb: erst hineinlegen, dann endgültig entfernen (Ketten über die reinen Regeln in lib/aufgaben/papierkorb.ts).
+    const entfernt = { aufgaben: [] as string[], projekte: [] as string[] };
+    for (const p of papierkorb.filter(x => !x.endgueltig)) roh2 = p.art === 'projekt' ? projektInPapierkorb(roh2, p.id, jetzt) : aufgabeInPapierkorb(roh2, p.id, jetzt);
+    for (const p of papierkorb.filter(x => x.endgueltig)) {
+      const r = endgueltigEntfernen(roh2, p.art, p.id);
+      roh2 = r.state; entfernt.aufgaben.push(...r.aufgaben); entfernt.projekte.push(...r.projekte);
+    }
     for (const [art, max, was] of [['tasks', AUFGABEN_GRENZEN.aufgaben, 'Aufgaben'], ['projects', AUFGABEN_GRENZEN.projekte, 'Projekte'], ['listen', AUFGABEN_GRENZEN.listen, 'Listen'], ['statusEigen', AUFGABEN_GRENZEN.status, 'eigene Status'], ['gruppen', AUFGABEN_GRENZEN.gruppen, 'Gruppen'], ['vorlagen', AUFGABEN_GRENZEN.vorlagen, 'Vorlagen']] as const) {
       const n = (roh2[art] ?? []).length;
       if (n > max && n > (vorher[art] ?? []).length) { erg = { ok: false, status: 413, fehler: `Abgelehnt: höchstens ${max} ${was}.`, angewandt: 0, zeilen: [] }; throw ABBRUCH; }
@@ -251,11 +305,14 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
         if (alt.get(x.id) !== s) zeilen.push({ liste: art, id: x.id, stand: s, ...(art === 'tasks' && (x as Task).verlauf ? { verlauf: (x as Task).verlauf } : {}) });
       }
     }
-    erg = { ok: true, status: 200, angewandt, zeilen, state: nachher, ...(serien.length ? { serien: serien.map(t => t.id) } : {}) };
+    erg = {
+      ok: true, status: 200, angewandt, zeilen, state: nachher, ...(serien.length ? { serien: serien.map(t => t.id) } : {}),
+      ...(entfernt.aufgaben.length || entfernt.projekte.length ? { entfernt } : {}),
+    };
     return nachher;
-  });
+  }, jetzt);
   } catch (e) {
-    // Abgelehnt: nichts geschrieben (updateJson schreibt nicht, wenn die Änderung wirft).
+    // Abgelehnt: nichts geschrieben (aufgabenSchreiben schreibt nicht, wenn die Änderung wirft).
     if (e !== ABBRUCH) throw e;
   }
 
@@ -264,8 +321,31 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
   const aenderungen: Aenderung[] = [];
   for (const art of LISTEN_ARTEN) aenderungen.push(...listenDiff((vorher[art] ?? []) as { id: string }[], (nachher[art] ?? []) as { id: string }[], art));
   await protokolliere(AUFGABEN_SPEICHER, aenderungen, opt.wer);
-  await meldungenNachSchreiben(vorher, nachher, neueKommentare, opt.person);
+  await meldungenNachSchreiben(aufgabenSicht(vorher), aufgabenSicht(nachher), neueKommentare, opt.person);
+  if (erg.entfernt && opt.haushalt) await papierkorbDateienEntfernen(opt.haushalt, opt.person, erg.entfernt);
   return erg;
+}
+
+/**
+ * Dateien endgültig gelöschter Projekte/Aufgaben entfernen (29.09., Papierkorb). Solange ein Eintrag im Papierkorb
+ * liegt, bleiben seine Dateien — erst hier gehen sie. Ein Fehler bricht nichts (der Bestand ist schon geschrieben);
+ * übrig gebliebene meldet die Verbindungsprüfung (`aufgaben-datei-verweis-tot`).
+ */
+export async function papierkorbDateienEntfernen(haushalt: string, person: string, entfernt: { aufgaben: readonly string[]; projekte: readonly string[] }): Promise<number> {
+  try {
+    const { aufgabenDateienListe, aufgabenDateiEntfernen } = await import('@/lib/dateien/aufgaben-ablage');
+    const a = new Set(entfernt.aufgaben), p = new Set(entfernt.projekte);
+    const weg = (await aufgabenDateienListe(haushalt)).filter(e => p.has(e.projektId) || (!!e.aufgabeId && a.has(e.aufgabeId)));
+    let n = 0;
+    for (const e of weg) {
+      try { if (await aufgabenDateiEntfernen(haushalt, person, e.id)) n++; }
+      catch (err) { console.error('[aufgaben/papierkorb] Datei nicht entfernt —', err instanceof Error ? err.message : err); }
+    }
+    return n;
+  } catch (e) {
+    console.error('[aufgaben/papierkorb] Dateien nicht entfernt —', e instanceof Error ? e.message : e);
+    return 0;
+  }
 }
 
 // ── Meldungen ──────────────────────────────────────────────────────────────

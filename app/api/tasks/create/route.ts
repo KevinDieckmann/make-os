@@ -8,14 +8,15 @@
 
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { updateJson } from '@/lib/store/local-db';
+import { aufgabenSchreiben } from '@/lib/aufgaben/umbau';
+import { bauPruefen } from '@/lib/bau/pruefen';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import { imHaushaltOderSystemlauf, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { uebernehmen, istSpaceId, spaceFuerAltAufgabe, sonstigeProjektId } from '@/lib/aufgaben/struktur';
 import { bezugSauber } from '@/lib/aufgaben/saeubern';
 import { orgZuordnung, meldeNeueAufgabe, AUFGABEN_SPEICHER } from '@/lib/aufgaben/speicher';
 import { verlaufFuer } from '@/lib/aufgaben/verlauf';
-import type { TasksState, Task, TaskStatus } from '@/types/tasks';
+import type { Task, TaskStatus } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
 
 export const runtime = 'nodejs';
@@ -31,6 +32,8 @@ const KENNUNG = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/;
 export async function POST(req: Request) {
   const zugang = await imHaushaltOderSystemlauf(req);
   if (!zugang) return NextResponse.json({ ...KARTEI_GESPERRT, error: KARTEI_GESPERRT.fehler }, { status: 403 });
+  const alterBau = bauPruefen(req);
+  if (alterBau) return alterBau;
   let body: NewTask;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const title = String(body.title ?? '').trim().slice(0, 300);
@@ -45,14 +48,14 @@ export async function POST(req: Request) {
   const wer = werAus(req);
   let ergebnis: { id: string; duplikat?: boolean } = { id: '' };
   const angelegt: { t: Task | null } = { t: null };
-  await updateJson<TasksState>(AUFGABEN_SPEICHER, cur => {
+  await aufgabenSchreiben(cur => {
     const state = uebernehmen(cur && Array.isArray(cur.tasks) ? cur : { projects: cur?.projects ?? [], tasks: [] }, orgs).state;
-    // Duplikat-Schutz: gleiche (normalisierte) Überschrift + noch offen → nicht doppelt anlegen.
+    // Duplikat-Schutz: gleiche (normalisierte) Überschrift + noch offen → nicht doppelt anlegen (der Papierkorb zählt nicht).
     const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
-    const vorhanden = state.tasks.find(t => t.status !== 'done' && !t.parentId && norm(t.title) === norm(title));
-    if (vorhanden) { ergebnis = { id: vorhanden.id, duplikat: true }; angelegt.t = null; return cur as TasksState; }
-    const projekt = state.projects.find(p => p.id === body.projectId);
-    const eltern = body.parentId ? state.tasks.find(t => t.id === body.parentId) : undefined;
+    const vorhanden = state.tasks.find(t => t.status !== 'done' && !t.parentId && !t.geloeschtAm && norm(t.title) === norm(title));
+    if (vorhanden) { ergebnis = { id: vorhanden.id, duplikat: true }; angelegt.t = null; return cur; }
+    const projekt = state.projects.find(p => p.id === body.projectId && !p.geloeschtAm);
+    const eltern = body.parentId ? state.tasks.find(t => t.id === body.parentId && !t.geloeschtAm) : undefined;
     const basis: Task = {
       // Kollisionsfrei: nicht an array.length koppeln (bricht nach Löschungen).
       id: `mtg-${now.replace(/[^0-9]/g, '').slice(0, 14)}-${randomUUID().slice(0, 8)}`,

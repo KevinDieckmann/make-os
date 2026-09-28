@@ -9,6 +9,7 @@ import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } fro
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Haken, Knopf, feld } from '../schlank';
 import { notizBloecke, checkUmschalten, checkStand, type Inline } from '@/lib/aufgaben/notiz';
+import { useEntwurf } from './useEntwurf';
 
 function Zeilen({ teile }: { teile: Inline[] }): ReactNode {
   return teile.map((t, i) => {
@@ -60,36 +61,53 @@ export function NotizAnzeige({ text, onText, leer = 'Noch keine Notiz.' }: { tex
 const HILFE = '# Überschrift · **fett** · *kursiv* · - Liste · - [ ] Checkliste · [Text](https://…)';
 
 /**
- * Notiz mit Vorschau und Bearbeiten. Gespeichert wird bei „Fertig“ (und beim Verlassen des Feldes); Abhaken in der
- * Vorschau speichert sofort. `max` = Grenze des Servers (darüber lehnt er mit 413 ab — hier schon vorher sichtbar).
+ * Notiz mit Vorschau und Bearbeiten. Seit 29.09. (A3) speichert sie von selbst: kurz nach dem Tippen, beim Verlassen des
+ * Feldes und der Seite; jeder Stand liegt zusätzlich als Entwurf im Sitzungsspeicher, bis der Server ihn bestätigt
+ * (`useEntwurf`). Abhaken in der Vorschau speichert sofort. `max` = Grenze des Servers (darüber: sichtbare Meldung, der
+ * Text bleibt, gespeichert wird erst wieder unter der Grenze — nie gekürzt).
  */
-export function NotizEditor({ wert, onSpeichern, max, platzhalter = 'Ziele, Absprachen, Checklisten, Links …' }: { wert?: string; onSpeichern: (neu: string | undefined) => void; max: number; platzhalter?: string }) {
-  const [bearbeiten, setBearbeiten] = useState(false);
-  const [text, setText] = useState(wert ?? '');
-  useEffect(() => { if (!bearbeiten) setText(wert ?? ''); }, [wert, bearbeiten]);
-  const zuLang = text.length > max;
-  const fertig = () => { if (zuLang) return; if ((text.trim() ? text : '') !== (wert ?? '')) onSpeichern(text.trim() ? text : undefined); setBearbeiten(false); };
+export function NotizEditor({ wert, onSpeichern, max, zeile, feldName = 'notiz', platzhalter = 'Ziele, Absprachen, Checklisten, Links …' }: {
+  wert?: string; onSpeichern: (neu: string | undefined) => void; max: number;
+  /** Die Zeile (Aufgabe/Projekt), an der die Notiz hängt — Kennung des Entwurfs und Bestätigung durch den Server. */
+  zeile: { liste: 'tasks' | 'projects'; id: string };
+  feldName?: string;
+  platzhalter?: string;
+}) {
+  const e = useEntwurf({ kennung: `${zeile.liste}:${zeile.id}:${feldName}`, zeile, wert, max, speichern: v => onSpeichern(v.trim() ? v : undefined) });
+  const [bearbeiten, setBearbeiten] = useState(e.wiederhergestellt);
+  const [startWert, setStartWert] = useState(wert ?? '');
+  useEffect(() => { if (e.wiederhergestellt) setBearbeiten(true); }, [e.wiederhergestellt]);
+  const oeffnen = () => { setStartWert(wert ?? ''); setBearbeiten(true); };
+  const fertig = () => { e.jetzt(); if (!e.zuLang && !e.wiederhergestellt) setBearbeiten(false); };
   const stand = checkStand(wert);
   return (
     <div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
         {stand.gesamt > 0 && !bearbeiten && <span style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>Checkliste {stand.fertig}/{stand.gesamt}</span>}
+        {bearbeiten && !e.wiederhergestellt && <span style={{ fontSize: 12, color: e.zuLang ? '#FF5C5C' : C.inkLeise }}>{e.zuLang ? 'nicht gespeichert — zu lang' : e.ungespeichert ? 'speichert …' : 'gespeichert'}</span>}
         <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
           {bearbeiten
-            ? <><Knopf leise onClick={() => { setText(wert ?? ''); setBearbeiten(false); }}>Abbrechen</Knopf><Knopf onClick={fertig} aus={zuLang}>Fertig</Knopf></>
-            : <Knopf leise onClick={() => setBearbeiten(true)}>{wert ? 'Bearbeiten' : '+ Notiz'}</Knopf>}
+            ? <>{e.text !== startWert && !e.wiederhergestellt && <Knopf leise onClick={() => { e.setText(startWert); }}>Änderungen zurücknehmen</Knopf>}<Knopf onClick={fertig} aus={e.zuLang || e.wiederhergestellt}>Fertig</Knopf></>
+            : <Knopf leise onClick={oeffnen}>{wert ? 'Bearbeiten' : '+ Notiz'}</Knopf>}
         </span>
       </div>
+      {bearbeiten && e.wiederhergestellt && (
+        <div role="alert" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: '#FFC93C', marginBottom: 8 }}>
+          <span style={{ flex: 1 }}>Ungespeicherter Entwurf aus dieser Sitzung wiederhergestellt — er weicht vom gespeicherten Stand ab.</span>
+          <Knopf leise onClick={() => { e.verwerfen(); setBearbeiten(false); }}>Verwerfen</Knopf>
+          <Knopf onClick={e.uebernehmen} aus={e.zuLang}>Entwurf speichern</Knopf>
+        </div>
+      )}
       {bearbeiten ? (
         <>
-          <textarea autoFocus value={text} onChange={e => setText(e.target.value)} aria-label="Notiz" placeholder={platzhalter}
-            onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); fertig(); } if (e.key === 'Escape') { setText(wert ?? ''); setBearbeiten(false); } }}
+          <textarea autoFocus value={e.text} onChange={x => e.setText(x.target.value)} onBlur={e.jetzt} aria-label="Notiz" placeholder={platzhalter}
+            onKeyDown={x => { if (x.key === 'Enter' && (x.metaKey || x.ctrlKey)) { x.preventDefault(); fertig(); } if (x.key === 'Escape') fertig(); }}
             rows={10} style={{ ...feld, fontFamily: SCHRIFT.mono, fontSize: 13, lineHeight: 1.55, resize: 'vertical', minHeight: 180 }} />
-          <div style={{ display: 'flex', gap: 10, fontSize: 12, color: zuLang ? '#FF5C5C' : C.inkLeise, marginTop: 6, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 10, fontSize: 12, color: e.zuLang ? '#FF5C5C' : C.inkLeise, marginTop: 6, flexWrap: 'wrap' }}>
             <span>{HILFE}</span>
-            <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{zuLang ? `zu lang: ${text.length.toLocaleString('de-DE')} von ${max.toLocaleString('de-DE')} Zeichen` : '⌘ + Enter speichert'}</span>
+            <span role={e.zuLang ? 'alert' : undefined} style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{e.zuLang ? `Zu lang — NICHT gespeichert: ${e.text.length.toLocaleString('de-DE')} von ${max.toLocaleString('de-DE')} Zeichen. Bitte kürzen oder aufteilen.` : 'speichert von selbst · ⌘ + Enter schließt'}</span>
           </div>
-          {text.trim() && <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.06)' }}><div style={{ fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise, marginBottom: 4 }}>Vorschau</div><NotizAnzeige text={text} /></div>}
+          {e.text.trim() && <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.06)' }}><div style={{ fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise, marginBottom: 4 }}>Vorschau</div><NotizAnzeige text={e.text} /></div>}
         </>
       ) : (
         <NotizAnzeige text={wert} onText={t => onSpeichern(t)} leer="Noch keine Notiz — „+ Notiz“ legt eine an." />

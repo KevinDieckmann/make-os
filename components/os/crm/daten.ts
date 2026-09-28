@@ -18,6 +18,7 @@ import { deltaAnwenden } from '@/lib/kontakte/delta';
 import { localDay } from '@/lib/zeit';
 import { KontaktStaende, kontaktSchreiben, nacheinanderKette, KONTAKT_KONFLIKT, type KontaktAntwort, type KontaktOp } from '@/lib/crm/kontakt-schreiben';
 import { neueKennung } from '@/lib/kennung';
+import { NEU_LADEN_TEXT } from '@/lib/bau/kennung';
 
 export interface CrmAntwort {
   ok: boolean; heute: string; stand: CrmBestand;
@@ -134,8 +135,10 @@ export function useCrm() {
    * Deal-Regeln als Fehler zeigen); 409 mit `konflikte` → Hinweis und neu laden; 409 mit `sperren` (Löschen trotz
    * Verweisen) oder 413 → nur der Text. Gibt zurück, ob neu geladen werden muss.
    */
-  const schreibAntwort = useCallback((r: { ok?: boolean; fehler?: string | string[]; konflikte?: unknown[] } & Partial<CrmAntwort>, sonst: string): boolean => {
+  const schreibAntwort = useCallback((r: { ok?: boolean; fehler?: string | string[]; konflikte?: unknown[]; neuLaden?: boolean } & Partial<CrmAntwort>, sonst: string): boolean => {
     if (r.ok) { uebernehmen(r as CrmAntwort); if (Array.isArray(r.fehler) && r.fehler.length) setFehler(r.fehler.join(' · ')); return false; }
+    // Alter Tab nach dem Hochladen (29.09., A2, lib/bau): nicht neu laden (die Eingabe bleibt sichtbar), Hinweis stehen lassen.
+    if (r.neuLaden) { fehlschlag(`${sonst.replace(/\.$/, '')} — ${NEU_LADEN_TEXT}`); return false; }
     if (r.konflikte?.length) { fehlschlag(KONFLIKT_HINWEIS); return true; }
     fehlschlag(typeof r.fehler === 'string' ? r.fehler : sonst);
     return false;
@@ -207,6 +210,7 @@ export function useCrm() {
       if (r.hinweis) setHinweis(r.hinweis);
       return false;
     }
+    if (r.neuLaden) { fehlschlag(`Nicht gespeichert — ${NEU_LADEN_TEXT}`); return false; }
     const aktuell = new Map((r.konflikte ?? []).flatMap(k => (k.aktuell?.id ? [[k.aktuell.id, k.aktuell as unknown as Kontakt] as const] : [])));
     if (aktuell.size) setKontakte(alt => (alt ? alt.map(k => aktuell.get(k.id) ?? k) : alt));
     fehlschlag(r.konflikte?.length ? KONTAKT_KONFLIKT : r.error ?? 'Nicht gespeichert.');

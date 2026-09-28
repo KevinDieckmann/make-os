@@ -710,7 +710,7 @@ export function AufgabenView() {
               })()}
               {done && <span style={{ flex: 1 }} />}
               <Pille an={blockiert} farbe={LEUCHT.achtung} onClick={() => patchTask(t.id, { status: blockiert ? 'todo' : 'blocked' })}>{blockiert ? 'blockiert ✓' : 'blockiert?'}</Pille>
-              <Pille leise onClick={() => { if (confirm(`„${t.title.slice(0, 60)}" wirklich löschen?`)) { dispatch({ type: 'DELETE_TASK', payload: { id: t.id } }); setOffenId(null); } }}>Löschen</Pille>
+              <Pille leise onClick={() => { if (confirm(`„${t.title.slice(0, 60)}" in den Papierkorb legen? (30 Tage wiederherstellbar unter Aufgaben › Archiv)`)) { dispatch({ type: 'DELETE_TASK', payload: { id: t.id } }); setOffenId(null); } }}>Löschen</Pille>
             </div>
           </div>
         )}

@@ -5,7 +5,6 @@
 
 import { NextResponse } from 'next/server';
 import { logRun } from '@/lib/agent-log';
-import { loadJson } from '@/lib/store/local-db';
 import { gatherBrain } from '@/lib/brain';
 import { personAus } from '@/lib/zoe/raum';
 import { localDay } from '@/lib/zeit';
@@ -13,6 +12,7 @@ import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { computeMetrics, eur, type FinanceState } from '@/lib/make-one/finance-data';
 import { modellSchranke } from '@/lib/zugang/umfang';
+import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     tasks = p.tasks;
   } else {
     // Privat bleibt privat — Filter jetzt SERVER-seitig: nur business-Projekte.
-    const store = await loadJson<{ tasks: (TaskLite & { projectId?: string })[]; projects: { id: string; category?: string }[] }>('tasks');
+    const store = await ladeAufgabenSicht();
     const businessIds = new Set((store?.projects ?? []).filter(x => x.category === 'business').map(x => x.id));
     tasks = (store?.tasks ?? []).filter(t => t.projectId && businessIds.has(t.projectId));
   }

@@ -14,10 +14,11 @@
 // ZOE versendet über diese Route nichts und löscht nichts.
 
 import { NextResponse } from 'next/server';
+import { bauPruefen } from '@/lib/bau/pruefen';
 import { hasAnthropicKey, guthabenLeer } from '@/lib/anthropic';
 import { imHaushaltDesInhabers, imHaushaltOderSystemlauf, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { modellSchranke, zuGross } from '@/lib/zugang/umfang';
-import { ladeAufgaben } from '@/lib/aufgaben/speicher';
+import { ladeAufgabenSicht } from '@/lib/aufgaben/speicher';
 import { auftraggeberinVon, vorschlagSauber } from '@/lib/aufgaben/zoe';
 import { hole } from '@/lib/zoe/stapel';
 import { anZoeGeben, vonZoeZurueck, vorschlagFreigeben, vorschlagAblehnen } from '@/lib/zoe/aufgaben-werkzeuge';
@@ -37,7 +38,7 @@ export async function GET(req: Request) {
   const id = new URL(req.url).searchParams.get('id') ?? '';
   if (!id) return NextResponse.json({ ok: true, ki: kiDa() });
   if (!ID.test(id)) return NextResponse.json({ ok: false, error: 'Ungültige Kennung.' }, { status: 400 });
-  const t = (await ladeAufgaben()).tasks.find(x => x.id === id);
+  const t = (await ladeAufgabenSicht()).tasks.find(x => x.id === id);
   if (!t) return NextResponse.json({ ok: false, error: 'Aufgabe nicht gefunden.' }, { status: 404 });
   const auftraggeberin = auftraggeberinVon(t);
   const darfEntscheiden = !!auftraggeberin && auftraggeberin === zugang.person;
@@ -55,6 +56,8 @@ export async function GET(req: Request) {
 interface Eingang { aktion?: string; id?: unknown; stapelId?: unknown; stand?: unknown; hinweis?: unknown; grund?: unknown; nochmal?: unknown; max?: unknown }
 
 export async function POST(req: Request) {
+  const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2) — Dienstweg (Takt) ist ausgenommen
+  if (alterBau) return alterBau;
   if (zuGross(req, MAX_BYTES)) return NextResponse.json({ ok: false, error: 'Abgelehnt: zu groß.' }, { status: 413 });
   let b: Eingang;
   try { b = (await req.json()) as Eingang; } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
@@ -90,7 +93,7 @@ export async function POST(req: Request) {
       return antwort(await vonZoeZurueck(id, zugang.person, { stand }));
     case 'freigeben':
     case 'ablehnen': {
-      const t = (await ladeAufgaben()).tasks.find(x => x.id === id);
+      const t = (await ladeAufgabenSicht()).tasks.find(x => x.id === id);
       const stapelId = str(b.stapelId, 80) || t?.zoe?.stapelId;
       if (!t || !stapelId) return NextResponse.json({ ok: false, error: 'Kein Vorschlag an dieser Aufgabe.' }, { status: 404 });
       if (b.aktion === 'freigeben') {

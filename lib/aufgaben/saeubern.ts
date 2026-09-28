@@ -50,6 +50,26 @@ const TAG = /^\d{4}-\d{2}-\d{2}$/;
 const FARBE = /^#[0-9a-fA-F]{6}$/;
 const S = (v: unknown, n: number) => (typeof v === 'string' ? v.replace(/\u0000/g, '').slice(0, n) : undefined);
 const kennung = (v: unknown): string | undefined => (typeof v === 'string' && KENNUNG.test(v) ? v : undefined);
+const ZEITPUNKT = /^\d{4}-\d{2}-\d{2}T[0-9:.]+(Z|[+-]\d{2}:?\d{2})?$/;
+/** Papierkorb-Zeitpunkt (29.09.): nur ein ISO-Zeitpunkt, sonst nichts. */
+const zeitpunkt = (v: unknown): string | undefined => (typeof v === 'string' && v.length <= 40 && ZEITPUNKT.test(v) ? v : undefined);
+
+/**
+ * Euro in deutscher Schreibweise → Cent (29.09., A6): „1.500“ = 1.500 € (Tausenderpunkt), „1.500,40“, „1500,4“, „12,5 €“,
+ * „-3,20“. Ein einzelner Punkt mit einer oder zwei Nachkommastellen („12.5“, „0.99“) gilt als Dezimalpunkt. null = keine Zahl.
+ */
+export function euroAlsCent(text: string): number | null {
+  const t = text.replace(/[€\s ]/g, '').replace(/^\+/, '');
+  if (!t) return null;
+  let n: number;
+  if (/,/.test(t)) {
+    if (!/^-?(\d{1,3}(\.\d{3})+|\d+),\d*$/.test(t)) return null;
+    n = Number(t.replace(/\./g, '').replace(',', '.'));
+  } else if (/^-?\d{1,3}(\.\d{3})+$/.test(t)) n = Number(t.replace(/\./g, ''));
+  else if (/^-?\d+(\.\d{1,2})?$/.test(t)) n = Number(t);
+  else return null;
+  return Number.isFinite(n) ? Math.round(n * 100) : null;
+}
 
 /** Fehler der Säuberung — die Route macht daraus 413. */
 export class ZuGross extends Error {}
@@ -128,7 +148,11 @@ export function taskSauber(o: unknown): Task | null {
     vorlageId: kennung(t.vorlageId),
     serieId: kennung(t.serieId),
     zoe: zoeSauber(t.zoe),
+    // Papierkorb (29.09.)
+    geloeschtAm: zeitpunkt(t.geloeschtAm),
+    geloeschtMit: kennung(t.geloeschtMit),
   };
+  if (!raus.geloeschtAm) delete raus.geloeschtMit;
   if (raus.parentId === id) delete raus.parentId;
   for (const k of Object.keys(raus) as (keyof Task)[]) if (raus[k] === undefined) delete raus[k];
   return raus;
@@ -159,6 +183,7 @@ export function projektSauber(o: unknown): Project | null {
     mitglieder: personenSauber(p.mitglieder),
     felder: felderDefSauber(p.felder),
     vorlageId: kennung(p.vorlageId),
+    geloeschtAm: zeitpunkt(p.geloeschtAm),
   };
   if (raus.start && raus.ende && raus.ende < raus.start) delete raus.ende;
   for (const k of Object.keys(raus) as (keyof Project)[]) if (raus[k] === undefined) delete raus[k];
@@ -246,34 +271,64 @@ export function feldWerteSauber(v: unknown): Record<string, FeldWert> | undefine
 
 const LINK = /^(https?:\/\/[^\s<>"']+|\/os\/[^\s<>"']*)$/i;
 /**
- * Feldwerte typgerecht gegen die Definitionen des Projekts: Zahl endlich, Betrag ganze Cent (Zahl = Cent, Text = Euro), Datum YYYY-MM-DD,
- * Auswahl nur aus den Optionen, Link http(s) oder /os/…, Person Speichername. Werte zu Feldern, die das Projekt
- * (noch) nicht kennt, bleiben stehen — zieht die Aufgabe zurück oder kommt das Feld wieder, sind sie da.
+ * Feldwerte typgerecht gegen die Definitionen des Projekts: Zahl endlich, Betrag ganze Cent (Zahl = Cent, Text = Euro in
+ * deutscher Schreibweise, `euroAlsCent`), Datum YYYY-MM-DD, Auswahl nur aus den Optionen, Link http(s) oder /os/…, Person
+ * Speichername. Werte zu Feldern, die das Projekt (noch) nicht kennt, bleiben stehen — zieht die Aufgabe zurück oder kommt
+ * das Feld wieder, sind sie da.
+ *
+ * Seit 29.09. (A6) mit `alt` (die gespeicherten Werte): geprüft wird nur, was NEU gesetzt wird. Ein gespeicherter Wert, der
+ * unverändert mitkommt, bleibt stehen — auch wenn seine Auswahl-Option inzwischen umbenannt oder entfernt wurde (vorher
+ * löschte ihn die nächste beliebige Änderung an der Aufgabe still). Ein ungültiger neuer Wert ersetzt nie einen gültigen
+ * alten: dann bleibt der alte.
  */
-export function feldWerteTypisieren(werte: Record<string, FeldWert> | undefined, defs: readonly EigenesFeld[] | undefined): Record<string, FeldWert> | undefined {
+export function feldWerteTypisieren(werte: Record<string, FeldWert> | undefined, defs: readonly EigenesFeld[] | undefined, alt?: Record<string, FeldWert> | undefined): Record<string, FeldWert> | undefined {
   if (!werte) return undefined;
   const raus: Record<string, FeldWert> = {};
   for (const [k, w] of Object.entries(werte)) {
     const d = defs?.find(f => f.id === k);
     if (!d) { raus[k] = w; continue; }
+    if (alt && Object.prototype.hasOwnProperty.call(alt, k) && alt[k] === w) { raus[k] = w; continue; }
     const text = typeof w === 'string' ? w.trim() : String(w);
     const zahl = typeof w === 'number' ? w : Number(text.replace(/\s/g, '').replace(',', '.'));
+    let gut: FeldWert | undefined;
     switch (d.typ) {
-      case 'zahl': if (Number.isFinite(zahl) && text !== '') raus[k] = zahl; break;
-      // Zahl = schon Cent (so schickt die Oberfläche); Text = Euro in deutscher Schreibweise („1.500,40“) → Cent.
+      case 'zahl': if (Number.isFinite(zahl) && text !== '') gut = zahl; break;
+      // Zahl = schon Cent (so schickt die Oberfläche); Text = Euro in deutscher Schreibweise („1.500,40“, „1.500“) → Cent.
       case 'betrag': {
-        const cent = typeof w === 'number' ? w : /,/.test(text) ? Number(text.replace(/[€\s.]/g, '').replace(',', '.')) * 100 : Number(text.replace(/[€\s]/g, '')) * 100;
-        if (Number.isFinite(cent) && text !== '' && Math.abs(cent) <= 1e13) raus[k] = Math.round(cent);
+        const cent = typeof w === 'number' ? w : euroAlsCent(text);
+        if (cent !== null && Number.isFinite(cent) && Math.abs(cent) <= 1e13) gut = Math.round(cent);
         break;
       }
-      case 'datum': if (TAG.test(text)) raus[k] = text; break;
-      case 'auswahl': if (d.optionen?.includes(text)) raus[k] = text; break;
-      case 'link': if (LINK.test(text)) raus[k] = text; break;
-      case 'person': if (PERSON.test(text)) raus[k] = text; break;
-      default: if (text) raus[k] = text;
+      case 'datum': if (TAG.test(text)) gut = text; break;
+      case 'auswahl': if (d.optionen?.includes(text)) gut = text; break;
+      case 'link': if (LINK.test(text)) gut = text; break;
+      case 'person': if (PERSON.test(text)) gut = text; break;
+      default: if (text) gut = text;
     }
+    if (gut !== undefined) raus[k] = gut;
+    else if (alt && alt[k] !== undefined) raus[k] = alt[k];
   }
   return Object.keys(raus).length ? raus : undefined;
+}
+
+/**
+ * Umbenannte Auswahl-Werte (29.09., A6): Die Oberfläche pflegt die Optionen als Liste. Bleibt die Anzahl gleich und steht
+ * an einer Stelle ein anderer Wert, der vorher nicht vorkam (und der alte nicht mehr), ist das ein Umbenennen — der
+ * Schreibweg zieht die Werte an allen Aufgaben des Projekts in DERSELBEN Sperre mit. Entfernen/Hinzufügen ist kein
+ * Umbenennen (die gespeicherten Werte bleiben einfach stehen).
+ */
+export function auswahlUmbenennungen(alt: readonly EigenesFeld[] | undefined, neu: readonly EigenesFeld[] | undefined): { feldId: string; von: string; nach: string }[] {
+  const raus: { feldId: string; von: string; nach: string }[] = [];
+  for (const n of neu ?? []) {
+    const a = (alt ?? []).find(f => f.id === n.id);
+    if (!a || a.typ !== 'auswahl' || n.typ !== 'auswahl') continue;
+    const vo = a.optionen ?? [], no = n.optionen ?? [];
+    if (vo.length !== no.length) continue;
+    for (let i = 0; i < vo.length; i++) {
+      if (vo[i] !== no[i] && !no.includes(vo[i]) && !vo.includes(no[i])) raus.push({ feldId: n.id, von: vo[i], nach: no[i] });
+    }
+  }
+  return raus;
 }
 
 /** „Wartet auf“: gültige Kennungen ohne Doppelte, nie die Aufgabe selbst. */

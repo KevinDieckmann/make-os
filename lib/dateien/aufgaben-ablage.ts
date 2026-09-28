@@ -18,7 +18,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { protokolliere, type Aenderung } from '@/lib/store/aenderungsprotokoll';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import type { Kontakt } from '@/lib/make-one/crm';
-import { ladeAufgaben, AUFGABEN_SPEICHER } from '@/lib/aufgaben/speicher';
+import { ladeAufgabenSicht, AUFGABEN_SPEICHER } from '@/lib/aufgaben/speicher';
 import { verlaufAnhaengen } from '@/lib/aufgaben/verlauf';
 import type { TasksState } from '@/types/tasks';
 import { bereichVonSpace, istSonstigeProjekt, SONSTIGE_PRAEFIX } from '@/lib/aufgaben/struktur';
@@ -48,7 +48,7 @@ export interface AufgabenBezug { projektId: string; aufgabeId?: string; bereich:
  * es geben, und ein genanntes Projekt muss ihres sein. Sonst Projekt Pflicht: vorhanden oder „Sonstige“ eines Space.
  */
 export async function bezugAufloesen(projektId: string | undefined, aufgabeId: string | undefined): Promise<AufgabenBezug> {
-  const state = await ladeAufgaben();
+  const state = await ladeAufgabenSicht();
   if (aufgabeId) {
     const t = state.tasks.find(x => x.id === aufgabeId);
     if (!t) throw new AblageFehler('Diese Aufgabe gibt es nicht (mehr).', 404);

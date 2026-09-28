@@ -7,6 +7,7 @@
 // Zugang: Haushalt des Inhabers UND benannte Person mit Haushalt (wie die Dateiablage).
 
 import { NextResponse } from 'next/server';
+import { bauPruefen } from '@/lib/bau/pruefen';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -61,6 +62,8 @@ async function aendern(haushalt: string, person: string, id: Gesellschaft['id'],
 export async function PATCH(req: Request) {
   const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2)
+  if (alterBau) return alterBau;
   let b: { id?: unknown; felder?: unknown; stand?: unknown };
   try { b = await req.json(); } catch { return fehler('Kein JSON.', 400); }
   if (!istGesellschaftId(b.id)) return fehler('id: kdc, kdv oder ug.', 400);
@@ -76,6 +79,8 @@ export async function PATCH(req: Request) {
 export async function POST(req: Request) {
   const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2)
+  if (alterBau) return alterBau;
   const art = req.headers.get('content-type') ?? '';
   if (!art.startsWith('multipart/form-data')) return fehler('Logo als multipart/form-data (id, datei, stand).', 415);
   const laenge = Number(req.headers.get('content-length') ?? '');
@@ -84,6 +89,9 @@ export async function POST(req: Request) {
   try { form = await req.formData(); } catch { return fehler('Upload nicht lesbar.', 400); }
   const id = String(form.get('id') ?? '');
   if (!istGesellschaftId(id)) return fehler('id: kdc, kdv oder ug.', 400);
+  // Ohne Stand kein Logo (29.09.): vorher galt dann der aktuelle Stand — ein altes Fenster überschrieb unbemerkt.
+  const stand = form.get('stand');
+  if (typeof stand !== 'string' || !stand) return fehler('Stand fehlt — bitte die Seite neu laden und noch einmal.', 409);
   const datei = form.get('datei');
   if (!datei || typeof datei === 'string' || !datei.size) return fehler('Datei fehlt.', 400);
   if (datei.size > MAX_DATEI_BYTES) return fehler('Datei zu groß (höchstens 15 MB).', 413);
@@ -94,7 +102,7 @@ export async function POST(req: Request) {
   try {
     const eintrag = await ablegen(z.haushalt, z.person, { art: 'sonstig', titel: `Logo ${id.toUpperCase()}` }, { bytes, name, typ }, new Date().toISOString(), { gesellschaft: id });
     const alt = alleGesellschaften(await loadJson<GesellschaftenDatei>(gesellschaftenName(z.haushalt))).find(g => g.id === id)!;
-    const r = await aendern(z.haushalt, z.person, id, { logoDateiId: eintrag.id }, form.get('stand') ?? standVon(alt), werAus(req));
+    const r = await aendern(z.haushalt, z.person, id, { logoDateiId: eintrag.id }, stand, werAus(req));
     if (!r.g) { await entfernen(z.haushalt, eintrag.id).catch(() => {}); return r.konflikt ? fehler('Wurde inzwischen geändert — neu geladen, bitte noch einmal.', 409, { aktuell: zurAnzeige(r.konflikt) }) : fehler('Logo nicht gespeichert.', 400); }
     if (alt.logoDateiId && alt.logoDateiId !== eintrag.id) await entfernen(z.haushalt, alt.logoDateiId).catch(() => {});
     return NextResponse.json({ ok: true, gesellschaft: zurAnzeige(r.g) });
@@ -108,12 +116,16 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2)
+  if (alterBau) return alterBau;
   const q = new URL(req.url).searchParams;
   const id = q.get('id') ?? '';
-  if (!istGesellschaftId(id) || q.get('logo') !== '1') return fehler('?id=<kdc|kdv|ug>&logo=1', 400);
+  if (!istGesellschaftId(id) || q.get('logo') !== '1') return fehler('?id=<kdc|kdv|ug>&logo=1&stand=…', 400);
+  const stand = q.get('stand');
+  if (!stand) return fehler('Stand fehlt — bitte die Seite neu laden und noch einmal.', 409);
   const alt = alleGesellschaften(await loadJson<GesellschaftenDatei>(gesellschaftenName(z.haushalt))).find(g => g.id === id)!;
   if (!alt.logoDateiId) return NextResponse.json({ ok: true, gesellschaft: zurAnzeige(alt) });
-  const r = await aendern(z.haushalt, z.person, id, { logoDateiId: null }, q.get('stand') ?? standVon(alt), werAus(req));
+  const r = await aendern(z.haushalt, z.person, id, { logoDateiId: null }, stand, werAus(req));
   if (!r.g) return fehler('Wurde inzwischen geändert — neu geladen, bitte noch einmal.', 409, r.konflikt ? { aktuell: zurAnzeige(r.konflikt) } : {});
   await entfernen(z.haushalt, alt.logoDateiId).catch(() => {});
   return NextResponse.json({ ok: true, gesellschaft: zurAnzeige(r.g) });

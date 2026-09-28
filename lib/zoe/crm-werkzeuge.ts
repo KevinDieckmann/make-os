@@ -107,7 +107,7 @@ async function dateienFuer(s: CrmSicht, f: { kontaktId?: string; firmaId?: strin
 }
 
 async function aufgabenFuerBezug(s: CrmSicht, wer: { kontaktId?: string; firmaId?: string; mandatIds?: string[]; dealIds?: string[] }): Promise<string[]> {
-  const { ladeAufgaben } = await import('@/lib/aufgaben/speicher');
+  const { ladeAufgabenSicht: ladeAufgaben } = await import('@/lib/aufgaben/speicher'); // ohne Papierkorb (29.09.)
   const { aufgabenFuer } = await import('@/lib/aufgaben/crm-verweise');
   const state = await ladeAufgaben();
   // Privates hat in der Markttraktion nichts zu suchen — nur Business-Spaces (eigene Firmen, Mandanten).

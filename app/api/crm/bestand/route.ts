@@ -10,6 +10,7 @@
 
 import { imHaushaltDesInhabers, haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
+import { bauPruefen } from '@/lib/bau/pruefen';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { ablageName } from '@/lib/dateien/ablage';
@@ -77,6 +78,9 @@ export async function GET(req: Request) {
 export async function PATCH(req: Request) {
   const zugang = await imHaushaltDesInhabers(req);
   if (!zugang) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+  // Alter Tab nach dem Hochladen (29.09., A2): fremde Build-Kennung → 409 „bitte neu laden“ statt alter Regeln.
+  const alterBau = bauPruefen(req);
+  if (alterBau) return alterBau;
   let body: { ops?: ListenOp[] };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   // Mehr als 200 auf einmal: ablehnen, nie still kürzen (28.09., K1) — vorher fielen alle ab der 201. weg.

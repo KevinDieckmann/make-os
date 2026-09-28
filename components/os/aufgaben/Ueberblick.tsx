@@ -16,6 +16,7 @@ import type { Task, TasksState } from '@/types/tasks';
 import type { Dispatch } from 'react';
 import type { AufgabenAktion } from '@/context/TasksContext';
 import { tagKurz, spaceLabel, projektTitel } from './hilfe';
+import { Papierkorb } from './Papierkorb';
 
 type Gehe = (z: Partial<AufgabenAdresse>) => void;
 const KACHELN: { id: KachelArt; label: string; farbe: string; leer: string }[] = [
@@ -153,6 +154,7 @@ export function AufgabenArchiv({ state, dispatch, spaces, heute, gehe }: { state
         ))}
         {!projekte.length && <Leer>Kein Projekt im Archiv.</Leer>}
       </Karte>
+      <Papierkorb spaces={spaces} />
     </>
   );
 }

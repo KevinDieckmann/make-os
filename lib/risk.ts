@@ -8,6 +8,7 @@ import { loadJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import { computeMetrics, mitKasse, type FinanceState } from '@/lib/make-one/finance-data';
 import { schwellen } from '@/lib/schwellen';
+import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 
 export interface Shield {
   id: string;
@@ -23,7 +24,7 @@ export async function computeShields(today = localDay()): Promise<Shield[]> {
   const [fplan, fin, tasksF, msF, wplanF] = await Promise.all([
     loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string; firmaId?: string }[]; zahlungen: { status: string; betrag: number; faellig?: string; an: string }[]; uhrwerk?: { letztesMeeting: string | null } }>('finanzplan'),
     loadJson<FinanceState>('finance'),
-    loadJson<{ tasks: { title: string; status: string; priority: string; dueDate?: string }[] }>('tasks'),
+    ladeAufgabenSicht(),
     loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; erledigt: boolean }[] }>('meilensteine'),
     loadJson<Record<string, { date: string; art: string }[]>>('wochenplan'),
   ]);

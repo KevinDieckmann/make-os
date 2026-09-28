@@ -3,14 +3,16 @@
 // Kevin: „Eigene Felder je Projekt (Text, Zahl, Betrag, Datum, Auswahl, Link, Person).“ Die Definition liegt am
 // Projekt (`Project.felder`), die Werte an der Aufgabe (`Task.felder`) — der Server prüft sie typgerecht
 // (lib/aufgaben/saeubern.ts `feldWerteTypisieren`; Betrag in ganzen Cent). Feld löschen lässt die Werte an den
-// Aufgaben stehen (kommt das Feld wieder, sind sie da) — sie werden nur nicht mehr gezeigt.
+// Aufgaben stehen (kommt das Feld wieder, sind sie da) — sie werden nur nicht mehr gezeigt. Seit 29.09. (A6): ein
+// Auswahl-Wert, der umbenannt wird (gleiche Stelle in der Liste), wandert serverseitig an allen Aufgaben mit; entfernte
+// Werte bleiben an den Aufgaben stehen (der Schreibweg prüft nur neu gesetzte Werte).
 
 import Link from 'next/link';
 import { useEffect, useState, type CSSProperties, type Dispatch } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Knopf, feld } from '../schlank';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
-import { AUFGABEN_GRENZEN } from '@/lib/aufgaben/saeubern';
+import { AUFGABEN_GRENZEN, euroAlsCent } from '@/lib/aufgaben/saeubern';
 import type { EigenesFeld, FeldTyp, FeldWert, Project, Task } from '@/types/tasks';
 import type { AufgabenAktion } from '@/context/TasksContext';
 import { neueKennung, type Person } from './hilfe';
@@ -22,13 +24,8 @@ const klein: CSSProperties = { ...feld, fontSize: TYP.bedien, padding: '7px 10px
 
 /** Cent → „1.500,40 €“. */
 export const betragText = (cent: number): string => (cent / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
-/** „1.500,40“ → 150040 Cent (null, wenn keine Zahl). */
-export function centAus(text: string): number | null {
-  const t = text.replace(/[€\s]/g, '');
-  if (!t) return null;
-  const n = Number(/,/.test(t) ? t.replace(/\./g, '').replace(',', '.') : t);
-  return Number.isFinite(n) ? Math.round(n * 100) : null;
-}
+/** „1.500,40“ → 150040 Cent, „1.500“ → 150000 (Tausenderpunkt, 29.09.), null, wenn keine Zahl — dieselbe Regel wie der Server. */
+export const centAus = (text: string): number | null => euroAlsCent(text);
 
 /** Ein Wert zur Anzeige (Tabelle, Zeile). */
 export function feldWertText(f: EigenesFeld, w: FeldWert | undefined, personen: readonly Person[] = []): string {

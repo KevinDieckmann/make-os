@@ -18,6 +18,7 @@ import {
   MELDUNGEN_MAX, PERSON_OK, bestandSaeubern, eintragAus, einfuegen, faelligAbleiten, gelesenSetzen, pruefeEingabe, sichtBauen,
   type GelesenAuswahl, type Meldung, type MeldungenBestand, type MeldungenSicht,
 } from './regeln';
+import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 
 /** Speichername je Person — für alle Konten gleich gebaut (auch „kevin“), nie im Code mit Daten. */
 export function meldungenSpeicher(person: string): string {
@@ -60,7 +61,7 @@ export function meldungenStand(person: string): Promise<string> {
 }
 
 async function aufgabenLesen(): Promise<unknown[]> {
-  const s = await loadJson<{ tasks?: unknown }>('tasks');
+  const s = await ladeAufgabenSicht();
   return Array.isArray(s?.tasks) ? s.tasks : [];
 }
 

@@ -17,7 +17,9 @@ const ablage = new Map<string, { v: number; t: number; wert: unknown; laeuft?: P
 // 27.09. (Tempo-Prüfung): dazu Zeit & Fokus (`zeit`, schreibt alle zwei Minuten je Person), Tageslauf, CRM-Signale,
 // die Kalender-Stände von iCloud, Verläufe (Traktion, Business, Performance) und die Flächen-Gestaltung — keiner dieser
 // Bestände ist Eingang eines Index, aber jeder machte bis dahin ALLES Gemerkte ungültig; der Speicher war nie warm.
-const RAUSCHEN = /^(anwesenheit|nutzung|aenderungen|agent-log|zoe-auftraege|zoe-verlauf(--.*)?|verbrauch|anmeldungen|client-fehler|hoi-.*|ki-stand|delegation-runde|content-entwuerfe|ernaehrung-vorschlag|sitzungs-stand.*|zeit(--.*)?|tageslauf|crm-signale|kalender-icloud|calendar-cache|performance(--.*)?|.*-verlauf|flaeche(--.*)?|willkommen(--.*)?|brain-konsolidierung|meldungen--.*)$/;
+// 29.09.: dazu das Änderungsprotokoll (Monatsdateien), ZOE-Stapel/-Protokoll/-Entscheidungen, der Brain-Spiegel der App
+// und der laufende Fokus je Person — viel geschrieben, Eingang höchstens mit TTL (wie agent-log/zoe-auftraege).
+const RAUSCHEN = /^(anwesenheit|nutzung|aenderungen|agent-log|zoe-auftraege|zoe-verlauf(--.*)?|verbrauch|anmeldungen|client-fehler|hoi-.*|ki-stand|delegation-runde|content-entwuerfe|ernaehrung-vorschlag|sitzungs-stand.*|zeit(--.*)?|tageslauf|crm-signale|kalender-icloud|calendar-cache|performance(--.*)?|.*-verlauf|flaeche(--.*)?|willkommen(--.*)?|brain-konsolidierung|meldungen--.*|aenderungsprotokoll--.*|zoe-stapel|zoe-protokoll|zoe-entscheidungen--.*|brain-app-spiegel|fokus-laufend--.*)$/;
 export const istRauschen = (name?: string): boolean => !!name && RAUSCHEN.test(name);
 
 /** local-db ruft das nach jedem Schreiben — dann rechnet der nächste Aufruf neu. Rauschen (siehe oben) lässt den Stand stehen. */

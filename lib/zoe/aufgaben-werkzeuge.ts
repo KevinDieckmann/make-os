@@ -15,7 +15,7 @@
 // ZOE versendet nichts und löscht nichts: kein Werkzeug hier schreibt nach außen oder entfernt eine Aufgabe.
 
 import type { Task, TasksState, AufgabeKommentar, ZoeAuftrag } from '@/types/tasks';
-import { ladeAufgaben, aufgabenAendern, type AufgabenOps } from '@/lib/aufgaben/speicher';
+import { ladeAufgabenSicht, aufgabenAendern, type AufgabenOps } from '@/lib/aufgaben/speicher';
 import { AUFGABEN_GRENZEN } from '@/lib/aufgaben/saeubern';
 import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -46,7 +46,7 @@ export async function aufgabeZoeAendern(id: string, aendern: (t: Task, state: Ta
 }): Promise<ZoeErgebnis> {
   const versuche = opt.stand ? 1 : 3;
   for (let i = 0; i < versuche; i++) {
-    const state = await ladeAufgaben();
+    const state = await ladeAufgabenSicht();
     const t = state.tasks.find(x => x.id === id);
     if (!t) return nein(404, 'Aufgabe nicht gefunden.');
     const stand = fingerabdruck(t as unknown as Record<string, unknown>);
@@ -219,7 +219,7 @@ const imHaushalt = (lauf: Lauf): Lauf => async (input, origin, person) => {
 
 /** Was liegt bei ZOE — nur die eigenen Aufträge, nur Titel/Status/Deadline (keine Notizen). */
 async function meineAufgaben(_i: Record<string, unknown>, _o: string, person?: string): Promise<string> {
-  const s = zoeAufgaben(await ladeAufgaben(), { auftraggeberin: person });
+  const s = zoeAufgaben(await ladeAufgabenSicht(), { auftraggeberin: person });
   if (!s.alle.length) return 'Bei ZOE liegt keine Aufgabe dieser Person.';
   const zeile = (t: Task) => `- „${kurz(t.title, 100)}“ [${t.id}] · ${ZOE_STATUS_LABEL[t.zoe!.status]}${t.dueDate ? ` · fällig ${t.dueDate.slice(0, 10)}` : ''}`;
   const block = (titel: string, l: Task[]) => (l.length ? [`${titel} (${l.length}):`, ...l.slice(0, 20).map(zeile), ...(l.length > 20 ? [`… und ${l.length - 20} weitere`] : [])] : []);
@@ -234,7 +234,7 @@ async function meineAufgaben(_i: Record<string, unknown>, _o: string, person?: s
 async function aufgabeAnZoe(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
   const frage = String(input.aufgabe ?? '').trim();
   if (!frage) return 'Fehlgeschlagen: aufgabe fehlt (Kennung oder Titel).';
-  const state = await ladeAufgaben();
+  const state = await ladeAufgabenSicht();
   const offen = state.tasks.filter(t => t.status !== 'done');
   const klein = frage.toLowerCase();
   const genau = offen.filter(t => t.id === frage || t.title.toLowerCase() === klein);

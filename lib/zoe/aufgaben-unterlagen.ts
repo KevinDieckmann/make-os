@@ -19,7 +19,7 @@
 import { fremd } from '@/lib/anthropic';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
-import { ladeAufgaben } from '@/lib/aufgaben/speicher';
+import { ladeAufgabenSicht } from '@/lib/aufgaben/speicher';
 import { bereichVonSpace } from '@/lib/aufgaben/struktur';
 import { aufgabenDateienListe, aufgabenDateiLesen, type AufgabenDatei } from '@/lib/dateien/aufgaben-ablage';
 import { textAuslesen, NichtLesbar } from '@/lib/dateien/text-auslesen';
@@ -87,7 +87,7 @@ function antwort(kopf: string, koerper: string, teil: unknown, weiter: (t: numbe
 async function unterlagen(input: Record<string, unknown>, person?: string): Promise<string> {
   const h = await haushalt(person);
   if (!h) return NICHT_IM_HINTERGRUND;
-  const state = await ladeAufgaben();
+  const state = await ladeAufgabenSicht();
   const aufgabeSuche = String(input.aufgabe ?? '').trim();
   const projektSuche = String(input.projekt ?? '').trim();
   if (!aufgabeSuche && !projektSuche) return 'Fehlgeschlagen: projekt oder aufgabe angeben (Kennung oder Titel).';

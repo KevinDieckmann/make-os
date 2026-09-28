@@ -255,13 +255,21 @@ describe('Gesellschaften-Route', () => {
     const gespeichert = (await db.loadJson<{ gesellschaften: { id: string; bank?: { iban?: string; bic?: string } }[] }>('gesellschaften--test-haus'))!.gesellschaften.find(g => g.id === 'kdv')!;
     expect(gespeichert.bank).toEqual({ iban: BEISPIEL_IBAN, bic: 'COBADEFFXXX' });
   });
-  it('Logo: nur PNG/JPG (am Inhalt), wird verknüpft', async () => {
+  it('Logo: nur PNG/JPG (am Inhalt), wird verknüpft — nur mit Stand aus dem Formular (29.09.)', async () => {
     const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
-    const f = new FormData(); f.append('id', 'kdc'); f.append('datei', new File([png as BlobPart], 'logo.png', { type: 'image/png' }));
-    const r = await gesellschaften.POST(new Request('http://test/api/crm/gesellschaften', { method: 'POST', headers: { 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': 'kevin' }, body: f }));
+    const kopfDienst = { 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': 'kevin' };
+    // Ohne Stand: 409 — vorher galt dann still der aktuelle Stand (ein altes Fenster überschrieb unbemerkt).
+    const ohne = new FormData(); ohne.append('id', 'kdc'); ohne.append('datei', new File([png as BlobPart], 'logo.png', { type: 'image/png' }));
+    expect((await gesellschaften.POST(new Request('http://test/api/crm/gesellschaften', { method: 'POST', headers: kopfDienst, body: ohne }))).status).toBe(409);
+    const stand = (await holen()).find(g => g.id === 'kdc')!.stand;
+    const f = new FormData(); f.append('id', 'kdc'); f.append('stand', stand); f.append('datei', new File([png as BlobPart], 'logo.png', { type: 'image/png' }));
+    const r = await gesellschaften.POST(new Request('http://test/api/crm/gesellschaften', { method: 'POST', headers: kopfDienst, body: f }));
     expect(r.status).toBe(200);
     expect(((await r.json()) as { gesellschaft: { logoDateiId?: string } }).gesellschaft.logoDateiId).toMatch(/^d-/);
-    const pdf = new FormData(); pdf.append('id', 'kdc'); pdf.append('datei', new File([new TextEncoder().encode('%PDF-1.4\n') as BlobPart], 'logo.pdf', { type: 'application/pdf' }));
+    // Veralteter Stand (vor dem Logo): 409.
+    const alt = new FormData(); alt.append('id', 'kdc'); alt.append('stand', stand); alt.append('datei', new File([png as BlobPart], 'logo.png', { type: 'image/png' }));
+    expect((await gesellschaften.POST(new Request('http://test/api/crm/gesellschaften', { method: 'POST', headers: kopfDienst, body: alt }))).status).toBe(409);
+    const pdf = new FormData(); pdf.append('id', 'kdc'); pdf.append('stand', (await holen()).find(g => g.id === 'kdc')!.stand); pdf.append('datei', new File([new TextEncoder().encode('%PDF-1.4\n') as BlobPart], 'logo.pdf', { type: 'application/pdf' }));
     expect((await gesellschaften.POST(new Request('http://test/api/crm/gesellschaften', { method: 'POST', headers: { 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': 'kevin' }, body: pdf }))).status).toBe(415);
   });
 });

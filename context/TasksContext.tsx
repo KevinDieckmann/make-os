@@ -1,13 +1,18 @@
 'use client';
 
-import { createContext, useContext, useEffect, useReducer, useRef, useState, type Dispatch, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type Dispatch, type ReactNode } from 'react';
 import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
 import type { TasksState, TasksAction, Project, Task, SubTask, AufgabenListe, AufgabenStatus, AufgabenGruppe, AufgabenVorlage, VerlaufEintrag } from '@/types/tasks';
 import type { AufgabenSpace } from '@/lib/aufgaben/struktur';
-import { sonstigeProjektId } from '@/lib/aufgaben/struktur';
 import { abhaengigAngleichen } from '@/lib/aufgaben/abhaengig';
-import { MOCK_PROJECTS } from '@/lib/mock-data/projects';
-import { MOCK_TASKS } from '@/lib/mock-data/tasks';
+import { aufgabenSicht, aufgabeInPapierkorb, projektInPapierkorb, wiederherstellen, endgueltigEntfernen, papierkorbEintraege, type PapierkorbEintrag } from '@/lib/aufgaben/papierkorb';
+import {
+  LISTEN, anzahl, aufOps, ausSchluessel, einzeln, filtern, gemerktAlsOps, gleichOhneZeit, koerper, leereOps, leererStand, merkenAus, ohneStand,
+  opId, pakete, schluessel, schluesselVon, unterschied, voruebergehend, wartezeit, zeilenTitel, fassungText,
+  type ListenArt, type OpsJe, type Staende, type Zeile,
+} from '@/lib/aufgaben/abgleich';
+import { istNeuLaden, NEU_LADEN_EREIGNIS } from '@/lib/bau/kennung';
+import { SpeicherHinweis } from '@/components/os/aufgaben/SpeicherHinweis';
 
 function generateId(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -31,16 +36,16 @@ export type AufgabenAktion =
   | { type: 'ADD_VORLAGE'; payload: AufgabenVorlage }
   | { type: 'UPDATE_VORLAGE'; payload: Partial<AufgabenVorlage> & { id: string } }
   | { type: 'DELETE_VORLAGE'; payload: { id: string } }
-  | { type: 'VERLAUF_NACHTRAGEN'; payload: { id: string; verlauf: VerlaufEintrag[] }[] };
+  | { type: 'VERLAUF_NACHTRAGEN'; payload: { id: string; verlauf: VerlaufEintrag[] }[] }
+  // Papierkorb (29.09.): „Löschen“ legt hinein (DELETE_PROJECT/DELETE_TASK), zurückholen samt Kette, endgültig getrennt.
+  | { type: 'WIEDERHERSTELLEN'; payload: { art: 'projekt' | 'aufgabe'; id: string } }
+  | { type: 'ENDGUELTIG_LOESCHEN'; payload: { art: 'projekt' | 'aufgabe'; id: string } }
+  // Abgleich (29.09., A1/A4): neuer Serverstand + ausstehende Änderungen wieder darauf; einzelne Zeilen setzen.
+  | { type: 'ABGLEICH'; payload: { basis: TasksState; altServer: TasksState; serverGewinnt?: readonly string[] } }
+  | { type: 'ZEILEN_SETZEN'; payload: { liste: ListenArt; id: string; eintrag: Zeile | null }[] };
 
-const initialState: TasksState = {
-  projects: MOCK_PROJECTS,
-  tasks: MOCK_TASKS,
-  listen: [],
-  statusEigen: [],
-  gruppen: [],
-  vorlagen: [],
-};
+// Leer bis zum Laden — nie Beispiel-Daten, die ein erster Klick als echten Stand speichern könnte.
+const initialState: TasksState = leererStand();
 
 /** Ein Teil auf einen Eintrag legen — `undefined` im Teil entfernt das Feld (JSON kennt kein undefined). */
 function mitTeil<T extends object>(alt: T, teil: Partial<T>): T {
@@ -55,7 +60,10 @@ function verlaufNachtragen(tasks: Task[], neu: readonly { id: string; verlauf: V
   return tasks.map(t => (m.has(t.id) ? mitTeil(t, { verlauf: m.get(t.id) }) : t));
 }
 
-function tasksReducer(state: TasksState, action: AufgabenAktion): TasksState {
+const vollstaendig = (s: TasksState): TasksState => ({ ...s, listen: s.listen ?? [], statusEigen: s.statusEigen ?? [], gruppen: s.gruppen ?? [], vorlagen: s.vorlagen ?? [] });
+
+/** Der Reducer (exportiert für die Tests der Verlust-Szenarien, tests/aufgaben-abgleich.test.ts). */
+export function tasksReducer(state: TasksState, action: AufgabenAktion): TasksState {
   const now = new Date().toISOString();
   const listen = state.listen ?? [];
   const statusEigen = state.statusEigen ?? [];
@@ -75,19 +83,9 @@ function tasksReducer(state: TasksState, action: AufgabenAktion): TasksState {
         ...state,
         projects: state.projects.map(p => p.id === action.payload.id ? mitTeil(p, { ...action.payload, updatedAt: now }) : p),
       };
-    case 'DELETE_PROJECT': {
-      // Seit 28.09. abends: Aufgaben gehen nie mit — sie wandern nach „Sonstige“ ihres Space, Listen des Projekts fallen weg.
-      const weg = new Set(listen.filter(l => l.projektId === action.payload.id).map(l => l.id));
-      return {
-        ...state,
-        projects: state.projects.filter(p => p.id !== action.payload.id),
-        listen: listen.filter(l => !weg.has(l.id)),
-        gruppen: gruppen.filter(g => g.projektId !== action.payload.id),
-        tasks: state.tasks.map(t => (t.projectId === action.payload.id
-          ? mitTeil(t, { projectId: sonstigeProjektId(t.spaceId ?? 'privat'), listeId: undefined, updatedAt: now })
-          : t)),
-      };
-    }
+    case 'DELETE_PROJECT':
+      // Seit 29.09. (A7): in den Papierkorb — samt Aufgaben, Notiz, Feldern, Listen und Dateien; 30 Tage wiederherstellbar.
+      return projektInPapierkorb(state, action.payload.id, now);
     case 'ADD_TASK': {
       const task: Task = { ...action.payload, id: generateId(), createdAt: now, updatedAt: now };
       return { ...state, tasks: [...state.tasks, task] };
@@ -113,15 +111,23 @@ function tasksReducer(state: TasksState, action: AufgabenAktion): TasksState {
         }),
       };
     case 'DELETE_TASK':
-      return {
-        ...state,
-        // Unteraufgaben gehen mit; Verweise AUF die gelöschte Aufgabe fallen weg — sonst bleiben andere für immer an einem Geist blockiert.
-        tasks: state.tasks
-          .filter(t => t.id !== action.payload.id && t.parentId !== action.payload.id)
-          .map(t => t.dependencies?.some(d => d.blockedByTaskId === action.payload.id) || t.abhaengigVon?.includes(action.payload.id)
-            ? mitTeil(t, { dependencies: (t.dependencies ?? []).filter(d => d.blockedByTaskId !== action.payload.id), abhaengigVon: t.abhaengigVon?.filter(x => x !== action.payload.id).length ? t.abhaengigVon.filter(x => x !== action.payload.id) : undefined, updatedAt: now })
-            : t),
-      };
+      // Seit 29.09. (A7): in den Papierkorb — Unteraufgaben gehen mit; wer auf sie wartete, wartet nicht mehr auf einen Geist.
+      return aufgabeInPapierkorb(state, action.payload.id, now);
+    case 'WIEDERHERSTELLEN':
+      return wiederherstellen(state, action.payload.art, action.payload.id, now);
+    case 'ENDGUELTIG_LOESCHEN':
+      return endgueltigEntfernen(state, action.payload.art, action.payload.id).state;
+    case 'ABGLEICH': {
+      // Ausstehend = was die Sicht vom alten Serverstand unterscheidet; es kommt wieder auf den neuen (außer Zeilen, bei denen der Server gewinnt).
+      const gewinnt = new Set(action.payload.serverGewinnt ?? []);
+      const offen = filtern(unterschied(action.payload.altServer, state, new Map()), k => !gewinnt.has(k));
+      return vollstaendig(aufOps(action.payload.basis, offen));
+    }
+    case 'ZEILEN_SETZEN': {
+      const ops = leereOps();
+      for (const z of action.payload) ops[z.liste].push(z.eintrag ? { op: 'upsert', eintrag: z.eintrag } : { op: 'delete', id: z.id });
+      return vollstaendig(aufOps(state, ops));
+    }
     case 'TOGGLE_TASK': {
       const ziel = state.tasks.find(t => t.id === action.payload.id);
       const wirdFertig = !!ziel && ziel.status !== 'done';
@@ -212,121 +218,285 @@ function tasksReducer(state: TasksState, action: AufgabenAktion): TasksState {
   }
 }
 
+/** Eine abgelehnte eigene Änderung (400/413/Kreis …) — bleibt in der Sicht, bis sie geändert oder verworfen wird. */
+export interface Abgelehnt { schluessel: string; titel: string; grund: string }
+/** Konflikt: der Server hatte inzwischen eine andere Fassung — sie wird gezeigt, die eigene bleibt als „Deine Fassung“. */
+export interface Konflikt { schluessel: string; liste: ListenArt; id: string; titel: string; grund: string; meine: Zeile | null; server: Zeile | null }
+/** Wie es um das Speichern steht — global sichtbar (SpeicherHinweis). */
+export interface SpeicherLage {
+  /** Ausstehende Änderungen (Zeilen), die der Server noch nicht bestätigt hat. */
+  offen: number;
+  phase: 'ruhig' | 'sendet' | 'wiederholen' | 'neuLaden' | 'gesperrt';
+  grund?: string;
+  naechsterVersuch?: number;
+  abgelehnt: Abgelehnt[];
+  konflikte: Konflikt[];
+}
+
 interface TasksContextValue {
+  /** Die Sicht: OHNE Papierkorb (so sehen alle Seiten, Flächen, CRM-Kacheln die Aufgaben). */
   state: TasksState;
+  /** Der volle Stand mit Papierkorb — nur für den Papierkorb selbst. */
+  voll: TasksState;
   dispatch: Dispatch<AufgabenAktion>;
   /** true, sobald der persistierte Zustand geladen wurde (oder Erststart bestätigt ist). */
   ready: boolean;
-  /** Server-Stand neu laden — nötig, nachdem eine Route (z. B. /api/tasks/create) direkt in den Store geschrieben hat. */
+  /** Server-Stand neu laden — ausstehende Änderungen bleiben (sie kommen wieder darauf). */
   rehydrate: () => Promise<void>;
   /** Spaces vom Server: fest + Mandanten aus dem CRM (aktiv, Archiv). */
   spaces: AufgabenSpace[];
+  /** Speicher-Lage (ausstehend, erneuter Versuch, abgelehnt, Konflikte). */
+  speicher: SpeicherLage;
+  /** Hat diese Zeile noch ungespeicherte Änderungen? (z. B. Notiz-Entwurf erst nach Bestätigung löschen) */
+  istOffen: (liste: ListenArt, id: string) => boolean;
+  /** Papierkorb-Einträge (Wurzeln), neueste zuerst. */
+  papierkorb: PapierkorbEintrag[];
+  /** Sofort speichern (statt nach der kurzen Wartezeit). */
+  jetztSpeichern: () => void;
+  /** Konflikt lösen: eigene Fassung übernehmen (schreibt sie mit dem neuen Stand) oder nur den Hinweis schließen. */
+  konfliktLoesen: (schluessel: string, wie: 'meine' | 'schliessen') => void;
+  /** Abgelehnte Änderung verwerfen (die Zeile nimmt wieder den Serverstand) oder erneut versuchen. */
+  ablehnungLoesen: (schluessel: string, wie: 'verwerfen' | 'erneut') => void;
 }
 
 const TasksContext = createContext<TasksContextValue | null>(null);
 
-/** Ereignis, wenn der Server eine Änderung mit 409 ablehnte (Stand veraltet) — die Seite zeigt einen Hinweis. */
+/** Ereignis, wenn der Server eine Änderung mit 409 ablehnte (Stand veraltet) — für Seiten, die zusätzlich reagieren wollen. */
 export const AUFGABEN_KONFLIKT = 'make-aufgaben-konflikt';
+/** Sitzungsspeicher der ausstehenden Änderungen (überlebt Neuladen/„bitte neu laden“ im selben Tab). */
+const MERKER = 'make-aufgaben-ausstehend';
+const WEG = '/api/state/tasks';
 
-type Zeile = { id: string; stand?: string };
-type ListenArt = 'tasks' | 'projects' | 'listen' | 'statusEigen' | 'gruppen' | 'vorlagen';
-const LISTEN: ListenArt[] = ['tasks', 'projects', 'listen', 'statusEigen', 'gruppen', 'vorlagen'];
-const STRUKTUR: Exclude<ListenArt, 'tasks'>[] = ['projects', 'listen', 'statusEigen', 'gruppen', 'vorlagen'];
-type Staende = Map<string, string>;
-const schluessel = (art: ListenArt, id: string) => `${art}:${id}`;
+interface SchreibAntwort { ok?: boolean; error?: string; neuLaden?: boolean; massenAenderung?: boolean; massenLoeschung?: boolean; anzahl?: number; konflikte?: { liste: ListenArt; id: string; grund: string }[]; kreis?: string[]; zeilen?: { liste: ListenArt; id: string; stand: string; verlauf?: VerlaufEintrag[] }[]; state?: TasksState; /** Paket C3: neue Instanzen wiederkehrender Aufgaben. */ serien?: string[] }
 
-/** Server-Antwort in Sicht + Stände teilen: `stand` gehört nie in den Zustand (sonst schickte man einen alten zurück). */
-function ohneStand(roh: TasksState, staende: Staende): TasksState {
-  const raus = { projects: [], tasks: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] } as unknown as Record<ListenArt, Zeile[]>;
-  for (const art of LISTEN) {
-    for (const z of ((roh[art] ?? []) as unknown as Zeile[])) {
-      const { stand, ...rest } = z;
-      if (stand) staende.set(schluessel(art, z.id), stand);
-      raus[art].push(rest as Zeile);
-    }
-  }
-  return raus as unknown as TasksState;
-}
-
-type Op = { op: 'upsert'; eintrag: unknown; stand?: string } | { op: 'delete'; id: string; stand?: string };
-
-/** Unterschied zweier Stände je Liste: geänderte/neue Einträge + gelöschte Kennungen, jeweils mit dem letzten Serverstand. */
-function unterschied(alt: TasksState, neu: TasksState, staende: Staende): Record<ListenArt, Op[]> {
-  const raus: Record<ListenArt, Op[]> = { tasks: [], projects: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] };
-  for (const art of LISTEN) {
-    const a = new Map(((alt[art] ?? []) as unknown as Zeile[]).map(x => [x.id, JSON.stringify(x)]));
-    const n = (neu[art] ?? []) as unknown as Zeile[];
-    for (const x of n) if (a.get(x.id) !== JSON.stringify(x)) { const s = staende.get(schluessel(art, x.id)); raus[art].push({ op: 'upsert', eintrag: x, ...(s && a.has(x.id) ? { stand: s } : {}) }); }
-    const ids = new Set(n.map(x => x.id));
-    for (const id of a.keys()) if (!ids.has(id)) { const s = staende.get(schluessel(art, id)); raus[art].push({ op: 'delete', id, ...(s ? { stand: s } : {}) }); }
-  }
-  return raus;
-}
-
-interface SchreibAntwort { ok?: boolean; error?: string; massenAenderung?: boolean; massenLoeschung?: boolean; anzahl?: number; konflikte?: unknown[]; kreis?: string[]; zeilen?: { liste: ListenArt; id: string; stand: string; verlauf?: VerlaufEintrag[] }[]; state?: TasksState; /** Paket C3: neue Instanzen wiederkehrender Aufgaben. */ serien?: string[] }
-
-/**
- * Schreiben mit Rückfrage bei Massen-Erledigung/-Löschung (lib/store/massen-wache.ts): ein blockierender Dialog statt
- * einer leisen Meldung. 409 mit `konflikte` (Stand veraltet): Rückgabe mit dem aktuellen Stand — der Aufrufer zeigt ihn.
- */
-async function schreibeMitWache(methode: 'PUT' | 'PATCH', koerper: Record<string, unknown>): Promise<SchreibAntwort | null> {
-  const senden = (b: Record<string, unknown>) => fetch('/api/state/tasks', { method: methode, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
+/** Ein PATCH — Status 0 = keine Verbindung. Kleine Körper mit keepalive (überleben das Schließen des Tabs). */
+async function schreiben(k: Record<string, unknown>): Promise<{ status: number; d: SchreibAntwort }> {
+  const text = JSON.stringify(k);
   try {
-    const r = await senden(koerper);
-    const d = (await r.json().catch(() => ({}))) as SchreibAntwort;
-    if (r.ok || r.status !== 409) return { ...d, ok: r.ok };
-    if (d.konflikte?.length) return d;
-    if (!d.massenAenderung && !d.massenLoeschung) { window.alert(d.error ?? 'Speichern abgelehnt. Bitte die Seite neu laden.'); return d; }
-    const ja = window.confirm(
-      d.massenLoeschung
-        ? 'Damit würde über die Hälfte aller Aufgaben gelöscht.\n\nIst das so gewollt?'
-        : `${d.anzahl} Aufgaben würden auf einmal als erledigt markiert.\n\nDas ist ungewöhnlich viel. Ist das so gewollt?`,
-    );
-    if (!ja) { window.location.reload(); return null; }
-    const r2 = await senden({ ...koerper, ...(d.massenLoeschung ? { massenLoeschung: true } : { massenAenderung: true }) });
-    return { ...((await r2.json().catch(() => ({}))) as SchreibAntwort), ok: r2.ok };
-  } catch { return null; /* offline → beim nächsten Mal erneut */ }
+    const r = await fetch(WEG, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: text, keepalive: text.length < 60_000 });
+    return { status: r.status, d: (await r.json().catch(() => ({}))) as SchreibAntwort };
+  } catch { return { status: 0, d: {} }; }
 }
+
+const zeileIn = (s: TasksState, liste: ListenArt, id: string): Zeile | null => (((s[liste] ?? []) as unknown as Zeile[]).find(x => x.id === id) ?? null);
+const lies = (k: string): string | null => { try { return window.sessionStorage.getItem(k); } catch { return null; } };
+const schreibe = (k: string, v: string | null) => { try { if (v === null) window.sessionStorage.removeItem(k); else window.sessionStorage.setItem(k, v); } catch { /* voll/privat — der Server bleibt die Wahrheit */ } };
 
 export function TasksProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(tasksReducer, initialState);
+  const [voll, dispatch] = useReducer(tasksReducer, initialState);
   const [ready, setReady] = useState(false);
   const [spaces, setSpaces] = useState<AufgabenSpace[]>([]);
   /** Laden fehlgeschlagen (oder kein Zugang) — dann wird nichts gespeichert, um echte Daten zu schützen. */
   const [ladeFehler, setLadeFehler] = useState(false);
+  const [lage, setLage] = useState<SpeicherLage>({ offen: 0, phase: 'ruhig', abgelehnt: [], konflikte: [] });
+  const vollRef = useRef(voll);
+  vollRef.current = voll;
   const hydrated = useRef(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  /** Der Stand, wie er zuletzt gelesen bzw. geschrieben wurde — geschrieben wird nur, was sich wirklich geändert hat. */
-  const zuletzt = useRef<string | null>(null);
+  const ladeFehlerRef = useRef(false);
+  /** Der zuletzt vom Server BESTÄTIGTE Stand (Sicht ohne `stand`) — alles, was die Sicht davon unterscheidet, steht aus. */
+  const server = useRef<TasksState | null>(null);
   /** Stand je Zeile aus der letzten Server-Antwort (Fingerabdruck) — geht mit jeder Änderung mit (409 bei veraltet). */
   const staende = useRef<Staende>(new Map());
-  /** Steht gerade ein Speichervorgang aus? Dann keinen Abgleich dazwischenschieben. */
-  const speichernSteht = useRef(false);
-  /** Schreibvorgänge laufen nacheinander — jeder liest die Stände, die die Antwort des vorigen brachte. */
+  /** Schreiben und Abgleichen laufen nacheinander — jeder Schritt liest die Stände, die der vorige brachte. */
   const kette = useRef<Promise<unknown>>(Promise.resolve());
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const wiederTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const versuch = useRef(0);
+  /** Der letzte Versuch scheiterte vorübergehend — ein neuer ist geplant. */
+  const wiederholen = useRef(false);
+  const unterwegs = useRef(false);
+  /** Gesperrt: „bitte neu laden“ (anderer Bau) oder kein Zugang — dann wird nicht mehr gesendet (die Änderungen bleiben gemerkt). */
+  const blockiert = useRef<null | 'neuLaden' | 'gesperrt'>(null);
+  const abgelehnt = useRef<Map<string, { json: string; titel: string; grund: string }>>(new Map());
+  const konflikte = useRef<Konflikt[]>([]);
+  const person = useRef<string>('');
 
-  const uebernehmenVomServer = (d: { state: TasksState | null; spaces?: AufgabenSpace[] }) => {
-    if (Array.isArray(d.spaces)) setSpaces(d.spaces);
-    if (d.state && Array.isArray(d.state.tasks)) {
-      staende.current = new Map();
-      const sicht = ohneStand(d.state, staende.current);
-      dispatch({ type: 'HYDRATE', payload: sicht });
-      zuletzt.current = JSON.stringify(tasksReducer(initialState, { type: 'HYDRATE', payload: sicht }));
-      return true;
+  const offeneOps = useCallback((): OpsJe => (server.current ? unterschied(server.current, vollRef.current, staende.current) : leereOps()), []);
+  /**
+   * Eine Aktion, die Serverstand und Sicht GEMEINSAM ändert (Abgleich, Verlauf): die Sicht-Referenz sofort mitziehen —
+   * sonst sähe ein Schritt bis zum nächsten Zeichnen neuen Serverstand gegen alte Sicht und hielte fremde Änderungen
+   * für eigene (und schickte sie mit neuem Stand zurück).
+   */
+  const gemeinsam = useCallback((a: AufgabenAktion) => {
+    vollRef.current = tasksReducer(vollRef.current, a);
+    dispatch(a);
+  }, []);
+  const lageSetzen = useCallback((teil: Partial<SpeicherLage> = {}) => {
+    const offen = anzahl(offeneOps());
+    setLage(alt => ({
+      ...alt, offen, ...teil,
+      abgelehnt: Array.from(abgelehnt.current.entries()).map(([k, a]) => ({ schluessel: k, titel: a.titel, grund: a.grund })),
+      konflikte: [...konflikte.current],
+      ...(teil.phase === undefined ? { phase: blockiert.current ?? (unterwegs.current ? 'sendet' : wiederholen.current && offen ? 'wiederholen' : 'ruhig') } : {}),
+    }));
+  }, [offeneOps]);
+
+  /** Ausstehendes im Sitzungsspeicher merken (oder löschen, wenn nichts aussteht). */
+  const merken = useCallback(() => {
+    if (!hydrated.current || !person.current) return;
+    const ops = offeneOps();
+    schreibe(MERKER, anzahl(ops) ? JSON.stringify(merkenAus(ops, person.current, new Date().toISOString())) : null);
+  }, [offeneOps]);
+
+  // ── Abgleich: neuer Serverstand, ausstehende Änderungen wieder darauf ────────────────────────────────
+  const uebernehmen = useCallback((roh: TasksState, serverGewinnt: readonly string[] = []) => {
+    const neu: Staende = new Map();
+    const basis = ohneStand(roh, neu);
+    const alt = server.current ?? leererStand();
+    const gewinnt = new Set(serverGewinnt);
+    // Ausstehende Zeilen behalten ihren ALTEN Stand — so fällt eine fremde Änderung daran als Konflikt auf.
+    for (const k of schluesselVon(unterschied(alt, vollRef.current, new Map()))) {
+      if (gewinnt.has(k)) continue;
+      const s = staende.current.get(k);
+      if (s) neu.set(k, s);
     }
-    return false;
-  };
+    server.current = basis;
+    staende.current = neu;
+    gemeinsam({ type: 'ABGLEICH', payload: { basis, altServer: alt, serverGewinnt } });
+  }, [gemeinsam]);
 
-  // Beim Start: persistierten Zustand laden. `hydrated` nur, wenn das Laden WIRKLICH geklappt hat — sonst gälte der
-  // Beispiel-Zustand als „geladen“, und der nächste Klick überschriebe die echten Aufgaben damit.
+  const abgleichenJetzt = useCallback(async (serverGewinnt: readonly string[] = []) => {
+    try {
+      const r = await fetch(`${WEG}?papierkorb=1`, { cache: 'no-store' });
+      if (!r.ok) return;
+      const d = (await r.json()) as { state: TasksState | null; spaces?: AufgabenSpace[] };
+      if (Array.isArray(d.spaces)) setSpaces(d.spaces);
+      if (d.state && Array.isArray(d.state.tasks)) uebernehmen(d.state, serverGewinnt);
+    } catch { /* offline — nächster Versuch beim nächsten Abgleich */ }
+  }, [uebernehmen]);
+
+  const rehydrate = useCallback(async () => {
+    const p = kette.current.then(() => abgleichenJetzt());
+    kette.current = p.catch(() => {});
+    await p.catch(() => {});
+  }, [abgleichenJetzt]);
+
+  // ── Senden ─────────────────────────────────────────────────────────────────────────────────────────
+  const sendenJetzt = useCallback(async (): Promise<void> => {
+    if (!hydrated.current || ladeFehlerRef.current || blockiert.current || !server.current) return;
+    clearTimeout(wiederTimer.current);
+    // Abgelehnte Zeilen gehen erst wieder, wenn sich an ihnen etwas geändert hat.
+    const alle = offeneOps();
+    const ops = filtern(alle, (k, o) => {
+      const a = abgelehnt.current.get(k);
+      if (!a) return true;
+      if ((o.op === 'upsert' ? JSON.stringify(o.eintrag) : 'geloescht') !== a.json) { abgelehnt.current.delete(k); return true; }
+      return false;
+    });
+    if (!anzahl(ops)) { lageSetzen({ phase: blockiert.current ?? 'ruhig' }); merken(); return; }
+    unterwegs.current = true;
+    lageSetzen({ phase: 'sendet' });
+    const schlange = pakete(ops);
+    let nachladen = false;
+    let bestaetigt: Record<string, true> = {};
+    try {
+      while (schlange.length) {
+        const p = schlange[0];
+        const r = await schreiben({ ...koerper(p), ...bestaetigt });
+        const d = r.d;
+        if (r.status >= 200 && r.status < 300 && d.ok !== false) {
+          schlange.shift(); bestaetigt = {};
+          // Bestätigt: jetzt (und erst jetzt) gilt es als gespeichert.
+          server.current = aufOps(server.current!, p);
+          for (const a of LISTEN) for (const o of p[a]) { const k = schluessel(a, opId(o)); abgelehnt.current.delete(k); if (o.op === 'delete') staende.current.delete(k); }
+          const gesendet = schluesselVon(p);
+          for (const z of d.zeilen ?? []) {
+            staende.current.set(schluessel(z.liste, z.id), z.stand);
+            // Der Server hat Zeilen geändert, die wir nicht geschickt haben (Serie, Umbenennen, Papierkorb-Kette) → nachladen.
+            if (!gesendet.has(schluessel(z.liste, z.id))) nachladen = true;
+          }
+          // Verlauf schreibt der Server — in Sicht UND bestätigten Stand, damit er nicht als Änderung zurückgeht.
+          const verlauf = (d.zeilen ?? []).filter(z => z.liste === 'tasks' && Array.isArray(z.verlauf)).map(z => ({ id: z.id, verlauf: z.verlauf! }));
+          if (verlauf.length) {
+            server.current = { ...server.current!, tasks: verlaufNachtragen(server.current!.tasks, verlauf) };
+            gemeinsam({ type: 'VERLAUF_NACHTRAGEN', payload: verlauf });
+          }
+          if (d.serien?.length) nachladen = true;
+          versuch.current = 0;
+          wiederholen.current = false;
+          continue;
+        }
+        if (istNeuLaden(r.status, d)) { blockiert.current = 'neuLaden'; window.dispatchEvent(new CustomEvent(NEU_LADEN_EREIGNIS)); return; }
+        if (voruebergehend(r.status)) {
+          // Netz weg, Neustart beim Hochladen (502), Sitzung abgelaufen: nichts verwerfen — später erneut.
+          const ms = wartezeit(versuch.current++);
+          wiederholen.current = true;
+          clearTimeout(wiederTimer.current);
+          wiederTimer.current = setTimeout(() => { void senden(); }, ms);
+          lageSetzen({ phase: 'wiederholen', grund: r.status === 0 ? 'keine Verbindung' : r.status === 401 ? 'Sitzung abgelaufen — bitte neu anmelden' : `Server antwortet ${r.status}`, naechsterVersuch: Date.now() + ms });
+          return;
+        }
+        if (r.status === 403) { blockiert.current = 'gesperrt'; lageSetzen({ phase: 'gesperrt', grund: d.error ?? 'Kein Zugang.' }); return; }
+        if (r.status === 409 && d.konflikte?.length && d.state) {
+          // Nur die betroffenen Zeilen nehmen die Fassung des Servers an; die eigene bleibt als „Deine Fassung“.
+          const basis = ohneStand(d.state, new Map());
+          const gewinnt: string[] = [];
+          for (const k of d.konflikte) {
+            const key = schluessel(k.liste, k.id);
+            const meine = zeileIn(vollRef.current, k.liste, k.id);
+            const srv = zeileIn(basis, k.liste, k.id);
+            gewinnt.push(key);
+            if (gleichOhneZeit(meine, srv)) continue; // derselbe Inhalt (z. B. schon gespeichert) — kein echter Konflikt
+            konflikte.current = [...konflikte.current.filter(x => x.schluessel !== key), { schluessel: key, liste: k.liste, id: k.id, titel: zeilenTitel(meine ?? srv), grund: k.grund, meine, server: srv }];
+          }
+          uebernehmen(d.state, gewinnt);
+          window.dispatchEvent(new CustomEvent(AUFGABEN_KONFLIKT));
+          nachladen = false;
+          // Der Rest geht mit den neuen Ständen gleich erneut raus.
+          clearTimeout(timer.current);
+          timer.current = setTimeout(() => { void senden(); }, 50);
+          return;
+        }
+        if (r.status === 409 && (d.massenAenderung || d.massenLoeschung) && !Object.keys(bestaetigt).length) {
+          const ja = window.confirm(d.massenLoeschung
+            ? 'Damit würde über die Hälfte aller Aufgaben gelöscht.\n\nIst das so gewollt?'
+            : `${d.anzahl} Aufgaben würden auf einmal als erledigt markiert.\n\nDas ist ungewöhnlich viel. Ist das so gewollt?`);
+          if (ja) { bestaetigt = d.massenLoeschung ? { massenLoeschung: true } : { massenAenderung: true }; continue; }
+          // Nicht gewollt: diese Änderungen verwerfen — die Zeilen nehmen wieder den Serverstand.
+          schlange.shift(); bestaetigt = {};
+          await abgleichenJetzt(Array.from(schluesselVon(p)));
+          continue;
+        }
+        // Inhaltlich abgelehnt (400, 413, Kreis, …): zerlegen, bis die schuldige Zeile allein steht — sie bleibt sichtbar mit Grund.
+        schlange.shift(); bestaetigt = {};
+        if (anzahl(p) > 1 && !d.kreis?.length) { schlange.unshift(...einzeln(p)); continue; }
+        const grund = d.error ?? `abgelehnt (${r.status})`;
+        for (const a of LISTEN) for (const o of p[a]) {
+          if (d.kreis?.length && a === 'tasks' && !d.kreis.includes(opId(o)) && anzahl(p) > 1) continue;
+          const k = schluessel(a, opId(o));
+          abgelehnt.current.set(k, { json: o.op === 'upsert' ? JSON.stringify(o.eintrag) : 'geloescht', titel: zeilenTitel(o.op === 'upsert' ? o.eintrag : zeileIn(server.current!, a, opId(o))), grund });
+        }
+        // Übrige Zeilen des Pakets (bei einem Kreis) gehen einzeln erneut.
+        if (d.kreis?.length && anzahl(p) > 1) schlange.unshift(...einzeln(filtern(p, k => !abgelehnt.current.has(k))));
+      }
+      if (nachladen) await abgleichenJetzt();
+    } finally {
+      unterwegs.current = false;
+      lageSetzen();
+      merken();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offeneOps, lageSetzen, merken, uebernehmen, abgleichenJetzt, gemeinsam]);
+
+  const senden = useCallback((): Promise<void> => {
+    const p = kette.current.then(() => sendenJetzt());
+    kette.current = p.catch(() => {});
+    return p.catch(() => {});
+  }, [sendenJetzt]);
+
+  const jetztSpeichern = useCallback(() => { clearTimeout(timer.current); merken(); void senden(); }, [merken, senden]);
+
+  // Beim Start: persistierten Zustand laden. `hydrated` nur, wenn das Laden WIRKLICH geklappt hat.
   useEffect(() => {
     let alive = true;
     let warten: ReturnType<typeof setTimeout> | undefined;
     const laden = () => {
       if (!alive) return;
       // Noch keine Sitzung (z. B. Anmeldeseite): alle zwei Sekunden nachsehen (23.09.).
-      if (!personLesen()) { warten = setTimeout(laden, 2000); return; }
-      fetch('/api/state/tasks')
+      const ich = personLesen();
+      if (!ich) { warten = setTimeout(laden, 2000); return; }
+      person.current = ich;
+      fetch(`${WEG}?papierkorb=1`)
         .then(async r => {
           // Kein Zugang (anderer Haushalt, 28.09.): leise leer — nichts speichern.
           if (r.status === 403) return { gesperrt: true } as const;
@@ -335,96 +505,108 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         })
         .then(d => {
           if (!alive) return;
-          if ('gesperrt' in d) { dispatch({ type: 'HYDRATE', payload: { projects: [], tasks: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] } }); setLadeFehler(true); setReady(true); return; }
-          if (!uebernehmenVomServer(d)) { if (Array.isArray(d.spaces)) setSpaces(d.spaces); }
-          // Erststart ohne Datei: leerer Stand ist gültig, Speichern erlaubt.
+          if ('gesperrt' in d) { dispatch({ type: 'HYDRATE', payload: leererStand() }); ladeFehlerRef.current = true; setLadeFehler(true); setReady(true); return; }
+          if (Array.isArray(d.spaces)) setSpaces(d.spaces);
+          const st: Staende = new Map();
+          // Erststart ohne Datei: leerer Stand ist gültig, Speichern erlaubt (PATCH legt den Bestand an).
+          const basis = d.state && Array.isArray(d.state.tasks) ? ohneStand(d.state, st) : leererStand();
+          server.current = basis;
+          staende.current = st;
+          // Aus diesem Tab gemerkte, noch nicht bestätigte Änderungen (Neuladen, „bitte neu laden“, Absturz) — mit ihrem
+          // ALTEN Stand erneut: hat sie inzwischen jemand geändert, wird es ein Konflikt statt eines stillen Überschreibens.
+          const gemerkt = (() => { try { return gemerktAlsOps(JSON.parse(lies(MERKER) ?? 'null'), ich, Date.now()); } catch { return null; } })();
+          if (gemerkt) for (const [k, s] of gemerkt.staende) staende.current.set(k, s);
+          gemeinsam({ type: 'HYDRATE', payload: gemerkt ? aufOps(basis, gemerkt.ops) : basis });
           hydrated.current = true;
           setReady(true);
         })
         .catch(err => {
           if (!alive) return;
           console.error('[MAKE OS] Aufgaben konnten nicht geladen werden — Speichern ist gesperrt, bis das Laden klappt.', err);
+          ladeFehlerRef.current = true;
           setLadeFehler(true);
           setReady(true);
         });
     };
     laden();
     return () => { alive = false; if (warten) clearTimeout(warten); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Regelmäßiger Abgleich (zu zweit): alle 45 s, bei Fokus und beim Zurückkehren in den Tab — nie mitten in einem Zug.
+  // Regelmäßiger Abgleich (zu zweit): alle 45 s, bei Fokus und beim Zurückkehren in den Tab. Ausstehendes bleibt (Rebase).
   useEffect(() => {
     const zug = () => {
-      if (!hydrated.current || ladeFehler || speichernSteht.current || document.visibilityState !== 'visible') return;
+      if (!hydrated.current || ladeFehler || document.visibilityState !== 'visible' || unterwegs.current) return;
       void rehydrate();
     };
     const iv = setInterval(zug, 45_000);
     const sicht = () => { if (document.visibilityState === 'visible') zug(); };
+    const online = () => { versuch.current = 0; void senden(); };
     window.addEventListener('focus', zug);
+    window.addEventListener('online', online);
     document.addEventListener('visibilitychange', sicht);
-    return () => { clearInterval(iv); window.removeEventListener('focus', zug); document.removeEventListener('visibilitychange', sicht); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ladeFehler]);
+    return () => { clearInterval(iv); window.removeEventListener('focus', zug); window.removeEventListener('online', online); document.removeEventListener('visibilitychange', sicht); };
+  }, [ladeFehler, rehydrate, senden]);
 
-  async function rehydrate() {
-    try {
-      const r = await fetch('/api/state/tasks');
-      if (!r.ok) return;
-      uebernehmenVomServer((await r.json()) as { state: TasksState | null; spaces?: AufgabenSpace[] });
-    } catch { /* offline — nächster Versuch beim nächsten Aufruf */ }
-  }
-
-  // Bei jeder Änderung (nach dem Laden): gebündelt schreiben — nur, was sich geändert hat, je Zeile mit Stand.
+  // Bei jeder Änderung: kurz sammeln, dann schreiben — nur was sich gegenüber dem bestätigten Serverstand geändert hat.
   useEffect(() => {
     if (!hydrated.current || ladeFehler) return;
-    const jetzt = JSON.stringify(state);
-    if (jetzt === zuletzt.current) return;
-    clearTimeout(saveTimer.current);
-    speichernSteht.current = true;
-    saveTimer.current = setTimeout(() => {
-      speichernSteht.current = false;
-      const alt = zuletzt.current ? (JSON.parse(zuletzt.current) as TasksState) : null;
-      zuletzt.current = jetzt;
-      const neu = JSON.parse(jetzt) as TasksState;
-      kette.current = kette.current.then(async () => {
-        if (!alt) { await schreibeMitWache('PUT', neu as unknown as Record<string, unknown>); await rehydrate(); return; }
-        const ops = unterschied(alt, neu, staende.current);
-        const n = LISTEN.reduce((s, a) => s + ops[a].length, 0);
-        if (!n) return;
-        // In Paketen zu 150 (Server-Grenze 200 je Liste); Struktur reist im ersten mit.
-        const pakete = Math.max(1, Math.ceil(ops.tasks.length / 150));
-        let serienNeu = false; // Paket C3: der Server legte beim Erledigen die nächste Instanz an → danach nachladen
-        for (let i = 0; i < pakete; i++) {
-          const koerper: Record<string, unknown> = { ops: ops.tasks.slice(i * 150, i * 150 + 150) };
-          if (i === 0 && STRUKTUR.some(a => ops[a].length)) koerper.struktur = { projekte: ops.projects, listen: ops.listen, status: ops.statusEigen, gruppen: ops.gruppen, vorlagen: ops.vorlagen };
-          const d = await schreibeMitWache('PATCH', koerper);
-          if (d?.ok && Array.isArray(d.zeilen)) {
-            for (const z of d.zeilen) staende.current.set(schluessel(z.liste, z.id), z.stand);
-            // Verlauf schreibt der Server — in Sicht UND in den zuletzt gesendeten Stand, damit er nicht als Änderung zurückgeht.
-            const verlauf = d.zeilen.filter(z => z.liste === 'tasks' && Array.isArray(z.verlauf)).map(z => ({ id: z.id, verlauf: z.verlauf! }));
-            if (verlauf.length) {
-              if (zuletzt.current) { const z = JSON.parse(zuletzt.current) as TasksState; zuletzt.current = JSON.stringify({ ...z, tasks: verlaufNachtragen(z.tasks, verlauf) }); }
-              dispatch({ type: 'VERLAUF_NACHTRAGEN', payload: verlauf });
-            }
-          }
-          if (d?.ok && d.serien?.length) serienNeu = true;
-          if (d && !d.ok && d.kreis?.length) { await rehydrate(); return; }
-          if (d && !d.ok && d.konflikte?.length) {
-            // Jemand anders war schneller: aktuellen Stand zeigen, Hinweis auslösen — nichts überschrieben.
-            if (d.state) uebernehmenVomServer({ state: d.state }); else await rehydrate();
-            window.dispatchEvent(new CustomEvent(AUFGABEN_KONFLIKT));
-            return;
-          }
-        }
-        if (serienNeu && !speichernSteht.current) await rehydrate();
-      }).catch(() => {});
-    }, 400);
-    return () => clearTimeout(saveTimer.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, ladeFehler]);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => { merken(); lageSetzen(); void senden(); }, 400);
+    return () => clearTimeout(timer.current);
+  }, [voll, ladeFehler, merken, lageSetzen, senden]);
 
-  return <TasksContext.Provider value={{ state, dispatch, ready, rehydrate, spaces }}>{children}</TasksContext.Provider>;
+  // Verlassen: sofort schreiben (keepalive) statt nach 400 ms; Warnung, solange etwas aussteht (A5).
+  useEffect(() => {
+    const raus = () => { if (!hydrated.current) return; clearTimeout(timer.current); merken(); if (!unterwegs.current) void senden(); };
+    const verdeckt = () => { if (document.visibilityState === 'hidden') raus(); };
+    const warnen = (e: BeforeUnloadEvent) => {
+      if (!hydrated.current || ladeFehlerRef.current) return;
+      if (!unterwegs.current && !anzahl(offeneOps())) return;
+      merken();
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('pagehide', raus);
+    window.addEventListener('beforeunload', warnen);
+    document.addEventListener('visibilitychange', verdeckt);
+    return () => { window.removeEventListener('pagehide', raus); window.removeEventListener('beforeunload', warnen); document.removeEventListener('visibilitychange', verdeckt); };
+  }, [merken, senden, offeneOps]);
+
+  const istOffen = useCallback((liste: ListenArt, id: string) => {
+    if (!server.current) return false;
+    const a = zeileIn(server.current, liste, id), b = zeileIn(vollRef.current, liste, id);
+    return JSON.stringify(a) !== JSON.stringify(b);
+  }, []);
+
+  const konfliktLoesen = useCallback((k: string, wie: 'meine' | 'schliessen') => {
+    const c = konflikte.current.find(x => x.schluessel === k);
+    konflikte.current = konflikte.current.filter(x => x.schluessel !== k);
+    if (c && wie === 'meine') dispatch({ type: 'ZEILEN_SETZEN', payload: [{ liste: c.liste, id: c.id, eintrag: c.meine }] });
+    lageSetzen();
+  }, [lageSetzen]);
+
+  const ablehnungLoesen = useCallback((k: string, wie: 'verwerfen' | 'erneut') => {
+    abgelehnt.current.delete(k);
+    if (wie === 'verwerfen' && server.current) {
+      const { liste, id } = ausSchluessel(k);
+      dispatch({ type: 'ZEILEN_SETZEN', payload: [{ liste, id, eintrag: zeileIn(server.current, liste, id) }] });
+    } else void senden();
+    lageSetzen();
+  }, [lageSetzen, senden]);
+
+  const sicht = useMemo(() => aufgabenSicht(voll), [voll]);
+  const papierkorb = useMemo(() => papierkorbEintraege(voll), [voll]);
+  const wert = useMemo<TasksContextValue>(() => ({
+    state: sicht, voll, dispatch, ready, rehydrate, spaces, speicher: lage, istOffen, papierkorb, jetztSpeichern, konfliktLoesen, ablehnungLoesen,
+  }), [sicht, voll, ready, rehydrate, spaces, lage, istOffen, papierkorb, jetztSpeichern, konfliktLoesen, ablehnungLoesen]);
+
+  return (
+    <TasksContext.Provider value={wert}>
+      {children}
+      <SpeicherHinweis lage={lage} onJetzt={jetztSpeichern} onKonflikt={konfliktLoesen} onAbgelehnt={ablehnungLoesen} fassungText={fassungText} />
+    </TasksContext.Provider>
+  );
 }
 
 export function useTasks() {
