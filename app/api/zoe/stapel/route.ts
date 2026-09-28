@@ -12,6 +12,9 @@
 // `entscheide`). Freigeben beansprucht den Vorschlag zuerst in der Sperre (`beanspruche`) — ein Doppelklick, ein zweites
 // Fenster oder „alle freigeben“ führt nichts doppelt aus. Nichts wird mehr still gekürzt: ein Grund über GRUND_MAX
 // oder eine zu große geänderte Eingabe → 413 mit Grund.
+// 29.09. (#94/#97, Kevin): Sammelfreigabe („alle“) nur für risikoarme Vorschläge — ZOE-Aufgaben-Vorschläge, die nur einen
+// Notiz-Entwurf und/oder Unteraufgaben ergänzen. Nie für CRM, Deals, Löschen, Versand oder andere Werkzeuge: die brauchen
+// je einen Blick (Antwort `einzeln`). Jede Sammelfreigabe bekommt eine Charge (`sammel`, „Charge rückgängig“).
 
 import { NextResponse } from 'next/server';
 import { lies, hole, entscheide, beanspruche, loslassen, type Vorschlag } from '@/lib/zoe/stapel';
@@ -20,6 +23,11 @@ import { stapelArtVon, UNBEKANNTE_ART } from '@/lib/zoe/stapel-arten';
 import { personAus } from '@/lib/zoe/raum';
 import { innenAdresse } from '@/lib/innen';
 import { haushaltVon, personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { risikoarm, vorschlagSauber, ZOE_AUFGABE_WERKZEUG } from '@/lib/aufgaben/zoe';
+import { neueKennung } from '@/lib/kennung';
+
+/** Darf in eine Sammelfreigabe? Nur ZOE-Aufgaben-Vorschläge, die nichts überschreiben (Notiz/Unteraufgaben). */
+const sammelTauglich = (v: Vorschlag) => v.werkzeug === ZOE_AUFGABE_WERKZEUG && v.bezug?.art === 'aufgabe' && risikoarm(vorschlagSauber(v.eingabe, v.bezug.id));
 
 /** Längster Ablehnungs-Grund (Zeichen) — länger → 413, nie gekürzt. */
 const GRUND_MAX = 400;
@@ -106,8 +114,11 @@ export async function POST(req: Request) {
 
   // ── Sammel-Freigabe: „durcharbeiten" ──
   if (body.alle) {
-    const offen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && meiner(v, wer, z, HAUSHALT));
-    if (!offen.length) return NextResponse.json({ ok: true, erledigt: 0, ergebnisse: [] });
+    const alleOffen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && meiner(v, wer, z, HAUSHALT));
+    const offen = alleOffen.filter(sammelTauglich);
+    const einzeln = alleOffen.length - offen.length;
+    if (!offen.length) return NextResponse.json({ ok: true, erledigt: 0, ergebnisse: [], einzeln });
+    const sammel = neueKennung('ch');
     // Nacheinander, nicht parallel: mehrere Vorschläge fassen oft denselben
     // Bestand an (zwei Rechnungen desselben Kunden). Parallel würde der eine
     // den anderen überschreiben. Jeder wird einzeln beansprucht — was ein anderes Fenster gerade übernimmt, bleibt liegen.
@@ -116,14 +127,11 @@ export async function POST(req: Request) {
       // Vorschlag einer Art (z. B. „aufgabe“): deren Freigabe (beansprucht selbst) — nie fuehreAus, auch wenn die Art unbekannt ist.
       if (v.bezug) {
         const art = await stapelArtVon(v);
-        const r = art ? await art.freigeben(v, wer ?? '', {}) : UNBEKANNTE_ART;
+        const r = art ? await art.freigeben(v, wer ?? '', { sammel }) : UNBEKANNTE_ART;
         ergebnisse.push({ id: v.id, ok: r.ok, text: r.ok ? r.text : r.fehler });
-        continue;
       }
-      const r = await werkzeugFreigeben(v.id, null);
-      ergebnisse.push({ id: v.id, ok: r.ok, text: r.text });
     }
-    return NextResponse.json({ ok: true, erledigt: ergebnisse.filter(e => e.ok).length, ergebnisse });
+    return NextResponse.json({ ok: true, erledigt: ergebnisse.filter(e => e.ok).length, ergebnisse, einzeln, sammel });
   }
 
   const id = String(body.id ?? '');

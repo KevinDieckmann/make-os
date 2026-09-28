@@ -6,14 +6,20 @@
 //  · `ZoeAufgabenSicht` (Aufgaben › Ansicht „ZOE“): was bei ZOE liegt, nach Status; Knopf für den Lauf.
 // Geschrieben wird nur über /api/aufgaben/zoe (Aufgaben-Schreibweg mit Verlauf); danach lädt der Kontext neu.
 // Den Vorschlag sieht und entscheidet nur die Auftraggeberin. Nichts wird ohne Klick übernommen.
+// 29.09. (#94–#97): Freigabe zeigt je Feld „alt → neu“ mit Häkchen (einzeln abwählbar, `FreigabeFelder` — auch im Stapel);
+// hat jemand Status/Deadline seit dem Vorschlag geändert, steht es rot daneben und der Server sagt 409 statt zu überschreiben
+// („trotzdem übernehmen“ nur ausdrücklich); in der Sicht „ZOE“ je Charge (Lauf/Sammelfreigabe) „Charge rückgängig“.
 
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Knopf, Chip, Leer, Ueberschrift, feld } from '../schlank';
 import { useTasks } from '@/context/TasksContext';
-import { zoeAufgaben, auftraggeberinVon, darfAnZoe, vorschlagZeile, ZOE_STATUS_LABEL, type ZoeVorschlagInhalt } from '@/lib/aufgaben/zoe';
+import {
+  zoeAufgaben, auftraggeberinVon, darfAnZoe, vorschlagZeile, vorschlagAenderungen, standAbweichung, nurGewaehlt, ZOE_STATUS_LABEL,
+  type ZoeVorschlagInhalt, type ZoeStand, type ZoeFeld, type ZoeKonflikt,
+} from '@/lib/aufgaben/zoe';
 import { grundVon } from '@/lib/aufgaben/struktur';
-import type { Task, TasksState, ZoeStatus } from '@/types/tasks';
+import type { AufgabenStatus, Task, TasksState, ZoeStatus } from '@/types/tasks';
 import { ownerLabel, type Person } from './hilfe';
 
 const ZOE_FARBE: Record<ZoeStatus, string> = {
@@ -21,8 +27,40 @@ const ZOE_FARBE: Record<ZoeStatus, string> = {
 };
 const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
 
-interface VorschlagSicht { id: string; zeit: string; status: string; titel: string; nachher: string; anlass: string | null; grund?: string; inhalt: ZoeVorschlagInhalt | null }
-interface Antwort { ok?: boolean; error?: string; ergebnis?: string; konflikt?: boolean; bearbeitet?: unknown[]; uebersprungen?: { grund: string }[]; ohneKi?: string; rest?: number }
+interface VorschlagSicht { id: string; zeit: string; status: string; titel: string; nachher: string; anlass: string | null; grund?: string; inhalt: ZoeVorschlagInhalt | null; stand?: ZoeStand | null; charge?: string | null }
+interface Antwort { ok?: boolean; error?: string; ergebnis?: string; konflikt?: boolean; diff?: ZoeKonflikt[]; bearbeitet?: unknown[]; uebersprungen?: { grund: string }[]; ohneKi?: string; rest?: number }
+
+/**
+ * Freigabe je Feld (#94): „alt → neu“ mit Häkchen. `aufgabe` = der jetzige Stand (fehlt er, nur „neu“). Was seit dem
+ * Vorschlag geändert wurde (#95), steht rot daneben — abwählen oder bewusst überschreiben.
+ */
+export function FreigabeFelder({ inhalt, aufgabe, stand, eigene = [], gewaehlt, onWahl }: {
+  inhalt: ZoeVorschlagInhalt; aufgabe?: Task; stand?: ZoeStand | null; eigene?: readonly AufgabenStatus[];
+  gewaehlt: ReadonlySet<ZoeFeld>; onWahl: (f: ReadonlySet<ZoeFeld>) => void;
+}) {
+  const zeilen = aufgabe ? vorschlagAenderungen(aufgabe, inhalt, eigene) : vorschlagAenderungen({ status: 'todo' }, inhalt, eigene).map(z => ({ ...z, alt: '' }));
+  const konflikte = aufgabe ? standAbweichung(stand ?? null, aufgabe, inhalt, eigene) : [];
+  return (
+    <div role="group" aria-label="Was übernommen wird" style={{ display: 'grid', gap: 4 }}>
+      <div style={{ ...mikro, marginBottom: 2 }}>Übernehmen — alt → neu</div>
+      {zeilen.map(z => {
+        const k = konflikte.find(x => x.feld === z.feld);
+        const an = gewaehlt.has(z.feld);
+        return (
+          <label key={z.feld} style={{ display: 'grid', gridTemplateColumns: '24px 96px minmax(0,1fr)', gap: 8, alignItems: 'center', minHeight: 40, fontSize: TYP.bedien, color: an ? C.ink : C.inkLeise, cursor: 'pointer' }}>
+            <input type="checkbox" checked={an} onChange={() => { const n = new Set(gewaehlt); if (an) n.delete(z.feld); else n.add(z.feld); onWahl(n); }} style={{ width: 20, height: 20, accentColor: C.aktiv }} />
+            <span style={{ color: C.inkLeise }}>{z.label}</span>
+            <span style={{ minWidth: 0, overflowWrap: 'anywhere', textDecoration: an ? 'none' : 'line-through' }}>
+              {z.alt && <span style={{ color: C.inkDim }}>{z.alt} → </span>}<b style={{ fontWeight: 600 }}>{z.neu}</b>
+              {k && <span role="note" style={{ display: 'block', color: LEUCHT.kritisch, fontSize: 12 }}>⚠ inzwischen geändert: beim Vorschlag {k.damals}, jetzt {k.jetzt}</span>}
+            </span>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+export const alleFelder = (v: ZoeVorschlagInhalt): Set<ZoeFeld> => new Set<ZoeFeld>([...(v.entwurf ? ['notiz' as const] : []), ...(v.unteraufgaben?.length ? ['unteraufgaben' as const] : []), ...(v.status ? ['status' as const] : []), ...(v.deadline ? ['deadline' as const] : [])]);
 
 async function senden(body: Record<string, unknown>): Promise<Antwort> {
   try {
@@ -67,7 +105,9 @@ function VorschlagInhalt({ v }: { v: ZoeVorschlagInhalt }) {
 
 /** In der Aufgabe: ZOE geben, Stand sehen, Vorschlag freigeben oder ablehnen. */
 export function ZoeAufgabe({ task: t, ich, personen }: { task: Task; ich: string; personen: readonly Person[] }) {
-  const { rehydrate } = useTasks();
+  const { rehydrate, state } = useTasks();
+  const [gewaehlt, setGewaehlt] = useState<ReadonlySet<ZoeFeld>>(new Set());
+  const [konflikt, setKonflikt] = useState<ZoeKonflikt[] | null>(null);
   const [hinweisAuf, setHinweisAuf] = useState(false);
   const [hinweis, setHinweis] = useState('');
   const [grund, setGrund] = useState('');
@@ -83,6 +123,8 @@ export function ZoeAufgabe({ task: t, ich, personen }: { task: Task; ich: string
       const d = await fetch(`/api/aufgaben/zoe?id=${encodeURIComponent(t.id)}`, { cache: 'no-store' }).then(r => r.json());
       setKi(d?.ki !== false);
       setVorschlag(d?.vorschlag ?? null);
+      if (d?.vorschlag?.inhalt) setGewaehlt(alleFelder(d.vorschlag.inhalt));
+      setKonflikt(null);
     } catch { /* offline — Knöpfe bleiben, der Server entscheidet */ }
   }, [t.id]);
   useEffect(() => { setMeldung(''); setHinweisAuf(false); setHinweis(''); setGrund(''); }, [t.id]);
@@ -91,6 +133,8 @@ export function ZoeAufgabe({ task: t, ich, personen }: { task: Task; ich: string
   const tun = async (body: Record<string, unknown>, erfolg: string) => {
     const d = await senden({ ...body, id: t.id });
     setMeldung(d.ok ? (d.ergebnis ?? (body.aktion === 'arbeiten' ? laufSatz(d) : erfolg)) : (d.error ?? 'Nicht gespeichert.'));
+    setKonflikt(!d.ok && d.diff?.length ? d.diff : null);
+    if (!d.ok && d.diff?.length) return; // nichts übernommen — Häkchen bleiben, der Konflikt steht daneben
     if (d.ok) { setHinweis(''); setHinweisAuf(false); setGrund(''); }
     await rehydrate();
     await laden();
@@ -139,11 +183,13 @@ export function ZoeAufgabe({ task: t, ich, personen }: { task: Task; ich: string
         vorschlag?.inhalt && vorschlag.status === 'offen' ? (
           <div style={{ display: 'grid', gap: 10 }}>
             <VorschlagInhalt v={vorschlag.inhalt} />
+            <FreigabeFelder inhalt={vorschlag.inhalt} aufgabe={t} stand={vorschlag.stand} eigene={state.statusEigen ?? []} gewaehlt={gewaehlt} onWahl={setGewaehlt} />
             <input value={grund} onChange={e => setGrund(e.target.value)} maxLength={400} aria-label="Grund fürs Ablehnen"
               placeholder="Grund fürs Ablehnen (optional) — ZOE lernt daraus" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 12px' }} />
             {hinweisAuf && hinweisFeld}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Knopf farbe={LEUCHT.gut} onClick={() => tun({ aktion: 'freigeben', stapelId: vorschlag.id }, 'Übernommen.')}>Freigeben</Knopf>
+              <Knopf farbe={LEUCHT.gut} aus={!gewaehlt.size} onClick={() => tun({ aktion: 'freigeben', stapelId: vorschlag.id, eingabe: nurGewaehlt(vorschlag.inhalt!, gewaehlt) }, 'Übernommen.')}>{gewaehlt.size === alleFelder(vorschlag.inhalt).size ? 'Freigeben' : `Auswahl freigeben (${gewaehlt.size})`}</Knopf>
+              {konflikt && <Knopf farbe={LEUCHT.kritisch} onClick={() => tun({ aktion: 'freigeben', stapelId: vorschlag.id, eingabe: nurGewaehlt(vorschlag.inhalt!, gewaehlt), trotzdem: true }, 'Übernommen (überschrieben).')}>Trotzdem übernehmen</Knopf>}
               <Knopf leise onClick={() => tun({ aktion: 'ablehnen', stapelId: vorschlag.id, ...(grund.trim() ? { grund: grund.trim() } : {}) }, 'Abgelehnt.')}>Ablehnen</Knopf>
               <Knopf leise onClick={() => (hinweisAuf
                 ? tun({ aktion: 'ablehnen', stapelId: vorschlag.id, nochmal: true, ...(grund.trim() ? { grund: grund.trim() } : {}), ...(hinweis.trim() ? { hinweis: hinweis.trim() } : {}) }, 'Abgelehnt — ZOE versucht es noch einmal.')
@@ -175,6 +221,18 @@ export function ZoeAufgabenSicht({ state, personen, ich, offenId, onOeffnen, i =
   useEffect(() => { fetch('/api/aufgaben/zoe', { cache: 'no-store' }).then(r => r.json()).then(d => setKi(d?.ki !== false)).catch(() => {}); }, []);
   const s = zoeAufgaben(state);
   const meineOffen = s.offen.filter(t => auftraggeberinVon(t) === ich).length;
+  // Chargen (#97): was ein Lauf bzw. eine Sammelfreigabe übernommen hat — gemeinsam zurücknehmen.
+  const [chargen, setChargen] = useState<{ charge: string; art: 'lauf' | 'sammel'; am: string; eintraege: { stapelId: string; aufgabeId: string; titel: string; zurueck: boolean }[] }[]>([]);
+  const chargenLaden = useCallback(() => { fetch('/api/aufgaben/zoe?chargen=1', { cache: 'no-store' }).then(r => r.json()).then(d => setChargen(Array.isArray(d?.chargen) ? d.chargen : [])).catch(() => {}); }, []);
+  useEffect(() => { chargenLaden(); }, [chargenLaden, s.freigegeben.length]);
+  const chargeZurueck = async (charge: string, n: number) => {
+    if (!window.confirm(`Die ${n} Übernahme${n === 1 ? '' : 'n'} dieser Charge zurücknehmen? Felder, die inzwischen jemand geändert hat, bleiben.`)) return;
+    const d = await fetch('/api/aufgaben/zoe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'charge-zurueck', charge }) }).then(r => r.json()).catch(() => ({ ok: false, error: 'nicht erreichbar' }));
+    const b = d?.bericht as { zurueck: number; teilweise: { titel: string; grund: string }[] } | undefined;
+    setMeldung(d?.ok && b ? `${b.zurueck} zurückgenommen.${b.teilweise.length ? ` ${b.teilweise.map(x => `„${x.titel}“: ${x.grund}`).join(' · ')}` : ''}` : (d?.error ?? 'Nicht zurückgenommen.'));
+    await rehydrate();
+    chargenLaden();
+  };
   const arbeiten = async () => {
     const d = await senden({ aktion: 'arbeiten' });
     setMeldung(laufSatz(d));
@@ -212,6 +270,21 @@ export function ZoeAufgabenSicht({ state, personen, ich, offenId, onOeffnen, i =
           {s.abgelehnt.length > 0 && gruppe('Abgelehnt', s.abgelehnt)}
           {s.freigegeben.length > 0 && gruppe('Zuletzt freigegeben', s.freigegeben.slice(0, 10))}
         </>
+      )}
+      {chargen.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ ...mikro, marginBottom: 4 }}>Chargen · gemeinsam zurücknehmen</div>
+          {chargen.slice(0, 8).map(c => {
+            const offen = c.eintraege.filter(e => !e.zurueck).length;
+            return (
+              <div key={c.charge} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '8px 2px', borderBottom: '1px solid rgba(255,255,255,.05)', fontSize: TYP.bedien }}>
+                <span style={{ color: C.ink }}>{c.art === 'sammel' ? 'Sammelfreigabe' : 'ZOE-Lauf'} · {new Date(c.am).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })}</span>
+                <span style={{ color: C.inkLeise, fontSize: 12.5, flex: 1, minWidth: 0 }}>{c.eintraege.length} Übernahme{c.eintraege.length === 1 ? '' : 'n'}{offen < c.eintraege.length ? ` · ${c.eintraege.length - offen} zurückgenommen` : ''}</span>
+                {offen > 0 ? <Knopf leise onClick={() => chargeZurueck(c.charge, offen)}>Charge rückgängig</Knopf> : <span style={{ fontSize: 12, color: LEUCHT.gut }}>zurückgenommen ✓</span>}
+              </div>
+            );
+          })}
+        </div>
       )}
     </Karte>
   );

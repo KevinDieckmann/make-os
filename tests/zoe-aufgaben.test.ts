@@ -14,14 +14,15 @@ delete process.env.MAKE_OS_DATEN_SCHLUESSEL;
 
 const gemeldet: { an: string; art: string; titel: string; von?: string; link: string }[] = [];
 vi.mock('@/lib/meldungen/melden', () => ({ melde: async (m: { an: string; art: string; titel: string; von?: string; link: string }) => { gemeldet.push(m); } }));
-const modell = vi.hoisted(() => ({ antworten: [] as (string | null)[], aufrufe: [] as { system: string; user: string; tools?: unknown }[], schluessel: true }));
+// Frist relativ zu heute (29.09.: eine vorgeschlagene Deadline in der Vergangenheit übernimmt ZOE nicht mehr).
+const modell = vi.hoisted(() => ({ antworten: [] as (string | null)[], aufrufe: [] as { system: string; user: string; tools?: unknown }[], schluessel: true, frist: new Date(Date.now() + 20 * 86_400_000).toISOString().slice(0, 10) }));
 vi.mock('@/lib/anthropic', async orig => ({
   ...(await orig<typeof import('@/lib/anthropic')>()),
   hasAnthropicKey: () => modell.schluessel,
   guthabenLeer: () => false,
   askText: async (o: { system: string; user: string; tools?: unknown }) => {
     modell.aufrufe.push({ system: o.system, user: o.user, tools: o.tools });
-    const a = modell.antworten.length ? modell.antworten.shift()! : JSON.stringify({ zusammenfassung: 'Vorbereitet.', entwurf: '## Entwurf\n- Punkt', unteraufgaben: ['Unterlagen sammeln', 'Termin vorschlagen'], status: 'in-progress', deadline: '2026-10-15', begruendung: 'Folgt aus der Beschreibung.' });
+    const a = modell.antworten.length ? modell.antworten.shift()! : JSON.stringify({ zusammenfassung: 'Vorbereitet.', entwurf: '## Entwurf\n- Punkt', unteraufgaben: ['Unterlagen sammeln', 'Termin vorschlagen'], status: 'in-progress', deadline: modell.frist, begruendung: 'Folgt aus der Beschreibung.' });
     return a === null ? { ok: false, status: 500, text: '', error: 'Serverfehler' } : { ok: true, status: 200, text: a };
   },
 }));
@@ -173,7 +174,7 @@ describe('Route /api/aufgaben/zoe', () => {
     expect(t.verlauf!.slice(-2).map(v => [v.von, v.durch, v.nachher])).toEqual([['kevin', 'zoe', 'in Arbeit'], ['kevin', 'zoe', 'wartet auf Freigabe']]);
     const v = await stapel.hole(t.zoe!.stapelId!);
     expect(v).toMatchObject({ status: 'offen', person: 'kevin', quelle: 'lauf', werkzeug: 'aufgabe_uebernehmen', bezug: { art: 'aufgabe', id: 'a1' } });
-    expect(v!.eingabe).toMatchObject({ aufgabeId: 'a1', unteraufgaben: ['Unterlagen sammeln', 'Termin vorschlagen'], status: 'in-progress', deadline: '2026-10-15' });
+    expect(v!.eingabe).toMatchObject({ aufgabeId: 'a1', unteraufgaben: ['Unterlagen sammeln', 'Termin vorschlagen'], status: 'in-progress', deadline: modell.frist });
     expect(gemeldet).toEqual([expect.objectContaining({ an: 'kevin', art: 'zoe', von: 'zoe', titel: 'ZOE hat „Aufgabe a1“ vorbereitet' })]);
     // Ein Modellaufruf ohne Werkzeuge, Kartei gekapselt und ohne Notizen/Kontaktdaten, kein fetch nach außen.
     expect(modell.aufrufe).toHaveLength(1);
@@ -231,7 +232,7 @@ describe('Route /api/aufgaben/zoe', () => {
     const r = await post('kevin', { aktion: 'freigeben', id: 'a1' });
     expect(r.status).toBe(200);
     const t = await task('a1');
-    expect(t).toMatchObject({ status: 'in-progress', dueDate: '2026-10-15', zoe: { status: 'freigegeben', stapelId } });
+    expect(t).toMatchObject({ status: 'in-progress', dueDate: modell.frist, zoe: { status: 'freigegeben', stapelId } });
     expect(t.notiz).toMatch(/\*\*ZOE · .*\*\* — freigegeben\n\n## Entwurf/);
     const unter = (await bestand()).tasks.filter(x => x.parentId === 'a1');
     expect(unter.map(u => u.title).sort()).toEqual(['Termin vorschlagen', 'Unterlagen sammeln']);
@@ -282,12 +283,20 @@ describe('Freigabe-Stapel: Art „aufgabe“', () => {
     expect(a.status).toBe(200);
     expect((await task('a4')).zoe).toEqual({ status: 'abgelehnt', stapelId: s4, von: 'kevin' });
   });
-  it('Sammelfreigabe nimmt Aufgaben-Vorschläge mit; ein Vorschlag mit Bezug läuft nie über ein Werkzeug', async () => {
+  it('Sammelfreigabe nur für risikoarme Aufgaben-Vorschläge (29.09., #94); ein Vorschlag mit Bezug läuft nie über ein Werkzeug', async () => {
     await post('kevin', { aktion: 'geben', id: 'a1' });
     await post('kevin', { aktion: 'arbeiten' });
+    // Status + Deadline → braucht einen Blick, geht nicht in die Sammelfreigabe.
+    const nein = await stapelPost('kevin', { alle: true });
+    expect(nein.d).toMatchObject({ erledigt: 0, einzeln: 1 });
+    expect((await task('a1')).zoe!.status).toBe('wartet_freigabe');
+    // Nur Notiz-Entwurf + Unteraufgaben → risikoarm.
+    modell.antworten.push(JSON.stringify({ zusammenfassung: 'Nur Notiz.', entwurf: '## Notiz', unteraufgaben: ['Eins'], status: '', deadline: '', begruendung: '' }));
+    await post('kevin', { aktion: 'geben', id: 'a2' });
+    await post('kevin', { aktion: 'arbeiten', id: 'a2' });
     const r = await stapelPost('kevin', { alle: true });
-    expect(r.d.erledigt).toBe(1);
-    expect((await task('a1')).zoe!.status).toBe('freigegeben');
+    expect(r.d).toMatchObject({ erledigt: 1, einzeln: 1 });
+    expect((await task('a2')).zoe!.status).toBe('freigegeben');
     const { WERKZEUGE } = await import('@/lib/zoe/werkzeuge');
     const { fehlendeStufen } = await import('@/lib/zoe/register');
     expect(WERKZEUGE.aufgabe_uebernehmen).toBeUndefined();

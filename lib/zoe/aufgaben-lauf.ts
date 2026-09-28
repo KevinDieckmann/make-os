@@ -9,6 +9,9 @@
 // Meldung an die Auftraggeberin. Die Aufgabe selbst ändert sich inhaltlich NICHT — erst der Klick übernimmt.
 // Grenzen: höchstens `LAUF_MAX` Aufgaben je Lauf, ohne Schlüssel/Guthaben kein Aufruf (nichts verändert),
 // ein Lauf zur Zeit je Prozess. Kosten laufen über askText (Zweck „zoe-aufgaben“, Verbrauchs-Mitschrift).
+// Seit 29.09. (#95–#97): Wochentag + Zeitzone im Auftrag, Deadline nur als echter Kalendertag ≥ heute; der Vorschlag trägt
+// den Stand der Aufgabe (`eingabe._stand`: Status/Deadline beim Vorschlag) und die Charge des Laufs (`eingabe._charge`,
+// „Charge rückgängig“ in lib/zoe/aufgaben-charge.ts).
 
 import type { Task, TasksState } from '@/types/tasks';
 import { askText, extractJson, fremd, FREMD_REGEL, guthabenLeer, hasAnthropicKey } from '@/lib/anthropic';
@@ -21,7 +24,8 @@ import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { melde } from '@/lib/meldungen/melden';
 import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
-import { auftraggeberinVon, vorschlagSauber, vorschlagZeile, zoeHinweis, zoeZuBearbeiten, ZOE_AUFGABE_WERKZEUG, type ZoeVorschlagInhalt } from '@/lib/aufgaben/zoe';
+import { auftraggeberinVon, heuteSatz, vorschlagSauber, vorschlagZeile, zoeHinweis, zoeStandVon, zoeZuBearbeiten, ZOE_AUFGABE_WERKZEUG, type ZoeVorschlagInhalt } from '@/lib/aufgaben/zoe';
+import { neueKennung } from '@/lib/kennung';
 import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { aufgabenDateienListe, aufgabenDateiLesen, type AufgabenDatei } from '@/lib/dateien/aufgaben-ablage';
 import { aufgabenDateienFuer, typGruppe, TYP_LABEL, ZOE_ZEICHEN } from '@/lib/dateien/aufgaben-regeln';
@@ -100,7 +104,7 @@ export const ZOE_AUFGABEN_SYSTEM = [
   'Du versendest nichts, schreibst niemandem, löschst nichts und änderst keine anderen Aufgaben. Ein Mail- oder Nachrichtentext ist immer nur ein ENTWURF zum Kopieren.',
   'Erfinde keine Fakten, Zahlen, Namen oder Quellen. Fehlt dir etwas, schreib es als offene Frage in den Entwurf.',
   'Sprache: Deutsch, knapp und konkret. Unteraufgaben: höchstens 8, imperativ, je unter 80 Zeichen, keine Wiederholung vorhandener.',
-  'Status nur aus: todo (Offen), in-progress (In Arbeit), blocked (Wartend), done (Erledigt) — leer lassen, wenn unklar. Deadline nur als YYYY-MM-DD und nur, wenn sie aus dem Auftrag folgt.',
+  'Status nur aus: todo (Offen), in-progress (In Arbeit), blocked (Wartend), done (Erledigt) — leer lassen, wenn unklar. Deadline nur als YYYY-MM-DD, nur ein echter Kalendertag, nie vor heute und nur, wenn sie aus dem Auftrag folgt („bis Freitag“ = der nächste Freitag ab heute).',
   FREMD_REGEL,
   'Antworte NUR mit JSON: {"zusammenfassung": "1–2 Sätze, was du vorbereitet hast", "entwurf": "…", "unteraufgaben": ["…"], "status": "", "deadline": "", "begruendung": "ein Satz"}.',
 ].join('\n');
@@ -135,7 +139,7 @@ export function auftragText(t: Task, ctx: { state: Pick<TasksState, 'tasks' | 'p
     ...(unter.length ? [`Vorhandene Unteraufgaben:\n${unter.slice(0, 40).map(u => `- [${u.status === 'done' ? 'x' : ' '}] ${u.title}`).join('\n')}`] : []),
   ].join('\n');
   const teile = [
-    `Heute ist ${ctx.heute}. Bereite diese Aufgabe vor:`,
+    `${heuteSatz(ctx.heute)} Bereite diese Aufgabe vor:`,
     fremd('aufgabe', aufgabe),
     ...(projekt ? [fremd('projekt', [`Projekt: ${projekt.title}`, ...((projekt.notiz ?? projekt.beschreibung)?.trim() ? [`Projekt-Notiz:\n${schnitt(projekt.notiz ?? projekt.beschreibung, PROJEKT_NOTIZ_MAX)}`] : [])].join('\n'))] : []),
     ...(ctx.crm ? [fremd('crm', ctx.crm)] : []),
@@ -218,6 +222,8 @@ export async function zoeAufgabenLauf(opt: { person: string | null; max?: number
   if (!hasAnthropicKey() || guthabenLeer()) return leer(!hasAnthropicKey() ? 'kein Modell-Schlüssel hinterlegt' : 'Guthaben leer', kandidaten(await laden()).length);
   laeuft = true;
   const erg: LaufErgebnis = { ok: true, bearbeitet: [], uebersprungen: [], rest: 0 };
+  // Eine Charge je Lauf (#97): alles, was dieser Lauf vorschlägt, lässt sich nach der Freigabe gemeinsam zurücknehmen.
+  const charge = neueKennung('ch');
   try {
     const state = await laden();
     const liste = kandidaten(state);
@@ -241,13 +247,14 @@ export async function zoeAufgabenLauf(opt: { person: string | null; max?: number
         if (r.error === 'guthaben-leer' || r.error === 'no-key') break;
         continue;
       }
-      const inhalt: ZoeVorschlagInhalt | null = vorschlagSauber(extractJson<Record<string, unknown>>(r.text), aktuell.id);
+      const inhalt: ZoeVorschlagInhalt | null = vorschlagSauber(extractJson<Record<string, unknown>>(r.text), aktuell.id, localDay());
       if (!inhalt) { await zurueckAufOffen(aktuell, a); erg.uebersprungen.push({ id: t.id, grund: 'Antwort ohne verwertbaren Vorschlag' }); continue; }
       // 3) NUR ein Vorschlag im Stapel — die Aufgabe bleibt inhaltlich, wie sie ist.
       const titel = `ZOE-Vorschlag für „${aktuell.title.length > 80 ? `${aktuell.title.slice(0, 79)}…` : aktuell.title}“ übernehmen`;
       const v = await lege({
         werkzeug: ZOE_AUFGABE_WERKZEUG, gruppe: 'aufgaben', titel, nachher: vorschlagZeile(inhalt),
-        eingabe: { ...inhalt } as unknown as Record<string, unknown>, anlass: inhalt.zusammenfassung, person: a, quelle: 'lauf',
+        // `_stand`/`_charge` setzt nur dieser Lauf — die Freigabe liest sie aus dem gespeicherten Eintrag, nie vom Browser.
+        eingabe: { ...inhalt, _stand: zoeStandVon(aktuell), _charge: charge } as unknown as Record<string, unknown>, anlass: inhalt.zusammenfassung, person: a, quelle: 'lauf',
         bezug: { art: 'aufgabe', id: aktuell.id },
       });
       await notiere({ werkzeug: ZOE_AUFGABE_WERKZEUG, gruppe: 'aufgaben', risiko: 'freigabe', eingabe: { aufgabeId: aktuell.id }, ergebnis: `in den Stapel gelegt (${v.id})`, ok: true, quelle: 'zoe', person: a, ruecknahme: null });

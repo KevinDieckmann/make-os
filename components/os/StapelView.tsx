@@ -5,6 +5,8 @@
 // lebendigen Muster: offene Vorschläge je Gruppe mit Freigeben/Ablehnen,
 // zuletzt Entschiedenes, der Arbeiter mit seinen Aufträgen, Gedächtnis und
 // Verbrauch. Protokoll, Rückgängig und Felder-Ändern: /os/stapel/voll.
+// 29.09. (#94/#97): ZOE-Aufgaben-Vorschläge zeigen je Feld „alt → neu“ mit Häkchen; „Alle freigeben“ nur für risikoarme
+// (nur Notiz-Entwurf/Unteraufgaben) — alles andere braucht einzeln einen Blick; freigegebene Chargen lassen sich zurücknehmen.
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -14,6 +16,9 @@ import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zah
 import { WEG } from '@/lib/wege';
 import { markttraktion } from '@/lib/crm/adresse';
 import { CrmStapelDetail } from './crm/ZoeFragen';
+import { useTasks } from '@/context/TasksContext';
+import { risikoarm, vorschlagSauber, nurGewaehlt, zoeStandLesen, ZOE_AUFGABE_WERKZEUG, type ZoeFeld } from '@/lib/aufgaben/zoe';
+import { FreigabeFelder, alleFelder } from './aufgaben/ZoeAufgabe';
 
 interface Vorschlag { id: string; zeit: string; werkzeug: string; gruppe: string; titel: string; vorher?: string; nachher: string; eingabe: Record<string, unknown>; anlass?: string; status: 'offen' | 'in_arbeit' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen'; ergebnis?: string; grund?: string; /** Wer entschieden hat (29.09.). */ entschiedenVon?: string; /** Art mit Bezug (lib/zoe/stapel-arten.ts), z. B. „aufgabe“. */ bezug?: { art: string; id: string } }
 interface Auftrag { id: string; zeit: string; art: string; name: string; auftrag?: string; status: 'offen' | 'laeuft' | 'fertig' | 'fehler'; ergebnis?: string; fehler?: string }
@@ -51,6 +56,11 @@ export function StapelView() {
   const [grund, setGrund] = useState<Record<string, string>>({});
   const [meldung, setMeldung] = useState('');
   const [laedt, setLaedt] = useState(true);
+  const { state: aufgabenStand, rehydrate } = useTasks();
+  const [haekchen, setHaekchen] = useState<Record<string, ReadonlySet<ZoeFeld>>>({});
+  /** ZOE-Aufgaben-Vorschlag (Art „aufgabe“) — gesäubert, sonst null. */
+  const aufgabenInhalt = (v: Vorschlag) => (v.werkzeug === ZOE_AUFGABE_WERKZEUG && v.bezug?.art === 'aufgabe' ? vorschlagSauber(v.eingabe, v.bezug.id) : null);
+  const sammelTauglich = (v: Vorschlag) => risikoarm(aufgabenInhalt(v));
 
   const laden = useCallback(async () => {
     try {
@@ -78,19 +88,31 @@ export function StapelView() {
 
   async function entscheide(v: Vorschlag, entscheidung: 'freigeben' | 'ablehnen') {
     setBusy(v.id);
-    const d = await fetch('/api/zoe/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: v.id, entscheidung, ...(grund[v.id] ? { grund: grund[v.id] } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
-    setMeldung(d.ergebnis ?? (entscheidung === 'ablehnen' ? `Abgelehnt: ${v.titel}` : d.error ?? '')); setBusy(null); setOffenId(null); void laden();
+    // Häkchen (#94): bei ZOE-Aufgaben-Vorschlägen nur die gewählten Felder.
+    const inhalt = entscheidung === 'freigeben' ? aufgabenInhalt(v) : null;
+    const auswahl = inhalt ? haekchen[v.id] ?? alleFelder(inhalt) : null;
+    const d = await fetch('/api/zoe/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: v.id, entscheidung, ...(grund[v.id] ? { grund: grund[v.id] } : {}), ...(inhalt && auswahl ? { eingabe: nurGewaehlt(inhalt, auswahl) } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
+    setMeldung(d.ergebnis ?? (entscheidung === 'ablehnen' ? `Abgelehnt: ${v.titel}` : d.error ?? '')); setBusy(null); if (d.ok !== false) setOffenId(null); void laden();
+    if (inhalt) void rehydrate();
   }
   async function alleFreigeben(gruppe?: string) {
     setBusy(gruppe ?? 'alle');
     const d = await fetch('/api/zoe/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alle: true, ...(gruppe ? { gruppe } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
-    setMeldung(d.error ?? `${d.erledigt ?? 0} freigegeben und ausgeführt.`); setBusy(null); void laden();
+    setMeldung(d.error ?? `${d.erledigt ?? 0} risikoarme Vorschläge übernommen.${d.einzeln ? ` ${d.einzeln} brauchen einzeln einen Blick (ändern Status/Deadline, CRM oder anderes).` : ''}`); setBusy(null); void laden(); void rehydrate();
+  }
+  async function chargeZurueck(charge: string) {
+    if (!window.confirm('Alle Übernahmen dieser Charge zurücknehmen? Felder, die inzwischen jemand geändert hat, bleiben.')) return;
+    setBusy(charge);
+    const d = await fetch('/api/aufgaben/zoe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'charge-zurueck', charge }) }).then(r => r.json()).catch(() => ({ ok: false, error: 'nicht erreichbar' }));
+    setMeldung(d?.ok ? `${d.bericht?.zurueck ?? 0} zurückgenommen.${d.bericht?.teilweise?.length ? ` ${d.bericht.teilweise.map((x: { titel: string; grund: string }) => `„${x.titel}“: ${x.grund}`).join(' · ')}` : ''}` : (d?.error ?? 'Nicht zurückgenommen.'));
+    setBusy(null); void laden(); void rehydrate();
   }
   async function vergiss(id: string) {
     setBusy(id); await fetch(`/api/zoe/gedaechtnis?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {}); setBusy(null); void laden();
   }
 
   const offen = vorschlaege.filter(v => v.status === 'offen');
+  const risikoarmOffen = offen.filter(sammelTauglich);
   const entschieden = vorschlaege.filter(v => v.status !== 'offen').slice(0, 10);
   const gruppen = Array.from(new Set(offen.map(v => v.gruppe)));
   const g = (id: string) => GRUPPE[id] ?? { label: id, href: '/os', farbe: C.inkLeise };
@@ -102,14 +124,14 @@ export function StapelView() {
       <Spalten verhaeltnis="2:1">
         <Spalte>
       <Karte i={0} akzent={offen.length ? LEUCHT.achtung : undefined}>
-        <Ueberschrift farbe={offen.length ? LEUCHT.achtung : C.inkLeise} rechts={offen.length > 1 ? <Knopf onClick={() => alleFreigeben()} aus={busy === 'alle'}>Alle {offen.length} freigeben</Knopf> : `${offen.length} offen`}>Wartet auf dich</Ueberschrift>
+        <Ueberschrift farbe={offen.length ? LEUCHT.achtung : C.inkLeise} rechts={risikoarmOffen.length > 1 ? <Knopf onClick={() => alleFreigeben()} aus={busy === 'alle'}>{risikoarmOffen.length === offen.length ? `Alle ${offen.length} freigeben` : `${risikoarmOffen.length} risikoarme freigeben`}</Knopf> : `${offen.length} offen`}>Wartet auf dich</Ueberschrift>
         {!laedt && offen.length === 0 && <Leer>Nichts offen. ZOE legt hier ab, was er vorbereitet hat — du entscheidest.</Leer>}
         {gruppen.map(gr => (
           <div key={gr} style={{ marginTop: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '6px 0 2px' }}>
               <Punkt farbe={g(gr).farbe} /><span style={{ fontSize: 12, fontWeight: 700, color: C.inkDim, letterSpacing: '.04em', textTransform: 'uppercase' }}>{g(gr).label}</span>
               <Link href={g(gr).href} style={{ fontSize: 12, color: C.inkLeise, textDecoration: 'none' }}>lieber selbst ›</Link>
-              {offen.filter(v => v.gruppe === gr).length > 1 && <button onClick={() => alleFreigeben(gr)} disabled={busy === gr} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>alle in {g(gr).label} freigeben</button>}
+              {risikoarmOffen.filter(v => v.gruppe === gr).length > 1 && <button onClick={() => alleFreigeben(gr)} disabled={busy === gr} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>alle in {g(gr).label} freigeben</button>}
             </div>
             <Liste>
               {offen.filter(v => v.gruppe === gr).map(v => (
@@ -125,6 +147,12 @@ export function StapelView() {
                         <span style={{ color: C.inkLeise }}>seit</span><span>{her(v.zeit)}</span>
                       </div>
                       {v.bezug?.art === 'aufgabe' && <AufgabeVorschlag v={v} />}
+                      {aufgabenInhalt(v) && (
+                        <div style={{ marginTop: 10 }}>
+                          <FreigabeFelder inhalt={aufgabenInhalt(v)!} aufgabe={aufgabenStand.tasks.find(t => t.id === v.bezug!.id)} stand={zoeStandLesen(v.eingabe._stand)} eigene={aufgabenStand.statusEigen ?? []}
+                            gewaehlt={haekchen[v.id] ?? alleFelder(aufgabenInhalt(v)!)} onWahl={f => setHaekchen(h => ({ ...h, [v.id]: f }))} />
+                        </div>
+                      )}
                       {/* Art „crm“ (28.09., C7): Text zum Kopieren, Mail-Programm, Sprung in die Markttraktion. */}
                       {v.bezug?.art === 'crm' && <CrmStapelDetail v={v} />}
                       <input value={grund[v.id] ?? ''} onChange={e => setGrund(x => ({ ...x, [v.id]: e.target.value }))} placeholder="Grund fürs Ablehnen (optional) — ZOE lernt daraus" style={{ ...feld, marginTop: 12 }} />
@@ -162,7 +190,11 @@ export function StapelView() {
           <Ueberschrift farbe={LEUCHT.schlaf}>Zuletzt entschieden</Ueberschrift>
           <Liste>
             {entschieden.length === 0 && <Leer>Noch nichts entschieden.</Leer>}
-            {entschieden.map(v => <Zeile key={v.id} links={<Punkt farbe={STATUS[v.status]?.farbe ?? C.inkLeise} />} titel={v.titel} unter={`${g(v.gruppe).label} · ${her(v.zeit)}${v.entschiedenVon ? ` · ${v.entschiedenVon}` : ''}${v.grund ? ` · ${v.grund}` : v.ergebnis ? ` · ${v.ergebnis.slice(0, 80)}` : ''}`} rechts={<Chip farbe={STATUS[v.status]?.farbe ?? C.inkLeise}>{STATUS[v.status]?.label ?? v.status}</Chip>} />)}
+            {entschieden.map(v => {
+              const charge = v.status === 'freigegeben' && v.werkzeug === ZOE_AUFGABE_WERKZEUG && v.eingabe?._vorher ? (typeof v.eingabe._sammel === 'string' ? v.eingabe._sammel : typeof v.eingabe._charge === 'string' ? v.eingabe._charge : null) : null;
+              return <Zeile key={v.id} links={<Punkt farbe={STATUS[v.status]?.farbe ?? C.inkLeise} />} titel={v.titel} unter={`${g(v.gruppe).label} · ${her(v.zeit)}${v.entschiedenVon ? ` · ${v.entschiedenVon}` : ''}${v.grund ? ` · ${v.grund}` : v.ergebnis ? ` · ${v.ergebnis.slice(0, 80)}` : ''}`}
+                rechts={<span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>{charge && <button onClick={() => void chargeZurueck(charge)} disabled={busy === charge} title="Alle Übernahmen dieses Laufs bzw. dieser Sammelfreigabe zurücknehmen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12 }}>Charge rückgängig</button>}<Chip farbe={STATUS[v.status]?.farbe ?? C.inkLeise}>{STATUS[v.status]?.label ?? v.status}</Chip></span>} />;
+            })}
           </Liste>
         </Karte>
         <Karte i={4}>

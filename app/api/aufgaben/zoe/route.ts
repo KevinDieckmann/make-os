@@ -10,6 +10,10 @@
 //                                                 (Dienstweg ohne Person) = alle. modellSchranke zuerst.
 //   freigeben { id, stapelId?, stand? }         — Vorschläge übernehmen (Stand/409)
 //   ablehnen  { id, stapelId?, grund?, nochmal?, hinweis? } — „nochmal“ = gleich wieder an ZOE
+//   freigeben … eingabe?, trotzdem?          — Häkchen (#94: abgewählte Felder leer), 409 mit `diff`, wenn Status/Deadline
+//                                                 seit dem Vorschlag geändert wurden (#95); `trotzdem` überschreibt bewusst
+//   charge-zurueck { charge }                  — „Charge rückgängig“ (#97, lib/zoe/aufgaben-charge.ts)
+// GET ?chargen=1 → die Chargen der Person (freigegebene ZOE-Vorschläge je Lauf/Sammelfreigabe).
 // Zugang: Haushalt des Inhabers (Sitzung oder Dienstweg mit Person dieses Haushalts), sonst 403.
 // ZOE versendet über diese Route nichts und löscht nichts.
 
@@ -19,7 +23,8 @@ import { hasAnthropicKey, guthabenLeer } from '@/lib/anthropic';
 import { imHaushaltDesInhabers, imHaushaltOderSystemlauf, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { modellSchranke, zuGross } from '@/lib/zugang/umfang';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/speicher';
-import { auftraggeberinVon, vorschlagSauber } from '@/lib/aufgaben/zoe';
+import { auftraggeberinVon, vorschlagSauber, zoeStandLesen } from '@/lib/aufgaben/zoe';
+import { chargenFuer, chargeZurueck, CHARGE_ID } from '@/lib/zoe/aufgaben-charge';
 import { hole } from '@/lib/zoe/stapel';
 import { anZoeGeben, vonZoeZurueck, vorschlagFreigeben, vorschlagAblehnen } from '@/lib/zoe/aufgaben-werkzeuge';
 import { zoeAufgabenLauf, LAUF_STANDARD } from '@/lib/zoe/aufgaben-lauf';
@@ -35,7 +40,9 @@ const ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/;
 export async function GET(req: Request) {
   const zugang = await imHaushaltDesInhabers(req);
   if (!zugang) return GESPERRT();
-  const id = new URL(req.url).searchParams.get('id') ?? '';
+  const q = new URL(req.url).searchParams;
+  if (q.get('chargen') === '1') return NextResponse.json({ ok: true, chargen: await chargenFuer(zugang.person) });
+  const id = q.get('id') ?? '';
   if (!id) return NextResponse.json({ ok: true, ki: kiDa() });
   if (!ID.test(id)) return NextResponse.json({ ok: false, error: 'Ungültige Kennung.' }, { status: 400 });
   const t = (await ladeAufgabenSicht(zugang.person)).tasks.find(x => x.id === id);
@@ -49,11 +56,23 @@ export async function GET(req: Request) {
     vorschlag: passt ? {
       id: v!.id, zeit: v!.zeit, status: v!.status, titel: v!.titel, nachher: v!.nachher, anlass: v!.anlass ?? null,
       ...(v!.grund ? { grund: v!.grund } : {}), inhalt: vorschlagSauber(v!.eingabe, t.id),
+      // Stand beim Vorschlag (#95) — damit die Ansicht vor dem Klick zeigt, was sich inzwischen geändert hat.
+      stand: zoeStandLesen(v!.eingabe._stand), charge: typeof v!.eingabe._charge === 'string' ? v!.eingabe._charge : null,
     } : null,
   });
 }
 
-interface Eingang { aktion?: string; id?: unknown; stapelId?: unknown; stand?: unknown; hinweis?: unknown; grund?: unknown; nochmal?: unknown; max?: unknown }
+interface Eingang { aktion?: string; id?: unknown; stapelId?: unknown; stand?: unknown; hinweis?: unknown; grund?: unknown; nochmal?: unknown; max?: unknown; eingabe?: unknown; trotzdem?: unknown; charge?: unknown }
+
+/** Häkchen (#94): nur die vier Felder, als einfache Werte — alles andere fällt weg (die Säuberung prüft danach). */
+function haekchenLesen(e: unknown): Record<string, unknown> | null {
+  if (!e || typeof e !== 'object' || Array.isArray(e)) return null;
+  const o = e as Record<string, unknown>;
+  const raus: Record<string, unknown> = {};
+  for (const k of ['entwurf', 'status', 'deadline'] as const) if (typeof o[k] === 'string') raus[k] = o[k];
+  if (Array.isArray(o.unteraufgaben)) raus.unteraufgaben = o.unteraufgaben.filter(x => typeof x === 'string').slice(0, 20);
+  return raus;
+}
 
 export async function POST(req: Request) {
   const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2) — Dienstweg (Takt) ist ausgenommen
@@ -76,12 +95,18 @@ export async function POST(req: Request) {
 
   const zugang = await imHaushaltDesInhabers(req);
   if (!zugang) return GESPERRT();
+  if (b.aktion === 'charge-zurueck') {
+    const charge = str(b.charge, 80) ?? '';
+    if (!CHARGE_ID.test(charge)) return NextResponse.json({ ok: false, error: 'Charge fehlt.' }, { status: 400 });
+    return NextResponse.json({ ok: true, bericht: await chargeZurueck(charge, zugang.person) });
+  }
   const id = str(b.id, 80) ?? '';
   if (!ID.test(id)) return NextResponse.json({ ok: false, error: 'Aufgabe fehlt.' }, { status: 400 });
   const stand = str(b.stand, 40) || undefined;
   const antwort = async (r: { ok: true } | { ok: false; status: number; fehler: string; konflikt?: boolean }, extra: Record<string, unknown> = {}) => {
     if (r.ok) return NextResponse.json({ ok: true, ...extra });
-    return NextResponse.json({ ok: false, error: r.fehler, ...(r.konflikt ? { konflikt: true } : {}) }, { status: r.status });
+    const diff = 'diff' in r ? (r as { diff?: unknown }).diff : undefined;
+    return NextResponse.json({ ok: false, error: r.fehler, ...(r.konflikt ? { konflikt: true } : {}), ...(diff ? { diff } : {}) }, { status: r.status });
   };
 
   switch (b.aktion) {
@@ -97,7 +122,8 @@ export async function POST(req: Request) {
       const stapelId = str(b.stapelId, 80) || t?.zoe?.stapelId;
       if (!t || !stapelId) return NextResponse.json({ ok: false, error: 'Kein Vorschlag an dieser Aufgabe.' }, { status: 404 });
       if (b.aktion === 'freigeben') {
-        const r = await vorschlagFreigeben(stapelId, zugang.person, { stand, aufgabeId: id });
+        const eingabe = haekchenLesen(b.eingabe);
+        const r = await vorschlagFreigeben(stapelId, zugang.person, { stand, aufgabeId: id, ...(eingabe ? { eingabe } : {}), trotzdem: b.trotzdem === true });
         return r.ok ? NextResponse.json({ ok: true, ergebnis: r.wert.text }) : antwort(r);
       }
       const hinweis = typeof b.hinweis === 'string' ? b.hinweis : undefined;

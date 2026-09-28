@@ -17,7 +17,8 @@ import type { StapelArt, Vorschlag } from './stapel';
 export type ArtErgebnis = { ok: true; text: string } | { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string };
 
 export interface StapelArtFreigabe {
-  freigeben: (v: Vorschlag, person: string, opt: { eingabe?: Record<string, unknown> | null }) => Promise<ArtErgebnis>;
+  /** `sammel` = Kennung einer Sammelfreigabe (29.09., #97) — alle darin freigegebenen Einträge tragen sie. */
+  freigeben: (v: Vorschlag, person: string, opt: { eingabe?: Record<string, unknown> | null; sammel?: string }) => Promise<ArtErgebnis>;
   nachAblehnen?: (v: Vorschlag, person: string) => Promise<unknown>;
 }
 

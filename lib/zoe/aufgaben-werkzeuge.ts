@@ -13,6 +13,11 @@
 //     /api/zoe/stapel bzw. /api/aufgaben/zoe über `vorschlagFreigeben` — ein eingeschleuster Werkzeug-Aufruf
 //     kann so keinen eigenen „Aufgaben-Vorschlag“ in den Stapel legen.
 // ZOE versendet nichts und löscht nichts: kein Werkzeug hier schreibt nach außen oder entfernt eine Aufgabe.
+// Seit 29.09. (#94–#97): Freigabe vergleicht den Stand beim Vorschlag (`eingabe._stand`) mit dem jetzigen — hat jemand
+// Status/Deadline inzwischen geändert, 409 mit Diff statt Überschreiben (außer ausdrücklich `trotzdem`); einzelne Felder
+// lassen sich abwählen (Häkchen); eine Deadline in der Vergangenheit wird nicht übernommen; der freigegebene Eintrag trägt
+// die Vorher-Werte (`_vorher`, `_nachher`, `_neue`) und Charge (`_charge`, bei Sammelfreigabe `_sammel`) für
+// „Charge rückgängig“ (lib/zoe/aufgaben-charge.ts). Schlüssel mit „_“ kommen nie vom Browser.
 
 import type { Task, TasksState, AufgabeKommentar, ZoeAuftrag } from '@/types/tasks';
 import { ladeAufgabenSicht, aufgabenAendern, type AufgabenOps } from '@/lib/aufgaben/speicher';
@@ -21,21 +26,22 @@ import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { localDay } from '@/lib/zeit';
 import {
-  auftraggeberinVon, darfAnZoe, vorschlagAnwenden, vorschlagSauber, vorschlagZeile, zoeAufgaben,
-  ZOE_AUFGABE_WERKZEUG, ZOE_STATUS_LABEL, ZOE_VORSCHLAG_GRENZEN, type ZoeVorschlagInhalt,
+  auftraggeberinVon, darfAnZoe, vorschlagAnwenden, vorschlagSauber, vorschlagZeile, zoeAufgaben, standAbweichung, konfliktText, zoeStandLesen,
+  ZOE_AUFGABE_WERKZEUG, ZOE_STATUS_LABEL, ZOE_VORSCHLAG_GRENZEN, type ZoeVorschlagInhalt, type ZoeKonflikt, type ZoeStand,
 } from '@/lib/aufgaben/zoe';
+import { suchPasst } from '@/lib/text/such-norm';
 import { hole, entscheide, beanspruche, loslassen, type Vorschlag } from './stapel';
 import { notiere } from './protokoll';
 import type { Risiko, Vorschau } from './register';
 import type { StapelArtFreigabe } from './stapel-arten';
 import { neueKennung } from '@/lib/kennung';
 
-export type ZoeErgebnis<T = Task> = { ok: true; wert: T } | { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string; konflikt?: boolean };
-const nein = (status: 400 | 403 | 404 | 409 | 413, fehler: string, konflikt = false): { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string; konflikt?: boolean } => ({ ok: false, status, fehler, ...(konflikt ? { konflikt } : {}) });
+export type ZoeErgebnis<T = Task> = { ok: true; wert: T } | { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string; konflikt?: boolean; /** Seit dem Vorschlag geändert (#95). */ diff?: ZoeKonflikt[] };
+const nein = (status: 400 | 403 | 404 | 409 | 413, fehler: string, konflikt = false, diff?: ZoeKonflikt[]): { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string; konflikt?: boolean; diff?: ZoeKonflikt[] } => ({ ok: false, status, fehler, ...(konflikt ? { konflikt } : {}), ...(diff?.length ? { diff } : {}) });
 const kurz = (t: string, n = 80) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
 const kennung = (p: string) => neueKennung(p);
 
-type Aenderung = { task: Task; neue?: Task[]; kommentar?: AufgabeKommentar } | { fehler: string; status: 400 | 403 | 404 | 409 | 413 };
+type Aenderung = { task: Task; neue?: Task[]; kommentar?: AufgabeKommentar } | { fehler: string; status: 400 | 403 | 404 | 409 | 413; diff?: ZoeKonflikt[] };
 
 /**
  * Eine Aufgabe über den Schreibweg ändern: frisch lesen → `aendern` → schreiben mit dem Stand der gelesenen Zeile.
@@ -52,7 +58,7 @@ export async function aufgabeZoeAendern(id: string, aendern: (t: Task, state: Ta
     const stand = fingerabdruck(t as unknown as Record<string, unknown>);
     if (opt.stand && opt.stand !== stand) return nein(409, 'Jemand hat die Aufgabe inzwischen geändert — Stand neu geladen, bitte noch einmal.', true);
     const a = aendern(t, state);
-    if ('fehler' in a) return nein(a.status, a.fehler);
+    if ('fehler' in a) return nein(a.status, a.fehler, false, a.diff);
     const jetzt = opt.jetzt ?? new Date().toISOString();
     const ops: AufgabenOps = { tasks: [], projects: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] };
     const task = a.kommentar ? { ...a.task, kommentare: [...(t.kommentare ?? []), a.kommentar] } : a.task;
@@ -120,25 +126,44 @@ function vorschlagPasst(v: Vorschlag | null, person: string, aufgabeId?: string)
  * Die Vorschläge in die Aufgabe übernehmen (ohne den Stapel-Eintrag zu entscheiden — das tun die Aufrufer).
  * `inhalt` ist die (evtl. geänderte) Eingabe, erneut gesäubert. Die Aufgabe muss auf GENAU diesen Vorschlag warten.
  */
-export async function vorschlagInAufgabe(stapelId: string, inhaltRoh: Record<string, unknown>, person: string, opt: { stand?: string } = {}): Promise<ZoeErgebnis<{ task: Task; neue: number; inhalt: ZoeVorschlagInhalt }>> {
+/** Was eine Freigabe an der Aufgabe änderte — für „Charge rückgängig“ (nur Kurzwerte und Längen, nie Texte). */
+export interface FreigabeVorher {
+  vorher: { status: Task['status']; statusId?: string; completedAt?: string; dueDate?: string; notizLaenge: number };
+  nachher: { status: Task['status']; statusId?: string; dueDate?: string; notizLaenge: number };
+  neue: string[];
+}
+
+export async function vorschlagInAufgabe(stapelId: string, inhaltRoh: Record<string, unknown>, person: string, opt: { stand?: string; standBeimVorschlag?: ZoeStand | null; trotzdem?: boolean } = {}): Promise<ZoeErgebnis<{ task: Task; neue: number; inhalt: ZoeVorschlagInhalt; protokoll: FreigabeVorher }>> {
   const aufgabeId = String(inhaltRoh.aufgabeId ?? '');
   const inhalt = vorschlagSauber(inhaltRoh, aufgabeId);
-  if (!inhalt) return nein(400, 'Der Vorschlag ist leer.');
+  if (!inhalt) return nein(400, 'Nichts ausgewählt — der Vorschlag wäre leer.');
+  const heute = localDay();
+  // Deadline in der Vergangenheit (#96): nie still übernehmen — abwählen oder ändern.
+  if (inhalt.deadline && inhalt.deadline < heute) return nein(409, `Die vorgeschlagene Deadline ${inhalt.deadline.slice(8, 10)}.${inhalt.deadline.slice(5, 7)}. liegt in der Vergangenheit — bitte abwählen.`);
   const jetzt = new Date().toISOString();
   let neue = 0;
+  let protokoll: FreigabeVorher | null = null;
   const r = await aufgabeZoeAendern(aufgabeId, (t, state) => {
     if (t.zoe?.status !== 'wartet_freigabe' || t.zoe.stapelId !== stapelId) return { status: 409, fehler: 'Die Aufgabe wartet nicht (mehr) auf diesen Vorschlag.' };
     const a = auftraggeberinVon(t);
     if (a !== person) return { status: 403, fehler: 'Nur wer die Aufgabe an ZOE gab, gibt frei.' };
+    // Stand beim Vorschlag (#95): Status/Deadline inzwischen geändert → nicht überschreiben, sondern zeigen.
+    const k = opt.trotzdem ? [] : standAbweichung(opt.standBeimVorschlag ?? null, t, inhalt, state.statusEigen ?? []);
+    if (k.length) return { status: 409, fehler: `Inzwischen geändert — ${konfliktText(k)}. Feld abwählen oder „trotzdem übernehmen“.`, diff: k };
     const x = vorschlagAnwenden(t, inhalt, {
       stapelId, jetzt, tag: localDay(), eigene: state.statusEigen ?? [], geschwister: state.tasks, notizMax: AUFGABEN_GRENZEN.notiz,
       neueId: i => `${kennung('t-zoe')}${i}`,
     });
     if (!x.ok) return { status: 413, fehler: x.fehler };
     neue = x.neue.length;
+    protokoll = {
+      vorher: { status: t.status, ...(t.statusId ? { statusId: t.statusId } : {}), ...(t.completedAt ? { completedAt: t.completedAt } : {}), ...(t.dueDate ? { dueDate: t.dueDate } : {}), notizLaenge: (t.notiz ?? '').trimEnd().length },
+      nachher: { status: x.task.status, ...(x.task.statusId ? { statusId: x.task.statusId } : {}), ...(x.task.dueDate ? { dueDate: x.task.dueDate } : {}), notizLaenge: (x.task.notiz ?? '').length },
+      neue: x.neue.map(n => n.id),
+    };
     return { task: x.task, neue: x.neue };
   }, { person, stand: opt.stand, jetzt });
-  return r.ok ? { ok: true, wert: { task: r.wert, neue, inhalt } } : r;
+  return r.ok ? { ok: true, wert: { task: r.wert, neue, inhalt, protokoll: protokoll! } } : r;
 }
 
 /**
@@ -146,21 +171,30 @@ export async function vorschlagInAufgabe(stapelId: string, inhaltRoh: Record<str
  * übernehmen, dann den Stapel-Eintrag entscheiden (mit Person, dauerhaft) und protokollieren. Bleibt offen, wenn
  * nichts übernommen wurde; ein zweiter Klick währenddessen bekommt 409.
  */
-export async function vorschlagFreigeben(stapelId: string, person: string, opt: { stand?: string; aufgabeId?: string; eingabe?: Record<string, unknown> | null } = {}): Promise<ZoeErgebnis<{ task: Task; text: string }>> {
+export async function vorschlagFreigeben(stapelId: string, person: string, opt: { stand?: string; aufgabeId?: string; eingabe?: Record<string, unknown> | null; trotzdem?: boolean; sammel?: string } = {}): Promise<ZoeErgebnis<{ task: Task; text: string }>> {
   const a = await beanspruche(stapelId, person, v => {
     const falsch = vorschlagPasst(v, person, opt.aufgabeId);
     return falsch ? { status: falsch.startsWith('Schon') ? 409 : falsch.startsWith('Nur') ? 403 : 404, fehler: falsch } : null;
   });
   if (!a.ok) return nein(a.status, a.fehler);
   const v = a.v;
-  // „Ändern & freigeben“ (Stapel): geänderte Felder ja, aber immer für DIESE Aufgabe und erneut gesäubert.
-  const eingabe = { ...v.eingabe, ...(opt.eingabe ?? {}), aufgabeId: v.bezug!.id };
+  // „Ändern & freigeben“ bzw. Häkchen (#94): geänderte/abgewählte Felder ja, aber immer für DIESE Aufgabe und erneut
+  // gesäubert. Schlüssel mit „_“ (Stand, Charge) kommen nur aus dem gespeicherten Eintrag, nie aus der Eingabe.
+  const vomBrowser = Object.fromEntries(Object.entries(opt.eingabe ?? {}).filter(([k]) => !k.startsWith('_')));
+  const eingabe = { ...v.eingabe, ...vomBrowser, aufgabeId: v.bezug!.id };
   let r: Awaited<ReturnType<typeof vorschlagInAufgabe>>;
-  try { r = await vorschlagInAufgabe(v.id, eingabe, person, { stand: opt.stand }); }
+  try { r = await vorschlagInAufgabe(v.id, eingabe, person, { stand: opt.stand, standBeimVorschlag: zoeStandLesen(v.eingabe._stand), trotzdem: opt.trotzdem }); }
   catch (e) { await loslassen(v.id); throw e; }
   if (!r.ok) { await loslassen(v.id); return r; }
   const text = uebernommenText(r.wert.task, r.wert.inhalt, r.wert.neue);
-  await entscheide(v.id, 'freigegeben', { ergebnis: text, eingabe: { ...r.wert.inhalt } as unknown as Record<string, unknown>, von: person, ausArbeit: true });
+  const p = r.wert.protokoll;
+  await entscheide(v.id, 'freigegeben', {
+    ergebnis: text, von: person, ausArbeit: true,
+    eingabe: {
+      ...r.wert.inhalt, ...(v.eingabe._stand ? { _stand: v.eingabe._stand } : {}), ...(typeof v.eingabe._charge === 'string' ? { _charge: v.eingabe._charge } : {}),
+      ...(opt.sammel ? { _sammel: opt.sammel } : {}), _vorher: p.vorher, _nachher: p.nachher, _neue: p.neue,
+    } as unknown as Record<string, unknown>,
+  });
   await notiere({ werkzeug: ZOE_AUFGABE_WERKZEUG, gruppe: 'aufgaben', risiko: 'freigabe', eingabe: { aufgabeId: r.wert.task.id }, ergebnis: text, ok: true, quelle: 'stapel', person, ruecknahme: null });
   return { ok: true, wert: { task: r.wert.task, text } };
 }
@@ -201,7 +235,7 @@ export async function nachAblehnen(v: Pick<Vorschlag, 'id' | 'bezug' | 'werkzeug
 /** Die Art „aufgabe“ im Freigabe-Stapel (lib/zoe/stapel-arten.ts): Freigeben übernimmt, Ablehnen stellt die Aufgabe um. */
 export const AUFGABE_STAPEL_ART: StapelArtFreigabe = {
   freigeben: async (v, person, opt) => {
-    const r = await vorschlagFreigeben(v.id, person, { eingabe: opt.eingabe });
+    const r = await vorschlagFreigeben(v.id, person, { eingabe: opt.eingabe, ...(opt.sammel ? { sammel: opt.sammel } : {}) });
     return r.ok ? { ok: true, text: r.wert.text } : { ok: false, status: r.status, fehler: r.fehler };
   },
   nachAblehnen: (v, person) => nachAblehnen(v, person),
@@ -239,7 +273,8 @@ async function aufgabeAnZoe(input: Record<string, unknown>, _o: string, person?:
   const offen = state.tasks.filter(t => t.status !== 'done' && t.status !== 'cancelled');
   const klein = frage.toLowerCase();
   const genau = offen.filter(t => t.id === frage || t.title.toLowerCase() === klein);
-  const treffer = genau.length ? genau : offen.filter(t => t.title.toLowerCase().includes(klein));
+  // Normalisiert (#58): „mueller“ findet „Müller“, auch in der Beschreibung.
+  const treffer = genau.length ? genau : offen.filter(t => suchPasst([t.title, t.description], frage));
   if (!treffer.length) return `Nicht ausgeführt: keine offene Aufgabe „${kurz(frage, 60)}“ gefunden.`;
   if (treffer.length > 1) return `Nicht ausgeführt: mehrdeutig — ${treffer.slice(0, 5).map(t => `„${kurz(t.title, 60)}“ [${t.id}]`).join(', ')}. Bitte die Kennung nennen.`;
   const r = await anZoeGeben(treffer[0].id, person!, { hinweis: typeof input.hinweis === 'string' ? input.hinweis : undefined, durchZoe: true });

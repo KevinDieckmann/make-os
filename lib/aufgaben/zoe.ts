@@ -11,6 +11,7 @@
 
 import type { Task, TasksState, ZoeStatus, AufgabenStatus, TaskStatus } from '@/types/tasks';
 import { statusTeil, grundVon } from './struktur';
+import { istTag } from './wiederholung';
 
 export const ZOE_STATUS_LABEL: Record<ZoeStatus, string> = {
   offen: 'bei ZOE', in_arbeit: 'ZOE arbeitet', wartet_freigabe: 'wartet auf Freigabe', freigegeben: 'freigegeben', abgelehnt: 'abgelehnt',
@@ -130,7 +131,7 @@ const text = (v: unknown, n: number): string => (typeof v === 'string' ? v.repla
  * Die Modell-Antwort (oder eine Stapel-Eingabe) säubern — nur die fünf erlaubten Arten von Vorschlag, begrenzt.
  * `null`, wenn nichts Brauchbares darin steht (keine leeren Vorschläge in den Stapel).
  */
-export function vorschlagSauber(roh: unknown, aufgabeId: string): ZoeVorschlagInhalt | null {
+export function vorschlagSauber(roh: unknown, aufgabeId: string, heute?: string): ZoeVorschlagInhalt | null {
   if (!roh || typeof roh !== 'object') return null;
   const o = roh as Record<string, unknown>;
   const G = ZOE_VORSCHLAG_GRENZEN;
@@ -138,7 +139,8 @@ export function vorschlagSauber(roh: unknown, aufgabeId: string): ZoeVorschlagIn
   const unteraufgaben = Array.from(new Set((Array.isArray(o.unteraufgaben) ? o.unteraufgaben : [])
     .map(x => text(x, G.unteraufgabeTitel)).filter(Boolean))).slice(0, G.unteraufgaben);
   const status = VORSCHLAG_STATUS.includes(o.status as Exclude<TaskStatus, 'backlog'>) ? (o.status as Exclude<TaskStatus, 'backlog'>) : undefined;
-  const deadline = typeof o.deadline === 'string' && TAG.test(o.deadline) && !Number.isNaN(Date.parse(o.deadline)) ? o.deadline : undefined;
+  // Nur echte Kalendertage (kein 31.02., #96) und — mit `heute` — nicht in der Vergangenheit.
+  const deadline = typeof o.deadline === 'string' && TAG.test(o.deadline) && istTag(o.deadline) && (!heute || o.deadline >= heute) ? o.deadline : undefined;
   const zusammenfassung = text(o.zusammenfassung, G.zusammenfassung);
   const begruendung = text(o.begruendung, G.begruendung);
   if (!entwurf && !unteraufgaben.length && !status && !deadline) return null;
@@ -195,4 +197,77 @@ export function vorschlagAnwenden(t: Task, v: ZoeVorschlagInhalt, opt: {
     }));
   }
   return { ok: true, task, neue };
+}
+
+// ── Freigabe mit Stand, Diff und Charge (29.09., #94–#97) ───────────────────────────────────────────
+
+/**
+ * Der Stand der Aufgabe, als ZOE den Vorschlag machte (#95) — nur die Felder, die eine Freigabe ÜBERSCHREIBT (Status,
+ * Deadline). Notiz und Unteraufgaben werden nur ergänzt, nie ersetzt. Liegt im Stapel-Eintrag (`eingabe._stand`), setzt nur
+ * der Server-Lauf.
+ */
+export interface ZoeStand { status: TaskStatus; statusId?: string; dueDate?: string }
+export const zoeStandVon = (t: Pick<Task, 'status' | 'statusId' | 'dueDate'>): ZoeStand => ({ status: t.status, ...(t.statusId ? { statusId: t.statusId } : {}), ...(t.dueDate ? { dueDate: t.dueDate.slice(0, 10) } : {}) });
+export function zoeStandLesen(roh: unknown): ZoeStand | null {
+  if (!roh || typeof roh !== 'object') return null;
+  const o = roh as Record<string, unknown>;
+  if (typeof o.status !== 'string') return null;
+  return { status: o.status as TaskStatus, ...(typeof o.statusId === 'string' ? { statusId: o.statusId } : {}), ...(typeof o.dueDate === 'string' ? { dueDate: o.dueDate } : {}) };
+}
+
+export type ZoeFeld = 'notiz' | 'unteraufgaben' | 'status' | 'deadline';
+/** Eine Zeile „alt → neu“ je Feld, das die Freigabe ändert (#94). */
+export interface ZoeFeldAenderung { feld: ZoeFeld; label: string; alt: string; neu: string }
+/** Seit dem Vorschlag von jemand anderem geändert (#95): Wert beim Vorschlag, Wert jetzt, was ZOE setzen will. */
+export interface ZoeKonflikt { feld: 'status' | 'deadline'; label: string; damals: string; jetzt: string; neu: string }
+
+const tagText = (d?: string) => (d ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : '—');
+const statusText = (s: TaskStatus | undefined, statusId: string | undefined, eigene: readonly AufgabenStatus[]) => (statusId ? eigene.find(x => x.id === statusId)?.label : undefined) ?? grundVon(s).label;
+
+/** Was die Freigabe an DIESER Aufgabe ändert — alt (jetzt) → neu, je Feld (für die Häkchen). */
+export function vorschlagAenderungen(t: Pick<Task, 'status' | 'statusId' | 'dueDate' | 'notiz' | 'parentId'>, v: ZoeVorschlagInhalt, eigene: readonly AufgabenStatus[] = []): ZoeFeldAenderung[] {
+  const raus: ZoeFeldAenderung[] = [];
+  if (v.entwurf) raus.push({ feld: 'notiz', label: 'Notiz', alt: t.notiz?.trim() ? `${t.notiz.trim().length.toLocaleString('de-DE')} Zeichen` : 'leer', neu: `+ Entwurf (${v.entwurf.length.toLocaleString('de-DE')} Zeichen) angehängt` });
+  if (v.unteraufgaben?.length) raus.push({ feld: 'unteraufgaben', label: t.parentId ? 'Checkliste' : 'Unteraufgaben', alt: '', neu: `+ ${v.unteraufgaben.length}: ${v.unteraufgaben.slice(0, 3).join(' · ')}${v.unteraufgaben.length > 3 ? ' …' : ''}` });
+  if (v.status) raus.push({ feld: 'status', label: 'Status', alt: statusText(t.status, t.statusId, eigene), neu: grundVon(v.status).label });
+  if (v.deadline) raus.push({ feld: 'deadline', label: 'Deadline', alt: tagText(t.dueDate?.slice(0, 10)), neu: tagText(v.deadline) });
+  return raus;
+}
+
+/**
+ * Hat sich seit dem Vorschlag etwas geändert, das die Freigabe überschreiben würde (#95)? Nur Status und Deadline — und
+ * nur, wenn der Vorschlag sie überhaupt setzt. Leer = passt.
+ */
+export function standAbweichung(stand: ZoeStand | null, t: Pick<Task, 'status' | 'statusId' | 'dueDate'>, v: ZoeVorschlagInhalt, eigene: readonly AufgabenStatus[] = []): ZoeKonflikt[] {
+  if (!stand) return [];
+  const raus: ZoeKonflikt[] = [];
+  const grund = (s?: string) => (s === 'backlog' ? 'todo' : s);
+  if (v.status && (grund(stand.status) !== grund(t.status) || (stand.statusId ?? '') !== (t.statusId ?? ''))) {
+    raus.push({ feld: 'status', label: 'Status', damals: statusText(stand.status, stand.statusId, eigene), jetzt: statusText(t.status, t.statusId, eigene), neu: grundVon(v.status).label });
+  }
+  if (v.deadline && (stand.dueDate ?? '') !== (t.dueDate?.slice(0, 10) ?? '')) {
+    raus.push({ feld: 'deadline', label: 'Deadline', damals: tagText(stand.dueDate), jetzt: tagText(t.dueDate?.slice(0, 10)), neu: tagText(v.deadline) });
+  }
+  return raus;
+}
+
+/** „Deadline: beim Vorschlag 10.10.2026, inzwischen 03.10.2026 — ZOE wollte 12.10.2026“ */
+export const konfliktText = (k: readonly ZoeKonflikt[]): string => k.map(x => `${x.label}: beim Vorschlag ${x.damals}, inzwischen ${x.jetzt} — ZOE wollte ${x.neu}`).join(' · ');
+
+/** Ein Vorschlag nur mit Notiz-Entwurf und/oder Unteraufgaben — ändert nichts, ergänzt nur (Sammelfreigabe erlaubt, #94). */
+export const risikoarm = (v: Pick<ZoeVorschlagInhalt, 'status' | 'deadline'> | null): boolean => !!v && !v.status && !v.deadline;
+
+/** Felder abwählen (Häkchen, #94): was nicht gewählt ist, wird für die Freigabe geleert (die Säuberung lässt es weg). */
+export function nurGewaehlt(v: ZoeVorschlagInhalt, felder: ReadonlySet<ZoeFeld>): Record<string, unknown> {
+  return {
+    entwurf: felder.has('notiz') ? v.entwurf ?? '' : '', unteraufgaben: felder.has('unteraufgaben') ? v.unteraufgaben ?? [] : [],
+    status: felder.has('status') ? v.status ?? '' : '', deadline: felder.has('deadline') ? v.deadline ?? '' : '',
+  };
+}
+
+const WOCHENTAG_LANG = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+/** „Heute ist Dienstag, 29.09.2026 (Zeitzone Europe/Berlin).“ — für den Prompt (#96). */
+export function heuteSatz(heute: string): string {
+  const w = new Date(`${heute}T12:00:00Z`).getUTCDay();
+  return `Heute ist ${WOCHENTAG_LANG[w]}, ${tagText(heute)} (Zeitzone Europe/Berlin).`;
 }
