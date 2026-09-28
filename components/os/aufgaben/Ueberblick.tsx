@@ -165,6 +165,11 @@ export function AufgabenArchiv({ state, dispatch, spaces, heute, gehe }: { state
       </Karte>
       <NeustartArchiv spaces={spaces} />
       <Papierkorb spaces={spaces} />
+      {/* Export (29.09., #81): alles, was du sehen darfst, als eine JSON-Datei (Umzug, Auskunft). Kein Seitenwechsel — ein Download. */}
+      <div style={{ margin: '14px 2px 0', fontSize: 12.5, color: C.inkLeise }}>
+        <a href="/api/aufgaben/export" download style={{ color: C.aktiv, textDecoration: 'none' }}>Alle Aufgaben exportieren (JSON)</a>
+        {' '}— Spaces, Projekte, Listen, Aufgaben, Serien, Abhängigkeiten, Kommentare und die Dateiliste.
+      </div>
     </>
   );
 }
