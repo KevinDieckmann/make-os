@@ -64,6 +64,16 @@ function leadVereinen(a: Kontakt['lead'], b: Kontakt['lead']): Kontakt['lead'] {
  * - `netzwerk` über `netzwerkVereinen` (der weitere Schritt je Profil gewinnt), `vonHand` vereinigt.
  * - Verlauf: beide ohne Doppelte (gleiche Fassung = ein Eintrag), Löschmarken beider vereinigt und angewandt.
  */
+/**
+ * Kevin 28.09.: Beim Zusammenführen darf keine private Notiz verloren gehen.
+ * Haben beide Einträge eine private Notiz von VERSCHIEDENEN Personen, passt das
+ * nicht in ein Feld (privatNotiz gehört genau einer Person) — dann wird nicht
+ * zusammengeführt, bis eine Notiz übertragen oder geleert ist.
+ */
+export function privatNotizKonflikt(a: Pick<Kontakt, 'privatNotiz' | 'privatNotizVon'>, b: Pick<Kontakt, 'privatNotiz' | 'privatNotizVon'>): boolean {
+  return !!a.privatNotiz && !!b.privatNotiz && privatNotizVerfasser(a as Kontakt) !== privatNotizVerfasser(b as Kontakt);
+}
+
 export function zusammenfuehren(a: Kontakt, b: Kontakt, von: string, jetzt: string): Kontakt {
   const out: Kontakt = { ...a };
   for (const f of Object.keys(b) as (keyof Kontakt)[]) {

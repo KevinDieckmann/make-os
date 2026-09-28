@@ -269,3 +269,14 @@ describe('Archiv-Kopien verschlüsselt', () => {
     } finally { process.env.MAKE_OS_DATEN_SCHLUESSEL = alt; }
   });
 });
+
+describe('Dubletten: private Notizen verschiedener Personen (Kevin 28.09.)', () => {
+  it('wird erkannt — dann kein Zusammenführen', async () => {
+    const { privatNotizKonflikt } = await import('@/lib/crm/dubletten');
+    expect(privatNotizKonflikt({ privatNotiz: 'a', privatNotizVon: 'kevin' }, { privatNotiz: 'b', privatNotizVon: 'malin' })).toBe(true);
+    expect(privatNotizKonflikt({ privatNotiz: 'a', privatNotizVon: 'kevin' }, { privatNotiz: 'b', privatNotizVon: 'kevin' })).toBe(false);
+    expect(privatNotizKonflikt({ privatNotiz: 'a' }, { privatNotiz: 'b', privatNotizVon: 'malin' })).toBe(true);
+    expect(privatNotizKonflikt({}, { privatNotiz: 'b', privatNotizVon: 'malin' })).toBe(false);
+  });
+});
+
