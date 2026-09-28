@@ -4,6 +4,96 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Aufgaben wie Monday/ClickUp (28.09.2026 abends, B1, nur lokal)
+
+- **Neue Aufgaben-Seite** `/os/aufgaben`: oben Schnell anlegen (Titel tippen, per Klick Space › Projekt › Liste › übergeordnete Aufgabe, vorbelegt mit dem, was offen ist; Kürzel !! · @malin · #projekt · Datum wie bisher). Darunter Privat | Business, im Business die Firmen (Selbstständigkeit · KD Ventures · MAKE OS UG) und die Mandanten (jede Firma mit aktivem Mandat; beendet → „Archiv“). Im Space Projekte → Listen → Aufgaben → Unteraufgaben (aufklappbar), ohne Projekt/Liste „Sonstige“. Ansicht Liste oder Board nach Status; Filter Alle/Meine, Status, fällig.
+- **Detail:** Status (Offen · In Arbeit · Wartend · Erledigt + eigene je Space mit Farbe und Grundstatus), Zuständig, Priorität, Start, Deadline, Ort, Beschreibung, Verknüpfung mit Kontakt/Firma/Mandat/Deal (Link in die Akte), Unteraufgaben, Kommentare mit @-Erwähnung.
+- **Bestand wird übernommen** (beim ersten Speichern): jede Aufgabe bekommt ihren Space, alte Unterpunkte werden Unteraufgaben — nichts geht verloren. Das alte Board mit Zeitstrahl/Delegation bleibt unter „Zeitstrahl ›“.
+- **Sicherheit:** Aufgaben lesen/schreiben nur noch der Haushalt des Inhabers (vorher ohne Prüfung); gleichzeitige Änderungen am selben Eintrag → Hinweis statt Überschreiben; Änderungsprotokoll ohne Werte.
+- **Glocke:** Zuweisung an die andere Person, @-Erwähnung und Kommentar melden sich (nie an sich selbst).
+- **CRM:** Kachel „Aufgaben“ in Kontakt öffnen und in der Firmenakte (+ Aufgabe, beim Mandanten gleich im richtigen Space); Übergabe verknüpft die Aufgabe mit Kontakt/Deal/Mandat; Datenqualität meldet tote Verknüpfungen; ein Fokus-Block auf eine Aufgabe mit Mandat zählt auf das Mandat.
+- **Dashboards:** Aufgaben-Widgets auf Privat-Flächen zeigen nur Privates, auf Business-Flächen nur Business.
+- Tests: `tests/aufgaben-struktur.test.ts`, `tests/aufgaben-route.test.ts`, `tests/aufgaben-crm-flaechen.test.ts`, erweitert Verbindungen/Person-Bestände/Übergabe/Mandat-Bezug.
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Aufgaben › Business › Mandant: „+ Projekt“ Buchhaltung, „+ Liste“ Januar/Februar, Aufgabe „Fehlende Belege“ mit zwei Unteraufgaben; Haken setzen, zuklappen, neu laden — alles steht.
+- [ ] Schnell anlegen: Titel + Projekt/Liste per Klick, Enter; ohne Auswahl landet sie unter „Sonstige“; „@malin morgen !!“ setzt Zuständig, Datum, Priorität.
+- [ ] Status verwalten: „Beim Steuerbüro“ (Grundstatus Wartend) anlegen, im Detail und im Board (Karte ziehen) setzen.
+- [ ] Detail: CRM-Verknüpfung suchen („mueller“ findet „Müller“), Link öffnet die Akte; Kommentar mit @Malin → Malins Glocke leuchtet.
+- [ ] Zu zweit: dieselbe Aufgabe in zwei Fenstern ändern → zweites Fenster zeigt den Hinweis, nichts überschrieben.
+- [ ] Alter Bestand: vorhandene Aufgaben stehen im passenden Space (Privat/Selbstständigkeit/KD Ventures), frühere Unterpunkte als Unteraufgaben.
+- [ ] Kontakt öffnen / Firmenakte: Kachel „Aufgaben“, „+ Aufgabe“; Home/Übersichten: Privat-Aufgaben nur links bzw. auf Privat.
+- [ ] Handy (375 px): Aufgaben-Seite, Detail öffnet oben, „⋯“ an Projekt/Liste.
+
+## Finanzen: eine Einheitenliste (28.09.2026 abends, nur lokal)
+
+- **Überall dieselben Einheiten:** Privat · Selbstständigkeit · KD Ventures · MAKE OS UG (aus `lib/einheiten.ts`) im Business-Cockpit, bei Steuern, im Szenario-Baukasten, in den Privat-Finanzen (Beleg-Einheit), bei Buchungen, in ZOE, in der Kontaktakte (Umsatz) und an den Liquiditäts-Pillen. „Consulting“ heißt in den Listen jetzt „Selbstständigkeit“.
+- **Cockpit:** neue Sicht „MAKE OS UG“ (Köpfe, Jahresziel, Monatsabschluss auch für die UG). Die Gesamtsicht nimmt die UG erst dazu, wenn sie einen Monatsabschluss hat — bestehende Gesamtzahlen bleiben gleich.
+- **Steuern:** die UG steht im Filter, in Rücklage und Prognose — aber ohne Fristen und ohne geschätzten Betrag („Steuerlogik der MAKE OS UG noch nicht hinterlegt“). Hinweis, keine Steuerberatung.
+- **Baukasten:** „Wo“ kennt jetzt die Selbstständigkeit als eigene Einheit (Produkte der Selbstständigkeit landen dort statt bei der UG). Gerechnet wird wie bisher über die UG, weil der Rechenkern v3 keine eigene Selbstständigkeits-Spalte hat — Kevins Entscheidung, ob er eine bekommt.
+- **Privat-Finanzen:** die frühere Einheit „KD Management UG“ ist die KD Ventures und heißt jetzt so; die MAKE OS UG ist neu wählbar. Alte Bestände werden beim Lesen übersetzt, beim nächsten Speichern neu geschrieben.
+- **Buchungen:** eine bezahlte UG-Rechnung bucht bei der UG (vorher Selbstständigkeit); Filter „MAKE OS UG“ in Buchungen; „Geschäftlich“ umfasst alle drei. Bereits gebuchte Eingänge bleiben, wie sie sind.
+- Tests: `tests/finanz-einheiten-summen.test.ts` (Summen vor/nach dem Umbau).
+- **Nachtrag (b264b72):** Beleg aus ZOE übernehmen rechnet auf den Cent (vorher Rechnung auf ganze Euro), netto/USt über `lib/finanzen/ust.ts`, ein reiner Nettobetrag wird nicht mehr als brutto gebucht. Prüfliste Privat/Business bietet beim Zuordnen jetzt auch die MAKE OS UG (neben Selbstständigkeit · KD Ventures · KEMARIS). Prüfen: Beleg-Foto in ZOE → „als Rechnung“ zeigt Cent-Betrag; Zahlen › Privat › Prüfliste: Auswahl enthält „gehört zu: MAKE OS UG“.
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Zahlen › Business: Sichten Gesamt · Selbstständigkeit · KD Ventures · MAKE OS UG; Gesamt-Index unverändert gegenüber vorher.
+- [ ] Zahlen › Business › Einstellungen: UG-Spalte speichern; Monatsabschluss für die UG anlegen und wieder löschen.
+- [ ] Zahlen › Steuern: Filter „MAKE OS UG“ zeigt „noch nicht hinterlegt“; Rücklage-Summe unverändert.
+- [ ] Finanzplanung › Planen › Baukasten: Baustein auf „Selbstständigkeit“ stellen → Zahlen gleich wie bei UG.
+- [ ] Zahlen › Privat › Belege: Einheit-Auswahl zeigt vier Einträge; ein alter „KD Management UG“-Beleg steht als KD Ventures.
+- [ ] Buchungen: Filter „MAKE OS UG“; Summe „Geschäftlich“ wie vorher.
+
+## Mandat an Zielen und Zeit (28.09.2026 abends, nur lokal)
+
+- **Mandat-Chip** (aktive Mandate, Suche „Firma · Mandatstitel“) im Business: bei Zielen und Meilensteinen beim Anlegen und am Eintrag, in der Zeitmessung neben Aufgabe und Einheit (Kopf beim laufenden Fokus, Fokus › Fokus-Blöcke). Ist ein Mandat gesetzt, kommen Firma und Einheit aus dem Mandat (Gesellschaft → Selbstständigkeit · KD Ventures · MAKE OS UG). Privat kennt keine Mandate.
+- **Zeit je Mandat** (Fokus-Seite, neue Karte): Woche/Monat, je Person und gesamt; mit Monatshonorar ein grober Hinweis „≈ €/h“ — kein Rechnungsbezug. In der Mandatsakte (Produkte & Mandate) steht „Zeit“ des laufenden Monats.
+- **Verbindungsprüfung:** Ziele, Meilensteine und Fokus-Blöcke mit gelöschtem Mandat/Firma werden gemeldet; „Bezug entfernen“ nimmt nur den toten Verweis weg (Zeit und Einheit bleiben). Ein Mandat lässt sich weiterhin löschen — die Zeit zählt dann als „Mandat (gelöscht)“.
+- Tests: `tests/mandat-bezug.test.ts`, erweitert `tests/crm-verbindungen.test.ts`.
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Planung › Jahr › Business: neues Ziel mit „+ Mandat“ → Einheit springt auf die Gesellschaft des Mandats; nach Neuladen steht das Mandat am Ziel; abgeleitete Quartals-/Monatsziele tragen es mit.
+- [ ] Meilenstein im Business mit Mandat anlegen; am Eintrag Mandat wechseln und entfernen.
+- [ ] Kopf: Fokus starten (Business) → Etikett → Mandat wählen → stoppen → Fokus › „Zeit je Mandat“ zeigt die Zeit; Mandatsakte zeigt „Zeit“ im Monat.
+- [ ] Fokus-Blöcke: Block nachträglich einem Mandat zuordnen; „nach Privat“ → Mandat weg.
+- [ ] Malin (ohne CRM-Zugang? — nur wenn nicht im Haushalt des Inhabers): kein Mandat-Chip, nichts bricht.
+- [ ] Stammdaten › Datenqualität: nach Löschen eines Test-Mandats erscheinen die drei Befunde; „Bezug entfernen“ räumt sie ab.
+
+## Querschnitt-Lücken: UG-Rechnungen, Gesellschafts-Filter, Meilenstein-Space, Einheit am Block (28.09.2026 abends, nur lokal)
+
+- **Rechnung aus dem Mandat bei der richtigen Gesellschaft:** „+ Rechnung aus dem Honorar“ legte Rechnungen aus UG-Mandaten bei kdc an. Jetzt folgt `firmaId` der Gesellschaft des Mandats (`firmaFuerGesellschaft` in `lib/einheiten.ts`: kdc · kdv · ug, „offen“ → kdc).
+- **UG-Konto im Finanzplan:** ein neuer Plan startet mit drei leeren Konten (kdv, kdc, ug — ohne Bank, zählt 0 €). Ein bestehender Plan bekommt das leere UG-Konto beim Speichern, sobald der erste Posten bei ug steht (`ugFirmaNachziehen`, additiv, vorhandene Konten unverändert; das Lesen schreibt weiterhin nie).
+- **Mandate nach Gesellschaft filtern:** Produkte & Mandate › Mandate hat neben dem Personen-Filter „Alle · Selbstständigkeit · KD Ventures · MAKE OS UG“ (am Handy Kürzel); „+ Mandat“ übernimmt die gefilterte Gesellschaft.
+- **Meilensteine mit echtem Space:** Feld `space` (Privat/Business) statt der Ersatzlösung `bereich` (Business/Gesundheit). Alte Einträge werden gelesen (Gesundheit → Privat); beim Speichern steht beides, damit Brain, Loop, Gesundheits- und Business-Säule unverändert weiterlaufen. In „Alle“ wechselt ein Klick auf die Plakette den Space (wie bei Zielen). Säuberung jetzt in `lib/planung/meilensteine.ts`.
+- **Einheit am Block der Wochenvorlage:** Routine-Planer › Blöcke — Business-Blöcke tragen optional eine Einheit (Auswahl wie bei Routinen, „+ neu“ inklusive), angezeigt als Kürzel (Selbst. · KDV · UG) unter der Uhrzeit; Privat verwirft sie.
+- Tests: `tests/querschnitt-2809.test.ts`; `tests/k1-seed.test.ts` erwartet das UG-Konto im Startbestand.
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Mandat mit Gesellschaft „MAKE OS UG“ → „+ Rechnung aus dem Honorar“ → Rechnung steht unter MAKE OS UG; im Finanzplan erscheint das UG-Konto (leer), vorhandene Kontostände unverändert.
+- [ ] Mandatsliste: Filter „KD Ventures“ zeigt nur KDV-Mandate; „+ Mandat“ im Filter legt ein KDV-Mandat an.
+- [ ] Jahr › Meilensteine: alter Gesundheits-Meilenstein erscheint unter Privat; Plakette in „Alle“ wechselt Privat ↔ Business; Gesundheits-Cockpit zeigt ihn weiterhin.
+- [ ] Routine-Planer › Blöcke: Business-Block → „+ Einheit“ → KDV; Kürzel sichtbar; Block auf Privat umschalten → Einheit weg.
+
+## Glocke oben rechts: Meldungen (28.09.2026 abends, B2, nur lokal)
+
+- **Glocke im Kopf** neben Heute · Inbox · Kalender (auch auf dem Handy): rote Zahl, solange etwas ungelesen ist; kommt etwas Neues dazu, leuchtet sie kurz rot und schwingt einmal (aus bei „Bewegung reduzieren“). Klick öffnet die Liste, neueste zuerst: Art-Symbol, Satz, Zeit („vor 5 Min“, „heute“, „überfällig“); ein Eintrag führt zur Aufgabe und gilt als gelesen; „Alle gelesen“ oben.
+- **Gemeldet:** Zuweisung an mich, Kommentar, Erwähnung (kommen über `melde()` aus dem Aufgaben-Umbau B1) sowie eigene Aufgaben (zuständig ich oder gemeinsam), die heute fällig oder überfällig sind — die werden nicht gespeichert, sondern beim Öffnen aus den Aufgaben abgeleitet (Berliner Tag); „gelesen“ gilt für diesen Tag, morgen meldet sich eine noch offene überfällige Aufgabe wieder.
+- **Regeln:** nie an sich selbst; je Aufgabe und Art eine ungelesene Meldung (eine neuere ersetzt sie); höchstens 500 je Person — erst fallen die ältesten gelesenen weg, ungelesene werden nie gelöscht, sondern zu „+N weitere Meldungen“ zusammengefasst. Nur eigene Meldungen, nur im Haushalt des Inhabers.
+- **Sparsam:** Abfrage beim Öffnen, bei Fensterfokus und alle 60 s nur bei sichtbarer Seite, mit ETag (304 ohne Inhalt).
+- **Telegram vorgesehen:** Schalter „Auch per Telegram“ unten in der Liste (aus) — es wird noch nichts gesendet; die Stelle für später ist `telegramHaken` in `lib/meldungen/speicher.ts`.
+- Tests: `tests/meldungen-regeln.test.ts`, `tests/meldungen-route.test.ts`, `tests/meldungen-glocke.test.ts`.
+
+### Prüfliste (vor dem Hochladen durchklicken)
+- [ ] Kevin weist Malin eine Aufgabe zu → bei Malin (anderes Gerät/Fenster) wird die Glocke innerhalb einer Minute bzw. beim Zurückkehren ins Fenster rot mit „1“.
+- [ ] Glocke öffnen → Eintrag anklicken → Aufgabe öffnet sich, Zahl sinkt; „Alle gelesen“ → Zahl weg.
+- [ ] Eigene Aufgabe mit Deadline gestern → „überfällig“ in der Glocke; nach „gelesen“ heute ruhig, morgen wieder da (solange offen).
+- [ ] Handy: Glocke im Kopf sichtbar, Liste passt in die Breite.
+- [ ] Mit „Bewegung reduzieren“ pulsiert nichts.
+
+## „Problem oder Idee melden“ in der Leiste (28.09.2026, nur lokal)
+
+- Leiste unten links zwischen Brain und System (Handy: „Melden“): öffnet das Erfassen-Fenster (`make-idee`), Titel „Problem oder Idee melden“, Art Fehler · Idee · Wunsch, Seite geht mit, danach „Im Bauplan notiert“ mit Link. Test `tests/leiste-melden.test.ts`.
+
 ## Kartei-Protokoll für alle Schreibwege, ZOE-Kontext, Firmenwechsel im Import, Angebots-Ablauf (28.09.2026 spät, W7, nur lokal)
 
 - **Änderungsprotokoll für jeden Kartei-Schreibweg:** neuer Helfer `aendereKontakte`/`aendereKontakteAsync` (`lib/crm/kartei-schreiben.ts`) — eine Sperre über `updateJson('kontakte')`, danach `listenDiff` ins Protokoll (wer, wann, Kennung als `c#…`, Feldnamen, nie Werte; der Stand vorher wird tief kopiert, weil manche Wege die Liste an Ort und Stelle ändern). Umgestellt: Aktivität (auch Notiz ändern/löschen), Follow-up (Aktivität, Verschieben, Absagen), Lead (Personen-Lead, Mandat → Phase), Kampagnen, Netzwerk, Anfrage, Stammdaten, Umzug, Verbindungen, Signale, Heads (Rücknahme, Übernahme), Deal anlegen, Übergabe, Lead heben, Heads-Lauf (Auto-Übernahme, als „zoe“), Angebot stellen, ZOE `notiere_kontakt` (als „zoe“ mit Person). `uebergeben`, `dealAnlegen`, `leadHebenNachGespraech` nehmen optional `wer` (Routen: `werAus(req)`, ZOE: `{ art: 'zoe', person }`). Schon vorher protokolliert und unverändert: Kartei-PATCH, Import (+ Konflikt, Rückgängig), Dubletten, Datenschutz, Firmen-Abgleich, Löschfristen-Lauf, `aendereCrm`.
