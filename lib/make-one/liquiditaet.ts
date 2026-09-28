@@ -209,7 +209,8 @@ export function vorschau(
 
     // Eingänge: offene Rechnungen mit Fälligkeit in dieser Woche.
     for (const r of rechnungen) {
-      if (r.status === 'bezahlt' || !r.betrag) continue;
+      // Stornierte Rechnungen (28.09., K3) bringen kein Geld mehr — sie bleiben nur als Beleg stehen.
+      if (r.status === 'bezahlt' || r.status === 'storniert' || !r.betrag) continue;
       if (nurFirma && (r as { firmaId?: string }).firmaId && (r as { firmaId?: string }).firmaId !== nurFirma) continue;
       const geplant = r.status === 'geplant';
       if (geplant && !optimistisch) continue;
@@ -223,7 +224,7 @@ export function vorschau(
     // Überfällige Rechnungen in Woche 1 mitnehmen.
     if (i === 0) {
       for (const r of rechnungen) {
-        if (r.status === 'bezahlt' || !r.betrag || !r.faellig || r.faellig >= vonISO) continue;
+        if (r.status === 'bezahlt' || r.status === 'storniert' || !r.betrag || !r.faellig || r.faellig >= vonISO) continue;
         if (r.status === 'geplant' && !optimistisch) continue;
         bewegungen.push({ datum: r.faellig, text: `${r.kunde}: ${r.titel} (überfällig)`.slice(0, 60), betrag: r.betrag, art: 'eingang', sicher: false });
         unsicher += r.betrag;

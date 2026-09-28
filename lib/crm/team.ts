@@ -135,7 +135,7 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   const nachfassen = crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm && eventIds.has(t.eventId) && nachfasser(t) === person).length;
   if (nachfassen) l.push({ id: 'nachfassen', welt: 'event', titel: 'Gäste nachfassen', anzahl: nachfassen, text: 'die du eingeladen hast oder deren Beziehung du hältst', ziel: { s: 'event' } });
   // Ebene 1 → 2: Leads, die SQL-bereit sind, aber noch keinen Deal haben — und Leads in Qualifizierung.
-  const meineLeads = leads(kontakte, crm).filter(z => z.besitzer === person || z.besitzer === BEIDE);
+  const meineLeads = leads(kontakte, crm, heute).filter(z => z.besitzer === person || z.besitzer === BEIDE);
   const sqlOffen = meineLeads.filter(z => sqlBereit(z.kriterien) && !z.deal?.offen && z.status !== 'kunde' && z.status !== 'kein_fit' && z.status !== 'ruht').length;
   if (sqlOffen) l.push({ id: 'sql_bereit', welt: 'sales', titel: 'SQL-bereit — Deal anlegen', anzahl: sqlOffen, text: 'Schmerz, Entscheider und Budget/Zeitpunkt geklärt', ziel: { s: 'firmen', a: 'leads' } });
   const inQuali = meineLeads.filter(z => z.status === 'qualifizierung' && !sqlBereit(z.kriterien)).length;

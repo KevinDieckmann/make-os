@@ -19,7 +19,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askText, extractJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
-import { localDay } from '@/lib/zeit';
+import { localDay, tagVon } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { SYSTEM, SCHEMA, aufgabe, datenBlock, AGENT_ID, HEAD_NAME, MODI, REVIEW_MODI, type HeadId } from './prompt';
@@ -199,7 +199,7 @@ async function autoUebernehmen(head: HeadId, berichtId: string, person: string, 
         erledigt.set(p.v.id, { am: jetzt, wirkung: `nächster Schritt an ${k.vorname} ${k.nachname}`.trim(), rueckgaengig: { art: 'schritt', kontaktId: k.id, vorher: null } });
         // Sichtbar im Verlauf der Person (Prüfbericht 27.09., Punkt 17): ein Agent hat gehandelt — rücknehmbar.
         const eintrag = { am: jetzt, art: 'system' as const, von: 'system', text: `Head: nächster Schritt „${p.v.titel.slice(0, 120)}“ bis ${p.v.frist} (automatisch, rücknehmbar)` };
-        return { ...k, naechsterSchritt: { text: p.v.titel.slice(0, 300), datum: p.v.frist }, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag], geaendertAm: jetzt.slice(0, 10) };
+        return { ...k, naechsterSchritt: { text: p.v.titel.slice(0, 300), datum: p.v.frist }, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag], geaendertAm: tagVon(jetzt) };
       }) };
     });
   }

@@ -14,7 +14,7 @@ import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, speicherStand } from '@/lib/store/local-db';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
-import { localDay } from '@/lib/zeit';
+import { localDay, tagVon } from '@/lib/zeit';
 import { personAus } from '@/lib/zoe/raum';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
       id: neueId('m'), kunde: c.firma ?? c.titel, ...(c.firmaId ? { firmaId: c.firmaId } : {}), kontaktIds: c.kontaktIds, titel: c.titel, art: c.art, chanceId: c.id, gesellschaft: c.gesellschaft, status: 'aktiv',
       // Das Produkt reist mit (26.09.) — sonst sieht die Produkt-Auswertung das Mandat nie.
       ...(c.leistungId ? { leistungId: c.leistungId } : {}),
-      vertragUnterschrieben: false, start: jetzt.slice(0, 10), verlaengerung: 'offen',
+      vertragUnterschrieben: false, start: tagVon(jetzt), verlaengerung: 'offen',
       honorar: { betrag: c.wert.basis === 'jahr' ? Math.round(c.wert.betrag / 12) : c.wert.betrag, basis: c.wert.basis === 'einmalig' ? 'einmalig' : 'monat', netto: true },
       ustSatz: 19, rechnungsrhythmus: c.wert.basis === 'einmalig' ? 'einmalig' : 'monatlich', zahlungszielTage: 14, ziele: [],
       health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: ['Vertrag unterschreiben lassen', 'Kickoff-Termin festlegen'],
@@ -89,13 +89,13 @@ export async function POST(req: Request) {
     await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => {
       if (!ids.has(k.id)) return k;
       const phase = phaseHeben(k.phase, 'kunde');
-      return { ...k, lebensphase: 'kunde', stufe: 'gewonnen', ...(phase ? { phase } : {}), geaendertAm: jetzt.slice(0, 10) };
+      return { ...k, lebensphase: 'kunde', stufe: 'gewonnen', ...(phase ? { phase } : {}), geaendertAm: tagVon(jetzt) };
     }) }));
     return NextResponse.json({ ok: true, mandatId: m.id, text: `Mandat „${m.kunde}“ angelegt — unter Produkte & Mandate: Vertrag und Kickoff klären.` });
   }
 
   const id = String(b.id ?? '');
-  const zeile = leads(kontakte, crm).find(z => z.id === id);
+  const zeile = leads(kontakte, crm, localDay()).find(z => z.id === id);
   if (!zeile) return NextResponse.json({ ok: false, fehler: 'Lead nicht gefunden.' }, { status: 404 });
   const basis = (alt: Lead | undefined): Lead => alt ?? { status: zeile.status, kriterien: zeile.kriterien };
 
@@ -108,7 +108,7 @@ export async function POST(req: Request) {
       return { ...l, ...(f.status ? { status: f.status as Lead['status'] } : {}), kriterien: { ...leereKriterien(), ...l.kriterien, ...((f.kriterien as object) ?? {}) },
         ...(f.antworten && typeof f.antworten === 'object' ? { antworten: { ...(l.antworten ?? {}), ...(f.antworten as object) } } : {}),
         ...(f.fit !== undefined ? { fit: f.fit as Lead['fit'] } : {}), ...(f.notiz !== undefined ? { notiz: String(f.notiz) } : {}), ...(f.grund !== undefined ? { grund: String(f.grund) } : {}),
-        ...(qualifiziert ? { qualifiziertAm: jetzt.slice(0, 10) } : {}),
+        ...(qualifiziert ? { qualifiziertAm: tagVon(jetzt) } : {}),
         geaendert: jetzt, geaendertVon: person };
     });
     return NextResponse.json({ ok: true, lead });
@@ -142,7 +142,7 @@ export async function POST(req: Request) {
     await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => {
       if (!ids.has(k.id) || (k.besitzer && k.besitzer !== BEIDE)) return k;
       n++;
-      return { ...k, besitzer: an, geaendertAm: jetzt.slice(0, 10), aktivitaeten: [...(k.aktivitaeten ?? []), { am: jetzt, art: 'uebergabe' as const, von: person, text: `Übernommen in der Qualifizierungsrunde von ${an}` }] };
+      return { ...k, besitzer: an, geaendertAm: tagVon(jetzt), aktivitaeten: [...(k.aktivitaeten ?? []), { am: jetzt, art: 'uebergabe' as const, von: person, text: `Übernommen in der Qualifizierungsrunde von ${an}` }] };
     }) }));
     return NextResponse.json({ ok: true, uebernommen: n, an });
   }

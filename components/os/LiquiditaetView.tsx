@@ -83,7 +83,7 @@ export function LiquiditaetView() {
 
   // Zu zweit: nur Einzeländerungen; Malins Änderungen kommen per Abgleich herein.
   const speichernHook = useSpeichern('/api/state/liquiplan', { verzoegerung: 400, listen: ['posten'], uebernehmen: st => setPosten((st.posten as Planposten[]) ?? []) });
-  const planSpeichern = useSpeichern('/api/state/finanzplan', { listen: FINANZPLAN_LISTEN, uebernehmen: st => setPlan(st as unknown as typeof plan) });
+  const planSpeichern = useSpeichern('/api/state/finanzplan', { listen: FINANZPLAN_LISTEN, standFeld: 'fassung', uebernehmen: st => setPlan(st as unknown as typeof plan) });
   const ladePlan = useCallback(() => fetch('/api/state/finanzplan').then(r => r.json()).then(d => {
     if (planSpeichern.hatOffenes()) return;
     setPlan(d); planSpeichern.kenne(d);

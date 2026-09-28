@@ -164,3 +164,27 @@ describe('ohne Datenschlüssel', () => {
     } finally { process.env.MAKE_OS_DATEN_SCHLUESSEL = key; }
   });
 });
+
+describe('Belege mit Rechnungs- oder Mandatsbezug werden nicht gelöscht (28.09., K3 · #50/#81)', () => {
+  const loeschen = (id: string) => route.DELETE(new Request(`http://test/api/crm/dateien?id=${id}`, { method: 'DELETE', headers: kopf('kevin') }));
+  const aendern = (id: string, felder: unknown) => route.PATCH(new Request('http://test/api/crm/dateien', { method: 'PATCH', headers: { ...kopf('kevin'), 'content-type': 'application/json' }, body: JSON.stringify({ id, felder }) }));
+
+  it('Rechnungs-PDF: Löschen → 409, Eintrag und Datei bleiben; vom Bezug lösen, dann löschbar', async () => {
+    const e = (await (await hochladen(pdf('beleg'), 'r.pdf', { art: 'rechnung', rechnungId: 'r-probe-1', kontaktId: 'c-beleg-1' })).json()).eintrag;
+    const r = await loeschen(e.id);
+    expect(r.status).toBe(409);
+    expect((await r.json()).fehler).toMatch(/Bezug lösen/);
+    expect((await liste('kontakt=c-beleg-1')).eintraege.map(x => x.id)).toEqual([e.id]);
+    expect(existsSync(path.join(ordner, 'dateien', 'test-haus', `${e.id}.bin`))).toBe(true);
+    // Vom Bezug lösen (Kontakt bleibt) — danach ist es eine gewöhnliche Datei.
+    expect((await aendern(e.id, { rechnungId: null })).status).toBe(200);
+    expect((await loeschen(e.id)).status).toBe(200);
+  });
+
+  it('Vertrag am Mandat: Löschen → 409; nur-Mandat-Bezug lässt sich nicht lösen (sonst nirgends zu finden) → 400', async () => {
+    const e = (await (await hochladen(pdf('mandat'), 'v.pdf', { art: 'vertrag', mandatId: 'm-probe-1' })).json()).eintrag;
+    expect((await loeschen(e.id)).status).toBe(409);
+    expect((await aendern(e.id, { mandatId: null })).status).toBe(400);
+    expect((await liste('mandat=m-probe-1')).eintraege.map(x => x.id)).toContain(e.id);
+  });
+});

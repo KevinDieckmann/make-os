@@ -20,6 +20,7 @@ import { lifecycleVon } from './vorschlaege';
 import type { LifecyclePhase } from './lifecycle';
 import { beanVon, beanFirma, type BeanId } from './bean';
 
+import { localDay } from '@/lib/zeit';
 export const EXPORTE = ['kontakte', 'firmen', 'deals', 'followups', 'mandate'] as const;
 export type ExportArt = typeof EXPORTE[number];
 export const istExportArt = (v: unknown): v is ExportArt => typeof v === 'string' && (EXPORTE as readonly string[]).includes(v);
@@ -75,7 +76,7 @@ export function kontakteCsv(q: ExportQuelle): string {
   const firmen = nachId(q.crm.firmen);
   // Lifecycle (28.09., H4): LIFECYCLE_PHASE = was gilt (gesetzt, sonst Lead); LIFECYCLE_GESETZT = nur die von Hand
   // gesetzte Phase, leer wenn nicht gesetzt. BEAN: von Hand, sonst abgeleitet (ohne Dateiablage).
-  const heute = q.heute ?? new Date().toISOString().slice(0, 10);
+  const heute = q.heute ?? localDay();
   return csvTabelle(KONTAKT_SPALTEN, q.kontakte.map(k => ({ k, f: k.firmaId ? firmen.get(k.firmaId) : undefined, l: lifecycleVon(k, q.crm, heute), bean: beanVon(k, q.crm).bean })));
 }
 

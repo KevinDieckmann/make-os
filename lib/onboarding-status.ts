@@ -6,7 +6,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { loadJson } from "@/lib/store/local-db";
-import { localDay } from "@/lib/zeit";
+import { localDay, tagePlus } from "@/lib/zeit";
 import { hasAnthropicKey } from "@/lib/anthropic";
 import { lesen, type MalinExport } from "@/lib/make-one/grundlage";
 import { SCHRITTE } from "@/lib/make-one/onboarding-data";
@@ -62,7 +62,7 @@ export async function pruefeAlles(): Promise<Record<string, Befund>> {
   const horizonte = ['jahr', 'quartal', 'monat', 'woche'] as const;
   const gesetzt = horizonte.filter(h => (ziele?.fokus?.[h] ?? '').trim()).length;
 
-  const letzte7 = Object.keys(health ?? {}).filter(d => d >= new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10)).length;
+  const letzte7 = Object.keys(health ?? {}).filter(d => d >= tagePlus(localDay(), -7)).length;
   const reglerEigen = Object.keys(kompass?.eigene ?? {}).length;
   const postfach = (inbox?.messages?.length ?? inbox?.nachrichten?.length ?? 0);
 

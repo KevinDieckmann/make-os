@@ -24,6 +24,7 @@ import { haeltBeziehung } from './team';
 import { dealZuFirma } from './firmen-bezug';
 import { leadScore, kanalVon, warmPlus, type LeadScore, type KanalId } from './score';
 import { beanVon, beanFirma, type BeanId } from './bean';
+import { tagVon } from '@/lib/zeit';
 
 export const LEAD_STATUS: { id: LeadStatus; label: string; weiterWenn: string; aktiv: boolean }[] = [
   { id: 'neu', label: 'Neu', weiterWenn: 'Erste Ansprache über einen zulässigen Kanal.', aktiv: false },
@@ -96,8 +97,11 @@ export interface LeadZeile {
  * Alle Leads: je Firma eine Zeile (mit ihren Personen), dazu Personen ohne
  * Firma einzeln. Firmen ohne Person und reine Dienstleister/Investoren fehlen
  * — sie sind kein Vertrieb.
+ *
+ * `heute` ist Pflicht (28.09., K3 · #75): der Berliner Tag des Aufrufers (`localDay()`),
+ * nie ein UTC-Tag aus `toISOString()` — der liegt nachts bis 2 Uhr einen Tag daneben.
  */
-export function leads(kontakte: Kontakt[], crm: CrmBestand, heute = new Date().toISOString().slice(0, 10)): LeadZeile[] {
+export function leads(kontakte: Kontakt[], crm: CrmBestand, heute: string): LeadZeile[] {
   const offeneDeals = crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe));
   const dealVon = (ids: string[], firma?: Firma): Chance | undefined =>
     (firma?.lead?.chanceId ? crm.chancen.find(c => c.id === firma.lead!.chanceId) : undefined)
@@ -178,7 +182,7 @@ export function dealAusLead(z: LeadZeile, e: { id: string; titel: string; art: C
     ...(firmaName ? { firma: firmaName } : {}), art: e.art, wert: { betrag: Math.max(0, e.betrag), basis: e.basis },
     stufe: 'qualifiziert', historie: [{ stufe: 'qualifiziert', am: e.jetzt, von: '' }],
     naechsterSchritt: e.schritt, qualifizierung: z.kriterien, ...(e.erwartetAm ? { erwartetAm: e.erwartetAm } : {}),
-    gesellschaft: 'offen', besitzer: e.besitzer, angelegt: e.jetzt, geaendert: e.jetzt, letzteAktivitaet: e.jetzt.slice(0, 10),
+    gesellschaft: 'offen', besitzer: e.besitzer, angelegt: e.jetzt, geaendert: e.jetzt, letzteAktivitaet: tagVon(e.jetzt),
   };
 }
 

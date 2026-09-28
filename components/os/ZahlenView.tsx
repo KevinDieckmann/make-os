@@ -51,7 +51,7 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
   const v = useMemo(() => (plan ? vorschau(plan.firmen, plan.rechnungen, plan.zahlungen, plan.merkposten, heute, 12, false, posten, 'real', undefined, true) : null), [plan, posten, heute]);
   const konten = businessFirmen(plan?.firmen ?? []).reduce((s, f) => s + (f.kontostand ?? 0), 0);
   const mussRaus = nurBusiness(plan?.zahlungen ?? []).filter(z => z.status === 'offen');
-  const kommtRein = nurBusiness((plan?.rechnungen ?? []) as (Rechnung & { firmaId?: string })[]).filter(r => r.status !== 'bezahlt' && r.betrag > 0);
+  const kommtRein = nurBusiness((plan?.rechnungen ?? []) as (Rechnung & { firmaId?: string })[]).filter(r => r.status !== 'bezahlt' && r.status !== 'storniert' && r.betrag > 0);
   const faellig = mussRaus.slice().sort((a, b) => (a.faellig ?? '9999').localeCompare(b.faellig ?? '9999')).slice(0, 6);
 
   const monat = useMemo(() => {

@@ -10,6 +10,7 @@
 
 import { steuertermine, werktag, type UstRhythmus } from '@/lib/finanzen/chef/steuertermine';
 import type { Rechnung } from '@/lib/make-one/liquiditaet';
+import { UST_REGEL, aufCent, ustAusBrutto } from '@/lib/finanzen/ust';
 import type { Beleg } from '@/lib/finanzen/haushalt/typen';
 import { WEG } from '@/lib/wege';
 
@@ -149,9 +150,10 @@ export function ustZeitraum(firma: 'kdc' | 'kdv', f: FirmaSteuer, zr: { label: s
   for (const r of eigene) {
     const tag = f.istVersteuerung ? (r.status === 'bezahlt' ? r.bezahltAm : undefined) : r.datum;
     if (!tag || tag < zr.von || tag > zr.bis) continue;
-    const satz = r.ustSatz ?? 19;
-    const netto = r.netto ?? r.betrag / (1 + satz / 100);
-    liste.push({ id: r.id, kunde: r.kunde, ...(r.nummer ? { nummer: r.nummer } : {}), ...(r.datum ? { datum: r.datum } : {}), brutto: r.betrag, ust: r.betrag - netto, satz, angenommen: r.ustSatz == null && r.netto == null });
+    const satz = r.ustSatz ?? UST_REGEL;
+    // Eine USt-Funktion (#79/#80): kaufmännisch je Rechnung auf den Cent; ein eingetragenes Netto gewinnt.
+    const ust = r.netto != null ? aufCent(r.betrag - r.netto) : ustAusBrutto(r.betrag, satz);
+    liste.push({ id: r.id, kunde: r.kunde, ...(r.nummer ? { nummer: r.nummer } : {}), ...(r.datum ? { datum: r.datum } : {}), brutto: r.betrag, ust, satz, angenommen: r.ustSatz == null && r.netto == null });
   }
   const ust = liste.reduce((s, x) => s + x.ust, 0);
   let vorsteuer: number | null = null, vorsteuerQuelle = 'keine Eingangsbelege mit Vorsteuer in MAKE OS';

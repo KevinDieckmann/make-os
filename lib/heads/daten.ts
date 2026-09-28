@@ -129,7 +129,7 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
       bean_verteilung: bean(),
       verlustgruende: Object.entries(verloren.reduce((x, c) => ({ ...x, [c.grund!]: (x[c.grund!] ?? 0) + 1 }), {} as Record<string, number>)),
       // Ebene 1: Leads in Arbeit mit ihren Kernfragen — die Personen für Vorschläge stehen unter „hauptkontakt“.
-      leads_in_arbeit: leadZeilen(aktiv, crm).filter(z => ['kontaktiert', 'im_gespraech', 'qualifizierung'].includes(z.status) || (sqlBereit(z.kriterien) && !z.deal?.offen && z.status !== 'kunde')).slice(0, 25).map(z => {
+      leads_in_arbeit: leadZeilen(aktiv, crm, heute).filter(z => ['kontaktiert', 'im_gespraech', 'qualifizierung'].includes(z.status) || (sqlBereit(z.kriterien) && !z.deal?.offen && z.status !== 'kunde')).slice(0, 25).map(z => {
         const haupt = z.personen.map(x => nachId.get(x.id)).filter((k): k is Kontakt => !!k).sort((a, b) => (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? ''))[0];
         return { lead_id: z.id, name: z.name, status: z.status, bean: beanLead(z.id), lifecycle: haupt ? lifecycleJe.get(haupt.id) ?? null : null, score: z.score.punkte, temperatur: z.score.temperatur, kanal: z.kanal, antworten: z.antworten ?? null, kriterien: z.kriterien, geklaert: geklaert(z.kriterien), sql_bereit: sqlBereit(z.kriterien), fehlt: fehltBisSql(z.kriterien), deal: z.deal ?? null, letzter_kontakt: z.letzterKontakt ?? null, hauptkontakt: haupt ? p(haupt) : null };
       }),

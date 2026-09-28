@@ -93,7 +93,7 @@ export function ControllingView() {
     fetch('/api/state/liquiplan').then(r => r.json()).then(d => setPosten(d.posten ?? [])).catch(() => {});
   }, []);
   // Zu zweit: Kontostände als Einzeländerung, Malins Änderungen per Abgleich.
-  const planSpeichern = useSpeichern('/api/state/finanzplan', { listen: FINANZPLAN_LISTEN, uebernehmen: st => setFplan(st as unknown as FinanzplanStand) });
+  const planSpeichern = useSpeichern('/api/state/finanzplan', { listen: FINANZPLAN_LISTEN, standFeld: 'fassung', uebernehmen: st => setFplan(st as unknown as FinanzplanStand) });
   const ladePlan = useCallback(() => fetch('/api/state/finanzplan')
     .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
     .then((d: FinanzplanStand) => { if (planSpeichern.hatOffenes()) return; setFplan(d); planSpeichern.kenne(d); })

@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
 
+import { localDay } from '@/lib/zeit';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -60,7 +61,7 @@ export async function PUT(req: Request) {
 export async function PATCH(req: Request) {
   let b: { datum?: string; eintrag?: Partial<JournalEntry> };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  const datum = b.datum && /^\d{4}-\d{2}-\d{2}$/.test(b.datum) ? b.datum : new Date().toISOString().slice(0, 10);
+  const datum = b.datum && /^\d{4}-\d{2}-\d{2}$/.test(b.datum) ? b.datum : localDay();
   const e = b.eintrag ?? {};
   const t = (v: unknown, n: number) => { const s = String(v ?? '').trim().slice(0, n); return s || undefined; };
   const z = (v: unknown) => { const n = Number(v); return isFinite(n) && n >= 1 && n <= 5 ? Math.round(n) : undefined; };

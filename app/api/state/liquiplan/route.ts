@@ -10,6 +10,7 @@ import { loadJson, updateGeschuetzt, updateJson } from '@/lib/store/local-db';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 
+import { localDay } from '@/lib/zeit';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -56,7 +57,7 @@ function sauber(p: Partial<Planposten>, i: number): Planposten | null {
     titel,
     betrag,
     rhythmus: RHYTHMEN.includes(p.rhythmus as Rhythmus) ? p.rhythmus as Rhythmus : 'monatlich',
-    ab: typeof p.ab === 'string' && DATUM.test(p.ab) ? p.ab : new Date().toISOString().slice(0, 10),
+    ab: typeof p.ab === 'string' && DATUM.test(p.ab) ? p.ab : localDay(),
     bis: typeof p.bis === 'string' && DATUM.test(p.bis) ? p.bis : undefined,
     sicher: p.sicher !== false,
     notiz: p.notiz ? String(p.notiz).slice(0, 300) : undefined,

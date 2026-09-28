@@ -13,6 +13,7 @@ import { lesen, kennzahlen, monatsBild, kostenNachKategorie, type MalinExport } 
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 
+import { localDay } from '@/lib/zeit';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -56,7 +57,7 @@ export async function PUT(req: Request) {
   if (!roh || typeof roh !== 'object' || (!roh.s?.invOut && !roh.p?.bank)) {
     return NextResponse.json({ ok: false, error: 'Das sieht nicht nach einem Export aus dem Finanz-Dashboard aus (s.invOut/p.bank fehlen).' }, { status: 400 });
   }
-  const stand = /^\d{4}-\d{2}-\d{2}$/.test(String(body.stand)) ? String(body.stand) : new Date().toISOString().slice(0, 10);
+  const stand = /^\d{4}-\d{2}-\d{2}$/.test(String(body.stand)) ? String(body.stand) : localDay();
   const neu: Datei = { roh, stand, geladen: new Date().toISOString() };
 
   const { ok, next } = await updateGeschuetzt<Datei>('grundlage', neu, positionen);

@@ -13,7 +13,8 @@
 // Sales-Verantwortung) — Filter „Alle · Meins · Malin“, Plakette, Zeile je
 // Person, Übergeben. Änderungen gehen als Einzelfelder raus (api.teil).
 
-import { localDay } from '@/lib/zeit';
+import { localDay, tagePlus } from '@/lib/zeit';
+import { bruttoAusNetto } from '@/lib/finanzen/ust';
 import { useLinkAuswahl } from '../Verlauf';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -297,8 +298,9 @@ function MandatRechnungen({ m }: { m: Mandat }) {
   const ueber = offen.filter(r => r.faellig && r.faellig < heute);
   const anlegen = async () => {
     const id = `r-${Date.now().toString(36)}`;
-    const brutto = m.honorar.netto ? Math.round(m.honorar.betrag * (1 + m.ustSatz / 100)) : m.honorar.betrag;
-    const eintrag = { id, kunde: m.kunde, titel: m.titel, betrag: brutto, status: 'geplant', firmaId: m.gesellschaft === 'kdv' ? 'kdv' : 'kdc', mandatId: m.id, ustSatz: m.ustSatz, ...(m.honorar.netto ? { netto: m.honorar.betrag } : {}), faellig: new Date(Date.now() + m.zahlungszielTage * 864e5).toISOString().slice(0, 10) };
+    // Eine USt-Funktion, auf den Cent (28.09., K3); fällig ab dem Berliner Tag, nicht dem UTC-Tag.
+    const brutto = m.honorar.netto ? bruttoAusNetto(m.honorar.betrag, m.ustSatz) : m.honorar.betrag;
+    const eintrag = { id, kunde: m.kunde, titel: m.titel, betrag: brutto, status: 'geplant', firmaId: m.gesellschaft === 'kdv' ? 'kdv' : 'kdc', mandatId: m.id, ustSatz: m.ustSatz, ...(m.honorar.netto ? { netto: m.honorar.betrag } : {}), faellig: tagePlus(heute, m.zahlungszielTage || 0) };
     const r = await fetch('/api/state/finanzplan', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ liste: 'rechnungen', op: 'upsert', eintrag }] }) }).then(x => x.json()).catch(() => null);
     if (r?.ok !== false) router.push(WEG.rechnung(id));
   };

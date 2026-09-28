@@ -25,7 +25,7 @@ import { localDay } from '@/lib/zeit';
 import { WEG } from '@/lib/wege';
 import { umsatzBezug, umsatzKennzahlen, angeboteListe, ablageFilter, kundenName, type UmsatzRechnung, type ZugeordneteRechnung, type AngebotZeile } from '@/lib/crm/umsatz';
 import { ZAHLUNGSWEGE, ZAHLUNGSWEG_LABEL, ibanGueltig, ibanMaskiert, zahlungsQuelle, zahlungLuecken } from '@/lib/crm/zahlung';
-import { ANNEHMEN, MAX_DATEI_BYTES, VERTRAGSARTEN, ANGEBOT_STATUS, groesseText, type DateiEintrag, type DateiArt, type Vertragsart, type AngebotStatus } from '@/lib/dateien/regeln';
+import { ANNEHMEN, MAX_DATEI_BYTES, VERTRAGSARTEN, ANGEBOT_STATUS, groesseText, istBeleg, type DateiEintrag, type DateiArt, type Vertragsart, type AngebotStatus } from '@/lib/dateien/regeln';
 import { einheitAusGesellschaft } from '@/lib/einheiten';
 
 export interface UmsatzReiterProps {
@@ -81,13 +81,28 @@ function ZeileKlein({ titel, unter, rechts }: { titel: ReactNode; unter?: ReactN
 }
 
 const leiseLink = { color: C.aktiv, fontSize: 12.5, fontWeight: 600, textDecoration: 'none', cursor: 'pointer', background: 'none', border: 'none', padding: 0 } as const;
-const STATUS_FARBE: Record<string, string> = { bezahlt: LEUCHT.gut, gestellt: LEUCHT.puls, geplant: C.inkLeise, offen: LEUCHT.achtung, angenommen: LEUCHT.gut, abgelehnt: C.inkLeise, ueberfaellig: LEUCHT.kritisch };
+const STATUS_FARBE: Record<string, string> = { storniert: C.inkLeise, bezahlt: LEUCHT.gut, gestellt: LEUCHT.puls, geplant: C.inkLeise, offen: LEUCHT.achtung, angenommen: LEUCHT.gut, abgelehnt: C.inkLeise, ueberfaellig: LEUCHT.kritisch };
 
 /** Löschen mit Rückfrage — erst „Löschen“, dann „Wirklich? Ja · Nein“. */
-function LoeschKnopf({ onJa }: { onJa: () => void }) {
+/** Löschen mit Rückfrage. Belege (hängen an Rechnung/Mandat, 28.09. K3) werden nicht gelöscht, nur vom Bezug gelöst. */
+function LoeschKnopf({ onJa, beleg }: { onJa: () => void; beleg?: boolean }) {
   const [frage, setFrage] = useState(false);
-  if (!frage) return <button onClick={() => setFrage(true)} style={{ ...leiseLink, color: C.inkLeise }}>Löschen</button>;
-  return <span style={{ fontSize: 12.5, color: C.inkDim, display: 'inline-flex', gap: 8 }}>Wirklich löschen? <button onClick={() => { setFrage(false); onJa(); }} style={{ ...leiseLink, color: LEUCHT.kritisch }}>Ja</button><button onClick={() => setFrage(false)} style={leiseLink}>Nein</button></span>;
+  if (!frage) return <button onClick={() => setFrage(true)} style={{ ...leiseLink, color: C.inkLeise }} title={beleg ? 'Hängt an einer Rechnung oder einem Mandat — wird nicht gelöscht, nur vom Bezug gelöst' : undefined}>{beleg ? 'vom Bezug lösen' : 'Löschen'}</button>;
+  return <span style={{ fontSize: 12.5, color: C.inkDim, display: 'inline-flex', gap: 8 }}>{beleg ? 'Von Rechnung/Mandat lösen?' : 'Wirklich löschen?'} <button onClick={() => { setFrage(false); onJa(); }} style={{ ...leiseLink, color: LEUCHT.kritisch }}>Ja</button><button onClick={() => setFrage(false)} style={leiseLink}>Nein</button></span>;
+}
+
+/** Stornieren mit Grund und Rückfrage — ersetzt das Löschen ab „gestellt“ (28.09., K3). */
+function StornoKnopf({ onJa }: { onJa: (grund: string) => Promise<void> }) {
+  const [grund, setGrund] = useState<string | null>(null);
+  const [laeuft, setLaeuft] = useState(false);
+  if (grund === null) return <button onClick={() => setGrund('')} style={{ ...leiseLink, color: C.inkLeise }}>stornieren</button>;
+  return (
+    <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      <input value={grund} onChange={e => setGrund(e.target.value)} placeholder="Grund des Stornos" aria-label="Grund des Stornos" style={{ ...feld, fontSize: TYP.bedien, padding: '6px 10px', width: 'min(200px, 100%)' }} />
+      <button disabled={laeuft || grund.trim().length < 3} onClick={async () => { setLaeuft(true); await onJa(grund.trim()); setLaeuft(false); setGrund(null); }} style={{ ...leiseLink, color: LEUCHT.kritisch }}>{laeuft ? '…' : 'wirklich stornieren'}</button>
+      <button onClick={() => setGrund(null)} style={leiseLink}>Abbrechen</button>
+    </span>
+  );
 }
 
 function DateiLink({ e }: { e: DateiEintrag }) {
@@ -177,8 +192,10 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
   const zahlung = zahlungsQuelle(k, bezug.firma) === 'firma' ? bezug.firma?.zahlung : k.zahlung;
   const zielTage = zahlung?.zielTage ?? bezug.mandate.find(m => m.status === 'aktiv')?.zahlungszielTage ?? 14;
 
-  async function eintragLoeschen(id: string) {
-    const r = await fetch(`/api/crm/dateien?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+  /** Ablage-Eintrag entfernen: Belege (Rechnung/Mandat) nur vom Bezug lösen, alles andere löschen (28.09., K3). */
+  async function eintragLoeschen(e: DateiEintrag) {
+    if (istBeleg(e)) { await eintragAendern(e.id, { rechnungId: null, mandatId: null }); return; }
+    const r = await fetch(`/api/crm/dateien?id=${encodeURIComponent(e.id)}`, { method: 'DELETE' }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
     if (!r.ok) setMeldung(r.fehler ?? 'Nicht gelöscht.');
     await ablageLaden();
   }
@@ -205,6 +222,18 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
     else if (r.schonBezahlt) setMeldung('Schon als bezahlt markiert — Stand neu geladen.');
     await planLaden();
   }
+  /**
+   * Stornieren (28.09., K3): gestellte/bezahlte Rechnungen werden nicht gelöscht. Ein Aufruf — der Server setzt
+   * Status, Datum, Grund und bucht bei vorhandenem Zahlungseingang die Gegenbuchung. Mit der Fassung, die wir kannten.
+   */
+  async function stornieren(r: UmsatzRechnung, grund: string) {
+    const stand = r.fassung;
+    const d = await fetch('/api/state/finanzplan', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'storno', rechnungId: r.id, grund, ...(stand ? { stand } : {}) }) })
+      .then(x => x.json()).catch(() => ({ ok: false, error: 'Keine Verbindung — nichts geändert.' }));
+    if (!d.ok) setMeldung(d.error ?? 'Nicht storniert.');
+    else setMeldung(d.gegenbuchung === 'neu' ? 'Storniert — zum Zahlungseingang ist die Gegenbuchung angelegt.' : 'Storniert — die Rechnung bleibt als Beleg stehen.');
+    await planLaden();
+  }
 
   const planHinweis = kein ? <Leer>Rechnungen gehören zu den Business-Zahlen des Haushalts — für dieses Konto nicht freigegeben.</Leer>
     : plan === 'fehler' ? <Leer>Finanzplan nicht erreichbar.</Leer> : plan === null ? <Leer>lade …</Leer> : null;
@@ -225,7 +254,7 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
           return (
             <ZeileKlein key={e.id} titel={e.titel || e.datei?.name || 'Vertrag'}
               unter={[VERTRAGSARTEN.find(a => a.id === e.vertrag?.vertragsart)?.label, e.vertrag?.von || e.vertrag?.bis ? `gültig ${e.vertrag?.von ? datum(e.vertrag.von) : '…'} – ${e.vertrag?.bis ? datum(e.vertrag.bis) : 'offen'}` : null, e.vertrag?.kuendigungsfrist ? `Kündigung ${e.vertrag.kuendigungsfrist}` : null, bezugText(e)].filter(Boolean).join(' · ')}
-              rechts={<>{abgelaufen ? <Chip farbe={C.inkLeise}>abgelaufen</Chip> : endetBald ? <Chip farbe={LEUCHT.achtung}>endet {datum(e.vertrag!.bis!, heute)}</Chip> : null}<DateiLink e={e} /><LoeschKnopf onJa={() => void eintragLoeschen(e.id)} /></>} />
+              rechts={<>{abgelaufen ? <Chip farbe={C.inkLeise}>abgelaufen</Chip> : endetBald ? <Chip farbe={LEUCHT.achtung}>endet {datum(e.vertrag!.bis!, heute)}</Chip> : null}<DateiLink e={e} /><LoeschKnopf beleg={istBeleg(e)} onJa={() => void eintragLoeschen(e)} /></>} />
           );
         })}
       </KachelKarte>
@@ -249,7 +278,7 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
         {planHinweis ?? <>
           <RechnungNeu k={k} bezug={bezug} zielTage={zielTage} heute={heute} firmen={(plan as Plan).firmen} schreiben={rechnungSchreiben} />
           {!rechnungen.length ? <Leer>Noch keine Rechnung für {kundenName(k, bezug.firma) || 'diesen Kontakt'} im Finanzplan.</Leer> : rechnungen.map(z => (
-            <RechnungZeile key={z.r.id} z={z} heute={heute} pdf={rechnungsPdf.get(z.r.id)} kontaktId={k.id} firmaId={bezug.firma?.id} onFertig={ablageLaden} setMeldung={setMeldung} loeschen={eintragLoeschen} />
+            <RechnungZeile key={z.r.id} z={z} heute={heute} pdf={rechnungsPdf.get(z.r.id)} kontaktId={k.id} firmaId={bezug.firma?.id} onFertig={ablageLaden} setMeldung={setMeldung} loeschen={eintragLoeschen} stornieren={stornieren} />
           ))}
         </>}
       </KachelKarte>
@@ -434,7 +463,7 @@ function AngebotNeu({ bezugListe, bezugFelder, heute, onFertig, setMeldung }: { 
   );
 }
 
-function AngebotZeileAnsicht({ a, heute, zuDeal, aendern, loeschen, alsRechnung }: { a: AngebotZeile; heute: string; zuDeal?: (id: string) => void; aendern: (id: string, felder: Record<string, unknown>) => Promise<void>; loeschen: (id: string) => Promise<void>; alsRechnung?: () => Promise<void> }) {
+function AngebotZeileAnsicht({ a, heute, zuDeal, aendern, loeschen, alsRechnung }: { a: AngebotZeile; heute: string; zuDeal?: (id: string) => void; aendern: (id: string, felder: Record<string, unknown>) => Promise<void>; loeschen: (e: DateiEintrag) => Promise<void>; alsRechnung?: () => Promise<void> }) {
   const e = a.eintrag;
   const quelle = a.quelle === 'deal' ? 'aus dem Deal' : a.quelle === 'rechnung' ? 'im Finanzplan' : e?.datei ? 'abgelegt' : 'erfasst';
   return (
@@ -448,7 +477,7 @@ function AngebotZeileAnsicht({ a, heute, zuDeal, aendern, loeschen, alsRechnung 
         {a.rechnungId && <a href={WEG.rechnung(a.rechnungId)} style={leiseLink}>Rechnung ›</a>}
         {e && a.status === 'angenommen' && !e.rechnungId && alsRechnung && <button onClick={() => void alsRechnung()} style={leiseLink}>→ als Rechnung planen</button>}
         {e && <DateiLink e={e} />}
-        {e && <LoeschKnopf onJa={() => void loeschen(e.id)} />}
+        {e && <LoeschKnopf beleg={istBeleg(e)} onJa={() => void loeschen(e)} />}
       </>} />
   );
 }
@@ -487,7 +516,7 @@ function RechnungNeu({ k, bezug, zielTage, heute, firmen, schreiben }: { k: Kont
   );
 }
 
-function RechnungZeile({ z, heute, pdf, kontaktId, firmaId, onFertig, setMeldung, loeschen }: { z: ZugeordneteRechnung; heute: string; pdf?: DateiEintrag; kontaktId: string; firmaId?: string; onFertig: () => Promise<void>; setMeldung: (t: string) => void; loeschen: (id: string) => Promise<void> }) {
+function RechnungZeile({ z, heute, pdf, kontaktId, firmaId, onFertig, setMeldung, loeschen, stornieren }: { z: ZugeordneteRechnung; heute: string; pdf?: DateiEintrag; kontaktId: string; firmaId?: string; onFertig: () => Promise<void>; setMeldung: (t: string) => void; loeschen: (e: DateiEintrag) => Promise<void>; stornieren: (r: UmsatzRechnung, grund: string) => Promise<void> }) {
   const ref = useRef<HTMLInputElement>(null);
   const [laeuft, setLaeuft] = useState(false);
   const status = z.ueberfaellig ? 'ueberfaellig' : z.r.status;
@@ -502,10 +531,11 @@ function RechnungZeile({ z, heute, pdf, kontaktId, firmaId, onFertig, setMeldung
   return (
     <ZeileKlein
       titel={<>{z.r.nummer ? `Nr. ${z.r.nummer} · ` : ''}{z.r.titel} <span style={{ color: C.ink, fontVariantNumeric: 'tabular-nums' }}>· {euro(z.r.betrag)}</span></>}
-      unter={[z.r.datum ? `vom ${datum(z.r.datum, heute)}` : null, z.r.faellig ? `fällig ${datum(z.r.faellig, heute)}` : null, z.r.bezahltAm ? `bezahlt ${datum(z.r.bezahltAm, heute)}` : null, z.einheit, z.perName ? 'per Name zugeordnet' : null].filter(Boolean).join(' · ')}
+      unter={[z.r.datum ? `vom ${datum(z.r.datum, heute)}` : null, z.r.faellig ? `fällig ${datum(z.r.faellig, heute)}` : null, z.r.bezahltAm ? `bezahlt ${datum(z.r.bezahltAm, heute)}` : null, z.r.storniertAm ? `storniert ${datum(z.r.storniertAm, heute)}${z.r.stornoGrund ? ` (${z.r.stornoGrund})` : ''}` : null, z.einheit, z.perName ? 'per Name zugeordnet' : null].filter(Boolean).join(' · ')}
       rechts={<>
         <Chip farbe={STATUS_FARBE[status] ?? C.inkLeise}>{status === 'ueberfaellig' ? 'überfällig' : status}</Chip>
-        {pdf ? <><DateiLink e={pdf} /><LoeschKnopf onJa={() => void loeschen(pdf.id)} /></> : <>
+        {(z.r.status === 'gestellt' || z.r.status === 'bezahlt') && <StornoKnopf onJa={grund => stornieren(z.r, grund)} />}
+        {pdf ? <><DateiLink e={pdf} /><LoeschKnopf beleg={istBeleg(pdf)} onJa={() => void loeschen(pdf)} /></> : <>
           <input ref={ref} type="file" accept={ANNEHMEN} hidden onChange={e => void pdfHoch(e.target.files?.[0] ?? null)} />
           <button onClick={() => ref.current?.click()} style={leiseLink} disabled={laeuft}>{laeuft ? 'lädt …' : '+ PDF'}</button>
         </>}

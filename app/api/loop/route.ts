@@ -265,7 +265,7 @@ export async function POST(req: Request) {
         `Stichtag ${wd}, ${today}.`,
         ...kliste.map(k => {
           const re = reVon(k.name);
-          const offenSum = re.filter(r2 => r2.status !== 'bezahlt').reduce((s, r2) => s + r2.betrag, 0);
+          const offenSum = re.filter(r2 => r2.status !== 'bezahlt' && r2.status !== 'storniert').reduce((s, r2) => s + r2.betrag, 0);
           return `KUNDE ${k.name} [${k.status}]: Mandat: ${k.mandat ?? '—'} · Cashflow ${k.cashflow ? eur(k.cashflow) + '/Monat' : '—'} · Rechnungen: ${re.length ? `${re.length} (${eur(offenSum)} offen)` : 'keine'} · nächster Schritt lt. CRM: ${k.naechsterSchritt ?? 'unklar'}`;
         }),
         kliste.length ? '' : 'Keine Kunden gepflegt.',

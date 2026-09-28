@@ -25,6 +25,7 @@ import { lerneRegel } from '@/lib/finanzen/rechenkern';
 import { pruefePlanszenarien } from '@/lib/finanzen/szenarien';
 import { KAL, istUnterseite } from './hilfen';
 
+import { localDay } from '@/lib/zeit';
 export interface Operation {
   pfad: string;
   /** Wert vorher — für Protokoll und Rückgängig; der Server nimmt den echten Vorwert, wenn er ihn kennt. */
@@ -245,7 +246,7 @@ export function pruefeDokument(roh: unknown): Pruefung {
   if (monate.length < 15 || monate.length > 60) return { ok: false, fehler: 'monate: der Rechenkern erwartet 15 bis 60 Planmonate ab Okt 26.' };
   if (historie.length !== 9) return { ok: false, fehler: 'historie: der Rechenkern erwartet neun IST-Monate (Jan–Sep 26).' };
   const e = objekt(roh.einstellungen);
-  const heute = typeof e.heute === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.heute) ? e.heute : new Date().toISOString().slice(0, 10);
+  const heute = typeof e.heute === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.heute) ? e.heute : localDay();
   const szenarien = roh.szenarien as Szenario[];
   const aktiv = typeof roh.aktiv === 'string' && szenarien.some(s => s.id === roh.aktiv) ? roh.aktiv : szenarien[0].id;
   // Szenario-Baukasten (27.09.): ältere Dokumente haben keinen — dann leer, Arbeitsplan null.

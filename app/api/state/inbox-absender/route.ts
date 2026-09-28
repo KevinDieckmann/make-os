@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 
+import { localDay } from '@/lib/zeit';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
 
   const next = await updateJson<AbsenderFile>('inbox-absender', current => {
     const bekannt = { ...(current?.bekannt ?? {}) };
-    bekannt[key] = { status, seit: new Date().toISOString().slice(0, 10), ...(body.fach ? { fach: String(body.fach).slice(0, 20) } : {}) };
+    bekannt[key] = { status, seit: localDay(), ...(body.fach ? { fach: String(body.fach).slice(0, 20) } : {}) };
     return { bekannt };
   });
   return NextResponse.json({ ok: true, bekannt: next.bekannt });

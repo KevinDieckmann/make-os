@@ -29,6 +29,7 @@ import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
 import { einheitenListe } from '@/lib/planung/einheiten';
 import { einheitName } from '@/lib/einheiten';
 
+import { tagVon } from '@/lib/zeit';
 // ── Eingang ─────────────────────────────────────────────────────────────────
 
 /** Eine Rechnung aus dem Finanzplan (Speicher „finanzplan“) — nur, was die Prüfung braucht. */
@@ -272,7 +273,8 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
       const fenster = x.rechnungsrhythmus === 'quartal' ? 120 : 60;
       const ab = tagPlus(b.heute, -fenster);
       const laeuftLangGenug = !x.start || x.start <= ab;
-      if (laeuftLangGenug && !rechnungen.some(r => r.mandatId === x.id && (rechnungTag(r) ?? '') >= ab)) melde('mandat-ohne-rechnung', x.id);
+      // Eine stornierte Rechnung (28.09., K3) zählt nicht als gestellt.
+      if (laeuftLangGenug && !rechnungen.some(r => r.mandatId === x.id && r.status !== 'storniert' && (rechnungTag(r) ?? '') >= ab)) melde('mandat-ohne-rechnung', x.id);
     }
   }
 
@@ -402,7 +404,7 @@ export function verbindungenReparieren(b: VerbindungsBestaende, ids: readonly st
   const m = mengen(b);
   const aenderungen: Aenderung[] = [];
   const zaehle = (befundId: PruefungId, speicher: ReparaturSpeicher, anzahl: number, text: string) => { if (anzahl) aenderungen.push({ befundId, speicher, anzahl, text }); };
-  const tag = jetzt.slice(0, 10);
+  const tag = tagVon(jetzt);
   let crm = b.crm;
   const setze = <L extends CrmListe>(l: L, neu: CrmBestand[L]) => { crm = { ...crm, [l]: neu }; };
 

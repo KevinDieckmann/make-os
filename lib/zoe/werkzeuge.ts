@@ -12,7 +12,7 @@ import { speicherFuer } from '@/lib/zoe/raum';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import type { Op as EinkaufOp } from '@/lib/ernaehrung/modell';
 import { localDay } from '@/lib/zeit';
-import { GRENZEN } from '@/lib/finanzen/finanzplan-bestand';
+import { GRENZEN, rechnungSchutz, sauberFile, type Rechnung as FpRechnung } from '@/lib/finanzen/finanzplan-bestand';
 import type { FaktArt } from './gedaechtnis';
 
 // ── ZOE plant SELBST: Block in den Wochenplan legen (Kevins Ansage:
@@ -95,17 +95,24 @@ async function erfasseRechnung(input: Record<string, unknown>): Promise<string> 
   const kunde = String(input.kunde ?? '').trim().slice(0, 120);
   if (!kunde) return 'Fehlgeschlagen: kunde fehlt.';
   const status = ['geplant', 'gestellt', 'bezahlt'].includes(String(input.status)) ? String(input.status) : undefined;
-  const betrag = isFinite(Number(input.betrag)) ? Math.max(0, Math.round(Number(input.betrag))) : undefined;
+  // Auf den Cent (28.09., K3) — vorher auf ganze Euro gerundet.
+  const betrag = input.betrag != null && isFinite(Number(input.betrag)) ? Math.max(0, Math.round(Number(input.betrag) * 100) / 100) : undefined;
   const faellig = /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined;
   const titel = input.titel ? String(input.titel).slice(0, 200) : undefined;
   let aktion = '';
+  let abgelehnt = '';
   await updateJson<{ rechnungen: { id: string; firmaId: string; kunde: string; titel: string; betrag: number; status: string; faellig?: string }[] }>('finanzplan', current => {
     const f = current ?? { rechnungen: [] };
     f.rechnungen = f.rechnungen ?? [];
     const idx = f.rechnungen.findIndex(r => r.kunde.toLowerCase() === kunde.toLowerCase() && (!titel || r.titel.toLowerCase().includes(titel.toLowerCase())));
     if (idx >= 0) {
       const r = f.rechnungen[idx];
-      f.rechnungen[idx] = { ...r, ...(betrag != null ? { betrag } : {}), ...(status ? { status } : {}), ...(faellig ? { faellig } : {}), ...(titel ? { titel } : {}) };
+      const neu = { ...r, ...(betrag != null ? { betrag } : {}), ...(status ? { status } : {}), ...(faellig ? { faellig } : {}), ...(titel ? { titel } : {}) };
+      // Dieselbe Regel wie die Route (28.09., K3): ab „gestellt“ kein Zurück und kein neuer Betrag — stornieren.
+      const sauber = (x: unknown) => sauberFile({ rechnungen: [x as FpRechnung] }).rechnungen[0];
+      abgelehnt = rechnungSchutz(sauber(r), sauber(neu)) ?? '';
+      if (abgelehnt) return current ?? f;
+      f.rechnungen[idx] = neu;
       aktion = `Rechnung ${kunde} aktualisiert: ${betrag != null ? eurW(betrag) : eurW(f.rechnungen[idx].betrag)}${status ? `, Status ${status}` : ''}${faellig ? `, fällig ${faellig}` : ''}`;
     } else if (f.rechnungen.length >= GRENZEN.rechnungen) {
       // Grenze erreicht: ablehnen, nie kürzen (28.09.) — der Bestand bleibt, wie er ist.
@@ -116,6 +123,7 @@ async function erfasseRechnung(input: Record<string, unknown>): Promise<string> 
     }
     return f;
   });
+  if (abgelehnt) return `Fehlgeschlagen: ${abgelehnt}`;
   if (!aktion) return `Fehlgeschlagen: höchstens ${GRENZEN.rechnungen} Rechnungen im Finanzplan — erst Erledigtes aufräumen.`;
   return `Erfasst: ${aktion}. Sichtbar in der Finanzplanung.`;
 }
@@ -430,7 +438,7 @@ async function erfassePlanposten(input: Record<string, unknown>): Promise<string
   if (!titel || !isFinite(betrag) || betrag === 0) return 'Fehlgeschlagen: titel + betrag nötig (negativ = Ausgabe).';
   const RHY = ['einmalig', 'monatlich', 'quartal', 'jaehrlich'];
   const rhythmus = RHY.includes(String(input.rhythmus)) ? String(input.rhythmus) : 'monatlich';
-  const ab = /^\d{4}-\d{2}-\d{2}$/.test(String(input.ab ?? '')) ? String(input.ab) : new Date().toISOString().slice(0, 10);
+  const ab = /^\d{4}-\d{2}-\d{2}$/.test(String(input.ab ?? '')) ? String(input.ab) : localDay();
   const kategorie = input.kategorie ? String(input.kategorie).slice(0, 40) : undefined;
   const firmaId = ['kdv', 'kdc', 'kemaris'].includes(String(input.firma)) ? String(input.firma) : undefined;
   const sicher = input.sicher !== false;

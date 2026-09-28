@@ -145,6 +145,12 @@ export function metaSaeubern(roh: unknown): Partial<Pick<DateiEintrag, 'art' | '
   };
 }
 
+/**
+ * Hängt der Eintrag an einer Rechnung oder einem Mandat (28.09., K3 · #50/#81)? Dann ist er ein Beleg
+ * und wird nicht gelöscht (DELETE → 409) — nur vom Bezug gelöst (PATCH `{ rechnungId: null, mandatId: null }`).
+ */
+export const istBeleg = (e: Pick<DateiEintrag, 'rechnungId' | 'mandatId'>) => !!(e.rechnungId || e.mandatId);
+
 /** Hängt der Eintrag an irgendetwas? Ohne Bezug wird nichts abgelegt (er wäre nirgends zu finden). */
 export const hatBezug = (e: Pick<DateiEintrag, 'kontaktId' | 'firmaId' | 'mandatId' | 'dealId' | 'rechnungId'>) => !!(e.kontaktId || e.firmaId || e.mandatId || e.dealId || e.rechnungId);
 

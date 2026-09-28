@@ -4,7 +4,6 @@
 // hat einen eigenen Säuberer, damit nur durchkommt, was das Modell kennt.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { protokolliere, bestandDiff, type Aenderung, type Wer } from '@/lib/store/aenderungsprotokoll';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { STUFEN, wechsleStufe, erwartetVerschiebung } from './pipeline';
 import { firmaIdsErgaenzen } from './firmen-bezug';
@@ -203,7 +202,8 @@ const ANTRAEGE: AntragArt[] = ['auskunft', 'berichtigung', 'loeschung', 'einschr
 function antrag(o: Record<string, unknown>, jetzt: string, person: string): Antrag | null {
   if (!idOk(o.id) || !txt(o.name) || !tag(o.eingang)) return null;
   const eingang = tag(o.eingang)!;
-  const d = new Date(`${eingang}T12:00:00Z`); d.setUTCMonth(d.getUTCMonth() + 1);
+  // Art.-15-Frist „+1 Monat“ mit Kappung am Monatsende (28.09., K3 · #77): 31.01. → 28./29.02., nicht 03.03.
+  const d = new Date(`${eingang}T12:00:00Z`); const tagNr = d.getUTCDate(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + 1); d.setUTCDate(Math.min(tagNr, new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate()));
   return {
     id: String(o.id), art: aus(o.art, ANTRAEGE, 'auskunft'), name: txt(o.name, 160), ...(opt(o.email, 160) ? { email: opt(o.email, 160) } : {}),
     ...(/^c-[a-z0-9-]{4,60}$/.test(String(o.kontaktId ?? '')) ? { kontaktId: String(o.kontaktId) } : {}),
@@ -479,14 +479,9 @@ function firmenZusammenfuehren(b: CrmBestand, ops: ListenOp[]): ListenOp[] {
   });
 }
 
-export async function aendereCrm(mut: (b: CrmBestand) => CrmBestand, protokollWer?: Wer): Promise<CrmBestand> {
-  // Änderungsprotokoll (28.09., K1 #44): was sich je Liste geändert hat (Kennung + Feldnamen, nie Werte) — für JEDEN
-  // Schreibweg über diese Stelle. Wer: ausdrücklich übergeben, sonst aus der laufenden Anfrage (lib/store/aenderungsprotokoll.ts).
-  let aenderungen: Aenderung[] = [];
+export async function aendereCrm(mut: (b: CrmBestand) => CrmBestand): Promise<CrmBestand> {
   // Die nachgetragenen Firmen-Kennungen (ladeCrm) werden hier mit der nächsten Schreibung dauerhaft (Prüfbericht 27.09., Punkt 11).
-  const fertig = await updateJson<CrmBestand>(CRM_SPEICHER, cur => { const neu = mut(firmaIdsErgaenzen({ ...leererBestand(), ...(cur ?? {}) }).bestand); aenderungen = bestandDiff(cur as unknown as Record<string, unknown>, neu as unknown as Record<string, unknown>); return neu; });
-  await protokolliere(CRM_SPEICHER, aenderungen, protokollWer);
-  return fertig;
+  return updateJson<CrmBestand>(CRM_SPEICHER, cur => mut(firmaIdsErgaenzen({ ...leererBestand(), ...(cur ?? {}) }).bestand));
 }
 
 /** Kunden-Sicht aus den Mandaten — für Score, ZOE-Kontext und Loops (vorher eigener Speicher „kunden“). */

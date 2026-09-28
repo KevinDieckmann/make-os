@@ -32,6 +32,7 @@ import { firmenName } from '@/lib/crm/firmen-bezug';
 import { winLoss } from '@/lib/crm/deal-auswertung';
 import type { DealsAnsicht } from '@/lib/crm/adresse';
 
+import { tagVon } from '@/lib/zeit';
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 const ARTEN = [{ id: 'retainer', label: 'Retainer' }, { id: 'projekt', label: 'Projekt' }, { id: 'workshop', label: 'Workshop' }, { id: 'vermittlung', label: 'Vermittlung' }, { id: 'software', label: 'Software' }] as const;
 const QUELLEN = [{ id: 'empfehlung', label: 'Empfehlung' }, { id: 'event', label: 'Event' }, { id: 'content', label: 'Content' }, { id: 'kampagne', label: 'Kampagne' }, { id: 'outreach', label: 'Ansprache' }, { id: 'bestand', label: 'Bestand' }, { id: 'inbound', label: 'Anfrage' }] as const;
@@ -249,7 +250,7 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
     if (ziel === 'verloren' && !extra.grund) return setWechsel({ ziel, grund: '', wiedervorlage: '' });
     if (ziel === 'geparkt' && !extra.wiedervorlage) return setWechsel({ ziel, grund: '', wiedervorlage: plusTage(crm.heute, 60) });
     const jetzt = new Date().toISOString();
-    void setze({ stufe: ziel, letzteAktivitaet: jetzt.slice(0, 10), ...(extra.grund ? { grund: extra.grund } : {}), ...(extra.wiedervorlage ? { wiedervorlage: extra.wiedervorlage } : {}) });
+    void setze({ stufe: ziel, letzteAktivitaet: tagVon(jetzt), ...(extra.grund ? { grund: extra.grund } : {}), ...(extra.wiedervorlage ? { wiedervorlage: extra.wiedervorlage } : {}) });
     setWechsel(null);
   };
   const fuehrt = zustaendig(c.besitzer, 'sales');

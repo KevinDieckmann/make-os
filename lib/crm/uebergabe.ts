@@ -13,6 +13,7 @@ import { markttraktion, mandateLink } from './adresse';
 import { einheitAusBezug } from '@/lib/aufgaben/einheit';
 import type { CrmBestand, CrmListe } from './typen';
 
+import { tagVon } from '@/lib/zeit';
 export const UEBERGABE_ARTEN = ['kontakt', 'kontakte', 'chance', 'mandat', 'event', 'kampagne', 'beitrag', 'newsletter'] as const;
 type Art = typeof UEBERGABE_ARTEN[number];
 const LISTE: Partial<Record<Art, CrmListe>> = { chance: 'chancen', mandat: 'mandate', event: 'events', kampagne: 'kampagnen', beitrag: 'beitraege', newsletter: 'newsletter' };
@@ -46,7 +47,7 @@ export async function uebergeben(b: UebergabeEingabe, person: string): Promise<U
         if (!ids.has(k.id) || k.werbesperre) return k;
         anzahl++; namen.push(anzeigename(k));
         const eintrag = { am: jetzt, art: 'uebergabe' as const, von: person, text: `an ${nameVon(an)}${notiz ? `: ${notiz}` : ''}` };
-        return { ...k, besitzer: an, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag], geaendertAm: jetzt.slice(0, 10),
+        return { ...k, besitzer: an, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag], geaendertAm: tagVon(jetzt),
           ...(art === 'kontakt' && notiz && frist ? { naechsterSchritt: { text: notiz.slice(0, 300), datum: frist } } : {}) };
       }) };
     });

@@ -128,6 +128,10 @@ describe('Verbindungsprüfung — je Prüfung ein Fall', () => {
     expect(b!.schwere).toBe(PRUEFUNGEN[id].schwere);
     expect(b!.reparierbar).toBe(PRUEFUNGEN[id].reparierbar);
   });
+  it('eine stornierte Rechnung zählt nicht als gestellt (28.09., K3)', () => {
+    expect(finde(mit(() => {}), 'mandat-ohne-rechnung')).toBeUndefined();
+    expect(finde(mit(x => { x.finanzplan!.rechnungen[0].status = 'storniert'; }), 'mandat-ohne-rechnung')?.beispiele).toContain('m-1');
+  });
   it('Beispiele tragen nur Kennungen — nie Namen oder Mailadressen', () => {
     const b = mit(x => { x.kontakte[1].email = 'c-anna1@example.invalid'; x.kontakte[1].firmaId = 'f-weg'; x.crm.chancen[0].kontaktIds.push('c-weg1'); });
     const alle = verbindungenPruefen(b).flatMap(x => [...x.beispiele, x.text]).join(' ');

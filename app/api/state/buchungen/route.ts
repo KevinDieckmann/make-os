@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateGeschuetzt, updateJson } from '@/lib/store/local-db';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 
+import { localDay } from '@/lib/zeit';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -42,11 +43,12 @@ const DATUM = /^\d{4}-\d{2}-\d{2}$/;
 
 function sauber(b: Partial<Buchung>, i: number): Buchung | null {
   const wer = String(b.wer ?? '').trim().slice(0, 120);
-  const betrag = Math.round(Number(b.betrag));
+  // Auf den Cent (28.09., K3) — vorher auf ganze Euro: aus 1.190,50 € wurden 1.191 €.
+  const betrag = Math.round(Number(b.betrag) * 100) / 100;
   if (!wer || !Number.isFinite(betrag)) return null;
   return {
     id: String(b.id ?? '').slice(0, 40) || `bu-${Date.now().toString(36)}-${i}`,
-    datum: typeof b.datum === 'string' && DATUM.test(b.datum) ? b.datum : new Date().toISOString().slice(0, 10),
+    datum: typeof b.datum === 'string' && DATUM.test(b.datum) ? b.datum : localDay(),
     wer,
     betrag,
     kategorie: String(b.kategorie ?? 'Sonstiges').trim().slice(0, 60) || 'Sonstiges',

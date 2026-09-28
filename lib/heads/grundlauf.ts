@@ -13,6 +13,7 @@
 import type { Antwort, Vorschlag } from './pruefer';
 import type { HeadId } from './prompt';
 
+import { localDay } from '@/lib/zeit';
 type P = { id: string; name: string; firma?: string; kanal_erlaubt: string[]; anrede?: string; letzter_kontakt?: string; naechster_schritt?: { text: string; datum: string } | null; verlauf?: { am: string; art: string; bedarf?: string; zusage?: string }[] };
 type Karte = P & { kategorie: string; gruende: string[] };
 type ChanceD = { id: string; titel: string; firma?: string; stufe?: string; wert_gesamt: number; ampel: { ampel: string; gruende: string[] }; naechster_schritt: { text: string; datum: string } | null; qualifizierung: Record<string, string>; entscheidung_bis: string | null; personen: P[]; signale?: { luecken: string[]; positiv: string[]; negativ: string[] } };
@@ -33,7 +34,7 @@ export interface Grundlauf { antwort: Antwort; regeln: number }
 
 /** Der Grundlauf eines Heads für einen Modus — aus dem Datenpaket, das auch das Modell sieht. */
 export function grundlauf(head: HeadId, modus: string, daten: Record<string, unknown>): Grundlauf {
-  const heute = String((daten.meta as { heute?: string } | undefined)?.heute ?? new Date().toISOString().slice(0, 10));
+  const heute = String((daten.meta as { heute?: string } | undefined)?.heute ?? localDay());
   const vs: Vorschlag[] = [];
   const befunde: Antwort['befunde'] = [];
   const luecken: string[] = [];

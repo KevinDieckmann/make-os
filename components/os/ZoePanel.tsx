@@ -32,6 +32,7 @@ import { useSpace } from '@/hooks/useSpace';
 import { useStimme } from '@/hooks/useStimme';
 import { fuerStimme, titelAus, wannText, type Gespraech, type VerlaufNachricht } from '@/lib/make-one/zoe-verlauf';
 
+import { localDay } from '@/lib/zeit';
 /** Was ZOE aus einem Foto/PDF gelesen hat — Vorschlag, noch nicht gebucht. */
 interface Beleg {
   richtung: 'eingang' | 'ausgang' | 'unklar';
@@ -154,7 +155,7 @@ export function ZoePanel() {
       const s = localStorage.getItem(MERKER_STIMME);
       if (s) { const j = JSON.parse(s); setVorlesen(!!j.vorlesen); setFreihand(!!j.freihand); }
     } catch { /* egal */ }
-    setHeute(new Date().toISOString().slice(0, 10));
+    setHeute(localDay());
   }, []);
   useEffect(() => { try { localStorage.setItem(MERKER_FENSTER, JSON.stringify(fenster)); } catch { /* egal */ } }, [fenster]);
   useEffect(() => { try { localStorage.setItem(MERKER_STIMME, JSON.stringify({ vorlesen, freihand })); } catch { /* egal */ } }, [vorlesen, freihand]);

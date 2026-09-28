@@ -20,7 +20,11 @@ export interface Firma {
   /** Tag des letzten Eintrags YYYY-MM-DD. */
   stand: string | null;
 }
-export type RechnungStatus = 'geplant' | 'gestellt' | 'bezahlt';
+/**
+ * geplant → gestellt → bezahlt; `storniert` (28.09., K3) ersetzt das Löschen ab „gestellt“:
+ * der Eintrag bleibt (mit Datum und Grund), zählt aber in Liquidität und Umsatz nicht mehr.
+ */
+export type RechnungStatus = 'geplant' | 'gestellt' | 'bezahlt' | 'storniert';
 export interface Rechnung {
   id: string;
   firmaId: string;
@@ -28,9 +32,13 @@ export interface Rechnung {
   mandatId?: string;
   kunde: string;
   titel: string;
+  /** Rechnungsbetrag BRUTTO in €, auf den Cent (28.09., K3 — vorher auf ganze Euro gerundet). */
   betrag: number;
   status: RechnungStatus;
   faellig?: string;
+  /** Storno (nur bei Status `storniert`): Tag und Grund. */
+  storniertAm?: string;
+  stornoGrund?: string;
   /** Der ganze Vorgang: Angebot → Rechnung → Eingang (Kevins Ansage 02.08.). */
   nummer?: string;
   datum?: string;
@@ -59,6 +67,7 @@ export interface Zahlung {
   firmaId: string;
   an: string;
   titel: string;
+  /** Betrag brutto in €, auf den Cent. */
   betrag: number;
   status: 'offen' | 'bezahlt';
   faellig?: string;
@@ -85,33 +94,38 @@ export interface FinanzplanFile {
   uhrwerk: Uhrwerk;
 }
 
-export const STATI: RechnungStatus[] = ['geplant', 'gestellt', 'bezahlt'];
+export const STATI: RechnungStatus[] = ['geplant', 'gestellt', 'bezahlt', 'storniert'];
 
-// Startbestand für einen NEUEN, leeren Plan (28.09., K1): nur Struktur — die beiden eigenen Firmen
-// (Kennungen kdv/kdc, überall im System verankert) ohne Bank und Stand, Produkt-Entwürfe und die Agenda
-// fürs Finanzmeeting. Keine Kunden, keine Beträge, keine Namen Dritter (Regel 1 „keine echten Daten im
-// Repo“; vorher standen hier echte Kunden und ein Privatkredit). Greift nur bei leerem Speicher
-// (app/api/state/finanzplan: `firmen` leer) — ein bestehender Plan wird nie überschrieben.
+/** Geldbetrag auf den Cent (28.09., K3): 1.190,50 € bleibt 1.190,50 € — vorher wurde auf ganze Euro gerundet. */
+const cent = (v: unknown): number => (isFinite(Number(v)) ? Math.round(Number(v) * 100) / 100 : 0);
+
+// Echter Startbestand (Kevins Ansage 31.07.2026) — alles editierbar.
 export const SEED: FinanzplanFile = {
   firmen: [
-    { id: 'kdv', name: 'KD Ventures', bank: '', kontostand: null, stand: null },
-    { id: 'kdc', name: 'Kevin Dieckmann Consulting', bank: '', kontostand: null, stand: null },
+    { id: 'kdv', name: 'KD Ventures', bank: 'Vivid', kontostand: null, stand: null },
+    { id: 'kdc', name: 'Kevin Dieckmann Consulting', bank: 'Vivid', kontostand: null, stand: null },
   ],
-  rechnungen: [],
-  merkposten: [],
+  rechnungen: [
+    { id: 'r-onebanking', firmaId: 'kdc', kunde: 'OneBanking', titel: 'Beratung/Umsetzung — Leistung abrechnen', betrag: 0, status: 'geplant', faellig: '2026-08-02', notiz: 'Betrag eintragen, dann stellen.' },
+    { id: 'r-acme', firmaId: 'kdc', kunde: 'ACME', titel: 'Neues Mandat — Einstieg', betrag: 0, status: 'geplant', notiz: 'Kunde im Aufbau — Umfang klären.' },
+  ],
+  merkposten: [
+    { id: 'm-bjoern', firmaId: 'kdc', titel: 'Björn-Kredit erhalten', betrag: 17_000, art: 'kredit', datum: '2026-07-30', notiz: 'Eingang 30.07 — Rückzahlung offen halten.' },
+  ],
   zahlungen: [],
   // Entwürfe fürs Finanzmeeting — zum Festzurren, alles editierbar.
   produkte: [
     { id: 'p-sprint', name: 'Klarheits-Sprint', beschreibung: 'Kompakter Einstieg: Analyse + Maßnahmenplan mit klarem Ergebnis.', preis: 0, einheit: 'einmalig', status: 'entwurf' },
     { id: 'p-mandat', name: 'Begleitungs-Mandat', beschreibung: 'Laufende Beratung & Steuerung im monatlichen Mandat.', preis: 0, einheit: 'monatlich', status: 'entwurf' },
-    { id: 'p-umsetzung', name: 'Umsetzungs-Mandat', beschreibung: 'Projekt mit definiertem Ergebnis.', preis: 0, einheit: 'projekt', status: 'entwurf' },
+    { id: 'p-umsetzung', name: 'Umsetzungs-Mandat', beschreibung: 'Projekt mit definiertem Ergebnis — wie OneBanking.', preis: 0, einheit: 'projekt', status: 'entwurf' },
   ],
   uhrwerk: {
     letztesMeeting: null,
     agenda: [
-      { id: 'a-konten', label: 'Kontostände der Geschäftskonten eintragen', done: false },
+      { id: 'a-konten', label: 'Kontostände beider Vivid-Konten eintragen', done: false },
       { id: 'a-rechnungen', label: 'Alle offenen Rechnungen zusammenziehen (rein & raus)', done: false },
       { id: 'a-prio', label: 'Zahlungs-Prioritätenliste festlegen — was zuerst?', done: false },
+      { id: 'a-kredit', label: 'Kreditvertrag Firma → privat aufsetzen (mit Steuerberater absichern)', done: false },
       { id: 'a-plan', label: 'Finanzplan füllen: Monats-Umsatz & Kosten im Controlling', done: false },
       { id: 'a-produkte', label: 'Produktpakete festzurren (Entwürfe unten)', done: false },
       { id: 'a-vertrieb', label: 'Vertriebsziele festlegen → in Jahr & Ziele eintragen', done: false },
@@ -136,9 +150,10 @@ export function sauberFile(f: Partial<FinanzplanFile> | null): FinanzplanFile {
       firmaId: String(x.firmaId ?? '').slice(0, 40),
       kunde: String(x.kunde ?? '').slice(0, 120),
       titel: String(x.titel ?? '').slice(0, 200),
-      betrag: isFinite(Number(x.betrag)) ? Math.max(0, Math.round(Number(x.betrag))) : 0,
+      betrag: Math.max(0, cent(x.betrag)),
       status: STATI.includes(x.status as RechnungStatus) ? x.status as RechnungStatus : 'geplant',
       faellig: tag(x.faellig),
+      ...(x.status === 'storniert' ? { storniertAm: tag(x.storniertAm), stornoGrund: x.stornoGrund ? String(x.stornoGrund).slice(0, 300) : undefined } : {}),
       // Der ganze Vorgang, nicht nur der Betrag: Angebot → Rechnung → Eingang.
       nummer: x.nummer ? String(x.nummer).slice(0, 60) : undefined,
       datum: tag(x.datum),
@@ -166,7 +181,7 @@ export function sauberFile(f: Partial<FinanzplanFile> | null): FinanzplanFile {
       firmaId: String(x.firmaId ?? '').slice(0, 40),
       an: String(x.an ?? '').slice(0, 120),
       titel: String(x.titel ?? '').slice(0, 200),
-      betrag: isFinite(Number(x.betrag)) ? Math.max(0, Math.round(Number(x.betrag))) : 0,
+      betrag: Math.max(0, cent(x.betrag)),
       status: (x.status === 'bezahlt' ? 'bezahlt' : 'offen') as Zahlung['status'],
       faellig: typeof x.faellig === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.faellig) ? x.faellig : undefined,
     })).filter(x => x.an || x.titel),
@@ -260,11 +275,178 @@ export type BezahltErgebnis =
 export function bezahltAnwenden(f: FinanzplanFile, id: string, am: string, stand?: string): BezahltErgebnis {
   const alt = f.rechnungen.find(r => r.id === id);
   if (!alt) return { ok: false, status: 404, fehler: 'Die Rechnung gibt es nicht (mehr).' };
-  if (stand && fingerabdruck(alt as unknown as Record<string, unknown>) !== stand) {
+  if (stand && fassung(alt) !== stand) {
     return { ok: false, status: 409, fehler: 'Jemand hat die Rechnung inzwischen geändert — Stand neu geladen, bitte noch einmal.', aktuell: alt };
   }
+  if (alt.status === 'storniert') return { ok: false, status: 409, fehler: 'Die Rechnung ist storniert — bezahlt geht nicht mehr. Bei Bedarf neu stellen.', aktuell: alt };
   const schonBezahlt = alt.status === 'bezahlt';
   const rechnung: Rechnung = schonBezahlt ? alt : { ...alt, status: 'bezahlt', bezahltAm: am };
   const datei = schonBezahlt ? f : { ...f, rechnungen: f.rechnungen.map(r => (r.id === id ? rechnung : r)) };
   return { ok: true, datei, rechnung, schonBezahlt, buchung: rechnung.betrag > 0 ? buchungFuer(rechnung, rechnung.bezahltAm ?? am) : null };
+}
+
+// ── Fassung je Eintrag + Stand-Prüfung (28.09., K3 · #107) ────────────────────
+// Wie `listePatchen` (lib/store/patch-liste.ts), nur über fünf Listen in EINER
+// Sperre: GET liefert je Eintrag `fassung` (Fingerabdruck), der Browser schickt
+// sie mit zurück; passt sie nicht mehr, hat inzwischen jemand geändert → 409 mit
+// dem aktuellen Eintrag, nichts wird überschrieben. Das Feld heißt hier `fassung`,
+// weil `Firma.stand` schon das Datum des Kontostands ist. Gespeichert wird die
+// Fassung nie (sauberFile kennt das Feld nicht).
+
+/** Fingerabdruck eines Eintrags — eingewickelt, damit `Firma.stand` (Datum) mitzählt. */
+export const fassung = (e: object): string => fingerabdruck({ e } as Record<string, unknown>);
+
+export const FP_LISTEN = ['firmen', 'rechnungen', 'zahlungen', 'merkposten', 'produkte'] as const;
+export type FpListe = typeof FP_LISTEN[number];
+
+/** So geht der Finanzplan an den Browser: jede Zeile der fünf Listen mit `fassung`. */
+export function mitFassung(f: FinanzplanFile): FinanzplanFile {
+  const aus = { ...f } as FinanzplanFile & Record<string, unknown>;
+  for (const l of FP_LISTEN) aus[l] = (f[l] as object[]).map(e => ({ ...e, fassung: fassung(e) })) as never;
+  return aus;
+}
+
+// ── Rechnungen ab „gestellt“: nicht löschen, nicht umschreiben (28.09., K3 · #50/#81) ──
+// Eine gestellte Rechnung liegt beim Kunden — sie wird nicht gelöscht und ihr
+// Betrag, ihre Nummer, ihr Datum nicht still geändert. Stattdessen: stornieren
+// (`aktion: 'storno'`, mit Datum und Grund). Nachtragen (leer → Wert) bleibt
+// erlaubt, weil der Status oft vor der Nummer gesetzt wird.
+
+/** Felder, die ab „gestellt“ feststehen (Nachtragen erlaubt, Ändern nicht). */
+export const FEST_AB_GESTELLT = ['betrag', 'nummer', 'datum', 'netto', 'ustSatz'] as const;
+const FELD_NAME: Record<typeof FEST_AB_GESTELLT[number], string> = { betrag: 'Betrag', nummer: 'Rechnungsnummer', datum: 'Rechnungsdatum', netto: 'Nettobetrag', ustSatz: 'USt-Satz' };
+const RANG: Record<RechnungStatus, number> = { geplant: 0, gestellt: 1, bezahlt: 2, storniert: 3 };
+const leerWert = (v: unknown) => v === undefined || v === null || v === '' || v === 0;
+
+/**
+ * Darf die Rechnung `alt` so geändert (`neu`) bzw. gelöscht (`neu === null`) werden?
+ * null = ja, sonst der Ablehnungstext (HTTP 409).
+ */
+export function rechnungSchutz(alt: Rechnung | undefined, neu: Rechnung | null): string | null {
+  if (!alt) return neu?.status === 'storniert' ? 'Eine Rechnung wird nicht als „storniert“ angelegt.' : null;
+  if (neu === null) {
+    if (alt.status === 'geplant') return null;
+    return `Die Rechnung ist ${alt.status} — sie wird nicht gelöscht, sondern storniert (mit Datum und Grund).`;
+  }
+  if (alt.status === 'geplant') return neu.status === 'storniert' ? 'Eine geplante Rechnung wird gelöscht, nicht storniert.' : null;
+  if (alt.status === 'storniert') {
+    return JSON.stringify(neu) === JSON.stringify(alt) ? null : 'Die Rechnung ist storniert — sie bleibt, wie sie ist. Bei Bedarf eine neue anlegen.';
+  }
+  if (neu.status === 'storniert') return 'Stornieren nur über „stornieren“ (mit Datum und Grund).';
+  if (RANG[neu.status] < RANG[alt.status]) {
+    return `Die Rechnung ist ${alt.status} — zurück auf „${neu.status}“ geht nicht. Stornieren und neu stellen.`;
+  }
+  for (const k of FEST_AB_GESTELLT) {
+    const a = alt[k], n = neu[k];
+    if (a === n || leerWert(a)) continue;
+    return `Die Rechnung ist ${alt.status} — ${FELD_NAME[k]} steht fest. Stornieren und neu stellen.`;
+  }
+  return null;
+}
+
+/** Eine Einzeländerung an einer der fünf Listen (PATCH /api/state/finanzplan). `stand` = die Fassung, die der Browser kannte. */
+export interface FpOp { liste: FpListe; op: 'upsert' | 'delete'; eintrag?: Record<string, unknown>; id?: string; stand?: string }
+export interface FpKonflikt { liste: FpListe; id: string; grund: 'inzwischen geändert' | 'inzwischen gelöscht'; aktuell?: unknown }
+
+/** Rohe Änderungen lesen. Die Fassung kommt aus `op.stand` oder `eintrag.fassung` (nie aus `Firma.stand` — das ist ein Datum). */
+export function fpOpsLesen(roh: unknown[]): FpOp[] {
+  const ops: FpOp[] = [];
+  for (const o of roh as Record<string, unknown>[]) {
+    const l = String(o?.liste ?? '') as FpListe;
+    if (!(FP_LISTEN as readonly string[]).includes(l)) continue;
+    const eintrag = o.eintrag && typeof o.eintrag === 'object' ? o.eintrag as Record<string, unknown> : undefined;
+    const s = typeof o.stand === 'string' && o.stand ? o.stand : typeof o.fassung === 'string' && o.fassung ? o.fassung
+      : typeof eintrag?.fassung === 'string' && eintrag.fassung ? eintrag.fassung : undefined;
+    if (o.op === 'delete' && typeof o.id === 'string') ops.push({ liste: l, op: 'delete', id: o.id, ...(s ? { stand: s } : {}) });
+    else if (o.op === 'upsert' && eintrag) ops.push({ liste: l, op: 'upsert', eintrag, ...(s ? { stand: s } : {}) });
+  }
+  return ops;
+}
+
+export type FpErgebnis =
+  | { ok: true; datei: FinanzplanFile; angewandt: number }
+  | { ok: false; status: 409; fehler: string; konflikte?: FpKonflikt[] };
+
+/**
+ * Rein: Einzeländerungen auf den (gesäuberten) Bestand legen — Stand-Prüfung je Eintrag,
+ * Rechnungs-Schutz, dieselbe Säuberung wie beim Vollschreiben. Ein Konflikt oder eine
+ * verbotene Änderung lehnt die GANZE Änderung ab (halbe Stände sind schlimmer als eine Nachfrage).
+ */
+export function fpOpsAnwenden(f: FinanzplanFile, ops: FpOp[]): FpErgebnis {
+  const aus = { ...f } as FinanzplanFile;
+  const konflikte: FpKonflikt[] = [];
+  let angewandt = 0;
+  for (const o of ops) {
+    const liste = aus[o.liste] as { id: string }[];
+    const nachId = new Map(liste.map(x => [x.id, x]));
+    const vorher = new Map((f[o.liste] as { id: string }[]).map(x => [x.id, x]));
+    const geprueft = o.op === 'upsert'
+      ? (sauberFile({ [o.liste]: [o.eintrag] } as Partial<FinanzplanFile>)[o.liste] as { id: string }[])[0]
+      : undefined;
+    const id = o.op === 'delete' ? o.id! : geprueft?.id;
+    if (!id) continue;
+    const alt = nachId.get(id);
+    if (o.stand !== undefined) {
+      const bekannt = vorher.get(id);
+      if (!bekannt) { konflikte.push({ liste: o.liste, id, grund: 'inzwischen gelöscht' }); continue; }
+      if (fassung(bekannt) !== o.stand) { konflikte.push({ liste: o.liste, id, grund: 'inzwischen geändert', aktuell: { ...bekannt, fassung: fassung(bekannt) } }); continue; }
+    }
+    if (o.liste === 'rechnungen') {
+      const grund = rechnungSchutz(alt as Rechnung | undefined, o.op === 'delete' ? null : geprueft as Rechnung);
+      if (grund) return { ok: false, status: 409, fehler: grund, ...(alt ? { konflikte: [{ liste: o.liste, id, grund: 'inzwischen geändert' as const, aktuell: { ...alt, fassung: fassung(alt) } }] } : {}) };
+    }
+    if (o.op === 'delete') { if (nachId.delete(id)) angewandt++; }
+    else if (geprueft) { nachId.set(id, geprueft); angewandt++; }
+    (aus[o.liste] as unknown) = Array.from(nachId.values());
+  }
+  if (konflikte.length) return { ok: false, status: 409, fehler: 'Jemand hat inzwischen geändert — Stand neu geladen, bitte noch einmal.', konflikte };
+  return { ok: true, datei: aus, angewandt };
+}
+
+/** Rechnungs-Schutz für das Vollschreiben (PUT): jede Rechnung ab „gestellt“ muss bleiben und darf nur erlaubt geändert sein. */
+export function rechnungenSchutzVoll(vorher: FinanzplanFile | null, neu: FinanzplanFile): string | null {
+  if (!vorher) return null;
+  const nachId = new Map(neu.rechnungen.map(r => [r.id, r]));
+  for (const alt of vorher.rechnungen) {
+    const grund = rechnungSchutz(alt, nachId.get(alt.id) ?? null);
+    if (grund) return grund;
+  }
+  const alteIds = new Set(vorher.rechnungen.map(r => r.id));
+  for (const r of neu.rechnungen) if (!alteIds.has(r.id) && r.status === 'storniert') return rechnungSchutz(undefined, r);
+  return null;
+}
+
+// ── Stornieren (28.09., K3 · #50/#81) ─────────────────────────────────────────
+// Storno = Status `storniert` mit Datum und Grund; der Eintrag bleibt. Gab es zur
+// Rechnung schon einen Zahlungseingang (`bu-re-<id>`), bekommt er eine
+// Gegenbuchung `bu-st-<id>` (negativ, gleicher Betrag) — so steht kein verwaister
+// Ist-Eingang in den Buchungen, und gelöscht wird trotzdem nichts.
+
+export const stornoBuchungsId = (rechnungId: string) => `bu-st-${rechnungId}`.slice(0, 40);
+
+/** Gegenbuchung zu einem Zahlungseingang einer stornierten Rechnung. */
+export function stornoBuchungFuer(eingang: RechnungsBuchung, r: Rechnung, am: string): RechnungsBuchung {
+  return {
+    ...eingang, id: stornoBuchungsId(r.id), datum: am, betrag: -Math.abs(eingang.betrag),
+    zweck: `Storno${r.nummer ? ` Rechnung ${r.nummer}` : ''}${r.stornoGrund ? ` — ${r.stornoGrund}` : ''}`.slice(0, 200), rechnungId: r.id,
+  };
+}
+
+export type StornoErgebnis =
+  | { ok: true; datei: FinanzplanFile; rechnung: Rechnung; schonStorniert: boolean }
+  | { ok: false; status: 400 | 404 | 409; fehler: string; aktuell?: Rechnung };
+
+/** Rein: Rechnung `id` stornieren (nur ab „gestellt“), Datum + Grund Pflicht. `stand` wie bei „bezahlt“. */
+export function stornoAnwenden(f: FinanzplanFile, id: string, am: string, grund: string, stand?: string): StornoErgebnis {
+  const alt = f.rechnungen.find(r => r.id === id);
+  if (!alt) return { ok: false, status: 404, fehler: 'Die Rechnung gibt es nicht (mehr).' };
+  if (stand && fassung(alt) !== stand) {
+    return { ok: false, status: 409, fehler: 'Jemand hat die Rechnung inzwischen geändert — Stand neu geladen, bitte noch einmal.', aktuell: alt };
+  }
+  if (alt.status === 'storniert') return { ok: true, datei: f, rechnung: alt, schonStorniert: true };
+  if (alt.status === 'geplant') return { ok: false, status: 409, fehler: 'Eine geplante Rechnung wird gelöscht, nicht storniert.', aktuell: alt };
+  const g = grund.replace(/\s+/g, ' ').trim().slice(0, 300);
+  if (g.length < 3) return { ok: false, status: 400, fehler: 'Bitte einen Grund für das Storno angeben.' };
+  const rechnung: Rechnung = { ...alt, status: 'storniert', storniertAm: am, stornoGrund: g };
+  return { ok: true, datei: { ...f, rechnungen: f.rechnungen.map(r => (r.id === id ? rechnung : r)) }, rechnung, schonStorniert: false };
 }

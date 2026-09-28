@@ -21,6 +21,7 @@ import { pruefeText } from '@/lib/finanzen/chef/pruefung';
 import { ARTEN, SIGNAL_TYPEN, type HeadId } from './prompt';
 import { PLAYBOOKS } from '@/lib/crm/kampagnen';
 
+import { localDay } from '@/lib/zeit';
 const PLAYBOOK_IDS = new Set([...PLAYBOOKS.map(p => p.id), 'eigen']);
 
 export interface Vorschlag {
@@ -116,7 +117,7 @@ export function qualitaet(v: Vorschlag, k: Kontakt | undefined, heute: string): 
 }
 
 export function pruefe(a: Antwort, daten: unknown, kontakte: Kontakt[], crm: CrmBestand, heuteArg?: string): { antwort: Antwort; pruefung: Pruefung } {
-  const heute = heuteArg ?? String((daten as { meta?: { heute?: string } } | null)?.meta?.heute ?? new Date().toISOString().slice(0, 10));
+  const heute = heuteArg ?? String((daten as { meta?: { heute?: string } } | null)?.meta?.heute ?? localDay());
   const nachId = new Map(kontakte.map(k => [k.id, k]));
   const gestrichen: Pruefung['gestrichen'] = [];
   const mandatJe = new Set(crm.mandate.filter(m => m.status === 'aktiv').flatMap(m => m.kontaktIds));

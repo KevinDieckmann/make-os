@@ -14,10 +14,11 @@ import { OFFENE_STUFEN } from './pipeline';
 import { leadNachGespraech, leadZiel } from './event-bruecke';
 import { dealZuFirma } from './firmen-bezug';
 
+import { tagVon } from '@/lib/zeit';
 export interface LeadMeldung { ziel: { art: 'firma' | 'person'; id: string; name: string }; von: string; nach: string; geaendert: boolean; grund?: string }
 
 /** Lead der Firma (sonst der Person) nach einem Gespräch heben und schreiben. null, wenn die Person unbekannt ist. */
-export async function leadHebenNachGespraech(kontaktId: string, jetzt: string, person: string, heute = jetzt.slice(0, 10)): Promise<LeadMeldung | null> {
+export async function leadHebenNachGespraech(kontaktId: string, jetzt: string, person: string, heute = tagVon(jetzt)): Promise<LeadMeldung | null> {
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const k = kontakte.find(x => x.id === kontaktId);
   if (!k) return null;

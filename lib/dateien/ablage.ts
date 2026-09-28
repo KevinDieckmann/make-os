@@ -25,7 +25,7 @@ import path from 'path';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { datenOrdner, datenSchluessel, loadJson, updateJson } from '@/lib/store/local-db';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
-import { DATEI_ID, MAX_EINTRAEGE, hatBezug, metaSaeubern, type DateiEintrag, type DateiInfo, type DateiTyp } from './regeln';
+import { DATEI_ID, MAX_EINTRAEGE, hatBezug, istBeleg, metaSaeubern, type DateiEintrag, type DateiInfo, type DateiTyp } from './regeln';
 
 const MAGIE = Buffer.from('MKOSDAT1', 'ascii');
 
@@ -123,6 +123,7 @@ export async function ablegen(haushalt: string, person: string, metaRoh: unknown
 export async function aendern(haushalt: string, person: string, id: string, felder: unknown, jetzt = new Date().toISOString()): Promise<DateiEintrag | null> {
   if (!DATEI_ID.test(id)) throw new AblageFehler('Unzulässige Kennung.', 400);
   let neu: DateiEintrag | null = null;
+  let ohneBezug = false;
   await updateJson<AblageDatei>(ablageName(haushalt), cur => {
     const l = cur?.eintraege ?? [];
     return {
@@ -130,12 +131,14 @@ export async function aendern(haushalt: string, person: string, id: string, feld
         if (e.id !== id) return e;
         const roh = { ...e, ...(felder && typeof felder === 'object' ? felder as Record<string, unknown> : {}), art: e.art };
         const m = metaSaeubern(roh);
-        if (!hatBezug(m)) return e;
+        if (!hatBezug(m)) { ohneBezug = true; return e; }
         neu = { id: e.id, ...m, art: e.art, ...(e.datei ? { datei: e.datei } : {}), hochgeladenAm: e.hochgeladenAm, hochgeladenVon: e.hochgeladenVon, ...(e.dateiFehlt ? { dateiFehlt: e.dateiFehlt } : {}), geaendert: jetzt, geaendertVon: person };
         return neu;
       }),
     };
   });
+  // Vom Bezug lösen geht nur, solange ein anderer Bezug bleibt — sonst wäre der Eintrag nirgends mehr zu finden.
+  if (ohneBezug) throw new AblageFehler('Ohne Bezug wäre der Eintrag nirgends mehr zu finden — erst einen anderen Bezug setzen (z. B. Kontakt oder Firma).', 400);
   return neu;
 }
 
@@ -151,15 +154,20 @@ export async function lesen(haushalt: string, id: string): Promise<{ eintrag: Da
   return { eintrag, bytes };
 }
 
-/** Eintrag und Datei entfernen. true, wenn es ihn gab. */
+/** Eintrag und Datei entfernen. true, wenn es ihn gab. Belege (Rechnung/Mandat) → AblageFehler 409, nichts gelöscht. */
 export async function entfernen(haushalt: string, id: string): Promise<boolean> {
   if (!DATEI_ID.test(id)) throw new AblageFehler('Unzulässige Kennung.', 400);
   let gab = false;
+  let beleg = false;
   await updateJson<AblageDatei>(ablageName(haushalt), cur => {
     const l = cur?.eintraege ?? [];
-    gab = l.some(e => e.id === id);
-    return { eintraege: l.filter(e => e.id !== id) };
+    const e = l.find(x => x.id === id);
+    gab = !!e;
+    // In der Sperre geprüft: ein Beleg bleibt samt Datei.
+    if (e && istBeleg(e)) { beleg = true; return cur ?? { eintraege: l }; }
+    return { eintraege: l.filter(x => x.id !== id) };
   });
+  if (beleg) throw new AblageFehler('Der Eintrag hängt an einer Rechnung oder einem Mandat und wird nicht gelöscht — erst vom Bezug lösen.', 409);
   await fs.unlink(dateiPfad(haushalt, id)).catch(() => {});
   return gab;
 }

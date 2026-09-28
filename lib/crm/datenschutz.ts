@@ -12,6 +12,7 @@ import type { CrmBestand, Verarbeitung } from './typen';
 import { art14 } from './recht';
 import { speicherbegrenzung } from './kennzahlen';
 
+import { tagVon } from '@/lib/zeit';
 export interface PflichtVorschlag { id: string; herkunft?: Herkunft; rechtsgrundlage?: Rechtsgrundlage; fremddaten?: boolean; grund: string }
 
 export function pflichtangaben(kontakte: Kontakt[], crm: CrmBestand): PflichtVorschlag[] {
@@ -75,7 +76,7 @@ export const LOESCHREGELN = [
 
 /** Startbestand für das Verzeichnis (Art. 30) — MAKE OS, nicht Operations. Wird einmal angelegt, danach gepflegt. */
 export function verarbeitungenStart(jetzt: string): Verarbeitung[] {
-  const s = jetzt.slice(0, 10);
+  const s = tagVon(jetzt);
   const v = (id: string, name: string, zweck: string, personen: string, daten: string, rechtsgrundlage: string, empfaenger: string, loeschfrist: string): Verarbeitung => ({
     id, name, zweck, personen, daten, rechtsgrundlage, empfaenger, drittland: 'Anthropic (USA) nur für KI-Auswertung: Standardvertragsklauseln / Data Privacy Framework — prüfen', loeschfrist,
     toms: 'Zugang nur mit Anmeldung (zwei Konten), HTTPS, Server in Deutschland (Hetzner), nächtliche verschlüsselte Sicherung, Agentenpakete ohne Privatnotiz', verantwortlich: 'Kevin Dieckmann (KD Ventures / Kevin Dieckmann Consulting)', stand: s,

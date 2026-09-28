@@ -35,6 +35,11 @@ export interface UmsatzRechnung {
   angebot?: string;
   angebotAm?: string;
   bezahltAm?: string;
+  /** Storno (28.09., K3): Status `storniert` zählt weder als Umsatz noch als offen. */
+  storniertAm?: string;
+  stornoGrund?: string;
+  /** Fingerabdruck vom GET — geht beim Ändern als `stand` zurück (409 bei fremder Änderung). */
+  fassung?: string;
 }
 
 export interface ZugeordneteRechnung {

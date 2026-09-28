@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import type { Kontakt, Chance } from '@/lib/make-one/netzwerk-data';
 
+import { localDay } from '@/lib/zeit';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -61,7 +62,7 @@ async function rechne() {
     if (!titel) continue;
     const datum = tag(e.startDate ?? e.start);
     // Nur Vergangenes zählt als „gesprochen".
-    if (!datum || datum > new Date().toISOString().slice(0, 10)) continue;
+    if (!datum || datum > localDay()) continue;
     for (const { k, teile } of mitNachname) {
       if (teile.every(t => titel.includes(t.toLowerCase()))) merke(k, datum, 'Kalender', e.title ?? 'Termin');
     }

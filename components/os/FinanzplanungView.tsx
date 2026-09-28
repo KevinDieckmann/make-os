@@ -16,13 +16,16 @@ import { useSpeichern } from '@/hooks/useSpeichern';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import { FINANZPLAN_LISTEN } from '@/lib/sync';
 import { localDay } from '@/lib/zeit';
+import { nettoAusBrutto } from '@/lib/finanzen/ust';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Zahl, feld, LEUCHT } from './schlank';
 
 interface Firma { id: string; name: string; bank: string; kontostand: number | null; stand: string | null }
-type RStatus = 'geplant' | 'gestellt' | 'bezahlt';
+type RStatus = 'geplant' | 'gestellt' | 'bezahlt' | 'storniert';
 interface Rechnung {
   id: string; firmaId: string; kunde: string; titel: string; betrag: number; status: RStatus; faellig?: string; notiz?: string; mandatId?: string;
+  /** Storno (28.09., K3): statt Löschen ab „gestellt“. */
+  storniertAm?: string; stornoGrund?: string;
   /** Der Vorgang: Angebot → Rechnung → Eingang (Kevins Ansage 02.08.). */
   nummer?: string; datum?: string; angebot?: string; angebotAm?: string; bezahltAm?: string;
   netto?: number; ustSatz?: number; leistungVon?: string; leistungBis?: string;
@@ -33,8 +36,11 @@ interface Produkt { id: string; name: string; beschreibung: string; preis: numbe
 interface Uhrwerk { letztesMeeting: string | null; agenda: { id: string; label: string; done: boolean }[] }
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; merkposten: Merkposten[]; zahlungen: Zahlung[]; produkte: Produkt[]; uhrwerk: Uhrwerk }
 
-const STATUS_FARBE: Record<RStatus, string> = { geplant: C.inkDim, gestellt: LEUCHT.achtung, bezahlt: LEUCHT.gut };
-const STATUS_NEXT: Record<RStatus, RStatus> = { geplant: 'gestellt', gestellt: 'bezahlt', bezahlt: 'geplant' };
+const STATUS_FARBE: Record<RStatus, string> = { geplant: C.inkDim, gestellt: LEUCHT.achtung, bezahlt: LEUCHT.gut, storniert: C.inkLeise };
+/** Nur vorwärts (28.09., K3): eine gestellte/bezahlte Rechnung geht nicht zurück — sie wird storniert. */
+const STATUS_NEXT: Partial<Record<RStatus, RStatus>> = { geplant: 'gestellt', gestellt: 'bezahlt' };
+/** Ab „gestellt“ stehen Betrag, Nummer und Datum fest (Nachtragen erlaubt). */
+const fest = (r: Rechnung, wert: unknown) => r.status !== 'geplant' && wert !== undefined && wert !== '' && wert !== 0;
 /** Kredite in Lila — wie bisher, jetzt aus der Leuchtpalette. */
 const KREDIT = LEUCHT.agenten;
 const HAAR = 'rgba(255,255,255,.06)';
@@ -71,11 +77,19 @@ export function FinanzplanungView() {
   const [finance, setFinance] = useState<FinanceState | null>(null);
   const [neu, setNeu] = useState({ kunde: '', titel: '', betrag: '', firmaId: 'kdc' });
   const [neuZ, setNeuZ] = useState({ an: '', titel: '', betrag: '', faellig: '', firmaId: 'kdc' });
+  /** Rückfrage an einer Rechnung: löschen (nur geplant) oder stornieren (ab gestellt, mit Grund). */
+  const [frage, setFrage] = useState<{ id: string; art: 'loeschen' | 'storno'; grund: string } | null>(null);
+  /** Hinweis nach einer Ablehnung (409: inzwischen geändert / nicht erlaubt) — der Stand ist dann schon neu geladen. */
+  const [hinweis, setHinweis] = useState<string | null>(null);
   const heute = localDay();
 
   // Speichert auch beim Seitenwechsel — nichts geht zwischen zwei Klicks verloren.
-  // Zu zweit: nur Einzeländerungen, und Malins Änderungen kommen per Abgleich herein.
-  const planSpeichern = useSpeichern('/api/state/finanzplan', { listen: FINANZPLAN_LISTEN, uebernehmen: st => setPlan(st as unknown as Plan) });
+  // Zu zweit: nur Einzeländerungen mit Fassung je Eintrag (28.09., #107) — eine fremde Änderung
+  // kommt als 409 zurück, der Hook übernimmt dann den Serverstand, hier steht der Hinweis.
+  const planSpeichern = useSpeichern('/api/state/finanzplan', {
+    listen: FINANZPLAN_LISTEN, standFeld: 'fassung', uebernehmen: st => setPlan(st as unknown as Plan),
+    danach: (ok, f) => { if (!ok && f && f.status >= 400) setHinweis(`${f.fehler ?? 'Nicht gespeichert.'}${f.status === 409 ? ' Der aktuelle Stand ist geladen.' : ''}`); },
+  });
   const ladePlan = useCallback(() => fetch('/api/state/finanzplan').then(r => r.json()).then((d: Plan) => {
     if (planSpeichern.hatOffenes()) return;
     setPlan(d); planSpeichern.kenne(d);
@@ -125,6 +139,17 @@ export function FinanzplanungView() {
     planSpeichern.kenne(d.stand);
     if (!planSpeichern.hatOffenes()) setPlan(d.stand);
   }
+  /** Stornieren (28.09., K3): ein Server-Schritt mit Grund; Gegenbuchung, falls schon ein Zahlungseingang gebucht ist. */
+  async function stornieren(r: Rechnung, grund: string) {
+    await planSpeichern.jetzt(); // offene Eingaben zuerst
+    const stand = planSpeichern.standVon('rechnungen', r.id);
+    const d = await fetch('/api/state/finanzplan', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'storno', rechnungId: r.id, grund, ...(stand ? { stand } : {}) }) })
+      .then(x => x.json()).catch(() => null) as { ok?: boolean; stand?: Plan; error?: string; gegenbuchung?: string } | null;
+    if (!d) { setHinweis('Keine Verbindung — nichts storniert.'); return; }
+    if (d.stand) { planSpeichern.kenne(d.stand); if (!planSpeichern.hatOffenes()) setPlan(d.stand); }
+    if (!d.ok) { setHinweis(d.error ?? 'Nicht storniert.'); if (!d.stand) void ladePlan(); return; }
+    setHinweis(d.gegenbuchung === 'neu' ? 'Storniert — zum Zahlungseingang ist die Gegenbuchung angelegt.' : null);
+  }
   function zahlungBewegen(id: string, richtung: -1 | 1) {
     const z = [...plan!.zahlungen];
     const i = z.findIndex(x => x.id === id);
@@ -143,6 +168,7 @@ export function FinanzplanungView() {
 
   return (
     <Seite titel="Finanzplanung" unter={`Finanzen · ${datum(heute)}`}>
+      {hinweis && <Karte i={0} akzent={LEUCHT.achtung}><div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: TYP.bedien, color: C.inkDim }}><span>{hinweis}</span><button onClick={() => setHinweis(null)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien }}>ok</button></div></Karte>}
       {/* ── Finanzmeeting — das Uhrwerk: 2× im Monat, läuft immer wieder durch ── */}
       <Karte i={0} akzent={meetingUeberfaellig ? LEUCHT.kritisch : undefined}>
         <Ueberschrift farbe={meetingUeberfaellig ? LEUCHT.kritisch : agendaOffen ? LEUCHT.achtung : LEUCHT.gut}
@@ -221,22 +247,41 @@ export function FinanzplanungView() {
 
       {/* Rechnungs-Pipeline */}
       <Karte i={3 + plan.firmen.length}>
-        <Ueberschrift farbe={LEUCHT.gut} rechts="Klick auf den Status wechselt: geplant → gestellt → bezahlt">Rechnungen</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.gut} rechts="Klick auf den Status: geplant → gestellt → bezahlt · ab gestellt stornieren statt löschen">Rechnungen</Ueberschrift>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {plan.rechnungen.map(r => {
             const spaet = r.status === 'gestellt' && r.faellig && r.faellig < heute;
+            const weiter = STATUS_NEXT[r.status];
+            const storniert = r.status === 'storniert';
+            const f = frage?.id === r.id ? frage : null;
             return (
-              <div key={r.id} id={`ziel-${r.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderBottom: `1px solid ${HAAR}`, padding: '10px 0', ...zielRahmen(zielR === r.id, spaet ? LEUCHT.kritisch : LEUCHT.gut) }}>
-                <ChipKnopf farbe={STATUS_FARBE[r.status]} onClick={() => rechnungAendern(r.id, { status: STATUS_NEXT[r.status] })} title="Status wechseln">{r.status}</ChipKnopf>
+              <div key={r.id} id={`ziel-${r.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderBottom: `1px solid ${HAAR}`, padding: '10px 0', opacity: storniert ? 0.55 : 1, ...zielRahmen(zielR === r.id, spaet ? LEUCHT.kritisch : LEUCHT.gut) }}>
+                {weiter
+                  ? <ChipKnopf farbe={STATUS_FARBE[r.status]} onClick={() => rechnungAendern(r.id, { status: weiter })} title={`Status wechseln → ${weiter}`}>{r.status}</ChipKnopf>
+                  : <span style={{ display: 'inline-flex', minWidth: 76, justifyContent: 'center' }}><Chip farbe={STATUS_FARBE[r.status]}>{r.status}</Chip></span>}
                 <span style={{ fontSize: TYP.body, fontWeight: 600, color: C.ink }}>{r.kunde}</span>
                 <span style={{ fontSize: TYP.bedien, color: C.inkDim, flex: 1, minWidth: 140 }}>{r.titel}</span>
                 <span style={leise}>{firmaName(r.firmaId)}</span>
                 {r.faellig && <span style={{ ...leise, color: spaet ? LEUCHT.kritisch : C.inkLeise }}>{spaet ? 'überfällig ' : 'fällig '}{datum(r.faellig)}</span>}
-                <input type="number" value={r.betrag || ''} placeholder="0" aria-label="Betrag"
-                  onChange={e => rechnungAendern(r.id, { betrag: Number(e.target.value) || 0 })}
-                  style={{ ...eingabe, width: 96, textAlign: 'right', fontFamily: SCHRIFT.display, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }} />
+                <input type="number" step="0.01" value={r.betrag || ''} placeholder="0" aria-label="Betrag (brutto)" readOnly={fest(r, r.betrag)}
+                  title={fest(r, r.betrag) ? 'Ab „gestellt“ steht der Betrag fest — stornieren und neu stellen' : 'Betrag brutto'}
+                  onChange={e => rechnungAendern(r.id, { betrag: Math.round((Number(e.target.value) || 0) * 100) / 100 })}
+                  style={{ ...eingabe, width: 110, textAlign: 'right', fontFamily: SCHRIFT.display, fontWeight: 700, fontVariantNumeric: 'tabular-nums', textDecoration: storniert ? 'line-through' : 'none' }} />
                 <span style={leise}>€</span>
-                <Zeichen onClick={() => speichern({ ...plan, rechnungen: plan.rechnungen.filter(x => x.id !== r.id) })} label="Rechnung löschen">✕</Zeichen>
+                {/* Löschen nur geplant (mit Rückfrage); ab gestellt wird storniert — der Eintrag bleibt (28.09., K3). */}
+                {r.status === 'geplant' && <Zeichen onClick={() => setFrage({ id: r.id, art: 'loeschen', grund: '' })} label="Rechnung löschen">✕</Zeichen>}
+                {(r.status === 'gestellt' || r.status === 'bezahlt') && !f && <button onClick={() => setFrage({ id: r.id, art: 'storno', grund: '' })} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, color: C.inkLeise }}>stornieren</button>}
+                {f?.art === 'loeschen' && <span style={{ flexBasis: '100%', display: 'flex', gap: 10, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
+                  Geplante Rechnung wirklich löschen?
+                  <Knopf farbe={LEUCHT.kritisch} onClick={() => { setFrage(null); speichern({ ...plan, rechnungen: plan.rechnungen.filter(x => x.id !== r.id) }); }}>Löschen</Knopf>
+                  <Knopf leise onClick={() => setFrage(null)}>Abbrechen</Knopf>
+                </span>}
+                {f?.art === 'storno' && <span style={{ flexBasis: '100%', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
+                  Stornieren — die Rechnung bleibt als Beleg, zählt aber nicht mehr.
+                  <input value={f.grund} onChange={e => setFrage({ ...f, grund: e.target.value })} placeholder="Grund" aria-label="Grund des Stornos" style={{ ...eingabe, width: 200 }} />
+                  <Knopf farbe={LEUCHT.kritisch} aus={f.grund.trim().length < 3} onClick={() => { setFrage(null); void stornieren(r, f.grund.trim()); }}>Stornieren</Knopf>
+                  <Knopf leise onClick={() => setFrage(null)}>Abbrechen</Knopf>
+                </span>}
 
                 {/* Der Vorgang dahinter — Kevins Ansage: der Betrag allein
                     reicht nicht, Angebot, Nummer und Daten gehören dazu. */}
@@ -249,11 +294,13 @@ export function FinanzplanungView() {
                     ['bezahltAm', 'bezahlt am', 'date', 138],
                   ] as const).map(([name, platz, typ, breite]) => (
                     <input key={name} type={typ} value={(r[name] as string) ?? ''} placeholder={platz} title={platz} aria-label={platz}
+                      readOnly={storniert || ((name === 'nummer' || name === 'datum') && fest(r, r[name]))}
                       onChange={e => rechnungAendern(r.id, { [name]: e.target.value || undefined })}
                       style={{ ...eingabe, width: breite, fontSize: 12, padding: '5px 8px', colorScheme: 'dark', color: r[name] ? C.ink : C.inkLeise }} />
                   ))}
                   <span style={leise}>
-                    netto {(r.netto ?? r.betrag / 1.19).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                    {storniert && `storniert${r.storniertAm ? ` ${datum(r.storniertAm)}` : ''}${r.stornoGrund ? ` · ${r.stornoGrund}` : ''} · `}
+                    netto {(r.netto ?? nettoAusBrutto(r.betrag, r.ustSatz)).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                     {r.ustSatz != null ? ` · ${r.ustSatz}% USt` : ' · 19% angenommen'}
                     {r.mandatId && <> · <Link href={WEG.mandat(r.mandatId)} style={{ color: C.inkDim }}>Mandat ›</Link></>}
                     {r.status === 'bezahlt' && <> · <Link href={`/os/finanzen/buchungen?q=${encodeURIComponent(r.kunde)}`} style={{ color: C.inkDim }}>Buchung ›</Link></>}

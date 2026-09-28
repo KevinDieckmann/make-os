@@ -26,7 +26,7 @@ import { ruecknehmbar } from '@/lib/heads/autonomie';
 import { uebersicht } from '@/lib/zoe/verbrauch';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { PLAYBOOKS, planen } from '@/lib/crm/kampagnen';
-import { localDay } from '@/lib/zeit';
+import { localDay, tagVon } from '@/lib/zeit';
 import { wer, verantwortlich, haeltBeziehung, nameVon, BEIDE } from '@/lib/crm/team';
 import { leererStand, standName, type HeadStand, type HeadVorschlag, type Status } from '@/lib/heads/stand';
 import { einheitAusBezug } from '@/lib/aufgaben/einheit';
@@ -118,7 +118,7 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
     const tasks = (await loadJson<{ tasks: Record<string, unknown>[] }>('tasks'))?.tasks ?? [];
     const aufgabe = r.aufgabeId ? tasks.find(t => t.id === r.aufgabeId) as { status?: string; createdAt?: string; updatedAt?: string } | undefined : undefined;
     if (!ruecknehmbar(v, kontakte.find(k => k.id === r.kontaktId), aufgabe)) return NextResponse.json({ ok: false, fehler: 'Inzwischen von Hand geändert — bitte dort anpassen.' }, { status: 409 });
-    if (r.art === 'schritt' && r.kontaktId) await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === r.kontaktId ? { ...k, naechsterSchritt: r.vorher ?? undefined, geaendertAm: jetzt.slice(0, 10) } : k)) }));
+    if (r.art === 'schritt' && r.kontaktId) await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === r.kontaktId ? { ...k, naechsterSchritt: r.vorher ?? undefined, geaendertAm: tagVon(jetzt) } : k)) }));
     if (r.art === 'aufgabe' && r.aufgabeId) await updateJson<{ tasks: Record<string, unknown>[] }>('tasks', cur => ({ ...(cur ?? { tasks: [] }), tasks: (cur?.tasks ?? []).filter(t => t.id !== r.aufgabeId) }));
     await updateJson<HeadStand>(standName(h), s => { const x = { ...leererStand(), ...(s ?? {}) }; return { ...x, vorschlaege: x.vorschlaege.map(y => (y.id === v.id ? { ...y, status: 'abgelehnt' as const, grund: 'unpassend', entschieden: jetzt, aktualisiert: jetzt, von: person } : y)) }; });
     return NextResponse.json({ ok: true, text: `Zurückgenommen: ${v.auto!.wirkung}.` });
@@ -162,10 +162,10 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
         const f = cur ?? { kontakte: [] };
         return { ...f, kontakte: f.kontakte.map(k => {
           if (k.id !== t.kontakt_id || k.werbesperre) return k;
-          if (k.naechsterSchritt && k.naechsterSchritt.datum >= jetzt.slice(0, 10)) { lage.stand = 'schon-da'; return k; }
+          if (k.naechsterSchritt && k.naechsterSchritt.datum >= tagVon(jetzt)) { lage.stand = 'schon-da'; return k; }
           lage.stand = 'gesetzt';
           const eintrag = { am: jetzt, art: 'system' as const, von: person, text: `${HEAD_NAME[h]}: nächster Schritt „${t.titel.slice(0, 120)}“ bis ${t.frist} (angenommen)` };
-          return { ...k, naechsterSchritt: { text: t.titel.slice(0, 300), datum: t.frist! }, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag], geaendertAm: jetzt.slice(0, 10) };
+          return { ...k, naechsterSchritt: { text: t.titel.slice(0, 300), datum: t.frist! }, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag], geaendertAm: tagVon(jetzt) };
         }) };
       });
       wohin = lage.stand === 'gesetzt' ? 'nächster Schritt an der Person' : lage.stand === 'schon-da' ? 'nicht gesetzt — an der Person steht schon ein nächster Schritt (erst erledigen oder unter „Kontakt öffnen“ ändern)' : 'Person nicht gefunden';

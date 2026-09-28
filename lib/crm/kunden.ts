@@ -8,6 +8,7 @@
 import type { Mandat } from './typen';
 import type { Planposten } from '@/lib/make-one/liquiditaet';
 import { TEAM, BEIDE, zustaendig } from './team';
+import { bruttoAusNetto } from '@/lib/finanzen/ust';
 
 const tage = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 864e5);
 function plusMonate(datum: string, n: number): string {
@@ -100,7 +101,8 @@ export function konzentration(mandate: Mandat[]): { kunde: string; anteil: numbe
 export function planpostenAus(m: Mandat, heute: string): Planposten | null {
   if (m.status !== 'aktiv' && m.status !== 'verhandlung') return null;
   if (!(m.honorar.betrag > 0) || m.honorar.basis === 'tag') return null;
-  const brutto = Math.round(m.honorar.betrag * (m.honorar.netto ? 1 + (m.ustSatz ?? 19) / 100 : 1));
+  // Eine USt-Funktion (#79/#80): auf den Cent, nicht auf ganze Euro.
+  const brutto = m.honorar.netto ? bruttoAusNetto(m.honorar.betrag, m.ustSatz) : m.honorar.betrag;
   const basis = m.start && m.start > heute ? m.start : heute;
   const ab = plusTage(m.rechnungsrhythmus === 'einmalig' || m.honorar.basis === 'einmalig' ? basis : `${basis.slice(0, 8)}01`, m.zahlungszielTage || 14);
   const sicher = m.status === 'aktiv' && m.vertragUnterschrieben;

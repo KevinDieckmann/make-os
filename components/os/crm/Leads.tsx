@@ -359,7 +359,7 @@ export function QualifizierungsRunde({ api, zuKontakt, zurueck }: { api: CrmApi;
  */
 export function LeadBlock({ api, leadId }: { api: CrmApi; leadId: string }) {
   const router = useRouter();
-  const z = useMemo(() => (api.crm && api.kontakte ? leads(api.kontakte, api.crm.stand).find(x => x.id === leadId) : undefined), [api.crm, api.kontakte, leadId]);
+  const z = useMemo(() => (api.crm && api.kontakte ? leads(api.kontakte, api.crm.stand, api.crm.heute ?? localDay()).find(x => x.id === leadId) : undefined), [api.crm, api.kontakte, leadId]);
   if (!z) return null;
   const fehlt = fehltBisSql(z.kriterien);
   return (

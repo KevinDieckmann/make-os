@@ -6,7 +6,7 @@
 // derselben Firma ohne Absicht, und der Lead wird SQL mit Verweis auf den Deal.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { localDay } from '@/lib/zeit';
+import { tagVon } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
 import { aendereCrm } from './speicher';
@@ -46,7 +46,7 @@ export type DealErgebnis = { ok: true; chance: Chance; leadId?: string; text: st
 export function dealBauen(e: DealEingabe, ctx: { kontakte: Kontakt[]; firmen: { id: string; name: string; lead?: Lead }[]; chancen: Chance[]; leadZeilen: LeadZeile[]; person: string; jetzt: string; id?: string }): DealErgebnis {
   const schritt = e.schritt && String(e.schritt.text ?? '').trim() && tagOk(e.schritt.datum) ? { text: String(e.schritt.text).trim().slice(0, 300), datum: tagOk(e.schritt.datum)! } : null;
   if (!schritt) return { ok: false, fehler: 'Nächster Schritt mit Datum ist Pflicht — ohne ihn verliert sich der Deal.', status: 400 };
-  if (schritt.datum < ctx.jetzt.slice(0, 10) && schritt.datum < localDay(new Date(ctx.jetzt))) return { ok: false, fehler: 'Der nächste Schritt liegt in der Vergangenheit — ein Deal startet mit einem Termin vor sich.', status: 400 };
+  if (schritt.datum < tagVon(ctx.jetzt)) return { ok: false, fehler: 'Der nächste Schritt liegt in der Vergangenheit — ein Deal startet mit einem Termin vor sich.', status: 400 };
   const kontaktIds = Array.from(new Set((e.kontaktIds ?? []).filter(idOk))).slice(0, 20);
   const personen = kontaktIds.map(id => ctx.kontakte.find(k => k.id === id)).filter((k): k is Kontakt => !!k);
   const firmaId = idOk(e.firmaId) && ctx.firmen.some(f => f.id === e.firmaId) ? e.firmaId! : personen.map(k => k.firmaId).find(id => id && ctx.firmen.some(f => f.id === id));
@@ -74,7 +74,7 @@ export function dealBauen(e: DealEingabe, ctx: { kontakte: Kontakt[]; firmen: { 
     ...(QUELLEN.includes(e.quelle as Quelle) ? { quelle: e.quelle as Quelle } : {}), ...(e.quelleBezug && idOk(e.quelleBezug) ? { quelleBezug: e.quelleBezug } : {}),
     ...(tagOk(e.erwartetAm) ? { erwartetAm: tagOk(e.erwartetAm) } : {}),
     gesellschaft: GES.includes(e.gesellschaft as Gesellschaft) ? (e.gesellschaft as Gesellschaft) : 'offen', besitzer,
-    angelegt: ctx.jetzt, geaendert: ctx.jetzt, geaendertVon: ctx.person, letzteAktivitaet: ctx.jetzt.slice(0, 10),
+    angelegt: ctx.jetzt, geaendert: ctx.jetzt, geaendertVon: ctx.person, letzteAktivitaet: tagVon(ctx.jetzt),
     ...(String(e.notiz ?? '').trim() ? { notiz: String(e.notiz).trim().slice(0, 3000) } : {}),
   };
   return { ok: true, chance, ...(zeile ? { leadId: zeile.id } : {}), text: `Deal „${chance.titel}“ steht in der Pipeline (Stufe ${stufe === 'qualifiziert' ? 'SQL' : stufe}).` };
@@ -96,7 +96,7 @@ export async function dealAnlegen(e: DealEingabe, person: string, jetzt = new Da
   // Prüfen (Dublette!) und Schreiben in EINER Schreibsperre — zwei gleichzeitige Anlagen (ZOE + Browser) ergeben sonst zwei offene Deals (Prüfbericht 27.09., Punkt 18).
   let r: DealErgebnis | null = null;
   await aendereCrm(x => {
-    r = dealBauen(e, { kontakte, firmen: x.firmen, chancen: x.chancen, leadZeilen: leads(kontakte, x), person, jetzt });
+    r = dealBauen(e, { kontakte, firmen: x.firmen, chancen: x.chancen, leadZeilen: leads(kontakte, x, tagVon(jetzt)), person, jetzt });
     if (!r.ok) return x;
     const c = r.chance;
     // Ebene 1 → 2: der Lead der Firma ist jetzt SQL — mit Verweis auf den Deal, in derselben Mutation.
@@ -108,7 +108,7 @@ export async function dealAnlegen(e: DealEingabe, person: string, jetzt = new Da
   const c = ergebnis.chance;
   // Person ohne Firma: der Lead hängt an ihr (anderer Bestand).
   if (!c.firmaId && c.kontaktIds[0]) {
-    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === c.kontaktIds[0] && !k.firmaId ? { ...k, lead: leadWirdSql(k.lead, c, jetzt, person), geaendertAm: localDay(new Date(jetzt)) } : k)) }));
+    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === c.kontaktIds[0] && !k.firmaId ? { ...k, lead: leadWirdSql(k.lead, c, jetzt, person), geaendertAm: tagVon(jetzt) } : k)) }));
   }
   return ergebnis;
 }

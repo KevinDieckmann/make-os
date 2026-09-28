@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 
+import { localDay } from '@/lib/zeit';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +34,7 @@ interface Datei { meetings: Meeting[] }
 
 const GRENZE = 200;
 const text = (v: unknown, n = 200) => String(v ?? '').trim().slice(0, n);
-const tag = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : new Date().toISOString().slice(0, 10));
+const tag = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : localDay());
 
 function sauber(m: Partial<Meeting>, i: number): Meeting | null {
   const titel = text(m.titel, 160);
