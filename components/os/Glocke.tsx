@@ -14,7 +14,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, type LucideIcon } from 'lucide-react';
+import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { vorZeit, type GespeicherteArt, type Meldung, type MeldungenSicht } from '@/lib/meldungen/regeln';
 
@@ -78,6 +78,7 @@ const ART: Record<GespeicherteArt, { Icon: LucideIcon; label: string; farbe: str
   erwaehnung: { Icon: AtSign, label: 'Erwähnung', farbe: C.aktiv },
   faellig: { Icon: Clock, label: 'Fällig', farbe: C.achtung },
   ueberfaellig: { Icon: AlertTriangle, label: 'Überfällig', farbe: C.kritisch },
+  zoe: { Icon: Sparkles, label: 'ZOE', farbe: C.aktiv },
   sammel: { Icon: Layers, label: 'Weitere', farbe: C.inkDim },
 };
 

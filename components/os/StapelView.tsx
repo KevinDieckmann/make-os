@@ -14,7 +14,7 @@ import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zah
 import { WEG } from '@/lib/wege';
 import { markttraktion } from '@/lib/crm/adresse';
 
-interface Vorschlag { id: string; zeit: string; werkzeug: string; gruppe: string; titel: string; vorher?: string; nachher: string; eingabe: Record<string, unknown>; anlass?: string; status: 'offen' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen'; ergebnis?: string; grund?: string }
+interface Vorschlag { id: string; zeit: string; werkzeug: string; gruppe: string; titel: string; vorher?: string; nachher: string; eingabe: Record<string, unknown>; anlass?: string; status: 'offen' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen'; ergebnis?: string; grund?: string; /** Art mit Bezug (lib/zoe/stapel-arten.ts), z. B. „aufgabe“. */ bezug?: { art: string; id: string } }
 interface Auftrag { id: string; zeit: string; art: string; name: string; auftrag?: string; status: 'offen' | 'laeuft' | 'fertig' | 'fehler'; ergebnis?: string; fehler?: string }
 interface Fakt { id: string; tag: string; art: string; thema: string; satz: string }
 interface Kosten { heuteCent: number; summeCent: number; jeZweck: { zweck: string; cent: number; anzahl: number }[] }
@@ -123,6 +123,7 @@ export function StapelView() {
                         <span style={{ color: C.inkLeise }}>Werkzeug</span><span style={{ fontFamily: SCHRIFT.mono, fontSize: 12 }}>{v.werkzeug}</span>
                         <span style={{ color: C.inkLeise }}>seit</span><span>{her(v.zeit)}</span>
                       </div>
+                      {v.bezug?.art === 'aufgabe' && <AufgabeVorschlag v={v} />}
                       <input value={grund[v.id] ?? ''} onChange={e => setGrund(x => ({ ...x, [v.id]: e.target.value }))} placeholder="Grund fürs Ablehnen (optional) — ZOE lernt daraus" style={{ ...feld, marginTop: 12 }} />
                     </div>
                   )}
@@ -185,5 +186,19 @@ export function StapelView() {
         </Spalte>
       </Spalten>
     </Seite>
+  );
+}
+
+/** Art „aufgabe“ (Paket C4): was ZOE an der Aufgabe übernehmen würde — nur Text, Link zur Aufgabe. */
+function AufgabeVorschlag({ v }: { v: Vorschlag }) {
+  const e = v.eingabe;
+  const entwurf = typeof e.entwurf === 'string' ? e.entwurf : '';
+  const unter = Array.isArray(e.unteraufgaben) ? e.unteraufgaben.filter((x): x is string => typeof x === 'string') : [];
+  return (
+    <div style={{ marginTop: 12, display: 'grid', gap: 8, fontSize: TYP.bedien, color: C.inkDim }}>
+      {entwurf && <div style={{ whiteSpace: 'pre-wrap', background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, padding: '10px 12px', maxHeight: 240, overflowY: 'auto', lineHeight: 1.5 }}>{entwurf}</div>}
+      {unter.length > 0 && <ul style={{ margin: 0, paddingLeft: 18 }}>{unter.map(u => <li key={u}>{u}</li>)}</ul>}
+      <Link href={WEG.aufgabe(v.bezug!.id)} style={{ fontSize: 12.5, color: C.aktiv, textDecoration: 'none' }}>Aufgabe öffnen ›</Link>
+    </div>
   );
 }

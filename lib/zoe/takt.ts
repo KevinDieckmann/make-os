@@ -184,6 +184,16 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
     });
   }
 
+  // 2b) ZOE-Aufgaben (28.09., Paket C4) — einmal am Tag nach dem Morgenlauf, nur wenn etwas bei ZOE offen liegt.
+  //     Riegel = die Warteschlange selbst (wie beim Morgenlauf); der Lauf legt nur Vorschläge in den Stapel.
+  const zoeAufgabenHeute = (auftraege?.auftraege ?? []).some(a => a.name === 'zoe-aufgaben' && a.tag === heute && a.status !== 'fehler');
+  if (morgenHeute && !zoeAufgabenHeute) {
+    try {
+      const { zoeAufgabenFaellig } = await import('./aufgaben-lauf');
+      if (await zoeAufgabenFaellig(jetzt)) raus.push({ id: 'zoe-aufgaben', grund: 'Aufgaben liegen bei ZOE', auftrag: { art: 'agent', name: 'zoe-aufgaben', anlass: 'Takt: ZOE-Aufgaben' } });
+    } catch (err) { console.error('[MAKE OS] ZOE-Aufgaben-Takt übersprungen:', err); }
+  }
+
   // 3) Der Abendlauf — ab 18 Uhr, einmal. Kevins Vorgabe: gebündelt morgens
   //    UND abends. Der Morgen bereitet vor, der Abend räumt nach.
   const abendHeute = (auftraege?.auftraege ?? []).some(a =>

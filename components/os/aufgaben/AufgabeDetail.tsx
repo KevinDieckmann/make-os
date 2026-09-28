@@ -16,6 +16,7 @@ import { fokusFuerAufgabe } from '@/lib/zeitmessung/fokus-laufend';
 import type { Task, TasksState, AufgabeKommentar } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
 import type { AufgabenAktion } from '@/context/TasksContext';
+import { ZoeAufgabe } from './ZoeAufgabe';
 import { aufgabeAnlegen, projektAnlegen, listeAnlegen, projekteImSpace, spacesOderFest, umzugTeil, useCrmVerweise, neueKennung, ownerLabel, type Person } from './hilfe';
 import { WiederholungWahl } from './WiederholungWahl';
 import { wiederholungSetzen } from '@/lib/aufgaben/serie';
@@ -143,6 +144,8 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
             placeholder="+ Unteraufgabe (Enter)" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 12px', marginTop: 6 }} />
         </>
       )}
+
+      <ZoeAufgabe task={t} ich={ich} personen={personen} />
 
       <Kommentare task={t} ich={ich} personen={personen} aendern={aendern} />
 

@@ -16,6 +16,7 @@
 import { loadJson } from '@/lib/store/local-db';
 import { WERKZEUGE } from './werkzeuge';
 import { firmaAusAngabe, finanzOrtName, istGesellschaft } from '@/lib/einheiten';
+import { AUFGABEN_REGISTER } from './aufgaben-werkzeuge';
 
 export type Risiko = 'frei' | 'freigabe' | 'nie';
 
@@ -313,6 +314,8 @@ export const REGISTER: Record<string, Eintrag> = {
     gruppe: 'aufgaben-dateien', risiko: 'frei',
     vorschau: schlicht('Projekt-Datei lesen', i => `${text(i.datei, 40)}${i.teil ? ` · Teil ${text(i.teil, 4)}` : ''}`),
   },
+  // ZOE-Aufgaben (28.09., C4): lesen und übergeben frei; das Übernehmen ist KEIN Werkzeug (nur Stapel/Route).
+  ...AUFGABEN_REGISTER,
 
   // Freigabe — Geld, Ziele, Kompass. Wird zum Vorschlag im Stapel.
   // Haushaltsfinanzen (24.09.): lesen läuft durch, Ändern braucht die Freigabe.

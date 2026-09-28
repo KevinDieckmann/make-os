@@ -16,6 +16,7 @@ import { GRENZEN, UG_FIRMA, rechnungSchutz, sauberFile, type Rechnung as FpRechn
 import { firmaAusAngabe, finanzOrtName, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 import type { FaktArt } from './gedaechtnis';
 import { projektUnterlagen, dateiLesen } from './aufgaben-unterlagen';
+import { AUFGABEN_WERKZEUGE } from './aufgaben-werkzeuge';
 
 // ── ZOE plant SELBST: Block in den Wochenplan legen (Kevins Ansage:
 // „dass da auch drin geplant werden kann"). Interne Planung, frei verschiebbar
@@ -1020,4 +1021,6 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: Lauf }> = {
   // Projekt- und Aufgaben-Dateien lesen (28.09., C2 — Kevins Wahl): nur im Haushalt, nur die Aufgaben-Ablage, gekapselt.
   projekt_unterlagen: { gruppe: 'aufgaben-dateien', lauf: nurImHaushalt(projektUnterlagen) },
   datei_lesen: { gruppe: 'aufgaben-dateien', lauf: nurImHaushalt(dateiLesen) },
+  // ZOE-Aufgaben (28.09., C4): meine_aufgaben, aufgabe_an_zoe — prüfen den Haushalt selbst (lib/zoe/aufgaben-werkzeuge.ts).
+  ...AUFGABEN_WERKZEUGE,
 };

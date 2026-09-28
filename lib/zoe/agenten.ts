@@ -15,7 +15,7 @@ export const AUSFUEHRBAR = [
   'head-sales', 'head-marketing', 'head-event',
   // Systemläufe: kein Fach-Agent, sondern der Takt selbst. Sie stehen hier,
   // damit der Arbeiter sie wie alles andere aus der Warteschlange holt.
-  'tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi', 'konsolidierung', 'loeschfristen',
+  'tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi', 'konsolidierung', 'loeschfristen', 'zoe-aufgaben',
 ] as const;
 export type Ausfuehrbar = typeof AUSFUEHRBAR[number];
 
@@ -52,6 +52,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
   markttraktion: 'Der Markttraktion-Takt — schickt Kevin und Malin werktags morgens, was in der Markttraktion bei ihnen liegt, und freitags das Wochen-Scoreboard aufs Handy (auftrag = morgen | woche, optional person:kevin|malin — schickt sofort; leer = was fällig ist)',
   hoi: 'Der Head of IT — Lagebild aus Server, App, Sicherheit und Außenblick; ohne KI (auftrag = bericht | pruefen)',
   konsolidierung: 'Die nächtliche Brain-Konsolidierung — verdichtet Fakten, Log und Protokolle des Tages zu Vorschlägen in der Brain-Inbox (auftrag = jetzt erzwingt)',
+  'zoe-aufgaben': 'ZOE bereitet die Aufgaben vor, die an sie gegeben wurden — nur Vorschläge in den Stapel, übernommen wird erst nach Freigabe (mit Person: nur deren Aufträge)',
   loeschfristen: 'Der Löschfristen-Lauf (Datenschutz, einmal am Tag) — Kontakte über der Frist nur als Aufgabe (nie automatisch löschen), technische Bestände nach Frist bereinigen; ohne KI (auftrag = jetzt erzwingt)',
 };
 
@@ -63,7 +64,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
  * eigenen Kopie. Eine zweite Liste hätte genau einen Zweck: irgendwann von
  * dieser abzuweichen.
  */
-export const SYSTEM_LAEUFE = ['tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi', 'konsolidierung', 'loeschfristen'] as const;
+export const SYSTEM_LAEUFE = ['tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi', 'konsolidierung', 'loeschfristen', 'zoe-aufgaben'] as const;
 const SYSTEM = new Set<string>(SYSTEM_LAEUFE);
 
 const kuerze = (t: unknown, n = 1600) => String(t ?? '').slice(0, n);
@@ -355,6 +356,14 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
         const { loeschfristenLauf } = await import('@/lib/crm/loeschfristen-lauf');
         const r = await loeschfristenLauf(new Date(), auftrag === 'jetzt');
         return r.ok ? gut(`LÖSCHFRISTEN${r.uebersprungen ? ' (heute schon gelaufen)' : ''}: ${r.text}`) : fehl(`Löschfristen: ${r.text}`);
+      }
+      case 'zoe-aufgaben': {
+        // Paket C4: ZOE bereitet ihre Aufgaben vor — nur Vorschläge (Stapel), nie Übernahme. Mit Person nur deren Aufträge.
+        const { zoeAufgabenLauf } = await import('./aufgaben-lauf');
+        const r = await zoeAufgabenLauf({ person: person ?? null });
+        if (!r.ok) return fehl(`ZOE-Aufgaben: ${kuerze(r.uebersprungen.map(u => u.grund).join(' · '), 200)}`);
+        if (r.ohneKi) return gut(`ZOE-AUFGABEN: nichts vorbereitet (${r.ohneKi}); ${r.rest} warten.`);
+        return gut(`ZOE-AUFGABEN: ${r.bearbeitet.length} vorbereitet (warten auf Freigabe)${r.uebersprungen.length ? `, ${r.uebersprungen.length} übersprungen` : ''}${r.rest ? `, ${r.rest} noch offen` : ''}.`);
       }
       case 'selbstbild': {
         const d = await post('/api/zoe/selbstbild', {}, 120_000);

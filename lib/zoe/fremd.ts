@@ -14,6 +14,8 @@ export const FREMD_WERKZEUGE: Record<string, string> = {
   frag_gedaechtnis: 'gedaechtnis',
   // 28.09. (C2): Projekt-/Aufgaben-Dateien und Notizen — kapseln selbst (SELBST_GEKAPSELT).
   projekt_unterlagen: 'projekt-unterlagen', datei_lesen: 'projekt-unterlagen',
+  // 28.09. (C4): Titel der eigenen ZOE-Aufgaben.
+  meine_aufgaben: 'aufgaben',
 };
 
 /**

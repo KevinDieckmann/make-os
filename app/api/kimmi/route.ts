@@ -26,6 +26,7 @@ import { GESUNDHEIT_KENNZAHLEN } from '@/lib/gesundheit/index';
 import { modellSchranke, zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { FREMD_WERKZEUGE, FREMD_AGENTEN, SELBST_GEKAPSELT } from '@/lib/zoe/fremd';
 import { AUFGABEN_DATEI_WERKZEUGE } from '@/lib/zoe/aufgaben-unterlagen';
+import { AUFGABEN_WERKZEUG_DEFS } from '@/lib/zoe/aufgaben-werkzeuge';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -543,6 +544,8 @@ export async function POST(req: Request) {
         }, required: ['datei'] },
       },
     );
+    // ZOE-Aufgaben (28.09., C4): was bei ZOE liegt, und „gib das an dich“ — nur im Haushalt des Inhabers.
+    if (crmErlaubt) tools.push(...AUFGABEN_WERKZEUG_DEFS);
     // Markttraktion nur im Haushalt des Inhabers (28.09., K1) — siehe `crmErlaubt` oben.
     if (crmErlaubt) tools.push(
       {

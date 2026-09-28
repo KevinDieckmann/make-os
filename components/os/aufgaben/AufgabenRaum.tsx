@@ -27,6 +27,7 @@ import { SchnellAnlegen } from './SchnellAnlegen';
 import { AufgabeDetail } from './AufgabeDetail';
 import { StatusVerwalten } from './StatusVerwalten';
 import { StatusBoard } from './StatusBoard';
+import { ZoeAufgabenSicht } from './ZoeAufgabe';
 import { SerienZeichen } from './WiederholungWahl';
 import { ListeSerieKnopf } from './SerienListeEinstellen';
 import { VorlagenKnopf } from './VorlagenDialog';
@@ -116,7 +117,7 @@ export function AufgabenRaum() {
   const qBereich = params.get('space');
   const qRaum = params.get('r');
   const qProjekt = params.get('p');
-  const ansicht = params.get('ansicht') === 'board' ? 'board' : 'liste';
+  const ansicht = params.get('ansicht') === 'board' ? 'board' : params.get('ansicht') === 'zoe' ? 'zoe' : 'liste';
   const bereich: 'privat' | 'business' = qBereich === 'privat' || qBereich === 'business' ? qBereich
     : istSpaceId(qRaum) ? bereichVonSpace(qRaum)
       : offen?.spaceId ? bereichVonSpace(offen.spaceId) : bereichGemerkt;
@@ -313,7 +314,7 @@ export function AufgabenRaum() {
   return (
     <Seite titel={bereich === 'privat' ? 'Aufgaben · Privat' : `Aufgaben · ${raum.label}`} rechts={
       <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Segmente liste={[{ id: 'liste', label: 'Liste' }, { id: 'board', label: 'Board' }]} aktiv={ansicht} onWahl={a => gehe({ ansicht: a === 'board' ? 'board' : null })} />
+        <Segmente liste={[{ id: 'liste', label: 'Liste' }, { id: 'board', label: 'Board' }, { id: 'zoe', label: 'ZOE' }]} aktiv={ansicht} onWahl={a => gehe({ ansicht: a === 'board' || a === 'zoe' ? a : null })} />
         <Link href={bereich === 'privat' ? '/os/aufgaben/board?space=privat' : '/os/aufgaben/board?space=business'} style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Zeitstrahl ›</Link>
       </span>
     }>
@@ -326,6 +327,12 @@ export function AufgabenRaum() {
           {offen && <div style={{ marginBottom: 14 }}>{detail(offen)}</div>}
           <StatusBoard state={state} dispatch={dispatch} spaceId={raumId} aufgaben={imRaum} personen={personen} heute={heute} offenId={offenId} onOeffnen={id => setOffenId(offenId === id ? null : id)} />
           {statusZeigen && <div style={{ marginTop: 14 }}><StatusVerwalten state={state} dispatch={dispatch} spaceId={raumId} spaceLabel={raum.label} /></div>}
+        </>
+      )}
+      {ready && ansicht === 'zoe' && (
+        <>
+          {offen && <div style={{ marginBottom: 14 }}>{detail(offen)}</div>}
+          <ZoeAufgabenSicht state={state} personen={personen} ich={ich} offenId={offenId} onOeffnen={id => setOffenId(offenId === id ? null : id)} />
         </>
       )}
       {ready && ansicht === 'liste' && (breit ? (

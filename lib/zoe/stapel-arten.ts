@@ -22,6 +22,8 @@ export interface StapelArtFreigabe {
 }
 
 const ARTEN: Partial<Record<StapelArt, () => Promise<StapelArtFreigabe>>> = {
+  // Paket C4: ZOE hat eine Aufgabe vorbereitet — übernehmen über den Aufgaben-Schreibweg (lib/zoe/aufgaben-werkzeuge.ts).
+  aufgabe: async () => (await import('./aufgaben-werkzeuge')).AUFGABE_STAPEL_ART,
 };
 
 /** Die Freigabe der Art dieses Vorschlags — `null` für gewöhnliche Werkzeug-Vorschläge (ohne Bezug). */
