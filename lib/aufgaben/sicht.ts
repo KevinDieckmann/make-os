@@ -2,13 +2,15 @@
 // Leichtgewichtig (nur Bestand + reine Regeln), damit jeder Leser es einbinden kann, ohne den ganzen Schreibweg
 // (Meldungen, CRM, Konten) mitzuziehen. Zwei Wege:
 //   · `ladeAufgaben`     — übernommen (Space, Unteraufgaben, Sonstige …) MIT Papierkorb: Schreibwege, Aufgaben-Seite.
-//   · `ladeAufgabenSicht` — übernommen OHNE Papierkorb: ALLE Leser (Listen, Heute, Glocke, Kalender, Board, Indizes, ZOE).
+//   · `ladeAufgabenSicht(person)` — übernommen OHNE Papierkorb und durch den Sichtfilter „nur ich“ (29.09.): ALLE Leser
+//     (Listen, Heute, Glocke, Kalender, Board, Indizes, ZOE, Brain, Suche).
 // Nie `loadJson('tasks')` roh lesen — dort fehlt die Übernahme, und der Papierkorb stünde mitten in den Listen.
 // Ausnahmen mit Grund: Art. 15/17 (lib/crm/person-bestaende.ts — auch der Papierkorb ist personenbezogen), die
 // Verbindungsprüfung (lib/crm/verbindungen-laden.ts — Dateien an Papierkorb-Einträgen sind nicht „tot“) und Server-
 // Schreiber, die in der Sperre anhängen.
 
 import { loadJson } from '@/lib/store/local-db';
+import { ladeKonten } from '@/lib/zugang/konten';
 import type { Task, TasksState } from '@/types/tasks';
 import { uebernehmen } from './struktur';
 import { aufgabenSicht } from './papierkorb';
@@ -53,13 +55,43 @@ export async function orgZuordnung(): Promise<Record<string, string>> {
   return f?.orgs && typeof f.orgs === 'object' ? f.orgs : {};
 }
 
-/** Den Bestand lesen — übernommen (Space, Unteraufgaben …), noch nicht gespeichert. MIT Papierkorb (Schreibwege, Aufgaben-Seite). */
+/**
+ * Personen des Haushalts des Inhabers (Speichername + Anzeigename), der Inhaber zuerst — für „eine Verantwortliche“
+ * (Prüfung + Auflösen von „both“) und Meldungen. Ohne Konten: leer (dann wird nichts umgewandelt und nichts geprüft).
+ */
+export async function haushaltsPersonen(): Promise<{ speicher: string; name: string }[]> {
+  const { konten } = await ladeKonten();
+  const inhaber = konten.find(k => k.rolle === 'inhaber');
+  if (!inhaber) return [];
+  return konten
+    .filter(k => k.speicher === inhaber.speicher || (!!inhaber.haushalt && k.haushalt === inhaber.haushalt))
+    .sort((a, b) => Number(b.rolle === 'inhaber') - Number(a.rolle === 'inhaber'))
+    .map(k => ({ speicher: k.speicher, name: k.name }));
+}
+/** Nur die Speichernamen (Inhaber zuerst). */
+export const haushaltsSpeicher = async (): Promise<string[]> => (await haushaltsPersonen()).map(p => p.speicher);
+
+/**
+ * Den Bestand lesen — übernommen (Space, Unteraufgaben, „both“ aufgelöst …), noch nicht gespeichert. MIT Papierkorb und
+ * OHNE Sichtfilter: nur Schreibwege in der Sperre und Server-Teile, die selbst je Person filtern.
+ */
 export async function ladeAufgaben(orgs?: Record<string, string>): Promise<TasksState> {
   const roh = await loadJson<TasksState>(AUFGABEN_BESTAND_NAME);
-  return uebernehmen(alsStand(roh), orgs ?? await orgZuordnung()).state;
+  return uebernehmen(alsStand(roh), orgs ?? await orgZuordnung(), await haushaltsSpeicher()).state;
 }
 
-/** Die Sicht für alle LESER: übernommen und OHNE Papierkorb. */
-export async function ladeAufgabenSicht(orgs?: Record<string, string>): Promise<TasksState> {
+/**
+ * Die Sicht für alle LESER: übernommen, OHNE Papierkorb und durch den Sichtfilter „nur ich“ der Person (29.09.).
+ * `person` ist Pflicht: `null` = Systemlauf → keine „nur ich“-Aufgabe. So kann kein Leser den Filter vergessen.
+ */
+export async function ladeAufgabenSicht(person: string | null, orgs?: Record<string, string>): Promise<TasksState> {
+  return sichtFuer(aufgabenSicht(await ladeAufgaben(orgs)), person);
+}
+
+/**
+ * Ohne Papierkorb, aber OHNE Sichtfilter — nur für Systemläufe, die je Aufgabe selbst mit `darfSehen` filtern (z. B. der
+ * ZOE-Lauf im Namen der jeweiligen Auftraggeberin). Nie an eine Person oder ein Modell weitergeben, ohne zu filtern.
+ */
+export async function ladeAufgabenUngefiltert(orgs?: Record<string, string>): Promise<TasksState> {
   return aufgabenSicht(await ladeAufgaben(orgs));
 }

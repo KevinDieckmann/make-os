@@ -5,6 +5,7 @@
 // Einstellungen, das Abhaken und — N Tage vor jeder Frist — eine Aufgabe.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
 import { nurBusiness, type Rechnung } from '@/lib/make-one/liquiditaet';
 import { lesen, type MalinExport } from '@/lib/make-one/grundlage';
 import { ladeHaushalt, patchen } from '@/lib/finanzen/haushalt/speicher';
@@ -164,8 +165,6 @@ export async function steuernStand(heute = localDay()) {
   };
 }
 
-interface Aufgabe { id: string; title: string; description?: string; status: string; priority: string; assignee?: string; tags?: string[]; subTasks?: unknown[]; dependencies?: unknown[]; sortOrder?: number; createdAt?: string; updatedAt?: string; dueDate?: string; space?: 'privat' | 'business'; einheit?: string }
-
 /** Business-Einheit einer Steuer-Aufgabe aus ihrer Kennung `steuer-<kdc|kdv|privat>-…` (27.09.) — privat hat keine. */
 export const steuerEinheit = (aufgabeId: string): string | undefined => einheitAusGesellschaft(aufgabeId.replace(/^steuer-/, '').split('-')[0]);
 
@@ -181,28 +180,32 @@ export async function steuerAufgabenAbgleichen(f: Frist[], heute = localDay()): 
   const erledigtIds = new Set(f.filter(x => x.erledigt).map(x => `steuer-${x.id}`));
   const jetzt = new Date().toISOString();
   let neu = 0, erledigt = 0;
-  await updateJson<{ tasks: Aufgabe[] }>('tasks', cur => {
-    const t = cur ?? { tasks: [] };
-    const tasks = (t.tasks ?? []).map(roh => {
-      if (!roh.id.startsWith('steuer-')) return roh;
-      // Ältere Steuer-Aufgaben bekommen ihre Einheit nachgetragen (Selbstständigkeit/KD Ventures) — ohne „geändert“-Stempel.
-      const e = roh.einheit ? undefined : steuerEinheit(roh.id);
-      const a: Aufgabe = e ? { ...roh, space: 'business', einheit: e } : roh;
-      if (erledigtIds.has(a.id) && a.status !== 'done') { erledigt++; return { ...a, status: 'done', updatedAt: jetzt }; }
-      dran.delete(a.id);
-      return a;
-    });
-    for (const [id, x] of Array.from(dran.entries())) {
+  // Über den Schreibweg (29.09., Paket T1 #12): `completedAt`, Verlauf „durch System“, Serien, Protokoll — in EINER Sperre.
+  await systemAufgabenAendern(stand => {
+    neu = 0; erledigt = 0;
+    const offen = new Map(dran);
+    const teile: { id: string; felder: Record<string, unknown> }[] = [];
+    for (const a of stand.tasks) {
+      if (!a.id.startsWith('steuer-')) continue;
+      // Ältere Steuer-Aufgaben einer Gesellschaft, die im Privat-Space gelandet sind, kommen in ihren Space.
+      const g = a.id.replace(/^steuer-/, '').split('-')[0];
+      const felder: Record<string, unknown> = {};
+      if (istGesellschaft(g) && a.spaceId === 'privat') felder.spaceId = g;
+      if (erledigtIds.has(a.id) && a.status !== 'done' && a.status !== 'cancelled') { erledigt++; felder.status = 'done'; }
+      if (Object.keys(felder).length) teile.push({ id: a.id, felder });
+      offen.delete(a.id);
+    }
+    const neue = Array.from(offen.entries()).map(([id, x]) => {
       neu++;
-      tasks.push({
+      return {
         id, title: `${finanzOrtName(x.einheit)}: ${x.titel}`.slice(0, 200),
         description: `Steuerfrist ${x.datum.slice(8, 10)}.${x.datum.slice(5, 7)}.${x.datum.slice(0, 4)} — ${x.hinweis}. Abhaken unter Zahlen → Steuern. ${HINWEIS}`,
         status: 'todo', priority: x.tage <= 3 ? 'high' : 'medium', assignee: 'kevin',
         tags: ['steuern', ...(x.einheit === 'privat' ? ['haushalt'] : [])], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, dueDate: x.datum,
         ...(steuerEinheit(id) ? { space: 'business' as const, einheit: steuerEinheit(id) } : {}),
-      });
-    }
-    return { ...t, tasks };
-  });
+      };
+    });
+    return { neu: neue, teile };
+  }, { jetzt });
   return { neu, erledigt };
 }

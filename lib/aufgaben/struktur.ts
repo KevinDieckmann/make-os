@@ -18,6 +18,8 @@ import { EINHEIT_FARBE } from './einheit';
 import { orgVon } from '@/lib/make-one/organisation-data';
 import { spaceVonAufgabe, type SpaceId } from '@/lib/make-one/space-regeln';
 import { abhaengigAngleichen } from './abhaengig';
+import { beideAufloesen, anlegerinVon } from './zustaendig';
+import { berlinerTag, istTag } from './wiederholung';
 
 // ── Spaces ─────────────────────────────────────────────────────────────────
 
@@ -196,7 +198,18 @@ const kennungTeil = (s: string) => s.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 30)
 /** Kennung der aus `subTasks[]` übernommenen Unteraufgabe — stabil, damit die Übernahme idempotent ist. */
 export const unteraufgabeId = (taskId: string, subId: string): string => `${taskId.slice(0, 48)}--${kennungTeil(subId)}`.slice(0, 80);
 
-export interface UebernahmeErgebnis { state: TasksState; geaendert: boolean }
+export interface UebernahmeErgebnis {
+  state: TasksState; geaendert: boolean;
+  /** „both“ ohne bekannte Anlegerin/Schreiberin — die erste Person des Haushalts wurde verantwortlich (Hinweis-Liste, 29.09.). */
+  geraten: string[];
+}
+
+/** Deadline als Zeitstempel aus alten Ständen („2026-10-01T23:30:00.000Z“) → Berliner Tag (29.09., #14). Sonst unverändert. */
+export function deadlineAlsTag(d: string | undefined): string | undefined {
+  if (!d || istTag(d)) return d;
+  if (/^\d{4}-\d{2}-\d{2}T/.test(d)) { const t = new Date(d); if (!Number.isNaN(t.getTime())) return berlinerTag(t); }
+  return d;
+}
 
 /**
  * Den Bestand in das neue Modell bringen — idempotent, nie Verlust:
@@ -211,9 +224,13 @@ export interface UebernahmeErgebnis { state: TasksState; geaendert: boolean }
  *  7. (28.09. spät) Gruppen/Vorlagen sind Listen im Bestand; eine Liste mit Gruppe eines anderen Projekts (oder einer
  *     gelöschten) steht wieder direkt im Projekt; `abhaengigVon` führt, `dependencies` wird daraus abgeleitet,
  *     Verweise auf nicht mehr vorhandene Aufgaben fallen weg.
+ *  8. (29.09., Paket T1) Mit `personen` (Speichernamen des Haushalts): „both“ → eine Verantwortliche + Beteiligte
+ *     (lib/aufgaben/zustaendig.ts, Status bleibt), fehlende `angelegtVon` aus dem Verlauf „angelegt“; Deadlines als
+ *     Zeitstempel → Berliner Tag. Ohne `personen` (reine Leser im Browser, Tests) bleibt „both“ stehen.
  */
-export function uebernehmen(roh: TasksState, orgs: Record<string, string> = {}): UebernahmeErgebnis {
+export function uebernehmen(roh: TasksState, orgs: Record<string, string> = {}, personen: readonly string[] = []): UebernahmeErgebnis {
   let geaendert = false;
+  const geraten: string[] = [];
   const projects = (Array.isArray(roh.projects) ? roh.projects : []).map(p => {
     if (istSpaceId(p.spaceId)) return p;
     geaendert = true;
@@ -293,6 +310,14 @@ export function uebernehmen(roh: TasksState, orgs: Record<string, string> = {}):
     }
     const bereich = bereichVonSpace(spaceId);
     setze({ space: bereich, einheit: einheitFuer(spaceId, t.einheit) });
+    // Paket T1 (29.09.): Deadline als Tag, Anlegerin aus dem Verlauf, „both“ auflösen.
+    const tag = deadlineAlsTag(t.dueDate);
+    if (tag !== t.dueDate) setze({ dueDate: tag });
+    if (personen.length) {
+      if (!t.angelegtVon) { const a = anlegerinVon(t); if (a && personen.includes(a)) setze({ angelegtVon: a }); }
+      const b = beideAufloesen(t, personen);
+      if (b.geaendert) { setze({ assignee: b.task.assignee, beteiligte: b.task.beteiligte }); if (b.geraten) geraten.push(t.id); }
+    }
     // Serie (Paket C3): früher `vorlageId` „serie:<Anker>“ — jetzt `serieId`; die Herkunftsvorlage bleibt frei.
     if (t.vorlageId?.startsWith('serie:')) setze({ serieId: t.serieId ?? t.vorlageId.slice('serie:'.length), vorlageId: undefined });
     if (t.abhaengigVon?.length || t.dependencies?.length || !Array.isArray(t.dependencies)) {
@@ -304,12 +329,12 @@ export function uebernehmen(roh: TasksState, orgs: Record<string, string> = {}):
   const vorlagen = Array.isArray(roh.vorlagen) ? roh.vorlagen : [];
   const state: TasksState = { ...roh, projects, tasks, listen, statusEigen, gruppen, vorlagen };
   if (!Array.isArray(roh.listen) || !Array.isArray(roh.statusEigen) || !Array.isArray(roh.gruppen) || !Array.isArray(roh.vorlagen)) geaendert = true;
-  return { state, geaendert };
+  return { state, geaendert, geraten };
 }
 
 /** Eine einzelne Aufgabe gegen den Bestand ableiten (Schreibweg, neue Aufgaben) — dieselben Regeln wie `uebernehmen`. */
-export function aufgabeAbleiten(t: Task, state: TasksState, orgs: Record<string, string> = {}): Task {
-  const r = uebernehmen({ ...state, tasks: [...state.tasks.filter(x => x.id !== t.id), t] }, orgs);
+export function aufgabeAbleiten(t: Task, state: TasksState, orgs: Record<string, string> = {}, personen: readonly string[] = []): Task {
+  const r = uebernehmen({ ...state, tasks: [...state.tasks.filter(x => x.id !== t.id), t] }, orgs, personen);
   return r.state.tasks.find(x => x.id === t.id) ?? t;
 }
 
@@ -325,7 +350,8 @@ export interface BaumProjekt {
   /** Gruppen des Projekts in Reihenfolge (auch leere). */ gruppen: BaumGruppe[];
 }
 
-const nachReihe = (a: { sortOrder?: number; createdAt?: string }, b: { sortOrder?: number; createdAt?: string }) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || String(a.createdAt ?? '').localeCompare(String(b.createdAt ?? ''));
+/** Reihenfolge (sortOrder, createdAt, id) — die Kennung entscheidet zuletzt, nie die Array-Reihenfolge (#56, 29.09.). */
+export const nachReihe = (a: { sortOrder?: number; createdAt?: string; id?: string }, b: { sortOrder?: number; createdAt?: string; id?: string }) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || String(a.createdAt ?? '').localeCompare(String(b.createdAt ?? '')) || String(a.id ?? '').localeCompare(String(b.id ?? ''));
 
 /**
  * Der Baum eines Space: Projekte (eigene, dann fremde mit Aufgaben hier, zuletzt „Sonstige“) → Listen (in

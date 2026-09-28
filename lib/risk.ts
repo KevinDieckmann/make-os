@@ -24,7 +24,7 @@ export async function computeShields(today = localDay()): Promise<Shield[]> {
   const [fplan, fin, tasksF, msF, wplanF] = await Promise.all([
     loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string; firmaId?: string }[]; zahlungen: { status: string; betrag: number; faellig?: string; an: string }[]; uhrwerk?: { letztesMeeting: string | null } }>('finanzplan'),
     loadJson<FinanceState>('finance'),
-    ladeAufgabenSicht(),
+    ladeAufgabenSicht(null), // Systemsicht: ohne „nur ich“ (29.09.)
     loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; erledigt: boolean }[] }>('meilensteine'),
     loadJson<Record<string, { date: string; art: string }[]>>('wochenplan'),
   ]);

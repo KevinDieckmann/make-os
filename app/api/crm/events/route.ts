@@ -42,13 +42,12 @@ import { icsText, icsDateiname, checklisteAlsAufgaben, punktAendern, aufgabeAbgl
 import { hebtLead, planpostenAusEvent, planpostenId, liquiplanStand, type NachfassErgebnis } from '@/lib/crm/event-bruecke';
 import { leadHebenNachGespraech } from '@/lib/crm/lead-heben';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
+import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const ID = /^[a-z0-9][a-z0-9-]{1,63}$/;
-type Aufgabe = { id: string; status?: string; assignee?: string; dueDate?: string; title?: string } & Record<string, unknown>;
-type Aufgaben = { tasks?: Aufgabe[] } & Record<string, unknown>;
 type Liquiplan = { posten: Planposten[] };
 const NACHFASS: NachfassErgebnis[] = ['gespraech', 'termin', 'erledigt'];
 
@@ -166,18 +165,20 @@ export async function POST(req: Request) {
     let verknuepft: Record<string, string> = {};
     const jePerson: Record<string, number> = {};
     const erledigtDort = new Set<string>();
-    await updateJson<Aufgaben>('tasks', cur => {
-      const f: Aufgaben = cur ?? { projects: [], tasks: [] };
-      const tasks = [...(f.tasks ?? [])];
+    // Über den Schreibweg (29.09., Paket T1): Anlegerin, Verlauf „durch System“ im Auftrag der Person, Meldungen (gebündelt).
+    await systemAufgabenAendern(stand => {
+      const tasks = stand.tasks;
       const r = checklisteAlsAufgaben(e, new Set(tasks.map(t => t.id)), person, jetzt);
       angelegt = r.neu.length;
       verknuepft = r.verknuepft;
+      for (const k of Object.keys(jePerson)) delete jePerson[k];
       for (const a of r.neu) jePerson[a.assignee] = (jePerson[a.assignee] ?? 0) + 1;
       // Rückweg: in der Aufgabenliste erledigt → Punkt hier abhaken.
+      erledigtDort.clear();
       const status = new Map(tasks.map(t => [t.id, t.status]));
       for (const p of e.checkliste ?? []) if (!p.erledigt && p.aufgabeId && status.get(p.aufgabeId) === 'done') erledigtDort.add(p.id);
-      return r.neu.length ? { ...f, tasks: [...tasks, ...r.neu] } : f;
-    });
+      return { neu: r.neu as unknown as Record<string, unknown>[] };
+    }, { person, wer: { art: 'system', person }, jetzt });
     const zuVerknuepfen = Object.keys(verknuepft).length;
     if (zuVerknuepfen || erledigtDort.size) {
       await aendereCrm(bestand => ({
@@ -211,16 +212,14 @@ export async function POST(req: Request) {
     let aufgabe: 'mitgezogen' | 'unveraendert' | null = null;
     let hinweise: string[] = [];
     if (vorher?.aufgabeId && nachher) {
-      await updateJson<Aufgaben>('tasks', cur => {
-        const f: Aufgaben = cur ?? { projects: [], tasks: [] };
-        const tasks = f.tasks ?? [];
-        const t = tasks.find(x => x.id === vorher.aufgabeId);
+      await systemAufgabenAendern(stand => {
+        const t = stand.tasks.find(x => x.id === vorher.aufgabeId);
         const a = aufgabeAbgleichen(t, aus.ev, vorher, nachher);
         hinweise = a.hinweise;
         aufgabe = Object.keys(a.patch).length ? 'mitgezogen' : 'unveraendert';
-        if (!t || aufgabe === 'unveraendert') return f;
-        return { ...f, tasks: tasks.map(x => (x.id === t.id ? { ...x, ...a.patch, updatedAt: jetzt } : x)) };
-      });
+        if (!t || aufgabe === 'unveraendert') return {};
+        return { teile: [{ id: t.id, felder: a.patch }] };
+      }, { person, wer: { art: 'system', person }, jetzt });
     } else if (vorher?.aufgabeId && !nachher) hinweise = ['Die verknüpfte Aufgabe bleibt in der Aufgabenliste stehen.'];
     return NextResponse.json({ ok: true, punkt: nachher ?? null, aufgabe, hinweise });
   }
@@ -230,15 +229,11 @@ export async function POST(req: Request) {
     if (!p?.aufgabeId) return NextResponse.json({ ok: true, geaendert: false });
     const ziel = b.erledigt === true ? 'done' : 'todo';
     let geaendert = false;
-    await updateJson<Aufgaben>('tasks', cur => {
-      const f: Aufgaben = cur ?? { projects: [], tasks: [] };
-      const tasks = (f.tasks ?? []).map(t => {
-        if (t.id !== p.aufgabeId || t.status === ziel || (ziel === 'todo' && t.status !== 'done')) return t;
-        geaendert = true;
-        return { ...t, status: ziel, updatedAt: jetzt };
-      });
-      return geaendert ? { ...f, tasks } : f;
-    });
+    await systemAufgabenAendern(stand => {
+      const t = stand.tasks.find(x => x.id === p.aufgabeId);
+      geaendert = !!t && t.status !== ziel && !(ziel === 'todo' && t.status !== 'done');
+      return geaendert && t ? { teile: [{ id: t.id, felder: { status: ziel } }] } : {};
+    }, { person, wer: { art: 'system', person }, jetzt });
     return NextResponse.json({ ok: true, geaendert });
   }
 

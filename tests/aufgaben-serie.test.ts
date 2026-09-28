@@ -309,7 +309,7 @@ beforeAll(async () => {
 });
 
 describe('Schreibweg: Erledigen erzeugt die nächste Instanz', () => {
-  it('PATCH erledigt → Instanz mit Verlauf „angelegt“ durch System, Antwort `serien`; wieder öffnen + erledigen → keine zweite', async () => {
+  it('PATCH erledigt → Instanz mit Verlauf „angelegt“ durch System, Antwort `serien`; wieder öffnen nimmt die unberührte Instanz zurück (T1, #12) → erledigen legt sie neu an, genau eine offene', async () => {
     const heute = berlinerTag();
     await db.saveJson('tasks', { projects: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [], tasks: [aufgabe('r1', { dueDate: heute, wiederholung: { regel: 'taeglich' } })] });
     const zeile = () => lesen().then(s => s.state.tasks.find(t => t.id === 'r1')!);
@@ -324,9 +324,11 @@ describe('Schreibweg: Erledigen erzeugt die nächste Instanz', () => {
     expect(inst.verlauf).toEqual([expect.objectContaining({ was: 'angelegt', von: 'kevin', durch: 'system' })]);
     const r2 = await zeile();
     await route.PATCH(anfrage(sitzung('kevin'), 'PATCH', { ops: [{ op: 'upsert', task: { ...r2, status: 'todo', completedAt: undefined }, stand: r2.stand }] }));
+    // Wieder offen: die gerade erzeugte, unberührte Folgeinstanz ist weg — nur r1 ist offen.
+    expect((await gespeichert()).tasks.filter(t => serieVon(t) === 'serie:r1' && t.status !== 'done').map(t => t.id)).toEqual(['r1']);
     const r3 = await zeile();
     const res2 = await route.PATCH(anfrage(sitzung('kevin'), 'PATCH', { ops: [{ op: 'upsert', task: { ...r3, status: 'done', completedAt: JETZT }, stand: r3.stand }] }));
-    expect(((await res2.json()) as { serien?: string[] }).serien).toBeUndefined();
+    expect(((await res2.json()) as { serien?: string[] }).serien).toEqual(d.serien);
     expect((await gespeichert()).tasks.filter(t => serieVon(t) === 'serie:r1' && t.status !== 'done')).toHaveLength(1);
   });
 });

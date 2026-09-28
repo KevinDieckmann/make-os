@@ -5,17 +5,18 @@
 // Dritte berichten (OKR), sie auslassen. Nur echte Haushalte — der Test-
 // Haushalt und Probeläufe schreiben nie in die echte Aufgabenliste.
 
-import { updateJson } from '@/lib/store/local-db';
+import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
+import { finanzOrtAus, istGesellschaft } from '@/lib/einheiten';
 import { ladeHaushalt } from './speicher';
 import { heuteBerlin } from './monat';
 
-interface Aufgabe {
-  id: string; title: string; description?: string; status: string; priority: string; assignee?: string;
-  tags?: string[]; subTasks?: unknown[]; dependencies?: unknown[]; sortOrder?: number; createdAt?: string; updatedAt?: string; dueDate?: string; projectId?: string;
-  /** Space (26.09.): Belege der Selbständigkeit/UG sind Business, private Belege Privat. */
-  space?: 'privat' | 'business';
-}
 const spaceVon = (einheit: string | undefined) => (einheit === 'privat' ? 'privat' : 'business') as 'privat' | 'business';
+/** Aufgaben-Space eines Belegs (29.09.): privat → Privat, eine Gesellschaft → ihr Space, sonst KD Ventures. */
+const spaceIdVon = (einheit: string | undefined): string => {
+  if (einheit === 'privat') return 'privat';
+  const g = finanzOrtAus(einheit);
+  return g && istGesellschaft(g) ? g : 'kdv';
+};
 
 export const istEchterHaushalt = (h: string) => h !== 'test' && !h.endsWith('-probe');
 
@@ -26,27 +27,37 @@ export async function belegAufgabenAbgleichen(haushalt: string): Promise<{ neu: 
   const jetzt = new Date().toISOString();
   const offen = new Map(h.belege.filter(b => b.art === 'beleg' && !b.erledigt).map(b => [`beleg-${b.id}`, b]));
   let neu = 0, erledigt = 0;
-  await updateJson<{ tasks: Aufgabe[]; projects?: unknown[] }>('tasks', cur => {
-    const f = cur ?? { tasks: [] };
-    const tasks = (f.tasks ?? []).map(t => {
-      if (!t.id.startsWith('beleg-') || !(t.tags ?? []).includes('haushalt')) return t;
-      const b = offen.get(t.id);
-      if (!b) { if (t.status !== 'done') { erledigt++; return { ...t, status: 'done', updatedAt: jetzt }; } return t; }
-      offen.delete(t.id);
+  // Über den Schreibweg (29.09., Paket T1 #12): `completedAt`, Verlauf „durch System“, Protokoll — in EINER Sperre.
+  await systemAufgabenAendern(stand => {
+    neu = 0; erledigt = 0;
+    const rest = new Map(offen);
+    const teile: { id: string; felder: Record<string, unknown> }[] = [];
+    for (const t of stand.tasks) {
+      if (!t.id.startsWith('beleg-') || !(t.tags ?? []).map(String).includes('haushalt')) continue;
+      const b = rest.get(t.id);
+      if (!b) { if (t.status !== 'done' && t.status !== 'cancelled') { erledigt++; teile.push({ id: t.id, felder: { status: 'done' } }); } continue; }
+      rest.delete(t.id);
       const titel = `Beleg nachreichen: ${b.bezeichnung}`.slice(0, 200);
-      const space = spaceVon(b.einheit);
-      return titel === t.title && (b.faellig_am ?? undefined) === t.dueDate && t.space === space ? t : { ...t, title: titel, dueDate: b.faellig_am ?? undefined, space, updatedAt: jetzt };
-    });
-    for (const [id, b] of Array.from(offen.entries())) {
+      // Nur gültige Tage (sonst lehnt der Schreibweg den ganzen Abgleich ab) — eine schiefe Frist bleibt, wie sie ist.
+      const faellig = b.faellig_am && /^\d{4}-\d{2}-\d{2}$/.test(b.faellig_am) ? b.faellig_am : t.dueDate;
+      const spaceId = spaceIdVon(b.einheit);
+      const felder: Record<string, unknown> = {};
+      if (titel !== t.title) felder.title = titel;
+      if ((faellig ?? '') !== (t.dueDate ?? '')) felder.dueDate = faellig ?? null;
+      // Privat ↔ Business: der Space entscheidet (die Übernahme leitet space/einheit daraus ab).
+      if ((spaceId === 'privat') !== (t.spaceId === 'privat')) felder.spaceId = spaceId;
+      if (Object.keys(felder).length) teile.push({ id: t.id, felder });
+    }
+    const neue = Array.from(rest.entries()).map(([id, b]) => {
       neu++;
       const wer = (b.verursacher ?? '').toLowerCase();
-      tasks.push({
+      return {
         id, title: `Beleg nachreichen: ${b.bezeichnung}`.slice(0, 200), description: 'Aus den Haushaltsfinanzen: dieser Beleg fehlt der Buchhaltung (sevdesk/Bank).',
         status: 'todo', priority: b.faellig_am && b.faellig_am < heute ? 'high' : 'medium', assignee: wer === 'malin' ? 'malin' : 'kevin',
-        tags: ['haushalt', 'beleg'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, space: spaceVon(b.einheit), ...(b.faellig_am ? { dueDate: b.faellig_am } : {}),
-      });
-    }
-    return { ...f, tasks };
-  });
+        tags: ['haushalt', 'beleg'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, space: spaceVon(b.einheit), spaceId: spaceIdVon(b.einheit), ...(b.faellig_am ? { dueDate: b.faellig_am } : {}),
+      };
+    });
+    return { neu: neue, teile };
+  }, { jetzt });
   return { neu, erledigt };
 }

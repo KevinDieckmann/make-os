@@ -25,7 +25,7 @@ export async function pruefeAlles(): Promise<Record<string, Befund>> {
     loadJson<{ kontakte?: unknown[] }>('netzwerk'),
     loadJson<{ events?: unknown[] }>('calendar-cache'),
     loadJson<{ messages?: unknown[]; nachrichten?: unknown[] }>('microsoft-inbox'),
-    ladeAufgabenSicht(),
+    ladeAufgabenSicht(null), // Systemsicht: ohne „nur ich“ (29.09.)
     loadJson<{ modus?: string; eigene?: Record<string, unknown> }>('kompass'),
     loadJson<{ fokus?: Record<string, string>; jahr?: unknown[] }>('ziele'),
     loadJson<{ zielUmsatz?: number; startMonat?: number }>('finance'),

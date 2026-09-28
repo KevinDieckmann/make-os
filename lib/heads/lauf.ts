@@ -16,6 +16,7 @@
 // 7. Bericht + Freigabe-Liste speichern. Nichts wird versendet.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { askText, extractJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent } from '@/lib/agent-config';
@@ -210,17 +211,17 @@ async function autoUebernehmen(head: HeadId, berichtId: string, person: string, 
   if (aufgaben.length) {
     // Business-Einheit aus dem Deal/Mandat dahinter (27.09.) — das CRM nur laden, wenn ein Vorschlag einen Bezug hat.
     const crm = aufgaben.some(p => p.v.chance_id || p.v.mandat_id) ? await ladeCrm().catch(() => null) : null;
-    await updateJson<{ tasks: Record<string, unknown>[] }>('tasks', cur => {
-      const f = cur ?? { tasks: [] };
-      const tasks = [...(f.tasks ?? [])];
+    // Über den Schreibweg (29.09., Paket T1): Anlegerin, Zeitstempel, Verlauf „durch System“ im Auftrag der Person, Meldungen.
+    await systemAufgabenAendern(stand => {
+      const neu: Record<string, unknown>[] = [];
       for (const { v } of aufgaben) {
         const bearbeiter = !v.fuer || v.fuer === BEIDE ? person : v.fuer;
         const t = aufgabeAus(v, HEAD_NAME[head], AGENT_ID[head], bearbeiter, jetzt, einheitAusBezug(crm, { chanceId: v.chance_id, mandatId: v.mandat_id }));
-        if (!tasks.some(x => x.id === t.id)) tasks.push(t);
+        if (!stand.tasks.some(x => x.id === t.id) && !neu.some(x => x.id === t.id)) neu.push(t);
         erledigt.set(v.id, { am: jetzt, wirkung: `Aufgabe für ${bearbeiter.charAt(0).toUpperCase() + bearbeiter.slice(1)}`, rueckgaengig: { art: 'aufgabe', aufgabeId: String(t.id) } });
       }
-      return { ...f, tasks };
-    });
+      return { neu };
+    }, { person, wer: { art: 'system', person }, jetzt });
   }
   if (!erledigt.size) return 0;
   await updateJson<HeadStand>(name, s => {

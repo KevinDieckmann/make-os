@@ -8,7 +8,7 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT, TIEF } from '@/lib/make-one/design';
 import { Karte, Leer, Punkt, Haken, prioFarbe } from '../schlank';
-import { kachelAufgaben, spaceStaende, type KachelArt, type SpaceStand } from '@/lib/aufgaben/uebersicht';
+import { kachelAufgaben, spaceStaende, wartetNoch, type KachelArt, type SpaceStand } from '@/lib/aufgaben/uebersicht';
 import { zoeAufgaben } from '@/lib/aufgaben/zoe';
 import type { AufgabenSpace } from '@/lib/aufgaben/struktur';
 import type { AufgabenAdresse } from '@/lib/aufgaben/adresse';
@@ -24,6 +24,8 @@ const KACHELN: { id: KachelArt; label: string; farbe: string; leer: string }[] =
   { id: 'meine', label: 'Meine offenen', farbe: C.aktiv, leer: 'Nichts offen für dich.' },
   { id: 'heute', label: 'Heute fällig', farbe: LEUCHT.achtung, leer: 'Heute ist nichts fällig.' },
   { id: 'ueberfaellig', label: 'Überfällig', farbe: LEUCHT.kritisch, leer: 'Nichts überfällig.' },
+  // Seit 29.09. (#36): wer noch auf eine andere Aufgabe wartet, ist nicht „überfällig“, sondern steht hier.
+  { id: 'wartet', label: 'Wartet auf andere', farbe: LEUCHT.achtung, leer: 'Nichts wartet auf eine andere Aufgabe.' },
   { id: 'freigabe', label: 'Wartet auf Freigabe', farbe: LEUCHT.agenten, leer: 'Nichts wartet — hier legt ZOE ab, was sie für euch vorbereitet hat.' },
 ];
 const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
@@ -85,7 +87,8 @@ export function AufgabenUeberblick({ state, dispatch, spaces, ich, heute, gehe, 
         <span style={{ color: C.ink, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
         <span style={{ color: C.inkLeise, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{spaceLabel(spaces, t.spaceId)} › {projektTitel(state, t.projectId)}</span>
       </button>
-      {t.dueDate && <span style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute ? LEUCHT.kritisch : t.dueDate === heute ? LEUCHT.achtung : C.inkLeise }}>{tagKurz(t.dueDate)}</span>}
+      {wartetNoch(t, tasks) && <span title="wartet noch auf eine andere Aufgabe" style={{ fontSize: 12, color: LEUCHT.achtung }}>wartet</span>}
+      {t.dueDate && <span style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute && !wartetNoch(t, tasks) ? LEUCHT.kritisch : t.dueDate === heute ? LEUCHT.achtung : C.inkLeise }}>{tagKurz(t.dueDate)}</span>}
     </div>
   );
   return (

@@ -38,7 +38,7 @@ export async function GET(req: Request) {
   const id = new URL(req.url).searchParams.get('id') ?? '';
   if (!id) return NextResponse.json({ ok: true, ki: kiDa() });
   if (!ID.test(id)) return NextResponse.json({ ok: false, error: 'Ungültige Kennung.' }, { status: 400 });
-  const t = (await ladeAufgabenSicht()).tasks.find(x => x.id === id);
+  const t = (await ladeAufgabenSicht(zugang.person)).tasks.find(x => x.id === id);
   if (!t) return NextResponse.json({ ok: false, error: 'Aufgabe nicht gefunden.' }, { status: 404 });
   const auftraggeberin = auftraggeberinVon(t);
   const darfEntscheiden = !!auftraggeberin && auftraggeberin === zugang.person;
@@ -93,7 +93,7 @@ export async function POST(req: Request) {
       return antwort(await vonZoeZurueck(id, zugang.person, { stand }));
     case 'freigeben':
     case 'ablehnen': {
-      const t = (await ladeAufgabenSicht()).tasks.find(x => x.id === id);
+      const t = (await ladeAufgabenSicht(zugang.person)).tasks.find(x => x.id === id);
       const stapelId = str(b.stapelId, 80) || t?.zoe?.stapelId;
       if (!t || !stapelId) return NextResponse.json({ ok: false, error: 'Kein Vorschlag an dieser Aufgabe.' }, { status: 404 });
       if (b.aktion === 'freigeben') {

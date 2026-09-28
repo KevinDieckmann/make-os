@@ -54,7 +54,8 @@ export async function POST(req: Request) {
   const agent = await resolveAgent('task');
   if (!agent.enabled) return NextResponse.json(disabledResponse(agent));
 
-  const f = await ladeAufgabenSicht();
+  // Delegations-Runde geht an ein Modell und an Dritte: nie „nur ich“-Aufgaben (Systemsicht, 29.09.).
+  const f = await ladeAufgabenSicht(null);
   const projekte = new Map((f?.projects ?? []).map(p => [p.id, p.category ?? '']));
   const offen = (f?.tasks ?? []).filter(t => t.status !== 'done' && t.assignee !== 'malin');
   // Fail-closed: nur business in den Prompt; joint (MAKE.One) separat — nur Malin.

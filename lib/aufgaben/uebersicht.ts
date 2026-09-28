@@ -1,37 +1,45 @@
 // ─── MAKE OS — Aufgaben-Überblick und Projekt-Fortschritt (rein, 28.09. spät) ─
 // Kevin (~22:30): „/os/aufgaben startet mit einem Überblick — oben Kacheln (meine offenen, heute fällig, überfällig,
 // wartet auf Freigabe), darunter je Privat, Firma, Mandant eine Karte mit offenen/fälligen Aufgaben und Projekten.“
-// Gezählt werden oberste Aufgaben UND Unteraufgaben (jede ist eine eigene Arbeit); erledigt zählt nicht.
+// Gezählt werden oberste Aufgaben UND Unteraufgaben (jede ist eine eigene Arbeit); erledigt und abgebrochen zählen nicht.
+// Seit 29.09. (Paket T1): „Meine“ = verantwortlich; eine Aufgabe, die noch auf eine andere wartet (`abhaengigVon`), ist
+// nicht „überfällig“, sondern „wartet“ (#36) — eigene Kachel-Art `wartet` und Zahl je Space.
 
 import type { Task, TasksState, Project } from '@/types/tasks';
-import { istSonstigeProjekt, sonstigeProjektId, type AufgabenSpace } from './struktur';
+import { istSonstigeProjekt, sonstigeProjektId, istOffen as offenStatus, type AufgabenSpace } from './struktur';
 import { wartetAuf } from './abhaengig';
 
-export type KachelArt = 'meine' | 'heute' | 'ueberfaellig' | 'freigabe';
+export type KachelArt = 'meine' | 'beteiligt' | 'heute' | 'ueberfaellig' | 'wartet' | 'freigabe';
 export interface ProjektStand { id: string; titel: string; farbe: string; offen: number; fertig: number; gesamt: number; ueberfaellig: number; heute: number; blockiert: number; naechste?: string }
-export interface SpaceStand { space: AufgabenSpace; offen: number; heute: number; ueberfaellig: number; projekte: ProjektStand[] }
+export interface SpaceStand { space: AufgabenSpace; offen: number; heute: number; ueberfaellig: number; /** Offen, aber wartet noch auf eine andere Aufgabe (29.09.). */ wartet: number; projekte: ProjektStand[] }
 
-const istOffen = (t: Task) => t.status !== 'done';
+const istOffen = (t: Task) => offenStatus(t);
 const meine = (t: Task, ich: string) => !!ich && (t.assignee === ich || t.assignee === 'both');
+const beteiligt = (t: Task, ich: string) => !!ich && (t.beteiligte ?? []).includes(ich);
+/** Wartet die Aufgabe noch auf eine andere (nicht erledigte)? */
+export const wartetNoch = (t: Task, alle: readonly Task[]): boolean => wartetAuf(t, alle).length > 0;
 
-/** Die Aufgaben einer Kachel (offen), nach Deadline. */
+/** Die Aufgaben einer Kachel (offen), nach Deadline — „überfällig“ ohne die, die noch warten (die stehen unter „wartet“). */
 export function kachelAufgaben(tasks: readonly Task[], art: KachelArt, ich: string, heute: string): Task[] {
   const l = tasks.filter(t => istOffen(t) && (
     art === 'meine' ? meine(t, ich)
-      : art === 'heute' ? t.dueDate?.slice(0, 10) === heute
-        : art === 'ueberfaellig' ? !!t.dueDate && t.dueDate.slice(0, 10) < heute
-          : t.zoe?.status === 'wartet_freigabe'));
-  return l.sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999') || a.title.localeCompare(b.title, 'de'));
+      : art === 'beteiligt' ? beteiligt(t, ich)
+        : art === 'heute' ? t.dueDate?.slice(0, 10) === heute
+          : art === 'ueberfaellig' ? !!t.dueDate && t.dueDate.slice(0, 10) < heute && !wartetNoch(t, tasks)
+            : art === 'wartet' ? wartetNoch(t, tasks)
+              : t.zoe?.status === 'wartet_freigabe'));
+  return l.sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999') || a.title.localeCompare(b.title, 'de') || a.id.localeCompare(b.id));
 }
 
 /** Stand eines Projekts: offen/erledigt, überfällig, heute, blockiert, nächste Deadline. */
 export function projektStand(state: TasksState, projekt: Pick<Project, 'id' | 'title' | 'color'>, heute: string): ProjektStand {
-  const alle = state.tasks.filter(t => t.projectId === projekt.id);
+  // Abgebrochene zählen weder als offen noch als fertig (29.09.).
+  const alle = state.tasks.filter(t => t.projectId === projekt.id && t.status !== 'cancelled');
   const offen = alle.filter(istOffen);
   const naechste = offen.map(t => t.dueDate?.slice(0, 10)).filter((d): d is string => !!d && d >= heute).sort()[0];
   return {
     id: projekt.id, titel: projekt.title, farbe: projekt.color, offen: offen.length, fertig: alle.length - offen.length, gesamt: alle.length,
-    ueberfaellig: offen.filter(t => !!t.dueDate && t.dueDate.slice(0, 10) < heute).length,
+    ueberfaellig: offen.filter(t => !!t.dueDate && t.dueDate.slice(0, 10) < heute && !wartetNoch(t, state.tasks)).length,
     heute: offen.filter(t => t.dueDate?.slice(0, 10) === heute).length,
     blockiert: offen.filter(t => wartetAuf(t, state.tasks).length > 0).length,
     ...(naechste ? { naechste } : {}),
@@ -50,7 +58,8 @@ export function spaceStaende(state: TasksState, spaces: readonly AufgabenSpace[]
     return {
       space, offen: im.length,
       heute: im.filter(t => t.dueDate?.slice(0, 10) === heute).length,
-      ueberfaellig: im.filter(t => !!t.dueDate && t.dueDate.slice(0, 10) < heute).length,
+      ueberfaellig: im.filter(t => !!t.dueDate && t.dueDate.slice(0, 10) < heute && !wartetNoch(t, state.tasks)).length,
+      wartet: im.filter(t => wartetNoch(t, state.tasks)).length,
       projekte,
     };
   });

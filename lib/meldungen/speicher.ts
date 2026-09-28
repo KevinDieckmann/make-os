@@ -60,8 +60,8 @@ export function meldungenStand(person: string): Promise<string> {
   return speicherStand([meldungenSpeicher(person), 'tasks']);
 }
 
-async function aufgabenLesen(): Promise<unknown[]> {
-  const s = await ladeAufgabenSicht();
+async function aufgabenLesen(person: string): Promise<unknown[]> {
+  const s = await ladeAufgabenSicht(person); // Sichtfilter „nur ich“ (29.09.)
   return Array.isArray(s?.tasks) ? s.tasks : [];
 }
 
@@ -75,7 +75,7 @@ function abgeleitet(bestand: MeldungenBestand, aufgaben: unknown[], person: stri
 /** Die Glocke einer Person: eigene Meldungen + fällig/überfällig von heute. */
 export async function meldungenSicht(person: string, jetzt: Date = new Date()): Promise<MeldungenSicht> {
   const heute = heuteBerlin(jetzt);
-  const [roh, aufgaben] = await Promise.all([loadJson<unknown>(meldungenSpeicher(person)), aufgabenLesen()]);
+  const [roh, aufgaben] = await Promise.all([loadJson<unknown>(meldungenSpeicher(person)), aufgabenLesen(person)]);
   const bestand = bestandSaeubern(roh);
   return sichtBauen(bestand, abgeleitet(bestand, aufgaben, person, heute), heute);
 }
@@ -83,7 +83,7 @@ export async function meldungenSicht(person: string, jetzt: Date = new Date()): 
 /** „Gelesen“ setzen — nur im eigenen Bestand der Person. */
 export async function meldungenGelesen(person: string, auswahl: GelesenAuswahl, jetzt: Date = new Date()): Promise<MeldungenSicht> {
   const heute = heuteBerlin(jetzt);
-  const aufgaben = await aufgabenLesen();
+  const aufgaben = await aufgabenLesen(person);
   const next = await updateJson<MeldungenBestand>(meldungenSpeicher(person), cur => {
     const b = bestandSaeubern(cur);
     const ids = abgeleitet(b, aufgaben, person, heute).map(m => m.id);
@@ -95,7 +95,7 @@ export async function meldungenGelesen(person: string, auswahl: GelesenAuswahl, 
 /** Kanal-Einstellung der Person (Telegram vorgesehen, versendet noch nichts). */
 export async function meldungenEinstellen(person: string, e: { telegram: boolean }, jetzt: Date = new Date()): Promise<MeldungenSicht> {
   const heute = heuteBerlin(jetzt);
-  const aufgaben = await aufgabenLesen();
+  const aufgaben = await aufgabenLesen(person);
   const next = await updateJson<MeldungenBestand>(meldungenSpeicher(person), cur => ({ ...bestandSaeubern(cur), einstellungen: { telegram: e.telegram === true } }));
   return sichtBauen(next, abgeleitet(next, aufgaben, person, heute), heute);
 }

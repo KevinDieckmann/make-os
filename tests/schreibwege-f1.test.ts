@@ -260,7 +260,7 @@ describe('10 · Übergabe-Aufgaben tragen die Einheit', () => {
     expect((await uebergeben({ art: 'kontakt', id: 'c-privat', an: 'malin' }, 'kevin')).ok).toBe(true);
     const tk = await aufgabe('Gerd Beispiel');
     expect(tk.bezug).toEqual({ kontaktId: 'c-privat' });
-    expect(tk).not.toHaveProperty('spaceId'); // ohne Einheit leitet die Übernahme den Space ab
+    expect(tk.spaceId).toBe('kdv'); // ohne Einheit leitet die Übernahme den Space ab — seit 29.09. (T1) gespeichert, weil die Übergabe über den Schreibweg geht
     expect(String(tk.description)).toContain('k=c-privat');
 
     expect((await uebergeben({ art: 'chance', id: 'ch-mit-firma', an: 'malin' }, 'kevin')).ok).toBe(true);

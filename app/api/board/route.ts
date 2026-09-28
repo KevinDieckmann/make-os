@@ -13,6 +13,7 @@ import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { computeMetrics, eur, type FinanceState } from '@/lib/make-one/finance-data';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
     tasks = p.tasks;
   } else {
     // Privat bleibt privat — Filter jetzt SERVER-seitig: nur business-Projekte.
-    const store = await ladeAufgabenSicht();
+    const store = await ladeAufgabenSicht(personStreng(req)); // Sichtfilter „nur ich“ (29.09.)
     const businessIds = new Set((store?.projects ?? []).filter(x => x.category === 'business').map(x => x.id));
     tasks = (store?.tasks ?? []).filter(t => t.projectId && businessIds.has(t.projectId));
   }

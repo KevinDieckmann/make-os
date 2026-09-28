@@ -195,7 +195,7 @@ describe('A9 — Übernahme beim ersten Schreiben', () => {
     const { archivLesen } = await import('@/lib/store/archiv');
     expect(await archivLesen(archiv()[0])).toEqual(roh);
     const g = await gespeichert();
-    expect(g.umbauVersion).toBe(1);
+    expect(g.umbauVersion).toBe(2); // seit 29.09. (Paket T1) Version 2
     // Übernommen: alte subTasks sind echte Unteraufgaben.
     expect(g.tasks.some(x => x.parentId === 'alt')).toBe(true);
     const t2 = (await lesen()).state.tasks.find(x => x.id === 'alt')!;
@@ -212,6 +212,6 @@ describe('A9 — Übernahme beim ersten Schreiben', () => {
     expect(ids).toContain('da');
     expect(ids).not.toContain('weg');
     const { ladeAufgabenSicht } = await import('@/lib/aufgaben/sicht');
-    expect((await ladeAufgabenSicht()).tasks.map(t => t.id)).not.toContain('weg');
+    expect((await ladeAufgabenSicht('kevin')).tasks.map(t => t.id)).not.toContain('weg');
   });
 });

@@ -13,7 +13,9 @@
 import type { Task, TasksState } from '@/types/tasks';
 import { askText, extractJson, fremd, FREMD_REGEL, guthabenLeer, hasAnthropicKey } from '@/lib/anthropic';
 import { loadJson } from '@/lib/store/local-db';
-import { ladeAufgabenSicht } from '@/lib/aufgaben/speicher';
+import { ladeAufgabenSicht, ladeAufgabenUngefiltert } from '@/lib/aufgaben/speicher';
+import { darfSehen } from '@/lib/aufgaben/sicht';
+import { wartetAuf } from '@/lib/aufgaben/abhaengig';
 import { statusVon } from '@/lib/aufgaben/struktur';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { melde } from '@/lib/meldungen/melden';
@@ -126,6 +128,8 @@ export function auftragText(t: Task, ctx: { state: Pick<TasksState, 'tasks' | 'p
     `Titel: ${t.title}`,
     `Status: ${statusVon(t, ctx.state.statusEigen ?? []).label} · Priorität: ${t.priority}${t.dueDate ? ` · Deadline: ${t.dueDate.slice(0, 10)}` : ''}${t.startDate ? ` · Start: ${t.startDate}` : ''}`,
     ...(eltern ? [`Teil von: ${eltern.title}`] : []),
+    // Blockiert (29.09., #36): worauf die Aufgabe noch wartet — ZOE soll das berücksichtigen, nicht drängen.
+    ...(wartetAuf(t, ctx.state.tasks).length ? [`Wartet noch auf: ${wartetAuf(t, ctx.state.tasks).slice(0, 10).map(x => x.title).join(' · ')}`] : []),
     ...(t.description?.trim() ? [`Beschreibung:\n${schnitt(t.description, AUFTRAG_TEXT_MAX)}`] : []),
     ...(t.notiz?.trim() ? [`Notiz:\n${schnitt(t.notiz, AUFTRAG_TEXT_MAX)}`] : []),
     ...(unter.length ? [`Vorhandene Unteraufgaben:\n${unter.slice(0, 40).map(u => `- [${u.status === 'done' ? 'x' : ' '}] ${u.title}`).join('\n')}`] : []),
@@ -193,6 +197,12 @@ async function zurueckAufOffen(t: Task, person: string): Promise<void> {
   await aufgabeZoeAendern(t.id, x => (x.zoe?.status === 'in_arbeit' ? { task: { ...x, zoe: { ...x.zoe, status: 'offen' } } } : { status: 409, fehler: 'nicht mehr in Arbeit' }), { person, zoe: true }).catch(() => null);
 }
 
+/** Systemlauf: nur Aufgaben, die ihre Auftraggeberin sehen darf (eine „nur ich“-Aufgabe nur im Auftrag ihrer Anlegerin). */
+function nachAuftraggeberin(state: TasksState): TasksState {
+  const nachId = new Map(state.tasks.map(t => [t.id, t]));
+  return { ...state, tasks: state.tasks.filter(t => darfSehen(t, auftraggeberinVon(t) ?? null, nachId)) };
+}
+
 /**
  * Den Lauf ausführen. `person` = nur deren Aufträge (Knopf); `null` = Systemlauf (alle Auftraggeberinnen des
  * Haushalts, je Auftrag in deren Namen). Wirft nicht.
@@ -202,12 +212,14 @@ export async function zoeAufgabenLauf(opt: { person: string | null; max?: number
   const leer = (ohneKi: string, rest: number): LaufErgebnis => ({ ok: true, bearbeitet: [], uebersprungen: [], ohneKi, rest });
   const jetzt = (opt.jetzt ?? new Date()).toISOString();
   const kandidaten = (state: TasksState) => zoeZuBearbeiten(state.tasks, { person: opt.person, jetzt }).filter(t => !opt.nur || t.id === opt.nur);
-  if (laeuft) return leer('ZOE arbeitet schon — gleich noch einmal.', kandidaten(await ladeAufgabenSicht()).length);
-  if (!hasAnthropicKey() || guthabenLeer()) return leer(!hasAnthropicKey() ? 'kein Modell-Schlüssel hinterlegt' : 'Guthaben leer', kandidaten(await ladeAufgabenSicht()).length);
+  // Sichtfilter „nur ich“ (29.09.): mit Person deren Sicht; der Systemlauf nimmt je Auftrag nur, was die Auftraggeberin sieht.
+  const laden = () => (opt.person ? ladeAufgabenSicht(opt.person) : ladeAufgabenUngefiltert().then(nachAuftraggeberin));
+  if (laeuft) return leer('ZOE arbeitet schon — gleich noch einmal.', kandidaten(await laden()).length);
+  if (!hasAnthropicKey() || guthabenLeer()) return leer(!hasAnthropicKey() ? 'kein Modell-Schlüssel hinterlegt' : 'Guthaben leer', kandidaten(await laden()).length);
   laeuft = true;
   const erg: LaufErgebnis = { ok: true, bearbeitet: [], uebersprungen: [], rest: 0 };
   try {
-    const state = await ladeAufgabenSicht();
+    const state = await laden();
     const liste = kandidaten(state);
     for (const t of liste.slice(0, max)) {
       const a = auftraggeberinVon(t);
@@ -219,7 +231,7 @@ export async function zoeAufgabenLauf(opt: { person: string | null; max?: number
       // 2) Auftrag bauen und EIN Modellaufruf — ohne Werkzeuge: ZOE kann hier nichts tun außer antworten.
       const alt = aktuell.zoe?.stapelId ? await hole(aktuell.zoe.stapelId) : null;
       const text = auftragText(aktuell, {
-        state: await ladeAufgabenSicht(), heute: localDay(), crm: await crmFuer(aktuell), dateien: await unterlagenFuer(aktuell, a), hinweis: zoeHinweis(aktuell),
+        state: await ladeAufgabenSicht(a), heute: localDay(), crm: await crmFuer(aktuell), dateien: await unterlagenFuer(aktuell, a), hinweis: zoeHinweis(aktuell),
         abgelehnt: alt?.status === 'abgelehnt' && alt.bezug?.id === aktuell.id ? (alt.grund ?? 'ohne Grund') : null,
       });
       const r = await askText({ system: ZOE_AUFGABEN_SYSTEM, user: text, schema: SCHEMA as unknown as Record<string, unknown>, maxTokens: 4000, zweck: 'zoe-aufgaben', timeoutMs: 90_000, retries: 1 });
@@ -244,7 +256,7 @@ export async function zoeAufgabenLauf(opt: { person: string | null; max?: number
       erg.bearbeitet.push({ id: aktuell.id, titel: aktuell.title, stapelId: v.id });
       await melde({ an: a, art: 'zoe', titel: `ZOE hat „${aktuell.title.length > 80 ? `${aktuell.title.slice(0, 79)}…` : aktuell.title}“ vorbereitet`, link: WEG.aufgabe(aktuell.id), von: 'zoe', bezug: { art: 'aufgabe', id: aktuell.id } });
     }
-    erg.rest = kandidaten(await ladeAufgabenSicht()).length;
+    erg.rest = kandidaten(await laden()).length;
     return erg;
   } catch (e) {
     return { ...erg, ok: false, uebersprungen: [...erg.uebersprungen, { id: '', grund: e instanceof Error ? e.message.slice(0, 160) : 'Fehler' }] };
@@ -255,6 +267,6 @@ export async function zoeAufgabenLauf(opt: { person: string | null; max?: number
 
 /** Für den Takt: steht heute ein Lauf an? Nur, wenn etwas offen liegt — sonst kein Eintrag in der Warteschlange. */
 export async function zoeAufgabenFaellig(jetzt: Date = new Date()): Promise<boolean> {
-  const state = await ladeAufgabenSicht();
+  const state = nachAuftraggeberin(await ladeAufgabenUngefiltert());
   return zoeZuBearbeiten(state.tasks, { person: null, jetzt: jetzt.toISOString() }).length > 0;
 }

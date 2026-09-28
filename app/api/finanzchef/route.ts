@@ -8,6 +8,7 @@
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, saveJson } from '@/lib/store/local-db';
+import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { istEchterHaushalt } from '@/lib/finanzen/haushalt/aufgaben';
 import { monatPlus, heuteBerlin } from '@/lib/finanzen/haushalt/monat';
@@ -126,22 +127,20 @@ export async function POST(req: Request) {
     // Vorschläge ohne Beträge und mit Stichwort „haushalt“ (OKR lässt sie aus).
     const privat = !!u.haushalt && (v.bereich === 'haushalt' || v.bereich === 'gesamt');
     if ((status === 'angenommen' || status === 'erledigt') && (!u.haushalt || istEchterHaushalt(u.haushalt))) {
-      await updateJson<{ tasks: Record<string, unknown>[] }>('tasks', cur => {
-        const f = cur ?? { tasks: [] };
-        const tasks = [...(f.tasks ?? [])];
-        const i = tasks.findIndex(t => t.id === `hof-${v.id}`);
-        if (status === 'erledigt') { if (i >= 0) tasks[i] = { ...tasks[i], status: 'done', updatedAt: jetzt }; return { ...f, tasks }; }
-        if (i >= 0) return f;
+      // Über den Schreibweg (29.09., Paket T1): Zeitstempel, Verlauf „durch System“, Serien, Sichtfilter.
+      await systemAufgabenAendern(stand => {
+        const da = stand.tasks.find(t => t.id === `hof-${v.id}`);
+        if (status === 'erledigt') return da && da.status !== 'done' ? { teile: [{ id: da.id, felder: { status: 'done' } }] } : {};
+        if (da) return {};
         const wer = v.verantwortlich === 'malin' ? 'malin' : 'kevin';
-        tasks.push({
+        return { neu: [{
           id: `hof-${v.id}`, title: (privat ? ohneBetraege(v.titel) : v.titel).slice(0, 200),
           description: privat ? 'Vorschlag des Head of Finance (Haushalt) — Details und Beträge unter Zahlen › Head of Finance.' : `Vorschlag des Head of Finance: ${v.begruendung}`,
           status: 'todo', priority: v.prioritaet === 'hoch' ? 'high' : v.prioritaet === 'niedrig' ? 'low' : 'medium', assignee: wer,
           tags: privat ? ['haushalt', 'finanzchef'] : ['finanzchef'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt,
           ...(v.frist ? { dueDate: v.frist } : {}),
-        });
-        return { ...f, tasks };
-      });
+        }] };
+      }, { person: u.person ?? null, jetzt });
     }
     return NextResponse.json({ ok: true, vorschlag: v });
   }

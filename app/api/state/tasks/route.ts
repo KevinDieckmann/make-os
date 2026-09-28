@@ -9,6 +9,8 @@
 // Seit 29.09. (A2/A7, Kevin: „Alle Infos müssen immer sauber gespeichert werden“):
 //   · Build-Kennung: PATCH/PUT aus einem alten Tab (fremde/fehlende `x-make-bau`) → 409 `{ neuLaden: true }` (lib/bau).
 //   · Upsert ohne Stand über einen bestehenden Eintrag = Teil-Merge (fehlende Felder bleiben).
+//   · Paket T1 (29.09.): Sichtfilter „nur ich“ je Person (fremde „nur ich“-Aufgaben lesen: nie; schreiben: 404),
+//     ETag/304 für GET, Prüfregeln (Datum, eine Verantwortliche, Start ≤ Deadline) → 400, Server-Zeitstempel.
 //   · Papierkorb: GET liefert ihn nur mit `?papierkorb=1` (die Aufgaben-Seite); alle anderen Leser sehen ihn nie.
 //     `delete` auf einen Eintrag außerhalb des Papierkorbs legt hinein, auf einen Papierkorb-Eintrag ist es endgültig
 //     (samt Dateien, lib/aufgaben/papierkorb.ts).
@@ -22,7 +24,9 @@
 // Die Logik liegt in lib/aufgaben/speicher.ts (Server) und lib/aufgaben/struktur.ts (rein).
 
 import { NextResponse } from 'next/server';
-import { loadJson } from '@/lib/store/local-db';
+import { loadJson, speicherStand } from '@/lib/store/local-db';
+import { etagAus, unveraendert, jsonAntwort } from '@/lib/http/json-antwort';
+import { sichtFuer } from '@/lib/aufgaben/sicht';
 import { protokolliereBestand, werAus } from '@/lib/store/aenderungsprotokoll';
 import { brauchtBestaetigung, MASSEN_GRENZE } from '@/lib/store/massen-wache';
 import { imHaushaltDesInhabers, imHaushaltOderSystemlauf, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
@@ -45,13 +49,20 @@ const GESPERRT = () => NextResponse.json({ ...KARTEI_GESPERRT, error: KARTEI_GES
 const MAX_BYTES = 20 * 1024 * 1024;
 
 export async function GET(req: Request) {
-  if (!(await imHaushaltOderSystemlauf(req))) return GESPERRT();
-  const roh = await loadJson<TasksState>(AUFGABEN_SPEICHER);
-  if (!roh) return NextResponse.json({ state: null, spaces: await spacesFuer({ projects: [], tasks: [] }) });
+  const zugang = await imHaushaltOderSystemlauf(req);
+  if (!zugang) return GESPERRT();
   const mitPapierkorb = new URL(req.url).searchParams.get('papierkorb') === '1';
+  // ETag/304 (29.09., #86): Stand von Aufgaben, CRM (Mandanten-Spaces), Orten und Konten (Übernahme) + Person (Sichtfilter
+  // „nur ich“ je Person) + Papierkorb ja/nein. Unverändert → 304 ohne Lesen, Übernahme und Fingerabdrücke.
+  const etag = etagAus('aufgaben1', zugang.person ?? 'system', mitPapierkorb ? 'korb' : 'sicht', await speicherStand([AUFGABEN_SPEICHER, 'crm', 'ordnung', 'konten']));
+  const nichts = unveraendert(req, etag);
+  if (nichts) return nichts;
+  const roh = await loadJson<TasksState>(AUFGABEN_SPEICHER);
+  if (!roh) return jsonAntwort(req, { state: null, spaces: await spacesFuer({ projects: [], tasks: [] }) }, etag);
   const voll = await ladeAufgaben();
-  const state = mitPapierkorb ? voll : aufgabenSicht(voll);
-  return NextResponse.json({ state: fuerBrowser(state), spaces: await spacesFuer(state) });
+  // Sichtfilter „nur ich“ (29.09.): jede Person sieht nur ihre eigenen „nur ich“-Aufgaben; der Systemlauf keine.
+  const state = sichtFuer(mitPapierkorb ? voll : aufgabenSicht(voll), zugang.person);
+  return jsonAntwort(req, { state: fuerBrowser(state), spaces: await spacesFuer(state) }, etag);
 }
 
 async function body(req: Request): Promise<Record<string, unknown> | NextResponse> {
@@ -74,7 +85,7 @@ export async function PATCH(req: Request) {
   const haushalt = (await haushaltFuer(zugang.person))?.haushalt;
   const r = await aufgabenAendern(gelesen.ops, { person: zugang.person, wer: werAus(req), massenAenderung: b.massenAenderung === true, massenLoeschung: b.massenLoeschung === true, ...(haushalt ? { haushalt } : {}) });
   if (r.ok) return NextResponse.json({ ok: true, angewandt: r.angewandt, zeilen: r.zeilen, ...(r.serien?.length ? { serien: r.serien } : {}) });
-  const aktuell = r.konflikte?.length ? (r.state ?? await ladeAufgaben()) : null;
+  const aktuell = r.konflikte?.length ? sichtFuer(r.state ?? await ladeAufgaben(), zugang.person) : null;
   return NextResponse.json({
     ok: false, error: r.fehler, ...(r.konflikte ? { konflikte: r.konflikte } : {}),
     ...(r.massenAenderung ? { massenAenderung: true, anzahl: r.anzahl, grenze: r.grenze } : {}),

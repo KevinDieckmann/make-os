@@ -1,7 +1,7 @@
 // ─── MAKE OS — Wiederholung: nächster Termin je Regel (rein, Paket C3, 28.09. spät) ──
 // Kevin 28.09.: „Denk in diesem ganzen Konstrukt immer wieder daran, dass es Listen gibt, die immer wieder
 // kommen — wiederkehrende Aufgaben.“ Hier steht NUR die Kalenderrechnung (client- und server-sicher):
-//   · Regeln täglich · Werktage (Mo–Fr) · wöchentlich (Wochentage) · monatlich (Monatstag, 31 → 30/28/29 gekappt)
+//   · Regeln täglich · Werktage (Mo–Fr ohne Feiertage NRW, seit 29.09.) · wöchentlich (Wochentage) · monatlich (Monatstag, 31 → 30/28/29 gekappt)
 //     · jährlich; Intervall „alle n …“; `bis` beendet die Serie.
 //   · Gerechnet wird mit Kalendertagen „YYYY-MM-DD“ über UTC-Mittag — die Zeitumstellung kann keinen Tag
 //     verschieben. „Heute“ ist immer der Berliner Tag (`berlinerTag`, lib/kalender/zeit.ts), nie die Uhr der Maschine.
@@ -10,6 +10,7 @@
 
 import type { Wiederholung, WiederholungRegel } from '@/types/tasks';
 import { wandzeit, tagVon, tagPlus } from '@/lib/kalender/zeit';
+import { istWerktag as werktagNRW } from './feiertage';
 
 export { tagPlus };
 
@@ -34,7 +35,8 @@ export const tageImMonat = (j: number, m: number): number => new Date(Date.UTC(j
 export const wochentag = (tag: string): number => new Date(`${tag}T12:00:00Z`).getUTCDay();
 /** Kalendertage von a nach b (b − a). */
 export const tageZwischen = (a: string, b: string): number => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86_400_000);
-const istWerktag = (tag: string) => { const w = wochentag(tag); return w !== 0 && w !== 6; };
+/** Werktag der Regel „Werktage“: Mo–Fr ohne gesetzliche Feiertage NRW (29.09., Kevin — gilt global, lib/aufgaben/feiertage.ts). */
+const istWerktag = (tag: string) => werktagNRW(tag, 'NRW');
 const montagVon = (tag: string) => tagPlus(tag, -((wochentag(tag) + 6) % 7));
 function monatPlus(j: number, m: number, n: number): { j: number; m: number } {
   const i = j * 12 + (m - 1) + n;
@@ -175,12 +177,16 @@ export function wiederholungText(w: Wiederholung): string {
   let s: string;
   switch (w.regel) {
     case 'taeglich': s = n === 1 ? 'täglich' : `alle ${n} Tage`; break;
-    case 'werktage': s = n === 1 ? 'werktags (Mo–Fr)' : `alle ${n} Werktage`; break;
+    case 'werktage': s = n === 1 ? 'werktags (Mo–Fr, ohne Feiertage NRW)' : `alle ${n} Werktage`; break;
     case 'woechentlich': s = `${n === 1 ? 'wöchentlich' : `alle ${n} Wochen`}${wt}`; break;
     case 'monatlich': s = `${n === 1 ? 'monatlich' : `alle ${n} Monate`}${w.monatstag ? ` am ${w.monatstag}.${w.monatstag > 28 ? ' (sonst Monatsende)' : ''}` : ''}`; break;
     case 'jaehrlich': s = n === 1 ? 'jährlich' : `alle ${n} Jahre`; break;
     default: s = 'wiederkehrend';
   }
+  // Serien-Extras (29.09.)
+  if (w.ab === 'erledigt') s += ' ab Erledigung';
+  if (w.rotation && w.rotation.length > 1) s += ' · im Wechsel';
+  if (w.feiertage === 'NRW' && w.regel !== 'werktage') s += ' · ohne Feiertage';
   return w.bis ? `${s} bis ${langTag(w.bis)}` : s;
 }
 

@@ -357,7 +357,8 @@ export function TasksProvider({ children }: { children: ReactNode }) {
 
   const abgleichenJetzt = useCallback(async (serverGewinnt: readonly string[] = []) => {
     try {
-      const r = await fetch(`${WEG}?papierkorb=1`, { cache: 'no-store' });
+      // `no-cache` = immer beim Server nachfragen, aber mit ETag (29.09., #86): unverändert → 304, der Browser nimmt seinen Stand.
+      const r = await fetch(`${WEG}?papierkorb=1`, { cache: 'no-cache' });
       if (!r.ok) return;
       const d = (await r.json()) as { state: TasksState | null; spaces?: AufgabenSpace[] };
       if (Array.isArray(d.spaces)) setSpaces(d.spaces);

@@ -20,6 +20,7 @@
 
 import { promises as fs } from 'fs';
 import { datenOrdner, loadJson, updateJson } from '@/lib/store/local-db';
+import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
 import { localDay } from '@/lib/zeit';
 import { WEG } from '@/lib/wege';
 import type { Kontakt } from '@/lib/make-one/crm';
@@ -45,7 +46,6 @@ import { loeschprotokollBereinigen } from './loeschprotokoll';
 /** Kennung der einen laufenden Aufgabe (nie mehrere, nie mit Personen). */
 export const LOESCHFRIST_AUFGABE = 'loeschfrist-kontakte';
 
-interface Aufgabe { id: string; title: string; description?: string; status: string; priority: string; assignee?: string; tags?: string[]; subTasks?: unknown[]; dependencies?: unknown[]; sortOrder?: number; createdAt?: string; updatedAt?: string; space?: 'privat' | 'business' }
 
 const SYSTEM = { art: 'system' as const };
 const PROTOKOLL_DATEI = new RegExp(`^${PROTOKOLL_PRAEFIX}--([a-z0-9-]+)--(\\d{4}-\\d{2})\\.json$`);
@@ -300,25 +300,24 @@ async function aufgabeAbgleichen(kartei: number, monate: number, jetztIso: strin
   if (!n && (await loadJson<unknown>('tasks')) === null) return wirkung;
   const titel = `${kartei} ${kartei === 1 ? 'Kontakt' : 'Kontakte'}${netz ? ` (+ ${netz} im Altbestand Netzwerk)` : ''} über der Löschfrist — prüfen: löschen oder begründen`;
   const beschreibung = `Seit ${monate} Monaten ohne Beziehung und ohne Aktivität (Art. 5 Abs. 1 lit. e DSGVO). Gelöscht wird nie automatisch: je Person löschen (Art. 17) oder „Frist verlängern mit Grund“ — Liste unter ${WEG.stammdaten('datenschutz')}. Hinweis, keine Rechtsberatung.`;
-  await updateJson<{ tasks?: Aufgabe[] } & Record<string, unknown>>('tasks', cur => {
-    const t = cur ?? { tasks: [] };
-    const tasks = [...(t.tasks ?? [])];
-    const i = tasks.findIndex(a => a.id === LOESCHFRIST_AUFGABE);
-    const offen = i >= 0 && tasks[i].status !== 'done';
+  // Über den Schreibweg (29.09., Paket T1 #12): `completedAt`, Verlauf „durch System“, Protokoll — in EINER Sperre.
+  await systemAufgabenAendern(stand => {
+    const a = stand.tasks.find(x => x.id === LOESCHFRIST_AUFGABE);
+    const offen = !!a && a.status !== 'done' && a.status !== 'cancelled' && !a.geloeschtAm;
     if (!n) {
-      if (!offen) { wirkung = 'keine'; return t; }
-      tasks[i] = { ...tasks[i], status: 'done', updatedAt: jetztIso }; wirkung = 'erledigt';
-      return { ...t, tasks };
+      if (!offen) { wirkung = 'keine'; return {}; }
+      wirkung = 'erledigt';
+      return { teile: [{ id: a!.id, felder: { status: 'done' } }] };
     }
     if (offen) {
-      if (tasks[i].title === titel) { wirkung = 'unveraendert'; return t; }
-      tasks[i] = { ...tasks[i], title: titel, description: beschreibung, updatedAt: jetztIso }; wirkung = 'aktualisiert';
-      return { ...t, tasks };
+      if (a!.title === titel) { wirkung = 'unveraendert'; return {}; }
+      wirkung = 'aktualisiert';
+      return { teile: [{ id: a!.id, felder: { title: titel, description: beschreibung } }] };
     }
-    const neu: Aufgabe = { id: LOESCHFRIST_AUFGABE, title: titel, description: beschreibung, status: 'todo', priority: 'medium', ...(inhaber ? { assignee: inhaber } : {}), tags: ['datenschutz', 'markttraktion'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetztIso, updatedAt: jetztIso, space: 'business' };
-    if (i >= 0) tasks[i] = { ...tasks[i], ...neu, createdAt: tasks[i].createdAt ?? jetztIso }; else tasks.push(neu);
     wirkung = 'neu';
-    return { ...t, tasks };
-  });
+    // Erledigte (oder im Papierkorb liegende) Aufgabe gleicher Kennung: wieder öffnen statt eine zweite anlegen.
+    if (a) return { teile: [{ id: a.id, felder: { title: titel, description: beschreibung, status: 'todo', geloeschtAm: null, geloeschtMit: null } }] };
+    return { neu: [{ id: LOESCHFRIST_AUFGABE, title: titel, description: beschreibung, status: 'todo', priority: 'medium', ...(inhaber ? { assignee: inhaber } : {}), tags: ['datenschutz', 'markttraktion'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetztIso, updatedAt: jetztIso, space: 'business' }] };
+  }, { jetzt: jetztIso });
   return wirkung;
 }

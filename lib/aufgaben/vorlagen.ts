@@ -10,7 +10,7 @@
 import type { Task, TasksState, Project, AufgabenListe, AufgabenGruppe, AufgabenVorlage, VorlageAufgabe, VorlageInhalt } from '@/types/tasks';
 import type { Owner } from '@/types/common';
 import { AUFGABEN_GRENZEN } from './saeubern';
-import { bereichVonSpace, einheitVonSpace, firmaVonSpace, istSonstigeProjekt, sonstigeProjektId, SONSTIGE_PRAEFIX } from './struktur';
+import { bereichVonSpace, einheitVonSpace, firmaVonSpace, istSonstigeProjekt, sonstigeProjektId, SONSTIGE_PRAEFIX, nachReihe } from './struktur';
 import { istTag, tagPlus, tageZwischen, titelMitPlatzhaltern } from './wiederholung';
 import { STARTVORLAGEN } from './vorlagen-start';
 
@@ -18,7 +18,7 @@ export { STARTVORLAGEN };
 
 const OWNER: readonly string[] = ['kevin', 'malin', 'both'];
 const GRUPPEN_FARBEN = ['#E27FD0', '#6E7EF5', '#58D9CD', '#FFC93C', '#3DE28B', '#FF8A5C'];
-const nachReihe = (a: { sortOrder?: number; createdAt?: string }, b: { sortOrder?: number; createdAt?: string }) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || String(a.createdAt ?? '').localeCompare(String(b.createdAt ?? ''));
+// Reihenfolge (sortOrder, createdAt, id) — eine Regel, lib/aufgaben/struktur.ts (#56, 29.09.).
 const tagDer = (d: string | undefined): string | undefined => (d && istTag(d.slice(0, 10)) ? d.slice(0, 10) : undefined);
 
 // ── Finden ─────────────────────────────────────────────────────────────────

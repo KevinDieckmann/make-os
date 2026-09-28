@@ -46,7 +46,7 @@ export async function aufgabeZoeAendern(id: string, aendern: (t: Task, state: Ta
 }): Promise<ZoeErgebnis> {
   const versuche = opt.stand ? 1 : 3;
   for (let i = 0; i < versuche; i++) {
-    const state = await ladeAufgabenSicht();
+    const state = await ladeAufgabenSicht(opt.person); // Sichtfilter „nur ich“ (29.09.)
     const t = state.tasks.find(x => x.id === id);
     if (!t) return nein(404, 'Aufgabe nicht gefunden.');
     const stand = fingerabdruck(t as unknown as Record<string, unknown>);
@@ -59,7 +59,8 @@ export async function aufgabeZoeAendern(id: string, aendern: (t: Task, state: Ta
     if (task.kommentare && task.kommentare.length > AUFGABEN_GRENZEN.kommentare) return nein(413, `Abgelehnt: höchstens ${AUFGABEN_GRENZEN.kommentare} Kommentare an einer Aufgabe.`);
     ops.tasks.push({ op: 'upsert', eintrag: task, stand, ...(a.kommentar ? { mitKommentaren: true } : {}) });
     for (const n of a.neue ?? []) ops.tasks.push({ op: 'upsert', eintrag: n });
-    const r = await aufgabenAendern(ops, { person: opt.person, wer: { art: opt.zoe ? 'zoe' : 'person', person: opt.person }, jetzt });
+    // Nur dieser Weg darf `zoe.status` ändern (per PATCH wird es ignoriert, 29.09. #78).
+    const r = await aufgabenAendern(ops, { person: opt.person, wer: { art: opt.zoe ? 'zoe' : 'person', person: opt.person }, jetzt, zoeStatus: true });
     if (r.ok) return { ok: true, wert: r.state?.tasks.find(x => x.id === id) ?? task };
     if (r.konflikte?.length && i < versuche - 1) continue;
     if (r.konflikte?.length) return nein(409, r.fehler ?? 'Inzwischen geändert.', true);
@@ -219,7 +220,7 @@ const imHaushalt = (lauf: Lauf): Lauf => async (input, origin, person) => {
 
 /** Was liegt bei ZOE — nur die eigenen Aufträge, nur Titel/Status/Deadline (keine Notizen). */
 async function meineAufgaben(_i: Record<string, unknown>, _o: string, person?: string): Promise<string> {
-  const s = zoeAufgaben(await ladeAufgabenSicht(), { auftraggeberin: person });
+  const s = zoeAufgaben(await ladeAufgabenSicht(person ?? null), { auftraggeberin: person });
   if (!s.alle.length) return 'Bei ZOE liegt keine Aufgabe dieser Person.';
   const zeile = (t: Task) => `- „${kurz(t.title, 100)}“ [${t.id}] · ${ZOE_STATUS_LABEL[t.zoe!.status]}${t.dueDate ? ` · fällig ${t.dueDate.slice(0, 10)}` : ''}`;
   const block = (titel: string, l: Task[]) => (l.length ? [`${titel} (${l.length}):`, ...l.slice(0, 20).map(zeile), ...(l.length > 20 ? [`… und ${l.length - 20} weitere`] : [])] : []);
@@ -234,8 +235,8 @@ async function meineAufgaben(_i: Record<string, unknown>, _o: string, person?: s
 async function aufgabeAnZoe(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
   const frage = String(input.aufgabe ?? '').trim();
   if (!frage) return 'Fehlgeschlagen: aufgabe fehlt (Kennung oder Titel).';
-  const state = await ladeAufgabenSicht();
-  const offen = state.tasks.filter(t => t.status !== 'done');
+  const state = await ladeAufgabenSicht(person ?? null);
+  const offen = state.tasks.filter(t => t.status !== 'done' && t.status !== 'cancelled');
   const klein = frage.toLowerCase();
   const genau = offen.filter(t => t.id === frage || t.title.toLowerCase() === klein);
   const treffer = genau.length ? genau : offen.filter(t => t.title.toLowerCase().includes(klein));

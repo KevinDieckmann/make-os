@@ -13,7 +13,7 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { ladeCrm, kundenAusMandaten } from '@/lib/crm/speicher';
-import { ladeAufgaben } from '@/lib/aufgaben/speicher';
+import { ladeAufgabenSicht } from '@/lib/aufgaben/speicher';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { localDay, tagePlus, alterStunden } from '@/lib/zeit';
 import { resolveVitals, vitalsHint, type ResolvedVitals } from '@/lib/vitals';
@@ -110,7 +110,7 @@ export async function gatherBrain(heute = localDay(), person: string = 'kevin'):
   const [tasksR, finR, prospectsR, calR, kemR, msR, vitalsR, indexR, laeufeR, meilR, fplanR, kundenR, shieldsR, kompassR, ordnungR, schwellenR, teamR] = await Promise.allSettled([
     // Aufgaben (29.09., B4): die übernommene Sicht (`ladeAufgaben` — Space, Unteraufgaben aus `subTasks` …), nur für
     // Personen im Haushalt des Inhabers (wie die Mandate), Papierkorb (`geloeschtAm`) ausgeblendet, gezählt nur Hauptaufgaben.
-    personImHaushaltDesInhabers(person).then(ja => (ja ? ladeAufgaben().then(aufgabenFuerBrain) : null)),
+    personImHaushaltDesInhabers(person).then(ja => (ja ? ladeAufgabenSicht(person).then(aufgabenFuerBrain) : null)), // Sichtfilter „nur ich“ (29.09.)
     loadJson<FinanceState>('finance'),
     loadJson<{ prospects: Prospect[] }>('prospects'),
     loadJson<{ events: CalEvent[]; at?: string }>('calendar-cache'),

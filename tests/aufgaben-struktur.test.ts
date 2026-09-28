@@ -233,10 +233,12 @@ describe('Filter, Erwähnungen, Säuberung', () => {
     expect(() => taskSauber({ ...aufgabe('a'), kommentare: viele })).toThrow(ZuGross);
     expect(() => taskSauber({ ...aufgabe('a'), tags: Array.from({ length: AUFGABEN_GRENZEN.tags + 1 }, () => 't') })).toThrow(ZuGross);
   });
-  it('Kommentare: fremde bleiben, eigene löschbar, neue tragen Person und Serverzeit', () => {
+  it('Kommentare: fremde bleiben, eigene nur weich entfernt (29.09., #76), neue tragen Person und Serverzeit', () => {
     const alt = [{ id: 'k1', von: 'malin', text: 'von Malin', am: T0 }, { id: 'k2', von: 'kevin', text: 'von Kevin', am: T0 }];
     const r = kommentareVereinen(alt, [{ id: 'k3', von: 'malin', text: 'gefälscht', am: '2000-01-01' }], 'kevin', '2026-09-28T10:00:00.000Z');
-    expect(r.kommentare!.map(k => [k.id, k.von])).toEqual([['k1', 'malin'], ['k3', 'kevin']]);
+    expect(r.kommentare!.map(k => [k.id, k.von])).toEqual([['k1', 'malin'], ['k2', 'kevin'], ['k3', 'kevin']]);
+    expect(r.kommentare!.find(k => k.id === 'k2')).toMatchObject({ text: 'von Kevin', entfernt: { am: '2026-09-28T10:00:00.000Z', von: 'kevin' } });
+    expect(r.kommentare!.find(k => k.id === 'k1')!.entfernt).toBeUndefined();
     expect(r.neue).toEqual([{ id: 'k3', von: 'kevin', text: 'gefälscht', am: '2026-09-28T10:00:00.000Z' }]);
     // Fremden Text ändern geht nicht: der gespeicherte bleibt.
     const r2 = kommentareVereinen(alt, [{ ...alt[0], text: 'umgeschrieben' }, alt[1]], 'kevin');

@@ -8,7 +8,7 @@
 // + Firma) und, wo er feststeht, ihren Space (aktives Mandat → Mandant `m-<firmaId>`, sonst die Gesellschaft).
 // Der Link bleibt zusätzlich in der Beschreibung (andere Leser, z. B. Art. 15/17, nutzen ihn).
 
-import { updateJson } from '@/lib/store/local-db';
+import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
@@ -105,13 +105,13 @@ export async function uebergeben(b: UebergabeEingabe, person: string, protokollW
     // Space: aktives Mandat → Mandant, sonst die Gesellschaft der Einheit; sonst keiner (die Übernahme leitet ihn ab).
     const spaceId: AufgabenSpaceId | undefined = mandantSpace ?? gesellschaftAusEinheit(einheit);
     const ort = spaceId ? { spaceId, space: 'business', ...(einheitFuer(spaceId, einheit) ? { einheit: einheitFuer(spaceId, einheit) } : {}) } : einheit ? { space: 'business', einheit } : {};
-    await updateJson<{ tasks: Record<string, unknown>[] }>('tasks', cur => {
-      const f = cur ?? { tasks: [] };
+    // Über den Schreibweg (29.09., Paket T1): Anlegerin, Zeitstempel, Verlauf, Meldung an die Empfängerin.
+    await systemAufgabenAendern(() => {
       const t = { ...ort, ...(bezug ? { bezug } : {}), id: neueKennung('ueb'), title: `Von ${vonName}: ${titel}`.slice(0, 200),
         description: `${vonName} hat dir ${art === 'kontakte' ? `${anzahl} Kontakte` : titel} in der Markttraktion übergeben.${notiz ? `\n\n„${notiz}“` : ''}\n\n${link}`,
         status: 'todo', priority: 'medium', assignee: an, tags: ['markttraktion', 'uebergabe'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, ...(frist ? { dueDate: frist } : {}) };
-      return { ...f, tasks: [...(f.tasks ?? []), t] };
-    });
+      return { neu: [t] };
+    }, { person, wer: { art: 'system', person }, jetzt });
     aufgabe = true;
   }
   return { ok: true, anzahl, an, aufgabe, text: `${titel} → ${nameVon(an)}${aufgabe ? ' · Aufgabe angelegt' : ''}` };

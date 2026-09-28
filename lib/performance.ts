@@ -116,7 +116,7 @@ export async function computeIndex(today = localDay(), person: Person = 'kevin')
   // Haut-Tagebuch und Streak (23.09.) — die zwei Hebel, die Kevin am 29.07.
   // genannt hat und die bis dahin nirgends gemessen wurden.
   const [tasksState, journal, cal, ritualLog] = await Promise.all([
-    ladeAufgabenSicht(),
+    ladeAufgabenSicht(person), // Sichtfilter „nur ich“ je Person (29.09.)
     loadJson<Record<string, JournalTag>>(p('journal')),
     loadJson<CalCache>('calendar-cache'),
     loadJson<Record<string, string[]>>(p('rituale')),

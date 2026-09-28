@@ -16,6 +16,7 @@ import { tagVon } from '@/lib/zeit';
 import { WEG } from '@/lib/wege';
 import { alleSpaces, bereichVonSpace, istSonstigeProjekt } from '@/lib/aufgaben/struktur';
 import type { Task, Project, TasksState } from '@/types/tasks';
+import { istNurIch } from '@/lib/aufgaben/sicht';
 import type { CrmBestand, ChancenStufe } from '@/lib/crm/typen';
 import type { DauerEintrag } from '@/lib/zoe/entscheidungen';
 import type { ZeitJeMandat } from '@/lib/zeitmessung/mandate';
@@ -70,6 +71,7 @@ export async function appDatenLaden(heute: string): Promise<AppDaten | null> {
   const haushalt = inhaber?.haushalt;
   if (!inhaber || !haushalt) return null;
   const { ladeAufgaben } = await import('@/lib/aufgaben/speicher');
+  const { sichtFuer } = await import('@/lib/aufgaben/sicht');
   const { ladeCrm } = await import('@/lib/crm/speicher');
   const { entscheidungenMonat } = await import('@/lib/zoe/entscheidungen');
   const zeit = async (zeitraum: 'woche' | 'monat', stichtag: string) => {
@@ -77,7 +79,8 @@ export async function appDatenLaden(heute: string): Promise<AppDaten | null> {
   };
   const vorTag = `${vormonatVon(heute)}-15`;
   const [state, crm, kartei, e1, e2, zeitWoche, zeitMonat, zeitVormonat, einstellung] = await Promise.all([
-    ladeAufgaben(), ladeCrm(), loadJson<{ kontakte?: { id: string; eingeschraenkt?: unknown }[] }>('kontakte'),
+    // Geteilter Spiegel/Index: Systemsicht — keine „nur ich“-Aufgabe und keine ihrer Unteraufgaben (29.09., lib/aufgaben/sicht.ts).
+    ladeAufgaben().then(s => sichtFuer(s, null)), ladeCrm(), loadJson<{ kontakte?: { id: string; eingeschraenkt?: unknown }[] }>('kontakte'),
     entscheidungenMonat(haushalt, vormonatVon(heute)), entscheidungenMonat(haushalt, monatVon(heute)),
     zeit('woche', heute), zeit('monat', heute), zeit('monat', vorTag), einstellungLesen(haushalt),
   ]);
@@ -92,10 +95,9 @@ export async function appDatenLaden(heute: string): Promise<AppDaten | null> {
 
 const im = (x: object, feld: string): unknown => (x as Record<string, unknown>)[feld];
 export const imPapierkorb = (x: object): boolean => { const g = im(x, 'geloeschtAm'); return typeof g === 'string' && g.length > 0; };
-/** Sichtbarkeit „nur ich“ (Aufgaben-Paket, Feld folgt) — tolerant gegenüber den möglichen Namen. */
+/** Sichtbarkeit „nur ich“ (29.09., Paket T1): `Task.sichtbarkeit === 'nur-ich'` — eine Regel, lib/aufgaben/sicht.ts `istNurIch`. */
 export function nurIch(t: object): boolean {
-  const s = im(t, 'sichtbarkeit');
-  return im(t, 'nurIch') === true || (typeof s === 'string' && /^nur[-_ ]?ich$/i.test(s));
+  return istNurIch(t as Pick<Task, 'sichtbarkeit'>);
 }
 export const privatAufgabe = (t: Pick<Task, 'spaceId' | 'space'>) => bereichVonSpace(t.spaceId ?? (t.space === 'privat' ? 'privat' : undefined)) === 'privat';
 export const privatProjekt = (p: Pick<Project, 'spaceId'>) => bereichVonSpace(p.spaceId) === 'privat';

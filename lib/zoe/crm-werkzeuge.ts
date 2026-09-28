@@ -109,7 +109,7 @@ async function dateienFuer(s: CrmSicht, f: { kontaktId?: string; firmaId?: strin
 async function aufgabenFuerBezug(s: CrmSicht, wer: { kontaktId?: string; firmaId?: string; mandatIds?: string[]; dealIds?: string[] }): Promise<string[]> {
   const { ladeAufgabenSicht: ladeAufgaben } = await import('@/lib/aufgaben/speicher'); // ohne Papierkorb (29.09.)
   const { aufgabenFuer } = await import('@/lib/aufgaben/crm-verweise');
-  const state = await ladeAufgaben();
+  const state = await ladeAufgaben(s.person); // Sichtfilter „nur ich“ (29.09.)
   // Privates hat in der Markttraktion nichts zu suchen — nur Business-Spaces (eigene Firmen, Mandanten).
   return aufgabenFuer(state.tasks, wer).filter(t => t.spaceId !== 'privat' && t.space !== 'privat')
     .map(t => `- ${t.id} · ${t.title} · ${t.status}${t.dueDate ? ` · fällig ${t.dueDate}` : ''} · ${t.assignee}`);

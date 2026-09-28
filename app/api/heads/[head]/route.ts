@@ -16,6 +16,7 @@ import { WEG } from '@/lib/wege';
 import { markttraktion, mandateLink } from '@/lib/crm/adresse';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
@@ -185,15 +186,13 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
       const bearbeiter = fuer === BEIDE ? person : fuer;
       // Business-Einheit aus dem Deal/Mandat dahinter (27.09.) — ohne Bezug keine.
       const einheit = status === 'angenommen' && (t.chance_id || t.mandat_id) ? einheitAusBezug(await ladeCrm().catch(() => null), { chanceId: t.chance_id, mandatId: t.mandat_id }) : undefined;
-      await updateJson<{ tasks: Record<string, unknown>[] }>('tasks', cur => {
-        const f = cur ?? { tasks: [] };
-        const tasks = [...(f.tasks ?? [])];
-        const i = tasks.findIndex(x => x.id === `hd-${t.id}`);
-        if (status === 'erledigt') { if (i >= 0) tasks[i] = { ...tasks[i], status: 'done', updatedAt: jetzt }; return { ...f, tasks }; }
-        if (i >= 0) return f;
-        tasks.push({ id: `hd-${t.id}`, title: t.titel.slice(0, 200), description: `Vorschlag des ${HEAD_NAME[h]}: ${t.begruendung}${t.entwurf ? `\n\nEntwurf (${t.entwurf.kanal}):\n${t.entwurf.text}` : ''}${ort(t) ? `\n\n${ort(t)}` : ''}`, status: 'todo', priority: t.prioritaet === 'hoch' ? 'high' : t.prioritaet === 'niedrig' ? 'low' : 'medium', assignee: bearbeiter, tags: [AGENT_ID[h], 'markttraktion'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, ...(t.frist ? { dueDate: t.frist } : {}), ...(einheit ? { space: 'business', einheit } : {}) });
-        return { ...f, tasks };
-      });
+      // Über den Schreibweg (29.09., Paket T1): Zeitstempel, Anlegerin, Verlauf „durch System“ im Auftrag der Person, Serien.
+      await systemAufgabenAendern(stand => {
+        const da = stand.tasks.find(x => x.id === `hd-${t.id}`);
+        if (status === 'erledigt') return da && da.status !== 'done' ? { teile: [{ id: da.id, felder: { status: 'done' } }] } : {};
+        if (da) return {};
+        return { neu: [{ id: `hd-${t.id}`, title: t.titel.slice(0, 200), description: `Vorschlag des ${HEAD_NAME[h]}: ${t.begruendung}${t.entwurf ? `\n\nEntwurf (${t.entwurf.kanal}):\n${t.entwurf.text}` : ''}${ort(t) ? `\n\n${ort(t)}` : ''}`, status: 'todo', priority: t.prioritaet === 'hoch' ? 'high' : t.prioritaet === 'niedrig' ? 'low' : 'medium', assignee: bearbeiter, tags: [AGENT_ID[h], 'markttraktion'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, ...(t.frist ? { dueDate: t.frist } : {}), ...(einheit ? { space: 'business', einheit } : {}) }] };
+      }, { person, wer: { art: 'system', person }, jetzt });
       wohin = bearbeiter === person ? 'Aufgabe' : `Aufgabe für ${nameVon(bearbeiter)}`;
     }
     return NextResponse.json({ ok: true, vorschlag: t, wohin });

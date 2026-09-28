@@ -12,6 +12,14 @@
 //   · Lange weg gewesen: die nächste Deadline springt auf den ersten Termin am oder nach heute (keine Lawine).
 //   · Morgenlauf (/api/tagesstart, Schritt „Aufgaben-Serien“) holt nur nach, was ein anderer Schreiber beim Erledigen
 //     nicht angelegt hat (Heads, ZOE, alte Fenster): letzte Instanz erledigt, keine offene, nächster Termin ≤ morgen.
+//   · Seit 29.09. (Kevin, Paket T1):
+//     – Die JÜNGSTE Instanz entscheidet — auch ohne `wiederholung` (dann ist die Serie beendet) bzw. mit `serieBeendet`.
+//     – „abgebrochen“ (`cancelled`) löst keine Folgeinstanz aus (auch nicht im Morgenlauf).
+//     – Wieder geöffnet (erledigt → offen): die gerade erzeugte, unberührte Folgeinstanz geht wieder weg (#12).
+//     – „Nur diese löschen“: der Tag geht in `ausnahmen`, die nächste Instanz entsteht sofort (übersprungen, #29);
+//       der Morgenlauf legt den übersprungenen Tag nie wieder an.
+//     – `ab: 'erledigt'` rechnet ab dem Tag der Erledigung; `rotation` gibt die nächste Instanz der nächsten Person;
+//       `feiertage: 'NRW'` schiebt einen Termin auf den nächsten Werktag (Regel „Werktage“ kennt die Feiertage immer).
 //
 // Wiederkehrende LISTE (`AufgabenListe.wiederholung` + `vorlageId`):
 //   · Die jeweils NEUESTE Liste der Serie trägt `wiederholung` mit `naechste` (Start der nächsten Periode).
@@ -25,7 +33,8 @@
 
 import type { Task, TasksState, AufgabenListe, AufgabenVorlage, Wiederholung } from '@/types/tasks';
 import type { Owner } from '@/types/common';
-import { istSonstigeProjekt, SONSTIGE_PRAEFIX } from './struktur';
+import { werktagAbOder } from './feiertage';
+import { istSonstigeProjekt, SONSTIGE_PRAEFIX, nachReihe } from './struktur';
 import {
   berlinerTag, ersterTermin, faelligeTermine, grundTitel, hatPlatzhalter, istTag, naechsterAbHeute, naechsterTermin, ohneNaechste,
   standardMuster, tagPlus, tageZwischen, titelMitPlatzhaltern,
@@ -66,9 +75,45 @@ export function wiederholungSetzen(t: Pick<Task, 'dueDate'>, w: Wiederholung | u
   return { wiederholung: rein, ...(erster ? { dueDate: erster } : {}) };
 }
 
-/** Gibt es in der Serie eine offene Instanz (ohne `ausser`)? Unteraufgaben zählen nicht. */
+/** Gibt es in der Serie eine offene Instanz (ohne `ausser`)? Unteraufgaben zählen nicht, erledigte/abgebrochene nicht. */
 function offeneInstanz(alle: readonly Task[], serie: string, ausser?: string): boolean {
-  return alle.some(x => x.id !== ausser && !x.parentId && x.status !== 'done' && !x.geloeschtAm && serieVon(x) === serie);
+  return alle.some(x => x.id !== ausser && !x.parentId && x.status !== 'done' && x.status !== 'cancelled' && !x.geloeschtAm && serieVon(x) === serie);
+}
+
+/** Läuft die Serie an dieser Instanz weiter? Ohne `wiederholung` oder mit `serieBeendet` ist sie beendet. */
+export const serieLaeuft = (t: Pick<Task, 'wiederholung'>): boolean => !!t.wiederholung && !t.wiederholung.serieBeendet;
+
+/**
+ * Der nächste Termin einer Serie nach `basis` (nie vor heute): übersprungene Tage (`ausnahmen`) fallen aus, mit
+ * `feiertage: 'NRW'` rückt ein Termin auf den nächsten Werktag. null = Serie zu Ende (`bis`).
+ */
+export function serienTermin(w: Wiederholung, basis: string, heute: string): string | null {
+  const aus = new Set(w.ausnahmen ?? []);
+  let b = basis;
+  for (let i = 0; i < 1000; i++) {
+    let d = naechsterAbHeute(w, b, heute);
+    if (!d) return null;
+    if (w.feiertage === 'NRW' && w.regel !== 'werktage') {
+      d = werktagAbOder(d, 'NRW');
+      if (w.bis && d > w.bis) return null;
+    }
+    if (!aus.has(d)) return d;
+    b = d;
+  }
+  return null;
+}
+
+/** Die nächste Person im Wechsel (`rotation`) nach `aktuell` — nicht in der Liste: die erste. */
+export function naechstePerson(rotation: readonly string[] | undefined, aktuell: string): string | undefined {
+  if (!rotation?.length) return undefined;
+  const i = rotation.indexOf(aktuell);
+  return rotation[(i + 1) % rotation.length];
+}
+
+/** Basis-Tag für den nächsten Termin: die Fälligkeit — oder bei „ab Erledigung“ der Berliner Tag der Erledigung. */
+function basisTag(t: Task, heute: string): string {
+  if (t.wiederholung?.ab === 'erledigt' && t.completedAt) return berlinerTag(new Date(t.completedAt));
+  return tagDer(t.dueDate) ?? (t.completedAt ? berlinerTag(new Date(t.completedAt)) : heute);
 }
 
 /**
@@ -77,12 +122,17 @@ function offeneInstanz(alle: readonly Task[], serie: string, ausser?: string): b
  * oder die Instanz für den Tag gibt es schon.
  */
 export function naechsteInstanz(t: Task, alle: readonly Task[], heute: string, jetzt: string): Task[] {
-  if (!t.wiederholung || t.status !== 'done' || t.parentId) return [];
+  if (!serieLaeuft(t) || t.status !== 'done' || t.parentId) return [];
   const serie = serieVon(t);
   if (offeneInstanz(alle, serie, t.id)) return [];
-  const basis = tagDer(t.dueDate) ?? (t.completedAt ? berlinerTag(new Date(t.completedAt)) : heute);
-  const tag = naechsterAbHeute(t.wiederholung, basis, heute);
+  const basis = basisTag(t, heute);
+  const tag = serienTermin(t.wiederholung!, basis, heute);
   if (!tag) return [];
+  return instanzAm(t, alle, serie, basis, tag, jetzt);
+}
+
+/** Die Instanz der Serie am Tag `tag` aus der Vorgängerin `t` (+ zurückgesetzte Unteraufgaben). Leer, wenn es sie gibt. */
+function instanzAm(t: Task, alle: readonly Task[], serie: string, basis: string, tag: string, jetzt: string): Task[] {
   const id = instanzId(serie, tag);
   if (alle.some(x => x.id === id)) return [];
   const delta = tageZwischen(basis, tag);
@@ -104,8 +154,21 @@ export function naechsteInstanz(t: Task, alle: readonly Task[], heute: string, j
     return n;
   };
   const herkunft = t.vorlageId && !t.vorlageId.startsWith(SERIE_PRAEFIX) ? t.vorlageId : undefined;
-  const inst = kopie(t, id, { dueDate: tag, startDate: verschoben(t.startDate, delta), serieId: serie.slice(SERIE_PRAEFIX.length), vorlageId: herkunft, wiederholung: ohneNaechste(t.wiederholung) });
-  const unter = alle.filter(x => x.parentId === t.id && !x.geloeschtAm).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+  const w = ohneNaechste(t.wiederholung!);
+  // Übersprungene Tage vor dem neuen Termin braucht die Serie nicht mehr (die Liste wächst nicht ohne Ende).
+  const ausnahmen = (w.ausnahmen ?? []).filter(d => d > tag);
+  const wNeu: Wiederholung = { ...w };
+  if (ausnahmen.length) wNeu.ausnahmen = ausnahmen; else delete wNeu.ausnahmen;
+  // Wechsel (29.09.): die nächste Person der Liste wird verantwortlich; wer es vorher war, ist nicht mehr beteiligt-pflichtig.
+  const wer = naechstePerson(w.rotation, t.assignee);
+  const person: Partial<Task> = wer ? { assignee: wer as Owner, ...(t.beteiligte?.length ? { beteiligte: t.beteiligte.filter(p => p !== wer) } : {}) } : {};
+  const inst = kopie(t, id, {
+    dueDate: tag, startDate: verschoben(t.startDate, delta), serieId: serie.slice(SERIE_PRAEFIX.length), vorlageId: herkunft, wiederholung: wNeu,
+    ...(t.beteiligte?.length && !wer ? { beteiligte: [...t.beteiligte] } : {}), ...person,
+    ...(t.sichtbarkeit ? { sichtbarkeit: t.sichtbarkeit } : {}), ...(t.angelegtVon ? { angelegtVon: t.angelegtVon } : {}),
+  });
+  if (inst.beteiligte && !inst.beteiligte.length) delete inst.beteiligte;
+  const unter = alle.filter(x => x.parentId === t.id && (!x.geloeschtAm || x.geloeschtMit === t.id)).sort(nachReihe)
     .map((u, i) => kopie(u, `${id}-u${i + 1}`, { parentId: id, dueDate: verschoben(u.dueDate, delta), startDate: verschoben(u.startDate, delta) }));
   return [inst, ...unter];
 }
@@ -121,10 +184,54 @@ export function serienBeimErledigen(vorher: readonly Task[], nachher: readonly T
   for (const id of ids) {
     const n = jetztNach.get(id);
     const a = alt.get(id);
-    if (!n || !a || a.status === 'done' || n.status !== 'done' || !n.wiederholung || n.parentId) continue;
+    if (!n || !a || a.status === 'done' || n.status !== 'done' || !serieLaeuft(n) || n.parentId) continue;
     neu.push(...naechsteInstanz(n, [...nachher, ...neu], heute, jetzt));
   }
   return neu;
+}
+
+/**
+ * Wieder geöffnet (#12): eine Serien-Aufgabe geht von „erledigt“ zurück auf offen → die Folgeinstanz, die beim Erledigen
+ * entstand und seither niemand angefasst hat (Verlauf nur „angelegt“, `updatedAt` = `createdAt`, nicht vor der Erledigung
+ * angelegt), fällt wieder weg — samt Unteraufgaben. So gibt es nie zwei offene Instanzen. Liefert die Kennungen.
+ */
+export function folgeinstanzenBeimOeffnen(vorher: readonly Task[], nachher: readonly Task[], ids: readonly string[]): string[] {
+  const alt = new Map(vorher.map(t => [t.id, t]));
+  const jetztNach = new Map(nachher.map(t => [t.id, t]));
+  const weg = new Set<string>();
+  for (const id of ids) {
+    const a = alt.get(id), n = jetztNach.get(id);
+    if (!a || !n || a.status !== 'done' || n.status === 'done' || n.parentId || !a.wiederholung) continue;
+    const serie = serieVon(n);
+    const seit = a.completedAt ?? a.updatedAt;
+    for (const x of nachher) {
+      if (x.id === id || x.parentId || x.geloeschtAm || serieVon(x) !== serie || x.status !== 'todo') continue;
+      const unberuehrt = (x.verlauf ?? []).every(v => v.was === 'angelegt') && x.updatedAt === x.createdAt && (!seit || x.createdAt >= seit);
+      if (!unberuehrt || x.kommentare?.length) continue;
+      weg.add(x.id);
+      for (const u of nachher) if (u.parentId === x.id) weg.add(u.id);
+    }
+  }
+  return Array.from(weg);
+}
+
+/**
+ * „Nur diese löschen“ (#29): eine OFFENE Instanz einer laufenden Serie geht in den Papierkorb → ihr Tag kommt in
+ * `ausnahmen` (an der gelöschten Instanz — sie bleibt die jüngste, bis die nächste da ist) und die nächste Instanz entsteht
+ * sofort. Liefert die geänderte gelöschte Instanz (mit Ausnahme) und die neuen Aufgaben.
+ */
+export function serieUeberspringen(t: Task, alle: readonly Task[], heute: string, jetzt: string): { geloescht: Task; neu: Task[] } | null {
+  if (!serieLaeuft(t) || t.parentId || t.status === 'done' || t.status === 'cancelled') return null;
+  const tag = tagDer(t.dueDate);
+  if (!tag) return null;
+  const w = t.wiederholung!;
+  const ausnahmen = Array.from(new Set([...(w.ausnahmen ?? []), tag])).sort();
+  const geloescht: Task = { ...t, wiederholung: { ...w, ausnahmen } };
+  const serie = serieVon(t);
+  if (offeneInstanz(alle.filter(x => x.id !== t.id), serie)) return { geloescht, neu: [] };
+  const naechster = serienTermin(geloescht.wiederholung!, tag, heute);
+  if (!naechster) return { geloescht, neu: [] };
+  return { geloescht, neu: instanzAm(geloescht, alle, serie, tag, naechster, jetzt) };
 }
 
 /**
@@ -134,8 +241,11 @@ export function serienBeimErledigen(vorher: readonly Task[], nachher: readonly T
 export function serienAufgabenNachholen(tasks: readonly Task[], heute: string, jetzt: string): Task[] {
   const letzte = new Map<string, Task>();
   const zeit = (t: Task) => tagDer(t.dueDate) ?? tagDer(t.completedAt) ?? tagDer(t.createdAt) ?? '';
+  // Die JÜNGSTE Instanz entscheidet (29.09., #29) — auch eine ohne `wiederholung` (dann ist die Serie beendet). Nur Serien,
+  // in denen irgendeine Instanz je wiederholt hat, zählen.
+  const mitSerie = new Set(tasks.filter(t => !t.parentId && t.wiederholung).map(serieVon));
   for (const t of tasks) {
-    if (t.parentId || !t.wiederholung) continue;
+    if (t.parentId || !mitSerie.has(serieVon(t))) continue;
     const s = serieVon(t);
     const l = letzte.get(s);
     if (!l || zeit(t) > zeit(l)) letzte.set(s, t);
@@ -143,11 +253,20 @@ export function serienAufgabenNachholen(tasks: readonly Task[], heute: string, j
   const morgen = tagPlus(heute, 1);
   const neu: Task[] = [];
   for (const [serie, t] of Array.from(letzte.entries())) {
-    // Die jüngste Instanz liegt im Papierkorb (29.09.): die Serie ruht — gelöscht heißt „nicht mehr“, nicht „die nächste bitte“.
-    if (t.geloeschtAm) continue;
-    if (t.status !== 'done' || offeneInstanz([...tasks, ...neu], serie)) continue;
-    const basis = tagDer(t.dueDate) ?? (t.completedAt ? berlinerTag(new Date(t.completedAt)) : heute);
-    const tag = naechsterAbHeute(t.wiederholung!, basis, heute);
+    if (!serieLaeuft(t) || offeneInstanz([...tasks, ...neu], serie)) continue;
+    // Die jüngste Instanz liegt im Papierkorb: übersprungen („nur diese“, ihr Tag steht in `ausnahmen`) → weiter nach dem
+    // Tag; sonst ruht die Serie — gelöscht heißt „nicht mehr“, nicht „die nächste bitte“.
+    if (t.geloeschtAm) {
+      const tag0 = tagDer(t.dueDate);
+      if (!tag0 || !(t.wiederholung!.ausnahmen ?? []).includes(tag0)) continue;
+      const tag = serienTermin(t.wiederholung!, tag0, heute);
+      if (!tag || tag > morgen) continue;
+      neu.push(...instanzAm(t, [...tasks, ...neu], serie, tag0, tag, jetzt));
+      continue;
+    }
+    // Abgebrochen: keine Folgeinstanz (Kevin 29.09.).
+    if (t.status !== 'done') continue;
+    const tag = serienTermin(t.wiederholung!, basisTag(t, heute), heute);
     if (!tag || tag > morgen) continue;
     neu.push(...naechsteInstanz(t, [...tasks, ...neu], heute, jetzt));
   }

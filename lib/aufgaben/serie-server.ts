@@ -9,6 +9,7 @@ import { protokolliere, listenDiff, type Aenderung } from '@/lib/store/aenderung
 import type { TasksState } from '@/types/tasks';
 import { uebernehmen } from './struktur';
 import { AUFGABEN_SPEICHER, orgZuordnung, papierkorbDateienEntfernen } from './speicher';
+import { haushaltsSpeicher } from './sicht';
 import { aufgabenSchreiben } from './umbau';
 import { papierkorbAbgelaufen, endgueltigEntfernen } from './papierkorb';
 import { karteiHaushalt } from '@/lib/crm/sperrliste';
@@ -26,16 +27,17 @@ export async function aufgabenSerienNachziehen(jetzt = new Date()): Promise<Seri
   const heute = berlinerTag(jetzt);
   const jetztIso = jetzt.toISOString();
   const orgs = await orgZuordnung();
+  const personen = await haushaltsSpeicher();
   // Vorab ohne Sperre: ist überhaupt etwas fällig? Sonst wird nichts geschrieben.
   const roh = await loadJson<TasksState>(AUFGABEN_SPEICHER);
-  if (!roh || !serienLauf(uebernehmen(alsStand(roh), orgs).state, heute, jetztIso).geaendert) return { listen: 0, aufgaben: 0, hinweise: [] };
+  if (!roh || !serienLauf(uebernehmen(alsStand(roh), orgs, personen).state, heute, jetztIso).geaendert) return { listen: 0, aufgaben: 0, hinweise: [] };
 
   let bericht: SerienLaufBericht = { listen: 0, aufgaben: 0, hinweise: [] };
   const stand: { vorher?: TasksState; nachher?: TasksState } = {};
   // Über `aufgabenSchreiben` (29.09., A9): vor dem ersten übernommenen Schreiben eine Archiv-Kopie, danach der Merker.
   await aufgabenSchreiben(aktuell => {
     if (!aktuell) return aktuell;
-    const basis = uebernehmen(alsStand(aktuell), orgs).state;
+    const basis = uebernehmen(alsStand(aktuell), orgs, personen).state;
     const r = serienLauf(basis, heute, jetztIso);
     if (!r.geaendert) return aktuell;
     // Nie abschneiden, ablehnen: über der Grenze nichts anlegen (Hinweis statt still kürzen).
@@ -46,7 +48,7 @@ export async function aufgabenSerienNachziehen(jetzt = new Date()): Promise<Seri
     const neu = new Set(r.neueAufgaben.map(t => t.id));
     const tasks = r.state.tasks.map(t => (neu.has(t.id) ? { ...t, verlauf: verlaufAnhaengen(undefined, [{ am: jetztIso, von: 'system', durch: 'system', was: 'angelegt' }]) } : t));
     stand.vorher = basis;
-    stand.nachher = uebernehmen({ ...r.state, tasks }, orgs).state;
+    stand.nachher = uebernehmen({ ...r.state, tasks }, orgs, personen).state;
     bericht = { listen: r.neueListen.length, aufgaben: r.neueAufgaben.length, hinweise: r.hinweise };
     return stand.nachher;
   }, jetztIso);
@@ -69,12 +71,13 @@ export async function papierkorbAufraeumen(jetzt = new Date()): Promise<Papierko
   const roh = await loadJson<TasksState>(AUFGABEN_SPEICHER);
   if (!roh || !papierkorbAbgelaufen(alsStand(roh), iso).length) return { projekte: 0, aufgaben: 0, dateien: 0 };
   const orgs = await orgZuordnung();
+  const personen = await haushaltsSpeicher();
   const entfernt = { aufgaben: [] as string[], projekte: [] as string[] };
   const stand: { vorher?: TasksState; nachher?: TasksState } = {};
   await aufgabenSchreiben(aktuell => {
     if (!aktuell) return aktuell;
     entfernt.aufgaben.length = 0; entfernt.projekte.length = 0;
-    const basis = uebernehmen(alsStand(aktuell), orgs).state;
+    const basis = uebernehmen(alsStand(aktuell), orgs, personen).state;
     const faellig = papierkorbAbgelaufen(basis, iso);
     if (!faellig.length) return aktuell;
     let s = basis;

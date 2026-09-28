@@ -472,7 +472,8 @@ export function statusSauber(o: unknown): AufgabenStatus | null {
 
 /**
  * Kommentare zusammenführen (Server): Vorhandene bleiben so, wie sie gespeichert sind (niemand ändert fremde
- * Kommentare); neue tragen die schreibende Person und den Zeitpunkt des Servers; löschen darf man nur eigene.
+ * Kommentare); neue tragen die schreibende Person und den Zeitpunkt des Servers; entfernen darf man nur eigene — und
+ * auch das nur weich (`entfernt`, 29.09.): die Absprache bleibt belegbar.
  * Liefert auch die neu hinzugekommenen (für die Meldungen).
  */
 export function kommentareVereinen(alt: readonly AufgabeKommentar[] | undefined, neu: readonly AufgabeKommentar[] | undefined, person: string | null, jetzt = new Date().toISOString()): { kommentare: AufgabeKommentar[] | undefined; neue: AufgabeKommentar[] } {
@@ -481,7 +482,12 @@ export function kommentareVereinen(alt: readonly AufgabeKommentar[] | undefined,
   const raus: AufgabeKommentar[] = [];
   const neue: AufgabeKommentar[] = [];
   for (const k of alt ?? []) {
-    if (kommen.has(k.id) || !person || k.von !== person) raus.push(k); // bleibt (unverändert) — fremde nie löschen
+    // Bleibt (unverändert) — fremde nie löschen. Eigene werden seit 29.09. (#76) nur WEICH entfernt: fehlt ein eigener
+    // Kommentar oder kommt er mit `entfernt`, bleibt er gespeichert und trägt `entfernt: { am, von }` (Anzeige „entfernt“).
+    const k2 = kommen.get(k.id);
+    const eigen = !!person && k.von === person;
+    if (eigen && !k.entfernt && (!k2 || k2.entfernt)) { raus.push({ ...k, entfernt: { am: jetzt, von: person! } }); continue; }
+    raus.push(k);
   }
   for (const k of neu ?? []) {
     if (vorher.has(k.id) || !person) continue;

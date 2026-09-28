@@ -12,6 +12,7 @@ import { fortschritt } from '@/lib/onboarding-status';
 import { computeIndex, indexLabel } from '@/lib/performance';
 import { personAus, darfGesundheitSehen } from '@/lib/zoe/raum';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,7 +22,7 @@ export async function GET(req: Request) {
   const heute = localDay();
   const [ob, tasks, perf, netz, plan, grund] = await Promise.all([
     fortschritt(),
-    ladeAufgabenSicht(),
+    ladeAufgabenSicht(personStreng(req)), // Sichtfilter „nur ich“ (29.09.)
     loadJson<{ snapshots?: { date: string; index: number; abdeckung?: number; label?: string; hebel?: string; saeulen?: Record<string, number | null> }[] }>('performance'),
     loadJson<{ kontakte?: unknown[]; chancen?: { wert?: number; stufe?: string }[] }>('netzwerk'),
     loadJson<{ firmen?: { kontostand?: number }[]; zahlungen?: { status?: string }[] }>('finanzplan'),

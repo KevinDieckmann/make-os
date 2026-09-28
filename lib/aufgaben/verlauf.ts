@@ -31,7 +31,10 @@ export function verlaufFuer(alt: Task | undefined, neu: Task, wer: VerlaufWer, j
   if ((alt.notiz ?? '') !== (neu.notiz ?? '')) raus.push(e('notiz'));
   if (alt.spaceId !== neu.spaceId || alt.projectId !== neu.projectId || (alt.listeId ?? '') !== (neu.listeId ?? '') || (alt.parentId ?? '') !== (neu.parentId ?? '')) raus.push(e('verschoben'));
   const ka = new Set((alt.kommentare ?? []).map(k => k.id)), kn = new Set((neu.kommentare ?? []).map(k => k.id));
-  const kNeu = Array.from(kn).filter(id => !ka.has(id)).length, kWeg = Array.from(ka).filter(id => !kn.has(id)).length;
+  // Entfernt = fehlt jetzt ODER seit dieser Änderung weich entfernt (29.09., `entfernt`).
+  const weichAlt = new Set((alt.kommentare ?? []).filter(k => k.entfernt).map(k => k.id));
+  const weichNeu = (neu.kommentare ?? []).filter(k => k.entfernt && !weichAlt.has(k.id)).length;
+  const kNeu = Array.from(kn).filter(id => !ka.has(id)).length, kWeg = Array.from(ka).filter(id => !kn.has(id)).length + weichNeu;
   if (kNeu) raus.push(e('kommentar', { feld: 'neu', anzahl: kNeu }));
   if (kWeg) raus.push(e('kommentar', { feld: 'entfernt', anzahl: kWeg }));
   const fa = alt.felder ?? {}, fn = neu.felder ?? {};
@@ -39,6 +42,9 @@ export function verlaufFuer(alt: Task | undefined, neu: Task, wer: VerlaufWer, j
   if (!gleichJson(alt.abhaengigVon ?? [], neu.abhaengigVon ?? [])) raus.push(e('abhaengigkeit', { anzahl: (neu.abhaengigVon ?? []).length }));
   if (!gleichJson(alt.bezug, neu.bezug)) raus.push(e('verknuepfung'));
   if (!gleichJson(alt.wiederholung, neu.wiederholung)) raus.push(e('wiederholung'));
+  // Seit 29.09.: Beteiligte (Personen = Kurzwerte) und Sichtbarkeit.
+  if (!gleichJson(alt.beteiligte ?? [], neu.beteiligte ?? [])) raus.push(e('beteiligte', { ...(alt.beteiligte?.length ? { vorher: alt.beteiligte.join(', ') } : {}), ...(neu.beteiligte?.length ? { nachher: neu.beteiligte.join(', ') } : {}) }));
+  if ((alt.sichtbarkeit ?? 'haushalt') !== (neu.sichtbarkeit ?? 'haushalt')) raus.push(e('sichtbarkeit', { vorher: alt.sichtbarkeit === 'nur-ich' ? 'nur ich' : 'Haushalt', nachher: neu.sichtbarkeit === 'nur-ich' ? 'nur ich' : 'Haushalt' }));
   if ((alt.zoe?.status ?? '') !== (neu.zoe?.status ?? '')) raus.push(e('zoe', { ...(alt.zoe ? { vorher: ZOE_LABEL[alt.zoe.status] } : {}), ...(neu.zoe ? { nachher: ZOE_LABEL[neu.zoe.status] } : {}) }));
   return raus;
 }
@@ -79,6 +85,8 @@ export function verlaufText(v: VerlaufEintrag, feldName: (id: string) => string 
     case 'abhaengigkeit': return v.anzahl ? `wartet jetzt auf ${v.anzahl} Aufgabe${v.anzahl === 1 ? '' : 'n'}` : 'wartet auf nichts mehr';
     case 'verknuepfung': return 'CRM-Verknüpfung geändert';
     case 'wiederholung': return 'Wiederholung geändert';
+    case 'beteiligte': return `Beteiligte: ${v.vorher ? v.vorher.split(', ').map(person).join(', ') : '—'} → ${v.nachher ? v.nachher.split(', ').map(person).join(', ') : '—'}`;
+    case 'sichtbarkeit': return `Sichtbar${pfeil}`;
     case 'zoe': return `ZOE${pfeil}`;
     case 'zusammengefasst': return `+${v.anzahl ?? 0} ältere Änderungen`;
     default: return 'geändert';

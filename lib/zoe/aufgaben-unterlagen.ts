@@ -87,7 +87,7 @@ function antwort(kopf: string, koerper: string, teil: unknown, weiter: (t: numbe
 async function unterlagen(input: Record<string, unknown>, person?: string): Promise<string> {
   const h = await haushalt(person);
   if (!h) return NICHT_IM_HINTERGRUND;
-  const state = await ladeAufgabenSicht();
+  const state = await ladeAufgabenSicht(person ?? null); // Sichtfilter „nur ich“ (29.09.)
   const aufgabeSuche = String(input.aufgabe ?? '').trim();
   const projektSuche = String(input.projekt ?? '').trim();
   if (!aufgabeSuche && !projektSuche) return 'Fehlgeschlagen: projekt oder aufgabe angeben (Kennung oder Titel).';

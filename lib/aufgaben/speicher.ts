@@ -9,28 +9,60 @@
 import { fingerabdruck, mitStand } from '@/lib/store/fingerabdruck';
 import { protokolliere, listenDiff, type Aenderung, type Wer } from '@/lib/store/aenderungsprotokoll';
 import { brauchtBestaetigung, MASSEN_GRENZE } from '@/lib/store/massen-wache';
-import { ladeKonten } from '@/lib/zugang/konten';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { melde, type MeldungEingabe } from '@/lib/meldungen/melden';
 import { WEG } from '@/lib/wege';
 import type { Task, TasksState, Project, AufgabenListe, AufgabenStatus, AufgabeKommentar, AufgabenGruppe, AufgabenVorlage } from '@/types/tasks';
-import { uebernehmen, alleSpaces, zustaendigeVon, type AufgabenSpace } from './struktur';
+import { uebernehmen, alleSpaces, type AufgabenSpace } from './struktur';
 import { taskSauber, projektSauber, listeSauber, statusSauber, gruppeSauber, vorlageSauber, feldWerteTypisieren, auswahlUmbenennungen, kommentareVereinen, AUFGABEN_GRENZEN, ZuGross } from './saeubern';
-import { alsStand, orgZuordnung } from './sicht';
+import { alsStand, orgZuordnung, darfSehen, istNurIch, haushaltsPersonen } from './sicht';
+import { beideAufloesen, anlegerinVon, alleZustaendigen, SYSTEM } from './zustaendig';
+import { aufgabePruefen } from './pruefen';
 import { aufgabenSicht, projektInPapierkorb, aufgabeInPapierkorb, endgueltigEntfernen, imPapierkorb } from './papierkorb';
-import { aufgabenSchreiben } from './umbau';
+import { aufgabenSchreiben, UMBAU_VERSION } from './umbau';
 import { abhaengigAngleichen, kreisBei } from './abhaengig';
 import { verlaufFuer, verlaufAnhaengen, type VerlaufWer } from './verlauf';
-import { serienBeimErledigen } from './serie';
+import { serienBeimErledigen, folgeinstanzenBeimOeffnen, serieUeberspringen } from './serie';
 import { berlinerTag } from './wiederholung';
 
 export const AUFGABEN_SPEICHER = 'tasks';
 
 /** Abbruch in der Sperre — nichts wird geschrieben, `erg` trägt den Grund. */
 const ABBRUCH = Symbol('aufgaben-abbruch');
+/** JSON mit sortierten Schlüsseln — gleiche Inhalte, gleiche Zeichenkette (Reihenfolge der Felder egal). */
+function stabil(x: unknown): string {
+  if (Array.isArray(x)) return `[${x.map(stabil).join(',')}]`;
+  if (x && typeof x === 'object') return `{${Object.keys(x as object).filter(k => (x as Record<string, unknown>)[k] !== undefined).sort().map(k => `${JSON.stringify(k)}:${stabil((x as Record<string, unknown>)[k])}`).join(',')}}`;
+  return JSON.stringify(x) ?? 'null';
+}
+/** Nichts zu tun (Server-Schreiber ohne Änderung) — nichts wird geschrieben, `erg` ist ok. */
+const NICHTS_ZU_TUN = Symbol('aufgaben-nichts');
+
+/**
+ * Felder, die NUR der Server setzt (29.09., #12/#14/#20/#78): `createdAt` nur beim Anlegen, `updatedAt` = jetzt (nur bei
+ * einer echten Änderung), `completedAt` beim Übergang nach „erledigt“ (Server-Zeit; bleibt, solange erledigt; sonst weg),
+ * `angelegtVon` (neu: die schreibende Person; alt: gespeichert bzw. aus dem Verlauf), `zoe.status` per PATCH nur, wenn
+ * unverändert (Änderung nur über /api/aufgaben/zoe). Sichtbarkeit „haushalt“ wird nicht gespeichert (fehlt = haushalt).
+ */
+export function serverFelder(n0: Task, alt: Task | undefined, o: { person: string; echtePerson: boolean; jetzt: string; zoeStatus: boolean }): Task {
+  const n: Task = { ...n0 };
+  if (alt) n.createdAt = alt.createdAt; else n.createdAt = o.jetzt;
+  const anlegerin = alt ? (alt.angelegtVon ?? anlegerinVon(alt)) : (o.echtePerson ? o.person : undefined);
+  if (anlegerin) n.angelegtVon = anlegerin; else delete n.angelegtVon;
+  if (n.sichtbarkeit !== 'nur-ich') delete n.sichtbarkeit;
+  if (n.status === 'done') n.completedAt = alt?.status === 'done' && alt.completedAt ? alt.completedAt : o.jetzt;
+  else delete n.completedAt;
+  if (!o.zoeStatus && (n.zoe?.status ?? null) !== (alt?.zoe?.status ?? null)) {
+    if (alt?.zoe) n.zoe = alt.zoe; else delete n.zoe;
+  }
+  // updatedAt: nur bei einer echten Änderung neu (sonst bleibt der Stand gleich und nichts wird geschrieben).
+  const ohneZeit = (t: Task) => { const { updatedAt: _u, verlauf: _v, ...r } = t; return stabil(r); };
+  n.updatedAt = alt && ohneZeit(alt) === ohneZeit(n) ? alt.updatedAt : o.jetzt;
+  return n;
+}
 const leer = (): TasksState => ({ projects: [], tasks: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] });
 // Lesen (übernommen, mit/ohne Papierkorb) liegt leichtgewichtig in ./sicht — hier weitergereicht für bestehende Aufrufer.
-export { orgZuordnung, ladeAufgaben, ladeAufgabenSicht } from './sicht';
+export { orgZuordnung, ladeAufgaben, ladeAufgabenSicht, ladeAufgabenUngefiltert } from './sicht';
 
 /** Spaces für die Oberfläche: fest + Mandanten aus dem CRM (aktiv, Archiv). */
 export async function spacesFuer(state: TasksState): Promise<AufgabenSpace[]> {
@@ -119,7 +151,7 @@ export function opsLesen(body: Record<string, unknown>): LeseErgebnis {
 
 export interface SchreibErgebnis {
   ok: boolean;
-  status: 200 | 403 | 409 | 413;
+  status: 200 | 400 | 403 | 404 | 409 | 413;
   fehler?: string;
   konflikte?: Konflikt[];
   massenAenderung?: boolean; massenLoeschung?: boolean; anzahl?: number; grenze?: number;
@@ -135,7 +167,30 @@ export interface SchreibErgebnis {
   state?: TasksState;
 }
 
-interface Optionen { person: string; wer?: Wer; massenAenderung?: boolean; massenLoeschung?: boolean; orgs?: Record<string, string>; jetzt?: string; /** Haushalt der Person — dann gehen beim endgültigen Löschen auch die Dateien. */ haushalt?: string }
+interface Optionen {
+  /** Die schreibende Person (Speichername) — „system“ für Systemläufe ohne Person. */
+  person: string; wer?: Wer; massenAenderung?: boolean; massenLoeschung?: boolean; orgs?: Record<string, string>; jetzt?: string;
+  /** Haushalt der Person — dann gehen beim endgültigen Löschen auch die Dateien. */ haushalt?: string;
+  /**
+   * Server-Schreiber (Heads, Finanzchef, Steuern, Löschfristen, Belege, Events — 29.09.): der Sichtfilter „nur ich“ gilt
+   * nicht (sie schreiben ihre eigenen Aufgaben per Kennung), Verlauf mit `durch: 'system'`.
+   */
+  system?: boolean;
+  /** Nur die ZOE-Wege (lib/zoe/aufgaben-werkzeuge.ts) dürfen `zoe.status` ändern — per PATCH wird eine Änderung ignoriert. */
+  zoeStatus?: boolean;
+}
+
+/** Änderungen, die ERST in der Sperre aus dem aktuellen Stand berechnet werden (Server-Schreiber: anlegen/erledigen je Kennung). */
+export type OpsRechnen = (stand: TasksState) => AufgabenOps;
+export const keineOps = leereOps;
+/** Eine Aufgabe als Teil-Änderung ohne Stand (nur die genannten Felder; `null` leert) — für Server-Schreiber. */
+export function teilOp(id: string, basis: Task, felder: Partial<Record<keyof Task, unknown>>): Op<Task> {
+  const gesetzt = Object.keys(felder).filter(k => felder[k as keyof Task] !== null && felder[k as keyof Task] !== undefined);
+  const leer = Object.keys(felder).filter(k => felder[k as keyof Task] === null);
+  const e = { ...basis, id } as Task;
+  for (const k of gesetzt) (e as unknown as Record<string, unknown>)[k] = felder[k as keyof Task];
+  return { op: 'upsert', eintrag: e, felder: { gesetzt, leer } };
+}
 
 /** Teil-Merge (29.09., A2): nur die Felder, die mitkamen, ersetzen; ausdrücklich geleerte fallen weg; alles andere bleibt. */
 export function teilMerge<T extends object>(alt: T, neu: T, felder: { gesetzt: readonly string[]; leer: readonly string[] }): T {
@@ -147,9 +202,13 @@ export function teilMerge<T extends object>(alt: T, neu: T, felder: { gesetzt: r
 }
 
 /** Änderungen in EINER Sperre anwenden (Stand-Prüfung, Übernahme, Grenzen, Massen-Wache), danach Protokoll + Meldungen. */
-export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<SchreibErgebnis> {
+export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, opt: Optionen): Promise<SchreibErgebnis> {
   const orgs = opt.orgs ?? await orgZuordnung();
   const jetzt = opt.jetzt ?? new Date().toISOString();
+  const personenListe = await haushaltsPersonen();
+  const personen = personenListe.map(p => p.speicher);
+  const echtePerson = !!opt.person && opt.person !== SYSTEM;
+  let ops: AufgabenOps = typeof opsOderRechnen === 'function' ? leereOps() : opsOderRechnen;
   let erg: SchreibErgebnis = { ok: false, status: 409, angewandt: 0, zeilen: [] };
   let vorher: TasksState = leer();
   let nachher: TasksState = leer();
@@ -158,8 +217,23 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
   try {
   await aufgabenSchreiben(roh => {
     neueKommentare.length = 0;
-    const basis = uebernehmen(alsStand(roh), orgs);
+    const basis = uebernehmen(alsStand(roh), orgs, personen);
     vorher = basis.state;
+    // Hinweis-Liste der Übernahme (29.09.): „both“ ohne bekannte Anlegerin → erste Person verantwortlich (nur Kennungen).
+    if (basis.geraten.length && (roh?.umbauVersion ?? 0) < UMBAU_VERSION) console.info(`[aufgaben] Übernahme „both“ ohne bekannte Anlegerin — ${personen[0]} verantwortlich (bitte prüfen): ${basis.geraten.join(', ')}`);
+    if (typeof opsOderRechnen === 'function') {
+      ops = opsOderRechnen(vorher);
+      if (!Object.values(ops).some(l => (l as unknown[]).length)) { erg = { ok: true, status: 200, angewandt: 0, zeilen: [], state: vorher }; throw NICHTS_ZU_TUN; }
+    }
+    // „nur ich“ (29.09.): eine fremde „nur ich“-Aufgabe gibt es für die schreibende Person nicht → 404 (auch löschen).
+    if (!opt.system) {
+      const alleVorher = new Map(vorher.tasks.map(t => [t.id, t]));
+      for (const o of ops.tasks) {
+        const id = o.op === 'delete' ? o.id! : o.eintrag!.id;
+        const alt = alleVorher.get(id);
+        if (alt && !darfSehen(alt, echtePerson ? opt.person : null, alleVorher)) { erg = { ok: false, status: 404, fehler: 'Aufgabe nicht gefunden.', angewandt: 0, zeilen: [] }; throw ABBRUCH; }
+      }
+    }
     const konflikte: Konflikt[] = [];
     let angewandt = 0;
     const listen = {
@@ -215,12 +289,22 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
           const defs = listen.projects.get(n.projectId)?.felder;
           const felder = feldWerteTypisieren(n.felder, defs, alt?.felder);
           if (felder) n.felder = felder; else delete n.felder;
-          if (!alt) { n.createdAt = n.createdAt || jetzt; }
           // Eigener Status neu gesetzt → `status` bekommt seinen Grundstatus (alle Leser verstehen „erledigt“).
           if (n.statusId && n.statusId !== alt?.statusId) {
             const s = listen.statusEigen.get(n.statusId);
-            if (s && s.spaceId === n.spaceId && n.status !== s.basis) { n.status = s.basis; if (s.basis === 'done') n.completedAt = n.completedAt ?? jetzt; else delete n.completedAt; }
+            if (s && s.spaceId === n.spaceId && n.status !== s.basis) n.status = s.basis;
           }
+          // ── Paket T1 (29.09.): Server-Felder, eine Verantwortliche, „nur ich“, Prüfregeln ──
+          n = serverFelder(n, alt, { person: opt.person, echtePerson, jetzt, zoeStatus: !!opt.zoeStatus });
+          if (n.sichtbarkeit === 'nur-ich' && !istNurIch(alt)) {
+            // Auf „nur ich“ stellen darf nur die Anlegerin (unbekannt → wer es tut, wird es).
+            if (n.angelegtVon && n.angelegtVon !== opt.person) { erg = { ok: false, status: 400, fehler: 'Auf „nur ich“ stellen kann nur, wer die Aufgabe angelegt hat. Nichts gespeichert.', angewandt: 0, zeilen: [] }; throw ABBRUCH; }
+            if (!n.angelegtVon && echtePerson) n = { ...n, angelegtVon: opt.person };
+            if (!n.angelegtVon) { erg = { ok: false, status: 400, fehler: '„Nur ich“ braucht eine Person — ein Systemlauf kann das nicht setzen. Nichts gespeichert.', angewandt: 0, zeilen: [] }; throw ABBRUCH; }
+          }
+          n = beideAufloesen(n, personen, echtePerson ? opt.person : null).task;
+          const grund = aufgabePruefen(n, alt, { personen });
+          if (grund) { erg = { ok: false, status: 400, fehler: grund, angewandt: 0, zeilen: [] }; throw ABBRUCH; }
           for (const c of k.neue) neueKommentare.push({ task: n, k: c });
           e = n;
         }
@@ -254,6 +338,15 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
     };
     // Papierkorb: erst hineinlegen, dann endgültig entfernen (Ketten über die reinen Regeln in lib/aufgaben/papierkorb.ts).
     const entfernt = { aufgaben: [] as string[], projekte: [] as string[] };
+    // „Nur diese löschen“ einer laufenden Serie (#29): Tag → `ausnahmen`, die nächste Instanz entsteht sofort.
+    const uebersprungen: Task[] = [];
+    for (const p of papierkorb.filter(x => !x.endgueltig && x.art === 'aufgabe')) {
+      const t = roh2.tasks.find(x => x.id === p.id);
+      const r = t ? serieUeberspringen(t, roh2.tasks, berlinerTag(new Date(jetzt)), jetzt) : null;
+      if (!r) continue;
+      roh2 = { ...roh2, tasks: [...roh2.tasks.map(x => (x.id === p.id ? r.geloescht : x)), ...r.neu] };
+      uebersprungen.push(...r.neu);
+    }
     for (const p of papierkorb.filter(x => !x.endgueltig)) roh2 = p.art === 'projekt' ? projektInPapierkorb(roh2, p.id, jetzt) : aufgabeInPapierkorb(roh2, p.id, jetzt);
     for (const p of papierkorb.filter(x => x.endgueltig)) {
       const r = endgueltigEntfernen(roh2, p.art, p.id);
@@ -268,7 +361,7 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
       erg = { ok: false, status: 409, massenLoeschung: true, fehler: 'Abgelehnt: das hätte über die Hälfte der Aufgaben gelöscht. Wenn das so gewollt ist, noch einmal mit ausdrücklicher Bestätigung schicken.', angewandt: 0, zeilen: [] };
       throw ABBRUCH;
     }
-    nachher = uebernehmen(roh2, orgs).state;
+    nachher = uebernehmen(roh2, orgs, personen).state;
     // Kreise („A wartet auf B wartet auf A“) — keine der Aufgaben könnte je fertig werden: ablehnen.
     const upserts = ops.tasks.filter(o => o.op === 'upsert').map(o => o.eintrag!.id);
     const kreis = kreisBei(nachher.tasks, upserts);
@@ -278,8 +371,16 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
       throw ABBRUCH;
     }
     // Paket C3: wiederkehrende Aufgabe erledigt → nächste Instanz (idempotent, höchstens eine offene je Serie).
-    const serien = serienBeimErledigen(vorher.tasks, nachher.tasks, upserts, berlinerTag(new Date(jetzt)), jetzt);
-    if (serien.length) nachher = { ...nachher, tasks: [...nachher.tasks, ...serien] };
+    // „nur ich“: auch eine NEUE Aufgabe unter einer fremden „nur ich“-Aufgabe gibt es nicht (Unteraufgaben erben).
+    if (!opt.system) {
+      const nachId = new Map(nachher.tasks.map(t => [t.id, t]));
+      for (const id of upserts) { const t = nachId.get(id); if (t && !darfSehen(t, echtePerson ? opt.person : null, nachId)) { erg = { ok: false, status: 404, fehler: 'Aufgabe nicht gefunden.', angewandt: 0, zeilen: [] }; throw ABBRUCH; } }
+    }
+    const serien = [...uebersprungen, ...serienBeimErledigen(vorher.tasks, nachher.tasks, upserts, berlinerTag(new Date(jetzt)), jetzt)];
+    if (serien.length) nachher = { ...nachher, tasks: [...nachher.tasks, ...serien.filter(x => !nachher.tasks.some(y => y.id === x.id))] };
+    // Wieder geöffnet (#12): die gerade erzeugte, unberührte Folgeinstanz geht weg — nie zwei offene Instanzen.
+    const zurueck = folgeinstanzenBeimOeffnen(vorher.tasks, nachher.tasks, upserts);
+    if (zurueck.length) { const w = new Set(zurueck); nachher = { ...nachher, tasks: nachher.tasks.filter(t => !w.has(t.id)) }; }
     const serienIds = new Set(serien.map(t => t.id));
     // Verlauf je Aufgabe: nach der Übernahme, damit abgeleitete Felder (Status, Ort) stimmen.
     const altNach = new Map(vorher.tasks.map(t => [t.id, t]));
@@ -306,13 +407,14 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
       }
     }
     erg = {
-      ok: true, status: 200, angewandt, zeilen, state: nachher, ...(serien.length ? { serien: serien.map(t => t.id) } : {}),
+      ok: true, status: 200, angewandt, zeilen, state: nachher, ...(serien.length || zurueck.length ? { serien: [...serien.map(t => t.id), ...zurueck] } : {}),
       ...(entfernt.aufgaben.length || entfernt.projekte.length ? { entfernt } : {}),
     };
     return nachher;
   }, jetzt);
   } catch (e) {
     // Abgelehnt: nichts geschrieben (aufgabenSchreiben schreibt nicht, wenn die Änderung wirft).
+    if (e === NICHTS_ZU_TUN) return erg;
     if (e !== ABBRUCH) throw e;
   }
 
@@ -321,7 +423,7 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
   const aenderungen: Aenderung[] = [];
   for (const art of LISTEN_ARTEN) aenderungen.push(...listenDiff((vorher[art] ?? []) as { id: string }[], (nachher[art] ?? []) as { id: string }[], art));
   await protokolliere(AUFGABEN_SPEICHER, aenderungen, opt.wer);
-  await meldungenNachSchreiben(aufgabenSicht(vorher), aufgabenSicht(nachher), neueKommentare, opt.person);
+  await meldungenNachSchreiben(aufgabenSicht(vorher), aufgabenSicht(nachher), neueKommentare, echtePerson ? opt.person : SYSTEM, personenListe);
   if (erg.entfernt && opt.haushalt) await papierkorbDateienEntfernen(opt.haushalt, opt.person, erg.entfernt);
   return erg;
 }
@@ -352,55 +454,70 @@ export async function papierkorbDateienEntfernen(haushalt: string, person: strin
 
 /** Personen des Haushalts des Inhabers (Speichername + Anzeigename) — für „beide“ und für Texte. */
 export async function haushaltPersonen(): Promise<{ speicher: string; name: string }[]> {
-  const { konten } = await ladeKonten();
-  const inhaber = konten.find(k => k.rolle === 'inhaber');
-  if (!inhaber) return [];
-  return konten.filter(k => k.speicher === inhaber.speicher || (!!inhaber.haushalt && k.haushalt === inhaber.haushalt)).map(k => ({ speicher: k.speicher, name: k.name }));
+  return haushaltsPersonen();
 }
 
 const kurzTitel = (t: string) => (t.length > 80 ? `${t.slice(0, 79)}…` : t);
 const vorname = (n: string | undefined, rueck: string) => (n ?? '').trim().split(/\s+/)[0] || rueck;
 
 /**
- * Wer bekommt eine Meldung? Neu zugewiesen (auch neu angelegt für jemand anderen) → „zuweisung“; neuer Kommentar →
- * Erwähnte „erwaehnung“, übrige Zuständige „kommentar“. Nie an die schreibende Person selbst. Rein (testbar).
+ * Wer bekommt eine Meldung? (rein, testbar)
+ *  · Neu verantwortlich (auch neu angelegt für jemand anderen) → „zuweisung“; neu beteiligt (29.09.) → „zuweisung“
+ *    („… hat dich an „X“ beteiligt“). Mehrere Zuweisungen an dieselbe Person in EINEM Schreibvorgang werden zu EINER
+ *    Meldung gebündelt („Kevin hat dir 5 Aufgaben zugewiesen“, #42).
+ *  · Neuer Kommentar → Erwähnte „erwaehnung“, übrige Zuständige (verantwortlich + beteiligt) „kommentar“.
+ *  · Nie an die schreibende Person selbst, nie über erledigte/abgebrochene Aufgaben (Zuweisung), nie über eine Aufgabe,
+ *    die die Empfängerin nicht sehen darf („nur ich“).
  */
 export function meldungenBerechnen(
   vorher: TasksState, nachher: TasksState, neueKommentare: readonly { task: Task; k: AufgabeKommentar }[], person: string,
   personen: readonly { speicher: string; name: string }[],
 ): MeldungEingabe[] {
   const alle = personen.map(p => p.speicher);
-  const ichName = vorname(personen.find(p => p.speicher === person)?.name, person);
+  const ichName = person === SYSTEM ? 'MAKE OS' : vorname(personen.find(p => p.speicher === person)?.name, person);
   const bekannt = new Set(alle);
   const raus: MeldungEingabe[] = [];
   const alt = new Map(vorher.tasks.map(t => [t.id, t]));
+  const nachId = new Map(nachher.tasks.map(t => [t.id, t]));
+  const sieht = (t: Task, an: string) => darfSehen(t, an, nachId);
+  const zuweisungen = new Map<string, MeldungEingabe[]>();
+  const merke = (m: MeldungEingabe) => zuweisungen.set(m.an, [...(zuweisungen.get(m.an) ?? []), m]);
   for (const t of nachher.tasks) {
     const a = alt.get(t.id);
-    if (a && a.assignee === t.assignee) continue;
-    if (t.status === 'done') continue;
-    const vorherHatte = new Set(a ? zustaendigeVon(a.assignee, alle) : []);
-    for (const an of zustaendigeVon(t.assignee, alle)) {
-      if (an === person || vorherHatte.has(an) || !bekannt.has(an)) continue;
-      raus.push({ an, art: 'zuweisung', titel: `${ichName} hat dir „${kurzTitel(t.title)}“ zugewiesen`, link: WEG.aufgabe(t.id), von: person, bezug: { art: 'aufgabe', id: t.id } });
+    if (t.status === 'done' || t.status === 'cancelled') continue;
+    const vorherVerantwortlich = new Set(a ? (a.assignee === 'both' ? alle : [a.assignee]) : []);
+    const vorherDabei = new Set(a ? alleZustaendigen(a, alle) : []);
+    const jetztVerantwortlich = t.assignee === 'both' ? alle : [t.assignee];
+    for (const an of jetztVerantwortlich) {
+      if (an === person || vorherVerantwortlich.has(an) || !bekannt.has(an) || !sieht(t, an)) continue;
+      merke({ an, art: 'zuweisung', titel: `${ichName} hat dir „${kurzTitel(t.title)}“ zugewiesen`, link: WEG.aufgabe(t.id), von: person, bezug: { art: 'aufgabe', id: t.id } });
     }
+    for (const an of t.beteiligte ?? []) {
+      if (an === person || vorherDabei.has(an) || !bekannt.has(an) || !sieht(t, an)) continue;
+      merke({ an, art: 'zuweisung', titel: `${ichName} hat dich an „${kurzTitel(t.title)}“ beteiligt`, link: WEG.aufgabe(t.id), von: person, bezug: { art: 'aufgabe', id: t.id } });
+    }
+  }
+  for (const [an, l] of Array.from(zuweisungen.entries())) {
+    if (l.length === 1) { raus.push(l[0]); continue; }
+    raus.push({ an, art: 'zuweisung', titel: `${ichName} hat dir ${l.length} Aufgaben zugewiesen`, link: WEG.aufgaben({}), von: person });
   }
   for (const { task, k } of neueKommentare) {
     const erwaehnt = new Set((k.erwaehnt ?? []).filter(p => bekannt.has(p)));
-    for (const an of erwaehnt) {
-      if (an === person) continue;
+    for (const an of Array.from(erwaehnt)) {
+      if (an === person || !sieht(task, an)) continue;
       raus.push({ an, art: 'erwaehnung', titel: `${ichName} hat dich bei „${kurzTitel(task.title)}“ erwähnt`, link: WEG.aufgabe(task.id), von: person, bezug: { art: 'aufgabe', id: task.id } });
     }
-    for (const an of zustaendigeVon(task.assignee, alle)) {
-      if (an === person || erwaehnt.has(an) || !bekannt.has(an)) continue;
+    for (const an of alleZustaendigen(task, alle)) {
+      if (an === person || erwaehnt.has(an) || !bekannt.has(an) || !sieht(task, an)) continue;
       raus.push({ an, art: 'kommentar', titel: `${ichName} hat „${kurzTitel(task.title)}“ kommentiert`, link: WEG.aufgabe(task.id), von: person, bezug: { art: 'aufgabe', id: task.id } });
     }
   }
   return raus;
 }
 
-async function meldungenNachSchreiben(vorher: TasksState, nachher: TasksState, neueKommentare: { task: Task; k: AufgabeKommentar }[], person: string) {
+async function meldungenNachSchreiben(vorher: TasksState, nachher: TasksState, neueKommentare: { task: Task; k: AufgabeKommentar }[], person: string, personen?: readonly { speicher: string; name: string }[]) {
   try {
-    const liste = meldungenBerechnen(vorher, nachher, neueKommentare, person, await haushaltPersonen());
+    const liste = meldungenBerechnen(vorher, nachher, neueKommentare, person, personen ?? await haushaltPersonen());
     for (const m of liste) await melde(m);
   } catch (e) {
     // Eine Meldung darf nie einen Schreibweg brechen (er ist schon geschehen).

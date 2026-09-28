@@ -12,20 +12,27 @@ import { archivOrdner, archivSchreiben, archivZeit } from '@/lib/store/archiv';
 import type { TasksState } from '@/types/tasks';
 
 export const AUFGABEN_BESTAND = 'tasks';
-export const UMBAU_VERSION = 1;
+/**
+ * Versionen der Übernahme: 1 = Modell wie Monday/ClickUp (28.09., Kopie `tasks-vor-umbau-<zeit>`); 2 = Paket T1 (29.09.:
+ * „both“ → eine Verantwortliche + Beteiligte, Anlegerin aus dem Verlauf, Deadlines als Tag — Kopie `tasks-vor-umbau-v2-<zeit>`).
+ */
+export const UMBAU_VERSION = 2;
 export const UMBAU_ARCHIV_PRAEFIX = 'tasks-vor-umbau-';
+/** Präfix der Archiv-Kopie je Version (v1 ohne Versionskennung — so heißen die schon abgelegten Kopien). */
+export const umbauPraefix = (version: number): string => (version <= 1 ? UMBAU_ARCHIV_PRAEFIX : `${UMBAU_ARCHIV_PRAEFIX}v${version}-`);
+const istKopieVon = (name: string, version: number) => (version <= 1 ? name.startsWith(UMBAU_ARCHIV_PRAEFIX) && /^\d/.test(name.slice(UMBAU_ARCHIV_PRAEFIX.length)) : name.startsWith(umbauPraefix(version)));
 
-/** Liegt schon eine Kopie vor dem Umbau im Archiv? */
-async function kopieDa(): Promise<boolean> {
-  try { return (await fs.readdir(archivOrdner())).some(n => n.startsWith(UMBAU_ARCHIV_PRAEFIX)); }
+/** Liegt schon eine Kopie vor diesem Umbau im Archiv? */
+async function kopieDa(version: number): Promise<boolean> {
+  try { return (await fs.readdir(archivOrdner())).some(n => istKopieVon(n, version)); }
   catch { return false; }
 }
 
-/** Vor dem ersten übernommenen Schreiben: Kopie des Rohstands ablegen (einmal). Liefert den Dateinamen oder null. */
+/** Vor dem ersten übernommenen Schreiben einer Version: Kopie des Rohstands ablegen (einmal je Version). Liefert den Dateinamen oder null. */
 export async function vorUmbauSichern(roh: TasksState | null, jetzt = new Date().toISOString()): Promise<string | null> {
-  if (!roh || roh.umbauVersion === UMBAU_VERSION) return null;
-  if (await kopieDa()) return null;
-  return archivSchreiben(`${UMBAU_ARCHIV_PRAEFIX}${archivZeit(jetzt)}.json`, roh);
+  if (!roh || (roh.umbauVersion ?? 0) >= UMBAU_VERSION) return null;
+  if (await kopieDa(UMBAU_VERSION)) return null;
+  return archivSchreiben(`${umbauPraefix(UMBAU_VERSION)}${archivZeit(jetzt)}.json`, roh);
 }
 
 const NICHTS = Symbol('aufgaben-nichts-zu-schreiben');

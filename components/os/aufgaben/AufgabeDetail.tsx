@@ -290,16 +290,17 @@ function Kommentare({ task: t, ich, personen, aendern }: { task: Task; ich: stri
   const name = (s: string) => personen.find(p => p.speicher === s)?.name ?? s;
   return (
     <div style={{ marginTop: 16 }}>
-      <div style={{ ...mikro, marginBottom: 6 }}>Kommentare{liste.length ? ` · ${liste.length}` : ''}</div>
+      <div style={{ ...mikro, marginBottom: 6 }}>Kommentare{liste.filter(k => !k.entfernt).length ? ` · ${liste.filter(k => !k.entfernt).length}` : ''}</div>
       {liste.map(k => (
         <div key={k.id} style={{ padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', fontSize: 12, color: C.inkLeise }}>
             <b style={{ color: C.inkDim, fontWeight: 600 }}>{name(k.von)}</b><span>{zeit(k.am)}</span>
-            {k.von === ich && <button onClick={() => aendern({ kommentare: liste.filter(x => x.id !== k.id) })} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, fontFamily: SCHRIFT.text }}>entfernen</button>}
+            {/* Weich entfernen (29.09., #76): der Kommentar bleibt gespeichert, angezeigt wird „Kommentar entfernt“. */}
+            {k.von === ich && !k.entfernt && <button onClick={() => aendern({ kommentare: liste.map(x => (x.id === k.id ? { ...x, entfernt: { am: new Date().toISOString(), von: ich } } : x)) })} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12, fontFamily: SCHRIFT.text }}>entfernen</button>}
           </div>
-          <div style={{ fontSize: TYP.bedien, color: C.ink, whiteSpace: 'pre-wrap', marginTop: 3, lineHeight: 1.5 }}>
+          {k.entfernt ? <div style={{ fontSize: TYP.bedien, color: C.inkLeise, fontStyle: 'italic', marginTop: 3 }}>Kommentar entfernt</div> : <div style={{ fontSize: TYP.bedien, color: C.ink, whiteSpace: 'pre-wrap', marginTop: 3, lineHeight: 1.5 }}>
             {k.text.split(/(@[\p{L}\p{N}_-]+)/u).map((s, n) => (s.startsWith('@') && erwaehnungen(s, personen).length ? <b key={n} style={{ color: C.aktiv, fontWeight: 600 }}>{s}</b> : <span key={n}>{s}</span>))}
-          </div>
+          </div>}
         </div>
       ))}
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginTop: 8 }}>

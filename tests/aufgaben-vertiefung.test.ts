@@ -250,11 +250,17 @@ describe('Route: Gruppen, Felder, Verlauf, Kreise', () => {
     expect(n.gruppen!.map(x => x.id)).toEqual(['g-ops']);
     expect(n.vorlagen!.map(x => x.id)).toEqual(['v-1']);
   });
-  it('zoe.von setzt der Server (die schreibende Person), nie eine behauptete', async () => {
+  it('zoe.status per PATCH wird ignoriert (nur /api/aufgaben/zoe, T1 #78); zoe.von setzt der Server (die schreibende Person)', async () => {
     const d = await lesen();
     const a1 = d.state.tasks.find(x => x.id === 'a1')!;
     await route.PATCH(anfrage(sitzung('malin'), 'PATCH', { ops: [{ op: 'upsert', task: { ...a1, zoe: { status: 'offen', von: 'kevin' } }, stand: a1.stand }] }));
-    expect((await gespeichert()).tasks.find(x => x.id === 'a1')!.zoe).toEqual({ status: 'offen', von: 'malin' });
+    expect((await gespeichert()).tasks.find(x => x.id === 'a1')!.zoe).toBeUndefined();
+    // Liegt die Aufgabe schon bei ZOE (Status unverändert), gilt der Rest — die Auftraggeberin ist, wer sie ändert.
+    const roh = await gespeichert();
+    await db.saveJson('tasks', { ...roh, tasks: roh.tasks.map(t => (t.id === 'a1' ? { ...t, zoe: { status: 'offen', von: 'kevin' } } : t)) });
+    const a1b = (await lesen()).state.tasks.find(x => x.id === 'a1')!;
+    await route.PATCH(anfrage(sitzung('malin'), 'PATCH', { ops: [{ op: 'upsert', task: { ...a1b, zoe: { status: 'offen', von: 'malin', hinweis: 'bitte kurz' } }, stand: a1b.stand }] }));
+    expect((await gespeichert()).tasks.find(x => x.id === 'a1')!.zoe).toEqual({ status: 'offen', von: 'malin', hinweis: 'bitte kurz' });
   });
   it('/api/tasks/create: Verlauf „angelegt“ (ZOE im Auftrag)', async () => {
     const r = await (await anlegen.POST(anfrage(dienst('malin'), 'POST', { title: 'Von ZOE vorbereitet' }, '/api/tasks/create'))).json() as { id: string };

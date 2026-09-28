@@ -67,7 +67,11 @@ export function bezugOhne(alt: AufgabeBezug | undefined, art: BezugArt): Aufgabe
   return Object.keys(rest).length ? rest : undefined;
 }
 
-/** Aufgaben einer Akte: Kontakt direkt, Firma direkt oder über ein Mandat/einen Deal dieser Firma. */
+/**
+ * Aufgaben einer Akte: Kontakt direkt, Firma direkt oder über ein Mandat/einen Deal dieser Firma.
+ * `tasks` ist immer die SICHT der Person (Sichtfilter „nur ich“, 29.09.): im Browser `useTasks().state` (GET filtert),
+ * auf dem Server `ladeAufgabenSicht(person)` — nie den rohen Bestand hineingeben.
+ */
 export function aufgabenFuer(tasks: readonly Task[], wer: { kontaktId?: string; firmaId?: string; mandatIds?: readonly string[]; dealIds?: readonly string[] }): Task[] {
   const m = new Set(wer.mandatIds ?? []), d = new Set(wer.dealIds ?? []);
   return tasks.filter(t => {

@@ -183,25 +183,34 @@ export interface FaelligOptionen {
 /** Kennung einer abgeleiteten Meldung — trägt den Tag, damit der Merker je Tag gilt. */
 export const faelligId = (art: 'faellig' | 'ueberfaellig', heute: string, aufgabeId: string) => `${art}:${heute}:${aufgabeId}`;
 
-/** Regel 4 + 5: eigene, offene Aufgaben mit Deadline heute (fällig) oder früher (überfällig). */
+/**
+ * Regel 4 + 5: eigene, offene Aufgaben mit Deadline heute (fällig) oder früher (überfällig). Abgebrochene zählen nicht
+ * (29.09.). Wartet die Aufgabe noch auf eine andere (`abhaengigVon`, nicht erledigt), heißt es „wartet auf …“ statt
+ * „überfällig“ (#36) — wer nicht anfangen kann, soll nicht gemahnt werden.
+ */
 export function faelligAbleiten(aufgaben: unknown[], o: FaelligOptionen): Meldung[] {
   const merker = o.gelesen?.tag === o.heute ? new Set(o.gelesen.ids) : new Set<string>();
   const raus: (Meldung & { tag: string })[] = [];
+  const nachId = new Map<string, Record<string, unknown>>();
+  for (const roh of aufgaben) if (roh && typeof roh === 'object' && istText((roh as Record<string, unknown>).id)) nachId.set((roh as Record<string, unknown>).id as string, roh as Record<string, unknown>);
   for (const roh of aufgaben) {
     if (!roh || typeof roh !== 'object') continue;
     const t = roh as Record<string, unknown>;
     if (!istText(t.id) || !BEZUG_ID_OK.test(t.id) || !istText(t.title)) continue;
-    if (t.status === 'done' || (istText(t.completedAt) && t.completedAt)) continue;
+    if (t.status === 'done' || t.status === 'cancelled' || (istText(t.completedAt) && t.completedAt)) continue;
     if (!istZustaendig(t, o.person)) continue;
     const tag = deadlineTag(t.dueDate, o.tagVonIso);
     if (!tag || tag > o.heute) continue;
     const art = tag === o.heute ? 'faellig' : 'ueberfaellig';
     const id = faelligId(art, o.heute, t.id);
     const name = t.title.trim() || 'Ohne Titel';
+    const wartet = (Array.isArray(t.abhaengigVon) ? t.abhaengigVon : []).map(x => (istText(x) ? nachId.get(x) : undefined)).filter((x): x is Record<string, unknown> => !!x && x.status !== 'done');
+    const aufWen = wartet.length ? `„${istText(wartet[0].title) ? wartet[0].title.trim() : 'eine Aufgabe'}“${wartet.length > 1 ? ` und ${wartet.length - 1} weitere` : ''}` : '';
     raus.push({
       id, art, tag, am: o.am, link: o.link(t.id), virtuell: true, gelesen: merker.has(id),
       bezug: { art: 'aufgabe', id: t.id },
-      titel: art === 'faellig' ? `„${name}“ ist heute fällig` : `„${name}“ ist überfällig — fällig seit ${tagText(tag)}`,
+      titel: wartet.length ? `„${name}“ wartet auf ${aufWen} (fällig ${art === 'faellig' ? 'heute' : `seit ${tagText(tag)}`})`
+        : art === 'faellig' ? `„${name}“ ist heute fällig` : `„${name}“ ist überfällig — fällig seit ${tagText(tag)}`,
     });
   }
   // Überfällige zuerst, darin die älteste Deadline zuerst.

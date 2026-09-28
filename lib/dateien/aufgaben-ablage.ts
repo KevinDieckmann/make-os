@@ -47,8 +47,9 @@ export interface AufgabenBezug { projektId: string; aufgabeId?: string; bereich:
  * Projekt/Aufgabe im Aufgaben-Bestand nachsehen und den Bereich aus dem Space ableiten. Aufgabe gegeben → sie muss
  * es geben, und ein genanntes Projekt muss ihres sein. Sonst Projekt Pflicht: vorhanden oder „Sonstige“ eines Space.
  */
-export async function bezugAufloesen(projektId: string | undefined, aufgabeId: string | undefined): Promise<AufgabenBezug> {
-  const state = await ladeAufgabenSicht();
+export async function bezugAufloesen(projektId: string | undefined, aufgabeId: string | undefined, person: string | null = null): Promise<AufgabenBezug> {
+  // Sichtfilter „nur ich“ (29.09.): eine fremde „nur ich“-Aufgabe gibt es für die Person nicht (404).
+  const state = await ladeAufgabenSicht(person);
   if (aufgabeId) {
     const t = state.tasks.find(x => x.id === aufgabeId);
     if (!t) throw new AblageFehler('Diese Aufgabe gibt es nicht (mehr).', 404);
@@ -97,7 +98,7 @@ export interface NeueAufgabenDatei { bytes: Buffer; name: string; typ: AufgabenD
  */
 export async function aufgabenDateiAblegen(haushalt: string, person: string, metaRoh: unknown, datei: NeueAufgabenDatei, jetzt = new Date().toISOString()): Promise<AufgabenDatei> {
   const meta = aufgabenMetaSaeubern(metaRoh);
-  const bezug = await bezugAufloesen(meta.projektId, meta.aufgabeId);
+  const bezug = await bezugAufloesen(meta.projektId, meta.aufgabeId, person);
   if (meta.bereich && meta.bereich !== bezug.bereich) throw new AblageFehler(`Das Projekt liegt im Bereich ${bezug.bereich === 'privat' ? 'Privat' : 'Business'} — Privat und Business bleiben getrennt.`, 409);
   const id = neueDateiId();
   const verschluesselt = await inhaltAblegen(haushalt, id, datei.bytes);

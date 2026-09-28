@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState, type ComponentType, type CSSProperties, t
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
+import { wartetAuf } from '@/lib/aufgaben/abhaengig';
 import { parseSchnell } from '@/lib/make-one/schnell-anlegen';
 import { WEG } from '@/lib/wege';
 import { markttraktion } from '@/lib/crm/adresse';
@@ -94,7 +95,8 @@ function AufgabenWidget({ e, titel, i, seite }: WidgetProps) {
   // und im Business auf eine Einheit (27.09.): dann zählen nur Business-Aufgaben dieser Einheit.
   const passtEh = (t: Task) => eh === 'alle' || (spaceVonAufgabe(t) === 'business' && passtEinheitFilter(t.einheit, eh === 'ohne' ? EINHEIT_OHNE : eh));
   // Unteraufgaben (28.09. abends) nur, wenn sie dran sind (fällig/kritisch) — in „alle offenen“ zählt die Aufgabe selbst.
-  const offen = state.tasks.filter(t => t.status !== 'done' && (sp === 'alle' || spaceVonAufgabe(t) === sp) && passtEh(t) && (!t.parentId || nur !== 'alle'));
+  // Abgebrochene sind nicht offen (29.09.); wer noch auf eine andere Aufgabe wartet, heißt „wartet“, nicht „überfällig“ (#36).
+  const offen = state.tasks.filter(t => t.status !== 'done' && t.status !== 'cancelled' && (sp === 'alle' || spaceVonAufgabe(t) === sp) && passtEh(t) && (!t.parentId || nur !== 'alle'));
   const liste = (nur === 'alle' ? offen : offen.filter(t => (t.dueDate && t.dueDate <= heute) || t.priority === 'critical'))
     .sort((a, b) => ((a.dueDate ?? '9') < (b.dueDate ?? '9') ? -1 : 1)).slice(0, n);
   const projekt = (id: string) => state.projects.find(p => p.id === id)?.title ?? '';
@@ -117,7 +119,7 @@ function AufgabenWidget({ e, titel, i, seite }: WidgetProps) {
           <Zeile key={t.id} onClick={() => router.push(WEG.aufgabe(t.id))}
             links={<Haken an={false} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />}
             titel={t.title}
-            unter={[sp === 'alle' ? <span key="s" style={{ color: SPACE_FARBE[spaceVonAufgabe(t)] }}>{SPACE_LABEL[spaceVonAufgabe(t)]}</span> : null, eh === 'alle' && t.einheit && spaceVonAufgabe(t) === 'business' ? <EinheitMarke key="e" name={t.einheit} /> : null, projekt(t.projectId), t.dueDate && t.dueDate < heute ? `überfällig seit ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : t.dueDate === heute ? 'heute' : t.dueDate ? `bis ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : ''].filter(Boolean).map((x, k, arr) => <span key={k}>{x}{k < arr.length - 1 ? ' · ' : ''}</span>)}
+            unter={[sp === 'alle' ? <span key="s" style={{ color: SPACE_FARBE[spaceVonAufgabe(t)] }}>{SPACE_LABEL[spaceVonAufgabe(t)]}</span> : null, eh === 'alle' && t.einheit && spaceVonAufgabe(t) === 'business' ? <EinheitMarke key="e" name={t.einheit} /> : null, projekt(t.projectId), wartetAuf(t, state.tasks).length ? `wartet auf „${wartetAuf(t, state.tasks)[0].title}“` : t.dueDate && t.dueDate < heute ? `überfällig seit ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : t.dueDate === heute ? 'heute' : t.dueDate ? `bis ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : ''].filter(Boolean).map((x, k, arr) => <span key={k}>{x}{k < arr.length - 1 ? ' · ' : ''}</span>)}
             rechts={<Punkt farbe={prioFarbe(t.priority)} />} />
         ))}
       </Liste>

@@ -125,7 +125,7 @@ export async function POST(req: Request) {
   const zeilen = lies(inhalt);
   if (!zeilen.length) return NextResponse.json({ ok: true, aufgaben: 0, notizen: 0, hinweis: 'Nichts Neues im Eingang.' });
 
-  const state = await ladeAufgabenSicht();
+  const state = await ladeAufgabenSicht(zugang.person);
   const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
   const offen = new Set(state.tasks.filter(t => t.status !== 'done').map(t => norm(t.title)));
   const now = new Date().toISOString();
