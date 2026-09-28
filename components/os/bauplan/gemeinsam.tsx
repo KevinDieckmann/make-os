@@ -13,10 +13,19 @@ import { useAbgleich } from '@/hooks/useAbgleich';
 import type { BacklogItem } from '@/lib/make-one/backlog-data';
 import { ARTEN, BEREICHE, bereichAusSeite, type Art, type Etappe } from '@/lib/bauplan/board';
 
-/** Eine neue Karte ist da (z. B. vom Knopf „Idee“) — ein offener Bauplan lädt nach. */
+/** Eine neue Karte ist da (z. B. aus „Problem oder Idee melden“) — ein offener Bauplan lädt nach. */
 export const BAUPLAN_NEU = 'make-bauplan-neu';
 
 export const ART_FARBE: Record<Art, string> = { fehler: LEUCHT.kritisch, verbesserung: LEUCHT.business, neu: LEUCHT.agenten, anbindung: LEUCHT.puls, frage: C.inkDim };
+/**
+ * Die Wahl beim Melden von jeder Seite (Kevin/Malin 28.09.): drei klare Arten
+ * statt der fünf Bauplan-Arten — Anbindung und Frage ordnet der Bauplan später zu.
+ */
+export const MELDEN_ARTEN: { id: Art; label: string; hinweis: string }[] = [
+  { id: 'fehler', label: 'Fehler', hinweis: 'Etwas geht nicht oder zeigt Falsches.' },
+  { id: 'neu', label: 'Idee', hinweis: 'Etwas Neues, das es noch nicht gibt.' },
+  { id: 'verbesserung', label: 'Wunsch', hinweis: 'Etwas Bestehendes soll besser werden.' },
+];
 export const PRIO: { id: '1' | '2' | '3'; label: string }[] = [{ id: '1', label: 'Jetzt' }, { id: '2', label: 'Bald' }, { id: '3', label: 'Irgendwann' }];
 export const klein = { fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5 } as const;
 export const titelKlein = { margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: C.inkDim, letterSpacing: '.08em', textTransform: 'uppercase' } as const;
@@ -160,7 +169,8 @@ function EinfuegenHorcher({ aktiv, onBild }: { aktiv: boolean; onBild: (b: Blob)
  * (aus der Seite vorbelegt), Dringlichkeit; dazu die Vorlage (Problem · Wunsch
  * · Warum · Fertig wenn) und Bildschirmfotos. Pflicht ist nur der Titel.
  */
-export function ErfassenFormular({ seite, onFertig, onAbbruch }: { seite?: string; onFertig: (k: BacklogItem) => void; onAbbruch: () => void }) {
+/** `melden`: das Fenster „Problem oder Idee melden“ — die Art steht oben als klare Wahl Fehler · Idee · Wunsch. */
+export function ErfassenFormular({ seite, melden, onFertig, onAbbruch }: { seite?: string; melden?: boolean; onFertig: (k: BacklogItem) => void; onAbbruch: () => void }) {
   const [f, setF] = useState({ titel: '', art: 'verbesserung' as Art, bereich: bereichAusSeite(seite), prio: '2' as '1' | '2' | '3', problem: '', wunsch: '', warum: '', fertigWenn: '' });
   const [bilder, setBilder] = useState<string[]>([]);
   // Kevin (26.09.): „So genau wie möglich beschreiben“ — die Felder sind deshalb von Anfang an offen.
@@ -182,15 +192,23 @@ export function ErfassenFormular({ seite, onFertig, onAbbruch }: { seite?: strin
     <label style={{ display: 'grid', gap: 4 }}><span style={klein}>{label}</span>
       <textarea ref={k === 'problem' ? problemRef : undefined} value={f[k]} onChange={e => setF({ ...f, [k]: e.target.value })} rows={k === 'problem' ? 4 : 2} placeholder={platz} style={{ ...eingabe, resize: 'vertical', lineHeight: 1.5 }} /></label>
   );
+  const meldenArt = MELDEN_ARTEN.find(a => a.id === f.art);
   return (
     <div style={{ display: 'grid', gap: 14 }}>
+      {melden && (
+        <div>
+          <h3 style={titelKlein}>Was möchtest du melden?</h3>
+          <Pillen liste={MELDEN_ARTEN} aktiv={f.art} onWahl={art => setF({ ...f, art })} farbe={ART_FARBE[f.art]} />
+          {meldenArt && <div style={{ ...klein, marginTop: 6 }}>{meldenArt.hinweis}</div>}
+        </div>
+      )}
       <div style={{ display: 'grid', gap: 4 }}>
         <input ref={titelRef} value={f.titel} onChange={e => setF({ ...f, titel: e.target.value })}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (e.metaKey || e.ctrlKey) void anlegen(); else problemRef.current?.focus(); } }}
           placeholder="Was ist dir aufgefallen? (ein Satz)" aria-label="Titel" style={{ ...eingabe, fontSize: TYP.body, padding: '11px 14px' }} />
         <span style={klein}>{f.titel.length > 140 ? 'Lang — der erste Satz bleibt Titel, der Rest wandert von selbst nach „Problem“.' : 'Enter springt zur Beschreibung, Cmd+Enter speichert. Keine Längenbegrenzung — je genauer, desto besser.'}</span>
       </div>
-      <div><h3 style={titelKlein}>Art</h3><Pillen liste={ARTEN} aktiv={f.art} onWahl={art => setF({ ...f, art })} farbe={ART_FARBE[f.art]} /></div>
+      {!melden && <div><h3 style={titelKlein}>Art</h3><Pillen liste={ARTEN} aktiv={f.art} onWahl={art => setF({ ...f, art })} farbe={ART_FARBE[f.art]} /></div>}
       <div><h3 style={titelKlein}>Bereich</h3><Pillen liste={BEREICHE.map(b => ({ id: b, label: b }))} aktiv={f.bereich} onWahl={bereich => setF({ ...f, bereich })} /></div>
       <div><h3 style={titelKlein}>Wie dringend?</h3><Pillen liste={PRIO} aktiv={f.prio} onWahl={prio => setF({ ...f, prio })} /></div>
       {!mehr ? (

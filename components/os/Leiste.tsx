@@ -7,24 +7,42 @@
 // Wachstum (die Gesamtansicht, das zentrale Stück), Privat und Business als
 // Kästen in ihrer Farbe — ein Tipp klappt die Punkte SOFORT auf, der andere
 // Kasten klappt zu — dann Agenten als eigener Knopf. Unten gesondert ZOE
-// und Brain, darunter System und das Konto. Inbox und Kalender stehen im Kopf
-// oben und folgen dem Space.
-// Handy: Leiste unten mit Home · Privat · Business · ZOE · System —
+// und Brain, dann „Problem oder Idee melden“ (Kevin/Malin 28.09.: öffnet das
+// Erfassen-Fenster, kein Seitenwechsel), darunter System und das Konto. Inbox
+// und Kalender stehen im Kopf oben und folgen dem Space.
+// Handy: Leiste unten mit Home · Privat · Business · ZOE · Melden · System —
 // Privat/Business öffnen ihre Punkte als Blatt.
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
-import { ChevronDown, Settings, LayoutDashboard, PanelLeftClose, PanelLeftOpen, type LucideIcon } from 'lucide-react';
+import { ChevronDown, Settings, LayoutDashboard, PanelLeftClose, PanelLeftOpen, MessageSquareWarning, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { SPACES, UNTEN, EIGEN, aktiverSpaceEintrag, type SpaceId, type SpaceEintrag } from '@/lib/make-one/spaces';
 import { useSpace } from '@/hooks/useSpace';
+import { problemMelden } from './bauplan/IdeeErfassen';
 
 const SYSTEM: SpaceEintrag = { href: '/os/system', label: 'System', icon: Settings, passt: ['/os/system', '/os/verbindungen', '/os/konto', '/os/datenbasis', '/os/stammdaten', '/os/bauplan', '/os/roadmap', '/os/onboarding'] };
 /** Unter Home (Kevin 26.09.): Wachstum — die Gesamtansicht, das zentrale Stück. */
 // Der Wachstum-Knopf stand vom 26.09. abends bis spät hier unter Home — seitdem ist der Score
 // oben im Kopf als Zahl (Kevin), und /os/wachstum öffnet sich über diese Zahl oder ⌘K.
 const MERKER = 'make-leiste';
+/** Der Einstieg unten links (Kevin/Malin 28.09.) — früher der Knopf „Idee“ im Kopf. */
+export const MELDEN_LABEL = 'Problem oder Idee melden';
+
+/**
+ * „Problem oder Idee melden“ als Knopf: löst `make-idee` aus, das Fenster
+ * (IdeeErfassen im /os-Layout) öffnet sich über der aktuellen Seite und nimmt
+ * sie mit. Eingeklappt nur das Symbol, der Name steht dann im Tooltip.
+ */
+export function MeldenKnopf({ zu, stil }: { zu: boolean; stil: CSSProperties }) {
+  return (
+    <button type="button" onClick={problemMelden} title={MELDEN_LABEL} aria-label={MELDEN_LABEL} className="fassbar" style={stil}>
+      <MessageSquareWarning size={16} strokeWidth={1.75} style={{ flex: '0 0 auto' }} />
+      {!zu && <span style={{ lineHeight: 1.3 }}>{MELDEN_LABEL}</span>}
+    </button>
+  );
+}
 
 export function Leiste() {
   const pfad = usePathname() ?? '/os';
@@ -70,14 +88,15 @@ export function Leiste() {
     </Link>
   );
   /** Ein Eintrag unten: Symbol + Text, eingeklappt nur das Symbol. */
+  const zeileStil = (an: boolean): CSSProperties => ({
+    display: 'flex', alignItems: 'center', justifyContent: zu ? 'center' : 'flex-start', gap: 10, padding: zu ? '9px 0' : '8px 10px', borderRadius: 9, textDecoration: 'none',
+    color: an ? C.aktiv : C.inkDim, background: an ? C.aktivSanft : 'transparent', transition: 'background .2s ease, color .2s ease',
+    fontFamily: SCHRIFT.text, fontSize: 14, fontWeight: 500,
+  });
   const zeile = (e: SpaceEintrag, an: boolean) => {
     const Icon = e.icon;
     return (
-      <Link key={e.href} href={e.href} title={e.label} className="fassbar" style={{
-        display: 'flex', alignItems: 'center', justifyContent: zu ? 'center' : 'flex-start', gap: 10, padding: zu ? '9px 0' : '8px 10px', borderRadius: 9, textDecoration: 'none',
-        color: an ? C.aktiv : C.inkDim, background: an ? C.aktivSanft : 'transparent', transition: 'background .2s ease, color .2s ease',
-        fontFamily: SCHRIFT.text, fontSize: 14, fontWeight: 500,
-      }}>
+      <Link key={e.href} href={e.href} title={e.label} className="fassbar" style={zeileStil(an)}>
         <Icon size={16} strokeWidth={1.75} />
         {!zu && <span>{e.label}</span>}
       </Link>
@@ -131,6 +150,8 @@ export function Leiste() {
         <div style={{ marginTop: 'auto', display: 'grid', gap: 1 }}>
           <div style={{ borderTop: `1px solid ${C.linie}`, margin: '10px 0 8px' }} />
           {UNTEN.map(e => zeile(e, aktiv.space === null && aktiv.eintrag?.href === e.href))}
+          {/* Zwischen Brain und System (Kevin/Malin 28.09.): öffnet das Fenster, bleibt auf der Seite. */}
+          <MeldenKnopf zu={zu} stil={{ ...zeileStil(false), width: '100%', border: 'none', cursor: 'pointer', textAlign: 'left' }} />
           <div style={{ borderTop: `1px solid ${C.linie}`, margin: '8px 0' }} />
           {zeile(SYSTEM, passt(SYSTEM))}
           <Link href="/os/konto" title={vorname ? `Konto · ${vorname}` : 'Mein Konto'} style={{ display: 'flex', alignItems: 'center', justifyContent: zu ? 'center' : 'flex-start', gap: 9, padding: zu ? '8px 0 4px' : '8px 10px 4px', color: C.inkDim, textDecoration: 'none', fontSize: TYP.bedien }}>
@@ -162,10 +183,12 @@ export function Leiste() {
         {([{ art: 'link' as const, href: '/os', label: 'Home', icon: LayoutDashboard, farbe: C.aktiv, an: pfad === '/os' },
           ...SPACES.map(s => ({ art: 'space' as const, href: s.start, label: s.label, icon: s.icon, farbe: s.farbe, an: space === s.id && pfad !== '/os', id: s.id })),
           { art: 'link' as const, href: '/zoe', label: 'ZOE', icon: UNTEN[0].icon, farbe: C.aktiv, an: pfad.startsWith('/zoe') },
+          { art: 'melden' as const, href: '#melden', label: 'Melden', icon: MessageSquareWarning, farbe: C.aktiv, an: false },
           { art: 'link' as const, href: '/os/system', label: 'System', icon: Settings, farbe: C.aktiv, an: passt(SYSTEM) }]).map(e => {
           const Icon = e.icon;
           const innen = <><Icon size={20} strokeWidth={1.75} /><span>{e.label}</span></>;
           const stil = { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 3, flex: 1, padding: '6px 0', border: 'none', background: 'none', textDecoration: 'none', color: e.an ? e.farbe : C.inkDim, fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 500, cursor: 'pointer' };
+          if (e.art === 'melden') return <button key={e.label} type="button" onClick={problemMelden} title={MELDEN_LABEL} aria-label={MELDEN_LABEL} className="fassbar" style={stil}>{innen}</button>;
           return e.art === 'space'
             ? <button key={e.label} type="button" onClick={() => setOffen(o => (o === e.id ? null : e.id))} className="fassbar" style={stil}>{innen}</button>
             : <Link key={e.href} href={e.href} className="fassbar" style={stil}>{innen}</Link>;

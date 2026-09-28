@@ -100,8 +100,10 @@ lokal, Route `/os`, Port 3001.
 
 ## Bauplan — so arbeiten Kevin, Malin und Claude (seit 25.09.2026)
 - `/os/bauplan` ist ein Board: **Ideen → Bereit → In Arbeit → Zum Testen → Fertig**,
-  dazu „Planung“ (Etappen mit Zieldatum). Karten kommen vom Knopf „Idee“ oben auf
-  jeder Seite (nimmt die Seite mit), aus dem Board („+ Karte“, mit Bildschirmfoto)
+  dazu „Planung“ (Etappen mit Zieldatum). Karten kommen aus „Problem oder Idee
+  melden“ in der Leiste unten links zwischen Brain und System (Handy: „Melden“;
+  löst `make-idee` aus → Fenster `IdeeErfassen`, Art Fehler · Idee · Wunsch, nimmt
+  die Seite mit), aus dem Board („+ Karte“, mit Bildschirmfoto)
   und von ZOE (`bauplan_notieren`). Logik: `lib/bauplan/board.ts` (getestet),
   API `app/api/bauplan` (+ `/bild`), Oberfläche `components/os/bauplan/`.
 - **Bau-Sessions:** Den Stand vom Server holen (`GET /api/bauplan` → `warteschlange`
