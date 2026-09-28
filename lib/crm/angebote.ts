@@ -390,8 +390,12 @@ export function mailtoLink(an: string | undefined, betreff: string, text: string
 export function dealWertAusAngebot(a: Pick<Angebot, 'positionen'>): Chance['wert'] {
   const s = angebotSummen(a);
   const lz = Math.max(0, ...a.positionen.filter(p => p.basis !== 'einmalig').map(p => p.laufzeitMonate ?? 0));
-  if (s.monat.netto > 0) return { betrag: ausCent(s.monat.netto + kaufmaennisch(s.jahr.netto / 12)), basis: 'monat', ...(lz ? { laufzeitMonate: lz } : {}) };
-  if (s.jahr.netto > 0) return { betrag: ausCent(s.jahr.netto), basis: 'jahr', ...(lz ? { laufzeitMonate: lz } : {}) };
+  // Gemischtes Angebot (einmalig + laufend): der Einmal-Anteil verteilt sich auf die Laufzeit (ohne Laufzeit: 12 Monate),
+  // damit der Deal den ganzen Auftragswert trägt — vorher fiel er weg (Sandbox-Prüfung 28.09.). Der Deal hat nur EINE Basis.
+  const laufzeit = lz || 12;
+  const einmalAnteil = s.einmalig.netto > 0 && (s.monat.netto > 0 || s.jahr.netto > 0);
+  if (s.monat.netto > 0) return { betrag: ausCent(s.monat.netto + kaufmaennisch(s.jahr.netto / 12) + (einmalAnteil ? kaufmaennisch(s.einmalig.netto / laufzeit) : 0)), basis: 'monat', ...(lz || einmalAnteil ? { laufzeitMonate: laufzeit } : {}) };
+  if (s.jahr.netto > 0) return { betrag: ausCent(s.jahr.netto + (einmalAnteil ? kaufmaennisch(s.einmalig.netto * 12 / laufzeit) : 0)), basis: 'jahr', ...(lz || einmalAnteil ? { laufzeitMonate: laufzeit } : {}) };
   return { betrag: ausCent(s.einmalig.netto), basis: 'einmalig' };
 }
 
@@ -400,7 +404,8 @@ export function mandatVorbelegung(a: Angebot): Partial<Mandat> {
   const s = angebotSummen(a, { kleinunternehmer: !!a.absender?.kleinunternehmer });
   const laufend = s.monat.netto + kaufmaennisch(s.jahr.netto / 12);
   const lz = Math.max(0, ...a.positionen.filter(p => p.basis !== 'einmalig').map(p => p.laufzeitMonate ?? 0));
-  const leistungId = a.positionen.find(p => p.leistungId)?.leistungId;
+  // Das Mandat trägt die laufende Leistung (Retainer), nicht den einmaligen Auftakt — sonst die erste mit Produkt.
+  const leistungId = (a.positionen.find(p => p.leistungId && p.basis !== 'einmalig') ?? a.positionen.find(p => p.leistungId))?.leistungId;
   const saetze = Array.from(new Set(a.positionen.map(p => p.ustSatz)));
   return {
     gesellschaft: a.gesellschaft, titel: a.titel || undefined,

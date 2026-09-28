@@ -38,16 +38,17 @@ function ZahlFeld({ wert, onWert, breite, label, rechts }: { wert: string; onWer
     style={{ ...zelle, width: breite, textAlign: rechts ? 'right' : 'left', fontVariantNumeric: 'tabular-nums' }} />;
 }
 
-export function Katalog({ leistungen, gesellschaft, kleinunternehmer, onDazu, aus }: { leistungen: Leistung[]; gesellschaft: Gesellschaftskennung; kleinunternehmer: boolean; onDazu: (p: AngebotPosition) => void; aus?: boolean }) {
-  const [alle, setAlle] = useState(false);
+export function Katalog({ leistungen, gesellschaft, kleinunternehmer, onDazu, aus }: { leistungen: Leistung[]; gesellschaft: Gesellschaftskennung; kleinunternehmer: (g: Gesellschaftskennung) => boolean; onDazu: (p: AngebotPosition, von: Gesellschaftskennung | null) => void; aus?: boolean }) {
   const l = katalog(leistungen, gesellschaft);
+  // Hat die gewählte Gesellschaft kein eigenes Produkt, gleich alle zeigen — im Call zählt jeder Klick.
+  const [alle, setAlle] = useState(() => !l.some(x => !x.andere));
   const sichtbar = alle ? l : l.filter(x => !x.andere);
   if (!l.length) return <div style={klein}>Noch kein aktives Produkt — unter Produkte & Mandate › Produkte anlegen (mit Leistungstext), oder hier eine freie Position.</div>;
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 8 }}>
         {sichtbar.map(({ l: p, textFehlt, andere }) => (
-          <button key={p.id} disabled={aus} onClick={() => onDazu(positionAusProdukt(p, neueId('p'), { kleinunternehmer }))} className="fassbar"
+          <button key={p.id} disabled={aus} onClick={() => { const von = p.gesellschaft !== 'offen' ? p.gesellschaft as Gesellschaftskennung : null; onDazu(positionAusProdukt(p, neueId('p'), { kleinunternehmer: kleinunternehmer(von ?? gesellschaft) }), von); }} className="fassbar"
             style={{ textAlign: 'left', cursor: aus ? 'default' : 'pointer', padding: '12px 13px', borderRadius: 12, border: `1px solid ${andere ? 'rgba(255,255,255,.08)' : `${LEUCHT.gut}55`}`, background: andere ? 'rgba(255,255,255,.03)' : `${LEUCHT.gut}12`, color: C.ink, display: 'grid', gap: 4 }}>
             <span style={{ fontSize: TYP.bedien, fontWeight: 700, lineHeight: 1.3 }}>+ {p.angebot?.titel?.trim() || p.name}</span>
             <span style={{ fontSize: 12.5, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{p.preis.betrag ? `${euroCent(Math.round(p.preis.betrag * 100))} ${p.preis.einheit}` : 'Preis offen'}</span>

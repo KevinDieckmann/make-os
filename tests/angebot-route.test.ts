@@ -125,7 +125,7 @@ describe('Stellen: Nummer, PDF, Verbindungen', () => {
     // Deal neu über dealAnlegen, Stufe Angebot, Wert aus dem Angebot, nächster Schritt = Nachfassen.
     const b = await crm();
     const deal = b.chancen.find(c => c.id === gestellt.dealId)!;
-    expect(deal).toMatchObject({ stufe: 'angebot', wert: { betrag: 2500, basis: 'monat', laufzeitMonate: 6 }, naechsterSchritt: { datum: '2026-12-01' }, gesellschaft: 'kdv', firmaId: 'f-muster' });
+    expect(deal).toMatchObject({ stufe: 'angebot', wert: { betrag: 2635, basis: 'monat', laufzeitMonate: 6 } /* 2.500 + (900 − 10 %) / 6 */, naechsterSchritt: { datum: '2026-12-01' }, gesellschaft: 'kdv', firmaId: 'f-muster' });
     expect(b.followups.find(f => f.id === 'fu-ang-entwurf1')).toMatchObject({ faellig: '2026-12-01', status: 'offen', bezug: { art: 'chance', id: deal.id }, kontaktId: 'c-anna1' });
     const anna = (await kontakte()).find(x => x.id === 'c-anna1')!;
     expect(anna.aktivitaeten.some(x => x.art === 'mail' && x.text?.startsWith(`Angebot KDV-A-${jahr}-0001 gesendet`) && x.bezug === deal.id)).toBe(true);

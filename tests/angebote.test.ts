@@ -159,8 +159,11 @@ describe('Vorlagen und Mail', () => {
 
 describe('Verbindungen: Deal-Wert, Mandat-Vorbelegung, Umsatz, BEAN', () => {
   const gestellt = ang({ status: 'gestellt', nummer: 'KDV-A-2026-0001', dealId: 'ch-1', positionen: [pos({ basis: 'monat', einzelpreisCent: 250000, laufzeitMonate: 6, leistungId: 'l-strategie' }), pos({ id: 'p2', einzelpreisCent: 50000 })] });
-  it('Deal-Wert: laufend monatlich mit Laufzeit', () => {
-    expect(dealWertAusAngebot(gestellt)).toEqual({ betrag: 2500, basis: 'monat', laufzeitMonate: 6 });
+  it('Deal-Wert: laufend monatlich mit Laufzeit, Einmal-Anteil auf die Laufzeit verteilt', () => {
+    // 2.500 €/Monat × 6 + 500 € einmalig → 2.583,33 €/Monat über 6 Monate (ganzer Auftragswert im Deal).
+    expect(dealWertAusAngebot(gestellt)).toEqual({ betrag: 2583.33, basis: 'monat', laufzeitMonate: 6 });
+    expect(dealWertAusAngebot(ang({ positionen: [pos({ basis: 'monat', einzelpreisCent: 100000, laufzeitMonate: 6 })] }))).toEqual({ betrag: 1000, basis: 'monat', laufzeitMonate: 6 });
+    expect(dealWertAusAngebot(ang({ positionen: [pos({ basis: 'monat', einzelpreisCent: 100000 }), pos({ id: 'p2', einzelpreisCent: 120000 })] }))).toEqual({ betrag: 1100, basis: 'monat', laufzeitMonate: 12 });
     expect(dealWertAusAngebot(ang({ positionen: [pos({ einzelpreisCent: 123456 })] }))).toEqual({ betrag: 1234.56, basis: 'einmalig' });
   });
   it('Mandat-Vorbelegung: Honorar, Laufzeit, Produkt, Gesellschaft, Zahlungsziel', () => {

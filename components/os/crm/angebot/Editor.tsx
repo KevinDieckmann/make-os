@@ -156,9 +156,17 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   }
   const positionen = form.positionen;
   const setzePos = (l: AngebotPosition[]) => aendern({ positionen: l });
-  const dazu = (p: AngebotPosition) => {
-    setzePos([...positionen, p]);
-    if (!form.titel.trim() && !vonHand.titel) aendern({ titel: p.titel });
+  // Erstes Produkt einer anderen Gesellschaft: der Absender folgt dem Produkt (sonst ginge ein KD-Ventures-Produkt
+  // unter der Selbstständigkeit raus). Stehen schon Positionen drin, bleibt die Gesellschaft — Hinweis statt Wechsel.
+  const [mischHinweis, setMischHinweis] = useState<string | null>(null);
+  const dazu = (p: AngebotPosition, von: Gesellschaftskennung | null) => {
+    const teil: Partial<Form> = { positionen: [...positionen, p] };
+    if (!form.titel.trim() && !vonHand.titel) teil.titel = p.titel;
+    if (von && von !== form.gesellschaft) {
+      if (!positionen.length) { teil.gesellschaft = von; merkeGesellschaft(von); setMischHinweis(null); }
+      else setMischHinweis(`„${p.titel}“ gehört zu ${GES_WAHL.find(x => x.id === von)?.label ?? von} — Absender bleibt ${GES_WAHL.find(x => x.id === form.gesellschaft)?.label ?? form.gesellschaft}. Getrennte Angebote je Gesellschaft sind sauberer.`);
+    }
+    aendern(teil);
   };
 
   // ── Vorschau ──
@@ -234,7 +242,8 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
 
       <Karte i={1}>
         <div style={{ ...kopf, marginBottom: 10 }}>2 · Was</div>
-        <Katalog leistungen={crm.stand.leistungen} gesellschaft={form.gesellschaft} kleinunternehmer={ku} onDazu={dazu} />
+        <Katalog leistungen={crm.stand.leistungen} gesellschaft={form.gesellschaft} kleinunternehmer={x => !!mitVorgaben(gesellschaftVon(x)).kleinunternehmer} onDazu={dazu} />
+        {mischHinweis && <div style={{ fontSize: 12.5, color: LEUCHT.business, marginTop: 8 }}>{mischHinweis}</div>}
         <div style={{ marginTop: 14 }}>
           <input value={form.titel} onChange={e => { setVonHand(h => ({ ...h, titel: true })); aendern({ titel: e.target.value }); }} placeholder="Titel des Angebots (z. B. Retainer Strategie 2027)" aria-label="Titel des Angebots"
             style={{ ...feld, fontSize: TYP.body, fontWeight: 700, padding: '10px 13px' }} />
