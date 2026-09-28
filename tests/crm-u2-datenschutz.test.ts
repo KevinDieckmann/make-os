@@ -231,8 +231,11 @@ describe('#51 Einschränkung nach Art. 18 als echte Sperre', () => {
     const { kontaktPaket } = await import('@/lib/crm/zusammenfassung');
     expect(kontaktPaket(k, crm, HEUTE)).toBeNull();
     const { exportCsv } = await import('@/lib/crm/export');
-    const csv = exportCsv('kontakte', { kontakte: [k], crm, heute: HEUTE });
-    expect(csv).toMatch(/EINGESCHRAENKT/);
+    // 29.09. (D-B #72): standardmäßig fehlt die eingeschränkte Person ganz — nur „mit eingeschränkten“ (Auskunft) markiert dabei.
+    const ohne = exportCsv('kontakte', { kontakte: [k], crm, heute: HEUTE });
+    expect(ohne).toMatch(/EINGESCHRAENKT/);
+    expect(ohne).not.toContain(k.id);
+    const csv = exportCsv('kontakte', { kontakte: [k], crm, heute: HEUTE, mitEingeschraenkten: true });
     expect(csv).toMatch(/seit 2026-09-27/);                 // im Export nur MIT Markierung
   });
 

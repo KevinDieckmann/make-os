@@ -7,12 +7,12 @@
 // Je Karte steht, wem sie gehört; dazu die Team-Zeile (Power Hours und echte
 // Gespräche je Person, heute und sieben Tage).
 
+import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
-import { loadJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/zoe/raum';
 import { localDay } from '@/lib/zeit';
-import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
+import { anzeigename } from '@/lib/make-one/crm';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { werIstDran, karteGehoert, KATEGORIEN } from '@/lib/crm/heute';
 import { teamZahlen } from '@/lib/crm/pipeline';
@@ -31,7 +31,7 @@ export async function GET(req: Request) {
   const gewuenscht = wer(q.get('fuer'));
   const person = gewuenscht && gewuenscht !== BEIDE ? gewuenscht : ich;
   const heute = localDay();
-  const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
+  const kontakte = await kontakteFuerVerarbeitung(); // Art. 18 zentral (29.09.)
   const crm = await ladeCrm();
   const a = werIstDran(kontakte, crm, heute, person, n);
   const mandatJe = new Set(crm.mandate.filter(m => m.status === 'aktiv').flatMap(m => m.kontaktIds));

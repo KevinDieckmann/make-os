@@ -111,6 +111,8 @@ describe('Regel 5: ausdrückliche Person bei Dubletten-Merge und Löschprotokoll
     const r = await routen.datenschutz.POST!(anfrage('/api/crm/datenschutz', dienst('malin'), 'POST', { id: 'c-bert' }));
     expect(r.status).toBe(200);
     const p = await db.loadJson<{ eintraege: { id: string; von: string }[] }>('crm-loeschprotokoll');
-    expect(p?.eintraege).toEqual([expect.objectContaining({ id: 'c-bert', von: 'malin' })]);
+    // Seit 29.09. (D-B #30) nur eine Protokoll-ID — nie die Kontakt-Kennung (sie trägt die E-Mail).
+    expect(p?.eintraege).toEqual([expect.objectContaining({ id: expect.stringMatching(/^lp-/), von: 'malin' })]);
+    expect(JSON.stringify(p)).not.toContain('c-bert');
   });
 });

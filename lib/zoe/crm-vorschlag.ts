@@ -23,7 +23,7 @@ import { lege, entscheide, beanspruche, loslassen } from './stapel';
 import { notiere } from './protokoll';
 import type { StapelArtFreigabe, ArtErgebnis } from './stapel-arten';
 import type { Risiko, Vorschau } from './register';
-import { crmSicht, eindeutig, EINGESCHRAENKT_NAME, NICHT_IM_HINTERGRUND, type CrmSicht } from './crm-sicht';
+import { crmSicht, eindeutig, EINGESCHRAENKT_NAME, NICHT_IM_HINTERGRUND, karteiFuerPruefung, type CrmSicht } from './crm-sicht';
 
 type Eingabe = Record<string, unknown>;
 type Lauf = (input: Eingabe, origin: string, person?: string) => Promise<string>;
@@ -79,7 +79,7 @@ type Geplant = Plan | string;
 
 // ── Rohbestände für Stände (vor jeder Sicht: der Server rechnet den Stand am gespeicherten Datensatz) ──
 async function rohKontakt(id: string): Promise<Kontakt | undefined> {
-  return ((await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? []).find(k => k.id === id);
+  return (await karteiFuerPruefung()).find(k => k.id === id);
 }
 async function rohCrm(): Promise<CrmBestand> { return (await import('@/lib/crm/speicher')).ladeCrm(); }
 
@@ -656,7 +656,7 @@ async function ausfuehren(e: Eingabe, person: string, vid: string): Promise<Erge
     }
     case 'gaesteliste': {
       // Beim Freigeben neu gegen den Stand: wer inzwischen gesperrt/eingeschränkt ist oder schon dabei, fällt raus.
-      const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
+      const kontakte = await karteiFuerPruefung();
       const rc = await rohCrm();
       if (rc.teilnahmen.some(t => t.id.startsWith(`${ausVorschlag('tn', vid)}-`))) return SCHON('Gäste vorgemerkt');
       const schon = new Set(rc.teilnahmen.filter(t => t.eventId === e.eventId).map(t => t.kontaktId));

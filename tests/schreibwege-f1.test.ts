@@ -3,6 +3,7 @@
 // Dienstaufruf per Schlüssel (mit bzw. ohne ausdrückliche Person) — nie der echte
 // Bestand. Alle Namen und Firmen sind erfunden.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { localDay } from '@/lib/zeit';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -14,7 +15,8 @@ process.env.MAKE_OS_DATEN_DIR = ordner;
 process.env.MAKE_OS_KEY = 'pruef-schluessel-28-09-f1';
 delete process.env.MAKE_OS_DATEN_SCHLUESSEL;
 
-const H = new Date().toISOString().slice(0, 10);
+// Berliner Tag wie der Server (29.09., Paket D-B) — vorher UTC-Tag: zwischen 0 und 2 Uhr rot.
+const H = localDay();
 const JETZT = new Date().toISOString();
 const kopf = (person: string | null) => ({ 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, ...(person ? { 'x-make-person': person } : {}) });
 const req = (url: string, body?: unknown, method = 'POST', person: string | null = 'kevin') => new Request(`http://test${url}`, { method, headers: kopf(person), ...(body ? { body: JSON.stringify(body) } : {}) });

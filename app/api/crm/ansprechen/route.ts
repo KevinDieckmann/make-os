@@ -3,9 +3,9 @@
 // fällige Wiedervorlagen zuerst, dann Prio A, dann B — nur, wer erreichbar
 // ist und einen Aufhänger hat.
 
+import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
-import { loadJson } from '@/lib/store/local-db';
 import { pipelineStand, type Kontakt } from '@/lib/make-one/crm';
 import { localDay } from '@/lib/zeit';
 import { personAus } from '@/lib/zoe/raum';
@@ -24,7 +24,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const n = Math.max(1, Math.min(30, Number(new URL(req.url).searchParams.get('n')) || 10));
-  const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
+  const kontakte = await kontakteFuerVerarbeitung(); // Art. 18 zentral (29.09.)
   const heute = localDay();
   const crm = await ladeCrm();
   const a = werIstDran(kontakte, crm, heute, personAus(req), n);

@@ -93,7 +93,10 @@ if pause_an; then PAUSE=an; SCHNAPPSCHUSS=mit-pause; else SCHNAPPSCHUSS=ohne-pau
 tar -C "$BASIS" --exclude='daten/backup' --exclude='daten/.sicherung-stage' --exclude='daten/.schreiber' --exclude='*.tmp' \
     --exclude='daten/brain-index.sqlite*' -cf - daten | tar -C "$STAGE" -xf - || fehlschlag "Schnappschuss (tar) gescheitert"
 pause_aus
-DATEIEN=$(find "$STAGE/daten" -type f | wc -l | tr -d ' ')
+# Grabsteine gelöschter Personen (29.09., Paket D-B #70) — liegen AUSSERHALB von daten und gehen mit ins Archiv.
+TEILE=(daten)
+if [ -d "$BASIS/grabsteine" ]; then cp -a "$BASIS/grabsteine" "$STAGE/grabsteine" || fehlschlag "Grabsteine nicht kopierbar"; TEILE+=(grabsteine); fi
+DATEIEN=$(find "${TEILE[@]/#/$STAGE/}" -type f | wc -l | tr -d ' ')
 
 # ── 4 · Schnappschuss prüfen (entschlüsseln, parsen, zählen) ──────────────────
 PRUEF_TEXT=$(pruefen) || { PRUEFUNG=$( [ -n "$PRUEF_TEXT" ] && printf '%s' "$PRUEF_TEXT" | sed 's/"je":{[^}]*},\{0,1\}//' || echo null ); fehlschlag "Prüfung des Schnappschusses fehlgeschlagen (Bestände nicht lesbar)"; }
@@ -101,7 +104,7 @@ PRUEF_TEXT=$(pruefen) || { PRUEFUNG=$( [ -n "$PRUEF_TEXT" ] && printf '%s' "$PRU
 PRUEFUNG=$(printf '%s' "$PRUEF_TEXT" | sed 's/"je":{[^}]*},\{0,1\}//')
 
 # ── 5 · packen und mit age verschlüsseln ─────────────────────────────────────
-tar -C "$STAGE" -czf "$STAGE/archiv.tar.gz" daten || fehlschlag "Packen gescheitert"
+tar -C "$STAGE" -czf "$STAGE/archiv.tar.gz" "${TEILE[@]}" || fehlschlag "Packen gescheitert"
 IM_ARCHIV=$(tar -tzf "$STAGE/archiv.tar.gz" | grep -vc '/$' || true)
 [ "$IM_ARCHIV" = "$DATEIEN" ] || fehlschlag "Archiv unvollständig ($IM_ARCHIV von $DATEIEN Dateien)"
 age -R "$PUB" -o "$ZIEL.tmp" "$STAGE/archiv.tar.gz" || fehlschlag "age-Verschlüsselung gescheitert"

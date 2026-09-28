@@ -7,17 +7,16 @@
 //        Kein Guthaben → 402 { ok:false, grund:'guthaben' } — die Oberfläche zeigt einen
 //        freundlichen Hinweis statt eines Fehlers. Es wird nichts gespeichert und nichts verschickt.
 
+import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { NextResponse } from 'next/server';
 import { resolveAgent } from '@/lib/agent-config';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { modellSchranke, zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { askText, hasAnthropicKey, guthabenLeer, fremd, FREMD_REGEL } from '@/lib/anthropic';
-import { loadJson } from '@/lib/store/local-db';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { kontaktPaket } from '@/lib/crm/zusammenfassung';
 import { localDay } from '@/lib/zeit';
-import type { Kontakt } from '@/lib/make-one/crm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -60,8 +59,9 @@ export async function POST(req: Request) {
   }
   const schranke = modellSchranke(req); if (schranke) return schranke;
 
-  const k = ((await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? []).find(x => x.id === id);
-  if (!k) return NextResponse.json({ ok: false, fehler: 'Kontakt nicht gefunden.' }, { status: 404 });
+  // Art. 18 zentral (29.09.): eine eingeschränkte Person geht an kein Modell — sie ist hier gar nicht erst da.
+  const k = (await kontakteFuerVerarbeitung()).find(x => x.id === id);
+  if (!k) return NextResponse.json({ ok: false, fehler: 'Kontakt nicht gefunden oder Verarbeitung eingeschränkt (Art. 18).' }, { status: 404 });
   const heute = localDay();
   const paket = kontaktPaket(k, await ladeCrm(), heute);
   if (!paket) return NextResponse.json({ ok: false, grund: 'gesperrt', text: 'Für diese Person gilt eine Werbesperre — sie geht an keinen Agenten.' }, { status: 403 });

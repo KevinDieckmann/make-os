@@ -11,8 +11,8 @@
 // es wird nur angehängt, nie gekürzt, nie überschrieben. Ein Fehler beim Protokollieren bricht
 // den eigentlichen Schreibvorgang nie ab (er ist dann schon geschehen).
 
-import { createHash } from 'node:crypto';
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { hmacHex, shaHex } from '@/lib/datenschutz/pepper';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { gleich } from '@/lib/zugang/sitzung';
@@ -71,12 +71,24 @@ export async function werAusAnfrage(): Promise<Wer> {
 
 /**
  * Kontakt-Kennungen tragen die E-Mail-Adresse (lib/make-one/crm.ts: `c-` + Schlüssel) — ins Protokoll kommen sie nur
- * als Fingerabdruck `c#<12 hex>`. Solange es den Kontakt gibt, löst die Lese-Route ihn wieder auf; nach einer
- * Löschung (Art. 17) bleibt im Protokoll nichts, das auf die Person zeigt.
+ * als Fingerabdruck. Seit 29.09. (Paket D-B #68/#71) HMAC-SHA-256 mit Pepper: `c2#<16 hex>` (v2); ohne Pepper wie bisher
+ * der ungesalzene `c#<12 hex>` (v1, Warnung im HOI). Solange es den Kontakt gibt, löst die Lese-Route beide Formen auf
+ * (`protokollKennungen`); Art. 17 ersetzt die Fingerabdrücke der Person durch `c#geloescht` (lib/crm/person-weitere.ts) —
+ * danach bleibt im Protokoll nichts, das auf die Person zeigt.
  */
 export function protokollKennung(id: string): string {
-  return /^c-/.test(id) ? `c#${createHash('sha256').update(id).digest('hex').slice(0, 12)}` : id;
+  if (!/^c-/.test(id)) return id;
+  const v2 = hmacHex('make-os-protokoll-v2', id);
+  return v2 ? `c2#${v2.slice(0, 16)}` : protokollKennungV1(id);
 }
+/** Der alte, ungesalzene Fingerabdruck (v1) — nur zum Auflösen, Migrieren und Tilgen. */
+export const protokollKennungV1 = (id: string): string => (/^c-/.test(id) ? `c#${shaHex(id).slice(0, 12)}` : id);
+/** Alle Fingerabdrücke einer Kennung (aktuelle Version zuerst, dann v1) — zum Auflösen und für Art. 15/17. */
+export function protokollKennungen(id: string): string[] {
+  return /^c-/.test(id) ? Array.from(new Set([protokollKennung(id), protokollKennungV1(id)])) : [id];
+}
+/** Platzhalter für den Fingerabdruck einer gelöschten Person (Art. 17). */
+export const KENNUNG_GELOESCHT = 'c#geloescht';
 
 const gleichWert = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b);
 /** Namen der Felder, die sich unterscheiden — nie die Werte. `stand` (Fingerabdruck) zählt nicht. */

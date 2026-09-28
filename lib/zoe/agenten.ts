@@ -467,8 +467,8 @@ async function markttraktionLauf(auftrag: string, jetzt = new Date(), person?: s
     : S.faelligeRhythmen(S.rhythmusStand(riegel), personen, jetzt);
   if (!dran.length) return gut(personen.length ? 'MARKTTRAKTION: nichts fällig.' : 'MARKTTRAKTION: niemand im Team ist mit Telegram gekoppelt.');
 
-  const [roh, crm] = await Promise.all([loadJson<{ kontakte?: import('@/lib/make-one/crm').Kontakt[] }>('kontakte'), ladeCrm()]);
-  const kontakte = roh?.kontakte ?? [];
+  // Art. 18 zentral (29.09., #72): eingeschränkte Personen stehen nie in der Morgen-/Wochennachricht.
+  const [kontakte, crm] = await Promise.all([(await import('@/lib/crm/verarbeitung')).kontakteFuerVerarbeitung(), ladeCrm()]);
   const o = { adresse: aussenAdresse() };
   const ergebnisse: { person: string; slot: typeof dran[number]['slot']; ok: boolean; zeile: string }[] = [];
   for (const { person, slot } of dran) {

@@ -2,7 +2,7 @@
 // Die Werbesperre hing nur am Kontakt: wurde die Person gelöscht (Art. 17),
 // legte der nächste Import der Masterliste sie ungesperrt neu an. Ab jetzt
 // merkt sich der Haushalt, WER nicht mehr hereinkommt — ohne zu speichern,
-// wer das ist: nur SHA-256 der Merkmale (persönliche E-Mail, HubSpot-ID,
+// wer das ist: nur Fingerabdrücke der Merkmale (HMAC-SHA-256 v2, früher SHA-256 v1; persönliche E-Mail, HubSpot-ID,
 // Name+Firma, je normalisiert wie der Import-Schlüssel), Grund und Tag.
 // Keine Klartexte. Der Bestand liegt wie jeder andere verschlüsselt.
 //
@@ -12,12 +12,18 @@
 //   wirkt      importieren(): eine gesperrte Zeile wird NICHT neu angelegt (Vorschau „n gesperrt übersprungen“)
 //   endet      nur „Werbesperre aufheben“ mit Einwilligungs-Nachweis im selben Schritt (PATCH /api/state/kontakte)
 //
+// 29.09. (Paket D-B #71): HMAC-SHA-256 mit geheimem Pepper (lib/datenschutz/pepper.ts, Version v2) statt des
+// ungesalzenen SHA-256 (v1). Neue Einträge entstehen in der aktuellen Version; GEPRÜFT wird gegen beide — v1-Hashes
+// bereits gelöschter Personen bleiben gültig, solange ihr Eintrag besteht. Existierende Kontakte werden einmal je Pepper
+// umgerechnet (`sperrlisteMigrieren`, Löschfristen-Lauf): ihre v1-Hashes werden durch v2 ersetzt. Ohne Pepper bleibt
+// alles v1 (Warnung im Head of IT).
+//
 // Der Haushalt ist der des Inhabers — die Kartei (`kontakte`) gehört genau ihm.
 // Ohne eingetragenen Haushalt heißt er „haupt“; wird später einer eingetragen,
 // liest `sperrlisteLaden` den alten Stand mit (nie ein stiller Verlust).
 
-import { createHash } from 'node:crypto';
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { hmacHex, shaHex } from '@/lib/datenschutz/pepper';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import { identitaetsMerkmale, type Kontakt } from '@/lib/make-one/crm';
@@ -41,40 +47,66 @@ export const sperrlisteName = (haushalt: string) => {
 
 // ── Rein ─────────────────────────────────────────────────────────────────────
 
-/** Ein Merkmal gehasht (mit festem Vorsatz, damit der Hash nur hier etwas bedeutet). */
-export const sperrHash = (merkmal: string) => createHash('sha256').update(`make-os-sperre-v1|${merkmal}`).digest('hex');
-/** Alle Hashes einer Person. Leer, wenn sie kein Merkmal trägt. */
+/** v1 (bis 29.09.): ungesalzener SHA-256 mit festem Vorsatz — nur noch zum Prüfen und Migrieren. */
+export const sperrHashV1 = (merkmal: string) => shaHex(`make-os-sperre-v1|${merkmal}`);
+/** v2 (29.09.): HMAC-SHA-256 mit Pepper — null ohne Pepper. */
+export const sperrHashV2 = (merkmal: string) => hmacHex('make-os-sperre-v2', merkmal);
+/** Ein Merkmal in der AKTUELLEN Version gehasht (v2 mit Pepper, sonst v1). */
+export const sperrHash = (merkmal: string) => sperrHashV2(merkmal) ?? sperrHashV1(merkmal);
+/** Alle Hashes einer Person in der aktuellen Version (für NEUE Einträge). Leer, wenn sie kein Merkmal trägt. */
 export const sperrHashes = (k: Person) => identitaetsMerkmale(k).map(sperrHash);
+/** Alle Hashes einer Person in JEDER Version (v2 und v1) — geprüft wird immer gegen beide. */
+export const sperrHashesAlle = (k: Person) => { const m = identitaetsMerkmale(k); return Array.from(new Set([...m.map(sperrHash), ...m.map(sperrHashV1)])); };
 
-/** Person aufnehmen (idempotent): gleicher Grund + Überschneidung → Hashes vereinen, sonst neuer Eintrag. */
+/** Person aufnehmen (idempotent): gleicher Grund + Überschneidung → Hashes vereinen (v1 der Person wird dabei zu v2), sonst neuer Eintrag. */
 export function sperrlisteMit(eintraege: SperrEintrag[], k: Person, grund: SperrGrund, am: string): { eintraege: SperrEintrag[]; geaendert: boolean } {
   const h = sperrHashes(k);
   if (!h.length) return { eintraege, geaendert: false };
-  const i = eintraege.findIndex(e => e.grund === grund && e.h.some(x => h.includes(x)));
+  const alle = new Set(sperrHashesAlle(k));
+  const i = eintraege.findIndex(e => e.grund === grund && e.h.some(x => alle.has(x)));
   if (i < 0) return { eintraege: [...eintraege, { h, grund, am: am.slice(0, 10) }], geaendert: true };
-  const vereint = Array.from(new Set([...eintraege[i].h, ...h]));
-  if (vereint.length === eintraege[i].h.length) return { eintraege, geaendert: false };
+  const veraltet = new Set(alle); for (const x of h) veraltet.delete(x); // v1-Hashes dieser Person, wenn jetzt v2 gilt
+  const vereint = Array.from(new Set([...eintraege[i].h.filter(x => !veraltet.has(x)), ...h]));
+  if (vereint.length === eintraege[i].h.length && vereint.every(x => eintraege[i].h.includes(x))) return { eintraege, geaendert: false };
   return { eintraege: eintraege.map((e, j) => (j === i ? { ...e, h: vereint } : e)), geaendert: true };
 }
 
-/** Person herausnehmen: jeder Eintrag, der eines ihrer Merkmale trägt, fällt (er beschreibt diese Person). */
+/** Person herausnehmen: jeder Eintrag, der eines ihrer Merkmale trägt (v1 oder v2), fällt (er beschreibt diese Person). */
 export function sperrlisteOhne(eintraege: SperrEintrag[], k: Person): { eintraege: SperrEintrag[]; entfernt: number } {
-  const h = new Set(sperrHashes(k));
+  const h = new Set(sperrHashesAlle(k));
   const rest = eintraege.filter(e => !e.h.some(x => h.has(x)));
   return { eintraege: rest, entfernt: eintraege.length - rest.length };
 }
 
-/** Prüfer für den Import: steht eines der Merkmale auf der Liste? */
+/** Prüfer für den Import: steht eines der Merkmale auf der Liste (v1 oder v2)? */
 export function sperrPruefer(eintraege: SperrEintrag[]): (k: Person) => boolean {
   const alle = new Set(eintraege.flatMap(e => e.h));
-  return k => alle.size > 0 && sperrHashes(k).some(x => alle.has(x));
+  return k => alle.size > 0 && sperrHashesAlle(k).some(x => alle.has(x));
 }
 
-/** Der passende Eintrag der Sperrliste (erster Treffer) oder null — für Neuanlagen (28.09., Ablaufprüfung). */
+/** Der passende Eintrag der Sperrliste (erster Treffer, v1 oder v2) oder null — für Neuanlagen (28.09., Ablaufprüfung). */
 export function sperrTreffer(eintraege: SperrEintrag[], k: Person): SperrEintrag | null {
   if (!eintraege.length) return null;
-  const h = new Set(sperrHashes(k));
+  const h = new Set(sperrHashesAlle(k));
   return eintraege.find(e => e.h.some(x => h.has(x))) ?? null;
+}
+
+/**
+ * Einmalige Umrechnung v1 → v2 (29.09., #71), solange die Kontakte existieren: trägt ein Eintrag v1-Hashes einer Person
+ * der Kartei, werden sie durch deren v2-Hashes ersetzt. v1-Hashes, zu denen es keine Person mehr gibt (gelöschte),
+ * bleiben stehen und werden weiter geprüft. Ohne Pepper: nichts zu tun. Rein; liefert die Zahl umgerechneter Einträge.
+ */
+export function sperrlisteUmrechnen(eintraege: SperrEintrag[], kontakte: readonly Person[]): { eintraege: SperrEintrag[]; umgerechnet: number } {
+  if (!kontakte.length || !eintraege.length || sperrHashV2('probe') === null) return { eintraege, umgerechnet: 0 };
+  const v1zuV2 = new Map<string, string>();
+  for (const k of kontakte) for (const m of identitaetsMerkmale(k)) v1zuV2.set(sperrHashV1(m), sperrHash(m));
+  let umgerechnet = 0;
+  const neu = eintraege.map(e => {
+    if (!e.h.some(x => v1zuV2.has(x))) return e;
+    umgerechnet++;
+    return { ...e, h: Array.from(new Set(e.h.map(x => v1zuV2.get(x) ?? x))) };
+  });
+  return { eintraege: umgerechnet ? neu : eintraege, umgerechnet };
 }
 
 /** Hinweistext, wenn eine Neuanlage auf der Sperrliste steht — ohne Namen (die Liste kennt keine). */
@@ -147,5 +179,36 @@ export async function sperrlisteNachtragen(kontakte: Kontakt[]): Promise<number>
   const jeTag = new Map<string, Kontakt[]>();
   for (const k of gesperrt) { const t = k.werbesperre!.seit; jeTag.set(t, [...(jeTag.get(t) ?? []), k]); }
   for (const [tag, l] of Array.from(jeTag)) n += await sperren(l, 'werbesperre', tag);
+  return n;
+}
+
+/** Umrechnung v1 → v2 für alle Listen des Kartei-Haushalts (samt „haupt“) — idempotent, Zahl der umgerechneten Einträge. */
+export async function sperrlisteMigrieren(kontakte: readonly Person[]): Promise<number> {
+  const h = await karteiHaushalt();
+  let n = 0;
+  for (const name of Array.from(new Set([sperrlisteName(h), sperrlisteName(HAUSHALT_ERSATZ)]))) {
+    if ((await loadJson<Sperrliste>(name)) === null) continue;
+    await updateJson<Sperrliste>(name, cur => { const r = sperrlisteUmrechnen(saeubern(cur), kontakte); n += r.umgerechnet; return r.umgerechnet ? { eintraege: r.eintraege } : (cur ?? { eintraege: [] }); });
+  }
+  return n;
+}
+
+/**
+ * Fertige Hashes aufnehmen (Grabsteine nach einem Restore, lib/datenschutz/grabsteine.ts): Eintrag mit Überschneidung
+ * wird ergänzt, sonst neu. Idempotent. Liefert 1, wenn etwas geändert wurde.
+ */
+export async function sperrHashesAufnehmen(hashes: readonly string[], grund: SperrGrund, am: string): Promise<number> {
+  const h = hashes.filter(x => /^[0-9a-f]{64}$/.test(x));
+  if (!h.length) return 0;
+  let n = 0;
+  await updateJson<Sperrliste>(sperrlisteName(await karteiHaushalt()), cur => {
+    const l = saeubern(cur);
+    const i = l.findIndex(e => e.grund === grund && e.h.some(x => h.includes(x)));
+    if (i < 0) { n = 1; return { eintraege: [...l, { h: Array.from(new Set(h)), grund, am: am.slice(0, 10) }] }; }
+    const vereint = Array.from(new Set([...l[i].h, ...h]));
+    if (vereint.length === l[i].h.length) return cur ?? { eintraege: l };
+    n = 1;
+    return { eintraege: l.map((e, j) => (j === i ? { ...e, h: vereint } : e)) };
+  });
   return n;
 }

@@ -88,6 +88,13 @@ export interface Aktivitaet {
    * desselben Vorschlags legt nichts doppelt an (app/api/crm/aktivitaet `vorschlagId`).
    */
   vorschlagId?: string;
+  /**
+   * Herkunft (29.09., Paket D-B #94): `zoe` = ZOE hat den Eintrag vorbereitet, eine Person hat ihn im Stapel freigegeben
+   * (`freigegebenVon`). `von` bleibt die Person, in deren Auftrag gearbeitet wurde — so sieht niemand eine ZOE-Notiz
+   * für Kevins eigene Eingabe an. Fehlt = von Hand.
+   */
+  quelle?: 'zoe';
+  freigegebenVon?: string;
 }
 
 /** Beziehungskreis A–D: bestimmt den Takt, in dem man sich meldet (Dunbar-Schichten). */
@@ -1116,6 +1123,9 @@ export interface AktivitaetEingabe {
   anlass?: string;
   /** Kennung des ZOE-Vorschlags, aus dem die Aktivität stammt (29.09., idempotente Freigabe). */
   vorschlagId?: string;
+  /** Aus einem ZOE-Vorschlag, freigegeben von … (29.09., #94). */
+  quelle?: 'zoe';
+  freigegebenVon?: string;
   /** Ausdrückliche Stufe gewinnt über die Regel. */
   stufe?: Stufe;
   wiedervorlage?: string;
@@ -1138,6 +1148,7 @@ export function wendeAktivitaetAn(
     ...(wannSaeubern(e.wann) ? { wann: wannSaeubern(e.wann) } : {}), ...(ortSaeubern(e.ort) ? { ort: ortSaeubern(e.ort) } : {}),
     ...(e.anlass?.trim() ? { anlass: e.anlass.trim().slice(0, 600) } : {}),
     ...(e.vorschlagId && VORSCHLAG_KENNUNG.test(e.vorschlagId) ? { vorschlagId: e.vorschlagId } : {}),
+    ...(e.quelle === 'zoe' ? { quelle: 'zoe' as const, ...(e.freigegebenVon && /^[a-z0-9-]{1,40}$/.test(e.freigegebenVon) ? { freigegebenVon: e.freigegebenVon } : {}) } : {}),
     // Firma zum Zeitpunkt (28.09., Stationen): die Zeitlinie der Firma behält die Aktivität nach einem Jobwechsel.
     ...(k.firmaId ? { firmaId: k.firmaId } : {}) };
   const out: Kontakt = { ...k, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag] };

@@ -18,7 +18,7 @@
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { karteiZugang, KARTEI_GESPERRT, haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
-import { monatBerlin, vormonat, protokollMonat, protokollKennung, type ProtokollEintrag } from '@/lib/store/aenderungsprotokoll';
+import { monatBerlin, vormonat, protokollMonat, protokollKennungen, type ProtokollEintrag } from '@/lib/store/aenderungsprotokoll';
 import { nameVon } from '@/lib/zoe/raum';
 
 export const runtime = 'nodejs';
@@ -47,9 +47,9 @@ export async function GET(req: Request) {
   const monate = gewuenscht ? [gewuenscht] : [jetzt, vormonat(jetzt)];
   const haushalt = (await haushaltDesInhabers()) ?? 'ohne-haushalt';
 
-  // Kontakt-Fingerabdrücke (c#…) zurück auf die Kennung — nur für Kontakte, die es noch gibt.
+  // Kontakt-Fingerabdrücke (c2#… v2, c#… v1) zurück auf die Kennung — nur für Kontakte, die es noch gibt.
   const kontaktIds = ((await loadJson<{ kontakte?: { id: string }[] }>('kontakte'))?.kontakte ?? []).map(k => k.id);
-  const aufloesen = new Map(kontaktIds.map(id => [protokollKennung(id), id]));
+  const aufloesen = new Map(kontaktIds.flatMap(id => protokollKennungen(id).map(f => [f, id] as const)));
   const neu: Zeile[] = [];
   for (const m of [...monate].sort()) {
     for (const e of await protokollMonat(haushalt, m)) {

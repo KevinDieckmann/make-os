@@ -2,6 +2,7 @@
 // Eigener Datenordner, Dienstaufruf per Schlüssel — nie der echte Bestand. Alle Daten erfunden;
 // die IBAN wird zur Laufzeit aus einer erfundenen Kontonummer gerechnet (tests/repo-sauber.test.ts).
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { localDay } from '@/lib/zeit';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -19,7 +20,8 @@ const IBAN = mitPruefziffer('120300009876543210');
 const IBAN_NEU = mitPruefziffer('500105170123456789');
 const MASKE = (i: string) => `${i.slice(0, 4)} •••• •••• ${i.slice(-4)}`;
 
-const H = new Date().toISOString().slice(0, 10);
+// Berliner Tag wie der Server (29.09., Paket D-B) — vorher UTC-Tag: zwischen 0 und 2 Uhr rot.
+const H = localDay();
 const kopf = (person: string | null = 'kevin') => ({ 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, ...(person ? { 'x-make-person': person } : {}) });
 const req = (url: string, body?: unknown, method = 'POST', person: string | null = 'kevin') => new Request(`http://test${url}`, { method, headers: kopf(person), ...(body ? { body: JSON.stringify(body) } : {}) });
 

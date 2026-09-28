@@ -1,0 +1,126 @@
+// ─── Register ALLER Bestände: Personenbezug und Art.-17-Behandlung (29.09., Paket D-B #69/#74) ─
+// Jeder Bestandsname, den der Code liest oder schreibt (`loadJson/updateJson/saveJson/updateJsonAsync/updateGeschuetzt`
+// mit Literal), MUSS hier stehen — der Wächtertest `tests/datenschutz-register.test.ts` scannt den Code und wird rot bei
+// jedem unbekannten Namen. Damit kann kein neuer Speicher mit Personenbezug still an Art. 15/17 vorbeiwachsen.
+//
+//   bezug        'dritte'   Personen außerhalb des Haushalts (CRM-Kontakte, Absender, Teilnehmende) — Art. 15/17 gilt
+//                'haushalt' Kevin/Malin selbst (Konto, Gesundheit, Finanzen) — Art. 17 über das Konto, nicht über das CRM
+//                'kein'     keine Personendaten (Einstellungen, Riegel, Zahlen)
+//   behandlung   'entfernen'  Einträge der Person fallen weg (person-bestaende.ts / person-weitere.ts)
+//                'tilgen'     Eintrag bleibt, Kennung/Adresse/Name/Fingerabdruck → „[gelöscht]“
+//                'pseudonym'  nur Fingerabdrücke (HMAC v2), keine Klartexte — bewusst so (Sperrliste, Löschprotokoll)
+//                'ausgenommen' mit Grund (Aufbewahrungspflicht, eigene Daten des Haushalts, kein Personenbezug)
+//   muster       Name oder Muster mit `*` (z. B. `heads-replay-*`).
+// Rein, ohne Abhängigkeiten — der Test und die Doku lesen es direkt.
+
+export type Bezug = 'dritte' | 'haushalt' | 'kein';
+export type Behandlung = 'entfernen' | 'tilgen' | 'pseudonym' | 'ausgenommen';
+export interface SpeicherEintrag { muster: string; bezug: Bezug; behandlung: Behandlung; grund: string; frist?: string }
+
+const E = (muster: string, grund: string, frist?: string): SpeicherEintrag => ({ muster, bezug: 'dritte', behandlung: 'entfernen', grund, ...(frist ? { frist } : {}) });
+const T = (muster: string, grund: string, frist?: string): SpeicherEintrag => ({ muster, bezug: 'dritte', behandlung: 'tilgen', grund, ...(frist ? { frist } : {}) });
+const H = (muster: string, grund: string): SpeicherEintrag => ({ muster, bezug: 'haushalt', behandlung: 'ausgenommen', grund });
+const K = (muster: string, grund: string): SpeicherEintrag => ({ muster, bezug: 'kein', behandlung: 'ausgenommen', grund });
+
+export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
+  // ── CRM-Kern (lib/crm/person-bestaende.ts) ──
+  E('kontakte', 'Die Kartei — Eintrag raus (personEntfernen).', 'kontakte'),
+  E('crm', 'Kennung raus (person-verweise.ts), voller Name in Deal-Titeln/Kundennamen → „[gelöscht]“.'),
+  E('crm-dateien--*', 'Dateiablage: nur Personen-Bezug → Eintrag + Datei weg; mit Geschäftsbezug nur der Personen-Bezug.'),
+  E('crm-import-konflikte', 'Konflikte und mögliche Dubletten der Person raus.', 'import-konflikte'),
+  E('crm-import-laeufe--*', 'Vorher-Stände der Person raus (laufOhne), auch Zusammenführ-Läufe; Namen getilgt.', 'import-laeufe'),
+  E('head-*', 'Head-Vorschläge der Person raus, Berichte, die sie nennen, raus.'),
+  E('heads-replay-*', 'Replay-Fälle mit der Person raus.', 'heads-replay'),
+  E('crm-signale', 'Kommender Termin der Person raus.', 'signale'),
+  E('tasks', 'Nur eindeutig zugeordnete Aufgaben: Name → „[gelöscht]“, Link und bezug.kontaktId raus — die Aufgabe bleibt.'),
+  { muster: 'crm-sperrliste--*', bezug: 'dritte', behandlung: 'pseudonym', grund: 'Person KOMMT HINZU (Grund „loeschung“) — nur HMAC-Fingerabdrücke, damit ein Import sie nie neu anlegt.' },
+  { muster: 'crm-loeschprotokoll', bezug: 'dritte', behandlung: 'pseudonym', grund: 'Nur Protokoll-ID `lp-…`, Tag, Grund, wer — nie die Kennung (lib/crm/loeschprotokoll.ts).' },
+  // ── Weitere Speicher (lib/crm/person-weitere.ts, 29.09.) ──
+  E('netzwerk', 'Altbestand vor der Kartei — Datensätze der Person (Adresse/Name) samt Chancen raus; wird stillgelegt.', 'netzwerk'),
+  E('kunden', 'Altbestand Kunden — Privatkunde mit dem Namen der Person raus, Rest getilgt.'),
+  E('stammdaten', 'Alte Stammdaten-Listen (Personen/Partner) — Datensätze der Person raus, Rest getilgt.'),
+  T('prospects', 'Zielliste (Firmen) — Nennungen in Begründung/Aufhänger getilgt.'),
+  E('inbox-absender', 'Screener: Entscheidung zur Adresse der Person fällt weg.'),
+  E('inbox-triage', 'Einstufungen von Mails, die die Person nennen, raus.', 'postfach-caches'),
+  E('apple-mail-cache', 'Mail-Zwischenspeicher — Mails der Person raus (Postfach selbst beim Anbieter).', 'postfach-caches'),
+  E('m365-postfach', 'Mail-Zwischenspeicher (Microsoft 365) — Mails der Person raus.', 'postfach-caches'),
+  E('microsoft-inbox', 'Mail-Zwischenspeicher (Anzeige) — Mails der Person raus.', 'postfach-caches'),
+  T('calendar-cache', 'Kalender-Zwischenspeicher — Termin bleibt, Name/Adresse getilgt.', 'kalender-caches'),
+  T('kemaris-calendar', 'Kalender-Zwischenspeicher (KEMARIS) — Termin bleibt, Name/Adresse getilgt.', 'kalender-caches'),
+  T('meetings', 'Meeting-Protokolle — bleiben, Name/Adresse getilgt.'),
+  T('zoe-verlauf', 'Gespräche mit ZOE — bleiben, die Person getilgt.', 'zoe-verlauf'),
+  E('zoe-gedaechtnis', 'Fakten, die die Person nennen, raus.', 'zoe-gedaechtnis'),
+  E('zoe-protokoll', 'Einträge, die die Person nennen, raus (seit 29.09. ohnehin nur Kennungen + Feldnamen).', 'zoe-arbeitslisten'),
+  E('zoe-stapel', 'Vorschläge, die die Person nennen, raus (offene und entschiedene).', 'zoe-arbeitslisten'),
+  T('zoe-entscheidungen--*', 'Dauerhafte Entscheidungen — bleiben (Rechenschaft), Fingerabdruck → c#geloescht, Name getilgt.', 'zoe-entscheidungen'),
+  T('zoe-auftraege', 'Warteschlange der Läufe — Aufträge/Ergebnisse getilgt.'),
+  T('zoe-empfang', 'Begrüßungstext der Stunde — getilgt.'),
+  T('aenderungsprotokoll--*', 'Änderungsprotokoll — bleibt (nur Feldnamen), Fingerabdruck der Person → c#geloescht.', 'aenderungsprotokoll'),
+  T('agent-log', 'Agenten-Log — Titel/Texte getilgt.'),
+  T('client-fehler', 'Fehlermeldungen der Oberfläche — getilgt, falls sie die Person nennen.'),
+  T('meldungen--*', 'Glocke je Person — Texte getilgt.'),
+  // ── Haushalt / Geschäft: bewusst ausgenommen ──
+  { muster: 'finanzplan', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Rechnungen/Buchungen — Aufbewahrungspflicht § 147 AO / § 257 HGB (Kundenname auf der Rechnung bleibt).' },
+  { muster: 'finanzen-plan--*', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Finanzplan des Haushalts — Rechnungen: Aufbewahrungspflicht § 147 AO / § 257 HGB.' },
+  { muster: 'liquiplan', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Planposten/Zahlungen — Geschäftsunterlage, Aufbewahrungspflicht § 147 AO.' },
+  { muster: 'buchungen', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Buchungen — Aufbewahrungspflicht § 147 AO / § 257 HGB.' },
+  { muster: 'finance', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Controlling-Zahlen, Rechnungen — Aufbewahrungspflicht § 147 AO.' },
+  { muster: 'grundlage', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Finanz-Export aus Malins Dashboard (Original, nur gelesen) — Buchführung, Aufbewahrungspflicht.' },
+  K('business-abschluesse', 'Monatszahlen der Gesellschaften — keine Personen.'),
+  H('ernaehrung', 'Eigene Daten des Haushalts (Essen, Einkauf).'),
+  H('gesundheit-takt', 'Eigene Gesundheitsdaten des Haushalts.'),
+  H('gesundheitszeit', 'Eigene Gesundheitsdaten des Haushalts.'),
+  H('health-log', 'Eigene Gesundheitsdaten des Haushalts.'),
+  H('journal', 'Eigenes Journal des Haushalts.'),
+  H('routinen', 'Eigene Routinen des Haushalts.'),
+  H('ziele', 'Eigene Ziele/Fokus des Haushalts.'),
+  H('meilensteine', 'Eigene Meilensteine des Haushalts.'),
+  H('kompass', 'Eigener Kompass des Haushalts.'),
+  H('wochenplan', 'Eigener Wochenplan des Haushalts.'),
+  H('anwesenheit', 'Wer vom Haushalt gerade online ist.'),
+  H('nutzung', 'Nutzung der Oberfläche durch den Haushalt (Zähler).'),
+  H('aenderungen', 'Altes Browser-Änderungsprotokoll (nur Person des Haushalts, Bestand, Seite) — nur gelesen.'),
+  H('arbeitsmodus', 'Arbeitsmodus des Haushalts.'),
+  H('arbeitsplatz', 'Arbeitsplatz-Einstellungen des Haushalts.'),
+  H('konten', 'Konten der Nutzer — Art. 17 über das Konto.'),
+  H('team--*', 'Team des Haushalts (Rollen/Namen der Mitglieder).'),
+  H('oauth-tokens', 'Zugangsschlüssel des Haushalts (Whoop/Microsoft) — keine Dritten.'),
+  H('oauth-states', 'Kurzlebige OAuth-Zustände — keine Dritten.'),
+  H('ki-verbrauch', 'Kosten der Modellaufrufe je Person des Haushalts.'),
+  K('backlog', 'Bauplan der Software (Ideen/Etappen) — keine Kontakte.'),
+  K('bauzeit', 'Bauzeiten der Software.'),
+  K('agents-config', 'Agenten-Schalter.'),
+  K('brain-konsolidierung', 'Riegel der Brain-Konsolidierung.'),
+  K('crm-loeschfristen', 'Fristen und Tagesmarke — keine Kennungen.'),
+  K('dashboard', 'Anordnung der Startfläche.'),
+  K('filter', 'Gespeicherte Filter.'),
+  K('fokus-regler', 'Regler-Stand.'),
+  K('hoi-meldung', 'Riegel des Head of IT.'),
+  K('hoi-durchsicht', 'Nächtliche Durchsicht der Bestände (lib/store/durchsicht.ts) — nur Zähler je Bestand.'),
+  K('inbox-status', 'Gelesen/erledigt je Mail-Kennung — keine Inhalte, keine Adressen.'),
+  K('kalender-einstellungen', 'Kalender-Einstellungen.'),
+  K('labels', 'Beschriftungen.'),
+  K('onboarding', 'Einrichtungs-Haken.'),
+  K('ordnung', 'Sortierung/Ordnung von Listen.'),
+  K('performance', 'Wachstums-Score (Zahlen).'),
+  K('planung-einheiten--*', 'Einheiten der Planung je Haushalt.'),
+  K('spaces', 'Space-Einstellungen.'),
+  K('tageslauf', 'Riegel des Tageslaufs.'),
+  K('tagesstart', 'Riegel des Morgenlaufs.'),
+  K('willkommen', 'Willkommens-Hinweise.'),
+  K('aufgaben-dateien--*', 'Aufgaben-Ablage (Dateien zu Aufgaben, lib/dateien/aufgaben-ablage.ts) — Kontakt-Dateien liegen in crm-dateien--*.'),
+  K('datenschutz-grabsteine', 'Marke „Grabsteine zuletzt angewendet“ (Fingerabdruck der Grabstein-Datei, Zahl).'),
+  K('datenschutz-migration', 'Marke der Umrechnung v1 → v2 je Pepper (nur Zahlen).'),
+];
+
+/** Dynamische Namen im Code, deren Präfix aus einer Konstante kommt (`${KONSTANTE}${…}` → „**“) — mit ihrem Muster. */
+export const DYNAMISCHE_NAMEN: Readonly<Record<string, { datei: string; muster: string }>> = {
+  '**': { datei: 'lib/crm/verbindungen-laden.ts', muster: 'aufgaben-dateien--*' },
+};
+
+const alsRegex = (muster: string) => new RegExp(`^${muster.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
+
+/** Der Register-Eintrag für einen Bestandsnamen (auch ein Code-Muster wie `heads-replay-*`) — oder null. */
+export function registerEintrag(name: string): SpeicherEintrag | null {
+  return SPEICHER_REGISTER.find(e => e.muster === name || alsRegex(e.muster).test(name)) ?? null;
+}

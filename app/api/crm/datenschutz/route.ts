@@ -6,8 +6,10 @@
 //              Wortlaut, Beleg, Widerruf, was fehlt), Einschränkung, „geprüft“, Löschfrist.
 // GET  ?loeschfristen=1 → die Löschfristen-Tabelle (Standard, wirksam, gespeichert) + letzter Lauf
 // POST { id, grund } → Löschen nach Art. 17: Person raus aus ALLEN Speichern
-//              (lib/crm/person-bestaende.ts, 28.09.). Ins Löschprotokoll kommt nur Kennung,
-//              Datum und Grund — keine Personendaten. Eine Werbesperre ist
+//              (lib/crm/person-bestaende.ts, 28.09.; weitere Speicher seit 29.09. lib/crm/person-weitere.ts).
+//              Ins Löschprotokoll kommt nur eine Protokoll-ID (`lp-…`, nie die Kennung — sie trägt die
+//              E-Mail), Tag, Grund und wer (lib/crm/loeschprotokoll.ts). Dazu ein Grabstein AUSSERHALB
+//              des Datenordners (lib/datenschutz/grabsteine.ts) — ein Restore holt die Person nicht zurück. Eine Werbesperre ist
 //              meist die bessere Wahl (Art. 21): dann bleibt „nicht anschreiben“
 //              erhalten. Deshalb fragt die Oberfläche das vorher ab. Eine eingeschränkte
 //              Person (Art. 18) wird aufbewahrt — erst aufheben, dann löschen (409).
@@ -17,6 +19,8 @@
 // POST { aktion: 'einschraenkung-aufheben', id, grund }          → nur mit Grund
 // POST { aktion: 'frist-verlaengern', id, bis, grund }           → Löschfrist der Person verlängern (U2 #52)
 // POST { aktion: 'fristen', fristen: { <art>: Zahl | null } }    → Löschfristen anpassen (Standard nie gespeichert)
+// POST { aktion: 'grabsteine' }  (Dienstweg, auch ohne Person)    → Grabsteine erzwungen anwenden — ruft das
+//              Restore-Skript (deploy/wiederherstellen.sh) nach jedem Zurückspielen ZWINGEND auf (29.09., #70).
 // Alle Schreibwege nur mit ausdrücklicher Person (Regel 5) — sie steht im Vermerk.
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -34,6 +38,8 @@ import { nachweisAuskunft } from '@/lib/crm/einwilligung';
 import { einschraenkungSetzen, einschraenkungAufheben } from '@/lib/crm/einschraenkung';
 import { LOESCHFRISTEN, LOESCHFRISTEN_SPEICHER, fristenWirksam, fristenSpeichern, verlaengerungPruefen, type LoeschfristenBestand } from '@/lib/crm/loeschfristen';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
+import { istDienst } from '@/lib/zugang/dienst';
+import { loeschungFesthalten } from '@/lib/crm/loeschprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -97,6 +103,20 @@ async function kontaktAendern(req: Request, id: string, felder: string[], f: (k:
 }
 
 export async function POST(req: Request) {
+  // Grabsteine nach einem Restore (29.09., #70): Dienstweg (Restore-Skript), auch ohne Person — vor allen anderen Prüfungen.
+  if (istDienst(req) && !req.headers.get('x-make-person')) {
+    let roh: { aktion?: string } = {};
+    try { roh = await req.clone().json(); } catch { /* unten: 400 */ }
+    if (roh.aktion === 'grabsteine') {
+      try {
+        const { grabsteineAnwenden } = await import('@/lib/datenschutz/grabsteine');
+        const r = await grabsteineAnwenden({ erzwingen: true });
+        return NextResponse.json({ ok: true, ...r });
+      } catch (e) {
+        return NextResponse.json({ ok: false, fehler: `Grabsteine nicht anwendbar: ${e instanceof Error ? e.message.slice(0, 200) : 'Fehler'}` }, { status: 500 });
+      }
+    }
+  }
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   // Regel 5 (28.09., K1): Löschprotokoll und Vermerke nennen, WER — nur mit ausdrücklicher Person, nie „kevin“ als Rückfall.
   const von = personStreng(req);
@@ -159,7 +179,12 @@ export async function POST(req: Request) {
   const nurSie = new Set((await ladeCrm()).chancen.filter(c => c.kontaktIds.length === 1 && c.kontaktIds[0] === id).map(c => c.id));
   const bericht = await personEntfernen(id);
   if (!Object.keys(bericht.speicher).length) return NextResponse.json({ ok: false, fehler: 'Nicht gefunden.' }, { status: 404 });
-  await updateJson<{ eintraege: { id: string; datum: string; grund: string; von: string }[] }>('crm-loeschprotokoll', cur => ({ eintraege: [...(cur?.eintraege ?? []), { id, datum: heute, grund: (grund || 'Art. 17 DSGVO').slice(0, 200), von }] }));
+  // Nur Protokoll-ID, Tag, Grund, Person — nie die Kennung (29.09., #30). Ein zweiter Lauf (Reste) protokolliert nur, wenn die Kartei die Person noch hatte.
+  const protokollId = bericht.speicher.kontakte ? await loeschungFesthalten({ datum: heute, grund: (grund || 'Art. 17 DSGVO').slice(0, 200), von }) : null;
   const dealsOhnePerson = nurSie.size ? (await ladeCrm()).chancen.filter(c => nurSie.has(c.id) && !c.kontaktIds.length).map(c => ({ id: c.id, titel: c.titel })) : [];
-  return NextResponse.json({ ok: true, speicher: bericht.speicher, aufgabenPruefen: bericht.aufgabenPruefen, dealsOhnePerson });
+  return NextResponse.json({
+    ok: true, speicher: bericht.speicher, aufgabenPruefen: bericht.aufgabenPruefen, dealsOhnePerson, protokollId,
+    ...(bericht.grabstein === false ? { warnung: 'Grabstein nicht geschrieben — ein Restore könnte die Person zurückholen. Bitte den Head of IT prüfen.' } : {}),
+    ...(bericht.fehler?.length ? { nachzuholen: bericht.fehler } : {}),
+  });
 }

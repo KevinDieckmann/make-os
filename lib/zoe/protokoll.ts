@@ -13,8 +13,16 @@
 // nie Werte); gekürzt wird nur, was dort steht (`dauerhaft`) — Altbestand wird vor dem Kürzen nachgetragen, scheitert
 // das, bleibt er stehen. Nie still.
 
+//
+// 29.09. (Paket D-B #93): Ins Protokoll kommt NICHT mehr die volle Eingabe (Gesprächsnotizen, Beträge, Texte), sondern
+// nur, was eine Wirkung wiederfindbar macht: die Feldnamen (`felder`) und Kennungen (`eingabeKurz` — Kontakt-Kennungen
+// als Fingerabdruck). Das Ergebnis höchstens 300 Zeichen. Die Rücknahme (alter Wert für „zurück“) bleibt — sie gehört zu
+// Finanzen/Fokus/Zielen des Haushalts. Frist 90 Tage (Löschklasse „zoe-arbeitslisten“, `protokollFrist`), Art. 15/17 über
+// lib/crm/person-bestaende.ts.
+
 import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
+import { protokollKennung } from '@/lib/store/aenderungsprotokoll';
 import { ausfuehrungEintrag, haltFest } from './entscheidungen';
 import type { Risiko } from './register';
 import type { Person } from './raum';
@@ -34,7 +42,10 @@ export interface Eintrag {
   werkzeug: string;
   gruppe: string;
   risiko: Risiko;
+  /** Seit 29.09. nur Kennungen (`eingabeKurz`) — nie Texte, Beträge oder Notizen. */
   eingabe: Record<string, unknown>;
+  /** Namen der Eingabe-Felder (29.09.). */
+  felder?: string[];
   ergebnis: string;
   ok: boolean;
   /** Direkt von ZOE ausgeführt, oder nach deiner Freigabe aus dem Stapel. */
@@ -54,9 +65,31 @@ interface Stand { eintraege: Eintrag[] }
 /** So viele Einträge bleiben stehen (Arbeitsliste) — Älteres steht dauerhaft in `zoe-entscheidungen`. */
 const GRENZE = 500;
 
+/** Sieht der Wert wie eine Kennung aus (c-…, ch-…, v-…, fu-…)? Nur solche bleiben im Protokoll. */
+const KENNUNG = /^[a-z]{1,4}[-_][A-Za-z0-9][A-Za-z0-9._@+-]{1,120}$/;
+const ID_FELD = /(^id$|_id$|Id$|_ids$|Ids$)/;
+/**
+ * Eingabe fürs Protokoll (rein): nur Felder, die Kennungen tragen (Feldname auf -id/-Id oder Wert in Kennungsform),
+ * Kontakt-Kennungen als Fingerabdruck (`protokollKennung`). Alles andere fällt weg — die Feldnamen stehen in `felder`.
+ */
+export function eingabeKurz(eingabe: Record<string, unknown> | null | undefined): Record<string, unknown> {
+  const raus: Record<string, unknown> = {};
+  const kennung = (v: unknown) => (typeof v === 'string' && v.length <= 160 && !/\s/.test(v) && KENNUNG.test(v) ? protokollKennung(v) : null);
+  for (const [k, v] of Object.entries(eingabe ?? {})) {
+    if (!ID_FELD.test(k) && !(typeof v === 'string' && KENNUNG.test(v) && /^c-/.test(v))) continue;
+    if (Array.isArray(v)) { const l = v.map(kennung).filter((x): x is string => !!x); if (l.length) raus[k.slice(0, 40)] = l.slice(0, 50); continue; }
+    const x = kennung(v);
+    if (x) raus[k.slice(0, 40)] = x;
+  }
+  return raus;
+}
+
 export async function notiere(e: Omit<Eintrag, 'id' | 'zeit' | 'tag'>): Promise<Eintrag> {
   const eintrag: Eintrag = {
     ...e,
+    eingabe: eingabeKurz(e.eingabe),
+    felder: e.felder ?? Object.keys(e.eingabe ?? {}).slice(0, 40).map(k => k.slice(0, 40)),
+    ergebnis: String(e.ergebnis ?? '').slice(0, 300),
     id: `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
     zeit: new Date().toISOString(),
     tag: localDay(),
@@ -98,4 +131,27 @@ export async function stempleZurueckgenommen(id: string): Promise<void> {
     const liste = current?.eintraege ?? [];
     return { eintraege: liste.map(x => x.id === id ? { ...x, zurueckgenommenAm: new Date().toISOString() } : x) };
   });
+}
+
+/**
+ * Frist (29.09., Löschklasse „zoe-arbeitslisten“, 90 Tage): Einträge vor `grenze` (Tag) fallen weg — nur, was dauerhaft
+ * in zoe-entscheidungen steht; Altbestand wird vorher nachgetragen, scheitert das, bleibt er stehen. Liefert die Zahl.
+ */
+export async function protokollFrist(grenze: string): Promise<number> {
+  if ((await loadJson<Stand>('zoe-protokoll')) === null) return 0;
+  let n = 0;
+  await updateJsonAsync<Stand>('zoe-protokoll', async current => {
+    const liste = current?.eintraege ?? [];
+    const alt = liste.filter(x => (x.tag || x.zeit?.slice(0, 10) || '') < grenze);
+    if (!alt.length) return current as Stand;
+    const nach = alt.filter(x => !x.dauerhaft);
+    if (nach.length) {
+      try { await haltFest(nach.map(x => ausfuehrungEintrag(x, true))); }
+      catch (err) { console.error('[zoe-protokoll] Frist: Nachtragen fehlgeschlagen — nichts gekürzt:', err instanceof Error ? err.message : err); return current as Stand; }
+    }
+    const weg = new Set(alt.map(x => x.id));
+    n = weg.size;
+    return { eintraege: liste.filter(x => !weg.has(x.id)) };
+  });
+  return n;
 }

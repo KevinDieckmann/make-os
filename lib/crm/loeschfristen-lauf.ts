@@ -10,6 +10,13 @@
 //  · TECHNISCHE Bestände werden nach Frist bereinigt — mit Protokolleintrag „System“:
 //    Import-Konflikte, Import-Läufe, Heads-Replay, Signal-Texte (Betreff/Titel), Monatsdateien
 //    des Änderungsprotokolls. Eingeschränkte Personen (Art. 18) fasst der Lauf nicht an.
+//
+// 29.09. (Paket D-B): zuerst — auch wenn der Tageslauf schon gelaufen ist — die GRABSTEINE anwenden, sobald sie sich seit
+// dem letzten Mal geändert haben (nach einem Restore: immer, lib/datenschutz/grabsteine.ts). Danach im Tageslauf:
+// Fingerabdrücke v1 → v2 umrechnen (einmal je Pepper: Sperrliste, Änderungsprotokoll, ZOE-Entscheidungen — nur für
+// Kontakte, die es noch gibt), Löschprotokoll ohne Klartext-Kennung, und die neuen Löschklassen (ZOE-Arbeitslisten,
+// ZOE-Entscheidungen, ZOE-Verlauf, ZOE-Gedächtnis, Postfach-/Kalender-Zwischenspeicher, Umzugs-Kopien im Archiv,
+// Grabsteine); der Altbestand Netzwerk zählt in die Löschfrist-Aufgabe (nie automatisch).
 
 import { promises as fs } from 'fs';
 import { datenOrdner, loadJson, updateJson } from '@/lib/store/local-db';
@@ -26,8 +33,14 @@ import { ladeKonten } from '@/lib/zugang/konten';
 import { protokolliere, PROTOKOLL_PRAEFIX, type ProtokollDatei } from '@/lib/store/aenderungsprotokoll';
 import {
   LOESCHFRISTEN_SPEICHER, fristenWirksam, stichtag, kontakteUeberFrist, signalTexteBereinigen, replayBereinigen, protokollMonateUeberFrist,
-  type LoeschfristenBestand,
+  vorGrenzeRaus, istUmzugsKopie, archivTag, netzwerkUeberFrist, type LoeschfristenBestand,
 } from './loeschfristen';
+import path from 'path';
+import { ENTSCHEIDUNGEN_PRAEFIX } from '@/lib/zoe/entscheidungen';
+import { protokollKennungV1, protokollKennung } from '@/lib/store/aenderungsprotokoll';
+import { pepperFingerabdruck } from '@/lib/datenschutz/pepper';
+import { sperrlisteMigrieren } from './sperrliste';
+import { loeschprotokollBereinigen } from './loeschprotokoll';
 
 /** Kennung der einen laufenden Aufgabe (nie mehrere, nie mit Personen). */
 export const LOESCHFRIST_AUFGABE = 'loeschfrist-kontakte';
@@ -37,7 +50,12 @@ interface Aufgabe { id: string; title: string; description?: string; status: str
 const SYSTEM = { art: 'system' as const };
 const PROTOKOLL_DATEI = new RegExp(`^${PROTOKOLL_PRAEFIX}--([a-z0-9-]+)--(\\d{4}-\\d{2})\\.json$`);
 
-export interface LaufErgebnis { ok: boolean; uebersprungen?: boolean; ueberFrist: number; bereinigt: Record<string, number>; aufgabe: 'neu' | 'aktualisiert' | 'erledigt' | 'unveraendert' | 'keine'; text: string }
+export interface LaufErgebnis { ok: boolean; uebersprungen?: boolean; ueberFrist: number; bereinigt: Record<string, number>; aufgabe: 'neu' | 'aktualisiert' | 'erledigt' | 'unveraendert' | 'keine'; text: string; grabsteine?: { entfernt: number; uebersprungen: boolean } }
+
+/** Marke der einmaligen Umrechnung v1 → v2 je Pepper (nur Zahlen). */
+export const MIGRATION_SPEICHER = 'datenschutz-migration';
+interface Migration { v2?: { pepper: string; am: string; sperrliste: number; protokoll: number } }
+const ENTSCHEIDUNGS_DATEI = new RegExp(`^${ENTSCHEIDUNGEN_PRAEFIX}--([a-z0-9-]+)--(\\d{4}-\\d{2})\\.json$`);
 
 /**
  * Den Lauf ausführen. `erzwingen` übergeht die Tagesmarke (Knopf, Tests). Wirft nie wegen eines einzelnen
@@ -46,8 +64,15 @@ export interface LaufErgebnis { ok: boolean; uebersprungen?: boolean; ueberFrist
 export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): Promise<LaufErgebnis> {
   const heute = localDay(jetzt);
   const jetztIso = jetzt.toISOString();
+  // 0 · Grabsteine (29.09., #70) — vor der Tagesmarke: nach einem Restore sofort beim nächsten Takt.
+  let grabsteine: LaufErgebnis['grabsteine'];
+  try {
+    const { grabsteineAnwenden } = await import('@/lib/datenschutz/grabsteine');
+    const r = await grabsteineAnwenden({ jetzt });
+    grabsteine = { entfernt: r.entfernt, uebersprungen: r.uebersprungen };
+  } catch (e) { console.error('[loeschfristen] Grabsteine nicht angewendet:', e instanceof Error ? e.message : e); }
   const b = (await loadJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER)) ?? {};
-  if (!erzwingen && b.lauf?.tag === heute) return { ok: true, uebersprungen: true, ueberFrist: b.lauf.ueberFrist, bereinigt: {}, aufgabe: 'unveraendert', text: 'Heute schon gelaufen.' };
+  if (!erzwingen && b.lauf?.tag === heute) return { ok: true, uebersprungen: true, ueberFrist: b.lauf.ueberFrist, bereinigt: {}, aufgabe: 'unveraendert', text: 'Heute schon gelaufen.', ...(grabsteine ? { grabsteine } : {}) };
   const f = fristenWirksam(b.fristen);
   const bereinigt: Record<string, number> = {};
   const zaehle = (name: string, n: number) => { if (n) bereinigt[name] = (bereinigt[name] ?? 0) + n; };
@@ -57,7 +82,8 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const crm = await ladeCrm();
   const ueber = kontakteUeberFrist(kontakte, crm, heute, f.kontakte);
-  const aufgabe = await aufgabeAbgleichen(ueber.length, f.kontakte, jetztIso);
+  const netz = netzwerkUeberFrist((await loadJson<{ kontakte?: { letzterKontakt?: string }[] }>('netzwerk'))?.kontakte, heute, f.netzwerk);
+  const aufgabe = await aufgabeAbgleichen(ueber.length, f.kontakte, jetztIso, netz);
 
   // 2 · Import-Konflikte
   await schritt('import-konflikte', async () => {
@@ -148,21 +174,131 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     }
   });
 
+  // 7 · Fingerabdrücke v1 → v2 (29.09., #71/#68) — einmal je Pepper, nur für Kontakte, die es noch gibt.
+  await schritt('migration-v2', async () => {
+    const pf = pepperFingerabdruck();
+    if (!pf) return;
+    const m = (await loadJson<Migration>(MIGRATION_SPEICHER)) ?? {};
+    if (m.v2?.pepper === pf) return;
+    const sperr = await sperrlisteMigrieren(kontakte);
+    const karte = new Map(kontakte.filter(k => /^c-/.test(k.id)).map(k => [protokollKennungV1(k.id), protokollKennung(k.id)]));
+    let prot = 0;
+    const namen = await fs.readdir(datenOrdner()).catch(() => [] as string[]);
+    for (const d of namen) {
+      const name = PROTOKOLL_DATEI.test(d) || ENTSCHEIDUNGS_DATEI.test(d) ? d.slice(0, -5) : null;
+      if (!name || !karte.size) continue;
+      await updateJson<{ eintraege?: { id?: string; bezug?: { art: string; id: string } }[] } & Record<string, unknown>>(name, cur => {
+        let n = 0;
+        const um = (x: string) => x.split(':').map(t => { const v = karte.get(t); if (v) n++; return v ?? t; }).join(':');
+        const eintraege = (cur?.eintraege ?? []).map(e => {
+          const id = typeof e.id === 'string' ? um(e.id) : e.id;
+          const bezug = e.bezug ? { ...e.bezug, id: um(e.bezug.id) } : e.bezug;
+          return id === e.id && (!e.bezug || bezug!.id === e.bezug.id) ? e : { ...e, id, ...(bezug ? { bezug } : {}) };
+        });
+        prot += n;
+        return n ? { ...(cur ?? {}), eintraege } : (cur as never);
+      });
+    }
+    await updateJson<Migration>(MIGRATION_SPEICHER, cur => ({ ...(cur ?? {}), v2: { pepper: pf, am: jetztIso, sperrliste: sperr, protokoll: prot } }));
+    zaehle('v2-umgerechnet', sperr + prot);
+  });
+
+  // 8 · Löschprotokoll ohne Klartext-Kennung (29.09., #30)
+  await schritt('loeschprotokoll', async () => { zaehle('crm-loeschprotokoll', await loeschprotokollBereinigen()); });
+
+  // 9 · ZOE-Arbeitslisten (90 Tage): Protokoll + entschiedene Vorschläge — nur dauerhaft Festgehaltenes (#93)
+  await schritt('zoe-arbeitslisten', async () => {
+    const grenze = stichtag('zoe-arbeitslisten', f['zoe-arbeitslisten'], heute);
+    const { protokollFrist } = await import('@/lib/zoe/protokoll');
+    const { stapelFrist } = await import('@/lib/zoe/stapel');
+    zaehle('zoe-protokoll', await protokollFrist(grenze));
+    zaehle('zoe-stapel', await stapelFrist(grenze));
+  });
+
+  // 10 · ZOE-Entscheidungen (36 Monate): Monatsdateien vor der Frist leeren (Vermerk bleibt)
+  await schritt('zoe-entscheidungen', async () => {
+    const grenzMonat = stichtag('zoe-entscheidungen', f['zoe-entscheidungen'], heute).slice(0, 7);
+    for (const d of await fs.readdir(datenOrdner()).catch(() => [] as string[])) {
+      const m = ENTSCHEIDUNGS_DATEI.exec(d);
+      if (!m || m[2] >= grenzMonat) continue;
+      let n = 0;
+      await updateJson<{ eintraege: unknown[]; bereinigt?: unknown }>(d.slice(0, -5), cur => {
+        n = cur?.eintraege?.length ?? 0;
+        return n ? { eintraege: [], bereinigt: { am: jetztIso, eintraege: n, grund: `Löschfrist ${f['zoe-entscheidungen']} Monate (System)` } } : (cur ?? { eintraege: [] });
+      });
+      zaehle(d.slice(0, -5), n);
+    }
+  });
+
+  // 11 · Gespräche, Gedächtnis, Postfach- und Kalender-Zwischenspeicher (nur Bestände, die es gibt)
+  const kuerzen = async <T,>(name: string, feld: string, frist: Parameters<typeof stichtag>[0], tagVon: (x: T) => unknown) => {
+    await schritt(name, async () => {
+      if ((await loadJson<unknown>(name)) === null) return;
+      const grenze = stichtag(frist, f[frist], heute);
+      let n = 0;
+      await updateJson<Record<string, unknown>>(name, cur => {
+        const r = vorGrenzeRaus<T>((cur?.[feld] as T[]) ?? [], grenze, tagVon);
+        n = r.n;
+        return n ? { ...(cur ?? {}), [feld]: r.liste } : (cur as Record<string, unknown>);
+      });
+      if (n) { zaehle(name, n); await protokolliere(name, [{ op: 'geloescht', id: 'loeschfrist', felder: [feld] }], SYSTEM); }
+    });
+  };
+  await kuerzen<{ zuletzt?: string }>('zoe-verlauf', 'gespraeche', 'zoe-verlauf', g => g.zuletzt);
+  await kuerzen<{ tag?: string; zeit?: string }>('zoe-gedaechtnis', 'fakten', 'zoe-gedaechtnis', x => x.tag ?? x.zeit);
+  await kuerzen<{ receivedAt?: string }>('m365-postfach', 'mails', 'postfach-caches', x => x.receivedAt);
+  await kuerzen<{ receivedAt?: string }>('microsoft-inbox', 'emails', 'postfach-caches', x => x.receivedAt);
+  await kuerzen<{ receivedAt?: string }>('apple-mail-cache', 'daten', 'postfach-caches', x => x.receivedAt);
+  await kuerzen<{ startDate?: string }>('calendar-cache', 'events', 'kalender-caches', x => x.startDate);
+  await kuerzen<{ start?: string }>('kemaris-calendar', 'events', 'kalender-caches', x => x.start);
+  await schritt('inbox-triage', async () => {
+    if ((await loadJson<unknown>('inbox-triage')) === null) return;
+    const grenze = stichtag('postfach-caches', f['postfach-caches'], heute);
+    let n = 0;
+    await updateJson<Record<string, { at?: string }>>('inbox-triage', cur => {
+      const alle = Object.entries(cur ?? {});
+      const rest = alle.filter(([, v]) => !v?.at || String(v.at).slice(0, 10) >= grenze);
+      n = alle.length - rest.length;
+      return n ? Object.fromEntries(rest) : (cur ?? {});
+    });
+    zaehle('inbox-triage', n);
+  });
+
+  // 12 · Umzugs- und Aufräum-Kopien im Archiv (30 Tage) — andere Archiv-Dateien bleiben (dokumentiert)
+  await schritt('archiv-umzug', async () => {
+    const grenze = stichtag('archiv-umzug', f['archiv-umzug'], heute);
+    const ordner = path.join(datenOrdner(), 'archiv');
+    for (const d of await fs.readdir(ordner).catch(() => [] as string[])) {
+      if (!istUmzugsKopie(d)) continue;
+      const tag = archivTag(d) ?? localDay(new Date((await fs.stat(path.join(ordner, d)).catch(() => null))?.mtimeMs ?? Date.now()));
+      if (tag >= grenze) continue;
+      await fs.unlink(path.join(ordner, d));
+      zaehle('archiv', 1);
+    }
+  });
+
+  // 13 · Grabsteine (13 Monate) — außerhalb des Datenordners; die Sperrliste bleibt
+  await schritt('grabsteine', async () => {
+    const { grabsteineAufraeumen } = await import('@/lib/datenschutz/grabsteine');
+    zaehle('grabsteine', await grabsteineAufraeumen(stichtag('grabsteine', f.grabsteine, heute)));
+  });
+
   await updateJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER, cur => ({ ...(cur ?? {}), lauf: { tag: heute, am: jetztIso, ueberFrist: ueber.length, bereinigt } }));
   const summe = Object.values(bereinigt).reduce((a, x) => a + x, 0);
   return {
-    ok: true, ueberFrist: ueber.length, bereinigt, aufgabe,
-    text: `${ueber.length} ${ueber.length === 1 ? 'Kontakt' : 'Kontakte'} über der Frist (Aufgabe ${aufgabe}) · ${summe} technische Einträge bereinigt`,
+    ok: true, ueberFrist: ueber.length, bereinigt, aufgabe, ...(grabsteine ? { grabsteine } : {}),
+    text: `${ueber.length} ${ueber.length === 1 ? 'Kontakt' : 'Kontakte'} über der Frist${netz ? ` (+ ${netz} im Altbestand Netzwerk)` : ''} (Aufgabe ${aufgabe}) · ${summe} technische Einträge bereinigt${grabsteine && !grabsteine.uebersprungen ? ` · Grabsteine angewendet (${grabsteine.entfernt} erneut entfernt)` : ''}`,
   };
 }
 
 /** Die eine Aufgabe führen: anlegen, Zahl nachziehen oder erledigen. Nie Kennungen oder Namen im Text. */
-async function aufgabeAbgleichen(n: number, monate: number, jetztIso: string): Promise<LaufErgebnis['aufgabe']> {
+async function aufgabeAbgleichen(kartei: number, monate: number, jetztIso: string, netz = 0): Promise<LaufErgebnis['aufgabe']> {
   const inhaber = (await ladeKonten()).konten.find(k => k.rolle === 'inhaber')?.speicher;
   let wirkung: LaufErgebnis['aufgabe'] = 'keine';
+  const n = kartei + netz;
   // Nichts über der Frist und noch keine Aufgaben-Liste: nichts anlegen.
   if (!n && (await loadJson<unknown>('tasks')) === null) return wirkung;
-  const titel = `${n} ${n === 1 ? 'Kontakt' : 'Kontakte'} über der Löschfrist — prüfen: löschen oder begründen`;
+  const titel = `${kartei} ${kartei === 1 ? 'Kontakt' : 'Kontakte'}${netz ? ` (+ ${netz} im Altbestand Netzwerk)` : ''} über der Löschfrist — prüfen: löschen oder begründen`;
   const beschreibung = `Seit ${monate} Monaten ohne Beziehung und ohne Aktivität (Art. 5 Abs. 1 lit. e DSGVO). Gelöscht wird nie automatisch: je Person löschen (Art. 17) oder „Frist verlängern mit Grund“ — Liste unter ${WEG.stammdaten('datenschutz')}. Hinweis, keine Rechtsberatung.`;
   await updateJson<{ tasks?: Aufgabe[] } & Record<string, unknown>>('tasks', cur => {
     const t = cur ?? { tasks: [] };

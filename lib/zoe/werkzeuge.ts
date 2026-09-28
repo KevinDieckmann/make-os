@@ -719,20 +719,20 @@ async function notizErgaenzen(input: Record<string, unknown>, _o: string, person
 
 
 // ── Markttraktion (Kartei): Kontakte finden, notieren, ansprechen ──────────────────────────────
-// Kevins Ansage vom 18.09.: „damit wir Kunden ansprechen können." Drei
-// Werkzeuge, alle frei — sie schaffen Struktur und Entwürfe. Es gibt bewusst
-// KEIN Werkzeug zum Versenden: das bleibt eiserne Regel 3.
+// Kevins Ansage vom 18.09.: „damit wir Kunden ansprechen können." Es gibt bewusst
+// KEIN Werkzeug zum Versenden: das bleibt eiserne Regel 3. Seit 29.09. (Kevin: „ZOE schreibt
+// nur über den Stapel“, Paket D-B #90) sind notiere_kontakt, chance_anlegen und uebergeben
+// freigabepflichtig (lib/zoe/register.ts) — sie laufen erst nach dem Klick im Stapel.
 
+/** Art. 18 zentral (29.09., #72/#92): eingeschränkte Personen findet ZOE gar nicht erst. */
 async function ladeKontakte() {
-  const { loadJson } = await import('@/lib/store/local-db');
-  const f = await loadJson<{ kontakte: import('@/lib/make-one/crm').Kontakt[] }>('kontakte');
-  return f?.kontakte ?? [];
+  return (await import('@/lib/crm/verarbeitung')).kontakteFuerVerarbeitung();
 }
 
 async function kontaktFinden(hinweis: string) {
   const { findeKontakte } = await import('@/lib/make-one/crm');
-  // Art. 18 (28.09., C7): eingeschränkte Personen findet ZOE nicht — sie werden weder gezeigt noch verarbeitet.
-  const alle = (await ladeKontakte()).filter(k => !k.eingeschraenkt);
+  // Art. 18 (28.09., C7): eingeschränkte Personen findet ZOE nicht — sie werden weder gezeigt noch verarbeitet (seit 29.09. im Leser).
+  const alle = await ladeKontakte();
   const direkt = alle.find(k => k.id === hinweis);
   if (direkt) return { treffer: direkt, alle };
   const l = findeKontakte(alle, hinweis, 3);
@@ -748,7 +748,7 @@ async function kontaktFinden(hinweis: string) {
  * Power Hour (folgeAus + erfassungAnwenden, wie app/api/crm/aktivitaet):
  * Stufe nur vorwärts, Wiedervorlage = nächster Schritt, „sperre“ sperrt sofort.
  */
-async function notiereKontakt(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
+async function notiereKontakt(input: Record<string, unknown>, _origin: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
   const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
   if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
   const { localDay } = await import('@/lib/zeit');
@@ -780,6 +780,8 @@ async function notiereKontakt(input: Record<string, unknown>, _origin: string, p
     folgeHinweis = folge?.hinweis ?? '';
     nachher = erfassungAnwenden(alt, {
       art: e.art, text: e.text, von: person ?? 'zoe', ergebnis: e.ergebnis, notiz: e.notiz, stufe, wiedervorlage: e.wiedervorlage, naechster: e.naechster,
+      // #94 (29.09.): immer als ZOE-Eintrag gekennzeichnet, mit der Person, die ihn im Stapel freigegeben hat.
+      quelle: 'zoe', ...(kontext?.freigegebenVon ? { freigegebenVon: kontext.freigegebenVon } : {}),
     }, folge, heute, new Date().toISOString());
     f.kontakte[i] = nachher;
     return f;
@@ -814,7 +816,7 @@ async function entwurfAnsprache(input: Record<string, unknown>): Promise<string>
 // ─── Markttraktion (24.09. nachts): Chance anlegen, Lage abfragen ─────────────────────
 
 /** Kontakt an Kevin oder Malin übergeben (25.09.) — Verlauf, nächster Schritt, Aufgabe. Nichts wird versendet. */
-async function kontaktUebergeben(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+async function kontaktUebergeben(input: Record<string, unknown>, _o: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
   if (!person) return 'Nicht verfügbar: Übergeben geht nur im Gespräch mit Kevin oder Malin.';
   const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
   if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
@@ -823,7 +825,7 @@ async function kontaktUebergeben(input: Record<string, unknown>, _o: string, per
   const { anzeigename } = await import('@/lib/make-one/crm');
   if (mehrere) return `Mehrdeutig — ${mehrere.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}? Bitte mit der ID.`;
   const { uebergeben } = await import('@/lib/crm/uebergabe');
-  const r = await uebergeben({ art: 'kontakt', id: treffer.id, an: String(input.an ?? ''), notiz: input.notiz ? String(input.notiz) : undefined, frist: input.frist ? String(input.frist) : undefined }, person, { art: 'zoe', person });
+  const r = await uebergeben({ art: 'kontakt', id: treffer.id, an: String(input.an ?? ''), notiz: input.notiz ? String(input.notiz) : undefined, frist: input.frist ? String(input.frist) : undefined }, person, { art: 'zoe', person }, { quelle: 'zoe', ...(kontext?.freigegebenVon ? { freigegebenVon: kontext.freigegebenVon } : {}) });
   return r.ok ? `Übergeben: ${r.text}.` : `Fehlgeschlagen: ${r.fehler}`;
 }
 
@@ -931,11 +933,16 @@ export async function crmWerkzeugErlaubt(person: string | null | undefined): Pro
   const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
   return personImHaushaltDesInhabers(person);
 }
-type Lauf = (input: Record<string, unknown>, origin: string, person?: string) => Promise<string>;
-const nurImHaushalt = (lauf: Lauf): Lauf => async (input, origin, person) => {
+/**
+ * Was die Ausführung über ihren Anlass weiß (29.09., Paket D-B #94): `freigegebenVon` = die Person, die den Vorschlag im
+ * Stapel freigegeben hat (nur bei der Freigabe gesetzt, von `fuehreAus` — nie aus der Eingabe des Modells).
+ */
+export interface WerkzeugKontext { freigegebenVon?: string }
+type Lauf = (input: Record<string, unknown>, origin: string, person?: string, kontext?: WerkzeugKontext) => Promise<string>;
+const nurImHaushalt = (lauf: Lauf): Lauf => async (input, origin, person, kontext) => {
   if (!person) return KEINE_PERSON;
   if (!(await crmWerkzeugErlaubt(person))) return KEIN_CRM;
-  return lauf(input, origin, person);
+  return lauf(input, origin, person, kontext);
 };
 
 export const WERKZEUGE: Record<string, { gruppe: string; lauf: Lauf }> = {

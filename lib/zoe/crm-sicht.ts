@@ -68,6 +68,15 @@ export function sichtAus(person: string, roh: Kontakt[], crm: CrmBestand, heute:
   };
 }
 
+/**
+ * Die ROHE Kartei — einzig erlaubter direkter Kartei-Leser in lib/zoe (Wächtertest, 29.09. #92). Nur für PRÜFUNGEN
+ * (Stände beim Vorschlagen, Art. 18/Werbesperre beim Freigeben, „verknüpft — gesperrt“ in der Kurzinfo) — nie als
+ * Inhalt an das Modell; dafür gibt es `crmSicht`.
+ */
+export async function karteiFuerPruefung(): Promise<Kontakt[]> {
+  return (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
+}
+
 /** Die Sicht für eine Person im Haushalt des Inhabers — sonst null (Hintergrund, fremdes Konto). */
 export async function crmSicht(person: string | undefined): Promise<CrmSicht | null> {
   if (!person || !(await personImHaushaltDesInhabers(person))) return null;

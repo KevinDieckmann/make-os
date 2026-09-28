@@ -198,11 +198,12 @@ export interface Folge { stufe?: Stufe; wiedervorlage?: string; werbesperre?: bo
  */
 export function erfassungAnwenden(
   alt: Kontakt,
-  e: { art: AktivitaetArt; von: string; text?: string; ergebnis?: Ergebnis; notiz?: NotizVorlage; bezug?: string; stufe?: Stufe; wiedervorlage?: string; naechster?: { text: string; datum: string } },
+  e: { art: AktivitaetArt; von: string; text?: string; ergebnis?: Ergebnis; notiz?: NotizVorlage; bezug?: string; stufe?: Stufe; wiedervorlage?: string; naechster?: { text: string; datum: string }; quelle?: 'zoe'; freigegebenVon?: string },
   folge: Folge | null, heute: string, jetztIso: string,
 ): Kontakt {
   let neu = wendeAktivitaetAn(alt, {
     art: e.art, text: e.text, von: e.von, ergebnis: e.ergebnis, notiz: e.notiz && Object.keys(e.notiz).length ? e.notiz : undefined, bezug: e.bezug,
+    ...(e.quelle === 'zoe' ? { quelle: 'zoe' as const, freigegebenVon: e.freigegebenVon } : {}),
     stufe: e.stufe ?? folge?.stufe, wiedervorlage: e.wiedervorlage ?? e.naechster?.datum ?? folge?.wiedervorlage,
   }, heute, jetztIso, tagePlus);
   if (e.naechster) neu = { ...neu, naechsterSchritt: e.naechster };

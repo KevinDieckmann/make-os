@@ -14,13 +14,28 @@
 //   Änderungsprotokoll         36 Monate   Monatsdateien geleert (Vermerk bleibt)
 //   Aktivitäten-Texte bei      sofort      Art. 17 über lib/crm/person-bestaende.ts (fest, nicht einstellbar)
 //     gelöschten Personen
+//   — seit 29.09. (Paket D-B #73/#93) —
+//   ZOE-Arbeitslisten          90 Tage     zoe-protokoll + entschiedene Vorschläge in zoe-stapel (nur, was dauerhaft
+//                                          in zoe-entscheidungen steht — sonst erst nachtragen, nie still)
+//   ZOE-Entscheidungen         36 Monate   Monatsdateien geleert (Vermerk bleibt) — wie das Änderungsprotokoll
+//   Gespräche mit ZOE          12 Monate   Gespräche, deren letzte Nachricht älter ist, fallen weg
+//   ZOE-Gedächtnis             24 Monate   Fakten, die so lange nicht erneuert wurden, fallen weg
+//   Postfach-Zwischenspeicher  30 Tage     Mails (Absender, Betreff, Vorschau) und Einstufungen — das Postfach bleibt beim Anbieter
+//   Kalender-Zwischenspeicher  12 Monate   vergangene Termine im Zwischenspeicher
+//   Umzugs-Kopien (archiv/)    30 Tage     crm-vor-*, make-orga-*, business-vor-*, kategorien-vor-* — andere Archiv-Dateien
+//                                          bleiben (dokumentiert, nie automatisch)
+//   Altbestand Netzwerk        24 Monate   KEINE automatische Löschung — zählt in die Löschfrist-Aufgabe (stilllegen)
+//   Grabsteine                 13 Monate   außerhalb des Datenordners; länger als jede Sicherung (lib/datenschutz/grabsteine.ts)
+//   Sicherungen                14 Tage     fest — Tageskopien und Nachtsicherungen („beyond use“; Restore wendet Grabsteine an)
 //
 // Keine Rechtsberatung — die Werte einmal anwaltlich gegenlesen.
 
 import { letzterKontaktVon, type Kontakt, type Aktivitaet } from '@/lib/make-one/crm';
 import type { CrmBestand } from './typen';
+import { tagVon } from '@/lib/zeit';
 
-export type FristArt = 'kontakte' | 'import-konflikte' | 'import-laeufe' | 'heads-replay' | 'signale' | 'aenderungsprotokoll' | 'aktivitaeten-geloeschte';
+export type FristArt = 'kontakte' | 'import-konflikte' | 'import-laeufe' | 'heads-replay' | 'signale' | 'aenderungsprotokoll' | 'aktivitaeten-geloeschte'
+  | 'zoe-arbeitslisten' | 'zoe-entscheidungen' | 'zoe-verlauf' | 'zoe-gedaechtnis' | 'postfach-caches' | 'kalender-caches' | 'archiv-umzug' | 'netzwerk' | 'grabsteine' | 'sicherungen';
 export type Einheit = 'tage' | 'monate';
 
 export interface FristDef {
@@ -28,6 +43,8 @@ export interface FristDef {
   /** automatisch bereinigt (technischer Bestand) — sonst nur eine Aufgabe (Personen) bzw. fest (Art. 17). */
   wirkung: 'automatisch' | 'aufgabe' | 'fest';
   norm: string; hinweis: string;
+  /** Anzeige statt der Zahl (nur `fest`, z. B. „14 Tage“ für Sicherungen). */
+  anzeige?: string;
 }
 
 export const LOESCHFRISTEN: readonly FristDef[] = [
@@ -38,6 +55,17 @@ export const LOESCHFRISTEN: readonly FristDef[] = [
   { id: 'signale', titel: 'Signale (Betreff, Termintitel)', einheit: 'monate', standard: 12, min: 1, max: 60, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Der Text der Signal-Aktivität fällt weg, das Ereignis (Tag, Art) bleibt für die Kadenz.' },
   { id: 'aenderungsprotokoll', titel: 'Änderungsprotokoll', einheit: 'monate', standard: 36, min: 12, max: 120, wirkung: 'automatisch', norm: 'Art. 5 Abs. 2, Art. 32 DSGVO', hinweis: 'Monatsdateien älter als die Frist werden geleert (ohne Werte, nur Kennungen).' },
   { id: 'aktivitaeten-geloeschte', titel: 'Aktivitäten-Texte bei gelöschten Personen', einheit: 'tage', standard: 0, min: 0, max: 0, wirkung: 'fest', norm: 'Art. 17 DSGVO', hinweis: 'Sofort mit der Löschung — über alle Speicher (lib/crm/person-bestaende.ts).' },
+  // 29.09. (Paket D-B #73/#93)
+  { id: 'zoe-arbeitslisten', titel: 'ZOE-Protokoll und entschiedene Vorschläge', einheit: 'tage', standard: 90, min: 30, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Arbeitslisten von ZOE (Kennungen und Feldnamen). Die Entscheidung selbst bleibt in den ZOE-Entscheidungen.' },
+  { id: 'zoe-entscheidungen', titel: 'ZOE-Entscheidungen (dauerhaft)', einheit: 'monate', standard: 36, min: 12, max: 120, wirkung: 'automatisch', norm: 'Art. 5 Abs. 2 DSGVO', hinweis: 'Monatsdateien älter als die Frist werden geleert (Vermerk bleibt).' },
+  { id: 'zoe-verlauf', titel: 'Gespräche mit ZOE', einheit: 'monate', standard: 12, min: 1, max: 60, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Gespräche, deren letzte Nachricht älter ist, fallen weg.' },
+  { id: 'zoe-gedaechtnis', titel: 'ZOE-Gedächtnis (Fakten)', einheit: 'monate', standard: 24, min: 6, max: 120, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. d, e DSGVO', hinweis: 'Fakten, die so lange nicht erneuert wurden, fallen weg.' },
+  { id: 'postfach-caches', titel: 'Postfach-Zwischenspeicher', einheit: 'tage', standard: 30, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Zwischengespeicherte Mails (Absender, Betreff, Vorschau) und Einstufungen — das Postfach selbst bleibt beim Anbieter.' },
+  { id: 'kalender-caches', titel: 'Kalender-Zwischenspeicher', einheit: 'monate', standard: 12, min: 1, max: 60, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Vergangene Termine im Zwischenspeicher — der Kalender selbst bleibt beim Anbieter.' },
+  { id: 'archiv-umzug', titel: 'Umzugs- und Aufräum-Kopien im Archiv', einheit: 'tage', standard: 30, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Kopien vor Umzügen und Aufräumarbeiten (CRM vor Brain-Umzug, MAKE.ORGA, Business, Kategorien). Andere Archiv-Dateien bleiben — nie automatisch.' },
+  { id: 'netzwerk', titel: 'Altbestand Netzwerk (vor der Kartei)', einheit: 'monate', standard: 24, min: 6, max: 120, wirkung: 'aufgabe', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Nie automatisch: Einträge ohne Kontakt seit der Frist zählen in die Löschfrist-Aufgabe. Der Altbestand wird stillgelegt (in die Kartei übernehmen oder löschen).' },
+  { id: 'grabsteine', titel: 'Grabsteine gelöschter Personen', einheit: 'monate', standard: 13, min: 13, max: 120, wirkung: 'automatisch', norm: 'Art. 17, Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Fingerabdrücke außerhalb des Datenordners — länger als jede Sicherung, damit ein Restore niemanden zurückholt. Die Sperrliste bleibt.' },
+  { id: 'sicherungen', titel: 'Tageskopien und Nachtsicherungen', einheit: 'tage', standard: 14, min: 14, max: 14, wirkung: 'fest', anzeige: '14 Tage', norm: 'Art. 5 Abs. 1 lit. e, Art. 32 DSGVO', hinweis: 'Gelöschte Personen stehen bis zum Ablauf noch in Sicherungen („beyond use“) — nach jedem Zurückspielen wenden die Grabsteine die Löschung erneut an.' },
 ];
 
 export type Fristen = Record<FristArt, number>;
@@ -84,6 +112,7 @@ export function fristenSpeichern(alt: FristenGespeichert | undefined, aenderung:
 
 /** Anzeige „24 Monate“, „90 Tage“, „sofort“. */
 export function fristText(id: FristArt, wert: number): string {
+  if (def(id).anzeige) return def(id).anzeige!;
   if (def(id).wirkung === 'fest' || wert === 0) return 'sofort';
   const monate = def(id).einheit === 'monate';
   return `${wert} ${monate ? (wert === 1 ? 'Monat' : 'Monate') : (wert === 1 ? 'Tag' : 'Tage')}`;
@@ -186,4 +215,34 @@ export function replayBereinigen<F extends { zeit: string }>(faelle: F[], grenze
 export function protokollMonateUeberFrist(monate: string[], grenze: string): string[] {
   const grenzMonat = grenze.slice(0, 7);
   return monate.filter(m => /^\d{4}-\d{2}$/.test(m) && m < grenzMonat).sort();
+}
+
+// ── Weitere technische Bestände (29.09., Paket D-B) — rein ─────────────────────
+
+/** Tag eines Zeitstempels (ISO), leer wenn unbrauchbar. */
+const tagIso = (v: unknown) => (typeof v === 'string' && TAG.test(v) ? v.slice(0, 10) : '');
+
+/** Einträge einer Liste, deren Tag (`feld`) vor der Grenze liegt, fallen weg; ohne Datum bleiben sie. */
+export function vorGrenzeRaus<T>(liste: readonly T[] | undefined, grenze: string, tagVon: (x: T) => unknown): { liste: T[]; n: number } {
+  const l = Array.isArray(liste) ? liste : [];
+  const rest = l.filter(x => { const t = tagIso(tagVon(x)); return !t || t >= grenze; });
+  return { liste: rest.length === l.length ? [...l] : rest, n: l.length - rest.length };
+}
+
+/** Archiv-Datei eine Umzugs-/Aufräum-Kopie? (lib/store/archiv.ts-Aufrufer: crm-vor-*, make-orga-*, business-vor-*, kategorien-vor-*) */
+export const istUmzugsKopie = (datei: string) => /^(crm-vor-|make-orga-|business-vor-|kategorien-vor-)[a-z0-9._-]*\.json$/i.test(datei);
+
+/** Tag einer Archiv-Datei aus dem Namen (ISO-Zeit oder Millisekunden) — null, wenn keiner drinsteht. */
+export function archivTag(datei: string): string | null {
+  const iso = /(\d{4}-\d{2}-\d{2})T\d{2}-\d{2}/.exec(datei);
+  if (iso) return iso[1];
+  const ms = /-(\d{13})\.json$/i.exec(datei);
+  if (ms) { const d = new Date(Number(ms[1])); return Number.isNaN(d.getTime()) ? null : tagVon(d.toISOString()); }
+  return null;
+}
+
+/** Netzwerk-Altbestand über der Frist: ohne letzten Kontakt seit der Grenze (nie automatisch löschen). */
+export function netzwerkUeberFrist(kontakte: readonly { letzterKontakt?: string }[] | undefined, heute: string, monate: number): number {
+  const grenze = monateZurueck(heute, monate);
+  return (kontakte ?? []).filter(k => !k.letzterKontakt || k.letzterKontakt < grenze).length;
 }

@@ -1,6 +1,7 @@
 // ─── Sport · Route: je Person, Schritte, ETag, Vitalwerte zum Vorbelegen ────
 // Eigener Datenordner, erfundene Werte — nie der echte Bestand.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { localDay } from '@/lib/zeit';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -10,7 +11,8 @@ process.env.MAKE_OS_DATEN_DIR = ordner;
 process.env.MAKE_OS_KEY = 'pruef-schluessel-sport';
 delete process.env.MAKE_OS_DATENSCHLUESSEL;
 
-const H = new Date().toISOString().slice(0, 10);
+// Berliner Tag wie der Server (29.09., Paket D-B) — vorher UTC-Tag: zwischen 0 und 2 Uhr rot.
+const H = localDay();
 const kopf = (person?: string) => ({ 'content-type': 'application/json', ...(person ? { 'x-make-user': person } : {}) });
 const req = (person: string | undefined, body?: unknown, extra: Record<string, string> = {}) =>
   new Request('http://test/api/sport', { method: body ? 'PUT' : 'GET', headers: { ...kopf(person), ...extra }, ...(body ? { body: JSON.stringify(body) } : {}) });

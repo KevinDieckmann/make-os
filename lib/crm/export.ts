@@ -6,6 +6,8 @@
 //   · `privatNotiz` verlässt die Kartei NIE — steht in keiner Spalte
 //   · Gesperrte Personen bleiben drin, aber markiert (WERBESPERRE), damit eine
 //     Werbeliste sie ausschließen kann — nie stillschweigend weglassen
+//   · Eingeschränkte Personen (Art. 18) fehlen standardmäßig ganz (29.09.); nur mit
+//     `mitEingeschraenkten` (Route: ?mitEingeschraenkten=1, z. B. für eine Auskunft) markiert drin
 //   · Deals und Mandate tragen die Firma per Kennung (firmaId → Name über
 //     firmen-bezug.ts), Follow-ups Person und Bezug in Klartext
 // Kein Dateisystem hier — die Route (app/api/crm/export) liefert nur aus.
@@ -40,6 +42,12 @@ export const EXPORT_INFO: Record<ExportArt, { label: string; datei: string; text
 
 export interface ExportQuelle {
   kontakte: Kontakt[]; crm: CrmBestand;
+  /**
+   * Art. 18 (29.09., Paket D-B #72): ohne diesen Schalter fehlen eingeschränkte Personen in JEDER Tabelle (Kontakte,
+   * Personen-Spalten von Deals/Mandaten, Follow-ups der Person). Mit Schalter („mit eingeschränkten“, z. B. für eine
+   * Auskunft) stehen sie drin — markiert in der Spalte EINGESCHRAENKT.
+   */
+  mitEingeschraenkten?: boolean;
   /** Stichtag für den Lifecycle-Vorschlag (Score-Wärme); ohne: heute (UTC). */
   heute?: string;
 }
@@ -181,7 +189,8 @@ export function mandateCsv(q: ExportQuelle): string {
 }
 
 /** Die eine Einstiegsfunktion für die Route. */
-export function exportCsv(was: ExportArt, q: ExportQuelle): string {
+export function exportCsv(was: ExportArt, roh: ExportQuelle): string {
+  const q = roh.mitEingeschraenkten ? roh : ohneEingeschraenkte(roh);
   switch (was) {
     case 'kontakte': return kontakteCsv(q);
     case 'firmen': return firmenCsv(q);
@@ -189,6 +198,13 @@ export function exportCsv(was: ExportArt, q: ExportQuelle): string {
     case 'followups': return followupsCsv(q);
     case 'mandate': return mandateCsv(q);
   }
+}
+
+/** Eingeschränkte Personen (Art. 18) und ihre Follow-ups aus der Quelle nehmen (rein). */
+export function ohneEingeschraenkte(q: ExportQuelle): ExportQuelle {
+  const weg = new Set(q.kontakte.filter(k => k.eingeschraenkt).map(k => k.id));
+  if (!weg.size) return q;
+  return { ...q, kontakte: q.kontakte.filter(k => !weg.has(k.id)), crm: { ...q.crm, followups: (q.crm.followups ?? []).filter(f => !f.kontaktId || !weg.has(f.kontaktId)) } };
 }
 
 /** Alle Spaltenköpfe je Tabelle — für den Test, dass nichts Privates darin steht. */

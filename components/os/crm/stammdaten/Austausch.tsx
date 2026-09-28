@@ -47,6 +47,8 @@ const wert = (v: unknown) => { const t = typeof v === 'string' ? v : JSON.string
 export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d: StammdatenDaten; api: CrmApi; laeuft: boolean; setLaeuft: (v: boolean) => void; setMeldung: (t: string) => void; laden: () => void }) {
   const [quelle, setQuelle] = useState<Quelle | null>(null);
   const [vorschau, setVorschau] = useState<Vorschau | null>(null);
+  // Art. 18 (29.09.): eingeschränkte Personen fehlen im Export — nur ausdrücklich (z. B. für eine Auskunft) mit Markierung dabei.
+  const [mitEingeschraenkten, setMitEingeschraenkten] = useState(false);
   const [stand, setStand] = useState<KonfliktStand>(leererKonfliktStand());
   const [zeigeDubletten, setZeigeDubletten] = useState(false);
   const [laeufe, setLaeufe] = useState<LaufKurz[]>([]);
@@ -221,11 +223,15 @@ export function Austausch({ d, api, laeuft, setLaeuft, setMeldung, laden }: { d:
 
       <Karte i={3}>
         <Ueberschrift>Export</Ueberschrift>
-        <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>Fünf Tabellen als CSV (Semikolon, UTF-8 mit BOM, Datum ISO) — für Excel, den Steuerberater oder ein Versandwerkzeug. Nie mit Privatnotiz oder Verlauf; gesperrte Personen sind markiert, damit keine Werbeliste sie trifft.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>Fünf Tabellen als CSV (Semikolon, UTF-8 mit BOM, Datum ISO) — für Excel, den Steuerberater oder ein Versandwerkzeug. Nie mit Privatnotiz oder Verlauf; gesperrte Personen sind markiert, damit keine Werbeliste sie trifft. Eingeschränkte Personen (Art. 18) fehlen — außer mit dem Schalter unten (nur für eine Auskunft).</div>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim, margin: '8px 0 2px' }}>
+          <input type="checkbox" checked={mitEingeschraenkten} onChange={e => setMitEingeschraenkten(e.target.checked)} />
+          mit eingeschränkten Personen (markiert — nur für eine Auskunft)
+        </label>
         <Liste>
           {EXPORTE.map(was => (
             <Zeile key={was} titel={EXPORT_INFO[was].label} unter={<span style={{ whiteSpace: 'normal' }}>{EXPORT_INFO[was].text}</span>}
-              rechts={<Knopf leise onClick={() => { window.location.href = `/api/crm/export?was=${was}`; }}>{EXPORT_INFO[was].label} als CSV</Knopf>} />
+              rechts={<Knopf leise onClick={() => { window.location.href = `/api/crm/export?was=${was}${mitEingeschraenkten ? '&mitEingeschraenkten=1' : ''}`; }}>{EXPORT_INFO[was].label} als CSV</Knopf>} />
           ))}
         </Liste>
       </Karte>

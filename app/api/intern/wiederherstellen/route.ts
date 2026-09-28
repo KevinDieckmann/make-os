@@ -38,6 +38,15 @@ export async function POST(req: Request) {
   if (!auswahl || Object.values(auswahl).some(v => v !== null && typeof v !== 'string')) return NextResponse.json({ ok: false, fehler: 'auswahl = { id: stand | null }' }, { status: 400 });
   try {
     const r = await uebernehmen(String(b.bestand ?? ''), String(b.tag ?? ''), String(b.liste ?? ''), auswahl as Record<string, string | null>, werAus(req));
-    return r.ok ? NextResponse.json(r) : NextResponse.json(r, { status: r.status });
+    if (!r.ok) return NextResponse.json(r, { status: r.status });
+    // Nach JEDEM Zurückholen die Grabsteine anwenden (29.09., Paket D-B #70): eine Tageskopie von vor einer Löschung
+    // (Art. 17) darf die Person nicht zurückbringen. Scheitert das, sagt die Antwort es laut.
+    try {
+      const { grabsteineAnwenden } = await import('@/lib/datenschutz/grabsteine');
+      const g = await grabsteineAnwenden({ erzwingen: true });
+      return NextResponse.json({ ...r, grabsteine: { entfernt: g.entfernt } });
+    } catch (e) {
+      return NextResponse.json({ ...r, warnung: `Grabsteine NICHT angewendet (${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}) — gelöschte Personen könnten zurück sein.` });
+    }
   } catch (e) { return fehler(e); }
 }

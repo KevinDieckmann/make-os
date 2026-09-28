@@ -181,7 +181,8 @@ async function unterlagenFuer(t: Task, auftraggeberin: string): Promise<string> 
 async function crmFuer(t: Task): Promise<string> {
   if (!t.bezug) return '';
   try {
-    const kontakte = t.bezug.kontaktId ? ((await loadJson<{ kontakte?: KontaktKurz[] }>('kontakte'))?.kontakte ?? []) : [];
+    // Roh nur zur Prüfung „verknüpft — gesperrt“ (crmKurzinfo gibt von eingeschränkten Personen nichts weiter) — über crm-sicht (#92).
+    const kontakte: readonly KontaktKurz[] = t.bezug.kontaktId ? await (await import('./crm-sicht')).karteiFuerPruefung() : [];
     const crm = (t.bezug.firmaId || t.bezug.mandatId || t.bezug.dealId) ? ((await loadJson<CrmKurz>('crm')) ?? {}) : {};
     return crmKurzinfo(t.bezug, kontakte, crm);
   } catch { return ''; }

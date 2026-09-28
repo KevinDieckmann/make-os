@@ -11,6 +11,7 @@
 // POST { aktion: 'wertelisten', wertelisten: Teil }          → Verlustgründe, Kadenz, Ergebnisse, Ziele
 //                                                              (Teil-Update, lib/crm/wertelisten.ts prüft und säubert)
 
+import { PROTOKOLL_ID } from '@/lib/crm/loeschprotokoll';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
@@ -104,7 +105,8 @@ export async function GET(req: Request) {
     loeschfristen: { tabelle: LOESCHFRISTEN, wirksam: fristen, gespeichert: lf.fristen ?? {}, lauf: lf.lauf ?? null },
     antraege: crm.antraege, verarbeitungen: crm.verarbeitungen,
     befunde: befunde(kontakte, crm, heute, { loeschMonate: fristen.kontakte }),
-    loeschprotokoll: ((await loadJson<{ eintraege: { id: string; datum: string; grund: string; von: string }[] }>('crm-loeschprotokoll'))?.eintraege ?? []).slice(-20).reverse(),
+    // Nie die Kontakt-Kennung zeigen (29.09., #30): Altbestand mit Klartext-Kennung erscheint als „lp-alt“, bis der Löschfristen-Lauf ihn umschreibt.
+    loeschprotokoll: ((await loadJson<{ eintraege: { id: string; datum: string; grund: string; von: string }[] }>('crm-loeschprotokoll'))?.eintraege ?? []).slice(-20).reverse().map(e => (PROTOKOLL_ID.test(e.id) ? e : { ...e, id: 'lp-alt' })),
   });
 }
 

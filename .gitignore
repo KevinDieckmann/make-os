@@ -40,6 +40,8 @@ next-env.d.ts
 
 # MAKE OS lokaler Datei-Store (nur auf diesem Mac)
 .data/
+# Grabsteine gelöschter Personen (29.09., lib/datenschutz/grabsteine.ts) — neben dem Datenordner, nie ins Repo.
+.data-grabsteine/
 
 # 24.09.: Finanz-Exporte und echte Kontodaten gehören nie ins Repo
 # (Alex bekommt den Rohbau, nie Daten). Echte Prüfdaten liegen in .data/pruefdaten/.

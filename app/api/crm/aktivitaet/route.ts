@@ -13,6 +13,7 @@ import { VORSCHLAG_KENNUNG, fuerPerson, wendeAktivitaetAn, wannSaeubern, wannInZ
 import { notizAnwenden, istAktAnker, type NotizAktion } from '@/lib/crm/aktivitaeten';
 import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { istDienst } from '@/lib/zugang/dienst';
 import { folgeAus } from '@/lib/crm/heute';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { sperren } from '@/lib/crm/sperrliste';
@@ -121,6 +122,9 @@ export async function POST(req: Request) {
 
   // Aus einem ZOE-Vorschlag (29.09.): steht die Aktivität schon am Kontakt, wird nichts doppelt angelegt (idempotent).
   const vorschlagId = typeof b.vorschlagId === 'string' && VORSCHLAG_KENNUNG.test(b.vorschlagId) ? b.vorschlagId : undefined;
+  // Herkunft (29.09., #94): aus einem ZOE-Vorschlag (nur über den Dienstweg der Freigabe) → quelle 'zoe', freigegeben von
+  // der Person, die im Stapel geklickt hat (x-make-person).
+  const ausZoe = !!vorschlagId && istDienst(req);
   let schonDa = false;
   let ergebnis: Kontakt | null = null;
   let abgelehnt: { status: number; body: Antwort } | null = null;
@@ -145,7 +149,7 @@ export async function POST(req: Request) {
     const geplant = art === 'termin' && wannInZukunft(wann, jetzt);
     nurGeplant = geplant;
     let neu = wendeAktivitaetAn(alt, {
-      art, text: text || undefined, von, ergebnis: erg, ...(vorschlagId ? { vorschlagId } : {}), notiz: notiz && Object.keys(notiz).length ? notiz : undefined, bezug,
+      art, text: text || undefined, von, ergebnis: erg, ...(vorschlagId ? { vorschlagId } : {}), ...(ausZoe ? { quelle: 'zoe' as const, freigegebenVon: personStreng(req) ?? undefined } : {}), notiz: notiz && Object.keys(notiz).length ? notiz : undefined, bezug,
       ...(wann ? { wann } : {}), ...(art === 'termin' ? { ort: ortSaeubern(b.ort) } : {}), ...(art === 'anruf' && anlass ? { anlass } : {}),
       stufe: wunschStufe ?? (geplant ? undefined : folge?.stufe), wiedervorlage: wunschWv ?? naechster?.datum ?? (geplant ? undefined : folge?.wiedervorlage),
     }, heute, jetzt, tagePlus);

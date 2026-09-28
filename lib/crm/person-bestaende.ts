@@ -31,8 +31,30 @@
 //   crm-import-laeufe--<haushalt>  Vorher-Stand/Kennung/Fingerabdruck der      bewusst NICHT (Vorher-Stände sind Geschichte;
 //     (K2, „Import rückgängig“)    Person aus jedem Lauf raus                  „rückgängig“ meldet den Zusammengeführten als Konflikt)
 //   crm-sperrliste--<haushalt>     Person KOMMT HINZU (Grund „loeschung“, nur  —
-//     (K2, nur SHA-256)            Hashes): ein erneuter Import legt sie nicht
-//                                  wieder an (#60). Keine Klartexte.
+//     (K2; seit 29.09. HMAC v2)    Fingerabdrücke): ein erneuter Import legt sie
+//                                  nicht wieder an (#60). Keine Klartexte.
+//   <grabsteine>/grabsteine.json   Grabstein KOMMT HINZU (HMAC der Kennung +    —
+//     (29.09., D-B #70, AUSSERHALB Merkmale) — wendet die Löschung nach jedem
+//      des Datenordners)           Restore erneut an (lib/datenschutz/grabsteine.ts)
+//
+// 29.09. (Paket D-B #69/#74, Kevin „Top 1 %“): ALLE weiteren Speicher mit Personenbezug — Behandlung und Grund je
+// Speicher stehen im Register `lib/crm/speicher-register.ts` (ein Wächtertest gleicht jeden Bestandsnamen im Code
+// dagegen ab), umgesetzt in `lib/crm/person-weitere.ts`:
+//   netzwerk · kunden · stammdaten (Altbestände)      Datensätze der Person raus, Rest getilgt
+//   inbox-absender · inbox-triage · apple-mail-cache  Mails/Einträge der Person raus (Zwischenspeicher; das Postfach
+//     · m365-postfach · microsoft-inbox                selbst liegt beim Anbieter — Art. 17 dort gesondert)
+//   calendar-cache · kemaris-calendar · meetings      getilgt (Termin bleibt, Name/Adresse → „[gelöscht]“)
+//   zoe-verlauf · zoe-auftraege · zoe-empfang         getilgt
+//   zoe-gedaechtnis · zoe-protokoll · zoe-stapel      Einträge, die die Person nennen, raus
+//   zoe-entscheidungen--* · aenderungsprotokoll--*    getilgt: Fingerabdrücke (v2 + v1) → `c#geloescht`, Name → „[gelöscht]“
+//   crm-import-laeufe--* (auch Zusammenführ-Läufe)    zusätzlich zu `laufOhne` getilgt (Namen in Schnappschüssen)
+//   agent-log · client-fehler · meldungen--*          getilgt
+//   archiv/*.json (Umzugs-Kopien)                     Kartei-Eintrag raus, Rest getilgt (Frist 30 Tage: archiv-umzug)
+//   app_chunks (Such-Index, lib/brain/app-index.ts)   sofort nachgezogen (inkrementell; `secure_delete` überschreibt)
+//   _App-Spiegel im Vault                             neu erzeugt, wenn eingeschaltet (MAKE_OS_APP_SPIEGEL=an)
+//   crm-loeschprotokoll                               nur Protokoll-ID `lp-…`, Tag, Grund, Person — nie die Kennung
+// Bewusst NICHT hier (Grund im Register): Sicherungen (14 Tage „beyond use“, Grabsteine wenden die Löschung nach einem
+// Restore an), Vault + Git-Historie (Verfahren in DATENARCHITEKTUR.md), Finanz-/Buchungsbestände (§ 147 AO / § 257 HGB).
 //
 // U2 (28.09., Datenschutz vollständig): Einwilligungs-Nachweise, Einschränkung (Art. 18), „geprüft“, Hinweis bei
 // Erhebung und Fristverlängerung liegen AM KONTAKT (kein neuer Speicher mit Personenbezug) — Art. 17 nimmt sie mit
@@ -62,6 +84,7 @@ import { crmSchnappschuesse, schnappschuesse, schnappschussKonflikte, schnappsch
 import { CRM_LISTEN } from './typen';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { sperren } from './sperrliste';
+import { merkmaleVon, weitereEntfernen, weitereAufzaehlen } from './person-weitere';
 import type { AufgabeBezug, AufgabeKommentar } from '@/types/tasks';
 
 // ── Reine Helfer ─────────────────────────────────────────────────────────────
@@ -340,6 +363,10 @@ export interface PersonBericht {
   speicher: Record<string, number>;
   /** Aufgaben, die die Person nur beim Namen nennen — von Hand prüfen (nicht geändert). */
   aufgabenPruefen: string[];
+  /** Grabstein gesetzt (29.09., #70) — false: Schreiben scheiterte (Löschung trotzdem geschehen, Warnung). Fehlt = nicht verlangt. */
+  grabstein?: boolean;
+  /** Speicher, in denen das Tilgen scheiterte (29.09.) — ein zweiter Lauf räumt nach. */
+  fehler?: string[];
 }
 const zaehle = (b: PersonBericht, name: string, n: number) => { if (n) b.speicher[name] = (b.speicher[name] ?? 0) + n; };
 
@@ -347,7 +374,7 @@ const zaehle = (b: PersonBericht, name: string, n: number) => { if (n) b.speiche
  * Art. 17: die Person aus ALLEN Speichern entfernen (auch aus der Kartei). Idempotent. Liefert, was wo geändert wurde.
  * Der Löschprotokoll-Eintrag bleibt Sache der Route.
  */
-export async function personEntfernen(id: string, bekannt?: Pick<Kontakt, 'vorname' | 'nachname'> & Partial<Pick<Kontakt, 'email' | 'emails' | 'hubspotId' | 'firma'>>): Promise<PersonBericht> {
+export async function personEntfernen(id: string, bekannt?: Pick<Kontakt, 'vorname' | 'nachname'> & Partial<Pick<Kontakt, 'email' | 'emails' | 'hubspotId' | 'firma'>>, opt: { grabstein?: boolean } = {}): Promise<PersonBericht> {
   const b: PersonBericht = { speicher: {}, aufgabenPruefen: [] };
   if (!id) return b;
   let kontakt: Kontakt | undefined;
@@ -367,6 +394,20 @@ export async function personEntfernen(id: string, bekannt?: Pick<Kontakt, 'vorna
   // Sperrliste (K2 #60): nur Hashes der Merkmale — ein erneuter Import der Liste legt die Person nicht wieder an.
   const person = kontakt ?? bekannt;
   if (person && await sperren([person], 'loeschung', new Date().toISOString())) zaehle(b, 'crm-sperrliste', 1);
+  // Grabstein AUSSERHALB des Datenordners (29.09., #70): ein Restore holt die Person nicht zurück. Nur, wenn wirklich
+  // eine Person gelöscht wurde — hier oder vom Aufrufer (`bekannt`, PATCH der Kartei); ein zweiter Lauf ohne Person und
+  // die Grabstein-Anwendung selbst (`grabstein: false`) setzen keinen neuen.
+  if (person && opt.grabstein !== false) {
+    try {
+      const { grabsteinFuer, grabsteinSetzen } = await import('@/lib/datenschutz/grabsteine');
+      await grabsteinSetzen(grabsteinFuer(id, person, new Date().toISOString()));
+      b.grabstein = true;
+    } catch (e) {
+      b.grabstein = false;
+      console.error('[art17] Grabstein nicht geschrieben:', e instanceof Error ? e.message : e);
+    }
+  }
+  const merkmale = merkmaleVon(id, person);
 
   // Import-Läufe (K2 #25): der Vorher-Stand der Person verschwindet aus jedem Lauf.
   for (const h of await laufHaushalte()) {
@@ -417,6 +458,22 @@ export async function personEntfernen(id: string, bekannt?: Pick<Kontakt, 'vorna
       b.aufgabenPruefen = r.pruefen;
       return r.n ? { ...f, tasks: r.tasks } : f;
     });
+  }
+
+  // Alle weiteren Speicher (29.09., #69) — Register lib/crm/speicher-register.ts, Umsetzung lib/crm/person-weitere.ts.
+  const w = await weitereEntfernen(merkmale);
+  for (const [name, n] of Object.entries(w.speicher)) zaehle(b, name, n);
+  if (w.fehler.length) b.fehler = w.fehler;
+
+  // Abgeleitete Stände sofort nachziehen (#99): Such-Index der Arbeitsbestände (inkrementell; secure_delete überschreibt
+  // die freien Seiten) und — falls eingeschaltet — der _App-Spiegel im Vault. Fehler hier machen die Löschung nicht rückgängig.
+  if (Object.keys(b.speicher).length) {
+    try { const { appIndexAktualisieren } = await import('@/lib/brain/app-index'); await appIndexAktualisieren(true); }
+    catch (e) { console.error('[art17] Such-Index nicht nachgezogen (der Takt holt es nach):', e instanceof Error ? e.message : e); }
+    if (process.env.MAKE_OS_APP_SPIEGEL?.trim() === 'an') {
+      try { const { appSpiegel } = await import('@/lib/brain/app-spiegel'); await appSpiegel({ erzwingen: true }); }
+      catch (e) { console.error('[art17] _App-Spiegel nicht neu erzeugt:', e instanceof Error ? e.message : e); }
+    }
   }
   return b;
 }
@@ -470,7 +527,31 @@ export async function personAufzaehlen(id: string) {
   // Import-Läufe (K2): in wie vielen Läufen ein Vorher-Stand der Person liegt (Inhalt = frühere Fassung derselben Stammdaten).
   let importLaeufe = 0;
   for (const h of await laufHaushalte()) importLaeufe += ((await loadJson<LaufBestand>(laufName(h)))?.laeufe ?? []).filter(l => laufOhne(l, id).n > 0).length;
-  return { ...personVerweise(crm, id), dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe };
+  // 29.09. (#68/#93): ZOE-Protokoll und -Stapel (nur Zeit, Werkzeug, Status — keine Inhalte), das Änderungsprotokoll
+  // (Fingerabdruck v2/v1 → Bestand, Art, Feldnamen, wer) und je weiterem Speicher, wie oft die Person vorkommt.
+  const kontakt = ((await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? []).find(k => k.id === id);
+  const m = merkmaleVon(id, kontakt);
+  const { nenntPerson } = await import('./person-weitere');
+  const zoeProtokoll = ((await loadJson<{ eintraege?: { zeit: string; werkzeug: string; ok: boolean; quelle: string }[] }>('zoe-protokoll'))?.eintraege ?? [])
+    .filter(e => nenntPerson(e, m)).map(e => ({ zeit: e.zeit, werkzeug: e.werkzeug, ok: e.ok, quelle: e.quelle }));
+  const zoeStapel = ((await loadJson<{ vorschlaege?: { zeit: string; werkzeug: string; status: string; titel: string }[] }>('zoe-stapel'))?.vorschlaege ?? [])
+    .filter(v => nenntPerson(v, m)).map(v => ({ zeit: v.zeit, werkzeug: v.werkzeug, status: v.status, titel: v.titel }));
+  const aenderungsprotokoll = await protokollDerPerson(m.fingerabdruecke);
+  const weitereSpeicher = await weitereAufzaehlen(m);
+  return { ...personVerweise(crm, id), dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher };
+}
+
+/** Änderungsprotokoll-Einträge zu diesen Fingerabdrücken (alle Monatsdateien) — ohne Werte, wie gespeichert. */
+async function protokollDerPerson(fps: readonly string[]): Promise<{ at: string; bestand: string; liste?: string; op: string; felder?: string[]; wer: string; person?: string }[]> {
+  if (!fps.length) return [];
+  const namen = (await fs.readdir(datenOrdner()).catch(() => [] as string[])).filter(n => /^aenderungsprotokoll--[a-z0-9-]+--\d{4}-\d{2}\.json$/.test(n)).sort();
+  const raus: { at: string; bestand: string; liste?: string; op: string; felder?: string[]; wer: string; person?: string }[] = [];
+  for (const n of namen) {
+    for (const e of (await loadJson<{ eintraege?: { at: string; bestand: string; liste?: string; op: string; id: string; felder?: string[]; wer: string; person?: string }[] }>(n.slice(0, -5)))?.eintraege ?? []) {
+      if (fps.includes(e.id)) raus.push({ at: e.at, bestand: e.bestand, ...(e.liste ? { liste: e.liste } : {}), op: e.op, ...(e.felder ? { felder: e.felder } : {}), wer: e.wer, ...(e.person ? { person: e.person } : {}) });
+    }
+  }
+  return raus;
 }
 
 /**

@@ -35,7 +35,7 @@ export interface UebergabeEingabe { art?: string; id?: string; ids?: string[]; a
 export type UebergabeErgebnis = { ok: true; anzahl: number; an: string; aufgabe: boolean; text: string } | { ok: false; fehler: string; status: number };
 
 /** `protokollWer` fürs Änderungsprotokoll (Route: `werAus(req)`, ZOE: `{ art: 'zoe', person }`); fehlt es, gilt die laufende Anfrage. */
-export async function uebergeben(b: UebergabeEingabe, person: string, protokollWer?: Wer): Promise<UebergabeErgebnis> {
+export async function uebergeben(b: UebergabeEingabe, person: string, protokollWer?: Wer, herkunft?: { quelle: 'zoe'; freigegebenVon?: string }): Promise<UebergabeErgebnis> {
   const art = UEBERGABE_ARTEN.includes(b.art as Art) ? (b.art as Art) : null;
   const an = wer(b.an);
   const notiz = String(b.notiz ?? '').trim().slice(0, 600);
@@ -61,7 +61,7 @@ export async function uebergeben(b: UebergabeEingabe, person: string, protokollW
       return { ...f, kontakte: f.kontakte.map(k => {
         if (!ids.has(k.id) || ausgenommen(k)) return k;
         anzahl++; namen.push(anzeigename(k));
-        const eintrag = { am: jetzt, art: 'uebergabe' as const, von: person, text: `an ${nameVon(an)}${notiz ? `: ${notiz}` : ''}` };
+        const eintrag = { am: jetzt, art: 'uebergabe' as const, von: person, text: `an ${nameVon(an)}${notiz ? `: ${notiz}` : ''}`, ...(herkunft ? { quelle: 'zoe' as const, ...(herkunft.freigegebenVon ? { freigegebenVon: herkunft.freigegebenVon } : {}) } : {}) };
         return { ...k, besitzer: an, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag], geaendertAm: tagVon(jetzt),
           ...(art === 'kontakt' && notiz && frist ? { naechsterSchritt: { text: notiz.slice(0, 300), datum: frist } } : {}) };
       }) };

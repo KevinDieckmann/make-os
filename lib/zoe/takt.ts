@@ -162,7 +162,11 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
   //     Bestände nach Frist bereinigen. Riegel = Tagesmarke `lauf.tag` im Bestand crm-loeschfristen (der Lauf schreibt sie).
   try {
     const lf = (await loadJson<{ lauf?: { tag?: string } }>('crm-loeschfristen')) ?? {};
+    // 29.09. (#70): auch sobald die Grabsteine neuer sind als ihre Marke im Datenordner — nach einem Restore oder Neustart
+    // wendet der nächste Takt die Löschungen erneut an (der Lauf selbst prüft das vor der Tagesmarke).
+    const { grabsteineOffen } = await import('@/lib/datenschutz/grabsteine');
     if (lf.lauf?.tag !== heute) raus.push({ id: 'loeschfristen', grund: 'Löschfristen: Tageslauf steht aus', auftrag: { art: 'agent', name: 'loeschfristen', anlass: 'Takt: Löschfristen' } });
+    else if (await grabsteineOffen()) raus.push({ id: 'grabsteine', grund: 'Grabsteine gelöschter Personen anwenden (nach Restore/Löschung)', auftrag: { art: 'agent', name: 'loeschfristen', anlass: 'Takt: Grabsteine' } });
   } catch (err) { console.error('[MAKE OS] Löschfristen-Takt übersprungen:', err); }
 
   // 1) Der Morgenlauf — einmal am Tag, ab 7 Uhr.

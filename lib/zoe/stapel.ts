@@ -252,3 +252,23 @@ export async function entscheide(
   if (raus && process.env.MAKE_OS_APP_SPIEGEL?.trim() === 'an') void import('@/lib/brain/app-spiegel').then(m => m.spiegelAnstossen()).catch(() => {});
   return raus;
 }
+
+/**
+ * Frist (29.09., Paket D-B #93, Löschklasse „zoe-arbeitslisten“, 90 Tage): ENTSCHIEDENE Vorschläge, die vor `grenze`
+ * (Tag) entschieden wurden, fallen weg — offene und laufende nie. Nicht dauerhaft Festgehaltenes wird vorher nachgetragen;
+ * scheitert das, bleibt es stehen (nie still). Liefert die Zahl.
+ */
+export async function stapelFrist(grenze: string): Promise<number> {
+  if ((await loadJson<Stand>('zoe-stapel')) === null) return 0;
+  let n = 0;
+  await updateJsonAsync<Stand>('zoe-stapel', async current => {
+    const liste = current?.vorschlaege ?? [];
+    const alt = liste.filter(x => !AKTIV.has(x.status) && (x.entschiedenAm ?? x.zeit ?? '').slice(0, 10) < grenze);
+    if (!alt.length) return current as Stand;
+    const bleibt = new Set((await nichtKuerzbar(alt)).map(x => x.id));
+    const weg = new Set(alt.filter(x => !bleibt.has(x.id)).map(x => x.id));
+    n = weg.size;
+    return n ? { vorschlaege: liste.filter(x => !weg.has(x.id)) } : (current as Stand);
+  });
+  return n;
+}

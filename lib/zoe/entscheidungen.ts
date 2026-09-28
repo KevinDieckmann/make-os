@@ -8,7 +8,10 @@
 // Speicher: `zoe-entscheidungen--<haushalt>--<JJJJ-MM>` (Berliner Monat) — wie das Änderungsprotokoll nur
 // anhängend, nie gekürzt, nie überschrieben. Inhalt: Art, Bezug, Person, Grund (eigener Text der entscheidenden
 // Person — darf rein), Ergebnis kurz; von Ausführungen nur die Feldnamen der Eingabe, nie die Werte.
-// Kontakt-Kennungen (tragen die E-Mail) nur als Fingerabdruck (`protokollKennung`).
+// Kontakt-Kennungen (tragen die E-Mail) nur als Fingerabdruck (`protokollKennung`; seit 29.09. HMAC v2 mit Pepper).
+// Geprüft 29.09. (Paket D-B #69): Titel, Grund und Ergebnis KÖNNEN Namen tragen („Notiz an …“) — Art. 17 tilgt sie
+// (lib/crm/person-weitere.ts, Name → „[gelöscht]“, Fingerabdruck → `c#geloescht`), Art. 15 zählt sie, Frist 36 Monate
+// (Löschklasse „zoe-entscheidungen“, Monatsdateien geleert wie das Änderungsprotokoll).
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { monatBerlin, protokollKennung } from '@/lib/store/aenderungsprotokoll';
@@ -92,12 +95,12 @@ export function entscheidungEintrag(v: {
 
 /** Eine Werkzeug-Ausführung (ZOE-Protokoll) als dauerhafter Eintrag — nur Feldnamen, nie Werte (rein). */
 export function ausfuehrungEintrag(p: {
-  id: string; zeit: string; werkzeug: string; gruppe: string; risiko: string; eingabe: Record<string, unknown>; ergebnis: string; ok: boolean; quelle: string; person?: string;
+  id: string; zeit: string; werkzeug: string; gruppe: string; risiko: string; eingabe: Record<string, unknown>; felder?: string[]; ergebnis: string; ok: boolean; quelle: string; person?: string;
 }, nachgetragen = false): DauerEintrag {
   return {
     at: p.zeit, typ: 'ausfuehrung', quelleId: p.id, werkzeug: p.werkzeug, gruppe: p.gruppe, risiko: p.risiko, quelle: p.quelle, ok: p.ok,
     ...(p.person && PERSON.test(p.person) ? { person: p.person } : {}),
-    felder: Object.keys(p.eingabe ?? {}).slice(0, 40).map(k => k.slice(0, 40)),
+    felder: (p.felder ?? Object.keys(p.eingabe ?? {})).slice(0, 40).map(k => k.slice(0, 40)),
     ...(kurz(p.ergebnis, 300) ? { ergebnis: kurz(p.ergebnis, 300) } : {}),
     ...(nachgetragen ? { nachgetragen: true as const } : {}),
   };
