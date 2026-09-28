@@ -3,8 +3,10 @@
 // Zu zweit werden nur Einzeländerungen geschrieben (lib/sync.ts); jede Liste
 // hat einen eigenen Säuberer, damit nur durchkommt, was das Modell kennt.
 
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
-import { protokolliere, bestandDiff, type Aenderung, type Wer } from '@/lib/store/aenderungsprotokoll';
+import { protokolliere, bestandDiff, listenDiff, type Aenderung, type Wer } from '@/lib/store/aenderungsprotokoll';
+import type { Kontakt } from '@/lib/make-one/crm';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { STUFEN, wechsleStufe, erwartetVerschiebung } from './pipeline';
 import { firmaIdsErgaenzen } from './firmen-bezug';
@@ -20,6 +22,8 @@ import { LIFECYCLE_PHASEN } from './lifecycle';
 import { BEAN_IDS, istBean } from './bean';
 import { mutterPruefen } from './konzern';
 import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEBOT_GRENZEN } from './angebote';
+import { personenSchranke, type PersonSchranke } from './personen-schranke';
+import { crmFolgen, geloeschteDeals, karteiBetroffen, kontaktLeadsOhneDeals } from './bestand-folgen';
 import type { Temperatur } from './typen';
 
 const TEMPERATUREN: readonly Temperatur[] = ['kalt', 'lau', 'warm', 'heiss'];
@@ -81,6 +85,13 @@ export const LISTEN_GRENZEN: Partial<Record<CrmListe, Record<string, number>>> =
   angebote: { positionen: ANGEBOT_GRENZEN.positionen },
 };
 const grenzeVon = (liste: CrmListe, feld: string) => LISTEN_GRENZEN[liste]?.[feld] ?? GRENZE_IDS;
+/**
+ * Werte je Segment-Kriterium (Typ, Kategorie, Label, Kreis …) — in `segmente.kriterien` und `kampagnen.zielgruppe`
+ * (28.09. spät): vorher kürzte `strListe` still auf 50, jetzt 413 über `crmGrenzen`, der Säuberer nimmt denselben Wert.
+ */
+export const KRITERIEN_WERTE_MAX = 500;
+/** Wo Segment-Kriterien in einem Eintrag stehen. */
+const KRITERIEN_FELD: Partial<Record<CrmListe, string>> = { segmente: 'kriterien', kampagnen: 'zielgruppe' };
 
 /** Überschreitet eine Änderung eine Listen-Grenze? Liefert die Texte (leer = alles gut). Ganze Änderung → 413. */
 export function crmGrenzen(ops: ListenOp[]): string[] {
@@ -92,6 +103,13 @@ export function crmGrenzen(ops: ListenOp[]): string[] {
       const v = e[feld];
       const n = Array.isArray(v) ? v.length : v && typeof v === 'object' ? Object.keys(v).length : 0;
       if (n > max) raus.push(`${o.liste} „${String(e.id ?? o.id ?? '')}“: ${n} Einträge in „${feld}“ — höchstens ${max}. Abgelehnt, nichts gekürzt.`);
+    }
+    const kf = KRITERIEN_FELD[o.liste as CrmListe];
+    const kr = kf ? e[kf] : undefined;
+    if (kr && typeof kr === 'object') {
+      for (const [feld, v] of Object.entries(kr as Record<string, unknown>)) {
+        if (Array.isArray(v) && v.length > KRITERIEN_WERTE_MAX) raus.push(`${o.liste} „${String(e.id ?? o.id ?? '')}“: ${v.length} Werte im Kriterium „${feld}“ — höchstens ${KRITERIEN_WERTE_MAX}. Abgelehnt, nichts gekürzt.`);
+      }
     }
   }
   return raus;
@@ -264,14 +282,14 @@ function verarbeitung(o: Record<string, unknown>, jetzt: string): Verarbeitung |
   };
 }
 
-const strListe = (v: unknown, n = 50, l = 40) => (Array.isArray(v) ? v.map(x => txt(x, l)).filter(Boolean).slice(0, n) : undefined);
+const strListe = (v: unknown, n = KRITERIEN_WERTE_MAX, l = 40) => (Array.isArray(v) ? v.map(x => txt(x, l)).filter(Boolean).slice(0, n) : undefined);
 function segment(o: Record<string, unknown>, jetzt: string): Segment | null {
   if (!idOk(o.id) || !txt(o.name)) return null;
   const k = (o.kriterien ?? {}) as Record<string, unknown>;
   const kr: SegmentKriterien = {};
   for (const f of ['lebensphase', 'kreis', 'prio', 'firmaRolle', 'herkunft'] as const) { const l = strListe(k[f]); if (l?.length) kr[f] = l; }
   // Typ/Kategorie/Label „enthält einen von“ (28.09.) — freie Werte aus den Wertelisten.
-  for (const f of ['typ', 'kategorie', 'label'] as const) { const l = strListe(k[f], 50, 80); if (l?.length) kr[f] = l; }
+  for (const f of ['typ', 'kategorie', 'label'] as const) { const l = strListe(k[f], KRITERIEN_WERTE_MAX, 80); if (l?.length) kr[f] = l; }
   for (const f of ['branche', 'stadt', 'stichwort'] as const) { const t = opt(k[f], 80); if (t) kr[f] = t; }
   if (['mail', 'telefon', 'linkedin', 'newsletter', 'einladung'].includes(String(k.kanal))) kr.kanal = k.kanal as SegmentKriterien['kanal'];
   if (typeof k.mitChance === 'boolean') kr.mitChance = k.mitChance;
@@ -446,6 +464,8 @@ export function dealRegeln(b: CrmBestand, ops: ListenOp[], jetzt: string, person
       // Sperre statt Löschen (Konzept): ein Deal mit Geschichte wird verloren oder geparkt — löschen nur eine Fehlanlage.
       const alt = b.chancen.find(c => c.id === String(o.id));
       if (alt && !(alt.historie.length <= 1 && !alt.wert.betrag && !(alt.notiz ?? '').trim())) { fehler.push(`„${alt.titel}“: Deals mit Geschichte werden nicht gelöscht — als verloren oder geparkt markieren.`); continue; }
+      // Fehlanlage weg (28.09. spät): der Lead, der per `chanceId` darauf zeigte, geht in derselben Sperre zurück auf
+      // Qualifizierung (`crmFolgen` am Ende von `wendeCrmAn`; Personen-Leads der Kartei über `aendereCrm`).
       raus.push(o); continue;
     }
     const roh = (o.op === 'teil' ? o.felder : o.eintrag) ?? {};
@@ -492,11 +512,25 @@ export interface CrmAnwendung {
   sperren: LoeschSperre[];
   /** 413 (28.09., K4): über eine Grenze (Deal-Historie) — die GANZE Änderung ist abgelehnt. */
   grenze: string[];
-  /** 409 (28.09.): gegen eine Regel (Angebote nur übers Tool, Produkt ohne Leistungstext nicht aktiv) — die GANZE Änderung ist abgelehnt. */
+  /**
+   * 409 (28.09.): gegen eine Regel (Angebote nur übers Tool, Produkt ohne Leistungstext nicht aktiv; seit 28.09. spät
+   * auch neue Verweise auf gesperrte Personen, `personenSchranke`) — die GANZE Änderung ist abgelehnt.
+   */
   abgelehnt?: string[];
 }
 
-export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person: string, kontext?: VerweisKontext): CrmAnwendung {
+/**
+ * Die Personen der Kartei für die Schranke — `aendereCrm` legt sie für die Dauer der Änderung hier ab (gelesen IN der
+ * CRM-Sperre), damit `wendeCrmAn` sie findet, ohne dass jede Route sie laden und durchreichen muss.
+ */
+const personenImLauf = new AsyncLocalStorage<readonly PersonSchranke[]>();
+
+/**
+ * Eine Änderung aus Einzel-Ops auf den Bestand anwenden — alle Prüfungen gegen den Bestand IN der Sperre.
+ * `personen` (Kartei) nur für Aufrufe außerhalb von `aendereCrm` (Tests); sonst gilt die Kartei aus der laufenden
+ * Änderung. Ohne beides prüft die Personen-Schranke nicht.
+ */
+export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person: string, kontext?: VerweisKontext, personen?: readonly PersonSchranke[]): CrmAnwendung {
   let angewandt = 0;
   // Erst Stand und Verweise (gegen den Bestand IN der Sperre), dann die Regeln — ein Konflikt lehnt alles ab.
   const konflikte = crmKonflikte(b, roh);
@@ -506,7 +540,8 @@ export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person
   // Nie abschneiden (28.09.): zu lange Listen → die ganze Änderung wird abgelehnt (413).
   const zuLang = crmGrenzen(roh);
   if (zuLang.length) return { bestand: b, angewandt: 0, fehler: [], konflikte: [], sperren: [], grenze: zuLang };
-  const abgelehnt = regelnAbgelehnt(b, roh);
+  // Gesperrte Personen (28.09. spät): neue Verweise auf Art.-18-Personen nie, Werbesperre nicht in Kampagne/Einladung.
+  const abgelehnt = [...regelnAbgelehnt(b, roh), ...personenSchranke(b, roh, personen ?? personenImLauf.getStore() ?? [])];
   if (abgelehnt.length) return { bestand: b, angewandt: 0, fehler: [], konflikte: [], sperren: [], grenze: [], abgelehnt };
   const { ops: regelOps, fehler, grenze } = dealRegeln(b, roh, jetzt, person);
   if (grenze.length) return { bestand: b, angewandt: 0, fehler, konflikte: [], sperren: [], grenze };
@@ -524,7 +559,9 @@ export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person
     const m = mutterPruefen(b.firmen, neu.firmen);
     if (m.fehler.length) { neu.firmen = m.firmen; fehler.push(...m.fehler); }
   }
-  return { bestand: neu, angewandt, fehler, konflikte: [], sperren: [], grenze: [] };
+  // Folgen in derselben Sperre (28.09. spät, lib/crm/bestand-folgen.ts): gelöschter Deal → Firmen-Lead zurück auf
+  // Qualifizierung; umbenannte Firma → Anzeigename an Mandaten/Deals. Personen-Leads führt `aendereCrm` nach.
+  return { bestand: crmFolgen(b, neu, jetzt, person), angewandt, fehler, konflikte: [], sperren: [], grenze: [] };
 }
 
 /**
@@ -564,14 +601,50 @@ function firmenZusammenfuehren(b: CrmBestand, ops: ListenOp[]): ListenOp[] {
   });
 }
 
-export async function aendereCrm(mut: (b: CrmBestand) => CrmBestand, protokollWer?: Wer): Promise<CrmBestand> {
+type Kartei = { kontakte?: Kontakt[] } & Record<string, unknown>;
+const personVon = (w?: Wer) => (w?.person && /^[a-z0-9-]{1,40}$/.test(w.person) ? w.person : undefined);
+
+/**
+ * Der gemeinsame Kern von `aendereCrm`/`aendereCrmAsync` — alles IN der Sperre des CRM-Bestands:
+ *  · die Kartei lesen und für die Personen-Schranke ablegen (`personenImLauf`, lib/crm/personen-schranke.ts);
+ *  · Folgen für JEDEN Schreibweg (`crmFolgen`, idempotent): gelöschter Deal → Firmen-Lead zurück, umbenannte Firma →
+ *    Anzeigenamen an Mandaten/Deals;
+ *  · Personen-Leads auf gelöschte Deals in der Kartei zurücksetzen — ein anderer Bestand, deshalb `updateJson('kontakte')`
+ *    INNEN (Regel „zwei Bestände in einer Sperre“; nie umgekehrt die CRM-Sperre aus einer Kartei-Sperre nehmen).
+ */
+async function crmSchreiben(mut: (b: CrmBestand) => CrmBestand | Promise<CrmBestand>, protokollWer?: Wer): Promise<CrmBestand> {
   // Änderungsprotokoll (28.09., K1 #44): was sich je Liste geändert hat (Kennung + Feldnamen, nie Werte) — für JEDEN
   // Schreibweg über diese Stelle. Wer: ausdrücklich übergeben, sonst aus der laufenden Anfrage (lib/store/aenderungsprotokoll.ts).
   let aenderungen: Aenderung[] = [];
-  // Die nachgetragenen Firmen-Kennungen (ladeCrm) werden hier mit der nächsten Schreibung dauerhaft (Prüfbericht 27.09., Punkt 11).
-  const fertig = await updateJson<CrmBestand>(CRM_SPEICHER, cur => { const neu = mut(firmaIdsErgaenzen({ ...leererBestand(), ...(cur ?? {}) }).bestand); aenderungen = bestandDiff(cur as unknown as Record<string, unknown>, neu as unknown as Record<string, unknown>); return neu; });
+  let karteiAenderungen: Aenderung[] = [];
+  const person = personVon(protokollWer);
+  const fertig = await updateJsonAsync<CrmBestand>(CRM_SPEICHER, async cur => {
+    // Die nachgetragenen Firmen-Kennungen (ladeCrm) werden hier mit der nächsten Schreibung dauerhaft (Prüfbericht 27.09., Punkt 11).
+    const basis = firmaIdsErgaenzen({ ...leererBestand(), ...(cur ?? {}) }).bestand;
+    const kontakte = (await loadJson<Kartei>('kontakte'))?.kontakte ?? [];
+    const roh = await personenImLauf.run(kontakte, () => mut(basis));
+    const jetzt = new Date().toISOString();
+    const neu = roh === basis ? roh : crmFolgen(basis, roh, jetzt, person);
+    const weg = geloeschteDeals(basis, neu);
+    if (karteiBetroffen(kontakte, weg)) {
+      await updateJson<Kartei>('kontakte', k => {
+        const vorher = k?.kontakte ?? [];
+        const r = kontaktLeadsOhneDeals(vorher, weg, jetzt, localDay(new Date(jetzt)), person);
+        if (!r.geaendert.length) return k ?? { kontakte: [] };
+        karteiAenderungen = listenDiff(vorher, r.kontakte);
+        return { ...(k ?? {}), kontakte: r.kontakte };
+      });
+    }
+    aenderungen = bestandDiff(cur as unknown as Record<string, unknown>, neu as unknown as Record<string, unknown>);
+    return neu;
+  });
   await protokolliere(CRM_SPEICHER, aenderungen, protokollWer);
+  if (karteiAenderungen.length) await protokolliere('kontakte', karteiAenderungen, protokollWer);
   return fertig;
+}
+
+export async function aendereCrm(mut: (b: CrmBestand) => CrmBestand, protokollWer?: Wer): Promise<CrmBestand> {
+  return crmSchreiben(mut, protokollWer);
 }
 
 /**
@@ -580,10 +653,7 @@ export async function aendereCrm(mut: (b: CrmBestand) => CrmBestand, protokollWe
  * so ist die Nummer lückenlos und parallel sicher. Wirft `mut`, wird nichts geschrieben.
  */
 export async function aendereCrmAsync(mut: (b: CrmBestand) => Promise<CrmBestand>, protokollWer?: Wer): Promise<CrmBestand> {
-  let aenderungen: Aenderung[] = [];
-  const fertig = await updateJsonAsync<CrmBestand>(CRM_SPEICHER, async cur => { const neu = await mut(firmaIdsErgaenzen({ ...leererBestand(), ...(cur ?? {}) }).bestand); aenderungen = bestandDiff(cur as unknown as Record<string, unknown>, neu as unknown as Record<string, unknown>); return neu; });
-  await protokolliere(CRM_SPEICHER, aenderungen, protokollWer);
-  return fertig;
+  return crmSchreiben(mut, protokollWer);
 }
 
 /** Kunden-Sicht aus den Mandaten — für Score, ZOE-Kontext und Loops (vorher eigener Speicher „kunden“). */
