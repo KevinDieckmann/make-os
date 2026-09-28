@@ -13,6 +13,9 @@ export default defineConfig({
     // Derselbe @-Pfad wie in tsconfig.json.
     alias: { '@': wurzel },
   },
+  // Render-Tests der Oberfläche (28.09., Angebots-Tool): .tsx-Bauteile in Tests mit der automatischen JSX-Laufzeit
+  // übersetzen (tsconfig steht für Next auf „preserve“). Tests bleiben .test.ts, gerendert wird serverseitig ohne Browser.
+  oxc: { jsx: { runtime: 'automatic' } },
   test: {
     include: ['tests/**/*.test.ts'],
   },

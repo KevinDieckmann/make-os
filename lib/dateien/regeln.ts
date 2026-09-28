@@ -54,6 +54,13 @@ export interface DateiEintrag {
   mandatId?: string;
   dealId?: string;
   rechnungId?: string;
+  /**
+   * Angebot aus dem Angebots-Tool (28.09., crm.angebote) — setzt NUR der Server beim Stellen (PDF). Ein solcher
+   * Eintrag ist eine Geschäftsunterlage: nicht löschbar (`istBeleg`), Personenbezug nur lösbar.
+   */
+  angebotId?: string;
+  /** Logo einer Gesellschaft (28.09., Stammdaten › Gesellschaften) — setzt NUR der Server. */
+  gesellschaft?: 'kdc' | 'kdv' | 'ug';
   vertrag?: VertragDaten;
   angebot?: AngebotDaten;
   notiz?: string;
@@ -149,10 +156,13 @@ export function metaSaeubern(roh: unknown): Partial<Pick<DateiEintrag, 'art' | '
  * Hängt der Eintrag an einer Rechnung oder einem Mandat (28.09., K3 · #50/#81)? Dann ist er ein Beleg
  * und wird nicht gelöscht (DELETE → 409) — nur vom Bezug gelöst (PATCH `{ rechnungId: null, mandatId: null }`).
  */
-export const istBeleg = (e: Pick<DateiEintrag, 'rechnungId' | 'mandatId'>) => !!(e.rechnungId || e.mandatId);
+export const istBeleg = (e: Pick<DateiEintrag, 'rechnungId' | 'mandatId'> & Partial<Pick<DateiEintrag, 'angebotId'>>) => !!(e.rechnungId || e.mandatId || e.angebotId);
 
 /** Hängt der Eintrag an irgendetwas? Ohne Bezug wird nichts abgelegt (er wäre nirgends zu finden). */
-export const hatBezug = (e: Pick<DateiEintrag, 'kontaktId' | 'firmaId' | 'mandatId' | 'dealId' | 'rechnungId'>) => !!(e.kontaktId || e.firmaId || e.mandatId || e.dealId || e.rechnungId);
+export const hatBezug = (e: Pick<DateiEintrag, 'kontaktId' | 'firmaId' | 'mandatId' | 'dealId' | 'rechnungId'> & Partial<Pick<DateiEintrag, 'angebotId' | 'gesellschaft'>>) => !!(e.kontaktId || e.firmaId || e.mandatId || e.dealId || e.rechnungId || e.angebotId || e.gesellschaft);
+
+/** Bezüge, die nur der Server setzt (Angebots-PDF, Logo) — `metaSaeubern` liest sie nie aus dem Netz. */
+export interface FesteBezuege { angebotId?: string; gesellschaft?: 'kdc' | 'kdv' | 'ug' }
 
 export interface DateiFilter { kontaktId?: string; firmaId?: string; mandatIds?: string[]; dealIds?: string[]; rechnungIds?: string[] }
 /** Einträge eines Kontakts: an ihm, an seiner Firma, an seinen Mandaten, Deals oder Rechnungen. Neueste zuerst. */

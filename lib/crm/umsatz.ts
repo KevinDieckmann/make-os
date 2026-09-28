@@ -13,7 +13,8 @@
 //     nie per Name hergeholt. Private Posten (firmaId „privat“) zählen nie.
 // Client-sicher: keine Server-Importe.
 
-import type { Chance, CrmBestand, Firma, Mandat } from './typen';
+import type { Angebot, AngebotsStatus, Chance, CrmBestand, Firma, Mandat } from './typen';
+import { angebotSummen } from './angebote';
 import type { DateiEintrag, AngebotStatus } from '@/lib/dateien/regeln';
 import { dealZuFirma, mandatZuFirma } from './firmen-bezug';
 import { rechnungPasst, mrr } from './kunden';
@@ -181,7 +182,8 @@ export function umsatzKennzahlen(b: UmsatzBezug): UmsatzKennzahlen {
 
 export interface AngebotZeile {
   schluessel: string;
-  quelle: 'rechnung' | 'deal' | 'ablage';
+  /** `tool` (28.09.): aus dem Angebots-Tool (crm.angebote) — die übrigen sind Altbestand und bleiben lesbar. */
+  quelle: 'tool' | 'rechnung' | 'deal' | 'ablage';
   titel: string;
   nummer?: string;
   datum?: string;
@@ -190,10 +192,23 @@ export interface AngebotZeile {
   rechnungId?: string;
   dealId?: string;
   eintrag?: DateiEintrag;
+  /** Nur `tool`: das Angebot und sein Status (entwurf · gestellt · angenommen · abgelehnt · abgelaufen · ersetzt). */
+  angebot?: Angebot;
+  toolStatus?: AngebotsStatus;
 }
 
-export function angeboteListe(b: UmsatzBezug, ablage: DateiEintrag[]): AngebotZeile[] {
+/** Status eines Tool-Angebots in der alten Dreiteilung (offen · angenommen · abgelehnt). */
+const statusAlt = (s: AngebotsStatus): AngebotStatus => (s === 'angenommen' ? 'angenommen' : s === 'abgelehnt' || s === 'abgelaufen' || s === 'ersetzt' ? 'abgelehnt' : 'offen');
+
+export function angeboteListe(b: UmsatzBezug, ablage: DateiEintrag[], tool: readonly Angebot[] = []): AngebotZeile[] {
   const zeilen: AngebotZeile[] = [];
+  // Angebots-Tool zuerst (28.09.): Deals und Ablage-PDFs, die schon als Tool-Angebot da sind, nicht doppelt.
+  const dealMitTool = new Set(tool.filter(a => a.dealId && a.status !== 'entwurf').map(a => a.dealId!));
+  for (const a of tool) {
+    const s = angebotSummen(a, { kleinunternehmer: !!a.absender?.kleinunternehmer });
+    zeilen.push({ schluessel: `a:${a.id}`, quelle: 'tool', titel: a.titel || 'Angebot', ...(a.nummer ? { nummer: a.nummer } : {}), datum: (a.gestelltAm ?? a.geaendert).slice(0, 10), betrag: s.gesamt.brutto / 100, status: statusAlt(a.status), ...(a.dealId ? { dealId: a.dealId } : {}), angebot: a, toolStatus: a.status });
+  }
+  ablage = ablage.filter(e => !e.angebotId);
   const verknuepft = new Set(ablage.filter(e => e.art === 'angebot' && e.rechnungId).map(e => e.rechnungId!));
   for (const z of b.rechnungen) {
     if (!z.r.angebot && !z.r.angebotAm) continue;
@@ -202,7 +217,7 @@ export function angeboteListe(b: UmsatzBezug, ablage: DateiEintrag[]): AngebotZe
   }
   const dealMitAblage = new Set(ablage.filter(e => e.art === 'angebot' && e.dealId).map(e => e.dealId!));
   for (const c of b.deals) {
-    if (dealMitAblage.has(c.id)) continue;
+    if (dealMitAblage.has(c.id) || dealMitTool.has(c.id)) continue;
     const warAngebot = c.historie?.some(h => h.stufe === 'angebot' || h.stufe === 'abschluss');
     const status: AngebotStatus | null = c.stufe === 'angebot' || c.stufe === 'abschluss' ? 'offen'
       : warAngebot && c.stufe === 'gewonnen' ? 'angenommen' : warAngebot && c.stufe === 'verloren' ? 'abgelehnt' : null;

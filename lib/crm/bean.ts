@@ -26,6 +26,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, Firma, Mandat, Chance } from './typen';
 import { dealZuFirma, mandatZuFirma } from './firmen-bezug';
 import { personenDerFirma } from './stationen';
+import { offeneAngeboteHinweise } from './angebote';
 
 export type BeanId = 'B' | 'E' | 'A' | 'N';
 /** Reihenfolge der Anzeige (Kevins Wort: B-E-A-N). */
@@ -54,14 +55,15 @@ export interface AngebotHinweis { titel?: string; kontaktId?: string; firmaId?: 
 
 /** Aus Einträgen der Dateiablage die offenen Angebote (art „angebot“, Status „offen“). */
 export function offeneAngebote(eintraege: readonly { art?: string; titel?: string; angebot?: { status?: string }; kontaktId?: string; firmaId?: string; dealId?: string; mandatId?: string }[]): AngebotHinweis[] {
-  return eintraege.filter(e => e.art === 'angebot' && (e.angebot?.status ?? 'offen') === 'offen').map(e => ({
+  // PDFs aus dem Angebots-Tool (`angebotId`) zählen über crm.angebote (Status dort) — nicht doppelt über die Ablage.
+  return eintraege.filter(e => e.art === 'angebot' && !(e as { angebotId?: string }).angebotId && (e.angebot?.status ?? 'offen') === 'offen').map(e => ({
     ...(e.titel ? { titel: e.titel } : {}), ...(e.kontaktId ? { kontaktId: e.kontaktId } : {}), ...(e.firmaId ? { firmaId: e.firmaId } : {}),
     ...(e.dealId ? { dealId: e.dealId } : {}), ...(e.mandatId ? { mandatId: e.mandatId } : {}),
   }));
 }
 
 export interface BeanOpts { angebote?: readonly AngebotHinweis[] }
-export type BeanBestand = Pick<CrmBestand, 'mandate' | 'chancen'> & Partial<Pick<CrmBestand, 'firmen'>>;
+export type BeanBestand = Pick<CrmBestand, 'mandate' | 'chancen'> & Partial<Pick<CrmBestand, 'firmen' | 'angebote'>>;
 
 export interface BeanErgebnis {
   bean: BeanId;
@@ -95,6 +97,8 @@ function ableiten(t: { mandate: Mandat[]; chancen: Chance[]; angebote: AngebotHi
   return { bean: 'N', grund: 'kein Mandat, kein offenes Angebot — Lead zum Qualifizieren' };
 }
 
+/** Offene Angebote: aus dem Angebots-Tool (crm.angebote, gestellt) und — nur in der Oberfläche — aus der Dateiablage. */
+const hinweiseAus = (crm: BeanBestand | null | undefined, opts: BeanOpts): AngebotHinweis[] => [...offeneAngeboteHinweise(crm ?? {}), ...(opts.angebote ?? [])];
 const angebotePasst = (a: readonly AngebotHinweis[] | undefined, p: { kontaktIds: Set<string>; firmaId?: string; dealIds: Set<string>; mandatIds: Set<string> }) =>
   (a ?? []).filter(x => (x.kontaktId && p.kontaktIds.has(x.kontaktId)) || (x.firmaId && x.firmaId === p.firmaId) || (x.dealId && p.dealIds.has(x.dealId)) || (x.mandatId && p.mandatIds.has(x.mandatId)));
 
@@ -106,7 +110,7 @@ export function beanVon(k: Pick<Kontakt, 'id' | 'firmaId' | 'bean' | 'lebensphas
   const firma = k.firmaId ? (crm?.firmen ?? []).find(f => f.id === k.firmaId) : undefined;
   const mandate = (crm?.mandate ?? []).filter(m => (m.kontaktIds ?? []).includes(k.id) || (!!firma && mandatZuFirma(m, firma)));
   const chancen = (crm?.chancen ?? []).filter(c => (c.kontaktIds ?? []).includes(k.id) || (!!firma && dealZuFirma(c, firma)));
-  const angebote = angebotePasst(opts.angebote, { kontaktIds: new Set([k.id]), firmaId: firma?.id ?? k.firmaId, dealIds: new Set(chancen.map(c => c.id)), mandatIds: new Set(mandate.map(m => m.id)) });
+  const angebote = angebotePasst(hinweiseAus(crm, opts), { kontaktIds: new Set([k.id]), firmaId: firma?.id ?? k.firmaId, dealIds: new Set(chancen.map(c => c.id)), mandatIds: new Set(mandate.map(m => m.id)) });
   const exKunde = k.lebensphase === 'ex_kunde' ? 'Lebensphase Ex-Kunde' : firma?.rolle === 'ex_kunde' ? 'Firma als Ex-Kunde geführt' : undefined;
   const kunde = k.lebensphase === 'kunde' ? 'als Kunde geführt' : firma?.rolle === 'kunde' ? 'Firma als Kunde geführt' : undefined;
   const abgeleitet = ableiten({ mandate, chancen, angebote, exKunde, kunde });
@@ -122,7 +126,7 @@ export function beanFirma(f: Pick<Firma, 'id' | 'name' | 'rolle' | 'bean'>, crm:
   const ids = new Set(dabei.map(p => p.id));
   const mandate = (crm?.mandate ?? []).filter(m => mandatZuFirma(m, f) || (m.kontaktIds ?? []).some(id => ids.has(id)));
   const chancen = (crm?.chancen ?? []).filter(c => dealZuFirma(c, f) || (c.kontaktIds ?? []).some(id => ids.has(id)));
-  const angebote = angebotePasst(opts.angebote, { kontaktIds: ids, firmaId: f.id, dealIds: new Set(chancen.map(c => c.id)), mandatIds: new Set(mandate.map(m => m.id)) });
+  const angebote = angebotePasst(hinweiseAus(crm, opts), { kontaktIds: ids, firmaId: f.id, dealIds: new Set(chancen.map(c => c.id)), mandatIds: new Set(mandate.map(m => m.id)) });
   const exKunde = f.rolle === 'ex_kunde' ? 'Firma als Ex-Kunde geführt' : dabei.some(p => p.lebensphase === 'ex_kunde') ? 'eine Person ist als Ex-Kunde geführt' : undefined;
   const kunde = f.rolle === 'kunde' ? 'Firma als Kunde geführt' : dabei.some(p => p.lebensphase === 'kunde') ? 'eine Person ist als Kunde geführt' : undefined;
   const abgeleitet = ableiten({ mandate, chancen, angebote, exKunde, kunde });

@@ -30,7 +30,8 @@ import type { WahlVorschlag } from '@/lib/crm/wahl';
 import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
 import { TEAM, BEIDE, nameVon, haeltBeziehung } from '@/lib/crm/team';
 import { WEG } from '@/lib/wege';
-import { mandateLink } from '@/lib/crm/adresse';
+import { mandateLink, angebotLink } from '@/lib/crm/adresse';
+import { suchPasst } from '@/lib/text/such-norm';
 import { type CrmApi, datum, euro, plusTage } from './daten';
 import { Wahl } from './Wahl';
 import { WertelistenMehrfachWahl } from './WertelistenWahl';
@@ -251,9 +252,12 @@ function NotizAktion({ k, api, onFertig, onAbbruch }: { k: Kontakt; api: CrmApi;
   const speichern = async () => {
     if (!text.trim() || laeuft) return;
     setLaeuft(true);
-    const r = await api.aktivitaet({ id: k.id, art: 'notiz', text: text.trim() });
-    setLaeuft(false);
-    if (r.kontakt) onFertig('Notiz festgehalten.');
+    // Ein Netzfehler darf „Notiz festhalten“ nicht dauerhaft sperren (Ablaufprüfung 28.09.).
+    try {
+      const r = await api.aktivitaet({ id: k.id, art: 'notiz', text: text.trim() });
+      if (r.kontakt) onFertig('Notiz festgehalten.');
+    } catch { /* Hinweis kommt aus api (fehlschlag) */ }
+    finally { setLaeuft(false); }
   };
   return (
     <>
@@ -271,7 +275,8 @@ function EmailAktion({ k, api, mailOk, mailHref, onFertig }: { k: Kontakt; api: 
       <EntwurfTeil k={k} mailOk={mailOk} ohneTitel />
       <Fuss>
         {mailHref && <a href={mailHref} className="fassbar" style={{ fontSize: TYP.bedien, fontWeight: 700, color: C.ink, textDecoration: 'none', padding: '8px 13px', borderRadius: 11, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)' }}>Mail-Programm öffnen ↗</a>}
-        {k.email && <button type="button" onClick={() => void api.aktivitaet({ id: k.id, art: 'mail' }).then(r => { if (r.kontakt) onFertig('Mail festgehalten.'); })} style={leiseKnopf}>Mail ist raus — festhalten</button>}
+        {/* Knopf sperrt sich bis zur Antwort — ein Doppelklick ergibt nicht zwei Aktivitäten. */}
+        {k.email && <Knopf leise onClick={async () => { try { const r = await api.aktivitaet({ id: k.id, art: 'mail' }); if (r.kontakt) onFertig('Mail festgehalten.'); } catch { /* Hinweis kommt aus api */ } }}>Mail ist raus — festhalten</Knopf>}
       </Fuss>
       <Hinweis>{mailHref ? 'MAKE OS verschickt nichts — die Mail geht aus deinem eigenen Programm.' : 'Mail ist für diese Person nicht freigegeben (Ampel) oder es fehlt die Adresse — den Entwurf nur im persönlichen Gespräch nutzen.'}</Hinweis>
     </>
@@ -411,7 +416,8 @@ export function KontaktRechts({ k, api, heute, setze, klappen, zuFirma, zuAufgab
           <div style={{ display: 'grid', gap: 8 }}>
             <input autoFocus list="kontakt-firmen" value={firmaNeu} onChange={e => setFirmaNeu(e.target.value)} placeholder="Firma suchen oder neu …" aria-label="Firma"
               onKeyDown={e => { if (e.key === 'Enter' && firmaNeu.trim()) void firmaVerknuepfen(api, k, firmaNeu, setze).then(() => setFirmaNeu(null)); if (e.key === 'Escape') { e.stopPropagation(); setFirmaNeu(null); } }} style={eingabe} />
-            <datalist id="kontakt-firmen">{firmen.slice(0, 400).map(f => <option key={f.id} value={f.name} />)}</datalist>
+            {/* Nie abschneiden: Vorschläge nach dem Suchtext gefiltert statt die ersten 400. */}
+            <datalist id="kontakt-firmen">{(firmaNeu.trim() ? firmen.filter(f => suchPasst([f.name, f.domain], firmaNeu)) : firmen).map(f => <option key={f.id} value={f.name} />)}</datalist>
             <Fuss>
               <Knopf aus={!firmaNeu.trim()} onClick={() => void firmaVerknuepfen(api, k, firmaNeu, setze).then(() => setFirmaNeu(null))}>{firmen.some(f => f.name.toLowerCase() === firmaNeu.trim().toLowerCase()) ? 'Verknüpfen' : firmaNeu.trim() ? 'Anlegen und verknüpfen' : 'Verknüpfen'}</Knopf>
               <Knopf leise onClick={() => setFirmaNeu(null)}>Abbrechen</Knopf>
@@ -428,7 +434,7 @@ export function KontaktRechts({ k, api, heute, setze, klappen, zuFirma, zuAufgab
       </Klappe>
 
       <Klappe id="r-deals" i={2} klein titel={`Deals${deals.length ? ` · ${offeneDeals ? `${offeneDeals} offen` : deals.length}` : ''}`} zu={klappen.istZu('r-deals')} umschalten={klappen.umschalten}
-        rechts={!dealNeu ? plus('Hinzufügen', () => setDealNeu(true)) : undefined}>
+        rechts={!dealNeu ? <span style={{ display: 'inline-flex', gap: 10 }}><Link href={angebotLink({ kontaktId: k.id, firmaId: k.firmaId })} style={{ ...leiseKnopf, textDecoration: 'none' }}>Angebot erstellen</Link>{plus('Hinzufügen', () => setDealNeu(true))}</span> : undefined}>
         {dealNeu && <div style={{ marginBottom: 10 }}><DealAnlegen api={api} kontaktId={k.id} onFertig={() => setDealNeu(false)} onAbbruch={() => setDealNeu(false)} /></div>}
         {deals.slice(0, 8).map(c => {
           const offen = OFFENE_STUFEN.includes(c.stufe);

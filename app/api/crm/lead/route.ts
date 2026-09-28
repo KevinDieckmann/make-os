@@ -31,6 +31,7 @@ export const dynamic = 'force-dynamic';
 
 const neueId = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 const tagOk = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
+import { angenommenZuDeal, mandatVorbelegung } from '@/lib/crm/angebote';
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
@@ -78,6 +79,14 @@ export async function POST(req: Request) {
       health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: ['Vertrag unterschreiben lassen', 'Kickoff-Termin festlegen'],
       quelle: `aus Deal „${c.titel}“`, zustaendig: c.besitzer, geaendert: jetzt, geaendertVon: person,
     };
+    // Angebots-Tool (28.09.): gibt es ein angenommenes Angebot zum Deal, belegt es Honorar, Laufzeit, Produkt,
+    // Gesellschaft, USt, Zahlungsziel und Leistungen vor — derselbe Weg, nur mit besseren Startwerten.
+    const angebot = angenommenZuDeal(crm.angebote, c.id);
+    if (angebot) {
+      const v = mandatVorbelegung(angebot);
+      Object.assign(m, v, { quelle: `aus Angebot ${angebot.nummer ?? ''} (Deal „${c.titel}“)`.replace('  ', ' ') });
+      if (!v.titel) m.titel = c.titel;
+    }
     const ids = new Set(c.kontaktIds);
     let schonDa = false;
     await aendereCrm(x => {

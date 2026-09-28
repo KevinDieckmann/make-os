@@ -25,6 +25,8 @@ import { firmaVonDeal } from '@/lib/crm/firmen-bezug';
 import { mitglied } from '@/lib/crm/team';
 import { WEG } from '@/lib/wege';
 import type { DealRolle } from '@/lib/crm/typen';
+import { angebotLink } from '@/lib/crm/adresse';
+import { angeboteZu, ANGEBOT_STATUS_LABEL } from '@/lib/crm/angebote';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 /** Rollen am Deal — „Bremst“ steht im Menü, wird aber nie vorgeschlagen (lib/crm/vorschlaege.ts). */
@@ -106,6 +108,13 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{c.wert.betrag ? euro(gesamtwert(c)) : '—'}</div>
             <div style={{ fontSize: 12, color: C.inkLeise }}>{c.wert.betrag ? `${euro(c.wert.betrag)} ${c.wert.basis === 'monat' ? 'je Monat' : c.wert.basis === 'jahr' ? 'je Jahr' : 'einmalig'}${c.wert.laufzeitMonate ? ` · ${c.wert.laufzeitMonate} Monate` : ''}` : 'ohne Wert'}</div>
+            {/* Angebots-Tool (28.09.): vorbelegt mit Deal, Firma und erster Person. */}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap', marginTop: 8 }}>
+              {angeboteZu(crm.stand.angebote, { dealId: c.id }).slice(0, 3).map(x => (
+                <Link key={x.id} href={angebotLink({ angebotId: x.id })} style={{ fontSize: 12, color: C.inkDim, textDecoration: 'none' }}>{x.nummer ?? 'Entwurf'} · {ANGEBOT_STATUS_LABEL[x.status]} ›</Link>
+              ))}
+              <Link href={angebotLink({ dealId: c.id, kontaktId: c.kontaktIds[0], firmaId: c.firmaId })} style={{ fontSize: 12.5, fontWeight: 700, color: LEUCHT.gut, textDecoration: 'none', border: `1px solid ${LEUCHT.gut}80`, background: `${LEUCHT.gut}24`, borderRadius: 10, padding: '6px 11px' }}>Angebot erstellen</Link>
+            </div>
           </div>
         </div>
         {/* Stufen-Treppe: wo der Deal steht und was für den nächsten Schritt auf Kundenseite passieren muss */}
@@ -133,7 +142,7 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
           </Karte>
           <Karte i={3}>
             <Ueberschrift rechts={`${aktivitaeten.length}`}>Aktivitäten der Beteiligten</Ueberschrift>
-            {aktivitaeten.length ? <AktivitaetenVerlauf liste={aktivitaeten} name={p => mitglied(p)?.name ?? p} heute={crm.heute} max={40} /> : <Leer>Noch keine Aktivität festgehalten — über „+ Gespräch“ oben oder ein Follow-up.</Leer>}
+            {aktivitaeten.length ? <AktivitaetenVerlauf liste={aktivitaeten} name={p => mitglied(p)?.name ?? p} heute={crm.heute} max={40} /> : <Leer>Noch keine Aktivität festgehalten — über „+ Aktivität hinzufügen“ oben oder ein Follow-up.</Leer>}
           </Karte>
         </div>
         <div style={{ display: 'grid', gap: 14 }}>

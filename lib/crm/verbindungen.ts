@@ -61,9 +61,9 @@ export interface VerbindungsBestaende {
 // ── Befunde ─────────────────────────────────────────────────────────────────
 
 export type Schwere = 'fehler' | 'warnung' | 'hinweis';
-export type VerbindungsBereich = 'kennungen' | 'kontakte' | 'firmen' | 'deals' | 'mandate' | 'rechnungen' | 'followup' | 'events' | 'marketing' | 'datenschutz' | 'aufgaben' | 'zeit' | 'dateien' | 'import';
+export type VerbindungsBereich = 'kennungen' | 'kontakte' | 'firmen' | 'deals' | 'mandate' | 'rechnungen' | 'followup' | 'events' | 'marketing' | 'datenschutz' | 'aufgaben' | 'zeit' | 'dateien' | 'import' | 'angebote';
 /** Wofür die Beispiel-Kennungen stehen — die Oberfläche macht daraus Links. */
-export type BeispielArt = 'kontakt' | 'firma' | 'deal' | 'mandat' | 'rechnung' | 'followup' | 'event' | 'kampagne' | 'beitrag' | 'newsletter' | 'segment' | 'antrag' | 'aufgabe' | 'datei' | 'kennung';
+export type BeispielArt = 'kontakt' | 'firma' | 'deal' | 'mandat' | 'rechnung' | 'followup' | 'event' | 'kampagne' | 'beitrag' | 'newsletter' | 'segment' | 'antrag' | 'aufgabe' | 'datei' | 'kennung' | 'angebot' | 'produkt';
 
 export interface VerbindungsBefund {
   id: string;
@@ -143,6 +143,11 @@ export const PRUEFUNGEN = {
   'datei-fehlt': { schwere: 'fehler', bereich: 'dateien', reparierbar: true, art: 'datei', text: n => `${n} ${e(n, 'Eintrag der Dateiablage hat', 'Einträge der Dateiablage haben')} keine Datei mehr auf der Platte — Reparieren markiert sie.` },
   'datei-fehlt-markiert': { schwere: 'hinweis', bereich: 'dateien', reparierbar: false, art: 'datei', text: n => `${n} ${e(n, 'Eintrag ist', 'Einträge sind')} als „Datei fehlt“ markiert — neu hochladen oder den Eintrag entfernen.` },
   'datei-ohne-eintrag': { schwere: 'warnung', bereich: 'dateien', reparierbar: false, art: 'kennung', text: n => `${n} ${e(n, 'Datei liegt', 'Dateien liegen')} ohne Eintrag in der Ablage — niemand findet sie.` },
+  // Angebote (28.09., Angebots-Tool)
+  'angebot-verweis-tot': { schwere: 'fehler', bereich: 'angebote', reparierbar: false, art: 'angebot', text: n => `${n} ${e(n, 'Angebot zeigt', 'Angebote zeigen')} auf eine Person, Firma, einen Deal, ein Mandat oder eine Vorversion, die es nicht mehr gibt.` },
+  'angebot-produkt-tot': { schwere: 'hinweis', bereich: 'angebote', reparierbar: false, art: 'angebot', text: n => `${n} ${e(n, 'Angebot hat eine Position', 'Angebote haben Positionen')} aus einem Produkt, das es nicht mehr gibt — Text und Preis stehen im Angebot, es bleibt lesbar.` },
+  'angebot-ohne-pdf': { schwere: 'fehler', bereich: 'angebote', reparierbar: false, art: 'angebot', text: n => `${n} ${e(n, 'gestelltes Angebot hat', 'gestellte Angebote haben')} kein PDF (oder es fehlt in der Dateiablage).` },
+  'produkt-ohne-angebotstext': { schwere: 'hinweis', bereich: 'angebote', reparierbar: false, art: 'produkt', text: n => `${n} ${e(n, 'aktives Produkt hat', 'aktive Produkte haben')} noch keinen Leistungstext — im Angebots-Tool als „Text fehlt“ markiert (Produkte & Mandate › Produkte).` },
   'konflikt-veraltet': { schwere: 'warnung', bereich: 'import', reparierbar: true, art: 'kennung', text: n => `Import-Konflikte gelten ${n} ${e(n, 'Person', 'Personen')}, die es nicht mehr gibt — Reparieren räumt sie ab.` },
 } as const satisfies Record<string, Pruefung>;
 
@@ -178,6 +183,7 @@ function mengen(b: VerbindungsBestaende) {
     events: new Set(liste(crm.events).map(x => x.id)),
     segmente: new Set(liste(crm.segmente).map(s => s.id)),
     beitraege: new Set(liste(crm.beitraege).map(x => x.id)),
+    angebote: new Set(liste(crm.angebote).map(x => x.id)),
   };
 }
 type Mengen = ReturnType<typeof mengen>;
@@ -384,13 +390,22 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
     const rechnungIds = rechnungen ? new Set(rechnungen.map(r => r.id)) : null;
     for (const d of eintraege) {
       const tot = (d.kontaktId && !m.kontakte.has(d.kontaktId)) || (d.firmaId && !m.firmen.has(d.firmaId)) || (d.mandatId && !m.mandate.has(d.mandatId))
-        || (d.dealId && !m.chancen.has(d.dealId)) || (d.rechnungId && rechnungIds && !rechnungIds.has(d.rechnungId));
+        || (d.dealId && !m.chancen.has(d.dealId)) || (d.rechnungId && rechnungIds && !rechnungIds.has(d.rechnungId)) || (d.angebotId && !m.angebote.has(d.angebotId));
       if (tot) melde('datei-verweis-tot', d.id);
       if (d.datei && !platte.has(d.id)) melde(d.dateiFehlt ? 'datei-fehlt-markiert' : 'datei-fehlt', d.id);
     }
     const mitEintrag = new Set(eintraege.map(d => d.id));
     for (const id of Array.from(platte)) if (!mitEintrag.has(id)) melde('datei-ohne-eintrag', id);
   }
+
+  // Angebote (28.09.): tote Verweise, Positionen aus gelöschten Produkten, gestellte ohne PDF; Produkte ohne Leistungstext.
+  const pdfIds = b.dateien ? new Set(liste(b.dateien.eintraege).map(d => d.id)) : null;
+  for (const a of liste(crm.angebote)) {
+    if ((a.kontaktId && !m.kontakte.has(a.kontaktId)) || (a.firmaId && !m.firmen.has(a.firmaId)) || (a.dealId && !m.chancen.has(a.dealId)) || (a.mandatId && !m.mandate.has(a.mandatId)) || (a.vorgaengerId && !m.angebote.has(a.vorgaengerId))) melde('angebot-verweis-tot', a.id);
+    if (liste(a.positionen).some(p => p.leistungId && !m.leistungen.has(p.leistungId))) melde('angebot-produkt-tot', a.id);
+    if (a.status !== 'entwurf' && (!a.pdfDateiId || (pdfIds && !pdfIds.has(a.pdfDateiId)))) melde('angebot-ohne-pdf', a.id);
+  }
+  for (const l of liste(crm.leistungen)) if (l.status === 'aktiv' && !l.angebot?.leistungstext?.trim()) melde('produkt-ohne-angebotstext', l.id);
 
   // Import-Konflikte
   if (b.konflikte) {

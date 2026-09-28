@@ -25,7 +25,7 @@ import path from 'path';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { datenOrdner, datenSchluessel, loadJson, updateJson } from '@/lib/store/local-db';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
-import { DATEI_ID, MAX_EINTRAEGE, hatBezug, istBeleg, metaSaeubern, type DateiEintrag, type DateiInfo, type DateiTyp } from './regeln';
+import { DATEI_ID, MAX_EINTRAEGE, hatBezug, istBeleg, metaSaeubern, type DateiEintrag, type DateiInfo, type DateiTyp, type FesteBezuege } from './regeln';
 
 const MAGIE = Buffer.from('MKOSDAT1', 'ascii');
 
@@ -86,8 +86,9 @@ export interface NeueDatei { bytes: Buffer; name: string; typ: DateiTyp }
  * Ablegen: erst die Datei (verschlüsselt, tmp + rename), dann der Eintrag. Scheitert
  * der Eintrag, wird die Datei wieder entfernt — keine verwaisten Inhalte.
  */
-export async function ablegen(haushalt: string, person: string, metaRoh: unknown, datei: NeueDatei | null, jetzt = new Date().toISOString()): Promise<DateiEintrag> {
-  const meta = metaSaeubern(metaRoh);
+export async function ablegen(haushalt: string, person: string, metaRoh: unknown, datei: NeueDatei | null, jetzt = new Date().toISOString(), feste: FesteBezuege = {}): Promise<DateiEintrag> {
+  // Feste Bezüge (Angebots-PDF, Logo einer Gesellschaft) kommen nur vom Server-Aufrufer, nie aus dem Netz.
+  const meta = { ...metaSaeubern(metaRoh), ...(feste.angebotId && /^[a-z0-9][a-z0-9-]{1,63}$/.test(feste.angebotId) ? { angebotId: feste.angebotId } : {}), ...(feste.gesellschaft ? { gesellschaft: feste.gesellschaft } : {}) };
   if (!meta.art) throw new AblageFehler('Art fehlt (vertrag, angebot, rechnung, sonstig).', 400);
   if (!hatBezug(meta)) throw new AblageFehler('Bezug fehlt (Kontakt, Firma, Mandat, Deal oder Rechnung).', 400);
   if (!datei && meta.art !== 'angebot') throw new AblageFehler('Datei fehlt.', 400);
@@ -130,7 +131,8 @@ export async function aendern(haushalt: string, person: string, id: string, feld
       eintraege: l.map(e => {
         if (e.id !== id) return e;
         const roh = { ...e, ...(felder && typeof felder === 'object' ? felder as Record<string, unknown> : {}), art: e.art };
-        const m = metaSaeubern(roh);
+        // Feste Bezüge (Angebot, Gesellschaft) bleiben, wie der Server sie setzte — ein PATCH ändert sie nie.
+        const m = { ...metaSaeubern(roh), ...(e.angebotId ? { angebotId: e.angebotId } : {}), ...(e.gesellschaft ? { gesellschaft: e.gesellschaft } : {}) };
         if (!hatBezug(m)) { ohneBezug = true; return e; }
         neu = { id: e.id, ...m, art: e.art, ...(e.datei ? { datei: e.datei } : {}), hochgeladenAm: e.hochgeladenAm, hochgeladenVon: e.hochgeladenVon, ...(e.dateiFehlt ? { dateiFehlt: e.dateiFehlt } : {}), geaendert: jetzt, geaendertVon: person };
         return neu;
@@ -167,7 +169,7 @@ export async function entfernen(haushalt: string, id: string): Promise<boolean> 
     if (e && istBeleg(e)) { beleg = true; return cur ?? { eintraege: l }; }
     return { eintraege: l.filter(x => x.id !== id) };
   });
-  if (beleg) throw new AblageFehler('Der Eintrag hängt an einer Rechnung oder einem Mandat und wird nicht gelöscht — erst vom Bezug lösen.', 409);
+  if (beleg) throw new AblageFehler('Der Eintrag hängt an einer Rechnung, einem Mandat oder einem gestellten Angebot und wird nicht gelöscht — Rechnung/Mandat erst vom Bezug lösen; Angebots-PDFs sind Geschäftsunterlagen.', 409);
   await fs.unlink(dateiPfad(haushalt, id)).catch(() => {});
   return gab;
 }

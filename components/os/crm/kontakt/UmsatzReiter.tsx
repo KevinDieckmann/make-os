@@ -28,6 +28,9 @@ import { ZAHLUNGSWEGE, ZAHLUNGSWEG_LABEL, ibanGueltig, ibanMaskiert, zahlungsQue
 import { ANNEHMEN, MAX_DATEI_BYTES, VERTRAGSARTEN, ANGEBOT_STATUS, groesseText, istBeleg, type DateiEintrag, type DateiArt, type Vertragsart, type AngebotStatus } from '@/lib/dateien/regeln';
 import { einheitAusGesellschaft } from '@/lib/einheiten';
 import { inGruppe } from '@/lib/crm/konzern';
+import Link from 'next/link';
+import { angebotLink } from '@/lib/crm/adresse';
+import { angeboteZu, ANGEBOT_STATUS_LABEL } from '@/lib/crm/angebote';
 
 export interface UmsatzReiterProps {
   k: Kontakt;
@@ -190,7 +193,9 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
   const rechnungen = bezug.rechnungen;
   const offen = rechnungen.filter(z => z.r.status === 'gestellt');
   const bezahlt = rechnungen.filter(z => z.r.status === 'bezahlt');
-  const angebote = angeboteListe(bezug, ablage ?? []);
+  // Angebote (28.09.): aus dem Angebots-Tool (crm.angebote) + Altbestand (Finanzplan, Deals, Ablage) — lesbar wie bisher.
+  const angebote = angeboteListe(bezug, ablage ?? [], angeboteZu(api.crm?.stand.angebote, { kontaktId: k.id, firmaId: bezug.firma?.id }));
+  const offenZahl = angebote.filter(a => (a.quelle === 'tool' ? a.toolStatus === 'gestellt' : a.status === 'offen')).length;
   const vertraege = (ablage ?? []).filter(e => e.art === 'vertrag');
   const rechnungsPdf = new Map((ablage ?? []).filter(e => e.art === 'rechnung' && e.rechnungId).map(e => [e.rechnungId!, e]));
   const zahlung = zahlungsQuelle(k, bezug.firma) === 'firma' ? bezug.firma?.zahlung : k.zahlung;
@@ -269,9 +274,10 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
         })}
       </KachelKarte>
 
-      <KachelKarte id="angebote" i={3} titel="Angebote" farbe={LEUCHT.business} kurz={angebote.length ? `${angebote.filter(a => a.status === 'offen').length} offen · ${angebote.length} gesamt` : undefined} zu={zu.has('angebote')} umschalten={umschalten}>
+      <KachelKarte id="angebote" i={3} titel="Angebote" farbe={LEUCHT.business} kurz={angebote.length ? `${offenZahl} offen · ${angebote.length} gesamt` : undefined} zu={zu.has('angebote')} umschalten={umschalten}
+        rechts={<Link href={angebotLink({ kontaktId: k.id, firmaId: bezug.firma?.id })} style={leiseLink}>+ Angebot</Link>}>
         <AngebotNeu bezugListe={bezugListe} bezugFelder={bezugFelder} heute={heute} onFertig={ablageLaden} setMeldung={setMeldung} />
-        {!angebote.length ? <Leer>Noch kein Angebot — weder im Finanzplan noch an einem Deal in der Stufe Angebot.</Leer> : angebote.map(a => (
+        {!angebote.length ? <Leer>Noch kein Angebot — „+ Angebot“ oben rechts öffnet das Angebots-Tool.</Leer> : angebote.map(a => (
           <AngebotZeileAnsicht key={a.schluessel} a={a} heute={heute} zuDeal={zuDeal} aendern={eintragAendern} loeschen={eintragLoeschen}
             alsRechnung={plan === null || typeof plan !== 'object' ? undefined : async () => {
               const e = a.eintrag!;
@@ -452,7 +458,7 @@ function AngebotNeu({ bezugListe, bezugFelder, heute, onFertig, setMeldung }: { 
   const leer = { nummer: '', titel: '', datum: heute, betrag: '', bezug: null as string | null };
   const [f, setF] = useState(leer);
   const [laeuft, setLaeuft] = useState(false);
-  if (!offen) return <div style={{ marginBottom: 6 }}><button onClick={() => setOffen(true)} style={leiseLink}>+ Angebot</button></div>;
+  if (!offen) return <div style={{ marginBottom: 6 }}><button onClick={() => setOffen(true)} style={{ ...leiseLink, color: C.inkLeise, fontWeight: 500 }}>+ Angebot ablegen (Datei, Altbestand)</button></div>;
   async function los() {
     setLaeuft(true);
     const r = await hochladen({ art: 'angebot' satisfies DateiArt, titel: f.titel || undefined, angebot: { nummer: f.nummer || undefined, datum: f.datum || undefined, betrag: f.betrag === '' ? undefined : Number(f.betrag.replace(',', '.')), status: 'offen' }, ...bezugFelder(f.bezug) }, datei);
@@ -475,6 +481,16 @@ function AngebotNeu({ bezugListe, bezugFelder, heute, onFertig, setMeldung }: { 
 
 function AngebotZeileAnsicht({ a, heute, zuDeal, aendern, loeschen, alsRechnung }: { a: AngebotZeile; heute: string; zuDeal?: (id: string) => void; aendern: (id: string, felder: Record<string, unknown>) => Promise<void>; loeschen: (e: DateiEintrag) => Promise<void>; alsRechnung?: () => Promise<void> }) {
   const e = a.eintrag;
+  // Aus dem Angebots-Tool (28.09.): Status des Tools, öffnen im Tool (dort annehmen/ablehnen/neue Version).
+  if (a.quelle === 'tool' && a.angebot) {
+    const st = a.toolStatus ?? a.angebot.status;
+    const farbe = st === 'gestellt' ? LEUCHT.achtung : st === 'angenommen' ? LEUCHT.gut : st === 'entwurf' ? C.inkDim : C.inkLeise;
+    return (
+      <ZeileKlein titel={<>{a.nummer ? `${a.nummer} · ` : ''}{a.titel}</>}
+        unter={[a.datum ? datum(a.datum, heute) : null, a.betrag != null ? `${euro(a.betrag)} Gesamtwert` : null, `bis ${datum(a.angebot.gueltigBis)}`].filter(Boolean).join(' · ')}
+        rechts={<><Chip farbe={farbe}>{ANGEBOT_STATUS_LABEL[st]}</Chip><Link href={angebotLink({ angebotId: a.angebot.id })} style={leiseLink}>öffnen ›</Link>{a.dealId && zuDeal && <button onClick={() => zuDeal(a.dealId!)} style={leiseLink}>Deal ›</button>}</>} />
+    );
+  }
   const quelle = a.quelle === 'deal' ? 'aus dem Deal' : a.quelle === 'rechnung' ? 'im Finanzplan' : e?.datei ? 'abgelegt' : 'erfasst';
   return (
     <ZeileKlein

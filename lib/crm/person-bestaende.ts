@@ -83,7 +83,7 @@ const nenntNamen = (wert: unknown, name: string | null) => !!name && nameMuster(
 // ── Dateiablage ──
 
 /** Hat der Eintrag außer der Person noch einen geschäftlichen Bezug? */
-const andererBezug = (e: DateiEintrag) => !!(e.firmaId || e.mandatId || e.dealId || e.rechnungId);
+const andererBezug = (e: DateiEintrag) => !!(e.firmaId || e.mandatId || e.dealId || e.rechnungId || e.angebotId); // Angebots-PDF (28.09.) = Geschäftsunterlage
 
 /**
  * Art. 17 in der Ablage: Einträge NUR mit Personenbezug fallen weg (samt Datei); Einträge, die zugleich an

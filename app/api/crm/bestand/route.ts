@@ -25,6 +25,7 @@ import { crmMitStand, type CrmKonflikt, type VerweisKontext } from '@/lib/crm/cr
 import { zahlungMaskiert } from '@/lib/crm/zahlung';
 import { opsFehler } from '@/lib/store/patch-liste';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
+import { ablaufNachziehen } from '@/lib/crm/angebot-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -62,6 +63,8 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const person = personAus(req);
   // Alles, woraus die Antwort entsteht: die vier Speicher, der Tag (Ampeln, Prognose) und wer fragt.
+  // Angebote (28.09.): gestellte nach „gültig bis“ → abgelaufen, bevor der Stand gerechnet wird (schreibt nur bei Bedarf).
+  await ablaufNachziehen();
   const etag = etagAus('b3', await speicherStand(['crm', 'kontakte', 'finanzplan', 'crm-signale']), localDay(), person);
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
@@ -89,6 +92,8 @@ export async function PATCH(req: Request) {
   if (e.konflikte.length) return NextResponse.json({ ok: false, fehler: 'Wurde inzwischen geändert — neu geladen, bitte noch einmal.', konflikte: e.konflikte.map(konfliktOhneIban) }, { status: 409 });
   if (e.sperren.length) return NextResponse.json({ ok: false, fehler: e.sperren.map(s => s.text).join(' · '), sperren: e.sperren }, { status: 409 });
   if (e.grenze.length) return NextResponse.json({ ok: false, fehler: e.grenze.join(' · ') }, { status: 413 });
+  // Regeln (28.09.): Angebote nur übers Tool, Produkt ohne Leistungstext nicht „aktiv“ — ganze Änderung abgelehnt.
+  if (e.abgelehnt?.length) return NextResponse.json({ ok: false, fehler: e.abgelehnt.join(' · '), abgelehnt: e.abgelehnt }, { status: 409 });
   // Abgelehnte Stufenwechsel (Regeln, 27.09.) kommen als `fehler` mit — der Stand ist trotzdem der aktuelle.
   return jsonAntwort(req, { ...(await antwort(b, person)), angewandt: e.angewandt, fehler: e.fehler });
 }

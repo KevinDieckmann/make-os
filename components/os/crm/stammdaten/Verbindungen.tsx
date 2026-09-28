@@ -39,6 +39,8 @@ function ziel(art: BeispielArt | undefined, id: string): string | null {
     case 'aufgabe': return WEG.aufgabe(id);
     case 'antrag': return WEG.stammdaten('datenschutz');
     case 'followup': return WEG.followup();
+    case 'angebot': return WEG.angebot({ angebotId: id });
+    case 'produkt': return WEG.produkt(id);
     default: return null;
   }
 }

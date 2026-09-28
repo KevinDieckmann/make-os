@@ -3,7 +3,7 @@
 // Zu zweit werden nur Einzeländerungen geschrieben (lib/sync.ts); jede Liste
 // hat einen eigenen Säuberer, damit nur durchkommt, was das Modell kennt.
 
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
 import { protokolliere, bestandDiff, type Aenderung, type Wer } from '@/lib/store/aenderungsprotokoll';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { STUFEN, wechsleStufe, erwartetVerschiebung } from './pipeline';
@@ -19,12 +19,13 @@ import { zahlungSaeubern, zahlungZusammenfuehren } from './zahlung';
 import { LIFECYCLE_PHASEN } from './lifecycle';
 import { BEAN_IDS, istBean } from './bean';
 import { mutterPruefen } from './konzern';
+import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEBOT_GRENZEN } from './angebote';
 import type { Temperatur } from './typen';
 
 const TEMPERATUREN: readonly Temperatur[] = ['kalt', 'lau', 'warm', 'heiss'];
 
 export const CRM_SPEICHER = 'crm';
-export const leererBestand = (): CrmBestand => ({ firmen: [], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [], segmente: [], beitraege: [], newsletter: [], kampagnen: [], followups: [] });
+export const leererBestand = (): CrmBestand => ({ firmen: [], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [], segmente: [], beitraege: [], newsletter: [], kampagnen: [], followups: [], angebote: [] });
 
 export async function ladeCrm(): Promise<CrmBestand> {
   const roh = { ...leererBestand(), ...((await loadJson<CrmBestand>(CRM_SPEICHER)) ?? {}) };
@@ -77,6 +78,7 @@ export const LISTEN_GRENZEN: Partial<Record<CrmListe, Record<string, number>>> =
   beitraege: { wirkung: 20000, quellen: 1000 },
   newsletter: { beitragIds: GRENZE_IDS },
   kampagnen: { schritte: 1000, kontaktIds: 20000, ergebnisse: 100000 },
+  angebote: { positionen: ANGEBOT_GRENZEN.positionen },
 };
 const grenzeVon = (liste: CrmListe, feld: string) => LISTEN_GRENZEN[liste]?.[feld] ?? GRENZE_IDS;
 
@@ -165,6 +167,8 @@ function leistung(o: Record<string, unknown>, jetzt: string): Leistung | null {
     ...(opt(o.quelle, 600) ? { quelle: opt(o.quelle, 600) } : {}),
     ...(opt(o.linie, 80) ? { linie: opt(o.linie, 80) } : {}),
     ...(Array.isArray(o.phasen) && o.phasen.length ? { phasen: (o.phasen as Record<string, unknown>[]).slice(0, grenzeVon('leistungen', 'phasen')).map((x, i) => ({ id: txt(x.id, 40) || `p${i}`, name: txt(x.name, 80), ...(zahl(x.dauerTage, 0, 730) ? { dauerTage: zahl(x.dauerTage, 0, 730) } : {}), ...(opt(x.beschreibung, 400) ? { beschreibung: opt(x.beschreibung, 400) } : {}) })).filter(x => x.name) } : {}),
+    // Angebotstexte (28.09.): Leistungstext ist Pflicht für „aktiv“ — die Regel prüft `regelnAbgelehnt`.
+    ...(leistungAngebotSaeubern(o.angebot) ? { angebot: leistungAngebotSaeubern(o.angebot) } : {}),
     ...(Array.isArray(o.unterlagen) && o.unterlagen.length ? { unterlagen: (o.unterlagen as Record<string, unknown>[]).slice(0, grenzeVon('leistungen', 'unterlagen')).map((x, i) => ({ id: txt(x.id, 40) || `u${i}`, titel: txt(x.titel, 120), art: aus(x.art, ['angebot', 'vertrag', 'deck', 'onepager', 'sonstiges'] as const, 'sonstiges'), ...(unterlageLink(x.url) ? { url: unterlageLink(x.url)! } : {}) })).filter(x => x.titel) } : {}),
     geaendert: jetzt,
   };
@@ -397,7 +401,33 @@ function saeubernRoh(liste: CrmListe, roh: Record<string, unknown>, jetzt: strin
     case 'teilnahmen': return teilnahme(roh, jetzt) as unknown as Record<string, unknown>;
     case 'sitzungen': return sitzung(roh, person) as unknown as Record<string, unknown>;
     case 'followups': return followup(roh, jetzt, person) as unknown as Record<string, unknown>;
+    // Angebote (28.09.) schreibt nur /api/crm/angebot (lib/crm/angebot-server.ts) — hier nur die Form halten.
+    case 'angebote': return angebotAusSpeicher(roh) as unknown as Record<string, unknown>;
   }
+}
+
+/**
+ * Regeln, die eine GANZE Änderung ablehnen (409, 28.09.):
+ *  · Angebote nur über /api/crm/angebot — Entwurf, Stellen (Nummer, PDF), Annahme, Ablehnung, Version.
+ *  · Ein Produkt geht erst mit Leistungstext (Angebotstexte) auf „aktiv“; ein aktives verliert ihn nicht.
+ *    Bestehende aktive Produkte ohne Text bleiben aktiv (das Tool markiert „Text fehlt“).
+ */
+export function regelnAbgelehnt(b: CrmBestand, ops: ListenOp[]): string[] {
+  const raus: string[] = [];
+  for (const o of ops) {
+    if (o.liste === 'angebote') { raus.push('Angebote werden nur im Angebots-Tool geändert (/api/crm/angebot).'); continue; }
+    if (o.liste !== 'leistungen' || o.op === 'delete') continue;
+    const id = String(o.op === 'teil' ? o.id : (o.eintrag as { id?: unknown } | undefined)?.id ?? '');
+    const alt = b.leistungen.find(l => l.id === id);
+    const roh = ((o.op === 'teil' ? o.felder : o.eintrag) ?? {}) as Record<string, unknown>;
+    const status = 'status' in roh ? String(roh.status) : alt?.status;
+    const angebot = 'angebot' in roh ? leistungAngebotSaeubern(roh.angebot) : alt?.angebot;
+    const name = String(roh.name ?? alt?.name ?? id);
+    const fehlt = produktAngebotFehlt({ angebot });
+    if (status === 'aktiv' && alt?.status !== 'aktiv' && fehlt.length) raus.push(`„${name}“ kann erst aktiv gehen, wenn die Angebotstexte stehen — für Angebote fehlt: ${fehlt.join(', ')}.`);
+    else if (status === 'aktiv' && alt?.status === 'aktiv' && !produktAngebotFehlt(alt).length && fehlt.length) raus.push(`„${name}“ ist aktiv — der Leistungstext bleibt Pflicht. Erst auf Entwurf stellen, dann leeren.`);
+  }
+  return raus;
 }
 
 /**
@@ -462,6 +492,8 @@ export interface CrmAnwendung {
   sperren: LoeschSperre[];
   /** 413 (28.09., K4): über eine Grenze (Deal-Historie) — die GANZE Änderung ist abgelehnt. */
   grenze: string[];
+  /** 409 (28.09.): gegen eine Regel (Angebote nur übers Tool, Produkt ohne Leistungstext nicht aktiv) — die GANZE Änderung ist abgelehnt. */
+  abgelehnt?: string[];
 }
 
 export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person: string, kontext?: VerweisKontext): CrmAnwendung {
@@ -474,6 +506,8 @@ export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person
   // Nie abschneiden (28.09.): zu lange Listen → die ganze Änderung wird abgelehnt (413).
   const zuLang = crmGrenzen(roh);
   if (zuLang.length) return { bestand: b, angewandt: 0, fehler: [], konflikte: [], sperren: [], grenze: zuLang };
+  const abgelehnt = regelnAbgelehnt(b, roh);
+  if (abgelehnt.length) return { bestand: b, angewandt: 0, fehler: [], konflikte: [], sperren: [], grenze: [], abgelehnt };
   const { ops: regelOps, fehler, grenze } = dealRegeln(b, roh, jetzt, person);
   if (grenze.length) return { bestand: b, angewandt: 0, fehler, konflikte: [], sperren: [], grenze };
   const ops = firmenZusammenfuehren(b, ibanSchuetzen(b, regelOps));
@@ -536,6 +570,18 @@ export async function aendereCrm(mut: (b: CrmBestand) => CrmBestand, protokollWe
   let aenderungen: Aenderung[] = [];
   // Die nachgetragenen Firmen-Kennungen (ladeCrm) werden hier mit der nächsten Schreibung dauerhaft (Prüfbericht 27.09., Punkt 11).
   const fertig = await updateJson<CrmBestand>(CRM_SPEICHER, cur => { const neu = mut(firmaIdsErgaenzen({ ...leererBestand(), ...(cur ?? {}) }).bestand); aenderungen = bestandDiff(cur as unknown as Record<string, unknown>, neu as unknown as Record<string, unknown>); return neu; });
+  await protokolliere(CRM_SPEICHER, aenderungen, protokollWer);
+  return fertig;
+}
+
+/**
+ * Wie `aendereCrm`, aber die Änderung darf warten (28.09., Angebot stellen): PDF erzeugen und in der Dateiablage
+ * ablegen passiert IN der Sperre des CRM-Bestands (die Ablage ist ein anderer Bestand, `updateJsonAsync`-Regel) —
+ * so ist die Nummer lückenlos und parallel sicher. Wirft `mut`, wird nichts geschrieben.
+ */
+export async function aendereCrmAsync(mut: (b: CrmBestand) => Promise<CrmBestand>, protokollWer?: Wer): Promise<CrmBestand> {
+  let aenderungen: Aenderung[] = [];
+  const fertig = await updateJsonAsync<CrmBestand>(CRM_SPEICHER, async cur => { const neu = await mut(firmaIdsErgaenzen({ ...leererBestand(), ...(cur ?? {}) }).bestand); aenderungen = bestandDiff(cur as unknown as Record<string, unknown>, neu as unknown as Record<string, unknown>); return neu; });
   await protokolliere(CRM_SPEICHER, aenderungen, protokollWer);
   return fertig;
 }

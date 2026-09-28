@@ -158,7 +158,87 @@ export interface Leistung {
   /** Ablauf in Phasen — ein Mandat auf diesem Produkt steht in einer davon. */
   phasen?: ProduktPhase[];
   unterlagen?: Unterlage[];
+  /**
+   * Angebotstexte (28.09., Kevin: „Produkte brauchen Angebotstexte“) — daraus baut das Angebots-Tool die Position.
+   * Ein Produkt geht erst mit `leistungstext` auf „aktiv“ (Server 409, lib/crm/angebote.ts `produktAngebotFehlt`).
+   */
+  angebot?: LeistungAngebot;
   geaendert: string;
+}
+/** Texte eines Produkts für Angebote (28.09.) — `leistungstext` ist Pflicht, der Rest optional. */
+export interface LeistungAngebot { titel?: string; einleitung?: string; leistungstext: string; ergebnis?: string; hinweise?: string }
+
+// ── Angebote (28.09., Angebots-Tool) ─────────────────────────────────────
+// Ein Angebot je Gesellschaft (kdc · kdv · ug) mit Positionen in CENT. Entwurf frei änderbar;
+// „gestellt“ = festgeschrieben (Nummer lückenlos je Gesellschaft und Jahr, PDF + Prüfsumme in der
+// Dateiablage, Inhalt unveränderlich); Änderung nur als neue Version mit Bezug. Regeln: lib/crm/angebote.ts
+// (rein), Server: lib/crm/angebot-server.ts, Route /api/crm/angebot.
+export type AngebotsStatus = 'entwurf' | 'gestellt' | 'angenommen' | 'abgelehnt' | 'abgelaufen' | 'ersetzt';
+export type AngebotBasis = 'einmalig' | 'monat' | 'jahr';
+export interface AngebotPosition {
+  id: string;
+  /** Aus welchem Produkt die Position stammt (Text und Preis wurden beim Hinzufügen übernommen). */
+  leistungId?: string;
+  titel: string;
+  text: string;
+  menge: number;
+  /** z. B. „Stück“, „Monat“, „Tag“, „pauschal“. */
+  einheit: string;
+  /** Einzelpreis netto in Cent. */
+  einzelpreisCent: number;
+  rabattProzent?: number;
+  /** 19, 7 oder 0. */
+  ustSatz: number;
+  basis: AngebotBasis;
+  /** Nur bei monatlich/jährlich: Laufzeit, über die der Gesamtwert gerechnet wird. */
+  laufzeitMonate?: number;
+}
+/** Festgehaltener Absender beim Stellen (ohne IBAN im Klartext — die steht nur im PDF). */
+export interface AngebotAbsender { firmierung: string; zeilen: string[]; kontakt: string[]; fuss: string[]; kleinunternehmer: boolean }
+/** Festgehaltener Empfänger beim Stellen. */
+export interface AngebotEmpfaenger { name: string; firma?: string; zeilen: string[]; email?: string }
+export interface Angebot {
+  id: string;
+  /** Vergibt nur der Server beim Stellen (Nummernformat der Gesellschaft). */
+  nummer?: string;
+  /** Laufende Nummer je Gesellschaft und Jahr — Grundlage der lückenlosen Vergabe (nur Server). */
+  lauf?: { jahr: number; nr: number };
+  gesellschaft: import('@/lib/einheiten').Gesellschaftskennung;
+  /** Empfänger (Person) — beim Lösen des Personenbezugs (Art. 17) fällt er weg, das gestellte Angebot bleibt. */
+  kontaktId?: string;
+  firmaId?: string;
+  dealId?: string;
+  mandatId?: string;
+  titel: string;
+  positionen: AngebotPosition[];
+  einleitung: string;
+  schluss: string;
+  /** YYYY-MM-DD */
+  gueltigBis: string;
+  zahlungszielTage: number;
+  status: AngebotsStatus;
+  version: number;
+  vorgaengerId?: string;
+  /** Nachfolger (neue Version), wenn es eine gibt — setzt nur der Server. */
+  nachfolgerId?: string;
+  gestelltAm?: string;
+  gestelltVon?: string;
+  /** SHA-256 des PDFs (hex) — setzt nur der Server beim Stellen. */
+  pruefsumme?: string;
+  pdfDateiId?: string;
+  absender?: AngebotAbsender;
+  empfaenger?: AngebotEmpfaenger;
+  /** Grund bei „abgelehnt“ (Pflicht). */
+  grund?: string;
+  angenommenAm?: string;
+  abgelehntAm?: string;
+  abgelaufenAm?: string;
+  /** Personenbezug gelöst (Art. 17) — Tag. */
+  personGeloest?: string;
+  angelegt: string;
+  angelegtVon?: string;
+  geaendert: string;
+  geaendertVon?: string;
 }
 
 /** Zahlungsweg eines Kunden (28.09., Reiter „Umsatz“). */
@@ -462,6 +542,8 @@ export interface CrmBestand {
   kampagnen: Kampagne[];
   /** Follow-up-Ebene (27.09.). */
   followups: FollowUp[];
+  /** Angebote (28.09., Angebots-Tool) — geschrieben nur über /api/crm/angebot. */
+  angebote: Angebot[];
   marketing?: MarketingEinstellung;
   /** Pflegbare Wertelisten (27.09.). */
   wertelisten?: Wertelisten;
@@ -469,5 +551,5 @@ export interface CrmBestand {
   wahrscheinlichkeiten?: Partial<Record<ChancenStufe, number>>;
 }
 
-export const CRM_LISTEN = ['firmen', 'chancen', 'mandate', 'leistungen', 'events', 'teilnahmen', 'sitzungen', 'antraege', 'verarbeitungen', 'segmente', 'beitraege', 'newsletter', 'kampagnen', 'followups'] as const;
+export const CRM_LISTEN = ['firmen', 'chancen', 'mandate', 'leistungen', 'events', 'teilnahmen', 'sitzungen', 'antraege', 'verarbeitungen', 'segmente', 'beitraege', 'newsletter', 'kampagnen', 'followups', 'angebote'] as const;
 export type CrmListe = typeof CRM_LISTEN[number];

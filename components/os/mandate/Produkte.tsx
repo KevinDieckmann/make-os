@@ -29,6 +29,8 @@ import { Feldzeile, Pillen, Feld } from '../crm/teile';
 import { Wahl } from '../crm/Wahl';
 import { GESELLSCHAFT_WAHL } from '@/lib/crm/wahl';
 import { useLinkAuswahl } from '../Verlauf';
+import { produktAngebotFehlt } from '@/lib/crm/angebote';
+import { angebotLink } from '@/lib/crm/adresse';
 
 const STUFE: Record<Leistung['stufe'], string> = { einstieg: 'Einstieg', kern: 'Kern', premium: 'Premium' };
 const TYP_LABEL: Record<Leistung['typ'], string> = { diagnose: 'Diagnose', workshop: 'Workshop', retainer: 'Retainer', sprint: 'Sprint', vermittlung: 'Vermittlung', software: 'Software' };
@@ -84,7 +86,7 @@ export function Produkte({ api }: { api: CrmApi }) {
                 <div key={l.id}>
                   <Zeile onClick={() => setAuswahl(auswahl === l.id ? null : l.id)} aktiv={auswahl === l.id} links={<Punkt farbe={statusFarbe(l.status)} />}
                     titel={l.name} unter={[`${STUFE[l.stufe]} · ${preisText(l)}`, zahlen, planungFehlt(l).length ? `Planung: ${planungFehlt(l).join(', ')} fehlt` : ''].filter(Boolean).join(' · ')}
-                    rechts={<span style={{ display: 'flex', gap: 6 }}>{l.phasen?.length ? <Chip farbe={C.inkDim}>{l.phasen.length} Phasen</Chip> : null}<Chip farbe={statusFarbe(l.status)}>{l.status}</Chip></span>} />
+                    rechts={<span style={{ display: 'flex', gap: 6 }}>{l.phasen?.length ? <Chip farbe={C.inkDim}>{l.phasen.length} Phasen</Chip> : null}{l.status !== 'eingestellt' && produktAngebotFehlt(l).length ? <Chip farbe={LEUCHT.achtung}>Text fehlt</Chip> : null}<Chip farbe={statusFarbe(l.status)}>{l.status}</Chip></span>} />
                   {auswahl === l.id && <ProduktDetail l={l} api={api} />}
                 </div>
               );
@@ -113,6 +115,9 @@ function ProduktDetail({ l, api }: { l: Leistung; api: CrmApi }) {
   const unterlagen = l.unterlagen ?? [];
   const [neueU, setNeueU] = useState<{ titel: string; art: UnterlageArt; url: string }>({ titel: '', art: 'angebot', url: '' });
   const [fehler, setFehler] = useState<string | null>(null);
+  const [statusHinweis, setStatusHinweis] = useState(false);
+  const angebotFehlt = produktAngebotFehlt(l);
+  const angebotText = (f: 'titel' | 'einleitung' | 'leistungstext' | 'ergebnis' | 'hinweise', v: string) => setze({ angebot: { leistungstext: l.angebot?.leistungstext ?? '', ...(l.angebot ?? {}), [f]: v } });
   const setzePhasen = (neu: ProduktPhase[]) => setze({ phasen: neu });
   const verschiebe = (i: number, d: -1 | 1) => { const n = [...phasen]; const j = i + d; if (j < 0 || j >= n.length) return; [n[i], n[j]] = [n[j], n[i]]; setzePhasen(n); };
   const linkOk = (u: string) => /^https:\/\/\S+$/i.test(u) || /^\/os\/wissen\?n=\S+$/.test(u);
@@ -187,7 +192,14 @@ function ProduktDetail({ l, api }: { l: Leistung; api: CrmApi }) {
           <Link href="/os/finanzplan?u=planen" style={{ color: C.aktiv, fontSize: 12.5 }}>In der Finanzplanung verwenden ›</Link>
         </div>
       </Feldzeile>
-      <Feldzeile label="Status"><Pillen liste={[{ id: 'aktiv', label: 'aktiv' }, { id: 'entwurf', label: 'Entwurf' }, { id: 'eingestellt', label: 'eingestellt' }]} aktiv={l.status} onWahl={status => setze({ status })} /></Feldzeile>
+      <Feldzeile label="Status">
+        <div style={{ display: 'grid', gap: 4 }}>
+          {/* „aktiv“ (online) erst mit Leistungstext (28.09., Kevin) — der Server lehnt sonst mit 409 ab. */}
+          <Pillen liste={[{ id: 'aktiv', label: angebotFehlt.length && l.status !== 'aktiv' ? 'aktiv 🔒' : 'aktiv' }, { id: 'entwurf', label: 'Entwurf' }, { id: 'eingestellt', label: 'eingestellt' }]} aktiv={l.status}
+            onWahl={status => { if (status === 'aktiv' && l.status !== 'aktiv' && angebotFehlt.length) { setStatusHinweis(true); return; } setStatusHinweis(false); setze({ status }); }} />
+          {angebotFehlt.length > 0 && <span style={{ fontSize: 12.5, color: LEUCHT.achtung, fontWeight: statusHinweis ? 700 : 400 }}>für Angebote fehlt: {angebotFehlt.join(', ')}{l.status === 'aktiv' ? ' — im Angebots-Tool als „Text fehlt“ markiert' : ' — „aktiv“ ist gesperrt, bis er steht (unten unter Angebotstexte)'}</span>}
+        </div>
+      </Feldzeile>
       <Feldzeile label="Gesellschaft"><Wahl label="Gesellschaft" liste={GESELLSCHAFT_WAHL} wert={l.gesellschaft} onWahl={gesellschaft => setze({ gesellschaft })} /></Feldzeile>
       {textfeld('Beschreibung', l.beschreibung, 'beschreibung')}
       {textfeld('Ergebnis', l.ergebnis, 'ergebnis', 2)}
@@ -203,6 +215,18 @@ function ProduktDetail({ l, api }: { l: Leistung; api: CrmApi }) {
           <Feld platzhalter="+ Punkt hinzufügen (Enter)" onFertig={t => t.trim() && setze({ lieferumfang: [...l.lieferumfang, t.trim()] })} />
         </div>
       </Feldzeile>
+
+      <div style={abschnitt}>
+        <div style={kopf}>Angebotstexte</div>
+        <div style={klein}>Daraus baut das Angebots-Tool die Position — ein Klick im Call, der Text steht. Der Leistungstext ist Pflicht, bevor das Produkt aktiv geht. <Link href={angebotLink({})} style={{ color: C.aktiv }}>Zum Angebots-Tool ›</Link></div>
+        {([['titel', 'Titel im Angebot', 1, `leer = „${l.name}“`], ['einleitung', 'Einleitung', 2, 'optional'], ['leistungstext', 'Leistungstext *', 5, 'Was genau geliefert wird — Pflicht'], ['ergebnis', 'Ergebnis', 2, 'Was der Kunde danach hat'], ['hinweise', 'Hinweise', 2, 'Voraussetzungen, Mitwirkung, Grenzen']] as const).map(([f, label, zeilen, platz]) => (
+          <Feldzeile key={f} label={label}>
+            <textarea key={`${l.id}-ang-${f}-${(l.angebot?.[f] ?? '').length}`} defaultValue={l.angebot?.[f] ?? ''} rows={zeilen} aria-label={label} placeholder={platz}
+              onBlur={e => { if (e.target.value.trim() !== (l.angebot?.[f] ?? '')) angebotText(f, e.target.value.trim()); }}
+              style={{ ...feld, resize: 'vertical', fontSize: TYP.bedien, lineHeight: 1.5, padding: '8px 11px', ...(f === 'leistungstext' && angebotFehlt.length ? { borderColor: `${LEUCHT.achtung}88` } : {}) }} />
+          </Feldzeile>
+        ))}
+      </div>
 
       <div style={abschnitt}>
         <div style={kopf}>Ablauf in Phasen</div>

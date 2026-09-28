@@ -2,7 +2,7 @@
 // Alle Daten erfunden (@example.invalid) — nie echte Bestände.
 import { describe, it, expect } from 'vitest';
 import type { Kontakt } from '../lib/make-one/crm';
-import type { Chance, CrmBestand, Firma, Mandat, FollowUp } from '../lib/crm/typen';
+import type { Angebot, Chance, CrmBestand, Firma, Mandat, FollowUp, Leistung } from '../lib/crm/typen';
 import { leererBestand } from '../lib/crm/speicher';
 import { verbindungenPruefen, verbindungenReparieren, verbindungsAmpel, PRUEFUNGEN, PRUEFUNG_IDS, REPARIERBAR, type VerbindungsBestaende, type PruefungId } from '../lib/crm/verbindungen';
 import { befunde } from '../lib/crm/befunde';
@@ -16,6 +16,8 @@ const k = (id: string, x: Partial<Kontakt> = {}): Kontakt => ({ id, vorname: id,
 const firma = (id: string, x: Partial<Firma> = {}): Firma => ({ id, name: `Firma ${id}`, rolle: 'zielkunde', geaendert: J, ...x });
 const deal = (id: string, x: Partial<Chance> = {}): Chance => ({ id, titel: `Deal ${id}`, kontaktIds: [], art: 'retainer', wert: { betrag: 1000, basis: 'monat' }, stufe: 'angebot', historie: [], qualifizierung: { ...Q }, gesellschaft: 'kdc', besitzer: 'kevin', angelegt: J, geaendert: J, ...x });
 const mandat = (id: string, x: Partial<Mandat> = {}): Mandat => ({ id, kunde: 'Firma f-alpha', kontaktIds: [], titel: `Mandat ${id}`, art: 'retainer', gesellschaft: 'kdc', status: 'aktiv', vertragUnterschrieben: true, verlaengerung: 'offen', honorar: { betrag: 2500, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [], health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: [], geaendert: J, ...x });
+const angebot = (id: string, x: Partial<Angebot> = {}): Angebot => ({ id, gesellschaft: 'kdv', kontaktId: 'c-anna1', firmaId: 'f-alpha', dealId: 'd-1', titel: 'A', positionen: [], einleitung: '', schluss: '', gueltigBis: '2026-10-28', zahlungszielTage: 14, status: 'entwurf', version: 1, angelegt: J, geaendert: J, ...x });
+const produkt = (id: string, x: Partial<Leistung> = {}): Leistung => ({ id, name: id, typ: 'retainer', stufe: 'kern', preis: { betrag: 100, einheit: 'Monat netto' }, lieferumfang: [], gesellschaft: 'kdv', status: 'aktiv', geaendert: J, ...x });
 const fu = (id: string, x: Partial<FollowUp> = {}): FollowUp => ({ id, bezug: { art: 'chance', id: 'd-1' }, kontaktId: 'c-anna1', art: 'anruf', text: 'Nachfassen', faellig: '2026-10-01', zustaendig: 'kevin', status: 'offen', quelle: 'hand', angelegt: J, geaendert: J, ...x });
 
 /** Ein sauberer Bestand: jede Kennung zeigt auf etwas, das es gibt — ergibt keinen einzigen Befund. */
@@ -123,6 +125,11 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   ['datei-fehlt-markiert', b => { b.dateien!.aufPlatte = []; b.dateien!.eintraege[0].dateiFehlt = HEUTE; }, 1, 'd-abcd1'],
   ['datei-ohne-eintrag', b => { b.dateien!.aufPlatte.push('d-zzzz9'); }, 1, 'd-zzzz9'],
   ['konflikt-veraltet', b => { b.konflikte!.konflikte.push({ kontaktId: 'c-weg1', feld: 'email', online: 1, liste: 2 }); }, 1, 'c-weg1'],
+  // Angebote (28.09., Angebots-Tool)
+  ['angebot-verweis-tot', b => { b.crm.angebote.push(angebot('ang-a1', { kontaktId: 'c-weg1' }), angebot('ang-a2', { dealId: 'd-weg' }), angebot('ang-a3', { vorgaengerId: 'ang-weg' })); }, 3, 'ang-a1'],
+  ['angebot-produkt-tot', b => { b.crm.angebote.push(angebot('ang-a1', { positionen: [{ id: 'p1', leistungId: 'l-weg', titel: 'x', text: '', menge: 1, einheit: 'pauschal', einzelpreisCent: 100, ustSatz: 19, basis: 'einmalig' }] })); }, 1, 'ang-a1'],
+  ['angebot-ohne-pdf', b => { b.crm.angebote.push(angebot('ang-a1', { status: 'gestellt', nummer: 'KDV-A-2026-0001' }), angebot('ang-a2', { status: 'gestellt', nummer: 'KDV-A-2026-0002', pdfDateiId: 'd-abcd1' }), angebot('ang-a3', { status: 'gestellt', nummer: 'KDV-A-2026-0003', pdfDateiId: 'd-weg99' })); }, 2, 'ang-a3'],
+  ['produkt-ohne-angebotstext', b => { b.crm.leistungen.push(produkt('l-ohne'), produkt('l-mit', { angebot: { leistungstext: 'Text' } }), produkt('l-entwurf', { status: 'entwurf' })); }, 1, 'l-ohne'],
 ];
 
 describe('Verbindungsprüfung — je Prüfung ein Fall', () => {

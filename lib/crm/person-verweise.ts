@@ -6,6 +6,8 @@
 // prüft, dass nach dem Entfernen die Kennung nirgends mehr im Bestand steht.
 
 import type { CrmBestand, FollowUp, Teilnahme } from './typen';
+import { angebotePersonOhne, angebotePersonUm, angebotePersonAuskunft } from './angebote';
+import { localDay } from '@/lib/zeit';
 
 const ohne = (ids: string[], id: string) => ids.filter(x => x !== id);
 const um = (ids: string[], alt: string, neu: string) => Array.from(new Set(ids.map(x => (x === alt ? neu : x))));
@@ -23,6 +25,8 @@ export function personEntfernen(crm: CrmBestand, id: string): CrmBestand {
     followups: (crm.followups ?? []).filter(f => f.kontaktId !== id && !(f.bezug.art === 'kontakt' && f.bezug.id === id)),
     sitzungen: (crm.sitzungen ?? []).map(s => (s.karten.some(k => k.kontaktId === id) ? { ...s, karten: s.karten.filter(k => k.kontaktId !== id) } : s)),
     antraege: (crm.antraege ?? []).map(a => (a.kontaktId === id ? { ...a, kontaktId: undefined } : a)),
+    // Angebote (28.09.): Entwürfe fallen weg; gestellte sind Geschäftsunterlagen — Personenbezug lösen statt löschen.
+    angebote: angebotePersonOhne(crm.angebote ?? [], id, localDay()),
   };
 }
 
@@ -72,6 +76,7 @@ export function personUmbiegen(crm: CrmBestand, alt: string, neu: string): CrmBe
     sitzungen: (crm.sitzungen ?? []).map(s => (s.karten.some(k => k.kontaktId === alt)
       ? { ...s, karten: s.karten.some(k => k.kontaktId === neu) ? s.karten.filter(k => k.kontaktId !== alt) : s.karten.map(k => (k.kontaktId === alt ? { ...k, kontaktId: neu } : k)) } : s)),
     antraege: (crm.antraege ?? []).map(a => (a.kontaktId === alt ? { ...a, kontaktId: neu } : a)),
+    angebote: angebotePersonUm(crm.angebote ?? [], alt, neu),
   };
 }
 
@@ -86,5 +91,6 @@ export function personVerweise(crm: CrmBestand, id: string) {
     beitraege: (crm.beitraege ?? []).filter(b => b.quellen.includes(id) || b.wirkung.some(w => w.kontaktId === id)).map(b => ({ id: b.id, titel: b.titel, quelle: b.quellen.includes(id), wirkung: b.wirkung.filter(w => w.kontaktId === id) })),
     powerHours: (crm.sitzungen ?? []).filter(s => s.karten.some(k => k.kontaktId === id)).map(s => ({ datum: s.datum, karten: s.karten.filter(k => k.kontaktId === id) })),
     antraege: (crm.antraege ?? []).filter(a => a.kontaktId === id),
+    angebote: angebotePersonAuskunft(crm.angebote ?? [], id),
   };
 }
