@@ -56,7 +56,7 @@ describe('Verbindungsprüfung — sauberer Bestand', () => {
   });
   it('jede Prüfung hat Satz, Schwere und Bereich; reparierbar ist eine feste Teilmenge', () => {
     for (const id of PRUEFUNG_IDS) expect(PRUEFUNGEN[id].text(2)).toMatch(/^\S/);
-    expect(REPARIERBAR).toEqual(['firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'datei-fehlt', 'konflikt-veraltet']);
+    expect(REPARIERBAR).toEqual(['firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'datei-fehlt', 'konflikt-veraltet']);
   });
 });
 
@@ -161,6 +161,9 @@ describe('Verbindungen reparieren', () => {
     b.kontakte[0].lead!.chanceId = 'd-weg';
     b.crm.followups.push(fu('fu-2', { kontaktId: 'c-weg1', bezug: { art: 'kontakt', id: 'c-weg1' } }), fu('fu-3', { kontaktId: undefined, bezug: { art: 'event', id: 'ev-weg' } }));
     b.crm.kampagnen[0].kontaktIds.push('c-weg1');
+    // Werbesperre in laufender Kampagne (reparierbar seit 28.09.): eigene gesperrte Person, damit die übrigen Erwartungen gleich bleiben.
+    b.kontakte.push({ ...b.kontakte[1], id: 'c-sperr1', firmaId: undefined, werbesperre: { seit: HEUTE, grund: 'Widerspruch' } });
+    b.crm.kampagnen[0].kontaktIds.push('c-sperr1');
     b.crm.beitraege[0].quellen.push('c-weg1');
     b.crm.antraege[0].kontaktId = 'c-weg3';
     b.konflikte!.konflikte.push({ kontaktId: 'c-weg1', feld: 'email', online: 1, liste: 2 });
@@ -230,3 +233,18 @@ describe('Verbindungen reparieren', () => {
     expect(r.bestaende).toEqual(sauber());
   });
 });
+
+describe('Werbesperre in Kampagnen reparieren (Kevin 28.09.)', () => {
+  it('nimmt gesperrte Personen aus laufenden Kampagnen heraus, sonst nichts', () => {
+    const b = sauber();
+    b.kontakte[1].werbesperre = { seit: HEUTE, grund: 'Widerspruch' };
+    const vorher = verbindungenPruefen(b).find(x => x.id === 'werbesperre-kampagne');
+    expect(vorher?.anzahl).toBe(1);
+    const r = verbindungenReparieren(b, ['werbesperre-kampagne'], JETZT, 'kevin');
+    expect(r.aenderungen.map(a => a.befundId)).toEqual(['werbesperre-kampagne']);
+    expect(verbindungenPruefen(r.bestaende).find(x => x.id === 'werbesperre-kampagne')).toBeUndefined();
+    expect(r.bestaende.kontakte).toHaveLength(b.kontakte.length);
+    expect(verbindungenReparieren(r.bestaende, ['werbesperre-kampagne'], JETZT, 'kevin').aenderungen).toEqual([]);
+  });
+});
+

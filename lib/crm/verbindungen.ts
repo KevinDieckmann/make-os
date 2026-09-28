@@ -116,7 +116,7 @@ export const PRUEFUNGEN = {
   'newsletter-beitrag-tot': { schwere: 'warnung', bereich: 'marketing', reparierbar: false, art: 'newsletter', text: n => `${n} ${e(n, 'Newsletter-Ausgabe zeigt', 'Newsletter-Ausgaben zeigen')} auf Beiträge, die es nicht mehr gibt.` },
   'powerhour-kontakt-tot': { schwere: 'hinweis', bereich: 'followup', reparierbar: false, art: 'kennung', text: n => `${n} Power-${e(n, 'Hour nennt', 'Hours nennen')} Personen, die es nicht mehr gibt — bleibt als Verlauf stehen.` },
   'antrag-kontakt-tot': { schwere: 'warnung', bereich: 'datenschutz', reparierbar: true, art: 'antrag', text: n => `${n} ${e(n, 'Betroffenenantrag zeigt', 'Betroffenenanträge zeigen')} auf eine Person, die es nicht mehr gibt — der Vorgang bleibt, der Verweis geht.` },
-  'werbesperre-kampagne': { schwere: 'fehler', bereich: 'datenschutz', reparierbar: false, art: 'kampagne', text: n => `${n} ${e(n, 'laufende Kampagne enthält', 'laufende Kampagnen enthalten')} Personen mit Werbesperre (Art. 21) — dort herausnehmen.` },
+  'werbesperre-kampagne': { schwere: 'fehler', bereich: 'datenschutz', reparierbar: true, art: 'kampagne', text: n => `${n} ${e(n, 'laufende Kampagne enthält', 'laufende Kampagnen enthalten')} Personen mit Werbesperre (Art. 21) — dort herausnehmen.` },
   'werbesperre-einladung': { schwere: 'fehler', bereich: 'datenschutz', reparierbar: false, art: 'event', text: n => `${n} ${e(n, 'kommendes Event hat', 'kommende Events haben')} Personen mit Werbesperre auf der Einladungsliste — dort herausnehmen.` },
   'werbesperre-followup': { schwere: 'warnung', bereich: 'datenschutz', reparierbar: false, art: 'followup', text: n => `${n} ${e(n, 'offenes Follow-up geht', 'offene Follow-ups gehen')} an Personen mit Werbesperre — nur mit Vertrag oder ihrer Anfrage weiterverfolgen.` },
   'aufgabe-einheit-ungueltig': { schwere: 'warnung', bereich: 'aufgaben', reparierbar: false, art: 'aufgabe', text: n => `${n} ${e(n, 'Aufgabe trägt', 'Aufgaben tragen')} eine Einheit, die es in der Liste nicht gibt (oder liegen privat).` },
@@ -456,6 +456,19 @@ export function verbindungenReparieren(b: VerbindungsBestaende, ids: readonly st
     let n = 0;
     setze('kampagnen', liste(crm.kampagnen).map(k => (liste(k.kontaktIds).some(id => !m.kontakte.has(id)) ? (n++, { ...k, kontaktIds: liste(k.kontaktIds).filter(id => m.kontakte.has(id)) }) : k)));
     zaehle('kampagne-kontakt-tot', 'crm', n, `${n} ${e(n, 'Kampagne', 'Kampagnen')}: tote Personen-Verweise entfernt`);
+  }
+  // Kevin 28.09.: gesperrte Personen (Werbewiderspruch, Art. 21) aus laufenden und geplanten Kampagnen herausnehmen — rechtlich geboten.
+  if (will.has('werbesperre-kampagne')) {
+    const gesperrt = new Set(liste(b.kontakte).filter(k => k.werbesperre).map(k => k.id));
+    let n = 0, personen = 0;
+    setze('kampagnen', liste(crm.kampagnen).map(k => {
+      if (!(k.status === 'aktiv' || k.status === 'entwurf')) return k;
+      const raus = liste(k.kontaktIds).filter(id => gesperrt.has(id));
+      if (!raus.length) return k;
+      n++; personen += raus.length;
+      return { ...k, kontaktIds: liste(k.kontaktIds).filter(id => !gesperrt.has(id)) };
+    }));
+    zaehle('werbesperre-kampagne', 'crm', n, `${n} ${e(n, 'Kampagne', 'Kampagnen')}: ${personen} ${e(personen, 'gesperrte Person', 'gesperrte Personen')} herausgenommen (Werbewiderspruch)`);
   }
   if (will.has('beitrag-kontakt-tot')) {
     let n = 0;
