@@ -98,7 +98,7 @@ export async function POST(req: Request) {
     if (!a.ok) return { ok: false as const, status: a.status, text: a.fehler, vorschlag: null };
     const eingabe = eingabeNeu ?? a.v.eingabe;
     let lauf: { ok: boolean; text: string };
-    try { lauf = await fuehreAus(a.v.werkzeug, eingabe, origin, { erzwingen: true, person: a.v.gruppe === HAUSHALT ? z!.person : person }); }
+    try { lauf = await fuehreAus(a.v.werkzeug, eingabe, origin, { erzwingen: true, person: a.v.gruppe === HAUSHALT ? z!.person : person, ...(wer ? { freigegebenVon: wer } : {}) }); }
     catch (e) { await loslassen(id); throw e; }
     const raus = await entscheide(id, lauf.ok ? 'freigegeben' : 'fehlgeschlagen', { ergebnis: lauf.text, ...(eingabeNeu ? { eingabe } : {}), von: wer, ausArbeit: true });
     return { ok: lauf.ok, status: 200 as const, text: lauf.text, vorschlag: raus };

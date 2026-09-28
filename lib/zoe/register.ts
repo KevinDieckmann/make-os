@@ -9,6 +9,10 @@
 //   nie      — gibt es hier bewusst noch nicht; die Stufe steht bereit, damit
 //              spätere Werkzeuge (Versand, Löschen von Beständen) sie tragen.
 //
+// 29.09. (Kevin: „ZOE schreibt nur über den Stapel“, Paket D-B #90/#93): alles, was ins CRM schreibt (notiere_kontakt,
+// chance_anlegen, uebergeben, setze_kunde), und eine Aufgabe für eine ANDERE Person (create_task mit `wer`) ist
+// freigabepflichtig — auch VOR jedem Fremdtext. `risikoFuer` rechnet die Stufe je Aufruf (nie aus einem Satz im Gespräch).
+//
 // WICHTIG — und das ist der Grund, warum das hier steht und nicht im Prompt:
 // Die Stufe ist eine Eigenschaft des Werkzeugs, nicht eine Entscheidung des
 // Modells. Kein Satz, den jemand ZOE schreibt, kann sie umgehen.
@@ -45,6 +49,8 @@ export interface Vorschau {
 interface Eintrag {
   gruppe: string;
   risiko: Risiko;
+  /** Stufe je Aufruf (29.09.) — nur strenger als `risiko`, nie lockerer (siehe `risikoFuerAufruf`). */
+  risikoFuer?: (input: Record<string, unknown>, person?: string) => Risiko;
   /** Trockenlauf: liest denselben Bestand wie die Ausführung, ändert nichts. */
   vorschau: (input: Record<string, unknown>) => Promise<Vorschau>;
 }
@@ -235,6 +241,11 @@ export const REGISTER: Record<string, Eintrag> = {
   },
   create_task: {
     gruppe: 'aufgaben', risiko: 'frei',
+    // Für sich selbst frei; für eine ANDERE Person (oder beide) nur nach Freigabe (29.09., #93 der Aufgaben-Liste).
+    risikoFuer: (i, person) => {
+      const wer = typeof i.wer === 'string' ? i.wer : '';
+      return !wer || (person && wer === person) ? 'frei' : 'freigabe';
+    },
     vorschau: schlicht('Aufgabe anlegen', i => `„${text(i.title, 200)}"${i.priority && i.priority !== 'medium' ? ` (${String(i.priority)})` : ''}${i.einheit && i.space !== 'privat' ? ` · ${text(i.einheit, 40)}` : ''}`),
   },
   plan_block: {
@@ -281,22 +292,22 @@ export const REGISTER: Record<string, Eintrag> = {
     gruppe: 'kunden', risiko: 'freigabe',
     vorschau: schlicht('Kunde in der Markttraktion pflegen', i => `${text(i.name)}${i.status ? ` · ${String(i.status)}` : ''}`),
   },
-  // CRM (18.09.): finden, notieren, entwerfen — alles frei, weil nichts davon
-  // das System verlässt. Ein Werkzeug zum VERSENDEN gibt es absichtlich nicht.
+  // CRM (18.09.): finden und entwerfen frei; seit 29.09. (Kevin, #90) SCHREIBT ZOE ins CRM nur über den Stapel —
+  // notieren, Deal anlegen, übergeben erst nach Freigabe. Ein Werkzeug zum VERSENDEN gibt es absichtlich nicht.
   suche_kontakt: {
     gruppe: 'kontakte', risiko: 'frei',
     vorschau: schlicht('Kontakt in der Kartei suchen', i => text(i.frage)),
   },
   notiere_kontakt: {
-    gruppe: 'kontakte', risiko: 'frei',
+    gruppe: 'kontakte', risiko: 'freigabe',
     vorschau: schlicht('Aktivität am Kontakt notieren', i => `${text(i.kontakt)} · ${text(i.art) || 'notiz'}${i.ergebnis ? ` · ${text(i.ergebnis)}` : ''}${i.naechster_schritt ? ` · nächster Schritt ${text(i.naechster_schritt, 60)}` : ''}`),
   },
   chance_anlegen: {
-    gruppe: 'kontakte', risiko: 'frei',
+    gruppe: 'kontakte', risiko: 'freigabe',
     vorschau: schlicht('Chance in der Pipeline anlegen', i => `${text(i.kontakt)}${i.titel ? ` · ${text(i.titel)}` : ''}`),
   },
   uebergeben: {
-    gruppe: 'kontakte', risiko: 'frei',
+    gruppe: 'kontakte', risiko: 'freigabe',
     vorschau: schlicht('Kontakt übergeben (Kevin/Malin)', i => `${text(i.kontakt)} → ${text(i.an)}`),
   },
   crm_lage: {
@@ -365,6 +376,20 @@ export function fehlendeStufen(): string[] {
 export function risikoVon(name: string): Risiko {
   // Unbekanntes Werkzeug ist im Zweifel freigabepflichtig, nicht frei.
   return REGISTER[name]?.risiko ?? 'freigabe';
+}
+
+const RANG: Record<Risiko, number> = { frei: 0, freigabe: 1, nie: 2 };
+/**
+ * Die Stufe für DIESEN Aufruf (29.09.): die feste Stufe, verschärft durch `risikoFuer` — nie gelockert
+ * (ein `risikoFuer`, das „frei“ liefert, macht aus „freigabe“ nichts Freies).
+ */
+export function risikoFuerAufruf(name: string, input: Record<string, unknown>, person?: string): Risiko {
+  const fest = risikoVon(name);
+  const e = REGISTER[name];
+  if (!e?.risikoFuer) return fest;
+  let je: Risiko = fest;
+  try { je = e.risikoFuer(input ?? {}, person); } catch { je = 'freigabe'; }
+  return RANG[je] > RANG[fest] ? je : fest;
 }
 
 export function gruppeVon(name: string): string {

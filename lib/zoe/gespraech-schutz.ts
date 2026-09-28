@@ -27,3 +27,37 @@ export function nurVorschlag(name: string, input: Record<string, unknown> | unde
   if (IMMER_VORSCHLAG.has(name)) return true;
   return fremdGelesen && !LESEND.has(name);
 }
+
+// ── Agenten im Gespräch (29.09., Paket D-B #90/#91) ──────────────────────────
+// `run_agent` lief bisher an `nurVorschlag` vorbei: nach Fremdtext konnte ein eingeschleuster Satz einen Agenten
+// starten, der schreibt oder Text nach außen trägt. Ab jetzt gilt für Agenten dieselbe Regel wie für Werkzeuge —
+// statt zu laufen, landet der Auftrag als Vorschlag im Stapel (über `starte_auftraege`, Freigabe per Klick).
+
+/** Agenten, die nur lesen und rechnen (keine Wirkung, nichts nach außen) — sie laufen auch nach Fremdtext. */
+export const AGENTEN_LESEND = new Set(['board', 'okr', 'controlling', 'fokus', 'crm']);
+/** Agenten, die Text an eine Websuche oder ein fremdes Verzeichnis geben (Drittdienst). */
+export const WEB_AGENTEN = new Set(['research', 'content', 'prospect', 'prospecting']);
+/**
+ * Leser, deren Ergebnis vertraulich ist (CRM, Kartei, Postfach, Bank, Notizen, Dateien, Gedächtnis): hat das Gespräch
+ * einen davon benutzt, darf danach kein Web-Agent mehr ohne Freigabe laufen — sonst könnten CRM-Inhalte in einer
+ * Suchanfrage bei einem Drittdienst landen (#91).
+ */
+export const VERTRAULICHE_QUELLEN = new Set(['postfach', 'kontakte', 'crm', 'bank', 'notizen', 'gedaechtnis', 'projekt-unterlagen', 'aufgaben', 'arbeitsbestaende', 'markttraktion', 'crm-ablage', 'meeting']);
+
+/** Soll dieser Agent nur als Vorschlag (Stapel) gestartet werden statt zu laufen? */
+export function agentNurVorschlag(agent: string, fremdGelesen: boolean, vertraulich: boolean): boolean {
+  if (WEB_AGENTEN.has(agent) && vertraulich) return true;
+  return fremdGelesen && !AGENTEN_LESEND.has(agent);
+}
+
+/**
+ * Hat ein früherer Zug DIESES Gesprächs einen vertraulichen Leser benutzt? Der Verlauf trägt je Antwort von ZOE die
+ * gelaufenen Werkzeuge/Agenten (`ran`, lib/make-one/zoe-verlauf.ts). `quelleVon` bildet einen Namen auf seine Quelle ab.
+ */
+export function verlaufVertraulich(verlauf: unknown, quelleVon: (name: string) => string | null): boolean {
+  if (!Array.isArray(verlauf)) return false;
+  return verlauf.some(n => Array.isArray((n as { ran?: unknown })?.ran) && ((n as { ran: { agent?: unknown }[] }).ran).some(r => {
+    const q = typeof r?.agent === 'string' ? quelleVon(r.agent) : null;
+    return !!q && VERTRAULICHE_QUELLEN.has(q);
+  }));
+}
