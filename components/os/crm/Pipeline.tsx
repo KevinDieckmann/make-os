@@ -20,7 +20,7 @@ import { anzeigename } from '@/lib/make-one/crm';
 import { gesamtwert, prognose, prognoseJePerson, werZahlen, verlustgruende } from '@/lib/crm/pipeline';
 import { zustaendig, mitglied, nameVon, verantwortlich } from '@/lib/crm/team';
 import type { Chance, ChancenStufe, Qual } from '@/lib/crm/typen';
-import { type CrmApi, datum, euro, kurzEuro, plusTage } from './daten';
+import { type CrmApi, datum, euro, kurzEuro, plusTage, nurFelder } from './daten';
 import { Feldzeile, Pillen, Feld } from './teile';
 import { Wahl } from './Wahl';
 import { GESELLSCHAFT_WAHL } from '@/lib/crm/wahl';
@@ -39,8 +39,6 @@ const QUAL: { id: keyof Chance['qualifizierung']; label: string }[] = [
   { id: 'schmerz', label: 'Schmerz' }, { id: 'entscheider', label: 'Entscheider' }, { id: 'budget', label: 'Budget' }, { id: 'zeitpunkt', label: 'Zeitpunkt' }, { id: 'wirkung', label: 'Wirkung' }, { id: 'alternative', label: 'Alternative' },
 ];
 const BASEN = [{ id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr' }, { id: 'einmalig', label: 'einmalig' }] as const;
-/** Einzeländerung: nur diese Felder; „undefined“ heißt leeren (als '' gesendet — der Server lässt das Feld dann weg). */
-const nurFelder = (t: Record<string, unknown>) => Object.fromEntries(Object.entries(t).map(([k, v]) => [k, v === undefined ? '' : v]));
 const wertText = (c: Chance) => (c.wert.betrag ? `${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/M' : c.wert.basis === 'jahr' ? '/J' : ''}` : 'ohne Wert');
 
 export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, zurueck }: { api: CrmApi; ansicht?: DealsAnsicht; zuKontakt: (id: string) => void; /** Ebene 1 — wer im Gespräch ist, wird erst dort qualifiziert. */ zuLeads?: () => void; /** Deal-Akte öffnen (27.09.). */ zuAkte?: (id: string) => void; zurueck?: () => void }) {

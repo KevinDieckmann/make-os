@@ -7,9 +7,9 @@
 // trägt den Stand der Blöcke, weil `zeit` Memo-Rauschen ist.
 
 import { NextResponse } from 'next/server';
-import { personAus, nameVon } from '@/lib/zoe/raum';
+import { nameVon } from '@/lib/zoe/raum';
 import { ladeKonten } from '@/lib/zugang/konten';
-import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
+import { HAUSHALT_OK, personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { merken } from '@/lib/store/memo';
 import { ladeZeit, aufgabenKurz, zeitBloeckeStand } from '@/lib/zeitmessung/speicher';
 import { zeitJeEinheit, berlinTag, type Zeitraum } from '@/lib/zeitmessung/einheiten';
@@ -35,7 +35,9 @@ export async function GET(req: Request) {
   const zeitraum: Zeitraum = url.searchParams.get('zeitraum') === 'monat' ? 'monat' : 'woche';
   const s = url.searchParams.get('stichtag');
   const stichtag = s && TAG.test(s) && Number.isFinite(Date.parse(`${s}T12:00:00Z`)) ? s : berlinTag(new Date().toISOString());
-  const person = personAus(req);
+  // Nur für eine ausdrücklich benannte Person (Regel 5) — kein Rückfall auf „kevin“.
+  const person = personStreng(req);
+  if (!person) return NextResponse.json({ ok: false, error: 'Ohne angemeldete Person keine Zeitauswertung.' }, { status: 401 });
   const { schluessel, personen } = await personenVon(person);
   const daten = await merken(`zeit-einheiten:${schluessel}:${zeitraum}:${stichtag}:${zeitBloeckeStand()}`, 60_000, async () => {
     const [aufgaben, dateien] = await Promise.all([aufgabenKurz(), Promise.all(personen.map(p => ladeZeit(p.person)))]);

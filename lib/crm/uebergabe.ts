@@ -10,6 +10,7 @@ import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { aendereCrm } from './speicher';
 import { wer, nameVon, BEIDE } from './team';
 import { markttraktion, mandateLink } from './adresse';
+import { einheitAusBezug } from '@/lib/aufgaben/einheit';
 import type { CrmBestand, CrmListe } from './typen';
 
 export const UEBERGABE_ARTEN = ['kontakt', 'kontakte', 'chance', 'mandat', 'event', 'kampagne', 'beitrag', 'newsletter'] as const;
@@ -32,6 +33,8 @@ export async function uebergeben(b: UebergabeEingabe, person: string): Promise<U
   let titel = '';
   let link = '';
   let anzahl = 0;
+  /** Business-Einheit der Aufgabe (Prüfbericht F1) — aus der Gesellschaft von Deal/Mandat, wie bei den Heads. */
+  let einheit: string | undefined;
 
   if (art === 'kontakt' || art === 'kontakte') {
     const ids = new Set((art === 'kontakt' ? [b.id] : (b.ids ?? [])).map(String).filter(x => /^c-[a-z0-9-]{4,60}$/.test(x)).slice(0, 300));
@@ -60,6 +63,7 @@ export async function uebergeben(b: UebergabeEingabe, person: string): Promise<U
       if (i < 0) return c;
       const x = l[i];
       anzahl = 1; titel = String(x.titel ?? x.name ?? x.kunde ?? id);
+      einheit = art === 'chance' ? einheitAusBezug(c, { chanceId: id }) : art === 'mandat' ? einheitAusBezug(c, { mandatId: id }) : undefined;
       const neu = [...l]; neu[i] = { ...x, [feld]: an, geaendert: jetzt, geaendertVon: person };
       // Schreibt jetzt die Stimme selbst, braucht es keine Freigabe mehr.
       if (liste === 'beitraege' && x.freigabe && x.stimme === an) delete (neu[i] as Record<string, unknown>).freigabe;
@@ -77,7 +81,7 @@ export async function uebergeben(b: UebergabeEingabe, person: string): Promise<U
   if (an !== person && an !== BEIDE) {
     await updateJson<{ tasks: Record<string, unknown>[] }>('tasks', cur => {
       const f = cur ?? { tasks: [] };
-      const t = { id: `ueb-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, title: `Von ${vonName}: ${titel}`.slice(0, 200),
+      const t = { ...(einheit ? { space: 'business', einheit } : {}), id: `ueb-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, title: `Von ${vonName}: ${titel}`.slice(0, 200),
         description: `${vonName} hat dir ${art === 'kontakte' ? `${anzahl} Kontakte` : titel} in der Markttraktion übergeben.${notiz ? `\n\n„${notiz}“` : ''}\n\n${link}`,
         status: 'todo', priority: 'medium', assignee: an, tags: ['markttraktion', 'uebergabe'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, ...(frist ? { dueDate: frist } : {}) };
       return { ...f, tasks: [...(f.tasks ?? []), t] };

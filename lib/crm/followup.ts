@@ -11,7 +11,7 @@
 // Follow-up daraus macht.
 
 import type { Kontakt } from '@/lib/make-one/crm';
-import { anzeigename, KREIS_TAKT } from '@/lib/make-one/crm';
+import { anzeigename, letzterKontaktVon, KREIS_TAKT } from '@/lib/make-one/crm';
 import type { CrmBestand, FollowUp, FollowUpArt, FollowUpBezugArt, Wertelisten } from './typen';
 import { OFFENE_STUFEN } from './pipeline';
 import { haeltBeziehung, zustaendig, BEIDE } from './team';
@@ -131,15 +131,17 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
     raus.push(mach({ id: `v:review:${m.id}`, virtuell: true, quelle: 'review', art: 'termin', text: `Review „${m.kunde}“`, faellig: m.naechstesReview!, ...(kid ? { kontaktId: kid } : {}), name: kid ? nameVon(kid) : m.kunde, firma: m.kunde, bezug: { art: 'mandat', id: m.id, titel: m.kunde }, zustaendig: zustaendig(m.zustaendig, 'sales') }));
   }
   // 6 · Kadenz je Kreis: zu lange nichts gehört
+  // Ein eingetragenes Meeting zählt ab seinem Tag (`wann`) — geplant setzt es „letzter Kontakt“ nicht (28.09., F1).
   for (const k of kontakte) {
-    if (k.werbesperre || RUHT.has(k.stufe) || !k.letzterKontakt) continue;
+    const letzter = letzterKontaktVon(k, heute);
+    if (k.werbesperre || RUHT.has(k.stufe) || !letzter) continue;
     const takt = taktVon(k, opts.wertelisten);
     if (!takt) continue;
-    const f = tagPlus(k.letzterKontakt, takt);
+    const f = tagPlus(letzter, takt);
     if (f > bis || tage(f, heute) > 365) continue;
     // Hat die Person schon irgendein offenes Follow-up, braucht es keinen Kadenz-Eintrag.
     if (raus.some(x => x.kontaktId === k.id)) continue;
-    raus.push(mach({ id: `v:kadenz:${k.id}`, virtuell: true, quelle: 'kadenz', art: 'anruf', text: `Kreis ${k.kreis ?? '—'}: seit ${tage(k.letzterKontakt, heute)} Tagen kein Kontakt (Takt ${takt} Tage)`, faellig: f, kontaktId: k.id, name: anzeigename(k), ...(firmaVon(k.id) ? { firma: firmaVon(k.id) } : {}), bezug: { art: 'kontakt', id: k.id }, zustaendig: haeltBeziehung(k) }));
+    raus.push(mach({ id: `v:kadenz:${k.id}`, virtuell: true, quelle: 'kadenz', art: 'anruf', text: `Kreis ${k.kreis ?? '—'}: seit ${tage(letzter, heute)} Tagen kein Kontakt (Takt ${takt} Tage)`, faellig: f, kontaktId: k.id, name: anzeigename(k), ...(firmaVon(k.id) ? { firma: firmaVon(k.id) } : {}), bezug: { art: 'kontakt', id: k.id }, zustaendig: haeltBeziehung(k) }));
   }
   const rang: Record<Gruppe, number> = { ueberfaellig: 0, heute: 1, woche: 2, spaeter: 3 };
   return raus.sort((a, b) => rang[a.gruppe] - rang[b.gruppe] || a.faellig.localeCompare(b.faellig) || (a.uhrzeit ?? '99').localeCompare(b.uhrzeit ?? '99') || a.name.localeCompare(b.name));

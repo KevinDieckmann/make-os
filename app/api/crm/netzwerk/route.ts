@@ -23,7 +23,7 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/zoe/raum';
 import { localDay, tagePlus } from '@/lib/zeit';
-import { fuerPerson, wendeAktivitaetAn, type Kontakt, type Aktivitaet } from '@/lib/make-one/crm';
+import { fuerPerson, wendeAktivitaetAn, vonHandMarkieren, type Kontakt, type Aktivitaet } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { netzRunde, profilAdresse, exportLesen, exportAbgleich, exportAnwenden, type NetzStand } from '@/lib/crm/netzwerk';
 import { nameVon } from '@/lib/crm/team';
@@ -89,7 +89,8 @@ export async function POST(req: Request) {
     const nach = new Map(plan.treffer.map(t => [t.kontaktId, t]));
     await updateJson<Bestand>('kontakte', cur => {
       const f = cur ?? { kontakte: [] };
-      return { ...f, kontakte: f.kontakte.map(k => { const t = nach.get(k.id); return t ? { ...exportAnwenden(k, t, person, heute), geaendertAm: heute } : k; }) };
+      // „Online gewinnt“ (Prüfbericht F1): ein übernommenes Profil ist Handarbeit — der Masterlisten-Import überschreibt es nicht.
+      return { ...f, kontakte: f.kontakte.map(k => { const t = nach.get(k.id); return t ? vonHandMarkieren(k, { ...exportAnwenden(k, t, person, heute), geaendertAm: heute }) : k; }) };
     });
     return NextResponse.json({ ok: true, vorschau, text: `${vorschau.treffer} Kontakte abgeglichen: ${vorschau.neueProfile} Profile ergänzt, ${vorschau.neuVernetzt} jetzt als vernetzt mit ${profilName} markiert.` });
   }
@@ -107,7 +108,8 @@ export async function POST(req: Request) {
       case 'profil': {
         const url = profilAdresse(b.url);
         if (!url) { fehler = 'Das ist keine LinkedIn-Profiladresse (linkedin.com/in/…).'; return null; }
-        return { ...alt, linkedin: url, linkedinNichtGefunden: undefined, geaendertAm: heute };
+        // Von Hand eingetragen: `vonHand` bekommt „linkedin“ — sonst überschriebe der nächste Import das Profil (F1).
+        return vonHandMarkieren(alt, { ...alt, linkedin: url, linkedinNichtGefunden: undefined, geaendertAm: heute });
       }
       case 'nicht_gefunden':
         return { ...alt, linkedinNichtGefunden: heute, geaendertAm: heute };

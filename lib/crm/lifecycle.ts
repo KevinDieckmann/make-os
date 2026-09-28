@@ -39,5 +39,15 @@ export function lifecycleAusListe(roh?: string | null): LifecyclePhase | undefin
   return n ? AUS_LISTE[n] : undefined;
 }
 
+/**
+ * Phase heben, nie senken (28.09., Prüfbericht F1): steht eine Phase und liegt sie vor `ziel`,
+ * wird sie `ziel`; eine spätere (z. B. Follow Up nach Kunde) bleibt. Ohne gesetzte Phase `undefined` —
+ * dann gilt weiter der Vorschlag aus den Daten, gespeichert wird nichts.
+ */
+export function phaseHeben(phase: LifecyclePhase | undefined, ziel: LifecyclePhase): LifecyclePhase | undefined {
+  if (!phase) return undefined;
+  return LIFECYCLE_PHASEN.indexOf(phase) < LIFECYCLE_PHASEN.indexOf(ziel) ? ziel : phase;
+}
+
 /** Leere Verteilung — jede Phase mit 0, in der Reihenfolge des Trichters. */
 export const leereVerteilung = (): Record<LifecyclePhase, number> => Object.fromEntries(LIFECYCLE_PHASEN.map(p => [p, 0])) as Record<LifecyclePhase, number>;

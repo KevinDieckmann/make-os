@@ -29,7 +29,7 @@ import { HEALTH_GEWICHTE, HEALTH_LABEL, kundenJePerson } from '@/lib/crm/kunden'
 import { werZahlen } from '@/lib/crm/pipeline';
 import { zustaendig, mitglied, nameVon } from '@/lib/crm/team';
 import type { Mandat } from '@/lib/crm/typen';
-import { type CrmApi, neueId, datum, euro, kurzEuro } from './daten';
+import { type CrmApi, neueId, datum, euro, kurzEuro, nurFelder } from './daten';
 import { Feldzeile, Feld } from './teile';
 import { Wahl } from './Wahl';
 import { GESELLSCHAFT_WAHL } from '@/lib/crm/wahl';
@@ -45,8 +45,6 @@ const NETTO = [{ id: 'netto', label: 'netto' }, { id: 'brutto', label: 'brutto' 
 const UST = [{ id: '19', label: '19 % USt' }, { id: '0', label: 'Reverse Charge' }] as const;
 const VERLAENGERUNG = [{ id: 'auto', label: 'verlängert sich' }, { id: 'manuell', label: 'endet' }, { id: 'offen', label: 'offen' }] as const;
 const statusFarbe = (s: string) => (s === 'aktiv' ? LEUCHT.gut : s === 'verhandlung' || s === 'angebot' ? LEUCHT.business : C.inkLeise);
-/** Einzeländerung: nur diese Felder; „undefined“ heißt leeren (als '' gesendet — der Server lässt das Feld dann weg). */
-const nurFelder = (t: Record<string, unknown>) => Object.fromEntries(Object.entries(t).map(([k, v]) => [k, v === undefined ? '' : v]));
 interface LiquiLage { id: string; lage: 'fehlt' | 'ok' | 'abweichend' | 'kein-posten'; vorschlag: { betrag: number; ab: string; rhythmus: string } | null; vorhanden: { id: string; betrag: number } | null }
 
 /** Alle Mandate mit Kennzahlen, Filter und Detail — der Hauptteil von Produkte & Mandate. */

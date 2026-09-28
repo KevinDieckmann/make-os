@@ -21,6 +21,18 @@ export function domainVon(k: Pick<Kontakt, 'email' | 'firmaDomain' | 'firmaWebse
 function hash(t: string): string { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36).slice(0, 6); }
 export const firmenId = (name: string) => `f-${firmenSchluessel(name).slice(0, 30) || 'firma'}-${hash(firmenSchluessel(name) || name)}`;
 
+/**
+ * Gibt es diese Firma schon (28.09., Prüfbericht F1)? Dieselbe Kennung (`firmenId` — Name ohne Rechtsform)
+ * oder derselbe Schlüssel: „Muster GmbH“ findet „Muster“. Vor jedem Anlegen fragen — sonst träfe die neue
+ * Firma die bestehende (der Server führt dann zusammen, lib/crm/speicher.ts `firmaZusammenfuehren`).
+ */
+export function bestehendeFirma<F extends Pick<Firma, 'id' | 'name'>>(firmen: readonly F[], name: string): F | undefined {
+  const n = name.trim();
+  if (!n) return undefined;
+  const id = firmenId(n), s = firmenSchluessel(n);
+  return firmen.find(f => f.id === id) ?? (s ? firmen.find(f => firmenSchluessel(f.name) === s) : undefined);
+}
+
 /** Rolle aus den Personen: Kunde schlägt alles, dann Ex-Kunde, Partner … */
 export function rolleAus(personen: Kontakt[]): FirmaRolle {
   const hat = (f: (k: Kontakt) => boolean) => personen.some(f);

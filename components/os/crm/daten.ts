@@ -47,6 +47,17 @@ export async function holeMitStand<T>(url: string, staende: Map<string, string>)
   return (await r.json()) as T;
 }
 
+/**
+ * Kontakt-Teiländerung: `undefined` (Feld leeren) → `null`, das der Server als „Feld entfernen“ liest
+ * (lib/make-one/crm.ts `teilAnwenden`). Ohne das verwirft JSON.stringify den Schlüssel, und das alte Feld bleibt.
+ */
+export const leerAlsNull = (t: Record<string, unknown>) => Object.fromEntries(Object.entries(t).map(([k, v]) => [k, v === undefined ? null : v]));
+/**
+ * CRM-Bestand (`api.teil`): `undefined` → `''` — die Säuberer der Listen (lib/crm/speicher.ts) lassen leere Texte weg.
+ * Ohne das verwirft JSON.stringify den Schlüssel, und das alte Feld bleibt.
+ */
+export const nurFelder = (t: Record<string, unknown>) => Object.fromEntries(Object.entries(t).map(([k, v]) => [k, v === undefined ? '' : v]));
+
 export const neueId = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
 export function useCrm() {
@@ -143,13 +154,16 @@ export function useCrm() {
     finally { unterwegs.current--; }
   }, [kontaktAntwort]);
 
-  /** Kartei: nur diese Felder ändern (Stufe 2) — der Server legt sie auf den aktuellen Stand; so überschreiben Kevin und Malin einander nicht. */
+  /**
+   * Kartei: nur diese Felder ändern (Stufe 2) — der Server legt sie auf den aktuellen Stand; so überschreiben Kevin und Malin einander nicht.
+   * Ein Feld mit `undefined` heißt „leeren“ und geht als `null` hinaus (`leerAlsNull`) — JSON würde den Schlüssel sonst verwerfen.
+   */
   const kontaktTeil = useCallback(async (id: string, felder: Partial<Kontakt>) => {
     unterwegs.current++;
     let stand: string | undefined;
     setKontakte(alt => { stand = alt?.find(x => x.id === id)?.stand; return alt ? alt.map(x => (x.id === id ? { ...x, ...felder } : x)) : alt; });
     try {
-      const r = await fetch('/api/state/kontakte', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ op: 'teil', id, felder: { ...felder, geaendertAm: localDay() }, ...(stand ? { stand } : {}) }] }) }).then(x => x.json());
+      const r = await fetch('/api/state/kontakte', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ op: 'teil', id, felder: { ...leerAlsNull(felder), geaendertAm: localDay() }, ...(stand ? { stand } : {}) }] }) }).then(x => x.json());
       kontaktAntwort(r);
     } catch { fehlschlag('Nicht gespeichert — keine Verbindung.'); }
     finally { unterwegs.current--; }

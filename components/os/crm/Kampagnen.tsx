@@ -30,7 +30,7 @@ import type { Kampagne, KampagnenErgebnis } from '@/lib/crm/typen';
 import type { Playbook, KampagnenZahlen } from '@/lib/crm/kampagnen';
 import { werZahlen, bearbeiterFuer, kampagneJePerson, OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { zustaendig, nameVon, BEIDE } from '@/lib/crm/team';
-import { type CrmApi, datum, euro, plusTage } from './daten';
+import { type CrmApi, datum, euro, plusTage, nurFelder } from './daten';
 import { Pillen, Feld, Feldzeile, AMPEL_FARBE } from './teile';
 import { Wahl } from './Wahl';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
@@ -50,8 +50,6 @@ const ERGEBNISSE: { id: KampagnenErgebnis; label: string; farbe: string }[] = [
   { id: 'chance', label: 'Interesse → Lead', farbe: LEUCHT.business }, { id: 'kein_interesse', label: 'kein Interesse', farbe: C.inkLeise },
 ];
 const KANAL_LABEL: Record<string, string> = { persoenlich: 'persönlich', telefon: 'Telefon', mail: 'Mail', linkedin: 'LinkedIn', event: 'Event', mix: 'gemischt' };
-/** Einzeländerung: nur diese Felder; „undefined“ heißt leeren (als '' gesendet — der Server lässt das Feld dann weg). */
-const nurFelder = (t: Record<string, unknown>) => Object.fromEntries(Object.entries(t).map(([k, v]) => [k, v === undefined ? '' : v]));
 
 /** Kampagnen planen beide Heads (Kevin, 25.09.): in Sales mit dem Head of Sales, in Marketing mit dem Head of Marketing — dieselben Kampagnen. */
 export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi; zuKontakt: (id: string) => void; head?: 'sales' | 'marketing' }) {

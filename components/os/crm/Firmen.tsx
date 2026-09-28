@@ -14,8 +14,9 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Zeile, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT } from '../schlank';
 import { anzeigename, type Aktivitaet } from '@/lib/make-one/crm';
 import { firmenId, firmenDubletten } from '@/lib/crm/firmen';
+import { dealZuFirma, mandatZuFirma } from '@/lib/crm/firmen-bezug';
 import type { Firma, FirmaRolle } from '@/lib/crm/typen';
-import { type CrmApi, datum, euro } from './daten';
+import { type CrmApi, datum, euro, nurFelder } from './daten';
 import { Feldzeile, Pillen, Feld, Verlauf } from './teile';
 import { Wahl } from './Wahl';
 import { BeanWahl, useOffeneAngebote } from './bean-teile';
@@ -130,12 +131,15 @@ function FirmenKarte({ f, api, zuPerson }: { f: Firma; api: CrmApi; zuPerson: (i
   const crm = api.crm!;
   const personen = (api.kontakte ?? []).filter(k => k.firmaId === f.id);
   const ids = new Set(personen.map(k => k.id));
-  const chancen = crm.stand.chancen.filter(c => c.kontaktIds.some(id => ids.has(id)) || (c.firma ?? '').toLowerCase() === f.name.toLowerCase());
-  const mandate = crm.stand.mandate.filter(m => m.kontaktIds.some(id => ids.has(id)) || m.kunde.toLowerCase() === f.name.toLowerCase());
+  // Per Kennung (dealZuFirma/mandatZuFirma, F1) — der Name nur als Rückfall für Einträge ohne Firmen-Kennung; über
+  // die Personen nur, wenn der Eintrag keiner anderen Firma gehört.
+  const chancen = crm.stand.chancen.filter(c => dealZuFirma(c, f) || (!c.firmaId && c.kontaktIds.some(id => ids.has(id))));
+  const mandate = crm.stand.mandate.filter(m => mandatZuFirma(m, f) || (!m.firmaId && m.kontaktIds.some(id => ids.has(id))));
   const verlauf: Aktivitaet[] = personen.flatMap(k => (k.aktivitaeten ?? []).filter(a => a.art !== 'system').map(a => ({ ...a, text: `${anzeigename(k)}: ${a.text ?? ''}`.replace(/: $/, '') }))).sort((a, b) => a.am.localeCompare(b.am));
   const [zuordnen, setZuordnen] = useState('');
   const angebote = useOffeneAngebote();
-  const setze = (teil: Partial<Firma>) => api.setze('firmen', { ...f, ...teil } as unknown as { id: string } & Record<string, unknown>);
+  // Nur die geänderten Felder (F1) — ein ganzer Eintrag aus dem Browser-Stand überschrieb gleichzeitige Änderungen (Lead-Qualifizierung).
+  const setze = (teil: Partial<Firma>) => api.teil('firmen', f.id, nurFelder(teil));
   const kandidaten = zuordnen.trim().length >= 2 ? (api.kontakte ?? []).filter(k => k.firmaId !== f.id && `${anzeigename(k)} ${k.firma ?? ''}`.toLowerCase().includes(zuordnen.toLowerCase())).slice(0, 6) : [];
   const F: [keyof Firma, string, string?][] = [['domain', 'Domain'], ['webseite', 'Webseite'], ['branche', 'Branche'], ['mitarbeiter', 'Mitarbeitende'], ['umsatz', 'Umsatz'], ['stadt', 'Ort'], ['gegruendet', 'Gegründet'], ['telefon', 'Telefon'], ['email', 'E-Mail'], ['linkedin', 'LinkedIn']];
 

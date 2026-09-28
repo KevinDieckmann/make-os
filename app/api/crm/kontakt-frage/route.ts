@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import { resolveAgent } from '@/lib/agent-config';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { modellSchranke, zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { askText, hasAnthropicKey, guthabenLeer, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import { loadJson } from '@/lib/store/local-db';
@@ -31,12 +32,17 @@ async function kiStand(): Promise<{ ki: boolean; grund?: 'schluessel' | 'guthabe
   return { ki: true };
 }
 
+/** Nur für eine ausdrücklich benannte Person (Regel 5): ein Dienstaufruf ohne Person fragt nicht im Namen von „kevin“. */
+const OHNE_PERSON = () => NextResponse.json({ ok: false, fehler: 'Ohne angemeldete Person keine Frage an ZOE.' }, { status: 401 });
+
 export async function GET(req: Request) {
+  if (!personStreng(req)) return OHNE_PERSON();
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   return NextResponse.json({ ok: true, ...(await kiStand()) });
 }
 
 export async function POST(req: Request) {
+  if (!personStreng(req)) return OHNE_PERSON();
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   if (zuGross(req, 20_000)) return ZU_GROSS(20_000);
   let b: { id?: unknown; frage?: unknown };

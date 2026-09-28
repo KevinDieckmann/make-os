@@ -26,7 +26,7 @@ import { Notizfeld, KarteiSuche, JePerson, gastSetzen, type ReiterProps } from '
 import { VisitenkarteKnopf } from '../Visitenkarte';
 import { neueFirma } from '../Firmen';
 import { kartenDubletten, firmaZurKarte, kontaktAusKarte, emailNormal, type VisitenkartenDaten } from '@/lib/crm/visitenkarte';
-import { domainVon } from '@/lib/crm/firmen';
+import { domainVon, bestehendeFirma } from '@/lib/crm/firmen';
 
 function GrossKnopf({ an, farbe, onClick, children }: { an: boolean; farbe: string; onClick: () => void; children: string }) {
   return (
@@ -174,7 +174,8 @@ function SpontanPerKarte({ e, api, zuKontakt }: ReiterProps) {
     setLaeuft(true);
     try {
       const d: VisitenkartenDaten = { ...karte, email: karte.email ? emailNormal(karte.email) : undefined };
-      let firma = firmaZurKarte(d, crm.stand.firmen);
+      // Bestehende Firma (Schlüssel, Domain oder gleiche Kennung) verknüpfen — nie überschreiben (F1).
+      let firma = firmaZurKarte(d, crm.stand.firmen) ?? (d.firma ? bestehendeFirma(crm.stand.firmen, d.firma) : undefined);
       if (!firma && d.firma?.trim()) {
         const domain = domainVon({ email: d.email, firmaWebseite: d.webseite });
         firma = { ...neueFirma(d.firma), ...(d.webseite ? { webseite: d.webseite } : {}), ...(domain ? { domain } : {}) };

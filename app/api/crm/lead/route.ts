@@ -22,6 +22,7 @@ import { dealZuFirma } from '@/lib/crm/firmen-bezug';
 import { leads, trichter, sqlBereit, fehltBisSql, leereKriterien } from '@/lib/crm/leads';
 import { dealAnlegen } from '@/lib/crm/deal-anlegen';
 import { leadSaeubern } from '@/lib/crm/lead-form';
+import { phaseHeben } from '@/lib/crm/lifecycle';
 import { wer, BEIDE } from '@/lib/crm/team';
 import type { Lead, Mandat } from '@/lib/crm/typen';
 
@@ -84,7 +85,12 @@ export async function POST(req: Request) {
       return { ...x, mandate: [...x.mandate, m], firmen: x.firmen.map(f => (dealZuFirma(c, f) && !f.rolleVonHand ? { ...f, rolle: 'kunde' } : f)) };
     });
     if (schonDa) return NextResponse.json({ ok: false, fehler: 'Zu diesem Deal gibt es schon ein Mandat.' }, { status: 409 });
-    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (ids.has(k.id) ? { ...k, lebensphase: 'kunde', stufe: 'gewonnen', geaendertAm: jetzt.slice(0, 10) } : k)) }));
+    // Lifecycle (Prüfbericht F1): eine gesetzte Phase vor „Kunde“ wird Kunde — ohne gesetzte Phase bleibt es beim Vorschlag.
+    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => {
+      if (!ids.has(k.id)) return k;
+      const phase = phaseHeben(k.phase, 'kunde');
+      return { ...k, lebensphase: 'kunde', stufe: 'gewonnen', ...(phase ? { phase } : {}), geaendertAm: jetzt.slice(0, 10) };
+    }) }));
     return NextResponse.json({ ok: true, mandatId: m.id, text: `Mandat „${m.kunde}“ angelegt — unter Produkte & Mandate: Vertrag und Kickoff klären.` });
   }
 

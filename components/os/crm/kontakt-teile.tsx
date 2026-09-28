@@ -29,6 +29,7 @@ import { anredeVorschlag, kontaktRollenVorschlag } from '@/lib/crm/vorschlaege';
 import { KREIS_WORT } from '@/lib/crm/wertelisten';
 import { ZustaendigWahl, Uebergeben, Person } from './team';
 import { neueFirma, ROLLEN } from './Firmen';
+import { bestehendeFirma } from '@/lib/crm/firmen';
 import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
 import { WertelistenWahl, WertelistenEinzelWahl } from './WertelistenWahl';
 import { phaseVon, PHASE_LABEL, type Phase } from '@/lib/crm/phase';
@@ -67,7 +68,8 @@ export async function firmaVerknuepfen(api: CrmApi, k: Kontakt, name: string, se
   const jetzt = k.firmaId ? firmen.find(f => f.id === k.firmaId) : undefined;
   if (n === (jetzt?.name ?? k.firma ?? '')) return;
   if (!n) return void setze({ firma: undefined, firmaId: undefined });
-  const f = firmen.find(x => x.name.toLowerCase() === n.toLowerCase()) ?? neueFirma(n);
+  // Bestehende Firma (auch „Muster GmbH“ zu „Muster“, gleiche Kennung) verknüpfen statt neu anlegen (F1).
+  const f = firmen.find(x => x.name.toLowerCase() === n.toLowerCase()) ?? bestehendeFirma(firmen, n) ?? neueFirma(n);
   if (!firmen.some(x => x.id === f.id)) await api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>);
   void setze({ firma: f.name, firmaId: f.id });
 }

@@ -8,7 +8,7 @@ import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/zoe/raum';
-import { fuerPerson, wendeAktivitaetAn, wannSaeubern, ortSaeubern, STUFEN, AKTIVITAET_ARTEN, ERGEBNISSE, NOTIZ_FELDER, type Kontakt, type AktivitaetArt, type Stufe, type Ergebnis, type NotizVorlage } from '@/lib/make-one/crm';
+import { fuerPerson, wendeAktivitaetAn, wannSaeubern, wannInZukunft, ortSaeubern, STUFEN, AKTIVITAET_ARTEN, ERGEBNISSE, NOTIZ_FELDER, type Kontakt, type AktivitaetArt, type Stufe, type Ergebnis, type NotizVorlage } from '@/lib/make-one/crm';
 import { notizAnwenden, istAktAnker, type NotizAktion } from '@/lib/crm/aktivitaeten';
 import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
@@ -31,6 +31,8 @@ const ARTEN: readonly AktivitaetArt[] = AKTIVITAET_ARTEN.filter(a => a !== 'syst
 //    aktuellen Kontakt. Die alte Fassung bekommt eine Löschmarke (lib/crm/aktivitaet-marke.ts), damit
 //    ein Speichern ohne Stand (ZOE, Import, altes Fenster) sie nicht zurückholt.
 //  · Jede Antwort trägt den Kontakt mit `stand` (Fingerabdruck) und maskierter IBAN.
+//  · Geplantes Meeting (wann in der Zukunft, Prüfbericht F1): kein „letzter Kontakt“, keine Stufe und
+//    Wiedervorlage nach Regel — es zählt ab seinem Tag (Kadenz: `letzterKontaktVon`).
 
 type Antwort = Record<string, unknown>;
 const mitStandFuer = (k: Kontakt, person: string) => ({ ...fuerPerson(k, person), stand: fingerabdruck(k as unknown as Record<string, unknown>) });
@@ -93,13 +95,17 @@ export async function POST(req: Request) {
     if (i < 0) return f;
     const alt = f.kontakte[i];
     const folge = erg ? folgeAus(erg, heute, alt.stufe) : null;
+    const jetzt = new Date().toISOString();
+    // Geplantes Meeting (wann in der Zukunft, 28.09., F1): noch kein Kontakt — keine Folge-Regeln, nur Ausdrückliches.
+    const wann = art === 'termin' ? wannSaeubern(b.wann) : undefined;
+    const geplant = wannInZukunft(wann, jetzt);
     let neu = wendeAktivitaetAn(alt, {
       art, text: text || undefined, von, ergebnis: erg, notiz: notiz && Object.keys(notiz).length ? notiz : undefined, bezug,
-      ...(art === 'termin' ? { wann: wannSaeubern(b.wann), ort: ortSaeubern(b.ort) } : {}),
-      stufe: wunschStufe ?? folge?.stufe, wiedervorlage: wunschWv ?? naechster?.datum ?? folge?.wiedervorlage,
-    }, heute, new Date().toISOString(), tagePlus);
+      ...(art === 'termin' ? { wann, ort: ortSaeubern(b.ort) } : {}),
+      stufe: wunschStufe ?? (geplant ? undefined : folge?.stufe), wiedervorlage: wunschWv ?? naechster?.datum ?? (geplant ? undefined : folge?.wiedervorlage),
+    }, heute, jetzt, tagePlus);
     if (naechster) neu = { ...neu, naechsterSchritt: naechster };
-    else if (erg && alt.naechsterSchritt && alt.naechsterSchritt.datum <= heute && (erg === 'gespraech' || erg === 'termin')) neu = { ...neu, naechsterSchritt: undefined };
+    else if (!geplant && erg && alt.naechsterSchritt && alt.naechsterSchritt.datum <= heute && (erg === 'gespraech' || erg === 'termin')) neu = { ...neu, naechsterSchritt: undefined };
     if (folge?.werbesperre) neu = { ...neu, werbesperre: { seit: heute, grund: text || 'Widerspruch im Gespräch' }, wiedervorlage: undefined, naechsterSchritt: undefined };
     ergebnis = neu;
     f.kontakte[i] = neu;
@@ -112,6 +118,6 @@ export async function POST(req: Request) {
     const { aendereCrm } = await import('@/lib/crm/speicher');
     await aendereCrm(c => ({ ...c, kampagnen: c.kampagnen.map(k => (k.id === bezug && k.kontaktIds.includes(id) ? { ...k, ergebnisse: [...k.ergebnisse, { kontaktId: id, ergebnis: kErg, am: heute, ...(von !== 'zoe' ? { von } : {}) }], geaendert: new Date().toISOString(), geaendertVon: von } : k)) }));
   }
-  // Private Notizen sieht nur, wer sie schrieb — auch in dieser Antwort.
-  return NextResponse.json({ ok: true, kontakt: ergebnis ? mitStandFuer(ergebnis, personAus(req)) : ergebnis, hinweis: erg ? folgeAus(erg, heute, 'neu').hinweis : undefined });
+  // Private Notizen sieht nur, wer sie schrieb — auch in dieser Antwort; ohne ausdrückliche Person keine (Regel 5).
+  return NextResponse.json({ ok: true, kontakt: ergebnis ? mitStandFuer(ergebnis, personStreng(req) ?? '') : ergebnis, hinweis: erg ? folgeAus(erg, heute, 'neu').hinweis : undefined });
 }

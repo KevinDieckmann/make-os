@@ -633,6 +633,46 @@ export function wannSaeubern(v: unknown): string | undefined {
   if (!/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})?)?$/.test(t)) return undefined;
   return Number.isNaN(Date.parse(t.length === 10 ? `${t}T12:00:00Z` : t)) ? undefined : t;
 }
+const BERLIN_WAND = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+/** Berliner Wandzeit `YYYY-MM-DDTHH:MM` eines Zeitpunkts mit Zone. */
+function berlinWand(iso: string): string | undefined {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return undefined;
+  const p = Object.fromEntries(BERLIN_WAND.formatToParts(d).map(x => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}
+const mitZone = (t: string) => /(Z|[+-]\d{2}:\d{2})$/.test(t);
+/** Der Berliner Tag eines Meeting-Zeitpunkts (`wann`: Tag, Wandzeit oder ISO mit Zone). */
+export function wannTag(wann: string): string {
+  return mitZone(wann) ? (berlinWand(wann) ?? wann).slice(0, 10) : wann.slice(0, 10);
+}
+/**
+ * Liegt das Meeting noch vor uns (28.09., Prüfbericht F1)? Ein geplantes Meeting ist noch kein
+ * Kontakt — erst wenn es vorbei ist, zählt es (Kadenz über `letzterKontaktVon`). Ein Meeting nur
+ * mit Tag gilt am Tag selbst als stattgefunden.
+ */
+export function wannInZukunft(wann: string | undefined, jetztIso: string): boolean {
+  if (!wann) return false;
+  if (mitZone(wann)) return Date.parse(wann) > Date.parse(jetztIso);
+  const jetzt = berlinWand(jetztIso);
+  if (!jetzt) return false;
+  if (wann.length === 10) return wann > jetzt.slice(0, 10);
+  return wann.slice(0, 16) > jetzt;
+}
+/**
+ * Letzter echter Kontakt für die Kadenz: das gespeicherte Feld oder ein Meeting, dessen Tag
+ * inzwischen erreicht ist (geplante Meetings setzen `letzterKontakt` beim Eintragen nicht).
+ */
+export function letzterKontaktVon(k: Pick<Kontakt, 'letzterKontakt' | 'aktivitaeten'>, heute: string): string | undefined {
+  let letzter = k.letzterKontakt;
+  for (const a of k.aktivitaeten ?? []) {
+    if (a.art !== 'termin' || !a.wann) continue;
+    const t = wannTag(a.wann);
+    if (t <= heute && (!letzter || t > letzter)) letzter = t;
+  }
+  return letzter;
+}
+
 /** Ort oder Videolink: eine Zeile, höchstens 160 Zeichen. */
 export function ortSaeubern(v: unknown): string | undefined {
   const t = String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
@@ -751,11 +791,14 @@ export function wendeAktivitaetAn(
   const out: Kontakt = { ...k, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag] };
   // Nur echter Kontakt zählt: ein nicht erreichter Anruf ist ein Versuch, kein Kontakt.
   const echt = e.art !== 'notiz' && e.art !== 'stufe' && e.art !== 'system' && e.ergebnis !== 'nicht_erreicht' && e.ergebnis !== 'mailbox';
-  if (echt) out.letzterKontakt = heute;
-  out.stufe = e.stufe ?? stufeNach(e.art, k.stufe);
-  const wv = e.wiedervorlage ?? wiedervorlageNach(e.art, heute, tagePlus);
+  // Ein geplantes Meeting (wann in der Zukunft) ist noch kein Kontakt: weder letzter Kontakt noch
+  // Stufe oder Wiedervorlage nach Regel — nur, was ausdrücklich mitkommt (Prüfbericht 28.09., F1).
+  const geplant = e.art === 'termin' && wannInZukunft(eintrag.wann, jetztIso);
+  if (echt && !geplant) out.letzterKontakt = heute;
+  out.stufe = e.stufe ?? (geplant ? k.stufe : stufeNach(e.art, k.stufe));
+  const wv = e.wiedervorlage ?? (geplant ? undefined : wiedervorlageNach(e.art, heute, tagePlus));
   if (wv) out.wiedervorlage = wv;
-  else if (e.art === 'antwort' || e.art === 'termin') out.wiedervorlage = undefined;
+  else if (!geplant && (e.art === 'antwort' || e.art === 'termin')) out.wiedervorlage = undefined;
   out.geaendertAm = heute;
   return out;
 }
@@ -786,6 +829,32 @@ export function kontaktVereinen(neu: Kontakt, alt: Kontakt, person?: string): Ko
   };
 }
 
+
+/**
+ * Felder, die ein `teil` nie leert — Kennung, Pipeline-Kern und was nur der Server setzt.
+ * Die Zahlung hat ihren eigenen Weg (`ibanEntfernen`, lib/crm/zahlung.ts).
+ */
+const NIE_LEEREN = new Set(['id', 'stufe', 'aktivitaeten', 'importiertAm', 'geaendertAm', 'vonHand', 'geloeschteAktivitaeten', 'stand', 'zahlung']);
+
+/**
+ * Einzelne Felder auf den gespeicherten Kontakt legen (PATCH /api/state/kontakte, op `teil`).
+ * `null` heißt „Feld entfernen“ (28.09., Prüfbericht F1): JSON kennt kein `undefined`, der Browser
+ * übersetzt es in `kontaktTeil` zu `null` — sonst verschwände der Schlüssel unterwegs und das alte
+ * Feld bliebe stehen („✓ erledigt“, Firma lösen, Sperre aufheben …). Das Ergebnis läuft danach
+ * durch `saeubereKontakt`; `vonHandMarkieren` zählt ein geleertes Stammdaten-Feld als von Hand.
+ */
+export function teilAnwenden(alt: Kontakt, felder: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...alt };
+  for (const [f, v] of Object.entries(felder)) {
+    if (f === 'stand' || f === 'geloeschteAktivitaeten') continue;
+    if (v === null) {
+      if (NIE_LEEREN.has(f)) continue;
+      delete out[f];
+      if (f === 'privatNotiz') delete out.privatNotizVon;
+    } else if (v !== undefined) out[f] = v;
+  }
+  return { ...out, id: alt.id, geloeschteAktivitaeten: alt.geloeschteAktivitaeten };
+}
 
 // ── Private Notiz: nur für die Person, die sie schrieb (Kevins Entscheidung 25.09.) ──
 /** Vor dem 25.09. schrieb nur Kevin private Notizen — ohne Verfasser gelten sie als seine. */

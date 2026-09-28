@@ -80,6 +80,16 @@ export function dealBauen(e: DealEingabe, ctx: { kontakte: Kontakt[]; firmen: { 
   return { ok: true, chance, ...(zeile ? { leadId: zeile.id } : {}), text: `Deal „${chance.titel}“ steht in der Pipeline (Stufe ${stufe === 'qualifiziert' ? 'SQL' : stufe}).` };
 }
 
+/**
+ * Der Lead wird SQL (Ebene 1 → 2): alles Bisherige bleibt — Kernfragen, Antworten je Frage,
+ * `qualifiziertAm`, Fit, Notiz (Prüfbericht 28.09., F1: vorher gingen Antworten und Datum verloren).
+ * Nur der Grund für „kein Fit“/„ruht“ fällt weg — er gilt für ein SQL nicht mehr.
+ */
+export function leadWirdSql(alt: Lead | undefined, c: Pick<Chance, 'id' | 'qualifizierung'>, jetzt: string, person: string): Lead {
+  const { grund: _g, ...bisher } = alt ?? { kriterien: c.qualifizierung };
+  return { ...bisher, status: 'sql', kriterien: alt?.kriterien ?? c.qualifizierung, sqlAm: jetzt, chanceId: c.id, geaendert: jetzt, geaendertVon: person };
+}
+
 /** Deal anlegen und schreiben: Chance in den CRM-Bestand, Lead wird SQL mit Verweis. */
 export async function dealAnlegen(e: DealEingabe, person: string, jetzt = new Date().toISOString()): Promise<DealErgebnis> {
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
@@ -90,8 +100,7 @@ export async function dealAnlegen(e: DealEingabe, person: string, jetzt = new Da
     if (!r.ok) return x;
     const c = r.chance;
     // Ebene 1 → 2: der Lead der Firma ist jetzt SQL — mit Verweis auf den Deal, in derselben Mutation.
-    const sql = (alt?: Lead): Lead => ({ status: 'sql', kriterien: alt?.kriterien ?? c.qualifizierung, ...(alt?.fit ? { fit: alt.fit } : {}), ...(alt?.notiz ? { notiz: alt.notiz } : {}), sqlAm: jetzt, chanceId: c.id, geaendert: jetzt, geaendertVon: person });
-    return { ...x, chancen: [...x.chancen, c], firmen: c.firmaId ? x.firmen.map(f => (f.id === c.firmaId ? { ...f, lead: sql(f.lead), geaendert: jetzt, geaendertVon: person } : f)) : x.firmen };
+    return { ...x, chancen: [...x.chancen, c], firmen: c.firmaId ? x.firmen.map(f => (f.id === c.firmaId ? { ...f, lead: leadWirdSql(f.lead, c, jetzt, person), geaendert: jetzt, geaendertVon: person } : f)) : x.firmen };
   });
   const ergebnis = r as DealErgebnis | null;
   if (!ergebnis) return { ok: false, fehler: 'Deal nicht angelegt.', status: 500 };
@@ -99,8 +108,7 @@ export async function dealAnlegen(e: DealEingabe, person: string, jetzt = new Da
   const c = ergebnis.chance;
   // Person ohne Firma: der Lead hängt an ihr (anderer Bestand).
   if (!c.firmaId && c.kontaktIds[0]) {
-    const sql = (alt?: Lead): Lead => ({ status: 'sql', kriterien: alt?.kriterien ?? c.qualifizierung, ...(alt?.fit ? { fit: alt.fit } : {}), ...(alt?.notiz ? { notiz: alt.notiz } : {}), sqlAm: jetzt, chanceId: c.id, geaendert: jetzt, geaendertVon: person });
-    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === c.kontaktIds[0] && !k.firmaId ? { ...k, lead: sql(k.lead), geaendertAm: localDay(new Date(jetzt)) } : k)) }));
+    await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === c.kontaktIds[0] && !k.firmaId ? { ...k, lead: leadWirdSql(k.lead, c, jetzt, person), geaendertAm: localDay(new Date(jetzt)) } : k)) }));
   }
   return ergebnis;
 }

@@ -32,6 +32,7 @@ import { type CrmApi, datum } from './daten';
 import { KanalAmpel, Grund, Feldzeile, Pillen, Feld, AMPEL_FARBE } from './teile';
 import { Wahl } from './Wahl';
 import { Firmen, neueFirma } from './Firmen';
+import { bestehendeFirma } from '@/lib/crm/firmen';
 import { Person, WerFilter, useWerFilter, passtWer, Uebergeben, AuchHier } from './team';
 import { VisitenkarteKnopf } from './Visitenkarte';
 import { LeadBlock } from './Leads';
@@ -152,7 +153,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
       <input ref={sucheRef} value={suche} onChange={e => setSuche(e.target.value)} placeholder={modus === 'personen' ? 'Suchen: Name, Firma, Branche, Ort …  ( / )' : 'Firma, Domain, Branche, Ort …'} aria-label="Suchen" style={{ ...feld, flex: 1, minWidth: 200, padding: '9px 13px', fontSize: TYP.bedien }} />
       {modus === 'personen' && zuRunde && <><Knopf leise onClick={() => zuRunde('kreis')}>Kreis-Runde</Knopf><Knopf leise onClick={() => zuRunde('chancen')}>Qualifizierungs-Runde</Knopf><Knopf leise onClick={() => zuRunde('vernetzen')}>Vernetzen-Runde</Knopf></>}
       {modus === 'personen' ? <Knopf onClick={() => setAnlegen(!anlegen)}>+ Person</Knopf>
-        : <Knopf onClick={async () => { const n = await frage('Name der Firma', { hinweis: 'Rechtsform gern dazu — Dubletten prüft die Kartei danach.' }); if (n?.trim()) { const f = neueFirma(n); void api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>).then(() => zuFirma(f.id)); } }}>+ Firma</Knopf>}
+        : <Knopf onClick={async () => { const n = await frage('Name der Firma', { hinweis: 'Rechtsform gern dazu — Dubletten prüft die Kartei danach.' }); if (n?.trim()) { const da = bestehendeFirma(api.crm?.stand.firmen ?? [], n); if (da) { zuFirma(da.id); return; } const f = neueFirma(n); void api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>).then(() => zuFirma(f.id)); } }}>+ Firma</Knopf>}
       {nachfrage}
     </div>
   );
@@ -296,7 +297,8 @@ function Anlegen({ api, heute, onFertig }: { api: CrmApi; heute: string; onFerti
   const dublette = e.email.includes('@') ? (api.kontakte ?? []).find(k => (k.email ?? '').toLowerCase() === e.email.trim().toLowerCase()) : undefined;
   // Ohne Titel verglichen: „Dr. Anna Weber“ von der Karte ist „Anna Weber“ in der Kartei.
   const namensgleich = e.nachname.trim() ? (api.kontakte ?? []).find(k => gleicherName(k, e)) : undefined;
-  const firma = firmen.find(f => f.name.toLowerCase() === e.firma.trim().toLowerCase());
+  // Auch „Muster GmbH“ zu „Muster“ (gleiche Kennung) — verknüpfen statt die bestehende Firma zu überschreiben (F1).
+  const firma = bestehendeFirma(firmen, e.firma);
   const ok = e.nachname.trim() && !dublette;
   const anlegen = async () => {
     if (!ok) return;

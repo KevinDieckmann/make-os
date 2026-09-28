@@ -172,6 +172,8 @@ function teilnahme(o: Record<string, unknown>, jetzt: string): Teilnahme | null 
     ...(['persoenlich', 'telefon', 'mail', 'linkedin'].includes(String(o.einladungsweg)) ? { einladungsweg: o.einladungsweg as Teilnahme['einladungsweg'] } : {}),
     ...(wer(o.einladenDurch) && wer(o.einladenDurch) !== BEIDE ? { einladenDurch: wer(o.einladenDurch) } : {}),
     ...(wer(o.eingechecktVon) && wer(o.eingechecktVon) !== BEIDE ? { eingechecktVon: wer(o.eingechecktVon) } : {}),
+    // „Kein Nachfassen“ (Tag) — fiel hier vorher weg, und der Gast kam beim nächsten Speichern wieder ins Nachfassen (F1).
+    ...(tag(o.nachfassenVerzichtet) ? { nachfassenVerzichtet: tag(o.nachfassenVerzichtet) } : {}),
     geaendert: jetzt,
   };
 }
@@ -394,7 +396,7 @@ export function dealRegeln(b: CrmBestand, ops: ListenOp[], jetzt: string, person
 export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person: string): { bestand: CrmBestand; angewandt: number; fehler: string[] } {
   let angewandt = 0;
   const { ops: regelOps, fehler } = dealRegeln(b, roh, jetzt, person);
-  const ops = ibanSchuetzen(b, regelOps);
+  const ops = firmenZusammenfuehren(b, ibanSchuetzen(b, regelOps));
   const neu = { ...b };
   for (const l of CRM_LISTEN) {
     const eigene = ops.filter(o => o.liste === l);
@@ -419,6 +421,27 @@ function ibanSchuetzen(b: CrmBestand, ops: ListenOp[]): ListenOp[] {
     if (o.op === 'teil' && o.felder && 'zahlung' in o.felder) return { ...o, felder: { ...o.felder, zahlung: zahlungZusammenfuehren(o.felder.zahlung, alt) } };
     if (o.op === 'upsert' && o.eintrag && alt?.iban) return { ...o, eintrag: { ...o.eintrag, zahlung: zahlungZusammenfuehren((o.eintrag as Record<string, unknown>).zahlung, alt) } };
     return o;
+  });
+}
+
+const leerWert = (v: unknown) => v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length);
+/**
+ * Eine Firma „anlegen“, die es schon gibt (28.09., Prüfbericht F1): Die Kennung entsteht aus dem Namen
+ * ohne Rechtsform (`firmenId`) — „Muster GmbH“ nach „Muster“ trifft denselben Eintrag. Ein `upsert` mit
+ * bestehender Kennung ersetzt deshalb nie, sondern führt zusammen: nur leere Felder werden gefüllt;
+ * Lead, Zahlung, BEAN, Notiz, Domain, Branchen, Rolle (auch `rolleVonHand`) und Name bleiben, wie sie sind.
+ * Ändern geht über `teil` (Firmen-Karte, Matrix).
+ */
+export function firmaZusammenfuehren(alt: Firma, neu: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...alt };
+  for (const [f, v] of Object.entries(neu)) if (f !== 'id' && leerWert(out[f]) && !leerWert(v)) out[f] = v;
+  return out;
+}
+function firmenZusammenfuehren(b: CrmBestand, ops: ListenOp[]): ListenOp[] {
+  return ops.map(o => {
+    if (o.liste !== 'firmen' || o.op !== 'upsert' || !o.eintrag) return o;
+    const alt = b.firmen.find(f => f.id === o.eintrag!.id);
+    return alt ? { ...o, eintrag: firmaZusammenfuehren(alt, o.eintrag) } : o;
   });
 }
 
