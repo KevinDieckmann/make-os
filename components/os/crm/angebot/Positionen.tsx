@@ -40,9 +40,10 @@ function ZahlFeld({ wert, onWert, breite, label, rechts }: { wert: string; onWer
 
 export function Katalog({ leistungen, gesellschaft, kleinunternehmer, onDazu, aus }: { leistungen: Leistung[]; gesellschaft: Gesellschaftskennung; kleinunternehmer: (g: Gesellschaftskennung) => boolean; onDazu: (p: AngebotPosition, von: Gesellschaftskennung | null) => void; aus?: boolean }) {
   const l = katalog(leistungen, gesellschaft);
+  const [alle, setAlle] = useState(false);
   // Hat die gewählte Gesellschaft kein eigenes Produkt, gleich alle zeigen — im Call zählt jeder Klick.
-  const [alle, setAlle] = useState(() => !l.some(x => !x.andere));
-  const sichtbar = alle ? l : l.filter(x => !x.andere);
+  const keineEigenen = !l.some(x => !x.andere);
+  const sichtbar = alle || keineEigenen ? l : l.filter(x => !x.andere);
   if (!l.length) return <div style={klein}>Noch kein aktives Produkt — unter Produkte & Mandate › Produkte anlegen (mit Leistungstext), oder hier eine freie Position.</div>;
   return (
     <div>
@@ -59,7 +60,7 @@ export function Katalog({ leistungen, gesellschaft, kleinunternehmer, onDazu, au
           </button>
         ))}
       </div>
-      {l.some(x => x.andere) && <button onClick={() => setAlle(!alle)} style={{ marginTop: 8, background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>{alle ? 'nur Produkte dieser Gesellschaft' : `+ ${l.filter(x => x.andere).length} Produkte anderer Gesellschaften`}</button>}
+      {l.some(x => x.andere) && !keineEigenen && <button onClick={() => setAlle(!alle)} style={{ marginTop: 8, background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>{alle ? 'nur Produkte dieser Gesellschaft' : `+ ${l.filter(x => x.andere).length} Produkte anderer Gesellschaften`}</button>}
     </div>
   );
 }
