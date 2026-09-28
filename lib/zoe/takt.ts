@@ -14,6 +14,7 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
+import { wandzeit } from '@/lib/kalender/zeit';
 import { artFuerStunde, tagKey, type LaufArt } from '@/lib/tageslauf';
 import { faelligeSlots, type TaktStand } from '@/lib/gesundheit/takt';
 import { telegramKonfiguriert } from '@/lib/telegram';
@@ -82,11 +83,20 @@ export async function faellig(jetzt = new Date()): Promise<Faellig[]> {
 }
 
 async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
-  const h = jetzt.getHours();
-  if (h < VON || h >= BIS) return [];
-
-  const raus: Faellig[] = [];
+  // Berliner Wandzeit (29.09., Paket D-A #40) — nicht die Zeitzone der Maschine.
+  const wand = wandzeit(jetzt);
+  const h = Number(wand.slice(11, 13));
   const heute = localDay(jetzt);
+  const raus: Faellig[] = [];
+
+  // 00) Durchsicht der Bestände (Paket D-A #85): einmal am Tag ab 4 Uhr — nach der Sicherung (03:15), auch nachts.
+  //     Riegel = `letzter.tag` im Bestand hoi-durchsicht (der Lauf schreibt ihn). Ohne KI.
+  try {
+    const d = (await loadJson<{ letzter?: { tag?: string } }>('hoi-durchsicht')) ?? {};
+    if (h >= 4 && d.letzter?.tag !== heute) raus.push({ id: 'durchsicht', grund: 'Durchsicht der Bestände steht aus', auftrag: { art: 'agent', name: 'durchsicht', anlass: 'Takt: Durchsicht' } });
+  } catch (err) { console.error('[MAKE OS] Durchsicht-Takt übersprungen:', err); }
+
+  if (h < VON || h >= BIS) return raus;
 
   // 0) Der Gesundheits-Takt (23.09.) — VOR allem anderen und unabhängig vom
   //    Morgenlauf: Kevin soll seine Nachricht aufs Handy bekommen, auch wenn
@@ -134,7 +144,7 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
   //     den nur, wenn ein Bote da ist, der es zustellen kann. Riegel in hoi-meldung.json (der Lauf schreibt ihn).
   try {
     const hm = (await loadJson<{ berichtTag?: string; zuletzt?: string }>('hoi-meldung')) ?? {};
-    const minuten = h * 60 + jetzt.getMinutes();
+    const minuten = h * 60 + Number(wand.slice(14, 16));
     if (minuten >= 7 * 60 + 45 && hm.berichtTag !== heute) raus.push({ id: 'hoi-bericht', grund: 'Head of IT: Tagesbericht', auftrag: { art: 'agent', name: 'hoi', auftrag: 'bericht', anlass: 'Takt: Head of IT' } });
     else if (telegramKonfiguriert() && (!hm.zuletzt || jetzt.getTime() - Date.parse(hm.zuletzt) >= 55 * 60_000)) raus.push({ id: `hoi-${h}`, grund: 'Head of IT: Stundenblick auf neues Rot', auftrag: { art: 'agent', name: 'hoi', auftrag: 'pruefen', anlass: 'Takt: Head of IT' } });
   } catch (err) {

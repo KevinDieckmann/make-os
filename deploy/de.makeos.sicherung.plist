@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MAKE OS · Sicherung jeden Morgen auf den Mac ziehen (29.09., Paket D-A).
+     Einmalig: deploy/sicherung-abholen.sh --einrichten (Schlüssel + Zeile für den Server), dann
+       cp deploy/de.makeos.sicherung.plist ~/Library/LaunchAgents/
+       launchctl load ~/Library/LaunchAgents/de.makeos.sicherung.plist
+     Läuft täglich 08:30 — war der Mac aus oder im Ruhezustand, holt launchd den Lauf beim Aufwachen nach.
+     Protokoll: ~/.make-os/sicherung-abholen.log. Der Head of IT warnt, wenn die letzte Abholung älter als 48 h ist. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>de.makeos.sicherung</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/kevindieckmann/Claude/Projects/MakeOS/deploy/sicherung-abholen.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>30</integer></dict>
+  <key>RunAtLoad</key><false/>
+  <key>StandardOutPath</key><string>/Users/kevindieckmann/.make-os/sicherung-abholen.log</string>
+  <key>StandardErrorPath</key><string>/Users/kevindieckmann/.make-os/sicherung-abholen.log</string>
+</dict>
+</plist>

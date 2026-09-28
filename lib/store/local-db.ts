@@ -437,6 +437,15 @@ async function mitSperre<T>(name: string, fn: () => Promise<T>): Promise<T> {
   }
 }
 
+/**
+ * Nur die Schreibsperre eines Bestands halten (ohne ihn zu lesen oder zu schreiben) — für Werkzeuge, die
+ * Dateien NEBEN einem Bestand bearbeiten müssen, während dessen Schreiber warten (Rotation der Dateiablage).
+ */
+export async function mitBestandSperre<T>(name: string, fn: () => Promise<T>): Promise<T> {
+  pruefeName(name);
+  return mitSperre(name, async () => { aenderungFertig(); return fn(); });
+}
+
 /** Zum Schreiben: Schemaversion dran, ohne Einrückung (#76 — Lesen bleibt tolerant). */
 const zuText = (name: string, daten: unknown) => JSON.stringify(mitVersion(name, daten));
 

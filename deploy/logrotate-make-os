@@ -1,0 +1,15 @@
+# ─── MAKE OS · Logrotate für die Cron-Protokolle (29.09., Paket D-A #79) ───
+# Einrichten (einmalig, als make mit sudo):
+#   sudo install -m 644 /srv/make-os/app/deploy/logrotate-make-os /etc/logrotate.d/make-os
+# Prüfen: sudo logrotate -d /etc/logrotate.d/make-os
+/srv/make-os/sicherungen/protokoll.txt /srv/make-os/vault-abgleich.txt /srv/make-os/lage-sammeln.txt {
+  weekly
+  rotate 8
+  maxsize 5M
+  compress
+  delaycompress
+  missingok
+  notifempty
+  copytruncate
+  su make make
+}

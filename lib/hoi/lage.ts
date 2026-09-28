@@ -24,6 +24,8 @@ export interface HostLage {
   zertifikat?: { tage?: number; bis?: string };
   sicherung?: { alter_stunden?: number; groesse_mb?: number; datei?: string };
   vault?: { letzter_commit_stunden?: number; konflikt?: boolean };
+  /** Letzte bestätigte Abholung durch den Mac (deploy/sicherung-ausgeben.sh → daten/system/abholung.json, 29.09.). */
+  abholung?: { alter_stunden?: number | null; datei?: string | null };
   kernel_neustart_noetig?: boolean;
   updates?: { sicherheit?: number };
 }
@@ -49,7 +51,27 @@ export interface InnenLage {
   verschluesselt: boolean;
   /** KI-Schlüssel da? Guthaben leer (seit)? — aus lib/anthropic.ts, dem einen Weg für alle Modellaufrufe. */
   ki: { schluessel: boolean; guthabenLeerSeit: string | null };
+  /** Datenschicht (29.09., Paket D-A): Messwerte, Sicherungsfehler, Klartext, .tmp-Reste, zweiter Schreiber, Schlüsselquelle. */
+  datenschicht?: DatenschichtLage;
+  /** Ergebnis der letzten nächtlichen Sicherung (deploy/sicherung.sh → daten/system/sicherung.json). */
+  sicherungLauf?: SicherungLauf | null;
+  /** Letzte Durchsicht der Bestände (lib/store/durchsicht.ts, Bestand hoi-durchsicht). */
+  durchsicht?: DurchsichtKurz | null;
 }
+
+export interface Quantile { p50: number | null; p99: number | null; n: number }
+export interface DatenschichtLage {
+  sperrWarten: Quantile; sperrHalten: Quantile; schreiben: Quantile;
+  zaehler: { '409': number; '413': number; sperrZeitlimit: number; sicherungFehler: number; klartextAbgelehnt: number };
+  parseLangsam: { bestand: string; maxMs: number; mb: number }[];
+  sicherungFehler: { anzahl: number; letzter?: string; zeit?: string };
+  klartext: string[];
+  tmpReste: number;
+  fremderSchreiber: { pid: number; host: string } | null;
+  schluesselQuelle: 'datei' | 'umgebung' | 'keiner';
+}
+export interface SicherungLauf { zeit?: string; ok?: boolean; grund?: string; datei?: string; groesse_mb?: number; dateien?: number; dauer_s?: number; schnappschuss?: string; ping?: string; pruefung?: { ok?: boolean; bestaende?: number; datensaetze?: number; fehler?: number } | null }
+export interface DurchsichtKurz { zeit: string; bestaende: number; zeilen: number; fehler: number; klartext: number; alteHuellen: number; alteForm: number; spruenge: { name: string; vorher: number; nachher: number }[]; tmpReste: number; verbindungen: { fehler: number; warnung: number; hinweis: number } | { nichtGeprueft: string } }
 
 const uhr = (h: number) => (h < 1 ? `${Math.round(h * 60)} min` : h < 48 ? `${Math.round(h)} h` : `${Math.round(h / 24)} Tage`);
 
@@ -98,6 +120,9 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   if (kaputt?.anzahl) b.push({ id: 'beschaedigt', bereich: 'app', label: 'Bestand beschädigt beiseitegelegt', ampel: 'rot', wert: `${kaputt.anzahl} Datei${kaputt.anzahl === 1 ? '' : 'en'}: ${kaputt.bestaende.slice(0, 5).join(', ')}${kaputt.bestaende.length > 5 ? ' …' : ''}`, satz: 'liegt als .corrupt-… im Datenordner; der Bestand wird bis zur Prüfung nicht beschrieben — Kopie prüfen, aus backup/ oder der Sicherung wiederherstellen' });
   b.push({ id: 'bestaende', bereich: 'app', label: 'Bestände', ampel: innen.bestaende.gesamtMb < 50 ? 'gruen' : innen.bestaende.gesamtMb < 200 ? 'gelb' : 'rot', wert: `${innen.bestaende.anzahl} Dateien · ${innen.bestaende.gesamtMb.toFixed(1)} MB`, satz: `größte: ${innen.bestaende.groesste.slice(0, 3).map(x => `${x.name} ${x.mb.toFixed(1)} MB`).join(', ')}` });
 
+  // ── Datenschicht, Sicherung, Durchsicht (29.09., Paket D-A) ──
+  b.push(...datenschichtBefunde(innen, host, jetzt));
+
   // ── Außen ──
   const aAlter = alterMin(aussen?.zeit);
   if (!aussen || aAlter === null) b.push({ id: 'aussen', bereich: 'aussen', label: 'Außenblick', ampel: 'grau', wert: 'keine Meldung', satz: 'GitHub-Aktion hoi-aussenblick.yml meldet alle 6 Stunden — braucht MAKE_OS_KEY_HOI und MAKE_OS_ADRESSE in den Repo-Einstellungen.' });
@@ -109,6 +134,65 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
     const fehlen = ['strict-transport-security', 'content-security-policy', 'x-content-type-options', 'referrer-policy', 'x-frame-options', 'permissions-policy'].filter(h => !k[h]);
     b.push({ id: 'kopfzeilen', bereich: 'aussen', label: 'Sicherheits-Kopfzeilen', ampel: !fehlen.length ? 'gruen' : fehlen.length <= 2 ? 'gelb' : 'rot', wert: fehlen.length ? `fehlt: ${fehlen.join(', ')}` : 'alle sechs gesetzt', satz: fehlen.length ? 'next.config.mjs bzw. Caddyfile prüfen' : 'HSTS, CSP, nosniff, Referrer, Frame, Permissions' });
     if (aussen.observatory?.note) b.push({ id: 'observatory', bereich: 'aussen', label: 'Mozilla Observatory', ampel: /^A/.test(aussen.observatory.note) ? 'gruen' : /^B/.test(aussen.observatory.note) ? 'gelb' : 'rot', wert: `${aussen.observatory.note}${aussen.observatory.punkte != null ? ` · ${aussen.observatory.punkte}` : ''}`, satz: 'wöchentlicher Scan' });
+  }
+  return b;
+}
+
+const ms = (x: number | null) => (x === null ? '—' : x >= 1000 ? `${(x / 1000).toFixed(1)} s` : `${Math.round(x)} ms`);
+
+/** Befunde zur Datenschicht und zur Sicherung — rein, getestet (tests/hoi-datenschicht.test.ts). */
+export function datenschichtBefunde(innen: InnenLage, host: HostLage | null, jetzt: string): Befund[] {
+  const b: Befund[] = [];
+  const stunden = (zeit?: string) => (zeit ? (Date.parse(jetzt) - Date.parse(zeit)) / 3_600_000 : null);
+
+  // Nächtliche Sicherung: geprüft? Schreibpause? Dead-Man-Ping?
+  const s = innen.sicherungLauf;
+  if (s === null) b.push({ id: 'sicherung-geprueft', bereich: 'sicherung', label: 'Sicherung geprüft', ampel: 'grau', wert: 'noch kein Prüfergebnis', satz: 'deploy/sicherung.sh schreibt ab dem nächsten Lauf daten/system/sicherung.json' });
+  else if (s) {
+    const alt = stunden(s.zeit);
+    if (!s.ok) b.push({ id: 'sicherung-geprueft', bereich: 'sicherung', label: 'Sicherung geprüft', ampel: 'rot', wert: 'letzter Lauf gescheitert', satz: (s.grund || 'Grund im Protokoll /srv/make-os/sicherungen/protokoll.txt').slice(0, 160) });
+    else {
+      const p = s.pruefung;
+      const ohnePause = s.schnappschuss === 'ohne-pause';
+      b.push({ id: 'sicherung-geprueft', bereich: 'sicherung', label: 'Sicherung geprüft', ampel: alt !== null && alt > 30 ? 'gelb' : ohnePause ? 'gelb' : 'gruen', wert: `${p?.bestaende ?? '?'} Bestände · ${p?.datensaetze ?? '?'} Datensätze · ${s.dateien ?? '?'} Dateien${s.dauer_s != null ? ` · ${s.dauer_s} s` : ''}`, satz: ohnePause ? 'ohne Schreibpause gesichert — die App war nicht erreichbar oder nicht still' : 'entschlüsselt, geparst und gezählt, Archiv mit age-Kopf' });
+    }
+    b.push({ id: 'sicherung-ping', bereich: 'sicherung', label: 'Dead-Man-Ping der Sicherung', ampel: s.ping === 'ok' ? 'gruen' : 'gelb', wert: s.ping === 'ok' ? 'meldet' : s.ping === 'fehler' ? 'Ping gescheitert' : 'nicht eingerichtet', satz: s.ping === 'ok' ? 'Healthchecks schlägt Alarm, wenn die Sicherung ausbleibt' : 'Pflicht: Ping-Adresse (Healthchecks.io) nach /srv/make-os/.healthchecks-sicherung — sonst merkt niemand, wenn die Sicherung ausfällt' });
+  }
+  // Abholung durch den Mac (Offsite)
+  if (host) {
+    const a = host.abholung?.alter_stunden;
+    if (a == null) b.push({ id: 'abholung', bereich: 'sicherung', label: 'Sicherung am Mac', ampel: 'gelb', wert: 'noch nie abgeholt', satz: 'zweiter Ort fehlt: am Mac deploy/sicherung-abholen.sh --einrichten + launchd (NOTFALL.md)' });
+    else b.push({ id: 'abholung', bereich: 'sicherung', label: 'Sicherung am Mac', ampel: a <= 30 ? 'gruen' : a <= 48 ? 'gelb' : 'rot', wert: `zuletzt vor ${Math.round(a)} h`, satz: a <= 30 ? 'der Mac hat die letzte Sicherung abgeholt und bestätigt' : 'der Mac holt nicht mehr ab — Mac an? launchd de.makeos.sicherung geladen?' });
+  }
+
+  const d = innen.datenschicht;
+  if (d) {
+    if (d.sicherungFehler.anzahl) b.push({ id: 'tagessicherung', bereich: 'sicherung', label: 'Tagessicherung der Bestände', ampel: 'rot', wert: `${d.sicherungFehler.anzahl}× gescheitert`, satz: `zuletzt ${d.sicherungFehler.letzter ?? '?'} — Platz und Rechte von daten/backup prüfen` });
+    if (d.klartext.length) b.push({ id: 'klartext', bereich: 'sicherheit', label: 'Klartext-Bestand abgelehnt', ampel: 'rot', wert: `${d.klartext.length}: ${d.klartext.slice(0, 4).join(', ')}${d.klartext.length > 4 ? ' …' : ''}`, satz: 'liegt unverschlüsselt da, obwohl ein Schlüssel gesetzt ist — untergeschoben oder alte Sicherung? prüfen, dann scripts/daten-verschluesselung.mjs --verschluesseln' });
+    if (d.tmpReste) b.push({ id: 'tmp-reste', bereich: 'app', label: 'Liegengebliebene .tmp-Dateien', ampel: 'gelb', wert: String(d.tmpReste), satz: 'abgebrochene Schreibungen — nach Prüfung löschen, sie füllen sonst die Platte' });
+    if (d.fremderSchreiber) b.push({ id: 'schreiber', bereich: 'app', label: 'Zweiter Schreiber im Datenordner', ampel: 'gelb', wert: `PID ${d.fremderSchreiber.pid} auf ${d.fremderSchreiber.host}`, satz: 'zwei Prozesse schreiben in dieselben Bestände (lokal: Dev-Server und Prüfbau) — einen anhalten' });
+    if (d.schluesselQuelle === 'umgebung') b.push({ id: 'schluessel-quelle', bereich: 'sicherheit', label: 'Datenschlüssel', ampel: 'gelb', wert: 'aus der Umgebung (.env)', satz: 'Empfehlung: als Datei 0400 unter /srv/make-os/schluessel/daten und aus der .env nehmen (NOTFALL.md) — dann nicht mehr in docker inspect sichtbar' });
+    const w = d.sperrWarten, sc = d.schreiben;
+    const wartenRot = d.zaehler.sperrZeitlimit > 0;
+    const wartenGelb = (w.p99 ?? 0) > 5000 || (sc.p99 ?? 0) > 2000;
+    b.push({ id: 'sperren', bereich: 'app', label: 'Schreibsperren und Schreibdauer', ampel: wartenRot ? 'rot' : wartenGelb ? 'gelb' : 'gruen', wert: `Warten p50 ${ms(w.p50)} · p99 ${ms(w.p99)} · Schreiben p99 ${ms(sc.p99)} · 409: ${d.zaehler['409']} · 413: ${d.zaehler['413']}`, satz: wartenRot ? `${d.zaehler.sperrZeitlimit}× Zeitlimit (30 s) — ein Vorgang hält eine Sperre zu lange` : wartenGelb ? 'Schreibungen stauen sich — großer Import, PDF in der Sperre oder volle Platte?' : 'kein Stau' });
+    const langsam = d.parseLangsam[0];
+    if (langsam && langsam.maxMs >= 200) b.push({ id: 'parse', bereich: 'app', label: 'Parse-Zeit größter Bestand', ampel: langsam.maxMs >= 1000 ? 'rot' : 'gelb', wert: `${langsam.bestand} ${ms(langsam.maxMs)} · ${langsam.mb} MB`, satz: 'wird der Bestand zu groß? SQLite-Auslöser 1 (DATENARCHITEKTUR.md) prüfen' });
+  }
+
+  const ds = innen.durchsicht;
+  if (ds === null) b.push({ id: 'durchsicht', bereich: 'app', label: 'Durchsicht der Bestände', ampel: 'grau', wert: 'noch nicht gelaufen', satz: 'der Takt stößt sie täglich ab 4 Uhr an' });
+  else if (ds) {
+    const alt = stunden(ds.zeit) ?? 0;
+    const v = 'fehler' in ds.verbindungen ? ds.verbindungen : null;
+    const rot = ds.fehler > 0 || ds.klartext > 0;
+    const gelb = alt > 30 || ds.spruenge.length > 0 || (v?.fehler ?? 0) > 0 || ds.tmpReste > 0;
+    const teile = [`${ds.bestaende} Bestände · ${ds.zeilen} Zeilen`];
+    if (ds.fehler) teile.push(`${ds.fehler} unlesbar`);
+    if (ds.spruenge.length) teile.push(`Sprung: ${ds.spruenge.slice(0, 3).map(x => `${x.name} ${x.vorher}→${x.nachher}`).join(', ')}`);
+    if (v) teile.push(`Verbindungen: ${v.fehler} Fehler, ${v.warnung} Warnungen`);
+    if (ds.alteHuellen || ds.alteForm) teile.push(`alt: ${ds.alteHuellen} Hüllen v1, ${ds.alteForm} Form`);
+    b.push({ id: 'durchsicht', bereich: 'app', label: 'Durchsicht der Bestände', ampel: rot ? 'rot' : gelb ? 'gelb' : 'gruen', wert: teile.join(' · '), satz: rot ? 'ein Bestand ist nicht lesbar oder liegt im Klartext — sofort prüfen' : ds.spruenge.length ? 'ein Bestand ist über Nacht deutlich geschrumpft — gewollt? sonst aus backup/ zurückholen (Einzel-Restore)' : alt > 30 ? 'die Durchsicht ist nicht gelaufen — Takt/Arbeiter prüfen' : 'alles entschlüsselt, geparst und gezählt' });
   }
   return b;
 }

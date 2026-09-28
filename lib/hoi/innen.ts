@@ -6,10 +6,14 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { loadJson, datenOrdner, datenSchluessel } from '@/lib/store/local-db';
+import { loadJson, datenOrdner, datenSchluessel, datenschichtLage } from '@/lib/store/local-db';
+import { messBild } from '@/lib/store/messwerte';
+import { schluesselQuelle } from '@/lib/store/huelle.mjs';
+import { fremderSchreiber } from '@/lib/store/betrieb';
+import { tmpResteZaehlen, DURCHSICHT_SPEICHER, type DurchsichtErgebnis } from '@/lib/store/durchsicht';
 import { lies, stand } from '@/lib/zoe/auftraege';
 import { alle } from '@/lib/zugang/anmeldungen';
-import { befundeAus, gesamt, kurzbericht, nachRang, type InnenLage, type HostLage, type AussenLage, type Befund } from './lage';
+import { befundeAus, gesamt, kurzbericht, nachRang, type InnenLage, type HostLage, type AussenLage, type Befund, type DatenschichtLage, type SicherungLauf, type DurchsichtKurz } from './lage';
 import { fehlerquote24h, fehlanmeldungen24h, neueNetze7d, cspBild, type CspMeldung } from './rechnen';
 import { hasAnthropicKey, guthabenStand } from '@/lib/anthropic';
 
@@ -47,11 +51,34 @@ async function bestaende(): Promise<InnenLage['bestaende']> {
   } catch { return { anzahl: 0, gesamtMb: 0, groesste: [] }; }
 }
 
+/** Datenschicht-Messwerte dieses Prozesses (29.09., Paket D-A #87/#75/#8/#9/#50) — nur Zähler. */
+async function datenschicht(): Promise<DatenschichtLage> {
+  const m = messBild();
+  const l = datenschichtLage();
+  return {
+    sperrWarten: m.sperrWarten, sperrHalten: m.sperrHalten, schreiben: m.schreiben, zaehler: m.zaehler, parseLangsam: m.parseLangsam,
+    sicherungFehler: l.sicherungFehler, klartext: l.klartext, tmpReste: await tmpResteZaehlen(datenOrdner()).catch(() => 0),
+    fremderSchreiber: fremderSchreiber(), schluesselQuelle: schluesselQuelle(),
+  };
+}
+
+/** Ergebnis der nächtlichen Sicherung (Klartext-JSON von deploy/sicherung.sh, nur Zahlen) — null, wenn noch keins da ist. */
+async function sicherungLauf(): Promise<SicherungLauf | null> {
+  try { const j = JSON.parse(await fs.readFile(path.join(systemOrdner(), 'sicherung.json'), 'utf8')); return j && typeof j === 'object' ? j as SicherungLauf : null; } catch { return null; }
+}
+
+async function durchsichtKurz(): Promise<DurchsichtKurz | null> {
+  const d = (await loadJson<{ letzter?: DurchsichtErgebnis }>(DURCHSICHT_SPEICHER).catch(() => null))?.letzter;
+  if (!d) return null;
+  return { zeit: d.zeit, bestaende: d.bestaende, zeilen: d.zeilen, fehler: d.fehler.length, klartext: d.klartext, alteHuellen: d.alteHuellen, alteForm: d.alteForm, spruenge: d.spruenge, tmpReste: d.tmpReste, verbindungen: d.verbindungen };
+}
+
 export async function innenLage(jetzt = new Date().toISOString()): Promise<InnenLage> {
-  const [auftraege, warte, anmeldungen, takt, best, fehlerDatei, csp] = await Promise.all([
+  const [auftraege, warte, anmeldungen, takt, best, fehlerDatei, csp, ds, sl, dk] = await Promise.all([
     lies().catch(() => []), stand().catch(() => ({ offen: 0, laeuft: 0, fertig: 0, fehler: 0 })), alle().catch(() => []), letzterTakt(jetzt), bestaende(),
     loadJson<{ meldungen: { at: string; text: string; anzahl: number }[] }>('client-fehler').catch(() => null),
     loadJson<CspSpeicher>(HOI_CSP).catch(() => null),
+    datenschicht(), sicherungLauf(), durchsichtKurz(),
   ]);
   const ab24 = Date.parse(jetzt) - 24 * 3_600_000;
   const frischeFehler = (fehlerDatei?.meldungen ?? []).filter(m => Date.parse(m.at) >= ab24);
@@ -66,6 +93,7 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     csp: cspBild(csp?.meldungen ?? [], jetzt),
     verschluesselt: datenSchluessel() !== null,
     ki: { schluessel: hasAnthropicKey(), guthabenLeerSeit: guthabenStand().leerSeit },
+    datenschicht: ds, sicherungLauf: sl, durchsicht: dk,
   };
 }
 

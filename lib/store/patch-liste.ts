@@ -12,6 +12,7 @@
 // dort, wo der Bestand definiert ist.
 
 import { updateJson } from './local-db';
+import { zaehle } from './messwerte';
 import { fingerabdruck } from './fingerabdruck';
 import { protokolliere, feldDiff, type Aenderung, type Wer } from './aenderungsprotokoll';
 
@@ -56,7 +57,7 @@ export interface PatchOptionen<E, T = Record<string, unknown>> {
  */
 export function opsFehler(roh: unknown, grenze = 200): string | null {
   if (!Array.isArray(roh)) return 'ops muss eine Liste sein.';
-  if (roh.length > grenze) return `Abgelehnt: ${roh.length} Änderungen auf einmal — höchstens ${grenze}. Nichts gespeichert; bitte in Teilen schicken.`;
+  if (roh.length > grenze) { zaehle('413'); return `Abgelehnt: ${roh.length} Änderungen auf einmal — höchstens ${grenze}. Nichts gespeichert; bitte in Teilen schicken.`; }
   return null;
 }
 
@@ -164,6 +165,7 @@ export async function listePatchen<E extends { id: string }, T extends Record<st
   });
 
   if (fehler) return { ok: false, angewandt: 0, fehler };
+  if (konflikte.length) zaehle('409'); // Messwert für den Head of IT (Paket D-A #87)
   if (konflikte.length) return { ok: false, angewandt: 0, fehler: 'Jemand hat inzwischen geändert — Stand neu geladen, bitte noch einmal.', konflikte };
   await protokolliere(name, aenderungen, opt.wer);
   return { ok: true, angewandt, next, zeilen };

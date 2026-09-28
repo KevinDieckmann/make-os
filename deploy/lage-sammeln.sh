@@ -59,6 +59,14 @@ S_ALTER=""; S_GROESSE=""; S_DATEI=""
 J=$(ls -t "$BASIS"/sicherungen/make-os-*.tar.gz.* 2>/dev/null | head -1)
 if [ -n "$J" ]; then S_DATEI=$(basename "$J"); S_ALTER=$(awk -v m="$(stat -c %Y "$J")" -v n="$(date +%s)" 'BEGIN{printf "%.1f", (n-m)/3600}'); S_GROESSE=$(du -m "$J" | cut -f1); fi
 
+# Abholung durch den Mac (29.09., Paket D-A): Marke von deploy/sicherung-ausgeben.sh (bestaetigen) — Alter in Stunden
+A_ALTER=""; A_DATEI=""
+if [ -f "$BASIS/daten/system/abholung.json" ]; then
+  A_ZEIT=$(grep -o '"zeit":"[^"]*"' "$BASIS/daten/system/abholung.json" | cut -d'"' -f4)
+  A_DATEI=$(grep -o '"datei":"[^"]*"' "$BASIS/daten/system/abholung.json" | cut -d'"' -f4)
+  [ -n "$A_ZEIT" ] && A_ALTER=$(awk -v m="$(date -d "$A_ZEIT" +%s 2>/dev/null || echo 0)" -v n="$(date +%s)" 'BEGIN{ if (m > 0) printf "%.1f", (n-m)/3600 }')
+fi
+
 # Vault: Stunden seit dem letzten Commit, Konflikt (Rebase abgebrochen → Marker)
 V_STUNDEN=""; V_KONFLIKT=false
 if [ -d "$BASIS/vault/.git" ]; then
@@ -83,6 +91,7 @@ cat >"$TMP" <<EOF
   "ssh": { "fehlversuche_24h": $(zahl "$SSH_FEHL") },
   "zertifikat": { "tage": $(zahl "$Z_TAGE"), "bis": $( [ -n "$Z_BIS" ] && printf '"%s"' "$Z_BIS" || printf 'null') },
   "sicherung": { "alter_stunden": $(zahl "$S_ALTER"), "groesse_mb": $(zahl "$S_GROESSE"), "datei": $( [ -n "$S_DATEI" ] && printf '"%s"' "$S_DATEI" || printf 'null') },
+  "abholung": { "alter_stunden": $(zahl "$A_ALTER"), "datei": $( [ -n "$A_DATEI" ] && printf '"%s"' "$A_DATEI" || printf 'null') },
   "vault": { "letzter_commit_stunden": $(zahl "$V_STUNDEN"), "konflikt": $V_KONFLIKT },
   "kernel_neustart_noetig": $NEUSTART,
   "updates": { "sicherheit": $(zahl "$UPD") }
