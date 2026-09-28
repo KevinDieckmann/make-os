@@ -4,6 +4,25 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Datenschutz vollständig: Nachweis, Art. 18, Löschfristen, geprüft (28.09.2026, U2, nur lokal)
+
+- **Einwilligung mit vollem Nachweis (#55):** Wortlaut und Beleg sind beim Erfassen Pflicht; Zeitpunkt (mit Uhrzeit) und wer sie aufgenommen hat, stempelt der Server. Einmal erfasst, bleibt eine Einwilligung unveränderlich — nur der Widerruf kommt dazu (mit Person). Kontakt › Stammdaten › Datenschutz zeigt den ganzen Nachweis und „Nachweis unvollständig“.
+- **Altbestand:** alte Einwilligungen bleiben gültig, zählen aber als „unvollständiger Nachweis“ → Mail/LinkedIn/Einladung **gelb statt grün** (Grund nennt, was fehlt). Newsletter-Ampel unverändert (offene Frage). Mail an Bestandskunden (Mandat) wird **gelb**, bis „Hinweis bei Erhebung erteilt“ vermerkt ist.
+- **Einschränkung nach Art. 18 als echte Sperre (#51):** setzen/aufheben mit Grund (Kontakt › Datenschutz oder Betroffenenantrag „Einschränkung“ mit verknüpfter Person — setzt sie beim Anlegen). Wirkung: Ampel rot, raus aus Heads/ZOE, Segmenten, Kampagnen, Qualifizierung, Power Hour, Follow-ups; Export nur mit Spalte EINGESCHRAENKT, Suche mit Kennzeichnung; Bearbeiten, Verlauf, Zusammenführen und Löschen gesperrt (Werbewiderspruch bleibt möglich). Verbindungsprüfung meldet eingeschränkte Personen in laufenden Kampagnen (reparierbar) und auf Einladungslisten.
+- **Löschfristen je Datenart (#52):** Tabelle unter Stammdaten › Datenschutz (Vorschläge, anpassbar, Standard nie gespeichert). Täglicher Takt-Lauf: Kontakte über der Frist **nie automatisch gelöscht** — eine Aufgabe „n Kontakte über der Löschfrist — prüfen“, Liste mit „Frist verlängern mit Grund“; technische Bestände (Import-Konflikte 90 T, Import-Läufe 30 T, Heads-Replay 90 T, Signal-Texte 12 M, Änderungsprotokoll 36 M) werden bereinigt, Protokoll „System“.
+- **„Zuletzt geprüft“ (#34):** Knopf „Stammdaten geprüft“; Datenqualität + Befund „n Kontakte seit über 12 Monaten nicht geprüft“ (aktive Beziehungen/Leads).
+- **Telefon mit Anlass (#58):** bei gelber Telefon-Ampel verlangt „Anruf festhalten“ einen Anlass (gespeichert an der Aktivität). **Ereigniszeit (#46):** nachgetragener Anruf/Mail mit Tag; „letzter Kontakt“ und Verlauf nach Ereigniszeit.
+- Tests: `tests/crm-u2-datenschutz.test.ts` (21 Fälle), Verbindungsprüfung (zwei neue Prüfungen), angepasste Ampel-Fälle.
+
+### Prüfliste U2 (vor dem Hochladen durchklicken)
+- [ ] Kontakt mit alter Einwilligung: Mail-Ampel gelb mit „Nachweis unvollständig (fehlt: …)“; unter Stammdaten › Datenschutz „+ Einwilligung“ nur mit Wortlaut + Beleg → danach grün, Eintrag zeigt „erfasst … von …“.
+- [ ] Kunde mit Mandat: Mail gelb „Hinweis bei Erhebung fehlt“ → „Hinweis vermerken“ → grün.
+- [ ] Testperson „Verarbeitung einschränken“ (Grund): Banner, Ampel rot, Schnellaktionen aus, Matrix speichert nicht (Meldung), Löschen gesperrt; „Aufheben (mit Grund)“ → alles wieder da, Verlauf zeigt beide Schritte.
+- [ ] Betroffenenantrag „Einschränkung (18)“ mit einer Testperson anlegen → Person eingeschränkt; „Einschränkung aufheben“ im Antrag.
+- [ ] Stammdaten › Datenschutz: Löschfristen-Tabelle, einen Wert ändern und „Standard“ zurück; Liste „über der Frist“ mit „Frist verlängern mit Grund“.
+- [ ] Anruf festhalten bei einer bekannten Person ohne Einwilligung (gelb): Knopf erst mit Anlass aktiv; „Wann“ auf gestern → Verlauf zeigt gestern, „nachgetragen am …“.
+- [ ] Aufgaben: nach dem Takt-Lauf (ab 7 Uhr) höchstens EINE Aufgabe „… über der Löschfrist“, ohne Namen.
+
 ## CRM grundsätzlich fertig: Stationen, mehrere Adressen, Konzern, Mehrfachwerte (28.09.2026, U1, nur lokal)
 
 - **Person in mehreren Firmen mit Rolle und Beschäftigungshistorie:** Stationen je Person (Firma, Rolle, Art, von–bis, Hauptstation). „Firma wechseln“ beendet die alte Station, statt sie zu überschreiben; „+ weitere Firma“ (z. B. Beirat). Firmenkarte zeigt aktuelle und ehemalige Personen getrennt, die Zeitlinie einer Firma behält Aktivitäten, auch wenn die Person weitergezogen ist.
