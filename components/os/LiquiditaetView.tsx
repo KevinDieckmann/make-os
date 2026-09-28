@@ -21,6 +21,9 @@ import {
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, Segmente, feld, LEUCHT } from './schlank';
 import { finanzOrtName, istGesellschaft } from '@/lib/einheiten';
+import { mandatAusPlanposten, PLANPOSTEN_MANDAT } from '@/lib/crm/mandant-link';
+import { MandantLink } from './crm/MandantLink';
+import { useMandate } from './zeit/useMandate';
 
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
 
@@ -64,6 +67,22 @@ function Wochenbalken({ wochen, hoehe, jede }: { wochen: Woche[]; hoehe: number;
 
 function Feld({ label, children }: { label: ReactNode; children: ReactNode }) {
   return <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}><span style={mikro}>{label}</span>{children}</label>;
+}
+
+/**
+ * Mandanten klickbar (28.09.): ein Posten, der aus einem Mandat kommt (`lp-mandat-<id>` oder im Mandat verknüpft),
+ * zeigt sein Mandat als Link in die Mandatsakte. Erst beim Aufklappen — dann erst wird der Mandat-Bestand geholt.
+ */
+function PostenMandat({ postenId }: { postenId: string }) {
+  const { mandate } = useMandate();
+  const mandatId = mandatAusPlanposten(postenId, mandate);
+  if (!mandatId) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignSelf: 'center', minWidth: 0 }}>
+      <span style={mikro}>Mandat</span>
+      <span style={{ fontSize: TYP.bedien, color: C.ink, minHeight: 34, display: 'flex', alignItems: 'center' }}><MandantLink mandatId={mandatId} /></span>
+    </div>
+  );
 }
 
 export function LiquiditaetView() {
@@ -178,6 +197,7 @@ export function LiquiditaetView() {
             <Feld label="Wofür">
               <input value={p.titel} onChange={e => patch(p.id, { titel: e.target.value })} aria-label="Bezeichnung" style={{ ...eingabe, width: 'min(100%, 220px)' }} />
             </Feld>
+            {(p.kategorie === 'mandat' || p.id.startsWith(PLANPOSTEN_MANDAT)) && <PostenMandat postenId={p.id} />}
             <Feld label="Betrag">
               <input type="number" value={Math.abs(p.betrag)} onChange={e => patch(p.id, { betrag: (raus ? -1 : 1) * Math.abs(Math.round(Number(e.target.value) || 0)) })}
                 aria-label="Betrag" style={{ ...eingabe, width: 110, fontFamily: SCHRIFT.display, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }} />

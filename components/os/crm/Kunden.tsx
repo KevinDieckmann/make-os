@@ -38,6 +38,8 @@ import { Feldzeile, Feld } from './teile';
 import { Wahl } from './Wahl';
 import { GESELLSCHAFT_WAHL } from '@/lib/crm/wahl';
 import { firmaFuerGesellschaft } from '@/lib/einheiten';
+import { firmaVonMandat } from '@/lib/crm/firmen-bezug';
+import { MandantLink } from './MandantLink';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
 import { HeadPanel } from './HeadPanel';
 import { useZiel, useZuZiel } from '../ziel';
@@ -165,6 +167,7 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
   // Nur die geänderten Felder — Kevin und Malin können gleichzeitig am selben Mandat arbeiten.
   const setze = (teil: Partial<Mandat>) => api.teil('mandate', m.id, nurFelder(teil));
   const produkt = m.leistungId ? crm.stand.leistungen.find(x => x.id === m.leistungId) : undefined;
+  const firma = firmaVonMandat(m, crm.stand.firmen);
   const personen = m.kontaktIds.map(id => (api.kontakte ?? []).find(k => k.id === id)).filter((k): k is NonNullable<typeof k> => !!k);
   const liquiplan = async (aktion: 'anlegen' | 'verknuepfen', postenId?: string) => {
     await fetch('/api/crm/liquiplan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mandatId: m.id, aktion, postenId }) });
@@ -193,6 +196,9 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
       <Feldzeile label="Status"><Wahl label="Status" liste={STATUS} wert={m.status} onWahl={status => setze({ status })} /></Feldzeile>
       <Feldzeile label="Vertrag"><Wahl label="Vertrag" liste={VERTRAG} wert={m.vertragUnterschrieben ? 'ja' : 'nein'} farbe={m.vertragUnterschrieben ? LEUCHT.gut : C.aktiv} onWahl={x => setze({ vertragUnterschrieben: x === 'ja' })} /></Feldzeile>
       <Feldzeile label="Kunde"><Feld wert={m.kunde} onFertig={kunde => kunde.trim() && setze({ kunde: kunde.trim() })} /></Feldzeile>
+      {/* Mandanten klickbar (28.09.): das Mandat führt zurück in die Firmenakte (per Kennung, sonst eindeutiger Name). */}
+      {firma ? <Feldzeile label="Firma"><span style={{ fontSize: 12.5 }}><MandantLink firmaId={firma.id} firmaDa name={firma.name} /></span></Feldzeile>
+        : m.firmaId ? <Feldzeile label="Firma"><span style={{ fontSize: 12.5 }}><MandantLink firmaId={m.firmaId} firmaDa={false} name={m.kunde} /></span></Feldzeile> : null}
       <Feldzeile label="Titel"><Feld wert={m.titel} onFertig={titel => titel.trim() && setze({ titel: titel.trim() })} /></Feldzeile>
       <Feldzeile label="Produkt">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>

@@ -15,6 +15,7 @@ import { wandzeit, tagPlus } from '@/lib/kalender/zeit';
 import { SPEICHER as MAC, type Gemerkt } from '@/lib/mac';
 import { ladeBauplan } from '@/lib/bauplan/speicher';
 import { ladeCrm } from '@/lib/crm/speicher';
+import { firmaVonMandat } from '@/lib/crm/firmen-bezug';
 import { localDay } from '@/lib/zeit';
 import type { Termin } from '@/lib/kalender/ics';
 
@@ -72,7 +73,8 @@ export async function GET(req: Request) {
   ]);
   const quellen: Quellen = {
     meilensteine: meilensteine?.meilensteine, etappen: bauplan?.etappen,
-    mandate: crm?.mandate as Quellen['mandate'], zahlungen: finanzplan?.zahlungen, rechnungen: finanzplan?.rechnungen,
+    // Mandanten klickbar (28.09.): der Name der CRM-Firma (per Kennung) statt des alten Kundentexts.
+    mandate: crm?.mandate.map(m => ({ ...m, kunde: firmaVonMandat(m, crm.firmen)?.name ?? m.kunde })) as Quellen['mandate'], zahlungen: finanzplan?.zahlungen, rechnungen: finanzplan?.rechnungen,
   };
 
   return NextResponse.json({

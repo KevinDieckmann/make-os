@@ -19,6 +19,7 @@ import { localDay } from '@/lib/zeit';
 import { nettoAusBrutto } from '@/lib/finanzen/ust';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Zahl, feld, LEUCHT } from './schlank';
+import { MandantLink } from './crm/MandantLink';
 
 interface Firma { id: string; name: string; bank: string; kontostand: number | null; stand: string | null }
 type RStatus = 'geplant' | 'gestellt' | 'bezahlt' | 'storniert';
@@ -259,7 +260,8 @@ export function FinanzplanungView() {
                 {weiter
                   ? <ChipKnopf farbe={STATUS_FARBE[r.status]} onClick={() => rechnungAendern(r.id, { status: weiter })} title={`Status wechseln → ${weiter}`}>{r.status}</ChipKnopf>
                   : <span style={{ display: 'inline-flex', minWidth: 76, justifyContent: 'center' }}><Chip farbe={STATUS_FARBE[r.status]}>{r.status}</Chip></span>}
-                <span style={{ fontSize: TYP.body, fontWeight: 600, color: C.ink }}>{r.kunde}</span>
+                {/* Mandanten klickbar (28.09.): mit Mandat in die Mandatsakte, sonst per eindeutigem Namen, sonst Text. */}
+                <span style={{ fontSize: TYP.body, fontWeight: 600, color: C.ink, minWidth: 0 }}><MandantLink mandatId={r.mandatId} name={r.kunde} nachName zeichen={false} /></span>
                 <span style={{ fontSize: TYP.bedien, color: C.inkDim, flex: 1, minWidth: 140 }}>{r.titel}</span>
                 <span style={leise}>{firmaName(r.firmaId)}</span>
                 {r.faellig && <span style={{ ...leise, color: spaet ? LEUCHT.kritisch : C.inkLeise }}>{spaet ? 'überfällig ' : 'fällig '}{datum(r.faellig)}</span>}
@@ -302,7 +304,6 @@ export function FinanzplanungView() {
                     {storniert && `storniert${r.storniertAm ? ` ${datum(r.storniertAm)}` : ''}${r.stornoGrund ? ` · ${r.stornoGrund}` : ''} · `}
                     netto {(r.netto ?? nettoAusBrutto(r.betrag, r.ustSatz)).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                     {r.ustSatz != null ? ` · ${r.ustSatz}% USt` : ' · 19% angenommen'}
-                    {r.mandatId && <> · <Link href={WEG.mandat(r.mandatId)} style={{ color: C.inkDim }}>Mandat ›</Link></>}
                     {r.status === 'bezahlt' && <> · <Link href={`/os/finanzen/buchungen?q=${encodeURIComponent(r.kunde)}`} style={{ color: C.inkDim }}>Buchung ›</Link></>}
                   </span>
                 </div>

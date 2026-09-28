@@ -9,7 +9,6 @@
 //   MandatZeitMonat   — eine Zeile „Zeit diesen Monat“ in der Mandatsakte
 // Rechnung: lib/zeitmessung/mandate.ts über /api/state/zeit/mandate (nur im Haushalt des Inhabers).
 
-import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { zeitText } from '@/lib/zeitmessung/modell';
@@ -17,8 +16,8 @@ import { ZEITRAUM_LABEL, type Zeitraum } from '@/lib/zeitmessung/einheiten';
 import { MANDAT_OHNE, type MandatAuswertung, type MandatZeile, type ZeitJeMandat } from '@/lib/zeitmessung/mandate';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { einheitFarbe, EINHEIT_GRAU } from '@/lib/aufgaben/einheit';
-import { WEG } from '@/lib/wege';
 import { Karte, Ueberschrift, Leer, Segmente, Fortschritt } from '../schlank';
+import { MandantLink } from '../crm/MandantLink';
 import { ZEIT_EREIGNIS } from '../Kopf';
 
 export type ZeitJeMandatAntwort = ZeitJeMandat & { ok: boolean; ich: string };
@@ -39,7 +38,7 @@ async function holen(url: string, frisch = false): Promise<ZeitJeMandatAntwort |
   return d;
 }
 
-/** Die Zeilen je Mandat: Name (Link zum Mandat), Balken, Zeit, grober Satz. */
+/** Die Zeilen je Mandat: Name (MandantLink in die CRM-Akte), Balken, Zeit, grober Satz. */
 export function MandatBalken({ a }: { a: MandatAuswertung }) {
   const max = Math.max(1, ...a.zeilen.map(z => z.sek));
   if (!a.sek) return <Leer>Noch keine Fokus-Blöcke im Business in diesem Zeitraum — oben „Fokus“ starten und einem Mandat zuordnen.</Leer>;
@@ -52,7 +51,8 @@ export function MandatBalken({ a }: { a: MandatAuswertung }) {
         return (
           <div key={z.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '4px 10px', alignItems: 'center' }}>
             <span style={{ fontSize: TYP.bedien, color: z.art === 'ohne' ? C.inkDim : C.ink, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
-              {z.art === 'mandat' ? <Link href={WEG.mandat(z.id)} style={{ color: 'inherit', textDecoration: 'none' }}>{z.label}</Link> : z.label}
+              {/* Mandanten klickbar (28.09.): Mandat → Mandatsakte; gelöschtes Mandat → Firmenakte, sonst „Mandat (gelöscht)“. */}
+              {z.art === 'ohne' ? z.label : <MandantLink mandatId={z.id} firmaId={z.firmaId} mandatDa={z.art === 'mandat'} name={z.art === 'mandat' ? z.label : 'Mandat'} zeichen={false} />}
               <span style={{ color: C.inkLeise, fontWeight: 400 }}> · {anteil} %{z.einheit ? ` · ${z.einheit}` : ''} · {z.bloecke} {z.bloecke === 1 ? 'Block' : 'Blöcke'}</span>
             </span>
             <span style={{ fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', color: C.ink, textAlign: 'right' }}>

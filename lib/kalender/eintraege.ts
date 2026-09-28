@@ -6,8 +6,11 @@
 // Apple-Erinnerungen, wenn der Mac sie zuliefert (iCloud gibt Erinnerungen
 // seit iOS 13 nicht mehr über CalDAV heraus). Aufgaben mit Datum kommen im
 // Browser aus dem Aufgaben-Bestand (abhakbar), nicht von hier.
+// Mandanten klickbar (28.09.): Mandatsfristen führen direkt ins Mandat (`WEG.mandat(id)`),
+// nicht mehr nur in die Liste; der Name ist die CRM-Firma (die Route setzt `kunde` aus der Kennung).
 
 import { tagPlus } from './zeit';
+import { WEG } from '@/lib/wege';
 
 export type FristArt = 'meilenstein' | 'etappe' | 'mandat' | 'zahlung' | 'eingang';
 export interface Frist { id: string; art: FristArt; tag: string; titel: string; unter?: string; href: string; erledigt?: boolean }
@@ -37,12 +40,12 @@ export function fristen(q: Quellen, von: string, bis: string): Frist[] {
   for (const m of q.mandate ?? []) {
     if (m.status && !['aktiv', 'pausiert'].includes(m.status)) continue;
     const name = m.kunde || m.titel || 'Mandat';
-    if (imZeitraum(m.ende, von, bis)) raus.push({ id: `md-ende-${m.id}`, art: 'mandat', tag: m.ende.slice(0, 10), titel: `Mandat endet: ${name}`, href: '/os/mandate' });
+    if (imZeitraum(m.ende, von, bis)) raus.push({ id: `md-ende-${m.id}`, art: 'mandat', tag: m.ende.slice(0, 10), titel: `Mandat endet: ${name}`, href: WEG.mandat(m.id) });
     if (m.ende && TAG.test(m.ende.slice(0, 10)) && m.kuendigungsfristTage && m.kuendigungsfristTage > 0) {
       const frist = tagPlus(m.ende.slice(0, 10), -m.kuendigungsfristTage);
-      if (imZeitraum(frist, von, bis)) raus.push({ id: `md-frist-${m.id}`, art: 'mandat', tag: frist, titel: `Kündigungsfrist: ${name}`, unter: `${m.kuendigungsfristTage} Tage vor Ende`, href: '/os/mandate' });
+      if (imZeitraum(frist, von, bis)) raus.push({ id: `md-frist-${m.id}`, art: 'mandat', tag: frist, titel: `Kündigungsfrist: ${name}`, unter: `${m.kuendigungsfristTage} Tage vor Ende`, href: WEG.mandat(m.id) });
     }
-    if (imZeitraum(m.naechstesReview, von, bis)) raus.push({ id: `md-review-${m.id}`, art: 'mandat', tag: m.naechstesReview.slice(0, 10), titel: `Review: ${name}`, href: '/os/mandate' });
+    if (imZeitraum(m.naechstesReview, von, bis)) raus.push({ id: `md-review-${m.id}`, art: 'mandat', tag: m.naechstesReview.slice(0, 10), titel: `Review: ${name}`, href: WEG.mandat(m.id) });
   }
   for (const z of q.zahlungen ?? []) {
     if (z.status === 'bezahlt' || z.status === 'erledigt') continue;

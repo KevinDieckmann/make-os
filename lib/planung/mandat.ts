@@ -51,11 +51,13 @@ export interface MandatKurz {
   aktiv: boolean;
   /** Monatshonorar netto (nur bei Basis „Monat“) — für den groben Hinweis €/Stunde, kein Rechnungsbezug. */
   honorarMonat?: number;
+  /** Eigener Liquiplan-Posten (nur wenn von Hand verknüpft; sonst gilt `lp-mandat-<id>`) — für den Mandant-Link in der Liquidität. */
+  planpostenId?: string;
 }
 
 type MandatRoh = {
   id: string; titel?: string; kunde?: string; firmaId?: string; status?: string; gesellschaft?: string; leistungId?: string; chanceId?: string;
-  honorar?: { betrag?: number; basis?: string; netto?: boolean }; ustSatz?: number;
+  honorar?: { betrag?: number; basis?: string; netto?: boolean }; ustSatz?: number; planpostenId?: string;
 };
 export interface CrmFuerMandat {
   mandate?: readonly MandatRoh[];
@@ -88,6 +90,7 @@ export function mandatKurzListe(crm: CrmFuerMandat | null | undefined): MandatKu
       status: String(m.status ?? ''),
       aktiv: m.status === 'aktiv',
       ...(honorarMonat ? { honorarMonat } : {}),
+      ...(m.planpostenId ? { planpostenId: m.planpostenId } : {}),
     };
   }).sort((a, b) => Number(b.aktiv) - Number(a.aktiv) || a.firma.localeCompare(b.firma, 'de') || a.titel.localeCompare(b.titel, 'de'));
 }

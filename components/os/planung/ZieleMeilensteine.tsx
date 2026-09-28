@@ -12,6 +12,7 @@
 // Seit 28.09. („Mandat an Zielen und Zeit“): im Business ein Mandat-Chip beim Anlegen
 // und am Eintrag (aktive Mandate, „Firma · Mandatstitel“) — Firma und Einheit kommen
 // dann aus dem Mandat (der Server leitet sie beim Speichern ab, lib/planung/mandat.ts).
+// Am Eintrag führt „›“ neben dem Chip in die Mandatsakte (MandantLink, 28.09.); beim Anlegen nicht.
 
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -292,7 +293,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
               </>
             )}
             {imBusiness && einheitWahl(neu.einheit, v => setNeu({ ...neu, einheit: v }), 'Einheit des Ziels')}
-            {imBusiness && mandatZugang && <MandatWahl wert={neu.mandatId || undefined} setzen={m => setNeu({ ...neu, mandatId: m?.id ?? '', einheit: m?.einheit ?? neu.einheit })} />}
+            {imBusiness && mandatZugang && <MandatWahl ohneLink wert={neu.mandatId || undefined} setzen={m => setNeu({ ...neu, mandatId: m?.id ?? '', einheit: m?.einheit ?? neu.einheit })} />}
             <Knopf onClick={zielAnlegen}>+ Ziel</Knopf>
           </div>
           {!p.geladen ? <Leer>lade …</Leer>
@@ -316,7 +317,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
               </select>
             )}
             {imBusiness && einheitWahl(msNeu.einheit, v => setMsNeu({ ...msNeu, einheit: v }), 'Einheit des Meilensteins')}
-            {msBusiness && mandatZugang && <MandatWahl wert={msNeu.mandatId || undefined} setzen={m => setMsNeu({ ...msNeu, mandatId: m?.id ?? '', einheit: m?.einheit ?? msNeu.einheit })} />}
+            {msBusiness && mandatZugang && <MandatWahl ohneLink wert={msNeu.mandatId || undefined} setzen={m => setMsNeu({ ...msNeu, mandatId: m?.id ?? '', einheit: m?.einheit ?? msNeu.einheit })} />}
             <Knopf onClick={msAnlegen}>+ Meilenstein</Knopf>
           </div>
           {!mOffen.length && !mErledigt.length ? <Leer>Noch kein Meilenstein für {p.zr.label}{spaceHinweis}.{horizont === 'jahr' ? ' Ein Jahresziel mit Termin legt ihn von selbst an.' : ''}</Leer>

@@ -146,3 +146,42 @@ export function mandateLink(s?: 'mandate' | 'produkte', k?: string): string {
   const t = q.toString();
   return t ? `${MANDATE_PFAD}?${t}` : MANDATE_PFAD;
 }
+
+// ─── Mandant überall klickbar (28.09., Kevin: „Mandanten auch klickbar“) ─────
+// Wo außerhalb des CRM ein Mandant erscheint (Zeit, Ziele, Finanzen, Kalender, Suche),
+// führt ein Klick in die CRM-Akte: das Mandat vor der Firma. Gebaut wird der Link NUR
+// hier (Baustein components/os/crm/MandantLink.tsx) — nie Pfade von Hand.
+//   privat               → 'aus'       (Privat kennt keine Mandanten — nichts anzeigen)
+//   kein Zugang zum CRM  → 'text'      (nur der Name, die Akte ginge ohnehin nicht auf)
+//   Mandat da            → 'mandat'    /os/mandate?k=<Mandat>
+//   Mandat weg, Firma da → 'firma'     /os/markttraktion?s=firmen&k=<Firma> (mandatGeloescht)
+//   beides weg           → 'geloescht' (Text mit „(gelöscht)“)
+//   keine Kennung        → 'text'
+// `…Da` = undefined heißt „nicht geprüft“ und gilt als vorhanden (die Akte zeigt dann selbst, was fehlt).
+export interface MandantEingabe {
+  mandatId?: string | null;
+  firmaId?: string | null;
+  privat?: boolean;
+  /** Gibt es das Mandat noch? undefined = unbekannt (gilt als ja). */
+  mandatDa?: boolean;
+  /** Gibt es die Firma noch? undefined = unbekannt (gilt als ja). */
+  firmaDa?: boolean;
+  /** Darf die Person ins CRM? false → nur Text. */
+  zugang?: boolean;
+}
+export type MandantZiel =
+  | { art: 'aus'; href: null }
+  | { art: 'text'; href: null }
+  | { art: 'geloescht'; href: null }
+  | { art: 'mandat'; href: string }
+  | { art: 'firma'; href: string; mandatGeloescht: boolean };
+
+export function mandantZiel({ mandatId, firmaId, privat, mandatDa, firmaDa, zugang }: MandantEingabe): MandantZiel {
+  if (privat) return { art: 'aus', href: null };
+  const m = kennung(mandatId), f = kennung(firmaId);
+  if (zugang === false) return { art: 'text', href: null };
+  if (m && mandatDa !== false) return { art: 'mandat', href: mandateLink('mandate', m) };
+  if (f && firmaDa !== false) return { art: 'firma', href: markttraktion('firmen', undefined, f), mandatGeloescht: !!m };
+  if (m || f) return { art: 'geloescht', href: null };
+  return { art: 'text', href: null };
+}
