@@ -206,6 +206,12 @@ describe('Dubletten zusammenführen', () => {
     const d1 = await hochladen({ art: 'vertrag', kontaktId: 'c-b' });
     await db.saveJson<KonfliktStand>('crm-import-konflikte', { konflikte: [{ kontaktId: 'c-b', feld: 'firma', online: 'x', liste: 'y' }], moeglicheDubletten: [{ kontaktId: 'c-a', mitId: 'c-b', grund: 'Name' }], ohneBesitzer: 0, stand: 'x', quelle: 'x' });
 
+    // Kevin 28.09.: private Notizen verschiedener Personen → erst 409, nichts geändert …
+    const abgelehnt = await dubletten.POST!(json('/api/crm/dubletten', { behalten: 'c-a', weg: 'c-b' }));
+    expect(abgelehnt.status).toBe(409);
+    expect((await db.loadJson<{ kontakte: Kontakt[] }>('kontakte'))!.kontakte.map(x => x.id).sort()).toEqual(['c-a', 'c-b']);
+    // … nach dem Leeren der einen Notiz (hier: Malins an b) klappt es.
+    await db.updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => ({ kontakte: cur!.kontakte.map(x => (x.id === 'c-b' ? { ...x, privatNotiz: undefined, privatNotizVon: undefined } : x)) }));
     const r = await dubletten.POST!(json('/api/crm/dubletten', { behalten: 'c-a', weg: 'c-b' }));
     expect(r.status).toBe(200);
     const kontakte = (await db.loadJson<{ kontakte: Kontakt[] }>('kontakte'))!.kontakte;
