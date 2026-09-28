@@ -25,6 +25,7 @@ import { followUpBis } from './events';
 import { taktVon } from './followup';
 import { haeltBeziehung, zustaendig, BEIDE } from './team';
 import { hatTyp } from './mehrfach';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export type Kategorie = 'versprechen' | 'signale' | 'chancen' | 'kunden' | 'pflege' | 'neu';
 export const KATEGORIEN: { id: Kategorie; label: string; warum: string }[] = [
@@ -161,7 +162,7 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   const gesehen = new Set<string>();
   for (const c of Array.from(kandidaten.values())) {
     const k = c.kontakt;
-    if (k.werbesperre) { aus.sperre++; continue; }
+    if (ausgenommen(k)) { aus.sperre++; continue; }
     const wem = karteGehoert(c, crm);
     if (wem !== person && wem !== BEIDE) { aus.beiAnderen++; continue; }
     if (!c.kanal) { aus.ohneKanal++; continue; }

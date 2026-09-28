@@ -23,6 +23,8 @@ import { markenSaeubern, ohneMarkierte } from '@/lib/crm/aktivitaet-marke';
 import { stationenSaeubern, stationenSynchron, STATIONEN_MAX, type Station } from '@/lib/crm/stationen';
 import { werteSaeubern, mehrfachSynchron, hatTyp, kategorieBeginnt, MEHRFACH_MAX } from '@/lib/crm/mehrfach';
 import { emailsSaeubern, emailsSynchron, alleAdressen, adresseAnhaengen, hatAdresse, EMAILS_MAX, type EmailAdresse } from '@/lib/crm/emails';
+import { einwilligungSaeubern } from '@/lib/crm/einwilligung';
+import { einschraenkungSaeubern } from '@/lib/crm/einschraenkung';
 
 export const STUFEN = [
   'neu', 'ansprechen', 'angesprochen', 'gespraech', 'termin', 'angebot',
@@ -69,6 +71,11 @@ export interface Aktivitaet {
   wann?: string;
   /** Ort oder Videolink eines Meetings (28.09., H4). */
   ort?: string;
+  /**
+   * Konkreter Anlass eines Anrufs bei gelber Telefon-Ampel (28.09., U2 #58) — mutmaßliche Einwilligung
+   * (§ 7 Abs. 2 Nr. 1 UWG) trägt nur mit Anlass aus der Beziehung; ohne ihn lehnt die Route ab.
+   */
+  anlass?: string;
   /** Wann der Text zuletzt geändert wurde (eigene Notiz bearbeiten, 28.09.) — ISO. */
   bearbeitet?: string;
   /**
@@ -111,8 +118,21 @@ export type Grundlage = 'einwilligung' | 'bestandskunde_7_3' | 'mutmasslich_b2b_
 export type EinwilligungKanal = 'mail' | 'telefon' | 'social' | 'newsletter' | 'einladung';
 export interface Einwilligung {
   kanal: EinwilligungKanal; grundlage: Grundlage; erteiltAm: string;
-  /** Wortlaut oder Beleg („DOI 12.03.“, „im Gespräch am …: darf ich Ihnen … schicken? — ja“). */
+  /** Kurzer Nachweis (Altbestand: Wortlaut oder Beleg in einem, „DOI 12.03.“, „im Gespräch am …: … — ja“). */
   nachweis: string; widerrufenAm?: string;
+  // ── Voller Nachweis (28.09., U2 #55, lib/crm/einwilligung.ts) — fehlt im Altbestand (= „unvollständiger Nachweis“) ──
+  /** Wann genau erfasst (ISO mit Uhrzeit) — stempelt der Server. */
+  zeitpunkt?: string;
+  /** Wer sie aufgenommen hat (Person aus der Sitzung) — stempelt der Server. */
+  erfasstVon?: string;
+  /** Text der Einwilligung (Frage + Antwort, Formulartext). */
+  wortlaut?: string;
+  /** Fassung eines festen Textes („Formular v2“, „DOI-Text 2026-03“). */
+  wortlautVersion?: string;
+  /** Wo der Beleg liegt: Dateiablage-Eintrag (d-…), Formular, Mail, Gespräch vom … */
+  belegRef?: string;
+  /** Wer den Widerruf festgehalten hat — stempelt der Server. */
+  widerrufenVon?: string;
 }
 
 export type Prio = 'A' | 'B' | 'C' | '';
@@ -216,6 +236,22 @@ export interface Kontakt {
   einwilligungen?: Einwilligung[];
   /** Werbewiderspruch (Art. 21 DSGVO): sofort, dauerhaft, kein Import überschreibt ihn. */
   werbesperre?: { seit: string; grund: string };
+  /**
+   * Einschränkung der Verarbeitung (Art. 18 DSGVO, 28.09., U2 #51, lib/crm/einschraenkung.ts): gespeichert ja,
+   * verarbeitet nein — raus aus Ampel, Listen, Paketen; Bearbeiten gesperrt. Setzen/Aufheben nur über
+   * POST /api/crm/datenschutz (nie über die Kartei).
+   */
+  eingeschraenkt?: import('@/lib/crm/einschraenkung').Einschraenkung;
+  /** „Stammdaten geprüft“ (28.09., U2 #34): Tag und Person — stempelt der Server. */
+  geprueftAm?: string;
+  geprueftVon?: string;
+  /**
+   * Bestandskundenprivileg (§ 7 Abs. 3 Nr. 4 UWG, 28.09., U2 #57): Hinweis auf das Widerspruchsrecht bei
+   * Erhebung der Adresse erteilt — Tag und Person (Person stempelt der Server).
+   */
+  hinweisBeiErhebung?: { am: string; von?: string };
+  /** Löschfrist mit Grund verlängert (28.09., U2 #52, lib/crm/loeschfristen.ts) — nur über POST /api/crm/datenschutz. */
+  loeschfristVerlaengert?: { bis: string; grund: string; von: string; am: string };
   /** Woher die Daten stammen (Art. 14 DSGVO) und worauf die Verarbeitung beruht (Art. 6). */
   herkunft?: Herkunft;
   rechtsgrundlage?: Rechtsgrundlage;
@@ -250,7 +286,8 @@ export interface Kontakt {
 /** Felder, die der Import NIE anfasst — das ist die Arbeit im CRM. */
 export const PIPELINE_FELDER: (keyof Kontakt)[] = ['stufe', 'wiedervorlage', 'letzterKontakt', 'aktivitaeten', 'importiertAm',
   'firmaId', 'herkunft', 'rechtsgrundlage', 'kreis', 'taktTage', 'besitzer', 'lebensphase', 'anrede', 'vorgestelltDurch', 'einwilligungen', 'werbesperre', 'fremddaten', 'art14InformiertAm', 'naechsterSchritt', 'privatNotiz', 'netzwerk', 'linkedinNichtGefunden',
-  'lead', 'rollen', 'privatNotizVon', 'stand', 'vonHand', 'phase', 'zahlung', 'bean', 'geloeschteAktivitaeten', 'stationen'];
+  'lead', 'rollen', 'privatNotizVon', 'stand', 'vonHand', 'phase', 'zahlung', 'bean', 'geloeschteAktivitaeten', 'stationen',
+  'eingeschraenkt', 'geprueftAm', 'geprueftVon', 'hinweisBeiErhebung', 'loeschfristVerlaengert'];
 
 /** Höchstens so viele Feldnamen in `vonHand` — mehr Stammdaten-Felder gibt es nicht. */
 export const VON_HAND_MAX = 60;
@@ -712,6 +749,8 @@ export function importieren(bestand: Kontakt[], zeilen: Record<string, string>[]
       nachId.set(fertig.id, fertig); index.set(key, fertig.id); neu++; neuIds.push(fertig.id);
     } else {
       const vorher = nachId.get(altId)!;
+      // Art. 18 (U2 #51): eine eingeschränkte Person wird nicht bearbeitet — auch nicht vom Import.
+      if (vorher.eingeschraenkt) { unveraendert++; betroffen.add(vorher.id); return; }
       const r = zusammenfuehren(vorher, k, heute);
       if (alleAdressen(r.kontakt).length > alleAdressen(vorher).length && alleAdressen(vorher).length) weitereAdressen++;
       nachId.set(altId, r.kontakt); index.set(key, altId); indizieren(r.kontakt);
@@ -880,11 +919,37 @@ export function wannInZukunft(wann: string | undefined, jetztIso: string): boole
 export function letzterKontaktVon(k: Pick<Kontakt, 'letzterKontakt' | 'aktivitaeten'>, heute: string): string | undefined {
   let letzter = k.letzterKontakt;
   for (const a of k.aktivitaeten ?? []) {
-    if (a.art !== 'termin' || !a.wann) continue;
+    // Ereigniszeit für alle echten Kontakte (U2 #46): `wann ?? am` — hier zählt nur, was `wann` trägt
+    // (ohne `wann` hat `wendeAktivitaetAn` den letzten Kontakt schon beim Festhalten gesetzt).
+    if (!a.wann || !echterKontakt(a)) continue;
     const t = wannTag(a.wann);
     if (t <= heute && (!letzter || t > letzter)) letzter = t;
   }
   return letzter;
+}
+
+/** Ein echter Kontakt (zählt für „letzter Kontakt“): keine Notiz/Stufe/Systemzeile/Übergabe, kein bloßer Versuch. */
+export function echterKontakt(a: Pick<Aktivitaet, 'art' | 'ergebnis'>): boolean {
+  return a.art !== 'notiz' && a.art !== 'stufe' && a.art !== 'system' && a.art !== 'uebergabe' && a.ergebnis !== 'nicht_erreicht' && a.ergebnis !== 'mailbox';
+}
+
+/**
+ * Ereigniszeit einer Aktivität in Millisekunden (U2 #46): `wann` (Tag = 12 Uhr, Wandzeit = Berliner Zeit,
+ * ISO mit Zone), sonst `am`. Zum Sortieren „wann ?? am“.
+ */
+export function ereignisMs(a: Pick<Aktivitaet, 'am' | 'wann'>): number {
+  const w = a.wann;
+  if (w) {
+    if (mitZone(w)) return Date.parse(w);
+    if (w.length === 10) return Date.parse(`${w}T12:00:00Z`);
+    // Berliner Wandzeit → UTC: Versatz des Tages aus der Zeitzone rechnen (Sommer +2, Winter +1).
+    const roh = Date.parse(`${w.slice(0, 16)}:00Z`);
+    const wand = berlinWand(new Date(roh).toISOString());
+    const versatz = wand ? Date.parse(`${wand}:00Z`) - roh : 0;
+    return roh - versatz;
+  }
+  const t = Date.parse(a.am);
+  return Number.isNaN(t) ? 0 : t;
 }
 
 /** Ort oder Videolink: eine Zeile, höchstens 160 Zeichen. */
@@ -933,24 +998,25 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     const ergebnis = ERGEBNISSE.includes(x.ergebnis as Ergebnis) ? (x.ergebnis as Ergebnis) : undefined;
     const n = x.notiz && typeof x.notiz === 'object' ? x.notiz as Record<string, unknown> : null;
     const notiz = n ? Object.fromEntries(NOTIZ_FELDER.map(f => [f.id, txt(n[f.id], 1500)]).filter(([, v]) => v)) as NotizVorlage : undefined;
-    const wann = wannSaeubern(x.wann), ort = ortSaeubern(x.ort), bearbeitet = zeitpunktSaeubern(x.bearbeitet);
+    const wann = wannSaeubern(x.wann), ort = ortSaeubern(x.ort), bearbeitet = zeitpunktSaeubern(x.bearbeitet), anlass = txt(x.anlass, 600);
     const aktFirma = typeof x.firmaId === 'string' && /^f-[a-z0-9-]{2,63}$/.test(x.firmaId) ? x.firmaId : undefined;
     return {
       am: String(x.am ?? '').slice(0, 25), art, ...(txt(x.text, 3000) ? { text: txt(x.text, 3000) } : {}), von,
       ...(ergebnis ? { ergebnis } : {}), ...(notiz && Object.keys(notiz).length ? { notiz } : {}), ...(txt(x.bezug, 60) ? { bezug: txt(x.bezug, 60) } : {}),
       ...(wann ? { wann } : {}), ...(ort ? { ort } : {}), ...(bearbeitet ? { bearbeitet } : {}), ...(aktFirma ? { firmaId: aktFirma } : {}),
+      ...(anlass ? { anlass } : {}),
     } as Aktivitaet;
   }).filter((a): a is Aktivitaet => !!a) : [];
   // Löschmarken (28.09., H4): markierte Fassungen fallen hier heraus — egal, welcher Weg sie zurückbringen wollte.
   const geloeschteAktivitaeten = markenSaeubern(o.geloeschteAktivitaeten);
   const verlauf = ohneMarkierte(akt, geloeschteAktivitaeten);
-  const GRUNDLAGEN: Grundlage[] = ['einwilligung', 'bestandskunde_7_3', 'mutmasslich_b2b_tel', 'anfrage', 'vertrag', 'intro_akzeptiert'];
-  const EW_KANAELE: EinwilligungKanal[] = ['mail', 'telefon', 'social', 'newsletter', 'einladung'];
-  const einwilligungen = Array.isArray(o.einwilligungen) ? (o.einwilligungen as unknown[]).map(e => {
-    const x = (e ?? {}) as Record<string, unknown>;
-    if (!EW_KANAELE.includes(x.kanal as EinwilligungKanal) || !GRUNDLAGEN.includes(x.grundlage as Grundlage) || !tag(x.erteiltAm)) return null;
-    return { kanal: x.kanal, grundlage: x.grundlage, erteiltAm: tag(x.erteiltAm), nachweis: txt(x.nachweis, 400) ?? '', ...(tag(x.widerrufenAm) ? { widerrufenAm: tag(x.widerrufenAm) } : {}) } as Einwilligung;
-  }).filter((e): e is Einwilligung => !!e) : undefined;
+  // Einwilligungen mit vollem Nachweis (28.09., U2 #55): Zeitpunkt, erfasst von, Wortlaut, Beleg, Widerruf — lib/crm/einwilligung.ts.
+  const einwilligungen = Array.isArray(o.einwilligungen) ? (o.einwilligungen as unknown[]).map(einwilligungSaeubern).filter((e): e is Einwilligung => !!e) : undefined;
+  const eingeschraenkt = einschraenkungSaeubern(o.eingeschraenkt);
+  const pv = typeof o.geprueftVon === 'string' && /^[a-z0-9-]{1,40}$/.test(o.geprueftVon) ? o.geprueftVon : undefined;
+  const hbe = o.hinweisBeiErhebung && typeof o.hinweisBeiErhebung === 'object' ? o.hinweisBeiErhebung as Record<string, unknown> : null;
+  const lfv = o.loeschfristVerlaengert && typeof o.loeschfristVerlaengert === 'object' ? o.loeschfristVerlaengert as Record<string, unknown> : null;
+  const loeschfristVerlaengert = lfv && tag(lfv.bis) && tag(lfv.am) && txt(lfv.grund, 300) ? { bis: tag(lfv.bis)!, grund: txt(lfv.grund, 300)!, von: /^[a-z0-9-]{1,40}$/.test(String(lfv.von ?? '')) ? String(lfv.von) : 'system', am: tag(lfv.am)! } : undefined;
   const ws = o.werbesperre && typeof o.werbesperre === 'object' ? o.werbesperre as Record<string, unknown> : null;
   const ns = o.naechsterSchritt && typeof o.naechsterSchritt === 'object' ? o.naechsterSchritt as Record<string, unknown> : null;
   const kreis = ['A', 'B', 'C', 'D'].includes(String(o.kreis)) ? String(o.kreis) as Kreis : undefined;
@@ -985,6 +1051,10 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     ...(o.anrede === 'Sie' || o.anrede === 'Du' ? { anrede: o.anrede } : {}), ...(txt(o.vorgestelltDurch, 60) ? { vorgestelltDurch: txt(o.vorgestelltDurch, 60) } : {}),
     ...(einwilligungen?.length ? { einwilligungen } : {}),
     ...(ws && tag(ws.seit) ? { werbesperre: { seit: tag(ws.seit)!, grund: txt(ws.grund, 300) ?? 'Widerspruch' } } : {}),
+    ...(eingeschraenkt ? { eingeschraenkt } : {}),
+    ...(tag(o.geprueftAm) ? { geprueftAm: tag(o.geprueftAm), ...(pv ? { geprueftVon: pv } : {}) } : {}),
+    ...(hbe && tag(hbe.am) ? { hinweisBeiErhebung: { am: tag(hbe.am)!, ...(/^[a-z0-9-]{1,40}$/.test(String(hbe.von ?? '')) ? { von: String(hbe.von) } : {}) } } : {}),
+    ...(loeschfristVerlaengert ? { loeschfristVerlaengert } : {}),
     ...(HERKUNFT.some(h => h.id === o.herkunft) ? { herkunft: o.herkunft as Herkunft } : {}),
     ...(RECHTSGRUNDLAGEN.some(r => r.id === o.rechtsgrundlage) ? { rechtsgrundlage: o.rechtsgrundlage as Rechtsgrundlage } : {}),
     ...(o.fremddaten === true ? { fremddaten: true } : {}), ...(tag(o.art14InformiertAm) ? { art14InformiertAm: tag(o.art14InformiertAm) } : {}),
@@ -1011,9 +1081,14 @@ export interface AktivitaetEingabe {
   ergebnis?: Ergebnis;
   notiz?: NotizVorlage;
   bezug?: string;
-  /** Zeitpunkt und Ort eines Meetings (28.09.) — gesäubert über wannSaeubern/ortSaeubern. */
+  /**
+   * Wann es war bzw. ist (28.09.; seit U2 #46 für alle Arten — nachgetragener Anruf, Mail): gesäubert über
+   * wannSaeubern. Ort nur bei Meetings.
+   */
   wann?: string;
   ort?: string;
+  /** Anlass eines Anrufs (U2 #58) — Pflicht bei gelber Telefon-Ampel (prüft die Route). */
+  anlass?: string;
   /** Ausdrückliche Stufe gewinnt über die Regel. */
   stufe?: Stufe;
   wiedervorlage?: string;
@@ -1031,15 +1106,22 @@ export function wendeAktivitaetAn(
   const eintrag: Aktivitaet = { am: jetztIso, art: e.art, ...(e.text ? { text: e.text } : {}), von: e.von,
     ...(e.ergebnis ? { ergebnis: e.ergebnis } : {}), ...(e.notiz ? { notiz: e.notiz } : {}), ...(e.bezug ? { bezug: e.bezug } : {}),
     ...(wannSaeubern(e.wann) ? { wann: wannSaeubern(e.wann) } : {}), ...(ortSaeubern(e.ort) ? { ort: ortSaeubern(e.ort) } : {}),
+    ...(e.anlass?.trim() ? { anlass: e.anlass.trim().slice(0, 600) } : {}),
     // Firma zum Zeitpunkt (28.09., Stationen): die Zeitlinie der Firma behält die Aktivität nach einem Jobwechsel.
     ...(k.firmaId ? { firmaId: k.firmaId } : {}) };
   const out: Kontakt = { ...k, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag] };
   // Nur echter Kontakt zählt: ein nicht erreichter Anruf ist ein Versuch, kein Kontakt.
-  const echt = e.art !== 'notiz' && e.art !== 'stufe' && e.art !== 'system' && e.ergebnis !== 'nicht_erreicht' && e.ergebnis !== 'mailbox';
+  const echt = echterKontakt(e);
   // Ein geplantes Meeting (wann in der Zukunft) ist noch kein Kontakt: weder letzter Kontakt noch
   // Stufe oder Wiedervorlage nach Regel — nur, was ausdrücklich mitkommt (Prüfbericht 28.09., F1).
   const geplant = e.art === 'termin' && wannInZukunft(eintrag.wann, jetztIso);
-  if (echt && !geplant) out.letzterKontakt = heute;
+  // Ereigniszeit (U2 #46): ein nachgetragener Anruf von letzter Woche setzt den letzten Kontakt auf seinen Tag —
+  // nie zurück (ein jüngerer Kontakt bleibt), nie in die Zukunft.
+  if (echt && !geplant) {
+    const tag = eintrag.wann ? wannTag(eintrag.wann) : heute;
+    const t = tag > heute ? heute : tag;
+    out.letzterKontakt = !k.letzterKontakt || t > k.letzterKontakt ? t : k.letzterKontakt;
+  }
   out.stufe = e.stufe ?? (geplant ? k.stufe : stufeNach(e.art, k.stufe));
   const wv = e.wiedervorlage ?? (geplant ? undefined : wiedervorlageNach(e.art, heute, tagePlus));
   if (wv) out.wiedervorlage = wv;
@@ -1059,7 +1141,10 @@ export function kontaktVereinen(neu: Kontakt, alt: Kontakt, person?: string): Ko
   // Löschmarken (28.09., H4): es gelten die gespeicherten — nur der Server setzt sie (POST /api/crm/aktivitaet).
   // Eine gelöschte oder geänderte Notiz im älteren Stand fällt heraus; beim Ändern gibt es so keine Doppelung.
   const marken = alt.geloeschteAktivitaeten;
-  const eigene = ohneMarkierte(neu.aktivitaeten ?? [], marken);
+  // System-Signale (Mail-Betreff, Termintitel — lib/crm/signale.ts) gehören dem Server: gibt es sie gespeichert, gilt
+  // die gespeicherte Fassung (U2 #52 — ein älterer Stand holt keinen nach der Frist entfernten Betreff zurück).
+  const signalAlt = new Map((alt.aktivitaeten ?? []).filter(a => a.von === 'system' && /^(mail|termin)-/.test(a.bezug ?? '')).map(a => [`${a.art}|${a.bezug}`, a]));
+  const eigene = ohneMarkierte(neu.aktivitaeten ?? [], marken).map(a => (a.von === 'system' && a.bezug ? signalAlt.get(`${a.art}|${a.bezug}`) ?? a : a));
   const bekannt = new Set(eigene.map(schluessel));
   const fehlend = ohneMarkierte(alt.aktivitaeten ?? [], marken).filter(a => !bekannt.has(schluessel(a)));
   const letzter = [neu.letzterKontakt, alt.letzterKontakt].filter(Boolean).sort().pop();
@@ -1079,7 +1164,9 @@ export function kontaktVereinen(neu: Kontakt, alt: Kontakt, person?: string): Ko
  * Felder, die ein `teil` nie leert — Kennung, Pipeline-Kern und was nur der Server setzt.
  * Die Zahlung hat ihren eigenen Weg (`ibanEntfernen`, lib/crm/zahlung.ts).
  */
-const NIE_LEEREN = new Set(['id', 'stufe', 'aktivitaeten', 'importiertAm', 'geaendertAm', 'vonHand', 'geloeschteAktivitaeten', 'stand', 'zahlung', 'stationen', 'emails', 'typen', 'kategorien', 'labels']);
+const NIE_LEEREN = new Set(['id', 'stufe', 'aktivitaeten', 'importiertAm', 'geaendertAm', 'vonHand', 'geloeschteAktivitaeten', 'stand', 'zahlung', 'stationen', 'emails', 'typen', 'kategorien', 'labels',
+  // U2 (28.09.): Einwilligungen sind ein Nachweis (wächst nur), Einschränkung und Fristverlängerung setzt nur /api/crm/datenschutz, geprüft stempelt der Server.
+  'einwilligungen', 'eingeschraenkt', 'loeschfristVerlaengert', 'geprueftAm', 'geprueftVon']);
 
 /**
  * Einzelne Felder auf den gespeicherten Kontakt legen (PATCH /api/state/kontakte, op `teil`).

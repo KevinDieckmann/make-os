@@ -22,6 +22,7 @@ import {
 import type { KanalStatus } from './recht';
 import { haeltBeziehung, BEIDE } from './team';
 import { tagePlus } from '@/lib/zeit';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -111,7 +112,7 @@ export function nachbereitung(kontakte: Kontakt[], heute: string, person?: strin
   const ab = tagePlus(heute, -NACHBEREITEN_TAGE);
   const raus: Nachbereitung[] = [];
   for (const k of kontakte) {
-    if (k.werbesperre) continue;
+    if (ausgenommen(k)) continue;
     const fuer = haeltBeziehung(k);
     if (person && fuer !== person && fuer !== BEIDE) continue;
     const l = k.aktivitaeten ?? [];
@@ -140,14 +141,17 @@ export const einwilligungVorlage = (anrede?: 'Sie' | 'Du') =>
  * schon eine gültige Mail-Einwilligung, bleibt alles, wie es ist (null).
  * `von` (kevin/malin) kommt in den Nachweis — wer gefragt hat, gehört dazu.
  */
-export function einwilligungUebernehmen(k: Kontakt, wortlaut: string, heute: string, von?: string): Kontakt | null {
+export function einwilligungUebernehmen(k: Kontakt, wortlaut: string, heute: string, von?: string, jetztIso = new Date().toISOString()): Kontakt | null {
   const w = wortlaut.trim();
   if (!w) return null;
   if ((k.einwilligungen ?? []).some(e => e.kanal === 'mail' && e.grundlage === 'einwilligung' && !e.widerrufenAm)) return null;
   const wer = von && von !== 'system' ? ` (${von.charAt(0).toUpperCase()}${von.slice(1)})` : '';
   const nachweis = `Im Gespräch${wer}: ${w}`.slice(0, 400);
   // Die Einwilligung gilt für die Werbung per Mail (§ 7 UWG); eine vorhandene Rechtsgrundlage der Verarbeitung (z. B. Vertrag) bleibt.
-  return { ...k, einwilligungen: [...(k.einwilligungen ?? []), { kanal: 'mail', grundlage: 'einwilligung', erteiltAm: heute, nachweis }], ...(k.rechtsgrundlage ? {} : { rechtsgrundlage: 'einwilligung' as const }) };
+  // Voller Nachweis (U2 #55): Wortlaut, Beleg (das Gespräch), wer und wann — Zeitpunkt und Person stempelt der Server beim Speichern neu.
+  const ew = { kanal: 'mail' as const, grundlage: 'einwilligung' as const, erteiltAm: heute, nachweis, wortlaut: w.slice(0, 1500), belegRef: `Gespräch vom ${heute}${wer}`.slice(0, 200), zeitpunkt: jetztIso,
+    ...(von && von !== 'system' && /^[a-z0-9-]{1,40}$/.test(von) ? { erfasstVon: von } : {}) };
+  return { ...k, einwilligungen: [...(k.einwilligungen ?? []), ew], ...(k.rechtsgrundlage ? {} : { rechtsgrundlage: 'einwilligung' as const }) };
 }
 
 // ── ZOE-Schnellnotiz ─────────────────────────────────────────────────────

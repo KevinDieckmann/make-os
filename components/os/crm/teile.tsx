@@ -10,7 +10,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Knopf, feld, LEUCHT } from '../schlank';
-import { NOTIZ_FELDER, type Aktivitaet, type NotizVorlage, type Ergebnis, type Kontakt } from '@/lib/make-one/crm';
+import { NOTIZ_FELDER, ereignisMs, type Aktivitaet, type NotizVorlage, type Ergebnis, type Kontakt } from '@/lib/make-one/crm';
 import type { KanalStatus } from '@/lib/crm/recht';
 import { kanalLink, einwilligungVorlage, einwilligungUebernehmen } from '@/lib/crm/erfassen';
 import { datum, plusTage, type CrmApi } from './daten';
@@ -61,18 +61,20 @@ const ERG_LABEL: Record<string, string> = { gespraech: 'Gespräch', termin: 'Ter
 
 /** Verlauf: jüngstes zuerst, Notizvorlage aufgeklappt. */
 export function Verlauf({ liste, name, max = 50, heute }: { liste: Aktivitaet[]; name: (p: string) => string; max?: number; heute?: string }) {
-  const l = [...liste].reverse().slice(0, max);
+  // Ereigniszeit (U2 #46): jüngstes Ereignis zuerst — `wann ?? am` (ein nachgetragener Anruf steht an seinem Tag).
+  const l = [...liste].sort((a, b) => ereignisMs(b) - ereignisMs(a)).slice(0, max);
   if (!l.length) return <div style={{ fontSize: 12.5, color: C.inkLeise }}>Noch kein Verlauf. Das erste Gespräch mit der Notizvorlage festhalten.</div>;
   return (
     <div style={{ display: 'grid', gap: 0 }}>
       {l.map((a, i) => (
         <div key={i} style={{ display: 'grid', gridTemplateColumns: '78px 1fr', gap: 12, padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
-          <div style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{datum(a.am, heute)}</div>
+          <div style={{ fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{datum(a.wann ?? a.am, heute)}</div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: TYP.bedien, color: C.ink }}>
               <b style={{ fontWeight: 600 }}>{ART_LABEL[a.art] ?? a.art}</b>{a.ergebnis && <span style={{ color: C.inkDim }}> · {ERG_LABEL[a.ergebnis]}</span>}
               <span style={{ color: C.inkLeise }}> · </span><span style={{ display: 'inline-flex', verticalAlign: 'middle', gap: 4, alignItems: 'center', color: C.inkLeise }}>{a.von !== 'system' && <Person id={a.von} groesse={14} />}{name(a.von)}</span>
             </div>
+            {a.anlass && <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 2 }}><span style={{ color: C.inkLeise }}>Anlass:</span> {a.anlass}</div>}
             {a.text && <div style={{ fontSize: 12.5, color: C.inkDim, marginTop: 2, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{a.text}</div>}
             {a.notiz && (
               <div style={{ display: 'grid', gap: 2, marginTop: 4 }}>

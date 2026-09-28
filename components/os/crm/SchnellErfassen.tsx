@@ -66,6 +66,8 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
   const [laeuft, setLaeuft] = useState(false);
   const [fertig, setFertig] = useState('');
   const [fehler, setFehler] = useState('');
+  /** Anlass eines Anrufs (U2 #58) — Pflicht, wenn die Telefon-Ampel gelb ist (mutmaßliche Einwilligung); der Server prüft. */
+  const [anlass, setAnlass] = useState('');
   const sucheRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const vorher = useRef<HTMLElement | null>(null);
@@ -77,7 +79,7 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
   useEffect(() => {
     if (!offen) return;
     vorher.current = document.activeElement as HTMLElement | null;
-    setSuche(''); setMarkiert(0); setPersonId(kontaktId ?? null); setGesucht(false); setArt('gespraech'); setErgebnis('gespraech');
+    setSuche(''); setMarkiert(0); setPersonId(kontaktId ?? null); setGesucht(false); setArt('gespraech'); setErgebnis('gespraech'); setAnlass('');
     setChance(null); setLaeuft(false); setFertig(''); setFehler('');
     const handy = window.matchMedia('(max-width: 720px)').matches;
     const t = setTimeout(() => { if (!kontaktId || !handy) sucheRef.current?.focus(); }, 30);
@@ -116,8 +118,8 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
     if (e === 'sperre' && !window.confirm(`${anzeigename(k)} widerspricht Werbung? Die Person wird gesperrt und taucht nirgends mehr auf.`)) return;
     setLaeuft(true); setFehler('');
     try {
-      const r = await festhalten(api, { id: k.id, art, ergebnis: e }, undefined, heute);
-      if (r.error || !r.kontakt) { setFehler(r.error ?? 'Nicht gespeichert.'); return; }
+      const r = await festhalten(api, { id: k.id, art, ergebnis: e, ...(art === 'anruf' && anlass.trim() ? { anlass: anlass.trim() } : {}) }, undefined, heute);
+      if (r.error || r.fehler || !r.kontakt) { setFehler(r.error ?? r.fehler ?? 'Nicht gespeichert.'); return; }
       erledigt(`${anzeigename(k)} · ${ERGEBNIS_KNOEPFE.find(x => x.id === e)?.label}${r.hinweis ? ` — ${r.hinweis}` : ''}`);
     } finally { setLaeuft(false); }
   }
@@ -142,8 +144,8 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
         chanceId = r.chanceId;
         void api.laden();
       }
-      const r = await festhalten(api, { id: k.id, art, ...(ergebnis ? { ergebnis } : {}), notiz: x.notiz, naechster: x.naechster, ...(chanceId ? { bezug: chanceId } : {}) }, x.einwilligung, heute);
-      if (r.error || !r.kontakt) { setFehler(r.error ?? 'Nicht gespeichert.'); return; }
+      const r = await festhalten(api, { id: k.id, art, ...(ergebnis ? { ergebnis } : {}), notiz: x.notiz, naechster: x.naechster, ...(chanceId ? { bezug: chanceId } : {}), ...(art === 'anruf' && anlass.trim() ? { anlass: anlass.trim() } : {}) }, x.einwilligung, heute);
+      if (r.error || r.fehler || !r.kontakt) { setFehler(r.error ?? r.fehler ?? 'Nicht gespeichert.'); return; }
       erledigt([`${anzeigename(k)} · festgehalten`, chanceId && 'SQL → Deal angelegt', x.einwilligung && 'Einwilligung für Mail', x.naechster && `nächster Schritt ${x.naechster.datum.slice(8, 10)}.${x.naechster.datum.slice(5, 7)}.`].filter(Boolean).join(' · '));
     } finally { setLaeuft(false); }
   }
@@ -220,6 +222,7 @@ export function SchnellErfassen({ api, offen, onZu, kontaktId }: { api: CrmApi; 
                       ))}
                     </div>
                   )}
+                  {art === 'anruf' && <input value={anlass} onChange={ev => setAnlass(ev.target.value)} placeholder="Anlass des Anrufs (Pflicht bei gelber Telefon-Ampel)" aria-label="Anlass des Anrufs" style={{ ...feld, fontSize: TYP.bedien, marginTop: 10 }} />}
                   {art === 'anruf' && !ergebnis && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 8 }}>Mailbox, nicht erreicht, kein Bedarf und Sperre sind mit einem Tipp gespeichert.</div>}
                 </div>
 

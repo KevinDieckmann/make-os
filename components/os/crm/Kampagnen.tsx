@@ -37,6 +37,7 @@ import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer }
 import { HeadPanel } from './HeadPanel';
 import { VernetzenEinstellungen } from './Vernetzen';
 import { DealAusQuelle } from './marketing/DealAusQuelle';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 interface Daten {
   heute: string; playbooks: (Playbook & { anzahl: number })[];
@@ -187,7 +188,7 @@ function KampagnenDetail({ k, api, pb, z, heute, post, zuKontakt }: { k: Kampagn
     : z.offen ? `${z.offen} ${z.offen === 1 ? 'Person ist' : 'Personen sind'} noch nicht angesprochen${k.status === 'aktiv' ? ` — sie stehen in der Power Hour von ${fuehrt === BEIDE ? 'euch beiden' : nameVon(fuehrt)}` : ' — Status auf „Aktiv“, dann stehen sie in der Power Hour'}.`
     : z.personen ? 'Alle angesprochen — Kampagne abschließen und in der Notiz festhalten, was funktioniert hat.' : 'Personen hinzufügen — über die Suche unten.';
   const kanal = k.kanal === 'telefon' || k.kanal === 'mail' || k.kanal === 'linkedin' ? k.kanal : null;
-  const treffer = suche.trim().length >= 2 ? (api.kontakte ?? []).filter(x => !k.kontaktIds.includes(x.id) && !x.werbesperre && `${anzeigename(x)} ${x.firma ?? ''}`.toLowerCase().includes(suche.toLowerCase())).slice(0, 6) : [];
+  const treffer = suche.trim().length >= 2 ? (api.kontakte ?? []).filter(x => !k.kontaktIds.includes(x.id) && !ausgenommen(x) && `${anzeigename(x)} ${x.firma ?? ''}`.toLowerCase().includes(suche.toLowerCase())).slice(0, 6) : [];
   // Offener Deal mit dieser Person — dann führt „Deal“ dorthin statt einen zweiten anzulegen.
   const offenerDeal = (kontaktId: string) => (api.crm?.stand.chancen ?? []).find(c => OFFENE_STUFEN.includes(c.stufe) && c.kontaktIds.includes(kontaktId));
   const personen = k.kontaktIds.map(id => nachId.get(id)).filter((x): x is NonNullable<typeof x> => !!x);

@@ -15,6 +15,10 @@ import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { folgeAus } from '@/lib/crm/heute';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { sperren } from '@/lib/crm/sperrliste';
+import { anlassPflicht } from '@/lib/crm/recht';
+import { EINGESCHRAENKT_FEHLER } from '@/lib/crm/einschraenkung';
+import { ladeCrm } from '@/lib/crm/speicher';
+import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,6 +38,13 @@ const ARTEN: readonly AktivitaetArt[] = AKTIVITAET_ARTEN.filter(a => a !== 'syst
 //  · Jede Antwort trägt den Kontakt mit `stand` (Fingerabdruck) und maskierter IBAN.
 //  · Geplantes Meeting (wann in der Zukunft, Prüfbericht F1): kein „letzter Kontakt“, keine Stufe und
 //    Wiedervorlage nach Regel — es zählt ab seinem Tag (Kadenz: `letzterKontaktVon`).
+//
+// 28.09. (U2):
+//  · Ereigniszeit `wann` für ALLE Arten (#46): ein nachgetragener Anruf oder eine Mail trägt ihren Tag
+//    (nie in der Zukunft — außer bei Meetings); „letzter Kontakt“ und Sortierung nutzen `wann ?? am`.
+//  · Anruf bei gelber Telefon-Ampel (#58, mutmaßliche Einwilligung): nur mit `anlass` (Text, an der
+//    Aktivität gespeichert; auch aus notiz.anlass) — sonst 409 mit `anlassPflicht: true`.
+//  · Eingeschränkte Person (Art. 18, #51): nichts festhalten — 409 mit `eingeschraenkt: true`.
 
 type Antwort = Record<string, unknown>;
 const mitStandFuer = (k: Kontakt, person: string) => ({ ...fuerPerson(k, person), stand: fingerabdruck(k as unknown as Record<string, unknown>) });
@@ -58,6 +69,8 @@ async function notizAktion(req: Request, b: { aktion: NotizAktion; id?: string; 
       raus = { status: 409, body: { ok: false, konflikt: true, fehler: 'Jemand hat diesen Kontakt inzwischen geändert — Stand neu geladen, bitte noch einmal.', kontakt: mitStandFuer(alt, ich) } };
       return f;
     }
+    // Art. 18 (U2): an einer eingeschränkten Person wird nichts geändert.
+    if (alt.eingeschraenkt) { raus = { status: 409, body: { ok: false, fehler: EINGESCHRAENKT_FEHLER, eingeschraenkt: true } }; return f; }
     const r = notizAnwenden(alt, { aktion: b.aktion, anker, text: b.text }, ich, heute, new Date().toISOString());
     if (!r.ok) { raus = { status: r.status, body: { ok: false, fehler: r.fehler } }; return f; }
     raus = { status: 200, body: { ok: true, kontakt: mitStandFuer(r.kontakt, ich), text: b.aktion === 'loeschen' ? 'Notiz gelöscht.' : r.unveraendert ? 'Unverändert.' : 'Notiz geändert.' } };
@@ -70,7 +83,7 @@ async function notizAktion(req: Request, b: { aktion: NotizAktion; id?: string; 
 
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
-  let b: { id?: string; art?: string; text?: string; stufe?: string; wiedervorlage?: string; von?: 'zoe'; ergebnis?: string; notiz?: Record<string, unknown>; naechster?: { text?: string; datum?: string }; bezug?: string; wann?: string; ort?: string; aktion?: string; anker?: string; stand?: string };
+  let b: { id?: string; art?: string; text?: string; stufe?: string; wiedervorlage?: string; von?: 'zoe'; ergebnis?: string; notiz?: Record<string, unknown>; naechster?: { text?: string; datum?: string }; bezug?: string; wann?: string; ort?: string; anlass?: string; aktion?: string; anker?: string; stand?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (b.aktion === 'aendern' || b.aktion === 'loeschen') return notizAktion(req, { ...b, aktion: b.aktion });
   if (b.aktion !== undefined) return NextResponse.json({ ok: false, fehler: 'aktion ist aendern oder loeschen.' }, { status: 400 });
@@ -88,21 +101,36 @@ export async function POST(req: Request) {
   const wunschWv = b.wiedervorlage && /^\d{4}-\d{2}-\d{2}$/.test(b.wiedervorlage) ? b.wiedervorlage : undefined;
   const von = b.von === 'zoe' ? 'zoe' : personAus(req);
   const heute = localDay();
+  // Ereigniszeit (U2 #46): für alle Arten; ein ungültiges `wann` fällt weg (kein Fantasiedatum), nur ein Meeting
+  // darf in der Zukunft liegen.
+  const wann = wannSaeubern(b.wann);
+  if (wann && art !== 'termin' && wannInZukunft(wann, new Date().toISOString())) return NextResponse.json({ ok: false, fehler: 'wann liegt in der Zukunft — nur Meetings dürfen geplant werden.' }, { status: 400 });
+  const anlass = String(b.anlass ?? notiz?.anlass ?? '').replace(/\s+/g, ' ').trim().slice(0, 600);
+  // Kontext der Telefon-Ampel (U2 #58): aktives Mandat / offener Deal mit der Person — nur für Anrufe laden.
+  const crm = art === 'anruf' ? await ladeCrm() : null;
+  const ctx = crm ? { hatMandat: crm.mandate.some(m => m.status === 'aktiv' && m.kontaktIds.includes(id)), hatChance: crm.chancen.some(c => OFFENE_STUFEN.includes(c.stufe) && c.kontaktIds.includes(id)) } : {};
 
   let ergebnis: Kontakt | null = null;
+  let abgelehnt: { status: number; body: Antwort } | null = null;
   await updateJson<{ kontakte: Kontakt[] }>('kontakte', current => {
     const f = current ?? { kontakte: [] };
     const i = f.kontakte.findIndex(x => x.id === id);
     if (i < 0) return f;
     const alt = f.kontakte[i];
+    // Art. 18 (U2): eine eingeschränkte Person wird nicht weiter verarbeitet — auch kein Verlauf.
+    if (alt.eingeschraenkt) { abgelehnt = { status: 409, body: { ok: false, fehler: EINGESCHRAENKT_FEHLER, eingeschraenkt: true } }; return f; }
+    // Mutmaßliche Einwilligung (U2 #58): gelbe Telefon-Ampel → nur mit konkretem Anlass.
+    if (art === 'anruf' && !anlass && anlassPflicht(alt, ctx)) {
+      abgelehnt = { status: 409, body: { ok: false, anlassPflicht: true, fehler: 'Anruf nur mit konkretem Anlass aus der Beziehung (mutmaßliche Einwilligung, § 7 Abs. 2 UWG) — bitte den Anlass eintragen.' } };
+      return f;
+    }
     const folge = erg ? folgeAus(erg, heute, alt.stufe) : null;
     const jetzt = new Date().toISOString();
     // Geplantes Meeting (wann in der Zukunft, 28.09., F1): noch kein Kontakt — keine Folge-Regeln, nur Ausdrückliches.
-    const wann = art === 'termin' ? wannSaeubern(b.wann) : undefined;
-    const geplant = wannInZukunft(wann, jetzt);
+    const geplant = art === 'termin' && wannInZukunft(wann, jetzt);
     let neu = wendeAktivitaetAn(alt, {
       art, text: text || undefined, von, ergebnis: erg, notiz: notiz && Object.keys(notiz).length ? notiz : undefined, bezug,
-      ...(art === 'termin' ? { wann, ort: ortSaeubern(b.ort) } : {}),
+      ...(wann ? { wann } : {}), ...(art === 'termin' ? { ort: ortSaeubern(b.ort) } : {}), ...(art === 'anruf' && anlass ? { anlass } : {}),
       stufe: wunschStufe ?? (geplant ? undefined : folge?.stufe), wiedervorlage: wunschWv ?? naechster?.datum ?? (geplant ? undefined : folge?.wiedervorlage),
     }, heute, jetzt, tagePlus);
     if (naechster) neu = { ...neu, naechsterSchritt: naechster };
@@ -112,6 +140,8 @@ export async function POST(req: Request) {
     f.kontakte[i] = neu;
     return f;
   });
+  const nein = abgelehnt as { status: number; body: Antwort } | null;
+  if (nein) return NextResponse.json(nein.body, { status: nein.status });
   if (!ergebnis) return NextResponse.json({ error: `Kein Kontakt mit id ${id}.` }, { status: 404 });
   // Werbesperre (Ergebnis „Sperre“): auch auf die gehashte Sperrliste (K2 #60) — ein Import legt die Person nie neu an.
   const gespeichert = ergebnis as Kontakt | null;

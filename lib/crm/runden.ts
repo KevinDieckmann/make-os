@@ -21,6 +21,7 @@ import { anzeigename, KREIS_TAKT, NOTIZ_FELDER, STUFE_LABEL, type Kontakt, type 
 import type { Chance, CrmBestand, Mandat } from './typen';
 import { OFFENE_STUFEN } from './pipeline';
 import { TEAM, BEIDE, verantwortlich } from './team';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 /** Kontaktstufen, in denen es ein laufendes Gespräch gibt — hier gehört eine Chance hin. */
 export const IM_GESPRAECH: readonly Stufe[] = ['gespraech', 'termin', 'angebot'];
@@ -84,7 +85,7 @@ export function kreisKandidaten(kontakte: Kontakt[], crm: CrmBestand, heute: str
   const zuletzt = (k: Kontakt) => (k.letzterKontakt ? `zuletzt ${kurzDatum(k.letzterKontakt, heute)}` : '');
   const r: KreisKandidat[] = [];
   for (const k of kontakte) {
-    if (k.kreis || k.werbesperre) continue;
+    if (k.kreis || ausgenommen(k)) continue;
     const ms = mandate.get(k.id) ?? [];
     const laufend = ms.filter(m => m.status !== 'beendet');
     const offen = chancen.get(k.id) ?? [];

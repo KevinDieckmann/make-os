@@ -132,6 +132,8 @@ export const PRUEFUNGEN = {
   'antrag-kontakt-tot': { schwere: 'warnung', bereich: 'datenschutz', reparierbar: true, art: 'antrag', text: n => `${n} ${e(n, 'Betroffenenantrag zeigt', 'Betroffenenanträge zeigen')} auf eine Person, die es nicht mehr gibt — der Vorgang bleibt, der Verweis geht.` },
   'werbesperre-kampagne': { schwere: 'fehler', bereich: 'datenschutz', reparierbar: true, art: 'kampagne', text: n => `${n} ${e(n, 'laufende Kampagne enthält', 'laufende Kampagnen enthalten')} Personen mit Werbesperre (Art. 21) — dort herausnehmen.` },
   'werbesperre-einladung': { schwere: 'fehler', bereich: 'datenschutz', reparierbar: false, art: 'event', text: n => `${n} ${e(n, 'kommendes Event hat', 'kommende Events haben')} Personen mit Werbesperre auf der Einladungsliste — dort herausnehmen.` },
+  'einschraenkung-kampagne': { schwere: 'fehler', bereich: 'datenschutz', reparierbar: true, art: 'kampagne', text: n => `${n} ${e(n, 'laufende Kampagne enthält', 'laufende Kampagnen enthalten')} Personen mit eingeschränkter Verarbeitung (Art. 18) — Reparieren nimmt sie heraus.` },
+  'einschraenkung-einladung': { schwere: 'fehler', bereich: 'datenschutz', reparierbar: false, art: 'event', text: n => `${n} ${e(n, 'kommendes Event hat', 'kommende Events haben')} Personen mit eingeschränkter Verarbeitung (Art. 18) auf der Einladungsliste — dort herausnehmen.` },
   'werbesperre-followup': { schwere: 'warnung', bereich: 'datenschutz', reparierbar: false, art: 'followup', text: n => `${n} ${e(n, 'offenes Follow-up geht', 'offene Follow-ups gehen')} an Personen mit Werbesperre — nur mit Vertrag oder ihrer Anfrage weiterverfolgen.` },
   'aufgabe-einheit-ungueltig': { schwere: 'warnung', bereich: 'aufgaben', reparierbar: false, art: 'aufgabe', text: n => `${n} ${e(n, 'Aufgabe trägt', 'Aufgaben tragen')} eine Einheit, die es in der Liste nicht gibt (oder liegen privat).` },
   'aufgabe-ohne-einheit': { schwere: 'hinweis', bereich: 'aufgaben', reparierbar: false, art: 'aufgabe', text: n => `${n} offene Business-${e(n, 'Aufgabe hat', 'Aufgaben haben')} keine Einheit.` },
@@ -312,6 +314,8 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
 
   // Follow-ups
   const gesperrt = new Set(kontakte.filter(k => k.werbesperre).map(k => k.id));
+  // Art. 18 (U2): eingeschränkte Personen dürfen in keiner laufenden Kampagne und auf keiner Einladungsliste stehen.
+  const eingeschraenkt = new Set(kontakte.filter(k => k.eingeschraenkt).map(k => k.id));
   for (const f of liste(crm.followups)) {
     const tot = followupTot(f, m);
     const offen = OFFEN_FU.includes(f.status);
@@ -329,7 +333,9 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
     if (!m.events.has(t.eventId)) melde('teilnahme-event-tot', t.kontaktId);
     if (!m.kontakte.has(t.kontaktId)) melde('teilnahme-kontakt-tot', t.eventId);
     const ev = eventNachId.get(t.eventId);
-    if (ev && gesperrt.has(t.kontaktId) && (t.status === 'vorgemerkt' || t.status === 'eingeladen') && ev.datum >= b.heute && ev.status !== 'abgesagt' && ev.status !== 'durchgefuehrt') melde('werbesperre-einladung', ev.id);
+    const kommend = !!ev && (t.status === 'vorgemerkt' || t.status === 'eingeladen') && ev.datum >= b.heute && ev.status !== 'abgesagt' && ev.status !== 'durchgefuehrt';
+    if (ev && kommend && gesperrt.has(t.kontaktId)) melde('werbesperre-einladung', ev.id);
+    if (ev && kommend && eingeschraenkt.has(t.kontaktId)) melde('einschraenkung-einladung', ev.id);
   }
   for (const x of liste(crm.events)) if (x.segmentId && !m.segmente.has(x.segmentId)) melde('segment-verweis-tot', x.segmentId);
 
@@ -342,6 +348,7 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
     if (ids.some(id => !m.kontakte.has(id))) melde('kampagne-kontakt-tot', k.id);
     if (liste(k.ergebnisse).some(r => !m.kontakte.has(r.kontaktId))) melde('kampagne-ergebnis-tot', k.id);
     if ((k.status === 'aktiv' || k.status === 'entwurf') && ids.some(id => gesperrt.has(id))) melde('werbesperre-kampagne', k.id);
+    if ((k.status === 'aktiv' || k.status === 'entwurf') && ids.some(id => eingeschraenkt.has(id))) melde('einschraenkung-kampagne', k.id);
   }
   for (const x of liste(crm.beitraege)) {
     if (beitragQuellenTot(x.quellen, m).length) melde('beitrag-kontakt-tot', x.id);
@@ -526,6 +533,19 @@ export function verbindungenReparieren(b: VerbindungsBestaende, ids: readonly st
       return { ...k, kontaktIds: liste(k.kontaktIds).filter(id => !gesperrt.has(id)) };
     }));
     zaehle('werbesperre-kampagne', 'crm', n, `${n} ${e(n, 'Kampagne', 'Kampagnen')}: ${personen} ${e(personen, 'gesperrte Person', 'gesperrte Personen')} herausgenommen (Werbewiderspruch)`);
+  }
+  // Art. 18 (U2): eingeschränkte Personen aus laufenden und geplanten Kampagnen herausnehmen — die Person selbst bleibt unberührt.
+  if (will.has('einschraenkung-kampagne')) {
+    const raus = new Set(liste(b.kontakte).filter(k => k.eingeschraenkt).map(k => k.id));
+    let n = 0, personen = 0;
+    setze('kampagnen', liste(crm.kampagnen).map(k => {
+      if (!(k.status === 'aktiv' || k.status === 'entwurf')) return k;
+      const weg = liste(k.kontaktIds).filter(id => raus.has(id));
+      if (!weg.length) return k;
+      n++; personen += weg.length;
+      return { ...k, kontaktIds: liste(k.kontaktIds).filter(id => !raus.has(id)) };
+    }));
+    zaehle('einschraenkung-kampagne', 'crm', n, `${n} ${e(n, 'Kampagne', 'Kampagnen')}: ${personen} ${e(personen, 'eingeschränkte Person', 'eingeschränkte Personen')} herausgenommen (Art. 18)`);
   }
   if (will.has('beitrag-kontakt-tot')) {
     let n = 0;

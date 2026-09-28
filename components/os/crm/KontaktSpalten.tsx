@@ -108,7 +108,10 @@ export function KontaktLinks({ k, api, heute, ampel, setze, klappen, lifecycle, 
   const profil = profilAdresse(k.linkedin);
   const mailOk = !!mail && mail.farbe !== 'rot';
   const gesperrt = !!k.werbesperre;
-  const aus: Partial<Record<Aktion, string>> = gesperrt ? { email: 'Werbesperre — kein Kanal', anruf: 'Werbesperre — kein Kanal' } : {};
+  // Art. 18 (U2): eingeschränkt = nichts festhalten, nichts ansprechen — alle Schnellaktionen aus.
+  const aus: Partial<Record<Aktion, string>> = k.eingeschraenkt
+    ? Object.fromEntries(AKTIONEN.map(a => [a.id, 'Verarbeitung eingeschränkt (Art. 18)'])) as Partial<Record<Aktion, string>>
+    : gesperrt ? { email: 'Werbesperre — kein Kanal', anruf: 'Werbesperre — kein Kanal' } : {};
   const listen = wertelistenVollstaendig(api.crm?.stand.wertelisten);
   const fertig = (text: string) => { setMeldung(text); setAktion(null); };
   const ampelPunkt = (s?: KanalStatus) => s ? <span title={s.grund} style={{ width: 7, height: 7, borderRadius: '50%', background: s.farbe === 'gruen' ? LEUCHT.gut : s.farbe === 'gelb' ? LEUCHT.achtung : LEUCHT.kritisch, flex: '0 0 auto' }} /> : null;
@@ -153,7 +156,7 @@ export function KontaktLinks({ k, api, heute, ampel, setze, klappen, lifecycle, 
           <div style={{ marginTop: 12, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', display: 'grid', gap: 8 }}>
             {aktion === 'notiz' && <NotizAktion k={k} api={api} onFertig={fertig} onAbbruch={() => setAktion(null)} />}
             {aktion === 'email' && <EmailAktion k={k} api={api} mailOk={mailOk} mailHref={mailHref} onFertig={fertig} />}
-            {aktion === 'anruf' && <AnrufAktion k={k} api={api} heute={heute} telHref={telHref} onFertig={fertig} onAbbruch={() => setAktion(null)} />}
+            {aktion === 'anruf' && <AnrufAktion k={k} api={api} heute={heute} telHref={telHref} anlassNoetig={tel?.farbe === 'gelb'} onFertig={fertig} onAbbruch={() => setAktion(null)} />}
             {aktion === 'aufgabe' && <AufgabeAktion k={k} api={api} heute={heute} onFertig={fertig} onAbbruch={() => setAktion(null)} />}
             {aktion === 'meeting' && <MeetingAktion k={k} api={api} heute={heute} onFertig={fertig} onAbbruch={() => setAktion(null)} />}
           </div>
@@ -275,17 +278,20 @@ function EmailAktion({ k, api, mailOk, mailHref, onFertig }: { k: Kontakt; api: 
   );
 }
 
-function AnrufAktion({ k, api, heute, telHref, onFertig, onAbbruch }: { k: Kontakt; api: CrmApi; heute: string; telHref: string | null; onFertig: (t: string) => void; onAbbruch: () => void }) {
+function AnrufAktion({ k, api, heute, telHref, anlassNoetig, onFertig, onAbbruch }: { k: Kontakt; api: CrmApi; heute: string; telHref: string | null; /** Gelbe Telefon-Ampel (U2 #58): Anlass Pflicht. */ anlassNoetig: boolean; onFertig: (t: string) => void; onAbbruch: () => void }) {
   const [ergebnis, setErgebnis] = useState<Ergebnis | null>(null);
   const [text, setText] = useState('');
+  const [anlass, setAnlass] = useState('');
+  /** Ereigniszeit (U2 #46): ein nachgetragener Anruf trägt seinen Tag — leer = heute. */
+  const [wann, setWann] = useState('');
   const [schritt, setSchritt] = useState('');
   const [am, setAm] = useState(plusTage(heute, 2));
   const [laeuft, setLaeuft] = useState(false);
   const liste = ANRUF_ERGEBNISSE.map(e => ({ id: e, label: ERGEBNIS_KURZ[e] }));
   const speichern = async () => {
-    if (!ergebnis || laeuft) return;
+    if (!ergebnis || laeuft || (anlassNoetig && !anlass.trim())) return;
     setLaeuft(true);
-    const r = await api.aktivitaet({ id: k.id, art: 'anruf', ergebnis, ...(text.trim() ? { text: text.trim() } : {}), ...(schritt.trim() && am ? { naechster: { text: schritt.trim(), datum: am } } : {}) });
+    const r = await api.aktivitaet({ id: k.id, art: 'anruf', ergebnis, ...(text.trim() ? { text: text.trim() } : {}), ...(anlass.trim() ? { anlass: anlass.trim() } : {}), ...(wann && wann < heute ? { wann } : {}), ...(schritt.trim() && am ? { naechster: { text: schritt.trim(), datum: am } } : {}) });
     setLaeuft(false);
     if (r.kontakt) onFertig(r.hinweis ? `Anruf festgehalten — ${r.hinweis}` : 'Anruf festgehalten.');
   };
@@ -294,12 +300,14 @@ function AnrufAktion({ k, api, heute, telHref, onFertig, onAbbruch }: { k: Konta
       {telHref ? <a href={telHref} className="fassbar" style={{ justifySelf: 'start', fontSize: TYP.bedien, fontWeight: 700, color: C.ink, textDecoration: 'none', padding: '8px 13px', borderRadius: 11, border: `1px solid ${LEUCHT.gut}55`, background: `${LEUCHT.gut}14` }}>☏ Anrufen</a>
         : <Hinweis>Kein freigegebenes Telefon — Kaltanruf nur mit Anlass (Ampel).</Hinweis>}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Ergebnis</span><Wahl label="Ergebnis" klein liste={liste} wert={ergebnis} onWahl={setErgebnis} /></div>
+      <input value={anlass} onChange={e => setAnlass(e.target.value)} placeholder={anlassNoetig ? 'Anlass aus der Beziehung (Pflicht — gelbe Ampel)' : 'Anlass (optional)'} aria-label="Anlass des Anrufs" style={eingabe} />
       <input value={text} onChange={e => setText(e.target.value)} placeholder="Kurz: worum ging es?" aria-label="Notiz zum Anruf" style={eingabe} />
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Wann</span><input type="date" value={wann} max={heute} onChange={e => setWann(e.target.value)} aria-label="Wann war der Anruf (leer = heute)" style={{ ...eingabe, width: 150, flex: '0 0 auto' }} /></div>
       <div style={{ display: 'flex', gap: 6 }}>
         <input value={schritt} onChange={e => setSchritt(e.target.value)} placeholder="Nächster Schritt (optional)" aria-label="Nächster Schritt" style={{ ...eingabe, flex: 1, minWidth: 0 }} />
         <input type="date" value={am} min={heute} onChange={e => setAm(e.target.value)} aria-label="Datum des nächsten Schritts" style={{ ...eingabe, width: 136, flex: '0 0 auto' }} />
       </div>
-      <Fuss><Knopf aus={!ergebnis || laeuft} onClick={() => void speichern()}>Anruf festhalten</Knopf><Knopf leise onClick={onAbbruch}>Abbrechen</Knopf></Fuss>
+      <Fuss><Knopf aus={!ergebnis || laeuft || (anlassNoetig && !anlass.trim())} onClick={() => void speichern()}>Anruf festhalten</Knopf><Knopf leise onClick={onAbbruch}>Abbrechen</Knopf></Fuss>
     </>
   );
 }

@@ -17,6 +17,7 @@ import { WEG } from '@/lib/wege';
 import { anzeigename, STUFE_LABEL, STUFEN, KREIS_TAKT, HERKUNFT, RECHTSGRUNDLAGEN, type Kontakt, type Kreis, type Lebensphase, type Einwilligung, type EinwilligungKanal, type Grundlage, type Stufe, type Herkunft, type Rechtsgrundlage, type AktivitaetArt, ROLLEN as KONTAKT_ROLLEN, ROLLE_LABEL, rollenVon, type Rolle } from '@/lib/make-one/crm';
 import type { Firma } from '@/lib/crm/typen';
 import { art14 } from '@/lib/crm/recht';
+import { nachweisLuecken } from '@/lib/crm/einwilligung';
 import { PERSON_FELDER, FIRMA_FELDER, FIRMA_FELDER_IMPORT, EINORDNUNG_FELDER, HERKUNFT_FELDER, gefuellt, vollstaendigkeit, type MatrixFeld } from '@/lib/crm/akte';
 import { haeltBeziehung, TEAM, nameVon } from '@/lib/crm/team';
 import { netzStufe, profilAdresse, suchLink } from '@/lib/crm/netzwerk';
@@ -99,6 +100,7 @@ export function Hinweise({ k, heute, setze }: { k: Kontakt; heute: string; setze
   const a14 = art14(k, heute);
   return (
     <>
+      {k.eingeschraenkt && <div style={{ padding: '10px 12px', borderRadius: 10, background: `${LEUCHT.kritisch}18`, color: LEUCHT.kritisch, fontSize: TYP.bedien }}>Verarbeitung eingeschränkt (Art. 18) seit {datum(k.eingeschraenkt.seit)} — {k.eingeschraenkt.grund}. Nur aufbewahren: kein Kanal, keine Liste, kein Agent, kein Bearbeiten. Aufheben unter Stammdaten › Datenschutz.</div>}
       {k.werbesperre && <div style={{ padding: '10px 12px', borderRadius: 10, background: `${LEUCHT.kritisch}18`, color: LEUCHT.kritisch, fontSize: TYP.bedien }}>Werbesperre seit {datum(k.werbesperre.seit)} — {k.werbesperre.grund}. Kein Kanal, keine Liste, kein Agent.</div>}
       {a14 && <div style={{ padding: '10px 12px', borderRadius: 10, background: `${a14.faellig ? LEUCHT.kritisch : LEUCHT.achtung}14`, fontSize: TYP.bedien, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <span style={{ color: a14.faellig ? LEUCHT.kritisch : LEUCHT.achtung }}>Art. 14: Daten stammen nicht von der Person — seit {a14.tage} Tagen nicht informiert (Frist ein Monat).</span>
@@ -266,78 +268,157 @@ export function VerlaufTeil({ k, api, name, heute, max = 60 }: { k: Kontakt; api
   );
 }
 
-/** Rechtsgrundlage, Herkunft (Art. 14), Einwilligungen, Werbewiderspruch, Auskunft und Löschung. */
+/** Eine Einwilligung aufnehmen: Kanal, Grundlage, Wortlaut und Beleg sind Pflicht (U2 #55) — Zeitpunkt und Person stempelt der Server. */
+interface EwEingabe { kanal: EinwilligungKanal; grundlage: Grundlage; wortlaut: string; version: string; beleg: string; am: string }
+const EW_LEER = (heute: string): EwEingabe => ({ kanal: 'mail', grundlage: 'einwilligung', wortlaut: '', version: '', beleg: '', am: heute });
+const ewOk = (e: EwEingabe, heute: string) => (e.wortlaut.trim().length >= 3 || !!e.version.trim()) && e.beleg.trim().length >= 2 && !!e.am && e.am <= heute;
+const ewAus = (e: EwEingabe): Einwilligung => ({
+  kanal: e.kanal, grundlage: e.grundlage, erteiltAm: e.am, nachweis: (e.wortlaut.trim() || e.version.trim()).slice(0, 400),
+  ...(e.wortlaut.trim() ? { wortlaut: e.wortlaut.trim() } : {}), ...(e.version.trim() ? { wortlautVersion: e.version.trim() } : {}), belegRef: e.beleg.trim(),
+});
+const zeitKurz = (iso?: string) => (iso ? new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(iso)) : '');
+
+function EwFormular({ e, setE, heute, knopf, onFertig, onAbbruch, nurEinwilligung }: { e: EwEingabe; setE: (e: EwEingabe) => void; heute: string; knopf: string; onFertig: () => void; onAbbruch: () => void; nurEinwilligung?: boolean }) {
+  return (
+    <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
+      <div style={{ display: 'flex', gap: '8px 18px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Kanal</span><Wahl label="Kanal" liste={EW_KANAL} wert={e.kanal} onWahl={kanal => setE({ ...e, kanal })} /></span>
+        {!nurEinwilligung && <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Grundlage</span><Wahl label="Grundlage" liste={GRUNDLAGEN} wert={e.grundlage} onWahl={grundlage => setE({ ...e, grundlage })} /></span>}
+        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>erteilt am</span><input type="date" value={e.am} max={heute} onChange={x => setE({ ...e, am: x.target.value })} aria-label="Erteilt am" style={{ ...feld, width: 150, fontSize: TYP.bedien }} /></span>
+      </div>
+      <textarea value={e.wortlaut} onChange={x => setE({ ...e, wortlaut: x.target.value })} rows={2} placeholder="Wortlaut (Pflicht): Frage und Antwort bzw. Formulartext — „Darf ich Ihnen … schicken? — Ja“" aria-label="Wortlaut der Einwilligung" style={{ ...feld, fontSize: TYP.bedien, resize: 'vertical' }} />
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <input value={e.beleg} onChange={x => setE({ ...e, beleg: x.target.value })} placeholder="Beleg (Pflicht): Dateiablage d-…, Formular, Mail vom …, Gespräch vom …" aria-label="Beleg der Einwilligung" style={{ ...feld, flex: '2 1 240px', fontSize: TYP.bedien }} />
+        <input value={e.version} onChange={x => setE({ ...e, version: x.target.value })} placeholder="Fassung des Textes (optional)" aria-label="Fassung des Wortlauts" style={{ ...feld, flex: '1 1 160px', fontSize: TYP.bedien }} />
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Knopf aus={!ewOk(e, heute)} onClick={onFertig}>{knopf}</Knopf>
+        <Knopf leise onClick={onAbbruch}>Abbrechen</Knopf>
+      </div>
+      <div style={{ fontSize: 12, color: C.inkLeise }}>Zeitpunkt und wer erfasst hat, stempelt MAKE OS. Eine Visitenkarte ist keine Einwilligung. Newsletter nur per Double-Opt-in. Hinweis, keine Rechtsberatung.</div>
+    </div>
+  );
+}
+
+/** POST an /api/crm/datenschutz (Einschränkung, Frist) — danach neu laden. */
+async function datenschutzAktion(api: CrmApi, body: Record<string, unknown>): Promise<boolean> {
+  const r = await fetch('/api/crm/datenschutz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'keine Verbindung' }));
+  if (!r.ok) api.setFehler(r.fehler ?? 'Nicht gespeichert.');
+  void api.laden(true);
+  return !!r.ok;
+}
+
+/**
+ * Stammdaten › Datenschutz (U2, 28.09.): Prüfung der Stammdaten, Rechtsgrundlage, Herkunft (Art. 14), Einwilligungen
+ * mit vollem Nachweis, Hinweis bei Erhebung (Bestandskunde), Einschränkung (Art. 18), Werbewiderspruch (Art. 21),
+ * Löschfrist, Auskunft und Löschung. Hinweis, keine Rechtsberatung.
+ */
 export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; heute: string; setze: Setze }) {
   const { frage, dialog: nachfrage } = useNachfrage();
-  const [ew, setEw] = useState<{ kanal: EinwilligungKanal; grundlage: Grundlage; nachweis: string } | null>(null);
+  const [ew, setEw] = useState<EwEingabe | null>(null);
   // Werbesperre aufheben (K2 #64): nur zusammen mit einer neuen Einwilligung samt Nachweis — ein Schritt, der Server prüft es.
-  const [auf, setAuf] = useState<{ kanal: EinwilligungKanal; nachweis: string } | null>(null);
-  useEffect(() => { setEw(null); setAuf(null); }, [k.id]);
+  const [auf, setAuf] = useState<EwEingabe | null>(null);
+  const [hinweisAm, setHinweisAm] = useState(heute);
+  useEffect(() => { setEw(null); setAuf(null); setHinweisAm(heute); }, [k.id, heute]);
+  const gesperrt = !!k.eingeschraenkt;
+  const alt = k.geprueftAm && k.geprueftAm < plusMonate(heute, -12);
   return (
     <div style={{ display: 'grid', gap: 14 }}>
+      <div><Ueberschrift>Einschränkung (Art. 18)</Ueberschrift>
+        {k.eingeschraenkt ? (
+          <div style={{ display: 'grid', gap: 8 }}>
+            <div style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>Eingeschränkt seit {datum(k.eingeschraenkt.seit)} von {nameVon(k.eingeschraenkt.von)} — {k.eingeschraenkt.grund}{k.eingeschraenkt.antragId ? ` · Antrag ${k.eingeschraenkt.antragId}` : ''}. Gespeichert bleibt alles; verarbeitet, bearbeitet und angesprochen wird nichts.</div>
+            <div><Knopf leise onClick={async () => { const g = await frage('Einschränkung aufheben — Grund', { hinweis: 'z. B. „Richtigkeit geprüft und bestätigt“ — steht im Verlauf.' }); if (g?.trim()) void datenschutzAktion(api, { aktion: 'einschraenkung-aufheben', id: k.id, grund: g.trim() }); }}>Aufheben (mit Grund)</Knopf></div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12.5, color: C.inkLeise }}>Nicht eingeschränkt.</span>
+            <Knopf leise onClick={async () => { const g = await frage('Verarbeitung einschränken — Grund', { hinweis: 'z. B. „Richtigkeit bestritten (Art. 18 Abs. 1 lit. a)“. Danach: nur aufbewahren, nichts bearbeiten.' }); if (g?.trim()) void datenschutzAktion(api, { aktion: 'einschraenken', id: k.id, grund: g.trim() }); }}>Verarbeitung einschränken</Knopf>
+          </div>
+        )}
+      </div>
+      <div><Ueberschrift>Stammdaten geprüft</Ueberschrift>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12.5, color: alt || !k.geprueftAm ? LEUCHT.achtung : C.inkDim }}>{k.geprueftAm ? `zuletzt am ${datum(k.geprueftAm)}${k.geprueftVon ? ` von ${nameVon(k.geprueftVon)}` : ''}${alt ? ' — über 12 Monate her' : ''}` : 'noch nie geprüft'}</span>
+          {!gesperrt && <Knopf leise onClick={() => void setze({ geprueftAm: heute })}>Stammdaten geprüft</Knopf>}
+        </div>
+      </div>
       <div><Ueberschrift>Grundlage</Ueberschrift>
         <Feldzeile label="Rechtsgrundlage (Art. 6)"><Wahl label="Rechtsgrundlage" liste={RECHTSGRUNDLAGEN_WAHL} wert={k.rechtsgrundlage} onWahl={(r: Rechtsgrundlage) => void setze({ rechtsgrundlage: r })} /></Feldzeile>
         <Feldzeile label="Herkunft (Art. 14)"><Wahl label="Herkunft" liste={HERKUNFT_WAHL} wert={k.herkunft} onWahl={(h: Herkunft) => void setze({ herkunft: h, ...(HERKUNFT.find(x => x.id === h)?.fremd ? { fremddaten: true } : { fremddaten: undefined }) })} /></Feldzeile>
         {k.fremddaten && <Feldzeile label="Informiert"><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkDim }}>{k.art14InformiertAm ? `am ${datum(k.art14InformiertAm)}` : 'noch nicht'}</span>{!k.art14InformiertAm && <Knopf leise onClick={() => void setze({ art14InformiertAm: heute })}>Heute informiert</Knopf>}</div></Feldzeile>}
+        <Feldzeile label="Hinweis bei Erhebung">
+          {k.hinweisBeiErhebung
+            ? <span style={{ fontSize: 12.5, color: C.inkDim }}>erteilt am {datum(k.hinweisBeiErhebung.am)}{k.hinweisBeiErhebung.von ? ` · vermerkt von ${nameVon(k.hinweisBeiErhebung.von)}` : ''} — Bestandskunden-Werbung per Mail möglich (§ 7 Abs. 3 UWG)</span>
+            : <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <input type="date" value={hinweisAm} max={heute} onChange={x => setHinweisAm(x.target.value)} aria-label="Hinweis erteilt am" style={{ ...feld, width: 150, fontSize: TYP.bedien }} />
+                <Knopf leise aus={!hinweisAm || gesperrt} onClick={() => void setze({ hinweisBeiErhebung: { am: hinweisAm } })}>Hinweis vermerken</Knopf>
+                <span style={{ fontSize: 12, color: C.inkLeise }}>Widerspruchsrecht bei Erhebung der Adresse genannt? Ohne Vermerk bleibt die Mail-Ampel für Bestandskunden gelb.</span>
+              </div>}
+        </Feldzeile>
       </div>
       <div>
-        <Ueberschrift rechts={!ew ? <Knopf leise onClick={() => setEw({ kanal: 'mail', grundlage: 'einwilligung', nachweis: '' })}>+ Einwilligung</Knopf> : undefined}>Einwilligungen</Ueberschrift>
-        {(k.einwilligungen ?? []).map((e, i) => (
-          <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, padding: '4px 0', color: e.widerrufenAm ? C.inkLeise : C.ink }}>
-            <span>{EW_KANAL.find(x => x.id === e.kanal)?.label} · {GRUNDLAGEN.find(x => x.id === e.grundlage)?.label ?? e.grundlage} · {datum(e.erteiltAm)}{e.nachweis ? ` · „${e.nachweis.slice(0, 60)}“` : ''}{e.widerrufenAm ? ` · widerrufen ${datum(e.widerrufenAm)}` : ''}</span>
-            {!e.widerrufenAm && <button onClick={() => void setze({ einwilligungen: (k.einwilligungen ?? []).map((x, j) => (j === i ? { ...x, widerrufenAm: heute } : x)) })} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>Widerruf</button>}
-          </div>
-        ))}
-        {!(k.einwilligungen ?? []).length && !ew && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Keine. Einwilligung im Gespräch einholen und den Wortlaut festhalten.</div>}
-        {ew && (
-          <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
-            <div style={{ display: 'flex', gap: '8px 18px', flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Kanal</span><Wahl label="Kanal" liste={EW_KANAL} wert={ew.kanal} onWahl={kanal => setEw({ ...ew, kanal })} /></span>
-              <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Grundlage</span><Wahl label="Grundlage" liste={GRUNDLAGEN} wert={ew.grundlage} onWahl={grundlage => setEw({ ...ew, grundlage })} /></span>
+        <Ueberschrift rechts={!ew && !gesperrt ? <Knopf leise onClick={() => setEw(EW_LEER(heute))}>+ Einwilligung</Knopf> : undefined}>Einwilligungen</Ueberschrift>
+        {(k.einwilligungen ?? []).map((e, i) => {
+          const fehlt = nachweisLuecken(e);
+          return (
+            <div key={i} style={{ display: 'grid', gap: 2, fontSize: TYP.bedien, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)', color: e.widerrufenAm ? C.inkLeise : C.ink }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <b style={{ fontWeight: 600 }}>{EW_KANAL.find(x => x.id === e.kanal)?.label}</b><span style={{ color: C.inkDim }}>{GRUNDLAGEN.find(x => x.id === e.grundlage)?.label ?? e.grundlage} · erteilt {datum(e.erteiltAm)}</span>
+                {!e.widerrufenAm && (fehlt.length ? <span title={`Fehlt: ${fehlt.join(', ')}`} style={{ fontSize: 11.5, color: LEUCHT.achtung }}>Nachweis unvollständig</span> : <span style={{ fontSize: 11.5, color: LEUCHT.gut }}>Nachweis vollständig</span>)}
+                {!e.widerrufenAm && !gesperrt && <button onClick={() => void setze({ einwilligungen: (k.einwilligungen ?? []).map((x, j) => (j === i ? { ...x, widerrufenAm: heute } : x)) })} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 12 }}>Widerruf</button>}
+              </div>
+              {(e.wortlaut || e.nachweis) && <div style={{ fontSize: 12.5, color: C.inkDim }}>„{(e.wortlaut ?? e.nachweis).slice(0, 240)}“{e.wortlautVersion ? ` (Fassung ${e.wortlautVersion})` : ''}</div>}
+              <div style={{ fontSize: 12, color: C.inkLeise }}>
+                {[e.belegRef ? `Beleg: ${e.belegRef}` : 'kein Beleg', e.zeitpunkt ? `erfasst ${zeitKurz(e.zeitpunkt)}${e.erfasstVon ? ` von ${nameVon(e.erfasstVon)}` : ''}` : 'Erfassung ohne Zeitpunkt', e.widerrufenAm ? `widerrufen ${datum(e.widerrufenAm)}${e.widerrufenVon ? ` (${nameVon(e.widerrufenVon)})` : ''}` : ''].filter(Boolean).join(' · ')}
+              </div>
             </div>
-            <input value={ew.nachweis} onChange={e => setEw({ ...ew, nachweis: e.target.value })} placeholder="Nachweis: Wortlaut oder Beleg („im Gespräch am …: Darf ich Ihnen … schicken? — ja“)" aria-label="Nachweis" style={{ ...feld, fontSize: TYP.bedien }} />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Knopf aus={!ew.nachweis.trim()} onClick={() => { const neu: Einwilligung = { kanal: ew.kanal, grundlage: ew.grundlage, erteiltAm: heute, nachweis: ew.nachweis.trim() }; void setze({ einwilligungen: [...(k.einwilligungen ?? []), neu], ...(ew.grundlage === 'einwilligung' && !k.rechtsgrundlage ? { rechtsgrundlage: 'einwilligung' as Rechtsgrundlage } : {}) }); setEw(null); }}>Festhalten</Knopf>
-              <Knopf leise onClick={() => setEw(null)}>Abbrechen</Knopf>
-            </div>
-            <div style={{ fontSize: 12, color: C.inkLeise }}>Eine Visitenkarte ist keine Einwilligung. Newsletter nur per Double-Opt-in.</div>
-          </div>
-        )}
+          );
+        })}
+        {!(k.einwilligungen ?? []).length && !ew && <div style={{ fontSize: 12.5, color: C.inkLeise }}>Keine. Einwilligung im Gespräch einholen und Wortlaut + Beleg festhalten.</div>}
+        {ew && <EwFormular e={ew} setE={setEw} heute={heute} knopf="Festhalten" onAbbruch={() => setEw(null)} onFertig={() => { void setze({ einwilligungen: [...(k.einwilligungen ?? []), ewAus(ew)], ...(ew.grundlage === 'einwilligung' && !k.rechtsgrundlage ? { rechtsgrundlage: 'einwilligung' as Rechtsgrundlage } : {}) }); setEw(null); }} />}
       </div>
       <div>
         <Ueberschrift>Werbewiderspruch (Art. 21)</Ueberschrift>
         {!k.werbesperre
           ? <Knopf leise onClick={() => { if (window.confirm('Werbewiderspruch eintragen? Die Person wird aus allen Listen genommen — dauerhaft.')) void setze({ werbesperre: { seit: heute, grund: 'Widerspruch' }, wiedervorlage: undefined, naechsterSchritt: undefined }); }}>Werbesperre eintragen</Knopf>
           : !auf
-            ? <Knopf leise onClick={() => setAuf({ kanal: 'mail', nachweis: '' })}>Sperre aufheben (nur mit neuer Einwilligung)</Knopf>
+            ? (!gesperrt && <Knopf leise onClick={() => setAuf({ ...EW_LEER(heute), grundlage: 'einwilligung' })}>Sperre aufheben (nur mit neuer Einwilligung)</Knopf>)
             : (
-              <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
-                <div style={{ fontSize: 12.5, color: C.inkDim }}>Gesperrt seit {datum(k.werbesperre.seit)}. Aufheben nur, wenn die Person ausdrücklich wieder eingewilligt hat — der Nachweis wird als Einwilligung festgehalten, der Schritt steht im Verlauf.</div>
-                <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Kanal</span><Wahl label="Kanal" liste={EW_KANAL} wert={auf.kanal} onWahl={kanal => setAuf({ ...auf, kanal })} /></span>
-                <input value={auf.nachweis} onChange={e => setAuf({ ...auf, nachweis: e.target.value })} placeholder="Nachweis der neuen Einwilligung: Wortlaut oder Beleg („DOI vom …“, „im Gespräch am …: ja“)" aria-label="Nachweis der Einwilligung" style={{ ...feld, fontSize: TYP.bedien }} />
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <Knopf aus={auf.nachweis.trim().length < 3} onClick={() => { const neu: Einwilligung = { kanal: auf.kanal, grundlage: 'einwilligung', erteiltAm: heute, nachweis: auf.nachweis.trim() }; void setze({ werbesperre: undefined, einwilligungen: [...(k.einwilligungen ?? []), neu] }); setAuf(null); }}>Mit Nachweis aufheben</Knopf>
-                  <Knopf leise onClick={() => setAuf(null)}>Abbrechen</Knopf>
-                </div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                <div style={{ fontSize: 12.5, color: C.inkDim }}>Gesperrt seit {datum(k.werbesperre.seit)}. Aufheben nur, wenn die Person ausdrücklich wieder eingewilligt hat — Wortlaut und Beleg werden als Einwilligung festgehalten, der Schritt steht im Verlauf.</div>
+                <EwFormular e={auf} setE={setAuf} heute={heute} nurEinwilligung knopf="Mit Nachweis aufheben" onAbbruch={() => setAuf(null)} onFertig={() => { void setze({ werbesperre: undefined, einwilligungen: [...(k.einwilligungen ?? []), ewAus(auf)] }); setAuf(null); }} />
               </div>
             )}
       </div>
+      {k.loeschfristVerlaengert && <div><Ueberschrift>Löschfrist</Ueberschrift>
+        <div style={{ fontSize: 12.5, color: C.inkDim }}>verlängert bis {datum(k.loeschfristVerlaengert.bis)} — {k.loeschfristVerlaengert.grund} ({nameVon(k.loeschfristVerlaengert.von)}, {datum(k.loeschfristVerlaengert.am)})</div>
+      </div>}
       <div>
         <Ueberschrift>Betroffenenrechte</Ueberschrift>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Knopf leise onClick={() => { window.location.href = `/api/crm/datenschutz?id=${k.id}`; }}>Auskunft (Art. 15) als Datei</Knopf>
-          <Knopf leise onClick={async () => {
+          <Knopf leise aus={gesperrt} onClick={async () => {
             if (!window.confirm(`${anzeigename(k)} endgültig löschen (Art. 17)? Besser oft: Werbesperre — dann bleibt „nicht anschreiben“ erhalten.`)) return;
             const grund = await frage('Grund für das Löschprotokoll', { vorgabe: 'Löschverlangen Art. 17', hinweis: 'Ohne Personendaten — der Eintrag bleibt als Nachweis.' });
             if (grund === null) return;
             const r = await fetch('/api/crm/datenschutz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: k.id, grund }) }).then(x => x.json()).catch(() => null);
-            if (r?.ok) void api.laden(); else api.setFehler('Nicht gelöscht.');
+            if (r?.ok) void api.laden(); else api.setFehler(r?.fehler ?? 'Nicht gelöscht.');
           }}>Löschen (Art. 17)</Knopf>
           {nachfrage}
         </div>
+        {gesperrt && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 6 }}>Löschen erst nach dem Aufheben der Einschränkung — sie heißt „aufbewahren“.</div>}
       </div>
     </div>
   );
+}
+
+/** Tag plus/minus n Monate (Monatsende gekappt) — für „über 12 Monate her“. */
+function plusMonate(tag: string, n: number): string {
+  const [j, m, t] = tag.split('-').map(Number);
+  const g = j * 12 + (m - 1) + n, jj = Math.floor(g / 12), mm = ((g % 12) + 12) % 12;
+  const letzter = new Date(Date.UTC(jj, mm + 1, 0)).getUTCDate();
+  return `${jj}-${String(mm + 1).padStart(2, '0')}-${String(Math.min(t, letzter)).padStart(2, '0')}`;
 }
 
 /**

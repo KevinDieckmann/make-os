@@ -148,6 +148,13 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
     if (h >= 21 && bk.letzterTag !== heute) raus.push({ id: 'konsolidierung', grund: 'Brain: den Tag verdichten', auftrag: { art: 'agent', name: 'konsolidierung', anlass: 'Takt: Brain-Konsolidierung' } });
   } catch (err) { console.error('[MAKE OS] Konsolidierungs-Takt übersprungen:', err); }
 
+  // 0e) Löschfristen (28.09., U2 #52): einmal am Tag ab 7 Uhr — Personen über der Frist nur als Aufgabe, technische
+  //     Bestände nach Frist bereinigen. Riegel = Tagesmarke `lauf.tag` im Bestand crm-loeschfristen (der Lauf schreibt sie).
+  try {
+    const lf = (await loadJson<{ lauf?: { tag?: string } }>('crm-loeschfristen')) ?? {};
+    if (lf.lauf?.tag !== heute) raus.push({ id: 'loeschfristen', grund: 'Löschfristen: Tageslauf steht aus', auftrag: { art: 'agent', name: 'loeschfristen', anlass: 'Takt: Löschfristen' } });
+  } catch (err) { console.error('[MAKE OS] Löschfristen-Takt übersprungen:', err); }
+
   // 1) Der Morgenlauf — einmal am Tag, ab 7 Uhr.
   const start = await loadJson<TagesstartStand>('tagesstart');
   if (start?.lastRun !== heute) {

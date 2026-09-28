@@ -149,7 +149,7 @@ describe('Kartei-Schreibweg (#68, nie abschneiden, #64)', () => {
     expect((await patch([{ op: 'upsert', eintrag: ganz }])).status).toBe(200);
     expect((await finde('Carla'))!.werbesperre).toBeDefined();
     // mit Nachweis im selben Schritt
-    const ew = { kanal: 'mail', grundlage: 'einwilligung', erteiltAm: '2026-09-28', nachweis: 'DOI-Bestätigung vom 28.09.' };
+    const ew = { kanal: 'mail', grundlage: 'einwilligung', erteiltAm: '2026-09-28', nachweis: 'DOI-Bestätigung vom 28.09.', wortlaut: 'Ja, ich möchte wieder Post bekommen.', belegRef: 'DOI-Mail vom 28.09.' };
     expect((await patch([{ op: 'teil', id: carla.id, felder: { werbesperre: null, einwilligungen: [ew] } }])).status).toBe(200);
     const nach = (await finde('Carla'))!;
     expect(nach.werbesperre).toBeUndefined();

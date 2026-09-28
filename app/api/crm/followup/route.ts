@@ -72,8 +72,12 @@ async function aktivitaet(kontaktId: string, art: AktivitaetArt, text: string, v
     const i = f.kontakte.findIndex(x => x.id === kontaktId);
     if (i < 0) return f;
     const alt = f.kontakte[i];
+    // Art. 18 (U2): an einer eingeschränkten Person wird nichts festgehalten (das Follow-up selbst wird trotzdem erledigt).
+    if (alt.eingeschraenkt) return f;
     const folge = ergebnis ? folgeAus(ergebnis, heute, alt.stufe) : null;
-    let neu = wendeAktivitaetAn(alt, { art, text: text || undefined, von, ergebnis, bezug, stufe: folge?.stufe }, heute, new Date().toISOString(), tagePlus);
+    // Anlass (U2 #58): ein vereinbartes Follow-up IST der konkrete Anlass eines Anrufs aus der Beziehung.
+    const anlass = art === 'anruf' ? `Vereinbartes Follow-up${text ? `: ${text.slice(0, 200)}` : ''}` : undefined;
+    let neu = wendeAktivitaetAn(alt, { art, text: text || undefined, von, ergebnis, bezug, stufe: folge?.stufe, ...(anlass ? { anlass } : {}) }, heute, new Date().toISOString(), tagePlus);
     // Die Follow-up-Ebene führt: keine zweite Wiedervorlage aus der Regel, keine fremde Zusage löschen.
     neu = { ...neu, wiedervorlage: herkunft === 'wiedervorlage' ? undefined : alt.wiedervorlage, naechsterSchritt: herkunft === 'schritt' ? undefined : alt.naechsterSchritt };
     if (folge?.werbesperre) { neu = { ...neu, werbesperre: { seit: heute, grund: text || 'Widerspruch im Gespräch' }, wiedervorlage: undefined, naechsterSchritt: undefined }; gesperrt = neu; }

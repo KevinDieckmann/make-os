@@ -25,6 +25,7 @@ import { bearbeiterFuer } from '@/lib/crm/pipeline';
 import { wer, mitglied, nameVon, BEIDE } from '@/lib/crm/team';
 import type { Kampagne, KampagnenErgebnis } from '@/lib/crm/typen';
 import { personenJeFirma as personenJeFirmaVon } from '@/lib/crm/stationen';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,7 +43,7 @@ export async function GET(req: Request) {
   const crm = await ladeCrm();
   const profil = kundenprofil(crm, heute);
   // Personen einer Firma nur über die Stationen (28.09.) — ohne Werbesperre.
-  const personenJeFirma = personenJeFirmaVon(kontakte.filter(k => !k.werbesperre), { nurAktiv: true });
+  const personenJeFirma = personenJeFirmaVon(kontakte.filter(k => !ausgenommen(k)), { nurAktiv: true });
   return jsonAntwort(req, {
     ok: true, heute,
     playbooks: PLAYBOOKS.map(p => ({ ...p, anzahl: zielgruppe(kontakte, crm, p, heute).length })),
@@ -109,15 +110,19 @@ export async function POST(req: Request) {
     const art: AktivitaetArt = erg === 'angesprochen' ? kanalArt : erg === 'reagiert' ? 'antwort' : erg === 'gespraech' || erg === 'chance' ? 'gespraech' : 'notiz';
     const text = `Kampagne „${k.name}“: ${({ angesprochen: 'angesprochen', reagiert: 'hat reagiert', gespraech: 'Gespräch', chance: 'Chance entstanden', kein_interesse: 'kein Interesse' } as const)[erg]}`;
     let kontakt: Kontakt | null = null;
+    let eingeschraenkt = false;
     await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
       const f = cur ?? { kontakte: [] };
       const i = f.kontakte.findIndex(x => x.id === b.kontaktId);
       if (i < 0) return f;
+      // Art. 18 (U2): an einer eingeschränkten Person wird nichts festgehalten.
+      if (f.kontakte[i].eingeschraenkt) { eingeschraenkt = true; return f; }
       kontakt = wendeAktivitaetAn(f.kontakte[i], { art, text, von, bezug: k.id }, heute, new Date().toISOString(), tagePlus);
       f.kontakte[i] = kontakt;
       return f;
     });
     const kt = kontakt as Kontakt | null;
+    if (eingeschraenkt) return NextResponse.json({ ok: false, fehler: 'Verarbeitung der Person ist eingeschränkt (Art. 18) — kein Ergebnis festgehalten.' }, { status: 409 });
     if (!kt) return NextResponse.json({ ok: false, fehler: 'Person nicht gefunden.' }, { status: 404 });
     const jetzt = new Date().toISOString();
     await aendereCrm(c => {

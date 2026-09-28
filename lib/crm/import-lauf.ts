@@ -53,9 +53,9 @@ export const neueLaufId = (jetzt = new Date()) => `imp-${jetzt.getTime().toStrin
 
 // ── Rein ─────────────────────────────────────────────────────────────────────
 
-/** Läufe älter als 30 Tage fallen weg. */
-export function laeufeAufraeumen(laeufe: ImportLauf[], jetztIso: string): ImportLauf[] {
-  const grenze = Date.parse(jetztIso) - LAUF_TAGE * 864e5;
+/** Läufe älter als 30 Tage fallen weg — `tage` aus der Löschfristen-Tabelle (lib/crm/loeschfristen.ts, U2), sonst 30. */
+export function laeufeAufraeumen(laeufe: ImportLauf[], jetztIso: string, tage = LAUF_TAGE): ImportLauf[] {
+  const grenze = Date.parse(jetztIso) - tage * 864e5;
   return laeufe.filter(l => Date.parse(l.am) >= grenze);
 }
 

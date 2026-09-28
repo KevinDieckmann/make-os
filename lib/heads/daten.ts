@@ -24,6 +24,7 @@ import { lifecycleVon, lifecycleVerteilung } from '@/lib/crm/vorschlaege';
 import type { LifecyclePhase } from '@/lib/crm/lifecycle';
 import { beanVon, beanFirma, beanVerteilung, BEAN_LABEL, type BeanId } from '@/lib/crm/bean';
 import { personenJeFirma as personenJeFirmaVon } from '@/lib/crm/stationen';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 const kurz = (t: string | undefined, n: number) => (t ?? '').replace(/\s+/g, ' ').trim().slice(0, n) || undefined;
 
@@ -71,7 +72,8 @@ export function dealSignale(c: CrmBestand['chancen'][number], personen: Kontakt[
 }
 
 export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, personName: string, frueher: { titel: string; status: string }[]) {
-  const aktiv = kontakte.filter(k => !k.werbesperre);
+  // Werbesperre und Einschränkung (Art. 18, U2): nie in ein Agentenpaket.
+  const aktiv = kontakte.filter(k => !ausgenommen(k));
   const nachId = new Map(aktiv.map(k => [k.id, k]));
   const mandatJe = new Set(crm.mandate.filter(m => m.status === 'aktiv').flatMap(m => m.kontaktIds));
   const chanceJe = new Set(crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe)).flatMap(c => c.kontaktIds));

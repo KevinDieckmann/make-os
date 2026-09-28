@@ -20,6 +20,7 @@ import { kanalStatus, type Kanal } from '@/lib/crm/recht';
 import { pruefeText } from '@/lib/finanzen/chef/pruefung';
 import { ARTEN, SIGNAL_TYPEN, type HeadId } from './prompt';
 import { PLAYBOOKS } from '@/lib/crm/kampagnen';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 import { localDay } from '@/lib/zeit';
 const PLAYBOOK_IDS = new Set([...PLAYBOOKS.map(p => p.id), 'eigen']);
@@ -129,6 +130,7 @@ export function pruefe(a: Antwort, daten: unknown, kontakte: Kontakt[], crm: Crm
     if (v.kontakt_id) {
       const k = nachId.get(v.kontakt_id);
       if (!k) return weg('Person gibt es nicht');
+      if (k.eingeschraenkt) return weg('Verarbeitung der Person ist eingeschränkt (Art. 18)');
       if (k.werbesperre) return weg('Person hat eine Werbesperre');
       if (v.entwurf && v.entwurf.kanal !== 'persoenlich') {
         const st = kanalStatus(k, v.entwurf.kanal as Kanal, { hatMandat: mandatJe.has(k.id), hatChance: crm.chancen.some(c => c.kontaktIds.includes(k.id)) });
@@ -138,7 +140,7 @@ export function pruefe(a: Antwort, daten: unknown, kontakte: Kontakt[], crm: Crm
     if (v.kampagne) {
       if (!PLAYBOOK_IDS.has(v.kampagne.playbook)) return weg(`unbekanntes Vorgehen „${v.kampagne.playbook}“`);
       // Nur echte, nicht gesperrte Personen — Rest still aussortieren.
-      v.kampagne.kontakt_ids = v.kampagne.kontakt_ids.filter(id => { const k = nachId.get(id); return k && !k.werbesperre; });
+      v.kampagne.kontakt_ids = v.kampagne.kontakt_ids.filter(id => { const k = nachId.get(id); return k && !ausgenommen(k); });
     }
     return true;
   });

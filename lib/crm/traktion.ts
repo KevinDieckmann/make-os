@@ -23,6 +23,7 @@ import { OFFENE_STUFEN } from './pipeline';
 import { eventZahlen, followUpBis } from './events';
 import { mix } from './eventplanung';
 import { stimmenAus } from './marketing';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export type Welt = 'sales' | 'marketing' | 'event';
 export const WELTEN: { id: Welt; label: string; head: string; gewicht: number; saeulen: string }[] = [
@@ -142,7 +143,7 @@ export function uebergaben(kontakte: Kontakt[], crm: CrmBestand, heute: string):
   // Marketing → Sales: Gespräche und Anfragen aus Beiträgen (60 Tage) ohne offene Chance.
   const vor60 = tagPlus(heute, -59);
   const ausContent = new Set((crm.beitraege ?? []).flatMap(b => (b.wirkung ?? []).filter(w => (w.art === 'gespraech' || w.art === 'anfrage') && w.am.slice(0, 10) >= vor60).map(w => w.kontaktId))
-    .filter(id => nachId.has(id) && !offeneChance.has(id) && !nachId.get(id)!.werbesperre));
+    .filter(id => nachId.has(id) && !offeneChance.has(id) && !ausgenommen(nachId.get(id)!)));
   if (ausContent.size) liste.push({ id: 'content-ohne-chance', von: 'marketing', an: 'sales', titel: 'Anfragen aus Content ohne Chance', anzahl: ausContent.size,
     text: 'Wert und nächsten Schritt festhalten — sonst fehlen sie in der Prognose', ziel: { s: 'deals' } });
 

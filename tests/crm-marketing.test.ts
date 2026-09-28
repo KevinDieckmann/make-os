@@ -11,7 +11,7 @@ import {
 
 const HEUTE = '2026-09-24';
 const k = (id: string, x: Partial<Kontakt> = {}): Kontakt => ({ id: `c-${id}`, vorname: id, nachname: 'Test', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-08-01', geaendertAm: '2026-08-01', ...x });
-const ew = (kanal: Einwilligung['kanal'], x: Partial<Einwilligung> = {}): Einwilligung => ({ kanal, grundlage: 'einwilligung', erteiltAm: '2026-09-01', nachweis: 'DOI', ...x });
+const ew = (kanal: Einwilligung['kanal'], x: Partial<Einwilligung> = {}): Einwilligung => ({ kanal, grundlage: 'einwilligung', erteiltAm: '2026-09-01', nachweis: 'DOI', zeitpunkt: '2026-09-01T10:00:00.000Z', erfasstVon: 'kevin', wortlaut: 'Darf ich Ihnen … schicken? — Ja', belegRef: 'Gespräch vom 01.09.', ...x });
 const b = (id: string, x: Partial<Beitrag> = {}): Beitrag => ({ id: `bt-${id}`, titel: id, kanal: 'linkedin', status: 'idee', wirkung: [], quellen: [], geaendert: HEUTE, ...x });
 const chance = (id: string, x: Partial<Chance> = {}): Chance => ({
   id: `ch-${id}`, titel: id, kontaktIds: [], art: 'retainer', wert: { betrag: 1000, basis: 'monat' }, stufe: 'qualifiziert', historie: [],

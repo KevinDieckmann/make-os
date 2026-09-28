@@ -11,10 +11,13 @@ import { dubletten } from './dubletten';
 import { checklisteFaellig } from './eventplanung';
 import { faellige } from './followup';
 import { verbindungenPruefen } from './verbindungen';
+import { kontakteUeberFrist } from './loeschfristen';
+import { nichtGeprueft, PRUEFEN_MONATE } from './geprueft';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export interface Befund { prio: 1 | 2 | 3 | 4 | 5; titel: string; grund: string; bereich: 'heute' | 'followup' | 'kontakte' | 'firmen' | 'pipeline' | 'kunden' | 'marketing' | 'events' | 'stammdaten'; ansicht?: string }
 
-export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string): Befund[] {
+export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string, opts: { loeschMonate?: number } = {}): Befund[] {
   const b: Befund[] = [];
   const bald = (d: string, n: number) => { const x = new Date(`${heute}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return d <= x.toISOString().slice(0, 10); };
   const antraege = crm.antraege.filter(a => a.status === 'offen' && bald(a.frist, 7));
@@ -31,10 +34,10 @@ export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string): Be
   if (art.length) b.push({ prio: 2, titel: `${art.length} Personen nach Art. 14 informieren`, grund: 'Daten aus Recherche, Frist ein Monat', bereich: 'kontakte', ansicht: 'art14' });
   // Nur offene Chancen zählen — Ebene 1 (Leads) endet erst mit einem Deal.
   const mitChance = new Set(crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe)).flatMap(c => c.kontaktIds));
-  const ohneChance = kontakte.filter(k => ['gespraech', 'termin', 'angebot'].includes(k.stufe) && !mitChance.has(k.id) && !k.werbesperre);
+  const ohneChance = kontakte.filter(k => ['gespraech', 'termin', 'angebot'].includes(k.stufe) && !mitChance.has(k.id) && !ausgenommen(k));
   if (ohneChance.length) b.push({ prio: 2, titel: `${ohneChance.length} Kontakte im Gespräch ohne Deal`, grund: 'Qualifizierungs-Runde: sechs Kernfragen je Lead — SQL-bereite werden Deals', bereich: 'kontakte', ansicht: 'runde-chancen' });
   // Ohne Kreis kein Pflege-Takt in der Power Hour — die Kreis-Runde sortiert Karte für Karte.
-  const ohneKreis = kontakte.filter(k => !k.kreis && !k.werbesperre && (k.lebensphase === 'kunde' || k.prio === 'A' || k.prio === 'B' || ['gespraech', 'termin', 'angebot', 'gewonnen'].includes(k.stufe)));
+  const ohneKreis = kontakte.filter(k => !k.kreis && !ausgenommen(k) && (k.lebensphase === 'kunde' || k.prio === 'A' || k.prio === 'B' || ['gespraech', 'termin', 'angebot', 'gewonnen'].includes(k.stufe)));
   if (ohneKreis.length) b.push({ prio: 3, titel: `${ohneKreis.length} wichtige Kontakte ohne Kreis`, grund: 'Kreis-Runde: A/B/C/D und wer die Beziehung hält — dann greift der Pflege-Takt', bereich: 'kontakte', ansicht: 'runde-kreis' });
   const ohneSchritt = offen.filter(c => !c.naechsterSchritt);
   if (ohneSchritt.length) b.push({ prio: 2, titel: `${ohneSchritt.length} Deals ohne nächsten Schritt`, grund: 'Ohne Datum verliert sich jeder Deal', bereich: 'pipeline' });
@@ -42,6 +45,11 @@ export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string): Be
   if (widersprueche.length) b.push({ prio: 3, titel: `${widersprueche.length} Mandate mit offenen Punkten`, grund: `${widersprueche.reduce((a, m) => a + m.offen.length, 0)} Widersprüche und Klärungen`, bereich: 'kunden' });
   const ohneAngaben = kontakte.filter(k => !k.herkunft || !k.rechtsgrundlage).length;
   if (ohneAngaben) b.push({ prio: 3, titel: `${ohneAngaben} Kontakte ohne Herkunft oder Rechtsgrundlage`, grund: 'Vorschlag per Regel, Übernahme per Klick', bereich: 'stammdaten', ansicht: 'datenschutz' });
+  // Datenschutz (U2, 28.09.): Löschfrist (nie automatisch löschen) und „zuletzt geprüft“ (Richtigkeit).
+  const ueberFrist = kontakteUeberFrist(kontakte, crm, heute, opts.loeschMonate ?? 24).length;
+  if (ueberFrist) b.push({ prio: 3, titel: `${ueberFrist} Kontakte über der Löschfrist`, grund: 'prüfen: löschen oder Frist mit Grund verlängern — gelöscht wird nie automatisch', bereich: 'stammdaten', ansicht: 'datenschutz' });
+  const ungeprueft = nichtGeprueft(kontakte, crm, heute).length;
+  if (ungeprueft) b.push({ prio: 4, titel: `${ungeprueft} Kontakte seit über ${PRUEFEN_MONATE} Monaten nicht geprüft`, grund: 'aktive Beziehungen und Leads — in der Kontaktseite „Stammdaten geprüft“', bereich: 'stammdaten', ansicht: 'qualitaet' });
   const d = dubletten(kontakte).length;
   if (d) b.push({ prio: 4, titel: `${d} Dubletten zusammenführen`, grund: 'gleicher Name, gleiche Firma oder Kontaktdaten', bereich: 'stammdaten', ansicht: 'qualitaet' });
   // Events: überfällige Checklistenpunkte (vor dem Termin) — nach dem Event zählt das Nachfassen in der Power Hour.

@@ -24,6 +24,7 @@ import { FOLLOWUP_ARTEN, VERSCHIEBEN_TAGE, type Faellig, type Gruppe } from '@/l
 import type { FollowUpArt } from '@/lib/crm/typen';
 import type { FollowupAnsicht } from '@/lib/crm/adresse';
 import { KREIS_TAKT, type Kreis } from '@/lib/make-one/crm';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 interface Antwort { ok: boolean; heute: string; liste: Faellig[]; zahlen: Record<Gruppe, number> & { gesamt: number }; puenktlich: { erledigt: number; puenktlich: number; verpasst: number; quote: number | null } }
 
@@ -263,8 +264,8 @@ function Wochenansicht({ liste, heute, zuKontakt, zuDeal, zuAkte, aktion }: { li
 function Kadenz({ api, liste, heute, zuKontakt, aktion }: { api: CrmApi; liste: Faellig[]; heute: string; zuKontakt: (id: string) => void; aktion: (b: Record<string, unknown>) => Promise<void> }) {
   const kontakte = api.kontakte ?? [];
   const takte = api.crm?.stand.wertelisten?.kadenzTage ?? {};
-  const kreise = (['A', 'B', 'C', 'D'] as Kreis[]).map(k => ({ k, takt: takte[k] ?? KREIS_TAKT[k], n: kontakte.filter(x => x.kreis === k && !x.werbesperre).length, faellig: liste.filter(f => f.quelle === 'kadenz' && kontakte.find(x => x.id === f.kontaktId)?.kreis === k).length }));
-  const ohne = kontakte.filter(x => !x.kreis && !x.werbesperre && x.stufe !== 'ruht' && x.stufe !== 'verloren').length;
+  const kreise = (['A', 'B', 'C', 'D'] as Kreis[]).map(k => ({ k, takt: takte[k] ?? KREIS_TAKT[k], n: kontakte.filter(x => x.kreis === k && !ausgenommen(x)).length, faellig: liste.filter(f => f.quelle === 'kadenz' && kontakte.find(x => x.id === f.kontaktId)?.kreis === k).length }));
+  const ohne = kontakte.filter(x => !x.kreis && !ausgenommen(x) && x.stufe !== 'ruht' && x.stufe !== 'verloren').length;
   const kadenz = liste.filter(f => f.quelle === 'kadenz');
   return (
     <>

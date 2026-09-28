@@ -46,6 +46,7 @@ import { BEAN_IDS, BEAN_LABEL, BEAN_HINWEIS, beanVon, istBean, type BeanErgebnis
 import { BeanBadge, BEAN_FARBE, useOffeneAngebote } from './bean-teile';
 import { typenVon, kategorienVon, labelsVon, enthaeltEinenVon } from '@/lib/crm/mehrfach';
 import { alleAdressen, hatAdresse } from '@/lib/crm/emails';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 type Modus = 'personen' | 'firmen';
 type Ansicht = 'alle' | 'kunden' | 'kreis' | 'prio' | 'chancen' | 'mail' | 'anreichern' | 'art14' | 'gesperrt' | 'dubletten';
@@ -103,7 +104,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   const filter = useMemo<Record<Ansicht, (k: Kontakt) => boolean>>(() => ({
     alle: () => true, kunden: k => k.lebensphase === 'kunde', kreis: k => k.kreis === 'A' || k.kreis === 'B', prio: k => k.prio === 'A',
     chancen: k => mitChance.has(k.id), mail: k => !!k.email, anreichern: k => !k.email && !k.telefon && !k.sms || !k.firma,
-    art14: k => !!art14(k, heute)?.faellig, gesperrt: k => !!k.werbesperre, dubletten: k => paare.some(([a, b]) => a.id === k.id || b.id === k.id),
+    art14: k => !!art14(k, heute)?.faellig, gesperrt: k => ausgenommen(k), dubletten: k => paare.some(([a, b]) => a.id === k.id || b.id === k.id),
   }), [mitChance, paare, heute]);
   const zaehlung = useMemo(() => { const z = {} as Record<Ansicht, number>; for (const id of Object.keys(filter) as Ansicht[]) z[id] = kontakte.filter(filter[id]).length; return z; }, [kontakte, filter]);
   const ANSICHTEN: { id: Ansicht; label: string }[] = ([
@@ -127,7 +128,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   const werZahlen = ich ? { alle: kontakte.length, ich: kontakte.filter(k => passtWer('ich', k.besitzer, 'sales', ich)).length, [anderer(ich)]: kontakte.filter(k => passtWer(anderer(ich), k.besitzer, 'sales', ich)).length } : undefined;
   // Gesammelt übergeben geht nur mit einer Eingrenzung — nie aus Versehen die ganze Kartei.
   const eingegrenzt = !!suche.trim() || ansicht !== 'alle' || wer !== 'alle' || !!lc || !!bn || !!ein;
-  const sammel = eingegrenzt && treffer.length > 0 && treffer.length <= 300 ? treffer.filter(k => !k.werbesperre) : [];
+  const sammel = eingegrenzt && treffer.length > 0 && treffer.length <= 300 ? treffer.filter(k => !ausgenommen(k)) : [];
 
   // Tastatur wie in einer guten Liste: / sucht, j/k blättert, Enter öffnet, Esc schließt.
   useEffect(() => {
@@ -277,7 +278,7 @@ function KarteiZeile({ k, firma, lifecycle, bean, breit, aktiv, markiert, chance
   if (!breit) {
     return (
       <div onClick={onClick} className="zeile zeile-klick fassbar" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 4px', borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer', background: aktiv ? 'rgba(255,255,255,.05)' : 'transparent', borderRadius: aktiv ? 10 : 0 }}>
-        <Punkt farbe={k.werbesperre ? LEUCHT.kritisch : phaseFarbe(k.lebensphase)} />
+        <Punkt farbe={ausgenommen(k) ? LEUCHT.kritisch : phaseFarbe(k.lebensphase)} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: TYP.body, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anzeigename(k)}{f && <span style={{ color: C.inkLeise }}> · {f}</span>}</div>
           <div style={{ fontSize: 12.5, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[lifecycle ? LIFECYCLE_KURZ[lifecycle.phase] : '', k.position ?? k.jobtitel, k.naechsterSchritt ? `→ ${k.naechsterSchritt.text}` : ''].filter(Boolean).join(' · ')}</div>
@@ -292,7 +293,7 @@ function KarteiZeile({ k, firma, lifecycle, bean, breit, aktiv, markiert, chance
     <div onClick={onClick} className="fassbar" title={[anzeigename(k), k.position, f].filter(Boolean).join(' · ')}
       style={{ display: 'grid', gridTemplateColumns: KARTEI_SPALTEN, gap: 12, alignItems: 'center', padding: '8px 8px', minHeight: 44, borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer', fontSize: TYP.bedien,
         background: aktiv ? 'rgba(255,255,255,.07)' : markiert ? 'rgba(88,217,205,.07)' : 'transparent', borderRadius: aktiv || markiert ? 8 : 0 }}>
-      <Punkt farbe={k.werbesperre ? LEUCHT.kritisch : phaseFarbe(k.lebensphase)} groesse={8} />
+      <Punkt farbe={ausgenommen(k) ? LEUCHT.kritisch : phaseFarbe(k.lebensphase)} groesse={8} />
       <span title={`Zuständig: ${nameVon(haeltBeziehung(k))}${k.besitzer ? '' : ' (Sales-Verantwortung)'}`} style={{ opacity: k.besitzer ? 1 : 0.45, display: 'inline-flex' }}><Person id={haeltBeziehung(k)} groesse={18} /></span>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontWeight: 500, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anzeigename(k)}{k.prio === 'A' && <span style={{ color: LEUCHT.gut, marginLeft: 6, fontSize: 11 }}>A</span>}{a14?.faellig && <span style={{ color: LEUCHT.kritisch, marginLeft: 6, fontSize: 11 }}>Art. 14</span>}</div>

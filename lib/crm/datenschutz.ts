@@ -45,14 +45,14 @@ export function pflichtangaben(kontakte: Kontakt[], crm: CrmBestand): PflichtVor
 export type PruefStatus = 'erfuellt' | 'teilweise' | 'offen';
 export interface Pruefpunkt { id: string; titel: string; status: PruefStatus; befund: string; norm: string }
 
-export function selbstpruefung(kontakte: Kontakt[], crm: CrmBestand, heute: string, anmeldung: { konten: number; mitPasswort: number }): Pruefpunkt[] {
+export function selbstpruefung(kontakte: Kontakt[], crm: CrmBestand, heute: string, anmeldung: { konten: number; mitPasswort: number }, loeschMonate = 24): Pruefpunkt[] {
   const n = kontakte.length || 1;
   const quote = (x: number) => (x === 0 ? 'erfuellt' : x / n > 0.5 ? 'offen' : 'teilweise') as PruefStatus;
   const ohneRg = kontakte.filter(k => !k.rechtsgrundlage).length, ohneHerkunft = kontakte.filter(k => !k.herkunft).length;
   const art14faellig = kontakte.filter(k => art14(k, heute)?.faellig).length;
   const widerrufenOhneSperre = kontakte.filter(k => !k.werbesperre && (k.einwilligungen ?? []).length > 0 && (k.einwilligungen ?? []).every(e => e.widerrufenAm)).length;
   const antraegeUeber = crm.antraege.filter(a => a.status === 'offen' && a.frist < heute).length;
-  const alt = speicherbegrenzung(kontakte, heute).length;
+  const alt = speicherbegrenzung(kontakte, heute, loeschMonate, crm).length;
   return [
     { id: 'verzeichnis', titel: 'Verzeichnis der Verarbeitungstätigkeiten', status: crm.verarbeitungen.length >= 4 ? 'erfuellt' : crm.verarbeitungen.length ? 'teilweise' : 'offen', befund: `${crm.verarbeitungen.length} Verarbeitungen beschrieben`, norm: 'Art. 30 DSGVO' },
     { id: 'rechtsgrundlage', titel: 'Rechtsgrundlage je Kontakt', status: quote(ohneRg), befund: ohneRg ? `${ohneRg} von ${kontakte.length} ohne dokumentierte Grundlage` : 'bei allen dokumentiert', norm: 'Art. 6 DSGVO' },
@@ -60,7 +60,7 @@ export function selbstpruefung(kontakte: Kontakt[], crm: CrmBestand, heute: stri
     { id: 'art14', titel: 'Information bei Fremddaten', status: art14faellig ? 'offen' : 'erfuellt', befund: art14faellig ? `${art14faellig} Personen seit über 25 Tagen nicht informiert` : 'keine Frist überschritten', norm: 'Art. 14 Abs. 3 DSGVO' },
     { id: 'widerspruch', titel: 'Werbewiderspruch wirksam gesperrt', status: widerrufenOhneSperre ? 'offen' : 'erfuellt', befund: widerrufenOhneSperre ? `${widerrufenOhneSperre} haben alles widerrufen, sind aber nicht gesperrt` : 'Sperre greift in Liste, Entwurf und Agenten', norm: 'Art. 21 Abs. 3 DSGVO' },
     { id: 'antraege', titel: 'Betroffenenanträge fristgerecht', status: antraegeUeber ? 'offen' : 'erfuellt', befund: antraegeUeber ? `${antraegeUeber} Anträge über der Monatsfrist` : `${crm.antraege.filter(a => a.status === 'offen').length} offen, keiner überfällig`, norm: 'Art. 12 Abs. 3 DSGVO' },
-    { id: 'loeschkonzept', titel: 'Speicherbegrenzung', status: alt ? 'teilweise' : 'erfuellt', befund: alt ? `${alt} Interessenten ohne Interaktion seit 24 Monaten — löschen oder begründen` : 'nichts über der Frist', norm: 'Art. 5 Abs. 1 lit. e DSGVO' },
+    { id: 'loeschkonzept', titel: 'Speicherbegrenzung', status: alt ? 'teilweise' : 'erfuellt', befund: alt ? `${alt} Kontakte ohne Beziehung und Aktivität seit ${loeschMonate} Monaten — löschen oder Frist mit Grund verlängern` : 'nichts über der Frist', norm: 'Art. 5 Abs. 1 lit. e DSGVO' },
     { id: 'zugang', titel: 'Zugang nur mit Anmeldung', status: anmeldung.konten && anmeldung.mitPasswort === anmeldung.konten ? 'erfuellt' : 'teilweise', befund: `${anmeldung.mitPasswort} von ${anmeldung.konten} Konten mit Passwort`, norm: 'Art. 32 DSGVO' },
     { id: 'ki', titel: 'KI nur mit Arbeitsfeldern', status: 'erfuellt', befund: 'Agentenpakete ohne Privatnotiz und ohne gesperrte Personen (im Code erzwungen)', norm: 'Art. 5 Abs. 1 lit. c, Art. 28 DSGVO' },
   ];

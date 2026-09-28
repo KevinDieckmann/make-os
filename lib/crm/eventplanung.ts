@@ -23,6 +23,7 @@ import { kontextAus, imSegment } from './segmente';
 import { TEAM, BEIDE, wer, zustaendig, verantwortlich, haeltBeziehung, nameVon } from './team';
 import { markttraktion } from './adresse';
 import { markeVon } from './marke';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 const plusTage = (datum: string, n: number) => { const d = new Date(`${datum}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const tageZwischen = (von: string, bis: string) => Math.round((Date.parse(`${bis}T12:00:00Z`) - Date.parse(`${von}T12:00:00Z`)) / 864e5);
@@ -499,7 +500,7 @@ export function gaesteVorschlag(kontakte: Kontakt[], crm: CrmBestand, e: Event, 
   const m = mix(e, crm.teilnahmen, kontakte, crm.firmen);
   const raus: GastVorschlag[] = [];
   for (const k of kontakte) {
-    if (k.werbesperre || schon.has(k.id)) continue;
+    if (ausgenommen(k) || schon.has(k.id)) continue;
     if (segment && !imSegment(k, segment, ctx)) continue;
     const f = k.firmaId ? ctx.firmen.get(k.firmaId) : undefined;
     const gruppe = mixGruppe(k, f);

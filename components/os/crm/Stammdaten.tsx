@@ -27,6 +27,7 @@ import { Wertelisten } from './stammdaten/Wertelisten';
 import { Austausch } from './stammdaten/Austausch';
 import { Verweise } from './stammdaten/Verweise';
 import { Verbindungen } from './stammdaten/Verbindungen';
+import { Loeschfristen } from './stammdaten/Loeschfristen';
 
 type Unter = 'uebersicht' | 'qualitaet' | 'wertelisten' | 'datenschutz' | 'austausch';
 const UNTER: { id: Unter; label: string }[] = [{ id: 'uebersicht', label: 'Übersicht' }, { id: 'qualitaet', label: 'Datenqualität' }, { id: 'wertelisten', label: 'Wertelisten' }, { id: 'datenschutz', label: 'Datenschutz' }, { id: 'austausch', label: 'Import & Export' }];
@@ -112,6 +113,13 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
             </div>
             <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Kreis, Anrede und Lebensphase pflegst du in der Karteikarte — sie steuern Power Hour und Entwürfe.</div>
           </Karte>
+          <Karte i={1} akzent={d.qualitaet.nichtGeprueft.length ? LEUCHT.achtung : undefined}>
+            <Ueberschrift rechts={`${d.qualitaet.nichtGeprueft.length} offen`}>Zuletzt geprüft</Ueberschrift>
+            <div style={{ fontSize: TYP.bedien, color: d.qualitaet.nichtGeprueft.length ? LEUCHT.achtung : C.inkLeise, lineHeight: 1.55 }}>
+              {d.qualitaet.nichtGeprueft.length ? `${d.qualitaet.nichtGeprueft.length} Kontakte seit über ${d.qualitaet.pruefenMonate} Monaten nicht geprüft (aktive Beziehungen und Leads) — in der Kontaktseite unter Stammdaten › Datenschutz „Stammdaten geprüft“.` : `Alle aktiven Beziehungen und Leads sind in den letzten ${d.qualitaet.pruefenMonate} Monaten geprüft.`}
+            </div>
+            {d.qualitaet.nichtGeprueft.map(k => <button key={k.id} onClick={() => zuKontakt(k.id)} style={{ display: 'block', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: '2px 0', textAlign: 'left' }}>{k.name} — {k.nie ? `nie geprüft (seit ${datum(k.seit)})` : `zuletzt ${datum(k.seit)}`}</button>)}
+          </Karte>
           <Karte i={2}>
             <Ueberschrift rechts={<Knopf leise aus={laeuft} onClick={async () => { const r = await post({ aktion: 'firmen-abgleich' }); setMeldung(r.ok ? `Firmen-Abgleich: ${r.neu} neu, ${r.verknuepft} Personen verknüpft, ${r.ergaenzt} ergänzt.` : `Abgleich fehlgeschlagen${r.fehler ? `: ${r.fehler}` : '.'}`); }}>Firmen abgleichen</Knopf>}>Firmen</Ueberschrift>
             <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>
@@ -149,9 +157,9 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
           <Karte i={2}>
             <Ueberschrift>Löschkonzept</Ueberschrift>
             <Liste>{d.loeschregeln.map(r => <Zeile key={r.id} titel={r.titel} unter={`${r.frist} · ${r.norm}`} rechts={<Chip farbe={r.aktion.startsWith('Löschen') ? LEUCHT.kritisch : r.aktion.startsWith('Sperren') ? LEUCHT.achtung : C.inkDim}>{r.aktion}</Chip>} />)}</Liste>
-            <div style={{ marginTop: 10, fontSize: TYP.bedien, color: d.speicherbegrenzung.length ? LEUCHT.achtung : C.inkLeise }}>{d.speicherbegrenzung.length ? `${d.speicherbegrenzung.length} Interessenten über 24 Monate ohne Interaktion — löschen (Karteikarte › Recht) oder Grund notieren.` : 'Heute ist nichts über der Frist. Gelöscht wird nie automatisch, nur nach deiner Entscheidung.'}</div>
-            {d.speicherbegrenzung.slice(0, 8).map(k => <button key={k.id} onClick={() => zuKontakt(k.id)} style={{ display: 'block', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 12.5, padding: '2px 0' }}>{k.name} — seit {datum(k.seit)}</button>)}
+            <div style={{ marginTop: 10, fontSize: 12.5, color: C.inkLeise }}>Aufbewahrungspflichten (HGB/AO) gehen vor. Die Fristen je Datenart und wer darüber liegt: nächste Karte.</div>
           </Karte>
+          <Loeschfristen d={d} i={2} laden={() => void laden()} zuKontakt={zuKontakt} />
           <Verzeichnis liste={d.verarbeitungen} api={api} laden={laden} />
           {d.loeschprotokoll.length > 0 && (
             <Karte i={4}>
@@ -183,6 +191,17 @@ function Antraege({ d, api, laden, zuKontakt }: { d: Daten; api: CrmApi; laden: 
   const offen = d.antraege.filter(a => a.status === 'offen').sort((a, b) => a.frist.localeCompare(b.frist));
   const erledigt = d.antraege.filter(a => a.status === 'erledigt').slice(-5).reverse();
   const setze = async (a: Partial<Antrag> & { id: string }) => { await api.setze('antraege', a as unknown as { id: string } & Record<string, unknown>); laden(); };
+  /** Art. 18 (U2): der Antrag „Einschränkung“ setzt bzw. hebt die Sperre an der Person (POST /api/crm/datenschutz). */
+  const einschraenkung = async (a: Antrag, aufheben: boolean) => {
+    const grund = aufheben
+      ? await frage('Einschränkung aufheben — Grund', { hinweis: 'z. B. „Richtigkeit geprüft und bestätigt“ — steht im Verlauf der Person.' })
+      : `Antrag auf Einschränkung (Art. 18) vom ${a.eingang}`;
+    if (!grund?.trim() || !a.kontaktId) return;
+    const r = await fetch('/api/crm/datenschutz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(aufheben ? { aktion: 'einschraenkung-aufheben', id: a.kontaktId, grund: grund.trim() } : { aktion: 'einschraenken', id: a.kontaktId, grund, antragId: a.id }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'keine Verbindung' }));
+    if (!r.ok) api.setFehler(r.fehler ?? 'Nicht gespeichert.');
+    void api.laden(true); laden();
+  };
+  const eingeschraenkt = (id?: string) => !!id && !!(api.kontakte ?? []).find(k => k.id === id)?.eingeschraenkt;
   const { frage, dialog: nachfrage } = useNachfrage();
   const tage = (f: string) => Math.round((Date.parse(`${f}T12:00:00Z`) - Date.parse(`${d.heute}T12:00:00Z`)) / 864e5);
   const passend = (name: string) => (api.kontakte ?? []).find(k => `${k.vorname} ${k.nachname}`.trim().toLowerCase() === name.trim().toLowerCase());
@@ -199,10 +218,17 @@ function Antraege({ d, api, laden, zuKontakt }: { d: Daten; api: CrmApi; laden: 
           </div>
           {neu.name && passend(neu.name) && <div style={{ fontSize: 12, color: LEUCHT.gut }}>In der Kartei gefunden — wird verknüpft.</div>}
           <div style={{ display: 'flex', gap: 8 }}>
-            <Knopf aus={!neu.name.trim()} onClick={() => { const k = passend(neu.name); void setze({ id: neueId('ant'), art: neu.art, name: neu.name.trim(), ...(neu.email ? { email: neu.email } : {}), ...(k ? { kontaktId: k.id } : {}), eingang: neu.eingang, status: 'offen' }); setNeu(null); }}>Anlegen</Knopf>
+            <Knopf aus={!neu.name.trim()} onClick={async () => {
+              const k = passend(neu.name);
+              const a = { id: neueId('ant'), art: neu.art, name: neu.name.trim(), ...(neu.email ? { email: neu.email } : {}), ...(k ? { kontaktId: k.id } : {}), eingang: neu.eingang, status: 'offen' as const };
+              setNeu(null);
+              await setze(a);
+              // Antrag auf Einschränkung mit verknüpfter Person: die Sperre gilt sofort (Art. 18 Abs. 1 — während der Prüfung).
+              if (a.art === 'einschraenkung' && a.kontaktId) await einschraenkung(a as Antrag, false);
+            }}>Anlegen</Knopf>
             <Knopf leise onClick={() => setNeu(null)}>Abbrechen</Knopf>
           </div>
-          <div style={{ fontSize: 12, color: C.inkLeise }}>Frist: ein Monat ab Eingang (Art. 12 Abs. 3 DSGVO).</div>
+          <div style={{ fontSize: 12, color: C.inkLeise }}>Frist: ein Monat ab Eingang (Art. 12 Abs. 3 DSGVO). Einschränkung (18) mit verknüpfter Person sperrt sie sofort — Aufheben nur mit Grund.</div>
         </div>
       )}
       <Liste>
@@ -217,6 +243,9 @@ function Antraege({ d, api, laden, zuKontakt }: { d: Daten; api: CrmApi; laden: 
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {a.kontaktId && <Knopf leise onClick={() => { window.location.href = `/api/crm/datenschutz?id=${a.kontaktId}`; }}>Datenkopie (JSON)</Knopf>}
                 {a.kontaktId && <Knopf leise onClick={() => zuKontakt(a.kontaktId!)}>Zur Person</Knopf>}
+                {a.art === 'einschraenkung' && a.kontaktId && (eingeschraenkt(a.kontaktId)
+                  ? <Knopf leise onClick={() => void einschraenkung(a, true)}>Einschränkung aufheben</Knopf>
+                  : <Knopf leise onClick={() => void einschraenkung(a, false)}>Einschränkung setzen</Knopf>)}
                 <Knopf onClick={async () => { const e = await frage('Ergebnis festhalten', { hinweis: 'z. B. „Auskunft am … per Mail übermittelt“ — steht im Nachweis.' }); if (e?.trim()) void setze({ ...a, status: 'erledigt', ergebnis: e.trim(), erledigtAm: d.heute }); }}>Erledigt</Knopf>
                 {nachfrage}
               </div>

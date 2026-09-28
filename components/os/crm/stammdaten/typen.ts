@@ -6,6 +6,7 @@ import type { Antrag, Verarbeitung } from '@/lib/crm/typen';
 import type { Kpi } from '@/lib/crm/kennzahlen';
 import type { Befund } from '@/lib/crm/befunde';
 import type { Pruefpunkt } from '@/lib/crm/datenschutz';
+import type { FristDef, FristArt, LoeschfristenBestand } from '@/lib/crm/loeschfristen';
 
 export interface WertelistenAntwort {
   /** `gemessen` (28.09., K4): Gewinnquote der entschiedenen Deals, die die Stufe erreichten — `quote` erst ab MINDESTMENGE. */
@@ -29,12 +30,16 @@ export interface WertelistenAntwort {
 
 export interface StammdatenDaten {
   heute: string; kennzahlen: Kpi[]; befunde: Befund[]; selbstpruefung: Pruefpunkt[];
-  qualitaet: { kontakte: number; firmen: number; vollstaendigkeit: { feld: string; label: string; anzahl: number; anteil: number }[]; dublettenPersonen: number; dublettenFirmen: number; ohneFirmenverweis: number; art14: number; speicherbegrenzung: number; werbesperren: { id: string; seit: string }[] };
+  qualitaet: { kontakte: number; firmen: number; vollstaendigkeit: { feld: string; label: string; anzahl: number; anteil: number }[]; dublettenPersonen: number; dublettenFirmen: number; ohneFirmenverweis: number; art14: number; speicherbegrenzung: number; werbesperren: { id: string; seit: string }[];
+    /** U2 #34: aktive Beziehungen/Leads seit über `pruefenMonate` nicht geprüft. */
+    nichtGeprueft: { id: string; name: string; seit: string; nie: boolean }[]; pruefenMonate: number };
   wertelisten: WertelistenAntwort;
   letzterImport: { zeit: string; text: string } | null;
   pflichtangaben: { anzahl: number; herkunft: Record<string, number>; rechtsgrundlage: Record<string, number>; fremddaten: number; beispiele: { name: string; herkunft?: string; rechtsgrundlage?: string; fremddaten: boolean; grund: string }[] };
   loeschregeln: { id: string; titel: string; frist: string; aktion: string; norm: string }[];
   speicherbegrenzung: { id: string; name: string; seit: string }[];
+  /** Löschfristen je Datenart (U2 #52): Tabelle, wirksame Werte, gespeicherte Abweichungen, letzter Takt-Lauf. */
+  loeschfristen: { tabelle: FristDef[]; wirksam: Record<FristArt, number>; gespeichert: Partial<Record<FristArt, number>>; lauf: LoeschfristenBestand['lauf'] | null };
   antraege: Antrag[]; verarbeitungen: Verarbeitung[]; loeschprotokoll: { id: string; datum: string; grund: string; von: string }[];
 }
 

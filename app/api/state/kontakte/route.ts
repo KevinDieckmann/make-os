@@ -20,6 +20,9 @@
 //    ein Dienstaufruf ohne Person bekommt keine, und was er schreibt, lässt sie stehen
 //  · Zugang (28.09., K1 #66/#67): nur Haushalt des Inhabers (`karteiZugang`) — Dienstweg mit Person nur,
 //    wenn die Person dazugehört; sonst 403
+//  · Datenschutz (28.09., U2): Einwilligungen, „geprüft“, Hinweis bei Erhebung stempelt der Server
+//    (`datenschutzStempeln`); Einschränkung (Art. 18) und Fristverlängerung ändert nur /api/crm/datenschutz;
+//    eine eingeschränkte Person ist nicht bearbeitbar, eine neue Einwilligung braucht Wortlaut + Beleg (409)
 
 import { NextResponse } from 'next/server';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
@@ -37,6 +40,7 @@ import { zahlungZusammenfuehren, ibanBehalten } from '@/lib/crm/zahlung';
 import { personEntfernen } from '@/lib/crm/person-bestaende';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { firmaWechselAnwenden, firmaWechselFehlt, istFirmaWechsel, FIRMA_WECHSEL_FEHLT } from '@/lib/crm/stationen';
+import { datenschutzStempeln, pruefeDatenschutz } from '@/lib/crm/datenschutz-stempel';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -110,6 +114,9 @@ export async function PATCH(req: Request) {
   const firmaBeruehrt = ops.some(o => o.op === 'upsert' || (o.op === 'teil' && !!o.felder && ('stationen' in o.felder || 'firmaId' in o.felder)));
   const firmenNamen = firmaBeruehrt ? new Map((await ladeCrm()).firmen.map(f => [f.id, f.name])) : new Map<string, string>();
   const firmaName = (id: string) => firmenNamen.get(id);
+  // U2 (28.09.): Datenschutz-Felder stempelt der Server — Person aus der Sitzung, sonst „system“ (nie „kevin“, Regel 5).
+  const jetztIso = new Date().toISOString();
+  const ds = (neu: Kontakt, alt: Kontakt | undefined) => datenschutzStempeln(neu, alt, ich ?? 'system', jetztIso, heute);
   const r = await listePatchen<Kontakt, Bestand>('kontakte', 'kontakte', ops, 20, undefined, {
     // Änderungsprotokoll (28.09., K1 #44): wer — aus der Sitzung bzw. dem Dienstweg, nie aus dem Body.
     wer: werAus(req),
@@ -122,9 +129,9 @@ export async function PATCH(req: Request) {
       const zahlung = ausTeil.has(neu) ? v.zahlung : ibanBehalten(v.zahlung, alt.zahlung);
       const mitZahlung = zahlung === v.zahlung ? v : { ...v, zahlung };
       // K2: ein ganzer Eintrag hebt eine Sperre nie auf (Sperre gewinnt) — nur ein geprüfter `teil` mit Nachweis.
-      return serverStempel(bezuegeSynchron(ausTeil.has(neu) ? mitZahlung : sperreBehalten(mitZahlung, alt), alt, heute, firmaName), alt, heute);
+      return serverStempel(bezuegeSynchron(ds(ausTeil.has(neu) ? mitZahlung : sperreBehalten(mitZahlung, alt), alt), alt, heute, firmaName), alt, heute);
     },
-    neu: eintrag => serverStempel(bezuegeSynchron(eintrag, undefined, heute, firmaName), undefined, heute),
+    neu: eintrag => serverStempel(bezuegeSynchron(ds(eintrag, undefined), undefined, heute, firmaName), undefined, heute),
     // `teil`: Felder auf den gespeicherten Kontakt legen, dann dieselbe Prüfung wie für einen ganzen Eintrag.
     // `null` = Feld entfernen (28.09., F1 — `teilAnwenden`), danach säubern; `vonHandMarkieren` (im `vereinen`) zählt das Leeren als von Hand.
     // Löschmarken setzt nur der Server (es gelten die gespeicherten); die IBAN kommt maskiert zurück und bleibt, wenn keine neue gültige kommt (28.09., H4).
@@ -147,6 +154,14 @@ export async function PATCH(req: Request) {
     },
     // Massen-Wache INNERHALB der Sperre: wie viele Stufen würden sich ändern?
     pruefen: (liste, ops) => {
+      // Datenschutz (U2): eingeschränkte Person nicht bearbeiten (Art. 18), neue Einwilligung nur mit Wortlaut + Beleg — auch mit `erzwingen`.
+      for (const o of ops) {
+        // Art. 18: eine eingeschränkte Person wird aufbewahrt — Löschen erst nach dem Aufheben (mit Grund).
+        if (o.op === 'delete') { if (liste.find(k => k.id === o.id)?.eingeschraenkt) return 'Die Verarbeitung dieser Person ist eingeschränkt (Art. 18) — sie wird aufbewahrt. Erst die Einschränkung mit Grund aufheben, dann löschen.'; continue; }
+        const alt = liste.find(k => k.id === (o.op === 'teil' ? o.id : o.eintrag?.id));
+        const grund = o.op === 'teil' ? pruefeDatenschutz(alt, { art: 'teil', felder: o.felder ?? {} }, heute) : o.eintrag ? pruefeDatenschutz(alt, { art: 'upsert', eintrag: o.eintrag }, heute) : null;
+        if (grund) return grund;
+      }
       // Werbesperre aufheben nur mit Einwilligungs-Nachweis im selben Schritt (K2 #64) — gilt auch mit `erzwingen`.
       for (const o of ops) {
         if (o.op !== 'teil') continue;

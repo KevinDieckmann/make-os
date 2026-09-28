@@ -20,7 +20,7 @@ const crm: CrmBestand = {
   wahrscheinlichkeiten: { angebot: 80 },
 };
 const kontakte = [
-  k('anna', { firmaId: 'f-alpha', email: 'anna@alpha.de', kreis: 'A', privatNotiz: 'PRIVAT-GEHEIM', einwilligungen: [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: '2026-09-01', nachweis: 'Mail' }], rollen: ['partner'] }),
+  k('anna', { firmaId: 'f-alpha', email: 'anna@alpha.de', kreis: 'A', privatNotiz: 'PRIVAT-GEHEIM', einwilligungen: [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: '2026-09-01', nachweis: 'Mail', zeitpunkt: '2026-09-01T10:00:00.000Z', erfasstVon: 'kevin', wortlaut: 'Darf ich Ihnen … schicken? — Ja', belegRef: 'Gespräch vom 01.09.' }], rollen: ['partner'] }),
   k('ben', { firma: 'Beta AG', werbesperre: { seit: '2026-09-10', grund: 'Widerspruch' }, privatNotiz: 'AUCH-PRIVAT' }),
 ];
 const q: ExportQuelle = { kontakte, crm };

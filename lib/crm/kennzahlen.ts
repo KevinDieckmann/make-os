@@ -12,6 +12,8 @@ import { zyklus as dealZyklus, haengtNachWert } from './deal-auswertung';
 import { faellige, puenktlichkeit } from './followup';
 import { mrr, konzentration } from './kunden';
 import { ampel as kanalAmpel } from './recht';
+import { kontakteUeberFrist } from './loeschfristen';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export type KpiAmpel = 'gruen' | 'gelb' | 'rot' | 'grau';
 export interface Kpi { id: string; label: string; wert: number | null; anzeige: string; ampel: KpiAmpel; ziel: string; quelle: string }
@@ -31,7 +33,7 @@ export function kennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: string):
   const ohneSchritt = offen.filter(c => !c.naechsterSchritt).length;
   const p = prognose(crm.chancen, heute, crm.wahrscheinlichkeiten);
   const m = mrr(crm.mandate), kz = konzentration(crm.mandate);
-  const aktiv = kontakte.filter(k => !k.werbesperre);
+  const aktiv = kontakte.filter(k => !ausgenommen(k));
   const ansprechbar = aktiv.filter(k => kanalAmpel(k).some(s => s.farbe !== 'rot' && s.kanal !== 'vernetzen')).length;
   const reif = kontakte.filter(k => (k.email || k.telefon) && (k.firma || k.firmaId) && (k.position || k.jobtitel)).length;
   const reife = kontakte.length ? Math.round((reif / kontakte.length) * 100) : null;
@@ -86,7 +88,11 @@ export function vollstaendigkeit(kontakte: Kontakt[]): { feld: string; label: st
 }
 
 /** R12: Interessenten ohne echte Interaktion seit 24 Monaten → löschen oder anonymisieren prüfen. */
-export function speicherbegrenzung(kontakte: Kontakt[], heute: string): Kontakt[] {
-  const grenze = tagMinus(heute, 730);
-  return kontakte.filter(k => !['kunde', 'ex_kunde', 'partner', 'multiplikator'].includes(k.lebensphase ?? '') && (k.importiertAm || heute) < grenze && !(k.letzterKontakt && k.letzterKontakt >= grenze));
+/**
+ * Speicherbegrenzung: Kontakte über der Löschfrist — seit U2 (28.09.) EINE Regel in lib/crm/loeschfristen.ts
+ * (`kontakteUeberFrist`: Frist aus der Tabelle, ohne Kunden/Partner/Mandate/offene Deals/Einschränkung/Verlängerung).
+ */
+export function speicherbegrenzung(kontakte: Kontakt[], heute: string, monate = 24, crm?: Pick<CrmBestand, 'mandate' | 'chancen'> | null): Kontakt[] {
+  const ids = new Set(kontakteUeberFrist(kontakte, crm, heute, monate).map(x => x.id));
+  return kontakte.filter(k => ids.has(k.id));
 }

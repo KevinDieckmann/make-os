@@ -17,6 +17,7 @@
 
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { HeadVorschlag } from './stand';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export type AutoWirkung = 'schritt' | 'aufgabe';
 
@@ -34,7 +35,7 @@ const NUR_AUFGABE = new Set(['daten_pflegen', 'ziel_schaerfen', 'positionierung_
 export function automatisch(v: HeadVorschlag, k: Kontakt | undefined): AutoWirkung | null {
   if (v.status !== 'offen' || v.entwurf || v.kampagne || v.art === 'merken') return null;
   if (v.kontakt_id) {
-    if (!k || k.werbesperre) return null;
+    if (!k || ausgenommen(k)) return null;
     return v.frist && !k.naechsterSchritt && !NUR_AUFGABE.has(v.art) ? 'schritt' : 'aufgabe';
   }
   return 'aufgabe';

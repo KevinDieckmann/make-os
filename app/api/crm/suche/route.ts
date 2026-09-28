@@ -42,7 +42,7 @@ export async function GET(req: Request) {
   const firmen = new Map(crm.firmen.map(f => [f.id, f]));
   // Alle E-Mail-Adressen und Labels zählen (28.09.).
   const personen = kontakte.filter(k => passt([anzeigename(k), k.firma, ...alleAdressen(k), k.position, k.firmaStadt, k.telefon, ...labelsVon(k)]))
-    .map(k => ({ art: 'kontakt', id: k.id, titel: anzeigename(k), unter: [k.position ?? k.jobtitel, (k.firmaId && firmen.get(k.firmaId)?.name) ?? k.firma, k.werbesperre ? 'Werbesperre' : ''].filter(Boolean).join(' · '), href: `/os/markttraktion?s=kontakte&k=${k.id}`, p: punkte(anzeigename(k)) + (k.lebensphase === 'kunde' ? 1 : 0) }))
+    .map(k => ({ art: 'kontakt', id: k.id, titel: anzeigename(k), unter: [k.position ?? k.jobtitel, (k.firmaId && firmen.get(k.firmaId)?.name) ?? k.firma, k.werbesperre ? 'Werbesperre' : '', k.eingeschraenkt ? 'Eingeschränkt (Art. 18)' : ''].filter(Boolean).join(' · '), href: `/os/markttraktion?s=kontakte&k=${k.id}`, p: punkte(anzeigename(k)) + (k.lebensphase === 'kunde' ? 1 : 0) }))
     .sort((a, b) => b.p - a.p).slice(0, 8);
   const fs = crm.firmen.filter(f => passt([f.name, f.domain, f.branche, f.stadt]))
     .map(f => ({ art: 'firma', id: f.id, titel: f.name, unter: [f.branche, f.stadt, f.rolle === 'kunde' ? 'Kunde' : ''].filter(Boolean).join(' · '), href: `/os/markttraktion?s=firmen&k=${f.id}`, p: punkte(f.name) + (f.rolle === 'kunde' ? 1 : 0) }))

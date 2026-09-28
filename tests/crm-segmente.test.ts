@@ -15,7 +15,7 @@ describe('Segmente', () => {
     expect(imSegment(k('c', { werbesperre: { seit: HEUTE, grund: 'x' } }), {}, ctx)).toBe(false);
   });
   it('Kanal-Kriterium zählt nur zulässig Erreichbare; Auswertung je Kanal', () => {
-    const ew = { kanal: 'mail' as const, grundlage: 'einwilligung' as const, erteiltAm: HEUTE, nachweis: 'x' };
+    const ew = { kanal: 'mail' as const, grundlage: 'einwilligung' as const, erteiltAm: HEUTE, nachweis: 'x', zeitpunkt: '2026-09-01T10:00:00.000Z', erfasstVon: 'kevin', wortlaut: 'Darf ich Ihnen … schicken? — Ja', belegRef: 'Gespräch vom 01.09.' };
     const l = [k('a', { email: 'a@b.de', einwilligungen: [ew] }), k('b', { email: 'b@b.de' }), k('c', { telefon: '030' })];
     expect(segmentAuswerten(l, { kanal: 'mail' }, ctx).anzahl).toBe(1);
     expect(segmentAuswerten(l, {}, ctx).kanaele).toMatchObject({ mail: 1, einladung: 1, nurPersoenlich: 2 });

@@ -31,6 +31,7 @@ import { DealAkte, DealAuswertung } from './DealAkte';
 import { firmenName } from '@/lib/crm/firmen-bezug';
 import { winLoss } from '@/lib/crm/deal-auswertung';
 import type { DealsAnsicht } from '@/lib/crm/adresse';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 import { tagVon } from '@/lib/zeit';
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
@@ -76,7 +77,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
   const zeigeZu = geschlossen || (!!gewaehlt && !istOffen(gewaehlt));
   // Aus der Kartei: wer laut Masterdatei im Gespräch ist oder ein Angebot hat, aber noch keine Chance.
   const mitChance = new Set(crm.stand.chancen.flatMap(c => c.kontaktIds));
-  const vorschlaege = (api.kontakte ?? []).filter(k => ['gespraech', 'termin', 'angebot'].includes(k.stufe) && !mitChance.has(k.id) && !k.werbesperre && passtWer(wahl, k.besitzer, 'sales', ich))
+  const vorschlaege = (api.kontakte ?? []).filter(k => ['gespraech', 'termin', 'angebot'].includes(k.stufe) && !mitChance.has(k.id) && !ausgenommen(k) && passtWer(wahl, k.besitzer, 'sales', ich))
     .sort((a, b) => (a.stufe === 'angebot' ? 0 : 1) - (b.stufe === 'angebot' ? 0 : 1));
   // Die Chance führt, wer die Beziehung hält — im Gespräch ist ja sie/er.
   const ausKontakt = (k: NonNullable<CrmApi['kontakte']>[number]) => setAnlegen({ kontaktId: k.id });

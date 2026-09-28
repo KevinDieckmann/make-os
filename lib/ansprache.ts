@@ -22,6 +22,7 @@ export const RECHT =
 export interface Entwurf { betreff: string; email: string; linkedin: string; hinweis: string }
 
 export async function entwurfFuer(k: Kontakt): Promise<{ ok: true; entwurf: Entwurf } | { ok: false; fehler: string }> {
+  if (k.eingeschraenkt) return { ok: false, fehler: `Verarbeitung eingeschränkt (Art. 18) seit ${k.eingeschraenkt.seit} — kein Entwurf.` };
   if (k.werbesperre) return { ok: false, fehler: `Werbesperre seit ${k.werbesperre.seit} — kein Entwurf.` };
   const agent = await resolveAgent('outreach');
   if (!agent.enabled) return { ok: false, fehler: 'Outreach-Agent ist ausgeschaltet.' };

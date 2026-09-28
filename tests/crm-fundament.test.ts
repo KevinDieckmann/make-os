@@ -64,8 +64,12 @@ describe('Kanal-Ampel (§ 7 UWG)', () => {
     expect(besterKanal(x)?.kanal).toBe('vernetzen');
   });
   it('Einwilligung macht grün, Widerruf wieder rot, Werbesperre sperrt alles', () => {
-    const e = { kanal: 'mail' as const, grundlage: 'einwilligung' as const, erteiltAm: '2026-09-01', nachweis: 'DOI' };
+    const e = { kanal: 'mail' as const, grundlage: 'einwilligung' as const, erteiltAm: '2026-09-01', nachweis: 'DOI', zeitpunkt: '2026-09-01T10:00:00.000Z', erfasstVon: 'kevin', wortlaut: 'Darf ich Ihnen … schicken? — Ja', belegRef: 'Gespräch vom 01.09.' };
     expect(kanalStatus(k('a', { email: 'a@b.de', einwilligungen: [e] }), 'mail').farbe).toBe('gruen');
+    // U2 #55: Altbestand ohne vollen Nachweis bleibt gültig, ist aber nur gelb (Grund nennt, was fehlt).
+    const alt = kanalStatus(k('a', { email: 'a@b.de', einwilligungen: [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: '2026-09-01', nachweis: 'DOI' }] }), 'mail');
+    expect(alt.farbe).toBe('gelb');
+    expect(alt.grund).toMatch(/Nachweis unvollständig.*Wortlaut.*Beleg/);
     expect(kanalStatus(k('a', { email: 'a@b.de', einwilligungen: [{ ...e, widerrufenAm: '2026-09-10' }] }), 'mail').farbe).toBe('rot');
     expect(kanalStatus(k('a', { email: 'a@b.de', einwilligungen: [e], werbesperre: { seit: '2026-09-11', grund: 'Widerspruch' } }), 'mail').farbe).toBe('rot');
   });

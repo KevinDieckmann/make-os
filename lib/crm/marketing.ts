@@ -20,6 +20,7 @@ import { TEAM, BEIDE, zustaendig, istMeins, mitglied, nameVon } from './team';
 import { TEMPERATUR, temperaturLabel } from './score';
 import { LIFECYCLE_PHASEN, LIFECYCLE_KURZ } from './lifecycle';
 import { BEAN_IDS, BEAN_LABEL } from './bean';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 // ── Kleine Helfer ───────────────────────────────────────────────────────────
 const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
@@ -164,7 +165,7 @@ export function ausMarketing(c: Pick<Chance, 'quelle' | 'kontaktIds' | 'angelegt
 export interface Stimme { kontaktId: string; name: string; am: string; bedarf: string }
 /** „Bedarf / Schmerz“ aus den Gesprächsnotizen, jüngste zuerst — ohne gesperrte Personen. */
 export function stimmenAus(kontakte: Kontakt[], max = 30): Stimme[] {
-  return kontakte.filter(k => !k.werbesperre)
+  return kontakte.filter(k => !ausgenommen(k))
     .flatMap(k => (k.aktivitaeten ?? []).filter(a => (a.notiz?.bedarf ?? '').trim()).map(a => ({ kontaktId: k.id, name: anzeigename(k), am: tag(a.am), bedarf: a.notiz!.bedarf!.trim() })))
     .sort((a, b) => b.am.localeCompare(a.am)).slice(0, max);
 }
@@ -178,7 +179,7 @@ export const schonUebernommen = (s: Stimme, beitraege: Beitrag[]) => beitraege.s
 // ── Newsletter ─────────────────────────────────────────────────────────────
 /** Nur Double-Opt-in. Eine Mail-Einwilligung oder ein Mandat reicht für den Newsletter NICHT. */
 export function newsletterEmpfaenger(kontakte: Kontakt[]): Kontakt[] {
-  return kontakte.filter(k => !k.werbesperre && kanalStatus(k, 'newsletter').farbe === 'gruen');
+  return kontakte.filter(k => !ausgenommen(k) && kanalStatus(k, 'newsletter').farbe === 'gruen');
 }
 /** Abmeldungen je Empfänger — nur für versendete Ausgaben mit beiden Zahlen. */
 export function abmeldequote(a: Pick<NewsletterAusgabe, 'status' | 'empfaenger' | 'abmeldungen'>): number | null {
@@ -323,7 +324,7 @@ export function kanalText(k: Kontakt, ctx: Kontext = {}): string {
 /** Segment-Export: nur Mitglieder (nie Gesperrte), Mail-Adresse nur bei grüner Mail-Ampel, keine Privatnotiz. */
 export function segmentCsv(kontakte: Kontakt[], kriterien: SegmentKriterien, ctx: SegmentKontext): string {
   const a = segmentAuswerten(kontakte, kriterien, ctx);
-  const zeilen = a.mitglieder.filter(k => !k.werbesperre).map(k => {
+  const zeilen = a.mitglieder.filter(k => !ausgenommen(k)).map(k => {
     const c: Kontext = { hatMandat: ctx.mitMandat.has(k.id), hatChance: ctx.mitChance.has(k.id) };
     const f = k.firmaId ? ctx.firmen.get(k.firmaId) : undefined;
     return [anzeigename(k), f?.name ?? k.firma, kanalStatus(k, 'mail', c).farbe === 'gruen' ? k.email : '', k.telefon ?? k.sms, k.kreis, PHASE_TEXT[k.lebensphase ?? 'kontakt'], kanalText(k, c)];
@@ -695,7 +696,7 @@ export function marketingTrichter(kontakte: Kontakt[], crm: CrmBestand, heute: s
   for (const id of personen) {
     if (imDeal.has(id)) continue;
     const k = kontakte.find(x => x.id === id);
-    if (!k || k.werbesperre) continue;
+    if (!k || ausgenommen(k)) continue;
     const status = (k.firmaId ? firmen.get(k.firmaId)?.lead?.status : undefined) ?? k.lead?.status;
     // Ohne gesetzten Status gilt: die Anfrage selbst ist der Kontakt — im Prozess, vor dem SQL.
     if (status === undefined || LEAD_VOR_SQL.has(status)) leadEinheiten.add(k.firmaId ?? k.id);

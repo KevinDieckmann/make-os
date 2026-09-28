@@ -22,6 +22,7 @@ import { art14, ampel as kanalAmpel } from './recht';
 import { berechneModell, type KennzahlDefBasis, type SaeuleDef, type Messung, type Detail, type Ampel, type Schwelle, type IndexErgebnis } from '@/lib/kennzahlen/kern';
 import { WEG } from '@/lib/wege';
 import { markttraktion } from './adresse';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export type TraktionsIndex = IndexErgebnis;
 
@@ -188,7 +189,7 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
     const vor30 = tagMinus(b.heute, 29);
     const l: Detail[] = [];
     for (const k of b.kontakte) for (const e of (k.einwilligungen ?? []).filter(e => e.kanal === 'newsletter')) {
-      if (!k.werbesperre && !e.widerrufenAm && e.erteiltAm >= vor30) l.push({ titel: anzeigename(k), wert: 'neu', unter: `Double-Opt-in ${tagKurz(e.erteiltAm)}`, href: WEG.akte(k.id), ampel: 'gruen' });
+      if (!ausgenommen(k) && !e.widerrufenAm && e.erteiltAm >= vor30) l.push({ titel: anzeigename(k), wert: 'neu', unter: `Double-Opt-in ${tagKurz(e.erteiltAm)}`, href: WEG.akte(k.id), ampel: 'gruen' });
       else if (e.widerrufenAm && e.widerrufenAm >= vor30) l.push({ titel: anzeigename(k), wert: 'weg', unter: `widerrufen ${tagKurz(e.widerrufenAm)}`, href: WEG.akte(k.id), ampel: 'rot' });
     }
     return l.slice(0, 4);
@@ -222,7 +223,7 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
   },
   ansprechbar(b) {
     const gesperrt = b.kontakte.filter(k => k.werbesperre).length;
-    const ohneKanal = b.kontakte.filter(k => !k.werbesperre && !kanalAmpel(k).some(s => s.farbe !== 'rot' && s.kanal !== 'vernetzen')).length;
+    const ohneKanal = b.kontakte.filter(k => !ausgenommen(k) && !kanalAmpel(k).some(s => s.farbe !== 'rot' && s.kanal !== 'vernetzen')).length;
     return [
       { titel: 'Ohne zulässigen Kanal', wert: String(ohneKanal), unter: 'Einwilligung oder Bestandskunden-Bezug festhalten', href: WEG.kontakt(), ampel: ohneKanal ? 'gelb' : 'gruen' },
       { titel: 'Werbesperren', wert: String(gesperrt), href: markttraktion('kontakte', 'gesperrt') },
@@ -267,7 +268,7 @@ export function traktionsIndex(b: TraktionBestand): TraktionsIndex {
   }
   // Ansprechbar: Kpi liefert die Anzahl — hier der Anteil.
   if (kpis.ansprechbar) {
-    const aktiv = b.kontakte.filter(k => !k.werbesperre).length;
+    const aktiv = b.kontakte.filter(k => !ausgenommen(k)).length;
     kpis.ansprechbar = aktiv ? { ...kpis.ansprechbar, wert: (kpis.ansprechbar.wert ?? 0) / aktiv } : { ...kpis.ansprechbar, wert: null, ampel: 'grau' };
   }
   const messen: Record<string, (x: TraktionBestand) => Messung> = {};

@@ -16,6 +16,7 @@ import type { CrmBestand, FollowUp, FollowUpArt, FollowUpBezugArt, Wertelisten }
 import { OFFENE_STUFEN } from './pipeline';
 import { haeltBeziehung, zustaendig, BEIDE } from './team';
 import { followUpBis } from './events';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export const FOLLOWUP_ARTEN: { id: FollowUpArt; label: string }[] = [
   { id: 'anruf', label: 'Anruf' }, { id: 'mail', label: 'Mail' }, { id: 'linkedin', label: 'LinkedIn' }, { id: 'termin', label: 'Termin' }, { id: 'nachricht', label: 'Nachricht' }, { id: 'sonstig', label: 'Sonstiges' },
@@ -88,6 +89,8 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
     if (f.status !== 'offen' || f.faellig > bis) continue;
     if (f.kontaktId) belegt.add(`${f.kontaktId}|${f.faellig}`);
     const k = f.kontaktId ? nachId.get(f.kontaktId) : undefined;
+    // Art. 18 (U2): eingeschränkte Personen stehen in keiner Fälligkeitsliste (Power Hour, „Für dich“).
+    if (k?.eingeschraenkt) continue;
     const titel = f.bezug.art === 'chance' ? crm.chancen.find(c => c.id === f.bezug.id)?.titel : f.bezug.art === 'mandat' ? crm.mandate.find(m => m.id === f.bezug.id)?.kunde : f.bezug.art === 'event' ? crm.events.find(e => e.id === f.bezug.id)?.titel : f.bezug.art === 'firma' ? firmen.get(f.bezug.id)?.name : undefined;
     raus.push(mach({ id: f.id, virtuell: false, quelle: f.quelle, art: f.art, text: f.text, faellig: f.faellig, ...(f.uhrzeit ? { uhrzeit: f.uhrzeit } : {}), ...(f.kontaktId ? { kontaktId: f.kontaktId } : {}),
       name: k ? anzeigename(k) : titel ?? f.text, ...(firmaVon(f.kontaktId) ? { firma: firmaVon(f.kontaktId) } : {}), bezug: { ...f.bezug, ...(titel ? { titel } : {}) }, zustaendig: f.zustaendig, ...(f.verschoben ? { verschoben: f.verschoben } : {}) }));
@@ -96,7 +99,7 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
 
   // 2 · nächster Schritt und Wiedervorlage am Kontakt
   for (const k of kontakte) {
-    if (k.werbesperre || RUHT.has(k.stufe)) continue;
+    if (ausgenommen(k) || RUHT.has(k.stufe)) continue;
     const z = haeltBeziehung(k);
     if (k.naechsterSchritt && k.naechsterSchritt.datum <= bis && frei(k.id, k.naechsterSchritt.datum)) {
       raus.push(mach({ id: `v:schritt:${k.id}`, virtuell: true, quelle: 'schritt', art: 'sonstig', text: k.naechsterSchritt.text, faellig: k.naechsterSchritt.datum, kontaktId: k.id, name: anzeigename(k), ...(firmaVon(k.id) ? { firma: firmaVon(k.id) } : {}), bezug: { art: 'kontakt', id: k.id }, zustaendig: z }));
@@ -118,7 +121,7 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
   // 4 · Nachfassen nach einem Event (binnen 48 h)
   for (const t of crm.teilnahmen.filter(t => t.status === 'da' && !t.followUpAm && !t.nachfassenVerzichtet)) {
     const ev = crm.events.find(e => e.id === t.eventId);
-    if (!ev || ev.datum > heute) continue;
+    if (!ev || ev.datum > heute || nachId.get(t.kontaktId)?.eingeschraenkt) continue;
     const f = followUpBis(ev);
     if (!frei(t.kontaktId, f)) continue;
     // Ein echtes Event-Follow-up zu diesem Gast (etwa nach „+3 Tage“) ersetzt den virtuellen Eintrag.
@@ -134,7 +137,7 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
   // Ein eingetragenes Meeting zählt ab seinem Tag (`wann`) — geplant setzt es „letzter Kontakt“ nicht (28.09., F1).
   for (const k of kontakte) {
     const letzter = letzterKontaktVon(k, heute);
-    if (k.werbesperre || RUHT.has(k.stufe) || !letzter) continue;
+    if (ausgenommen(k) || RUHT.has(k.stufe) || !letzter) continue;
     const takt = taktVon(k, opts.wertelisten);
     if (!takt) continue;
     const f = tagPlus(letzter, takt);

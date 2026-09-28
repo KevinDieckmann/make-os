@@ -26,6 +26,7 @@ import { leereKriterien } from './leads';
 import { firmaNachName } from './firmen-bezug';
 import { ANFRAGE_PRAEFIX, ANFRAGE_FOLLOWUP, istAnfrage, istAnfrageFollowUp } from './marketing';
 import { OFFENE_STUFEN } from './pipeline';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export type AnfrageKanal = 'website' | 'mail' | 'linkedin' | 'telefon' | 'empfehlung' | 'event';
 export type AnfrageBezugArt = 'beitrag' | 'kampagne' | 'event';
@@ -131,6 +132,7 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
       };
     }
   }
+  if (basis.eingeschraenkt) return { ok: false, fehler: `${anzeigename(basis)}: Verarbeitung eingeschränkt (Art. 18) — nichts festhalten, erst unter Kontakt › Datenschutz klären.` };
   if (basis.werbesperre) return { ok: false, fehler: `${anzeigename(basis)} hat eine Werbesperre. Antworten ja — aber in der Karteikarte, nicht über den Eingang.` };
 
   // Bezug prüfen — nur, was es gibt.
@@ -205,7 +207,7 @@ export function anfragenListe(kontakte: Kontakt[], crm: CrmBestand, heute: strin
   const firmen = new Map(crm.firmen.map(f => [f.id, f]));
   const raus: AnfrageZeile[] = [];
   for (const k of kontakte) {
-    if (k.werbesperre) continue;
+    if (ausgenommen(k)) continue;
     const anfragen = (k.aktivitaeten ?? []).filter(a => istAnfrage(a) && a.am.slice(0, 10) >= ab && a.am.slice(0, 10) <= heute);
     if (!anfragen.length) continue;
     const fus = (crm.followups ?? []).filter(f => f.kontaktId === k.id && istAnfrageFollowUp(f)).sort((a, b) => b.angelegt.localeCompare(a.angelegt));

@@ -19,6 +19,7 @@ import type { FollowUpArt } from '@/lib/crm/typen';
 import { FOLLOWUP_ARTEN } from '@/lib/crm/followup';
 import { nameVon } from '@/lib/crm/team';
 import { WEG } from '@/lib/wege';
+import { kanalStatus } from '@/lib/crm/recht';
 import {
   ERGEBNIS_KURZ, ERGEBNIS_TITEL, ANRUF_ERGEBNISSE, STATUS_LABEL, meetingWann, darfBearbeiten, bezugAufloesen,
   type Eintrag, type Kategorie,
@@ -135,6 +136,7 @@ export function AktivitaetKarte({ e, k, api, heute, kompakt, markiert, onErledig
               {e.ort && <span>Ort: {e.ort}</span>}
               {bezug && <button type="button" onClick={zuBezug} className="fassbar" style={{ ...leiseKnopf, padding: 0, color: C.aktiv }}>{bezug.art === 'deal' ? 'Deal' : bezug.art === 'mandat' ? 'Mandat' : bezug.art === 'event' ? 'Event' : bezug.art === 'kampagne' ? 'Kampagne' : 'Firma'}: {bezug.titel} ›</button>}
               {e.hinweis && <span>{e.hinweis}</span>}
+              {e.anlass && <span>Anlass: {e.anlass}</span>}
             </div>
             {bearbeiten != null ? (
               <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
@@ -245,23 +247,31 @@ export function EmailNeu({ k, api, onFertig, onAbbruch }: FormProps) {
 export function AnrufNeu({ k, api, heute, onFertig, onAbbruch }: FormProps) {
   const [ergebnis, setErgebnis] = useState<Ergebnis | null>(null);
   const [text, setText] = useState('');
+  // Anlass (U2 #58): bei gelber Telefon-Ampel Pflicht — die Ampel hier ohne Mandats-/Deal-Kontext, der Server rechnet genau.
+  const [anlass, setAnlass] = useState('');
+  const anlassNoetig = kanalStatus(k, 'telefon').farbe === 'gelb';
+  /** Ereigniszeit (U2 #46): leer = heute. */
+  const [wann, setWann] = useState('');
+  const extra = { ...(anlass.trim() ? { anlass: anlass.trim() } : {}), ...(wann && wann < heute ? { wann } : {}) };
   const [laeuft, setLaeuft] = useState(false);
   const liste = ANRUF_ERGEBNISSE.map(id => ({ id, label: ERGEBNIS_TITEL[id] }));
   const mitNotiz = !!ergebnis && !!ERGEBNIS_KNOEPFE.find(b => b.id === ergebnis)?.notiz;
   const kurz = async () => {
     if (!ergebnis) return;
     setLaeuft(true);
-    try { if (await schreiben(api, { id: k.id, art: 'anruf', ergebnis, ...(text.trim() ? { text: text.trim() } : {}) })) onFertig('Anruf festgehalten.'); } finally { setLaeuft(false); }
+    try { if (await schreiben(api, { id: k.id, art: 'anruf', ergebnis, ...(text.trim() ? { text: text.trim() } : {}), ...extra })) onFertig('Anruf festgehalten.'); } finally { setLaeuft(false); }
   };
   return (
     <div style={{ display: 'grid', gap: 8 }}>
       <Zeile><span style={{ fontSize: 12.5, color: C.inkLeise }}>Ergebnis</span><Wahl liste={liste} wert={ergebnis} onWahl={setErgebnis} label="Ergebnis" /></Zeile>
+      <input value={anlass} onChange={e => setAnlass(e.target.value)} placeholder={anlassNoetig ? 'Anlass aus der Beziehung (Pflicht — gelbe Telefon-Ampel)' : 'Anlass (optional)'} aria-label="Anlass des Anrufs" style={eingabe} />
+      <Zeile><span style={{ fontSize: 12.5, color: C.inkLeise }}>Wann</span><input type="date" value={wann} max={heute} onChange={e => setWann(e.target.value)} aria-label="Wann war der Anruf (leer = heute)" style={{ ...eingabe, width: 160 }} /></Zeile>
       {mitNotiz ? (
         <NotizFormular heute={heute} ergebnis={ergebnis!} knopf={laeuft ? 'Speichert …' : 'Festhalten'} onAbbruch={onAbbruch} einwilligung={!hatMailEinwilligung(k)} anrede={k.anrede}
           onFertig={async x => {
             setLaeuft(true);
             try {
-              const r = await festhalten(api, { id: k.id, art: 'anruf', ergebnis: ergebnis!, notiz: x.notiz, ...(x.naechster ? { naechster: x.naechster } : {}) }, x.einwilligung, heute);
+              const r = await festhalten(api, { id: k.id, art: 'anruf', ergebnis: ergebnis!, notiz: x.notiz, ...(x.naechster ? { naechster: x.naechster } : {}), ...extra }, x.einwilligung, heute);
               if (r.kontakt) onFertig(r.hinweis ?? 'Anruf festgehalten.');
             } finally { setLaeuft(false); }
           }} />
@@ -269,7 +279,7 @@ export function AnrufNeu({ k, api, heute, onFertig, onAbbruch }: FormProps) {
         <>
           <textarea value={text} onChange={e => setText(e.target.value)} rows={2} placeholder="Notiz (optional)" aria-label="Notiz zum Anruf" style={{ ...eingabe, resize: 'vertical' }} />
           <Hinweis>Nach einem Gespräch, Termin oder Rückruf öffnet sich die Notizvorlage mit dem nächsten Schritt.</Hinweis>
-          <Fuss ok={!!ergebnis} laeuft={laeuft} knopf="Festhalten" onSpeichern={() => void kurz()} onAbbruch={onAbbruch} />
+          <Fuss ok={!!ergebnis && (!anlassNoetig || !!anlass.trim())} laeuft={laeuft} knopf="Festhalten" onSpeichern={() => void kurz()} onAbbruch={onAbbruch} />
         </>
       )}
     </div>

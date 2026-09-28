@@ -171,10 +171,10 @@ describe('Nachfassen', () => {
 });
 
 describe('Gäste-Vorschläge', () => {
-  const ew = { kanal: 'einladung' as const, grundlage: 'einwilligung' as const, erteiltAm: '2026-05-01', nachweis: 'im Gespräch: gern einladen' };
+  const ew = { kanal: 'einladung' as const, grundlage: 'einwilligung' as const, erteiltAm: '2026-05-01', nachweis: 'im Gespräch: gern einladen', zeitpunkt: '2026-09-01T10:00:00.000Z', erfasstVon: 'kevin', wortlaut: 'Darf ich Ihnen … schicken? — Ja', belegRef: 'Gespräch vom 01.09.' };
   const kontakte = [
     k('a', { kreis: 'A', email: 'a@x.de' }),
-    k('b', { kreis: 'B', lebensphase: 'kunde', email: 'b@x.de' }),
+    k('b', { kreis: 'B', lebensphase: 'kunde', email: 'b@x.de', hinweisBeiErhebung: { am: '2026-05-01' } }),
     k('c', { prio: 'A', email: 'c@x.de', einwilligungen: [ew] }),
     k('d', { kreis: 'A', werbesperre: { seit: '2026-09-01', grund: 'Widerspruch' } }),
     k('e', { kreis: 'A', lebensphase: 'multiplikator' }),

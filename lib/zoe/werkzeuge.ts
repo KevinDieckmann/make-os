@@ -704,13 +704,15 @@ async function sucheKontakt(input: Record<string, unknown>): Promise<string> {
   if (!alle.length) return 'Die Kartei ist leer — die Masterliste wurde noch nicht importiert (Markttraktion › Stammdaten › Import).';
   const l = findeKontakte(alle, frage, Math.min(8, Math.max(1, Number(input.anzahl) || 5)));
   if (!l.length) return `Kein Kontakt zu „${frage}" (${alle.length} durchsucht).`;
-  return `KONTAKTE — ${l.length} Treffer:\n\n` + l.map(k =>
+  return `KONTAKTE — ${l.length} Treffer:\n\n` + l.map(k => (k.eingeschraenkt
+    // Art. 18 (U2): eingeschränkte Personen nur mit Kennung und Namen — keine Arbeitsfelder, nicht verarbeiten.
+    ? `ID ${k.id}\n${anzeigename(k)}\nVERARBEITUNG EINGESCHRÄNKT (Art. 18) seit ${k.eingeschraenkt.seit} — nicht ansprechen, nichts festhalten.` :
     `ID ${k.id}\n${anzeigename(k)}${k.position ? ` · ${k.position}` : ''}${k.firma ? ` · ${k.firma}` : ''}` +
     `\nStufe ${STUFE_LABEL[k.stufe]} · Prio ${k.prio || '–'} · Eignung ${k.eignung || '–'}` +
     `${k.wiedervorlage ? ` · Wiedervorlage ${k.wiedervorlage}` : ''}${k.letzterKontakt ? ` · zuletzt ${k.letzterKontakt}` : ''}` +
     `${k.lebensphase ? ` · ${k.lebensphase}` : ''}${k.kreis ? ` · Kreis ${k.kreis}` : ''}${k.naechsterSchritt ? `\nNächster Schritt: ${k.naechsterSchritt.text} (${k.naechsterSchritt.datum})` : ''}` +
     (k.werbesperre ? `\nWERBESPERRE seit ${k.werbesperre.seit} — nicht ansprechen.` : `\nKanäle (Ampel § 7 UWG): ${ampel(k).map(c => `${c.kanal} ${c.farbe === 'gruen' ? 'frei' : c.farbe === 'gelb' ? 'nur persönlich/mit Anlass' : 'nicht zulässig'}`).join(', ') || 'keine'}`) +
-    `${k.aufhaenger ? `\nAufhänger: ${k.aufhaenger.slice(0, 220)}` : ''}`,
+    `${k.aufhaenger ? `\nAufhänger: ${k.aufhaenger.slice(0, 220)}` : ''}`),
   ).join('\n\n───\n\n');
 }
 
@@ -741,11 +743,14 @@ async function notiereKontakt(input: Record<string, unknown>, _origin: string, p
   const stufe = STUFEN.includes(input.stufe as never) ? (input.stufe as import('@/lib/make-one/crm').Stufe) : undefined;
   let nachher: import('@/lib/make-one/crm').Kontakt | null = null;
   let folgeHinweis = '';
+  let eingeschraenkt = false;
   await updateJson<{ kontakte: import('@/lib/make-one/crm').Kontakt[] }>('kontakte', current => {
     const f = current ?? { kontakte: [] };
     const i = f.kontakte.findIndex(k => k.id === treffer.id);
     if (i < 0) return f;
     const alt = f.kontakte[i];
+    // Art. 18 (U2): an einer eingeschränkten Person wird nichts festgehalten.
+    if (alt.eingeschraenkt) { eingeschraenkt = true; return f; }
     const folge = e.ergebnis ? folgeAus(e.ergebnis, heute, alt.stufe) : null;
     folgeHinweis = folge?.hinweis ?? '';
     nachher = erfassungAnwenden(alt, {
@@ -754,6 +759,7 @@ async function notiereKontakt(input: Record<string, unknown>, _origin: string, p
     f.kontakte[i] = nachher;
     return f;
   });
+  if (eingeschraenkt) return 'Nicht notiert: die Verarbeitung dieser Person ist eingeschränkt (Art. 18 DSGVO).';
   if (!nachher) return 'Fehlgeschlagen: Kontakt beim Schreiben nicht mehr gefunden.';
   const n = nachher as import('@/lib/make-one/crm').Kontakt;
   const teile = [

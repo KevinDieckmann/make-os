@@ -24,12 +24,15 @@ import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { firmenAbgleichen } from '@/lib/crm/abgleich';
 import { firmenDubletten } from '@/lib/crm/firmen';
 import { dubletten } from '@/lib/crm/dubletten';
-import { kennzahlen, vollstaendigkeit, speicherbegrenzung } from '@/lib/crm/kennzahlen';
+import { kennzahlen, vollstaendigkeit } from '@/lib/crm/kennzahlen';
+import { LOESCHFRISTEN, LOESCHFRISTEN_SPEICHER, fristenWirksam, kontakteUeberFrist, type LoeschfristenBestand } from '@/lib/crm/loeschfristen';
+import { nichtGeprueft, PRUEFEN_MONATE } from '@/lib/crm/geprueft';
 import { art14 } from '@/lib/crm/recht';
 import { STUFEN, OFFENE_STUFEN, gesamtwert, wahrscheinlichkeit } from '@/lib/crm/pipeline';
 import { gemesseneQuoten } from '@/lib/crm/deal-auswertung';
 import { wertelistenVollstaendig, wertelistenPruefen, type Pruefung } from '@/lib/crm/wertelisten';
 import type { ChancenStufe } from '@/lib/crm/typen';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -39,6 +42,9 @@ export async function GET(req: Request) {
   const heute = localDay();
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   let crm = await ladeCrm();
+  // Löschfristen (U2 #52): wirksame Tabelle (Standard + Abweichungen), Personen über der Frist (nie automatisch gelöscht).
+  const lf = (await loadJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER)) ?? {};
+  const fristen = fristenWirksam(lf.fristen);
   if (!crm.verarbeitungen.length) crm = await aendereCrm(c => (c.verarbeitungen.length ? c : { ...c, verarbeitungen: verarbeitungenStart(new Date().toISOString()) }));
   const konten = (await ladeKonten()).konten;
   const vorschlag = pflichtangaben(kontakte, crm);
@@ -65,7 +71,9 @@ export async function GET(req: Request) {
       dublettenPersonen: dubletten(kontakte).length, dublettenFirmen: firmenDubletten(crm.firmen).length,
       ohneFirmenverweis: kontakte.filter(k => k.firma && !k.firmaId).length,
       art14: kontakte.filter(k => art14(k, heute)?.faellig).length,
-      speicherbegrenzung: speicherbegrenzung(kontakte, heute).length,
+      speicherbegrenzung: kontakteUeberFrist(kontakte, crm, heute, fristen.kontakte).length,
+      // „Zuletzt geprüft“ (U2 #34): aktive Beziehungen und Leads, seit über 12 Monaten nicht geprüft (Kennungen + Namen).
+      nichtGeprueft: nichtGeprueft(kontakte, crm, heute).map(x => ({ id: x.id, name: anzeigename(nachId.get(x.id)!), seit: x.seit, nie: x.nie })), pruefenMonate: PRUEFEN_MONATE,
       werbesperren: kontakte.filter(k => k.werbesperre).map(k => ({ id: k.id, seit: k.werbesperre!.seit })),
     },
     wertelisten: {
@@ -74,21 +82,23 @@ export async function GET(req: Request) {
       verlustgruende: voll.verlustgruende.map(g => ({ grund: g.wert, fest: g.fest, anzahl: verlust[g.wert] ?? 0 })),
       kadenzTage: voll.kadenzTage, kadenzStandard: voll.kadenzStandard,
       branchen: voll.branchen, typen: voll.typen, kategorien: voll.kategorien, labels: voll.labels,
-      kadenzPersonen: Object.fromEntries((['A', 'B', 'C', 'D'] as const).map(k => [k, kontakte.filter(x => x.kreis === k && !x.werbesperre).length])),
+      kadenzPersonen: Object.fromEntries((['A', 'B', 'C', 'D'] as const).map(k => [k, kontakte.filter(x => x.kreis === k && !ausgenommen(x)).length])),
       ergebnisse: voll.ergebnisse,
       ziele: voll.ziele,
       ist: { umsatzNeu30: crm.chancen.some(c => c.stufe === 'gewonnen') ? umsatzNeu30 : null, sql30: kpis.find(k => k.id === 'sql_30')?.wert ?? null, gespraecheWoche: kpis.find(k => k.id === 'gespraeche')?.wert ?? null, dealsOffen: crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe)).length },
     },
     letzterImport: letzterImport ? { zeit: letzterImport.ts, text: letzterImport.title ?? '' } : null,
-    selbstpruefung: selbstpruefung(kontakte, crm, heute, { konten: konten.length, mitPasswort: konten.filter(k => !!k.hash).length }),
+    selbstpruefung: selbstpruefung(kontakte, crm, heute, { konten: konten.length, mitPasswort: konten.filter(k => !!k.hash).length }, fristen.kontakte),
     pflichtangaben: {
       anzahl: vorschlag.length, herkunft: zaehl(v => v.herkunft), rechtsgrundlage: zaehl(v => v.rechtsgrundlage), fremddaten: vorschlag.filter(v => v.fremddaten).length,
       beispiele: vorschlag.slice(0, 8).map(v => ({ name: anzeigename(nachId.get(v.id)!), herkunft: v.herkunft, rechtsgrundlage: v.rechtsgrundlage, fremddaten: !!v.fremddaten, grund: v.grund })),
     },
     loeschregeln: LOESCHREGELN,
-    speicherbegrenzung: speicherbegrenzung(kontakte, heute).slice(0, 20).map(k => ({ id: k.id, name: anzeigename(k), seit: k.letzterKontakt ?? k.importiertAm })),
+    // Alle über der Frist (nie gekürzt) — mit „seit“ = letzte Spur (letzter Kontakt, Aktivität, Import, Prüfung).
+    speicherbegrenzung: kontakteUeberFrist(kontakte, crm, heute, fristen.kontakte).map(x => ({ id: x.id, name: anzeigename(nachId.get(x.id)!), seit: x.seit })),
+    loeschfristen: { tabelle: LOESCHFRISTEN, wirksam: fristen, gespeichert: lf.fristen ?? {}, lauf: lf.lauf ?? null },
     antraege: crm.antraege, verarbeitungen: crm.verarbeitungen,
-    befunde: befunde(kontakte, crm, heute),
+    befunde: befunde(kontakte, crm, heute, { loeschMonate: fristen.kontakte }),
     loeschprotokoll: ((await loadJson<{ eintraege: { id: string; datum: string; grund: string; von: string }[] }>('crm-loeschprotokoll'))?.eintraege ?? []).slice(-20).reverse(),
   });
 }

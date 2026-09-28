@@ -236,6 +236,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
             {rollenVon(k).map(r => <Chip key={r} farbe={LEUCHT.business}>{ROLLE_LABEL[r]}</Chip>)}{k.kreis && <Chip farbe={LEUCHT.beziehung}>Kreis {k.kreis}</Chip>}
             <Chip farbe={C.inkDim}>{STUFE_LABEL[k.stufe]}</Chip>{k.prio && <Chip farbe={C.inkDim}>Prio {k.prio}</Chip>}
             {k.werbesperre && <Chip farbe={LEUCHT.kritisch}>Werbesperre</Chip>}
+            {k.eingeschraenkt && <Chip farbe={LEUCHT.kritisch}>Eingeschränkt (Art. 18)</Chip>}
             <span title={`Zuständig: ${nameVon(haeltBeziehung(k))}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.inkLeise, marginLeft: 4 }}><Person id={haeltBeziehung(k)} groesse={18} />{nameVon(haeltBeziehung(k))}</span>
             <AuchHier passt={p => p.includes(`k=${k.id}`)} was="bei dieser Person" />
           </div>

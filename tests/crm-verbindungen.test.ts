@@ -56,7 +56,7 @@ describe('Verbindungsprüfung — sauberer Bestand', () => {
   });
   it('jede Prüfung hat Satz, Schwere und Bereich; reparierbar ist eine feste Teilmenge', () => {
     for (const id of PRUEFUNG_IDS) expect(PRUEFUNGEN[id].text(2)).toMatch(/^\S/);
-    expect(REPARIERBAR).toEqual(['firma-mutter-tot', 'werte-ausserhalb-wertelisten', 'firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'datei-fehlt', 'konflikt-veraltet']);
+    expect(REPARIERBAR).toEqual(['firma-mutter-tot', 'werte-ausserhalb-wertelisten', 'firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'einschraenkung-kampagne', 'datei-fehlt', 'konflikt-veraltet']);
   });
 });
 
@@ -111,6 +111,8 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   ['antrag-kontakt-tot', b => { b.crm.antraege[0].kontaktId = 'c-weg1'; }, 1, 'a-1'],
   ['werbesperre-kampagne', b => { b.kontakte[1].werbesperre = { seit: HEUTE, grund: 'Widerspruch' }; }, 1, 'kp-1'],
   ['werbesperre-einladung', b => { b.kontakte[1].werbesperre = { seit: HEUTE, grund: 'Widerspruch' }; }, 1, 'ev-1'],
+  ['einschraenkung-kampagne', b => { b.kontakte[1].eingeschraenkt = { seit: HEUTE, grund: 'Antrag Art. 18', von: 'kevin' }; }, 1, 'kp-1'],
+  ['einschraenkung-einladung', b => { b.kontakte[1].eingeschraenkt = { seit: HEUTE, grund: 'Antrag Art. 18', von: 'kevin' }; }, 1, 'ev-1'],
   ['werbesperre-followup', b => { b.kontakte[0].werbesperre = { seit: HEUTE, grund: 'Widerspruch' }; }, 1, 'fu-1'],
   ['aufgabe-einheit-ungueltig', b => { b.aufgaben!.liste[1].einheit = 'KD Ventures'; b.aufgaben!.liste.push({ id: 't-3', title: 'x', projectId: 'p', space: 'business', einheit: 'Erfundene Einheit', status: 'todo' }); }, 2, 't-2'],
   ['aufgabe-ohne-einheit', b => { b.aufgaben!.liste.push({ id: 't-4', title: 'x', projectId: 'p', status: 'todo' }, { id: 't-5', title: 'y', projectId: 'p', status: 'done' }); }, 1, 't-4'],
@@ -177,6 +179,9 @@ describe('Verbindungen reparieren', () => {
     // Werbesperre in laufender Kampagne (reparierbar seit 28.09.): eigene gesperrte Person, damit die übrigen Erwartungen gleich bleiben.
     b.kontakte.push({ ...b.kontakte[1], id: 'c-sperr1', firmaId: undefined, werbesperre: { seit: HEUTE, grund: 'Widerspruch' } });
     b.crm.kampagnen[0].kontaktIds.push('c-sperr1');
+    // Art. 18 in laufender Kampagne (U2, reparierbar): eigene eingeschränkte Person.
+    b.kontakte.push({ ...b.kontakte[1], id: 'c-einsch1', firmaId: undefined, eingeschraenkt: { seit: HEUTE, grund: 'Antrag Art. 18', von: 'kevin' } });
+    b.crm.kampagnen[0].kontaktIds.push('c-einsch1');
     b.crm.beitraege[0].quellen.push('c-weg1');
     b.crm.antraege[0].kontaktId = 'c-weg3';
     b.konflikte!.konflikte.push({ kontaktId: 'c-weg1', feld: 'email', online: 1, liste: 2 });

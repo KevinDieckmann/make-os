@@ -26,6 +26,7 @@ import { leadScore, kanalVon, warmPlus, type LeadScore, type KanalId } from './s
 import { beanVon, beanFirma, type BeanId } from './bean';
 import { tagVon } from '@/lib/zeit';
 import { personenJeFirma, firmenDerPerson } from './stationen';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export const LEAD_STATUS: { id: LeadStatus; label: string; weiterWenn: string; aktiv: boolean }[] = [
   { id: 'neu', label: 'Neu', weiterWenn: 'Erste Ansprache über einen zulässigen Kanal.', aktiv: false },
@@ -69,7 +70,7 @@ export function abgeleitet(personen: Kontakt[], offenerDeal: boolean): LeadStatu
   if (offenerDeal || personen.some(k => k.stufe === 'angebot')) return 'sql';
   if (personen.some(k => k.stufe === 'gespraech' || k.stufe === 'termin')) return 'im_gespraech';
   if (personen.some(k => k.stufe === 'angesprochen')) return 'kontaktiert';
-  if (personen.length && personen.every(k => k.stufe === 'verloren' || k.stufe === 'ruht' || k.werbesperre)) return 'ruht';
+  if (personen.length && personen.every(k => k.stufe === 'verloren' || k.stufe === 'ruht' || ausgenommen(k))) return 'ruht';
   return 'neu';
 }
 
@@ -138,11 +139,11 @@ export function leads(kontakte: Kontakt[], crm: CrmBestand, heute: string): Lead
   };
   const raus: LeadZeile[] = [];
   for (const f of crm.firmen) {
-    const personen = (jeFirma.get(f.id) ?? []).filter(k => !k.werbesperre);
+    const personen = (jeFirma.get(f.id) ?? []).filter(k => !ausgenommen(k));
     if (!personen.length || f.rolle === 'dienstleister' || f.rolle === 'investor' || f.rolle === 'wettbewerb') continue;
     raus.push(zeile(f.id, 'firma', f.name, personen, f.lead, f));
   }
-  for (const k of ohneFirma.filter(k => !k.werbesperre)) raus.push(zeile(k.id, 'person', `${anzeigename(k)}${k.firma ? ` (${k.firma})` : ''}`, [k], k.lead));
+  for (const k of ohneFirma.filter(k => !ausgenommen(k))) raus.push(zeile(k.id, 'person', `${anzeigename(k)}${k.firma ? ` (${k.firma})` : ''}`, [k], k.lead));
   const rang = (s: LeadStatus) => ['qualifizierung', 'im_gespraech', 'kontaktiert', 'sql', 'neu', 'kunde', 'ruht', 'kein_fit'].indexOf(s);
   return raus.sort((a, b) => rang(a.status) - rang(b.status) || (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? '') || a.name.localeCompare(b.name));
 }

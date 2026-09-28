@@ -203,6 +203,8 @@ export interface Eintrag {
   /** Leiser Zusatz (z. B. „aus: Nächster Schritt am Deal“, „festgehalten am …“). */
   hinweis?: string;
   ort?: string;
+  /** Anlass eines Anrufs (U2 #58) — bei gelber Telefon-Ampel Pflicht. */
+  anlass?: string;
   /** Stelle im Verlauf des Kontakts (nur Aktivitäten). */
   index?: number;
   /** Die Aktivität selbst (Bearbeiten/Löschen eigener Notizen). */
@@ -238,8 +240,10 @@ export function aufbereiten(k: Kontakt, crm: CrmBestand | null | undefined, o: A
     const b = berlin(a.am);
     const kategorie = KATEGORIE_VON_ART[a.art] ?? 'system';
     const meeting = meetingVon(a);
-    const tag = meeting?.tag ?? b.tag;
-    const zeit = meeting ? meeting.zeit : b.zeit;
+    // Ereigniszeit (U2 #46): auch ein nachgetragener Anruf / eine Mail steht an ihrem Tag (`wann ?? am`).
+    const ereignis = !meeting && a.wann ? berlin(a.wann) : null;
+    const tag = meeting?.tag ?? ereignis?.tag ?? b.tag;
+    const zeit = meeting ? meeting.zeit : ereignis ? (a.wann!.length > 10 ? ereignis.zeit : undefined) : b.zeit;
     const kommend = !!meeting && `${meeting.tag}T${meeting.zeit ?? '23:59'}` > jetzt;
     raus.push({
       anker: anker[i], quelle: 'aktivitaet', kategorie, art: a.art, tag, ...(zeit ? { zeit } : {}), sortier: sortierVon(tag, zeit, i),
@@ -247,7 +251,8 @@ export function aufbereiten(k: Kontakt, crm: CrmBestand | null | undefined, o: A
       ...(meeting ? (meeting.notiz ? { text: meeting.notiz } : {}) : a.text ? { text: a.text } : {}),
       ...(a.notiz && Object.keys(a.notiz).length ? { notiz: a.notiz } : {}), ...(a.ergebnis ? { ergebnis: a.ergebnis } : {}),
       person: a.von, ...(a.bezug ? { bezug: a.bezug } : {}), kommend,
-      ...(meeting ? { hinweis: `festgehalten am ${datumKurz(b.tag)}`, ...(meeting.ort ? { ort: meeting.ort } : {}) } : {}),
+      ...(meeting ? { hinweis: `festgehalten am ${datumKurz(b.tag)}`, ...(meeting.ort ? { ort: meeting.ort } : {}) } : ereignis && ereignis.tag !== b.tag ? { hinweis: `nachgetragen am ${datumKurz(b.tag)}` } : {}),
+      ...(a.anlass ? { anlass: a.anlass } : {}),
       index: i, aktivitaet: a,
     });
   });

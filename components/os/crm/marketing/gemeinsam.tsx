@@ -19,6 +19,7 @@ import { MARKE, stimmeText, genitiv, type FreigabeStand } from '@/lib/crm/market
 import { Pillen } from '../teile';
 import { Person } from '../team';
 import { datum } from '../daten';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export const KPI_FARBE = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch, grau: C.inkLeise } as const;
 
@@ -49,7 +50,7 @@ export function Mehrfach<T extends string>({ liste, aktiv, onWahl, farbe }: { li
 /** Person aus der Kartei suchen (ab zwei Zeichen). Gesperrte Personen stehen nicht zur Wahl. */
 export function PersonWahl({ kontakte, onWahl, platzhalter = 'Person suchen: Name, Firma, Mail …' }: { kontakte: Kontakt[]; onWahl: (k: Kontakt) => void; platzhalter?: string }) {
   const [q, setQ] = useState('');
-  const treffer = useMemo(() => (q.trim().length >= 2 ? findeKontakte(kontakte.filter(k => !k.werbesperre), q, 6) : []), [kontakte, q]);
+  const treffer = useMemo(() => (q.trim().length >= 2 ? findeKontakte(kontakte.filter(k => !ausgenommen(k)), q, 6) : []), [kontakte, q]);
   return (
     <div style={{ display: 'grid', gap: 4 }}>
       <input value={q} onChange={e => setQ(e.target.value)} placeholder={platzhalter} aria-label="Person suchen" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} />

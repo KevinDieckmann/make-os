@@ -30,6 +30,7 @@ import { localDay, tagVon } from '@/lib/zeit';
 import { wer, verantwortlich, haeltBeziehung, nameVon, BEIDE } from '@/lib/crm/team';
 import { leererStand, standName, type HeadStand, type HeadVorschlag, type Status } from '@/lib/heads/stand';
 import { einheitAusBezug } from '@/lib/aufgaben/einheit';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -150,7 +151,7 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
       const crm = await ladeCrm();
       const basis = pb ?? { ...PLAYBOOKS[0], id: 'eigen', name: t.kampagne.name, schritte: [{ text: 'Anlass und Botschaft festlegen', tag: 0 }, { text: 'Personen ansprechen', tag: 2 }, { text: 'Nachfassen', tag: 9 }] };
       const plan = planen(basis, kontakte, crm, localDay(), `kp-${Date.now().toString(36)}`, h === 'sales' ? 'head-sales' : 'head-marketing');
-      const ids = t.kampagne.kontakt_ids.filter(id => kontakte.some(k => k.id === id && !k.werbesperre));
+      const ids = t.kampagne.kontakt_ids.filter(id => kontakte.some(k => k.id === id && !ausgenommen(k)));
       // Zuständig: wer angenommen hat — die Kampagne gehört der Person, die sie führen will.
       await aendereCrm(c => ({ ...c, kampagnen: [...c.kampagnen, { ...plan, name: t.kampagne!.name || plan.name, ziel: t.kampagne!.ziel || plan.ziel, kontaktIds: ids.length ? ids : plan.kontaktIds, notiz: t.begruendung.slice(0, 1000), zustaendig: wer(person) ?? verantwortlich(h), geaendertVon: person }] }));
       wohin = `Kampagnen-Entwurf (${h === 'sales' ? 'Sales' : 'Marketing'} › Kampagnen)`;
@@ -161,7 +162,7 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
       await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
         const f = cur ?? { kontakte: [] };
         return { ...f, kontakte: f.kontakte.map(k => {
-          if (k.id !== t.kontakt_id || k.werbesperre) return k;
+          if (k.id !== t.kontakt_id || ausgenommen(k)) return k;
           if (k.naechsterSchritt && k.naechsterSchritt.datum >= tagVon(jetzt)) { lage.stand = 'schon-da'; return k; }
           lage.stand = 'gesetzt';
           const eintrag = { am: jetzt, art: 'system' as const, von: person, text: `${HEAD_NAME[h]}: nächster Schritt „${t.titel.slice(0, 120)}“ bis ${t.frist} (angenommen)` };

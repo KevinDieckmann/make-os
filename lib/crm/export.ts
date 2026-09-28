@@ -24,6 +24,7 @@ import { localDay } from '@/lib/zeit';
 import { stationenVon, personenDerFirma, STATION_ART_LABEL } from './stationen';
 import { emailsVon, EMAIL_ART_LABEL } from './emails';
 import { typenVon, kategorienVon, labelsVon } from './mehrfach';
+import { nachweisVollstaendig } from './einwilligung';
 export const EXPORTE = ['kontakte', 'firmen', 'deals', 'followups', 'mandate'] as const;
 export type ExportArt = typeof EXPORTE[number];
 export const istExportArt = (v: unknown): v is ExportArt => typeof v === 'string' && (EXPORTE as readonly string[]).includes(v);
@@ -67,6 +68,12 @@ const firmaDerPerson = (p: Kontakt | undefined, f: Map<string, Firma>) => (p ? (
 
 // ── Kontakte (die Kartei) ───────────────────────────────────────────────────
 type KontaktZeile = { k: Kontakt; f?: Firma; l: { phase: LifecyclePhase; vonHand: boolean }; bean: BeanId; firmen: Map<string, Firma> };
+/** Nachweis der gültigen Einwilligungen (U2 #55): „vollständig“, „unvollständig“ oder leer (keine). */
+const nachweisStand = (k: Kontakt): string => {
+  const l = (k.einwilligungen ?? []).filter(e => !e.widerrufenAm);
+  if (!l.length) return '';
+  return l.every(nachweisVollstaendig) ? 'vollständig' : 'unvollständig';
+};
 const KONTAKT_SPALTEN: Spalte<KontaktZeile>[] = [
   ['ID', z => z.k.id], ['VORNAME', z => z.k.vorname], ['NACHNAME', z => z.k.nachname], ['ANREDE', z => z.k.anrede], ['EMAIL', z => z.k.email], ['TELEFON', z => z.k.telefon ?? z.k.sms], ['LINKEDIN', z => z.k.linkedin],
   ['POSITION', z => z.k.position ?? z.k.jobtitel], ['FIRMA_ID', z => z.k.firmaId], ['FIRMA', z => z.f?.name ?? z.k.firma], ['BRANCHE', z => z.f?.branche ?? z.k.firmaBranche], ['STADT', z => z.f?.stadt ?? z.k.firmaStadt], ['WEBSEITE', z => z.f?.webseite ?? z.k.firmaWebseite],
@@ -78,6 +85,9 @@ const KONTAKT_SPALTEN: Spalte<KontaktZeile>[] = [
   ['TYPEN', z => typenVon(z.k).join(' · ')], ['KATEGORIEN', z => kategorienVon(z.k).join(' · ')], ['LABELS', z => labelsVon(z.k).join(' · ')],
   ['WEITERE_EMAILS', z => emailsVon(z.k).filter(a => a.adresse !== (z.k.email ?? '')).map(a => `${a.adresse}${a.art ? ` (${EMAIL_ART_LABEL[a.art]})` : ''}`).join(' · ')],
   ['STATIONEN', z => stationenVon(z.k).map(st => `${z.firmen.get(st.firmaId)?.name ?? st.firmaId}${st.rolle ? `, ${st.rolle}` : ''}${st.art ? ` (${STATION_ART_LABEL[st.art]})` : ''}${st.von || st.bis ? ` ${st.von ?? '…'}–${st.bis ?? (st.aktiv ? 'heute' : '…')}` : ''}${st.aktiv ? '' : ' [ehemalig]'}`).join(' · ')],
+  // U2 (28.09., am Ende angehängt): Art. 18 nur MIT Markierung, Nachweis der Einwilligungen, geprüft, Hinweis bei Erhebung.
+  ['EINGESCHRAENKT', z => (z.k.eingeschraenkt ? `seit ${z.k.eingeschraenkt.seit}` : '')], ['EINWILLIGUNG_NACHWEIS', z => nachweisStand(z.k)],
+  ['GEPRUEFT_AM', z => z.k.geprueftAm], ['HINWEIS_BEI_ERHEBUNG', z => z.k.hinweisBeiErhebung?.am],
 ];
 export function kontakteCsv(q: ExportQuelle): string {
   const firmen = nachId(q.crm.firmen);

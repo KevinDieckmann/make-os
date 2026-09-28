@@ -32,6 +32,7 @@ import { einheitAusBezug } from '@/lib/aufgaben/einheit';
 import { belege } from './belege';
 import { BEIDE } from '@/lib/crm/team';
 import { MODEL_BY_TIER } from '@/lib/agent-config';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 /** Gespeicherte Fälle für Evals (lib/heads/eval.ts, /api/heads/eval). */
 export interface ReplayFall { zeit: string; modus: string; person: string; heute: string; quelle: 'ki' | 'regelwerk'; modell: string; daten: Record<string, unknown>; roh: Antwort }
@@ -195,7 +196,7 @@ async function autoUebernehmen(head: HeadId, berichtId: string, person: string, 
       return { ...f, kontakte: f.kontakte.map(k => {
         const p = schritte.find(x => x.v.kontakt_id === k.id);
         // Nie überschreiben: steht inzwischen ein nächster Schritt da, bleibt der Vorschlag zur Freigabe.
-        if (!p || k.naechsterSchritt || k.werbesperre || !p.v.frist) return k;
+        if (!p || k.naechsterSchritt || ausgenommen(k) || !p.v.frist) return k;
         erledigt.set(p.v.id, { am: jetzt, wirkung: `nächster Schritt an ${k.vorname} ${k.nachname}`.trim(), rueckgaengig: { art: 'schritt', kontaktId: k.id, vorher: null } });
         // Sichtbar im Verlauf der Person (Prüfbericht 27.09., Punkt 17): ein Agent hat gehandelt — rücknehmbar.
         const eintrag = { am: jetzt, art: 'system' as const, von: 'system', text: `Head: nächster Schritt „${p.v.titel.slice(0, 120)}“ bis ${p.v.frist} (automatisch, rücknehmbar)` };

@@ -19,6 +19,7 @@ import { echtesGespraech, OFFENE_STUFEN, STUFEN } from './pipeline';
 import { ankerListe, berlin, meetingVon } from './aktivitaeten';
 import { lifecycleVon, type LifecycleBestand } from './vorschlaege';
 import { LIFECYCLE_LABEL, type LifecyclePhase } from './lifecycle';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export type ZfQuelle =
   | { nr: number; art: 'aktivitaet'; anker: string; am: string; label: string }
@@ -185,7 +186,8 @@ export interface KontaktPaket {
  * Nachweise, keine Kollegen. Mit Werbesperre: null — die Person geht an keinen Agenten.
  */
 export function kontaktPaket(k: Kontakt, crm: Pick<CrmBestand, 'chancen' | 'mandate' | 'firmen'> & Partial<Pick<CrmBestand, 'teilnahmen'>>, heute: string): KontaktPaket | null {
-  if (k.werbesperre) return null;
+  // Werbesperre und Einschränkung (Art. 18, U2): die Person geht an keinen Agenten.
+  if (ausgenommen(k)) return null;
   const z = zusammenfassung(k, crm, heute);
   const l = lifecycleVon(k, crm, heute);
   const firma = k.firmaId ? crm.firmen.find(f => f.id === k.firmaId) : undefined;

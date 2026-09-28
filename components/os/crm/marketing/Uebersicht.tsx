@@ -44,6 +44,7 @@ import { anfragenListe, kanalInfo } from '@/lib/crm/anfragen';
 import { kontextAus, segmentAuswerten } from '@/lib/crm/segmente';
 import { Flaeche, Kachel } from '../../flaeche/Flaeche';
 import { FLAECHE, kachel, standardVon } from '@/lib/crm/flaechen';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 const K = (id: string) => kachel('marketing', id);
 
@@ -75,7 +76,7 @@ export function Uebersicht({ api, zuKontakt, zu, zuAnsicht }: { api: CrmApi; zuK
   const beiWem = useMemo(() => [...TEAM.map(t => t.id), BEIDE].map(p => ({ person: p, posten: lage.filter(x => x.bei === p) })).filter(g => g.posten.length), [lage]);
   const beiMir = lage.filter(x => liegtBei(x, ich));
   const z = useMemo(() => {
-    const aktive = kontakte.filter(k => !k.werbesperre);
+    const aktive = kontakte.filter(k => !ausgenommen(k));
     const kreisAC = aktive.filter(k => k.kreis && k.kreis !== 'D');
     const mailOk = (k: typeof kontakte[number]) => kanalStatus(k, 'mail').farbe === 'gruen';
     const quellen = new Map<string, number>();

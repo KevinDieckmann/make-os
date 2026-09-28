@@ -7,6 +7,7 @@
 // Bezugsschlüssel je Nachricht/Termin.
 
 import type { Kontakt, Aktivitaet } from '@/lib/make-one/crm';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export interface MailEin { id: string; email: string; betreff: string; am: string }
 export interface TerminEin { id: string; titel: string; start: string }
@@ -28,7 +29,7 @@ export const ROLLENPOSTFACH = /^(no-?reply|do-?not-?reply|newsletter|news|info|e
 
 export function mailSignale(kontakte: Kontakt[], mails: MailEin[]): Signal[] {
   const nachMail = new Map<string, Kontakt>();
-  for (const k of kontakte) if (k.email && !k.werbesperre && !ROLLENPOSTFACH.test(k.email) && (k.vorname || k.nachname)) nachMail.set(k.email.toLowerCase(), k);
+  for (const k of kontakte) if (k.email && !ausgenommen(k) && !ROLLENPOSTFACH.test(k.email) && (k.vorname || k.nachname)) nachMail.set(k.email.toLowerCase(), k);
   const raus: Signal[] = [];
   for (const m of mails) {
     const k = nachMail.get(m.email.toLowerCase());
@@ -53,7 +54,7 @@ export function terminSignale(kontakte: Kontakt[], termine: TerminEin[], jetzt: 
   const vergangen: Signal[] = [];
   const kommend: Record<string, { titel: string; start: string }> = {};
   for (const t of termine) {
-    const passend = kontakte.filter(k => !k.werbesperre && personImTitel(k, t.titel));
+    const passend = kontakte.filter(k => !ausgenommen(k) && personImTitel(k, t.titel));
     if (passend.length !== 1) continue; // mehrdeutig → lieber nichts zuordnen
     const k = passend[0];
     if (t.start <= jetzt) {

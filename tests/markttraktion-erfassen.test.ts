@@ -128,10 +128,12 @@ describe('Einwilligung im Gespräch — nur ein ausdrückliches Ja mit Wortlaut'
   });
   it('legt die Mail-Einwilligung mit Wortlaut, Tag und Fragendem an und setzt die Rechtsgrundlage', () => {
     const vorher = k('a', { einwilligungen: [{ kanal: 'telefon', grundlage: 'einwilligung', erteiltAm: '2026-09-01', nachweis: 'Anruf erlaubt' }] });
-    const n = einwilligungUebernehmen(vorher, einwilligungVorlage(), HEUTE, 'kevin')!;
+    const n = einwilligungUebernehmen(vorher, einwilligungVorlage(), HEUTE, 'kevin', `${HEUTE}T09:15:00.000Z`)!;
     expect(n.rechtsgrundlage).toBe('einwilligung');
     expect(n.einwilligungen).toHaveLength(2);
-    expect(n.einwilligungen![1]).toEqual({ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: HEUTE, nachweis: 'Im Gespräch (Kevin): Darf ich Ihnen dazu etwas per Mail schicken? — Ja' });
+    // Voller Nachweis (U2 #55): Wortlaut, Beleg, wer, wann.
+    expect(n.einwilligungen![1]).toEqual({ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: HEUTE, nachweis: 'Im Gespräch (Kevin): Darf ich Ihnen dazu etwas per Mail schicken? — Ja',
+      wortlaut: 'Darf ich Ihnen dazu etwas per Mail schicken? — Ja', belegRef: `Gespräch vom ${HEUTE} (Kevin)`, zeitpunkt: `${HEUTE}T09:15:00.000Z`, erfasstVon: 'kevin' });
     // Danach ist Mail grün — die Ampel liest genau diese Einwilligung.
     expect(kanalStatus({ ...n, email: 'a@b.de' }, 'mail').farbe).toBe('gruen');
     expect(vorher.einwilligungen).toHaveLength(1);

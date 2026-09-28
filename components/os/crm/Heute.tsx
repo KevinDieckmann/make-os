@@ -125,7 +125,9 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
   async function erfassen(k: HeuteKarte, ergebnis: Ergebnis, x?: NotizErgebnis) {
     if (ergebnis === 'sperre' && !window.confirm(`${k.name} widerspricht Werbung? Die Person wird gesperrt und taucht nirgends mehr auf.`)) return;
     const art = ergebnis === 'gespraech' || ergebnis === 'termin' ? (k.kanal?.kanal === 'telefon' || !k.kanal ? 'anruf' : 'gespraech') : 'anruf';
-    const r = await festhalten(api, { id: k.id, art: ergebnis === 'termin' ? 'termin' : art, ergebnis, bezug: k.chance?.id ?? k.bezug, ...(x ? { notiz: x.notiz, naechster: x.naechster } : {}) }, x?.einwilligung, d!.heute);
+    // Anlass (U2 #58): der Grund der Power-Hour-Karte ist der konkrete Anlass aus der Beziehung (Zusage, Deal-Schritt, Takt …).
+    const anlass = x?.notiz?.anlass?.trim() || (k.gruende[0] ? `Power Hour: ${k.gruende[0]}` : '');
+    const r = await festhalten(api, { id: k.id, art: ergebnis === 'termin' ? 'termin' : art, ergebnis, bezug: k.chance?.id ?? k.bezug, ...(x ? { notiz: x.notiz, naechster: x.naechster } : {}), ...(anlass ? { anlass } : {}) }, x?.einwilligung, d!.heute);
     setMeldung([r.hinweis ?? (r.error ? r.error : ''), x?.einwilligung && r.kontakt ? 'Einwilligung für Mail festgehalten.' : ''].filter(Boolean).join(' '));
     setOffen(null); setGewaehlt(null);
     // Ohne Power Hour lädt die Liste über den geänderten Bestand neu.

@@ -25,6 +25,7 @@
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import type { Kampagne } from './typen';
 import { firmenSchluessel } from './firmen';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 import type { NetzStand, VernetzenEinstellung, VorlageId } from './netzwerk-form';
 import { hatTyp } from './mehrfach';
@@ -75,6 +76,7 @@ export function netzStand(k: Pick<Kontakt, 'netzwerk'>, profil: string): NetzSta
 
 /** Wo steht die Person für dieses Profil — und warum? `folgeTage`: nach der Nachricht so lange warten, dann nachfassen. */
 export function netzStufe(k: Kontakt, profil: string, heute: string, folgeTage = 7): { stufe: NetzStufe; grund: string } {
+  if (k.eingeschraenkt) return { stufe: 'raus', grund: 'Verarbeitung eingeschränkt (Art. 18)' };
   if (k.werbesperre) return { stufe: 'raus', grund: 'Werbesperre' };
   const s = netzStand(k, profil);
   if (s?.status === 'abgelehnt' || s?.status === 'zurueckgezogen') return { stufe: 'raus', grund: s.status === 'abgelehnt' ? 'Anfrage abgelehnt' : 'Anfrage zurückgezogen' };
@@ -101,7 +103,7 @@ export interface NetzZahlen { anreichern: number; anfragen: number; warten: numb
 
 /** Wer gehört überhaupt ins Netzwerk? Keine Sperre, kein Wettbewerb, keine Dienstleister. */
 export function netzFaehig(k: Kontakt): boolean {
-  return !k.werbesperre && !hatTyp(k, 'Dienstleister');
+  return !ausgenommen(k) && !hatTyp(k, 'Dienstleister');
 }
 
 /** Wichtige zuerst: Kunden, Kreis A/B, Prio A/B, Leads — dann alphabetisch. */

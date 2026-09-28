@@ -30,6 +30,13 @@
 //     (K2, nur SHA-256)            Hashes): ein erneuter Import legt sie nicht
 //                                  wieder an (#60). Keine Klartexte.
 //
+// U2 (28.09., Datenschutz vollständig): Einwilligungs-Nachweise, Einschränkung (Art. 18), „geprüft“, Hinweis bei
+// Erhebung und Fristverlängerung liegen AM KONTAKT (kein neuer Speicher mit Personenbezug) — Art. 17 nimmt sie mit
+// dem Eintrag, die Auskunft (app/api/crm/datenschutz) listet sie eigens (`nachweisAuskunft`), die Dubletten-
+// Zusammenführung hat eigene Regeln (lib/crm/dubletten.ts). Eine eingeschränkte Person wird nicht gelöscht und
+// nicht zusammengeführt (die Routen lehnen mit 409 ab). `crm-loeschfristen` hält nur Fristen und die Tagesmarke —
+// keine Kennungen; die Löschfrist-Aufgabe (`loeschfrist-kontakte`) nennt weder Kennung noch Namen.
+//
 // Jede Funktion ist idempotent (zweimal laufen ändert nichts mehr) und nimmt je
 // Speicher genau EINE Schreibsperre (updateJson). Reine Teile sind exportiert und getestet.
 

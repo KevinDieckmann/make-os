@@ -206,7 +206,8 @@ describe('7 · Geplantes Meeting ist noch kein Kontakt', () => {
   it('rein: ein vergangenes Meeting zählt sofort; die Kadenz zählt ein geplantes ab seinem Tag', async () => {
     const k = person('c-rein', { stufe: 'angesprochen', letzterKontakt: '2026-09-01' });
     const vorbei = crmLib.wendeAktivitaetAn(k, { art: 'termin', von: 'kevin', wann: '2026-09-20T10:00' }, '2026-09-28', '2026-09-28T08:00:00.000Z', d => d);
-    expect(vorbei.letzterKontakt).toBe('2026-09-28');
+    // Ereigniszeit (U2 #46): ein nachgetragenes Meeting zählt mit SEINEM Tag, nicht mit dem Tag des Festhaltens.
+    expect(vorbei.letzterKontakt).toBe('2026-09-20');
     const geplant = crmLib.wendeAktivitaetAn(k, { art: 'termin', von: 'kevin', wann: '2026-10-05' }, '2026-09-28', '2026-09-28T08:00:00.000Z', d => d);
     expect(geplant.letzterKontakt).toBe('2026-09-01');
     expect(crmLib.letzterKontaktVon(geplant, '2026-09-30')).toBe('2026-09-01');

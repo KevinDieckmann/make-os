@@ -20,6 +20,7 @@ import { TEAM, BEIDE, anderer, nameVon } from '@/lib/crm/team';
 import { datum, type CrmApi } from '../daten';
 import { Feld, Pillen } from '../teile';
 import { Person } from '../team';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export const FORMATE = [{ id: 'stammtisch', label: 'Stammtisch' }, { id: 'workshop', label: 'Workshop' }, { id: 'dinner', label: 'Dinner' }, { id: 'webinar', label: 'Webinar' }, { id: 'messe', label: 'Messe' }, { id: 'sonstig', label: 'Sonstiges' }] as const;
 export const STATUS = [{ id: 'idee', label: 'Idee' }, { id: 'geplant', label: 'Geplant' }, { id: 'einladung', label: 'Einladung läuft' }, { id: 'durchgefuehrt', label: 'Durchgeführt' }, { id: 'abgesagt', label: 'Abgesagt' }] as const;
@@ -169,7 +170,7 @@ export function KarteiSuche({ api, e, platzhalter, onWahl }: { api: CrmApi; e: E
   const crm = api.crm!;
   const drin = new Set(crm.stand.teilnahmen.filter(t => t.eventId === e.id).map(t => t.kontaktId));
   const q = suche.trim().toLowerCase();
-  const treffer = q.length >= 2 ? (api.kontakte ?? []).filter(k => !drin.has(k.id) && !k.werbesperre && `${k.vorname} ${k.nachname} ${k.firma ?? ''} ${k.email ?? ''}`.toLowerCase().includes(q)).slice(0, 6) : [];
+  const treffer = q.length >= 2 ? (api.kontakte ?? []).filter(k => !drin.has(k.id) && !ausgenommen(k) && `${k.vorname} ${k.nachname} ${k.firma ?? ''} ${k.email ?? ''}`.toLowerCase().includes(q)).slice(0, 6) : [];
   return (
     <div>
       <input value={suche} onChange={x => setSuche(x.target.value)} placeholder={platzhalter} aria-label={platzhalter} style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} />

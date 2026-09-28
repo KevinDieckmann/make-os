@@ -12,6 +12,7 @@ import { wer, nameVon, BEIDE } from './team';
 import { markttraktion, mandateLink } from './adresse';
 import { einheitAusBezug } from '@/lib/aufgaben/einheit';
 import type { CrmBestand, CrmListe } from './typen';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 import { tagVon } from '@/lib/zeit';
 export const UEBERGABE_ARTEN = ['kontakt', 'kontakte', 'chance', 'mandat', 'event', 'kampagne', 'beitrag', 'newsletter'] as const;
@@ -44,7 +45,7 @@ export async function uebergeben(b: UebergabeEingabe, person: string): Promise<U
     await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
       const f = cur ?? { kontakte: [] };
       return { ...f, kontakte: f.kontakte.map(k => {
-        if (!ids.has(k.id) || k.werbesperre) return k;
+        if (!ids.has(k.id) || ausgenommen(k)) return k;
         anzahl++; namen.push(anzeigename(k));
         const eintrag = { am: jetzt, art: 'uebergabe' as const, von: person, text: `an ${nameVon(an)}${notiz ? `: ${notiz}` : ''}` };
         return { ...k, besitzer: an, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag], geaendertAm: tagVon(jetzt),

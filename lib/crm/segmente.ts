@@ -13,6 +13,7 @@ import { lifecycleVon, type LifecycleBestand } from './vorschlaege';
 import { beanVon } from './bean';
 import { firmenDerPerson } from './stationen';
 import { typenVon, kategorienVon, labelsVon, enthaeltEinenVon } from './mehrfach';
+import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export interface SegmentKontext {
   firmen: Map<string, Firma>; mitChance: Set<string>; mitMandat: Set<string>; heute: string;
@@ -35,7 +36,8 @@ const enthaelt = (feld: string | undefined, such?: string) => !such || (feld ?? 
 const tage = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a.slice(0, 10)}T12:00:00Z`)) / 864e5);
 
 export function imSegment(k: Kontakt, kr: SegmentKriterien, ctx: SegmentKontext): boolean {
-  if (k.werbesperre) return false;
+  // Werbesperre (Art. 21) und Einschränkung (Art. 18, U2): nie in einem Segment.
+  if (ausgenommen(k)) return false;
   const f = k.firmaId ? ctx.firmen.get(k.firmaId) : undefined;
   // Firmen-Kriterien (Rolle, Branche, Stadt) treffen über JEDE laufende Station (28.09.), die Hauptstation zuerst.
   const firmen = firmenDerPerson(k).map(id => ctx.firmen.get(id)).filter((x): x is NonNullable<typeof x> => !!x);

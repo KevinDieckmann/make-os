@@ -51,7 +51,9 @@ export function dubletten(kontakte: Kontakt[]): [Kontakt, Kontakt][] {
 
 /** Felder, die `zusammenfuehren` eigens behandelt — die allgemeine Lückenfüllung lässt sie aus. */
 const EIGENS: readonly string[] = ['id', 'aktivitaeten', 'geloeschteAktivitaeten', 'einwilligungen', 'werbesperre', 'stufe', 'importiertAm', 'geaendertAm', 'stand',
-  'privatNotiz', 'privatNotizVon', 'netzwerk', 'vonHand', 'lead', 'zahlung', 'stationen', 'emails', 'email', 'firmaId', 'position', 'firma', 'typ', 'typen', 'kategorie', 'kategorien', 'labels'];
+  'privatNotiz', 'privatNotizVon', 'netzwerk', 'vonHand', 'lead', 'zahlung', 'stationen', 'emails', 'email', 'firmaId', 'position', 'firma', 'typ', 'typen', 'kategorie', 'kategorien', 'labels',
+  // U2 (28.09.): Datenschutz-Felder mit eigenen Regeln (unten).
+  'eingeschraenkt', 'geprueftAm', 'geprueftVon', 'hinweisBeiErhebung', 'loeschfristVerlaengert'];
 
 const leer = (v: unknown) => v === undefined || v === null || v === '';
 
@@ -150,6 +152,19 @@ export function zusammenfuehren(a: Kontakt, b: Kontakt, von: string, jetzt: stri
   out.einwilligungen = [...(a.einwilligungen ?? []), ...(b.einwilligungen ?? [])];
   if (!out.einwilligungen.length) delete out.einwilligungen;
   if (b.werbesperre && !a.werbesperre) out.werbesperre = b.werbesperre;
+  // U2 (28.09.): Einschränkung (Art. 18) gilt weiter, wenn einer von beiden sie trägt (die Route lehnt das Zusammenführen
+  // vorher ab — hier nur die Sicherung). Einwilligungen samt vollem Nachweis bleiben oben vollständig (beide Listen).
+  const einsch = a.eingeschraenkt ?? b.eingeschraenkt;
+  if (einsch) out.eingeschraenkt = einsch; else delete out.eingeschraenkt;
+  // „Geprüft“ nur, wenn BEIDE geprüft sind — dann das ältere Datum (die Daten der anderen Hälfte hat sonst niemand gesehen).
+  delete out.geprueftAm; delete out.geprueftVon;
+  if (a.geprueftAm && b.geprueftAm) { const aelter = a.geprueftAm <= b.geprueftAm ? a : b; out.geprueftAm = aelter.geprueftAm; if (aelter.geprueftVon) out.geprueftVon = aelter.geprueftVon; }
+  // Hinweis bei Erhebung: erteilt ist erteilt — der frühere Vermerk.
+  const hinweis = [a.hinweisBeiErhebung, b.hinweisBeiErhebung].filter((x): x is NonNullable<typeof x> => !!x).sort((x, y) => x.am.localeCompare(y.am))[0];
+  if (hinweis) out.hinweisBeiErhebung = hinweis; else delete out.hinweisBeiErhebung;
+  // Fristverlängerung: die längere gilt.
+  const frist = [a.loeschfristVerlaengert, b.loeschfristVerlaengert].filter((x): x is NonNullable<typeof x> => !!x).sort((x, y) => y.bis.localeCompare(x.bis))[0];
+  if (frist) out.loeschfristVerlaengert = frist; else delete out.loeschfristVerlaengert;
   // Die weiter fortgeschrittene Stufe gewinnt; letzter Kontakt der jüngere.
   if (STUFEN.indexOf(b.stufe) > STUFEN.indexOf(a.stufe) && !['verloren', 'ruht'].includes(b.stufe)) out.stufe = b.stufe;
   if ((b.letzterKontakt ?? '') > (a.letzterKontakt ?? '')) out.letzterKontakt = b.letzterKontakt;
