@@ -1,4 +1,5 @@
 'use client';
+import { suchPasst } from '@/lib/text/such-norm';
 import { useSpace } from '@/hooks/useSpace';
 
 // ─── MAKE OS — Schnellsuche (⌘K / Strg+K) ──────────────────────────────────
@@ -40,9 +41,8 @@ const ART: Record<string, { label: string; farbe: string }> = {
 
 /** Offene Aufgaben des aktiven Space, deren Titel passt — im Business mit der Einheit im Untertitel (27.09.). */
 function aufgabenTreffer(tasks: readonly Task[], q: string, space: 'privat' | 'business'): Treffer[] {
-  const t = q.toLocaleLowerCase('de-DE');
   return tasks
-    .filter(a => a.status !== 'done' && a.title.toLocaleLowerCase('de-DE').includes(t) && spaceVonAufgabe(a) === space)
+    .filter(a => a.status !== 'done' && suchPasst([a.title], q) && spaceVonAufgabe(a) === space)
     .slice(0, 4)
     .map(a => ({
       art: 'aufgabe', id: a.id, titel: a.title, href: WEG.aufgabe(a.id), space,
@@ -75,7 +75,7 @@ export function Schnellsuche() {
     if (!offen) return;
     const t = q.trim();
     // Im aktiven Space zuerst (Malin 26.09.): Seiten des anderen Space nur, wenn der Begriff sie direkt trifft.
-    const seiten = SEITEN.filter(s => (!t || s.titel.toLowerCase().includes(t.toLowerCase())) && (!s.space || s.space === space || !!t));
+    const seiten = SEITEN.filter(s => (!t || suchPasst([s.titel], t)) && (!s.space || s.space === space || !!t));
     if (t.length < 2) { setTreffer(seiten.slice(0, 8)); setI(0); return; }
     const ab = new AbortController();
     const timer = setTimeout(() => {
@@ -83,7 +83,7 @@ export function Schnellsuche() {
         // Privat-Space (26.09.): eure Menschen statt der Kartei — das Business-Kontaktbuch ist die Markttraktion.
         fetch('/api/familie', { signal: ab.signal }).then(r => (r.ok ? r.json() : null)).then(d => {
           const menschen = ((d?.familie?.menschen ?? []) as { id: string; name: string; rolle: string; notiz?: string }[])
-            .filter(m => `${m.name} ${m.rolle} ${m.notiz ?? ''}`.toLowerCase().includes(t.toLowerCase())).slice(0, 8)
+            .filter(m => suchPasst([m.name, m.rolle, m.notiz], t)).slice(0, 8)
             .map(m => ({ art: 'mensch', id: m.id, titel: m.name, unter: m.rolle, href: '/os/menschen' }));
           setTreffer([...menschen, ...aufgabenTreffer(aufgabenRef.current, t, 'privat'), ...seiten.slice(0, 3)]); setI(0);
         }).catch(() => {});

@@ -111,7 +111,7 @@ describe('Tolerantes Matching', () => {
     expect(normFirma('Testfirma GmbH & Co. KG')).toBe('testfirma');
     expect(normFirma('Beispiel-Werke e.K.')).toBe('beispielwerke');
     expect(normFirma('Muster UG (haftungsbeschränkt)')).toBe('muster');
-    expect(normTelefon('+49 (0)30 123 45 67')).toBe('0301234567');
+    expect(normTelefon('+49 (0)30 123 45 67')).toBe('+49301234567');   // K2: E.164-nah (vorher „030…“)
     expect(normTelefon('12345')).toBe('');
   });
 

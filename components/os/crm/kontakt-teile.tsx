@@ -250,7 +250,9 @@ export function VerlaufTeil({ k, api, name, heute, max = 60 }: { k: Kontakt; api
 export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; heute: string; setze: Setze }) {
   const { frage, dialog: nachfrage } = useNachfrage();
   const [ew, setEw] = useState<{ kanal: EinwilligungKanal; grundlage: Grundlage; nachweis: string } | null>(null);
-  useEffect(() => { setEw(null); }, [k.id]);
+  // Werbesperre aufheben (K2 #64): nur zusammen mit einer neuen Einwilligung samt Nachweis — ein Schritt, der Server prüft es.
+  const [auf, setAuf] = useState<{ kanal: EinwilligungKanal; nachweis: string } | null>(null);
+  useEffect(() => { setEw(null); setAuf(null); }, [k.id]);
   return (
     <div style={{ display: 'grid', gap: 14 }}>
       <div><Ueberschrift>Grundlage</Ueberschrift>
@@ -286,7 +288,19 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
         <Ueberschrift>Werbewiderspruch (Art. 21)</Ueberschrift>
         {!k.werbesperre
           ? <Knopf leise onClick={() => { if (window.confirm('Werbewiderspruch eintragen? Die Person wird aus allen Listen genommen — dauerhaft.')) void setze({ werbesperre: { seit: heute, grund: 'Widerspruch' }, wiedervorlage: undefined, naechsterSchritt: undefined }); }}>Werbesperre eintragen</Knopf>
-          : <Knopf leise onClick={() => { if (window.confirm('Sperre aufheben? Nur, wenn die Person ausdrücklich wieder eingewilligt hat.')) void setze({ werbesperre: undefined }); }}>Sperre aufheben (nur nach neuer Einwilligung)</Knopf>}
+          : !auf
+            ? <Knopf leise onClick={() => setAuf({ kanal: 'mail', nachweis: '' })}>Sperre aufheben (nur mit neuer Einwilligung)</Knopf>
+            : (
+              <div style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
+                <div style={{ fontSize: 12.5, color: C.inkDim }}>Gesperrt seit {datum(k.werbesperre.seit)}. Aufheben nur, wenn die Person ausdrücklich wieder eingewilligt hat — der Nachweis wird als Einwilligung festgehalten, der Schritt steht im Verlauf.</div>
+                <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: 12.5, color: C.inkLeise }}>Kanal</span><Wahl label="Kanal" liste={EW_KANAL} wert={auf.kanal} onWahl={kanal => setAuf({ ...auf, kanal })} /></span>
+                <input value={auf.nachweis} onChange={e => setAuf({ ...auf, nachweis: e.target.value })} placeholder="Nachweis der neuen Einwilligung: Wortlaut oder Beleg („DOI vom …“, „im Gespräch am …: ja“)" aria-label="Nachweis der Einwilligung" style={{ ...feld, fontSize: TYP.bedien }} />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Knopf aus={auf.nachweis.trim().length < 3} onClick={() => { const neu: Einwilligung = { kanal: auf.kanal, grundlage: 'einwilligung', erteiltAm: heute, nachweis: auf.nachweis.trim() }; void setze({ werbesperre: undefined, einwilligungen: [...(k.einwilligungen ?? []), neu] }); setAuf(null); }}>Mit Nachweis aufheben</Knopf>
+                  <Knopf leise onClick={() => setAuf(null)}>Abbrechen</Knopf>
+                </div>
+              </div>
+            )}
       </div>
       <div>
         <Ueberschrift>Betroffenenrechte</Ueberschrift>

@@ -25,7 +25,9 @@ import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { listePatchen, opsLesen } from '@/lib/store/patch-liste';
 import { mitStand } from '@/lib/store/fingerabdruck';
 import { deltaAus, staende, StandGedaechtnis } from '@/lib/kontakte/delta';
-import { saeubereKontakt, kontaktVereinen, privatNotizVereinen, vonHandMarkieren, fuerPerson, teilAnwenden, massenStufe, pipelineStand, MASSEN_GRENZE, type Kontakt } from '@/lib/make-one/crm';
+import { saeubereKontakt, kontaktVereinen, privatNotizVereinen, fuerPerson, teilAnwenden, massenStufe, pipelineStand, MASSEN_GRENZE, serverStempel, sperreAufhebenPruefen, sperreAufhebenVermerk, sperreBehalten, kontaktZuGross, type Kontakt } from '@/lib/make-one/crm';
+import { sperren, entsperren } from '@/lib/crm/sperrliste';
+import { localDay } from '@/lib/zeit';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { zahlungZusammenfuehren, ibanBehalten } from '@/lib/crm/zahlung';
 import { personEntfernen } from '@/lib/crm/person-bestaende';
@@ -71,6 +73,9 @@ export async function GET(req: Request) {
 export async function PATCH(req: Request) {
   let body: { ops?: unknown; erzwingen?: boolean };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  // Nie abschneiden (K2): zu viele Aktivitäten/Einwilligungen an einem Kontakt → 413 statt stillem Kürzen.
+  const zuViel = Array.isArray(body.ops) ? (body.ops as ({ eintrag?: unknown; felder?: unknown } | null)[]).map(o => kontaktZuGross(o?.eintrag) ?? kontaktZuGross(o?.felder)).find(Boolean) : null;
+  if (zuViel) return NextResponse.json({ error: zuViel }, { status: 413 });
   const roh = opsLesen<Kontakt>(body.ops, saeubereKontakt);
   if (!roh) return NextResponse.json({ error: 'ops muss eine Liste sein.' }, { status: 400 });
   // Private Notizen nur mit ausdrücklicher Person (Regel 5) — ein Dienstaufruf ohne Person sieht sie nicht und fasst sie nicht an.
@@ -86,6 +91,10 @@ export async function PATCH(req: Request) {
 
   /** Ergebnisse eines `teil` — beim anschließenden Vereinen ist ihre IBAN schon entschieden. */
   const ausTeil = new WeakSet<Kontakt>();
+  /** Werbesperre mit Nachweis aufgehoben (K2 #64) — nach dem Schreiben von der Sperrliste nehmen. */
+  const aufgehoben: Kontakt[] = [];
+  // Server-Felder (K2 #68): geaendertAm/importiertAm/vonHand stempelt der Server — Browser-Werte zählen nicht.
+  const heute = localDay();
   const r = await listePatchen<Kontakt, Bestand>('kontakte', 'kontakte', ops, 20, undefined, {
     // Herkunft je Feld (27.09., „Online gewinnt“): was hier von Hand anders wird, überschreibt kein Import mehr.
     // IBAN (28.09., H4): ein ganzer Eintrag aus dem Browser trägt sie nur maskiert (fällt in der Säuberung weg) —
@@ -94,21 +103,33 @@ export async function PATCH(req: Request) {
       // Ohne Person bleibt die gespeicherte private Notiz, wie sie ist (der Aufrufer kannte sie nicht).
       const v = kontaktVereinen(ich ? neu : { ...ohnePrivat(neu), ...(alt.privatNotiz ? { privatNotiz: alt.privatNotiz, privatNotizVon: alt.privatNotizVon } : {}) }, alt, person);
       const zahlung = ausTeil.has(neu) ? v.zahlung : ibanBehalten(v.zahlung, alt.zahlung);
-      return vonHandMarkieren(alt, zahlung === v.zahlung ? v : { ...v, zahlung });
+      const mitZahlung = zahlung === v.zahlung ? v : { ...v, zahlung };
+      // K2: ein ganzer Eintrag hebt eine Sperre nie auf (Sperre gewinnt) — nur ein geprüfter `teil` mit Nachweis.
+      return serverStempel(ausTeil.has(neu) ? mitZahlung : sperreBehalten(mitZahlung, alt), alt, heute);
     },
-    neu: eintrag => vonHandMarkieren(undefined, eintrag),
+    neu: eintrag => serverStempel(eintrag, undefined, heute),
     // `teil`: Felder auf den gespeicherten Kontakt legen, dann dieselbe Prüfung wie für einen ganzen Eintrag.
     // `null` = Feld entfernen (28.09., F1 — `teilAnwenden`), danach säubern; `vonHandMarkieren` (im `vereinen`) zählt das Leeren als von Hand.
     // Löschmarken setzt nur der Server (es gelten die gespeicherten); die IBAN kommt maskiert zurück und bleibt, wenn keine neue gültige kommt (28.09., H4).
     teil: (alt, felder) => {
       const eigene = ich ? felder : ohnePrivat(felder as Pick<Kontakt, 'privatNotiz' | 'privatNotizVon'>) as Record<string, unknown>;
       const zahlung = eigene.zahlung !== undefined && eigene.zahlung !== null ? { zahlung: zahlungZusammenfuehren(eigene.zahlung, alt.zahlung) } : {};
-      const k = saeubereKontakt({ ...teilAnwenden(alt, eigene), ...zahlung });
+      const gesaeubert = saeubereKontakt({ ...teilAnwenden(alt, eigene), ...zahlung });
+      // Werbesperre aufgehoben (geprüft in `pruefen`): System-Aktivität mit Nachweis, danach raus aus der Sperrliste.
+      const k = gesaeubert && alt.werbesperre && !gesaeubert.werbesperre ? sperreAufhebenVermerk(alt, gesaeubert, ich ?? 'system', new Date().toISOString()) : gesaeubert;
+      if (k && alt.werbesperre && !k.werbesperre) aufgehoben.push(k);
       if (k) ausTeil.add(k);
       return k;
     },
     // Massen-Wache INNERHALB der Sperre: wie viele Stufen würden sich ändern?
     pruefen: (liste, ops) => {
+      // Werbesperre aufheben nur mit Einwilligungs-Nachweis im selben Schritt (K2 #64) — gilt auch mit `erzwingen`.
+      for (const o of ops) {
+        if (o.op !== 'teil') continue;
+        const alt = liste.find(k => k.id === o.id);
+        const grund = alt ? sperreAufhebenPruefen(alt, o.felder ?? {}) : null;
+        if (grund) return grund;
+      }
       if (body.erzwingen) return null;
       const nachher = ops.flatMap(o => (o.op === 'upsert' && o.eintrag ? [o.eintrag] : o.op === 'teil' && typeof o.felder?.stufe === 'string' ? [{ ...(liste.find(k => k.id === o.id) ?? { id: o.id }), stufe: o.felder.stufe } as Kontakt] : []));
       const wechsel = massenStufe(liste, nachher);
@@ -116,6 +137,11 @@ export async function PATCH(req: Request) {
     },
   });
   if (!r.ok) return NextResponse.json({ error: r.fehler, ...(r.konflikte ? { konflikte: r.konflikte.map(k => ({ ...k, aktuell: k.aktuell ? sicht(k.aktuell as Kontakt, ich) : undefined })) } : {}) }, { status: 409 });
+  // Sperrliste (K2 #60/#64): neue Sperren eintragen (idempotent), mit Nachweis aufgehobene austragen.
+  const geschrieben = new Set((r.zeilen ?? []).map(z => z.id));
+  const gesperrt = (r.next?.kontakte ?? []).filter(k => geschrieben.has(k.id) && k.werbesperre);
+  if (gesperrt.length) await sperren(gesperrt, 'werbesperre', heute);
+  for (const k of aufgehoben) await entsperren(k);
   for (const id of loeschIds) if (geloeschtVorher.has(id) && !(r.next?.kontakte ?? []).some(k => k.id === id)) await personEntfernen(id, geloeschtVorher.get(id));
   return NextResponse.json({ ok: true, angewandt: r.angewandt, zeilen: r.zeilen ?? [], stand: pipelineStand(r.next?.kontakte ?? []) });
 }

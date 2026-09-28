@@ -236,47 +236,112 @@ const STAMMDATEN = new Set<string>(STAMMDATEN_FELDER);
 /** Stammdaten-Feld = darf vom Import gefüllt und von Hand als „meins“ markiert werden (keine Pipeline, keine Kennung). */
 export const istStammdatenFeld = (f: string): f is keyof Kontakt & string => STAMMDATEN.has(f);
 
-const s = (v: unknown, n = 400) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
-const norm = (v: string) => v.toLowerCase().replace(/[^a-z0-9äöüß@.]/g, '');
+const s = (v: unknown, n = 400) => String(v ?? '').normalize('NFC').replace(/\s+/g, ' ').trim().slice(0, n);
+/** Kennungen (HubSpot-ID) — NFC, klein, nur Buchstaben/Ziffern. Nie für E-Mails (siehe `mailSchluessel`). */
+const norm = (v: string) => v.normalize('NFC').toLowerCase().replace(/[^a-z0-9äöüß@.]/g, '');
 
-// ── Tolerantes Matching (27.09.) ─────────────────────────────────────────────
+// ── Tolerantes Matching (27.09., K2 28.09.) ──────────────────────────────────
 // Die Masterliste schreibt „Dr. Jörg Müller“ und „Müller, Jörg“, die Kartei
 // „Joerg Mueller“; die Firma heißt einmal „Testfirma GmbH & Co. KG“, einmal
-// „Testfirma“. Für den Schlüssel zählt nur der Kern: Umlaute aufgelöst, Titel
-// und Rechtsformen weg, Satzzeichen weg.
+// „Testfirma“ oder „Testfirma G.m.b.H.“. Für den Schlüssel zählt nur der Kern:
+// NFC zuerst (macOS liefert NFD — „u“ + Trema als zwei Zeichen), Umlaute
+// aufgelöst, Titel und Rechtsformen weg, Satzzeichen weg.
 const UMLAUTE: Record<string, string> = { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'ß': 'ss' };
-const entumlauten = (t: string) => t.toLowerCase().replace(/[äöüß]/g, c => UMLAUTE[c] ?? c).normalize('NFKD').replace(/[̀-ͯ]/g, '');
+const entumlauten = (t: string) => t.normalize('NFC').toLowerCase().replace(/[äöüß]/g, c => UMLAUTE[c] ?? c).normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
 const TITEL = new Set(['dr', 'prof', 'dipl', 'ing', 'mba', 'llm', 'phd', 'med', 'jur', 'rer', 'nat', 'pol', 'oec', 'habil', 'mag', 'msc', 'bsc', 'hc', 'dipling', 'diplkfm', 'kfm']);
-const RECHTSFORMEN = new Set(['gmbh', 'ag', 'ug', 'kg', 'ohg', 'gbr', 'se', 'kgaa', 'mbh', 'inc', 'ltd', 'llc', 'corp', 'plc', 'sa', 'sarl', 'bv', 'nv', 'partg', 'mbb', 'eg', 'ev', 'ek', 'haftungsbeschraenkt', 'co', 'cokg', 'und', 'and']);
-const woerter = (t: string) => entumlauten(t).replace(/\be\.\s?(k|v)\.?/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+const RECHTSFORMEN = new Set(['gmbh', 'ag', 'ug', 'kg', 'ohg', 'gbr', 'se', 'kgaa', 'mbh', 'inc', 'ltd', 'llc', 'corp', 'plc', 'sa', 'sarl', 'bv', 'nv', 'partg', 'mbb', 'eg', 'ev', 'ek', 'haftungsbeschraenkt', 'co', 'cokg', 'gmbhcokg', 'und', 'and']);
+// Punkte nach einem einzelnen Buchstaben gehören zu einer Abkürzung: „G.m.b.H.“ → „gmbh“, „e.K.“ → „ek“ — vor dem Wort-Split.
+const woerter = (t: string) => entumlauten(t).replace(/\be\.\s?(k|v)\.?/g, ' ').replace(/\b([a-z])\./g, '$1').replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
 
 /** Name ohne Titel, Umlaute und Satzzeichen — leer, wenn nichts übrig bleibt. */
 export function normName(vorname?: string, nachname?: string): string {
   return woerter(`${vorname ?? ''} ${nachname ?? ''}`).filter(w => !TITEL.has(w)).join('');
 }
-/** Firma ohne Rechtsform, Umlaute und Satzzeichen. */
+/** Firma ohne Rechtsform (auch „G.m.b.H.“, „GmbH & Co. KG“), Umlaute und Satzzeichen. */
 export function normFirma(firma?: string): string {
   return woerter(firma ?? '').filter(w => !RECHTSFORMEN.has(w)).join('');
 }
-/** Telefonnummer nur als Ziffern, Landesvorwahl 49 → 0. Leer unter sechs Ziffern (keine Durchwahl-Treffer). */
+/**
+ * DIE Telefon-Normalisierung (K2, 28.09.) — Import, Dubletten und Kartei nutzen nur diese.
+ * E.164-nah: „+49 (0)30 12 34“, „0049 30 1234“, „030 1234“ → „+49301234“; andere Länder behalten
+ * ihre Vorwahl („0041 …“ → „+41…“). Leer unter sechs Ziffern (keine Durchwahl-Treffer).
+ */
 export function normTelefon(t?: string): string {
-  const z = (t ?? '').replace(/\(0\)/g, '').replace(/[^0-9]/g, '').replace(/^0049/, '0').replace(/^49/, '0');
-  return z.length >= 6 ? z : '';
+  const roh = (t ?? '').normalize('NFC').replace(/\(0\)/g, '').trim();
+  const plus = roh.startsWith('+');
+  let z = roh.replace(/[^0-9]/g, '');
+  if (z.length < 6) return '';
+  if (plus) z = z.startsWith('490') ? `+49${z.slice(3)}` : `+${z}`;   // „+49 030 …“ (Verkehrsnull doppelt) → +4930…
+  else if (z.startsWith('00')) z = `+${z.slice(2)}`;
+  else if (z.startsWith('0')) z = `+49${z.slice(1)}`;
+  else if (z.startsWith('49') && z.length >= 11) z = `+${z}`;
+  else if (z) z = `+49${z}`;
+  return z;
+}
+
+/**
+ * Sammel- und Rollenadressen (info@, kontakt@, office@ …) gehören keinem Menschen — mehrere Personen
+ * einer Firma teilen sie. Als Schlüssel würden sie verschiedene Menschen verschmelzen (K2 #11).
+ */
+const SAMMEL = new Set(['info', 'infos', 'kontakt', 'contact', 'office', 'hallo', 'hello', 'hi', 'mail', 'email', 'e-mail', 'post', 'postfach', 'service', 'kundenservice', 'customerservice',
+  'support', 'team', 'buero', 'büro', 'zentrale', 'empfang', 'rezeption', 'sekretariat', 'verwaltung', 'vertrieb', 'sales', 'anfrage', 'anfragen', 'admin', 'administrator',
+  'noreply', 'no-reply', 'webmaster', 'marketing', 'presse', 'press', 'jobs', 'karriere', 'bewerbung', 'rechnung', 'rechnungen', 'buchhaltung', 'invoice', 'invoices', 'order',
+  'bestellung', 'shop', 'hr', 'personal', 'datenschutz', 'privacy', 'legal', 'impressum', 'newsletter', 'events', 'einkauf', 'kanzlei', 'praxis', 'mitglieder', 'geschaeftsfuehrung', 'gf']);
+/** Ist das eine Sammel-/Rollenadresse (nur der Teil vor dem @ zählt, NFC, klein)? */
+export function istSammelAdresse(email?: string): boolean {
+  const lokal = (email ?? '').normalize('NFC').trim().toLowerCase().split('@')[0] ?? '';
+  return SAMMEL.has(lokal);
+}
+/**
+ * E-Mail als Schlüssel: NFC, trim, klein — sonst nichts. Bindestrich, Unterstrich und Plus bleiben:
+ * „max-muster@…“ und „maxmuster@…“ sind zwei Postfächer (vor K2 verschmolzen sie). Leer ohne @.
+ */
+export function mailSchluessel(email?: string): string {
+  const m = (email ?? '').normalize('NFC').trim().toLowerCase();
+  return m.includes('@') ? m : '';
 }
 
 /**
  * Der Schlüssel, unter dem ein Kontakt wiedererkannt wird.
  *
- * Reihenfolge: E-Mail vor HubSpot-ID vor Name+Firma. E-Mail ist am stabilsten;
+ * Reihenfolge: persönliche E-Mail vor HubSpot-ID vor Name+Firma. E-Mail ist am stabilsten;
  * die HubSpot-ID kennt nur der HubSpot-Teil der Liste; Name+Firma ist der
  * Notnagel für die Kontakte ohne Mail — seit 27.09. tolerant (normName/normFirma).
+ * Sammeladressen (info@ …) zählen nicht als Personenschlüssel (K2, 28.09.).
  * Ohne diesen Schlüssel würde jeder Import alle Zeilen neu anlegen.
  */
 export function schluessel(k: { email?: string; hubspotId?: string; vorname?: string; nachname?: string; firma?: string }): string {
-  const mail = norm(k.email ?? '');
+  const mail = mailSchluessel(k.email);
+  if (mail && !istSammelAdresse(mail)) return `m:${mail}`;
+  if ((k.hubspotId ?? '').trim()) return `h:${norm(k.hubspotId!)}`;
+  return `n:${normName(k.vorname, k.nachname)}|${normFirma(k.firma)}`;
+}
+
+/**
+ * Übergangsregel (K2, 28.09.): die Schlüsselform VOR K2 — E-Mail ohne Satzzeichen außer „.“ und „@“
+ * (auch bei Sammeladressen), HubSpot-ID wie gehabt. Name+Firma ist seit K2 nur toleranter geworden
+ * (jeder alte Treffer ist auch ein neuer), deshalb dort dieselbe Form. Nur `importieren` fragt sie —
+ * damit ein Bestand, der unter der alten Form zusammengefunden hatte, nicht verdoppelt wird.
+ */
+export function schluesselAlt(k: { email?: string; hubspotId?: string; vorname?: string; nachname?: string; firma?: string }): string {
+  const mail = (k.email ?? '').toLowerCase().replace(/[^a-z0-9äöüß@.]/g, '');
   if (mail.includes('@')) return `m:${mail}`;
   if ((k.hubspotId ?? '').trim()) return `h:${norm(k.hubspotId!)}`;
   return `n:${normName(k.vorname, k.nachname)}|${normFirma(k.firma)}`;
+}
+
+/**
+ * Alle Merkmale, an denen dieselbe Person wiedererkannt wird (Sperrliste, K2 #60): persönliche
+ * E-Mail, HubSpot-ID, Name+Firma (nur mit Namen). Klartext — gehasht wird in lib/crm/sperrliste.ts.
+ */
+export function identitaetsMerkmale(k: { email?: string; hubspotId?: string; vorname?: string; nachname?: string; firma?: string }): string[] {
+  const l: string[] = [];
+  const mail = mailSchluessel(k.email);
+  if (mail && !istSammelAdresse(mail)) l.push(`m:${mail}`);
+  if ((k.hubspotId ?? '').trim()) l.push(`h:${norm(k.hubspotId!)}`);
+  const name = normName(k.vorname, k.nachname);
+  if (name) l.push(`n:${name}|${normFirma(k.firma)}`);
+  return l;
 }
 
 /**
@@ -318,6 +383,37 @@ export function stufeAusImport(zeile: Record<string, string>): Stufe {
   return 'neu';
 }
 
+/**
+ * Datum aus der Liste (K2 #10/#23): ISO bleibt, deutsches `TT.MM.JJJJ` (auch `T.M.JJ`) wird ISO,
+ * Excel-Seriennummern nicht (zu unsicher). Unlesbares → `unlesbar` (der Import verwirft es und meldet es).
+ */
+export function datumAusListe(v?: string): { iso?: string; unlesbar: boolean } {
+  const t = (v ?? '').normalize('NFC').trim();
+  if (!t) return { unlesbar: false };
+  let j: number, m: number, d: number;
+  const iso = /^(\d{4})-(\d{2})-(\d{2})(?:[T ].*)?$/.exec(t);
+  const de = /^(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})$/.exec(t);
+  if (iso) { j = +iso[1]; m = +iso[2]; d = +iso[3]; }
+  else if (de) { d = +de[1]; m = +de[2]; j = de[3].length === 2 ? 2000 + +de[3] : +de[3]; }
+  else return { unlesbar: true };
+  const dt = new Date(Date.UTC(j, m - 1, d));
+  if (j < 1900 || j > 2100 || dt.getUTCFullYear() !== j || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return { unlesbar: true };
+  return { iso: `${String(j).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`, unlesbar: false };
+}
+
+/**
+ * Herkunft einer importierten Zeile (Art. 14, K2 #27/#62): aus der Spalte QUELLE, wenn sie es klar sagt,
+ * sonst „Recherche / Liste“ — die Masterliste ist eine angereicherte Recherche.
+ */
+export function herkunftAusQuelle(quelle?: string): Herkunft {
+  const q = (quelle ?? '').toLowerCase();
+  if (/empfehl|empfohlen/.test(q)) return 'empfehlung';
+  if (/hubspot/.test(q)) return 'hubspot';
+  if (/veranstaltung|event|messe|konferenz/.test(q)) return 'veranstaltung';
+  return 'recherche';
+}
+const herkunftIstFremd = (h: Herkunft) => HERKUNFT.find(x => x.id === h)?.fremd ?? true;
+
 /** Eine Zeile der Masterliste wird ein Kontakt. Spaltennamen sind die der Datei. */
 export function ausZeile(z: Record<string, string>, heute: string): Kontakt {
   const k: Kontakt = {
@@ -343,12 +439,15 @@ export function ausZeile(z: Record<string, string>, heute: string): Kontakt {
     recherche: s(z.STATUS_RECHERCHE, 60) || undefined, notiz: s(z.KEVIN_NOTIZ, 800) || undefined,
     hubspotId: s(z.HUBSPOT_ID, 40) || undefined, steckbrief: s(z.STECKBRIEF, 400) || undefined,
     stufe: stufeAusImport(z),
-    letzterKontakt: s(z.LETZTER_KONTAKT, 20) || undefined,
+    letzterKontakt: datumAusListe(z.LETZTER_KONTAKT).iso,
     aktivitaeten: [],
     importiertAm: heute, geaendertAm: heute,
   };
   const besitzer = besitzerAusOwner(k.owner);
   if (besitzer) k.besitzer = besitzer;
+  // Herkunft (Art. 14, K2): Daten aus der Liste stammen nicht von der Person selbst → Art.-14-Uhr ab `importiertAm`.
+  k.herkunft = herkunftAusQuelle(k.quelle);
+  if (herkunftIstFremd(k.herkunft)) k.fremddaten = true;
   // Lifecycle (28.09.): die HubSpot-Spalte LIFECYCLE belegt die Phase nur vor — gesetzt wird sie von Hand.
   const phase = lifecycleAusListe(k.lifecycle);
   if (phase) k.phase = phase;
@@ -414,6 +513,12 @@ export function zusammenfuehren(alt: Kontakt, neu: Kontakt, heute: string): { ko
   if (!alt.besitzer && neu.besitzer) setze('besitzer', neu.besitzer);
   // Lifecycle (28.09.): wie der Besitzer — nur vorbelegen, wenn online noch keine Phase steht; nie überschreiben.
   if (!alt.phase && neu.phase) setze('phase', neu.phase);
+  // Herkunft (Art. 14, K2 28.09.): nur, wenn noch nichts gesetzt ist UND der Kontakt aus derselben Liste stammt
+  // (gleiche QUELLE) — eine von Hand angelegte Person (Visitenkarte, Anfrage) wird nie still zur „Recherche“.
+  if (!alt.herkunft && alt.fremddaten === undefined && neu.herkunft && (alt.quelle ?? '') === (neu.quelle ?? '')) {
+    setze('herkunft', neu.herkunft);
+    if (neu.fremddaten) setze('fremddaten', true);
+  }
   if (geaendert) {
     out.geaendertAm = heute;
     // Ohne Herkunftsliste und ohne Handänderung (Faustregel sagt „nur Import“): ab jetzt exakt führen —
@@ -485,25 +590,68 @@ export interface ImportErgebnis {
   ohneBesitzer: number;
   /** Kennungen aller Kontakte, die diese Liste getroffen hat (neu oder bestehend). */
   betroffen: string[];
+  /** Kennungen der neu angelegten Kontakte (für „Import rückgängig“). */
+  neuIds: string[];
+  /** Zeilen, die auf der Sperrliste stehen und deshalb NICHT angelegt wurden (K2 #60). */
+  gesperrt: number;
+  /** Bestehende Kontakte, die nur über die alte Schlüsselform wiedererkannt wurden (Übergangsregel K2). */
+  uebergang: number;
 }
 
-/** Ein Import über den ganzen Bestand — idempotent: zweimal laufen ändert nichts (Konflikte bleiben, bis sie gelöst sind). */
-export function importieren(bestand: Kontakt[], zeilen: Record<string, string>[], heute: string): ImportErgebnis {
-  const nachSchluessel = new Map(bestand.map(k => [schluessel(k), k]));
-  let neu = 0, aktualisiert = 0, unveraendert = 0, ohneBesitzer = 0;
+export interface ImportOptionen {
+  /** Steht diese (neue) Person auf der Sperrliste? Dann wird sie nicht angelegt (lib/crm/sperrliste.ts). */
+  gesperrt?: (k: Kontakt) => boolean;
+}
+
+/** Widersprechen sich zwei Namen? Leer widerspricht nie; sonst muss der Kern gleich sein. */
+const namenVertraeglich = (a: Kontakt, b: Kontakt) => { const x = normName(a.vorname, a.nachname), y = normName(b.vorname, b.nachname); return !x || !y || x === y; };
+
+/**
+ * Ein Import über den ganzen Bestand — idempotent: zweimal laufen ändert nichts (Konflikte bleiben, bis sie gelöst sind).
+ * Kein Kontakt des Bestands geht verloren, auch wenn zwei denselben Schlüssel tragen (vorher fiel einer still weg).
+ *
+ * Übergangsregel (K2, 28.09.): findet eine Zeile unter dem NEUEN Schlüssel niemanden, wird der Bestand auch unter
+ * der ALTEN Form (`schluesselAlt`) gesucht — aber nur, wenn der Treffer eindeutig ist, in diesem Lauf von keiner
+ * anderen Zeile direkt getroffen wird und die Namen sich nicht widersprechen. So verdoppelt die neue Form keinen
+ * Bestand, und zwei verschiedene Menschen (andere Namen) verschmelzen trotzdem nicht mehr.
+ */
+export function importieren(bestand: Kontakt[], zeilen: Record<string, string>[], heute: string, opt: ImportOptionen = {}): ImportErgebnis {
+  const nachId = new Map(bestand.map(k => [k.id, k]));
+  const index = new Map<string, string>();
+  for (const k of bestand) index.set(schluessel(k), k.id);
+  // Alte Form: nur eindeutige Treffer (mehrdeutig = null).
+  const altIndex = new Map<string, string | null>();
+  for (const k of bestand) { const a = schluesselAlt(k); altIndex.set(a, altIndex.has(a) ? null : k.id); }
+  const kandidaten = zeilen.map(z => ausZeile(z, heute));
+  // Bestand, den irgendeine Zeile direkt trifft — den darf keine andere Zeile über die alte Form an sich ziehen.
+  const direkt = new Set(kandidaten.flatMap(k => { const id = index.get(schluessel(k)); return id ? [id] : []; }));
+  const perUebergang = new Set<string>();
+
+  let neu = 0, aktualisiert = 0, unveraendert = 0, ohneBesitzer = 0, gesperrt = 0;
   const konflikte: Konflikt[] = [];
   const hinweise: MoeglicheDublette[] = [];
   const betroffen = new Set<string>();
-  for (const z of zeilen) {
-    const k = ausZeile(z, heute);
-    if (!k.vorname && !k.nachname && !k.firma) continue;   // leere Zeile
+  const neuIds: string[] = [];
+  zeilen.forEach((z, i) => {
+    const k = kandidaten[i];
+    if (!k.vorname && !k.nachname && !k.firma) return;   // leere Zeile
     const key = schluessel(k);
-    const alt = nachSchluessel.get(key);
+    let altId = index.get(key);
+    if (!altId) {
+      const a = altIndex.get(schluesselAlt(k));
+      const kand = a ? nachId.get(a) : undefined;
+      if (kand && !direkt.has(kand.id) && !perUebergang.has(kand.id) && namenVertraeglich(kand, k)) { altId = kand.id; perUebergang.add(kand.id); }
+    }
     let fertig: Kontakt;
-    if (!alt) { nachSchluessel.set(key, k); neu++; fertig = k; }
-    else {
-      const r = zusammenfuehren(alt, k, heute);
-      nachSchluessel.set(key, r.kontakt);
+    if (!altId) {
+      if (opt.gesperrt?.(k)) { gesperrt++; return; }
+      let id = k.id, n = 2;
+      while (nachId.has(id)) id = `${k.id.slice(0, 56)}-${n++}`;
+      fertig = id === k.id ? k : { ...k, id };
+      nachId.set(fertig.id, fertig); index.set(key, fertig.id); neu++; neuIds.push(fertig.id);
+    } else {
+      const r = zusammenfuehren(nachId.get(altId)!, k, heute);
+      nachId.set(altId, r.kontakt); index.set(key, altId); index.set(schluessel(r.kontakt), altId);
       konflikte.push(...r.konflikte);
       if (r.geaendert) aktualisiert++; else unveraendert++;
       fertig = r.kontakt;
@@ -512,9 +660,12 @@ export function importieren(bestand: Kontakt[], zeilen: Record<string, string>[]
     if (!fertig.besitzer) ohneBesitzer++;
     // Vermerk aus der Liste („⚠ Owner klären (Dublette Kevin/Malin)“) — als Hinweis, nicht als Feld.
     if (/dublette/i.test(s(z.STATUS_RECHERCHE, 200))) hinweise.push({ kontaktId: fertig.id, grund: 'Liste: Owner klären' });
-  }
-  const kontakte = Array.from(nachSchluessel.values());
-  return { kontakte, neu, aktualisiert, unveraendert, konflikte, ohneBesitzer, betroffen: Array.from(betroffen), moeglicheDubletten: [...moeglicheDubletten(kontakte, betroffen), ...hinweise] };
+  });
+  const kontakte = Array.from(nachId.values());
+  return {
+    kontakte, neu, aktualisiert, unveraendert, konflikte, ohneBesitzer, betroffen: Array.from(betroffen), neuIds, gesperrt, uebergang: perUebergang.size,
+    moeglicheDubletten: [...moeglicheDubletten(kontakte, betroffen), ...hinweise],
+  };
 }
 
 // ── Die Tagesliste ──────────────────────────────────────────────────────────
@@ -680,6 +831,22 @@ export function ortSaeubern(v: unknown): string | undefined {
 }
 const zeitpunktSaeubern = (v: unknown): string | undefined => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(v) && v.length <= 30 ? v : undefined);
 
+/**
+ * Obergrenzen je Kontakt (K2, 28.09.) — „nie abschneiden“: vorher kürzte die Säuberung still auf die letzten
+ * 600 Aktivitäten und 30 Einwilligungen, jedes Speichern verlor so den ältesten Verlauf. Jetzt gilt: liegt ein
+ * Eintrag darüber, wird er ABGELEHNT (die Route antwortet 413), nie gekürzt. Lesen kürzt nie.
+ */
+export const AKTIVITAETEN_MAX = 10_000;
+export const EINWILLIGUNGEN_MAX = 500;
+/** Überschreitet ein roher Kontakt (oder die Felder eines `teil`) eine Obergrenze? Dann der Grund, sonst null. */
+export function kontaktZuGross(e: unknown): string | null {
+  if (!e || typeof e !== 'object') return null;
+  const o = e as Record<string, unknown>;
+  if (Array.isArray(o.aktivitaeten) && o.aktivitaeten.length > AKTIVITAETEN_MAX) return `Mehr als ${AKTIVITAETEN_MAX} Aktivitäten an einem Kontakt — abgelehnt, nichts gekürzt.`;
+  if (Array.isArray(o.einwilligungen) && o.einwilligungen.length > EINWILLIGUNGEN_MAX) return `Mehr als ${EINWILLIGUNGEN_MAX} Einwilligungen an einem Kontakt — abgelehnt, nichts gekürzt.`;
+  return null;
+}
+
 export function saeubereKontakt(e: unknown): Kontakt | null {
   if (!e || typeof e !== 'object') return null;
   const o = e as Record<string, unknown>;
@@ -689,11 +856,14 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
   if (!STUFEN.includes(st)) return null;
   const tag = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
   const txt = (v: unknown, n: number) => { const t = String(v ?? '').trim().slice(0, n); return t || undefined; };
-  const akt = Array.isArray(o.aktivitaeten) ? (o.aktivitaeten as unknown[]).slice(-600).map(a => {
+  // Nie kürzen (K2): über der Grenze ist der ganze Eintrag ungültig — die Route lehnt vorher mit 413 ab.
+  if (kontaktZuGross(o)) return null;
+  const akt = Array.isArray(o.aktivitaeten) ? (o.aktivitaeten as unknown[]).map(a => {
     const x = (a ?? {}) as Record<string, unknown>;
     const art = String(x.art ?? '') as AktivitaetArt;
     if (!AKTIVITAET_ARTEN.includes(art)) return null;
-    const von = /^[a-z0-9-]{1,40}$/.test(String(x.von)) ? String(x.von) : 'kevin';
+    // Regel 5 (K2): ohne gültiges `von` nie „kevin“ — ein Eintrag ohne Urheber gilt als System.
+    const von = typeof x.von === 'string' && /^[a-z0-9-]{1,40}$/.test(x.von) && x.von !== 'undefined' && x.von !== 'null' ? x.von : 'system';
     const ergebnis = ERGEBNISSE.includes(x.ergebnis as Ergebnis) ? (x.ergebnis as Ergebnis) : undefined;
     const n = x.notiz && typeof x.notiz === 'object' ? x.notiz as Record<string, unknown> : null;
     const notiz = n ? Object.fromEntries(NOTIZ_FELDER.map(f => [f.id, txt(n[f.id], 1500)]).filter(([, v]) => v)) as NotizVorlage : undefined;
@@ -709,7 +879,7 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
   const verlauf = ohneMarkierte(akt, geloeschteAktivitaeten);
   const GRUNDLAGEN: Grundlage[] = ['einwilligung', 'bestandskunde_7_3', 'mutmasslich_b2b_tel', 'anfrage', 'vertrag', 'intro_akzeptiert'];
   const EW_KANAELE: EinwilligungKanal[] = ['mail', 'telefon', 'social', 'newsletter', 'einladung'];
-  const einwilligungen = Array.isArray(o.einwilligungen) ? (o.einwilligungen as unknown[]).slice(0, 30).map(e => {
+  const einwilligungen = Array.isArray(o.einwilligungen) ? (o.einwilligungen as unknown[]).map(e => {
     const x = (e ?? {}) as Record<string, unknown>;
     if (!EW_KANAELE.includes(x.kanal as EinwilligungKanal) || !GRUNDLAGEN.includes(x.grundlage as Grundlage) || !tag(x.erteiltAm)) return null;
     return { kanal: x.kanal, grundlage: x.grundlage, erteiltAm: tag(x.erteiltAm), nachweis: txt(x.nachweis, 400) ?? '', ...(tag(x.widerrufenAm) ? { widerrufenAm: tag(x.widerrufenAm) } : {}) } as Einwilligung;
@@ -854,6 +1024,51 @@ export function teilAnwenden(alt: Kontakt, felder: Record<string, unknown>): Rec
     } else if (v !== undefined) out[f] = v;
   }
   return { ...out, id: alt.id, geloeschteAktivitaeten: alt.geloeschteAktivitaeten };
+}
+
+// ── Server-Felder und Werbesperre (K2, 28.09.) ───────────────────────────────
+
+/**
+ * `geaendertAm`, `importiertAm` und `vonHand` stempelt der Server (K2 #68) — was der Browser dafür schickt,
+ * zählt nicht: `importiertAm` bleibt der gespeicherte (neu: heute), `geaendertAm` ist heute, `vonHand` ist
+ * der gespeicherte plus jedes Stammdaten-Feld, das sich gegenüber dem Gespeicherten wirklich ändert.
+ */
+export function serverStempel(neu: Kontakt, alt: Kontakt | undefined, heute: string): Kontakt {
+  const { vonHand: _browser, ...rest } = neu;
+  const basis: Kontakt = { ...rest, importiertAm: alt?.importiertAm || heute, geaendertAm: heute, ...(alt?.vonHand ? { vonHand: alt.vonHand } : {}) };
+  return vonHandMarkieren(alt, basis);
+}
+
+/** Die neuen, gültigen Einwilligungen in `neu` gegenüber `alt` (gleiche Fassung zählt nicht). */
+function neueEinwilligungen(alt: Kontakt, neu: unknown): Einwilligung[] {
+  if (!Array.isArray(neu)) return [];
+  const da = new Set((alt.einwilligungen ?? []).map(e => JSON.stringify(e)));
+  return (neu as Einwilligung[]).filter(e => e && typeof e === 'object' && !da.has(JSON.stringify(e)));
+}
+
+/**
+ * Werbesperre aufheben (K2 #64) nur mit Nachweis im SELBEN Schritt: der `teil` bringt eine neue, nicht
+ * widerrufene Einwilligung mit Wortlaut/Beleg (≥ 3 Zeichen), erteilt am Tag der Sperre oder danach.
+ * Liefert den Ablehnungsgrund oder null. Ein ganzer Eintrag (`upsert`) hebt nie auf (`sperreBehalten`).
+ */
+export function sperreAufhebenPruefen(alt: Kontakt, felder: Record<string, unknown>): string | null {
+  if (!alt.werbesperre || felder.werbesperre !== null) return null;
+  const ok = neueEinwilligungen(alt, felder.einwilligungen).some(e => typeof e.nachweis === 'string' && e.nachweis.trim().length >= 3 && !e.widerrufenAm
+    && typeof e.erteiltAm === 'string' && e.erteiltAm >= alt.werbesperre!.seit);
+  return ok ? null : 'Werbesperre aufheben nur mit neuer Einwilligung samt Nachweis im selben Schritt.';
+}
+
+/** Nach dem Aufheben: System-Aktivität mit Kanal und Nachweis (wer, wann, worauf gestützt). */
+export function sperreAufhebenVermerk(alt: Kontakt, neu: Kontakt, person: string, jetztIso: string): Kontakt {
+  if (!alt.werbesperre || neu.werbesperre) return neu;
+  const e = neueEinwilligungen(alt, neu.einwilligungen).find(x => x.nachweis?.trim());
+  const text = `Werbesperre aufgehoben (seit ${alt.werbesperre.seit}) — neue Einwilligung${e ? ` (${e.kanal}, ${e.erteiltAm}): „${e.nachweis.trim().slice(0, 200)}“` : ''}`;
+  return { ...neu, aktivitaeten: [...(neu.aktivitaeten ?? []), { am: jetztIso, art: 'system', text, von: person }] };
+}
+
+/** Ein ganzer Eintrag ohne Sperre (älteres Fenster, ZOE) hebt eine gespeicherte Sperre nie auf — Sperre gewinnt. */
+export function sperreBehalten(neu: Kontakt, alt: Kontakt): Kontakt {
+  return alt.werbesperre && !neu.werbesperre ? { ...neu, werbesperre: alt.werbesperre } : neu;
 }
 
 // ── Private Notiz: nur für die Person, die sie schrieb (Kevins Entscheidung 25.09.) ──

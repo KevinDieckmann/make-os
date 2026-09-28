@@ -14,6 +14,7 @@ import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { folgeAus } from '@/lib/crm/heute';
 import { localDay, tagePlus } from '@/lib/zeit';
+import { sperren } from '@/lib/crm/sperrliste';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -112,6 +113,9 @@ export async function POST(req: Request) {
     return f;
   });
   if (!ergebnis) return NextResponse.json({ error: `Kein Kontakt mit id ${id}.` }, { status: 404 });
+  // Werbesperre (Ergebnis „Sperre“): auch auf die gehashte Sperrliste (K2 #60) — ein Import legt die Person nie neu an.
+  const gespeichert = ergebnis as Kontakt | null;
+  if (gespeichert?.werbesperre) await sperren([gespeichert], 'werbesperre', heute);
   // Karte aus einer Kampagne: das Ergebnis zählt auch dort (Power Hour ↔ Kampagne).
   if (bezug?.startsWith('kp-') && erg) {
     const kErg = erg === 'gespraech' || erg === 'termin' ? 'gespraech' : erg === 'kein_bedarf' || erg === 'sperre' ? 'kein_interesse' : 'angesprochen';

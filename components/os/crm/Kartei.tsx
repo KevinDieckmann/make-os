@@ -19,6 +19,7 @@
 // übergeben, je Person „Übergeben“ und „Malin ist gerade hier“. Die private
 // Notiz sieht nur, wer sie schrieb (serverseitig).
 
+import { suchPasst } from '@/lib/text/such-norm';
 import { useNachfrage } from './Nachfrage';
 import { localDay } from '@/lib/zeit';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -95,9 +96,10 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   ] as [Ansicht, string][]).map(([id, l]) => ({ id, label: `${l} ${zaehlung[id]}` }));
 
   const treffer = useMemo(() => {
-    const q = suche.trim().toLowerCase();
+    const q = suche.trim();
     let l = kontakte.filter(filter[ansicht]).filter(k => passtWer(wer, k.besitzer, 'sales', ich)).filter(k => !lc || lifecycle.get(k.id)?.phase === lc).filter(k => !bn || beans.get(k.id)?.bean === bn);
-    if (q) l = l.filter(k => [anzeigename(k), k.firma ?? '', k.email ?? '', k.firmaBranche ?? '', k.position ?? '', k.firmaStadt ?? '', k.telefon ?? ''].join(' ').toLowerCase().includes(q));
+    // Eine Such-Normalisierung (K2 #105): „mueller“ findet „Müller“ (auch NFD), „strasse“ „Straße“; jedes Wort muss passen.
+    if (q) l = l.filter(k => suchPasst([anzeigename(k), k.firma, k.email, k.firmaBranche, k.position, k.firmaStadt, k.telefon], q));
     const rang = (k: Kontakt) => (k.lebensphase === 'kunde' ? 0 : k.kreis === 'A' ? 1 : k.kreis === 'B' ? 2 : k.prio === 'A' ? 3 : k.prio === 'B' ? 4 : 5);
     return [...l].sort((a, b) => (ansicht === 'dubletten' ? anzeigename(a).localeCompare(anzeigename(b)) : rang(a) - rang(b) || anzeigename(a).localeCompare(anzeigename(b))));
   }, [kontakte, suche, ansicht, filter, wer, ich, lc, lifecycle, bn, beans]);

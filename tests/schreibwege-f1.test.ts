@@ -85,11 +85,14 @@ describe('1 · kontaktTeil leert Felder (null = entfernen)', () => {
     const { leerAlsNull } = await import('@/components/os/crm/daten');
     const r = await teil('c-leeren', JSON.parse(JSON.stringify(leerAlsNull({
       naechsterSchritt: undefined, firmaId: undefined, firma: undefined, bean: undefined, kreis: undefined, anrede: undefined, lebensphase: undefined, besitzer: undefined,
-      privatNotiz: undefined, fremddaten: undefined, werbesperre: undefined,
+      privatNotiz: undefined, fremddaten: undefined,
     }))));
     expect(r.status).toBe(200);
     const k = await gespeichert('c-leeren');
-    for (const f of ['naechsterSchritt', 'firmaId', 'firma', 'bean', 'kreis', 'anrede', 'lebensphase', 'besitzer', 'privatNotiz', 'privatNotizVon', 'fremddaten', 'werbesperre'] as const) expect(k[f], f).toBeUndefined();
+    for (const f of ['naechsterSchritt', 'firmaId', 'firma', 'bean', 'kreis', 'anrede', 'lebensphase', 'besitzer', 'privatNotiz', 'privatNotizVon', 'fremddaten'] as const) expect(k[f], f).toBeUndefined();
+    // K2 #64: die Werbesperre leert ein `null` allein NICHT mehr — nur zusammen mit neuer Einwilligung samt Nachweis (tests/crm-k2-routen.test.ts).
+    expect((await teil('c-leeren', { werbesperre: null })).status).toBe(409);
+    expect(k.werbesperre).toBeDefined();
     // Geleertes Stammdaten-Feld zählt als von Hand — der nächste Import füllt es nicht still wieder auf.
     expect(k.vonHand).toContain('firma');
     // Kennung, Stufe und Verlauf lassen sich nicht wegnullen.

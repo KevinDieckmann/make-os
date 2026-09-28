@@ -293,10 +293,14 @@ export function kriterienText(kr: SegmentKriterien): string {
 }
 
 // ── CSV ────────────────────────────────────────────────────────────────────
-/** Eine Zelle: Semikolon-sicher und ohne Formel-Einschleusung (=, @, +/- vor Nicht-Ziffer). */
+/**
+ * Eine Zelle: Semikolon-sicher und ohne Formel-Einschleusung (K2 #28). Beginnt sie mit =, @, Tab/CR oder
+ * + / -, wird ein ' vorangestellt — + und - IMMER, außer bei einer reinen Telefonnummer/Zahl
+ * (`+49 30 123`, `-5`). Vorher kam „-1+1+cmd|…“ oder „+1+…“ unmaskiert durch (Ziffer nach dem Zeichen).
+ */
 export function csvZelle(v?: string | number | null): string {
   let t = String(v ?? '').replace(/\r?\n/g, ' ');
-  if (/^[=@\t\r]/.test(t) || /^[+-][^\d\s]/.test(t)) t = `'${t}`;
+  if (/^[=@\t\r]/.test(t) || (/^[+-]/.test(t) && !/^\+?[\d\s/()-]+$/.test(t))) t = `'${t}`;
   return /[;"]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
 }
 /** UTF-8 mit BOM, damit Excel die Umlaute richtig liest. */

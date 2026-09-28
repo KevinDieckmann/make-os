@@ -7,21 +7,25 @@
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { WEG } from '@/lib/wege';
 import { NextResponse } from 'next/server';
-import { loadJson } from '@/lib/store/local-db';
+import { loadJson, speicherStand } from '@/lib/store/local-db';
+import { suchNorm, suchWoerter } from '@/lib/text/such-norm';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm } from '@/lib/crm/speicher';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const norm = (t?: string) => (t ?? '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '');
+// Eine Such-Normalisierung für alles (K2 #105, lib/text/such-norm.ts): „mueller“ findet „Müller“ (NFC und NFD), „strasse“ „Straße“.
+const norm = suchNorm;
 
-// Beim Tippen kommen viele Anfragen kurz hintereinander — 15 Sekunden reichen als Frische.
-let zwischen: { t: number; kontakte: Kontakt[]; crm: Awaited<ReturnType<typeof ladeCrm>> } | null = null;
+// Beim Tippen kommen viele Anfragen kurz hintereinander — 15 Sekunden reichen als Frische, aber nur, solange sich
+// Kartei und CRM nicht geändert haben (K2 #106): der Zwischenstand hängt am Speicherstand.
+let zwischen: { t: number; stand: string; kontakte: Kontakt[]; crm: Awaited<ReturnType<typeof ladeCrm>> } | null = null;
 async function bestand() {
-  if (zwischen && Date.now() - zwischen.t < 15_000) return zwischen;
+  const stand = await speicherStand(['kontakte', 'crm']);
+  if (zwischen && zwischen.stand === stand && Date.now() - zwischen.t < 15_000) return zwischen;
   const [k, crm] = await Promise.all([loadJson<{ kontakte: Kontakt[] }>('kontakte'), ladeCrm()]);
-  zwischen = { t: Date.now(), kontakte: k?.kontakte ?? [], crm };
+  zwischen = { t: Date.now(), stand, kontakte: k?.kontakte ?? [], crm };
   return zwischen;
 }
 
@@ -29,7 +33,7 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const q = norm(new URL(req.url).searchParams.get('q') ?? '').trim();
   if (q.length < 2) return NextResponse.json({ ok: true, treffer: [] });
-  const w = q.split(/\s+/).filter(Boolean);
+  const w = suchWoerter(q);
   const passt = (felder: (string | undefined)[]) => { const t = norm(felder.filter(Boolean).join(' ')); return w.every(x => t.includes(x)); };
   const punkte = (name: string) => (norm(name).startsWith(q) ? 3 : norm(name).includes(q) ? 2 : 1);
   const { kontakte, crm } = await bestand();

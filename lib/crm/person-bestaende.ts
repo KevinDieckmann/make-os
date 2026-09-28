@@ -24,6 +24,11 @@
 //                                  oder Link k=<id>): voller Name → „[gelöscht]“,
 //                                  Link raus; Aufgabe bleibt (eure Arbeit).
 //                                  Nur-Namens-Treffer werden gemeldet, nie geändert.
+//   crm-import-laeufe--<haushalt>  Vorher-Stand/Kennung/Fingerabdruck der      bewusst NICHT (Vorher-Stände sind Geschichte;
+//     (K2, „Import rückgängig“)    Person aus jedem Lauf raus                  „rückgängig“ meldet den Zusammengeführten als Konflikt)
+//   crm-sperrliste--<haushalt>     Person KOMMT HINZU (Grund „loeschung“, nur  —
+//     (K2, nur SHA-256)            Hashes): ein erneuter Import legt sie nicht
+//                                  wieder an (#60). Keine Klartexte.
 //
 // Jede Funktion ist idempotent (zweimal laufen ändert nichts mehr) und nimmt je
 // Speicher genau EINE Schreibsperre (updateJson). Reine Teile sind exportiert und getestet.
@@ -39,6 +44,8 @@ import type { DateiEintrag } from '@/lib/dateien/regeln';
 import { HEADS, type HeadId } from '@/lib/heads/prompt';
 import { leererStand, standName, type HeadStand, type HeadBericht } from '@/lib/heads/stand';
 import type { ReplayStand } from '@/lib/heads/lauf';
+import { laufHaushalte, laufName, laufOhne, type LaufBestand } from './import-lauf';
+import { sperren } from './sperrliste';
 
 // ── Reine Helfer ─────────────────────────────────────────────────────────────
 
@@ -259,7 +266,7 @@ const zaehle = (b: PersonBericht, name: string, n: number) => { if (n) b.speiche
  * Art. 17: die Person aus ALLEN Speichern entfernen (auch aus der Kartei). Idempotent. Liefert, was wo geändert wurde.
  * Der Löschprotokoll-Eintrag bleibt Sache der Route.
  */
-export async function personEntfernen(id: string, bekannt?: Pick<Kontakt, 'vorname' | 'nachname'>): Promise<PersonBericht> {
+export async function personEntfernen(id: string, bekannt?: Pick<Kontakt, 'vorname' | 'nachname'> & Partial<Pick<Kontakt, 'email' | 'hubspotId' | 'firma'>>): Promise<PersonBericht> {
   const b: PersonBericht = { speicher: {}, aufgabenPruefen: [] };
   if (!id) return b;
   let kontakt: Kontakt | undefined;
@@ -273,6 +280,20 @@ export async function personEntfernen(id: string, bekannt?: Pick<Kontakt, 'vorna
   // Name für die Freitext-Suche (Heads, Aufgaben) — gibt es den Kontakt nicht mehr (zweiter Lauf), bleibt es bei der Kennung.
   // `bekannt`: der Aufrufer hat die Kartei schon selbst geleert (PATCH /api/state/kontakte, op 'delete') und reicht den Namen nach.
   const name = vollerName(kontakt ?? bekannt);
+
+  // Sperrliste (K2 #60): nur Hashes der Merkmale — ein erneuter Import der Liste legt die Person nicht wieder an.
+  const person = kontakt ?? bekannt;
+  if (person && await sperren([person], 'loeschung', new Date().toISOString())) zaehle(b, 'crm-sperrliste', 1);
+
+  // Import-Läufe (K2 #25): der Vorher-Stand der Person verschwindet aus jedem Lauf.
+  for (const h of await laufHaushalte()) {
+    await updateJson<LaufBestand>(laufName(h), cur => {
+      let n = 0;
+      const laeufe = (cur?.laeufe ?? []).map(l => { const r = laufOhne(l, id); n += r.n; return r.lauf; });
+      zaehle(b, laufName(h), n);
+      return n ? { laeufe } : (cur ?? { laeufe: [] });
+    });
+  }
 
   const vorher = await ladeCrm();
   if (enthaeltKennung(vorher, id)) { await aendereCrm(c => crmOhne(c, id)); zaehle(b, 'crm', 1); }
@@ -356,5 +377,8 @@ export async function personAufzaehlen(id: string) {
   const kommenderTermin = (await loadJson<SignalStand>('crm-signale'))?.kommend?.[id] ?? null;
   const tasks = (await loadJson<Tasks>('tasks'))?.tasks ?? [];
   const aufgaben = aufgabenZuordnen(tasks, id, headAufgaben, null).eindeutig.map(t => ({ id: t.id, titel: t.title, status: t.status, ...(t.dueDate ? { faellig: t.dueDate } : {}) }));
-  return { ...personVerweise(crm, id), dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben };
+  // Import-Läufe (K2): in wie vielen Läufen ein Vorher-Stand der Person liegt (Inhalt = frühere Fassung derselben Stammdaten).
+  let importLaeufe = 0;
+  for (const h of await laufHaushalte()) importLaeufe += ((await loadJson<LaufBestand>(laufName(h)))?.laeufe ?? []).filter(l => laufOhne(l, id).n > 0).length;
+  return { ...personVerweise(crm, id), dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe };
 }

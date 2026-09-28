@@ -10,7 +10,13 @@
 //   POST { csv, name } | { pfad } | {}     → schreiben
 //   POST { …, vorschau: true }             → alles rechnen, nichts schreiben
 //   POST { aktion: 'konflikt', kontaktId, feld, wahl: 'online' | 'liste' }
-//   GET                                    → offene Konflikte, mögliche Dubletten, ohne Besitzer
+//   POST { aktion: 'rueckgaengig', laufId }→ Import-Lauf zurücknehmen (K2 #25, lib/crm/import-lauf.ts)
+//   GET                                    → offene Konflikte, mögliche Dubletten, ohne Besitzer, Läufe (30 Tage)
+//
+// K2 (28.09.): die Vorschau prüft die Datei (Spaltenzahl, Excel-„E+“, verlorene PLZ-Null, unlesbares Datum —
+// lib/crm/import-pruefung.ts) und zählt, wer auf der Sperrliste steht (nicht angelegt, lib/crm/sperrliste.ts).
+// Jeder schreibende Import bekommt eine Lauf-ID; der Vorher-Stand der geänderten Kontakte liegt VOR dem
+// Schreiben in `crm-import-laeufe--<haushalt>` — „Import rückgängig“ je Lauf, 30 Tage.
 //
 // Der Pfad ist auf den Leadordner beschränkt. Die Schnittstelle ist zwar
 // schlüsselgeschützt, aber „lies mir beliebige Dateien" darf trotzdem keine
@@ -23,8 +29,8 @@ import { NextResponse } from 'next/server';
 import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
-import { loadJson, schrumpftZuStark, updateJson } from '@/lib/store/local-db';
-import { csvLesen, trennerVon } from '@/lib/make-one/csv';
+import { loadJson, schrumpftZuStark, updateJson, updateJsonAsync } from '@/lib/store/local-db';
+import { csvLesenMitBefund, trennerVon } from '@/lib/make-one/csv';
 import { importieren, pipelineStand, istStammdatenFeld, VON_HAND_MAX, type Kontakt } from '@/lib/make-one/crm';
 import { firmenAbgleichen } from '@/lib/crm/abgleich';
 import { aendereCrm } from '@/lib/crm/speicher';
@@ -32,6 +38,11 @@ import { KONFLIKT_SPEICHER, leererKonfliktStand, SEGMENT_VERNETZEN_ID, segmentVe
 import { localDay } from '@/lib/zeit';
 import { logRun } from '@/lib/agent-log';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
+import { importPruefen } from '@/lib/crm/import-pruefung';
+import { karteiHaushalt, sperrlisteLaden, sperrlisteNachtragen, sperrPruefer } from '@/lib/crm/sperrliste';
+import { kontaktAbdruck, laeufeLaden, laufAblegen, laufKurz, laufName, laufNachherSetzen, neueLaufId, rueckgaengigRechnen, LAUF_ID_OK, type ImportLauf, type LaufBestand } from '@/lib/crm/import-lauf';
+import { enthaeltKennung } from '@/lib/crm/person-bestaende';
+import { ladeCrm } from '@/lib/crm/speicher';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -44,17 +55,20 @@ interface Bestand { kontakte: Kontakt[] }
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const st = (await loadJson<KonfliktStand>(KONFLIKT_SPEICHER)) ?? leererKonfliktStand();
-  return NextResponse.json({ ok: true, ...st });
+  const laeufe = (await laeufeLaden(await karteiHaushalt())).map(laufKurz).reverse();
+  return NextResponse.json({ ok: true, ...st, laeufe });
 }
 
-type Body = { pfad?: string; csv?: string; name?: string; vorschau?: boolean; aktion?: string; kontaktId?: string; feld?: string; wahl?: string };
+type Body = { pfad?: string; csv?: string; name?: string; vorschau?: boolean; aktion?: string; kontaktId?: string; feld?: string; wahl?: string; laufId?: string };
 
 export async function POST(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+  const wer = await imHaushaltDesInhabers(req);
+  if (!wer) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   if (zuGross(req, 12_000_000)) return ZU_GROSS(12_000_000);
   let body: Body = {};
   try { body = await req.json(); } catch { /* ohne Body: Standarddatei */ }
   if (body.aktion === 'konflikt') return konfliktLoesen(body);
+  if (body.aktion === 'rueckgaengig') return rueckgaengig(body, wer.person);
 
   let text: string;
   let quelle: string;
@@ -71,17 +85,24 @@ export async function POST(req: Request) {
     quelle = pfad.replace(homedir(), '~');
   }
 
-  const zeilen = csvLesen(text, trennerVon(text));
+  const befund = csvLesenMitBefund(text, trennerVon(text));
+  const zeilen = befund.zeilen;
   if (!zeilen.length) return NextResponse.json({ error: 'Keine Zeilen in der Datei.' }, { status: 400 });
   const heute = localDay();
+  const pruefung = importPruefen(befund);
+
+  // Sperrliste (K2 #60): wer eine Werbesperre trägt, steht darauf (nachtragen, idempotent) — gesperrte Zeilen werden nicht angelegt.
+  await sperrlisteNachtragen((await loadJson<Bestand>('kontakte'))?.kontakte ?? []);
+  const gesperrt = sperrPruefer(await sperrlisteLaden());
 
   // Vorschau: alles rechnen auf dem aktuellen Stand, nichts schreiben. Beispiele nur Kennungen und Feldnamen.
   if (body.vorschau) {
     const vorher = (await loadJson<Bestand>('kontakte'))?.kontakte ?? [];
-    const r = importieren(vorher, zeilen, heute);
+    const r = importieren(vorher, zeilen, heute, { gesperrt });
     return NextResponse.json({
       ok: true, vorschau: true, zeilen: zeilen.length, neu: r.neu, aktualisiert: r.aktualisiert, unveraendert: r.unveraendert,
       konflikte: r.konflikte.length, moeglicheDubletten: r.moeglicheDubletten.length, ohneBesitzer: r.ohneBesitzer,
+      gesperrt: r.gesperrt, uebergang: r.uebergang, warnungen: pruefung.warnungen, pruefung: pruefung.zaehler,
       abgelehnt: schrumpftZuStark(vorher.length, r.kontakte.length, 20),
       beispiele: { konflikte: r.konflikte.slice(0, 10).map(k => ({ kontaktId: k.kontaktId, feld: k.feld })), moeglicheDubletten: r.moeglicheDubletten.slice(0, 10) },
     });
@@ -89,13 +110,22 @@ export async function POST(req: Request) {
 
   // Stufe 2: Lesen, Einarbeiten und Schrumpf-Schutz in EINER Schreibsperre — vorher las der Import außerhalb,
   // und eine Änderung dazwischen (Klick in der Kartei) wurde vom Import-Stand überschrieben.
+  // K2 #25: in derselben Sperre, VOR dem Schreiben, den Lauf mit dem Vorher-Stand der geänderten Kontakte ablegen.
   let r: ReturnType<typeof importieren> | null = null;
   let abgelehnt = false;
-  await updateJson<Bestand>('kontakte', cur => {
+  const haushalt = await karteiHaushalt();
+  const lauf: ImportLauf = { id: neueLaufId(), am: new Date().toISOString(), person: wer.person, quelle, neu: [], vorher: [], nachher: {} };
+  let mitLauf = false;
+  await updateJsonAsync<Bestand>('kontakte', async cur => {
     const vorher = cur?.kontakte ?? [];
-    r = importieren(vorher, zeilen, heute);
-    if (schrumpftZuStark(vorher.length, r.kontakte.length, 20)) { abgelehnt = true; return cur ?? { kontakte: [] }; }
-    return { ...(cur ?? {}), kontakte: r.kontakte };
+    const ergebnis = importieren(vorher, zeilen, heute, { gesperrt });
+    r = ergebnis;
+    if (schrumpftZuStark(vorher.length, ergebnis.kontakte.length, 20)) { abgelehnt = true; return cur ?? { kontakte: [] }; }
+    const alt = new Map(vorher.map(k => [k.id, k]));
+    lauf.neu = ergebnis.neuIds;
+    lauf.vorher = ergebnis.kontakte.flatMap(k => { const a = alt.get(k.id); return a && kontaktAbdruck(a) !== kontaktAbdruck(k) ? [a] : []; });
+    if (lauf.neu.length || lauf.vorher.length) { await laufAblegen(haushalt, lauf); mitLauf = true; }
+    return { ...(cur ?? {}), kontakte: ergebnis.kontakte };
   });
   if (abgelehnt || !r) return NextResponse.json({ error: 'Abgelehnt: der Import hätte den Bestand halbiert.' }, { status: 409 });
   r = r as ReturnType<typeof importieren>;
@@ -110,11 +140,15 @@ export async function POST(req: Request) {
 
   // Firmen als eigene Stammdaten: neue anlegen, Personen verknüpfen, leere Felder füllen.
   const firmen = await firmenAbgleichen();
-  await logRun('crm', `Import: ${r.neu} neu, ${r.aktualisiert} aktualisiert, ${r.unveraendert} unverändert, ${r.konflikte.length} Konflikte`, { quelle, zeilen: zeilen.length, moeglicheDubletten: r.moeglicheDubletten.length, ohneBesitzer: r.ohneBesitzer });
+  // Fingerabdrücke NACH dem Firmen-Abgleich — so, wie der Import die Kontakte hinterließ.
+  const nachher = (await loadJson<Bestand>('kontakte'))?.kontakte ?? [];
+  if (mitLauf) await laufNachherSetzen(haushalt, lauf.id, nachher);
+  await logRun('crm', `Import: ${r.neu} neu, ${r.aktualisiert} aktualisiert, ${r.unveraendert} unverändert, ${r.konflikte.length} Konflikte, ${r.gesperrt} gesperrt übersprungen`, { quelle, zeilen: zeilen.length, moeglicheDubletten: r.moeglicheDubletten.length, ohneBesitzer: r.ohneBesitzer, ...(mitLauf ? { lauf: lauf.id } : {}) });
   return NextResponse.json({
     ok: true, zeilen: zeilen.length, neu: r.neu, aktualisiert: r.aktualisiert, unveraendert: r.unveraendert,
-    konflikte: r.konflikte, moeglicheDubletten: r.moeglicheDubletten, ohneBesitzer: r.ohneBesitzer,
-    firmen, stand: pipelineStand(r.kontakte),
+    konflikte: r.konflikte, moeglicheDubletten: r.moeglicheDubletten, ohneBesitzer: r.ohneBesitzer, gesperrt: r.gesperrt,
+    warnungen: pruefung.warnungen, pruefung: pruefung.zaehler, ...(mitLauf ? { laufId: lauf.id } : {}),
+    firmen, stand: pipelineStand(nachher),
   });
 }
 
@@ -146,4 +180,33 @@ async function konfliktLoesen(body: Body) {
   // gegenstandslos — entfernen statt 404, sonst hinge er für immer in Stammdaten › Austausch (28.09., F2).
   const rest = await updateJson<KonfliktStand>(KONFLIKT_SPEICHER, cur => ({ ...(cur ?? leererKonfliktStand()), konflikte: (cur?.konflikte ?? []).filter(x => !(x.kontaktId === kontaktId && x.feld === feld)) }));
   return NextResponse.json({ ok: true, offen: rest.konflikte.length, ...(gefunden ? {} : { entfernt: true }) });
+}
+
+/**
+ * Import-Lauf zurücknehmen (K2 #25): neu angelegte Kontakte fallen weg, geänderte bekommen ihren Vorher-Stand —
+ * nur, wer seitdem unverändert ist (und als Neuer nicht inzwischen an einem Deal/Mandat/einer Kampagne hängt).
+ * Alle anderen sind Konflikte (nichts überschrieben). Ein Lauf geht nur einmal zurück.
+ */
+async function rueckgaengig(body: Body, person: string) {
+  const laufId = String(body.laufId ?? '');
+  if (!LAUF_ID_OK.test(laufId)) return NextResponse.json({ ok: false, fehler: 'laufId fehlt oder ist ungültig.' }, { status: 400 });
+  const haushalt = await karteiHaushalt();
+  const lauf = (await laeufeLaden(haushalt)).find(l => l.id === laufId);
+  if (!lauf) return NextResponse.json({ ok: false, fehler: 'Lauf nicht (mehr) da — Läufe bleiben 30 Tage.' }, { status: 404 });
+  if (lauf.rueckgaengig) return NextResponse.json({ ok: false, fehler: 'Dieser Lauf ist schon zurückgenommen.', rueckgaengig: lauf.rueckgaengig }, { status: 409 });
+  const crm = await ladeCrm();
+  let ergebnis: ReturnType<typeof rueckgaengigRechnen> | null = null;
+  await updateJson<Bestand>('kontakte', cur => {
+    const f = cur ?? { kontakte: [] };
+    ergebnis = rueckgaengigRechnen(f.kontakte, lauf, id => enthaeltKennung(crm, id));
+    return ergebnis.zurueck ? { ...f, kontakte: ergebnis.kontakte } : f;
+  });
+  const e = ergebnis as unknown as ReturnType<typeof rueckgaengigRechnen>;
+  const vermerk = { am: new Date().toISOString(), von: person, zurueck: e.zurueck, konflikte: e.konflikte };
+  await updateJson<LaufBestand>(laufName(haushalt), cur => ({ laeufe: (cur?.laeufe ?? []).map(l => (l.id === laufId ? { ...l, rueckgaengig: vermerk } : l)) }));
+  // Konflikte/Dubletten-Hinweise zu Kontakten, die es nicht mehr gibt, fallen aus der Konfliktliste.
+  const weg = new Set(lauf.neu.filter(id => !e.kontakte.some(k => k.id === id)));
+  if (weg.size) await updateJson<KonfliktStand>(KONFLIKT_SPEICHER, cur => { const st = cur ?? leererKonfliktStand(); return { ...st, konflikte: st.konflikte.filter(k => !weg.has(k.kontaktId)), moeglicheDubletten: st.moeglicheDubletten.filter(m => !weg.has(m.kontaktId) && !(m.mitId && weg.has(m.mitId))) }; });
+  await logRun('crm', `Import rückgängig: ${e.zurueck} zurückgesetzt, ${e.konflikte.length} Konflikte`, { lauf: laufId, von: person });
+  return NextResponse.json({ ok: true, laufId, zurueck: e.zurueck, konflikte: e.konflikte });
 }

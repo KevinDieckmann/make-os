@@ -6,15 +6,18 @@
 // alles, was ihm fehlt, den ganzen Verlauf beider, alle Einwilligungen; eine
 // Werbesperre des anderen gilt weiter (Sperre gewinnt immer).
 
-import { anzeigename, privatNotizVerfasser, STUFEN, VON_HAND_MAX, type Aktivitaet, type Kontakt } from '@/lib/make-one/crm';
+import { anzeigename, normTelefon, privatNotizVerfasser, STUFEN, VON_HAND_MAX, type Aktivitaet, type Kontakt } from '@/lib/make-one/crm';
+import { suchNorm } from '@/lib/text/such-norm';
 import { netzwerkVereinen } from './netzwerk-form';
 import { markenMit, ohneMarkierte } from './aktivitaet-marke';
 import type { CrmBestand } from './typen';
 import { personUmbiegen } from './person-verweise';
 
-const n = (t?: string) => (t ?? '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss').replace(/[^a-z0-9]/g, '');
+// K2 (28.09.): NFC zuerst und dieselbe Umlaut-Regel wie die Suche („Müller“ NFC/NFD = „Mueller“), EINE Telefon-Normalisierung
+// (`normTelefon`, E.164-nah) wie der Import — vorher wurde „0049 30 …“ hier zu „049…“ und fand „030 …“ nicht.
+const n = (t?: string) => suchNorm(t).replace(/[^a-z0-9]/g, '');
 const domain = (k: Kontakt) => n((k.email ?? '').split('@')[1] ?? k.firmaDomain ?? '');
-const tel = (t?: string) => (t ?? '').replace(/[^0-9]/g, '').replace(/^49/, '0').replace(/^00/, '0');
+const tel = normTelefon;
 
 export function dubletten(kontakte: Kontakt[]): [Kontakt, Kontakt][] {
   const je = new Map<string, Kontakt[]>();

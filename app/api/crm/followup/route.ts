@@ -25,6 +25,7 @@ import { personAus } from '@/lib/zoe/raum';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { wendeAktivitaetAn, ERGEBNISSE, type Kontakt, type Ergebnis, type AktivitaetArt } from '@/lib/make-one/crm';
 import { folgeAus } from '@/lib/crm/heute';
+import { sperren } from '@/lib/crm/sperrliste';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { faellige, zaehlen, puenktlichkeit, neuesFollowUp, virtuell, tagPlus, taktVon, type Faellig } from '@/lib/crm/followup';
 import { leadHebenNachGespraech, type LeadMeldung } from '@/lib/crm/lead-heben';
@@ -65,6 +66,7 @@ type Herkunft = 'schritt' | 'wiedervorlage' | 'dealschritt' | 'nachfassen' | 're
  */
 async function aktivitaet(kontaktId: string, art: AktivitaetArt, text: string, von: string, ergebnis: Ergebnis | undefined, bezug: string | undefined, herkunft: Herkunft): Promise<void> {
   const heute = localDay();
+  let gesperrt: Kontakt | null = null;
   await updateJson<{ kontakte: Kontakt[] }>('kontakte', current => {
     const f = current ?? { kontakte: [] };
     const i = f.kontakte.findIndex(x => x.id === kontaktId);
@@ -74,10 +76,13 @@ async function aktivitaet(kontaktId: string, art: AktivitaetArt, text: string, v
     let neu = wendeAktivitaetAn(alt, { art, text: text || undefined, von, ergebnis, bezug, stufe: folge?.stufe }, heute, new Date().toISOString(), tagePlus);
     // Die Follow-up-Ebene führt: keine zweite Wiedervorlage aus der Regel, keine fremde Zusage löschen.
     neu = { ...neu, wiedervorlage: herkunft === 'wiedervorlage' ? undefined : alt.wiedervorlage, naechsterSchritt: herkunft === 'schritt' ? undefined : alt.naechsterSchritt };
-    if (folge?.werbesperre) neu = { ...neu, werbesperre: { seit: heute, grund: text || 'Widerspruch im Gespräch' }, wiedervorlage: undefined, naechsterSchritt: undefined };
+    if (folge?.werbesperre) { neu = { ...neu, werbesperre: { seit: heute, grund: text || 'Widerspruch im Gespräch' }, wiedervorlage: undefined, naechsterSchritt: undefined }; gesperrt = neu; }
     f.kontakte[i] = neu;
     return f;
   });
+  // Werbesperre: auch auf die gehashte Sperrliste (K2 #60).
+  const g = gesperrt as Kontakt | null;
+  if (g) await sperren([g], 'werbesperre', heute);
 }
 
 export async function POST(req: Request) {
