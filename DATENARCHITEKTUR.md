@@ -120,6 +120,52 @@ Empfehlung (umgesetzt, Umstellung macht Kevin): Schlüssel als Datei `/srv/make-
 nur lesend in den App-Container gebunden, `MAKE_OS_DATEN_SCHLUESSEL_DATEI`) statt in der `.env`; die Umgebung gewinnt,
 solange sie gesetzt ist — deshalb die Zeile aus der `.env` nehmen (DEPLOY.md). Der HOI zeigt die Quelle.
 
+## 4c. Datenschutz über alle Speicher (29.09., Paket D-B — Kevin: „Top 1 %“)
+
+- **Register statt Gedächtnis:** `lib/crm/speicher-register.ts` führt JEDEN Bestand mit Bezug (Dritte · Haushalt · kein),
+  Behandlung bei Art. 17 (entfernen · tilgen · pseudonym · ausgenommen) und Grund. Der Wächter `tests/datenschutz-register.test.ts`
+  scannt den Code und wird rot bei jedem neuen Namen — so wächst kein Speicher mit Personenbezug still an Art. 15/17 vorbei.
+- **Art. 17 vollständig:** Kartei, CRM, Ablage, Konflikte, Heads, Replay, Signale, Aufgaben, Import-/Zusammenführ-Läufe
+  (`person-bestaende.ts`) und seit 29.09. `netzwerk`, `kunden`, `stammdaten`, `prospects`, Postfach-Zwischenspeicher
+  (`apple-mail-cache`, `m365-postfach`, `microsoft-inbox`, `inbox-absender`, `inbox-triage`), Kalender-Zwischenspeicher,
+  `meetings`, alle `zoe-*` (auch `zoe-entscheidungen--*`), `aenderungsprotokoll--*` (Fingerabdruck → `c#geloescht`),
+  `agent-log`, `client-fehler`, `meldungen--*` und die Umzugs-Kopien in `archiv/` (`person-weitere.ts`). Danach sofort:
+  Such-Index `app_chunks` nachziehen (`secure_delete=ON`), `_App`-Spiegel neu erzeugen (falls an). Löschprotokoll nur mit `lp-…`.
+- **Bewusst nicht gelöscht (mit Grund):** Rechnungen/Buchungen/Finanzplan (§ 147 AO / § 257 HGB), eigene Daten des Haushalts,
+  Tageskopien und Nachtarchive (Löschklasse „Sicherungen“, 14 Tage bzw. Generationen — „beyond use“: nie zurückgespielt ohne
+  Grabsteine).
+- **Grabsteine** (`lib/datenschutz/grabsteine.ts`): HMAC der Kennung + Sperrlisten-Hashes, außerhalb des Datenordners
+  (`MAKE_OS_GRABSTEINE_DIR`, Server `/srv/make-os/grabsteine` als eigenes Volume), mit ins Nachtarchiv. Angewendet nach
+  jedem Restore (Restore-Skript zwingend, Einzel-Restore, Takt über die Marke `datenschutz-grabsteine`). Frist 13 Monate.
+- **Pepper** (`lib/datenschutz/pepper.ts`, `MAKE_OS_PEPPER`): Sperrliste, Protokoll-Kennungen, Grabsteine als HMAC v2;
+  v1-Hashes gelöschter Personen bleiben gültig, existierende Kontakte werden einmal je Pepper umgerechnet.
+- **Art. 18 zentral** (`lib/crm/verarbeitung.ts`): Leser, die verarbeiten, sehen eingeschränkte Personen gar nicht; direkte
+  Kartei-Leser nur in einer Erlaubnisliste mit Grund (Wächtertest).
+- **ZOE schreibt nur über den Stapel**; Protokoll nur Kennungen + Feldnamen; Arbeitslisten 90 Tage, Entscheidungen 36 Monate.
+- **Löschklassen neu:** ZOE-Arbeitslisten, ZOE-Entscheidungen, ZOE-Verlauf, ZOE-Gedächtnis, Postfach-/Kalender-Zwischenspeicher,
+  Umzugs-Kopien im Archiv (30 Tage; andere Archiv-Dateien bleiben, nie automatisch), Altbestand Netzwerk (nur Aufgabe),
+  Grabsteine, Sicherungen (fest) — Tabelle `lib/crm/loeschfristen.ts`, Lauf `loeschfristen-lauf.ts`.
+
+### Art. 17 im Vault und in seiner Git-Historie (#98)
+
+Der Vault ist Wahrheit des Brain und liegt in drei Kopien (Server `/srv/make-os/vault`, GitHub `make-vault`, Mac
+`~/Vaults/MAKE/Make.Claude`) — jede mit voller Git-Historie. Personenbezug dort klein halten (Links in die App statt Kopien;
+der `_App`-Spiegel trägt nur Titel/Links, nie Art.-18-Kontakte). Muss eine Person auch aus dem Vault verschwinden:
+
+1. **Finden:** am Mac im Vault `git grep -n -i "<Name>"` und `git log -S "<Name>" --oneline` (auch Adresse, Telefon).
+   Treffer im `_App`-Spiegel verschwinden von selbst (Art. 17 in der App erzeugt ihn neu) — sie stehen aber in der Historie.
+2. **Heutigen Stand bereinigen:** Notizen von Hand ändern (Name → „[gelöscht]“), committen, Abgleich laufen lassen.
+3. **Historie umschreiben** (erst, wenn alle drei Kopien abgeglichen sind; der Abgleich-Dienst am Mac und der Cron auf dem
+   Server kurz anhalten): in einer frischen Klon-Kopie
+   `git filter-repo --replace-text ausdruecke.txt` (Datei mit `Name==>[gelöscht]` je Zeile, liegt NUR lokal und wird danach
+   gelöscht) bzw. `--invert-paths --path "<Notiz>.md"` für ganze Notizen; dann `git push --force --all` nach GitHub.
+4. **Alle Kopien ersetzen:** Server-Vault und Mac-Vault NICHT pullen, sondern neu klonen (alte Ordner beiseitelegen, nach
+   Prüfung löschen) — sonst bringt ein alter Klon die Historie zurück. GitHub: Support um Löschung der gecachten Ansichten
+   bitten, falls die Notiz dort je angezeigt wurde.
+5. **Sicherungen:** Nachtarchive enthalten den Vault nicht (er kommt aus GitHub); `.git`-Kopien in Time Machine o. Ä. laufen
+   mit ihrer Frist aus.
+6. **Festhalten:** im Löschprotokoll der App steht die Löschung (`lp-…`); im Vault nur „Historie bereinigt am …“ ohne Namen.
+
 ## 5. Offene Entscheidungen für den 27.09.
 
 - Speicher: JSON optimiert · JSON je Kontakt · SQLite (mit Verschlüsselungskonzept).

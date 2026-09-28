@@ -32,11 +32,16 @@ Jährlich prüfen (Übung, Abschnitt 3), ob alle drei Orte den **aktuellen** Sta
    In die `.env` NICHT als `MAKE_OS_DATEN_SCHLUESSEL` (die Umgebung ginge vor und wäre in `docker inspect` sichtbar).
 5. **Daten zurück:** Archiv per `scp` auf den Server, dort `age -d -i <identität> <archiv> | tar xzf - -C /srv/make-os`
    (legt `daten/` an; die Identität danach vom Server löschen). `chown -R make:make /srv/make-os/daten`.
-6. **Starten:** `cd /srv/make-os/app && docker compose up -d`; HOI öffnen (`/os/hoi`): „Bestände im Ruhezustand:
+6. **Grabsteine (Art. 17, 29.09.):** vor dem Start `/srv/make-os/grabsteine` aus dem Archiv übernehmen, falls der Ordner
+   fehlt (das Archiv trägt ihn). Einfacher und zwingend mit Grabsteinen: `deploy/wiederherstellen.sh <archiv> <identität>`
+   (hält den Arbeiter aus, bis die Grabsteine angewendet sind). Bei einem Restore von Hand nach dem Start:
+   `docker compose exec -T app node -e "fetch('http://localhost:3000/api/crm/datenschutz',{method:'POST',headers:{'content-type':'application/json','x-make-key':process.env.MAKE_OS_KEY},body:'{\"aktion\":\"grabsteine\"}'}).then(r=>r.text()).then(console.log)"`
+   — sonst sind nach dem Archiv gelöschte Personen wieder da (der Takt holt es spätestens nach einer Minute nach).
+7. **Starten:** `cd /srv/make-os/app && docker compose up -d`; HOI öffnen (`/os/hoi`): „Bestände im Ruhezustand:
    verschlüsselt“, keine roten Befunde; die Durchsicht aller Bestände läuft täglich ab 4 Uhr von selbst. Dann
    `sicherung.pub`, Healthcheck-Adresse, Cron, Logrotate und den Mac-Abholschlüssel wieder einrichten
    (DEPLOY.md › Sicherung, Offsite, Wiederherstellung).
-7. **Was fehlt:** alles seit dem Archiv (≤ 24 h). Der Vault kommt aus GitHub (`make-vault`), nicht aus dem Archiv.
+8. **Was fehlt:** alles seit dem Archiv (≤ 24 h). Der Vault kommt aus GitHub (`make-vault`), nicht aus dem Archiv.
 
 ## 3 · Jährliche Übung (und nach jeder Rotation)
 
