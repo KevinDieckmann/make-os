@@ -91,6 +91,10 @@ export interface Task extends Timestamps {
   geloeschtAm?: string;
   /** Mit wem sie in den Papierkorb ging (Projekt- bzw. Eltern-Kennung) — Wiederherstellen holt die ganze Kette zurück. */
   geloeschtMit?: ID;
+  /** Archiviert durch „Neu anfangen“ (29.09., Kevin) — seit wann (ISO). Leser blenden es aus (`aufgabenSicht`); wiederherstellbar unter Aufgaben › Archiv. */
+  archiviertAm?: string;
+  /** Kennung des „Neu anfangen“-Laufs (lib/aufgaben/neustart.ts) — Wiederherstellen ganz oder einzeln. */
+  archivId?: ID;
 }
 
 /** Wert eines eigenen Feldes: Text/Datum/Auswahl/Link/Person als Text, Zahl als Zahl, Betrag als ganze Cent. */
@@ -199,6 +203,9 @@ export interface AufgabenListe {
   vorlageId?: ID;
   /** Titel-Muster der Serien-Liste, z. B. „Monatsabschluss {Monat} {Jahr}“ (Paket C3; Platzhalter lib/aufgaben/wiederholung.ts). */
   titelMuster?: string;
+  /** „Neu anfangen“ (29.09.): archiviert seit / Lauf — nicht zu verwechseln mit `archiviert` (von Hand abgelegte Liste). */
+  archiviertAm?: string;
+  archivId?: ID;
 }
 
 /** Gruppe im Projekt (28.09. spät): Projekt → Gruppe → Liste → Aufgabe → Unteraufgabe. */
@@ -210,6 +217,9 @@ export interface AufgabenGruppe {
   farbe: string;
   sortOrder: number;
   eingeklappt?: boolean;
+  /** „Neu anfangen“ (29.09.): archiviert seit / Lauf. */
+  archiviertAm?: string;
+  archivId?: ID;
 }
 
 /** Eine Aufgabe in einer Vorlage (Deadline als Versatz in Tagen ab Anlage). */
@@ -285,6 +295,9 @@ export interface Project extends Timestamps {
   vorlageId?: ID;
   /** Im Papierkorb seit (ISO, 29.09.) — samt Aufgaben (`Task.geloeschtMit` = Projekt), Notiz, Feldern und Dateien. */
   geloeschtAm?: string;
+  /** „Neu anfangen“ (29.09.): archiviert seit / Lauf — nicht zu verwechseln mit `archived` (von Hand abgelegt). */
+  archiviertAm?: string;
+  archivId?: ID;
 }
 
 export type ProjektStatus = 'aktiv' | 'pausiert' | 'abgeschlossen';

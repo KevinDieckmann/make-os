@@ -34,6 +34,7 @@ import { AufgabenLeiste, Brotkrumen, MandantKopf } from './Navigation';
 import { AufgabenUeberblick, AufgabenArchiv } from './Ueberblick';
 import { VorlagenKnopf } from './VorlagenDialog';
 import { ZoeAufgabenSicht } from './ZoeAufgabe';
+import { NeuAnfangenKnopf } from './NeuAnfangen';
 import { projektAnlegen, spacesOderFest, usePersonen, useIch } from './hilfe';
 
 const RAUM_MERKER = 'make-aufgaben-raum';
@@ -170,6 +171,7 @@ export function AufgabenRaum() {
       <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         {raum && <Segmente liste={[{ id: 'liste', label: 'Liste' }, { id: 'board', label: 'Board' }, { id: 'tabelle', label: 'Tabelle' }, { id: 'kalender', label: 'Kalender' }, { id: 'zoe', label: 'ZOE' }]} aktiv={darstellung} onWahl={a => gehe({ ...adresse, darstellung: a === 'liste' ? undefined : a }, 'replace')} />}
         <Link href={bereichGemerkt === 'privat' ? '/os/aufgaben/board?space=privat' : '/os/aufgaben/board?space=business'} style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Zeitstrahl ›</Link>
+        {!raum && <NeuAnfangenKnopf klein />}
       </span>
     }>
       <AufgabenLeiste adresse={adresse} spaces={spaces} offenJe={offenJe} gehe={gehe} />

@@ -15,6 +15,7 @@ import { localDay } from '@/lib/zeit';
 import { EINHEITEN_STANDARD } from '@/lib/planung/einheiten';
 import { zeitraum, type Zeitraum } from '@/lib/planung/zeitraum';
 import type { Meilenstein, Ziel, ZielHorizont } from '@/lib/planung/typen';
+import { NEU_ANGEFANGEN } from '@/components/os/aufgaben/NeuAnfangen';
 
 export interface PlanungStand {
   heute: string;
@@ -53,6 +54,9 @@ export function usePlanung(horizont: ZielHorizont): PlanungStand {
   const [einheiten, setEinheiten] = useState<string[]>([...EINHEITEN_STANDARD]);
   const [geladen, setGeladen] = useState(false);
   const [hinweis, setHinweis] = useState<string | null>(null);
+  // Nach „Neu anfangen“ oder Zurückholen (29.09.): neu laden.
+  const [runde, setRunde] = useState(0);
+  useEffect(() => { const neu = () => setRunde(r => r + 1); window.addEventListener(NEU_ANGEFANGEN, neu); return () => window.removeEventListener(NEU_ANGEFANGEN, neu); }, []);
   const zieleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const msTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const fokusTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -94,7 +98,7 @@ export function usePlanung(horizont: ZielHorizont): PlanungStand {
     ladeMs();
     fetch('/api/planung/einheiten').then(r => r.json()).then(d => { if (aktiv && Array.isArray(d.einheiten)) setEinheiten(d.einheiten); }).catch(() => {});
     return () => { aktiv = false; };
-  }, [horizont, ladeMs, zieleSchreiber, zieleZeigen]);
+  }, [horizont, ladeMs, zieleSchreiber, zieleZeigen, runde]);
 
   /** Die Ansicht reicht die neue Liste — hier wird daraus je Ziel eine Änderung (nie der ganze Horizont). */
   const persistZiele = useCallback((next: Ziel[]) => {

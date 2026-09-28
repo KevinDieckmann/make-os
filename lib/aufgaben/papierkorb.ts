@@ -15,14 +15,22 @@
 
 import type { Task, TasksState } from '@/types/tasks';
 import { sonstigeProjektId } from './struktur';
+import { ohneArchiv } from './neustart';
 
 export const PAPIERKORB_TAGE = 30;
 const TAG_MS = 86_400_000;
 
 export const imPapierkorb = (x: { geloeschtAm?: string } | undefined | null): boolean => !!x?.geloeschtAm;
 
-/** Der Bestand ohne Papierkorb — so sehen ihn alle Leser. Aufgaben eines Projekts im Papierkorb fallen mit weg. */
+/**
+ * Der Bestand ohne Papierkorb — so sehen ihn alle Leser. Aufgaben eines Projekts im Papierkorb fallen mit weg.
+ * Seit 29.09. auch ohne das Archiv von „Neu anfangen“ (`ohneArchiv`, lib/aufgaben/neustart.ts).
+ */
 export function aufgabenSicht<T extends TasksState>(state: T): T {
+  return ohneArchiv(ohnePapierkorb(state));
+}
+
+function ohnePapierkorb<T extends TasksState>(state: T): T {
   const weg = new Set(state.projects.filter(imPapierkorb).map(p => p.id));
   if (!weg.size && !state.tasks.some(imPapierkorb)) return state;
   const tasks = state.tasks.filter(t => !imPapierkorb(t) && !weg.has(t.projectId));

@@ -26,6 +26,7 @@ import type { Meilenstein, Ziel } from '@/lib/planung/typen';
 import { meilensteinSpace } from '@/lib/planung/meilensteine';
 import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
 import type { PlanungStand } from './planung/usePlanung';
+import { NeuAnfangenKnopf } from './aufgaben/NeuAnfangen';
 
 type Horizont = 'monat' | 'quartal' | 'jahr';
 
@@ -126,7 +127,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
     <Seite
       titel={meta.claim}
       unter={<>{meta.titel} · {zr.label} — {meta.hinweis}</>}
-      rechts={schnitt != null ? <Chip farbe={col(schnitt)}>Ziele Ø {schnitt} %</Chip> : undefined}
+      rechts={<span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{schnitt != null && <Chip farbe={col(schnitt)}>Ziele Ø {schnitt} %</Chip>}<NeuAnfangenKnopf klein /></span>}
     >
       <PlanerLeiste aktiv={horizont} />
 
