@@ -4,6 +4,52 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## CRM grundsätzlich fertig: Stationen, mehrere Adressen, Konzern, Mehrfachwerte (28.09.2026, U1, nur lokal)
+
+- **Person in mehreren Firmen mit Rolle und Beschäftigungshistorie:** Stationen je Person (Firma, Rolle, Art, von–bis, Hauptstation). „Firma wechseln“ beendet die alte Station, statt sie zu überschreiben; „+ weitere Firma“ (z. B. Beirat). Firmenkarte zeigt aktuelle und ehemalige Personen getrennt, die Zeitlinie einer Firma behält Aktivitäten, auch wenn die Person weitergezogen ist.
+- **Mehrere E-Mail-Adressen je Person** (geschäftlich/privat/alt), Haupt-Adresse wählbar. Import hängt eine neue Adresse an eine bekannte Person an (nie überschreiben), Dubletten, Sperrliste und Suche prüfen alle Adressen.
+- **Mutter- und Tochterfirmen:** Mutter in der Firmenkarte wählen, Töchter sichtbar, Deals/Mandate und Umsatz für die „ganze Gruppe“, BEAN der Gruppe. Kreise werden abgelehnt.
+- **Typ, Kategorie mehrfach + Labels** (eigene Werte per „+ neu“), Segmente/Kartei-Filter/Export dazu. Werte an Personen, die in keiner Werteliste stehen, meldet Datenqualität als einen Hinweis — „In Werteliste aufnehmen“ legt sie an.
+- **Firma ändern fragt nach** (Matrix-Feld „Firma“, Firmenkarte „+ zuordnen“): Jobwechsel (alte Station endet, Verlauf bleibt) · Zusätzliche Firma · Korrektur (falsche Firma ersetzen, ohne Historie). Ohne Angabe lehnt der Server bei gespeicherten Stationen ab — nie endet still eine Station. „Besitzer“ heißt jetzt „Zuständig“, der Reiter „Daten“ heißt „Stammdaten“.
+- **Nie abschneiden:** Kampagnen-Ergebnisse/-Kontakte, Beitrags-Wirkung, Personen je Deal usw. werden nicht mehr still gekürzt — über hohen Grenzen wird abgelehnt. Import schreibt ins Änderungsprotokoll als „import“.
+- **Altbestand geschützt:** Bestehende Kontakte/Firmen werden NICHT umgeschrieben. `firmaId`/`firma`/`position`/`email`/`typ`/`kategorie` bleiben und werden weiter befüllt; die neuen Listen entstehen erst, wenn jemand etwas daran ändert. Ein älteres Browserfenster kann sie nicht löschen.
+- Tests: `tests/crm-stationen-emails.test.ts` (inkl. Migrationstest), `tests/crm-verbindungen.test.ts` (fünf neue Prüfungen), `tests/crm-import-route.test.ts` (Protokoll „import“, zweite Adresse).
+
+### Prüfliste U1 (vor dem Hochladen durchklicken)
+- [ ] Kontakt öffnen (beliebige Person aus dem Bestand): links E-Mail wie vorher, rechts Firma wie vorher, darunter „Stationen“ mit einer laufenden Hauptstation.
+- [ ] Testperson: „+ Adresse“, Art wählen, „Haupt“ wechseln — die Kanal-Ampel und „Mail ↗“ folgen der Haupt-Adresse.
+- [ ] Testperson: „Firma wechseln“ → alte Station unter „Ehemalig“ mit Enddatum, Firma oben neu; die alte Firmenkarte zeigt die Person unter „Ehemalig“ und die frühere Aktivität in der Zeitlinie.
+- [ ] Firmenkarte: Mutterfirma wählen, bei der Mutter erscheinen die Töchter; eine Tochter als Mutter der Mutter → Hinweis „Kreis“.
+- [ ] Wichtigste Infos: Typ/Kategorie mehrfach, Labels mit „+ neu“; Stammdaten › Wertelisten zeigt „Labels“.
+- [ ] Import der Masterliste (Vorschau): „weitere Adressen“ statt neuer Personen, wo nur die Mail neu ist.
+- [ ] Testperson mit Firma: Matrix-Feld „Firma“ ändern → Menü Jobwechsel/Zusätzlich/Korrektur; jede Wahl einmal, Abbrechen ändert nichts.
+- [ ] Stammdaten › Datenqualität: Hinweis „Werte außerhalb der Wertelisten“ → „In Werteliste aufnehmen“ → Hinweis weg, Werte stehen unter Wertelisten.
+
+## Team aus den Daten (28.09.2026, U4, nur lokal)
+
+- **Team steht im Speicher, nicht im Code:** Bestand `team--<haushalt>` (über `local-db`, also verschlüsselt) mit `{ id, name, kurz, rolle, bereich?, email?, aktiv, farbe?, kreis? }`. Kevin und Malin sind feste Einträge aus den Konten des Haushalts (`konto-<speicher>`: Name aus dem Konto, Kurzwort/Rolle/Bereich pflegbar). Route `GET/PATCH /api/team` (Haushalt des Inhabers + Person nötig, sonst 403; Einzeländerungen mit Stand über `listePatchen`, veraltet → 409 mit aktuellem Team; ETag → 304; Löschen gibt es nicht, nur Deaktivieren; Kurzwort ein Wort und eindeutig).
+- **Gepflegt in der Karte „Team — wer was trägt“** (Säule Familie & Partnerschaft, `/os/saeule/social`, `components/os/TeamKarte.tsx`): anlegen, ändern, deaktivieren. Leerer Speicher → Hinweis „Team einmal eintragen“, bis dahin Rollen-Platzhalter. Keine automatische Übernahme alter Namen.
+- **Leser:** Aufgaben (Abgeben-Liste, Delegations-Runde, Marker „— Delegiert an <Kurzwort>“, jetzt auch mit Umlauten), `/api/delegation` (Kurznamen + Team-Zeilen im Prompt, MAKE.One nur an Malins Konto), `/api/inbox/triage`, `/api/loop` (Operations), Brain → ZOE (`blockZiele`). Server über `teamVon`/`teamFuerPerson`/`teamFuerAnfrage` (`lib/make-one/team-speicher.ts`), Browser über `hooks/useTeam.ts`. `lib/make-one/team-data.ts` ist nur noch Rückfall für leere Speicher und Tests.
+- Tests: `tests/team-daten.test.ts`.
+
+### Prüfliste U4 (vor dem Hochladen durchklicken)
+- [ ] Säule Familie & Partnerschaft: Karte „Team“ zeigt Kevin und Malin (Konto) und den Hinweis „Team einmal eintragen“.
+- [ ] Team einmal eintragen (Name, Kurzwort, Rolle) — danach verschwinden die Platzhalter.
+- [ ] Aufgaben › „Abgeben“: die Liste zeigt die eingetragenen Namen; Delegieren schreibt „— Delegiert an <Kurzwort> (…)“, der Chip zeigt es.
+- [ ] Als Malin eine Person ändern, als Kevin im alten Fenster dieselbe ändern → Hinweis „inzwischen geändert“, Stand neu geladen.
+
+## Aufgeräumt: keine echten Namen im Code (28.09.2026, U3, nur lokal)
+
+- **Namen Dritter raus aus Prompts, Kommentaren, Beispielen und Tests:** Inbox-Triage, Operations-Loop und ZOE nennen das Team jetzt aus `lib/make-one/team-data.ts` (dort nur noch Rollen-Platzhalter außer Kevin und Malin), Kunden als Kategorie. Beispieltermine (KEMARIS-Kalender, Alt-Dashboard), Onboarding-Hinweise, Kalender-Schnelleingabe, Finanzplan-Beschriftungen („Partnerdarlehen“, „Ankermandat“), Konto-Hinweise („Geschäftskonten“) und Testdaten neutral („Beispiel GmbH“, „Kunde A“, „Anna Beispiel“). Private Details (Gesundheit, Rechtsstreit, Inkasso) aus Beispieldaten entfernt.
+- **Bewusst geblieben:** Kevins Rechenkern (`lib/finanzen/rechenkern.ts`) — Feldnamen und zwei Beschriftungen im Zahlungskalender nur mit Kevins Wort; CRM-Dateien und -Tests aus Paket U1 (Ausnahmeliste im Wächter mit Grund).
+- **Wächter:** `tests/repo-sauber.test.ts` prüft alle versionierten Code-Dateien auf Namen Dritter (Muster nur als Teilstücke) und E-Mail-Adressen außerhalb von Tests (nur reservierte Domains).
+- **Entflechtung hält den Rechnungsschutz ein:** Die Prüfliste (Privates aus den Business-Speichern) löscht gestellte/bezahlte/stornierte Rechnungen nicht mehr — nur „geplant“ darf weg; sonst einer Firma zuordnen, mit Vermerk in der Notiz. Löschversuche → 409. Tests: `tests/pruefliste.test.ts`.
+
+### Prüfliste U3 (vor dem Hochladen durchklicken)
+- [ ] Aufgaben › „Abgeben“: die Liste zeigt Rollen (Finanzen, Produkt …) und Malin; Delegieren schreibt „— Delegiert an Finanzen (…)“.
+- [ ] Haushalt › Prüfliste: eine private, gestellte Rechnung bietet nur Firma zuordnen / so lassen.
+- [ ] Echte Teamnamen gehören künftig in die Daten (nicht in den Code) — Vorschlag: Team aus dem Bestand laden.
+
 ## Zugriff & Betrieb (28.09.2026, K1, nur lokal)
 
 - **Kartei nur für den Haushalt des Inhabers (#66/#67):** `/api/state/{kontakte,kunden,prospects,netzwerk,stammdaten,aenderungen}` prüfen jetzt `karteiZugang` (`lib/zugang/haushalt-inhaber.ts`) — ein Konto ohne Haushalt oder aus einem anderen Haushalt bekommt 403. Dienstweg ohne Person (Takt) darf; mit Person nur, wenn die Person zum Inhaber-Haushalt gehört (ZOE/Heads/Arbeiter schicken sie schon mit).
