@@ -314,6 +314,12 @@ lokal, Route `/os`, Port 3001.
   Art. 17 löst `bezug.kontaktId` und tilgt Namen auch in Kommentaren, Dubletten biegen `bezug.kontaktId` um, Verbindungsprüfung
   `aufgabe-bezug-tot` (Reparatur entfernt nur tote Einzelverweise), Übergabe setzt `bezug`. Fokus-Block auf eine Aufgabe mit Mandat übernimmt es.
 - **Flächen:** Aufgaben-Widget ohne Einstellung nimmt den Space der Fläche (`lib/flaeche/space.ts`); Unteraufgaben nur unter „fällig & kritisch“.
+- **Ansichten Tabelle + Kalender (C5, 28.09. spät):** `AnsichtTabelle` (Spalten fest + eigene Felder je Projekt als `feld:<projekt>:<feld>`, Kopfklick
+  auf → ab → Listen-Reihenfolge, Leeres immer unten, Unteraufgaben unter ihrer Aufgabe; Status/Zuständig/Deadline/Priorität/Felder direkt über `UPDATE_TASK`;
+  Summen Zahl/Betrag über alle Aufgaben inkl. Unteraufgaben; Spalten + Sortierung je Person in `make-aufgaben-tabelle:<person>`; Querlauf nur im eigenen
+  Behälter) und `AnsichtKalender` (Monat/Woche, Balken Start → Deadline je Woche in Bahnen, Farbe Status/Gruppe, „!“ überfällig, ↻ wiederkehrend; Ziehen
+  oder „verschieben auf …“ = `verschiebenTeil`, Start wandert mit; „Ohne Datum“ als Seitenliste; heute = `berlinHeute`). Rechnen nur in
+  `lib/aufgaben/ansichten.ts` (Test `tests/aufgaben-ansichten.test.ts`). Umschalter in `AufgabenRaum` (hängt C1 ein), Adresse `ansicht=tabelle|kalender` (`lib/aufgaben/adresse.ts`).
 
 ## Markttraktion — Deal- und Follow-up-Ebene (27.09., nur lokal)
 - **Marke Make.One (27.09.):** unter den Events läuft unsere Veranstaltungsmarke. `lib/crm/marke.ts` ist die eine Stelle (`MARKE_EVENTS`,
