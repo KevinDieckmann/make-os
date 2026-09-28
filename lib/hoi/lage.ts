@@ -23,7 +23,12 @@ export interface HostLage {
   ssh?: { fehlversuche_24h?: number };
   zertifikat?: { tage?: number; bis?: string };
   sicherung?: { alter_stunden?: number; groesse_mb?: number; datei?: string };
-  vault?: { letzter_commit_stunden?: number; konflikt?: boolean };
+  /**
+   * Vault-Abgleich (29.09., Paket D-B #97): `letzter_push_stunden` aus der Marke, die deploy/vault-abgleich.sh nach
+   * jedem erfolgreichen Push schreibt (lokale Commits zählen nicht); `konflikt` = Rebase abgebrochen (Markerdatei),
+   * `push_fehler` = Push gescheitert (Markerdatei). Ohne Marke (altes Skript) gilt `letzter_commit_stunden`.
+   */
+  vault?: { letzter_commit_stunden?: number; letzter_push_stunden?: number; konflikt?: boolean; push_fehler?: boolean };
   /** Letzte bestätigte Abholung durch den Mac (deploy/sicherung-ausgeben.sh → daten/system/abholung.json, 29.09.). */
   abholung?: { alter_stunden?: number | null; datei?: string | null };
   kernel_neustart_noetig?: boolean;
@@ -57,6 +62,11 @@ export interface InnenLage {
   sicherungLauf?: SicherungLauf | null;
   /** Letzte Durchsicht der Bestände (lib/store/durchsicht.ts, Bestand hoi-durchsicht). */
   durchsicht?: DurchsichtKurz | null;
+  /**
+   * Datenschutz (29.09., Paket D-B): Pepper für HMAC-Fingerabdrücke gesetzt (sonst v1, ungesalzen)? Grabsteine in einem
+   * ausdrücklich konfigurierten Ordner (Server: eigenes Volume, sonst gehen sie mit dem Container verloren)?
+   */
+  datenschutz?: { pepper: boolean; grabsteinOrdner: boolean; produktion: boolean };
 }
 
 export interface Quantile { p50: number | null; p99: number | null; n: number }
@@ -98,13 +108,27 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
     if (host.fail2ban) b.push({ id: 'fail2ban', bereich: 'sicherheit', label: 'SSH-Abwehr', ampel: (host.fail2ban.versuche_24h ?? 0) < 200 ? 'gruen' : 'gelb', wert: `${host.fail2ban.versuche_24h ?? 0} Versuche · ${host.fail2ban.gesperrt ?? 0} gesperrt`, satz: 'fail2ban arbeitet — Passwort-Login ist aus, nur Schlüssel' });
     if (host.sicherung?.alter_stunden != null) b.push({ id: 'sicherung', bereich: 'sicherung', label: 'Letzte Sicherung', ampel: host.sicherung.alter_stunden <= 30 ? 'gruen' : host.sicherung.alter_stunden <= 54 ? 'gelb' : 'rot', wert: `vor ${uhr(host.sicherung.alter_stunden)}${host.sicherung.groesse_mb != null ? ` · ${host.sicherung.groesse_mb} MB` : ''}`, satz: host.sicherung.alter_stunden <= 30 ? 'nächtlich, verschlüsselt' : 'Sicherung ausgefallen — Cron 03:15 und Platz prüfen' });
     else b.push({ id: 'sicherung', bereich: 'sicherung', label: 'Letzte Sicherung', ampel: 'rot', wert: 'keine gefunden', satz: 'in /srv/make-os/sicherungen liegt nichts — sicherung.sh prüfen' });
-    if (host.vault?.letzter_commit_stunden != null) b.push({ id: 'vault', bereich: 'sicherung', label: 'Vault-Abgleich', ampel: host.vault.konflikt ? 'rot' : host.vault.letzter_commit_stunden <= 48 ? 'gruen' : 'gelb', wert: host.vault.konflikt ? 'Konflikt' : `letzter Stand vor ${uhr(host.vault.letzter_commit_stunden)}`, satz: host.vault.konflikt ? 'Git-Konflikt im Vault — von Hand lösen' : 'läuft alle 10 Minuten' });
+    const v = host.vault;
+    const vStunden = v?.letzter_push_stunden ?? v?.letzter_commit_stunden;
+    if (v && (vStunden != null || v.konflikt || v.push_fehler)) {
+      const rot = !!v.konflikt || !!v.push_fehler;
+      const mitPush = v.letzter_push_stunden != null;
+      b.push({ id: 'vault', bereich: 'sicherung', label: 'Vault-Abgleich', ampel: rot ? 'rot' : vStunden! <= 48 ? 'gruen' : 'gelb',
+        wert: v.konflikt ? 'Konflikt' : v.push_fehler ? 'Push fehlgeschlagen' : `${mitPush ? 'letzter erfolgreicher Push' : 'letzter Stand'} vor ${uhr(vStunden!)}`,
+        satz: v.konflikt ? 'Git-Konflikt im Vault (Rebase abgebrochen) — von Hand lösen: git status im Vault' : v.push_fehler ? 'Push zum Vault-Repo scheitert — Zugang/Netz prüfen, lokale Änderungen stauen sich' : 'läuft alle 10 Minuten' });
+    }
     if (host.kernel_neustart_noetig) b.push({ id: 'neustart', bereich: 'server', label: 'Neustart nötig', ampel: 'gelb', wert: 'Kernel-Update wartet', satz: 'beim nächsten ruhigen Moment neu starten' });
     if ((host.updates?.sicherheit ?? 0) > 0) b.push({ id: 'updates', bereich: 'sicherheit', label: 'Sicherheitsupdates', ampel: (host.updates!.sicherheit ?? 0) > 10 ? 'rot' : 'gelb', wert: `${host.updates!.sicherheit} offen`, satz: 'unattended-upgrades prüfen bzw. apt upgrade' });
   }
 
   // ── App (innen) ──
   b.push({ id: 'verschluesselt', bereich: 'sicherheit', label: 'Bestände im Ruhezustand', ampel: innen.verschluesselt ? 'gruen' : 'rot', wert: innen.verschluesselt ? 'verschlüsselt' : 'Klartext', satz: innen.verschluesselt ? 'AES-256-GCM je Datei' : 'MAKE_OS_DATEN_SCHLUESSEL fehlt in der .env' });
+  const dsch = innen.datenschutz;
+  if (dsch) {
+    b.push({ id: 'pepper', bereich: 'sicherheit', label: 'Fingerabdrücke gelöschter Personen', ampel: dsch.pepper ? 'gruen' : 'gelb', wert: dsch.pepper ? 'HMAC mit Pepper (v2)' : 'ohne Pepper (v1)',
+      satz: dsch.pepper ? 'Sperrliste, Protokoll-Kennungen und Grabsteine gesalzen' : 'MAKE_OS_PEPPER fehlt — Sperrliste und Protokoll-Kennungen nur ungesalzen (v1): wer eine Mail-Liste hat, erkennt Gelöschte wieder. Erzeugen: openssl rand -hex 32, in die .env (nie wechseln).' });
+    if (dsch.produktion && !dsch.grabsteinOrdner) b.push({ id: 'grabsteine', bereich: 'sicherung', label: 'Grabsteine (Art. 17 nach Restore)', ampel: 'gelb', wert: 'kein eigener Ordner', satz: 'MAKE_OS_GRABSTEINE_DIR fehlt — die Grabsteine liegen im Container und gehen beim Neubau verloren; eigenes Volume /srv/make-os/grabsteine einbinden (DEPLOY.md).' });
+  }
   const ki = innen.ki;
   b.push({ id: 'ki', bereich: 'app', label: 'KI-Guthaben', ampel: !ki.schluessel ? 'grau' : ki.guthabenLeerSeit ? 'rot' : 'gruen', wert: !ki.schluessel ? 'kein Schlüssel' : ki.guthabenLeerSeit ? `leer seit ${ki.guthabenLeerSeit.slice(11, 16)} Uhr` : 'verfügbar', satz: !ki.schluessel ? 'ANTHROPIC_API_KEY fehlt — Agenten mit KI stehen, Regel-Läufe laufen' : ki.guthabenLeerSeit ? 'console.anthropic.com aufladen — bis dahin pausieren alle KI-Aufrufe (halbstündlich ein Versuch), Regel-Läufe laufen weiter' : 'Modellaufrufe gehen durch' });
   const t = innen.takt;

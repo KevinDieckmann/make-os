@@ -16,6 +16,8 @@ import { alle } from '@/lib/zugang/anmeldungen';
 import { befundeAus, gesamt, kurzbericht, nachRang, type InnenLage, type HostLage, type AussenLage, type Befund, type DatenschichtLage, type SicherungLauf, type DurchsichtKurz } from './lage';
 import { fehlerquote24h, fehlanmeldungen24h, neueNetze7d, cspBild, type CspMeldung } from './rechnen';
 import { hasAnthropicKey, guthabenStand } from '@/lib/anthropic';
+import { pepperGesetzt } from '@/lib/datenschutz/pepper';
+import { grabsteinOrdnerKonfiguriert } from '@/lib/datenschutz/grabsteine';
 
 export const HOI_AUSSEN = 'hoi-aussen';
 export const HOI_CSP = 'hoi-csp';
@@ -94,6 +96,7 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     verschluesselt: datenSchluessel() !== null,
     ki: { schluessel: hasAnthropicKey(), guthabenLeerSeit: guthabenStand().leerSeit },
     datenschicht: ds, sicherungLauf: sl, durchsicht: dk,
+    datenschutz: { pepper: pepperGesetzt(), grabsteinOrdner: grabsteinOrdnerKonfiguriert(), produktion: process.env.NODE_ENV === 'production' },
   };
 }
 

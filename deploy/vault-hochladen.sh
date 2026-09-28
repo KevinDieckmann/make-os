@@ -3,12 +3,14 @@
 # Einmalig auf Kevins Mac. Danach gleicht der Server das Repo alle 10 Minuten
 # ab (deploy/vault-abgleich.sh), und Obsidian (Git-Plugin) auf den Macs ebenso.
 # Aufruf:  bash ~/Claude/Projects/MakeOS/deploy/vault-hochladen.sh [vault-ordner] [repo]
-# Standard: ~/Desktop/MAKE/Make.Claude  →  git@github.com:KevinDieckmann/make-vault.git
+# Standard: ~/Vaults/MAKE/Make.Claude (seit 29.09., VAULT_UMZUG_ANLEITUNG.md), sonst ~/Desktop/MAKE/Make.Claude
+#   →  git@github.com:KevinDieckmann/make-vault.git
 # Was nicht hochgeht, steht in deploy/vault.gitignore (Arbeitsbereich von
 # Obsidian, Papierkorb, iCloud-Platzhalter).
 set -euo pipefail
 HIER="$(cd "$(dirname "$0")" && pwd)"
-VAULT="${1:-$HOME/Desktop/MAKE/Make.Claude}"
+STANDARD="$HOME/Vaults/MAKE/Make.Claude"; [ -d "$STANDARD" ] || STANDARD="$HOME/Desktop/MAKE/Make.Claude"
+VAULT="${1:-$STANDARD}"
 REPO="${2:-git@github.com:KevinDieckmann/make-vault.git}"
 [ -d "$VAULT" ] || { echo "Vault nicht gefunden: $VAULT"; exit 1; }
 cd "$VAULT"

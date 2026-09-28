@@ -10,6 +10,10 @@
 // Regeln nur als Vorschlag in die Inbox (lib/brain/inbox.ts). Regeln sind — anders
 // als gewöhnliche Notizen — Anweisungen an ZOE: darum trägt jede den Namen
 // der Person, die sie freigegeben hat, und nur „aktiv“ wird geladen.
+//
+// 29.09. (Paket D-B #100): in den Prompt kommt eine Regel NUR mit `status: aktiv` UND `freigegeben_von` einer bekannten
+// Person (Konten des Systems) — eine kopierte oder eingeschleuste Notiz mit „status: aktiv“ im Regelordner wird sonst zur
+// Anweisung an ZOE. Einen Kopf, den der Parser nicht sicher versteht (verschachtelt, Blocktext), lädt er nicht (Warnung).
 
 import { readFile, writeFile, mkdir, readdir, rename } from 'node:fs/promises';
 import { join, basename } from 'node:path';
@@ -53,8 +57,10 @@ function regelText(r: Regel): string {
 }
 
 function regelAus(id: string, text: string): Regel | null {
-  const { kopf, rumpf } = leseKopf(text);
+  const { kopf, rumpf, warnungen } = leseKopf(text);
   if (kopf.typ !== 'regel') return null;
+  // Nicht sicher lesbar → nicht als Regel (29.09., #100): lieber keine Anweisung als eine falsch gelesene.
+  if (warnungen?.length) { console.warn(`[regeln] ${id}: Kopf nicht sicher lesbar (${warnungen.map(w => `${w.feld}: ${w.grund}`).join('; ')}) — nicht geladen.`); return null; }
   const f = kopf.felder;
   const koerper = rumpf.replace(/^\s*#\s+.+\n/, '').trim();
   return {
@@ -147,17 +153,25 @@ export async function regelArchivieren(id: string, person: string, sicht: Sicht)
  * Was in JEDEN ZOE-Prompt geht: die Konstitution (ganz) und die aktiven Regeln, die
  * für diese Person gelten (oder für ZOE selbst) — hart zuerst, gedeckelt. Rein.
  */
-export function regelnBlock(konstitution: Konstitution | null, regeln: Regel[], person: string, maxZeichen = 6000): string {
-  const passende = regeln.filter(r => r.status === 'aktiv' && (r.giltFuer === 'beide' || r.giltFuer === 'zoe' || r.giltFuer === person)).sort((a, b) => a.prioritaet - b.prioritaet);
+/** Ist diese Regel wirksam freigegeben? `aktiv` UND `freigegeben_von` einer bekannten Person (rein, #100). */
+export function regelFreigegeben(r: Pick<Regel, 'status' | 'freigegebenVon'>, bekannte?: readonly string[]): boolean {
+  if (r.status !== 'aktiv' || !r.freigegebenVon || !/^[a-z0-9-]{1,40}$/.test(r.freigegebenVon)) return false;
+  return !bekannte || bekannte.includes(r.freigegebenVon);
+}
+
+export function regelnBlock(konstitution: Konstitution | null, regeln: Regel[], person: string, maxZeichen = 6000, bekannte?: readonly string[]): string {
+  const passende = regeln.filter(r => regelFreigegeben(r, bekannte) && (r.giltFuer === 'beide' || r.giltFuer === 'zoe' || r.giltFuer === person)).sort((a, b) => a.prioritaet - b.prioritaet);
   const teile: string[] = [];
   if (konstitution?.text) teile.push(`── KONSTITUTION (gilt immer; Rangfolge: hart > Sicherheit/Privatsphäre > Haus-Regel > Vorliebe) ──\n${konstitution.text}`);
-  if (passende.length) teile.push(`── REGELN (aktiv, freigegeben) ──\n` + passende.map(r => `- [P${r.prioritaet} · ${GILT_LABEL[r.giltFuer]}${r.freigegebenVon ? ` · freigegeben von ${r.freigegebenVon}` : ''}] ${r.titel}: ${r.text.replace(/\s+/g, ' ').slice(0, 400)}`).join('\n'));
+  if (passende.length) teile.push(`── REGELN (aktiv, freigegeben) ──\n` + passende.map(r => `- [P${r.prioritaet} · ${GILT_LABEL[r.giltFuer]} · freigegeben von ${r.freigegebenVon}] ${r.titel}: ${r.text.replace(/\s+/g, ' ').slice(0, 400)}`).join('\n'));
   const text = teile.join('\n\n');
   return text.length > maxZeichen ? `${text.slice(0, maxZeichen)}\n[… Regelblock gekürzt]` : text;
 }
 
 /** Konstitution + Regeln für eine Person laden und als Block liefern (leer, wenn nichts da ist). */
 export async function regelnFuerPrompt(person: string): Promise<string> {
-  const [k, r] = await Promise.all([konstitutionLesen(), regelnLesen({ person: wer(person) })]);
-  return regelnBlock(k, r, wer(person));
+  const { ladeKonten } = await import('@/lib/zugang/konten');
+  const [k, r, konten] = await Promise.all([konstitutionLesen(), regelnLesen({ person: wer(person) }), ladeKonten().catch(() => ({ konten: [] as { speicher: string }[] }))]);
+  // Bekannte Personen = Konten des Systems. Ohne Konten (Test, Erststart) gilt keine Regel — nie „alle“.
+  return regelnBlock(k, r, wer(person), 6000, konten.konten.map(x => x.speicher));
 }

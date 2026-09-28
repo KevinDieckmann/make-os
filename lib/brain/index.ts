@@ -6,6 +6,9 @@
 // JSON-Bestände und außerhalb des Vault-Repos (sonst würde vault-abgleich.sh ihn
 // einchecken). Inkrementell: je Notiz ein Hash — nur Geändertes wird neu zerlegt.
 // Sicht (scope/owner) wird VOR dem Ranking angewandt (lib/zoe/vault.ts darfSehen).
+// 29.09. (Paket D-B #99): `secure_delete=ON` — gelöschte Zeilen (entfernte Notizen, nach Art. 17 nachgezogene
+// Arbeitsbestände in `app_chunks`) werden mit Nullen überschrieben, statt in freien Seiten lesbar zu bleiben. Nach einer
+// Löschung zieht lib/crm/person-bestaende.ts den Such-Index sofort nach (nicht erst im 30-Minuten-Takt).
 
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
@@ -33,7 +36,7 @@ export function oeffneIndex(): DatabaseSync {
   mkdirSync(path.dirname(pfad), { recursive: true });
   db = new DatabaseSync(pfad); dbPfad = pfad;
   db.exec(`
-    PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;
+    PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA secure_delete=ON;
     CREATE TABLE IF NOT EXISTS notizen(id TEXT PRIMARY KEY, wurzel TEXT, titel TEXT, bereich TEXT, typ TEXT, scope TEXT, owner TEXT, stand TEXT, tags TEXT, geaendert TEXT, hash TEXT, zeichen INTEGER);
     CREATE TABLE IF NOT EXISTS chunks(id INTEGER PRIMARY KEY AUTOINCREMENT, notiz_id TEXT NOT NULL, position INTEGER, ueberschrift TEXT, kontext TEXT, text TEXT, hash TEXT);
     CREATE INDEX IF NOT EXISTS chunks_notiz ON chunks(notiz_id);

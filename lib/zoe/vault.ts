@@ -9,9 +9,10 @@
 //   • LESEN nur das Brain, ohne _Archiv, _Vorlagen, Kopien und Exporte —
 //     und ohne das, was Kevin in Obsidian selbst ausgeblendet hat
 //     (.obsidian/app.json › userIgnoreFilters).
-//   • SEHEN nach `scope` (AGENTS.md §3): kevin alles · malin alles außer
-//     `privat` mit `owner: kevin` · sonst nur familie/oeffentlich ·
-//     Agenten ohne Person nie `privat`.
+//   • SEHEN nach `scope` (AGENTS.md §3): `privat` nur für die Eigentümerin/den
+//     Eigentümer (`owner`, ohne Angabe: kevin) — seit 29.09. SYMMETRISCH, auch
+//     Kevin sieht Malins private Notizen nicht mehr (Paket D-B #92) · sonst
+//     kevin/malin alles · andere nur familie/oeffentlich · Agenten ohne Person nie `privat`.
 //   • SCHREIBEN (AGENTS.md §4.2): anhängen nur an Offene_Fragen_Brain,
 //     Taskmanagement_Brain, Zoe_Log; neu anlegen nur Protokolle.
 //     Überschreiben oder Löschen gibt es nicht.
@@ -24,13 +25,19 @@
 import { readdir, readFile, stat, appendFile, writeFile, mkdir, access } from 'node:fs/promises';
 import { join, basename, relative, sep, dirname } from 'node:path';
 import { homedir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
 const HEIM = homedir();
 const ausHeim = (p: string) => p.replace(/^~(?=$|\/)/, HEIM);
 
-/** Das Brain — Nummer eins. */
-export const BRAIN = process.env.MAKE_VAULT_DIR?.trim() ? ausHeim(process.env.MAKE_VAULT_DIR.trim()) : join(HEIM, 'Desktop', 'MAKE', 'Make.Claude');
+/**
+ * Das Brain — Nummer eins. Ohne MAKE_VAULT_DIR: am Mac zuerst der neue Ort außerhalb von iCloud (`~/Vaults/MAKE`,
+ * VAULT_UMZUG_ANLEITUNG.md, 29.09.), sonst der alte auf dem Schreibtisch. Nur gelesen — schreiben darf die App dort nie
+ * (lib/brain/vault-ziel.ts).
+ */
+const MAC_VAULT_NEU = join(HEIM, 'Vaults', 'MAKE', 'Make.Claude');
+export const BRAIN = process.env.MAKE_VAULT_DIR?.trim() ? ausHeim(process.env.MAKE_VAULT_DIR.trim()) : existsSync(MAC_VAULT_NEU) ? MAC_VAULT_NEU : join(HEIM, 'Desktop', 'MAKE', 'Make.Claude');
 const ICLOUD = join(HEIM, 'Library/Mobile Documents/com~apple~CloudDocs/Make Privat ❤️/MAKE OS');
 
 export interface Wurzel {
@@ -75,22 +82,43 @@ export function istPrivat(segment: string): boolean {
 
 export interface Kopf { typ?: string; scope?: string; owner?: string; stand?: string; tags: string[]; /** alle Felder roh (Regeln, Vorschläge, Provenienz — 27.09.) */ felder: Record<string, string | string[]> }
 
-/** YAML-Kopf, die Untermenge „key: value" und „key: [a, b]" — ohne Zusatzpaket. */
-export function leseKopf(text: string): { kopf: Kopf; rumpf: string } {
+/** Warnungen des Kopf-Parsers (29.09.): was er nicht versteht, wird abgelehnt — nie still falsch gelesen. */
+export interface KopfWarnung { feld: string; grund: string }
+
+/**
+ * YAML-Kopf, die Untermenge „key: value", „key: [a, b]" und (seit 29.09., Paket D-B #100) mehrzeilige Listen
+ * („key:" + Zeilen „  - a") — ohne Zusatzpaket. Anderes Verschachteltes (eingerückte Schlüssel, Blocktext mit | oder >)
+ * wird NICHT geraten: das Feld fällt weg und steht in `warnungen`.
+ */
+export function leseKopf(text: string): { kopf: Kopf; rumpf: string; warnungen?: KopfWarnung[] } {
   const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
   if (!m) return { kopf: { tags: [], felder: {} }, rumpf: text };
   const roh: Record<string, string | string[]> = {};
-  for (const zeile of m[1].split(/\r?\n/)) {
-    const kv = zeile.match(/^([A-Za-z_][\w-]*):\s*(.*)$/);
+  const warnungen: KopfWarnung[] = [];
+  const zeilen = m[1].split(/\r?\n/);
+  for (let i = 0; i < zeilen.length; i++) {
+    const kv = zeilen[i].match(/^([A-Za-z_][\w-]*):\s*(.*)$/);
     if (!kv) continue;
     const wert = kv[2].trim();
+    if (wert === '' || wert === '|' || wert === '>' || wert === '|-' || wert === '>-') {
+      // Eingerückte Folgezeilen einsammeln.
+      const folge: string[] = [];
+      while (i + 1 < zeilen.length && /^\s+\S/.test(zeilen[i + 1])) folge.push(zeilen[++i]);
+      if (!folge.length) { roh[kv[1]] = ''; continue; }
+      if (wert === '' && folge.every(z => /^\s+-\s+/.test(z))) {
+        roh[kv[1]] = folge.map(z => z.replace(/^\s+-\s+/, '').trim().replace(/^["'#]|["']$/g, '')).filter(Boolean);
+        continue;
+      }
+      warnungen.push({ feld: kv[1], grund: wert ? 'Blocktext (| oder >) wird nicht gelesen' : 'verschachtelter Wert wird nicht gelesen' });
+      continue;
+    }
     roh[kv[1]] = wert.startsWith('[') && wert.endsWith(']')
       ? wert.slice(1, -1).split(',').map(s => s.trim().replace(/^["'#]|["']$/g, '')).filter(Boolean)
       : wert.replace(/^["']|["']$/g, '');
   }
   const s = (k: string) => (typeof roh[k] === 'string' ? (roh[k] as string) : undefined);
   const tags = Array.isArray(roh.tags) ? roh.tags : s('tags') ? s('tags')!.split(/[,\s]+/).filter(Boolean) : [];
-  return { kopf: { typ: s('type'), scope: s('scope')?.toLowerCase(), owner: s('owner')?.toLowerCase(), stand: s('stand'), tags: tags.slice(0, 12), felder: roh }, rumpf: text.slice(m[0].length) };
+  return { kopf: { typ: s('type'), scope: s('scope')?.toLowerCase(), owner: s('owner')?.toLowerCase(), stand: s('stand'), tags: tags.slice(0, 12), felder: roh }, rumpf: text.slice(m[0].length), ...(warnungen.length ? { warnungen } : {}) };
 }
 
 /** Der gültige Stand: erster „## 🔴 UPDATE"-Block bis zur nächsten ##-Überschrift. */
@@ -112,8 +140,9 @@ export const AGENT: Sicht = { person: 'kevin', agent: true };
 export function darfSehen(n: { scope?: string; owner?: string }, s: Sicht): boolean {
   const scope = n.scope || 'intern';           // ohne Kennzeichnung mindestens intern
   if (s.agent && scope === 'privat') return false;
-  if (s.person === 'kevin') return true;
-  if (s.person === 'malin') return !(scope === 'privat' && n.owner === 'kevin');
+  // Symmetrisch (29.09., #92): Privates sieht NUR, wem es gehört — auch Kevin nicht Malins. Ohne owner: Kevins Vault.
+  if (scope === 'privat') return (n.owner || 'kevin') === s.person;
+  if (s.person === 'kevin' || s.person === 'malin') return true;
   return scope === 'familie' || scope === 'oeffentlich';
 }
 

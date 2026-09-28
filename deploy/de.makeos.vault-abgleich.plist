@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Vault-Abgleich am Mac (29.09., VAULT_UMZUG_ANLEITUNG.md): alle 5 Minuten deploy/vault-abgleich.sh auf den Vault
+     unter ~/Vaults/MAKE/Make.Claude (NICHT mehr im iCloud-Schreibtisch). Konflikt oder Push-Fehler → Mitteilung am Mac.
+     Kopieren nach ~/Library/LaunchAgents/ und laden mit:
+       launchctl load ~/Library/LaunchAgents/de.makeos.vault-abgleich.plist
+     Anhalten: launchctl unload ~/Library/LaunchAgents/de.makeos.vault-abgleich.plist -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>de.makeos.vault-abgleich</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/kevindieckmann/Claude/Projects/MakeOS/deploy/vault-abgleich.sh</string>
+    <string>/Users/kevindieckmann/Vaults/MAKE/Make.Claude</string>
+  </array>
+  <key>StartInterval</key><integer>300</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>/Users/kevindieckmann/.make-os/vault-abgleich.log</string>
+  <key>StandardErrorPath</key><string>/Users/kevindieckmann/.make-os/vault-abgleich.log</string>
+</dict>
+</plist>

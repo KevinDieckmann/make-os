@@ -67,12 +67,16 @@ if [ -f "$BASIS/daten/system/abholung.json" ]; then
   [ -n "$A_ZEIT" ] && A_ALTER=$(awk -v m="$(date -d "$A_ZEIT" +%s 2>/dev/null || echo 0)" -v n="$(date +%s)" 'BEGIN{ if (m > 0) printf "%.1f", (n-m)/3600 }')
 fi
 
-# Vault: Stunden seit dem letzten Commit, Konflikt (Rebase abgebrochen → Marker)
-V_STUNDEN=""; V_KONFLIKT=false
+# Vault: Stunden seit dem letzten Commit und seit dem letzten ERFOLGREICHEN Push, Konflikt/Push-Fehler (29.09., #97:
+# Markerdateien von deploy/vault-abgleich.sh in .git — ein abgebrochener Rebase hinterlässt sonst keine Spur).
+V_STUNDEN=""; V_PUSH=""; V_KONFLIKT=false; V_PUSHFEHLER=false
 if [ -d "$BASIS/vault/.git" ]; then
+  G="$BASIS/vault/.git"
   LC=$(git -C "$BASIS/vault" log -1 --format=%ct 2>/dev/null)
   [ -n "$LC" ] && V_STUNDEN=$(awk -v m="$LC" -v n="$(date +%s)" 'BEGIN{printf "%.1f", (n-m)/3600}')
-  [ -d "$BASIS/vault/.git/rebase-merge" ] || [ -d "$BASIS/vault/.git/rebase-apply" ] && V_KONFLIKT=true
+  [ -f "$G/make-os-letzter-push" ] && V_PUSH=$(awk -v m="$(stat -c %Y "$G/make-os-letzter-push")" -v n="$(date +%s)" 'BEGIN{printf "%.1f", (n-m)/3600}')
+  { [ -d "$G/rebase-merge" ] || [ -d "$G/rebase-apply" ] || [ -f "$G/make-os-konflikt" ]; } && V_KONFLIKT=true
+  [ -f "$G/make-os-push-fehler" ] && V_PUSHFEHLER=true
 fi
 
 # Updates: wartende Sicherheitsupdates, Neustart nötig
@@ -92,7 +96,7 @@ cat >"$TMP" <<EOF
   "zertifikat": { "tage": $(zahl "$Z_TAGE"), "bis": $( [ -n "$Z_BIS" ] && printf '"%s"' "$Z_BIS" || printf 'null') },
   "sicherung": { "alter_stunden": $(zahl "$S_ALTER"), "groesse_mb": $(zahl "$S_GROESSE"), "datei": $( [ -n "$S_DATEI" ] && printf '"%s"' "$S_DATEI" || printf 'null') },
   "abholung": { "alter_stunden": $(zahl "$A_ALTER"), "datei": $( [ -n "$A_DATEI" ] && printf '"%s"' "$A_DATEI" || printf 'null') },
-  "vault": { "letzter_commit_stunden": $(zahl "$V_STUNDEN"), "konflikt": $V_KONFLIKT },
+  "vault": { "letzter_commit_stunden": $(zahl "$V_STUNDEN"), "letzter_push_stunden": $(zahl "$V_PUSH"), "konflikt": $V_KONFLIKT, "push_fehler": $V_PUSHFEHLER },
   "kernel_neustart_noetig": $NEUSTART,
   "updates": { "sicherheit": $(zahl "$UPD") }
 }
