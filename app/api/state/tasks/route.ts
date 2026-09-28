@@ -3,6 +3,7 @@
 // PATCH → Einzeländerungen: { ops: [{ op: 'upsert', task|eintrag, stand? } | { op: 'delete', id, stand? }],
 //          struktur?: { projekte?, listen?, status?, gruppen?, vorlagen? } (dieselbe Form), massenAenderung?, massenLoeschung? }
 //          Kreis in „wartet auf“ → 409 mit `kreis`; der Verlauf je Aufgabe entsteht hier (lib/aufgaben/verlauf.ts).
+//          Wiederkehrende Aufgabe erledigt → nächste Instanz im selben Schreibvorgang, Antwort `serien: [id]` (lib/aufgaben/serie.ts).
 // PUT   → ganzer Stand — nur noch für den allerersten Stand (leerer Bestand) und alte Fenster.
 //
 // Seit 28.09. abends (Aufgaben wie Monday/ClickUp, AUFGABEN_PLAN.md):
@@ -55,7 +56,7 @@ export async function PATCH(req: Request) {
   const gelesen = opsLesen(b);
   if (!gelesen.ok) return NextResponse.json({ ok: false, error: gelesen.fehler }, { status: gelesen.status });
   const r = await aufgabenAendern(gelesen.ops, { person: zugang.person, wer: werAus(req), massenAenderung: b.massenAenderung === true, massenLoeschung: b.massenLoeschung === true });
-  if (r.ok) return NextResponse.json({ ok: true, angewandt: r.angewandt, zeilen: r.zeilen });
+  if (r.ok) return NextResponse.json({ ok: true, angewandt: r.angewandt, zeilen: r.zeilen, ...(r.serien?.length ? { serien: r.serien } : {}) });
   const aktuell = r.konflikte?.length ? (r.state ?? await ladeAufgaben()) : null;
   return NextResponse.json({
     ok: false, error: r.fehler, ...(r.konflikte ? { konflikte: r.konflikte } : {}),

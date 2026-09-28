@@ -7,6 +7,8 @@
 // POST → führt ihn aus (Kalender auffrischen + Morgen-Loop) und merkt sich das.
 // 28.09.: vorneweg die Angebote — gestellte nach „gültig bis“ → abgelaufen, mit Follow-up-Hinweis
 // (lib/crm/angebot-server.ts `ablaufNachziehen`); vorher geschah das nur beim Lesen der Markttraktion.
+// 28.09. spät (Paket C3): danach die Aufgaben-Serien — fällige wiederkehrende Listen und nachzuholende
+// Serien-Aufgaben (lib/aufgaben/serie-server.ts), nur Haushalt des Inhabers oder Systemlauf.
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -15,6 +17,8 @@ import { resolveVitals, localDay } from '@/lib/vitals';
 import { innenAdresse } from '@/lib/innen';
 import { personAus } from '@/lib/zoe/raum';
 import { ablaufNachziehen } from '@/lib/crm/angebot-server';
+import { imHaushaltOderSystemlauf } from '@/lib/zugang/haushalt-inhaber';
+import { aufgabenSerienNachziehen } from '@/lib/aufgaben/serie-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -70,6 +74,19 @@ export async function POST(req: Request) {
     schritte.push({ name: 'Angebote', ok: true, info: n ? `${n} abgelaufen — Follow-up „nachfassen oder Version 2“` : 'keins abgelaufen' });
   } catch (err) {
     schritte.push({ name: 'Angebote', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
+  // 0b) Aufgaben-Serien: fällige wiederkehrende Listen anlegen, Serien-Aufgaben nachholen (ohne Netz, schreibt nur
+  //     wenn fällig, höchstens eine neue Liste je Serie und Lauf, Protokoll „System“).
+  try {
+    if (!(await imHaushaltOderSystemlauf(req))) schritte.push({ name: 'Aufgaben-Serien', ok: false, info: 'nur im Haushalt des Inhabers' });
+    else {
+      const s = await aufgabenSerienNachziehen();
+      const was = [s.listen ? `${s.listen} Liste${s.listen === 1 ? '' : 'n'}` : '', s.aufgaben ? `${s.aufgaben} Aufgabe${s.aufgaben === 1 ? '' : 'n'}` : ''].filter(Boolean).join(', ');
+      schritte.push({ name: 'Aufgaben-Serien', ok: true, info: [was ? `angelegt: ${was}` : 'nichts fällig', ...s.hinweise].join(' · ') });
+    }
+  } catch (err) {
+    schritte.push({ name: 'Aufgaben-Serien', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
   // 1) Kalender auffrischen — nur wenn er wirklich alt ist. Der osascript-Read

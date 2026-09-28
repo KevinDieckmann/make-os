@@ -27,6 +27,9 @@ import { SchnellAnlegen } from './SchnellAnlegen';
 import { AufgabeDetail } from './AufgabeDetail';
 import { StatusVerwalten } from './StatusVerwalten';
 import { StatusBoard } from './StatusBoard';
+import { SerienZeichen } from './WiederholungWahl';
+import { ListeSerieKnopf } from './SerienListeEinstellen';
+import { VorlagenKnopf } from './VorlagenDialog';
 import { aufgabeAnlegen, projektAnlegen, listeAnlegen, spacesOderFest, usePersonen, useIch, ownerLabel } from './hilfe';
 
 const RAUM_MERKER = 'make-aufgaben-raum';
@@ -154,6 +157,7 @@ export function AufgabenRaum() {
   const meta = (t: Task, s: ReturnType<typeof statusVon>, f: { fertig: number; gesamt: number }, schmal: boolean) => (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: schmal ? 8 : 10, fontSize: 12, color: C.inkLeise, flex: '0 0 auto', flexWrap: 'wrap' }}>
       {s.id !== 'todo' && s.id !== 'done' && <span style={{ color: s.farbe, border: `1px solid ${s.farbe}55`, borderRadius: 999, padding: '0 7px', fontWeight: 600, whiteSpace: 'nowrap' }}>{s.label}</span>}
+      <SerienZeichen w={t.wiederholung} groesse={12} />
       {f.gesamt > 0 && <span title="Unteraufgaben erledigt" style={{ fontVariantNumeric: 'tabular-nums' }}>{f.fertig}/{f.gesamt}</span>}
       {!!t.kommentare?.length && <span title="Kommentare" style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><MessageSquare size={12} />{t.kommentare.length}</span>}
       {t.bezug && <span title="Mit dem CRM verknüpft" style={{ display: 'inline-flex' }}><Link2 size={12} /></span>}
@@ -229,6 +233,7 @@ export function AufgabenRaum() {
                   </button>
                   <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: l.virtuell ? C.inkLeise : C.inkDim }}>{l.titel}</span>
                   <span style={{ fontSize: 12, color: C.inkLeise }}>{l.offen || ''}</span>
+                  {!l.virtuell && <ListeSerieKnopf listeId={l.id} />}
                   {!l.virtuell && <span style={{ marginLeft: 'auto', display: 'inline-flex' }}><Aktionen breit={breit}>
                     <button onClick={() => { const v = window.prompt('Liste umbenennen', l.titel)?.trim(); if (v && v !== l.titel) dispatch({ type: 'UPDATE_LISTE', payload: { id: l.id, titel: v.slice(0, 80) } }); }} style={leiseKnopf}>Umbenennen</button>
                     <button onClick={() => { if (window.confirm(`Liste „${l.titel}“ löschen? Die Aufgaben bleiben — unter „Sonstige“.`)) dispatch({ type: 'DELETE_LISTE', payload: { id: l.id } }); }} style={leiseKnopf}>Löschen</button>
@@ -283,6 +288,7 @@ export function AufgabenRaum() {
         <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
           {projektFokus && <button onClick={() => gehe({ p: null })} style={leiseKnopf}>‹ alle Projekte</button>}
           <button onClick={() => setNeuProjekt(n => (n === null ? '' : null))} style={{ ...leiseKnopf, color: C.aktiv }}>+ Projekt</button>
+          <VorlagenKnopf spaceId={raumId} projektId={projektFokus ?? undefined} />
           <button onClick={() => setStatusZeigen(z => !z)} style={leiseKnopf}>{statusZeigen ? 'Status schließen' : 'Status verwalten'}</button>
         </span>
       </div>

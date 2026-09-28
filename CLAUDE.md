@@ -320,6 +320,20 @@ lokal, Route `/os`, Port 3001.
   Behälter) und `AnsichtKalender` (Monat/Woche, Balken Start → Deadline je Woche in Bahnen, Farbe Status/Gruppe, „!“ überfällig, ↻ wiederkehrend; Ziehen
   oder „verschieben auf …“ = `verschiebenTeil`, Start wandert mit; „Ohne Datum“ als Seitenliste; heute = `berlinHeute`). Rechnen nur in
   `lib/aufgaben/ansichten.ts` (Test `tests/aufgaben-ansichten.test.ts`). Umschalter in `AufgabenRaum` (hängt C1 ein), Adresse `ansicht=tabelle|kalender` (`lib/aufgaben/adresse.ts`).
+- **Wiederkehrend + Vorlagen (C3, 28.09. spät):** Kalenderrechnung NUR in `lib/aufgaben/wiederholung.ts` (täglich · Werktage · wöchentlich mit
+  Tagen · monatlich mit Monatstag, 31 → Monatsende gekappt · jährlich mit festem Tag für 29.02.; Intervall, `bis`; Kalendertage über UTC-Mittag,
+  heute = `berlinerTag`; Platzhalter {Monat} {Jahr} {KW} {Datum}). Serien rein in `lib/aufgaben/serie.ts`: **Aufgabe** erledigt → im Schreibweg
+  (`aufgabenAendern`) die nächste Instanz (`naechsteInstanz`: Unteraufgaben zurückgesetzt + Deadlines mitverschoben, Notiz/Felder/Zuständig/Bezug/Ort
+  übernommen, nie Kommentare/Verlauf/ZOE/Abhängigkeiten/eigener Status), Serie = `vorlageId` „serie:<erste Kennung>“, Kennung `w-<fnv>-<JJJJMMTT>`,
+  höchstens eine offene je Serie, nie in der Vergangenheit (springt auf ≥ heute); Verlauf „angelegt“ durch System, Antwort `serien[]` → Browser lädt nach.
+  **Liste:** die NEUESTE der Serie trägt `wiederholung.naechste` + `vorlageId` (Muster = Vorlagen-Name); Morgenlauf `/api/tagesstart` Schritt
+  „Aufgaben-Serien“ (`lib/aufgaben/serie-server.ts`, Haushalt oder Systemlauf, schreibt nur wenn fällig, Protokoll „System“) legt je Serie und Lauf
+  höchstens EINE Liste an (`ls-<fnv>-<JJJJMMTT>`, idempotent; monatlich/jährlich älteste verpasste zuerst, täglich/Werktage/wöchentlich nur die
+  jüngste) und holt Serien-Aufgaben nach, die ein anderer Schreiber erledigt hat (nächster Termin ≤ morgen, keine offene). **Vorlagen** rein in
+  `lib/aufgaben/vorlagen.ts` (`vorlageAusProjekt`/`vorlageAusListe` nur Struktur, ohne `bezug`/Kommentare/Dateien/Feldwerte; `ausVorlageAnlegen`
+  Deadline = Start + `versatzTage`, Mandanten-Space → Firma vorbelegt), drei Startvorlagen im Code (`vorlagen-start.ts`, `start-…`, nie im Bestand).
+  Oberfläche: `WiederholungWahl` (+ `SerienZeichen` ↻), `SerienListeEinstellen` (+ `ListeSerieKnopf`), `VorlagenDialog` (+ `VorlagenKnopf`);
+  eingehängt in `AufgabeDetail` (Feld „Wiederholt“ über `wiederholungSetzen`) und `AufgabenRaum`. Test `tests/aufgaben-serie.test.ts`.
 
 ## Markttraktion — Deal- und Follow-up-Ebene (27.09., nur lokal)
 - **Marke Make.One (27.09.):** unter den Events läuft unsere Veranstaltungsmarke. `lib/crm/marke.ts` ist die eine Stelle (`MARKE_EVENTS`,

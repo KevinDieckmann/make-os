@@ -17,6 +17,8 @@ import type { Task, TasksState, AufgabeKommentar } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
 import type { AufgabenAktion } from '@/context/TasksContext';
 import { aufgabeAnlegen, projektAnlegen, listeAnlegen, projekteImSpace, spacesOderFest, umzugTeil, useCrmVerweise, neueKennung, ownerLabel, type Person } from './hilfe';
+import { WiederholungWahl } from './WiederholungWahl';
+import { wiederholungSetzen } from '@/lib/aufgaben/serie';
 
 const PRIO: WahlEintrag<Priority>[] = [
   { id: 'critical', label: 'Kritisch', punkt: LEUCHT.kritisch }, { id: 'high', label: 'Hoch', punkt: LEUCHT.achtung },
@@ -101,6 +103,7 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.inkLeise }}>Deadline
             <input type="date" value={t.dueDate ?? ''} onChange={e => aendern({ dueDate: e.target.value || undefined })} style={datumFeld} aria-label="Deadline" /></label>
         </Feld>
+        {!eltern && <Feld label="Wiederholt"><WiederholungWahl wert={t.wiederholung} basis={t.dueDate} onChange={w => aendern(wiederholungSetzen(t, w))} /></Feld>}
         {!eltern && (
           <Feld label="Ort">
             <Wahl klein label="Space" liste={spaceWahl} wert={t.spaceId} farbe={space?.farbe} onWahl={id => aendern(umzugTeil(state, t, { spaceId: id }))} />

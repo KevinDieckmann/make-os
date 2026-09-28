@@ -263,7 +263,7 @@ function unterschied(alt: TasksState, neu: TasksState, staende: Staende): Record
   return raus;
 }
 
-interface SchreibAntwort { ok?: boolean; error?: string; massenAenderung?: boolean; massenLoeschung?: boolean; anzahl?: number; konflikte?: unknown[]; kreis?: string[]; zeilen?: { liste: ListenArt; id: string; stand: string; verlauf?: VerlaufEintrag[] }[]; state?: TasksState }
+interface SchreibAntwort { ok?: boolean; error?: string; massenAenderung?: boolean; massenLoeschung?: boolean; anzahl?: number; konflikte?: unknown[]; kreis?: string[]; zeilen?: { liste: ListenArt; id: string; stand: string; verlauf?: VerlaufEintrag[] }[]; state?: TasksState; /** Paket C3: neue Instanzen wiederkehrender Aufgaben. */ serien?: string[] }
 
 /**
  * Schreiben mit Rückfrage bei Massen-Erledigung/-Löschung (lib/store/massen-wache.ts): ein blockierender Dialog statt
@@ -394,6 +394,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         if (!n) return;
         // In Paketen zu 150 (Server-Grenze 200 je Liste); Struktur reist im ersten mit.
         const pakete = Math.max(1, Math.ceil(ops.tasks.length / 150));
+        let serienNeu = false; // Paket C3: der Server legte beim Erledigen die nächste Instanz an → danach nachladen
         for (let i = 0; i < pakete; i++) {
           const koerper: Record<string, unknown> = { ops: ops.tasks.slice(i * 150, i * 150 + 150) };
           if (i === 0 && STRUKTUR.some(a => ops[a].length)) koerper.struktur = { projekte: ops.projects, listen: ops.listen, status: ops.statusEigen, gruppen: ops.gruppen, vorlagen: ops.vorlagen };
@@ -407,6 +408,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
               dispatch({ type: 'VERLAUF_NACHTRAGEN', payload: verlauf });
             }
           }
+          if (d?.ok && d.serien?.length) serienNeu = true;
           if (d && !d.ok && d.kreis?.length) { await rehydrate(); return; }
           if (d && !d.ok && d.konflikte?.length) {
             // Jemand anders war schneller: aktuellen Stand zeigen, Hinweis auslösen — nichts überschrieben.
@@ -415,6 +417,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
             return;
           }
         }
+        if (serienNeu && !speichernSteht.current) await rehydrate();
       }).catch(() => {});
     }, 400);
     return () => clearTimeout(saveTimer.current);

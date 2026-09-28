@@ -19,6 +19,8 @@ import { uebernehmen, alleSpaces, zustaendigeVon, type AufgabenSpace } from './s
 import { taskSauber, projektSauber, listeSauber, statusSauber, gruppeSauber, vorlageSauber, feldWerteTypisieren, kommentareVereinen, AUFGABEN_GRENZEN, ZuGross } from './saeubern';
 import { abhaengigAngleichen, kreisBei } from './abhaengig';
 import { verlaufFuer, verlaufAnhaengen, type VerlaufWer } from './verlauf';
+import { serienBeimErledigen } from './serie';
+import { berlinerTag } from './wiederholung';
 
 export const AUFGABEN_SPEICHER = 'tasks';
 
@@ -116,6 +118,8 @@ export interface SchreibErgebnis {
   angewandt: number;
   /** Neuer Stand je geschriebener Zeile — der Browser trägt ihn nach. */
   zeilen: { liste: ListenArt; id: string; stand: string; /** Nur Aufgaben: der Verlauf, wie er jetzt gespeichert ist (der Browser trägt ihn nach). */ verlauf?: Task['verlauf'] }[];
+  /** Paket C3: neu entstandene Instanzen wiederkehrender Aufgaben (Kennungen) — der Browser lädt dann den Stand nach. */
+  serien?: string[];
   state?: TasksState;
 }
 
@@ -217,13 +221,17 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
       erg = { ok: false, status: 409, kreis, fehler: `Abgelehnt: „${titel(kreis[0])}“ würde über ${kreis.length - 1 === 1 ? 'eine Abhängigkeit' : `${kreis.length - 1} Abhängigkeiten`} auf sich selbst warten. Nichts gespeichert.`, angewandt: 0, zeilen: [] };
       throw ABBRUCH;
     }
+    // Paket C3: wiederkehrende Aufgabe erledigt → nächste Instanz (idempotent, höchstens eine offene je Serie).
+    const serien = serienBeimErledigen(vorher.tasks, nachher.tasks, upserts, berlinerTag(new Date(jetzt)), jetzt);
+    if (serien.length) nachher = { ...nachher, tasks: [...nachher.tasks, ...serien] };
+    const serienIds = new Set(serien.map(t => t.id));
     // Verlauf je Aufgabe: nach der Übernahme, damit abgeleitete Felder (Status, Ort) stimmen.
     const altNach = new Map(vorher.tasks.map(t => [t.id, t]));
     const wer: VerlaufWer = { person: opt.person, ...(opt.wer?.art === 'zoe' ? { durch: 'zoe' as const } : opt.wer && opt.wer.art !== 'person' ? { durch: 'system' as const } : {}) };
-    const hier = new Set(upserts);
+    const hier = new Set([...upserts, ...serienIds]);
     nachher = { ...nachher, tasks: nachher.tasks.map(t => {
       if (!hier.has(t.id)) return t;
-      const eintraege = verlaufFuer(altNach.get(t.id), t, wer, jetzt, nachher.statusEigen ?? []);
+      const eintraege = verlaufFuer(altNach.get(t.id), t, serienIds.has(t.id) ? { person: opt.person, durch: 'system' } : wer, jetzt, nachher.statusEigen ?? []);
       if (!eintraege.length) return t;
       const verlauf = verlaufAnhaengen(t.verlauf, eintraege);
       return verlauf ? { ...t, verlauf } : t;
@@ -241,7 +249,7 @@ export async function aufgabenAendern(ops: AufgabenOps, opt: Optionen): Promise<
         if (alt.get(x.id) !== s) zeilen.push({ liste: art, id: x.id, stand: s, ...(art === 'tasks' && (x as Task).verlauf ? { verlauf: (x as Task).verlauf } : {}) });
       }
     }
-    erg = { ok: true, status: 200, angewandt, zeilen, state: nachher };
+    erg = { ok: true, status: 200, angewandt, zeilen, state: nachher, ...(serien.length ? { serien: serien.map(t => t.id) } : {}) };
     return nachher;
   });
   } catch (e) {
