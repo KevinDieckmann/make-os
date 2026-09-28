@@ -31,8 +31,9 @@ async function zugang(req: Request) {
 }
 
 export async function GET(req: Request) {
-  if (!(await zugang(req))) return GESPERRT();
-  if (new URL(req.url).searchParams.get('archiv') === '1') return NextResponse.json({ laeufe: await neustartArchiv() });
+  const z = await zugang(req);
+  if (!z) return GESPERRT();
+  if (new URL(req.url).searchParams.get('archiv') === '1') return NextResponse.json({ laeufe: await neustartArchiv(z.person) });
   return NextResponse.json({ vorschau: await neustartVorschau(), bestaetigung: BESTAETIGUNG });
 }
 
@@ -65,7 +66,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         ok: true, schon: r.schon, laufId: l.id,
         bericht: {
-          projekte: l.aufgaben.projekte.length, listen: l.aufgaben.listen.length, gruppen: l.aufgaben.gruppen.length, aufgaben: l.aufgaben.aufgaben.length,
+          projekte: l.aufgaben.projekte.length, listen: l.aufgaben.listen.length, gruppen: l.aufgaben.gruppen.length, aufgaben: l.aufgaben.aufgaben.length - (l.unteraufgaben ?? 0), unteraufgaben: l.unteraufgaben ?? 0,
           ziele: l.ziele.length, meilensteine: l.meilensteine.length, fokus: l.fokus.length, meldungenGelesen: l.meldungenGelesen,
           serien: l.aufgaben.pausiert.map(s => ({ art: s.art, titel: s.titel, regel: s.wiederholung.regel })),
         },

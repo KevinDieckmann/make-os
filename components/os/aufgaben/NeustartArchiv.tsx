@@ -13,6 +13,7 @@ import type { ArchivLaufSicht, NeustartAuswahl } from '@/lib/aufgaben/neustart-s
 import { REGEL_LABEL } from '@/lib/aufgaben/wiederholung';
 import { spaceLabel, tagKurz } from './hilfe';
 import { NEU_ANGEFANGEN } from './NeuAnfangen';
+import { usePersonen } from './hilfe';
 
 const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
 const zeileStil: CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,.05)', flexWrap: 'wrap', minHeight: 44 };
@@ -37,6 +38,7 @@ function Abschnitt({ titel, anzahl, children }: { titel: string; anzahl: number;
 
 export function NeustartArchiv({ spaces }: { spaces: readonly AufgabenSpace[] }) {
   const { rehydrate } = useTasks();
+  const personen = usePersonen();
   const [laeufe, setLaeufe] = useState<ArchivLaufSicht[] | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [meldung, setMeldung] = useState<string | null>(null);
@@ -83,8 +85,8 @@ export function NeustartArchiv({ spaces }: { spaces: readonly AufgabenSpace[] })
         return (
           <Karte key={l.id} i={3 + i}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span style={{ fontFamily: SCHRIFT.display, fontSize: 16, fontWeight: 700, color: C.ink }}>Neustart vom {tagKurz(l.am.slice(0, 10))}</span>
-              <span style={{ fontSize: 12, color: C.inkLeise }}>{new Date(l.am).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })} · {l.von}{l.status !== 'fertig' ? ' · nicht abgeschlossen' : ''}</span>
+              <span style={{ fontFamily: SCHRIFT.display, fontSize: 16, fontWeight: 700, color: C.ink }}>Neustart vom {new Date(l.am).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Berlin' })}</span>
+              <span style={{ fontSize: 12, color: C.inkLeise }}>{new Date(l.am).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })} Uhr · {personen.find(p => p.speicher === l.von)?.name ?? l.von}{l.status !== 'fertig' ? ' · nicht abgeschlossen' : ''}</span>
               <span style={{ marginLeft: 'auto' }}>
                 {l.offen > 0 ? <Knopf leise onClick={() => zurueck(l.id, { art: 'alles' })}>Alles wiederherstellen ({l.offen})</Knopf> : <span style={{ fontSize: 12.5, color: LEUCHT.gut }}>alles zurück ✓</span>}
               </span>

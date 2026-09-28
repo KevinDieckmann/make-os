@@ -182,7 +182,7 @@ describe('Route /api/neustart', () => {
     expect(r.status).toBe(200);
     const d = await r.json() as { schon: boolean; bericht: Record<string, unknown> };
     expect(d.schon).toBe(false);
-    expect(d.bericht).toMatchObject({ projekte: 2, aufgaben: 5, ziele: 4, meilensteine: 1, fokus: 1, meldungenGelesen: 1 });
+    expect(d.bericht).toMatchObject({ projekte: 2, aufgaben: 4, unteraufgaben: 1, ziele: 4, meilensteine: 1, fokus: 1, meldungenGelesen: 1 });
     // Leser sehen nichts mehr außer der offenen Steuer-Frist.
     const { ladeAufgaben } = await import('@/lib/aufgaben/sicht');
     const sicht = aufgabenSicht(await ladeAufgaben());

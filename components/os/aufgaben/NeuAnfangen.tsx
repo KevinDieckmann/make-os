@@ -7,6 +7,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Fenster } from '../Fenster';
 import { Knopf, feld } from '../schlank';
@@ -23,7 +24,7 @@ export const NEU_ANGEFANGEN = 'make-neu-angefangen';
 const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
 const zahl = (n: number, eins: string, viele: string) => `${n} ${n === 1 ? eins : viele}`;
 
-interface Bericht { projekte: number; listen: number; gruppen: number; aufgaben: number; ziele: number; meilensteine: number; fokus: number; meldungenGelesen: number; serien: { art: string; titel: string; regel: string }[] }
+interface Bericht { projekte: number; listen: number; gruppen: number; aufgaben: number; unteraufgaben?: number; ziele: number; meilensteine: number; fokus: number; meldungenGelesen: number; serien: { art: string; titel: string; regel: string }[] }
 
 export function NeuAnfangenKnopf({ klein }: { klein?: boolean }) {
   const [auf, setAuf] = useState(false);
@@ -34,7 +35,8 @@ export function NeuAnfangenKnopf({ klein }: { klein?: boolean }) {
         style={{ background: 'none', border: `1px solid ${LEUCHT.kritisch}55`, borderRadius: 10, color: LEUCHT.kritisch, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: klein ? 12.5 : TYP.bedien, padding: klein ? '6px 10px' : '8px 12px', minHeight: 36 }}>
         Neu anfangen …
       </button>
-      {auf && <NeuAnfangenFenster onZu={() => { setAuf(false); requestAnimationFrame(() => knopf.current?.focus()); }} />}
+      {/* Über ein Portal an den Seitenrand — im Seitenkopf läge das Fenster sonst unter den Karten (Stapelkontext). */}
+      {auf && createPortal(<NeuAnfangenFenster onZu={() => { setAuf(false); requestAnimationFrame(() => knopf.current?.focus()); }} />, document.body)}
     </>
   );
 }
@@ -77,7 +79,7 @@ export function NeuAnfangenFenster({ onZu }: { onZu: () => void }) {
       {bericht ? (
         <>
           <p style={{ margin: 0, fontSize: TYP.body, color: C.ink, lineHeight: 1.55 }}>
-            Archiviert: {[zahl(bericht.ziele, 'Ziel', 'Ziele'), zahl(bericht.meilensteine, 'Meilenstein', 'Meilensteine'), zahl(bericht.projekte, 'Projekt', 'Projekte'), zahl(bericht.aufgaben, 'Aufgabe', 'Aufgaben')].join(' · ')}.
+            Archiviert: {[zahl(bericht.ziele, 'Ziel', 'Ziele'), zahl(bericht.meilensteine, 'Meilenstein', 'Meilensteine'), zahl(bericht.projekte, 'Projekt', 'Projekte'), zahl(bericht.aufgaben, 'Aufgabe', 'Aufgaben')].join(' · ')}{bericht.unteraufgaben ? ` (dazu ${zahl(bericht.unteraufgaben, 'Unteraufgabe', 'Unteraufgaben')})` : ''}.
             {' '}Die Spaces sind leer — die Startvorlagen stehen unter „Vorlagen“ bereit.
           </p>
           {bericht.serien.length > 0 && <SerienListe serien={bericht.serien} titel="Serien ruhen (laufen weiter, sobald ihr sie zurückholt)" />}
