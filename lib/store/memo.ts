@@ -39,9 +39,18 @@ export async function merken<T>(schluessel: string, ttlMs: number, rechne: () =>
     return e.wert as T;
   }
   const v = stand.v;
-  // Schreibt WÄHREND der Berechnung ein anderer Bestand, gilt das Ergebnis trotzdem — für höchstens eine TTL. Vorher wurde es
-  // verworfen, und weil die Indizes selbst Verläufe schreiben, war der Speicher unter Last nie gefüllt (Tempo-Prüfung 27.09.).
-  const laeuft = rechne().then(wert => { ablage.set(schluessel, { v: stand.v, t: Date.now(), wert }); return wert; }, err => { ablage.delete(schluessel); throw err; });
+  // Gemerkt wird unter dem Stand vom START der Rechnung (Prüfbericht 28.09.): schreibt WÄHREND der Rechnung jemand einen
+  // Bestand, kann das Ergebnis den alten Stand zeigen — es darf dann nicht unter dem neuen Stand als frisch gelten. Der
+  // nächste Aufruf rechnet neu. (Die Verläufe, die die Indizes selbst schreiben, sind Rauschen und erhöhen den Stand nicht.)
+  // Eine ältere Rechnung überschreibt nie das Ergebnis einer jüngeren.
+  const laeuft: Promise<T> = rechne().then(wert => {
+    const jetzt = ablage.get(schluessel);
+    if (!jetzt || jetzt.laeuft === laeuft) ablage.set(schluessel, { v, t: Date.now(), wert });
+    return wert;
+  }, err => {
+    if (ablage.get(schluessel)?.laeuft === laeuft) ablage.delete(schluessel);
+    throw err;
+  });
   ablage.set(schluessel, { v, t: Date.now(), wert: undefined, laeuft });
   return laeuft;
 }

@@ -194,15 +194,16 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
     await planLaden();
     return true;
   }
-  /** Als bezahlt markieren: frisch laden, am aktuellen Eintrag nur Status + Datum setzen (kein Überschreiben fremder Änderungen), dann die Buchung wie in den Finanzen. */
+  /**
+   * Als bezahlt markieren (28.09.): EIN Aufruf — der Server setzt Status + Datum am aktuellen Eintrag
+   * und legt die Buchung `bu-re-<id>` in derselben Sperre an (idempotent). Kein zweiter Aufruf, der verloren gehen kann.
+   */
   async function alsBezahlt(id: string, am: string) {
-    const frisch = await planLaden();
-    const r = frisch?.rechnungen.find(x => x.id === id);
-    if (!r) { setMeldung('Die Rechnung gibt es nicht mehr — Stand neu geladen.'); return; }
-    if (r.status === 'bezahlt') { setMeldung('Schon als bezahlt markiert — Stand neu geladen.'); return; }
-    if (await rechnungSchreiben({ ...r, status: 'bezahlt', bezahltAm: am }) && r.betrag > 0) {
-      fetch('/api/state/buchungen', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ op: 'upsert', buchung: { id: `bu-re-${r.id}`, datum: am, wer: r.kunde, betrag: r.betrag, kategorie: 'Umsatz', zweck: r.titel, ort: r.firmaId === 'kdv' ? 'kdv' : 'kdc', rechnungId: r.id } }] }) }).catch(() => {});
-    }
+    const r = await fetch('/api/state/finanzplan', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'bezahlt', rechnungId: id, am }) })
+      .then(x => x.json()).catch(() => ({ ok: false, error: 'Keine Verbindung — nichts geändert.' }));
+    if (!r.ok) setMeldung(r.error ?? 'Nicht gespeichert.');
+    else if (r.schonBezahlt) setMeldung('Schon als bezahlt markiert — Stand neu geladen.');
+    await planLaden();
   }
 
   const planHinweis = kein ? <Leer>Rechnungen gehören zu den Business-Zahlen des Haushalts — für dieses Konto nicht freigegeben.</Leer>

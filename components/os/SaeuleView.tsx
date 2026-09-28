@@ -15,6 +15,7 @@ import type { PerfIndex, Saeule } from '@/lib/performance';
 import { TEAM, RITUALE } from '@/lib/make-one/team-data';
 import { eur, computeMetrics, type FinanceState, type Kasse } from '@/lib/make-one/finance-data';
 import { localDay } from '@/lib/zeit';
+import { aufgabeStatusSetzen } from '@/lib/aufgaben/status';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Ring, Zahl, Balken, Fortschritt, Haken, feld, LEUCHT } from './schlank';
 
 export { SAEULEN_META };
@@ -201,18 +202,8 @@ function WerkzeugPlanung() {
     const next = tasks.map(x => (x.id === t.id ? { ...x, status, updatedAt: new Date().toISOString() } : x));
     setTasks(next);
     try {
-      // Erst den echten Stand holen, dann genau diese eine Aufgabe ändern.
-      // Wichtig: kommt keine Liste zurück, wird NICHT geschrieben — sonst
-      // hätte ein fehlgeschlagener Lesevorgang alle Aufgaben gelöscht.
-      const r = await fetch('/api/state/tasks', { cache: 'no-store' });
-      if (!r.ok) throw new Error('Stand nicht lesbar');
-      const cur = await r.json();
-      if (!Array.isArray(cur?.state?.tasks) || !Array.isArray(cur?.state?.projects)) throw new Error('kein Bestand');
-      await fetch('/api/state/tasks', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projects: cur.state.projects, tasks: cur.state.tasks.map((x: Task) => (x.id === t.id ? { ...x, status } : x)) }),
-      });
+      // Genau diese eine Aufgabe ändern (28.09.): frisch lesen, EINE Einzeländerung (PATCH) — nie der ganze Stand per PUT.
+      await aufgabeStatusSetzen(t.id, status);
       await load();
     } catch {
       setTasks(tasks); /* nicht gespeichert — Anzeige zurückdrehen */

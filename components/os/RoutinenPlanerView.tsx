@@ -13,7 +13,7 @@ import Link from 'next/link';
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { listeSchreiben } from '@/lib/make-one/liste-sync';
+import { ListenSchreiber, type SchreibErgebnis } from '@/lib/make-one/liste-stand';
 import { localDay } from '@/lib/zeit';
 import { SPACE_FARBE, SPACE_LABEL, type SpaceId } from '@/lib/make-one/space-regeln';
 import { RHYTHMEN, WOCHENTAGE, OWNER_BEIDE, type Block, type Routine, type Wochentag } from '@/lib/planung/typen';
@@ -64,16 +64,25 @@ export function RoutinenPlanerView() {
   const [blockNeu, setBlockNeu] = useState({ wochentag: 1 as Wochentag, von: '09:00', bis: '18:00', art: 'business' as SpaceId, titel: '' });
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const blockTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  /** Zuletzt gelesener/geschriebener Stand — Basis für die Unterschiede. */
-  const gespeichert = useRef<Routine[] | null>(null);
+  // Geteilter Bestand (28.09.): nur Einzeländerungen mit Stand — Routinen über `{ ops }`, Blöcke über `{ bloecke: ops }`
+  // (nur die eigenen). Die Refs halten die aktuelle Sicht als Grundlage für „was wurde gerade geändert“.
+  const routinenSchreiber = useMemo(() => new ListenSchreiber<Routine>({ pfad: '/api/state/routinen', liste: d => (Array.isArray(d.routinen) ? d.routinen as Routine[] : null) }), []);
+  const blockSchreiber = useMemo(() => new ListenSchreiber<Block>({ pfad: '/api/state/routinen', koerper: ops => ({ bloecke: ops }), liste: d => (Array.isArray(d.bloecke) ? d.bloecke as Block[] : null) }), []);
+  const routinenRef = useRef<Routine[]>([]);
+  const bloeckeRef = useRef<Block[]>([]);
+  const [hinweis, setHinweis] = useState<string | null>(null);
+  const zeigeRoutinen = (l: Routine[]) => { routinenRef.current = l; setRoutinen(l); };
+  const zeigeBloecke = (l: Block[]) => { bloeckeRef.current = l; setBloecke(l); };
+  const nachSenden = (e: SchreibErgebnis<unknown>) => setHinweis(e.ok ? null : e.status === 409 ? 'Jemand hat inzwischen geändert — der aktuelle Stand ist geladen, bitte noch einmal.' : e.fehler ?? 'Nicht gespeichert.');
 
   useEffect(() => {
     fetch('/api/state/routinen')
       .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
       .then(d => {
-        const l = Array.isArray(d.routinen) ? d.routinen : [];
-        gespeichert.current = l; setRoutinen(l);
-        setBloecke(Array.isArray(d.bloecke) ? d.bloecke : []);
+        const l: Routine[] = Array.isArray(d.routinen) ? d.routinen : [];
+        const b: Block[] = Array.isArray(d.bloecke) ? d.bloecke : [];
+        routinenSchreiber.kenne(l); blockSchreiber.kenne(b);
+        zeigeRoutinen(l); zeigeBloecke(b);
         setGeladen(true);
       })
       .catch(err => {
@@ -88,23 +97,30 @@ export function RoutinenPlanerView() {
   }, []);
 
   function persist(next: Routine[]) {
-    setRoutinen(next);
-    if (ladeFehler) return;
+    if (ladeFehler || !routinenSchreiber.geladen) { setRoutinen(next); return; }
+    routinenSchreiber.aendern(routinenRef.current, next);
+    zeigeRoutinen(next);
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      const alt = gespeichert.current;
-      gespeichert.current = next;
-      void listeSchreiben<Routine>('/api/state/routinen', 'routinen', alt, next);
+      void routinenSchreiber.senden().then(e => { nachSenden(e); if (e.sicht && !e.nichts) zeigeRoutinen(e.sicht); });
     }, 500);
   }
+  /** Nur eigene Blöcke — der Server lehnt fremde ohnehin ab (403). */
   function persistBloecke(next: Block[]) {
-    setBloecke(next);
-    if (ladeFehler) return;
+    if (ladeFehler || !blockSchreiber.geladen) return;
+    blockSchreiber.aendern(bloeckeRef.current, next);
+    zeigeBloecke(next);
     clearTimeout(blockTimer.current);
     blockTimer.current = setTimeout(() => {
-      fetch('/api/state/routinen', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bloecke: next }) }).catch(() => {});
+      void blockSchreiber.senden().then(e => { nachSenden(e); if (e.sicht && !e.nichts) zeigeBloecke(e.sicht); });
     }, 500);
   }
+  // Beim Verlassen: noch Offenes senden.
+  useEffect(() => () => {
+    clearTimeout(saveTimer.current); clearTimeout(blockTimer.current);
+    if (routinenSchreiber.hatOffenes) void routinenSchreiber.senden();
+    if (blockSchreiber.hatOffenes) void blockSchreiber.senden();
+  }, [routinenSchreiber, blockSchreiber]);
 
   const nameVon = (sp: string) => (sp === OWNER_BEIDE ? 'gemeinsam' : personen.find(p => p.speicher === sp)?.name ?? (sp === ich ? 'ich' : sp));
   const patch = (id: string, p: Partial<Routine>) => persist(routinen.map(x => (x.id === id ? { ...x, ...p, ...(p.space === 'privat' ? { einheit: undefined } : {}) } : x)));
@@ -132,8 +148,10 @@ export function RoutinenPlanerView() {
 
   // Blöcke der gewählten Person
   const meineBloecke = useMemo(() => bloeckeFuer(bloecke, blockPerson), [bloecke, blockPerson]);
+  /** Blöcke der anderen Person sind nur zu sehen — ändern kann sie nur sie selbst. */
+  const blockEigen = !!ich && blockPerson === ich;
   const blockAnlegen = () => {
-    if (!blockPerson || blockNeu.bis <= blockNeu.von) return;
+    if (!blockPerson || !blockEigen || blockNeu.bis <= blockNeu.von) return;
     const b: Block = { id: `bl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, owner: blockPerson, wochentag: blockNeu.wochentag, von: blockNeu.von, bis: blockNeu.bis, art: blockNeu.art, rang: naechsterRang(meineBloecke.filter(x => x.wochentag === blockNeu.wochentag)), ...(blockNeu.titel.trim() ? { titel: blockNeu.titel.trim().slice(0, 60) } : {}) };
     persistBloecke([...bloecke, b]);
     setBlockNeu({ ...blockNeu, titel: '' });
@@ -276,7 +294,7 @@ export function RoutinenPlanerView() {
         {geladen && blockPerson && !meineBloecke.length && (
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
             <Leer>Noch keine Blöcke für {nameVon(blockPerson)}.</Leer>
-            <Knopf leise onClick={() => persistBloecke([...bloecke, ...standardBloecke(blockPerson)])}>Mo–Fr 09–18 Business anlegen</Knopf>
+            {blockEigen && <Knopf leise onClick={() => persistBloecke([...bloecke, ...standardBloecke(blockPerson)])}>Mo–Fr 09–18 Business anlegen</Knopf>}
           </div>
         )}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 150px), 1fr))', gap: 10 }}>
@@ -290,16 +308,20 @@ export function RoutinenPlanerView() {
                   <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: pos < tag.length - 1 ? '1px solid rgba(255,255,255,.05)' : 'none' }}>
                     <Punkt farbe={SPACE_FARBE[b.art]} groesse={7} />
                     <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: C.ink, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${b.von}–${b.bis} ${SPACE_LABEL[b.art]}${b.titel ? ` · ${b.titel}` : ''}`}>{b.von}–{b.bis}{b.titel ? <span style={{ color: C.inkDim }}> {b.titel}</span> : ''}</span>
-                    <button onClick={() => persistBloecke(bloecke.map(x => (x.id === b.id ? { ...x, art: x.art === 'business' ? 'privat' : 'business' } : x)))} title={`${SPACE_LABEL[b.art]} — Klick wechselt`} style={{ ...pille(true, SPACE_FARBE[b.art]), padding: '1px 6px', fontSize: 11 }}>{b.art === 'business' ? 'B' : 'P'}</button>
-                    <PfeilRang label={`${wt.kurz} ${b.von}`} obenAus={pos === 0} untenAus={pos === tag.length - 1} onAuf={() => blockBewegen(b, 'auf')} onAb={() => blockBewegen(b, 'ab')} />
-                    <button onClick={() => persistBloecke(bloecke.filter(x => x.id !== b.id))} aria-label="Block löschen" style={{ ...loeschen, padding: 0 }}>✕</button>
+                    {blockEigen ? <>
+                      <button onClick={() => persistBloecke(bloecke.map(x => (x.id === b.id ? { ...x, art: x.art === 'business' ? 'privat' : 'business' } : x)))} title={`${SPACE_LABEL[b.art]} — Klick wechselt`} style={{ ...pille(true, SPACE_FARBE[b.art]), padding: '1px 6px', fontSize: 11 }}>{b.art === 'business' ? 'B' : 'P'}</button>
+                      <PfeilRang label={`${wt.kurz} ${b.von}`} obenAus={pos === 0} untenAus={pos === tag.length - 1} onAuf={() => blockBewegen(b, 'auf')} onAb={() => blockBewegen(b, 'ab')} />
+                      <button onClick={() => persistBloecke(bloecke.filter(x => x.id !== b.id))} aria-label="Block löschen" style={{ ...loeschen, padding: 0 }}>✕</button>
+                    </> : <span style={{ ...pille(true, SPACE_FARBE[b.art]), padding: '1px 6px', fontSize: 11 }}>{b.art === 'business' ? 'B' : 'P'}</span>}
                   </div>
                 ))}
               </div>
             );
           })}
         </div>
-        {blockPerson && (
+        {hinweis && <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 10 }}>{hinweis}</div>}
+        {blockPerson && !blockEigen && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 12 }}>Die Wochenvorlage von {nameVon(blockPerson)} ändert nur {nameVon(blockPerson)} selbst.</div>}
+        {blockPerson && blockEigen && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
             <select value={blockNeu.wochentag} onChange={e => setBlockNeu({ ...blockNeu, wochentag: Number(e.target.value) as Wochentag })} aria-label="Wochentag" style={wahl}>
               {WOCHENTAGE.map(w => <option key={w.id} value={w.id}>{w.label}</option>)}

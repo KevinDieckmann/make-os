@@ -10,12 +10,17 @@
 // (privat/business), `owner` (Person oder „beide“), `rhythmus` + `naechstesMal`
 // und `rang` — alles additiv, gesäubert in lib/planung/routinen.ts. Im selben
 // Bestand liegen die `bloecke`: die Wochenvorlage je Person (wann Privat, wann
-// Arbeit). GET liefert beides; PUT { routinen } oder { bloecke } setzt eine
-// Liste ganz, PATCH { ops } ändert einzelne Routinen.
+// Arbeit). GET liefert beides (jede Zeile mit `stand`); PATCH { ops } ändert
+// einzelne Routinen, PATCH { bloecke: ops } einzelne Blöcke — nur die eigenen
+// der angemeldeten Person (28.09.). PUT { routinen } bleibt als Vollschreiben
+// (Schrumpf-Schutz in der Sperre); PUT { bloecke } ist abgeschaltet, weil er die
+// Blöcke BEIDER Personen ersetzte.
 
 import { NextResponse } from 'next/server';
-import { loadJson, updateJson, updateGeschuetzt } from '@/lib/store/local-db';
-import { listePatchen, opsLesen } from '@/lib/store/patch-liste';
+import { loadJson, updateJson } from '@/lib/store/local-db';
+import { listePatchen, opsLesen, type ListenOp, type PatchErgebnis } from '@/lib/store/patch-liste';
+import { mitStand } from '@/lib/store/fingerabdruck';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
 import { sauberRoutine, sauberBlock } from '@/lib/planung/routinen';
 import type { Block, Routine, RoutinenDatei } from '@/lib/planung/typen';
@@ -36,47 +41,102 @@ const seed = (): Routine[] => ROUTINE_ITEMS.map(r => ({
 
 const bloeckeVon = (f: RoutinenDatei | null | undefined): Block[] => (Array.isArray(f?.bloecke) ? f!.bloecke : []);
 
+const antwort = (f: RoutinenDatei | null | undefined) => ({
+  routinen: mitStand(Array.isArray(f?.routinen) ? f!.routinen : []),
+  bloecke: mitStand(bloeckeVon(f)),
+});
+
 export async function GET() {
   const f = await loadJson<RoutinenDatei>('routinen');
   if (!f || !Array.isArray(f.routinen) || !f.routinen.length) {
     const next = await updateJson<RoutinenDatei>('routinen', cur => ({ ...(cur ?? {}), routinen: seed() }));
-    return NextResponse.json({ routinen: next.routinen, bloecke: bloeckeVon(next) });
+    return NextResponse.json(antwort(next));
   }
-  return NextResponse.json({ routinen: f.routinen, bloecke: bloeckeVon(f) });
+  return NextResponse.json(antwort(f));
 }
+
+/** Höchstzahlen — darüber wird abgelehnt, nie gekürzt (28.09.). */
+const MAX_ROUTINEN = 200;
+const MAX_BLOECKE = 500;
 
 export async function PUT(req: Request) {
   let body: { routinen?: unknown; bloecke?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
 
-  if (Array.isArray(body.bloecke)) {
-    const sauber = body.bloecke.slice(0, 120).map(sauberBlock).filter((b): b is Block => !!b);
-    // Blöcke sind die Wochenvorlage — Schrumpf-Schutz wie bei den Routinen, ab 8 Einträgen.
-    let abgelehnt = false;
-    const next = await updateJson<RoutinenDatei>('routinen', cur => {
-      const alt = bloeckeVon(cur).length;
-      if (alt >= 8 && sauber.length < alt / 2) { abgelehnt = true; return cur ?? { routinen: seed() }; }
-      return { ...(cur ?? { routinen: seed() }), bloecke: sauber };
-    });
-    if (abgelehnt) return NextResponse.json({ ok: false, error: 'Abgelehnt: das hätte über die Hälfte der Blöcke gelöscht.' }, { status: 409 });
-    return NextResponse.json({ ok: true, bloecke: bloeckeVon(next) });
+  if (body.bloecke !== undefined) {
+    return NextResponse.json({ ok: false, error: 'Blöcke bitte einzeln ändern (PATCH { bloecke: ops }) — Seite neu laden.' }, { status: 409 });
   }
-
-  if (!Array.isArray(body.routinen)) return NextResponse.json({ ok: false, error: 'routinen oder bloecke fehlt.' }, { status: 400 });
-  const sauber = body.routinen.slice(0, 60).map(sauberRoutine).filter((r): r is Routine => !!r);
-  const bisher = await loadJson<RoutinenDatei>('routinen');
-  const { ok, next } = await updateGeschuetzt<RoutinenDatei>('routinen', { ...(bisher ?? {}), routinen: sauber }, s => s.routinen?.length ?? 0, 4);
-  if (!ok) return NextResponse.json({ ok: false, error: 'Abgelehnt: das haette ueber die Haelfte der Routinen geloescht.' }, { status: 409 });
-  return NextResponse.json({ ok: true, routinen: next.routinen, bloecke: bloeckeVon(next) });
+  if (!Array.isArray(body.routinen)) return NextResponse.json({ ok: false, error: 'routinen fehlt.' }, { status: 400 });
+  if (body.routinen.length > MAX_ROUTINEN) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${MAX_ROUTINEN} Routinen.` }, { status: 413 });
+  const sauber = body.routinen.map(sauberRoutine).filter((r): r is Routine => !!r);
+  // Lesen, prüfen und schreiben in EINER Sperre (28.09.) — vorher las die Route den Bestand davor
+  // und schrieb ihn mit zurück: was dazwischen an Blöcken geändert wurde, war weg.
+  let abgelehnt = false;
+  const next = await updateJson<RoutinenDatei>('routinen', cur => {
+    const alt = Array.isArray(cur?.routinen) ? cur!.routinen.length : 0;
+    if (alt >= 4 && sauber.length < alt / 2) { abgelehnt = true; return cur as RoutinenDatei; }
+    return { ...(cur ?? {}), routinen: sauber };
+  });
+  if (abgelehnt) return NextResponse.json({ ok: false, error: 'Abgelehnt: das hätte über die Hälfte der Routinen gelöscht.' }, { status: 409 });
+  return NextResponse.json({ ok: true, ...antwort(next) });
 }
 
-/** Einzelne Routinen ändern — Zwei-Fenster-Fundament. */
+/**
+ * Einzelne Routinen (`{ ops }`) oder Blöcke (`{ bloecke: ops }`) ändern — Zwei-Fenster-Fundament
+ * mit `stand` je Änderung (veraltet → 409 mit dem aktuellen Bestand, nichts überschrieben).
+ * Blöcke: nur die eigenen der angemeldeten Person — fremde anlegen, ändern oder löschen → 403.
+ */
 export async function PATCH(req: Request) {
-  let body: { ops?: unknown };
+  let body: { ops?: unknown; bloecke?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  const ops = opsLesen<Routine>(body.ops, sauberRoutine, 60);
+
+  if (body.bloecke !== undefined) {
+    const ich = personStreng(req);
+    if (!ich) return NextResponse.json({ ok: false, error: 'Blöcke gehören einer Person — ohne Anmeldung nichts zu ändern.' }, { status: 403 });
+    if (Array.isArray(body.bloecke) && body.bloecke.length > MAX_BLOECKE) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${MAX_BLOECKE} Änderungen je Aufruf.` }, { status: 413 });
+    const ops = opsLesen<Block>(body.bloecke, sauberBlock, MAX_BLOECKE);
+    if (!ops) return NextResponse.json({ ok: false, error: 'bloecke (Liste von Änderungen) fehlt.' }, { status: 400 });
+    const r = await listePatchen<Block, RoutinenDatei & Record<string, unknown>>('routinen', 'bloecke', ops, 8, undefined, {
+      pruefen: (liste, o) => nurEigene(liste, o, ich) ?? (wachstum(liste, o) > MAX_BLOECKE ? `Abgelehnt: höchstens ${MAX_BLOECKE} Blöcke.` : null),
+    });
+    return ergebnis(r);
+  }
+
+  if (Array.isArray(body.ops) && body.ops.length > MAX_ROUTINEN) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${MAX_ROUTINEN} Änderungen je Aufruf.` }, { status: 413 });
+  const ops = opsLesen<Routine>(body.ops, sauberRoutine, MAX_ROUTINEN);
   if (!ops) return NextResponse.json({ ok: false, error: 'Feld "ops" (Liste) fehlt.' }, { status: 400 });
-  const r = await listePatchen<Routine, RoutinenDatei & Record<string, unknown>>('routinen', 'routinen', ops, 4);
-  if (!r.ok) return NextResponse.json({ ok: false, error: r.fehler }, { status: r.fehler?.startsWith('Abgelehnt') ? 409 : 400 });
-  return NextResponse.json({ ok: true, angewandt: r.angewandt, routinen: r.next?.routinen, bloecke: bloeckeVon(r.next) });
+  const r = await listePatchen<Routine, RoutinenDatei & Record<string, unknown>>('routinen', 'routinen', ops, 4, undefined, {
+    pruefen: (liste, o) => (wachstum(liste, o) > MAX_ROUTINEN ? `Abgelehnt: höchstens ${MAX_ROUTINEN} Routinen.` : null),
+  });
+  return ergebnis(r);
+}
+
+/** Länge der Liste nach den neu angelegten Einträgen. */
+function wachstum<E extends { id: string }>(liste: E[], ops: ListenOp<E>[]): number {
+  const ids = new Set(liste.map(e => e.id));
+  const neu = new Set(ops.filter(o => o.op === 'upsert' && o.eintrag && !ids.has(o.eintrag.id)).map(o => o.eintrag!.id)).size;
+  return neu ? liste.length + neu : 0;
+}
+
+const FREMD = 'Nicht erlaubt: nur die eigenen Blöcke lassen sich ändern.';
+
+/** In der Sperre: jede Änderung betrifft nur Blöcke der Person — der neue Eintrag UND der gespeicherte. */
+function nurEigene(liste: Block[], ops: ListenOp<Block>[], ich: string): string | null {
+  const nachId = new Map(liste.map(b => [b.id, b]));
+  for (const o of ops) {
+    if (o.op === 'teil') return 'Blöcke nur ganz (upsert) oder löschen.';
+    const id = o.op === 'upsert' ? o.eintrag!.id : o.id!;
+    const alt = nachId.get(id);
+    if (alt && alt.owner !== ich) return FREMD;
+    if (o.op === 'upsert' && o.eintrag!.owner !== ich) return FREMD;
+  }
+  return null;
+}
+
+async function ergebnis(r: PatchErgebnis<RoutinenDatei & Record<string, unknown>>) {
+  if (r.ok) return NextResponse.json({ ok: true, angewandt: r.angewandt, ...antwort(r.next) });
+  const status = r.fehler === FREMD ? 403
+    : r.fehler?.startsWith('Abgelehnt: höchstens') ? 413
+      : r.konflikte?.length || r.fehler?.startsWith('Abgelehnt') ? 409 : 400;
+  return NextResponse.json({ ok: false, error: r.fehler, konflikte: r.konflikte ?? [], ...antwort(await loadJson<RoutinenDatei>('routinen')) }, { status });
 }

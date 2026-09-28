@@ -6,195 +6,19 @@
 // je Monat — hier lebt die Planung/Verwaltung davor.
 
 import { NextResponse } from 'next/server';
-import { loadJson, updateJson, updateGeschuetztListen } from '@/lib/store/local-db';
+import { loadJson, updateJson, updateJsonAsync, updateGeschuetztListen } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import {
+  SEED, sauberFile, ueberGrenze, istGrenzFehler, bezahltAnwenden,
+  type FinanzplanFile, type BezahltErgebnis, type RechnungsBuchung,
+} from '@/lib/finanzen/finanzplan-bestand';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Business-Zahlen gehören zum Haushalt des Inhabers — wie der Business-Index (26.09.).
 const KEIN_HAUSHALT = { ok: false, error: 'Kein Zugang zu den Business-Zahlen — sie gehören zum Haushalt des Inhabers (System → Konto).' };
-
-export interface Firma {
-  id: string;
-  name: string;
-  bank: string;
-  /** Kontostand in €, von Hand gepflegt (null = noch nie eingetragen). */
-  kontostand: number | null;
-  /** Tag des letzten Eintrags YYYY-MM-DD. */
-  stand: string | null;
-}
-export type RechnungStatus = 'geplant' | 'gestellt' | 'bezahlt';
-export interface Rechnung {
-  id: string;
-  firmaId: string;
-  /** Das Mandat, aus dem die Rechnung stammt (26.09.). */
-  mandatId?: string;
-  kunde: string;
-  titel: string;
-  betrag: number;
-  status: RechnungStatus;
-  faellig?: string;
-  /** Der ganze Vorgang: Angebot → Rechnung → Eingang (Kevins Ansage 02.08.). */
-  nummer?: string;
-  datum?: string;
-  angebot?: string;
-  angebotAm?: string;
-  bezahltAm?: string;
-  netto?: number;
-  ustSatz?: number;
-  leistungVon?: string;
-  leistungBis?: string;
-  notiz?: string;
-}
-export interface Merkposten {
-  id: string;
-  firmaId: string;
-  titel: string;
-  /** Positiv = erhalten (z.B. Kredit), negativ = zu zahlen. */
-  betrag: number;
-  art: 'kredit' | 'sonstig';
-  datum?: string;
-  notiz?: string;
-}
-/** Zu zahlende Posten — die Reihenfolge im Array IST die Prioritätenliste. */
-export interface Zahlung {
-  id: string;
-  firmaId: string;
-  an: string;
-  titel: string;
-  betrag: number;
-  status: 'offen' | 'bezahlt';
-  faellig?: string;
-}
-export interface Produkt {
-  id: string;
-  name: string;
-  beschreibung: string;
-  preis: number;
-  einheit: 'einmalig' | 'monatlich' | 'projekt';
-  status: 'entwurf' | 'aktiv';
-}
-/** Das Finanz-Uhrwerk: 2× im Monat Meeting, Checkliste läuft immer wieder durch. */
-export interface Uhrwerk {
-  letztesMeeting: string | null;
-  agenda: { id: string; label: string; done: boolean }[];
-}
-export interface FinanzplanFile {
-  firmen: Firma[];
-  rechnungen: Rechnung[];
-  merkposten: Merkposten[];
-  zahlungen: Zahlung[];
-  produkte: Produkt[];
-  uhrwerk: Uhrwerk;
-}
-
-const STATI: RechnungStatus[] = ['geplant', 'gestellt', 'bezahlt'];
-
-// Echter Startbestand (Kevins Ansage 31.07.2026) — alles editierbar.
-const SEED: FinanzplanFile = {
-  firmen: [
-    { id: 'kdv', name: 'KD Ventures', bank: 'Vivid', kontostand: null, stand: null },
-    { id: 'kdc', name: 'Kevin Dieckmann Consulting', bank: 'Vivid', kontostand: null, stand: null },
-  ],
-  rechnungen: [
-    { id: 'r-onebanking', firmaId: 'kdc', kunde: 'OneBanking', titel: 'Beratung/Umsetzung — Leistung abrechnen', betrag: 0, status: 'geplant', faellig: '2026-08-02', notiz: 'Betrag eintragen, dann stellen.' },
-    { id: 'r-acme', firmaId: 'kdc', kunde: 'ACME', titel: 'Neues Mandat — Einstieg', betrag: 0, status: 'geplant', notiz: 'Kunde im Aufbau — Umfang klären.' },
-  ],
-  merkposten: [
-    { id: 'm-bjoern', firmaId: 'kdc', titel: 'Björn-Kredit erhalten', betrag: 17_000, art: 'kredit', datum: '2026-07-30', notiz: 'Eingang 30.07 — Rückzahlung offen halten.' },
-  ],
-  zahlungen: [],
-  // Entwürfe fürs Finanzmeeting — zum Festzurren, alles editierbar.
-  produkte: [
-    { id: 'p-sprint', name: 'Klarheits-Sprint', beschreibung: 'Kompakter Einstieg: Analyse + Maßnahmenplan mit klarem Ergebnis.', preis: 0, einheit: 'einmalig', status: 'entwurf' },
-    { id: 'p-mandat', name: 'Begleitungs-Mandat', beschreibung: 'Laufende Beratung & Steuerung im monatlichen Mandat.', preis: 0, einheit: 'monatlich', status: 'entwurf' },
-    { id: 'p-umsetzung', name: 'Umsetzungs-Mandat', beschreibung: 'Projekt mit definiertem Ergebnis — wie OneBanking.', preis: 0, einheit: 'projekt', status: 'entwurf' },
-  ],
-  uhrwerk: {
-    letztesMeeting: null,
-    agenda: [
-      { id: 'a-konten', label: 'Kontostände beider Vivid-Konten eintragen', done: false },
-      { id: 'a-rechnungen', label: 'Alle offenen Rechnungen zusammenziehen (rein & raus)', done: false },
-      { id: 'a-prio', label: 'Zahlungs-Prioritätenliste festlegen — was zuerst?', done: false },
-      { id: 'a-kredit', label: 'Kreditvertrag Firma → privat aufsetzen (mit Steuerberater absichern)', done: false },
-      { id: 'a-plan', label: 'Finanzplan füllen: Monats-Umsatz & Kosten im Controlling', done: false },
-      { id: 'a-produkte', label: 'Produktpakete festzurren (Entwürfe unten)', done: false },
-      { id: 'a-vertrieb', label: 'Vertriebsziele festlegen → in Jahr & Ziele eintragen', done: false },
-    ],
-  },
-};
-
-/** Ein Datum oder gar nichts — spart die Wiederholung bei jedem Feld. */
-const tag = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
-
-function sauberFile(f: Partial<FinanzplanFile> | null): FinanzplanFile {
-  return {
-    firmen: (Array.isArray(f?.firmen) ? f!.firmen : []).slice(0, 10).map(x => ({
-      id: String(x.id ?? '').slice(0, 40) || `f-${Math.random().toString(36).slice(2, 8)}`,
-      name: String(x.name ?? '').slice(0, 120),
-      bank: String(x.bank ?? '').slice(0, 60),
-      kontostand: x.kontostand == null || !isFinite(Number(x.kontostand)) ? null : Math.round(Number(x.kontostand)),
-      stand: typeof x.stand === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.stand) ? x.stand : null,
-    })).filter(x => x.name),
-    rechnungen: (Array.isArray(f?.rechnungen) ? f!.rechnungen : []).slice(0, 200).map(x => ({
-      id: String(x.id ?? '').slice(0, 40) || `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-      firmaId: String(x.firmaId ?? '').slice(0, 40),
-      kunde: String(x.kunde ?? '').slice(0, 120),
-      titel: String(x.titel ?? '').slice(0, 200),
-      betrag: isFinite(Number(x.betrag)) ? Math.max(0, Math.round(Number(x.betrag))) : 0,
-      status: STATI.includes(x.status as RechnungStatus) ? x.status as RechnungStatus : 'geplant',
-      faellig: tag(x.faellig),
-      // Der ganze Vorgang, nicht nur der Betrag: Angebot → Rechnung → Eingang.
-      nummer: x.nummer ? String(x.nummer).slice(0, 60) : undefined,
-      datum: tag(x.datum),
-      angebot: x.angebot ? String(x.angebot).slice(0, 60) : undefined,
-      angebotAm: tag(x.angebotAm),
-      bezahltAm: tag(x.bezahltAm),
-      netto: x.netto == null || !isFinite(Number(x.netto)) ? undefined : Math.round(Number(x.netto) * 100) / 100,
-      ustSatz: x.ustSatz == null || !isFinite(Number(x.ustSatz)) ? undefined : Math.max(0, Math.min(30, Number(x.ustSatz))),
-      mandatId: x.mandatId ? String(x.mandatId).slice(0, 40) : undefined,
-      leistungVon: tag(x.leistungVon),
-      leistungBis: tag(x.leistungBis),
-      notiz: x.notiz ? String(x.notiz).slice(0, 300) : undefined,
-    })).filter(x => x.kunde || x.titel),
-    merkposten: (Array.isArray(f?.merkposten) ? f!.merkposten : []).slice(0, 100).map(x => ({
-      id: String(x.id ?? '').slice(0, 40) || `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-      firmaId: String(x.firmaId ?? '').slice(0, 40),
-      titel: String(x.titel ?? '').slice(0, 200),
-      betrag: isFinite(Number(x.betrag)) ? Math.round(Number(x.betrag)) : 0,
-      art: (x.art === 'kredit' ? 'kredit' : 'sonstig') as Merkposten['art'],
-      datum: typeof x.datum === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.datum) ? x.datum : undefined,
-      notiz: x.notiz ? String(x.notiz).slice(0, 300) : undefined,
-    })).filter(x => x.titel),
-    zahlungen: (Array.isArray(f?.zahlungen) ? f!.zahlungen : []).slice(0, 100).map(x => ({
-      id: String(x.id ?? '').slice(0, 40) || `z-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-      firmaId: String(x.firmaId ?? '').slice(0, 40),
-      an: String(x.an ?? '').slice(0, 120),
-      titel: String(x.titel ?? '').slice(0, 200),
-      betrag: isFinite(Number(x.betrag)) ? Math.max(0, Math.round(Number(x.betrag))) : 0,
-      status: (x.status === 'bezahlt' ? 'bezahlt' : 'offen') as Zahlung['status'],
-      faellig: typeof x.faellig === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.faellig) ? x.faellig : undefined,
-    })).filter(x => x.an || x.titel),
-    produkte: (Array.isArray(f?.produkte) ? f!.produkte : []).slice(0, 30).map(x => ({
-      id: String(x.id ?? '').slice(0, 40) || `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-      name: String(x.name ?? '').slice(0, 120),
-      beschreibung: String(x.beschreibung ?? '').slice(0, 300),
-      preis: isFinite(Number(x.preis)) ? Math.max(0, Math.round(Number(x.preis))) : 0,
-      einheit: (['einmalig', 'monatlich', 'projekt'].includes(x.einheit as string) ? x.einheit : 'einmalig') as Produkt['einheit'],
-      status: (x.status === 'aktiv' ? 'aktiv' : 'entwurf') as Produkt['status'],
-    })).filter(x => x.name),
-    uhrwerk: {
-      letztesMeeting: typeof f?.uhrwerk?.letztesMeeting === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f.uhrwerk.letztesMeeting) ? f.uhrwerk.letztesMeeting : null,
-      agenda: (Array.isArray(f?.uhrwerk?.agenda) ? f!.uhrwerk!.agenda : []).slice(0, 20).map(x => ({
-        id: String(x.id ?? '').slice(0, 40) || `a-${Math.random().toString(36).slice(2, 8)}`,
-        label: String(x.label ?? '').slice(0, 200),
-        done: x.done === true,
-      })).filter(x => x.label),
-    },
-  };
-}
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
@@ -221,6 +45,9 @@ export async function PUT(req: Request) {
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const sauber = sauberFile(body);
   if (!sauber.firmen.length) return NextResponse.json({ ok: false, error: 'firmen darf nicht leer sein.' }, { status: 400 });
+  // Zu viele Einträge: ablehnen, nie kürzen (28.09.).
+  const grenze = ueberGrenze(sauber);
+  if (grenze) return NextResponse.json({ ok: false, error: grenze }, { status: 413 });
   // Kontostand-Änderung stempelt automatisch das Stand-Datum.
   const vorher = await loadJson<FinanzplanFile>('finanzplan');
   for (const fa of sauber.firmen) {
@@ -257,9 +84,15 @@ type PatchListe = typeof PATCHBAR[number];
 
 export async function PATCH(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
-  let body: { ops?: unknown; felder?: Record<string, unknown> };
+  let body: { ops?: unknown; felder?: Record<string, unknown>; aktion?: unknown; rechnungId?: unknown; am?: unknown; stand?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  const roh = Array.isArray(body.ops) ? body.ops.slice(0, 100) : (body.felder ? [] : null);
+  if (body.aktion === 'bezahlt') return bezahlt(body);
+  if (body.aktion !== undefined) return NextResponse.json({ ok: false, error: 'Unbekannte Aktion.' }, { status: 400 });
+  // Zu viele Änderungen auf einmal: ablehnen statt still nur die ersten 100 zu nehmen (28.09.).
+  if (Array.isArray(body.ops) && body.ops.length > MAX_OPS) {
+    return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${MAX_OPS} Änderungen je Aufruf (geschickt: ${body.ops.length}).` }, { status: 413 });
+  }
+  const roh = Array.isArray(body.ops) ? body.ops : (body.felder ? [] : null);
   if (!roh) return NextResponse.json({ ok: false, error: 'Feld "ops" (Liste) fehlt.' }, { status: 400 });
   // Zu zweit (24.09.): Einzelfelder außerhalb der Listen — derzeit nur das Uhrwerk.
   const uhrwerk = body.felder && typeof body.felder.uhrwerk === 'object' && body.felder.uhrwerk ? body.felder.uhrwerk : null;
@@ -277,8 +110,9 @@ export async function PATCH(req: Request) {
   if (!ops.length && !uhrwerk) return NextResponse.json({ ok: false, error: 'Keine gültigen Änderungen.' }, { status: 400 });
 
   let angewandt = 0;
+  let grenze: string | null = null;
   const next = await updateJson<FinanzplanFile>('finanzplan', current => {
-    // Immer vom gesäuberten Bestand ausgehen — nie vom Rohzustand.
+    // Immer vom gesäuberten Bestand ausgehen — nie vom Rohzustand. Die Säuberung kürzt nichts (28.09.).
     const f = sauberFile(current);
     for (const o of ops) {
       const liste = f[o.liste] as { id: string }[];
@@ -299,8 +133,65 @@ export async function PATCH(req: Request) {
       const vorher = alt.firmen.find(x => x.id === fa.id);
       if (fa.kontostand !== null && fa.kontostand !== (vorher?.kontostand ?? null)) fa.stand = localDay();
     }
+    // Über der Grenze: ablehnen, den Bestand unverändert lassen (in der Sperre geprüft).
+    grenze = ueberGrenze(f, alt);
+    if (grenze) { angewandt = 0; return current ?? alt; }
     return f;
   });
 
+  if (grenze) return NextResponse.json({ ok: false, error: grenze }, { status: istGrenzFehler(grenze) ? 413 : 400 });
   return NextResponse.json({ ok: true, angewandt, ...next, stand: next });
+}
+
+/** Höchstzahl Einzeländerungen je PATCH — darüber 413 statt still abschneiden. */
+const MAX_OPS = 1000;
+
+/** Nichts schreiben: bricht updateJsonAsync ab, ohne dass der Bestand angefasst wird. */
+class KeinSchreiben extends Error {}
+
+/**
+ * `PATCH { aktion: 'bezahlt', rechnungId, am?, stand? }` (28.09.): Status + `bezahltAm`
+ * setzen UND die Buchung `bu-re-<id>` anlegen — in EINER Sperre über dem Finanzplan,
+ * die Buchung zuerst (idempotent: gibt es sie schon, bleibt sie, wie sie ist). Schlägt
+ * die Buchung fehl, bleibt die Rechnung unverändert; ein Wiederholen heilt alles.
+ */
+async function bezahlt(body: { rechnungId?: unknown; am?: unknown; stand?: unknown }) {
+  const id = typeof body.rechnungId === 'string' ? body.rechnungId.slice(0, 40) : '';
+  if (!id) return NextResponse.json({ ok: false, error: 'rechnungId fehlt.' }, { status: 400 });
+  const am = typeof body.am === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.am) ? body.am : localDay();
+  const stand = typeof body.stand === 'string' && body.stand ? body.stand : undefined;
+  let erg: BezahltErgebnis | null = null;
+  let gebucht: 'neu' | 'vorhanden' | null = null;
+  try {
+    await updateJsonAsync<FinanzplanFile>('finanzplan', async current => {
+      if (!current) { erg = { ok: false, status: 404, fehler: 'Noch kein Finanzplan angelegt.' }; throw new KeinSchreiben(); }
+      const e = bezahltAnwenden(sauberFile(current), id, am, stand);
+      erg = e;
+      if (!e.ok) throw new KeinSchreiben();
+      if (e.buchung) gebucht = await buchungAnlegen(e.buchung);
+      return e.schonBezahlt ? current : e.datei;
+    });
+  } catch (err) {
+    if (!(err instanceof KeinSchreiben)) {
+      console.error('[finanzplan] bezahlt fehlgeschlagen', err);
+      return NextResponse.json({ ok: false, error: 'Nicht gespeichert — Rechnung und Buchung sind unverändert. Bitte noch einmal.' }, { status: 500 });
+    }
+  }
+  const e = erg as BezahltErgebnis | null;
+  if (!e) return NextResponse.json({ ok: false, error: 'Nicht gespeichert.' }, { status: 500 });
+  if (!e.ok) return NextResponse.json({ ok: false, error: e.fehler, ...(e.aktuell ? { aktuell: e.aktuell } : {}) }, { status: e.status });
+  const stand2 = sauberFile(await loadJson<FinanzplanFile>('finanzplan'));
+  return NextResponse.json({ ok: true, rechnung: e.rechnung, schonBezahlt: e.schonBezahlt, buchung: e.buchung ? { id: e.buchung.id, gebucht } : null, ...stand2, stand: stand2 });
+}
+
+/** Die Buchung zur Rechnung anlegen, wenn es sie noch nicht gibt (Kennung `bu-re-<id>`). */
+async function buchungAnlegen(b: RechnungsBuchung): Promise<'neu' | 'vorhanden'> {
+  let ergebnis: 'neu' | 'vorhanden' = 'vorhanden';
+  await updateJson<{ buchungen: RechnungsBuchung[] }>('buchungen', cur => {
+    const liste = Array.isArray(cur?.buchungen) ? cur!.buchungen : [];
+    if (liste.some(x => x.id === b.id)) return cur ?? { buchungen: liste };
+    ergebnis = 'neu';
+    return { ...(cur ?? {}), buchungen: [...liste, b].sort((x, y) => y.datum.localeCompare(x.datum)) };
+  });
+  return ergebnis;
 }

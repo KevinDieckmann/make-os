@@ -232,6 +232,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
 
   return (
     <>
+      {p.hinweis && <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{p.hinweis}</div>}
       {/* Filter: Space · Einheiten (Business) */}
       <div className="os-auf" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', ['--i' as string]: i }}>
         {(['privat', 'business', 'alle'] as const).map(k => (

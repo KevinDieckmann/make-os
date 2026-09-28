@@ -108,12 +108,22 @@ export function FinanzplanungView() {
   function rechnungAendern(id: string, patch: Partial<Rechnung>) {
     const r = plan!.rechnungen.find(x => x.id === id);
     const wirdBezahlt = patch.status === 'bezahlt' && !!r && r.status !== 'bezahlt';
-    const p2 = wirdBezahlt && !r!.bezahltAm ? { ...patch, bezahltAm: heute } : patch;
-    speichern({ ...plan!, rechnungen: plan!.rechnungen.map(x => x.id === id ? { ...x, ...p2 } : x) });
-    // Rechnung → Buchung (26.09.): der Zahlungseingang steht in den Buchungen, mit Bezug zur Rechnung.
-    if (wirdBezahlt && r && r.betrag > 0) {
-      fetch('/api/state/buchungen', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: [{ op: 'upsert', buchung: { id: `bu-re-${r.id}`, datum: p2.bezahltAm ?? heute, wer: r.kunde, betrag: r.betrag, kategorie: 'Umsatz', zweck: r.titel, ort: r.firmaId === 'kdv' ? 'kdv' : 'kdc', rechnungId: r.id } }] }) }).catch(() => {});
-    }
+    if (wirdBezahlt && r) { void alsBezahlt(r); return; }
+    speichern({ ...plan!, rechnungen: plan!.rechnungen.map(x => x.id === id ? { ...x, ...patch } : x) });
+  }
+  /**
+   * Rechnung → bezahlt + Buchung `bu-re-<id>` (28.09.): EIN Server-Schritt in einer Sperre (PATCH `aktion: 'bezahlt'`),
+   * wie im Kontakt-Reiter Umsatz. Vorher ging die Buchung als zweiter Aufruf mit `.catch(() => {})` hinterher.
+   */
+  async function alsBezahlt(r: Rechnung) {
+    const am = r.bezahltAm ?? heute;
+    setPlan(p => (p ? { ...p, rechnungen: p.rechnungen.map(x => (x.id === r.id ? { ...x, status: 'bezahlt', bezahltAm: am } : x)) } : p));
+    await planSpeichern.jetzt(); // offene Eingaben zuerst — sie bleiben eigene Einzeländerungen
+    const d = await fetch('/api/state/finanzplan', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'bezahlt', rechnungId: r.id, am }) })
+      .then(x => x.json()).catch(() => null) as { ok?: boolean; stand?: Plan; error?: string } | null;
+    if (!d?.ok || !d.stand) { console.error('[MAKE OS] Rechnung nicht als bezahlt gespeichert.', d?.error); void ladePlan(); return; }
+    planSpeichern.kenne(d.stand);
+    if (!planSpeichern.hatOffenes()) setPlan(d.stand);
   }
   function zahlungBewegen(id: string, richtung: -1 | 1) {
     const z = [...plan!.zahlungen];

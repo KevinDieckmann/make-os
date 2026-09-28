@@ -9,6 +9,7 @@
 import { NextResponse } from 'next/server';
 import { updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
+import { GRENZEN } from '@/lib/finanzen/finanzplan-bestand';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,6 +42,8 @@ export async function POST(req: Request) {
     await updateJson<{ rechnungen: Rechnung[] }>('finanzplan', current => {
       const f = current ?? { rechnungen: [] };
       f.rechnungen = Array.isArray(f.rechnungen) ? f.rechnungen : [];
+      // Grenze wie im Schreibweg der Finanzplanung: ablehnen, nie kürzen (28.09.).
+      if (f.rechnungen.length >= GRENZEN.rechnungen) return f;
       const r: Rechnung = {
         id: `r-${Date.now().toString(36)}`,
         firmaId: firma,
@@ -54,6 +57,7 @@ export async function POST(req: Request) {
       angelegt = `${r.kunde} · ${r.betrag} € · ${r.status}`;
       return f;
     });
+    if (!angelegt) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${GRENZEN.rechnungen} Rechnungen im Finanzplan — erst Erledigtes aufräumen.` }, { status: 413 });
     return NextResponse.json({ ok: true, ziel: 'rechnung', angelegt, wo: '/os/finanzen/planung' });
   }
 

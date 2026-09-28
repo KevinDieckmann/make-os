@@ -12,6 +12,7 @@ import { speicherFuer } from '@/lib/zoe/raum';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import type { Op as EinkaufOp } from '@/lib/ernaehrung/modell';
 import { localDay } from '@/lib/zeit';
+import { GRENZEN } from '@/lib/finanzen/finanzplan-bestand';
 import type { FaktArt } from './gedaechtnis';
 
 // ── ZOE plant SELBST: Block in den Wochenplan legen (Kevins Ansage:
@@ -106,12 +107,16 @@ async function erfasseRechnung(input: Record<string, unknown>): Promise<string> 
       const r = f.rechnungen[idx];
       f.rechnungen[idx] = { ...r, ...(betrag != null ? { betrag } : {}), ...(status ? { status } : {}), ...(faellig ? { faellig } : {}), ...(titel ? { titel } : {}) };
       aktion = `Rechnung ${kunde} aktualisiert: ${betrag != null ? eurW(betrag) : eurW(f.rechnungen[idx].betrag)}${status ? `, Status ${status}` : ''}${faellig ? `, fällig ${faellig}` : ''}`;
+    } else if (f.rechnungen.length >= GRENZEN.rechnungen) {
+      // Grenze erreicht: ablehnen, nie kürzen (28.09.) — der Bestand bleibt, wie er ist.
+      aktion = '';
     } else {
       f.rechnungen.push({ id: `r-${Date.now().toString(36)}`, firmaId: firmaId(input.firma), kunde, titel: titel ?? 'Leistung', betrag: betrag ?? 0, status: status ?? 'geplant', ...(faellig ? { faellig } : {}) });
       aktion = `Neue Rechnung angelegt: ${kunde} ${betrag != null ? eurW(betrag) : 'ohne Betrag'} [${status ?? 'geplant'}]`;
     }
     return f;
   });
+  if (!aktion) return `Fehlgeschlagen: höchstens ${GRENZEN.rechnungen} Rechnungen im Finanzplan — erst Erledigtes aufräumen.`;
   return `Erfasst: ${aktion}. Sichtbar in der Finanzplanung.`;
 }
 
@@ -121,11 +126,15 @@ async function erfasseZahlung(input: Record<string, unknown>): Promise<string> {
   const betrag = Number(input.betrag);
   if (!an || !isFinite(betrag)) return 'Fehlgeschlagen: an + betrag nötig.';
   const faellig = /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined;
+  let voll = false;
   await updateJson<{ zahlungen: { id: string; firmaId: string; an: string; titel: string; betrag: number; status: string; faellig?: string }[] }>('finanzplan', current => {
     const f = current ?? { zahlungen: [] };
+    // Grenze wie im Schreibweg der Finanzplanung: ablehnen, nie kürzen (28.09.).
+    if ((f.zahlungen ?? []).length >= GRENZEN.zahlungen) { voll = true; return f; }
     f.zahlungen = [...(f.zahlungen ?? []), { id: `z-${Date.now().toString(36)}`, firmaId: firmaId(input.firma), an, titel: String(input.titel ?? '').slice(0, 200), betrag: Math.max(0, Math.round(betrag)), status: 'offen', ...(faellig ? { faellig } : {}) }];
     return f;
   });
+  if (voll) return `Fehlgeschlagen: höchstens ${GRENZEN.zahlungen} Zahlungen im Finanzplan — erst Erledigtes aufräumen.`;
   return `Erfasst: Zahlung an ${an} über ${eurW(betrag)}${faellig ? `, fällig ${faellig}` : ''} — steht in der Prioritätenliste.`;
 }
 

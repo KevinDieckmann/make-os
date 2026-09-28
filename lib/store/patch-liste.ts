@@ -33,7 +33,7 @@ export interface PatchErgebnis<T> {
   zeilen?: { id: string; stand: string }[];
 }
 
-export interface PatchOptionen<E> {
+export interface PatchOptionen<E, T = Record<string, unknown>> {
   /** Neuen Eintrag mit dem aktuellen Serverstand vereinen (z. B. anhängende Logs nie verlieren). */
   vereinen?: (neu: E, alt: E) => E;
   /** `teil`: Felder auf den aktuellen Eintrag legen und prüfen — null, wenn das Ergebnis ungültig wäre. */
@@ -42,6 +42,8 @@ export interface PatchOptionen<E> {
   neu?: (eintrag: E) => E;
   /** Läuft INNERHALB der Sperre über der aktuellen Liste — ein Text lehnt die ganze Änderung ab (Massen-Wache). */
   pruefen?: (liste: E[], ops: ListenOp<E>[]) => string | null;
+  /** Läuft INNERHALB der Sperre nach einer erfolgreichen Änderung über dem ganzen Bestand (z. B. die Ziel-Kaskade, 28.09.). */
+  danach?: (bestand: T) => T;
 }
 
 /** Rohe Änderungen aus dem Netz in geprüfte Änderungen übersetzen. */
@@ -84,7 +86,7 @@ export async function listePatchen<E extends { id: string }, T extends Record<st
   abZahl = 10,
   /** Optional: neuen Eintrag mit dem aktuellen Serverstand vereinen (z. B. anhängende Logs nie verlieren). */
   vereinen?: (neu: E, alt: E) => E,
-  opt: PatchOptionen<E> = {},
+  opt: PatchOptionen<E, T> = {},
 ): Promise<PatchErgebnis<T>> {
   if (!ops.length) return { ok: false, angewandt: 0, fehler: 'Keine gültigen Änderungen.' };
   const vereine = opt.vereinen ?? vereinen;
@@ -136,7 +138,8 @@ export async function listePatchen<E extends { id: string }, T extends Record<st
     }
     // Ein Konflikt lehnt die ganze Änderung ab — halbe Stände sind schlimmer als eine Nachfrage.
     if (konflikte.length) { angewandt = 0; return f; }
-    return { ...f, [feld]: Array.from(neuListe.values()) };
+    const fertig = { ...f, [feld]: Array.from(neuListe.values()) } as T;
+    return opt.danach ? opt.danach(fertig) : fertig;
   });
 
   if (fehler) return { ok: false, angewandt: 0, fehler };

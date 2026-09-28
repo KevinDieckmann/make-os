@@ -284,6 +284,34 @@ export async function updateJson<T>(name: string, mutate: (current: T | null) =>
 }
 
 /**
+ * Wie updateJson, aber die Änderung darf warten (28.09.): für Schritte, die in
+ * DERSELBEN Sperre einen zweiten Bestand mitschreiben müssen (Finanzplan
+ * „bezahlt“ → Buchung). Innen nur andere Bestände über updateJson anfassen —
+ * nie denselben Namen (das wartete auf sich selbst). Wirft `mutate`, wird
+ * dieser Bestand nicht geschrieben.
+ */
+export async function updateJsonAsync<T>(name: string, mutate: (current: T | null) => Promise<T>): Promise<T> {
+  pruefeName(name);
+  const previous = writeChain.get(name) ?? Promise.resolve();
+  const run = previous.catch(() => {}).then(async () => {
+    const vorher = await leseText(name);
+    const current = vorher ? await parseOderBeiseite<T>(name, vorher.text) : null;
+    if (current === null && await beschaedigt(name)) throw new BestandBeschaedigt(`[local-db] ${name}: liegt beschädigt beiseite (.corrupt-…) — erst prüfen oder wiederherstellen, dann schreiben.`);
+    const next = await mutate(current);
+    const text = JSON.stringify(next, null, 2);
+    if (unveraendert(vorher, text)) return next;
+    await schreibeDatei(name, path.join(DATA_DIR, `${name}.json`), text);
+    return next;
+  });
+  writeChain.set(name, run);
+  try {
+    return (await run) as T;
+  } finally {
+    if (writeChain.get(name) === run) writeChain.delete(name);
+  }
+}
+
+/**
  * Schreibt eine Sammlung mit Schrumpf-Schutz: Wenn der neue Stand deutlich
  * weniger Einträge hätte als der alte, wird abgelehnt statt überschrieben.
  *
