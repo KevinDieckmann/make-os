@@ -18,7 +18,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { listePatchen, opsLesen, type ListenOp, type PatchErgebnis } from '@/lib/store/patch-liste';
+import { listePatchen, opsLesen, opsFehler, type ListenOp, type PatchErgebnis } from '@/lib/store/patch-liste';
 import { mitStand } from '@/lib/store/fingerabdruck';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { ROUTINE_ITEMS } from '@/lib/make-one/health-data';
@@ -95,7 +95,7 @@ export async function PATCH(req: Request) {
     if (!ich) return NextResponse.json({ ok: false, error: 'Blöcke gehören einer Person — ohne Anmeldung nichts zu ändern.' }, { status: 403 });
     if (Array.isArray(body.bloecke) && body.bloecke.length > MAX_BLOECKE) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${MAX_BLOECKE} Änderungen je Aufruf.` }, { status: 413 });
     const ops = opsLesen<Block>(body.bloecke, sauberBlock, MAX_BLOECKE);
-    if (!ops) return NextResponse.json({ ok: false, error: 'bloecke (Liste von Änderungen) fehlt.' }, { status: 400 });
+    if (!ops) return NextResponse.json({ ok: false, error: Array.isArray(body.bloecke) ? opsFehler(body.bloecke, MAX_BLOECKE) : 'bloecke (Liste von Änderungen) fehlt.' }, { status: Array.isArray(body.bloecke) ? 413 : 400 });
     const r = await listePatchen<Block, RoutinenDatei & Record<string, unknown>>('routinen', 'bloecke', ops, 8, undefined, {
       pruefen: (liste, o) => nurEigene(liste, o, ich) ?? (wachstum(liste, o) > MAX_BLOECKE ? `Abgelehnt: höchstens ${MAX_BLOECKE} Blöcke.` : null),
     });
@@ -104,7 +104,7 @@ export async function PATCH(req: Request) {
 
   if (Array.isArray(body.ops) && body.ops.length > MAX_ROUTINEN) return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${MAX_ROUTINEN} Änderungen je Aufruf.` }, { status: 413 });
   const ops = opsLesen<Routine>(body.ops, sauberRoutine, MAX_ROUTINEN);
-  if (!ops) return NextResponse.json({ ok: false, error: 'Feld "ops" (Liste) fehlt.' }, { status: 400 });
+  if (!ops) return NextResponse.json({ ok: false, error: opsFehler(body.ops, MAX_ROUTINEN) }, { status: Array.isArray(body.ops) ? 413 : 400 });
   const r = await listePatchen<Routine, RoutinenDatei & Record<string, unknown>>('routinen', 'routinen', ops, 4, undefined, {
     pruefen: (liste, o) => (wachstum(liste, o) > MAX_ROUTINEN ? `Abgelehnt: höchstens ${MAX_ROUTINEN} Routinen.` : null),
   });

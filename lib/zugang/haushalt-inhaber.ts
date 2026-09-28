@@ -18,6 +18,28 @@ export async function imHaushaltDesInhabers(req: Request): Promise<{ person: str
   return (await personImHaushaltDesInhabers(person)) ? { person, dienst: false } : null;
 }
 
+/**
+ * Kartei und Personen-Bestände (28.09., K1 #66/#67): `/api/state/{kontakte,kunden,prospects,netzwerk,
+ * stammdaten,aenderungen}` gehören dem Haushalt des Inhabers — vorher reichte „angemeldet“, und ein neues
+ * Konto ohne Haushalt konnte die ganze Kartei lesen und ändern.
+ * Strenger als `imHaushaltDesInhabers`: Nennt der Dienstweg eine Person (ZOE, Heads, Arbeiter im Auftrag),
+ * muss auch DIESE Person im Haushalt des Inhabers sein — sonst holte ein Gespräch aus einem anderen Haushalt
+ * die Kartei über ZOE. Dienstweg ohne Person = Systemlauf des Takts (Regel 7): darf, `person` ist dann null
+ * (kein Rückfall auf „kevin“, Regel 5).
+ */
+export async function karteiZugang(req: Request): Promise<{ person: string | null; dienst: boolean } | null> {
+  if (istDienst(req)) {
+    const p = req.headers.get('x-make-person');
+    if (!p) return { person: null, dienst: true };
+    return (await personImHaushaltDesInhabers(p)) ? { person: p, dienst: true } : null;
+  }
+  const w = await imHaushaltDesInhabers(req);
+  return w ? { person: w.person, dienst: false } : null;
+}
+
+/** Die 403-Antwort der Kartei-Routen (ein Satz, überall gleich). */
+export const KARTEI_GESPERRT = { ok: false, fehler: 'Nur im Haushalt des Inhabers.' } as const;
+
 /** Dieselbe Regel für eine Person (z. B. ZOE-Werkzeuge, die im Auftrag handeln). */
 export async function personImHaushaltDesInhabers(person: string | undefined | null): Promise<boolean> {
   if (!person || !/^[a-z0-9-]{1,40}$/.test(person)) return false;

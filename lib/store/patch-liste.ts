@@ -13,6 +13,7 @@
 
 import { updateJson } from './local-db';
 import { fingerabdruck } from './fingerabdruck';
+import { protokolliere, feldDiff, type Aenderung, type Wer } from './aenderungsprotokoll';
 
 /**
  * Eine Änderung: ganzer Eintrag (`upsert`), nur Felder (`teil`, 27.09.) oder `delete`.
@@ -44,17 +45,30 @@ export interface PatchOptionen<E, T = Record<string, unknown>> {
   pruefen?: (liste: E[], ops: ListenOp<E>[]) => string | null;
   /** Läuft INNERHALB der Sperre nach einer erfolgreichen Änderung über dem ganzen Bestand (z. B. die Ziel-Kaskade, 28.09.). */
   danach?: (bestand: T) => T;
+  /** Wer schreibt — fürs Änderungsprotokoll (28.09., K1 #44). Fehlt es, gilt die laufende Anfrage (next/headers). */
+  wer?: Wer;
 }
 
-/** Rohe Änderungen aus dem Netz in geprüfte Änderungen übersetzen. */
+/**
+ * Warum eine Änderungsliste abgelehnt wird — oder null. Mehr als `grenze` Änderungen auf einmal werden
+ * ABGELEHNT, nie still gekürzt (28.09., K1: vorher fielen alle ab der 201. still weg, der Aufrufer hielt sie
+ * für gespeichert).
+ */
+export function opsFehler(roh: unknown, grenze = 200): string | null {
+  if (!Array.isArray(roh)) return 'ops muss eine Liste sein.';
+  if (roh.length > grenze) return `Abgelehnt: ${roh.length} Änderungen auf einmal — höchstens ${grenze}. Nichts gespeichert; bitte in Teilen schicken.`;
+  return null;
+}
+
+/** Rohe Änderungen aus dem Netz in geprüfte Änderungen übersetzen — null, wenn `opsFehler` etwas findet. */
 export function opsLesen<E extends { id: string }>(
   roh: unknown,
   saeubern: (e: unknown) => E | null,
   grenze = 200,
 ): ListenOp<E>[] | null {
-  if (!Array.isArray(roh)) return null;
+  if (opsFehler(roh, grenze) || !Array.isArray(roh)) return null;
   const ops: ListenOp<E>[] = [];
-  const liste = roh.slice(0, grenze) as Record<string, unknown>[];
+  const liste = roh as Record<string, unknown>[];
   const stand = (o: Record<string, unknown>) => (typeof o.stand === 'string' && o.stand ? { stand: o.stand } : {});
   for (let i = 0; i < liste.length; i++) {
     const o = liste[i];
@@ -98,7 +112,10 @@ export async function listePatchen<E extends { id: string }, T extends Record<st
   let fehler: string | undefined;
   const konflikte: Konflikt[] = [];
   const zeilen: { id: string; stand: string }[] = [];
+  /** Fürs Änderungsprotokoll: Kennung + Feldnamen, nie Werte (28.09., K1 #44). */
+  let aenderungen: Aenderung[] = [];
   const next = await updateJson<T>(name, current => {
+    aenderungen = [];
     const f = (current ?? {}) as T;
     const liste = (Array.isArray(f[feld]) ? f[feld] : []) as E[];
     const loeschungen = ops.filter(o => o.op === 'delete').length;
@@ -119,7 +136,7 @@ export async function listePatchen<E extends { id: string }, T extends Record<st
       if (o.op === 'delete') {
         const alt = nachId.get(o.id!);
         if (!passt(o, alt, o.id!)) continue;
-        if (neuListe.delete(o.id!)) angewandt++;
+        if (neuListe.delete(o.id!)) { angewandt++; aenderungen.push({ op: 'geloescht', id: o.id! }); }
       } else if (o.op === 'teil') {
         const alt = nachId.get(o.id!);
         if (!alt) { konflikte.push({ id: o.id!, grund: o.stand === undefined ? 'unbekannt' : 'inzwischen gelöscht' }); continue; }
@@ -128,12 +145,16 @@ export async function listePatchen<E extends { id: string }, T extends Record<st
         if (!neu) { konflikte.push({ id: o.id!, grund: 'unbekannt' }); continue; }
         const fertig = vereine ? vereine(neu, alt) : neu;
         neuListe.set(o.id!, fertig); zeilen.push({ id: o.id!, stand: abdruck(fertig) }); angewandt++;
+        const felder = feldDiff(alt as unknown as Record<string, unknown>, fertig as unknown as Record<string, unknown>);
+        if (felder.length) aenderungen.push({ op: 'geaendert', id: o.id!, felder });
       } else {
         const id = o.eintrag!.id;
         const alt = nachId.get(id);
         if (!passt(o, alt, id)) continue;
         const fertig = alt ? (vereine ? vereine(o.eintrag!, alt) : o.eintrag!) : (opt.neu ? opt.neu(o.eintrag!) : o.eintrag!);
         neuListe.set(id, fertig); zeilen.push({ id, stand: abdruck(fertig) }); angewandt++;
+        if (!alt) aenderungen.push({ op: 'neu', id });
+        else { const felder = feldDiff(alt as unknown as Record<string, unknown>, fertig as unknown as Record<string, unknown>); if (felder.length) aenderungen.push({ op: 'geaendert', id, felder }); }
       }
     }
     // Ein Konflikt lehnt die ganze Änderung ab — halbe Stände sind schlimmer als eine Nachfrage.
@@ -144,5 +165,6 @@ export async function listePatchen<E extends { id: string }, T extends Record<st
 
   if (fehler) return { ok: false, angewandt: 0, fehler };
   if (konflikte.length) return { ok: false, angewandt: 0, fehler: 'Jemand hat inzwischen geändert — Stand neu geladen, bitte noch einmal.', konflikte };
+  await protokolliere(name, aenderungen, opt.wer);
   return { ok: true, angewandt, next, zeilen };
 }

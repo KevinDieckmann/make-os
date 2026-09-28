@@ -8,6 +8,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
+import net from 'node:net';
 
 const modus = process.argv[2];
 if (!['--verschluesseln', '--entschluesseln'].includes(modus ?? '')) { console.error('Aufruf: --verschluesseln | --entschluesseln'); process.exit(1); }
@@ -16,6 +17,21 @@ if (!geheim) { console.error('MAKE_OS_DATEN_SCHLUESSEL fehlt in der Umgebung.');
 const key = createHash('sha256').update(`make-os-daten:${geheim}`).digest();
 const H = '__verschluesselt';
 const DATEN = process.env.MAKE_OS_DATEN_DIR || path.join(process.cwd(), '.data');
+
+// Läuft gerade eine App auf demselben Datenordner? (28.09., K1 #40) Dev-Server (3001), Prüfbau (3011) und ein
+// lokaler Start (3000) teilen sich `.data` — schreibt eine App, während hier umgestellt wird, landet ein Bestand
+// im falschen Zustand. Nur eine Warnung (auf dem Server sind App und Arbeiter vorher angehalten).
+// MAKE_OS_PRUEF_PORTE (Komma-Liste) biegt die Ports für Tests um.
+const PORTE = (process.env.MAKE_OS_PRUEF_PORTE ?? '3000,3001,3011').split(',').map(Number).filter(p => Number.isInteger(p) && p > 0);
+const belegt = p => new Promise(ok => {
+  const s = net.connect({ port: p, host: '127.0.0.1' });
+  const fertig = x => { s.destroy(); ok(x); };
+  s.setTimeout(400, () => fertig(false));
+  s.once('connect', () => fertig(true));
+  s.once('error', () => fertig(false));
+});
+const laufend = (await Promise.all(PORTE.map(async p => ((await belegt(p)) ? p : null)))).filter(Boolean);
+if (laufend.length) console.warn(`WARNUNG: Auf Port ${laufend.join(', ')} läuft eine App — Dev-Server/Prüfbau teilen denselben Datenordner. Erst anhalten, sonst kann sie mitten in der Umstellung schreiben.`);
 
 const ver = t => { const iv = randomBytes(12); const c = createCipheriv('aes-256-gcm', key, iv); const e = Buffer.concat([c.update(t, 'utf8'), c.final()]); return JSON.stringify({ [H]: 1, iv: iv.toString('base64'), tag: c.getAuthTag().toString('base64'), daten: e.toString('base64') }); };
 const ent = o => { const d = createDecipheriv('aes-256-gcm', key, Buffer.from(o.iv, 'base64')); d.setAuthTag(Buffer.from(o.tag, 'base64')); return Buffer.concat([d.update(Buffer.from(o.daten, 'base64')), d.final()]).toString('utf8'); };

@@ -6,6 +6,8 @@ import { NextResponse } from 'next/server';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import type { Kontakt, Chance, Naehe, Stufe } from '@/lib/make-one/netzwerk-data';
+import { karteiZugang, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
+import { protokolliereBestand, werAus } from '@/lib/store/aenderungsprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -53,7 +55,9 @@ function sauberChance(c: Partial<Chance>, i: number): Chance | null {
   };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  // Haushalt des Inhabers (28.09., K1 #66/#67).
+  if (!(await karteiZugang(req))) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   const f = await loadJson<NetzFile>('netzwerk');
   return NextResponse.json({
     kontakte: Array.isArray(f?.kontakte) ? f.kontakte : [],
@@ -62,15 +66,20 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
+  if (!(await karteiZugang(req))) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   let body: Partial<NetzFile>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  // Mehr als 2000 je Liste: ablehnen, nie still kürzen (28.09., K1).
+  if ((Array.isArray(body.kontakte) && body.kontakte.length > 2000) || (Array.isArray(body.chancen) && body.chancen.length > 2000)) return NextResponse.json({ ok: false, error: 'Abgelehnt: höchstens 2000 Kontakte bzw. Chancen. Nichts gespeichert.' }, { status: 413 });
 
+  let vorher: NetzFile | null = null;
   const next = await updateJson<NetzFile>('netzwerk', current => {
+    vorher = current;
     const kontakte = Array.isArray(body.kontakte)
-      ? body.kontakte.slice(0, 2000).map(sauberKontakt).filter((x): x is Kontakt => !!x)
+      ? body.kontakte.map(sauberKontakt).filter((x): x is Kontakt => !!x)
       : (current?.kontakte ?? []);
     const chancen = Array.isArray(body.chancen)
-      ? body.chancen.slice(0, 2000).map(sauberChance).filter((x): x is Chance => !!x)
+      ? body.chancen.map(sauberChance).filter((x): x is Chance => !!x)
       : (current?.chancen ?? []);
 
     // Schrumpf-Wächter: ein Client-Fehler darf weder das mühsam gepflegte
@@ -87,6 +96,8 @@ export async function PUT(req: Request) {
   });
 
   if (!next) return NextResponse.json({ ok: false, error: 'Das hätte über die Hälfte der Kontakte gelöscht — abgelehnt.' }, { status: 409 });
+  // Änderungsprotokoll (28.09., K1 #44): nur Kennungen und Feldnamen.
+  await protokolliereBestand('netzwerk', vorher, next, werAus(req));
   return NextResponse.json({ ok: true, ...next });
 }
 
@@ -96,17 +107,23 @@ export async function PUT(req: Request) {
  * Was der andere inzwischen an anderen Einträgen geändert hat, bleibt erhalten.
  */
 export async function PATCH(req: Request) {
+  if (!(await karteiZugang(req))) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   let body: { ops?: ListenOp[] };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
-  const ops = (Array.isArray(body.ops) ? body.ops : []).slice(0, 500);
+  // Mehr als 500 auf einmal: ablehnen, nie still kürzen (28.09., K1).
+  if (Array.isArray(body.ops) && body.ops.length > 500) return NextResponse.json({ ok: false, error: `Abgelehnt: ${body.ops.length} Änderungen auf einmal — höchstens 500.` }, { status: 413 });
+  const ops = Array.isArray(body.ops) ? body.ops : [];
   if (!ops.length) return NextResponse.json({ ok: true, angewandt: 0 });
   let angewandt = 0;
+  let vorher: NetzFile | null = null;
   const next = await updateJson<NetzFile>('netzwerk', current => {
+    vorher = current;
     const f = { kontakte: current?.kontakte ?? [], chancen: current?.chancen ?? [] };
     const k = wendeAn(f.kontakte as unknown as Record<string, unknown>[], ops.filter(o => o.liste === 'kontakte'), 'id', r => sauberKontakt(r as Partial<Kontakt>, 0) as unknown as Record<string, unknown> | null);
     const c = wendeAn(f.chancen as unknown as Record<string, unknown>[], ops.filter(o => o.liste === 'chancen'), 'id', r => sauberChance(r as Partial<Chance>, 0) as unknown as Record<string, unknown> | null);
     angewandt = k.angewandt + c.angewandt;
     return { kontakte: k.liste as unknown as Kontakt[], chancen: c.liste as unknown as Chance[] };
   });
+  await protokolliereBestand('netzwerk', vorher, next, werAus(req));
   return NextResponse.json({ ok: true, angewandt, stand: next });
 }

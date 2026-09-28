@@ -29,13 +29,21 @@ async function letzterTakt(jetzt: string): Promise<number | null> {
   try { const t = (await fs.readFile(path.join(systemOrdner(), 'takt.txt'), 'utf8')).trim(); const z = Date.parse(t); return Number.isNaN(z) ? null : Math.max(0, Math.round((Date.parse(jetzt) - z) / 60_000)); } catch { return null; }
 }
 
+/** Beiseitegelegte Bestände (`<name>.json.corrupt-<zeit>`, lib/store/local-db.ts) — nur Dateinamen, nie Inhalte (28.09., K1 #39). */
+export function beschaedigteAus(dateien: string[]): { anzahl: number; bestaende: string[] } {
+  const kaputt = dateien.filter(f => /\.json\.corrupt-\d+$/.test(f));
+  return { anzahl: kaputt.length, bestaende: Array.from(new Set(kaputt.map(f => f.replace(/\.json\.corrupt-\d+$/, '')))).sort() };
+}
+
 async function bestaende(): Promise<InnenLage['bestaende']> {
   try {
     const ordner = datenOrdner();
-    const namen = (await fs.readdir(ordner)).filter(f => f.endsWith('.json') && !f.includes('.corrupt-'));
+    const alle = await fs.readdir(ordner);
+    const beschaedigt = beschaedigteAus(alle);
+    const namen = alle.filter(f => f.endsWith('.json') && !f.includes('.corrupt-'));
     const groessen = await Promise.all(namen.map(async n => { try { const st = await fs.stat(path.join(ordner, n)); return { name: n.replace(/\.json$/, ''), mb: st.size / 1_048_576 }; } catch { return null; } }));
     const liste = groessen.filter((g): g is { name: string; mb: number } => !!g);
-    return { anzahl: liste.length, gesamtMb: liste.reduce((s, g) => s + g.mb, 0), groesste: [...liste].sort((a, b) => b.mb - a.mb).slice(0, 3).map(g => ({ name: g.name, mb: Math.round(g.mb * 100) / 100 })) };
+    return { anzahl: liste.length, gesamtMb: liste.reduce((s, g) => s + g.mb, 0), groesste: [...liste].sort((a, b) => b.mb - a.mb).slice(0, 3).map(g => ({ name: g.name, mb: Math.round(g.mb * 100) / 100 })), beschaedigt };
   } catch { return { anzahl: 0, gesamtMb: 0, groesste: [] }; }
 }
 

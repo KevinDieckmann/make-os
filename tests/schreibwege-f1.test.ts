@@ -51,6 +51,11 @@ beforeAll(async () => {
   einheitenPlanung = (await import('@/app/api/planung/einheiten/route')) as unknown as Route;
   zeitEinheiten = (await import('@/app/api/state/zeit/einheiten/route')) as unknown as Route;
   kontaktFrage = (await import('@/app/api/crm/kontakt-frage/route')) as unknown as Route;
+  // Kartei nur für den Haushalt des Inhabers (28.09., K1 #66/#67): erfundene Konten im selben Haushalt.
+  await db.saveJson('konten', { konten: [
+    { id: 'k1', speicher: 'kevin', email: 'k@test.invalid', name: 'Kevin Test', rolle: 'inhaber', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'test-haus' },
+    { id: 'k2', speicher: 'malin', email: 'm@test.invalid', name: 'Malin Test', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'test-haus' },
+  ], einladungen: [] });
   await db.saveJson('kontakte', { kontakte: [
     person('c-leeren', {
       firma: 'Beispiel Werke GmbH', firmaId: 'f-beispielwerke-abc', naechsterSchritt: { text: 'Angebot nachfassen', datum: H }, bean: 'A', kreis: 'B', anrede: 'Du',

@@ -41,7 +41,7 @@ export interface AussenLage {
 export interface InnenLage {
   zeit: string;
   prozess: { laufzeitStunden: number; heapMb: number; rssMb: number; node: string };
-  bestaende: { anzahl: number; gesamtMb: number; groesste: { name: string; mb: number }[] };
+  bestaende: { anzahl: number; gesamtMb: number; groesste: { name: string; mb: number }[]; beschaedigt?: { anzahl: number; bestaende: string[] } };
   takt: { letzterLaufMinuten: number | null; fehlerquote24h: number | null; wartend: number; laufend: number };
   fehler: { client24h: number; letzter?: string };
   anmeldungen: { fehl24h: number; neueNetze7d: number };
@@ -92,6 +92,10 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push({ id: 'anmeldungen', bereich: 'sicherheit', label: 'Fehlanmeldungen · 24 h', ampel: innen.anmeldungen.fehl24h < 5 ? 'gruen' : innen.anmeldungen.fehl24h < 20 ? 'gelb' : 'rot', wert: `${innen.anmeldungen.fehl24h}${innen.anmeldungen.neueNetze7d ? ` · ${innen.anmeldungen.neueNetze7d} neue Netze in 7 Tagen` : ''}`, satz: innen.anmeldungen.fehl24h < 5 ? 'unauffällig' : 'jemand probiert Passwörter — Bremse und Zweiter Faktor greifen' });
   b.push({ id: 'csp', bereich: 'sicherheit', label: 'CSP-Meldungen · 7 Tage', ampel: innen.csp.meldungen7d === 0 ? 'gruen' : innen.csp.meldungen7d < 20 ? 'gelb' : 'rot', wert: String(innen.csp.meldungen7d), satz: innen.csp.meldungen7d ? `häufigste: ${innen.csp.top ?? '—'}` : 'nichts blockiert' });
   b.push({ id: 'heap', bereich: 'app', label: 'App-Speicher', ampel: innen.prozess.rssMb < 900 ? 'gruen' : innen.prozess.rssMb < 1150 ? 'gelb' : 'rot', wert: `${innen.prozess.rssMb} MB · seit ${uhr(innen.prozess.laufzeitStunden)}`, satz: innen.prozess.rssMb < 900 ? 'unter der Grenze (1280 MB)' : 'nah an der Speichergrenze — Neustart droht' });
+  // Beschädigte Bestände (28.09., K1 #39): local-db legt kaputtes JSON als <name>.json.corrupt-<zeit> beiseite und
+  // verweigert danach jedes Schreiben (BestandBeschaedigt) — ohne diesen Befund merkt das niemand, bis etwas fehlt.
+  const kaputt = innen.bestaende.beschaedigt;
+  if (kaputt?.anzahl) b.push({ id: 'beschaedigt', bereich: 'app', label: 'Bestand beschädigt beiseitegelegt', ampel: 'rot', wert: `${kaputt.anzahl} Datei${kaputt.anzahl === 1 ? '' : 'en'}: ${kaputt.bestaende.slice(0, 5).join(', ')}${kaputt.bestaende.length > 5 ? ' …' : ''}`, satz: 'liegt als .corrupt-… im Datenordner; der Bestand wird bis zur Prüfung nicht beschrieben — Kopie prüfen, aus backup/ oder der Sicherung wiederherstellen' });
   b.push({ id: 'bestaende', bereich: 'app', label: 'Bestände', ampel: innen.bestaende.gesamtMb < 50 ? 'gruen' : innen.bestaende.gesamtMb < 200 ? 'gelb' : 'rot', wert: `${innen.bestaende.anzahl} Dateien · ${innen.bestaende.gesamtMb.toFixed(1)} MB`, satz: `größte: ${innen.bestaende.groesste.slice(0, 3).map(x => `${x.name} ${x.mb.toFixed(1)} MB`).join(', ')}` });
 
   // ── Außen ──

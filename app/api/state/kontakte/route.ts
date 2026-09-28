@@ -18,17 +18,21 @@
 //  · Felder leeren (28.09., Prüfbericht F1): im `teil` heißt `null` „Feld entfernen“ (`teilAnwenden`)
 //  · Private Notizen (28.09., F1, Regel 5): nur mit ausdrücklicher Person (`personStreng`) —
 //    ein Dienstaufruf ohne Person bekommt keine, und was er schreibt, lässt sie stehen
+//  · Zugang (28.09., K1 #66/#67): nur Haushalt des Inhabers (`karteiZugang`) — Dienstweg mit Person nur,
+//    wenn die Person dazugehört; sonst 403
 
 import { NextResponse } from 'next/server';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
-import { listePatchen, opsLesen } from '@/lib/store/patch-liste';
+import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
 import { mitStand } from '@/lib/store/fingerabdruck';
 import { deltaAus, staende, StandGedaechtnis } from '@/lib/kontakte/delta';
 import { saeubereKontakt, kontaktVereinen, privatNotizVereinen, fuerPerson, teilAnwenden, massenStufe, pipelineStand, MASSEN_GRENZE, serverStempel, sperreAufhebenPruefen, sperreAufhebenVermerk, sperreBehalten, kontaktZuGross, type Kontakt } from '@/lib/make-one/crm';
 import { sperren, entsperren } from '@/lib/crm/sperrliste';
 import { localDay } from '@/lib/zeit';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { karteiZugang, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
+import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { zahlungZusammenfuehren, ibanBehalten } from '@/lib/crm/zahlung';
 import { personEntfernen } from '@/lib/crm/person-bestaende';
 
@@ -50,6 +54,8 @@ function ohnePrivat<K extends Pick<Kontakt, 'privatNotiz' | 'privatNotizVon'>>(k
 const sicht = (k: Kontakt, ich: string | null): Kontakt => (ich ? fuerPerson(k, ich) : ohnePrivat(fuerPerson(k, '')));
 
 export async function GET(req: Request) {
+  // Haushalt des Inhabers (28.09., K1 #66/#67) — vorher reichte „angemeldet“.
+  if (!(await karteiZugang(req))) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   // Nie Rückfall auf „kevin“ (Regel 5): ohne ausdrückliche Person keine privaten Notizen.
   const ich = personStreng(req);
   // Der Abgleich fragt alle 20 Sekunden — unverändert gibt es 304 statt 750 KB (lib/http/json-antwort.ts).
@@ -71,13 +77,15 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  if (!(await karteiZugang(req))) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   let body: { ops?: unknown; erzwingen?: boolean };
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   // Nie abschneiden (K2): zu viele Aktivitäten/Einwilligungen an einem Kontakt → 413 statt stillem Kürzen.
   const zuViel = Array.isArray(body.ops) ? (body.ops as ({ eintrag?: unknown; felder?: unknown } | null)[]).map(o => kontaktZuGross(o?.eintrag) ?? kontaktZuGross(o?.felder)).find(Boolean) : null;
   if (zuViel) return NextResponse.json({ error: zuViel }, { status: 413 });
   const roh = opsLesen<Kontakt>(body.ops, saeubereKontakt);
-  if (!roh) return NextResponse.json({ error: 'ops muss eine Liste sein.' }, { status: 400 });
+  // Mehr als 200 auf einmal: ablehnen, nie still kürzen (28.09., K1).
+  if (!roh) return NextResponse.json({ error: opsFehler(body.ops) }, { status: Array.isArray(body.ops) ? 413 : 400 });
   // Private Notizen nur mit ausdrücklicher Person (Regel 5) — ein Dienstaufruf ohne Person sieht sie nicht und fasst sie nicht an.
   const ich = personStreng(req);
   const person = ich ?? undefined;
@@ -96,6 +104,8 @@ export async function PATCH(req: Request) {
   // Server-Felder (K2 #68): geaendertAm/importiertAm/vonHand stempelt der Server — Browser-Werte zählen nicht.
   const heute = localDay();
   const r = await listePatchen<Kontakt, Bestand>('kontakte', 'kontakte', ops, 20, undefined, {
+    // Änderungsprotokoll (28.09., K1 #44): wer — aus der Sitzung bzw. dem Dienstweg, nie aus dem Body.
+    wer: werAus(req),
     // Herkunft je Feld (27.09., „Online gewinnt“): was hier von Hand anders wird, überschreibt kein Import mehr.
     // IBAN (28.09., H4): ein ganzer Eintrag aus dem Browser trägt sie nur maskiert (fällt in der Säuberung weg) —
     // dann bleibt die gespeicherte. Ein `teil` hat die IBAN schon gegen den Altstand aufgelöst (ibanEntfernen wirkt).

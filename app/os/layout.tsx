@@ -9,7 +9,6 @@ import { Leiste } from '@/components/os/Leiste';
 import { ZoePanel } from '@/components/os/ZoePanel';
 import { FehlerMelder } from '@/components/os/FehlerMelder';
 import { NutzungsMelder } from '@/components/os/NutzungsMelder';
-import { Protokollant } from '@/components/os/Protokollant';
 import { Mitarbeit } from '@/components/os/Mitarbeit';
 import { WillkommenMalin } from '@/components/os/WillkommenMalin';
 import { Schnellsuche } from '@/components/os/Schnellsuche';
@@ -30,8 +29,7 @@ export default async function OsLayout({ children }: { children: React.ReactNode
       <AnfrageBuendel />
       {/* Schreibt Browser-Fehler mit, damit sie nicht nur auf dem Bildschirm stehen. */}
       <FehlerMelder />
-      {/* Hält fest, wer welchen Bestand geändert hat. */}
-      <Protokollant />
+      {/* Wer welchen Bestand geändert hat, schreibt seit 28.09. der Server selbst (lib/store/aenderungsprotokoll.ts). */}
       {/* Schreibt leise mit, welche Seiten benutzt werden — Grundlage der Verbesserungs-Vorschläge. */}
       <NutzungsMelder />
       {/* Die Leiste (26.09.): Home · Wachstum · Privat · Business · Agenten, unten ZOE · Brain · System. */}

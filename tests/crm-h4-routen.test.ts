@@ -50,6 +50,11 @@ beforeAll(async () => {
   kontakte = (await import('@/app/api/state/kontakte/route')) as unknown as Route;
   bestand = (await import('@/app/api/crm/bestand/route')) as unknown as Route;
   datenschutz = (await import('@/app/api/crm/datenschutz/route')) as unknown as Route;
+  // Kartei nur für den Haushalt des Inhabers (28.09., K1 #66/#67): erfundene Konten im selben Haushalt.
+  await db.saveJson('konten', { konten: [
+    { id: 'k1', speicher: 'kevin', email: 'k@test.invalid', name: 'Kevin Test', rolle: 'inhaber', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'test-haus' },
+    { id: 'k2', speicher: 'malin', email: 'm@test.invalid', name: 'Malin Test', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'test-haus' },
+  ], einladungen: [] });
   await db.saveJson('kontakte', { kontakte: [
     person('c-anna', { aktivitaeten: [NOTIZ_K, NOTIZ_M, NOTIZ_2, ANRUF], zahlung: { weg: 'sepa', iban: IBAN } }),
     person('c-bert', { vorname: 'Bert', firmaId: 'f-werke' }),

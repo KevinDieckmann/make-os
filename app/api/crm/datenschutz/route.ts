@@ -11,7 +11,7 @@
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { personAus } from '@/lib/zoe/raum';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { localDay } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm } from '@/lib/crm/speicher';
@@ -34,7 +34,7 @@ export async function GET(req: Request) {
     // IBAN (Entscheidung 28.09., H4): Die Auskunft nach Art. 15 enthält die volle IBAN, wenn sie zur Person
     // gehört (Kontakt.zahlung — nur bei Personen ohne Firma). Die IBAN einer Firma ist kein Datum der Person:
     // sie steht hier nur maskiert, wie überall sonst im Browser.
-    person: fuerPerson(k, personAus(req), { ibanVoll: true }), firma: (() => { const f = k.firmaId ? crm.firmen.find(x => x.id === k.firmaId) : undefined; return f ? { ...f, ...(f.zahlung ? { zahlung: zahlungMaskiert(f.zahlung) } : {}) } : null; })(),
+    person: fuerPerson(k, personStreng(req) ?? '', { ibanVoll: true }), firma: (() => { const f = k.firmaId ? crm.firmen.find(x => x.id === k.firmaId) : undefined; return f ? { ...f, ...(f.zahlung ? { zahlung: zahlungMaskiert(f.zahlung) } : {}) } : null; })(),
     // Alle Speicher aus einer Stelle (28.09., lib/crm/person-bestaende.ts): CRM-Listen, Dateiablage (nur Metadaten),
     // Import-Konflikte, Head-Vorschläge, kommender Termin, eindeutig zugeordnete Aufgaben.
     ...(await personAufzaehlen(id)),
@@ -44,6 +44,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+  // Regel 5 (28.09., K1): Das Löschprotokoll nennt, WER gelöscht hat — nur mit ausdrücklicher Person, nie „kevin“ als Rückfall.
+  const von = personStreng(req);
+  if (!von) return NextResponse.json({ ok: false, fehler: 'Löschen nur mit angemeldeter Person.' }, { status: 401 });
   let b: { id?: string; grund?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const id = String(b.id ?? '');
@@ -52,6 +55,6 @@ export async function POST(req: Request) {
   // (etwa nach einem Abbruch) räumt Reste auf, auch wenn die Kartei die Person schon nicht mehr kennt.
   const bericht = await personEntfernen(id);
   if (!Object.keys(bericht.speicher).length) return NextResponse.json({ ok: false, fehler: 'Nicht gefunden.' }, { status: 404 });
-  await updateJson<{ eintraege: { id: string; datum: string; grund: string; von: string }[] }>('crm-loeschprotokoll', cur => ({ eintraege: [...(cur?.eintraege ?? []), { id, datum: localDay(), grund: String(b.grund ?? 'Art. 17 DSGVO').slice(0, 200), von: personAus(req) }] }));
+  await updateJson<{ eintraege: { id: string; datum: string; grund: string; von: string }[] }>('crm-loeschprotokoll', cur => ({ eintraege: [...(cur?.eintraege ?? []), { id, datum: localDay(), grund: String(b.grund ?? 'Art. 17 DSGVO').slice(0, 200), von }] }));
   return NextResponse.json({ ok: true, speicher: bericht.speicher, aufgabenPruefen: bericht.aufgabenPruefen });
 }

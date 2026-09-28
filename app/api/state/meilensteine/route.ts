@@ -5,8 +5,8 @@
 // Gesundheits-Säule — und bleibt aus Business-Kontexten draußen (Privatsphäre).
 
 import { NextResponse } from 'next/server';
-import { loadJson, updateJson, updateGeschuetztListen } from '@/lib/store/local-db';
-import { listePatchen, opsLesen } from '@/lib/store/patch-liste';
+import { loadJson, updateGeschuetztListen } from '@/lib/store/local-db';
+import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
 import { mitStand } from '@/lib/store/fingerabdruck';
 import type { Meilenstein } from '@/lib/planung/typen';
 import { sauberEinheit } from '@/lib/planung/einheiten';
@@ -22,24 +22,8 @@ interface MeilensteinFile { meilensteine: Meilenstein[] }
 /** Höchstzahl Meilensteine — darüber wird abgelehnt, nie gekürzt (28.09.). */
 const GRENZE = 500;
 
-// Startbestand: Miro „Kevin & Frank" (Business) + Kevins echte Gesundheits-
-// Etappen. Erledigtes bleibt sichtbar — der Weg zählt.
-const SEED: Meilenstein[] = [
-  { id: 'ms-kdm-ug', titel: 'KD Management UG gegründet', bereich: 'business', faellig: '2026-06-25', fortschritt: 100, erledigt: true, erledigtAm: '2026-06-25' },
-  { id: 'ms-poincap-v1', titel: 'POINCAP v1.0 live', bereich: 'business', faellig: '2026-06-25', fortschritt: 100, erledigt: true, erledigtAm: '2026-06-25' },
-  { id: 'ms-landingpage', titel: 'Landingpage F&F live', bereich: 'business', faellig: '2026-07-03', fortschritt: 100, erledigt: true, erledigtAm: '2026-07-03' },
-  { id: 'ms-ig', titel: 'KEMARIS Innovation GmbH / IG gegründet', bereich: 'business', faellig: '2026-07-28', fortschritt: 100, erledigt: true, erledigtAm: '2026-07-28' },
-  { id: 'ms-ff-launch', titel: 'F&F-Launch', bereich: 'business', faellig: '2026-08-01', messlatte: '30 Testkunden onboarded', fortschritt: 60, erledigt: false },
-  { id: 'ms-poincap-gmbh', titel: 'POINCAP GmbH Gründung', bereich: 'business', faellig: '2026-09-30', fortschritt: 0, erledigt: false },
-  { id: 'ms-volllaunch', titel: 'Volllaunch + Pressekonferenz Zoo Palais', bereich: 'business', faellig: '2026-10-01', fortschritt: 0, erledigt: false },
-  { id: 'ms-podcast', titel: 'KEMARIS Podcast', bereich: 'business', zeitfenster: 'Q3', fortschritt: 0, erledigt: false },
-  { id: 'ms-magazin', titel: 'KEMARIS Magazin', bereich: 'business', zeitfenster: 'Q4', fortschritt: 0, erledigt: false },
-  { id: 'ms-breakeven', titel: 'Break-even POINCAP', bereich: 'business', zeitfenster: '2028', fortschritt: 0, erledigt: false },
-  { id: 'ms-g-infiltration', titel: 'Rücken: Infiltration wahrgenommen', bereich: 'gesundheit', faellig: '2026-07-31', messlatte: 'Termin wahrgenommen, Plan mit Arzt besprochen', fortschritt: 0, erledigt: false },
-  { id: 'ms-g-cannabis', titel: 'Cannabis-Cut durchgehalten', bereich: 'gesundheit', faellig: '2026-08-30', messlatte: '30 Tage ohne — Start 31.07', fortschritt: 0, erledigt: false },
-  { id: 'ms-g-reha', titel: 'Reha Stufe 1 etabliert', bereich: 'gesundheit', faellig: '2026-08-14', messlatte: '14 Tage in Folge täglich ein Reha-Block', fortschritt: 0, erledigt: false },
-  { id: 'ms-g-schlaf', titel: 'Schlaf stabil', bereich: 'gesundheit', zeitfenster: 'August', messlatte: 'Ø ≥ 7 h über 14 Tage (Whoop)', fortschritt: 0, erledigt: false },
-];
+// Kein Startbestand (28.09., K1): hier standen echte Business- und Gesundheits-Etappen im Code (Regel 1
+// „keine echten Daten im Repo“). Ein neuer Haushalt beginnt leer; ein bestehender Bestand wird nie angefasst.
 
 function sauberListe(rein: unknown): Meilenstein[] {
   return (Array.isArray(rein) ? rein : []).map((m: Partial<Meilenstein>) => {
@@ -64,12 +48,9 @@ function sauberListe(rein: unknown): Meilenstein[] {
 }
 
 export async function GET() {
-  let f = await loadJson<MeilensteinFile>('meilensteine');
-  if (!f || !Array.isArray(f.meilensteine) || !f.meilensteine.length) {
-    f = await updateJson<MeilensteinFile>('meilensteine', () => ({ meilensteine: SEED }));
-  }
+  const f = await loadJson<MeilensteinFile>('meilensteine');
   // Jede Zeile trägt ihren Stand — Änderungen kommen als PATCH mit diesem Stand zurück (28.09.).
-  return NextResponse.json({ meilensteine: mitStand(f.meilensteine) });
+  return NextResponse.json({ meilensteine: mitStand(Array.isArray(f?.meilensteine) ? f.meilensteine : []) });
 }
 
 export async function PUT(req: Request) {
@@ -101,7 +82,7 @@ export async function PATCH(req: Request) {
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (Array.isArray(body.ops) && body.ops.length > 160) return NextResponse.json({ ok: false, error: 'Abgelehnt: höchstens 160 Änderungen je Aufruf.' }, { status: 413 });
   const ops = opsLesen<Meilenstein>(body.ops, e => sauberListe([e])[0] ?? null, 160);
-  if (!ops) return NextResponse.json({ ok: false, error: 'Feld "ops" (Liste) fehlt.' }, { status: 400 });
+  if (!ops) return NextResponse.json({ ok: false, error: opsFehler(body.ops, 160) }, { status: Array.isArray(body.ops) ? 413 : 400 });
   const r = await listePatchen<Meilenstein, MeilensteinFile & Record<string, unknown>>('meilensteine', 'meilensteine', ops, 6, undefined, {
     pruefen: (liste, o) => {
       const ids = new Set(liste.map(m => m.id));

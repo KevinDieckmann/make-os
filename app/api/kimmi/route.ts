@@ -12,6 +12,7 @@ import { WERKZEUGE } from '@/lib/zoe/werkzeuge';
 import { AUSFUEHRBAR, AGENT_ZWECK, runAgent, type Ausfuehrbar } from '@/lib/zoe/agenten';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { offeneAnzahl } from '@/lib/zoe/stapel';
+import { kontextIstFremd, nurVorschlag } from '@/lib/zoe/gespraech-schutz';
 import { personAus } from '@/lib/zoe/raum';
 import { brainAnweisung } from '@/lib/zoe/vault';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
@@ -87,7 +88,7 @@ function systemPrompt(extra?: string, live?: string, fortsetzung = false, gedaec
     gedaechtnis ? `WAS DU DIR GEMERKT HAST (dein Langzeit-Gedächtnis — benutze es, statt zu fragen, was du schon weißt):\n${gedaechtnis}` : '',
     'DEIN GEHIRN: Kevins Obsidian-Brain (Vault „MAKE“, Ordner Make.Claude) ist deine Wissensbank Nummer eins; dazu die MAKE-OS-Doku in der iCloud. Mit suche_wissen und lies_notiz kommst du dran — nutze das, BEVOR du sagst, dass du etwas nicht weißt, und immer bei Fragen nach Personen, Firmen, Preisen, Vereinbarungen, Terminologie oder früheren Entscheidungen. Der oberste 🔴-UPDATE-Block einer Notiz ist ihr gültiger Stand. NENNE IMMER DIE QUELLE (die Kennung unter QUELLE). Mit 🔒 PRIVAT markierte Notizen nur im Gespräch mit der Person selbst verwenden, nie in Mails, Entwürfe, Briefings oder Texte nach außen. Schreiben nach den Regeln des Vaults: notiz_anlegen legt ein Protokoll an (03. Protokolle), notiz_ergaenzen hängt nur an Offene_Fragen_Brain, Taskmanagement_Brain oder Zoe_Log an. Was nicht im Brain steht, erfindest du nicht — trag es als offene Frage in Offene_Fragen_Brain ein. Überschrieben oder gelöscht wird nie.',
     'WAS GILT: Bei Widersprüchen zwischen Vault und Software gilt die SOFTWARE. Zahlen, Aufgaben und Termine kommen aus dem Live-Zustand; der Vault liefert Zusammenhang und Wissen, keine aktuellen Werte. Sag es Kevin, wenn dir ein Widerspruch auffällt.',
-    'MERKEN: Fällt im Gespräch ein dauerhafter Fakt („Frank ist jetzt bei der Volksbank", „Malin mag keine Termine vor 10", „wir haben uns gegen X entschieden"), dann leg ihn SOFORT mit fakt_merken ab — ohne zu fragen, ohne es anzukündigen. Kevin sieht alles Gemerkte in einer Liste und wirft raus, was nicht stimmt. Merke keine Tagesdaten, die ohnehin im Live-Zustand stehen (Kontostände, offene Aufgaben, Termine) — nur was länger gilt. Mit frag_gedaechtnis siehst du nach, bevor du rätst.',
+    'MERKEN: Fällt im Gespräch ein dauerhafter Fakt („Frank ist jetzt bei der Volksbank", „Malin mag keine Termine vor 10", „wir haben uns gegen X entschieden"), dann schlag ihn SOFORT mit fakt_merken vor — ohne zu fragen. fakt_merken (wie notiz_anlegen) landet im Gespräch immer als Vorschlag im Stapel; sag knapp, dass er dort auf eine Freigabe wartet. Merke keine Tagesdaten, die ohnehin im Live-Zustand stehen (Kontostände, offene Aufgaben, Termine) — nur was länger gilt. Mit frag_gedaechtnis siehst du nach, bevor du rätst.',
     '',
     live ? `LIVE-ZUSTAND aus dem Brain (deine echten Daten gerade jetzt — beziehe dich konkret darauf, erfinde nichts dazu):\n${live}` : '',
     '',
@@ -115,6 +116,8 @@ export async function POST(req: Request) {
   const message = String(payload.message ?? '').trim().slice(0, 8000);
   // Verlauf und Zusatz begrenzt — der Prompt darf nicht beliebig wachsen (26.09.).
   if (Array.isArray(payload.verlauf)) payload.verlauf = payload.verlauf.slice(-40).map(v => ({ ...v, text: typeof v.text === 'string' ? v.text.slice(0, 8000) : '' }));
+  // Browser-Kontext ist Text Dritter (28.09., K1 #98): nicht leer → das Gespräch gilt von Anfang an als „fremd gelesen“.
+  const kontextFremd = kontextIstFremd(payload.context);
   if (typeof payload.context === 'string') payload.context = fremd('client', payload.context.slice(0, 4000));
   if (!message) return NextResponse.json({ reply: 'Sag mir, woran ich arbeiten soll.' });
   // Gedächtnis: die bisherigen Züge dieses Gesprächs. Ohne das fing ZOE bei
@@ -600,10 +603,10 @@ export async function POST(req: Request) {
     const ran: { agent: string; ok: boolean }[] = [];
     let laufBudget = 8;
     let werkBudget = 14;
-    // Prompt-Injection-Schutz (26.09.): Sobald Fremdinhalt gelesen wurde (Postfach, Web),
-    // wirken schreibende Werkzeuge in diesem Gespräch nur noch als Vorschlag (Freigabe).
-    let fremdGelesen = false;
-    const LESEND = new Set(['lies_postfach', 'suche_wissen', 'lies_notiz', 'frag_gedaechtnis', 'business_index', 'crm_lage', 'haushalt_stand', 'haushalt_buchungen', 'gesundheits_index', 'finde_kontakt', 'lies_kontakt', 'suche_kontakt']);
+    // Prompt-Injection-Schutz (26.09.): Sobald Fremdinhalt gelesen wurde (Postfach, Web) — oder der
+    // Browser Kontext mitschickt (28.09., K1 #98) —, wirken schreibende Werkzeuge in diesem Gespräch nur
+    // noch als Vorschlag (Freigabe). Regeln rein und getestet in lib/zoe/gespraech-schutz.ts.
+    let fremdGelesen = kontextFremd;
 
     // Grundlage aus dem Obsidian-Brain (00_ZOE_AGENT + Vertraulichkeitsregeln), eine Minute zwischengespeichert.
     const brain = await brainAnweisung(person).catch(() => '');
@@ -633,9 +636,8 @@ export async function POST(req: Request) {
           const gueltig = werkBudget-- > 0;
           // Über fuehreAus — dort sitzen Risiko-Stufe, Trockenlauf, Stapel und
           // Protokoll. Es gibt bewusst keinen zweiten Weg zur Wirkung.
-          // Eine Werbesperre ist dauerhaft — sie geht immer über den Stapel.
-          const sperre = name === 'notiere_kontakt' && String(l.input?.ergebnis ?? '') === 'sperre';
-          const vorschlagen = sperre || (fremdGelesen && !LESEND.has(name));
+          // Werbesperre, fakt_merken und notiz_anlegen immer über den Stapel; nach Fremdtext alles Schreibende.
+          const vorschlagen = nurVorschlag(name, l.input, fremdGelesen);
           return {
             l, agentId: name, gueltig,
             lauf: async () => (await fuehreAus(name, l.input ?? {}, origin, { anlass: message.slice(0, 200), person, ...(vorschlagen ? { vorschlagen: true } : {}) })).text,

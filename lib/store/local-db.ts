@@ -214,6 +214,14 @@ export async function loadJson<T>(name: string): Promise<T | null> {
   return parseOderBeiseite<T>(name, r.text);
 }
 
+/** Verzeichnis-fsync nach dem Umbenennen — macht den neuen Namen dauerhaft. Wo das System es nicht kann, nicht fatal. */
+async function ordnerSync(ordner: string): Promise<void> {
+  try {
+    const d = await fs.open(ordner, 'r');
+    try { await d.sync(); } finally { await d.close(); }
+  } catch { /* z. B. Systeme ohne Verzeichnis-fsync — die Datei selbst ist schon synchronisiert */ }
+}
+
 /** Datei schreiben (tmp + rename) und den Lesecache mit dem geschriebenen Text füllen. */
 async function schreibeDatei(name: string, dest: string, text: string): Promise<void> {
   await ensureDir();
@@ -221,8 +229,21 @@ async function schreibeDatei(name: string, dest: string, text: string): Promise<
   // Eindeutiger Temp-Name: zwei Prozesse/Läufe dürfen sich nicht dieselbe .tmp-Datei wegziehen.
   const tmp = `${dest}.${process.pid}.${Math.random().toString(36).slice(2, 10)}.tmp`;
   // Nur der Besitzer liest die Bestände (26.09.) — auf dem Server ist das der Container-Nutzer = make.
-  await fs.writeFile(tmp, zumSchreiben(text), { encoding: 'utf8', mode: 0o600 });
+  // fsync (28.09., K1 #37): erst die Daten der Temp-Datei auf die Platte (FileHandle.sync), dann umbenennen,
+  // dann das Verzeichnis synchronisieren — sonst kann nach einem Stromausfall eine leere/halbe Datei unter dem
+  // richtigen Namen stehen (rename ist atomar, aber nicht dauerhaft ohne fsync).
+  const fh = await fs.open(tmp, 'w', 0o600);
+  try {
+    await fh.writeFile(zumSchreiben(text), { encoding: 'utf8' });
+    await fh.sync();
+  } catch (e) {
+    await fh.close().catch(() => {});
+    await fs.unlink(tmp).catch(() => {});
+    throw e;
+  }
+  await fh.close();
   await fs.rename(tmp, dest);
+  await ordnerSync(path.dirname(dest));
   try { merkeGelesen(name, await fs.stat(dest), text, datenSchluessel() !== null); } catch { leseCache.delete(name); }
   standErhoehen(name);
 }

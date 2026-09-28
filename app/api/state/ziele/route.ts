@@ -9,7 +9,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { listePatchen, opsLesen } from '@/lib/store/patch-liste';
+import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
 import { mitStand } from '@/lib/store/fingerabdruck';
 import { personAus, speicherFuer } from '@/lib/zoe/raum';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
@@ -110,7 +110,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: false, error: `Abgelehnt: höchstens ${JE_HORIZONT * 2} Änderungen je Aufruf.` }, { status: 413 });
   }
   const ops = opsLesen<Ziel>(body.ops, sauberZiel, JE_HORIZONT * 2);
-  if (!ops) return NextResponse.json({ ok: false, error: 'Feld "ops" (Liste) fehlt.' }, { status: 400 });
+  if (!ops) return NextResponse.json({ ok: false, error: opsFehler(body.ops, JE_HORIZONT * 2) }, { status: Array.isArray(body.ops) ? 413 : 400 });
   const jahr = Number(localDay().slice(0, 4));
 
   const r = await listePatchen<Ziel, ZieleDatei & Record<string, unknown>>(sp.name, h, ops, 6, undefined, {

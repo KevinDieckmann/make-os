@@ -49,3 +49,48 @@ describe('Repo ohne Kontodaten', () => {
     expect(funde, funde.join('\n')).toEqual([]);
   });
 });
+
+// ─── Startbestände ohne echte Daten (28.09., K1) ────────────────────────────
+// Ein SEED greift, wenn ein Speicher leer ist — er ist Code, geht also mit dem Rohbau an Dritte.
+// Vorher standen dort echte Kunden, ein Privatkredit mit Betrag und Gesundheits-Etappen. Jeder
+// `SEED`-Block in einer versionierten Datei wird auf Namen Dritter, Banken, private Themen und
+// Beträge geprüft. Die Muster sind zur Laufzeit zusammengesetzt, damit diese Datei sich nicht selbst meldet.
+const VERBOTEN_IM_SEED = new RegExp(['One' + 'Banking', 'Bj(ö|oe)' + 'rn', 'Gre' + 'gor', 'Vi' + 'vid', 'AC' + 'ME', 'Canna' + 'bis', 'Infil' + 'tration', 'Zoo ' + 'Palais', 'Volks' + 'bank', 'Kredit'].join('|'), 'i');
+const BETRAG_IM_SEED = /\b(betrag|cashflow|kontostand|preis)\s*:\s*[1-9]|\b\d{1,3}_\d{3}\b/;
+
+/** Alle `const SEED`-Blöcke einer Datei (bis zur schließenden Klammer am Zeilenanfang). */
+function seedBloecke(text: string): string[] {
+  const raus: string[] = [];
+  const re = /(?:export\s+)?const\s+SEED\b[^=]*=\s*[[{]/g;
+  for (const m of Array.from(text.matchAll(re))) {
+    const rest = text.slice(m.index!);
+    const ende = rest.search(/\n[\]}];?\s*\n/);
+    raus.push(ende < 0 ? rest : rest.slice(0, ende + 3));
+  }
+  return raus;
+}
+
+describe('Startbestände (SEED) ohne echte Daten', () => {
+  it('der Prüfer erkennt Namen Dritter und Beträge', () => {
+    const probe = ['export const SEED = [', `  { id: 'x', kunde: '${'One' + 'Banking'}', betrag: 17_000 },`, '];', ''].join('\n');
+    const b = seedBloecke(probe);
+    expect(b.length).toBe(1);
+    expect(VERBOTEN_IM_SEED.test(b[0])).toBe(true);
+    expect(BETRAG_IM_SEED.test(b[0])).toBe(true);
+  });
+
+  it('kein SEED-Block in versionierten Dateien trägt Namen Dritter, private Themen oder Beträge', () => {
+    const funde: string[] = [];
+    for (const f of dateien()) {
+      if (!/\.(ts|tsx|mjs|js)$/.test(f) || f.startsWith('tests/')) continue;
+      let text = '';
+      try { text = readFileSync(f, 'utf8'); } catch { continue; }
+      for (const b of seedBloecke(text)) {
+        const name = b.match(VERBOTEN_IM_SEED);
+        if (name) funde.push(`${f}: SEED enthält „${name[0]}“`);
+        if (BETRAG_IM_SEED.test(b)) funde.push(`${f}: SEED enthält einen Betrag`);
+      }
+    }
+    expect(funde, funde.join('\n')).toEqual([]);
+  });
+});

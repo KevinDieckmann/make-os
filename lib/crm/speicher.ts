@@ -4,6 +4,7 @@
 // hat einen eigenen Säuberer, damit nur durchkommt, was das Modell kennt.
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
+import { protokolliere, bestandDiff, type Aenderung, type Wer } from '@/lib/store/aenderungsprotokoll';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { STUFEN, wechsleStufe, erwartetVerschiebung } from './pipeline';
 import { firmaIdsErgaenzen } from './firmen-bezug';
@@ -478,9 +479,14 @@ function firmenZusammenfuehren(b: CrmBestand, ops: ListenOp[]): ListenOp[] {
   });
 }
 
-export async function aendereCrm(mut: (b: CrmBestand) => CrmBestand): Promise<CrmBestand> {
+export async function aendereCrm(mut: (b: CrmBestand) => CrmBestand, protokollWer?: Wer): Promise<CrmBestand> {
+  // Änderungsprotokoll (28.09., K1 #44): was sich je Liste geändert hat (Kennung + Feldnamen, nie Werte) — für JEDEN
+  // Schreibweg über diese Stelle. Wer: ausdrücklich übergeben, sonst aus der laufenden Anfrage (lib/store/aenderungsprotokoll.ts).
+  let aenderungen: Aenderung[] = [];
   // Die nachgetragenen Firmen-Kennungen (ladeCrm) werden hier mit der nächsten Schreibung dauerhaft (Prüfbericht 27.09., Punkt 11).
-  return updateJson<CrmBestand>(CRM_SPEICHER, cur => mut(firmaIdsErgaenzen({ ...leererBestand(), ...(cur ?? {}) }).bestand));
+  const fertig = await updateJson<CrmBestand>(CRM_SPEICHER, cur => { const neu = mut(firmaIdsErgaenzen({ ...leererBestand(), ...(cur ?? {}) }).bestand); aenderungen = bestandDiff(cur as unknown as Record<string, unknown>, neu as unknown as Record<string, unknown>); return neu; });
+  await protokolliere(CRM_SPEICHER, aenderungen, protokollWer);
+  return fertig;
 }
 
 /** Kunden-Sicht aus den Mandaten — für Score, ZOE-Kontext und Loops (vorher eigener Speicher „kunden“). */

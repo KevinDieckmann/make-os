@@ -8,7 +8,7 @@
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { personAus } from '@/lib/zoe/raum';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { dubletten, zusammenfuehren, privatNotizKonflikt } from '@/lib/crm/dubletten';
 import { personUmbiegen } from '@/lib/crm/person-bestaende';
@@ -25,10 +25,13 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+  // Regel 5 (28.09., K1): Zusammenführen nur mit ausdrücklicher Person — sie entscheidet über private Notizen und
+  // steht im Verlauf. Kein Rückfall auf „kevin“ für einen Dienstaufruf ohne Person.
+  const person = personStreng(req);
+  if (!person) return NextResponse.json({ ok: false, fehler: 'Zusammenführen nur mit angemeldeter Person.' }, { status: 401 });
   let body: { behalten?: string; weg?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (!body.behalten || !body.weg || body.behalten === body.weg) return NextResponse.json({ ok: false, fehler: 'behalten und weg nötig.' }, { status: 400 });
-  const person = personAus(req);
   let ergebnis: Kontakt | null = null;
   let notizKonflikt = false;
   await updateJson<{ kontakte: Kontakt[] }>('kontakte', cur => {
