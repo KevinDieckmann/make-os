@@ -17,6 +17,12 @@ import { createPortal } from 'react-dom';
 import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { vorZeit, type GespeicherteArt, type Meldung, type MeldungenSicht } from '@/lib/meldungen/regeln';
+import { useTasks } from '@/context/TasksContext';
+import { imArchiv } from '@/lib/aufgaben/neustart';
+
+/** Was aus der Aufgabe einer Meldung geworden ist (29.09., #45) — null = gibt es noch (oder unbekannt). */
+export type AufgabeLage = 'weg' | 'papierkorb' | 'archiv' | 'erledigt' | null;
+const LAGE_TEXT: Record<Exclude<AufgabeLage, null>, string> = { weg: 'gibt es nicht mehr', papierkorb: 'im Papierkorb', archiv: 'archiviert', erledigt: 'erledigt' };
 
 const TAKT_MS = 60_000;
 
@@ -88,12 +94,14 @@ function zeitVon(m: Meldung, jetzt: number): string {
 }
 
 /** Die Liste im Panel — eigene Komponente, damit sie ohne Browser prüfbar ist (Render-Test). */
-export function GlockeListe({ sicht, jetzt, oeffnen, alleGelesen, telegram }: {
+export function GlockeListe({ sicht, jetzt, oeffnen, alleGelesen, telegram, lage }: {
   sicht: MeldungenSicht;
   jetzt: number;
   oeffnen: (m: Meldung) => void;
   alleGelesen: () => void;
   telegram: (an: boolean) => void;
+  /** Lage der Aufgabe hinter einer Meldung (fehlt z. B. im Test). */
+  lage?: (aufgabeId: string) => AufgabeLage;
 }) {
   return (
     <div style={{ display: 'grid', gap: 0, fontFamily: SCHRIFT.text }}>
@@ -121,7 +129,7 @@ export function GlockeListe({ sicht, jetzt, oeffnen, alleGelesen, telegram }: {
                   </span>
                   <span style={{ display: 'grid', gap: 2, minWidth: 0 }}>
                     <span style={{ fontSize: TYP.bedien, lineHeight: 1.35, color: m.gelesen ? C.inkDim : C.ink, fontWeight: m.gelesen ? 400 : 600, overflowWrap: 'anywhere' }}>{m.titel}</span>
-                    <span style={{ fontSize: 11, color: C.inkLeise }}>{a.label} · {zeitVon(m, jetzt)}</span>
+                    <span style={{ fontSize: 11, color: C.inkLeise }}>{a.label} · {zeitVon(m, jetzt)}{(() => { const l = m.bezug?.art === 'aufgabe' ? lage?.(m.bezug.id) : null; return l ? <b style={{ color: l === 'erledigt' ? C.inkDim : C.kritisch, fontWeight: 600 }}> · Aufgabe {LAGE_TEXT[l]}</b> : null; })()}</span>
                   </span>
                   {!m.gelesen && <span aria-label="ungelesen" style={{ width: 8, height: 8, marginTop: 6, borderRadius: '50%', background: C.kritisch, boxShadow: `0 0 8px ${C.kritisch}` }} />}
                 </Link>
@@ -140,6 +148,7 @@ export function GlockeListe({ sicht, jetzt, oeffnen, alleGelesen, telegram }: {
 
 /** Die Glocke im Kopf. */
 export function Glocke() {
+  const aufgaben = useTasks();
   const [s, setS] = useState<Stand>(stand);
   const [auf, setAuf] = useState(false);
   const [puls, setPuls] = useState(false);
@@ -195,6 +204,15 @@ export function Glocke() {
 
   if (s.gesperrt) return null;
   const zahl = s.sicht?.ungelesen ?? 0;
+  const lage = (id: string): AufgabeLage => {
+    if (!aufgaben.ready) return null;
+    const t = aufgaben.state.tasks.find(x => x.id === id);
+    if (t) return t.status === 'done' ? 'erledigt' : null;
+    const v = aufgaben.voll.tasks.find(x => x.id === id);
+    if (!v) return 'weg';
+    if (v.geloeschtAm) return 'papierkorb';
+    return imArchiv(v) || aufgaben.voll.projects.some(p => p.id === v.projectId && imArchiv(p)) ? 'archiv' : null;
+  };
   const rot = zahl > 0;
 
   return (
@@ -221,6 +239,7 @@ export function Glocke() {
           style={{ position: 'fixed', top: ort.top, right: ort.right, zIndex: 60, width: 'min(400px, calc(100vw - 32px))', maxHeight: 'min(70vh, 560px)', overflowY: 'auto', borderRadius: 14, background: C.flaeche, border: '1px solid rgba(255,255,255,.08)', boxShadow: '0 18px 50px -12px rgba(0,0,0,.75)' }}>
           {s.sicht ? (
             <GlockeListe sicht={s.sicht} jetzt={Date.now()}
+              lage={lage}
               oeffnen={m => { if (!m.gelesen) gelesenMarkieren([m.id]); setAuf(false); }}
               alleGelesen={() => gelesenMarkieren('alle')}
               telegram={an => { const x = stand.sicht; if (x) setzen({ sicht: { ...x, einstellungen: { telegram: an } }, gesperrt: false }); void senden({ aktion: 'einstellungen', telegram: an }); }} />

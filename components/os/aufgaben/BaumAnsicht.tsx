@@ -4,17 +4,21 @@
 // einklappbar (`eingeklappt` liegt an der Gruppe — gilt für beide), Listen per „Gruppe ▾“ in eine Gruppe verschieben,
 // Unteraufgaben inline (Enter = nächste). Blockierte Aufgaben („wartet auf …“) sind markiert.
 // Genutzt vom Space (alle Projekte) und von der Projektseite (ein Projekt, ohne Kopf, optional Fokus auf Gruppe/Liste).
+// Paket T2 (29.09.): 🔒 „nur ich“, „abgebrochen“ grau/durchgestrichen, Priorität/überfällig auch als Zeichen (#88), Haken mit
+// Titel (#62), Erledigen/Löschen über den HandlungProvider (Rückfrage bei offenen Unteraufgaben, „Rückgängig“), Wartende
+// über EINE Karte je Render (#84), lange Listen in Stücken zu 200 Zeilen („weitere zeigen“).
 
-import { useEffect, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
 import { MessageSquare, Link2, ChevronRight, Lock, Sparkles, StickyNote } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Haken, Punkt, feld, prioFarbe } from '../schlank';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { statusVon, fortschritt, sonstigeProjektId, type BaumProjekt, type BaumAufgabe, type BaumListe } from '@/lib/aufgaben/struktur';
-import { wartetAuf } from '@/lib/aufgaben/abhaengig';
+import { useHandlung } from './Handlung';
+import { NurIchZeichen, PrioZeichen, FristZeichen, titelStil, AbgebrochenSchild } from './Zeichen';
 import type { Task, TasksState } from '@/types/tasks';
 import type { AufgabenAktion } from '@/context/TasksContext';
-import { aufgabeAnlegen, listeAnlegen, gruppeAnlegen, ownerLabel, tagKurz, GRUPPEN_FARBEN, type Person } from './hilfe';
+import { aufgabeAnlegen, listeAnlegen, gruppeAnlegen, ownerLabel, GRUPPEN_FARBEN, type Person } from './hilfe';
 import { SerienZeichen } from './WiederholungWahl';
 import { ListeSerieKnopf } from './SerienListeEinstellen';
 
@@ -23,6 +27,8 @@ const lies = (k: string): string | null => { try { return localStorage.getItem(k
 const merke = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* egal */ } };
 export const leiseKnopf: CSSProperties = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, padding: '4px 6px' };
 const DIREKT = '__direkt__';
+/** Fensterung (#84): so viele Zeilen je Liste auf einmal, dann „weitere zeigen“. */
+export const FENSTER_ZEILEN = 200;
 
 /** Umbenennen/Löschen: breit in der Zeile, schmal hinter „⋯“. */
 export function Aktionen({ breit, children }: { breit: boolean; children: ReactNode }) {
@@ -67,6 +73,11 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
   iStart?: number;
 }) {
   const [zu, setZu] = useState<Set<string>>(new Set());
+  const [mehr, setMehr] = useState<Record<string, number>>({});
+  const handlung = useHandlung(dispatch, state.statusEigen);
+  // Einmal je Render (#84): Kennung → Aufgabe, für „wartet auf …“ jeder Zeile.
+  const nachId = useMemo(() => new Map(state.tasks.map(x => [x.id, x])), [state.tasks]);
+  const wartetAuf = (t: Task): Task[] => (t.abhaengigVon ?? []).map(id => nachId.get(id)).filter((x): x is Task => !!x && x.status !== 'done');
   const [auf, setAuf] = useState<Set<string>>(new Set());
   useEffect(() => { try { setZu(new Set(JSON.parse(lies(ZU_MERKER) ?? '[]') as string[])); } catch { /* egal */ } }, []);
   // Die offene Aufgabe ist eine Unteraufgabe → ihr Elternteil aufklappen.
@@ -82,11 +93,14 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
   const meta = (t: Task, unter: Task[], schmal: boolean) => {
     const s = statusVon(t, state.statusEigen ?? []);
     const f = fortschritt(unter);
-    const wartet = t.status !== 'done' ? wartetAuf(t, state.tasks) : [];
+    const wartet = t.status !== 'done' && t.status !== 'cancelled' ? wartetAuf(t) : [];
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: schmal ? 8 : 10, fontSize: 12, color: C.inkLeise, flex: '0 0 auto', flexWrap: 'wrap' }}>
+        <PrioZeichen p={t.priority} />
+        {t.sichtbarkeit === 'nur-ich' && <NurIchZeichen />}
+        {t.status === 'cancelled' && <AbgebrochenSchild />}
         {wartet.length > 0 && <span title={`Wartet auf: ${wartet.map(w => w.title).join(', ')}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: LEUCHT.achtung, fontWeight: 600 }}><Lock size={11} />wartet</span>}
-        {s.id !== 'todo' && s.id !== 'done' && <span style={{ color: s.farbe, border: `1px solid ${s.farbe}55`, borderRadius: 999, padding: '0 7px', fontWeight: 600, whiteSpace: 'nowrap' }}>{s.label}</span>}
+        {s.id !== 'todo' && s.id !== 'done' && s.id !== 'cancelled' && <span style={{ color: s.farbe, border: `1px solid ${s.farbe}55`, borderRadius: 999, padding: '0 7px', fontWeight: 600, whiteSpace: 'nowrap' }}>{s.label}</span>}
         {t.zoe && t.zoe.status !== 'freigegeben' && t.zoe.status !== 'abgelehnt' && <span title="ZOE bereitet vor" style={{ display: 'inline-flex', color: LEUCHT.agenten }}><Sparkles size={12} /></span>}
         {f.gesamt > 0 && (
           <span title="Unteraufgaben erledigt" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontVariantNumeric: 'tabular-nums' }}>
@@ -98,8 +112,8 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
         {!!t.notiz && <span title="Mit Notiz" style={{ display: 'inline-flex' }}><StickyNote size={12} /></span>}
         {!!t.kommentare?.length && <span title="Kommentare" style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><MessageSquare size={12} />{t.kommentare.length}</span>}
         {t.bezug && <span title="Mit dem CRM verknüpft" style={{ display: 'inline-flex' }}><Link2 size={12} /></span>}
-        <span title={`Zuständig: ${ownerLabel(t.assignee, personen)}`}>{t.assignee === 'both' ? 'Beide' : schmal ? ownerLabel(t.assignee, personen) : ownerLabel(t.assignee, personen).slice(0, 1)}</span>
-        {t.dueDate && <span style={{ fontFamily: SCHRIFT.display, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute && t.status !== 'done' ? LEUCHT.kritisch : t.dueDate === heute ? LEUCHT.achtung : C.inkLeise }}>{tagKurz(t.dueDate)}</span>}
+        <span title={`Zuständig: ${ownerLabel(t.assignee, personen)}${t.beteiligte?.length ? ` · beteiligt: ${t.beteiligte.map(b => ownerLabel(b, personen)).join(', ')}` : ''}`}>{schmal ? ownerLabel(t.assignee, personen) : ownerLabel(t.assignee, personen).slice(0, 1)}{t.beteiligte?.length ? ` +${t.beteiligte.length}` : ''}</span>
+        <FristZeichen t={t} heute={heute} />
       </span>
     );
   };
@@ -115,9 +129,9 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
             <button onClick={() => umschalten(auf, setAuf, t.id)} aria-label={aufgeklappt ? 'Unteraufgaben zuklappen' : 'Unteraufgaben aufklappen'} aria-expanded={aufgeklappt} className="fassbar"
               style={{ ...klappKnopf, color: a.unter.length ? C.inkDim : 'rgba(255,255,255,.18)' }}>{chevron(!aufgeklappt)}</button>
           )}
-          <Haken an={t.status === 'done'} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />
-          <button onClick={() => onOeffnen(istOffen ? null : t.id)} className="fassbar" style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: '4px 2px', cursor: 'pointer', fontFamily: SCHRIFT.text, display: 'grid', gap: 2 }}>
-            <span style={{ fontSize: tiefe ? TYP.bedien : 14.5, fontWeight: tiefe ? 500 : 550, color: t.status === 'done' ? C.inkLeise : C.ink, textDecoration: t.status === 'done' ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
+          <Haken an={t.status === 'done'} onChange={() => handlung.erledigen(t)} farbe={prioFarbe(t.priority)} label={t.title} />
+          <button id={`oeffnen-${t.id}`} onClick={() => onOeffnen(istOffen ? null : t.id)} aria-expanded={istOffen} className="fassbar" style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: '4px 2px', minHeight: 40, cursor: 'pointer', fontFamily: SCHRIFT.text, display: 'grid', gap: 2 }}>
+            <span style={{ fontSize: tiefe ? TYP.bedien : 14.5, fontWeight: tiefe ? 500 : 550, ...titelStil(t), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
             {!breit && meta(t, a.unter, true)}
           </button>
           {breit && meta(t, a.unter, false)}
@@ -149,7 +163,12 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
           </div>
         )}
         {!lz && <>
-          {l.aufgaben.map(a => zeile(a))}
+          {l.aufgaben.slice(0, mehr[lk] ?? FENSTER_ZEILEN).map(a => zeile(a))}
+          {l.aufgaben.length > (mehr[lk] ?? FENSTER_ZEILEN) && (
+            <button onClick={() => setMehr(m => ({ ...m, [lk]: (m[lk] ?? FENSTER_ZEILEN) + FENSTER_ZEILEN }))} style={{ ...leiseKnopf, color: C.aktiv, padding: '10px 4px', minHeight: 44 }}>
+              weitere {Math.min(FENSTER_ZEILEN, l.aufgaben.length - (mehr[lk] ?? FENSTER_ZEILEN))} von {l.aufgaben.length - (mehr[lk] ?? FENSTER_ZEILEN)} zeigen
+            </button>
+          )}
           {!l.aufgaben.length && <div style={{ fontSize: 12.5, color: C.inkLeise, padding: '8px 4px' }}>Noch keine Aufgabe.</div>}
           <NeuZeile platzhalter={`+ Aufgabe in ${l.virtuell ? p.titel : l.titel} (Enter)`} onNeu={title => aufgabeAnlegen(dispatch, state, { spaceId: raumId, projectId: p.virtuell ? sonstigeProjektId(raumId) : p.id, listeId: l.virtuell ? undefined : l.id }, { title })} />
         </>}

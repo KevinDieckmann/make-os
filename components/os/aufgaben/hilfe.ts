@@ -69,7 +69,11 @@ export const listeTitel = (state: TasksState, id: string | undefined): string =>
 
 // ── Anlegen ─────────────────────────────────────────────────────────────────
 export interface Ziel { spaceId: string; projectId?: string; listeId?: string; parentId?: string }
-export interface Neu { title: string; priority?: Priority; assignee?: Owner; dueDate?: string; bezug?: AufgabeBezug; description?: string }
+export interface Neu {
+  title: string; priority?: Priority; assignee?: Owner; dueDate?: string; bezug?: AufgabeBezug; description?: string;
+  /** 29.09.: „nur ich“ (nur die Anlegerin sieht sie) und Beteiligte neben der einen Verantwortlichen. */
+  sichtbarkeit?: Task['sichtbarkeit']; beteiligte?: string[];
+}
 
 /** Eine Aufgabe anlegen (Kennung vorab, damit die Seite sie gleich öffnen kann). In Mandanten-Spaces ist die Firma vorbelegt. */
 export function aufgabeAnlegen(dispatch: Dispatch<AufgabenAktion>, state: TasksState, ziel: Ziel, neu: Neu): string {
@@ -80,7 +84,8 @@ export function aufgabeAnlegen(dispatch: Dispatch<AufgabenAktion>, state: TasksS
   const bezug: AufgabeBezug | undefined = neu.bezug ?? (firmaId ? { firmaId } : undefined);
   const imOrt = state.tasks.filter(t => t.spaceId === spaceId);
   const task: Omit<Task, 'createdAt' | 'updatedAt'> = {
-    id, title: neu.title, description: neu.description ?? '', status: 'todo', priority: neu.priority ?? 'medium', assignee: neu.assignee ?? 'kevin',
+    // Ohne Angabe ist die anlegende Person verantwortlich (29.09. — vorher fest „kevin“).
+    id, title: neu.title, description: neu.description ?? '', status: 'todo', priority: neu.priority ?? 'medium', assignee: neu.assignee ?? ((personLesen() || 'kevin') as Owner),
     tags: [], subTasks: [], dependencies: [], sortOrder: imOrt.reduce((m, t) => Math.max(m, t.sortOrder ?? 0), -1) + 1,
     spaceId, projectId: eltern?.projectId ?? ziel.projectId ?? sonstigeProjektId(spaceId), space: spaceId === 'privat' ? 'privat' : 'business',
     ...(einheitVonSpace(spaceId) ? { einheit: einheitVonSpace(spaceId) } : {}),
@@ -88,6 +93,9 @@ export function aufgabeAnlegen(dispatch: Dispatch<AufgabenAktion>, state: TasksS
     ...(eltern ? { parentId: eltern.id } : {}),
     ...(bezug ? { bezug } : {}),
     ...(neu.dueDate ? { dueDate: neu.dueDate } : {}),
+    // Unteraufgaben erben die Sichtbarkeit ohnehin (Server); gesetzt wird sie an der Hauptaufgabe.
+    ...(neu.sichtbarkeit === 'nur-ich' && !eltern ? { sichtbarkeit: 'nur-ich' as const } : {}),
+    ...(neu.beteiligte?.length ? { beteiligte: neu.beteiligte } : {}),
   };
   dispatch({ type: 'ADD_TASK_MIT_ID', payload: task });
   return id;

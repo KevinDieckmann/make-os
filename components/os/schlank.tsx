@@ -139,10 +139,11 @@ export function Chip({ farbe, children }: { farbe: string; children: ReactNode }
   return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: `${farbe}22`, color: farbe, borderRadius: 999, padding: '4px 11px', fontSize: 12, fontWeight: 700, letterSpacing: '.02em', whiteSpace: 'nowrap' }}>{children}</span>;
 }
 
-export function Haken({ an, onChange, farbe }: { an: boolean; onChange: () => void; farbe?: string }) {
+/** Haken (erledigt ↔ offen). Mit `label` (Titel der Aufgabe) sagt er dem Screenreader, WAS er abhakt (#62); Trefferfläche 44 px (#90). */
+export function Haken({ an, onChange, farbe, label }: { an: boolean; onChange: () => void; farbe?: string; label?: string }) {
   const f = farbe ?? C.inkLeise;
   return (
-    <button onClick={e => { e.stopPropagation(); onChange(); }} aria-label={an ? 'erledigt' : 'offen'} className="fassbar" style={{
+    <button onClick={e => { e.stopPropagation(); onChange(); }} aria-label={label ? `„${label}“ ${an ? 'wieder öffnen' : 'als erledigt markieren'}` : an ? 'erledigt' : 'offen'} aria-pressed={an} className="fassbar treffer44" style={{
       width: 24, height: 24, borderRadius: 8, flex: '0 0 auto', cursor: 'pointer', display: 'grid', placeItems: 'center', transition: 'background .2s ease, box-shadow .2s ease',
       border: `2px solid ${an ? TIEF.rand(LEUCHT.gut) : f}`, background: an ? TIEF.flaeche(LEUCHT.gut) : 'transparent', color: LEUCHT.gut, fontSize: 13, fontWeight: 800,
     }}>{an ? '✓' : ''}</button>

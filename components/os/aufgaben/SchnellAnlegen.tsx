@@ -4,16 +4,20 @@
 // gerade offen ist; Enter legt an. Neues Projekt / neue Liste direkt aus der Auswahl („+ neu …“, `onNeu`).
 // Kürzel wie bisher (lib/make-one/schnell-anlegen.ts): !! kritisch · ! hoch · heute/morgen/mo–so/24.09. · #projekt · @malin/@beide.
 // Nicht zugeordnet → „Sonstige“.
+// 29.09. (Paket T2): Schalter „🔒 nur ich“; Vorschau dessen, was erkannt wurde („Fr 02.10. · kritisch · @Malin“), BEVOR
+// gespeichert wird (#21); „@beide“ = ich verantwortlich + die andere beteiligt (kein „Beide“ mehr); ohne @ = ich.
 
 import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
+import { Lock } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Knopf, feld, LEUCHT } from '../schlank';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
-import { parseSchnell } from '@/lib/make-one/schnell-anlegen';
+import { parseSchnell, schnellVorschau } from '@/lib/make-one/schnell-anlegen';
 import { sonstigeProjektId, istSonstigeProjekt, type AufgabenSpace } from '@/lib/aufgaben/struktur';
 import type { TasksState } from '@/types/tasks';
 import type { AufgabenAktion } from '@/context/TasksContext';
-import { aufgabeAnlegen, projektAnlegen, listeAnlegen, gruppeAnlegen, projekteImSpace, spacesOderFest } from './hilfe';
+import { aufgabeAnlegen, projektAnlegen, listeAnlegen, gruppeAnlegen, projekteImSpace, spacesOderFest, usePersonen, useIch } from './hilfe';
+import type { Owner } from '@/types/common';
 
 const SONST = '__sonstige__';
 const ALLE = '__alle__';
@@ -33,6 +37,9 @@ export function SchnellAnlegen({ state, dispatch, spaces, vorbelegt, onAngelegt 
   const [listeId, setListeId] = useState<string>(vorbelegt.listeId ?? SONST);
   const [parentId, setParentId] = useState<string | null>(null);
   const [hinweis, setHinweis] = useState<string | null>(null);
+  const [nurIch, setNurIch] = useState(false);
+  const personen = usePersonen();
+  const ich = useIch();
   const eingabe = useRef<HTMLInputElement>(null);
   const schluessel = `${vorbelegt.spaceId}|${vorbelegt.projectId ?? ''}|${vorbelegt.gruppeId ?? ''}|${vorbelegt.listeId ?? ''}`;
   // Neue Vorbelegung (anderer Space/Projekt/Liste offen) → Auswahl folgt.
@@ -59,17 +66,24 @@ export function SchnellAnlegen({ state, dispatch, spaces, vorbelegt, onAngelegt 
     .sort((a, b) => a.title.localeCompare(b.title, 'de'))
     .map(t => ({ id: t.id, label: t.title })), [state.tasks, spaceId, projektId, listeId, listen]);
 
+  const erkannt = text.trim() ? parseSchnell(text.trim(), projekte) : null;
+  const vorschau = erkannt ? schnellVorschau(erkannt, projekte, Object.fromEntries(personen.map(x => [x.speicher, x.name]))) : [];
   const anlegen = () => {
     const roh = text.trim();
     if (!roh) { eingabe.current?.focus(); return; }
     const p = parseSchnell(roh, projekte);
     if (!p.title) return;
     const pid = p.projectId ?? projektId;
+    // Eine Verantwortliche (29.09.): ohne @ = ich; „@beide“ = ich + die andere beteiligt.
+    const selbst = (ich || personen[0]?.speicher || 'kevin') as Owner;
+    // „Nur ich“ gehört der Anlegerin — zuständig kann nur sie sein, Beteiligte gibt es dann nicht (Server-Regel T1).
+    const assignee = nurIch || !p.zustaendigGetippt || p.assignee === 'both' ? selbst : p.assignee;
+    const beteiligte = !nurIch && p.zustaendigGetippt && p.assignee === 'both' ? personen.map(x => x.speicher).filter(x => x !== selbst) : undefined;
     const id = aufgabeAnlegen(dispatch, state, {
       spaceId, projectId: pid, listeId: pid === projektId && listeId !== SONST ? listeId : undefined, parentId: parentId ?? undefined,
-    }, { title: p.title, priority: p.priority, assignee: p.assignee, dueDate: p.dueDate });
+    }, { title: p.title, priority: p.priority, assignee, dueDate: p.dueDate, ...(beteiligte?.length ? { beteiligte } : {}), ...(nurIch ? { sichtbarkeit: 'nur-ich' as const } : {}) });
     setText('');
-    setHinweis(`Angelegt: „${p.title}“`);
+    setHinweis(`Angelegt: „${p.title}“${p.dueDate ? ` · fällig ${vorschau[0] ?? ''}` : ''}${nurIch ? ' · nur ich' : ''}`);
     setTimeout(() => setHinweis(null), 2500);
     onAngelegt?.(id);
   };
@@ -77,12 +91,26 @@ export function SchnellAnlegen({ state, dispatch, spaces, vorbelegt, onAngelegt 
   const chip = { klein: true } as const;
   return (
     <Karte i={0} akzent={LEUCHT.achtung}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <input ref={eingabe} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') anlegen(); }}
           aria-label="Neue Aufgabe" placeholder="Neue Aufgabe … (!! kritisch · heute / mo–so / 24.09. · #projekt · @malin)"
-          style={{ ...feld, fontSize: TYP.body, flex: 1, minWidth: 0, width: 'auto' }} />
+          style={{ ...feld, fontSize: TYP.body, flex: '1 1 240px', minWidth: 0, width: 'auto' }} />
+        <button type="button" aria-pressed={nurIch} onClick={() => setNurIch(n => !n)} className="fassbar" title="Nur ich: niemand sonst sieht die Aufgabe"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 5, minHeight: 44, padding: '0 12px', borderRadius: 12, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, whiteSpace: 'nowrap',
+            border: `1px solid ${nurIch ? `${LEUCHT.schlaf}99` : 'rgba(255,255,255,.1)'}`, background: nurIch ? `${LEUCHT.schlaf}22` : 'rgba(255,255,255,.03)', color: nurIch ? LEUCHT.schlaf : C.inkLeise }}>
+          <Lock size={13} aria-hidden /> nur ich
+        </button>
         <Knopf onClick={anlegen}>Anlegen</Knopf>
       </div>
+      {erkannt && (vorschau.length > 0 || erkannt.datumUngueltig) && (
+        <div aria-live="polite" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 8, fontSize: 12.5, color: C.inkDim }}>
+          <span style={{ color: C.inkLeise }}>erkannt:</span>
+          {vorschau.map((v, i) => <span key={i} style={{ border: `1px solid ${i === 0 && erkannt.dueDate ? `${LEUCHT.achtung}77` : 'rgba(255,255,255,.12)'}`, borderRadius: 999, padding: '1px 9px', color: i === 0 && erkannt.dueDate ? LEUCHT.achtung : C.inkDim }}>{v}</span>)}
+          {nurIch && erkannt.zustaendigGetippt && <span style={{ color: LEUCHT.achtung }}>„nur ich“: zuständig bist du</span>}
+          {erkannt.datumUngueltig && <span style={{ color: LEUCHT.kritisch }}>„{erkannt.datumUngueltig}“ gibt es nicht — kein Datum gesetzt</span>}
+          <span style={{ color: C.inkLeise }}>· Titel: „{erkannt.title}“</span>
+        </div>
+      )}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginTop: 10, fontFamily: SCHRIFT.text, fontSize: 12.5, color: C.inkLeise }}>
         <span>in</span>
         <Wahl {...chip} label="Space" liste={spaceListe} wert={spaceId} farbe={space?.farbe ?? C.aktiv}

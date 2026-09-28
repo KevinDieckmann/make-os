@@ -23,7 +23,9 @@ const sicht: MeldungenSicht = {
 describe('Glocke zeichnet', () => {
   it('Grundzustand im Kopf: Knopf „Meldungen“, noch ohne Zahl, kein Panel', async () => {
     const { Glocke } = await import('@/components/os/Glocke');
-    const html = renderToStaticMarkup(h(Glocke));
+    // Seit 29.09. (#45) liest die Glocke den Aufgaben-Kontext (Hinweis „Aufgabe gibt es nicht mehr“) — wie im Wurzel-Rahmen.
+    const { TasksProvider } = await import('@/context/TasksContext');
+    const html = renderToStaticMarkup(h(TasksProvider, null, h(Glocke)));
     expect(html).toContain('aria-label="Meldungen"');
     expect(html).toContain('>Meldungen<');
     expect(html).not.toContain('role="dialog"');
@@ -47,5 +49,18 @@ describe('Glocke zeichnet', () => {
     const html = renderToStaticMarkup(h(GlockeListe, { sicht: { ...sicht, meldungen: [], ungelesen: 0 }, jetzt: J, oeffnen: () => {}, alleGelesen: () => {}, telegram: () => {} }));
     expect(html).toContain('Keine Meldungen.');
     expect(html).toContain('disabled=""');
+  });
+});
+
+describe('Glocke: Aufgabe hinter der Meldung (29.09., #45)', () => {
+  it('zeigt „Aufgabe gibt es nicht mehr“ bzw. „im Papierkorb“', async () => {
+    const { GlockeListe } = await import('@/components/os/Glocke');
+    const sicht = { meldungen: [
+      { id: 'a', art: 'zuweisung' as const, titel: 'Weg', link: '/os/aufgaben?offen=t-weg', bezug: { art: 'aufgabe' as const, id: 't-weg' }, am: '2026-09-28T10:00:00.000Z' },
+      { id: 'b', art: 'kommentar' as const, titel: 'Korb', link: '/os/aufgaben?offen=t-korb', bezug: { art: 'aufgabe' as const, id: 't-korb' }, am: '2026-09-28T10:00:00.000Z' },
+    ], ungelesen: 2, einstellungen: { telegram: false }, heute: '2026-09-29' };
+    const html = renderToStaticMarkup(h(GlockeListe, { sicht, jetzt: Date.parse('2026-09-29T10:00:00Z'), oeffnen: () => {}, alleGelesen: () => {}, telegram: () => {}, lage: (id: string) => (id === 't-weg' ? 'weg' : 'papierkorb') }));
+    expect(html).toContain('Aufgabe gibt es nicht mehr');
+    expect(html).toContain('Aufgabe im Papierkorb');
   });
 });

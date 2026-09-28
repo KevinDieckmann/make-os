@@ -273,6 +273,10 @@ nav a:hover { transform: translateX(2px); }
 }
 .fassbar:hover { transform: translateY(-1px); }
 
+/* Trefferfläche ≥ 44 px um kleine Knöpfe (Haken 24 px, #90) — sichtbar bleibt der kleine Knopf. */
+.treffer44 { position: relative; }
+.treffer44::after { content: ''; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
+
 /* Der Sprechknopf: ein Ring, der beim Aufnehmen nach außen läuft. */
 @keyframes hoerRing {
   from { transform: scale(1); opacity: .55; }

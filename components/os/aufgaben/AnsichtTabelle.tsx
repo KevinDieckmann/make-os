@@ -8,6 +8,8 @@
 // Aufgaben-Kontext (Stand/409; den Hinweis bei Konflikt zeigt die Aufgaben-Seite). Summenzeile für Zahl/Betrag.
 // Am Handy scrollt die Tabelle im eigenen Behälter quer, die Seite nicht; die Aufgaben-Spalte bleibt stehen.
 // Rechnen (Spalten, Sortierung, Summen, Werte) rein in lib/aufgaben/ansichten.ts.
+// Paket T2 (29.09.): Datumsfelder speichern beim Verlassen (#65), kein „Beide“ mehr, 🔒/abgebrochen/Priorität als Zeichen,
+// Status über den HandlungProvider (Rückfrage + „Rückgängig“), „wartet“ über eine Karte je Render, ab 200 Zeilen in Stücken.
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
@@ -15,8 +17,7 @@ import { ChevronRight, Columns3, Repeat } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Leer, Punkt, prioFarbe } from '../schlank';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
-import { baum, statusListe, statusVon, statusTeil } from '@/lib/aufgaben/struktur';
-import { wartetAuf } from '@/lib/aufgaben/abhaengig';
+import { baum, statusListe, statusVon } from '@/lib/aufgaben/struktur';
 import { bezugName, bezugLink, BEZUG_ARTEN, BEZUG_LABEL } from '@/lib/aufgaben/crm-verweise';
 import {
   tabellenSpalten, tabelleZeilen, nachVorgabe, naechsteSortierung, summen, merkerLesen, feldWertVon, feldText, felderMit,
@@ -27,6 +28,10 @@ import type { FeldWert, Task, TasksState } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
 import type { AufgabenAktion } from '@/context/TasksContext';
 import { useCrmVerweise, ownerLabel, projektTitel, type Person } from './hilfe';
+import { useHandlung } from './Handlung';
+import { DatumFeld } from './DatumFeld';
+import { NurIchZeichen, PrioZeichen, titelStil } from './Zeichen';
+import { FENSTER_ZEILEN } from './BaumAnsicht';
 
 const MERKER = 'make-aufgaben-tabelle';
 const lies = (k: string): string | null => { try { return localStorage.getItem(k); } catch { return null; } };
@@ -73,7 +78,7 @@ function FeldZelle({ t, s, personen, setzen }: { t: Task; s: SpalteDef; personen
     case 'person':
       return <Wahl klein label={f.name} leer="–" liste={personen.map(p => ({ id: p.speicher, label: p.name }))} wert={typeof w === 'string' ? w : null} onWahl={v => setzen(v)} onLeeren={() => setzen(null)} leerenLabel="leeren" />;
     case 'datum':
-      return <input type="date" value={typeof w === 'string' ? w : ''} aria-label={label} onChange={e => setzen(e.target.value || null)} style={eingabe} />;
+      return <DatumFeld wert={typeof w === 'string' ? w : undefined} label={label} onWert={d => setzen(d ?? null)} style={eingabe} />;
     case 'betrag':
       return <TextZelle typ="betrag" label={label} wert={typeof w === 'number' ? (w / 100).toFixed(2).replace('.', ',') : ''} anzeige={typeof w === 'number' ? betragText(w) : ''}
         onSpeichern={x => { const c = betragLesen(x); if (c !== null && !Number.isFinite(c)) return false; setzen(c); return true; }} />;
@@ -106,6 +111,11 @@ export function AnsichtTabelle({ state, dispatch, spaceId, aufgaben, personen, h
   const sichtbar = spalten.filter(s => s.immer || !aus.has(s.id));
   const verweise = useCrmVerweise(sichtbar.some(s => s.id === 'crm'));
   const aendern = (t: Task, teil: Partial<Task>) => dispatch({ type: 'UPDATE_TASK', payload: { id: t.id, ...teil } });
+  const handlung = useHandlung(dispatch, state.statusEigen);
+  const [grenze, setGrenze] = useState(FENSTER_ZEILEN);
+  // Einmal je Render (#84) statt je Zeile eine Karte zu bauen.
+  const nachId = useMemo(() => new Map(state.tasks.map(x => [x.id, x])), [state.tasks]);
+  const wartetAuf = (t: Task): Task[] => (t.abhaengigVon ?? []).map(id => nachId.get(id)).filter((x): x is Task => !!x && x.status !== 'done');
 
   // ── Namen und Ränge für Anzeige und Sortierung ──
   const projekteImKontext = useMemo(() => new Set(aufgaben.map(t => t.projectId)), [aufgaben]);
@@ -120,7 +130,7 @@ export function AnsichtTabelle({ state, dispatch, spaceId, aufgaben, personen, h
     person: o => ownerLabel(o, personen),
     ort: ortText,
     crm: t => crmTeile(t)[0]?.name ?? '',
-    wartet: t => wartetAuf(t, state.tasks).length,
+    wartet: t => wartetAuf(t).length,
     spalten,
   };
 
@@ -163,8 +173,10 @@ export function AnsichtTabelle({ state, dispatch, spaceId, aufgaben, personen, h
               </button>
             ) : <span style={{ width: tiefe ? 0 : 22, flex: '0 0 auto' }} />}
             <Punkt farbe={prioFarbe(t.priority)} groesse={7} />
-            <button onClick={() => onOeffnen(t.id)} className="fassbar" title={t.title}
-              style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: tiefe ? 12.5 : 13.5, fontWeight: tiefe ? 500 : 600, color: t.status === 'done' ? C.inkLeise : C.ink, textDecoration: t.status === 'done' ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</button>
+            <PrioZeichen p={t.priority} />
+            <button id={`oeffnen-${t.id}`} onClick={() => onOeffnen(t.id)} className="fassbar" title={t.title}
+              style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: tiefe ? 12.5 : 13.5, fontWeight: tiefe ? 500 : 600, ...titelStil(t), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</button>
+            {t.sichtbarkeit === 'nur-ich' && <NurIchZeichen />}
             {t.wiederholung && <span title="wiederkehrend" aria-label="wiederkehrend" style={{ color: C.inkLeise, display: 'inline-flex' }}><Repeat size={12} /></span>}
             {tiefe === 0 && unter > 0 && <span style={{ fontSize: 11.5, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{unter}</span>}
           </span>
@@ -172,14 +184,19 @@ export function AnsichtTabelle({ state, dispatch, spaceId, aufgaben, personen, h
       }
       case 'status': {
         const st = statusVon(t, eigene);
-        return <Wahl klein label="Status" liste={statusListe(t.spaceId, eigene).map(x => ({ id: x.id, label: x.label, punkt: x.farbe }))} wert={st.id} farbe={st.farbe} onWahl={id => aendern(t, statusTeil(t, id, eigene))} />;
+        return <Wahl klein label="Status" liste={statusListe(t.spaceId, eigene).map(x => ({ id: x.id, label: x.label, punkt: x.farbe }))} wert={st.id} farbe={st.farbe} onWahl={id => handlung.statusSetzen(t, id)} />;
       }
       case 'zustaendig':
-        return <Wahl klein label="Zuständig" liste={[...personen.map(p => ({ id: p.speicher as Owner, label: p.name })), { id: 'both' as Owner, label: 'Beide' }]} wert={t.assignee} onWahl={a => aendern(t, { assignee: a })} />;
+        return <Wahl klein label="Zuständig" liste={[...personen.map(p => ({ id: p.speicher as Owner, label: p.name })), ...(t.assignee === 'both' ? [{ id: 'both' as Owner, label: 'Beide (alt)' }] : [])]} wert={t.assignee} onWahl={a => aendern(t, { assignee: a })} />;
       case 'deadline': {
         const rot = istUeberfaellig(t, heute);
-        return <input type="date" value={istTag(t.dueDate) ? t.dueDate : ''} aria-label={`Deadline von „${t.title}“`} onChange={e => aendern(t, { dueDate: e.target.value || undefined })}
-          style={{ ...eingabe, color: rot ? LEUCHT.kritisch : t.dueDate === heute ? LEUCHT.achtung : C.ink, fontVariantNumeric: 'tabular-nums' }} title={rot ? 'überfällig' : undefined} />;
+        return (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 2 }} title={rot ? 'überfällig' : undefined}>
+            {rot && <span aria-label="überfällig" style={{ color: LEUCHT.kritisch, fontWeight: 800 }}>!</span>}
+            <DatumFeld wert={istTag(t.dueDate) ? t.dueDate : undefined} label={`Deadline von „${t.title}“${rot ? ' (überfällig)' : ''}`} onWert={d => handlung.verschieben(t, { dueDate: d }, d ? 'verschoben' : 'ohne Deadline')}
+              style={{ ...eingabe, color: rot ? LEUCHT.kritisch : t.dueDate === heute ? LEUCHT.achtung : C.ink, fontVariantNumeric: 'tabular-nums' }} />
+          </span>
+        );
       }
       case 'prioritaet':
         return <Wahl klein label="Priorität" liste={PRIO_WAHL} wert={t.priority} farbe={prioFarbe(t.priority)} onWahl={p => aendern(t, { priority: p })} />;
@@ -196,7 +213,7 @@ export function AnsichtTabelle({ state, dispatch, spaceId, aufgaben, personen, h
         );
       }
       case 'wartet': {
-        const w = wartetAuf(t, state.tasks);
+        const w = wartetAuf(t);
         if (!w.length) return <span style={{ color: C.inkLeise }}>–</span>;
         return (
           <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', minWidth: 0 }} title={`wartet auf: ${w.map(x => x.title).join(', ')}`}>
@@ -239,7 +256,7 @@ export function AnsichtTabelle({ state, dispatch, spaceId, aufgaben, personen, h
             <colgroup>{sichtbar.map(s => <col key={s.id} style={{ width: s.breite }} />)}</colgroup>
             <thead><tr>{sichtbar.map(kopf)}</tr></thead>
             <tbody>
-              {zeilen.map(({ task: t, tiefe, unter }) => (
+              {zeilen.slice(0, grenze).map(({ task: t, tiefe, unter }) => (
                 <tr key={t.id} data-aufgabe={t.id} style={{ background: offenId === t.id ? 'rgba(255,255,255,.05)' : undefined }}>
                   {sichtbar.map((s, i) => (
                     <td key={s.id} style={{ ...zelle, ...(i === 0 ? { position: 'sticky', left: 0, zIndex: 1, background: offenId === t.id ? C.flaecheHoch : C.flaeche } : {}) }}>{inhalt(t, s, tiefe, unter)}</td>
@@ -260,6 +277,11 @@ export function AnsichtTabelle({ state, dispatch, spaceId, aufgaben, personen, h
               </tfoot>
             )}
           </table>
+          {zeilen.length > grenze && (
+            <button onClick={() => setGrenze(g => g + FENSTER_ZEILEN)} style={{ ...leiseKnopf, color: C.aktiv, padding: '12px', minHeight: 44 }}>
+              weitere {Math.min(FENSTER_ZEILEN, zeilen.length - grenze)} von {zeilen.length - grenze} Zeilen zeigen
+            </button>
+          )}
         </div>
       )}
     </Karte>

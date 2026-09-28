@@ -18,6 +18,8 @@ import type { AufgabenAktion } from '@/context/TasksContext';
 import { tagKurz, spaceLabel, projektTitel } from './hilfe';
 import { Papierkorb } from './Papierkorb';
 import { NeustartArchiv } from './NeustartArchiv';
+import { useHandlung } from './Handlung';
+import { NurIchZeichen, PrioZeichen } from './Zeichen';
 
 type Gehe = (z: Partial<AufgabenAdresse>) => void;
 const KACHELN: { id: KachelArt; label: string; farbe: string; leer: string }[] = [
@@ -80,15 +82,18 @@ export function AufgabenUeberblick({ state, dispatch, spaces, ich, heute, gehe, 
   const zahl = (k: KachelArt) => (k === 'freigabe' ? zoeAufgaben({ tasks }).wartet.length : kachelAufgaben(tasks, k, ich, heute).length);
   const liste = kachel ? kachelAufgaben(tasks, kachel, ich, heute) : [];
   const gruppe = (art: AufgabenSpace['art']) => staende.filter(s => s.space.art === art);
+  const handlung = useHandlung(dispatch, state.statusEigen);
   const zeile = (t: Task) => (
     <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
-      <Haken an={false} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />
+      <Haken an={false} onChange={() => handlung.erledigen(t)} farbe={prioFarbe(t.priority)} label={t.title} />
+      <PrioZeichen p={t.priority} />
       <button onClick={() => gehe({ ansicht: 'space', s: t.spaceId, a: t.id })} className="fassbar" style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', display: 'grid', gap: 1, fontFamily: SCHRIFT.text }}>
         <span style={{ color: C.ink, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
         <span style={{ color: C.inkLeise, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{spaceLabel(spaces, t.spaceId)} › {projektTitel(state, t.projectId)}</span>
       </button>
+      {t.sichtbarkeit === 'nur-ich' && <NurIchZeichen />}
       {wartetNoch(t, tasks) && <span title="wartet noch auf eine andere Aufgabe" style={{ fontSize: 12, color: LEUCHT.achtung }}>wartet</span>}
-      {t.dueDate && <span style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute && !wartetNoch(t, tasks) ? LEUCHT.kritisch : t.dueDate === heute ? LEUCHT.achtung : C.inkLeise }}>{tagKurz(t.dueDate)}</span>}
+      {t.dueDate && <span style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute && !wartetNoch(t, tasks) ? LEUCHT.kritisch : t.dueDate === heute ? LEUCHT.achtung : C.inkLeise }} aria-label={t.dueDate < heute && !wartetNoch(t, tasks) ? `überfällig seit ${tagKurz(t.dueDate)}` : undefined}>{t.dueDate < heute && !wartetNoch(t, tasks) ? '! ' : ''}{tagKurz(t.dueDate)}</span>}
     </div>
   );
   return (

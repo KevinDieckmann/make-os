@@ -20,6 +20,7 @@ import {
 } from '@/lib/aufgaben/ansichten';
 import type { Task, TasksState } from '@/types/tasks';
 import type { AufgabenAktion } from '@/context/TasksContext';
+import { useHandlung } from './Handlung';
 
 const MERKER = 'make-aufgaben-kalender';
 const lies = (k: string): string | null => { try { return localStorage.getItem(k); } catch { return null; } };
@@ -86,11 +87,13 @@ export function AnsichtKalender({ state, dispatch, aufgaben, heute: heuteVorgabe
     return Array.from(m.values());
   }, [farbeNach, aufgaben, state.listen, state.gruppen, eigene]);
 
+  // Seit 29.09. über den HandlungProvider: „Rückgängig“ (#87) und „Unteraufgaben mitverschieben?“ (#68).
+  const handlung = useHandlung(dispatch, state.statusEigen);
   const verschiebeAuf = (id: string, tag: string) => {
     const t = state.tasks.find(x => x.id === id);
     if (!t) return;
     const teil = verschiebenTeil(t, tag);
-    if (teil) dispatch({ type: 'UPDATE_TASK', payload: { id: t.id, ...teil } });
+    if (teil) handlung.verschieben(t, teil, `auf ${tag.slice(8, 10)}.${tag.slice(5, 7)}. verschoben`);
   };
   const ablegen = (tag: string, e: DragEvent) => {
     let id = zieht;

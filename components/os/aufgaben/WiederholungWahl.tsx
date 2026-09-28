@@ -3,8 +3,12 @@
 // Kompakt: „wiederholt: nie · täglich · Werktage · wöchentlich (Tage) · monatlich (Tag) · jährlich“, dazu „alle n …“
 // und „bis …“, mit Vorschau „nächste: Mo 05.10.“. Rechnung rein in lib/aufgaben/wiederholung.ts.
 // `SerienZeichen` = das kleine ↻ an wiederkehrenden Aufgaben und Listen.
+// Serien-Extras (29.09., Kevin; nur an Aufgaben, `extras`): Rhythmus „ab Fälligkeit / ab Erledigung“, „im Wechsel:
+// Kevin → Malin“ (die nächste Instanz bekommt die nächste Person), „Wochenende/Feiertag (NRW) → nächster Werktag“.
+// „Werktage“ kennt die Feiertage NRW immer (lib/aufgaben/feiertage.ts). Überspringen/Beenden stehen im Detail.
 
 import { useEffect, useState, type CSSProperties } from 'react';
+import { werktagAbOder } from '@/lib/aufgaben/feiertage';
 import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
 import type { Wiederholung, WiederholungRegel } from '@/types/tasks';
 import {
@@ -37,12 +41,18 @@ function mitRegel(regel: WiederholungRegel, alt: Wiederholung | undefined, bezug
  * Auswahl der Wiederholung. `basis` = Deadline (Aufgabe) bzw. Start der laufenden Periode; Vorschau „nach-basis“ zeigt
  * den Termin nach der Basis (Aufgabe: nach dem Erledigen), „ab-morgen“ den ersten Termin ab morgen (Serien-Liste).
  */
-export function WiederholungWahl({ wert, basis, onChange, vorschau = 'nach-basis', ohneBis }: {
+export function WiederholungWahl({ wert, basis, onChange, vorschau = 'nach-basis', ohneBis, extras, personen = [], zustaendig }: {
   wert?: Wiederholung;
   basis?: string;
   onChange: (w: Wiederholung | undefined) => void;
   vorschau?: 'nach-basis' | 'ab-morgen';
   ohneBis?: boolean;
+  /** Serien-Extras (nur Aufgaben): ab Erledigung, im Wechsel, Feiertage. */
+  extras?: boolean;
+  /** Personen des Haushalts (Speichername + Name) — für „im Wechsel“. */
+  personen?: readonly { speicher: string; name: string }[];
+  /** Wer die Aufgabe gerade hat — beginnt den Wechsel. */
+  zustaendig?: string;
 }) {
   const heute = berlinerTag();
   const bezug = basis && istTag(basis.slice(0, 10)) ? basis.slice(0, 10) : heute;
@@ -67,13 +77,22 @@ export function WiederholungWahl({ wert, basis, onChange, vorschau = 'nach-basis
     if (!Number.isFinite(x) || x < 1 || x > 31) { setTag(String(wert?.monatstag ?? '')); return; }
     if (x !== wert?.monatstag) setze({ monatstag: x });
   };
-  const naechste = wert ? (vorschau === 'ab-morgen' ? ersterTermin(wert, tagPlus(heute, 1)) : naechsterTermin(wert, bezug)) : null;
+  const roh = wert ? (vorschau === 'ab-morgen' ? ersterTermin(wert, tagPlus(heute, 1)) : naechsterTermin(wert, bezug)) : null;
+  // Wochenende/Feiertag → nächster Werktag (wie der Schreibweg, lib/aufgaben/serie.ts).
+  const naechste = roh && wert?.feiertage === 'NRW' && wert.regel !== 'werktage' ? werktagAbOder(roh, 'NRW') : roh;
+  const name = (p: string) => personen.find(x => x.speicher === p)?.name ?? p;
+  const wechsel = (wert?.rotation?.length ?? 0) > 1;
+  const wechselAn = () => {
+    const erste = zustaendig && personen.some(p => p.speicher === zustaendig) ? zustaendig : personen[0]?.speicher;
+    if (!erste) return;
+    setze({ rotation: [erste, ...personen.map(p => p.speicher).filter(p => p !== erste)] });
+  };
 
   return (
     <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
       <select value={wert?.regel ?? ''} aria-label="Wiederholung" onChange={e => onChange(e.target.value ? mitRegel(e.target.value as WiederholungRegel, wert, bezug) : undefined)} style={klein}>
         <option value="">nie</option>
-        {REGELN.map(r => <option key={r} value={r}>{REGEL_LABEL[r]}</option>)}
+        {REGELN.map(r => <option key={r} value={r}>{r === 'werktage' ? 'Werktage (ohne Feiertage NRW)' : REGEL_LABEL[r]}</option>)}
       </select>
       {wert && (
         <label style={leise}>alle
@@ -109,7 +128,28 @@ export function WiederholungWahl({ wert, basis, onChange, vorschau = 'nach-basis
           <input type="date" value={wert.bis ?? ''} min={bezug} onChange={e => setze({ bis: e.target.value || undefined })} aria-label="Wiederholen bis" style={klein} />
         </label>
       )}
-      {wert && <span style={{ fontSize: 12.5, color: naechste ? C.inkDim : C.inkLeise }}>{naechste ? `nächste: ${kurzTag(naechste)}` : 'Serie endet'}</span>}
+      {wert && <span style={{ fontSize: 12.5, color: naechste ? C.inkDim : C.inkLeise }}>{wert.serieBeendet ? 'Serie beendet' : wert.ab === 'erledigt' ? 'nächste: gerechnet ab dem Tag der Erledigung' : naechste ? `nächste: ${kurzTag(naechste)}` : 'Serie endet'}</span>}
+      {wert && extras && (
+        <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', flexBasis: '100%' }}>
+          <select value={wert.ab ?? 'faellig'} aria-label="Rhythmus rechnen ab" onChange={e => setze({ ab: e.target.value === 'erledigt' ? 'erledigt' : undefined })} style={klein}>
+            <option value="faellig">ab Fälligkeit</option>
+            <option value="erledigt">ab Erledigung</option>
+          </select>
+          {personen.length > 1 && (
+            <button type="button" aria-pressed={wechsel} onClick={() => (wechsel ? setze({ rotation: undefined }) : wechselAn())} className="fassbar"
+              title="Die nächste Instanz bekommt die nächste Person"
+              style={{ ...klein, cursor: 'pointer', borderColor: wechsel ? `${C.aktiv}99` : 'rgba(255,255,255,.08)', background: wechsel ? `${C.aktiv}22` : 'rgba(255,255,255,.03)', color: wechsel ? C.aktiv : C.inkDim }}>
+              ⇄ im Wechsel{wechsel ? `: ${wert.rotation!.map(name).join(' → ')}` : ''}
+            </button>
+          )}
+          {wert.regel !== 'werktage' && (
+            <label style={leise}>
+              <input type="checkbox" checked={wert.feiertage === 'NRW'} onChange={e => setze({ feiertage: e.target.checked ? 'NRW' : undefined })} style={{ width: 18, height: 18 }} />
+              Wochenende/Feiertag (NRW) → nächster Werktag
+            </label>
+          )}
+        </span>
+      )}
     </span>
   );
 }

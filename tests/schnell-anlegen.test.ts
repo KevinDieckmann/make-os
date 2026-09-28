@@ -59,3 +59,33 @@ describe('parseSchnell', () => {
     });
   });
 });
+
+// #21 (29.09.): keine erfundenen Fristen — Wochentag nur als letztes Wort/mit Präfix, Datum mit Kalenderprüfung, Vorschau.
+describe('parseSchnell ohne erfundene Fristen (#21)', () => {
+  const HEUTE = '2026-09-29'; // Dienstag
+  it('„so“ mitten im Satz ist kein Sonntag; am Ende oder mit Präfix schon', () => {
+    const p = parseSchnell('Rechnung so schnell wie möglich', PROJEKTE, HEUTE);
+    expect(p.dueDate).toBeUndefined();
+    expect(p.title).toBe('Rechnung so schnell wie möglich');
+    expect(parseSchnell('Steuer fr', PROJEKTE, HEUTE)).toMatchObject({ title: 'Steuer', dueDate: '2026-10-02' });
+    expect(parseSchnell('Steuer bis fr erledigen', PROJEKTE, HEUTE)).toMatchObject({ title: 'Steuer erledigen', dueDate: '2026-10-02' });
+    expect(parseSchnell('Friseur freitag', PROJEKTE, HEUTE).dueDate).toBe('2026-10-02');
+    // Heute ist Dienstag: „di“ = nächste Woche.
+    expect(parseSchnell('Jour fixe di', PROJEKTE, HEUTE).dueDate).toBe('2026-10-06');
+  });
+  it('„31.02.“ bleibt im Titel (mit Hinweis), gültige Daten auch mit Jahr', () => {
+    const p = parseSchnell('Abgabe 31.02.', PROJEKTE, HEUTE);
+    expect(p.dueDate).toBeUndefined();
+    expect(p.datumUngueltig).toBe('31.02.');
+    expect(p.title).toBe('Abgabe 31.02.');
+    expect(parseSchnell('Abgabe 15.10.', PROJEKTE, HEUTE).dueDate).toBe('2026-10-15');
+    expect(parseSchnell('Abgabe 01.03.2027 fertig', PROJEKTE, HEUTE)).toMatchObject({ dueDate: '2027-03-01', title: 'Abgabe fertig' });
+    expect(parseSchnell('Schalttag 29.02.', PROJEKTE, HEUTE).dueDate).toBe('2028-02-29');
+  });
+  it('Vorschau vor dem Speichern: „Fr 02.10.“, Priorität, Person, Projekt', async () => {
+    const { schnellVorschau } = await import('@/lib/make-one/schnell-anlegen');
+    const p = parseSchnell('!! Vertrag fr @malin #capos', PROJEKTE, HEUTE);
+    expect(schnellVorschau(p, PROJEKTE, { malin: 'Malin' })).toEqual(['Fr 02.10.', 'kritisch', '@Malin', '#CapOS Aufbau']);
+    expect(schnellVorschau(parseSchnell('Nur Text', PROJEKTE, HEUTE), PROJEKTE)).toEqual([]);
+  });
+});

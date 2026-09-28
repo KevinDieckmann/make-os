@@ -8,11 +8,13 @@
 // gelten weiter. Regeln rein in lib/aufgaben/*; Schreiben über den Aufgaben-Kontext (Einzeländerungen mit Stand).
 // Andere Pakete hängen sich mit wenigen Zeilen ein: Dateien (C2) über ProjektDateien, Wiederkehrend/Vorlagen (C3),
 // ZOE-Stapel (C4, Kachel „Wartet auf Freigabe“), weitere Ansichten (C5, `ansicht=`).
+// Paket T2 (29.09.): Filter „Alle · Meine · Beteiligt“, Suchfeld (Titel + Beschreibung, `suchPasst`, #58), Rückfragen und
+// „Rückgängig“ über den HandlungProvider, Fokus zurück auf die Zeile nach dem Schließen (#89), Hinweis bei toten Links (#45).
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { FARBE as C, TYP } from '@/lib/make-one/design';
+import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { Seite, Karte, Spalten, Spalte, Segmente, Leer, feld, useBreit } from '../schlank';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { nachOben } from '../Verlauf';
@@ -35,6 +37,9 @@ import { AufgabenUeberblick, AufgabenArchiv } from './Ueberblick';
 import { VorlagenKnopf } from './VorlagenDialog';
 import { ZoeAufgabenSicht } from './ZoeAufgabe';
 import { NeuAnfangenKnopf } from './NeuAnfangen';
+import { HandlungProvider } from './Handlung';
+import { suchPasst } from '@/lib/text/such-norm';
+import { imArchiv } from '@/lib/aufgaben/neustart';
 import { projektAnlegen, spacesOderFest, usePersonen, useIch } from './hilfe';
 
 const RAUM_MERKER = 'make-aufgaben-raum';
@@ -45,7 +50,8 @@ const FAELLIG: { id: FaelligFilter; label: string }[] = [{ id: 'alle', label: 'J
 
 
 export function AufgabenRaum() {
-  const { state, dispatch, spaces: rohSpaces, ready } = useTasks();
+  const { state, voll, dispatch, spaces: rohSpaces, ready } = useTasks();
+  const [suche, setSuche] = useState('');
   const spaces = spacesOderFest(rohSpaces);
   const params = useSearchParams();
   const router = useRouter();
@@ -85,6 +91,20 @@ export function AufgabenRaum() {
     if (adresse.ansicht !== 'space' && offen?.spaceId) router.replace(aufgabenLink({ ansicht: 'space', s: offen.spaceId, a: offen.id, darstellung: adresse.darstellung }), { scroll: false });
   }, [adresse.ansicht, offen?.spaceId, offen?.id, adresse.darstellung, router]);
   const setOffen = (id: string | null) => gehe({ ...adresse, a: id ?? undefined }, offenId && id ? 'replace' : id ? 'push' : 'replace');
+  // Schließen: Fokus zurück auf die Zeile, die das Detail geöffnet hat (#89).
+  const schliessen = () => {
+    const war = offenId;
+    setOffen(null);
+    if (war) setTimeout(() => document.getElementById(`oeffnen-${war}`)?.focus(), 80);
+  };
+  // Toter Link (#45): Aufgabe gelöscht, im Papierkorb oder archiviert → Hinweis statt stillem Überblick.
+  const tot = ready && offenId && !offen ? (() => {
+    const v = voll.tasks.find(t => t.id === offenId);
+    if (!v) return 'weg' as const;
+    if (v.geloeschtAm) return 'papierkorb' as const;
+    if (imArchiv(v) || voll.projects.some(p => p.id === v.projectId && imArchiv(p))) return 'archiv' as const;
+    return 'unsichtbar' as const;
+  })() : null;
   // Am Handy steht das Detail über dem Baum — beim Öffnen dorthin springen.
   useEffect(() => {
     if (!offenId || breit) return;
@@ -109,9 +129,9 @@ export function AufgabenRaum() {
     return m;
   }, [state.tasks]);
 
-  const zeigen = (t: Task) => passtFilter(t, { ...filter, ich }, heute);
-  const standard = filter.wer === 'alle' && filter.faellig === 'alle' && (filter.status === 'offen' || filter.status === 'alle');
-  const projekteBaum = useMemo(() => (raumId ? baum(state, raumId, zeigen, standard) : []), [state, raumId, filter, ich, heute]); // eslint-disable-line react-hooks/exhaustive-deps
+  const zeigen = (t: Task) => passtFilter(t, { ...filter, ich }, heute) && (!suche.trim() || suchPasst([t.title, t.description], suche));
+  const standard = filter.wer === 'alle' && filter.faellig === 'alle' && (filter.status === 'offen' || filter.status === 'alle') && !suche.trim();
+  const projekteBaum = useMemo(() => (raumId ? baum(state, raumId, zeigen, standard) : []), [state, raumId, filter, ich, heute, suche]); // eslint-disable-line react-hooks/exhaustive-deps
   const baumProjekt = projektId ? projekteBaum.find(p => p.id === projektId) : undefined;
   const imRaum = raumId ? state.tasks.filter(t => t.spaceId === raumId && zeigen(t) && (!projektId || t.projectId === projektId || (istSonstigeProjekt(projektId) && !state.projects.some(p => p.id === t.projectId && p.spaceId === raumId)))) : [];
   const statusWahl: WahlEintrag<string>[] = [{ id: 'offen', label: 'Nicht erledigt' }, { id: 'alle', label: 'Alle' }, ...statusListe(raumId ?? undefined, state.statusEigen ?? []).map(s => ({ id: s.id, label: s.label, punkt: s.farbe }))];
@@ -122,7 +142,7 @@ export function AufgabenRaum() {
   const imKontext = imRaum.filter(t => (!adresse.l || t.listeId === adresse.l) && (!adresse.g || (state.listen ?? []).some(l => l.id === t.listeId && l.gruppeId === adresse.g)));
 
   const detail = (t: Task) => (
-    <AufgabeDetail task={t} state={state} dispatch={dispatch} spaces={spaces} personen={personen} ich={ich} onSchliessen={() => setOffen(null)} onOeffnen={id => setOffen(id)} />
+    <AufgabeDetail task={t} state={state} dispatch={dispatch} spaces={spaces} personen={personen} ich={ich} onSchliessen={schliessen} onOeffnen={id => setOffen(id)} />
   );
 
   const vorbelegt = raumId
@@ -131,7 +151,9 @@ export function AufgabenRaum() {
 
   const filterZeile = raum && (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', margin: '0 0 12px' }}>
-      <Segmente liste={[{ id: 'alle', label: 'Alle' }, { id: 'meine', label: 'Meine' }]} aktiv={filter.wer} onWahl={w => setFilter({ wer: w })} />
+      <Segmente liste={[{ id: 'alle', label: 'Alle' }, { id: 'meine', label: 'Meine' }, { id: 'beteiligt', label: 'Beteiligt' }]} aktiv={filter.wer} onWahl={w => setFilter({ wer: w })} />
+      <input type="search" value={suche} onChange={e => setSuche(e.target.value)} aria-label="Aufgaben durchsuchen" placeholder="Suchen …"
+        style={{ ...feld, fontSize: TYP.bedien, padding: '7px 12px', width: 180, minHeight: 36 }} />
       <Wahl klein label="Status" liste={statusWahl} wert={filter.status} onWahl={s => setFilter({ status: s })} />
       <Wahl klein label="Fällig" liste={FAELLIG} wert={filter.faellig} onWahl={f => setFilter({ faellig: f })} />
       <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -166,7 +188,9 @@ export function AufgabenRaum() {
         </>);
 
   const titel = raum ? `Aufgaben · ${raum.label}` : adresse.ansicht === 'archiv' ? 'Aufgaben · Archiv' : 'Aufgaben';
+  const treffer = adresse.ansicht === 'ueberblick' && suche.trim() ? state.tasks.filter(t => suchPasst([t.title, t.description], suche)).slice(0, 40) : [];
   return (
+    <HandlungProvider>
     <Seite titel={titel} rechts={
       <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         {raum && <Segmente liste={[{ id: 'liste', label: 'Liste' }, { id: 'board', label: 'Board' }, { id: 'tabelle', label: 'Tabelle' }, { id: 'kalender', label: 'Kalender' }, { id: 'zoe', label: 'ZOE' }]} aktiv={darstellung} onWahl={a => gehe({ ...adresse, darstellung: a === 'liste' ? undefined : a }, 'replace')} />}
@@ -178,6 +202,33 @@ export function AufgabenRaum() {
       <SchnellAnlegen state={state} dispatch={dispatch} spaces={spaces} vorbelegt={vorbelegt} />
 
       {!ready && <Karte i={1}><Leer>lade …</Leer></Karte>}
+      {tot && (
+        <Karte i={1}>
+          <div role="status" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
+            <span>{tot === 'papierkorb' ? 'Diese Aufgabe liegt im Papierkorb.' : tot === 'archiv' ? 'Diese Aufgabe ist archiviert („Neu anfangen“).' : tot === 'unsichtbar' ? 'Diese Aufgabe ist hier nicht sichtbar.' : 'Diese Aufgabe gibt es nicht mehr.'}</span>
+            {(tot === 'papierkorb' || tot === 'archiv') && <button onClick={() => gehe({ ansicht: 'archiv' })} style={{ ...leiseKnopf, color: C.aktiv }}>Zum Archiv ›</button>}
+            <button onClick={() => setOffen(null)} style={{ ...leiseKnopf, marginLeft: 'auto' }}>schließen</button>
+          </div>
+        </Karte>
+      )}
+      {ready && adresse.ansicht === 'ueberblick' && darstellung !== 'zoe' && (
+        <div style={{ margin: '0 0 12px' }}>
+          <input type="search" value={suche} onChange={e => setSuche(e.target.value)} aria-label="In allen Aufgaben suchen" placeholder="In allen Aufgaben suchen (Titel und Beschreibung) …"
+            style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px' }} />
+          {suche.trim() && (
+            <Karte i={1} style={{ marginTop: 8 }}>
+              {treffer.map(t => (
+                <button key={t.id} id={`oeffnen-${t.id}`} onClick={() => gehe({ ansicht: 'space', s: t.spaceId, a: t.id })} className="fassbar"
+                  style={{ display: 'flex', width: '100%', gap: 10, alignItems: 'baseline', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', padding: '9px 2px', minHeight: 44, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: t.status === 'done' || t.status === 'cancelled' ? C.inkLeise : C.ink }}>
+                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: t.status === 'done' || t.status === 'cancelled' ? 'line-through' : 'none' }}>{t.title}</span>
+                  <span style={{ fontSize: 12, color: C.inkLeise, whiteSpace: 'nowrap' }}>{spaces.find(x => x.id === t.spaceId)?.label ?? ''}</span>
+                </button>
+              ))}
+              {!treffer.length && <Leer>Nichts gefunden.</Leer>}
+            </Karte>
+          )}
+        </div>
+      )}
 
       {ready && adresse.ansicht === 'ueberblick' && (darstellung === 'zoe'
         ? <>{offen && <div style={{ marginBottom: 14 }}>{detail(offen)}</div>}{zoeSicht}</>
@@ -205,5 +256,6 @@ export function AufgabenRaum() {
         )}
       </>}
     </Seite>
+    </HandlungProvider>
   );
 }

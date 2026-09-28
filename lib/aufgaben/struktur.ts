@@ -363,7 +363,9 @@ export function baum(state: TasksState, spaceId: string, zeigen: (t: Task) => bo
   const imSpace = state.tasks.filter(t => t.spaceId === spaceId);
   const kinder = new Map<string, Task[]>();
   for (const t of imSpace) if (t.parentId) kinder.set(t.parentId, [...(kinder.get(t.parentId) ?? []), t]);
-  const oben = imSpace.filter(t => !t.parentId || !imSpace.some(x => x.id === t.parentId));
+  // Eine Menge statt „some“ je Zeile (29.09., #84): O(n) statt O(n²) bei ein paar tausend Aufgaben.
+  const imSpaceIds = new Set(imSpace.map(t => t.id));
+  const oben = imSpace.filter(t => !t.parentId || !imSpaceIds.has(t.parentId));
   const sichtbar = oben.filter(t => zeigen(t) || (kinder.get(t.id) ?? []).some(zeigen));
   const offen = (l: BaumAufgabe[]) => l.filter(a => a.task.status !== 'done').length;
   const projekte = state.projects.filter(p => p.spaceId === spaceId && !p.archived);

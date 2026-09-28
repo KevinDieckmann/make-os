@@ -6,15 +6,19 @@
 // Vertiefung (28.09. spät): Notiz, eigene Felder des Projekts, „wartet auf …“ (blockiert sichtbar), Unteraufgaben mit
 // eigenem Status/Zuständig/Deadline, in Unteraufgabe umwandeln bzw. herauslösen, Zeit je Aufgabe (Fokus), Dateien
 // (Paket C2), Verlauf.
+// Paket T2 (29.09., Kevins Entscheidungen): Schalter „🔒 nur ich“, eine Verantwortliche + Beteiligte (kein „Beide“ mehr),
+// Status „Abgebrochen“ (grau, durchgestrichen), Serien-Extras (ab Erledigung, im Wechsel, Feiertage NRW, diese überspringen,
+// Serie beenden), Erledigen/Löschen/Verschieben mit Rückfrage + „Rückgängig“ (Handlung.tsx), Datumsfelder speichern beim
+// Verlassen, Warnung „Unteraufgabe nach Hauptfrist“.
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch } from 'react';
 import { Lock } from 'lucide-react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Haken, Knopf, feld, prioFarbe } from '../schlank';
-import { Wahl, type WahlEintrag } from '../crm/Wahl';
+import { Wahl, WahlMehrfach, type WahlEintrag } from '../crm/Wahl';
 import { TextMitLinks } from '../TextMitLinks';
-import { statusListe, statusVon, statusTeil, erwaehnungen, sonstigeProjektId, fortschritt, type AufgabenSpace } from '@/lib/aufgaben/struktur';
+import { statusListe, statusVon, erwaehnungen, sonstigeProjektId, fortschritt, type AufgabenSpace } from '@/lib/aufgaben/struktur';
 import { crmSuchen, bezugName, bezugLink, bezugSetzen, bezugOhne, BEZUG_ARTEN, BEZUG_LABEL } from '@/lib/aufgaben/crm-verweise';
 import { fokusFuerAufgabe } from '@/lib/zeitmessung/fokus-laufend';
 import { wartetAuf, wuerdeKreisen } from '@/lib/aufgaben/abhaengig';
@@ -26,14 +30,16 @@ import type { Owner, Priority } from '@/types/common';
 import type { AufgabenAktion } from '@/context/TasksContext';
 import { aufgabeAnlegen, projektAnlegen, listeAnlegen, projekteImSpace, spacesOderFest, umzugTeil, useCrmVerweise, neueKennung, tagKurz, type Person } from './hilfe';
 import { NotizEditor } from './Notiz';
-import { dateienZaehlen } from './Papierkorb';
-import { aufgabeUmfang, umfangText } from '@/lib/aufgaben/papierkorb';
 import { FeldWerte } from './EigeneFelder';
 import { VerlaufListe } from './VerlaufListe';
 import { ProjektDateien } from './ProjektDateien';
 import { WiederholungWahl } from './WiederholungWahl';
 import { ZoeAufgabe } from './ZoeAufgabe';
 import { wiederholungSetzen } from '@/lib/aufgaben/serie';
+import { anlegerinVon } from '@/lib/aufgaben/zustaendig';
+import { useHandlung, NachElternFrist } from './Handlung';
+import { DatumFeld } from './DatumFeld';
+import { NurIchZeichen, titelStil, AbgebrochenSchild } from './Zeichen';
 
 const PRIO: WahlEintrag<Priority>[] = [
   { id: 'critical', label: 'Kritisch', punkt: LEUCHT.kritisch }, { id: 'high', label: 'Hoch', punkt: LEUCHT.achtung },
@@ -65,6 +71,7 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
   i?: number;
 }) {
   const aendern = (teil: Partial<Task>) => dispatch({ type: 'UPDATE_TASK', payload: { id: t.id, ...teil } });
+  const handlung = useHandlung(dispatch, state.statusEigen);
   const alleSpaces = spacesOderFest(spaces);
   const space = alleSpaces.find(s => s.id === t.spaceId);
   const eltern = t.parentId ? state.tasks.find(x => x.id === t.parentId) : undefined;
@@ -72,7 +79,13 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
   const eigene = state.statusEigen ?? [];
   const status = statusVon(t, eigene);
   const statusWahl: WahlEintrag<string>[] = statusListe(t.spaceId, eigene).map(s => ({ id: s.id, label: s.label, punkt: s.farbe, ...(s.eigen ? { hinweis: 'eigener Status' } : {}) }));
-  const personenWahl: WahlEintrag<Owner>[] = [...personen.map(p => ({ id: p.speicher as Owner, label: p.name })), { id: 'both', label: 'Beide' }];
+  // Eine Verantwortliche (29.09., Kevin) — „Beide“ gibt es nicht mehr; ein Altbestand „both“ steht nur noch zum Lesen da.
+  const personenWahl: WahlEintrag<Owner>[] = [...personen.map(p => ({ id: p.speicher as Owner, label: p.name })), ...(t.assignee === 'both' ? [{ id: 'both' as Owner, label: 'Beide (alt)' }] : [])];
+  const beteiligtWahl: WahlEintrag<string>[] = personen.filter(p => p.speicher !== t.assignee).map(p => ({ id: p.speicher, label: p.name }));
+  const nurIch = t.sichtbarkeit === 'nur-ich';
+  const anlegerin = anlegerinVon(t);
+  const darfSichtbarkeit = !anlegerin || anlegerin === ich;
+  const serieLaeuft = !!t.wiederholung && !t.wiederholung.serieBeendet;
   const projekte = projekteImSpace(state, t.spaceId ?? 'privat');
   const projektWahl: WahlEintrag<string>[] = [...projekte.map(p => ({ id: p.id, label: p.title, punkt: p.color })), { id: sonstigeProjektId(t.spaceId ?? 'privat'), label: 'Sonstige' }];
   const listen = (state.listen ?? []).filter(l => l.projektId === t.projectId && !l.archiviert).sort((a, b) => a.sortOrder - b.sortOrder);
@@ -100,12 +113,13 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
         <button onClick={onSchliessen} aria-label="Schließen" className="fassbar" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 6px' }}>×</button>
       </div>
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 12 }}>
-        <div style={{ paddingTop: 8 }}><Haken an={t.status === 'done'} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} /></div>
+        <div style={{ paddingTop: 8 }}><Haken an={t.status === 'done'} onChange={() => handlung.erledigen(t)} farbe={prioFarbe(t.priority)} label={t.title} /></div>
         <textarea value={titel} onChange={e => setTitel(e.target.value)} rows={1} aria-label="Titel"
           onBlur={() => { const v = titel.replace(/\s+/g, ' ').trim(); if (v && v !== t.title) aendern({ title: v }); else setTitel(t.title); }}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLTextAreaElement).blur(); } }}
-          style={{ ...feld, fontFamily: SCHRIFT.display, fontSize: 19, fontWeight: 700, letterSpacing: '-.01em', background: 'transparent', border: '1px solid transparent', padding: '6px 8px', resize: 'none', lineHeight: 1.3, textDecoration: t.status === 'done' ? 'line-through' : 'none', color: t.status === 'done' ? C.inkDim : C.ink, fieldSizing: 'content' } as CSSProperties} />
+          style={{ ...feld, fontFamily: SCHRIFT.display, fontSize: 19, fontWeight: 700, letterSpacing: '-.01em', background: 'transparent', border: '1px solid transparent', padding: '6px 8px', resize: 'none', lineHeight: 1.3, ...titelStil(t), fieldSizing: 'content' } as CSSProperties} />
       </div>
+      {(nurIch || t.status === 'cancelled') && <div style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '-6px 0 10px 34px' }}>{nurIch && <NurIchZeichen text />}{t.status === 'cancelled' && <AbgebrochenSchild />}</div>}
 
       {wartet.length > 0 && (
         <div role="status" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', margin: '-4px 0 12px', padding: '8px 12px', borderRadius: 10, border: `1px solid ${LEUCHT.achtung}55`, background: `${LEUCHT.achtung}12`, color: LEUCHT.achtung, fontSize: 12.5 }}>
@@ -114,21 +128,50 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
       )}
       <div style={{ display: 'grid', gap: 4, marginBottom: 14 }}>
         <Feld label="Status">
-          <Wahl klein label="Status" liste={statusWahl} wert={status.id} farbe={status.farbe} onWahl={id => aendern(statusTeil(t, id, eigene))} />
+          <Wahl klein label="Status" liste={statusWahl} wert={status.id} farbe={status.farbe} onWahl={id => handlung.statusSetzen(t, id)} />
         </Feld>
         <Feld label="Zuständig">
-          <Wahl klein label="Zuständig" liste={personenWahl} wert={t.assignee} onWahl={a => aendern({ assignee: a })} />
+          <Wahl klein label="Zuständig" liste={personenWahl} wert={t.assignee} aus={nurIch} onWahl={a => aendern({ assignee: a, ...(t.beteiligte?.includes(a) ? { beteiligte: t.beteiligte.filter(x => x !== a).length ? t.beteiligte.filter(x => x !== a) : undefined } : {}) })} />
+          {beteiligtWahl.length > 0 && !nurIch && (
+            <WahlMehrfach klein label="Beteiligte" leer="+ Beteiligte" liste={beteiligtWahl} wert={(t.beteiligte ?? []).filter(p => p !== t.assignee)} farbe={C.inkDim}
+              onWahl={l => aendern({ beteiligte: l.length ? l : undefined })} />
+          )}
         </Feld>
+        {!eltern && (
+          <Feld label="Sichtbar">
+            <button type="button" aria-pressed={nurIch} disabled={!darfSichtbarkeit} onClick={() => aendern(nurIch ? { sichtbarkeit: 'haushalt' } : { sichtbarkeit: 'nur-ich', assignee: (ich || t.assignee) as Owner, beteiligte: undefined })} className="fassbar"
+              title={darfSichtbarkeit ? 'Nur ich: niemand sonst sieht die Aufgabe — auch nicht in Kalender, Glocke, Suche oder bei ZOE.' : 'Nur wer die Aufgabe angelegt hat, kann das ändern.'}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 32, borderRadius: 999, padding: '4px 12px', cursor: darfSichtbarkeit ? 'pointer' : 'default', fontFamily: SCHRIFT.text, fontSize: 12.5,
+                border: `1px solid ${nurIch ? `${LEUCHT.schlaf}99` : 'rgba(255,255,255,.1)'}`, background: nurIch ? `${LEUCHT.schlaf}22` : 'rgba(255,255,255,.03)', color: nurIch ? LEUCHT.schlaf : C.inkDim, opacity: darfSichtbarkeit ? 1 : 0.55 }}>
+              <Lock size={13} aria-hidden /> nur ich
+            </button>
+            <span style={{ fontSize: 12, color: C.inkLeise }}>{nurIch ? 'Nur du siehst sie — und nur du bist zuständig.' : t.assignee !== ich || t.beteiligte?.length ? 'Für euch beide sichtbar. „Nur ich“ macht dich zuständig und nimmt die Beteiligten heraus.' : 'Für euch beide sichtbar.'}</span>
+          </Feld>
+        )}
         <Feld label="Priorität">
           <Wahl klein label="Priorität" liste={PRIO} wert={t.priority} farbe={prioFarbe(t.priority)} onWahl={p => aendern({ priority: p })} />
         </Feld>
         <Feld label="Zeitraum">
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.inkLeise }}>Start
-            <input type="date" value={t.startDate ?? ''} onChange={e => aendern({ startDate: e.target.value || undefined })} style={datumFeld} aria-label="Startdatum" /></label>
+            <DatumFeld wert={t.startDate} onWert={d => handlung.verschieben(t, { startDate: d }, 'Start geändert')} style={datumFeld} label="Startdatum" /></label>
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.inkLeise }}>Deadline
-            <input type="date" value={t.dueDate ?? ''} onChange={e => aendern({ dueDate: e.target.value || undefined })} style={datumFeld} aria-label="Deadline" /></label>
+            <DatumFeld wert={t.dueDate} onWert={d => handlung.verschieben(t, { dueDate: d }, d ? 'verschoben' : 'ohne Deadline')} style={datumFeld} label="Deadline" /></label>
+          {eltern && <NachElternFrist unter={t} eltern={eltern} />}
         </Feld>
-        {!eltern && <Feld label="Wiederholt"><WiederholungWahl wert={t.wiederholung} basis={t.dueDate} onChange={w => aendern(wiederholungSetzen(t, w))} /></Feld>}
+        {!eltern && <Feld label="Wiederholt">
+          <WiederholungWahl wert={t.wiederholung} basis={t.dueDate} onChange={w => aendern(wiederholungSetzen(t, w))} extras personen={personen} zustaendig={t.assignee} />
+          {t.wiederholung && (
+            <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+              {serieLaeuft && t.dueDate && t.status !== 'done' && t.status !== 'cancelled' && (
+                <button type="button" onClick={() => { if (handlung.ueberspringen(t)) onSchliessen(); }} className="fassbar" title="Nur diesen Termin auslassen — die nächste Instanz entsteht sofort"
+                  style={{ background: 'none', border: '1px dashed rgba(255,255,255,.2)', borderRadius: 999, padding: '4px 11px', minHeight: 32, color: C.inkDim, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>Diese überspringen</button>
+              )}
+              <button type="button" onClick={() => aendern({ wiederholung: serieLaeuft ? { ...t.wiederholung!, serieBeendet: true } : (() => { const w = { ...t.wiederholung! }; delete w.serieBeendet; return w; })() })} className="fassbar"
+                title={serieLaeuft ? 'Nach dieser Aufgabe kommt keine weitere — die Regel bleibt sichtbar' : 'Die Serie läuft nach dieser Aufgabe wieder weiter'}
+                style={{ background: 'none', border: '1px dashed rgba(255,255,255,.2)', borderRadius: 999, padding: '4px 11px', minHeight: 32, color: serieLaeuft ? C.inkDim : C.aktiv, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>{serieLaeuft ? 'Serie beenden' : 'Serie fortsetzen'}</button>
+            </span>
+          )}
+        </Feld>}
         {!eltern && (
           <Feld label="Ort">
             <Wahl klein label="Space" liste={spaceWahl} wert={t.spaceId} farbe={space?.farbe} onWahl={id => aendern(umzugTeil(state, t, { spaceId: id }))} />
@@ -179,12 +222,13 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
             const aendernU = (teil: Partial<Task>) => dispatch({ type: 'UPDATE_TASK', payload: { id: u.id, ...teil } });
             return (
               <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)', flexWrap: 'wrap' }}>
-                <Haken an={u.status === 'done'} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: u.id } })} farbe={prioFarbe(u.priority)} />
-                <button onClick={() => onOeffnen(u.id)} className="fassbar" style={{ flex: '1 1 140px', minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', color: u.status === 'done' ? C.inkLeise : C.ink, textDecoration: u.status === 'done' ? 'line-through' : 'none', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.title}</button>
+                <Haken an={u.status === 'done'} onChange={() => handlung.erledigen(u)} farbe={prioFarbe(u.priority)} label={u.title} />
+                <button onClick={() => onOeffnen(u.id)} className="fassbar" style={{ flex: '1 1 140px', minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', ...titelStil(u), fontFamily: SCHRIFT.text, fontSize: TYP.bedien, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.title}</button>
                 <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Wahl klein label="Status" liste={statusWahl} wert={us.id} farbe={us.farbe} onWahl={id => aendernU(statusTeil(u, id, eigene))} />
-                  <Wahl klein label="Zuständig" liste={personenWahl} wert={u.assignee} farbe={C.inkDim} onWahl={a => aendernU({ assignee: a })} />
-                  <input type="date" value={u.dueDate ?? ''} onChange={e => aendernU({ dueDate: e.target.value || undefined })} style={{ ...datumFeld, padding: '2px 8px', minHeight: 26, fontSize: 12 }} aria-label={`Deadline ${u.title}`} />
+                  <Wahl klein label="Status" liste={statusWahl} wert={us.id} farbe={us.farbe} onWahl={id => handlung.statusSetzen(u, id)} />
+                  <Wahl klein label="Zuständig" liste={personen.map(p => ({ id: p.speicher as Owner, label: p.name }))} wert={u.assignee} farbe={C.inkDim} onWahl={a => aendernU({ assignee: a })} />
+                  <DatumFeld wert={u.dueDate} onWert={d => aendernU({ dueDate: d })} style={{ ...datumFeld, padding: '2px 8px', fontSize: 12 }} label={`Deadline ${u.title}`} />
+                  <NachElternFrist unter={u} eltern={t} />
                 </span>
               </div>
             );
@@ -216,10 +260,9 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
         <span style={{ fontSize: 12, color: C.inkLeise }}>angelegt {zeit(t.createdAt)}</span>
         <button onClick={async () => {
           // Papierkorb (29.09., A7): geht etwas mit (Unteraufgaben, Notiz, Dateien), nennt die Rückfrage es; 30 Tage wiederherstellbar.
-          const mit = umfangText(aufgabeUmfang(state, t.id, await dateienZaehlen({ aufgabeId: t.id })));
-          if (mit && !window.confirm(`„${t.title}“ in den Papierkorb legen?\n\nEs geht mit: ${mit}.\n\n30 Tage lang unter Aufgaben › Archiv › Papierkorb wiederherstellbar.`)) return;
-          dispatch({ type: 'DELETE_TASK', payload: { id: t.id } }); onSchliessen();
-        }} className="fassbar" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5 }}>Löschen</button>
+          // Danach „Rückgängig“ (10 s, #87). Eine offene Serien-Instanz wird dabei übersprungen (die Serie läuft weiter).
+          if (await handlung.loeschen(t)) onSchliessen();
+        }} className="fassbar" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, minHeight: 36 }}>Löschen</button>
       </div>
     </Karte>
   );
