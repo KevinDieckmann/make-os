@@ -39,3 +39,13 @@ Grundlage: `CRM_FEHLER_PRUEFLISTE.md` (116 Punkte aus Web-Recherche). Zwei Prüf
 - **Versand** (neu): siehe `VERSAND_PLAN.md`.
 
 Die vollständigen Tabellen je Punkt (Status, Beleg Datei:Zeile, Aufwand, Vorschlag) liegen in den Prüfberichten vom 28.09. (Sitzungsprotokoll).
+
+## Entscheidungen Kevin (28.09. abends)
+- **Gehört zu „CRM grundsätzlich fertig“ (wird gebaut, nach K1–K4):**
+  - Person in **mehreren Firmen mit Rolle** + **Beschäftigungshistorie** beim Jobwechsel (#2/#3).
+  - **Mehrere E-Mail-Adressen** je Person (#11).
+  - **Mutter- und Tochterfirmen** (#7).
+  - **Datenschutz vollständig:** Einwilligung mit vollem Nachweis, Einschränkung nach Art. 18 als echte Sperre, Löschfristen je Datenart, „zuletzt geprüft“ je Kontakt (#34/#51/#52/#55).
+- **Rechnungen: MAKE OS stellt selbst Rechnungen** (Nummernkreis, Storno statt Bearbeiten, PDF + XRechnung/ZUGFeRD, GoBD) — eigener Baustein mit Plan (#81/#82).
+- **Zweiter Sicherungsort:** später.
+- **Versand:** zurückgestellt (siehe `VERSAND_PLAN.md`), erst CRM fertig.
