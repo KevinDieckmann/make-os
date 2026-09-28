@@ -28,6 +28,7 @@ import { Austausch } from './stammdaten/Austausch';
 import { Verweise } from './stammdaten/Verweise';
 import { Verbindungen } from './stammdaten/Verbindungen';
 import { Loeschfristen } from './stammdaten/Loeschfristen';
+import { NachweisOffenKarte } from './stammdaten/NachweisOffen';
 
 type Unter = 'uebersicht' | 'qualitaet' | 'wertelisten' | 'datenschutz' | 'austausch';
 const UNTER: { id: Unter; label: string }[] = [{ id: 'uebersicht', label: 'Übersicht' }, { id: 'qualitaet', label: 'Datenqualität' }, { id: 'wertelisten', label: 'Wertelisten' }, { id: 'datenschutz', label: 'Datenschutz' }, { id: 'austausch', label: 'Import & Export' }];
@@ -113,6 +114,7 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
             </div>
             <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Kreis, Anrede und Lebensphase pflegst du in der Karteikarte — sie steuern Power Hour und Entwürfe.</div>
           </Karte>
+          <NachweisOffenKarte d={d} />
           <Karte i={1} akzent={d.qualitaet.nichtGeprueft.length ? LEUCHT.achtung : undefined}>
             <Ueberschrift rechts={`${d.qualitaet.nichtGeprueft.length} offen`}>Zuletzt geprüft</Ueberschrift>
             <div style={{ fontSize: TYP.bedien, color: d.qualitaet.nichtGeprueft.length ? LEUCHT.achtung : C.inkLeise, lineHeight: 1.55 }}>

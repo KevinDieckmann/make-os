@@ -32,7 +32,9 @@ export interface StammdatenDaten {
   heute: string; kennzahlen: Kpi[]; befunde: Befund[]; selbstpruefung: Pruefpunkt[];
   qualitaet: { kontakte: number; firmen: number; vollstaendigkeit: { feld: string; label: string; anzahl: number; anteil: number }[]; dublettenPersonen: number; dublettenFirmen: number; ohneFirmenverweis: number; art14: number; speicherbegrenzung: number; werbesperren: { id: string; seit: string }[];
     /** U2 #34: aktive Beziehungen/Leads seit über `pruefenMonate` nicht geprüft. */
-    nichtGeprueft: { id: string; name: string; seit: string; nie: boolean }[]; pruefenMonate: number };
+    nichtGeprueft: { id: string; name: string; seit: string; nie: boolean }[]; pruefenMonate: number;
+    /** U2-Nachtrag: gültige Einwilligungen ohne vollständigen Nachweis — Anzahl je Kanal und Liste. */
+    nachweisOffen: { jeKanal: Record<string, number>; liste: { id: string; name: string; kanaele: string[]; fehlt: string[] }[] } };
   wertelisten: WertelistenAntwort;
   letzterImport: { zeit: string; text: string } | null;
   pflichtangaben: { anzahl: number; herkunft: Record<string, number>; rechtsgrundlage: Record<string, number>; fremddaten: number; beispiele: { name: string; herkunft?: string; rechtsgrundlage?: string; fremddaten: boolean; grund: string }[] };

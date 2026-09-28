@@ -13,6 +13,7 @@ import { faellige } from './followup';
 import { verbindungenPruefen } from './verbindungen';
 import { kontakteUeberFrist } from './loeschfristen';
 import { nichtGeprueft, PRUEFEN_MONATE } from './geprueft';
+import { nachweisOffen } from './einwilligung';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 export interface Befund { prio: 1 | 2 | 3 | 4 | 5; titel: string; grund: string; bereich: 'heute' | 'followup' | 'kontakte' | 'firmen' | 'pipeline' | 'kunden' | 'marketing' | 'events' | 'stammdaten'; ansicht?: string }
@@ -50,6 +51,8 @@ export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string, opt
   if (ueberFrist) b.push({ prio: 3, titel: `${ueberFrist} Kontakte über der Löschfrist`, grund: 'prüfen: löschen oder Frist mit Grund verlängern — gelöscht wird nie automatisch', bereich: 'stammdaten', ansicht: 'datenschutz' });
   const ungeprueft = nichtGeprueft(kontakte, crm, heute).length;
   if (ungeprueft) b.push({ prio: 4, titel: `${ungeprueft} Kontakte seit über ${PRUEFEN_MONATE} Monaten nicht geprüft`, grund: 'aktive Beziehungen und Leads — in der Kontaktseite „Stammdaten geprüft“', bereich: 'stammdaten', ansicht: 'qualitaet' });
+  const nw = nachweisOffen(kontakte).liste.length;
+  if (nw) b.push({ prio: 4, titel: `${nw} Kontakte mit Einwilligung ohne vollständigen Nachweis`, grund: 'Wortlaut, Beleg, Zeitpunkt oder wer fehlt — Mail/Newsletter bleiben gelb, bis ergänzt', bereich: 'stammdaten', ansicht: 'qualitaet' });
   const d = dubletten(kontakte).length;
   if (d) b.push({ prio: 4, titel: `${d} Dubletten zusammenführen`, grund: 'gleicher Name, gleiche Firma oder Kontaktdaten', bereich: 'stammdaten', ansicht: 'qualitaet' });
   // Events: überfällige Checklistenpunkte (vor dem Termin) — nach dem Event zählt das Nachfassen in der Power Hour.

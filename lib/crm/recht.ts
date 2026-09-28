@@ -9,7 +9,7 @@
 //   R4 Kommunikation im laufenden Mandat und Antworten auf Anfragen sind frei
 //   R9 Werbesperre sperrt alles, sofort
 //   U2 (28.09.): Einschränkung nach Art. 18 sperrt alles wie die Werbesperre; werbliche
-//      Mail grün nur mit VOLLEM Einwilligungs-Nachweis (Zeitpunkt, wer, Wortlaut, Beleg —
+//      Mail und Newsletter grün nur mit VOLLEM Einwilligungs-Nachweis (Zeitpunkt, wer, Wortlaut, Beleg —
 //      Altbestand gelb); Bestandskunde grün nur mit Mandat UND Vermerk „Hinweis bei
 //      Erhebung erteilt“ (§ 7 Abs. 3 Nr. 4 UWG), sonst gelb mit Grund
 // Ergebnis ist eine Ampel je Kanal: grün (Grundlage da), gelb (vertretbar,
@@ -55,7 +55,12 @@ export function kanalStatus(k: Kontakt, kanal: Kanal, ctx: Kontext = {}): KanalS
 
   if (kanal === 'newsletter') {
     const e = gueltig(k, 'newsletter');
-    return e ? { kanal, farbe: 'gruen', grund: 'Double-Opt-in', grundlage: 'einwilligung' } : { kanal, farbe: 'rot', grund: 'Newsletter nur mit Double-Opt-in' };
+    if (!e) return { kanal, farbe: 'rot', grund: 'Newsletter nur mit Double-Opt-in' };
+    // Voller Nachweis (U2-Nachtrag, Kevin 28.09.): wie bei der Mail — ohne Zeitpunkt, wer, Wortlaut und Beleg nur gelb.
+    const fehlt = nachweisLuecken(e);
+    return fehlt.length
+      ? { kanal, farbe: 'gelb', grund: `Double-Opt-in vom ${e.erteiltAm} — Nachweis unvollständig (fehlt: ${fehlt.join(', ')}), vor dem Versand ergänzen`, grundlage: 'einwilligung' }
+      : { kanal, farbe: 'gruen', grund: 'Double-Opt-in', grundlage: 'einwilligung' };
   }
   if (kanal === 'vernetzen') {
     // Eine Vernetzungsanfrage ohne Werbebotschaft ist keine elektronische Werbung.

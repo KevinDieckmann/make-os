@@ -126,3 +126,27 @@ export function nachweisAuskunft(liste: Einwilligung[] | undefined) {
     vollstaendig: nachweisVollstaendig(e), fehlt: nachweisLuecken(e),
   }));
 }
+
+/** Kanäle, für die eine Einwilligung Grundlage einer Werbung ist (Anfrage erlaubt nur die Antwort — zählt nicht). */
+const traegt = (e: Einwilligung) => !e.widerrufenAm && e.grundlage !== 'anfrage';
+
+export interface NachweisOffen { id: string; kanaele: EinwilligungKanal[]; fehlt: string[] }
+
+/**
+ * Datenqualität (28.09., U2-Nachtrag): Personen mit gültiger Einwilligung, deren Nachweis unvollständig ist —
+ * je Person die Kanäle und was fehlt, dazu die Anzahl je Kanal. Nur zum Nachtragen von Hand; nichts wird geändert.
+ * Gesperrte/eingeschränkte Personen (`ausgenommen`) zählen nicht — sie werden ohnehin nicht angesprochen.
+ */
+export function nachweisOffen(kontakte: { id: string; einwilligungen?: Einwilligung[]; werbesperre?: unknown; eingeschraenkt?: unknown }[]): { liste: NachweisOffen[]; jeKanal: Record<EinwilligungKanal, number> } {
+  const jeKanal = Object.fromEntries(EW_KANAELE.map(k => [k, 0])) as Record<EinwilligungKanal, number>;
+  const liste: NachweisOffen[] = [];
+  for (const k of kontakte) {
+    if (k.werbesperre || k.eingeschraenkt) continue;
+    const offen = (k.einwilligungen ?? []).filter(e => traegt(e) && nachweisLuecken(e).length);
+    if (!offen.length) continue;
+    const kanaele = Array.from(new Set(offen.map(e => e.kanal)));
+    for (const c of kanaele) jeKanal[c]++;
+    liste.push({ id: k.id, kanaele, fehlt: Array.from(new Set(offen.flatMap(nachweisLuecken))) });
+  }
+  return { liste, jeKanal };
+}

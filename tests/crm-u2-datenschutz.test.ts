@@ -117,6 +117,54 @@ describe('#55 Einwilligung mit vollem Nachweis', () => {
   });
 });
 
+describe('U2-Nachtrag: Newsletter-Ampel und Datenqualität „ohne vollständigen Nachweis“', () => {
+  it('Newsletter: Double-Opt-in ohne vollen Nachweis gelb (mit Grund), mit vollem grün; ohne DOI rot', () => {
+    const alt = person('c-nl', { email: 'nl@example.invalid', einwilligungen: [{ kanal: 'newsletter', grundlage: 'einwilligung', erteiltAm: '2026-01-01', nachweis: 'DOI' }] });
+    const s = recht.kanalStatus(alt, 'newsletter');
+    expect(s.farbe).toBe('gelb');
+    expect(s.grund).toMatch(/Nachweis unvollständig/);
+    expect(recht.kanalStatus({ ...alt, einwilligungen: [{ kanal: 'newsletter', ...VOLL }] }, 'newsletter').farbe).toBe('gruen');
+    expect(recht.kanalStatus(person('c-nl2', { email: 'x@example.invalid' }), 'newsletter').farbe).toBe('rot');
+  });
+
+  it('Segment „Kanal newsletter“ und Newsletter-Empfänger nehmen nur vollständige Nachweise', async () => {
+    const { leererBestand } = await import('@/lib/crm/speicher');
+    const { imSegment, kontextAus } = await import('@/lib/crm/segmente');
+    const ctx = kontextAus(leererBestand(), HEUTE);
+    const alt = person('c-s1', { email: 's1@example.invalid', einwilligungen: [{ kanal: 'newsletter', grundlage: 'einwilligung', erteiltAm: '2026-01-01', nachweis: 'DOI' }] });
+    const voll = person('c-s2', { email: 's2@example.invalid', einwilligungen: [{ kanal: 'newsletter', ...VOLL }] });
+    expect(imSegment(alt, { kanal: 'newsletter' }, ctx)).toBe(false);
+    expect(imSegment(voll, { kanal: 'newsletter' }, ctx)).toBe(true);
+    const { exportCsv } = await import('@/lib/crm/export');
+    const csv = exportCsv('kontakte', { kontakte: [alt, voll], crm: leererBestand(), heute: HEUTE }).split('\n');
+    const kopf = csv[0].replace(/^\uFEFF/, '').split(';'), i = kopf.indexOf('NEWSLETTER_DOI');
+    expect(csv.slice(1).map(z => z.split(';')[i])).toEqual(['nein', 'ja']);
+  });
+
+  it('Datenqualität: Anzahl je Kanal und Liste; Widerrufene, Anfragen, Gesperrte zählen nicht; nichts wird geändert', () => {
+    const l = [
+      person('c-q1', { einwilligungen: [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: '2026-01-01', nachweis: 'ja' }, { kanal: 'newsletter', grundlage: 'einwilligung', erteiltAm: '2026-01-01', nachweis: 'DOI' }] }),
+      person('c-q2', { einwilligungen: [{ kanal: 'mail', ...VOLL }] }),
+      person('c-q3', { einwilligungen: [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: '2026-01-01', nachweis: 'ja', widerrufenAm: '2026-02-01' }] }),
+      person('c-q4', { einwilligungen: [{ kanal: 'mail', grundlage: 'anfrage', erteiltAm: '2026-01-01', nachweis: 'Anfrage' }] }),
+      person('c-q5', { werbesperre: { seit: '2026-02-01', grund: 'x' }, einwilligungen: [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: '2026-01-01', nachweis: 'ja' }] }),
+    ];
+    const vorher = JSON.stringify(l);
+    const r = ew.nachweisOffen(l);
+    expect(r.liste.map(x => x.id)).toEqual(['c-q1']);
+    expect(r.liste[0]).toMatchObject({ kanaele: ['mail', 'newsletter'], fehlt: ['Zeitpunkt', 'erfasst von', 'Wortlaut', 'Beleg'] });
+    expect(r.jeKanal).toMatchObject({ mail: 1, newsletter: 1, telefon: 0 });
+    expect(JSON.stringify(l)).toBe(vorher);
+  });
+
+  it('Befund „ohne vollständigen Nachweis“ zeigt auf Datenqualität', async () => {
+    const { befunde } = await import('@/lib/crm/befunde');
+    const { leererBestand } = await import('@/lib/crm/speicher');
+    const b = befunde([person('c-b9', { einwilligungen: [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: '2026-01-01', nachweis: 'ja' }] })], leererBestand(), HEUTE);
+    expect(b.find(x => /ohne vollständigen Nachweis/.test(x.titel))).toMatchObject({ bereich: 'stammdaten', ansicht: 'qualitaet' });
+  });
+});
+
 describe('#57 Bestandskundenprivileg / #58 Telefon mit Anlass', () => {
   it('Mail an Kunden: grün nur mit Vermerk „Hinweis bei Erhebung“, sonst gelb mit Grund', () => {
     const k = person('c-k', { email: 'k@example.invalid', lebensphase: 'kunde' });

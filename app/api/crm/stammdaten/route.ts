@@ -27,6 +27,7 @@ import { dubletten } from '@/lib/crm/dubletten';
 import { kennzahlen, vollstaendigkeit } from '@/lib/crm/kennzahlen';
 import { LOESCHFRISTEN, LOESCHFRISTEN_SPEICHER, fristenWirksam, kontakteUeberFrist, type LoeschfristenBestand } from '@/lib/crm/loeschfristen';
 import { nichtGeprueft, PRUEFEN_MONATE } from '@/lib/crm/geprueft';
+import { nachweisOffen } from '@/lib/crm/einwilligung';
 import { art14 } from '@/lib/crm/recht';
 import { STUFEN, OFFENE_STUFEN, gesamtwert, wahrscheinlichkeit } from '@/lib/crm/pipeline';
 import { gemesseneQuoten } from '@/lib/crm/deal-auswertung';
@@ -74,6 +75,8 @@ export async function GET(req: Request) {
       speicherbegrenzung: kontakteUeberFrist(kontakte, crm, heute, fristen.kontakte).length,
       // „Zuletzt geprüft“ (U2 #34): aktive Beziehungen und Leads, seit über 12 Monaten nicht geprüft (Kennungen + Namen).
       nichtGeprueft: nichtGeprueft(kontakte, crm, heute).map(x => ({ id: x.id, name: anzeigename(nachId.get(x.id)!), seit: x.seit, nie: x.nie })), pruefenMonate: PRUEFEN_MONATE,
+      // Einwilligung ohne vollständigen Nachweis (U2-Nachtrag): Anzahl je Kanal + Liste — nur zum Ergänzen von Hand.
+      nachweisOffen: (() => { const n = nachweisOffen(kontakte); return { jeKanal: n.jeKanal, liste: n.liste.map(x => ({ ...x, name: anzeigename(nachId.get(x.id)!) })) }; })(),
       werbesperren: kontakte.filter(k => k.werbesperre).map(k => ({ id: k.id, seit: k.werbesperre!.seit })),
     },
     wertelisten: {
