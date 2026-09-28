@@ -399,6 +399,41 @@ lokal, Route `/os`, Port 3001.
 - ZOE schreibt ins Brain nur über `lib/brain/inbox.ts vorschlagAblegen` (plus Zoe_Log). Menschen: Regeln (`lib/brain/regeln.ts`) und Freigaben. Nie Notizen überschreiben.
 - Regeln (`00. Fundament/Regeln`) und Konstitution sind ANWEISUNGEN an ZOE — nur `status: aktiv` mit `freigegeben_von` wird geladen (`regelnFuerPrompt`). Alles andere aus dem Vault bleibt Daten (`fremd()`).
 - Lokal NIE in Kevins echten Vault schreiben; Tests setzen `MAKE_VAULT_DIR` auf einen Temp-Ordner und `MAKE_OS_DOKU_WURZEL=aus`. Embeddings sind im Test aus.
+- **Server-Vault ist die Wahrheit (Kevin 29.09., `BRAIN_SERVER_PLAN.md`):** drei Bereiche — eure Notizen (nur Menschen), `_App/` (generiert),
+  `_inbox/` (Vorschläge von ZOE: Konsolidierung, Regeln, Erkenntnisse, App-Tagesbericht). Die App schreibt NUR in einen konfigurierten Vault
+  (`lib/brain/vault-ziel.ts` `vaultZiel`: `MAKE_VAULT_DIR`, auf dem Server `/vault`; Schreibtisch/iCloud/`~/Vaults`/`~/Documents` auf dem Mac werden
+  abgelehnt, auch per Symlink) — ohne Ziel nichts, Grund im Log. Tests: Temp-Ordner.
+- **App → Brain-Brücke (29.09., S2/B2):** Leitplanken an EINER Stelle `lib/brain/app-material.ts` (`aufgabeSichtbar`, `nurIch` — liest das kommende
+  Feld „nur ich“ tolerant, `imPapierkorb` — `geloeschtAm` tolerant): nichts an Art.-18-Kontakten (nur „n ausgeblendet“), keine Kontakt-Notizen/-Daten,
+  keine IBAN, nur Titel/Status/Links; Privat-Space nach Einstellung `brain-bruecke--<haushalt>` (`privat: 'anzahl'` Standard = nur Zahlen · `'voll'`),
+  Route `/api/brain/app` (GET Stand · POST `{ privat }` · POST `{ aktion: 'jetzt' }`). Texte über `md()`/`zitat()` (keine Wikilinks/HTML aus Daten).
+  - **App-Tagesbericht** (`lib/brain/app-bericht.ts`): je Tag EIN Vorschlag „App-Tagesbericht JJJJ-MM-TT“ in `_inbox/zoe` (erledigte Aufgaben je Projekt,
+    Projekt-Notizen Titel + Kurzfassung, Angebote, Deal-Stufen, Mandate neu/beendet, ZOE-Entscheidungen, Zeit je Mandat der Woche) — ohne Modell,
+    idempotent auch nach Annehmen/Ablehnen (`vorschlagAblegen(…, { tag, einmalig })`), nichts an leeren Tagen, > 7.900 Zeichen sichtbar gekürzt.
+  - **`_App/`-Spiegel** (`lib/brain/app-spiegel.ts`, direkt geschrieben, nur mit `MAKE_OS_APP_SPIEGEL=an` — einschalten erst auf Kevins Wort):
+    `Projekte/<Space>/<Projekt>.md` (Beschreibung, Notiz, offene/erledigte Aufgaben mit Links; Privat standardmäßig nur `Projekte/Privat.md` mit Zahlen),
+    `Mandate/<Firma>.md` (Mandate, Aufgaben, Zeit dieser/voriger Monat, Angebote), `Angebote.md`, `Entscheidungen/<JJJJ-MM>.md`, `Woche/<JJJJ>-KW<NN>.md`.
+    Kopf `type: app-spiegel` + „Automatisch aus MAKE OS — nicht von Hand bearbeiten.“ Nur bei Änderung (atomar), Dateien ohne diesen Kopf werden nie
+    überschrieben, verwaiste Spiegel unter Projekte/ und Mandate/ fallen weg, Entscheidungen/Wochen bleiben. Läufe: nächtlich in `konsolidieren`
+    (erzwungen, mit dem Tagesbericht), im Takt über `indexFrischHalten` (Riegel `brain-app-spiegel` = Tag + Stand von tasks/crm/kontakte/Entscheidungen),
+    nach ZOE-Entscheidungen gebündelt (`spiegelAnstossen`, 1 Min.). `_App` ist aus dem Vault-Index ausgenommen (`AUSGESCHLOSSEN` in lib/zoe/vault.ts).
+- **Such-Index der Arbeitsbestände `app_chunks` (29.09., B3, `lib/brain/app-index.ts`):** dieselbe SQLite wie der Brain-Index, eigene Tabelle + FTS5
+  (Aufgaben Titel/Beschreibung/Notiz, Kommentare je Zeile, Projekte Titel/Beschreibung/Notiz, Angebote Titel/Einleitung, Mandate). Jede Zeile trägt
+  `haushalt` + `privat`; die Sicht steht IN der Abfrage (`appSuche`), nie nachträglich filtern. Papierkorb, „nur ich“, Art.-18-Bezug gar nicht im Index.
+  Abgeleitet: `appIndexNeuBauen()` (auch POST `/api/brain/index { aktion: 'arbeit' }`), inkrementell `appIndexAktualisieren()` je Zeilen-Hash — vor jeder
+  Suche, wenn sich tasks/crm/kontakte geändert haben (`speicherStand`), und im Takt. Embeddings bewusst nicht (optional).
+  **Eine Suche für ZOE:** `suche_arbeit` (`lib/zoe/arbeit-werkzeug.ts`, frei, LESEND, SELBST_GEKAPSELT) fragt Vault (`suche`, Sicht der Person) und
+  `app_chunks` und mischt nach Rang; Kopfzeile nur Zahlen, Treffer im `fremd()`-Block mit Links (`WEG.aufgabe`, Projektseite, `WEG.angebot`, `WEG.mandat`).
+- **ZOE-Entscheidungen dauerhaft (29.09., B1, `lib/zoe/entscheidungen.ts`):** jede Stapel-Entscheidung (freigegeben · abgelehnt · fehlgeschlagen ·
+  zurück an ZOE) mit Person (`entschiedenVon`), Art, Bezug (Kontakt-Kennungen als Fingerabdruck), Grund (eigener Text der Person) und jede Werkzeug-Ausführung
+  (nur Feldnamen) gehen in derselben Sperre nach `zoe-entscheidungen--<haushalt>--<JJJJ-MM>` — nur anhängend wie das Änderungsprotokoll. `zoe-stapel`
+  (200 Erledigte) und `zoe-protokoll` (500) kürzen nur Festgehaltenes (`protokolliert`/`dauerhaft`), Altbestand wird vorher nachgetragen, scheitert das,
+  bleibt er stehen. Freigeben beansprucht zuerst in der Sperre (`beanspruche` → Status `in_arbeit`, verwaist nach 10 Min.), dann ausführen, dann
+  `entscheide(…, { von, ausArbeit: true })`, bei Fehler `loslassen`; `entscheide` entscheidet nur Offenes (sonst `null` → 409). CRM-Arten ohne Stand sind
+  zusätzlich idempotent über die Vorschlags-Kennung (Aktivität `vorschlagId`, Follow-up `fu-<v-…>`, Beitrag `b-…`, Newsletter `nl-…`, Segment `seg-…`,
+  Gäste `tn-…-i`). Grund > 400 Zeichen bzw. „Ändern & freigeben“ über den Grenzen → 413 mit Grund, nie gekürzt. Test `tests/zoe-entscheidungen.test.ts`.
+- `gatherBrain` (lib/brain.ts) liest Aufgaben über `ladeAufgaben` → `aufgabenFuerBrain` (nur Hauptaufgaben, ohne Papierkorb), nur für Personen im
+  Haushalt des Inhabers; `mandate_lage` zeigt die Zeit je Mandat der Woche (`lib/zeitmessung/mandate-server.ts`). Test `tests/brain-app-bruecke.test.ts`.
 
 ## Datenschicht (lib/store/local-db.ts, Stufe 1 seit 27.09.)
 - `loadJson` gibt nur bei „Datei fehlt“ null; Lesefehler werfen `BestandNichtLesbar`, ein beschädigter Bestand blockiert Schreibungen (`BestandBeschaedigt`). Nie `catch → null` um loadJson legen, wenn danach geschrieben wird.

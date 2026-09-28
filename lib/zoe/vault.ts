@@ -54,7 +54,9 @@ export const WURZELN: Wurzel[] = [
 const TECHNIK = new Set(['node_modules', '.git', '.next', '_build', 'dist', '.obsidian', '.claude', 'build', 'scripts']);
 /** Aus AGENTS.md §5: Archiv, Vorlagen, Kopien und Exporte sind keine Quellen. */
 // _inbox (27.09.): Vorschläge von ZOE sind kein Wissen, bis jemand sie annimmt (lib/brain/inbox.ts).
-const AUSGESCHLOSSEN = ['_Archiv', '_Vorlagen', '_to_delete', '_inbox', 'MakeOS-Blueprint', 'OneDrive_Export', 'KEMA_Brain Kopie'];
+// _App (29.09.): der generierte Spiegel der App (lib/brain/app-spiegel.ts) — gesucht wird er über `app_chunks`
+// (lib/brain/app-index.ts, mit Haushalts-Sicht); im Vault-Index stünde er doppelt.
+const AUSGESCHLOSSEN = ['_Archiv', '_Vorlagen', '_to_delete', '_inbox', '_App', 'MakeOS-Blueprint', 'OneDrive_Export', 'KEMA_Brain Kopie'];
 export const istAusgeschlossen = (name: string) => TECHNIK.has(name) || AUSGESCHLOSSEN.some(a => name.startsWith(a));
 
 /**

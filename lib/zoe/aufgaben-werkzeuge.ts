@@ -24,7 +24,7 @@ import {
   auftraggeberinVon, darfAnZoe, vorschlagAnwenden, vorschlagSauber, vorschlagZeile, zoeAufgaben,
   ZOE_AUFGABE_WERKZEUG, ZOE_STATUS_LABEL, ZOE_VORSCHLAG_GRENZEN, type ZoeVorschlagInhalt,
 } from '@/lib/aufgaben/zoe';
-import { hole, entscheide, type Vorschlag } from './stapel';
+import { hole, entscheide, beanspruche, loslassen, type Vorschlag } from './stapel';
 import { notiere } from './protokoll';
 import type { Risiko, Vorschau } from './register';
 import type { StapelArtFreigabe } from './stapel-arten';
@@ -98,7 +98,7 @@ export async function vonZoeZurueck(id: string, person: string, opt: { stand?: s
   }, { person, stand: opt.stand });
   if (r.ok && offenerVorschlag) {
     const v = await hole(offenerVorschlag);
-    if (v?.status === 'offen') await entscheide(v.id, 'abgelehnt', { grund: 'zurückgeholt' });
+    if (v?.status === 'offen') await entscheide(v.id, 'abgelehnt', { grund: 'zurückgeholt', von: person });
   }
   return r;
 }
@@ -139,23 +139,35 @@ export async function vorschlagInAufgabe(stapelId: string, inhaltRoh: Record<str
   return r.ok ? { ok: true, wert: { task: r.wert, neue, inhalt } } : r;
 }
 
-/** Freigeben (an der Aufgabe und im Stapel): prüfen, übernehmen, dann den Stapel-Eintrag entscheiden und protokollieren. Bleibt offen, wenn nichts übernommen wurde. */
+/**
+ * Freigeben (an der Aufgabe und im Stapel): prüfen und beanspruchen (in der Sperre, lib/zoe/stapel.ts `beanspruche`),
+ * übernehmen, dann den Stapel-Eintrag entscheiden (mit Person, dauerhaft) und protokollieren. Bleibt offen, wenn
+ * nichts übernommen wurde; ein zweiter Klick währenddessen bekommt 409.
+ */
 export async function vorschlagFreigeben(stapelId: string, person: string, opt: { stand?: string; aufgabeId?: string; eingabe?: Record<string, unknown> | null } = {}): Promise<ZoeErgebnis<{ task: Task; text: string }>> {
-  const v = await hole(stapelId);
-  const falsch = vorschlagPasst(v, person, opt.aufgabeId);
-  if (falsch) return nein(falsch.startsWith('Schon') ? 409 : falsch.startsWith('Nur') ? 403 : 404, falsch);
+  const a = await beanspruche(stapelId, person, v => {
+    const falsch = vorschlagPasst(v, person, opt.aufgabeId);
+    return falsch ? { status: falsch.startsWith('Schon') ? 409 : falsch.startsWith('Nur') ? 403 : 404, fehler: falsch } : null;
+  });
+  if (!a.ok) return nein(a.status, a.fehler);
+  const v = a.v;
   // „Ändern & freigeben“ (Stapel): geänderte Felder ja, aber immer für DIESE Aufgabe und erneut gesäubert.
-  const eingabe = { ...v!.eingabe, ...(opt.eingabe ?? {}), aufgabeId: v!.bezug!.id };
-  const r = await vorschlagInAufgabe(v!.id, eingabe, person, { stand: opt.stand });
-  if (!r.ok) return r;
+  const eingabe = { ...v.eingabe, ...(opt.eingabe ?? {}), aufgabeId: v.bezug!.id };
+  let r: Awaited<ReturnType<typeof vorschlagInAufgabe>>;
+  try { r = await vorschlagInAufgabe(v.id, eingabe, person, { stand: opt.stand }); }
+  catch (e) { await loslassen(v.id); throw e; }
+  if (!r.ok) { await loslassen(v.id); return r; }
   const text = uebernommenText(r.wert.task, r.wert.inhalt, r.wert.neue);
-  await entscheide(v!.id, 'freigegeben', { ergebnis: text, eingabe: { ...r.wert.inhalt } as unknown as Record<string, unknown> });
+  await entscheide(v.id, 'freigegeben', { ergebnis: text, eingabe: { ...r.wert.inhalt } as unknown as Record<string, unknown>, von: person, ausArbeit: true });
   await notiere({ werkzeug: ZOE_AUFGABE_WERKZEUG, gruppe: 'aufgaben', risiko: 'freigabe', eingabe: { aufgabeId: r.wert.task.id }, ergebnis: text, ok: true, quelle: 'stapel', person, ruecknahme: null });
   return { ok: true, wert: { task: r.wert.task, text } };
 }
 
 const uebernommenText = (t: Task, v: ZoeVorschlagInhalt, neue: number) =>
   `Übernommen in „${kurz(t.title)}“: ${vorschlagZeile(v)}${neue && v.unteraufgaben && neue !== v.unteraufgaben.length ? ` (${neue} angelegt)` : ''}.`;
+
+/** Längster Ablehnungs-Grund — darüber 413 (wie /api/zoe/stapel), nie gekürzt. */
+export const ABLEHN_GRUND_MAX = 400;
 
 /**
  * Ablehnen (Route): Stapel-Eintrag „abgelehnt“ mit Grund, Aufgabe → abgelehnt — oder mit `nochmal` gleich wieder
@@ -165,8 +177,11 @@ export async function vorschlagAblehnen(stapelId: string, person: string, opt: {
   const v = await hole(stapelId);
   const falsch = vorschlagPasst(v, person, opt.aufgabeId);
   if (falsch) return nein(falsch.startsWith('Schon') ? 409 : falsch.startsWith('Nur') ? 403 : 404, falsch);
-  const grund = (opt.grund ?? '').replace(/\u0000/g, '').trim().slice(0, 400);
-  await entscheide(v!.id, 'abgelehnt', grund ? { grund } : undefined);
+  const grund = (opt.grund ?? '').replace(/\u0000/g, '').trim();
+  // Nie still kürzen (29.09.): ein zu langer Grund wird abgelehnt, nicht abgeschnitten.
+  if (grund.length > ABLEHN_GRUND_MAX) return nein(413, `Abgelehnt: der Grund ist länger als ${ABLEHN_GRUND_MAX} Zeichen.`);
+  const raus = await entscheide(v!.id, 'abgelehnt', { ...(grund ? { grund } : {}), von: person, zurueck: !!opt.nochmal });
+  if (!raus) return nein(409, 'Schon entschieden oder gerade in Arbeit.');
   const r = await nachAblehnen(v!, person);
   if (!r.ok || !opt.nochmal) return r;
   return anZoeGeben(v!.bezug!.id, person, { hinweis: opt.hinweis });

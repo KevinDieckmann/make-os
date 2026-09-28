@@ -27,6 +27,7 @@ import { modellSchranke, zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { FREMD_WERKZEUGE, FREMD_AGENTEN, SELBST_GEKAPSELT } from '@/lib/zoe/fremd';
 import { AUFGABEN_DATEI_WERKZEUGE } from '@/lib/zoe/aufgaben-unterlagen';
 import { AUFGABEN_WERKZEUG_DEFS } from '@/lib/zoe/aufgaben-werkzeuge';
+import { ARBEIT_WERKZEUG_DEFS } from '@/lib/zoe/arbeit-werkzeug';
 import { CRM_WERKZEUG_DEFS, crmBezugAus, crmBezugHinweis } from '@/lib/zoe/crm-werkzeug-defs';
 
 export const runtime = 'nodejs';
@@ -549,6 +550,8 @@ export async function POST(req: Request) {
     );
     // ZOE-Aufgaben (28.09., C4): was bei ZOE liegt, und „gib das an dich“ — nur im Haushalt des Inhabers.
     if (crmErlaubt) tools.push(...AUFGABEN_WERKZEUG_DEFS);
+    // Eine Suche über Brain und App (29.09., B3): suche_arbeit — nur im Haushalt des Inhabers.
+    if (crmErlaubt) tools.push(...ARBEIT_WERKZEUG_DEFS);
     // Die ganze Markttraktion (28.09., C7): lesen gekapselt mit Leitplanken, unterstützen nur als Stapel-Vorschlag.
     if (crmErlaubt) tools.push(...CRM_WERKZEUG_DEFS);
     // Markttraktion nur im Haushalt des Inhabers (28.09., K1) — siehe `crmErlaubt` oben.

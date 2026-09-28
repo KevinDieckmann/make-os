@@ -7,8 +7,15 @@
 // entsteht, kann man sie später nicht mehr rekonstruieren — der alte Wert ist
 // dann längst überschrieben.
 
-import { loadJson, updateJson } from '@/lib/store/local-db';
+//
+// 29.09. (B1): Die Liste hier bleibt eine Arbeitsliste (GRENZE Einträge, Rücknahme). Jede Ausführung geht in derselben
+// Sperre zuerst dauerhaft nach `zoe-entscheidungen--<haushalt>--<JJJJ-MM>` (lib/zoe/entscheidungen.ts, nur Feldnamen,
+// nie Werte); gekürzt wird nur, was dort steht (`dauerhaft`) — Altbestand wird vor dem Kürzen nachgetragen, scheitert
+// das, bleibt er stehen. Nie still.
+
+import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
+import { ausfuehrungEintrag, haltFest } from './entscheidungen';
 import type { Risiko } from './register';
 import type { Person } from './raum';
 
@@ -38,11 +45,13 @@ export interface Eintrag {
   ruecknahme?: Ruecknahme | null;
   /** Gesetzt, sobald zurückgenommen — dann ist die Rücknahme verbraucht. */
   zurueckgenommenAm?: string;
+  /** Steht dauerhaft in `zoe-entscheidungen` (29.09.) — erst dann darf die Arbeitsliste ihn kürzen. */
+  dauerhaft?: true;
 }
 
 interface Stand { eintraege: Eintrag[] }
 
-/** So viele Einträge bleiben stehen. Darunter läuft die Datei nicht voll. */
+/** So viele Einträge bleiben stehen (Arbeitsliste) — Älteres steht dauerhaft in `zoe-entscheidungen`. */
 const GRENZE = 500;
 
 export async function notiere(e: Omit<Eintrag, 'id' | 'zeit' | 'tag'>): Promise<Eintrag> {
@@ -52,9 +61,21 @@ export async function notiere(e: Omit<Eintrag, 'id' | 'zeit' | 'tag'>): Promise<
     zeit: new Date().toISOString(),
     tag: localDay(),
   };
-  await updateJson<Stand>('zoe-protokoll', current => {
-    const liste = current?.eintraege ?? [];
-    return { eintraege: [eintrag, ...liste].slice(0, GRENZE) };
+  await updateJsonAsync<Stand>('zoe-protokoll', async current => {
+    try { await haltFest([ausfuehrungEintrag(eintrag)]); eintrag.dauerhaft = true; }
+    catch (err) { console.error('[zoe-protokoll] nicht dauerhaft festgehalten (wird vor dem Kürzen nachgetragen):', err instanceof Error ? err.message : err); }
+    const liste = [eintrag, ...(current?.eintraege ?? [])];
+    if (liste.length <= GRENZE) return { eintraege: liste };
+    const ueber = liste.slice(GRENZE);
+    const nach = ueber.filter(x => !x.dauerhaft);
+    if (nach.length) {
+      try { await haltFest(nach.map(x => ausfuehrungEintrag(x, true))); }
+      catch (err) {
+        console.error('[zoe-protokoll] Nachtragen vor dem Kürzen fehlgeschlagen — nichts gekürzt:', err instanceof Error ? err.message : err);
+        return { eintraege: [...liste.slice(0, GRENZE), ...nach] };
+      }
+    }
+    return { eintraege: liste.slice(0, GRENZE) };
   });
   return eintrag;
 }

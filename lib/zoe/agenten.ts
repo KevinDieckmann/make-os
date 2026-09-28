@@ -349,7 +349,7 @@ export async function runAgent(id: Ausfuehrbar, auftrag: string, origin: string,
         // Brain (27.09.): schreibt nur in die Inbox; ohne KI Regelwerk. „jetzt“ übergeht den Tages-Riegel.
         const { konsolidieren } = await import('@/lib/brain/konsolidierung');
         const k = await konsolidieren(new Date().toISOString(), auftrag === 'jetzt');
-        return k.ok ? gut(`BRAIN-KONSOLIDIERUNG${k.ohneKi ? ' (Regelwerk)' : ''}: ${k.text}`) : fehl(`Konsolidierung: ${k.text}`);
+        return k.ok ? gut(`BRAIN-KONSOLIDIERUNG${k.ohneKi ? ' (Regelwerk)' : ''}: ${k.text}${k.app ? ` · ${k.app}` : ''}`) : fehl(`Konsolidierung: ${k.text}`);
       }
       case 'loeschfristen': {
         // Datenschutz (28.09., U2 #52): Personen nie automatisch löschen — nur die Aufgabe; technische Bestände bereinigen.

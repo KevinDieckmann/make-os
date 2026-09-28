@@ -19,7 +19,7 @@ import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { suchPasst } from '@/lib/text/such-norm';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, ChancenStufe, FollowUpArt, FollowUpBezugArt, SegmentKriterien } from '@/lib/crm/typen';
-import { lege, hole, entscheide, type Vorschlag } from './stapel';
+import { lege, entscheide, beanspruche, loslassen } from './stapel';
 import { notiere } from './protokoll';
 import type { StapelArtFreigabe, ArtErgebnis } from './stapel-arten';
 import type { Risiko, Vorschau } from './register';
@@ -70,7 +70,6 @@ const text = (v: unknown, n = 300) => String(v ?? '').replace(/\u0000/g, '').tri
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
 const tagOk = (v: unknown) => (typeof v === 'string' && TAG.test(v) ? v : undefined);
 const kurz = (t: string, n = 90) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
-const neueKennung = (p: string) => `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 const stand = (e: unknown) => (e ? fingerabdruck(e as Record<string, unknown>) : '');
 const liste = (v: unknown): string[] => (Array.isArray(v) ? v.map(x => text(x, 120)).filter(Boolean) : typeof v === 'string' && v.trim() ? v.split(',').map(x => x.trim()).filter(Boolean) : []);
 
@@ -560,7 +559,15 @@ type Ergebnis = { ok: true; text: string } | Extract<ArtErgebnis, { ok: false }>
 const ok = (t: string): Ergebnis => ({ ok: true, text: t });
 const aus = (a: Antwort, erfolg: string): Ergebnis => (a.status >= 400 || a.json.ok === false ? { ok: false, status: statusVon(a.status), fehler: fehlerText(a) } : ok(erfolg));
 
-async function ausfuehren(e: Eingabe, person: string): Promise<Ergebnis> {
+/**
+ * Feste Kennungen aus der Vorschlags-Kennung (29.09.): was ohne Stand angelegt wird (Aktivität, Follow-up, Beitrag,
+ * Newsletter, Segment, Gäste), trägt die Kennung des Vorschlags — eine zweite Ausführung desselben Vorschlags (Doppelklick,
+ * zweites Fenster, verwaister Anspruch nach Absturz) legt nichts doppelt an.
+ */
+export const ausVorschlag = (praefix: string, vorschlagId: string, i?: number) => `${praefix}-${vorschlagId}${i === undefined ? '' : `-${i}`}`;
+const SCHON = (was: string): Ergebnis => ok(`${was} — stand schon da (derselbe Vorschlag), nichts doppelt angelegt.`);
+
+async function ausfuehren(e: Eingabe, person: string, vid: string): Promise<Ergebnis> {
   const art = String(e.art ?? '') as VorschlagArt;
   if (NUR_TEXT.has(art)) {
     if (e.kontaktId) {
@@ -574,12 +581,12 @@ async function ausfuehren(e: Eingabe, person: string): Promise<Ergebnis> {
   }
   switch (art) {
     case 'aktivitaet': {
-      const r = await innen('/api/crm/aktivitaet', 'POST', { id: e.kontaktId, art: e.aktivitaetArt, text: e.text, ergebnis: e.ergebnis, anlass: e.anlass, naechster: e.naechster, wann: e.wann }, person);
-      return aus(r, `Aktivität festgehalten (${String(e.aktivitaetArt)}).`);
+      const r = await innen('/api/crm/aktivitaet', 'POST', { id: e.kontaktId, art: e.aktivitaetArt, text: e.text, ergebnis: e.ergebnis, anlass: e.anlass, naechster: e.naechster, wann: e.wann, vorschlagId: vid }, person);
+      return r.json.schonDa ? SCHON('Aktivität festgehalten') : aus(r, `Aktivität festgehalten (${String(e.aktivitaetArt)}).`);
     }
     case 'followup': {
-      const r = await innen('/api/crm/followup', 'POST', { aktion: 'anlegen', bezug: e.bezug, kontaktId: e.kontaktId, art: e.followupArt, text: e.text, faellig: e.faellig, zustaendig: e.zustaendig, quelle: 'zoe' }, person);
-      return aus(r, `Follow-up am ${String(e.faellig)} angelegt.`);
+      const r = await innen('/api/crm/followup', 'POST', { aktion: 'anlegen', id: ausVorschlag('fu', vid), bezug: e.bezug, kontaktId: e.kontaktId, art: e.followupArt, text: e.text, faellig: e.faellig, zustaendig: e.zustaendig, quelle: 'zoe' }, person);
+      return r.json.schonDa ? SCHON('Follow-up angelegt') : aus(r, `Follow-up am ${String(e.faellig)} angelegt.`);
     }
     case 'followup_verschieben': {
       if (e._stand) {
@@ -630,25 +637,33 @@ async function ausfuehren(e: Eingabe, person: string): Promise<Ergebnis> {
       return aus(r, `Angebots-Entwurf gespeichert${id ? ` (${id})` : ''} — gestellt wird nur im Angebots-Tool.`);
     }
     case 'beitrag_entwurf': {
-      const eintrag = { id: neueKennung('b'), titel: e.titel, kanal: e.kanal, status: 'entwurf', text: e.text, wirkung: [], quellen: [], zustaendig: person, ...(e.stimme ? { stimme: e.stimme } : {}), ...(e.saeule ? { saeule: e.saeule } : {}), ...(e.datum ? { datum: e.datum } : {}) };
+      const id = ausVorschlag('b', vid);
+      if ((await rohCrm()).beitraege?.some(x => x.id === id)) return SCHON('Beitrag angelegt');
+      const eintrag = { id, titel: e.titel, kanal: e.kanal, status: 'entwurf', text: e.text, wirkung: [], quellen: [], zustaendig: person, ...(e.stimme ? { stimme: e.stimme } : {}), ...(e.saeule ? { saeule: e.saeule } : {}), ...(e.datum ? { datum: e.datum } : {}) };
       return aus(await innen('/api/crm/bestand', 'PATCH', { ops: [{ liste: 'beitraege', op: 'upsert', eintrag }] }, person), 'Beitrag als Entwurf angelegt — veröffentlicht wird nichts.');
     }
     case 'newsletter_entwurf': {
-      const eintrag = { id: neueKennung('nl'), titel: e.titel, status: 'entwurf', inhalt: e.inhalt, beitragIds: [], zustaendig: person, ...(e.datum ? { datum: e.datum } : {}) };
+      const id = ausVorschlag('nl', vid);
+      if ((await rohCrm()).newsletter?.some(x => x.id === id)) return SCHON('Newsletter angelegt');
+      const eintrag = { id, titel: e.titel, status: 'entwurf', inhalt: e.inhalt, beitragIds: [], zustaendig: person, ...(e.datum ? { datum: e.datum } : {}) };
       return aus(await innen('/api/crm/bestand', 'PATCH', { ops: [{ liste: 'newsletter', op: 'upsert', eintrag }] }, person), 'Newsletter als Entwurf angelegt — versendet wird nichts.');
     }
     case 'segment': {
-      const eintrag = { id: neueKennung('seg'), name: e.name, ...(e.beschreibung ? { beschreibung: e.beschreibung } : {}), kriterien: e.kriterien };
+      const id = ausVorschlag('seg', vid);
+      if ((await rohCrm()).segmente?.some(x => x.id === id)) return SCHON('Segment angelegt');
+      const eintrag = { id, name: e.name, ...(e.beschreibung ? { beschreibung: e.beschreibung } : {}), kriterien: e.kriterien };
       return aus(await innen('/api/crm/bestand', 'PATCH', { ops: [{ liste: 'segmente', op: 'upsert', eintrag }] }, person), 'Segment angelegt.');
     }
     case 'gaesteliste': {
       // Beim Freigeben neu gegen den Stand: wer inzwischen gesperrt/eingeschränkt ist oder schon dabei, fällt raus.
       const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
       const rc = await rohCrm();
+      if (rc.teilnahmen.some(t => t.id.startsWith(`${ausVorschlag('tn', vid)}-`))) return SCHON('Gäste vorgemerkt');
       const schon = new Set(rc.teilnahmen.filter(t => t.eventId === e.eventId).map(t => t.kontaktId));
-      const ids = (Array.isArray(e.kontaktIds) ? e.kontaktIds.map(String) : []).filter(id => { const k = kontakte.find(x => x.id === id); return k && !k.werbesperre && !k.eingeschraenkt && !schon.has(id); });
+      const alleIds = Array.isArray(e.kontaktIds) ? e.kontaktIds.map(String) : [];
+      const ids = alleIds.filter(id => { const k = kontakte.find(x => x.id === id); return k && !k.werbesperre && !k.eingeschraenkt && !schon.has(id); });
       if (!ids.length) return { ok: false, status: 409, fehler: 'Niemand mehr vorzumerken (inzwischen gesperrt, eingeschränkt oder schon dabei).' };
-      const ops = ids.map(id => ({ liste: 'teilnahmen', op: 'upsert', eintrag: { id: neueKennung('tn'), eventId: e.eventId, kontaktId: id, status: 'vorgemerkt' } }));
+      const ops = ids.map(id => ({ liste: 'teilnahmen', op: 'upsert', eintrag: { id: ausVorschlag('tn', vid, alleIds.indexOf(id)), eventId: e.eventId, kontaktId: id, status: 'vorgemerkt' } }));
       return aus(await innen('/api/crm/bestand', 'PATCH', { ops }, person), `${ids.length} Gäste vorgemerkt — eingeladen wird nichts.`);
     }
     case 'leistungstext': {
@@ -669,27 +684,30 @@ async function ausfuehren(e: Eingabe, person: string): Promise<Ergebnis> {
   }
 }
 
-/** Passt der Vorschlag zu dieser Person und ist er noch offen? (wie C4: nur, wer ihn ausgelöst hat) */
-async function pruefen(v: Vorschlag | null, person: string): Promise<string | null> {
-  if (!v || v.bezug?.art !== 'crm' || v.werkzeug !== CRM_VORSCHLAG_WERKZEUG) return 'Vorschlag nicht gefunden.';
-  if (v.status !== 'offen') return `Schon entschieden (${v.status}).`;
-  if (!person || (v.person && v.person !== person)) return 'Nur die Person, für die ZOE ihn vorbereitet hat, gibt ihn frei.';
-  const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
-  if (!(await personImHaushaltDesInhabers(person))) return 'Nur im Haushalt des Inhabers.';
-  return null;
-}
-
-/** Stapel-Art „crm“ (lib/zoe/stapel-arten.ts): Freigabe per Klick — übernimmt über den Schreibweg und entscheidet selbst. */
+/**
+ * Stapel-Art „crm“ (lib/zoe/stapel-arten.ts): Freigabe per Klick — beansprucht den Vorschlag IN der Sperre (29.09.),
+ * übernimmt über den Schreibweg und entscheidet selbst (mit Person, dauerhaft). Scheitert es, wird der Anspruch
+ * gelöst — der Vorschlag bleibt offen. Doppelklick, zweites Fenster, „alle freigeben“: der zweite bekommt 409.
+ */
 export const CRM_STAPEL_ART: StapelArtFreigabe = {
   freigeben: async (vIn, person) => {
-    const v = await hole(vIn.id);
-    const falsch = await pruefen(v, person);
-    if (falsch) return { ok: false, status: falsch.startsWith('Schon') ? 409 : falsch.startsWith('Nur') ? 403 : 404, fehler: falsch };
+    const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
+    if (!person || !(await personImHaushaltDesInhabers(person))) return { ok: false, status: 403, fehler: 'Nur im Haushalt des Inhabers.' };
+    // Prüfen (wie C4: nur, für wen ZOE ihn vorbereitet hat) und beanspruchen in EINER Sperre.
+    const a = await beanspruche(vIn.id, person, v => {
+      if (v.bezug?.art !== 'crm' || v.werkzeug !== CRM_VORSCHLAG_WERKZEUG) return { status: 404, fehler: 'Vorschlag nicht gefunden.' };
+      if (v.person && v.person !== person) return { status: 403, fehler: 'Nur die Person, für die ZOE ihn vorbereitet hat, gibt ihn frei.' };
+      return null;
+    });
+    if (!a.ok) return { ok: false, status: a.status, fehler: a.fehler };
+    const v = a.v;
     // „Ändern & freigeben“ gibt es für CRM-Vorschläge nicht — übernommen wird genau, was vorbereitet und geprüft wurde.
-    const r = await ausfuehren(v!.eingabe, person);
-    if (!r.ok) return r;
-    await entscheide(v!.id, 'freigegeben', { ergebnis: r.text });
-    await notiere({ werkzeug: CRM_VORSCHLAG_WERKZEUG, gruppe: 'crm', risiko: 'freigabe', eingabe: { art: v!.eingabe.art, bezug: v!.bezug?.id }, ergebnis: r.text, ok: true, quelle: 'stapel', person, ruecknahme: null });
+    let r: Ergebnis;
+    try { r = await ausfuehren(v.eingabe, person, v.id); }
+    catch (e) { await loslassen(v.id); throw e; }
+    if (!r.ok) { await loslassen(v.id); return r; }
+    await entscheide(v.id, 'freigegeben', { ergebnis: r.text, von: person, ausArbeit: true });
+    await notiere({ werkzeug: CRM_VORSCHLAG_WERKZEUG, gruppe: 'crm', risiko: 'freigabe', eingabe: { art: v.eingabe.art, bezug: v.bezug?.id }, ergebnis: r.text, ok: true, quelle: 'stapel', person, ruecknahme: null });
     return { ok: true, text: r.text };
   },
 };

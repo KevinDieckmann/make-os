@@ -7,26 +7,51 @@
 // schreibt ins Protokoll. Ausnahme (28.09., C4): Vorschläge mit `bezug` gehören
 // einer Art (lib/zoe/stapel-arten.ts) — deren Freigabe-Funktion übernimmt und
 // entscheidet selbst; nach dem Ablehnen macht die Art ihren Folgeschritt.
+//
+// 29.09. (B1): Jede Entscheidung trägt die Person (`von`) und steht dauerhaft in `zoe-entscheidungen` (lib/zoe/stapel.ts
+// `entscheide`). Freigeben beansprucht den Vorschlag zuerst in der Sperre (`beanspruche`) — ein Doppelklick, ein zweites
+// Fenster oder „alle freigeben“ führt nichts doppelt aus. Nichts wird mehr still gekürzt: ein Grund über GRUND_MAX
+// oder eine zu große geänderte Eingabe → 413 mit Grund.
 
 import { NextResponse } from 'next/server';
-import { lies, hole, entscheide } from '@/lib/zoe/stapel';
+import { lies, hole, entscheide, beanspruche, loslassen, type Vorschlag } from '@/lib/zoe/stapel';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { stapelArtVon, UNBEKANNTE_ART } from '@/lib/zoe/stapel-arten';
 import { personAus } from '@/lib/zoe/raum';
 import { innenAdresse } from '@/lib/innen';
 import { haushaltVon, personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
-/** „Ändern & freigeben“: nur einfache Werte, begrenzt — den Rest prüft das Werkzeug selbst (26.09.). */
-function eingabeSauber(v: unknown): Record<string, unknown> | null {
-  if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+/** Längster Ablehnungs-Grund (Zeichen) — länger → 413, nie gekürzt. */
+const GRUND_MAX = 400;
+/** Grenzen für „Ändern & freigeben“ — darüber 413 mit Grund, nie gekürzt. */
+const EINGABE_GRENZEN = { felder: 40, text: 4000, liste: 100, listenText: 1000 } as const;
+type Sauber = { ok: true; wert: Record<string, unknown> | null } | { ok: false; status: 400 | 413; fehler: string };
+
+/**
+ * „Ändern & freigeben“: nur einfache Werte — den Rest prüft das Werkzeug selbst (26.09.). Seit 29.09. nie still:
+ * zu lang/zu viele → 413, unbekannte Feldnamen oder verschachtelte Werte → 400 (ein verschachtelter Wert, der
+ * unverändert aus dem Vorschlag kommt, bleibt stehen).
+ */
+function eingabeSauber(v: unknown, vorher: Record<string, unknown>): Sauber {
+  if (v === undefined || v === null) return { ok: true, wert: null };
+  if (typeof v !== 'object' || Array.isArray(v)) return { ok: false, status: 400, fehler: 'Die geänderte Eingabe ist kein Objekt.' };
+  const eintraege = Object.entries(v as Record<string, unknown>);
+  if (eintraege.length > EINGABE_GRENZEN.felder) return { ok: false, status: 413, fehler: `Abgelehnt: höchstens ${EINGABE_GRENZEN.felder} Felder.` };
   const raus: Record<string, unknown> = {};
-  for (const [k, w] of Object.entries(v as Record<string, unknown>).slice(0, 40)) {
-    if (!/^[a-zA-Z_][a-zA-Z0-9_]{0,40}$/.test(k)) continue;
+  for (const [k, w] of eintraege) {
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]{0,40}$/.test(k)) return { ok: false, status: 400, fehler: `Unzulässiger Feldname „${k.slice(0, 40)}“.` };
     if (w === null || typeof w === 'boolean' || (typeof w === 'number' && Number.isFinite(w))) raus[k] = w;
-    else if (typeof w === 'string') raus[k] = w.slice(0, 4000);
-    else if (Array.isArray(w)) raus[k] = w.slice(0, 100).filter(x => ['string', 'number', 'boolean'].includes(typeof x)).map(x => (typeof x === 'string' ? x.slice(0, 1000) : x));
+    else if (typeof w === 'string') {
+      if (w.length > EINGABE_GRENZEN.text) return { ok: false, status: 413, fehler: `Abgelehnt: „${k}“ ist länger als ${EINGABE_GRENZEN.text} Zeichen.` };
+      raus[k] = w;
+    } else if (Array.isArray(w) && w.every(x => ['string', 'number', 'boolean'].includes(typeof x))) {
+      if (w.length > EINGABE_GRENZEN.liste) return { ok: false, status: 413, fehler: `Abgelehnt: „${k}“ hat mehr als ${EINGABE_GRENZEN.liste} Einträge.` };
+      if (w.some(x => typeof x === 'string' && x.length > EINGABE_GRENZEN.listenText)) return { ok: false, status: 413, fehler: `Abgelehnt: ein Eintrag in „${k}“ ist länger als ${EINGABE_GRENZEN.listenText} Zeichen.` };
+      raus[k] = w;
+    } else if (JSON.stringify(w) === JSON.stringify(vorher[k])) raus[k] = vorher[k];
+    else return { ok: false, status: 400, fehler: `„${k}“ lässt sich hier nicht ändern (verschachtelter Wert).` };
   }
-  return raus;
+  return { ok: true, wert: raus };
 }
 /** Sehen und entscheiden: eigene Vorschläge, die des Systems, und Haushalts-Vorschläge für Haushaltsmitglieder. */
 const meiner = (v: { person?: string; gruppe: string }, person: string | null, z: unknown, HH: string) => (!v.person || v.person === person) && (z || v.gruppe !== HH);
@@ -63,27 +88,40 @@ export async function POST(req: Request) {
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const origin = innenAdresse(req);
   const person = personAus(req);
+  const wer = personStreng(req);
   const z = await haushaltVon(req);
+  const darf = (v: Vorschlag) => (meiner(v, wer, z, HAUSHALT) ? null : { status: 404 as const, fehler: 'Vorschlag nicht gefunden.' });
+
+  /** Ein gewöhnlicher Werkzeug-Vorschlag: beanspruchen (in der Sperre), ausführen, entscheiden. */
+  const werkzeugFreigeben = async (id: string, eingabeNeu: Record<string, unknown> | null) => {
+    const a = await beanspruche(id, wer ?? 'system', darf);
+    if (!a.ok) return { ok: false as const, status: a.status, text: a.fehler, vorschlag: null };
+    const eingabe = eingabeNeu ?? a.v.eingabe;
+    let lauf: { ok: boolean; text: string };
+    try { lauf = await fuehreAus(a.v.werkzeug, eingabe, origin, { erzwingen: true, person: a.v.gruppe === HAUSHALT ? z!.person : person }); }
+    catch (e) { await loslassen(id); throw e; }
+    const raus = await entscheide(id, lauf.ok ? 'freigegeben' : 'fehlgeschlagen', { ergebnis: lauf.text, ...(eingabeNeu ? { eingabe } : {}), von: wer, ausArbeit: true });
+    return { ok: lauf.ok, status: 200 as const, text: lauf.text, vorschlag: raus };
+  };
 
   // ── Sammel-Freigabe: „durcharbeiten" ──
   if (body.alle) {
-    const offen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && meiner(v, personStreng(req), z, HAUSHALT));
+    const offen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && meiner(v, wer, z, HAUSHALT));
     if (!offen.length) return NextResponse.json({ ok: true, erledigt: 0, ergebnisse: [] });
     // Nacheinander, nicht parallel: mehrere Vorschläge fassen oft denselben
     // Bestand an (zwei Rechnungen desselben Kunden). Parallel würde der eine
-    // den anderen überschreiben.
+    // den anderen überschreiben. Jeder wird einzeln beansprucht — was ein anderes Fenster gerade übernimmt, bleibt liegen.
     const ergebnisse: { id: string; ok: boolean; text: string }[] = [];
     for (const v of offen) {
-      // Vorschlag einer Art (z. B. „aufgabe“): deren Freigabe — nie fuehreAus, auch wenn die Art unbekannt ist.
+      // Vorschlag einer Art (z. B. „aufgabe“): deren Freigabe (beansprucht selbst) — nie fuehreAus, auch wenn die Art unbekannt ist.
       if (v.bezug) {
         const art = await stapelArtVon(v);
-        const r = art ? await art.freigeben(v, personStreng(req) ?? '', {}) : UNBEKANNTE_ART;
+        const r = art ? await art.freigeben(v, wer ?? '', {}) : UNBEKANNTE_ART;
         ergebnisse.push({ id: v.id, ok: r.ok, text: r.ok ? r.text : r.fehler });
         continue;
       }
-      const lauf = await fuehreAus(v.werkzeug, v.eingabe, origin, { erzwingen: true, person: v.gruppe === HAUSHALT ? z!.person : person });
-      await entscheide(v.id, lauf.ok ? 'freigegeben' : 'fehlgeschlagen', { ergebnis: lauf.text });
-      ergebnisse.push({ id: v.id, ok: lauf.ok, text: lauf.text });
+      const r = await werkzeugFreigeben(v.id, null);
+      ergebnisse.push({ id: v.id, ok: r.ok, text: r.text });
     }
     return NextResponse.json({ ok: true, erledigt: ergebnisse.filter(e => e.ok).length, ergebnisse });
   }
@@ -91,26 +129,30 @@ export async function POST(req: Request) {
   const id = String(body.id ?? '');
   const v = id ? await hole(id) : null;
   if (!v) return NextResponse.json({ ok: false, error: 'Vorschlag nicht gefunden.' }, { status: 404 });
+  if (!meiner(v, wer, z, HAUSHALT)) return NextResponse.json({ ok: false, error: 'Vorschlag nicht gefunden.' }, { status: 404 });
+  if (v.status === 'in_arbeit') return NextResponse.json({ ok: false, error: 'Wird gerade übernommen.' }, { status: 409 });
   if (v.status !== 'offen') return NextResponse.json({ ok: false, error: `Schon entschieden (${v.status}).` }, { status: 409 });
-  if (!meiner(v, personStreng(req), z, HAUSHALT)) return NextResponse.json({ ok: false, error: 'Vorschlag nicht gefunden.' }, { status: 404 });
 
   if (body.entscheidung === 'ablehnen') {
-    const raus = await entscheide(id, 'abgelehnt', { grund: String(body.grund ?? '').slice(0, 400) });
+    const grund = typeof body.grund === 'string' ? body.grund.replace(/\u0000/g, '').trim() : '';
+    if (grund.length > GRUND_MAX) return NextResponse.json({ ok: false, error: `Abgelehnt: der Grund ist länger als ${GRUND_MAX} Zeichen.` }, { status: 413 });
+    const raus = await entscheide(id, 'abgelehnt', { grund, von: wer });
+    if (!raus) return NextResponse.json({ ok: false, error: 'Schon entschieden oder gerade in Arbeit.' }, { status: 409 });
     // Folgeschritt der Art (z. B. Aufgabe → „abgelehnt“); ein Fehler dort macht das Ablehnen nicht rückgängig.
-    const wer = personStreng(req);
     if (v.bezug && wer) { try { await (await stapelArtVon(v))?.nachAblehnen?.(v, wer); } catch { /* Ablehnen bleibt stehen */ } }
     return NextResponse.json({ ok: true, vorschlag: raus });
   }
 
+  const sauber = eingabeSauber(body.eingabe, v.eingabe);
+  if (!sauber.ok) return NextResponse.json({ ok: false, error: sauber.fehler }, { status: sauber.status });
   if (v.bezug) {
     // Nichts übernommen (z. B. inzwischen geändert) → der Vorschlag bleibt offen.
     const art = await stapelArtVon(v);
-    const r = art ? await art.freigeben(v, personStreng(req) ?? '', { eingabe: eingabeSauber(body.eingabe) }) : UNBEKANNTE_ART;
+    const r = art ? await art.freigeben(v, wer ?? '', { eingabe: sauber.wert }) : UNBEKANNTE_ART;
     if (!r.ok) return NextResponse.json({ ok: false, error: r.fehler }, { status: r.status });
     return NextResponse.json({ ok: true, ergebnis: r.text, vorschlag: await hole(v.id) });
   }
-  const eingabe = eingabeSauber(body.eingabe) ?? v.eingabe;
-  const lauf = await fuehreAus(v.werkzeug, eingabe, origin, { erzwingen: true, person: v.gruppe === HAUSHALT ? z!.person : person });
-  const raus = await entscheide(id, lauf.ok ? 'freigegeben' : 'fehlgeschlagen', { ergebnis: lauf.text, eingabe });
-  return NextResponse.json({ ok: lauf.ok, ergebnis: lauf.text, vorschlag: raus });
+  const r = await werkzeugFreigeben(id, sauber.wert);
+  if (r.status !== 200) return NextResponse.json({ ok: false, error: r.text }, { status: r.status });
+  return NextResponse.json({ ok: r.ok, ergebnis: r.text, vorschlag: r.vorschlag });
 }

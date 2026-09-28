@@ -98,7 +98,7 @@ export async function POST(req: Request) {
         return r.ok ? NextResponse.json({ ok: true, ergebnis: r.wert.text }) : antwort(r);
       }
       const hinweis = typeof b.hinweis === 'string' ? b.hinweis : undefined;
-      return antwort(await vorschlagAblehnen(stapelId, zugang.person, { grund: str(b.grund, 400), nochmal: b.nochmal === true, hinweis, aufgabeId: id }));
+      return antwort(await vorschlagAblehnen(stapelId, zugang.person, { grund: typeof b.grund === 'string' ? b.grund : undefined, nochmal: b.nochmal === true, hinweis, aufgabeId: id }));
     }
     default:
       return NextResponse.json({ ok: false, error: 'Unbekannte Aktion.' }, { status: 400 });

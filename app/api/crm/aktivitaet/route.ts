@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { personAus } from '@/lib/zoe/raum';
-import { fuerPerson, wendeAktivitaetAn, wannSaeubern, wannInZukunft, ortSaeubern, STUFEN, AKTIVITAET_ARTEN, ERGEBNISSE, NOTIZ_FELDER, type Kontakt, type AktivitaetArt, type Stufe, type Ergebnis, type NotizVorlage } from '@/lib/make-one/crm';
+import { VORSCHLAG_KENNUNG, fuerPerson, wendeAktivitaetAn, wannSaeubern, wannInZukunft, ortSaeubern, STUFEN, AKTIVITAET_ARTEN, ERGEBNISSE, NOTIZ_FELDER, type Kontakt, type AktivitaetArt, type Stufe, type Ergebnis, type NotizVorlage } from '@/lib/make-one/crm';
 import { notizAnwenden, istAktAnker, type NotizAktion } from '@/lib/crm/aktivitaeten';
 import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
@@ -92,7 +92,7 @@ async function notizAktion(req: Request, b: { aktion: NotizAktion; id?: string; 
 
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
-  let b: { id?: string; art?: string; text?: string; stufe?: string; wiedervorlage?: string; von?: 'zoe'; ergebnis?: string; notiz?: Record<string, unknown>; naechster?: { text?: string; datum?: string }; bezug?: string; wann?: string; ort?: string; anlass?: string; aktion?: string; anker?: string; stand?: string };
+  let b: { id?: string; art?: string; text?: string; stufe?: string; wiedervorlage?: string; von?: 'zoe'; ergebnis?: string; notiz?: Record<string, unknown>; naechster?: { text?: string; datum?: string }; bezug?: string; wann?: string; ort?: string; anlass?: string; aktion?: string; anker?: string; stand?: string; vorschlagId?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (b.aktion === 'aendern' || b.aktion === 'loeschen') return notizAktion(req, { ...b, aktion: b.aktion });
   if (b.aktion !== undefined) return NextResponse.json({ ok: false, fehler: 'aktion ist aendern oder loeschen.' }, { status: 400 });
@@ -119,6 +119,9 @@ export async function POST(req: Request) {
   const crm = art === 'anruf' ? await ladeCrm() : null;
   const ctx = crm ? { hatMandat: crm.mandate.some(m => m.status === 'aktiv' && m.kontaktIds.includes(id)), hatChance: crm.chancen.some(c => OFFENE_STUFEN.includes(c.stufe) && c.kontaktIds.includes(id)) } : {};
 
+  // Aus einem ZOE-Vorschlag (29.09.): steht die Aktivität schon am Kontakt, wird nichts doppelt angelegt (idempotent).
+  const vorschlagId = typeof b.vorschlagId === 'string' && VORSCHLAG_KENNUNG.test(b.vorschlagId) ? b.vorschlagId : undefined;
+  let schonDa = false;
   let ergebnis: Kontakt | null = null;
   let abgelehnt: { status: number; body: Antwort } | null = null;
   /** Geplantes Meeting (in der Zukunft) — zählt noch nicht als Aktivität am Deal. */
@@ -128,6 +131,7 @@ export async function POST(req: Request) {
     const i = f.kontakte.findIndex(x => x.id === id);
     if (i < 0) return f;
     const alt = f.kontakte[i];
+    if (vorschlagId && (alt.aktivitaeten ?? []).some(a => a.vorschlagId === vorschlagId)) { schonDa = true; ergebnis = alt; return f; }
     // Art. 18 (U2): eine eingeschränkte Person wird nicht weiter verarbeitet — auch kein Verlauf.
     if (alt.eingeschraenkt) { abgelehnt = { status: 409, body: { ok: false, fehler: EINGESCHRAENKT_FEHLER, eingeschraenkt: true } }; return f; }
     // Mutmaßliche Einwilligung (U2 #58): gelbe Telefon-Ampel → nur mit konkretem Anlass.
@@ -141,7 +145,7 @@ export async function POST(req: Request) {
     const geplant = art === 'termin' && wannInZukunft(wann, jetzt);
     nurGeplant = geplant;
     let neu = wendeAktivitaetAn(alt, {
-      art, text: text || undefined, von, ergebnis: erg, notiz: notiz && Object.keys(notiz).length ? notiz : undefined, bezug,
+      art, text: text || undefined, von, ergebnis: erg, ...(vorschlagId ? { vorschlagId } : {}), notiz: notiz && Object.keys(notiz).length ? notiz : undefined, bezug,
       ...(wann ? { wann } : {}), ...(art === 'termin' ? { ort: ortSaeubern(b.ort) } : {}), ...(art === 'anruf' && anlass ? { anlass } : {}),
       stufe: wunschStufe ?? (geplant ? undefined : folge?.stufe), wiedervorlage: wunschWv ?? naechster?.datum ?? (geplant ? undefined : folge?.wiedervorlage),
     }, heute, jetzt, tagePlus);
@@ -155,6 +159,7 @@ export async function POST(req: Request) {
   const nein = abgelehnt as { status: number; body: Antwort } | null;
   if (nein) return NextResponse.json(nein.body, { status: nein.status });
   if (!ergebnis) return NextResponse.json({ error: `Kein Kontakt mit id ${id}.` }, { status: 404 });
+  if (schonDa) return NextResponse.json({ ok: true, schonDa: true, kontakt: mitStandFuer(ergebnis as Kontakt, personStreng(req) ?? '') });
   // Werbesperre (Ergebnis „Sperre“): auch auf die gehashte Sperrliste (K2 #60) — ein Import legt die Person nie neu an.
   const gespeichert = ergebnis as Kontakt | null;
   if (gespeichert?.werbesperre) await sperren([gespeichert], 'werbesperre', heute);

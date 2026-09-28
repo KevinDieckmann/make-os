@@ -17,6 +17,7 @@ import { firmaAusAngabe, finanzOrtName, istGesellschaft, type Gesellschaftskennu
 import type { FaktArt } from './gedaechtnis';
 import { projektUnterlagen, dateiLesen } from './aufgaben-unterlagen';
 import { AUFGABEN_WERKZEUGE } from './aufgaben-werkzeuge';
+import { ARBEIT_WERKZEUGE } from './arbeit-werkzeug';
 import { CRM_LESE_LAEUFE, suche_kontakt as sucheKontaktSicht, crm_lage as crmLageSicht } from './crm-werkzeuge';
 import { CRM_VORSCHLAG_LAUF } from './crm-vorschlag';
 
@@ -985,4 +986,6 @@ export const WERKZEUGE: Record<string, { gruppe: string; lauf: Lauf }> = {
   datei_lesen: { gruppe: 'aufgaben-dateien', lauf: nurImHaushalt(dateiLesen) },
   // ZOE-Aufgaben (28.09., C4): meine_aufgaben, aufgabe_an_zoe — prüfen den Haushalt selbst (lib/zoe/aufgaben-werkzeuge.ts).
   ...AUFGABEN_WERKZEUGE,
+  // Eine Suche über Brain und App (29.09., B3): suche_arbeit — prüft den Haushalt selbst (lib/zoe/arbeit-werkzeug.ts).
+  ...ARBEIT_WERKZEUGE,
 };

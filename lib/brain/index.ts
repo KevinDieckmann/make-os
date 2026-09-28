@@ -126,6 +126,11 @@ export function indexFrischHalten(minuten = 10): void {
   void aktualisieren(true)
     .then(async () => { const e = await import('./einbettung'); if (e.embeddingsAktiv()) await e.vektorenAuffuellen(64); })
     .catch(err => console.error('[brain-index] Abgleich fehlgeschlagen:', err instanceof Error ? err.message : err));
+  // Arbeitsbestände der App (29.09., lib/brain/app-index.ts): im selben Takt, nur wenn sich Aufgaben/CRM geändert haben.
+  void import('./app-index').then(a => a.appIndexAktualisieren())
+    .catch(err => console.error('[brain-index] App-Bestände nicht abgeglichen:', err instanceof Error ? err.message : err));
+  // _App-Spiegel im Server-Vault (lib/brain/app-spiegel.ts): nur eingeschaltet und nur bei Änderung.
+  if (process.env.MAKE_OS_APP_SPIEGEL?.trim() === 'an') void import('./app-spiegel').then(a => a.appSpiegel()).catch(() => {});
 }
 
 interface Zeile { id: number; notiz_id: string; ueberschrift: string; kontext: string; text: string; r: number; titel: string; bereich: string; scope: string | null; owner: string | null; stand: string | null; wurzel: string; geaendert: string; typ: string | null }

@@ -13,6 +13,7 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { ladeCrm, kundenAusMandaten } from '@/lib/crm/speicher';
+import { ladeAufgaben } from '@/lib/aufgaben/speicher';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { localDay, tagePlus, alterStunden } from '@/lib/zeit';
 import { resolveVitals, vitalsHint, type ResolvedVitals } from '@/lib/vitals';
@@ -88,6 +89,17 @@ export interface Brain {
   };
 }
 
+/** Papierkorb (Feld `geloeschtAm`, paralleles Paket) — tolerant: fehlt das Feld, ist nichts gelöscht. */
+const imPapierkorb = (x: object): boolean => typeof (x as { geloeschtAm?: unknown }).geloeschtAm === 'string' && !!(x as { geloeschtAm: string }).geloeschtAm;
+
+/** Aufgaben-Bestand → Brain-Sicht: nur Hauptaufgaben (Unteraufgaben zählen nicht doppelt), nichts aus dem Papierkorb (rein). */
+export function aufgabenFuerBrain(state: { tasks: readonly (StoredTask & { parentId?: string })[]; projects: readonly StoredProject[] }): { tasks: StoredTask[]; projects: StoredProject[] } {
+  return {
+    tasks: state.tasks.filter(t => !t.parentId && !imPapierkorb(t)).map(t => ({ id: t.id, title: t.title, status: t.status, priority: t.priority, dueDate: t.dueDate, projectId: t.projectId, assignee: t.assignee, einheit: t.einheit })),
+    projects: state.projects.filter(p => !imPapierkorb(p)).map(p => ({ id: p.id, title: p.title })),
+  };
+}
+
 /** Alles einsammeln — jede Quelle darf einzeln ausfallen. */
 /**
  * Der Live-Zustand. `person` entscheidet, WESSEN Körperwerte darin stehen —
@@ -96,7 +108,9 @@ export interface Brain {
  */
 export async function gatherBrain(heute = localDay(), person: string = 'kevin'): Promise<Brain> {
   const [tasksR, finR, prospectsR, calR, kemR, msR, vitalsR, indexR, laeufeR, meilR, fplanR, kundenR, shieldsR, kompassR, ordnungR, schwellenR, teamR] = await Promise.allSettled([
-    loadJson<{ tasks: StoredTask[]; projects: StoredProject[] }>('tasks'),
+    // Aufgaben (29.09., B4): die übernommene Sicht (`ladeAufgaben` — Space, Unteraufgaben aus `subTasks` …), nur für
+    // Personen im Haushalt des Inhabers (wie die Mandate), Papierkorb (`geloeschtAm`) ausgeblendet, gezählt nur Hauptaufgaben.
+    personImHaushaltDesInhabers(person).then(ja => (ja ? ladeAufgaben().then(aufgabenFuerBrain) : null)),
     loadJson<FinanceState>('finance'),
     loadJson<{ prospects: Prospect[] }>('prospects'),
     loadJson<{ events: CalEvent[]; at?: string }>('calendar-cache'),

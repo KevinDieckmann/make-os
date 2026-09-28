@@ -7,6 +7,8 @@
 // annehmen tun Menschen. Ohne KI-Guthaben läuft er als Regelwerk: ein Vorschlag
 // „Fakten vom <Tag>“ mit allem Neuen. Riegel: Bestand brain-konsolidierung
 // (letzter Tag), der Takt fragt ihn (lib/zoe/takt.ts).
+// 29.09. (B2): zuerst die Brücke App → Brain — ein Vorschlag „App-Tagesbericht“ (lib/brain/app-bericht.ts) und der
+// _App-Spiegel im Server-Vault (lib/brain/app-spiegel.ts). Beide schreiben nur in einen konfigurierten Server-Vault.
 
 import { askText, hasAnthropicKey, guthabenLeer, fremd, FREMD_REGEL, extractJson } from '@/lib/anthropic';
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -17,7 +19,7 @@ import { localDay } from '@/lib/zeit';
 
 export const RIEGEL = 'brain-konsolidierung';
 export interface KonsolidierungStand { letzterTag?: string; letzterLauf?: string; letztesErgebnis?: string }
-export interface Ergebnis { ok: boolean; abgelegt: number; schonDa: number; ohneKi: boolean; text: string }
+export interface Ergebnis { ok: boolean; abgelegt: number; schonDa: number; ohneKi: boolean; text: string; /** App → Brain (29.09.): Tagesbericht + _App-Spiegel. */ app?: string }
 
 const STUNDE = 3_600_000;
 
@@ -36,6 +38,14 @@ export function regelVorschlag(neu: Fakt[], heute: string): NeuerVorschlag | nul
     ziel: 'neu', zielOrdner: '03. Protokolle/Protokolle', begruendung: 'Regelwerk ohne KI: neue Gedächtnis-Einträge des Tages, unverdichtet.', quelle: 'ZOE-Gedächtnis', vertraulichkeit: 'gemeinsam', erstelltVon: 'zoe' };
 }
 
+/** Die Brücke App → Brain im nächtlichen Lauf: Tagesbericht (Vorschlag) und _App-Spiegel (direkt, falls eingeschaltet). */
+async function appInsBrain(heute: string): Promise<string> {
+  const teile: string[] = [];
+  try { teile.push((await (await import('./app-bericht')).appTagesbericht(heute)).text); } catch (e) { teile.push(`Tagesbericht: ${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}`); }
+  try { teile.push((await (await import('./app-spiegel')).appSpiegel({ erzwingen: true, heute })).text); } catch (e) { teile.push(`_App-Spiegel: ${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}`); }
+  return teile.join(' · ');
+}
+
 interface ModellVorschlag { titel?: string; text?: string; ziel?: string; ziel_notiz?: string; begruendung?: string; quelle?: string; vertraulichkeit?: string; prioritaet?: number; gilt_fuer?: string }
 
 /** Der Lauf. `erzwingen` übergeht den Tages-Riegel (Knopf auf der Wissen-Seite). */
@@ -43,10 +53,12 @@ export async function konsolidieren(jetzt = new Date().toISOString(), erzwingen 
   const heute = localDay(new Date(jetzt));
   const riegel = (await loadJson<KonsolidierungStand>(RIEGEL)) ?? {};
   if (!erzwingen && riegel.letzterTag === heute) return { ok: true, abgelegt: 0, schonDa: 0, ohneKi: false, text: 'heute schon gelaufen' };
+  // App → Brain (29.09., B2): Tagesbericht als Vorschlag in der Inbox + _App-Spiegel (nur mit Server-Vault; wirft nie).
+  const app = await appInsBrain(heute);
   const alle = await fakten({ anzahl: 500 }).catch(() => [] as Fakt[]);
   const neu = tagesernte(alle, jetzt);
   const offen = await vorschlaegeLesen(AGENT).catch(() => []);
-  const merke = async (e: Omit<Ergebnis, 'ok'>) => { await updateJson<KonsolidierungStand>(RIEGEL, cur => ({ ...(cur ?? {}), letzterTag: heute, letzterLauf: jetzt, letztesErgebnis: e.text })); return { ok: true, ...e }; };
+  const merke = async (e: Omit<Ergebnis, 'ok'>) => { await updateJson<KonsolidierungStand>(RIEGEL, cur => ({ ...(cur ?? {}), letzterTag: heute, letzterLauf: jetzt, letztesErgebnis: `${e.text} · ${app}` })); return { ok: true, ...e, app }; };
 
   if (!hasAnthropicKey() || guthabenLeer()) {
     const v = regelVorschlag(neu, heute);

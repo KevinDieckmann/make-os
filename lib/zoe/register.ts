@@ -17,6 +17,7 @@ import { loadJson } from '@/lib/store/local-db';
 import { WERKZEUGE } from './werkzeuge';
 import { firmaAusAngabe, finanzOrtName, istGesellschaft } from '@/lib/einheiten';
 import { AUFGABEN_REGISTER } from './aufgaben-werkzeuge';
+import { ARBEIT_REGISTER } from './arbeit-werkzeug';
 import { CRM_VORSCHLAG_REGISTER } from './crm-vorschlag';
 
 export type Risiko = 'frei' | 'freigabe' | 'nie';
@@ -336,6 +337,8 @@ export const REGISTER: Record<string, Eintrag> = {
   },
   // ZOE-Aufgaben (28.09., C4): lesen und übergeben frei; das Übernehmen ist KEIN Werkzeug (nur Stapel/Route).
   ...AUFGABEN_REGISTER,
+  // Eine Suche über Brain und App (29.09., B3, lib/zoe/arbeit-werkzeug.ts) — nur lesen.
+  ...ARBEIT_REGISTER,
 
   // Freigabe — Geld, Ziele, Kompass. Wird zum Vorschlag im Stapel.
   // Haushaltsfinanzen (24.09.): lesen läuft durch, Ändern braucht die Freigabe.

@@ -394,12 +394,20 @@ async function mandateLage(i: Eingabe, s: CrmSicht): Promise<string> {
   const rechnungen = (await loadJson<{ rechnungen?: import('@/lib/crm/kunden').RechnungKurz[] }>('finanzplan'))?.rechnungen ?? [];
   const alle = s.crm.mandate.filter(m => !i.mandat || m.id === text(i.mandat, 80) || suchPasst([m.titel, m.kunde], text(i.mandat, 80)));
   const k = konzentration(s.crm.mandate.filter(m => m.status === 'aktiv'));
+  // Zeit je Mandat diese Woche (29.09., B4) — bewusste Business-Blöcke des Haushalts (wie Fokus › Zeit je Mandat).
+  const zeit = await (async () => {
+    try { const { zeitJeMandatFuer } = await import('@/lib/zeitmessung/mandate-server'); return await zeitJeMandatFuer(s.person, 'woche'); } catch { return null; }
+  })();
+  const { stundenText } = await import('@/lib/zeitmessung/mandate-server');
+  const zeitVon = new Map((zeit?.gesamt.zeilen ?? []).map(z => [z.id, z]));
   const zeilen = alle.map(m => {
     const l = mandatLage(m, s.heute, rechnungen);
-    return `${mandatZeile(s, m)}\n  Lage: ${l.ampel ?? 'grau'}${l.health !== null ? ` · Health ${l.health}` : ''}${l.endeAm ? ` · Ende ${l.endeAm}` : ''}${l.fristBis ? ` · kündbar bis ${l.fristBis}` : ''}${l.gruende.length ? ` · ${l.gruende.join('; ')}` : ''}`
+    const z = zeitVon.get(m.id);
+    return `${mandatZeile(s, m)}\n  Zeit diese Woche: ${z ? `${stundenText(z.sek)} (${z.bloecke} Blöcke)${z.euroJeStunde ? ` · ≈ ${eur(z.euroJeStunde)}/h (grober Hinweis)` : ''}` : '—'}\n  Lage: ${l.ampel ?? 'grau'}${l.health !== null ? ` · Health ${l.health}` : ''}${l.endeAm ? ` · Ende ${l.endeAm}` : ''}${l.fristBis ? ` · kündbar bis ${l.fristBis}` : ''}${l.gruende.length ? ` · ${l.gruende.join('; ')}` : ''}`
       + `${m.ziele.length ? `\n  Ziele: ${m.ziele.map(z => `${z.text}${z.ziel ? ` (Ziel ${z.ziel}` : ''}${z.ist ? `, ist ${z.ist})` : z.ziel ? ')' : ''}`).join(' | ')}` : ''}${m.notiz ? `\n  Notiz: ${m.notiz}` : ''}`;
   });
-  const koerper = [`MRR ${eur(mrr(s.crm.mandate))}${k ? ` · größter Kunde ${k.kunde} mit ${Math.round(k.anteil * 100)} %` : ''}`, block('Mandate', zeilen)].join('\n\n');
+  const zeitKopf = zeit ? `Zeit ${zeit.label} (${zeit.von} bis ${zeit.bis}): ${stundenText(zeit.gesamt.mitMandatSek)} mit Mandat · ${stundenText(zeit.gesamt.sek - zeit.gesamt.mitMandatSek)} ohne Mandat` : 'Zeit je Mandat: nicht lesbar';
+  const koerper = [`MRR ${eur(mrr(s.crm.mandate))}${k ? ` · größter Kunde ${k.kunde} mit ${Math.round(k.anteil * 100)} %` : ''}`, zeitKopf, block('Mandate', zeilen)].join('\n\n');
   return crmAntwort(`MANDATE · ${alle.length} von ${s.crm.mandate.length} · aktiv ${s.crm.mandate.filter(m => m.status === 'aktiv').length}`, koerper, i.teil, t => `mandate_lage mit teil: ${t}`);
 }
 

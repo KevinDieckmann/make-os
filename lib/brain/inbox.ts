@@ -72,11 +72,15 @@ export function darfVorschlagSehen(v: Pick<Vorschlag, 'vertraulichkeit'>, sicht:
   return v.vertraulichkeit === `privat-${sicht.person}`;
 }
 
-/** Vorschlag ablegen (ZOE oder ein Lauf). Gleicher Titel am selben Tag = derselbe Vorschlag (kein Zweiter). */
-export async function vorschlagAblegen(neu: NeuerVorschlag): Promise<{ ok: boolean; id?: string; schonDa?: boolean; fehler?: string }> {
+/**
+ * Vorschlag ablegen (ZOE oder ein Lauf). Gleicher Titel am selben Tag = derselbe Vorschlag (kein Zweiter).
+ * `opt.tag` legt den Tag der Kennung fest (z. B. App-Tagesbericht für gestern); `opt.einmalig` zählt auch schon
+ * angenommene/abgelehnte Vorschläge (Ordner erledigt/abgelehnt) als „schon da“ — nichts zweimal vorschlagen.
+ */
+export async function vorschlagAblegen(neu: NeuerVorschlag, opt: { tag?: string; einmalig?: boolean } = {}): Promise<{ ok: boolean; id?: string; schonDa?: boolean; fehler?: string }> {
   const titel = neu.titel.trim().slice(0, 120); const text = neu.text.trim().slice(0, 8000);
   if (!titel || !text) return { ok: false, fehler: 'Titel und Text sind Pflicht.' };
-  const heute = localDay();
+  const heute = opt.tag && /^\d{4}-\d{2}-\d{2}$/.test(opt.tag) ? opt.tag : localDay();
   const id = `${heute}-${kennung(titel)}.md`;
   const v: Vorschlag = { id, titel, text, ziel: ziel(neu.ziel), zielNotiz: neu.zielNotiz?.trim().slice(0, 160) || undefined, zielOrdner: sicherRel(neu.zielOrdner) || undefined,
     begruendung: neu.begruendung.trim().slice(0, 600), quelle: neu.quelle.trim().slice(0, 300), vertraulichkeit: vertr(neu.vertraulichkeit),
@@ -84,7 +88,9 @@ export async function vorschlagAblegen(neu: NeuerVorschlag): Promise<{ ok: boole
     erstelltVon: neu.erstelltVon && /^[a-z0-9-]{1,40}$/.test(neu.erstelltVon) ? neu.erstelltVon : 'zoe', erstelltAm: heute, status: 'offen' };
   try {
     await mkdir(INBOX(), { recursive: true });
-    try { await access(join(INBOX(), id)); return { ok: true, id, schonDa: true }; } catch { /* neu */ }
+    for (const ordner of opt.einmalig ? [INBOX(), ERLEDIGT(), ABGELEHNT()] : [INBOX()]) {
+      try { await access(join(ordner, id)); return { ok: true, id, schonDa: true }; } catch { /* nicht dort */ }
+    }
     await writeFile(join(INBOX(), id), vorschlagText(v), { encoding: 'utf8', flag: 'wx' });
     return { ok: true, id };
   } catch (err) { return { ok: false, fehler: err instanceof Error ? err.message.slice(0, 160) : 'nicht schreibbar' }; }

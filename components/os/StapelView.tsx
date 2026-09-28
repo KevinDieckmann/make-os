@@ -15,7 +15,7 @@ import { WEG } from '@/lib/wege';
 import { markttraktion } from '@/lib/crm/adresse';
 import { CrmStapelDetail } from './crm/ZoeFragen';
 
-interface Vorschlag { id: string; zeit: string; werkzeug: string; gruppe: string; titel: string; vorher?: string; nachher: string; eingabe: Record<string, unknown>; anlass?: string; status: 'offen' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen'; ergebnis?: string; grund?: string; /** Art mit Bezug (lib/zoe/stapel-arten.ts), z. B. „aufgabe“. */ bezug?: { art: string; id: string } }
+interface Vorschlag { id: string; zeit: string; werkzeug: string; gruppe: string; titel: string; vorher?: string; nachher: string; eingabe: Record<string, unknown>; anlass?: string; status: 'offen' | 'in_arbeit' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen'; ergebnis?: string; grund?: string; /** Wer entschieden hat (29.09.). */ entschiedenVon?: string; /** Art mit Bezug (lib/zoe/stapel-arten.ts), z. B. „aufgabe“. */ bezug?: { art: string; id: string } }
 interface Auftrag { id: string; zeit: string; art: string; name: string; auftrag?: string; status: 'offen' | 'laeuft' | 'fertig' | 'fehler'; ergebnis?: string; fehler?: string }
 interface Fakt { id: string; tag: string; art: string; thema: string; satz: string }
 interface Kosten { heuteCent: number; summeCent: number; jeZweck: { zweck: string; cent: number; anzahl: number }[] }
@@ -36,7 +36,7 @@ const GRUPPE: Record<string, { label: string; href: string; farbe: string }> = {
 };
 const STATUS: Record<string, { label: string; farbe: string }> = {
   offen: { label: 'offen', farbe: LEUCHT.achtung }, laeuft: { label: 'läuft', farbe: LEUCHT.puls }, fertig: { label: 'fertig', farbe: LEUCHT.gut }, fehler: { label: 'Fehler', farbe: LEUCHT.kritisch },
-  freigegeben: { label: 'freigegeben', farbe: LEUCHT.gut }, abgelehnt: { label: 'abgelehnt', farbe: C.inkLeise }, fehlgeschlagen: { label: 'fehlgeschlagen', farbe: LEUCHT.kritisch },
+  in_arbeit: { label: 'wird übernommen', farbe: LEUCHT.puls }, freigegeben: { label: 'freigegeben', farbe: LEUCHT.gut }, abgelehnt: { label: 'abgelehnt', farbe: C.inkLeise }, fehlgeschlagen: { label: 'fehlgeschlagen', farbe: LEUCHT.kritisch },
 };
 const her = (iso: string) => { const min = Math.floor((Date.now() - Date.parse(iso)) / 60000); return min < 1 ? 'gerade' : min < 60 ? `vor ${min} min` : min < 1440 ? `vor ${Math.floor(min / 60)} h` : `${iso.slice(8, 10)}.${iso.slice(5, 7)}.`; };
 
@@ -162,7 +162,7 @@ export function StapelView() {
           <Ueberschrift farbe={LEUCHT.schlaf}>Zuletzt entschieden</Ueberschrift>
           <Liste>
             {entschieden.length === 0 && <Leer>Noch nichts entschieden.</Leer>}
-            {entschieden.map(v => <Zeile key={v.id} links={<Punkt farbe={STATUS[v.status]?.farbe ?? C.inkLeise} />} titel={v.titel} unter={`${g(v.gruppe).label} · ${her(v.zeit)}${v.grund ? ` · ${v.grund}` : v.ergebnis ? ` · ${v.ergebnis.slice(0, 80)}` : ''}`} rechts={<Chip farbe={STATUS[v.status]?.farbe ?? C.inkLeise}>{STATUS[v.status]?.label ?? v.status}</Chip>} />)}
+            {entschieden.map(v => <Zeile key={v.id} links={<Punkt farbe={STATUS[v.status]?.farbe ?? C.inkLeise} />} titel={v.titel} unter={`${g(v.gruppe).label} · ${her(v.zeit)}${v.entschiedenVon ? ` · ${v.entschiedenVon}` : ''}${v.grund ? ` · ${v.grund}` : v.ergebnis ? ` · ${v.ergebnis.slice(0, 80)}` : ''}`} rechts={<Chip farbe={STATUS[v.status]?.farbe ?? C.inkLeise}>{STATUS[v.status]?.label ?? v.status}</Chip>} />)}
           </Liste>
         </Karte>
         <Karte i={4}>

@@ -1,7 +1,7 @@
 // ─── Markttraktion — Follow-up-Ebene (27.09.) ───────────────────────────────
 // GET  → alle fälligen und bald fälligen Follow-ups (echte + virtuelle aus den alten
 //        Feldern), Zahlen je Gruppe, Pünktlichkeit
-// POST { aktion: 'anlegen', bezug, kontaktId?, art?, text, faellig, uhrzeit?, zustaendig?, notiz? }
+// POST { aktion: 'anlegen', bezug, kontaktId?, art?, text, faellig, uhrzeit?, zustaendig?, notiz?, id? (nur `fu-v-…` aus einem ZOE-Vorschlag, idempotent) }
 //      { aktion: 'erledigen', id, ergebnis?, notiz?, naechster?: { text, faellig, art? } }
 //      { aktion: 'verschieben', id, tage | faellig }     (nie in die Vergangenheit)
 //      { aktion: 'absagen', id }                          (überfällig abgesagt = verpasst)
@@ -116,12 +116,19 @@ export async function POST(req: Request) {
     if (faellig < heute) return NextResponse.json({ ok: false, fehler: 'Das Datum liegt in der Vergangenheit.' }, { status: 400 });
     // Art. 18 (28.09., W8): an einer eingeschränkten Person wird nichts Neues festgehalten.
     if (kontakt(kontaktId ?? (bezug.art === 'kontakt' ? bezug.id : undefined))?.eingeschraenkt) return EINGESCHRAENKT();
+    // Aus einem ZOE-Vorschlag (29.09.): feste Kennung `fu-<vorschlag>` — eine zweite Freigabe legt nichts doppelt an.
+    const wunschId = typeof b.id === 'string' && /^fu-v-[a-z0-9-]{4,40}$/.test(b.id) ? b.id : undefined;
     const f = neuesFollowUp({
-      id: neueId('fu'), bezug, kontaktId: kontaktId ?? (bezug.art === 'kontakt' ? bezug.id : undefined), art: ARTEN.includes(b.art as FollowUpArt) ? (b.art as FollowUpArt) : undefined, text, faellig,
+      id: wunschId ?? neueId('fu'), bezug, kontaktId: kontaktId ?? (bezug.art === 'kontakt' ? bezug.id : undefined), art: ARTEN.includes(b.art as FollowUpArt) ? (b.art as FollowUpArt) : undefined, text, faellig,
       uhrzeit: typeof b.uhrzeit === 'string' && /^\d{2}:\d{2}$/.test(b.uhrzeit) ? b.uhrzeit : undefined, zustaendig: wer(b.zustaendig), notiz: typeof b.notiz === 'string' ? b.notiz : undefined,
       quelle: ['hand', 'zoe', 'head', 'deal', 'event', 'kampagne', 'kadenz'].includes(String(b.quelle)) ? (b.quelle as FollowUp['quelle']) : 'hand',
     }, kontakt(kontaktId ?? bezug.id), person, jetzt);
-    await aendereCrm(c => ({ ...c, followups: [...(c.followups ?? []), { ...f, geaendertVon: person }] }));
+    let schonDa = false;
+    await aendereCrm(c => {
+      if (wunschId && (c.followups ?? []).some(x => x.id === wunschId)) { schonDa = true; return c; }
+      return { ...c, followups: [...(c.followups ?? []), { ...f, geaendertVon: person }] };
+    });
+    if (schonDa) return NextResponse.json({ ok: true, schonDa: true, text: 'Dieses Follow-up steht schon — nicht doppelt angelegt.' });
     return NextResponse.json({ ok: true, followup: f, text: `Follow-up „${f.text}“ am ${f.faellig} steht.` });
   }
 

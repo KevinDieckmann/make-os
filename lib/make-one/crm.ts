@@ -83,6 +83,11 @@ export interface Aktivitaet {
    * ihre Aktivitäten behält, auch wenn die Person weitergezogen ist. Altbestand ohne: über die Station (von/bis).
    */
   firmaId?: string;
+  /**
+   * Kennung des ZOE-Vorschlags (`v-…`, 29.09.), aus dem die Aktivität übernommen wurde — eine zweite Freigabe
+   * desselben Vorschlags legt nichts doppelt an (app/api/crm/aktivitaet `vorschlagId`).
+   */
+  vorschlagId?: string;
 }
 
 /** Beziehungskreis A–D: bestimmt den Takt, in dem man sich meldet (Dunbar-Schichten). */
@@ -1109,6 +1114,8 @@ export interface AktivitaetEingabe {
   ort?: string;
   /** Anlass eines Anrufs (U2 #58) — Pflicht bei gelber Telefon-Ampel (prüft die Route). */
   anlass?: string;
+  /** Kennung des ZOE-Vorschlags, aus dem die Aktivität stammt (29.09., idempotente Freigabe). */
+  vorschlagId?: string;
   /** Ausdrückliche Stufe gewinnt über die Regel. */
   stufe?: Stufe;
   wiedervorlage?: string;
@@ -1119,6 +1126,9 @@ export interface AktivitaetEingabe {
  * Regeln zusammenkommen: protokollieren, letzter Kontakt, Stufe vorwärts,
  * Wiedervorlage. Route und ZOE-Werkzeug rufen beide genau das hier.
  */
+/** Form einer ZOE-Vorschlags-Kennung (lib/zoe/stapel.ts: `v-<zeit>-<zufall>`). */
+export const VORSCHLAG_KENNUNG = /^v-[a-z0-9-]{4,40}$/;
+
 export function wendeAktivitaetAn(
   k: Kontakt, e: AktivitaetEingabe, heute: string, jetztIso: string,
   tagePlus: (d: string, n: number) => string,
@@ -1127,6 +1137,7 @@ export function wendeAktivitaetAn(
     ...(e.ergebnis ? { ergebnis: e.ergebnis } : {}), ...(e.notiz ? { notiz: e.notiz } : {}), ...(e.bezug ? { bezug: e.bezug } : {}),
     ...(wannSaeubern(e.wann) ? { wann: wannSaeubern(e.wann) } : {}), ...(ortSaeubern(e.ort) ? { ort: ortSaeubern(e.ort) } : {}),
     ...(e.anlass?.trim() ? { anlass: e.anlass.trim().slice(0, 600) } : {}),
+    ...(e.vorschlagId && VORSCHLAG_KENNUNG.test(e.vorschlagId) ? { vorschlagId: e.vorschlagId } : {}),
     // Firma zum Zeitpunkt (28.09., Stationen): die Zeitlinie der Firma behält die Aktivität nach einem Jobwechsel.
     ...(k.firmaId ? { firmaId: k.firmaId } : {}) };
   const out: Kontakt = { ...k, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag] };

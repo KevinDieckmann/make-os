@@ -1,7 +1,8 @@
 // ─── /api/brain/index — Stand und Aufbau des Brain-Index (27.09.) ───────────
 // GET: Notizen, Abschnitte, Vektoren, letzter Lauf, Hinweis zu den Embeddings.
-// POST { aktion: 'aufbauen' | 'vektoren' }: Index mit dem Vault abgleichen bzw.
-// eine Portion Vektoren nachziehen — Haushalt des Inhabers. Der Takt macht das
+// POST { aktion: 'aufbauen' | 'vektoren' | 'arbeit' }: Index mit dem Vault abgleichen bzw.
+// eine Portion Vektoren nachziehen bzw. (29.09.) den Such-Index der Arbeitsbestände
+// (`app_chunks`, lib/brain/app-index.ts) neu bauen — Haushalt des Inhabers. Der Takt macht das
 // alle 10 Minuten von selbst; hier für den Knopf auf der Wissen-Seite.
 
 import { NextResponse } from 'next/server';
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
   try { b = await req.json(); } catch { /* Standard: aufbauen */ }
   try {
     if (b.aktion === 'vektoren') return NextResponse.json({ ok: true, ...(await vektorenAuffuellen(128)), stand: indexStand() });
+    if (b.aktion === 'arbeit') { const a = await import('@/lib/brain/app-index'); return NextResponse.json({ ok: true, lauf: await a.appIndexNeuBauen(), arbeit: a.appIndexStand() }); }
     const lauf = await aktualisieren(true);
     let vektoren: Awaited<ReturnType<typeof vektorenAuffuellen>> | null = null;
     if (embeddingsAktiv()) vektoren = await vektorenAuffuellen(64).catch(() => null);

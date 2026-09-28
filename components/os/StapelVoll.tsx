@@ -24,7 +24,7 @@ interface Vorschlag {
   id: string; zeit: string; werkzeug: string; gruppe: string;
   titel: string; vorher?: string; nachher: string;
   eingabe: Record<string, unknown>; anlass?: string;
-  status: 'offen' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen';
+  status: 'offen' | 'in_arbeit' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen';
   ergebnis?: string; grund?: string; quelle?: 'gespraech' | 'lauf';
 }
 interface Fakt {
