@@ -201,6 +201,37 @@ describe('Datensatz-Zusammenfassung', () => {
     expect(nummer(3)).toBe('③');
     expect(nummer(12)).toBe('(12)');
   });
+  it('Meeting zählt mit seinem Zeitpunkt (wann), nicht mit dem Tag des Festhaltens', () => {
+    // Am 01.09. festgehalten, stattgefunden am 20.09. — das Gespräch ist vom 20.09.
+    const p = k('a', { aktivitaeten: [akt('2026-09-01T09:00:00Z', 'termin', { wann: '2026-09-20T10:00', text: 'Budget klären' }), akt('2026-09-10T09:00:00Z', 'mail', { text: 'Unterlagen' })] });
+    const z = zusammenfassung(p, bestand(), HEUTE, '2026-09-28T08:00:00Z');
+    expect(z.saetze[0].text).toMatch(/^Letztes echtes Gespräch am 20\.09\. \(Meeting, vor 8 Tagen\): „Budget klären“\./);
+    // Die Mail vom 10.09. liegt vor dem Meeting — kein eigener Satz.
+    expect(z.saetze.some(x => x.text.includes('Mail'))).toBe(false);
+  });
+  it('kommende Meetings sind kein „letztes Gespräch“, sondern ein eigener Satz „Nächstes Meeting am …“', () => {
+    const p = k('a', { aktivitaeten: [
+      akt('2026-09-05T09:00:00Z', 'anruf', { ergebnis: 'gespraech' }),
+      akt('2026-09-27T09:00:00Z', 'termin', { wann: '2026-10-02T14:00', ort: 'Büro Hamburg' }),
+      akt('2026-09-27T09:05:00Z', 'termin', { wann: '2026-10-09' }),
+    ] });
+    const z = zusammenfassung(p, bestand(), HEUTE, '2026-09-28T08:00:00Z');
+    expect(z.saetze[0].text).toMatch(/^Letztes echtes Gespräch am 05\.09\. \(Anruf/);
+    const naechstes = z.saetze.find(x => x.text.startsWith('Nächstes Meeting'));
+    expect(naechstes?.text).toBe('Nächstes Meeting am 02.10. um 14:00 Uhr (in 4 Tagen), Büro Hamburg.');
+    expect(z.quellen.find(q => q.nr === naechstes!.quellen[0])).toMatchObject({ art: 'aktivitaet', anker: ankerListe(p.aktivitaeten)[1] });
+  });
+  it('Meeting heute: ohne Jetzt zählt es als vorbei, mit Uhrzeit in der Zukunft als nächstes Meeting', () => {
+    const p = k('a', { aktivitaeten: [akt('2026-09-27T09:00:00Z', 'termin', { wann: '2026-09-28T18:00' })] });
+    expect(zusammenfassung(p, bestand(), HEUTE).saetze[0].text).toMatch(/^Letztes echtes Gespräch am 28\.09\. \(Meeting, heute\)/);
+    const z = zusammenfassung(p, bestand(), HEUTE, '2026-09-28T08:00:00Z');
+    expect(z.saetze[0].text).toBe('Nächstes Meeting am 28.09. um 18:00 Uhr (heute).');
+    expect(z.leer).toBe(false);
+  });
+  it('Altbestand: Meeting-Zeitpunkt aus der ersten Textzeile', () => {
+    const p = k('a', { aktivitaeten: [akt('2026-09-01T09:00:00Z', 'termin', { text: 'Meeting am 15.09.2026 um 09:30 Uhr\nErstgespräch' })] });
+    expect(zusammenfassung(p, bestand(), HEUTE, '2026-09-28T08:00:00Z').saetze[0].text).toMatch(/^Letztes echtes Gespräch am 15\.09\. \(Meeting, vor 13 Tagen\): „Erstgespräch“/);
+  });
   it('abgeschlossener Deal erscheint, wenn nichts offen ist', () => {
     const z = zusammenfassung(k('a'), bestand({ chancen: [deal('d9', { kontaktIds: ['c-a'], stufe: 'verloren', grund: 'Preis' })] }), HEUTE);
     expect(z.saetze[0].text).toBe('Deal „Deal d9“ verloren (Preis).');

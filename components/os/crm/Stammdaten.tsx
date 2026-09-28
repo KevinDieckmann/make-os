@@ -2,7 +2,7 @@
 
 // ─── Markttraktion · Stammdaten — sauber halten, was alles andere trägt ───────────────
 // Übersicht (Selbstprüfung + was zu tun ist + Bestand + Verweise auf Produkte,
-// Segmente, Team) · Datenqualität (Vollständigkeit, Dubletten, Firmen-Abgleich)
+// Segmente, Team) · Datenqualität (Verbindungen, Vollständigkeit, Dubletten, Firmen-Abgleich)
 // · Wertelisten (Stufen mit Wahrscheinlichkeit, Verlustgründe, Kadenz je Kreis,
 // Gesprächsergebnisse, Ziele, Herkunft, Rechtsgrundlagen — stammdaten/Wertelisten.tsx)
 // · Datenschutz (Pflichtangaben, Betroffenenanträge, Löschkonzept, Verzeichnis
@@ -26,6 +26,7 @@ import { Laedt } from './stammdaten/Laden';
 import { Wertelisten } from './stammdaten/Wertelisten';
 import { Austausch } from './stammdaten/Austausch';
 import { Verweise } from './stammdaten/Verweise';
+import { Verbindungen } from './stammdaten/Verbindungen';
 
 type Unter = 'uebersicht' | 'qualitaet' | 'wertelisten' | 'datenschutz' | 'austausch';
 const UNTER: { id: Unter; label: string }[] = [{ id: 'uebersicht', label: 'Übersicht' }, { id: 'qualitaet', label: 'Datenqualität' }, { id: 'wertelisten', label: 'Wertelisten' }, { id: 'datenschutz', label: 'Datenschutz' }, { id: 'austausch', label: 'Import & Export' }];
@@ -97,7 +98,8 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
 
       {unter === 'qualitaet' && (
         <>
-          <Karte i={0}>
+          <Verbindungen i={0} onGeaendert={() => { void laden(); void api.laden(); }} />
+          <Karte i={1}>
             <Ueberschrift rechts={`${d.qualitaet.kontakte} Personen`}>Vollständigkeit</Ueberschrift>
             <div style={{ display: 'grid', gap: 9 }}>
               {d.qualitaet.vollstaendigkeit.map(f => (
@@ -110,14 +112,14 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
             </div>
             <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 10 }}>Kreis, Anrede und Lebensphase pflegst du in der Karteikarte — sie steuern Power Hour und Entwürfe.</div>
           </Karte>
-          <Karte i={1}>
+          <Karte i={2}>
             <Ueberschrift rechts={<Knopf leise aus={laeuft} onClick={async () => { const r = await post({ aktion: 'firmen-abgleich' }); setMeldung(r.ok ? `Firmen-Abgleich: ${r.neu} neu, ${r.verknuepft} Personen verknüpft, ${r.ergaenzt} ergänzt.` : `Abgleich fehlgeschlagen${r.fehler ? `: ${r.fehler}` : '.'}`); }}>Firmen abgleichen</Knopf>}>Firmen</Ueberschrift>
             <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>
               {d.qualitaet.firmen} Firmen · {d.qualitaet.ohneFirmenverweis} Personen mit Firmenname, aber ohne Verknüpfung · {d.qualitaet.dublettenFirmen} Firmen-Dubletten.
               Der Abgleich legt fehlende Firmen an, verknüpft Personen und füllt nur leere Felder — Gepflegtes bleibt.
             </div>
           </Karte>
-          <Karte i={2}>
+          <Karte i={3}>
             <Ueberschrift>Dubletten</Ueberschrift>
             <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 }}>{d.qualitaet.dublettenPersonen} Personen-Paare (gleicher Name und ein zweites Merkmal). Zusammenführen in der Kartei, Ansicht „Dubletten“ — Verlauf, Einwilligungen und zweite Mailadresse bleiben erhalten, eine Sperre gilt weiter.</div>
             <div style={{ marginTop: 10 }}><Knopf leise onClick={() => zuBereich('kontakte', 'dubletten')}>Dubletten öffnen</Knopf></div>

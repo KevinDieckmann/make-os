@@ -55,7 +55,8 @@ export function KontaktUeber({ k, api, heute, name, setze, klappen, breit, zuRei
 }) {
   const router = useRouter();
   const crm = api.crm;
-  const zf = useMemo(() => zusammenfassung(k, crm?.stand, heute), [k, crm, heute]);
+  // Jetzt mitgeben (28.09.): ein Meeting von heute 18 Uhr ist um 10 Uhr noch das „nächste“, kein vergangenes Gespräch.
+  const zf = useMemo(() => zusammenfassung(k, crm?.stand, heute, new Date().toISOString()), [k, crm, heute]);
   const ki = useKi();
   const [frage, setFrage] = useState('');
   const [antwort, setAntwort] = useState<{ text: string; art: 'ok' | 'hinweis' } | 'laedt' | null>(null);

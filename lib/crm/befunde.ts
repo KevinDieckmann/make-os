@@ -10,6 +10,7 @@ import { art14 } from './recht';
 import { dubletten } from './dubletten';
 import { checklisteFaellig } from './eventplanung';
 import { faellige } from './followup';
+import { verbindungenPruefen } from './verbindungen';
 
 export interface Befund { prio: 1 | 2 | 3 | 4 | 5; titel: string; grund: string; bereich: 'heute' | 'followup' | 'kontakte' | 'firmen' | 'pipeline' | 'kunden' | 'marketing' | 'events' | 'stammdaten'; ansicht?: string }
 
@@ -53,5 +54,13 @@ export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string): Be
   if (ohneZahlen) b.push({ prio: 5, titel: `${ohneZahlen} versendete Newsletter ohne Zahlen`, grund: 'Empfänger, Antworten, Abmeldungen nachtragen', bereich: 'marketing' });
   const letzte = crm.sitzungen.map(s => s.datum).sort().pop();
   if (!letzte || letzte < vor7) b.push({ prio: 4, titel: letzte ? 'Diese Woche noch keine Power Hour' : 'Erste Power Hour', grund: 'Vier Stunden pro Woche halten die Pipeline in Bewegung', bereich: 'heute' });
+  // Verbindungsprüfung (28.09.): Fehler in den Verknüpfungen (tote Verweise, doppelte Kennungen, Werbesperre in
+  // laufender Kampagne) sollen im Überblick auffallen — hier nur, was Personen und CRM-Bestand allein zeigen;
+  // die volle Prüfung (Rechnungen, Aufgaben, Ablage) steht unter Stammdaten › Datenqualität.
+  const vf = verbindungenPruefen({ heute, kontakte, crm }).filter(x => x.schwere === 'fehler');
+  if (vf.length) {
+    const n = vf.reduce((a, x) => a + x.anzahl, 0);
+    b.push({ prio: 1, titel: `${n} Verbindungsfehler im Bestand`, grund: vf.slice(0, 2).map(x => x.text).join(' · '), bereich: 'stammdaten', ansicht: 'qualitaet' });
+  }
   return b.sort((x, y) => x.prio - y.prio);
 }

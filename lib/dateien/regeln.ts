@@ -61,6 +61,11 @@ export interface DateiEintrag {
   hochgeladenVon: string;
   geaendert?: string;
   geaendertVon?: string;
+  /**
+   * Tag, an dem die Verbindungsprüfung (lib/crm/verbindungen.ts) bemerkt hat, dass die Datei
+   * zu diesem Eintrag nicht mehr auf der Platte liegt (28.09.) — nur eine Markierung, gelöscht wird nichts.
+   */
+  dateiFehlt?: string;
 }
 
 const txt = (v: unknown, n: number) => { const t = String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n); return t || undefined; };

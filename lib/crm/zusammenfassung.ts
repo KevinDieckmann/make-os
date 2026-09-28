@@ -4,8 +4,10 @@
 // nicht erfunden. Jeder Satz trägt Quellen-Nummern ①②…; ein Klick springt in
 // den Reiter Aktivitäten zur Quelle (Anker aus lib/crm/aktivitaeten.ts) oder
 // öffnet den Deal bzw. das Mandat.
-//   1  letztes echtes Gespräch/Meeting (Datum, Art)
+//   1  letztes echtes Gespräch/Meeting (Datum, Art) — Meetings zählen mit ihrem Zeitpunkt
+//      (`wann`, H4), nicht mit dem Tag, an dem sie festgehalten wurden, und nur, wenn er vorbei ist
 //   2  jüngste Mail/Antwort — nur, wenn sie nach dem Gespräch kam
+//   2b nächstes Meeting („Nächstes Meeting am …“), wenn eins ansteht (28.09.)
 //   3  offener Deal (Stufe, Wert) · Mandat (Honorar) — sonst der letzte abgeschlossene
 //   4  nächster Schritt · Lifecycle (immer — deshalb gibt es nie null Sätze)
 // `kontaktPaket` baut daraus das Datenpaket für „Frage stellen“ (ZOE):
@@ -14,7 +16,7 @@
 import type { Aktivitaet, Kontakt } from '@/lib/make-one/crm';
 import type { Chance, CrmBestand, Mandat } from './typen';
 import { echtesGespraech, OFFENE_STUFEN, STUFEN } from './pipeline';
-import { ankerListe } from './aktivitaeten';
+import { ankerListe, berlin, meetingVon } from './aktivitaeten';
 import { lifecycleVon, type LifecycleBestand } from './vorschlaege';
 import { LIFECYCLE_LABEL, type LifecyclePhase } from './lifecycle';
 
@@ -72,31 +74,50 @@ export type ZfBestand = LifecycleBestand;
  * Reihenfolge der Sätze fest (Gespräch · Mail/Antwort · Deal/Mandat · Schritt & Lifecycle),
  * Quellen in der Reihenfolge ihres Auftretens nummeriert.
  */
-export function zusammenfassung(k: Kontakt, crm: ZfBestand | null | undefined, heute: string): Zusammenfassung {
+export function zusammenfassung(k: Kontakt, crm: ZfBestand | null | undefined, heute: string, jetzt?: string): Zusammenfassung {
   const quellen: ZfQuelle[] = [];
   const saetze: ZfSatz[] = [];
   const neu = (q: OhneNr<ZfQuelle>): number => { const nr = quellen.length + 1; quellen.push({ ...q, nr } as ZfQuelle); return nr; };
   const liste = k.aktivitaeten ?? [];
   const anker = ankerListe(liste);
+  // Zeitpunkt jedes Eintrags als Berliner Wandzeit „YYYY-MM-DDTHH:MM“: Meetings mit ihrem `wann`
+  // (Altbestand: erste Textzeile, sonst der Tag des Festhaltens), alles andere mit `am` (28.09.).
+  const jetztWand = (() => { if (!jetzt) return `${heute}T23:59`; const b = berlin(jetzt); return `${b.tag}T${b.zeit ?? '23:59'}`; })();
+  const zeitpunkt = (a: Aktivitaet): { wand: string; tag: string; meeting: boolean; zeit?: string } => {
+    const mt = meetingVon(a);
+    if (mt) return { wand: `${mt.tag}T${mt.zeit ?? '00:00'}`, tag: mt.tag, meeting: true, ...(mt.zeit ? { zeit: mt.zeit } : {}) };
+    const b = berlin(a.am);
+    return { wand: `${b.tag}T${b.zeit ?? '00:00'}`, tag: b.tag, meeting: false };
+  };
   // Jüngste zuerst, „System“ zählt nie. Die Position im Log bleibt für den Anker.
-  const echt = liste.map((a, i) => ({ a, i })).filter(({ a }) => a.von !== 'system' && a.art !== 'system' && !!a.am).sort((x, y) => y.a.am.localeCompare(x.a.am));
+  const echt = liste.map((a, i) => ({ a, i, z: zeitpunkt(a) })).filter(({ a }) => a.von !== 'system' && a.art !== 'system' && !!a.am).sort((x, y) => y.z.wand.localeCompare(x.z.wand));
+  // Ein Meeting ist vorbei, wenn sein Zeitpunkt nicht in der Zukunft liegt (ohne Uhrzeit: ab seinem Tag).
+  const vorbei = (z: { wand: string; tag: string; zeit?: string }) => (z.zeit ? z.wand <= jetztWand : z.tag <= heute);
 
-  // 1 · letztes echtes Gespräch/Meeting
-  const g = echt.find(({ a }) => echtesGespraech(a));
+  // 1 · letztes echtes Gespräch/Meeting — nur, was schon stattgefunden hat
+  const g = echt.find(({ a, z }) => echtesGespraech(a) && (!z.meeting || vorbei(z)));
   if (g) {
-    const nr = neu({ art: 'aktivitaet', anker: anker[g.i], am: g.a.am, label: `${gespraechArt(g.a)} am ${tag(g.a.am, heute)}` });
-    const zusatz = kurz(g.a.notiz?.erkenntnisse ?? g.a.notiz?.bedarf ?? g.a.text, 90);
-    saetze.push({ text: `Letztes echtes Gespräch am ${tag(g.a.am, heute)} (${gespraechArt(g.a)}, ${vor(g.a.am, heute)})${zusatz ? `: „${zusatz}“` : ''}.`, quellen: [nr] });
+    const nr = neu({ art: 'aktivitaet', anker: anker[g.i], am: g.a.am, label: `${gespraechArt(g.a)} am ${tag(g.z.tag, heute)}` });
+    const zusatz = kurz(g.a.notiz?.erkenntnisse ?? g.a.notiz?.bedarf ?? (g.z.meeting ? meetingVon(g.a)?.notiz : g.a.text), 90);
+    saetze.push({ text: `Letztes echtes Gespräch am ${tag(g.z.tag, heute)} (${gespraechArt(g.a)}, ${vor(g.z.tag, heute)})${zusatz ? `: „${zusatz}“` : ''}.`, quellen: [nr] });
   }
 
   // 2 · jüngste Mail oder Antwort — nur, wenn sie jünger ist als das Gespräch
   const m = echt.find(({ a }) => a.art === 'mail' || a.art === 'antwort');
-  if (m && (!g || m.a.am > g.a.am)) {
+  if (m && (!g || m.z.wand > g.z.wand)) {
     const was = m.a.art === 'antwort' ? (m.a.text?.startsWith('Anfrage über ') ? 'Anfrage' : 'Antwort') : 'Mail';
     const nr = neu({ art: 'aktivitaet', anker: anker[m.i], am: m.a.am, label: `${was} am ${tag(m.a.am, heute)}` });
     const text = kurz(m.a.text, 90);
     const satz = was === 'Mail' ? `Zuletzt ging am ${tag(m.a.am, heute)} eine Mail raus` : `Am ${tag(m.a.am, heute)} kam eine ${was}`;
     saetze.push({ text: `${satz}${text ? `: „${text}“` : ''}${g ? '' : ' — ein echtes Gespräch gab es noch nicht'}.`, quellen: [nr] });
+  }
+
+  // 2b · nächstes Meeting — das früheste, das noch bevorsteht (28.09.)
+  const kommend = echt.filter(({ a, z }) => a.art === 'termin' && z.meeting && !vorbei(z)).sort((x, y) => x.z.wand.localeCompare(y.z.wand))[0];
+  if (kommend) {
+    const mt = meetingVon(kommend.a)!;
+    const nr = neu({ art: 'aktivitaet', anker: anker[kommend.i], am: kommend.a.am, label: `Meeting am ${tag(mt.tag, heute)}` });
+    saetze.push({ text: `Nächstes Meeting am ${tag(mt.tag, heute)}${mt.zeit ? ` um ${mt.zeit} Uhr` : ''} (${vor(mt.tag, heute)})${mt.ort ? `, ${kurz(mt.ort, 60)}` : ''}.`, quellen: [nr] });
   }
 
   // 3 · Deal und Mandat
@@ -138,7 +159,7 @@ export function zusammenfassung(k: Kontakt, crm: ZfBestand | null | undefined, h
   // 28.09. (H4): ohne gesetzte Phase gilt „Lead“ — ein Vorschlag erscheint nur, wenn er höher ist.
   saetze.push({ text: `${sText} · Lifecycle ${LIFECYCLE_LABEL[l.phase]}${l.vonHand ? '' : l.vorschlag ? ` (nicht gesetzt; Vorschlag ${LIFECYCLE_LABEL[l.vorschlag.id]}: ${l.vorschlag.grund})` : ' (nicht gesetzt)'}.`, quellen: sQ });
 
-  const leer = !g && !m && !teile.length && !schritt;
+  const leer = !g && !m && !kommend && !teile.length && !schritt;
   if (leer) saetze[0] = { text: `Noch nichts festgehalten — kein Gespräch, kein Deal, kein nächster Schritt. ${saetze[0].text}`, quellen: saetze[0].quellen };
   return { saetze, quellen, leer };
 }
