@@ -5,7 +5,8 @@
 // Matrix“ zur Person. Malin 27.09.: weniger scrollen. Kevin 28.09. (HubSpot als
 // Vorbild, „Kontakt öffnen“ statt „Akte öffnen“): unser Kopf bleibt, darunter
 // drei Spalten.
-//   Kopf        Zurück · Name, Firma · Lifecycle (Wahl mit Vorschlag), Score, Typ,
+//   Kopf        Zurück · Name, Firma · Lifecycle (Wahl, ohne Phase „Lead“, Vorschlag nur höher) ·
+//               BEAN (Wahl: abgeleitet sichtbar, von Hand markiert, 28.09. H4), Score, Typ,
 //               Kategorie, Rollen, Kreis · hält die Beziehung · Kanäle · eine Zeile
 //               Kennzahlen (letzter Kontakt, nächster Schritt, Takt, Gespräche, Deals, Vollständigkeit)
 //   Links       Kontaktdaten · Schnellaktionen (Notiz · E-Mail · Anruf · Aufgabe · Meeting) ·
@@ -37,7 +38,8 @@ import { ampel as kanalAmpel } from '@/lib/crm/recht';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { phaseVon } from '@/lib/crm/phase';
 import { leadScore, temperaturFarbe, temperaturLabel } from '@/lib/crm/score';
-import { lifecycleVorschlag } from '@/lib/crm/vorschlaege';
+import { lifecycleVorschlagHoeher } from '@/lib/crm/vorschlaege';
+import { beanVon } from '@/lib/crm/bean';
 import { vollstaendigkeit, verbindungen, takt, verlaufZahlen, TEILNAHME_LABEL, KAMPAGNEN_ERGEBNIS_LABEL } from '@/lib/crm/akte';
 import { haeltBeziehung, nameVon } from '@/lib/crm/team';
 import { AKTE_REITER, akteReiter, akteUnter, type AkteReiter } from '@/lib/crm/adresse';
@@ -47,6 +49,7 @@ import { Person, AuchHier } from './team';
 import { phaseFarbe, phaseLabel, Hinweise, BeziehungTeil, RechtTeil, LinkedInTeil, MatrixTeilInhalt, MatrixZahl, MatrixZeile, MATRIX_TEIL_LABEL, type MatrixTeil } from './kontakt-teile';
 import { Klappe, leiseKnopf, useKlappen, useBreite } from './kontakt-klappe';
 import { KontaktLinks, KontaktRechts, LifecycleWahl } from './KontaktSpalten';
+import { BeanWahl, useOffeneAngebote } from './bean-teile';
 import { KontaktUeber } from './KontaktUeber';
 import { AktivitaetenReiter } from './kontakt/AktivitaetenReiter';
 import { UmsatzReiter } from './kontakt/UmsatzReiter';
@@ -127,6 +130,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
   const [mitteRef, mitteBreite] = useBreite<HTMLDivElement>();
   const zweiInDerMitte = mitteBreite >= MITTE_ZWEI_AB;
   const klappen = useKlappen(id);
+  const angebote = useOffeneAngebote();
   const { istZu, umschalten } = klappen;
   const crm = api.crm;
   const heute = crm?.heute ?? localDay();
@@ -189,7 +193,10 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
   const pf = phaseFarbe(ph.phase);
   // Lead-Score (27.09.): Firma-Lead vor Personen-Lead, Personen der Firma zählen mit (Wärme, Erreichbarkeit).
   const scoreAkte = leadScore(personen, firma?.lead ?? k.lead, heute);
-  const lcVorschlag = lifecycleVorschlag(k, crm?.stand, heute);
+  // Lifecycle (28.09., H4): ohne gesetzte Phase gilt Lead — ein Vorschlag nur, wenn er höher ist.
+  const lcVorschlag = lifecycleVorschlagHoeher(k, crm?.stand, heute);
+  // BEAN (28.09., H4): von Hand, sonst abgeleitet — mit den offenen Angeboten aus der Dateiablage.
+  const beanErgebnis = beanVon(k, crm?.stand, { angebote });
   const dealWert = offeneDeals.reduce((s, d) => s + (d.wert.betrag || 0) * (d.wert.basis === 'monat' ? 12 : 1), 0);
   const schrittUeberfaellig = !!k.naechsterSchritt && k.naechsterSchritt.datum < heute;
   const vollFarbe = voll.anteil >= 0.7 ? LEUCHT.gut : voll.anteil >= 0.4 ? LEUCHT.achtung : LEUCHT.kritisch;
@@ -219,6 +226,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
           <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             {/* Lifecycle (28.09.) ersetzt hier die abgeleitete Phase — die Beziehungs-Lebensphase steht unter Daten › Beziehung. */}
             <LifecycleWahl k={k} vorschlag={lcVorschlag} setze={setze} klein />
+            <BeanWahl wert={k.bean} ergebnis={beanErgebnis} klein onSetze={b => void setze({ bean: b })} />
             <span title={scoreAkte.teile.map(x => `${x.label} ${x.punkte}/${x.max} — ${x.grund}`).join('\n')}><Chip farbe={temperaturFarbe(scoreAkte.temperatur)}>Score {scoreAkte.punkte} · {temperaturLabel(scoreAkte.temperatur)}</Chip></span>
             {einordnungChip('Typ', k.typ)}{einordnungChip('Kategorie', k.kategorie)}
             {rollenVon(k).map(r => <Chip key={r} farbe={LEUCHT.business}>{ROLLE_LABEL[r]}</Chip>)}{k.kreis && <Chip farbe={LEUCHT.beziehung}>Kreis {k.kreis}</Chip>}
@@ -331,7 +339,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
       </div>
     </div>
   );
-  const links = <KontaktLinks k={k} api={api} heute={heute} ampel={ampel} setze={setze} klappen={klappen} lifecycle={lcVorschlag} />;
+  const links = <KontaktLinks k={k} api={api} heute={heute} ampel={ampel} setze={setze} klappen={klappen} lifecycle={lcVorschlag} bean={beanErgebnis} />;
   const rechts = <KontaktRechts k={k} api={api} heute={heute} setze={setze} klappen={klappen} zuFirma={zuFirma} zuAufgabe={anker => waehleReiter('aktivitaeten', 'aufgaben', anker)} />;
 
   return (

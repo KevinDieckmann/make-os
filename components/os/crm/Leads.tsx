@@ -31,6 +31,8 @@ import { Pillen, Feldzeile } from './teile';
 import { Wahl } from './Wahl';
 import { Person, ZustaendigWahl, WerFilter, useWerFilter, passtWer } from './team';
 import { HeadPanel } from './HeadPanel';
+import { BEAN_IDS, BEAN_LABEL, BEAN_HINWEIS, beanFuerLead, type BeanId } from '@/lib/crm/bean';
+import { BeanBadge, BEAN_FARBE, useOffeneAngebote } from './bean-teile';
 
 interface Daten { leads: LeadZeile[]; trichter: Trichter }
 const STATUS_FARBE: Record<LeadStatus, string> = { neu: C.inkLeise, kontaktiert: LEUCHT.puls, im_gespraech: LEUCHT.business, qualifizierung: LEUCHT.achtung, sql: LEUCHT.gut, kunde: LEUCHT.geld, kein_fit: C.inkLeise, ruht: C.inkLeise };
@@ -97,20 +99,26 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
   const [wahl, setWahl] = useLinkAuswahl();
   const [wer, setWer] = useWerFilter('leads');
   const ich = api.ich;
+  // BEAN (28.09., H4): je Lead (Firma bzw. Person) — hier mit den offenen Angeboten der Dateiablage nachgerechnet; Filter als Wahl-Chip.
+  const angebote = useOffeneAngebote();
+  const [bn, setBn] = useState<BeanId | null>(null);
+  const alleLeads = useMemo(() => (d?.leads ?? []).map(z => { const b = beanFuerLead(z, api.crm?.stand, api.kontakte ?? [], { angebote }); return b && b.bean !== z.bean ? { ...z, bean: b.bean } : z; }), [d, api.crm, api.kontakte, angebote]);
   const zeilen = useMemo(() => {
     const q = suche.trim().toLowerCase();
     // Kalte Leads (Score < 25) leben im Marketing-Segment „Vernetzen“ — hier nur über den Filter „Kalt“ (Kevin 27.09.).
-    return (d?.leads ?? []).filter(z => (filter === 'kalt' ? !nichtKalt(z) : nichtKalt(z) && (filter === 'aktiv' ? LEAD_STATUS.find(s => s.id === z.status)?.aktiv : filter === 'ruht' ? z.status === 'ruht' || z.status === 'kein_fit' : z.status === filter)))
+    return alleLeads.filter(z => (filter === 'kalt' ? !nichtKalt(z) : nichtKalt(z) && (filter === 'aktiv' ? LEAD_STATUS.find(s => s.id === z.status)?.aktiv : filter === 'ruht' ? z.status === 'ruht' || z.status === 'kein_fit' : z.status === filter)))
       .filter(z => passtWer(wer, z.besitzer, 'sales', ich))
+      .filter(z => !bn || z.bean === bn)
       .filter(z => !q || [z.name, ...z.personen.map(p => p.name), z.branche ?? '', z.stadt ?? ''].join(' ').toLowerCase().includes(q));
-  }, [d, filter, suche, wer, ich]);
+  }, [alleLeads, filter, suche, wer, ich, bn]);
   if (!d) return <Karte i={0}>{fehler ? <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{fehler} <Knopf leise onClick={() => void laden()}>Noch einmal</Knopf></div> : <Leer>Lädt die Leads …</Leer>}</Karte>;
-  const zahl = (f: Filter) => (d.leads ?? []).filter(z => (f === 'kalt' ? !nichtKalt(z) : nichtKalt(z) && (f === 'aktiv' ? LEAD_STATUS.find(s => s.id === z.status)?.aktiv : f === 'ruht' ? z.status === 'ruht' || z.status === 'kein_fit' : z.status === f))).length;
+  const zahl = (f: Filter) => alleLeads.filter(z => (!bn || z.bean === bn) && (f === 'kalt' ? !nichtKalt(z) : nichtKalt(z) && (f === 'aktiv' ? LEAD_STATUS.find(s => s.id === z.status)?.aktiv : f === 'ruht' ? z.status === 'ruht' || z.status === 'kein_fit' : z.status === f))).length;
   const FILTER: { id: Filter; label: string }[] = [
     { id: 'aktiv', label: `In Arbeit ${zahl('aktiv')}` }, { id: 'im_gespraech', label: `Im Gespräch ${zahl('im_gespraech')}` }, { id: 'qualifizierung', label: `Qualifizierung ${zahl('qualifizierung')}` },
     { id: 'kontaktiert', label: `Kontaktiert ${zahl('kontaktiert')}` }, { id: 'sql', label: `SQL ${zahl('sql')}` }, { id: 'neu', label: `Neu ${zahl('neu')}` }, { id: 'kunde', label: `Kunde ${zahl('kunde')}` }, { id: 'kalt', label: `Kalt ${zahl('kalt')}` }, { id: 'ruht', label: `Ruht · kein Fit ${zahl('ruht')}` },
   ];
-  const aktiv = wahl ? d.leads.find(z => z.id === wahl) ?? null : breit ? zeilen[0] ?? null : null;
+  const aktiv = wahl ? alleLeads.find(z => z.id === wahl) ?? null : breit ? zeilen[0] ?? null : null;
+  const bnZahl = (b: BeanId) => alleLeads.filter(z => z.bean === b && (filter === 'kalt' ? !nichtKalt(z) : nichtKalt(z))).length;
   // Gewählt über die Adresse, aber im aktuellen Filter nicht sichtbar? Dann oben zeigen.
   const zeigen = aktiv && !zeilen.some(z => z.id === aktiv.id) ? [aktiv, ...zeilen] : zeilen;
 
@@ -120,6 +128,10 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
       <div style={{ fontSize: 12.5, color: C.inkLeise, marginBottom: 10, lineHeight: 1.5 }}>Qualifizieren, bis es ein SQL ist: Schmerz und Entscheider geklärt, dazu Budget oder Zeitpunkt. Dann wird es ein Deal in der Pipeline.</div>
       <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Firma, Person, Branche, Ort …" aria-label="Leads suchen" style={{ ...feld, fontSize: TYP.bedien, padding: '9px 13px', marginBottom: 10 }} />
       <div style={{ overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 8 }}><Pillen einzeilig liste={FILTER} aktiv={filter} onWahl={f => { setFilter(f); setWahl(null); }} farbe={LEUCHT.business} /></div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }} title="BEAN: Bestandskunde · Ehemalig · Angebotskunde · Neu">
+        <Wahl label="BEAN" klein liste={BEAN_IDS.map(b => ({ id: b, label: `${b} · ${BEAN_LABEL[b]} · ${bnZahl(b)}`, hinweis: BEAN_HINWEIS[b] }))} wert={bn} leer="BEAN: alle ▾"
+          farbe={bn ? BEAN_FARBE[bn] : undefined} onWahl={b => { setBn(b); setWahl(null); }} onLeeren={() => setBn(null)} leerenLabel="alle Gruppen" />
+      </div>
       {!zeilen.length && <Leer>{filter === 'aktiv' ? 'Gerade nichts in Arbeit. Neue Leads kommen aus der Power Hour, Events und Kampagnen.' : filter === 'kalt' ? 'Keine kalten Leads — alle haben mindestens 25 Punkte.' : 'Keine Leads in diesem Status.'}</Leer>}
       <div>
         {zeigen.slice(0, 120).map(z => (
@@ -133,6 +145,7 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
                   {[z.art === 'firma' ? z.personen.map(p => p.name).join(', ') : z.personen[0]?.position, z.naechsterSchritt ? `→ ${z.naechsterSchritt.text}` : '', z.letzterKontakt ? `zuletzt ${datum(z.letzterKontakt)}` : ''].filter(Boolean).join(' · ')}
                 </div>
               </div>
+              <BeanBadge bean={z.bean} />
               <KriterienPunkte k={z.kriterien} />
               <span title={z.score.teile.map(t => `${t.label} ${t.punkte}/${t.max} — ${t.grund}`).join('\n')}><Chip farbe={temperaturFarbe(z.score.temperatur)}>{z.score.punkte} · {temperaturLabel(z.score.temperatur)}</Chip></span>
               <Chip farbe={STATUS_FARBE[z.status]}>{statusLabel(z.status)}</Chip>

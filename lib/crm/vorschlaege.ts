@@ -8,7 +8,8 @@
 //   kontaktRollenVorschlag  Typ/Kategorie/Firmen-Rolle → Rollen der Person
 //   anredeVorschlag         Kategorie, Rolle „Freund“, eigene Nachrichten → Du/Sie
 //   lifecycleVorschlag      Mandat, Deal, Lead-Status, Marketing-Signal → Lifecycle (28.09.)
-//   lifecycleVon            gesetzt oder vorgeschlagen — für Kartei, Segmente, Export, Heads
+//   lifecycleVorschlagHoeher  der Vorschlag nur, wenn er höher als Lead ist (Wahl-Chip)
+//   lifecycleVon            gesetzt, sonst Lead (28.09., H4) — für Kartei, Segmente, Export, Heads
 // Deutsche und englische Titel, Groß-/Kleinschreibung egal. „Bremst“ (blocker)
 // wird nie vorgeschlagen — das weiß nur, wer mit der Person gesprochen hat.
 
@@ -234,14 +235,14 @@ const ANFRAGE_ANFANG = 'Anfrage über ';
 const tagDE = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`;
 
 /**
- * Lifecycle aus dem, was im System passiert ist — in dieser Reihenfolge:
- *   aktives Mandat → Kunde · beendetes Mandat oder gewonnener Deal (ohne aktives Mandat) → Follow Up ·
- *   offener Deal in Angebot/Abschluss → Angebot · sonst offener Deal → Opportunity ·
+ * Lifecycle aus dem, was im System passiert ist — in dieser Reihenfolge (Kevin 28.09., H4:
+ * „ein offener Deal schlägt ein früheres Mandat“):
+ *   aktives Mandat → Kunde · offener Deal in Angebot/Abschluss → Angebot · sonst offener Deal → Opportunity ·
+ *   beendetes Mandat oder gewonnener Deal (ohne aktives Mandat) → Follow Up ·
  *   Lead-Status SQL (Firma vor Person) → SQL · Marketing-Signal (Antwort/Anfrage, beim Event dabei,
  *   Score warm/heiß) → MQL · sonst Lead.
  * Deals und Mandate zählen, wenn die Person daran hängt; der Score ist der der Person selbst
- * (mit dem Lead der Firma) — so rechnen Kartei, Segmente, Export und Heads dasselbe.
- * Nie still gespeichert — der Wahl-Chip zeigt ihn, ein Klick übernimmt.
+ * (mit dem Lead der Firma). Nie still gespeichert — der Wahl-Chip zeigt ihn, ein Klick übernimmt.
  */
 export function lifecycleVorschlag(k: Kontakt, crm: LifecycleBestand | null | undefined, heute: string): WahlVorschlag<LifecyclePhase> {
   const mandate = crm?.mandate ?? [], chancen = crm?.chancen ?? [];
@@ -249,14 +250,14 @@ export function lifecycleVorschlag(k: Kontakt, crm: LifecycleBestand | null | un
   const m = meine(mandate), c = meine(chancen);
   const aktiv = m.find(x => x.status === 'aktiv');
   if (aktiv) return { id: 'kunde', grund: `aktives Mandat „${aktiv.kunde}“` };
-  const beendet = m.find(x => x.status === 'beendet');
-  if (beendet) return { id: 'follow_up', grund: `Mandat „${beendet.kunde}“ beendet — Nachbetreuung, Folgegeschäft, Empfehlung` };
-  const gewonnen = c.find(x => x.stufe === 'gewonnen');
-  if (gewonnen) return { id: 'follow_up', grund: `Deal „${gewonnen.titel}“ gewonnen, kein aktives Mandat` };
   const offen = c.filter(x => OFFENE_STUFEN.includes(x.stufe));
   const angebot = offen.find(x => x.stufe === 'angebot' || x.stufe === 'abschluss');
   if (angebot) return { id: 'angebot', grund: `Deal „${angebot.titel}“ in Stufe ${STUFEN.find(s => s.id === angebot.stufe)?.label ?? angebot.stufe}` };
   if (offen[0]) return { id: 'opportunity', grund: `offener Deal „${offen[0].titel}“` };
+  const beendet = m.find(x => x.status === 'beendet');
+  if (beendet) return { id: 'follow_up', grund: `Mandat „${beendet.kunde}“ beendet — Nachbetreuung, Folgegeschäft, Empfehlung` };
+  const gewonnen = c.find(x => x.stufe === 'gewonnen');
+  if (gewonnen) return { id: 'follow_up', grund: `Deal „${gewonnen.titel}“ gewonnen, kein aktives Mandat` };
   const firmaLead = k.firmaId ? (crm?.firmen ?? []).find(f => f.id === k.firmaId)?.lead : undefined;
   const lead = firmaLead ?? k.lead;
   if (lead?.status === 'sql') return { id: 'sql', grund: `Lead ${firmaLead ? 'der Firma ' : ''}ist SQL` };
@@ -270,14 +271,27 @@ export function lifecycleVorschlag(k: Kontakt, crm: LifecycleBestand | null | un
   return { id: 'lead', grund: 'noch kein Marketing-Signal, kein Deal' };
 }
 
-/** Der Lifecycle, wie er gilt: von Hand gesetzt, sonst der Vorschlag (für Kartei, Segmente, Export, Heads). */
-export function lifecycleVon(k: Kontakt, crm: LifecycleBestand | null | undefined, heute: string): { phase: LifecyclePhase; vonHand: boolean; grund: string } {
-  if (k.phase) return { phase: k.phase, vonHand: true, grund: `von Hand gesetzt: ${LIFECYCLE_LABEL[k.phase]}` };
+/**
+ * Der Vorschlag für den Wahl-Chip — nur, wenn er HÖHER als Lead ist (Kevin 28.09.: „Bestandskontakte
+ * sind am Ende alle Leads, wir müssen sie qualifizieren“). Ist die Phase gesetzt, gibt es keinen.
+ */
+export function lifecycleVorschlagHoeher(k: Kontakt, crm: LifecycleBestand | null | undefined, heute: string): WahlVorschlag<LifecyclePhase> | null {
+  if (k.phase) return null;
   const v = lifecycleVorschlag(k, crm, heute);
-  return { phase: v.id, vonHand: false, grund: v.grund };
+  return v.id === 'lead' ? null : v;
 }
 
-/** Verteilung über viele Personen — gesetzt oder vorgeschlagen; `gesetzt` zählt, wie viele von Hand stehen. */
+/**
+ * Der Lifecycle, wie er gilt (Kartei, Segmente, Export, Heads): von Hand gesetzt — sonst „Lead“.
+ * Ohne gesetzte Phase wird NICHTS gespeichert; `vorschlag` nennt, was die Daten nahelegen (nur höher als Lead).
+ */
+export function lifecycleVon(k: Kontakt, crm: LifecycleBestand | null | undefined, heute: string): { phase: LifecyclePhase; vonHand: boolean; grund: string; vorschlag: WahlVorschlag<LifecyclePhase> | null } {
+  if (k.phase) return { phase: k.phase, vonHand: true, grund: `von Hand gesetzt: ${LIFECYCLE_LABEL[k.phase]}`, vorschlag: null };
+  const v = lifecycleVorschlagHoeher(k, crm, heute);
+  return { phase: 'lead', vonHand: false, grund: v ? `nicht gesetzt — gilt als Lead · Vorschlag ${LIFECYCLE_LABEL[v.id]}: ${v.grund}` : 'nicht gesetzt — gilt als Lead', vorschlag: v };
+}
+
+/** Verteilung über viele Personen — gesetzt, sonst Lead; `gesetzt` zählt, wie viele von Hand stehen. */
 export function lifecycleVerteilung(kontakte: readonly Kontakt[], crm: LifecycleBestand | null | undefined, heute: string): { je: Record<LifecyclePhase, number>; gesetzt: number } {
   const je = leereVerteilung();
   let gesetzt = 0;

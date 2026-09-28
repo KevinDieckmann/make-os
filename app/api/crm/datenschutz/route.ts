@@ -15,6 +15,7 @@ import { localDay } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { fuerPerson } from '@/lib/make-one/crm';
+import { zahlungMaskiert } from '@/lib/crm/zahlung';
 import { personEntfernen, personVerweise } from '@/lib/crm/person-verweise';
 
 export const runtime = 'nodejs';
@@ -29,7 +30,10 @@ export async function GET(req: Request) {
   const auskunft = {
     erstellt: new Date().toISOString(), verantwortlich: 'Kevin Dieckmann (KD Ventures / Kevin Dieckmann Consulting)',
     // Private Notizen sieht nur, wer sie schrieb — auch in der Auskunft (26.09.).
-    person: fuerPerson(k, personAus(req)), firma: k.firmaId ? crm.firmen.find(f => f.id === k.firmaId) ?? null : null,
+    // IBAN (Entscheidung 28.09., H4): Die Auskunft nach Art. 15 enthält die volle IBAN, wenn sie zur Person
+    // gehört (Kontakt.zahlung — nur bei Personen ohne Firma). Die IBAN einer Firma ist kein Datum der Person:
+    // sie steht hier nur maskiert, wie überall sonst im Browser.
+    person: fuerPerson(k, personAus(req), { ibanVoll: true }), firma: (() => { const f = k.firmaId ? crm.firmen.find(x => x.id === k.firmaId) : undefined; return f ? { ...f, ...(f.zahlung ? { zahlung: zahlungMaskiert(f.zahlung) } : {}) } : null; })(),
     // Alle Listen aus einer Stelle (27.09.): Deals mit Rolle, Mandate, Events, Follow-ups, Kampagnen, Beiträge, Power-Hour-Karten, Anträge.
     ...personVerweise(crm, id),
   };

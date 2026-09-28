@@ -6,8 +6,10 @@
 // MAKE OS verschickt nichts: „+ E-Mail festhalten“ hält nur fest, was außerhalb
 // gesendet wurde; „+ Meeting“ legt keine Kalendereinladung an. Geschrieben wird
 // nur über die bestehenden Wege: /api/crm/aktivitaet (api.aktivitaet),
-// /api/crm/followup (anlegen, erledigen) und — für eigene Notizen — PATCH
-// /api/state/kontakte `teil` mit Stand (api.kontaktTeil, 409 statt Überschreiben).
+// /api/crm/followup (anlegen, erledigen) und — für eigene Notizen — POST
+// /api/crm/aktivitaet mit `aktion: 'aendern' | 'loeschen'`, Anker und Stand
+// (28.09., H4: 409 statt Überschreiben, Löschmarke gegen Wiederauferstehung).
+// „+ Meeting“ schreibt Zeitpunkt und Ort als Felder `wann`/`ort` (H4).
 
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
@@ -18,7 +20,7 @@ import { FOLLOWUP_ARTEN } from '@/lib/crm/followup';
 import { nameVon } from '@/lib/crm/team';
 import { WEG } from '@/lib/wege';
 import {
-  ERGEBNIS_KURZ, ERGEBNIS_TITEL, ANRUF_ERGEBNISSE, STATUS_LABEL, meetingText, darfBearbeiten, notizAendern, notizLoeschen, bezugAufloesen,
+  ERGEBNIS_KURZ, ERGEBNIS_TITEL, ANRUF_ERGEBNISSE, STATUS_LABEL, meetingWann, darfBearbeiten, bezugAufloesen,
   type Eintrag, type Kategorie,
 } from '@/lib/crm/aktivitaeten';
 import { Knopf, feld, LEUCHT } from '../../schlank';
@@ -85,18 +87,25 @@ export function AktivitaetKarte({ e, k, api, heute, kompakt, markiert, onErledig
     if (!bezug) return;
     router.push(bezug.art === 'deal' ? WEG.deal(bezug.id) : bezug.art === 'mandat' ? WEG.mandat(bezug.id) : bezug.art === 'event' ? WEG.event(bezug.id) : bezug.art === 'kampagne' ? WEG.kampagne(bezug.id) : WEG.deal());
   };
+  const [fehler, setFehler] = useState<string | null>(null);
+  /** Eigene Notiz ändern/löschen: eigene Aktion mit Anker und Stand — bei 409 kommt der aktuelle Kontakt zurück. */
+  const notizAktion = async (aktion: 'aendern' | 'loeschen', text?: string): Promise<boolean> => {
+    if (!e.aktivitaet) return false;
+    setLaeuft(true); setFehler(null);
+    try {
+      if (!k.stand) { await api.laden(); setFehler('Stand wurde nachgeladen — bitte noch einmal.'); return false; }
+      const r = await api.aktivitaet({ aktion, id: k.id, anker: e.anker, stand: k.stand, ...(text !== undefined ? { text } : {}) }) as { ok?: boolean; fehler?: string; error?: string };
+      if (!r?.ok) { setFehler(r?.fehler ?? r?.error ?? 'Nicht gespeichert.'); return false; }
+      return true;
+    } finally { setLaeuft(false); }
+  };
   const speichern = async () => {
-    if (bearbeiten == null || !e.aktivitaet) return;
-    const neu = notizAendern(k.aktivitaeten, e.anker, bearbeiten, api.ich);
-    if (!neu) return;
-    setLaeuft(true);
-    try { await api.kontaktTeil(k.id, { aktivitaeten: neu }); setBearbeiten(null); } finally { setLaeuft(false); }
+    if (bearbeiten == null || !bearbeiten.trim()) return;
+    if (await notizAktion('aendern', bearbeiten)) setBearbeiten(null);
   };
   const weg = async () => {
-    const neu = notizLoeschen(k.aktivitaeten, e.anker, api.ich);
-    if (!neu) return;
-    setLaeuft(true);
-    try { await api.kontaktTeil(k.id, { aktivitaeten: neu }); } finally { setLaeuft(false); setLoeschen(false); }
+    await notizAktion('loeschen');
+    setLoeschen(false);
   };
   const statusChip = e.quelle === 'followup' && e.status ? (
     e.status === 'offen' ? (e.ueberfaellig ? <span style={kleinChip(LEUCHT.kritisch)}>überfällig</span> : <span style={kleinChip(LEUCHT.planung)}>offen</span>)
@@ -167,6 +176,7 @@ export function AktivitaetKarte({ e, k, api, heute, kompakt, markiert, onErledig
                 )}
               </div>
             ) : null}
+            {fehler && <div role="alert" style={{ fontSize: 12.5, color: LEUCHT.kritisch, marginTop: 6 }}>{fehler}</div>}
           </>
         )}
       </div>
@@ -275,7 +285,8 @@ export function MeetingNeu({ k, api, heute, onFertig, onAbbruch }: FormProps) {
   const ok = /^\d{4}-\d{2}-\d{2}$/.test(tag);
   const los = async () => {
     setLaeuft(true);
-    try { if (await schreiben(api, { id: k.id, art: 'termin', text: meetingText({ tag, ...(zeit ? { zeit } : {}), ort, notiz }) })) onFertig('Meeting festgehalten.'); } finally { setLaeuft(false); }
+    // Zeitpunkt und Ort als Felder (28.09., H4) — der Text ist nur die Notiz.
+    try { if (await schreiben(api, { id: k.id, art: 'termin', wann: meetingWann(tag, zeit), ...(ort.trim() ? { ort: ort.trim() } : {}), ...(notiz.trim() ? { text: notiz.trim() } : {}) })) onFertig('Meeting festgehalten.'); } finally { setLaeuft(false); }
   };
   return (
     <div style={{ display: 'grid', gap: 8 }}>

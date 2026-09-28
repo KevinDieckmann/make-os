@@ -70,7 +70,7 @@ const crmLeer = (): CrmBestand => ({ firmen: [], chancen: [], mandate: [], leist
 
 describe('Qualifizierungsrunde — wer ist dran', () => {
   const zeile = (o: Partial<LeadZeile>): LeadZeile => ({
-    id: 'c-x', art: 'person', name: 'X', personen: [], status: 'neu', gesetzt: false, kriterien: leereKriterien(), besitzer: 'malin', ohneBesitzer: false,
+    id: 'c-x', art: 'person', name: 'X', personen: [], status: 'neu', gesetzt: false, kriterien: leereKriterien(), besitzer: 'malin', ohneBesitzer: false, bean: 'N',
     score: { punkte: 40, temperatur: 'lau', teile: [] }, kanal: 'bestand', ...o,
   });
   it('offene Kernfragen oder alte Prüfung → dran; SQL/Kunde/offener Deal → nicht', () => {

@@ -8,8 +8,8 @@
 //
 // Sechs Kacheln, je einklappbar (Merker `mt-umsatz-zu`), Reihenfolge wie HubSpot:
 // Umsatz · Zahlungsmöglichkeiten · Verträge · Angebote · Rechnungen · Zahlungseingang.
-// Rechnen: lib/crm/umsatz.ts (rein). Zahlungsdaten: lib/crm/zahlung.ts (IBAN nur
-// maskiert). Dateien: /api/crm/dateien (verschlüsselt je Haushalt, nie an KI).
+// Rechnen: lib/crm/umsatz.ts (rein). Zahlungsdaten: lib/crm/zahlung.ts (die IBAN kommt vom
+// Server nur maskiert, 28.09. H4). Dateien: /api/crm/dateien (verschlüsselt je Haushalt, nie an KI).
 // Rechnungen schreiben nur über den Finanzplan-PATCH (`liste: 'rechnungen'`).
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -321,8 +321,11 @@ function ZahlungKachel({ i, zu, umschalten, k, api, firma, zahlung, heute }: { i
   const [ibanFehler, setIbanFehler] = useState<string | null>(null);
   const luecken = zahlungLuecken(zahlung);
 
+  // IBAN (28.09., H4): der Browser kennt sie nur maskiert. Zurück geht sie maskiert — der Server liest das als
+  // „unverändert“; eine neue gültige IBAN ersetzt, Entfernen nur mit `ibanEntfernen: true`.
   function speichern(teil: Partial<Zahlungsdaten>) {
-    const neu: Zahlungsdaten = { ...z, ...teil, geaendert: heute, ...(api.ich ? { geaendertVon: api.ich } : {}) };
+    const { ibanGesetzt: _g, ibanEntfernen: _e, ...basis } = z;
+    const neu: Zahlungsdaten = { ...basis, ...teil, geaendert: heute, ...(api.ich ? { geaendertVon: api.ich } : {}) };
     if (quelle === 'firma' && firma) void api.teil('firmen', firma.id, { zahlung: neu });
     else void api.kontaktTeil(k.id, { zahlung: neu });
   }
@@ -349,7 +352,7 @@ function ZahlungKachel({ i, zu, umschalten, k, api, firma, zahlung, heute }: { i
           <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', color: z.iban ? C.ink : C.inkLeise }}>{z.iban ? ibanMaskiert(z.iban) : 'keine'}</span>
             <button onClick={() => { setIbanNeu(''); setIbanFehler(null); }} style={leiseLink}>{z.iban ? 'ersetzen' : '+ IBAN'}</button>
-            {z.iban && <LoeschKnopf onJa={() => speichern({ iban: undefined })} />}
+            {z.iban && <LoeschKnopf onJa={() => speichern({ iban: undefined, ibanEntfernen: true })} />}
           </span>
         ) : (
           <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>

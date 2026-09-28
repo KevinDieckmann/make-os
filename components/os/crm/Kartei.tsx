@@ -9,8 +9,10 @@
 // (Art. 6/14/15/17/21, Einwilligungen, Werbesperre). Oben rechts „Kontakt
 // öffnen“: dieselbe Person auf einer ganzen Seite (Akte.tsx), mit Zurück in die
 // Kartei. Die Bausteine teilen sich Karte und „Kontakt öffnen“ (kontakt-teile.tsx).
-// Lifecycle (28.09.): Filter als Wahl-Chip und eigene Spalte — gesetzt oder
-// (leiser) der Vorschlag aus den Daten (lib/crm/vorschlaege.ts `lifecycleVon`).
+// Lifecycle (28.09.): Filter als Wahl-Chip und eigene Spalte — gesetzt, sonst
+// (leiser) „Lead“ (lib/crm/vorschlaege.ts `lifecycleVon`, H4).
+// BEAN (28.09., H4): Filter als Wahl-Chip (auch aus der Adresse `bean=B|E|A|N`,
+// Verteilungskarte im Überblick) und Spalte mit dem Buchstaben (lib/crm/bean.ts).
 // Quelle ist die Masterdatei — das Adressbuch der Kontakte-App bleibt bewusst draußen.
 // Zu zweit (25.09.): Filter „Alle · Meins · Malin“ nach „Hält die Beziehung“
 // (ohne Eintrag: Sales-Verantwortung, Kevin), gefilterte Kontakte gesammelt
@@ -38,13 +40,17 @@ import { gleicherName } from '@/lib/crm/visitenkarte';
 import { haeltBeziehung, anderer, nameVon } from '@/lib/crm/team';
 import { lifecycleVon } from '@/lib/crm/vorschlaege';
 import { LIFECYCLE_PHASEN, LIFECYCLE_KURZ, LIFECYCLE_LABEL, type LifecyclePhase } from '@/lib/crm/lifecycle';
+import { BEAN_IDS, BEAN_LABEL, BEAN_HINWEIS, beanVon, istBean, type BeanErgebnis, type BeanId } from '@/lib/crm/bean';
+import { BeanBadge, BEAN_FARBE, useOffeneAngebote } from './bean-teile';
 
 type Modus = 'personen' | 'firmen';
 type Ansicht = 'alle' | 'kunden' | 'kreis' | 'prio' | 'chancen' | 'mail' | 'anreichern' | 'art14' | 'gesperrt' | 'dubletten';
 const ANSICHT_IDS: Ansicht[] = ['alle', 'kunden', 'kreis', 'prio', 'chancen', 'mail', 'anreichern', 'art14', 'gesperrt', 'dubletten'];
 const istAnsicht = (a?: string): a is Ansicht => !!a && (ANSICHT_IDS as string[]).includes(a);
 
-export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFirma, start, zuRunde, zuAkte }: { api: CrmApi; name: (p: string) => string; modus: Modus; auswahl: string | null; setAuswahl: (id: string | null) => void; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; start?: string; zuRunde?: (art: 'kreis' | 'chancen' | 'vernetzen') => void; zuAkte?: (id: string) => void }) {
+export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFirma, start, zuRunde, zuAkte, startBean }: { api: CrmApi; name: (p: string) => string; modus: Modus; auswahl: string | null; setAuswahl: (id: string | null) => void; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; start?: string; zuRunde?: (art: 'kreis' | 'chancen' | 'vernetzen') => void; zuAkte?: (id: string) => void;
+  /** BEAN-Filter aus der Adresse (`bean=`), z. B. aus der Verteilungskarte im Überblick. */
+  startBean?: string | null }) {
   const breit = useBreit();
   const [suche, setSuche] = useState('');
   // Die Ansicht kommt aus der Adresse (?a=art14|anreichern|gesperrt|…) — Befunde, Index-Punkte und Übergaben landen so auf der richtigen Liste (26.09.).
@@ -66,6 +72,12 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   const [lc, setLc] = useState<LifecyclePhase | null>(null);
   const lifecycle = useMemo(() => new Map(kontakte.map(k => [k.id, lifecycleVon(k, crm?.stand, heute)])), [kontakte, crm, heute]);
   const lcZahl = useMemo(() => { const z = new Map<LifecyclePhase, number>(); for (const l of lifecycle.values()) z.set(l.phase, (z.get(l.phase) ?? 0) + 1); return z; }, [lifecycle]);
+  // BEAN (28.09., H4): von Hand, sonst abgeleitet — mit den offenen Angeboten der Dateiablage.
+  const angebote = useOffeneAngebote();
+  const [bn, setBn] = useState<BeanId | null>(istBean(startBean) ? startBean : null);
+  useEffect(() => { if (istBean(startBean)) setBn(startBean); }, [startBean]);
+  const beans = useMemo(() => new Map(kontakte.map(k => [k.id, beanVon(k, crm?.stand, { angebote })])), [kontakte, crm, angebote]);
+  const bnZahl = useMemo(() => { const z = new Map<BeanId, number>(); for (const b of beans.values()) z.set(b.bean, (z.get(b.bean) ?? 0) + 1); return z; }, [beans]);
   // Aus einer Übergabe-Aufgabe (…&wer=malin) direkt in die übergebenen Kontakte.
   useEffect(() => { const w = new URLSearchParams(window.location.search).get('wer'); if (w) setWer(w === api.ich ? 'ich' : w); }, [api.ich]); // eslint-disable-line react-hooks/exhaustive-deps
   const ich = api.ich;
@@ -83,11 +95,11 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
 
   const treffer = useMemo(() => {
     const q = suche.trim().toLowerCase();
-    let l = kontakte.filter(filter[ansicht]).filter(k => passtWer(wer, k.besitzer, 'sales', ich)).filter(k => !lc || lifecycle.get(k.id)?.phase === lc);
+    let l = kontakte.filter(filter[ansicht]).filter(k => passtWer(wer, k.besitzer, 'sales', ich)).filter(k => !lc || lifecycle.get(k.id)?.phase === lc).filter(k => !bn || beans.get(k.id)?.bean === bn);
     if (q) l = l.filter(k => [anzeigename(k), k.firma ?? '', k.email ?? '', k.firmaBranche ?? '', k.position ?? '', k.firmaStadt ?? '', k.telefon ?? ''].join(' ').toLowerCase().includes(q));
     const rang = (k: Kontakt) => (k.lebensphase === 'kunde' ? 0 : k.kreis === 'A' ? 1 : k.kreis === 'B' ? 2 : k.prio === 'A' ? 3 : k.prio === 'B' ? 4 : 5);
     return [...l].sort((a, b) => (ansicht === 'dubletten' ? anzeigename(a).localeCompare(anzeigename(b)) : rang(a) - rang(b) || anzeigename(a).localeCompare(anzeigename(b))));
-  }, [kontakte, suche, ansicht, filter, wer, ich, lc, lifecycle]);
+  }, [kontakte, suche, ansicht, filter, wer, ich, lc, lifecycle, bn, beans]);
   const sichtbar = treffer.slice(0, mehr);
   const [erreichbar, freigegeben] = useMemo(() => [
     kontakte.filter(k => k.email || k.telefon || k.sms).length,
@@ -95,7 +107,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   ], [kontakte, mitMandat]);
   const werZahlen = ich ? { alle: kontakte.length, ich: kontakte.filter(k => passtWer('ich', k.besitzer, 'sales', ich)).length, [anderer(ich)]: kontakte.filter(k => passtWer(anderer(ich), k.besitzer, 'sales', ich)).length } : undefined;
   // Gesammelt übergeben geht nur mit einer Eingrenzung — nie aus Versehen die ganze Kartei.
-  const eingegrenzt = !!suche.trim() || ansicht !== 'alle' || wer !== 'alle' || !!lc;
+  const eingegrenzt = !!suche.trim() || ansicht !== 'alle' || wer !== 'alle' || !!lc || !!bn;
   const sammel = eingegrenzt && treffer.length > 0 && treffer.length <= 300 ? treffer.filter(k => !k.werbesperre) : [];
 
   // Tastatur wie in einer guten Liste: / sucht, j/k blättert, Enter öffnet, Esc schließt.
@@ -164,7 +176,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
         <Spalte>
           <Karte i={1}>
             <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim, marginBottom: 10 }}>
-              <span><b style={{ color: C.ink }}>{suche || ansicht !== 'alle' ? treffer.length : kontakte.length}</b> {suche || ansicht !== 'alle' ? 'Treffer' : 'Personen'}</span>
+              <span><b style={{ color: C.ink }}>{eingegrenzt ? treffer.length : kontakte.length}</b> {eingegrenzt ? 'Treffer' : 'Personen'}</span>
               <span title="Mail oder Telefon vorhanden"><b style={{ color: C.ink }}>{erreichbar}</b> erreichbar</span>
               <span title="Werbung per Mail zulässig (Einwilligung oder Bestandskunde)"><b style={{ color: C.ink }}>{freigegeben}</b> Mail freigegeben</span>
               {breit && <span style={{ marginLeft: 'auto', color: C.inkLeise, fontSize: 12 }}>/ suchen · j k blättern · Enter öffnen</span>}
@@ -172,7 +184,11 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
               <WerFilter wahl={wer} onWahl={w => { setWer(w); setMehr(80); }} ich={ich} zahlen={werZahlen} />
               <span style={{ fontSize: 12, color: C.inkLeise }}>nach „Hält die Beziehung“ · ohne Eintrag bei {nameVon('kevin')} (Sales-Verantwortung)</span>
-              <span style={{ marginLeft: 'auto' }} title="Lifecycle: gesetzt oder der Vorschlag aus den Daten">
+              <span style={{ marginLeft: 'auto' }} title="BEAN: Bestandskunde · Ehemalig · Angebotskunde · Neu — von Hand oder abgeleitet">
+                <Wahl label="BEAN" klein liste={BEAN_IDS.map(b => ({ id: b, label: `${b} · ${BEAN_LABEL[b]} · ${bnZahl.get(b) ?? 0}`, hinweis: BEAN_HINWEIS[b] }))}
+                  wert={bn} leer="BEAN: alle ▾" farbe={bn ? BEAN_FARBE[bn] : undefined} onWahl={b => { setBn(b); setMehr(80); }} onLeeren={() => setBn(null)} leerenLabel="alle Gruppen" />
+              </span>
+              <span title="Lifecycle: gesetzt, sonst Lead">
                 <Wahl label="Lifecycle" klein liste={LIFECYCLE_PHASEN.map(p => ({ id: p, label: `${LIFECYCLE_KURZ[p]} · ${lcZahl.get(p) ?? 0}`, ...(LIFECYCLE_KURZ[p] !== LIFECYCLE_LABEL[p] ? { hinweis: LIFECYCLE_LABEL[p] } : {}) }))}
                   wert={lc} leer="Lifecycle: alle ▾" farbe={lc ? lifecycleFarbe(lc) : undefined} onWahl={p => { setLc(p); setMehr(80); }} onLeeren={() => setLc(null)} leerenLabel="alle Lifecycle" />
               </span>
@@ -198,13 +214,13 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
               <>
                 {breit && (
                   <div style={{ display: 'grid', gridTemplateColumns: KARTEI_SPALTEN, gap: 12, padding: '0 8px 6px', fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
-                    <span /><span /><span>Name</span><span>Firma</span><span>Lifecycle</span><span>Phase</span><span>Kanal</span><span style={{ textAlign: 'right' }}>Zuletzt</span>
+                    <span /><span /><span>Name</span><span>Firma</span><span title="BEAN-Kundengruppe">BEAN</span><span>Lifecycle</span><span>Phase</span><span>Kanal</span><span style={{ textAlign: 'right' }}>Zuletzt</span>
                   </div>
                 )}
                 <div>
                   {sichtbar.map((x, i) => (
                     <div key={x.id} data-kid={x.id}>
-                      <KarteiZeile k={x} firma={x.firmaId ? firmen.get(x.firmaId)?.name : undefined} lifecycle={lifecycle.get(x.id)} breit={breit} aktiv={auswahl === x.id} markiert={i === markiert && breit}
+                      <KarteiZeile k={x} firma={x.firmaId ? firmen.get(x.firmaId)?.name : undefined} lifecycle={lifecycle.get(x.id)} bean={beans.get(x.id)} breit={breit} aktiv={auswahl === x.id} markiert={i === markiert && breit}
                         chance={mitChance.has(x.id)} mandat={mitMandat.has(x.id)} heute={heute} onClick={() => { setMarkiert(i); setAuswahl(auswahl === x.id ? null : x.id); }} />
                       {auswahl === x.id && !breit && <div style={{ padding: '8px 0 18px' }}><Karteikarte k={x} api={api} name={name} zuFirma={zuFirma} zuAkte={zuAkte} /></div>}
                     </div>
@@ -228,9 +244,9 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   );
 }
 
-const KARTEI_SPALTEN = '10px 22px minmax(0,1.6fr) minmax(0,1.2fr) 84px 96px 64px 64px';
+const KARTEI_SPALTEN = '10px 22px minmax(0,1.6fr) minmax(0,1.2fr) 40px 84px 96px 64px 64px';
 
-function KarteiZeile({ k, firma, lifecycle, breit, aktiv, markiert, chance, mandat, heute, onClick }: { k: Kontakt; firma?: string; lifecycle?: { phase: LifecyclePhase; vonHand: boolean; grund: string }; breit: boolean; aktiv: boolean; markiert: boolean; chance: boolean; mandat: boolean; heute: string; onClick: () => void }) {
+function KarteiZeile({ k, firma, lifecycle, bean, breit, aktiv, markiert, chance, mandat, heute, onClick }: { k: Kontakt; firma?: string; lifecycle?: { phase: LifecyclePhase; vonHand: boolean; grund: string }; bean?: BeanErgebnis; breit: boolean; aktiv: boolean; markiert: boolean; chance: boolean; mandat: boolean; heute: string; onClick: () => void }) {
   const kanal = besterKanal(k, { hatMandat: mandat, hatChance: chance });
   const a14 = art14(k, heute);
   const f = firma ?? k.firma;
@@ -242,6 +258,7 @@ function KarteiZeile({ k, firma, lifecycle, breit, aktiv, markiert, chance, mand
           <div style={{ fontSize: TYP.body, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anzeigename(k)}{f && <span style={{ color: C.inkLeise }}> · {f}</span>}</div>
           <div style={{ fontSize: 12.5, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[lifecycle ? LIFECYCLE_KURZ[lifecycle.phase] : '', k.position ?? k.jobtitel, k.naechsterSchritt ? `→ ${k.naechsterSchritt.text}` : ''].filter(Boolean).join(' · ')}</div>
         </div>
+        {bean && <BeanBadge bean={bean.bean} vonHand={bean.vonHand} grund={bean.grund} />}
         {chance && <Chip farbe={LEUCHT.business}>Deal</Chip>}
         <span style={{ opacity: k.besitzer ? 1 : 0.45, display: 'inline-flex' }}><Person id={haeltBeziehung(k)} groesse={18} /></span>
       </div>
@@ -258,6 +275,7 @@ function KarteiZeile({ k, firma, lifecycle, breit, aktiv, markiert, chance, mand
         <div style={{ fontSize: 12, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.naechsterSchritt ? `→ ${k.naechsterSchritt.text}` : (k.position ?? k.jobtitel ?? '')}</div>
       </div>
       <div style={{ color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f ?? '—'}</div>
+      <div>{bean ? <BeanBadge bean={bean.bean} vonHand={bean.vonHand} grund={bean.grund} /> : '—'}</div>
       <div title={lifecycle ? `${LIFECYCLE_LABEL[lifecycle.phase]} — ${lifecycle.grund}` : undefined}
         style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: lifecycle ? lifecycleFarbe(lifecycle.phase) : C.inkLeise, opacity: lifecycle?.vonHand ? 1 : 0.6, fontStyle: lifecycle?.vonHand ? 'normal' : 'italic' }}>
         {lifecycle ? LIFECYCLE_KURZ[lifecycle.phase] : '—'}

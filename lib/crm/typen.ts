@@ -172,8 +172,12 @@ export interface Zahlungsdaten {
   ustId?: string;
   /** Bestellnummer / Referenz des Kunden — gehört auf jede Rechnung. */
   referenz?: string;
-  /** Grundform ohne Leerzeichen; nur mit gültiger Prüfziffer gespeichert. */
+  /** Grundform ohne Leerzeichen; nur mit gültiger Prüfziffer gespeichert. Im Browser nur maskiert (lib/crm/zahlung.ts `zahlungMaskiert`). */
   iban?: string;
+  /** Nur in Antworten an den Browser (28.09.): eine IBAN ist gespeichert — `iban` ist dann maskiert. Nie gespeichert. */
+  ibanGesetzt?: boolean;
+  /** Nur beim Speichern (28.09.): die gespeicherte IBAN ausdrücklich entfernen. Nie gespeichert. */
+  ibanEntfernen?: boolean;
   /** Nur bei SEPA-Lastschrift. */
   sepa?: { mandatsreferenz?: string; datum?: string };
   /** Zahlungslink (https), z. B. Kreditkarte/PayPal. */
@@ -210,6 +214,8 @@ export interface Firma {
   notiz?: string;
   /** Zahlungsmöglichkeiten (28.09., lib/crm/zahlung.ts) — gelten für alle Personen der Firma. */
   zahlung?: Zahlungsdaten;
+  /** BEAN-Kundengruppe von Hand (28.09., H4, lib/crm/bean.ts) — fehlt es, gilt die Ableitung (`beanFirma`); gilt dann auch für Personen ohne eigene Wahl. */
+  bean?: import('./bean').BeanId;
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;
@@ -291,6 +297,8 @@ export interface SegmentKriterien {
   temperatur?: Temperatur[];
   /** Lifecycle (28.09.): gesetzt, sonst der Vorschlag aus den Daten (lib/crm/vorschlaege.ts `lifecycleVon`). */
   lifecycle?: import('./lifecycle').LifecyclePhase[];
+  /** BEAN-Kundengruppe (28.09., H4): von Hand, sonst abgeleitet (lib/crm/bean.ts `beanVon`). */
+  bean?: import('./bean').BeanId[];
 }
 export interface Segment { id: string; name: string; beschreibung?: string; kriterien: SegmentKriterien; geaendert: string; geaendertVon?: string }
 export type BeitragKanal = 'linkedin' | 'newsletter' | 'blog' | 'podcast' | 'vortrag' | 'sonstig';

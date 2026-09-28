@@ -4,7 +4,7 @@
 // Links (schmal): Kontaktdaten (E-Mail mit Kopieren + Mail-Programm, Telefon,
 // LinkedIn), Schnellaktionen als runde Knöpfe — Notiz · E-Mail · Anruf ·
 // Aufgabe · Meeting — und die wichtigsten Infos als Wahl-Chips (Lifecycle,
-// Typ, Kategorie, Besitzer, Kreis).
+// BEAN, Typ, Kategorie, Besitzer, Kreis).
 // Rechts (schmal): Firma · Deals · Mandate · Follow-ups, jede Karte
 // einklappbar (je Person gemerkt), „+ Hinzufügen“ über die bestehenden Wege
 // (Firma verknüpfen/anlegen, DealAnlegen, /api/crm/followup).
@@ -23,8 +23,9 @@ import { kanalLink } from '@/lib/crm/erfassen';
 import { profilAdresse, suchLink } from '@/lib/crm/netzwerk';
 import { OFFENE_STUFEN, STUFEN } from '@/lib/crm/pipeline';
 import { faellige, FOLLOWUP_ARTEN } from '@/lib/crm/followup';
-import { ANRUF_ERGEBNISSE, ERGEBNIS_KURZ, meetingText, followupAnker } from '@/lib/crm/aktivitaeten';
-import { LIFECYCLE_WAHL, LIFECYCLE_LABEL, type LifecyclePhase } from '@/lib/crm/lifecycle';
+import { ANRUF_ERGEBNISSE, ERGEBNIS_KURZ, meetingWann, followupAnker } from '@/lib/crm/aktivitaeten';
+import { LIFECYCLE_WAHL, LIFECYCLE_LABEL, LIFECYCLE_KURZ, type LifecyclePhase } from '@/lib/crm/lifecycle';
+import type { BeanErgebnis } from '@/lib/crm/bean';
 import type { WahlVorschlag } from '@/lib/crm/wahl';
 import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
 import { TEAM, BEIDE, nameVon, haeltBeziehung } from '@/lib/crm/team';
@@ -36,17 +37,24 @@ import { WertelistenEinzelWahl } from './WertelistenWahl';
 import { DealAnlegen } from './DealAnlegen';
 import { EntwurfTeil, KREISE, lifecycleFarbe, firmaVerknuepfen, type Setze } from './kontakt-teile';
 import { Klappe, leiseKnopf, type Klappen } from './kontakt-klappe';
+import { BeanWahl } from './bean-teile';
 
 const zeile = { display: 'flex', alignItems: 'center', gap: 8, minHeight: 30, fontSize: TYP.bedien, minWidth: 0 } as const;
 const klein = { fontSize: 12, color: C.inkLeise } as const;
 const eingabe = { ...feld, fontSize: TYP.bedien, padding: '8px 11px' };
 
-/** Lifecycle als Wahl-Chip mit Vorschlag — im Kopf und links unter „Wichtigste Infos“. Kein Leeren: die Phase ist immer eine der sieben. */
-export function LifecycleWahl({ k, vorschlag, setze, klein: kleinChip }: { k: Kontakt; vorschlag: WahlVorschlag<LifecyclePhase>; setze: Setze; klein?: boolean }) {
+/**
+ * Lifecycle als Wahl-Chip — im Kopf und links unter „Wichtigste Infos“. Kein Leeren: die Phase ist immer eine der sieben.
+ * Ohne gesetzte Phase gilt „Lead“ (28.09., H4) — gestrichelt; ein Vorschlag erscheint nur, wenn er höher ist
+ * (`lifecycleVorschlagHoeher`), und wird nie still gespeichert.
+ */
+export function LifecycleWahl({ k, vorschlag, setze, klein: kleinChip }: { k: Kontakt; vorschlag: WahlVorschlag<LifecyclePhase> | null; setze: Setze; klein?: boolean }) {
+  const titel = k.phase ? `Lifecycle: ${LIFECYCLE_LABEL[k.phase]} (von Hand)`
+    : vorschlag ? `Nicht gesetzt — gilt als Lead. Vorschlag: ${LIFECYCLE_LABEL[vorschlag.id]} — ${vorschlag.grund}` : 'Nicht gesetzt — gilt als Lead';
   return (
-    <span title={k.phase ? `Lifecycle: ${LIFECYCLE_LABEL[k.phase]} (von Hand)` : `Vorschlag: ${LIFECYCLE_LABEL[vorschlag.id]} — ${vorschlag.grund}`} style={{ display: 'inline-flex', minWidth: 0 }}>
-      <Wahl label="Lifecycle" liste={LIFECYCLE_WAHL} wert={k.phase} vorschlag={vorschlag} farbe={lifecycleFarbe(k.phase ?? vorschlag.id)} klein={kleinChip}
-        onWahl={phase => void setze({ phase })} />
+    <span title={titel} style={{ display: 'inline-flex', minWidth: 0 }}>
+      <Wahl label="Lifecycle" liste={LIFECYCLE_WAHL} wert={k.phase} vorschlag={vorschlag} farbe={lifecycleFarbe(k.phase ?? vorschlag?.id ?? 'lead')} klein={kleinChip}
+        leer={`${LIFECYCLE_KURZ.lead} ▾`} onWahl={phase => void setze({ phase })} />
     </span>
   );
 }
@@ -79,8 +87,10 @@ const AKTIONEN: { id: Aktion; label: string; zeichen: string }[] = [
   { id: 'aufgabe', label: 'Aufgabe', zeichen: '✓' }, { id: 'meeting', label: 'Meeting', zeichen: '◷' },
 ];
 
-export function KontaktLinks({ k, api, heute, ampel, setze, klappen, lifecycle }: {
-  k: Kontakt; api: CrmApi; heute: string; ampel: KanalStatus[]; setze: Setze; klappen: Klappen; lifecycle: WahlVorschlag<LifecyclePhase>;
+export function KontaktLinks({ k, api, heute, ampel, setze, klappen, lifecycle, bean }: {
+  k: Kontakt; api: CrmApi; heute: string; ampel: KanalStatus[]; setze: Setze; klappen: Klappen; lifecycle: WahlVorschlag<LifecyclePhase> | null;
+  /** BEAN-Kundengruppe (28.09., H4) — aus beanVon, mit den offenen Angeboten der Ablage. */
+  bean: BeanErgebnis;
 }) {
   const [aktion, setAktion] = useState<Aktion | null>(null);
   const [meldung, setMeldung] = useState<string | null>(null);
@@ -153,6 +163,7 @@ export function KontaktLinks({ k, api, heute, ampel, setze, klappen, lifecycle }
       <Klappe id="l-infos" i={2} klein titel="Wichtigste Infos" zu={klappen.istZu('l-infos')} umschalten={klappen.umschalten}>
         <div style={{ display: 'grid', gap: 2 }}>
           {infoZeile('Lifecycle', <LifecycleWahl k={k} vorschlag={lifecycle} setze={setze} klein />)}
+          {infoZeile('BEAN', <BeanWahl wert={k.bean} ergebnis={bean} klein onSetze={b => void setze({ bean: b })} />)}
           {infoZeile('Typ', <WertelistenEinzelWahl liste="typen" werte={listen.typen} wert={k.typ} onWahl={typ => void setze({ typ })} api={api} klein />)}
           {infoZeile('Kategorie', <WertelistenEinzelWahl liste="kategorien" werte={listen.kategorien} wert={k.kategorie} onWahl={kategorie => void setze({ kategorie })} api={api} klein />)}
           {infoZeile('Besitzer', <Wahl label="Besitzer" klein liste={besitzerListe} wert={k.besitzer} leer={`${nameVon(haeltBeziehung(k))} (Standard) ▾`} farbe={LEUCHT.beziehung}
@@ -270,7 +281,8 @@ function MeetingAktion({ k, api, heute, onFertig, onAbbruch }: { k: Kontakt; api
   const speichern = async () => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(tag) || laeuft) return;
     setLaeuft(true);
-    const r = await api.aktivitaet({ id: k.id, art: 'termin', text: meetingText({ tag, ...(zeit ? { zeit } : {}), ...(ort.trim() ? { ort } : {}), ...(notiz.trim() ? { notiz } : {}) }) });
+    // Zeitpunkt und Ort als Felder (28.09., H4) — der Text ist nur die Notiz.
+    const r = await api.aktivitaet({ id: k.id, art: 'termin', wann: meetingWann(tag, zeit), ...(ort.trim() ? { ort: ort.trim() } : {}), ...(notiz.trim() ? { text: notiz.trim() } : {}) });
     setLaeuft(false);
     if (r.kontakt) onFertig('Meeting festgehalten.');
   };

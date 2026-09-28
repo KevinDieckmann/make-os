@@ -13,6 +13,8 @@
 //  · Delta: kennt der Server den Stand, den der Browser hat (ETag), gehen nur die
 //    geänderten Zeilen und die gelöschten Kennungen über die Leitung
 //  · Massen-Wache und Massenlösch-Schutz laufen in der Schreibsperre
+//  · IBAN (28.09., H4): geht nur maskiert hinaus (`fuerPerson`), ein maskierter/leerer Wert
+//    beim Speichern heißt „unverändert“; Löschmarken im Verlauf setzt nur /api/crm/aktivitaet
 
 import { NextResponse } from 'next/server';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
@@ -22,6 +24,7 @@ import { mitStand } from '@/lib/store/fingerabdruck';
 import { deltaAus, staende, StandGedaechtnis } from '@/lib/kontakte/delta';
 import { saeubereKontakt, kontaktVereinen, privatNotizVereinen, vonHandMarkieren, fuerPerson, massenStufe, pipelineStand, MASSEN_GRENZE, type Kontakt } from '@/lib/make-one/crm';
 import { personAus } from '@/lib/zoe/raum';
+import { zahlungZusammenfuehren, ibanBehalten } from '@/lib/crm/zahlung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,7 +37,7 @@ const gedaechtnis = new StandGedaechtnis(20);
 export async function GET(req: Request) {
   const person = personAus(req);
   // Der Abgleich fragt alle 20 Sekunden — unverändert gibt es 304 statt 750 KB (lib/http/json-antwort.ts).
-  const etag = etagAus('k2', await speicherStand(['kontakte']), person);
+  const etag = etagAus('k3', await speicherStand(['kontakte']), person);
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
   const f = await loadJson<Bestand>('kontakte');
@@ -60,12 +63,27 @@ export async function PATCH(req: Request) {
   // Neue Kontakte: eine private Notiz gehört der Person, die sie anlegt.
   const ops = roh.map(o => (o.op === 'upsert' && o.eintrag ? { ...o, eintrag: privatNotizVereinen(o.eintrag, undefined, person) } : o));
 
+  /** Ergebnisse eines `teil` — beim anschließenden Vereinen ist ihre IBAN schon entschieden. */
+  const ausTeil = new WeakSet<Kontakt>();
   const r = await listePatchen<Kontakt, Bestand>('kontakte', 'kontakte', ops, 20, undefined, {
     // Herkunft je Feld (27.09., „Online gewinnt“): was hier von Hand anders wird, überschreibt kein Import mehr.
-    vereinen: (neu, alt) => vonHandMarkieren(alt, kontaktVereinen(neu, alt, person)),
+    // IBAN (28.09., H4): ein ganzer Eintrag aus dem Browser trägt sie nur maskiert (fällt in der Säuberung weg) —
+    // dann bleibt die gespeicherte. Ein `teil` hat die IBAN schon gegen den Altstand aufgelöst (ibanEntfernen wirkt).
+    vereinen: (neu, alt) => {
+      const v = kontaktVereinen(neu, alt, person);
+      const zahlung = ausTeil.has(neu) ? v.zahlung : ibanBehalten(v.zahlung, alt.zahlung);
+      return vonHandMarkieren(alt, zahlung === v.zahlung ? v : { ...v, zahlung });
+    },
     neu: eintrag => vonHandMarkieren(undefined, eintrag),
     // `teil`: Felder auf den gespeicherten Kontakt legen, dann dieselbe Prüfung wie für einen ganzen Eintrag.
-    teil: (alt, felder) => { const { stand: _s, ...rest } = felder; return saeubereKontakt({ ...alt, ...rest, id: alt.id }); },
+    // Löschmarken setzt nur der Server (es gelten die gespeicherten); die IBAN kommt maskiert zurück und bleibt, wenn keine neue gültige kommt (28.09., H4).
+    teil: (alt, felder) => {
+      const { stand: _s, geloeschteAktivitaeten: _m, ...rest } = felder;
+      const zahlung = 'zahlung' in rest ? { zahlung: zahlungZusammenfuehren(rest.zahlung, alt.zahlung) } : {};
+      const k = saeubereKontakt({ ...alt, ...rest, ...zahlung, id: alt.id, geloeschteAktivitaeten: alt.geloeschteAktivitaeten });
+      if (k) ausTeil.add(k);
+      return k;
+    },
     // Massen-Wache INNERHALB der Sperre: wie viele Stufen würden sich ändern?
     pruefen: (liste, ops) => {
       if (body.erzwingen) return null;

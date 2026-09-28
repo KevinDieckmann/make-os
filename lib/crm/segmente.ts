@@ -10,10 +10,11 @@ import type { CrmBestand, Firma, SegmentKriterien } from './typen';
 import { kanalStatus } from './recht';
 import { OFFENE_STUFEN } from './pipeline';
 import { lifecycleVon, type LifecycleBestand } from './vorschlaege';
+import { beanVon } from './bean';
 
 export interface SegmentKontext {
   firmen: Map<string, Firma>; mitChance: Set<string>; mitMandat: Set<string>; heute: string;
-  /** Für den Lifecycle-Vorschlag (28.09.) — ohne zählt nur die gesetzte Phase, sonst „Lead“. */
+  /** Mandate, Deals, Firmen, Teilnahmen — für die BEAN-Ableitung (28.09.). */
   bestand?: LifecycleBestand;
 }
 
@@ -27,6 +28,7 @@ export function kontextAus(crm: CrmBestand, heute: string): SegmentKontext {
   };
 }
 
+const OHNE_BESTAND: LifecycleBestand = { mandate: [], chancen: [] };
 const enthaelt = (feld: string | undefined, such?: string) => !such || (feld ?? '').toLowerCase().includes(such.toLowerCase());
 const tage = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a.slice(0, 10)}T12:00:00Z`)) / 864e5);
 
@@ -44,7 +46,11 @@ export function imSegment(k: Kontakt, kr: SegmentKriterien, ctx: SegmentKontext)
   if (kr.mitChance !== undefined && ctx.mitChance.has(k.id) !== kr.mitChance) return false;
   if (kr.ohneKontaktSeitTagen && k.letzterKontakt && tage(k.letzterKontakt, ctx.heute) < kr.ohneKontaktSeitTagen) return false;
   if (kr.temperatur?.length && !kr.temperatur.includes(leadScore([k], f?.lead ?? k.lead, ctx.heute).temperatur)) return false;
-  if (kr.lifecycle?.length && !kr.lifecycle.includes(ctx.bestand ? lifecycleVon(k, ctx.bestand, ctx.heute).phase : k.phase ?? 'lead')) return false;
+  // Lifecycle (28.09., H4): die gesetzte Phase, sonst „Lead“ — ein Vorschlag zählt nicht.
+  if (kr.lifecycle?.length && !kr.lifecycle.includes(lifecycleVon(k, null, ctx.heute).phase)) return false;
+  // BEAN (28.09., H4): von Hand, sonst abgeleitet aus Mandaten und Deals. Segmente rechnen überall gleich
+  // (Oberfläche, Heads, Kampagnen) — deshalb ohne die Dateiablage, die nur die Oberfläche lesen darf.
+  if (kr.bean?.length && !kr.bean.includes(beanVon(k, ctx.bestand ?? OHNE_BESTAND).bean)) return false;
   if (kr.kanal) {
     const st = kanalStatus(k, kr.kanal, { hatMandat: ctx.mitMandat.has(k.id), hatChance: ctx.mitChance.has(k.id) });
     if (st.farbe !== 'gruen') return false;

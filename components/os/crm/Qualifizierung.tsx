@@ -20,6 +20,8 @@ import { type CrmApi, datum, holeMitStand } from './daten';
 import { Pillen } from './teile';
 import { Person } from './team';
 import { useNachfrage } from './Nachfrage';
+import { beanFuerLead } from '@/lib/crm/bean';
+import { BeanBadge, BEAN_FARBE, useOffeneAngebote } from './bean-teile';
 
 interface Daten { leads: LeadZeile[] }
 const Q_FARBE: Record<Qual, string> = { ja: LEUCHT.gut, nein: LEUCHT.kritisch, unklar: C.inkLeise };
@@ -27,22 +29,27 @@ const Q_FARBE: Record<Qual, string> = { ja: LEUCHT.gut, nein: LEUCHT.kritisch, u
 export function Qualifizierung({ api, zuKontakt, zuFirma, zuLeads }: { api: CrmApi; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; zuLeads: (id?: string) => void }) {
   const heute = api.crm?.heute ?? localDay();
   const ich = api.ich ?? TEAM[0].id;
-  const [d, setD] = useState<Daten | null>(null);
+  const [roh, setRoh] = useState<Daten | null>(null);
   const [fehler, setFehler] = useState('');
   const staende = useRef(new Map<string, string>());
-  const laden = useCallback(() => holeMitStand<Daten & { ok?: boolean; fehler?: string }>('/api/crm/lead', staende.current).then(x => { if (x?.ok) { setD(x); setFehler(''); } else if (x && !x.ok) setFehler(x.fehler ?? 'Leads nicht geladen.'); }).catch(() => setFehler('Leads nicht erreichbar.')), []);
+  const laden = useCallback(() => holeMitStand<Daten & { ok?: boolean; fehler?: string }>('/api/crm/lead', staende.current).then(x => { if (x?.ok) { setRoh(x); setFehler(''); } else if (x && !x.ok) setFehler(x.fehler ?? 'Leads nicht geladen.'); }).catch(() => setFehler('Leads nicht erreichbar.')), []);
   useEffect(() => { void laden(); }, [laden]);
+  // BEAN (28.09., H4): je Lead mit den offenen Angeboten der Dateiablage nachgerechnet — für die Filter-Pille „Neu“.
+  const angebote = useOffeneAngebote();
+  const d = useMemo<Daten | null>(() => (roh ? { leads: roh.leads.map(z => { const b = beanFuerLead(z, api.crm?.stand, api.kontakte ?? [], { angebote }); return b && b.bean !== z.bean ? { ...z, bean: b.bean } : z; }) } : null), [roh, api.crm, api.kontakte, angebote]);
 
   const [wer, setWer] = useState<RundenFilter['wer']>(ich);
   useEffect(() => { setWer(w => (w === TEAM[0].id && ich !== TEAM[0].id ? ich : w)); }, [ich]);
   const [auchKalt, setAuchKalt] = useState(false);
   const [kanal, setKanal] = useState<KanalId | ''>('');
+  // Standard der Runde bleibt wie bisher; die Pille „Neu“ grenzt zusätzlich auf BEAN N ein (Leads zum Qualifizieren).
+  const [nurNeu, setNurNeu] = useState(false);
   // Die Reihenfolge steht beim Start der Runde fest — jede Antwort würde sie sonst umsortieren.
   const [reihe, setReihe] = useState<string[] | null>(null);
   const [pos, setPos] = useState(0);
   const [erledigt, setErledigt] = useState(0);
-  const filterKey = `${wer}|${auchKalt}|${kanal}`;
-  const passend = useMemo(() => (d ? zuQualifizieren(d.leads, { wer, auchKalt, ...(kanal ? { kanal } : {}), heute }) : []), [d, wer, auchKalt, kanal, heute]);
+  const filterKey = `${wer}|${auchKalt}|${kanal}|${nurNeu}`;
+  const passend = useMemo(() => (d ? zuQualifizieren(d.leads, { wer, auchKalt, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute }) : []), [d, wer, auchKalt, kanal, nurNeu, heute]);
   useEffect(() => { setReihe(null); setPos(0); setErledigt(0); }, [filterKey]);
   useEffect(() => { if (!reihe && d) setReihe(passend.map(z => z.id)); }, [reihe, d, passend]);
   const nachId = useMemo(() => new Map((d?.leads ?? []).map(z => [z.id, z])), [d]);
@@ -61,7 +68,8 @@ export function Qualifizierung({ api, zuKontakt, zuFirma, zuLeads }: { api: CrmA
     return () => window.removeEventListener('keydown', h);
   }, [karten.length]);
 
-  const zaehl = (w: RundenFilter['wer']) => (d ? zuQualifizieren(d.leads, { wer: w, auchKalt, ...(kanal ? { kanal } : {}), heute }).length : 0);
+  const zaehl = (w: RundenFilter['wer']) => (d ? zuQualifizieren(d.leads, { wer: w, auchKalt, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute }).length : 0);
+  const neuZahl = d ? zuQualifizieren(d.leads, { wer, auchKalt, ...(kanal ? { kanal } : {}), bean: 'N', heute }).length : 0;
   const andere = anderer(ich);
   const WER: { id: RundenFilter['wer']; label: string }[] = [
     { id: ich, label: `Meine ${zaehl(ich)}` }, { id: andere, label: `${nameVon(andere)} ${zaehl(andere)}` },
@@ -76,6 +84,11 @@ export function Qualifizierung({ api, zuKontakt, zuFirma, zuLeads }: { api: CrmA
         <div style={{ fontSize: 12.5, color: C.inkLeise, lineHeight: 1.55, marginBottom: 10 }}>Lead für Lead: die sechs Kernfragen, was genau dahintersteckt, und wie warm es ist. Wer qualifiziert, übernimmt Leads ohne Besitzer. Kalte Leads warten im Marketing-Segment „Vernetzen“, bis sie warm werden.</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={WER} aktiv={wer} onWahl={setWer} farbe={LEUCHT.business} /></div>
+          <button type="button" onClick={() => setNurNeu(!nurNeu)} aria-pressed={nurNeu} title="BEAN „Neu“: kein Mandat, kein offenes Angebot — Leads zum Qualifizieren" className="fassbar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: 12.5, fontWeight: 600,
+              border: `1px solid ${nurNeu ? BEAN_FARBE.N : 'rgba(255,255,255,.14)'}`, background: nurNeu ? `${BEAN_FARBE.N}1F` : 'transparent', color: nurNeu ? BEAN_FARBE.N : C.inkDim }}>
+            <BeanBadge bean="N" vonHand={nurNeu} /> Neu {neuZahl}
+          </button>
           <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 12.5, color: C.inkDim, cursor: 'pointer' }}><input type="checkbox" checked={auchKalt} onChange={e => setAuchKalt(e.target.checked)} /> auch kalte</label>
           <select value={kanal} onChange={e => setKanal(e.target.value as KanalId | '')} aria-label="Kanal" style={{ ...feld, fontSize: 12.5, padding: '6px 10px', width: 'auto' }}>
             <option value="">Jeder Kanal</option>

@@ -19,6 +19,7 @@ import { segmentAuswerten, type SegmentKontext } from './segmente';
 import { TEAM, BEIDE, zustaendig, istMeins, mitglied, nameVon } from './team';
 import { TEMPERATUR, temperaturLabel } from './score';
 import { LIFECYCLE_PHASEN, LIFECYCLE_KURZ } from './lifecycle';
+import { BEAN_IDS, BEAN_LABEL } from './bean';
 
 // ── Kleine Helfer ───────────────────────────────────────────────────────────
 const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
@@ -256,6 +257,9 @@ export function kriterienSauber(kr: SegmentKriterien): SegmentKriterien {
   if (temperatur.length) r.temperatur = temperatur;
   const lifecycle = LIFECYCLE_PHASEN.filter(p => (kr.lifecycle ?? []).includes(p));
   if (lifecycle.length) r.lifecycle = lifecycle;
+  // BEAN (28.09., H4): nur B/E/A/N, in der Reihenfolge B-E-A-N.
+  const bean = BEAN_IDS.filter(b => (kr.bean ?? []).includes(b));
+  if (bean.length) r.bean = bean;
   if (kr.kanal) r.kanal = kr.kanal;
   if (typeof kr.mitChance === 'boolean') r.mitChance = kr.mitChance;
   const n = Math.round(Number(kr.ohneKontaktSeitTagen ?? 0));
@@ -273,6 +277,7 @@ export function kriterienText(kr: SegmentKriterien): string {
   const t: string[] = [];
   if (kr.lebensphase?.length) t.push(kr.lebensphase.map(p => PHASE_TEXT[p] ?? p).join(', '));
   if (kr.lifecycle?.length) t.push(`Lifecycle ${kr.lifecycle.map(p => LIFECYCLE_KURZ[p]).join(', ')}`);
+  if (kr.bean?.length) t.push(`BEAN ${kr.bean.map(b => BEAN_LABEL[b]).join(', ')}`);
   if (kr.temperatur?.length) t.push(kr.temperatur.map(temperaturLabel).join(', '));
   if (kr.kreis?.length) t.push(`Kreis ${kr.kreis.join(', ')}`);
   if (kr.prio?.length) t.push(`Prio ${kr.prio.join(', ')}`);

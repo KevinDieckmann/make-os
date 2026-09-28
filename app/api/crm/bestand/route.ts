@@ -3,6 +3,7 @@
 //         Lage je Mandat, Ampel je Chance, Zahlen je Event)
 // PATCH → { ops: [{ liste, op: 'upsert'|'delete'|'teil', eintrag|id|felder }] } — Einzeländerungen,
 //         damit Kevin und Malin gleichzeitig arbeiten können.
+// IBAN (28.09., H4): Firmen gehen nur mit maskierter IBAN (+ ibanGesetzt) hinaus.
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
@@ -17,6 +18,7 @@ import { prognose, gesundheit, winRate, STUFEN, wahrscheinlichkeit } from '@/lib
 import { mandatLage, mrr, konzentration, zahlungAusRechnungen, type RechnungKurz } from '@/lib/crm/kunden';
 import { eventZahlen } from '@/lib/crm/events';
 import type { CrmBestand } from '@/lib/crm/typen';
+import { zahlungMaskiert } from '@/lib/crm/zahlung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,7 +28,8 @@ async function antwort(b: CrmBestand, ich: string) {
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const rechnungen = (await loadJson<{ rechnungen?: RechnungKurz[] }>('finanzplan'))?.rechnungen ?? [];
   return {
-    ok: true, ich, heute, stand: b,
+    // IBAN der Firmen nur maskiert (28.09., H4) — Speichern: maskiert/leer = unverändert (lib/crm/speicher.ts `ibanSchuetzen`).
+    ok: true, ich, heute, stand: { ...b, firmen: b.firmen.map(f => (f.zahlung?.iban ? { ...f, zahlung: zahlungMaskiert(f.zahlung) } : f)) },
     stufen: STUFEN.map(s => ({ ...s, p: wahrscheinlichkeit(s.id, b.wahrscheinlichkeiten) })),
     prognose: prognose(b.chancen, heute, b.wahrscheinlichkeiten),
     gewinnquote: winRate(b.chancen, localDay()),
@@ -43,7 +46,7 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const person = personAus(req);
   // Alles, woraus die Antwort entsteht: die vier Speicher, der Tag (Ampeln, Prognose) und wer fragt.
-  const etag = etagAus('b', await speicherStand(['crm', 'kontakte', 'finanzplan', 'crm-signale']), localDay(), person);
+  const etag = etagAus('b2', await speicherStand(['crm', 'kontakte', 'finanzplan', 'crm-signale']), localDay(), person);
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
   return jsonAntwort(req, await antwort(await ladeCrm(), person), etag);

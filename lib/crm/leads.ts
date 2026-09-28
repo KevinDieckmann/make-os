@@ -23,6 +23,7 @@ import { OFFENE_STUFEN, gesamtwert } from './pipeline';
 import { haeltBeziehung } from './team';
 import { dealZuFirma } from './firmen-bezug';
 import { leadScore, kanalVon, warmPlus, type LeadScore, type KanalId } from './score';
+import { beanVon, beanFirma, type BeanId } from './bean';
 
 export const LEAD_STATUS: { id: LeadStatus; label: string; weiterWenn: string; aktiv: boolean }[] = [
   { id: 'neu', label: 'Neu', weiterWenn: 'Erste Ansprache über einen zulässigen Kanal.', aktiv: false },
@@ -84,6 +85,11 @@ export interface LeadZeile {
   antworten?: Lead['antworten']; qualifiziertAm?: string;
   /** Besitzer wurde nie gesetzt — in der Runde per Klick übernehmen. */
   ohneBesitzer: boolean;
+  /**
+   * BEAN-Kundengruppe (28.09., H4, lib/crm/bean.ts): der Firma bzw. der Person — von Hand oder abgeleitet
+   * aus Mandaten und Deals. Die Oberfläche rechnet sie mit der Dateiablage nach (`beanFuerLead`).
+   */
+  bean: BeanId;
 }
 
 /**
@@ -117,6 +123,7 @@ export function leads(kontakte: Kontakt[], crm: CrmBestand, heute = new Date().t
       score: leadScore(personen, lead, heute, kriterien), kanal: kanalVon(haupt ?? personen[0] ?? {}),
       ...(lead?.antworten ? { antworten: lead.antworten } : {}), ...(lead?.qualifiziertAm ? { qualifiziertAm: lead.qualifiziertAm } : {}),
       ohneBesitzer: personen.every(k => !k.besitzer),
+      bean: firma ? beanFirma(firma, crm, personen).bean : beanVon(personen[0] ?? { id, firmaId: undefined }, crm).bean,
       ...(lead?.fit ? { fit: lead.fit } : {}), ...(lead?.notiz ? { notiz: lead.notiz } : {}), ...(lead?.grund ? { grund: lead.grund } : lead?.status === 'sql' && d && !offen && d.grund ? { grund: d.grund } : {}), ...(lead?.sqlAm ? { sqlAm: lead.sqlAm } : {}),
       ...(d ? { deal: { id: d.id, titel: d.titel, stufe: d.stufe, wert: Math.round(gesamtwert(d)), offen } } : {}),
       ...(letzter ? { letzterKontakt: letzter } : {}),
@@ -183,6 +190,8 @@ export interface RundenFilter {
   /** Auch kalte Leads zeigen (Standard: nur lau und wärmer). */
   auchKalt?: boolean;
   kanal?: KanalId;
+  /** Nur diese BEAN-Gruppe (28.09., H4) — die Filter-Pille „Neu“ in der Runde. */
+  bean?: BeanId;
   heute: string;
 }
 const tageZw = (a: string, b: string) => Math.round((Date.parse(`${b.slice(0, 10)}T12:00:00Z`) - Date.parse(`${a.slice(0, 10)}T12:00:00Z`)) / 864e5);
@@ -201,6 +210,7 @@ export function zuQualifizieren(zeilen: LeadZeile[], f: RundenFilter): LeadZeile
     .filter(z => (f.wer === 'alle' ? true : f.wer === 'ohne' ? z.ohneBesitzer : !z.ohneBesitzer && (z.besitzer === f.wer || z.besitzer === 'beide')))
     .filter(z => f.auchKalt || z.score.temperatur !== 'kalt')
     .filter(z => !f.kanal || z.kanal === f.kanal)
+    .filter(z => !f.bean || z.bean === f.bean)
     .sort((a, b) => b.score.punkte - a.score.punkte || (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? '') || a.name.localeCompare(b.name));
 }
 /** Leads-Liste ohne die kalten (Kevin 27.09.: kalte leben nur im Marketing-Segment „Vernetzen“, bis sie warm werden). */

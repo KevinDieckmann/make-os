@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   aufbereiten, filtern, zaehlen, gruppieren, berlin, unterAus, passtZeitraum, passtPerson, meetingText, meetingAusText,
-  ankerListe, aktivitaetAnker, followupAnker, istAktAnker, notizAendern, notizLoeschen, darfBearbeiten, bezugAufloesen, filterGesetzt,
+  ankerListe, aktivitaetAnker, followupAnker, istAktAnker, notizAnwenden, darfBearbeiten, bezugAufloesen, filterGesetzt,
   FILTER_START, KATEGORIE_VON_ART, type AktFilter, type Eintrag,
 } from '../lib/crm/aktivitaeten';
 import { leererBestand } from '../lib/crm/speicher';
@@ -182,16 +182,22 @@ describe('Aktivitäten — Meeting-Text, Anker, eigene Notizen, Bezug', () => {
     expect(darfBearbeiten(verlauf[2], 'kevin')).toBe(true);
     expect(darfBearbeiten(verlauf[2], 'malin')).toBe(false);
     expect(darfBearbeiten(verlauf[0], 'kevin')).toBe(false);
-    const neu = notizAendern(verlauf, a[2], ' Kurz halten. ', 'kevin')!;
-    expect(neu[2].text).toBe('Kurz halten.');
-    expect(neu).toHaveLength(verlauf.length);
-    expect(notizAendern(verlauf, a[2], '   ', 'kevin')).toBeNull();
-    expect(notizAendern(verlauf, a[2], 'x', 'malin')).toBeNull();
-    expect(notizAendern(verlauf, a[0], 'x', 'kevin')).toBeNull();
-    const weg = notizLoeschen(verlauf, a[2], 'kevin')!;
-    expect(weg).toHaveLength(verlauf.length - 1);
-    expect(weg.some(x => x.art === 'notiz')).toBe(false);
-    expect(notizLoeschen(verlauf, a[2], 'malin')).toBeNull();
+    const p = k({ aktivitaeten: verlauf });
+    const neu = notizAnwenden(p, { aktion: 'aendern', anker: a[2], text: ' Kurz halten. ' }, 'kevin', HEUTE, JETZT);
+    expect(neu.ok && neu.kontakt.aktivitaeten[2]).toMatchObject({ text: 'Kurz halten.', bearbeitet: JETZT });
+    expect(neu.ok && neu.kontakt.aktivitaeten).toHaveLength(verlauf.length);
+    // Die alte Fassung ist markiert — die neue nicht.
+    expect(neu.ok && neu.kontakt.geloeschteAktivitaeten).toHaveLength(1);
+    expect(notizAnwenden(p, { aktion: 'aendern', anker: a[2], text: '   ' }, 'kevin', HEUTE, JETZT)).toMatchObject({ ok: false, status: 400 });
+    expect(notizAnwenden(p, { aktion: 'aendern', anker: a[2], text: 'x' }, 'malin', HEUTE, JETZT)).toMatchObject({ ok: false, status: 403 });
+    expect(notizAnwenden(p, { aktion: 'aendern', anker: a[0], text: 'x' }, 'kevin', HEUTE, JETZT)).toMatchObject({ ok: false, status: 403 });
+    expect(notizAnwenden(p, { aktion: 'aendern', anker: 'akt-gibtsnicht', text: 'x' }, 'kevin', HEUTE, JETZT)).toMatchObject({ ok: false, status: 404 });
+    expect(notizAnwenden(p, { aktion: 'aendern', anker: a[2], text: 'Mag keine langen Mails.' }, 'kevin', HEUTE, JETZT)).toMatchObject({ ok: true, unveraendert: true });
+    const weg = notizAnwenden(p, { aktion: 'loeschen', anker: a[2] }, 'kevin', HEUTE, JETZT);
+    expect(weg.ok && weg.kontakt.aktivitaeten).toHaveLength(verlauf.length - 1);
+    expect(weg.ok && weg.kontakt.aktivitaeten.some(x => x.art === 'notiz')).toBe(false);
+    expect(weg.ok && weg.kontakt.geloeschteAktivitaeten).toHaveLength(1);
+    expect(notizAnwenden(p, { aktion: 'loeschen', anker: a[2] }, 'malin', HEUTE, JETZT)).toMatchObject({ ok: false, status: 403 });
   });
   it('Bezug wird zu Deal/Event mit Titel', () => {
     expect(bezugAufloesen('ch-1', crm)).toEqual({ art: 'deal', id: 'ch-1', titel: 'Kapitalmarkt-Diagnose' });

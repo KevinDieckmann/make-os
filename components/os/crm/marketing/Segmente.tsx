@@ -22,6 +22,7 @@ import { ROLLEN } from '../Firmen';
 import { Mehrfach } from './gemeinsam';
 import { WahlMehrfach } from '../Wahl';
 import { LIFECYCLE_WAHL } from '@/lib/crm/lifecycle';
+import { BEAN_WAHL } from '@/lib/crm/bean';
 
 const PHASEN = [{ id: 'kontakt', label: 'Kontakt' }, { id: 'interessent', label: 'Interessent' }, { id: 'kunde', label: 'Kunde' }, { id: 'ex_kunde', label: 'Ex-Kunde' }, { id: 'partner', label: 'Partner' }, { id: 'multiplikator', label: 'Multiplikator' }];
 const KREISE = ['A', 'B', 'C', 'D'].map(k => ({ id: k, label: `Kreis ${k}` }));
@@ -136,6 +137,7 @@ function SegmentFormular({ e, setE, a, speichern, gespeichert, csv, zuKontakt, l
       </div>
       <div>
         <Feldzeile label="Lifecycle"><WahlMehrfach label="Lifecycle" liste={LIFECYCLE_WAHL} wert={kr.lifecycle ?? []} onWahl={l => setK({ lifecycle: l.length ? l : undefined })} /></Feldzeile>
+        <Feldzeile label="BEAN"><WahlMehrfach label="BEAN" liste={BEAN_WAHL} wert={kr.bean ?? []} onWahl={l => setK({ bean: l.length ? l : undefined })} /></Feldzeile>
         <Feldzeile label="Lebensphase"><Mehrfach liste={PHASEN} aktiv={kr.lebensphase ?? []} onWahl={l => setK({ lebensphase: l })} /></Feldzeile>
         <Feldzeile label="Kreis"><Mehrfach liste={KREISE} aktiv={kr.kreis ?? []} onWahl={l => setK({ kreis: l })} /></Feldzeile>
         <Feldzeile label="Prio"><Mehrfach liste={PRIOS} aktiv={kr.prio ?? []} onWahl={l => setK({ prio: l })} /></Feldzeile>

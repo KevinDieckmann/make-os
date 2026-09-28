@@ -32,12 +32,23 @@
 //
 // Zeiten: Aktivitäten tragen ISO-Zeitpunkte (UTC). Tag, Uhrzeit, Monat und
 // Zeitraum rechnen in Europe/Berlin — nie `.slice(0, 10)` auf einem UTC-Stempel.
+//
+// Meetings (28.09., H4): Zeitpunkt und Ort stehen als Felder `wann`/`ort` an der
+// Aktivität; `am` bleibt, wann festgehalten wurde. Altbestand trägt das Datum in der
+// ersten Textzeile („Meeting am 02.10.2026 um 14:00 Uhr · Ort: …“) — `meetingVon`
+// liest beides (Feld vor Text).
+//
+// Eigene Notizen ändern/löschen (28.09., H4): nur über POST /api/crm/aktivitaet mit
+// `aktion: 'aendern' | 'loeschen'`, Anker und Stand (409 bei veraltetem Stand) —
+// Logik in `notizAnwenden`. Die alte Fassung bekommt eine Löschmarke
+// (lib/crm/aktivitaet-marke.ts), damit sie beim Vereinen nicht zurückkommt.
 
 import type { Aktivitaet, AktivitaetArt, Ergebnis, Kontakt, NotizVorlage } from '@/lib/make-one/crm';
 import { NOTIZ_FELDER } from '@/lib/make-one/crm';
 import type { CrmBestand, FollowUpArt, FollowUpStatus } from './typen';
 import { faellige, FOLLOWUP_ARTEN, tagPlus, type Faellig, type VirtuelleQuelle } from './followup';
 import { normiere } from './wahl';
+import { kurzHash, grundAnker, aktivitaetMarke, markenMit } from './aktivitaet-marke';
 
 // ── Unter-Reiter und Kategorien ──────────────────────────────────────────────
 export type Unter = 'alle' | 'notizen' | 'emails' | 'anrufe' | 'aufgaben' | 'meetings';
@@ -110,11 +121,26 @@ export function berlin(iso: string): { tag: string; zeit?: string } {
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 export const monatLabel = (monat: string) => `${MONATE[Number(monat.slice(5, 7)) - 1] ?? monat} ${monat.slice(0, 4)}`;
 
-// ── Meeting festhalten: Datum, Uhrzeit und Ort stehen im Text ────────────────
-// Die Aktivität hat nur „am“ (wann festgehalten). Ein Meeting braucht ein
-// eigenes Datum — es steht in einer festen ersten Zeile, die hier gelesen wird.
-// Keine Kalendereinladung, keine Teilnehmer: MAKE OS verschickt nichts.
+// ── Meeting festhalten: Zeitpunkt und Ort als Felder (28.09., H4) ─────────────
+// Seit H4 schreibt „+ Meeting“ `wann` (Tag bzw. Tag + Uhrzeit, Berliner Zeit) und
+// `ort` an die Aktivität, der Text ist nur noch die Notiz. Früher stand das Datum
+// in einer festen ersten Textzeile (`meetingText`) — die wird für den Altbestand
+// weiter gelesen. Keine Kalendereinladung, keine Teilnehmer: MAKE OS verschickt nichts.
 export interface MeetingDaten { tag: string; zeit?: string; ort?: string; notiz?: string }
+
+/** `wann` für die Aktivität aus Tag und optionaler Uhrzeit (Berliner Zeit, ohne Zone). */
+export const meetingWann = (tag: string, zeit?: string): string => (zeit && /^\d{2}:\d{2}$/.test(zeit) ? `${tag}T${zeit}` : tag);
+
+/** Datum, Uhrzeit, Ort und Notiz eines Meetings — aus den Feldern, sonst (Altbestand) aus der ersten Textzeile. */
+export function meetingVon(a: Pick<Aktivitaet, 'art' | 'text' | 'wann' | 'ort'>): MeetingDaten | null {
+  if (a.art !== 'termin') return null;
+  if (a.wann) {
+    const b = berlin(a.wann);
+    return { tag: b.tag, ...(b.zeit && a.wann.length > 10 ? { zeit: b.zeit } : {}), ...(a.ort ? { ort: a.ort } : {}), ...(a.text?.trim() ? { notiz: a.text.trim() } : {}) };
+  }
+  const alt = meetingAusText(a.text);
+  return alt ? { ...alt, ...(a.ort && !alt.ort ? { ort: a.ort } : {}) } : null;
+}
 
 export function meetingText(e: MeetingDaten): string {
   const [j, m, t] = e.tag.split('-');
@@ -129,13 +155,8 @@ export function meetingAusText(text?: string): MeetingDaten | null {
 }
 
 // ── Anker ────────────────────────────────────────────────────────────────────
-/** FNV-1a, 32 Bit, base36 — kurz und stabil. */
-export function kurzHash(s: string): string {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
-  return h.toString(36);
-}
-const grundAnker = (a: Pick<Aktivitaet, 'am' | 'art' | 'von' | 'bezug'>) => `akt-${kurzHash(`${a.am}|${a.art}|${a.von}|${a.bezug ?? ''}`)}`;
+// FNV-Hash und Grundanker liegen in lib/crm/aktivitaet-marke.ts (auch für die Löschmarken).
+export { kurzHash };
 
 /** Anker aller Einträge des Verlaufs, in Log-Reihenfolge (gleiche Schlüssel bekommen -2, -3 …). */
 export function ankerListe(liste: readonly Aktivitaet[]): string[] {
@@ -216,7 +237,7 @@ export function aufbereiten(k: Kontakt, crm: CrmBestand | null | undefined, o: A
   log.forEach((a, i) => {
     const b = berlin(a.am);
     const kategorie = KATEGORIE_VON_ART[a.art] ?? 'system';
-    const meeting = a.art === 'termin' ? meetingAusText(a.text) : null;
+    const meeting = meetingVon(a);
     const tag = meeting?.tag ?? b.tag;
     const zeit = meeting ? meeting.zeit : b.zeit;
     const kommend = !!meeting && `${meeting.tag}T${meeting.zeit ?? '23:59'}` > jetzt;
@@ -358,26 +379,39 @@ export function gruppieren(liste: readonly Eintrag[]): AktGruppe[] {
   return raus;
 }
 
-// ── Eigene Notizen bearbeiten und löschen ────────────────────────────────────
-// Schreibweg: PATCH /api/state/kontakte `teil` mit `stand` (api.kontaktTeil) —
-// hat inzwischen jemand anders geschrieben, kommt 409 und der Stand wird neu
-// geladen; nichts wird still überschrieben. Nur Notizen, nur die eigenen.
+// ── Eigene Notizen bearbeiten und löschen (28.09., H4) ───────────────────────
+// Schreibweg: POST /api/crm/aktivitaet mit `aktion: 'aendern' | 'loeschen'`, Kontakt-Id,
+// Anker und Stand — hat inzwischen jemand anders geschrieben, kommt 409 mit dem
+// aktuellen Kontakt; nichts wird still überschrieben. Nur Notizen, nur die eigenen
+// (`von` = angemeldete Person). Die entfernte Fassung bekommt eine Löschmarke.
 
 export const darfBearbeiten = (a: Pick<Aktivitaet, 'art' | 'von'>, ich: string | null | undefined) => a.art === 'notiz' && !!ich && a.von === ich;
 
-/** Neuer Verlauf mit geändertem Notiztext — null, wenn der Anker fehlt, es keine eigene Notiz ist oder der Text leer ist. */
-export function notizAendern(liste: readonly Aktivitaet[], anker: string, text: string, ich: string | null | undefined): Aktivitaet[] | null {
-  const t = text.trim().slice(0, 3000);
-  const i = ankerListe(liste).indexOf(anker);
-  if (i < 0 || !t || !darfBearbeiten(liste[i], ich)) return null;
-  return liste.map((a, j) => (j === i ? { ...a, text: t } : a));
-}
+export type NotizAktion = 'aendern' | 'loeschen';
+export type NotizErgebnis = { ok: true; kontakt: Kontakt; unveraendert?: boolean } | { ok: false; status: 400 | 403 | 404; fehler: string };
 
-/** Neuer Verlauf ohne diese Notiz — null, wenn es keine eigene Notiz ist. */
-export function notizLoeschen(liste: readonly Aktivitaet[], anker: string, ich: string | null | undefined): Aktivitaet[] | null {
-  const i = ankerListe(liste).indexOf(anker);
-  if (i < 0 || !darfBearbeiten(liste[i], ich)) return null;
-  return liste.filter((_, j) => j !== i);
+/**
+ * Eine eigene Notiz ändern oder löschen — rein, für die Route. `heute` ist der lokale Tag
+ * (geaendertAm), `jetzt` der ISO-Zeitpunkt (`bearbeitet`).
+ */
+export function notizAnwenden(k: Kontakt, e: { aktion: NotizAktion; anker: string; text?: string }, ich: string | null | undefined, heute: string, jetzt: string): NotizErgebnis {
+  const liste = k.aktivitaeten ?? [];
+  const i = ankerListe(liste).indexOf(e.anker);
+  if (i < 0) return { ok: false, status: 404, fehler: 'Diese Notiz gibt es nicht mehr — Stand neu laden.' };
+  const a = liste[i];
+  if (a.art !== 'notiz') return { ok: false, status: 403, fehler: 'Ändern und Löschen gibt es nur für Notizen.' };
+  if (!ich || a.von !== ich) return { ok: false, status: 403, fehler: 'Nur eigene Notizen lassen sich ändern oder löschen.' };
+  if (e.aktion === 'loeschen') {
+    const marken = markenMit(k.geloeschteAktivitaeten, [aktivitaetMarke(a)]);
+    return { ok: true, kontakt: { ...k, aktivitaeten: liste.filter((_, j) => j !== i), ...(marken ? { geloeschteAktivitaeten: marken } : {}), geaendertAm: heute } };
+  }
+  const t = String(e.text ?? '').trim().slice(0, 3000);
+  if (!t) return { ok: false, status: 400, fehler: 'Eine Notiz braucht Text — zum Entfernen „Löschen“ nehmen.' };
+  if (t === a.text) return { ok: true, kontakt: k, unveraendert: true };
+  const neu: Aktivitaet = { ...a, text: t, bearbeitet: jetzt };
+  // Alte Fassung markieren; kehrt der Text zu einer früher markierten Fassung zurück, gilt sie wieder.
+  const marken = markenMit(k.geloeschteAktivitaeten, [aktivitaetMarke(a)], [aktivitaetMarke(neu)]);
+  return { ok: true, kontakt: { ...k, aktivitaeten: liste.map((x, j) => (j === i ? neu : x)), ...(marken ? { geloeschteAktivitaeten: marken } : {}), geaendertAm: heute } };
 }
 
 // ── Bezug (Deal, Mandat, Event, Kampagne) ────────────────────────────────────

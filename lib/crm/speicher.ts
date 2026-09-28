@@ -13,7 +13,12 @@ import { wer, BEIDE, verantwortlich } from './team';
 import { leadSaeubern } from './lead-form';
 import { vernetzenSaeubern } from './netzwerk-form';
 import { MARKE_MAX } from './marke';
-import { zahlungSaeubern } from './zahlung';
+import { zahlungSaeubern, zahlungZusammenfuehren } from './zahlung';
+import { LIFECYCLE_PHASEN } from './lifecycle';
+import { BEAN_IDS, istBean } from './bean';
+import type { Temperatur } from './typen';
+
+const TEMPERATUREN: readonly Temperatur[] = ['kalt', 'lau', 'warm', 'heiss'];
 
 export const CRM_SPEICHER = 'crm';
 export const leererBestand = (): CrmBestand => ({ firmen: [], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [], segmente: [], beitraege: [], newsletter: [], kampagnen: [], followups: [] });
@@ -132,7 +137,8 @@ function firma(o: Record<string, unknown>, jetzt: string): Firma | null {
     id: String(o.id), name: txt(o.name, 160), ...f('domain', 120), ...f('webseite'), ...f('branche', 160), ...f('mitarbeiter', 40), ...f('umsatz', 60), ...f('stadt', 80),
     ...(Array.isArray(o.branchen) && (o.branchen as unknown[]).some(x => txt(x, 60)) ? { branchen: Array.from(new Set((o.branchen as unknown[]).map(x => txt(x, 60)).filter(Boolean))).slice(0, 12) } : {}),
     ...f('gegruendet', 20), ...f('linkedin'), ...f('telefon', 60), ...f('email', 160), ...f('rechtsform', 80),
-    rolle: aus(o.rolle, ROLLEN, 'offen'), ...(o.rolleVonHand === true ? { rolleVonHand: true } : {}), ...(leadSaeubern(o.lead) ? { lead: leadSaeubern(o.lead) } : {}), ...f('marktinfo', 800), ...f('notiz', 3000), ...(zahlungSaeubern(o.zahlung) ? { zahlung: zahlungSaeubern(o.zahlung) } : {}), geaendert: jetzt,
+    rolle: aus(o.rolle, ROLLEN, 'offen'), ...(o.rolleVonHand === true ? { rolleVonHand: true } : {}), ...(leadSaeubern(o.lead) ? { lead: leadSaeubern(o.lead) } : {}), ...f('marktinfo', 800), ...f('notiz', 3000), ...(zahlungSaeubern(o.zahlung) ? { zahlung: zahlungSaeubern(o.zahlung) } : {}),
+    ...(istBean(o.bean) ? { bean: o.bean } : {}), geaendert: jetzt,
   } as Firma;
 }
 
@@ -211,6 +217,13 @@ function segment(o: Record<string, unknown>, jetzt: string): Segment | null {
   if (['mail', 'telefon', 'linkedin', 'newsletter', 'einladung'].includes(String(k.kanal))) kr.kanal = k.kanal as SegmentKriterien['kanal'];
   if (typeof k.mitChance === 'boolean') kr.mitChance = k.mitChance;
   if (zahl(k.ohneKontaktSeitTagen, 0, 3650)) kr.ohneKontaktSeitTagen = zahl(k.ohneKontaktSeitTagen, 0, 3650);
+  // Temperatur (27.09.), Lifecycle (28.09.) und BEAN (28.09.): nur bekannte Werte in fester Reihenfolge — vorher fielen sie hier beim Speichern weg.
+  const temperatur = TEMPERATUREN.filter(t => Array.isArray(k.temperatur) && (k.temperatur as unknown[]).includes(t));
+  if (temperatur.length) kr.temperatur = temperatur;
+  const lifecycle = LIFECYCLE_PHASEN.filter(p => Array.isArray(k.lifecycle) && (k.lifecycle as unknown[]).includes(p));
+  if (lifecycle.length) kr.lifecycle = lifecycle;
+  const bean = BEAN_IDS.filter(b => Array.isArray(k.bean) && (k.bean as unknown[]).includes(b));
+  if (bean.length) kr.bean = bean;
   return { id: String(o.id), name: txt(o.name, 120), ...(opt(o.beschreibung, 400) ? { beschreibung: opt(o.beschreibung, 400) } : {}), kriterien: kr, geaendert: jetzt };
 }
 function beitrag(o: Record<string, unknown>, jetzt: string): Beitrag | null {
@@ -380,7 +393,8 @@ export function dealRegeln(b: CrmBestand, ops: ListenOp[], jetzt: string, person
 
 export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person: string): { bestand: CrmBestand; angewandt: number; fehler: string[] } {
   let angewandt = 0;
-  const { ops, fehler } = dealRegeln(b, roh, jetzt, person);
+  const { ops: regelOps, fehler } = dealRegeln(b, roh, jetzt, person);
+  const ops = ibanSchuetzen(b, regelOps);
   const neu = { ...b };
   for (const l of CRM_LISTEN) {
     const eigene = ops.filter(o => o.liste === l);
@@ -390,6 +404,22 @@ export function wendeCrmAn(b: CrmBestand, roh: ListenOp[], jetzt: string, person
     angewandt += r.angewandt;
   }
   return { bestand: neu, angewandt, fehler };
+}
+
+/**
+ * IBAN der Firmen (28.09., H4): der Browser kennt sie nur maskiert. Ein maskierter, leerer oder
+ * fehlender Wert heißt „unverändert“, nur eine neue gültige IBAN ersetzt, Entfernen nur mit
+ * `ibanEntfernen: true` (lib/crm/zahlung.ts `zahlungZusammenfuehren`). Gilt für `teil` und `upsert`.
+ */
+function ibanSchuetzen(b: CrmBestand, ops: ListenOp[]): ListenOp[] {
+  return ops.map(o => {
+    if (o.liste !== 'firmen') return o;
+    const id = o.op === 'teil' ? o.id : (o.eintrag as { id?: unknown } | undefined)?.id;
+    const alt = b.firmen.find(f => f.id === id)?.zahlung;
+    if (o.op === 'teil' && o.felder && 'zahlung' in o.felder) return { ...o, felder: { ...o.felder, zahlung: zahlungZusammenfuehren(o.felder.zahlung, alt) } };
+    if (o.op === 'upsert' && o.eintrag && alt?.iban) return { ...o, eintrag: { ...o.eintrag, zahlung: zahlungZusammenfuehren((o.eintrag as Record<string, unknown>).zahlung, alt) } };
+    return o;
+  });
 }
 
 export async function aendereCrm(mut: (b: CrmBestand) => CrmBestand): Promise<CrmBestand> {

@@ -96,6 +96,9 @@ export function markttraktion(s?: string, a?: string, k?: string, t?: string | n
 /** „Kontakt öffnen“ (25.09., Reiter 28.09.): eine ganze Seite je Person, optional direkt auf einem Reiter (und Unter-Reiter der Aktivitäten). */
 export const kontaktAkte = (id: string, t?: AkteReiter | string | null, u?: string | null): string => markttraktion('kontakte', 'akte', id, t, u);
 
+/** Kartei gefiltert auf eine BEAN-Gruppe (28.09., H4) — aus der Verteilungskarte im Überblick. Unbekanntes → ungefiltert. */
+export const karteiBean = (b: string): string => (/^[BEAN]$/.test(b) ? `${PFAD}?s=kontakte&bean=${b}` : markttraktion('kontakte'));
+
 /** Die Deal-Akte (27.09.): eine ganze Seite je Deal. */
 export const dealAkte = (id: string): string => markttraktion('deals', 'akte', id);
 

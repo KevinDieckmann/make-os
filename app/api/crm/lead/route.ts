@@ -33,7 +33,7 @@ const tagOk = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.te
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
-  const etag = etagAus('l', await speicherStand(['crm', 'kontakte']), localDay());
+  const etag = etagAus('l2', await speicherStand(['crm', 'kontakte']), localDay());
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];

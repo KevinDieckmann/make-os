@@ -18,6 +18,8 @@ import type { Firma, FirmaRolle } from '@/lib/crm/typen';
 import { type CrmApi, datum, euro } from './daten';
 import { Feldzeile, Pillen, Feld, Verlauf } from './teile';
 import { Wahl } from './Wahl';
+import { BeanWahl, useOffeneAngebote } from './bean-teile';
+import { beanFirma } from '@/lib/crm/bean';
 import { Person } from './team';
 import { LeadBlock } from './Leads';
 import { haeltBeziehung, nameVon } from '@/lib/crm/team';
@@ -132,6 +134,7 @@ function FirmenKarte({ f, api, zuPerson }: { f: Firma; api: CrmApi; zuPerson: (i
   const mandate = crm.stand.mandate.filter(m => m.kontaktIds.some(id => ids.has(id)) || m.kunde.toLowerCase() === f.name.toLowerCase());
   const verlauf: Aktivitaet[] = personen.flatMap(k => (k.aktivitaeten ?? []).filter(a => a.art !== 'system').map(a => ({ ...a, text: `${anzeigename(k)}: ${a.text ?? ''}`.replace(/: $/, '') }))).sort((a, b) => a.am.localeCompare(b.am));
   const [zuordnen, setZuordnen] = useState('');
+  const angebote = useOffeneAngebote();
   const setze = (teil: Partial<Firma>) => api.setze('firmen', { ...f, ...teil } as unknown as { id: string } & Record<string, unknown>);
   const kandidaten = zuordnen.trim().length >= 2 ? (api.kontakte ?? []).filter(k => k.firmaId !== f.id && `${anzeigename(k)} ${k.firma ?? ''}`.toLowerCase().includes(zuordnen.toLowerCase())).slice(0, 6) : [];
   const F: [keyof Firma, string, string?][] = [['domain', 'Domain'], ['webseite', 'Webseite'], ['branche', 'Branche'], ['mitarbeiter', 'Mitarbeitende'], ['umsatz', 'Umsatz'], ['stadt', 'Ort'], ['gegruendet', 'Gegründet'], ['telefon', 'Telefon'], ['email', 'E-Mail'], ['linkedin', 'LinkedIn']];
@@ -143,6 +146,8 @@ function FirmenKarte({ f, api, zuPerson }: { f: Firma; api: CrmApi; zuPerson: (i
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>{[f.branche, f.stadt, f.webseite ?? f.domain].filter(Boolean).join(' · ') || '—'}</div>
       </div>
       <Feldzeile label="Rolle"><Wahl label="Rolle" liste={ROLLEN.map(r => ({ id: r.id, label: r.label }))} wert={f.rolle} farbe={ROLLEN.find(r => r.id === f.rolle)?.farbe} onWahl={r => setze({ rolle: r, rolleVonHand: true })} /></Feldzeile>
+      {/* BEAN (28.09., H4): abgeleitet aus Mandaten, Deals und Angeboten der Firma und ihrer Personen — von Hand überschreibbar, gilt dann für Personen ohne eigene Wahl. */}
+      <Feldzeile label="BEAN"><BeanWahl wert={f.bean} ergebnis={beanFirma(f, crm.stand, api.kontakte ?? [], { angebote })} onSetze={bean => setze({ bean })} /></Feldzeile>
       <LeadBlock api={api} leadId={f.id} />
       <div>
         <Ueberschrift rechts={`${personen.length}`}>Personen</Ueberschrift>

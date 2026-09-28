@@ -160,9 +160,10 @@ export function useCrm() {
     unterwegs.current++;
     try {
       const r = await fetch('/api/crm/aktivitaet', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json());
+      // Die Antwort trägt den Kontakt mit Stand (28.09.) — auch bei 409 (Notiz ändern/löschen): dann der aktuelle.
       if (r.kontakt) setKontakte(alt => (alt ? alt.map(x => (x.id === r.kontakt.id ? r.kontakt : x)) : alt));
-      else fehlschlag(r.error ?? 'Nicht gespeichert.');
-      return r as { ok?: boolean; kontakt?: Kontakt; hinweis?: string; error?: string };
+      else fehlschlag(r.error ?? r.fehler ?? 'Nicht gespeichert.');
+      return r as { ok?: boolean; kontakt?: Kontakt; hinweis?: string; error?: string; fehler?: string; konflikt?: boolean; text?: string };
     } finally { unterwegs.current--; }
   }, []);
 

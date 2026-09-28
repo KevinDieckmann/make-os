@@ -97,6 +97,41 @@ export function zahlungOhneIban(z: Zahlungsdaten | undefined): Omit<Zahlungsdate
   return rest;
 }
 
+// ── IBAN serverseitig maskieren (28.09., Paket H4) ─────────────────────────────
+// Kein Weg an den Browser trägt die volle IBAN: Bestand (/api/crm/bestand) und Kartei
+// (/api/state/kontakte und alle Routen, die einen Kontakt zurückgeben — über
+// `fuerPerson`) liefern `iban` nur maskiert plus `ibanGesetzt: true`.
+// Beim Speichern heißt ein maskierter, leerer oder fehlender IBAN-Wert „unverändert“
+// (die gespeicherte bleibt); nur eine neue gültige IBAN ersetzt; Entfernen geht nur
+// ausdrücklich über `ibanEntfernen: true`. Ausnahme: die Auskunft nach Art. 15.
+
+/** Die Form für den Browser: IBAN maskiert, dazu `ibanGesetzt`. Ohne IBAN unverändert. */
+export function zahlungMaskiert<Z extends Zahlungsdaten | undefined>(z: Z): Z {
+  if (!z?.iban) return z;
+  return { ...z, iban: ibanMaskiert(z.iban), ibanGesetzt: true } as Z;
+}
+
+/** `maskiereIban` — dieselbe Maskierung für eine einzelne IBAN (Name aus dem Auftrag H4). */
+export const maskiereIban = ibanMaskiert;
+
+/**
+ * Eingehende Zahlungsdaten (roh, aus dem Netz) auf die gespeicherten legen:
+ * neue gültige IBAN → ersetzt; sonst `ibanEntfernen: true` → weg; sonst bleibt die gespeicherte.
+ * Danach dieselbe Säuberung wie immer (`zahlungSaeubern`).
+ */
+export function zahlungZusammenfuehren(roh: unknown, alt: Zahlungsdaten | undefined): Zahlungsdaten | undefined {
+  const o = roh && typeof roh === 'object' ? roh as Record<string, unknown> : {};
+  const neueIban = ibanGueltig(o.iban) ? ibanGrundform(o.iban) : undefined;
+  const iban = neueIban ?? (o.ibanEntfernen === true ? undefined : alt?.iban);
+  return zahlungSaeubern({ ...o, iban });
+}
+
+/** Für schon gesäuberte Daten (ganzer Eintrag): trägt der neue Stand keine IBAN, bleibt die gespeicherte. */
+export function ibanBehalten(neu: Zahlungsdaten | undefined, alt: Zahlungsdaten | undefined): Zahlungsdaten | undefined {
+  if (neu?.iban || !alt?.iban) return neu;
+  return { ...(neu ?? {}), iban: alt.iban };
+}
+
 /** Für die Anzeige: dieselben Daten, die IBAN nur maskiert. */
 export function zahlungFuerAnzeige(z: Zahlungsdaten | undefined): (Omit<Zahlungsdaten, 'iban'> & { ibanMaskiert?: string }) | undefined {
   if (!z) return undefined;

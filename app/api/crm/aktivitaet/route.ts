@@ -8,7 +8,10 @@ import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
 import { updateJson } from '@/lib/store/local-db';
 import { personAus } from '@/lib/zoe/raum';
-import { fuerPerson, wendeAktivitaetAn, STUFEN, AKTIVITAET_ARTEN, ERGEBNISSE, NOTIZ_FELDER, type Kontakt, type AktivitaetArt, type Stufe, type Ergebnis, type NotizVorlage } from '@/lib/make-one/crm';
+import { fuerPerson, wendeAktivitaetAn, wannSaeubern, ortSaeubern, STUFEN, AKTIVITAET_ARTEN, ERGEBNISSE, NOTIZ_FELDER, type Kontakt, type AktivitaetArt, type Stufe, type Ergebnis, type NotizVorlage } from '@/lib/make-one/crm';
+import { notizAnwenden, istAktAnker, type NotizAktion } from '@/lib/crm/aktivitaeten';
+import { fingerabdruck } from '@/lib/store/fingerabdruck';
+import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { folgeAus } from '@/lib/crm/heute';
 import { localDay, tagePlus } from '@/lib/zeit';
 
@@ -20,11 +23,54 @@ const ARTEN: readonly AktivitaetArt[] = AKTIVITAET_ARTEN.filter(a => a !== 'syst
 // Seit 24.09. auch mit Ergebnis (Power Hour), Notizvorlage und nächstem Schritt:
 // das Ergebnis setzt per Regel Wiedervorlage und Stufe (lib/crm/heute.ts),
 // „Sperre“ setzt die Werbesperre — sofort und dauerhaft (Art. 21 DSGVO).
+//
+// 28.09. (H4):
+//  · Meetings tragen `wann` (Tag bzw. Tag + Uhrzeit) und `ort` als Felder — der Text ist nur die Notiz.
+//  · Eigene Notizen ändern/löschen: { aktion: 'aendern' | 'loeschen', id, anker, stand, text? } —
+//    nur Art „notiz“, nur `von` = angemeldete Person (sonst 403), veralteter Stand → 409 mit dem
+//    aktuellen Kontakt. Die alte Fassung bekommt eine Löschmarke (lib/crm/aktivitaet-marke.ts), damit
+//    ein Speichern ohne Stand (ZOE, Import, altes Fenster) sie nicht zurückholt.
+//  · Jede Antwort trägt den Kontakt mit `stand` (Fingerabdruck) und maskierter IBAN.
+
+type Antwort = Record<string, unknown>;
+const mitStandFuer = (k: Kontakt, person: string) => ({ ...fuerPerson(k, person), stand: fingerabdruck(k as unknown as Record<string, unknown>) });
+
+async function notizAktion(req: Request, b: { aktion: NotizAktion; id?: string; anker?: string; stand?: string; text?: string }): Promise<NextResponse> {
+  // Nur eine benannte Person — der Dienstweg ohne Person darf keine „eigenen“ Notizen ändern.
+  const ich = personStreng(req);
+  if (!ich) return NextResponse.json({ ok: false, fehler: 'Ohne angemeldete Person keine Änderung an Notizen.' }, { status: 403 });
+  const id = String(b.id ?? '').trim();
+  const anker = String(b.anker ?? '').trim();
+  const stand = typeof b.stand === 'string' ? b.stand : '';
+  if (!/^c-[a-z0-9-]{4,60}$/.test(id) || !istAktAnker(anker)) return NextResponse.json({ ok: false, fehler: 'id und anker nötig.' }, { status: 400 });
+  if (!stand) return NextResponse.json({ ok: false, fehler: 'stand fehlt — ohne Stand wird nichts geändert.' }, { status: 400 });
+  const heute = localDay();
+  let raus: { status: number; body: Antwort } = { status: 404, body: { ok: false, fehler: `Kein Kontakt mit id ${id}.` } };
+  await updateJson<{ kontakte: Kontakt[] }>('kontakte', current => {
+    const f = current ?? { kontakte: [] };
+    const i = f.kontakte.findIndex(x => x.id === id);
+    if (i < 0) return f;
+    const alt = f.kontakte[i];
+    if (fingerabdruck(alt as unknown as Record<string, unknown>) !== stand) {
+      raus = { status: 409, body: { ok: false, konflikt: true, fehler: 'Jemand hat diesen Kontakt inzwischen geändert — Stand neu geladen, bitte noch einmal.', kontakt: mitStandFuer(alt, ich) } };
+      return f;
+    }
+    const r = notizAnwenden(alt, { aktion: b.aktion, anker, text: b.text }, ich, heute, new Date().toISOString());
+    if (!r.ok) { raus = { status: r.status, body: { ok: false, fehler: r.fehler } }; return f; }
+    raus = { status: 200, body: { ok: true, kontakt: mitStandFuer(r.kontakt, ich), text: b.aktion === 'loeschen' ? 'Notiz gelöscht.' : r.unveraendert ? 'Unverändert.' : 'Notiz geändert.' } };
+    if (r.unveraendert) return f;
+    f.kontakte[i] = r.kontakt;
+    return f;
+  });
+  return NextResponse.json(raus.body, { status: raus.status });
+}
 
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
-  let b: { id?: string; art?: string; text?: string; stufe?: string; wiedervorlage?: string; von?: 'zoe'; ergebnis?: string; notiz?: Record<string, unknown>; naechster?: { text?: string; datum?: string }; bezug?: string };
+  let b: { id?: string; art?: string; text?: string; stufe?: string; wiedervorlage?: string; von?: 'zoe'; ergebnis?: string; notiz?: Record<string, unknown>; naechster?: { text?: string; datum?: string }; bezug?: string; wann?: string; ort?: string; aktion?: string; anker?: string; stand?: string };
   try { b = await req.json(); } catch { return NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
+  if (b.aktion === 'aendern' || b.aktion === 'loeschen') return notizAktion(req, { ...b, aktion: b.aktion });
+  if (b.aktion !== undefined) return NextResponse.json({ ok: false, fehler: 'aktion ist aendern oder loeschen.' }, { status: 400 });
   const id = String(b.id ?? '').trim();
   const art = String(b.art ?? '') as AktivitaetArt;
   if (!id || !ARTEN.includes(art)) return NextResponse.json({ error: `id und art (${ARTEN.join('|')}) nötig.` }, { status: 400 });
@@ -49,6 +95,7 @@ export async function POST(req: Request) {
     const folge = erg ? folgeAus(erg, heute, alt.stufe) : null;
     let neu = wendeAktivitaetAn(alt, {
       art, text: text || undefined, von, ergebnis: erg, notiz: notiz && Object.keys(notiz).length ? notiz : undefined, bezug,
+      ...(art === 'termin' ? { wann: wannSaeubern(b.wann), ort: ortSaeubern(b.ort) } : {}),
       stufe: wunschStufe ?? folge?.stufe, wiedervorlage: wunschWv ?? naechster?.datum ?? folge?.wiedervorlage,
     }, heute, new Date().toISOString(), tagePlus);
     if (naechster) neu = { ...neu, naechsterSchritt: naechster };
@@ -66,5 +113,5 @@ export async function POST(req: Request) {
     await aendereCrm(c => ({ ...c, kampagnen: c.kampagnen.map(k => (k.id === bezug && k.kontaktIds.includes(id) ? { ...k, ergebnisse: [...k.ergebnisse, { kontaktId: id, ergebnis: kErg, am: heute, ...(von !== 'zoe' ? { von } : {}) }], geaendert: new Date().toISOString(), geaendertVon: von } : k)) }));
   }
   // Private Notizen sieht nur, wer sie schrieb — auch in dieser Antwort.
-  return NextResponse.json({ ok: true, kontakt: ergebnis ? fuerPerson(ergebnis, personAus(req)) : ergebnis, hinweis: erg ? folgeAus(erg, heute, 'neu').hinweis : undefined });
+  return NextResponse.json({ ok: true, kontakt: ergebnis ? mitStandFuer(ergebnis, personAus(req)) : ergebnis, hinweis: erg ? folgeAus(erg, heute, 'neu').hinweis : undefined });
 }

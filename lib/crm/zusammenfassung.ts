@@ -135,7 +135,8 @@ export function zusammenfassung(k: Kontakt, crm: ZfBestand | null | undefined, h
     sText = `Nächster Schritt: „${kurz(schritt.text, 80)}“ am ${tag(schritt.datum, heute)}${schritt.datum < heute ? ' — überfällig' : ''}`;
   } else sText = 'Kein nächster Schritt gesetzt';
   sQ.push(neu({ art: 'feld', feld: 'phase', label: `Lifecycle ${LIFECYCLE_LABEL[l.phase]}` }));
-  saetze.push({ text: `${sText} · Lifecycle ${LIFECYCLE_LABEL[l.phase]}${l.vonHand ? '' : ` (Vorschlag: ${l.grund})`}.`, quellen: sQ });
+  // 28.09. (H4): ohne gesetzte Phase gilt „Lead“ — ein Vorschlag erscheint nur, wenn er höher ist.
+  saetze.push({ text: `${sText} · Lifecycle ${LIFECYCLE_LABEL[l.phase]}${l.vonHand ? '' : l.vorschlag ? ` (nicht gesetzt; Vorschlag ${LIFECYCLE_LABEL[l.vorschlag.id]}: ${l.vorschlag.grund})` : ' (nicht gesetzt)'}.`, quellen: sQ });
 
   const leer = !g && !m && !teile.length && !schritt;
   if (leer) saetze[0] = { text: `Noch nichts festgehalten — kein Gespräch, kein Deal, kein nächster Schritt. ${saetze[0].text}`, quellen: saetze[0].quellen };
@@ -150,7 +151,7 @@ export interface KontaktPaket {
   person: { name: string; firma?: string; position?: string; kreis?: string; anrede?: string; lifecycle: { phase: LifecyclePhase; label: string; von_hand: boolean; grund: string }; lebensphase?: string; stufe: string; letzter_kontakt?: string; naechster_schritt?: { text: string; datum: string } };
   zusammenfassung: string;
   quellen: { nr: string; was: string }[];
-  verlauf: { am: string; art: string; ergebnis?: string; text?: string; bedarf?: string; zusage?: string; naechster?: string }[];
+  verlauf: { am: string; art: string; wann?: string; ort?: string; ergebnis?: string; text?: string; bedarf?: string; zusage?: string; naechster?: string }[];
   deals: { titel: string; stufe: string; wert: string; naechster_schritt?: { text: string; datum: string }; qualifizierung: Chance['qualifizierung'] }[];
   mandate: { titel: string; status: string; honorar: string; start?: string; ende?: string }[];
   lead?: { status: string; kriterien: Record<string, string> };
@@ -177,7 +178,7 @@ export function kontaktPaket(k: Kontakt, crm: Pick<CrmBestand, 'chancen' | 'mand
     zusammenfassung: zusammenfassungText(z),
     quellen: z.quellen.map(q => ({ nr: nummer(q.nr), was: q.label })),
     verlauf: (k.aktivitaeten ?? []).filter(a => a.art !== 'system' && a.von !== 'system').slice(-15).map(a => ({
-      am: a.am.slice(0, 10), art: a.art, ...(a.ergebnis ? { ergebnis: a.ergebnis } : {}), ...(a.text ? { text: kurz(a.text, 300) } : {}),
+      am: a.am.slice(0, 10), art: a.art, ...(a.wann ? { wann: a.wann } : {}), ...(a.ort ? { ort: kurz(a.ort, 120) } : {}), ...(a.ergebnis ? { ergebnis: a.ergebnis } : {}), ...(a.text ? { text: kurz(a.text, 300) } : {}),
       ...(a.notiz?.bedarf ? { bedarf: kurz(a.notiz.bedarf, 200) } : {}), ...(a.notiz?.zusage ? { zusage: kurz(a.notiz.zusage, 160) } : {}), ...(a.notiz?.naechster ? { naechster: kurz(a.notiz.naechster, 160) } : {}),
     })),
     deals: crm.chancen.filter(c => c.kontaktIds.includes(k.id)).slice(0, 8).map(c => ({ titel: c.titel, stufe: stufeLabel(c), wert: wertText(c), ...(c.naechsterSchritt ? { naechster_schritt: c.naechsterSchritt } : {}), qualifizierung: c.qualifizierung })),

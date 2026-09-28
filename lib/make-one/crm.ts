@@ -16,8 +16,10 @@
 
 import { leadSaeubern } from '@/lib/crm/lead-form';
 import { netzwerkSaeubern, netzwerkVereinen } from '@/lib/crm/netzwerk-form';
-import { zahlungSaeubern } from '@/lib/crm/zahlung';
+import { zahlungSaeubern, zahlungMaskiert } from '@/lib/crm/zahlung';
 import { istLifecycle, lifecycleAusListe, type LifecyclePhase } from '@/lib/crm/lifecycle';
+import { istBean, type BeanId } from '@/lib/crm/bean';
+import { markenSaeubern, ohneMarkierte } from '@/lib/crm/aktivitaet-marke';
 
 export const STUFEN = [
   'neu', 'ansprechen', 'angesprochen', 'gespraech', 'termin', 'angebot',
@@ -56,6 +58,16 @@ export interface Aktivitaet {
   notiz?: NotizVorlage;
   /** Bezug: Chance, Mandat oder Event. */
   bezug?: string;
+  /**
+   * Wann es stattfindet bzw. stattfand (28.09., H4) — v. a. Meetings: `YYYY-MM-DD` oder
+   * `YYYY-MM-DDTHH:MM` (Berliner Zeit) bzw. ISO mit Zone. `am` bleibt, wann es festgehalten wurde.
+   * Altbestand ohne `wann` trägt das Datum in der ersten Textzeile (`meetingAusText`).
+   */
+  wann?: string;
+  /** Ort oder Videolink eines Meetings (28.09., H4). */
+  ort?: string;
+  /** Wann der Text zuletzt geändert wurde (eigene Notiz bearbeiten, 28.09.) — ISO. */
+  bearbeitet?: string;
 }
 
 /** Beziehungskreis A–D: bestimmt den Takt, in dem man sich meldet (Dunbar-Schichten). */
@@ -158,6 +170,16 @@ export interface Kontakt {
    * Von Hand gesetzt (Wahl-Chip mit Vorschlag); der Import belegt es nur vor, solange es leer ist — überschreibt es nie.
    */
   phase?: LifecyclePhase;
+  /**
+   * BEAN-Kundengruppe von Hand (28.09., H4, lib/crm/bean.ts): B Bestandskunde · E Ehemalig ·
+   * A Angebotskunde · N Neu. Fehlt es, gilt die Ableitung (`beanVon`). Handfeld wie `phase` — der Import überschreibt es nie.
+   */
+  bean?: BeanId;
+  /**
+   * Löschmarken entfernter Fassungen im Verlauf (28.09., H4, lib/crm/aktivitaet-marke.ts) —
+   * damit ein Speichern ohne Stand eine gelöschte/geänderte Notiz nicht zurückholt. Setzt nur der Server.
+   */
+  geloeschteAktivitaeten?: string[];
   /** Mehrfach: Partner, Multiplikator, Dienstleister, Investor, Netzwerk, Freund (26.09.). */
   rollen?: Rolle[];
   anrede?: 'Sie' | 'Du';
@@ -199,7 +221,7 @@ export interface Kontakt {
 /** Felder, die der Import NIE anfasst — das ist die Arbeit im CRM. */
 export const PIPELINE_FELDER: (keyof Kontakt)[] = ['stufe', 'wiedervorlage', 'letzterKontakt', 'aktivitaeten', 'importiertAm',
   'firmaId', 'herkunft', 'rechtsgrundlage', 'kreis', 'taktTage', 'besitzer', 'lebensphase', 'anrede', 'vorgestelltDurch', 'einwilligungen', 'werbesperre', 'fremddaten', 'art14InformiertAm', 'naechsterSchritt', 'privatNotiz', 'netzwerk', 'linkedinNichtGefunden',
-  'lead', 'rollen', 'privatNotizVon', 'stand', 'vonHand', 'phase', 'zahlung'];
+  'lead', 'rollen', 'privatNotizVon', 'stand', 'vonHand', 'phase', 'zahlung', 'bean', 'geloeschteAktivitaeten'];
 
 /** Höchstens so viele Feldnamen in `vonHand` — mehr Stammdaten-Felder gibt es nicht. */
 export const VON_HAND_MAX = 60;
@@ -602,6 +624,22 @@ export function anzeigename(k: Pick<Kontakt, 'vorname' | 'nachname' | 'firma' | 
  * unbekannte Stufen, überlange Texte, fremde Felder. Was durchkommt, ist
  * genau das, was auch der Import erzeugt hätte.
  */
+/**
+ * Zeitpunkt eines Meetings (`Aktivitaet.wann`, 28.09.): Tag, Tag mit Uhrzeit (Berliner Zeit,
+ * ohne Zone) oder ISO mit Zone. Alles andere fällt weg.
+ */
+export function wannSaeubern(v: unknown): string | undefined {
+  const t = String(v ?? '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})?)?$/.test(t)) return undefined;
+  return Number.isNaN(Date.parse(t.length === 10 ? `${t}T12:00:00Z` : t)) ? undefined : t;
+}
+/** Ort oder Videolink: eine Zeile, höchstens 160 Zeichen. */
+export function ortSaeubern(v: unknown): string | undefined {
+  const t = String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+  return t || undefined;
+}
+const zeitpunktSaeubern = (v: unknown): string | undefined => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(v) && v.length <= 30 ? v : undefined);
+
 export function saeubereKontakt(e: unknown): Kontakt | null {
   if (!e || typeof e !== 'object') return null;
   const o = e as Record<string, unknown>;
@@ -619,11 +657,16 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     const ergebnis = ERGEBNISSE.includes(x.ergebnis as Ergebnis) ? (x.ergebnis as Ergebnis) : undefined;
     const n = x.notiz && typeof x.notiz === 'object' ? x.notiz as Record<string, unknown> : null;
     const notiz = n ? Object.fromEntries(NOTIZ_FELDER.map(f => [f.id, txt(n[f.id], 1500)]).filter(([, v]) => v)) as NotizVorlage : undefined;
+    const wann = wannSaeubern(x.wann), ort = ortSaeubern(x.ort), bearbeitet = zeitpunktSaeubern(x.bearbeitet);
     return {
       am: String(x.am ?? '').slice(0, 25), art, ...(txt(x.text, 3000) ? { text: txt(x.text, 3000) } : {}), von,
       ...(ergebnis ? { ergebnis } : {}), ...(notiz && Object.keys(notiz).length ? { notiz } : {}), ...(txt(x.bezug, 60) ? { bezug: txt(x.bezug, 60) } : {}),
+      ...(wann ? { wann } : {}), ...(ort ? { ort } : {}), ...(bearbeitet ? { bearbeitet } : {}),
     } as Aktivitaet;
   }).filter((a): a is Aktivitaet => !!a) : [];
+  // Löschmarken (28.09., H4): markierte Fassungen fallen hier heraus — egal, welcher Weg sie zurückbringen wollte.
+  const geloeschteAktivitaeten = markenSaeubern(o.geloeschteAktivitaeten);
+  const verlauf = ohneMarkierte(akt, geloeschteAktivitaeten);
   const GRUNDLAGEN: Grundlage[] = ['einwilligung', 'bestandskunde_7_3', 'mutmasslich_b2b_tel', 'anfrage', 'vertrag', 'intro_akzeptiert'];
   const EW_KANAELE: EinwilligungKanal[] = ['mail', 'telefon', 'social', 'newsletter', 'einladung'];
   const einwilligungen = Array.isArray(o.einwilligungen) ? (o.einwilligungen as unknown[]).slice(0, 30).map(e => {
@@ -667,10 +710,12 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     ...(ns && txt(ns.text, 300) && tag(ns.datum) ? { naechsterSchritt: { text: txt(ns.text, 300)!, datum: tag(ns.datum)! } } : {}),
     ...(txt(o.privatNotiz, 2000) ? { privatNotiz: txt(o.privatNotiz, 2000), ...(/^[a-z0-9-]{1,40}$/.test(String(o.privatNotizVon ?? '')) ? { privatNotizVon: String(o.privatNotizVon) } : {}) } : {}),
     stufe: st, wiedervorlage: tag(o.wiedervorlage), letzterKontakt: tag(o.letzterKontakt),
-    aktivitaeten: akt,
+    aktivitaeten: verlauf,
     importiertAm: String(o.importiertAm ?? '').slice(0, 10) || '', geaendertAm: String(o.geaendertAm ?? '').slice(0, 10) || '',
     ...(vonHand ? { vonHand } : {}),
     ...(zahlungSaeubern(o.zahlung) ? { zahlung: zahlungSaeubern(o.zahlung) } : {}),
+    ...(istBean(o.bean) ? { bean: o.bean } : {}),
+    ...(geloeschteAktivitaeten ? { geloeschteAktivitaeten } : {}),
   };
   if (!k.vorname && !k.nachname && !k.firma) return null;
   return k;
@@ -683,6 +728,9 @@ export interface AktivitaetEingabe {
   ergebnis?: Ergebnis;
   notiz?: NotizVorlage;
   bezug?: string;
+  /** Zeitpunkt und Ort eines Meetings (28.09.) — gesäubert über wannSaeubern/ortSaeubern. */
+  wann?: string;
+  ort?: string;
   /** Ausdrückliche Stufe gewinnt über die Regel. */
   stufe?: Stufe;
   wiedervorlage?: string;
@@ -698,7 +746,8 @@ export function wendeAktivitaetAn(
   tagePlus: (d: string, n: number) => string,
 ): Kontakt {
   const eintrag: Aktivitaet = { am: jetztIso, art: e.art, ...(e.text ? { text: e.text } : {}), von: e.von,
-    ...(e.ergebnis ? { ergebnis: e.ergebnis } : {}), ...(e.notiz ? { notiz: e.notiz } : {}), ...(e.bezug ? { bezug: e.bezug } : {}) };
+    ...(e.ergebnis ? { ergebnis: e.ergebnis } : {}), ...(e.notiz ? { notiz: e.notiz } : {}), ...(e.bezug ? { bezug: e.bezug } : {}),
+    ...(wannSaeubern(e.wann) ? { wann: wannSaeubern(e.wann) } : {}), ...(ortSaeubern(e.ort) ? { ort: ortSaeubern(e.ort) } : {}) };
   const out: Kontakt = { ...k, aktivitaeten: [...(k.aktivitaeten ?? []), eintrag] };
   // Nur echter Kontakt zählt: ein nicht erreichter Anruf ist ein Versuch, kein Kontakt.
   const echt = e.art !== 'notiz' && e.art !== 'stufe' && e.art !== 'system' && e.ergebnis !== 'nicht_erreicht' && e.ergebnis !== 'mailbox';
@@ -719,17 +768,24 @@ export function wendeAktivitaetAn(
  */
 export function kontaktVereinen(neu: Kontakt, alt: Kontakt, person?: string): Kontakt {
   const schluessel = (a: Aktivitaet) => `${a.am}|${a.art}|${a.bezug ?? ''}|${a.text ?? ''}`;
-  const bekannt = new Set((neu.aktivitaeten ?? []).map(schluessel));
-  const fehlend = (alt.aktivitaeten ?? []).filter(a => !bekannt.has(schluessel(a)));
+  // Löschmarken (28.09., H4): es gelten die gespeicherten — nur der Server setzt sie (POST /api/crm/aktivitaet).
+  // Eine gelöschte oder geänderte Notiz im älteren Stand fällt heraus; beim Ändern gibt es so keine Doppelung.
+  const marken = alt.geloeschteAktivitaeten;
+  const eigene = ohneMarkierte(neu.aktivitaeten ?? [], marken);
+  const bekannt = new Set(eigene.map(schluessel));
+  const fehlend = ohneMarkierte(alt.aktivitaeten ?? [], marken).filter(a => !bekannt.has(schluessel(a)));
   const letzter = [neu.letzterKontakt, alt.letzterKontakt].filter(Boolean).sort().pop();
+  const { geloeschteAktivitaeten: _m, ...ohneMarken } = privatNotizVereinen(neu, alt, person);
   return {
-    ...privatNotizVereinen(neu, alt, person),
-    aktivitaeten: fehlend.length ? [...(neu.aktivitaeten ?? []), ...fehlend].sort((a, b) => a.am.localeCompare(b.am)) : neu.aktivitaeten,
+    ...ohneMarken,
+    aktivitaeten: fehlend.length ? [...eigene, ...fehlend].sort((a, b) => a.am.localeCompare(b.am)) : eigene,
+    ...(marken?.length ? { geloeschteAktivitaeten: marken } : {}),
     ...(letzter ? { letzterKontakt: letzter } : {}),
     // LinkedIn je Profil: der weitere Schritt gewinnt — ein älterer Stand wischt kein „vernetzt“ weg.
     ...(neu.netzwerk || alt.netzwerk ? { netzwerk: netzwerkVereinen(neu.netzwerk, alt.netzwerk) } : {}),
   };
 }
+
 
 // ── Private Notiz: nur für die Person, die sie schrieb (Kevins Entscheidung 25.09.) ──
 /** Vor dem 25.09. schrieb nur Kevin private Notizen — ohne Verfasser gelten sie als seine. */
@@ -748,11 +804,16 @@ export function privatNotizVereinen(neu: Kontakt, alt: Kontakt | undefined, pers
   return neu.privatNotiz ? { ...rest, privatNotiz: neu.privatNotiz, privatNotizVon: person } : rest;
 }
 
-/** Für die Anzeige: fremde private Notizen entfernen. */
-export function fuerPerson(k: Kontakt, person: string): Kontakt {
+/**
+ * Für die Anzeige (jede Antwort an den Browser): fremde private Notizen entfernen und die
+ * IBAN nur maskiert (28.09., H4 — `zahlungMaskiert`, dazu `ibanGesetzt`). `ibanVoll` nur für
+ * die Auskunft nach Art. 15 (app/api/crm/datenschutz): dort gehört die IBAN der Person selbst.
+ */
+export function fuerPerson(k: Kontakt, person: string, opts: { ibanVoll?: boolean } = {}): Kontakt {
   const v = privatNotizVerfasser(k);
-  if (!v || v === person) return k;
-  const { privatNotiz: _n, privatNotizVon: _v, ...rest } = k;
+  const z = !opts.ibanVoll && k.zahlung?.iban ? { ...k, zahlung: zahlungMaskiert(k.zahlung) } : k;
+  if (!v || v === person) return z;
+  const { privatNotiz: _n, privatNotizVon: _v, ...rest } = z;
   return rest;
 }
 

@@ -6,7 +6,7 @@ import type { Chance, CrmBestand, Firma, Mandat, Lead } from '../lib/crm/typen';
 import { leererBestand } from '../lib/crm/speicher';
 import { markttraktion, kontaktAkte, akteReiter, akteUnter } from '../lib/crm/adresse';
 import { lifecycleAusListe, istLifecycle, LIFECYCLE_PHASEN, LIFECYCLE_WAHL } from '../lib/crm/lifecycle';
-import { lifecycleVorschlag, lifecycleVon, lifecycleVerteilung } from '../lib/crm/vorschlaege';
+import { lifecycleVorschlag, lifecycleVorschlagHoeher, lifecycleVon, lifecycleVerteilung } from '../lib/crm/vorschlaege';
 import { zusammenfassung, zusammenfassungText, kontaktPaket, nummer } from '../lib/crm/zusammenfassung';
 import { ankerListe } from '../lib/crm/aktivitaeten';
 import { kontextAus, imSegment } from '../lib/crm/segmente';
@@ -124,12 +124,27 @@ describe('Lifecycle-Vorschlag — alle Zweige, in dieser Reihenfolge', () => {
     // Eine eingeladene, aber nicht erschienene Person ist noch kein MQL.
     expect(lifecycleVorschlag(k('a'), bestand({ teilnahmen: [{ id: 't1', eventId: 'e1', kontaktId: 'c-a', status: 'eingeladen', geaendert: J }] }), HEUTE).id).toBe('lead');
   });
-  it('lifecycleVon: von Hand gewinnt über den Vorschlag; Verteilung zählt beides', () => {
+  it('H4: ein offener Deal schlägt ein früheres Mandat (und einen gewonnenen Deal)', () => {
+    const b = bestand({ mandate: [mandat('m1', { kontaktIds: ['c-a'], status: 'beendet' })], chancen: [deal('d1', { kontaktIds: ['c-a'], stufe: 'bedarf' }), deal('d2', { kontaktIds: ['c-a'], stufe: 'gewonnen' })] });
+    expect(lifecycleVorschlag(k('a'), b, HEUTE)).toMatchObject({ id: 'opportunity' });
+    const b2 = bestand({ mandate: [mandat('m1', { kontaktIds: ['c-a'], status: 'beendet' })], chancen: [deal('d1', { kontaktIds: ['c-a'], stufe: 'angebot' })] });
+    expect(lifecycleVorschlag(k('a'), b2, HEUTE)).toMatchObject({ id: 'angebot' });
+    // Ohne offenen Deal bleibt das beendete Mandat Follow Up — vor SQL und MQL.
+    const b3 = bestand({ mandate: [mandat('m1', { kontaktIds: ['c-a'], status: 'beendet' })] });
+    expect(lifecycleVorschlag(k('a', { lead: lead('sql') }), b3, HEUTE).id).toBe('follow_up');
+  });
+  it('H4: ohne gesetzte Phase gilt „Lead“ — nichts gespeichert, Vorschlag nur, wenn höher', () => {
     const b = bestand({ mandate: [mandat('m1', { kontaktIds: ['c-a'] })] });
-    expect(lifecycleVon(k('a', { phase: 'follow_up' }), b, HEUTE)).toMatchObject({ phase: 'follow_up', vonHand: true });
-    expect(lifecycleVon(k('a'), b, HEUTE)).toMatchObject({ phase: 'kunde', vonHand: false });
+    expect(lifecycleVon(k('a', { phase: 'follow_up' }), b, HEUTE)).toMatchObject({ phase: 'follow_up', vonHand: true, vorschlag: null });
+    const l = lifecycleVon(k('a'), b, HEUTE);
+    expect(l).toMatchObject({ phase: 'lead', vonHand: false, vorschlag: { id: 'kunde' } });
+    expect(l.grund).toContain('gilt als Lead');
+    expect(lifecycleVon(k('z'), b, HEUTE)).toMatchObject({ phase: 'lead', vonHand: false, vorschlag: null });
+    expect(lifecycleVorschlagHoeher(k('a'), b, HEUTE)).toMatchObject({ id: 'kunde' });
+    expect(lifecycleVorschlagHoeher(k('z'), b, HEUTE)).toBeNull();
+    expect(lifecycleVorschlagHoeher(k('a', { phase: 'lead' }), b, HEUTE)).toBeNull();
     const v = lifecycleVerteilung([k('a'), k('b', { phase: 'sql' }), k('c')], b, HEUTE);
-    expect(v.je).toMatchObject({ kunde: 1, sql: 1, lead: 1, mql: 0 });
+    expect(v.je).toMatchObject({ kunde: 0, sql: 1, lead: 2, mql: 0 });
     expect(v.gesetzt).toBe(1);
   });
 });
@@ -152,7 +167,7 @@ describe('Datensatz-Zusammenfassung', () => {
     expect(z.saetze[1].text).toContain('Antwort');
     expect(z.saetze[2].text).toContain('Deal „Controlling“ in Stufe Angebot');
     expect(z.saetze[2].text).toContain('aktives Mandat „Finanzen“');
-    expect(z.saetze[3].text).toMatch(/^Nächster Schritt: „Angebot schicken“ am 30\.09\. · Lifecycle Kunde/);
+    expect(z.saetze[3].text).toMatch(/^Nächster Schritt: „Angebot schicken“ am 30\.09\. · Lifecycle Lead \(nicht gesetzt; Vorschlag Kunde: aktives Mandat/);
     expect(z.saetze.flatMap(s => s.quellen)).toEqual([1, 2, 3, 4, 5, 6]);
     expect(z.quellen.map(q => q.art)).toEqual(['aktivitaet', 'aktivitaet', 'deal', 'mandat', 'feld', 'feld']);
   });
@@ -176,7 +191,7 @@ describe('Datensatz-Zusammenfassung', () => {
     expect(z.leer).toBe(true);
     expect(z.saetze).toHaveLength(1);
     expect(z.saetze[0].text).toMatch(/^Noch nichts festgehalten/);
-    expect(z.saetze[0].text).toContain('Lifecycle Lead (Vorschlag:');
+    expect(z.saetze[0].text).toContain('Lifecycle Lead (nicht gesetzt).');
     expect(z.quellen).toEqual([{ nr: 1, art: 'feld', feld: 'phase', label: 'Lifecycle Lead' }]);
   });
   it('gesetzter Lifecycle ohne „Vorschlag“, Klartext mit Nummern', () => {
@@ -211,9 +226,10 @@ describe('Datenpaket für „Frage stellen“', () => {
 describe('Segment-Kriterium Lifecycle', () => {
   const b = bestand({ chancen: [deal('d1', { kontaktIds: ['c-b'], stufe: 'bedarf' })] });
   const ctx = kontextAus(b, HEUTE);
-  it('trifft gesetzte und vorgeschlagene Phasen; Gesperrte nie', () => {
+  it('H4: trifft die gesetzte Phase, sonst Lead — ein Vorschlag zählt nicht; Gesperrte nie', () => {
     expect(imSegment(k('a', { phase: 'sql' }), { lifecycle: ['sql'] }, ctx)).toBe(true);
-    expect(imSegment(k('b'), { lifecycle: ['opportunity'] }, ctx)).toBe(true);
+    expect(imSegment(k('b'), { lifecycle: ['opportunity'] }, ctx)).toBe(false);
+    expect(imSegment(k('b'), { lifecycle: ['lead'] }, ctx)).toBe(true);
     expect(imSegment(k('c'), { lifecycle: ['opportunity'] }, ctx)).toBe(false);
     expect(imSegment(k('c'), { lifecycle: ['lead'] }, ctx)).toBe(true);
     expect(imSegment(k('d', { phase: 'sql', werbesperre: { seit: HEUTE, grund: 'x' } }), { lifecycle: ['sql'] }, ctx)).toBe(false);
@@ -232,11 +248,11 @@ describe('Segment-Kriterium Lifecycle', () => {
 });
 
 describe('Export', () => {
-  it('Spalten LIFECYCLE_PHASE und LIFECYCLE_GESETZT — gesetzt oder Vorschlag', () => {
+  it('H4: LIFECYCLE_PHASE = gesetzt, sonst Lead; LIFECYCLE_GESETZT ehrlich (leer, wenn nicht gesetzt)', () => {
     expect(EXPORT_SPALTEN.kontakte).toContain('LIFECYCLE_PHASE');
     const csv = exportCsv('kontakte', { kontakte: [k('a', { phase: 'angebot' }), k('b')], crm: bestand({ chancen: [deal('d1', { kontaktIds: ['c-b'] })] }), heute: HEUTE });
     const [kopf, ...zeilen] = csv.replace(/^﻿/, '').split('\n').map(z => z.split(';'));
     const i = kopf.indexOf('LIFECYCLE_PHASE'), j = kopf.indexOf('LIFECYCLE_GESETZT');
-    expect(zeilen.map(z => [z[i], z[j]])).toEqual([['angebot', 'ja'], ['opportunity', 'nein']]);
+    expect(zeilen.map(z => [z[i], z[j]])).toEqual([['angebot', 'angebot'], ['lead', '']]);
   });
 });

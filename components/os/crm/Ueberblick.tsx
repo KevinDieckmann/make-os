@@ -8,7 +8,7 @@
 // Beiträge, Events — je mit Weg dorthin) und Fenster mit Formel, Schwellen,
 // Verlauf. In jeder Welt steht ihr Head. Darunter Scoreboard, Übergaben, Befunde.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, LEUCHT } from '../schlank';
@@ -25,6 +25,8 @@ import { WEG } from '@/lib/wege';
 import { Person } from './team';
 import { Scoreboard } from './Scoreboard';
 import type { CrmApi } from './daten';
+import { BeanVerteilungKarte, useOffeneAngebote } from './bean-teile';
+import { beanVerteilung } from '@/lib/crm/bean';
 import { datum } from './daten';
 
 /** Farbe je Welt — dieselbe in der Leiste, im Überblick und an den Übergaben. */
@@ -48,6 +50,9 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
   const laden = useCallback(() => fetch('/api/crm/traktion', { cache: 'no-store' }).then(r => (r.ok ? r.json() : Promise.reject(new Error(`Antwort ${r.status}`)))).then(x => { if (x.ok) { setD(x); setFehler(null); } else setFehler(x.fehler ?? 'Überblick nicht ladbar.'); }).catch(e => setFehler(e instanceof Error ? e.message : 'Nicht erreichbar.')), []);
   useEffect(() => { void laden(); }, [laden]);
   useAbgleich(laden, { alle: 60_000 });
+  // BEAN-Verteilung (28.09., H4): über die ganze Kartei, mit den offenen Angeboten der Dateiablage.
+  const angebote = useOffeneAngebote();
+  const bean = useMemo(() => (api.kontakte ? beanVerteilung(api.kontakte, api.crm?.stand, { angebote }) : null), [api.kontakte, api.crm, angebote]);
   if (!d) return <Karte i={0}>{fehler || api.fehler ? <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span>Überblick konnte nicht geladen werden: {fehler ?? api.fehler}</span><button onClick={() => void laden()} style={{ background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 8, padding: '5px 10px', color: C.ink, cursor: 'pointer' }}>Noch einmal</button></div> : <Leer>Lädt …</Leer>}</Karte>;
   const befunde = alle ? d.befunde : d.befunde.slice(0, 5);
   const zeit = (iso: string) => { const tg = iso.slice(0, 10); return tg === d.heute ? iso.slice(11, 16) : datum(tg, d.heute); };
@@ -121,6 +126,9 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
           </Karte>
           </Kachel>
 
+      <Kachel id="bean" titel="Kundengruppen · BEAN" breite={6}>
+        {bean ? <BeanVerteilungKarte je={bean.je} vonHand={bean.vonHand} i={1} /> : <Karte i={1}><Leer>Kartei lädt …</Leer></Karte>}
+      </Kachel>
       <Kachel id="traktion" titel="Traktions-Score" breite={6}>
       <IndexAnsicht d={{ pi: d.index, ...d.indexVerlauf }} name="Traktion" chip="Traktions-Index" farben={INDEX_FARBE} scope="markttraktion" i0={2}
         chips={d.traktion.vorlaeufig ? <Chip farbe={LEUCHT.achtung}>vorläufig</Chip> : undefined}

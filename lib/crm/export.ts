@@ -18,6 +18,7 @@ import { firmaVonDeal, firmaVonMandat, dealZuFirma, mandatZuFirma } from './firm
 import { gesamtwert, OFFENE_STUFEN, STUFEN, wahrscheinlichkeit } from './pipeline';
 import { lifecycleVon } from './vorschlaege';
 import type { LifecyclePhase } from './lifecycle';
+import { beanVon, beanFirma, type BeanId } from './bean';
 
 export const EXPORTE = ['kontakte', 'firmen', 'deals', 'followups', 'mandate'] as const;
 export type ExportArt = typeof EXPORTE[number];
@@ -25,7 +26,7 @@ export const istExportArt = (v: unknown): v is ExportArt => typeof v === 'string
 
 /** Beschriftung für die Knöpfe — was drin ist und was nicht. */
 export const EXPORT_INFO: Record<ExportArt, { label: string; datei: string; text: string }> = {
-  kontakte: { label: 'Kontakte', datei: 'Kontakte', text: 'Personen mit Firma, Kreis, Lifecycle, Phase, Stufe, nächstem Schritt und Kanal-Freigabe. Ohne Privatnotiz und Verlauf.' },
+  kontakte: { label: 'Kontakte', datei: 'Kontakte', text: 'Personen mit Firma, Kreis, Lifecycle, BEAN, Phase, Stufe, nächstem Schritt und Kanal-Freigabe. Ohne Privatnotiz und Verlauf.' },
   firmen: { label: 'Firmen', datei: 'Firmen', text: 'Unternehmen mit Branche, Rolle, Lead-Status und Zahl der Personen, offenen Deals und aktiven Mandate.' },
   deals: { label: 'Deals', datei: 'Deals', text: 'Pipeline mit Firma (per Kennung), Personen, Stufe, Wert, Gesamtwert, Wahrscheinlichkeit und nächstem Schritt.' },
   followups: { label: 'Follow-ups', datei: 'Follow-ups', text: 'Alle Follow-ups mit Person, Bezug (Deal, Mandat, Event, Firma), Fälligkeit, Status und Ergebnis.' },
@@ -61,28 +62,29 @@ const personenNamen = (ids: string[], k: Map<string, Kontakt>) => ids.map(id => 
 const firmaDerPerson = (p: Kontakt | undefined, f: Map<string, Firma>) => (p ? (p.firmaId ? f.get(p.firmaId)?.name : undefined) ?? p.firma : undefined);
 
 // ── Kontakte (die Kartei) ───────────────────────────────────────────────────
-type KontaktZeile = { k: Kontakt; f?: Firma; l: { phase: LifecyclePhase; vonHand: boolean } };
+type KontaktZeile = { k: Kontakt; f?: Firma; l: { phase: LifecyclePhase; vonHand: boolean }; bean: BeanId };
 const KONTAKT_SPALTEN: Spalte<KontaktZeile>[] = [
   ['ID', z => z.k.id], ['VORNAME', z => z.k.vorname], ['NACHNAME', z => z.k.nachname], ['ANREDE', z => z.k.anrede], ['EMAIL', z => z.k.email], ['TELEFON', z => z.k.telefon ?? z.k.sms], ['LINKEDIN', z => z.k.linkedin],
   ['POSITION', z => z.k.position ?? z.k.jobtitel], ['FIRMA_ID', z => z.k.firmaId], ['FIRMA', z => z.f?.name ?? z.k.firma], ['BRANCHE', z => z.f?.branche ?? z.k.firmaBranche], ['STADT', z => z.f?.stadt ?? z.k.firmaStadt], ['WEBSEITE', z => z.f?.webseite ?? z.k.firmaWebseite],
-  ['PRIORITAET', z => z.k.prio], ['KREIS', z => z.k.kreis], ['LIFECYCLE_PHASE', z => z.l.phase], ['LIFECYCLE_GESETZT', z => z.l.vonHand], ['LEBENSPHASE', z => z.k.lebensphase], ['ROLLEN', z => (z.k.rollen ?? []).join(', ')], ['STUFE', z => z.k.stufe], ['HAELT_BEZIEHUNG', z => z.k.besitzer], ['LETZTER_KONTAKT', z => tagISO(z.k.letzterKontakt)],
+  ['PRIORITAET', z => z.k.prio], ['KREIS', z => z.k.kreis], ['LIFECYCLE_PHASE', z => z.l.phase], ['LIFECYCLE_GESETZT', z => (z.l.vonHand ? z.l.phase : '')], ['BEAN', z => z.bean], ['LEBENSPHASE', z => z.k.lebensphase], ['ROLLEN', z => (z.k.rollen ?? []).join(', ')], ['STUFE', z => z.k.stufe], ['HAELT_BEZIEHUNG', z => z.k.besitzer], ['LETZTER_KONTAKT', z => tagISO(z.k.letzterKontakt)],
   ['NAECHSTER_SCHRITT_DATUM', z => z.k.naechsterSchritt?.datum], ['NAECHSTER_SCHRITT', z => z.k.naechsterSchritt?.text], ['WIEDERVORLAGE', z => z.k.wiedervorlage],
   ['MAIL_ERLAUBT', z => kanalStatus(z.k, 'mail').farbe === 'gruen'], ['NEWSLETTER_DOI', z => kanalStatus(z.k, 'newsletter').farbe === 'gruen'],
   ['WERBESPERRE', z => (z.k.werbesperre ? `seit ${z.k.werbesperre.seit}` : '')], ['HERKUNFT', z => z.k.herkunft], ['RECHTSGRUNDLAGE', z => z.k.rechtsgrundlage], ['QUELLE', z => z.k.quelle], ['IMPORTIERT_AM', z => tagISO(z.k.importiertAm)],
 ];
 export function kontakteCsv(q: ExportQuelle): string {
   const firmen = nachId(q.crm.firmen);
-  // Lifecycle (28.09.): gesetzt oder der Vorschlag aus den Daten — LIFECYCLE_GESETZT sagt, was von Hand steht.
+  // Lifecycle (28.09., H4): LIFECYCLE_PHASE = was gilt (gesetzt, sonst Lead); LIFECYCLE_GESETZT = nur die von Hand
+  // gesetzte Phase, leer wenn nicht gesetzt. BEAN: von Hand, sonst abgeleitet (ohne Dateiablage).
   const heute = q.heute ?? new Date().toISOString().slice(0, 10);
-  return csvTabelle(KONTAKT_SPALTEN, q.kontakte.map(k => ({ k, f: k.firmaId ? firmen.get(k.firmaId) : undefined, l: lifecycleVon(k, q.crm, heute) })));
+  return csvTabelle(KONTAKT_SPALTEN, q.kontakte.map(k => ({ k, f: k.firmaId ? firmen.get(k.firmaId) : undefined, l: lifecycleVon(k, q.crm, heute), bean: beanVon(k, q.crm).bean })));
 }
 
 // ── Firmen ──────────────────────────────────────────────────────────────────
-type FirmaZeile = { f: Firma; personen: number; dealsOffen: number; mandateAktiv: number };
+type FirmaZeile = { f: Firma; personen: number; dealsOffen: number; mandateAktiv: number; bean: BeanId };
 const FIRMA_SPALTEN: Spalte<FirmaZeile>[] = [
   ['ID', z => z.f.id], ['NAME', z => z.f.name], ['DOMAIN', z => z.f.domain], ['WEBSEITE', z => z.f.webseite], ['BRANCHE', z => z.f.branche], ['MITARBEITER', z => z.f.mitarbeiter], ['UMSATZ', z => z.f.umsatz],
   ['STADT', z => z.f.stadt], ['GEGRUENDET', z => z.f.gegruendet], ['RECHTSFORM', z => z.f.rechtsform], ['LINKEDIN', z => z.f.linkedin], ['TELEFON', z => z.f.telefon], ['EMAIL', z => z.f.email],
-  ['ROLLE', z => z.f.rolle], ['LEAD_STATUS', z => z.f.lead?.status], ['LEAD_FIT', z => z.f.lead?.fit], ['SQL_AM', z => z.f.lead?.sqlAm],
+  ['ROLLE', z => z.f.rolle], ['BEAN', z => z.bean], ['LEAD_STATUS', z => z.f.lead?.status], ['LEAD_FIT', z => z.f.lead?.fit], ['SQL_AM', z => z.f.lead?.sqlAm],
   ['PERSONEN', z => z.personen], ['DEALS_OFFEN', z => z.dealsOffen], ['MANDATE_AKTIV', z => z.mandateAktiv], ['GEAENDERT', z => tagISO(z.f.geaendert)],
 ];
 export function firmenCsv(q: ExportQuelle): string {
@@ -91,6 +93,7 @@ export function firmenCsv(q: ExportQuelle): string {
     personen: q.kontakte.filter(k => k.firmaId === f.id).length,
     dealsOffen: q.crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe) && dealZuFirma(c, f)).length,
     mandateAktiv: q.crm.mandate.filter(m => m.status === 'aktiv' && mandatZuFirma(m, f)).length,
+    bean: beanFirma(f, q.crm, q.kontakte).bean,
   }));
   return csvTabelle(FIRMA_SPALTEN, zeilen);
 }
