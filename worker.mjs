@@ -94,12 +94,13 @@ async function fuehreAus(auftrag) {
   const start = Date.now();
   try {
     const r = await fetch(`${ORT}/api/zoe/auftraege/lauf`, {
-      method: 'POST', headers: kopf, body: JSON.stringify({ id: auftrag.id }),
+      // Pacht-Token (29.09., Paket D-A #20): ohne den aktuellen Token führt die App nicht aus.
+      method: 'POST', headers: kopf, body: JSON.stringify({ id: auftrag.id, token: auftrag.pachtToken }),
       signal: AbortSignal.timeout(280_000),
     });
     const d = await r.json();
     const s = Math.round((Date.now() - start) / 1000);
-    const wie = d.gestapelt ? 'in den Stapel' : d.ok ? 'fertig' : 'fehlgeschlagen';
+    const wie = r.status === 409 ? 'übersprungen (Pacht abgelaufen)' : d.gestapelt ? 'in den Stapel' : d.ok ? 'fertig' : 'fehlgeschlagen';
     console.log(`[${zeit()}] ${auftrag.art}/${auftrag.name} — ${wie} (${s}s)`);
   } catch (err) {
     // Der Auftrag bleibt in der Warteschlange: die Pacht läuft ab und ein

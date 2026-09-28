@@ -170,3 +170,22 @@ describe('Routen und Zähler', () => {
     expect(nachher['409']).toBe(vorher['409'] + 1);
   });
 });
+
+describe('ETag der gepackten Fassung (#47)', () => {
+  it('gzip bekommt ein eigenes ETag; beide Fassungen führen zu 304; der Delta-Abgleich findet den Stand auch über das gz-ETag', async () => {
+    const { jsonAntwort, unveraendert, gzEtag } = await import('../lib/http/json-antwort');
+    const { StandGedaechtnis } = await import('../lib/kontakte/delta');
+    const etag = '"k3|abc|kevin"';
+    const gross = { x: 'y'.repeat(20_000) };
+    const gz = jsonAntwort(new Request('http://t', { headers: { 'accept-encoding': 'gzip' } }), gross, etag);
+    expect(gz.headers.get('content-encoding')).toBe('gzip');
+    expect(gz.headers.get('etag')).toBe(gzEtag(etag));
+    expect(jsonAntwort(new Request('http://t'), gross, etag).headers.get('etag')).toBe(etag);
+    expect(unveraendert(new Request('http://t', { headers: { 'if-none-match': gzEtag(etag) } }), etag)?.status).toBe(304);
+    expect(unveraendert(new Request('http://t', { headers: { 'if-none-match': etag } }), etag)?.status).toBe(304);
+    expect(unveraendert(new Request('http://t', { headers: { 'if-none-match': '"anders"' } }), etag)).toBeNull();
+    const g = new StandGedaechtnis();
+    g.merke(etag, new Map([['c-1', 's1']]));
+    expect(g.hole(gzEtag(etag))?.get('c-1')).toBe('s1');
+  });
+});

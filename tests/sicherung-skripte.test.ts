@@ -151,10 +151,11 @@ describe('Mac-Abholung: sicherung-ausgeben.sh (Forced Command) + sicherung-abhol
     expect(zweiter.stdout).toMatch(/liegt schon vollständig hier/);
   });
   it('Skripte: gültiges Bash, ausführbar; plist gültig', () => {
-    for (const f of ['deploy/sicherung.sh', 'deploy/sicherung-ausgeben.sh', 'deploy/sicherung-abholen.sh', 'deploy/sicherung-probe.sh', 'deploy/generationen.sh', 'deploy/lage-sammeln.sh']) {
+    for (const f of ['deploy/sicherung.sh', 'deploy/sicherung-ausgeben.sh', 'deploy/sicherung-abholen.sh', 'deploy/sicherung-probe.sh', 'deploy/generationen.sh', 'deploy/datenschluessel-rotieren-live.sh']) {
       execFileSync('bash', ['-n', f]);
-      expect(statSync(f).mode & 0o100).toBeTruthy();
+      expect(statSync(f).mode & 0o100, f).toBeTruthy(); // Forced Command und launchd rufen sie direkt auf
     }
+    execFileSync('bash', ['-n', 'deploy/lage-sammeln.sh']); // Cron ruft sie über „bash …“ auf
     if (process.platform === 'darwin') execFileSync('plutil', ['-lint', 'deploy/de.makeos.sicherung.plist']);
   });
 });

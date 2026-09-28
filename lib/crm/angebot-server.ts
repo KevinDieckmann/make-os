@@ -232,34 +232,67 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
     else hinweise.push(`Kein Deal angelegt: ${r.fehler}`);
   }
 
-  // 3. In EINER Sperre des CRM-Bestands: erneut prüfen, Nummer vergeben, PDF erzeugen und ablegen, Deal/Follow-up.
-  let ergebnis: { a: Angebot; pdf: { id: string; name: string } } | null = null;
+  // 3. Stellen in drei Schritten (29.09., Paket D-A #13) — die PDF-Erzeugung (pdf-lib, Logo, SHA-256, Datei-E/A)
+  //    läuft NICHT mehr in der CRM-Sperre; auf 1 vCPU blockierte sie sonst jede CRM-Schreibung (Deals, Follow-ups, ZOE).
+  //    a) In der Sperre: erneut prüfen und die laufende Nummer RESERVIEREN (`lauf` am Entwurf — naechsteLaufnummer zählt
+  //       sie mit, nie doppelt vergeben; ein Wiederholungsversuch nach einem Abbruch nimmt dieselbe Nummer, keine Lücke).
+  //    b) Außerhalb: PDF erzeugen, Prüfsumme.
+  //    c) In der Sperre: Festschreiben nur, wenn der Entwurf noch genau der reservierte ist (Stand-Prüfung) — dann PDF
+  //       ablegen (kurz: verschlüsseln + fsync) und stellen; sonst Reservierung lösen, 409, nichts abgelegt.
+  const jahr = jahrVon(heute);
+  let res: { a: Angebot; nummer: string; stand: string; firma?: CrmBestand['firmen'][number] } | null = null;
   await aendereCrmAsync(async b => {
     const liste = b.angebote ?? [];
     const a = liste.find(x => x.id === p.id);
     if (!a) throw new AngebotFehler('Angebot nicht gefunden.', 404);
     if (!istEntwurf(a)) throw new AngebotFehler(`Schon gestellt (${a.nummer ?? a.status}).`, 409, { aktuell: mitStand(a), grund: 'gestellt' });
     standPruefen(a, p.stand);
-    const jahr = jahrVon(heute);
-    let nr = naechsteLaufnummer(liste, a.gesellschaft, jahr);
+    const andere = liste.filter(x => x.id !== a.id);
+    const belegt = (nr: number, nummer: string) => andere.some(x => x.nummer === nummer || (x.gesellschaft === a.gesellschaft && x.lauf?.jahr === jahr && x.lauf.nr === nr));
+    let nr = a.lauf?.jahr === jahr ? a.lauf.nr : naechsteLaufnummer(andere, a.gesellschaft, jahr);
     let nummer = nummerAusFormat(v.nummernformat, v.kurz, jahr, nr);
     // Nie doppelt (z. B. nach einer Formatänderung): weiterzählen, bis die Nummer frei ist.
-    while (liste.some(x => x.nummer === nummer)) { nr++; nummer = nummerAusFormat(v.nummernformat, v.kurz, jahr, nr); }
-    const firma = firmaId ? b.firmen.find(f => f.id === firmaId) : undefined;
-    const empfaenger = empfaengerAus(k, firma);
-    const gestellt: Angebot = {
-      ...a, nummer, lauf: { jahr, nr }, ...(firmaId ? { firmaId } : {}), ...(dealId ? { dealId } : {}), status: 'gestellt', gestelltAm: jetztIso, gestelltVon: p.person,
-      absender: absenderAus(g), empfaenger, geaendert: jetztIso, geaendertVon: p.person,
-    };
-    const dok = angebotDokument(gestellt, absenderAus(g, { ibanVoll: true }), empfaenger, heute);
-    const bytes = Buffer.from(await angebotPdf(dok, { logo, erstellt: jetzt }));
-    const pruefsumme = createHash('sha256').update(bytes).digest('hex');
-    const name = `Angebot ${nummer}.pdf`.replace(/[\\/]/g, '-');
-    const brutto = angebotSummen(gestellt, { kleinunternehmer: !!gestellt.absender?.kleinunternehmer }).gesamt.brutto / 100;
+    while (belegt(nr, nummer)) { nr++; nummer = nummerAusFormat(v.nummernformat, v.kurz, jahr, nr); }
+    const reserviert: Angebot = { ...a, lauf: { jahr, nr } };
+    res = { a: reserviert, nummer, stand: standVon(reserviert), firma: firmaId ? b.firmen.find(f => f.id === firmaId) : undefined };
+    return a.lauf?.jahr === jahr && a.lauf.nr === nr ? b : { ...b, angebote: liste.map(x => (x.id === a.id ? reserviert : x)) };
+  }, p.wer);
+  const r0 = res as { a: Angebot; nummer: string; stand: string; firma?: CrmBestand['firmen'][number] } | null;
+  if (!r0) throw new AngebotFehler('Nicht gestellt.', 500);
+  const { nummer } = r0;
+  /** Reservierung lösen, wenn sie noch unverändert am Entwurf hängt (nach einem Fehlschlag in b/c). */
+  const reservierungLoesen = () => aendereCrm(b => {
+    const x = (b.angebote ?? []).find(y => y.id === p.id);
+    if (!x || !istEntwurf(x) || standVon(x) !== r0.stand) return b;
+    const { lauf: _lauf, ...ohne } = x;
+    return { ...b, angebote: (b.angebote ?? []).map(y => (y.id === p.id ? ohne as Angebot : y)) };
+  }, p.wer).catch(() => { /* bleibt reserviert — der nächste Versuch nimmt dieselbe Nummer */ });
+
+  const empfaenger = empfaengerAus(k, r0.firma);
+  const gestellt: Angebot = {
+    ...r0.a, nummer, ...(firmaId ? { firmaId } : {}), ...(dealId ? { dealId } : {}), status: 'gestellt', gestelltAm: jetztIso, gestelltVon: p.person,
+    absender: absenderAus(g), empfaenger, geaendert: jetztIso, geaendertVon: p.person,
+  };
+  // b) Außerhalb der Sperre: das PDF (pdf-lib, Logo) und seine Prüfsumme — der teure Teil.
+  const name = `Angebot ${nummer}.pdf`.replace(/[\\/]/g, '-');
+  let bytes: Buffer;
+  try { bytes = Buffer.from(await angebotPdf(angebotDokument(gestellt, absenderAus(g, { ibanVoll: true }), empfaenger, heute), { logo, erstellt: jetzt })); }
+  catch (err) { await reservierungLoesen(); throw err; }
+  const pruefsumme = createHash('sha256').update(bytes).digest('hex');
+  const brutto = angebotSummen(gestellt, { kleinunternehmer: !!gestellt.absender?.kleinunternehmer }).gesamt.brutto / 100;
+
+  let ergebnis: { a: Angebot; pdf: { id: string; name: string } } | null = null;
+  let geaendert = false;
+  await aendereCrmAsync(async b => {
+    const liste = b.angebote ?? [];
+    const a = liste.find(x => x.id === p.id);
+    // Zwischen Reservierung und Festschreiben geändert (anderes Fenster, zweites „Stellen“)? Dann nichts festschreiben.
+    if (!a || !istEntwurf(a) || standVon(a) !== r0.stand) { geaendert = true; return b; }
+    // Erst jetzt ablegen (Stand passt): ein Angebots-PDF ist ein Beleg und wäre danach nicht mehr löschbar.
     const datei = await ablegen(p.haushalt, p.person, {
-      art: 'angebot', titel: `Angebot ${nummer} – ${a.titel}`.slice(0, 160), kontaktId: k.id, ...(firmaId ? { firmaId } : {}), ...(dealId ? { dealId } : {}),
-      angebot: { nummer, datum: heute, betrag: brutto, status: 'offen', gueltigBis: a.gueltigBis },
-    }, { bytes, name, typ: 'application/pdf' }, jetztIso, { angebotId: a.id });
+      art: 'angebot', titel: `Angebot ${nummer} – ${r0.a.titel}`.slice(0, 160), kontaktId: k.id, ...(firmaId ? { firmaId } : {}), ...(dealId ? { dealId } : {}),
+      angebot: { nummer, datum: heute, betrag: brutto, status: 'offen', gueltigBis: r0.a.gueltigBis },
+    }, { bytes, name, typ: 'application/pdf' }, jetztIso, { angebotId: r0.a.id });
     const fertig: Angebot = { ...gestellt, pruefsumme, pdfDateiId: datei.id };
     ergebnis = { a: fertig, pdf: { id: datei.id, name } };
 
@@ -283,6 +316,10 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
     const followups = [...(b.followups ?? []).filter(f => f.id !== fu.id), fu];
     return { ...b, angebote, chancen, followups };
   }, p.wer);
+  if (geaendert) {
+    await reservierungLoesen();
+    throw new AngebotFehler('Wurde inzwischen geändert — neu geladen, bitte noch einmal.', 409, { grund: 'inzwischen geändert' });
+  }
   const e = ergebnis as { a: Angebot; pdf: { id: string; name: string } } | null;
   if (!e) throw new AngebotFehler('Nicht gestellt.', 500);
 

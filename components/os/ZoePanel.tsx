@@ -50,6 +50,8 @@ interface Beleg {
   kategorie?: string;
   unsicher?: string[];
   dateiname: string;
+  /** Idempotenz (29.09., Paket D-A #19): einmal je gelesenem Beleg — ein erneuter Klick nach einem Netzfehler legt nichts doppelt an. */
+  anfrageId?: string;
 }
 
 interface Handoff { agent: string; name: string; href: string; why: string }
@@ -206,7 +208,7 @@ export function ZoePanel() {
         body: JSON.stringify({ datei: base64, medientyp: f.type, name: f.name }),
       });
       const d = await r.json();
-      if (d.ok) setBeleg({ ...d.beleg, dateiname: f.name });
+      if (d.ok) setBeleg({ ...d.beleg, dateiname: f.name, anfrageId: neueKennung('anf') });
       else setBelegFehler(d.error ?? 'Beleg konnte nicht gelesen werden.');
     } catch (e) {
       setBelegFehler(e instanceof Error ? e.message : 'Beleg konnte nicht gelesen werden.');
@@ -226,7 +228,7 @@ export function ZoePanel() {
           // brutto/netto/Satz getrennt — die Route rechnet über lib/finanzen/ust.ts (netto ist nie brutto).
           betragBrutto: beleg.betragBrutto, betragNetto: beleg.betragNetto, ustSatz: beleg.ustSatz,
           kategorie: beleg.kategorie, zweck: beleg.zweck,
-          faellig: beleg.faellig, rechnungsnummer: beleg.rechnungsnummer,
+          faellig: beleg.faellig, rechnungsnummer: beleg.rechnungsnummer, anfrageId: beleg.anfrageId,
         }),
       });
       const d = await r.json();

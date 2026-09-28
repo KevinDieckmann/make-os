@@ -40,5 +40,10 @@ export class StandGedaechtnis {
     this.ablage.set(etag, s);
     while (this.ablage.size > this.max) { const erster = this.ablage.keys().next().value as string; this.ablage.delete(erster); }
   }
-  hole(etag: string | null): Map<string, string> | null { return etag ? this.ablage.get(etag) ?? null : null; }
+  /** Auch mit dem ETag der gepackten Fassung (`…-gz"`, lib/http/json-antwort.ts gzEtag — 29.09., Paket D-A #47). */
+  hole(etag: string | null): Map<string, string> | null {
+    if (!etag) return null;
+    const e = etag.trim().replace(/^W\//, '');
+    return this.ablage.get(e) ?? this.ablage.get(e.replace(/-gz"$/, '"')) ?? null;
+  }
 }

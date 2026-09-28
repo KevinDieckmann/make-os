@@ -39,6 +39,12 @@ export interface Auftrag {
   status: AuftragStatus;
   versuche: number;
   pachtBis?: string;
+  /**
+   * Pacht-Token (29.09., Paket D-A #20): je Übernahme neu. Nur wer den passenden Token hat, darf den Auftrag
+   * ausführen und das Ergebnis melden — läuft ein Lauf länger als die Pacht und der Auftrag wird neu vergeben,
+   * wirkt der alte Läufer nicht mehr (kein doppeltes Ergebnis, kein Überschreiben).
+   */
+  pachtToken?: string;
   begonnen?: string;
   beendet?: string;
   ergebnis?: string;
@@ -117,7 +123,7 @@ export async function nimm(anzahl: number, pachtSekunden = 300): Promise<Auftrag
     const naechste = liste.map(a => {
       // Abgelaufene Pacht: der Arbeiter ist weg, der Auftrag ist wieder frei.
       if (a.status === 'laeuft' && a.pachtBis && Date.parse(a.pachtBis) < jetzt) {
-        return { ...a, status: 'offen' as AuftragStatus, pachtBis: undefined };
+        return { ...a, status: 'offen' as AuftragStatus, pachtBis: undefined, pachtToken: undefined };
       }
       return a;
     });
@@ -129,6 +135,7 @@ export async function nimm(anzahl: number, pachtSekunden = 300): Promise<Auftrag
       a.versuche += 1;
       a.begonnen = new Date().toISOString();
       a.pachtBis = new Date(jetzt + pachtSekunden * 1000).toISOString();
+      a.pachtToken = neueKennung('pacht');
       genommen.push({ ...a });
     }
     return { auftraege: naechste };
@@ -145,22 +152,35 @@ export async function nimm(anzahl: number, pachtSekunden = 300): Promise<Auftrag
  * Arbeiter einen abgeschalteten Agenten am 07.09. dreimal hintereinander
  * angestoßen.
  */
-export async function melde(id: string, status: 'fertig' | 'fehler', text: string, endgueltig = false): Promise<void> {
+export async function melde(id: string, pachtToken: string, status: 'fertig' | 'fehler', text: string, endgueltig = false): Promise<boolean> {
+  let angenommen = false;
   await updateJson<Stand>('zoe-auftraege', current => {
     const liste = current?.auftraege ?? [];
     return {
-      auftraege: liste.map(a => a.id === id
-        ? {
-            ...a, status,
-            beendet: new Date().toISOString(),
-            pachtBis: undefined,
-            ...(status === 'fertig' ? { ergebnis: text.slice(0, 1200) } : { fehler: text.slice(0, 600) }),
-            // Ein Fehlschlag darf es nochmal versuchen — außer das Budget ist weg.
-            ...(status === 'fehler' && !endgueltig && a.versuche < MAX_VERSUCHE ? { status: 'offen' as AuftragStatus } : {}),
-          }
-        : a),
+      auftraege: liste.map(a => {
+        // Nur der Halter der AKTUELLEN Pacht meldet (Paket D-A #20) — ein abgelaufener Läufer ändert nichts mehr.
+        if (a.id !== id || a.status !== 'laeuft' || !a.pachtToken || a.pachtToken !== pachtToken) return a;
+        angenommen = true;
+        return {
+          ...a, status,
+          beendet: new Date().toISOString(),
+          pachtBis: undefined, pachtToken: undefined,
+          ...(status === 'fertig' ? { ergebnis: text.slice(0, 1200) } : { fehler: text.slice(0, 600) }),
+          // Ein Fehlschlag darf es nochmal versuchen — außer das Budget ist weg.
+          ...(status === 'fehler' && !endgueltig && a.versuche < MAX_VERSUCHE ? { status: 'offen' as AuftragStatus } : {}),
+        };
+      }),
     };
   });
+  if (!angenommen) console.warn(`[Aufträge] Meldung zu ${id} verworfen — Pacht abgelaufen oder neu vergeben.`);
+  return angenommen;
+}
+
+/** Hält der Aufrufer die aktuelle Pacht dieses Auftrags? (vor dem Ausführen prüfen) */
+export async function pachtGueltig(id: string, pachtToken: unknown): Promise<Auftrag | null> {
+  if (typeof pachtToken !== 'string' || !pachtToken) return null;
+  const a = (await lies()).find(x => x.id === id);
+  return a && a.status === 'laeuft' && a.pachtToken === pachtToken && (!a.pachtBis || Date.parse(a.pachtBis) >= Date.now()) ? a : null;
 }
 
 export async function lies(): Promise<Auftrag[]> {

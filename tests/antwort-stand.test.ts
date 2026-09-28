@@ -10,7 +10,7 @@ describe('jsonAntwort', () => {
   it('packt große Antworten, wenn der Browser gzip annimmt — und liefert denselben Inhalt', async () => {
     const r = jsonAntwort(anfrage({ 'accept-encoding': 'gzip, deflate, br' }), gross, etagAus('k', 'abc', 'kevin'));
     expect(r.headers.get('content-encoding')).toBe('gzip');
-    expect(r.headers.get('etag')).toBe('"k|abc|kevin"');
+    expect(r.headers.get('etag')).toBe('"k|abc|kevin-gz"'); // gepackte Fassung: eigenes ETag (29.09., Paket D-A #47)
     const text = gunzipSync(Buffer.from(await r.arrayBuffer())).toString('utf8');
     expect(JSON.parse(text).kontakte).toHaveLength(400);
   });
