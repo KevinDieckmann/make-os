@@ -26,3 +26,10 @@ Alles lokal; Upload nur auf Kevins Wort.
 - **Gemeinsame Lesefunktionen** statt Doppel-Logik: `verfuegbarkeitFuer` (Abwesend, Arbeitsort, Arbeitszeiten), Feiertage NRW, `geburtstageIm`, freie Zeit, Wochen-Auswertung — genutzt von Kalender, Aufgaben, Heute, Glocke, ZOE, Buchung, Angebot, Brain.
 - **Jede neue Kennung** → Verbindungsprüfung; **Personenbezug** → Speicher-Register/Art. 17.
 - **K6 Verbindungsrunde** (nach K1–K4): Karte „Zeit & Termine“ über alle Module (Aufgaben, Ziele, Zeitmessung, CRM-Follow-ups/Deals/Angebote/Mandate/Events/Power Hour, Finanzen-Fälligkeiten/Steuern, Familie, Gesundheit/Sport, Inbox, ZOE, Heads, Glocke, Heute, Brain) → doppelte Wahrheiten auflösen, fehlende Verbindungen bauen.
+
+## Offene Verbindungen für K6 (gesammelt aus K1/K2)
+- `lib/brain/app-spiegel.ts` (`_App/Woche`) an `auswertungMarkdown()` anschließen.
+- `app/api/kalender/route.ts` (Mac-Rückfall) auf `termineLesen()` umstellen (Abbildung doppelt).
+- Auswertung: mehrere Gäste je Termin (`ATermin.kontakte`) sobald K3 Gäste einführt.
+- Glocke + Heute: Termine, Follow-ups, Fristen (Verbindungskarte Befund 8/9).
+- ZOE-Kalender-Agent reparieren (blind, autonom über Altweg, fest verdrahtete Kalender) — Verbindungskarte Befund 1.
