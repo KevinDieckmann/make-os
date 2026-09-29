@@ -16,7 +16,7 @@ import { wandzeit, ausWandzeit, tagVon } from '@/lib/kalender/zeit';
 import { WEG } from '@/lib/wege';
 import type { MeldungEingabe } from './melden';
 import {
-  MELDUNGEN_MAX, PERSON_OK, bestandSaeubern, eintragAus, einfuegen, faelligAbleiten, geburtstagAbleiten, anstehendAbleiten, gelesenSetzen, pruefeEingabe, sichtBauen,
+  MELDUNGEN_MAX, PERSON_OK, bestandSaeubern, buchungenErledigen, eintragAus, einfuegen, faelligAbleiten, geburtstagAbleiten, anstehendAbleiten, gelesenSetzen, pruefeEingabe, sichtBauen,
   type GelesenAuswahl, type Meldung, type MeldungenBestand, type MeldungenSicht, type AnstehendFuerGlocke,
 } from './regeln';
 import { anstehendLesen, anstehendStand } from '@/lib/heute/anstehend-server';
@@ -26,6 +26,8 @@ import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { familieName } from '@/lib/familie/speicher';
 import type { Geburtstag } from '@/lib/kalender/geburtstag';
 import { tagPlus } from '@/lib/kalender/zeit';
+import { ladeBuchungBestand, buchungHaushalt } from '@/lib/kalender/buchung-speicher';
+import { OFFEN } from '@/lib/kalender/buchung';
 
 /** Speichername je Person — für alle Konten gleich gebaut (auch „kevin“), nie im Code mit Daten. */
 export function meldungenSpeicher(person: string): string {
@@ -65,8 +67,19 @@ export async function meldungAblegen(m: MeldungEingabe, jetzt: Date = new Date()
 /** Stand für das ETag: eigener Bestand + Aufgaben + Geburtstags-Quellen (Kartei, Familie) — Tag und Person nimmt die Route dazu. */
 export async function meldungenStand(person: string, jetzt: Date = new Date()): Promise<string> {
   const h = await haushaltFuer(person).catch(() => null);
+  const bh = await buchungHaushalt().catch(() => null);
   // K6a: dazu die Quellen von „Was ansteht“ (Termine, Fristen, Follow-ups …) samt 10-Minuten-Uhr (Termin „gleich“).
-  return `${await speicherStand([meldungenSpeicher(person), 'tasks', 'kontakte', ...(h ? [familieName(h.haushalt)] : [])])}|${await anstehendStand(jetzt)}`;
+  // Nachtrag F1: der Buchungs-Bestand (Terminanfrage freigegeben/abgelehnt/abgesagt → Meldung erledigt).
+  return `${await speicherStand([meldungenSpeicher(person), 'tasks', 'kontakte', ...(h ? [familieName(h.haushalt)] : []), ...(bh ? [`buchung--${bh}`] : [])])}|${await anstehendStand(jetzt)}`;
+}
+
+/**
+ * Kennungen der Buchungen, die noch auf eine Entscheidung warten (vorläufig/angefragt, Ablauf nachgezogen) — nur, wenn
+ * der Bestand eine ungelesene Buchungs-Meldung hat (sonst gar nicht lesen). null = nicht lesbar → nichts ausblenden.
+ */
+async function offeneBuchungen(b: MeldungenBestand, jetzt: Date): Promise<Set<string> | null> {
+  if (!b.eintraege.some(e => !e.gelesen && e.bezug?.art === 'buchung')) return null;
+  try { return new Set((await ladeBuchungBestand(jetzt)).buchungen.filter(x => OFFEN.includes(x.status)).map(x => x.id)); } catch { return null; }
 }
 
 const LEER_ANSTEHEND: AnstehendFuerGlocke = { termine: [], nachbereiten: [], fristen: [], followups: [] };
@@ -109,7 +122,9 @@ async function quellenLesen(person: string, heute: string, jetzt: Date) {
 export async function meldungenSicht(person: string, jetzt: Date = new Date()): Promise<MeldungenSicht> {
   const heute = heuteBerlin(jetzt);
   const [roh, q] = await Promise.all([loadJson<unknown>(meldungenSpeicher(person)), quellenLesen(person, heute, jetzt)]);
-  const bestand = bestandSaeubern(roh);
+  const gespeichert = bestandSaeubern(roh);
+  // Nachtrag F1: entschiedene Terminanfragen zählen nicht mehr an der Glocke.
+  const bestand = buchungenErledigen(gespeichert, await offeneBuchungen(gespeichert, jetzt));
   return sichtBauen(bestand, abgeleitet(bestand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute);
 }
 
@@ -122,13 +137,15 @@ export async function meldungenGelesen(person: string, auswahl: GelesenAuswahl, 
     const ids = abgeleitet(b, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand).map(m => m.id);
     return gelesenSetzen(b, auswahl, heute, ids);
   });
-  return sichtBauen(next, abgeleitet(next, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute);
+  const sicht = buchungenErledigen(next, await offeneBuchungen(next, jetzt));
+  return sichtBauen(sicht, abgeleitet(sicht, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute);
 }
 
 /** Kanal-Einstellung der Person (Telegram vorgesehen, versendet noch nichts). */
 export async function meldungenEinstellen(person: string, e: { telegram: boolean }, jetzt: Date = new Date()): Promise<MeldungenSicht> {
   const heute = heuteBerlin(jetzt);
   const q = await quellenLesen(person, heute, jetzt);
-  const next = await updateJson<MeldungenBestand>(meldungenSpeicher(person), cur => ({ ...bestandSaeubern(cur), einstellungen: { telegram: e.telegram === true } }));
+  const gespeichert = await updateJson<MeldungenBestand>(meldungenSpeicher(person), cur => ({ ...bestandSaeubern(cur), einstellungen: { telegram: e.telegram === true } }));
+  const next = buchungenErledigen(gespeichert, await offeneBuchungen(gespeichert, jetzt));
   return sichtBauen(next, abgeleitet(next, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand), heute);
 }

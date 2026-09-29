@@ -63,6 +63,16 @@ export interface Vorgabe {
 const plusMin = (hhmm: string, min: number) => { const [h, m] = hhmm.split(':').map(Number); const g = Math.min(23 * 60 + 59, h * 60 + m + min); return `${String(Math.floor(g / 60)).padStart(2, '0')}:${String(g % 60).padStart(2, '0')}`; };
 export { plusMin };
 
+/**
+ * Neue Anfangszeit (Nachtrag F1, wie bei Google): die Dauer bleibt, das Ende wandert mit. Ohne gültige Dauer (Ende vor dem
+ * Anfang) die Standarddauer. Höchstens bis 23:59 desselben Tages (`plusMin`).
+ */
+export function vonAendern(f: Pick<Formular, 'von' | 'bis'>, von: string, standardDauer: number): { von: string; bis: string } {
+  const min = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
+  const dauer = min(f.bis) - min(f.von);
+  return { von, bis: plusMin(von, dauer > 0 ? dauer : standardDauer) };
+}
+
 /** Startzustand aus einer Vorgabe (Klick, Aufziehen, Erstellen-Menü). */
 export function formularStart(v: Vorgabe, standardDauer: number, fokusDauer = 90): Formular {
   const art = v.art ?? 'termin';

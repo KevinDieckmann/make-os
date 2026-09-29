@@ -18,7 +18,7 @@
 //  5. Zuständig „both“ (gemeinsam) zählt für jede Person, die die Glocke sehen darf
 //     (der Zugang ist schon auf den Haushalt des Inhabers begrenzt).
 
-import type { MeldungArt, MeldungEingabe } from './melden';
+import type { MeldungArt, MeldungBezug, MeldungEingabe } from './melden';
 import { geburtstagFuer } from '@/lib/kalender/geburtstag';
 
 export const MELDUNGEN_MAX = 500;
@@ -48,7 +48,7 @@ export interface Meldung {
   titel: string;
   link: string;
   von?: string;
-  bezug?: { art: 'aufgabe'; id: string };
+  bezug?: MeldungBezug;
   /** ISO-Zeitpunkt. */
   am: string;
   gelesen?: boolean;
@@ -101,7 +101,7 @@ export function pruefeEingabe(m: MeldungEingabe): { ok: true } | { ok: false; gr
   if (!istText(m.titel) || !m.titel.trim()) return { ok: false, grund: 'Titel fehlt' };
   if (m.titel.length > TITEL_MAX) return { ok: false, grund: `Titel länger als ${TITEL_MAX} Zeichen` };
   if (!istLink(m.link)) return { ok: false, grund: 'Link muss ein Weg in MAKE OS sein' };
-  if (m.bezug !== undefined && (m.bezug?.art !== 'aufgabe' || !istText(m.bezug.id) || !BEZUG_ID_OK.test(m.bezug.id))) return { ok: false, grund: 'Bezug ungültig' };
+  if (m.bezug !== undefined && ((m.bezug?.art !== 'aufgabe' && m.bezug?.art !== 'buchung') || !istText(m.bezug.id) || !BEZUG_ID_OK.test(m.bezug.id))) return { ok: false, grund: 'Bezug ungültig' };
   return { ok: true };
 }
 
@@ -110,7 +110,7 @@ export function eintragAus(m: MeldungEingabe, id: string, am: string): Meldung {
   return {
     id, art: m.art, titel: m.titel.trim(), link: m.link, am,
     ...(m.von ? { von: m.von } : {}),
-    ...(m.bezug ? { bezug: { art: 'aufgabe' as const, id: m.bezug.id } } : {}),
+    ...(m.bezug ? { bezug: { art: m.bezug.art, id: m.bezug.id } } : {}),
   };
 }
 
@@ -322,6 +322,17 @@ export function sichtBauen(bestand: MeldungenBestand, abgeleitet: Meldung[], heu
   // Stabil sortieren: die Reihenfolge der abgeleiteten (überfällig vor fällig) bleibt erhalten.
   const meldungen = [...abgeleitet, ...gespeichert].map((m, i) => ({ m, i })).sort((a, b) => neuesteZuerst(a.m, b.m) || a.i - b.i).map(x => x.m);
   return { meldungen, ungelesen: ungelesenZahl(meldungen), einstellungen: bestand.einstellungen, heute };
+}
+
+/**
+ * Nachtrag F1 (29.09.): Meldungen zu einer Buchung (Bezug `buchung`) gelten als erledigt (gelesen), sobald die Buchung
+ * nicht mehr in `offen` steht — freigegeben, abgelehnt, abgesagt oder abgelaufen. Nur in der Sicht (rein), der Bestand
+ * bleibt; `offen` null (Bestand nicht lesbar) → nichts ändern.
+ */
+export function buchungenErledigen(bestand: MeldungenBestand, offen: ReadonlySet<string> | null): MeldungenBestand {
+  if (!offen) return bestand;
+  const eintraege = bestand.eintraege.map(e => (!e.gelesen && e.bezug?.art === 'buchung' && !offen.has(e.bezug.id) ? { ...e, gelesen: true } : e));
+  return { ...bestand, eintraege };
 }
 
 export interface GelesenAuswahl { ids?: string[]; alle?: boolean }

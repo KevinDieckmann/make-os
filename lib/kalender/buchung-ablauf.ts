@@ -105,7 +105,8 @@ async function anfrageLauf(h: string, a: Absicht): Promise<void> {
     const id = String(v.daten<string>('buchungId'));
     await v.schritt('melden', async () => {
       const { b, s } = await buchungUndSeite(id);
-      await melde({ an: s.person, art: 'buchung', titel: `Neue Terminanfrage: „${s.titel}“ am ${datumText(b)} — bitte freigeben oder ablehnen`, link: '/os/kalender?buchungen=1' });
+      // Bezug `buchung` (Nachtrag F1): freigegeben, abgelehnt, abgesagt oder abgelaufen → die Glocke zählt sie nicht mehr.
+      await melde({ an: s.person, art: 'buchung', titel: `Neue Terminanfrage: „${s.titel}“ am ${datumText(b)} — bitte freigeben oder ablehnen`, link: '/os/kalender?buchungen=1', bezug: { art: 'buchung', id } });
     });
   });
   await absichtAbschliessen(h, a.id, 'fertig');

@@ -11,6 +11,7 @@
  *  `buchung` (29.09., K4): neue Terminanfrage über eine Buchungsseite — an die Person der Seite.
  *  `kalender` (29.09., F1 #5): ein Kalender-Spiegel (Event, Date, Paar-Gespräch) ließ sich nicht nachziehen — an die
  *  Person, die die Änderung ausgelöst hat (lib/kalender/spiegel-server.ts `spiegelHinweiseMelden`). */
+export interface MeldungBezug { art: 'aufgabe' | 'buchung'; id: string }
 export type MeldungArt = 'zuweisung' | 'kommentar' | 'erwaehnung' | 'faellig' | 'ueberfaellig' | 'zoe' | 'buchung' | 'kalender';
 
 export interface MeldungEingabe {
@@ -23,8 +24,11 @@ export interface MeldungEingabe {
   link: string;
   /** Auslöser (Speichername), falls eine Person. */
   von?: string;
-  /** Worum es geht — für Zusammenfassen/Entdoppeln (eine offene Meldung je Bezug und Art). */
-  bezug?: { art: 'aufgabe'; id: string };
+  /**
+   * Worum es geht — für Zusammenfassen/Entdoppeln (eine offene Meldung je Bezug und Art). `buchung` (Nachtrag F1): die
+   * Meldung „Neue Terminanfrage“ gilt als erledigt, sobald die Buchung nicht mehr „angefragt“ ist (lib/meldungen/speicher.ts).
+   */
+  bezug?: MeldungBezug;
 }
 
 /**

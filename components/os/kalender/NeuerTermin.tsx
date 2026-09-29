@@ -34,7 +34,7 @@ import { ART_INFO, TERMIN_ARTEN, ARBEITSORTE, SICHTBARKEIT_LABEL, ERINNERUNG_VOR
 import { ZONEN, gmtText, ausWandzeitIn } from '@/lib/kalender/zeitzone';
 import { wiederholungVorlagen, wiederholungBeschreiben, wochentagVon, wochentagNr, WOCHENTAGE, TAG_KURZ, type Wiederholung, type WiederholungFreq } from '@/lib/kalender/wiederholung';
 import { neueTerminUid } from '@/lib/kalender/eingabe';
-import { formularStart, formularErgaenzen, artWechseln, formularFehler, formularAnfrage, entwurfWertvoll, plusMin, ENTWURF_SCHLUESSEL, type Formular, type Vorgabe } from '@/lib/kalender/formular';
+import { formularStart, formularErgaenzen, artWechseln, formularFehler, formularAnfrage, entwurfWertvoll, vonAendern, ENTWURF_SCHLUESSEL, type Formular, type Vorgabe } from '@/lib/kalender/formular';
 import { FarbPunkte, WER_FARBE, WER_LABEL, type Wer } from './teile';
 import { TerminVerknuepfen, GaesteWahl, EinladungFrage } from './verknuepfen';
 
@@ -180,7 +180,7 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
           <input type="date" value={f.bisTag} min={f.tag} onChange={e => setF({ ...f, bisTag: e.target.value })} style={eingabe} /></label>}
         {!f.ganztags && (art !== 'aufgabe' || f.aufgabe.mitZeit) && <>
           <label style={{ display: 'grid', gap: 4, flex: '0 1 104px' }}><span style={beschr}>{art === 'aufgabe' ? 'Uhrzeit' : 'Von'}</span>
-            <input type="time" step={300} value={f.von} onChange={e => { const v = e.target.value; setF({ ...f, von: v, bis: f.bis <= v ? plusMin(v, art === 'fokus' ? fokusDauer : standardDauer) : f.bis }); }} style={eingabe} /></label>
+            <input type="time" step={300} value={f.von} onChange={e => { const v = e.target.value; if (v) setF({ ...f, ...vonAendern(f, v, art === 'fokus' ? fokusDauer : standardDauer) }); }} style={eingabe} /></label>
           {art !== 'aufgabe' && <label style={{ display: 'grid', gap: 4, flex: '0 1 104px' }}><span style={beschr}>Bis</span>
             <input type="time" step={300} value={f.bis} onChange={e => setF({ ...f, bis: e.target.value })} style={eingabe} /></label>}
           {art !== 'aufgabe' && <button type="button" onClick={() => setVoll(true)} title="Zeitzone ändern (Weitere Optionen)" style={{ background: 'none', border: 'none', color: C.inkLeise, fontSize: 12.5, cursor: 'pointer', paddingBottom: 10 }}>{f.zone === 'Europe/Berlin' ? gmt : `${ZONEN.find(z => z.id === f.zone)?.label ?? f.zone} · ${gmt}`}</button>}

@@ -245,10 +245,14 @@ function SeiteBearbeiten({ start, onZu, onSpeichern, onLoeschen, fehler }: { sta
   const zahl = (k: keyof typeof s, min: number, max: number) => (e: React.ChangeEvent<HTMLInputElement>) => setS(x => ({ ...x, [k]: Math.max(min, Math.min(max, Number(e.target.value) || min)) }));
   const zeile = (label: string, kind: React.ReactNode) => <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: 12, color: C.inkLeise }}>{label}</span>{kind}</label>;
   const klein = { ...feld, fontSize: 13, padding: '8px 10px' };
+  // Nachtrag F1: Pflichtfelder sagen schon vor dem Speichern, was fehlt — keine Platzhalter, die wie Werte aussehen.
+  const fehlt = { titel: !s.titel.trim(), kalender: !s.zielKalender.trim(), verantwortlich: s.verantwortlich.trim().length < 5 };
+  const hinweis = (text: string) => <span role="note" style={{ fontSize: 11.5, color: LEUCHT.achtung }}>{text}</span>;
+  const beispiel = (text: string) => <span style={{ fontSize: 11.5, color: C.inkLeise }}>{text}</span>;
   return (
     <Fenster titel={start.id ? 'Buchungsseite bearbeiten' : 'Neue Buchungsseite'} onZu={onZu} breit={620}>
       <div style={{ display: 'grid', gap: 12 }}>
-        {zeile('Titel (steht öffentlich auf der Seite)', <input value={s.titel} maxLength={80} onChange={e => setS({ ...s, titel: e.target.value })} placeholder="30 min mit Kevin" style={klein} />)}
+        {zeile('Titel * (steht öffentlich auf der Seite)', <><input value={s.titel} maxLength={80} required aria-required="true" aria-invalid={fehlt.titel || undefined} onChange={e => setS({ ...s, titel: e.target.value })} style={klein} />{fehlt.titel ? hinweis('Titel fehlt — z. B. „30 min mit Kevin“.') : null}</>)}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
           {zeile('Für wen', <select value={s.person} onChange={e => setS({ ...s, person: e.target.value })} style={klein}>{personen.map(p => <option key={p.speicher} value={p.speicher}>{p.name}</option>)}</select>)}
           {zeile('Dauer (Min.)', <input type="number" min={10} max={240} step={5} value={s.dauerMin} onChange={zahl('dauerMin', 10, 240)} style={klein} />)}
@@ -263,9 +267,10 @@ function SeiteBearbeiten({ start, onZu, onSpeichern, onLoeschen, fehler }: { sta
             <input type="time" value={s.von} onChange={e => setS({ ...s, von: e.target.value })} style={{ ...klein, width: 110 }} />–<input type="time" value={s.bis} onChange={e => setS({ ...s, bis: e.target.value })} style={{ ...klein, width: 110 }} />
           </div>
         ))}
-        {zeile('Zielkalender (Name wie in der Kalender-App)', <input value={s.zielKalender} maxLength={100} onChange={e => setS({ ...s, zielKalender: e.target.value })} placeholder="Kalender" style={klein} />)}
+        {zeile('Zielkalender * (Name wie in der Kalender-App)', <><input value={s.zielKalender} maxLength={100} required aria-required="true" aria-invalid={fehlt.kalender || undefined} onChange={e => setS({ ...s, zielKalender: e.target.value })} style={klein} />{fehlt.kalender ? hinweis('Zielkalender fehlt — genau so geschrieben wie in der Kalender-App.') : beispiel('Hier legt die Freigabe den festen Termin an.')}</>)}
         {zeile('Ort oder Videolink (sieht der Gast erst nach der Freigabe)', <input value={s.ort} maxLength={300} onChange={e => setS({ ...s, ort: e.target.value })} style={klein} />)}
-        {zeile('Verantwortlich * (Pflicht — steht im Datenschutz-Hinweis: Name/Firma und Kontakt)', <input value={s.verantwortlich} maxLength={300} required aria-required="true" onChange={e => setS({ ...s, verantwortlich: e.target.value })} placeholder="Firma, Anschrift, datenschutz@…" style={klein} />)}
+        {zeile('Verantwortlich * (Pflicht — steht im Datenschutz-Hinweis: Name/Firma und Kontakt)', <input value={s.verantwortlich} maxLength={300} required aria-required="true" onChange={e => setS({ ...s, verantwortlich: e.target.value })} style={klein} />)}
+        {fehlt.verantwortlich && hinweis('Verantwortlich fehlt — Name/Firma, Anschrift und eine Kontakt-Adresse für den Datenschutz.')}
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12.5, color: C.inkDim }}>
           <label><input type="checkbox" checked={s.firma} onChange={e => setS({ ...s, firma: e.target.checked })} /> nach Firma fragen</label>
           <label><input type="checkbox" checked={s.anliegen} onChange={e => setS({ ...s, anliegen: e.target.checked })} /> nach Anliegen fragen</label>
@@ -276,7 +281,7 @@ function SeiteBearbeiten({ start, onZu, onSpeichern, onLoeschen, fehler }: { sta
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           {onLoeschen && <Knopf leise onClick={onLoeschen}>Löschen</Knopf>}
           <Knopf leise onClick={onZu}>Abbrechen</Knopf>
-          <Knopf onClick={async () => { await onSpeichern({ ...(start.id ? { id: start.id } : {}), titel: s.titel, person: s.person, dauerMin: s.dauerMin, fenster: [{ tage: s.tage, von: s.von, bis: s.bis }], tageVoraus: s.tageVoraus, vorlaufMin: s.vorlaufMin, maxJeTag: s.maxJeTag, pufferMin: s.pufferMin, rasterMin: s.rasterMin, zielKalender: s.zielKalender, ort: s.ort, verantwortlich: s.verantwortlich, fragen: { firma: s.firma, anliegen: s.anliegen }, aktiv: s.aktiv }); }}>Speichern</Knopf>
+          <Knopf aus={fehlt.titel || fehlt.kalender || fehlt.verantwortlich} onClick={async () => { await onSpeichern({ ...(start.id ? { id: start.id } : {}), titel: s.titel, person: s.person, dauerMin: s.dauerMin, fenster: [{ tage: s.tage, von: s.von, bis: s.bis }], tageVoraus: s.tageVoraus, vorlaufMin: s.vorlaufMin, maxJeTag: s.maxJeTag, pufferMin: s.pufferMin, rasterMin: s.rasterMin, zielKalender: s.zielKalender, ort: s.ort, verantwortlich: s.verantwortlich, fragen: { firma: s.firma, anliegen: s.anliegen }, aktiv: s.aktiv }); }}>Speichern</Knopf>
         </div>
       </div>
     </Fenster>

@@ -139,3 +139,26 @@ describe('#13 Drosselung je Netz', () => {
     expect(netzVon('direkt')).toBe('direkt');
   });
 });
+
+describe('Nachträge F1', () => {
+  it('(1) neue Anfangszeit behält die Dauer, das Ende wandert mit (wie Google)', async () => {
+    const { vonAendern } = await import('@/lib/kalender/formular');
+    expect(vonAendern({ von: '09:00', bis: '10:30' }, '14:00', 60)).toEqual({ von: '14:00', bis: '15:30' });
+    expect(vonAendern({ von: '09:00', bis: '08:00' }, '11:00', 45)).toEqual({ von: '11:00', bis: '11:45' }); // keine gültige Dauer → Standard
+    expect(vonAendern({ von: '09:00', bis: '10:00' }, '23:30', 60)).toEqual({ von: '23:30', bis: '23:59' }); // nie über Mitternacht
+  });
+
+  it('(2) Terminanfrage-Meldung gilt als erledigt, sobald die Buchung entschieden ist', async () => {
+    const { buchungenErledigen, pruefeEingabe, leererBestand, ungelesenZahl } = await import('@/lib/meldungen/regeln');
+    expect(pruefeEingabe({ an: 'kevin', art: 'buchung', titel: 'Neue Terminanfrage', link: '/os/kalender?buchungen=1', bezug: { art: 'buchung', id: 'bu-1' } })).toEqual({ ok: true });
+    const b = { ...leererBestand(), eintraege: [
+      { id: 'm1', art: 'buchung' as const, titel: 'Neue Terminanfrage A', link: '/os/kalender', am: '2026-10-05T06:00:00Z', bezug: { art: 'buchung' as const, id: 'bu-offen' } },
+      { id: 'm2', art: 'buchung' as const, titel: 'Neue Terminanfrage B', link: '/os/kalender', am: '2026-10-05T06:01:00Z', bezug: { art: 'buchung' as const, id: 'bu-entschieden' } },
+      { id: 'm3', art: 'buchung' as const, titel: 'Termin entfernen?', link: '/os/kalender', am: '2026-10-05T06:02:00Z' },
+    ] };
+    const e = buchungenErledigen(b, new Set(['bu-offen']));
+    expect(e.eintraege.map(x => [x.id, !!x.gelesen])).toEqual([['m1', false], ['m2', true], ['m3', false]]);
+    expect(ungelesenZahl(e.eintraege)).toBe(2);
+    expect(buchungenErledigen(b, null)).toBe(b); // Bestand nicht lesbar → nichts ausblenden
+  });
+});

@@ -27,7 +27,7 @@ const ic = vi.hoisted(() => ({
   beimZwang: null as null | (() => Promise<void>),
   /** Wird direkt NACH dem Anlegen im iCloud-Mock ausgeführt (Absage zwischen Termin und Buchung). */
   nachAnlegen: null as null | (() => Promise<void>),
-  meldungen: [] as { an: string; titel: string }[],
+  meldungen: [] as { an: string; titel: string; bezug?: { art: string; id: string } }[],
 }));
 const stand = () => ({ at: new Date().toISOString(), kalender: [], objekte: {} });
 vi.mock('@/lib/kalender/icloud', async () => ({
@@ -58,7 +58,7 @@ vi.mock('@/lib/kalender/zugang', () => ({
   KEIN_KALENDER: { ok: false, fehler: 'Kein Zugang.' },
   kalenderZugang: async (req: Request) => { const p = req.headers.get('x-make-user'); return p === 'kevin' || p === 'malin' ? { person: p, dienst: false } : null; },
 }));
-vi.mock('@/lib/meldungen/melden', () => ({ melde: async (m: { an: string; titel: string }) => { ic.meldungen.push({ an: m.an, titel: m.titel }); } }));
+vi.mock('@/lib/meldungen/melden', () => ({ melde: async (m: { an: string; titel: string; bezug?: { art: string; id: string } }) => { ic.meldungen.push({ an: m.an, titel: m.titel, ...(m.bezug ? { bezug: m.bezug } : {}) }); } }));
 
 type Ctx = { params: Promise<{ slug: string }> };
 type Route = { GET?: (r: Request, c: Ctx) => Promise<Response>; POST?: (r: Request, c: Ctx) => Promise<Response> };
@@ -110,6 +110,8 @@ describe('#1 Doppelte Freigabe → ein Termin, eine Einladung', () => {
   it('zwei Freigaben gleichzeitig (Kevin + Malin): ein Termin mit fester UID, die zweite 409 „läuft schon“', async () => {
     const { buchungTerminUid } = await import('@/lib/kalender/buchung');
     const { id } = await anfragen('2026-10-06T10:00:00', 'doppel@example.invalid');
+    // Nachtrag F1: die Glocke „Neue Terminanfrage“ trägt den Bezug zur Buchung (wird nach der Entscheidung erledigt).
+    expect(ic.meldungen.find(m => /Neue Terminanfrage/.test(m.titel))?.bezug).toEqual({ art: 'buchung', id });
     const vorher = ic.angelegt;
     const [a, b] = await Promise.all([verwalten({ aktion: 'freigeben', id }), verwalten({ aktion: 'freigeben', id }, 'malin')]);
     expect([a.status, b.status].sort()).toEqual([200, 409]);
