@@ -139,13 +139,13 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
         </Feld>
         {!eltern && (
           <Feld label="Sichtbar">
-            <button type="button" aria-pressed={nurIch} disabled={!darfSichtbarkeit} onClick={() => aendern(nurIch ? { sichtbarkeit: 'haushalt' } : { sichtbarkeit: 'nur-ich', assignee: (ich || t.assignee) as Owner, beteiligte: undefined })} className="fassbar"
+            <button type="button" aria-pressed={nurIch} disabled={!darfSichtbarkeit} onClick={() => aendern(nurIch ? { sichtbarkeit: 'haushalt' } : { sichtbarkeit: 'nur-ich', assignee: (ich || t.assignee) as Owner, beteiligte: undefined, ...(t.wiederholung?.rotation ? { wiederholung: (() => { const w = { ...t.wiederholung! }; delete w.rotation; return w; })() } : {}) })} className="fassbar"
               title={darfSichtbarkeit ? 'Nur ich: niemand sonst sieht die Aufgabe — auch nicht in Kalender, Glocke, Suche oder bei ZOE.' : 'Nur wer die Aufgabe angelegt hat, kann das ändern.'}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 32, borderRadius: 999, padding: '4px 12px', cursor: darfSichtbarkeit ? 'pointer' : 'default', fontFamily: SCHRIFT.text, fontSize: 12.5,
                 border: `1px solid ${nurIch ? `${LEUCHT.schlaf}99` : 'rgba(255,255,255,.1)'}`, background: nurIch ? `${LEUCHT.schlaf}22` : 'rgba(255,255,255,.03)', color: nurIch ? LEUCHT.schlaf : C.inkDim, opacity: darfSichtbarkeit ? 1 : 0.55 }}>
               <Lock size={13} aria-hidden /> nur ich
             </button>
-            <span style={{ fontSize: 12, color: C.inkLeise }}>{nurIch ? 'Nur du siehst sie — und nur du bist zuständig.' : t.assignee !== ich || t.beteiligte?.length ? 'Für euch beide sichtbar. „Nur ich“ macht dich zuständig und nimmt die Beteiligten heraus.' : 'Für euch beide sichtbar.'}</span>
+            <span style={{ fontSize: 12, color: C.inkLeise }}>{nurIch ? 'Nur du siehst sie — und nur du bist zuständig.' : t.assignee !== ich || t.beteiligte?.length ? 'Für euch beide sichtbar. „Nur ich“ macht dich zuständig und nimmt Beteiligte und Wechsel heraus.' : 'Für euch beide sichtbar.'}</span>
           </Feld>
         )}
         <Feld label="Priorität">

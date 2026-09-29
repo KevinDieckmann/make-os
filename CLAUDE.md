@@ -385,6 +385,35 @@ lokal, Route `/os`, Port 3001.
     auf „Y““ statt „überfällig“; Flächen-Widget und ZOE-Auftrag nennen, worauf gewartet wird. Zuweisungen je Absender und Schreibvorgang gebündelt (#42).
   - **Kommentare weich** (`entfernt: { am, von }`, nur eigene; Anzeige „Kommentar entfernt“). Sortierung `nachReihe` = (sortOrder, createdAt, id).
     GET `/api/state/tasks` mit ETag/304 (Stand tasks/crm/ordnung/konten + Person + Papierkorb). Tests `tests/aufgaben-t1-{modell,server}.test.ts`.
+- **Paket T2 (29.09., Oberfläche + ZOE-Freigabe + CRM-Einheit + „Neu anfangen“):**
+  - **„Neu anfangen …“** (Aufgaben-Überblick + Ziele & Planung Monat/Quartal/Jahr; Kevin: „alle Ziele und Aufgaben rausnehmen und neu planen“):
+    `/api/neustart` (GET Vorschau, `?archiv=1` Läufe; POST `neu-anfangen` mit `laufId: na-…` + `bestaetigung: 'NEU ANFANGEN'`, POST `zurueck` ganz/
+    Projekt/Aufgabe/Ziel/Meilenstein) — nur Personen im Haushalt mit eigener Sitzung. Server `lib/aufgaben/neustart-server.ts`: Sicherheitskopie über
+    `archivSchreiben` → Lauf-Protokoll `planung-neustart--<haushalt>` → je Bestand EINE Sperre (Bestand außen, Protokoll innen). **Aufgaben/Projekte/
+    Gruppen/Listen** bekommen `archiviertAm` + `archivId` (bleiben im Bestand — Dateien, Zeiten, Follow-ups zeigen auf Vorhandenes); `aufgabenSicht`
+    blendet sie aus (`ohneArchiv`, lib/aufgaben/neustart.ts). Serien ruhen (`wiederholung` im Lauf gemerkt, zurück = läuft weiter). Bleiben: Papierkorb,
+    Vorlagen, eigene Status, offene Fristen-Aufgaben der Module (`steuer-`, `beleg-`, `loeschfrist-kontakte`, `ev-`). **Ziele** (geteilt + `ziele-eigen`
+    je Person) samt Fokus-Sätzen und **Meilensteine** wandern ins Lauf-Protokoll (lib/planung/neustart.ts) — zurück nie über vorhandene Kennungen,
+    Fokus nur in leere Plätze. Routinen/Blöcke/CRM unberührt; Meldungen zu archivierten Aufgaben gelesen. Ansicht: Aufgaben › Archiv › „Neu angefangen“.
+    Wer `tasks` roh liest (Brain, Art. 15/17, Verbindungsprüfung), sieht Archiviertes mit Marke — bei neuen Lesern `imArchiv` beachten.
+  - **Oberfläche:** 🔒 „nur ich“ (Detail + Schnell-Anlegen; macht die Anlegerin zuständig, ohne Beteiligte), Zuständig = eine Person + „Beteiligte“
+    (`WahlMehrfach`), Filter Alle · Meine · Beteiligt, „Abgebrochen“ grau/durchgestrichen (Board-Spalte bei Bedarf), Serien-Extras in `WiederholungWahl`
+    (`extras`), „Diese überspringen“ (`serieUeberspringen` im Browser) getrennt von „Serie beenden“; Löschen einer laufenden Instanz fragt. Kennzeichen
+    an EINER Stelle `components/os/aufgaben/Zeichen.tsx` (🔒, Titelstil, „!!/!“, „! 02.10.“ überfällig). **Rückfragen + „Rückgängig“ (10 s)** nur über
+    `HandlungProvider`/`useHandlung(dispatch, statusEigen)` (Handlung.tsx; ohne Provider direkte Aktionen): erledigen (offene Unteraufgaben → mit erledigen/
+    offen lassen), Status, löschen, verschieben (Unteraufgaben mitverschieben), umziehen (Privat + CRM-Bezug → lösen/behalten). Datumsfelder nur
+    `DatumFeld` (speichert beim Verlassen). Schnell-Anlegen: `parseSchnell(text, projekte, heute)` + `schnellVorschau` (Wochentag nur am Ende/mit Präfix,
+    Datum mit Kalenderprüfung). Suche überall `suchPasst` (Titel + Beschreibung). Zeilen-Knöpfe tragen `id="oeffnen-<id>"` (Fokus zurück).
+  - **ZOE-Freigabe:** Vorschlag trägt `eingabe._stand` (Status/Deadline beim Vorschlag) und `_charge` (je Lauf); Freigabe → 409 mit `diff` statt
+    Überschreiben (`standAbweichung`), „trotzdem“ nur ausdrücklich; Häkchen je Feld (`FreigabeFelder`, `nurGewaehlt`); Deadline nur echter Tag ≥ heute;
+    Sammelfreigabe nur `risikoarm` (nur Notiz/Unteraufgaben), mit Charge `_sammel`; „Charge rückgängig“ `lib/zoe/aufgaben-charge.ts` (nur was noch den
+    freigegebenen Wert trägt). „_“-Schlüssel nie vom Browser.
+  - **Follow-up = Aufgabe:** CRM „Aufgabe anlegen“ legt eine Aufgabe mit `bezug` an; Abgleich beidseitig idempotent (`lib/crm/followup-aufgabe.ts`,
+    eingehängt nach jedem Schreiben in speicher.ts bzw. in `/api/crm/followup` erledigen); Follow-up › Fällig zeigt Aufgaben mit CRM-Bezug mit an.
+    Nach jedem Schreiben ziehen Dateien umgezogener Aufgaben ihren Bereich mit (`lib/aufgaben/umzug-dateien.ts`).
+  - **Export:** `GET /api/aufgaben/export` (Sichtfilter der Person, Papierkorb/Archiv mit Marke, Dateiliste ohne Inhalte), rein `lib/aufgaben/export.ts`
+    (`exportBauen`/`exportEinlesen`). Vorlagen: `gruppeIndex`, `versatzArt: 'werktage'` (NRW), `version` → `vorlageVersion`.
+    Tests `tests/{neustart,zoe-freigabe-t2,followup-aufgabe,aufgaben-export,aufgaben-vorlagen-t2,aufgaben-umzug-t2}.test.ts`.
 
 ## Markttraktion — Deal- und Follow-up-Ebene (27.09., nur lokal)
 - **Marke Make.One (27.09.):** unter den Events läuft unsere Veranstaltungsmarke. `lib/crm/marke.ts` ist die eine Stelle (`MARKE_EVENTS`,
