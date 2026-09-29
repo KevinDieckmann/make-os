@@ -192,3 +192,78 @@ Die Fristen-Ebene respektiert Sicht (Kevin/Malin/Gemeinsam) und Bereich (Privat/
 - `/Users/kevindieckmann/Claude/Projects/MakeOS/lib/aufgaben/feiertage.ts`
 - `/Users/kevindieckmann/Claude/Projects/MakeOS/lib/finanzen/chef/steuertermine.ts`
 - `/Users/kevindieckmann/Claude/Projects/MakeOS/tests/datenschutz-register.test.ts`
+
+---
+
+## Status nach K6a (29.09., Branch `worktree-agent-a6cddde712a8d9a39`, Code-Commit `c3d9f53`)
+
+Legende: **erledigt** (Paket/Commit) · **teilweise** (was fehlt) · **offen** (Grund). „Kern“ = die parallel bearbeiteten
+Kalender-Kerndateien (`lib/kalender/{ics,icloud,…}`, Termin-Route, Buchung, `Kalender.tsx`/`Zeitraster`/`Agenda`/`Monat`) — dort
+hat K6a nichts geändert.
+
+### Befunde 1–15
+| # | Befund | Status |
+|---|---|---|
+| 1 | ZOE-Kalender-Agent arbeitet blind | **erledigt** R-Z `186a264`/`2b7ebfa` (Woche serverseitig über `termineFuerZoe`, Vorschläge nur im Stapel, Kalender aus den Einstellungen) |
+| 2 | Wiedervorlage geparkter Deals kommt nie hoch | **erledigt** K6a `c3d9f53` (`v:dealwiedervorlage`, `dealWiedervorlagen` in Follow-ups, Power Hour, Glocke, Heute) |
+| 3 | Speicher-Register-Lücken | **erledigt** K2 `72b8fa6` (Wächter löst Konstanten/`speicherFuer` auf; Apple-Spiegel „nur in Apple“) |
+| 4 | Event mit Schein-Kennung | **erledigt** K5 `55866be` (echte UID, Nachziehen); K6a: Nachziehen auch im Takt + „Termin entfernen“ nach Event-Löschung |
+| 5 | Wochenplan-Blöcke bleiben in Apple stehen | **erledigt** K5 `55866be` (Block = iCloud-Termin) |
+| 6 | Kündigungsfrist zweimal gerechnet | **erledigt** K6a `c3d9f53` (`mandatFristen` — Mandatsseite, Kalender, Glocke/Heute) |
+| 7 | Meeting zählt doppelt | **erledigt** K3 `7b498e5` |
+| 8 | Kalender-Zuordnung an zwei Stellen | **offen** — die feste Einordnung steht in `lib/kalender/icloud.ts` (Kern, parallel in Arbeit); die Signale filtern weiter über `category === 'holding'`. Umstellung auf die Einstellungen braucht den Kalendernamen im Mac-/iCloud-Spiegel (Kern). |
+| 9 | Aufgaben im Kalender halb angebunden | **erledigt** K3 `43f2dd9`/`7b498e5` |
+| 10 | Event-Checkliste: Frist beim Anlegen kopiert | **offen** — nicht im K6a-Umfang (Eventplanung: Aufgabe braucht `bezug.eventId` + Nachziehen bei Datumsänderung; eigenes kleines Paket) |
+| 11 | `signale.ts` Wandzeit-Vergleich | **erledigt** K3 `7b498e5` (`terminMs`) |
+| 12 | Drei Feiertagsrechnungen | **erledigt** K2 `72b8fa6` (`lib/zeit/kalender-kern.ts`) |
+| 13 | Kalenderwoche an 7 Stellen | **erledigt** K2 `72b8fa6` |
+| 14 | Beispieldaten `kemaris-calendar` | **erledigt** K5 `55866be` (liefert nichts mehr); `lib/brain.ts` liest den leeren Bestand noch (R-Z) |
+| 15 | `/api/kalender` höchstens 120 Tage | **erledigt** K2 `72b8fa6` (Jahr über `/api/kalender/jahr`) |
+
+### Doppelte Wahrheiten 1–12
+| # | Thema | Status |
+|---|---|---|
+| 1 | `FollowUp.faellig` gegen `Task.dueDate` | **teilweise** — T2 „Follow-up = Aufgabe“ gleicht den Status ab; K6a: Glocke/Heute zeigen Follow-ups mit Aufgabe nicht doppelt (die Aufgabe führt). Offen: `faellig` liest nicht von der Aufgabe (Umbau der Follow-up-Ebene). |
+| 2 | Nachfassen an 8 Stellen | **teilweise** — K6a: EINE Leseregel `faellige` für Liste, Power Hour, Glocke, Heute, Akte (jetzt inkl. Deal-Wiedervorlage). Offen: Datenumzug der Altfelder zu echten Follow-ups (Migration mit Kevins Wort; Inbox-Zurückstellen und Kampagnen-Schritte eigene Bestände). |
+| 3 | Kündigungsfrist | **erledigt** K6a `c3d9f53` |
+| 4 | Wochenplan-Block gegen Apple-Spiegel | **erledigt** K5 `55866be` |
+| 5 | Event/Date/Gespräch gegen iCloud-Kopie | **erledigt** K5 `55866be`; K6a: Takt-Abgleich + Termin gelöschter Events entfernen |
+| 6 | CRM-Meeting gegen Termin gegen Signal | **erledigt** K3 `7b498e5`; K6a: alle Leser (ZOE, Heads, Verlauf, Nachbereitung) lesen die Zeit aus dem Termin |
+| 7 | Wem gehört ein Kalender | **offen** — wie Befund 8 (Kern) |
+| 8 | Geburtstag | **erledigt** K2 `72b8fa6` |
+| 9 | `Ziel.termin` gegen `Meilenstein.faellig` | **offen** — Ziehen im Kalender (Kern-Oberfläche) |
+| 10 | Ist-/Soll-Arbeitszeit | **teilweise** — K1/K2: Soll aus der Wochenvorlage, Auswertung an einer Stelle; `arbeitsmodus` bleibt eigene Ist-Quelle |
+| 11 | Feiertage und KW | **erledigt** K2 `72b8fa6` |
+| 12 | Event-Checkliste/Kampagnen-Schritte: Frist kopiert | **offen** — wie Befund 10 |
+
+### Fehlende Verbindungen 1–15
+| # | Verbindung | Status |
+|---|---|---|
+| 1 | ZOE-Kalender-Agent reparieren | **erledigt** R-Z `186a264` |
+| 2 | Follow-ups als Kalender-Ebene | **offen** — Ebene in `Kalender.tsx`/Zeitraster (Kern-Oberfläche, parallel in Arbeit); die Daten liefert `faellige` |
+| 3 | Aufgaben im Kalender vollständig | **erledigt** K3 |
+| 4 | Wiedervorlage geparkter Deals und `erwartetAm` | **erledigt** K6a `c3d9f53` (Wiedervorlage als Follow-up; `erwartetAm` als Frist „Entscheidung erwartet“) |
+| 5 | Verfügbarkeit an einer Stelle | **erledigt** K1 `da76672`/K4; Nutzer: freie Zeit, Buchung, ZOE `freie_zeit` (K6a). Follow-up-Fälligkeit auf Werktag: offen (Regel der Follow-up-Ebene) |
+| 6 | CRM am Termin | **erledigt** K3 |
+| 7 | Weitere Fristen lesend | **teilweise** — K6a: Steuertermine (Vorlage, Standard aus), DSGVO-Anträge, Angebote „gültig bis“, Deals; Quellen an einer Stelle (`fristen-server.ts`). Offen: `Routine.naechstesMal`, Finanzplanung v3, Haushalt-Fälligkeiten (je eigener Bestand je Person/Haushalt — eigenes Paket) |
+| 8 | Glocke | **erledigt** K6a `c3d9f53` (Termin ≤ 2 h, Nachbereitung, Fristen mit Kündigungs-Vorlauf, Follow-ups, ZOE-Kalender-Vorschläge; abgeleitet, nie gespeichert) |
+| 9 | Heute und Tagesplan | **erledigt** K5 (Termine über `/api/kalender`) + K6a (Karte „Steht an“) |
+| 10 | Make.One-Event als echter iCloud-Termin | **erledigt** K5; K6a Takt. Checklisten-Aufgaben nachziehen: offen (Befund 10) |
+| 11 | Wochenplaner als Modus „Planen“ | **erledigt** K5 |
+| 12 | Geburtstage | **erledigt** K2; Vorlauf-Aufgabe K6a (Vorschlag per Klick). CRM-Geburtstag am Kontakt: K2 |
+| 13 | Familie | **teilweise** — K5: Dates/Gespräche ziehen den Termin nach; `Vereinbarung.faellig` von der Aufgabe lesen: offen |
+| 14 | Power Hour: freien Slot vorschlagen | **offen** — nicht im K6a-Umfang (Grundlage `freieZeitFuer` steht) |
+| 15 | Zeit-Auswertung aus einer Quelle | **erledigt** K2 + K6a (`_App/Woche` je Person, Planen-Blöcke je Unterart) |
+
+### Aus K1–K5 und R-K1 gesammelt
+| Punkt | Status |
+|---|---|
+| `_App/Woche` ← `auswertungMarkdown()` | **erledigt** K6a (nur mit `MAKE_OS_APP_SPIEGEL=an`, ohne Kontakte) |
+| Mac-Rückfall in `/api/kalender` auf `termineLesen()` | **erledigt** K6a (`macTermine` — eine Abbildung) |
+| ZOE `freie_zeit`; Angebot „Termin zum Besprechen vorschlagen“ | **erledigt** K6a |
+| Heute + Glocke: offene Buchungsanfragen | **erledigt** K6a (Heute; die Glocke meldet sie beim Eingang — K4) |
+| Termin-Zeiten der Meetings in ZOE/Heads/Zusammenfassung/„Letzte Aktivitäten“ | **erledigt** K6a |
+| Event im CRM gelöscht → Termin | **erledigt** K6a (`event-termin-verwaist`, „Termin entfernen“, nie mit Gästen) |
+| #100 Waise → Neuzuordnung per Klick | **erledigt** K6a (`termin-waise-neu`) |
+| Buchungs-Follow-up hängt am Termin und zieht mit | **teilweise** — K6a: `FollowUp.terminUid`, Verknüpfen + Nachziehen per Klick in der Verbindungsprüfung. Automatisch beim Verschieben: offen (Schreibweg der Termin-Route/Buchung = Kern/R-K2) |
+| Auswertung: mehrere Gäste je Termin (`ATermin.kontakte`) | **erledigt** K3 |

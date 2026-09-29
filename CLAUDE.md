@@ -607,6 +607,49 @@ lokal, Route `/os`, Port 3001.
 - **Verbindungsprüfung:** `aktivitaet-termin-tot` (Meeting zeigt auf einen in Apple gelöschten Termin — nur bei gelungenem Stand, Bezug-Tag im Holfenster oder ohne Bezug-Eintrag; Reparieren löst nur den Verweis).
 - Tests: `tests/kalender-k3-route.test.ts` (DAV gemockt: ohne Bestätigung kein PUT, Dienstweg 403, Art. 18, Ändern/Löschen/Antwort, Meeting-Aktivität), `tests/kalender-k3-crm.test.ts`, `tests/kalender-k3-aufgaben.test.ts`.
 
+## Kalender — Verbindungsrunde außerhalb des Kerns (29.09., Paket K6a, nur lokal — KALENDER_VERBINDUNGEN.md, Status)
+- **Meeting-Zeit NUR aus dem Termin:** EINE Abbildung in `lib/crm/aktivitaeten.ts` — `zeitenAus` (Schlüssel neu + alt, maskierte
+  fallen heraus), `mitTerminZeit`/`kontakteMitTerminZeit` (setzen `wann`/`ort` NUR für Anzeige/Datenpakete — nie speichern).
+  Server: `lib/crm/termin-zeiten-server.ts` (`terminZeitenLesen(person)`, `kontakteMitTerminZeitenLesen`, ohne Abgleich,
+  maskiert je Person). Genutzt: GET /api/kalender/bezug, ZOE-CRM-Werkzeuge (`sicher` → `mitTerminZeiten`), Heads (lauf + Route;
+  Signal „Meeting geplant am …“), `Verlauf` (Prop `termine`, Kontakt „Letzte Aktivitäten“ + Verlauf-Reiter), „Wie lief's?“.
+- **„Wie lief's?“ (`nachbereitung`, lib/crm/erfassen.ts)** kennt beide Wege: Signal-Aktivität (Altweg) und Meeting mit `terminUid`
+  (Zeit/Titel/abgesagt aus dem Termin, erst wenn vorbei — `termine`, `jetztWand`). Power Hour holt die Zeiten aus
+  `/api/heute/anstehend` (`nachbereitZeiten`).
+- **Glocke & Heute = eine Quelle:** `lib/heute/anstehend.ts` (rein) + `anstehend-server.ts` (`anstehendLesen`, `anstehendStand` mit
+  10-Min.-Uhr) → Route `GET /api/heute/anstehend` (eigene Person, ETag) und Glocke (`anstehendAbleiten` in lib/meldungen/regeln.ts,
+  Arten termin ≤ 2 h · nachbereiten · frist · followup · vorschlag — abgeleitet, nie gespeichert, Gelesen je Tag). Heute-Karte
+  `components/os/heute/Anstehend.tsx` („Steht an“: Nachbereiten, Fristen, Follow-ups, Buchungsanfragen, ZOE-Kalender-Vorschläge,
+  Geburtstage mit „Geschenk-Aufgabe (10 Tage vorher)“ — erst der Klick legt die Aufgabe an; vorgemerkt = offene Aufgabe mit
+  gleichem Titel). Follow-ups ohne Kadenz und ohne verknüpfte Aufgabe (die Aufgabe führt). Buchungsanfragen meldet die Glocke
+  schon beim Eingang (gespeicherte Art „buchung“).
+- **Fristen an EINER Stelle:** Quellen lädt NUR `lib/kalender/fristen-server.ts` (`fristenLesen`, auch GET /api/kalender);
+  gerechnet in `eintraege.ts fristen(q, von, bis, heute)`. Kündigungsfrist/Periodenende NUR `mandatFristen` (lib/crm/kunden.ts,
+  auch `mandatLage`) — `kuendigung`, `fuer` (zuständig). Dazu DSGVO-Anträge (ohne Namen), Angebote „gültig bis“, Deals
+  „Entscheidung bis“, Werktag-Hinweis an Zahlungen (§ 193 BGB), Steuertermine als VORLAGE: Schalter
+  `kalender-einstellungen.steuerVorlage.an` (Standard aus, Schalter im Steuer-Modul „Fristen“), Termine aus `lib/steuern` (eine
+  Quelle, § 108 AO), nie Beträge, Hinweis `STEUER_HINWEIS`. Vorlauf der Kündigungsfrist: `kuendigungVorlaufTage` (14).
+- **Nachfassen — eine Leseregel:** `faellige` (lib/crm/followup.ts) kennt jetzt die Wiedervorlage geparkter Deals
+  (`v:dealwiedervorlage:<id>`, Regel `dealWiedervorlagen`, auch in `werIstDran`); verschieben/erledigen setzt die nächste
+  Wiedervorlage am Deal (+90 Tage ohne Angabe), absagen → 400. Der Datenumzug der Altfelder zu echten Follow-ups ist offen.
+- **Follow-up am Termin:** `FollowUp.terminUid` (Schlüssel wie `Aktivitaet.terminUid`); die Verbindungsprüfung zieht den Vortag
+  nach (`followup-termin-verschoben`, von Hand verschobene bleiben) und verknüpft „Termin vorbereiten“ bestätigter Buchungen
+  (`buchung-followup-ohne-termin`) — Buchungen selbst fasst sie nicht an (R-K2).
+- **Verbindungsprüfung K6a** (`lib/crm/verbindungen-termine.ts`): `event-termin-verwaist` („Termin entfernen“ — iCloud über
+  `terminLoeschenServer`, nach Vorschau/Rückfrage, nie mit Gästen, nie ein Serien-Vorkommen), `termin-waise-neu` (#100: gelöschter
+  Termin mit CRM-/Aufgaben-Bezug + genau EIN neuer Termin gleichen Titels ±1 Tag → „Neu zuordnen“ hängt Bezug
+  (`bezuegeUmhaengen`) und Meetings um; Titel nur aus „Meeting: …“ bzw. Aufgabentitel). Reparatur vor K1 (Meetings sonst „tot“).
+  Loader `ladeTermineStand` (Holfenster, Titel nur zum Vergleichen).
+- **Event-Spiegel im Takt:** `eventSpiegelImTakt` (lib/kalender/spiegel-server.ts, alle 30 Min. aus /api/zoe/takt) — Änderungen
+  am Event ohne Bestand-PATCH (ZOE, Heads) ziehen den Termin nach.
+- **ZOE `freie_zeit`** (nur lesen, Register frei, `LESEND`): `freieZeitFuer` — nur Zeiten, nie Titel; legt nichts an. Angebot:
+  `components/os/crm/angebot/TerminVorschlag.tsx` („Termin zum Besprechen vorschlagen“ → freie Zeit → Termin-Entwurf mit
+  Kontakt/Firma/Deal; erst „Speichern“ legt an).
+- **Zeit-Auswertung:** Planen-Blöcke (`X-MAKE-ART:block` + `X-MAKE-BLOCK`) = Kategorie `block` (Vorrang unter Fokus),
+  `minuten.bloecke`, `jeBlock` je Unterart (`BLOCK_NAME`). `_App/Woche` enthält je Person `auswertungMarkdown` (ohne Kontakte;
+  `appDatenLaden(…, { mitZeit: true })` nur im Spiegel).
+- Tests: `tests/kalender-k6a.test.ts`, `tests/crm-verbindungen.test.ts` (4 neue Prüfungen), `tests/brain-app-bruecke.test.ts`.
+
 ## Brain (lib/brain, seit 27.09.)
 - Wahrheit ist der Vault (Markdown, Obsidian). Der Index (`lib/brain/index.ts`, SQLite FTS5 + Vektoren) ist abgeleitet — bei Zweifel Datei löschen, der Takt baut neu.
 - Suche immer über `suche()` in `lib/zoe/vault.ts` (nimmt den Index, sonst Dateisuche). Sicht (`darfSehen`) gilt VOR dem Ranking — nie nachträglich filtern.

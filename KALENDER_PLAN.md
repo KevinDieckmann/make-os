@@ -35,6 +35,10 @@ Alles lokal; Upload nur auf Kevins Wort.
 - ZOE-Kalender-Agent reparieren (blind, autonom über Altweg, fest verdrahtete Kalender) — Verbindungskarte Befund 1.
 - (aus K4) ZOE-Werkzeug `freie_zeit` (nur lesen) → `freieZeitFuer`; Angebot „Termin zum Besprechen vorschlagen“ → `freieZeitFuer`; Heute + Glocke: offene Buchungsanfragen; K3: Gast-Einladung statt Notiz bei bestätigter Buchung.
 
+**Stand K6a (29.09., Commit `c3d9f53`):** `_App/Woche`, Mac-Rückfall, Glocke/Heute, ZOE `freie_zeit`, Angebot-Termin,
+Buchungsanfragen in Heute erledigt; ZOE-Agent (R-Z) und Gäste in der Auswertung (K3) schon vorher. Einzelstatus aller Befunde
+und Verbindungen: KALENDER_VERBINDUNGEN.md › „Status nach K6a“.
+
 ## Qualität (Kevin 29.09.)
 - Nach K3/K5/K6: **Prüfliste „100 typische Fehler bei Kalender-Systemen“** (Web-Recherche, `KALENDER_FEHLER_PRUEFLISTE.md`) gegen den Code abgleichen (2 Prüfer), Befunde reparieren, Gesamtprüfung.
 - **Sinnvolle Zusatzthemen** aus der Recherche (Timeboxing, Meeting-Vorbereitung aus CRM, Nachbereitung → Follow-ups, Puffer/Reisezeit, Kontingente je Mandat, Abrechnung aus Terminen, Reisen aus Mails …) in die Verbindungsrunde aufnehmen — Auswahl der 15 sinnvollsten.

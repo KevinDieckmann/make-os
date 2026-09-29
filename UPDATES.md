@@ -4,6 +4,35 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## Kalender K6a: alles mit dem Kalender verbunden (29.09.2026, nur lokal — Commit c3d9f53)
+
+- **Glocke und Heute wissen, was ansteht:** ein Termin meldet sich 2 Stunden vorher, Termine ohne festgehaltenes Ergebnis
+  („Wie lief …?“), Fristen (Kündigungsfristen 14 Tage vorher, Zahlungen, DSGVO-Anträge, Angebote, Entscheidung eines Deals),
+  fällige Follow-ups, Kalender-Vorschläge von ZOE. Auf Heute die neue Karte „Steht an“ — auch offene Buchungsanfragen und
+  Geburtstage der nächsten 14 Tage mit „Geschenk-Aufgabe (10 Tage vorher)“ per Klick. Nichts wird kopiert — alles kommt aus
+  den Modulen und führt dorthin.
+- **Geparkte Deals kommen wieder:** Die Wiedervorlage steht als Follow-up in der Liste, in der Power Hour und in der Glocke.
+  „Erledigt“ setzt die nächste Wiedervorlage (ohne Angabe in 90 Tagen), der Deal bleibt geparkt.
+- **Meetings zeigen überall die Zeit des Termins** (Kontakt, ZOE, Heads) — verschoben heißt: neue Zeit.
+- **Kündigungsfrist einmal gerechnet:** Mandate ohne festes Ende (Mindestlaufzeit, Verlängerung) haben ihre Frist jetzt auch im
+  Kalender.
+- **Steuertermine im Kalender (Vorlage, Standard aus):** im Steuer-Modul unter „Fristen“ einschaltbar — ohne Beträge, mit dem
+  Hinweis „keine Steuerberatung; Termine gegen BMF-Steuerkalender prüfen“.
+- **Angebot:** „Termin zum Besprechen vorschlagen“ zeigt die eigene freie Zeit; ein Klick öffnet den Termin-Entwurf mit Kontakt,
+  Firma und Deal. ZOE kann freie Zeit nachsehen (nur lesen).
+- **Verbindungsprüfung:** „Termin entfernen“ für Termine gelöschter Events (mit Rückfrage, nie mit Gästen), „Neu zuordnen“, wenn
+  ein Termin in Apple gelöscht und gleich wieder angelegt wurde, „Nachziehen“ für Follow-ups an verschobenen Terminen.
+- **Zeit-Auswertung** zählt Planen-Blöcke (Reha, Routine, Pause, Aufgabe, Blockzeit) als eigene Kategorie; der Wochenrückblick
+  im Brain (`_App/Woche`) enthält die Zeit der Woche je Person (nur Zahlen, Firmen, Mandate).
+
+**Prüfliste (vor dem Hochladen, lokal mit Wegwerfdaten):**
+- Geparkten Deal mit Wiedervorlage heute anlegen → Follow-ups „Deal-Wiedervorlage“, Glocke „Überfällig/Heute: …“, Heute „Steht an“.
+- Termin mit Kontakt heute in 1 h → Glocke „Um HH:MM: …“; nach dem Termin „Wie lief …?“ in Glocke, Heute und Power Hour.
+- Mandat ohne Ende, Mindestlaufzeit 12 Monate, Kündigungsfrist 90 Tage → Frist im Kalender (Fristen) und 14 Tage vorher in der Glocke.
+- Steuer-Modul › Fristen › „Steuertermine im Kalender zeigen“ an → Kalender-Fristen „¶“ mit Hinweis; aus → weg.
+- Angebot mit Empfänger → „Termin zum Besprechen vorschlagen“ → Zeit wählen → Dialog vorbelegt, erst „Speichern“ legt an.
+- Event löschen, dessen Termin im Kalender steht → Verbindungsprüfung „Termin entfernen“ → Vorschau → „Jetzt reparieren“.
+
 ## Kalender R-K1: Kern & Abgleich (29.09.2026, nur lokal)
 
 - **Zeitumstellung stimmt:** Termine zwischen 02:00 und 03:59 am 25.10. und 29.03. werden richtig geschrieben und gelesen
