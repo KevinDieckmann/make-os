@@ -282,3 +282,18 @@ Die Dateien, an denen andere gerade bauen (`NeuerTermin.tsx`, `teile.tsx`, `Zeit
 - `/Users/kevindieckmann/Claude/Projects/MakeOS/app/api/apple-calendar/termin/route.ts`
 - `/Users/kevindieckmann/Claude/Projects/MakeOS/lib/crm/signale.ts`
 - `/Users/kevindieckmann/Claude/Projects/MakeOS/lib/crm/verbindungen-kalender.ts`
+
+---
+
+## Reparaturstand
+
+| Lücke | Stand | Commit | Test |
+|---|---|---|---|
+| #K1 (hoch) Prompt Injection über Termintitel | **behoben** (Paket R-Z, 29.09.). Titel, Orte und Anlass-Namen stehen im ZOE-Prompt als `<fremde_daten quelle="kalender">` (`lib/brain.ts`). Stehen Termine im Prompt (`kalenderImPrompt`), gilt das Gespräch als fremd gelesen und vertraulich (`app/api/kimmi/route.ts`): schreibende „frei“-Werkzeuge und Web-Agenten nur mit Freigabe. `lib/zoe/fremd.ts` kennt „kalender“ als Fremdquelle (Agent `kalender`, Werkzeug `plan_block`). Die Analyse-Route kapselt ihre Titel ebenfalls. | `186a264` | `tests/zoe-kalender-sicht.test.ts` (#K1), `tests/zoe-kalender-stapel.test.ts` (Injektions-Titel → `create_task` im Stapel, Gegenprobe mit „Belegt“), Wächter `tests/k1-betrieb.test.ts` |
+| #K2 (hoch) ZOE schreibt autonom nach iCloud | **behoben**. Der Autonom-Zweig in `app/api/kalender/analyse/route.ts` ist weg, der Altweg `apple-calendar/create` wird dort nicht mehr aufgerufen. Vorschläge gehen über den Dienstweg (ZOE) oder auf „autonom“ in den Freigabe-Stapel (neue Stapel-Art „kalender“, `lib/zoe/kalender-vorschlag.ts`). Angelegt wird erst per Klick über `/api/kalender/termin` (Bau-Kennung, Änderungsprotokoll, keine Doppelanlage). Befund 1 aus KALENDER_VERBINDUNGEN: Der Agent liest selbst über den Lesepfad der Kalender-Sicht und ist nicht mehr blind. | `186a264` | `tests/zoe-kalender-stapel.test.ts` (#K2: „autonom“ → kein Schreibweg, kein Netz, Stapel-Eintrag; Freigabe legt genau einmal an; fremde Person 403) |
+| #K3 (mittel) Datum im Prompt | **behoben**. `heuteSatz` liegt jetzt in `lib/zeit.ts` (der Aufgabenlauf nutzt denselben Satz). `jetztSatz()` steht im ZOE-Systemprompt: Datum, Wochentag, Uhrzeit, Europe/Berlin, dazu die Regel für relative Angaben. | `186a264` | `tests/zoe-kalender-sicht.test.ts` (#K3, 00:30 Berlin), `tests/zoe-kalender-stapel.test.ts` (Systemprompt) |
+| #K4 (hoch) Datenumfang | **behoben**. `gatherBrain`, Kalender-Agent und `plan_block` lesen über `termineFuerZoe` (`lib/kalender/zoe-sicht-server.ts`). Das ist derselbe Lesepfad wie die Kalender-Sicht (`termineLesen`) mit derselben Maskierung (`maskieren`) je fragender Person. Zusätzlich gelten Gesundheitstermine (Stichwort-Regeln „Rehabilitation“/„Behandlung“) der anderen Person als privat. Eine Person aus einem anderen Haushalt bekommt keine Termine. **Offen:** AVV mit dem LLM-Anbieter belegen (organisatorisch). | `186a264` | `tests/zoe-kalender-sicht.test.ts` (#K4: Malin fragt → Kevins private und Arzt-Titel nicht im Prompt) |
+
+Weiter offen aus diesem Umfeld:
+- `app/api/planung/vorschlag` (Wochenplan-Agent) und `app/api/netzwerk/verlauf` lesen noch den rohen `calendar-cache`, ohne Maskierung je Person. Beide sollten auf `termineFuerZoe` umgestellt werden (gehört zu den K5-Altwegen).
+- Im Kalender-Agenten sind die erlaubten Kalender fest „Privat Kevin“ und „Kalender“ und nicht aus den Einstellungen gelesen. Die Standard-Einstellung für „gemeinsam“ heißt „Gemeinsam“, eine Freigabe in einen fehlenden Kalender scheitert dann mit Meldung. Der Vorschlag bleibt dabei offen.
