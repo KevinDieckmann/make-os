@@ -3,8 +3,9 @@
 # Aufruf auf dem Server:  bash server-einrichten.sh <github-repo-ssh-url>
 #   z. B.  bash server-einrichten.sh git@github.com:<name>/make-os.git
 # Macht: Updates, Docker (offizielles Paketquelle), Firewall (22/80/443),
-# Nutzer „make“, Ordner unter /srv/make-os, Deploy-Schlüssel für GitHub,
-# Sicherungs-Passwort, Cronjobs (Sicherung nachts, Vault-Abgleich alle 10 Min.).
+# Nutzer „make“, Ordner unter /srv/make-os (auch grabsteine/ außerhalb der Daten), Deploy-Schlüssel für GitHub,
+# Cronjobs (Sicherung nachts, Vault-Abgleich alle 10 Min.). Die Sicherung verschlüsselt mit age an Kevins
+# öffentlichen Schlüssel (/srv/make-os/sicherung.pub) — kein Passwort auf dem Server (29.09., Paket D-A/D-C).
 # Danach fehlen nur: .env ausfüllen, Daten hochladen, `docker compose up -d --build`.
 set -euo pipefail
 REPO="${1:-}"
@@ -42,14 +43,16 @@ echo 'make ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/make && chmod 440 /etc/sudoe
 
 echo "▸ Ordner"
 mkdir -p /srv/make-os/{daten,vault,sicherungen}
+# Grabsteine gelöschter Personen (Art. 17) — AUSSERHALB des Datenordners, eigenes Volume der App (compose.yml).
+install -d -m 700 /srv/make-os/grabsteine
 chown -R make:make /srv/make-os
 
 echo "▸ Deploy-Schlüssel für GitHub (nur lesen)"
 sudo -u make bash -c '[ -f ~/.ssh/github ] || ssh-keygen -t ed25519 -N "" -f ~/.ssh/github -C "make-os-server" >/dev/null'
 sudo -u make bash -c 'printf "Host github.com\n  IdentityFile ~/.ssh/github\n  IdentitiesOnly yes\n" > ~/.ssh/config && ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null'
 
-echo "▸ Sicherungs-Passwort (einmalig erzeugt — in den Passwort-Manager!)"
-[ -f /srv/make-os/.sicherung-passwort ] || { openssl rand -base64 32 > /srv/make-os/.sicherung-passwort; chown make:make /srv/make-os/.sicherung-passwort; chmod 600 /srv/make-os/.sicherung-passwort; }
+echo "▸ Sicherung: age statt Passwort (der private Schlüssel bleibt beim Mac/Kevin, nie auf dem Server)"
+[ -s /srv/make-os/sicherung.pub ] || echo "   Noch kein /srv/make-os/sicherung.pub — siehe Schritt 3 unten (sonst bricht die Nachtsicherung ab)."
 
 echo "▸ Cronjobs für make"
 ( { sudo -u make crontab -l 2>/dev/null | grep -v make-os || true; } ; \
@@ -76,10 +79,10 @@ $(cat /home/make/.ssh/github.pub)
               nano /srv/make-os/app/.env        (Werte eintragen; Datei bleibt 600)
               Ausroll-Schlüssel in ~/.ssh/authorized_keys mit Forced Command:
               command="/srv/make-os/app/deploy/ausrollen.sh",restrict ssh-ed25519 AAAA… make-os-ausrollen
-              Sicherung mit age (Empfänger = Kevins öffentlicher Schlüssel, Mac: age-keygen):
-              echo 'age1…' > /srv/make-os/sicherung.pub
 
- 3) Sicherungs-Passwort in den Passwort-Manager übertragen:
-              cat /srv/make-os/.sicherung-passwort
+ 3) Sicherung mit age: am Mac einmal  age-keygen -o ~/…/make-os-sicherung.key  (privater Schlüssel in beide
+    Passwort-Manager + Papier, NIE auf den Server), dann nur den öffentlichen hier ablegen:
+              echo 'age1…' > /srv/make-os/sicherung.pub && chown make:make /srv/make-os/sicherung.pub
+    Der Grabstein-Ordner /srv/make-os/grabsteine ist angelegt (0700, make) — compose.yml bindet ihn ein.
 ════════════════════════════════════════════════════════════════════
 TEXT

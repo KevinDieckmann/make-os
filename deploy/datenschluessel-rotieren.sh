@@ -29,12 +29,12 @@ docker compose up -d </dev/null
 for i in $(seq 1 24); do docker ps --format '{{.Names}} {{.Status}}' | grep -q 'app-app-1.*(healthy)' && break; sleep 5; done
 docker ps --format '{{.Names}} {{.Status}}'
 # Restkontrolle (29.09.): Bestände, Tagessicherungen, Archiv-Kopien (<daten>/archiv, z. B. tasks-vor-umbau-…) und die
-# Dateiablage (<daten>/dateien/<haushalt>/*.bin, Hülle beginnt mit MKOSDAT1) — alles muss verschlüsselt sein.
+# Dateiablage (<daten>/dateien/<haushalt>/*.bin, Hülle beginnt mit MKOSDAT1 bzw. seit 29.09. MKOSDAT2) — alles muss verschlüsselt sein.
 REST=$(grep -L __verschluesselt /srv/make-os/daten/*.json /srv/make-os/daten/backup/*.json /srv/make-os/daten/archiv/*.json 2>/dev/null | wc -l | tr -d ' ')
 REST_BIN=0
 for f in /srv/make-os/daten/dateien/*/*.bin; do
   [ -e "$f" ] || continue
-  [ "$(head -c 8 "$f")" = "MKOSDAT1" ] || REST_BIN=$((REST_BIN + 1))
+  case "$(head -c 8 "$f")" in MKOSDAT1|MKOSDAT2) ;; *) REST_BIN=$((REST_BIN + 1)) ;; esac
 done
 echo "▸ fertig — Klartext-Reste: $REST Bestände/Archiv, $REST_BIN Dateien. Neuen Schlüssel jetzt in den Passwort-Manager (siehe Kopf dieser Datei)."
 [ "$REST" = "0" ] && [ "$REST_BIN" = "0" ] || echo "  ACHTUNG: Klartext-Reste gefunden — prüfen (scripts/daten-verschluesselung.mjs --verschluesseln erneut laufen lassen)."

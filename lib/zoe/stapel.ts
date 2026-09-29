@@ -25,6 +25,7 @@ import { loadJson, updateJsonAsync } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import { entscheidungEintrag, haltFest, type EntscheidungArt } from './entscheidungen';
 import type { Person } from './raum';
+import { neueKennung } from '@/lib/kennung';
 
 export type VorschlagStatus = 'offen' | 'in_arbeit' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen';
 /** Status, die noch nicht entschieden sind — sie werden nie gekürzt. */
@@ -102,7 +103,7 @@ function kennung(werkzeug: string, eingabe: Record<string, unknown>): string {
 export async function lege(v: Omit<Vorschlag, 'id' | 'zeit' | 'tag' | 'status'>): Promise<Vorschlag> {
   const vorschlag: Vorschlag = {
     ...v,
-    id: `v-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    id: neueKennung('v'), // Paket D-C: zufällig, ohne Zeitanteil (lib/kennung.ts)
     zeit: new Date().toISOString(),
     tag: localDay(),
     status: 'offen',

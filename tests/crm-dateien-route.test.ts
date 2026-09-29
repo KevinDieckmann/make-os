@@ -64,7 +64,7 @@ describe('Upload → Liste → Download', () => {
     const datei = path.join(ordner, 'dateien', 'test-haus', `${id}.bin`);
     expect(existsSync(datei)).toBe(true);
     expect(readFileSync(datei).includes(Buffer.from(GEHEIM))).toBe(false);
-    expect(readFileSync(datei).subarray(0, 8).toString('ascii')).toBe('MKOSDAT1');
+    expect(readFileSync(datei).subarray(0, 8).toString('ascii')).toBe('MKOSDAT2');
     const meta = readFileSync(path.join(ordner, 'crm-dateien--test-haus.json'), 'utf8');
     expect(meta).toContain('__verschluesselt');
     expect(meta).not.toContain('Rahmenvertrag');
@@ -146,7 +146,7 @@ describe('Skript Ein-/Ausschalten (daten-verschluesselung.mjs) stellt auch die A
     process.env.MAKE_OS_KLARTEXT_MIGRATION = '1';
     try { expect(await laden()).toEqual(pdf('skript')); } finally { delete process.env.MAKE_OS_KLARTEXT_MIGRATION; }
     lauf('--verschluesseln');
-    expect(readFileSync(datei).subarray(0, 8).toString('ascii')).toBe('MKOSDAT1');
+    expect(readFileSync(datei).subarray(0, 8).toString('ascii')).toBe('MKOSDAT2');
     expect(await laden()).toEqual(pdf('skript'));
   });
 });

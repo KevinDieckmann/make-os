@@ -116,7 +116,7 @@ describe('Stellen: Nummer, PDF, Verbindungen', () => {
     // PDF: verschlüsselt auf der Platte, Text enthält die Nummer, Prüfsumme passt, Bezug Angebot/Kontakt/Firma/Deal.
     const d = (await ablage.lesen('test-haus', pdfId))!;
     expect(d.eintrag).toMatchObject({ art: 'angebot', angebotId: 'ang-entwurf1', kontaktId: 'c-anna1', firmaId: 'f-muster', dealId: gestellt.dealId, datei: { typ: 'application/pdf', verschluesselt: true } });
-    expect(readFileSync(ablage.dateiPfad('test-haus', pdfId)).subarray(0, 8).toString('ascii')).toBe('MKOSDAT1');
+    expect(readFileSync(ablage.dateiPfad('test-haus', pdfId)).subarray(0, 8).toString('ascii')).toBe('MKOSDAT2');
     expect(createHash('sha256').update(d.bytes).digest('hex')).toBe(gestellt.pruefsumme);
     const p = await pdfText(new Uint8Array(d.bytes));
     expect(p.seiten).toBeGreaterThanOrEqual(1);

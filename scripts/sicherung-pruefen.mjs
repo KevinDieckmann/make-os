@@ -11,8 +11,8 @@
 // verschlüsselte Bestände als Fehler gezählt (Klartext-Ordner, z. B. lokal, gehen ohne).
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { createDecipheriv } from 'node:crypto';
 import { schluesselRing, huellenVersion, huelleOeffnen } from '../lib/store/huelle.mjs';
+import { binVersion, binOeffnen } from '../lib/store/datei-huelle.mjs';
 
 const ordner = process.argv[2];
 const alsJson = process.argv.includes('--json');
@@ -45,15 +45,14 @@ for (const n of (await fs.readdir(path.join(ordner, 'archiv')).catch(() => [])).
   try { oeffne(await fs.readFile(path.join(ordner, 'archiv', n), 'utf8'), `archiv/${n}`); ergebnis.archiv++; }
   catch { ergebnis.archivFehler++; }
 }
-const MAGIE = Buffer.from('MKOSDAT1', 'ascii');
+// Dateiablage: v1 „MKOSDAT1“ oder v2 „MKOSDAT2“ (Schlüssel-ID + AAD) — gemeinsamer Code lib/store/datei-huelle.mjs.
 for (const h of await fs.readdir(path.join(ordner, 'dateien')).catch(() => [])) {
   for (const n of await fs.readdir(path.join(ordner, 'dateien', h)).catch(() => [])) {
     if (!n.endsWith('.bin')) continue;
     ergebnis.ablage++;
     const b = await fs.readFile(path.join(ordner, 'dateien', h, n));
-    if (!b.subarray(0, 8).equals(MAGIE)) continue;
-    const ok = ring.alle.some(s => { try { const d = createDecipheriv('aes-256-gcm', s.key, b.subarray(8, 20)); d.setAuthTag(b.subarray(20, 36)); d.update(b.subarray(36)); d.final(); return true; } catch { return false; } });
-    if (!ok) ergebnis.ablageFehler++;
+    if (!binVersion(b)) continue;
+    try { binOeffnen(b, ring, h, n.slice(0, -4)); } catch { ergebnis.ablageFehler++; }
   }
 }
 ergebnis.dauerMs = Date.now() - t0;

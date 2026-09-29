@@ -128,7 +128,7 @@ describe('Rotation im laufenden Betrieb: alles in die v2-Hülle mit dem neuen Sc
     await archivSchreiben('rot-archiv.json', { alt: true });
     const binOrdner = path.join(dir, 'dateien', 'haus-rot');
     mkdirSync(binOrdner, { recursive: true });
-    const { inhaltVerschluesseln, inhaltEntschluesseln } = await import('../lib/dateien/ablage');
+    const { inhaltVerschluesseln, inhaltLaden } = await import('../lib/dateien/ablage');
     writeFileSync(path.join(binOrdner, 'd-probe-1.bin'), inhaltVerschluesseln(Buffer.from('PDF-INHALT'), db.datenSchluessel()!));
     process.env.MAKE_OS_DATEN_SCHLUESSEL = 'rot-neu';
     process.env.MAKE_OS_DATEN_SCHLUESSEL_ALT = 'rot-alt';
@@ -141,7 +141,9 @@ describe('Rotation im laufenden Betrieb: alles in die v2-Hülle mit dem neuen Sc
     db.leseCacheLeeren();
     expect(await db.loadJson('rot-a')).toEqual({ x: [1, 2] });
     expect(await archivLesen('rot-archiv.json')).toEqual({ alt: true });
-    expect(inhaltEntschluesseln(readFileSync(path.join(binOrdner, 'd-probe-1.bin')), db.datenSchluessel()).toString()).toBe('PDF-INHALT');
+    // Paket D-C: umgeschrieben in die Hülle v2 (Schlüssel-ID + AAD), gelesen über den Ring — ohne den alten Schlüssel.
+    expect(readFileSync(path.join(binOrdner, 'd-probe-1.bin')).subarray(0, 8).toString('ascii')).toBe('MKOSDAT2');
+    expect((await inhaltLaden('haus-rot', 'd-probe-1'))!.toString()).toBe('PDF-INHALT');
     const neuKid = huelle.schluesselAus('rot-neu').kid;
     for (const f of (await fs.readdir(path.join(dir, 'backup'))).filter(x => x.startsWith('rot-a-'))) expect(JSON.parse(readFileSync(path.join(dir, 'backup', f), 'utf8')).kid).toBe(neuKid);
   });

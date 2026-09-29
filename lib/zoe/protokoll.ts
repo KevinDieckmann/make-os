@@ -26,6 +26,7 @@ import { protokollKennung } from '@/lib/store/aenderungsprotokoll';
 import { ausfuehrungEintrag, haltFest } from './entscheidungen';
 import type { Risiko } from './register';
 import type { Person } from './raum';
+import { neueKennung } from '@/lib/kennung';
 
 /** Wie man eine Wirkung wieder aufhebt — als erneuter Werkzeug-Aufruf. */
 export interface Ruecknahme {
@@ -90,7 +91,7 @@ export async function notiere(e: Omit<Eintrag, 'id' | 'zeit' | 'tag'>): Promise<
     eingabe: eingabeKurz(e.eingabe),
     felder: e.felder ?? Object.keys(e.eingabe ?? {}).slice(0, 40).map(k => k.slice(0, 40)),
     ergebnis: String(e.ergebnis ?? '').slice(0, 300),
-    id: `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    id: neueKennung('p'), // Paket D-C: zufällig, ohne Zeitanteil (lib/kennung.ts)
     zeit: new Date().toISOString(),
     tag: localDay(),
   };

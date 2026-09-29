@@ -10,19 +10,18 @@
 //   3. erst wenn alles `fehler: []` meldet, den alten Schlüssel vom Server nehmen (Passwort-Manager behält ihn
 //      für ältere Sicherungen).
 // Aufruf: POST /api/intern/umschluesseln (Dienstweg) — deploy/datenschluessel-rotieren-live.sh macht alles.
-// Hinweis: lib/dateien/ablage.ts liest .bin heute nur mit dem AKTIVEN Schlüssel — zwischen Schritt 1 und dem
-// Umschlüsseln der Ablage (Sekunden) sind ältere Dateien kurz nicht abrufbar. Die Übernahme von
-// `schluesselRing()` in ablage.ts (anderes Paket) schließt diese Lücke.
+// Die Dateiablage liest .bin seit 29.09. (Paket D-C) über den Schlüsselring (lib/store/datei-huelle.mjs) — auch
+// zwischen Schritt 1 und dem Umschlüsseln der Ablage bleibt jede Datei abrufbar. Umgeschrieben wird in die Hülle v2
+// (Schlüssel-ID + AAD Haushalt/Kennung).
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { datenOrdner, bestandUmschluesseln, mitBestandSperre } from './local-db';
 import { atomarSchreiben } from './atomar.mjs';
-import { schluesselRing, schluesselNeuLaden, huellenVersion, huelleOeffnen, huelleSchreiben, type Schluessel } from './huelle.mjs';
+import { schluesselRing, schluesselNeuLaden, huellenVersion, huelleOeffnen, huelleSchreiben } from './huelle.mjs';
+import { binOeffnen, binSchreiben, binVersion } from './datei-huelle.mjs';
 
 const NAME_OK = /^[a-z0-9][a-z0-9-]*$/;
-const MAGIE = Buffer.from('MKOSDAT1', 'ascii');
 const HAUSHALT_OK = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
 export interface UmschluesselErgebnis {
@@ -33,23 +32,6 @@ export interface UmschluesselErgebnis {
   archiv: { neu: number; schon: number };
   ablage: { neu: number; schon: number };
   fehler: string[];
-}
-
-function binOeffnen(b: Buffer, ring: Schluessel[]): { klar: Buffer; kid: string } | null {
-  for (const s of ring) {
-    try {
-      const d = createDecipheriv('aes-256-gcm', s.key, b.subarray(8, 20));
-      d.setAuthTag(b.subarray(20, 36));
-      return { klar: Buffer.concat([d.update(b.subarray(36)), d.final()]), kid: s.kid };
-    } catch { /* nächster Schlüssel */ }
-  }
-  return null;
-}
-function binSchreiben(klar: Buffer, s: Schluessel): Buffer {
-  const iv = randomBytes(12);
-  const c = createCipheriv('aes-256-gcm', s.key, iv);
-  const e = Buffer.concat([c.update(klar), c.final()]);
-  return Buffer.concat([MAGIE, iv, c.getAuthTag(), e]);
 }
 
 /** Alles in die v2-Hülle mit dem aktiven Schlüssel bringen. `neuLaden` liest die Schlüsseldateien sofort neu. */
@@ -94,13 +76,14 @@ export async function allesUmschluesseln(neuLaden = true): Promise<UmschluesselE
       const dir = path.join(ordner, 'dateien', h);
       for (const n of (await fs.readdir(dir).catch(() => [] as string[])).filter(f => /^d-[a-z0-9-]+\.bin$/.test(f))) {
         const p = path.join(dir, n);
+        const id = n.slice(0, -4);
         try {
           const b = await fs.readFile(p);
-          if (!(b.length >= 36 && b.subarray(0, 8).equals(MAGIE))) { await atomarSchreiben(p, binSchreiben(b, aktiv)); r.ablage.neu++; continue; }
-          const o = binOeffnen(b, ring.alle);
-          if (!o) { r.fehler.push(`dateien/${h}/${n}: kein Schlüssel passt`); continue; }
-          if (o.kid === aktiv.kid) { r.ablage.schon++; continue; }
-          await atomarSchreiben(p, binSchreiben(o.klar, aktiv));
+          if (!binVersion(b)) { await atomarSchreiben(p, binSchreiben(b, aktiv, h, id)); r.ablage.neu++; continue; }
+          let o: { klar: Buffer; version: 1 | 2; kid: string };
+          try { o = binOeffnen(b, ring, h, id); } catch { r.fehler.push(`dateien/${h}/${n}: kein Schlüssel passt`); continue; }
+          if (o.version === 2 && o.kid === aktiv.kid) { r.ablage.schon++; continue; }
+          await atomarSchreiben(p, binSchreiben(o.klar, aktiv, h, id));
           r.ablage.neu++;
         } catch (e) { if ((e as NodeJS.ErrnoException)?.code !== 'ENOENT') r.fehler.push(`dateien/${h}/${n}: ${e instanceof Error ? e.message.slice(0, 80) : String(e)}`); }
       }

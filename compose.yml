@@ -6,6 +6,8 @@
 # Ordner auf dem Server (server-einrichten.sh legt sie an):
 #   /srv/make-os/daten   → .data   (alles, was ihr eingebt)
 #   /srv/make-os/vault   → Obsidian-Hirn (privates Git-Repo, vault-abgleich.sh)
+#   /srv/make-os/grabsteine → Grabsteine gelöschter Personen (Art. 17), AUSSERHALB der Daten — ein Restore des
+#                          Datenordners holt sie nie zurück (lib/datenschutz/grabsteine.ts, 0700, Besitzer make)
 # Geheimnisse stehen in /srv/make-os/app/.env (Vorlage: deploy/env.server.beispiel).
 
 # Härtung (26.09.): kein Rechte-Zuwachs im Container, keine Kernel-Fähigkeiten, Speichergrenzen;
@@ -42,11 +44,15 @@ services:
       MAKE_VAULT_DIR: /vault
       # Brain-Embeddings (27.09.): Modell-Cache außerhalb der Daten (nicht in jeder Sicherung); MAKE_OS_EMBEDDINGS=aus schaltet auf reinen Volltext.
       MAKE_OS_MODELLE_DIR: /modelle
+      # Grabsteine (29.09., Paket D-B/D-C): eigenes Volume neben den Daten. Nur die App braucht sie (Art. 17, Löschfristen-
+      # Lauf, Restore); der Arbeiter spricht nur HTTP mit der App und bekommt das Volume bewusst NICHT.
+      MAKE_OS_GRABSTEINE_DIR: /grabsteine
     volumes:
       - ${MAKE_OS_DATEN:-/srv/make-os/daten}:/app/.data
       - ${MAKE_OS_VAULT:-/srv/make-os/vault}:/vault
       - ${MAKE_OS_MODELLE:-/srv/make-os/modelle}:/modelle
       - ${MAKE_OS_SCHLUESSEL:-/srv/make-os/schluessel}:/run/make-os-schluessel:ro
+      - ${MAKE_OS_GRABSTEINE:-/srv/make-os/grabsteine}:/grabsteine
     expose: ["3000"]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/anmelden').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]

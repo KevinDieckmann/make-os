@@ -81,6 +81,7 @@ describe('Typ am Inhalt erkennen', () => {
     expect(aufgabenTypErkennen('notiz.txt', text('MZ\u0090\u0000'))).toBeNull(); // Programm als Text
     expect(aufgabenTypErkennen('notiz.txt', await pdf(['x']))).toBeNull(); // PDF als Text
     expect(aufgabenTypErkennen('notiz.txt', text('MKOSDAT1 sieht aus wie die Hülle'))).toBeNull();
+    expect(aufgabenTypErkennen('notiz.txt', text('MKOSDAT2 sieht aus wie die neue Hülle'))).toBeNull();
     expect(aufgabenTypErkennen('notiz.txt', new Uint8Array([0x61, 0x00, 0x62]))).toBeNull(); // NUL
     expect(aufgabenTypErkennen('bild.png', new Uint8Array([0xff, 0xd8, 0xff, 0xe0]))).toBeNull(); // JPEG als PNG
     expect(aufgabenTypErkennen('programm.exe', text('MZ'))).toBeNull();
@@ -164,7 +165,7 @@ describe('Route /api/aufgaben/dateien', () => {
     expect(new TextDecoder().decode(await dl.arrayBuffer())).toContain(GEHEIM);
 
     const platte = readFileSync(path.join(ordner, 'dateien', 'test-haus', `${id}.bin`));
-    expect(platte.subarray(0, 8).toString('ascii')).toBe('MKOSDAT1');
+    expect(platte.subarray(0, 8).toString('ascii')).toBe('MKOSDAT2');
     expect(platte.includes(Buffer.from(GEHEIM))).toBe(false);
     const meta = readFileSync(path.join(ordner, 'aufgaben-dateien--test-haus.json'), 'utf8');
     expect(meta).toContain('__verschluesselt');

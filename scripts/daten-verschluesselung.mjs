@@ -18,10 +18,10 @@
 // (Für eine Rotation OHNE Unterbrechung: scripts/datenschluessel-rotieren-live.mjs.)
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import net from 'node:net';
 import { atomarSchreiben } from '../lib/store/atomar.mjs';
 import { schluesselRing, huellenVersion, huelleSchreiben, huelleOeffnen } from '../lib/store/huelle.mjs';
+import { binVersion, binOeffnen, binSchreiben } from '../lib/store/datei-huelle.mjs';
 import { skriptSperreOderAbbruch } from '../lib/store/schreiber.mjs';
 
 const modus = process.argv[2];
@@ -77,34 +77,25 @@ for (const ordner of [DATEN, path.join(DATEN, 'backup'), path.join(DATEN, 'archi
   for (const n of namen) if (n.endsWith('.json')) await datei(ordner, n);
 }
 
-// Dateiablage (28.09., lib/dateien/ablage.ts): dateien/<haushalt>/<id>.bin — Hülle = „MKOSDAT1“ + IV (12) + Tag (16) + Chiffrat.
-// Das Format kennt keine Schlüssel-ID: beim Lesen werden alle Schlüssel des Rings probiert (aktiv zuerst).
-const MAGIE = Buffer.from('MKOSDAT1', 'ascii');
-const binHuelle = b => b.length >= MAGIE.length + 28 && b.subarray(0, MAGIE.length).equals(MAGIE);
-function binOeffnen(roh) {
-  for (const s of ring.alle) {
-    try { const d = createDecipheriv('aes-256-gcm', s.key, roh.subarray(8, 20)); d.setAuthTag(roh.subarray(20, 36)); return { klar: Buffer.concat([d.update(roh.subarray(36)), d.final()]), kid: s.kid }; }
-    catch { /* nächster Schlüssel */ }
-  }
-  return null;
-}
-const binSchreiben = klar => { const iv = randomBytes(12); const c = createCipheriv('aes-256-gcm', ring.aktiv.key, iv); const e = Buffer.concat([c.update(klar), c.final()]); return Buffer.concat([MAGIE, iv, c.getAuthTag(), e]); };
-async function ablageDatei(p) {
+// Dateiablage (lib/dateien/ablage.ts): dateien/<haushalt>/<id>.bin — Hülle v1 „MKOSDAT1“ (ohne Schlüssel-ID) oder seit
+// 29.09. v2 „MKOSDAT2“ (Schlüssel-ID + AAD Haushalt/Kennung), gemeinsamer Code in lib/store/datei-huelle.mjs.
+// Beim Lesen: v2 nach Schlüssel-ID, v1 mit allen Schlüsseln des Rings (aktiv zuerst). Geschrieben wird v2.
+async function ablageDatei(p, haushalt, id) {
   const roh = await fs.readFile(p);
   let neu = null;
-  if (binHuelle(roh)) {
-    const o = binOeffnen(roh);
-    if (!o) { fehler++; console.error('Schlüssel passt nicht:', p); return; }
+  if (binVersion(roh)) {
+    let o;
+    try { o = binOeffnen(roh, ring, haushalt, id); } catch { fehler++; console.error('Schlüssel passt nicht:', p); return; }
     if (modus === '--entschluesseln') neu = o.klar;
-    else if (o.kid !== ring.aktiv.kid) neu = binSchreiben(o.klar);
-  } else if (modus === '--verschluesseln') neu = binSchreiben(roh);
+    else if (o.version !== 2 || o.kid !== ring.aktiv.kid) neu = binSchreiben(o.klar, ring.aktiv, haushalt, id);
+  } else if (modus === '--verschluesseln') neu = binSchreiben(roh, ring.aktiv, haushalt, id);
   if (neu === null) { gelassen++; return; }
   await atomarSchreiben(p, neu);
   getan++;
 }
 for (const h of await fs.readdir(path.join(DATEN, 'dateien')).catch(() => [])) {
   const ordner = path.join(DATEN, 'dateien', h);
-  for (const n of await fs.readdir(ordner).catch(() => [])) if (/^d-[a-z0-9-]+\.bin$/.test(n)) await ablageDatei(path.join(ordner, n));
+  for (const n of await fs.readdir(ordner).catch(() => [])) if (/^d-[a-z0-9-]+\.bin$/.test(n)) await ablageDatei(path.join(ordner, n), h, n.slice(0, -4));
 }
 console.log(`${modus.slice(2)}: ${getan} Dateien umgestellt, ${gelassen} schon passend, ${fehler} Fehler.`);
 process.exit(fehler ? 1 : 0);

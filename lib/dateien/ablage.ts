@@ -14,7 +14,10 @@
 // rotieren; das Skript stellt auch dateien/<haushalt>/*.bin um) beide Fassungen.
 // `datei.verschluesselt` hält nur fest, wie die Datei abgelegt wurde. Hochgeladene
 // Dateien können nicht mit MKOSDAT1 beginnen (Typprüfung am Inhalt: PDF/PNG/JPG/DOCX; bei den
-// Aufgaben-Dateien lehnt `aufgabenTypErkennen` Text, der mit MKOSDAT1 beginnt, ausdrücklich ab).
+// Aufgaben-Dateien lehnt `aufgabenTypErkennen` Text, der mit MKOSDAT beginnt, ausdrücklich ab).
+// Seit 29.09. (Paket D-C): neue Dateien als Hülle v2 „MKOSDAT2“ mit Schlüssel-ID und AAD (Haushalt/Kennung) —
+// lib/store/datei-huelle.mjs; gelesen wird über den Schlüsselring (v1 und v2, aktiver UND alte Schlüssel), damit
+// eine Rotation im laufenden Betrieb keine Datei kurz unlesbar macht. Kennungen `d-<uuid>` (ohne Zeitanteil).
 // Der Inhalt selbst (Schreiben/Lesen/Entfernen) liegt in `inhaltAblegen`/`inhaltLaden`/`inhaltEntfernen` —
 // dieselben Wege nutzt die Aufgaben-Ablage (lib/dateien/aufgaben-ablage.ts, 28.09. C2): gleicher Ordner,
 // gleiche Hülle, eigener Metadaten-Bestand `aufgaben-dateien--<haushalt>`.
@@ -28,7 +31,10 @@ import { promises as fs } from 'fs';
 import { atomarSchreiben } from '@/lib/store/atomar.mjs';
 import path from 'path';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
-import { datenOrdner, datenSchluessel, loadJson, updateJson } from '@/lib/store/local-db';
+import { datenOrdner, loadJson, updateJson } from '@/lib/store/local-db';
+import { schluesselRing, SchluesselFehlt } from '@/lib/store/huelle.mjs';
+import { binOeffnen, binSchreiben, binVersion } from '@/lib/store/datei-huelle.mjs';
+import { neueKennung } from '@/lib/kennung';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { einwilligungenMitBeleg, belegGesperrtText } from './einwilligung-beleg';
@@ -56,19 +62,19 @@ export function dateiPfad(haushalt: string, id: string): string {
   return p;
 }
 
-/** Liegt die Datei als Hülle auf der Platte? */
-export const istHuelle = (b: Buffer) => b.length >= MAGIE.length + 28 && b.subarray(0, MAGIE.length).equals(MAGIE);
+/** Liegt die Datei als Hülle auf der Platte (v1 „MKOSDAT1“ oder v2 „MKOSDAT2“)? */
+export const istHuelle = (b: Buffer) => binVersion(b) > 0;
 
-/** Inhalt → Hülle (MAGIE + IV + Tag + Chiffrat). */
+/** Nur Altformat (v1) und Tests: Inhalt → Hülle v1 (MAGIE + IV + Tag + Chiffrat). Neue Dateien: `inhaltAblegen` (v2). */
 export function inhaltVerschluesseln(klar: Buffer, key: Buffer): Buffer {
   const iv = randomBytes(12);
   const c = createCipheriv('aes-256-gcm', key, iv);
   const enc = Buffer.concat([c.update(klar), c.final()]);
   return Buffer.concat([MAGIE, iv, c.getAuthTag(), enc]);
 }
-/** Hülle → Inhalt. Wirft ohne passenden Schlüssel oder bei veränderter Datei. */
+/** Nur Altformat (v1) und Tests: Hülle v1 → Inhalt mit EINEM Schlüssel. Gelesen wird sonst über `inhaltLaden` (Ring, v1+v2). */
 export function inhaltEntschluesseln(huelle: Buffer, key: Buffer | null): Buffer {
-  if (!istHuelle(huelle)) throw new AblageFehler('Datei ist keine verschlüsselte Ablage.', 500);
+  if (binVersion(huelle) !== 1) throw new AblageFehler('Datei ist keine verschlüsselte Ablage (v1).', 500);
   if (!key) throw new AblageFehler('Die Datei ist verschlüsselt, der Datenschlüssel fehlt.', 503);
   const iv = huelle.subarray(MAGIE.length, MAGIE.length + 12);
   const tag = huelle.subarray(MAGIE.length + 12, MAGIE.length + 28);
@@ -85,7 +91,8 @@ export async function ablageListe(haushalt: string): Promise<DateiEintrag[]> {
   return (await loadJson<AblageDatei>(ablageName(haushalt)))?.eintraege ?? [];
 }
 
-export const neueDateiId = () => `d-${Date.now().toString(36)}-${randomBytes(4).toString('hex')}`;
+/** Kennung einer Datei: `d-<uuid>` (Paket D-C: ohne Zeitanteil, lib/kennung.ts). */
+export const neueDateiId = () => neueKennung('d');
 
 export interface NeueDatei { bytes: Buffer; name: string; typ: DateiInfo['typ'] }
 
@@ -96,18 +103,24 @@ export interface NeueDatei { bytes: Buffer; name: string; typ: DateiInfo['typ'] 
  * Geteilt mit der Aufgaben-Ablage.
  */
 export async function inhaltAblegen(haushalt: string, id: string, bytes: Buffer): Promise<boolean> {
-  const key = datenSchluessel();
+  const aktiv = schluesselRing().aktiv;
   const ordner = haushaltOrdner(haushalt);
   await fs.mkdir(ordner, { recursive: true, mode: 0o700 });
-  await atomarSchreiben(dateiPfad(haushalt, id), key ? inhaltVerschluesseln(bytes, key) : bytes);
-  return !!key;
+  // v2: Schlüssel-ID + AAD (Haushalt/Kennung) — eine unter anderem Namen/Haushalt abgelegte Datei öffnet sich nicht.
+  await atomarSchreiben(dateiPfad(haushalt, id), aktiv ? binSchreiben(bytes, aktiv, haushalt, id) : bytes);
+  return !!aktiv;
 }
-/** Inhalt lesen (Hülle → entschlüsselt, sonst wie abgelegt) — null, wenn die Datei fehlt. */
+/** Inhalt lesen (Hülle v1/v2 → über den Schlüsselring entschlüsselt, sonst wie abgelegt) — null, wenn die Datei fehlt. */
 export async function inhaltLaden(haushalt: string, id: string): Promise<Buffer | null> {
   let roh: Buffer;
   try { roh = await fs.readFile(dateiPfad(haushalt, id)); }
   catch (e) { if ((e as NodeJS.ErrnoException)?.code === 'ENOENT') return null; throw e; }
-  return istHuelle(roh) ? inhaltEntschluesseln(roh, datenSchluessel()) : roh;
+  if (!binVersion(roh)) return roh;
+  try { return binOeffnen(roh, schluesselRing(), haushalt, id).klar; }
+  catch (e) {
+    if (e instanceof SchluesselFehlt) throw new AblageFehler('Die Datei ist verschlüsselt, der passende Datenschlüssel fehlt.', 503);
+    throw new AblageFehler('Datei nicht lesbar — falscher Schlüssel oder verändert.', 500);
+  }
 }
 /** Inhalt entfernen (fehlt er schon, ist das kein Fehler). */
 export async function inhaltEntfernen(haushalt: string, id: string): Promise<void> {
