@@ -6,12 +6,16 @@
 // „Aus Vorlage anlegen“: Space/Projekt + Startdatum → Projekt/Gruppen/Listen/Aufgaben mit Deadline = Start + Versatz.
 // Die Ergebnisse gehen im Browser über den Aufgaben-Kontext (Einzeländerungen mit Stand), serverseitig über den
 // Morgenlauf der Serien (lib/aufgaben/serie.ts). Tests: tests/aufgaben-serie.test.ts.
+// 29.09. (#69/#70): Listen zeigen per `gruppeIndex` auf ihre Gruppe (gleichnamige Gruppen fallen nicht mehr zusammen);
+// Versatz optional in Werktagen ohne Feiertage NRW (`versatzArt: 'werktage'`, Start auf dem nächsten Werktag); Vorlagen
+// tragen `version`, angelegte Aufgaben/Projekte `vorlageVersion`.
 
 import type { Task, TasksState, Project, AufgabenListe, AufgabenGruppe, AufgabenVorlage, VorlageAufgabe, VorlageInhalt } from '@/types/tasks';
 import type { Owner } from '@/types/common';
 import { AUFGABEN_GRENZEN } from './saeubern';
 import { bereichVonSpace, einheitVonSpace, firmaVonSpace, istSonstigeProjekt, sonstigeProjektId, SONSTIGE_PRAEFIX, nachReihe } from './struktur';
 import { istTag, tagPlus, tageZwischen, titelMitPlatzhaltern } from './wiederholung';
+import { istWerktag, werktagAbOder, werktagePlus } from './feiertage';
 import { STARTVORLAGEN } from './vorlagen-start';
 
 export { STARTVORLAGEN };
@@ -20,6 +24,19 @@ const OWNER: readonly string[] = ['kevin', 'malin', 'both'];
 const GRUPPEN_FARBEN = ['#E27FD0', '#6E7EF5', '#58D9CD', '#FFC93C', '#3DE28B', '#FF8A5C'];
 // Reihenfolge (sortOrder, createdAt, id) — eine Regel, lib/aufgaben/struktur.ts (#56, 29.09.).
 const tagDer = (d: string | undefined): string | undefined => (d && istTag(d.slice(0, 10)) ? d.slice(0, 10) : undefined);
+
+/** Werktage (Mo–Fr ohne Feiertage NRW) von `a` bis `b` — wie `werktagePlus` rückwärts: werktagePlus(a, n) = b. */
+export function werktageZwischen(a: string, b: string): number {
+  if (a === b) return 0;
+  const r = b > a ? 1 : -1;
+  let n = 0, d = a;
+  for (let i = 0; i < 4000 && (r > 0 ? d < b : d > b); i++) { d = tagPlus(d, r); if (istWerktag(d, 'NRW')) n += r; }
+  return n;
+}
+/** Deadline aus Start + Versatz — in Kalendertagen oder Werktagen (ab dem nächsten Werktag am/nach dem Start). */
+export function deadlineAus(start: string, versatz: number, art: VorlageInhalt['versatzArt']): string {
+  return art === 'werktage' ? werktagePlus(werktagAbOder(start, 'NRW'), versatz, 'NRW') : tagPlus(start, versatz);
+}
 
 // ── Finden ─────────────────────────────────────────────────────────────────
 
@@ -61,16 +78,16 @@ export function bezugsTagVon(tasks: readonly Pick<Task, 'startDate' | 'dueDate'>
   return tage[0] ?? rueckfall;
 }
 
-function alsVorlageAufgabe(t: Task, kinder: Map<string, Task[]>, bezug: string | undefined, tiefe: number): VorlageAufgabe {
+function alsVorlageAufgabe(t: Task, kinder: Map<string, Task[]>, bezug: string | undefined, tiefe: number, werktage = false): VorlageAufgabe {
   const r: VorlageAufgabe = { titel: t.title };
   const b = (t.description ?? '').trim();
   if (b) r.beschreibung = b.slice(0, 4000);
   if (t.priority && t.priority !== 'medium') r.prioritaet = t.priority;
   if (OWNER.includes(t.assignee)) r.zustaendig = t.assignee;
   const due = tagDer(t.dueDate);
-  if (bezug && due) { const v = tageZwischen(bezug, due); if (Math.abs(v) <= 3650) r.versatzTage = v; }
+  if (bezug && due) { const v = werktage ? werktageZwischen(werktagAbOder(bezug, 'NRW'), due) : tageZwischen(bezug, due); if (Math.abs(v) <= 3650) r.versatzTage = v; }
   if (tiefe === 0) {
-    const u = (kinder.get(t.id) ?? []).sort(nachReihe).map(k => alsVorlageAufgabe(k, kinder, bezug, 1));
+    const u = (kinder.get(t.id) ?? []).sort(nachReihe).map(k => alsVorlageAufgabe(k, kinder, bezug, 1, werktage));
     if (u.length) r.unter = u;
   }
   return r;
@@ -82,7 +99,7 @@ function kinderVon(tasks: readonly Task[]): Map<string, Task[]> {
   return m;
 }
 
-export interface SpeichernOptionen { id: string; titel?: string; bezugsTag?: string; spaceId?: string; jetzt?: string }
+export interface SpeichernOptionen { id: string; titel?: string; bezugsTag?: string; spaceId?: string; jetzt?: string; /** Versatz in Werktagen ohne Feiertage NRW (#70). */ werktage?: boolean }
 
 /** Ein Projekt als Vorlage (Struktur): Gruppen, Listen (nicht archiviert), Aufgaben + Unteraufgaben, Felder, Notiz. */
 export function vorlageAusProjekt(state: TasksState, projektId: string, o: SpeichernOptionen): AufgabenVorlage | null {
@@ -97,15 +114,16 @@ export function vorlageAusProjekt(state: TasksState, projektId: string, o: Speic
   const listenIds = new Set(listen.map(l => l.id));
   const inhalt: VorlageInhalt = {};
   if (gruppen.length) inhalt.gruppen = gruppen.map(g => ({ titel: g.titel, farbe: g.farbe }));
+  if (o.werktage) inhalt.versatzArt = 'werktage';
   if (listen.length) inhalt.listen = listen.map(l => {
-    const g = l.gruppeId ? gruppen.find(x => x.id === l.gruppeId)?.titel : undefined;
-    return { titel: l.titel, ...(g ? { gruppe: g } : {}), aufgaben: oben.filter(t => t.listeId === l.id).map(t => alsVorlageAufgabe(t, kinder, bezug, 0)) };
+    const gi = l.gruppeId ? gruppen.findIndex(x => x.id === l.gruppeId) : -1;
+    return { titel: l.titel, ...(gi >= 0 ? { gruppe: gruppen[gi].titel, gruppeIndex: gi } : {}), aufgaben: oben.filter(t => t.listeId === l.id).map(t => alsVorlageAufgabe(t, kinder, bezug, 0, o.werktage)) };
   });
-  const ohneListe = oben.filter(t => !t.listeId || !listenIds.has(t.listeId)).map(t => alsVorlageAufgabe(t, kinder, bezug, 0));
+  const ohneListe = oben.filter(t => !t.listeId || !listenIds.has(t.listeId)).map(t => alsVorlageAufgabe(t, kinder, bezug, 0, o.werktage));
   if (ohneListe.length) inhalt.aufgaben = ohneListe;
   if (p.felder?.length) inhalt.felder = p.felder.map(f => ({ ...f, ...(f.optionen ? { optionen: [...f.optionen] } : {}) }));
   if (p.notiz?.trim()) inhalt.notiz = p.notiz;
-  return { id: o.id, art: 'projekt', titel: (o.titel ?? p.title).trim().slice(0, 120) || p.title, inhalt, ...(o.spaceId ? { spaceId: o.spaceId } : {}), angelegt: o.jetzt ?? new Date().toISOString() };
+  return { id: o.id, art: 'projekt', titel: (o.titel ?? p.title).trim().slice(0, 120) || p.title, inhalt, ...(o.spaceId ? { spaceId: o.spaceId } : {}), angelegt: o.jetzt ?? new Date().toISOString(), version: 1 };
 }
 
 /** Eine Liste als Vorlage: ihre Aufgaben + Unteraufgaben (Versatz ab `bezugsTag`, sonst ab der frühesten Deadline). */
@@ -116,8 +134,8 @@ export function vorlageAusListe(state: TasksState, listeId: string, o: Speichern
   const kinder = kinderVon(state.tasks.filter(t => t.projectId === l.projektId));
   const oben = inListe.filter(t => !t.parentId).sort(nachReihe);
   const bezug = o.bezugsTag ?? bezugsTagVon([...oben, ...oben.flatMap(t => kinder.get(t.id) ?? [])]);
-  const aufgaben = oben.map(t => alsVorlageAufgabe(t, kinder, bezug, 0));
-  return { id: o.id, art: 'liste', titel: (o.titel ?? l.titel).trim().slice(0, 120) || l.titel, inhalt: aufgaben.length ? { aufgaben } : {}, ...(o.spaceId ? { spaceId: o.spaceId } : {}), angelegt: o.jetzt ?? new Date().toISOString() };
+  const aufgaben = oben.map(t => alsVorlageAufgabe(t, kinder, bezug, 0, o.werktage));
+  return { id: o.id, art: 'liste', titel: (o.titel ?? l.titel).trim().slice(0, 120) || l.titel, inhalt: aufgaben.length ? { aufgaben, ...(o.werktage ? { versatzArt: 'werktage' as const } : {}) } : {}, ...(o.spaceId ? { spaceId: o.spaceId } : {}), angelegt: o.jetzt ?? new Date().toISOString(), version: 1 };
 }
 
 // ── Aus Vorlage anlegen ────────────────────────────────────────────────────
@@ -135,6 +153,10 @@ export interface AufgabenZiel {
   jetzt: string;
   vorlageId?: string;
   sortStart?: number;
+  /** Versatz in Werktagen (NRW) statt Kalendertagen (#70). */
+  versatzArt?: VorlageInhalt['versatzArt'];
+  /** Fassung der Vorlage (#70). */
+  vorlageVersion?: number;
 }
 
 /** Aufgaben (mit Unteraufgaben) aus Vorlage-Aufgaben. In Mandanten-Spaces ist die Firma vorbelegt (wie beim Anlegen). */
@@ -152,9 +174,10 @@ export function aufgabenAusVorlage(liste: readonly VorlageAufgabe[], z: Aufgaben
     ...(a.beschreibung ? { description: a.beschreibung } : {}),
     ...(a.notiz ? { notiz: a.notiz } : {}),
     ...(a.felder && Object.keys(a.felder).length ? { felder: { ...a.felder } } : {}),
-    ...(z.start && typeof a.versatzTage === 'number' ? { dueDate: tagPlus(z.start, a.versatzTage) } : {}),
+    ...(z.start && typeof a.versatzTage === 'number' ? { dueDate: deadlineAus(z.start, a.versatzTage, z.versatzArt) } : {}),
     ...(firmaId ? { bezug: { firmaId } } : {}),
     ...(z.vorlageId ? { vorlageId: z.vorlageId } : {}),
+    ...(z.vorlageId && z.vorlageVersion ? { vorlageVersion: z.vorlageVersion } : {}),
   });
   liste.forEach((a, i) => {
     const id = `${z.praefix}-a${i + 1}`;
@@ -190,13 +213,13 @@ export function ausVorlageAnlegen(v: AufgabenVorlage, state: TasksState, z: Anla
     const gruppe = z.gruppeId ? (state.gruppen ?? []).find(g => g.id === z.gruppeId && g.projektId === projektId) : undefined;
     const sortOrder = (state.listen ?? []).filter(l => l.projektId === projektId).reduce((m, l) => Math.max(m, l.sortOrder), -1) + 1;
     const liste: AufgabenListe = { id: z.praefix, projektId, titel: titel.slice(0, 80), sortOrder, ...(gruppe ? { gruppeId: gruppe.id } : {}) };
-    const tasks = aufgabenAusVorlage(v.inhalt.aufgaben ?? [], { spaceId, projectId: projektId, listeId: liste.id, start, praefix: z.praefix, owner: z.owner, jetzt: z.jetzt, vorlageId: v.id });
+    const tasks = aufgabenAusVorlage(v.inhalt.aufgaben ?? [], { spaceId, projectId: projektId, listeId: liste.id, start, praefix: z.praefix, owner: z.owner, jetzt: z.jetzt, vorlageId: v.id, versatzArt: v.inhalt.versatzArt, vorlageVersion: v.version ?? 1 });
     return { gruppen: [], listen: [liste], tasks };
   }
   const projektId = z.praefix;
   const projekt: Project = {
     id: projektId, title: titel.slice(0, 120), category: z.spaceId === 'privat' ? 'joint' : 'business', owner: 'both', color: z.farbe ?? '#58D9CD',
-    tags: [], archived: false, spaceId: z.spaceId, createdAt: z.jetzt, updatedAt: z.jetzt, status: 'aktiv', vorlageId: v.id,
+    tags: [], archived: false, spaceId: z.spaceId, createdAt: z.jetzt, updatedAt: z.jetzt, status: 'aktiv', vorlageId: v.id, vorlageVersion: v.version ?? 1,
     ...(start ? { start } : {}),
     ...(v.inhalt.notiz ? { notiz: v.inhalt.notiz } : {}),
     ...(v.inhalt.felder?.length ? { felder: v.inhalt.felder.map(f => ({ ...f, ...(f.optionen ? { optionen: [...f.optionen] } : {}) })) } : {}),
@@ -205,11 +228,12 @@ export function ausVorlageAnlegen(v: AufgabenVorlage, state: TasksState, z: Anla
   const listen: AufgabenListe[] = [];
   const tasks: Task[] = [];
   (v.inhalt.listen ?? []).forEach((l, i) => {
-    const g = l.gruppe ? gruppen.find(x => x.titel === l.gruppe) : undefined;
+    // Gruppe per Index (#69) — Titel nur noch für Vorlagen von vor dem 29.09.
+    const g = typeof l.gruppeIndex === 'number' && gruppen[l.gruppeIndex] ? gruppen[l.gruppeIndex] : l.gruppe ? gruppen.find(x => x.titel === l.gruppe) : undefined;
     const liste: AufgabenListe = { id: `${projektId}-l${i + 1}`, projektId, titel: titelMitPlatzhaltern(l.titel, start ?? '').slice(0, 80), sortOrder: i, ...(g ? { gruppeId: g.id } : {}) };
     listen.push(liste);
-    tasks.push(...aufgabenAusVorlage(l.aufgaben, { spaceId: z.spaceId, projectId: projektId, listeId: liste.id, start, praefix: liste.id, owner: z.owner, jetzt: z.jetzt, vorlageId: v.id }));
+    tasks.push(...aufgabenAusVorlage(l.aufgaben, { spaceId: z.spaceId, projectId: projektId, listeId: liste.id, start, praefix: liste.id, owner: z.owner, jetzt: z.jetzt, vorlageId: v.id, versatzArt: v.inhalt.versatzArt, vorlageVersion: v.version ?? 1 }));
   });
-  tasks.push(...aufgabenAusVorlage(v.inhalt.aufgaben ?? [], { spaceId: z.spaceId, projectId: projektId, start, praefix: `${projektId}-s`, owner: z.owner, jetzt: z.jetzt, vorlageId: v.id, sortStart: tasks.length }));
+  tasks.push(...aufgabenAusVorlage(v.inhalt.aufgaben ?? [], { spaceId: z.spaceId, projectId: projektId, start, praefix: `${projektId}-s`, owner: z.owner, jetzt: z.jetzt, vorlageId: v.id, sortStart: tasks.length, versatzArt: v.inhalt.versatzArt, vorlageVersion: v.version ?? 1 }));
   return { projekt, gruppen, listen, tasks };
 }

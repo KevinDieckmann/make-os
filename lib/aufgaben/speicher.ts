@@ -25,6 +25,7 @@ import { verlaufFuer, verlaufAnhaengen, type VerlaufWer } from './verlauf';
 import { serienBeimErledigen, folgeinstanzenBeimOeffnen, serieUeberspringen } from './serie';
 import { berlinerTag } from './wiederholung';
 import { followupsNachAufgaben } from '@/lib/crm/followup-aufgabe';
+import { dateienBereichNachziehen } from './umzug-dateien';
 
 export const AUFGABEN_SPEICHER = 'tasks';
 
@@ -427,6 +428,8 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
   await meldungenNachSchreiben(aufgabenSicht(vorher), aufgabenSicht(nachher), neueKommentare, echtePerson ? opt.person : SYSTEM, personenListe);
   // Follow-up = Aufgabe (29.09., #99): erledigte Aufgaben erledigen ihre verknüpften CRM-Follow-ups (idempotent, wirft nie).
   await followupsNachAufgaben(vorher, nachher, echtePerson ? opt.person : SYSTEM);
+  // Umzug Privat ↔ Business (29.09., #4): der Bereich der Dateien an umgezogenen Aufgaben zieht mit.
+  await dateienBereichNachziehen(vorher, nachher, opt.haushalt, echtePerson ? opt.person : SYSTEM);
   if (erg.entfernt && opt.haushalt) await papierkorbDateienEntfernen(opt.haushalt, opt.person, erg.entfernt);
   return erg;
 }

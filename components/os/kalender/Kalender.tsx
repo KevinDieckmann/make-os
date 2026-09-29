@@ -25,6 +25,7 @@ import { Zeitraster } from './Zeitraster';
 import { Monat } from './Monat';
 import { Agenda } from './Agenda';
 import { NeuerTermin, type Vorgabe } from './NeuerTermin';
+import { suchPasst } from '@/lib/text/such-norm';
 
 type Ansicht = 'tag' | 'woche' | 'monat' | 'agenda';
 const ANSICHTEN: { id: Ansicht; label: string; taste: string }[] = [{ id: 'tag', label: 'Tag', taste: 'd' }, { id: 'woche', label: 'Woche', taste: 'w' }, { id: 'monat', label: 'Monat', taste: 'm' }, { id: 'agenda', label: 'Agenda', taste: 'a' }];
@@ -83,7 +84,7 @@ export function Kalender() {
   const termine = useMemo(() => (daten?.termine ?? []).filter(t => (sicht === 'alle' || t.wer === sicht) && !aus.has(t.kalender) && (!such || `${t.titel} ${t.ort ?? ''} ${t.kalender} ${t.notiz ?? ''}`.toLowerCase().includes(such))), [daten, sicht, aus, such]);
   const fristen = useMemo(() => (ebenen.fristen && !such ? daten?.fristen ?? [] : (daten?.fristen ?? []).filter(f => such && f.titel.toLowerCase().includes(such))), [daten, ebenen.fristen, such]);
   const erinnerungen = useMemo(() => (ebenen.erinnerungen && !such ? daten?.erinnerungen ?? [] : (daten?.erinnerungen ?? []).filter(e => such && e.titel.toLowerCase().includes(such))), [daten, ebenen.erinnerungen, such]);
-  const aufgabenImZeitraum = useMemo(() => (ebenen.aufgaben ? aufgaben : []).filter(a => a.dueDate && a.dueDate >= von && a.dueDate < bis && a.status !== 'done' && (!such || a.title.toLowerCase().includes(such))).map(a => ({ id: a.id, title: a.title, done: a.status === 'done', priority: a.priority, tag: a.dueDate! })), [aufgaben, ebenen.aufgaben, von, bis, such]);
+  const aufgabenImZeitraum = useMemo(() => (ebenen.aufgaben ? aufgaben : []).filter(a => a.dueDate && a.dueDate >= von && a.dueDate < bis && a.status !== 'done' && (!such || suchPasst([a.title], such))).map(a => ({ id: a.id, title: a.title, done: a.status === 'done', priority: a.priority, tag: a.dueDate! })), [aufgaben, ebenen.aufgaben, von, bis, such]);
 
   // Navigation
   const springe = (richtung: -1 | 1) => setAnker(a => ansicht === 'tag' ? tagPlus(a, richtung) : ansicht === 'woche' ? tagPlus(a, 7 * richtung) : ansicht === 'monat' ? monatPlus(a, richtung) : tagPlus(a, 30 * richtung));

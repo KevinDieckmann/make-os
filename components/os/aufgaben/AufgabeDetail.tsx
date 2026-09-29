@@ -174,7 +174,7 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
         </Feld>}
         {!eltern && (
           <Feld label="Ort">
-            <Wahl klein label="Space" liste={spaceWahl} wert={t.spaceId} farbe={space?.farbe} onWahl={id => aendern(umzugTeil(state, t, { spaceId: id }))} />
+            <Wahl klein label="Space" liste={spaceWahl} wert={t.spaceId} farbe={space?.farbe} onWahl={id => handlung.umziehen(t, umzugTeil(state, t, { spaceId: id }))} />
             <Wahl klein label="Projekt" liste={fremdesProjekt ? [{ id: t.projectId, label: state.projects.find(p => p.id === t.projectId)?.title ?? '' }, ...projektWahl] : projektWahl} wert={t.projectId}
               onWahl={id => aendern(umzugTeil(state, t, { projectId: id, listeId: null }))}
               onNeu={async titel => projektAnlegen(dispatch, t.spaceId ?? 'privat', titel, space?.farbe ?? '#58D9CD')} neuMax={80} />

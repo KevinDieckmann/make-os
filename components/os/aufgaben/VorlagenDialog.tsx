@@ -51,11 +51,13 @@ function Speichern({ art, id, onSchliessen }: { art: 'projekt' | 'liste'; id: st
   const [titel, setTitel] = useState(projekt?.title ?? liste?.titel ?? '');
   const [bezug, setBezug] = useState(vorschlag ?? '');
   const [nurHier, setNurHier] = useState(false);
+  // #70 (29.09.): Versatz in Werktagen ohne Feiertage NRW — Deadlines fallen beim Anlegen nie aufs Wochenende/einen Feiertag.
+  const [werktage, setWerktage] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
   const kennung = useMemo(() => neueKennung('v'), []);
   const v = art === 'projekt'
-    ? vorlageAusProjekt(state, id, { id: kennung, titel, bezugsTag: bezug || undefined, ...(nurHier && spaceId ? { spaceId } : {}) })
-    : vorlageAusListe(state, id, { id: kennung, titel, bezugsTag: bezug || undefined, ...(nurHier && spaceId ? { spaceId } : {}) });
+    ? vorlageAusProjekt(state, id, { id: kennung, titel, bezugsTag: bezug || undefined, werktage, ...(nurHier && spaceId ? { spaceId } : {}) })
+    : vorlageAusListe(state, id, { id: kennung, titel, bezugsTag: bezug || undefined, werktage, ...(nurHier && spaceId ? { spaceId } : {}) });
   if (!v) return <Fenster titel="Als Vorlage speichern" onZu={onSchliessen} breit={560}><span style={{ color: C.inkLeise }}>Nicht mehr vorhanden.</span></Fenster>;
   const speichern = () => {
     if (!titel.trim()) { setFehler('Bitte einen Namen geben.'); return; }
@@ -76,6 +78,8 @@ function Speichern({ art, id, onSchliessen }: { art: 'projekt' | 'liste'; id: st
         <input type="date" value={bezug} onChange={e => setBezug(e.target.value)} style={eingabe} aria-label="Bezugstag" /></label>
       {spaceId && <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
         <input type="checkbox" checked={nurHier} onChange={e => setNurHier(e.target.checked)} /> nur in diesem Space anbieten</label>}
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
+        <input type="checkbox" checked={werktage} onChange={e => setWerktage(e.target.checked)} /> Abstand in Werktagen (ohne Wochenende und Feiertage NRW)</label>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <Umfang v={v} />
         <span style={{ fontSize: 12.5, color: C.inkLeise }}>Platzhalter im Namen: {'{Monat}'} {'{Jahr}'} {'{KW}'} {'{Datum}'}</span>

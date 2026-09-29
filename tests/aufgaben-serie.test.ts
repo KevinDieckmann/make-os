@@ -223,11 +223,11 @@ describe('Vorlagen speichern und anlegen', () => {
   it('Projekt → Vorlage: Struktur vollständig, ohne CRM-Bezug, Kommentare, Feldwerte, ZOE; übersteht die Säuberung', () => {
     const v = vorlageAusProjekt(stand(), 'p-launch', { id: 'v-1', jetzt: JETZT })!;
     expect(v).toEqual({
-      id: 'v-1', art: 'projekt', titel: 'Launch', angelegt: JETZT,
+      id: 'v-1', art: 'projekt', titel: 'Launch', angelegt: JETZT, version: 1,
       inhalt: {
         gruppen: [{ titel: 'Marketing', farbe: '#E27FD0' }],
         listen: [
-          { titel: 'Woche 1', gruppe: 'Marketing', aufgaben: [{ titel: 'Aufgabe t1', zustaendig: 'kevin', versatzTage: 3, unter: [{ titel: 'Entwurf', zustaendig: 'kevin', versatzTage: 1 }] }] },
+          { titel: 'Woche 1', gruppe: 'Marketing', gruppeIndex: 0, aufgaben: [{ titel: 'Aufgabe t1', zustaendig: 'kevin', versatzTage: 3, unter: [{ titel: 'Entwurf', zustaendig: 'kevin', versatzTage: 1 }] }] },
           { titel: 'Woche 2', aufgaben: [{ titel: 'Aufgabe t2', beschreibung: 'Kurz beschrieben', zustaendig: 'kevin' }] },
         ],
         aufgaben: [{ titel: 'Aufgabe t3', prioritaet: 'high', zustaendig: 'malin', versatzTage: 10 }],

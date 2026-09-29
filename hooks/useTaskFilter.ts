@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useTasks } from '@/context/TasksContext';
 import type { Owner, Priority } from '@/types/common';
 import type { TaskStatus } from '@/types/tasks';
+import { suchPasst } from '@/lib/text/such-norm';
 
 export interface TaskFilterOptions {
   projectId?: string;
@@ -20,8 +21,9 @@ export function useTaskFilter(options: TaskFilterOptions = {}) {
     if (options.status && options.status !== 'all') tasks = tasks.filter(t => t.status === options.status);
     if (options.priority && options.priority !== 'all') tasks = tasks.filter(t => t.priority === options.priority);
     if (options.search) {
-      const q = options.search.toLowerCase();
-      tasks = tasks.filter(t => t.title.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q));
+      // Normalisiert (29.09., #58): Umlaute/ß, Groß-/Kleinschreibung, mehrere Wörter.
+      const q = options.search;
+      tasks = tasks.filter(t => suchPasst([t.title, t.description], q));
     }
     return [...tasks].sort((a, b) => a.sortOrder - b.sortOrder);
   }, [state.tasks, options.projectId, options.owner, options.status, options.priority, options.search]);

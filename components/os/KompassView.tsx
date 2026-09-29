@@ -29,6 +29,7 @@ import {
 } from '@/lib/make-one/kompass-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Segmente, feld, LEUCHT } from './schlank';
 import { neueKennung } from '@/lib/kennung';
+import { suchPasst } from '@/lib/text/such-norm';
 
 const HAAR = 'rgba(255,255,255,.06)';
 /** Beschriftung einer Zeile im Filter-Editor — GROSSBUCHSTABEN, leise. */
@@ -304,7 +305,8 @@ export function KompassView() {
       const meine = stichworteVon(t, {}, stichListe);
       if (!f.stichworte.some(s => meine.includes(s))) return false;
     }
-    if (f.suche && !`${t.title} ${t.description ?? ''}`.toLowerCase().includes(f.suche.toLowerCase())) return false;
+    // Normalisiert (29.09., #58).
+    if (f.suche && !suchPasst([t.title, t.description], f.suche)) return false;
     return true;
   }).length;
 

@@ -80,6 +80,8 @@ export interface Task extends Timestamps {
   wiederholung?: Wiederholung;
   /** Aus welcher Vorlage die Aufgabe entstand (Paket C3). */
   vorlageId?: ID;
+  /** Fassung der Vorlage beim Anlegen (29.09., #70) — nachvollziehbar, welche Vorlagenfassung benutzt wurde. */
+  vorlageVersion?: number;
   /** Serie einer wiederkehrenden Aufgabe (Paket C3): Kennung der ersten Aufgabe (Anker). Früher als `vorlageId` „serie:…“ — die Übernahme übersetzt. */
   serieId?: ID;
   /** ZOE bereitet vor (Paket C4): Stand der Vorbereitung; `assignee` bleibt kevin/malin/both. */
@@ -239,7 +241,10 @@ export interface VorlageAufgabe {
 /** Inhalt einer Vorlage: bei `projekt` Gruppen, Listen, Felder, Notiz; bei `liste` nur `aufgaben`. */
 export interface VorlageInhalt {
   gruppen?: { titel: string; farbe?: string }[];
-  listen?: { titel: string; gruppe?: string; aufgaben: VorlageAufgabe[] }[];
+  /** `gruppeIndex` (29.09., #69) zeigt auf `gruppen[i]` — zwei Gruppen mit gleichem Titel fallen nicht mehr zusammen; `gruppe` (Titel) bleibt für Altbestand. */
+  listen?: { titel: string; gruppe?: string; gruppeIndex?: number; aufgaben: VorlageAufgabe[] }[];
+  /** Versatz der Deadlines in Kalendertagen (Standard) oder in Werktagen ohne Feiertage NRW (29.09., #70). */
+  versatzArt?: 'tage' | 'werktage';
   aufgaben?: VorlageAufgabe[];
   felder?: EigenesFeld[];
   notiz?: string;
@@ -253,6 +258,8 @@ export interface AufgabenVorlage {
   spaceId?: AufgabenSpaceId;
   inhalt: VorlageInhalt;
   angelegt?: string;
+  /** Fassung (29.09., #70): 1 beim Anlegen, +1 bei jeder inhaltlichen Änderung — Aufgaben tragen `vorlageVersion`. */
+  version?: number;
 }
 
 /** Eigener Status je Space — `basis` sagt allen Lesern, was er bedeutet (erledigt = done). */
@@ -293,6 +300,8 @@ export interface Project extends Timestamps {
   felder?: EigenesFeld[];
   /** Aus welcher Vorlage das Projekt entstand (Paket C3). */
   vorlageId?: ID;
+  /** Fassung der Vorlage beim Anlegen (29.09., #70). */
+  vorlageVersion?: number;
   /** Im Papierkorb seit (ISO, 29.09.) — samt Aufgaben (`Task.geloeschtMit` = Projekt), Notiz, Feldern und Dateien. */
   geloeschtAm?: string;
   /** „Neu anfangen“ (29.09.): archiviert seit / Lauf — nicht zu verwechseln mit `archived` (von Hand abgelegt). */

@@ -365,7 +365,7 @@ export function serienLauf(state: TasksState, heute: string, jetzt: string): Ser
     if (!vorlage) hinweise.push(`„${neu.titel}“: keine Vorlage gefunden — Liste ohne Aufgaben angelegt.`);
     const owner: Owner = projekt?.owner ?? 'kevin';
     const sortStart = tasks.filter(t => t.spaceId === spaceId).reduce((m, t) => Math.max(m, t.sortOrder ?? 0), -1) + 1;
-    neueAufgaben.push(...aufgabenAusVorlage(inhalt, { spaceId, projectId: l.projektId, listeId: id, start: tag, praefix: id, owner, jetzt, ...(vorlage ? { vorlageId: vorlage.id } : {}), sortStart }));
+    neueAufgaben.push(...aufgabenAusVorlage(inhalt, { spaceId, projectId: l.projektId, listeId: id, start: tag, praefix: id, owner, jetzt, ...(vorlage ? { vorlageId: vorlage.id, vorlageVersion: vorlage.version ?? 1, versatzArt: vorlage.inhalt.versatzArt } : {}), sortStart }));
   }
 
   // Wiederkehrende Aufgaben: nur nachholen, was beim Erledigen nicht entstand.

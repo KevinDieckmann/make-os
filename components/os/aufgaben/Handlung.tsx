@@ -13,7 +13,7 @@ import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Fenster } from '../Fenster';
 import { Knopf } from '../schlank';
 import { useTasks, type AufgabenAktion } from '@/context/TasksContext';
-import { istOffen, statusTeil, statusListe } from '@/lib/aufgaben/struktur';
+import { istOffen, statusTeil, statusListe, bereichVonSpace } from '@/lib/aufgaben/struktur';
 import { berlinerTag, kurzTag, tagPlus, tageZwischen } from '@/lib/aufgaben/wiederholung';
 import { serieLaeuft, serieUeberspringen } from '@/lib/aufgaben/serie';
 import { aufgabeUmfang, umfangText } from '@/lib/aufgaben/papierkorb';
@@ -39,6 +39,8 @@ export interface Handlungen {
   ueberspringen: (t: Task) => boolean;
   /** Deadline/Start/Ort ändern mit „Rückgängig“; Deadline der Hauptaufgabe → Unteraufgaben mitverschieben? */
   verschieben: (t: Task, teil: Partial<Task>, was?: string) => void;
+  /** In einen anderen Space umziehen (`teil` aus `umzugTeil`). Business → Privat mit CRM-Bezug fragt: lösen oder behalten (#4). */
+  umziehen: (t: Task, teil: Partial<Task>) => void;
 }
 
 const Ctx = createContext<Handlungen | null>(null);
@@ -189,7 +191,24 @@ export function HandlungProvider({ children }: { children: ReactNode }) {
     });
   }, [upd, melden]);
 
-  const wert = useMemo<Handlungen>(() => ({ erledigen, statusSetzen, loeschen, ueberspringen, verschieben }), [erledigen, statusSetzen, loeschen, ueberspringen, verschieben]);
+  const umziehen = useCallback((t: Task, teil: Partial<Task>) => {
+    const nachPrivat = bereichVonSpace(teil.spaceId ?? t.spaceId) === 'privat' && bereichVonSpace(t.spaceId) === 'business';
+    const b = t.bezug;
+    const verknuepft = !!b && !!(b.kontaktId || b.firmaId || b.mandatId || b.dealId);
+    if (!nachPrivat || !verknuepft) { verschieben(t, teil, 'verschoben'); return; }
+    const arten = [b!.kontaktId ? 'Kontakt' : '', b!.firmaId ? 'Firma' : '', b!.mandatId ? 'Mandat' : '', b!.dealId ? 'Deal' : ''].filter(Boolean).join(', ');
+    setFrage({
+      titel: `„${t.title}“ nach Privat?`,
+      text: `Die Aufgabe ist mit dem CRM verknüpft (${arten}). Bleibt die Verknüpfung, steht sie weiter in der Akte. Dateien an der Aufgabe werden „privat“.`,
+      wahl: [
+        { label: 'Verknüpfung lösen und verschieben', tun: () => verschieben(t, { ...teil, bezug: undefined }, 'nach Privat verschoben (ohne CRM-Bezug)') },
+        { label: 'Verknüpfung behalten', leise: true, tun: () => verschieben(t, teil, 'nach Privat verschoben') },
+        { label: 'Abbrechen', leise: true, tun: () => undefined },
+      ],
+    });
+  }, [verschieben]);
+
+  const wert = useMemo<Handlungen>(() => ({ erledigen, statusSetzen, loeschen, ueberspringen, verschieben, umziehen }), [erledigen, statusSetzen, loeschen, ueberspringen, verschieben, umziehen]);
   return (
     <Ctx.Provider value={wert}>
       {children}
@@ -224,6 +243,7 @@ export function useHandlung(dispatch: Dispatch<AufgabenAktion>, statusEigen?: re
     statusSetzen: (t, id) => dispatch({ type: 'UPDATE_TASK', payload: { id: t.id, ...statusTeil(t, id, statusEigen ?? []) } }),
     loeschen: async t => { dispatch({ type: 'DELETE_TASK', payload: { id: t.id } }); return true; },
     ueberspringen: () => false,
+    umziehen: (t, teil) => dispatch({ type: 'UPDATE_TASK', payload: { id: t.id, ...teil } }),
     verschieben: (t, teil) => dispatch({ type: 'UPDATE_TASK', payload: { id: t.id, ...teil } }),
   }, [ctx, dispatch, statusEigen]);
 }

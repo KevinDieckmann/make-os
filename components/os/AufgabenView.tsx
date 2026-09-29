@@ -34,6 +34,7 @@ import { spaceVonAufgabe, SPACE_LABEL, SPACE_FARBE, type SpaceId } from '@/lib/m
 import { EinheitWahl, EinheitFilterPillen, useEinheiten, einheitGemerkt, einheitMerken } from './aufgaben/Einheit';
 import { fokusFuerAufgabe } from '@/lib/zeitmessung/fokus-laufend';
 import { EINHEIT_ALLE, einheitFilterOptionen, passtEinheitFilter, vorgabeEinheit, type EinheitFilter } from '@/lib/aufgaben/einheit';
+import { suchPasst } from '@/lib/text/such-norm';
 
 const PRIO_ZYKLUS: Priority[] = ['low', 'medium', 'high', 'critical'];
 const PRIO_RANG: Record<Priority, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -339,7 +340,8 @@ export function AufgabenView() {
             const meine = stichworteVon(t, handStich, stichListe);
             if (!f.stichworte.some(s => meine.includes(s))) return false;
           }
-          if (f.suche && !`${t.title} ${t.description ?? ''}`.toLowerCase().includes(f.suche.toLowerCase())) return false;
+          // Normalisiert (29.09., #58): „mueller“ findet „Müller“ — Titel und Beschreibung.
+          if (f.suche && !suchPasst([t.title, t.description], f.suche)) return false;
         }
       }
       return true;

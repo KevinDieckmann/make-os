@@ -159,6 +159,7 @@ export function taskSauber(o: unknown): Task | null {
     abhaengigVon: abhaengigSauber(t.abhaengigVon, id),
     wiederholung: wiederholungSauber(t.wiederholung),
     vorlageId: kennung(t.vorlageId),
+    vorlageVersion: Number.isInteger(t.vorlageVersion) && (t.vorlageVersion as number) >= 1 && (t.vorlageVersion as number) <= 99_999 ? (t.vorlageVersion as number) : undefined,
     serieId: kennung(t.serieId),
     zoe: zoeSauber(t.zoe),
     // Papierkorb (29.09.)
@@ -196,6 +197,7 @@ export function projektSauber(o: unknown): Project | null {
     mitglieder: personenSauber(p.mitglieder),
     felder: felderDefSauber(p.felder),
     vorlageId: kennung(p.vorlageId),
+    vorlageVersion: Number.isInteger(p.vorlageVersion) && (p.vorlageVersion as number) >= 1 && (p.vorlageVersion as number) <= 99_999 ? (p.vorlageVersion as number) : undefined,
     geloeschtAm: zeitpunkt(p.geloeschtAm),
   };
   if (raus.start && raus.ende && raus.ende < raus.start) delete raus.ende;
@@ -450,14 +452,17 @@ export function vorlageSauber(o: unknown): AufgabenVorlage | null {
     if (g.length) inhalt.gruppen = g;
   }
   if (Array.isArray(roh.listen)) {
-    const l = roh.listen.map(x => (x && typeof x === 'object' ? x as Record<string, unknown> : {})).map(x => ({ titel: S(x.titel, 80)?.trim() ?? '', ...(S(x.gruppe, 60)?.trim() ? { gruppe: S(x.gruppe, 60)!.trim() } : {}), aufgaben: aufgaben(x.aufgaben) })).filter(x => x.titel);
+    const gi = (v: unknown) => (Number.isInteger(v) && (v as number) >= 0 && (v as number) < (inhalt.gruppen?.length ?? 0) ? { gruppeIndex: v as number } : {});
+    const l = roh.listen.map(x => (x && typeof x === 'object' ? x as Record<string, unknown> : {})).map(x => ({ titel: S(x.titel, 80)?.trim() ?? '', ...(S(x.gruppe, 60)?.trim() ? { gruppe: S(x.gruppe, 60)!.trim() } : {}), ...gi(x.gruppeIndex), aufgaben: aufgaben(x.aufgaben) })).filter(x => x.titel);
     if (l.length) inhalt.listen = l;
   }
   const a = aufgaben(roh.aufgaben); if (a.length) inhalt.aufgaben = a;
   const f = felderDefSauber(roh.felder); if (f) inhalt.felder = f;
   const n = notizSauber(roh.notiz, 'Vorlagen-Notiz'); if (n) inhalt.notiz = n;
+  if (roh.versatzArt === 'werktage') inhalt.versatzArt = 'werktage';
   const spaceId = istSpaceId(v.spaceId) ? v.spaceId : undefined;
-  return { id, art: v.art, titel, inhalt, ...(spaceId ? { spaceId } : {}), ...(typeof v.angelegt === 'string' ? { angelegt: v.angelegt.slice(0, 40) } : {}) };
+  const version = Number.isInteger(v.version) && (v.version as number) >= 1 && (v.version as number) <= 99_999 ? (v.version as number) : undefined;
+  return { id, art: v.art, titel, inhalt, ...(spaceId ? { spaceId } : {}), ...(typeof v.angelegt === 'string' ? { angelegt: v.angelegt.slice(0, 40) } : {}), ...(version ? { version } : {}) };
 }
 
 /** Ein eigener Status je Space: Name, Farbe, Grundstatus (Bedeutung). */

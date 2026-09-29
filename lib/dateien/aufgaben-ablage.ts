@@ -184,3 +184,24 @@ export async function aufgabenDateiEntfernen(haushalt: string, person: string, i
   await verlauf(haushalt, { op: 'geloescht', id }, e, person, jetzt);
   return true;
 }
+
+/**
+ * Bereich (privat/business) der Dateien an Aufgaben nachziehen, wenn Aufgaben zwischen Privat und Business umziehen
+ * (29.09., #4) — sonst blieben Dateien einer nach Privat verschobenen Mandanten-Aufgabe „business“. Nur Einträge, deren
+ * Bereich sich ändert; Protokoll ohne Inhalte. Liefert die Zahl.
+ */
+export async function aufgabenDateienBereichSetzen(haushalt: string, person: string, neu: ReadonlyMap<string, Bereich>): Promise<number> {
+  if (!neu.size) return 0;
+  const passt = (e: AufgabenDatei) => !!e.aufgabeId && neu.has(e.aufgabeId) && neu.get(e.aufgabeId) !== e.bereich;
+  if (!(await aufgabenDateienListe(haushalt)).some(passt)) return 0;
+  const jetzt = new Date().toISOString();
+  const ids: string[] = [];
+  await updateJson<AblageDatei>(aufgabenAblageName(haushalt), cur => {
+    const l = cur?.eintraege ?? [];
+    ids.length = 0;
+    const eintraege = l.map(e => { if (!passt(e)) return e; ids.push(e.id); return { ...e, bereich: neu.get(e.aufgabeId!)!, geaendert: jetzt, geaendertVon: person }; });
+    return ids.length ? { eintraege } : (cur ?? { eintraege: l });
+  });
+  if (ids.length) await protokolliere(aufgabenAblageName(haushalt), ids.map(id => ({ op: 'geaendert' as const, id, liste: 'dateien', felder: ['bereich'] })), { art: 'person', person });
+  return ids.length;
+}
