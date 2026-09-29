@@ -16,7 +16,8 @@
 # Aufruf (Archiv vom Mac-Abholordner ~/MAKE-OS-Sicherungen, sonst scp make@…:/srv/make-os/sicherungen/… .):
 #   read -rs MAKE_OS_DATEN_SCHLUESSEL && export MAKE_OS_DATEN_SCHLUESSEL
 #   deploy/sicherung-probe.sh ~/MAKE-OS-Sicherungen/make-os-JJJJ-MM-TT.tar.gz.age ~/pfad/age-identitaet.txt [--app]
-# Ältere .enc-Archive (openssl, vor dem 26.09.): statt der age-Identität die Passwort-Datei angeben.
+# .enc-Archive (openssl — vor dem 26.09. oder die Übergangs-Sicherung, wenn am Server age/sicherung.pub fehlt):
+# statt der age-Identität die Passwort-Datei (Inhalt von /srv/make-os/.sicherung-passwort) angeben.
 # Archive von vor einer Schlüsselrotation brauchen den ALTEN Datenschlüssel: zusätzlich
 #   read -rs MAKE_OS_DATEN_SCHLUESSEL_ALT && export MAKE_OS_DATEN_SCHLUESSEL_ALT
 # Ergebnis eintragen: DEPLOY.md › Probe-Restore (Datum, Archiv, Bestände, Dauer, Auffälligkeiten).

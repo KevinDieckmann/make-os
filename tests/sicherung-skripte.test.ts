@@ -9,11 +9,14 @@ import http from 'node:http';
 import { spawnSync, execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { huelleSchreiben, schluesselAus } from '@/lib/store/huelle.mjs';
+import { binSchreiben } from '@/lib/store/datei-huelle.mjs';
 
 const wurzel = mkdtempSync(path.join(tmpdir(), 'make-os-sicherung-'));
 afterAll(() => rmSync(wurzel, { recursive: true, force: true }));
 const bin = path.join(wurzel, 'bin');
 const SCHL = 'sicherung-test-schluessel';
+// PATH ohne age (Stellvertreter fehlt, ein echtes age liegt nicht in /usr/bin:/bin) — node bleibt für die Prüfung erreichbar.
+const OHNE_AGE = `${path.dirname(process.execPath)}:/usr/bin:/bin`;
 
 beforeAll(() => {
   mkdirSync(bin);
@@ -74,30 +77,98 @@ describe('deploy/sicherung.sh', () => {
     expect(falsch.status).toBe(2);
     expect(falsch.stdout).toMatch(/NICHT bestanden/);
   });
-  it('ohne sicherung.pub: Abbruch (kein openssl-Rückfall), Status rot mit Grund', () => {
+  it('ohne sicherung.pub: Übergangs-Verschlüsselung mit openssl + Passwort (.enc, lesbar), Status warnung/rot, Ping /fail', async () => {
     const b = basisAnlegen('ohne-pub');
     rmSync(path.join(b, 'sicherung.pub'));
-    const r = lauf(b);
-    expect(r.status).not.toBe(0);
-    expect(status(b)).toMatchObject({ ok: false });
-    expect(status(b).grund).toMatch(/sicherung\.pub fehlt/);
-    expect(readdirSync(path.join(b, 'sicherungen'))).toEqual([]);
+    writeFileSync(path.join(b, '.sicherung-passwort'), 'uebergangs-passwort');
+    const pings: string[] = [];
+    const server = http.createServer((q, a) => { pings.push(q.url ?? ''); a.end('ok'); });
+    await new Promise<void>(ok => server.listen(0, '127.0.0.1', () => ok()));
+    writeFileSync(path.join(b, '.healthchecks-sicherung'), `http://127.0.0.1:${(server.address() as { port: number }).port}/hc`);
+    let r: { status: number | null; err: string };
+    try {
+      r = await new Promise(ok => { let err = ''; const p = spawn('bash', ['deploy/sicherung.sh'], { env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, MAKE_OS_BASIS: b, MAKE_OS_OHNE_APP: '1', MAKE_OS_DATEN_SCHLUESSEL: SCHL } }); p.stderr.on('data', d => { err += d; }); p.on('close', (c: number) => ok({ status: c, err })); });
+    } finally { await new Promise(ok => server.close(ok)); }
+    expect(r.status, r.err).toBe(0);
+    expect(r.err).toMatch(/WARNUNG: age fehlt — Sicherung nur mit Übergangs-Verschlüsselung/);
+    expect(pings).toEqual(['/hc/fail']);
+    const archiv = readdirSync(path.join(b, 'sicherungen')).find(f => f.endsWith('.tar.gz.enc'))!;
+    expect(archiv).toBeTruthy();
+    expect(statSync(path.join(b, 'sicherungen', archiv)).mode & 0o777).toBe(0o600);
+    const liste = execFileSync('bash', ['-c', `openssl enc -d -aes-256-cbc -pbkdf2 -pass "file:${path.join(b, '.sicherung-passwort')}" -in "${path.join(b, 'sicherungen', archiv)}" | tar -tzf -`], { encoding: 'utf8' });
+    expect(liste).toContain('daten/kontakte.json');
+    const s = status(b);
+    expect(s).toMatchObject({ ok: false, stufe: 'warnung', archiv: true, verfahren: 'openssl', ping: 'ok' });
+    expect(s.grund).toMatch(/age fehlt — Sicherung nur mit Übergangs-Verschlüsselung/);
+    expect(s.pruefung).toMatchObject({ ok: true, bestaende: 2 });
+    // Probe-Restore liest auch das Übergangsformat (Passwort-Datei statt age-Identität).
+    const probe = spawnSync('bash', ['deploy/sicherung-probe.sh', path.join(b, 'sicherungen', archiv), path.join(b, '.sicherung-passwort')], { env: { ...process.env, MAKE_OS_DATEN_SCHLUESSEL: SCHL }, encoding: 'utf8' });
+    expect(probe.status, probe.stdout + probe.stderr).toBe(0);
+    expect(probe.stdout).toMatch(/Probe bestanden/);
   });
-  it('Bestand mit fremdem Schlüssel: Prüfung schlägt an, kein Archiv, Dead-Man-Ping meldet /fail', async () => {
-    const b = basisAnlegen('falsch', 'anderer-schluessel');
+  it('age nicht installiert (sicherung.pub liegt): ebenfalls openssl-Übergang', () => {
+    const b = basisAnlegen('ohne-age');
+    writeFileSync(path.join(b, '.sicherung-passwort'), 'uebergangs-passwort');
+    const r = lauf(b, { PATH: OHNE_AGE });
+    expect(r.status, r.stderr).toBe(0);
+    expect(readdirSync(path.join(b, 'sicherungen')).filter(f => f.endsWith('.enc'))).toHaveLength(1);
+    expect(status(b)).toMatchObject({ stufe: 'warnung', verfahren: 'openssl', archiv: true });
+    expect(status(b).grund).toMatch(/age ist nicht installiert/);
+  });
+  it('weder age noch Passwort: Abbruch, NIE unverschlüsselt — kein Archiv, Status fehler', () => {
+    const b = basisAnlegen('ohne-alles');
+    rmSync(path.join(b, 'sicherung.pub'));
+    const r = lauf(b, { PATH: OHNE_AGE });
+    expect(r.status).not.toBe(0);
+    expect(status(b)).toMatchObject({ ok: false, stufe: 'fehler', archiv: false });
+    expect(status(b).grund).toMatch(/nie unverschlüsselt/);
+    expect(readdirSync(path.join(b, 'sicherungen'))).toEqual([]);
+    expect(existsSync(path.join(b, 'daten', '.sicherung-stage'))).toBe(false);
+  });
+  it('einzelne kaputte Dateien (Bestand, Archiv, .bin): Archiv trotzdem, „teilweise“ mit Dateinamen, Ping /fail', async () => {
+    const b = basisAnlegen('kaputt');
+    const fremd = schluesselAus('anderer-schluessel');
+    writeFileSync(path.join(b, 'daten', 'kaputt.json'), '{"__verschluesselt":2,"kid":"x","iv":"a","tag":"b","daten":"GEHEIMER-INHALT"');
+    mkdirSync(path.join(b, 'daten', 'archiv'));
+    writeFileSync(path.join(b, 'daten', 'archiv', 'crm-alt.json'), huelleSchreiben('{"a":1}', fremd, 'archiv/crm-alt.json'));
+    mkdirSync(path.join(b, 'daten', 'dateien', 'h1'), { recursive: true });
+    writeFileSync(path.join(b, 'daten', 'dateien', 'h1', 'd-1.bin'), binSchreiben(Buffer.from('pdf'), fremd, 'h1', 'd-1'));
     const pings: string[] = [];
     const server = http.createServer((q, a) => { pings.push(q.url ?? ''); a.end('ok'); });
     await new Promise<void>(ok => server.listen(0, '127.0.0.1', () => ok()));
     writeFileSync(path.join(b, '.healthchecks-sicherung'), `http://127.0.0.1:${(server.address() as { port: number }).port}/hc`);
     try {
       const r = await new Promise<{ status: number | null }>(ok => { const p = spawn('bash', ['deploy/sicherung.sh'], { env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, MAKE_OS_BASIS: b, MAKE_OS_OHNE_APP: '1', MAKE_OS_DATEN_SCHLUESSEL: SCHL } }); p.on('close', (c: number) => ok({ status: c })); });
-      expect(r.status).not.toBe(0);
+      expect(r.status).toBe(0);
     } finally { await new Promise(ok => server.close(ok)); }
     expect(pings).toEqual(['/hc/fail']);
+    const archiv = readdirSync(path.join(b, 'sicherungen')).find(f => f.endsWith('.tar.gz.age'))!;
+    expect(archiv).toBeTruthy();
+    const inhalt = execFileSync('bash', ['-c', `tail -c +23 "${path.join(b, 'sicherungen', archiv)}" | tar -tzf -`], { encoding: 'utf8' });
+    expect(inhalt).toContain('daten/kaputt.json'); // die kaputte Datei geht mit (Beweisstück), die heilen sowieso
+    expect(inhalt).toContain('daten/kontakte.json');
     const s = status(b);
-    expect(s).toMatchObject({ ok: false, ping: 'ok' });
-    expect(s.grund).toMatch(/Prüfung/);
-    expect(readdirSync(path.join(b, 'sicherungen')).filter(f => f.endsWith('.age'))).toEqual([]);
+    expect(s).toMatchObject({ ok: false, stufe: 'warnung', archiv: true, verfahren: 'age', ping: 'ok' });
+    expect(s.pruefung).toMatchObject({ ok: false, bestaende: 2, fehler: 1, fehlerNamen: ['kaputt'], archivFehlerNamen: ['archiv/crm-alt.json'], ablageFehlerNamen: ['dateien/h1/d-1.bin'] });
+    expect(s.grund).toMatch(/teilweise — nicht lesbar: kaputt,archiv\/crm-alt\.json,dateien\/h1\/d-1\.bin/);
+    expect(JSON.stringify(s)).not.toContain('GEHEIMER-INHALT');
+    expect(JSON.stringify(s)).not.toContain('c-1');
+  });
+  it('alle Bestände mit fremdem Schlüssel: Archiv bleibt trotzdem, Prüfung „teilweise“, Ping /fail', () => {
+    const b = basisAnlegen('falsch', 'anderer-schluessel');
+    const r = lauf(b);
+    expect(r.status, r.stderr).toBe(0);
+    expect(readdirSync(path.join(b, 'sicherungen')).filter(f => f.endsWith('.age'))).toHaveLength(1);
+    expect(status(b)).toMatchObject({ ok: false, stufe: 'warnung', archiv: true });
+    expect(status(b).pruefung.fehlerNamen).toEqual(['crm', 'kontakte']);
+  });
+  it('Prüfung läuft gar nicht (kein node): Archiv ungeprüft geschrieben, Status warnung', () => {
+    const b = basisAnlegen('ohne-node');
+    const r = lauf(b, { PATH: `${bin}:/usr/bin:/bin` });
+    expect(r.status, r.stderr).toBe(0);
+    expect(readdirSync(path.join(b, 'sicherungen')).filter(f => f.endsWith('.age'))).toHaveLength(1);
+    expect(status(b)).toMatchObject({ ok: false, stufe: 'warnung', archiv: true, pruefung: null });
+    expect(status(b).grund).toMatch(/Prüfung des Schnappschusses nicht gelaufen/);
   });
   it('Generationen: 14 täglich, 8 wöchentlich, 12 monatlich — ältere weg', () => {
     const b = basisAnlegen('gen');

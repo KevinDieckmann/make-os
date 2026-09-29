@@ -25,10 +25,10 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createDecipheriv } from 'crypto';
-import { atomarSchreiben, atomarKopieren, ordnerSync as ordnerSyncKern } from './atomar.mjs';
+import { atomarSchreiben, atomarKopieren, ordnerSync as ordnerSyncKern, tmpName } from './atomar.mjs';
 import {
   HUELLE as HUELLE_KERN, SchluesselFehlt as SchluesselFehltKern, EntschluesselungFehlgeschlagen,
-  schluesselRing, huellenVersion, huelleSchreiben, huelleOeffnen, huelleV1Schreiben,
+  schluesselRing, huellenVersion, huelleSchreiben, huelleOeffnen, huelleV1Schreiben, aadAlternativen,
 } from './huelle.mjs';
 import { messe, zaehle, parseMessen } from './messwerte';
 import { migriere, mitVersion } from './schema';
@@ -210,7 +210,11 @@ function cacheHole(name: string): CacheEintrag | undefined {
   return c;
 }
 
-interface Gelesen { text: string; /** 0 = Klartext, 1/2 = Hüllen-Fassung */ version: 0 | 1 | 2; kid: string | null }
+interface Gelesen {
+  text: string; /** 0 = Klartext, 1/2 = Hüllen-Fassung */ version: 0 | 1 | 2; kid: string | null;
+  /** v2-Hülle, die noch unter dem gleichwertigen Altnamen (jarvis-…) verschlüsselt ist — wird neu geschrieben. */
+  aadAlt?: boolean;
+}
 
 function merkeGelesen(name: string, st: { ino: number; mtimeMs: number; size: number }, g: Gelesen): void {
   cacheWeg(name);
@@ -223,15 +227,60 @@ function merkeGelesen(name: string, st: { ino: number; mtimeMs: number; size: nu
   }
 }
 
+/** `von` unter dem Namen `nach` ablegen, ohne eine dort schon liegende Datei zu überschreiben (link statt rename). */
+async function ohneUeberschreiben(von: string, nach: string): Promise<'ok' | 'da'> {
+  try { await fs.link(von, nach); }
+  catch (e) {
+    const code = (e as NodeJS.ErrnoException)?.code;
+    if (code === 'EEXIST') return 'da';
+    if (code !== 'EPERM' && code !== 'ENOTSUP' && code !== 'EOPNOTSUPP') throw e;
+    // Dateisystem ohne harte Links: prüfen und umbenennen (kleines Fenster, wie vor dem 29.09.).
+    try { await fs.access(nach); return 'da'; } catch { /* frei */ }
+    await fs.rename(von, nach);
+    return 'ok';
+  }
+  await fs.unlink(von).catch(() => {});
+  return 'ok';
+}
+
 /**
  * Umbenennung Jarvis → ZOE (27.09.): Bestände hießen `jarvis-…`. Wird ein `zoe-…`-Bestand zum ersten Mal gelesen
- * und liegt noch die alte Datei, wird sie EINMAL umbenannt — Daten auf dem Server bleiben so ohne Migration erhalten.
+ * und liegt noch die alte Datei, wird sie EINMAL übernommen — Daten auf dem Server bleiben so ohne Migration erhalten.
+ * Seit 29.09. (Go-Live-Prüfung): eine v2-Hülle trägt den Bestandsnamen als AAD. Ein bloßes Umbenennen ließe sie unter
+ * `zoe-…` mit der AAD `jarvis-…` liegen — darum wird sie mit dem aktiven Schlüssel unter dem NEUEN Namen neu verschlüsselt
+ * (atomar: Temp-Datei mit fsync, dann ohne Überschreiben an den neuen Namen, erst danach die alte Datei weg).
+ * Ohne aktiven Schlüssel (nur Alt-Schlüssel) oder bei v1/Klartext wird wie bisher nur umbenannt; die Hülle liest
+ * die AAD ohnehin tolerant (huelle.mjs `aadAlternativen`) und die nächste Schreibung stellt sie um.
  */
 async function altenNamenUebernehmen(name: string, file: string): Promise<boolean> {
   if (!/^zoe(-|$)/.test(name)) return false;
-  const alt = path.join(DATA_DIR, `${name.replace(/^zoe/, 'jarvis')}.json`);
-  try { await fs.access(alt); } catch { return false; }
-  try { await fs.rename(alt, file); console.log(`[local-db] ${path.basename(alt)} → ${path.basename(file)} (ZOE)`); return true; } catch { return false; }
+  const altName = name.replace(/^zoe/, 'jarvis');
+  const alt = path.join(DATA_DIR, `${altName}.json`);
+  const istDa = async () => { try { await fs.access(file); return true; } catch { return false; } };
+  let roh: string;
+  try { roh = await fs.readFile(alt, 'utf8'); } catch { return istDa(); } // keine alte Datei (oder schon übernommen)
+  const aktiv = schluesselRing().aktiv;
+  let neu: string | null = null;
+  if (aktiv && siehtWieHuelleAus(roh)) {
+    try {
+      const o: unknown = JSON.parse(roh);
+      if (huellenVersion(o) === 2) neu = huelleSchreiben(huelleOeffnen(o, schluesselRing(), altName).text, aktiv, name);
+    } catch { /* nicht lesbar: unverändert übernehmen — der Leser meldet den Fehler danach laut */ }
+  }
+  try {
+    if (neu === null) {
+      if ((await ohneUeberschreiben(alt, file)) === 'da') return true;
+    } else {
+      const tmp = tmpName(file);
+      await atomarSchreiben(tmp, neu);
+      const r = await ohneUeberschreiben(tmp, file).catch(async e => { await fs.unlink(tmp).catch(() => {}); throw e; });
+      if (r === 'da') { await fs.unlink(tmp).catch(() => {}); return true; }
+      await fs.unlink(alt).catch(() => {});
+    }
+    await ordnerSyncKern(DATA_DIR);
+    console.log(`[local-db] ${path.basename(alt)} → ${path.basename(file)} (ZOE${neu !== null ? ', mit neuem Namen verschlüsselt' : ''})`);
+    return true;
+  } catch { return istDa(); }
 }
 
 const siehtWieHuelleAus = (roh: string) => roh.startsWith('{') && roh.slice(0, 48).includes(`"${HUELLE}"`);
@@ -247,7 +296,7 @@ export function rohOeffnen(roh: string, aad: string): Gelesen {
     let o: unknown = null;
     try { o = JSON.parse(roh); } catch { return { text: roh, version: 0, kid: null }; }
     if (huellenVersion(o)) {
-      try { const r = huelleOeffnen(o, ring, aad); return { text: r.text, version: r.version, kid: r.kid }; }
+      try { const r = huelleOeffnen(o, ring, aad); return { text: r.text, version: r.version, kid: r.kid, ...(r.aadAlt ? { aadAlt: true } : {}) }; }
       catch (e) {
         if (e instanceof SchluesselFehltKern) throw e;
         throw new Error(`[local-db] ${aad}: ${e instanceof EntschluesselungFehlgeschlagen ? e.message : 'Entschlüsselung fehlgeschlagen — stimmt MAKE_OS_DATEN_SCHLUESSEL?'}`);
@@ -285,8 +334,34 @@ async function leseText(name: string): Promise<Gelesen | null> {
     throw new BestandNichtLesbar(`[local-db] ${name}: nicht lesbar (${code ?? 'unbekannt'})`);
   }
   const g = rohOeffnen(buf, name);
-  if (g.version || buf === g.text) merkeGelesen(name, st, g);
+  if (g.aadAlt) altAadNachschreiben(name); // nicht cachen: bis zum Neuschreiben jedes Mal ehrlich lesen
+  else if (g.version || buf === g.text) merkeGelesen(name, st, g);
   return g;
+}
+
+const nachschreibend = new Set<string>();
+/**
+ * Eine unter dem Altnamen verschlüsselte Hülle (jarvis-… → zoe-…) einmal mit dem richtigen Namen neu schreiben — in der
+ * Schreibsperre des Bestands, außerhalb des Ablaufs des Lesers (sonst hielte ein updateJson-Leser die Sperre selbst).
+ * Fehler werden nur gemeldet: der Bestand bleibt lesbar, die nächste gewöhnliche Schreibung stellt ihn ebenso um.
+ */
+function altAadNachschreiben(name: string): void {
+  if (nachschreibend.has(name) || !schluesselRing().aktiv) return;
+  nachschreibend.add(name);
+  Z.als.exit(() => {
+    void mitSperre(name, async () => {
+      aenderungFertig();
+      const file = path.join(DATA_DIR, `${name}.json`);
+      let roh: string;
+      try { roh = await fs.readFile(file, 'utf8'); } catch { return; }
+      const g = rohOeffnen(roh, name);
+      const aktiv = schluesselRing().aktiv;
+      if (!g.aadAlt || !aktiv) return;
+      await schreibeDatei(name, file, g.text);
+      console.log(`[local-db] ${name}: Hülle vom Altnamen auf den Bestandsnamen umgestellt (AAD).`);
+    }).catch(e => console.error(`[local-db] ${name}: Neuschreiben nach Altnamen gescheitert (${e instanceof Error ? e.message.slice(0, 120) : 'unbekannt'}) — die nächste Schreibung holt es nach.`))
+      .finally(() => nachschreibend.delete(name));
+  });
 }
 
 /**
@@ -342,7 +417,7 @@ async function schreibeDatei(name: string, dest: string, text: string): Promise<
 
 /** Unverändert? Dann nicht schreiben — außer die Datei liegt nicht in der aktuellen Hülle (Klartext → verschlüsseln, v1/alter Schlüssel → v2). */
 function unveraendert(vorher: Gelesen | null, text: string): boolean {
-  if (!vorher || vorher.text !== text) return false;
+  if (!vorher || vorher.text !== text || vorher.aadAlt) return false;
   const aktiv = schluesselRing().aktiv;
   if (!aktiv) return vorher.version === 0;
   return vorher.version === 2 && vorher.kid === aktiv.kid;
@@ -547,7 +622,8 @@ export async function bestandUmschluesseln(name: string): Promise<{ bestand: 'ne
       let o: unknown = null;
       try { o = JSON.parse(roh); } catch { throw new Error('kein JSON'); }
       const v = huellenVersion(o);
-      if (v === 2 && (o as { kid?: string }).kid === aktiv.kid) return 'schon';
+      // Aktueller Schlüssel UND richtige AAD? Den Altnamen (jarvis-…) erkennt nur das Öffnen — nur bei zoe-… nötig.
+      if (v === 2 && (o as { kid?: string }).kid === aktiv.kid && (!aadAlternativen(name).length || !huelleOeffnen(o, schluesselRing(), name).aadAlt)) return 'schon';
       const text = v ? huelleOeffnen(o, schluesselRing(), name).text : roh;
       JSON.parse(text);
       await atomarSchreiben(pfad, huelleSchreiben(text, aktiv, name));

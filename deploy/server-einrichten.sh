@@ -52,7 +52,7 @@ sudo -u make bash -c '[ -f ~/.ssh/github ] || ssh-keygen -t ed25519 -N "" -f ~/.
 sudo -u make bash -c 'printf "Host github.com\n  IdentityFile ~/.ssh/github\n  IdentitiesOnly yes\n" > ~/.ssh/config && ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null'
 
 echo "▸ Sicherung: age statt Passwort (der private Schlüssel bleibt beim Mac/Kevin, nie auf dem Server)"
-[ -s /srv/make-os/sicherung.pub ] || echo "   Noch kein /srv/make-os/sicherung.pub — siehe Schritt 3 unten (sonst bricht die Nachtsicherung ab)."
+[ -s /srv/make-os/sicherung.pub ] || echo "   Noch kein /srv/make-os/sicherung.pub — siehe Schritt 3 unten (sonst nur openssl-Übergang mit .sicherung-passwort, HOI rot; ohne Passwort keine Sicherung)."
 
 echo "▸ Cronjobs für make"
 ( { sudo -u make crontab -l 2>/dev/null | grep -v make-os || true; } ; \

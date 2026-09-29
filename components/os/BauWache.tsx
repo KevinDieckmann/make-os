@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
-import { bauHuelle, bauKennung, NEU_LADEN_EREIGNIS, NEU_LADEN_TEXT } from '@/lib/bau/kennung';
+import { bauHuelle, bauKennung, NEU_LADEN_EREIGNIS, NEU_LADEN_HINWEIS } from '@/lib/bau/kennung';
 
 declare global { interface Window { __makeBau?: string } }
 
@@ -36,7 +36,7 @@ export function BauWache() {
       display: 'flex', gap: 12, alignItems: 'center', padding: '10px 14px', borderRadius: 14, background: C.flaecheHoch,
       border: `1px solid ${LEUCHT.achtung}55`, boxShadow: '0 10px 30px rgba(0,0,0,.45)', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.ink,
     }}>
-      <span style={{ flex: 1, lineHeight: 1.45 }}>{NEU_LADEN_TEXT}</span>
+      <span style={{ flex: 1, lineHeight: 1.45 }}>{NEU_LADEN_HINWEIS}</span>
       <button onClick={() => window.location.reload()} style={{ background: LEUCHT.achtung, color: '#111', border: 'none', borderRadius: 999, padding: '6px 14px', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>Neu laden</button>
     </div>
   );

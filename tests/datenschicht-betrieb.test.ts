@@ -66,6 +66,14 @@ describe('HOI: Befunde der Datenschicht und Sicherung', () => {
     expect(finde(datenschichtBefunde(basisInnen, { zeit: JETZT, abholung: { alter_stunden: 50 } }, JETZT), 'abholung')?.ampel).toBe('rot');
     expect(finde(datenschichtBefunde(basisInnen, { zeit: JETZT }, JETZT), 'abholung')).toMatchObject({ ampel: 'gelb', wert: 'noch nie abgeholt' });
   });
+  it('Sicherung mit Warnung (Go-Live 29.09.): Archiv liegt, aber openssl statt age bzw. teilweise lesbar → rot, mit Dateinamen', () => {
+    const ossl = datenschichtBefunde({ ...basisInnen, sicherungLauf: { zeit: JETZT, ok: false, stufe: 'warnung', archiv: true, verfahren: 'openssl', ping: 'ok', grund: 'age fehlt — Sicherung nur mit Übergangs-Verschlüsselung', pruefung: { ok: true, bestaende: 3 } } }, null, JETZT);
+    expect(finde(ossl, 'sicherung-geprueft')).toMatchObject({ ampel: 'rot', wert: 'age fehlt — Sicherung nur mit Übergangs-Verschlüsselung' });
+    expect(finde(ossl, 'sicherung-ping')).toMatchObject({ ampel: 'gruen', wert: 'meldet Fehler' });
+    const teil = datenschichtBefunde({ ...basisInnen, sicherungLauf: { zeit: JETZT, ok: false, stufe: 'warnung', archiv: true, verfahren: 'age', ping: 'ok', pruefung: { ok: false, fehler: 1, fehlerNamen: ['crm'], archivFehlerNamen: [], ablageFehlerNamen: ['dateien/h1/d-1.bin'] } } }, null, JETZT);
+    expect(finde(teil, 'sicherung-geprueft')).toMatchObject({ ampel: 'rot', wert: 'teilweise: 2 Dateien nicht lesbar' });
+    expect(finde(teil, 'sicherung-geprueft')?.satz).toMatch(/crm, dateien\/h1\/d-1\.bin — Archiv trotzdem geschrieben/);
+  });
   it('Datenschicht: Zeitlimit rot, Stau gelb, Tagessicherung/Klartext rot, .tmp und zweiter Schreiber gelb, Schlüssel aus der Umgebung gelb', () => {
     expect(finde(datenschichtBefunde({ ...basisInnen, datenschicht: ds() }, null, JETZT), 'sperren')?.ampel).toBe('gruen');
     expect(finde(datenschichtBefunde({ ...basisInnen, datenschicht: ds({ sperrWarten: q(100, 9000) }) }, null, JETZT), 'sperren')?.ampel).toBe('gelb');

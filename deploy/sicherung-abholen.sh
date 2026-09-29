@@ -9,6 +9,8 @@
 # (Server schreibt die Marke „letzte Abholung“ für den Head of IT; > 48 h → Warnung) → Generationen am Mac
 # (14 täglich / 8 wöchentlich / 12 monatlich, deploy/generationen.sh). Optional ganz prüfen, wenn die
 # age-Identität auf dem Mac liegt (MAKE_OS_AGE_IDENTITAET=Pfad): entschlüsseln + tar-Liste lesen.
+# Beide Formate kommen an: .tar.gz.age (Normalweg) und .tar.gz.enc (openssl-Übergang, wenn am Server age/sicherung.pub
+# fehlt — deploy/sicherung.sh, HOI rot). Vollprüfung einer .enc nur mit MAKE_OS_SICHERUNG_PASSWORT_DATEI=Pfad.
 #
 # Einrichten (einmalig, am Mac):
 #   deploy/sicherung-abholen.sh --einrichten      # erzeugt ~/.ssh/make-os-abholung + zeigt die Zeile für den Server
@@ -66,6 +68,13 @@ if [ -n "${MAKE_OS_AGE_IDENTITAET:-}" ] && [[ "$NAME" == *.age ]]; then
   command -v age >/dev/null || { log "age fehlt (brew install age) — Vollprüfung übersprungen"; }
   if command -v age >/dev/null; then
     age -d -i "$MAKE_OS_AGE_IDENTITAET" "$ZIEL/$NAME" | tar -tzf - >/dev/null && log "Vollprüfung: entschlüsselbar, tar lesbar" || { log "Vollprüfung FEHLGESCHLAGEN"; exit 1; }
+  fi
+fi
+
+if [[ "$NAME" == *.enc ]]; then
+  log "Hinweis: $NAME ist nur mit der Übergangs-Verschlüsselung (openssl) gesichert — am Server age einrichten (DEPLOY.md › Sicherung)"
+  if [ -n "${MAKE_OS_SICHERUNG_PASSWORT_DATEI:-}" ]; then
+    openssl enc -d -aes-256-cbc -pbkdf2 -pass "file:$MAKE_OS_SICHERUNG_PASSWORT_DATEI" -in "$ZIEL/$NAME" | tar -tzf - >/dev/null && log "Vollprüfung: entschlüsselbar, tar lesbar" || { log "Vollprüfung FEHLGESCHLAGEN"; exit 1; }
   fi
 fi
 

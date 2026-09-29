@@ -1,6 +1,6 @@
 // ─── Build-Kennung: alte Tabs schreiben nicht mehr mit altem Code (29.09., A2) ─
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { bauHuelle, bauKennung, istNeuLaden, BAU_KOPF } from '@/lib/bau/kennung';
+import { bauHuelle, bauKennung, istNeuLaden, BAU_KOPF, NEU_LADEN_HINWEIS } from '@/lib/bau/kennung';
 import { bauFremd, bauPruefen } from '@/lib/bau/pruefen';
 
 afterEach(() => { vi.unstubAllEnvs(); });
@@ -55,5 +55,14 @@ describe('Server-Prüfung', () => {
     const r = bauPruefen(req({ [BAU_KOPF]: 'bau-1' }))!;
     expect(r.status).toBe(409);
     expect(await r.json()).toMatchObject({ ok: false, neuLaden: true });
+  });
+  it('Meldung an alte Tabs verspricht nichts (Go-Live 29.09.): nicht gespeichert, bitte neu eingeben', async () => {
+    vi.stubEnv('NEXT_PUBLIC_MAKE_BAU', 'bau-2');
+    const d = await bauPruefen(req({ [BAU_KOPF]: 'bau-1' }))!.json() as { error: string; fehler: string };
+    expect(d.error).toBe('MAKE OS wurde gerade aktualisiert. Bitte die Seite neu laden. Die letzte Eingabe wurde nicht gespeichert — bitte danach noch einmal eingeben.');
+    expect(d.fehler).toBe(d.error);
+    expect(d.error).not.toMatch(/gemerkt|bleiben/);
+    expect(NEU_LADEN_HINWEIS).toMatch(/Aufgaben-Änderungen bleiben in diesem Tab gemerkt/);
+    expect(NEU_LADEN_HINWEIS).toMatch(/CRM/);
   });
 });

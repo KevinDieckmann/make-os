@@ -20,7 +20,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import net from 'node:net';
 import { atomarSchreiben } from '../lib/store/atomar.mjs';
-import { schluesselRing, huellenVersion, huelleSchreiben, huelleOeffnen } from '../lib/store/huelle.mjs';
+import { schluesselRing, huellenVersion, huelleSchreiben, huelleOeffnen, aadAlternativen } from '../lib/store/huelle.mjs';
 import { binVersion, binOeffnen, binSchreiben } from '../lib/store/datei-huelle.mjs';
 import { skriptSperreOderAbbruch } from '../lib/store/schreiber.mjs';
 
@@ -47,11 +47,21 @@ const laufend = (await Promise.all(PORTE.map(async p => ((await belegt(p)) ? p :
 if (laufend.length) console.warn(`WARNUNG: Auf Port ${laufend.join(', ')} läuft eine App — Dev-Server/Prüfbau teilen denselben Datenordner. Erst anhalten, sonst kann sie mitten in der Umstellung schreiben.`);
 
 let getan = 0, gelassen = 0, fehler = 0;
+// ZOE hieß bis 27.09. Jarvis (Go-Live-Prüfung 29.09.): die App übernimmt `jarvis-X.json` beim ersten Lesen als `zoe-X.json`.
+// Die v2-Hülle bindet den Bestandsnamen als AAD — darum hier VOR dem Verschlüsseln umbenennen (wenn noch kein `zoe-X`
+// liegt) und sonst als AAD immer den Zielnamen `zoe-…` nehmen. Lesen bleibt tolerant (huelle.mjs `aadAlternativen`).
+const zielName = name => name.replace(/^jarvis(?=-|$)/, 'zoe');
+for (const n of await fs.readdir(DATEN).catch(() => [])) {
+  if (!/^jarvis(-[a-z0-9-]*)?\.json$/.test(n)) continue;
+  const ziel = path.join(DATEN, `${zielName(n.replace(/\.json$/, ''))}.json`);
+  try { await fs.link(path.join(DATEN, n), ziel); await fs.unlink(path.join(DATEN, n)); console.log(`umbenannt: ${n} → ${path.basename(ziel)}`); }
+  catch (e) { if (e?.code !== 'EEXIST') { fehler++; console.error('nicht umbenannt:', n); } }
+}
 /** AAD je Datei: Bestandsname (Tagessicherung ohne Datum), im Archiv `archiv/<datei>` — wie lib/store/local-db.ts und archiv.ts. */
 const aadVon = (ordner, n) => {
   if (path.basename(ordner) === 'archiv') return `archiv/${n}`;
   const name = n.replace(/\.json$/, '');
-  return path.basename(ordner) === 'backup' ? name.replace(/-\d{4}-\d{2}-\d{2}$/, '') : name;
+  return zielName(path.basename(ordner) === 'backup' ? name.replace(/-\d{4}-\d{2}-\d{2}$/, '') : name);
 };
 async function datei(ordner, n) {
   const p = path.join(ordner, n);
@@ -62,7 +72,8 @@ async function datei(ordner, n) {
   let neu = null;
   try {
     if (modus === '--verschluesseln') {
-      if (v === 2 && o.kid === ring.aktiv.kid) { gelassen++; return; }
+      // Aktueller Schlüssel und richtige AAD (unter dem Altnamen jarvis-… verschlüsselt → neu schreiben).
+      if (v === 2 && o.kid === ring.aktiv.kid && (!aadAlternativen(aad).length || !huelleOeffnen(o, ring, aad).aadAlt)) { gelassen++; return; }
       const klar = v ? huelleOeffnen(o, ring, aad).text : roh;
       neu = huelleSchreiben(klar, ring.aktiv, aad);
     } else if (v) neu = huelleOeffnen(o, ring, aad).text;

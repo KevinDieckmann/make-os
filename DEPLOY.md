@@ -143,11 +143,13 @@ Was im Repo steht und mit dem nächsten Ausrollen wirkt:
 - **Ausrollen:** `deploy/ausrollen.sh` ist der Forced Command des Ausroll-Schlüssels (nur `git merge --ff-only`
   + `docker compose up -d --build`). In `/home/make/.ssh/authorized_keys` muss die Zeile so aussehen:
   `command="/srv/make-os/app/deploy/ausrollen.sh",restrict ssh-ed25519 AAAA… make-os-ausrollen`
-- **Sicherung:** `/srv/make-os/sicherung.pub` (öffentlicher age-Schlüssel) ist seit 29.09. **Pflicht** — ohne sie bricht
-  `deploy/sicherung.sh` ab (kein openssl-Rückfall mehr); entschlüsseln kann nur, wer die age-Identität hat. Erzeugen
-  auf dem Mac: `age-keygen -o ~/make-os-sicherung.txt` (Datei in beide Passwort-Manager + Papier, NOTFALL.md), die
-  Zeile `age1…` nach `/srv/make-os/sicherung.pub`. Zweiter Ort: der Mac holt jede Nacht ab (Abschnitt „Sicherung,
-  Offsite, Wiederherstellung“).
+- **Sicherung:** `/srv/make-os/sicherung.pub` (öffentlicher age-Schlüssel) + `age` auf dem Server sind der Normalweg —
+  entschlüsseln kann nur, wer die age-Identität hat. Einrichten **vor** dem Upload (UPDATES.md › „Go-Live: VOR dem Upload
+  am Server“): `apt-get install age` am Server, am Mac `age-keygen -o ~/make-os-sicherung.txt` (Datei in beide
+  Passwort-Manager + Papier, NOTFALL.md), die Zeile `age1…` nach `/srv/make-os/sicherung.pub`. Fehlt age oder die Datei,
+  sichert `deploy/sicherung.sh` mit dem bisherigen openssl-Weg und `/srv/make-os/.sicherung-passwort` (`.tar.gz.enc`,
+  HOI rot „Übergangs-Verschlüsselung“, Ping als Fehler); fehlt auch das Passwort, bricht sie ab — nie unverschlüsselt.
+  Zweiter Ort: der Mac holt jede Nacht ab (Abschnitt „Sicherung, Offsite, Wiederherstellung“).
 - **SSH:** `server-haerten.sh` setzt `PermitRootLogin no`, sobald `make` einen Schlüssel und sudo hat
   (`server-einrichten.sh` richtet beides ein); `AllowTcpForwarding no`; Sicherheitsupdates explizit täglich.
 
@@ -230,14 +232,17 @@ Die Nachtarchive selbst sind als Ganzes mit age verschlüsselt.
 
 **Ziele:** RPO 24 h (Nachtarchiv 03:15 + Tageskopie je Bestand vor dem ersten Überschreiben des Tages), RTO 4 h
 (NOTFALL.md, gemessen mit `sicherung-probe.sh --app`). Löschkonzept: Sicherungen sind „beyond use“ und laufen nach
-den Generationen unten ab (längstens 12 Monate). Offen (#70): Grabsteine, die eine Wiederherstellung automatisch um
-spätere Art.-17-Löschungen bereinigen — bis dahin nach einem Restore das Löschprotokoll der Zwischenzeit von Hand nachziehen.
+den Generationen unten ab (längstens 12 Monate). Spätere Art.-17-Löschungen bereinigen die Grabsteine nach jeder
+Wiederherstellung (Abschnitt „Datenschutz: Pepper und Grabsteine“, `deploy/wiederherstellen.sh`).
 
 **Ablauf der Nachtsicherung** (`deploy/sicherung.sh`, Cron 03:15 als make): Schreibpause ≤ 30 s über
 `POST /api/intern/schreibpause` (Dienstweg im Container) → Schnappschuss nach `daten/.sicherung-stage` (ohne
 `backup/`, Brain-Index, `.tmp`) → Pause aufheben → jeden Bestand entschlüsseln/parsen/zählen
-(`scripts/sicherung-pruefen.mjs` im Container) → tar.gz → age → Kopf und Dateizahl prüfen → Generationen.
-Immer (auch bei Fehlern): `daten/system/sicherung.json` (nur Zahlen) für den Head of IT und der Dead-Man-Ping.
+(`scripts/sicherung-pruefen.mjs` im Container) → tar.gz → age (ohne age: openssl-Übergang, siehe oben) → Kopf und
+Dateizahl prüfen → Generationen. Ist bei der Prüfung eine einzelne Datei nicht lesbar (oder läuft die Prüfung nicht), wird
+das Archiv trotzdem geschrieben — Status „teilweise“ mit den Dateinamen, HOI rot, Ping als Fehler.
+Immer (auch bei Fehlern): `daten/system/sicherung.json` (Zahlen und Dateinamen, nie Inhalte) für den Head of IT und
+der Dead-Man-Ping (Erfolg nur, wenn alles in Ordnung ist).
 
 **Generationen** (Server `sicherungen/` und Mac `~/MAKE-OS-Sicherungen`, `deploy/generationen.sh`): 14 täglich,
 8 wöchentlich (neuestes je Kalenderwoche), 12 monatlich (neuestes je Monat).

@@ -7,6 +7,9 @@
 // Datensätze zählen), das Archiv (archiv/*.json, AAD archiv/<datei>) und die Dateiablage
 // (dateien/<haushalt>/*.bin, Hülle MKOSDAT1). Gibt NUR Zahlen und Bestandsnamen aus, nie Inhalte
 // und nie Schlüssel. Exit 0 = alles lesbar, 2 = Fehler (falscher Schlüssel, defekte Datei).
+// Seit 29.09. (Go-Live-Prüfung) nennt das Ergebnis bei Fehlern die DATEINAMEN (Bestand, archiv/<datei>,
+// dateien/<haushalt>/<id>.bin — nie Inhalte): die Nachtsicherung behält das Archiv dann trotzdem und meldet
+// „teilweise“ (deploy/sicherung.sh). Im JSON höchstens 25 Namen je Liste (`namenGekuerzt`), ohne Zählung je Bestand.
 // Schlüssel wie die App: MAKE_OS_DATEN_SCHLUESSEL(_DATEI) und …_ALT(_DATEI) — ohne Schlüssel werden
 // verschlüsselte Bestände als Fehler gezählt (Klartext-Ordner, z. B. lokal, gehen ohne).
 import { promises as fs } from 'node:fs';
@@ -30,7 +33,7 @@ function oeffne(roh, aad) {
   return { daten: JSON.parse(huelleOeffnen(o, ring, aad).text), version: v };
 }
 
-const ergebnis = { zeit: new Date().toISOString(), bestaende: 0, datensaetze: 0, v2: 0, v1: 0, klartext: 0, fehler: 0, fehlerNamen: [], archiv: 0, archivFehler: 0, ablage: 0, ablageFehler: 0, je: {} };
+const ergebnis = { zeit: new Date().toISOString(), bestaende: 0, datensaetze: 0, v2: 0, v1: 0, klartext: 0, fehler: 0, fehlerNamen: [], archiv: 0, archivFehler: 0, archivFehlerNamen: [], ablage: 0, ablageFehler: 0, ablageFehlerNamen: [], je: {} };
 
 for (const n of (await fs.readdir(ordner).catch(() => [])).filter(n => n.endsWith('.json')).sort()) {
   const name = n.replace(/\.json$/, '');
@@ -43,7 +46,7 @@ for (const n of (await fs.readdir(ordner).catch(() => [])).filter(n => n.endsWit
 }
 for (const n of (await fs.readdir(path.join(ordner, 'archiv')).catch(() => [])).filter(n => n.endsWith('.json'))) {
   try { oeffne(await fs.readFile(path.join(ordner, 'archiv', n), 'utf8'), `archiv/${n}`); ergebnis.archiv++; }
-  catch { ergebnis.archivFehler++; }
+  catch { ergebnis.archivFehler++; ergebnis.archivFehlerNamen.push(`archiv/${n}`); }
 }
 // Dateiablage: v1 „MKOSDAT1“ oder v2 „MKOSDAT2“ (Schlüssel-ID + AAD) — gemeinsamer Code lib/store/datei-huelle.mjs.
 for (const h of await fs.readdir(path.join(ordner, 'dateien')).catch(() => [])) {
@@ -52,16 +55,21 @@ for (const h of await fs.readdir(path.join(ordner, 'dateien')).catch(() => [])) 
     ergebnis.ablage++;
     const b = await fs.readFile(path.join(ordner, 'dateien', h, n));
     if (!binVersion(b)) continue;
-    try { binOeffnen(b, ring, h, n.slice(0, -4)); } catch { ergebnis.ablageFehler++; }
+    try { binOeffnen(b, ring, h, n.slice(0, -4)); } catch { ergebnis.ablageFehler++; ergebnis.ablageFehlerNamen.push(`dateien/${h}/${n}`); }
   }
 }
 ergebnis.dauerMs = Date.now() - t0;
 const gut = !ergebnis.fehler && !ergebnis.archivFehler && !ergebnis.ablageFehler;
 
-if (alsJson) { console.log(JSON.stringify({ ...ergebnis, ok: gut })); }
+if (alsJson) {
+  const rest = { ...ergebnis }; delete rest.je; // Zählung je Bestand gehört nicht in den Status (die Durchsicht der App zählt je Bestand)
+  const kurz = l => l.slice(0, 25);
+  const gekuerzt = [ergebnis.fehlerNamen, ergebnis.archivFehlerNamen, ergebnis.ablageFehlerNamen].some(l => l.length > 25);
+  console.log(JSON.stringify({ ...rest, fehlerNamen: kurz(rest.fehlerNamen), archivFehlerNamen: kurz(rest.archivFehlerNamen), ablageFehlerNamen: kurz(rest.ablageFehlerNamen), ...(gekuerzt ? { namenGekuerzt: true } : {}), ok: gut }));
+}
 else {
   for (const [name, z] of Object.entries(ergebnis.je)) console.log(`  ${name.padEnd(48)} ${String(z).padStart(7)}`);
-  for (const name of ergebnis.fehlerNamen) console.log(`  ${name.padEnd(48)}  FEHLER (Schlüssel passt nicht oder Datei defekt)`);
+  for (const name of [...ergebnis.fehlerNamen, ...ergebnis.archivFehlerNamen, ...ergebnis.ablageFehlerNamen]) console.log(`  ${name.padEnd(48)}  FEHLER (Schlüssel passt nicht oder Datei defekt)`);
   console.log(`\n  Bestände: ${ergebnis.bestaende + ergebnis.fehler} (v2 ${ergebnis.v2}, v1 ${ergebnis.v1}, Klartext ${ergebnis.klartext}, Fehler ${ergebnis.fehler}) · Datensätze gesamt: ${ergebnis.datensaetze}`);
   console.log(`  Archiv: ${ergebnis.archiv} lesbar, ${ergebnis.archivFehler} Fehler · Dateiablage: ${ergebnis.ablage} Dateien, ${ergebnis.ablageFehler} nicht entschlüsselbar`);
   console.log(gut ? '\n  ✓ Probe bestanden — alles lesbar.' : '\n  ✗ Probe NICHT bestanden — falscher Schlüssel (Archiv von vor einer Rotation? dann …_ALT setzen) oder defekte Dateien.');

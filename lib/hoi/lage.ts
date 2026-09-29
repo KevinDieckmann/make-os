@@ -82,7 +82,16 @@ export interface DatenschichtLage {
   fremderSchreiber: { pid: number; host: string } | null;
   schluesselQuelle: 'datei' | 'umgebung' | 'keiner';
 }
-export interface SicherungLauf { zeit?: string; ok?: boolean; grund?: string; datei?: string; groesse_mb?: number; dateien?: number; dauer_s?: number; schnappschuss?: string; ping?: string; pruefung?: { ok?: boolean; bestaende?: number; datensaetze?: number; fehler?: number } | null }
+/**
+ * Ergebnis der Nachtsicherung (deploy/sicherung.sh). Seit 29.09. (Go-Live-Prüfung): `stufe` warnung = Archiv liegt
+ * (`archiv: true`), aber nur mit Übergangs-Verschlüsselung (`verfahren: 'openssl'`) oder nicht vollständig geprüft
+ * (Dateinamen in `pruefung.*FehlerNamen`) — `ok` ist dann false, der HOI zeigt rot.
+ */
+export interface SicherungLauf {
+  zeit?: string; ok?: boolean; stufe?: 'ok' | 'warnung' | 'fehler'; archiv?: boolean; verfahren?: 'age' | 'openssl';
+  grund?: string; datei?: string; groesse_mb?: number; dateien?: number; dauer_s?: number; schnappschuss?: string; ping?: string;
+  pruefung?: { ok?: boolean; bestaende?: number; datensaetze?: number; fehler?: number; archivFehler?: number; ablageFehler?: number; fehlerNamen?: string[]; archivFehlerNamen?: string[]; ablageFehlerNamen?: string[] } | null;
+}
 export interface DurchsichtKurz { zeit: string; bestaende: number; zeilen: number; fehler: number; klartext: number; alteHuellen: number; alteForm: number; spruenge: { name: string; vorher: number; nachher: number }[]; tmpReste: number; verbindungen: { fehler: number; warnung: number; hinweis: number } | { nichtGeprueft: string } }
 
 const uhr = (h: number) => (h < 1 ? `${Math.round(h * 60)} min` : h < 48 ? `${Math.round(h)} h` : `${Math.round(h / 24)} Tage`);
@@ -176,13 +185,23 @@ export function datenschichtBefunde(innen: InnenLage, host: HostLage | null, jet
   if (s === null) b.push({ id: 'sicherung-geprueft', bereich: 'sicherung', label: 'Sicherung geprüft', ampel: 'grau', wert: 'noch kein Prüfergebnis', satz: 'deploy/sicherung.sh schreibt ab dem nächsten Lauf daten/system/sicherung.json' });
   else if (s) {
     const alt = stunden(s.zeit);
-    if (!s.ok) b.push({ id: 'sicherung-geprueft', bereich: 'sicherung', label: 'Sicherung geprüft', ampel: 'rot', wert: 'letzter Lauf gescheitert', satz: (s.grund || 'Grund im Protokoll /srv/make-os/sicherungen/protokoll.txt').slice(0, 160) });
+    if (!s.ok && s.archiv) {
+      // Archiv liegt, aber nicht so, wie es soll: nur openssl statt age, oder einzelne Dateien nicht lesbar/ungeprüft.
+      const p = s.pruefung;
+      const namen = [...(p?.fehlerNamen ?? []), ...(p?.archivFehlerNamen ?? []), ...(p?.ablageFehlerNamen ?? [])];
+      const teile = [
+        ...(s.verfahren === 'openssl' ? ['age fehlt — Sicherung nur mit Übergangs-Verschlüsselung'] : []),
+        ...(namen.length ? [`teilweise: ${namen.length} Datei${namen.length === 1 ? '' : 'en'} nicht lesbar`] : []),
+        ...(p == null ? ['Archiv ungeprüft'] : []),
+      ];
+      b.push({ id: 'sicherung-geprueft', bereich: 'sicherung', label: 'Sicherung geprüft', ampel: 'rot', wert: teile.join(' · ') || 'Archiv liegt, mit Warnung', satz: (namen.length ? `nicht lesbar: ${namen.slice(0, 5).join(', ')}${namen.length > 5 ? ' …' : ''} — Archiv trotzdem geschrieben` : s.grund || 'Grund im Protokoll /srv/make-os/sicherungen/protokoll.txt').slice(0, 160) });
+    } else if (!s.ok) b.push({ id: 'sicherung-geprueft', bereich: 'sicherung', label: 'Sicherung geprüft', ampel: 'rot', wert: 'letzter Lauf gescheitert', satz: (s.grund || 'Grund im Protokoll /srv/make-os/sicherungen/protokoll.txt').slice(0, 160) });
     else {
       const p = s.pruefung;
       const ohnePause = s.schnappschuss === 'ohne-pause';
       b.push({ id: 'sicherung-geprueft', bereich: 'sicherung', label: 'Sicherung geprüft', ampel: alt !== null && alt > 30 ? 'gelb' : ohnePause ? 'gelb' : 'gruen', wert: `${p?.bestaende ?? '?'} Bestände · ${p?.datensaetze ?? '?'} Datensätze · ${s.dateien ?? '?'} Dateien${s.dauer_s != null ? ` · ${s.dauer_s} s` : ''}`, satz: ohnePause ? 'ohne Schreibpause gesichert — die App war nicht erreichbar oder nicht still' : 'entschlüsselt, geparst und gezählt, Archiv mit age-Kopf' });
     }
-    b.push({ id: 'sicherung-ping', bereich: 'sicherung', label: 'Dead-Man-Ping der Sicherung', ampel: s.ping === 'ok' ? 'gruen' : 'gelb', wert: s.ping === 'ok' ? 'meldet' : s.ping === 'fehler' ? 'Ping gescheitert' : 'nicht eingerichtet', satz: s.ping === 'ok' ? 'Healthchecks schlägt Alarm, wenn die Sicherung ausbleibt' : 'Pflicht: Ping-Adresse (Healthchecks.io) nach /srv/make-os/.healthchecks-sicherung — sonst merkt niemand, wenn die Sicherung ausfällt' });
+    b.push({ id: 'sicherung-ping', bereich: 'sicherung', label: 'Dead-Man-Ping der Sicherung', ampel: s.ping === 'ok' ? 'gruen' : 'gelb', wert: s.ping === 'ok' ? (s.ok ? 'meldet' : 'meldet Fehler') : s.ping === 'fehler' ? 'Ping gescheitert' : 'nicht eingerichtet', satz: s.ping === 'ok' ? 'Healthchecks schlägt Alarm, wenn die Sicherung ausbleibt' : 'Pflicht: Ping-Adresse (Healthchecks.io) nach /srv/make-os/.healthchecks-sicherung — sonst merkt niemand, wenn die Sicherung ausfällt' });
   }
   // Abholung durch den Mac (Offsite)
   if (host) {

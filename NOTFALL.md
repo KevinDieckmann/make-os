@@ -11,7 +11,7 @@ Hier stehen **nur Orte, nie Werte**. Ziele: **RPO 24 h** (höchstens ein Tag Dat
 | **Datenschlüssel** (aktuell) | entschlüsselt jeden Bestand | Passwort-Manager Kevin · Passwort-Manager Malin · Papier im Tresor |
 | **Alter Datenschlüssel** (Rotation 26.09.) und jeder weitere alte | Sicherungen von vor der jeweiligen Rotation | wie oben, Eintrag „… ALT — rotiert am …“ |
 | **age-Identität** (`AGE-SECRET-KEY-…`, Datei `make-os-sicherung.txt`) | entschlüsselt die Nachtarchive | wie oben (Papier: ausgedruckt) |
-| **Sicherungspasswort** (`.sicherung-passwort`, nur für alte `.enc`-Archive vor dem 26.09.) | alte Archive | wie oben |
+| **Sicherungspasswort** (`.sicherung-passwort`, für `.enc`-Archive: vor dem 26.09. und die openssl-Übergangssicherung, wenn am Server age fehlt) | `.enc`-Archive | wie oben |
 | **GitHub-Zugang** (Repo `make-os`, `make-vault`) mit 2FA-Wiederherstellungscodes | Code + Vault | Passwort-Manager beider |
 | **Hetzner-Zugang** mit 2FA | neuer Server | Passwort-Manager beider |
 | Die Archive selbst | Daten | Mac `~/MAKE-OS-Sicherungen` (täglich abgeholt) · Server `/srv/make-os/sicherungen` · Hetzner-Abbilder |
