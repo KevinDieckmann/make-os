@@ -847,8 +847,9 @@ export function verbindungenReparieren(b: VerbindungsBestaende, ids: readonly st
   const planung = planungReparieren(b, will, { mandate: m.mandate, firmen: m.firmen });
   aenderungen.push(...planung.aenderungen);
   // Kalender (29.09., K1): Einträge zu gelöschten Terminen, tote Kennungen, Fokus-Blöcke aus gelöschten Fokuszeiten.
-  const kal = kalenderReparieren({ ...b, fokus: planung.fokus }, will, kalenderLebend(b, m));
+  // K3 (30.09.): Meetings mit Verweis auf gelöschte Termine — auf der schon reparierten Kartei (`kontakte`).
+  const kal = kalenderReparieren({ ...b, kontakte, fokus: planung.fokus }, will, kalenderLebend(b, m));
   aenderungen.push(...kal.aenderungen);
 
-  return { aenderungen, bestaende: { ...b, crm, kontakte, konflikte, dateien, aufgaben, planung: planung.planung, fokus: kal.fokus, kalender: kal.kalender } };
+  return { aenderungen, bestaende: { ...b, crm, kontakte: kal.kontakte, konflikte, dateien, aufgaben, planung: planung.planung, fokus: kal.fokus, kalender: kal.kalender } };
 }

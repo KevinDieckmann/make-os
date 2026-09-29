@@ -9,19 +9,22 @@
 // /api/crm/followup (anlegen, erledigen) und — für eigene Notizen — POST
 // /api/crm/aktivitaet mit `aktion: 'aendern' | 'loeschen'`, Anker und Stand
 // (28.09., H4: 409 statt Überschreiben, Löschmarke gegen Wiederauferstehung).
-// „+ Meeting“ schreibt Zeitpunkt und Ort als Felder `wann`/`ort` (H4).
+// „+ Meeting“ legt seit 30.09. (K3) einen echten Termin an (Anlege-Dialog des Kalenders) — Zeit und Ort liest die
+// Akte aus dem Termin (`terminUid`); die alte Form mit `wann`/`ort` (H4) bleibt für den Bestand lesbar.
 
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import Link from 'next/link';
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
-import { NOTIZ_FELDER, type Ergebnis, type Kontakt, type AktivitaetArt } from '@/lib/make-one/crm';
+import { NOTIZ_FELDER, anzeigename, type Ergebnis, type Kontakt, type AktivitaetArt } from '@/lib/make-one/crm';
+import { NeuerTermin } from '../../kalender/NeuerTermin';
 import type { FollowUpArt } from '@/lib/crm/typen';
 import { FOLLOWUP_ARTEN } from '@/lib/crm/followup';
 import { nameVon } from '@/lib/crm/team';
 import { WEG } from '@/lib/wege';
 import { kanalStatus } from '@/lib/crm/recht';
 import {
-  ERGEBNIS_KURZ, ERGEBNIS_TITEL, ANRUF_ERGEBNISSE, STATUS_LABEL, meetingWann, darfBearbeiten, bezugAufloesen,
+  ERGEBNIS_KURZ, ERGEBNIS_TITEL, ANRUF_ERGEBNISSE, STATUS_LABEL, darfBearbeiten, bezugAufloesen,
   type Eintrag, type Kategorie,
 } from '@/lib/crm/aktivitaeten';
 import { Knopf, feld, LEUCHT } from '../../schlank';
@@ -136,6 +139,8 @@ export function AktivitaetKarte({ e, k, api, heute, kompakt, markiert, onErledig
               {e.ort && <span>Ort: {e.ort}</span>}
               {bezug && <button type="button" onClick={zuBezug} className="fassbar" style={{ ...leiseKnopf, padding: 0, color: C.aktiv }}>{bezug.art === 'deal' ? 'Deal' : bezug.art === 'mandat' ? 'Mandat' : bezug.art === 'event' ? 'Event' : bezug.art === 'kampagne' ? 'Kampagne' : 'Firma'}: {bezug.titel} ›</button>}
               {e.hinweis && <span>{e.hinweis}</span>}
+              {/* K3: Meeting aus einem Kalendertermin — Zeit und Ort kommen aus dem Termin; Klick öffnet ihn. */}
+              {e.aktivitaet?.terminUid && <Link href={WEG.termin(e.aktivitaet.terminUid, e.tag)} style={{ color: C.aktiv, textDecoration: 'none' }}>im Kalender ›</Link>}
               {e.anlass && <span>Anlass: {e.anlass}</span>}
             </div>
             {bearbeiten != null ? (
@@ -286,28 +291,19 @@ export function AnrufNeu({ k, api, heute, onFertig, onAbbruch }: FormProps) {
   );
 }
 
+/**
+ * „+ Meeting“ (30.09., K3): ein ECHTER Termin — der Anlege-Dialog des Kalenders, vorbelegt mit der Person (und ihrer
+ * Firma). Aus dem Termin wird die Aktivität „Meeting“ (lib/crm/termin-aktivitaet.ts, eine je Termin); Zeit und Ort liest
+ * die Akte aus dem Termin. Auch ein vergangenes Meeting wird so ein Termin (Tag in der Vergangenheit wählen).
+ */
 export function MeetingNeu({ k, api, heute, onFertig, onAbbruch }: FormProps) {
-  const [tag, setTag] = useState(heute);
-  const [zeit, setZeit] = useState('');
-  const [ort, setOrt] = useState('');
-  const [notiz, setNotiz] = useState('');
-  const [laeuft, setLaeuft] = useState(false);
-  const ok = /^\d{4}-\d{2}-\d{2}$/.test(tag);
-  const los = async () => {
-    setLaeuft(true);
-    // Zeitpunkt und Ort als Felder (28.09., H4) — der Text ist nur die Notiz.
-    try { if (await schreiben(api, { id: k.id, art: 'termin', wann: meetingWann(tag, zeit), ...(ort.trim() ? { ort: ort.trim() } : {}), ...(notiz.trim() ? { text: notiz.trim() } : {}) })) onFertig('Meeting festgehalten.'); } finally { setLaeuft(false); }
-  };
+  const stunde = Math.min(22, new Date().getHours() + 1);
+  const vorgabe = useMemo(() => ({ tag: heute, von: `${String(stunde).padStart(2, '0')}:00`, art: 'termin' as const, titel: `Meeting ${anzeigename(k)}`.slice(0, 120), crm: { kontaktId: k.id, ...(k.firmaId ? { firmaId: k.firmaId } : {}) } }), [heute, stunde, k]);
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      <Zeile>
-        <input type="date" value={tag} onChange={e => setTag(e.target.value)} aria-label="Datum" style={{ ...eingabe, width: 'auto' }} />
-        <input type="time" value={zeit} onChange={e => setZeit(e.target.value)} aria-label="Uhrzeit" style={{ ...eingabe, width: 'auto' }} />
-        <input value={ort} onChange={e => setOrt(e.target.value)} placeholder="Ort oder Videolink" aria-label="Ort" style={{ ...eingabe, flex: 1, minWidth: 160, width: 'auto' }} />
-      </Zeile>
-      <textarea value={notiz} onChange={e => setNotiz(e.target.value)} rows={3} placeholder="Notiz — Anlass, Agenda, Ergebnis" aria-label="Notiz zum Meeting" style={{ ...eingabe, resize: 'vertical' }} />
-      <Hinweis>Hält das Meeting fest (Stufe rückt auf „Termin“ vor) — keine Kalendereinladung, keine Teilnehmer. Liegt es in der Zukunft, steht es oben unter „Kommend“.</Hinweis>
-      <Fuss ok={ok} laeuft={laeuft} knopf="Meeting festhalten" onSpeichern={() => void los()} onAbbruch={onAbbruch} />
+      <Hinweis>Der Termin landet im Kalender (iCloud) und steht dann hier als Meeting — mit der Zeit aus dem Kalender.</Hinweis>
+      <NeuerTermin vorgabe={vorgabe} heute={heute} standardDauer={60} kalender={[]} onZu={onAbbruch}
+        onAngelegt={x => { if (x.uid) { void api.laden(true); onFertig(x.gaeste ? `Termin angelegt — Einladung an ${x.gaeste} ${x.gaeste === 1 ? 'Person' : 'Personen'} verschickt.` : 'Termin angelegt — steht unter Aktivitäten als Meeting.'); } }} />
     </div>
   );
 }

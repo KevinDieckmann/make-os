@@ -5,12 +5,27 @@
 // Postfach und private Kalender bleiben draußen), nur bekannte Personen der
 // Kartei, nur Betreff/Titel — nie Mailtext. Wiederholbar über einen
 // Bezugsschlüssel je Nachricht/Termin.
+// Seit 30.09. (K3): Termine ordnen sich über ihren BEZUG zu (`kalender-bezug`: Kontakt + Gäste aus dem CRM) — der
+// Name im Titel ist nur noch Rückfall für Termine ohne Bezug. Für Termine mit Bezug legt dieses Signal NICHTS an: die
+// Aktivität „Meeting“ mit `terminUid` entsteht in lib/crm/termin-aktivitaet.ts (eine Quelle, keine Doppelzählung —
+// Verbindungskarte Befund 7). Zeitvergleich über `ausWandzeit` (Befund 11: Wandzeit gegen UTC war bis 2 h zu spät).
 
 import type { Kontakt, Aktivitaet } from '@/lib/make-one/crm';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
+import { ausWandzeit } from '@/lib/kalender/zeit';
 
 export interface MailEin { id: string; email: string; betreff: string; am: string }
-export interface TerminEin { id: string; titel: string; start: string }
+/**
+ * Ein Termin für die Signale. `start`: Berliner Wandzeit (iCloud) oder ISO mit Zone (Beispiel-Quellen). `uid` = die
+ * echte iCloud-UID (für „gibt es schon ein Meeting dazu?“), `kontaktIds` = Bezug + Gäste aus `kalender-bezug`.
+ */
+export interface TerminEin { id: string; titel: string; start: string; uid?: string; kontaktIds?: readonly string[] }
+
+/** Zeitpunkt eines Terminbeginns in ms — Wandzeit über `ausWandzeit`, ISO mit Zone direkt. */
+export function terminMs(start: string): number {
+  if (/(Z|[+-]\d{2}:\d{2})$/.test(start)) return Date.parse(start);
+  try { return ausWandzeit(start.slice(0, 19)).getTime(); } catch { return Number.NaN; }
+}
 export interface Signal { kontaktId: string; aktivitaet: Aktivitaet }
 
 function hash(t: string): string { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
@@ -53,15 +68,24 @@ export function personImTitel(k: Kontakt, titel: string): boolean {
 export function terminSignale(kontakte: Kontakt[], termine: TerminEin[], jetzt: string): { vergangen: Signal[]; kommend: Record<string, { titel: string; start: string }> } {
   const vergangen: Signal[] = [];
   const kommend: Record<string, { titel: string; start: string }> = {};
+  const jetztMs = Date.parse(jetzt);
+  const nachId = new Map(kontakte.map(k => [k.id, k]));
+  const merke = (k: Kontakt, t: TerminEin) => { if (!kommend[k.id] || terminMs(t.start) < terminMs(kommend[k.id].start)) kommend[k.id] = { titel: t.titel, start: t.start }; };
   for (const t of termine) {
+    const vorbei = terminMs(t.start) <= jetztMs;
+    // Bezug gewinnt: zugeordnet über `kalender-bezug`, die Aktivität legt lib/crm/termin-aktivitaet.ts an.
+    if (t.kontaktIds?.length) {
+      if (!vorbei) for (const id of t.kontaktIds) { const k = nachId.get(id); if (k && !ausgenommen(k)) merke(k, t); }
+      continue;
+    }
     const passend = kontakte.filter(k => !ausgenommen(k) && personImTitel(k, t.titel));
     if (passend.length !== 1) continue; // mehrdeutig → lieber nichts zuordnen
     const k = passend[0];
-    if (t.start <= jetzt) {
+    if (vorbei) {
       const bezug = bezugTermin(t.id);
-      if ((k.aktivitaeten ?? []).some(a => a.bezug === bezug)) continue;
+      if ((k.aktivitaeten ?? []).some(a => a.bezug === bezug || (!!t.uid && (a.terminUid === t.uid || a.terminUid?.startsWith(`${t.uid}::`) || a.bezug === bezugTermin(t.uid))))) continue;
       vergangen.push({ kontaktId: k.id, aktivitaet: { am: t.start, art: 'termin', text: `Termin: ${t.titel.slice(0, 200)}`, von: 'system', bezug } });
-    } else if (!kommend[k.id] || t.start < kommend[k.id].start) kommend[k.id] = { titel: t.titel, start: t.start };
+    } else merke(k, t);
   }
   return { vergangen, kommend };
 }

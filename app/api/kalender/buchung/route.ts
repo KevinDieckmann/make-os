@@ -2,9 +2,10 @@
 // GET  → { ok, seiten (+ Pfad), buchungen (ohne Token-Hash), vorschlaege }
 // POST { aktion: 'seite', seite: {…, id?} }            anlegen/ändern (neue bekommen eine nicht erratbare Adresse)
 //      { aktion: 'seite-loeschen', id }                 nur ohne Buchungen (sonst erst deaktivieren — Löschfrist räumt)
-//      { aktion: 'freigeben', id }                      fester Termin + CRM (lib/kalender/buchung-ablauf.ts)
+//      { aktion: 'freigeben', id, einladen?, einladungBestaetigt? }  fester Termin + CRM (lib/kalender/buchung-ablauf.ts);
+//                                                       `einladen` (K3): Gast als echte Einladung — nur mit Bestätigung
 //      { aktion: 'ablehnen', id, grund? }               Buchender sieht den Status (und den Grund) auf seiner Seite
-// Nur der Haushalt des Inhabers (wie der Kalender). Versendet wird nichts.
+// Nur der Haushalt des Inhabers (wie der Kalender). Versendet wird nichts — außer der Einladung nach Klick (iCloud).
 
 import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
@@ -15,6 +16,7 @@ import { neueKennung } from '@/lib/kennung';
 import { seiteSauber, GRENZEN, OFFEN, type Buchung, type BuchungsSeite } from '@/lib/kalender/buchung';
 import { ladeBuchungBestand, aendereBuchungBestand, buchungProtokoll, neuerSlug } from '@/lib/kalender/buchung-speicher';
 import { buchungFreigeben, folgeVorschlag, FreigabeFehler } from '@/lib/kalender/buchung-ablauf';
+import { istDienst } from '@/lib/zugang/dienst';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -95,8 +97,12 @@ export async function POST(req: Request) {
 
   if (b.aktion === 'freigeben') {
     const id = typeof b.id === 'string' && ID.test(b.id) ? b.id : '';
+    // K3: Gast als echte Einladung — nur nach der Rückfrage in der Oberfläche (`einladungBestaetigt`), nie über den Dienstweg.
+    const einladen = b.einladen === true;
+    if (einladen && b.einladungBestaetigt !== true) return nein('Einladung erst nach Bestätigung („Einladung senden?“).', 409);
+    if (einladen && istDienst(req)) return nein('Einladungen nur von Hand — nie über ZOE oder Skripte.', 403);
     try {
-      await buchungFreigeben(id, person, jetzt);
+      await buchungFreigeben(id, person, jetzt, { einladen });
     } catch (e) {
       if (e instanceof FreigabeFehler) return nein(e.message, e.status);
       const text = e instanceof Error ? e.message.slice(0, 200) : 'Fehler';

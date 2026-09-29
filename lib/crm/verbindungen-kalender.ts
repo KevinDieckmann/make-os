@@ -9,6 +9,10 @@
 //                              beim nächsten Speichern in MAKE OS wird die Art wieder in den Termin geschrieben.
 //   zeit-termin-tot            Fokus-Block aus einer Fokuszeit, deren Termin es nicht mehr gibt. Die Zeit zählt weiter;
 //                              Reparieren nimmt nur den Verweis `terminUid` weg.
+//   aktivitaet-termin-tot      (K3, 30.09.) Aktivität „Meeting“ mit `terminUid`, deren Termin es nicht mehr gibt (in Apple
+//                              gelöscht). Geprüft nur, wo wir es wissen: Termin nicht im Stand UND (kein Bezug-Eintrag mehr
+//                              oder sein Starttag im Holfenster). Reparieren löst nur den Verweis — die Aktivität bleibt
+//                              (ihre Zeit ist dann der Tag, an dem sie festgehalten wurde).
 // Beispiele sind UIDs bzw. Schlüssel — nie Titel. Eingehängt in lib/crm/verbindungen.ts.
 
 import type { FokusBlock, ZeitDatei } from '@/lib/zeitmessung/modell';
@@ -30,6 +34,7 @@ export const PRUEFUNGEN_KALENDER = {
   'kalender-bezug-kennung-tot': { schwere: 'warnung', bereich: 'kalender', reparierbar: true, art: 'kennung', knopf: 'Bezug entfernen', text: (n: number) => `${n} ${e(n, 'Termin zeigt', 'Termine zeigen')} auf eine Aufgabe, ein Mandat, eine Person, Firma, einen Deal oder ein Event, die es nicht mehr gibt — „Bezug entfernen“ nimmt nur den toten Verweis weg (der Termin bleibt).` },
   'termin-art-verloren': { schwere: 'hinweis', bereich: 'kalender', reparierbar: false, art: 'kennung', text: (n: number) => `${n} ${e(n, 'Termin hat', 'Termine haben')} die Art (Abwesend, Fokuszeit, Arbeitsort) in Apple verloren — MAKE OS zeigt sie aus der Sicherung weiter und schreibt sie beim nächsten Speichern zurück.` },
   'zeit-termin-tot': { schwere: 'hinweis', bereich: 'zeit', reparierbar: true, art: 'kennung', knopf: 'Verweis entfernen', text: (n: number) => `${n} Fokus-${e(n, 'Block stammt', 'Blöcke stammen')} aus einer Fokuszeit, die es im Kalender nicht mehr gibt — die Zeit zählt weiter; „Verweis entfernen“ löst nur die Verbindung.` },
+  'aktivitaet-termin-tot': { schwere: 'hinweis', bereich: 'kontakte', reparierbar: true, art: 'kennung', knopf: 'Verweis lösen', text: (n: number) => `${n} ${e(n, 'Meeting im CRM zeigt', 'Meetings im CRM zeigen')} auf einen Termin, den es im Kalender nicht mehr gibt (in Apple gelöscht) — „Verweis lösen“ lässt die Aktivität stehen und nimmt nur die Verbindung weg.` },
 } as const;
 export type KalenderPruefungId = keyof typeof PRUEFUNGEN_KALENDER;
 
@@ -37,6 +42,28 @@ export type KalenderPruefungId = keyof typeof PRUEFUNGEN_KALENDER;
 export type KalenderLebend = Partial<Record<BezugFeld, ReadonlySet<string>>>;
 
 const imFenster = (tag: string | undefined, f: { von: string; bis: string }) => !!tag && tag >= f.von && tag < f.bis;
+
+/** Was die Prüfung von der Kartei braucht: je Kontakt die Aktivitäten mit Termin-Verweis. */
+export type KontaktTermine = readonly { id: string; aktivitaeten?: readonly { terminUid?: string }[] }[];
+
+/**
+ * Meetings, deren Termin es nicht mehr gibt (Schlüssel `kontaktId|terminUid`). Nur bei gelungenem Stand; ein Termin mit
+ * Bezug-Eintrag außerhalb des Holfensters bleibt unentschieden (wir kennen ihn nicht).
+ */
+export function toteMeetings(k: KalenderPruefBestand | null | undefined, kontakte: KontaktTermine | null | undefined): string[] {
+  if (!k?.fenster) return [];
+  const da = new Set(k.objekte.map(o => o.uid));
+  const tag = new Map(k.bezuege.map(b => [uidVonSchluessel(b.schluessel), b.tag]));
+  const raus: string[] = [];
+  for (const kt of kontakte ?? []) for (const a of kt.aktivitaeten ?? []) {
+    if (!a.terminUid) continue;
+    const uid = uidVonSchluessel(a.terminUid);
+    if (da.has(uid)) continue;
+    if (tag.has(uid) && !imFenster(tag.get(uid), k.fenster)) continue;
+    raus.push(`${kt.id}|${a.terminUid}`);
+  }
+  return raus;
+}
 
 /** Tote Kennungen eines Bezugs (nur Felder, deren Menge bekannt ist). */
 export function toteKennungen(k: BezugKennungen, l: KalenderLebend): BezugFeld[] {
@@ -54,7 +81,7 @@ export function toteTermine(k: KalenderPruefBestand | null | undefined, fokus?: 
 }
 
 export function kalenderPruefen(
-  b: { kalender?: KalenderPruefBestand | null; fokus?: { person: string; bloecke: FokusBlock[] }[] | null },
+  b: { kalender?: KalenderPruefBestand | null; fokus?: { person: string; bloecke: FokusBlock[] }[] | null; kontakte?: KontaktTermine | null },
   l: KalenderLebend,
   melde: (id: KalenderPruefungId, kennung: string) => void,
 ): void {
@@ -62,22 +89,35 @@ export function kalenderPruefen(
   const tot = toteTermine(k, b.fokus);
   for (const s of tot.bezuege) melde('termin-uid-tot', s);
   for (const u of tot.bloecke) melde('zeit-termin-tot', u);
+  for (const m of toteMeetings(k, b.kontakte)) melde('aktivitaet-termin-tot', m);
   if (!k) return;
   for (const x of k.bezuege) if (toteKennungen(x.kennungen, l).length) melde('kalender-bezug-kennung-tot', x.schluessel);
   const ohneArt = new Set(k.objekte.filter(o => !o.mitArt).map(o => o.uid));
   for (const x of k.bezuege) if (x.art && x.art !== 'termin' && !x.schluessel.includes('::') && ohneArt.has(x.schluessel)) melde('termin-art-verloren', x.schluessel);
 }
 
-export interface KalenderAenderung { befundId: KalenderPruefungId; speicher: 'kalender-bezug' | 'zeit'; anzahl: number; text: string }
+export interface KalenderAenderung { befundId: KalenderPruefungId; speicher: 'kalender-bezug' | 'zeit' | 'kontakte'; anzahl: number; text: string }
 
 /** Reparieren (rein): was „Reparieren“ täte — der Schreibweg (Route) rechnet in der Sperre neu. */
-export function kalenderReparieren<P extends { kalender?: KalenderPruefBestand | null; fokus?: { person: string; bloecke: FokusBlock[] }[] | null }>(
+export function kalenderReparieren<P extends { kalender?: KalenderPruefBestand | null; fokus?: { person: string; bloecke: FokusBlock[] }[] | null; kontakte: readonly { id: string; aktivitaeten?: readonly { terminUid?: string }[] }[] }>(
   b: P, will: ReadonlySet<string>, l: KalenderLebend,
-): { aenderungen: KalenderAenderung[]; kalender: P['kalender']; fokus: P['fokus'] } {
+): { aenderungen: KalenderAenderung[]; kalender: P['kalender']; fokus: P['fokus']; kontakte: P['kontakte'] } {
   const aenderungen: KalenderAenderung[] = [];
   let kalender = b.kalender;
   let fokus = b.fokus;
+  let kontakte = b.kontakte;
   const tot = toteTermine(b.kalender, b.fokus);
+  if (will.has('aktivitaet-termin-tot')) {
+    const weg = new Set(toteMeetings(b.kalender, b.kontakte));
+    if (weg.size) {
+      let n = 0;
+      kontakte = b.kontakte.map(kt => {
+        if (!(kt.aktivitaeten ?? []).some(a => a.terminUid && weg.has(`${kt.id}|${a.terminUid}`))) return kt;
+        return { ...kt, aktivitaeten: (kt.aktivitaeten ?? []).map(a => { if (!a.terminUid || !weg.has(`${kt.id}|${a.terminUid}`)) return a; n++; const { terminUid: _t, ...rest } = a; return rest; }) };
+      }) as unknown as P['kontakte'];
+      if (n) aenderungen.push({ befundId: 'aktivitaet-termin-tot', speicher: 'kontakte', anzahl: n, text: `${n} ${e(n, 'Meeting', 'Meetings')}: Verweis auf gelöschten Termin gelöst (Aktivität bleibt)` });
+    }
+  }
   if (kalender && will.has('termin-uid-tot') && tot.bezuege.length) {
     const weg = new Set(tot.bezuege);
     kalender = { ...kalender, bezuege: kalender.bezuege.filter(x => !weg.has(x.schluessel)) };
@@ -101,7 +141,7 @@ export function kalenderReparieren<P extends { kalender?: KalenderPruefBestand |
     fokus = fokus.map(p => ({ ...p, bloecke: p.bloecke.map(bl => { if (!bl.terminUid || !weg.has(bl.terminUid)) return bl; n++; const { terminUid: _t, ...rest } = bl; return rest; }) }));
     if (n) aenderungen.push({ befundId: 'zeit-termin-tot', speicher: 'zeit', anzahl: n, text: `${n} Fokus-${e(n, 'Block', 'Blöcke')}: Verweis auf gelöschte Fokuszeit entfernt (Zeit bleibt)` });
   }
-  return { aenderungen, kalender, fokus };
+  return { aenderungen, kalender, fokus, kontakte };
 }
 
 /** Für den Schreibweg: die Zeit-Datei einer Person von toten Termin-Verweisen befreien (Sekunden bleiben). */

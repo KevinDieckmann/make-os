@@ -74,7 +74,7 @@ describe('Verbindungsprüfung — sauberer Bestand', () => {
   });
   it('jede Prüfung hat Satz, Schwere und Bereich; reparierbar ist eine feste Teilmenge', () => {
     for (const id of PRUEFUNG_IDS) expect(PRUEFUNGEN[id].text(2)).toMatch(/^\S/);
-    expect(REPARIERBAR).toEqual(['firma-mutter-tot', 'werte-ausserhalb-wertelisten', 'firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'einschraenkung-kampagne', 'aufgabe-bezug-tot', 'datei-fehlt', 'konflikt-veraltet', 'kontakt-firma-text-abweichend', 'kontakt-typ-abweichend', 'teilnahme-doppelt', 'ziel-mandat-tot', 'meilenstein-mandat-tot', 'zeit-mandat-tot', 'termin-uid-tot', 'kalender-bezug-kennung-tot', 'zeit-termin-tot']);
+    expect(REPARIERBAR).toEqual(['firma-mutter-tot', 'werte-ausserhalb-wertelisten', 'firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'einschraenkung-kampagne', 'aufgabe-bezug-tot', 'datei-fehlt', 'konflikt-veraltet', 'kontakt-firma-text-abweichend', 'kontakt-typ-abweichend', 'teilnahme-doppelt', 'ziel-mandat-tot', 'meilenstein-mandat-tot', 'zeit-mandat-tot', 'termin-uid-tot', 'kalender-bezug-kennung-tot', 'zeit-termin-tot', 'aktivitaet-termin-tot']);
   });
 });
 
@@ -175,6 +175,11 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   ['kalender-bezug-kennung-tot', b => { b.kalender!.bezuege.push({ schluessel: 'U-2', tag: '2026-10-01', kennungen: { aufgabeId: 't-weg', kontaktId: 'c-anna1' } }, { schluessel: 'U-1::x', tag: '2026-10-01', kennungen: { eventId: 'ev-weg' } }); }, 2, 'U-2'],
   ['termin-art-verloren', b => { b.kalender!.bezuege.push({ schluessel: 'U-2', tag: '2026-10-01', art: 'abwesend', kennungen: {} }); }, 1, 'U-2'],
   ['zeit-termin-tot', b => { b.fokus![0].bloecke.push({ von: '2026-09-28T08:00:00.000Z', bis: '2026-09-28T09:00:00.000Z', schluessel: 'business:fokuszeit', label: 'x', sek: 3600, terminUid: 'U-weg' }); }, 1, 'U-weg'],
+  // K3 (30.09.): Meeting mit Verweis auf einen gelöschten Termin — nur im Holfenster bzw. ohne Bezug-Eintrag; lebend, uralt → nichts.
+  ['aktivitaet-termin-tot', b => {
+    b.kalender!.bezuege.push({ schluessel: 'U-uralt', tag: '2025-01-01', kennungen: {} });
+    b.kontakte[0].aktivitaeten = [...(b.kontakte[0].aktivitaeten ?? []), { am: J, art: 'termin', von: 'kevin', terminUid: 'U-weg' }, { am: J, art: 'termin', von: 'kevin', terminUid: 'U-1' }, { am: J, art: 'termin', von: 'kevin', terminUid: 'U-uralt' }, { am: J, art: 'termin', von: 'kevin', terminUid: 'U-2::20261001T080000Z' }];
+  }, 1, 'c-anna1|U-weg'],
   ['einwilligung-beleg-tot', b => { b.kontakte[0].einwilligungen = [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: HEUTE, nachweis: 'Formular', wortlaut: 'Ja, gern', belegRef: 'd-weg99' }]; b.kontakte[1].einwilligungen = [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: HEUTE, nachweis: 'Formular', wortlaut: 'Ja, gern', belegRef: 'Formular d-abcd1' }]; }, 1, 'c-anna1'],
 ];
 
@@ -269,6 +274,7 @@ describe('Verbindungen reparieren', () => {
     // Kalender (29.09., K1): Bezug zu gelöschtem Termin, tote Kennung im Bezug, Fokus-Block aus gelöschter Fokuszeit.
     b.kalender!.bezuege.push({ schluessel: 'U-weg', tag: '2026-10-01', kennungen: { aufgabeId: 't-1' } }, { schluessel: 'U-2', tag: '2026-10-01', kennungen: { mandatId: 'm-weg', aufgabeId: 't-1' } });
     b.fokus![0].bloecke.push({ von: '2026-09-28T08:00:00.000Z', bis: '2026-09-28T09:00:00.000Z', schluessel: 'business:fokuszeit', label: 'x', sek: 3600, terminUid: 'U-weg' });
+    b.kontakte[1].aktivitaeten = [...(b.kontakte[1].aktivitaeten ?? []), { am: J, art: 'termin', von: 'kevin', text: 'Meeting: X', terminUid: 'U-weg' }];
     // Nicht reparierbar — muss stehen bleiben:
     b.crm.chancen[0].firmaId = 'f-weg';
     b.crm.teilnahmen.push({ id: 'tn-9', eventId: 'ev-1', kontaktId: 'c-weg1', status: 'da', geaendert: J });

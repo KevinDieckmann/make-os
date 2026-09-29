@@ -7,6 +7,7 @@
 // Aktivitäten der beteiligten Personen; die offenen Follow-ups zum Deal.
 // Die Auswertung: Prognose nach Monat, Verweildauer, Umwandlung, Win/Loss, Zyklus.
 
+import { TermineAkte } from '../kalender/TermineAkte';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -182,6 +183,11 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
           <Karte i={4}>
             <Ueberschrift rechts={<Link href={WEG.followup()} style={{ color: C.inkLeise, textDecoration: 'none', fontSize: 12.5 }}>Follow-up ›</Link>}>Offene Follow-ups</Ueberschrift>
             {folgen.length ? <Liste>{folgen.map(f => <Zeile key={f.id} links={<Punkt farbe={f.gruppe === 'ueberfaellig' ? LEUCHT.kritisch : f.gruppe === 'heute' ? LEUCHT.achtung : LEUCHT.business} />} titel={f.text} unter={`${f.name} · ${datum(f.faellig, crm.heute)}`} rechts={<Person id={f.zustaendig} groesse={16} />} />)}</Liste> : <Leer>Kein offenes Follow-up. Der nächste Schritt oben zählt als Zusage.</Leer>}
+          </Karte>
+          {/* Termine (30.09., K3): am Deal verknüpfte Termine (kalender-bezug), Klick öffnet den Kalender. */}
+          <Karte i={5}>
+            <Ueberschrift>Termine</Ueberschrift>
+            <TermineAkte frage={{ deals: [c.id] }} heute={crm.heute} />
           </Karte>
           <Karte i={5}>
             <Ueberschrift>Verlauf</Ueberschrift>

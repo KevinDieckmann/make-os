@@ -68,6 +68,9 @@ export const WEG = {
   qualifizierung: () => markttraktion('qualifizierung'),
   angebot: (x?: AngebotAdresse) => angebotLink(x),
 
+  /** Ein Termin im Kalender (K3): Tag anspringen und das Termin-Fenster öffnen (Schlüssel `uid` bzw. `uid::RID`). */
+  termin: (id: string, tag?: string) => q('/os/kalender', { tag, termin: id }),
+  kalender: (tag?: string) => q('/os/kalender', { tag }),
   woche: (tag?: string) => q('/os/planung/woche', { tag }),
   tag: (tag?: string) => q('/os/planung', { tag }),
   routinen: () => '/os/planung/routinen',

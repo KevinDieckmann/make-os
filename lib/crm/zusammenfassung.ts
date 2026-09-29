@@ -16,7 +16,7 @@
 import type { Aktivitaet, Kontakt } from '@/lib/make-one/crm';
 import type { Chance, CrmBestand, Mandat } from './typen';
 import { echtesGespraech, OFFENE_STUFEN, STUFEN } from './pipeline';
-import { ankerListe, berlin, meetingVon } from './aktivitaeten';
+import { ankerListe, berlin, meetingVon, type TerminZeiten } from './aktivitaeten';
 import { lifecycleVon, type LifecycleBestand } from './vorschlaege';
 import { LIFECYCLE_LABEL, type LifecyclePhase } from './lifecycle';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
@@ -75,7 +75,7 @@ export type ZfBestand = LifecycleBestand;
  * Reihenfolge der Sätze fest (Gespräch · Mail/Antwort · Deal/Mandat · Schritt & Lifecycle),
  * Quellen in der Reihenfolge ihres Auftretens nummeriert.
  */
-export function zusammenfassung(k: Kontakt, crm: ZfBestand | null | undefined, heute: string, jetzt?: string): Zusammenfassung {
+export function zusammenfassung(k: Kontakt, crm: ZfBestand | null | undefined, heute: string, jetzt?: string, termine?: TerminZeiten): Zusammenfassung {
   const quellen: ZfQuelle[] = [];
   const saetze: ZfSatz[] = [];
   const neu = (q: OhneNr<ZfQuelle>): number => { const nr = quellen.length + 1; quellen.push({ ...q, nr } as ZfQuelle); return nr; };
@@ -84,8 +84,10 @@ export function zusammenfassung(k: Kontakt, crm: ZfBestand | null | undefined, h
   // Zeitpunkt jedes Eintrags als Berliner Wandzeit „YYYY-MM-DDTHH:MM“: Meetings mit ihrem `wann`
   // (Altbestand: erste Textzeile, sonst der Tag des Festhaltens), alles andere mit `am` (28.09.).
   const jetztWand = (() => { if (!jetzt) return `${heute}T23:59`; const b = berlin(jetzt); return `${b.tag}T${b.zeit ?? '23:59'}`; })();
-  const zeitpunkt = (a: Aktivitaet): { wand: string; tag: string; meeting: boolean; zeit?: string } => {
-    const mt = meetingVon(a);
+  const zeitpunkt = (a: Aktivitaet): { wand: string; tag: string; meeting: boolean; zeit?: string; unbekannt?: true } => {
+    const mt = meetingVon(a, termine);
+    // K3: Meeting aus einem Termin, dessen Zeit (noch) nicht geladen ist — weder „letztes“ noch „nächstes“ Meeting raten.
+    if (mt && a.terminUid && !termine?.[a.terminUid]) return { wand: `${mt.tag}T00:00`, tag: mt.tag, meeting: true, unbekannt: true };
     if (mt) return { wand: `${mt.tag}T${mt.zeit ?? '00:00'}`, tag: mt.tag, meeting: true, ...(mt.zeit ? { zeit: mt.zeit } : {}) };
     const b = berlin(a.am);
     return { wand: `${b.tag}T${b.zeit ?? '00:00'}`, tag: b.tag, meeting: false };
@@ -96,10 +98,10 @@ export function zusammenfassung(k: Kontakt, crm: ZfBestand | null | undefined, h
   const vorbei = (z: { wand: string; tag: string; zeit?: string }) => (z.zeit ? z.wand <= jetztWand : z.tag <= heute);
 
   // 1 · letztes echtes Gespräch/Meeting — nur, was schon stattgefunden hat
-  const g = echt.find(({ a, z }) => echtesGespraech(a) && (!z.meeting || vorbei(z)));
+  const g = echt.find(({ a, z }) => echtesGespraech(a) && !z.unbekannt && (!z.meeting || vorbei(z)));
   if (g) {
     const nr = neu({ art: 'aktivitaet', anker: anker[g.i], am: g.a.am, label: `${gespraechArt(g.a)} am ${tag(g.z.tag, heute)}` });
-    const zusatz = kurz(g.a.notiz?.erkenntnisse ?? g.a.notiz?.bedarf ?? (g.z.meeting ? meetingVon(g.a)?.notiz : g.a.text), 90);
+    const zusatz = kurz(g.a.notiz?.erkenntnisse ?? g.a.notiz?.bedarf ?? (g.z.meeting ? meetingVon(g.a, termine)?.notiz : g.a.text), 90);
     saetze.push({ text: `Letztes echtes Gespräch am ${tag(g.z.tag, heute)} (${gespraechArt(g.a)}, ${vor(g.z.tag, heute)})${zusatz ? `: „${zusatz}“` : ''}.`, quellen: [nr] });
   }
 
@@ -114,9 +116,9 @@ export function zusammenfassung(k: Kontakt, crm: ZfBestand | null | undefined, h
   }
 
   // 2b · nächstes Meeting — das früheste, das noch bevorsteht (28.09.)
-  const kommend = echt.filter(({ a, z }) => a.art === 'termin' && z.meeting && !vorbei(z)).sort((x, y) => x.z.wand.localeCompare(y.z.wand))[0];
+  const kommend = echt.filter(({ a, z }) => a.art === 'termin' && z.meeting && !z.unbekannt && !vorbei(z)).sort((x, y) => x.z.wand.localeCompare(y.z.wand))[0];
   if (kommend) {
-    const mt = meetingVon(kommend.a)!;
+    const mt = meetingVon(kommend.a, termine)!;
     const nr = neu({ art: 'aktivitaet', anker: anker[kommend.i], am: kommend.a.am, label: `Meeting am ${tag(mt.tag, heute)}` });
     saetze.push({ text: `Nächstes Meeting am ${tag(mt.tag, heute)}${mt.zeit ? ` um ${mt.zeit} Uhr` : ''} (${vor(mt.tag, heute)})${mt.ort ? `, ${kurz(mt.ort, 60)}` : ''}.`, quellen: [nr] });
   }

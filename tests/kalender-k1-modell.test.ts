@@ -162,7 +162,7 @@ describe('Eingaben der Termin-Route', () => {
     expect(b).toMatchObject({ ok: true, e: { erinnerungenMin: [15, 60], bezug: { kontaktId: 'c-1' }, sichtbarkeit: 'privat', farbe: 'gold' } });
   });
   it('ändern: Termin-Felder und Bezug getrennt, Stand wird mitgenommen', () => {
-    expect(aendernPruefen({ uid: 'u', stand: 'e1', farbe: '', art: 'fokus', bezug: { aufgabeId: 't-1', mandatId: null } })).toEqual({ ok: true, e: { uid: 'u', stand: 'e1', termin: { art: 'fokus', farbe: null }, bezug: { aufgabeId: 't-1', mandatId: null } } });
+    expect(aendernPruefen({ uid: 'u', stand: 'e1', farbe: '', art: 'fokus', bezug: { aufgabeId: 't-1', mandatId: null } })).toEqual({ ok: true, e: { uid: 'u', stand: 'e1', termin: { art: 'fokus', farbe: null }, bezug: { aufgabeId: 't-1', mandatId: null }, einladungBestaetigt: false } });
     expect(aendernPruefen({ uid: 'u', bezug: { aufgabeId: '../x y' } })).toEqual({ ok: false, fehler: 'Ungültige Kennung (aufgabeId).' });
     expect(aendernPruefen({ uid: 'u', farbe: 'lila' })).toEqual({ ok: false, fehler: 'Unbekannte Farbe.' });
   });

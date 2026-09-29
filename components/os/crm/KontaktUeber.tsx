@@ -8,6 +8,7 @@
 //   Nächster Schritt · Lead-Qualifizierung kurz (Score, Kernfragen) · Beziehung kurz ·
 //   die letzten drei Aktivitäten mit „alle ›“.
 
+import { useTerminZeiten } from '../kalender/TermineAkte';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -56,7 +57,9 @@ export function KontaktUeber({ k, api, heute, name, setze, klappen, breit, zuRei
   const router = useRouter();
   const crm = api.crm;
   // Jetzt mitgeben (28.09.): ein Meeting von heute 18 Uhr ist um 10 Uhr noch das „nächste“, kein vergangenes Gespräch.
-  const zf = useMemo(() => zusammenfassung(k, crm?.stand, heute, new Date().toISOString()), [k, crm, heute]);
+  // K3: Meetings aus Kalenderterminen tragen ihre Zeit im Termin — über den Bezug gelesen.
+  const terminZeiten = useTerminZeiten(k.id);
+  const zf = useMemo(() => zusammenfassung(k, crm?.stand, heute, new Date().toISOString(), terminZeiten), [k, crm, heute, terminZeiten]);
   const ki = useKi();
   const [frage, setFrage] = useState('');
   const [antwort, setAntwort] = useState<{ text: string; art: 'ok' | 'hinweis' } | 'laedt' | null>(null);

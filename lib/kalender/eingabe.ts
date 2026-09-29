@@ -3,12 +3,36 @@
 // wird hier gesäubert — Zeiten, Art, Farbe, frei/beschäftigt, Sichtbarkeit, Zeitzone,
 // Wiederholung (voll), Erinnerungen, Arbeitsort und die Bezüge (nur Kennungen → Bestand
 // `kalender-bezug`, nie in den Termin). Fehler als Satz (400).
+// K3 (30.09.): Gäste (Adresse, Name, Kontakt-Kennung) — die Adresse geht NUR in den Termin (ATTENDEE), die Kennung
+// in `kalender-bezug.gastKontakte`; `einladungBestaetigt: true` ist die ausdrückliche Bestätigung aus der Oberfläche.
 
 import { istIcsArt, istSichtbarkeit, farbeSauber, arbeitsortSauber, arbeitsortTitel, erinnerungenSauber, beschaeftigtStandard, type IcsArt, type Sichtbarkeit, type Arbeitsort } from './arten';
 import { wiederholungSauber, type Wiederholung } from './wiederholung';
 import { zoneGueltig, STANDARD_ZONE } from './zeitzone';
-import { kennungenVon, type BezugKennungen } from './bezug';
+import { kennungenVon, GAST_KONTAKTE_MAX, type BezugKennungen } from './bezug';
+import { adresseAus, TEILNAHMEN, type Teilnahme } from './gaeste';
 import type { Wer } from './einstellungen';
+
+/** Ein Gast aus der Oberfläche: Adresse (Pflicht), Name, Kontakt-Kennung aus dem CRM. */
+export interface GastEingabe { email: string; name?: string; kontaktId?: string }
+const KONTAKT = /^c-[a-z0-9-]{4,60}$/;
+
+/** Gäste prüfen (höchstens GAST_KONTAKTE_MAX, ohne Doppelte) — `null` bei ungültiger Adresse (dann 400). */
+export function gaestePruefen(v: unknown): { ok: true; gaeste: GastEingabe[] } | { ok: false; fehler: string } {
+  if (v === undefined || v === null) return { ok: true, gaeste: [] };
+  if (!Array.isArray(v)) return { ok: false, fehler: 'Gäste als Liste.' };
+  if (v.length > GAST_KONTAKTE_MAX) return { ok: false, fehler: `Höchstens ${GAST_KONTAKTE_MAX} Gäste.` };
+  const raus = new Map<string, GastEingabe>();
+  for (const g of v) {
+    const o = (g && typeof g === 'object' ? g : { email: g }) as Record<string, unknown>;
+    const email = adresseAus(o.email);
+    if (!email) return { ok: false, fehler: `Keine gültige E-Mail-Adresse: „${String(o.email ?? '').slice(0, 80)}“.` };
+    const name = text(o.name, 120);
+    const kontaktId = typeof o.kontaktId === 'string' && KONTAKT.test(o.kontaktId) ? o.kontaktId : undefined;
+    if (!raus.has(email)) raus.set(email, { email, ...(name ? { name } : {}), ...(kontaktId ? { kontaktId } : {}) });
+  }
+  return { ok: true, gaeste: Array.from(raus.values()) };
+}
 
 const WAND = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$/;
 /** Wandzeit „YYYY-MM-DD[THH:mm[:ss]]“ → „YYYY-MM-DDTHH:mm:ss“ (ohne Zone, nie über new Date). */
@@ -23,6 +47,9 @@ export interface AnlegeEingabe {
   wiederholung?: Wiederholung; erinnerungenMin: number[]; arbeitsort?: Arbeitsort;
   /** Nur Kennungen → `kalender-bezug`. */
   bezug: BezugKennungen;
+  /** Gäste (K3) — nur mit `einladungBestaetigt` geschrieben. */
+  gaeste: GastEingabe[];
+  einladungBestaetigt: boolean;
 }
 
 /** POST-Körper prüfen. */
@@ -46,6 +73,10 @@ export function anlegenPruefen(b: Record<string, unknown>): { ok: true; e: Anleg
   const erinnerungenMin = erinnerungenSauber([...(Array.isArray(b.erinnerungenMin) ? b.erinnerungenMin : []), ...(typeof b.erinnerungMin === 'number' && b.erinnerungMin >= 0 ? [b.erinnerungMin] : [])]);
   const ort = text(b.ort, 300), notiz = text(b.notiz, 2000), kalender = text(b.kalender, 100);
   const farbe = farbeSauber(b.farbe);
+  const g = gaestePruefen(b.gaeste);
+  if (!g.ok) return g;
+  // Gäste nur an echten Terminen (Abwesend, Fokuszeit, Arbeitsort laden niemanden ein).
+  if (g.gaeste.length && art !== 'termin') return { ok: false, fehler: 'Gäste gibt es nur an Terminen.' };
   return {
     ok: true,
     e: {
@@ -54,6 +85,7 @@ export function anlegenPruefen(b: Record<string, unknown>): { ok: true; e: Anleg
       art, ...(farbe ? { farbe } : {}), beschaeftigt, sichtbarkeit: istSichtbarkeit(b.sichtbarkeit) ? b.sichtbarkeit : 'standard', zone,
       ...(wiederholung ? { wiederholung } : {}), erinnerungenMin, ...(arbeitsort ? { arbeitsort } : {}),
       bezug: kennungenVon(b.bezug && typeof b.bezug === 'object' ? b.bezug as BezugKennungen : {}),
+      gaeste: g.gaeste, einladungBestaetigt: b.einladungBestaetigt === true,
     },
   };
 }
@@ -63,6 +95,11 @@ export interface AenderEingabe {
   termin: { titel?: string; start?: string; ende?: string; ort?: string | null; notiz?: string | null; art?: IcsArt; farbe?: string | null; beschaeftigt?: boolean; sichtbarkeit?: Sichtbarkeit };
   /** Bezüge ändern (null = Kennung entfernen) — nur Neben-Bestand, auch bei Serien erlaubt. */
   bezug?: Record<string, string | null>;
+  /** K3: die ganze neue Gästeliste (nur Organisator, nur nach Bestätigung). */
+  gaeste?: GastEingabe[];
+  /** K3: als Gast antworten (nur nach Bestätigung). */
+  antwort?: Exclude<Teilnahme, 'offen'>;
+  einladungBestaetigt: boolean;
 }
 
 /** PATCH-Körper prüfen. */
@@ -96,5 +133,9 @@ export function aendernPruefen(b: Record<string, unknown>): { ok: true; e: Aende
     }
   }
   const stand = text(b.stand, 200);
-  return { ok: true, e: { uid, ...(stand ? { stand } : {}), termin, ...(bezug ? { bezug } : {}) } };
+  let gaeste: GastEingabe[] | undefined;
+  if (b.gaeste !== undefined) { const g = gaestePruefen(b.gaeste); if (!g.ok) return g; gaeste = g.gaeste; }
+  if (b.antwort !== undefined && !(TEILNAHMEN as readonly unknown[]).includes(b.antwort)) return { ok: false, fehler: 'Antwort: zugesagt, abgesagt oder vielleicht.' };
+  const antwort = b.antwort === 'zugesagt' || b.antwort === 'abgesagt' || b.antwort === 'vielleicht' ? b.antwort : undefined;
+  return { ok: true, e: { uid, ...(stand ? { stand } : {}), termin, ...(bezug ? { bezug } : {}), ...(gaeste ? { gaeste } : {}), ...(antwort ? { antwort } : {}), einladungBestaetigt: b.einladungBestaetigt === true } };
 }

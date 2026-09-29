@@ -11,13 +11,18 @@
 //   Schreiben Anlegen, verschieben, umbenennen, löschen — immer mit ETag
 //             (If-Match / If-None-Match): Wer gleichzeitig am iPhone ändert,
 //             wird nicht überschrieben (409 statt still weg).
+//   Gäste     (K3, 30.09.) Termine mit Gästen tragen ORGANIZER = eine Adresse
+//             des Kontos (`calendar-user-address-set`, sonst die Apple-ID) —
+//             iCloud verschickt Einladung/Änderung/Absage. Jede Schreibaktion,
+//             die Post an Gäste auslöst, braucht `einladungBestaetigt`, sonst
+//             `EinladungNoetig` (409 mit Anzahl + Adressen für die Rückfrage).
 //
 // Die Zugangsdaten gehen NUR an *.icloud.com (auch bei Weiterleitungen).
 
 import { randomUUID } from 'node:crypto';
 import { loadJson, saveJson } from '@/lib/store/local-db';
 import { antworten, istTerminKalender, text, adresse, etagSauber, klartext } from './dav';
-import { termineAus, baueTermin, aendereTermin, uidVon, nichtBearbeitbar, objektKurz, type KalenderObjekt, type Termin, type Aenderung, type NeuerTermin } from './ics';
+import { termineAus, baueTermin, aendereTermin, antwortSetzen, einladungsLage, uidVon, nichtBearbeitbar, objektKurz, adresseAus, type KalenderObjekt, type Termin, type Aenderung, type NeuerTermin, type Teilnahme } from './ics';
 import { tagPlus } from './zeit';
 import { localDay } from '@/lib/zeit';
 import { mitBezug, type BezugBestand } from './bezug';
@@ -41,6 +46,8 @@ export interface IcloudStand {
   /** iCloud hat die Anmeldung abgelehnt — dann seltener versuchen (Apple sperrt sonst). */
   fehlerAnmeldung?: boolean;
   home?: string;
+  /** Adressen des Kontos (calendar-user-address-set, klein) — Organisator neuer Einladungen, „bin ich Gast?“ (K3). */
+  adressen?: string[];
   kalender: KalenderEintrag[];
   objekte: Record<string, KalenderObjekt[]>;
 }
@@ -68,6 +75,22 @@ export class KalenderFehler extends Error {
 /** 409: der Termin hat inzwischen einen anderen Stand (ETag) — mit dem aktuellen Termin, damit „Deine Fassung“ bleibt. */
 export class KalenderKonflikt extends KalenderFehler {
   constructor(message: string, public aktuell: Termin | null) { super(message, 409); }
+}
+/**
+ * 409 (K3): diese Schreibaktion schickt Post an Gäste (Einladung, Änderung, Absage, Antwort) — erst nach Bestätigung.
+ * `adressen` nur für die Rückfrage in der Oberfläche (nie ins Protokoll).
+ */
+export class EinladungNoetig extends KalenderFehler {
+  constructor(public was: 'einladung' | 'aenderung' | 'absage' | 'antwort', public adressen: string[]) {
+    super(was === 'antwort' ? 'Antwort an den Organisator senden?' : `${was === 'einladung' ? 'Einladung' : was === 'absage' ? 'Absage' : 'Änderung'} an ${adressen.length} ${adressen.length === 1 ? 'Person' : 'Personen'} über iCloud senden?`, 409);
+  }
+}
+
+/** Adressen des Kontos (klein): aus iCloud, sonst die Apple-ID. */
+export function kontoAdressen(s: Pick<IcloudStand, 'adressen'>): string[] {
+  if (s.adressen?.length) return s.adressen;
+  const id = adresseAus(zugang()?.id);
+  return id ? [id] : [];
 }
 
 const icloudHost = (u: string) => { try { const h = new URL(u); return h.protocol === 'https:' && (h.hostname === 'icloud.com' || h.hostname.endsWith('.icloud.com')); } catch { return false; } };
@@ -99,17 +122,19 @@ async function dav(url: string, method: string, opt: { body?: string; tiefe?: '0
 
 const PROPFIND = (props: string) => `<?xml version="1.0" encoding="UTF-8"?><d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:cs="http://calendarserver.org/ns/" xmlns:a="http://apple.com/ns/ical/"><d:prop>${props}</d:prop></d:propfind>`;
 
-/** Wo liegen die Kalender? principal → calendar-home-set. */
-async function entdecke(): Promise<string> {
+/** Wo liegen die Kalender? principal → calendar-home-set (+ die Adressen des Kontos für Einladungen, K3). */
+async function entdecke(): Promise<{ home: string; adressen: string[] }> {
   const p = await dav(BASIS, 'PROPFIND', { tiefe: '0', body: PROPFIND('<d:current-user-principal/>') });
   const principal = text(antworten(p.text, ['current-user-principal'])[0]?.props['current-user-principal'] ?? '', 'href');
   if (!principal) throw new KalenderFehler(`iCloud: kein Konto gefunden (${p.status}).`);
-  const h = await dav(adresse(BASIS, principal), 'PROPFIND', { tiefe: '0', body: PROPFIND('<c:calendar-home-set/>') });
-  const home = text(antworten(h.text, ['calendar-home-set'])[0]?.props['calendar-home-set'] ?? '', 'href');
+  const h = await dav(adresse(BASIS, principal), 'PROPFIND', { tiefe: '0', body: PROPFIND('<c:calendar-home-set/><c:calendar-user-address-set/>') });
+  const props = antworten(h.text, ['calendar-home-set', 'calendar-user-address-set'])[0]?.props ?? {};
+  const home = text(props['calendar-home-set'] ?? '', 'href');
   if (!home) throw new KalenderFehler('iCloud: keine Kalender gefunden.');
   const url = adresse(adresse(BASIS, principal), home);
   if (!icloudHost(url)) throw new KalenderFehler('iCloud: unerwartete Kalender-Adresse.');
-  return url;
+  const adressen = Array.from(new Set(Array.from((props['calendar-user-address-set'] ?? '').matchAll(/mailto:([^<\s"]+)/gi)).map(m => adresseAus(m[1])).filter((x): x is string => !!x)));
+  return { home: url, adressen };
 }
 
 async function kalenderListe(home: string): Promise<KalenderEintrag[]> {
@@ -159,7 +184,8 @@ export function termineImZeitraum(s: IcloudStand, von: string, bis: string): Ter
   const c = s.at ? terminCache.get(key) : undefined;
   if (c) return c;
   const raus: Termin[] = [];
-  for (const k of s.kalender) for (const o of s.objekte[k.id] ?? []) raus.push(...termineAus(o, k, von, bis));
+  const ich = kontoAdressen(s);
+  for (const k of s.kalender) for (const o of s.objekte[k.id] ?? []) raus.push(...termineAus(o, k, von, bis, ich));
   raus.sort((a, b) => a.start.localeCompare(b.start) || a.titel.localeCompare(b.titel));
   if (s.at) { if (terminCache.size >= 24) terminCache.clear(); terminCache.set(key, raus); }
   return raus;
@@ -216,7 +242,9 @@ export async function abgleichen(opt: { erzwingen?: boolean; nur?: string } = {}
   laufend = (async () => {
     const alt = await ladeStand();
     try {
-      const home = alt.home ?? await entdecke();
+      // Die Adressen (K3) fehlen in Ständen vor dem 30.09. — dann einmal neu entdecken.
+      const ort = alt.home && alt.adressen ? { home: alt.home, adressen: alt.adressen } : await entdecke();
+      const home = ort.home;
       const liste = await kalenderListe(home);
       const objekte: Record<string, KalenderObjekt[]> = {};
       for (const k of liste) {
@@ -224,7 +252,7 @@ export async function abgleichen(opt: { erzwingen?: boolean; nur?: string } = {}
         const unveraendert = !opt.erzwingen && opt.nur !== k.id && vorher?.ctag && vorher.ctag === k.ctag && alt.objekte[k.id];
         objekte[k.id] = unveraendert ? alt.objekte[k.id] : await holeObjekte(k);
       }
-      const neu: IcloudStand = { at: new Date().toISOString(), home, kalender: liste, objekte };
+      const neu: IcloudStand = { at: new Date().toISOString(), home, adressen: ort.adressen, kalender: liste, objekte };
       await saveJson(SPEICHER, neu);
       // Sicherung von Art/„privat“ im Neben-Bestand nachtragen (Apple kann X-MAKE-ART/CLASS verlieren) — ein Fehler hier kostet den Abgleich nicht.
       let bezuege: BezugBestand | null = null;
@@ -236,7 +264,7 @@ export async function abgleichen(opt: { erzwingen?: boolean; nur?: string } = {}
       const fehler = e instanceof Error ? e.message.slice(0, 300) : 'iCloud nicht erreichbar.';
       // Die Adresse kann sich ändern — beim nächsten Mal neu suchen.
       const anmeldung = e instanceof KalenderFehler && e.status === 401;
-      const s: IcloudStand = { ...alt, home: anmeldung ? alt.home : undefined, fehler, fehlerAt: new Date().toISOString(), fehlerAnmeldung: anmeldung };
+      const s: IcloudStand = { ...alt, home: anmeldung ? alt.home : undefined, ...(anmeldung ? {} : { adressen: undefined }), fehler, fehlerAt: new Date().toISOString(), fehlerAnmeldung: anmeldung };
       await saveJson(SPEICHER, s).catch(() => {});
       throw e;
     }
@@ -270,20 +298,24 @@ function findeObjekt(s: IcloudStand, uid: string): { kal: KalenderEintrag; obj: 
   return null;
 }
 
-/** Anlegen: alles aus NeuerTermin (ohne uid) plus der Kalender (Name). */
-export type NeuEingabe = Omit<NeuerTermin, 'uid'> & { kalender: string };
+/** Anlegen: alles aus NeuerTermin (ohne uid, ohne Organisator — der kommt aus dem Konto) plus der Kalender (Name). */
+export type NeuEingabe = Omit<NeuerTermin, 'uid' | 'organisator'> & { kalender: string };
 
-/** Neuen Termin anlegen. Liefert die UID. */
-export async function anlegen(e: NeuEingabe): Promise<{ uid: string; kalender: string }> {
+/** Neuen Termin anlegen. Liefert die UID. Mit Gästen nur nach Bestätigung (`einladungBestaetigt`, sonst EinladungNoetig). */
+export async function anlegen(e: NeuEingabe, opt: { einladungBestaetigt?: boolean } = {}): Promise<{ uid: string; kalender: string; gaeste: number }> {
+  const gaeste = e.gaeste ?? [];
+  if (gaeste.length && !opt.einladungBestaetigt) throw new EinladungNoetig('einladung', gaeste.map(g => g.email));
   const s = await frischerStand();
   const kal = kalenderNachName(s, e.kalender);
   if (!kal) throw new KalenderFehler(`Kalender „${e.kalender}“ gibt es in iCloud nicht.`, 400);
   if (!kal.schreibbar) throw new KalenderFehler(`„${kal.name}“ ist nur lesbar (geteilt ohne Schreibrecht).`, 403);
+  const ich = kontoAdressen(s);
+  if (gaeste.length && !ich[0]) throw new KalenderFehler('Ohne iCloud-Adresse keine Einladung — bitte iCloud neu verbinden.', 409);
   const uid = randomUUID().toUpperCase();
-  const r = await dav(`${kal.id.replace(/\/?$/, '/')}${uid}.ics`, 'PUT', { body: baueTermin({ uid, ...e }), typ: 'text/calendar; charset=utf-8', kopf: { 'If-None-Match': '*' } });
+  const r = await dav(`${kal.id.replace(/\/?$/, '/')}${uid}.ics`, 'PUT', { body: baueTermin({ uid, ...e, ...(gaeste.length ? { gaeste: gaeste.filter(g => !ich.includes(g.email)), organisator: ich[0] } : {}) }), typ: 'text/calendar; charset=utf-8', kopf: { 'If-None-Match': '*' } });
   if (![200, 201, 204].includes(r.status)) throw new KalenderFehler(`iCloud hat den Termin nicht angenommen (${r.status}).`);
   await abgleichen({ nur: kal.id }).catch(() => {});
-  return { uid, kalender: kal.name };
+  return { uid, kalender: kal.name, gaeste: gaeste.length };
 }
 
 /** Gibt es den Termin (UID) im aktuellen Stand? Für Bezug-Änderungen ohne iCloud-Schreiben (auch Serien). */
@@ -296,7 +328,12 @@ function aktuellerTermin(s: IcloudStand, uid: string): Termin | null {
   const f = findeObjekt(s, uid);
   if (!f) return null;
   const heute = localDay();
-  return termineAus(f.obj, f.kal, tagPlus(heute, HOLEN_VON), tagPlus(heute, HOLEN_BIS))[0] ?? null;
+  return termineAus(f.obj, f.kal, tagPlus(heute, HOLEN_VON), tagPlus(heute, HOLEN_BIS), kontoAdressen(s))[0] ?? null;
+}
+
+/** Der Termin (erstes Vorkommen im Holfenster) aus dem aktuellen Stand — für die CRM-Folgen einer Bezug-Änderung (K3). */
+export async function terminLesen(uid: string): Promise<Termin | null> {
+  return aktuellerTermin(await frischerStand(), uid);
 }
 
 /**
@@ -304,31 +341,67 @@ function aktuellerTermin(s: IcloudStand, uid: string): Termin | null {
  * `stand` = das ETag, das der Browser zuletzt gesehen hat: weicht es vom aktuellen ab (am iPhone geändert, schon
  * abgeglichen), gibt es 409 mit dem aktuellen Termin statt still zu überschreiben.
  */
-export async function aendern(uid: string, a: Aenderung, opt: { stand?: string } = {}): Promise<void> {
+export async function aendern(uid: string, a: Aenderung, opt: { stand?: string; einladungBestaetigt?: boolean } = {}): Promise<{ gaeste: number }> {
   const s = await frischerStand();
   const f = findeObjekt(s, uid);
   if (!f) throw new KalenderFehler('Termin nicht gefunden — vielleicht gerade in Apple gelöscht.', 404);
   if (!f.kal.schreibbar) throw new KalenderFehler(`„${f.kal.name}“ ist nur lesbar.`, 403);
   if (opt.stand && f.obj.etag && opt.stand !== f.obj.etag) throw new KalenderKonflikt('Der Termin wurde inzwischen woanders geändert — deine Fassung ist unten noch da.', aktuellerTermin(s, uid));
-  const neu = aendereTermin(f.obj.ics, a);
+  // K3: Post an Gäste nur nach Bestätigung — betroffen sind die bisherigen UND die neuen Gäste (Ausgeladene bekommen eine Absage).
+  const ich = kontoAdressen(s);
+  const lage = einladungsLage(f.obj.ics, ich);
+  if (lage.serie) throw new KalenderFehler('Serientermin — bitte in Apple Kalender ändern.', 400);
+  if (lage.gast) throw new KalenderFehler('Du bist hier Gast — nur zusagen oder absagen; ändern kann nur, wer eingeladen hat.', 400);
+  const betroffen = Array.from(new Set([...lage.gaeste, ...(a.gaeste ?? []).map(g => g.email).filter(m => !ich.includes(m))]));
+  if (betroffen.length && !opt.einladungBestaetigt) throw new EinladungNoetig(lage.gaeste.length ? 'aenderung' : 'einladung', betroffen);
+  const neu = aendereTermin(f.obj.ics, a, new Date(), { ich, einladungBestaetigt: opt.einladungBestaetigt });
   if ('fehler' in neu) throw new KalenderFehler(neu.fehler, 400);
   const r = await dav(f.obj.href, 'PUT', { body: neu.ics, typ: 'text/calendar; charset=utf-8', kopf: f.obj.etag ? { 'If-Match': f.obj.etag } : {} });
   if (r.status === 412) { await abgleichen({ nur: f.kal.id }).catch(() => {}); throw new KalenderKonflikt('Der Termin wurde gerade woanders geändert — deine Fassung ist unten noch da.', aktuellerTermin(await ladeStand(), uid)); }
   if (![200, 201, 204].includes(r.status)) throw new KalenderFehler(`iCloud hat die Änderung nicht angenommen (${r.status}).`);
   await abgleichen({ nur: f.kal.id }).catch(() => {});
+  return { gaeste: betroffen.length };
 }
 
-/** Termin löschen — nur Einzeltermine ohne Teilnehmer, mit ETag (und `stand` wie beim Ändern). */
-export async function loeschen(uid: string, opt: { stand?: string } = {}): Promise<void> {
+/**
+ * Termin löschen — Einzeltermine, mit ETag (und `stand` wie beim Ändern). Mit Gästen (K3): nur, wenn wir eingeladen haben,
+ * und nur nach Bestätigung (iCloud schickt die Absage). Liefert die Zahl der Gäste (für das Protokoll).
+ */
+export async function loeschen(uid: string, opt: { stand?: string; einladungBestaetigt?: boolean } = {}): Promise<{ gaeste: number }> {
   const s = await frischerStand();
   const f = findeObjekt(s, uid);
-  if (!f) return; // schon weg
+  if (!f) return { gaeste: 0 }; // schon weg
   if (!f.kal.schreibbar) throw new KalenderFehler(`„${f.kal.name}“ ist nur lesbar.`, 403);
   if (opt.stand && f.obj.etag && opt.stand !== f.obj.etag) throw new KalenderKonflikt('Der Termin wurde inzwischen woanders geändert — bitte erst ansehen.', aktuellerTermin(s, uid));
-  const grund = nichtBearbeitbar(f.obj.ics);
+  const ich = kontoAdressen(s);
+  const grund = nichtBearbeitbar(f.obj.ics, ich);
   if (grund) throw new KalenderFehler(grund.replace('ändern', 'löschen'), 400);
+  const lage = einladungsLage(f.obj.ics, ich);
+  if (lage.gaeste.length && !opt.einladungBestaetigt) throw new EinladungNoetig('absage', lage.gaeste);
   const r = await dav(f.obj.href, 'DELETE', { kopf: f.obj.etag ? { 'If-Match': f.obj.etag } : {} });
   if (r.status === 412) { await abgleichen({ nur: f.kal.id }).catch(() => {}); throw new KalenderKonflikt('Der Termin wurde gerade woanders geändert — bitte erst ansehen.', aktuellerTermin(await ladeStand(), uid)); }
   if (![200, 204, 404].includes(r.status)) throw new KalenderFehler(`iCloud hat das Löschen nicht angenommen (${r.status}).`);
+  await abgleichen({ nur: f.kal.id }).catch(() => {});
+  return { gaeste: lage.gaeste.length };
+}
+
+/**
+ * Als Gast zusagen/absagen (K3) — auch an Serien (die Antwort gilt dem ganzen Termin). Nur nach Bestätigung: iCloud
+ * schickt die Antwort an den Organisator. Mit ETag wie beim Ändern.
+ */
+export async function antwortSenden(uid: string, status: Exclude<Teilnahme, 'offen'>, opt: { stand?: string; einladungBestaetigt?: boolean } = {}): Promise<void> {
+  const s = await frischerStand();
+  const f = findeObjekt(s, uid);
+  if (!f) throw new KalenderFehler('Termin nicht gefunden — vielleicht gerade in Apple gelöscht.', 404);
+  if (opt.stand && f.obj.etag && opt.stand !== f.obj.etag) throw new KalenderKonflikt('Der Termin wurde inzwischen woanders geändert — bitte erst ansehen.', aktuellerTermin(s, uid));
+  const ich = kontoAdressen(s);
+  const lage = einladungsLage(f.obj.ics, ich);
+  if (!lage.gast) throw new KalenderFehler(lage.ichOrganisator ? 'Du hast eingeladen — zusagen oder absagen können nur die Gäste.' : 'Dieser Termin hat keine Einladung.', 400);
+  if (!opt.einladungBestaetigt) throw new EinladungNoetig('antwort', lage.empfaenger);
+  const neu = antwortSetzen(f.obj.ics, ich, status);
+  if ('fehler' in neu) throw new KalenderFehler(neu.fehler, 400);
+  const r = await dav(f.obj.href, 'PUT', { body: neu.ics, typ: 'text/calendar; charset=utf-8', kopf: f.obj.etag ? { 'If-Match': f.obj.etag } : {} });
+  if (r.status === 412) { await abgleichen({ nur: f.kal.id }).catch(() => {}); throw new KalenderKonflikt('Der Termin wurde gerade woanders geändert — bitte erst ansehen.', aktuellerTermin(await ladeStand(), uid)); }
+  if (![200, 201, 204].includes(r.status)) throw new KalenderFehler(`iCloud hat die Antwort nicht angenommen (${r.status}).`);
   await abgleichen({ nur: f.kal.id }).catch(() => {});
 }

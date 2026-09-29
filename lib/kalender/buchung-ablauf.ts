@@ -14,11 +14,12 @@
 //     melden    Glocke an die Person der Seite.
 //   freigabe  (Kevin oder Malin geben frei)
 //     termin    fester Termin im Zielkalender (iCloud, lib/kalender/icloud.ts `anlegen`, Art „termin“, beschäftigt) — Gast
-//               nur als Notiz, bis K3 Einladungen kann; echte UID. Wiedererkannt über die Marke in der Notiz
+//               als Notiz ODER (K3, 30.09.) nach bestätigter Rückfrage als echte Einladung (ATTENDEE, iCloud verschickt;
+//               Kennung als `gastKontakte`); echte UID. Wiedererkannt über die Marke in der Notiz
 //               (`terminMarke`), nie doppelt angelegt. Kontaktbezug NUR in `kalender-bezug` (K1 `bezugSetzen`). Audit.
 //     buchung   Status „bestätigt“ + Termin-UID an der Buchung.
-//     kartei    Aktivität „Termin gebucht“ (Art termin, wann = Beginn, Ort, bezug = `bezugTermin(uid)` wie das
-//               Kalender-Signal) — genau eine je Termin, das Signal legt keine zweite an.
+//     kartei    Aktivität „Termin gebucht“ als Meeting mit `terminUid` (K3 — Zeit aus dem Termin, kein `wann`) — genau
+//               eine je Termin; Kalender-Signal und Bezug-Lauf legen keine zweite an.
 //     crm       Follow-up „Termin vorbereiten“ (Vortag) — nur, wenn die Kennung noch fehlt.
 // Ein Deal- oder Qualifizierungsvorschlag entsteht NUR als Vorschlag (`folgeVorschlag`) — nie automatisch.
 
@@ -37,8 +38,9 @@ import { neueKennung } from '@/lib/kennung';
 import { localDay } from '@/lib/zeit';
 import { melde } from '@/lib/meldungen/melden';
 import { protokolliere } from '@/lib/store/aenderungsprotokoll';
-import { bezugTermin } from '@/lib/crm/signale';
+import { hatTerminAktivitaet, terminAktivitaetAnwenden } from '@/lib/crm/termin-aktivitaet';
 import { anlegen, ladeStand, termineImZeitraum, verbunden } from './icloud';
+import { gaestePruefenCrm } from './gaeste-server';
 import { bezugSetzen } from './bezug-server';
 import { bezugSchluessel } from './bezug';
 import { tagVon, tagPlus } from './zeit';
@@ -169,6 +171,8 @@ async function freigabeLauf(h: string, a: Absicht): Promise<void> {
     const heute = String(v.daten<string>('heute'));
     const von = String(v.daten<string>('von'));
     const vorbereitenId = String(v.daten<string>('vorbereitenId'));
+    // K3 (30.09.): der Gast als echte Einladung — nur, wenn bei der Freigabe ausdrücklich bestätigt (Absicht-Daten).
+    const einladen = v.daten<boolean>('einladen') === true;
 
     await v.schritt('termin', async () => {
       const { b, s } = await buchungUndSeite(id);
@@ -176,16 +180,18 @@ async function freigabeLauf(h: string, a: Absicht): Promise<void> {
       if (!r) {
         const notiz = [
           `Gebucht über die Buchungsseite „${s.titel}“.`,
-          `Gast: ${b.name} <${b.email}>${b.firma ? ` · ${b.firma}` : ''}`,
+          // Eingeladen: die Adresse steht als Gast im Termin, nicht zusätzlich in der Notiz.
+          einladen ? `Gast: ${b.name}${b.firma ? ` · ${b.firma}` : ''} (eingeladen)` : `Gast: ${b.name} <${b.email}>${b.firma ? ` · ${b.firma}` : ''}`,
           ...(b.anliegen ? [`Anliegen: ${b.anliegen}`] : []),
           terminMarke(b.id),
         ].join('\n');
-        r = await anlegen({ titel: `${s.titel} · ${b.name}`.slice(0, 300), kalender: s.zielKalender, start: b.start, ende: b.ende, art: 'termin', beschaeftigt: true, ...(s.ort ? { ort: s.ort } : {}), notiz: notiz.slice(0, 2000) });
+        const n = await anlegen({ titel: `${s.titel} · ${b.name}`.slice(0, 300), kalender: s.zielKalender, start: b.start, ende: b.ende, art: 'termin', beschaeftigt: true, ...(s.ort ? { ort: s.ort } : {}), notiz: notiz.slice(0, 2000), ...(einladen ? { gaeste: [{ email: b.email.toLowerCase(), name: b.name }] } : {}) }, { einladungBestaetigt: einladen });
+        r = { uid: n.uid, kalender: n.kalender };
         // Audit wie die Termin-Route (K1): Bestand „kalender“, Liste „termine“, UID + Feldnamen — nie Titel oder Namen.
-        await protokolliere('kalender', [{ liste: 'termine', op: 'neu', id: r.uid, felder: ['buchung', ...(b.kontaktId ? ['kontaktId'] : [])] }], { art: 'person', person: von });
+        await protokolliere('kalender', [{ liste: 'termine', op: 'neu', id: r.uid, felder: ['buchung', ...(b.kontaktId ? ['kontaktId'] : [])] }, ...(n.gaeste ? [{ liste: 'einladungen', op: 'neu' as const, id: r.uid, felder: [`gaeste:${n.gaeste}`] }] : [])], { art: 'person', person: von });
       }
       // Kontaktbezug am Termin NUR im Bestand `kalender-bezug` (K1) — nie im Termin selbst. Idempotent (Teil-Änderung).
-      if (b.kontaktId) await bezugSetzen(bezugSchluessel(r.uid), { kontaktId: b.kontaktId, von, tag: tagVon(b.start) });
+      if (b.kontaktId) await bezugSetzen(bezugSchluessel(r.uid), { kontaktId: b.kontaktId, ...(einladen ? { gastKontakte: [b.kontaktId] } : {}), von, tag: tagVon(b.start) });
       return r;
     }, r => (r ? { terminUid: r.uid, terminKalender: r.kalender } : {}));
 
@@ -199,17 +205,19 @@ async function freigabeLauf(h: string, a: Absicht): Promise<void> {
       const { b, s } = await buchungUndSeite(id);
       if (!b.kontaktId) return;
       const text = `Termin gebucht: „${s.titel}“ am ${datumText(b)}`;
-      // Genau EINE Aktivität zum Termin: `bezug` = derselbe Schlüssel wie das Kalender-Signal (lib/crm/signale.ts
-      // `bezugTermin(uid)`) — das Signal legt dann keine zweite an.
-      const bezug = b.terminUid ? bezugTermin(b.terminUid) : undefined;
+      // Genau EINE Aktivität zum Termin (K3): die Meeting-Aktivität mit `terminUid` — Zeit und Ort liest die Akte aus dem
+      // Termin (kein `wann`); das Kalender-Signal und der Bezug-Lauf legen dann keine zweite an.
       await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
         const f = cur ?? { kontakte: [] };
         const i = f.kontakte.findIndex(k => k.id === b.kontaktId);
         if (i < 0) return f;
         const k = f.kontakte[i];
         if (k.eingeschraenkt) return f; // Art. 18: nichts festhalten
-        if (k.aktivitaeten.some(x => (bezug && x.bezug === bezug) || (x.am === jetzt && x.art === 'termin' && x.text === text))) return f;
-        const neu = wendeAktivitaetAn(k, { art: 'termin', text, von, wann: b.start.slice(0, 16), ...(s.ort ? { ort: s.ort } : {}), ...(bezug ? { bezug } : {}) }, heute, jetzt, crmTagPlus);
+        const termin = { id: b.terminUid ?? '', uid: b.terminUid ?? '', titel: s.titel, start: b.start, kontaktIds: [k.id], von };
+        if ((b.terminUid && hatTerminAktivitaet(k, termin)) || k.aktivitaeten.some(x => x.am === jetzt && x.art === 'termin' && x.text === text)) return f;
+        const neu = b.terminUid
+          ? terminAktivitaetAnwenden(k, termin, { text, heute, jetztIso: jetzt, tagePlus: crmTagPlus })
+          : wendeAktivitaetAn(k, { art: 'termin', text, von, wann: b.start.slice(0, 16), ...(s.ort ? { ort: s.ort } : {}) }, heute, jetzt, crmTagPlus);
         return { ...f, kontakte: f.kontakte.map((x, j) => (j === i ? neu : x)) };
       }, { art: 'person', person: von });
     });
@@ -231,17 +239,25 @@ async function freigabeLauf(h: string, a: Absicht): Promise<void> {
 
 export class FreigabeFehler extends Error { constructor(message: string, public status = 409) { super(message); } }
 
-/** Freigabe durch Kevin oder Malin: fester Termin, Aktivität, Follow-up. Idempotent (je Buchung eine Absicht). */
-export async function buchungFreigeben(buchungId: string, von: string, jetzt = new Date()): Promise<void> {
+/**
+ * Freigabe durch Kevin oder Malin: fester Termin, Aktivität, Follow-up. Idempotent (je Buchung eine Absicht).
+ * `einladen` (K3): der Gast bekommt eine echte Einladung über iCloud — nur, wenn die Oberfläche es nach der Rückfrage
+ * bestätigt hat (die Route prüft `einladungBestaetigt`); Art. 18 → 409.
+ */
+export async function buchungFreigeben(buchungId: string, von: string, jetzt = new Date(), opt: { einladen?: boolean } = {}): Promise<void> {
   const bestand = await ladeBuchungBestand(jetzt);
   const b = bestand.buchungen.find(x => x.id === buchungId);
   if (!b) throw new FreigabeFehler('Buchung nicht gefunden.', 404);
   if (!b.terminUid && !verbunden()) throw new FreigabeFehler('iCloud ist nicht verbunden — ein fester Termin kann gerade nicht angelegt werden.', 409);
   if (b.status !== 'angefragt' && b.status !== 'bestaetigt') throw new FreigabeFehler(b.status === 'vorlaeufig' ? 'Noch nicht vom Buchenden bestätigt.' : 'Diese Buchung ist nicht mehr offen.');
+  if (opt.einladen) {
+    const g = await gaestePruefenCrm([{ email: b.email.toLowerCase(), name: b.name, ...(b.kontaktId ? { kontaktId: b.kontaktId } : {}) }]);
+    if (!g.ok) throw new FreigabeFehler(g.fehler, 409);
+  }
   const h = await buchungHaushalt();
   const { absicht, neu } = await absichtBeginnen(h, {
     art: 'buchung', schluessel: `${buchungId}:freigabe`, schritte: FREIGABE_SCHRITTE, person: von,
-    daten: { phase: 'freigabe', buchungId, von, jetzt: jetzt.toISOString(), heute: localDay(jetzt), vorbereitenId: neueKennung('fu') },
+    daten: { phase: 'freigabe', buchungId, von, jetzt: jetzt.toISOString(), heute: localDay(jetzt), vorbereitenId: neueKennung('fu'), ...(opt.einladen ? { einladen: true } : {}) },
   });
   if (!neu && absicht.status !== 'offen') return;
   await freigabeLauf(h, absicht);

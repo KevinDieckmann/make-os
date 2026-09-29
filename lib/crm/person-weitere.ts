@@ -177,15 +177,21 @@ export const absichtenTilgen: Wirkung = (cur, m) => {
 };
 
 /**
- * Kalender-Bezüge (29.09., K1): nur Kennungen je Termin (`bezuege[uid] = { kontaktId?, … }`). Die Kontakt-Kennung der
- * Person fällt weg; der Eintrag bleibt (andere Bezüge, Sicherung von Art/privat). Titel stehen hier nie.
+ * Kalender-Bezüge (29.09., K1): nur Kennungen je Termin (`bezuege[uid] = { kontaktId?, gastKontakte?, … }`). Die
+ * Kontakt-Kennung der Person fällt weg — als Bezug und als Gast (K3); der Eintrag bleibt (andere Bezüge, Sicherung von
+ * Art/privat). Titel und Adressen stehen hier nie (die Gast-Adresse steht nur im Termin in Apple → „dort löschen“).
  */
 export const kalenderBezugOhne: Wirkung = (cur, m) => {
   const alt = (cur?.bezuege && typeof cur.bezuege === 'object' ? cur.bezuege : {}) as Record<string, Obj>;
   let n = 0;
   const bezuege: Record<string, Obj> = {};
   for (const [k, e] of Object.entries(alt)) {
-    if (e?.kontaktId === m.id) { n++; const { kontaktId: _weg, ...rest } = e; bezuege[k] = rest; } else bezuege[k] = e;
+    const gaeste = Array.isArray(e?.gastKontakte) ? (e.gastKontakte as unknown[]) : [];
+    if (e?.kontaktId !== m.id && !gaeste.includes(m.id)) { bezuege[k] = e; continue; }
+    n++;
+    const { kontaktId, gastKontakte: _g, ...rest } = e;
+    const bleiben = gaeste.filter(x => x !== m.id);
+    bezuege[k] = { ...rest, ...(kontaktId !== m.id && kontaktId !== undefined ? { kontaktId } : {}), ...(bleiben.length ? { gastKontakte: bleiben } : {}) };
   }
   return { neu: n ? { ...cur, bezuege } : cur, n };
 };

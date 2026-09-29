@@ -37,6 +37,7 @@ import type { CrmApi } from '../daten';
 import { Karte, Leer, Knopf, feld, LEUCHT } from '../../schlank';
 import { Wahl, WahlMehrfach } from '../Wahl';
 import { AktivitaetKarte, NeuFormular, NEU_KNOEPFE, KATEGORIE_FARBE, type NeuArt } from './aktivitaeten-teile';
+import { useTerminZeiten } from '../../kalender/TermineAkte';
 
 export interface AktivitaetenReiterProps {
   k: Kontakt;
@@ -80,7 +81,9 @@ export function AktivitaetenReiter({ k, api, unter, onUnter }: AktivitaetenReite
   useEffect(() => { const t = setInterval(() => setJetzt(new Date().toISOString()), 60_000); return () => clearInterval(t); }, []);
   useEffect(() => { if (!meldung) return; const t = setTimeout(() => setMeldung(null), 4000); return () => clearTimeout(t); }, [meldung]);
 
-  const alle = useMemo<Eintrag[]>(() => aufbereiten(k, api.crm?.stand, { heute, jetzt, termin: api.crm?.termine?.[k.id] ?? null }), [k, api.crm?.stand, api.crm?.termine, heute, jetzt]);
+  // K3: Meetings mit `terminUid` zeigen die Zeit ihres Termins (verschoben → neue Zeit).
+  const terminZeiten = useTerminZeiten(k.id);
+  const alle = useMemo<Eintrag[]>(() => aufbereiten(k, api.crm?.stand, { heute, jetzt, termin: api.crm?.termine?.[k.id] ?? null, ...(terminZeiten ? { termine: terminZeiten } : {}) }), [k, api.crm?.stand, api.crm?.termine, heute, jetzt, terminZeiten]);
   const zahlen = useMemo(() => zaehlen(alle, filter, heute), [alle, filter, heute]);
   const sichtbar = useMemo(() => filtern(alle, aktiv, filter, heute), [alle, aktiv, filter, heute]);
   const gruppen = useMemo(() => gruppieren(sichtbar), [sichtbar]);

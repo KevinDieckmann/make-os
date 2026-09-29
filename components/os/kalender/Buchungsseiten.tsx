@@ -7,6 +7,7 @@
 // (Qualifizierung starten / Deal anlegen) mit Link auf den Kontakt — angelegt wird dort, von Hand.
 // Daten: /api/kalender/buchung (Haushalt). Versendet wird nichts.
 
+import { EinladungFrage } from './verknuepfen';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
@@ -43,7 +44,8 @@ export function useBuchungen() {
     const seiten = new Map(stand.seiten.map(s => [s.id, s]));
     return stand.buchungen.filter(b => b.status === 'vorlaeufig' || b.status === 'angefragt').map(b => {
       const s = seiten.get(b.seiteId);
-      return { id: `buchung-${b.id}`, uid: `buchung-${b.id}`, titel: `${b.status === 'vorlaeufig' ? '◌ vorläufig' : '◌ Anfrage'} · ${b.name}`, start: b.start, ende: b.ende, ganztags: false, kalender: s?.zielKalender ?? 'Buchung', wer: ((s?.person === 'kevin' || s?.person === 'malin') ? s.person : 'beide') as Wer, serie: false, mitTeilnehmern: false, bearbeitbar: false };
+      // K3 (30.09.): vorläufig über das Feld `vorlaeufig`, die Buchung über `buchungId` — kein Kennungs-Präfix mehr.
+      return { id: `buchung-${b.id}`, uid: `buchung-${b.id}`, titel: `${b.status === 'vorlaeufig' ? '◌ vorläufig' : '◌ Anfrage'} · ${b.name}`, start: b.start, ende: b.ende, ganztags: false, kalender: s?.zielKalender ?? 'Buchung', wer: ((s?.person === 'kevin' || s?.person === 'malin') ? s.person : 'beide') as Wer, serie: false, mitTeilnehmern: false, bearbeitbar: false, vorlaeufig: true as const, buchungId: b.id };
     });
   }, [stand]);
   return { stand, laden, alsTermine, offen, setOffen, zeigen: () => setOffen(true) };
@@ -55,6 +57,7 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
   const [bearbeiten, setBearbeiten] = useState<Partial<SeiteSicht> | null>(null);
   const [meldung, setMeldung] = useState('');
   const [kopiert, setKopiert] = useState('');
+  const [einladen, setEinladen] = useState<string | null>(null);
   const aktion = async (body: Record<string, unknown>) => {
     const r = await fetch('/api/kalender/buchung', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
     setMeldung(r.ok ? '' : r.fehler ?? 'Nicht geklappt.');
@@ -99,9 +102,14 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
               <div style={{ fontSize: 12.5, fontWeight: 700 }}>{x.name}{x.firma ? ` · ${x.firma}` : ''}</div>
               <div style={{ fontSize: 11.5, color: C.inkDim }}>{seiteVon(x.seiteId)?.titel ?? 'Seite'} · {zeit(x)}</div>
               {x.anliegen && <div style={{ fontSize: 11.5, color: C.inkLeise }}>{x.anliegen}</div>}
+              {einladen === x.id && <EinladungFrage was="einladung" adressen={[x.email]} onNein={() => setEinladen(null)}
+                warnung="Die Adresse hat der Buchende selbst eingetragen — sie ist nicht per Mail bestätigt. Nur einladen, wenn du sicher bist, dass sie ihm gehört (sonst schreibt iCloud eine fremde Person an)."
+                onJa={async () => { setEinladen(null); await aktion({ aktion: 'freigeben', id: x.id, einladen: true, einladungBestaetigt: true }); }} />}
               {x.crmHinweis && <div style={{ fontSize: 11.5, color: LEUCHT.achtung }}>{x.crmHinweis}</div>}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 <Knopf farbe={LEUCHT.gut} onClick={async () => { await aktion({ aktion: 'freigeben', id: x.id }); }}>Freigeben</Knopf>
+                {/* K3: den Gast als echte Einladung — erst nach der Rückfrage mit der Adresse. */}
+                <Knopf leise onClick={() => setEinladen(x.id)}>Freigeben + einladen …</Knopf>
                 <Knopf leise onClick={async () => { await aktion({ aktion: 'ablehnen', id: x.id }); }}>Ablehnen</Knopf>
                 {x.kontaktId && <Link href={WEG.kontakt(x.kontaktId)} style={{ fontSize: 11.5, color: C.inkDim }}>Kontakt ›</Link>}
               </div>

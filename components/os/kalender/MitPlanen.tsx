@@ -82,12 +82,12 @@ export function useTermineFinden({ alle = KEINE, onVorschlag }: { alle?: KTermin
   }, [alle, andere, buchungen.alsTermine]);
 
   const farbe = useCallback((f: (t: KTermin) => string) => (t: KTermin) => {
-    if (t.id.startsWith('buchung-')) return gedimmt(LEUCHT.achtung, 0.7);
+    if (t.buchungId) return gedimmt(LEUCHT.achtung, 0.7);
     return (t as Ueberlagert).gedimmt ? gedimmt(f(t)) : f(t);
   }, []);
 
   const oeffnen = useCallback((t: KTermin): boolean => {
-    if (t.id.startsWith('buchung-')) { buchungen.zeigen(); return true; }
+    if (t.buchungId) { buchungen.zeigen(); return true; }
     return t.id.startsWith('mit-') ? true : false;
   }, [buchungen]);
 

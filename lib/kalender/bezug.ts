@@ -17,6 +17,10 @@
 //                         `dueTime`) — eine Stelle, keine Kopie.
 //   Fokus-Block           trägt `terminUid` (lib/zeitmessung/modell.ts) — geprüft in der
 //                         Verbindungsprüfung (`zeit-termin-tot`).
+//   Gäste (K3, 30.09.)    Die Adressen stehen NUR im Termin (ATTENDEE, iCloud verschickt nach Klick). Hier nur die
+//                         Kontakt-Kennungen der Gäste aus dem CRM (`gastKontakte`) — nie Adressen, nie Namen.
+//   CRM-Meeting (K3)      Die Aktivität „Meeting“ am Kontakt trägt `terminUid` (= Schlüssel des Termins bzw. Vorkommens);
+//                         ihre Zeit liest sie über diesen Verweis aus dem Termin (lib/crm/termin-aktivitaet.ts).
 //
 // Vorrang beim Lesen (`mitBezug`): der iCloud-Text gewinnt; die Sicherung füllt nur, was dort
 // fehlt (Art verloren → Sicherung; „privat“ gilt, wenn EINE Seite privat sagt — Privatheit geht
@@ -32,7 +36,12 @@ export const BEZUG_FELDER = ['kontaktId', 'firmaId', 'mandatId', 'dealId', 'aufg
 export type BezugFeld = (typeof BEZUG_FELDER)[number];
 export type BezugKennungen = Partial<Record<BezugFeld, string>>;
 
+/** Höchstzahl der Gast-Kennungen je Termin (die Adressen selbst stehen nur im Termin). */
+export const GAST_KONTAKTE_MAX = 50;
+
 export interface TerminBezug extends BezugKennungen {
+  /** Kontakt-Kennungen der Gäste aus dem CRM (K3) — nie Adressen. */
+  gastKontakte?: string[];
   /** Wer ihn in MAKE OS angelegt hat (Speichername) — Eigentümer für „privat“ im gemeinsamen Kalender. */
   von?: string;
   /** Sicherung der Art (X-MAKE-ART). */
@@ -66,12 +75,25 @@ export function kennungenVon(b: Partial<TerminBezug> | undefined | null): BezugK
   return raus;
 }
 
+/** Gast-Kennungen säubern (nur gültige Kennungen, ohne Doppelte, höchstens GAST_KONTAKTE_MAX). */
+export function gastKontakteSauber(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  return Array.from(new Set(v.filter((x): x is string => typeof x === 'string' && KENNUNG.test(x)))).slice(0, GAST_KONTAKTE_MAX);
+}
+
+/** Alle Kontakte eines Termins: der verknüpfte Kontakt und die Gäste aus dem CRM (ohne Doppelte). */
+export function kontakteVon(b: Partial<Pick<TerminBezug, 'kontaktId' | 'gastKontakte'>> | undefined | null): string[] {
+  return Array.from(new Set([...(b?.kontaktId ? [b.kontaktId] : []), ...gastKontakteSauber(b?.gastKontakte)]));
+}
+
 /** Einen Eintrag säubern — null, wenn nichts Gültiges übrig bleibt (dann fällt er weg). */
 export function bezugSauber(v: unknown, jetzt = new Date().toISOString()): TerminBezug | null {
   if (!v || typeof v !== 'object') return null;
   const o = v as Record<string, unknown>;
+  const gaeste = gastKontakteSauber(o.gastKontakte);
   const raus: TerminBezug = {
     ...kennungenVon(o as Partial<TerminBezug>),
+    ...(gaeste.length ? { gastKontakte: gaeste } : {}),
     ...(typeof o.von === 'string' && PERSON.test(o.von) ? { von: o.von } : {}),
     ...(istIcsArt(o.art) ? { art: o.art } : {}),
     ...(o.privat === true ? { privat: true as const } : {}),
@@ -89,15 +111,15 @@ export function bezugSauber(v: unknown, jetzt = new Date().toISOString()): Termi
 export function bezugAendern(alt: TerminBezug | undefined, teil: Record<string, unknown>, jetzt: string): TerminBezug | null {
   const neu: Record<string, unknown> = { ...(alt ?? {}) };
   for (const [k, v] of Object.entries(teil)) {
-    if (![...BEZUG_FELDER, 'von', 'art', 'privat', 'tag'].includes(k)) continue;
-    if (v === null || v === '' || v === false || v === undefined) delete neu[k]; else neu[k] = v;
+    if (![...BEZUG_FELDER, 'gastKontakte', 'von', 'art', 'privat', 'tag'].includes(k)) continue;
+    if (v === null || v === '' || v === false || v === undefined || (Array.isArray(v) && !v.length)) delete neu[k]; else neu[k] = v;
   }
   neu.geaendert = jetzt;
   return bezugSauber(neu, jetzt);
 }
 
-/** Ein Termin mit seinem Eintrag (Sicherung angewandt, Kennungen und `von` dazu). */
-export type TerminMitBezug = Termin & { bezug?: BezugKennungen; von?: string; maskiert?: true };
+/** Ein Termin mit seinem Eintrag (Sicherung angewandt, Kennungen, Gast-Kontakte und `von` dazu). */
+export type TerminMitBezug = Termin & { bezug?: BezugKennungen; gastKontakte?: string[]; von?: string; maskiert?: true };
 
 /** Bezug + Sicherung auf einen Termin anwenden (Vorrang siehe Kopf). Serien: erst das Vorkommen, dann die Serie. */
 export function mitBezug(t: Termin, bestand: BezugBestand | null | undefined): TerminMitBezug {
@@ -105,6 +127,7 @@ export function mitBezug(t: Termin, bestand: BezugBestand | null | undefined): T
   const b = (t.id !== t.uid ? bestand?.bezuege[t.id] : undefined) ?? bestand?.bezuege[t.uid];
   if (!b) return t;
   const kennungen = kennungenVon(b);
+  const gaeste = gastKontakteSauber(b.gastKontakte);
   // Art verloren (Apple hat X-MAKE-ART beim Bearbeiten weggelassen) → Sicherung. Der iCloud-Text sagt „termin“ nur ohne X-MAKE-ART.
   const art = t.art === 'termin' && b.art && b.art !== 'termin' ? b.art : t.art;
   return {
@@ -112,6 +135,7 @@ export function mitBezug(t: Termin, bestand: BezugBestand | null | undefined): T
     art,
     ...(b.privat && t.sichtbarkeit !== 'privat' ? { sichtbarkeit: 'privat' as const } : {}),
     ...(Object.keys(kennungen).length ? { bezug: kennungen } : {}),
+    ...(gaeste.length ? { gastKontakte: gaeste } : {}),
     ...(b.von ? { von: b.von } : {}),
   };
 }
@@ -130,7 +154,7 @@ export function maskieren<T extends TerminMitBezug & { wer?: string }>(t: T, bet
   if (t.sichtbarkeit !== 'privat') return t;
   const e = eigentuemer(t);
   if (!e || e === betrachter) return t;
-  const { ort: _o, notiz: _n, bezug: _b, erinnerungen: _e, farbeEigen: _f, farbeId: _fi, arbeitsort: _a, ...rest } = t;
+  const { ort: _o, notiz: _n, bezug: _b, gastKontakte: _g, teilnehmer: _t, organisator: _og, erinnerungen: _e, farbeEigen: _f, farbeId: _fi, arbeitsort: _a, ...rest } = t;
   return { ...rest, titel: 'Belegt', bearbeitbar: false, maskiert: true } as T;
 }
 

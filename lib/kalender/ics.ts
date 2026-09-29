@@ -4,9 +4,12 @@
 // gebaut immer irgendwann falsch wäre. Hier: aus Objekten Termine für einen
 // Zeitraum machen, neue Termine bauen, bestehende verschieben.
 //
-// Was MAKE OS bewusst NICHT ändert (nur in Apple): Serientermine und Termine
-// mit Teilnehmern — bei denen würde iCloud Einladungen verschicken, und
-// MAKE OS versendet nie etwas.
+// Was MAKE OS bewusst NICHT ändert (nur in Apple): Serientermine.
+// Gäste (K3, 30.09., Kevin: „Echte Einladung nach Klick“): ein Termin mit Gästen trägt ORGANIZER (das iCloud-Konto)
+// und je Gast ein ATTENDEE mit SCHEDULE-AGENT=SERVER — iCloud verschickt Einladung, Änderung und Absage. Geschrieben
+// wird das NUR nach einer ausdrücklichen Bestätigung in der Oberfläche (die Route erzwingt sie: `einladungBestaetigt`).
+// Sind wir Gast (ORGANIZER ist jemand anderes), ändern wir nichts am Termin — nur die eigene Antwort (PARTSTAT),
+// ebenfalls erst nach Klick (`antwortSetzen`).
 //
 // Seit 29.09. (K1, Google-Vorbild) trägt ein Termin auch — und NUR diese Standard-/
 // Nahezu-Standard-Eigenschaften (Datenregel KALENDER_VERBINDUNGEN.md 4a): Art (X-MAKE-ART),
@@ -20,11 +23,14 @@ import { wandzeit, ausWandzeit, ZONE } from './zeit';
 import { rruleText, type Wiederholung } from './wiederholung';
 import { istIcsArt, beschaeftigtStandard, farbeSauber, farbeHex, arbeitsortAusTitel, arbeitsortTitel, erinnerungenSauber, istSichtbarkeit, type IcsArt, type Sichtbarkeit, type Arbeitsort } from './arten';
 import { vtimezoneText, ausWandzeitIn } from './zeitzone';
+import { adresseAus, type Teilnahme, type Teilnehmer, type Gast } from './gaeste';
 
 export { rruleText };
 export type { Wiederholung, WiederholungFreq } from './wiederholung';
+export { adresseAus, TEILNAHMEN, type Teilnahme, type Teilnehmer, type Gast } from './gaeste';
 
 export interface KalenderObjekt { href: string; etag?: string; ics: string }
+const PARTSTAT: Record<Exclude<Teilnahme, 'offen'>, string> = { zugesagt: 'ACCEPTED', abgesagt: 'DECLINED', vielleicht: 'TENTATIVE' };
 export interface KalenderInfo { id: string; name: string; farbe?: string; schreibbar?: boolean }
 
 export interface Termin {
@@ -65,6 +71,15 @@ export interface Termin {
   arbeitsort?: Arbeitsort;
   /** ETag des iCloud-Objekts — der Stand für Änderungen (veraltet → 409 statt still überschreiben). */
   stand?: string;
+  // ── seit 30.09. (K3) ──
+  /** Gäste (ATTENDEE) ohne das eigene Konto — mit ihrer Antwort (PARTSTAT). */
+  teilnehmer?: Teilnehmer[];
+  /** Wer eingeladen hat (ORGANIZER). */
+  organisator?: { email: string; name?: string };
+  /** Wir haben eingeladen (ORGANIZER = eine Adresse des iCloud-Kontos) — dann nach Bestätigung änderbar. */
+  ichOrganisator?: boolean;
+  /** Wir sind Gast: unsere Antwort (nur Zusagen/Absagen, nach Klick). */
+  meineAntwort?: Teilnahme;
 }
 
 /** Was ein VEVENT selbst über Art, Farbe und Sichtbarkeit sagt (X-MAKE-ART, COLOR, CLASS). */
@@ -121,6 +136,50 @@ function parse(ics: string): ICAL.Component | null {
 }
 
 const kurz = (v: unknown, n: number) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, n) : undefined);
+const teilnahmeVon = (p: unknown): Teilnahme => {
+  const s = typeof p === 'string' ? p.toUpperCase() : '';
+  return s === 'ACCEPTED' ? 'zugesagt' : s === 'DECLINED' ? 'abgesagt' : s === 'TENTATIVE' ? 'vielleicht' : 'offen';
+};
+
+/** Gäste und Organisator eines VEVENT; `ich` = Adressen des iCloud-Kontos (klein geschrieben). */
+function gaesteVon(v: ICAL.Component, ich: readonly string[]): Pick<Termin, 'teilnehmer' | 'organisator' | 'ichOrganisator' | 'meineAntwort'> {
+  const orgProp = v.getFirstProperty('organizer');
+  const org = orgProp ? adresseAus(orgProp.getFirstValue()) : undefined;
+  const orgName = orgProp ? kurz(orgProp.getParameter('cn'), 120) : undefined;
+  const ichOrg = !!org && ich.includes(org);
+  const alle = v.getAllProperties('attendee').map(p => ({ email: adresseAus(p.getFirstValue()), name: kurz(p.getParameter('cn'), 120), status: teilnahmeVon(p.getParameter('partstat')), optional: String(p.getParameter('role') ?? '').toUpperCase() === 'OPT-PARTICIPANT' }))
+    .filter((x): x is { email: string; name: string | undefined; status: Teilnahme; optional: boolean } => !!x.email);
+  if (!alle.length && !org) return {};
+  const mein = alle.find(x => ich.includes(x.email));
+  // Das eigene Konto steht nicht in der Gästeliste (als Organisator bzw. als Gast mit `meineAntwort`).
+  const teilnehmer = alle.filter(x => !ich.includes(x.email))
+    .map(x => ({ email: x.email, ...(x.name ? { name: x.name } : {}), status: x.status, ...(x.optional ? { optional: true as const } : {}) }));
+  return {
+    ...(teilnehmer.length ? { teilnehmer } : {}),
+    ...(org ? { organisator: { email: org, ...(orgName ? { name: orgName } : {}) } } : {}),
+    ...(ichOrg ? { ichOrganisator: true } : {}),
+    ...(!ichOrg && mein ? { meineAntwort: mein.status } : {}),
+  };
+}
+
+/**
+ * Wie steht ein Objekt zu Einladungen (rein)? Gäste (ohne das eigene Konto und den Organisator), ob wir einladen, ob wir
+ * Gast sind, ob es eine Serie ist — und `empfaenger`: wer bei einer Änderung Post von iCloud bekommt (wir laden ein: die
+ * Gäste; wir sind Gast: der Organisator). Grundlage der Bestätigungs-Pflicht in lib/kalender/icloud.ts.
+ */
+export function einladungsLage(ics: string, ich: readonly string[]): { gaeste: string[]; empfaenger: string[]; mitTeilnehmern: boolean; ichOrganisator: boolean; organisator?: string; gast: boolean; serie: boolean } {
+  const comp = parse(ics);
+  const vs = comp?.getAllSubcomponents('vevent') ?? [];
+  const serie = vs.some(v => v.hasProperty('rrule') || v.hasProperty('rdate') || v.hasProperty('recurrence-id'));
+  const mitTeilnehmern = vs.some(v => v.hasProperty('attendee'));
+  const master = vs.find(x => !x.hasProperty('recurrence-id')) ?? vs[0];
+  if (!master) return { gaeste: [], empfaenger: [], mitTeilnehmern: false, ichOrganisator: false, gast: false, serie: false };
+  const org = adresseAus(master.getFirstPropertyValue('organizer'));
+  const ichOrganisator = !!org && ich.includes(org);
+  const gaeste = Array.from(new Set(vs.flatMap(v => v.getAllProperties('attendee').map(p => adresseAus(p.getFirstValue())).filter((x): x is string => !!x && !ich.includes(x) && x !== org))));
+  const gast = mitTeilnehmern && !ichOrganisator;
+  return { gaeste, empfaenger: gast ? (org ? [org] : []) : gaeste, mitTeilnehmern, ichOrganisator, ...(org ? { organisator: org } : {}), gast, serie };
+}
 
 /** Die Zusätze eines VEVENT (rein aus dem Text, ohne Neben-Bestand). */
 function zusatzVon(v: ICAL.Component): IcsZusatz & { transp?: 'OPAQUE' | 'TRANSPARENT'; markiert: boolean } {
@@ -164,9 +223,9 @@ export function icsZusatz(ics: string): IcsZusatz | null {
 /**
  * Alle Termine eines Objekts, die in [von, bis) liegen (Berliner Tage
  * YYYY-MM-DD). Serien werden aufgefaltet, Ausnahmen (verschobene oder
- * gestrichene Vorkommen) berücksichtigt.
+ * gestrichene Vorkommen) berücksichtigt. `ich` = Adressen des iCloud-Kontos (K3: Organisator oder Gast?).
  */
-export function termineAus(obj: KalenderObjekt, kal: KalenderInfo, von: string, bis: string): Termin[] {
+export function termineAus(obj: KalenderObjekt, kal: KalenderInfo, von: string, bis: string, ich: readonly string[] = []): Termin[] {
   const comp = parse(obj.ics);
   if (!comp) return [];
   const vevents = comp.getAllSubcomponents('vevent');
@@ -182,6 +241,7 @@ export function termineAus(obj: KalenderObjekt, kal: KalenderInfo, von: string, 
 
   const fuege = (e: ICAL.Event, start: ICAL.Time, ende: ICAL.Time, rid?: ICAL.Time) => {
     const z = zusatzVon(e.component);
+    const g = gaesteVon(e.component, ich);
     const s = alsWand(start);
     const en = alsWand(ende && ende.compare(start) > 0 ? ende : start);
     const sT = start.isDate ? ausWandzeit(s).getTime() : start.toJSDate().getTime();
@@ -194,8 +254,10 @@ export function termineAus(obj: KalenderObjekt, kal: KalenderInfo, von: string, 
       kalender: kal.name, kalenderId: kal.id, farbe: kal.farbe,
       ort: kurz(e.location, 300), notiz: kurz(e.description, 2000),
       serie, mitTeilnehmern,
-      bearbeitbar: !serie && !mitTeilnehmern && kal.schreibbar !== false,
+      // Mit Gästen nur, wenn WIR eingeladen haben (dann nach Bestätigung, K3); als Gast nur zusagen/absagen.
+      bearbeitbar: !serie && (!mitTeilnehmern || !!g.ichOrganisator) && kal.schreibbar !== false,
       ...zusatzFelder(z, start, e.component),
+      ...g,
       ...(obj.etag ? { stand: obj.etag } : {}),
     });
   };
@@ -257,13 +319,19 @@ export function uidVon(ics: string): string | undefined {
   return /^UID(?:;[^:\r\n]*)?:(.+)$/m.exec(ics.replace(/\r?\n[ \t]/g, ''))?.[1]?.trim();
 }
 
-/** Darf MAKE OS dieses Objekt ändern oder löschen? null = ja, sonst der Grund. */
-export function nichtBearbeitbar(ics: string): string | null {
+/**
+ * Darf MAKE OS dieses Objekt ändern oder löschen? null = ja, sonst der Grund. Mit Gästen (K3): nur, wenn wir eingeladen
+ * haben (`ich` enthält den ORGANIZER) — die Bestätigung („Absage an n Gäste senden?“) prüft lib/kalender/icloud.ts.
+ */
+export function nichtBearbeitbar(ics: string, ich: readonly string[] = []): string | null {
   // Nur die Termine selbst ansehen: Zeitzonen haben eigene RRULEs, Alarme eigene ATTENDEEs.
   const glatt = (ics.replace(/\r?\n[ \t]/g, '').match(/BEGIN:VEVENT[\s\S]*?END:VEVENT/g) ?? [])
     .map(v => v.replace(/BEGIN:VALARM[\s\S]*?END:VALARM/g, '')).join('\n');
   if (/^(RRULE|RDATE|RECURRENCE-ID)[;:]/m.test(glatt)) return 'Serientermin — bitte in Apple Kalender ändern.';
-  if (/^ATTENDEE[;:]/m.test(glatt)) return 'Termin mit Teilnehmern — bitte in Apple Kalender ändern (dort gehen die Einladungen raus).';
+  if (/^ATTENDEE[;:]/m.test(glatt)) {
+    const org = adresseAus(/^ORGANIZER[^:\r\n]*:(.+)$/m.exec(glatt)?.[1]);
+    if (!org || !ich.includes(org)) return 'Du bist hier Gast — nur zusagen oder absagen; ändern kann nur, wer eingeladen hat.';
+  }
   return null;
 }
 
@@ -296,6 +364,50 @@ export interface NeuerTermin {
   zone?: string;
   /** Nur Art „arbeitsort“: wird der Titel. */
   arbeitsort?: Arbeitsort;
+  // ── seit 30.09. (K3) ── nur nach Bestätigung (Route: `einladungBestaetigt`)
+  /** Gäste — je ein ATTENDEE (SCHEDULE-AGENT=SERVER: iCloud verschickt die Einladung). */
+  gaeste?: Gast[];
+  /** ORGANIZER = eine Adresse des iCloud-Kontos (Pflicht, sobald es Gäste gibt). */
+  organisator?: string;
+}
+
+/** Name für einen Parameter (CN): eine Zeile, ohne Anführungszeichen und Steuerzeichen. */
+const cnSauber = (s: string | undefined) => (s ? s.replace(/[\u0000-\u001f\u007f"]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) : '');
+
+/** Ein ATTENDEE für einen Gast — neu: noch ohne Antwort, Antwort erbeten, iCloud verschickt (SCHEDULE-AGENT=SERVER). */
+function gastEigenschaft(v: ICAL.Component, g: Gast, status: string = 'NEEDS-ACTION'): ICAL.Property {
+  const p = new ICAL.Property('attendee', v);
+  p.setValue(`mailto:${g.email}`);
+  const cn = cnSauber(g.name);
+  if (cn) p.setParameter('cn', cn);
+  p.setParameter('cutype', 'INDIVIDUAL');
+  p.setParameter('role', 'REQ-PARTICIPANT');
+  p.setParameter('partstat', status);
+  p.setParameter('rsvp', 'TRUE');
+  p.setParameter('schedule-agent', 'SERVER');
+  return p;
+}
+
+function organisatorSetzen(v: ICAL.Component, email: string) {
+  v.removeAllProperties('organizer');
+  const p = new ICAL.Property('organizer', v);
+  p.setValue(`mailto:${email}`);
+  p.setParameter('schedule-agent', 'SERVER');
+  v.addProperty(p);
+}
+
+/** Gästeliste eines VEVENT neu setzen: bekannte Gäste behalten ihre Antwort, neue kommen ohne Antwort dazu. */
+function gaesteSetzen(v: ICAL.Component, gaeste: readonly Gast[], organisator: string, ich: readonly string[]) {
+  const alt = new Map(v.getAllProperties('attendee').map(p => [adresseAus(p.getFirstValue()) ?? '', p] as const));
+  v.removeAllProperties('attendee');
+  // Das eigene Konto als Teilnehmer (falls Apple es eingetragen hatte) bleibt stehen.
+  for (const [mail, p] of alt) if (ich.includes(mail)) v.addProperty(p);
+  for (const g of gaeste) {
+    if (ich.includes(g.email)) continue;
+    const war = alt.get(g.email);
+    v.addProperty(war ?? gastEigenschaft(v, g));
+  }
+  if (gaeste.length && !v.hasProperty('organizer')) organisatorSetzen(v, organisator);
 }
 
 /** Die Zone für ical.js — Berlin fest hinterlegt, andere aus den Zonendaten der Laufzeit (einmal registriert). */
@@ -360,7 +472,7 @@ function alarmeSetzen(v: ICAL.Component, minuten: number[], titel: string) {
   }
 }
 
-/** Ein neuer Termin als iCalendar-Text (ohne Teilnehmer — MAKE OS lädt niemanden ein). */
+/** Ein neuer Termin als iCalendar-Text — Gäste nur, wenn mitgegeben (die Route lässt sie erst nach Bestätigung durch). */
 export function baueTermin(t: NeuerTermin, jetzt = new Date()): string {
   berlin();
   const cal = new ICAL.Component(['vcalendar', [], []]);
@@ -387,6 +499,11 @@ export function baueTermin(t: NeuerTermin, jetzt = new Date()): string {
   zusaetzeSetzen(v, { art, ...(t.farbe ? { farbe: t.farbe } : {}), ...(t.sichtbarkeit && t.sichtbarkeit !== 'standard' ? { sichtbarkeit: t.sichtbarkeit } : {}) });
   const min = [...(t.erinnerungenMin ?? []), ...(t.erinnerungMin !== undefined && t.erinnerungMin >= 0 ? [Math.min(60 * 24 * 14, Math.round(t.erinnerungMin))] : [])];
   alarmeSetzen(v, min, titel);
+  if (t.gaeste?.length) {
+    if (!t.organisator) throw new Error('Gäste ohne Organisator — ohne iCloud-Adresse keine Einladung.');
+    organisatorSetzen(v, t.organisator);
+    for (const g of t.gaeste) if (g.email !== t.organisator) v.addProperty(gastEigenschaft(v, g));
+  }
   if (!t.ganztags) mitZone(cal, zone, Number(t.start.slice(0, 4)));
   cal.addSubcomponent(v);
   return cal.toString();
@@ -396,21 +513,31 @@ export interface Aenderung {
   titel?: string; start?: string; ende?: string; ort?: string | null; notiz?: string | null;
   // ── seit 29.09. (K1) ── (Arbeitsort ändern = Titel ändern)
   art?: IcsArt; farbe?: string | null; beschaeftigt?: boolean; sichtbarkeit?: Sichtbarkeit;
+  // ── seit 30.09. (K3) ── die ganze neue Gästeliste (leer = alle ausladen) — nur nach Bestätigung
+  gaeste?: Gast[];
 }
 
 /**
  * Einen bestehenden Einzeltermin ändern — alles andere (Alarme, Notizen,
- * Anhänge, Apple-Felder) bleibt, wie es ist. Serien und Termine mit
- * Teilnehmern: Fehler (nur in Apple ändern).
+ * Anhänge, Apple-Felder) bleibt, wie es ist. Serien: Fehler (nur in Apple ändern).
+ * Mit Gästen (K3): nur als Organisator (`opt.ich` enthält den ORGANIZER) UND nach Bestätigung (`opt.einladungBestaetigt`)
+ * — dann verschickt iCloud die Änderung (SEQUENCE steigt). Als Gast: Fehler (nur `antwortSetzen`).
  */
-export function aendereTermin(ics: string, a: Aenderung, jetzt = new Date()): { ics: string } | { fehler: string } {
+export function aendereTermin(ics: string, a: Aenderung, jetzt = new Date(), opt: { ich?: readonly string[]; einladungBestaetigt?: boolean } = {}): { ics: string } | { fehler: string } {
   const comp = parse(ics);
   if (!comp) return { fehler: 'Der Termin ließ sich nicht lesen.' };
   const vevents = comp.getAllSubcomponents('vevent');
   if (vevents.length !== 1) return { fehler: 'Serientermin — bitte in Apple Kalender ändern.' };
   const v = vevents[0];
   if (v.hasProperty('rrule') || v.hasProperty('rdate') || v.hasProperty('recurrence-id')) return { fehler: 'Serientermin — bitte in Apple Kalender ändern.' };
-  if (v.hasProperty('attendee')) return { fehler: 'Termin mit Teilnehmern — bitte in Apple Kalender ändern (dort gehen die Einladungen raus).' };
+  const ich = opt.ich ?? [];
+  if (v.hasProperty('attendee') || a.gaeste?.length) {
+    const org = adresseAus(v.getFirstPropertyValue('organizer'));
+    if (v.hasProperty('attendee') && (!org || !ich.includes(org))) return { fehler: 'Du bist hier Gast — nur zusagen oder absagen; ändern kann nur, wer eingeladen hat.' };
+    if (!opt.einladungBestaetigt) return { fehler: 'Termin mit Gästen — erst bestätigen, dass iCloud die Änderung an die Gäste schickt.' };
+    if (!org && !ich[0]) return { fehler: 'Ohne iCloud-Adresse keine Einladung.' };
+  }
+  if (a.gaeste !== undefined) gaesteSetzen(v, a.gaeste, adresseAus(v.getFirstPropertyValue('organizer')) ?? ich[0] ?? '', ich);
   const ev = new ICAL.Event(v);
   const ganztags = ev.startDate.isDate;
   if (a.titel !== undefined) v.updatePropertyWithValue('summary', sauber(a.titel, 300) || 'Termin');
@@ -438,7 +565,38 @@ export function aendereTermin(ics: string, a: Aenderung, jetzt = new Date()): { 
   const stempel = ICAL.Time.fromJSDate(jetzt, true);
   v.updatePropertyWithValue('dtstamp', stempel);
   v.updatePropertyWithValue('last-modified', stempel);
-  const seq = Number(v.getFirstPropertyValue('sequence') ?? 0);
-  v.updatePropertyWithValue('sequence', (Number.isFinite(seq) ? seq : 0) + 1);
+  // SEQUENCE (KALENDER_FEHLER_PRUEFLISTE #61): mit Gästen nur bei wesentlichen Änderungen (Zeit, Ort) — sonst müssten alle
+  // neu zusagen; ohne Gäste wie bisher bei jeder Änderung.
+  const wesentlich = !!(a.start || a.ende) || a.ort !== undefined;
+  if (!v.hasProperty('attendee') || wesentlich) {
+    const seq = Number(v.getFirstPropertyValue('sequence') ?? 0);
+    v.updatePropertyWithValue('sequence', (Number.isFinite(seq) ? seq : 0) + 1);
+  }
+  return { ics: comp.toString() };
+}
+
+/**
+ * Als Gast antworten (K3): PARTSTAT der eigenen Adresse in ALLEN VEVENTs (auch Serien) — iCloud schickt die Antwort an
+ * den Organisator. Kein SEQUENCE-Sprung (eine Antwort ist keine Änderung des Termins). Rein.
+ */
+export function antwortSetzen(ics: string, ich: readonly string[], status: Exclude<Teilnahme, 'offen'>, jetzt = new Date()): { ics: string } | { fehler: string } {
+  const comp = parse(ics);
+  if (!comp) return { fehler: 'Der Termin ließ sich nicht lesen.' };
+  const vs = comp.getAllSubcomponents('vevent');
+  const org = adresseAus(vs[0]?.getFirstPropertyValue('organizer'));
+  if (org && ich.includes(org)) return { fehler: 'Du hast eingeladen — zusagen oder absagen können nur die Gäste.' };
+  let gefunden = false;
+  const stempel = ICAL.Time.fromJSDate(jetzt, true);
+  for (const v of vs) {
+    for (const p of v.getAllProperties('attendee')) {
+      const mail = adresseAus(p.getFirstValue());
+      if (!mail || !ich.includes(mail)) continue;
+      p.setParameter('partstat', PARTSTAT[status]);
+      p.removeParameter('rsvp');
+      gefunden = true;
+    }
+    v.updatePropertyWithValue('dtstamp', stempel);
+  }
+  if (!gefunden) return { fehler: 'Du stehst nicht auf der Gästeliste dieses Termins.' };
   return { ics: comp.toString() };
 }

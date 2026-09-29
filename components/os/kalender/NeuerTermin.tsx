@@ -4,8 +4,10 @@
 // Kevin schickte Google-Screenshots: Titel oben, Reiter „Termin · Aufgabe · Abwesend ·
 // Fokuszeit · Arbeitsort“, Zeit mit Zeitzone („GMT+02“), „Wiederholt sich nicht ▾“,
 // Ort, Beschreibung, Kalender + Farbe, „Beschäftigt · Standard-Sichtbarkeit ·
-// 10 Minuten vorher“, „Weitere Optionen“ und „Speichern“. Gäste und Videolink kommen
-// mit K3/K4 — dafür die Erweiterungsstelle `zusatz` (Gäste, CRM-Bezug), keine Platzhalter.
+// 10 Minuten vorher“, „Weitere Optionen“ und „Speichern“.
+// Seit 30.09. (K3): „Mit Kontakt/Firma/Mandat/Deal verknüpfen“ (wird im CRM zum Meeting) und Gäste (aus dem CRM
+// oder frei) — Speichern mit Gästen fragt ERST „Einladung an n Personen über iCloud senden?“ (mit den Adressen);
+// ohne Bestätigung geht nichts an iCloud (die Route erzwingt es: 409 ohne `einladungBestaetigt`).
 //
 //   Formular → Anfrage rein in lib/kalender/formular.ts (getestet). Art „Aufgabe“ legt
 //   DIESELBE Aufgabe im Aufgaben-Modell an (aufgabeAnlegen, TasksContext — ausstehend bis der
@@ -16,7 +18,7 @@
 //   Die Schnelleingabe (lib/kalender/schnell.ts) liest den Titel („Mo 10 Uhr Kaffee 45min“)
 //   und bietet „übernehmen“ an; Enter übernimmt und speichert.
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Knopf, Segmente, feld, LEUCHT } from '../schlank';
 import { Fenster } from '../Fenster';
@@ -31,8 +33,9 @@ import { tagPlus, ausWandzeit } from '@/lib/kalender/zeit';
 import { ART_INFO, TERMIN_ARTEN, ARBEITSORTE, SICHTBARKEIT_LABEL, ERINNERUNG_VORLAGEN, ERINNERUNG_MAX, erinnerungText, type Sichtbarkeit } from '@/lib/kalender/arten';
 import { ZONEN, gmtText, ausWandzeitIn } from '@/lib/kalender/zeitzone';
 import { wiederholungVorlagen, wiederholungBeschreiben, wochentagVon, wochentagNr, WOCHENTAGE, TAG_KURZ, type Wiederholung, type WiederholungFreq } from '@/lib/kalender/wiederholung';
-import { formularStart, artWechseln, formularFehler, formularAnfrage, entwurfWertvoll, plusMin, ENTWURF_SCHLUESSEL, type Formular, type Vorgabe } from '@/lib/kalender/formular';
+import { formularStart, formularErgaenzen, artWechseln, formularFehler, formularAnfrage, entwurfWertvoll, plusMin, ENTWURF_SCHLUESSEL, type Formular, type Vorgabe } from '@/lib/kalender/formular';
 import { FarbPunkte, WER_FARBE, WER_LABEL, type Wer } from './teile';
+import { TerminVerknuepfen, GaesteWahl, EinladungFrage } from './verknuepfen';
 
 export type { Vorgabe };
 
@@ -40,18 +43,18 @@ interface Entwurf { f: Formular; am: string }
 const lese = (): Entwurf | null => { try { const v = window.sessionStorage.getItem(ENTWURF_SCHLUESSEL); return v ? JSON.parse(v) as Entwurf : null; } catch { return null; } };
 const schreibe = (e: Entwurf | null) => { try { if (e) window.sessionStorage.setItem(ENTWURF_SCHLUESSEL, JSON.stringify(e)); else window.sessionStorage.removeItem(ENTWURF_SCHLUESSEL); } catch { /* voll/privat */ } };
 
-export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, kalender, kalenderStandard, onZu, onAngelegt, zusatz }: {
+export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, kalender, kalenderStandard, onZu, onAngelegt }: {
   vorgabe: Vorgabe; heute: string; standardDauer: number; fokusDauer?: number;
   kalender: { name: string; wer: Wer; schreibbar: boolean; farbe?: string }[];
   /** Welcher Kalender gehört wem (Einstellungen) — für die Farbe „Standard“. */
   kalenderStandard?: Partial<Record<Wer, string>>;
-  onZu: () => void; onAngelegt: (was: { uid?: string; aufgabeId?: string }) => void;
-  /** Erweiterungsstelle für K3: Gäste, CRM-Bezug — erscheinen unter „Weitere Optionen“. */
-  zusatz?: { gaeste?: ReactNode; crm?: ReactNode };
+  onZu: () => void; onAngelegt: (was: { uid?: string; aufgabeId?: string; gaeste?: number; hinweis?: string }) => void;
 }) {
   const { state, dispatch, spaces } = useTasks();
   const [f, setFRoh] = useState<Formular>(() => formularStart(vorgabe, standardDauer, fokusDauer));
-  const [alt] = useState<Entwurf | null>(() => { const e = lese(); return e && entwurfWertvoll(e.f) ? e : null; });
+  const [alt] = useState<Entwurf | null>(() => { const e = lese(); return e && entwurfWertvoll(e.f) ? { ...e, f: formularErgaenzen(e.f) } : null; });
+  /** Rückfrage vor dem Versand (K3): die Adressen, an die iCloud die Einladung schickt. */
+  const [frage, setFrage] = useState<{ adressen: string[]; x: Formular } | null>(null);
   const [altOffen, setAltOffen] = useState(!!alt);
   const [voll, setVoll] = useState(false);
   const [eigenOffen, setEigenOffen] = useState(false);
@@ -71,24 +74,29 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
     };
   };
 
-  const speichern = async (roh: Formular = f) => {
+  const speichern = async (roh: Formular = f, bestaetigt = false) => {
     const x = schnellAnwenden(roh);
     if (x !== roh) setF(x);
     const fe = formularFehler(x);
     if (fe) { setFehler(fe); return; }
-    setLaeuft(true); setFehler(null);
     const a = formularAnfrage(x);
+    // Gäste: erst die Rückfrage — ohne „Senden“ geht nichts an iCloud.
+    if (a.art === 'termin' && x.gaeste.length && !bestaetigt) { setFehler(null); setFrage({ adressen: x.gaeste.map(g => g.email), x }); return; }
+    setLaeuft(true); setFehler(null);
     if (a.art === 'aufgabe') {
       // Dieselbe Aufgabe im Aufgaben-Modell — der TasksContext hält sie als „ausstehend“, bis der Server bestätigt.
       const id = aufgabeAnlegen(dispatch, state, a.ziel, a.neu);
       schreibe(null); setLaeuft(false); onAngelegt({ aufgabeId: id }); onZu();
       return;
     }
-    const r = await fetch('/api/kalender/termin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(a.koerper) })
+    const r = await fetch('/api/kalender/termin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...a.koerper, ...(bestaetigt ? { einladungBestaetigt: true } : {}) }) })
       .then(async res => ({ status: res.status, d: await res.json().catch(() => ({})) })).catch(() => ({ status: 0, d: { ok: false, fehler: 'Keine Verbindung — dein Entwurf bleibt gemerkt.' } }));
     setLaeuft(false);
-    if (r.d.ok) { schreibe(null); onAngelegt({ uid: r.d.uid }); onZu(); return; }
+    if (r.d.ok) { schreibe(null); setFrage(null); onAngelegt({ uid: r.d.uid, ...(r.d.gaeste ? { gaeste: r.d.gaeste } : {}), ...(r.d.hinweis ? { hinweis: r.d.hinweis } : {}) }); onZu(); return; }
     schreibe({ f: x, am: new Date().toISOString() });
+    // Der Server verlangt die Bestätigung (z. B. Gäste kamen anders an) → dieselbe Rückfrage mit SEINEN Adressen.
+    if (r.status === 409 && r.d.einladung && Array.isArray(r.d.adressen)) { setFrage({ adressen: r.d.adressen, x }); return; }
+    setFrage(null);
     setFehler(`${r.d.fehler ?? 'Nicht angelegt.'}${r.status === 409 || r.status === 0 || r.status >= 500 ? ' Dein Entwurf bleibt gemerkt.' : ''}`);
   };
 
@@ -247,6 +255,12 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
       <label style={{ display: 'grid', gap: 4 }}><span style={beschr}>{art === 'abwesend' ? 'Hinweis (optional)' : 'Beschreibung'}</span>
         <textarea value={f.notiz} rows={voll ? 4 : 2} onChange={e => setF({ ...f, notiz: e.target.value })} placeholder="optional" style={{ ...eingabe, resize: 'vertical', lineHeight: 1.5 }} /></label>
 
+      {/* K3: CRM am Termin + Gäste (nur echte Termine) */}
+      {art === 'termin' && <>
+        <TerminVerknuepfen wert={f.crm} onWert={crm => setF({ ...f, crm })} />
+        <GaesteWahl gaeste={f.gaeste} onGaeste={gaeste => setF({ ...f, gaeste })} hinweis={f.gaeste.length ? 'Die Einladung verschickt iCloud — erst nach deiner Bestätigung beim Speichern.' : undefined} />
+      </>}
+
       {/* Kalender + Farbe */}
       {art !== 'aufgabe' && (
         <div style={{ display: 'grid', gap: 6 }}>
@@ -297,20 +311,19 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
             ))}
             {f.erinnerungen.length < ERINNERUNG_MAX && <button type="button" onClick={() => setF({ ...f, erinnerungen: [...f.erinnerungen, f.erinnerungen.length ? 60 : 10] })} style={{ justifySelf: 'start', background: 'none', border: 'none', color: LEUCHT.puls, cursor: 'pointer', fontSize: 12.5, padding: 0 }}>+ Erinnerung hinzufügen</button>}
           </div>
-          {zusatz?.gaeste}
-          {zusatz?.crm}
         </div>
       ))}
 
       {fehler && <div role="alert" style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{fehler}</div>}
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap', alignItems: 'center' }}>
+      {frage && <EinladungFrage was="einladung" adressen={frage.adressen} laeuft={laeuft} onJa={() => void speichern(frage.x, true)} onNein={() => setFrage(null)} />}
+      {!frage && <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap', alignItems: 'center' }}>
         {art !== 'aufgabe' ? <Knopf leise onClick={() => setVoll(v => !v)}>{voll ? 'Weniger Optionen' : 'Weitere Optionen'}</Knopf> : <span />}
         <div style={{ display: 'flex', gap: 8 }}>
           <Knopf leise onClick={onZu}>Abbrechen</Knopf>
-          <Knopf farbe={LEUCHT.puls} aus={laeuft} onClick={() => void speichern()}>{laeuft ? 'speichert …' : 'Speichern'}</Knopf>
+          <Knopf farbe={LEUCHT.puls} aus={laeuft} onClick={() => void speichern()}>{laeuft ? 'speichert …' : f.gaeste.length && art === 'termin' ? 'Speichern …' : 'Speichern'}</Knopf>
         </div>
-      </div>
-      <span style={{ fontSize: 12, color: C.inkLeise }}>{art === 'aufgabe' ? 'Landet in den Aufgaben — dieselbe Aufgabe, keine Kopie.' : 'Landet in iCloud — auf iPhone und Mac sichtbar. Keine Einladungen, kein Versand.'}</span>
+      </div>}
+      <span style={{ fontSize: 12, color: C.inkLeise }}>{art === 'aufgabe' ? 'Landet in den Aufgaben — dieselbe Aufgabe, keine Kopie.' : art === 'termin' && f.gaeste.length ? 'Landet in iCloud — die Gäste bekommen die Einladung erst nach deiner Bestätigung.' : 'Landet in iCloud — auf iPhone und Mac sichtbar. Ohne Gäste kein Versand.'}</span>
     </Fenster>
   );
 }

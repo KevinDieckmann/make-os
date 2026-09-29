@@ -9,8 +9,10 @@
 // einklappbar (je Person gemerkt), „+ Hinzufügen“ über die bestehenden Wege
 // (Firma verknüpfen/anlegen, DealAnlegen, /api/crm/followup).
 // MAKE OS verschickt nichts: „E-Mail“ = Entwurf + Mail-Programm öffnen,
-// „Anruf“ = Telefon-Link + Anruf festhalten, „Meeting“ = Termin festhalten
-// (keine Einladung, keine Teilnehmer). Kanäle nur, wo die Ampel nicht rot ist.
+// „Anruf“ = Telefon-Link + Anruf festhalten. „Meeting“ (seit 30.09., K3) legt einen ECHTEN Termin an
+// (Anlege-Dialog des Kalenders, vorbelegt mit der Person) — der Termin wird über `kalender-bezug` zur Aktivität
+// „Meeting“ (eine Quelle, keine lose zweite Aktivität). Gäste nur, wenn man sie im Dialog einträgt, und erst nach
+// der Rückfrage „Einladung senden?“. Kanäle nur, wo die Ampel nicht rot ist.
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -23,7 +25,9 @@ import { kanalLink } from '@/lib/crm/erfassen';
 import { profilAdresse, suchLink } from '@/lib/crm/netzwerk';
 import { OFFENE_STUFEN, STUFEN } from '@/lib/crm/pipeline';
 import { faellige, FOLLOWUP_ARTEN } from '@/lib/crm/followup';
-import { ANRUF_ERGEBNISSE, ERGEBNIS_KURZ, meetingWann, followupAnker } from '@/lib/crm/aktivitaeten';
+import { ANRUF_ERGEBNISSE, ERGEBNIS_KURZ, followupAnker } from '@/lib/crm/aktivitaeten';
+import { MeetingNeu } from './kontakt/aktivitaeten-teile';
+import { TermineAkte } from '../kalender/TermineAkte';
 import { LIFECYCLE_WAHL, LIFECYCLE_LABEL, LIFECYCLE_KURZ, type LifecyclePhase } from '@/lib/crm/lifecycle';
 import type { BeanErgebnis } from '@/lib/crm/bean';
 import type { WahlVorschlag } from '@/lib/crm/wahl';
@@ -361,32 +365,9 @@ function AufgabeAktion({ k, api, heute, onFertig, onAbbruch }: { k: Kontakt; api
   );
 }
 
-function MeetingAktion({ k, api, heute, onFertig, onAbbruch }: { k: Kontakt; api: CrmApi; heute: string; onFertig: (t: string) => void; onAbbruch: () => void }) {
-  const [tag, setTag] = useState(heute);
-  const [zeit, setZeit] = useState('');
-  const [ort, setOrt] = useState('');
-  const [notiz, setNotiz] = useState('');
-  const [laeuft, setLaeuft] = useState(false);
-  const speichern = async () => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(tag) || laeuft) return;
-    setLaeuft(true);
-    // Zeitpunkt und Ort als Felder (28.09., H4) — der Text ist nur die Notiz.
-    const r = await api.aktivitaet({ id: k.id, art: 'termin', wann: meetingWann(tag, zeit), ...(ort.trim() ? { ort: ort.trim() } : {}), ...(notiz.trim() ? { text: notiz.trim() } : {}) });
-    setLaeuft(false);
-    if (r.kontakt) onFertig('Meeting festgehalten.');
-  };
-  return (
-    <>
-      <div style={{ display: 'flex', gap: 6 }}>
-        <input type="date" value={tag} onChange={e => setTag(e.target.value)} aria-label="Datum des Meetings" style={{ ...eingabe, flex: 1, minWidth: 0 }} />
-        <input type="time" value={zeit} onChange={e => setZeit(e.target.value)} aria-label="Uhrzeit" style={{ ...eingabe, width: 104, flex: '0 0 auto' }} />
-      </div>
-      <input value={ort} onChange={e => setOrt(e.target.value)} placeholder="Ort oder Video (optional)" aria-label="Ort" style={eingabe} />
-      <input value={notiz} onChange={e => setNotiz(e.target.value)} placeholder="Worum geht es? (optional)" aria-label="Notiz zum Meeting" style={eingabe} />
-      <Fuss><Knopf aus={laeuft} onClick={() => void speichern()}>Meeting festhalten</Knopf><Knopf leise onClick={onAbbruch}>Abbrechen</Knopf></Fuss>
-      <Hinweis>Nur festgehalten (Aktivitäten › Meetings) — keine Kalendereinladung, keine Teilnehmer.</Hinweis>
-    </>
-  );
+/** „+ Meeting“ (K3): derselbe echte Termin wie im Reiter Aktivitäten (MeetingNeu, kontakt/aktivitaeten-teile.tsx). */
+function MeetingAktion(p: { k: Kontakt; api: CrmApi; heute: string; onFertig: (t: string) => void; onAbbruch: () => void }) {
+  return <MeetingNeu {...p} />;
 }
 
 // ── Rechts ───────────────────────────────────────────────────────────────────
@@ -494,6 +475,11 @@ export function KontaktRechts({ k, api, heute, setze, klappen, zuFirma, zuAufgab
         })}
         {followups.length > 8 && <div style={{ ...klein, marginTop: 6 }}>… und {followups.length - 8} weitere unter Aktivitäten › Aufgaben.</div>}
         {!followups.length && !aufgabeNeu && <div style={klein}>Nichts offen.</div>}
+      </Klappe>
+
+      {/* Termine (30.09., K3): über den Bezug am Termin (Kontakt oder Gast), Klick öffnet den Kalender; vergangene → „Nachbereiten“. */}
+      <Klappe id="r-termine" i={5} klein titel="Termine" zu={klappen.istZu('r-termine')} umschalten={klappen.umschalten}>
+        <TermineAkte frage={{ kontakte: [k.id] }} kontaktId={k.id} heute={heute} />
       </Klappe>
 
       {/* Aufgaben (28.09. abends): mit der Person verknüpfte Aufgaben der Aufgaben-Seite; bei aktivem Mandat im Mandanten-Space. */}

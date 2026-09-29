@@ -1,5 +1,6 @@
 'use client';
 
+import { TermineAkte } from '../kalender/TermineAkte';
 import Link from 'next/link';
 import { WEG } from '@/lib/wege';
 
@@ -231,6 +232,11 @@ function FirmenKarte({ f, api, zuPerson, zuFirma }: { f: Firma; api: CrmApi; zuP
           {mandate.map(m => <Link key={m.id} href={WEG.mandat(m.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{m.titel.slice(0, 80)} <span style={{ color: C.inkLeise }}>· Mandat {m.status}{m.honorar.betrag ? ` · ${euro(m.honorar.betrag)}` : ''} ›</span></Link>)}
         </div>
       )}
+      {/* Termine (30.09., K3): mit der Firma, ihren Personen, Deals oder Mandaten verknüpft (kalender-bezug). */}
+      <div>
+        <Ueberschrift>Termine</Ueberschrift>
+        <TermineAkte frage={{ firmen: [f.id], kontakte: personen.map(k => k.id), deals: chancen.map(c => c.id), mandate: mandate.map(m => m.id) }} heute={crm.heute} />
+      </div>
       {/* Aufgaben (28.09. abends): verknüpft mit der Firma oder einem ihrer Mandate/Deals; bei aktivem Mandat im Mandanten-Space. */}
       <div>
         <Ueberschrift>Aufgaben</Ueberschrift>

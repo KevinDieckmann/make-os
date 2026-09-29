@@ -9,7 +9,7 @@
 // components/os/crm/Akte.tsx. Die private Notiz gehört nicht in die Matrix —
 // sie bleibt bei der Person, die sie schrieb.
 
-import { KREIS_TAKT, type Kontakt } from '@/lib/make-one/crm';
+import { KREIS_TAKT, wannTag, type Kontakt, type Aktivitaet } from '@/lib/make-one/crm';
 import { dealZuFirma } from './firmen-bezug';
 import type { CrmBestand, Firma, Chance, Mandat, Event, Teilnahme, TeilnahmeStatus, Kampagne, KampagnenErgebnis, Beitrag, Antrag } from './typen';
 import { personenDerFirma } from './stationen';
@@ -81,11 +81,25 @@ export function takt(k: Kontakt, heute: string): { tage: number; seit: number | 
   return { tage: t, seit, faelligAm, ueberfaellig: seit === null || seit >= t };
 }
 
-/** Was im Verlauf steht: Einträge, echte Gespräche (Gespräch, Termin oder Ergebnis „Gespräch/Termin“), der jüngste Eintrag. */
+/**
+ * Ein Meeting zählt EINMAL (30.09., K3 — Verbindungskarte Befund 7): Aktivitäten zu demselben Termin (`terminUid`) sind ein
+ * Gespräch; ein altes Kalender-Signal (`bezug` termin-…, System) und ein von Hand festgehaltenes Meeting (`wann`) am
+ * selben Tag beschreiben dasselbe Treffen (Altbestand vor K3, als es keine Verknüpfung gab).
+ */
+export function gespraechSchluessel(a: Pick<Aktivitaet, 'art' | 'ergebnis' | 'terminUid' | 'bezug' | 'wann' | 'am' | 'von'>, i: number): string | null {
+  if (!(a.art === 'gespraech' || a.art === 'termin' || a.ergebnis === 'gespraech' || a.ergebnis === 'termin')) return null;
+  if (a.terminUid) return `t:${a.terminUid}`;
+  if (a.art === 'termin' && a.von === 'system' && /^termin-/.test(a.bezug ?? '')) return `tag:${a.am.slice(0, 10)}`;
+  if (a.art === 'termin' && a.wann) return `tag:${wannTag(a.wann)}`;
+  return `i:${i}`;
+}
+
+/** Was im Verlauf steht: Einträge, echte Gespräche (Gespräch, Termin oder Ergebnis „Gespräch/Termin“ — jedes Meeting einmal), der jüngste Eintrag. */
 export function verlaufZahlen(k: Kontakt): { eintraege: number; gespraeche: number; zuletzt?: string } {
   const l = k.aktivitaeten ?? [];
-  const gespraeche = l.filter(a => a.art === 'gespraech' || a.art === 'termin' || a.ergebnis === 'gespraech' || a.ergebnis === 'termin').length;
-  const zuletzt = l.filter(a => a.art !== 'system').map(a => a.am).sort().pop();
+  const gespraeche = new Set(l.map(gespraechSchluessel).filter((s): s is string => !!s)).size;
+  // Meetings aus Kalenderterminen (K3) tragen ihre Zeit im Termin, nicht in `am` — sie zählen über `letzterKontakt`.
+  const zuletzt = l.filter(a => a.art !== 'system' && !a.terminUid).map(a => a.am).sort().pop();
   return { eintraege: l.length, gespraeche, ...(zuletzt ? { zuletzt } : {}) };
 }
 

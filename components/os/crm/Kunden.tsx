@@ -16,6 +16,7 @@
 // neben dem Personen-Filter; „+ Mandat“ übernimmt die gefilterte Gesellschaft. Rechnungen
 // aus dem Honorar landen bei der Gesellschaft des Mandats (firmaFuerGesellschaft).
 
+import { TermineAkte } from '../kalender/TermineAkte';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { bruttoAusNetto } from '@/lib/finanzen/ust';
 import { useLinkAuswahl } from '../Verlauf';
@@ -221,6 +222,8 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
       </Feldzeile>
       {/* Mandat an Zielen und Zeit (28.09.): erfasste Fokus-Zeit dieses Mandats im laufenden Monat */}
       <Feldzeile label="Zeit"><MandatZeitMonat mandatId={m.id} /></Feldzeile>
+      {/* K3 (30.09.): am Mandat verknüpfte Termine (kalender-bezug), Klick öffnet den Kalender. */}
+      <Feldzeile label="Termine"><TermineAkte frage={{ mandate: [m.id] }} heute={crm.heute} /></Feldzeile>
       <Feldzeile label="Laufzeit">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Feld typ="date" wert={m.start} breite={150} platzhalter="Start" onFertig={start => setze({ start: start || undefined })} />

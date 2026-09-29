@@ -10,6 +10,7 @@ import { ART_INFO, erinnerungenSauber, type TerminArt, type Sichtbarkeit, type A
 import { STANDARD_ZONE } from './zeitzone';
 import type { Wiederholung } from './wiederholung';
 import type { Wer } from './einstellungen';
+import type { GastWahl } from './gaeste';
 
 export const ENTWURF_SCHLUESSEL = 'make-kalender-entwurf';
 
@@ -42,9 +43,17 @@ export interface Formular {
   fokus: { aufgabeId?: string; mandatId?: string };
   /** Aufgabe: wohin (Space, Projekt, Liste) und ob mit Uhrzeit. */
   aufgabe: { spaceId: string; projectId?: string; listeId?: string; mitZeit: boolean };
+  /** K3: Kontakt/Firma/Mandat/Deal am Termin (nur Kennungen → `kalender-bezug`; wird im CRM zum Meeting). */
+  crm: { kontaktId?: string; firmaId?: string; mandatId?: string; dealId?: string };
+  /** K3: Gäste — gehen erst nach der Rückfrage „Einladung an n Personen senden?“ an iCloud. */
+  gaeste: GastWahl[];
 }
 
-export interface Vorgabe { tag: string; von?: string; bis?: string; ganztags?: boolean; wer?: Wer; titel?: string; art?: TerminArt; spaceId?: string }
+export interface Vorgabe {
+  tag: string; von?: string; bis?: string; ganztags?: boolean; wer?: Wer; titel?: string; art?: TerminArt; spaceId?: string;
+  /** K3: vorbelegt aus einer CRM-Akte („+ Meeting“). */
+  crm?: Formular['crm']; gaeste?: GastWahl[];
+}
 
 const plusMin = (hhmm: string, min: number) => { const [h, m] = hhmm.split(':').map(Number); const g = Math.min(23 * 60 + 59, h * 60 + m + min); return `${String(Math.floor(g / 60)).padStart(2, '0')}:${String(g % 60).padStart(2, '0')}`; };
 export { plusMin };
@@ -60,8 +69,12 @@ export function formularStart(v: Vorgabe, standardDauer: number, fokusDauer = 90
     zone: STANDARD_ZONE, wiederholung: null, ort: '', notiz: '', wer: v.wer ?? 'kevin', kalender: '', farbe: '',
     beschaeftigt: null, sichtbarkeit: 'standard', erinnerungen: ganztags ? [] : [10],
     arbeitsort: { art: 'home' }, fokus: {}, aufgabe: { spaceId: v.spaceId ?? 'privat', mitZeit: !ganztags && !!v.von },
+    crm: { ...(v.crm ?? {}) }, gaeste: [...(v.gaeste ?? [])],
   };
 }
+
+/** Formular aus dem Sitzungsspeicher (Entwurf vor K3 ohne `crm`/`gaeste`) — fehlende Felder ergänzen. */
+export const formularErgaenzen = (f: Formular): Formular => ({ ...f, crm: f.crm ?? {}, gaeste: Array.isArray(f.gaeste) ? f.gaeste : [] });
 
 /** Art wechseln (Reiter): ganztags-Standard und Dauer folgen der Art, Eingetipptes bleibt. */
 export function artWechseln(f: Formular, art: TerminArt, standardDauer: number, fokusDauer = 90): Formular {
@@ -77,6 +90,7 @@ export function formularFehler(f: Formular): string | null {
   if (f.art === 'arbeitsort' && f.arbeitsort.art === 'frei' && !f.arbeitsort.text?.trim()) return 'Welcher Ort?';
   if (!/^\d{4}-\d{2}-\d{2}$/.test(f.tag)) return 'Der Tag fehlt.';
   if (f.art === 'aufgabe') return null;
+  if ((f.gaeste?.length ?? 0) && f.art !== 'termin') return 'Gäste gibt es nur an Terminen.';
   if (f.ganztags) return f.bisTag < f.tag ? 'Der letzte Tag liegt vor dem ersten.' : null;
   return f.bis <= f.von ? 'Das Ende liegt vor dem Anfang.' : null;
 }
@@ -94,7 +108,10 @@ export function formularAnfrage(f: Formular): Anfrage {
       ziel: { spaceId: f.aufgabe.spaceId, ...(f.aufgabe.projectId ? { projectId: f.aufgabe.projectId } : {}), ...(f.aufgabe.listeId ? { listeId: f.aufgabe.listeId } : {}) },
     };
   }
-  const bezug = f.art === 'fokus' ? { ...(f.fokus.aufgabeId ? { aufgabeId: f.fokus.aufgabeId } : {}), ...(f.fokus.mandatId ? { mandatId: f.fokus.mandatId } : {}) } : {};
+  // Fokuszeit zählt auf Aufgabe/Mandat; ein Termin trägt den CRM-Bezug (K3). Nur Kennungen.
+  const crm = f.art === 'termin' ? Object.fromEntries(Object.entries(f.crm ?? {}).filter(([, v]) => !!v)) : {};
+  const bezug = f.art === 'fokus' ? { ...(f.fokus.aufgabeId ? { aufgabeId: f.fokus.aufgabeId } : {}), ...(f.fokus.mandatId ? { mandatId: f.fokus.mandatId } : {}) } : crm;
+  const gaeste = f.art === 'termin' ? (f.gaeste ?? []).map(g => ({ email: g.email, ...(g.name ? { name: g.name } : {}), ...(g.kontaktId ? { kontaktId: g.kontaktId } : {}) })) : [];
   const erinnerungen = erinnerungenSauber(f.erinnerungen);
   return {
     art: 'termin',
@@ -113,6 +130,7 @@ export function formularAnfrage(f: Formular): Anfrage {
       ...(!f.ganztags && f.zone !== STANDARD_ZONE ? { zone: f.zone } : {}),
       ...(f.art === 'arbeitsort' ? { arbeitsort: f.arbeitsort } : {}),
       ...(Object.keys(bezug).length ? { bezug } : {}),
+      ...(gaeste.length ? { gaeste } : {}),
     },
   };
 }

@@ -66,11 +66,18 @@ export interface Aktivitaet {
   /** Bezug: Chance, Mandat oder Event. */
   bezug?: string;
   /**
-   * Wann es stattfindet bzw. stattfand (28.09., H4) — v. a. Meetings: `YYYY-MM-DD` oder
-   * `YYYY-MM-DDTHH:MM` (Berliner Zeit) bzw. ISO mit Zone. `am` bleibt, wann es festgehalten wurde.
-   * Altbestand ohne `wann` trägt das Datum in der ersten Textzeile (`meetingAusText`).
+   * Wann es stattfindet bzw. stattfand (28.09., H4) — EIN Format (30.09., K3, Datenregel KALENDER_VERBINDUNGEN.md 4d):
+   * Berliner Wandzeit `YYYY-MM-DD` oder `YYYY-MM-DDTHH:MM`, nie mit Zone (`wannSaeubern` rechnet ISO mit Zone beim
+   * Speichern um). `am` bleibt, wann es festgehalten wurde. Altbestand ohne `wann` trägt das Datum in der ersten
+   * Textzeile (`meetingAusText`). Ein Meeting mit `terminUid` hat KEIN `wann` — seine Zeit steht nur im Termin.
    */
   wann?: string;
+  /**
+   * Der Kalendertermin dieses Meetings (30.09., K3): Schlüssel `uid` bzw. `uid::RECURRENCE-ID` (ein Vorkommen). Eine
+   * Aktivität je Termin/Vorkommen; Zeit, Ort und Titel liest die Akte über diesen Verweis aus dem Termin (verschiebt
+   * sich der Termin, zeigt die Aktivität die neue Zeit). Angelegt nur in lib/crm/termin-aktivitaet.ts.
+   */
+  terminUid?: string;
   /** Ort oder Videolink eines Meetings (28.09., H4). */
   ort?: string;
   /**
@@ -920,7 +927,14 @@ export function anzeigename(k: Pick<Kontakt, 'vorname' | 'nachname' | 'firma' | 
 export function wannSaeubern(v: unknown): string | undefined {
   const t = String(v ?? '').trim();
   if (!/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})?)?$/.test(t)) return undefined;
-  return Number.isNaN(Date.parse(t.length === 10 ? `${t}T12:00:00Z` : t)) ? undefined : t;
+  if (Number.isNaN(Date.parse(t.length === 10 ? `${t}T12:00:00Z` : mitZone(t) ? t : `${t.slice(0, 16)}:00Z`))) return undefined;
+  // Ein Format (K3): ISO mit Zone → Berliner Wandzeit `YYYY-MM-DDTHH:MM`; Sekunden fallen weg.
+  return wannNorm(t);
+}
+/** `wann` in das EINE Format bringen (Tag oder Berliner Wandzeit ohne Sekunden) — auch für Altbestand beim Lesen. */
+export function wannNorm(t: string): string {
+  if (t.length === 10) return t;
+  return mitZone(t) ? (berlinWand(t) ?? t.slice(0, 16)) : t.slice(0, 16);
 }
 const BERLIN_WAND = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 /** Berliner Wandzeit `YYYY-MM-DDTHH:MM` eines Zeitpunkts mit Zone. */
@@ -930,10 +944,10 @@ function berlinWand(iso: string): string | undefined {
   const p = Object.fromEntries(BERLIN_WAND.formatToParts(d).map(x => [x.type, x.value]));
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
-const mitZone = (t: string) => /(Z|[+-]\d{2}:\d{2})$/.test(t);
-/** Der Berliner Tag eines Meeting-Zeitpunkts (`wann`: Tag, Wandzeit oder ISO mit Zone). */
+function mitZone(t: string): boolean { return /(Z|[+-]\d{2}:\d{2})$/.test(t); }
+/** Der Berliner Tag eines Meeting-Zeitpunkts (`wann`; Altbestand mit Zone wird umgerechnet). */
 export function wannTag(wann: string): string {
-  return mitZone(wann) ? (berlinWand(wann) ?? wann).slice(0, 10) : wann.slice(0, 10);
+  return wannNorm(wann).slice(0, 10);
 }
 /**
  * Liegt das Meeting noch vor uns (28.09., Prüfbericht F1)? Ein geplantes Meeting ist noch kein
@@ -942,11 +956,11 @@ export function wannTag(wann: string): string {
  */
 export function wannInZukunft(wann: string | undefined, jetztIso: string): boolean {
   if (!wann) return false;
-  if (mitZone(wann)) return Date.parse(wann) > Date.parse(jetztIso);
+  const w = wannNorm(wann);
   const jetzt = berlinWand(jetztIso);
   if (!jetzt) return false;
-  if (wann.length === 10) return wann > jetzt.slice(0, 10);
-  return wann.slice(0, 16) > jetzt;
+  if (w.length === 10) return w > jetzt.slice(0, 10);
+  return w > jetzt;
 }
 /**
  * Letzter echter Kontakt für die Kadenz: das gespeicherte Feld oder ein Meeting, dessen Tag
@@ -974,9 +988,8 @@ export function echterKontakt(a: Pick<Aktivitaet, 'art' | 'ergebnis'>): boolean 
  * ISO mit Zone), sonst `am`. Zum Sortieren „wann ?? am“.
  */
 export function ereignisMs(a: Pick<Aktivitaet, 'am' | 'wann'>): number {
-  const w = a.wann;
+  const w = a.wann ? wannNorm(a.wann) : undefined;
   if (w) {
-    if (mitZone(w)) return Date.parse(w);
     if (w.length === 10) return Date.parse(`${w}T12:00:00Z`);
     // Berliner Wandzeit → UTC: Versatz des Tages aus der Zeitzone rechnen (Sommer +2, Winter +1).
     const roh = Date.parse(`${w.slice(0, 16)}:00Z`);
@@ -1035,11 +1048,13 @@ export function saeubereKontakt(e: unknown): Kontakt | null {
     const n = x.notiz && typeof x.notiz === 'object' ? x.notiz as Record<string, unknown> : null;
     const notiz = n ? Object.fromEntries(NOTIZ_FELDER.map(f => [f.id, txt(n[f.id], 1500)]).filter(([, v]) => v)) as NotizVorlage : undefined;
     const wann = wannSaeubern(x.wann), ort = ortSaeubern(x.ort), bearbeitet = zeitpunktSaeubern(x.bearbeitet), anlass = txt(x.anlass, 600);
+    // Termin-Verweis (K3): Schlüssel `uid` bzw. `uid::RECURRENCE-ID` — eine Zeile, begrenzt.
+    const terminUid = typeof x.terminUid === 'string' && /^[^\u0000-\u001f\u007f]{1,300}$/.test(x.terminUid) ? x.terminUid : undefined;
     const aktFirma = typeof x.firmaId === 'string' && /^f-[a-z0-9-]{2,63}$/.test(x.firmaId) ? x.firmaId : undefined;
     return {
       am: String(x.am ?? '').slice(0, 25), art, ...(txt(x.text, 3000) ? { text: txt(x.text, 3000) } : {}), von,
       ...(ergebnis ? { ergebnis } : {}), ...(notiz && Object.keys(notiz).length ? { notiz } : {}), ...(txt(x.bezug, 60) ? { bezug: txt(x.bezug, 60) } : {}),
-      ...(wann ? { wann } : {}), ...(ort ? { ort } : {}), ...(bearbeitet ? { bearbeitet } : {}), ...(aktFirma ? { firmaId: aktFirma } : {}),
+      ...(wann && !terminUid ? { wann } : {}), ...(terminUid ? { terminUid } : {}), ...(ort ? { ort } : {}), ...(bearbeitet ? { bearbeitet } : {}), ...(aktFirma ? { firmaId: aktFirma } : {}),
       ...(anlass ? { anlass } : {}),
     } as Aktivitaet;
   }).filter((a): a is Aktivitaet => !!a) : [];

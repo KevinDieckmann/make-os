@@ -131,9 +131,23 @@ export interface MeetingDaten { tag: string; zeit?: string; ort?: string; notiz?
 /** `wann` für die Aktivität aus Tag und optionaler Uhrzeit (Berliner Zeit, ohne Zone). */
 export const meetingWann = (tag: string, zeit?: string): string => (zeit && /^\d{2}:\d{2}$/.test(zeit) ? `${tag}T${zeit}` : tag);
 
-/** Datum, Uhrzeit, Ort und Notiz eines Meetings — aus den Feldern, sonst (Altbestand) aus der ersten Textzeile. */
-export function meetingVon(a: Pick<Aktivitaet, 'art' | 'text' | 'wann' | 'ort'>): MeetingDaten | null {
+/** Zeit eines Kalendertermins für ein Meeting mit `terminUid` (K3) — aus /api/kalender/bezug, je Schlüssel. */
+export interface TerminZeit { start: string; ende?: string; ganztags?: boolean; ort?: string; titel?: string }
+export type TerminZeiten = Readonly<Record<string, TerminZeit>>;
+
+/**
+ * Datum, Uhrzeit, Ort und Notiz eines Meetings. Mit `terminUid` (K3) kommen Zeit und Ort aus dem TERMIN (`termine`,
+ * über den Verweis gelesen — verschiebt sich der Termin, zeigt das Meeting die neue Zeit); fehlt er (noch nicht geladen,
+ * in Apple gelöscht), steht das Meeting am Tag, an dem es festgehalten wurde. Sonst aus den Feldern, Altbestand aus
+ * der ersten Textzeile.
+ */
+export function meetingVon(a: Pick<Aktivitaet, 'art' | 'text' | 'wann' | 'ort'> & Partial<Pick<Aktivitaet, 'terminUid' | 'am'>>, termine?: TerminZeiten): MeetingDaten | null {
   if (a.art !== 'termin') return null;
+  if (a.terminUid) {
+    const t = termine?.[a.terminUid];
+    if (t) return { tag: t.start.slice(0, 10), ...(!t.ganztags && t.start.length > 10 ? { zeit: t.start.slice(11, 16) } : {}), ...(t.ort ? { ort: t.ort } : {}), ...(a.text?.trim() ? { notiz: a.text.trim() } : {}) };
+    if (a.am) return { tag: berlin(a.am).tag, ...(a.text?.trim() ? { notiz: a.text.trim() } : {}) };
+  }
   if (a.wann) {
     const b = berlin(a.wann);
     return { tag: b.tag, ...(b.zeit && a.wann.length > 10 ? { zeit: b.zeit } : {}), ...(a.ort ? { ort: a.ort } : {}), ...(a.text?.trim() ? { notiz: a.text.trim() } : {}) };
@@ -223,6 +237,8 @@ export interface AufbereitenOpts {
   jetzt: string;
   /** Nächster Termin der Person aus dem Geschäftskalender (crm.termine[k.id]). */
   termin?: { titel: string; start: string } | null;
+  /** Zeiten der verknüpften Termine je `terminUid` (K3) — Meetings zeigen die Zeit ihres Termins. */
+  termine?: TerminZeiten;
 }
 
 /**
@@ -239,7 +255,7 @@ export function aufbereiten(k: Kontakt, crm: CrmBestand | null | undefined, o: A
   log.forEach((a, i) => {
     const b = berlin(a.am);
     const kategorie = KATEGORIE_VON_ART[a.art] ?? 'system';
-    const meeting = meetingVon(a);
+    const meeting = meetingVon(a, o.termine);
     // Ereigniszeit (U2 #46): auch ein nachgetragener Anruf / eine Mail steht an ihrem Tag (`wann ?? am`).
     const ereignis = !meeting && a.wann ? berlin(a.wann) : null;
     const tag = meeting?.tag ?? ereignis?.tag ?? b.tag;
@@ -283,8 +299,9 @@ export function aufbereiten(k: Kontakt, crm: CrmBestand | null | undefined, o: A
     }
   }
 
-  // 3 · Nächster Kalendertermin (nur, wenn er noch kommt)
-  if (o.termin?.start) {
+  // 3 · Nächster Kalendertermin (nur, wenn er noch kommt) — steht er schon als Meeting mit `terminUid` im Verlauf (K3), nicht doppelt.
+  const alsMeeting = (start: string) => log.some(a => !!a.terminUid && o.termine?.[a.terminUid]?.start.slice(0, 16) === start.slice(0, 16));
+  if (o.termin?.start && !alsMeeting(o.termin.start)) {
     const b = berlin(o.termin.start);
     if (`${b.tag}T${b.zeit ?? '23:59'}` > jetzt) {
       raus.push({ anker: kalenderAnker(k.id), quelle: 'kalender', kategorie: 'meetings', art: 'kalender', tag: b.tag, ...(b.zeit ? { zeit: b.zeit } : {}),

@@ -17,8 +17,13 @@ import { ART_INFO, TERMIN_FARBEN, SICHTBARKEIT_LABEL, ARBEITSORTE, arbeitsortTit
 import { gmtText, wandzeitIn } from '@/lib/kalender/zeitzone';
 import { ausWandzeit } from '@/lib/kalender/zeit';
 import type { BezugKennungen } from '@/lib/kalender/bezug';
+import { TEILNAHME_LABEL, type GastWahl } from '@/lib/kalender/gaeste';
+import { TerminVerknuepfen, GaesteWahl, EinladungFrage } from './verknuepfen';
 import { fokusFuerTermin } from '@/lib/zeitmessung/fokus-laufend';
 import { ZuordnungWahl, type Zuordnung } from '../zeit/Zuordnung';
+import type { Abschnitt } from '@/lib/kalender/aufgaben';
+import type { Teilnahme, Teilnehmer } from '@/lib/kalender/gaeste';
+import { aufgabeZiehStart } from './aufgaben';
 
 export type Wer = 'kevin' | 'malin' | 'beide';
 /** Ein Termin, wie ihn /api/kalender liefert (Bezug angewandt, für die ansehende Person maskiert). */
@@ -28,11 +33,23 @@ export interface KTermin {
   // ── seit 29.09. (K1) ──
   art?: IcsArt; farbeEigen?: string; farbeId?: string; beschaeftigt?: boolean; sichtbarkeit?: Sichtbarkeit; zone?: string;
   erinnerungen?: number[]; arbeitsort?: Arbeitsort; stand?: string; bezug?: BezugKennungen; von?: string; maskiert?: true;
-  /** Vorläufig (K4: offene Buchungsanfrage, noch kein fester Termin) — gestrichelt im Raster. Ältere Einträge: Kennung `buchung-…`. */
+  /** Vorläufig (K4: offene Buchungsanfrage, noch kein fester Termin) — gestrichelt im Raster. */
   vorlaeufig?: true;
+  /** Eintrag einer Buchungsanfrage (K4) — Klick öffnet die Buchungsseiten, nicht das Termin-Fenster. */
+  buchungId?: string;
+  // ── seit 30.09. (K3) ──
+  /** Gäste mit ihrer Antwort (ohne das eigene Konto). */
+  teilnehmer?: Teilnehmer[];
+  organisator?: { email: string; name?: string };
+  /** Wir haben eingeladen → ändern nach Bestätigung. */
+  ichOrganisator?: boolean;
+  /** Wir sind Gast → nur zusagen/absagen (nach Klick). */
+  meineAntwort?: Teilnahme;
+  /** Kontakt-Kennungen der Gäste aus dem CRM (`kalender-bezug`). */
+  gastKontakte?: string[];
 }
-/** Vorläufiger Eintrag (Buchungsanfrage) — über das Feld, Rückfall auf das Kennungs-Präfix von K4. */
-export const istVorlaeufig = (t: Pick<KTermin, 'id' | 'vorlaeufig'>): boolean => !!t.vorlaeufig || t.id.startsWith('buchung-');
+/** Vorläufiger Eintrag (Buchungsanfrage) — über das Feld `vorlaeufig` (K3: kein Kennungs-Präfix mehr). */
+export const istVorlaeufig = (t: Pick<KTermin, 'vorlaeufig'>): boolean => !!t.vorlaeufig;
 export interface KFrist { id: string; art: 'meilenstein' | 'etappe' | 'mandat' | 'zahlung' | 'eingang'; tag: string; titel: string; unter?: string; href: string; erledigt?: boolean; bereich?: 'privat' | 'business' }
 export interface KErinnerung { id: string; tag: string; zeit?: string; titel: string; liste?: string }
 export interface KalenderStand {
@@ -84,10 +101,10 @@ export function useKalender(von: string, bis: string) {
 const uhr = (wand: string) => wand.slice(11, 16);
 
 /** Ein Eintrag in der Ganztags-Zeile: kleine Pille, farbig nach Art. */
-function Pille({ farbe, titel, children, onClick, href, durch }: { farbe: string; titel?: string; children: React.ReactNode; onClick?: () => void; href?: string; durch?: boolean }) {
+function Pille({ farbe, titel, children, onClick, href, durch, stil: extra }: { farbe: string; titel?: string; children: React.ReactNode; onClick?: () => void; href?: string; durch?: boolean; stil?: React.CSSProperties }) {
   const stil: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 5, width: '100%', minWidth: 0, textAlign: 'left', padding: '3px 6px', borderRadius: 6, fontSize: 11.5, fontWeight: 600, lineHeight: 1.3,
-    background: `${farbe}1c`, color: farbe, border: 'none', cursor: onClick || href ? 'pointer' : 'default', textDecoration: durch ? 'line-through' : 'none', fontFamily: SCHRIFT.text,
+    background: `${farbe}1c`, color: farbe, border: 'none', cursor: onClick || href ? 'pointer' : 'default', textDecoration: durch ? 'line-through' : 'none', fontFamily: SCHRIFT.text, ...extra,
   };
   const inhalt = <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, display: 'flex', alignItems: 'center', gap: 5 }}>{children}</span>;
   if (href) return <Link href={href} title={titel} style={stil} className="fassbar">{inhalt}</Link>;
@@ -101,9 +118,18 @@ const HOECHSTENS = 4;
  * Aufgaben, Erinnerungen. Höchstens vier, der Rest auf Klick — und
  * Überfälliges als eine Pille, sonst verschwindet der Tag darunter.
  */
-export function GanztagsZelle({ termine, aufgaben, erinnerungen, fristen, ueberfaellig = 0, onTermin, onAufgabeHaken }: {
-  termine: KTermin[]; aufgaben: { id: string; title: string; done: boolean; priority?: string }[]; erinnerungen: KErinnerung[]; fristen: KFrist[];
-  ueberfaellig?: number; onTermin: (t: KTermin) => void; onAufgabeHaken: (id: string) => void;
+export function GanztagsZelle({ termine, aufgaben, erinnerungen, fristen, ueberfaellig = 0, onTermin, onAufgabeHaken, onAufgabeOeffnen, aufgabenZiehbar }: {
+  termine: KTermin[];
+  /** K3: `abschnitt` = Teil des Balkens Start → Deadline, `eltern` = Unteraufgabe von … */
+  aufgaben: { id: string; title: string; done: boolean; priority?: string; abschnitt?: Abschnitt; eltern?: string; wiederkehrend?: boolean }[];
+  erinnerungen: KErinnerung[]; fristen: KFrist[];
+  ueberfaellig?: number; onTermin: (t: KTermin) => void;
+  /** Haken. Ohne `onAufgabeOeffnen` hakt der Klick auf die ganze Pille ab (Wochenplaner). */
+  onAufgabeHaken: (id: string) => void;
+  /** K3: Klick auf den Titel öffnet die Aufgabe, der Haken hakt ab. */
+  onAufgabeOeffnen?: (id: string) => void;
+  /** K3: Aufgaben lassen sich auf einen anderen Tag oder ins Raster ziehen. */
+  aufgabenZiehbar?: boolean;
 }) {
   const [alle, setAlle] = useState(false);
   const gesamt = termine.length + fristen.length + aufgaben.length + erinnerungen.length;
@@ -130,12 +156,29 @@ export function GanztagsZelle({ termine, aufgaben, erinnerungen, fristen, ueberf
           <span aria-hidden>{FRIST_ZEICHEN[f.art].zeichen}</span>{f.titel}
         </Pille>
       ))}
-      {aufgaben.map(a => (
-        <Pille key={a.id} farbe={ART_FARBE.aufgabe} titel={`Aufgabe: ${a.title}`} onClick={() => onAufgabeHaken(a.id)} durch={a.done}>
-          <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, border: `1.5px solid ${ART_FARBE.aufgabe}`, flex: '0 0 auto', background: a.done ? ART_FARBE.aufgabe : 'transparent' }} />
-          {a.priority === 'critical' ? '‼ ' : ''}{a.title}
-        </Pille>
-      ))}
+      {aufgaben.map(a => {
+        // Balken Start → Deadline (K3): links offen ab dem 2. Tag, rechts offen bis zur Deadline, dazwischen gestrichelt.
+        const ab = a.abschnitt ?? 'einzel';
+        const balken: React.CSSProperties = ab === 'einzel' ? {} : {
+          borderRadius: ab === 'start' ? '6px 0 0 6px' : ab === 'ende' ? '0 6px 6px 0' : 0, opacity: ab === 'mitte' ? 0.75 : 1,
+          borderTop: `1px dashed ${ART_FARBE.aufgabe}55`, borderBottom: `1px dashed ${ART_FARBE.aufgabe}55`,
+        };
+        const titel = `Aufgabe${a.eltern ? ` (Unteraufgabe von „${a.eltern}“)` : ''}: ${a.title}${ab === 'start' ? ' — Start' : ab === 'mitte' ? ' — läuft' : ab === 'ende' ? ' — Deadline' : ''}${aufgabenZiehbar ? ' · ziehen verschiebt die Deadline' : ''}`;
+        const haken = <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, border: `1.5px solid ${ART_FARBE.aufgabe}`, flex: '0 0 auto', background: a.done ? ART_FARBE.aufgabe : 'transparent' }} />;
+        const inhalt = <>{ab === 'mitte' || ab === 'ende' ? <span aria-hidden>‹</span> : null}{a.eltern ? <span aria-label="Unteraufgabe">↳</span> : null}{a.priority === 'critical' ? '‼ ' : ''}{a.wiederkehrend ? <span aria-label="wiederkehrend">↻</span> : null}{a.title}{ab === 'start' || ab === 'mitte' ? <span aria-hidden style={{ marginLeft: 'auto' }}>›</span> : null}</>;
+        if (!onAufgabeOeffnen) return <Pille key={a.id} farbe={ART_FARBE.aufgabe} titel={titel} onClick={() => onAufgabeHaken(a.id)} durch={a.done} stil={balken}>{haken}{inhalt}</Pille>;
+        return (
+          <div key={a.id} data-aufgabe={a.id} draggable={!!aufgabenZiehbar} onDragStart={e => aufgabeZiehStart(e, a.id)} title={titel}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, padding: '3px 6px', borderRadius: 6, background: `${ART_FARBE.aufgabe}1c`, color: ART_FARBE.aufgabe, fontSize: 11.5, fontWeight: 600, lineHeight: 1.3, fontFamily: SCHRIFT.text, cursor: aufgabenZiehbar ? 'grab' : 'default', ...balken }}>
+            <button type="button" onClick={() => onAufgabeHaken(a.id)} aria-label={`„${a.title}“ als erledigt markieren`} title="Abhaken"
+              style={{ width: 12, height: 12, borderRadius: 3, border: `1.5px solid ${ART_FARBE.aufgabe}`, flex: '0 0 auto', background: 'transparent', padding: 0, cursor: 'pointer' }} />
+            <button type="button" onClick={() => onAufgabeOeffnen(a.id)} className="fassbar"
+              style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', textDecoration: a.done ? 'line-through' : 'none' }}>
+              {inhalt}
+            </button>
+          </div>
+        );
+      })}
       {erinnerungen.map(e => (
         <Pille key={e.id} farbe={LEUCHT.schlaf} titel={`Erinnerung${e.liste ? ` (${e.liste})` : ''}: ${e.titel}`}>
           <span aria-hidden>◷</span>{e.zeit ? `${e.zeit} ` : ''}{e.titel}
@@ -156,7 +199,7 @@ export function nurAppleGrund(t: KTermin, icloud = true): string | null {
   if (t.maskiert) return `Privater Termin${t.von ? ` von ${WER_LABEL[t.von as Wer] ?? t.von}` : ''} — du siehst nur, dass die Zeit belegt ist.`;
   if (!icloud) return 'iCloud ist noch nicht verbunden — du siehst den zuletzt vom Mac gelieferten Stand. Ändern geht hier, sobald die Verbindung steht.';
   if (t.serie) return 'Serientermin — Änderungen bitte in Apple Kalender (dort fragt Apple „nur dieser oder alle?“).';
-  if (t.mitTeilnehmern) return 'Termin mit Teilnehmern — bitte in Apple Kalender ändern, dort gehen die Einladungen raus. MAKE OS versendet nichts.';
+  if (t.mitTeilnehmern && !t.ichOrganisator) return 'Du bist hier Gast — ändern kann nur, wer eingeladen hat. Zusagen oder absagen geht unten (nach Bestätigung).';
   return 'Dieser Kalender ist nur lesbar (geteilt ohne Schreibrecht).';
 }
 
@@ -190,6 +233,9 @@ const fassungVon = (t: KTermin): Fassung => ({
  * Ein Termin im Detail (seit 29.09., K1): Art, Zeit (mit Zone), Ort, Notiz, Farbe, frei/beschäftigt, Sichtbarkeit —
  * ändern (mit Stand: 409 behält „Deine Fassung“), löschen (mit Rückfrage), Fokuszeit starten (Zeitmessung, Aufgabe/
  * Mandat/Einheit wie im Fokus-Kopf). Ungespeicherte Änderungen liegen bis zur Bestätigung im Sitzungsspeicher.
+ * Seit 30.09. (K3): mit Kontakt/Firma/Mandat/Deal verknüpfen (auch an Serien und Einladungen — nur `kalender-bezug`),
+ * Gäste mit Zusagen/Absagen; haben WIR eingeladen, gehen Änderung, neue Gäste und Löschen erst nach der Rückfrage
+ * „Änderung/Absage an n Gäste senden?“ raus; sind wir Gast, nur „Zusagen · Vielleicht · Absagen“ (ebenfalls nach Klick).
  */
 export function TerminFenster({ termin, icloud = true, space = 'privat', kalenderFarbe, onZu, onGespeichert }: {
   termin: KTermin; icloud?: boolean; space?: 'privat' | 'business'; kalenderFarbe?: string; onZu: () => void; onGespeichert: () => void;
@@ -207,6 +253,12 @@ export function TerminFenster({ termin, icloud = true, space = 'privat', kalende
   const [konflikt, setKonflikt] = useState<KTermin | null>(null);
   const [loeschenFragen, setLoeschenFragen] = useState(false);
   const [zuordnung, setZuordnung] = useState<Zuordnung>({ ...(termin.bezug?.aufgabeId ? { aufgabeId: termin.bezug.aufgabeId } : {}), ...(termin.bezug?.mandatId ? { mandatId: termin.bezug.mandatId } : {}) });
+  // K3: CRM-Bezug und Gäste (Adressen stehen nur im Termin; die Kennungen der Gäste aus dem CRM ordnet der Server zu).
+  const crmStart = { ...(termin.bezug?.kontaktId ? { kontaktId: termin.bezug.kontaktId } : {}), ...(termin.bezug?.firmaId ? { firmaId: termin.bezug.firmaId } : {}), ...(termin.bezug?.mandatId ? { mandatId: termin.bezug.mandatId } : {}), ...(termin.bezug?.dealId ? { dealId: termin.bezug.dealId } : {}) };
+  const [crm, setCrm] = useState<Pick<BezugKennungen, 'kontaktId' | 'firmaId' | 'mandatId' | 'dealId'>>(crmStart);
+  const gaesteStart: GastWahl[] = (termin.teilnehmer ?? []).map(x => ({ email: x.email, ...(x.name ? { name: x.name } : {}) }));
+  const [gaeste, setGaeste] = useState<GastWahl[]>(gaesteStart);
+  const [frage, setFrage] = useState<{ was: 'einladung' | 'aenderung' | 'absage' | 'antwort'; adressen: string[]; tun: () => void } | null>(null);
   const [fokusMeldung, setFokusMeldung] = useState<string | null>(null);
   const grund = nurAppleGrund(basis, icloud);
   const aus = !!grund;
@@ -232,31 +284,54 @@ export function TerminFenster({ termin, icloud = true, space = 'privat', kalende
   const bezugAenderung = (): Record<string, string | null> | null => {
     const alt = termin.bezug ?? {};
     const neu: Record<string, string | null> = {};
-    if ((zuordnung.aufgabeId ?? '') !== (alt.aufgabeId ?? '')) neu.aufgabeId = zuordnung.aufgabeId ?? null;
-    if ((zuordnung.mandatId ?? '') !== (alt.mandatId ?? '')) neu.mandatId = zuordnung.mandatId ?? null;
-    return art === 'fokus' && Object.keys(neu).length ? neu : null;
+    if (art === 'fokus') {
+      if ((zuordnung.aufgabeId ?? '') !== (alt.aufgabeId ?? '')) neu.aufgabeId = zuordnung.aufgabeId ?? null;
+      if ((zuordnung.mandatId ?? '') !== (alt.mandatId ?? '')) neu.mandatId = zuordnung.mandatId ?? null;
+    } else if (art === 'termin') {
+      for (const k of ['kontaktId', 'firmaId', 'mandatId', 'dealId'] as const) if ((crm[k] ?? '') !== (alt[k] ?? '')) neu[k] = crm[k] ?? null;
+    }
+    return Object.keys(neu).length ? neu : null;
   };
+  /** Gäste geändert? (nur, wer eingeladen hat bzw. an einem Termin ohne Gäste) */
+  const gaesteDarf = !aus && art === 'termin' && !basis.serie;
+  const gaesteGeaendert = gaesteDarf && JSON.stringify(gaeste.map(g => g.email).sort()) !== JSON.stringify(gaesteStart.map(g => g.email).sort());
 
-  const speichern = async (b: KTermin = basis) => {
+  const speichern = async (b: KTermin = basis, bestaetigt = false) => {
     const stand = b.stand;
-    const body = aus ? {} : aenderungen();
+    const body: Record<string, unknown> = aus ? {} : aenderungen();
+    if (gaesteGeaendert) body.gaeste = gaeste.map(g => ({ email: g.email, ...(g.name ? { name: g.name } : {}), ...(g.kontaktId ? { kontaktId: g.kontaktId } : {}) }));
     const bezug = bezugAenderung();
     if (!Object.keys(body).length && !bezug) { schreibeMerker(MERKER_AENDERUNG(termin.uid), null); onZu(); return; }
     if (body.start && String(body.ende) <= String(body.start)) { setFehler('Das Ende liegt vor dem Anfang.'); return; }
+    // Post an Gäste (K3): Änderung eines Termins mit Gästen oder eine neue Gästeliste → erst die Rückfrage.
+    const bisher = (b.teilnehmer ?? []).map(x => x.email);
+    const betroffen = Array.from(new Set([...(Object.keys(body).length ? bisher : []), ...(gaesteGeaendert ? gaeste.map(g => g.email) : [])]));
+    if (betroffen.length && !bestaetigt) { setFrage({ was: bisher.length ? 'aenderung' : 'einladung', adressen: betroffen, tun: () => void speichern(b, true) }); return; }
     setLaeuft(true); setFehler(null);
-    const r = await fetch('/api/kalender/termin', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: termin.uid, ...(stand && Object.keys(body).length ? { stand } : {}), ...body, ...(bezug ? { bezug } : {}) }) })
+    const r = await fetch('/api/kalender/termin', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: termin.uid, ...(stand && Object.keys(body).length ? { stand } : {}), ...body, ...(bezug ? { bezug } : {}), ...(bestaetigt ? { einladungBestaetigt: true } : {}) }) })
       .then(async x => ({ status: x.status, d: await x.json().catch(() => ({})) })).catch(() => ({ status: 0, d: { ok: false, fehler: 'Keine Verbindung — deine Änderung bleibt hier gemerkt.' } }));
-    setLaeuft(false);
+    setLaeuft(false); setFrage(null);
     if (r.d.ok) { schreibeMerker(MERKER_AENDERUNG(termin.uid), null); onGespeichert(); onZu(); return; }
+    if (r.status === 409 && r.d.einladung && Array.isArray(r.d.adressen)) { setFrage({ was: r.d.einladung, adressen: r.d.adressen, tun: () => void speichern(b, true) }); return; }
     if (r.status === 409 && r.d.konflikt) { setKonflikt(r.d.aktuell ?? null); setFehler(r.d.fehler ?? 'Inzwischen woanders geändert.'); return; }
     setFehler(r.d.fehler ?? 'Nicht gespeichert — deine Änderung bleibt hier gemerkt.');
   };
+  /** Als Gast antworten (K3) — nach Klick, iCloud schickt die Antwort an die einladende Person. */
+  const antworten = (status: 'zugesagt' | 'vielleicht' | 'abgesagt') => setFrage({ was: 'antwort', adressen: basis.organisator ? [basis.organisator.email] : [], tun: async () => {
+    setLaeuft(true); setFehler(null);
+    const r = await fetch('/api/kalender/termin', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: termin.uid, antwort: status, einladungBestaetigt: true, ...(basis.stand ? { stand: basis.stand } : {}) }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    setLaeuft(false); setFrage(null);
+    if (r.ok) { onGespeichert(); onZu(); } else setFehler(r.fehler ?? 'Antwort nicht gesendet.');
+  } });
   const meineUebernehmen = () => { if (!konflikt) return; const neu = { ...konflikt }; setBasis(neu); setKonflikt(null); void speichern(neu); };
   const serverUebernehmen = () => { if (!konflikt) return; setBasis(konflikt); setStart(fassungVon(konflikt)); setFRoh(fassungVon(konflikt)); schreibeMerker(MERKER_AENDERUNG(termin.uid), null); setKonflikt(null); setFehler(null); };
-  const loeschen = async () => {
+  const loeschen = async (bestaetigt = false) => {
+    // Mit Gästen (K3): iCloud schickt allen eine Absage — erst nach der Rückfrage.
+    const bisher = (basis.teilnehmer ?? []).map(x => x.email);
+    if (bisher.length && !bestaetigt) { setLoeschenFragen(false); setFrage({ was: 'absage', adressen: bisher, tun: () => void loeschen(true) }); return; }
     setLaeuft(true); setFehler(null);
-    const r = await fetch(`/api/kalender/termin?uid=${encodeURIComponent(termin.uid)}${basis.stand ? `&stand=${encodeURIComponent(basis.stand)}` : ''}`, { method: 'DELETE' }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
-    setLaeuft(false);
+    const r = await fetch(`/api/kalender/termin?uid=${encodeURIComponent(termin.uid)}${basis.stand ? `&stand=${encodeURIComponent(basis.stand)}` : ''}${bestaetigt ? '&einladungBestaetigt=1' : ''}`, { method: 'DELETE' }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    setLaeuft(false); setFrage(null);
     if (r.ok) { schreibeMerker(MERKER_AENDERUNG(termin.uid), null); onGespeichert(); onZu(); } else { setFehler(r.fehler ?? 'Nicht gelöscht.'); if (r.aktuell) setKonflikt(r.aktuell); setLoeschenFragen(false); }
   };
   const abbrechen = () => { schreibeMerker(MERKER_AENDERUNG(termin.uid), null); onZu(); };
@@ -320,6 +395,22 @@ export function TerminFenster({ termin, icloud = true, space = 'privat', kalende
             </div>
           </div>
         )}
+        {/* K3: CRM am Termin (auch an Serien/Einladungen — nur der Neben-Bestand) und Gäste */}
+        {art === 'termin' && <TerminVerknuepfen wert={crm} onWert={setCrm} />}
+        {art === 'termin' && (gaesteDarf || (basis.teilnehmer?.length ?? 0) > 0) && (
+          <GaesteWahl gaeste={gaeste} onGaeste={setGaeste} antworten={basis.teilnehmer} aus={!gaesteDarf}
+            hinweis={basis.meineAntwort ? `Eingeladen von ${basis.organisator?.name ?? basis.organisator?.email ?? 'jemand anderem'}.` : gaesteGeaendert ? 'Neue Gäste bekommen die Einladung erst nach deiner Bestätigung beim Speichern.' : undefined} />
+        )}
+        {basis.meineAntwort && (
+          <div style={{ display: 'grid', gap: 6 }}>
+            <span style={beschr}>Deine Antwort: {TEILNAHME_LABEL[basis.meineAntwort]}</span>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Knopf farbe={LEUCHT.gut} aus={laeuft || basis.meineAntwort === 'zugesagt'} onClick={() => antworten('zugesagt')}>Zusagen</Knopf>
+              <Knopf leise aus={laeuft || basis.meineAntwort === 'vielleicht'} onClick={() => antworten('vielleicht')}>Vielleicht</Knopf>
+              <Knopf farbe={LEUCHT.kritisch} aus={laeuft || basis.meineAntwort === 'abgesagt'} onClick={() => antworten('abgesagt')}>Absagen</Knopf>
+            </div>
+          </div>
+        )}
         {art === 'fokus' && (
           <div style={{ display: 'grid', gap: 8, background: `${ART_INFO.fokus.farbe}14`, border: `1px solid ${ART_INFO.fokus.farbe}40`, borderRadius: 12, padding: '10px 12px' }}>
             <span style={{ fontSize: 12.5, color: C.inkDim }}>Fokuszeit — startet die Zeitmessung (wie der Fokus im Kopf). Zählt auf Aufgabe, Mandat oder Einheit:</span>
@@ -341,9 +432,10 @@ export function TerminFenster({ termin, icloud = true, space = 'privat', kalende
         </div>
       )}
       {fehler && !konflikt && <div style={{ fontSize: 12.5, color: LEUCHT.kritisch }}>{fehler}</div>}
-      {!basis.maskiert && (loeschenFragen && !aus ? (
+      {frage && <EinladungFrage was={frage.was} adressen={frage.adressen} laeuft={laeuft} onJa={frage.tun} onNein={() => setFrage(null)} />}
+      {!basis.maskiert && !frage && (loeschenFragen && !aus ? (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', background: `${LEUCHT.kritisch}14`, borderRadius: 10, padding: '9px 12px' }}>
-          <span style={{ fontSize: TYP.bedien, flex: 1 }}>Termin wirklich löschen? Er verschwindet auch auf iPhone und Mac.</span>
+          <span style={{ fontSize: TYP.bedien, flex: 1 }}>Termin wirklich löschen? Er verschwindet auch auf iPhone und Mac.{basis.teilnehmer?.length ? ' Die Gäste bekommen eine Absage (nächster Schritt).' : ''}</span>
           <Knopf farbe={LEUCHT.kritisch} aus={laeuft} onClick={() => void loeschen()}>Ja, löschen</Knopf>
           <Knopf leise onClick={() => setLoeschenFragen(false)}>Nein</Knopf>
         </div>

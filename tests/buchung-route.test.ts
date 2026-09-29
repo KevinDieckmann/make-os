@@ -16,7 +16,7 @@ process.env.MAKE_OS_DATEN_SCHLUESSEL = 'pruef-datenschluessel-k4-nur-im-test';
 process.env.MAKE_OS_PEPPER = 'pruef-pepper-k4-nur-im-test-0123456789abcdef';
 
 // ── iCloud gemockt: Termine liegen im Speicher dieses Tests ────────────────────
-const ic = vi.hoisted(() => ({ verbunden: true, termine: [] as { uid: string; id: string; titel: string; start: string; ende: string; ganztags: boolean; kalender: string; notiz?: string; art: string; beschaeftigt: boolean }[], angelegt: 0 }));
+const ic = vi.hoisted(() => ({ verbunden: true, termine: [] as { uid: string; id: string; titel: string; start: string; ende: string; ganztags: boolean; kalender: string; notiz?: string; art: string; beschaeftigt: boolean }[], angelegt: 0, gaeste: [] as { email: string }[][], bestaetigt: [] as boolean[] }));
 vi.mock('@/lib/kalender/icloud', () => ({
   CACHE: 'calendar-cache',
   SPEICHER: 'kalender-icloud',
@@ -26,8 +26,9 @@ vi.mock('@/lib/kalender/icloud', () => ({
   ladeStand: async () => ({ at: '2026-10-05T06:00:00.000Z', kalender: [], objekte: {} }),
   frischerStand: async () => ({ at: '2026-10-05T06:00:00.000Z', kalender: [], objekte: {} }),
   termineImZeitraum: (_s: unknown, von: string, bis: string) => ic.termine.filter(t => t.start.slice(0, 10) < bis && t.ende.slice(0, 10) >= von).map(t => ({ ...t, href: '', kalenderId: '', serie: false, mitTeilnehmern: false, bearbeitbar: true })),
-  anlegen: async (e: { titel: string; kalender: string; start: string; ende: string; notiz?: string; art?: string; beschaeftigt?: boolean }) => {
+  anlegen: async (e: { titel: string; kalender: string; start: string; ende: string; notiz?: string; art?: string; beschaeftigt?: boolean; gaeste?: { email: string }[] }, opt: { einladungBestaetigt?: boolean } = {}) => {
     ic.angelegt++;
+    ic.gaeste.push(e.gaeste ?? []); ic.bestaetigt.push(!!opt.einladungBestaetigt);
     const uid = `UID-TEST-${ic.angelegt}`;
     ic.termine.push({ uid, id: uid, titel: e.titel, start: e.start, ende: e.ende, ganztags: false, kalender: e.kalender, notiz: e.notiz, art: e.art ?? 'termin', beschaeftigt: e.beschaeftigt ?? true });
     return { uid, kalender: e.kalender };
@@ -185,11 +186,14 @@ describe('Bestätigen → EIN CRM-Vorgang → Freigabe → Termin', () => {
   });
 
   it('Freigabe: fester Termin (echte UID), genau eine Aktivität „Termin gebucht“ mit Termin-Bezug, Follow-up „vorbereiten“, Audit', async () => {
-    const { bezugTermin } = await import('@/lib/crm/signale');
     const id = (await bestand()).buchungen[0].id;
+    // K3: „einladen“ ohne Bestätigung → 409, nichts angelegt.
+    expect((await verwalten({ aktion: 'freigeben', id, einladen: true })).status).toBe(409);
+    expect(ic.angelegt).toBe(0);
     const r = await verwalten({ aktion: 'freigeben', id });
     expect(r.status).toBe(200);
     expect(ic.angelegt).toBe(1);
+    expect(ic.gaeste[0]).toEqual([]); // ohne „einladen“ nie ein Gast im Termin
     const b = (await bestand()).buchungen[0];
     expect(b).toMatchObject({ status: 'bestaetigt', terminUid: 'UID-TEST-1', entschiedenVon: 'kevin' });
     expect(ic.termine[0].notiz).not.toContain(b.kontaktId!); // Kontaktbezug nie im Termin …
@@ -198,7 +202,9 @@ describe('Bestätigen → EIN CRM-Vorgang → Freigabe → Termin', () => {
     const k = (await kontakte()).find(x => x.id === b.kontaktId)!;
     const termin = k.aktivitaeten.filter(a => a.art === 'termin');
     expect(termin).toHaveLength(1);
-    expect(termin[0]).toMatchObject({ bezug: bezugTermin('UID-TEST-1'), wann: b.start.slice(0, 16) });
+    // K3: die Meeting-Aktivität verweist auf den Termin (`terminUid`) — die Zeit steht nur im Termin, kein `wann`.
+    expect(termin[0]).toMatchObject({ terminUid: 'UID-TEST-1' });
+    expect(termin[0].wann).toBeUndefined();
     const crm = (await db.loadJson<{ followups: { id: string; text: string; faellig: string }[] }>('crm'))!;
     expect(crm.followups.find(f => f.id === b.vorbereitenId)?.text).toContain('Termin vorbereiten');
     // Audit: Kalender-Schreibaktion mit UID, ohne Titel/Namen

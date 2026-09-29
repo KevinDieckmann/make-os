@@ -104,13 +104,18 @@ describe('Schreiben', () => {
     const serie = ics.replace('SUMMARY:Steuerberater', 'SUMMARY:X\r\nRRULE:FREQ=DAILY');
     expect(aendereTermin(serie, { start: '2026-09-28T14:00:00' })).toEqual({ fehler: expect.stringContaining('Serientermin') });
     const einladung = ics.replace('SUMMARY:Steuerberater', 'SUMMARY:X\r\nATTENDEE:mailto:a@example.invalid');
-    expect(aendereTermin(einladung, { titel: 'Y' })).toEqual({ fehler: expect.stringContaining('Teilnehmern') });
+    // K3: fremde Einladung (kein ORGANIZER des Kontos) → nur zusagen/absagen.
+    expect(aendereTermin(einladung, { titel: 'Y' })).toEqual({ fehler: expect.stringContaining('Gast') });
     expect(aendereTermin(ics, { start: '2026-09-28T14:00:00', ende: '2026-09-28T13:00:00' })).toEqual({ fehler: expect.stringContaining('Ende') });
     // Zeitzonen-RRULE und Alarm-ATTENDEE machen einen Einzeltermin nicht zur Serie/Einladung.
     const mitAlarm = ics.replace('ACTION:DISPLAY', 'ACTION:EMAIL\r\nATTENDEE:mailto:kevin@example.invalid');
     expect(nichtBearbeitbar(mitAlarm)).toBeNull();
     expect(nichtBearbeitbar(serie)).toMatch(/Serientermin/);
-    expect(nichtBearbeitbar(einladung)).toMatch(/Teilnehmern/);
+    expect(nichtBearbeitbar(einladung)).toMatch(/Gast/);
+    // K3: haben WIR eingeladen (ORGANIZER = Konto), ist er bearbeitbar — die Bestätigung prüft lib/kalender/icloud.ts.
+    const eigene = einladung.replace('SUMMARY:X', 'SUMMARY:X\r\nORGANIZER:mailto:kevin@example.invalid');
+    expect(nichtBearbeitbar(eigene, ['kevin@example.invalid'])).toBeNull();
+    expect(nichtBearbeitbar(eigene)).toMatch(/Gast/);
     expect(uidVon(ics)).toBe('e1');
     expect(uidVon('BEGIN:VEVENT\r\nUID:sehr-lange-uid-die-apple-auf-zwei-zeilen-umbricht-0123456789-abcdef\r\n ghij\r\nEND:VEVENT')).toBe('sehr-lange-uid-die-apple-auf-zwei-zeilen-umbricht-0123456789-abcdefghij');
   });

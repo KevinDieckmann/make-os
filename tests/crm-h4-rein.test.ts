@@ -59,7 +59,10 @@ describe('Meeting-Zeitpunkt als Feld', () => {
   it('wann und ort säubern', () => {
     expect(wannSaeubern('2026-10-02')).toBe('2026-10-02');
     expect(wannSaeubern('2026-10-02T14:00')).toBe('2026-10-02T14:00');
-    expect(wannSaeubern('2026-10-02T12:00:00.000Z')).toBe('2026-10-02T12:00:00.000Z');
+    // K3 (30.09.): ein Format — ISO mit Zone wird Berliner Wandzeit (Sommerzeit +2).
+    expect(wannSaeubern('2026-10-02T12:00:00.000Z')).toBe('2026-10-02T14:00');
+    expect(wannSaeubern('2026-12-02T12:00:00+00:00')).toBe('2026-12-02T13:00');
+    expect(wannSaeubern('2026-10-02T14:00:30')).toBe('2026-10-02T14:00');
     expect(wannSaeubern('2026-13-45')).toBeUndefined();
     expect(wannSaeubern('morgen')).toBeUndefined();
     expect(ortSaeubern('  Zoom\n Raum 2 ')).toBe('Zoom Raum 2');

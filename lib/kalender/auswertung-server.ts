@@ -10,6 +10,7 @@
 // Die Zeit ist persönlich (wie in der Zeitmessung): ausgewertet wird die angemeldete Person.
 
 import { termineLesen } from './termine-lesen';
+import { kontakteVon } from './bezug';
 import { ladeEinstellungen } from './einstellungen';
 import { spaceVonKalender } from './space';
 import { tagPlus } from './zeit';
@@ -55,7 +56,9 @@ export async function zeitAuswertungFuer(person: string, stichtag: string, woche
     id: t.id, start: t.start, ende: t.ende, ganztags: t.ganztags, space: spaceVonKalender(einst, t.kalender), mitTeilnehmern: t.mitTeilnehmern,
     art: t.art, ...(t.beschaeftigt === false ? { frei: true } : {}),
     ...(t.bezug?.mandatId ? { mandatId: t.bezug.mandatId } : {}),
-    ...(t.bezug?.kontaktId ? { kontakte: [t.bezug.kontaktId] } : {}),
+    // K3 (30.09.): Kontakt am Termin + Gäste aus dem CRM (`gastKontakte`) — je Person einmal.
+    ...(kontakteVon({ ...(t.bezug?.kontaktId ? { kontaktId: t.bezug.kontaktId } : {}), ...(t.gastKontakte ? { gastKontakte: t.gastKontakte } : {}) }).length
+      ? { kontakte: kontakteVon({ ...(t.bezug?.kontaktId ? { kontaktId: t.bezug.kontaktId } : {}), ...(t.gastKontakte ? { gastKontakte: t.gastKontakte } : {}) }) } : {}),
   }));
   // Soll-Arbeitszeit aus der Wochenvorlage (K1) — nur wenn die Person dort Business-Blöcke hat.
   const bloeckeVorlage = Array.isArray(routinen?.bloecke) ? routinen!.bloecke : [];
