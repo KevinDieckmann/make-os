@@ -25,6 +25,7 @@ import { Zeitraster } from './Zeitraster';
 import { Monat } from './Monat';
 import { Agenda } from './Agenda';
 import { NeuerTermin, type Vorgabe } from './NeuerTermin';
+import { useTermineFinden } from './MitPlanen';
 import { suchPasst } from '@/lib/text/such-norm';
 // K2 (29.09.): 4 Tage, Jahr, Quellen „Feiertage NRW“ + „Geburtstage“, Zeit-Auswertung.
 import { VierTage } from './VierTage';
@@ -90,6 +91,8 @@ export function Kalender() {
   const jahr = Number(anker.slice(0, 4));
   const quell = useQuellTermine(ansicht === 'jahr' ? `${jahr}-01-01` : von, ansicht === 'jahr' ? `${jahr + 1}-01-01` : bis);
   const jahrDaten = useJahr(ansicht === 'jahr' ? jahr : 0);
+  // K4 Termine finden: „Mit … planen“ (Überlagerung + freie Zeiten) und Buchungsseiten — ein Haken (components/os/kalender/MitPlanen.tsx).
+  const k4 = useTermineFinden({ alle: daten?.termine, onVorschlag: setNeu });
 
   const farbe = useCallback((t: KTermin) => (istQuellTermin(t) ? t.farbe : daten?.kalender.find(k => k.name === t.kalender)?.farbe ?? WER_FARBE[t.wer]), [daten]);
   const such = suche.trim().toLowerCase();
@@ -212,6 +215,7 @@ export function Kalender() {
           <Link href="/os/planung/woche" style={{ fontSize: 12, color: C.inkDim, alignSelf: 'center' }}>Wochenplaner (Blöcke) ›</Link>
         </div>
       </Karte>
+      {k4.karten}
       <Karte i={3} akzent={analyse?.conflicts?.length ? LEUCHT.kritisch : undefined}>
         <Ueberschrift rechts={<Knopf leise aus={analysiert || !daten} onClick={() => void analysieren()}>{analysiert ? 'analysiert …' : 'Woche prüfen'}</Knopf>}>Kalender-Agent</Ueberschrift>
         {!analyse && <div style={{ fontSize: 12.5, color: C.inkDim }}>Konflikte finden, Reha- und Fokus-Blöcke in freie Lücken vorschlagen — eintragen tust du.</div>}
@@ -264,8 +268,8 @@ export function Kalender() {
       </div>
       <div style={{ minHeight: 0 }}>
         {(ansicht === 'tag' || ansicht === 'woche') && (
-          <Zeitraster tage={tage} heute={heute} termine={termine} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} farbe={farbe}
-            onOeffnen={oeffnen} onNeu={(tag, m) => setNeu({ tag, von: uhr(m), bis: uhr(Math.min(24 * 60, m + standardDauer)) })} onVerschieben={verschieben} onAufgabe={() => router.push('/os/aufgaben')} />
+          <Zeitraster tage={tage} heute={heute} termine={k4.raster(termine)} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} farbe={k4.farbe(farbe)}
+            onOeffnen={t => { if (!k4.oeffnen(t)) oeffnen(t); }} onNeu={(tag, m) => setNeu({ tag, von: uhr(m), bis: uhr(Math.min(24 * 60, m + standardDauer)) })} onVerschieben={verschieben} onAufgabe={() => router.push('/os/aufgaben')} />
         )}
         {ansicht === 'vier' && (
           <VierTage start={anker} heute={heute} termine={termine} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} farbe={farbe}

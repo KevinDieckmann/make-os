@@ -35,8 +35,9 @@ export const GRENZE_VERSUCHE = 3;
 /** Abgeschlossene Absichten bleiben so lange (Nachvollziehbarkeit), dann fallen sie beim nächsten Schreiben weg. */
 export const HALTEN_TAGE = 30;
 
-export type AbsichtArt = 'art17' | 'zusammenfuehren' | 'import' | 'kennungen-umzug' | 'kennungen-rueckweg' | 'crm-folgen' | 'angebot-stellen';
-export const ABSICHT_ARTEN: readonly AbsichtArt[] = ['art17', 'zusammenfuehren', 'import', 'kennungen-umzug', 'kennungen-rueckweg', 'crm-folgen', 'angebot-stellen'];
+/** `buchung` (29.09., K4): Terminbuchung als EIN CRM-Vorgang — Anfrage bzw. Freigabe (lib/kalender/buchung-ablauf.ts). */
+export type AbsichtArt = 'art17' | 'zusammenfuehren' | 'import' | 'kennungen-umzug' | 'kennungen-rueckweg' | 'crm-folgen' | 'angebot-stellen' | 'buchung';
+export const ABSICHT_ARTEN: readonly AbsichtArt[] = ['art17', 'zusammenfuehren', 'import', 'kennungen-umzug', 'kennungen-rueckweg', 'crm-folgen', 'angebot-stellen', 'buchung'];
 /**
  * offen          läuft oder wartet auf Wiederaufnahme
  * fertig         alle Schritte abgehakt

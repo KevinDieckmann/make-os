@@ -47,6 +47,8 @@ function sauber(): VerbindungsBestaende {
     fokus: [{ person: 'kevin', bloecke: [{ von: J, bis: J, schluessel: 'business:markttraktion', label: 'x', sek: 60, aufgabeId: 't-1', terminUid: 'U-1' }, { von: JETZT, bis: JETZT, schluessel: 'business:markttraktion', label: 'x', sek: 60, mandatId: 'm-1', firmaId: 'f-alpha' }] }],
     // Mandat an Zielen und Zeit (28.09.): Ziele/Meilensteine mit lebendem Mandats-/Firmen-Bezug.
     planung: { ziele: [{ speicher: 'ziele', ziele: [{ id: 'z-1', mandatId: 'm-1', firmaId: 'f-alpha' }, { id: 'z-2' }] }], meilensteine: [{ id: 'ms-1', mandatId: 'm-1' }] },
+    // Terminbuchungen (29.09., K4): eine saubere, bestätigte Buchung mit Kontakt und Termin.
+    buchungen: { seiten: ['bs-1'], buchungen: [{ id: 'bu-1', seiteId: 'bs-1', status: 'bestaetigt', kontaktId: 'c-anna1', terminUid: 'U-1', start: `${HEUTE}T10:00:00` }] },
     dateien: { eintraege: [{ id: 'd-abcd1', art: 'vertrag', kontaktId: 'c-anna1', mandatId: 'm-1', rechnungId: 'r-1', datei: { name: 'v.pdf', typ: 'application/pdf', groesse: 10, verschluesselt: false }, hochgeladenAm: J, hochgeladenVon: 'kevin' }], aufPlatte: ['d-abcd1', 'd-aufg1'] },
     // Projekt-/Aufgaben-Dateien (28.09., C2): eigener Bestand, derselbe Ordner — ihre .bin ist keine „Datei ohne Eintrag“.
     aufgabenDateien: { eintraege: [aufgabenDatei('d-aufg1', { aufgabeId: 't-1' })], projekte: ['p-1', 'p-2'] },
@@ -163,6 +165,10 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   // Mandat an Zielen und Zeit (28.09.)
   ['ziel-mandat-tot', b => { b.planung!.ziele[0].ziele.push({ id: 'z-3', mandatId: 'm-weg' }); b.planung!.ziele.push({ speicher: 'ziele-eigen--malin', ziele: [{ id: 'z-4', firmaId: 'f-weg' }, { id: 'z-5', mandatId: 'm-1' }] }); }, 2, 'z-3'],
   ['meilenstein-mandat-tot', b => { b.planung!.meilensteine.push({ id: 'ms-2', mandatId: 'm-weg', firmaId: 'f-alpha' }); }, 1, 'ms-2'],
+  // Terminbuchungen (29.09., K4)
+  ['buchung-seite-tot', b => { b.buchungen!.buchungen.push({ id: 'bu-2', seiteId: 'bs-weg', status: 'abgelehnt', start: `${HEUTE}T11:00:00` }); }, 1, 'bu-2'],
+  ['buchung-kontakt-tot', b => { b.buchungen!.buchungen.push({ id: 'bu-3', seiteId: 'bs-1', status: 'angefragt', kontaktId: 'c-weg1', start: `${HEUTE}T11:00:00` }); }, 1, 'bu-3'],
+  ['buchung-termin-tot', b => { b.buchungen!.buchungen.push({ id: 'bu-4', seiteId: 'bs-1', status: 'bestaetigt', terminUid: 'UID-weg', start: `${HEUTE}T12:00:00` }, { id: 'bu-5', seiteId: 'bs-1', status: 'bestaetigt', terminUid: 'UID-alt', start: '2025-01-01T12:00:00' }); }, 1, 'bu-4'],
   ['zeit-mandat-tot', b => { b.fokus![0].bloecke.push({ von: HEUTE, bis: HEUTE, schluessel: 'business:x', label: 'x', sek: 60, mandatId: 'm-weg' }); }, 1, 'm-weg'],
   // Kalender (29.09., K1) — gelöschte Termine nur im Holfenster; ohne gelungenen Stand (fenster null) nie.
   ['termin-uid-tot', b => { b.kalender!.bezuege.push({ schluessel: 'U-weg', tag: '2026-10-01', kennungen: {} }, { schluessel: 'U-weg::20261001T080000Z', tag: '2026-10-01', kennungen: {} }, { schluessel: 'U-uralt', tag: '2025-01-01', kennungen: {} }); }, 2, 'U-weg'],

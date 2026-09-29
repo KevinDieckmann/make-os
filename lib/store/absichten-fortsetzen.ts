@@ -32,6 +32,7 @@ const FORTSETZER: Record<AbsichtArt, () => Promise<Fortsetzer>> = {
   'kennungen-rueckweg': async () => (await import('@/lib/crm/kennungen-umzug')).umzugFortsetzen,
   'crm-folgen': async () => (await import('@/lib/crm/speicher')).crmFolgenFortsetzen,
   'angebot-stellen': async () => (await import('@/lib/crm/angebot-server')).angebotFortsetzen,
+  'buchung': async () => (await import('@/lib/kalender/buchung-ablauf')).buchungFortsetzen,
 };
 
 export interface FortsetzenErgebnis { gefunden: number; fertig: number; weiterOffen: number; gescheitert: number; fehler: string[] }

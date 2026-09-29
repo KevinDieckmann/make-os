@@ -286,6 +286,12 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     zaehle('grabsteine', await grabsteineAufraeumen(stichtag('grabsteine', f.grabsteine, heute)));
   });
 
+  // 14 · Terminbuchungen der Buchungsseiten (29.09., K4): Endzustände nach der Frist, bestätigte die Frist nach dem Termin.
+  await schritt('buchungen', async () => {
+    const { buchungenLoeschfrist } = await import('@/lib/kalender/buchung-speicher');
+    zaehle('buchung (Terminbuchungen)', await buchungenLoeschfrist(jetzt, f.buchungen));
+  });
+
   await updateJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER, cur => ({ ...(cur ?? {}), lauf: { tag: heute, am: jetztIso, ueberFrist: ueber.length, bereinigt } }));
   const summe = Object.values(bereinigt).reduce((a, x) => a + x, 0);
   return {

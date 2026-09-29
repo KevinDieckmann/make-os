@@ -7,8 +7,9 @@
 // Umsetzung seit Paket „Glocke“ (B2): Speicher je Person `lib/meldungen/speicher.ts`, reine Regeln
 // `lib/meldungen/regeln.ts`, Route `/api/meldungen`, Glocke `components/os/Glocke.tsx` im Kopf.
 
-/** `zoe` (Paket C4): ZOE hat eine Aufgabe vorbereitet — an die Auftraggeberin, `von: 'zoe'`. */
-export type MeldungArt = 'zuweisung' | 'kommentar' | 'erwaehnung' | 'faellig' | 'ueberfaellig' | 'zoe';
+/** `zoe` (Paket C4): ZOE hat eine Aufgabe vorbereitet — an die Auftraggeberin, `von: 'zoe'`.
+ *  `buchung` (29.09., K4): neue Terminanfrage über eine Buchungsseite — an die Person der Seite. */
+export type MeldungArt = 'zuweisung' | 'kommentar' | 'erwaehnung' | 'faellig' | 'ueberfaellig' | 'zoe' | 'buchung';
 
 export interface MeldungEingabe {
   /** Empfänger: Speichername der Person (z. B. „malin“). Nie an sich selbst melden. */

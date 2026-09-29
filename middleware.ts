@@ -20,6 +20,10 @@ const OFFEN = [/^\/anmelden$/, /^\/api\/konto\/(status|anmelden|einrichten|beitr
 // Der Browser meldet CSP-Verstöße ohne Sitzung und ohne verlässlichen Origin-Kopf (27.09.) — die Route
 // nimmt nur Zähler an (Richtlinie, blockierte Quelle, Seite ohne Parameter) und begrenzt die Rate selbst.
 const CSP_MELDEWEG = /^\/api\/hoi\/csp$/;
+// Öffentliche Buchungsseite (29.09., K4): NUR diese Pfade sind ohne Sitzung offen — die Seite einer Buchungsadresse,
+// ihre Status-Seite und genau deren zwei Schnittstellen. Adresse = lesbarer Vorsatz + 96 Bit Zufall (lib/kalender/buchung.ts
+// `slugOk`); alles andere (auch /buchen ohne Adresse oder tiefere Pfade) bleibt zu. Die Routen drosseln selbst.
+const BUCHUNG_OFFEN = [/^\/buchen\/[a-z0-9-]{1,40}-[a-f0-9]{24}(\/status)?$/, /^\/api\/buchung\/[a-z0-9-]{1,40}-[a-f0-9]{24}(\/status)?$/];
 
 function adresseHost(): string | null {
   try { const a = process.env.MAKE_OS_ADRESSE?.trim(); return a ? new URL(a).host : null; } catch { return null; }
@@ -82,6 +86,8 @@ export async function middleware(req: NextRequest) {
   if (pfad.startsWith('/api/') && req.headers.get('sec-fetch-site') === 'cross-site' && req.headers.get('sec-fetch-mode') === 'navigate') return verweigertApi();
 
   if (OFFEN.some(r => r.test(pfad))) return NextResponse.next({ request: { headers: kopf } });
+  // Öffentliche Buchung: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung — die Routen handeln für niemanden.
+  if (BUCHUNG_OFFEN.some(r => r.test(pfad))) return NextResponse.next({ request: { headers: kopf } });
 
   const sitzung = await sitzungPruefen(sitzungsGeheimnis(), req.cookies.get(SITZUNG_COOKIE)?.value);
   // Passt der Zettel noch zum Passwort? (nach einem Wechsel: alle anderen Geräte binnen einer Minute raus)

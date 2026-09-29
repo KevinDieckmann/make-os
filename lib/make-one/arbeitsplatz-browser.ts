@@ -16,9 +16,12 @@ export function personLesen(): Person {
   } catch { return ''; }
 }
 
-/** Steht der Browser auf der Anmeldeseite? Dort fragen die Kontexte nichts ab (ohne Sitzung gäbe es nur 401, 29.09.). */
+/**
+ * Steht der Browser auf der Anmeldeseite oder einer öffentlichen Seite (Buchungsseite `/buchen/…`, 29.09. K4)? Dort
+ * fragen die Kontexte nichts ab — ohne Sitzung gäbe es nur 401, und eine Seite für Gäste lädt nie Daten des Haushalts.
+ */
 export function aufAnmeldeseite(): boolean {
-  try { return window.location.pathname === '/anmelden' || window.location.pathname.startsWith('/anmelden/'); } catch { return false; }
+  try { const p = window.location.pathname; return p === '/anmelden' || p.startsWith('/anmelden/') || p.startsWith('/buchen/'); } catch { return false; }
 }
 
 /** Angemeldet aus Sicht des Browsers: Namens-Zettel da und nicht auf der Anmeldeseite — erst dann abfragen. */

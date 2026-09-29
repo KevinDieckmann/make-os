@@ -35,7 +35,7 @@ import type { CrmBestand } from './typen';
 import { tagVon } from '@/lib/zeit';
 
 export type FristArt = 'kontakte' | 'import-konflikte' | 'import-laeufe' | 'heads-replay' | 'signale' | 'aenderungsprotokoll' | 'aktivitaeten-geloeschte'
-  | 'zoe-arbeitslisten' | 'zoe-entscheidungen' | 'zoe-verlauf' | 'zoe-gedaechtnis' | 'postfach-caches' | 'kalender-caches' | 'archiv-umzug' | 'netzwerk' | 'grabsteine' | 'sicherungen';
+  | 'zoe-arbeitslisten' | 'zoe-entscheidungen' | 'zoe-verlauf' | 'zoe-gedaechtnis' | 'postfach-caches' | 'kalender-caches' | 'archiv-umzug' | 'netzwerk' | 'grabsteine' | 'sicherungen' | 'buchungen';
 export type Einheit = 'tage' | 'monate';
 
 export interface FristDef {
@@ -65,6 +65,8 @@ export const LOESCHFRISTEN: readonly FristDef[] = [
   { id: 'archiv-umzug', titel: 'Umzugs- und Aufräum-Kopien im Archiv', einheit: 'tage', standard: 30, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Kopien vor Umzügen und Aufräumarbeiten (CRM vor Brain-Umzug, MAKE.ORGA, Business, Kategorien). Andere Archiv-Dateien bleiben — nie automatisch.' },
   { id: 'netzwerk', titel: 'Altbestand Netzwerk (vor der Kartei)', einheit: 'monate', standard: 24, min: 6, max: 120, wirkung: 'aufgabe', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Nie automatisch: Einträge ohne Kontakt seit der Frist zählen in die Löschfrist-Aufgabe. Der Altbestand wird stillgelegt (in die Kartei übernehmen oder löschen).' },
   { id: 'grabsteine', titel: 'Grabsteine gelöschter Personen', einheit: 'monate', standard: 13, min: 13, max: 120, wirkung: 'automatisch', norm: 'Art. 17, Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Fingerabdrücke außerhalb des Datenordners — länger als jede Sicherung, damit ein Restore niemanden zurückholt. Die Sperrliste bleibt.' },
+  // 29.09. (K4): Terminbuchungen der öffentlichen Buchungsseiten.
+  { id: 'buchungen', titel: 'Terminbuchungen (Buchungsseiten)', einheit: 'tage', standard: 30, min: 7, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Nicht bestätigte, abgelehnte, abgesagte und abgelaufene Buchungen fallen nach der Frist weg, bestätigte die Frist nach dem Termin — Anfrage und Aktivität im CRM bleiben (dort gilt die Frist der Kartei).' },
   { id: 'sicherungen', titel: 'Tageskopien und Nachtsicherungen', einheit: 'tage', standard: 14, min: 14, max: 14, wirkung: 'fest', anzeige: '14 Tage', norm: 'Art. 5 Abs. 1 lit. e, Art. 32 DSGVO', hinweis: 'Gelöschte Personen stehen bis zum Ablauf noch in Sicherungen („beyond use“) — nach jedem Zurückspielen wenden die Grabsteine die Löschung erneut an.' },
 ];
 

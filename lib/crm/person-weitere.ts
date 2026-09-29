@@ -241,6 +241,8 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'client-fehler', muster: /^client-fehler$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'meldungen--*', muster: /^meldungen--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   { name: 'absichten--*', muster: /^absichten--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: absichtenTilgen },
+  // Terminbuchungen (29.09., K4): die Buchungen der Person fallen weg (Name, Adresse, Kontakt-Kennung); Seiten bleiben.
+  { name: 'buchung--*', muster: /^buchung--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: eintraegeRaus('buchungen') },
 ];
 
 /** Welcher weitere Speicher gilt für diesen Bestandsnamen? */

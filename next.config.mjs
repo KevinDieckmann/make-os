@@ -30,9 +30,25 @@ const nextConfig = {
           'report-uri /api/hoi/csp', 'report-to csp',
         ].join('; ') }, { key: 'Reporting-Endpoints', value: 'csp="/api/hoi/csp"' }]
       : [];
+    // Öffentliche Buchungsseite (29.09., K4): strengere Richtlinie — kein Einbetten, keine Rahmen, keine Worker, keine
+    // Kamera/Mikrofon, keine Referrer (die Status-Adresse trägt das Token im Fragment), nicht indexieren, nicht zwischenspeichern.
+    // Steht NACH der allgemeinen Regel: bei gleichem Kopf gewinnt der spätere Eintrag.
+    const buchung = [
+      { key: 'Referrer-Policy', value: 'no-referrer' },
+      { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+      { key: 'Cache-Control', value: 'no-store' },
+      { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=()' },
+      ...(process.env.NODE_ENV === 'production' ? [{ key: 'Content-Security-Policy', value: [
+        "default-src 'self'", "script-src 'self' 'unsafe-inline'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data:", "font-src 'self' data:",
+        "connect-src 'self'", "worker-src 'none'", "media-src 'none'", "frame-src 'none'", "frame-ancestors 'none'", "base-uri 'none'", "form-action 'self'", "object-src 'none'",
+        'report-uri /api/hoi/csp', 'report-to csp',
+      ].join('; ') }] : []),
+    ];
     return [
       { source: '/finanz-dashboard.html', headers: basis.filter(h => h.key !== 'X-Frame-Options').concat([{ key: 'X-Frame-Options', value: 'SAMEORIGIN' }]) },
       { source: '/((?!finanz-dashboard\\.html).*)', headers: [...basis, ...csp] },
+      { source: '/buchen/:pfad*', headers: buchung },
+      { source: '/api/buchung/:pfad*', headers: buchung },
     ];
   },
   // Gesundheit ist seit 23.09. EINE Seite mit vier Segmenten. Die alten

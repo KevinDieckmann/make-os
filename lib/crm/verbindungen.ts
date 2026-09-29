@@ -51,6 +51,7 @@ import { wertelistenVollstaendig, wertelistenPruefen, WERT_MIN, WERT_MAX } from 
 import { tagVon } from '@/lib/zeit';
 import { PRUEFUNGEN_PLANUNG, planungPruefen, planungReparieren, type PlanungBestand } from './verbindungen-planung';
 import { PRUEFUNGEN_KALENDER, kalenderPruefen, kalenderReparieren, type KalenderPruefBestand, type KalenderLebend } from './verbindungen-kalender';
+import { PRUEFUNGEN_BUCHUNG, buchungenPruefen, type BuchungenStand } from '@/lib/kalender/buchung-verbindungen';
 // ── Eingang ─────────────────────────────────────────────────────────────────
 
 /** Eine Rechnung aus dem Finanzplan (Speicher „finanzplan“) — nur, was die Prüfung braucht. */
@@ -91,6 +92,8 @@ export interface VerbindungsBestaende {
   planung?: PlanungBestand | null;
   /** Kalender (29.09., K1): iCloud-UIDs, Holfenster, Einträge `kalender-bezug` — nur Kennungen. null = nicht geprüft. */
   kalender?: KalenderPruefBestand | null;
+  /** Terminbuchungen (29.09., K4): nur Kennungen/Status, Seiten, UIDs des iCloud-Stands. null = nicht geprüft. */
+  buchungen?: BuchungenStand | null;
 }
 
 // ── Befunde ─────────────────────────────────────────────────────────────────
@@ -203,6 +206,8 @@ export const PRUEFUNGEN = {
   ...PRUEFUNGEN_PLANUNG,
   // Kalender (29.09., K1): termin-uid-tot, kalender-bezug-kennung-tot, termin-art-verloren, zeit-termin-tot — lib/crm/verbindungen-kalender.ts.
   ...PRUEFUNGEN_KALENDER,
+  // Buchung ↔ Seite ↔ Kontakt ↔ Termin (29.09., K4): lib/kalender/buchung-verbindungen.ts.
+  ...PRUEFUNGEN_BUCHUNG,
 } as const satisfies Record<string, Pruefung>;
 
 export type PruefungId = keyof typeof PRUEFUNGEN;
@@ -543,6 +548,9 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
   planungPruefen(b, { mandate: m.mandate, firmen: m.firmen }, melde);
   // Kalender (29.09., K1): Bezüge, gelöschte Termine, verlorene Art, Fokus-Blöcke aus gelöschten Fokuszeiten.
   kalenderPruefen(b, kalenderLebend(b, m), melde);
+
+  // Terminbuchungen (29.09., K4): Seite, Kontakt, Termin.
+  buchungenPruefen(b.buchungen, m.kontakte, b.kalender, melde);
 
   // Import-Konflikte
   if (b.konflikte) {
